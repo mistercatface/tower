@@ -26,4 +26,18 @@ export class Viewport {
             y: (worldY - this.y) * this.zoom + this.cy
         };
     }
+
+    follow(targetX, targetY, factor = 0.1) {
+        this.x += (targetX - this.x) * factor;
+        this.y += (targetY - this.y) * factor;
+    }
+
+    snapTo(x, y) {
+        this.x = x;
+        this.y = y;
+    }
+
+    setZoom(value) {
+        this.zoom = Math.min(Math.max(value, 0.2), 3.0);
+    }
 }

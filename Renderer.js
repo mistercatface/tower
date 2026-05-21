@@ -51,23 +51,53 @@ export class Renderer {
         }
     }
 
-    drawCoin(coin) {
+    drawPickup(pickup) {
+        if (!pickup.cachedSprite) {
+            const canvasSize = pickup.radius * 2 + 4;
+            const cx = canvasSize / 2;
+            const cy = canvasSize / 2;
+            const offCanvas = new OffscreenCanvas(canvasSize, canvasSize);
+            const offCtx = offCanvas.getContext('2d');
+
+            if (pickup.type === 'coin') {
+                offCtx.beginPath();
+                offCtx.arc(cx, cy, pickup.radius, 0, Math.PI * 2);
+                offCtx.fillStyle = "#FFEB3B";
+                offCtx.fill();
+                offCtx.lineWidth = 1;
+                offCtx.strokeStyle = "#FBC02D";
+                offCtx.stroke();
+                
+                offCtx.fillStyle = "#000";
+                offCtx.font = "10px monospace";
+                offCtx.textAlign = "center";
+                offCtx.textBaseline = "middle";
+                offCtx.fillText("$", cx, cy + 1);
+            } else if (pickup.type === 'eyeball') {
+                offCtx.beginPath();
+                offCtx.arc(cx, cy, pickup.radius, 0, Math.PI * 2);
+                offCtx.fillStyle = "#FFFFFF";
+                offCtx.fill();
+                offCtx.lineWidth = 1;
+                offCtx.strokeStyle = "#000000";
+                offCtx.stroke();
+                
+                offCtx.beginPath();
+                offCtx.arc(cx, cy, pickup.radius * 0.5, 0, Math.PI * 2);
+                offCtx.fillStyle = "#2196F3";
+                offCtx.fill();
+
+                offCtx.beginPath();
+                offCtx.arc(cx, cy, pickup.radius * 0.25, 0, Math.PI * 2);
+                offCtx.fillStyle = "#000000";
+                offCtx.fill();
+            }
+            pickup.cachedSprite = offCanvas;
+        }
+
         this.ctx.save();
-        this.ctx.translate(coin.x, coin.y);
-        this.ctx.beginPath();
-        this.ctx.arc(0, 0, coin.radius, 0, Math.PI * 2);
-        this.ctx.fillStyle = "#FFEB3B";
-        this.ctx.fill();
-        this.ctx.lineWidth = 1;
-        this.ctx.strokeStyle = "#FBC02D";
-        this.ctx.stroke();
-        
-        this.ctx.fillStyle = "#000";
-        this.ctx.font = "10px monospace";
-        this.ctx.textAlign = "center";
-        this.ctx.textBaseline = "middle";
-        this.ctx.fillText("$", 0, 1);
-        
+        this.ctx.translate(pickup.x, pickup.y);
+        this.ctx.drawImage(pickup.cachedSprite, -pickup.cachedSprite.width / 2, -pickup.cachedSprite.height / 2);
         this.ctx.restore();
     }
 
@@ -99,10 +129,9 @@ export class Renderer {
 
             this.drawShadows(state);
 
-            for (const c of state.coins) this.drawCoin(c);
+            for (const p of state.pickups) this.drawPickup(p);
             for (const e of state.enemies) this.drawEnemy(e);
-            for (const m of state.missiles) this.drawMissile(m, "#FFEB3B");
-            for (const em of state.enemyMissiles) this.drawMissile(em, "#F44336");
+            for (const p of state.projectiles) this.drawMissile(p, p.faction === "player" ? "#FFEB3B" : "#F44336");
 
             this.drawWalls(state.walls, state.wallTheme);
 

@@ -1,7 +1,8 @@
-import { Planet, Turret } from "./Entities.js";
+import { Turret } from "./Entities.js";
+import { Planet } from "./Planet.js";
 import { GridSystem } from "./GridSystem.js";
 import { enemyTypes, defaultUpgradeCost } from "./Config.js";
-
+import { WallGenerator } from "./Generator.js";
 
 export class Stat {
     constructor(baseValue, min = -Infinity, max = Infinity) {
@@ -24,7 +25,6 @@ export class Stat {
 }
 
 export class GameState {
-
     constructor() {
         this.phase = "map";
         this.mapNodes = [];
@@ -48,7 +48,7 @@ export class GameState {
             accuracy: new Stat(0.5),
             penetration: new Stat(0),
             moveSpeedMultiplier: new Stat(1.0),
-            baseUpgradeCost: new Stat(defaultUpgradeCost)
+            baseUpgradeCost: new Stat(defaultUpgradeCost),
         };
 
         this.planet = new Planet(0, 0, 8, this.stats.maxHealth.value);
@@ -68,11 +68,11 @@ export class GameState {
                 if (self.planet && self.planet.isMoving) acc *= 0.5;
                 acc += this.accuracyModifier;
                 return Math.min(1, acc);
-            }
+            },
         };
 
         this.gridSystem = new GridSystem(16, 1600, 1600);
-        
+
         this.currentUpgradeTab = "attack";
         this.canvasBounds = { width: 0, height: 0 };
         this.upgrades = {};
@@ -80,12 +80,54 @@ export class GameState {
         this.initializeDefaultState();
     }
 
+    updateMapTransition(dt, viewport) {
+        const targetNode = this.mapNodes.find((n) => n.id === this.mapTargetNodeId);
+        if (targetNode) {
+            const dx = targetNode.x - this.mapPlayerX;
+            const dy = targetNode.y - this.mapPlayerY;
+            const dist = Math.hypot(dx, dy);
+            const speed = 150;
+            if (dist === 0 || dist <= speed * (dt / 1000)) {
+                state.mapPlayerX = targetNode.x;
+                state.mapPlayerY = targetNode.y;
+                state.currentNodeId = targetNode.id;
+                if (!targetNode.completed) {
+                    state.phase = "combat";
+                    state.sectorWave = 1;
+                    state.wave++;
+                    state.pickups = [];
+                    state.planet.resetToSpawn();
+                    if (state.wave % 10 === 0) {
+                        state.enemiesToSpawn = 1;
+                    } else if (state.wave % 10 === 1 && state.wave > 1) {
+                        state.enemiesToSpawn = 5 + state.wave * 2;
+                    } else {
+                        if (state.wave === 1) state.enemiesToSpawn = 5;
+                        else state.enemiesToSpawn += 3;
+                    }
+                    state.enemiesSpawned = 0;
+                    WallGenerator.generate(this);
+                    const offsetX = state.mapPlayerX - viewport.x;
+                    const offsetY = state.mapPlayerY - viewport.y;
+                    viewport.snapTo(state.planet.x - offsetX, state.planet.y - offsetY);
+                } else {
+                    state.phase = "map";
+                }
+                return true;
+            } else {
+                this.mapPlayerX += (dx / dist) * speed * (dt / 1000);
+                this.mapPlayerY += (dy / dist) * speed * (dt / 1000);
+            }
+        }
+        return false;
+    }
+
     resetRun(upgradesList) {
         this.initializeDefaultState();
         this.recalculateStats(upgradesList);
         for (const key in this.upgrades) {
             if (upgradesList) {
-                const upgDef = upgradesList.find(u => u.id === key);
+                const upgDef = upgradesList.find((u) => u.id === key);
                 if (upgDef && upgDef.isAbility) this.upgrades[key].baseLevel = 0;
             }
             this.upgrades[key].level = this.upgrades[key].baseLevel;
@@ -129,24 +171,23 @@ export class GameState {
         this.abilityTimers = {};
         this.pendingUnlocks = [];
 
-        this.planet.health = this.planet.maxHealth;
-        this.planet.healAccumulator = 0;
+        this.planet.fullHeal();
+        this.planet.clearHealAccumulator();
         this.weapon.charge = 0;
         this.weapon.charge2 = 0;
         this.turret.angle = 0;
         this.turret2.angle = Math.PI;
 
         this.enemies = [];
-        this.missiles = [];
-        this.enemyMissiles = [];
+        this.projectiles = [];
         this.floatingTexts = [];
         this.walls = [];
-        this.coins = [];
+        this.pickups = [];
         this.activeLasers = [];
         this.gridSystem.clear();
         this.currentTarget = null;
         this.currentTarget2 = null;
-        
+
         this.gameSpeed = 2.0;
         this.selectedSpeed = 1.0;
         this.pointBonus = 0;
@@ -178,8 +219,7 @@ export class GameState {
         this.selectedSpeed = Math.min(this.selectedSpeed, this.gameSpeed);
         this.pointBonus = this.stats.pointBonus.value;
         this.mitigation = this.stats.mitigation.value;
-        this.planet.maxHealth = this.stats.maxHealth.value;
-        this.planet.health = Math.min(this.planet.health, this.planet.maxHealth);
+        this.planet.updateMaxHealth(this.stats.maxHealth.value);
         this.planet.moveSpeed = 25 * this.stats.moveSpeedMultiplier.value;
 
         if (upgradesList) {
@@ -203,34 +243,24 @@ export class GameState {
         const numLayers = 50;
         const layerSpacing = 150;
         const xSpacing = 120;
-        
+
         let nodeIdCounter = 0;
         let layers = [];
 
-        this.mapNodes.push({
-            id: nodeIdCounter++,
-            x: 0,
-            y: 0,
-            connections: [],
-            completed: false,
-            wavesTotal: 1,
-            reward: null,
-            type: "combat",
-            layer: 0
-        });
+        this.mapNodes.push({ id: nodeIdCounter++, x: 0, y: 0, connections: [], completed: false, wavesTotal: 1, reward: null, type: "combat", layer: 0 });
         layers.push([this.mapNodes[0]]);
 
         for (let l = 1; l < numLayers; l++) {
             let layerNodes = [];
             let numNodesInLayer = Math.floor(Math.random() * 3) + 2;
             let startX = -((numNodesInLayer - 1) * xSpacing) / 2;
-            
+
             for (let i = 0; i < numNodesInLayer; i++) {
                 let jitterX = (Math.random() - 0.5) * 40;
                 let jitterY = (Math.random() - 0.5) * 40;
-                
+
                 let type = "combat";
-                let reward = { type: 'random_permanent_upgrade' };
+                let reward = { type: "random_permanent_upgrade" };
 
                 let node = {
                     id: nodeIdCounter++,
@@ -241,7 +271,7 @@ export class GameState {
                     wavesTotal: Math.floor(Math.random() * 5) + 1,
                     reward: reward,
                     type: type,
-                    layer: l
+                    layer: l,
                 };
                 layerNodes.push(node);
                 this.mapNodes.push(node);
@@ -252,14 +282,14 @@ export class GameState {
         for (let l = 0; l < numLayers - 1; l++) {
             let currentLayer = layers[l];
             let nextLayer = layers[l + 1];
-            
+
             currentLayer.forEach((node, i) => {
                 let targetIndex = Math.floor((i / currentLayer.length) * nextLayer.length);
                 node.connections.push(nextLayer[targetIndex].id);
             });
-            
+
             nextLayer.forEach((nextNode, j) => {
-                let hasIncoming = currentLayer.some(n => n.connections.includes(nextNode.id));
+                let hasIncoming = currentLayer.some((n) => n.connections.includes(nextNode.id));
                 if (!hasIncoming) {
                     let closestNode = currentLayer[Math.floor((j / nextLayer.length) * currentLayer.length)];
                     if (!closestNode.connections.includes(nextNode.id)) {
@@ -267,7 +297,7 @@ export class GameState {
                     }
                 }
             });
-            
+
             currentLayer.forEach((node, i) => {
                 if (Math.random() < 0.3) {
                     let targetIndex = Math.floor((i / currentLayer.length) * nextLayer.length);
@@ -285,7 +315,6 @@ export class GameState {
         this.mapPlayerX = 0;
         this.mapPlayerY = 0;
     }
-
 }
 
 export const state = new GameState();

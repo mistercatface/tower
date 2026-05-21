@@ -1,3 +1,5 @@
+import { Projectile } from "./Entities.js";
+
 export class Upgrade {
     constructor(config) {
         this.id = config.id;
@@ -85,7 +87,7 @@ export const createUpgrades = () => [
         isPerk: true,
         onSectorEnd: (state) => {
             const healAmount = state.planet.maxHealth * 0.5;
-            state.planet.health = Math.min(state.planet.maxHealth, state.planet.health + healAmount);
+            state.planet.heal(healAmount);
         }
     }),
     new Upgrade({
@@ -191,13 +193,13 @@ export const createUpgrades = () => [
         abilityApplyFn: (weapon, planet) => {
             weapon.damage *= 0.5;
         },
-        abilityShootFn: (state, tx, ty, finalAngle, MissileClass) => {
+        abilityShootFn: (state, tx, ty, finalAngle) => {
             let r = state.planet.radius * 0.125;
-            let m1 = new MissileClass(tx, ty, r, 250, null, finalAngle - 0.1);
-            let m2 = new MissileClass(tx, ty, r, 250, null, finalAngle + 0.1);
+            let m1 = new Projectile(tx, ty, r, 250, null, finalAngle - 0.1, 0, "player");
+            let m2 = new Projectile(tx, ty, r, 250, null, finalAngle + 0.1, 0, "player");
             m1.penetration = state.weapon.penetration;
             m2.penetration = state.weapon.penetration;
-            state.missiles.push(m1, m2);
+            state.projectiles.push(m1, m2);
             return true;
         }
     }),
@@ -211,15 +213,15 @@ export const createUpgrades = () => [
         abilityApplyFn: (weapon, planet) => {
             weapon.damage *= 0.33;
         },
-        abilityShootFn: (state, tx, ty, finalAngle, MissileClass) => {
+        abilityShootFn: (state, tx, ty, finalAngle) => {
             let r = state.planet.radius * 0.125;
-            let m1 = new MissileClass(tx, ty, r, 250, null, finalAngle - 0.1);
-            let m2 = new MissileClass(tx, ty, r, 250, null, finalAngle + 0.1);
-            let m3 = new MissileClass(tx, ty, r, 250, null, finalAngle + Math.random() * 0.1);
+            let m1 = new Projectile(tx, ty, r, 250, null, finalAngle - 0.1, 0, "player");
+            let m2 = new Projectile(tx, ty, r, 250, null, finalAngle + 0.1, 0, "player");
+            let m3 = new Projectile(tx, ty, r, 250, null, finalAngle + Math.random() * 0.1, 0, "player");
             m1.penetration = state.weapon.penetration;
             m2.penetration = state.weapon.penetration;
             m3.penetration = state.weapon.penetration;
-            state.missiles.push(m1, m2, m3);
+            state.projectiles.push(m1, m2, m3);
             return true;
         },
         requires: ['TwinStrike'],
@@ -323,7 +325,7 @@ export const createUpgrades = () => [
         applyFn: (stats, level) => { stats.maxHealth.flatModifiers += level * 20; },
         currentStrFn: (level) => 100 + level * 20,
         nextStrFn: (level) => 100 + (level + 1) * 20,
-        onPurchase: (state) => { state.planet.health += 20; }
+        onPurchase: (state) => { state.planet.heal(20); }
     }),
     new Upgrade({
         id: "Regen",
@@ -334,14 +336,9 @@ export const createUpgrades = () => [
         nextStrFn: (level) => (level + 1) + " HP/s",
         updateFn: (dt, state, level) => {
             if (state.planet.health < state.planet.maxHealth) {
-                state.planet.healAccumulator += level * (dt / 1000);
-                if (state.planet.healAccumulator >= 1) {
-                    const healAmount = Math.floor(state.planet.healAccumulator);
-                    state.planet.health = Math.min(state.planet.maxHealth, state.planet.health + healAmount);
-                    state.planet.healAccumulator -= healAmount;
-                }
+                state.planet.addHealAccumulator(level * (dt / 1000));
             } else {
-                state.planet.healAccumulator = 0;
+                state.planet.clearHealAccumulator();
             }
         },
     }),

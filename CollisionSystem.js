@@ -3,13 +3,13 @@ export class CollisionSystem {
         const dx = a.x - b.x;
         const dy = a.y - b.y;
         const dist = Math.hypot(dx, dy);
-        return dist < (a.radius + b.radius);
+        return dist < a.radius + b.radius;
     }
 
     static checkCircleRect(circle, rect) {
         const dx = circle.x - rect.x;
         const dy = circle.y - rect.y;
-        
+
         const cos = Math.cos(-rect.angle);
         const sin = Math.sin(-rect.angle);
         const localX = dx * cos - dy * sin;
@@ -18,76 +18,72 @@ export class CollisionSystem {
         const half = rect.size / 2;
         const closestX = Math.max(-half, Math.min(localX, half));
         const closestY = Math.max(-half, Math.min(localY, half));
-        
+
         const distDX = localX - closestX;
         const distDY = localY - closestY;
-        return (distDX * distDX + distDY * distDY) < (circle.radius * circle.radius);
+        return distDX * distDX + distDY * distDY < circle.radius * circle.radius;
     }
 
-    static checkMissileWallCollision(missile, walls, onWallHitCallback) {
+    static getMissileWallCollision(missile, walls) {
         for (const w of walls) {
             for (const seg of w.segments) {
                 if (seg.isDead) continue;
                 if (this.checkCircleRect(missile, seg)) {
-                    missile.isDead = true;
-                    onWallHitCallback(w, seg);
-                    return true;
+                    return { wall: w, segment: seg };
                 }
             }
         }
-        return false;
+        return null;
     }
 
-    static run(state, onEnemyHit, onPlanetHit, onWallHit) {
-        for (const m of state.missiles) {
-            if (m.isDead) continue;
-            
-            if (this.checkMissileWallCollision(m, state.walls, (w, seg) => onWallHit(w, seg, state.weapon.damage))) {
+    static run(state) {
+        const events = [];
+        for (const p of state.projectiles) {
+            if (p.isDead) continue;
+            const wallHit = this.getMissileWallCollision(p, state.walls);
+            if (wallHit) {
+                p.isDead = true;
+                const damage = p.faction === "player" ? state.weapon.damage : p.damage;
+                events.push({ type: "wallHit", wall: wallHit.wall, segment: wallHit.segment, damage: damage });
                 continue;
             }
-
-            if (state.abilities["Eraser"]) {
-                for (const em of state.enemyMissiles) {
-                    if (em.isDead) continue;
-                    if (this.checkCircle(m, em)) {
-                        em.isDead = true;
-                        if (m.penetration > 0) {
-                            m.penetration--;
+            if (p.faction === "player") {
+                if (state.abilities["Eraser"]) {
+                    for (const ep of state.projectiles) {
+                        if (ep.isDead || ep.faction !== "enemy") continue;
+                        if (this.checkCircle(p, ep)) {
+                            ep.isDead = true;
+                            if (p.penetration > 0) {
+                                p.penetration--;
+                            } else {
+                                p.isDead = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (p.isDead) continue;
+                }
+                for (const e of state.enemies) {
+                    if (e.isDead) continue;
+                    if (this.checkCircle(p, e)) {
+                        events.push({ type: "enemyHit", enemy: e, damage: state.weapon.damage });
+                        if (e.health <= state.weapon.damage && p.penetration > 0) {
+                            p.penetration--;
+                            e.health -= state.weapon.damage;
                         } else {
-                            m.isDead = true;
+                            p.isDead = true;
                             break;
                         }
                     }
                 }
-                if (m.isDead) continue;
-            }
-
-            for (const e of state.enemies) {
-                if (e.isDead) continue;
-                if (this.checkCircle(m, e)) {
-                    onEnemyHit(e, state.weapon.damage);
-                    if (e.isDead && m.penetration > 0) {
-                        m.penetration--;
-                    } else {
-                        m.isDead = true;
-                        break;
-                    }
+            } else if (p.faction === "enemy") {
+                if (this.checkCircle(p, state.planet)) {
+                    p.isDead = true;
+                    events.push({ type: "planetHit", damage: p.damage });
                 }
             }
         }
-
-        for (const em of state.enemyMissiles) {
-            if (em.isDead) continue;
-            
-            if (this.checkMissileWallCollision(em, state.walls, (w, seg) => onWallHit(w, seg, em.damage))) {
-                continue;
-            }
-
-            if (this.checkCircle(em, state.planet)) {
-                em.isDead = true;
-                onPlanetHit(em.damage);
-            }
-        }
+        return events;
     }
 }
 

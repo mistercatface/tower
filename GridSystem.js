@@ -21,6 +21,14 @@ export class GridSystem {
         this.centerY = 0;
     }
 
+    rebuild(walls, targetX, targetY) {
+        this.clear();
+        for (const w of walls) {
+            this.addWall(w);
+        }
+        this.buildFlowField(targetX, targetY);
+    }
+
     buildFlowFieldTarget(px, py, targetField, gridData) {
         targetField.fill(null);
         const start = this.worldToGrid(px, py);
