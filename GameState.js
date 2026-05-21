@@ -80,6 +80,65 @@ export class GameState {
         this.initializeDefaultState();
     }
 
+    startWaveTransition(duration) {
+        this.isTransitioning = true;
+        this.waveTransitionTimer = duration;
+    }
+
+    tickWaveTransition(dt) {
+        if (!this.isTransitioning) return false;
+        this.waveTransitionTimer -= dt;
+        if (this.waveTransitionTimer <= 0) {
+            this.isTransitioning = false;
+            return true;
+        }
+        return false;
+    }
+
+    enterRewardPhase() {
+        this.phase = "reward";
+    }
+
+    enterMapPhase() {
+        this.phase = "map";
+    }
+
+    enterCombatPhase() {
+        this.phase = "combat";
+        this.sectorWave = 1;
+        this.wave++;
+        this.pickups = [];
+        this.planet.resetToSpawn();
+        if (this.wave % 10 === 0) {
+            this.enemiesToSpawn = 1;
+        } else if (this.wave % 10 === 1 && this.wave > 1) {
+            this.enemiesToSpawn = 5 + this.wave * 2;
+        } else {
+            if (this.wave === 1) this.enemiesToSpawn = 5;
+            else this.enemiesToSpawn += 3;
+        }
+        this.enemiesSpawned = 0;
+    }
+
+    advanceWave() {
+        this.sectorWave++;
+        this.wave++;
+        if (this.wave % 10 === 0) {
+            this.enemiesToSpawn = 1;
+        } else if (this.wave % 10 === 1 && this.wave > 1) {
+            this.enemiesToSpawn = 5 + this.wave * 2;
+        } else {
+            if (this.wave === 1) this.enemiesToSpawn = 5;
+            else this.enemiesToSpawn += 3;
+        }
+        this.enemiesSpawned = 0;
+    }
+
+    startRun() {
+        this.mapTargetNodeId = 0;
+        this.phase = "map_transition";
+    }
+
     updateMapTransition(dt, viewport) {
         const targetNode = this.mapNodes.find((n) => n.id === this.mapTargetNodeId);
         if (targetNode) {
@@ -88,30 +147,17 @@ export class GameState {
             const dist = Math.hypot(dx, dy);
             const speed = 150;
             if (dist === 0 || dist <= speed * (dt / 1000)) {
-                state.mapPlayerX = targetNode.x;
-                state.mapPlayerY = targetNode.y;
-                state.currentNodeId = targetNode.id;
+                this.mapPlayerX = targetNode.x;
+                this.mapPlayerY = targetNode.y;
+                this.currentNodeId = targetNode.id;
                 if (!targetNode.completed) {
-                    state.phase = "combat";
-                    state.sectorWave = 1;
-                    state.wave++;
-                    state.pickups = [];
-                    state.planet.resetToSpawn();
-                    if (state.wave % 10 === 0) {
-                        state.enemiesToSpawn = 1;
-                    } else if (state.wave % 10 === 1 && state.wave > 1) {
-                        state.enemiesToSpawn = 5 + state.wave * 2;
-                    } else {
-                        if (state.wave === 1) state.enemiesToSpawn = 5;
-                        else state.enemiesToSpawn += 3;
-                    }
-                    state.enemiesSpawned = 0;
+                    this.enterCombatPhase();
                     WallGenerator.generate(this);
-                    const offsetX = state.mapPlayerX - viewport.x;
-                    const offsetY = state.mapPlayerY - viewport.y;
-                    viewport.snapTo(state.planet.x - offsetX, state.planet.y - offsetY);
+                    const offsetX = this.mapPlayerX - viewport.x;
+                    const offsetY = this.mapPlayerY - viewport.y;
+                    viewport.snapTo(this.planet.x - offsetX, this.planet.y - offsetY);
                 } else {
-                    state.phase = "map";
+                    this.enterMapPhase();
                 }
                 return true;
             } else {

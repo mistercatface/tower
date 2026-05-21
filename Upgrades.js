@@ -18,7 +18,6 @@ export class Upgrade {
         this.isAbility = config.isAbility || false;
         this.isPerk = config.isPerk || false;
         this.abilityApplyFn = config.abilityApplyFn || null;
-        this.abilityShootFn = config.abilityShootFn || null;
         this.requires = config.requires || [];
         this.replaces = config.replaces || [];
         this.minPlayerLevel = config.minPlayerLevel || 0;

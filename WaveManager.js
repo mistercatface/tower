@@ -95,28 +95,16 @@ export class WaveManager {
     static manageSpawning(dt, state, upgrades, viewport) {
         if (state.phase === "map" || state.phase === "reward") return;
         if (state.isTransitioning) {
-            state.waveTransitionTimer -= dt;
-            if (state.waveTransitionTimer <= 0) {
-                state.isTransitioning = false;
+            if (state.tickWaveTransition(dt)) {
                 const currentNode = state.mapNodes.find((n) => n.id === state.currentNodeId);
                 const advanceWave = () => {
                     state.wavesCompleted++;
                     if (state.sectorWave < currentNode.wavesTotal) {
-                        state.sectorWave++;
-                        state.wave++;
-                        if (state.wave % 10 === 0) {
-                            state.enemiesToSpawn = 1;
-                        } else if (state.wave % 10 === 1 && state.wave > 1) {
-                            state.enemiesToSpawn = 5 + state.wave * 2;
-                        } else {
-                            if (state.wave === 1) state.enemiesToSpawn = 5;
-                            else state.enemiesToSpawn += 3;
-                        }
-                        state.enemiesSpawned = 0;
+                        state.advanceWave();
                     } else {
                         if (currentNode && !currentNode.completed) {
                             currentNode.completed = true;
-                            state.phase = "reward";
+                            state.enterRewardPhase();
                             upgrades.forEach((upg) => {
                                 if (state.upgrades[upg.id] && state.upgrades[upg.id].level > 0 && upg.onSectorEnd) {
                                     upg.onSectorEnd(state);
@@ -124,7 +112,7 @@ export class WaveManager {
                             });
                             const finishSector = (rewardText) => {
                                 showSectorCleared(currentNode, rewardText, () => {
-                                    state.phase = "map";
+                                    state.enterMapPhase();
                                     viewport.snapTo(state.mapPlayerX - state.planet.x - viewport.x, state.mapPlayerY - state.planet.y - viewport.y);
                                     updateUI(state, upgrades);
                                 });
@@ -150,7 +138,7 @@ export class WaveManager {
                                 finishSector();
                             }
                         } else {
-                            state.phase = "map";
+                            state.enterMapPhase();
                             viewport.snapTo(state.planet.x - state.planet.x - viewport.x, state.planet.y - state.planet.y - viewport.y);
                         }
                     }
@@ -171,8 +159,7 @@ export class WaveManager {
             state.enemySpawnTimer = 0;
         } else if (state.enemiesSpawned >= state.enemiesToSpawn && state.enemies.length === 0) {
             updateUI(state, upgrades);
-            state.isTransitioning = true;
-            state.waveTransitionTimer = 1500;
+            state.startWaveTransition(1500);
         }
     }
 }
