@@ -191,15 +191,6 @@ export const createUpgrades = () => [
         isAbility: true,
         abilityApplyFn: (weapon, planet) => {
             weapon.damage *= 0.5;
-        },
-        abilityShootFn: (state, tx, ty, finalAngle) => {
-            let r = state.planet.radius * 0.125;
-            let m1 = new Projectile(tx, ty, r, 250, null, finalAngle - 0.1, 0, "player");
-            let m2 = new Projectile(tx, ty, r, 250, null, finalAngle + 0.1, 0, "player");
-            m1.penetration = state.weapon.penetration;
-            m2.penetration = state.weapon.penetration;
-            state.projectiles.push(m1, m2);
-            return true;
         }
     }),
     new Upgrade({
@@ -211,17 +202,6 @@ export const createUpgrades = () => [
         isAbility: true,
         abilityApplyFn: (weapon, planet) => {
             weapon.damage *= 0.33;
-        },
-        abilityShootFn: (state, tx, ty, finalAngle) => {
-            let r = state.planet.radius * 0.125;
-            let m1 = new Projectile(tx, ty, r, 250, null, finalAngle - 0.1, 0, "player");
-            let m2 = new Projectile(tx, ty, r, 250, null, finalAngle + 0.1, 0, "player");
-            let m3 = new Projectile(tx, ty, r, 250, null, finalAngle + Math.random() * 0.1, 0, "player");
-            m1.penetration = state.weapon.penetration;
-            m2.penetration = state.weapon.penetration;
-            m3.penetration = state.weapon.penetration;
-            state.projectiles.push(m1, m2, m3);
-            return true;
         },
         requires: ['TwinStrike'],
         replaces: ['TwinStrike']

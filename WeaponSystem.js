@@ -2,6 +2,69 @@ import { Projectile } from "./Entities.js";
 import { CollisionSystem } from "./CollisionSystem.js";
 import { Utilities } from "./Utilities.js";
 
+const WEAPON_MODES = {
+    Laser: {
+        type: "continuous",
+        onTick: (dt, state, tx, ty, turret, chargeKey, combatEvents) => {
+            state.weapon.laserTimer = (state.weapon.laserTimer || 0) + dt;
+            let laserCanDamage = false;
+            if (state.weapon.laserTimer >= 200) {
+                laserCanDamage = true;
+                state.weapon.laserTimer = 0;
+            }
+            const phaseOffset = chargeKey === "charge2" ? Math.PI : 0;
+            const accuracySpread = (1 - state.weapon.accuracy) * (Math.PI / 12);
+            const laserAngle = turret.angle + Math.sin((state.lastTime || Date.now()) / 150 + phaseOffset) * accuracySpread;
+            const hit = WeaponSystem.castLaser(tx, ty, laserAngle, 2000, state);
+            state.activeLasers.push({ x1: tx, y1: ty, x2: hit.x, y2: hit.y });
+            if (laserCanDamage && hit.hit === "enemy") {
+                combatEvents.push({ type: "enemyHit", enemy: hit.entity, damage: state.weapon.damage });
+            }
+        },
+    },
+    TripleStrike: {
+        type: "charged",
+        onFire: (state, tx, ty, turretAngle) => {
+            const accuracySpread = ((1 - state.weapon.accuracy) * Math.PI) / 2;
+            const spreadAngle = (Math.random() - 0.5) * accuracySpread;
+            const finalAngle = turretAngle + spreadAngle;
+            const r = state.planet.radius * 0.125;
+            const m1 = new Projectile(tx, ty, r, 250, null, finalAngle - 0.1, 0, "player");
+            const m2 = new Projectile(tx, ty, r, 250, null, finalAngle + 0.1, 0, "player");
+            const m3 = new Projectile(tx, ty, r, 250, null, finalAngle + Math.random() * 0.1, 0, "player");
+            m1.penetration = state.weapon.penetration;
+            m2.penetration = state.weapon.penetration;
+            m3.penetration = state.weapon.penetration;
+            state.projectiles.push(m1, m2, m3);
+        },
+    },
+    TwinStrike: {
+        type: "charged",
+        onFire: (state, tx, ty, turretAngle) => {
+            const accuracySpread = ((1 - state.weapon.accuracy) * Math.PI) / 2;
+            const spreadAngle = (Math.random() - 0.5) * accuracySpread;
+            const finalAngle = turretAngle + spreadAngle;
+            const r = state.planet.radius * 0.125;
+            const m1 = new Projectile(tx, ty, r, 250, null, finalAngle - 0.1, 0, "player");
+            const m2 = new Projectile(tx, ty, r, 250, null, finalAngle + 0.1, 0, "player");
+            m1.penetration = state.weapon.penetration;
+            m2.penetration = state.weapon.penetration;
+            state.projectiles.push(m1, m2);
+        },
+    },
+    Default: {
+        type: "charged",
+        onFire: (state, tx, ty, turretAngle) => {
+            const accuracySpread = ((1 - state.weapon.accuracy) * Math.PI) / 2;
+            const spreadAngle = (Math.random() - 0.5) * accuracySpread;
+            const finalAngle = turretAngle + spreadAngle;
+            const m = new Projectile(tx, ty, state.planet.radius * 0.25, 250, null, finalAngle, 0, "player");
+            m.penetration = state.weapon.penetration;
+            state.projectiles.push(m);
+        },
+    },
+};
+
 export class WeaponSystem {
     static castLaser(startX, startY, angle, maxDist, state) {
         const step = 8;
@@ -11,14 +74,14 @@ export class WeaponSystem {
         let cx = startX;
         let cy = startY;
         const rayCircle = { x: cx, y: cy, radius: 1 };
-        
+
         while (dist < maxDist) {
             cx += dx * step;
             cy += dy * step;
             dist += step;
             rayCircle.x = cx;
             rayCircle.y = cy;
-            
+
             let hitWall = false;
             for (const seg of state.walls) {
                 if (seg.isDead) continue;
@@ -27,7 +90,7 @@ export class WeaponSystem {
                     break;
                 }
             }
-            
+
             if (hitWall) {
                 while (hitWall && dist > 0) {
                     cx -= dx;
@@ -44,9 +107,9 @@ export class WeaponSystem {
                         }
                     }
                 }
-                return { hit: 'wall', x: cx, y: cy, dist: dist };
+                return { hit: "wall", x: cx, y: cy, dist: dist };
             }
-            
+
             for (const e of state.enemies) {
                 if (e.isDead) continue;
                 if (CollisionSystem.checkCircle(rayCircle, e)) {
@@ -54,11 +117,11 @@ export class WeaponSystem {
                     const exactDist = distToEnemy - e.radius;
                     const finalX = startX + dx * exactDist;
                     const finalY = startY + dy * exactDist;
-                    return { hit: 'enemy', entity: e, x: finalX, y: finalY, dist: exactDist };
+                    return { hit: "enemy", entity: e, x: finalX, y: finalY, dist: exactDist };
                 }
             }
         }
-        return { hit: 'none', x: cx, y: cy, dist: dist };
+        return { hit: "none", x: cx, y: cy, dist: dist };
     }
 
     static getNearestEnemy(state, source = state.planet, range = state.weapon.range, excludeTarget = null) {
@@ -81,36 +144,14 @@ export class WeaponSystem {
     static updateTurretAndWeapon(dt, blocksTargeting, state, upgrades) {
         const combatEvents = [];
 
-        function fireTurret(turretAngle) {
-            const turretDist = state.planet.radius + 12;
-            const tx = state.planet.x + Math.cos(turretAngle) * turretDist;
-            const ty = state.planet.y + Math.sin(turretAngle) * turretDist;
-
-            const accuracySpread = (1 - state.weapon.accuracy) * Math.PI / 2;
-            const spreadAngle = (Math.random() - 0.5) * accuracySpread;
-            const finalAngle = turretAngle + spreadAngle;
-
-            let shotOverridden = false;
-
-            for (const upg of upgrades) {
-                if (upg.isAbility && state.abilities[upg.id] && upg.abilityShootFn) {
-                    if (upg.abilityShootFn(state, tx, ty, finalAngle)) {
-                        shotOverridden = true;
-                        break;
-                    }
-                }
-            }
-
-            if (!shotOverridden) {
-                let m = new Projectile(tx, ty, state.planet.radius * 0.25, 250, null, finalAngle, 0, "player");
-                m.penetration = state.weapon.penetration;
-                state.projectiles.push(m);
-            }
-        }
-
         if (state.currentTarget) {
             const dist = Math.hypot(state.currentTarget.x - state.planet.x, state.currentTarget.y - state.planet.y);
-            if (state.currentTarget.isDead || dist > state.weapon.range || !Utilities.hasLineOfSight(state.planet.x, state.planet.y, state.currentTarget.x, state.currentTarget.y, state.walls) || blocksTargeting) {
+            if (
+                state.currentTarget.isDead ||
+                dist > state.weapon.range ||
+                !Utilities.hasLineOfSight(state.planet.x, state.planet.y, state.currentTarget.x, state.currentTarget.y, state.walls) ||
+                blocksTargeting
+            ) {
                 state.currentTarget = null;
             }
         }
@@ -122,7 +163,12 @@ export class WeaponSystem {
         if (twoGuns) {
             if (state.currentTarget2) {
                 const dist2 = Math.hypot(state.currentTarget2.x - state.planet.x, state.currentTarget2.y - state.planet.y);
-                if (state.currentTarget2.isDead || dist2 > state.weapon.range || !Utilities.hasLineOfSight(state.planet.x, state.planet.y, state.currentTarget2.x, state.currentTarget2.y, state.walls) || blocksTargeting) {
+                if (
+                    state.currentTarget2.isDead ||
+                    dist2 > state.weapon.range ||
+                    !Utilities.hasLineOfSight(state.planet.x, state.planet.y, state.currentTarget2.x, state.currentTarget2.y, state.walls) ||
+                    blocksTargeting
+                ) {
                     state.currentTarget2 = null;
                 } else if (state.currentTarget2 === state.currentTarget && this.getNearestEnemy(state, state.planet, state.weapon.range, state.currentTarget) !== null) {
                     state.currentTarget2 = null;
@@ -135,17 +181,17 @@ export class WeaponSystem {
         }
 
         state.activeLasers = [];
-        const isLaser = state.abilities["Laser"];
-        let laserCanDamage = false;
-        if (isLaser) {
-            state.weapon.laserTimer = (state.weapon.laserTimer || 0) + dt;
-            if (state.weapon.laserTimer >= 200) {
-                laserCanDamage = true;
-                state.weapon.laserTimer = 0;
-            }
-        }
+        let activeModeKey = "Default";
+        if (state.abilities["Laser"]) activeModeKey = "Laser";
+        else if (state.abilities["TripleStrike"]) activeModeKey = "TripleStrike";
+        else if (state.abilities["TwinStrike"]) activeModeKey = "TwinStrike";
+        const mode = WEAPON_MODES[activeModeKey];
 
         const processTurretRotation = (turret, target, chargeKey) => {
+            const turretDist = mode.type === "continuous" ? state.planet.radius + 4 + 4 * (state.planet.radius / 8) : state.planet.radius + 12;
+            const tx = state.planet.x + Math.cos(turret.angle) * turretDist;
+            const ty = state.planet.y + Math.sin(turret.angle) * turretDist;
+
             if (target && !blocksTargeting) {
                 const targetAngle = Math.atan2(target.y - state.planet.y, target.x - state.planet.x);
                 let diff = targetAngle - turret.angle;
@@ -153,57 +199,41 @@ export class WeaponSystem {
 
                 if (Math.abs(diff) < 0.05) {
                     turret.angle = targetAngle;
-                    if (!isLaser) {
+                    if (mode.type === "charged") {
                         state.weapon[chargeKey] += dt;
                         if (state.weapon[chargeKey] >= state.weapon.chargeTime) {
-                            fireTurret(turret.angle);
+                            mode.onFire(state, tx, ty, turret.angle);
                             state.weapon[chargeKey] = 0;
                         }
                     }
                 } else {
                     turret.angle += Math.sign(diff) * Math.min(Math.abs(diff), turret.turnSpeed * (dt / 1000));
-                    if (!isLaser) state.weapon[chargeKey] = 0;
+                    if (mode.type === "charged") state.weapon[chargeKey] = 0;
                 }
             } else if (state.planet.isMoving) {
-                let tx = state.planet.targetNodeX !== null ? state.planet.targetNodeX : state.planet.targetX;
-                let ty = state.planet.targetNodeY !== null ? state.planet.targetNodeY : state.planet.targetY;
-                if (tx !== null && ty !== null) {
-                    const moveAngle = Math.atan2(ty - state.planet.y, tx - state.planet.x);
+                let ntx = state.planet.targetNodeX !== null ? state.planet.targetNodeX : state.planet.targetX;
+                let nty = state.planet.targetNodeY !== null ? state.planet.targetNodeY : state.planet.targetY;
+                if (ntx !== null && nty !== null) {
+                    const moveAngle = Math.atan2(nty - state.planet.y, ntx - state.planet.x);
                     let diff = moveAngle - turret.angle;
                     diff = Utilities.normalizeAngle(diff);
                     turret.angle += Math.sign(diff) * Math.min(Math.abs(diff), turret.turnSpeed * (dt / 1000));
                 }
-                if (!isLaser) state.weapon[chargeKey] = 0;
+                if (mode.type === "charged") state.weapon[chargeKey] = 0;
             } else {
-                if (!isLaser) state.weapon[chargeKey] = 0;
+                if (mode.type === "charged") state.weapon[chargeKey] = 0;
             }
 
-            if (isLaser) {
-                const turretDist = state.planet.radius + 4 + 4 * (state.planet.radius / 8);
-                
-                const time = state.lastTime || Date.now();
-                const phaseOffset = chargeKey === 'charge2' ? Math.PI : 0;
-                const accuracySpread = (1 - state.weapon.accuracy) * (Math.PI / 12);
-                const laserAngle = turret.angle + Math.sin(time / 150 + phaseOffset) * accuracySpread;
-                
-                const tx = state.planet.x + Math.cos(turret.angle) * turretDist;
-                const ty = state.planet.y + Math.sin(turret.angle) * turretDist;
-                const hit = this.castLaser(tx, ty, laserAngle, 2000, state);
-                
-                state.activeLasers.push({ x1: tx, y1: ty, x2: hit.x, y2: hit.y });
-                
-                if (laserCanDamage && hit.hit === 'enemy') {
-                    const damage = state.weapon.damage;
-                    combatEvents.push({ type: 'enemyHit', enemy: hit.entity, damage: damage });
-                }
+            if (mode.type === "continuous") {
+                mode.onTick(dt, state, tx, ty, turret, chargeKey, combatEvents);
             }
         };
 
-        processTurretRotation(state.turret, state.currentTarget, 'charge');
+        processTurretRotation(state.turret, state.currentTarget, "charge");
 
         if (twoGuns) {
             if (state.weapon.charge2 === undefined) state.weapon.charge2 = 0;
-            processTurretRotation(state.turret2, state.currentTarget2, 'charge2');
+            processTurretRotation(state.turret2, state.currentTarget2, "charge2");
         }
 
         return combatEvents;
