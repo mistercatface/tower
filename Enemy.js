@@ -35,6 +35,8 @@ export class Enemy {
         this.attackRange = 75;
         this.fireRate = 1000;
         this.fireTimer = 0;
+        this.dodgeCooldownTimer = 0;
+        this.isDodging = false;
     }
 
     calculateSeparation(spatialHash) {
