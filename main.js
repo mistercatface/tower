@@ -105,11 +105,6 @@ function update(dt) {
     }
     const abilityState = ProgressionManager.updateAbilities(state, dt, upgrades);
     if (!abilityState.isDiving && state.planet.applyQueuedTarget()) state.gridSystem.buildPlayerFlowField(state.planet.targetX, state.planet.targetY);
-    if (state.walls) {
-        for (const wall of state.walls) {
-            wall.update(dt);
-        }
-    }
     
     const spatialHash = new SpatialHash(50);
     for (const e of state.enemies) spatialHash.insert(e);
