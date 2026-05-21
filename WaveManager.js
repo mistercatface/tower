@@ -1,7 +1,7 @@
 import { enemyTypes, difficultyCurve } from "./Config.js";
 import { Enemy } from "./Enemy.js";
-import { showSectorCleared, updateUI } from "./UI.js";
-import { saveProgress } from "./Storage.js";
+import { updateUI } from "./UI.js";
+import { ProgressionManager } from "./ProgressionManager.js";
 
 export class WaveManager {
     static calculateSpawnPosition(state, side, pos) {
@@ -95,64 +95,11 @@ export class WaveManager {
     static manageSpawning(dt, state, upgrades, viewport) {
         if (state.phase === "map" || state.phase === "reward") return;
         if (state.isTransitioning) {
-            if (state.tickWaveTransition(dt)) {
-                const currentNode = state.mapNodes.find((n) => n.id === state.currentNodeId);
-                const advanceWave = () => {
-                    state.wavesCompleted++;
-                    if (state.sectorWave < currentNode.wavesTotal) {
-                        state.advanceWave();
-                    } else {
-                        if (currentNode && !currentNode.completed) {
-                            currentNode.completed = true;
-                            state.enterRewardPhase();
-                            upgrades.forEach((upg) => {
-                                if (state.upgrades[upg.id] && state.upgrades[upg.id].level > 0 && upg.onSectorEnd) {
-                                    upg.onSectorEnd(state);
-                                }
-                            });
-                            const finishSector = (rewardText) => {
-                                showSectorCleared(currentNode, rewardText, () => {
-                                    state.enterMapPhase();
-                                    viewport.snapTo(state.mapPlayerX - state.planet.x - viewport.x, state.mapPlayerY - state.planet.y - viewport.y);
-                                    updateUI(state, upgrades);
-                                });
-                            };
-                            if (currentNode.reward && currentNode.reward.type === "random_permanent_upgrade") {
-                                let rewardText = "Reward: None";
-                                const validUpgrades = upgrades.filter((u) => {
-                                    const uState = state.upgrades[u.id];
-                                    return uState && uState.baseLevel < u.maxLevel && u.category !== "abilities" && u.category !== "perk";
-                                });
-                                if (validUpgrades.length > 0) {
-                                    const pickedUpg = validUpgrades[Math.floor(Math.random() * validUpgrades.length)];
-                                    const uState = state.upgrades[pickedUpg.id];
-                                    uState.baseLevel++;
-                                    uState.level++;
-                                    saveProgress(state);
-                                    state.recalculateStats(upgrades);
-                                    if (pickedUpg.onPurchase) pickedUpg.onPurchase(state);
-                                    rewardText = `Reward: Permanent ${pickedUpg.name} Upgrade!`;
-                                }
-                                finishSector(rewardText);
-                            } else {
-                                finishSector();
-                            }
-                        } else {
-                            state.enterMapPhase();
-                            viewport.snapTo(state.planet.x - state.planet.x - viewport.x, state.planet.y - state.planet.y - viewport.y);
-                        }
-                    }
-                    updateUI(state, upgrades);
-                };
-
-                advanceWave();
-            }
+            if (state.tickWaveTransition(dt)) ProgressionManager.handleWaveCompletion(state, upgrades, viewport);
             return;
         }
-
         state.enemySpawnTimer += dt;
-        let currentSpawnDelay = Math.max(300, 1200 - state.wave * 150);
-
+        const currentSpawnDelay = Math.max(300, 1200 - state.wave * 150);
         if (state.enemySpawnTimer > currentSpawnDelay && state.enemiesSpawned < state.enemiesToSpawn) {
             this.spawnEnemy(state);
             state.enemiesSpawned++;

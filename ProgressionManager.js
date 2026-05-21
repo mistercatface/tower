@@ -1,6 +1,6 @@
 import { FloatingText } from "./FloatingText.js";
 import { saveProgress } from "./Storage.js";
-import { showUpgradeChoice, updateUI } from "./UI.js";
+import { showUpgradeChoice, showSectorCleared, updateUI } from "./UI.js";
 
 export class ProgressionManager {
     static updatePickups(state, dt, upgrades) {
@@ -197,5 +197,60 @@ export class ProgressionManager {
 
             this.promptAbilitySelection(state, upgrades, "LEVEL UP", "Choose a new ability.", choices, false);
         }
+    }
+
+    static handleWaveCompletion(state, upgrades, viewport) {
+        const currentNode = state.mapNodes.find((n) => n.id === state.currentNodeId);
+        state.wavesCompleted++;
+        if (state.sectorWave < currentNode.wavesTotal) {
+            state.advanceWave();
+            updateUI(state, upgrades);
+        } else {
+            if (currentNode && !currentNode.completed) {
+                currentNode.completed = true;
+                state.enterRewardPhase();
+                upgrades.forEach((upg) => {
+                    if (state.upgrades[upg.id] && state.upgrades[upg.id].level > 0 && upg.onSectorEnd) {
+                        upg.onSectorEnd(state);
+                    }
+                });
+                if (currentNode.reward && currentNode.reward.type === "random_permanent_upgrade") {
+                    this.awardPermanentUpgrade(state, upgrades, currentNode, viewport);
+                } else {
+                    this.finalizeSectorClearance(state, upgrades, currentNode, viewport, "Reward: None");
+                }
+            } else {
+                state.enterMapPhase();
+                viewport.snapTo(state.planet.x - state.planet.x - viewport.x, state.planet.y - state.planet.y - viewport.y);
+                updateUI(state, upgrades);
+            }
+        }
+    }
+
+    static awardPermanentUpgrade(state, upgrades, currentNode, viewport) {
+        let rewardText = "Reward: None";
+        const validUpgrades = upgrades.filter((u) => {
+            const uState = state.upgrades[u.id];
+            return uState && uState.baseLevel < u.maxLevel && u.category !== "abilities" && u.category !== "perk";
+        });
+        if (validUpgrades.length > 0) {
+            const pickedUpg = validUpgrades[Math.floor(Math.random() * validUpgrades.length)];
+            const uState = state.upgrades[pickedUpg.id];
+            uState.baseLevel++;
+            uState.level++;
+            saveProgress(state);
+            state.recalculateStats(upgrades);
+            if (pickedUpg.onPurchase) pickedUpg.onPurchase(state);
+            rewardText = `Reward: Permanent ${pickedUpg.name} Upgrade!`;
+        }
+        this.finalizeSectorClearance(state, upgrades, currentNode, viewport, rewardText);
+    }
+
+    static finalizeSectorClearance(state, upgrades, currentNode, viewport, rewardText) {
+        showSectorCleared(currentNode, rewardText, () => {
+            state.enterMapPhase();
+            viewport.snapTo(state.mapPlayerX - state.planet.x - viewport.x, state.mapPlayerY - state.planet.y - viewport.y);
+            updateUI(state, upgrades);
+        });
     }
 }
