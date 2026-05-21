@@ -4,12 +4,9 @@ import { showSectorCleared, updateUI } from "./UI.js";
 import { saveProgress } from "./Storage.js";
 
 export class WaveManager {
-    static spawnEnemy(state) {
+    static calculateSpawnPosition(state, side, pos) {
         const dist = state.spawnRadius;
         let x, y;
-
-        const side = Math.floor(Math.random() * 4);
-        const pos = (Math.random() * 2 - 1) * dist;
 
         if (side === 0) {
             x = state.planet.x + pos;
@@ -28,12 +25,22 @@ export class WaveManager {
         if (state.gridSystem) {
             const grid = state.gridSystem;
             const gridPos = grid.worldToGrid(x, y);
-            let targetCol = Math.max(0, Math.min(grid.cols - 1, gridPos.col));
-            let targetRow = Math.max(0, Math.min(grid.rows - 1, gridPos.row));
+            const targetCol = Math.max(0, Math.min(grid.cols - 1, gridPos.col));
+            const targetRow = Math.max(0, Math.min(grid.rows - 1, gridPos.row));
 
             x = targetCol * grid.cellSize + grid.centerX - grid.offsetX + grid.cellSize / 2;
             y = targetRow * grid.cellSize + grid.centerY - grid.offsetY + grid.cellSize / 2;
         }
+
+        return { x, y };
+    }
+
+    static spawnEnemy(state) {
+        const dist = state.spawnRadius;
+        const side = Math.floor(Math.random() * 4);
+        const pos = (Math.random() * 2 - 1) * dist;
+
+        const { x, y } = this.calculateSpawnPosition(state, side, pos);
 
         let selectedType;
 
@@ -79,33 +86,8 @@ export class WaveManager {
         const startOffset = -((numEnemies - 1) * spacing) / 2;
 
         for (let i = 0; i < numEnemies; i++) {
-            let x, y;
             const pos = startOffset + i * spacing;
-
-            if (side === 0) {
-                x = state.planet.x + pos;
-                y = state.planet.y - dist;
-            } else if (side === 1) {
-                x = state.planet.x + dist;
-                y = state.planet.y + pos;
-            } else if (side === 2) {
-                x = state.planet.x + pos;
-                y = state.planet.y + dist;
-            } else {
-                x = state.planet.x - dist;
-                y = state.planet.y + pos;
-            }
-
-            if (state.gridSystem) {
-                const grid = state.gridSystem;
-                const gridPos = grid.worldToGrid(x, y);
-                let targetCol = Math.max(0, Math.min(grid.cols - 1, gridPos.col));
-                let targetRow = Math.max(0, Math.min(grid.rows - 1, gridPos.row));
-
-                x = targetCol * grid.cellSize + grid.centerX - grid.offsetX + grid.cellSize / 2;
-                y = targetRow * grid.cellSize + grid.centerY - grid.offsetY + grid.cellSize / 2;
-            }
-
+            const { x, y } = this.calculateSpawnPosition(state, side, pos);
             state.enemies.push(new Enemy(x, y, selectedType.radius, scaledSpeed, scaledHealth, selectedType.color, scaledReward, selectedType.type));
         }
     }
