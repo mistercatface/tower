@@ -1,4 +1,4 @@
-import { state } from "./GameState.js";
+import { state } from "./GameState/GameState.js";
 import { createUpgrades } from "./Upgrades.js";
 import { loadProgress } from "./Storage.js";
 import { initUI, updateUI, updateHud } from "./UI.js";
@@ -6,8 +6,8 @@ import { Renderer } from "./Renderer.js";
 import { Viewport } from "./Viewport.js";
 import { InputManager } from "./InputManager.js";
 import { ProgressionManager } from "./ProgressionManager.js";
-import { GameStateMachine } from "./GameStateMachine.js";
-import { MapState, MapTransitionState, CombatState, RewardState } from "./GameStates.js";
+import { GameStateMachine } from "./GameState/GameStateMachine.js";
+import { MapState, MapTransitionState, CombatState, RewardState } from "./GameState/GameStates.js";
 
 const canvas = document.getElementById("towerCanvas");
 const ctx = canvas.getContext("2d");

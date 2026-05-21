@@ -1,11 +1,11 @@
-import { FloatingText } from "./FloatingText.js";
-import { ProgressionManager } from "./ProgressionManager.js";
-import { SpatialHash, CollisionSystem } from "./CollisionSystem.js";
-import { WaveManager } from "./WaveManager.js";
-import { Enemy } from "./Enemy.js";
-import { Projectile } from "./Entities.js";
-import { WeaponSystem } from "./WeaponSystem.js";
-import { CombatManager } from "./CombatManager.js";
+import { FloatingText } from "../FloatingText.js";
+import { ProgressionManager } from "../ProgressionManager.js";
+import { SpatialHash, CollisionSystem } from "../CollisionSystem.js";
+import { WaveManager } from "../WaveManager.js";
+import { Enemy } from "../Enemy.js";
+import { Projectile } from "../Entities.js";
+import { WeaponSystem } from "../WeaponSystem.js";
+import { CombatManager } from "../CombatManager.js";
 
 export class MapState {
     update(dt, ctx) {
