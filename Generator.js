@@ -1,4 +1,5 @@
-import { Wall, Pickup } from "./Entities.js";
+import { Pickup } from "./Entities.js";
+import { Wall } from "./Wall.js";
 import { Enemy } from "./Enemy.js";
 import { enemyTypes, difficultyCurve } from "./Config.js";
 

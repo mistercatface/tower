@@ -192,6 +192,7 @@ export class GameState {
         this.selectedSpeed = 1.0;
         this.pointBonus = 0;
         this.mitigation = 0.0;
+        this.dirtySegments = new Set();
     }
 
     recalculateStats(upgradesList) {

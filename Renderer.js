@@ -1,54 +1,12 @@
+import { ChunkManager } from "./ChunkManager.js";
+
 export class Renderer {
     constructor(canvas, ctx) {
         this.canvas = canvas;
         this.ctx = ctx;
-        this.wallCache = new Map();
         this.enemyCache = new Map();
         this.missileCache = new Map();
-    }
-
-    drawWalls(walls, theme) {
-        if (!walls) return;
-
-        const baseR = theme ? theme.r : 0;
-        const baseG = theme ? theme.g : 188;
-        const baseB = theme ? theme.b : 212;
-
-        for (const wall of walls) {
-            this.ctx.globalAlpha = wall.alpha;
-
-            for (const seg of wall.segments) {
-                if (seg.isDead) continue;
-
-                const healthRatio = Math.max(0, Math.round((seg.health / seg.maxHealth) * 10) / 10);
-                const r = Math.floor(baseR + (244 - baseR) * (1 - healthRatio));
-                const g = Math.floor(baseG + (67 - baseG) * (1 - healthRatio));
-                const b = Math.floor(baseB + (54 - baseB) * (1 - healthRatio));
-
-                const cacheKey = `${seg.size}_${r}_${g}_${b}`;
-                
-                let cachedSprite = this.wallCache.get(cacheKey);
-                if (!cachedSprite) {
-                    cachedSprite = new OffscreenCanvas(seg.size + 2, seg.size + 2);
-                    const offCtx = cachedSprite.getContext('2d');
-                    
-                    offCtx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-                    offCtx.fillRect(1, 1, seg.size, seg.size);
-                    
-                    this.wallCache.set(cacheKey, cachedSprite);
-                }
-
-                this.ctx.save();
-                this.ctx.translate(seg.x, seg.y);
-                this.ctx.rotate(seg.angle);
-                
-                this.ctx.drawImage(cachedSprite, -seg.size / 2 - 1, -seg.size / 2 - 1);
-
-                this.ctx.restore();
-            }
-            
-            this.ctx.globalAlpha = 1.0;
-        }
+        this.chunkManager = new ChunkManager();
     }
 
     drawPickup(pickup) {
@@ -57,9 +15,9 @@ export class Renderer {
             const cx = canvasSize / 2;
             const cy = canvasSize / 2;
             const offCanvas = new OffscreenCanvas(canvasSize, canvasSize);
-            const offCtx = offCanvas.getContext('2d');
+            const offCtx = offCanvas.getContext("2d");
 
-            if (pickup.type === 'coin') {
+            if (pickup.type === "coin") {
                 offCtx.beginPath();
                 offCtx.arc(cx, cy, pickup.radius, 0, Math.PI * 2);
                 offCtx.fillStyle = "#FFEB3B";
@@ -67,13 +25,13 @@ export class Renderer {
                 offCtx.lineWidth = 1;
                 offCtx.strokeStyle = "#FBC02D";
                 offCtx.stroke();
-                
+
                 offCtx.fillStyle = "#000";
                 offCtx.font = "10px monospace";
                 offCtx.textAlign = "center";
                 offCtx.textBaseline = "middle";
                 offCtx.fillText("$", cx, cy + 1);
-            } else if (pickup.type === 'eyeball') {
+            } else if (pickup.type === "eyeball") {
                 offCtx.beginPath();
                 offCtx.arc(cx, cy, pickup.radius, 0, Math.PI * 2);
                 offCtx.fillStyle = "#FFFFFF";
@@ -81,7 +39,7 @@ export class Renderer {
                 offCtx.lineWidth = 1;
                 offCtx.strokeStyle = "#000000";
                 offCtx.stroke();
-                
+
                 offCtx.beginPath();
                 offCtx.arc(cx, cy, pickup.radius * 0.5, 0, Math.PI * 2);
                 offCtx.fillStyle = "#2196F3";
@@ -111,16 +69,16 @@ export class Renderer {
 
         if (state.phase === "map" || state.phase === "map_transition") {
             this.drawMap(state);
-            
+
             const tempPlanet = { ...state.planet, x: state.mapPlayerX, y: state.mapPlayerY };
-            this.drawPlanet(tempPlanet, 0); 
+            this.drawPlanet(tempPlanet, 0);
             this.drawTurret(state.turret, state.mapPlayerX, state.mapPlayerY, state.planet.radius, 0, 1);
             if (state.abilities["TwoGuns"]) {
                 this.drawTurret(state.turret2, state.mapPlayerX, state.mapPlayerY, state.planet.radius, 0, 1);
             }
         } else {
             this.drawPlanet(state.planet, state.weapon.range);
-            
+
             if (state.planet.queuedTargetX != null && state.planet.queuedTargetY != null) {
                 this.drawTargetMarker(state.planet.queuedTargetX, state.planet.queuedTargetY);
             } else if (state.planet.isMoving && state.planet.targetX !== null && state.planet.targetY !== null) {
@@ -133,7 +91,7 @@ export class Renderer {
             for (const e of state.enemies) this.drawEnemy(e);
             for (const p of state.projectiles) this.drawMissile(p, p.faction === "player" ? "#FFEB3B" : "#F44336");
 
-            this.drawWalls(state.walls, state.wallTheme);
+            this.chunkManager.drawWalls(this.ctx, state);
 
             if (state.activeLasers) {
                 for (const laser of state.activeLasers) {
@@ -155,7 +113,7 @@ export class Renderer {
                 this.drawTurret(state.turret2, state.planet.x, state.planet.y, state.planet.radius, state.weapon.charge2, state.weapon.chargeTime);
             }
         }
-        
+
         for (const ft of state.floatingTexts) this.drawFloatingText(ft);
 
         this.ctx.restore();
@@ -185,24 +143,24 @@ export class Renderer {
                 if (seg.isDead) continue;
 
                 const dist = Math.hypot(seg.x - px, seg.y - py);
-                if (dist > 1500) continue; 
+                if (dist > 1500) continue;
 
                 const cos = Math.cos(seg.angle);
                 const sin = Math.sin(seg.angle);
                 const hs = seg.size / 2;
 
                 const corners = [
-                    { x: seg.x + (-hs) * cos - (-hs) * sin, y: seg.y + (-hs) * sin + (-hs) * cos },
-                    { x: seg.x + (hs) * cos - (-hs) * sin, y: seg.y + (hs) * sin + (-hs) * cos },
-                    { x: seg.x + (hs) * cos - (hs) * sin, y: seg.y + (hs) * sin + (hs) * cos },
-                    { x: seg.x + (-hs) * cos - (hs) * sin, y: seg.y + (-hs) * sin + (hs) * cos }
+                    { x: seg.x + -hs * cos - -hs * sin, y: seg.y + -hs * sin + -hs * cos },
+                    { x: seg.x + hs * cos - -hs * sin, y: seg.y + hs * sin + -hs * cos },
+                    { x: seg.x + hs * cos - hs * sin, y: seg.y + hs * sin + hs * cos },
+                    { x: seg.x + -hs * cos - hs * sin, y: seg.y + -hs * sin + hs * cos },
                 ];
 
                 const edges = [
                     [corners[0], corners[1]],
                     [corners[1], corners[2]],
                     [corners[2], corners[3]],
-                    [corners[3], corners[0]]
+                    [corners[3], corners[0]],
                 ];
 
                 for (const edge of edges) {
@@ -223,7 +181,7 @@ export class Renderer {
 
                     const cross = (p1.x - px) * (p2.y - py) - (p1.y - py) * (p2.x - px);
                     const spread = 0.02;
-                    
+
                     if (cross > 0) {
                         angle1 -= spread;
                         angle2 += spread;
@@ -232,14 +190,8 @@ export class Renderer {
                         angle2 -= spread;
                     }
 
-                    const proj1 = {
-                        x: p1.x + Math.cos(angle1) * radius,
-                        y: p1.y + Math.sin(angle1) * radius
-                    };
-                    const proj2 = {
-                        x: p2.x + Math.cos(angle2) * radius,
-                        y: p2.y + Math.sin(angle2) * radius
-                    };
+                    const proj1 = { x: p1.x + Math.cos(angle1) * radius, y: p1.y + Math.sin(angle1) * radius };
+                    const proj2 = { x: p2.x + Math.cos(angle2) * radius, y: p2.y + Math.sin(angle2) * radius };
 
                     this.ctx.beginPath();
                     this.ctx.moveTo(p1.x, p1.y);
@@ -259,7 +211,7 @@ export class Renderer {
         this.ctx.translate(x, y);
         this.ctx.strokeStyle = "#4CAF50";
         this.ctx.lineWidth = 2;
-        
+
         const size = 6;
         this.ctx.beginPath();
         this.ctx.moveTo(-size, -size);
@@ -267,14 +219,14 @@ export class Renderer {
         this.ctx.moveTo(size, -size);
         this.ctx.lineTo(-size, size);
         this.ctx.stroke();
-        
+
         this.ctx.restore();
     }
 
     drawDebugFlowField(state) {
         const grid = state.gridSystem;
         if (!grid) return;
-        
+
         const px = grid.centerX;
         const py = grid.centerY;
 
@@ -320,18 +272,18 @@ export class Renderer {
     }
 
     drawMap(state) {
-        const currentNode = state.mapNodes.find(n => n.id === state.currentNodeId);
-        
+        const currentNode = state.mapNodes.find((n) => n.id === state.currentNodeId);
+
         for (const node of state.mapNodes) {
             for (const connId of node.connections) {
-                const targetNode = state.mapNodes.find(n => n.id === connId);
+                const targetNode = state.mapNodes.find((n) => n.id === connId);
                 if (!targetNode) continue;
-                
+
                 this.ctx.beginPath();
                 this.ctx.moveTo(node.x, node.y);
                 this.ctx.lineTo(targetNode.x, targetNode.y);
                 this.ctx.lineWidth = 2;
-                
+
                 if (node.completed && (targetNode.completed || targetNode.id === state.currentNodeId)) {
                     this.ctx.strokeStyle = "#4CAF50";
                 } else if (node.id === state.currentNodeId) {
@@ -348,7 +300,7 @@ export class Renderer {
         for (const node of state.mapNodes) {
             this.ctx.beginPath();
             this.ctx.arc(node.x, node.y, 12, 0, Math.PI * 2);
-            
+
             if (node.id === state.currentNodeId) {
                 this.ctx.fillStyle = "#FFEB3B";
             } else if (node.completed) {
@@ -359,7 +311,7 @@ export class Renderer {
             } else {
                 this.ctx.fillStyle = "#333";
             }
-            
+
             this.ctx.fill();
             this.ctx.lineWidth = 2;
             this.ctx.strokeStyle = "#FFF";
@@ -379,7 +331,12 @@ export class Renderer {
         const scale = planetRadius / 8;
         this.ctx.scale(scale, scale);
 
-        const turretPoints = [ { x: 4, y: 0 }, { x: -2, y: 2.5 }, { x: -2, y: -2.5 }, { x: 4, y: 0 } ];
+        const turretPoints = [
+            { x: 4, y: 0 },
+            { x: -2, y: 2.5 },
+            { x: -2, y: -2.5 },
+            { x: 4, y: 0 },
+        ];
 
         this.ctx.beginPath();
         this.ctx.moveTo(turretPoints[0].x, turretPoints[0].y);
@@ -431,32 +388,36 @@ export class Renderer {
 
     drawEnemy(enemy) {
         const cacheKey = `${enemy.radius}_${enemy.color}`;
-        
+
         let cachedSprite = this.enemyCache.get(cacheKey);
         if (!cachedSprite) {
             const canvasSize = Math.ceil(enemy.radius * 2.5) * 2;
             const cx = canvasSize / 2;
             const cy = canvasSize / 2;
-            
+
             cachedSprite = new OffscreenCanvas(canvasSize, canvasSize);
-            const offCtx = cachedSprite.getContext('2d');
-            
+            const offCtx = cachedSprite.getContext("2d");
+
             offCtx.beginPath();
             offCtx.arc(cx, cy, enemy.radius, 0, Math.PI * 2);
             offCtx.fillStyle = enemy.color;
             offCtx.fill();
-            
+
             offCtx.save();
             offCtx.translate(cx, cy);
-            
+
             const scale = enemy.radius / 8;
             const turretDist = enemy.radius + 4 * scale;
-            
+
             offCtx.translate(turretDist, 0);
             offCtx.scale(scale, scale);
-            
-            const turretPoints = [ { x: 4, y: 0 }, { x: -2, y: 2.5 }, { x: -2, y: -2.5 } ];
-            
+
+            const turretPoints = [
+                { x: 4, y: 0 },
+                { x: -2, y: 2.5 },
+                { x: -2, y: -2.5 },
+            ];
+
             offCtx.beginPath();
             offCtx.moveTo(turretPoints[0].x, turretPoints[0].y);
             offCtx.lineTo(turretPoints[1].x, turretPoints[1].y);
@@ -464,9 +425,9 @@ export class Renderer {
             offCtx.closePath();
             offCtx.fillStyle = enemy.color;
             offCtx.fill();
-            
+
             offCtx.restore();
-            
+
             this.enemyCache.set(cacheKey, cachedSprite);
         }
 
@@ -491,7 +452,7 @@ export class Renderer {
             const cx = canvasSize / 2;
             const cy = canvasSize / 2;
             cachedSprite = new OffscreenCanvas(canvasSize, canvasSize);
-            const offCtx = cachedSprite.getContext('2d');
+            const offCtx = cachedSprite.getContext("2d");
             offCtx.beginPath();
             offCtx.arc(cx, cy, missile.radius, 0, Math.PI * 2);
             offCtx.fillStyle = color;

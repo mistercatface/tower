@@ -14,6 +14,7 @@ export class CombatManager {
 
     static handleWallHit(wall, segment, damage, state) {
         segment.health -= damage;
+        state.dirtySegments.add(segment);
         if (segment.health <= 0 && !segment.isDead) {
             segment.isDead = true;
             state.gridSystem.rebuild(state.walls, state.planet.x, state.planet.y);
