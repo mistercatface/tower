@@ -170,6 +170,10 @@ export class GameState {
 
     resetRun(upgradesList) {
         this.initializeDefaultState();
+        this.isTransitioning = false;
+        this.waveTransitionTimer = 0;
+        this.mapTargetNodeId = 0;
+        
         this.recalculateStats(upgradesList);
         for (const key in this.upgrades) {
             if (upgradesList) {
@@ -180,7 +184,13 @@ export class GameState {
             this.upgrades[key].ptsCost = this.stats.baseUpgradeCost.value;
         }
 
-        this.phase = "map";
+        if (upgradesList) {
+            upgradesList.forEach((upg) => {
+                if (upg.onRunStart && this.upgrades[upg.id] && this.upgrades[upg.id].baseLevel > 0) upg.onRunStart(this);
+            });
+        }
+
+        this.recalculateStats(upgradesList);
         this.generateMap();
     }
 

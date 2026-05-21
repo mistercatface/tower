@@ -13,48 +13,42 @@ const canvas = document.getElementById("towerCanvas");
 const ctx = canvas.getContext("2d");
 ctx.imageSmoothingEnabled = false;
 
+let gameOverUI;
+
 const renderer = new Renderer(canvas, ctx);
 const upgrades = createUpgrades();
 const viewport = new Viewport(0, 0);
 
-let lastPlanetHealth = -1;
-let lastIsMoving = false;
-
-const stateMachineContext = {
-    state,
-    upgrades,
-    viewport,
-    renderer,
-    updateUI
+const uiSnapshot = {
+    health: -1,
+    isMoving: false
 };
+
+const stateMachineContext = { state, upgrades, viewport, renderer, updateUI };
 
 const fsm = new GameStateMachine(stateMachineContext);
 fsm.addState("map", new MapState());
 fsm.addState("map_transition", new MapTransitionState());
 fsm.addState("combat", new CombatState());
 fsm.addState("reward", new RewardState());
-fsm.transition("map");
 
 function resetGame() {
     state.resetRun(upgrades);
-    upgrades.forEach((upg) => {
-        if (upg.onRunStart && state.upgrades[upg.id] && state.upgrades[upg.id].baseLevel > 0) upg.onRunStart(state);
-    });
-    state.isTransitioning = false;
-    state.waveTransitionTimer = 0;
-    document.getElementById("gameOverUI").style.display = "none";
-    upgrades.forEach((upg) => {
-        upg.level = upg.baseLevel;
-        upg.ptsCost = state.stats.baseUpgradeCost.value;
-    });
-    state.recalculateStats(upgrades);
+    gameOverUI.style.display = "none";
     viewport.snapTo(0, 0);
-    state.mapTargetNodeId = 0;
-    state.phase = "map_transition";
     fsm.transition("map_transition");
     ProgressionManager.setupNewRunAbilities(state, upgrades);
     updateUI(state, upgrades);
     requestAnimationFrame(loop);
+}
+
+function didPlanetStateChange() {
+    if (state.planet.health !== uiSnapshot.health || state.planet.isMoving !== uiSnapshot.isMoving) {
+        uiSnapshot.health = state.planet.health;
+        uiSnapshot.isMoving = state.planet.isMoving;
+        return true;
+    }
+    return false;
 }
 
 function loop(timestamp) {
@@ -67,16 +61,12 @@ function loop(timestamp) {
         if (!state.isPaused) fsm.update(dt * state.selectedSpeed);
         fsm.render();
         updateHud(state, upgrades);
-        if (state.planet.health !== lastPlanetHealth || state.planet.isMoving !== lastIsMoving) {
-            updateUI(state, upgrades);
-            lastPlanetHealth = state.planet.health;
-            lastIsMoving = state.planet.isMoving;
-        }
+        if (didPlanetStateChange()) updateUI(state, upgrades);
         requestAnimationFrame(loop);
     } else if (!state.isGameOver) {
         state.isGameOver = true;
         fsm.render();
-        document.getElementById("gameOverUI").style.display = "flex";
+        gameOverUI.style.display = "flex";
         updateUI(state, upgrades);
         updateHud(state, upgrades);
     }
@@ -98,6 +88,9 @@ window.gameState = state;
 state.initUpgradesList(upgrades);
 loadProgress(state, upgrades);
 initUI(state, upgrades, resetGame);
+
+gameOverUI = document.getElementById("gameOverUI");
+
 resizeCanvas();
 InputManager.setup(canvas, state, viewport, upgrades);
 resetGame();
