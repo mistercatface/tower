@@ -7,11 +7,15 @@ export class ChunkManager {
         this.wallCache = new Map();
     }
 
-    buildWallChunks(segments, theme) {
+    clearActiveChunks() {
         for (const chunk of this.activeChunks.values()) {
             this.chunkPool.push(chunk);
         }
         this.activeChunks.clear();
+    }
+
+    buildWallChunks(segments, theme) {
+        this.clearActiveChunks();
 
         for (const seg of segments) {
             seg.chunks = [];
@@ -97,10 +101,7 @@ export class ChunkManager {
         const segments = state.walls;
 
         if (!segments || segments.length === 0) {
-            for (const chunk of this.activeChunks.values()) {
-                this.chunkPool.push(chunk);
-            }
-            this.activeChunks.clear();
+            this.clearActiveChunks();
             return;
         }
 
