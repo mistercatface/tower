@@ -20,15 +20,12 @@ export class WeaponSystem {
             rayCircle.y = cy;
             
             let hitWall = false;
-            for (const w of state.walls) {
-                for (const seg of w.segments) {
-                    if (seg.isDead) continue;
-                    if (CollisionSystem.checkCircleRect(rayCircle, seg)) {
-                        hitWall = true;
-                        break;
-                    }
+            for (const seg of state.walls) {
+                if (seg.isDead) continue;
+                if (CollisionSystem.checkCircleRect(rayCircle, seg)) {
+                    hitWall = true;
+                    break;
                 }
-                if (hitWall) break;
             }
             
             if (hitWall) {
@@ -39,15 +36,12 @@ export class WeaponSystem {
                     rayCircle.x = cx;
                     rayCircle.y = cy;
                     hitWall = false;
-                    for (const w of state.walls) {
-                        for (const seg of w.segments) {
-                            if (seg.isDead) continue;
-                            if (CollisionSystem.checkCircleRect(rayCircle, seg)) {
-                                hitWall = true;
-                                break;
-                            }
+                    for (const seg of state.walls) {
+                        if (seg.isDead) continue;
+                        if (CollisionSystem.checkCircleRect(rayCircle, seg)) {
+                            hitWall = true;
+                            break;
                         }
-                        if (hitWall) break;
                     }
                 }
                 return { hit: 'wall', x: cx, y: cy, dist: dist };

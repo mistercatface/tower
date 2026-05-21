@@ -138,69 +138,67 @@ export class Renderer {
         this.ctx.save();
         this.ctx.fillStyle = "#000000";
 
-        for (const wall of state.walls) {
-            for (const seg of wall.segments) {
-                if (seg.isDead) continue;
+        for (const seg of state.walls) {
+            if (seg.isDead) continue;
 
-                const dist = Math.hypot(seg.x - px, seg.y - py);
-                if (dist > 1500) continue;
+            const dist = Math.hypot(seg.x - px, seg.y - py);
+            if (dist > 1500) continue;
 
-                const cos = Math.cos(seg.angle);
-                const sin = Math.sin(seg.angle);
-                const hs = seg.size / 2;
+            const cos = Math.cos(seg.angle);
+            const sin = Math.sin(seg.angle);
+            const hs = seg.size / 2;
 
-                const corners = [
-                    { x: seg.x + -hs * cos - -hs * sin, y: seg.y + -hs * sin + -hs * cos },
-                    { x: seg.x + hs * cos - -hs * sin, y: seg.y + hs * sin + -hs * cos },
-                    { x: seg.x + hs * cos - hs * sin, y: seg.y + hs * sin + hs * cos },
-                    { x: seg.x + -hs * cos - hs * sin, y: seg.y + -hs * sin + hs * cos },
-                ];
+            const corners = [
+                { x: seg.x + -hs * cos - -hs * sin, y: seg.y + -hs * sin + -hs * cos },
+                { x: seg.x + hs * cos - -hs * sin, y: seg.y + hs * sin + -hs * cos },
+                { x: seg.x + hs * cos - hs * sin, y: seg.y + hs * sin + hs * cos },
+                { x: seg.x + -hs * cos - hs * sin, y: seg.y + -hs * sin + hs * cos },
+            ];
 
-                const edges = [
-                    [corners[0], corners[1]],
-                    [corners[1], corners[2]],
-                    [corners[2], corners[3]],
-                    [corners[3], corners[0]],
-                ];
+            const edges = [
+                [corners[0], corners[1]],
+                [corners[1], corners[2]],
+                [corners[2], corners[3]],
+                [corners[3], corners[0]],
+            ];
 
-                for (const edge of edges) {
-                    const p1 = edge[0];
-                    const p2 = edge[1];
+            for (const edge of edges) {
+                const p1 = edge[0];
+                const p2 = edge[1];
 
-                    const edgeCx = (p1.x + p2.x) / 2;
-                    const edgeCy = (p1.y + p2.y) / 2;
-                    const outX = edgeCx - seg.x;
-                    const outY = edgeCy - seg.y;
-                    const viewX = edgeCx - px;
-                    const viewY = edgeCy - py;
+                const edgeCx = (p1.x + p2.x) / 2;
+                const edgeCy = (p1.y + p2.y) / 2;
+                const outX = edgeCx - seg.x;
+                const outY = edgeCy - seg.y;
+                const viewX = edgeCx - px;
+                const viewY = edgeCy - py;
 
-                    if (outX * viewX + outY * viewY < 0) continue;
+                if (outX * viewX + outY * viewY < 0) continue;
 
-                    let angle1 = Math.atan2(p1.y - py, p1.x - px);
-                    let angle2 = Math.atan2(p2.y - py, p2.x - px);
+                let angle1 = Math.atan2(p1.y - py, p1.x - px);
+                let angle2 = Math.atan2(p2.y - py, p2.x - px);
 
-                    const cross = (p1.x - px) * (p2.y - py) - (p1.y - py) * (p2.x - px);
-                    const spread = 0.02;
+                const cross = (p1.x - px) * (p2.y - py) - (p1.y - py) * (p2.x - px);
+                const spread = 0.02;
 
-                    if (cross > 0) {
-                        angle1 -= spread;
-                        angle2 += spread;
-                    } else {
-                        angle1 += spread;
-                        angle2 -= spread;
-                    }
-
-                    const proj1 = { x: p1.x + Math.cos(angle1) * radius, y: p1.y + Math.sin(angle1) * radius };
-                    const proj2 = { x: p2.x + Math.cos(angle2) * radius, y: p2.y + Math.sin(angle2) * radius };
-
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(p1.x, p1.y);
-                    this.ctx.lineTo(proj1.x, proj1.y);
-                    this.ctx.lineTo(proj2.x, proj2.y);
-                    this.ctx.lineTo(p2.x, p2.y);
-                    this.ctx.closePath();
-                    this.ctx.fill();
+                if (cross > 0) {
+                    angle1 -= spread;
+                    angle2 += spread;
+                } else {
+                    angle1 += spread;
+                    angle2 -= spread;
                 }
+
+                const proj1 = { x: p1.x + Math.cos(angle1) * radius, y: p1.y + Math.sin(angle1) * radius };
+                const proj2 = { x: p2.x + Math.cos(angle2) * radius, y: p2.y + Math.sin(angle2) * radius };
+
+                this.ctx.beginPath();
+                this.ctx.moveTo(p1.x, p1.y);
+                this.ctx.lineTo(proj1.x, proj1.y);
+                this.ctx.lineTo(proj2.x, proj2.y);
+                this.ctx.lineTo(p2.x, p2.y);
+                this.ctx.closePath();
+                this.ctx.fill();
             }
         }
         this.ctx.restore();

@@ -7,14 +7,12 @@ export class Utilities {
         return Math.hypot(px - (vx + t * (wx - vx)), py - (vy + t * (wy - vy)));
     }
 
-    static hasLineOfSight(x1, y1, x2, y2, walls, padding = 0) {
-        for (const wall of walls) {
-            for (const seg of wall.segments) {
-                if (seg.isDead) continue;
-                const dist = this.distToSegment(seg.x, seg.y, x1, y1, x2, y2);
-                if (dist < seg.size * 0.5 + padding) {
-                    return false;
-                }
+    static hasLineOfSight(x1, y1, x2, y2, segments, padding = 0) {
+        for (const seg of segments) {
+            if (seg.isDead) continue;
+            const dist = this.distToSegment(seg.x, seg.y, x1, y1, x2, y2);
+            if (dist < seg.size * 0.5 + padding) {
+                return false;
             }
         }
         return true;

@@ -122,14 +122,14 @@ function update(dt) {
     const collisionEvents = CollisionSystem.run(state);
     const allEvents = [...turretEvents, ...collisionEvents];
     for (const event of allEvents) {
-        if (event.type === "enemyHit") {
-            CombatManager.handleEnemyHit(event.enemy, event.damage, state, upgrades);
-        } else if (event.type === "planetHit") {
-            CombatManager.handlePlanetHit(event.damage, state);
-        } else if (event.type === "wallHit") {
-            CombatManager.handleWallHit(event.wall, event.segment, event.damage, state);
+            if (event.type === "enemyHit") {
+                CombatManager.handleEnemyHit(event.enemy, event.damage, state, upgrades);
+            } else if (event.type === "planetHit") {
+                CombatManager.handlePlanetHit(event.damage, state);
+            } else if (event.type === "wallHit") {
+                CombatManager.handleWallHit(event.segment, event.damage, state);
+            }
         }
-    }
     FloatingText.updateAll(state, dt);
     upgrades.forEach((upg) => upg.update(dt, state));
     ProgressionManager.processLevelUps(state, upgrades);

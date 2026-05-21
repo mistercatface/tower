@@ -21,10 +21,10 @@ export class GridSystem {
         this.centerY = 0;
     }
 
-    rebuild(walls, targetX, targetY) {
+    rebuild(segments, targetX, targetY) {
         this.clear();
-        for (const w of walls) {
-            this.addWall(w);
+        for (const seg of segments) {
+            this.addSegment(seg);
         }
         this.buildFlowField(targetX, targetY);
     }
@@ -152,53 +152,50 @@ export class GridSystem {
         return { col, row };
     }
 
-    addWall(wall) {
-        const defaultPadding = wall.padding !== undefined ? wall.padding : 10;
-        for (const seg of wall.segments) {
-            if (seg.isDead) continue;
-            
-            const halfSize = seg.size / 2;
+    addSegment(seg) {
+        if (seg.isDead) return;
+        
+        const halfSize = seg.size / 2;
 
-            const processGrid = (padding, targetGrid) => {
-                const effectivePadding = padding;
-                const boundingRadius = halfSize * Math.SQRT2 + effectivePadding;
-                
-                const minGrid = this.worldToGrid(seg.x - boundingRadius, seg.y - boundingRadius);
-                const maxGrid = this.worldToGrid(seg.x + boundingRadius, seg.y + boundingRadius);
-                
-                const startCol = Math.max(0, minGrid.col);
-                const endCol = Math.min(this.cols - 1, maxGrid.col);
-                const startRow = Math.max(0, minGrid.row);
-                const endRow = Math.min(this.rows - 1, maxGrid.row);
-                
-                const cos = Math.cos(-seg.angle);
-                const sin = Math.sin(-seg.angle);
-                
-                for (let col = startCol; col <= endCol; col++) {
-                    for (let row = startRow; row <= endRow; row++) {
-                        const cx = col * this.cellSize + this.centerX - this.offsetX + (this.cellSize / 2);
-                        const cy = row * this.cellSize + this.centerY - this.offsetY + (this.cellSize / 2);
-                        
-                        const dx = cx - seg.x;
-                        const dy = cy - seg.y;
-                        
-                        const localX = dx * cos - dy * sin;
-                        const localY = dx * sin + dy * cos;
-                        
-                        const distX = Math.max(0, Math.abs(localX) - halfSize);
-                        const distY = Math.max(0, Math.abs(localY) - halfSize);
-                        
-                        if ((distX * distX + distY * distY) <= effectivePadding * effectivePadding + 0.01) {
-                            targetGrid[row * this.cols + col] = 1;
-                        }
+        const processGrid = (padding, targetGrid) => {
+            const effectivePadding = padding;
+            const boundingRadius = halfSize * Math.SQRT2 + effectivePadding;
+            
+            const minGrid = this.worldToGrid(seg.x - boundingRadius, seg.y - boundingRadius);
+            const maxGrid = this.worldToGrid(seg.x + boundingRadius, seg.y + boundingRadius);
+            
+            const startCol = Math.max(0, minGrid.col);
+            const endCol = Math.min(this.cols - 1, maxGrid.col);
+            const startRow = Math.max(0, minGrid.row);
+            const endRow = Math.min(this.rows - 1, maxGrid.row);
+            
+            const cos = Math.cos(-seg.angle);
+            const sin = Math.sin(-seg.angle);
+            
+            for (let col = startCol; col <= endCol; col++) {
+                for (let row = startRow; row <= endRow; row++) {
+                    const cx = col * this.cellSize + this.centerX - this.offsetX + (this.cellSize / 2);
+                    const cy = row * this.cellSize + this.centerY - this.offsetY + (this.cellSize / 2);
+                    
+                    const dx = cx - seg.x;
+                    const dy = cy - seg.y;
+                    
+                    const localX = dx * cos - dy * sin;
+                    const localY = dx * sin + dy * cos;
+                    
+                    const distX = Math.max(0, Math.abs(localX) - halfSize);
+                    const distY = Math.max(0, Math.abs(localY) - halfSize);
+                    
+                    if ((distX * distX + distY * distY) <= effectivePadding * effectivePadding + 0.01) {
+                        targetGrid[row * this.cols + col] = 1;
                     }
                 }
-            };
-
-            processGrid(defaultPadding, this.grid);
-            for (const r of this.radii) {
-                processGrid(r, this.gridsByRadius[r]);
             }
+        };
+
+        processGrid(seg.padding, this.grid);
+        for (const r of this.radii) {
+            processGrid(r, this.gridsByRadius[r]);
         }
     }
 

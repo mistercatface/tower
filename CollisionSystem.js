@@ -24,14 +24,10 @@ export class CollisionSystem {
         return distDX * distDX + distDY * distDY < circle.radius * circle.radius;
     }
 
-    static getMissileWallCollision(missile, walls) {
-        for (const w of walls) {
-            for (const seg of w.segments) {
-                if (seg.isDead) continue;
-                if (this.checkCircleRect(missile, seg)) {
-                    return { wall: w, segment: seg };
-                }
-            }
+    static getMissileWallCollision(missile, segments) {
+        for (const seg of segments) {
+            if (seg.isDead) continue;
+            if (this.checkCircleRect(missile, seg)) return seg;
         }
         return null;
     }
@@ -40,11 +36,11 @@ export class CollisionSystem {
         const events = [];
         for (const p of state.projectiles) {
             if (p.isDead) continue;
-            const wallHit = this.getMissileWallCollision(p, state.walls);
-            if (wallHit) {
+            const segment = this.getMissileWallCollision(p, state.walls);
+            if (segment) {
                 p.isDead = true;
                 const damage = p.faction === "player" ? state.weapon.damage : p.damage;
-                events.push({ type: "wallHit", wall: wallHit.wall, segment: wallHit.segment, damage: damage });
+                events.push({ type: "wallHit", segment, damage });
                 continue;
             }
             if (p.faction === "player") {

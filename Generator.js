@@ -1,5 +1,5 @@
 import { Pickup } from "./Entities.js";
-import { Wall, Segment } from "./Wall.js";
+import { Segment, buildArcWall } from "./Wall.js";
 import { Enemy } from "./Enemy.js";
 import { enemyTypes, difficultyCurve } from "./Config.js";
 
@@ -138,20 +138,15 @@ export const WallGenerator = {
             }
         }
 
-        const w = new Wall(px, py, 0, 0, 0, cellSize);
-        w.padding = 0;
-        w.segments = [];
         const offsetX = px - (cols * cellSize) / 2;
         const offsetY = py - (rows * cellSize) / 2;
-    
         for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
                 if (grid[r * cols + c] === 1) {
-                    w.segments.push(new Segment(offsetX + c * cellSize + cellSize / 2, offsetY + r * cellSize + cellSize / 2, 0, cellSize));
+                    state.walls.push(new Segment(offsetX + c * cellSize + cellSize / 2, offsetY + r * cellSize + cellSize / 2, 0, cellSize, 0));
                 }
             }
         }
-        state.walls.push(w);
     },
 
     maze(state, px, py) {
@@ -262,20 +257,15 @@ export const WallGenerator = {
             }
         }
 
-        const w = new Wall(px, py, 0, 0, 0, cellSize);
-        w.padding = 0;
-        w.segments = [];
         const offsetX = px - (cols * cellSize) / 2;
         const offsetY = py - (rows * cellSize) / 2;
-
         for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
                 if (grid[r * cols + c] === 1) {
-                    w.segments.push(new Segment(offsetX + c * cellSize + cellSize / 2, offsetY + r * cellSize + cellSize / 2, 0, cellSize));
+                    state.walls.push(new Segment(offsetX + c * cellSize + cellSize / 2, offsetY + r * cellSize + cellSize / 2, 0, cellSize, 0));
                 }
             }
         }
-        state.walls.push(w);
     },
 
     geometric(state, px, py) {
@@ -292,7 +282,7 @@ export const WallGenerator = {
                 const fullSpan = (Math.PI * 2) / sides;
                 const span = Math.max(fullSpan * 0.2, fullSpan - gapInRadians);
 
-                state.walls.push(new Wall(px, py, radius, centerAngle - span / 2, centerAngle + span / 2, 14 + l * 2));
+                buildArcWall(state.walls, px, py, radius, centerAngle - span / 2, centerAngle + span / 2, 14 + l * 2);
             }
         }
     },
@@ -302,8 +292,8 @@ export const WallGenerator = {
         const size = 18;
         for (let i = 0; i < 4; i++) {
             const angle = i * (Math.PI / 2);
-            state.walls.push(new Wall(px, py, dist, angle - 0.4, angle + 0.4, size));
-            state.walls.push(new Wall(px, py, dist + 40, angle - 0.2, angle + 0.2, size));
+            buildArcWall(state.walls, px, py, dist, angle - 0.4, angle + 0.4, size);
+            buildArcWall(state.walls, px, py, dist + 40, angle - 0.2, angle + 0.2, size);
         }
     },
 
@@ -315,7 +305,7 @@ export const WallGenerator = {
             for (let i = 0; i < count; i++) {
                 if (Math.random() > 0.4) {
                     const angle = (i / count) * Math.PI * 2;
-                    state.walls.push(new Wall(px, py, radius, angle - 0.1, angle + 0.1, 20));
+                    buildArcWall(state.walls, px, py, radius, angle - 0.1, angle + 0.1, 20);
                 }
             }
         }
@@ -528,20 +518,15 @@ export const WallGenerator = {
             }
         }
 
-        const w = new Wall(px, py, 0, 0, 0, cellSize);
-        w.padding = 0;
-        w.segments = [];
         const offsetX = px - (cols * cellSize) / 2;
         const offsetY = py - (rows * cellSize) / 2;
-
         for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
                 if (grid[r * cols + c] === 1) {
-                    w.segments.push(new Segment(offsetX + c * cellSize + cellSize / 2, offsetY + r * cellSize + cellSize / 2, 0, cellSize));
+                    state.walls.push(new Segment(offsetX + c * cellSize + cellSize / 2, offsetY + r * cellSize + cellSize / 2, 0, cellSize, 0));
                 }
             }
         }
-        state.walls.push(w);
     },
 
     diamond(state, px, py) {
@@ -549,8 +534,6 @@ export const WallGenerator = {
         const radii = [200, 350, 500];
 
         for (const r of radii) {
-            const w = new Wall(px, py, 0, 0, 0, wallSize);
-            w.segments = [];
             const dist = Math.hypot(r, r);
             const steps = Math.floor(dist / (wallSize * 1.1));
 
@@ -566,28 +549,27 @@ export const WallGenerator = {
                 if (!(t > gap1 && t < gap1 + gapSize)) {
                     const x1 = px + t * r;
                     const y1 = py - r + t * r;
-                    w.segments.push(new Segment(x1, y1, Math.PI / 4, wallSize));
+                    state.walls.push(new Segment(x1, y1, Math.PI / 4, wallSize));
                 }
 
                 if (!(t > gap2 && t < gap2 + gapSize)) {
                     const x2 = px + r - t * r;
                     const y2 = py + t * r;
-                    w.segments.push(new Segment(x2, y2, -Math.PI / 4, wallSize));
+                    state.walls.push(new Segment(x2, y2, -Math.PI / 4, wallSize));
                 }
 
                 if (!(t > gap3 && t < gap3 + gapSize)) {
                     const x3 = px - t * r;
                     const y3 = py + r - t * r;
-                    w.segments.push(new Segment(x3, y3, Math.PI / 4, wallSize));
+                    state.walls.push(new Segment(x3, y3, Math.PI / 4, wallSize));
                 }
 
                 if (!(t > gap4 && t < gap4 + gapSize)) {
                     const x4 = px - r + t * r;
                     const y4 = py - t * r;
-                    w.segments.push(new Segment(x4, y4, -Math.PI / 4, wallSize));
+                    state.walls.push(new Segment(x4, y4, -Math.PI / 4, wallSize));
                 }
             }
-            state.walls.push(w);
         }
     },
 };

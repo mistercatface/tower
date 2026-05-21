@@ -137,28 +137,26 @@ export class Enemy {
         }
     }
 
-    resolveWallCollisions(walls) {
-        if (!walls) return;
+    resolveWallCollisions(segments) {
+        if (!segments) return;
 
         for (let i = 0; i < 2; i++) {
-            for (const wall of walls) {
-                for (const seg of wall.segments) {
-                    if (seg.isDead) continue;
+            for (const seg of segments) {
+                if (seg.isDead) continue;
 
-                    const dx = this.x - seg.x;
-                    const dy = this.y - seg.y;
-                    const distanceSq = dx * dx + dy * dy;
-                    const minDistance = this.radius + seg.size * 0.5;
+                const dx = this.x - seg.x;
+                const dy = this.y - seg.y;
+                const distanceSq = dx * dx + dy * dy;
+                const minDistance = this.radius + seg.size * 0.5;
 
-                    if (distanceSq < minDistance * minDistance) {
-                        if (distanceSq === 0) {
-                            this.x += minDistance;
-                        } else {
-                            const distance = Math.sqrt(distanceSq);
-                            const overlap = minDistance - distance;
-                            this.x += (dx / distance) * overlap;
-                            this.y += (dy / distance) * overlap;
-                        }
+                if (distanceSq < minDistance * minDistance) {
+                    if (distanceSq === 0) {
+                        this.x += minDistance;
+                    } else {
+                        const distance = Math.sqrt(distanceSq);
+                        const overlap = minDistance - distance;
+                        this.x += (dx / distance) * overlap;
+                        this.y += (dy / distance) * overlap;
                     }
                 }
             }

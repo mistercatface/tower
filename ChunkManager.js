@@ -7,44 +7,41 @@ export class ChunkManager {
         this.wallCache = new Map();
     }
 
-    buildWallChunks(walls, theme) {
+    buildWallChunks(segments, theme) {
         for (const chunk of this.activeChunks.values()) {
             this.chunkPool.push(chunk);
         }
         this.activeChunks.clear();
 
-        for (const wall of walls) {
-            for (const seg of wall.segments) {
-                seg.parentWall = wall;
-                seg.chunks = [];
+        for (const seg of segments) {
+            seg.chunks = [];
 
-                const half = (seg.size * Math.SQRT2) / 2;
-                const minCx = Math.floor((seg.x - half) / this.chunkSize);
-                const maxCx = Math.floor((seg.x + half) / this.chunkSize);
-                const minCy = Math.floor((seg.y - half) / this.chunkSize);
-                const maxCy = Math.floor((seg.y + half) / this.chunkSize);
+            const half = (seg.size * Math.SQRT2) / 2;
+            const minCx = Math.floor((seg.x - half) / this.chunkSize);
+            const maxCx = Math.floor((seg.x + half) / this.chunkSize);
+            const minCy = Math.floor((seg.y - half) / this.chunkSize);
+            const maxCy = Math.floor((seg.y + half) / this.chunkSize);
 
-                for (let cx = minCx; cx <= maxCx; cx++) {
-                    for (let cy = minCy; cy <= maxCy; cy++) {
-                        const key = (cx & 0xffff) | ((cy & 0xffff) << 16);
+            for (let cx = minCx; cx <= maxCx; cx++) {
+                for (let cy = minCy; cy <= maxCy; cy++) {
+                    const key = (cx & 0xffff) | ((cy & 0xffff) << 16);
 
-                        let chunk = this.activeChunks.get(key);
-                        if (!chunk) {
-                            if (this.chunkPool.length > 0) {
-                                chunk = this.chunkPool.pop();
-                                chunk.x = cx * this.chunkSize;
-                                chunk.y = cy * this.chunkSize;
-                                chunk.segmentsCount = 0;
-                            } else {
-                                const offCanvas = new OffscreenCanvas(this.chunkSize, this.chunkSize);
-                                chunk = { canvas: offCanvas, ctx: offCanvas.getContext("2d"), x: cx * this.chunkSize, y: cy * this.chunkSize, segments: [], segmentsCount: 0 };
-                            }
-                            chunk.isDirty = true;
-                            this.activeChunks.set(key, chunk);
+                    let chunk = this.activeChunks.get(key);
+                    if (!chunk) {
+                        if (this.chunkPool.length > 0) {
+                            chunk = this.chunkPool.pop();
+                            chunk.x = cx * this.chunkSize;
+                            chunk.y = cy * this.chunkSize;
+                            chunk.segmentsCount = 0;
+                        } else {
+                            const offCanvas = new OffscreenCanvas(this.chunkSize, this.chunkSize);
+                            chunk = { canvas: offCanvas, ctx: offCanvas.getContext("2d"), x: cx * this.chunkSize, y: cy * this.chunkSize, segments: [], segmentsCount: 0 };
                         }
-                        chunk.segments[chunk.segmentsCount++] = seg;
-                        seg.chunks.push(chunk);
+                        chunk.isDirty = true;
+                        this.activeChunks.set(key, chunk);
                     }
+                    chunk.segments[chunk.segmentsCount++] = seg;
+                    seg.chunks.push(chunk);
                 }
             }
         }
@@ -88,7 +85,6 @@ export class ChunkManager {
             }
 
             ctx.save();
-            ctx.globalAlpha = seg.parentWall.alpha;
             ctx.translate(seg.x - chunk.x, seg.y - chunk.y);
             ctx.rotate(seg.angle);
 
@@ -98,9 +94,9 @@ export class ChunkManager {
     }
 
     drawWalls(mainCtx, state) {
-        const walls = state.walls;
+        const segments = state.walls;
 
-        if (!walls || walls.length === 0) {
+        if (!segments || segments.length === 0) {
             for (const chunk of this.activeChunks.values()) {
                 this.chunkPool.push(chunk);
             }
@@ -108,9 +104,9 @@ export class ChunkManager {
             return;
         }
 
-        if (this.lastWallsRef !== walls) {
-            this.buildWallChunks(walls, state.theme);
-            this.lastWallsRef = walls;
+        if (this.lastWallsRef !== segments) {
+            this.buildWallChunks(segments, state.theme);
+            this.lastWallsRef = segments;
         }
 
         if (state.dirtySegments.size > 0) {
