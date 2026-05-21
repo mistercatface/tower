@@ -145,12 +145,11 @@ export const createUpgrades = () => [
         description: "Passive: Replaces projectiles with a continuous laser beam. Turn Speed -50%.",
         maxLevel: 1,
         isAbility: true,
+        applyFn: (stats, level) => {
+            stats.turnSpeed.multiplierModifiers *= 0.5;
+        },
         abilityApplyFn: (weapon, planet) => {
             weapon.damage *= 0.33;
-            if (window.gameState) {
-                window.gameState.turret.turnSpeed *= 0.5;
-                window.gameState.turret2.turnSpeed *= 0.5;
-            }
         }
     }),
     new Upgrade({

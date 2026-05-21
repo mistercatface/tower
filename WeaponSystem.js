@@ -193,7 +193,7 @@ export class WeaponSystem {
                 state.activeLasers.push({ x1: tx, y1: ty, x2: hit.x, y2: hit.y });
                 
                 if (laserCanDamage && hit.hit === 'enemy') {
-                    const damage = state.weapon.damage * (200 / state.weapon.chargeTime);
+                    const damage = state.weapon.damage;
                     combatEvents.push({ type: 'enemyHit', enemy: hit.entity, damage: damage });
                 }
             }
