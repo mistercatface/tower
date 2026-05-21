@@ -21,9 +21,8 @@ export function showSectorCleared(node, rewardText, onContinue) {
 export function showUpgradeChoice(title, description, choices, upgrades, onPick) {
     const modal = document.getElementById("upgradeChoiceModal");
     const container = document.getElementById("upgradeChoicesContainer");
-    
-    const titleEl = modal.querySelector("h2");
-    const descEl = modal.querySelector("p");
+    const titleEl = document.getElementById("upgradeChoiceTitle");
+    const descEl = document.getElementById("upgradeChoiceDesc");
     
     if (titleEl) titleEl.innerText = title;
     if (descEl) descEl.innerText = description;
@@ -54,9 +53,8 @@ export function showCategoryChoice(title, description, attackText, defenseText, 
     const modal = document.getElementById("categoryModal");
     const atkBtn = document.getElementById("catAttackBtn");
     const defBtn = document.getElementById("catDefenseBtn");
-
-    const titleEl = modal.querySelector("h2");
-    const descEl = modal.querySelector("p");
+    const titleEl = document.getElementById("categoryModalTitle");
+    const descEl = document.getElementById("categoryModalDesc");
     
     if (titleEl) titleEl.innerText = title;
     if (descEl) descEl.innerText = description;
@@ -282,121 +280,8 @@ function setTextIfDifferent(id, text) {
 }
 
 export function initUI(state, upgrades, resetGameCallback) {
-    const uiContainer = document.createElement("div");
-    uiContainer.id = "uiContainer";
-    uiContainer.style.zIndex = "30";
-    uiContainer.innerHTML = `
-        <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 12px; pointer-events: auto;">
-            <button id="speedDownBtn" style="background: linear-gradient(to bottom, #3a3a3a, #1e1e1e); color: #FFF; border: 2px solid #555; border-radius: 6px; padding: 10px 16px; cursor: pointer; font-weight: bold; font-size: 14px; box-shadow: 0 3px 5px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1); text-shadow: 1px 1px 2px black;">-</button>
-            <button id="pauseBtn" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 100px; background: linear-gradient(to bottom, #3a3a3a, #1e1e1e); color: #FFF; border: 2px solid #555; border-radius: 6px; padding: 2px 16px; cursor: pointer; font-weight: bold; font-size: 14px; box-shadow: 0 3px 5px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1); text-shadow: 1px 1px 2px black; line-height: 1.2;">
-                <span id="pauseText">PAUSE</span>
-                <span id="speedDisplay" style="font-size: 11px; font-weight: normal; opacity: 0.8; margin-top: 2px;">1.00x</span>
-            </button>
-            <button id="speedUpBtn" style="background: linear-gradient(to bottom, #3a3a3a, #1e1e1e); color: #FFF; border: 2px solid #555; border-radius: 6px; padding: 10px 16px; cursor: pointer; font-weight: bold; font-size: 14px; box-shadow: 0 3px 5px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1); text-shadow: 1px 1px 2px black;">+</button>
-        </div>
-        <div id="missionDisplay" style="text-align: center; color: #00BCD4; font-weight: bold; margin-bottom: 8px; font-size: 14px;"></div>
-        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-            <span>Level: <span id="levelDisplay">0</span></span>
-            <span>Wave: <span id="waveDisplay">1</span></span>
-            <span>Kills: <span id="killsDisplay">0</span></span>
-        </div>
-        <div id="waveBarContainer" style="width: 100%; height: 18px; display: flex; gap: 2px; margin-bottom: 4px; border: 1px solid #555; background: #000; padding: 2px; box-sizing: border-box; position: relative;">
-            <div id="waveSegments" style="display: flex; gap: 1px; flex: 1; height: 100%;"></div>
-            <div id="waveText" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; color: white; font-weight: bold; text-shadow: 1px 1px 1px #000; pointer-events: none; font-family: monospace;"></div>
-        </div>
-        <div id="xpBarContainer" style="width: 100%; height: 18px; display: flex; gap: 2px; margin-bottom: 4px; border: 1px solid #555; background: #000; padding: 2px; box-sizing: border-box; position: relative;">
-            <div id="xpSegments" style="display: flex; gap: 1px; flex: 1; height: 100%;"></div>
-            <div id="xpText" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; color: white; font-weight: bold; text-shadow: 1px 1px 1px #000; pointer-events: none; font-family: monospace;"></div>
-        </div>
-        <div id="healthBarContainer" style="width: 100%; height: 18px; display: flex; gap: 2px; margin-bottom: 8px; border: 1px solid #555; background: #000; padding: 2px; box-sizing: border-box; position: relative;">
-            <div id="healthSegments" style="display: flex; gap: 1px; flex: 1; height: 100%;"></div>
-            <div id="healthText" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; color: white; font-weight: bold; text-shadow: 1px 1px 1px #000; pointer-events: none; font-family: monospace;"></div>
-        </div>
-        <div id="abilitiesContainer" style="display: flex; gap: 8px; margin-bottom: 8px; justify-content: center;">
-        </div>
-        <div id="upgradeTabs" style="display: flex; margin-bottom: 8px; gap: 4px;">
-            <button class="tabBtn" data-tab="attack" style="flex: 1; padding: 5px; background: #555; color: white; border: 1px solid #555; cursor: pointer; font-family: monospace; font-weight: bold;">Attack</button>
-            <button class="tabBtn" data-tab="defense" style="flex: 1; padding: 5px; background: #222; color: white; border: 1px solid #555; cursor: pointer; font-family: monospace; font-weight: bold;">Defense</button>
-            <button class="tabBtn" data-tab="meta" style="flex: 1; padding: 5px; background: #222; color: white; border: 1px solid #555; cursor: pointer; font-family: monospace; font-weight: bold;">Meta</button>
-            <button class="tabBtn" data-tab="abilities" style="flex: 1; padding: 5px; background: #222; color: white; border: 1px solid #555; cursor: pointer; font-family: monospace; font-weight: bold;">Abilities</button>
-            <button class="tabBtn" data-tab="perk" style="flex: 1; padding: 5px; background: #222; color: white; border: 1px solid #555; cursor: pointer; font-family: monospace; font-weight: bold;">Perks</button>
-        </div>
-        <div id="upgradesContainer" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
-    `;
-    document.body.appendChild(uiContainer);
-
-    const upgradeChoiceModal = document.createElement("div");
-    upgradeChoiceModal.id = "upgradeChoiceModal";
-    upgradeChoiceModal.style.cssText = "display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 100; flex-direction: column; align-items: center; justify-content: center; color: white; font-family: monospace; pointer-events: auto;";
-    upgradeChoiceModal.innerHTML = `
-        <div style="background: #222; padding: 20px; border: 2px solid #00BCD4; text-align: center; pointer-events: auto; width: 280px; box-shadow: 0 0 15px rgba(0,188,212,0.5);">
-            <h2 style="margin-top: 0; color: #00BCD4; font-size: 22px;"></h2>
-            <p style="margin-bottom: 20px; font-size: 14px;"></p>
-            <div id="upgradeChoicesContainer" style="display: flex; flex-direction: column; gap: 10px;">
-            </div>
-        </div>
-    `;
-    document.body.appendChild(upgradeChoiceModal);
-
-    const categoryModal = document.createElement("div");
-    categoryModal.id = "categoryModal";
-    categoryModal.style.cssText = "display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 100; flex-direction: column; align-items: center; justify-content: center; color: white; font-family: monospace; pointer-events: auto;";
-    categoryModal.innerHTML = `
-        <div style="background: #222; padding: 20px; border: 2px solid #00BCD4; text-align: center; pointer-events: auto; width: 280px; box-shadow: 0 0 15px rgba(0,188,212,0.5);">
-            <h2 style="margin-top: 0; color: #00BCD4; font-size: 22px;">WAVE 5 CLEARED</h2>
-            <p style="margin-bottom: 20px; font-size: 14px;">Choose an Upgrade Path.</p>
-            <div style="display: flex; gap: 10px; justify-content: center;">
-                <button id="catAttackBtn" style="padding: 10px; flex: 1; background: #F44336; color: white; border: 1px solid #FFF; cursor: pointer; font-family: monospace; font-weight: bold; font-size: 16px;">Attack</button>
-                <button id="catDefenseBtn" style="padding: 10px; flex: 1; background: #4CAF50; color: white; border: 1px solid #FFF; cursor: pointer; font-family: monospace; font-weight: bold; font-size: 16px;">Defense</button>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(categoryModal);
-
-    const unlockModal = document.createElement("div");
-    unlockModal.id = "unlockModal";
-    unlockModal.style.cssText = "display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 100; flex-direction: column; align-items: center; justify-content: center; color: white; font-family: monospace; pointer-events: auto;";
-    unlockModal.innerHTML = `
-        <div style="background: #222; padding: 20px; border: 2px solid #FFEB3B; text-align: center; pointer-events: auto; width: 280px; box-shadow: 0 0 15px rgba(255,235,59,0.5);">
-            <h2 style="margin-top: 0; color: #FFEB3B; font-size: 22px;">UPGRADE UNLOCKED</h2>
-            <div id="unlockDisplay" style="margin-bottom: 20px; font-size: 16px; font-weight: bold;"></div>
-            <button id="continueUnlockBtn" style="padding: 10px 20px; background: #4CAF50; color: white; border: none; cursor: pointer; font-weight: bold; font-family: monospace; font-size: 14px;">Continue</button>
-        </div>
-    `;
-    document.body.appendChild(unlockModal);
-
-    const nodeModal = document.createElement("div");
-    nodeModal.id = "nodeConfirmModal";
-    nodeModal.style.cssText = "display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 100; flex-direction: column; align-items: center; justify-content: center; color: white; font-family: monospace; pointer-events: auto;";
-    nodeModal.innerHTML = `
-        <div style="background: #222; padding: 20px; border: 2px solid #555; text-align: center; pointer-events: auto; width: 280px;">
-            <h2 id="nodeNameDisplay" style="margin-top: 0; color: #FFEB3B; font-size: 18px;"></h2>
-            <div id="nodeStatusDisplay" style="margin-bottom: 5px; font-weight: bold; font-size: 14px;"></div>
-            <div id="nodeWavesDisplay" style="margin-bottom: 10px; font-size: 14px; color: #00BCD4; font-weight: bold;"></div>
-            <div id="nodeRewardDisplay" style="margin-bottom: 10px; font-size: 14px; color: #FFEB3B; font-weight: bold;"></div>
-            <p style="margin: 10px 0;">Travel to this sector?</p>
-            <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
-                <button id="confirmNodeBtn" style="padding: 10px 20px; background: #4CAF50; color: white; border: none; cursor: pointer; font-weight: bold; font-family: monospace;">Confirm</button>
-                <button id="cancelNodeBtn" style="padding: 10px 20px; background: #F44336; color: white; border: none; cursor: pointer; font-weight: bold; font-family: monospace;">Cancel</button>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(nodeModal);
-
-    const clearedModal = document.createElement("div");
-    clearedModal.id = "sectorClearedModal";
-    clearedModal.style.cssText = "display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 100; flex-direction: column; align-items: center; justify-content: center; color: white; font-family: monospace; pointer-events: auto;";
-    clearedModal.innerHTML = `
-        <div style="background: #222; padding: 20px; border: 2px solid #4CAF50; text-align: center; pointer-events: auto; width: 280px; box-shadow: 0 0 15px rgba(76,175,80,0.5);">
-            <h2 style="margin-top: 0; color: #4CAF50; font-size: 22px;">SECTOR CLEARED</h2>
-            <div id="clearedNodeDisplay" style="margin-bottom: 5px; font-weight: bold; font-size: 14px;"></div>
-            <div id="clearedRewardDisplay" style="margin-bottom: 20px; font-size: 14px; color: #FFEB3B; font-weight: bold;"></div>
-            <button id="continueSectorBtn" style="padding: 10px 20px; background: #4CAF50; color: white; border: none; cursor: pointer; font-weight: bold; font-family: monospace; font-size: 14px;">Continue</button>
-        </div>
-    `;
-    document.body.appendChild(clearedModal);
-
     const abilitiesContainer = document.getElementById("abilitiesContainer");
+    abilitiesContainer.innerHTML = ''; 
     upgrades.filter(u => u.isAbility).forEach(upg => {
         const btn = document.createElement("button");
         btn.id = "btnAbility_" + upg.id;
@@ -426,6 +311,7 @@ export function initUI(state, upgrades, resetGameCallback) {
     });
 
     const upgContainer = document.getElementById("upgradesContainer");
+    upgContainer.innerHTML = '';
     upgrades.forEach((upg) => {
         const btn = document.createElement("button");
         btn.id = "upg_" + upg.id;
@@ -446,52 +332,6 @@ export function initUI(state, upgrades, resetGameCallback) {
         });
         upgContainer.appendChild(btn);
     });
-
-    const gameOverUI = document.createElement("div");
-    gameOverUI.id = "gameOverUI";
-    gameOverUI.style.cssText = "display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); flex-direction: column; align-items: center; justify-content: center; color: white; z-index: 20; font-family: monospace; text-align: center; padding-bottom: 150px; box-sizing: border-box; pointer-events: none;";
-    gameOverUI.innerHTML = `
-        <h1 style="font-size: 36px; margin-bottom: 10px; color: #F44336; pointer-events: auto;">GAME OVER</h1>
-        <button id="restartBtn" style="padding: 15px 30px; background: #4CAF50; color: white; border: none; font-weight: bold; cursor: pointer; font-family: monospace; font-size: 18px; pointer-events: auto;">NEW RUN</button>
-    `;
-    document.body.appendChild(gameOverUI);
-
-    const topUI = document.createElement("div");
-    topUI.style.cssText = "position: absolute; top: 0; left: 0; right: 0; margin: 0 auto; width: 100%; max-width: 450px; display: flex; justify-content: space-between; align-items: flex-start; padding: 15px; box-sizing: border-box; z-index: 40; pointer-events: none;";
-    
-    const leftCol = document.createElement("div");
-    leftCol.style.cssText = "display: flex; flex-direction: column; gap: 6px;";
-
-    const pointsContainer = document.createElement("div");
-    pointsContainer.style.cssText = "background: rgba(0, 0, 0, 0.75); color: #FFEB3B; font-weight: bold; font-size: 18px; text-shadow: 1px 1px 2px #000; box-shadow: 0 2px 4px rgba(0,0,0,0.5); pointer-events: auto; font-family: monospace;";
-    pointsContainer.innerHTML = `Points: <span id="scoreDisplay">0</span>`;
-    
-    const perkContainer = document.createElement("div");
-    perkContainer.id = "nextPerkDisplay";
-    perkContainer.style.cssText = "background: rgba(0, 0, 0, 0.75); color: #00BCD4; font-weight: bold; font-size: 18px; text-shadow: 1px 1px 2px #000; box-shadow: 0 2px 4px rgba(0,0,0,0.5); pointer-events: auto; font-family: monospace;";
-    perkContainer.innerText = "Next Perk: Level 1";
-
-    leftCol.appendChild(pointsContainer);
-    leftCol.appendChild(perkContainer);
-
-    const settingsBtn = document.createElement("button");
-    settingsBtn.id = "settingsBtn";
-    settingsBtn.innerHTML = "⚙️";
-    settingsBtn.style.cssText = "background: none; border: none; font-size: 28px; cursor: pointer; opacity: 0.8; padding: 0; pointer-events: auto;";
-    
-    topUI.appendChild(leftCol);
-    topUI.appendChild(settingsBtn);
-    document.body.appendChild(topUI);
-
-    const settingsModal = document.createElement("div");
-    settingsModal.id = "settingsModal";
-    settingsModal.style.cssText = "display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 50; flex-direction: column; align-items: center; justify-content: center; color: white; font-family: monospace;";
-    settingsModal.innerHTML = `
-        <h2 style="font-size: 24px; margin-bottom: 30px;">Settings</h2>
-        <button id="hardResetBtn" style="padding: 12px 24px; background: #F44336; color: white; border: none; font-weight: bold; cursor: pointer; font-family: monospace; font-size: 16px; margin-bottom: 20px;">Reset Game</button>
-        <button id="closeSettingsBtn" style="padding: 12px 24px; background: #555; color: white; border: none; font-weight: bold; cursor: pointer; font-family: monospace; font-size: 16px;">Close</button>
-    `;
-    document.body.appendChild(settingsModal);
 
     document.getElementById("pauseBtn").addEventListener("click", () => {
         state.isPaused = !state.isPaused;
