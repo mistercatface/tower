@@ -1,0 +1,485 @@
+export class Renderer {
+    constructor(canvas, ctx) {
+        this.canvas = canvas;
+        this.ctx = ctx;
+        this.wallCache = new Map();
+        this.enemyCache = new Map();
+        this.missileCache = new Map();
+    }
+
+    drawWalls(walls, theme) {
+        if (!walls) return;
+
+        const baseR = theme ? theme.r : 0;
+        const baseG = theme ? theme.g : 188;
+        const baseB = theme ? theme.b : 212;
+
+        for (const wall of walls) {
+            this.ctx.globalAlpha = wall.alpha;
+
+            for (const seg of wall.segments) {
+                if (seg.isDead) continue;
+
+                const healthRatio = Math.max(0, Math.round((seg.health / seg.maxHealth) * 10) / 10);
+                const r = Math.floor(baseR + (244 - baseR) * (1 - healthRatio));
+                const g = Math.floor(baseG + (67 - baseG) * (1 - healthRatio));
+                const b = Math.floor(baseB + (54 - baseB) * (1 - healthRatio));
+
+                const cacheKey = `${seg.size}_${r}_${g}_${b}`;
+                
+                let cachedSprite = this.wallCache.get(cacheKey);
+                if (!cachedSprite) {
+                    cachedSprite = new OffscreenCanvas(seg.size + 2, seg.size + 2);
+                    const offCtx = cachedSprite.getContext('2d');
+                    
+                    offCtx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+                    offCtx.fillRect(1, 1, seg.size, seg.size);
+                    
+                    this.wallCache.set(cacheKey, cachedSprite);
+                }
+
+                this.ctx.save();
+                this.ctx.translate(seg.x, seg.y);
+                this.ctx.rotate(seg.angle);
+                
+                this.ctx.drawImage(cachedSprite, -seg.size / 2 - 1, -seg.size / 2 - 1);
+
+                this.ctx.restore();
+            }
+            
+            this.ctx.globalAlpha = 1.0;
+        }
+    }
+
+    drawCoin(coin) {
+        this.ctx.save();
+        this.ctx.translate(coin.x, coin.y);
+        this.ctx.beginPath();
+        this.ctx.arc(0, 0, coin.radius, 0, Math.PI * 2);
+        this.ctx.fillStyle = "#FFEB3B";
+        this.ctx.fill();
+        this.ctx.lineWidth = 1;
+        this.ctx.strokeStyle = "#FBC02D";
+        this.ctx.stroke();
+        
+        this.ctx.fillStyle = "#000";
+        this.ctx.font = "10px monospace";
+        this.ctx.textAlign = "center";
+        this.ctx.textBaseline = "middle";
+        this.ctx.fillText("$", 0, 1);
+        
+        this.ctx.restore();
+    }
+
+    render(state, viewport) {
+        this.ctx.save();
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        if (viewport) {
+            viewport.apply(this.ctx);
+        }
+
+        if (state.phase === "map" || state.phase === "map_transition") {
+            this.drawMap(state);
+            
+            const tempPlanet = { ...state.planet, x: state.mapPlayerX, y: state.mapPlayerY };
+            this.drawPlanet(tempPlanet, 0); 
+            this.drawTurret(state.turret, state.mapPlayerX, state.mapPlayerY, state.planet.radius, 0, 1);
+            if (state.abilities["TwoGuns"]) {
+                this.drawTurret(state.turret2, state.mapPlayerX, state.mapPlayerY, state.planet.radius, 0, 1);
+            }
+        } else {
+            this.drawPlanet(state.planet, state.weapon.range);
+            
+            if (state.planet.queuedTargetX != null && state.planet.queuedTargetY != null) {
+                this.drawTargetMarker(state.planet.queuedTargetX, state.planet.queuedTargetY);
+            } else if (state.planet.isMoving && state.planet.targetX !== null && state.planet.targetY !== null) {
+                this.drawTargetMarker(state.planet.targetX, state.planet.targetY);
+            }
+
+            this.drawShadows(state);
+
+            for (const c of state.coins) this.drawCoin(c);
+            for (const e of state.enemies) this.drawEnemy(e);
+            for (const m of state.missiles) this.drawMissile(m, "#FFEB3B");
+            for (const em of state.enemyMissiles) this.drawMissile(em, "#F44336");
+
+            this.drawWalls(state.walls, state.wallTheme);
+
+            if (state.activeLasers) {
+                for (const laser of state.activeLasers) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(laser.x1, laser.y1);
+                    this.ctx.lineTo(laser.x2, laser.y2);
+                    this.ctx.strokeStyle = "#ff0000";
+                    this.ctx.lineWidth = 3;
+                    this.ctx.stroke();
+                    this.ctx.strokeStyle = "#FFFFFF";
+                    this.ctx.lineWidth = 1;
+                    this.ctx.stroke();
+                }
+            }
+
+            this.drawPlanet(state.planet, 0);
+            this.drawTurret(state.turret, state.planet.x, state.planet.y, state.planet.radius, state.weapon.charge, state.weapon.chargeTime);
+            if (state.abilities["TwoGuns"]) {
+                this.drawTurret(state.turret2, state.planet.x, state.planet.y, state.planet.radius, state.weapon.charge2, state.weapon.chargeTime);
+            }
+        }
+        
+        for (const ft of state.floatingTexts) this.drawFloatingText(ft);
+
+        this.ctx.restore();
+    }
+
+    drawDebugSpawnRadius(state) {
+        const visualRadius = state.spawnRadius - 50;
+        this.ctx.save();
+        this.ctx.beginPath();
+        this.ctx.rect(state.planet.x - 10000, state.planet.y - 10000, 20000, 20000);
+        this.ctx.rect(state.planet.x - visualRadius, state.planet.y - visualRadius, visualRadius * 2, visualRadius * 2);
+        this.ctx.fillStyle = "#000000";
+        this.ctx.fill("evenodd");
+        this.ctx.restore();
+    }
+
+    drawShadows(state) {
+        const px = state.planet.x;
+        const py = state.planet.y;
+        const radius = 3000;
+
+        this.ctx.save();
+        this.ctx.fillStyle = "#000000";
+
+        for (const wall of state.walls) {
+            for (const seg of wall.segments) {
+                if (seg.isDead) continue;
+
+                const dist = Math.hypot(seg.x - px, seg.y - py);
+                if (dist > 1500) continue; 
+
+                const cos = Math.cos(seg.angle);
+                const sin = Math.sin(seg.angle);
+                const hs = seg.size / 2;
+
+                const corners = [
+                    { x: seg.x + (-hs) * cos - (-hs) * sin, y: seg.y + (-hs) * sin + (-hs) * cos },
+                    { x: seg.x + (hs) * cos - (-hs) * sin, y: seg.y + (hs) * sin + (-hs) * cos },
+                    { x: seg.x + (hs) * cos - (hs) * sin, y: seg.y + (hs) * sin + (hs) * cos },
+                    { x: seg.x + (-hs) * cos - (hs) * sin, y: seg.y + (-hs) * sin + (hs) * cos }
+                ];
+
+                const edges = [
+                    [corners[0], corners[1]],
+                    [corners[1], corners[2]],
+                    [corners[2], corners[3]],
+                    [corners[3], corners[0]]
+                ];
+
+                for (const edge of edges) {
+                    const p1 = edge[0];
+                    const p2 = edge[1];
+
+                    const edgeCx = (p1.x + p2.x) / 2;
+                    const edgeCy = (p1.y + p2.y) / 2;
+                    const outX = edgeCx - seg.x;
+                    const outY = edgeCy - seg.y;
+                    const viewX = edgeCx - px;
+                    const viewY = edgeCy - py;
+
+                    if (outX * viewX + outY * viewY < 0) continue;
+
+                    let angle1 = Math.atan2(p1.y - py, p1.x - px);
+                    let angle2 = Math.atan2(p2.y - py, p2.x - px);
+
+                    const cross = (p1.x - px) * (p2.y - py) - (p1.y - py) * (p2.x - px);
+                    const spread = 0.02;
+                    
+                    if (cross > 0) {
+                        angle1 -= spread;
+                        angle2 += spread;
+                    } else {
+                        angle1 += spread;
+                        angle2 -= spread;
+                    }
+
+                    const proj1 = {
+                        x: p1.x + Math.cos(angle1) * radius,
+                        y: p1.y + Math.sin(angle1) * radius
+                    };
+                    const proj2 = {
+                        x: p2.x + Math.cos(angle2) * radius,
+                        y: p2.y + Math.sin(angle2) * radius
+                    };
+
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(p1.x, p1.y);
+                    this.ctx.lineTo(proj1.x, proj1.y);
+                    this.ctx.lineTo(proj2.x, proj2.y);
+                    this.ctx.lineTo(p2.x, p2.y);
+                    this.ctx.closePath();
+                    this.ctx.fill();
+                }
+            }
+        }
+        this.ctx.restore();
+    }
+
+    drawTargetMarker(x, y) {
+        this.ctx.save();
+        this.ctx.translate(x, y);
+        this.ctx.strokeStyle = "#4CAF50";
+        this.ctx.lineWidth = 2;
+        
+        const size = 6;
+        this.ctx.beginPath();
+        this.ctx.moveTo(-size, -size);
+        this.ctx.lineTo(size, size);
+        this.ctx.moveTo(size, -size);
+        this.ctx.lineTo(-size, size);
+        this.ctx.stroke();
+        
+        this.ctx.restore();
+    }
+
+    drawDebugFlowField(state) {
+        const grid = state.gridSystem;
+        if (!grid) return;
+        
+        const px = grid.centerX;
+        const py = grid.centerY;
+
+        for (let row = 0; row < grid.rows; row++) {
+            for (let col = 0; col < grid.cols; col++) {
+                const flow = grid.flowField[row * grid.cols + col];
+                const cx = col * grid.cellSize + px - grid.offsetX;
+                const cy = row * grid.cellSize + py - grid.offsetY;
+
+                if (flow) {
+                    this.ctx.fillStyle = "rgba(76, 175, 80, 0.15)";
+                    this.ctx.fillRect(cx, cy, grid.cellSize - 1, grid.cellSize - 1);
+                } else if (grid.grid[row * grid.cols + col] === 1) {
+                    this.ctx.fillStyle = "rgba(244, 67, 54, 0.15)";
+                    this.ctx.fillRect(cx, cy, grid.cellSize - 1, grid.cellSize - 1);
+                }
+            }
+        }
+    }
+
+    drawPlanet(planet, weaponRange) {
+        if (planet.spawnX !== undefined && planet.spawnY !== undefined && weaponRange > 0) {
+            this.ctx.beginPath();
+            this.ctx.arc(planet.spawnX, planet.spawnY, weaponRange, 0, Math.PI * 2);
+            this.ctx.strokeStyle = "rgba(150, 150, 150, 0.5)";
+            this.ctx.lineWidth = 1.5;
+            this.ctx.setLineDash([8, 8]);
+            this.ctx.stroke();
+            this.ctx.setLineDash([]);
+        }
+
+        if (weaponRange > 0) {
+            this.ctx.beginPath();
+            this.ctx.arc(planet.x, planet.y, weaponRange, 0, Math.PI * 2);
+            this.ctx.fillStyle = "rgba(76, 175, 80, 0.08)";
+            this.ctx.fill();
+        }
+
+        this.ctx.beginPath();
+        this.ctx.arc(planet.x, planet.y, planet.radius, 0, Math.PI * 2);
+        this.ctx.fillStyle = "#4CAF50";
+        this.ctx.fill();
+    }
+
+    drawMap(state) {
+        const currentNode = state.mapNodes.find(n => n.id === state.currentNodeId);
+        
+        for (const node of state.mapNodes) {
+            for (const connId of node.connections) {
+                const targetNode = state.mapNodes.find(n => n.id === connId);
+                if (!targetNode) continue;
+                
+                this.ctx.beginPath();
+                this.ctx.moveTo(node.x, node.y);
+                this.ctx.lineTo(targetNode.x, targetNode.y);
+                this.ctx.lineWidth = 2;
+                
+                if (node.completed && (targetNode.completed || targetNode.id === state.currentNodeId)) {
+                    this.ctx.strokeStyle = "#4CAF50";
+                } else if (node.id === state.currentNodeId) {
+                    this.ctx.strokeStyle = "#FFEB3B";
+                } else {
+                    this.ctx.strokeStyle = "#555";
+                }
+                this.ctx.stroke();
+            }
+        }
+
+        const waveColors = ["#03A9F4", "#7E57C2", "#AB47BC", "#EC407A", "#F44336"];
+
+        for (const node of state.mapNodes) {
+            this.ctx.beginPath();
+            this.ctx.arc(node.x, node.y, 12, 0, Math.PI * 2);
+            
+            if (node.id === state.currentNodeId) {
+                this.ctx.fillStyle = "#FFEB3B";
+            } else if (node.completed) {
+                this.ctx.fillStyle = "#4CAF50";
+            } else if (currentNode && currentNode.connections.includes(node.id)) {
+                const waveIndex = Math.min(4, Math.max(0, (node.wavesTotal || 1) - 1));
+                this.ctx.fillStyle = waveColors[waveIndex];
+            } else {
+                this.ctx.fillStyle = "#333";
+            }
+            
+            this.ctx.fill();
+            this.ctx.lineWidth = 2;
+            this.ctx.strokeStyle = "#FFF";
+            this.ctx.stroke();
+        }
+    }
+
+    drawTurret(turret, planetX, planetY, planetRadius, weaponCharge, weaponChargeTime) {
+        const turretDist = planetRadius + 4;
+        const tx = planetX + Math.cos(turret.angle) * turretDist;
+        const ty = planetY + Math.sin(turret.angle) * turretDist;
+
+        this.ctx.save();
+        this.ctx.translate(tx, ty);
+        this.ctx.rotate(turret.angle);
+
+        const scale = planetRadius / 8;
+        this.ctx.scale(scale, scale);
+
+        const turretPoints = [ { x: 4, y: 0 }, { x: -2, y: 2.5 }, { x: -2, y: -2.5 }, { x: 4, y: 0 } ];
+
+        this.ctx.beginPath();
+        this.ctx.moveTo(turretPoints[0].x, turretPoints[0].y);
+        this.ctx.lineTo(turretPoints[1].x, turretPoints[1].y);
+        this.ctx.lineTo(turretPoints[2].x, turretPoints[2].y);
+        this.ctx.closePath();
+        this.ctx.fillStyle = "#4CAF50";
+        this.ctx.fill();
+
+        let progress = 1;
+        let strokeColor = "#4CAF50";
+
+        if (weaponCharge > 0) {
+            progress = weaponCharge / weaponChargeTime;
+            strokeColor = "#ff0000";
+        }
+
+        if (progress > 0) {
+            this.ctx.beginPath();
+            this.ctx.moveTo(turretPoints[0].x, turretPoints[0].y);
+
+            let targetLen = progress * 18;
+
+            for (let i = 0; i < 3; i++) {
+                const p1 = turretPoints[i];
+                const p2 = turretPoints[i + 1];
+                const dx = p2.x - p1.x;
+                const dy = p2.y - p1.y;
+                const segLen = Math.hypot(dx, dy);
+
+                if (targetLen >= segLen) {
+                    this.ctx.lineTo(p2.x, p2.y);
+                    targetLen -= segLen;
+                } else {
+                    const ratio = targetLen / segLen;
+                    this.ctx.lineTo(p1.x + dx * ratio, p1.y + dy * ratio);
+                    break;
+                }
+            }
+
+            this.ctx.strokeStyle = strokeColor;
+            this.ctx.lineWidth = 1;
+            this.ctx.lineJoin = "round";
+            this.ctx.stroke();
+        }
+
+        this.ctx.restore();
+    }
+
+    drawEnemy(enemy) {
+        const cacheKey = `${enemy.radius}_${enemy.color}`;
+        
+        let cachedSprite = this.enemyCache.get(cacheKey);
+        if (!cachedSprite) {
+            const canvasSize = Math.ceil(enemy.radius * 2.5) * 2;
+            const cx = canvasSize / 2;
+            const cy = canvasSize / 2;
+            
+            cachedSprite = new OffscreenCanvas(canvasSize, canvasSize);
+            const offCtx = cachedSprite.getContext('2d');
+            
+            offCtx.beginPath();
+            offCtx.arc(cx, cy, enemy.radius, 0, Math.PI * 2);
+            offCtx.fillStyle = enemy.color;
+            offCtx.fill();
+            
+            offCtx.save();
+            offCtx.translate(cx, cy);
+            
+            const scale = enemy.radius / 8;
+            const turretDist = enemy.radius + 4 * scale;
+            
+            offCtx.translate(turretDist, 0);
+            offCtx.scale(scale, scale);
+            
+            const turretPoints = [ { x: 4, y: 0 }, { x: -2, y: 2.5 }, { x: -2, y: -2.5 } ];
+            
+            offCtx.beginPath();
+            offCtx.moveTo(turretPoints[0].x, turretPoints[0].y);
+            offCtx.lineTo(turretPoints[1].x, turretPoints[1].y);
+            offCtx.lineTo(turretPoints[2].x, turretPoints[2].y);
+            offCtx.closePath();
+            offCtx.fillStyle = enemy.color;
+            offCtx.fill();
+            
+            offCtx.restore();
+            
+            this.enemyCache.set(cacheKey, cachedSprite);
+        }
+
+        this.ctx.save();
+        this.ctx.translate(enemy.x, enemy.y);
+        this.ctx.rotate(enemy.angle);
+        this.ctx.drawImage(cachedSprite, -cachedSprite.width / 2, -cachedSprite.height / 2);
+        this.ctx.restore();
+
+        if (enemy.health < enemy.maxHealth) {
+            this.ctx.fillStyle = "#FFF";
+            const currentHealth = Math.max(0, enemy.health);
+            this.ctx.fillRect(enemy.x - 10, enemy.y - 12, 20 * (currentHealth / enemy.maxHealth), 3);
+        }
+    }
+
+    drawMissile(missile, color) {
+        const cacheKey = `${missile.radius}_${color}`;
+        let cachedSprite = this.missileCache.get(cacheKey);
+        if (!cachedSprite) {
+            const canvasSize = Math.ceil(missile.radius * 2);
+            const cx = canvasSize / 2;
+            const cy = canvasSize / 2;
+            cachedSprite = new OffscreenCanvas(canvasSize, canvasSize);
+            const offCtx = cachedSprite.getContext('2d');
+            offCtx.beginPath();
+            offCtx.arc(cx, cy, missile.radius, 0, Math.PI * 2);
+            offCtx.fillStyle = color;
+            offCtx.fill();
+            this.missileCache.set(cacheKey, cachedSprite);
+        }
+        this.ctx.save();
+        this.ctx.translate(missile.x, missile.y);
+        this.ctx.drawImage(cachedSprite, -cachedSprite.width / 2, -cachedSprite.height / 2);
+        this.ctx.restore();
+    }
+
+    drawFloatingText(ft) {
+        this.ctx.globalAlpha = Math.max(0, ft.life);
+        this.ctx.fillStyle = ft.color;
+        this.ctx.font = "12px monospace";
+        this.ctx.fillText(ft.text, Math.round(ft.x), Math.round(ft.y));
+        this.ctx.globalAlpha = 1.0;
+    }
+}
