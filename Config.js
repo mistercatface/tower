@@ -14,7 +14,7 @@ export const difficultyCurve = {
 };
 
 export const spawnSettings = {
-    baseSpawnDelay: 1500,
+    baseSpawnDelay: 2500,
     minSpawnDelay: 300,
     delayReductionPerWave: 100,
     kamikaze: {
