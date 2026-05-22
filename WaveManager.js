@@ -1,4 +1,4 @@
-import { enemyTypes, difficultyCurve } from "./Config.js";
+import { enemyTypes, difficultyCurve, spawnSettings } from "./Config.js";
 import { Enemy } from "./Enemy.js";
 import { updateUI } from "./UI.js";
 import { ProgressionManager } from "./ProgressionManager.js";
@@ -78,7 +78,7 @@ export class WaveManager {
         }
 
         if (selectedType.type === "kamikaze") {
-            const groupSize = 3 + Math.floor(state.wave / 5);
+            const groupSize = spawnSettings.kamikaze.baseGroupSize + Math.floor(state.wave * spawnSettings.kamikaze.growthPerWave);
             return this.spawnGroup(state, selectedType, groupSize);
         } else {
             const dist = state.spawnRadius;
@@ -102,7 +102,7 @@ export class WaveManager {
             return;
         }
         state.enemySpawnTimer += dt;
-        const currentSpawnDelay = Math.max(300, 1200 - state.wave * 150);
+        const currentSpawnDelay = Math.max(spawnSettings.minSpawnDelay, spawnSettings.baseSpawnDelay - state.wave * spawnSettings.delayReductionPerWave);
         if (state.enemySpawnTimer > currentSpawnDelay && state.enemiesSpawned < state.enemiesToSpawn) {
             const count = this.spawnEnemy(state);
             state.enemiesSpawned += count;
