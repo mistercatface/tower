@@ -1,18 +1,27 @@
 import { Navigator } from "./Navigator.js";
 import { Projectile } from "./Entities.js";
+import { enemyStates } from "./EnemyStates.js";
 
 export class Enemy {
-    
     static updateAll(state, dt, spatialHash) {
         for (let i = state.enemies.length - 1; i >= 0; i--) {
             const e = state.enemies[i];
-            const wantsToShoot = e.update(dt, state.planet, state.gridSystem, state.walls, state.projectiles, spatialHash);
-            if (wantsToShoot) state.projectiles.push(new Projectile(e.x, e.y, e.radius * 0.333, 150, state.planet, null, 10, "enemy"));
+            
+            if (e.dodgeCooldownTimer > 0) {
+                e.dodgeCooldownTimer -= dt;
+            }
+            
+            const wantsToShoot = e.currentState.update(e, dt, state.planet, state.gridSystem, state.walls, state.projectiles, spatialHash);
+            
+            if (wantsToShoot) {
+                state.projectiles.push(new Projectile(e.x, e.y, e.radius * 0.333, 150, state.planet, null, 10, "enemy"));
+            }
+            
             if (e.isDead) state.enemies.splice(i, 1);
         }
     }
 
-    constructor(x, y, radius, speed, health, color, reward, type = "standard", attackType = "ranged") {
+    constructor(x, y, radius, speed, health, color, reward, type = "standard", attackType = "ranged", canDodge = false) {
         this.x = x;
         this.y = y;
         this.radius = radius;
@@ -23,6 +32,7 @@ export class Enemy {
         this.reward = reward;
         this.type = type;
         this.attackType = attackType;
+        this.canDodge = canDodge;
         this.isDead = false;
         this.angle = Math.atan2(-y, -x);
         this.turnSpeed = 10;
@@ -37,10 +47,16 @@ export class Enemy {
         this.fireRate = 1000;
         this.fireTimer = 0;
         this.dodgeCooldownTimer = 0;
-        this.isDodging = false;
+        this.dodgeTargetX = 0;
+        this.dodgeTargetY = 0;
+        this.currentState = enemyStates.navigating;
     }
 
-    applyMovement(dt, ignoreSeparation = false) {
+    changeState(stateName) {
+        this.currentState = enemyStates[stateName];
+    }
+
+    applyMovement(dt, ignoreSeparation = false, shouldMove = true) {
         let finalX = this.desiredX + (ignoreSeparation ? 0 : this.sepX);
         let finalY = this.desiredY + (ignoreSeparation ? 0 : this.sepY);
 
@@ -55,26 +71,13 @@ export class Enemy {
         angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
         this.angle += angleDiff * Math.min(1, this.turnSpeed * (dt / 1000));
 
-        if (!this.isEngaged || this.attackType === "charge") {
+        if (shouldMove) {
             const moveDist = this.speed * (dt / 1000);
             this.x += finalX * moveDist;
             this.y += finalY * moveDist;
             this.x += this.pushX;
             this.y += this.pushY;
         }
-    }
-
-    updateCombat(dt) {
-        if (this.attackType === "charge") return false;
-
-        if (this.isEngaged) {
-            this.fireTimer += dt;
-            if (this.fireTimer >= this.fireRate) {
-                this.fireTimer = 0;
-                return true;
-            }
-        }
-        return false;
     }
 
     calculateSeparation(spatialHash) {
@@ -178,24 +181,7 @@ export class Enemy {
         }
     }
 
-    handleDodging(dt, missiles, gridSystem) {
-        if (this.dodgeCooldownTimer > 0) {
-            this.dodgeCooldownTimer -= dt;
-        }
-
-        if (this.type === "dodger" && this.dodgeCooldownTimer <= 0 && !this.isDodging) {
-            this.tryTriggerDodge(missiles, gridSystem);
-        }
-
-        if (this.isDodging) {
-            this.executeDodgeMovement(dt);
-            return true;
-        }
-
-        return false;
-    }
-
-    tryTriggerDodge(projectiles, gridSystem) {
+    shouldTriggerDodge(projectiles, gridSystem) {
         for (const m of projectiles) {
             if (m.faction === "enemy") continue;
 
@@ -217,11 +203,10 @@ export class Enemy {
                             const destY = this.y + Math.sin(dodgeAngle) * dodgeDist;
 
                             if (this.isValidDodgeTarget(destX, destY, gridSystem)) {
-                                this.isDodging = true;
                                 this.dodgeTargetX = destX;
                                 this.dodgeTargetY = destY;
                                 this.dodgeCooldownTimer = 2000;
-                                return;
+                                return true;
                             }
                         }
                     } else {
@@ -230,6 +215,7 @@ export class Enemy {
                 }
             }
         }
+        return false;
     }
 
     isValidDodgeTarget(x, y, gridSystem) {
@@ -239,47 +225,5 @@ export class Enemy {
             return gridSystem.grid[row * gridSystem.cols + col] === 0;
         }
         return false;
-    }
-
-    executeDodgeMovement(dt) {
-        const dx = this.dodgeTargetX - this.x;
-        const dy = this.dodgeTargetY - this.y;
-        const dist = Math.hypot(dx, dy);
-        const moveDist = this.speed * 1.5 * (dt / 1000);
-
-        const targetAngle = Math.atan2(dy, dx);
-        let dodgeAngleDiff = targetAngle - this.angle;
-        dodgeAngleDiff = Math.atan2(Math.sin(dodgeAngleDiff), Math.cos(dodgeAngleDiff));
-        this.angle += dodgeAngleDiff * Math.min(1, this.turnSpeed * 1.5 * (dt / 1000));
-
-        if (dist <= moveDist) {
-            this.x = this.dodgeTargetX;
-            this.y = this.dodgeTargetY;
-            this.isDodging = false;
-        } else {
-            this.x += (dx / dist) * moveDist;
-            this.y += (dy / dist) * moveDist;
-        }
-    }
-
-    update(dt, target, gridSystem, walls, missiles = [], spatialHash = null) {
-        if (this.handleDodging(dt, missiles, gridSystem)) return false;
-
-        this.updateEngagementStatus(target);
-        this.calculateSteering(target, gridSystem);
-        this.calculateSeparation(spatialHash);
-        this.applyMovement(dt, target);
-        this.resolveWallCollisions(walls);
-
-        return this.updateCombat(dt);
-    }
-
-    updateEngagementStatus(target) {
-        const distToTarget = Math.hypot(this.x - target.x, this.y - target.y);
-        if (distToTarget <= target.radius + this.attackRange) {
-            this.isEngaged = true;
-        } else {
-            this.isEngaged = false;
-        }
     }
 }
