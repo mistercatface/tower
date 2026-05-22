@@ -39,8 +39,9 @@ export class CombatManager {
             while (state.xp >= xpNeeded) {
                 state.xp -= xpNeeded;
                 state.level++;
-                if (perkMilestones.includes(state.level)) {
+                if (perkMilestones.includes(state.level) && !state.claimedPerkMilestones.includes(state.level)) {
                     state.pendingPerkPicks.push(state.level);
+                    state.claimedPerkMilestones.push(state.level);
                 }
                 state.pendingLevelUps++;
                 if (state.level > state.highestLevelReached) state.highestLevelReached = state.level;
