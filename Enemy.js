@@ -6,17 +6,9 @@ export class Enemy {
     static updateAll(state, dt, spatialHash) {
         for (let i = state.enemies.length - 1; i >= 0; i--) {
             const e = state.enemies[i];
-            
-            if (e.dodgeCooldownTimer > 0) {
-                e.dodgeCooldownTimer -= dt;
-            }
-            
+            if (e.dodgeCooldownTimer > 0) e.dodgeCooldownTimer -= dt;
             const wantsToShoot = e.currentState.update(e, dt, state.planet, state.gridSystem, state.walls, state.projectiles, spatialHash);
-            
-            if (wantsToShoot) {
-                state.projectiles.push(new Projectile(e.x, e.y, e.radius * 0.333, 150, state.planet, null, 10, "enemy"));
-            }
-            
+            if (wantsToShoot) state.projectiles.push(new Projectile(e.x, e.y, e.radius * 0.333, 150, state.planet, null, 10, "enemy"));
             if (e.isDead) state.enemies.splice(i, 1);
         }
     }
