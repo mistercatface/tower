@@ -40,6 +40,30 @@ export class Enemy {
         this.isDodging = false;
     }
 
+    applyMovement(dt, ignoreSeparation = false) {
+        let finalX = this.desiredX + (ignoreSeparation ? 0 : this.sepX);
+        let finalY = this.desiredY + (ignoreSeparation ? 0 : this.sepY);
+
+        const len = Math.hypot(finalX, finalY);
+        if (len > 0) {
+            finalX /= len;
+            finalY /= len;
+        }
+
+        const targetAngle = Math.atan2(finalY, finalX);
+        let angleDiff = targetAngle - this.angle;
+        angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+        this.angle += angleDiff * Math.min(1, this.turnSpeed * (dt / 1000));
+
+        if (!this.isEngaged || this.attackType === "charge") {
+            const moveDist = this.speed * (dt / 1000);
+            this.x += finalX * moveDist;
+            this.y += finalY * moveDist;
+            this.x += this.pushX;
+            this.y += this.pushY;
+        }
+    }
+
     updateCombat(dt) {
         if (this.attackType === "charge") return false;
 
@@ -94,6 +118,37 @@ export class Enemy {
         if (sepLen > 1.0) {
             this.sepX = (this.sepX / sepLen) * 1.0;
             this.sepY = (this.sepY / sepLen) * 1.0;
+        }
+    }
+
+    calculateSteering(target, gridSystem) {
+        if (this.isEngaged) {
+            const dx = target.x - this.x;
+            const dy = target.y - this.y;
+            this.desiredX = dx;
+            this.desiredY = dy;
+            return;
+        }
+
+        if (gridSystem) {
+            const angle = Navigator.getSteeringAngle(this.x, this.y, gridSystem, gridSystem.flowField);
+            if (angle !== null) {
+                this.desiredX = Math.cos(angle);
+                this.desiredY = Math.sin(angle);
+                return;
+            }
+        }
+
+        const dx = target.x - this.x;
+        const dy = target.y - this.y;
+        const dist = Math.hypot(dx, dy);
+
+        if (dist > 0) {
+            this.desiredX = dx / dist;
+            this.desiredY = dy / dist;
+        } else {
+            this.desiredX = 0;
+            this.desiredY = 0;
         }
     }
 
@@ -204,61 +259,6 @@ export class Enemy {
         } else {
             this.x += (dx / dist) * moveDist;
             this.y += (dy / dist) * moveDist;
-        }
-    }
-
-    applyMovement(dt, ignoreSeparation = false) {
-        let finalX = this.desiredX + (ignoreSeparation ? 0 : this.sepX);
-        let finalY = this.desiredY + (ignoreSeparation ? 0 : this.sepY);
-
-        const len = Math.hypot(finalX, finalY);
-        if (len > 0) {
-            finalX /= len;
-            finalY /= len;
-        }
-
-        const targetAngle = Math.atan2(finalY, finalX);
-        let angleDiff = targetAngle - this.angle;
-        angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
-        this.angle += angleDiff * Math.min(1, this.turnSpeed * (dt / 1000));
-
-        if (!this.isEngaged || this.attackType === "charge") {
-            const moveDist = this.speed * (dt / 1000);
-            this.x += finalX * moveDist;
-            this.y += finalY * moveDist;
-            this.x += this.pushX;
-            this.y += this.pushY;
-        }
-    }
-
-    calculateSteering(target, gridSystem) {
-        if (this.isEngaged) {
-            const dx = target.x - this.x;
-            const dy = target.y - this.y;
-            this.desiredX = dx;
-            this.desiredY = dy;
-            return;
-        }
-
-        if (gridSystem) {
-            const angle = Navigator.getSteeringAngle(this.x, this.y, gridSystem, gridSystem.flowField);
-            if (angle !== null) {
-                this.desiredX = Math.cos(angle);
-                this.desiredY = Math.sin(angle);
-                return;
-            }
-        }
-
-        const dx = target.x - this.x;
-        const dy = target.y - this.y;
-        const dist = Math.hypot(dx, dy);
-
-        if (dist > 0) {
-            this.desiredX = dx / dist;
-            this.desiredY = dy / dist;
-        } else {
-            this.desiredX = 0;
-            this.desiredY = 0;
         }
     }
 
