@@ -2,6 +2,7 @@ import { Navigator } from "./Navigator.js";
 import { Projectile } from "./Entities.js";
 
 export class Enemy {
+    
     static updateAll(state, dt, spatialHash) {
         for (let i = state.enemies.length - 1; i >= 0; i--) {
             const e = state.enemies[i];
@@ -11,7 +12,7 @@ export class Enemy {
         }
     }
 
-    constructor(x, y, radius, speed, health, color, reward, type = "standard") {
+    constructor(x, y, radius, speed, health, color, reward, type = "standard", attackType = "ranged") {
         this.x = x;
         this.y = y;
         this.radius = radius;
@@ -21,6 +22,7 @@ export class Enemy {
         this.color = color;
         this.reward = reward;
         this.type = type;
+        this.attackType = attackType;
         this.isDead = false;
         this.angle = Math.atan2(-y, -x);
         this.turnSpeed = 10;
@@ -36,6 +38,43 @@ export class Enemy {
         this.fireTimer = 0;
         this.dodgeCooldownTimer = 0;
         this.isDodging = false;
+    }
+
+    applyMovement(dt, ignoreSeparation = false) {
+        let finalX = this.desiredX + (ignoreSeparation ? 0 : this.sepX);
+        let finalY = this.desiredY + (ignoreSeparation ? 0 : this.sepY);
+
+        const len = Math.hypot(finalX, finalY);
+        if (len > 0) {
+            finalX /= len;
+            finalY /= len;
+        }
+
+        const targetAngle = Math.atan2(finalY, finalX);
+        let angleDiff = targetAngle - this.angle;
+        angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+        this.angle += angleDiff * Math.min(1, this.turnSpeed * (dt / 1000));
+
+        if (!this.isEngaged || this.attackType === "charge") {
+            const moveDist = this.speed * (dt / 1000);
+            this.x += finalX * moveDist;
+            this.y += finalY * moveDist;
+            this.x += this.pushX;
+            this.y += this.pushY;
+        }
+    }
+
+    updateCombat(dt) {
+        if (this.attackType === "charge") return false;
+
+        if (this.isEngaged) {
+            this.fireTimer += dt;
+            if (this.fireTimer >= this.fireRate) {
+                this.fireTimer = 0;
+                return true;
+            }
+        }
+        return false;
     }
 
     calculateSeparation(spatialHash) {
@@ -233,43 +272,6 @@ export class Enemy {
         this.resolveWallCollisions(walls);
 
         return this.updateCombat(dt);
-    }
-
-    applyMovement(dt, ignoreSeparation = false) {
-        let finalX = this.desiredX + (ignoreSeparation ? 0 : this.sepX);
-        let finalY = this.desiredY + (ignoreSeparation ? 0 : this.sepY);
-
-        const len = Math.hypot(finalX, finalY);
-        if (len > 0) {
-            finalX /= len;
-            finalY /= len;
-        }
-
-        const targetAngle = Math.atan2(finalY, finalX);
-        let angleDiff = targetAngle - this.angle;
-        angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
-        this.angle += angleDiff * Math.min(1, this.turnSpeed * (dt / 1000));
-
-        if (!this.isEngaged || this.type === "kamikaze") {
-            const moveDist = this.speed * (dt / 1000);
-            this.x += finalX * moveDist;
-            this.y += finalY * moveDist;
-            this.x += this.pushX;
-            this.y += this.pushY;
-        }
-    }
-
-    updateCombat(dt) {
-        if (this.type === "kamikaze") return false;
-
-        if (this.isEngaged) {
-            this.fireTimer += dt;
-            if (this.fireTimer >= this.fireRate) {
-                this.fireTimer = 0;
-                return true;
-            }
-        }
-        return false;
     }
 
     updateEngagementStatus(target) {

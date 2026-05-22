@@ -47,7 +47,7 @@ export class WaveManager {
         for (let i = 0; i < count; i++) {
             const pos = basePos + i * spacing;
             const { x, y } = this.calculateSpawnPosition(state, side, pos);
-            state.enemies.push(new Enemy(x, y, enemyType.radius, scaledSpeed, scaledHealth, enemyType.color, scaledReward, enemyType.type));
+            state.enemies.push(new Enemy(x, y, enemyType.radius, scaledSpeed, scaledHealth, enemyType.color, scaledReward, enemyType.type, enemyType.attackType));
         }
         return count;
     }
@@ -77,8 +77,8 @@ export class WaveManager {
             }
         }
 
-        if (selectedType.type === "kamikaze") {
-            const groupSize = spawnSettings.kamikaze.baseGroupSize + Math.floor(state.wave * spawnSettings.kamikaze.growthPerWave);
+        if (selectedType.spawnType === "group") {
+            const groupSize = selectedType.groupSettings.baseGroupSize + Math.floor(state.wave * selectedType.groupSettings.growthPerWave);
             return this.spawnGroup(state, selectedType, groupSize);
         } else {
             const dist = state.spawnRadius;
@@ -90,7 +90,7 @@ export class WaveManager {
             const scaledSpeed = selectedType.baseSpeed * Math.pow(difficultyCurve.speedMultiplier, state.wave - 1);
             const scaledReward = Math.max(1, Math.floor(selectedType.baseHealth * Math.pow(difficultyCurve.rewardMultiplier, state.wave - 1)));
 
-            state.enemies.push(new Enemy(x, y, selectedType.radius, scaledSpeed, scaledHealth, selectedType.color, scaledReward, selectedType.type));
+            state.enemies.push(new Enemy(x, y, selectedType.radius, scaledSpeed, scaledHealth, selectedType.color, scaledReward, selectedType.type, selectedType.attackType));
             return 1;
         }
     }
