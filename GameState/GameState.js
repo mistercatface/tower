@@ -103,34 +103,31 @@ export class GameState {
         this.phase = "map";
     }
 
+    calculateEnemiesToSpawn() {
+        if (this.wave % 10 === 0) {
+            return 1;
+        } else if (this.wave % 10 === 1 && this.wave > 1) {
+            return 5 + this.wave * 2;
+        } else {
+            if (this.wave === 1) return 5;
+            return this.enemiesToSpawn + 3;
+        }
+    }
+
     enterCombatPhase() {
         this.phase = "combat";
         this.sectorWave = 1;
         this.wave++;
         this.pickups = [];
         this.planet.resetToSpawn();
-        if (this.wave % 10 === 0) {
-            this.enemiesToSpawn = 1;
-        } else if (this.wave % 10 === 1 && this.wave > 1) {
-            this.enemiesToSpawn = 5 + this.wave * 2;
-        } else {
-            if (this.wave === 1) this.enemiesToSpawn = 5;
-            else this.enemiesToSpawn += 3;
-        }
+        this.enemiesToSpawn = this.calculateEnemiesToSpawn();
         this.enemiesSpawned = 0;
     }
 
     advanceWave() {
         this.sectorWave++;
         this.wave++;
-        if (this.wave % 10 === 0) {
-            this.enemiesToSpawn = 1;
-        } else if (this.wave % 10 === 1 && this.wave > 1) {
-            this.enemiesToSpawn = 5 + this.wave * 2;
-        } else {
-            if (this.wave === 1) this.enemiesToSpawn = 5;
-            else this.enemiesToSpawn += 3;
-        }
+        this.enemiesToSpawn = this.calculateEnemiesToSpawn();
         this.enemiesSpawned = 0;
     }
 

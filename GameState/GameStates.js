@@ -40,22 +40,7 @@ export class MapTransitionState {
 
 export class CombatState {
     onEnter(ctx) {
-        ctx.state.phase = "combat";
-        ctx.state.sectorWave = 1;
-        ctx.state.wave++;
-        ctx.state.pickups = [];
-        ctx.state.planet.resetToSpawn();
-
-        if (ctx.state.wave % 10 === 0) {
-            ctx.state.enemiesToSpawn = 1;
-        } else if (ctx.state.wave % 10 === 1 && ctx.state.wave > 1) {
-            ctx.state.enemiesToSpawn = 5 + ctx.state.wave * 2;
-        } else {
-            if (ctx.state.wave === 1) ctx.state.enemiesToSpawn = 5;
-            else ctx.state.enemiesToSpawn += 3;
-        }
-        ctx.state.enemiesSpawned = 0;
-
+        ctx.state.enterCombatPhase();
         WallGenerator.generate(ctx.state);
         const offsetX = ctx.state.mapPlayerX - ctx.viewport.x;
         const offsetY = ctx.state.mapPlayerY - ctx.viewport.y;
