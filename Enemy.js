@@ -2,7 +2,6 @@ import { Navigator } from "./Navigator.js";
 import { Projectile } from "./Entities.js";
 
 export class Enemy {
-
     static updateAll(state, dt, spatialHash) {
         for (let i = state.enemies.length - 1; i >= 0; i--) {
             const e = state.enemies[i];
@@ -11,7 +10,7 @@ export class Enemy {
             if (e.isDead) state.enemies.splice(i, 1);
         }
     }
-    
+
     constructor(x, y, radius, speed, health, color, reward, type = "standard") {
         this.x = x;
         this.y = y;
@@ -114,31 +113,6 @@ export class Enemy {
         }
     }
 
-    applyMovement(dt, ignoreSeparation = false) {
-        let finalX = this.desiredX + (ignoreSeparation ? 0 : this.sepX);
-        let finalY = this.desiredY + (ignoreSeparation ? 0 : this.sepY);
-
-        const len = Math.hypot(finalX, finalY);
-        if (len > 0) {
-            finalX /= len;
-            finalY /= len;
-        }
-
-        const targetAngle = Math.atan2(finalY, finalX);
-        let angleDiff = targetAngle - this.angle;
-        angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
-        this.angle += angleDiff * Math.min(1, this.turnSpeed * (dt / 1000));
-
-        if (!this.isEngaged) {
-            const moveDist = this.speed * (dt / 1000);
-            this.x += finalX * moveDist;
-            this.y += finalY * moveDist;
-
-            this.x += this.pushX;
-            this.y += this.pushY;
-        }
-    }
-
     resolveWallCollisions(segments) {
         if (!segments) return;
 
@@ -185,7 +159,7 @@ export class Enemy {
     tryTriggerDodge(projectiles, gridSystem) {
         for (const m of projectiles) {
             if (m.faction === "enemy") continue;
-            
+
             const dist = Math.hypot(m.x - this.x, m.y - this.y);
             if (dist < 100 && !m.isDead) {
                 const angleToEnemy = Math.atan2(this.y - m.y, this.x - m.x);
@@ -255,13 +229,39 @@ export class Enemy {
         this.updateEngagementStatus(target);
         this.calculateSteering(target, gridSystem);
         this.calculateSeparation(spatialHash);
-        this.applyMovement(dt);
+        this.applyMovement(dt, target);
         this.resolveWallCollisions(walls);
 
         return this.updateCombat(dt);
     }
 
+    applyMovement(dt, ignoreSeparation = false) {
+        let finalX = this.desiredX + (ignoreSeparation ? 0 : this.sepX);
+        let finalY = this.desiredY + (ignoreSeparation ? 0 : this.sepY);
+
+        const len = Math.hypot(finalX, finalY);
+        if (len > 0) {
+            finalX /= len;
+            finalY /= len;
+        }
+
+        const targetAngle = Math.atan2(finalY, finalX);
+        let angleDiff = targetAngle - this.angle;
+        angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+        this.angle += angleDiff * Math.min(1, this.turnSpeed * (dt / 1000));
+
+        if (!this.isEngaged || this.type === "kamikaze") {
+            const moveDist = this.speed * (dt / 1000);
+            this.x += finalX * moveDist;
+            this.y += finalY * moveDist;
+            this.x += this.pushX;
+            this.y += this.pushY;
+        }
+    }
+
     updateCombat(dt) {
+        if (this.type === "kamikaze") return false;
+
         if (this.isEngaged) {
             this.fireTimer += dt;
             if (this.fireTimer >= this.fireRate) {

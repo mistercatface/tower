@@ -1,4 +1,5 @@
 export const enemyTypes = [
+    { type: "kamikaze", weight: 15, radius: 4, baseSpeed: 100, baseHealth: 0.25, color: "#FF9800", minLevel: 0 },
     { type: "standard", weight: 60, radius: 6, baseSpeed: 50, baseHealth: 1, color: "#F44336", minLevel: 0 },
     { type: "fast", weight: 10, radius: 5, baseSpeed: 85, baseHealth: 0.5, color: "#FF9800", minLevel: 2 },
     { type: "tank", weight: 10, radius: 8, baseSpeed: 33, baseHealth: 3, color: "#9C27B0", minLevel: 0 },

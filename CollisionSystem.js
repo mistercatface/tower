@@ -79,6 +79,14 @@ export class CollisionSystem {
                 }
             }
         }
+
+        for (const e of state.enemies) {
+            if (e.isDead) continue;
+            if (e.type === "kamikaze" && this.checkCircle(e, state.planet)) {
+                e.isDead = true;
+                events.push({ type: "planetHit", damage: 5 });
+            }
+        }
         return events;
     }
 }
