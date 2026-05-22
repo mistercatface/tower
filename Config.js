@@ -1,4 +1,3 @@
-// Config.js
 export const enemyTypes = [
     {
         type: "kamikaze",
