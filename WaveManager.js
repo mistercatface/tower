@@ -42,15 +42,6 @@ export class WaveManager {
         const scaledSpeed = enemyType.baseSpeed * Math.pow(difficultyCurve.speedMultiplier, state.wave - 1);
         const scaledReward = Math.max(1, Math.floor(enemyType.baseHealth * Math.pow(difficultyCurve.rewardMultiplier, state.wave - 1)));
 
-        if (enemyType.attackType === "strafe") {
-            for (let i = 0; i < count; i++) {
-                const x = state.planet.x + dist + (i * spacing);
-                const y = state.planet.y - dist - (i * spacing);
-                state.enemies.push(new Enemy(x, y, enemyType.radius, scaledSpeed, scaledHealth, enemyType.color, scaledReward, enemyType.type, enemyType.attackType));
-            }
-            return count;
-        }
-
         const side = Math.floor(Math.random() * 4);
         const basePos = (Math.random() * 2 - 1) * (dist - (count * spacing / 2));
 

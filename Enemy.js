@@ -222,7 +222,7 @@ export class Enemy {
         angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
         this.angle += angleDiff * Math.min(1, this.turnSpeed * (dt / 1000));
 
-        if (!this.isEngaged || this.attackType === "charge" || this.attackType === "strafe") {
+        if (!this.isEngaged || this.attackType === "charge") {
             const moveDist = this.speed * (dt / 1000);
             this.x += finalX * moveDist;
             this.y += finalY * moveDist;
@@ -232,20 +232,6 @@ export class Enemy {
     }
 
     calculateSteering(target, gridSystem) {
-        if (this.attackType === "strafe") {
-            if (gridSystem && gridSystem.swarmerFlowField) {
-                const angle = Navigator.getSteeringAngle(this.x, this.y, gridSystem, gridSystem.swarmerFlowField);
-                if (angle !== null) {
-                    this.desiredX = Math.cos(angle);
-                    this.desiredY = Math.sin(angle);
-                    return;
-                }
-            }
-            this.desiredX = -0.7071;
-            this.desiredY = 0.7071;
-            return;
-        }
-
         if (this.isEngaged) {
             const dx = target.x - this.x;
             const dy = target.y - this.y;
@@ -284,12 +270,6 @@ export class Enemy {
         this.calculateSeparation(spatialHash);
         this.applyMovement(dt, target);
         this.resolveWallCollisions(walls);
-
-        if (this.attackType === "strafe") {
-            if (this.x < target.x - 800 && this.y > target.y + 800) {
-                this.isDead = true;
-            }
-        }
 
         return this.updateCombat(dt);
     }

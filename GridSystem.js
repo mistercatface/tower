@@ -1,5 +1,4 @@
 export class GridSystem {
-
     constructor(cellSize, width, height, radii = []) {
         this.cellSize = cellSize;
         this.width = width;
@@ -10,7 +9,6 @@ export class GridSystem {
         this.grid = new Array(this.cols * this.rows).fill(0);
         this.flowField = new Array(this.cols * this.rows).fill(null);
         this.playerFlowField = new Array(this.cols * this.rows).fill(null);
-        this.swarmerFlowField = new Array(this.cols * this.rows).fill(null);
         this.gridsByRadius = {};
         this.flowFieldsByRadius = {};
         for (const r of this.radii) {
@@ -21,29 +19,6 @@ export class GridSystem {
         this.offsetY = (height / 2) + (cellSize / 2);
         this.centerX = 0;
         this.centerY = 0;
-    }
-
-    clear() {
-        this.grid.fill(0);
-        this.flowField.fill(null);
-        this.playerFlowField.fill(null);
-        this.swarmerFlowField.fill(null);
-        for (const r of this.radii) {
-            this.gridsByRadius[r].fill(0);
-            this.flowFieldsByRadius[r].fill(null);
-        }
-    }
-
-    buildFlowField(px, py) {
-        this.buildFlowFieldTarget(px, py, this.flowField, this.grid);
-        
-        const swarmerTargetX = this.centerX - this.offsetX + (0 * this.cellSize) + (this.cellSize / 2);
-        const swarmerTargetY = this.centerY - this.offsetY + ((this.rows - 1) * this.cellSize) + (this.cellSize / 2);
-        this.buildFlowFieldTarget(swarmerTargetX, swarmerTargetY, this.swarmerFlowField, this.grid);
-
-        for (const r of this.radii) {
-            this.buildFlowFieldTarget(px, py, this.flowFieldsByRadius[r], this.gridsByRadius[r]);
-        }
     }
 
     rebuild(segments, targetX, targetY) {
@@ -102,6 +77,13 @@ export class GridSystem {
         }
     }
 
+    buildFlowField(px, py) {
+        this.buildFlowFieldTarget(px, py, this.flowField, this.grid);
+        for (const r of this.radii) {
+            this.buildFlowFieldTarget(px, py, this.flowFieldsByRadius[r], this.gridsByRadius[r]);
+        }
+    }
+
     buildPlayerFlowField(px, py) {
         this.buildFlowFieldTarget(px, py, this.playerFlowField, this.grid);
     }
@@ -152,6 +134,16 @@ export class GridSystem {
 
     getNextNodeCenter(x, y) {
         return this.getNodeCenterFromField(x, y, this.flowField);
+    }
+
+    clear() {
+        this.grid.fill(0);
+        this.flowField.fill(null);
+        this.playerFlowField.fill(null);
+        for (const r of this.radii) {
+            this.gridsByRadius[r].fill(0);
+            this.flowFieldsByRadius[r].fill(null);
+        }
     }
 
     worldToGrid(x, y) {
