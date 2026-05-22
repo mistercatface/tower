@@ -35,13 +35,24 @@ export class WaveManager {
         return { x, y };
     }
 
-    static spawnEnemy(state) {
+    static spawnGroup(state, enemyType, count, spacing = 40) {
         const dist = state.spawnRadius;
         const side = Math.floor(Math.random() * 4);
-        const pos = (Math.random() * 2 - 1) * dist;
+        const basePos = (Math.random() * 2 - 1) * (dist - (count * spacing / 2));
+        
+        const scaledHealth = Math.max(1, Math.floor(enemyType.baseHealth * Math.pow(difficultyCurve.healthMultiplier, state.wave - 1)));
+        const scaledSpeed = enemyType.baseSpeed * Math.pow(difficultyCurve.speedMultiplier, state.wave - 1);
+        const scaledReward = Math.max(1, Math.floor(enemyType.baseHealth * Math.pow(difficultyCurve.rewardMultiplier, state.wave - 1)));
 
-        const { x, y } = this.calculateSpawnPosition(state, side, pos);
+        for (let i = 0; i < count; i++) {
+            const pos = basePos + i * spacing;
+            const { x, y } = this.calculateSpawnPosition(state, side, pos);
+            state.enemies.push(new Enemy(x, y, enemyType.radius, scaledSpeed, scaledHealth, enemyType.color, scaledReward, enemyType.type));
+        }
+        return count;
+    }
 
+    static spawnEnemy(state) {
         let selectedType;
 
         if (state.wave % 10 === 0) {
@@ -66,29 +77,21 @@ export class WaveManager {
             }
         }
 
-        const scaledHealth = Math.max(1, Math.floor(selectedType.baseHealth * Math.pow(difficultyCurve.healthMultiplier, state.wave - 1)));
-        const scaledSpeed = selectedType.baseSpeed * Math.pow(difficultyCurve.speedMultiplier, state.wave - 1);
-        const scaledReward = Math.max(1, Math.floor(selectedType.baseHealth * Math.pow(difficultyCurve.rewardMultiplier, state.wave - 1)));
-
-        state.enemies.push(new Enemy(x, y, selectedType.radius, scaledSpeed, scaledHealth, selectedType.color, scaledReward, selectedType.type));
-    }
-
-    static spawnLineEnemies(state) {
-        const numEnemies = 10;
-        const dist = state.spawnRadius;
-        const side = Math.floor(Math.random() * 4);
-        const selectedType = enemyTypes.find((e) => e.type === "standard");
-        const scaledHealth = Math.max(1, Math.floor(selectedType.baseHealth * Math.pow(difficultyCurve.healthMultiplier, state.wave - 1)));
-        const scaledSpeed = selectedType.baseSpeed * Math.pow(difficultyCurve.speedMultiplier, state.wave - 1);
-        const scaledReward = Math.max(1, Math.floor(selectedType.baseHealth * Math.pow(difficultyCurve.rewardMultiplier, state.wave - 1)));
-
-        const spacing = 40;
-        const startOffset = -((numEnemies - 1) * spacing) / 2;
-
-        for (let i = 0; i < numEnemies; i++) {
-            const pos = startOffset + i * spacing;
+        if (selectedType.type === "kamikaze") {
+            const groupSize = 3 + Math.floor(state.wave / 5);
+            return this.spawnGroup(state, selectedType, groupSize);
+        } else {
+            const dist = state.spawnRadius;
+            const side = Math.floor(Math.random() * 4);
+            const pos = (Math.random() * 2 - 1) * dist;
             const { x, y } = this.calculateSpawnPosition(state, side, pos);
+
+            const scaledHealth = Math.max(1, Math.floor(selectedType.baseHealth * Math.pow(difficultyCurve.healthMultiplier, state.wave - 1)));
+            const scaledSpeed = selectedType.baseSpeed * Math.pow(difficultyCurve.speedMultiplier, state.wave - 1);
+            const scaledReward = Math.max(1, Math.floor(selectedType.baseHealth * Math.pow(difficultyCurve.rewardMultiplier, state.wave - 1)));
+
             state.enemies.push(new Enemy(x, y, selectedType.radius, scaledSpeed, scaledHealth, selectedType.color, scaledReward, selectedType.type));
+            return 1;
         }
     }
 
@@ -101,8 +104,8 @@ export class WaveManager {
         state.enemySpawnTimer += dt;
         const currentSpawnDelay = Math.max(300, 1200 - state.wave * 150);
         if (state.enemySpawnTimer > currentSpawnDelay && state.enemiesSpawned < state.enemiesToSpawn) {
-            this.spawnEnemy(state);
-            state.enemiesSpawned++;
+            const count = this.spawnEnemy(state);
+            state.enemiesSpawned += count;
             state.enemySpawnTimer = 0;
         } else if (state.enemiesSpawned >= state.enemiesToSpawn && state.enemies.length === 0) {
             updateUI(state, upgrades);
