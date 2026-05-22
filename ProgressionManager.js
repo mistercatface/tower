@@ -3,6 +3,25 @@ import { saveProgress } from "./Storage.js";
 import { showUpgradeChoice, showSectorCleared, updateUI } from "./UI.js";
 
 export class ProgressionManager {
+    static processEnemyKillRewards(enemy, state, upgrades) {
+        const pointsReward = enemy.reward * 10 + state.pointBonus;
+        let xpGain = 5;
+
+        upgrades.forEach((upg) => {
+            if (state.upgrades[upg.id] && state.upgrades[upg.id].level > 0 && upg.onEnemyKilled) {
+                xpGain = upg.onEnemyKilled(state, enemy, xpGain);
+            }
+        });
+
+        state.kills++;
+        state.score += pointsReward;
+        
+        state.grantXP(xpGain);
+
+        FloatingText.spawn(state, enemy.x, enemy.y, `+${pointsReward} Points`, "#FFF");
+        FloatingText.spawn(state, enemy.x, enemy.y - 30, `+${xpGain} XP`, "#4CAF50");
+    }
+    
     static updatePickups(state, dt, upgrades) {
         for (let i = state.pickups.length - 1; i >= 0; i--) {
             const p = state.pickups[i];

@@ -3,6 +3,8 @@ import { Planet } from "../Planet.js";
 import { GridSystem } from "../GridSystem.js";
 import { enemyTypes, defaultUpgradeCost } from "../Config.js";
 import { WallGenerator } from "../Generator.js";
+import { FloatingText } from "../FloatingText.js";
+import { perkMilestones } from "../Config.js";
 
 export class Stat {
     constructor(baseValue, min = -Infinity, max = Infinity) {
@@ -170,7 +172,7 @@ export class GameState {
         this.isTransitioning = false;
         this.waveTransitionTimer = 0;
         this.mapTargetNodeId = 0;
-        
+
         this.recalculateStats(upgradesList);
         for (const key in this.upgrades) {
             if (upgradesList) {
@@ -198,6 +200,23 @@ export class GameState {
                 this.upgrades[upg.id] = { level: 0, baseLevel: 0, ptsCost: defaultUpgradeCost };
             }
             this.resetUpgradesToDefault();
+        }
+    }
+
+    grantXP(amount) {
+        this.xp += amount;
+        let xpNeeded = Math.floor(25 * Math.pow(1.5, this.level));
+        while (this.xp >= xpNeeded) {
+            this.xp -= xpNeeded;
+            this.level++;
+            if (perkMilestones.includes(this.level) && !this.claimedPerkMilestones.includes(this.level)) {
+                this.pendingPerkPicks.push(this.level);
+                this.claimedPerkMilestones.push(this.level);
+            }
+            this.pendingLevelUps++;
+            if (this.level > this.highestLevelReached) this.highestLevelReached = this.level;
+            xpNeeded = Math.floor(25 * Math.pow(1.5, this.level));
+            FloatingText.spawn(this, this.planet.x, this.planet.y - 40, "LEVEL UP", "#FFEB3B");
         }
     }
 
