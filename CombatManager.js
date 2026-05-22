@@ -12,9 +12,9 @@ export class CombatManager {
         if (mitigatedAmount > 0) FloatingText.spawn(state, state.planet.x, state.planet.y + 20, `Mitigated ${mitigatedAmount.toFixed(1)}`, "#03A9F4");
     }
 
-    static handleWallHit(segment, damage, state) {
+    static handleWallHit(segment, damage, state, renderer) {
         segment.health -= damage;
-        state.dirtySegments.add(segment);
+        renderer.chunkManager.dirtySegments.add(segment);
         if (segment.health <= 0 && !segment.isDead) {
             segment.isDead = true;
             state.gridSystem.rebuild(state.walls, state.planet.x, state.planet.y);

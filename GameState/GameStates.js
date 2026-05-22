@@ -80,7 +80,7 @@ export class CombatState {
             } else if (event.type === "planetHit") {
                 CombatManager.handlePlanetHit(event.damage, ctx.state);
             } else if (event.type === "wallHit") {
-                CombatManager.handleWallHit(event.segment, event.damage, ctx.state);
+                CombatManager.handleWallHit(event.segment, event.damage, ctx.state, ctx.renderer);
             }
         }
 

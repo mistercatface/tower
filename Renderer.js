@@ -116,8 +116,6 @@ export class Renderer {
 
         for (const ft of state.floatingTexts) this.drawFloatingText(ft);
 
-        //this.drawDebugFlowField(state)
-
         this.ctx.restore();
     }
 

@@ -5,6 +5,7 @@ export class ChunkManager {
         this.chunkPool = [];
         this.lastWallsRef = null;
         this.wallCache = new Map();
+        this.dirtySegments = new Set();
     }
 
     clearActiveChunks() {
@@ -110,15 +111,15 @@ export class ChunkManager {
             this.lastWallsRef = segments;
         }
 
-        if (state.dirtySegments.size > 0) {
-            for (const seg of state.dirtySegments) {
+        if (this.dirtySegments.size > 0) {
+            for (const seg of this.dirtySegments) {
                 if (seg.chunks) {
                     for (const chunk of seg.chunks) {
                         chunk.isDirty = true;
                     }
                 }
             }
-            state.dirtySegments.clear();
+            this.dirtySegments.clear();
         }
 
         for (const chunk of this.activeChunks.values()) {
