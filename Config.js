@@ -19,9 +19,9 @@ export const enemyTypes = [
     { type: "boss", weight: 0, radius: 8, baseSpeed: 20, baseHealth: 50, color: "#B71C1C", minLevel: 0, spawnType: "single", attackType: "ranged" },
 ];
 
-export const spawnSettings = { baseSpawnDelay: 2500, minSpawnDelay: 300, delayReductionPerWave: 100 };
+export const spawnSettings = { baseSpawnDelay: 2500, minSpawnDelay: 300, delayReductionPerWave: 25 };
 
-export const difficultyCurve = { healthMultiplier: 1.2, speedMultiplier: 1.02, rewardMultiplier: 1.15 };
+export const difficultyCurve = { healthMultiplier: 1.15, speedMultiplier: 1.01, rewardMultiplier: 1.15 };
 
 export const perkMilestones = [2, 4, 6, 8, 10, 12, 14, 16];
 
