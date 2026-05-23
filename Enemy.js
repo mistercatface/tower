@@ -2,6 +2,7 @@ import { Navigator } from "./Navigator.js";
 import { Projectile, Turret } from "./Entities.js";
 import { enemyStates } from "./EnemyStates.js";
 import { DestructibleEntity } from "./Entity.js";
+import { Separation } from "./Separation.js";
 
 export class Enemy extends DestructibleEntity {
     static updateAll(state, dt, spatialHash) {
@@ -32,10 +33,7 @@ export class Enemy extends DestructibleEntity {
         this.isEngaged = false;
         this.desiredX = 0;
         this.desiredY = 0;
-        this.sepX = 0;
-        this.sepY = 0;
-        this.pushX = 0;
-        this.pushY = 0;
+        this.separation = new Separation();
         this.attackRange = 75;
         this.fireRate = 1500;
         this.fireTimerId = null;
@@ -50,8 +48,8 @@ export class Enemy extends DestructibleEntity {
     }
 
     applyMovement(dt, ignoreSeparation = false, shouldMove = true) {
-        let finalX = this.desiredX + (ignoreSeparation ? 0 : this.sepX);
-        let finalY = this.desiredY + (ignoreSeparation ? 0 : this.sepY);
+        let finalX = this.desiredX + (ignoreSeparation ? 0 : this.separation.x);
+        let finalY = this.desiredY + (ignoreSeparation ? 0 : this.separation.y);
 
         const len = Math.hypot(finalX, finalY);
         if (len > 0) {
@@ -68,52 +66,8 @@ export class Enemy extends DestructibleEntity {
             const moveDist = this.speed * (dt / 1000);
             this.x += finalX * moveDist;
             this.y += finalY * moveDist;
-            this.x += this.pushX;
-            this.y += this.pushY;
-        }
-    }
-
-    calculateSeparation(spatialHash) {
-        this.sepX = 0;
-        this.sepY = 0;
-        this.pushX = 0;
-        this.pushY = 0;
-
-        if (!spatialHash) return;
-
-        const neighbors = spatialHash.getNearby(this);
-        for (const other of neighbors) {
-            if (other === this || other.isDead) continue;
-
-            let dx = this.x - other.x;
-            let dy = this.y - other.y;
-            let dist = Math.hypot(dx, dy);
-
-            if (dist === 0) {
-                dx = Math.random() - 0.5;
-                dy = Math.random() - 0.5;
-                dist = Math.hypot(dx, dy);
-            }
-
-            const avoidRadius = this.radius + other.radius + 15;
-            if (dist < avoidRadius) {
-                const weight = 1 - dist / avoidRadius;
-                this.sepX += (dx / dist) * weight;
-                this.sepY += (dy / dist) * weight;
-            }
-
-            const minSep = this.radius + other.radius + 0.1;
-            if (dist < minSep) {
-                const overlap = minSep - dist;
-                this.pushX += (dx / dist) * overlap * 0.5;
-                this.pushY += (dy / dist) * overlap * 0.5;
-            }
-        }
-
-        let sepLen = Math.hypot(this.sepX, this.sepY);
-        if (sepLen > 1.0) {
-            this.sepX = (this.sepX / sepLen) * 1.0;
-            this.sepY = (this.sepY / sepLen) * 1.0;
+            this.x += this.separation.pushX;
+            this.y += this.separation.pushY;
         }
     }
 

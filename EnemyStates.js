@@ -19,7 +19,7 @@ export class EnemyNavigatingState {
         }
 
         enemy.calculateSteering(target, gridSystem);
-        enemy.calculateSeparation(spatialHash);
+        enemy.separation.update(enemy, spatialHash);
         enemy.applyMovement(dt, target, true);
         enemy.resolveWallCollisions(walls);
 
@@ -45,7 +45,7 @@ export class EnemyEngagedState {
         enemy.desiredX = target.x - enemy.x;
         enemy.desiredY = target.y - enemy.y;
         
-        enemy.calculateSeparation(spatialHash);
+        enemy.separation.update(enemy, spatialHash);
         enemy.applyMovement(dt, target, false);
         enemy.resolveWallCollisions(walls);
         const isAimed = WeaponSystem.aimTurret(enemy.turret, enemy.x, enemy.y, target.x, target.y, dt);
@@ -67,7 +67,7 @@ export class EnemyChargingState {
         enemy.isEngaged = distToTarget <= target.radius + enemy.attackRange;
 
         enemy.calculateSteering(target, gridSystem);
-        enemy.calculateSeparation(spatialHash);
+        enemy.separation.update(enemy, spatialHash);
         enemy.applyMovement(dt, target, true);
         enemy.resolveWallCollisions(walls);
 

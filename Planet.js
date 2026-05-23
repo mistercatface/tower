@@ -122,7 +122,7 @@ export class Planet extends Enemy {
             this.desiredY = 0;
         }
 
-        this.calculateSeparation(spatialHash);
+        this.separation.update(this, spatialHash);
         
         this.speed = 25 * externalSpeedMod;
         this.applyMovement(dt); 
