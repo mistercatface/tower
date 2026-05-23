@@ -1,5 +1,5 @@
 import { Projectile } from "./Entities.js";
-import { WeaponSystem } from "./WeaponSystem.js";
+import { WeaponSystem, ContinuousWeaponMode, ChargedWeaponMode } from "./WeaponSystem.js";
 
 export class Upgrade {
     constructor(config) {
@@ -261,25 +261,22 @@ export const createUpgrades = () => [
         abilityApplyFn: (weapon, planet) => {
             weapon.damage *= 0.33;
         },
-        weaponMode: {
-            type: "continuous",
-            onTick: (dt, state, tx, ty, turret, chargeKey, combatEvents) => {
-                state.weapon.laserTimer = (state.weapon.laserTimer || 0) + dt;
-                let laserCanDamage = false;
-                if (state.weapon.laserTimer >= 200) {
-                    laserCanDamage = true;
-                    state.weapon.laserTimer = 0;
-                }
-                const phaseOffset = chargeKey === "charge2" ? Math.PI : 0;
-                const accuracySpread = (1 - state.weapon.accuracy) * (Math.PI / 12);
-                const laserAngle = turret.angle + Math.sin((state.lastTime || Date.now()) / 150 + phaseOffset) * accuracySpread;
-                const hit = WeaponSystem.castLaser(tx, ty, laserAngle, 2000, state);
-                state.activeLasers.push({ x1: tx, y1: ty, x2: hit.x, y2: hit.y });
-                if (laserCanDamage && hit.hit === "enemy") {
-                    combatEvents.push({ target: hit.entity, damage: state.weapon.damage });
-                }
+        weaponMode: new ContinuousWeaponMode((dt, state, tx, ty, turret, chargeKey, combatEvents) => {
+            state.weapon.laserTimer = (state.weapon.laserTimer || 0) + dt;
+            let laserCanDamage = false;
+            if (state.weapon.laserTimer >= 200) {
+                laserCanDamage = true;
+                state.weapon.laserTimer = 0;
             }
-        }
+            const phaseOffset = chargeKey === "charge2" ? Math.PI : 0;
+            const accuracySpread = (1 - state.weapon.accuracy) * (Math.PI / 12);
+            const laserAngle = turret.angle + Math.sin((state.lastTime || Date.now()) / 150 + phaseOffset) * accuracySpread;
+            const hit = WeaponSystem.castLaser(tx, ty, laserAngle, 2000, state);
+            state.activeLasers.push({ x1: tx, y1: ty, x2: hit.x, y2: hit.y });
+            if (laserCanDamage && hit.hit === "enemy") {
+                combatEvents.push({ target: hit.entity, damage: state.weapon.damage });
+            }
+        })
     }),
     new Upgrade({
         id: "Dive",
@@ -321,20 +318,17 @@ export const createUpgrades = () => [
         abilityApplyFn: (weapon, planet) => {
             weapon.damage *= 0.5;
         },
-        weaponMode: {
-            type: "charged",
-            onFire: (state, tx, ty, turretAngle) => {
-                const accuracySpread = ((1 - state.weapon.accuracy) * Math.PI) / 2;
-                const spreadAngle = (Math.random() - 0.5) * accuracySpread;
-                const finalAngle = turretAngle + spreadAngle;
-                const r = state.planet.radius * 0.125;
-                const m1 = new Projectile(tx, ty, r, 250, null, finalAngle - 0.1, 0, "player");
-                const m2 = new Projectile(tx, ty, r, 250, null, finalAngle + 0.1, 0, "player");
-                m1.penetration = state.weapon.penetration;
-                m2.penetration = state.weapon.penetration;
-                state.projectiles.push(m1, m2);
-            }
-        }
+        weaponMode: new ChargedWeaponMode((state, tx, ty, turretAngle) => {
+            const accuracySpread = ((1 - state.weapon.accuracy) * Math.PI) / 2;
+            const spreadAngle = (Math.random() - 0.5) * accuracySpread;
+            const finalAngle = turretAngle + spreadAngle;
+            const r = state.planet.radius * 0.125;
+            const m1 = new Projectile(tx, ty, r, 250, null, finalAngle - 0.1, 0, "player");
+            const m2 = new Projectile(tx, ty, r, 250, null, finalAngle + 0.1, 0, "player");
+            m1.penetration = state.weapon.penetration;
+            m2.penetration = state.weapon.penetration;
+            state.projectiles.push(m1, m2);
+        })
     }),
     new Upgrade({
         id: "TripleStrike",
@@ -348,22 +342,19 @@ export const createUpgrades = () => [
         },
         requires: ['TwinStrike'],
         replaces: ['TwinStrike'],
-        weaponMode: {
-            type: "charged",
-            onFire: (state, tx, ty, turretAngle) => {
-                const accuracySpread = ((1 - state.weapon.accuracy) * Math.PI) / 2;
-                const spreadAngle = (Math.random() - 0.5) * accuracySpread;
-                const finalAngle = turretAngle + spreadAngle;
-                const r = state.planet.radius * 0.125;
-                const m1 = new Projectile(tx, ty, r, 250, null, finalAngle - 0.1, 0, "player");
-                const m2 = new Projectile(tx, ty, r, 250, null, finalAngle + 0.1, 0, "player");
-                const m3 = new Projectile(tx, ty, r, 250, null, finalAngle + Math.random() * 0.1, 0, "player");
-                m1.penetration = state.weapon.penetration;
-                m2.penetration = state.weapon.penetration;
-                m3.penetration = state.weapon.penetration;
-                state.projectiles.push(m1, m2, m3);
-            }
-        }
+        weaponMode: new ChargedWeaponMode((state, tx, ty, turretAngle) => {
+            const accuracySpread = ((1 - state.weapon.accuracy) * Math.PI) / 2;
+            const spreadAngle = (Math.random() - 0.5) * accuracySpread;
+            const finalAngle = turretAngle + spreadAngle;
+            const r = state.planet.radius * 0.125;
+            const m1 = new Projectile(tx, ty, r, 250, null, finalAngle - 0.1, 0, "player");
+            const m2 = new Projectile(tx, ty, r, 250, null, finalAngle + 0.1, 0, "player");
+            const m3 = new Projectile(tx, ty, r, 250, null, finalAngle + Math.random() * 0.1, 0, "player");
+            m1.penetration = state.weapon.penetration;
+            m2.penetration = state.weapon.penetration;
+            m3.penetration = state.weapon.penetration;
+            state.projectiles.push(m1, m2, m3);
+        })
     }),
     new Upgrade({
         id: "SteadyWeapon",

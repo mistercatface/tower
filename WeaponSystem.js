@@ -2,17 +2,70 @@ import { Projectile } from "./Entities.js";
 import { CollisionSystem } from "./CollisionSystem.js";
 import { Utilities } from "./Utilities.js";
 
-const DEFAULT_WEAPON_MODE = {
-    type: "charged",
-    onFire: (state, tx, ty, turretAngle) => {
-        const accuracySpread = ((1 - state.weapon.accuracy) * Math.PI) / 2;
-        const spreadAngle = (Math.random() - 0.5) * accuracySpread;
-        const finalAngle = turretAngle + spreadAngle;
-        const m = new Projectile(tx, ty, state.planet.radius * 0.25, 250, null, finalAngle, 0, "player");
-        m.penetration = state.weapon.penetration;
-        state.projectiles.push(m);
+export class ChargedWeaponMode {
+    constructor(onFireFn) {
+        this.onFire = onFireFn;
     }
-};
+
+    processTurret(dt, state, turret, target, blocksTargeting, chargeKey) {
+        const turretDist = state.planet.radius + 12;
+        const tx = state.planet.x + Math.cos(turret.angle) * turretDist;
+        const ty = state.planet.y + Math.sin(turret.angle) * turretDist;
+        
+        let isAimed = false;
+
+        if (target && !blocksTargeting) {
+            isAimed = WeaponSystem.aimTurret(turret, state.planet.x, state.planet.y, target.x, target.y, dt);
+            if (isAimed) {
+                state.weapon[chargeKey] += dt;
+                if (state.weapon[chargeKey] >= state.weapon.chargeTime) {
+                    this.onFire(state, tx, ty, turret.angle);
+                    state.weapon[chargeKey] = 0;
+                }
+            } else {
+                state.weapon[chargeKey] = 0;
+            }
+        } else if (state.planet.isMoving) {
+            let ntx = state.planet.targetNodeX !== null ? state.planet.targetNodeX : state.planet.targetX;
+            let nty = state.planet.targetNodeY !== null ? state.planet.targetNodeY : state.planet.targetY;
+            WeaponSystem.aimTurret(turret, state.planet.x, state.planet.y, ntx, nty, dt);
+            state.weapon[chargeKey] = 0;
+        } else {
+            state.weapon[chargeKey] = 0;
+        }
+    }
+}
+
+export class ContinuousWeaponMode {
+    constructor(onTickFn) {
+        this.onTick = onTickFn;
+    }
+
+    processTurret(dt, state, turret, target, blocksTargeting, chargeKey, combatEvents) {
+        const turretDist = state.planet.radius + 4 + 4 * (state.planet.radius / 8);
+        const tx = state.planet.x + Math.cos(turret.angle) * turretDist;
+        const ty = state.planet.y + Math.sin(turret.angle) * turretDist;
+
+        if (target && !blocksTargeting) {
+            WeaponSystem.aimTurret(turret, state.planet.x, state.planet.y, target.x, target.y, dt);
+        } else if (state.planet.isMoving) {
+            let ntx = state.planet.targetNodeX !== null ? state.planet.targetNodeX : state.planet.targetX;
+            let nty = state.planet.targetNodeY !== null ? state.planet.targetNodeY : state.planet.targetY;
+            WeaponSystem.aimTurret(turret, state.planet.x, state.planet.y, ntx, nty, dt);
+        }
+
+        this.onTick(dt, state, tx, ty, turret, chargeKey, combatEvents);
+    }
+}
+
+const DEFAULT_WEAPON_MODE = new ChargedWeaponMode((state, tx, ty, turretAngle) => {
+    const accuracySpread = ((1 - state.weapon.accuracy) * Math.PI) / 2;
+    const spreadAngle = (Math.random() - 0.5) * accuracySpread;
+    const finalAngle = turretAngle + spreadAngle;
+    const m = new Projectile(tx, ty, state.planet.radius * 0.25, 250, null, finalAngle, 0, "player");
+    m.penetration = state.weapon.penetration;
+    state.projectiles.push(m);
+});
 
 export class WeaponSystem {
     static castLaser(startX, startY, angle, maxDist, state) {
@@ -153,43 +206,11 @@ export class WeaponSystem {
             }
         }
 
-        const processTurretRotation = (turret, target, chargeKey) => {
-            const turretDist = mode.type === "continuous" ? state.planet.radius + 4 + 4 * (state.planet.radius / 8) : state.planet.radius + 12;
-            const tx = state.planet.x + Math.cos(turret.angle) * turretDist;
-            const ty = state.planet.y + Math.sin(turret.angle) * turretDist;
-
-            let isAimed = false;
-
-            if (target && !blocksTargeting) {
-                isAimed = this.aimTurret(turret, state.planet.x, state.planet.y, target.x, target.y, dt);
-                if (isAimed && mode.type === "charged") {
-                    state.weapon[chargeKey] += dt;
-                    if (state.weapon[chargeKey] >= state.weapon.chargeTime) {
-                        mode.onFire(state, tx, ty, turret.angle);
-                        state.weapon[chargeKey] = 0;
-                    }
-                } else if (!isAimed && mode.type === "charged") {
-                    state.weapon[chargeKey] = 0;
-                }
-            } else if (state.planet.isMoving) {
-                let ntx = state.planet.targetNodeX !== null ? state.planet.targetNodeX : state.planet.targetX;
-                let nty = state.planet.targetNodeY !== null ? state.planet.targetNodeY : state.planet.targetY;
-                this.aimTurret(turret, state.planet.x, state.planet.y, ntx, nty, dt);
-                if (mode.type === "charged") state.weapon[chargeKey] = 0;
-            } else {
-                if (mode.type === "charged") state.weapon[chargeKey] = 0;
-            }
-
-            if (mode.type === "continuous") {
-                mode.onTick(dt, state, tx, ty, turret, chargeKey, combatEvents);
-            }
-        };
-
-        processTurretRotation(state.turret, state.currentTarget, "charge");
+        mode.processTurret(dt, state, state.turret, state.currentTarget, blocksTargeting, "charge", combatEvents);
 
         if (twoGuns) {
             if (state.weapon.charge2 === undefined) state.weapon.charge2 = 0;
-            processTurretRotation(state.turret2, state.currentTarget2, "charge2");
+            mode.processTurret(dt, state, state.turret2, state.currentTarget2, blocksTargeting, "charge2", combatEvents);
         }
 
         return combatEvents;
