@@ -1,4 +1,5 @@
 import { Entity } from "./Entity.js";
+import { Utilities } from "../Utilities.js";
 
 export const PickupStrategies = {
     coin: {
@@ -76,19 +77,17 @@ export const PickupStrategies = {
             pickup.isDead = true;
             projectile.isDead = true;
 
-            const explosionRadius = 150;
-            const explosionDamage = 50;
+            if (!state.explosions) state.explosions = [];
+            state.explosions.push({
+                x: pickup.x,
+                y: pickup.y,
+                radius: 0,
+                maxRadius: 150,
+                speed: 150,
+                damage: 50,
+                hitTargets: new Set()
+            });
 
-            for (const e of state.enemies) {
-                if (e.isDead) continue;
-                if (Math.hypot(e.x - pickup.x, e.y - pickup.y) <= explosionRadius + e.radius) {
-                    events.push({ target: e, damage: explosionDamage });
-                }
-            }
-
-            if (Math.hypot(state.planet.x - pickup.x, state.planet.y - pickup.y) <= explosionRadius + state.planet.radius) {
-                events.push({ target: state.planet, damage: explosionDamage });
-            }
             return true;
         }
     }

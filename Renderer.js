@@ -52,6 +52,7 @@ export class Renderer {
             }
 
             this.drawShadows(state);
+            this.drawExplosions(state);
 
             for (const p of state.pickups) this.drawPickup(p);
             
@@ -101,19 +102,12 @@ export class Renderer {
         this.ctx.restore();
     }
 
-    drawShadows(state) {
-        const px = state.planet.x;
-        const py = state.planet.y;
-        const radius = 3000;
-
-        this.ctx.save();
-        this.ctx.fillStyle = "#000000";
-
+    drawShadowPolygons(px, py, maxDist, state, targetCtx) {
         for (const seg of state.walls) {
             if (seg.isDead) continue;
 
             const dist = Math.hypot(seg.x - px, seg.y - py);
-            if (dist > 1500) continue;
+            if (dist > maxDist) continue;
 
             const cos = Math.cos(seg.angle);
             const sin = Math.sin(seg.angle);
@@ -160,19 +154,61 @@ export class Renderer {
                     angle2 -= spread;
                 }
 
-                const proj1 = { x: p1.x + Math.cos(angle1) * radius, y: p1.y + Math.sin(angle1) * radius };
-                const proj2 = { x: p2.x + Math.cos(angle2) * radius, y: p2.y + Math.sin(angle2) * radius };
+                const proj1 = { x: p1.x + Math.cos(angle1) * 3000, y: p1.y + Math.sin(angle1) * 3000 };
+                const proj2 = { x: p2.x + Math.cos(angle2) * 3000, y: p2.y + Math.sin(angle2) * 3000 };
 
-                this.ctx.beginPath();
-                this.ctx.moveTo(p1.x, p1.y);
-                this.ctx.lineTo(proj1.x, proj1.y);
-                this.ctx.lineTo(proj2.x, proj2.y);
-                this.ctx.lineTo(p2.x, p2.y);
-                this.ctx.closePath();
-                this.ctx.fill();
+                targetCtx.beginPath();
+                targetCtx.moveTo(p1.x, p1.y);
+                targetCtx.lineTo(proj1.x, proj1.y);
+                targetCtx.lineTo(proj2.x, proj2.y);
+                targetCtx.lineTo(p2.x, p2.y);
+                targetCtx.closePath();
+                targetCtx.fill();
             }
         }
+    }
+
+    drawShadows(state) {
+        this.ctx.save();
+        this.ctx.fillStyle = "#000000";
+        this.drawShadowPolygons(state.planet.x, state.planet.y, 1500, state, this.ctx);
         this.ctx.restore();
+    }
+
+    drawExplosions(state) {
+        if (!state.explosions) return;
+        
+        for (const exp of state.explosions) {
+            const canvasSize = exp.maxRadius * 2;
+            if (canvasSize <= 0) continue;
+            
+            const offCanvas = new OffscreenCanvas(canvasSize, canvasSize);
+            const offCtx = offCanvas.getContext("2d");
+            
+            const cx = exp.maxRadius;
+            const cy = exp.maxRadius;
+
+            offCtx.beginPath();
+            offCtx.arc(cx, cy, exp.radius, 0, Math.PI * 2);
+            offCtx.fillStyle = "rgba(244, 67, 54, 0.6)";
+            offCtx.fill();
+            offCtx.lineWidth = 3;
+            offCtx.strokeStyle = "#FFEB3B";
+            offCtx.stroke();
+
+            offCtx.globalCompositeOperation = "destination-out";
+            offCtx.fillStyle = "#000000";
+            
+            offCtx.save();
+            offCtx.translate(cx - exp.x, cy - exp.y);
+            this.drawShadowPolygons(exp.x, exp.y, exp.maxRadius, state, offCtx);
+            offCtx.restore();
+
+            this.ctx.save();
+            this.ctx.globalCompositeOperation = "screen";
+            this.ctx.drawImage(offCanvas, exp.x - exp.maxRadius, exp.y - exp.maxRadius);
+            this.ctx.restore();
+        }
     }
 
     drawTargetMarker(x, y) {
