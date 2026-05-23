@@ -95,14 +95,9 @@ export class GameState {
 
     enterCombatPhase() {
         this.phase = "combat";
-
-        this.planet.resetToSpawn();
         this.pickups = [];
-
-        this.waveManager.sectorWave = 1;
-        this.waveManager.wave++;
-        this.waveManager.enemiesToSpawn = this.waveManager.calculateEnemiesToSpawn();
-        this.waveManager.enemiesSpawned = 0;
+        this.planet.resetToSpawn();
+        this.waveManager.startCombat();
     }
 
     advanceWave() {

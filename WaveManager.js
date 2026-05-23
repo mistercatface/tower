@@ -5,7 +5,11 @@ import { ProgressionManager } from "./ProgressionManager.js";
 
 export class WaveManager {
     constructor() {
-        this.reset();
+        this.wave = 0;
+        this.sectorWave = 0;
+        this.enemiesToSpawn = 5;
+        this.enemiesSpawned = 0;
+        this.spawnIntervalId = null;
     }
 
     reset() {
@@ -14,6 +18,13 @@ export class WaveManager {
         this.enemiesToSpawn = 5;
         this.enemiesSpawned = 0;
         this.spawnIntervalId = null;
+    }
+
+    startCombat() {
+        this.wave++;
+        this.sectorWave = 1;
+        this.enemiesToSpawn = this.calculateEnemiesToSpawn();
+        this.enemiesSpawned = 0;
     }
 
     advance() {
