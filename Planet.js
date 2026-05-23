@@ -62,11 +62,7 @@ export class Planet extends Enemy {
         this.desiredX = 0;
         this.desiredY = 0;
     }
-
-    takeDamage(amount) {
-        this.health -= amount;
-    }
-
+    
     heal(amount) {
         this.health = Math.min(this.maxHealth, this.health + amount);
     }

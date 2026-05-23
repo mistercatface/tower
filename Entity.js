@@ -13,4 +13,13 @@ export class DestructibleEntity extends Entity {
         this.maxHealth = maxHealth;
         this.health = health;
     }
+
+    takeDamage(amount) {
+        this.health -= amount;
+        if (this.health <= 0 && !this.isDead) {
+            this.isDead = true;
+            return true;
+        }
+        return false;
+    }
 }

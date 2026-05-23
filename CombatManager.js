@@ -13,20 +13,14 @@ export class CombatManager {
     }
 
     static handleWallHit(segment, damage, state, renderer) {
-        segment.health -= damage;
+        const died = segment.takeDamage(damage);
         renderer.chunkManager.dirtySegments.add(segment);
-        if (segment.health <= 0 && !segment.isDead) {
-            segment.isDead = true;
-            state.gridSystem.rebuild(state.walls, state.planet.x, state.planet.y);
-        }
+        if (died) state.gridSystem.rebuild(state.walls, state.planet.x, state.planet.y);
     }
 
     static handleEnemyHit(enemy, baseDamage, state, upgrades) {
-        enemy.health -= baseDamage;
-        if (enemy.health <= 0 && !enemy.isDead) {
-            enemy.isDead = true;
-            ProgressionManager.processEnemyKillRewards(enemy, state, upgrades);
-        } 
+        const died = enemy.takeDamage(baseDamage);
+        if (died) ProgressionManager.processEnemyKillRewards(enemy, state, upgrades);
         saveProgress(state);
         updateUI(state, upgrades);
     }
