@@ -299,7 +299,7 @@ export const createUpgrades = () => [
         id: "TwoGuns",
         category: "abilities",
         name: "Two Guns",
-        description: "When Active: Equip an additional turret. Bullets deal half damage.",
+        description: "When Active: Shoot two guns at once. Bullets deal half damage.",
         maxLevel: 1,
         isAbility: true,
         applyFn: (stats, level) => {
@@ -314,7 +314,7 @@ export const createUpgrades = () => [
         id: "ThreeGuns",
         category: "abilities",
         name: "Three Guns",
-        description: "When Active: Equip a third turret. Bullets deal one-third damage.",
+        description: "When Active: Shoot three guns at once. Bullets deal one-third damage.",
         maxLevel: 1,
         isAbility: true,
         requires: ['TwoGuns'],
