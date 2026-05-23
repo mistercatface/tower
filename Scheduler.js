@@ -1,47 +1,44 @@
 export class Scheduler {
     constructor() {
-        this.events = [];
+        this.events = new Map();
         this.nextId = 1;
     }
 
     schedule(delay, callback = null, isLoop = false) {
         const id = this.nextId++;
-        this.events.push({ id, timer: delay, delay, callback, isLoop, remove: false, paused: false });
+        const event = { id, timer: delay, delay, callback, isLoop, remove: false, paused: false };
+        this.events.set(id, event);
         return id;
     }
 
     cancel(id) {
-        const event = this.events.find((e) => e.id === id);
+        const event = this.events.get(id);
         if (event) event.remove = true;
     }
 
     pause(id) {
-        const event = this.events.find((e) => e.id === id);
+        const event = this.events.get(id);
         if (event) event.paused = true;
     }
 
     resume(id) {
-        const event = this.events.find((e) => e.id === id);
+        const event = this.events.get(id);
         if (event) event.paused = false;
     }
 
     getTimeRemaining(id) {
-        const event = this.events.find((e) => e.id === id);
+        const event = this.events.get(id);
         return event && !event.remove ? event.timer : 0;
     }
 
     clear() {
-        this.events = [];
+        this.events.clear();
     }
 
     update(dt) {
-        let hasRemovals = false;
-
-        for (let i = 0; i < this.events.length; i++) {
-            const event = this.events[i];
-
+        for (const [id, event] of this.events) {
             if (event.remove) {
-                hasRemovals = true;
+                this.events.delete(id);
                 continue;
             }
 
@@ -58,13 +55,8 @@ export class Scheduler {
                 } else {
                     if (event.callback) event.callback();
                     event.remove = true;
-                    hasRemovals = true;
                 }
             }
-        }
-
-        if (hasRemovals) {
-            this.events = this.events.filter((e) => !e.remove);
         }
     }
 }
