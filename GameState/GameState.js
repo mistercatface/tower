@@ -100,10 +100,6 @@ export class GameState {
         this.waveManager.startCombat();
     }
 
-    advanceWave() {
-        this.waveManager.advance();
-    }
-
     startRun() {
         this.mapTargetNodeId = 0;
         this.phase = "map_transition";

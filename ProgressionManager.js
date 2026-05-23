@@ -219,7 +219,7 @@ export class ProgressionManager {
         const currentNode = state.mapNodes.find((n) => n.id === state.currentNodeId);
         state.wavesCompleted++;
         if (state.waveManager.sectorWave < currentNode.wavesTotal) {
-            state.advanceWave();
+            state.waveManager.advance();
             updateUI(state, upgrades);
         } else {
             if (currentNode && !currentNode.completed) {
