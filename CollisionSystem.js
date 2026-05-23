@@ -43,6 +43,21 @@ export class CollisionSystem {
                 events.push({ target: segment, damage: damage });
                 continue;
             }
+
+            let hitPickup = false;
+            for (const pickup of state.pickups) {
+                if (!pickup.isDead && pickup.strategy && pickup.strategy.onHit) {
+                    if (this.checkCircle(p, pickup)) {
+                        const handled = pickup.strategy.onHit(state, pickup, p, events);
+                        if (handled) {
+                            hitPickup = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (hitPickup) continue;
+
             if (p.faction === "player") {
                 if (state.abilities["Eraser"]) {
                     for (const ep of state.projectiles) {

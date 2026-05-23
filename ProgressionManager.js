@@ -26,23 +26,28 @@ export class ProgressionManager {
         for (let i = state.pickups.length - 1; i >= 0; i--) {
             const p = state.pickups[i];
             p.update(dt);
+            
+            if (p.isDead) {
+                state.pickups.splice(i, 1);
+                continue;
+            }
+
             const dist = Math.hypot(p.x - state.planet.x, p.y - state.planet.y);
             if (dist < state.planet.radius + p.radius) {
-                if (p.type === "coin") {
-                    if (state.upgrades["Laser"].level === 0) {
-                        state.upgrades["Laser"].baseLevel = 1;
-                        state.upgrades["Laser"].level = 1;
-                        state.abilities["Laser"] = true;
-
-                        state.recalculateStats(upgrades);
-                        updateUI(state, upgrades);
-                        FloatingText.spawn(state, p.x, p.y - 20, "LASER UNLOCKED", "#00BCD4");
+                if (p.strategy && p.strategy.onCollect) {
+                    const result = p.strategy.onCollect(state, p, upgrades);
+                    if (result) {
+                        if (result.type === "coin") {
+                            if (result.unlockedLaser) {
+                                updateUI(state, upgrades);
+                                FloatingText.spawn(state, p.x, p.y - 20, "LASER UNLOCKED", "#00BCD4");
+                            }
+                            saveProgress(state);
+                        } else if (result.type === "eyeball") {
+                            FloatingText.spawn(state, p.x, p.y, "EYEBALL", "#FFFFFF");
+                        }
                     }
-                    saveProgress(state);
-                } else if (p.type === "eyeball") {
-                    FloatingText.spawn(state, p.x, p.y, "EYEBALL", "#FFFFFF");
                 }
-                state.pickups.splice(i, 1);
             }
         }
     }

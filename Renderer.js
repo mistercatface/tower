@@ -16,35 +16,9 @@ export class Renderer {
             const cy = canvasSize / 2;
             const offCanvas = new OffscreenCanvas(canvasSize, canvasSize);
             const offCtx = offCanvas.getContext("2d");
-
-            if (pickup.type === "coin") {
-                offCtx.beginPath();
-                offCtx.arc(cx, cy, pickup.radius, 0, Math.PI * 2);
-                offCtx.fillStyle = "#FFEB3B";
-                offCtx.fill();
-                offCtx.lineWidth = 1;
-                offCtx.strokeStyle = "#FBC02D";
-                offCtx.stroke();
-
-                offCtx.fillStyle = "#000";
-                offCtx.font = "10px monospace";
-                offCtx.textAlign = "center";
-                offCtx.textBaseline = "middle";
-                offCtx.fillText("$", cx, cy + 1);
-            } else if (pickup.type === "eyeball") {
-                offCtx.beginPath();
-                offCtx.arc(cx, cy, pickup.radius * 0.5, 0, Math.PI * 2);
-                offCtx.fillStyle = "#2196F3";
-                offCtx.fill();
-
-                offCtx.beginPath();
-                offCtx.arc(cx, cy, pickup.radius * 0.25, 0, Math.PI * 2);
-                offCtx.fillStyle = "#000000";
-                offCtx.fill();
-            }
+            if (pickup.strategy && pickup.strategy.render) pickup.strategy.render(offCtx, cx, cy, pickup.radius);
             pickup.cachedSprite = offCanvas;
         }
-
         this.ctx.save();
         this.ctx.translate(pickup.x, pickup.y);
         this.ctx.drawImage(pickup.cachedSprite, -pickup.cachedSprite.width / 2, -pickup.cachedSprite.height / 2);
