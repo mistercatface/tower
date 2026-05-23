@@ -3,6 +3,9 @@ import { Projectile, Turret } from "./Entities.js";
 import { enemyStates } from "./EnemyStates.js";
 import { DestructibleEntity } from "./Entity.js";
 import { Separation } from "./Separation.js";
+import { ProgressionManager } from "./ProgressionManager.js";
+import { saveProgress } from "./Storage.js";
+import { updateUI } from "./UI.js";
 
 export class Enemy extends DestructibleEntity {
     static updateAll(state, dt, spatialHash) {
@@ -41,6 +44,13 @@ export class Enemy extends DestructibleEntity {
         this.dodgeTargetX = 0;
         this.dodgeTargetY = 0;
         this.currentState = enemyStates.navigating;
+    }
+
+    handleHit(baseDamage, ctx) {
+        const died = this.takeDamage(baseDamage);
+        if (died) ProgressionManager.processEnemyKillRewards(this, ctx.state, ctx.upgrades);
+        saveProgress(ctx.state);
+        updateUI(ctx.state, ctx.upgrades);
     }
 
     changeState(stateName) {

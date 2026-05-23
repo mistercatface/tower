@@ -6,6 +6,12 @@ export class Segment extends DestructibleEntity {
         this.size = size;
         this.padding = padding;
     }
+
+    handleHit(damage, ctx) {
+        const died = this.takeDamage(damage);
+        ctx.renderer.chunkManager.dirtySegments.add(this);
+        if (died) ctx.state.gridSystem.rebuild(ctx.state.walls, ctx.state.planet.x, ctx.state.planet.y);
+    }
 }
 
 export function buildArcWall(segmentsArray, x, y, radius, startAngle, endAngle, size) {

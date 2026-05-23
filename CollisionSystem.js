@@ -40,7 +40,7 @@ export class CollisionSystem {
             if (segment) {
                 p.isDead = true;
                 const damage = p.faction === "player" ? state.weapon.damage : p.damage;
-                events.push({ type: "wallHit", segment, damage });
+                events.push({ target: segment, damage: damage });
                 continue;
             }
             if (p.faction === "player") {
@@ -62,7 +62,7 @@ export class CollisionSystem {
                 for (const e of state.enemies) {
                     if (e.isDead) continue;
                     if (this.checkCircle(p, e)) {
-                        events.push({ type: "enemyHit", enemy: e, damage: state.weapon.damage });
+                        events.push({ target: e, damage: state.weapon.damage });
                         if (e.health <= state.weapon.damage && p.penetration > 0) {
                             p.penetration--;
                             e.health -= state.weapon.damage;
@@ -75,7 +75,7 @@ export class CollisionSystem {
             } else if (p.faction === "enemy") {
                 if (this.checkCircle(p, state.planet)) {
                     p.isDead = true;
-                    events.push({ type: "planetHit", damage: p.damage });
+                    events.push({ target: state.planet, damage: p.damage });
                 }
             }
         }
@@ -84,7 +84,7 @@ export class CollisionSystem {
             if (e.isDead) continue;
             if (e.attackType === "charge" && this.checkCircle(e, state.planet)) {
                 e.isDead = true;
-                events.push({ type: "planetHit", damage: 5 });
+                events.push({ target: state.planet, damage: 5 });
             }
         }
         return events;

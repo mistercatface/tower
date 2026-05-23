@@ -1,6 +1,7 @@
 import { Enemy } from "./Enemy.js";
 import { Utilities } from "./Utilities.js";
 import { Navigator } from "./Navigator.js";
+import { FloatingText } from "./FloatingText.js";
 
 export class Planet extends Enemy {
     constructor(x, y, radius, maxHealth) {
@@ -15,6 +16,14 @@ export class Planet extends Enemy {
         this.isMoving = false;
         this.targetNodeX = null;
         this.targetNodeY = null;
+    }
+
+    handleHit(damage, ctx) {
+        const mitigatedAmount = damage * ctx.state.mitigation;
+        const finalDamage = damage - mitigatedAmount;
+        this.takeDamage(finalDamage);
+        FloatingText.spawn(ctx.state, this.x, this.y - 20, `-${finalDamage.toFixed(1)}`, "#F44336");
+        if (mitigatedAmount > 0) FloatingText.spawn(ctx.state, this.x, this.y + 20, `Mitigated ${mitigatedAmount.toFixed(1)}`, "#03A9F4");
     }
 
     setSpawnPosition(x, y) {

@@ -5,7 +5,6 @@ import { SpatialHash } from "../SpatialHash.js";
 import { Enemy } from "../Enemy.js";
 import { Projectile } from "../Entities.js";
 import { WeaponSystem } from "../WeaponSystem.js";
-import { CombatManager } from "../CombatManager.js";
 import { WallGenerator } from "../Generator.js";
 import { showNodeConfirm } from "../UI.js";
 
@@ -91,15 +90,8 @@ export class CombatState {
         const turretEvents = WeaponSystem.updateTurretAndWeapon(dt, abilityState.blocksTargeting, ctx.state, ctx.upgrades);
         const collisionEvents = CollisionSystem.run(ctx.state);
         const allEvents = [...turretEvents, ...collisionEvents];
-
         for (const event of allEvents) {
-            if (event.type === "enemyHit") {
-                CombatManager.handleEnemyHit(event.enemy, event.damage, ctx.state, ctx.upgrades);
-            } else if (event.type === "planetHit") {
-                CombatManager.handlePlanetHit(event.damage, ctx.state);
-            } else if (event.type === "wallHit") {
-                CombatManager.handleWallHit(event.segment, event.damage, ctx.state, ctx.renderer);
-            }
+            if (event.target && event.target.handleHit) event.target.handleHit(event.damage, ctx);
         }
 
         FloatingText.updateAll(ctx.state, dt);

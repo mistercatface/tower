@@ -276,7 +276,7 @@ export const createUpgrades = () => [
                 const hit = WeaponSystem.castLaser(tx, ty, laserAngle, 2000, state);
                 state.activeLasers.push({ x1: tx, y1: ty, x2: hit.x, y2: hit.y });
                 if (laserCanDamage && hit.hit === "enemy") {
-                    combatEvents.push({ type: "enemyHit", enemy: hit.entity, damage: state.weapon.damage });
+                    combatEvents.push({ target: hit.entity, damage: state.weapon.damage });
                 }
             }
         }
