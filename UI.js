@@ -194,7 +194,7 @@ export function updateToggleButton(btnId, isUnlocked, isActive, btnText, upgDef)
 }
 
 export function updateHud(state, upgrades) {
-    setTextIfDifferent("waveDisplay", state.wave);
+    setTextIfDifferent("waveDisplay", state.waveManager.wave);
     setTextIfDifferent("killsDisplay", state.kills);
     setTextIfDifferent("scoreDisplay", state.score);
     setTextIfDifferent("levelDisplay", state.level);
@@ -214,7 +214,7 @@ export function updateHud(state, upgrades) {
     );
 
     const aliveEnemies = state.enemies.filter((e) => !e.isDead).length;
-    let progress = Math.max(0, (state.enemiesSpawned - aliveEnemies) / state.enemiesToSpawn);
+    let progress = Math.max(0, (state.waveManager.enemiesSpawned - aliveEnemies) / state.waveManager.enemiesToSpawn);
     let waveColor = "#FFEB3B";
     let waveTextStr = `WAVE PROGRESS: ${Math.floor(progress * 100)}%`;
 
@@ -238,7 +238,7 @@ export function updateHud(state, upgrades) {
         } else {
             let text = "";
             if (state.phase === "combat" && currentNode) {
-                text = `Sector Wave: ${state.sectorWave} / ${currentNode.wavesTotal}`;
+                text = `Sector Wave: ${state.waveManager.sectorWave} / ${currentNode.wavesTotal}`;
                 if (elements.missionDisplay.style.color !== "rgb(255, 255, 255)" && elements.missionDisplay.style.color !== "#FFF") elements.missionDisplay.style.color = "#FFF";
             }
             setTextIfDifferent("missionDisplay", text);

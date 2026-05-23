@@ -6,6 +6,7 @@ import { WallGenerator } from "../Generator.js";
 import { FloatingText } from "../FloatingText.js";
 import { perkMilestones } from "../Config.js";
 import { Scheduler } from "../Scheduler.js";
+import { WaveManager } from "../WaveManager.js";
 
 export class Stat {
     constructor(baseValue, min = -Infinity, max = Infinity) {
@@ -30,6 +31,7 @@ export class Stat {
 export class GameState {
     constructor() {
         this.scheduler = new Scheduler();
+        this.waveManager = new WaveManager();
         this.phase = "map";
         this.mapNodes = [];
         this.currentNodeId = 0;
@@ -91,32 +93,20 @@ export class GameState {
         this.phase = "map";
     }
 
-    calculateEnemiesToSpawn() {
-        if (this.wave % 10 === 0) {
-            return 1;
-        } else if (this.wave % 10 === 1 && this.wave > 1) {
-            return 5 + this.wave * 2;
-        } else {
-            if (this.wave === 1) return 5;
-            return this.enemiesToSpawn + 3;
-        }
-    }
-
     enterCombatPhase() {
         this.phase = "combat";
-        this.sectorWave = 1;
-        this.wave++;
-        this.pickups = [];
+
         this.planet.resetToSpawn();
-        this.enemiesToSpawn = this.calculateEnemiesToSpawn();
-        this.enemiesSpawned = 0;
+        this.pickups = [];
+
+        this.waveManager.sectorWave = 1;
+        this.waveManager.wave++;
+        this.waveManager.enemiesToSpawn = this.waveManager.calculateEnemiesToSpawn();
+        this.waveManager.enemiesSpawned = 0;
     }
 
     advanceWave() {
-        this.sectorWave++;
-        this.wave++;
-        this.enemiesToSpawn = this.calculateEnemiesToSpawn();
-        this.enemiesSpawned = 0;
+        this.waveManager.advance();
     }
 
     startRun() {
@@ -219,18 +209,13 @@ export class GameState {
 
     initializeDefaultState() {
         this.scheduler.clear();
+        this.waveManager.reset();
         this.lastTime = 0;
-        this.enemySpawnTimer = 0;
-        this.spawnIntervalId = null;
         this.score = 0;
         this.xp = 0;
         this.level = 0;
         this.pendingLevelUps = 0;
-        this.wave = 0;
-        this.sectorWave = 0;
         this.kills = 0;
-        this.enemiesToSpawn = 5;
-        this.enemiesSpawned = 0;
         this.isGameOver = false;
         this.isPaused = false;
         this.spawnRadius = 650;

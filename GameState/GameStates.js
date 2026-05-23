@@ -2,7 +2,6 @@ import { FloatingText } from "../FloatingText.js";
 import { ProgressionManager } from "../ProgressionManager.js";
 import { CollisionSystem } from "../CollisionSystem.js";
 import { SpatialHash } from "../SpatialHash.js";
-import { WaveManager } from "../WaveManager.js";
 import { Enemy } from "../Enemy.js";
 import { Projectile } from "../Entities.js";
 import { WeaponSystem } from "../WeaponSystem.js";
@@ -84,7 +83,7 @@ export class CombatState {
             ctx.state.gridSystem.buildFlowField(ctx.state.planet.x, ctx.state.planet.y);
         }
 
-        WaveManager.manageSpawning(dt, ctx.state, ctx.upgrades, ctx.viewport);
+        ctx.state.waveManager.manageSpawning(dt, ctx.state, ctx.upgrades, ctx.viewport);
         Enemy.updateAll(ctx.state, dt, spatialHash);
         Projectile.updateAll(ctx.state, dt);
         ProgressionManager.updatePickups(ctx.state, dt, ctx.upgrades);

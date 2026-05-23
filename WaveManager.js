@@ -4,7 +4,37 @@ import { updateUI } from "./UI.js";
 import { ProgressionManager } from "./ProgressionManager.js";
 
 export class WaveManager {
-    static calculateSpawnPosition(state, side, pos) {
+    constructor() {
+        this.reset();
+    }
+
+    reset() {
+        this.wave = 0;
+        this.sectorWave = 0;
+        this.enemiesToSpawn = 5;
+        this.enemiesSpawned = 0;
+        this.spawnIntervalId = null;
+    }
+
+    advance() {
+        this.sectorWave++;
+        this.wave++;
+        this.enemiesToSpawn = this.calculateEnemiesToSpawn();
+        this.enemiesSpawned = 0;
+    }
+
+    calculateEnemiesToSpawn() {
+        if (this.wave % 10 === 0) {
+            return 1;
+        } else if (this.wave % 10 === 1 && this.wave > 1) {
+            return 5 + this.wave * 2;
+        } else {
+            if (this.wave === 1) return 5;
+            return this.enemiesToSpawn + 3;
+        }
+    }
+
+    calculateSpawnPosition(state, side, pos) {
         const dist = state.spawnRadius;
         let x, y;
 
@@ -35,14 +65,14 @@ export class WaveManager {
         return { x, y };
     }
 
-    static spawnGroup(state, enemyType, count, spacing = 40) {
+    spawnGroup(state, enemyType, count, spacing = 40) {
         const dist = state.spawnRadius;
         const side = Math.floor(Math.random() * 4);
         const basePos = (Math.random() * 2 - 1) * (dist - (count * spacing) / 2);
 
-        const scaledHealth = Math.max(1, Math.floor(enemyType.baseHealth * Math.pow(difficultyCurve.healthMultiplier, state.wave - 1)));
-        const scaledSpeed = enemyType.baseSpeed * Math.pow(difficultyCurve.speedMultiplier, state.wave - 1);
-        const scaledReward = Math.max(1, Math.floor(enemyType.baseHealth * Math.pow(difficultyCurve.rewardMultiplier, state.wave - 1)));
+        const scaledHealth = Math.max(1, Math.floor(enemyType.baseHealth * Math.pow(difficultyCurve.healthMultiplier, this.wave - 1)));
+        const scaledSpeed = enemyType.baseSpeed * Math.pow(difficultyCurve.speedMultiplier, this.wave - 1);
+        const scaledReward = Math.max(1, Math.floor(enemyType.baseHealth * Math.pow(difficultyCurve.rewardMultiplier, this.wave - 1)));
 
         for (let i = 0; i < count; i++) {
             const pos = basePos + i * spacing;
@@ -52,10 +82,10 @@ export class WaveManager {
         return count;
     }
 
-    static spawnEnemy(state) {
+    spawnEnemy(state) {
         let selectedType;
 
-        if (state.wave % 10 === 0) {
+        if (this.wave % 10 === 0) {
             selectedType = enemyTypes.find((e) => e.type === "boss");
         } else {
             let availableTypes = enemyTypes.filter((e) => e.type !== "boss" && (e.minLevel === undefined || state.level >= e.minLevel));
@@ -78,7 +108,7 @@ export class WaveManager {
         }
 
         if (selectedType.spawnType === "group") {
-            const groupSize = selectedType.groupSettings.baseGroupSize + Math.floor(state.wave * selectedType.groupSettings.growthPerWave);
+            const groupSize = selectedType.groupSettings.baseGroupSize + Math.floor(this.wave * selectedType.groupSettings.growthPerWave);
             return this.spawnGroup(state, selectedType, groupSize);
         } else {
             const dist = state.spawnRadius;
@@ -86,35 +116,35 @@ export class WaveManager {
             const pos = (Math.random() * 2 - 1) * dist;
             const { x, y } = this.calculateSpawnPosition(state, side, pos);
 
-            const scaledHealth = Math.max(1, Math.floor(selectedType.baseHealth * Math.pow(difficultyCurve.healthMultiplier, state.wave - 1)));
-            const scaledSpeed = selectedType.baseSpeed * Math.pow(difficultyCurve.speedMultiplier, state.wave - 1);
-            const scaledReward = Math.max(1, Math.floor(selectedType.baseHealth * Math.pow(difficultyCurve.rewardMultiplier, state.wave - 1)));
+            const scaledHealth = Math.max(1, Math.floor(selectedType.baseHealth * Math.pow(difficultyCurve.healthMultiplier, this.wave - 1)));
+            const scaledSpeed = selectedType.baseSpeed * Math.pow(difficultyCurve.speedMultiplier, this.wave - 1);
+            const scaledReward = Math.max(1, Math.floor(selectedType.baseHealth * Math.pow(difficultyCurve.rewardMultiplier, this.wave - 1)));
 
             state.enemies.push(new Enemy(x, y, selectedType.radius, scaledSpeed, scaledHealth, selectedType.color, scaledReward, selectedType.type, selectedType.attackType, selectedType.canDodge));
             return 1;
         }
     }
 
-    static manageSpawning(dt, state, upgrades, viewport) {
+    manageSpawning(dt, state, upgrades, viewport) {
         if (state.phase === "map" || state.phase === "reward" || state.isTransitioning) return;
 
-        if (state.enemiesSpawned < state.enemiesToSpawn && !state.spawnIntervalId) {
-            const currentSpawnDelay = Math.max(spawnSettings.minSpawnDelay, spawnSettings.baseSpawnDelay - state.wave * spawnSettings.delayReductionPerWave);
+        if (this.enemiesSpawned < this.enemiesToSpawn && !this.spawnIntervalId) {
+            const currentSpawnDelay = Math.max(spawnSettings.minSpawnDelay, spawnSettings.baseSpawnDelay - this.wave * spawnSettings.delayReductionPerWave);
             
-            state.spawnIntervalId = state.scheduler.schedule(currentSpawnDelay, () => {
-                if (state.enemiesSpawned < state.enemiesToSpawn) {
+            this.spawnIntervalId = state.scheduler.schedule(currentSpawnDelay, () => {
+                if (this.enemiesSpawned < this.enemiesToSpawn) {
                     const count = this.spawnEnemy(state);
-                    state.enemiesSpawned += count;
+                    this.enemiesSpawned += count;
                 }
                 
-                if (state.enemiesSpawned >= state.enemiesToSpawn) {
-                    state.scheduler.cancel(state.spawnIntervalId);
-                    state.spawnIntervalId = null;
+                if (this.enemiesSpawned >= this.enemiesToSpawn) {
+                    state.scheduler.cancel(this.spawnIntervalId);
+                    this.spawnIntervalId = null;
                 }
             }, true);
         }
 
-        if (state.enemiesSpawned >= state.enemiesToSpawn && state.enemies.length === 0) {
+        if (this.enemiesSpawned >= this.enemiesToSpawn && state.enemies.length === 0) {
             updateUI(state, upgrades);
             state.isTransitioning = true;
             state.scheduler.schedule(1500, () => {

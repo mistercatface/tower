@@ -270,7 +270,7 @@ export const WallGenerator = {
 
     geometric(state, px, py) {
         const sides = 4 + Math.floor(Math.random() * 4);
-        const layers = 2 + Math.floor(state.wave / 8);
+        const layers = 2 + Math.floor(state.waveManager.wave / 8);
         for (let l = 0; l < layers; l++) {
             const radius = 220 + l * 100;
             const rotOffset = l % 2 === 0 ? 0 : Math.PI / sides;

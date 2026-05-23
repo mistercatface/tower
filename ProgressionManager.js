@@ -218,7 +218,7 @@ export class ProgressionManager {
     static handleWaveCompletion(state, upgrades, viewport) {
         const currentNode = state.mapNodes.find((n) => n.id === state.currentNodeId);
         state.wavesCompleted++;
-        if (state.sectorWave < currentNode.wavesTotal) {
+        if (state.waveManager.sectorWave < currentNode.wavesTotal) {
             state.advanceWave();
             updateUI(state, upgrades);
         } else {
