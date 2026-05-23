@@ -1,10 +1,10 @@
-export class Pickup {
+import { Entity } from "./Entity.js";
+
+export class Pickup extends Entity {
     constructor(x, y, radius, type) {
-        this.x = x;
-        this.y = y;
+        super(x, y, 0, false);
         this.radius = radius;
         this.type = type;
-        this.isDead = false;
         this.cachedSprite = null;
     }
 
@@ -12,8 +12,7 @@ export class Pickup {
     }
 }
 
-export class Projectile {
-    
+export class Projectile extends Entity {
     static updateAll(state, dt) {
         for (let i = state.projectiles.length - 1; i >= 0; i--) {
             const p = state.projectiles[i];
@@ -23,22 +22,19 @@ export class Projectile {
     }
 
     constructor(x, y, radius, speed, target, angle = null, damage = 0, faction = "player") {
-        this.x = x;
-        this.y = y;
+        let initialAngle = 0;
+        if (angle !== null && angle !== undefined) {
+            initialAngle = angle;
+        } else if (target) {
+            initialAngle = Math.atan2(target.y - y, target.x - x);
+        }
+        
+        super(x, y, initialAngle, false);
         this.radius = radius;
         this.speed = speed;
         this.target = target;
         this.damage = damage;
         this.faction = faction;
-        this.isDead = false;
-
-        if (angle !== null && angle !== undefined) {
-            this.angle = angle;
-        } else if (target) {
-            this.angle = Math.atan2(target.y - y, target.x - x);
-        } else {
-            this.angle = 0;
-        }
     }
 
     move(dt) {

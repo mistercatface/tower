@@ -1,8 +1,9 @@
 import { Navigator } from "./Navigator.js";
 import { Projectile } from "./Entities.js";
 import { enemyStates } from "./EnemyStates.js";
+import { DestructibleEntity } from "./Entity.js";
 
-export class Enemy {
+export class Enemy extends DestructibleEntity {
     static updateAll(state, dt, spatialHash) {
         for (let i = state.enemies.length - 1; i >= 0; i--) {
             const e = state.enemies[i];
@@ -13,19 +14,16 @@ export class Enemy {
     }
 
     constructor(x, y, radius, speed, health, color, reward, type = "standard", attackType = "ranged", canDodge = false) {
-        this.x = x;
-        this.y = y;
+        const initialAngle = Math.atan2(-y, -x);
+        super(x, y, initialAngle, health, health, false);
+    
         this.radius = radius;
         this.speed = speed;
-        this.health = health;
-        this.maxHealth = health;
         this.color = color;
         this.reward = reward;
         this.type = type;
         this.attackType = attackType;
         this.canDodge = canDodge;
-        this.isDead = false;
-        this.angle = Math.atan2(-y, -x);
         this.turnSpeed = 10;
         this.isEngaged = false;
         this.desiredX = 0;
