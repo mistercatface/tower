@@ -48,9 +48,11 @@ export class EnemyEngagedState {
         enemy.calculateSeparation(spatialHash);
         enemy.applyMovement(dt, target, false);
         enemy.resolveWallCollisions(walls);
-
         const isAimed = WeaponSystem.aimTurret(enemy.turret, enemy.x, enemy.y, target.x, target.y, dt);
-
+        if (enemy.fireTimerId === null) {
+            enemy.fireTimerId = scheduler.schedule(enemy.fireRate);
+            return false;
+        }
         if (scheduler.getTimeRemaining(enemy.fireTimerId) <= 0 && isAimed) {
             enemy.fireTimerId = scheduler.schedule(enemy.fireRate);
             return true;
