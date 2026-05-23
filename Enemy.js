@@ -6,18 +6,13 @@ import { Separation } from "./Separation.js";
 import { ProgressionManager } from "./ProgressionManager.js";
 import { saveProgress } from "./Storage.js";
 import { updateUI } from "./UI.js";
+import { ChargedWeaponMode } from "./WeaponSystem.js";
 
 export class Enemy extends DestructibleEntity {
     static updateAll(state, dt, spatialHash) {
         for (let i = state.enemies.length - 1; i >= 0; i--) {
             const e = state.enemies[i];
-            const wantsToShoot = e.currentState.update(e, dt, state.planet, state.gridSystem, state.walls, state.projectiles, spatialHash, state.scheduler);
-            if (wantsToShoot) {
-                const turretDist = e.radius + 4;
-                const tx = e.x + Math.cos(e.turret.angle) * turretDist;
-                const ty = e.y + Math.sin(e.turret.angle) * turretDist;
-                state.projectiles.push(new Projectile(tx, ty, e.radius * 0.333, 150, state.planet, e.turret.angle, 10, "enemy"));
-            }
+            e.currentState.update(e, dt, state.planet, state.gridSystem, state.walls, state.projectiles, spatialHash, state.scheduler, state);
             if (e.isDead) state.enemies.splice(i, 1);
         }
     }
@@ -39,11 +34,13 @@ export class Enemy extends DestructibleEntity {
         this.separation = new Separation();
         this.attackRange = 75;
         this.fireRate = 1500;
-        this.fireTimerId = null;
         this.dodgeTimerId = null;
         this.dodgeTargetX = 0;
         this.dodgeTargetY = 0;
         this.currentState = enemyStates.navigating;
+        this.weaponMode = new ChargedWeaponMode((state, tx, ty, angle, source) => {
+            state.projectiles.push(new Projectile(tx, ty, source.radius * 0.333, 150, state.planet, angle, 10, "enemy"));
+        });
     }
 
     handleHit(baseDamage, ctx) {

@@ -3,19 +3,19 @@ import { CollisionSystem } from "./CollisionSystem.js";
 import { Utilities } from "./Utilities.js";
 
 class WeaponTargetingStrategy {
-    determineAimTarget(state, target, blocksTargeting, turret) {
+    determineAimTarget(source, target, blocksTargeting) {
         if (target && !blocksTargeting) {
             return target;
         }
-        if (state.planet.isMoving) {
+        if (source.isMoving) {
             return {
-                x: state.planet.targetNodeX !== null ? state.planet.targetNodeX : state.planet.targetX,
-                y: state.planet.targetNodeY !== null ? state.planet.targetNodeY : state.planet.targetY
+                x: source.targetNodeX !== null ? source.targetNodeX : source.targetX,
+                y: source.targetNodeY !== null ? source.targetNodeY : source.targetY
             };
         }
         return {
-            x: state.planet.x + Math.cos(state.planet.angle || 0) * 100,
-            y: state.planet.y + Math.sin(state.planet.angle || 0) * 100
+            x: source.x + Math.cos(source.angle || 0) * 100,
+            y: source.y + Math.sin(source.angle || 0) * 100
         };
     }
 }
@@ -26,18 +26,18 @@ export class ChargedWeaponMode extends WeaponTargetingStrategy {
         this.onFire = onFireFn;
     }
 
-    processTurret(dt, state, turret, target, blocksTargeting, combatEvents) {
-        const turretDist = state.planet.radius + 12;
-        const tx = state.planet.x + Math.cos(turret.angle) * turretDist;
-        const ty = state.planet.y + Math.sin(turret.angle) * turretDist;
+    processTurret(dt, state, source, chargeTime, turret, target, blocksTargeting, combatEvents) {
+        const turretDist = source.radius + 12;
+        const tx = source.x + Math.cos(turret.angle) * turretDist;
+        const ty = source.y + Math.sin(turret.angle) * turretDist;
 
-        const aimTarget = this.determineAimTarget(state, target, blocksTargeting, turret);
-        const isAimed = WeaponSystem.aimTurret(turret, state.planet.x, state.planet.y, aimTarget.x, aimTarget.y, dt);
+        const aimTarget = this.determineAimTarget(source, target, blocksTargeting);
+        const isAimed = WeaponSystem.aimTurret(turret, source.x, source.y, aimTarget.x, aimTarget.y, dt);
 
         if (target && !blocksTargeting && isAimed) {
             turret.charge += dt;
-            if (turret.charge >= state.weapon.chargeTime) {
-                this.onFire(state, tx, ty, turret.angle);
+            if (turret.charge >= chargeTime) {
+                this.onFire(state, tx, ty, turret.angle, source);
                 turret.charge = 0;
             }
         } else {
@@ -52,23 +52,23 @@ export class ContinuousWeaponMode extends WeaponTargetingStrategy {
         this.onTick = onTickFn;
     }
 
-    processTurret(dt, state, turret, target, blocksTargeting, combatEvents) {
-        const turretDist = state.planet.radius + 4 + 4 * (state.planet.radius / 8);
-        const tx = state.planet.x + Math.cos(turret.angle) * turretDist;
-        const ty = state.planet.y + Math.sin(turret.angle) * turretDist;
+    processTurret(dt, state, source, turret, target, blocksTargeting, combatEvents) {
+        const turretDist = source.radius + 4 + 4 * (source.radius / 8);
+        const tx = source.x + Math.cos(turret.angle) * turretDist;
+        const ty = source.y + Math.sin(turret.angle) * turretDist;
 
-        const aimTarget = this.determineAimTarget(state, target, blocksTargeting, turret);
-        WeaponSystem.aimTurret(turret, state.planet.x, state.planet.y, aimTarget.x, aimTarget.y, dt);
+        const aimTarget = this.determineAimTarget(source, target, blocksTargeting);
+        WeaponSystem.aimTurret(turret, source.x, source.y, aimTarget.x, aimTarget.y, dt);
 
-        this.onTick(dt, state, tx, ty, turret, combatEvents);
+        this.onTick(dt, state, tx, ty, turret, combatEvents, source);
     }
 }
 
-const DEFAULT_WEAPON_MODE = new ChargedWeaponMode((state, tx, ty, turretAngle) => {
+const DEFAULT_WEAPON_MODE = new ChargedWeaponMode((state, tx, ty, turretAngle, source) => {
     const accuracySpread = ((1 - state.weapon.accuracy) * Math.PI) / 2;
     const spreadAngle = (Math.random() - 0.5) * accuracySpread;
     const finalAngle = turretAngle + spreadAngle;
-    const m = new Projectile(tx, ty, state.planet.radius * 0.25, 250, null, finalAngle, 0, "player");
+    const m = new Projectile(tx, ty, source.radius * 0.25, 250, null, finalAngle, 0, "player");
     m.penetration = state.weapon.penetration;
     state.projectiles.push(m);
 });
@@ -207,7 +207,7 @@ export class WeaponSystem {
                 engagedTargets.add(turret.target);
             }
 
-            mode.processTurret(dt, state, turret, turret.target, blocksTargeting, combatEvents);
+            mode.processTurret(dt, state, state.planet, state.weapon.chargeTime, turret, turret.target, blocksTargeting, combatEvents);
         }
 
         return combatEvents;

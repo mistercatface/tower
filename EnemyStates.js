@@ -1,21 +1,19 @@
-import { WeaponSystem } from "./WeaponSystem.js";
-
 export class EnemyNavigatingState {
-    update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler) {
+    update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler, state) {
         if (enemy.canDodge && scheduler.getTimeRemaining(enemy.dodgeTimerId) <= 0 && enemy.shouldTriggerDodge(missiles, gridSystem, scheduler)) {
             enemy.changeState("dodging");
-            return enemy.currentState.update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler);
+            return enemy.currentState.update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler, state);
         }
 
         if (enemy.attackType === "charge") {
             enemy.changeState("charging");
-            return enemy.currentState.update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler);
+            return enemy.currentState.update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler, state);
         }
 
         const distToTarget = Math.hypot(enemy.x - target.x, enemy.y - target.y);
         if (distToTarget <= target.radius + enemy.attackRange) {
             enemy.changeState("engaged");
-            return enemy.currentState.update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler);
+            return enemy.currentState.update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler, state);
         }
 
         enemy.calculateSteering(target, gridSystem);
@@ -30,16 +28,16 @@ export class EnemyNavigatingState {
 }
 
 export class EnemyEngagedState {
-    update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler) {
+    update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler, state) {
         if (enemy.canDodge && scheduler.getTimeRemaining(enemy.dodgeTimerId) <= 0 && enemy.shouldTriggerDodge(missiles, gridSystem, scheduler)) {
             enemy.changeState("dodging");
-            return enemy.currentState.update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler);
+            return enemy.currentState.update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler, state);
         }
 
         const distToTarget = Math.hypot(enemy.x - target.x, enemy.y - target.y);
         if (distToTarget > target.radius + enemy.attackRange) {
             enemy.changeState("navigating");
-            return enemy.currentState.update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler);
+            return enemy.currentState.update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler, state);
         }
 
         enemy.desiredX = target.x - enemy.x;
@@ -48,21 +46,15 @@ export class EnemyEngagedState {
         enemy.separation.update(enemy, spatialHash);
         enemy.applyMovement(dt, target, false);
         enemy.resolveWallCollisions(walls);
-        const isAimed = WeaponSystem.aimTurret(enemy.turret, enemy.x, enemy.y, target.x, target.y, dt);
-        if (enemy.fireTimerId === null) {
-            enemy.fireTimerId = scheduler.schedule(enemy.fireRate);
-            return false;
-        }
-        if (scheduler.getTimeRemaining(enemy.fireTimerId) <= 0 && isAimed) {
-            enemy.fireTimerId = scheduler.schedule(enemy.fireRate);
-            return true;
-        }
+
+        enemy.weaponMode.processTurret(dt, state, enemy, enemy.fireRate, enemy.turret, target, false, null);
+
         return false;
     }
 }
 
 export class EnemyChargingState {
-    update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler) {
+    update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler, state) {
         const distToTarget = Math.hypot(enemy.x - target.x, enemy.y - target.y);
         enemy.isEngaged = distToTarget <= target.radius + enemy.attackRange;
 
@@ -78,7 +70,7 @@ export class EnemyChargingState {
 }
 
 export class EnemyDodgingState {
-    update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler) {
+    update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler, state) {
         const dx = enemy.dodgeTargetX - enemy.x;
         const dy = enemy.dodgeTargetY - enemy.y;
         const dist = Math.hypot(dx, dy);
