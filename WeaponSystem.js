@@ -1,4 +1,4 @@
-import { Projectile } from "./Entities.js";
+import { Projectile } from "./Entities/Projectile.js";
 import { CollisionSystem } from "./CollisionSystem.js";
 import { Utilities } from "./Utilities.js";
 

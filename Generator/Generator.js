@@ -1,4 +1,4 @@
-import { Pickup } from "../Entities.js";
+import { Pickup } from "../Entities/Pickup.js";
 import { GeneratorStrategies } from "./Strategies.js";
 
 export function spawnPickup(state, planetX, planetY, minRadius, maxRadius, type) {

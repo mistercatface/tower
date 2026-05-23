@@ -1,5 +1,5 @@
 import { enemyTypes, difficultyCurve, spawnSettings } from "./Config.js";
-import { Enemy } from "./Enemy.js";
+import { Enemy } from "./Entities/Enemy.js";
 import { updateUI } from "./UI.js";
 import { ProgressionManager } from "./ProgressionManager.js";
 

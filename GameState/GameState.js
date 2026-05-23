@@ -1,5 +1,6 @@
-import { Turret } from "../Entities.js";
-import { Planet } from "../Planet.js";
+import { Projectile } from "../Entities/Projectile.js";
+import { Turret } from "../Turret.js";
+import { Planet } from "../Entities/Planet.js";
 import { GridSystem } from "../GridSystem.js";
 import { enemyTypes, defaultUpgradeCost } from "../Config.js";
 import { WallGenerator } from "../Generator/Generator.js";

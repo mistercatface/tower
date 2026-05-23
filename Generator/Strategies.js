@@ -1,4 +1,4 @@
-import { Segment, buildArcWall } from "../Wall.js";
+import { Segment, buildArcWall } from "../Entities/Wall.js";
 
 const MazeStrategy = {
     generate(state, px, py) {

@@ -1,4 +1,4 @@
-import { Projectile } from "./Entities.js";
+import { Projectile } from "./Entities/Projectile.js";
 import { WeaponSystem, ContinuousWeaponMode, ChargedWeaponMode } from "./WeaponSystem.js";
 
 export class Upgrade {
