@@ -182,6 +182,11 @@ export class WeaponSystem {
                     blocksTargeting
                 ) {
                     turret.target = null;
+                } else if (engagedTargets.has(turret.target)) {
+                    const betterTarget = this.getNearestEnemy(state, state.planet, state.weapon.range, engagedTargets);
+                    if (betterTarget) {
+                        turret.target = betterTarget;
+                    }
                 }
             }
 
