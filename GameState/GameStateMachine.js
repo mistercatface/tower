@@ -32,4 +32,10 @@ export class GameStateMachine {
             this.currentState.render(this.context);
         }
     }
+
+    handleInteraction(worldCoords, isDoubleTap) {
+        if (this.currentState && this.currentState.handleInteraction) {
+            this.currentState.handleInteraction(worldCoords, isDoubleTap, this.context);
+        }
+    }
 }

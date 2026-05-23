@@ -8,6 +8,7 @@ import { Projectile } from "../Entities.js";
 import { WeaponSystem } from "../WeaponSystem.js";
 import { CombatManager } from "../CombatManager.js";
 import { WallGenerator } from "../Generator.js";
+import { showNodeConfirm } from "../UI.js";
 
 export class MapState {
     onEnter(ctx) {
@@ -20,6 +21,21 @@ export class MapState {
     render(ctx) {
         ctx.viewport.follow(ctx.state.mapPlayerX, ctx.state.mapPlayerY - 200);
         ctx.renderer.render(ctx.state, ctx.viewport);
+    }
+    handleInteraction(worldCoords, isDoubleTap, ctx) {
+        const currentNode = ctx.state.mapNodes.find((n) => n.id === ctx.state.currentNodeId);
+        if (!currentNode) return;
+        for (const neighborId of currentNode.connections) {
+            const neighbor = ctx.state.mapNodes.find((n) => n.id === neighborId);
+            const dist = Math.hypot(neighbor.x - worldCoords.x, neighbor.y - worldCoords.y);
+            if (dist < 20) {
+                showNodeConfirm(neighbor, () => {
+                    ctx.state.mapTargetNodeId = neighbor.id;
+                    ctx.state.phase = "map_transition";
+                });
+                break;
+            }
+        }
     }
 }
 
@@ -95,6 +111,45 @@ export class CombatState {
     render(ctx) {
         ctx.viewport.follow(ctx.state.planet.x, ctx.state.planet.y);
         ctx.renderer.render(ctx.state, ctx.viewport);
+    }
+
+    handleInteraction(worldCoords, isDoubleTap, ctx) {
+        if (!ctx.state.upgrades["Reposition"] || ctx.state.upgrades["Reposition"].level === 0) return;
+        const distFromSpawn = Math.hypot(worldCoords.x - ctx.state.planet.spawnX, worldCoords.y - ctx.state.planet.spawnY);
+        if (distFromSpawn <= ctx.state.weapon.range) {
+            const gridPos = ctx.state.gridSystem.worldToGrid(worldCoords.x, worldCoords.y);
+            if (gridPos.col >= 0 && gridPos.col < ctx.state.gridSystem.cols && gridPos.row >= 0 && gridPos.row < ctx.state.gridSystem.rows) {
+                if (ctx.state.gridSystem.grid[gridPos.row * ctx.state.gridSystem.cols + gridPos.col] !== 1) {
+                    const targetX = gridPos.col * ctx.state.gridSystem.cellSize + ctx.state.gridSystem.centerX - ctx.state.gridSystem.offsetX + ctx.state.gridSystem.cellSize / 2;
+                    const targetY = gridPos.row * ctx.state.gridSystem.cellSize + ctx.state.gridSystem.centerY - ctx.state.gridSystem.offsetY + ctx.state.gridSystem.cellSize / 2;
+                    let isDiving = false;
+                    ctx.upgrades
+                        .filter((u) => u.isAbility && u.triggerType === "double_tap_move" && ctx.state.abilities[u.id])
+                        .forEach((upg) => {
+                            if (ctx.state.scheduler.getTimeRemaining(ctx.state.abilityTimers[upg.id].activeId) > 0) {
+                                isDiving = true;
+                            }
+                        });
+                    if (isDiving) {
+                        ctx.state.planet.queueTarget(targetX, targetY);
+                    } else {
+                        ctx.state.planet.setTarget(targetX, targetY);
+                        ctx.state.gridSystem.buildPlayerFlowField(targetX, targetY);
+                        if (isDoubleTap) {
+                            ctx.upgrades
+                                .filter((u) => u.isAbility && u.triggerType === "double_tap_move" && ctx.state.abilities[u.id])
+                                .forEach((upg) => {
+                                    if (ctx.state.scheduler.getTimeRemaining(ctx.state.abilityTimers[upg.id].cooldownId) <= 0) {
+                                        ctx.state.abilityTimers[upg.id].activeId = ctx.state.scheduler.schedule(upg.activeDuration);
+                                        ctx.state.abilityTimers[upg.id].cooldownId = ctx.state.scheduler.schedule(upg.cooldown);
+                                        if (upg.onTrigger) upg.onTrigger(ctx.state);
+                                    }
+                                });
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
