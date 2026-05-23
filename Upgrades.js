@@ -299,7 +299,7 @@ export const createUpgrades = () => [
         id: "TwoGuns",
         category: "abilities",
         name: "Two Guns",
-        description: "When Active: Equip an additional turret. Bullets deal half damage and target different enemies.",
+        description: "When Active: Equip an additional turret. Bullets deal half damage.",
         maxLevel: 1,
         isAbility: true,
         applyFn: (stats, level) => {
@@ -314,18 +314,18 @@ export const createUpgrades = () => [
         id: "ThreeGuns",
         category: "abilities",
         name: "Three Guns",
-        description: "When Active: Equip a third turret. Bullets deal one-third damage and target different enemies.",
+        description: "When Active: Equip a third turret. Bullets deal one-third damage.",
         maxLevel: 1,
         isAbility: true,
-        //requires: ['TwoGuns'],
-        //replaces: ['TwoGuns'],
+        requires: ['TwoGuns'],
+        replaces: ['TwoGuns'],
         applyFn: (stats, level) => {
             stats.turretCount.flatModifiers += 2;
         },
         abilityApplyFn: (weapon, planet) => {
             weapon.damage *= 0.33;
         },
-        minPlayerLevel: 0
+        minPlayerLevel: 8
     }),
     new Upgrade({
         id: "TwinStrike",
