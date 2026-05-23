@@ -107,7 +107,7 @@ export class ChunkManager {
         }
 
         if (this.lastWallsRef !== segments) {
-            this.buildWallChunks(segments, state.theme);
+            this.buildWallChunks(segments, state.wallTheme);
             this.lastWallsRef = segments;
         }
 
@@ -124,7 +124,7 @@ export class ChunkManager {
 
         for (const chunk of this.activeChunks.values()) {
             if (chunk.isDirty) {
-                this.updateChunk(chunk, state.theme);
+                this.updateChunk(chunk, state.wallTheme);
                 chunk.isDirty = false;
             }
             mainCtx.drawImage(chunk.canvas, chunk.x, chunk.y);
