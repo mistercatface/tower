@@ -217,11 +217,9 @@ export class ProgressionManager {
 
     static handleWaveCompletion(state, upgrades, viewport) {
         const currentNode = state.mapNodes.find((n) => n.id === state.currentNodeId);
-        state.wavesCompleted++;
-        if (state.waveManager.sectorWave < currentNode.wavesTotal) {
-            state.waveManager.advance();
-            updateUI(state, upgrades);
-        } else {
+
+        const isFinished = state.waveManager.completeWave(currentNode.wavesTotal);
+        if (isFinished) {
             if (currentNode && !currentNode.completed) {
                 currentNode.completed = true;
                 state.enterRewardPhase();
@@ -240,7 +238,9 @@ export class ProgressionManager {
                 viewport.snapTo(state.planet.x - state.planet.x - viewport.x, state.planet.y - state.planet.y - viewport.y);
                 updateUI(state, upgrades);
             }
+            return;
         }
+        updateUI(state, upgrades);
     }
 
     static awardPermanentUpgrade(state, upgrades, currentNode, viewport) {
