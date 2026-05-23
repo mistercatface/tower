@@ -253,8 +253,8 @@ export function updateHud(state, upgrades) {
                 const btn = dynamicElements["btnAbility_" + upg.id];
                 if (cdOverlay && btn) {
                     cdOverlay.style.background = "#4CAF50";
-                    const timers = state.abilityTimers ? state.abilityTimers[upg.id] : null;
-                    const cdTimer = timers ? timers.cooldown : 0;
+                    const timers = state.abilityTimers[upg.id];
+                    const cdTimer = state.scheduler.getTimeRemaining(timers.cooldownId);
                     if (cdTimer > 0) {
                         const ratio = cdTimer / upg.cooldown;
                         cdOverlay.style.height = (1 - ratio) * 100 + "%";

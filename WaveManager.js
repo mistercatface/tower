@@ -38,8 +38,8 @@ export class WaveManager {
     static spawnGroup(state, enemyType, count, spacing = 40) {
         const dist = state.spawnRadius;
         const side = Math.floor(Math.random() * 4);
-        const basePos = (Math.random() * 2 - 1) * (dist - (count * spacing / 2));
-        
+        const basePos = (Math.random() * 2 - 1) * (dist - (count * spacing) / 2);
+
         const scaledHealth = Math.max(1, Math.floor(enemyType.baseHealth * Math.pow(difficultyCurve.healthMultiplier, state.wave - 1)));
         const scaledSpeed = enemyType.baseSpeed * Math.pow(difficultyCurve.speedMultiplier, state.wave - 1);
         const scaledReward = Math.max(1, Math.floor(enemyType.baseHealth * Math.pow(difficultyCurve.rewardMultiplier, state.wave - 1)));
@@ -96,20 +96,31 @@ export class WaveManager {
     }
 
     static manageSpawning(dt, state, upgrades, viewport) {
-        if (state.phase === "map" || state.phase === "reward") return;
-        if (state.isTransitioning) {
-            if (state.tickWaveTransition(dt)) ProgressionManager.handleWaveCompletion(state, upgrades, viewport);
-            return;
+        if (state.phase === "map" || state.phase === "reward" || state.isTransitioning) return;
+
+        if (state.enemiesSpawned < state.enemiesToSpawn && !state.spawnIntervalId) {
+            const currentSpawnDelay = Math.max(spawnSettings.minSpawnDelay, spawnSettings.baseSpawnDelay - state.wave * spawnSettings.delayReductionPerWave);
+            
+            state.spawnIntervalId = state.scheduler.schedule(currentSpawnDelay, () => {
+                if (state.enemiesSpawned < state.enemiesToSpawn) {
+                    const count = this.spawnEnemy(state);
+                    state.enemiesSpawned += count;
+                }
+                
+                if (state.enemiesSpawned >= state.enemiesToSpawn) {
+                    state.scheduler.cancel(state.spawnIntervalId);
+                    state.spawnIntervalId = null;
+                }
+            }, true);
         }
-        state.enemySpawnTimer += dt;
-        const currentSpawnDelay = Math.max(spawnSettings.minSpawnDelay, spawnSettings.baseSpawnDelay - state.wave * spawnSettings.delayReductionPerWave);
-        if (state.enemySpawnTimer > currentSpawnDelay && state.enemiesSpawned < state.enemiesToSpawn) {
-            const count = this.spawnEnemy(state);
-            state.enemiesSpawned += count;
-            state.enemySpawnTimer = 0;
-        } else if (state.enemiesSpawned >= state.enemiesToSpawn && state.enemies.length === 0) {
+
+        if (state.enemiesSpawned >= state.enemiesToSpawn && state.enemies.length === 0) {
             updateUI(state, upgrades);
-            state.startWaveTransition(1500);
+            state.isTransitioning = true;
+            state.scheduler.schedule(1500, () => {
+                state.isTransitioning = false;
+                ProgressionManager.handleWaveCompletion(state, upgrades, viewport);
+            });
         }
     }
 }

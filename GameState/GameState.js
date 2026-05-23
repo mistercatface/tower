@@ -5,6 +5,7 @@ import { enemyTypes, defaultUpgradeCost } from "../Config.js";
 import { WallGenerator } from "../Generator.js";
 import { FloatingText } from "../FloatingText.js";
 import { perkMilestones } from "../Config.js";
+import { Scheduler } from "../Scheduler.js";
 
 export class Stat {
     constructor(baseValue, min = -Infinity, max = Infinity) {
@@ -28,6 +29,7 @@ export class Stat {
 
 export class GameState {
     constructor() {
+        this.scheduler = new Scheduler();
         this.phase = "map";
         this.mapNodes = [];
         this.currentNodeId = 0;
@@ -74,27 +76,11 @@ export class GameState {
         };
 
         this.gridSystem = new GridSystem(16, 1600, 1600);
-
         this.currentUpgradeTab = "attack";
         this.canvasBounds = { width: 0, height: 0 };
         this.upgrades = {};
 
         this.initializeDefaultState();
-    }
-
-    startWaveTransition(duration) {
-        this.isTransitioning = true;
-        this.waveTransitionTimer = duration;
-    }
-
-    tickWaveTransition(dt) {
-        if (!this.isTransitioning) return false;
-        this.waveTransitionTimer -= dt;
-        if (this.waveTransitionTimer <= 0) {
-            this.isTransitioning = false;
-            return true;
-        }
-        return false;
     }
 
     enterRewardPhase() {
@@ -167,11 +153,32 @@ export class GameState {
         return false;
     }
 
+    initUpgradesList(upgradeList) {
+        this.upgradeDefs = upgradeList;
+        if (Object.keys(this.upgrades).length === 0) {
+            for (const upg of upgradeList) {
+                this.upgrades[upg.id] = { level: 0, baseLevel: 0, ptsCost: defaultUpgradeCost };
+            }
+            this.resetUpgradesToDefault();
+        }
+        for (const upg of upgradeList) {
+            if (upg.isAbility && !this.abilityTimers[upg.id]) {
+                this.abilityTimers[upg.id] = { readyTime: 0, activeUntil: 0, activeId: null, cooldownId: null };
+            }
+        }
+    }
+
     resetRun(upgradesList) {
         this.initializeDefaultState();
-        this.isTransitioning = false;
-        this.waveTransitionTimer = 0;
         this.mapTargetNodeId = 0;
+
+        if (upgradesList) {
+            upgradesList.forEach((upg) => {
+                if (upg.isAbility) {
+                    this.abilityTimers[upg.id] = { readyTime: 0, activeUntil: 0, activeId: null, cooldownId: null };
+                }
+            });
+        }
 
         this.recalculateStats(upgradesList);
         for (const key in this.upgrades) {
@@ -193,16 +200,6 @@ export class GameState {
         this.generateMap();
     }
 
-    initUpgradesList(upgradeList) {
-        this.upgradeDefs = upgradeList;
-        if (Object.keys(this.upgrades).length === 0) {
-            for (const upg of upgradeList) {
-                this.upgrades[upg.id] = { level: 0, baseLevel: 0, ptsCost: defaultUpgradeCost };
-            }
-            this.resetUpgradesToDefault();
-        }
-    }
-
     grantXP(amount) {
         this.xp += amount;
         let xpNeeded = Math.floor(25 * Math.pow(1.5, this.level));
@@ -221,6 +218,7 @@ export class GameState {
     }
 
     initializeDefaultState() {
+        this.scheduler.clear();
         this.lastTime = 0;
         this.enemySpawnTimer = 0;
         this.score = 0;
@@ -238,6 +236,7 @@ export class GameState {
         this.pendingPerkPicks = [];
 
         this.wavesCompleted = 0;
+        this.isTransitioning = false;
 
         this.abilities = {};
         this.abilityTimers = {};

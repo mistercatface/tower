@@ -48,7 +48,10 @@ export class CombatState {
         ctx.viewport.snapTo(ctx.state.planet.x - offsetX, ctx.state.planet.y - offsetY);
         ctx.updateUI(ctx.state, ctx.upgrades);
     }
+
     update(dt, ctx) {
+        ctx.state.scheduler.update(dt);
+        
         const abilityState = ProgressionManager.updateAbilities(ctx.state, dt, ctx.upgrades);
         if (!abilityState.isDiving && ctx.state.planet.applyQueuedTarget()) {
             ctx.state.gridSystem.buildPlayerFlowField(ctx.state.planet.targetX, ctx.state.planet.targetY);
@@ -88,6 +91,7 @@ export class CombatState {
         ctx.upgrades.forEach((upg) => upg.update(dt, ctx.state));
         ProgressionManager.processLevelUps(ctx.state, ctx.upgrades);
     }
+
     render(ctx) {
         ctx.viewport.follow(ctx.state.planet.x, ctx.state.planet.y);
         ctx.renderer.render(ctx.state, ctx.viewport);

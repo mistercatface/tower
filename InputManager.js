@@ -85,7 +85,7 @@ export class InputManager {
                             upgrades
                                 .filter((u) => u.isAbility && u.triggerType === "double_tap_move" && state.abilities[u.id])
                                 .forEach((upg) => {
-                                    if (state.abilityTimers[upg.id] && state.abilityTimers[upg.id].active > 0) {
+                                    if (state.scheduler.getTimeRemaining(state.abilityTimers[upg.id].activeId) > 0) {
                                         isDiving = true;
                                     }
                                 });
@@ -98,11 +98,9 @@ export class InputManager {
                                     upgrades
                                         .filter((u) => u.isAbility && u.triggerType === "double_tap_move" && state.abilities[u.id])
                                         .forEach((upg) => {
-                                            if (!state.abilityTimers) state.abilityTimers = {};
-                                            if (!state.abilityTimers[upg.id]) state.abilityTimers[upg.id] = { cooldown: 0, active: 0 };
-                                            if (state.abilityTimers[upg.id].cooldown <= 0) {
-                                                state.abilityTimers[upg.id].active = upg.activeDuration;
-                                                state.abilityTimers[upg.id].cooldown = upg.cooldown;
+                                            if (state.scheduler.getTimeRemaining(state.abilityTimers[upg.id].cooldownId) <= 0) {
+                                                state.abilityTimers[upg.id].activeId = state.scheduler.schedule(upg.activeDuration, () => {});
+                                                state.abilityTimers[upg.id].cooldownId = state.scheduler.schedule(upg.cooldown, () => {});
                                                 if (upg.onTrigger) upg.onTrigger(state);
                                             }
                                         });

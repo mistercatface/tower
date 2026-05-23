@@ -21,7 +21,7 @@ export class ProgressionManager {
         FloatingText.spawn(state, enemy.x, enemy.y, `+${pointsReward} Points`, "#FFF");
         FloatingText.spawn(state, enemy.x, enemy.y - 30, `+${xpGain} XP`, "#4CAF50");
     }
-    
+
     static updatePickups(state, dt, upgrades) {
         for (let i = state.pickups.length - 1; i >= 0; i--) {
             const p = state.pickups[i];
@@ -48,7 +48,6 @@ export class ProgressionManager {
     }
 
     static updateAbilities(state, dt, upgrades) {
-        if (!state.abilityTimers) state.abilityTimers = {};
         let externalSpeedMod = 1.0;
         let blocksTargeting = false;
         let isDiving = false;
@@ -56,17 +55,15 @@ export class ProgressionManager {
         upgrades
             .filter((u) => u.isAbility && state.abilities[u.id])
             .forEach((upg) => {
-                if (!state.abilityTimers[upg.id]) state.abilityTimers[upg.id] = { cooldown: 0, active: 0 };
                 const timers = state.abilityTimers[upg.id];
-
-                if (timers.cooldown > 0) timers.cooldown = Math.max(0, timers.cooldown - dt);
-                if (timers.active > 0) {
-                    timers.active = Math.max(0, timers.active - dt);
+                const activeRemaining = state.scheduler.getTimeRemaining(timers.activeId);
+                
+                if (activeRemaining > 0) {
                     if (upg.triggerType === "double_tap_move") {
                         isDiving = true;
                     }
                     if (upg.speedModFn) {
-                        externalSpeedMod *= upg.speedModFn(timers.active, upg.activeDuration);
+                        externalSpeedMod *= upg.speedModFn(activeRemaining, upg.activeDuration);
                     }
                     if (upg.blocksTargeting) {
                         blocksTargeting = true;
