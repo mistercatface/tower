@@ -221,6 +221,7 @@ export class GameState {
         this.scheduler.clear();
         this.lastTime = 0;
         this.enemySpawnTimer = 0;
+        this.spawnIntervalId = null;
         this.score = 0;
         this.xp = 0;
         this.level = 0;
