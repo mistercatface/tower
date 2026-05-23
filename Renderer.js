@@ -33,14 +33,6 @@ export class Renderer {
                 offCtx.fillText("$", cx, cy + 1);
             } else if (pickup.type === "eyeball") {
                 offCtx.beginPath();
-                offCtx.arc(cx, cy, pickup.radius, 0, Math.PI * 2);
-                offCtx.fillStyle = "#FFFFFF";
-                offCtx.fill();
-                offCtx.lineWidth = 1;
-                offCtx.strokeStyle = "#000000";
-                offCtx.stroke();
-
-                offCtx.beginPath();
                 offCtx.arc(cx, cy, pickup.radius * 0.5, 0, Math.PI * 2);
                 offCtx.fillStyle = "#2196F3";
                 offCtx.fill();
@@ -88,7 +80,12 @@ export class Renderer {
             this.drawShadows(state);
 
             for (const p of state.pickups) this.drawPickup(p);
-            for (const e of state.enemies) this.drawEnemy(e);
+            
+            for (const e of state.enemies) {
+                this.drawEnemy(e);
+                this.drawTurret(e.turret, e.x, e.y, e.radius, 0, 1, e.color);
+            }
+
             for (const p of state.projectiles) this.drawMissile(p, p.faction === "player" ? "#FFEB3B" : "#F44336");
 
             this.chunkManager.drawWalls(this.ctx, state);
@@ -317,7 +314,7 @@ export class Renderer {
         }
     }
 
-    drawTurret(turret, planetX, planetY, planetRadius, weaponCharge, weaponChargeTime) {
+    drawTurret(turret, planetX, planetY, planetRadius, weaponCharge, weaponChargeTime, explicitColor = null) {
         const turretDist = planetRadius + 4;
         const tx = planetX + Math.cos(turret.angle) * turretDist;
         const ty = planetY + Math.sin(turret.angle) * turretDist;
@@ -341,11 +338,11 @@ export class Renderer {
         this.ctx.lineTo(turretPoints[1].x, turretPoints[1].y);
         this.ctx.lineTo(turretPoints[2].x, turretPoints[2].y);
         this.ctx.closePath();
-        this.ctx.fillStyle = "#4CAF50";
+        this.ctx.fillStyle = explicitColor || "#4CAF50";
         this.ctx.fill();
 
         let progress = 1;
-        let strokeColor = "#4CAF50";
+        let strokeColor = explicitColor || "#4CAF50";
 
         if (weaponCharge > 0) {
             progress = weaponCharge / weaponChargeTime;
@@ -400,31 +397,6 @@ export class Renderer {
             offCtx.arc(cx, cy, enemy.radius, 0, Math.PI * 2);
             offCtx.fillStyle = enemy.color;
             offCtx.fill();
-
-            offCtx.save();
-            offCtx.translate(cx, cy);
-
-            const scale = enemy.radius / 8;
-            const turretDist = enemy.radius + 4 * scale;
-
-            offCtx.translate(turretDist, 0);
-            offCtx.scale(scale, scale);
-
-            const turretPoints = [
-                { x: 4, y: 0 },
-                { x: -2, y: 2.5 },
-                { x: -2, y: -2.5 },
-            ];
-
-            offCtx.beginPath();
-            offCtx.moveTo(turretPoints[0].x, turretPoints[0].y);
-            offCtx.lineTo(turretPoints[1].x, turretPoints[1].y);
-            offCtx.lineTo(turretPoints[2].x, turretPoints[2].y);
-            offCtx.closePath();
-            offCtx.fillStyle = enemy.color;
-            offCtx.fill();
-
-            offCtx.restore();
 
             this.enemyCache.set(cacheKey, cachedSprite);
         }

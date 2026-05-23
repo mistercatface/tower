@@ -1,3 +1,5 @@
+import { WeaponSystem } from "./WeaponSystem.js";
+
 export class EnemyNavigatingState {
     update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler) {
         if (enemy.canDodge && scheduler.getTimeRemaining(enemy.dodgeTimerId) <= 0 && enemy.shouldTriggerDodge(missiles, gridSystem, scheduler)) {
@@ -20,6 +22,8 @@ export class EnemyNavigatingState {
         enemy.calculateSeparation(spatialHash);
         enemy.applyMovement(dt, target, true);
         enemy.resolveWallCollisions(walls);
+
+        enemy.turret.angle = enemy.angle;
 
         return false;
     }
@@ -44,7 +48,10 @@ export class EnemyEngagedState {
         enemy.calculateSeparation(spatialHash);
         enemy.applyMovement(dt, target, false);
         enemy.resolveWallCollisions(walls);
-        if (scheduler.getTimeRemaining(enemy.fireTimerId) <= 0) {
+
+        const isAimed = WeaponSystem.aimTurret(enemy.turret, enemy.x, enemy.y, target.x, target.y, dt);
+
+        if (scheduler.getTimeRemaining(enemy.fireTimerId) <= 0 && isAimed) {
             enemy.fireTimerId = scheduler.schedule(enemy.fireRate);
             return true;
         }
@@ -61,6 +68,8 @@ export class EnemyChargingState {
         enemy.calculateSeparation(spatialHash);
         enemy.applyMovement(dt, target, true);
         enemy.resolveWallCollisions(walls);
+
+        enemy.turret.angle = enemy.angle;
 
         return false;
     }
@@ -86,6 +95,8 @@ export class EnemyDodgingState {
             enemy.x += (dx / dist) * moveDist;
             enemy.y += (dy / dist) * moveDist;
         }
+
+        enemy.turret.angle = enemy.angle;
 
         return false;
     }

@@ -90,6 +90,21 @@ export class WeaponSystem {
         return nearest;
     }
 
+    static aimTurret(turret, currentX, currentY, targetX, targetY, dt) {
+        if (targetX === null || targetY === null) return false;
+        const targetAngle = Math.atan2(targetY - currentY, targetX - currentX);
+        let diff = targetAngle - turret.angle;
+        diff = Utilities.normalizeAngle(diff);
+
+        if (Math.abs(diff) < 0.05) {
+            turret.angle = targetAngle;
+            return true; 
+        } else {
+            turret.angle += Math.sign(diff) * Math.min(Math.abs(diff), turret.turnSpeed * (dt / 1000));
+            return false;
+        }
+    }
+
     static updateTurretAndWeapon(dt, blocksTargeting, state, upgrades) {
         const combatEvents = [];
 
@@ -143,33 +158,23 @@ export class WeaponSystem {
             const tx = state.planet.x + Math.cos(turret.angle) * turretDist;
             const ty = state.planet.y + Math.sin(turret.angle) * turretDist;
 
-            if (target && !blocksTargeting) {
-                const targetAngle = Math.atan2(target.y - state.planet.y, target.x - state.planet.x);
-                let diff = targetAngle - turret.angle;
-                diff = Utilities.normalizeAngle(diff);
+            let isAimed = false;
 
-                if (Math.abs(diff) < 0.05) {
-                    turret.angle = targetAngle;
-                    if (mode.type === "charged") {
-                        state.weapon[chargeKey] += dt;
-                        if (state.weapon[chargeKey] >= state.weapon.chargeTime) {
-                            mode.onFire(state, tx, ty, turret.angle);
-                            state.weapon[chargeKey] = 0;
-                        }
+            if (target && !blocksTargeting) {
+                isAimed = this.aimTurret(turret, state.planet.x, state.planet.y, target.x, target.y, dt);
+                if (isAimed && mode.type === "charged") {
+                    state.weapon[chargeKey] += dt;
+                    if (state.weapon[chargeKey] >= state.weapon.chargeTime) {
+                        mode.onFire(state, tx, ty, turret.angle);
+                        state.weapon[chargeKey] = 0;
                     }
-                } else {
-                    turret.angle += Math.sign(diff) * Math.min(Math.abs(diff), turret.turnSpeed * (dt / 1000));
-                    if (mode.type === "charged") state.weapon[chargeKey] = 0;
+                } else if (!isAimed && mode.type === "charged") {
+                    state.weapon[chargeKey] = 0;
                 }
             } else if (state.planet.isMoving) {
                 let ntx = state.planet.targetNodeX !== null ? state.planet.targetNodeX : state.planet.targetX;
                 let nty = state.planet.targetNodeY !== null ? state.planet.targetNodeY : state.planet.targetY;
-                if (ntx !== null && nty !== null) {
-                    const moveAngle = Math.atan2(nty - state.planet.y, ntx - state.planet.x);
-                    let diff = moveAngle - turret.angle;
-                    diff = Utilities.normalizeAngle(diff);
-                    turret.angle += Math.sign(diff) * Math.min(Math.abs(diff), turret.turnSpeed * (dt / 1000));
-                }
+                this.aimTurret(turret, state.planet.x, state.planet.y, ntx, nty, dt);
                 if (mode.type === "charged") state.weapon[chargeKey] = 0;
             } else {
                 if (mode.type === "charged") state.weapon[chargeKey] = 0;
