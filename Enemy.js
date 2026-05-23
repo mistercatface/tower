@@ -37,7 +37,7 @@ export class Enemy extends DestructibleEntity {
         this.pushX = 0;
         this.pushY = 0;
         this.attackRange = 75;
-        this.fireRate = 1000;
+        this.fireRate = 1500;
         this.fireTimerId = null;
         this.dodgeTimerId = null;
         this.dodgeTargetX = 0;
