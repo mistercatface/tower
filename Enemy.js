@@ -36,8 +36,8 @@ export class Enemy {
         this.pushY = 0;
         this.attackRange = 75;
         this.fireRate = 1000;
-        this.isFireReady = true;
-        this.isDodgeReady = true;
+        this.fireTimerId = null;
+        this.dodgeTimerId = null;
         this.dodgeTargetX = 0;
         this.dodgeTargetY = 0;
         this.currentState = enemyStates.navigating;
@@ -196,25 +196,19 @@ export class Enemy {
                             if (this.isValidDodgeTarget(destX, destY, gridSystem)) {
                                 this.dodgeTargetX = destX;
                                 this.dodgeTargetY = destY;
-                                this.isDodgeReady = false;
-                                scheduler.schedule(2000, () => {
-                                    this.isDodgeReady = true;
-                                });
+                                this.dodgeTimerId = scheduler.schedule(2000);
                                 return true;
                             }
                         }
                     } else {
-                        this.isDodgeReady = false;
-                        scheduler.schedule(500, () => {
-                            this.isDodgeReady = true;
-                        });
+                        this.dodgeTimerId = scheduler.schedule(500);
                     }
                 }
             }
         }
         return false;
     }
-
+    
     isValidDodgeTarget(x, y, gridSystem) {
         if (!gridSystem) return true;
         const { col, row } = gridSystem.worldToGrid(x, y);

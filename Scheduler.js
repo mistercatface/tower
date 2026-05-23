@@ -4,7 +4,7 @@ export class Scheduler {
         this.nextId = 1;
     }
 
-    schedule(delay, callback, isLoop = false) {
+    schedule(delay, callback = null, isLoop = false) {
         const id = this.nextId++;
         this.events.push({ id, timer: delay, delay, callback, isLoop, remove: false, paused: false });
         return id;
@@ -52,11 +52,11 @@ export class Scheduler {
             if (event.timer <= 0) {
                 if (event.isLoop) {
                     while (event.timer <= 0) {
-                        event.callback();
+                        if (event.callback) event.callback();
                         event.timer += event.delay;
                     }
                 } else {
-                    event.callback();
+                    if (event.callback) event.callback();
                     event.remove = true;
                     hasRemovals = true;
                 }

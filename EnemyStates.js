@@ -1,6 +1,6 @@
 export class EnemyNavigatingState {
     update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler) {
-        if (enemy.canDodge && enemy.isDodgeReady && enemy.shouldTriggerDodge(missiles, gridSystem, scheduler)) {
+        if (enemy.canDodge && scheduler.getTimeRemaining(enemy.dodgeTimerId) <= 0 && enemy.shouldTriggerDodge(missiles, gridSystem, scheduler)) {
             enemy.changeState("dodging");
             return enemy.currentState.update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler);
         }
@@ -27,7 +27,7 @@ export class EnemyNavigatingState {
 
 export class EnemyEngagedState {
     update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler) {
-        if (enemy.canDodge && enemy.isDodgeReady && enemy.shouldTriggerDodge(missiles, gridSystem, scheduler)) {
+        if (enemy.canDodge && scheduler.getTimeRemaining(enemy.dodgeTimerId) <= 0 && enemy.shouldTriggerDodge(missiles, gridSystem, scheduler)) {
             enemy.changeState("dodging");
             return enemy.currentState.update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler);
         }
@@ -44,12 +44,8 @@ export class EnemyEngagedState {
         enemy.calculateSeparation(spatialHash);
         enemy.applyMovement(dt, target, false);
         enemy.resolveWallCollisions(walls);
-
-        if (enemy.isFireReady) {
-            enemy.isFireReady = false;
-            scheduler.schedule(enemy.fireRate, () => {
-                enemy.isFireReady = true;
-            });
+        if (scheduler.getTimeRemaining(enemy.fireTimerId) <= 0) {
+            enemy.fireTimerId = scheduler.schedule(enemy.fireRate);
             return true;
         }
         return false;

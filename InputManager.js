@@ -99,8 +99,8 @@ export class InputManager {
                                         .filter((u) => u.isAbility && u.triggerType === "double_tap_move" && state.abilities[u.id])
                                         .forEach((upg) => {
                                             if (state.scheduler.getTimeRemaining(state.abilityTimers[upg.id].cooldownId) <= 0) {
-                                                state.abilityTimers[upg.id].activeId = state.scheduler.schedule(upg.activeDuration, () => {});
-                                                state.abilityTimers[upg.id].cooldownId = state.scheduler.schedule(upg.cooldown, () => {});
+                                                state.abilityTimers[upg.id].activeId = state.scheduler.schedule(upg.activeDuration);
+                                                state.abilityTimers[upg.id].cooldownId = state.scheduler.schedule(upg.cooldown);
                                                 if (upg.onTrigger) upg.onTrigger(state);
                                             }
                                         });
