@@ -1,5 +1,5 @@
 import { state } from "./GameState/GameState.js";
-import { createUpgrades } from "./Upgrades.js";
+import { createUpgrades, createBaseUpgrades } from "./Upgrades.js";
 import { loadProgress } from "./Storage.js";
 import { initUI, updateUI, updateHud } from "./UI.js";
 import { Renderer } from "./Renderer.js";
@@ -16,7 +16,7 @@ ctx.imageSmoothingEnabled = false;
 let gameOverUI;
 
 const renderer = new Renderer(canvas, ctx);
-const upgrades = createUpgrades();
+const upgrades = [...createBaseUpgrades(), ...createUpgrades()];
 const viewport = new Viewport(0, 0);
 
 const uiSnapshot = {

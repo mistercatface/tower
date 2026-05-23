@@ -57,6 +57,115 @@ export class Upgrade {
     }
 }
 
+export const createBaseUpgrades = () => [
+    new Upgrade({
+        id: "Damage",
+        category: "attack",
+        name: "Damage",
+        description: "Increases base weapon damage.",
+        applyFn: (stats, level) => { stats.damage.flatModifiers += level; },
+        currentStrFn: (level) => 1 + level,
+        nextStrFn: (level) => 1 + (level + 1),
+        dynamicStrFn: (state) => state.weapon.damage
+    }),
+    new Upgrade({
+        id: "Accuracy",
+        category: "attack",
+        name: "Accuracy",
+        description: "Reduces weapon spread.",
+        applyFn: (stats, level) => { stats.accuracy.flatModifiers += level * 0.01; },
+        currentStrFn: (level) => (50 + level) + "%",
+        nextStrFn: (level) => (50 + level + 1) + "%",
+        maxLevel: 45,
+        dynamicStrFn: (state) => (state.weapon.accuracy * 100).toFixed(0) + "%"
+    }),
+    new Upgrade({
+        id: "Penetration",
+        category: "attack",
+        name: "Penetration",
+        description: "Projectiles pierce enemies they kill.",
+        applyFn: (stats, level) => { stats.penetration.flatModifiers += level; },
+        currentStrFn: (level) => "+" + level,
+        nextStrFn: (level) => "+" + (level + 1),
+        maxLevel: 2
+    }),
+    new Upgrade({
+        id: "Speed",
+        category: "attack",
+        name: "Turn Speed",
+        description: "Increases turret rotation speed.",
+        applyFn: (stats, level) => { stats.turnSpeed.flatModifiers += level * Math.PI * 0.5; },
+        currentStrFn: (level) => (3 + level * 0.5).toFixed(1) + "π",
+        nextStrFn: (level) => (3 + (level + 1) * 0.5).toFixed(1) + "π"
+    }),
+    new Upgrade({
+        id: "Charge",
+        category: "attack",
+        name: "Fire Rate",
+        description: "Reduces time between shots.",
+        applyFn: (stats, level) => { stats.chargeTime.flatModifiers -= level * 100; },
+        currentStrFn: (level) => Math.max(100, 1000 - level * 50) + "ms",
+        nextStrFn: (level) => Math.max(100, 1000 - (level + 1) * 50) + "ms",
+        maxLevel: 18,
+        dynamicStrFn: (state) => state.weapon.chargeTime.toFixed(0) + "ms"
+    }),
+    new Upgrade({
+        id: "Range",
+        category: "attack",
+        name: "Range",
+        description: "Increases weapon targeting range.",
+        applyFn: (stats, level) => { stats.range.flatModifiers += level * 10; },
+        currentStrFn: (level) => 150 + level * 10,
+        nextStrFn: (level) => 150 + (level + 1) * 10
+    }),
+    new Upgrade({
+        id: "Health",
+        category: "defense",
+        name: "Health",
+        description: "Increases maximum planet health.",
+        applyFn: (stats, level) => { stats.maxHealth.flatModifiers += level * 20; },
+        currentStrFn: (level) => 100 + level * 20,
+        nextStrFn: (level) => 100 + (level + 1) * 20,
+        onPurchase: (state) => { state.planet.heal(20); }
+    }),
+    new Upgrade({
+        id: "Regen",
+        category: "defense",
+        name: "Regenerate",
+        description: "Restore health over time.",
+        currentStrFn: (level) => level + " HP/s",
+        nextStrFn: (level) => (level + 1) + " HP/s",
+        updateFn: (dt, state, level) => {
+            if (state.planet.health < state.planet.maxHealth) {
+                state.planet.addHealAccumulator(level * (dt / 1000));
+            } else {
+                state.planet.clearHealAccumulator();
+            }
+        },
+    }),
+    new Upgrade({
+        id: "Mitigation",
+        category: "defense",
+        name: "Mitigation",
+        description: "Reduces incoming damage by a percentage.",
+        applyFn: (stats, level) => { stats.mitigation.flatModifiers += level * 0.01; },
+        currentStrFn: (level) => (1 + level) + "%",
+        nextStrFn: (level) => (2 + level) + "%",
+        maxLevel: 74
+    }),
+    new Upgrade({
+        id: "MoveSpeed",
+        category: "defense",
+        name: "Move Speed",
+        description: "Increases planet movement speed.",
+        applyFn: (stats, level) => { stats.moveSpeedMultiplier.flatModifiers += level * 0.25; },
+        currentStrFn: (level) => "x" + (1.0 + level * 0.25).toFixed(2),
+        nextStrFn: (level) => "x" + (1.0 + (level + 1) * 0.25).toFixed(2),
+        maxLevel: 4,
+        dynamicStrFn: (state) => "x" + (state.planet.moveSpeed / 25).toFixed(2)
+    }),
+]
+
 export const createUpgrades = () => [
     new Upgrade({
         id: "BaseCost1",
@@ -285,112 +394,6 @@ export const createUpgrades = () => [
         isAbility: true,
         maxLevel: 1,
         minPlayerLevel: 3
-    }),
-    new Upgrade({
-        id: "Damage",
-        category: "attack",
-        name: "Damage",
-        description: "Increases base weapon damage.",
-        applyFn: (stats, level) => { stats.damage.flatModifiers += level; },
-        currentStrFn: (level) => 1 + level,
-        nextStrFn: (level) => 1 + (level + 1),
-        dynamicStrFn: (state) => state.weapon.damage
-    }),
-    new Upgrade({
-        id: "Accuracy",
-        category: "attack",
-        name: "Accuracy",
-        description: "Reduces weapon spread.",
-        applyFn: (stats, level) => { stats.accuracy.flatModifiers += level * 0.01; },
-        currentStrFn: (level) => (50 + level) + "%",
-        nextStrFn: (level) => (50 + level + 1) + "%",
-        maxLevel: 45,
-        dynamicStrFn: (state) => (state.weapon.accuracy * 100).toFixed(0) + "%"
-    }),
-    new Upgrade({
-        id: "Penetration",
-        category: "attack",
-        name: "Penetration",
-        description: "Projectiles pierce enemies they kill.",
-        applyFn: (stats, level) => { stats.penetration.flatModifiers += level; },
-        currentStrFn: (level) => "+" + level,
-        nextStrFn: (level) => "+" + (level + 1),
-        maxLevel: 2
-    }),
-    new Upgrade({
-        id: "Speed",
-        category: "attack",
-        name: "Turn Speed",
-        description: "Increases turret rotation speed.",
-        applyFn: (stats, level) => { stats.turnSpeed.flatModifiers += level * Math.PI * 0.5; },
-        currentStrFn: (level) => (3 + level * 0.5).toFixed(1) + "π",
-        nextStrFn: (level) => (3 + (level + 1) * 0.5).toFixed(1) + "π"
-    }),
-    new Upgrade({
-        id: "Charge",
-        category: "attack",
-        name: "Fire Rate",
-        description: "Reduces time between shots.",
-        applyFn: (stats, level) => { stats.chargeTime.flatModifiers -= level * 100; },
-        currentStrFn: (level) => Math.max(100, 1000 - level * 50) + "ms",
-        nextStrFn: (level) => Math.max(100, 1000 - (level + 1) * 50) + "ms",
-        maxLevel: 18,
-        dynamicStrFn: (state) => state.weapon.chargeTime.toFixed(0) + "ms"
-    }),
-    new Upgrade({
-        id: "Range",
-        category: "attack",
-        name: "Range",
-        description: "Increases weapon targeting range.",
-        applyFn: (stats, level) => { stats.range.flatModifiers += level * 10; },
-        currentStrFn: (level) => 150 + level * 10,
-        nextStrFn: (level) => 150 + (level + 1) * 10
-    }),
-    new Upgrade({
-        id: "Health",
-        category: "defense",
-        name: "Health",
-        description: "Increases maximum planet health.",
-        applyFn: (stats, level) => { stats.maxHealth.flatModifiers += level * 20; },
-        currentStrFn: (level) => 100 + level * 20,
-        nextStrFn: (level) => 100 + (level + 1) * 20,
-        onPurchase: (state) => { state.planet.heal(20); }
-    }),
-    new Upgrade({
-        id: "Regen",
-        category: "defense",
-        name: "Regenerate",
-        description: "Restore health over time.",
-        currentStrFn: (level) => level + " HP/s",
-        nextStrFn: (level) => (level + 1) + " HP/s",
-        updateFn: (dt, state, level) => {
-            if (state.planet.health < state.planet.maxHealth) {
-                state.planet.addHealAccumulator(level * (dt / 1000));
-            } else {
-                state.planet.clearHealAccumulator();
-            }
-        },
-    }),
-    new Upgrade({
-        id: "Mitigation",
-        category: "defense",
-        name: "Mitigation",
-        description: "Reduces incoming damage by a percentage.",
-        applyFn: (stats, level) => { stats.mitigation.flatModifiers += level * 0.01; },
-        currentStrFn: (level) => (1 + level) + "%",
-        nextStrFn: (level) => (2 + level) + "%",
-        maxLevel: 74
-    }),
-    new Upgrade({
-        id: "MoveSpeed",
-        category: "defense",
-        name: "Move Speed",
-        description: "Increases planet movement speed.",
-        applyFn: (stats, level) => { stats.moveSpeedMultiplier.flatModifiers += level * 0.25; },
-        currentStrFn: (level) => "x" + (1.0 + level * 0.25).toFixed(2),
-        nextStrFn: (level) => "x" + (1.0 + (level + 1) * 0.25).toFixed(2),
-        maxLevel: 4,
-        dynamicStrFn: (state) => "x" + (state.planet.moveSpeed / 25).toFixed(2)
     }),
     new Upgrade({
         id: "GameSpeed",
