@@ -19,9 +19,7 @@ export class Enemy extends DestructibleEntity {
     }
 
     constructor(x, y, radius, speed, health, color, reward, type = "standard", attackType = "ranged", canDodge = false) {
-        const initialAngle = Math.atan2(-y, -x);
-        super(x, y, initialAngle, health, health, false);
-    
+        super(x, y, 0, health, health, false);
         this.radius = radius;
         this.speed = speed;
         this.color = color;
@@ -30,7 +28,7 @@ export class Enemy extends DestructibleEntity {
         this.attackType = attackType;
         this.canDodge = canDodge;
         this.turnSpeed = 10;
-        this.turret = new Turret(initialAngle, 10);
+        this.turret = new Turret(0, 10);
         this.isEngaged = false;
         this.desiredX = 0;
         this.desiredY = 0;
