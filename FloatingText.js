@@ -11,15 +11,16 @@ export class FloatingText {
     update(dt) {
         this.life -= dt / 1000;
         this.y -= 20 * (dt / 1000);
-        if (this.life <= 0) {
-            this.isDead = true;
-        }
     }
 
     static spawn(state, x, y, text, color) {
         const offsetX = (Math.random() - 0.5) * 16;
         const offsetY = (Math.random() - 0.5) * 16;
-        state.floatingTexts.push(new FloatingText(x + offsetX, y + offsetY, text, color));
+        const ft = new FloatingText(x + offsetX, y + offsetY, text, color);
+        state.floatingTexts.push(ft);
+        state.scheduler.schedule(1000, () => {
+            ft.isDead = true;
+        });
     }
 
     static updateAll(state, dt) {

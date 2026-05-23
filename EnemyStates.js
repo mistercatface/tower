@@ -1,19 +1,19 @@
 export class EnemyNavigatingState {
-    update(enemy, dt, target, gridSystem, walls, missiles, spatialHash) {
-        if (enemy.canDodge && enemy.dodgeCooldownTimer <= 0 && enemy.shouldTriggerDodge(missiles, gridSystem)) {
+    update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler) {
+        if (enemy.canDodge && enemy.isDodgeReady && enemy.shouldTriggerDodge(missiles, gridSystem, scheduler)) {
             enemy.changeState("dodging");
-            return enemy.currentState.update(enemy, dt, target, gridSystem, walls, missiles, spatialHash);
+            return enemy.currentState.update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler);
         }
 
         if (enemy.attackType === "charge") {
             enemy.changeState("charging");
-            return enemy.currentState.update(enemy, dt, target, gridSystem, walls, missiles, spatialHash);
+            return enemy.currentState.update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler);
         }
 
         const distToTarget = Math.hypot(enemy.x - target.x, enemy.y - target.y);
         if (distToTarget <= target.radius + enemy.attackRange) {
             enemy.changeState("engaged");
-            return enemy.currentState.update(enemy, dt, target, gridSystem, walls, missiles, spatialHash);
+            return enemy.currentState.update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler);
         }
 
         enemy.calculateSteering(target, gridSystem);
@@ -26,16 +26,16 @@ export class EnemyNavigatingState {
 }
 
 export class EnemyEngagedState {
-    update(enemy, dt, target, gridSystem, walls, missiles, spatialHash) {
-        if (enemy.canDodge && enemy.dodgeCooldownTimer <= 0 && enemy.shouldTriggerDodge(missiles, gridSystem)) {
+    update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler) {
+        if (enemy.canDodge && enemy.isDodgeReady && enemy.shouldTriggerDodge(missiles, gridSystem, scheduler)) {
             enemy.changeState("dodging");
-            return enemy.currentState.update(enemy, dt, target, gridSystem, walls, missiles, spatialHash);
+            return enemy.currentState.update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler);
         }
 
         const distToTarget = Math.hypot(enemy.x - target.x, enemy.y - target.y);
         if (distToTarget > target.radius + enemy.attackRange) {
             enemy.changeState("navigating");
-            return enemy.currentState.update(enemy, dt, target, gridSystem, walls, missiles, spatialHash);
+            return enemy.currentState.update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler);
         }
 
         enemy.desiredX = target.x - enemy.x;
@@ -45,9 +45,11 @@ export class EnemyEngagedState {
         enemy.applyMovement(dt, target, false);
         enemy.resolveWallCollisions(walls);
 
-        enemy.fireTimer += dt;
-        if (enemy.fireTimer >= enemy.fireRate) {
-            enemy.fireTimer = 0;
+        if (enemy.isFireReady) {
+            enemy.isFireReady = false;
+            scheduler.schedule(enemy.fireRate, () => {
+                enemy.isFireReady = true;
+            });
             return true;
         }
         return false;
@@ -55,7 +57,7 @@ export class EnemyEngagedState {
 }
 
 export class EnemyChargingState {
-    update(enemy, dt, target, gridSystem, walls, missiles, spatialHash) {
+    update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler) {
         const distToTarget = Math.hypot(enemy.x - target.x, enemy.y - target.y);
         enemy.isEngaged = distToTarget <= target.radius + enemy.attackRange;
 
@@ -69,7 +71,7 @@ export class EnemyChargingState {
 }
 
 export class EnemyDodgingState {
-    update(enemy, dt, target, gridSystem, walls, missiles, spatialHash) {
+    update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler) {
         const dx = enemy.dodgeTargetX - enemy.x;
         const dy = enemy.dodgeTargetY - enemy.y;
         const dist = Math.hypot(dx, dy);

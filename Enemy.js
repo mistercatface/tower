@@ -6,8 +6,7 @@ export class Enemy {
     static updateAll(state, dt, spatialHash) {
         for (let i = state.enemies.length - 1; i >= 0; i--) {
             const e = state.enemies[i];
-            if (e.dodgeCooldownTimer > 0) e.dodgeCooldownTimer -= dt;
-            const wantsToShoot = e.currentState.update(e, dt, state.planet, state.gridSystem, state.walls, state.projectiles, spatialHash);
+            const wantsToShoot = e.currentState.update(e, dt, state.planet, state.gridSystem, state.walls, state.projectiles, spatialHash, state.scheduler);
             if (wantsToShoot) state.projectiles.push(new Projectile(e.x, e.y, e.radius * 0.333, 150, state.planet, null, 10, "enemy"));
             if (e.isDead) state.enemies.splice(i, 1);
         }
@@ -37,8 +36,8 @@ export class Enemy {
         this.pushY = 0;
         this.attackRange = 75;
         this.fireRate = 1000;
-        this.fireTimer = 0;
-        this.dodgeCooldownTimer = 0;
+        this.isFireReady = true;
+        this.isDodgeReady = true;
         this.dodgeTargetX = 0;
         this.dodgeTargetY = 0;
         this.currentState = enemyStates.navigating;
@@ -173,7 +172,7 @@ export class Enemy {
         }
     }
 
-    shouldTriggerDodge(projectiles, gridSystem) {
+    shouldTriggerDodge(projectiles, gridSystem, scheduler) {
         for (const m of projectiles) {
             if (m.faction === "enemy") continue;
 
@@ -197,12 +196,18 @@ export class Enemy {
                             if (this.isValidDodgeTarget(destX, destY, gridSystem)) {
                                 this.dodgeTargetX = destX;
                                 this.dodgeTargetY = destY;
-                                this.dodgeCooldownTimer = 2000;
+                                this.isDodgeReady = false;
+                                scheduler.schedule(2000, () => {
+                                    this.isDodgeReady = true;
+                                });
                                 return true;
                             }
                         }
                     } else {
-                        this.dodgeCooldownTimer = 500;
+                        this.isDodgeReady = false;
+                        scheduler.schedule(500, () => {
+                            this.isDodgeReady = true;
+                        });
                     }
                 }
             }

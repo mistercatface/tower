@@ -35,26 +35,36 @@ export class Scheduler {
     }
 
     update(dt) {
-        for (let i = this.events.length - 1; i >= 0; i--) {
+        let hasRemovals = false;
+
+        for (let i = 0; i < this.events.length; i++) {
             const event = this.events[i];
-            
+
             if (event.remove) {
-                this.events.splice(i, 1);
+                hasRemovals = true;
                 continue;
             }
-            
+
             if (event.paused) continue;
 
             event.timer -= dt;
-            
+
             if (event.timer <= 0) {
-                event.callback();
                 if (event.isLoop) {
-                    event.timer += event.delay;
+                    while (event.timer <= 0) {
+                        event.callback();
+                        event.timer += event.delay;
+                    }
                 } else {
-                    this.events.splice(i, 1);
+                    event.callback();
+                    event.remove = true;
+                    hasRemovals = true;
                 }
             }
+        }
+
+        if (hasRemovals) {
+            this.events = this.events.filter((e) => !e.remove);
         }
     }
 }
