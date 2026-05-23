@@ -64,9 +64,9 @@ export class Renderer {
 
             const tempPlanet = { ...state.planet, x: state.mapPlayerX, y: state.mapPlayerY };
             this.drawPlanet(tempPlanet, 0);
-            this.drawTurret(state.turret, state.mapPlayerX, state.mapPlayerY, state.planet.radius, 0, 1);
-            if (state.abilities["TwoGuns"]) {
-                this.drawTurret(state.turret2, state.mapPlayerX, state.mapPlayerY, state.planet.radius, 0, 1);
+            
+            for (const turret of state.turrets) {
+                this.drawTurret(turret, state.mapPlayerX, state.mapPlayerY, state.planet.radius, 0, 1);
             }
         } else {
             this.drawPlanet(state.planet, state.weapon.range);
@@ -105,9 +105,9 @@ export class Renderer {
             }
 
             this.drawPlanet(state.planet, 0);
-            this.drawTurret(state.turret, state.planet.x, state.planet.y, state.planet.radius, state.weapon.charge, state.weapon.chargeTime);
-            if (state.abilities["TwoGuns"]) {
-                this.drawTurret(state.turret2, state.planet.x, state.planet.y, state.planet.radius, state.weapon.charge2, state.weapon.chargeTime);
+            
+            for (const turret of state.turrets) {
+                this.drawTurret(turret, state.planet.x, state.planet.y, state.planet.radius, turret.charge, state.weapon.chargeTime);
             }
         }
 

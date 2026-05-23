@@ -55,16 +55,15 @@ export class GameState {
             penetration: new Stat(0),
             moveSpeedMultiplier: new Stat(1.0),
             baseUpgradeCost: new Stat(defaultUpgradeCost),
+            turretCount: new Stat(1),
         };
 
         this.planet = new Planet(0, 0, 8, this.stats.maxHealth.value);
-        this.turret = new Turret(0, this.stats.turnSpeed.value);
-        this.turret2 = new Turret(Math.PI, this.stats.turnSpeed.value);
+        this.turrets = [new Turret(0, this.stats.turnSpeed.value)];
+        
         const self = this;
         this.weapon = {
             chargeTime: 1000,
-            charge: 0,
-            charge2: 0,
             range: 150,
             damage: 1,
             penetration: 0,
@@ -221,10 +220,7 @@ export class GameState {
 
         this.planet.fullHeal();
         this.planet.clearHealAccumulator();
-        this.weapon.charge = 0;
-        this.weapon.charge2 = 0;
-        this.turret.angle = 0;
-        this.turret2.angle = Math.PI;
+        this.turrets = [new Turret(0, 10)];
 
         this.enemies = [];
         this.projectiles = [];
@@ -233,8 +229,6 @@ export class GameState {
         this.pickups = [];
         this.activeLasers = [];
         this.gridSystem.clear();
-        this.currentTarget = null;
-        this.currentTarget2 = null;
 
         this.gameSpeed = 2.0;
         this.selectedSpeed = 1.0;
@@ -261,14 +255,22 @@ export class GameState {
         this.weapon.chargeTime = this.stats.chargeTime.value;
         this.weapon.penetration = this.stats.penetration.value;
 
-        this.turret.turnSpeed = this.stats.turnSpeed.value;
-        this.turret2.turnSpeed = this.stats.turnSpeed.value;
         this.gameSpeed = this.stats.gameSpeed.value;
         this.selectedSpeed = Math.min(this.selectedSpeed, this.gameSpeed);
         this.pointBonus = this.stats.pointBonus.value;
         this.mitigation = this.stats.mitigation.value;
         this.planet.updateMaxHealth(this.stats.maxHealth.value);
         this.planet.moveSpeed = 25 * this.stats.moveSpeedMultiplier.value;
+
+        const targetTurretCount = Math.floor(this.stats.turretCount.value);
+        while (this.turrets.length < targetTurretCount) {
+            const newAngle = (this.turrets.length / targetTurretCount) * Math.PI * 2;
+            this.turrets.push(new Turret(newAngle, this.stats.turnSpeed.value));
+        }
+        while (this.turrets.length > targetTurretCount) {
+            this.turrets.pop();
+        }
+        this.turrets.forEach(t => t.turnSpeed = this.stats.turnSpeed.value);
 
         if (upgradesList) {
             upgradesList.forEach((upg) => {

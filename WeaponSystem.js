@@ -7,7 +7,7 @@ export class ChargedWeaponMode {
         this.onFire = onFireFn;
     }
 
-    processTurret(dt, state, turret, target, blocksTargeting, chargeKey) {
+    processTurret(dt, state, turret, target, blocksTargeting, combatEvents) {
         const turretDist = state.planet.radius + 12;
         const tx = state.planet.x + Math.cos(turret.angle) * turretDist;
         const ty = state.planet.y + Math.sin(turret.angle) * turretDist;
@@ -17,21 +17,21 @@ export class ChargedWeaponMode {
         if (target && !blocksTargeting) {
             isAimed = WeaponSystem.aimTurret(turret, state.planet.x, state.planet.y, target.x, target.y, dt);
             if (isAimed) {
-                state.weapon[chargeKey] += dt;
-                if (state.weapon[chargeKey] >= state.weapon.chargeTime) {
+                turret.charge += dt;
+                if (turret.charge >= state.weapon.chargeTime) {
                     this.onFire(state, tx, ty, turret.angle);
-                    state.weapon[chargeKey] = 0;
+                    turret.charge = 0;
                 }
             } else {
-                state.weapon[chargeKey] = 0;
+                turret.charge = 0;
             }
         } else if (state.planet.isMoving) {
             let ntx = state.planet.targetNodeX !== null ? state.planet.targetNodeX : state.planet.targetX;
             let nty = state.planet.targetNodeY !== null ? state.planet.targetNodeY : state.planet.targetY;
             WeaponSystem.aimTurret(turret, state.planet.x, state.planet.y, ntx, nty, dt);
-            state.weapon[chargeKey] = 0;
+            turret.charge = 0;
         } else {
-            state.weapon[chargeKey] = 0;
+            turret.charge = 0;
         }
     }
 }
@@ -41,7 +41,7 @@ export class ContinuousWeaponMode {
         this.onTick = onTickFn;
     }
 
-    processTurret(dt, state, turret, target, blocksTargeting, chargeKey, combatEvents) {
+    processTurret(dt, state, turret, target, blocksTargeting, combatEvents) {
         const turretDist = state.planet.radius + 4 + 4 * (state.planet.radius / 8);
         const tx = state.planet.x + Math.cos(turret.angle) * turretDist;
         const ty = state.planet.y + Math.sin(turret.angle) * turretDist;
@@ -54,7 +54,7 @@ export class ContinuousWeaponMode {
             WeaponSystem.aimTurret(turret, state.planet.x, state.planet.y, ntx, nty, dt);
         }
 
-        this.onTick(dt, state, tx, ty, turret, chargeKey, combatEvents);
+        this.onTick(dt, state, tx, ty, turret, combatEvents);
     }
 }
 
@@ -126,12 +126,12 @@ export class WeaponSystem {
         return { hit: "none", x: cx, y: cy, dist: dist };
     }
 
-    static getNearestEnemy(state, source = state.planet, range = state.weapon.range, excludeTarget = null) {
+    static getNearestEnemy(state, source = state.planet, range = state.weapon.range, excludedTargets = null) {
         let nearest = null;
         let minDist = Infinity;
         for (let i = 0; i < state.enemies.length; i++) {
             const e = state.enemies[i];
-            if (excludeTarget && e === excludeTarget) continue;
+            if (excludedTargets && excludedTargets.has(e)) continue;
             const dist = Math.hypot(e.x - source.x, e.y - source.y);
             if (dist <= range && dist < minDist) {
                 if (Utilities.hasLineOfSight(source.x, source.y, e.x, e.y, state.walls)) {
@@ -160,44 +160,8 @@ export class WeaponSystem {
 
     static updateTurretAndWeapon(dt, blocksTargeting, state, upgrades) {
         const combatEvents = [];
-
-        if (state.currentTarget) {
-            const dist = Math.hypot(state.currentTarget.x - state.planet.x, state.currentTarget.y - state.planet.y);
-            if (
-                state.currentTarget.isDead ||
-                dist > state.weapon.range ||
-                !Utilities.hasLineOfSight(state.planet.x, state.planet.y, state.currentTarget.x, state.currentTarget.y, state.walls) ||
-                blocksTargeting
-            ) {
-                state.currentTarget = null;
-            }
-        }
-        if (!state.currentTarget && !blocksTargeting) {
-            state.currentTarget = this.getNearestEnemy(state);
-        }
-
-        const twoGuns = state.abilities["TwoGuns"];
-        if (twoGuns) {
-            if (state.currentTarget2) {
-                const dist2 = Math.hypot(state.currentTarget2.x - state.planet.x, state.currentTarget2.y - state.planet.y);
-                if (
-                    state.currentTarget2.isDead ||
-                    dist2 > state.weapon.range ||
-                    !Utilities.hasLineOfSight(state.planet.x, state.planet.y, state.currentTarget2.x, state.currentTarget2.y, state.walls) ||
-                    blocksTargeting
-                ) {
-                    state.currentTarget2 = null;
-                } else if (state.currentTarget2 === state.currentTarget && this.getNearestEnemy(state, state.planet, state.weapon.range, state.currentTarget) !== null) {
-                    state.currentTarget2 = null;
-                }
-            }
-            if (!state.currentTarget2 && !blocksTargeting) {
-                state.currentTarget2 = this.getNearestEnemy(state, state.planet, state.weapon.range, state.currentTarget);
-                if (!state.currentTarget2) state.currentTarget2 = state.currentTarget;
-            }
-        }
-
         state.activeLasers = [];
+
         let mode = DEFAULT_WEAPON_MODE;
         if (upgrades) {
             const activeAbilityWithMode = upgrades.find(u => u.isAbility && state.abilities[u.id] && u.weaponMode);
@@ -206,11 +170,33 @@ export class WeaponSystem {
             }
         }
 
-        mode.processTurret(dt, state, state.turret, state.currentTarget, blocksTargeting, "charge", combatEvents);
+        const engagedTargets = new Set();
 
-        if (twoGuns) {
-            if (state.weapon.charge2 === undefined) state.weapon.charge2 = 0;
-            mode.processTurret(dt, state, state.turret2, state.currentTarget2, blocksTargeting, "charge2", combatEvents);
+        for (const turret of state.turrets) {
+            if (turret.target) {
+                const dist = Math.hypot(turret.target.x - state.planet.x, turret.target.y - state.planet.y);
+                if (
+                    turret.target.isDead ||
+                    dist > state.weapon.range ||
+                    !Utilities.hasLineOfSight(state.planet.x, state.planet.y, turret.target.x, turret.target.y, state.walls) ||
+                    blocksTargeting
+                ) {
+                    turret.target = null;
+                }
+            }
+
+            if (!turret.target && !blocksTargeting) {
+                turret.target = this.getNearestEnemy(state, state.planet, state.weapon.range, engagedTargets);
+                if (!turret.target) {
+                    turret.target = this.getNearestEnemy(state, state.planet, state.weapon.range);
+                }
+            }
+
+            if (turret.target) {
+                engagedTargets.add(turret.target);
+            }
+
+            mode.processTurret(dt, state, turret, turret.target, blocksTargeting, combatEvents);
         }
 
         return combatEvents;

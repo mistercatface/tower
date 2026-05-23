@@ -261,16 +261,15 @@ export const createUpgrades = () => [
         abilityApplyFn: (weapon, planet) => {
             weapon.damage *= 0.33;
         },
-        weaponMode: new ContinuousWeaponMode((dt, state, tx, ty, turret, chargeKey, combatEvents) => {
-            state.weapon.laserTimer = (state.weapon.laserTimer || 0) + dt;
+        weaponMode: new ContinuousWeaponMode((dt, state, tx, ty, turret, combatEvents) => {
+            turret.laserTimer = (turret.laserTimer || 0) + dt;
             let laserCanDamage = false;
-            if (state.weapon.laserTimer >= 200) {
+            if (turret.laserTimer >= 200) {
                 laserCanDamage = true;
-                state.weapon.laserTimer = 0;
+                turret.laserTimer = 0;
             }
-            const phaseOffset = chargeKey === "charge2" ? Math.PI : 0;
             const accuracySpread = (1 - state.weapon.accuracy) * (Math.PI / 12);
-            const laserAngle = turret.angle + Math.sin((state.lastTime || Date.now()) / 150 + phaseOffset) * accuracySpread;
+            const laserAngle = turret.angle + Math.sin((state.lastTime || Date.now()) / 150) * accuracySpread;
             const hit = WeaponSystem.castLaser(tx, ty, laserAngle, 2000, state);
             state.activeLasers.push({ x1: tx, y1: ty, x2: hit.x, y2: hit.y });
             if (laserCanDamage && hit.hit === "enemy") {
@@ -300,13 +299,33 @@ export const createUpgrades = () => [
         id: "TwoGuns",
         category: "abilities",
         name: "Two Guns",
-        description: "When Active: Equip two turrets. Bullets deal half damage and target different enemies.",
+        description: "When Active: Equip an additional turret. Bullets deal half damage and target different enemies.",
         maxLevel: 1,
         isAbility: true,
+        applyFn: (stats, level) => {
+            stats.turretCount.flatModifiers += 1;
+        },
         abilityApplyFn: (weapon, planet) => {
             weapon.damage *= 0.5;
         },
         minPlayerLevel: 5
+    }),
+    new Upgrade({
+        id: "ThreeGuns",
+        category: "abilities",
+        name: "Three Guns",
+        description: "When Active: Equip a third turret. Bullets deal one-third damage and target different enemies.",
+        maxLevel: 1,
+        isAbility: true,
+        //requires: ['TwoGuns'],
+        //replaces: ['TwoGuns'],
+        applyFn: (stats, level) => {
+            stats.turretCount.flatModifiers += 2;
+        },
+        abilityApplyFn: (weapon, planet) => {
+            weapon.damage *= 0.33;
+        },
+        minPlayerLevel: 0
     }),
     new Upgrade({
         id: "TwinStrike",
