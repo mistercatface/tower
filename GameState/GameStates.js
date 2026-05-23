@@ -5,7 +5,7 @@ import { SpatialHash } from "../SpatialHash.js";
 import { Enemy } from "../Enemy.js";
 import { Projectile } from "../Entities.js";
 import { WeaponSystem } from "../WeaponSystem.js";
-import { WallGenerator } from "../Generator.js";
+import { WallGenerator } from "../Generator/Generator.js";
 import { showNodeConfirm } from "../UI.js";
 
 export class MapState {

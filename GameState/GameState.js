@@ -2,7 +2,7 @@ import { Turret } from "../Entities.js";
 import { Planet } from "../Planet.js";
 import { GridSystem } from "../GridSystem.js";
 import { enemyTypes, defaultUpgradeCost } from "../Config.js";
-import { WallGenerator } from "../Generator.js";
+import { WallGenerator } from "../Generator/Generator.js";
 import { FloatingText } from "../FloatingText.js";
 import { perkMilestones } from "../Config.js";
 import { Scheduler } from "../Scheduler.js";
