@@ -186,7 +186,9 @@ export function updateToggleButton(btnId, isUnlocked, isActive, btnText, upgDef)
             btn.style.background = isActive ? "#4CAF50" : "#222";
             btn.style.borderColor = isActive ? "#4CAF50" : "#555";
             btn.style.color = "white";
-            btn.innerText = btnText;
+            if (btn.innerText !== btnText) {
+                btn.innerText = btnText;
+            }
         }
     } else {
         btn.style.display = "none";
@@ -417,22 +419,27 @@ function drawStat(state, upg) {
     const maxLevelDisplay = upg.maxLevel === Infinity ? "∞" : upg.maxLevel;
     const isAbilOrPerk = upg.category === "abilities" || upg.category === "perk";
 
+    let targetHTML = "";
     if (isAbilOrPerk) {
-        btn.innerHTML = getUpgradeButtonHTML(upg.name, "", "", statStr);
+        targetHTML = getUpgradeButtonHTML(upg.name, "", "", statStr);
+    } else {
+        targetHTML = getUpgradeButtonHTML(`${upg.name} ${currentLevelToCheck}/${maxLevelDisplay}`, costText, costColor, statStr);
+    }
+
+    if (btn.dataset.lastHtml !== targetHTML) {
+        btn.innerHTML = targetHTML;
+        btn.dataset.lastHtml = targetHTML;
+    }
+
+    if (isAbilOrPerk || isMaxed) {
         btn.style.opacity = "1";
         btn.style.borderColor = "#4CAF50";
+    } else if (state.isGameOver) {
+        btn.style.opacity = "0.5";
+        btn.style.borderColor = "#555";
     } else {
-        btn.innerHTML = getUpgradeButtonHTML(`${upg.name} ${currentLevelToCheck}/${maxLevelDisplay}`, costText, costColor, statStr);
-        if (isMaxed) {
-            btn.style.opacity = "1";
-            btn.style.borderColor = "#4CAF50";
-        } else if (state.isGameOver) {
-            btn.style.opacity = "0.5";
-            btn.style.borderColor = "#555";
-        } else {
-            btn.style.opacity = state.score >= uState.ptsCost ? "1" : "0.5";
-            btn.style.borderColor = "#555";
-        }
+        btn.style.opacity = state.score >= uState.ptsCost ? "1" : "0.5";
+        btn.style.borderColor = "#555";
     }
 }
 
