@@ -81,13 +81,13 @@ export const PickupStrategies = {
                 x: pickup.x,
                 y: pickup.y,
                 radius: 0,
-                maxRadius: 150,
-                speed: 150,
+                maxRadius: 100,
+                speed: 300,
                 damage: 50,
                 hitTargets: new Set(),
                 phase: "expanding",
-                lingerTimer: 1000,
-                fadeTimer: 500,
+                lingerTimer: 750,
+                fadeTimer: 250,
                 opacity: 1.0
             });
 

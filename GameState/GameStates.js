@@ -99,6 +99,25 @@ export class CombatState {
                 if (exp.phase === "expanding") {
                     exp.radius += exp.speed * (dt / 1000);
                     
+                    for (const seg of ctx.state.walls) {
+                        if (seg.isDead || exp.hitTargets.has(seg)) continue;
+                        if (CollisionSystem.checkCircleRect(exp, seg)) {
+                            let blocked = false;
+                            for (const otherSeg of ctx.state.walls) {
+                                if (otherSeg === seg || otherSeg.isDead) continue;
+                                const dist = Utilities.distToSegment(otherSeg.x, otherSeg.y, exp.x, exp.y, seg.x, seg.y);
+                                if (dist < otherSeg.size * 0.5) {
+                                    blocked = true;
+                                    break;
+                                }
+                            }
+                            if (!blocked) {
+                                allEvents.push({ target: seg, damage: 10 });
+                                exp.hitTargets.add(seg);
+                            }
+                        }
+                    }
+                    
                     for (const e of ctx.state.enemies) {
                         if (e.isDead || exp.hitTargets.has(e)) continue;
                         if (Math.hypot(e.x - exp.x, e.y - exp.y) <= exp.radius + e.radius) {
