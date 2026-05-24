@@ -1,6 +1,8 @@
+// Render/Render.js
 import { ChunkManager } from "./ChunkManager.js";
 import { SpriteCache } from "./SpriteCache.js";
 import { RenderStrategies } from "./RenderStrategies.js";
+import { Explosion } from "../Entities/Explosion/Explosion.js";
 
 export class Renderer {
     constructor(canvas, ctx) {
@@ -31,13 +33,12 @@ export class Renderer {
                 RenderStrategies.targetMarker(this.ctx, state.planet.targetX, state.planet.targetY);
             }
             this.drawShadows(state);
-            this.drawExplosions(state);
             for (const p of state.pickups) RenderStrategies.pickup(this.ctx, p, this.pickupCache);
+            for (const p of state.projectiles) RenderStrategies.missile(this.ctx, p, p.faction === "player" ? "#FFEB3B" : "#F44336", this.missileCache);
             for (const e of state.enemies) {
                 RenderStrategies.enemy(this.ctx, e, this.enemyCache);
                 RenderStrategies.turret(this.ctx, e.turret, e.x, e.y, e.radius, 0, 1, e.color);
             }
-            for (const p of state.projectiles) RenderStrategies.missile(this.ctx, p, p.faction === "player" ? "#FFEB3B" : "#F44336", this.missileCache);
             this.chunkManager.drawWalls(this.ctx, state);
             if (state.activeLasers) {
                 for (const laser of state.activeLasers) {
@@ -48,6 +49,7 @@ export class Renderer {
             for (const turret of state.turrets) {
                 RenderStrategies.turret(this.ctx, turret, state.planet.x, state.planet.y, state.planet.radius, turret.charge, state.weapon.chargeTime);
             }
+            Explosion.renderAll(this.ctx, state, this);
         }
         for (const ft of state.floatingTexts) RenderStrategies.floatingText(this.ctx, ft);
         this.ctx.restore();
@@ -123,46 +125,6 @@ export class Renderer {
         this.ctx.fillStyle = "#000000";
         this.drawShadowPolygons(state.planet.x, state.planet.y, 1500, state, this.ctx);
         this.ctx.restore();
-    }
-
-    drawExplosions(state) {
-        if (!state.explosions) return;
-        for (const exp of state.explosions) {
-            const canvasSize = exp.maxRadius * 2;
-            if (canvasSize <= 0) continue;
-            const offCanvas = new OffscreenCanvas(canvasSize, canvasSize);
-            const offCtx = offCanvas.getContext("2d");
-            const cx = exp.maxRadius;
-            const cy = exp.maxRadius;
-            offCtx.beginPath();
-            offCtx.arc(cx, cy, exp.radius, 0, Math.PI * 2);
-            if (exp.phase === "expanding") {
-                offCtx.fillStyle = "rgba(244, 67, 54, 0.6)";
-                offCtx.fill();
-                offCtx.lineWidth = 3;
-                offCtx.strokeStyle = "#FFEB3B";
-                offCtx.stroke();
-            } else {
-                offCtx.fillStyle = "rgba(139, 0, 0, 0.9)";
-                offCtx.fill();
-            }
-            offCtx.globalCompositeOperation = "destination-out";
-            offCtx.fillStyle = "#000000";
-            offCtx.save();
-            offCtx.translate(cx - exp.x, cy - exp.y);
-            this.drawShadowPolygons(exp.x, exp.y, exp.maxRadius, state, offCtx);
-            offCtx.restore();
-            this.ctx.save();
-            if (exp.phase === "expanding") {
-                this.ctx.globalCompositeOperation = "screen";
-                this.ctx.globalAlpha = 1.0;
-            } else {
-                this.ctx.globalCompositeOperation = "source-over";
-                this.ctx.globalAlpha = exp.opacity !== undefined ? exp.opacity : 1.0;
-            }
-            this.ctx.drawImage(offCanvas, exp.x - exp.maxRadius, exp.y - exp.maxRadius);
-            this.ctx.restore();
-        }
     }
 
     drawDebugFlowField(state) {

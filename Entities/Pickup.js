@@ -1,4 +1,6 @@
+// Entities/Pickup.js
 import { Entity } from "./Entity.js";
+import { Explosion } from "./Explosion/Explosion.js";
 
 export const PickupStrategies = {
     coin: {
@@ -75,22 +77,15 @@ export const PickupStrategies = {
         onHit(state, pickup, projectile, events) {
             pickup.isDead = true;
             projectile.isDead = true;
-
             if (!state.explosions) state.explosions = [];
-            state.explosions.push({
-                x: pickup.x,
-                y: pickup.y,
+            state.explosions.push(new Explosion(pickup.x, pickup.y, "standard", {
                 radius: 0,
                 maxRadius: 100,
                 speed: 300,
                 damage: 50,
-                hitTargets: new Set(),
-                phase: "expanding",
                 lingerTimer: 750,
-                fadeTimer: 250,
-                opacity: 1.0
-            });
-
+                fadeTimer: 250
+            }));
             return true;
         }
     }

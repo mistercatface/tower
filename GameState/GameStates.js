@@ -8,6 +8,7 @@ import { WeaponSystem } from "../WeaponSystem.js";
 import { WallGenerator } from "../Generator/Generator.js";
 import { showNodeConfirm } from "../UI.js";
 import { Utilities } from "../Utilities.js";
+import { Explosion } from "../Entities/Explosion/Explosion.js";
 
 export class MapState {
     onEnter(ctx) {
@@ -92,79 +93,7 @@ export class CombatState {
         const collisionEvents = CollisionSystem.run(ctx.state);
         const allEvents = [...turretEvents, ...collisionEvents];
 
-        if (ctx.state.explosions) {
-            for (let i = ctx.state.explosions.length - 1; i >= 0; i--) {
-                const exp = ctx.state.explosions[i];
-                
-                if (exp.phase === "expanding") {
-                    exp.radius += exp.speed * (dt / 1000);
-                    
-                    for (const seg of ctx.state.walls) {
-                        if (seg.isDead || exp.hitTargets.has(seg)) continue;
-                        if (CollisionSystem.checkCircleRect(exp, seg)) {
-                            let blocked = false;
-                            for (const otherSeg of ctx.state.walls) {
-                                if (otherSeg === seg || otherSeg.isDead) continue;
-                                const dist = Utilities.distToSegment(otherSeg.x, otherSeg.y, exp.x, exp.y, seg.x, seg.y);
-                                if (dist < otherSeg.size * 0.5) {
-                                    blocked = true;
-                                    break;
-                                }
-                            }
-                            if (!blocked) {
-                                allEvents.push({ target: seg, damage: 10 });
-                                exp.hitTargets.add(seg);
-                            }
-                        }
-                    }
-                    
-                    for (const e of ctx.state.enemies) {
-                        if (e.isDead || exp.hitTargets.has(e)) continue;
-                        if (Math.hypot(e.x - exp.x, e.y - exp.y) <= exp.radius + e.radius) {
-                            if (Utilities.hasLineOfSight(exp.x, exp.y, e.x, e.y, ctx.state.walls, e.radius)) {
-                                allEvents.push({ target: e, damage: exp.damage });
-                                exp.hitTargets.add(e);
-                            }
-                        }
-                    }
-                    
-                    if (!exp.hitTargets.has(ctx.state.planet) && Math.hypot(ctx.state.planet.x - exp.x, ctx.state.planet.y - exp.y) <= exp.radius + ctx.state.planet.radius) {
-                        if (Utilities.hasLineOfSight(exp.x, exp.y, ctx.state.planet.x, ctx.state.planet.y, ctx.state.walls, ctx.state.planet.radius)) {
-                            allEvents.push({ target: ctx.state.planet, damage: exp.damage });
-                            exp.hitTargets.add(ctx.state.planet);
-                        }
-                    }
-
-                    for (const p of ctx.state.pickups) {
-                        if (p.isDead || exp.hitTargets.has(p)) continue;
-                        if (Math.hypot(p.x - exp.x, p.y - exp.y) <= exp.radius + p.radius) {
-                            if (Utilities.hasLineOfSight(exp.x, exp.y, p.x, p.y, ctx.state.walls, p.radius)) {
-                                if (p.strategy && p.strategy.onHit) {
-                                    p.strategy.onHit(ctx.state, p, { isDead: false }, allEvents);
-                                    exp.hitTargets.add(p);
-                                }
-                            }
-                        }
-                    }
-
-                    if (exp.radius >= exp.maxRadius) {
-                        exp.radius = exp.maxRadius;
-                        exp.phase = "lingering";
-                    }
-                } else if (exp.phase === "lingering") {
-                    exp.lingerTimer -= dt;
-                    if (exp.lingerTimer <= 0) {
-                        exp.phase = "fading";
-                    }
-                } else if (exp.phase === "fading") {
-                    exp.fadeTimer -= dt;
-                    exp.opacity = Math.max(0, exp.fadeTimer / 500);
-                    if (exp.fadeTimer <= 0) {
-                        ctx.state.explosions.splice(i, 1);
-                    }
-                }
-            }
-        }
+        Explosion.updateAll(ctx.state, dt, allEvents);
 
         for (const event of allEvents) {
             if (event.target && event.target.handleHit) event.target.handleHit(event.damage, ctx);
