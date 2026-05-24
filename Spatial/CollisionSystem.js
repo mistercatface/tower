@@ -57,42 +57,7 @@ export class CollisionSystem {
                 }
             }
             if (hitPickup) continue;
-
-            if (p.faction === "player") {
-                if (state.abilities["Eraser"]) {
-                    for (const ep of state.projectiles) {
-                        if (ep.isDead || ep.faction !== "enemy") continue;
-                        if (this.checkCircle(p, ep)) {
-                            ep.isDead = true;
-                            if (p.penetration > 0) {
-                                p.penetration--;
-                            } else {
-                                p.isDead = true;
-                                break;
-                            }
-                        }
-                    }
-                    if (p.isDead) continue;
-                }
-                for (const e of state.enemies) {
-                    if (e.isDead) continue;
-                    if (this.checkCircle(p, e)) {
-                        events.push({ target: e, damage: state.weapon.damage });
-                        if (e.health <= state.weapon.damage && p.penetration > 0) {
-                            p.penetration--;
-                            e.health -= state.weapon.damage;
-                        } else {
-                            p.isDead = true;
-                            break;
-                        }
-                    }
-                }
-            } else if (p.faction === "enemy") {
-                if (this.checkCircle(p, state.planet)) {
-                    p.isDead = true;
-                    events.push({ target: state.planet, damage: p.damage });
-                }
-            }
+            p.resolveFactionCollisions(state, events, this);
         }
 
         for (const e of state.enemies) {

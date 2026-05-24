@@ -85,9 +85,6 @@ export const ExplosionStrategies = {
             if (exp.phase === "expanding") {
                 offCtx.fillStyle = "rgba(244, 67, 54, 0.6)";
                 offCtx.fill();
-                offCtx.lineWidth = 3;
-                offCtx.strokeStyle = "#FFEB3B";
-                offCtx.stroke();
             } else {
                 offCtx.fillStyle = "rgba(139, 0, 0, 0.9)";
                 offCtx.fill();

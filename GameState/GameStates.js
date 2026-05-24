@@ -20,7 +20,7 @@ export class MapState {
     }
     render(ctx) {
         ctx.viewport.follow(ctx.state.mapPlayerX, ctx.state.mapPlayerY - 200);
-        ctx.renderer.render(ctx.state, ctx.viewport);
+        ctx.renderer.renderMapScene(ctx.state, ctx.viewport);
     }
     handleInteraction(worldCoords, isDoubleTap, ctx) {
         const currentNode = ctx.state.mapNodes.find((n) => n.id === ctx.state.currentNodeId);
@@ -31,7 +31,7 @@ export class MapState {
             if (dist < 20) {
                 showNodeConfirm(neighbor, () => {
                     ctx.state.mapTargetNodeId = neighbor.id;
-                    ctx.state.phase = "map_transition";
+                    ctx.fsm.transition("map_transition");
                 });
                 break;
             }
@@ -51,13 +51,16 @@ export class MapTransitionState {
     }
     render(ctx) {
         ctx.viewport.follow(ctx.state.mapPlayerX, ctx.state.mapPlayerY - 200);
-        ctx.renderer.render(ctx.state, ctx.viewport);
+        ctx.renderer.renderMapScene(ctx.state, ctx.viewport);
     }
 }
 
 export class CombatState {
     onEnter(ctx) {
-        ctx.state.enterCombatPhase();
+        ctx.state.phase = "combat";
+        ctx.state.pickups = [];
+        ctx.state.planet.resetToSpawn();
+        ctx.state.waveManager.startCombat();
         WallGenerator.generate(ctx.state);
         const offsetX = ctx.state.mapPlayerX - ctx.viewport.x;
         const offsetY = ctx.state.mapPlayerY - ctx.viewport.y;
@@ -106,7 +109,7 @@ export class CombatState {
 
     render(ctx) {
         ctx.viewport.follow(ctx.state.planet.x, ctx.state.planet.y);
-        ctx.renderer.render(ctx.state, ctx.viewport);
+        ctx.renderer.renderCombatScene(ctx.state, ctx.viewport);
     }
 
     handleInteraction(worldCoords, isDoubleTap, ctx) {
@@ -159,6 +162,6 @@ export class RewardState {
     }
     render(ctx) {
         ctx.viewport.follow(ctx.state.planet.x, ctx.state.planet.y);
-        ctx.renderer.render(ctx.state, ctx.viewport);
+        ctx.renderer.renderCombatScene(ctx.state, ctx.viewport);
     }
 }

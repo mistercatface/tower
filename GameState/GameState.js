@@ -31,6 +31,7 @@ export class Stat {
 
 export class GameState {
     constructor() {
+        this.fsm = null;
         this.scheduler = new Scheduler();
         this.waveManager = new WaveManager();
         this.phase = "map";
@@ -85,24 +86,26 @@ export class GameState {
         this.initializeDefaultState();
     }
 
+    transitionPhase(phaseName) {
+        this.phase = phaseName;
+        if (this.fsm) this.fsm.transition(phaseName);
+    }
+
     enterRewardPhase() {
-        this.phase = "reward";
+        this.transitionPhase("reward");
     }
 
     enterMapPhase() {
-        this.phase = "map";
-    }
-
-    enterCombatPhase() {
-        this.phase = "combat";
-        this.pickups = [];
-        this.planet.resetToSpawn();
-        this.waveManager.startCombat();
+        this.transitionPhase("map");
     }
 
     startRun() {
         this.mapTargetNodeId = 0;
-        this.phase = "map_transition";
+        this.transitionPhase("map_transition");
+    }
+
+    enterCombatPhase() {
+        this.transitionPhase("combat");
     }
 
     updateMapTransition(dt, viewport) {
@@ -117,13 +120,9 @@ export class GameState {
                 this.mapPlayerY = targetNode.y;
                 this.currentNodeId = targetNode.id;
                 if (!targetNode.completed) {
-                    this.enterCombatPhase();
-                    WallGenerator.generate(this);
-                    const offsetX = this.mapPlayerX - viewport.x;
-                    const offsetY = this.mapPlayerY - viewport.y;
-                    viewport.snapTo(this.planet.x - offsetX, this.planet.y - offsetY);
+                    this.transitionPhase("combat");
                 } else {
-                    this.enterMapPhase();
+                    this.transitionPhase("map");
                 }
                 return true;
             } else {

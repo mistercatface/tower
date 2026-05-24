@@ -1,4 +1,3 @@
-// Render/Render.js
 import { ChunkManager } from "./ChunkManager.js";
 import { SpriteCache } from "./SpriteCache.js";
 import { RenderStrategies } from "./RenderStrategies.js";
@@ -14,43 +13,48 @@ export class Renderer {
         this.chunkManager = new ChunkManager();
     }
 
-    render(state, viewport) {
+    renderMapScene(state, viewport) {
         this.ctx.save();
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         if (viewport) viewport.apply(this.ctx);
-        if (state.phase === "map" || state.phase === "map_transition") {
-            this.drawMap(state);
-            const tempPlanet = { ...state.planet, x: state.mapPlayerX, y: state.mapPlayerY };
-            RenderStrategies.planet(this.ctx, tempPlanet, 0);
-            for (const turret of state.turrets) {
-                RenderStrategies.turret(this.ctx, turret, state.mapPlayerX, state.mapPlayerY, state.planet.radius, 0, 1);
-            }
-        } else {
-            RenderStrategies.planet(this.ctx, state.planet, state.weapon.range);
-            if (state.planet.queuedTargetX != null && state.planet.queuedTargetY != null) {
-                RenderStrategies.targetMarker(this.ctx, state.planet.queuedTargetX, state.planet.queuedTargetY);
-            } else if (state.planet.isMoving && state.planet.targetX !== null && state.planet.targetY !== null) {
-                RenderStrategies.targetMarker(this.ctx, state.planet.targetX, state.planet.targetY);
-            }
-            this.drawShadows(state);
-            for (const p of state.pickups) RenderStrategies.pickup(this.ctx, p, this.pickupCache);
-            for (const p of state.projectiles) RenderStrategies.missile(this.ctx, p, p.faction === "player" ? "#FFEB3B" : "#F44336", this.missileCache);
-            for (const e of state.enemies) {
-                RenderStrategies.enemy(this.ctx, e, this.enemyCache);
-                RenderStrategies.turret(this.ctx, e.turret, e.x, e.y, e.radius, 0, 1, e.color);
-            }
-            if (state.activeLasers) {
-                for (const laser of state.activeLasers) {
-                    RenderStrategies.laser(this.ctx, laser);
-                }
-            }
-            RenderStrategies.planet(this.ctx, state.planet, 0);
-            for (const turret of state.turrets) {
-                RenderStrategies.turret(this.ctx, turret, state.planet.x, state.planet.y, state.planet.radius, turret.charge, state.weapon.chargeTime);
-            }
-            Explosion.renderAll(this.ctx, state, this);
-            this.chunkManager.drawWalls(this.ctx, state);
+        this.drawMap(state);
+        const tempPlanet = { ...state.planet, x: state.mapPlayerX, y: state.mapPlayerY };
+        RenderStrategies.planet(this.ctx, tempPlanet, 0);
+        for (const turret of state.turrets) {
+            RenderStrategies.turret(this.ctx, turret, state.mapPlayerX, state.mapPlayerY, state.planet.radius, 0, 1);
         }
+        for (const ft of state.floatingTexts) RenderStrategies.floatingText(this.ctx, ft);
+        this.ctx.restore();
+    }
+
+    renderCombatScene(state, viewport) {
+        this.ctx.save();
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        if (viewport) viewport.apply(this.ctx);
+        RenderStrategies.planet(this.ctx, state.planet, state.weapon.range);
+        if (state.planet.queuedTargetX != null && state.planet.queuedTargetY != null) {
+            RenderStrategies.targetMarker(this.ctx, state.planet.queuedTargetX, state.planet.queuedTargetY);
+        } else if (state.planet.isMoving && state.planet.targetX !== null && state.planet.targetY !== null) {
+            RenderStrategies.targetMarker(this.ctx, state.planet.targetX, state.planet.targetY);
+        }
+        this.drawShadows(state);
+        for (const p of state.pickups) RenderStrategies.pickup(this.ctx, p, this.pickupCache);
+        for (const p of state.projectiles) RenderStrategies.missile(this.ctx, p, p.faction === "player" ? "#FFEB3B" : "#F44336", this.missileCache);
+        for (const e of state.enemies) {
+            RenderStrategies.enemy(this.ctx, e, this.enemyCache);
+            RenderStrategies.turret(this.ctx, e.turret, e.x, e.y, e.radius, 0, 1, e.color);
+        }
+        if (state.activeLasers) {
+            for (const laser of state.activeLasers) {
+                RenderStrategies.laser(this.ctx, laser);
+            }
+        }
+        RenderStrategies.planet(this.ctx, state.planet, 0);
+        for (const turret of state.turrets) {
+            RenderStrategies.turret(this.ctx, turret, state.planet.x, state.planet.y, state.planet.radius, turret.charge, state.weapon.chargeTime);
+        }
+        Explosion.renderAll(this.ctx, state, this);
+        this.chunkManager.drawWalls(this.ctx, state);
         for (const ft of state.floatingTexts) RenderStrategies.floatingText(this.ctx, ft);
         this.ctx.restore();
     }

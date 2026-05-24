@@ -25,8 +25,9 @@ const uiSnapshot = {
 };
 
 const stateMachineContext = { state, upgrades, viewport, renderer, updateUI };
-
 const fsm = new GameStateMachine(stateMachineContext);
+stateMachineContext.fsm = fsm;
+state.fsm = fsm;
 fsm.addState("map", new MapState());
 fsm.addState("map_transition", new MapTransitionState());
 fsm.addState("combat", new CombatState());
@@ -57,7 +58,6 @@ function loop(timestamp) {
     state.lastTime = timestamp;
     dt = Math.min(dt, 50);
     if (state.planet.health > 0) {
-        if (fsm.currentStateName !== state.phase) fsm.transition(state.phase);
         if (!state.isPaused) fsm.update(dt * state.selectedSpeed);
         fsm.render();
         updateHud(state, upgrades);

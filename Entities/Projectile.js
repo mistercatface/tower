@@ -43,4 +43,42 @@ export class Projectile extends Entity {
         this.move(dt);
         this.checkOutOfBounds(canvasBounds);
     }
+
+    resolveFactionCollisions(state, events, system) {
+        if (this.faction === "player") {
+            if (state.abilities["Eraser"]) {
+                for (const ep of state.projectiles) {
+                    if (ep.isDead || ep.faction !== "enemy") continue;
+                    if (system.checkCircle(this, ep)) {
+                        ep.isDead = true;
+                        if (this.penetration > 0) {
+                            this.penetration--;
+                        } else {
+                            this.isDead = true;
+                            break;
+                        }
+                    }
+                }
+                if (this.isDead) return;
+            }
+            for (const e of state.enemies) {
+                if (e.isDead) continue;
+                if (system.checkCircle(this, e)) {
+                    events.push({ target: e, damage: state.weapon.damage });
+                    if (e.health <= state.weapon.damage && this.penetration > 0) {
+                        this.penetration--;
+                        e.health -= state.weapon.damage;
+                    } else {
+                        this.isDead = true;
+                        break;
+                    }
+                }
+            }
+        } else if (this.faction === "enemy") {
+            if (system.checkCircle(this, state.planet)) {
+                this.isDead = true;
+                events.push({ target: state.planet, damage: this.damage });
+            }
+        }
+    }
 }
