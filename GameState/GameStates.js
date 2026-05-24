@@ -56,6 +56,10 @@ export class MapTransitionState {
 }
 
 export class CombatState {
+    constructor() {
+        this.spatialHash = new SpatialHash(50);
+    }
+
     onEnter(ctx) {
         ctx.state.phase = "combat";
         ctx.state.pickups = [];
@@ -81,7 +85,8 @@ export class CombatState {
             ctx.state.gridSystem.buildPlayerFlowField(ctx.state.planet.targetX, ctx.state.planet.targetY);
         }
 
-        const spatialHash = new SpatialHash(50);
+        const spatialHash = this.spatialHash;
+        this.spatialHash.clear();
         for (const e of ctx.state.enemies) spatialHash.insert(e);
         spatialHash.insert(ctx.state.planet);
 
