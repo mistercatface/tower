@@ -1,5 +1,4 @@
 import { Entity } from "./Entity.js";
-import { Utilities } from "../Utilities.js";
 
 export const PickupStrategies = {
     coin: {
@@ -85,7 +84,11 @@ export const PickupStrategies = {
                 maxRadius: 150,
                 speed: 150,
                 damage: 50,
-                hitTargets: new Set()
+                hitTargets: new Set(),
+                phase: "expanding",
+                lingerTimer: 1000,
+                fadeTimer: 500,
+                opacity: 1.0
             });
 
             return true;

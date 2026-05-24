@@ -190,11 +190,17 @@ export class Renderer {
 
             offCtx.beginPath();
             offCtx.arc(cx, cy, exp.radius, 0, Math.PI * 2);
-            offCtx.fillStyle = "rgba(244, 67, 54, 0.6)";
-            offCtx.fill();
-            offCtx.lineWidth = 3;
-            offCtx.strokeStyle = "#FFEB3B";
-            offCtx.stroke();
+            
+            if (exp.phase === "expanding") {
+                offCtx.fillStyle = "rgba(244, 67, 54, 0.6)";
+                offCtx.fill();
+                offCtx.lineWidth = 3;
+                offCtx.strokeStyle = "#FFEB3B";
+                offCtx.stroke();
+            } else {
+                offCtx.fillStyle = "rgba(139, 0, 0, 0.9)";
+                offCtx.fill();
+            }
 
             offCtx.globalCompositeOperation = "destination-out";
             offCtx.fillStyle = "#000000";
@@ -205,7 +211,13 @@ export class Renderer {
             offCtx.restore();
 
             this.ctx.save();
-            this.ctx.globalCompositeOperation = "screen";
+            if (exp.phase === "expanding") {
+                this.ctx.globalCompositeOperation = "screen";
+                this.ctx.globalAlpha = 1.0;
+            } else {
+                this.ctx.globalCompositeOperation = "source-over";
+                this.ctx.globalAlpha = exp.opacity !== undefined ? exp.opacity : 1.0;
+            }
             this.ctx.drawImage(offCanvas, exp.x - exp.maxRadius, exp.y - exp.maxRadius);
             this.ctx.restore();
         }

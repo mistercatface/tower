@@ -95,27 +95,42 @@ export class CombatState {
         if (ctx.state.explosions) {
             for (let i = ctx.state.explosions.length - 1; i >= 0; i--) {
                 const exp = ctx.state.explosions[i];
-                exp.radius += exp.speed * (dt / 1000);
                 
-                for (const e of ctx.state.enemies) {
-                    if (e.isDead || exp.hitTargets.has(e)) continue;
-                    if (Math.hypot(e.x - exp.x, e.y - exp.y) <= exp.radius + e.radius) {
-                        if (Utilities.hasLineOfSight(exp.x, exp.y, e.x, e.y, ctx.state.walls, e.radius)) {
-                            allEvents.push({ target: e, damage: exp.damage });
-                            exp.hitTargets.add(e);
+                if (exp.phase === "expanding") {
+                    exp.radius += exp.speed * (dt / 1000);
+                    
+                    for (const e of ctx.state.enemies) {
+                        if (e.isDead || exp.hitTargets.has(e)) continue;
+                        if (Math.hypot(e.x - exp.x, e.y - exp.y) <= exp.radius + e.radius) {
+                            if (Utilities.hasLineOfSight(exp.x, exp.y, e.x, e.y, ctx.state.walls, e.radius)) {
+                                allEvents.push({ target: e, damage: exp.damage });
+                                exp.hitTargets.add(e);
+                            }
                         }
                     }
-                }
-                
-                if (!exp.hitTargets.has(ctx.state.planet) && Math.hypot(ctx.state.planet.x - exp.x, ctx.state.planet.y - exp.y) <= exp.radius + ctx.state.planet.radius) {
-                    if (Utilities.hasLineOfSight(exp.x, exp.y, ctx.state.planet.x, ctx.state.planet.y, ctx.state.walls, ctx.state.planet.radius)) {
-                        allEvents.push({ target: ctx.state.planet, damage: exp.damage });
-                        exp.hitTargets.add(ctx.state.planet);
+                    
+                    if (!exp.hitTargets.has(ctx.state.planet) && Math.hypot(ctx.state.planet.x - exp.x, ctx.state.planet.y - exp.y) <= exp.radius + ctx.state.planet.radius) {
+                        if (Utilities.hasLineOfSight(exp.x, exp.y, ctx.state.planet.x, ctx.state.planet.y, ctx.state.walls, ctx.state.planet.radius)) {
+                            allEvents.push({ target: ctx.state.planet, damage: exp.damage });
+                            exp.hitTargets.add(ctx.state.planet);
+                        }
                     }
-                }
 
-                if (exp.radius >= exp.maxRadius) {
-                    ctx.state.explosions.splice(i, 1);
+                    if (exp.radius >= exp.maxRadius) {
+                        exp.radius = exp.maxRadius;
+                        exp.phase = "lingering";
+                    }
+                } else if (exp.phase === "lingering") {
+                    exp.lingerTimer -= dt;
+                    if (exp.lingerTimer <= 0) {
+                        exp.phase = "fading";
+                    }
+                } else if (exp.phase === "fading") {
+                    exp.fadeTimer -= dt;
+                    exp.opacity = Math.max(0, exp.fadeTimer / 500);
+                    if (exp.fadeTimer <= 0) {
+                        ctx.state.explosions.splice(i, 1);
+                    }
                 }
             }
         }
