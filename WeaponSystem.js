@@ -50,7 +50,7 @@ export class ContinuousWeaponMode extends WeaponTargetingStrategy {
         this.onTick = onTickFn;
     }
 
-    processTurret(dt, state, source, turret, target, blocksTargeting, combatEvents) {
+    processTurret(dt, state, source, chargeTime, turret, target, blocksTargeting, combatEvents) {
         const turretDist = source.radius + 4 + 4 * (source.radius / 8);
         const tx = source.x + Math.cos(turret.angle) * turretDist;
         const ty = source.y + Math.sin(turret.angle) * turretDist;
