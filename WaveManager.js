@@ -128,7 +128,7 @@ export class WaveManager {
             const groupSize = selectedType.groupSettings.baseGroupSize + Math.floor(this.wave * selectedType.groupSettings.growthPerWave);
             return this.spawnGroup(state, selectedType, groupSize);
         } else {
-            const baseSimultaneous = 1 + Math.floor(this.wave / 3);
+            const baseSimultaneous = 1 + Math.floor(this.wave / 5);
             const simCount = Math.min(baseSimultaneous, this.enemiesToSpawn - this.enemiesSpawned);
 
             for (let i = 0; i < simCount; i++) {
