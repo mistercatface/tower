@@ -39,7 +39,6 @@ export class Renderer {
                 RenderStrategies.enemy(this.ctx, e, this.enemyCache);
                 RenderStrategies.turret(this.ctx, e.turret, e.x, e.y, e.radius, 0, 1, e.color);
             }
-            this.chunkManager.drawWalls(this.ctx, state);
             if (state.activeLasers) {
                 for (const laser of state.activeLasers) {
                     RenderStrategies.laser(this.ctx, laser);
@@ -50,6 +49,7 @@ export class Renderer {
                 RenderStrategies.turret(this.ctx, turret, state.planet.x, state.planet.y, state.planet.radius, turret.charge, state.weapon.chargeTime);
             }
             Explosion.renderAll(this.ctx, state, this);
+            this.chunkManager.drawWalls(this.ctx, state);
         }
         for (const ft of state.floatingTexts) RenderStrategies.floatingText(this.ctx, ft);
         this.ctx.restore();
