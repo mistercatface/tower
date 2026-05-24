@@ -116,6 +116,18 @@ export class CombatState {
                         }
                     }
 
+                    for (const p of ctx.state.pickups) {
+                        if (p.isDead || exp.hitTargets.has(p)) continue;
+                        if (Math.hypot(p.x - exp.x, p.y - exp.y) <= exp.radius + p.radius) {
+                            if (Utilities.hasLineOfSight(exp.x, exp.y, p.x, p.y, ctx.state.walls, p.radius)) {
+                                if (p.strategy && p.strategy.onHit) {
+                                    p.strategy.onHit(ctx.state, p, { isDead: false }, allEvents);
+                                    exp.hitTargets.add(p);
+                                }
+                            }
+                        }
+                    }
+
                     if (exp.radius >= exp.maxRadius) {
                         exp.radius = exp.maxRadius;
                         exp.phase = "lingering";
