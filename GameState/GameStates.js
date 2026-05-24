@@ -60,6 +60,10 @@ export class CombatState {
         ctx.state.phase = "combat";
         ctx.state.pickups = [];
         ctx.state.projectiles = [];
+        ctx.state.explosions = [];
+        ctx.state.enemies = [];
+        ctx.state.activeLasers = [];
+        ctx.state.floatingTexts = [];
         ctx.state.planet.resetToSpawn();
         ctx.state.waveManager.startCombat();
         WallGenerator.generate(ctx.state);
