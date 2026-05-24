@@ -2,8 +2,13 @@ import { Segment, buildArcWall } from "../Entities/Wall.js";
 
 const MazeStrategy = {
     generate(state, px, py) {
+        const pathWidth = Math.floor(Math.random() * 3) + 1;
+        const cutoutRadius = Math.random() < 0.25 ? 0 : Math.floor(Math.random() * 5) + 2;
+        const gateSize = Math.floor(Math.random() * 3) + 3;
+        const gateDepth = Math.floor(Math.random() * 4) + 1;
+        const addExtraPaths = Math.random() > 0.5;
+
         const cellSize = state.gridSystem.cellSize;
-        const pathWidth = 3;
         const wallWidth = 1;
         const step = pathWidth + wallWidth;
         const nodesX = 15;
@@ -12,35 +17,21 @@ const MazeStrategy = {
         const rows = nodesY * step + wallWidth;
         const grid = new Array(cols * rows).fill(1);
 
-        const carveNode = (nx, ny) => {
-            const sx = nx * step + wallWidth;
-            const sy = ny * step + wallWidth;
-            for (let r = 0; r < pathWidth; r++) {
-                for (let c = 0; c < pathWidth; c++) {
-                    grid[(sy + r) * cols + (sx + c)] = 0;
+        const carveArea = (startX, startY, w, h) => {
+            const sx = Math.max(0, startX);
+            const sy = Math.max(0, startY);
+            const ex = Math.min(startX + w, cols);
+            const ey = Math.min(startY + h, rows);
+            for (let r = sy; r < ey; r++) {
+                for (let c = sx; c < ex; c++) {
+                    grid[r * cols + c] = 0;
                 }
             }
         };
 
-        const carveH = (nx, ny) => {
-            const sx = nx * step + wallWidth + pathWidth;
-            const sy = ny * step + wallWidth;
-            for (let r = 0; r < pathWidth; r++) {
-                for (let c = 0; c < wallWidth; c++) {
-                    grid[(sy + r) * cols + (sx + c)] = 0;
-                }
-            }
-        };
-
-        const carveV = (nx, ny) => {
-            const sx = nx * step + wallWidth;
-            const sy = ny * step + wallWidth + pathWidth;
-            for (let r = 0; r < wallWidth; r++) {
-                for (let c = 0; c < pathWidth; c++) {
-                    grid[(sy + r) * cols + (sx + c)] = 0;
-                }
-            }
-        };
+        const carveNode = (nx, ny) => carveArea(nx * step + wallWidth, ny * step + wallWidth, pathWidth, pathWidth);
+        const carveH = (nx, ny) => carveArea(nx * step + wallWidth + pathWidth, ny * step + wallWidth, wallWidth, pathWidth);
+        const carveV = (nx, ny) => carveArea(nx * step + wallWidth, ny * step + wallWidth + pathWidth, pathWidth, wallWidth);
 
         const visited = new Set();
         const carveMaze = (nx, ny) => {
@@ -63,139 +54,32 @@ const MazeStrategy = {
 
         carveMaze(Math.floor(nodesX / 2), Math.floor(nodesY / 2));
 
-        for (let i = 0; i < (nodesX * nodesY) / 4; i++) {
-            const nx = Math.floor(Math.random() * (nodesX - 1));
-            const ny = Math.floor(Math.random() * (nodesY - 1));
-            if (Math.random() < 0.5) carveH(nx, ny);
-            else carveV(nx, ny);
+        if (addExtraPaths) {
+            for (let i = 0; i < (nodesX * nodesY) / 4; i++) {
+                const nx = Math.floor(Math.random() * (nodesX - 1));
+                const ny = Math.floor(Math.random() * (nodesY - 1));
+                if (Math.random() < 0.5) carveH(nx, ny);
+                else carveV(nx, ny);
+            }
         }
 
         const cx = Math.floor(cols / 2);
         const cy = Math.floor(rows / 2);
-        for (let r = -6; r <= 6; r++) {
-            for (let c = -6; c <= 6; c++) {
-                if (cy + r >= 0 && cy + r < rows && cx + c >= 0 && cx + c < cols) {
-                    grid[(cy + r) * cols + (cx + c)] = 0;
-                }
-            }
+        
+        if (cutoutRadius > 0) {
+            carveArea(cx - cutoutRadius, cy - cutoutRadius, cutoutRadius * 2 + 1, cutoutRadius * 2 + 1);
         }
 
-        for (let r = 0; r < rows; r++) {
-            for (let c = 0; c < cols; c++) {
-                if (r < 2 || r >= rows - 2 || c < 2 || c >= cols - 2) {
-                    grid[r * cols + c] = 0;
-                }
-            }
-        }
+        carveArea(0, 0, cols, 2);
+        carveArea(0, rows - 2, cols, 2);
+        carveArea(0, 0, 2, rows);
+        carveArea(cols - 2, 0, 2, rows);
 
-        const gateSize = 5;
-        for (let i = -gateSize; i <= gateSize; i++) {
-            for (let d = 0; d < 4; d++) {
-                if (cy + i >= 0 && cy + i < rows) {
-                    grid[d * cols + (cx + i)] = 0;
-                    grid[(rows - 1 - d) * cols + (cx + i)] = 0;
-                }
-            }
-            for (let d = 0; d < 4; d++) {
-                if (cx + i >= 0 && cx + i < cols) {
-                    grid[(cy + i) * cols + d] = 0;
-                    grid[(cy + i) * cols + (cols - 1 - d)] = 0;
-                }
-            }
-        }
-
-        const offsetX = px - (cols * cellSize) / 2;
-        const offsetY = py - (rows * cellSize) / 2;
-        for (let r = 0; r < rows; r++) {
-            for (let c = 0; c < cols; c++) {
-                if (grid[r * cols + c] === 1) {
-                    state.walls.push(new Segment(offsetX + c * cellSize + cellSize / 2, offsetY + r * cellSize + cellSize / 2, 0, cellSize, 0));
-                }
-            }
-        }
-    }
-}
-
-const Maze2Strategy = {
-    generate(state, px, py) {
-        const cellSize = state.gridSystem.cellSize;
-        const pathWidth = 1;
-        const wallWidth = 1;
-        const step = pathWidth + wallWidth;
-        const nodesX = 15;
-        const nodesY = 15;
-        const cols = nodesX * step + wallWidth;
-        const rows = nodesY * step + wallWidth;
-        const grid = new Array(cols * rows).fill(1);
-
-        const carveNode = (nx, ny) => {
-            const sx = nx * step + wallWidth;
-            const sy = ny * step + wallWidth;
-            grid[sy * cols + sx] = 0;
-        };
-
-        const carveH = (nx, ny) => {
-            const sx = nx * step + wallWidth + pathWidth;
-            const sy = ny * step + wallWidth;
-            grid[sy * cols + sx] = 0;
-        };
-
-        const carveV = (nx, ny) => {
-            const sx = nx * step + wallWidth;
-            const sy = ny * step + wallWidth + pathWidth;
-            grid[sy * cols + sx] = 0;
-        };
-
-        const visited = new Set();
-        const carveMaze = (nx, ny) => {
-            visited.add(`${nx},${ny}`);
-            carveNode(nx, ny);
-
-            const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]].sort(() => Math.random() - 0.5);
-            for (const [dx, dy] of dirs) {
-                const tx = nx + dx;
-                const ty = ny + dy;
-                if (tx >= 0 && tx < nodesX && ty >= 0 && ty < nodesY && !visited.has(`${tx},${ty}`)) {
-                    if (dx === 1) carveH(nx, ny);
-                    if (dx === -1) carveH(tx, ny);
-                    if (dy === 1) carveV(nx, ny);
-                    if (dy === -1) carveV(nx, ty);
-                    carveMaze(tx, ty);
-                }
-            }
-        };
-
-        carveMaze(Math.floor(nodesX / 2), Math.floor(nodesY / 2));
-
-        const cx = Math.floor(cols / 2);
-        const cy = Math.floor(rows / 2);
-        for (let r = -4; r <= 4; r++) {
-            for (let c = -4; c <= 4; c++) {
-                if (cy + r >= 0 && cy + r < rows && cx + c >= 0 && cx + c < cols) {
-                    grid[(cy + r) * cols + (cx + c)] = 0;
-                }
-            }
-        }
-
-        for (let r = 0; r < rows; r++) {
-            for (let c = 0; c < cols; c++) {
-                if (r < 2 || r >= rows - 2 || c < 2 || c >= cols - 2) {
-                    grid[r * cols + c] = 0;
-                }
-            }
-        }
-
-        const gateSize = 3;
-        for (let i = -gateSize; i <= gateSize; i++) {
-            if (cy + i >= 0 && cy + i < rows) {
-                grid[0 * cols + (cx + i)] = 0;
-                grid[(rows - 1) * cols + (cx + i)] = 0;
-            }
-            if (cx + i >= 0 && cx + i < cols) {
-                grid[(cy + i) * cols + 0] = 0;
-                grid[(cy + i) * cols + (cols - 1)] = 0;
-            }
-        }
+        const gateSpan = gateSize * 2 + 1;
+        carveArea(cx - gateSize, 0, gateSpan, gateDepth);
+        carveArea(cx - gateSize, rows - gateDepth, gateSpan, gateDepth);
+        carveArea(0, cy - gateSize, gateDepth, gateSpan);
+        carveArea(cols - gateDepth, cy - gateSize, gateDepth, gateSpan);
 
         const offsetX = px - (cols * cellSize) / 2;
         const offsetY = py - (rows * cellSize) / 2;
@@ -454,122 +338,11 @@ const DiamondStrategy = {
     }
 }
 
-const DenseMazeStrategy = {
-    generate(state, px, py) {
-        const cellSize = state.gridSystem.cellSize;
-        const pathWidth = 3;
-        const wallWidth = 1;
-        const step = pathWidth + wallWidth;
-        const nodesX = 15;
-        const nodesY = 15;
-        const cols = nodesX * step + wallWidth;
-        const rows = nodesY * step + wallWidth;
-        const grid = new Array(cols * rows).fill(1);
-
-        const carveNode = (nx, ny) => {
-            const sx = nx * step + wallWidth;
-            const sy = ny * step + wallWidth;
-            for (let r = 0; r < pathWidth; r++) {
-                for (let c = 0; c < pathWidth; c++) {
-                    grid[(sy + r) * cols + (sx + c)] = 0;
-                }
-            }
-        };
-
-        const carveH = (nx, ny) => {
-            const sx = nx * step + wallWidth + pathWidth;
-            const sy = ny * step + wallWidth;
-            for (let r = 0; r < pathWidth; r++) {
-                for (let c = 0; c < wallWidth; c++) {
-                    grid[(sy + r) * cols + (sx + c)] = 0;
-                }
-            }
-        };
-
-        const carveV = (nx, ny) => {
-            const sx = nx * step + wallWidth;
-            const sy = ny * step + wallWidth + pathWidth;
-            for (let r = 0; r < wallWidth; r++) {
-                for (let c = 0; c < pathWidth; c++) {
-                    grid[(sy + r) * cols + (sx + c)] = 0;
-                }
-            }
-        };
-
-        const visited = new Set();
-        const carveMaze = (nx, ny) => {
-            visited.add(`${nx},${ny}`);
-            carveNode(nx, ny);
-
-            const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]].sort(() => Math.random() - 0.5);
-            for (const [dx, dy] of dirs) {
-                const tx = nx + dx;
-                const ty = ny + dy;
-                if (tx >= 0 && tx < nodesX && ty >= 0 && ty < nodesY && !visited.has(`${tx},${ty}`)) {
-                    if (dx === 1) carveH(nx, ny);
-                    if (dx === -1) carveH(tx, ny);
-                    if (dy === 1) carveV(nx, ny);
-                    if (dy === -1) carveV(nx, ty);
-                    carveMaze(tx, ty);
-                }
-            }
-        };
-
-        carveMaze(Math.floor(nodesX / 2), Math.floor(nodesY / 2));
-
-        for (let i = 0; i < (nodesX * nodesY) / 4; i++) {
-            const nx = Math.floor(Math.random() * (nodesX - 1));
-            const ny = Math.floor(Math.random() * (nodesY - 1));
-            if (Math.random() < 0.5) carveH(nx, ny);
-            else carveV(nx, ny);
-        }
-
-        const cx = Math.floor(cols / 2);
-        const cy = Math.floor(rows / 2);
-
-        for (let r = 0; r < rows; r++) {
-            for (let c = 0; c < cols; c++) {
-                if (r < 2 || r >= rows - 2 || c < 2 || c >= cols - 2) {
-                    grid[r * cols + c] = 0;
-                }
-            }
-        }
-
-        const gateSize = 5;
-        for (let i = -gateSize; i <= gateSize; i++) {
-            for (let d = 0; d < 4; d++) {
-                if (cy + i >= 0 && cy + i < rows) {
-                    grid[d * cols + (cx + i)] = 0;
-                    grid[(rows - 1 - d) * cols + (cx + i)] = 0;
-                }
-            }
-            for (let d = 0; d < 4; d++) {
-                if (cx + i >= 0 && cx + i < cols) {
-                    grid[(cy + i) * cols + d] = 0;
-                    grid[(cy + i) * cols + (cols - 1 - d)] = 0;
-                }
-            }
-        }
-
-        const offsetX = px - (cols * cellSize) / 2;
-        const offsetY = py - (rows * cellSize) / 2;
-        for (let r = 0; r < rows; r++) {
-            for (let c = 0; c < cols; c++) {
-                if (grid[r * cols + c] === 1) {
-                    state.walls.push(new Segment(offsetX + c * cellSize + cellSize / 2, offsetY + r * cellSize + cellSize / 2, 0, cellSize, 0));
-                }
-            }
-        }
-    }
-}
-
 export const GeneratorStrategies = {
     MazeStrategy,
-    Maze2Strategy,
     GeometricStrategy,
     FortressStrategy,
     HoneycombStrategy,
     SquareStrategy,
     DiamondStrategy,
-    DenseMazeStrategy
 }
