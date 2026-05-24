@@ -72,8 +72,30 @@ export class WaveManager {
         if (state.gridSystem) {
             const grid = state.gridSystem;
             const gridPos = grid.worldToGrid(x, y);
-            const targetCol = Math.max(0, Math.min(grid.cols - 1, gridPos.col));
-            const targetRow = Math.max(0, Math.min(grid.rows - 1, gridPos.row));
+            let targetCol = Math.max(0, Math.min(grid.cols - 1, gridPos.col));
+            let targetRow = Math.max(0, Math.min(grid.rows - 1, gridPos.row));
+
+            if (grid.grid[targetRow * grid.cols + targetCol] !== 0) {
+                let found = false;
+                for (let radius = 1; radius <= 5; radius++) {
+                    for (let r = -radius; r <= radius; r++) {
+                        for (let c = -radius; c <= radius; c++) {
+                            const nr = targetRow + r;
+                            const nc = targetCol + c;
+                            if (nr >= 0 && nr < grid.rows && nc >= 0 && nc < grid.cols) {
+                                if (grid.grid[nr * grid.cols + nc] === 0) {
+                                    targetRow = nr;
+                                    targetCol = nc;
+                                    found = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if (found) break;
+                    }
+                    if (found) break;
+                }
+            }
 
             x = targetCol * grid.cellSize + grid.centerX - grid.offsetX + grid.cellSize / 2;
             y = targetRow * grid.cellSize + grid.centerY - grid.offsetY + grid.cellSize / 2;
