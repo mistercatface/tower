@@ -1,5 +1,5 @@
 import { Projectile } from "./Entities/Projectile.js";
-import { CollisionSystem } from "./CollisionSystem.js";
+import { CollisionSystem } from "./Spatial/CollisionSystem.js";
 import { Utilities } from "./Utilities.js";
 
 class WeaponTargetingStrategy {

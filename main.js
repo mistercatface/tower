@@ -3,7 +3,7 @@ import { createUpgrades, createBaseUpgrades } from "./Upgrades.js";
 import { loadProgress } from "./Storage.js";
 import { initUI, updateUI, updateHud } from "./UI.js";
 import { Renderer } from "./Render/Render.js";
-import { Viewport } from "./Viewport.js";
+import { Viewport } from "./Render/Viewport.js";
 import { InputManager } from "./InputManager.js";
 import { ProgressionManager } from "./ProgressionManager.js";
 import { GameStateMachine } from "./GameState/GameStateMachine.js";

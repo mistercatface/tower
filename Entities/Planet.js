@@ -1,6 +1,6 @@
 import { Enemy } from "./Enemy.js";
 import { Utilities } from "../Utilities.js";
-import { Navigator } from "../Navigator.js";
+import { Navigator } from "../Spatial/Navigator.js";
 import { FloatingText } from "../FloatingText.js";
 
 export class Planet extends Enemy {

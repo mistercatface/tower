@@ -1,9 +1,9 @@
-import { Navigator } from "../Navigator.js";
+import { Navigator } from "../Spatial/Navigator.js";
 import { Projectile } from "./Projectile.js";
 import { Turret } from "../Turret.js";
 import { enemyStates } from "../EnemyStates.js";
 import { DestructibleEntity } from "./Entity.js";
-import { Separation } from "../Separation.js";
+import { Separation } from "../Spatial/Separation.js";
 import { ProgressionManager } from "../ProgressionManager.js";
 import { saveProgress } from "../Storage.js";
 import { updateUI } from "../UI.js";
