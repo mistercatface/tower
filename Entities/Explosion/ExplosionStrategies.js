@@ -75,10 +75,19 @@ export const ExplosionStrategies = {
         render(ctx, exp, state, renderer) {
             const canvasSize = exp.maxRadius * 2;
             if (canvasSize <= 0) return;
-            const offCanvas = new OffscreenCanvas(canvasSize, canvasSize);
-            const offCtx = offCanvas.getContext("2d");
+            
+            if (!exp.offCanvas) {
+                exp.offCanvas = new OffscreenCanvas(canvasSize, canvasSize);
+                exp.offCtx = exp.offCanvas.getContext("2d");
+            }
+            
+            const offCanvas = exp.offCanvas;
+            const offCtx = exp.offCtx;
             const cx = exp.maxRadius;
             const cy = exp.maxRadius;
+
+            offCtx.globalCompositeOperation = "source-over";
+            offCtx.clearRect(0, 0, canvasSize, canvasSize);
 
             offCtx.beginPath();
             offCtx.arc(cx, cy, exp.radius, 0, Math.PI * 2);
