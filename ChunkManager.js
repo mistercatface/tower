@@ -1,11 +1,42 @@
+import { SpriteCache } from "./SpriteCache.js";
+
 export class ChunkManager {
     constructor() {
         this.chunkSize = 256;
         this.activeChunks = new Map();
         this.chunkPool = [];
         this.lastWallsRef = null;
-        this.wallCache = new Map();
+        this.wallCache = new SpriteCache();
         this.dirtySegments = new Set();
+    }
+
+    updateChunk(chunk, theme) {
+        const ctx = chunk.ctx;
+        ctx.clearRect(0, 0, this.chunkSize, this.chunkSize);
+        const baseR = theme ? theme.r : 0;
+        const baseG = theme ? theme.g : 188;
+        const baseB = theme ? theme.b : 212;
+        for (let i = 0; i < chunk.segmentsCount; i++) {
+            const seg = chunk.segments[i];
+            if (seg.isDead) continue;
+            const healthRatio = Math.max(0, Math.round((seg.health / seg.maxHealth) * 10) / 10);
+            const r = Math.floor(baseR + (244 - baseR) * (1 - healthRatio));
+            const g = Math.floor(baseG + (67 - baseG) * (1 - healthRatio));
+            const b = Math.floor(baseB + (54 - baseB) * (1 - healthRatio));
+            const cacheKey = `${seg.size}_${r}_${g}_${b}`;
+            const cachedSprite = this.wallCache.get(cacheKey, () => {
+                const offCanvas = new OffscreenCanvas(seg.size + 2, seg.size + 2);
+                const offCtx = offCanvas.getContext("2d");
+                offCtx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+                offCtx.fillRect(1, 1, seg.size, seg.size);
+                return offCanvas;
+            });
+            ctx.save();
+            ctx.translate(seg.x - chunk.x, seg.y - chunk.y);
+            ctx.rotate(seg.angle);
+            ctx.drawImage(cachedSprite, -seg.size / 2 - 1, -seg.size / 2 - 1);
+            ctx.restore();
+        }
     }
 
     clearActiveChunks() {
@@ -59,58 +90,16 @@ export class ChunkManager {
         }
     }
 
-    updateChunk(chunk, theme) {
-        const ctx = chunk.ctx;
-        ctx.clearRect(0, 0, this.chunkSize, this.chunkSize);
-
-        const baseR = theme ? theme.r : 0;
-        const baseG = theme ? theme.g : 188;
-        const baseB = theme ? theme.b : 212;
-
-        for (let i = 0; i < chunk.segmentsCount; i++) {
-            const seg = chunk.segments[i];
-            if (seg.isDead) continue;
-
-            const healthRatio = Math.max(0, Math.round((seg.health / seg.maxHealth) * 10) / 10);
-            const r = Math.floor(baseR + (244 - baseR) * (1 - healthRatio));
-            const g = Math.floor(baseG + (67 - baseG) * (1 - healthRatio));
-            const b = Math.floor(baseB + (54 - baseB) * (1 - healthRatio));
-
-            const cacheKey = `${seg.size}_${r}_${g}_${b}`;
-
-            let cachedSprite = this.wallCache.get(cacheKey);
-            if (!cachedSprite) {
-                cachedSprite = new OffscreenCanvas(seg.size + 2, seg.size + 2);
-                const offCtx = cachedSprite.getContext("2d");
-
-                offCtx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-                offCtx.fillRect(1, 1, seg.size, seg.size);
-
-                this.wallCache.set(cacheKey, cachedSprite);
-            }
-
-            ctx.save();
-            ctx.translate(seg.x - chunk.x, seg.y - chunk.y);
-            ctx.rotate(seg.angle);
-
-            ctx.drawImage(cachedSprite, -seg.size / 2 - 1, -seg.size / 2 - 1);
-            ctx.restore();
-        }
-    }
-
     drawWalls(mainCtx, state) {
         const segments = state.walls;
-
         if (!segments || segments.length === 0) {
             this.clearActiveChunks();
             return;
         }
-
         if (this.lastWallsRef !== segments) {
             this.buildWallChunks(segments, state.wallTheme);
             this.lastWallsRef = segments;
         }
-
         if (this.dirtySegments.size > 0) {
             for (const seg of this.dirtySegments) {
                 if (seg.chunks) {
@@ -121,7 +110,6 @@ export class ChunkManager {
             }
             this.dirtySegments.clear();
         }
-
         for (const chunk of this.activeChunks.values()) {
             if (chunk.isDirty) {
                 this.updateChunk(chunk, state.wallTheme);

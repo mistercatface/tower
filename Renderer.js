@@ -1,36 +1,37 @@
 import { ChunkManager } from "./ChunkManager.js";
+import { SpriteCache } from "./SpriteCache.js";
 
 const RenderStrategies = {
-    pickup: (ctx, pickup) => {
-        if (!pickup.cachedSprite) {
+    pickup: (ctx, pickup, cache) => {
+        const cacheKey = `${pickup.type}_${pickup.radius}`;
+        const cachedSprite = cache.get(cacheKey, () => {
             const canvasSize = pickup.radius * 2 + 4;
             const cx = canvasSize / 2;
             const cy = canvasSize / 2;
             const offCanvas = new OffscreenCanvas(canvasSize, canvasSize);
             const offCtx = offCanvas.getContext("2d");
             if (pickup.strategy && pickup.strategy.render) pickup.strategy.render(offCtx, cx, cy, pickup.radius);
-            pickup.cachedSprite = offCanvas;
-        }
+            return offCanvas;
+        });
         ctx.save();
         ctx.translate(pickup.x, pickup.y);
-        ctx.drawImage(pickup.cachedSprite, -pickup.cachedSprite.width / 2, -pickup.cachedSprite.height / 2);
+        ctx.drawImage(cachedSprite, -cachedSprite.width / 2, -cachedSprite.height / 2);
         ctx.restore();
     },
     enemy: (ctx, enemy, cache) => {
         const cacheKey = `${enemy.radius}_${enemy.color}`;
-        let cachedSprite = cache.get(cacheKey);
-        if (!cachedSprite) {
+        const cachedSprite = cache.get(cacheKey, () => {
             const canvasSize = Math.ceil(enemy.radius * 2.5) * 2;
             const cx = canvasSize / 2;
             const cy = canvasSize / 2;
-            cachedSprite = new OffscreenCanvas(canvasSize, canvasSize);
-            const offCtx = cachedSprite.getContext("2d");
+            const offCanvas = new OffscreenCanvas(canvasSize, canvasSize);
+            const offCtx = offCanvas.getContext("2d");
             offCtx.beginPath();
             offCtx.arc(cx, cy, enemy.radius, 0, Math.PI * 2);
             offCtx.fillStyle = enemy.color;
             offCtx.fill();
-            cache.set(cacheKey, cachedSprite);
-        }
+            return offCanvas;
+        });
         ctx.save();
         ctx.translate(enemy.x, enemy.y);
         ctx.rotate(enemy.angle);
@@ -44,19 +45,18 @@ const RenderStrategies = {
     },
     missile: (ctx, missile, color, cache) => {
         const cacheKey = `${missile.radius}_${color}`;
-        let cachedSprite = cache.get(cacheKey);
-        if (!cachedSprite) {
+        const cachedSprite = cache.get(cacheKey, () => {
             const canvasSize = Math.ceil(missile.radius * 2);
             const cx = canvasSize / 2;
             const cy = canvasSize / 2;
-            cachedSprite = new OffscreenCanvas(canvasSize, canvasSize);
-            const offCtx = cachedSprite.getContext("2d");
+            const offCanvas = new OffscreenCanvas(canvasSize, canvasSize);
+            const offCtx = offCanvas.getContext("2d");
             offCtx.beginPath();
             offCtx.arc(cx, cy, missile.radius, 0, Math.PI * 2);
             offCtx.fillStyle = color;
             offCtx.fill();
-            cache.set(cacheKey, cachedSprite);
-        }
+            return offCanvas;
+        });
         ctx.save();
         ctx.translate(missile.x, missile.y);
         ctx.drawImage(cachedSprite, -cachedSprite.width / 2, -cachedSprite.height / 2);
@@ -175,65 +175,50 @@ export class Renderer {
     constructor(canvas, ctx) {
         this.canvas = canvas;
         this.ctx = ctx;
-        this.enemyCache = new Map();
-        this.missileCache = new Map();
+        this.enemyCache = new SpriteCache();
+        this.missileCache = new SpriteCache();
+        this.pickupCache = new SpriteCache();
         this.chunkManager = new ChunkManager();
     }
 
     render(state, viewport) {
         this.ctx.save();
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-        if (viewport) {
-            viewport.apply(this.ctx);
-        }
-
+        if (viewport) viewport.apply(this.ctx);
         if (state.phase === "map" || state.phase === "map_transition") {
             this.drawMap(state);
             const tempPlanet = { ...state.planet, x: state.mapPlayerX, y: state.mapPlayerY };
             RenderStrategies.planet(this.ctx, tempPlanet, 0);
-
             for (const turret of state.turrets) {
                 RenderStrategies.turret(this.ctx, turret, state.mapPlayerX, state.mapPlayerY, state.planet.radius, 0, 1);
             }
         } else {
             RenderStrategies.planet(this.ctx, state.planet, state.weapon.range);
-
             if (state.planet.queuedTargetX != null && state.planet.queuedTargetY != null) {
                 RenderStrategies.targetMarker(this.ctx, state.planet.queuedTargetX, state.planet.queuedTargetY);
             } else if (state.planet.isMoving && state.planet.targetX !== null && state.planet.targetY !== null) {
                 RenderStrategies.targetMarker(this.ctx, state.planet.targetX, state.planet.targetY);
             }
-
             this.drawShadows(state);
             this.drawExplosions(state);
-
-            for (const p of state.pickups) RenderStrategies.pickup(this.ctx, p);
-
+            for (const p of state.pickups) RenderStrategies.pickup(this.ctx, p, this.pickupCache);
             for (const e of state.enemies) {
                 RenderStrategies.enemy(this.ctx, e, this.enemyCache);
                 RenderStrategies.turret(this.ctx, e.turret, e.x, e.y, e.radius, 0, 1, e.color);
             }
-
             for (const p of state.projectiles) RenderStrategies.missile(this.ctx, p, p.faction === "player" ? "#FFEB3B" : "#F44336", this.missileCache);
-
             this.chunkManager.drawWalls(this.ctx, state);
-
             if (state.activeLasers) {
                 for (const laser of state.activeLasers) {
                     RenderStrategies.laser(this.ctx, laser);
                 }
             }
-
             RenderStrategies.planet(this.ctx, state.planet, 0);
-
             for (const turret of state.turrets) {
                 RenderStrategies.turret(this.ctx, turret, state.planet.x, state.planet.y, state.planet.radius, turret.charge, state.weapon.chargeTime);
             }
         }
-
         for (const ft of state.floatingTexts) RenderStrategies.floatingText(this.ctx, ft);
-
         this.ctx.restore();
     }
 

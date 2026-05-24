@@ -101,7 +101,6 @@ export class Pickup extends Entity {
         super(x, y, 0, false);
         this.radius = radius;
         this.type = type;
-        this.cachedSprite = null;
         this.strategy = PickupStrategies[type];
     }
 
