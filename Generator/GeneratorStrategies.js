@@ -454,6 +454,115 @@ const DiamondStrategy = {
     }
 }
 
+const DenseMazeStrategy = {
+    generate(state, px, py) {
+        const cellSize = state.gridSystem.cellSize;
+        const pathWidth = 3;
+        const wallWidth = 1;
+        const step = pathWidth + wallWidth;
+        const nodesX = 15;
+        const nodesY = 15;
+        const cols = nodesX * step + wallWidth;
+        const rows = nodesY * step + wallWidth;
+        const grid = new Array(cols * rows).fill(1);
+
+        const carveNode = (nx, ny) => {
+            const sx = nx * step + wallWidth;
+            const sy = ny * step + wallWidth;
+            for (let r = 0; r < pathWidth; r++) {
+                for (let c = 0; c < pathWidth; c++) {
+                    grid[(sy + r) * cols + (sx + c)] = 0;
+                }
+            }
+        };
+
+        const carveH = (nx, ny) => {
+            const sx = nx * step + wallWidth + pathWidth;
+            const sy = ny * step + wallWidth;
+            for (let r = 0; r < pathWidth; r++) {
+                for (let c = 0; c < wallWidth; c++) {
+                    grid[(sy + r) * cols + (sx + c)] = 0;
+                }
+            }
+        };
+
+        const carveV = (nx, ny) => {
+            const sx = nx * step + wallWidth;
+            const sy = ny * step + wallWidth + pathWidth;
+            for (let r = 0; r < wallWidth; r++) {
+                for (let c = 0; c < pathWidth; c++) {
+                    grid[(sy + r) * cols + (sx + c)] = 0;
+                }
+            }
+        };
+
+        const visited = new Set();
+        const carveMaze = (nx, ny) => {
+            visited.add(`${nx},${ny}`);
+            carveNode(nx, ny);
+
+            const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]].sort(() => Math.random() - 0.5);
+            for (const [dx, dy] of dirs) {
+                const tx = nx + dx;
+                const ty = ny + dy;
+                if (tx >= 0 && tx < nodesX && ty >= 0 && ty < nodesY && !visited.has(`${tx},${ty}`)) {
+                    if (dx === 1) carveH(nx, ny);
+                    if (dx === -1) carveH(tx, ny);
+                    if (dy === 1) carveV(nx, ny);
+                    if (dy === -1) carveV(nx, ty);
+                    carveMaze(tx, ty);
+                }
+            }
+        };
+
+        carveMaze(Math.floor(nodesX / 2), Math.floor(nodesY / 2));
+
+        for (let i = 0; i < (nodesX * nodesY) / 4; i++) {
+            const nx = Math.floor(Math.random() * (nodesX - 1));
+            const ny = Math.floor(Math.random() * (nodesY - 1));
+            if (Math.random() < 0.5) carveH(nx, ny);
+            else carveV(nx, ny);
+        }
+
+        const cx = Math.floor(cols / 2);
+        const cy = Math.floor(rows / 2);
+
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                if (r < 2 || r >= rows - 2 || c < 2 || c >= cols - 2) {
+                    grid[r * cols + c] = 0;
+                }
+            }
+        }
+
+        const gateSize = 5;
+        for (let i = -gateSize; i <= gateSize; i++) {
+            for (let d = 0; d < 4; d++) {
+                if (cy + i >= 0 && cy + i < rows) {
+                    grid[d * cols + (cx + i)] = 0;
+                    grid[(rows - 1 - d) * cols + (cx + i)] = 0;
+                }
+            }
+            for (let d = 0; d < 4; d++) {
+                if (cx + i >= 0 && cx + i < cols) {
+                    grid[(cy + i) * cols + d] = 0;
+                    grid[(cy + i) * cols + (cols - 1 - d)] = 0;
+                }
+            }
+        }
+
+        const offsetX = px - (cols * cellSize) / 2;
+        const offsetY = py - (rows * cellSize) / 2;
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                if (grid[r * cols + c] === 1) {
+                    state.walls.push(new Segment(offsetX + c * cellSize + cellSize / 2, offsetY + r * cellSize + cellSize / 2, 0, cellSize, 0));
+                }
+            }
+        }
+    }
+}
+
 export const GeneratorStrategies = {
     MazeStrategy,
     Maze2Strategy,
@@ -462,4 +571,5 @@ export const GeneratorStrategies = {
     HoneycombStrategy,
     SquareStrategy,
     DiamondStrategy,
+    DenseMazeStrategy
 }
