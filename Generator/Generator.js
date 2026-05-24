@@ -1,5 +1,5 @@
 import { Pickup } from "../Entities/Pickup.js";
-import { GeneratorStrategies } from "./Strategies.js";
+import { GeneratorStrategies } from "./GeneratorStrategies.js";
 
 export function spawnPickup(state, planetX, planetY, minRadius, maxRadius, type) {
     const grid = state.gridSystem;
