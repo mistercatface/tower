@@ -3,7 +3,7 @@ import { CollisionSystem } from "./Spatial/CollisionSystem.js";
 import { Utilities } from "./Utilities.js";
 
 class WeaponTargetingStrategy {
-    determineAimTarget(source, target, blocksTargeting) {
+    determineAimTarget(source, target, blocksTargeting, turret) {
         if (target && !blocksTargeting) {
             return target;
         }
@@ -14,8 +14,8 @@ class WeaponTargetingStrategy {
             };
         }
         return {
-            x: source.x + Math.cos(source.angle || 0) * 100,
-            y: source.y + Math.sin(source.angle || 0) * 100
+            x: source.x + Math.cos(turret.angle) * 100,
+            y: source.y + Math.sin(turret.angle) * 100
         };
     }
 }
@@ -30,10 +30,8 @@ export class ChargedWeaponMode extends WeaponTargetingStrategy {
         const turretDist = source.radius + 12;
         const tx = source.x + Math.cos(turret.angle) * turretDist;
         const ty = source.y + Math.sin(turret.angle) * turretDist;
-
-        const aimTarget = this.determineAimTarget(source, target, blocksTargeting);
+        const aimTarget = this.determineAimTarget(source, target, blocksTargeting, turret);
         const isAimed = WeaponSystem.aimTurret(turret, source.x, source.y, aimTarget.x, aimTarget.y, dt);
-
         if (target && !blocksTargeting && isAimed) {
             turret.charge += dt;
             if (turret.charge >= chargeTime) {
@@ -56,10 +54,8 @@ export class ContinuousWeaponMode extends WeaponTargetingStrategy {
         const turretDist = source.radius + 4 + 4 * (source.radius / 8);
         const tx = source.x + Math.cos(turret.angle) * turretDist;
         const ty = source.y + Math.sin(turret.angle) * turretDist;
-
-        const aimTarget = this.determineAimTarget(source, target, blocksTargeting);
+        const aimTarget = this.determineAimTarget(source, target, blocksTargeting, turret);
         WeaponSystem.aimTurret(turret, source.x, source.y, aimTarget.x, aimTarget.y, dt);
-
         this.onTick(dt, state, tx, ty, turret, combatEvents, source);
     }
 }
