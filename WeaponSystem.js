@@ -114,6 +114,19 @@ export class WeaponSystem {
                 return { hit: "wall", x: cx, y: cy, dist: dist };
             }
 
+            if (!state.abilities["TargetVerification"]) {
+                for (const p of state.pickups) {
+                    if (p.isDead || p.type !== "barrel") continue;
+                    if (CollisionSystem.checkCircle(rayCircle, p)) {
+                        const distToPickup = Math.hypot(p.x - startX, p.y - startY);
+                        const exactDist = distToPickup - p.radius;
+                        const finalX = startX + dx * exactDist;
+                        const finalY = startY + dy * exactDist;
+                        return { hit: "pickup", entity: p, x: finalX, y: finalY, dist: exactDist };
+                    }
+                }
+            }
+
             for (const e of state.enemies) {
                 if (e.isDead) continue;
                 if (CollisionSystem.checkCircle(rayCircle, e)) {

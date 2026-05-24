@@ -309,8 +309,8 @@ export function initUI(state, upgrades, resetGameCallback) {
                 "padding: 5px 10px; background: #222; color: white; border: 1px solid #555; cursor: pointer; font-family: monospace; font-weight: bold; border-radius: 4px; display: none; position: relative; overflow: hidden;";
             const html =
                 upg.cooldown > 0
-                    ? `<span style="position: relative; z-index: 2;">${upg.name}</span><div id="cooldownOverlay_${upg.id}" style="position: absolute; bottom: 0; left: 0; width: 100%; height: 0%; background: rgba(0, 0, 0, 0.6); z-index: 1;"></div>`
-                    : upg.name;
+                    ? `<span style="position: relative; z-index: 2;">${upg.toggleName || upg.name}</span><div id="cooldownOverlay_${upg.id}" style="position: absolute; bottom: 0; left: 0; width: 100%; height: 0%; background: rgba(0, 0, 0, 0.6); z-index: 1;"></div>`
+                    : (upg.toggleName || upg.name);
 
             const btn = createButton(
                 styles,
@@ -449,7 +449,7 @@ export function updateUI(state, upgrades) {
         .forEach((upg) => {
             const unlocked = state.upgrades[upg.id] && state.upgrades[upg.id].level > 0 && !state.isGameOver;
             const active = state.abilities[upg.id];
-            updateToggleButton("btnAbility_" + upg.id, unlocked, active, upg.name, upg);
+            updateToggleButton("btnAbility_" + upg.id, unlocked, active, upg.toggleName || upg.name, upg);
         });
 
     if (elements.pauseText) {

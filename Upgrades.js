@@ -31,6 +31,7 @@ export class Upgrade {
         this.onEnemyKilled = config.onEnemyKilled || null;
         this.onSectorEnd = config.onSectorEnd || null;
         this.weaponMode = config.weaponMode || null;
+        this.toggleName = config.toggleName || null;
     }
 
     getCurrentStr(state) {
@@ -272,10 +273,24 @@ export const createUpgrades = () => [
             const laserAngle = turret.angle + Math.sin((state.lastTime || Date.now()) / 150) * accuracySpread;
             const hit = WeaponSystem.castLaser(tx, ty, laserAngle, 2000, state);
             state.activeLasers.push({ x1: tx, y1: ty, x2: hit.x, y2: hit.y });
-            if (laserCanDamage && hit.hit === "enemy") {
-                combatEvents.push({ target: hit.entity, damage: state.weapon.damage });
+            if (laserCanDamage) {
+                if (hit.hit === "enemy") {
+                    combatEvents.push({ target: hit.entity, damage: state.weapon.damage });
+                } else if (hit.hit === "pickup" && hit.entity.strategy && hit.entity.strategy.onHit) {
+                    hit.entity.strategy.onHit(state, hit.entity, { isDead: false }, combatEvents);
+                }
             }
         })
+    }),
+    new Upgrade({
+        id: "TargetVerification",
+        category: "abilities",
+        name: "Target Verification",
+        toggleName: "Organic",
+        description: "When Active: Laser ignores explosive barrels, only damaging enemies.",
+        maxLevel: 1,
+        isAbility: true,
+        requires: ["Laser"]
     }),
     new Upgrade({
         id: "Dive",
