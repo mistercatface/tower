@@ -128,17 +128,23 @@ export class WaveManager {
             const groupSize = selectedType.groupSettings.baseGroupSize + Math.floor(this.wave * selectedType.groupSettings.growthPerWave);
             return this.spawnGroup(state, selectedType, groupSize);
         } else {
-            const dist = state.spawnRadius;
-            const side = Math.floor(Math.random() * 4);
-            const pos = (Math.random() * 2 - 1) * dist;
-            const { x, y } = this.calculateSpawnPosition(state, side, pos);
+            const baseSimultaneous = 1 + Math.floor(this.wave / 3);
+            const simCount = Math.min(baseSimultaneous, this.enemiesToSpawn - this.enemiesSpawned);
 
-            const scaledHealth = Math.max(1, Math.floor(selectedType.baseHealth * Math.pow(difficultyCurve.healthMultiplier, this.wave - 1)));
-            const scaledSpeed = selectedType.baseSpeed * Math.pow(difficultyCurve.speedMultiplier, this.wave - 1);
-            const scaledReward = Math.max(1, Math.floor(selectedType.baseHealth * Math.pow(difficultyCurve.rewardMultiplier, this.wave - 1)));
+            for (let i = 0; i < simCount; i++) {
+                const dist = state.spawnRadius;
+                const side = Math.floor(Math.random() * 4);
+                const pos = (Math.random() * 2 - 1) * dist;
+                const { x, y } = this.calculateSpawnPosition(state, side, pos);
 
-            state.enemies.push(new Enemy(x, y, selectedType.radius, scaledSpeed, scaledHealth, selectedType.color, scaledReward, selectedType.type, selectedType.attackType, selectedType.canDodge));
-            return 1;
+                const scaledHealth = Math.max(1, Math.floor(selectedType.baseHealth * Math.pow(difficultyCurve.healthMultiplier, this.wave - 1)));
+                const scaledSpeed = selectedType.baseSpeed * Math.pow(difficultyCurve.speedMultiplier, this.wave - 1);
+                const scaledReward = Math.max(1, Math.floor(selectedType.baseHealth * Math.pow(difficultyCurve.rewardMultiplier, this.wave - 1)));
+
+                state.enemies.push(new Enemy(x, y, selectedType.radius, scaledSpeed, scaledHealth, selectedType.color, scaledReward, selectedType.type, selectedType.attackType, selectedType.canDodge));
+            }
+            
+            return simCount;
         }
     }
 
