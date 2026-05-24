@@ -277,7 +277,9 @@ export const createUpgrades = () => [
                 if (hit.hit === "enemy") {
                     combatEvents.push({ target: hit.entity, damage: state.weapon.damage });
                 } else if (hit.hit === "pickup" && hit.entity.strategy && hit.entity.strategy.onHit) {
-                    hit.entity.strategy.onHit(state, hit.entity, { isDead: false }, combatEvents);
+                    if (!state.abilities["TargetVerification"]) {
+                        hit.entity.strategy.onHit(state, hit.entity, { isDead: false }, combatEvents);
+                    }
                 }
             }
         })
