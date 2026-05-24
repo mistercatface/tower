@@ -51,7 +51,7 @@ export const WallGenerator = {
         spawnPickup(state, planetX, planetY, 250, 300, "coin");
         spawnPickup(state, planetX, planetY, 175, 200, "eyeball");
 
-        const numBarrels = 12 + Math.floor(Math.random() * 12);
+        const numBarrels = 260;
         for (let i = 0; i < numBarrels; i++) {
             spawnPickup(state, planetX, planetY, 150, 1000, "barrel");
         }
