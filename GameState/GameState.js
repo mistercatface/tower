@@ -79,7 +79,7 @@ export class GameState {
             },
         };
 
-        this.gridSystem = new GridSystem(16, 1600, 1600);
+        this.gridSystem = new GridSystem(16, 2400, 2400);
         this.currentUpgradeTab = "attack";
         this.canvasBounds = { width: 0, height: 0 };
         this.upgrades = {};
@@ -209,7 +209,7 @@ export class GameState {
         this.kills = 0;
         this.isGameOver = false;
         this.isPaused = false;
-        this.spawnRadius = 650;
+        this.spawnRadius = 950;
         this.pendingPerkPicks = [];
 
         this.wavesCompleted = 0;
