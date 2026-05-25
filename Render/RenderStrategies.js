@@ -80,58 +80,76 @@ export const RenderStrategies = {
         ctx.fillStyle = "#4CAF50";
         ctx.fill();
     },
-    turret: (ctx, turret, planetX, planetY, planetRadius, weaponCharge, weaponChargeTime, explicitColor = null) => {
+    turret: (ctx, turret, planetX, planetY, planetRadius, weaponCharge, weaponChargeTime, cache, explicitColor = null) => {
         const turretDist = planetRadius + 4;
         const tx = planetX + Math.cos(turret.angle) * turretDist;
         const ty = planetY + Math.sin(turret.angle) * turretDist;
-        ctx.save();
-        ctx.translate(tx, ty);
-        ctx.rotate(turret.angle);
+
         const scale = planetRadius / 8;
-        ctx.scale(scale, scale);
-        const turretPoints = [
-            { x: 4, y: 0 },
-            { x: -2, y: 2.5 },
-            { x: -2, y: -2.5 },
-            { x: 4, y: 0 },
-        ];
-        ctx.beginPath();
-        ctx.moveTo(turretPoints[0].x, turretPoints[0].y);
-        ctx.lineTo(turretPoints[1].x, turretPoints[1].y);
-        ctx.lineTo(turretPoints[2].x, turretPoints[2].y);
-        ctx.closePath();
-        ctx.fillStyle = explicitColor || "#4CAF50";
-        ctx.fill();
         let progress = 1;
         let strokeColor = explicitColor || "#4CAF50";
         if (weaponCharge > 0) {
             progress = weaponCharge / weaponChargeTime;
             strokeColor = "#ff0000";
         }
-        if (progress > 0) {
-            ctx.beginPath();
-            ctx.moveTo(turretPoints[0].x, turretPoints[0].y);
-            let targetLen = progress * 18;
-            for (let i = 0; i < 3; i++) {
-                const p1 = turretPoints[i];
-                const p2 = turretPoints[i + 1];
-                const dx = p2.x - p1.x;
-                const dy = p2.y - p1.y;
-                const segLen = Math.hypot(dx, dy);
-                if (targetLen >= segLen) {
-                    ctx.lineTo(p2.x, p2.y);
-                    targetLen -= segLen;
-                } else {
-                    const ratio = targetLen / segLen;
-                    ctx.lineTo(p1.x + dx * ratio, p1.y + dy * ratio);
-                    break;
+        
+        const progressKey = progress.toFixed(2);
+        const cacheKey = `${scale}_${explicitColor || "#4CAF50"}_${progressKey}_${strokeColor}`;
+        const cachedSprite = cache.get(cacheKey, () => {
+            const margin = Math.max(2, scale);
+            const cx = Math.ceil(2 * scale + margin);
+            const cy = Math.ceil(2.5 * scale + margin);
+            const W = Math.ceil(cx + 4 * scale + margin);
+            const H = Math.ceil(cy + 2.5 * scale + margin);
+            const offCanvas = new OffscreenCanvas(W, H);
+            const offCtx = offCanvas.getContext("2d");
+            offCtx.save();
+            offCtx.translate(cx, cy);
+            offCtx.scale(scale, scale);
+            const turretPoints = [
+                { x: 4, y: 0 },
+                { x: -2, y: 2.5 },
+                { x: -2, y: -2.5 },
+                { x: 4, y: 0 },
+            ];
+            offCtx.beginPath();
+            offCtx.moveTo(turretPoints[0].x, turretPoints[0].y);
+            offCtx.lineTo(turretPoints[1].x, turretPoints[1].y);
+            offCtx.lineTo(turretPoints[2].x, turretPoints[2].y);
+            offCtx.closePath();
+            offCtx.fillStyle = explicitColor || "#4CAF50";
+            offCtx.fill();
+            if (progress > 0) {
+                offCtx.beginPath();
+                offCtx.moveTo(turretPoints[0].x, turretPoints[0].y);
+                let targetLen = progress * 18;
+                for (let i = 0; i < 3; i++) {
+                    const p1 = turretPoints[i];
+                    const p2 = turretPoints[i + 1];
+                    const dx = p2.x - p1.x;
+                    const dy = p2.y - p1.y;
+                    const segLen = Math.hypot(dx, dy);
+                    if (targetLen >= segLen) {
+                        offCtx.lineTo(p2.x, p2.y);
+                        targetLen -= segLen;
+                    } else {
+                        const ratio = targetLen / segLen;
+                        offCtx.lineTo(p1.x + dx * ratio, p1.y + dy * ratio);
+                        break;
+                    }
                 }
+                offCtx.strokeStyle = strokeColor;
+                offCtx.lineWidth = 1;
+                offCtx.lineJoin = "round";
+                offCtx.stroke();
             }
-            ctx.strokeStyle = strokeColor;
-            ctx.lineWidth = 1;
-            ctx.lineJoin = "round";
-            ctx.stroke();
-        }
+            offCtx.restore();
+            return { offCanvas, cx, cy };
+        });
+        ctx.save();
+        ctx.translate(tx, ty);
+        ctx.rotate(turret.angle);
+        ctx.drawImage(cachedSprite.offCanvas, -cachedSprite.cx, -cachedSprite.cy);
         ctx.restore();
     },
     floatingText: (ctx, ft) => {

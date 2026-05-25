@@ -10,6 +10,7 @@ export class Renderer {
         this.enemyCache = new SpriteCache();
         this.missileCache = new SpriteCache();
         this.pickupCache = new SpriteCache();
+        this.turretCache = new SpriteCache();
         this.chunkManager = new ChunkManager();
     }
 
@@ -21,7 +22,7 @@ export class Renderer {
         const tempPlanet = { ...state.planet, x: state.mapPlayerX, y: state.mapPlayerY };
         RenderStrategies.planet(this.ctx, tempPlanet, 0);
         for (const turret of state.turrets) {
-            RenderStrategies.turret(this.ctx, turret, state.mapPlayerX, state.mapPlayerY, state.planet.radius, 0, 1);
+            RenderStrategies.turret(this.ctx, turret, state.mapPlayerX, state.mapPlayerY, state.planet.radius, 0, 1, this.turretCache);
         }
         for (const ft of state.floatingTexts) RenderStrategies.floatingText(this.ctx, ft);
         this.ctx.restore();
@@ -44,7 +45,7 @@ export class Renderer {
         for (const p of state.projectiles) RenderStrategies.missile(this.ctx, p, p.faction === "player" ? "#FFEB3B" : "#F44336", this.missileCache);
         for (const e of state.enemies) {
             RenderStrategies.enemy(this.ctx, e, this.enemyCache);
-            RenderStrategies.turret(this.ctx, e.turret, e.x, e.y, e.radius, 0, 1, e.color);
+            RenderStrategies.turret(this.ctx, e.turret, e.x, e.y, e.radius, 0, 1, this.turretCache, e.color);
         }
         if (state.activeLasers) {
             for (const laser of state.activeLasers) {
@@ -53,7 +54,7 @@ export class Renderer {
         }
         RenderStrategies.planet(this.ctx, state.planet, 0);
         for (const turret of state.turrets) {
-            RenderStrategies.turret(this.ctx, turret, state.planet.x, state.planet.y, state.planet.radius, turret.charge, state.weapon.chargeTime);
+            RenderStrategies.turret(this.ctx, turret, state.planet.x, state.planet.y, state.planet.radius, turret.charge, state.weapon.chargeTime, this.turretCache);
         }
         Explosion.renderAll(this.ctx, state, this);
         this.chunkManager.drawWalls(this.ctx, state);
