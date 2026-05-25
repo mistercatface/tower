@@ -21,6 +21,7 @@ export class Enemy extends DestructibleEntity {
     constructor(x, y, radius, speed, health, color, reward, type = "standard", attackType = "ranged", canDodge = false, accelRate = 3.0, canDamageWalls = false) {
         super(x, y, 0, health, health, false);
         this.radius = radius;
+        this.mass = radius;
         this.speed = speed;
         this.color = color;
         this.reward = reward;

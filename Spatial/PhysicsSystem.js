@@ -52,13 +52,28 @@ export class PhysicsSystem {
                     } else {
                         const distance = Math.sqrt(distanceSq);
                         const overlap = minDistance - distance;
-                        entity.x += (dx / distance) * overlap;
-                        entity.y += (dy / distance) * overlap;
+                        const normalX = dx / distance;
+                        const normalY = dy / distance;
+                        entity.x += normalX * overlap;
+                        entity.y += normalY * overlap;
 
-                        if (entity.canDamageWalls && state) {
-                            const normalX = dx / distance;
-                            const normalY = dy / distance;
-                            const impactSpeed = -(entity.vx * normalX + entity.vy * normalY);
+                        const dot = (entity.vx !== undefined && entity.vy !== undefined) ? (entity.vx * normalX + entity.vy * normalY) : 0;
+
+                        if (entity.vx !== undefined && entity.vy !== undefined && dot < 0) {
+                            const restitution = entity.type === "barrel" ? 0.25 : 0.0;
+                            entity.vx -= (1 + restitution) * dot * normalX;
+                            entity.vy -= (1 + restitution) * dot * normalY;
+
+                            const wallFriction = entity.type === "barrel" ? 0.75 : 0.9;
+                            const tx = -normalY;
+                            const ty = normalX;
+                            const tangentDot = entity.vx * tx + entity.vy * ty;
+                            entity.vx = tx * tangentDot * wallFriction;
+                            entity.vy = ty * tangentDot * wallFriction;
+                        }
+
+                        if (entity.canDamageWalls && state && dot < 0) {
+                            const impactSpeed = -dot;
                             if (impactSpeed > 75) {
                                 const ctx = state.fsm ? state.fsm.context : null;
                                 if (ctx) {

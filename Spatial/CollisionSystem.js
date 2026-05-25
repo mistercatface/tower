@@ -84,35 +84,84 @@ export class CollisionSystem {
                         pushY = dy / pushDist;
                     }
 
-                    const avx = actor.vx || 0;
-                    const avy = actor.vy || 0;
-                    const actorSpeed = Math.hypot(avx, avy);
-                    if (actorSpeed > 0) {
-                        const anx = avx / actorSpeed;
-                        const any = avy / actorSpeed;
-                        const dot = pushX * anx + pushY * any;
-                        if (dot > 0.5) {
-                            const perpX = -any;
-                            const perpY = anx;
-                            const side = (pushX * perpX + pushY * perpY) >= 0 ? 1 : -1;
-                            pushX += perpX * side * 0.6;
-                            pushY += perpY * side * 0.6;
-                            const pushLen = Math.hypot(pushX, pushY);
-                            pushX /= pushLen;
-                            pushY /= pushLen;
-                        }
+                    const overlap = minDist - pushDist;
+                    
+                    const actorMass = actor.mass !== undefined ? actor.mass : actor.radius;
+                    const pickupMass = pickup.mass !== undefined ? pickup.mass : 1.0;
+                    const totalMass = actorMass + pickupMass;
+
+                    const actorShift = overlap * (pickupMass / totalMass);
+                    const pickupShift = overlap * (actorMass / totalMass);
+
+                    actor.x -= pushX * actorShift;
+                    actor.y -= pushY * actorShift;
+                    pickup.x += pushX * pickupShift;
+                    pickup.y += pushY * pickupShift;
+
+                    const rvx = (pickup.vx || 0) - (actor.vx || 0);
+                    const rvy = (pickup.vy || 0) - (actor.vy || 0);
+                    const velAlongNormal = rvx * pushX + rvy * pushY;
+
+                    if (velAlongNormal < 0) {
+                        const restitution = 0.15;
+                        const impulseScalar = -(1 + restitution) * velAlongNormal / ((1 / actorMass) + (1 / pickupMass));
+
+                        actor.vx -= (impulseScalar / actorMass) * pushX;
+                        actor.vy -= (impulseScalar / actorMass) * pushY;
+                        pickup.vx += (impulseScalar / pickupMass) * pushX;
+                        pickup.vy += (impulseScalar / pickupMass) * pushY;
+                    }
+                }
+            }
+        }
+
+        for (let i = 0; i < state.pickups.length; i++) {
+            const p1 = state.pickups[i];
+            if (p1.isDead || p1.type !== "barrel") continue;
+            for (let j = i + 1; j < state.pickups.length; j++) {
+                const p2 = state.pickups[j];
+                if (p2.isDead || p2.type !== "barrel") continue;
+
+                const dx = p2.x - p1.x;
+                const dy = p2.y - p1.y;
+                const dist = Math.hypot(dx, dy);
+                const minDist = p1.radius + p2.radius;
+
+                if (dist < minDist) {
+                    let pushX, pushY;
+                    let pushDist = dist;
+                    if (pushDist === 0) {
+                        const angle = Math.random() * Math.PI * 2;
+                        pushX = Math.cos(angle);
+                        pushY = Math.sin(angle);
+                        pushDist = 0.1;
+                    } else {
+                        pushX = dx / pushDist;
+                        pushY = dy / pushDist;
                     }
 
                     const overlap = minDist - pushDist;
-                    pickup.x += pushX * overlap;
-                    pickup.y += pushY * overlap;
+                    
+                    p1.x -= pushX * overlap * 0.5;
+                    p1.y -= pushY * overlap * 0.5;
+                    p2.x += pushX * overlap * 0.5;
+                    p2.y += pushY * overlap * 0.5;
 
-                    actor.vx = (actor.vx || 0) * 0.7;
-                    actor.vy = (actor.vy || 0) * 0.7;
+                    const rvx = (p2.vx || 0) - (p1.vx || 0);
+                    const rvy = (p2.vy || 0) - (p1.vy || 0);
+                    const velAlongNormal = rvx * pushX + rvy * pushY;
 
-                    const pushSpeed = Math.max(actorSpeed * 0.8, 80);
-                    pickup.vx = pushX * pushSpeed;
-                    pickup.vy = pushY * pushSpeed;
+                    if (velAlongNormal < 0) {
+                        const p1Mass = p1.mass !== undefined ? p1.mass : 15.0;
+                        const p2Mass = p2.mass !== undefined ? p2.mass : 15.0;
+                        const restitution = 0.4;
+                        const impulseScalar = -(1 + restitution) * velAlongNormal / ((1 / p1Mass) + (1 / p2Mass));
+
+                        p1.vx -= (impulseScalar / p1Mass) * pushX;
+                        p1.vy -= (impulseScalar / p1Mass) * pushY;
+                        p2.vx += (impulseScalar / p2Mass) * pushX;
+                        p2.vy += (impulseScalar / p2Mass) * pushY;
+                    }
                 }
             }
         }

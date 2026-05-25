@@ -109,10 +109,11 @@ export class Pickup extends Entity {
         this.strategy = PickupStrategies[type];
         this.vx = 0;
         this.vy = 0;
+        this.mass = type === "barrel" ? 15.0 : 1.0;
     }
 
     update(dt, walls) {
-        PhysicsSystem.applyFrictionAndDrag(this, dt);
+        PhysicsSystem.applyFrictionAndDrag(this, dt, this.type === "barrel" ? 12.0 : 8.0);
         if (this.type === "barrel" && walls) {
             PhysicsSystem.resolveWallCollisions(this, walls);
         }

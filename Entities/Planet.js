@@ -17,6 +17,7 @@ export class Planet extends Enemy {
         this.isMoving = false;
         this.targetNodeX = null;
         this.targetNodeY = null;
+        this.mass = 50.0;
     }
 
     handleHit(damage, ctx) {
