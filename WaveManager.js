@@ -44,10 +44,12 @@ export class WaveManager {
         if (this.wave % 10 === 0) {
             return 1;
         } else if (this.wave % 10 === 1 && this.wave > 1) {
-            return 10 + this.wave * 6;
+            const multiplier = this.wave <= 10 ? 4 : 6;
+            return 10 + this.wave * multiplier;
         } else {
             if (this.wave === 1) return 10;
-            return this.enemiesToSpawn + 8 + Math.floor(this.wave / 5);
+            const growth = this.wave <= 10 ? 6 : (8 + Math.floor(this.wave / 5));
+            return this.enemiesToSpawn + growth;
         }
     }
 
