@@ -346,6 +346,7 @@ export function initUI(state, upgrades, resetGameCallback) {
             "",
             () => {
                 if (state.isGameOver) return;
+                if (upg.category === "abilities" || upg.category === "perk") return;
                 const uState = state.upgrades[upg.id];
                 const cost = uState.ptsCost;
                 if (state.score >= cost) {
@@ -401,45 +402,123 @@ export function initUI(state, upgrades, resetGameCallback) {
     updateHud(state);
 }
 
+const abilityTree = [
+    { id: "Reposition", depth: 0 },
+    { id: "Dive", depth: 1 },
+    { id: "Laser", depth: 0 },
+    { id: "TargetVerification", depth: 1 },
+    { id: "TwoGuns", depth: 0 },
+    { id: "ThreeGuns", depth: 1 },
+    { id: "TwinStrike", depth: 0 },
+    { id: "TripleStrike", depth: 1 },
+    { id: "SteadyWeapon", depth: 0 },
+    { id: "Eraser", depth: 0 }
+];
+
 function drawStat(state, upg) {
     const btn = dynamicElements["upg_" + upg.id];
     if (!btn) return;
 
     const uState = state.upgrades[upg.id];
     const currentLevelToCheck = uState.level;
-    const isVisible = upg.category === state.currentUpgradeTab && !((upg.category === "abilities" || upg.category === "perk") && currentLevelToCheck === 0);
+
+    let isVisible = false;
+    if (upg.category === state.currentUpgradeTab) {
+        if (upg.category === "abilities") {
+            isVisible = true; // Show all abilities in the tree
+        } else if (upg.category === "perk") {
+            isVisible = currentLevelToCheck > 0; // Perks only when owned
+        } else {
+            isVisible = true;
+        }
+    }
 
     btn.style.display = isVisible ? "block" : "none";
-    if (isVisible === false) return;
+    if (!isVisible) return;
 
-    const isMaxed = currentLevelToCheck >= upg.maxLevel;
-    const statStr = isMaxed ? `${upg.getCurrentStr(state)}` : `${upg.getCurrentStr(state)} &rarr; ${upg.getNextStr(state)}`;
-    const costText = isMaxed ? "MAX" : `${uState.ptsCost} Pts`;
-    const costColor = isMaxed || state.score >= uState.ptsCost ? "#4CAF50" : "#FFEB3B";
-    const maxLevelDisplay = upg.maxLevel === Infinity ? "∞" : upg.maxLevel;
-    const isAbilOrPerk = upg.category === "abilities" || upg.category === "perk";
+    if (upg.category === "abilities") {
+        const isOwned = currentLevelToCheck > 0;
+        const isDiscovered = state.discoveredAbilities && state.discoveredAbilities.has(upg.id);
+        const entry = abilityTree.find((e) => e.id === upg.id) || { depth: 0 };
+        const prefix = entry.depth > 0 ? "└── " : "";
 
-    let targetHTML = "";
-    if (isAbilOrPerk) {
-        targetHTML = getUpgradeButtonHTML(upg.name, "", "", statStr);
+        // Stylings for tree structure
+        btn.style.marginLeft = `${entry.depth * 20}px`;
+        btn.style.width = `calc(100% - ${entry.depth * 20}px)`;
+        btn.style.flex = "none";
+        btn.style.minWidth = "0";
+
+        let nameText = "";
+        let descText = "";
+
+        if (isOwned) {
+            nameText = prefix + upg.name;
+            descText = upg.description;
+            btn.style.background = "#1b3322"; // dark green background
+            btn.style.borderColor = "#4CAF50"; // bright green border
+            btn.style.opacity = "1";
+            btn.style.cursor = "default";
+        } else if (isDiscovered) {
+            nameText = prefix + upg.name + " (Locked)";
+            descText = upg.description;
+            btn.style.background = "#222";
+            btn.style.borderColor = "#555";
+            btn.style.opacity = "0.6";
+            btn.style.cursor = "default";
+        } else {
+            nameText = prefix + "???";
+            descText = "???";
+            btn.style.background = "#151515";
+            btn.style.borderColor = "#333";
+            btn.style.opacity = "0.35";
+            btn.style.cursor = "default";
+        }
+
+        const targetHTML = `
+            <div style="font-size: 13px; font-weight: bold; color: #FFF; line-height: 1.2; display: flex; justify-content: space-between;">
+                <span>${nameText}</span>
+            </div>
+            <div style="font-size: 12px; font-weight: normal; color: #CCC; line-height: 1.2; margin-top: 3px; text-align: left;">${descText}</div>
+        `;
+
+        if (btn.dataset.lastHtml !== targetHTML) {
+            btn.innerHTML = targetHTML;
+            btn.dataset.lastHtml = targetHTML;
+        }
     } else {
-        targetHTML = getUpgradeButtonHTML(`${upg.name} ${currentLevelToCheck}/${maxLevelDisplay}`, costText, costColor, statStr);
-    }
+        // Reset/original styles for standard tabs
+        btn.style.marginLeft = "0px";
+        btn.style.width = "";
+        btn.style.flex = "1";
+        btn.style.minWidth = "45%";
+        btn.style.cursor = "pointer";
 
-    if (btn.dataset.lastHtml !== targetHTML) {
-        btn.innerHTML = targetHTML;
-        btn.dataset.lastHtml = targetHTML;
-    }
+        const isMaxed = currentLevelToCheck >= upg.maxLevel;
+        const statStr = isMaxed ? `${upg.getCurrentStr(state)}` : `${upg.getCurrentStr(state)} &rarr; ${upg.getNextStr(state)}`;
+        const costText = isMaxed ? "MAX" : `${uState.ptsCost} Pts`;
+        const costColor = isMaxed || state.score >= uState.ptsCost ? "#4CAF50" : "#FFEB3B";
+        const maxLevelDisplay = upg.maxLevel === Infinity ? "∞" : upg.maxLevel;
 
-    if (isAbilOrPerk || isMaxed) {
-        btn.style.opacity = "1";
-        btn.style.borderColor = "#4CAF50";
-    } else if (state.isGameOver) {
-        btn.style.opacity = "0.5";
-        btn.style.borderColor = "#555";
-    } else {
-        btn.style.opacity = state.score >= uState.ptsCost ? "1" : "0.5";
-        btn.style.borderColor = "#555";
+        const targetHTML = getUpgradeButtonHTML(`${upg.name} ${currentLevelToCheck}/${maxLevelDisplay}`, costText, costColor, statStr);
+
+        if (btn.dataset.lastHtml !== targetHTML) {
+            btn.innerHTML = targetHTML;
+            btn.dataset.lastHtml = targetHTML;
+        }
+
+        if (isMaxed) {
+            btn.style.opacity = "1";
+            btn.style.borderColor = "#4CAF50";
+            btn.style.background = "#333";
+        } else if (state.isGameOver) {
+            btn.style.opacity = "0.5";
+            btn.style.borderColor = "#555";
+            btn.style.background = "#333";
+        } else {
+            btn.style.opacity = state.score >= uState.ptsCost ? "1" : "0.5";
+            btn.style.borderColor = "#555";
+            btn.style.background = "#333";
+        }
     }
 }
 
@@ -461,6 +540,31 @@ export function updateUI(state, upgrades) {
         elements.speedDisplay.innerText = state.selectedSpeed.toFixed(2) + "x";
         elements.speedDownBtn.style.opacity = state.selectedSpeed <= 0.5 ? "0.5" : "1";
         elements.speedUpBtn.style.opacity = state.selectedSpeed >= state.gameSpeed ? "0.5" : "1";
+    }
+
+    // Apply layout changes based on tab
+    if (state.currentUpgradeTab === "abilities") {
+        elements.upgradesContainer.style.flexDirection = "column";
+        elements.upgradesContainer.style.flexWrap = "nowrap";
+        elements.upgradesContainer.style.alignItems = "stretch";
+        elements.upgradesContainer.style.maxHeight = "180px";
+        elements.upgradesContainer.style.overflowY = "auto";
+        elements.upgradesContainer.style.paddingRight = "4px";
+
+        // Reorder ability buttons in DOM to match tree order
+        abilityTree.forEach((entry) => {
+            const btn = dynamicElements["upg_" + entry.id];
+            if (btn) {
+                elements.upgradesContainer.appendChild(btn);
+            }
+        });
+    } else {
+        elements.upgradesContainer.style.flexDirection = "row";
+        elements.upgradesContainer.style.flexWrap = "wrap";
+        elements.upgradesContainer.style.alignItems = "initial";
+        elements.upgradesContainer.style.maxHeight = "";
+        elements.upgradesContainer.style.overflowY = "";
+        elements.upgradesContainer.style.paddingRight = "";
     }
 
     upgrades.forEach((upg) => drawStat(state, upg));

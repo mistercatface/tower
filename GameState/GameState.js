@@ -43,6 +43,7 @@ export class GameState {
         this.mapTargetNodeId = null;
         this.highestLevelReached = 0;
         this.claimedPerkMilestones = [];
+        this.discoveredAbilities = new Set();
 
         this.stats = {
             damage: new Stat(1),

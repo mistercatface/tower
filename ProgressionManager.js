@@ -99,6 +99,9 @@ export class ProgressionManager {
                 state.upgrades[choice].baseLevel = 1;
             }
             state.abilities[choice] = true;
+            if (state.discoveredAbilities) {
+                state.discoveredAbilities.add(choice);
+            }
             if (upg.onPurchase) upg.onPurchase(state);
         }
     }
@@ -117,6 +120,15 @@ export class ProgressionManager {
 
     static promptAbilitySelection(state, upgrades, title, description, choices, isNewRun) {
         const pointsAmount = 100 + 100 * state.level;
+        if (state.discoveredAbilities) {
+            choices.forEach((choiceId) => {
+                if (choiceId !== "take_points") {
+                    state.discoveredAbilities.add(choiceId);
+                }
+            });
+            saveProgress(state);
+        }
+
         choices.push("take_points");
 
         const customUpgrades = [...upgrades, { id: "take_points", name: "Take Points", description: `Gain ${pointsAmount} Points` }];

@@ -25,6 +25,7 @@ export const PickupStrategies = {
                 state.upgrades["Laser"].baseLevel = 1;
                 state.upgrades["Laser"].level = 1;
                 state.abilities["Laser"] = true;
+                state.discoveredAbilities.add("Laser");
                 state.recalculateStats(upgrades);
                 unlockedLaser = true;
             }

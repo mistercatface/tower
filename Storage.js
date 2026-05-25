@@ -9,10 +9,12 @@ export function loadProgress(state, upgrades) {
         localStorage.removeItem("tower_upgrades");
         localStorage.removeItem("tower_highest_level");
         localStorage.removeItem("tower_claimed_milestones");
+        localStorage.removeItem("tower_discovered_abilities");
 
         state.wavesCompleted = 0;
         state.highestLevelReached = 0;
         state.claimedPerkMilestones = [];
+        state.discoveredAbilities = new Set();
         state.resetUpgradesToDefault();
         return;
     }
@@ -30,6 +32,9 @@ export function loadProgress(state, upgrades) {
 
     const savedMilestones = localStorage.getItem("tower_claimed_milestones");
     state.claimedPerkMilestones = savedMilestones ? JSON.parse(savedMilestones) : [];
+
+    const savedDiscovered = localStorage.getItem("tower_discovered_abilities");
+    state.discoveredAbilities = savedDiscovered ? new Set(JSON.parse(savedDiscovered)) : new Set();
 }
 
 export function saveProgress(state) {
@@ -37,6 +42,7 @@ export function saveProgress(state) {
     localStorage.setItem("tower_upgrades", JSON.stringify(state.upgrades));
     localStorage.setItem("tower_highest_level", state.highestLevelReached.toString());
     localStorage.setItem("tower_claimed_milestones", JSON.stringify(state.claimedPerkMilestones));
+    localStorage.setItem("tower_discovered_abilities", JSON.stringify(Array.from(state.discoveredAbilities)));
 }
 
 export function hardResetProgress(state, resetGameCallback) {
@@ -44,7 +50,9 @@ export function hardResetProgress(state, resetGameCallback) {
     localStorage.removeItem("tower_upgrades");
     localStorage.removeItem("tower_highest_level");
     localStorage.removeItem("tower_claimed_milestones");
+    localStorage.removeItem("tower_discovered_abilities");
 
+    state.discoveredAbilities = new Set();
     state.wavesCompleted = 0;
     state.highestLevelReached = 0;
     state.claimedPerkMilestones = [];
