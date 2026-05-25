@@ -44,11 +44,11 @@ export class WaveManager {
         if (this.wave % 10 === 0) {
             return 1;
         } else if (this.wave % 10 === 1 && this.wave > 1) {
-            const multiplier = this.wave <= 10 ? 4 : 6;
-            return 10 + this.wave * multiplier;
+            const multiplier = this.wave <= 10 ? 3 : 6;
+            return 5 + this.wave * multiplier;
         } else {
-            if (this.wave === 1) return 10;
-            const growth = this.wave <= 10 ? 6 : (8 + Math.floor(this.wave / 5));
+            if (this.wave === 1) return 5;
+            const growth = this.wave <= 10 ? 3 : (8 + Math.floor(this.wave / 5));
             return this.enemiesToSpawn + growth;
         }
     }
@@ -163,7 +163,7 @@ export class WaveManager {
             const groupSize = selectedType.groupSettings.baseGroupSize + Math.floor(this.wave * selectedType.groupSettings.growthPerWave);
             return this.spawnGroup(state, selectedType, groupSize);
         } else {
-            const baseSimultaneous = 3 + Math.floor(this.wave / 2);
+            const baseSimultaneous = 1 + Math.floor(this.wave / 3);
             const simCount = Math.min(baseSimultaneous, this.enemiesToSpawn - this.enemiesSpawned);
 
             for (let i = 0; i < simCount; i++) {
