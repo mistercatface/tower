@@ -70,6 +70,7 @@ export class CombatState {
         ctx.state.floatingTexts = [];
         ctx.state.planet.resetToSpawn();
         ctx.state.waveManager.startCombat();
+        ctx.state.turrets.forEach(t => t.currentLaserLength = 0);
         WallGenerator.generate(ctx.state);
         const offsetX = ctx.state.mapPlayerX - ctx.viewport.x;
         const offsetY = ctx.state.mapPlayerY - ctx.viewport.y;

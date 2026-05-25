@@ -272,9 +272,16 @@ export const createUpgrades = () => [
                 laserCanDamage = true;
                 turret.laserTimer = 0;
             }
+            const baseGrowthSpeed = 200;
+            const growthSpeed = baseGrowthSpeed * Math.sqrt(1000 / state.weapon.chargeTime);
+            turret.currentLaserLength = (turret.currentLaserLength || 0) + growthSpeed * (dt / 1000);
+            turret.currentLaserLength = Math.min(2000, turret.currentLaserLength);
+
             const accuracySpread = (1 - state.weapon.accuracy) * (Math.PI / 12);
             const laserAngle = turret.angle + Math.sin((state.lastTime || Date.now()) / 150) * accuracySpread;
-            const hit = WeaponSystem.castLaser(tx, ty, laserAngle, 2000, state);
+            const hit = WeaponSystem.castLaser(tx, ty, laserAngle, turret.currentLaserLength, state);
+            turret.currentLaserLength = hit.dist;
+
             state.activeLasers.push({ x1: tx, y1: ty, x2: hit.x, y2: hit.y });
             if (laserCanDamage) {
                 if (hit.hit === "enemy") {
