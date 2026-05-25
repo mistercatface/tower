@@ -44,10 +44,10 @@ export class WaveManager {
         if (this.wave % 10 === 0) {
             return 1;
         } else if (this.wave % 10 === 1 && this.wave > 1) {
-            return 5 + this.wave * 2;
+            return 10 + this.wave * 3;
         } else {
-            if (this.wave === 1) return 5;
-            return this.enemiesToSpawn + 3;
+            if (this.wave === 1) return 10;
+            return this.enemiesToSpawn + 6;
         }
     }
 

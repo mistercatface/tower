@@ -21,7 +21,7 @@ export const enemyTypes = [
 
 export const spawnSettings = { baseSpawnDelay: 2500, minSpawnDelay: 300, delayReductionPerWave: 150 };
 
-export const difficultyCurve = { healthMultiplier: 1.04, speedMultiplier: 1.002, rewardMultiplier: 1.04 };
+export const difficultyCurve = { healthMultiplier: 1.015, speedMultiplier: 1.002, rewardMultiplier: 1.04 };
 
 export const perkMilestones = [2, 4, 6, 8, 10, 12, 14, 16];
 
