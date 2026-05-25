@@ -17,7 +17,7 @@ export function spawnPickup(state, planetX, planetY, minRadius, maxRadius, type)
             if (grid.grid[idx] !== 1) {
                 const centerX = gridPos.col * grid.cellSize + grid.centerX - grid.offsetX + grid.cellSize / 2;
                 const centerY = gridPos.row * grid.cellSize + grid.centerY - grid.offsetY + grid.cellSize / 2;
-                state.pickups.push(new Pickup(centerX, centerY, 8, type));
+                state.pickups.push(new Pickup(centerX, centerY, type));
                 spawned = true;
             }
         }

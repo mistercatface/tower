@@ -4,6 +4,7 @@ import { PhysicsSystem } from "../Spatial/PhysicsSystem.js";
 
 export const PickupStrategies = {
     coin: {
+        radius: 8,
         render(ctx, cx, cy, radius) {
             ctx.beginPath();
             ctx.arc(cx, cy, radius, 0, Math.PI * 2);
@@ -46,6 +47,7 @@ export const PickupStrategies = {
         }
     },
     eyeball: {
+        radius: 8,
         render(ctx, cx, cy, radius) {
             ctx.beginPath();
             ctx.arc(cx, cy, radius * 0.5, 0, Math.PI * 2);
@@ -66,6 +68,7 @@ export const PickupStrategies = {
         }
     },
     barrel: {
+        radius: 3,
         render(ctx, cx, cy, radius) {
             ctx.beginPath();
             ctx.arc(cx, cy, radius, 0, Math.PI * 2);
@@ -74,12 +77,6 @@ export const PickupStrategies = {
             ctx.lineWidth = 2;
             ctx.strokeStyle = "#B71C1C";
             ctx.stroke();
-
-            ctx.fillStyle = "#000";
-            ctx.font = "bold 12px monospace";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText("X", cx, cy + 1);
         },
         onCollect(state, pickup, upgrades) {
             return null;
@@ -102,11 +99,11 @@ export const PickupStrategies = {
 };
 
 export class Pickup extends Entity {
-    constructor(x, y, radius, type) {
+    constructor(x, y, type) {
         super(x, y, 0, false);
-        this.radius = radius;
         this.type = type;
         this.strategy = PickupStrategies[type];
+        this.radius = this.strategy.radius;
         this.vx = 0;
         this.vy = 0;
         this.mass = type === "barrel" ? 15.0 : 1.0;
