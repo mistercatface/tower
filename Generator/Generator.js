@@ -48,7 +48,9 @@ export const WallGenerator = {
         state.wallTheme = themeColors[Math.floor(Math.random() * themeColors.length)];
         GeneratorStrategies[selected].generate(state, planetX, planetY);
         state.gridSystem.rebuild(state.walls, planetX, planetY);
-        spawnPickup(state, planetX, planetY, 250, 300, "coin");
+        if (!state.discoveredAbilities.has("Laser")) {
+            spawnPickup(state, planetX, planetY, 250, 300, "coin");
+        }
         spawnPickup(state, planetX, planetY, 175, 200, "eyeball");
 
         const numBarrels = 25;

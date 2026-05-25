@@ -108,7 +108,7 @@ export class ProgressionManager {
 
     static getValidAbilities(state, upgrades) {
         return upgrades.filter((u) => {
-            if (u.id === "Laser") return false;
+            if (u.id === "Laser" && (!state.discoveredAbilities || !state.discoveredAbilities.has("Laser"))) return false;
             const uState = state.upgrades[u.id];
             if (u.category !== "abilities" || uState.level > 0) return false;
             if (u.requires && u.requires.some((req) => !state.upgrades[req] || state.upgrades[req].level === 0)) return false;
