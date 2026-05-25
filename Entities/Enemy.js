@@ -32,6 +32,8 @@ export class Enemy extends DestructibleEntity {
         this.isEngaged = false;
         this.desiredX = 0;
         this.desiredY = 0;
+        this.vx = 0;
+        this.vy = 0;
         this.separation = new Separation();
         this.attackRange = 75;
         this.fireRate = 1500;
@@ -71,9 +73,14 @@ export class Enemy extends DestructibleEntity {
         this.angle += angleDiff * Math.min(1, this.turnSpeed * (dt / 1000));
 
         if (shouldMove) {
-            const moveDist = this.speed * (dt / 1000);
-            this.x += finalX * moveDist;
-            this.y += finalY * moveDist;
+            const targetVx = len > 0 ? finalX * this.speed : 0;
+            const targetVy = len > 0 ? finalY * this.speed : 0;
+            const accelRate = 3.0;
+            const t = 1 - Math.exp(-accelRate * (dt / 1000));
+            this.vx += (targetVx - this.vx) * t;
+            this.vy += (targetVy - this.vy) * t;
+            this.x += this.vx * (dt / 1000);
+            this.y += this.vy * (dt / 1000);
             this.x += this.separation.pushX;
             this.y += this.separation.pushY;
         }

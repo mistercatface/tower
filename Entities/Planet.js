@@ -70,6 +70,8 @@ export class Planet extends Enemy {
         this.isMoving = false;
         this.desiredX = 0;
         this.desiredY = 0;
+        this.vx = 0;
+        this.vy = 0;
     }
     
     heal(amount) {
