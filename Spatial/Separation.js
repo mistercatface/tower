@@ -26,6 +26,9 @@ export class Separation {
                 dx = Math.random() - 0.5;
                 dy = Math.random() - 0.5;
                 dist = Math.hypot(dx, dy);
+            } else if (dist < entity.radius + other.radius + 5) {
+                dx += (Math.random() - 0.5) * 0.5;
+                dy += (Math.random() - 0.5) * 0.5;
             }
 
             const avoidRadius = entity.radius + other.radius + 15;
