@@ -78,8 +78,8 @@ export class PhysicsSystem {
                                 const ctx = state.fsm ? state.fsm.context : null;
                                 if (ctx) {
                                     seg.handleHit(10, ctx);
-                                    entity.vx += 1.5 * impactSpeed * normalX;
-                                    entity.vy += 1.5 * impactSpeed * normalY;
+                                    entity.vx += 0.25 * impactSpeed * normalX;
+                                    entity.vy += 0.25 * impactSpeed * normalY;
                                 }
                             }
                         }

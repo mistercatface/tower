@@ -57,6 +57,7 @@ export class Renderer {
             RenderStrategies.turret(this.ctx, turret, state.planet.x, state.planet.y, state.planet.radius, turret.charge, state.weapon.chargeTime, this.turretCache);
         }
         Explosion.renderAll(this.ctx, state, this);
+        //this.drawDebugFlowField(state);
         this.chunkManager.drawWalls(this.ctx, state);
         for (const ft of state.floatingTexts) RenderStrategies.floatingText(this.ctx, ft);
         this.ctx.restore();
