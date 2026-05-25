@@ -37,6 +37,7 @@ const elements = {
     waveSegments: document.getElementById("waveSegments"),
     waveText: document.getElementById("waveText"),
     missionDisplay: document.getElementById("missionDisplay"),
+    passivesContainer: document.getElementById("passivesContainer"),
     abilitiesContainer: document.getElementById("abilitiesContainer"),
     upgradesContainer: document.getElementById("upgradesContainer"),
     pauseBtn: document.getElementById("pauseBtn"),
@@ -301,6 +302,22 @@ export function updateProgressBar(containerId, textId, textString, ratio, totalS
 }
 
 export function initUI(state, upgrades, resetGameCallback) {
+    elements.passivesContainer.innerHTML = "";
+    upgrades
+        .filter((u) => u.isAbility && !u.showInHud)
+        .forEach((upg) => {
+            const styles =
+                "padding: 3px 8px; background: #1e293b; color: #cbd5e1; border: 1px solid #475569; font-family: monospace; font-weight: bold; border-radius: 4px; display: none; font-size: 11px; pointer-events: none; user-select: none;";
+            const btn = createButton(
+                styles,
+                upg.name,
+                null,
+                "btnPassive_" + upg.id,
+            );
+            dynamicElements[btn.id] = btn;
+            elements.passivesContainer.appendChild(btn);
+        });
+
     elements.abilitiesContainer.innerHTML = "";
     upgrades
         .filter((u) => u.isAbility && u.showInHud)
@@ -529,6 +546,16 @@ export function updateUI(state, upgrades) {
             const unlocked = state.upgrades[upg.id] && state.upgrades[upg.id].level > 0 && !state.isGameOver;
             const active = state.abilities[upg.id];
             updateToggleButton("btnAbility_" + upg.id, unlocked, active, upg.toggleName || upg.name, upg);
+        });
+
+    upgrades
+        .filter((u) => u.isAbility && !u.showInHud)
+        .forEach((upg) => {
+            const unlocked = state.upgrades[upg.id] && state.upgrades[upg.id].level > 0 && !state.isGameOver;
+            const el = dynamicElements["btnPassive_" + upg.id];
+            if (el) {
+                el.style.display = unlocked ? "block" : "none";
+            }
         });
 
     if (elements.pauseText) {
