@@ -127,7 +127,7 @@ export class WaveManager {
             for (let i = 0; i < subGroupSize; i++) {
                 const pos = basePos + i * spacing;
                 const { x, y } = this.calculateSpawnPosition(state, side, pos);
-                state.enemies.push(new Enemy(x, y, enemyType.radius, scaledSpeed, scaledHealth, enemyType.color, scaledReward, enemyType.type, enemyType.attackType, enemyType.canDodge));
+                state.enemies.push(new Enemy(x, y, enemyType.radius, scaledSpeed, scaledHealth, enemyType.color, scaledReward, enemyType.type, enemyType.attackType, enemyType.canDodge, enemyType.accelRate));
             }
         }
 
@@ -179,7 +179,7 @@ export class WaveManager {
                 const scaledSpeed = selectedType.baseSpeed * Math.pow(difficultyCurve.speedMultiplier, this.wave - 1);
                 const scaledReward = Math.max(1, Math.floor(selectedType.baseHealth * Math.pow(difficultyCurve.rewardMultiplier, this.wave - 1)));
 
-                state.enemies.push(new Enemy(x, y, selectedType.radius, scaledSpeed, scaledHealth, selectedType.color, scaledReward, selectedType.type, selectedType.attackType, selectedType.canDodge));
+                state.enemies.push(new Enemy(x, y, selectedType.radius, scaledSpeed, scaledHealth, selectedType.color, scaledReward, selectedType.type, selectedType.attackType, selectedType.canDodge, selectedType.accelRate));
             }
 
             return simCount;

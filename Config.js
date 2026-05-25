@@ -11,6 +11,7 @@ export const enemyTypes = [
         spawnType: "group",
         attackType: "charge",
         canDodge: false,
+        accelRate: 1.0,
         groupSettings: { baseGroupSize: 2, growthPerWave: 1.0 },
     },
     { type: "standard", weight: 60, radius: 6, baseSpeed: 50, baseHealth: 1, maxHealth: 500, color: "#F44336", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: false },

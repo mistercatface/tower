@@ -18,7 +18,7 @@ export class Enemy extends DestructibleEntity {
         }
     }
 
-    constructor(x, y, radius, speed, health, color, reward, type = "standard", attackType = "ranged", canDodge = false) {
+    constructor(x, y, radius, speed, health, color, reward, type = "standard", attackType = "ranged", canDodge = false, accelRate = 3.0) {
         super(x, y, 0, health, health, false);
         this.radius = radius;
         this.speed = speed;
@@ -27,6 +27,7 @@ export class Enemy extends DestructibleEntity {
         this.type = type;
         this.attackType = attackType;
         this.canDodge = canDodge;
+        this.accelRate = accelRate;
         this.turnSpeed = 10;
         this.turret = new Turret(0, 10);
         this.isEngaged = false;
@@ -75,7 +76,7 @@ export class Enemy extends DestructibleEntity {
         if (shouldMove) {
             const targetVx = len > 0 ? finalX * this.speed : 0;
             const targetVy = len > 0 ? finalY * this.speed : 0;
-            const accelRate = 3.0;
+            const accelRate = this.accelRate;
             const t = 1 - Math.exp(-accelRate * (dt / 1000));
             this.vx += (targetVx - this.vx) * t;
             this.vy += (targetVy - this.vy) * t;
