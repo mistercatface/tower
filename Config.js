@@ -5,6 +5,7 @@ export const enemyTypes = [
         radius: 4,
         baseSpeed: 80,
         baseHealth: 0.25,
+        maxHealth: 200,
         color: "#FF9800",
         minLevel: 0,
         spawnType: "group",

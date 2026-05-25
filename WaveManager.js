@@ -107,7 +107,10 @@ export class WaveManager {
     spawnGroup(state, enemyType, count, spacing = 40) {
         const dist = state.spawnRadius;
         
-        const scaledHealth = Math.max(1, Math.floor(enemyType.baseHealth * Math.pow(difficultyCurve.healthMultiplier, this.wave - 1)));
+        let scaledHealth = Math.max(1, Math.floor(enemyType.baseHealth * Math.pow(difficultyCurve.healthMultiplier, this.wave - 1)));
+        if (enemyType.maxHealth !== undefined) {
+            scaledHealth = Math.min(enemyType.maxHealth, scaledHealth);
+        }
         const scaledSpeed = enemyType.baseSpeed * Math.pow(difficultyCurve.speedMultiplier, this.wave - 1);
         const scaledReward = Math.max(1, Math.floor(enemyType.baseHealth * Math.pow(difficultyCurve.rewardMultiplier, this.wave - 1)));
 
@@ -167,7 +170,10 @@ export class WaveManager {
                 const pos = (Math.random() * 2 - 1) * dist;
                 const { x, y } = this.calculateSpawnPosition(state, side, pos);
 
-                const scaledHealth = Math.max(1, Math.floor(selectedType.baseHealth * Math.pow(difficultyCurve.healthMultiplier, this.wave - 1)));
+                let scaledHealth = Math.max(1, Math.floor(selectedType.baseHealth * Math.pow(difficultyCurve.healthMultiplier, this.wave - 1)));
+                if (selectedType.maxHealth !== undefined) {
+                    scaledHealth = Math.min(selectedType.maxHealth, scaledHealth);
+                }
                 const scaledSpeed = selectedType.baseSpeed * Math.pow(difficultyCurve.speedMultiplier, this.wave - 1);
                 const scaledReward = Math.max(1, Math.floor(selectedType.baseHealth * Math.pow(difficultyCurve.rewardMultiplier, this.wave - 1)));
 
