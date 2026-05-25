@@ -1,5 +1,5 @@
 export class PhysicsSystem {
-    static applyMovement(entity, dt, ignoreSeparation = false, shouldMove = true) {
+    static applyMovement(entity, dt, ignoreSeparation = false, shouldMove = true, alignAngleWithMovement = true) {
         let finalX = entity.desiredX + (ignoreSeparation || !entity.separation ? 0 : entity.separation.x);
         let finalY = entity.desiredY + (ignoreSeparation || !entity.separation ? 0 : entity.separation.y);
 
@@ -9,10 +9,12 @@ export class PhysicsSystem {
             finalY /= len;
         }
 
-        const targetAngle = Math.atan2(finalY, finalX);
-        let angleDiff = targetAngle - entity.angle;
-        angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
-        entity.angle += angleDiff * Math.min(1, entity.turnSpeed * (dt / 1000));
+        if (alignAngleWithMovement) {
+            const targetAngle = Math.atan2(finalY, finalX);
+            let angleDiff = targetAngle - entity.angle;
+            angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+            entity.angle += angleDiff * Math.min(1, entity.turnSpeed * (dt / 1000));
+        }
 
         if (shouldMove) {
             const targetVx = len > 0 ? finalX * entity.speed : 0;
@@ -31,7 +33,8 @@ export class PhysicsSystem {
     }
 
     static resolveWallCollisions(entity, segments, state = null) {
-        if (!segments) return;
+        if (!segments) return false;
+        let collided = false;
 
         for (let i = 0; i < 2; i++) {
             for (const seg of segments) {
@@ -43,6 +46,7 @@ export class PhysicsSystem {
                 const minDistance = entity.radius + seg.size * 0.5;
 
                 if (distanceSq < minDistance * minDistance) {
+                    collided = true;
                     if (distanceSq === 0) {
                         entity.x += minDistance;
                     } else {
@@ -68,6 +72,7 @@ export class PhysicsSystem {
                 }
             }
         }
+        return collided;
     }
 
     static applyFrictionAndDrag(entity, dt, friction = 8.0) {

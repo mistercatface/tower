@@ -37,7 +37,7 @@ export class Enemy extends DestructibleEntity {
         this.vx = 0;
         this.vy = 0;
         this.separation = new Separation();
-        this.attackRange = 75;
+        this.attackRange = 75 + Math.floor(Math.random() * 70);
         this.fireRate = 1500;
         this.dodgeTimerId = null;
         this.dodgeTargetX = 0;
