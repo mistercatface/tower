@@ -2,6 +2,7 @@ import { Enemy } from "./Enemy.js";
 import { Utilities } from "../Utilities.js";
 import { Navigator } from "../Spatial/Navigator.js";
 import { FloatingText } from "../FloatingText.js";
+import { PhysicsSystem } from "../Spatial/PhysicsSystem.js";
 
 export class Planet extends Enemy {
     constructor(x, y, radius, maxHealth) {
@@ -132,7 +133,7 @@ export class Planet extends Enemy {
         this.separation.update(this, spatialHash);
         
         this.speed = 25 * externalSpeedMod;
-        this.applyMovement(dt); 
-        this.resolveWallCollisions(walls);
+        PhysicsSystem.applyMovement(this, dt); 
+        PhysicsSystem.resolveWallCollisions(this, walls);
     }
 }

@@ -59,35 +59,6 @@ export class Enemy extends DestructibleEntity {
         this.currentState = enemyStates[stateName];
     }
 
-    applyMovement(dt, ignoreSeparation = false, shouldMove = true) {
-        let finalX = this.desiredX + (ignoreSeparation ? 0 : this.separation.x);
-        let finalY = this.desiredY + (ignoreSeparation ? 0 : this.separation.y);
-
-        const len = Math.hypot(finalX, finalY);
-        if (len > 0) {
-            finalX /= len;
-            finalY /= len;
-        }
-
-        const targetAngle = Math.atan2(finalY, finalX);
-        let angleDiff = targetAngle - this.angle;
-        angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
-        this.angle += angleDiff * Math.min(1, this.turnSpeed * (dt / 1000));
-
-        if (shouldMove) {
-            const targetVx = len > 0 ? finalX * this.speed : 0;
-            const targetVy = len > 0 ? finalY * this.speed : 0;
-            const accelRate = this.accelRate;
-            const t = 1 - Math.exp(-accelRate * (dt / 1000));
-            this.vx += (targetVx - this.vx) * t;
-            this.vy += (targetVy - this.vy) * t;
-            this.x += this.vx * (dt / 1000);
-            this.y += this.vy * (dt / 1000);
-            this.x += this.separation.pushX;
-            this.y += this.separation.pushY;
-        }
-    }
-
     calculateSteering(target, gridSystem) {
         if (this.isEngaged) {
             const dx = target.x - this.x;
@@ -116,46 +87,6 @@ export class Enemy extends DestructibleEntity {
         } else {
             this.desiredX = 0;
             this.desiredY = 0;
-        }
-    }
-
-    resolveWallCollisions(segments, state) {
-        if (!segments) return;
-
-        for (let i = 0; i < 2; i++) {
-            for (const seg of segments) {
-                if (seg.isDead) continue;
-
-                const dx = this.x - seg.x;
-                const dy = this.y - seg.y;
-                const distanceSq = dx * dx + dy * dy;
-                const minDistance = this.radius + seg.size * 0.5;
-
-                if (distanceSq < minDistance * minDistance) {
-                    if (distanceSq === 0) {
-                        this.x += minDistance;
-                    } else {
-                        const distance = Math.sqrt(distanceSq);
-                        const overlap = minDistance - distance;
-                        this.x += (dx / distance) * overlap;
-                        this.y += (dy / distance) * overlap;
-
-                        if (this.canDamageWalls && state) {
-                            const normalX = dx / distance;
-                            const normalY = dy / distance;
-                            const impactSpeed = -(this.vx * normalX + this.vy * normalY);
-                            if (impactSpeed > 75) {
-                                const ctx = state.fsm ? state.fsm.context : null;
-                                if (ctx) {
-                                    seg.handleHit(10, ctx);
-                                    this.vx += 1.5 * impactSpeed * normalX;
-                                    this.vy += 1.5 * impactSpeed * normalY;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
         }
     }
 
