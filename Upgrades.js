@@ -32,6 +32,8 @@ export class Upgrade {
         this.onSectorEnd = config.onSectorEnd || null;
         this.weaponMode = config.weaponMode || null;
         this.toggleName = config.toggleName || null;
+        this.showInHud = config.showInHud || false;
+        this.hasToggle = config.hasToggle || false;
     }
 
     getCurrentStr(state) {
@@ -293,7 +295,9 @@ export const createUpgrades = () => [
         description: "When Active: Laser ignores explosive barrels, only damaging enemies.",
         maxLevel: 1,
         isAbility: true,
-        requires: ["Laser"]
+        requires: ["Laser"],
+        showInHud: true,
+        hasToggle: true
     }),
     new Upgrade({
         id: "Dive",
@@ -311,7 +315,8 @@ export const createUpgrades = () => [
         speedModFn: (activeTimer, duration) => {
             const diveRatio = activeTimer / duration;
             return 1.0 + (12.0 * Math.pow(diveRatio, 0.5));
-        }
+        },
+        showInHud: true
     }),
     new Upgrade({
         id: "TwoGuns",
@@ -404,7 +409,9 @@ export const createUpgrades = () => [
             weapon.chargeTime *= 1.33;
             planet.moveSpeed *= 0.5;
             weapon.accuracyModifier += 0.33;
-        }
+        },
+        showInHud: true,
+        hasToggle: true
     }),
     new Upgrade({
         id: "Reposition",

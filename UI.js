@@ -303,7 +303,7 @@ export function updateProgressBar(containerId, textId, textString, ratio, totalS
 export function initUI(state, upgrades, resetGameCallback) {
     elements.abilitiesContainer.innerHTML = "";
     upgrades
-        .filter((u) => u.isAbility)
+        .filter((u) => u.isAbility && u.showInHud)
         .forEach((upg) => {
             const styles =
                 "padding: 5px 10px; background: #222; color: white; border: 1px solid #555; cursor: pointer; font-family: monospace; font-weight: bold; border-radius: 4px; display: none; position: relative; overflow: hidden;";
@@ -316,9 +316,11 @@ export function initUI(state, upgrades, resetGameCallback) {
                 styles,
                 html,
                 () => {
-                    state.abilities[upg.id] = !state.abilities[upg.id];
-                    state.recalculateStats(upgrades);
-                    updateUI(state, upgrades);
+                    if (upg.hasToggle) {
+                        state.abilities[upg.id] = !state.abilities[upg.id];
+                        state.recalculateStats(upgrades);
+                        updateUI(state, upgrades);
+                    }
                 },
                 "btnAbility_" + upg.id,
             );
@@ -522,7 +524,7 @@ function drawStat(state, upg) {
 
 export function updateUI(state, upgrades) {
     upgrades
-        .filter((u) => u.isAbility)
+        .filter((u) => u.isAbility && u.showInHud)
         .forEach((upg) => {
             const unlocked = state.upgrades[upg.id] && state.upgrades[upg.id].level > 0 && !state.isGameOver;
             const active = state.abilities[upg.id];
