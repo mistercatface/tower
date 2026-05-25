@@ -1,4 +1,5 @@
 import { Entity } from "./Entity.js";
+import { PhysicsSystem } from "../Spatial/PhysicsSystem.js";
 
 export class Projectile extends Entity {
     static updateAll(state, dt) {
@@ -65,6 +66,7 @@ export class Projectile extends Entity {
                 if (e.isDead) continue;
                 if (system.checkCircle(this, e)) {
                     events.push({ target: e, damage: state.weapon.damage });
+                    PhysicsSystem.applyKnockback(e, this.angle, this.radius * 150);
                     if (e.health <= state.weapon.damage && this.penetration > 0) {
                         this.penetration--;
                         e.health -= state.weapon.damage;
@@ -78,6 +80,7 @@ export class Projectile extends Entity {
             if (system.checkCircle(this, state.planet)) {
                 this.isDead = true;
                 events.push({ target: state.planet, damage: this.damage });
+                PhysicsSystem.applyKnockback(state.planet, this.angle, this.radius * 150);
             }
         }
     }

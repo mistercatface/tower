@@ -1,5 +1,6 @@
 import { Projectile } from "./Entities/Projectile.js";
 import { WeaponSystem, ContinuousWeaponMode, ChargedWeaponMode } from "./WeaponSystem.js";
+import { PhysicsSystem } from "./Spatial/PhysicsSystem.js";
 
 export class Upgrade {
     constructor(config) {
@@ -367,7 +368,7 @@ export const createUpgrades = () => [
         abilityApplyFn: (weapon, planet) => {
             weapon.damage *= 0.5;
         },
-        weaponMode: new ChargedWeaponMode((state, tx, ty, turretAngle) => {
+        weaponMode: new ChargedWeaponMode((state, tx, ty, turretAngle, source) => {
             const accuracySpread = ((1 - state.weapon.accuracy) * Math.PI) / 2;
             const spreadAngle = (Math.random() - 0.5) * accuracySpread;
             const finalAngle = turretAngle + spreadAngle;
@@ -377,6 +378,9 @@ export const createUpgrades = () => [
             m1.penetration = state.weapon.penetration;
             m2.penetration = state.weapon.penetration;
             state.projectiles.push(m1, m2);
+            if (source) {
+                PhysicsSystem.applyKnockback(source, finalAngle + Math.PI, (m1.radius + m2.radius) * 200);
+            }
         })
     }),
     new Upgrade({
@@ -391,7 +395,7 @@ export const createUpgrades = () => [
         },
         requires: ['TwinStrike'],
         replaces: ['TwinStrike'],
-        weaponMode: new ChargedWeaponMode((state, tx, ty, turretAngle) => {
+        weaponMode: new ChargedWeaponMode((state, tx, ty, turretAngle, source) => {
             const accuracySpread = ((1 - state.weapon.accuracy) * Math.PI) / 2;
             const spreadAngle = (Math.random() - 0.5) * accuracySpread;
             const finalAngle = turretAngle + spreadAngle;
@@ -403,6 +407,9 @@ export const createUpgrades = () => [
             m2.penetration = state.weapon.penetration;
             m3.penetration = state.weapon.penetration;
             state.projectiles.push(m1, m2, m3);
+            if (source) {
+                PhysicsSystem.applyKnockback(source, finalAngle + Math.PI, (m1.radius + m2.radius + m3.radius) * 200);
+            }
         })
     }),
     new Upgrade({

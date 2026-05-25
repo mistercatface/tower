@@ -8,6 +8,7 @@ import { ProgressionManager } from "../ProgressionManager.js";
 import { saveProgress } from "../Storage.js";
 import { updateUI } from "../UI.js";
 import { ChargedWeaponMode } from "../WeaponSystem.js";
+import { PhysicsSystem } from "../Spatial/PhysicsSystem.js";
 
 export class Enemy extends DestructibleEntity {
     static updateAll(state, dt, spatialHash) {
@@ -21,7 +22,7 @@ export class Enemy extends DestructibleEntity {
     constructor(x, y, radius, speed, health, color, reward, type = "standard", attackType = "ranged", canDodge = false, accelRate = 3.0, canDamageWalls = false) {
         super(x, y, 0, health, health, false);
         this.radius = radius;
-        this.mass = radius;
+        this.mass = type === "boss" ? 200.0 : radius;
         this.speed = speed;
         this.color = color;
         this.reward = reward;
@@ -45,7 +46,11 @@ export class Enemy extends DestructibleEntity {
         this.dodgeTargetY = 0;
         this.currentState = enemyStates.navigating;
         this.weaponMode = new ChargedWeaponMode((state, tx, ty, angle, source) => {
-            state.projectiles.push(new Projectile(tx, ty, source.radius * 0.333, 150, state.planet, angle, 10, "enemy"));
+            const m = new Projectile(tx, ty, source.radius * 0.333, 150, state.planet, angle, 10, "enemy");
+            state.projectiles.push(m);
+            if (source) {
+                PhysicsSystem.applyKnockback(source, angle + Math.PI, m.radius * 120);
+            }
         });
     }
 

@@ -103,4 +103,17 @@ export class PhysicsSystem {
             }
         }
     }
+
+    static applyImpulse(entity, fx, fy) {
+        if (entity.vx === undefined || entity.vy === undefined) return;
+        const mass = entity.mass || 1.0;
+        entity.vx += fx / mass;
+        entity.vy += fy / mass;
+    }
+
+    static applyKnockback(entity, angle, magnitude) {
+        const fx = Math.cos(angle) * magnitude;
+        const fy = Math.sin(angle) * magnitude;
+        this.applyImpulse(entity, fx, fy);
+    }
 }

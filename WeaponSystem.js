@@ -1,6 +1,7 @@
 import { Projectile } from "./Entities/Projectile.js";
 import { CollisionSystem } from "./Spatial/CollisionSystem.js";
 import { Utilities } from "./Utilities.js";
+import { PhysicsSystem } from "./Spatial/PhysicsSystem.js";
 
 class WeaponTargetingStrategy {
     determineAimTarget(source, target, blocksTargeting, turret) {
@@ -67,6 +68,9 @@ const DEFAULT_WEAPON_MODE = new ChargedWeaponMode((state, tx, ty, turretAngle, s
     const m = new Projectile(tx, ty, source.radius * 0.25, 250, null, finalAngle, 0, "player");
     m.penetration = state.weapon.penetration;
     state.projectiles.push(m);
+    if (source) {
+        PhysicsSystem.applyKnockback(source, finalAngle + Math.PI, m.radius * 200);
+    }
 });
 
 export class WeaponSystem {
