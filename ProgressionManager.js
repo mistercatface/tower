@@ -25,7 +25,7 @@ export class ProgressionManager {
     static updatePickups(state, dt, upgrades) {
         for (let i = state.pickups.length - 1; i >= 0; i--) {
             const p = state.pickups[i];
-            p.update(dt);
+            p.update(dt, state.walls);
 
             if (p.isDead) {
                 state.pickups.splice(i, 1);

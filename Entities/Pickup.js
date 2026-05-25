@@ -106,8 +106,48 @@ export class Pickup extends Entity {
         this.radius = radius;
         this.type = type;
         this.strategy = PickupStrategies[type];
+        this.vx = 0;
+        this.vy = 0;
     }
 
-    update(dt) {
+    update(dt, walls) {
+        if (this.vx || this.vy) {
+            this.x += this.vx * (dt / 1000);
+            this.y += this.vy * (dt / 1000);
+            const friction = 8.0;
+            const dragFactor = Math.exp(-friction * (dt / 1000));
+            this.vx *= dragFactor;
+            this.vy *= dragFactor;
+            if (Math.hypot(this.vx, this.vy) < 1) {
+                this.vx = 0;
+                this.vy = 0;
+            }
+        }
+        if (this.type === "barrel" && walls) {
+            this.resolveWallCollisions(walls);
+        }
+    }
+
+    resolveWallCollisions(segments) {
+        if (!segments) return;
+        for (let i = 0; i < 2; i++) {
+            for (const seg of segments) {
+                if (seg.isDead) continue;
+                const dx = this.x - seg.x;
+                const dy = this.y - seg.y;
+                const distanceSq = dx * dx + dy * dy;
+                const minDistance = this.radius + seg.size * 0.5;
+                if (distanceSq < minDistance * minDistance) {
+                    if (distanceSq === 0) {
+                        this.x += minDistance;
+                    } else {
+                        const distance = Math.sqrt(distanceSq);
+                        const overlap = minDistance - distance;
+                        this.x += (dx / distance) * overlap;
+                        this.y += (dy / distance) * overlap;
+                    }
+                }
+            }
+        }
     }
 }
