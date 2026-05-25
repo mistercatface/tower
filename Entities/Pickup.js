@@ -1,4 +1,3 @@
-// Entities/Pickup.js
 import { Entity } from "./Entity.js";
 import { Explosion } from "./Explosion/Explosion.js";
 
@@ -26,7 +25,7 @@ export const PickupStrategies = {
                 state.upgrades["Laser"].level = 1;
                 state.abilities["Laser"] = true;
                 state.discoveredAbilities.add("Laser");
-                
+
                 ["TwinStrike", "TripleStrike"].forEach((repId) => {
                     if (state.upgrades[repId]) {
                         state.upgrades[repId].level = 0;

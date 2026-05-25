@@ -425,9 +425,9 @@ function drawStat(state, upg) {
     let isVisible = false;
     if (upg.category === state.currentUpgradeTab) {
         if (upg.category === "abilities") {
-            isVisible = true; // Show all abilities in the tree
+            isVisible = true;
         } else if (upg.category === "perk") {
-            isVisible = currentLevelToCheck > 0; // Perks only when owned
+            isVisible = currentLevelToCheck > 0;
         } else {
             isVisible = true;
         }
@@ -442,7 +442,6 @@ function drawStat(state, upg) {
         const entry = abilityTree.find((e) => e.id === upg.id) || { depth: 0 };
         const prefix = entry.depth > 0 ? "└── " : "";
 
-        // Stylings for tree structure
         btn.style.marginLeft = `${entry.depth * 20}px`;
         btn.style.width = `calc(100% - ${entry.depth * 20}px)`;
         btn.style.flex = "none";
@@ -454,8 +453,8 @@ function drawStat(state, upg) {
         if (isOwned) {
             nameText = prefix + upg.name;
             descText = upg.description;
-            btn.style.background = "#1b3322"; // dark green background
-            btn.style.borderColor = "#4CAF50"; // bright green border
+            btn.style.background = "#1b3322";
+            btn.style.borderColor = "#4CAF50";
             btn.style.opacity = "1";
             btn.style.cursor = "default";
         } else if (isDiscovered) {
@@ -486,7 +485,6 @@ function drawStat(state, upg) {
             btn.dataset.lastHtml = targetHTML;
         }
     } else {
-        // Reset/original styles for standard tabs
         btn.style.marginLeft = "0px";
         btn.style.width = "";
         btn.style.flex = "1";
@@ -542,7 +540,6 @@ export function updateUI(state, upgrades) {
         elements.speedUpBtn.style.opacity = state.selectedSpeed >= state.gameSpeed ? "0.5" : "1";
     }
 
-    // Apply layout changes based on tab
     if (state.currentUpgradeTab === "abilities") {
         elements.upgradesContainer.style.flexDirection = "column";
         elements.upgradesContainer.style.flexWrap = "nowrap";
@@ -551,7 +548,6 @@ export function updateUI(state, upgrades) {
         elements.upgradesContainer.style.overflowY = "auto";
         elements.upgradesContainer.style.paddingRight = "4px";
 
-        // Reorder ability buttons in DOM to match tree order
         abilityTree.forEach((entry) => {
             const btn = dynamicElements["upg_" + entry.id];
             if (btn) {
