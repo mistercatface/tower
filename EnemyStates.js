@@ -136,7 +136,7 @@ export class EnemyEngagedState {
 
             enemy.desiredX = tangentX * enemy.strafeDir + radialX * radialFactor;
             enemy.desiredY = tangentY * enemy.strafeDir + radialY * radialFactor;
-            
+
             enemy.separation.update(enemy, spatialHash);
             PhysicsSystem.applyMovement(enemy, dt, true, true, false);
             PhysicsSystem.resolveWallCollisions(enemy, walls, state);
@@ -207,7 +207,7 @@ export class EnemyEngagedState {
 
             enemy.separation.update(enemy, spatialHash);
             PhysicsSystem.applyMovement(enemy, dt, false, true, false);
-            
+
             const hitWall = PhysicsSystem.resolveWallCollisions(enemy, walls, state);
             if (hitWall) {
                 enemy.strafeDir *= -1;

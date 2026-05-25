@@ -61,14 +61,6 @@ export class Enemy extends DestructibleEntity {
     }
 
     calculateSteering(target, gridSystem) {
-        if (this.isEngaged) {
-            const dx = target.x - this.x;
-            const dy = target.y - this.y;
-            this.desiredX = dx;
-            this.desiredY = dy;
-            return;
-        }
-
         if (gridSystem) {
             const angle = Navigator.getSteeringAngle(this.x, this.y, gridSystem, gridSystem.flowField);
             if (angle !== null) {
