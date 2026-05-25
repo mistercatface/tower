@@ -18,7 +18,7 @@ export class Enemy extends DestructibleEntity {
         }
     }
 
-    constructor(x, y, radius, speed, health, color, reward, type = "standard", attackType = "ranged", canDodge = false, accelRate = 3.0) {
+    constructor(x, y, radius, speed, health, color, reward, type = "standard", attackType = "ranged", canDodge = false, accelRate = 3.0, canDamageWalls = false) {
         super(x, y, 0, health, health, false);
         this.radius = radius;
         this.speed = speed;
@@ -28,6 +28,7 @@ export class Enemy extends DestructibleEntity {
         this.attackType = attackType;
         this.canDodge = canDodge;
         this.accelRate = accelRate;
+        this.canDamageWalls = canDamageWalls;
         this.turnSpeed = 10;
         this.turret = new Turret(0, 10);
         this.isEngaged = false;
@@ -118,7 +119,7 @@ export class Enemy extends DestructibleEntity {
         }
     }
 
-    resolveWallCollisions(segments) {
+    resolveWallCollisions(segments, state) {
         if (!segments) return;
 
         for (let i = 0; i < 2; i++) {
@@ -138,6 +139,20 @@ export class Enemy extends DestructibleEntity {
                         const overlap = minDistance - distance;
                         this.x += (dx / distance) * overlap;
                         this.y += (dy / distance) * overlap;
+
+                        if (this.canDamageWalls && state) {
+                            const normalX = dx / distance;
+                            const normalY = dy / distance;
+                            const impactSpeed = -(this.vx * normalX + this.vy * normalY);
+                            if (impactSpeed > 75) {
+                                const ctx = state.fsm ? state.fsm.context : null;
+                                if (ctx) {
+                                    seg.handleHit(10, ctx);
+                                    this.vx += 1.5 * impactSpeed * normalX;
+                                    this.vy += 1.5 * impactSpeed * normalY;
+                                }
+                            }
+                        }
                     }
                 }
             }

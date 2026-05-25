@@ -19,7 +19,7 @@ export class EnemyNavigatingState {
         enemy.calculateSteering(target, gridSystem);
         enemy.separation.update(enemy, spatialHash);
         enemy.applyMovement(dt, target, true);
-        enemy.resolveWallCollisions(walls);
+        enemy.resolveWallCollisions(walls, state);
 
         enemy.turret.angle = enemy.angle;
 
@@ -45,7 +45,7 @@ export class EnemyEngagedState {
         
         enemy.separation.update(enemy, spatialHash);
         enemy.applyMovement(dt, target, false);
-        enemy.resolveWallCollisions(walls);
+        enemy.resolveWallCollisions(walls, state);
 
         enemy.weaponMode.processTurret(dt, state, enemy, enemy.fireRate, enemy.turret, target, false, null);
 
@@ -61,7 +61,7 @@ export class EnemyChargingState {
         enemy.calculateSteering(target, gridSystem);
         enemy.separation.update(enemy, spatialHash);
         enemy.applyMovement(dt, target, true);
-        enemy.resolveWallCollisions(walls);
+        enemy.resolveWallCollisions(walls, state);
 
         enemy.turret.angle = enemy.angle;
 
