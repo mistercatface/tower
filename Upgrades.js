@@ -256,6 +256,7 @@ export const createUpgrades = () => [
         description: "Passive: Replaces projectiles with a continuous laser beam. Turn Speed -50%.",
         maxLevel: 1,
         isAbility: true,
+        replaces: ["TwinStrike", "TripleStrike"],
         applyFn: (stats, level) => {
             stats.turnSpeed.multiplierModifiers *= 0.5;
         },
