@@ -1,4 +1,5 @@
 import { SpriteCache } from "./SpriteCache.js";
+import { RenderSprites } from "./RenderSprites.js";
 
 export class ChunkManager {
     constructor() {
@@ -24,13 +25,7 @@ export class ChunkManager {
             const g = Math.floor(baseG + (67 - baseG) * (1 - healthRatio));
             const b = Math.floor(baseB + (54 - baseB) * (1 - healthRatio));
             const cacheKey = `${seg.size}_${r}_${g}_${b}`;
-            const cachedSprite = this.wallCache.get(cacheKey, () => {
-                const offCanvas = new OffscreenCanvas(seg.size + 2, seg.size + 2);
-                const offCtx = offCanvas.getContext("2d");
-                offCtx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-                offCtx.fillRect(1, 1, seg.size, seg.size);
-                return offCanvas;
-            });
+            const cachedSprite = this.wallCache.get(cacheKey, RenderSprites.wall, seg.size, r, g, b);
             ctx.save();
             ctx.translate(seg.x - chunk.x, seg.y - chunk.y);
             ctx.rotate(seg.angle);

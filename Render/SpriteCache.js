@@ -3,10 +3,10 @@ export class SpriteCache {
         this.cache = new Map();
     }
 
-    get(key, generateFn) {
+    get(key, generateFn, ...args) {
         let sprite = this.cache.get(key);
         if (!sprite) {
-            sprite = generateFn();
+            sprite = generateFn(...args);
             this.cache.set(key, sprite);
         }
         return sprite;
