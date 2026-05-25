@@ -44,7 +44,7 @@ export class WaveManager {
         if (this.wave % 10 === 0) {
             return 1;
         } else if (this.wave % 10 === 1 && this.wave > 1) {
-            return 10 + this.wave * 3;
+            return 10 + this.wave * 4;
         } else {
             if (this.wave === 1) return 10;
             return this.enemiesToSpawn + 6;
@@ -106,18 +106,26 @@ export class WaveManager {
 
     spawnGroup(state, enemyType, count, spacing = 40) {
         const dist = state.spawnRadius;
-        const side = Math.floor(Math.random() * 4);
-        const basePos = (Math.random() * 2 - 1) * (dist - (count * spacing) / 2);
-
+        
         const scaledHealth = Math.max(1, Math.floor(enemyType.baseHealth * Math.pow(difficultyCurve.healthMultiplier, this.wave - 1)));
         const scaledSpeed = enemyType.baseSpeed * Math.pow(difficultyCurve.speedMultiplier, this.wave - 1);
         const scaledReward = Math.max(1, Math.floor(enemyType.baseHealth * Math.pow(difficultyCurve.rewardMultiplier, this.wave - 1)));
 
-        for (let i = 0; i < count; i++) {
-            const pos = basePos + i * spacing;
-            const { x, y } = this.calculateSpawnPosition(state, side, pos);
-            state.enemies.push(new Enemy(x, y, enemyType.radius, scaledSpeed, scaledHealth, enemyType.color, scaledReward, enemyType.type, enemyType.attackType, enemyType.canDodge));
+        let enemiesRemaining = count;
+        while (enemiesRemaining > 0) {
+            const subGroupSize = Math.min(enemiesRemaining, Math.floor(Math.random() * 6) + 5);
+            enemiesRemaining -= subGroupSize;
+
+            const side = Math.floor(Math.random() * 4);
+            const basePos = (Math.random() * 2 - 1) * (dist - (subGroupSize * spacing) / 2);
+
+            for (let i = 0; i < subGroupSize; i++) {
+                const pos = basePos + i * spacing;
+                const { x, y } = this.calculateSpawnPosition(state, side, pos);
+                state.enemies.push(new Enemy(x, y, enemyType.radius, scaledSpeed, scaledHealth, enemyType.color, scaledReward, enemyType.type, enemyType.attackType, enemyType.canDodge));
+            }
         }
+
         return count;
     }
 
@@ -150,7 +158,7 @@ export class WaveManager {
             const groupSize = selectedType.groupSettings.baseGroupSize + Math.floor(this.wave * selectedType.groupSettings.growthPerWave);
             return this.spawnGroup(state, selectedType, groupSize);
         } else {
-            const baseSimultaneous = 1 + Math.floor(this.wave / 5);
+            const baseSimultaneous = 3 + Math.floor(this.wave / 2);
             const simCount = Math.min(baseSimultaneous, this.enemiesToSpawn - this.enemiesSpawned);
 
             for (let i = 0; i < simCount; i++) {
@@ -189,7 +197,8 @@ export class WaveManager {
             }, true);
         }
 
-        if (this.enemiesSpawned >= this.enemiesToSpawn && state.enemies.length === 0) {
+        const aliveEnemies = state.enemies.filter(e => !e.isDead).length;
+        if (this.enemiesSpawned >= this.enemiesToSpawn && aliveEnemies === 0) {
             updateUI(state, upgrades);
             state.isTransitioning = true;
             state.scheduler.schedule(1500, () => {

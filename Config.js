@@ -1,7 +1,7 @@
 export const enemyTypes = [
     {
         type: "kamikaze",
-        weight: 5,
+        weight: 15,
         radius: 4,
         baseSpeed: 80,
         baseHealth: 0.25,
@@ -10,7 +10,7 @@ export const enemyTypes = [
         spawnType: "group",
         attackType: "charge",
         canDodge: false,
-        groupSettings: { baseGroupSize: 2, growthPerWave: 0.1 },
+        groupSettings: { baseGroupSize: 2, growthPerWave: 1.0 },
     },
     { type: "standard", weight: 60, radius: 6, baseSpeed: 50, baseHealth: 1, color: "#F44336", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: false },
     { type: "fast", weight: 5, radius: 5, baseSpeed: 70, baseHealth: 0.5, color: "#FFEB3B", minLevel: 2, spawnType: "single", attackType: "ranged", canDodge: false },
@@ -19,7 +19,7 @@ export const enemyTypes = [
     { type: "boss", weight: 0, radius: 8, baseSpeed: 20, baseHealth: 50, color: "#B71C1C", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: false },
 ];
 
-export const spawnSettings = { baseSpawnDelay: 2500, minSpawnDelay: 300, delayReductionPerWave: 150 };
+export const spawnSettings = { baseSpawnDelay: 2000, minSpawnDelay: 150, delayReductionPerWave: 150 };
 
 export const difficultyCurve = { healthMultiplier: 1.015, speedMultiplier: 1.002, rewardMultiplier: 1.04 };
 
