@@ -258,7 +258,7 @@ export class ProgressionManager {
             const pickedUpg = validUpgrades[Math.floor(Math.random() * validUpgrades.length)];
             const uState = state.upgrades[pickedUpg.id];
             uState.baseLevel++;
-            uState.level++;
+            uState.level = Math.min(pickedUpg.maxLevel, uState.level + 1);
             saveProgress(state);
             state.recalculateStats(upgrades);
             if (pickedUpg.onPurchase) pickedUpg.onPurchase(state);
