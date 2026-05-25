@@ -62,7 +62,7 @@ export class GameState {
 
         this.planet = new Planet(0, 0, 8, this.stats.maxHealth.value);
         this.turrets = [new Turret(0, this.stats.turnSpeed.value)];
-        
+
         const self = this;
         this.weapon = {
             chargeTime: 1000,
@@ -244,6 +244,7 @@ export class GameState {
             upgradesList.forEach((upg) => {
                 const level = this.upgrades[upg.id] ? this.upgrades[upg.id].level : 0;
                 if (level > 0 && upg.applyFn) {
+                    if (upg.isAbility && !this.abilities[upg.id]) return;
                     upg.applyFn(this.stats, level);
                 }
             });

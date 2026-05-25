@@ -15,7 +15,7 @@ export class ProgressionManager {
 
         state.kills++;
         state.score += pointsReward;
-        
+
         state.grantXP(xpGain);
 
         FloatingText.spawn(state, enemy.x, enemy.y, `+${pointsReward} Points`, "#FFF");
@@ -26,7 +26,7 @@ export class ProgressionManager {
         for (let i = state.pickups.length - 1; i >= 0; i--) {
             const p = state.pickups[i];
             p.update(dt);
-            
+
             if (p.isDead) {
                 state.pickups.splice(i, 1);
                 continue;
@@ -62,7 +62,7 @@ export class ProgressionManager {
             .forEach((upg) => {
                 const timers = state.abilityTimers[upg.id];
                 const activeRemaining = state.scheduler.getTimeRemaining(timers.activeId);
-                
+
                 if (activeRemaining > 0) {
                     if (upg.triggerType === "double_tap_move") {
                         isDiving = true;
