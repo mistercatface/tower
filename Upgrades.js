@@ -275,7 +275,7 @@ export const createUpgrades = () => [
             const baseGrowthSpeed = 200;
             const growthSpeed = baseGrowthSpeed * Math.sqrt(1000 / state.weapon.chargeTime);
             turret.currentLaserLength = (turret.currentLaserLength || 0) + growthSpeed * (dt / 1000);
-            turret.currentLaserLength = Math.min(2000, turret.currentLaserLength);
+            turret.currentLaserLength = Math.min(state.weapon.range, turret.currentLaserLength);
 
             const accuracySpread = (1 - state.weapon.accuracy) * (Math.PI / 12);
             const laserAngle = turret.angle + Math.sin((state.lastTime || Date.now()) / 150) * accuracySpread;
