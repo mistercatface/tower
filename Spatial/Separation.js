@@ -48,5 +48,11 @@ export class Separation {
             this.x = (this.x / sepLen) * 1.0;
             this.y = (this.y / sepLen) * 1.0;
         }
+
+        let pushLen = Math.hypot(this.pushX, this.pushY);
+        if (pushLen > 3.0) {
+            this.pushX = (this.pushX / pushLen) * 3.0;
+            this.pushY = (this.pushY / pushLen) * 3.0;
+        }
     }
 }
