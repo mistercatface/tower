@@ -319,7 +319,7 @@ export const createUpgrades = () => [
         isAbility: true,
         triggerType: 'double_tap_move',
         cooldown: 1000,
-        activeDuration: 750,
+        activeDuration: 400,
         blocksTargeting: true,
         speedModFn: (activeTimer, duration) => {
             const diveRatio = activeTimer / duration;

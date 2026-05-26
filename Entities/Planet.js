@@ -41,6 +41,8 @@ export class Planet extends Enemy {
         this.x = this.spawnX;
         this.y = this.spawnY;
         this.stopMovement();
+        this.vx = 0;
+        this.vy = 0;
     }
 
     setTarget(x, y) {
@@ -74,8 +76,6 @@ export class Planet extends Enemy {
         this.isMoving = false;
         this.desiredX = 0;
         this.desiredY = 0;
-        this.vx = 0;
-        this.vy = 0;
     }
     
     heal(amount) {
@@ -108,8 +108,6 @@ export class Planet extends Enemy {
         if (this.isMoving && this.targetX !== null && this.targetY !== null) {
             const distToDest = Math.hypot(this.targetX - this.x, this.targetY - this.y);
             if (distToDest < 2) {
-                this.x = this.targetX;
-                this.y = this.targetY;
                 this.stopMovement();
             } else {
                 let dirX = (this.targetX - this.x) / distToDest;
