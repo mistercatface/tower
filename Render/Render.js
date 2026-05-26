@@ -133,6 +133,15 @@ export class Renderer {
         this.ctx.save();
         this.ctx.fillStyle = "#000000";
         this.drawShadowPolygons(state.planet.x, state.planet.y, 1500, state, this.ctx);
+
+        const weaponRange = state.weapon.range;
+        if (weaponRange > 0) {
+            this.ctx.beginPath();
+            this.ctx.rect(state.planet.x - 10000, state.planet.y - 10000, 20000, 20000);
+            this.ctx.arc(state.planet.x, state.planet.y, weaponRange, 0, Math.PI * 2);
+            this.ctx.fill("evenodd");
+        }
+
         this.ctx.restore();
     }
 
