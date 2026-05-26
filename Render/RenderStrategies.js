@@ -32,15 +32,6 @@ export const RenderStrategies = {
         ctx.restore();
     },
     planet: (ctx, planet, weaponRange) => {
-        if (planet.spawnX !== undefined && planet.spawnY !== undefined && weaponRange > 0) {
-            ctx.beginPath();
-            ctx.arc(planet.spawnX, planet.spawnY, weaponRange, 0, Math.PI * 2);
-            ctx.strokeStyle = "rgba(150, 150, 150, 0.5)";
-            ctx.lineWidth = 1.5;
-            ctx.setLineDash([8, 8]);
-            ctx.stroke();
-            ctx.setLineDash([]);
-        }
         if (weaponRange > 0) {
             ctx.beginPath();
             ctx.arc(planet.x, planet.y, weaponRange, 0, Math.PI * 2);

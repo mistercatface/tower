@@ -432,7 +432,7 @@ export const createUpgrades = () => [
         category: "abilities",
         name: "Reposition",
         isAbility: true,
-        description: "Passive: Tap to move within the combat area.",
+        description: "Passive: Tap to move.",
         maxLevel: 1,
     }),
     new Upgrade({

@@ -125,7 +125,7 @@ export class Enemy extends DestructibleEntity {
         }
         return false;
     }
-    
+
     isValidDodgeTarget(x, y, gridSystem) {
         if (!gridSystem) return true;
         const { col, row } = gridSystem.worldToGrid(x, y);

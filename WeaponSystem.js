@@ -168,7 +168,7 @@ export class WeaponSystem {
 
         if (Math.abs(diff) < 0.05) {
             turret.angle = targetAngle;
-            return true; 
+            return true;
         } else {
             turret.angle += Math.sign(diff) * Math.min(Math.abs(diff), turret.turnSpeed * (dt / 1000));
             turret.angle = Utilities.normalizeAngle(turret.angle);
