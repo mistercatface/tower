@@ -88,10 +88,21 @@ export class Renderer {
             this.rebuildSharedEdges(state);
         }
 
+        const theme = state.wallTheme;
+        const baseR = theme ? theme.r : 0;
+        const baseG = theme ? theme.g : 188;
+        const baseB = theme ? theme.b : 212;
+
         for (const seg of state.walls) {
             if (seg.isDead) continue;
             const dist = Math.hypot(seg.x - px, seg.y - py);
             if (dist > maxDist) continue;
+
+            const healthRatio = Math.max(0, Math.round((seg.health / seg.maxHealth) * 10) / 10);
+            const r = Math.floor(baseR + (244 - baseR) * (1 - healthRatio));
+            const g = Math.floor(baseG + (67 - baseG) * (1 - healthRatio));
+            const b = Math.floor(baseB + (54 - baseB) * (1 - healthRatio));
+            const darkColor = `rgb(${Math.floor(r * 0.08)}, ${Math.floor(g * 0.08)}, ${Math.floor(b * 0.08)})`;
 
             const cos = Math.cos(seg.angle);
             const sin = Math.sin(seg.angle);
@@ -130,7 +141,7 @@ export class Renderer {
                 let angle1 = Math.atan2(p1.y - py, p1.x - px);
                 let angle2 = Math.atan2(p2.y - py, p2.x - px);
                 const cross = (p1.x - px) * (p2.y - py) - (p1.y - py) * (p2.x - px);
-                const spread = 0.002; // Small spread to prevent microscopic gaps at outer boundary corners
+                const spread = 0.002;
                 if (cross > 0) {
                     angle1 -= spread;
                     angle2 += spread;
@@ -140,6 +151,8 @@ export class Renderer {
                 }
                 const proj1 = { x: p1.x + Math.cos(angle1) * 3000, y: p1.y + Math.sin(angle1) * 3000 };
                 const proj2 = { x: p2.x + Math.cos(angle2) * 3000, y: p2.y + Math.sin(angle2) * 3000 };
+                
+                targetCtx.fillStyle = darkColor;
                 targetCtx.beginPath();
                 targetCtx.moveTo(p1.x, p1.y);
                 targetCtx.lineTo(proj1.x, proj1.y);
@@ -232,12 +245,24 @@ export class Renderer {
         const px = state.planet.x;
         const py = state.planet.y;
         this.ctx.save();
-        this.ctx.fillStyle = "#000000";
+        
+        const theme = state.wallTheme;
+        const baseR = theme ? theme.r : 0;
+        const baseG = theme ? theme.g : 188;
+        const baseB = theme ? theme.b : 212;
+
         for (const seg of state.walls) {
             if (seg.isDead) continue;
             const dist = Math.hypot(seg.x - px, seg.y - py);
             if (dist > 1500) continue;
 
+            const healthRatio = Math.max(0, Math.round((seg.health / seg.maxHealth) * 10) / 10);
+            const r = Math.floor(baseR + (244 - baseR) * (1 - healthRatio));
+            const g = Math.floor(baseG + (67 - baseG) * (1 - healthRatio));
+            const b = Math.floor(baseB + (54 - baseB) * (1 - healthRatio));
+            const darkColor = `rgb(${Math.floor(r * 0.08)}, ${Math.floor(g * 0.08)}, ${Math.floor(b * 0.08)})`;
+
+            this.ctx.fillStyle = darkColor;
             this.ctx.save();
             this.ctx.translate(seg.x, seg.y);
             this.ctx.rotate(seg.angle);
@@ -316,7 +341,6 @@ export class Renderer {
                 const side1 = { x: p1.x + Math.cos(angle1) * fadeDist, y: p1.y + Math.sin(angle1) * fadeDist };
                 const side2 = { x: p2.x + Math.cos(angle2) * fadeDist, y: p2.y + Math.sin(angle2) * fadeDist };
 
-                // Draw side extrusion 1 (receding wall sides)
                 const grad1 = this.ctx.createLinearGradient(p1.x, p1.y, side1.x, side1.y);
                 grad1.addColorStop(0, strokeColor);
                 grad1.addColorStop(1, "rgba(0, 0, 0, 0)");
@@ -327,7 +351,6 @@ export class Renderer {
                 this.ctx.lineTo(side1.x, side1.y);
                 this.ctx.stroke();
 
-                // Draw side extrusion 2 (receding wall sides)
                 const grad2 = this.ctx.createLinearGradient(p2.x, p2.y, side2.x, side2.y);
                 grad2.addColorStop(0, strokeColor);
                 grad2.addColorStop(1, "rgba(0, 0, 0, 0)");
@@ -338,7 +361,6 @@ export class Renderer {
                 this.ctx.lineTo(side2.x, side2.y);
                 this.ctx.stroke();
 
-                // Draw front edge (brightest, facing player)
                 this.ctx.strokeStyle = strokeColor;
                 this.ctx.lineWidth = 4;
                 this.ctx.beginPath();
