@@ -432,8 +432,10 @@ export const createUpgrades = () => [
         category: "abilities",
         name: "Reposition",
         isAbility: true,
-        description: "Passive: Tap to move.",
+        description: "Tap to move.",
         maxLevel: 1,
+        cooldown: 5000,
+        showInHud: true,
     }),
     new Upgrade({
         id: "Eraser",

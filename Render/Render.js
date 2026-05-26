@@ -35,6 +35,13 @@ export class Renderer {
         RenderStrategies.planet(this.ctx, state.planet, state.weapon.range);
         this.drawShadows(state);
 
+        if (state.upgrades["Reposition"] && state.upgrades["Reposition"].level > 0) {
+            const repTimer = state.abilityTimers["Reposition"];
+            if (repTimer && state.scheduler.getTimeRemaining(repTimer.cooldownId) <= 0 && !state.isGameOver) {
+                this.drawRepositionRange(state);
+            }
+        }
+
         if (state.planet.queuedTargetX != null && state.planet.queuedTargetY != null) {
             RenderStrategies.targetMarker(this.ctx, state.planet.queuedTargetX, state.planet.queuedTargetY);
         } else if (state.planet.isMoving && state.planet.targetX !== null && state.planet.targetY !== null) {
@@ -195,5 +202,35 @@ export class Renderer {
             this.ctx.strokeStyle = "#FFF";
             this.ctx.stroke();
         }
+    }
+
+    drawRepositionRange(state) {
+        const grid = state.gridSystem;
+        const playerGridPos = grid.worldToGrid(state.planet.x, state.planet.y);
+        
+        this.ctx.save();
+        
+        const reachable = grid.getReachableCells(playerGridPos.col, playerGridPos.row, 6);
+        const fillAlpha = 0.08;
+        const borderAlpha = 0.15;
+
+        for (const [nIdx, steps] of reachable) {
+            const c = nIdx % grid.cols;
+            const r = Math.floor(nIdx / grid.cols);
+            
+            const cx = c * grid.cellSize + grid.centerX - grid.offsetX;
+            const cy = r * grid.cellSize + grid.centerY - grid.offsetY;
+            
+            // Highlight the cell with static alpha
+            this.ctx.fillStyle = `rgba(0, 230, 118, ${fillAlpha})`;
+            this.ctx.fillRect(cx, cy, grid.cellSize - 1, grid.cellSize - 1);
+            
+            // Draw a subtle border around the walkable area grid cells with static alpha
+            this.ctx.strokeStyle = `rgba(0, 230, 118, ${borderAlpha})`;
+            this.ctx.lineWidth = 0.75;
+            this.ctx.strokeRect(cx, cy, grid.cellSize - 1, grid.cellSize - 1);
+        }
+
+        this.ctx.restore();
     }
 }
