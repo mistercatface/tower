@@ -54,7 +54,8 @@ export class Renderer {
         }
         Explosion.renderAll(this.ctx, state, this);
         //this.drawDebugFlowField(state);
-        this.chunkManager.drawWalls(this.ctx, state);
+        this.drawWallInteriors(state);
+        this.drawVisibleWallEdges(state);
         this.drawShadows(state);
 
         if (state.planet.queuedTargetX != null && state.planet.queuedTargetY != null) {
@@ -225,6 +226,98 @@ export class Renderer {
                 }
             }
         }
+    }
+
+    drawWallInteriors(state) {
+        const px = state.planet.x;
+        const py = state.planet.y;
+        this.ctx.save();
+        this.ctx.fillStyle = "#000000";
+        for (const seg of state.walls) {
+            if (seg.isDead) continue;
+            const dist = Math.hypot(seg.x - px, seg.y - py);
+            if (dist > 1500) continue;
+
+            this.ctx.save();
+            this.ctx.translate(seg.x, seg.y);
+            this.ctx.rotate(seg.angle);
+            this.ctx.fillRect(-seg.size / 2 - 0.5, -seg.size / 2 - 0.5, seg.size + 1.0, seg.size + 1.0);
+            this.ctx.restore();
+        }
+        this.ctx.restore();
+    }
+
+    drawVisibleWallEdges(state) {
+        const px = state.planet.x;
+        const py = state.planet.y;
+
+        this.ctx.save();
+        this.ctx.lineWidth = 4;
+        this.ctx.lineCap = "round";
+        this.ctx.lineJoin = "round";
+
+        const theme = state.wallTheme;
+        const baseR = theme ? theme.r : 0;
+        const baseG = theme ? theme.g : 188;
+        const baseB = theme ? theme.b : 212;
+
+        for (const seg of state.walls) {
+            if (seg.isDead) continue;
+            const dist = Math.hypot(seg.x - px, seg.y - py);
+            if (dist > 1500) continue;
+
+            if (!seg.sharedEdges) {
+                seg.sharedEdges = [false, false, false, false];
+            }
+
+            const cos = Math.cos(seg.angle);
+            const sin = Math.sin(seg.angle);
+            const hs = seg.size / 2;
+            const corners = [
+                { x: seg.x + -hs * cos - -hs * sin, y: seg.y + -hs * sin + -hs * cos },
+                { x: seg.x + hs * cos - -hs * sin, y: seg.y + hs * sin + -hs * cos },
+                { x: seg.x + hs * cos - hs * sin, y: seg.y + hs * sin + hs * cos },
+                { x: seg.x + -hs * cos - hs * sin, y: seg.y + -hs * sin + hs * cos },
+            ];
+            const edges = [
+                [corners[0], corners[1]],
+                [corners[1], corners[2]],
+                [corners[2], corners[3]],
+                [corners[3], corners[0]],
+            ];
+
+            let strokeColor = null;
+
+            for (let i = 0; i < 4; i++) {
+                if (seg.sharedEdges[i]) continue;
+
+                const p1 = edges[i][0];
+                const p2 = edges[i][1];
+                const edgeCx = (p1.x + p2.x) / 2;
+                const edgeCy = (p1.y + p2.y) / 2;
+                const outX = edgeCx - seg.x;
+                const outY = edgeCy - seg.y;
+
+                const viewX = edgeCx - px;
+                const viewY = edgeCy - py;
+                if (outX * viewX + outY * viewY >= 0) continue;
+
+                if (!strokeColor) {
+                    const healthRatio = Math.max(0, Math.round((seg.health / seg.maxHealth) * 10) / 10);
+                    const r = Math.floor(baseR + (244 - baseR) * (1 - healthRatio));
+                    const g = Math.floor(baseG + (67 - baseG) * (1 - healthRatio));
+                    const b = Math.floor(baseB + (54 - baseB) * (1 - healthRatio));
+                    strokeColor = `rgb(${r},${g},${b})`;
+                }
+
+                this.ctx.strokeStyle = strokeColor;
+                this.ctx.beginPath();
+                this.ctx.moveTo(p1.x, p1.y);
+                this.ctx.lineTo(p2.x, p2.y);
+                this.ctx.stroke();
+            }
+        }
+        this.ctx.restore();
     }
 
     drawShadows(state) {
