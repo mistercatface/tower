@@ -125,23 +125,6 @@ export class CombatState {
 
     handleInteraction(worldCoords, isDoubleTap, ctx) {
         if (!ctx.state.upgrades["Reposition"] || ctx.state.upgrades["Reposition"].level === 0) return;
-
-        const repTimer = ctx.state.abilityTimers["Reposition"];
-        const isRepositionCooldownActive = ctx.state.scheduler.getTimeRemaining(repTimer.cooldownId) > 0;
-        
-        let bypassCooldown = false;
-        if (isDoubleTap) {
-            const diveUpgrade = ctx.upgrades.find(u => u.id === "Dive");
-            if (diveUpgrade && ctx.state.abilities["Dive"]) {
-                const diveTimer = ctx.state.abilityTimers["Dive"];
-                if (ctx.state.scheduler.getTimeRemaining(diveTimer.cooldownId) <= 0) {
-                    bypassCooldown = true;
-                }
-            }
-        }
-
-        if (isRepositionCooldownActive && !bypassCooldown) return;
-
         const gridPos = ctx.state.gridSystem.worldToGrid(worldCoords.x, worldCoords.y);
         if (gridPos.col >= 0 && gridPos.col < ctx.state.gridSystem.cols && gridPos.row >= 0 && gridPos.row < ctx.state.gridSystem.rows) {
             if (ctx.state.gridSystem.grid[gridPos.row * ctx.state.gridSystem.cols + gridPos.col] !== 1) {
@@ -151,7 +134,6 @@ export class CombatState {
                 const targetIdx = gridPos.row * ctx.state.gridSystem.cols + gridPos.col;
                 if (!reachable.has(targetIdx)) return;
 
-                // Don't waste cooldown if clicking their own current cell
                 if (gridPos.col === playerGridPos.col && gridPos.row === playerGridPos.row) return;
 
                 const targetX = gridPos.col * ctx.state.gridSystem.cellSize + ctx.state.gridSystem.centerX - ctx.state.gridSystem.offsetX + ctx.state.gridSystem.cellSize / 2;
@@ -169,10 +151,6 @@ export class CombatState {
                 } else {
                     ctx.state.planet.setTarget(targetX, targetY);
                     ctx.state.gridSystem.buildPlayerFlowField(targetX, targetY);
-                    
-                    // Trigger the 15-second Reposition cooldown when starting a normal move
-                    repTimer.cooldownId = ctx.state.scheduler.schedule(15000);
-
                     if (isDoubleTap) {
                         ctx.upgrades
                             .filter((u) => u.isAbility && u.triggerType === "double_tap_move" && ctx.state.abilities[u.id])

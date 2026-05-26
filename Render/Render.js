@@ -35,11 +35,8 @@ export class Renderer {
         RenderStrategies.planet(this.ctx, state.planet, state.weapon.range);
         this.drawShadows(state);
 
-        if (state.upgrades["Reposition"] && state.upgrades["Reposition"].level > 0) {
-            const repTimer = state.abilityTimers["Reposition"];
-            if (repTimer && state.scheduler.getTimeRemaining(repTimer.cooldownId) <= 0 && !state.isGameOver) {
-                this.drawRepositionRange(state);
-            }
+        if (state.upgrades["Reposition"] && state.upgrades["Reposition"].level > 0 && !state.isGameOver) {
+            this.drawRepositionRange(state);
         }
 
         if (state.planet.queuedTargetX != null && state.planet.queuedTargetY != null) {
@@ -210,9 +207,10 @@ export class Renderer {
         
         this.ctx.save();
         
-        const reachable = grid.getReachableCells(playerGridPos.col, playerGridPos.row, 6);
         const fillAlpha = 0.08;
         const borderAlpha = 0.15;
+        
+        const reachable = grid.getReachableCells(playerGridPos.col, playerGridPos.row, 6);
 
         for (const [nIdx, steps] of reachable) {
             const c = nIdx % grid.cols;
