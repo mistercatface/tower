@@ -44,7 +44,7 @@ export class Renderer {
         } else if (state.planet.isMoving && state.planet.targetX !== null && state.planet.targetY !== null) {
             RenderStrategies.targetMarker(this.ctx, state.planet.targetX, state.planet.targetY);
         }
-        
+
         for (const p of state.pickups) RenderStrategies.pickup(this.ctx, p, this.pickupCache);
         for (const p of state.projectiles) RenderStrategies.missile(this.ctx, p, p.faction === "player" ? "#FFEB3B" : "#F44336", this.missileCache);
         for (const e of state.enemies) {
@@ -79,6 +79,7 @@ export class Renderer {
     }
 
     drawShadowPolygons(px, py, maxDist, state, targetCtx) {
+        targetCtx.beginPath();
         for (const seg of state.walls) {
             if (seg.isDead) continue;
             const dist = Math.hypot(seg.x - px, seg.y - py);
@@ -121,20 +122,19 @@ export class Renderer {
                 }
                 const proj1 = { x: p1.x + Math.cos(angle1) * 3000, y: p1.y + Math.sin(angle1) * 3000 };
                 const proj2 = { x: p2.x + Math.cos(angle2) * 3000, y: p2.y + Math.sin(angle2) * 3000 };
-                targetCtx.beginPath();
                 targetCtx.moveTo(p1.x, p1.y);
                 targetCtx.lineTo(proj1.x, proj1.y);
                 targetCtx.lineTo(proj2.x, proj2.y);
                 targetCtx.lineTo(p2.x, p2.y);
                 targetCtx.closePath();
-                targetCtx.fill();
             }
         }
+        targetCtx.fill();
     }
 
     drawShadows(state) {
         this.ctx.save();
-        this.ctx.fillStyle = "#000000";
+        this.ctx.fillStyle = "rgba(15, 23, 42, 0.55)";
         this.drawShadowPolygons(state.planet.x, state.planet.y, 1500, state, this.ctx);
         this.ctx.restore();
     }
@@ -204,26 +204,24 @@ export class Renderer {
     drawRepositionRange(state) {
         const grid = state.gridSystem;
         const playerGridPos = grid.worldToGrid(state.planet.x, state.planet.y);
-        
+
         this.ctx.save();
-        
+
         const fillAlpha = 0.08;
         const borderAlpha = 0.15;
-        
+
         const reachable = grid.getReachableCells(playerGridPos.col, playerGridPos.row, 6);
 
         for (const [nIdx, steps] of reachable) {
             const c = nIdx % grid.cols;
             const r = Math.floor(nIdx / grid.cols);
-            
+
             const cx = c * grid.cellSize + grid.centerX - grid.offsetX;
             const cy = r * grid.cellSize + grid.centerY - grid.offsetY;
-            
-            // Highlight the cell with static alpha
+
             this.ctx.fillStyle = `rgba(0, 230, 118, ${fillAlpha})`;
             this.ctx.fillRect(cx, cy, grid.cellSize - 1, grid.cellSize - 1);
-            
-            // Draw a subtle border around the walkable area grid cells with static alpha
+
             this.ctx.strokeStyle = `rgba(0, 230, 118, ${borderAlpha})`;
             this.ctx.lineWidth = 0.75;
             this.ctx.strokeRect(cx, cy, grid.cellSize - 1, grid.cellSize - 1);

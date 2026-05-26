@@ -254,7 +254,7 @@ export class GridSystem {
     }
 
     getReachableCells(startCol, startRow, maxSteps) {
-        const reachable = new Map(); // gridIndex -> steps
+        const reachable = new Map();
         if (startCol < 0 || startCol >= this.cols || startRow < 0 || startRow >= this.rows) return reachable;
         
         const queue = [{col: startCol, row: startRow, steps: 0}];
