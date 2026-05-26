@@ -54,9 +54,7 @@ export class Renderer {
         }
         Explosion.renderAll(this.ctx, state, this);
         //this.drawDebugFlowField(state);
-        this.drawShadows(state);
-        // this.drawWallInteriors(state); // Disabled roofs for skyscraper style
-        this.drawVisibleWallEdges(state);
+        this.draw3DBuildings(state);
 
         if (state.planet.queuedTargetX != null && state.planet.queuedTargetY != null) {
             RenderStrategies.targetMarker(this.ctx, state.planet.queuedTargetX, state.planet.queuedTargetY);
@@ -409,6 +407,175 @@ export class Renderer {
 
         // 2. Draw the skyscraper side-walls (shadow polygons)
         this.drawShadowPolygons(state.planet.x, state.planet.y, 1500, state, this.ctx);
+
+        this.ctx.restore();
+    }
+
+    draw3DBuildings(state) {
+        const px = state.planet.x;
+        const py = state.planet.y;
+
+        // 1. Rebuild shared edges if needed
+        const aliveCount = state.walls.reduce((acc, seg) => acc + (seg.isDead ? 0 : 1), 0);
+        if (state.walls !== this.lastWalls || aliveCount !== this.lastAliveCount || this.sharedEdgesDirty) {
+            this.lastWalls = state.walls;
+            this.lastAliveCount = aliveCount;
+            this.sharedEdgesDirty = false;
+            this.rebuildSharedEdges(state);
+        }
+
+        this.ctx.save();
+
+        // 2. Draw fog of war/weapon range cutout first
+        const weaponRange = state.weapon.range;
+        if (weaponRange > 0) {
+            this.ctx.fillStyle = "#000000";
+            this.ctx.beginPath();
+            this.ctx.rect(state.planet.x - 10000, state.planet.y - 10000, 20000, 20000);
+            this.ctx.arc(state.planet.x, state.planet.y, weaponRange, 0, Math.PI * 2);
+            this.ctx.fill("evenodd");
+        }
+
+        // 3. Sort walls from furthest to closest (Painter's Algorithm)
+        const sortedWalls = [...state.walls].sort((a, b) => {
+            const distA = Math.hypot(a.x - px, a.y - py);
+            const distB = Math.hypot(b.x - px, b.y - py);
+            return distB - distA;
+        });
+
+        const theme = state.wallTheme;
+        const baseR = theme ? theme.r : 0;
+        const baseG = theme ? theme.g : 188;
+        const baseB = theme ? theme.b : 212;
+
+        for (const seg of sortedWalls) {
+            if (seg.isDead) continue;
+            const dist = Math.hypot(seg.x - px, seg.y - py);
+            if (dist > 1500) continue; // Culling distance
+
+            // Coordinate calculations
+            const cos = Math.cos(seg.angle);
+            const sin = Math.sin(seg.angle);
+            const hs = seg.size / 2;
+            const corners = [
+                { x: seg.x + -hs * cos - -hs * sin, y: seg.y + -hs * sin + -hs * cos },
+                { x: seg.x + hs * cos - -hs * sin, y: seg.y + hs * sin + -hs * cos },
+                { x: seg.x + hs * cos - hs * sin, y: seg.y + hs * sin + hs * cos },
+                { x: seg.x + -hs * cos - hs * sin, y: seg.y + -hs * sin + hs * cos },
+            ];
+            const edges = [
+                [corners[0], corners[1]],
+                [corners[1], corners[2]],
+                [corners[2], corners[3]],
+                [corners[3], corners[0]],
+            ];
+
+            if (!seg.sharedEdges) {
+                seg.sharedEdges = [false, false, false, false];
+            }
+
+            // Color calculations
+            const healthRatio = Math.max(0, Math.round((seg.health / seg.maxHealth) * 10) / 10);
+            const r = Math.floor(baseR + (244 - baseR) * (1 - healthRatio));
+            const g = Math.floor(baseG + (67 - baseG) * (1 - healthRatio));
+            const b = Math.floor(baseB + (54 - baseB) * (1 - healthRatio));
+            const wallColor = `rgb(${Math.floor(r * 0.5)}, ${Math.floor(g * 0.5)}, ${Math.floor(b * 0.5)})`;
+            const strokeColor = `rgb(${r},${g},${b})`;
+
+            // --- A. Draw Side Walls (Shadow Polygons) ---
+            for (let i = 0; i < 4; i++) {
+                if (seg.sharedEdges[i]) continue;
+
+                const p1 = edges[i][0];
+                const p2 = edges[i][1];
+                const edgeCx = (p1.x + p2.x) / 2;
+                const edgeCy = (p1.y + p2.y) / 2;
+                const outX = edgeCx - seg.x;
+                const outY = edgeCy - seg.y;
+
+                const viewX = edgeCx - px;
+                const viewY = edgeCy - py;
+                if (outX * viewX + outY * viewY >= 0) continue; // Face away from player culling
+
+                let angle1 = Math.atan2(p1.y - py, p1.x - px);
+                let angle2 = Math.atan2(p2.y - py, p2.x - px);
+                const cross = (p1.x - px) * (p2.y - py) - (p1.y - py) * (p2.x - px);
+                const spread = 0.002;
+                if (cross > 0) {
+                    angle1 -= spread;
+                    angle2 += spread;
+                } else {
+                    angle1 += spread;
+                    angle2 -= spread;
+                }
+                const proj1 = { x: p1.x + Math.cos(angle1) * 3000, y: p1.y + Math.sin(angle1) * 3000 };
+                const proj2 = { x: p2.x + Math.cos(angle2) * 3000, y: p2.y + Math.sin(angle2) * 3000 };
+                
+                this.ctx.fillStyle = wallColor;
+                this.ctx.beginPath();
+                this.ctx.moveTo(p1.x, p1.y);
+                this.ctx.lineTo(proj1.x, proj1.y);
+                this.ctx.lineTo(proj2.x, proj2.y);
+                this.ctx.lineTo(p2.x, p2.y);
+                this.ctx.closePath();
+                this.ctx.fill();
+            }
+
+            // --- B. Draw Visible Wall Edges & Side Lines ---
+            this.ctx.save();
+            this.ctx.lineWidth = 4;
+            this.ctx.lineCap = "round";
+            this.ctx.lineJoin = "round";
+
+            for (let i = 0; i < 4; i++) {
+                if (seg.sharedEdges[i]) continue;
+
+                const p1 = edges[i][0];
+                const p2 = edges[i][1];
+                const edgeCx = (p1.x + p2.x) / 2;
+                const edgeCy = (p1.y + p2.y) / 2;
+                const outX = edgeCx - seg.x;
+                const outY = edgeCy - seg.y;
+
+                const viewX = edgeCx - px;
+                const viewY = edgeCy - py;
+                if (outX * viewX + outY * viewY >= 0) continue; // Face away culling
+
+                const angle1 = Math.atan2(p1.y - py, p1.x - px);
+                const angle2 = Math.atan2(p2.y - py, p2.x - px);
+                const fadeDist = 120;
+                const side1 = { x: p1.x + Math.cos(angle1) * fadeDist, y: p1.y + Math.sin(angle1) * fadeDist };
+                const side2 = { x: p2.x + Math.cos(angle2) * fadeDist, y: p2.y + Math.sin(angle2) * fadeDist };
+
+                const grad1 = this.ctx.createLinearGradient(p1.x, p1.y, side1.x, side1.y);
+                grad1.addColorStop(0, strokeColor);
+                grad1.addColorStop(1, "rgba(0, 0, 0, 0)");
+                this.ctx.strokeStyle = grad1;
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.moveTo(p1.x, p1.y);
+                this.ctx.lineTo(side1.x, side1.y);
+                this.ctx.stroke();
+
+                const grad2 = this.ctx.createLinearGradient(p2.x, p2.y, side2.x, side2.y);
+                grad2.addColorStop(0, strokeColor);
+                grad2.addColorStop(1, "rgba(0, 0, 0, 0)");
+                this.ctx.strokeStyle = grad2;
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.moveTo(p2.x, p2.y);
+                this.ctx.lineTo(side2.x, side2.y);
+                this.ctx.stroke();
+
+                this.ctx.strokeStyle = strokeColor;
+                this.ctx.lineWidth = 4;
+                this.ctx.beginPath();
+                this.ctx.moveTo(p1.x, p1.y);
+                this.ctx.lineTo(p2.x, p2.y);
+                this.ctx.stroke();
+            }
+            this.ctx.restore();
+        }
 
         this.ctx.restore();
     }
