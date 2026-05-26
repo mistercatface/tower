@@ -30,5 +30,66 @@ export const difficultyCurve = { healthMultiplier: 1.015, speedMultiplier: 1.002
 export const perkMilestones = [2, 4, 6, 8, 10, 12, 14, 16];
 
 export const defaultUpgradeCost = 50;
-
 export const basePlanetMoveSpeed = 50;
+
+export const playerBaseStats = {
+    damage: 1,
+    turnSpeed: Math.PI * 3,
+    chargeTime: 1000,
+    minChargeTime: 100,
+    maxChargeTime: 1000,
+    range: 150,
+    maxHealth: 100,
+    gameSpeed: 2.0,
+    mitigationMax: 0.75,
+    accuracy: 0.5,
+    penetration: 0,
+    moveSpeedMultiplier: 1.0,
+    turretCount: 1,
+};
+
+export const gridSettings = {
+    cellSize: 16,
+    width: 2400,
+    height: 2400,
+};
+
+export const mapSettings = {
+    numLayers: 50,
+    layerSpacing: 150,
+    xSpacing: 120,
+};
+
+export const playerProjectileSettings = {
+    speed: 250,
+    radiusMultiplier: 0.25,
+    splitRadiusMultiplier: 0.125,
+    knockbackMultiplier: 200,
+};
+
+export const enemyProjectileSettings = {
+    speed: 150,
+    radiusMultiplier: 0.333,
+    damage: 10,
+    knockbackMultiplier: 120,
+};
+
+export const pickupSpawnSettings = {
+    coinMinRadius: 250,
+    coinMaxRadius: 300,
+    eyeballMinRadius: 175,
+    eyeballMaxRadius: 200,
+    barrelMinCount: 25,
+    barrelRandomRange: 250,
+    barrelMinRadius: 150,
+    barrelMaxRadius: 1000,
+};
+
+export const controlSettings = {
+    doubleTapTimeout: 300,
+    scrollZoomSensitivity: -0.001,
+};
+
+export const timingSettings = {
+    sectorCompletedDelay: 1500,
+};

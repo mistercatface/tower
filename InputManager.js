@@ -1,4 +1,5 @@
 import { showNodeConfirm } from "./UI.js";
+import { controlSettings } from "./Config.js";
 
 export class InputManager {
     static setup(canvas, fsm, viewport) {
@@ -10,7 +11,7 @@ export class InputManager {
             "wheel",
             (e) => {
                 e.preventDefault();
-                const zoomAmount = e.deltaY * -0.001;
+                const zoomAmount = e.deltaY * controlSettings.scrollZoomSensitivity;
                 viewport.setZoom(viewport.zoom + zoomAmount);
             },
             { passive: false },
@@ -52,7 +53,7 @@ export class InputManager {
 
         canvas.addEventListener("pointerdown", (e) => {
             const currentTime = Date.now();
-            const isDoubleTap = currentTime - lastTapTime < 300;
+            const isDoubleTap = currentTime - lastTapTime < controlSettings.doubleTapTimeout;
             lastTapTime = currentTime;
             const rect = canvas.getBoundingClientRect();
             const screenX = e.clientX - rect.left;

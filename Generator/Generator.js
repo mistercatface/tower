@@ -1,5 +1,6 @@
 import { Pickup } from "../Entities/Pickup.js";
 import { GeneratorStrategies } from "./GeneratorStrategies.js";
+import { pickupSpawnSettings } from "../Config.js";
 
 export function spawnPickup(state, planetX, planetY, minRadius, maxRadius, type) {
     const grid = state.gridSystem;
@@ -49,13 +50,13 @@ export const WallGenerator = {
         GeneratorStrategies[selected].generate(state, planetX, planetY);
         state.gridSystem.rebuild(state.walls, planetX, planetY);
         if (!state.discoveredAbilities.has("Laser")) {
-            spawnPickup(state, planetX, planetY, 250, 300, "coin");
+            spawnPickup(state, planetX, planetY, pickupSpawnSettings.coinMinRadius, pickupSpawnSettings.coinMaxRadius, "coin");
         }
-        spawnPickup(state, planetX, planetY, 175, 200, "eyeball");
+        spawnPickup(state, planetX, planetY, pickupSpawnSettings.eyeballMinRadius, pickupSpawnSettings.eyeballMaxRadius, "eyeball");
 
-        const numBarrels = 25 + Math.floor(Math.random() * 250);
+        const numBarrels = pickupSpawnSettings.barrelMinCount + Math.floor(Math.random() * pickupSpawnSettings.barrelRandomRange);
         for (let i = 0; i < numBarrels; i++) {
-            spawnPickup(state, planetX, planetY, 150, 1000, "barrel");
+            spawnPickup(state, planetX, planetY, pickupSpawnSettings.barrelMinRadius, pickupSpawnSettings.barrelMaxRadius, "barrel");
         }
     },
 };

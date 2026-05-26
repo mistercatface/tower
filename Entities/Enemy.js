@@ -10,6 +10,7 @@ import { saveProgress } from "../Storage.js";
 import { updateUI } from "../UI.js";
 import { ChargedWeaponMode } from "../WeaponSystem.js";
 import { PhysicsSystem } from "../Spatial/PhysicsSystem.js";
+import { enemyProjectileSettings } from "../Config.js";
 
 export class Enemy extends DestructibleEntity {
     static updateAll(state, dt, spatialHash) {
@@ -47,10 +48,10 @@ export class Enemy extends DestructibleEntity {
         this.dodgeTargetY = 0;
         this.currentState = enemyStates.navigating;
         this.weaponMode = new ChargedWeaponMode((state, tx, ty, angle, source) => {
-            const m = new Projectile(tx, ty, source.radius * 0.333, 150, state.planet, angle, 10, "enemy");
+            const m = new Projectile(tx, ty, source.radius * enemyProjectileSettings.radiusMultiplier, enemyProjectileSettings.speed, state.planet, angle, enemyProjectileSettings.damage, "enemy");
             state.projectiles.push(m);
             if (source) {
-                PhysicsSystem.applyKnockback(source, angle + Math.PI, m.radius * 120);
+                PhysicsSystem.applyKnockback(source, angle + Math.PI, m.radius * enemyProjectileSettings.knockbackMultiplier);
             }
         });
     }

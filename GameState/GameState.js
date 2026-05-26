@@ -2,10 +2,9 @@ import { Projectile } from "../Entities/Projectile.js";
 import { Turret } from "../Turret.js";
 import { Planet } from "../Entities/Planet.js";
 import { GridSystem } from "../Spatial/GridSystem.js";
-import { enemyTypes, defaultUpgradeCost, basePlanetMoveSpeed } from "../Config.js";
+import { enemyTypes, defaultUpgradeCost, basePlanetMoveSpeed, perkMilestones, playerBaseStats, gridSettings, mapSettings } from "../Config.js";
 import { WallGenerator } from "../Generator/Generator.js";
 import { FloatingText } from "../FloatingText.js";
-import { perkMilestones } from "../Config.js";
 import { Scheduler } from "../Scheduler.js";
 import { WaveManager } from "../WaveManager.js";
 
@@ -46,19 +45,19 @@ export class GameState {
         this.discoveredAbilities = new Set();
 
         this.stats = {
-            damage: new Stat(1),
-            turnSpeed: new Stat(Math.PI * 3),
-            chargeTime: new Stat(1000, 100, 1000),
-            range: new Stat(150),
-            maxHealth: new Stat(100),
-            gameSpeed: new Stat(2.0),
+            damage: new Stat(playerBaseStats.damage),
+            turnSpeed: new Stat(playerBaseStats.turnSpeed),
+            chargeTime: new Stat(playerBaseStats.chargeTime, playerBaseStats.minChargeTime, playerBaseStats.maxChargeTime),
+            range: new Stat(playerBaseStats.range),
+            maxHealth: new Stat(playerBaseStats.maxHealth),
+            gameSpeed: new Stat(playerBaseStats.gameSpeed),
             pointBonus: new Stat(0),
-            mitigation: new Stat(0, 0, 0.75),
-            accuracy: new Stat(0.5),
-            penetration: new Stat(0),
-            moveSpeedMultiplier: new Stat(1.0),
+            mitigation: new Stat(0, 0, playerBaseStats.mitigationMax),
+            accuracy: new Stat(playerBaseStats.accuracy),
+            penetration: new Stat(playerBaseStats.penetration),
+            moveSpeedMultiplier: new Stat(playerBaseStats.moveSpeedMultiplier),
             baseUpgradeCost: new Stat(defaultUpgradeCost),
-            turretCount: new Stat(1),
+            turretCount: new Stat(playerBaseStats.turretCount),
         };
 
         this.planet = new Planet(0, 0, 8, this.stats.maxHealth.value);
@@ -66,10 +65,10 @@ export class GameState {
 
         const self = this;
         this.weapon = {
-            chargeTime: 1000,
-            range: 150,
-            damage: 1,
-            penetration: 0,
+            chargeTime: playerBaseStats.chargeTime,
+            range: playerBaseStats.range,
+            damage: playerBaseStats.damage,
+            penetration: playerBaseStats.penetration,
             accuracyModifier: 0,
             get accuracy() {
                 let acc = self.stats.accuracy.value;
@@ -79,7 +78,7 @@ export class GameState {
             },
         };
 
-        this.gridSystem = new GridSystem(16, 2400, 2400);
+        this.gridSystem = new GridSystem(gridSettings.cellSize, gridSettings.width, gridSettings.height);
         this.currentUpgradeTab = "attack";
         this.canvasBounds = { width: 0, height: 0 };
         this.upgrades = {};
@@ -292,9 +291,9 @@ export class GameState {
 
     generateMap() {
         this.mapNodes = [];
-        const numLayers = 50;
-        const layerSpacing = 150;
-        const xSpacing = 120;
+        const numLayers = mapSettings.numLayers;
+        const layerSpacing = mapSettings.layerSpacing;
+        const xSpacing = mapSettings.xSpacing;
 
         let nodeIdCounter = 0;
         let layers = [];

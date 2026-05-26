@@ -1,4 +1,4 @@
-import { enemyTypes, difficultyCurve, spawnSettings } from "./Config.js";
+import { enemyTypes, difficultyCurve, spawnSettings, timingSettings } from "./Config.js";
 import { Enemy } from "./Entities/Enemy.js";
 import { updateUI } from "./UI.js";
 import { ProgressionManager } from "./ProgressionManager.js";
@@ -209,7 +209,7 @@ export class WaveManager {
         if (this.enemiesSpawned >= this.enemiesToSpawn && aliveEnemies === 0) {
             updateUI(state, upgrades);
             state.isTransitioning = true;
-            state.scheduler.schedule(1500, () => {
+            state.scheduler.schedule(timingSettings.sectorCompletedDelay, () => {
                 state.isTransitioning = false;
                 ProgressionManager.handleWaveCompletion(state, upgrades, viewport);
             });

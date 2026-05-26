@@ -1,7 +1,7 @@
 import { Projectile } from "./Entities/Projectile.js";
 import { WeaponSystem, ContinuousWeaponMode, ChargedWeaponMode } from "./WeaponSystem.js";
 import { PhysicsSystem } from "./Spatial/PhysicsSystem.js";
-import { basePlanetMoveSpeed } from "./Config.js";
+import { basePlanetMoveSpeed, playerProjectileSettings } from "./Config.js";
 
 export class Upgrade {
     constructor(config) {
@@ -373,14 +373,14 @@ export const createUpgrades = () => [
             const accuracySpread = ((1 - state.weapon.accuracy) * Math.PI) / 2;
             const spreadAngle = (Math.random() - 0.5) * accuracySpread;
             const finalAngle = turretAngle + spreadAngle;
-            const r = state.planet.radius * 0.125;
-            const m1 = new Projectile(tx, ty, r, 250, null, finalAngle - 0.1, 0, "player");
-            const m2 = new Projectile(tx, ty, r, 250, null, finalAngle + 0.1, 0, "player");
+            const r = state.planet.radius * playerProjectileSettings.splitRadiusMultiplier;
+            const m1 = new Projectile(tx, ty, r, playerProjectileSettings.speed, null, finalAngle - 0.1, 0, "player");
+            const m2 = new Projectile(tx, ty, r, playerProjectileSettings.speed, null, finalAngle + 0.1, 0, "player");
             m1.penetration = state.weapon.penetration;
             m2.penetration = state.weapon.penetration;
             state.projectiles.push(m1, m2);
             if (source) {
-                PhysicsSystem.applyKnockback(source, finalAngle + Math.PI, (m1.radius + m2.radius) * 200);
+                PhysicsSystem.applyKnockback(source, finalAngle + Math.PI, (m1.radius + m2.radius) * playerProjectileSettings.knockbackMultiplier);
             }
         })
     }),
@@ -400,16 +400,16 @@ export const createUpgrades = () => [
             const accuracySpread = ((1 - state.weapon.accuracy) * Math.PI) / 2;
             const spreadAngle = (Math.random() - 0.5) * accuracySpread;
             const finalAngle = turretAngle + spreadAngle;
-            const r = state.planet.radius * 0.125;
-            const m1 = new Projectile(tx, ty, r, 250, null, finalAngle - 0.1, 0, "player");
-            const m2 = new Projectile(tx, ty, r, 250, null, finalAngle + 0.1, 0, "player");
-            const m3 = new Projectile(tx, ty, r, 250, null, finalAngle + Math.random() * 0.1, 0, "player");
+            const r = state.planet.radius * playerProjectileSettings.splitRadiusMultiplier;
+            const m1 = new Projectile(tx, ty, r, playerProjectileSettings.speed, null, finalAngle - 0.1, 0, "player");
+            const m2 = new Projectile(tx, ty, r, playerProjectileSettings.speed, null, finalAngle + 0.1, 0, "player");
+            const m3 = new Projectile(tx, ty, r, playerProjectileSettings.speed, null, finalAngle + Math.random() * 0.1, 0, "player");
             m1.penetration = state.weapon.penetration;
             m2.penetration = state.weapon.penetration;
             m3.penetration = state.weapon.penetration;
             state.projectiles.push(m1, m2, m3);
             if (source) {
-                PhysicsSystem.applyKnockback(source, finalAngle + Math.PI, (m1.radius + m2.radius + m3.radius) * 200);
+                PhysicsSystem.applyKnockback(source, finalAngle + Math.PI, (m1.radius + m2.radius + m3.radius) * playerProjectileSettings.knockbackMultiplier);
             }
         })
     }),
