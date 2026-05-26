@@ -171,6 +171,7 @@ export class WeaponSystem {
             return true; 
         } else {
             turret.angle += Math.sign(diff) * Math.min(Math.abs(diff), turret.turnSpeed * (dt / 1000));
+            turret.angle = Utilities.normalizeAngle(turret.angle);
             return false;
         }
     }

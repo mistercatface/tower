@@ -1,4 +1,5 @@
 import { Navigator } from "../Spatial/Navigator.js";
+import { Utilities } from "../Utilities.js";
 import { Projectile } from "./Projectile.js";
 import { Turret } from "../Turret.js";
 import { enemyStates } from "../EnemyStates.js";
@@ -96,7 +97,7 @@ export class Enemy extends DestructibleEntity {
             if (dist < 100 && !m.isDead) {
                 const angleToEnemy = Math.atan2(this.y - m.y, this.x - m.x);
                 let angleDiff = angleToEnemy - m.angle;
-                angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+                angleDiff = Utilities.normalizeAngle(angleDiff);
 
                 if (Math.abs(angleDiff) < 0.5) {
                     if (Math.random() < 0.5) {

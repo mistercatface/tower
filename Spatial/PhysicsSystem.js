@@ -1,3 +1,5 @@
+import { Utilities } from "../Utilities.js";
+
 export class PhysicsSystem {
     static applyMovement(entity, dt, ignoreSeparation = false, shouldMove = true, alignAngleWithMovement = true) {
         let finalX = entity.desiredX + (ignoreSeparation || !entity.separation ? 0 : entity.separation.x);
@@ -12,7 +14,7 @@ export class PhysicsSystem {
         if (alignAngleWithMovement) {
             const targetAngle = Math.atan2(finalY, finalX);
             let angleDiff = targetAngle - entity.angle;
-            angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+            angleDiff = Utilities.normalizeAngle(angleDiff);
             entity.angle += angleDiff * Math.min(1, entity.turnSpeed * (dt / 1000));
         }
 

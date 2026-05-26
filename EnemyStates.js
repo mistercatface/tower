@@ -66,8 +66,9 @@ export class EnemyNavigatingState {
         PhysicsSystem.resolveWallCollisions(enemy, walls, state);
 
         let diff = enemy.angle - enemy.turret.angle;
-        diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+        diff = Utilities.normalizeAngle(diff);
         enemy.turret.angle += diff * Math.min(1, enemy.turret.turnSpeed * (dt / 1000));
+        enemy.turret.angle = Utilities.normalizeAngle(enemy.turret.angle);
 
         return false;
     }
@@ -218,7 +219,7 @@ export class EnemyEngagedState {
 
         const angleToTarget = Math.atan2(-dy, -dx);
         let angleDiff = angleToTarget - enemy.angle;
-        angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+        angleDiff = Utilities.normalizeAngle(angleDiff);
         enemy.angle += angleDiff * Math.min(1, enemy.turnSpeed * (dt / 1000));
 
         enemy.weaponMode.processTurret(dt, state, enemy, enemy.fireRate, enemy.turret, target, !hasLOS, null);
@@ -238,8 +239,9 @@ export class EnemyChargingState {
         PhysicsSystem.resolveWallCollisions(enemy, walls, state);
 
         let diff = enemy.angle - enemy.turret.angle;
-        diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+        diff = Utilities.normalizeAngle(diff);
         enemy.turret.angle += diff * Math.min(1, enemy.turret.turnSpeed * (dt / 1000));
+        enemy.turret.angle = Utilities.normalizeAngle(enemy.turret.angle);
 
         return false;
     }
@@ -254,7 +256,7 @@ export class EnemyDodgingState {
 
         const targetAngle = Math.atan2(dy, dx);
         let dodgeAngleDiff = targetAngle - enemy.angle;
-        dodgeAngleDiff = Math.atan2(Math.sin(dodgeAngleDiff), Math.cos(dodgeAngleDiff));
+        dodgeAngleDiff = Utilities.normalizeAngle(dodgeAngleDiff);
         enemy.angle += dodgeAngleDiff * Math.min(1, enemy.turnSpeed * 1.5 * (dt / 1000));
 
         if (dist <= moveDist) {
@@ -267,8 +269,9 @@ export class EnemyDodgingState {
         }
 
         let diff = enemy.angle - enemy.turret.angle;
-        diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+        diff = Utilities.normalizeAngle(diff);
         enemy.turret.angle += diff * Math.min(1, enemy.turret.turnSpeed * (dt / 1000));
+        enemy.turret.angle = Utilities.normalizeAngle(enemy.turret.angle);
 
         return false;
     }
