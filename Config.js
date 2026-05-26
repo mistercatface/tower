@@ -30,7 +30,6 @@ export const difficultyCurve = { healthMultiplier: 1.015, speedMultiplier: 1.002
 export const perkMilestones = [2, 4, 6, 8, 10, 12, 14, 16];
 
 export const defaultUpgradeCost = 50;
-export const basePlanetMoveSpeed = 50;
 
 export const playerBaseStats = {
     damage: 1,
@@ -45,6 +44,7 @@ export const playerBaseStats = {
     accuracy: 0.5,
     penetration: 0,
     moveSpeedMultiplier: 1.0,
+    moveSpeed: 50,
     turretCount: 1,
 };
 

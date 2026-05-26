@@ -2,7 +2,7 @@ import { Projectile } from "../Entities/Projectile.js";
 import { Turret } from "../Turret.js";
 import { Planet } from "../Entities/Planet.js";
 import { GridSystem } from "../Spatial/GridSystem.js";
-import { enemyTypes, defaultUpgradeCost, basePlanetMoveSpeed, perkMilestones, playerBaseStats, gridSettings, mapSettings } from "../Config.js";
+import { enemyTypes, defaultUpgradeCost, perkMilestones, playerBaseStats, gridSettings, mapSettings } from "../Config.js";
 import { WallGenerator } from "../Generator/Generator.js";
 import { FloatingText } from "../FloatingText.js";
 import { Scheduler } from "../Scheduler.js";
@@ -261,7 +261,7 @@ export class GameState {
         this.pointBonus = this.stats.pointBonus.value;
         this.mitigation = this.stats.mitigation.value;
         this.planet.updateMaxHealth(this.stats.maxHealth.value);
-        this.planet.moveSpeed = basePlanetMoveSpeed * this.stats.moveSpeedMultiplier.value;
+        this.planet.moveSpeed = playerBaseStats.moveSpeed * this.stats.moveSpeedMultiplier.value;
 
         const targetTurretCount = Math.floor(this.stats.turretCount.value);
         while (this.turrets.length < targetTurretCount) {

@@ -1,7 +1,7 @@
 import { Projectile } from "./Entities/Projectile.js";
 import { WeaponSystem, ContinuousWeaponMode, ChargedWeaponMode } from "./WeaponSystem.js";
 import { PhysicsSystem } from "./Spatial/PhysicsSystem.js";
-import { basePlanetMoveSpeed, playerProjectileSettings } from "./Config.js";
+import { playerBaseStats, playerProjectileSettings } from "./Config.js";
 
 export class Upgrade {
     constructor(config) {
@@ -167,7 +167,7 @@ export const createBaseUpgrades = () => [
         currentStrFn: (level) => "x" + (1.0 + level * 0.25).toFixed(2),
         nextStrFn: (level) => "x" + (1.0 + (level + 1) * 0.25).toFixed(2),
         maxLevel: 4,
-        dynamicStrFn: (state) => "x" + (state.planet.moveSpeed / basePlanetMoveSpeed).toFixed(2)
+        dynamicStrFn: (state) => "x" + (state.planet.moveSpeed / playerBaseStats.moveSpeed).toFixed(2)
     }),
 ]
 

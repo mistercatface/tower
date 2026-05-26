@@ -3,11 +3,11 @@ import { Utilities } from "../Utilities.js";
 import { Navigator } from "../Spatial/Navigator.js";
 import { FloatingText } from "../FloatingText.js";
 import { PhysicsSystem } from "../Spatial/PhysicsSystem.js";
-import { basePlanetMoveSpeed } from "../Config.js";
+import { playerBaseStats } from "../Config.js";
 
 export class Planet extends Enemy {
     constructor(x, y, radius, maxHealth) {
-        super(x, y, radius, basePlanetMoveSpeed, maxHealth, "#4CAF50", 0, "player");
+        super(x, y, radius, playerBaseStats.moveSpeed, maxHealth, "#4CAF50", 0, "player");
         this.spawnX = x;
         this.spawnY = y;
         this.healAccumulator = 0;
@@ -19,7 +19,7 @@ export class Planet extends Enemy {
         this.targetNodeX = null;
         this.targetNodeY = null;
         this.mass = 50.0;
-        this.moveSpeed = basePlanetMoveSpeed;
+        this.moveSpeed = playerBaseStats.moveSpeed;
     }
 
     handleHit(damage, ctx) {
