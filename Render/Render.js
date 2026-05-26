@@ -54,9 +54,9 @@ export class Renderer {
         }
         Explosion.renderAll(this.ctx, state, this);
         //this.drawDebugFlowField(state);
-        this.drawWallInteriors(state);
-        this.drawVisibleWallEdges(state);
         this.drawShadows(state);
+        // this.drawWallInteriors(state); // Disabled roofs for skyscraper style
+        this.drawVisibleWallEdges(state);
 
         if (state.planet.queuedTargetX != null && state.planet.queuedTargetY != null) {
             RenderStrategies.targetMarker(this.ctx, state.planet.queuedTargetX, state.planet.queuedTargetY);
@@ -93,7 +93,14 @@ export class Renderer {
         const baseG = theme ? theme.g : 188;
         const baseB = theme ? theme.b : 212;
 
-        for (const seg of state.walls) {
+        // Sort walls by distance from light source descending (furthest first)
+        const sortedWalls = [...state.walls].sort((a, b) => {
+            const distA = Math.hypot(a.x - px, a.y - py);
+            const distB = Math.hypot(b.x - px, b.y - py);
+            return distB - distA;
+        });
+
+        for (const seg of sortedWalls) {
             if (seg.isDead) continue;
             const dist = Math.hypot(seg.x - px, seg.y - py);
             if (dist > maxDist) continue;
@@ -102,7 +109,8 @@ export class Renderer {
             const r = Math.floor(baseR + (244 - baseR) * (1 - healthRatio));
             const g = Math.floor(baseG + (67 - baseG) * (1 - healthRatio));
             const b = Math.floor(baseB + (54 - baseB) * (1 - healthRatio));
-            const darkColor = `rgb(${Math.floor(r * 0.08)}, ${Math.floor(g * 0.08)}, ${Math.floor(b * 0.08)})`;
+            // Wall color shaded to 50% for 3D depth (change 0.5 to 1.0 for full brightness)
+            const wallColor = `rgb(${Math.floor(r * 0.5)}, ${Math.floor(g * 0.5)}, ${Math.floor(b * 0.5)})`;
 
             const cos = Math.cos(seg.angle);
             const sin = Math.sin(seg.angle);
@@ -136,7 +144,7 @@ export class Renderer {
 
                 const viewX = edgeCx - px;
                 const viewY = edgeCy - py;
-                if (outX * viewX + outY * viewY < 0) continue;
+                if (outX * viewX + outY * viewY >= 0) continue;
 
                 let angle1 = Math.atan2(p1.y - py, p1.x - px);
                 let angle2 = Math.atan2(p2.y - py, p2.x - px);
@@ -152,7 +160,7 @@ export class Renderer {
                 const proj1 = { x: p1.x + Math.cos(angle1) * 3000, y: p1.y + Math.sin(angle1) * 3000 };
                 const proj2 = { x: p2.x + Math.cos(angle2) * 3000, y: p2.y + Math.sin(angle2) * 3000 };
                 
-                targetCtx.fillStyle = darkColor;
+                targetCtx.fillStyle = wallColor;
                 targetCtx.beginPath();
                 targetCtx.moveTo(p1.x, p1.y);
                 targetCtx.lineTo(proj1.x, proj1.y);
@@ -251,7 +259,14 @@ export class Renderer {
         const baseG = theme ? theme.g : 188;
         const baseB = theme ? theme.b : 212;
 
-        for (const seg of state.walls) {
+        // Sort walls by distance descending (furthest first)
+        const sortedWalls = [...state.walls].sort((a, b) => {
+            const distA = Math.hypot(a.x - px, a.y - py);
+            const distB = Math.hypot(b.x - px, b.y - py);
+            return distB - distA;
+        });
+
+        for (const seg of sortedWalls) {
             if (seg.isDead) continue;
             const dist = Math.hypot(seg.x - px, seg.y - py);
             if (dist > 1500) continue;
@@ -286,7 +301,14 @@ export class Renderer {
         const baseG = theme ? theme.g : 188;
         const baseB = theme ? theme.b : 212;
 
-        for (const seg of state.walls) {
+        // Sort walls by distance descending (furthest first)
+        const sortedWalls = [...state.walls].sort((a, b) => {
+            const distA = Math.hypot(a.x - px, a.y - py);
+            const distB = Math.hypot(b.x - px, b.y - py);
+            return distB - distA;
+        });
+
+        for (const seg of sortedWalls) {
             if (seg.isDead) continue;
             const dist = Math.hypot(seg.x - px, seg.y - py);
             if (dist > 1500) continue;
@@ -374,16 +396,19 @@ export class Renderer {
 
     drawShadows(state) {
         this.ctx.save();
-        this.ctx.fillStyle = "#000000";
-        this.drawShadowPolygons(state.planet.x, state.planet.y, 1500, state, this.ctx);
 
+        // 1. Draw the weapon range cutout first (so skyscraper walls can draw on top of it and extend to infinity)
         const weaponRange = state.weapon.range;
         if (weaponRange > 0) {
+            this.ctx.fillStyle = "#000000";
             this.ctx.beginPath();
             this.ctx.rect(state.planet.x - 10000, state.planet.y - 10000, 20000, 20000);
             this.ctx.arc(state.planet.x, state.planet.y, weaponRange, 0, Math.PI * 2);
             this.ctx.fill("evenodd");
         }
+
+        // 2. Draw the skyscraper side-walls (shadow polygons)
+        this.drawShadowPolygons(state.planet.x, state.planet.y, 1500, state, this.ctx);
 
         this.ctx.restore();
     }
