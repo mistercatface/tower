@@ -33,14 +33,7 @@ export class Renderer {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         if (viewport) viewport.apply(this.ctx);
         RenderStrategies.planet(this.ctx, state.planet, state.weapon.range);
-        this.drawShadows(state);
 
-        if (state.planet.queuedTargetX != null && state.planet.queuedTargetY != null) {
-            RenderStrategies.targetMarker(this.ctx, state.planet.queuedTargetX, state.planet.queuedTargetY);
-        } else if (state.planet.isMoving && state.planet.targetX !== null && state.planet.targetY !== null) {
-            RenderStrategies.targetMarker(this.ctx, state.planet.targetX, state.planet.targetY);
-        }
-        
         for (const p of state.pickups) RenderStrategies.pickup(this.ctx, p, this.pickupCache);
         for (const p of state.projectiles) RenderStrategies.missile(this.ctx, p, p.faction === "player" ? "#FFEB3B" : "#F44336", this.missileCache);
         for (const e of state.enemies) {
@@ -59,6 +52,14 @@ export class Renderer {
         Explosion.renderAll(this.ctx, state, this);
         //this.drawDebugFlowField(state);
         this.chunkManager.drawWalls(this.ctx, state);
+        this.drawShadows(state);
+
+        if (state.planet.queuedTargetX != null && state.planet.queuedTargetY != null) {
+            RenderStrategies.targetMarker(this.ctx, state.planet.queuedTargetX, state.planet.queuedTargetY);
+        } else if (state.planet.isMoving && state.planet.targetX !== null && state.planet.targetY !== null) {
+            RenderStrategies.targetMarker(this.ctx, state.planet.targetX, state.planet.targetY);
+        }
+
         for (const ft of state.floatingTexts) RenderStrategies.floatingText(this.ctx, ft);
         this.ctx.restore();
     }
