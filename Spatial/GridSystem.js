@@ -19,6 +19,7 @@ export class GridSystem {
         this.offsetY = (height / 2) + (cellSize / 2);
         this.centerX = 0;
         this.centerY = 0;
+        this.segmentGrid = new Array(this.cols * this.rows).fill(null).map(() => []);
     }
 
     rebuild(segments, targetX, targetY) {
@@ -144,6 +145,9 @@ export class GridSystem {
             this.gridsByRadius[r].fill(0);
             this.flowFieldsByRadius[r].fill(null);
         }
+        for (let i = 0; i < this.segmentGrid.length; i++) {
+            this.segmentGrid[i].length = 0;
+        }
     }
 
     worldToGrid(x, y) {
@@ -157,7 +161,7 @@ export class GridSystem {
         
         const halfSize = seg.size / 2;
 
-        const processGrid = (padding, targetGrid) => {
+        const processGrid = (padding, targetGrid, isMainGrid = false) => {
             const effectivePadding = padding;
             const boundingRadius = halfSize * Math.SQRT2 + effectivePadding;
             
@@ -187,15 +191,21 @@ export class GridSystem {
                     const distY = Math.max(0, Math.abs(localY) - halfSize);
                     
                     if ((distX * distX + distY * distY) <= effectivePadding * effectivePadding + 0.01) {
-                        targetGrid[row * this.cols + col] = 1;
+                        const idx = row * this.cols + col;
+                        targetGrid[idx] = 1;
+                        if (isMainGrid) {
+                            if (!this.segmentGrid[idx].includes(seg)) {
+                                this.segmentGrid[idx].push(seg);
+                            }
+                        }
                     }
                 }
             }
         };
 
-        processGrid(seg.padding, this.grid);
+        processGrid(seg.padding, this.grid, true);
         for (const r of this.radii) {
-            processGrid(r, this.gridsByRadius[r]);
+            processGrid(r, this.gridsByRadius[r], false);
         }
     }
 

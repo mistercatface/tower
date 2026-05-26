@@ -30,6 +30,7 @@ export const WallGenerator = {
         const planetX = state.planet.x;
         const planetY = state.planet.y;
         state.walls = [];
+        state.walls.gridSystem = state.gridSystem;
         state.gridSystem.centerX = planetX;
         state.gridSystem.centerY = planetY;
         const patterns = Object.keys(GeneratorStrategies);
