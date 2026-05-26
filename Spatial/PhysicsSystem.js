@@ -45,6 +45,9 @@ export class PhysicsSystem {
                 const dx = entity.x - seg.x;
                 const dy = entity.y - seg.y;
 
+                const maxDist = entity.radius + seg.size * 0.75;
+                if (Math.abs(dx) > maxDist || Math.abs(dy) > maxDist) continue;
+
                 const cos = Math.cos(-seg.angle);
                 const sin = Math.sin(-seg.angle);
                 const localX = dx * cos - dy * sin;

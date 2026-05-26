@@ -81,16 +81,19 @@ export class Render3D {
         this.updateSharedEdges(state);
 
         const maxDistSq = maxDist * maxDist;
-        const sortedWalls = [...state.walls].sort((a, b) => {
-            const distSqA = (a.x - px) ** 2 + (a.y - py) ** 2;
-            const distSqB = (b.x - px) ** 2 + (b.y - py) ** 2;
-            return distSqB - distSqA;
-        });
-
-        for (const seg of sortedWalls) {
+        const visibleWalls = [];
+        for (let i = 0; i < state.walls.length; i++) {
+            const seg = state.walls[i];
             if (seg.isDead) continue;
             const distSq = (seg.x - px) ** 2 + (seg.y - py) ** 2;
-            if (distSq > maxDistSq) continue;
+            if (distSq <= maxDistSq) {
+                seg._distSq = distSq;
+                visibleWalls.push(seg);
+            }
+        }
+        visibleWalls.sort((a, b) => b._distSq - a._distSq);
+
+        for (const seg of visibleWalls) {
 
             const wallColor = this.getWallColor(seg, state.wallTheme, 0.5);
             const edges = this.getSegmentEdges(seg);
@@ -153,7 +156,7 @@ export class Render3D {
             }
         }
 
-        const thresholdSq = 3.0 * 3.0; // 9.0
+        const thresholdSq = 9.0;
         for (const w1 of activeWalls) {
             for (const e1 of w1.edges) {
                 if (e1.seg.sharedEdges[e1.edgeIndex]) continue;
@@ -189,16 +192,19 @@ export class Render3D {
 
         ctx.save();
 
-        const sortedWalls = [...state.walls].sort((a, b) => {
-            const distSqA = (a.x - px) ** 2 + (a.y - py) ** 2;
-            const distSqB = (b.x - px) ** 2 + (b.y - py) ** 2;
-            return distSqB - distSqA;
-        });
-
-        for (const seg of sortedWalls) {
+        const visibleWalls = [];
+        for (let i = 0; i < state.walls.length; i++) {
+            const seg = state.walls[i];
             if (seg.isDead) continue;
             const distSq = (seg.x - px) ** 2 + (seg.y - py) ** 2;
-            if (distSq > 2250000) continue; // 1500 * 1500
+            if (distSq <= 2250000) {
+                seg._distSq = distSq;
+                visibleWalls.push(seg);
+            }
+        }
+        visibleWalls.sort((a, b) => b._distSq - a._distSq);
+
+        for (const seg of visibleWalls) {
 
             const wallColor = this.getWallColor(seg, state.wallTheme, 1.0);
             const edges = this.getSegmentEdges(seg);

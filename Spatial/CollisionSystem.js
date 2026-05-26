@@ -25,8 +25,13 @@ export class CollisionSystem {
     }
 
     static getMissileWallCollision(missile, segments) {
+        const missileRad = missile.radius;
         for (const seg of segments) {
             if (seg.isDead) continue;
+            const dx = missile.x - seg.x;
+            const dy = missile.y - seg.y;
+            const maxDist = missileRad + seg.size * 0.75;
+            if (Math.abs(dx) > maxDist || Math.abs(dy) > maxDist) continue;
             if (this.checkCircleRect(missile, seg)) return seg;
         }
         return null;

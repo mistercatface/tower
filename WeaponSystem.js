@@ -84,6 +84,24 @@ export class WeaponSystem {
         let cy = startY;
         const rayCircle = { x: cx, y: cy, radius: 1 };
 
+        const endX = startX + dx * maxDist;
+        const endY = startY + dy * maxDist;
+        const minX = Math.min(startX, endX);
+        const maxX = Math.max(startX, endX);
+        const minY = Math.min(startY, endY);
+        const maxY = Math.max(startY, endY);
+        const candidateWalls = [];
+
+        for (const seg of state.walls) {
+            if (seg.isDead) continue;
+            const limit = seg.size * 0.75 + 1.5;
+            if (seg.x < minX - limit || seg.x > maxX + limit ||
+                seg.y < minY - limit || seg.y > maxY + limit) {
+                continue;
+            }
+            candidateWalls.push(seg);
+        }
+
         while (dist < maxDist) {
             cx += dx * step;
             cy += dy * step;
@@ -92,8 +110,7 @@ export class WeaponSystem {
             rayCircle.y = cy;
 
             let hitWall = false;
-            for (const seg of state.walls) {
-                if (seg.isDead) continue;
+            for (const seg of candidateWalls) {
                 if (CollisionSystem.checkCircleRect(rayCircle, seg)) {
                     hitWall = true;
                     break;
@@ -108,8 +125,7 @@ export class WeaponSystem {
                     rayCircle.x = cx;
                     rayCircle.y = cy;
                     hitWall = false;
-                    for (const seg of state.walls) {
-                        if (seg.isDead) continue;
+                    for (const seg of candidateWalls) {
                         if (CollisionSystem.checkCircleRect(rayCircle, seg)) {
                             hitWall = true;
                             break;

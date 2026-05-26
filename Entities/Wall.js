@@ -10,6 +10,10 @@ export class Segment extends DestructibleEntity {
     handleHit(damage, ctx) {
         const died = this.takeDamage(damage);
         if (died) {
+            const idx = ctx.state.walls.indexOf(this);
+            if (idx !== -1) {
+                ctx.state.walls.splice(idx, 1);
+            }
             ctx.state.gridSystem.rebuild(ctx.state.walls, ctx.state.planet.x, ctx.state.planet.y);
             if (ctx.state.planet.isMoving && ctx.state.planet.targetX !== null && ctx.state.planet.targetY !== null) {
                 ctx.state.gridSystem.buildPlayerFlowField(ctx.state.planet.targetX, ctx.state.planet.targetY);

@@ -8,10 +8,20 @@ export class Utilities {
     }
 
     static hasLineOfSight(x1, y1, x2, y2, segments, padding = 0) {
+        const minX = Math.min(x1, x2);
+        const maxX = Math.max(x1, x2);
+        const minY = Math.min(y1, y2);
+        const maxY = Math.max(y1, y2);
+
         for (const seg of segments) {
             if (seg.isDead) continue;
+            const limit = seg.size * 0.5 + padding;
+            if (seg.x < minX - limit || seg.x > maxX + limit ||
+                seg.y < minY - limit || seg.y > maxY + limit) {
+                continue;
+            }
             const dist = this.distToSegment(seg.x, seg.y, x1, y1, x2, y2);
-            if (dist < seg.size * 0.5 + padding) {
+            if (dist < limit) {
                 return false;
             }
         }
