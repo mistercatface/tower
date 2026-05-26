@@ -9,7 +9,6 @@ export class Segment extends DestructibleEntity {
 
     handleHit(damage, ctx) {
         const died = this.takeDamage(damage);
-        ctx.renderer.chunkManager.dirtySegments.add(this);
         if (died) {
             ctx.state.gridSystem.rebuild(ctx.state.walls, ctx.state.planet.x, ctx.state.planet.y);
             if (ctx.state.planet.isMoving && ctx.state.planet.targetX !== null && ctx.state.planet.targetY !== null) {

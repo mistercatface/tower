@@ -1,4 +1,3 @@
-import { ChunkManager } from "./ChunkManager.js";
 import { SpriteCache } from "./SpriteCache.js";
 import { RenderStrategies } from "./RenderStrategies.js";
 import { Explosion } from "../Entities/Explosion/Explosion.js";
@@ -11,7 +10,6 @@ export class Renderer {
         this.missileCache = new SpriteCache();
         this.pickupCache = new SpriteCache();
         this.turretCache = new SpriteCache();
-        this.chunkManager = new ChunkManager();
         this.sharedEdgesDirty = true;
         this.lastWalls = null;
         this.lastAliveCount = 0;
