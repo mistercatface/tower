@@ -77,7 +77,7 @@ export class Renderer {
         this.ctx.restore();
     }
 
-    drawShadowPolygons(px, py, maxDist, state, targetCtx) {
+    drawCirclePolygons(px, py, maxDist, state, targetCtx) {
         const aliveCount = state.walls.reduce((acc, seg) => acc + (seg.isDead ? 0 : 1), 0);
         if (state.walls !== this.lastWalls || aliveCount !== this.lastAliveCount || this.sharedEdgesDirty) {
             this.lastWalls = state.walls;
@@ -255,7 +255,6 @@ export class Renderer {
         const baseG = theme ? theme.g : 188;
         const baseB = theme ? theme.b : 212;
 
-        // Sort walls by distance descending (furthest first)
         const sortedWalls = [...state.walls].sort((a, b) => {
             const distA = Math.hypot(a.x - px, a.y - py);
             const distB = Math.hypot(b.x - px, b.y - py);
@@ -297,7 +296,6 @@ export class Renderer {
         const baseG = theme ? theme.g : 188;
         const baseB = theme ? theme.b : 212;
 
-        // Sort walls by distance descending (furthest first)
         const sortedWalls = [...state.walls].sort((a, b) => {
             const distA = Math.hypot(a.x - px, a.y - py);
             const distB = Math.hypot(b.x - px, b.y - py);
@@ -390,30 +388,10 @@ export class Renderer {
         this.ctx.restore();
     }
 
-    drawShadows(state) {
-        this.ctx.save();
-
-        // 1. Draw the weapon range cutout first (so skyscraper walls can draw on top of it and extend to infinity)
-        const weaponRange = state.weapon.range;
-        if (weaponRange > 0) {
-            this.ctx.fillStyle = "#000000";
-            this.ctx.beginPath();
-            this.ctx.rect(state.planet.x - 10000, state.planet.y - 10000, 20000, 20000);
-            this.ctx.arc(state.planet.x, state.planet.y, weaponRange, 0, Math.PI * 2);
-            this.ctx.fill("evenodd");
-        }
-
-        // 2. Draw the skyscraper side-walls (shadow polygons)
-        this.drawShadowPolygons(state.planet.x, state.planet.y, 1500, state, this.ctx);
-
-        this.ctx.restore();
-    }
-
     draw3DBuildings(state) {
         const px = state.planet.x;
         const py = state.planet.y;
 
-        // 1. Rebuild shared edges if needed
         const aliveCount = state.walls.reduce((acc, seg) => acc + (seg.isDead ? 0 : 1), 0);
         if (state.walls !== this.lastWalls || aliveCount !== this.lastAliveCount || this.sharedEdgesDirty) {
             this.lastWalls = state.walls;
@@ -424,17 +402,6 @@ export class Renderer {
 
         this.ctx.save();
 
-        // 2. Draw fog of war/weapon range cutout first
-        const weaponRange = state.weapon.range;
-        if (weaponRange > 0) {
-            this.ctx.fillStyle = "#000000";
-            this.ctx.beginPath();
-            this.ctx.rect(state.planet.x - 10000, state.planet.y - 10000, 20000, 20000);
-            this.ctx.arc(state.planet.x, state.planet.y, weaponRange, 0, Math.PI * 2);
-            this.ctx.fill("evenodd");
-        }
-
-        // 3. Sort walls from furthest to closest (Painter's Algorithm)
         const sortedWalls = [...state.walls].sort((a, b) => {
             const distA = Math.hypot(a.x - px, a.y - py);
             const distB = Math.hypot(b.x - px, b.y - py);
@@ -449,9 +416,8 @@ export class Renderer {
         for (const seg of sortedWalls) {
             if (seg.isDead) continue;
             const dist = Math.hypot(seg.x - px, seg.y - py);
-            if (dist > 1500) continue; // Culling distance
+            if (dist > 1500) continue;
 
-            // Coordinate calculations
             const cos = Math.cos(seg.angle);
             const sin = Math.sin(seg.angle);
             const hs = seg.size / 2;
@@ -515,7 +481,17 @@ export class Renderer {
                 this.ctx.lineTo(p2.x, p2.y);
                 this.ctx.closePath();
                 this.ctx.fill();
+                this.ctx.stroke();
             }
+        }
+
+        const weaponRange = state.weapon.range;
+        if (weaponRange > 0) {
+            this.ctx.fillStyle = "#000000";
+            this.ctx.beginPath();
+            this.ctx.rect(state.planet.x - 10000, state.planet.y - 10000, 20000, 20000);
+            this.ctx.arc(state.planet.x, state.planet.y, weaponRange, 0, Math.PI * 2);
+            this.ctx.fill("evenodd");
         }
 
         this.ctx.restore();

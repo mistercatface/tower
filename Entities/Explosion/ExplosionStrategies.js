@@ -103,7 +103,7 @@ export const ExplosionStrategies = {
             offCtx.fillStyle = "#000000";
             offCtx.save();
             offCtx.translate(cx - exp.x, cy - exp.y);
-            renderer.drawShadowPolygons(exp.x, exp.y, exp.maxRadius, state, offCtx);
+            renderer.drawCirclePolygons(exp.x, exp.y, exp.maxRadius, state, offCtx);
             offCtx.restore();
 
             ctx.save();
