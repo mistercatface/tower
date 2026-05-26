@@ -5,37 +5,8 @@ export class Render3D {
         this.sharedEdgesDirty = true;
     }
 
-    drawExplosion(px, py, maxDist, state, targetCtx) {
-        const aliveCount = state.walls.reduce((acc, seg) => acc + (seg.isDead ? 0 : 1), 0);
-        if (state.walls !== this.lastWalls || aliveCount !== this.lastAliveCount || this.sharedEdgesDirty) {
-            this.lastWalls = state.walls;
-            this.lastAliveCount = aliveCount;
-            this.sharedEdgesDirty = false;
-            this.rebuildSharedEdges(state);
-        }
-
-        const theme = state.wallTheme;
-        const baseR = theme ? theme.r : 0;
-        const baseG = theme ? theme.g : 188;
-        const baseB = theme ? theme.b : 212;
-
-        const sortedWalls = [...state.walls].sort((a, b) => {
-            const distA = Math.hypot(a.x - px, a.y - py);
-            const distB = Math.hypot(b.x - px, b.y - py);
-            return distB - distA;
-        });
-
-        for (const seg of sortedWalls) {
-            if (seg.isDead) continue;
-            const dist = Math.hypot(seg.x - px, seg.y - py);
-            if (dist > maxDist) continue;
-
-            const healthRatio = Math.max(0, Math.round((seg.health / seg.maxHealth) * 10) / 10);
-            const r = Math.floor(baseR + (244 - baseR) * (1 - healthRatio));
-            const g = Math.floor(baseG + (67 - baseG) * (1 - healthRatio));
-            const b = Math.floor(baseB + (54 - baseB) * (1 - healthRatio));
-            const wallColor = `rgb(${Math.floor(r * 0.5)}, ${Math.floor(g * 0.5)}, ${Math.floor(b * 0.5)})`;
-
+    getSegmentEdges(seg) {
+        if (!seg.edges) {
             const cos = Math.cos(seg.angle);
             const sin = Math.sin(seg.angle);
             const hs = seg.size / 2;
@@ -45,12 +16,84 @@ export class Render3D {
                 { x: seg.x + hs * cos - hs * sin, y: seg.y + hs * sin + hs * cos },
                 { x: seg.x + -hs * cos - hs * sin, y: seg.y + -hs * sin + hs * cos },
             ];
-            const edges = [
+            seg.edges = [
                 [corners[0], corners[1]],
                 [corners[1], corners[2]],
                 [corners[2], corners[3]],
                 [corners[3], corners[0]],
             ];
+        }
+        return seg.edges;
+    }
+
+    updateSharedEdges(state) {
+        const aliveCount = state.walls.reduce((acc, seg) => acc + (seg.isDead ? 0 : 1), 0);
+        if (state.walls !== this.lastWalls || aliveCount !== this.lastAliveCount || this.sharedEdgesDirty) {
+            this.lastWalls = state.walls;
+            this.lastAliveCount = aliveCount;
+            this.sharedEdgesDirty = false;
+            this.rebuildSharedEdges(state);
+        }
+    }
+
+    getWallColor(seg, theme, darkenRatio = 1.0) {
+        const baseR = theme ? theme.r : 0;
+        const baseG = theme ? theme.g : 188;
+        const baseB = theme ? theme.b : 212;
+        const healthRatio = Math.max(0, Math.round((seg.health / seg.maxHealth) * 10) / 10);
+        const r = Math.floor((baseR + (244 - baseR) * (1 - healthRatio)) * darkenRatio);
+        const g = Math.floor((baseG + (67 - baseG) * (1 - healthRatio)) * darkenRatio);
+        const b = Math.floor((baseB + (54 - baseB) * (1 - healthRatio)) * darkenRatio);
+        return `rgb(${r}, ${g}, ${b})`;
+    }
+
+    drawProjectedFace(ctx, p1, p2, px, py, fillStyle, shouldStroke = false) {
+        let angle1 = Math.atan2(p1.y - py, p1.x - px);
+        let angle2 = Math.atan2(p2.y - py, p2.x - px);
+        const cross = (p1.x - px) * (p2.y - py) - (p1.y - py) * (p2.x - px);
+        const spread = 0.002;
+        if (cross > 0) {
+            angle1 -= spread;
+            angle2 += spread;
+        } else {
+            angle1 += spread;
+            angle2 -= spread;
+        }
+        const proj1X = p1.x + Math.cos(angle1) * 3000;
+        const proj1Y = p1.y + Math.sin(angle1) * 3000;
+        const proj2X = p2.x + Math.cos(angle2) * 3000;
+        const proj2Y = p2.y + Math.sin(angle2) * 3000;
+        
+        ctx.fillStyle = fillStyle;
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(proj1X, proj1Y);
+        ctx.lineTo(proj2X, proj2Y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.closePath();
+        ctx.fill();
+        if (shouldStroke) {
+            ctx.stroke();
+        }
+    }
+
+    drawExplosion(px, py, maxDist, state, targetCtx) {
+        this.updateSharedEdges(state);
+
+        const maxDistSq = maxDist * maxDist;
+        const sortedWalls = [...state.walls].sort((a, b) => {
+            const distSqA = (a.x - px) ** 2 + (a.y - py) ** 2;
+            const distSqB = (b.x - px) ** 2 + (b.y - py) ** 2;
+            return distSqB - distSqA;
+        });
+
+        for (const seg of sortedWalls) {
+            if (seg.isDead) continue;
+            const distSq = (seg.x - px) ** 2 + (seg.y - py) ** 2;
+            if (distSq > maxDistSq) continue;
+
+            const wallColor = this.getWallColor(seg, state.wallTheme, 0.5);
+            const edges = this.getSegmentEdges(seg);
 
             if (!seg.sharedEdges) {
                 seg.sharedEdges = [false, false, false, false];
@@ -70,28 +113,7 @@ export class Render3D {
                 const viewY = edgeCy - py;
                 if (outX * viewX + outY * viewY >= 0) continue;
 
-                let angle1 = Math.atan2(p1.y - py, p1.x - px);
-                let angle2 = Math.atan2(p2.y - py, p2.x - px);
-                const cross = (p1.x - px) * (p2.y - py) - (p1.y - py) * (p2.x - px);
-                const spread = 0.002;
-                if (cross > 0) {
-                    angle1 -= spread;
-                    angle2 += spread;
-                } else {
-                    angle1 += spread;
-                    angle2 -= spread;
-                }
-                const proj1 = { x: p1.x + Math.cos(angle1) * 3000, y: p1.y + Math.sin(angle1) * 3000 };
-                const proj2 = { x: p2.x + Math.cos(angle2) * 3000, y: p2.y + Math.sin(angle2) * 3000 };
-                
-                targetCtx.fillStyle = wallColor;
-                targetCtx.beginPath();
-                targetCtx.moveTo(p1.x, p1.y);
-                targetCtx.lineTo(proj1.x, proj1.y);
-                targetCtx.lineTo(proj2.x, proj2.y);
-                targetCtx.lineTo(p2.x, p2.y);
-                targetCtx.closePath();
-                targetCtx.fill();
+                this.drawProjectedFace(targetCtx, p1, p2, px, py, wallColor, false);
             }
         }
     }
@@ -101,21 +123,7 @@ export class Render3D {
         for (const seg of state.walls) {
             if (seg.isDead) continue;
             seg.sharedEdges = [false, false, false, false];
-            const cos = Math.cos(seg.angle);
-            const sin = Math.sin(seg.angle);
-            const hs = seg.size / 2;
-            const corners = [
-                { x: seg.x + -hs * cos - -hs * sin, y: seg.y + -hs * sin + -hs * cos },
-                { x: seg.x + hs * cos - -hs * sin, y: seg.y + hs * sin + -hs * cos },
-                { x: seg.x + hs * cos - hs * sin, y: seg.y + hs * sin + hs * cos },
-                { x: seg.x + -hs * cos - hs * sin, y: seg.y + -hs * sin + hs * cos },
-            ];
-            const edges = [
-                [corners[0], corners[1]],
-                [corners[1], corners[2]],
-                [corners[2], corners[3]],
-                [corners[3], corners[0]],
-            ];
+            const edges = this.getSegmentEdges(seg);
             const segmentEdges = [];
             for (let i = 0; i < 4; i++) {
                 const p1 = edges[i][0];
@@ -145,7 +153,7 @@ export class Render3D {
             }
         }
 
-        const threshold = 3.0;
+        const thresholdSq = 3.0 * 3.0; // 9.0
         for (const w1 of activeWalls) {
             for (const e1 of w1.edges) {
                 if (e1.seg.sharedEdges[e1.edgeIndex]) continue;
@@ -159,8 +167,8 @@ export class Render3D {
                         if (!bucket) continue;
                         for (const e2 of bucket) {
                             if (e1 === e2) continue;
-                            const dist = Math.hypot(e1.cx - e2.cx, e1.cy - e2.cy);
-                            if (dist < threshold) {
+                            const distSq = (e1.cx - e2.cx) ** 2 + (e1.cy - e2.cy) ** 2;
+                            if (distSq < thresholdSq) {
                                 e1.seg.sharedEdges[e1.edgeIndex] = true;
                                 e2.seg.sharedEdges[e2.edgeIndex] = true;
                                 found = true;
@@ -177,59 +185,27 @@ export class Render3D {
         const px = state.planet.x;
         const py = state.planet.y;
 
-        const aliveCount = state.walls.reduce((acc, seg) => acc + (seg.isDead ? 0 : 1), 0);
-        if (state.walls !== this.lastWalls || aliveCount !== this.lastAliveCount || this.sharedEdgesDirty) {
-            this.lastWalls = state.walls;
-            this.lastAliveCount = aliveCount;
-            this.sharedEdgesDirty = false;
-            this.rebuildSharedEdges(state);
-        }
+        this.updateSharedEdges(state);
 
         ctx.save();
 
         const sortedWalls = [...state.walls].sort((a, b) => {
-            const distA = Math.hypot(a.x - px, a.y - py);
-            const distB = Math.hypot(b.x - px, b.y - py);
-            return distB - distA;
+            const distSqA = (a.x - px) ** 2 + (a.y - py) ** 2;
+            const distSqB = (b.x - px) ** 2 + (b.y - py) ** 2;
+            return distSqB - distSqA;
         });
-
-        const theme = state.wallTheme;
-        const baseR = theme ? theme.r : 0;
-        const baseG = theme ? theme.g : 188;
-        const baseB = theme ? theme.b : 212;
 
         for (const seg of sortedWalls) {
             if (seg.isDead) continue;
-            const dist = Math.hypot(seg.x - px, seg.y - py);
-            if (dist > 1500) continue;
+            const distSq = (seg.x - px) ** 2 + (seg.y - py) ** 2;
+            if (distSq > 2250000) continue; // 1500 * 1500
 
-            const cos = Math.cos(seg.angle);
-            const sin = Math.sin(seg.angle);
-            const hs = seg.size / 2;
-            const corners = [
-                { x: seg.x + -hs * cos - -hs * sin, y: seg.y + -hs * sin + -hs * cos },
-                { x: seg.x + hs * cos - -hs * sin, y: seg.y + hs * sin + -hs * cos },
-                { x: seg.x + hs * cos - hs * sin, y: seg.y + hs * sin + hs * cos },
-                { x: seg.x + -hs * cos - hs * sin, y: seg.y + -hs * sin + hs * cos },
-            ];
-            const edges = [
-                [corners[0], corners[1]],
-                [corners[1], corners[2]],
-                [corners[2], corners[3]],
-                [corners[3], corners[0]],
-            ];
+            const wallColor = this.getWallColor(seg, state.wallTheme, 1.0);
+            const edges = this.getSegmentEdges(seg);
 
             if (!seg.sharedEdges) {
                 seg.sharedEdges = [false, false, false, false];
             }
-
-            const healthRatio = Math.max(0, Math.round((seg.health / seg.maxHealth) * 10) / 10);
-            const r = Math.floor(baseR + (244 - baseR) * (1 - healthRatio));
-            const g = Math.floor(baseG + (67 - baseG) * (1 - healthRatio));
-            const b = Math.floor(baseB + (54 - baseB) * (1 - healthRatio));
-            const wallColor = `rgb(${r}, ${g}, ${b})`;
-
-            ctx.fillStyle = wallColor;
 
             for (let i = 0; i < 4; i++) {
                 if (seg.sharedEdges[i]) continue;
@@ -245,28 +221,7 @@ export class Render3D {
                 const viewY = edgeCy - py;
                 if (outX * viewX + outY * viewY >= 0) continue;
 
-                let angle1 = Math.atan2(p1.y - py, p1.x - px);
-                let angle2 = Math.atan2(p2.y - py, p2.x - px);
-                const cross = (p1.x - px) * (p2.y - py) - (p1.y - py) * (p2.x - px);
-                const spread = 0.002;
-                if (cross > 0) {
-                    angle1 -= spread;
-                    angle2 += spread;
-                } else {
-                    angle1 += spread;
-                    angle2 -= spread;
-                }
-                const proj1 = { x: p1.x + Math.cos(angle1) * 3000, y: p1.y + Math.sin(angle1) * 3000 };
-                const proj2 = { x: p2.x + Math.cos(angle2) * 3000, y: p2.y + Math.sin(angle2) * 3000 };
-                
-                ctx.beginPath();
-                ctx.moveTo(p1.x, p1.y);
-                ctx.lineTo(proj1.x, proj1.y);
-                ctx.lineTo(proj2.x, proj2.y);
-                ctx.lineTo(p2.x, p2.y);
-                ctx.closePath();
-                ctx.fill();
-                ctx.stroke();
+                this.drawProjectedFace(ctx, p1, p2, px, py, wallColor, true);
             }
         }
 
