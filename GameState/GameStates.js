@@ -128,13 +128,6 @@ export class CombatState {
         const gridPos = ctx.state.gridSystem.worldToGrid(worldCoords.x, worldCoords.y);
         if (gridPos.col >= 0 && gridPos.col < ctx.state.gridSystem.cols && gridPos.row >= 0 && gridPos.row < ctx.state.gridSystem.rows) {
             if (ctx.state.gridSystem.grid[gridPos.row * ctx.state.gridSystem.cols + gridPos.col] !== 1) {
-                const playerGridPos = ctx.state.gridSystem.worldToGrid(ctx.state.planet.x, ctx.state.planet.y);
-                const reachable = ctx.state.gridSystem.getReachableCells(playerGridPos.col, playerGridPos.row, 6);
-                const targetIdx = gridPos.row * ctx.state.gridSystem.cols + gridPos.col;
-                if (!reachable.has(targetIdx)) return;
-
-                if (gridPos.col === playerGridPos.col && gridPos.row === playerGridPos.row) return;
-
                 const targetX = gridPos.col * ctx.state.gridSystem.cellSize + ctx.state.gridSystem.centerX - ctx.state.gridSystem.offsetX + ctx.state.gridSystem.cellSize / 2;
                 const targetY = gridPos.row * ctx.state.gridSystem.cellSize + ctx.state.gridSystem.centerY - ctx.state.gridSystem.offsetY + ctx.state.gridSystem.cellSize / 2;
                 let isDiving = false;

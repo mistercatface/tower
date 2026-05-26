@@ -252,48 +252,4 @@ export class GridSystem {
         }
         return defaultAngle;
     }
-
-    getReachableCells(startCol, startRow, maxSteps) {
-        const reachable = new Map();
-        if (startCol < 0 || startCol >= this.cols || startRow < 0 || startRow >= this.rows) return reachable;
-        
-        const queue = [{col: startCol, row: startRow, steps: 0}];
-        const startIdx = startRow * this.cols + startCol;
-        reachable.set(startIdx, 0);
-
-        const dirs = [
-            {c: 0, r: -1}, {c: 1, r: -1}, {c: 1, r: 0}, {c: 1, r: 1},
-            {c: 0, r: 1}, {c: -1, r: 1}, {c: -1, r: 0}, {c: -1, r: -1}
-        ];
-
-        let head = 0;
-        while(head < queue.length) {
-            const curr = queue[head++];
-            if (curr.steps >= maxSteps) continue;
-
-            for (const d of dirs) {
-                const nc = curr.col + d.c;
-                const nr = curr.row + d.r;
-                if (nc >= 0 && nc < this.cols && nr >= 0 && nr < this.rows) {
-                    const nIdx = nr * this.cols + nc;
-                    if (this.grid[nIdx] === 1) continue;
-                    
-                    if (d.c !== 0 && d.r !== 0) {
-                        const check1 = this.grid[curr.row * this.cols + nc];
-                        const check2 = this.grid[nr * this.cols + curr.col];
-                        if (check1 === 1 || check2 === 1) {
-                            continue;
-                        }
-                    }
-
-                    const nextSteps = curr.steps + 1;
-                    if (!reachable.has(nIdx) || nextSteps < reachable.get(nIdx)) {
-                        reachable.set(nIdx, nextSteps);
-                        queue.push({col: nc, row: nr, steps: nextSteps});
-                    }
-                }
-            }
-        }
-        return reachable;
-    }
 }
