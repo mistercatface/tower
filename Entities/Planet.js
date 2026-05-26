@@ -133,7 +133,7 @@ export class Planet extends Enemy {
 
         this.separation.update(this, spatialHash);
         
-        this.speed = 25 * externalSpeedMod;
+        this.speed = 50 * externalSpeedMod;
         PhysicsSystem.applyMovement(this, dt); 
         PhysicsSystem.resolveWallCollisions(this, walls);
     }

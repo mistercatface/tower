@@ -262,7 +262,7 @@ export class GameState {
         this.pointBonus = this.stats.pointBonus.value;
         this.mitigation = this.stats.mitigation.value;
         this.planet.updateMaxHealth(this.stats.maxHealth.value);
-        this.planet.moveSpeed = 25 * this.stats.moveSpeedMultiplier.value;
+        this.planet.moveSpeed = 50 * this.stats.moveSpeedMultiplier.value;
 
         const targetTurretCount = Math.floor(this.stats.turretCount.value);
         while (this.turrets.length < targetTurretCount) {
