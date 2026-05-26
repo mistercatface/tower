@@ -14,5 +14,5 @@ class MyHTTPRequestHandler(server.SimpleHTTPRequestHandler):
         super().end_headers()
 
 if __name__ == '__main__':
-    print("Turbo Server starting at http://localhost:9000")
-    server.test(HandlerClass=MyHTTPRequestHandler, port=9000)
+    print("Turbo Server starting at http://localhost:8000")
+    server.test(HandlerClass=MyHTTPRequestHandler, port=8000)
