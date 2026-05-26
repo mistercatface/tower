@@ -310,7 +310,37 @@ export class Renderer {
                     strokeColor = `rgb(${r},${g},${b})`;
                 }
 
+                const angle1 = Math.atan2(p1.y - py, p1.x - px);
+                const angle2 = Math.atan2(p2.y - py, p2.x - px);
+                const fadeDist = 120;
+                const side1 = { x: p1.x + Math.cos(angle1) * fadeDist, y: p1.y + Math.sin(angle1) * fadeDist };
+                const side2 = { x: p2.x + Math.cos(angle2) * fadeDist, y: p2.y + Math.sin(angle2) * fadeDist };
+
+                // Draw side extrusion 1 (receding wall sides)
+                const grad1 = this.ctx.createLinearGradient(p1.x, p1.y, side1.x, side1.y);
+                grad1.addColorStop(0, strokeColor);
+                grad1.addColorStop(1, "rgba(0, 0, 0, 0)");
+                this.ctx.strokeStyle = grad1;
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.moveTo(p1.x, p1.y);
+                this.ctx.lineTo(side1.x, side1.y);
+                this.ctx.stroke();
+
+                // Draw side extrusion 2 (receding wall sides)
+                const grad2 = this.ctx.createLinearGradient(p2.x, p2.y, side2.x, side2.y);
+                grad2.addColorStop(0, strokeColor);
+                grad2.addColorStop(1, "rgba(0, 0, 0, 0)");
+                this.ctx.strokeStyle = grad2;
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.moveTo(p2.x, p2.y);
+                this.ctx.lineTo(side2.x, side2.y);
+                this.ctx.stroke();
+
+                // Draw front edge (brightest, facing player)
                 this.ctx.strokeStyle = strokeColor;
+                this.ctx.lineWidth = 4;
                 this.ctx.beginPath();
                 this.ctx.moveTo(p1.x, p1.y);
                 this.ctx.lineTo(p2.x, p2.y);
