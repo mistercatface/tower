@@ -35,7 +35,7 @@ export const RenderStrategies = {
         if (weaponRange > 0) {
             ctx.beginPath();
             ctx.arc(planet.x, planet.y, weaponRange, 0, Math.PI * 2);
-            ctx.fillStyle = "rgba(76, 175, 80, 0.08)";
+            ctx.fillStyle = "rgba(76, 255, 80, 0.16)";
             ctx.fill();
         }
         ctx.beginPath();
@@ -55,7 +55,7 @@ export const RenderStrategies = {
             progress = weaponCharge / weaponChargeTime;
             strokeColor = "#ff0000";
         }
-        
+
         const progressKey = progress.toFixed(2);
         const cacheKey = `${scale}_${explicitColor || "#4CAF50"}_${progressKey}_${strokeColor}`;
         const cachedSprite = cache.get(cacheKey, RenderSprites.turret, scale, explicitColor, progress, strokeColor);
