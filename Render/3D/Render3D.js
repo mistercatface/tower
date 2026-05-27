@@ -3,7 +3,7 @@ export class Render3D {
         this.lastWalls = null;
         this.lastAliveCount = 0;
         this.sharedEdgesDirty = true;
-        this.perspectiveScale = 0.001; // Controls the strength of the 3D lean effect
+        this.perspectiveScale = 0.001;
     }
 
     getSegmentEdges(seg) {

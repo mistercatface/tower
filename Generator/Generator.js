@@ -49,6 +49,13 @@ export const WallGenerator = {
         ];
         state.wallTheme = themeColors[Math.floor(Math.random() * themeColors.length)];
         GeneratorStrategies[selected].generate(state, planetX, planetY);
+        
+        const levelHeightMultiplier = 1 + Math.random() * 9;
+
+        for (const seg of state.walls) {
+            seg.height = seg.size * levelHeightMultiplier;
+        }
+
         state.gridSystem.rebuild(state.walls, planetX, planetY);
         if (!state.discoveredAbilities.has("Laser")) {
             spawnPickup(state, planetX, planetY, pickupSpawnSettings.coinMinRadius, pickupSpawnSettings.coinMaxRadius, "coin");
