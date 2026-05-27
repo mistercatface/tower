@@ -5,12 +5,21 @@ export class Renderer {
     constructor(canvas, ctx) {
         this.canvas = canvas;
         this.ctx = ctx;
+
         this.enemyCache = new SpriteCache();
         this.missileCache = new SpriteCache();
         this.pickupCache = new SpriteCache();
         this.turretCache = new SpriteCache();
         this.planetCache = new SpriteCache();
         this.render3D = new Render3D();
+        this.effectPasses = [
+            { zIndex: 0,  fn: (state, viewport) => this.drawRangeIndicator(state, viewport) },
+            { zIndex: 50, fn: (state) => this.drawPlanetAndTurrets(state) },
+            { zIndex: 60, fn: (state) => this.renderExplosions(state) },
+            { zIndex: 70, fn: (state, viewport) => this.render3D.draw3DBuildings(this.ctx, state, viewport) },
+            { zIndex: 80, fn: (state, viewport) => this.drawVisibilityMask(this.ctx, state, viewport) },
+            { zIndex: 85, fn: (state) => this.drawTargetMarkers(state) },
+        ];
     }
 
     renderMapScene(state, viewport) {
@@ -37,21 +46,12 @@ export class Renderer {
     }
 
     buildCombatPipeline(state, viewport) {
-        const effectPasses = [
-            { zIndex: 0,  fn: () => this.drawRangeIndicator(state, viewport) },
-            { zIndex: 50, fn: () => this.drawPlanetAndTurrets(state) },
-            { zIndex: 60, fn: () => this.renderExplosions(state) },
-            { zIndex: 70, fn: () => this.render3D.draw3DBuildings(this.ctx, state, viewport) },
-            { zIndex: 80, fn: () => this.drawVisibilityMask(this.ctx, state, viewport) },
-            { zIndex: 85, fn: () => this.drawTargetMarkers(state) },
-        ];
-
         const entityPasses = state.entityLayers.map(layer => ({
             zIndex: layer.zIndex,
-            fn: () => this.renderEntityCollection(state[layer.key])
+            fn: (state) => this.renderEntityCollection(state[layer.key])
         }));
 
-        const pipeline = [...effectPasses, ...entityPasses];
+        const pipeline = [...this.effectPasses, ...entityPasses];
         pipeline.sort((a, b) => a.zIndex - b.zIndex);
         this._combatPipeline = pipeline.map(p => p.fn);
     }
@@ -66,7 +66,7 @@ export class Renderer {
         }
 
         for (let i = 0; i < this._combatPipeline.length; i++) {
-            this._combatPipeline[i]();
+            this._combatPipeline[i](state, viewport);
         }
 
         this.ctx.restore();
