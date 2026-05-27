@@ -51,8 +51,7 @@ const elements = {
     hardResetBtn: document.getElementById("hardResetBtn"),
     settingsModal: document.getElementById("settingsModal"),
     tabButtons: document.querySelectorAll(".tabBtn"),
-    zoomOutBtn: document.getElementById("zoomOutBtn"),
-    zoomInBtn: document.getElementById("zoomInBtn"),
+    zoomSlider: document.getElementById("zoomSlider"),
     zoomDisplay: document.getElementById("zoomDisplay"),
 };
 
@@ -403,31 +402,22 @@ export function initUI(state, upgrades, resetGameCallback) {
         updateUI(state, upgrades);
     });
 
-    elements.zoomOutBtn.addEventListener("click", () => {
-        const viewport = state.fsm?.context?.viewport;
-        if (!viewport) return;
-        if (state.phase === "combat" || state.phase === "reward") {
-            viewport.zoomProgress = Math.max(0.0, viewport.zoomProgress - 0.1);
-            viewport.updateZoomLimits(state);
-            updateUI(state, upgrades);
-        } else {
-            viewport.setZoom(viewport.zoom - 0.1, state);
-            updateUI(state, upgrades);
-        }
-    });
-
-    elements.zoomInBtn.addEventListener("click", () => {
-        const viewport = state.fsm?.context?.viewport;
-        if (!viewport) return;
-        if (state.phase === "combat" || state.phase === "reward") {
-            viewport.zoomProgress = Math.min(1.0, viewport.zoomProgress + 0.1);
-            viewport.updateZoomLimits(state);
-            updateUI(state, upgrades);
-        } else {
-            viewport.setZoom(viewport.zoom + 0.1, state);
-            updateUI(state, upgrades);
-        }
-    });
+    if (elements.zoomSlider) {
+        elements.zoomSlider.addEventListener("input", (e) => {
+            const viewport = state.fsm?.context?.viewport;
+            if (!viewport) return;
+            const sliderVal = parseFloat(e.target.value) / 100;
+            if (state.phase === "combat" || state.phase === "reward") {
+                viewport.zoomProgress = sliderVal;
+                viewport.updateZoomLimits(state);
+                updateUI(state, upgrades);
+            } else {
+                const rawZoom = 0.5 + sliderVal * 1.5;
+                viewport.setZoom(rawZoom, state);
+                updateUI(state, upgrades);
+            }
+        });
+    }
 
     elements.restartBtn.addEventListener("click", resetGameCallback);
 
@@ -572,6 +562,15 @@ export function updateUI(state, upgrades) {
     const viewport = state.fsm?.context?.viewport;
     if (elements.zoomDisplay && viewport) {
         elements.zoomDisplay.innerText = Math.round(viewport.zoom * 100) + "%";
+    }
+    if (elements.zoomSlider && viewport) {
+        let sliderVal = 0.5;
+        if (state.phase === "combat" || state.phase === "reward") {
+            sliderVal = viewport.zoomProgress;
+        } else {
+            sliderVal = (viewport.zoom - 0.5) / 1.5;
+        }
+        elements.zoomSlider.value = Math.round(sliderVal * 100);
     }
 
     upgrades

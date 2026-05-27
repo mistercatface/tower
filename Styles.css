@@ -1,7 +1,7 @@
 body {
     margin: 0;
     padding: 0;
-    background: #0a0a0a;
+    background: #050505;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -13,24 +13,175 @@ body {
     font-family: monospace;
 }
 
+#gameWrapper {
+    position: relative;
+    width: 100%;
+    max-width: 450px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: #000;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.85);
+}
+
 canvas {
     display: block;
     width: 100%;
     height: 100%;
-    max-width: 450px;
     cursor: crosshair;
     background: #000;
 }
 
-#uiContainer {
+#bottomArea {
     position: absolute;
     bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    flex-direction: column;
     width: 100%;
-    max-width: 450px;
-    background: rgba(10, 10, 10, 0.9);
-    color: #fff;
-    padding: 10px;
-    box-sizing: border-box;
-    border-top: 1px solid #333;
+    pointer-events: none;
     z-index: 10;
+}
+
+#controlsBar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 0 10px 10px 10px;
+    padding: 6px 12px;
+    background: rgba(15, 15, 15, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    pointer-events: auto;
+}
+
+#uiContainer {
+    position: relative;
+    margin: 0 10px 10px 10px;
+    background: rgba(10, 10, 10, 0.95);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: #fff;
+    padding: 14px;
+    box-sizing: border-box;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    pointer-events: auto;
+}
+
+.control-btn {
+    background: linear-gradient(to bottom, #2d2d2d, #1a1a1a);
+    color: #cbd5e1;
+    border: 1px solid #444;
+    border-radius: 4px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 13px;
+    box-shadow: 0 2px 3px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05);
+    text-shadow: 1px 1px 1px black;
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    user-select: none;
+}
+
+.control-btn:hover {
+    background: linear-gradient(to bottom, #3d3d3d, #252525);
+    border-color: #666;
+    color: #fff;
+}
+
+.control-btn:active {
+    transform: scale(0.95);
+    background: #111;
+    border-color: #333;
+}
+
+.control-btn-large {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 75px;
+    padding: 3px 10px;
+    line-height: 1.1;
+}
+
+.control-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 75px;
+    font-weight: bold;
+    font-size: 11px;
+    line-height: 1.1;
+    font-family: monospace;
+    color: #cbd5e1;
+    user-select: none;
+}
+
+/* Premium Range Slider styling */
+.premium-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 3px;
+    outline: none;
+    transition: background 0.15s ease;
+}
+
+.premium-slider:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+/* Webkit (Chrome, Safari, Edge, Opera) Thumb */
+.premium-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #00bcd4;
+    cursor: pointer;
+    box-shadow: 0 0 6px rgba(0, 188, 212, 0.5);
+    transition: transform 0.1s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.premium-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    background: #00e5ff;
+    box-shadow: 0 0 10px rgba(0, 229, 255, 0.8);
+}
+
+.premium-slider::-webkit-slider-thumb:active {
+    transform: scale(0.9);
+}
+
+/* Firefox Thumb */
+.premium-slider::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border: none;
+    border-radius: 50%;
+    background: #00bcd4;
+    cursor: pointer;
+    box-shadow: 0 0 6px rgba(0, 188, 212, 0.5);
+    transition: transform 0.1s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.premium-slider::-moz-range-thumb:hover {
+    transform: scale(1.2);
+    background: #00e5ff;
+    box-shadow: 0 0 10px rgba(0, 229, 255, 0.8);
+}
+
+.premium-slider::-moz-range-thumb:active {
+    transform: scale(0.9);
 }
