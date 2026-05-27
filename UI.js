@@ -36,7 +36,6 @@ const elements = {
     healthText: document.getElementById("healthText"),
     waveSegments: document.getElementById("waveSegments"),
     waveText: document.getElementById("waveText"),
-    missionDisplay: document.getElementById("missionDisplay"),
     passivesContainer: document.getElementById("passivesContainer"),
     abilitiesContainer: document.getElementById("abilitiesContainer"),
     upgradesContainer: document.getElementById("upgradesContainer"),
@@ -199,7 +198,13 @@ export function updateToggleButton(btnId, isUnlocked, isActive, btnText, upgDef)
 }
 
 export function updateHud(state, upgrades) {
-    setTextIfDifferent("waveDisplay", state.waveManager.wave);
+    const currentNode = state.mapNodes.find((n) => n.id === state.currentNodeId);
+    let waveTextVal = state.waveManager.wave;
+    if (state.phase === "combat" && currentNode) {
+        waveTextVal = `${state.waveManager.sectorWave}/${currentNode.wavesTotal}`;
+    }
+    setTextIfDifferent("waveDisplay", waveTextVal);
+
     setTextIfDifferent("killsDisplay", state.kills);
     setTextIfDifferent("scoreDisplay", state.score);
     setTextIfDifferent("levelDisplay", state.level);
@@ -233,22 +238,6 @@ export function updateHud(state, upgrades) {
     }
 
     updateProgressBar("waveSegments", "waveText", waveTextStr, progress, 10, () => waveColor);
-
-    if (elements.missionDisplay) {
-        const currentNode = state.mapNodes.find((n) => n.id === state.currentNodeId);
-
-        if (state.isGameOver) {
-            setTextIfDifferent("missionDisplay", "Game Over");
-            if (elements.missionDisplay.style.color !== "rgb(244, 67, 54)" && elements.missionDisplay.style.color !== "#F44336") elements.missionDisplay.style.color = "#F44336";
-        } else {
-            let text = "";
-            if (state.phase === "combat" && currentNode) {
-                text = `Sector Wave: ${state.waveManager.sectorWave} / ${currentNode.wavesTotal}`;
-                if (elements.missionDisplay.style.color !== "rgb(255, 255, 255)" && elements.missionDisplay.style.color !== "#FFF") elements.missionDisplay.style.color = "#FFF";
-            }
-            setTextIfDifferent("missionDisplay", text);
-        }
-    }
 
     if (upgrades) {
         upgrades
