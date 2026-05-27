@@ -108,6 +108,7 @@ export class Pickup extends Entity {
         this.vx = 0;
         this.vy = 0;
         this.mass = 1;
+        this.zIndex = 10;
     }
 
     update(dt, walls) {
@@ -117,8 +118,8 @@ export class Pickup extends Entity {
         }
     }
 
-    render(ctx, pickupCache) {
+    render(ctx, renderer) {
         const cacheKey = `${this.type}_${this.radius}`;
-        this.renderCachedSprite(ctx, pickupCache, cacheKey, RenderSprites.pickup, this.type, this.radius, this.strategy);
+        this.renderCachedSprite(ctx, renderer.pickupCache, cacheKey, RenderSprites.pickup, this.type, this.radius, this.strategy);
     }
 }

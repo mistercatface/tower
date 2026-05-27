@@ -245,6 +245,17 @@ export class GameState {
         this.activeLasers = [];
         this.gridSystem.clear();
 
+        // Declarative render layer registry.
+        // Add new entity collections here and they'll be rendered automatically.
+        // zIndex controls draw order — the Renderer merges these with its own effect passes.
+        this.entityLayers = [
+            { key: "pickups",       zIndex: 10 },
+            { key: "projectiles",   zIndex: 20 },
+            { key: "enemies",       zIndex: 30 },
+            { key: "activeLasers",  zIndex: 35 },
+            { key: "floatingTexts", zIndex: 90 },
+        ];
+
         this.gameSpeed = 2.0;
         this.selectedSpeed = 1.0;
         this.pointBonus = 0;

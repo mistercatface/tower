@@ -153,51 +153,6 @@ export const ExplosionStrategies = {
             if (exp.phase === "expanding" || exp.phase === "lingering") {
                 repelEntities(state, exp, dt);
             }
-        },
-        render(ctx, exp, state, renderer) {
-            const canvasSize = exp.maxRadius * 2;
-            if (canvasSize <= 0) return;
-            
-            if (!exp.offCanvas) {
-                exp.offCanvas = new OffscreenCanvas(canvasSize, canvasSize);
-                exp.offCtx = exp.offCanvas.getContext("2d");
-            }
-            
-            const offCanvas = exp.offCanvas;
-            const offCtx = exp.offCtx;
-            const cx = exp.maxRadius;
-            const cy = exp.maxRadius;
-
-            offCtx.globalCompositeOperation = "source-over";
-            offCtx.clearRect(0, 0, canvasSize, canvasSize);
-
-            offCtx.beginPath();
-            offCtx.arc(cx, cy, exp.radius, 0, Math.PI * 2);
-            if (exp.phase === "expanding") {
-                offCtx.fillStyle = "rgba(244, 67, 54, 0.6)";
-                offCtx.fill();
-            } else {
-                offCtx.fillStyle = "rgba(139, 0, 0, 0.9)";
-                offCtx.fill();
-            }
-
-            offCtx.globalCompositeOperation = "destination-out";
-            offCtx.fillStyle = "#000000";
-            offCtx.save();
-            offCtx.translate(cx - exp.x, cy - exp.y);
-            renderer.drawExplosion(exp.x, exp.y, exp.maxRadius, state, offCtx);
-            offCtx.restore();
-
-            ctx.save();
-            if (exp.phase === "expanding") {
-                ctx.globalCompositeOperation = "screen";
-                ctx.globalAlpha = 1.0;
-            } else {
-                ctx.globalCompositeOperation = "source-over";
-                ctx.globalAlpha = exp.opacity !== undefined ? exp.opacity : 1.0;
-            }
-            ctx.drawImage(offCanvas, exp.x - exp.maxRadius, exp.y - exp.maxRadius);
-            ctx.restore();
         }
     }
 };

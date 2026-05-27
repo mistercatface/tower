@@ -19,15 +19,6 @@ export class Explosion extends Entity {
         }
     }
 
-    static renderAll(ctx, state, renderer) {
-        if (!state.explosions) return;
-        for (const exp of state.explosions) {
-            if (exp.strategy && exp.strategy.render) {
-                exp.strategy.render(ctx, exp, state, renderer);
-            }
-        }
-    }
-
     constructor(x, y, type, config) {
         super(x, y, 0, false);
         this.type = type;

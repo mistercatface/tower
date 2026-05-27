@@ -9,14 +9,14 @@ export class Turret {
         this.target = null;
     }
 
-    render(ctx, planetX, planetY, planetRadius, cache, explicitColor = null) {
+    render(ctx, planetX, planetY, planetRadius, renderer, explicitColor = null) {
         const turretDist = planetRadius + 4;
         const tx = planetX + Math.cos(this.angle) * turretDist;
         const ty = planetY + Math.sin(this.angle) * turretDist;
 
         const scale = planetRadius / 8;
         const cacheKey = `${scale}_${explicitColor || "#4CAF50"}`;
-        const cachedSprite = cache.get(cacheKey, RenderSprites.turret, scale, explicitColor);
+        const cachedSprite = renderer.turretCache.get(cacheKey, RenderSprites.turret, scale, explicitColor);
 
         ctx.save();
         ctx.translate(tx, ty);

@@ -172,21 +172,21 @@ export class Enemy extends DestructibleEntity {
         return false;
     }
 
-    render(ctx, enemyCache, turretCache) {
+    render(ctx, renderer) {
         if (this.currentState && this.currentState.render) {
-            this.currentState.render(this, ctx, enemyCache, turretCache);
+            this.currentState.render(this, ctx, renderer.enemyCache, renderer.turretCache);
         }
 
         const cacheKey = `${this.radius}_${this.color}`;
-        this.renderCachedSprite(ctx, enemyCache, cacheKey, RenderSprites.enemy, this.radius, this.color);
+        this.renderCachedSprite(ctx, renderer.enemyCache, cacheKey, RenderSprites.enemy, this.radius, this.color);
         
         if (this.health < this.maxHealth) {
             const currentHealth = Math.max(0, this.health);
-            Enemy.healthBar.render(ctx, this.x, this.y - 14, currentHealth / this.maxHealth, enemyCache);
+            Enemy.healthBar.render(ctx, this.x, this.y - 14, currentHealth / this.maxHealth, renderer.enemyCache);
         }
 
         if (this.turret) {
-            this.turret.render(ctx, this.x, this.y, this.radius, turretCache, this.color);
+            this.turret.render(ctx, this.x, this.y, this.radius, renderer, this.color);
         }
     }
 }

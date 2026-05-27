@@ -4,6 +4,7 @@ export class Entity {
         this.y = y;
         this.angle = angle;
         this.isDead = isDead;
+        this.zIndex = 0;
     }
 
     render(ctx, ...caches) {

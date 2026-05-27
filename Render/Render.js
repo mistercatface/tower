@@ -1,6 +1,5 @@
 import { SpriteCache } from "./SpriteCache.js";
 import { Render3D } from "./3D/Render3D.js";
-import { Explosion } from "../Entities/Explosion/Explosion.js";
 
 export class Renderer {
     constructor(canvas, ctx) {
@@ -24,17 +23,37 @@ export class Renderer {
         const oldY = state.planet.y;
         state.planet.x = state.mapPlayerX;
         state.planet.y = state.mapPlayerY;
-        state.planet.render(this.ctx, this.planetCache);
+        state.planet.render(this.ctx, this);
 
         for (const turret of state.turrets) {
-            turret.render(this.ctx, state.mapPlayerX, state.mapPlayerY, state.planet.radius, this.turretCache);
+            turret.render(this.ctx, state.mapPlayerX, state.mapPlayerY, state.planet.radius, this);
         }
 
         state.planet.x = oldX;
         state.planet.y = oldY;
 
-        for (const ft of state.floatingTexts) ft.render(this.ctx);
+        this.renderEntityCollection(state.floatingTexts);
         this.ctx.restore();
+    }
+
+    buildCombatPipeline(state, viewport) {
+        const effectPasses = [
+            { zIndex: 0,  fn: () => this.drawRangeIndicator(state, viewport) },
+            { zIndex: 50, fn: () => this.drawPlanetAndTurrets(state) },
+            { zIndex: 60, fn: () => this.renderExplosions(state) },
+            { zIndex: 70, fn: () => this.render3D.draw3DBuildings(this.ctx, state, viewport) },
+            { zIndex: 80, fn: () => this.drawVisibilityMask(this.ctx, state, viewport) },
+            { zIndex: 85, fn: () => this.drawTargetMarkers(state) },
+        ];
+
+        const entityPasses = state.entityLayers.map(layer => ({
+            zIndex: layer.zIndex,
+            fn: () => this.renderEntityCollection(state[layer.key])
+        }));
+
+        const pipeline = [...effectPasses, ...entityPasses];
+        pipeline.sort((a, b) => a.zIndex - b.zIndex);
+        this._combatPipeline = pipeline.map(p => p.fn);
     }
 
     renderCombatScene(state, viewport) {
@@ -42,36 +61,105 @@ export class Renderer {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         if (viewport) viewport.apply(this.ctx);
 
+        if (!this._combatPipeline) {
+            this.buildCombatPipeline(state, viewport);
+        }
+
+        for (let i = 0; i < this._combatPipeline.length; i++) {
+            this._combatPipeline[i]();
+        }
+
+        this.ctx.restore();
+    }
+
+    renderEntityCollection(collection) {
+        if (!collection) return;
+        for (const entity of collection) {
+            entity.render(this.ctx, this);
+        }
+    }
+
+    drawRangeIndicator(state, viewport) {
         const drawRange = (viewport && state.phase === "combat") ? (viewport.getVisualRadius() / viewport.zoom) : state.weapon.range;
         state.planet.renderRange(this.ctx, drawRange);
+    }
 
-        for (const p of state.pickups) p.render(this.ctx, this.pickupCache);
-        for (const p of state.projectiles) p.render(this.ctx, this.missileCache);
-        for (const e of state.enemies) e.render(this.ctx, this.enemyCache, this.turretCache);
-
-        if (state.activeLasers) {
-            for (const laser of state.activeLasers) {
-                laser.render(this.ctx);
-            }
-        }
-
-        state.planet.render(this.ctx, this.planetCache);
-
+    drawPlanetAndTurrets(state) {
+        state.planet.render(this.ctx, this);
         for (const turret of state.turrets) {
-            turret.render(this.ctx, state.planet.x, state.planet.y, state.planet.radius, this.turretCache);
+            turret.render(this.ctx, state.planet.x, state.planet.y, state.planet.radius, this);
         }
+    }
 
-        Explosion.renderAll(this.ctx, state, this);
-        this.render3D.draw3DBuildings(this.ctx, state, viewport);
-
+    drawTargetMarkers(state) {
         if (state.planet.queuedTargetX != null && state.planet.queuedTargetY != null) {
             this._drawTargetMarker(this.ctx, state.planet.queuedTargetX, state.planet.queuedTargetY);
         } else if (state.planet.isMoving && state.planet.targetX !== null && state.planet.targetY !== null) {
             this._drawTargetMarker(this.ctx, state.planet.targetX, state.planet.targetY);
         }
+    }
 
-        for (const ft of state.floatingTexts) ft.render(this.ctx);
-        this.ctx.restore();
+    renderExplosions(state) {
+        if (!state.explosions) return;
+        for (const exp of state.explosions) {
+            const canvasSize = exp.maxRadius * 2;
+            if (canvasSize <= 0) continue;
+
+            if (!exp.offCanvas) {
+                exp.offCanvas = new OffscreenCanvas(canvasSize, canvasSize);
+                exp.offCtx = exp.offCanvas.getContext("2d");
+            }
+
+            const offCanvas = exp.offCanvas;
+            const offCtx = exp.offCtx;
+            const cx = exp.maxRadius;
+            const cy = exp.maxRadius;
+
+            offCtx.globalCompositeOperation = "source-over";
+            offCtx.clearRect(0, 0, canvasSize, canvasSize);
+
+            offCtx.beginPath();
+            offCtx.arc(cx, cy, exp.radius, 0, Math.PI * 2);
+            if (exp.phase === "expanding") {
+                offCtx.fillStyle = "rgba(244, 67, 54, 0.6)";
+                offCtx.fill();
+            } else {
+                offCtx.fillStyle = "rgba(139, 0, 0, 0.9)";
+                offCtx.fill();
+            }
+
+            offCtx.globalCompositeOperation = "destination-out";
+            offCtx.fillStyle = "#000000";
+            offCtx.save();
+            offCtx.translate(cx - exp.x, cy - exp.y);
+            this.render3D.drawExplosion(exp.x, exp.y, exp.maxRadius, state, offCtx);
+            offCtx.restore();
+
+            this.ctx.save();
+            if (exp.phase === "expanding") {
+                this.ctx.globalCompositeOperation = "screen";
+                this.ctx.globalAlpha = 1.0;
+            } else {
+                this.ctx.globalCompositeOperation = "source-over";
+                this.ctx.globalAlpha = exp.opacity !== undefined ? exp.opacity : 1.0;
+            }
+            this.ctx.drawImage(offCanvas, exp.x - exp.maxRadius, exp.y - exp.maxRadius);
+            this.ctx.restore();
+        }
+    }
+
+    drawVisibilityMask(ctx, state, viewport) {
+        const weaponRange = state.weapon.range;
+        if (weaponRange > 0) {
+            const maskRadius = (viewport && state.phase === "combat") ? (viewport.getVisualRadius() / viewport.zoom) : weaponRange;
+            ctx.save();
+            ctx.fillStyle = "#000000";
+            ctx.beginPath();
+            ctx.rect(state.planet.x - 10000, state.planet.y - 10000, 20000, 20000);
+            ctx.arc(state.planet.x, state.planet.y, maskRadius, 0, Math.PI * 2);
+            ctx.fill("evenodd");
+            ctx.restore();
+        }
     }
 
     _drawTargetMarker(ctx, x, y) {
@@ -98,10 +186,6 @@ export class Renderer {
         this.ctx.fillStyle = "#000000";
         this.ctx.fill("evenodd");
         this.ctx.restore();
-    }
-
-    drawExplosion(px, py, maxDist, state, targetCtx) {
-        this.render3D.drawExplosion(px, py, maxDist, state, targetCtx);
     }
 
     drawDebugFlowField(state) {

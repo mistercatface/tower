@@ -86,9 +86,9 @@ export class Projectile extends Entity {
         }
     }
 
-    render(ctx, missileCache) {
+    render(ctx, renderer) {
         const color = this.faction === "player" ? "#FFEB3B" : "#F44336";
         const cacheKey = `${this.radius}_${color}`;
-        this.renderCachedSprite(ctx, missileCache, cacheKey, RenderSprites.missile, this.radius, color);
+        this.renderCachedSprite(ctx, renderer.missileCache, cacheKey, RenderSprites.missile, this.radius, color);
     }
 }
