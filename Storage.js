@@ -5,8 +5,8 @@ const SAVE_INTERVAL_MS = 30000;
 
 let dirty = false;
 let saveStateRef = null;
-let debounceTimerId = null;
-let autosaveIntervalId = null;
+let debounceEventId = null;
+let autosaveEventId = null;
 let listenersBound = false;
 
 function asNonNegativeInt(value, fallback = 0) {
@@ -64,10 +64,19 @@ function applyProgress(state, upgrades, payload) {
     state.discoveredAbilities = new Set(Array.isArray(payload.discoveredAbilities) ? payload.discoveredAbilities.filter((id) => typeof id === "string") : []);
 }
 
-function clearDebounceTimer() {
-    if (debounceTimerId !== null) {
-        clearTimeout(debounceTimerId);
-        debounceTimerId = null;
+function cancelDebounceEvent() {
+    if (!saveStateRef?.scheduler) return;
+    if (debounceEventId !== null) {
+        saveStateRef.scheduler.cancel(debounceEventId);
+        debounceEventId = null;
+    }
+}
+
+function cancelAutosaveEvent() {
+    if (!saveStateRef?.scheduler) return;
+    if (autosaveEventId !== null) {
+        saveStateRef.scheduler.cancel(autosaveEventId);
+        autosaveEventId = null;
     }
 }
 
@@ -83,11 +92,12 @@ function flushSave() {
 }
 
 function queueFlush() {
-    clearDebounceTimer();
-    debounceTimerId = setTimeout(() => {
-        debounceTimerId = null;
+    if (!saveStateRef?.scheduler) return;
+    cancelDebounceEvent();
+    debounceEventId = saveStateRef.scheduler.schedule(SAVE_DEBOUNCE_MS, () => {
+        debounceEventId = null;
         if (dirty) flushSave();
-    }, SAVE_DEBOUNCE_MS);
+    });
 }
 
 function bindLifecycleListeners() {
@@ -108,13 +118,15 @@ export function initializeSaveSystem(state) {
     saveStateRef = state;
     bindLifecycleListeners();
 
-    if (autosaveIntervalId !== null) {
-        clearInterval(autosaveIntervalId);
-    }
-
-    autosaveIntervalId = setInterval(() => {
-        if (dirty) flushSave();
-    }, SAVE_INTERVAL_MS);
+    if (!saveStateRef?.scheduler) return;
+    cancelAutosaveEvent();
+    autosaveEventId = saveStateRef.scheduler.schedule(
+        SAVE_INTERVAL_MS,
+        () => {
+            if (dirty) flushSave();
+        },
+        true
+    );
 }
 
 export function loadProgress(state, upgrades) {
@@ -144,12 +156,14 @@ export function markProgressDirty(state) {
 export function saveProgress(state) {
     saveStateRef = state;
     dirty = true;
-    clearDebounceTimer();
+    cancelDebounceEvent();
     flushSave();
 }
 
 export function hardResetProgress(state, resetGameCallback) {
-    clearDebounceTimer();
+    saveStateRef = state;
+    cancelDebounceEvent();
+    cancelAutosaveEvent();
     dirty = false;
     localStorage.removeItem(SAVE_KEY);
     resetProgress(state);

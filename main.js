@@ -35,6 +35,7 @@ fsm.addState("reward", new RewardState());
 
 function resetGame() {
     state.resetRun(upgrades);
+    initializeSaveSystem(state);
     gameOverUI.style.display = "none";
     viewport.snapTo(0, 0);
     fsm.transition("map_transition");
@@ -58,6 +59,7 @@ function loop(timestamp) {
     state.lastTime = timestamp;
     dt = Math.min(dt, 50);
     if (state.player.health > 0) {
+        state.scheduler.update(dt);
         if (!state.isPaused) fsm.update(dt * state.selectedSpeed);
         fsm.render();
         updateHud(state, upgrades);

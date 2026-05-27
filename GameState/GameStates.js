@@ -81,8 +81,6 @@ export class CombatState {
     }
 
     update(dt, ctx) {
-        ctx.state.scheduler.update(dt);
-        
         const abilityState = ProgressionManager.updateAbilities(ctx.state, dt, ctx.upgrades);
         if (!abilityState.isDiving && ctx.state.player.applyQueuedTarget()) {
             ctx.state.gridSystem.buildPlayerFlowField(ctx.state.player.targetX, ctx.state.player.targetY);
