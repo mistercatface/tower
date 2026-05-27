@@ -72,9 +72,7 @@ export class Enemy extends DestructibleEntity {
         const died = this.takeDamage(baseDamage);
         
         if (hitType === "blast") {
-            FloatingText.spawn(ctx.state, this.x, this.y - 20, `-${baseDamage.toFixed(0)} BLAST`, "#FF5722", {
-                isBlast: true,
-                font: "bold 13px monospace",
+            FloatingText.spawn(ctx.state, this.x, this.y - 20, `-${baseDamage.toFixed(0)} BLAST`, "#FF5722", "blast", {
                 vx: (Math.random() - 0.5) * 80,
                 vy: -95 - Math.random() * 40,
                 gravity: 200,

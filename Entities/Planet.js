@@ -41,16 +41,14 @@ export class Planet extends Enemy {
         const isBlast = (hitType === "blast");
         if (isBlast) {
             text += " BLAST";
-            FloatingText.spawn(ctx.state, this.x, this.y - 20, text, "#FF5722", {
-                isBlast: true,
-                font: "bold 14px monospace",
+            FloatingText.spawn(ctx.state, this.x, this.y - 20, text, "#FF5722", "blast", {
                 vx: (Math.random() - 0.5) * 80,
                 vy: -95 - Math.random() * 40,
                 gravity: 200,
                 duration: 1200
             });
         } else {
-            FloatingText.spawn(ctx.state, this.x, this.y - 20, text, "#F44336", {
+            FloatingText.spawn(ctx.state, this.x, this.y - 20, text, "#F44336", "standard", {
                 vx: (Math.random() - 0.5) * 30,
                 vy: -40 - Math.random() * 20,
                 gravity: 80,
@@ -59,7 +57,7 @@ export class Planet extends Enemy {
         }
         
         if (mitigatedAmount > 0) {
-            FloatingText.spawn(ctx.state, this.x, this.y + 20, `Mitigated ${mitigatedAmount.toFixed(1)}`, "#03A9F4", {
+            FloatingText.spawn(ctx.state, this.x, this.y + 20, `Mitigated ${mitigatedAmount.toFixed(1)}`, "#03A9F4", "standard", {
                 vx: (Math.random() - 0.5) * 20,
                 vy: -30 - Math.random() * 15,
                 gravity: 60,

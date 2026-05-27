@@ -7,8 +7,6 @@ export class Entity {
     }
 
     render(ctx, ...caches) {
-        // Base signature for polymorphic rendering.
-        // Overridden by subclasses.
     }
 
     renderCachedSprite(ctx, cache, cacheKey, generateFn, ...generateArgs) {
