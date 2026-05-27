@@ -3,6 +3,7 @@ export class Render3D {
         this.lastWalls = null;
         this.lastAliveCount = 0;
         this.sharedEdgesDirty = true;
+        this.perspectiveScale = 0.001; // Controls the strength of the 3D lean effect
     }
 
     getSegmentEdges(seg) {
@@ -53,26 +54,19 @@ export class Render3D {
     }
 
     /**
-     * Draw a side face of a wall segment extruded outward from the planet center
-     * by the segment's height. p1 and p2 are the base edge corners.
+     * Draw a side face of a wall segment extruded outward from the player center
+     * by the segment's height. The extrusion lean is proportional to the distance from the player.
      */
     drawExtrudedFace(ctx, p1, p2, px, py, height, fillStyle, strokeStyle) {
-        // Direction from planet center to the midpoint of this edge
-        const midX = (p1.x + p2.x) / 2;
-        const midY = (p1.y + p2.y) / 2;
-        const dirX = midX - px;
-        const dirY = midY - py;
-        const dirLen = Math.sqrt(dirX * dirX + dirY * dirY);
-
-        if (dirLen === 0) return;
-
-        // Normalized extrusion direction
-        const nx = dirX / dirLen;
-        const ny = dirY / dirLen;
-
-        // Extrude each corner outward by height
-        const extP1 = { x: p1.x + nx * height, y: p1.y + ny * height };
-        const extP2 = { x: p2.x + nx * height, y: p2.y + ny * height };
+        const scale = this.perspectiveScale;
+        const extP1 = {
+            x: p1.x + (p1.x - px) * height * scale,
+            y: p1.y + (p1.y - py) * height * scale
+        };
+        const extP2 = {
+            x: p2.x + (p2.x - px) * height * scale,
+            y: p2.y + (p2.y - py) * height * scale
+        };
 
         ctx.fillStyle = fillStyle;
         ctx.beginPath();
@@ -91,12 +85,14 @@ export class Render3D {
 
     /**
      * Draw the top face of a wall segment (the extruded cap).
+     * The extrusion lean is proportional to the distance from the player.
      */
     drawTopFace(ctx, seg, px, py, fillStyle, strokeStyle) {
         const edges = this.getSegmentEdges(seg);
         const height = seg.height || seg.size;
+        const scale = this.perspectiveScale;
 
-        // For each corner of the base, extrude outward from planet center
+        // All 4 base corners
         const corners = [
             edges[0][0], // corner 0
             edges[0][1], // corner 1
@@ -104,17 +100,11 @@ export class Render3D {
             edges[2][1], // corner 3
         ];
 
-        // Compute per-corner extrusion direction from planet center
-        const extCorners = corners.map(c => {
-            const dx = c.x - px;
-            const dy = c.y - py;
-            const len = Math.sqrt(dx * dx + dy * dy);
-            if (len === 0) return { x: c.x, y: c.y };
-            return {
-                x: c.x + (dx / len) * height,
-                y: c.y + (dy / len) * height
-            };
-        });
+        // Extrude all corners along the direction from player center, proportional to distance
+        const extCorners = corners.map(c => ({
+            x: c.x + (c.x - px) * height * scale,
+            y: c.y + (c.y - py) * height * scale
+        }));
 
         ctx.fillStyle = fillStyle;
         ctx.beginPath();
@@ -300,7 +290,7 @@ export class Render3D {
                 seg.sharedEdges = [false, false, false, false];
             }
 
-            // Draw visible side faces (edges facing away from planet)
+            // Draw visible side faces (edges facing away from player)
             for (let i = 0; i < 4; i++) {
                 if (seg.sharedEdges[i]) continue;
 
