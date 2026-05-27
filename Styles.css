@@ -17,7 +17,8 @@ body {
     position: relative;
     width: 100%;
     max-width: 450px;
-    height: 100%;
+    height: 100vh;
+    height: 100dvh;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -28,28 +29,26 @@ body {
 canvas {
     display: block;
     width: 100%;
-    height: 100%;
+    aspect-ratio: 1 / 1;
     cursor: crosshair;
     background: #000;
 }
 
 #bottomArea {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    flex: 1;
     display: flex;
     flex-direction: column;
     width: 100%;
     pointer-events: none;
     z-index: 10;
+    overflow: hidden;
 }
 
 #controlsBar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin: 0 10px 10px 10px;
+    margin: 10px 10px 5px 10px;
     padding: 6px 12px;
     background: rgba(15, 15, 15, 0.8);
     backdrop-filter: blur(12px);
@@ -61,18 +60,50 @@ canvas {
 }
 
 #uiContainer {
-    position: relative;
-    margin: 0 10px 10px 10px;
+    flex: 1;
+    margin: 5px 10px 10px 10px;
+    display: flex;
+    flex-direction: column;
     background: rgba(10, 10, 10, 0.95);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     color: #fff;
-    padding: 14px;
+    padding: 12px;
     box-sizing: border-box;
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 12px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
     pointer-events: auto;
+    overflow: hidden;
+}
+
+#upgradesContainer {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-content: flex-start;
+    padding-right: 4px;
+}
+
+/* Premium scrollbar for the upgrades list */
+#upgradesContainer::-webkit-scrollbar {
+    width: 4px;
+}
+
+#upgradesContainer::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 2px;
+}
+
+#upgradesContainer::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 2px;
+}
+
+#upgradesContainer::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 188, 212, 0.6);
 }
 
 .control-btn {

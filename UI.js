@@ -606,9 +606,6 @@ export function updateUI(state, upgrades) {
         elements.upgradesContainer.style.flexDirection = "column";
         elements.upgradesContainer.style.flexWrap = "nowrap";
         elements.upgradesContainer.style.alignItems = "stretch";
-        elements.upgradesContainer.style.maxHeight = "180px";
-        elements.upgradesContainer.style.overflowY = "auto";
-        elements.upgradesContainer.style.paddingRight = "4px";
 
         abilityTree.forEach((entry) => {
             const btn = dynamicElements["upg_" + entry.id];
@@ -620,9 +617,6 @@ export function updateUI(state, upgrades) {
         elements.upgradesContainer.style.flexDirection = "row";
         elements.upgradesContainer.style.flexWrap = "wrap";
         elements.upgradesContainer.style.alignItems = "initial";
-        elements.upgradesContainer.style.maxHeight = "";
-        elements.upgradesContainer.style.overflowY = "";
-        elements.upgradesContainer.style.paddingRight = "";
     }
 
     upgrades.forEach((upg) => drawStat(state, upg));

@@ -76,11 +76,9 @@ function resizeCanvas() {
     canvas.width = canvas.clientWidth;
     canvas.height = canvas.clientHeight;
     state.canvasBounds = { width: canvas.width, height: canvas.height };
-    const bottomArea = document.getElementById("bottomArea");
-    const uiHeight = bottomArea ? bottomArea.offsetHeight : 0;
-    state.planet.setSpawnPosition(Math.floor(canvas.width / 2), Math.floor((canvas.height - uiHeight) / 2));
+    state.planet.setSpawnPosition(Math.floor(canvas.width / 2), Math.floor(canvas.height / 2));
     viewport.cx = Math.floor(canvas.width / 2);
-    viewport.cy = Math.floor((canvas.height - uiHeight) / 2);
+    viewport.cy = Math.floor(canvas.height / 2);
 }
 
 window.addEventListener("resize", resizeCanvas);
