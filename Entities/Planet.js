@@ -5,8 +5,16 @@ import { FloatingText } from "../FloatingText.js";
 import { PhysicsSystem } from "../Spatial/PhysicsSystem.js";
 import { playerBaseStats } from "../Config.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
+import { ProgressBar } from "../Render/ProgressBar.js";
 
 export class Planet extends Enemy {
+    static healthBar = new ProgressBar({
+        width: 48,
+        height: 4,
+        borderRadius: 2,
+        quantizationSteps: 20
+    });
+
     constructor(x, y, radius, maxHealth) {
         super(x, y, radius, playerBaseStats.moveSpeed, maxHealth, "#4CAF50", 0, "player");
         this.spawnX = x;
@@ -184,5 +192,10 @@ export class Planet extends Enemy {
     render(ctx, cache) {
         const cacheKey = `${this.radius}_${this.color}`;
         this.renderCachedSprite(ctx, cache, cacheKey, RenderSprites.planet, this.radius, this.color);
+        
+        if (this.health < this.maxHealth) {
+            const currentHealth = Math.max(0, this.health);
+            Planet.healthBar.render(ctx, this.x, this.y - (this.radius + 14), currentHealth / this.maxHealth, cache);
+        }
     }
 }
