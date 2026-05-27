@@ -61,9 +61,7 @@ export class EnemyNavigatingState {
         }
 
         enemy.calculateSteering(target, gridSystem);
-        enemy.separation.update(enemy, spatialHash);
-        PhysicsSystem.applyMovement(enemy, dt, true, true);
-        PhysicsSystem.resolveWallCollisions(enemy, walls, state);
+        enemy.applyLocomotion(dt, walls, spatialHash, { state, ignoreSeparationInDesired: true });
 
         if (enemy.turret) {
             enemy.turret.angle = Utilities.turnAngleTowards(enemy.turret.angle, enemy.angle, enemy.turret.turnSpeed, dt);

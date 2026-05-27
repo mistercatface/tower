@@ -13,23 +13,17 @@ import { updateUI } from "../UI.js";
 import { ChargedWeaponMode } from "../WeaponSystem.js";
 import { PhysicsSystem } from "../Spatial/PhysicsSystem.js";
 import { enemyProjectileSettings } from "../Config.js";
-import { ProgressBar } from "../Render/ProgressBar.js";
+import { createEntityBars } from "./EntityBars.js";
+
+const enemyBars = createEntityBars({
+    healthWidth: 22,
+    healthHeight: 3,
+    healthBorderRadius: 1.5,
+});
 
 export class Enemy extends DestructibleEntity {
-    static healthBar = new ProgressBar({
-        width: 22,
-        height: 3,
-        borderRadius: 1.5,
-        quantizationSteps: 20
-    });
-
-    static chargeBar = new ProgressBar({
-        width: 22,
-        height: 2,
-        borderRadius: 1,
-        quantizationSteps: 20,
-        colorFn: () => "#00E5FF"
-    });
+    static healthBar = enemyBars.healthBar;
+    static chargeBar = enemyBars.chargeBar;
 
     static updateAll(state, dt, spatialHash) {
         for (let i = state.enemies.length - 1; i >= 0; i--) {
@@ -89,12 +83,7 @@ export class Enemy extends DestructibleEntity {
         const died = this.takeDamage(baseDamage);
         
         if (hitType === "blast") {
-            FloatingText.spawn(ctx.state, this.x, this.y - 20, `-${baseDamage.toFixed(0)} BLAST`, "#FF5722", "blast", {
-                vx: (Math.random() - 0.5) * 80,
-                vy: -95 - Math.random() * 40,
-                gravity: 200,
-                duration: 1200
-            });
+            FloatingText.spawnBlastDamageText(ctx.state, this.x, this.y, baseDamage, 0);
         }
         
         if (died) {
@@ -115,9 +104,15 @@ export class Enemy extends DestructibleEntity {
         }
     }
 
-    calculateSteering(target, gridSystem) {
-        if (gridSystem) {
-            const angle = Navigator.getSteeringAngle(this.x, this.y, gridSystem, gridSystem.flowField);
+    steerTowardPoint(targetX, targetY, gridSystem, walls = null, { flowField = null, preferDirectWithLos = false } = {}) {
+        if (preferDirectWithLos && walls && Utilities.hasLineOfSight(this.x, this.y, targetX, targetY, walls, this.radius)) {
+            Utilities.setDesiredDirection(this, targetX - this.x, targetY - this.y);
+            return;
+        }
+
+        const field = flowField ?? gridSystem?.flowField;
+        if (gridSystem && field) {
+            const angle = Navigator.getSteeringAngle(this.x, this.y, gridSystem, field);
             if (angle !== null) {
                 this.desiredX = Math.cos(angle);
                 this.desiredY = Math.sin(angle);
@@ -125,9 +120,26 @@ export class Enemy extends DestructibleEntity {
             }
         }
 
-        const dx = target.x - this.x;
-        const dy = target.y - this.y;
-        Utilities.setDesiredDirection(this, dx, dy);
+        Utilities.setDesiredDirection(this, targetX - this.x, targetY - this.y);
+    }
+
+    calculateSteering(target, gridSystem) {
+        this.steerTowardPoint(target.x, target.y, gridSystem);
+    }
+
+    applyLocomotion(dt, walls, spatialHash, {
+        state = null,
+        externalSpeedMod = 1,
+        ignoreSeparationInDesired = false,
+        shouldMove = true,
+        alignAngleWithMovement = true,
+    } = {}) {
+        this.separation.update(this, spatialHash);
+        if (this.moveSpeed !== undefined) {
+            this.speed = this.moveSpeed * externalSpeedMod;
+        }
+        PhysicsSystem.applyMovement(this, dt, ignoreSeparationInDesired, shouldMove, alignAngleWithMovement);
+        PhysicsSystem.resolveWallCollisions(this, walls, state);
     }
 
     shouldTriggerDodge(projectiles, gridSystem, scheduler) {

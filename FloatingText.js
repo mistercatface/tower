@@ -62,6 +62,26 @@ export class FloatingText {
         if (remaining <= 0) this.isDead = true;
     }
 
+    static spawnBlastDamageText(state, x, y, damage, decimalPlaces = 0) {
+        const text = `-${damage.toFixed(decimalPlaces)} BLAST`;
+        FloatingText.spawn(state, x, y - 20, text, "#FF5722", "blast", {
+            vx: (Math.random() - 0.5) * 80,
+            vy: -95 - Math.random() * 40,
+            gravity: 200,
+            duration: 1200,
+        });
+    }
+
+    static spawnStandardDamageText(state, x, y, damage) {
+        const text = `-${damage.toFixed(1)}`;
+        FloatingText.spawn(state, x, y - 20, text, "#F44336", "standard", {
+            vx: (Math.random() - 0.5) * 30,
+            vy: -40 - Math.random() * 20,
+            gravity: 80,
+            duration: 900,
+        });
+    }
+
     static spawn(state, x, y, text, color, styleName = "standard", options = {}) {
         const offsetX = (Math.random() - 0.5) * 16;
         const offsetY = (Math.random() - 0.5) * 16;

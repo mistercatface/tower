@@ -1,27 +1,20 @@
 import { Enemy } from "./Enemy.js";
 import { Utilities } from "../Utilities.js";
-import { Navigator } from "../Spatial/Navigator.js";
 import { FloatingText } from "../FloatingText.js";
-import { PhysicsSystem } from "../Spatial/PhysicsSystem.js";
 import { playerBaseStats } from "../Config.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
-import { ProgressBar } from "../Render/ProgressBar.js";
+import { createEntityBars } from "./EntityBars.js";
+
+const playerBars = createEntityBars({
+    healthWidth: 48,
+    healthHeight: 4,
+    healthBorderRadius: 2,
+    chargeWidth: 48,
+});
 
 export class Player extends Enemy {
-    static healthBar = new ProgressBar({
-        width: 48,
-        height: 4,
-        borderRadius: 2,
-        quantizationSteps: 20
-    });
-
-    static chargeBar = new ProgressBar({
-        width: 48,
-        height: 2,
-        borderRadius: 1,
-        quantizationSteps: 20,
-        colorFn: () => "#00E5FF"
-    });
+    static healthBar = playerBars.healthBar;
+    static chargeBar = playerBars.chargeBar;
 
     constructor(x, y, radius, maxHealth) {
         super(x, y, radius, playerBaseStats.moveSpeed, maxHealth, "#4CAF50", 0, "player");
@@ -46,23 +39,10 @@ export class Player extends Enemy {
     handleHit(damage, ctx, hitType) {
         this.takeDamage(damage);
 
-        let text = `-${damage.toFixed(1)}`;
-        const isBlast = (hitType === "blast");
-        if (isBlast) {
-            text += " BLAST";
-            FloatingText.spawn(ctx.state, this.x, this.y - 20, text, "#FF5722", "blast", {
-                vx: (Math.random() - 0.5) * 80,
-                vy: -95 - Math.random() * 40,
-                gravity: 200,
-                duration: 1200
-            });
+        if (hitType === "blast") {
+            FloatingText.spawnBlastDamageText(ctx.state, this.x, this.y, damage, 1);
         } else {
-            FloatingText.spawn(ctx.state, this.x, this.y - 20, text, "#F44336", "standard", {
-                vx: (Math.random() - 0.5) * 30,
-                vy: -40 - Math.random() * 20,
-                gravity: 80,
-                duration: 900
-            });
+            FloatingText.spawnStandardDamageText(ctx.state, this.x, this.y, damage);
         }
     }
 
@@ -154,32 +134,19 @@ export class Player extends Enemy {
             if (toTarget.len < 2) {
                 this.stopMovement();
             } else {
-                let dirX = toTarget.x;
-                let dirY = toTarget.y;
-
-                if (!Utilities.hasLineOfSight(this.x, this.y, this.targetX, this.targetY, walls, this.radius)) {
-                    const angle = Navigator.getSteeringAngle(this.x, this.y, gridSystem, gridSystem.playerFlowField);
-                    if (angle !== null) {
-                        dirX = Math.cos(angle);
-                        dirY = Math.sin(angle);
-                    }
-                }
-
-                this.desiredX = dirX;
-                this.desiredY = dirY;
-                this.targetNodeX = this.x + dirX * 10;
-                this.targetNodeY = this.y + dirY * 10;
+                this.steerTowardPoint(this.targetX, this.targetY, gridSystem, walls, {
+                    flowField: gridSystem.playerFlowField,
+                    preferDirectWithLos: true,
+                });
+                this.targetNodeX = this.x + this.desiredX * 10;
+                this.targetNodeY = this.y + this.desiredY * 10;
             }
         } else {
             this.desiredX = 0;
             this.desiredY = 0;
         }
 
-        this.separation.update(this, spatialHash);
-        
-        this.speed = this.moveSpeed * externalSpeedMod;
-        PhysicsSystem.applyMovement(this, dt); 
-        PhysicsSystem.resolveWallCollisions(this, walls);
+        this.applyLocomotion(dt, walls, spatialHash, { externalSpeedMod });
     }
 
     renderRange(ctx, weaponRange) {
