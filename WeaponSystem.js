@@ -36,7 +36,18 @@ export class ChargedWeaponMode extends WeaponTargetingStrategy {
         const tx = source.x + Math.cos(turret.angle) * turretDist;
         const ty = source.y + Math.sin(turret.angle) * turretDist;
         const aimTarget = this.determineAimTarget(source, target, blocksTargeting, turret);
-        const isAimed = WeaponSystem.aimTurret(turret, source.x, source.y, aimTarget.x, aimTarget.y, dt);
+        
+        let sway = 0;
+        if (source.type === "player" && state.weapon && turret.charge > 0) {
+            const accuracySpread = ((1 - state.weapon.accuracy) * Math.PI) / 2;
+            const frequency = 0.005; // speed of sway
+            const phase = state.turrets ? state.turrets.indexOf(turret) * 2.0 : 0;
+            const time = state.lastTime || Date.now();
+            const chargeRatio = turret.charge / (chargeTime || 1);
+            sway = Math.sin(time * frequency + phase) * accuracySpread * chargeRatio;
+        }
+
+        const isAimed = WeaponSystem.aimTurret(turret, source.x, source.y, aimTarget.x, aimTarget.y, dt, sway);
         if (target && !blocksTargeting) {
             if (turret.lastTarget !== target) {
                 turret.charge = 0;
@@ -67,20 +78,27 @@ export class ContinuousWeaponMode extends WeaponTargetingStrategy {
         const tx = source.x + Math.cos(turret.angle) * turretDist;
         const ty = source.y + Math.sin(turret.angle) * turretDist;
         const aimTarget = this.determineAimTarget(source, target, blocksTargeting, turret);
-        WeaponSystem.aimTurret(turret, source.x, source.y, aimTarget.x, aimTarget.y, dt);
+
+        let sway = 0;
+        if (source.type === "player" && state.weapon) {
+            const accuracySpread = ((1 - state.weapon.accuracy) * Math.PI) / 2;
+            const frequency = 0.005; // speed of sway
+            const phase = state.turrets ? state.turrets.indexOf(turret) * 2.0 : 0;
+            const time = state.lastTime || Date.now();
+            sway = Math.sin(time * frequency + phase) * accuracySpread;
+        }
+
+        WeaponSystem.aimTurret(turret, source.x, source.y, aimTarget.x, aimTarget.y, dt, sway);
         this.onTick(dt, state, tx, ty, turret, combatEvents, source);
     }
 }
 
 const DEFAULT_WEAPON_MODE = new ChargedWeaponMode((state, tx, ty, turretAngle, source) => {
-    const accuracySpread = ((1 - state.weapon.accuracy) * Math.PI) / 2;
-    const spreadAngle = (Math.random() - 0.5) * accuracySpread;
-    const finalAngle = turretAngle + spreadAngle;
-    const m = new Projectile(tx, ty, source.radius * playerProjectileSettings.radiusMultiplier, playerProjectileSettings.speed, null, finalAngle, 0, "player");
+    const m = new Projectile(tx, ty, source.radius * playerProjectileSettings.radiusMultiplier, playerProjectileSettings.speed, null, turretAngle, 0, "player");
     m.penetration = state.weapon.penetration;
     state.projectiles.push(m);
     if (source) {
-        PhysicsSystem.applyKnockback(source, finalAngle + Math.PI, m.radius * playerProjectileSettings.knockbackMultiplier);
+        PhysicsSystem.applyKnockback(source, turretAngle + Math.PI, m.radius * playerProjectileSettings.knockbackMultiplier);
     }
 });
 
@@ -193,9 +211,10 @@ export class WeaponSystem {
         return nearest;
     }
 
-    static aimTurret(turret, currentX, currentY, targetX, targetY, dt) {
+    static aimTurret(turret, currentX, currentY, targetX, targetY, dt, sway = 0) {
         if (targetX === null || targetY === null) return false;
-        const targetAngle = Math.atan2(targetY - currentY, targetX - currentX);
+        let targetAngle = Math.atan2(targetY - currentY, targetX - currentX);
+        targetAngle += sway;
         let diff = targetAngle - turret.angle;
         diff = Utilities.normalizeAngle(diff);
 
