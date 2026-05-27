@@ -34,88 +34,45 @@ export class PhysicsSystem {
         }
     }
 
-    static getNearbySegments(entity, gridSystem) {
-        const boundingRadius = entity.radius;
-        const minGrid = gridSystem.worldToGrid(entity.x - boundingRadius, entity.y - boundingRadius);
-        const maxGrid = gridSystem.worldToGrid(entity.x + boundingRadius, entity.y + boundingRadius);
-        
-        const startCol = Math.max(0, minGrid.col);
-        const endCol = Math.min(gridSystem.cols - 1, maxGrid.col);
-        const startRow = Math.max(0, minGrid.row);
-        const endRow = Math.min(gridSystem.rows - 1, maxGrid.row);
-        
-        const nearby = [];
-        for (let col = startCol; col <= endCol; col++) {
-            for (let row = startRow; row <= endRow; row++) {
-                const idx = row * gridSystem.cols + col;
-                const cellSegs = gridSystem.segmentGrid[idx];
-                if (cellSegs) {
-                    for (let i = 0; i < cellSegs.length; i++) {
-                        const s = cellSegs[i];
-                        if (!nearby.includes(s)) {
-                            nearby.push(s);
-                        }
-                    }
-                }
-            }
-        }
-        return nearby;
-    }
-
     static resolveWallCollisions(entity, segments, state = null) {
         if (!segments) return false;
-        
-        let candidateWalls = segments;
-        if (segments.gridSystem) {
-            candidateWalls = this.getNearbySegments(entity, segments.gridSystem);
-        }
-        
-        let collided = false;
 
+        let candidateWalls = segments;
+        if (segments.gridSystem) candidateWalls = segments.gridSystem.getNearbySegments(entity);
+
+        let collided = false;
         for (let i = 0; i < 2; i++) {
             for (const seg of candidateWalls) {
                 if (seg.isDead) continue;
-
                 const dx = entity.x - seg.x;
                 const dy = entity.y - seg.y;
-
                 const maxDist = entity.radius + seg.size * 0.75;
                 if (Math.abs(dx) > maxDist || Math.abs(dy) > maxDist) continue;
-
                 const cos = Math.cos(-seg.angle);
                 const sin = Math.sin(-seg.angle);
                 const localX = dx * cos - dy * sin;
                 const localY = dx * sin + dy * cos;
-
                 const half = seg.size / 2;
                 const closestX = Math.max(-half, Math.min(localX, half));
                 const closestY = Math.max(-half, Math.min(localY, half));
-
                 const distDX = localX - closestX;
                 const distDY = localY - closestY;
                 const distanceSq = distDX * distDX + distDY * distDY;
-
                 if (distanceSq < entity.radius * entity.radius) {
                     collided = true;
-
                     let normalX, normalY, overlap;
-
                     if (distanceSq === 0) {
                         const distToLeft = localX - -half;
                         const distToRight = half - localX;
                         const distToTop = localY - -half;
                         const distToBottom = half - localY;
-
                         const minDist = Math.min(distToLeft, distToRight, distToTop, distToBottom);
-
                         let localNormX = 0;
                         let localNormY = 0;
-
                         if (minDist === distToLeft) localNormX = -1;
                         else if (minDist === distToRight) localNormX = 1;
                         else if (minDist === distToTop) localNormY = -1;
                         else localNormY = 1;
-
                         const invCos = Math.cos(seg.angle);
                         const invSin = Math.sin(seg.angle);
                         normalX = localNormX * invCos - localNormY * invSin;
@@ -124,26 +81,20 @@ export class PhysicsSystem {
                     } else {
                         const distance = Math.sqrt(distanceSq);
                         overlap = entity.radius - distance;
-
                         const localNormX = distDX / distance;
                         const localNormY = distDY / distance;
-
                         const invCos = Math.cos(seg.angle);
                         const invSin = Math.sin(seg.angle);
                         normalX = localNormX * invCos - localNormY * invSin;
                         normalY = localNormX * invSin + localNormY * invCos;
                     }
-
                     entity.x += normalX * overlap;
                     entity.y += normalY * overlap;
-
                     const dot = entity.vx !== undefined && entity.vy !== undefined ? entity.vx * normalX + entity.vy * normalY : 0;
-
                     if (entity.vx !== undefined && entity.vy !== undefined && dot < 0) {
                         const restitution = entity.type === "barrel" ? 0.25 : 0.0;
                         entity.vx -= (1 + restitution) * dot * normalX;
                         entity.vy -= (1 + restitution) * dot * normalY;
-
                         const wallFriction = entity.type === "barrel" ? 0.75 : 0.9;
                         const tx = -normalY;
                         const ty = normalX;
@@ -151,7 +102,6 @@ export class PhysicsSystem {
                         entity.vx = tx * tangentDot * wallFriction;
                         entity.vy = ty * tangentDot * wallFriction;
                     }
-
                     if (entity.canDamageWalls && state && dot < 0) {
                         const impactSpeed = -dot;
                         if (impactSpeed > 75) {

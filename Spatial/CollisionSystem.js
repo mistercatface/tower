@@ -24,41 +24,11 @@ export class CollisionSystem {
         return distDX * distDX + distDY * distDY < circle.radius * circle.radius;
     }
 
-    static getNearbySegments(entity, gridSystem) {
-        const boundingRadius = entity.radius;
-        const minGrid = gridSystem.worldToGrid(entity.x - boundingRadius, entity.y - boundingRadius);
-        const maxGrid = gridSystem.worldToGrid(entity.x + boundingRadius, entity.y + boundingRadius);
-        
-        const startCol = Math.max(0, minGrid.col);
-        const endCol = Math.min(gridSystem.cols - 1, maxGrid.col);
-        const startRow = Math.max(0, minGrid.row);
-        const endRow = Math.min(gridSystem.rows - 1, maxGrid.row);
-        
-        const nearby = [];
-        for (let col = startCol; col <= endCol; col++) {
-            for (let row = startRow; row <= endRow; row++) {
-                const idx = row * gridSystem.cols + col;
-                const cellSegs = gridSystem.segmentGrid[idx];
-                if (cellSegs) {
-                    for (let i = 0; i < cellSegs.length; i++) {
-                        const s = cellSegs[i];
-                        if (!nearby.includes(s)) {
-                            nearby.push(s);
-                        }
-                    }
-                }
-            }
-        }
-        return nearby;
-    }
-
     static getMissileWallCollision(missile, segments) {
         if (!segments) return null;
-        
+
         let candidateWalls = segments;
-        if (segments.gridSystem) {
-            candidateWalls = this.getNearbySegments(missile, segments.gridSystem);
-        }
+        if (segments.gridSystem) candidateWalls = segments.gridSystem.getNearbySegments(missile);
 
         const missileRad = missile.radius;
         for (const seg of candidateWalls) {

@@ -262,4 +262,28 @@ export class GridSystem {
         }
         return defaultAngle;
     }
+
+    getNearbySegments(entity) {
+        const boundingRadius = entity.radius;
+        const minGrid = this.worldToGrid(entity.x - boundingRadius, entity.y - boundingRadius);
+        const maxGrid = this.worldToGrid(entity.x + boundingRadius, entity.y + boundingRadius);
+        const startCol = Math.max(0, minGrid.col);
+        const endCol = Math.min(this.cols - 1, maxGrid.col);
+        const startRow = Math.max(0, minGrid.row);
+        const endRow = Math.min(this.rows - 1, maxGrid.row);
+        const nearby = [];
+        for (let col = startCol; col <= endCol; col++) {
+            for (let row = startRow; row <= endRow; row++) {
+                const idx = row * this.cols + col;
+                const cellSegs = this.segmentGrid[idx];
+                if (cellSegs) {
+                    for (let i = 0; i < cellSegs.length; i++) {
+                        const s = cellSegs[i];
+                        if (!nearby.includes(s)) nearby.push(s);
+                    }
+                }
+            }
+        }
+        return nearby;
+    }
 }
