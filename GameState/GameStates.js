@@ -129,7 +129,7 @@ export class CombatState {
     }
 
     handleInteraction(worldCoords, isDoubleTap, ctx) {
-        if (ctx.state.planet.currentState && ctx.state.planet.currentState.isBlastedState) return;
+        if (ctx.state.planet.currentState && ctx.state.planet.currentState.blocksInput) return;
         if (!ctx.state.planet.canReposition(ctx.state)) return;
         const gridPos = ctx.state.gridSystem.worldToGrid(worldCoords.x, worldCoords.y);
         if (gridPos.col >= 0 && gridPos.col < ctx.state.gridSystem.cols && gridPos.row >= 0 && gridPos.row < ctx.state.gridSystem.rows) {

@@ -434,7 +434,17 @@ export class EnemyDodgingState {
 
 export class EnemyBlastedState {
     constructor() {
-        this.isBlastedState = true;
+        this.customMovement = true;
+        this.blocksTargeting = true;
+        this.blocksInput = true;
+    }
+
+    getAimTarget(enemy, target, blocksTargeting, turret) {
+        const angle = enemy.stateData.angle || 0;
+        return {
+            x: enemy.x + Math.cos(angle) * 100,
+            y: enemy.y + Math.sin(angle) * 100
+        };
     }
 
     update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler, state) {

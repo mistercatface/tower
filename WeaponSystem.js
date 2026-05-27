@@ -6,11 +6,8 @@ import { playerProjectileSettings } from "./Config.js";
 
 class WeaponTargetingStrategy {
     determineAimTarget(source, target, blocksTargeting, turret) {
-        if (source.currentState && source.currentState.isBlastedState) {
-            return {
-                x: source.x + Math.cos(source.blastAngle) * 100,
-                y: source.y + Math.sin(source.blastAngle) * 100
-            };
+        if (source.currentState && source.currentState.getAimTarget) {
+            return source.currentState.getAimTarget(source, target, blocksTargeting, turret);
         }
         if (target && !blocksTargeting) {
             return target;
@@ -218,7 +215,7 @@ export class WeaponSystem {
         }
 
         const engagedTargets = new Set();
-        const actualBlocksTargeting = blocksTargeting || (state.planet && state.planet.currentState && state.planet.currentState.isBlastedState);
+        const actualBlocksTargeting = blocksTargeting || (state.planet && state.planet.currentState && state.planet.currentState.blocksTargeting);
 
         for (const turret of state.turrets) {
             if (turret.target) {

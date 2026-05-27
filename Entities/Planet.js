@@ -146,7 +146,7 @@ export class Planet extends Enemy {
     }
 
     update(dt, gridSystem, walls, spatialHash, externalSpeedMod = 1.0) {
-        if (this.currentState && this.currentState.isBlastedState) {
+        if (this.currentState && this.currentState.customMovement) {
             this.currentState.update(this, dt, null, gridSystem, walls, null, spatialHash, null, null);
             return;
         }
