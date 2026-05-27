@@ -89,10 +89,6 @@ export class Projectile extends Entity {
     render(ctx, missileCache) {
         const color = this.faction === "player" ? "#FFEB3B" : "#F44336";
         const cacheKey = `${this.radius}_${color}`;
-        const cachedSprite = missileCache.get(cacheKey, RenderSprites.missile, this.radius, color);
-        ctx.save();
-        ctx.translate(this.x, this.y);
-        ctx.drawImage(cachedSprite, -cachedSprite.width / 2, -cachedSprite.height / 2);
-        ctx.restore();
+        this.renderCachedSprite(ctx, missileCache, cacheKey, RenderSprites.missile, this.radius, color);
     }
 }

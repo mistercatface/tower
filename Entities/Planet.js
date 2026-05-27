@@ -183,10 +183,6 @@ export class Planet extends Enemy {
 
     render(ctx, cache) {
         const cacheKey = `${this.radius}_${this.color}`;
-        const cachedSprite = cache.get(cacheKey, RenderSprites.planet, this.radius, this.color);
-        ctx.save();
-        ctx.translate(this.x, this.y);
-        ctx.drawImage(cachedSprite, -cachedSprite.width / 2, -cachedSprite.height / 2);
-        ctx.restore();
+        this.renderCachedSprite(ctx, cache, cacheKey, RenderSprites.planet, this.radius, this.color);
     }
 }

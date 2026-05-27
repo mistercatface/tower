@@ -154,12 +154,7 @@ export class Enemy extends DestructibleEntity {
 
     render(ctx, enemyCache, turretCache) {
         const cacheKey = `${this.radius}_${this.color}`;
-        const cachedSprite = enemyCache.get(cacheKey, RenderSprites.enemy, this.radius, this.color);
-        ctx.save();
-        ctx.translate(this.x, this.y);
-        ctx.rotate(this.angle);
-        ctx.drawImage(cachedSprite, -cachedSprite.width / 2, -cachedSprite.height / 2);
-        ctx.restore();
+        this.renderCachedSprite(ctx, enemyCache, cacheKey, RenderSprites.enemy, this.radius, this.color);
         
         if (this.health < this.maxHealth) {
             ctx.fillStyle = "#FFF";

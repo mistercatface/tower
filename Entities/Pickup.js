@@ -119,10 +119,6 @@ export class Pickup extends Entity {
 
     render(ctx, pickupCache) {
         const cacheKey = `${this.type}_${this.radius}`;
-        const cachedSprite = pickupCache.get(cacheKey, RenderSprites.pickup, this.type, this.radius, this.strategy);
-        ctx.save();
-        ctx.translate(this.x, this.y);
-        ctx.drawImage(cachedSprite, -cachedSprite.width / 2, -cachedSprite.height / 2);
-        ctx.restore();
+        this.renderCachedSprite(ctx, pickupCache, cacheKey, RenderSprites.pickup, this.type, this.radius, this.strategy);
     }
 }
