@@ -87,7 +87,7 @@ window.addEventListener("resize", resizeCanvas);
 window.gameState = state;
 state.initUpgradesList(upgrades);
 loadProgress(state, upgrades);
-initUI(state, upgrades, viewport, resetGame);
+initUI(state, upgrades, resetGame);
 gameOverUI = document.getElementById("gameOverUI");
 resizeCanvas();
 InputManager.setup(canvas, fsm, viewport);
