@@ -239,9 +239,9 @@ export class EnemyChargePrepareState {
         const distToTarget = Math.hypot(enemy.x - target.x, enemy.y - target.y);
         enemy.isEngaged = distToTarget <= target.radius + enemy.attackRange;
 
-        const stagingDist = 180;
+        const stagingDist = 125;
         
-        if (distToTarget > stagingDist + 20) {
+        if (distToTarget > stagingDist + 25) {
             enemy.calculateSteering(target, gridSystem);
         } else if (distToTarget < stagingDist - 20) {
             const dx = enemy.x - target.x;
