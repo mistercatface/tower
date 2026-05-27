@@ -38,13 +38,14 @@ export class ChargedWeaponMode extends WeaponTargetingStrategy {
         const aimTarget = this.determineAimTarget(source, target, blocksTargeting, turret);
         
         let sway = 0;
-        if (source.type === "player" && state.weapon && turret.charge > 0) {
-            const accuracySpread = ((1 - state.weapon.accuracy) * Math.PI) / 2;
+        const weapon = source.weapon;
+        if (weapon && weapon.accuracy !== undefined && turret.charge > 0) {
+            const accuracySpread = ((1 - weapon.accuracy) * Math.PI) / 2 * 0.5;
             const frequency = 0.005; // speed of sway
-            const phase = state.turrets ? state.turrets.indexOf(turret) * 2.0 : 0;
+            const turretsList = source.turrets || (source.turret ? [source.turret] : null);
+            const phase = turretsList ? turretsList.indexOf(turret) * 2.0 : 0;
             const time = state.lastTime || Date.now();
-            const chargeRatio = turret.charge / (chargeTime || 1);
-            sway = Math.sin(time * frequency + phase) * accuracySpread * chargeRatio;
+            sway = Math.sin(time * frequency + phase) * accuracySpread;
         }
 
         const isAimed = WeaponSystem.aimTurret(turret, source.x, source.y, aimTarget.x, aimTarget.y, dt, sway);
@@ -80,10 +81,12 @@ export class ContinuousWeaponMode extends WeaponTargetingStrategy {
         const aimTarget = this.determineAimTarget(source, target, blocksTargeting, turret);
 
         let sway = 0;
-        if (source.type === "player" && state.weapon) {
-            const accuracySpread = ((1 - state.weapon.accuracy) * Math.PI) / 2;
+        const weapon = source.weapon;
+        if (weapon && weapon.accuracy !== undefined) {
+            const accuracySpread = ((1 - weapon.accuracy) * Math.PI) / 2 * 0.5;
             const frequency = 0.005; // speed of sway
-            const phase = state.turrets ? state.turrets.indexOf(turret) * 2.0 : 0;
+            const turretsList = source.turrets || (source.turret ? [source.turret] : null);
+            const phase = turretsList ? turretsList.indexOf(turret) * 2.0 : 0;
             const time = state.lastTime || Date.now();
             sway = Math.sin(time * frequency + phase) * accuracySpread;
         }

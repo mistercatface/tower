@@ -80,9 +80,9 @@ export const createBaseUpgrades = () => [
         name: "Accuracy",
         description: "Reduces weapon spread.",
         applyFn: (stats, level) => { stats.accuracy.flatModifiers += level * 0.01; },
-        currentStrFn: (level) => (50 + level) + "%",
-        nextStrFn: (level) => (50 + level + 1) + "%",
-        maxLevel: 45,
+        currentStrFn: (level) => (75 + level) + "%",
+        nextStrFn: (level) => (75 + level + 1) + "%",
+        maxLevel: 25,
         dynamicStrFn: (state) => (state.weapon.accuracy * 100).toFixed(0) + "%"
     }),
     new Upgrade({

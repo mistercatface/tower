@@ -197,10 +197,10 @@ export class Player extends Enemy {
         this.renderCachedSprite(ctx, cache, cacheKey, RenderSprites.player, this.radius, this.color);
         
         const chargeRatios = [];
-        if (state && state.turrets && state.weapon) {
+        if (state && state.turrets && this.weapon) {
             for (const turret of state.turrets) {
                 if (turret && turret.charge > 0) {
-                    chargeRatios.push(turret.charge / (state.weapon.chargeTime || 1));
+                    chargeRatios.push(turret.charge / (this.weapon.chargeTime || 1));
                 }
             }
         }

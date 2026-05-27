@@ -40,7 +40,7 @@ export const playerBaseStats = {
     range: 150,
     maxHealth: 100,
     gameSpeed: 2.0,
-    accuracy: 0.5,
+    accuracy: 0.75,
     penetration: 0,
     moveSpeedMultiplier: 1.0,
     moveSpeed: 50,

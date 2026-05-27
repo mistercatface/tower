@@ -61,21 +61,25 @@ export class Enemy extends DestructibleEntity {
         this.blastAngle = 0;
         this.blastTimer = 0;
         this.separation = new Separation();
-        this.attackRange = 75 + Math.floor(Math.random() * 70);
-        this.fireRate = 1500;
+        const calculatedRange = 75 + Math.floor(Math.random() * 70);
+        this.weapon = {
+            chargeTime: 1500,
+            range: calculatedRange,
+            accuracy: 0.9,
+            weaponMode: new ChargedWeaponMode((state, tx, ty, angle, source) => {
+                const m = new Projectile(tx, ty, source.radius * enemyProjectileSettings.radiusMultiplier, enemyProjectileSettings.speed, state.player, angle, enemyProjectileSettings.damage, "enemy");
+                state.projectiles.push(m);
+                if (source) {
+                    PhysicsSystem.applyKnockback(source, angle + Math.PI, m.radius * enemyProjectileSettings.knockbackMultiplier);
+                }
+            })
+        };
         this.dodgeTimerId = null;
         this.dodgeTargetX = 0;
         this.dodgeTargetY = 0;
         this.currentState = enemyStates.navigating;
         this.stateData = {};
         this.chargeCooldown = 0;
-        this.weaponMode = new ChargedWeaponMode((state, tx, ty, angle, source) => {
-            const m = new Projectile(tx, ty, source.radius * enemyProjectileSettings.radiusMultiplier, enemyProjectileSettings.speed, state.player, angle, enemyProjectileSettings.damage, "enemy");
-            state.projectiles.push(m);
-            if (source) {
-                PhysicsSystem.applyKnockback(source, angle + Math.PI, m.radius * enemyProjectileSettings.knockbackMultiplier);
-            }
-        });
         this.startingAbilities = [];
         this.healthBar = Enemy.healthBar;
         this.chargeBar = Enemy.chargeBar;
@@ -202,7 +206,7 @@ export class Enemy extends DestructibleEntity {
         const cacheKey = `${this.radius}_${this.color}`;
         this.renderCachedSprite(ctx, renderer.enemyCache, cacheKey, RenderSprites.enemy, this.radius, this.color);
         
-        const chargeRatio = this.turret && this.turret.charge > 0 ? this.turret.charge / (this.fireRate || 1) : 0;
+        const chargeRatio = this.turret && this.turret.charge > 0 ? this.turret.charge / (this.weapon.chargeTime || 1) : 0;
         this.renderBars(ctx, renderer.enemyCache, 14, [chargeRatio]);
 
         if (this.turret) {

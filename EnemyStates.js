@@ -55,7 +55,7 @@ export class EnemyNavigatingState {
 
         const distToTarget = Math.hypot(enemy.x - target.x, enemy.y - target.y);
         const hasLOS = Utilities.hasLineOfSight(enemy.x, enemy.y, target.x, target.y, walls, enemy.radius);
-        if (distToTarget <= target.radius + enemy.attackRange && hasLOS) {
+        if (distToTarget <= target.radius + enemy.weapon.range && hasLOS) {
             enemy.changeState("engaged");
             return enemy.currentState.update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler, state);
         }
@@ -84,7 +84,7 @@ export class EnemyEngagedState {
         const dy = enemy.y - target.y;
         const dist = Math.hypot(dx, dy);
 
-        if (dist > target.radius + enemy.attackRange + 15) {
+        if (dist > target.radius + enemy.weapon.range + 15) {
             enemy.changeState("navigating");
             return enemy.currentState.update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler, state);
         }
@@ -129,7 +129,7 @@ export class EnemyEngagedState {
                 stateData.strafeTimerId = scheduler.schedule(8000 + Math.random() * 8000);
             }
 
-            const preferredDist = target.radius + enemy.attackRange * 0.8;
+            const preferredDist = target.radius + enemy.weapon.range * 0.8;
             let radialFactor = 0;
             const distDiff = dist - preferredDist;
             if (Math.abs(distDiff) > 5) {
@@ -221,7 +221,7 @@ export class EnemyEngagedState {
         const angleToTarget = Math.atan2(-dy, -dx);
         enemy.angle = Utilities.turnAngleTowards(enemy.angle, angleToTarget, enemy.turnSpeed, dt);
 
-        enemy.weaponMode.processTurret(dt, state, enemy, enemy.fireRate, enemy.turret, target, !hasLOS, null);
+        enemy.weapon.weaponMode.processTurret(dt, state, enemy, enemy.weapon.chargeTime, enemy.turret, target, !hasLOS, null);
 
         return false;
     }
@@ -234,7 +234,7 @@ export class EnemyChargePrepareState {
         }
 
         const distToTarget = Math.hypot(enemy.x - target.x, enemy.y - target.y);
-        enemy.isEngaged = distToTarget <= target.radius + enemy.attackRange;
+        enemy.isEngaged = distToTarget <= target.radius + enemy.weapon.range;
 
         const stagingDist = 125;
         

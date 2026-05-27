@@ -29,6 +29,10 @@ export class Stat {
 }
 
 export class GameState {
+    get weapon() {
+        return this.player ? this.player.weapon : null;
+    }
+
     constructor() {
         this.fsm = null;
         this.scheduler = new Scheduler();
@@ -43,7 +47,7 @@ export class GameState {
         this.highestLevelReached = 0;
         this.claimedPerkMilestones = [];
         this.discoveredAbilities = new Set();
-
+ 
         this.stats = {
             damage: new Stat(playerBaseStats.damage),
             turnSpeed: new Stat(playerBaseStats.turnSpeed),
@@ -58,12 +62,12 @@ export class GameState {
             baseUpgradeCost: new Stat(defaultUpgradeCost),
             turretCount: new Stat(playerBaseStats.turretCount),
         };
-
+ 
         this.player = new Player(0, 0, 8, this.stats.maxHealth.value);
         this.turrets = [new Turret(0, this.stats.turnSpeed.value)];
-
+ 
         const self = this;
-        this.weapon = {
+        this.player.weapon = {
             chargeTime: playerBaseStats.chargeTime,
             range: playerBaseStats.range,
             damage: playerBaseStats.damage,
@@ -76,12 +80,12 @@ export class GameState {
                 return Math.min(1, acc);
             },
         };
-
+ 
         this.gridSystem = new GridSystem(gridSettings.cellSize, gridSettings.width, gridSettings.height);
         this.currentUpgradeTab = "attack";
         this.canvasBounds = { width: 0, height: 0 };
         this.upgrades = {};
-
+ 
         this.initializeDefaultState();
     }
 
@@ -165,7 +169,7 @@ export class GameState {
                 const upgDef = upgradesList.find((u) => u.id === key);
                 if (upgDef) {
                     if (upgDef.isAbility) {
-                                        if (this.player && this.player.startingAbilities && this.player.startingAbilities.includes(key)) {
+                        if (this.player && this.player.startingAbilities && this.player.startingAbilities.includes(key)) {
                             this.upgrades[key].baseLevel = 1;
                         } else {
                             this.upgrades[key].baseLevel = 0;
@@ -245,10 +249,10 @@ export class GameState {
         this.gridSystem.clear();
 
         this.entityLayers = [
-            { key: "pickups",       zIndex: 10 },
-            { key: "projectiles",   zIndex: 20 },
-            { key: "enemies",       zIndex: 30 },
-            { key: "activeLasers",  zIndex: 35 },
+            { key: "pickups", zIndex: 10 },
+            { key: "projectiles", zIndex: 20 },
+            { key: "enemies", zIndex: 30 },
+            { key: "activeLasers", zIndex: 35 },
             { key: "floatingTexts", zIndex: 90 },
         ];
 
@@ -282,6 +286,7 @@ export class GameState {
         this.pointBonus = this.stats.pointBonus.value;
         this.player.updateMaxHealth(this.stats.maxHealth.value);
         this.player.moveSpeed = playerBaseStats.moveSpeed * this.stats.moveSpeedMultiplier.value;
+        this.player.turrets = this.turrets;
 
         const targetTurretCount = Math.floor(this.stats.turretCount.value);
         while (this.turrets.length < targetTurretCount) {
