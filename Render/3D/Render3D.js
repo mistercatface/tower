@@ -44,7 +44,91 @@ export class Render3D {
         const r = Math.floor((baseR + (244 - baseR) * (1 - healthRatio)) * darkenRatio);
         const g = Math.floor((baseG + (67 - baseG) * (1 - healthRatio)) * darkenRatio);
         const b = Math.floor((baseB + (54 - baseB) * (1 - healthRatio)) * darkenRatio);
-        return `rgb(${r}, ${g}, ${b})`;
+        return { r, g, b };
+    }
+
+    getWallColorStr(seg, theme, darkenRatio = 1.0) {
+        const c = this.getWallColor(seg, theme, darkenRatio);
+        return `rgb(${c.r}, ${c.g}, ${c.b})`;
+    }
+
+    /**
+     * Draw a side face of a wall segment extruded outward from the planet center
+     * by the segment's height. p1 and p2 are the base edge corners.
+     */
+    drawExtrudedFace(ctx, p1, p2, px, py, height, fillStyle, strokeStyle) {
+        // Direction from planet center to the midpoint of this edge
+        const midX = (p1.x + p2.x) / 2;
+        const midY = (p1.y + p2.y) / 2;
+        const dirX = midX - px;
+        const dirY = midY - py;
+        const dirLen = Math.sqrt(dirX * dirX + dirY * dirY);
+
+        if (dirLen === 0) return;
+
+        // Normalized extrusion direction
+        const nx = dirX / dirLen;
+        const ny = dirY / dirLen;
+
+        // Extrude each corner outward by height
+        const extP1 = { x: p1.x + nx * height, y: p1.y + ny * height };
+        const extP2 = { x: p2.x + nx * height, y: p2.y + ny * height };
+
+        ctx.fillStyle = fillStyle;
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.lineTo(extP2.x, extP2.y);
+        ctx.lineTo(extP1.x, extP1.y);
+        ctx.closePath();
+        ctx.fill();
+        if (strokeStyle) {
+            ctx.strokeStyle = strokeStyle;
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+        }
+    }
+
+    /**
+     * Draw the top face of a wall segment (the extruded cap).
+     */
+    drawTopFace(ctx, seg, px, py, fillStyle, strokeStyle) {
+        const edges = this.getSegmentEdges(seg);
+        const height = seg.height || seg.size;
+
+        // For each corner of the base, extrude outward from planet center
+        const corners = [
+            edges[0][0], // corner 0
+            edges[0][1], // corner 1
+            edges[1][1], // corner 2
+            edges[2][1], // corner 3
+        ];
+
+        // Compute per-corner extrusion direction from planet center
+        const extCorners = corners.map(c => {
+            const dx = c.x - px;
+            const dy = c.y - py;
+            const len = Math.sqrt(dx * dx + dy * dy);
+            if (len === 0) return { x: c.x, y: c.y };
+            return {
+                x: c.x + (dx / len) * height,
+                y: c.y + (dy / len) * height
+            };
+        });
+
+        ctx.fillStyle = fillStyle;
+        ctx.beginPath();
+        ctx.moveTo(extCorners[0].x, extCorners[0].y);
+        ctx.lineTo(extCorners[1].x, extCorners[1].y);
+        ctx.lineTo(extCorners[2].x, extCorners[2].y);
+        ctx.lineTo(extCorners[3].x, extCorners[3].y);
+        ctx.closePath();
+        ctx.fill();
+        if (strokeStyle) {
+            ctx.strokeStyle = strokeStyle;
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+        }
     }
 
     drawProjectedFace(ctx, p1, p2, px, py, fillStyle, shouldStroke = false) {
@@ -95,7 +179,7 @@ export class Render3D {
 
         for (const seg of visibleWalls) {
 
-            const wallColor = this.getWallColor(seg, state.wallTheme, 0.5);
+            const wallColor = this.getWallColorStr(seg, state.wallTheme, 0.5);
             const edges = this.getSegmentEdges(seg);
 
             if (!seg.sharedEdges) {
@@ -205,14 +289,18 @@ export class Render3D {
         visibleWalls.sort((a, b) => b._distSq - a._distSq);
 
         for (const seg of visibleWalls) {
-
-            const wallColor = this.getWallColor(seg, state.wallTheme, 1.0);
+            const wallColorObj = this.getWallColor(seg, state.wallTheme, 1.0);
+            const sideColor = `rgb(${Math.floor(wallColorObj.r * 0.65)}, ${Math.floor(wallColorObj.g * 0.65)}, ${Math.floor(wallColorObj.b * 0.65)})`;
+            const topColor = `rgb(${wallColorObj.r}, ${wallColorObj.g}, ${wallColorObj.b})`;
+            const strokeColor = `rgba(0, 0, 0, 0.3)`;
             const edges = this.getSegmentEdges(seg);
+            const height = seg.height || seg.size;
 
             if (!seg.sharedEdges) {
                 seg.sharedEdges = [false, false, false, false];
             }
 
+            // Draw visible side faces (edges facing away from planet)
             for (let i = 0; i < 4; i++) {
                 if (seg.sharedEdges[i]) continue;
 
@@ -225,10 +313,14 @@ export class Render3D {
 
                 const viewX = edgeCx - px;
                 const viewY = edgeCy - py;
+                // Only draw faces pointing away from the planet (outer faces)
                 if (outX * viewX + outY * viewY >= 0) continue;
 
-                this.drawProjectedFace(ctx, p1, p2, px, py, wallColor, true);
+                this.drawExtrudedFace(ctx, p1, p2, px, py, height, sideColor, strokeColor);
             }
+
+            // Draw the top face
+            this.drawTopFace(ctx, seg, px, py, topColor, strokeColor);
         }
 
         const weaponRange = state.weapon.range;

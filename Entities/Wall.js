@@ -1,10 +1,11 @@
 import { DestructibleEntity } from "./Entity.js";
 
 export class Segment extends DestructibleEntity {
-    constructor(x, y, angle, size, padding = 10, maxHealth = 30, health = 30, isDead = false) {
+    constructor(x, y, angle, size, padding = 10, maxHealth = 30, health = 30, isDead = false, height = null) {
         super(x, y, angle, maxHealth, health, isDead);
         this.size = size;
         this.padding = padding;
+        this.height = height !== null ? height : size; // default to size for 1:1 voxel ratio
     }
 
     handleHit(damage, ctx) {
