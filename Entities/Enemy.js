@@ -13,8 +13,16 @@ import { updateUI } from "../UI.js";
 import { ChargedWeaponMode } from "../WeaponSystem.js";
 import { PhysicsSystem } from "../Spatial/PhysicsSystem.js";
 import { enemyProjectileSettings } from "../Config.js";
+import { ProgressBar } from "../Render/ProgressBar.js";
 
 export class Enemy extends DestructibleEntity {
+    static healthBar = new ProgressBar({
+        width: 22,
+        height: 3,
+        borderRadius: 1.5,
+        quantizationSteps: 20
+    });
+
     static updateAll(state, dt, spatialHash) {
         for (let i = state.enemies.length - 1; i >= 0; i--) {
             const e = state.enemies[i];
@@ -157,9 +165,8 @@ export class Enemy extends DestructibleEntity {
         this.renderCachedSprite(ctx, enemyCache, cacheKey, RenderSprites.enemy, this.radius, this.color);
         
         if (this.health < this.maxHealth) {
-            ctx.fillStyle = "#FFF";
             const currentHealth = Math.max(0, this.health);
-            ctx.fillRect(this.x - 10, this.y - 12, 20 * (currentHealth / this.maxHealth), 3);
+            Enemy.healthBar.render(ctx, this.x, this.y - 14, currentHealth / this.maxHealth, enemyCache);
         }
 
         if (this.turret) {
