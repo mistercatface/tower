@@ -27,9 +27,7 @@ function repelEntities(state, exp, dt) {
                 e.y += pushY * overlap;
                 
                 const angle = Math.atan2(pushY, pushX);
-                e.changeState("blasted");
-                e.blastAngle = angle;
-                e.blastTimer = 500;
+                e.changeState("blasted", { angle: angle, timer: 500 });
                 PhysicsSystem.resolveWallCollisions(e, state.walls, state);
             }
         }
@@ -59,9 +57,7 @@ function repelEntities(state, exp, dt) {
                 p.y += pushY * overlap;
                 
                 const angle = Math.atan2(pushY, pushX);
-                p.changeState("blasted");
-                p.blastAngle = angle;
-                p.blastTimer = 500;
+                p.changeState("blasted", { angle: angle, timer: 500 });
                 PhysicsSystem.resolveWallCollisions(p, state.walls, state);
             }
         }

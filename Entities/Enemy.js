@@ -59,6 +59,8 @@ export class Enemy extends DestructibleEntity {
         this.dodgeTargetX = 0;
         this.dodgeTargetY = 0;
         this.currentState = enemyStates.navigating;
+        this.stateData = {};
+        this.chargeCooldown = 0;
         this.weaponMode = new ChargedWeaponMode((state, tx, ty, angle, source) => {
             const m = new Projectile(tx, ty, source.radius * enemyProjectileSettings.radiusMultiplier, enemyProjectileSettings.speed, state.planet, angle, enemyProjectileSettings.damage, "enemy");
             state.projectiles.push(m);
@@ -86,8 +88,15 @@ export class Enemy extends DestructibleEntity {
         updateUI(ctx.state, ctx.upgrades);
     }
 
-    changeState(stateName) {
+    changeState(stateName, stateDataInit = null) {
+        if (this.currentState && this.currentState.onExit) {
+            this.currentState.onExit(this);
+        }
         this.currentState = enemyStates[stateName];
+        this.stateData = stateDataInit || {};
+        if (this.currentState && this.currentState.onEnter) {
+            this.currentState.onEnter(this);
+        }
     }
 
     calculateSteering(target, gridSystem) {
@@ -164,38 +173,8 @@ export class Enemy extends DestructibleEntity {
     }
 
     render(ctx, enemyCache, turretCache) {
-        if (this.chargeState === "windup") {
-            ctx.save();
-            ctx.strokeStyle = "rgba(255, 87, 34, 0.4)";
-            ctx.lineWidth = 1;
-            ctx.setLineDash([4, 4]);
-            ctx.beginPath();
-            ctx.moveTo(this.x, this.y);
-            ctx.lineTo(this.chargeTargetX, this.chargeTargetY);
-            ctx.stroke();
-            ctx.restore();
-            
-            ctx.save();
-            ctx.strokeStyle = "rgba(255, 152, 0, 0.6)";
-            ctx.lineWidth = 1.5;
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, this.radius + 3 + Math.sin(Date.now() * 0.02) * 2, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.restore();
-        }
-
-        if (this.chargeState === "dash" && this.dashTrail && this.dashTrail.length > 0) {
-            ctx.save();
-            for (let i = 0; i < this.dashTrail.length; i++) {
-                const pt = this.dashTrail[i];
-                const alpha = ((i + 1) / (this.dashTrail.length + 1)) * 0.35;
-                ctx.fillStyle = this.color;
-                ctx.globalAlpha = alpha;
-                ctx.beginPath();
-                ctx.arc(pt.x, pt.y, this.radius * (0.4 + 0.6 * (i / this.dashTrail.length)), 0, Math.PI * 2);
-                ctx.fill();
-            }
-            ctx.restore();
+        if (this.currentState && this.currentState.render) {
+            this.currentState.render(this, ctx, enemyCache, turretCache);
         }
 
         const cacheKey = `${this.radius}_${this.color}`;

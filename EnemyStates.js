@@ -44,12 +44,12 @@ function analyzeStrafePath(enemy, tangentX, tangentY, dir, walls, target) {
 export class EnemyNavigatingState {
     update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler, state) {
         if (enemy.canDodge && scheduler.getTimeRemaining(enemy.dodgeTimerId) <= 0 && enemy.shouldTriggerDodge(missiles, gridSystem, scheduler)) {
-            enemy.changeState("dodging");
+            enemy.changeState("dodging", { targetX: enemy.dodgeTargetX, targetY: enemy.dodgeTargetY });
             return enemy.currentState.update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler, state);
         }
 
         if (enemy.attackType === "charge") {
-            enemy.changeState("charging");
+            enemy.changeState("charging_prepare");
             return enemy.currentState.update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler, state);
         }
 
@@ -77,7 +77,7 @@ export class EnemyNavigatingState {
 export class EnemyEngagedState {
     update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler, state) {
         if (enemy.canDodge && scheduler.getTimeRemaining(enemy.dodgeTimerId) <= 0 && enemy.shouldTriggerDodge(missiles, gridSystem, scheduler)) {
-            enemy.changeState("dodging");
+            enemy.changeState("dodging", { targetX: enemy.dodgeTargetX, targetY: enemy.dodgeTargetY });
             return enemy.currentState.update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler, state);
         }
 
@@ -98,34 +98,36 @@ export class EnemyEngagedState {
         const tangentX = -radialY;
         const tangentY = radialX;
 
+        const stateData = enemy.stateData;
+
         if (shouldStrafe) {
             if (!hasLOS) {
                 enemy.changeState("navigating");
                 return enemy.currentState.update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler, state);
             }
 
-            if (enemy.strafeDir === undefined) {
-                enemy.strafeDir = Math.random() < 0.5 ? 1 : -1;
+            if (stateData.strafeDir === undefined) {
+                stateData.strafeDir = Math.random() < 0.5 ? 1 : -1;
             }
-            if (enemy.strafeTimerId === undefined || enemy.strafeTimerId === null) {
-                enemy.strafeTimerId = scheduler.schedule(8000 + Math.random() * 8000);
+            if (stateData.strafeTimerId === undefined || stateData.strafeTimerId === null) {
+                stateData.strafeTimerId = scheduler.schedule(8000 + Math.random() * 8000);
             }
 
-            const currentPath = analyzeStrafePath(enemy, tangentX, tangentY, enemy.strafeDir, walls, target);
+            const currentPath = analyzeStrafePath(enemy, tangentX, tangentY, stateData.strafeDir, walls, target);
             if (currentPath.walkableDist < 45) {
-                const oppositePath = analyzeStrafePath(enemy, tangentX, tangentY, -enemy.strafeDir, walls, target);
+                const oppositePath = analyzeStrafePath(enemy, tangentX, tangentY, -stateData.strafeDir, walls, target);
                 if (oppositePath.walkableDist > currentPath.walkableDist) {
-                    enemy.strafeDir *= -1;
-                    enemy.strafeTimerId = scheduler.schedule(8000 + Math.random() * 8000);
+                    stateData.strafeDir *= -1;
+                    stateData.strafeTimerId = scheduler.schedule(8000 + Math.random() * 8000);
                 }
             }
 
-            if (scheduler.getTimeRemaining(enemy.strafeTimerId) <= 0) {
-                const oppositePath = analyzeStrafePath(enemy, tangentX, tangentY, -enemy.strafeDir, walls, target);
+            if (scheduler.getTimeRemaining(stateData.strafeTimerId) <= 0) {
+                const oppositePath = analyzeStrafePath(enemy, tangentX, tangentY, -stateData.strafeDir, walls, target);
                 if (oppositePath.walkableDist > 50) {
-                    enemy.strafeDir *= -1;
+                    stateData.strafeDir *= -1;
                 }
-                enemy.strafeTimerId = scheduler.schedule(8000 + Math.random() * 8000);
+                stateData.strafeTimerId = scheduler.schedule(8000 + Math.random() * 8000);
             }
 
             const preferredDist = target.radius + enemy.attackRange * 0.8;
@@ -135,21 +137,21 @@ export class EnemyEngagedState {
                 radialFactor = Math.max(-0.3, Math.min(0.3, distDiff * 0.01));
             }
 
-            enemy.desiredX = tangentX * enemy.strafeDir + radialX * radialFactor;
-            enemy.desiredY = tangentY * enemy.strafeDir + radialY * radialFactor;
+            enemy.desiredX = tangentX * stateData.strafeDir + radialX * radialFactor;
+            enemy.desiredY = tangentY * stateData.strafeDir + radialY * radialFactor;
 
             enemy.separation.update(enemy, spatialHash);
             PhysicsSystem.applyMovement(enemy, dt, true, true, false);
             PhysicsSystem.resolveWallCollisions(enemy, walls, state);
         } else {
-            if (enemy.linearStrafeState === undefined) {
-                enemy.linearStrafeState = "idle";
+            if (stateData.linearStrafeState === undefined) {
+                stateData.linearStrafeState = "idle";
             }
-            if (enemy.linearStrafeTimerId === undefined || enemy.linearStrafeTimerId === null) {
-                enemy.linearStrafeTimerId = scheduler.schedule(200 + Math.random() * 500);
+            if (stateData.linearStrafeTimerId === undefined || stateData.linearStrafeTimerId === null) {
+                stateData.linearStrafeTimerId = scheduler.schedule(200 + Math.random() * 500);
             }
 
-            if (scheduler.getTimeRemaining(enemy.linearStrafeTimerId) <= 0) {
+            if (scheduler.getTimeRemaining(stateData.linearStrafeTimerId) <= 0) {
                 const leftPath = analyzeStrafePath(enemy, tangentX, tangentY, 1, walls, target);
                 const rightPath = analyzeStrafePath(enemy, tangentX, tangentY, -1, walls, target);
 
@@ -158,24 +160,24 @@ export class EnemyEngagedState {
                     const hasRightCover = rightPath.coverDist !== -1 && rightPath.coverDist <= rightPath.walkableDist;
 
                     if ((hasLeftCover || hasRightCover) && Math.random() < 0.7) {
-                        enemy.linearStrafeState = "strafing";
+                        stateData.linearStrafeState = "strafing";
                         if (hasLeftCover && hasRightCover) {
-                            enemy.strafeDir = leftPath.coverDist < rightPath.coverDist ? 1 : -1;
+                            stateData.strafeDir = leftPath.coverDist < rightPath.coverDist ? 1 : -1;
                         } else {
-                            enemy.strafeDir = hasLeftCover ? 1 : -1;
+                            stateData.strafeDir = hasLeftCover ? 1 : -1;
                         }
-                        const targetDist = enemy.strafeDir === 1 ? leftPath.coverDist : rightPath.coverDist;
-                        enemy.linearStrafeTimerId = scheduler.schedule((targetDist / enemy.speed) * 1000 + 300);
+                        const targetDist = stateData.strafeDir === 1 ? leftPath.coverDist : rightPath.coverDist;
+                        stateData.linearStrafeTimerId = scheduler.schedule((targetDist / enemy.speed) * 1000 + 300);
                     } else {
                         if (Math.random() < 0.7) {
-                            enemy.linearStrafeState = "strafing";
-                            enemy.strafeDir = leftPath.walkableDist >= rightPath.walkableDist ? 1 : -1;
-                            const walkTarget = enemy.strafeDir === 1 ? leftPath.walkableDist : rightPath.walkableDist;
+                            stateData.linearStrafeState = "strafing";
+                            stateData.strafeDir = leftPath.walkableDist >= rightPath.walkableDist ? 1 : -1;
+                            const walkTarget = stateData.strafeDir === 1 ? leftPath.walkableDist : rightPath.walkableDist;
                             const strafeDist = Math.min(walkTarget, 30 + Math.random() * 40);
-                            enemy.linearStrafeTimerId = scheduler.schedule((strafeDist / enemy.speed) * 1000);
+                            stateData.linearStrafeTimerId = scheduler.schedule((strafeDist / enemy.speed) * 1000);
                         } else {
-                            enemy.linearStrafeState = "idle";
-                            enemy.linearStrafeTimerId = scheduler.schedule(400 + Math.random() * 800);
+                            stateData.linearStrafeState = "idle";
+                            stateData.linearStrafeTimerId = scheduler.schedule(400 + Math.random() * 800);
                         }
                     }
                 } else {
@@ -183,14 +185,14 @@ export class EnemyEngagedState {
                     const hasRightOpen = rightPath.openDist !== -1 && rightPath.openDist <= rightPath.walkableDist;
 
                     if (hasLeftOpen || hasRightOpen) {
-                        enemy.linearStrafeState = "strafing";
+                        stateData.linearStrafeState = "strafing";
                         if (hasLeftOpen && hasRightOpen) {
-                            enemy.strafeDir = leftPath.openDist < rightPath.openDist ? 1 : -1;
+                            stateData.strafeDir = leftPath.openDist < rightPath.openDist ? 1 : -1;
                         } else {
-                            enemy.strafeDir = hasLeftOpen ? 1 : -1;
+                            stateData.strafeDir = hasLeftOpen ? 1 : -1;
                         }
-                        const targetDist = enemy.strafeDir === 1 ? leftPath.openDist : rightPath.openDist;
-                        enemy.linearStrafeTimerId = scheduler.schedule((targetDist / enemy.speed) * 1000 + 300);
+                        const targetDist = stateData.strafeDir === 1 ? leftPath.openDist : rightPath.openDist;
+                        stateData.linearStrafeTimerId = scheduler.schedule((targetDist / enemy.speed) * 1000 + 300);
                     } else {
                         enemy.changeState("navigating");
                         return enemy.currentState.update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler, state);
@@ -198,9 +200,9 @@ export class EnemyEngagedState {
                 }
             }
 
-            if (enemy.linearStrafeState === "strafing") {
-                enemy.desiredX = tangentX * enemy.strafeDir;
-                enemy.desiredY = tangentY * enemy.strafeDir;
+            if (stateData.linearStrafeState === "strafing") {
+                enemy.desiredX = tangentX * stateData.strafeDir;
+                enemy.desiredY = tangentY * stateData.strafeDir;
             } else {
                 enemy.desiredX = 0;
                 enemy.desiredY = 0;
@@ -211,9 +213,9 @@ export class EnemyEngagedState {
 
             const hitWall = PhysicsSystem.resolveWallCollisions(enemy, walls, state);
             if (hitWall) {
-                enemy.strafeDir *= -1;
-                enemy.linearStrafeState = "idle";
-                enemy.linearStrafeTimerId = scheduler.schedule(1000 + Math.random() * 1000);
+                stateData.strafeDir *= -1;
+                stateData.linearStrafeState = "idle";
+                stateData.linearStrafeTimerId = scheduler.schedule(1000 + Math.random() * 1000);
             }
         }
 
@@ -228,134 +230,180 @@ export class EnemyEngagedState {
     }
 }
 
-export class EnemyChargingState {
+export class EnemyChargePrepareState {
     update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler, state) {
-        if (enemy.chargeState === undefined) {
-            enemy.chargeState = "prepare";
-            enemy.chargeTimer = 0;
-            enemy.chargeCooldown = 0;
-            enemy.dashAngle = 0;
-            enemy.chargeTargetX = 0;
-            enemy.chargeTargetY = 0;
-            enemy.dashTrail = [];
+        if (enemy.chargeCooldown > 0) {
+            enemy.chargeCooldown -= dt;
         }
 
         const distToTarget = Math.hypot(enemy.x - target.x, enemy.y - target.y);
         enemy.isEngaged = distToTarget <= target.radius + enemy.attackRange;
 
-        if (enemy.chargeState === "prepare" && enemy.chargeCooldown > 0) {
-            enemy.chargeCooldown -= dt;
-        }
-
-        if (enemy.chargeState === "prepare") {
-            const stagingDist = 180;
-            
-            if (distToTarget > stagingDist + 20) {
-                enemy.calculateSteering(target, gridSystem);
-            } else if (distToTarget < stagingDist - 20) {
-                const dx = enemy.x - target.x;
-                const dy = enemy.y - target.y;
-                const dist = Math.hypot(dx, dy);
-                if (dist > 0) {
-                    enemy.desiredX = dx / dist;
-                    enemy.desiredY = dy / dist;
-                } else {
-                    enemy.desiredX = 0;
-                    enemy.desiredY = 0;
-                }
+        const stagingDist = 180;
+        
+        if (distToTarget > stagingDist + 20) {
+            enemy.calculateSteering(target, gridSystem);
+        } else if (distToTarget < stagingDist - 20) {
+            const dx = enemy.x - target.x;
+            const dy = enemy.y - target.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist > 0) {
+                enemy.desiredX = dx / dist;
+                enemy.desiredY = dy / dist;
             } else {
                 enemy.desiredX = 0;
                 enemy.desiredY = 0;
             }
-
-            enemy.separation.update(enemy, spatialHash);
-            PhysicsSystem.applyMovement(enemy, dt, false, true);
-            PhysicsSystem.resolveWallCollisions(enemy, walls, state);
-
-            const isStable = Math.hypot(enemy.vx, enemy.vy) < enemy.speed * 0.6;
-            const hasLOS = Utilities.hasLineOfSight(enemy.x, enemy.y, target.x, target.y, walls, enemy.radius);
-            
-            if (enemy.chargeCooldown <= 0 && distToTarget < 220 && distToTarget > 80 && isStable && hasLOS) {
-                enemy.chargeState = "windup";
-                enemy.chargeTimer = 500;
-                enemy.chargeTargetX = target.x;
-                enemy.chargeTargetY = target.y;
-                enemy.vx = 0;
-                enemy.vy = 0;
-            }
-        } 
-        else if (enemy.chargeState === "windup") {
+        } else {
             enemy.desiredX = 0;
             enemy.desiredY = 0;
-            PhysicsSystem.applyMovement(enemy, dt, true, true);
-            PhysicsSystem.resolveWallCollisions(enemy, walls, state);
-
-            const dx = target.x - enemy.x;
-            const dy = target.y - enemy.y;
-            const angleToTarget = Math.atan2(dy, dx);
-            let angleDiff = angleToTarget - enemy.angle;
-            angleDiff = Utilities.normalizeAngle(angleDiff);
-            enemy.angle += angleDiff * Math.min(1, enemy.turnSpeed * 1.5 * (dt / 1000));
-            enemy.angle = Utilities.normalizeAngle(enemy.angle);
-
-            let turretDiff = enemy.angle - enemy.turret.angle;
-            turretDiff = Utilities.normalizeAngle(turretDiff);
-            enemy.turret.angle += turretDiff * Math.min(1, enemy.turret.turnSpeed * (dt / 1000));
-            enemy.turret.angle = Utilities.normalizeAngle(enemy.turret.angle);
-
-            enemy.chargeTimer -= dt;
-            if (enemy.chargeTimer <= 0) {
-                enemy.chargeState = "dash";
-                enemy.chargeTimer = 1200;
-                enemy.dashAngle = Math.atan2(target.y - enemy.y, target.x - enemy.x);
-                enemy.dashTrail = [];
-            }
         }
-        else if (enemy.chargeState === "dash") {
-            if (!enemy.dashTrail) enemy.dashTrail = [];
-            enemy.dashTrail.push({ x: enemy.x, y: enemy.y });
-            if (enemy.dashTrail.length > 4) {
-                enemy.dashTrail.shift();
-            }
 
-            enemy.desiredX = Math.cos(enemy.dashAngle);
-            enemy.desiredY = Math.sin(enemy.dashAngle);
-            enemy.angle = enemy.dashAngle;
-            enemy.turret.angle = enemy.angle;
+        enemy.separation.update(enemy, spatialHash);
+        PhysicsSystem.applyMovement(enemy, dt, false, true);
+        PhysicsSystem.resolveWallCollisions(enemy, walls, state);
 
-            const originalSpeed = enemy.speed;
-            enemy.speed = originalSpeed * 2.2;
-            const originalAccel = enemy.accelRate;
-            enemy.accelRate = originalAccel * 5.0;
-            
-            PhysicsSystem.applyMovement(enemy, dt, true, true, false);
-            
-            enemy.speed = originalSpeed;
-            enemy.accelRate = originalAccel;
-
-            const hitWall = PhysicsSystem.resolveWallCollisions(enemy, walls, state);
-
-            const dx = target.x - enemy.x;
-            const dy = target.y - enemy.y;
-            const dot = dx * Math.cos(enemy.dashAngle) + dy * Math.sin(enemy.dashAngle);
-
-            enemy.chargeTimer -= dt;
-            
-            if (enemy.chargeTimer <= 0 || dot < -10 || hitWall) {
-                enemy.chargeState = "prepare";
-                enemy.chargeCooldown = 1500;
-                enemy.dashTrail = [];
-            }
+        const isStable = Math.hypot(enemy.vx, enemy.vy) < enemy.speed * 0.6;
+        const hasLOS = Utilities.hasLineOfSight(enemy.x, enemy.y, target.x, target.y, walls, enemy.radius);
+        
+        if (enemy.chargeCooldown <= 0 && distToTarget < 220 && distToTarget > 80 && isStable && hasLOS) {
+            enemy.changeState("charging_windup", {
+                timer: 500,
+                targetX: target.x,
+                targetY: target.y
+            });
+            return enemy.currentState.update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler, state);
         }
 
         return false;
     }
 }
 
+export class EnemyChargeWindupState {
+    onEnter(enemy) {
+        enemy.vx = 0;
+        enemy.vy = 0;
+    }
+    update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler, state) {
+        enemy.desiredX = 0;
+        enemy.desiredY = 0;
+        PhysicsSystem.applyMovement(enemy, dt, true, true);
+        PhysicsSystem.resolveWallCollisions(enemy, walls, state);
+
+        const dx = target.x - enemy.x;
+        const dy = target.y - enemy.y;
+        const angleToTarget = Math.atan2(dy, dx);
+        let angleDiff = angleToTarget - enemy.angle;
+        angleDiff = Utilities.normalizeAngle(angleDiff);
+        enemy.angle += angleDiff * Math.min(1, enemy.turnSpeed * 1.5 * (dt / 1000));
+        enemy.angle = Utilities.normalizeAngle(enemy.angle);
+
+        if (enemy.turret) {
+            let turretDiff = enemy.angle - enemy.turret.angle;
+            turretDiff = Utilities.normalizeAngle(turretDiff);
+            enemy.turret.angle += turretDiff * Math.min(1, enemy.turret.turnSpeed * (dt / 1000));
+            enemy.turret.angle = Utilities.normalizeAngle(enemy.turret.angle);
+        }
+
+        const stateData = enemy.stateData;
+        stateData.timer -= dt;
+        if (stateData.timer <= 0) {
+            enemy.changeState("charging_dash", {
+                timer: 1200,
+                dashAngle: Math.atan2(target.y - enemy.y, target.x - enemy.x),
+                dashTrail: []
+            });
+            return enemy.currentState.update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler, state);
+        }
+
+        return false;
+    }
+    render(enemy, ctx, enemyCache, turretCache) {
+        const stateData = enemy.stateData;
+        ctx.save();
+        ctx.strokeStyle = "rgba(255, 87, 34, 0.4)";
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(enemy.x, enemy.y);
+        ctx.lineTo(stateData.targetX, stateData.targetY);
+        ctx.stroke();
+        ctx.restore();
+        
+        ctx.save();
+        ctx.strokeStyle = "rgba(255, 152, 0, 0.6)";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(enemy.x, enemy.y, enemy.radius + 3 + Math.sin(Date.now() * 0.02) * 2, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+    }
+}
+
+export class EnemyChargeDashState {
+    update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler, state) {
+        const stateData = enemy.stateData;
+        if (!stateData.dashTrail) stateData.dashTrail = [];
+        stateData.dashTrail.push({ x: enemy.x, y: enemy.y });
+        if (stateData.dashTrail.length > 4) {
+            stateData.dashTrail.shift();
+        }
+
+        enemy.desiredX = Math.cos(stateData.dashAngle);
+        enemy.desiredY = Math.sin(stateData.dashAngle);
+        enemy.angle = stateData.dashAngle;
+        if (enemy.turret) {
+            enemy.turret.angle = enemy.angle;
+        }
+
+        const originalSpeed = enemy.speed;
+        enemy.speed = originalSpeed * 2.2;
+        const originalAccel = enemy.accelRate;
+        enemy.accelRate = originalAccel * 5.0;
+        
+        PhysicsSystem.applyMovement(enemy, dt, true, true, false);
+        
+        enemy.speed = originalSpeed;
+        enemy.accelRate = originalAccel;
+
+        const hitWall = PhysicsSystem.resolveWallCollisions(enemy, walls, state);
+
+        const dx = target.x - enemy.x;
+        const dy = target.y - enemy.y;
+        const dot = dx * Math.cos(stateData.dashAngle) + dy * Math.sin(stateData.dashAngle);
+
+        stateData.timer -= dt;
+        
+        if (stateData.timer <= 0 || dot < -10 || hitWall) {
+            enemy.chargeCooldown = 1500;
+            enemy.changeState("charging_prepare");
+        }
+
+        return false;
+    }
+    render(enemy, ctx, enemyCache, turretCache) {
+        const stateData = enemy.stateData;
+        if (stateData.dashTrail && stateData.dashTrail.length > 0) {
+            ctx.save();
+            for (let i = 0; i < stateData.dashTrail.length; i++) {
+                const pt = stateData.dashTrail[i];
+                const alpha = ((i + 1) / (stateData.dashTrail.length + 1)) * 0.35;
+                ctx.fillStyle = enemy.color;
+                ctx.globalAlpha = alpha;
+                ctx.beginPath();
+                ctx.arc(pt.x, pt.y, enemy.radius * (0.4 + 0.6 * (i / stateData.dashTrail.length)), 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
+        }
+    }
+}
+
 export class EnemyDodgingState {
     update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler, state) {
-        const dx = enemy.dodgeTargetX - enemy.x;
-        const dy = enemy.dodgeTargetY - enemy.y;
+        const stateData = enemy.stateData;
+        const dx = stateData.targetX - enemy.x;
+        const dy = stateData.targetY - enemy.y;
         const dist = Math.hypot(dx, dy);
         const moveDist = enemy.speed * 1.5 * (dt / 1000);
 
@@ -365,18 +413,20 @@ export class EnemyDodgingState {
         enemy.angle += dodgeAngleDiff * Math.min(1, enemy.turnSpeed * 1.5 * (dt / 1000));
 
         if (dist <= moveDist) {
-            enemy.x = enemy.dodgeTargetX;
-            enemy.y = enemy.dodgeTargetY;
+            enemy.x = stateData.targetX;
+            enemy.y = stateData.targetY;
             enemy.changeState("navigating");
         } else {
             enemy.x += (dx / dist) * moveDist;
             enemy.y += (dy / dist) * moveDist;
         }
 
-        let diff = enemy.angle - enemy.turret.angle;
-        diff = Utilities.normalizeAngle(diff);
-        enemy.turret.angle += diff * Math.min(1, enemy.turret.turnSpeed * (dt / 1000));
-        enemy.turret.angle = Utilities.normalizeAngle(enemy.turret.angle);
+        if (enemy.turret) {
+            let diff = enemy.angle - enemy.turret.angle;
+            diff = Utilities.normalizeAngle(diff);
+            enemy.turret.angle += diff * Math.min(1, enemy.turret.turnSpeed * (dt / 1000));
+            enemy.turret.angle = Utilities.normalizeAngle(enemy.turret.angle);
+        }
 
         return false;
     }
@@ -388,8 +438,9 @@ export class EnemyBlastedState {
     }
 
     update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler, state) {
-        enemy.blastTimer -= dt;
-        if (enemy.blastTimer <= 0) {
+        const stateData = enemy.stateData;
+        stateData.timer -= dt;
+        if (stateData.timer <= 0) {
             enemy.vx = 0;
             enemy.vy = 0;
             if (enemy.stopMovement) {
@@ -399,26 +450,28 @@ export class EnemyBlastedState {
             return false;
         }
 
-        const ratio = Math.max(0, enemy.blastTimer / 500);
+        const ratio = Math.max(0, stateData.timer / 500);
         const launchSpeed = (enemy.moveSpeed || enemy.speed || 50) * 6;
         const speed = launchSpeed * Math.pow(ratio, 1.5);
 
-        enemy.vx = Math.cos(enemy.blastAngle) * speed;
-        enemy.vy = Math.sin(enemy.blastAngle) * speed;
+        enemy.vx = Math.cos(stateData.angle) * speed;
+        enemy.vy = Math.sin(stateData.angle) * speed;
 
         enemy.x += enemy.vx * (dt / 1000);
         enemy.y += enemy.vy * (dt / 1000);
 
-        const targetAngle = enemy.blastAngle;
+        const targetAngle = stateData.angle;
         let angleDiff = targetAngle - enemy.angle;
         angleDiff = Utilities.normalizeAngle(angleDiff);
         enemy.angle += angleDiff * Math.min(1, enemy.turnSpeed * (dt / 1000));
         enemy.angle = Utilities.normalizeAngle(enemy.angle);
 
-        let turretDiff = targetAngle - enemy.turret.angle;
-        turretDiff = Utilities.normalizeAngle(turretDiff);
-        enemy.turret.angle += turretDiff * Math.min(1, enemy.turret.turnSpeed * (dt / 1000));
-        enemy.turret.angle = Utilities.normalizeAngle(enemy.turret.angle);
+        if (enemy.turret) {
+            let turretDiff = targetAngle - enemy.turret.angle;
+            turretDiff = Utilities.normalizeAngle(turretDiff);
+            enemy.turret.angle += turretDiff * Math.min(1, enemy.turret.turnSpeed * (dt / 1000));
+            enemy.turret.angle = Utilities.normalizeAngle(enemy.turret.angle);
+        }
 
         PhysicsSystem.resolveWallCollisions(enemy, walls, state);
 
@@ -429,7 +482,9 @@ export class EnemyBlastedState {
 export const enemyStates = {
     navigating: new EnemyNavigatingState(),
     engaged: new EnemyEngagedState(),
-    charging: new EnemyChargingState(),
+    charging_prepare: new EnemyChargePrepareState(),
+    charging_windup: new EnemyChargeWindupState(),
+    charging_dash: new EnemyChargeDashState(),
     dodging: new EnemyDodgingState(),
     blasted: new EnemyBlastedState()
 };
