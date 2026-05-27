@@ -230,18 +230,123 @@ export class EnemyEngagedState {
 
 export class EnemyChargingState {
     update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler, state) {
+        if (enemy.chargeState === undefined) {
+            enemy.chargeState = "prepare";
+            enemy.chargeTimer = 0;
+            enemy.chargeCooldown = 0;
+            enemy.dashAngle = 0;
+            enemy.chargeTargetX = 0;
+            enemy.chargeTargetY = 0;
+            enemy.dashTrail = [];
+        }
+
         const distToTarget = Math.hypot(enemy.x - target.x, enemy.y - target.y);
         enemy.isEngaged = distToTarget <= target.radius + enemy.attackRange;
 
-        enemy.calculateSteering(target, gridSystem);
-        enemy.separation.update(enemy, spatialHash);
-        PhysicsSystem.applyMovement(enemy, dt, true, true);
-        PhysicsSystem.resolveWallCollisions(enemy, walls, state);
+        if (enemy.chargeState === "prepare" && enemy.chargeCooldown > 0) {
+            enemy.chargeCooldown -= dt;
+        }
 
-        let diff = enemy.angle - enemy.turret.angle;
-        diff = Utilities.normalizeAngle(diff);
-        enemy.turret.angle += diff * Math.min(1, enemy.turret.turnSpeed * (dt / 1000));
-        enemy.turret.angle = Utilities.normalizeAngle(enemy.turret.angle);
+        if (enemy.chargeState === "prepare") {
+            const stagingDist = 180;
+            
+            if (distToTarget > stagingDist + 20) {
+                enemy.calculateSteering(target, gridSystem);
+            } else if (distToTarget < stagingDist - 20) {
+                const dx = enemy.x - target.x;
+                const dy = enemy.y - target.y;
+                const dist = Math.hypot(dx, dy);
+                if (dist > 0) {
+                    enemy.desiredX = dx / dist;
+                    enemy.desiredY = dy / dist;
+                } else {
+                    enemy.desiredX = 0;
+                    enemy.desiredY = 0;
+                }
+            } else {
+                enemy.desiredX = 0;
+                enemy.desiredY = 0;
+            }
+
+            enemy.separation.update(enemy, spatialHash);
+            PhysicsSystem.applyMovement(enemy, dt, false, true);
+            PhysicsSystem.resolveWallCollisions(enemy, walls, state);
+
+            const isStable = Math.hypot(enemy.vx, enemy.vy) < enemy.speed * 0.6;
+            const hasLOS = Utilities.hasLineOfSight(enemy.x, enemy.y, target.x, target.y, walls, enemy.radius);
+            
+            if (enemy.chargeCooldown <= 0 && distToTarget < 220 && distToTarget > 80 && isStable && hasLOS) {
+                enemy.chargeState = "windup";
+                enemy.chargeTimer = 500;
+                enemy.chargeTargetX = target.x;
+                enemy.chargeTargetY = target.y;
+                enemy.vx = 0;
+                enemy.vy = 0;
+            }
+        } 
+        else if (enemy.chargeState === "windup") {
+            enemy.desiredX = 0;
+            enemy.desiredY = 0;
+            PhysicsSystem.applyMovement(enemy, dt, true, true);
+            PhysicsSystem.resolveWallCollisions(enemy, walls, state);
+
+            const dx = target.x - enemy.x;
+            const dy = target.y - enemy.y;
+            const angleToTarget = Math.atan2(dy, dx);
+            let angleDiff = angleToTarget - enemy.angle;
+            angleDiff = Utilities.normalizeAngle(angleDiff);
+            enemy.angle += angleDiff * Math.min(1, enemy.turnSpeed * 1.5 * (dt / 1000));
+            enemy.angle = Utilities.normalizeAngle(enemy.angle);
+
+            let turretDiff = enemy.angle - enemy.turret.angle;
+            turretDiff = Utilities.normalizeAngle(turretDiff);
+            enemy.turret.angle += turretDiff * Math.min(1, enemy.turret.turnSpeed * (dt / 1000));
+            enemy.turret.angle = Utilities.normalizeAngle(enemy.turret.angle);
+
+            enemy.chargeTimer -= dt;
+            if (enemy.chargeTimer <= 0) {
+                enemy.chargeState = "dash";
+                enemy.chargeTimer = 1200;
+                enemy.dashAngle = Math.atan2(target.y - enemy.y, target.x - enemy.x);
+                enemy.dashTrail = [];
+            }
+        }
+        else if (enemy.chargeState === "dash") {
+            if (!enemy.dashTrail) enemy.dashTrail = [];
+            enemy.dashTrail.push({ x: enemy.x, y: enemy.y });
+            if (enemy.dashTrail.length > 4) {
+                enemy.dashTrail.shift();
+            }
+
+            enemy.desiredX = Math.cos(enemy.dashAngle);
+            enemy.desiredY = Math.sin(enemy.dashAngle);
+            enemy.angle = enemy.dashAngle;
+            enemy.turret.angle = enemy.angle;
+
+            const originalSpeed = enemy.speed;
+            enemy.speed = originalSpeed * 2.2;
+            const originalAccel = enemy.accelRate;
+            enemy.accelRate = originalAccel * 5.0;
+            
+            PhysicsSystem.applyMovement(enemy, dt, true, true, false);
+            
+            enemy.speed = originalSpeed;
+            enemy.accelRate = originalAccel;
+
+            const hitWall = PhysicsSystem.resolveWallCollisions(enemy, walls, state);
+
+            const dx = target.x - enemy.x;
+            const dy = target.y - enemy.y;
+            const dot = dx * Math.cos(enemy.dashAngle) + dy * Math.sin(enemy.dashAngle);
+
+            enemy.chargeTimer -= dt;
+            
+            if (enemy.chargeTimer <= 0 || dot < -10 || hitWall) {
+                enemy.chargeState = "prepare";
+                enemy.chargeCooldown = 1500;
+                enemy.dashTrail = [];
+            }
+        }
 
         return false;
     }
