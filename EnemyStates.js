@@ -262,6 +262,13 @@ export class EnemyChargePrepareState {
         enemy.separation.update(enemy, spatialHash);
         PhysicsSystem.applyMovement(enemy, dt, false, true);
         PhysicsSystem.resolveWallCollisions(enemy, walls, state);
+        
+        if (enemy.turret) {
+            let diff = enemy.angle - enemy.turret.angle;
+            diff = Utilities.normalizeAngle(diff);
+            enemy.turret.angle += diff * Math.min(1, enemy.turret.turnSpeed * (dt / 1000));
+            enemy.turret.angle = Utilities.normalizeAngle(enemy.turret.angle);
+        }
 
         const isStable = Math.hypot(enemy.vx, enemy.vy) < enemy.speed * 0.6;
         const hasLOS = Utilities.hasLineOfSight(enemy.x, enemy.y, target.x, target.y, walls, enemy.radius);
