@@ -51,7 +51,12 @@ const elements = {
     hardResetBtn: document.getElementById("hardResetBtn"),
     settingsModal: document.getElementById("settingsModal"),
     tabButtons: document.querySelectorAll(".tabBtn"),
+    zoomOutBtn: document.getElementById("zoomOutBtn"),
+    zoomInBtn: document.getElementById("zoomInBtn"),
+    zoomDisplay: document.getElementById("zoomDisplay"),
 };
+
+let viewportInstance = null;
 
 const dynamicElements = {};
 
@@ -301,7 +306,8 @@ export function updateProgressBar(containerId, textId, textString, ratio, totalS
     }
 }
 
-export function initUI(state, upgrades, resetGameCallback) {
+export function initUI(state, upgrades, viewport, resetGameCallback) {
+    viewportInstance = viewport;
     elements.passivesContainer.innerHTML = "";
     upgrades
         .filter((u) => u.isAbility && !u.showInHud)
@@ -398,6 +404,30 @@ export function initUI(state, upgrades, resetGameCallback) {
     elements.speedUpBtn.addEventListener("click", () => {
         state.selectedSpeed = Math.min(state.gameSpeed, state.selectedSpeed + 0.25);
         updateUI(state, upgrades);
+    });
+
+    elements.zoomOutBtn.addEventListener("click", () => {
+        if (!viewportInstance) return;
+        if (state.phase === "combat" || state.phase === "reward") {
+            viewportInstance.zoomProgress = Math.max(0.0, viewportInstance.zoomProgress - 0.1);
+            viewportInstance.updateZoomLimits(state);
+            updateUI(state, upgrades);
+        } else {
+            viewportInstance.setZoom(viewportInstance.zoom - 0.1, state);
+            updateUI(state, upgrades);
+        }
+    });
+
+    elements.zoomInBtn.addEventListener("click", () => {
+        if (!viewportInstance) return;
+        if (state.phase === "combat" || state.phase === "reward") {
+            viewportInstance.zoomProgress = Math.min(1.0, viewportInstance.zoomProgress + 0.1);
+            viewportInstance.updateZoomLimits(state);
+            updateUI(state, upgrades);
+        } else {
+            viewportInstance.setZoom(viewportInstance.zoom + 0.1, state);
+            updateUI(state, upgrades);
+        }
     });
 
     elements.restartBtn.addEventListener("click", resetGameCallback);
@@ -540,6 +570,10 @@ function drawStat(state, upg) {
 }
 
 export function updateUI(state, upgrades) {
+    if (elements.zoomDisplay && viewportInstance) {
+        elements.zoomDisplay.innerText = Math.round(viewportInstance.zoom * 100) + "%";
+    }
+
     upgrades
         .filter((u) => u.isAbility && u.showInHud)
         .forEach((upg) => {

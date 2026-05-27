@@ -12,7 +12,8 @@ export class InputManager {
             (e) => {
                 e.preventDefault();
                 const zoomAmount = e.deltaY * controlSettings.scrollZoomSensitivity;
-                viewport.setZoom(viewport.zoom + zoomAmount);
+                viewport.setZoom(viewport.zoom + zoomAmount, fsm.context.state);
+                fsm.context.updateUI(fsm.context.state, fsm.context.upgrades);
             },
             { passive: false },
         );
@@ -39,7 +40,8 @@ export class InputManager {
                     const dy = e.touches[0].clientY - e.touches[1].clientY;
                     const currentDistance = Math.hypot(dx, dy);
                     const ratio = currentDistance / initialPinchDistance;
-                    viewport.setZoom(initialZoom * ratio);
+                    viewport.setZoom(initialZoom * ratio, fsm.context.state);
+                    fsm.context.updateUI(fsm.context.state, fsm.context.upgrades);
                 }
             },
             { passive: false },

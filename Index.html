@@ -30,6 +30,14 @@
             </button>
             <button id="speedUpBtn" style="background: linear-gradient(to bottom, #3a3a3a, #1e1e1e); color: #FFF; border: 2px solid #555; border-radius: 6px; padding: 10px 16px; cursor: pointer; font-weight: bold; font-size: 14px; box-shadow: 0 3px 5px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1); text-shadow: 1px 1px 2px black;">+</button>
         </div>
+        <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 12px; pointer-events: auto;">
+            <button id="zoomOutBtn" style="background: linear-gradient(to bottom, #3a3a3a, #1e1e1e); color: #FFF; border: 2px solid #555; border-radius: 6px; padding: 10px 16px; cursor: pointer; font-weight: bold; font-size: 14px; box-shadow: 0 3px 5px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1); text-shadow: 1px 1px 2px black;">🔍-</button>
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 100px; padding: 2px 16px; font-weight: bold; font-size: 14px; line-height: 1.2; font-family: monospace;">
+                <span>ZOOM</span>
+                <span id="zoomDisplay" style="font-size: 11px; font-weight: normal; opacity: 0.8; margin-top: 2px;">100%</span>
+            </div>
+            <button id="zoomInBtn" style="background: linear-gradient(to bottom, #3a3a3a, #1e1e1e); color: #FFF; border: 2px solid #555; border-radius: 6px; padding: 10px 16px; cursor: pointer; font-weight: bold; font-size: 14px; box-shadow: 0 3px 5px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1); text-shadow: 1px 1px 2px black;">🔍+</button>
+        </div>
         <div id="missionDisplay" style="text-align: center; color: #00BCD4; font-weight: bold; margin-bottom: 8px; font-size: 14px;"></div>
         <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
             <span>Level: <span id="levelDisplay">0</span></span>

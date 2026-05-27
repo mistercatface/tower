@@ -184,7 +184,7 @@ export class Render3D {
         }
     }
 
-    draw3DBuildings(ctx, state) {
+    draw3DBuildings(ctx, state, viewport) {
         const px = state.planet.x;
         const py = state.planet.y;
 
@@ -233,10 +233,11 @@ export class Render3D {
 
         const weaponRange = state.weapon.range;
         if (weaponRange > 0) {
+            const maskRadius = (viewport && state.phase === "combat") ? (viewport.getVisualRadius() / viewport.zoom) : weaponRange;
             ctx.fillStyle = "#000000";
             ctx.beginPath();
             ctx.rect(state.planet.x - 10000, state.planet.y - 10000, 20000, 20000);
-            ctx.arc(state.planet.x, state.planet.y, weaponRange, 0, Math.PI * 2);
+            ctx.arc(state.planet.x, state.planet.y, maskRadius, 0, Math.PI * 2);
             ctx.fill("evenodd");
         }
 

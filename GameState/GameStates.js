@@ -19,6 +19,7 @@ export class MapState {
         FloatingText.updateAll(ctx.state, dt);
     }
     render(ctx) {
+        ctx.viewport.updateZoomLimits(ctx.state);
         ctx.viewport.follow(ctx.state.mapPlayerX, ctx.state.mapPlayerY - 200);
         ctx.renderer.renderMapScene(ctx.state, ctx.viewport);
     }
@@ -50,6 +51,7 @@ export class MapTransitionState {
         FloatingText.updateAll(ctx.state, dt);
     }
     render(ctx) {
+        ctx.viewport.updateZoomLimits(ctx.state);
         ctx.viewport.follow(ctx.state.mapPlayerX, ctx.state.mapPlayerY - 200);
         ctx.renderer.renderMapScene(ctx.state, ctx.viewport);
     }
@@ -119,6 +121,7 @@ export class CombatState {
     }
 
     render(ctx) {
+        ctx.viewport.updateZoomLimits(ctx.state);
         ctx.viewport.follow(ctx.state.planet.x, ctx.state.planet.y);
         ctx.renderer.renderCombatScene(ctx.state, ctx.viewport);
     }
@@ -169,6 +172,7 @@ export class RewardState {
         FloatingText.updateAll(ctx.state, dt);
     }
     render(ctx) {
+        ctx.viewport.updateZoomLimits(ctx.state);
         ctx.viewport.follow(ctx.state.planet.x, ctx.state.planet.y);
         ctx.renderer.renderCombatScene(ctx.state, ctx.viewport);
     }

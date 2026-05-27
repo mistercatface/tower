@@ -3,6 +3,8 @@ export class Viewport {
         this.x = x;
         this.y = y;
         this.zoom = zoom;
+        this.zoomProgress = 0.0;
+        this.mapZoom = 1.0;
         this.cx = 0;
         this.cy = 0;
     }
@@ -37,7 +39,47 @@ export class Viewport {
         this.y = y;
     }
 
-    setZoom(value) {
-        this.zoom = Math.min(Math.max(value, 0.2), 3.0);
+    getVisualRadius() {
+        return Math.max(1, Math.min(this.cx, this.cy) - 15);
+    }
+
+    updateZoomLimits(state) {
+        if (state && (state.phase === "combat" || state.phase === "reward")) {
+            const baseRange = 150;
+            const currentRange = state.weapon.range;
+            const visualRadius = this.getVisualRadius();
+            const minZoom = visualRadius / Math.max(1, currentRange);
+            const maxZoom = visualRadius / baseRange;
+            
+            if (maxZoom <= minZoom) {
+                this.zoom = minZoom;
+            } else {
+                this.zoom = minZoom + this.zoomProgress * (maxZoom - minZoom);
+            }
+        } else {
+            this.zoom = this.mapZoom;
+        }
+    }
+
+    setZoom(value, state) {
+        if (state && (state.phase === "combat" || state.phase === "reward")) {
+            const baseRange = 150;
+            const currentRange = state.weapon.range;
+            const visualRadius = this.getVisualRadius();
+            const minZoom = visualRadius / Math.max(1, currentRange);
+            const maxZoom = visualRadius / baseRange;
+            
+            if (maxZoom <= minZoom) {
+                this.zoom = minZoom;
+                this.zoomProgress = 0.0;
+            } else {
+                const clampedValue = Math.min(Math.max(value, minZoom), maxZoom);
+                this.zoom = clampedValue;
+                this.zoomProgress = (clampedValue - minZoom) / (maxZoom - minZoom);
+            }
+        } else {
+            this.mapZoom = Math.min(Math.max(value, 0.5), 2.0);
+            this.zoom = this.mapZoom;
+        }
     }
 }

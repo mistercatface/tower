@@ -32,7 +32,8 @@ export class Renderer {
         this.ctx.save();
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         if (viewport) viewport.apply(this.ctx);
-        RenderStrategies.planet(this.ctx, state.planet, state.weapon.range);
+        const drawRange = (viewport && state.phase === "combat") ? (viewport.getVisualRadius() / viewport.zoom) : state.weapon.range;
+        RenderStrategies.planet(this.ctx, state.planet, drawRange);
 
         for (const p of state.pickups) RenderStrategies.pickup(this.ctx, p, this.pickupCache);
         for (const p of state.projectiles) RenderStrategies.missile(this.ctx, p, p.faction === "player" ? "#FFEB3B" : "#F44336", this.missileCache);
@@ -51,7 +52,7 @@ export class Renderer {
         }
         Explosion.renderAll(this.ctx, state, this);
         //this.drawDebugFlowField(state);
-        this.render3D.draw3DBuildings(this.ctx, state);
+        this.render3D.draw3DBuildings(this.ctx, state, viewport);
 
         if (state.planet.queuedTargetX != null && state.planet.queuedTargetY != null) {
             RenderStrategies.targetMarker(this.ctx, state.planet.queuedTargetX, state.planet.queuedTargetY);
