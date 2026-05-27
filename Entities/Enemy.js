@@ -77,6 +77,8 @@ export class Enemy extends DestructibleEntity {
             }
         });
         this.startingAbilities = [];
+        this.healthBar = Enemy.healthBar;
+        this.chargeBar = Enemy.chargeBar;
     }
 
     handleHit(baseDamage, ctx, hitType) {
@@ -174,6 +176,24 @@ export class Enemy extends DestructibleEntity {
         return false;
     }
 
+    renderBars(ctx, cache, yOffset, chargeRatios) {
+        if (this.health < this.maxHealth && this.healthBar) {
+            const currentHealth = Math.max(0, this.health);
+            this.healthBar.render(ctx, this.x, this.y - yOffset, currentHealth / this.maxHealth, cache);
+        }
+
+        if (chargeRatios && chargeRatios.length > 0 && this.chargeBar) {
+            let activeBarsCount = 0;
+            for (let i = 0; i < chargeRatios.length; i++) {
+                const ratio = chargeRatios[i];
+                if (ratio > 0) {
+                    this.chargeBar.render(ctx, this.x, this.y - (yOffset + 5 + activeBarsCount * 5), ratio, cache);
+                    activeBarsCount++;
+                }
+            }
+        }
+    }
+
     render(ctx, renderer, state) {
         if (this.currentState && this.currentState.render) {
             this.currentState.render(this, ctx, renderer.enemyCache, renderer.turretCache);
@@ -182,15 +202,8 @@ export class Enemy extends DestructibleEntity {
         const cacheKey = `${this.radius}_${this.color}`;
         this.renderCachedSprite(ctx, renderer.enemyCache, cacheKey, RenderSprites.enemy, this.radius, this.color);
         
-        if (this.health < this.maxHealth) {
-            const currentHealth = Math.max(0, this.health);
-            Enemy.healthBar.render(ctx, this.x, this.y - 14, currentHealth / this.maxHealth, renderer.enemyCache);
-        }
-
-        if (this.turret && this.turret.charge > 0) {
-            const chargeRatio = this.turret.charge / (this.fireRate || 1);
-            Enemy.chargeBar.render(ctx, this.x, this.y - 19, chargeRatio, renderer.enemyCache);
-        }
+        const chargeRatio = this.turret && this.turret.charge > 0 ? this.turret.charge / (this.fireRate || 1) : 0;
+        this.renderBars(ctx, renderer.enemyCache, 14, [chargeRatio]);
 
         if (this.turret) {
             this.turret.render(ctx, this.x, this.y, this.radius, renderer, this.color);

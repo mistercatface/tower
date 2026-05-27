@@ -25,6 +25,8 @@ export class Player extends Enemy {
 
     constructor(x, y, radius, maxHealth) {
         super(x, y, radius, playerBaseStats.moveSpeed, maxHealth, "#4CAF50", 0, "player");
+        this.healthBar = Player.healthBar;
+        this.chargeBar = Player.chargeBar;
         this.spawnX = x;
         this.spawnY = y;
         this.healAccumulator = 0;
@@ -194,21 +196,14 @@ export class Player extends Enemy {
         const cacheKey = `${this.radius}_${this.color}`;
         this.renderCachedSprite(ctx, cache, cacheKey, RenderSprites.player, this.radius, this.color);
         
-        if (this.health < this.maxHealth) {
-            const currentHealth = Math.max(0, this.health);
-            Player.healthBar.render(ctx, this.x, this.y - (this.radius + 14), currentHealth / this.maxHealth, cache);
-        }
-
-        if (state && state.turrets && state.turrets.length > 0 && state.weapon) {
-            let activeBarsCount = 0;
-            for (let i = 0; i < state.turrets.length; i++) {
-                const turret = state.turrets[i];
+        const chargeRatios = [];
+        if (state && state.turrets && state.weapon) {
+            for (const turret of state.turrets) {
                 if (turret && turret.charge > 0) {
-                    const chargeRatio = turret.charge / (state.weapon.chargeTime || 1);
-                    Player.chargeBar.render(ctx, this.x, this.y - (this.radius + 20 + activeBarsCount * 5), chargeRatio, cache);
-                    activeBarsCount++;
+                    chargeRatios.push(turret.charge / (state.weapon.chargeTime || 1));
                 }
             }
         }
+        this.renderBars(ctx, cache, this.radius + 14, chargeRatios);
     }
 }
