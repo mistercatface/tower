@@ -115,7 +115,7 @@ canvas {
     cursor: pointer;
     font-weight: bold;
     font-size: 13px;
-    box-shadow: 0 2px 3px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05);
+    box-shadow: 0 2px 3px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
     text-shadow: 1px 1px 1px black;
     transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
     user-select: none;

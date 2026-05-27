@@ -30,12 +30,10 @@ const elements = {
     scoreDisplay: document.getElementById("scoreDisplay"),
     levelDisplay: document.getElementById("levelDisplay"),
     nextPerkDisplay: document.getElementById("nextPerkDisplay"),
-    xpSegments: document.getElementById("xpSegments"),
-    xpText: document.getElementById("xpText"),
+    xpDisplay: document.getElementById("xpDisplay"),
     healthSegments: document.getElementById("healthSegments"),
     healthText: document.getElementById("healthText"),
-    waveSegments: document.getElementById("waveSegments"),
-    waveText: document.getElementById("waveText"),
+    topWaveBar: document.getElementById("topWaveBar"),
     passivesContainer: document.getElementById("passivesContainer"),
     abilitiesContainer: document.getElementById("abilitiesContainer"),
     upgradesContainer: document.getElementById("upgradesContainer"),
@@ -213,31 +211,34 @@ export function updateHud(state, upgrades) {
     if (elements.nextPerkDisplay) elements.nextPerkDisplay.innerText = nextPerk ? `Next Perk: Level ${nextPerk}` : "All Perks Claimed";
 
     const xpNeeded = Math.floor(25 * Math.pow(1.5, state.level));
-    const xpRatio = Math.min(1, state.xp / xpNeeded);
-
-    updateProgressBar("xpSegments", "xpText", `XP: ${state.xp} / ${xpNeeded}`, xpRatio, 10, () => "#00BCD4");
+    setTextIfDifferent("xpDisplay", `${state.xp}/${xpNeeded}`);
 
     const healthRatio = state.planet.health / state.planet.maxHealth;
 
-    updateProgressBar("healthSegments", "healthText", `HEALTH: ${Math.max(0, state.planet.health).toFixed(0)} / ${state.planet.maxHealth}`, healthRatio, 10, (r) =>
+    updateProgressBar("healthSegments", "healthText", `HP: ${Math.max(0, state.planet.health).toFixed(0)} / ${state.planet.maxHealth}`, healthRatio, 10, (r) =>
         r > 0.5 ? "#4CAF50" : r > 0.2 ? "#FFEB3B" : "#F44336",
     );
 
     const aliveEnemies = state.enemies.filter((e) => !e.isDead).length;
     let progress = Math.max(0, (state.waveManager.enemiesSpawned - aliveEnemies) / state.waveManager.enemiesToSpawn);
-    let waveColor = "#FFEB3B";
-    let waveTextStr = `WAVE PROGRESS: ${Math.floor(progress * 100)}%`;
 
     if (state.isTransitioning) {
         progress = 1.0;
-        waveColor = "#4CAF50";
-        waveTextStr = "WAVE CLEARED";
     } else if (state.isGameOver) {
         progress = 0.0;
-        waveTextStr = "";
     }
 
-    updateProgressBar("waveSegments", "waveText", waveTextStr, progress, 10, () => waveColor);
+    const topWaveBar = elements.topWaveBar;
+    if (topWaveBar) {
+        topWaveBar.style.width = `${progress * 100}%`;
+        if (state.isTransitioning) {
+            topWaveBar.style.background = "#4CAF50";
+            topWaveBar.style.boxShadow = "0 0 8px rgba(76, 175, 80, 0.6)";
+        } else {
+            topWaveBar.style.background = "#00bcd4";
+            topWaveBar.style.boxShadow = "0 0 8px rgba(0, 188, 212, 0.6)";
+        }
+    }
 
     if (upgrades) {
         upgrades
@@ -562,10 +563,12 @@ export function updateUI(state, upgrades) {
         elements.zoomSlider.value = Math.round(sliderVal * 100);
     }
 
+    let hasAnyAbilities = false;
     upgrades
         .filter((u) => u.isAbility && u.showInHud)
         .forEach((upg) => {
             const unlocked = state.upgrades[upg.id] && state.upgrades[upg.id].level > 0 && !state.isGameOver;
+            if (unlocked) hasAnyAbilities = true;
             const active = state.abilities[upg.id];
             updateToggleButton("btnAbility_" + upg.id, unlocked, active, upg.toggleName || upg.name, upg);
         });
@@ -574,11 +577,17 @@ export function updateUI(state, upgrades) {
         .filter((u) => u.isAbility && !u.showInHud)
         .forEach((upg) => {
             const unlocked = state.upgrades[upg.id] && state.upgrades[upg.id].level > 0 && !state.isGameOver;
+            if (unlocked) hasAnyAbilities = true;
             const el = dynamicElements["btnPassive_" + upg.id];
             if (el) {
                 el.style.display = unlocked ? "block" : "none";
             }
         });
+
+    const dock = document.getElementById("abilitiesDock");
+    if (dock) {
+        dock.style.display = hasAnyAbilities ? "flex" : "none";
+    }
 
     if (elements.pauseText) {
         elements.pauseText.innerText = state.isPaused ? "PLAY" : "PAUSE";
