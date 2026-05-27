@@ -112,7 +112,9 @@ export class CombatState {
         Explosion.updateAll(ctx.state, dt, allEvents);
 
         for (const event of allEvents) {
-            if (event.target && event.target.handleHit) event.target.handleHit(event.damage, ctx);
+            if (event.target && event.target.handleHit) {
+                event.target.handleHit(event.damage, ctx, event.type);
+            }
         }
 
         FloatingText.updateAll(ctx.state, dt);
@@ -127,6 +129,7 @@ export class CombatState {
     }
 
     handleInteraction(worldCoords, isDoubleTap, ctx) {
+        if (ctx.state.planet.currentState && ctx.state.planet.currentState.isBlastedState) return;
         if (!ctx.state.upgrades["Reposition"] || ctx.state.upgrades["Reposition"].level === 0) return;
         const gridPos = ctx.state.gridSystem.worldToGrid(worldCoords.x, worldCoords.y);
         if (gridPos.col >= 0 && gridPos.col < ctx.state.gridSystem.cols && gridPos.row >= 0 && gridPos.row < ctx.state.gridSystem.rows) {

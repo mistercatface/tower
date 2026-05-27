@@ -4,6 +4,7 @@ import { Projectile } from "./Projectile.js";
 import { Turret } from "../Turret.js";
 import { enemyStates } from "../EnemyStates.js";
 import { DestructibleEntity } from "./Entity.js";
+import { FloatingText } from "../FloatingText.js";
 import { Separation } from "../Spatial/Separation.js";
 import { ProgressionManager } from "../ProgressionManager.js";
 import { saveProgress } from "../Storage.js";
@@ -40,6 +41,8 @@ export class Enemy extends DestructibleEntity {
         this.desiredY = 0;
         this.vx = 0;
         this.vy = 0;
+        this.blastAngle = 0;
+        this.blastTimer = 0;
         this.separation = new Separation();
         this.attackRange = 75 + Math.floor(Math.random() * 70);
         this.fireRate = 1500;
@@ -56,8 +59,20 @@ export class Enemy extends DestructibleEntity {
         });
     }
 
-    handleHit(baseDamage, ctx) {
+    handleHit(baseDamage, ctx, hitType) {
         const died = this.takeDamage(baseDamage);
+        
+        if (hitType === "blast") {
+            FloatingText.spawn(ctx.state, this.x, this.y - 20, `-${baseDamage.toFixed(0)} BLAST`, "#FF5722", {
+                isBlast: true,
+                font: "bold 13px monospace",
+                vx: (Math.random() - 0.5) * 80,
+                vy: -95 - Math.random() * 40,
+                gravity: 200,
+                duration: 1200
+            });
+        }
+        
         if (died) ProgressionManager.processEnemyKillRewards(this, ctx.state, ctx.upgrades);
         saveProgress(ctx.state);
         updateUI(ctx.state, ctx.upgrades);

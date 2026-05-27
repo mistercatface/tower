@@ -1,5 +1,72 @@
 import { CollisionSystem } from "../../Spatial/CollisionSystem.js";
 import { Utilities } from "../../Utilities.js";
+import { PhysicsSystem } from "../../Spatial/PhysicsSystem.js";
+
+function repelEntities(state, exp, dt) {
+    for (const e of state.enemies) {
+        if (e.isDead) continue;
+        const dx = e.x - exp.x;
+        const dy = e.y - exp.y;
+        const dist = Math.hypot(dx, dy);
+        const minDist = exp.radius + e.radius;
+        if (dist < minDist) {
+            if (Utilities.hasLineOfSight(exp.x, exp.y, e.x, e.y, state.walls, e.radius)) {
+                let pushX = 1, pushY = 0;
+                let pushDist = dist;
+                if (pushDist === 0) {
+                    const angle = Math.random() * Math.PI * 2;
+                    pushX = Math.cos(angle);
+                    pushY = Math.sin(angle);
+                    pushDist = 0.1;
+                } else {
+                    pushX = dx / pushDist;
+                    pushY = dy / pushDist;
+                }
+                const overlap = minDist - pushDist;
+                e.x += pushX * overlap;
+                e.y += pushY * overlap;
+                
+                const angle = Math.atan2(pushY, pushX);
+                e.changeState("blasted");
+                e.blastAngle = angle;
+                e.blastTimer = 500;
+                PhysicsSystem.resolveWallCollisions(e, state.walls, state);
+            }
+        }
+    }
+
+    const p = state.planet;
+    if (p && !p.isDead) {
+        const dx = p.x - exp.x;
+        const dy = p.y - exp.y;
+        const dist = Math.hypot(dx, dy);
+        const minDist = exp.radius + p.radius;
+        if (dist < minDist) {
+            if (Utilities.hasLineOfSight(exp.x, exp.y, p.x, p.y, state.walls, p.radius)) {
+                let pushX = 1, pushY = 0;
+                let pushDist = dist;
+                if (pushDist === 0) {
+                    const angle = Math.random() * Math.PI * 2;
+                    pushX = Math.cos(angle);
+                    pushY = Math.sin(angle);
+                    pushDist = 0.1;
+                } else {
+                    pushX = dx / pushDist;
+                    pushY = dy / pushDist;
+                }
+                const overlap = minDist - pushDist;
+                p.x += pushX * overlap;
+                p.y += pushY * overlap;
+                
+                const angle = Math.atan2(pushY, pushX);
+                p.changeState("blasted");
+                p.blastAngle = angle;
+                p.blastTimer = 500;
+                PhysicsSystem.resolveWallCollisions(p, state.walls, state);
+            }
+        }
+    }
+}
 
 export const ExplosionStrategies = {
     standard: {
@@ -20,7 +87,7 @@ export const ExplosionStrategies = {
                             }
                         }
                         if (!blocked) {
-                            allEvents.push({ target: seg, damage: 10 });
+                             allEvents.push({ target: seg, damage: 10, type: "blast" });
                             exp.hitTargets.add(seg);
                         }
                     }
@@ -28,18 +95,32 @@ export const ExplosionStrategies = {
 
                 for (const e of state.enemies) {
                     if (e.isDead || exp.hitTargets.has(e)) continue;
-                    if (Math.hypot(e.x - exp.x, e.y - exp.y) <= exp.radius + e.radius) {
+                    const dist = Math.hypot(e.x - exp.x, e.y - exp.y);
+                    if (dist <= exp.radius + e.radius) {
                         if (Utilities.hasLineOfSight(exp.x, exp.y, e.x, e.y, state.walls, e.radius)) {
-                            allEvents.push({ target: e, damage: exp.damage });
+                            const maxDmg = exp.damage * 1.6;
+                            const minDmg = exp.damage * 0.4;
+                            const proximityRatio = Math.min(1.0, dist / exp.maxRadius);
+                            const dmg = maxDmg - (maxDmg - minDmg) * proximityRatio;
+
+                            allEvents.push({ target: e, damage: dmg, type: "blast" });
                             exp.hitTargets.add(e);
                         }
                     }
                 }
 
-                if (!exp.hitTargets.has(state.planet) && Math.hypot(state.planet.x - exp.x, state.planet.y - exp.y) <= exp.radius + state.planet.radius) {
-                    if (Utilities.hasLineOfSight(exp.x, exp.y, state.planet.x, state.planet.y, state.walls, state.planet.radius)) {
-                        allEvents.push({ target: state.planet, damage: exp.damage });
-                        exp.hitTargets.add(state.planet);
+                if (!exp.hitTargets.has(state.planet)) {
+                    const dist = Math.hypot(state.planet.x - exp.x, state.planet.y - exp.y);
+                    if (dist <= exp.radius + state.planet.radius) {
+                        if (Utilities.hasLineOfSight(exp.x, exp.y, state.planet.x, state.planet.y, state.walls, state.planet.radius)) {
+                            const maxDmg = exp.damage;
+                            const minDmg = exp.damage * 0.5;
+                            const proximityRatio = Math.min(1.0, dist / exp.maxRadius);
+                            const dmg = maxDmg - (maxDmg - minDmg) * proximityRatio;
+
+                            allEvents.push({ target: state.planet, damage: dmg, type: "blast" });
+                            exp.hitTargets.add(state.planet);
+                        }
                     }
                 }
 
@@ -70,6 +151,11 @@ export const ExplosionStrategies = {
                 if (exp.fadeTimer <= 0) {
                     exp.isDead = true;
                 }
+            }
+        },
+        repel(state, exp, dt) {
+            if (exp.phase === "expanding" || exp.phase === "lingering") {
+                repelEntities(state, exp, dt);
             }
         },
         render(ctx, exp, state, renderer) {

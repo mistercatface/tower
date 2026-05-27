@@ -1,12 +1,8 @@
-import { render3DSettings } from "../../Config.js";
-
 export class Render3D {
     constructor() {
         this.lastWalls = null;
         this.lastAliveCount = 0;
         this.sharedEdgesDirty = true;
-        this.perspectiveScale = render3DSettings.perspectiveScale;
-        this.perspectiveCurve = render3DSettings.perspectiveCurve;
     }
 
     getSegmentEdges(seg) {
@@ -48,101 +44,7 @@ export class Render3D {
         const r = Math.floor((baseR + (244 - baseR) * (1 - healthRatio)) * darkenRatio);
         const g = Math.floor((baseG + (67 - baseG) * (1 - healthRatio)) * darkenRatio);
         const b = Math.floor((baseB + (54 - baseB) * (1 - healthRatio)) * darkenRatio);
-        return { r, g, b };
-    }
-
-    getWallColorStr(seg, theme, darkenRatio = 1.0) {
-        const c = this.getWallColor(seg, theme, darkenRatio);
-        return `rgb(${c.r}, ${c.g}, ${c.b})`;
-    }
-
-    /**
-     * Draw a side face of a wall segment extruded outward from the player center
-     * by the segment's height. The extrusion lean is proportional to the distance from the player,
-     * accelerating non-linearly for a more dramatic warp at the outer edges.
-     */
-    drawExtrudedFace(ctx, p1, p2, px, py, height, fillStyle, strokeStyle) {
-        const scale = this.perspectiveScale;
-        const curve = this.perspectiveCurve;
-
-        const dx1 = p1.x - px;
-        const dy1 = p1.y - py;
-        const dist1 = Math.sqrt(dx1 * dx1 + dy1 * dy1);
-        const factor1 = 1 + dist1 * curve;
-
-        const dx2 = p2.x - px;
-        const dy2 = p2.y - py;
-        const dist2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
-        const factor2 = 1 + dist2 * curve;
-
-        const extP1 = {
-            x: p1.x + dx1 * height * scale * factor1,
-            y: p1.y + dy1 * height * scale * factor1
-        };
-        const extP2 = {
-            x: p2.x + dx2 * height * scale * factor2,
-            y: p2.y + dy2 * height * scale * factor2
-        };
-
-        ctx.fillStyle = fillStyle;
-        ctx.beginPath();
-        ctx.moveTo(p1.x, p1.y);
-        ctx.lineTo(p2.x, p2.y);
-        ctx.lineTo(extP2.x, extP2.y);
-        ctx.lineTo(extP1.x, extP1.y);
-        ctx.closePath();
-        ctx.fill();
-        if (strokeStyle) {
-            ctx.strokeStyle = strokeStyle;
-            ctx.lineWidth = 0.5;
-            ctx.stroke();
-        }
-    }
-
-    /**
-     * Draw the top face of a wall segment (the extruded cap).
-     * The extrusion lean is proportional to the distance from the player,
-     * accelerating non-linearly for a more dramatic warp at the outer edges.
-     */
-    drawTopFace(ctx, seg, px, py, fillStyle, strokeStyle) {
-        const edges = this.getSegmentEdges(seg);
-        const height = seg.height || seg.size;
-        const scale = this.perspectiveScale;
-        const curve = this.perspectiveCurve;
-
-        // All 4 base corners
-        const corners = [
-            edges[0][0], // corner 0
-            edges[0][1], // corner 1
-            edges[1][1], // corner 2
-            edges[2][1], // corner 3
-        ];
-
-        // Extrude all corners along the direction from player center, proportional to distance + curve
-        const extCorners = corners.map(c => {
-            const dx = c.x - px;
-            const dy = c.y - py;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            const factor = 1 + dist * curve;
-            return {
-                x: c.x + dx * height * scale * factor,
-                y: c.y + dy * height * scale * factor
-            };
-        });
-
-        ctx.fillStyle = fillStyle;
-        ctx.beginPath();
-        ctx.moveTo(extCorners[0].x, extCorners[0].y);
-        ctx.lineTo(extCorners[1].x, extCorners[1].y);
-        ctx.lineTo(extCorners[2].x, extCorners[2].y);
-        ctx.lineTo(extCorners[3].x, extCorners[3].y);
-        ctx.closePath();
-        ctx.fill();
-        if (strokeStyle) {
-            ctx.strokeStyle = strokeStyle;
-            ctx.lineWidth = 0.5;
-            ctx.stroke();
-        }
+        return `rgb(${r}, ${g}, ${b})`;
     }
 
     drawProjectedFace(ctx, p1, p2, px, py, fillStyle, shouldStroke = false) {
@@ -193,7 +95,7 @@ export class Render3D {
 
         for (const seg of visibleWalls) {
 
-            const wallColor = this.getWallColorStr(seg, state.wallTheme, 0.5);
+            const wallColor = this.getWallColor(seg, state.wallTheme, 0.5);
             const edges = this.getSegmentEdges(seg);
 
             if (!seg.sharedEdges) {
@@ -303,18 +205,14 @@ export class Render3D {
         visibleWalls.sort((a, b) => b._distSq - a._distSq);
 
         for (const seg of visibleWalls) {
-            const wallColorObj = this.getWallColor(seg, state.wallTheme, 1.0);
-            const sideColor = `rgb(${Math.floor(wallColorObj.r * 0.65)}, ${Math.floor(wallColorObj.g * 0.65)}, ${Math.floor(wallColorObj.b * 0.65)})`;
-            const topColor = `rgb(${wallColorObj.r}, ${wallColorObj.g}, ${wallColorObj.b})`;
-            const strokeColor = `rgba(0, 0, 0, 0.3)`;
+
+            const wallColor = this.getWallColor(seg, state.wallTheme, 1.0);
             const edges = this.getSegmentEdges(seg);
-            const height = seg.height || seg.size;
 
             if (!seg.sharedEdges) {
                 seg.sharedEdges = [false, false, false, false];
             }
 
-            // Draw visible side faces (edges facing away from player)
             for (let i = 0; i < 4; i++) {
                 if (seg.sharedEdges[i]) continue;
 
@@ -327,14 +225,10 @@ export class Render3D {
 
                 const viewX = edgeCx - px;
                 const viewY = edgeCy - py;
-                // Only draw faces pointing away from the planet (outer faces)
                 if (outX * viewX + outY * viewY >= 0) continue;
 
-                this.drawExtrudedFace(ctx, p1, p2, px, py, height, sideColor, strokeColor);
+                this.drawProjectedFace(ctx, p1, p2, px, py, wallColor, true);
             }
-
-            // Draw the top face
-            this.drawTopFace(ctx, seg, px, py, topColor, strokeColor);
         }
 
         const weaponRange = state.weapon.range;

@@ -4,9 +4,17 @@ import { ExplosionStrategies } from "./ExplosionStrategies.js";
 export class Explosion extends Entity {
     static updateAll(state, dt, allEvents) {
         if (!state.explosions) return;
+        
         for (let i = state.explosions.length - 1; i >= 0; i--) {
             const exp = state.explosions[i];
             if (exp.strategy && exp.strategy.update) exp.strategy.update(state, exp, dt, allEvents);
+        }
+
+        for (let i = state.explosions.length - 1; i >= 0; i--) {
+            const exp = state.explosions[i];
+            if (exp.strategy && exp.strategy.repel && !exp.isDead) {
+                exp.strategy.repel(state, exp, dt);
+            }
             if (exp.isDead) state.explosions.splice(i, 1);
         }
     }

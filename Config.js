@@ -80,7 +80,7 @@ export const pickupSpawnSettings = {
     eyeballMinRadius: 175,
     eyeballMaxRadius: 200,
     barrelMinCount: 25,
-    barrelRandomRange: 250,
+    barrelRandomRange: 125,
     barrelMinRadius: 150,
     barrelMaxRadius: 1000,
 };
@@ -92,9 +92,4 @@ export const controlSettings = {
 
 export const timingSettings = {
     sectorCompletedDelay: 1500,
-};
-
-export const render3DSettings = {
-    perspectiveScale: 0.0008,
-    perspectiveCurve: 0.0004,
 };

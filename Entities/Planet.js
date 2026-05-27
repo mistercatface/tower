@@ -20,14 +20,43 @@ export class Planet extends Enemy {
         this.targetNodeY = null;
         this.mass = 50.0;
         this.moveSpeed = playerBaseStats.moveSpeed;
+        this.canDamageWalls = true;
     }
 
-    handleHit(damage, ctx) {
+    handleHit(damage, ctx, hitType) {
         const mitigatedAmount = damage * ctx.state.mitigation;
         const finalDamage = damage - mitigatedAmount;
         this.takeDamage(finalDamage);
-        FloatingText.spawn(ctx.state, this.x, this.y - 20, `-${finalDamage.toFixed(1)}`, "#F44336");
-        if (mitigatedAmount > 0) FloatingText.spawn(ctx.state, this.x, this.y + 20, `Mitigated ${mitigatedAmount.toFixed(1)}`, "#03A9F4");
+        
+        let text = `-${finalDamage.toFixed(1)}`;
+        const isBlast = (hitType === "blast");
+        if (isBlast) {
+            text += " BLAST";
+            FloatingText.spawn(ctx.state, this.x, this.y - 20, text, "#FF5722", {
+                isBlast: true,
+                font: "bold 14px monospace",
+                vx: (Math.random() - 0.5) * 80,
+                vy: -95 - Math.random() * 40,
+                gravity: 200,
+                duration: 1200
+            });
+        } else {
+            FloatingText.spawn(ctx.state, this.x, this.y - 20, text, "#F44336", {
+                vx: (Math.random() - 0.5) * 30,
+                vy: -40 - Math.random() * 20,
+                gravity: 80,
+                duration: 900
+            });
+        }
+        
+        if (mitigatedAmount > 0) {
+            FloatingText.spawn(ctx.state, this.x, this.y + 20, `Mitigated ${mitigatedAmount.toFixed(1)}`, "#03A9F4", {
+                vx: (Math.random() - 0.5) * 20,
+                vy: -30 - Math.random() * 15,
+                gravity: 60,
+                duration: 900
+            });
+        }
     }
 
     setSpawnPosition(x, y) {
@@ -105,6 +134,10 @@ export class Planet extends Enemy {
     }
 
     update(dt, gridSystem, walls, spatialHash, externalSpeedMod = 1.0) {
+        if (this.currentState && this.currentState.isBlastedState) {
+            this.currentState.update(this, dt, null, gridSystem, walls, null, spatialHash, null, null);
+            return;
+        }
         if (this.isMoving && this.targetX !== null && this.targetY !== null) {
             const distToDest = Math.hypot(this.targetX - this.x, this.targetY - this.y);
             if (distToDest < 2) {

@@ -6,6 +6,12 @@ import { playerProjectileSettings } from "./Config.js";
 
 class WeaponTargetingStrategy {
     determineAimTarget(source, target, blocksTargeting, turret) {
+        if (source.currentState && source.currentState.isBlastedState) {
+            return {
+                x: source.x + Math.cos(source.blastAngle) * 100,
+                y: source.y + Math.sin(source.blastAngle) * 100
+            };
+        }
         if (target && !blocksTargeting) {
             return target;
         }
@@ -212,6 +218,7 @@ export class WeaponSystem {
         }
 
         const engagedTargets = new Set();
+        const actualBlocksTargeting = blocksTargeting || (state.planet && state.planet.currentState && state.planet.currentState.isBlastedState);
 
         for (const turret of state.turrets) {
             if (turret.target) {
@@ -220,7 +227,7 @@ export class WeaponSystem {
                     turret.target.isDead ||
                     dist > state.weapon.range ||
                     !Utilities.hasLineOfSight(state.planet.x, state.planet.y, turret.target.x, turret.target.y, state.walls) ||
-                    blocksTargeting
+                    actualBlocksTargeting
                 ) {
                     turret.target = null;
                 } else if (engagedTargets.has(turret.target)) {
@@ -231,7 +238,7 @@ export class WeaponSystem {
                 }
             }
 
-            if (!turret.target && !blocksTargeting) {
+            if (!turret.target && !actualBlocksTargeting) {
                 turret.target = this.getNearestEnemy(state, state.planet, state.weapon.range, engagedTargets);
                 if (!turret.target) {
                     turret.target = this.getNearestEnemy(state, state.planet, state.weapon.range);
@@ -242,7 +249,7 @@ export class WeaponSystem {
                 engagedTargets.add(turret.target);
             }
 
-            mode.processTurret(dt, state, state.planet, state.weapon.chargeTime, turret, turret.target, blocksTargeting, combatEvents);
+            mode.processTurret(dt, state, state.planet, state.weapon.chargeTime, turret, turret.target, actualBlocksTargeting, combatEvents);
         }
 
         return combatEvents;

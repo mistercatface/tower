@@ -50,7 +50,7 @@ export class Viewport {
             const visualRadius = this.getVisualRadius();
             const minZoom = visualRadius / Math.max(1, currentRange);
             const maxZoom = visualRadius / baseRange;
-
+            
             if (maxZoom <= minZoom) {
                 this.zoom = minZoom;
             } else {
@@ -68,7 +68,7 @@ export class Viewport {
             const visualRadius = this.getVisualRadius();
             const minZoom = visualRadius / Math.max(1, currentRange);
             const maxZoom = visualRadius / baseRange;
-
+            
             if (maxZoom <= minZoom) {
                 this.zoom = minZoom;
                 this.zoomProgress = 0.0;

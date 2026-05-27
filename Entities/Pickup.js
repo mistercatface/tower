@@ -89,7 +89,7 @@ export const PickupStrategies = {
                 radius: 0,
                 maxRadius: 100,
                 speed: 300,
-                damage: 50,
+                damage: 100,
                 lingerTimer: 750,
                 fadeTimer: 250
             }));

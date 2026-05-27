@@ -277,9 +277,54 @@ export class EnemyDodgingState {
     }
 }
 
+export class EnemyBlastedState {
+    constructor() {
+        this.isBlastedState = true;
+    }
+
+    update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler, state) {
+        enemy.blastTimer -= dt;
+        if (enemy.blastTimer <= 0) {
+            enemy.vx = 0;
+            enemy.vy = 0;
+            if (enemy.stopMovement) {
+                enemy.stopMovement();
+            }
+            enemy.changeState("navigating");
+            return false;
+        }
+
+        const ratio = Math.max(0, enemy.blastTimer / 500);
+        const launchSpeed = (enemy.moveSpeed || enemy.speed || 50) * 6;
+        const speed = launchSpeed * Math.pow(ratio, 1.5);
+
+        enemy.vx = Math.cos(enemy.blastAngle) * speed;
+        enemy.vy = Math.sin(enemy.blastAngle) * speed;
+
+        enemy.x += enemy.vx * (dt / 1000);
+        enemy.y += enemy.vy * (dt / 1000);
+
+        const targetAngle = enemy.blastAngle;
+        let angleDiff = targetAngle - enemy.angle;
+        angleDiff = Utilities.normalizeAngle(angleDiff);
+        enemy.angle += angleDiff * Math.min(1, enemy.turnSpeed * (dt / 1000));
+        enemy.angle = Utilities.normalizeAngle(enemy.angle);
+
+        let turretDiff = targetAngle - enemy.turret.angle;
+        turretDiff = Utilities.normalizeAngle(turretDiff);
+        enemy.turret.angle += turretDiff * Math.min(1, enemy.turret.turnSpeed * (dt / 1000));
+        enemy.turret.angle = Utilities.normalizeAngle(enemy.turret.angle);
+
+        PhysicsSystem.resolveWallCollisions(enemy, walls, state);
+
+        return false;
+    }
+}
+
 export const enemyStates = {
     navigating: new EnemyNavigatingState(),
     engaged: new EnemyEngagedState(),
     charging: new EnemyChargingState(),
-    dodging: new EnemyDodgingState()
+    dodging: new EnemyDodgingState(),
+    blasted: new EnemyBlastedState()
 };
