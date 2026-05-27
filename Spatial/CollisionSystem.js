@@ -70,7 +70,7 @@ export class CollisionSystem {
             p.resolveFactionCollisions(state, events, this);
         }
 
-        const actors = [state.planet, ...state.enemies];
+        const actors = [state.player, ...state.enemies];
         for (const actor of actors) {
             if (!actor || actor.isDead) continue;
             for (const pickup of state.pickups) {
@@ -178,9 +178,9 @@ export class CollisionSystem {
 
         for (const e of state.enemies) {
             if (e.isDead) continue;
-            if (e.attackType === "charge" && this.checkCircle(e, state.planet)) {
+            if (e.attackType === "charge" && this.checkCircle(e, state.player)) {
                 e.isDead = true;
-                events.push({ target: state.planet, damage: 5 });
+                events.push({ target: state.player, damage: 5 });
             }
         }
         return events;

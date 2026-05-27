@@ -58,17 +58,17 @@ export class WaveManager {
         let x, y;
 
         if (side === 0) {
-            x = state.planet.x + pos;
-            y = state.planet.y - dist;
+            x = state.player.x + pos;
+            y = state.player.y - dist;
         } else if (side === 1) {
-            x = state.planet.x + dist;
-            y = state.planet.y + pos;
+            x = state.player.x + dist;
+            y = state.player.y + pos;
         } else if (side === 2) {
-            x = state.planet.x + pos;
-            y = state.planet.y + dist;
+            x = state.player.x + pos;
+            y = state.player.y + dist;
         } else {
-            x = state.planet.x - dist;
-            y = state.planet.y + pos;
+            x = state.player.x - dist;
+            y = state.player.y + pos;
         }
 
         if (state.gridSystem) {

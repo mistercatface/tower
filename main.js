@@ -43,10 +43,10 @@ function resetGame() {
     requestAnimationFrame(loop);
 }
 
-function didPlanetStateChange() {
-    if (state.planet.health !== uiSnapshot.health || state.planet.isMoving !== uiSnapshot.isMoving) {
-        uiSnapshot.health = state.planet.health;
-        uiSnapshot.isMoving = state.planet.isMoving;
+function didPlayerStateChange() {
+    if (state.player.health !== uiSnapshot.health || state.player.isMoving !== uiSnapshot.isMoving) {
+        uiSnapshot.health = state.player.health;
+        uiSnapshot.isMoving = state.player.isMoving;
         return true;
     }
     return false;
@@ -57,11 +57,11 @@ function loop(timestamp) {
     let dt = timestamp - state.lastTime;
     state.lastTime = timestamp;
     dt = Math.min(dt, 50);
-    if (state.planet.health > 0) {
+    if (state.player.health > 0) {
         if (!state.isPaused) fsm.update(dt * state.selectedSpeed);
         fsm.render();
         updateHud(state, upgrades);
-        if (didPlanetStateChange()) updateUI(state, upgrades);
+        if (didPlayerStateChange()) updateUI(state, upgrades);
         requestAnimationFrame(loop);
     } else if (!state.isGameOver) {
         state.isGameOver = true;
@@ -76,7 +76,7 @@ function resizeCanvas() {
     canvas.width = canvas.clientWidth;
     canvas.height = canvas.clientHeight;
     state.canvasBounds = { width: canvas.width, height: canvas.height };
-    state.planet.setSpawnPosition(Math.floor(canvas.width / 2), Math.floor(canvas.height / 2));
+    state.player.setSpawnPosition(Math.floor(canvas.width / 2), Math.floor(canvas.height / 2));
     viewport.cx = Math.floor(canvas.width / 2);
     viewport.cy = Math.floor(canvas.height / 2);
 }

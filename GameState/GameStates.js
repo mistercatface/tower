@@ -70,13 +70,13 @@ export class CombatState {
         ctx.state.enemies = [];
         ctx.state.activeLasers = [];
         ctx.state.floatingTexts = [];
-        ctx.state.planet.resetToSpawn();
+        ctx.state.player.resetToSpawn();
         ctx.state.waveManager.startCombat();
         ctx.state.turrets.forEach(t => t.currentLaserLength = 0);
         WallGenerator.generate(ctx.state);
         const offsetX = ctx.state.mapPlayerX - ctx.viewport.x;
         const offsetY = ctx.state.mapPlayerY - ctx.viewport.y;
-        ctx.viewport.snapTo(ctx.state.planet.x - offsetX, ctx.state.planet.y - offsetY);
+        ctx.viewport.snapTo(ctx.state.player.x - offsetX, ctx.state.player.y - offsetY);
         ctx.updateUI(ctx.state, ctx.upgrades);
     }
 
@@ -84,20 +84,20 @@ export class CombatState {
         ctx.state.scheduler.update(dt);
         
         const abilityState = ProgressionManager.updateAbilities(ctx.state, dt, ctx.upgrades);
-        if (!abilityState.isDiving && ctx.state.planet.applyQueuedTarget()) {
-            ctx.state.gridSystem.buildPlayerFlowField(ctx.state.planet.targetX, ctx.state.planet.targetY);
+        if (!abilityState.isDiving && ctx.state.player.applyQueuedTarget()) {
+            ctx.state.gridSystem.buildPlayerFlowField(ctx.state.player.targetX, ctx.state.player.targetY);
         }
 
         const spatialHash = this.spatialHash;
         this.spatialHash.clear();
         for (const e of ctx.state.enemies) spatialHash.insert(e);
-        spatialHash.insert(ctx.state.planet);
+        spatialHash.insert(ctx.state.player);
 
-        const oldGridPos = ctx.state.gridSystem.worldToGrid(ctx.state.planet.x, ctx.state.planet.y);
-        ctx.state.planet.update(dt, ctx.state.gridSystem, ctx.state.walls, spatialHash, abilityState.externalSpeedMod);
-        const newGridPos = ctx.state.gridSystem.worldToGrid(ctx.state.planet.x, ctx.state.planet.y);
+        const oldGridPos = ctx.state.gridSystem.worldToGrid(ctx.state.player.x, ctx.state.player.y);
+        ctx.state.player.update(dt, ctx.state.gridSystem, ctx.state.walls, spatialHash, abilityState.externalSpeedMod);
+        const newGridPos = ctx.state.gridSystem.worldToGrid(ctx.state.player.x, ctx.state.player.y);
         if (oldGridPos.col !== newGridPos.col || oldGridPos.row !== newGridPos.row) {
-            ctx.state.gridSystem.buildFlowField(ctx.state.planet.x, ctx.state.planet.y);
+            ctx.state.gridSystem.buildFlowField(ctx.state.player.x, ctx.state.player.y);
         }
 
         ctx.state.waveManager.manageSpawning(dt, ctx.state, ctx.upgrades, ctx.viewport);
@@ -124,13 +124,13 @@ export class CombatState {
 
     render(ctx) {
         ctx.viewport.updateZoomLimits(ctx.state);
-        ctx.viewport.follow(ctx.state.planet.x, ctx.state.planet.y);
+        ctx.viewport.follow(ctx.state.player.x, ctx.state.player.y);
         ctx.renderer.renderCombatScene(ctx.state, ctx.viewport);
     }
 
     handleInteraction(worldCoords, isDoubleTap, ctx) {
-        if (ctx.state.planet.currentState && ctx.state.planet.currentState.blocksInput) return;
-        if (!ctx.state.planet.canReposition(ctx.state)) return;
+        if (ctx.state.player.currentState && ctx.state.player.currentState.blocksInput) return;
+        if (!ctx.state.player.canReposition(ctx.state)) return;
         const gridPos = ctx.state.gridSystem.worldToGrid(worldCoords.x, worldCoords.y);
         if (gridPos.col >= 0 && gridPos.col < ctx.state.gridSystem.cols && gridPos.row >= 0 && gridPos.row < ctx.state.gridSystem.rows) {
             if (ctx.state.gridSystem.grid[gridPos.row * ctx.state.gridSystem.cols + gridPos.col] !== 1) {
@@ -145,9 +145,9 @@ export class CombatState {
                         }
                     });
                 if (isDiving) {
-                    ctx.state.planet.queueTarget(targetX, targetY);
+                    ctx.state.player.queueTarget(targetX, targetY);
                 } else {
-                    ctx.state.planet.setTarget(targetX, targetY);
+                    ctx.state.player.setTarget(targetX, targetY);
                     ctx.state.gridSystem.buildPlayerFlowField(targetX, targetY);
                     if (isDoubleTap) {
                         ctx.upgrades
@@ -176,7 +176,7 @@ export class RewardState {
     }
     render(ctx) {
         ctx.viewport.updateZoomLimits(ctx.state);
-        ctx.viewport.follow(ctx.state.planet.x, ctx.state.planet.y);
+        ctx.viewport.follow(ctx.state.player.x, ctx.state.player.y);
         ctx.renderer.renderCombatScene(ctx.state, ctx.viewport);
     }
 }

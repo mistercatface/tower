@@ -14,9 +14,9 @@ export class Segment extends DestructibleEntity {
             if (idx !== -1) {
                 ctx.state.walls.splice(idx, 1);
             }
-            ctx.state.gridSystem.rebuild(ctx.state.walls, ctx.state.planet.x, ctx.state.planet.y);
-            if (ctx.state.planet.isMoving && ctx.state.planet.targetX !== null && ctx.state.planet.targetY !== null) {
-                ctx.state.gridSystem.buildPlayerFlowField(ctx.state.planet.targetX, ctx.state.planet.targetY);
+            ctx.state.gridSystem.rebuild(ctx.state.walls, ctx.state.player.x, ctx.state.player.y);
+            if (ctx.state.player.isMoving && ctx.state.player.targetX !== null && ctx.state.player.targetY !== null) {
+                ctx.state.gridSystem.buildPlayerFlowField(ctx.state.player.targetX, ctx.state.player.targetY);
             }
         }
     }

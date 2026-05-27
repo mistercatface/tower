@@ -32,8 +32,8 @@ export class ProgressionManager {
                 continue;
             }
 
-            const dist = Math.hypot(p.x - state.planet.x, p.y - state.planet.y);
-            if (dist < state.planet.radius + p.radius) {
+            const dist = Math.hypot(p.x - state.player.x, p.y - state.player.y);
+            if (dist < state.player.radius + p.radius) {
                 if (p.strategy && p.strategy.onCollect) {
                     const result = p.strategy.onCollect(state, p, upgrades);
                     if (result) {
@@ -82,7 +82,7 @@ export class ProgressionManager {
     static applyUpgradeChoice(state, upgrades, choice, pointsAmount, setBaseLevel) {
         if (choice === "take_points") {
             state.score += pointsAmount;
-            FloatingText.spawn(state, state.planet.x, state.planet.y - 60, `+${pointsAmount} Pts`, "#FFEB3B");
+            FloatingText.spawn(state, state.player.x, state.player.y - 60, `+${pointsAmount} Pts`, "#FFEB3B");
         } else {
             const upg = upgrades.find((u) => u.id === choice);
             if (upg.replaces && upg.replaces.length > 0) {
@@ -252,7 +252,7 @@ export class ProgressionManager {
                 }
             } else {
                 state.enterMapPhase();
-                viewport.snapTo(state.planet.x - state.planet.x - viewport.x, state.planet.y - state.planet.y - viewport.y);
+                viewport.snapTo(state.player.x - state.player.x - viewport.x, state.player.y - state.player.y - viewport.y);
                 updateUI(state, upgrades);
             }
             return;
@@ -282,7 +282,7 @@ export class ProgressionManager {
     static finalizeSectorClearance(state, upgrades, currentNode, viewport, rewardText) {
         showSectorCleared(currentNode, rewardText, () => {
             state.enterMapPhase();
-            viewport.snapTo(state.mapPlayerX - state.planet.x - viewport.x, state.mapPlayerY - state.planet.y - viewport.y);
+            viewport.snapTo(state.mapPlayerX - state.player.x - viewport.x, state.mapPlayerY - state.player.y - viewport.y);
             updateUI(state, upgrades);
         });
     }

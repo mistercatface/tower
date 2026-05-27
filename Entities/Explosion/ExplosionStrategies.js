@@ -33,7 +33,7 @@ function repelEntities(state, exp, dt) {
         }
     }
 
-    const p = state.planet;
+    const p = state.player;
     if (p && !p.isDead) {
         const dx = p.x - exp.x;
         const dy = p.y - exp.y;
@@ -105,20 +105,20 @@ export const ExplosionStrategies = {
                     }
                 }
 
-                if (!exp.hitTargets.has(state.planet)) {
-                    const dist = Math.hypot(state.planet.x - exp.x, state.planet.y - exp.y);
-                    if (dist <= exp.radius + state.planet.radius) {
-                        if (Utilities.hasLineOfSight(exp.x, exp.y, state.planet.x, state.planet.y, state.walls, state.planet.radius)) {
-                            const maxDmg = exp.damage;
-                            const minDmg = exp.damage * 0.5;
-                            const proximityRatio = Math.min(1.0, dist / exp.maxRadius);
-                            const dmg = maxDmg - (maxDmg - minDmg) * proximityRatio;
+                        if (!exp.hitTargets.has(state.player)) {
+                            const dist = Math.hypot(state.player.x - exp.x, state.player.y - exp.y);
+                            if (dist <= exp.radius + state.player.radius) {
+                                if (Utilities.hasLineOfSight(exp.x, exp.y, state.player.x, state.player.y, state.walls, state.player.radius)) {
+                                    const maxDmg = exp.damage;
+                                    const minDmg = exp.damage * 0.5;
+                                    const proximityRatio = Math.min(1.0, dist / exp.maxRadius);
+                                    const dmg = maxDmg - (maxDmg - minDmg) * proximityRatio;
 
-                            allEvents.push({ target: state.planet, damage: dmg, type: "blast" });
-                            exp.hitTargets.add(state.planet);
+                                    allEvents.push({ target: state.player, damage: dmg, type: "blast" });
+                                    exp.hitTargets.add(state.player);
+                                }
+                            }
                         }
-                    }
-                }
 
                 for (const p of state.pickups) {
                     if (p.isDead || exp.hitTargets.has(p)) continue;

@@ -213,9 +213,9 @@ export function updateHud(state, upgrades) {
     const xpNeeded = Math.floor(25 * Math.pow(1.5, state.level));
     setTextIfDifferent("xpDisplay", `${state.xp}/${xpNeeded}`);
 
-    const healthRatio = state.planet.health / state.planet.maxHealth;
+    const healthRatio = state.player.health / state.player.maxHealth;
 
-    updateProgressBar("healthSegments", "healthText", `HP: ${Math.max(0, state.planet.health).toFixed(0)} / ${state.planet.maxHealth}`, healthRatio, 10, (r) =>
+    updateProgressBar("healthSegments", "healthText", `HP: ${Math.max(0, state.player.health).toFixed(0)} / ${state.player.maxHealth}`, healthRatio, 10, (r) =>
         r > 0.5 ? "#4CAF50" : r > 0.2 ? "#FFEB3B" : "#F44336",
     );
 

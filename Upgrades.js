@@ -128,11 +128,11 @@ export const createBaseUpgrades = () => [
         id: "Health",
         category: "defense",
         name: "Health",
-        description: "Increases maximum planet health.",
+        description: "Increases maximum player health.",
         applyFn: (stats, level) => { stats.maxHealth.flatModifiers += level * 20; },
         currentStrFn: (level) => 100 + level * 20,
         nextStrFn: (level) => 100 + (level + 1) * 20,
-        onPurchase: (state) => { state.planet.heal(20); }
+        onPurchase: (state) => { state.player.heal(20); }
     }),
     new Upgrade({
         id: "Regen",
@@ -142,10 +142,10 @@ export const createBaseUpgrades = () => [
         currentStrFn: (level) => level + " HP/s",
         nextStrFn: (level) => (level + 1) + " HP/s",
         updateFn: (dt, state, level) => {
-            if (state.planet.health < state.planet.maxHealth) {
-                state.planet.addHealAccumulator(level * (dt / 1000));
+            if (state.player.health < state.player.maxHealth) {
+                state.player.addHealAccumulator(level * (dt / 1000));
             } else {
-                state.planet.clearHealAccumulator();
+                state.player.clearHealAccumulator();
             }
         },
     }),
@@ -153,12 +153,12 @@ export const createBaseUpgrades = () => [
         id: "MoveSpeed",
         category: "defense",
         name: "Move Speed",
-        description: "Increases planet movement speed.",
+        description: "Increases player movement speed.",
         applyFn: (stats, level) => { stats.moveSpeedMultiplier.flatModifiers += level * 0.25; },
         currentStrFn: (level) => "x" + (1.0 + level * 0.25).toFixed(2),
         nextStrFn: (level) => "x" + (1.0 + (level + 1) * 0.25).toFixed(2),
         maxLevel: 4,
-        dynamicStrFn: (state) => "x" + (state.planet.moveSpeed / playerBaseStats.moveSpeed).toFixed(2)
+        dynamicStrFn: (state) => "x" + (state.player.moveSpeed / playerBaseStats.moveSpeed).toFixed(2)
     }),
 ]
 
@@ -192,8 +192,8 @@ export const createUpgrades = () => [
         maxLevel: 1,
         isPerk: true,
         onSectorEnd: (state) => {
-            const healAmount = state.planet.maxHealth * 0.5;
-            state.planet.heal(healAmount);
+            const healAmount = state.player.maxHealth * 0.5;
+            state.player.heal(healAmount);
         }
     }),
     new Upgrade({
@@ -255,7 +255,7 @@ export const createUpgrades = () => [
         applyFn: (stats, level) => {
             stats.turnSpeed.multiplierModifiers *= 0.5;
         },
-        abilityApplyFn: (weapon, planet) => {
+        abilityApplyFn: (weapon, player) => {
             weapon.damage *= 0.33;
         },
         weaponMode: new ContinuousWeaponMode((dt, state, tx, ty, turret, combatEvents) => {
@@ -328,7 +328,7 @@ export const createUpgrades = () => [
         applyFn: (stats, level) => {
             stats.turretCount.flatModifiers += 1;
         },
-        abilityApplyFn: (weapon, planet) => {
+        abilityApplyFn: (weapon, player) => {
             weapon.damage *= 0.5;
         },
         minPlayerLevel: 5
@@ -345,7 +345,7 @@ export const createUpgrades = () => [
         applyFn: (stats, level) => {
             stats.turretCount.flatModifiers += 2;
         },
-        abilityApplyFn: (weapon, planet) => {
+        abilityApplyFn: (weapon, player) => {
             weapon.damage *= 0.33;
         },
         minPlayerLevel: 8
@@ -357,14 +357,14 @@ export const createUpgrades = () => [
         description: "When Active: Fire 2 smaller projectiles at half damage.",
         maxLevel: 1,
         isAbility: true,
-        abilityApplyFn: (weapon, planet) => {
+        abilityApplyFn: (weapon, player) => {
             weapon.damage *= 0.5;
         },
         weaponMode: new ChargedWeaponMode((state, tx, ty, turretAngle, source) => {
             const accuracySpread = ((1 - state.weapon.accuracy) * Math.PI) / 2;
             const spreadAngle = (Math.random() - 0.5) * accuracySpread;
             const finalAngle = turretAngle + spreadAngle;
-            const r = state.planet.radius * playerProjectileSettings.splitRadiusMultiplier;
+            const r = state.player.radius * playerProjectileSettings.splitRadiusMultiplier;
             const m1 = new Projectile(tx, ty, r, playerProjectileSettings.speed, null, finalAngle - 0.1, 0, "player");
             const m2 = new Projectile(tx, ty, r, playerProjectileSettings.speed, null, finalAngle + 0.1, 0, "player");
             m1.penetration = state.weapon.penetration;
@@ -382,7 +382,7 @@ export const createUpgrades = () => [
         description: "When Active: Fire 3 smaller projectiles at one-third damage.",
         maxLevel: 1,
         isAbility: true,
-        abilityApplyFn: (weapon, planet) => {
+        abilityApplyFn: (weapon, player) => {
             weapon.damage *= 0.33;
         },
         requires: ['TwinStrike'],
@@ -391,7 +391,7 @@ export const createUpgrades = () => [
             const accuracySpread = ((1 - state.weapon.accuracy) * Math.PI) / 2;
             const spreadAngle = (Math.random() - 0.5) * accuracySpread;
             const finalAngle = turretAngle + spreadAngle;
-            const r = state.planet.radius * playerProjectileSettings.splitRadiusMultiplier;
+            const r = state.player.radius * playerProjectileSettings.splitRadiusMultiplier;
             const m1 = new Projectile(tx, ty, r, playerProjectileSettings.speed, null, finalAngle - 0.1, 0, "player");
             const m2 = new Projectile(tx, ty, r, playerProjectileSettings.speed, null, finalAngle + 0.1, 0, "player");
             const m3 = new Projectile(tx, ty, r, playerProjectileSettings.speed, null, finalAngle + Math.random() * 0.1, 0, "player");
@@ -411,9 +411,9 @@ export const createUpgrades = () => [
         description: "When Active: Accuracy + 33%, Fire Rate -33%, Move Speed -50%",
         maxLevel: 1,
         isAbility: true,
-        abilityApplyFn: (weapon, planet) => {
+        abilityApplyFn: (weapon, player) => {
             weapon.chargeTime *= 1.33;
-            planet.moveSpeed *= 0.5;
+            player.moveSpeed *= 0.5;
             weapon.accuracyModifier += 0.33;
         },
         showInHud: true,

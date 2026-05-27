@@ -9,12 +9,12 @@ export class Turret {
         this.target = null;
     }
 
-    render(ctx, planetX, planetY, planetRadius, renderer, explicitColor = null) {
-        const turretDist = planetRadius + 4;
-        const tx = planetX + Math.cos(this.angle) * turretDist;
-        const ty = planetY + Math.sin(this.angle) * turretDist;
+    render(ctx, playerX, playerY, playerRadius, renderer, explicitColor = null) {
+        const turretDist = playerRadius + 4;
+        const tx = playerX + Math.cos(this.angle) * turretDist;
+        const ty = playerY + Math.sin(this.angle) * turretDist;
 
-        const scale = planetRadius / 8;
+        const scale = playerRadius / 8;
         const cacheKey = `${scale}_${explicitColor || "#4CAF50"}`;
         const cachedSprite = renderer.turretCache.get(cacheKey, RenderSprites.turret, scale, explicitColor);
 

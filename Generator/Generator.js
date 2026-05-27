@@ -2,7 +2,7 @@ import { Pickup } from "../Entities/Pickup.js";
 import { GeneratorStrategies } from "./GeneratorStrategies.js";
 import { pickupSpawnSettings } from "../Config.js";
 
-export function spawnPickup(state, planetX, planetY, minRadius, maxRadius, type) {
+export function spawnPickup(state, playerX, playerY, minRadius, maxRadius, type) {
     const grid = state.gridSystem;
     let spawned = false;
     let attempts = 0;
@@ -10,8 +10,8 @@ export function spawnPickup(state, planetX, planetY, minRadius, maxRadius, type)
         attempts++;
         const angle = Math.random() * Math.PI * 2;
         const dist = minRadius + Math.random() * (maxRadius - minRadius);
-        const testX = planetX + Math.cos(angle) * dist;
-        const testY = planetY + Math.sin(angle) * dist;
+        const testX = playerX + Math.cos(angle) * dist;
+        const testY = playerY + Math.sin(angle) * dist;
         const gridPos = grid.worldToGrid(testX, testY);
         if (gridPos.col >= 0 && gridPos.col < grid.cols && gridPos.row >= 0 && gridPos.row < grid.rows) {
             const idx = gridPos.row * grid.cols + gridPos.col;
@@ -27,12 +27,12 @@ export function spawnPickup(state, planetX, planetY, minRadius, maxRadius, type)
 
 export const WallGenerator = {
     generate(state) {
-        const planetX = state.planet.x;
-        const planetY = state.planet.y;
+        const playerX = state.player.x;
+        const playerY = state.player.y;
         state.walls = [];
         state.walls.gridSystem = state.gridSystem;
-        state.gridSystem.centerX = planetX;
-        state.gridSystem.centerY = planetY;
+        state.gridSystem.centerX = playerX;
+        state.gridSystem.centerY = playerY;
         const patterns = Object.keys(GeneratorStrategies);
         const selected = patterns[Math.floor(Math.random() * patterns.length)];
         const themeColors = [
@@ -48,16 +48,16 @@ export const WallGenerator = {
             { r: 121, g: 85, b: 72 }
         ];
         state.wallTheme = themeColors[Math.floor(Math.random() * themeColors.length)];
-        GeneratorStrategies[selected].generate(state, planetX, planetY);
-        state.gridSystem.rebuild(state.walls, planetX, planetY);
+        GeneratorStrategies[selected].generate(state, playerX, playerY);
+        state.gridSystem.rebuild(state.walls, playerX, playerY);
         if (!state.discoveredAbilities.has("Laser")) {
-            spawnPickup(state, planetX, planetY, pickupSpawnSettings.coinMinRadius, pickupSpawnSettings.coinMaxRadius, "coin");
+            spawnPickup(state, playerX, playerY, pickupSpawnSettings.coinMinRadius, pickupSpawnSettings.coinMaxRadius, "coin");
         }
-        spawnPickup(state, planetX, planetY, pickupSpawnSettings.eyeballMinRadius, pickupSpawnSettings.eyeballMaxRadius, "eyeball");
+        spawnPickup(state, playerX, playerY, pickupSpawnSettings.eyeballMinRadius, pickupSpawnSettings.eyeballMaxRadius, "eyeball");
 
         const numBarrels = pickupSpawnSettings.barrelMinCount + Math.floor(Math.random() * pickupSpawnSettings.barrelRandomRange);
         for (let i = 0; i < numBarrels; i++) {
-            spawnPickup(state, planetX, planetY, pickupSpawnSettings.barrelMinRadius, pickupSpawnSettings.barrelMaxRadius, "barrel");
+            spawnPickup(state, playerX, playerY, pickupSpawnSettings.barrelMinRadius, pickupSpawnSettings.barrelMaxRadius, "barrel");
         }
     },
 };

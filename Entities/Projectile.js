@@ -78,10 +78,10 @@ export class Projectile extends Entity {
                 }
             }
         } else if (this.faction === "enemy") {
-            if (system.checkCircle(this, state.planet)) {
+            if (system.checkCircle(this, state.player)) {
                 this.isDead = true;
-                events.push({ target: state.planet, damage: this.damage });
-                PhysicsSystem.applyKnockback(state.planet, this.angle, this.radius * 150);
+                events.push({ target: state.player, damage: this.damage });
+                PhysicsSystem.applyKnockback(state.player, this.angle, this.radius * 150);
             }
         }
     }

@@ -10,11 +10,11 @@ export class Renderer {
         this.missileCache = new SpriteCache();
         this.pickupCache = new SpriteCache();
         this.turretCache = new SpriteCache();
-        this.planetCache = new SpriteCache();
+        this.playerCache = new SpriteCache();
         this.render3D = new Render3D();
         this.effectPasses = [
             { zIndex: 0,  fn: (state, viewport) => this.drawRangeIndicator(state, viewport) },
-            { zIndex: 50, fn: (state) => this.drawPlanetAndTurrets(state) },
+            { zIndex: 50, fn: (state) => this.drawPlayerAndTurrets(state) },
             { zIndex: 60, fn: (state) => this.renderExplosions(state) },
             { zIndex: 70, fn: (state, viewport) => this.render3D.draw3DBuildings(this.ctx, state, viewport) },
             { zIndex: 80, fn: (state, viewport) => this.drawVisibilityMask(this.ctx, state, viewport) },
@@ -28,18 +28,18 @@ export class Renderer {
         if (viewport) viewport.apply(this.ctx);
         this.drawMap(state);
 
-        const oldX = state.planet.x;
-        const oldY = state.planet.y;
-        state.planet.x = state.mapPlayerX;
-        state.planet.y = state.mapPlayerY;
-        state.planet.render(this.ctx, this);
+        const oldX = state.player.x;
+        const oldY = state.player.y;
+        state.player.x = state.mapPlayerX;
+        state.player.y = state.mapPlayerY;
+        state.player.render(this.ctx, this);
 
         for (const turret of state.turrets) {
-            turret.render(this.ctx, state.mapPlayerX, state.mapPlayerY, state.planet.radius, this);
+            turret.render(this.ctx, state.mapPlayerX, state.mapPlayerY, state.player.radius, this);
         }
 
-        state.planet.x = oldX;
-        state.planet.y = oldY;
+        state.player.x = oldX;
+        state.player.y = oldY;
 
         this.renderEntityCollection(state.floatingTexts);
         this.ctx.restore();
@@ -81,21 +81,21 @@ export class Renderer {
 
     drawRangeIndicator(state, viewport) {
         const drawRange = (viewport && state.phase === "combat") ? (viewport.getVisualRadius() / viewport.zoom) : state.weapon.range;
-        state.planet.renderRange(this.ctx, drawRange);
+        state.player.renderRange(this.ctx, drawRange);
     }
 
-    drawPlanetAndTurrets(state) {
-        state.planet.render(this.ctx, this);
+    drawPlayerAndTurrets(state) {
+        state.player.render(this.ctx, this);
         for (const turret of state.turrets) {
-            turret.render(this.ctx, state.planet.x, state.planet.y, state.planet.radius, this);
+            turret.render(this.ctx, state.player.x, state.player.y, state.player.radius, this);
         }
     }
 
     drawTargetMarkers(state) {
-        if (state.planet.queuedTargetX != null && state.planet.queuedTargetY != null) {
-            this._drawTargetMarker(this.ctx, state.planet.queuedTargetX, state.planet.queuedTargetY);
-        } else if (state.planet.isMoving && state.planet.targetX !== null && state.planet.targetY !== null) {
-            this._drawTargetMarker(this.ctx, state.planet.targetX, state.planet.targetY);
+        if (state.player.queuedTargetX != null && state.player.queuedTargetY != null) {
+            this._drawTargetMarker(this.ctx, state.player.queuedTargetX, state.player.queuedTargetY);
+        } else if (state.player.isMoving && state.player.targetX !== null && state.player.targetY !== null) {
+            this._drawTargetMarker(this.ctx, state.player.targetX, state.player.targetY);
         }
     }
 
@@ -155,8 +155,8 @@ export class Renderer {
             ctx.save();
             ctx.fillStyle = "#000000";
             ctx.beginPath();
-            ctx.rect(state.planet.x - 10000, state.planet.y - 10000, 20000, 20000);
-            ctx.arc(state.planet.x, state.planet.y, maskRadius, 0, Math.PI * 2);
+            ctx.rect(state.player.x - 10000, state.player.y - 10000, 20000, 20000);
+            ctx.arc(state.player.x, state.player.y, maskRadius, 0, Math.PI * 2);
             ctx.fill("evenodd");
             ctx.restore();
         }
@@ -181,8 +181,8 @@ export class Renderer {
         const visualRadius = state.spawnRadius - 50;
         this.ctx.save();
         this.ctx.beginPath();
-        this.ctx.rect(state.planet.x - 10000, state.planet.y - 10000, 20000, 20000);
-        this.ctx.rect(state.planet.x - visualRadius, state.planet.y - visualRadius, visualRadius * 2, visualRadius * 2);
+        this.ctx.rect(state.player.x - 10000, state.player.y - 10000, 20000, 20000);
+        this.ctx.rect(state.player.x - visualRadius, state.player.y - visualRadius, visualRadius * 2, visualRadius * 2);
         this.ctx.fillStyle = "#000000";
         this.ctx.fill("evenodd");
         this.ctx.restore();

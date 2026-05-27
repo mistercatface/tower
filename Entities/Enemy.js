@@ -26,7 +26,7 @@ export class Enemy extends DestructibleEntity {
     static updateAll(state, dt, spatialHash) {
         for (let i = state.enemies.length - 1; i >= 0; i--) {
             const e = state.enemies[i];
-            e.currentState.update(e, dt, state.planet, state.gridSystem, state.walls, state.projectiles, spatialHash, state.scheduler, state);
+            e.currentState.update(e, dt, state.player, state.gridSystem, state.walls, state.projectiles, spatialHash, state.scheduler, state);
             if (e.isDead) state.enemies.splice(i, 1);
         }
     }
@@ -62,7 +62,7 @@ export class Enemy extends DestructibleEntity {
         this.stateData = {};
         this.chargeCooldown = 0;
         this.weaponMode = new ChargedWeaponMode((state, tx, ty, angle, source) => {
-            const m = new Projectile(tx, ty, source.radius * enemyProjectileSettings.radiusMultiplier, enemyProjectileSettings.speed, state.planet, angle, enemyProjectileSettings.damage, "enemy");
+            const m = new Projectile(tx, ty, source.radius * enemyProjectileSettings.radiusMultiplier, enemyProjectileSettings.speed, state.player, angle, enemyProjectileSettings.damage, "enemy");
             state.projectiles.push(m);
             if (source) {
                 PhysicsSystem.applyKnockback(source, angle + Math.PI, m.radius * enemyProjectileSettings.knockbackMultiplier);

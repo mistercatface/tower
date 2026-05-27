@@ -185,8 +185,8 @@ export class Render3D {
     }
 
     draw3DBuildings(ctx, state, viewport) {
-        const px = state.planet.x;
-        const py = state.planet.y;
+        const px = state.player.x;
+        const py = state.player.y;
 
         this.updateSharedEdges(state);
 

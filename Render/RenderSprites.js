@@ -68,7 +68,7 @@ export const RenderSprites = {
         return { offCanvas, cx, cy };
     },
 
-    planet: (radius, color) => {
+    player: (radius, color) => {
         const canvasSize = Math.ceil(radius * 2) + 4;
         const cx = canvasSize / 2;
         const cy = canvasSize / 2;

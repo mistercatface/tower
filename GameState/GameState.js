@@ -1,6 +1,6 @@
 import { Projectile } from "../Entities/Projectile.js";
 import { Turret } from "../Turret.js";
-import { Planet } from "../Entities/Planet.js";
+import { Player } from "../Entities/Player.js";
 import { GridSystem } from "../Spatial/GridSystem.js";
 import { enemyTypes, defaultUpgradeCost, perkMilestones, playerBaseStats, gridSettings, mapSettings } from "../Config.js";
 import { WallGenerator } from "../Generator/Generator.js";
@@ -59,7 +59,7 @@ export class GameState {
             turretCount: new Stat(playerBaseStats.turretCount),
         };
 
-        this.planet = new Planet(0, 0, 8, this.stats.maxHealth.value);
+        this.player = new Player(0, 0, 8, this.stats.maxHealth.value);
         this.turrets = [new Turret(0, this.stats.turnSpeed.value)];
 
         const self = this;
@@ -71,7 +71,7 @@ export class GameState {
             accuracyModifier: 0,
             get accuracy() {
                 let acc = self.stats.accuracy.value;
-                if (self.planet && self.planet.isMoving) acc *= 0.5;
+                if (self.player && self.player.isMoving) acc *= 0.5;
                 acc += this.accuracyModifier;
                 return Math.min(1, acc);
             },
@@ -165,7 +165,7 @@ export class GameState {
                 const upgDef = upgradesList.find((u) => u.id === key);
                 if (upgDef) {
                     if (upgDef.isAbility) {
-                        if (this.planet && this.planet.startingAbilities && this.planet.startingAbilities.includes(key)) {
+                                        if (this.player && this.player.startingAbilities && this.player.startingAbilities.includes(key)) {
                             this.upgrades[key].baseLevel = 1;
                         } else {
                             this.upgrades[key].baseLevel = 0;
@@ -178,8 +178,8 @@ export class GameState {
             this.upgrades[key].ptsCost = this.stats.baseUpgradeCost.value;
         }
 
-        if (this.planet && this.planet.startingAbilities) {
-            this.planet.startingAbilities.forEach((abilityId) => {
+        if (this.player && this.player.startingAbilities) {
+            this.player.startingAbilities.forEach((abilityId) => {
                 this.abilities[abilityId] = true;
             });
         }
@@ -207,7 +207,7 @@ export class GameState {
             this.pendingLevelUps++;
             if (this.level > this.highestLevelReached) this.highestLevelReached = this.level;
             xpNeeded = Math.floor(25 * Math.pow(1.5, this.level));
-            FloatingText.spawn(this, this.planet.x, this.planet.y - 40, "LEVEL UP", "#FFEB3B");
+            FloatingText.spawn(this, this.player.x, this.player.y - 40, "LEVEL UP", "#FFEB3B");
         }
     }
 
@@ -232,8 +232,8 @@ export class GameState {
         this.abilityTimers = {};
         this.pendingUnlocks = [];
 
-        this.planet.fullHeal();
-        this.planet.clearHealAccumulator();
+        this.player.fullHeal();
+        this.player.clearHealAccumulator();
         this.turrets = [new Turret(0, 10)];
 
         this.enemies = [];
@@ -280,8 +280,8 @@ export class GameState {
         this.gameSpeed = this.stats.gameSpeed.value;
         this.selectedSpeed = Math.min(this.selectedSpeed, this.gameSpeed);
         this.pointBonus = this.stats.pointBonus.value;
-        this.planet.updateMaxHealth(this.stats.maxHealth.value);
-        this.planet.moveSpeed = playerBaseStats.moveSpeed * this.stats.moveSpeedMultiplier.value;
+        this.player.updateMaxHealth(this.stats.maxHealth.value);
+        this.player.moveSpeed = playerBaseStats.moveSpeed * this.stats.moveSpeedMultiplier.value;
 
         const targetTurretCount = Math.floor(this.stats.turretCount.value);
         while (this.turrets.length < targetTurretCount) {
@@ -296,7 +296,7 @@ export class GameState {
         if (upgradesList) {
             upgradesList.forEach((upg) => {
                 if (upg.isAbility && this.abilities && this.abilities[upg.id] && upg.abilityApplyFn) {
-                    upg.abilityApplyFn(this.weapon, this.planet);
+                    upg.abilityApplyFn(this.weapon, this.player);
                 }
             });
         }

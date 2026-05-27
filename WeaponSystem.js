@@ -169,7 +169,7 @@ export class WeaponSystem {
         return { hit: "none", x: cx, y: cy, dist: dist };
     }
 
-    static getNearestEnemy(state, source = state.planet, range = state.weapon.range, excludedTargets = null) {
+    static getNearestEnemy(state, source = state.player, range = state.weapon.range, excludedTargets = null) {
         let nearest = null;
         let minDist = Infinity;
         for (let i = 0; i < state.enemies.length; i++) {
@@ -215,20 +215,20 @@ export class WeaponSystem {
         }
 
         const engagedTargets = new Set();
-        const actualBlocksTargeting = blocksTargeting || (state.planet && state.planet.currentState && state.planet.currentState.blocksTargeting);
+        const actualBlocksTargeting = blocksTargeting || (state.player && state.player.currentState && state.player.currentState.blocksTargeting);
 
         for (const turret of state.turrets) {
             if (turret.target) {
-                const dist = Math.hypot(turret.target.x - state.planet.x, turret.target.y - state.planet.y);
+                const dist = Math.hypot(turret.target.x - state.player.x, turret.target.y - state.player.y);
                 if (
                     turret.target.isDead ||
                     dist > state.weapon.range ||
-                    !Utilities.hasLineOfSight(state.planet.x, state.planet.y, turret.target.x, turret.target.y, state.walls) ||
+                    !Utilities.hasLineOfSight(state.player.x, state.player.y, turret.target.x, turret.target.y, state.walls) ||
                     actualBlocksTargeting
                 ) {
                     turret.target = null;
                 } else if (engagedTargets.has(turret.target)) {
-                    const betterTarget = this.getNearestEnemy(state, state.planet, state.weapon.range, engagedTargets);
+                    const betterTarget = this.getNearestEnemy(state, state.player, state.weapon.range, engagedTargets);
                     if (betterTarget) {
                         turret.target = betterTarget;
                     }
@@ -236,9 +236,9 @@ export class WeaponSystem {
             }
 
             if (!turret.target && !actualBlocksTargeting) {
-                turret.target = this.getNearestEnemy(state, state.planet, state.weapon.range, engagedTargets);
+                turret.target = this.getNearestEnemy(state, state.player, state.weapon.range, engagedTargets);
                 if (!turret.target) {
-                    turret.target = this.getNearestEnemy(state, state.planet, state.weapon.range);
+                    turret.target = this.getNearestEnemy(state, state.player, state.weapon.range);
                 }
             }
 
@@ -246,7 +246,7 @@ export class WeaponSystem {
                 engagedTargets.add(turret.target);
             }
 
-            mode.processTurret(dt, state, state.planet, state.weapon.chargeTime, turret, turret.target, actualBlocksTargeting, combatEvents);
+            mode.processTurret(dt, state, state.player, state.weapon.chargeTime, turret, turret.target, actualBlocksTargeting, combatEvents);
         }
 
         return combatEvents;
