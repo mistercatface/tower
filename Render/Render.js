@@ -32,7 +32,7 @@ export class Renderer {
         const oldY = state.player.y;
         state.player.x = state.mapPlayerX;
         state.player.y = state.mapPlayerY;
-        state.player.render(this.ctx, this);
+        state.player.render(this.ctx, this, state);
 
         for (const turret of state.turrets) {
             turret.render(this.ctx, state.mapPlayerX, state.mapPlayerY, state.player.radius, this);
@@ -41,14 +41,14 @@ export class Renderer {
         state.player.x = oldX;
         state.player.y = oldY;
 
-        this.renderEntityCollection(state.floatingTexts);
+        this.renderEntityCollection(state.floatingTexts, state);
         this.ctx.restore();
     }
 
     buildCombatPipeline(state, viewport) {
         const entityPasses = state.entityLayers.map(layer => ({
             zIndex: layer.zIndex,
-            fn: (state) => this.renderEntityCollection(state[layer.key])
+            fn: (state) => this.renderEntityCollection(state[layer.key], state)
         }));
 
         const pipeline = [...this.effectPasses, ...entityPasses];
@@ -72,10 +72,10 @@ export class Renderer {
         this.ctx.restore();
     }
 
-    renderEntityCollection(collection) {
+    renderEntityCollection(collection, state) {
         if (!collection) return;
         for (const entity of collection) {
-            entity.render(this.ctx, this);
+            entity.render(this.ctx, this, state);
         }
     }
 
@@ -85,7 +85,7 @@ export class Renderer {
     }
 
     drawPlayerAndTurrets(state) {
-        state.player.render(this.ctx, this);
+        state.player.render(this.ctx, this, state);
         for (const turret of state.turrets) {
             turret.render(this.ctx, state.player.x, state.player.y, state.player.radius, this);
         }

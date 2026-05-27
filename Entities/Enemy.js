@@ -23,6 +23,14 @@ export class Enemy extends DestructibleEntity {
         quantizationSteps: 20
     });
 
+    static chargeBar = new ProgressBar({
+        width: 22,
+        height: 2,
+        borderRadius: 1,
+        quantizationSteps: 20,
+        colorFn: () => "#00E5FF"
+    });
+
     static updateAll(state, dt, spatialHash) {
         for (let i = state.enemies.length - 1; i >= 0; i--) {
             const e = state.enemies[i];
@@ -166,7 +174,7 @@ export class Enemy extends DestructibleEntity {
         return false;
     }
 
-    render(ctx, renderer) {
+    render(ctx, renderer, state) {
         if (this.currentState && this.currentState.render) {
             this.currentState.render(this, ctx, renderer.enemyCache, renderer.turretCache);
         }
@@ -177,6 +185,11 @@ export class Enemy extends DestructibleEntity {
         if (this.health < this.maxHealth) {
             const currentHealth = Math.max(0, this.health);
             Enemy.healthBar.render(ctx, this.x, this.y - 14, currentHealth / this.maxHealth, renderer.enemyCache);
+        }
+
+        if (this.turret && this.turret.charge > 0) {
+            const chargeRatio = this.turret.charge / (this.fireRate || 1);
+            Enemy.chargeBar.render(ctx, this.x, this.y - 19, chargeRatio, renderer.enemyCache);
         }
 
         if (this.turret) {

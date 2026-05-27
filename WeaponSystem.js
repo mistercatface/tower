@@ -37,14 +37,21 @@ export class ChargedWeaponMode extends WeaponTargetingStrategy {
         const ty = source.y + Math.sin(turret.angle) * turretDist;
         const aimTarget = this.determineAimTarget(source, target, blocksTargeting, turret);
         const isAimed = WeaponSystem.aimTurret(turret, source.x, source.y, aimTarget.x, aimTarget.y, dt);
-        if (target && !blocksTargeting && isAimed) {
-            turret.charge += dt;
-            if (turret.charge >= chargeTime) {
-                this.onFire(state, tx, ty, turret.angle, source);
+        if (target && !blocksTargeting) {
+            if (turret.lastTarget !== target) {
                 turret.charge = 0;
+                turret.lastTarget = target;
+            }
+            if (isAimed) {
+                turret.charge += dt;
+                if (turret.charge >= chargeTime) {
+                    this.onFire(state, tx, ty, turret.angle, source);
+                    turret.charge = 0;
+                }
             }
         } else {
             turret.charge = 0;
+            turret.lastTarget = null;
         }
     }
 }
