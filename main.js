@@ -1,6 +1,6 @@
 import { state } from "./GameState/GameState.js";
 import { createUpgrades, createBaseUpgrades } from "./Upgrades.js";
-import { loadProgress } from "./Storage.js";
+import { initializeSaveSystem, loadProgress } from "./Storage.js";
 import { initUI, updateUI, updateHud } from "./UI.js";
 import { Renderer } from "./Render/Render.js";
 import { Viewport } from "./Render/Viewport.js";
@@ -85,6 +85,7 @@ window.addEventListener("resize", resizeCanvas);
 window.gameState = state;
 state.initUpgradesList(upgrades);
 loadProgress(state, upgrades);
+initializeSaveSystem(state);
 initUI(state, upgrades, resetGame);
 gameOverUI = document.getElementById("gameOverUI");
 resizeCanvas();

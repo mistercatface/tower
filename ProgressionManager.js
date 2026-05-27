@@ -1,5 +1,5 @@
 import { FloatingText } from "./FloatingText.js";
-import { saveProgress } from "./Storage.js";
+import { markProgressDirty, saveProgress } from "./Storage.js";
 import { showUpgradeChoice, showSectorCleared, updateUI } from "./UI.js";
 
 export class ProgressionManager {
@@ -42,7 +42,7 @@ export class ProgressionManager {
                                 updateUI(state, upgrades);
                                 FloatingText.spawn(state, p.x, p.y - 20, "LASER UNLOCKED", "#00BCD4");
                             }
-                            saveProgress(state);
+                            markProgressDirty(state);
                         } else if (result.type === "eyeball") {
                             FloatingText.spawn(state, p.x, p.y, "EYEBALL", "#FFFFFF");
                         }
@@ -126,7 +126,7 @@ export class ProgressionManager {
                     state.discoveredAbilities.add(choiceId);
                 }
             });
-            saveProgress(state);
+            markProgressDirty(state);
         }
 
         choices.push("take_points");

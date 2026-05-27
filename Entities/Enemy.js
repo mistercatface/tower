@@ -8,7 +8,7 @@ import { DestructibleEntity } from "./Entity.js";
 import { FloatingText } from "../FloatingText.js";
 import { Separation } from "../Spatial/Separation.js";
 import { ProgressionManager } from "../ProgressionManager.js";
-import { saveProgress } from "../Storage.js";
+import { markProgressDirty } from "../Storage.js";
 import { updateUI } from "../UI.js";
 import { ChargedWeaponMode } from "../WeaponSystem.js";
 import { PhysicsSystem } from "../Spatial/PhysicsSystem.js";
@@ -83,8 +83,10 @@ export class Enemy extends DestructibleEntity {
             });
         }
         
-        if (died) ProgressionManager.processEnemyKillRewards(this, ctx.state, ctx.upgrades);
-        saveProgress(ctx.state);
+        if (died) {
+            ProgressionManager.processEnemyKillRewards(this, ctx.state, ctx.upgrades);
+            markProgressDirty(ctx.state);
+        }
         updateUI(ctx.state, ctx.upgrades);
     }
 

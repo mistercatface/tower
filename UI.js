@@ -1,4 +1,4 @@
-import { saveProgress, hardResetProgress } from "./Storage.js";
+import { hardResetProgress } from "./Storage.js";
 import { perkMilestones } from "./Config.js";
 
 const elements = {
