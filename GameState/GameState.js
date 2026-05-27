@@ -165,12 +165,24 @@ export class GameState {
             if (upgradesList) {
                 const upgDef = upgradesList.find((u) => u.id === key);
                 if (upgDef) {
-                    if (upgDef.isAbility) this.upgrades[key].baseLevel = 0;
+                    if (upgDef.isAbility) {
+                        if (this.planet && this.planet.startingAbilities && this.planet.startingAbilities.includes(key)) {
+                            this.upgrades[key].baseLevel = 1;
+                        } else {
+                            this.upgrades[key].baseLevel = 0;
+                        }
+                    }
                     this.upgrades[key].baseLevel = Math.min(this.upgrades[key].baseLevel, upgDef.maxLevel);
                 }
             }
             this.upgrades[key].level = this.upgrades[key].baseLevel;
             this.upgrades[key].ptsCost = this.stats.baseUpgradeCost.value;
+        }
+
+        if (this.planet && this.planet.startingAbilities) {
+            this.planet.startingAbilities.forEach((abilityId) => {
+                this.abilities[abilityId] = true;
+            });
         }
 
         if (upgradesList) {

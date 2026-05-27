@@ -46,6 +46,7 @@ export const playerBaseStats = {
     moveSpeedMultiplier: 1.0,
     moveSpeed: 50,
     turretCount: 1,
+    startingAbilities: ["Reposition"],
 };
 
 export const gridSettings = {

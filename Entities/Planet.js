@@ -30,6 +30,7 @@ export class Planet extends Enemy {
         this.mass = 50.0;
         this.moveSpeed = playerBaseStats.moveSpeed;
         this.canDamageWalls = true;
+        this.startingAbilities = playerBaseStats.startingAbilities || [];
     }
 
     handleHit(damage, ctx, hitType) {
@@ -138,6 +139,10 @@ export class Planet extends Enemy {
     
     clearHealAccumulator() {
         this.healAccumulator = 0;
+    }
+
+    canReposition(state) {
+        return state.upgrades["Reposition"] && state.upgrades["Reposition"].level > 0;
     }
 
     update(dt, gridSystem, walls, spatialHash, externalSpeedMod = 1.0) {

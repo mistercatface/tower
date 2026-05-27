@@ -66,6 +66,7 @@ export class Enemy extends DestructibleEntity {
                 PhysicsSystem.applyKnockback(source, angle + Math.PI, m.radius * enemyProjectileSettings.knockbackMultiplier);
             }
         });
+        this.startingAbilities = [];
     }
 
     handleHit(baseDamage, ctx, hitType) {
@@ -155,6 +156,10 @@ export class Enemy extends DestructibleEntity {
         if (col >= 0 && col < gridSystem.cols && row >= 0 && row < gridSystem.rows) {
             return gridSystem.grid[row * gridSystem.cols + col] === 0;
         }
+        return false;
+    }
+
+    canReposition(state) {
         return false;
     }
 
