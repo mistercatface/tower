@@ -10,6 +10,7 @@ export class Renderer {
         this.missileCache = new SpriteCache();
         this.pickupCache = new SpriteCache();
         this.turretCache = new SpriteCache();
+        this.planetCache = new SpriteCache();
         this.render3D = new Render3D();
     }
 
@@ -23,10 +24,10 @@ export class Renderer {
         const oldY = state.planet.y;
         state.planet.x = state.mapPlayerX;
         state.planet.y = state.mapPlayerY;
-        state.planet.render(this.ctx);
+        state.planet.render(this.ctx, this.planetCache);
 
         for (const turret of state.turrets) {
-            turret.render(this.ctx, state.mapPlayerX, state.mapPlayerY, state.planet.radius, 0, 1, this.turretCache);
+            turret.render(this.ctx, state.mapPlayerX, state.mapPlayerY, state.planet.radius, this.turretCache);
         }
 
         state.planet.x = oldX;
@@ -54,10 +55,10 @@ export class Renderer {
             }
         }
 
-        state.planet.render(this.ctx);
+        state.planet.render(this.ctx, this.planetCache);
 
         for (const turret of state.turrets) {
-            turret.render(this.ctx, state.planet.x, state.planet.y, state.planet.radius, turret.charge, state.weapon.chargeTime, this.turretCache);
+            turret.render(this.ctx, state.planet.x, state.planet.y, state.planet.radius, this.turretCache);
         }
 
         Explosion.renderAll(this.ctx, state, this);

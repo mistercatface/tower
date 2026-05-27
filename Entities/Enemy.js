@@ -168,7 +168,7 @@ export class Enemy extends DestructibleEntity {
         }
 
         if (this.turret) {
-            this.turret.render(ctx, this.x, this.y, this.radius, 0, 1, turretCache, this.color);
+            this.turret.render(ctx, this.x, this.y, this.radius, turretCache, this.color);
         }
     }
 }

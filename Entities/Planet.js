@@ -4,6 +4,7 @@ import { Navigator } from "../Spatial/Navigator.js";
 import { FloatingText } from "../FloatingText.js";
 import { PhysicsSystem } from "../Spatial/PhysicsSystem.js";
 import { playerBaseStats } from "../Config.js";
+import { RenderSprites } from "../Render/RenderSprites.js";
 
 export class Planet extends Enemy {
     constructor(x, y, radius, maxHealth) {
@@ -180,10 +181,12 @@ export class Planet extends Enemy {
         }
     }
 
-    render(ctx) {
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = "#4CAF50";
-        ctx.fill();
+    render(ctx, cache) {
+        const cacheKey = `${this.radius}_${this.color}`;
+        const cachedSprite = cache.get(cacheKey, RenderSprites.planet, this.radius, this.color);
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.drawImage(cachedSprite, -cachedSprite.width / 2, -cachedSprite.height / 2);
+        ctx.restore();
     }
 }
