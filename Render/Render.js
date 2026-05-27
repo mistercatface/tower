@@ -1,6 +1,5 @@
 import { SpriteCache } from "./SpriteCache.js";
 import { Render3D } from "./3D/Render3D.js";
-import { RenderStrategies } from "./RenderStrategies.js";
 import { Explosion } from "../Entities/Explosion/Explosion.js";
 
 export class Renderer {
@@ -19,12 +18,21 @@ export class Renderer {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         if (viewport) viewport.apply(this.ctx);
         this.drawMap(state);
-        const tempPlanet = { ...state.planet, x: state.mapPlayerX, y: state.mapPlayerY };
-        RenderStrategies.planet(this.ctx, tempPlanet, 0);
+
+        const oldX = state.planet.x;
+        const oldY = state.planet.y;
+        state.planet.x = state.mapPlayerX;
+        state.planet.y = state.mapPlayerY;
+        state.planet.render(this.ctx);
+
         for (const turret of state.turrets) {
-            RenderStrategies.turret(this.ctx, turret, state.mapPlayerX, state.mapPlayerY, state.planet.radius, 0, 1, this.turretCache);
+            turret.render(this.ctx, state.mapPlayerX, state.mapPlayerY, state.planet.radius, 0, 1, this.turretCache);
         }
-        for (const ft of state.floatingTexts) RenderStrategies.floatingText(this.ctx, ft);
+
+        state.planet.x = oldX;
+        state.planet.y = oldY;
+
+        for (const ft of state.floatingTexts) ft.render(this.ctx);
         this.ctx.restore();
     }
 
@@ -32,36 +40,52 @@ export class Renderer {
         this.ctx.save();
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         if (viewport) viewport.apply(this.ctx);
-        const drawRange = (viewport && state.phase === "combat") ? (viewport.getVisualRadius() / viewport.zoom) : state.weapon.range;
-        RenderStrategies.planet(this.ctx, state.planet, drawRange);
 
-        for (const p of state.pickups) RenderStrategies.pickup(this.ctx, p, this.pickupCache);
-        for (const p of state.projectiles) RenderStrategies.missile(this.ctx, p, p.faction === "player" ? "#FFEB3B" : "#F44336", this.missileCache);
-        for (const e of state.enemies) {
-            RenderStrategies.enemy(this.ctx, e, this.enemyCache);
-            RenderStrategies.turret(this.ctx, e.turret, e.x, e.y, e.radius, 0, 1, this.turretCache, e.color);
-        }
+        const drawRange = (viewport && state.phase === "combat") ? (viewport.getVisualRadius() / viewport.zoom) : state.weapon.range;
+        state.planet.renderRange(this.ctx, drawRange);
+
+        for (const p of state.pickups) p.render(this.ctx, this.pickupCache);
+        for (const p of state.projectiles) p.render(this.ctx, this.missileCache);
+        for (const e of state.enemies) e.render(this.ctx, this.enemyCache, this.turretCache);
+
         if (state.activeLasers) {
             for (const laser of state.activeLasers) {
-                RenderStrategies.laser(this.ctx, laser);
+                laser.render(this.ctx);
             }
         }
-        RenderStrategies.planet(this.ctx, state.planet, 0);
+
+        state.planet.render(this.ctx);
+
         for (const turret of state.turrets) {
-            RenderStrategies.turret(this.ctx, turret, state.planet.x, state.planet.y, state.planet.radius, turret.charge, state.weapon.chargeTime, this.turretCache);
+            turret.render(this.ctx, state.planet.x, state.planet.y, state.planet.radius, turret.charge, state.weapon.chargeTime, this.turretCache);
         }
+
         Explosion.renderAll(this.ctx, state, this);
-        //this.drawDebugFlowField(state);
         this.render3D.draw3DBuildings(this.ctx, state, viewport);
 
         if (state.planet.queuedTargetX != null && state.planet.queuedTargetY != null) {
-            RenderStrategies.targetMarker(this.ctx, state.planet.queuedTargetX, state.planet.queuedTargetY);
+            this._drawTargetMarker(this.ctx, state.planet.queuedTargetX, state.planet.queuedTargetY);
         } else if (state.planet.isMoving && state.planet.targetX !== null && state.planet.targetY !== null) {
-            RenderStrategies.targetMarker(this.ctx, state.planet.targetX, state.planet.targetY);
+            this._drawTargetMarker(this.ctx, state.planet.targetX, state.planet.targetY);
         }
 
-        for (const ft of state.floatingTexts) RenderStrategies.floatingText(this.ctx, ft);
+        for (const ft of state.floatingTexts) ft.render(this.ctx);
         this.ctx.restore();
+    }
+
+    _drawTargetMarker(ctx, x, y) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.strokeStyle = "#4CAF50";
+        ctx.lineWidth = 2;
+        const size = 6;
+        ctx.beginPath();
+        ctx.moveTo(-size, -size);
+        ctx.lineTo(size, size);
+        ctx.moveTo(size, -size);
+        ctx.lineTo(-size, size);
+        ctx.stroke();
+        ctx.restore();
     }
 
     drawDebugSpawnRadius(state) {

@@ -51,4 +51,52 @@ export class FloatingText {
             if (ft.isDead) state.floatingTexts.splice(i, 1);
         }
     }
+
+    render(ctx) {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, this.life);
+        
+        const ageRatio = 1.0 - this.life;
+        let scale = 1.0;
+        if (this.isBlast) {
+            if (ageRatio < 0.25) {
+                const t = ageRatio / 0.25;
+                scale = 2.2 - (2.2 - 1.3) * t;
+            } else {
+                scale = 1.3;
+            }
+        } else {
+            if (ageRatio < 0.15) {
+                const t = ageRatio / 0.15;
+                scale = 1.5 - 0.5 * t;
+            }
+        }
+        
+        ctx.translate(this.x, this.y);
+        ctx.scale(scale, scale);
+        
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.font = this.font || "bold 12px monospace";
+        
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.95)";
+        ctx.lineWidth = this.isBlast ? 3.5 : 2.5;
+        ctx.lineJoin = "round";
+        ctx.miterLimit = 2;
+        ctx.strokeText(this.text, 0, 0);
+        
+        if (this.isBlast) {
+            const gradient = ctx.createLinearGradient(0, -6, 0, 6);
+            gradient.addColorStop(0, "#FFF9C4");
+            gradient.addColorStop(0.3, "#FFEB3B");
+            gradient.addColorStop(0.65, "#FF5722");
+            gradient.addColorStop(1, "#F44336");
+            ctx.fillStyle = gradient;
+        } else {
+            ctx.fillStyle = this.color;
+        }
+        
+        ctx.fillText(this.text, 0, 0);
+        ctx.restore();
+    }
 }

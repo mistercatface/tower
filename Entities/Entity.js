@@ -5,6 +5,9 @@ export class Entity {
         this.angle = angle;
         this.isDead = isDead;
     }
+
+    render(ctx, ...caches) {
+    }
 }
 
 export class DestructibleEntity extends Entity {

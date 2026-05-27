@@ -170,4 +170,20 @@ export class Planet extends Enemy {
         PhysicsSystem.applyMovement(this, dt); 
         PhysicsSystem.resolveWallCollisions(this, walls);
     }
+
+    renderRange(ctx, weaponRange) {
+        if (weaponRange > 0) {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, weaponRange, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(76, 255, 80, 0.16)";
+            ctx.fill();
+        }
+    }
+
+    render(ctx) {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = "#4CAF50";
+        ctx.fill();
+    }
 }

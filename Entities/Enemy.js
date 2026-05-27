@@ -2,6 +2,7 @@ import { Navigator } from "../Spatial/Navigator.js";
 import { Utilities } from "../Utilities.js";
 import { Projectile } from "./Projectile.js";
 import { Turret } from "../Turret.js";
+import { RenderSprites } from "../Render/RenderSprites.js";
 import { enemyStates } from "../EnemyStates.js";
 import { DestructibleEntity } from "./Entity.js";
 import { FloatingText } from "../FloatingText.js";
@@ -149,5 +150,25 @@ export class Enemy extends DestructibleEntity {
             return gridSystem.grid[row * gridSystem.cols + col] === 0;
         }
         return false;
+    }
+
+    render(ctx, enemyCache, turretCache) {
+        const cacheKey = `${this.radius}_${this.color}`;
+        const cachedSprite = enemyCache.get(cacheKey, RenderSprites.enemy, this.radius, this.color);
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.angle);
+        ctx.drawImage(cachedSprite, -cachedSprite.width / 2, -cachedSprite.height / 2);
+        ctx.restore();
+        
+        if (this.health < this.maxHealth) {
+            ctx.fillStyle = "#FFF";
+            const currentHealth = Math.max(0, this.health);
+            ctx.fillRect(this.x - 10, this.y - 12, 20 * (currentHealth / this.maxHealth), 3);
+        }
+
+        if (this.turret) {
+            this.turret.render(ctx, this.x, this.y, this.radius, 0, 1, turretCache, this.color);
+        }
     }
 }

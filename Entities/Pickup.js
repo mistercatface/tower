@@ -1,6 +1,7 @@
 import { Entity } from "./Entity.js";
 import { Explosion } from "./Explosion/Explosion.js";
 import { PhysicsSystem } from "../Spatial/PhysicsSystem.js";
+import { RenderSprites } from "../Render/RenderSprites.js";
 
 export const PickupStrategies = {
     coin: {
@@ -114,5 +115,14 @@ export class Pickup extends Entity {
         if (this.type === "barrel" && walls) {
             PhysicsSystem.resolveWallCollisions(this, walls);
         }
+    }
+
+    render(ctx, pickupCache) {
+        const cacheKey = `${this.type}_${this.radius}`;
+        const cachedSprite = pickupCache.get(cacheKey, RenderSprites.pickup, this.type, this.radius, this.strategy);
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.drawImage(cachedSprite, -cachedSprite.width / 2, -cachedSprite.height / 2);
+        ctx.restore();
     }
 }

@@ -2,6 +2,7 @@ import { Projectile } from "./Entities/Projectile.js";
 import { WeaponSystem, ContinuousWeaponMode, ChargedWeaponMode } from "./WeaponSystem.js";
 import { PhysicsSystem } from "./Spatial/PhysicsSystem.js";
 import { playerBaseStats, playerProjectileSettings } from "./Config.js";
+import { Laser } from "./Entities/Laser.js";
 
 export class Upgrade {
     constructor(config) {
@@ -284,7 +285,7 @@ export const createUpgrades = () => [
             const hit = WeaponSystem.castLaser(tx, ty, laserAngle, turret.currentLaserLength, state);
             turret.currentLaserLength = hit.dist;
 
-            state.activeLasers.push({ x1: tx, y1: ty, x2: hit.x, y2: hit.y });
+            state.activeLasers.push(new Laser(tx, ty, hit.x, hit.y));
             if (laserCanDamage) {
                 if (hit.hit === "enemy") {
                     combatEvents.push({ target: hit.entity, damage: state.weapon.damage });

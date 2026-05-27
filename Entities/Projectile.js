@@ -1,5 +1,6 @@
 import { Entity } from "./Entity.js";
 import { PhysicsSystem } from "../Spatial/PhysicsSystem.js";
+import { RenderSprites } from "../Render/RenderSprites.js";
 
 export class Projectile extends Entity {
     static updateAll(state, dt) {
@@ -83,5 +84,15 @@ export class Projectile extends Entity {
                 PhysicsSystem.applyKnockback(state.planet, this.angle, this.radius * 150);
             }
         }
+    }
+
+    render(ctx, missileCache) {
+        const color = this.faction === "player" ? "#FFEB3B" : "#F44336";
+        const cacheKey = `${this.radius}_${color}`;
+        const cachedSprite = missileCache.get(cacheKey, RenderSprites.missile, this.radius, color);
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.drawImage(cachedSprite, -cachedSprite.width / 2, -cachedSprite.height / 2);
+        ctx.restore();
     }
 }
