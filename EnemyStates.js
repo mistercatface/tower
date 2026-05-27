@@ -243,14 +243,7 @@ export class EnemyChargePrepareState {
         } else if (distToTarget < stagingDist - 20) {
             const dx = enemy.x - target.x;
             const dy = enemy.y - target.y;
-            const dist = Math.hypot(dx, dy);
-            if (dist > 0) {
-                enemy.desiredX = dx / dist;
-                enemy.desiredY = dy / dist;
-            } else {
-                enemy.desiredX = 0;
-                enemy.desiredY = 0;
-            }
+            Utilities.setDesiredDirection(enemy, dx, dy);
         } else {
             enemy.desiredX = 0;
             enemy.desiredY = 0;

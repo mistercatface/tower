@@ -113,15 +113,7 @@ export class Enemy extends DestructibleEntity {
 
         const dx = target.x - this.x;
         const dy = target.y - this.y;
-        const dist = Math.hypot(dx, dy);
-
-        if (dist > 0) {
-            this.desiredX = dx / dist;
-            this.desiredY = dy / dist;
-        } else {
-            this.desiredX = 0;
-            this.desiredY = 0;
-        }
+        Utilities.setDesiredDirection(this, dx, dy);
     }
 
     shouldTriggerDodge(projectiles, gridSystem, scheduler) {

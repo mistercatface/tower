@@ -91,4 +91,19 @@ export class Utilities {
         const t = Math.min(1, turnSpeed * (dt / 1000));
         return this.normalizeAngle(currentAngle + diff * t);
     }
+
+    static normalizeVector(dx, dy) {
+        const len = Math.hypot(dx, dy);
+        if (len <= 0) {
+            return { x: 0, y: 0, len: 0 };
+        }
+        return { x: dx / len, y: dy / len, len };
+    }
+
+    static setDesiredDirection(entity, dx, dy) {
+        const vec = this.normalizeVector(dx, dy);
+        entity.desiredX = vec.x;
+        entity.desiredY = vec.y;
+        return vec;
+    }
 }

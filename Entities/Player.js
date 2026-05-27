@@ -140,12 +140,12 @@ export class Player extends Enemy {
             return;
         }
         if (this.isMoving && this.targetX !== null && this.targetY !== null) {
-            const distToDest = Math.hypot(this.targetX - this.x, this.targetY - this.y);
-            if (distToDest < 2) {
+            const toTarget = Utilities.normalizeVector(this.targetX - this.x, this.targetY - this.y);
+            if (toTarget.len < 2) {
                 this.stopMovement();
             } else {
-                let dirX = (this.targetX - this.x) / distToDest;
-                let dirY = (this.targetY - this.y) / distToDest;
+                let dirX = toTarget.x;
+                let dirY = toTarget.y;
 
                 if (!Utilities.hasLineOfSight(this.x, this.y, this.targetX, this.targetY, walls, this.radius)) {
                     const angle = Navigator.getSteeringAngle(this.x, this.y, gridSystem, gridSystem.playerFlowField);
