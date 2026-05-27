@@ -93,3 +93,8 @@ export const controlSettings = {
 export const timingSettings = {
     sectorCompletedDelay: 1500,
 };
+
+export const render3DSettings = {
+    perspectiveScale: 0.0008,
+    perspectiveCurve: 0.0004,
+};

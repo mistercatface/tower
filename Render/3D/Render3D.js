@@ -1,9 +1,12 @@
+import { render3DSettings } from "../../Config.js";
+
 export class Render3D {
     constructor() {
         this.lastWalls = null;
         this.lastAliveCount = 0;
         this.sharedEdgesDirty = true;
-        this.perspectiveScale = 0.001;
+        this.perspectiveScale = render3DSettings.perspectiveScale;
+        this.perspectiveCurve = render3DSettings.perspectiveCurve;
     }
 
     getSegmentEdges(seg) {
@@ -55,17 +58,30 @@ export class Render3D {
 
     /**
      * Draw a side face of a wall segment extruded outward from the player center
-     * by the segment's height. The extrusion lean is proportional to the distance from the player.
+     * by the segment's height. The extrusion lean is proportional to the distance from the player,
+     * accelerating non-linearly for a more dramatic warp at the outer edges.
      */
     drawExtrudedFace(ctx, p1, p2, px, py, height, fillStyle, strokeStyle) {
         const scale = this.perspectiveScale;
+        const curve = this.perspectiveCurve;
+
+        const dx1 = p1.x - px;
+        const dy1 = p1.y - py;
+        const dist1 = Math.sqrt(dx1 * dx1 + dy1 * dy1);
+        const factor1 = 1 + dist1 * curve;
+
+        const dx2 = p2.x - px;
+        const dy2 = p2.y - py;
+        const dist2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+        const factor2 = 1 + dist2 * curve;
+
         const extP1 = {
-            x: p1.x + (p1.x - px) * height * scale,
-            y: p1.y + (p1.y - py) * height * scale
+            x: p1.x + dx1 * height * scale * factor1,
+            y: p1.y + dy1 * height * scale * factor1
         };
         const extP2 = {
-            x: p2.x + (p2.x - px) * height * scale,
-            y: p2.y + (p2.y - py) * height * scale
+            x: p2.x + dx2 * height * scale * factor2,
+            y: p2.y + dy2 * height * scale * factor2
         };
 
         ctx.fillStyle = fillStyle;
@@ -85,12 +101,14 @@ export class Render3D {
 
     /**
      * Draw the top face of a wall segment (the extruded cap).
-     * The extrusion lean is proportional to the distance from the player.
+     * The extrusion lean is proportional to the distance from the player,
+     * accelerating non-linearly for a more dramatic warp at the outer edges.
      */
     drawTopFace(ctx, seg, px, py, fillStyle, strokeStyle) {
         const edges = this.getSegmentEdges(seg);
         const height = seg.height || seg.size;
         const scale = this.perspectiveScale;
+        const curve = this.perspectiveCurve;
 
         // All 4 base corners
         const corners = [
@@ -100,11 +118,17 @@ export class Render3D {
             edges[2][1], // corner 3
         ];
 
-        // Extrude all corners along the direction from player center, proportional to distance
-        const extCorners = corners.map(c => ({
-            x: c.x + (c.x - px) * height * scale,
-            y: c.y + (c.y - py) * height * scale
-        }));
+        // Extrude all corners along the direction from player center, proportional to distance + curve
+        const extCorners = corners.map(c => {
+            const dx = c.x - px;
+            const dy = c.y - py;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const factor = 1 + dist * curve;
+            return {
+                x: c.x + dx * height * scale * factor,
+                y: c.y + dy * height * scale * factor
+            };
+        });
 
         ctx.fillStyle = fillStyle;
         ctx.beginPath();
