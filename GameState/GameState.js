@@ -164,7 +164,10 @@ export class GameState {
         for (const key in this.upgrades) {
             if (upgradesList) {
                 const upgDef = upgradesList.find((u) => u.id === key);
-                if (upgDef && upgDef.isAbility) this.upgrades[key].baseLevel = 0;
+                if (upgDef) {
+                    if (upgDef.isAbility) this.upgrades[key].baseLevel = 0;
+                    this.upgrades[key].baseLevel = Math.min(this.upgrades[key].baseLevel, upgDef.maxLevel);
+                }
             }
             this.upgrades[key].level = this.upgrades[key].baseLevel;
             this.upgrades[key].ptsCost = this.stats.baseUpgradeCost.value;

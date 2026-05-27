@@ -453,7 +453,7 @@ export const createUpgrades = () => [
         applyFn: (stats, level) => { stats.gameSpeed.flatModifiers += level * 0.25; },
         currentStrFn: (level) => "x" + (2.0 + level * 0.25).toFixed(2),
         nextStrFn: (level) => "x" + (2.0 + (level + 1) * 0.25).toFixed(2),
-        maxLevel: 64,
+        maxLevel: 2,
     }),
     new Upgrade({
         id: "Points",

@@ -23,7 +23,11 @@ export function loadProgress(state, upgrades) {
     if (savedUpgrades) {
         const parsed = JSON.parse(savedUpgrades);
         for (const key in parsed) {
-            if (state.upgrades[key]) state.upgrades[key].baseLevel = parsed[key].baseLevel;
+            if (state.upgrades[key]) {
+                const upgDef = upgrades.find((u) => u.id === key);
+                const maxLevel = upgDef ? upgDef.maxLevel : Infinity;
+                state.upgrades[key].baseLevel = Math.min(parsed[key].baseLevel, maxLevel);
+            }
         }
     }
 
