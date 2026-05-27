@@ -84,4 +84,11 @@ export class Utilities {
     static normalizeAngle(angle) {
         return Math.atan2(Math.sin(angle), Math.cos(angle));
     }
+
+    static turnAngleTowards(currentAngle, targetAngle, turnSpeed, dt) {
+        let diff = targetAngle - currentAngle;
+        diff = this.normalizeAngle(diff);
+        const t = Math.min(1, turnSpeed * (dt / 1000));
+        return this.normalizeAngle(currentAngle + diff * t);
+    }
 }

@@ -65,10 +65,9 @@ export class EnemyNavigatingState {
         PhysicsSystem.applyMovement(enemy, dt, true, true);
         PhysicsSystem.resolveWallCollisions(enemy, walls, state);
 
-        let diff = enemy.angle - enemy.turret.angle;
-        diff = Utilities.normalizeAngle(diff);
-        enemy.turret.angle += diff * Math.min(1, enemy.turret.turnSpeed * (dt / 1000));
-        enemy.turret.angle = Utilities.normalizeAngle(enemy.turret.angle);
+        if (enemy.turret) {
+            enemy.turret.angle = Utilities.turnAngleTowards(enemy.turret.angle, enemy.angle, enemy.turret.turnSpeed, dt);
+        }
 
         return false;
     }
@@ -220,9 +219,7 @@ export class EnemyEngagedState {
         }
 
         const angleToTarget = Math.atan2(-dy, -dx);
-        let angleDiff = angleToTarget - enemy.angle;
-        angleDiff = Utilities.normalizeAngle(angleDiff);
-        enemy.angle += angleDiff * Math.min(1, enemy.turnSpeed * (dt / 1000));
+        enemy.angle = Utilities.turnAngleTowards(enemy.angle, angleToTarget, enemy.turnSpeed, dt);
 
         enemy.weaponMode.processTurret(dt, state, enemy, enemy.fireRate, enemy.turret, target, !hasLOS, null);
 
@@ -264,10 +261,7 @@ export class EnemyChargePrepareState {
         PhysicsSystem.resolveWallCollisions(enemy, walls, state);
         
         if (enemy.turret) {
-            let diff = enemy.angle - enemy.turret.angle;
-            diff = Utilities.normalizeAngle(diff);
-            enemy.turret.angle += diff * Math.min(1, enemy.turret.turnSpeed * (dt / 1000));
-            enemy.turret.angle = Utilities.normalizeAngle(enemy.turret.angle);
+            enemy.turret.angle = Utilities.turnAngleTowards(enemy.turret.angle, enemy.angle, enemy.turret.turnSpeed, dt);
         }
 
         const isStable = Math.hypot(enemy.vx, enemy.vy) < enemy.speed * 0.6;
@@ -300,16 +294,10 @@ export class EnemyChargeWindupState {
         const dx = target.x - enemy.x;
         const dy = target.y - enemy.y;
         const angleToTarget = Math.atan2(dy, dx);
-        let angleDiff = angleToTarget - enemy.angle;
-        angleDiff = Utilities.normalizeAngle(angleDiff);
-        enemy.angle += angleDiff * Math.min(1, enemy.turnSpeed * 1.5 * (dt / 1000));
-        enemy.angle = Utilities.normalizeAngle(enemy.angle);
+        enemy.angle = Utilities.turnAngleTowards(enemy.angle, angleToTarget, enemy.turnSpeed * 1.5, dt);
 
         if (enemy.turret) {
-            let turretDiff = enemy.angle - enemy.turret.angle;
-            turretDiff = Utilities.normalizeAngle(turretDiff);
-            enemy.turret.angle += turretDiff * Math.min(1, enemy.turret.turnSpeed * (dt / 1000));
-            enemy.turret.angle = Utilities.normalizeAngle(enemy.turret.angle);
+            enemy.turret.angle = Utilities.turnAngleTowards(enemy.turret.angle, enemy.angle, enemy.turret.turnSpeed, dt);
         }
 
         const stateData = enemy.stateData;
@@ -415,9 +403,7 @@ export class EnemyDodgingState {
         const moveDist = enemy.speed * 1.5 * (dt / 1000);
 
         const targetAngle = Math.atan2(dy, dx);
-        let dodgeAngleDiff = targetAngle - enemy.angle;
-        dodgeAngleDiff = Utilities.normalizeAngle(dodgeAngleDiff);
-        enemy.angle += dodgeAngleDiff * Math.min(1, enemy.turnSpeed * 1.5 * (dt / 1000));
+        enemy.angle = Utilities.turnAngleTowards(enemy.angle, targetAngle, enemy.turnSpeed * 1.5, dt);
 
         if (dist <= moveDist) {
             enemy.x = stateData.targetX;
@@ -429,10 +415,7 @@ export class EnemyDodgingState {
         }
 
         if (enemy.turret) {
-            let diff = enemy.angle - enemy.turret.angle;
-            diff = Utilities.normalizeAngle(diff);
-            enemy.turret.angle += diff * Math.min(1, enemy.turret.turnSpeed * (dt / 1000));
-            enemy.turret.angle = Utilities.normalizeAngle(enemy.turret.angle);
+            enemy.turret.angle = Utilities.turnAngleTowards(enemy.turret.angle, enemy.angle, enemy.turret.turnSpeed, dt);
         }
 
         return false;
@@ -478,16 +461,10 @@ export class EnemyBlastedState {
         enemy.y += enemy.vy * (dt / 1000);
 
         const targetAngle = stateData.angle;
-        let angleDiff = targetAngle - enemy.angle;
-        angleDiff = Utilities.normalizeAngle(angleDiff);
-        enemy.angle += angleDiff * Math.min(1, enemy.turnSpeed * (dt / 1000));
-        enemy.angle = Utilities.normalizeAngle(enemy.angle);
+        enemy.angle = Utilities.turnAngleTowards(enemy.angle, targetAngle, enemy.turnSpeed, dt);
 
         if (enemy.turret) {
-            let turretDiff = targetAngle - enemy.turret.angle;
-            turretDiff = Utilities.normalizeAngle(turretDiff);
-            enemy.turret.angle += turretDiff * Math.min(1, enemy.turret.turnSpeed * (dt / 1000));
-            enemy.turret.angle = Utilities.normalizeAngle(enemy.turret.angle);
+            enemy.turret.angle = Utilities.turnAngleTowards(enemy.turret.angle, targetAngle, enemy.turret.turnSpeed, dt);
         }
 
         PhysicsSystem.resolveWallCollisions(enemy, walls, state);
