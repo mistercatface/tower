@@ -52,7 +52,6 @@ export class GameState {
             maxHealth: new Stat(playerBaseStats.maxHealth),
             gameSpeed: new Stat(playerBaseStats.gameSpeed),
             pointBonus: new Stat(0),
-            mitigation: new Stat(0, 0, playerBaseStats.mitigationMax),
             accuracy: new Stat(playerBaseStats.accuracy),
             penetration: new Stat(playerBaseStats.penetration),
             moveSpeedMultiplier: new Stat(playerBaseStats.moveSpeedMultiplier),
@@ -245,9 +244,6 @@ export class GameState {
         this.activeLasers = [];
         this.gridSystem.clear();
 
-        // Declarative render layer registry.
-        // Add new entity collections here and they'll be rendered automatically.
-        // zIndex controls draw order — the Renderer merges these with its own effect passes.
         this.entityLayers = [
             { key: "pickups",       zIndex: 10 },
             { key: "projectiles",   zIndex: 20 },
@@ -259,7 +255,6 @@ export class GameState {
         this.gameSpeed = 2.0;
         this.selectedSpeed = 1.0;
         this.pointBonus = 0;
-        this.mitigation = 0.0;
     }
 
     recalculateStats(upgradesList) {
@@ -285,7 +280,6 @@ export class GameState {
         this.gameSpeed = this.stats.gameSpeed.value;
         this.selectedSpeed = Math.min(this.selectedSpeed, this.gameSpeed);
         this.pointBonus = this.stats.pointBonus.value;
-        this.mitigation = this.stats.mitigation.value;
         this.planet.updateMaxHealth(this.stats.maxHealth.value);
         this.planet.moveSpeed = playerBaseStats.moveSpeed * this.stats.moveSpeedMultiplier.value;
 

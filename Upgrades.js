@@ -150,16 +150,6 @@ export const createBaseUpgrades = () => [
         },
     }),
     new Upgrade({
-        id: "Mitigation",
-        category: "defense",
-        name: "Mitigation",
-        description: "Reduces incoming damage by a percentage.",
-        applyFn: (stats, level) => { stats.mitigation.flatModifiers += level * 0.01; },
-        currentStrFn: (level) => (1 + level) + "%",
-        nextStrFn: (level) => (2 + level) + "%",
-        maxLevel: 74
-    }),
-    new Upgrade({
         id: "MoveSpeed",
         category: "defense",
         name: "Move Speed",

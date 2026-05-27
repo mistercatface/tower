@@ -34,11 +34,9 @@ export class Planet extends Enemy {
     }
 
     handleHit(damage, ctx, hitType) {
-        const mitigatedAmount = damage * ctx.state.mitigation;
-        const finalDamage = damage - mitigatedAmount;
-        this.takeDamage(finalDamage);
-        
-        let text = `-${finalDamage.toFixed(1)}`;
+        this.takeDamage(damage);
+
+        let text = `-${damage.toFixed(1)}`;
         const isBlast = (hitType === "blast");
         if (isBlast) {
             text += " BLAST";
@@ -53,15 +51,6 @@ export class Planet extends Enemy {
                 vx: (Math.random() - 0.5) * 30,
                 vy: -40 - Math.random() * 20,
                 gravity: 80,
-                duration: 900
-            });
-        }
-        
-        if (mitigatedAmount > 0) {
-            FloatingText.spawn(ctx.state, this.x, this.y + 20, `Mitigated ${mitigatedAmount.toFixed(1)}`, "#03A9F4", "standard", {
-                vx: (Math.random() - 0.5) * 20,
-                vy: -30 - Math.random() * 15,
-                gravity: 60,
                 duration: 900
             });
         }
