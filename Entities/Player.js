@@ -1,4 +1,4 @@
-import { Enemy } from "./Enemy.js";
+import { Actor } from "./Actor.js";
 import { Utilities } from "../Core/Utilities.js";
 import { FloatingText } from "../Render/FloatingText.js";
 import { playerBaseStats, NAV_PROFILES, navigationSettings } from "../Config/Config.js";
@@ -12,12 +12,12 @@ const playerBars = createEntityBars({
     chargeWidth: 48,
 });
 
-export class Player extends Enemy {
+export class Player extends Actor {
     static healthBar = playerBars.healthBar;
     static chargeBar = playerBars.chargeBar;
 
     constructor(x, y, radius, maxHealth) {
-        super(x, y, radius, playerBaseStats.speed, maxHealth, "#4CAF50", 0, "player");
+        super(x, y, radius, playerBaseStats.speed, maxHealth, "#4CAF50", "player", 3.0, true);
         this.healthBar = Player.healthBar;
         this.chargeBar = Player.chargeBar;
         this.spawnX = x;

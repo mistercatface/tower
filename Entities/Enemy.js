@@ -2,10 +2,8 @@ import { Utilities } from "../Core/Utilities.js";
 import { Projectile } from "./Projectile.js";
 import { Turret } from "./Turret.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
-import { enemyStates } from "./EnemyStates.js";
-import { DestructibleEntity } from "./Entity.js";
+import { Actor } from "./Actor.js";
 import { FloatingText } from "../Render/FloatingText.js";
-import { Separation } from "../Spatial/Motion/Separation.js";
 import { ProgressionManager } from "../Progression/ProgressionManager.js";
 import { markProgressDirty } from "../Progression/Storage.js";
 import { updateUI } from "../UI/UI.js";
@@ -20,7 +18,7 @@ const enemyBars = createEntityBars({
     healthBorderRadius: 1.5,
 });
 
-export class Enemy extends DestructibleEntity {
+export class Enemy extends Actor {
     static healthBar = enemyBars.healthBar;
     static chargeBar = enemyBars.chargeBar;
 
@@ -33,27 +31,14 @@ export class Enemy extends DestructibleEntity {
     }
 
     constructor(x, y, radius, speed, health, color, reward, type = "standard", attackType = "ranged", canDodge = false, accelRate = 3.0, canDamageWalls = false) {
-        super(x, y, 0, health, health, false);
-        this.radius = radius;
-        this.mass = type === "boss" ? 200.0 : radius;
-        this.speed = speed;
-        this.color = color;
+        super(x, y, radius, speed, health, color, type, accelRate, canDamageWalls);
         this.reward = reward;
-        this.type = type;
         this.attackType = attackType;
         this.canDodge = canDodge;
-        this.accelRate = accelRate;
-        this.canDamageWalls = canDamageWalls;
-        this.turnSpeed = 10;
         this.turret = new Turret(0, 10);
         this.isEngaged = false;
-        this.desiredX = 0;
-        this.desiredY = 0;
-        this.vx = 0;
-        this.vy = 0;
         this.blastAngle = 0;
         this.blastTimer = 0;
-        this.separation = new Separation();
         const calculatedRange = 75 + Math.floor(Math.random() * 70);
         this.weapon = {
             chargeTime: 1500,
@@ -70,8 +55,6 @@ export class Enemy extends DestructibleEntity {
         this.dodgeTimerId = null;
         this.dodgeTargetX = 0;
         this.dodgeTargetY = 0;
-        this.currentState = enemyStates.navigating;
-        this.stateData = {};
         this.chargeCooldown = 0;
         this.startingAbilities = [];
         this.healthBar = Enemy.healthBar;
@@ -92,39 +75,13 @@ export class Enemy extends DestructibleEntity {
         updateUI(ctx.state, ctx.upgrades);
     }
 
-    changeState(stateName, stateDataInit = null) {
-        if (this.currentState && this.currentState.onExit) {
-            this.currentState.onExit(this);
-        }
-        this.currentState = enemyStates[stateName];
-        this.stateData = stateDataInit || {};
-        if (this.currentState && this.currentState.onEnter) {
-            this.currentState.onEnter(this);
-        }
-    }
+
 
     calculateSteering(target, state) {
         state.navigation.steerTo(this, target.x, target.y, NAV_PROFILES.enemyToPlayer);
     }
 
-    applyLocomotion(dt, walls, spatialHash, {
-        state = null,
-        externalSpeedMod = 1,
-        ignoreSeparationInDesired = false,
-        shouldMove = true,
-        alignAngleWithMovement = true,
-    } = {}) {
-        this.separation.update(this, spatialHash);
-        const baseSpeed = this.speed;
-        if (externalSpeedMod !== 1) {
-            this.speed = baseSpeed * externalSpeedMod;
-        }
-        PhysicsSystem.applyMovement(this, dt, ignoreSeparationInDesired, shouldMove, alignAngleWithMovement);
-        if (externalSpeedMod !== 1) {
-            this.speed = baseSpeed;
-        }
-        PhysicsSystem.resolveWallCollisions(this, walls, state);
-    }
+
 
     shouldTriggerDodge(projectiles, flowFieldGrid, scheduler) {
         for (const m of projectiles) {
@@ -176,37 +133,7 @@ export class Enemy extends DestructibleEntity {
         return false;
     }
 
-    getVelocityMagnitude() {
-        return Math.hypot(this.vx, this.vy);
-    }
 
-    getMovementSpeedRatio() {
-        if (this.speed <= 0) return 0;
-        return Math.min(1, this.getVelocityMagnitude() / this.speed);
-    }
-
-    applyMovementAccuracyPenalty(baseAccuracy, minMultiplier = 0.5) {
-        const ratio = this.getMovementSpeedRatio();
-        return baseAccuracy * (1 - (1 - minMultiplier) * ratio);
-    }
-
-    renderBars(ctx, cache, yOffset, chargeRatios) {
-        if (this.health < this.maxHealth && this.healthBar) {
-            const currentHealth = Math.max(0, this.health);
-            this.healthBar.render(ctx, this.x, this.y - yOffset, currentHealth / this.maxHealth, cache);
-        }
-
-        if (chargeRatios && chargeRatios.length > 0 && this.chargeBar) {
-            let activeBarsCount = 0;
-            for (let i = 0; i < chargeRatios.length; i++) {
-                const ratio = chargeRatios[i];
-                if (ratio > 0) {
-                    this.chargeBar.render(ctx, this.x, this.y - (yOffset + 5 + activeBarsCount * 5), ratio, cache);
-                    activeBarsCount++;
-                }
-            }
-        }
-    }
 
     renderStatusBars(ctx, renderer, state) {
         const chargeRatio = this.turret && this.turret.charge > 0 ? this.turret.charge / (this.weapon.chargeTime || 1) : 0;
