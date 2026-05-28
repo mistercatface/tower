@@ -234,7 +234,7 @@ export class ProgressionManager {
     }
 
     static handleWaveCompletion(state, upgrades, viewport) {
-        const currentNode = state.mapNodes.find((n) => n.id === state.currentNodeId);
+        const currentNode = state.getCurrentMapNode();
 
         const isFinished = state.waveManager.completeWave(currentNode.wavesTotal);
         if (isFinished) {

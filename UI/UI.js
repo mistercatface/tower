@@ -197,7 +197,7 @@ export function updateToggleButton(btnId, isUnlocked, isActive, btnText, upgDef)
 }
 
 export function updateHud(state, upgrades) {
-    const currentNode = state.mapNodes.find((n) => n.id === state.currentNodeId);
+    const currentNode = state.getCurrentMapNode();
     let waveTextVal = state.waveManager.wave;
     if (state.phase === "combat" && currentNode) {
         waveTextVal = `${state.waveManager.sectorWave}/${currentNode.wavesTotal}`;

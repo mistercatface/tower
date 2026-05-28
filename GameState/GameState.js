@@ -17,8 +17,8 @@ export class GameState {
         this.waveManager = new WaveManager();
         this.phase = "map";
         this.mapNodes = [];
+        this.mapNodeById = new Map();
         this.currentNodeId = 0;
-        this.highestLayerGenerated = 0;
         this.mapPlayerX = 0;
         this.mapPlayerY = 0;
         this.mapTargetNodeId = null;
@@ -85,6 +85,26 @@ export class GameState {
             x: baseSpawnX + node.x * scale,
             y: baseSpawnY + node.y * scale,
         };
+    }
+
+    rebuildMapNodeIndex() {
+        this.mapNodeById.clear();
+        for (const node of this.mapNodes) {
+            this.mapNodeById.set(node.id, node);
+        }
+    }
+
+    getMapNode(id) {
+        if (id == null) return null;
+        return this.mapNodeById.get(id) ?? null;
+    }
+
+    getCurrentMapNode() {
+        return this.getMapNode(this.currentNodeId);
+    }
+
+    getMapTargetNode() {
+        return this.getMapNode(this.mapTargetNodeId);
     }
 
     initializeDefaultState() {

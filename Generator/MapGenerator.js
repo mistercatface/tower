@@ -130,6 +130,8 @@ export class MapGenerator {
         state.mapPlayerX = 0;
         state.mapPlayerY = 0;
 
+        state.rebuildMapNodeIndex();
+
         MapGenerator.pregenerateAllCombatData(state);
 
         state.walls = [];
@@ -154,7 +156,7 @@ export class MapGenerator {
         const { tempObstacleGrid, tempFlowFieldGrid } = getTempGrids();
         const incomingByNodeId = buildIncomingNodesMap(state.mapNodes);
 
-        const startNode = state.mapNodes.find(n => n.id === 0);
+        const startNode = state.getMapNode(0);
         if (startNode) {
             const strategy = STRATEGIES[Math.floor(Math.random() * STRATEGIES.length)];
             const theme = THEME_COLORS[Math.floor(Math.random() * THEME_COLORS.length)];

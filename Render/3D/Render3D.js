@@ -1,3 +1,5 @@
+import { THEME_COLORS } from "../../Config/Config.js";
+
 export class Render3D {
     constructor() {
         this.lastWalls = null;
@@ -97,7 +99,7 @@ export class Render3D {
 
         for (const seg of visibleWalls) {
 
-            const wallColor = this.getWallColor(seg, state.wallTheme, 0.5);
+            const wallColor = this.getWallColor(seg, THEME_COLORS[0], 0.5);
             const edges = this.getSegmentEdges(seg);
 
             if (!seg.sharedEdges) {
@@ -396,7 +398,7 @@ export class Render3D {
         for (const obj of visibleObjects) {
             if (obj._renderType === "wall") {
                 const seg = obj;
-                const wallColor = this.getWallColor(seg, state.wallTheme, 1.0);
+                const wallColor = this.getWallColor(seg, THEME_COLORS[0], 1.0);
                 const edges = this.getSegmentEdges(seg);
 
                 if (!seg.sharedEdges) {

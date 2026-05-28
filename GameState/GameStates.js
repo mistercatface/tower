@@ -25,10 +25,11 @@ export class MapState {
         ctx.renderer.renderMapScene(ctx.state, ctx.viewport);
     }
     handleInteraction(worldCoords, isDoubleTap, ctx) {
-        const currentNode = ctx.state.mapNodes.find((n) => n.id === ctx.state.currentNodeId);
+        const currentNode = ctx.state.getCurrentMapNode();
         if (!currentNode) return;
         for (const neighborId of currentNode.connections) {
-            const neighbor = ctx.state.mapNodes.find((n) => n.id === neighborId);
+            const neighbor = ctx.state.getMapNode(neighborId);
+            if (!neighbor) continue;
             const dist = Math.hypot(neighbor.x - worldCoords.x, neighbor.y - worldCoords.y);
             if (dist < 20) {
                 showNodeConfirm(neighbor, () => {
@@ -45,8 +46,7 @@ export class MapTransitionState {
     onEnter(ctx) {
         ctx.state.phase = "map_transition";
         
-        const prevNode = ctx.state.mapNodes.find((n) => n.id === ctx.state.currentNodeId);
-        const targetNode = ctx.state.mapNodes.find((n) => n.id === ctx.state.mapTargetNodeId);
+        const targetNode = ctx.state.getMapTargetNode();
         
         ctx.state.player.stopMovement(ctx.state);
         ctx.state.player.vx = 0;
@@ -81,7 +81,7 @@ export class MapTransitionState {
 
         WeaponSystem.updateTurretAndWeapon(dt, true, ctx.state, ctx.upgrades);
 
-        const targetNode = ctx.state.mapNodes.find((n) => n.id === ctx.state.mapTargetNodeId);
+        const targetNode = ctx.state.getMapTargetNode();
         if (targetNode) {
             const targetCoords = ctx.state.getNodeCombatCoords(targetNode);
             const dist = Math.hypot(ctx.state.player.x - targetCoords.x, ctx.state.player.y - targetCoords.y);
@@ -123,12 +123,10 @@ export class CombatState {
         ctx.state.activeLasers = [];
         ctx.state.floatingTexts = [];
         
-        const currentNode = ctx.state.mapNodes.find(n => n.id === ctx.state.currentNodeId);
+        const currentNode = ctx.state.getCurrentMapNode();
         const combatCoords = ctx.state.getNodeCombatCoords(currentNode);
         
-        const transitioningFromTravel = ctx.state.isTransitioningFromTravel && ctx.state.travelSourceCoords && ctx.state.travelTargetCoords;
-
-        if (transitioningFromTravel) {
+        if (ctx.state.isTransitioningFromTravel) {
             ctx.state.isTransitioningFromTravel = false;
             ctx.state.player.stopMovement(ctx.state);
             ctx.state.player.vx = 0;

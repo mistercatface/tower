@@ -93,8 +93,8 @@ export class Renderer {
     }
 
     drawTransitionGuides(state) {
-        const prevNode = state.mapNodes.find(n => n.id === state.currentNodeId);
-        const targetNode = state.mapNodes.find(n => n.id === state.mapTargetNodeId);
+        const prevNode = state.getCurrentMapNode();
+        const targetNode = state.getMapTargetNode();
         if (!prevNode || !targetNode) return;
 
         const coordsA = state.getNodeCombatCoords(prevNode);
@@ -275,10 +275,10 @@ export class Renderer {
         const { x: baseSpawnX, y: baseSpawnY } = state.getCombatSpawnOrigin();
         const scale = mapSettings.combatCoordScale;
 
-        const currentNode = state.mapNodes.find((n) => n.id === state.currentNodeId);
+        const currentNode = state.getCurrentMapNode();
         for (const node of state.mapNodes) {
             for (const connId of node.connections) {
-                const targetNode = state.mapNodes.find((n) => n.id === connId);
+                const targetNode = state.getMapNode(connId);
                 if (!targetNode) continue;
                 this.ctx.beginPath();
                 this.ctx.moveTo(node.x, node.y);

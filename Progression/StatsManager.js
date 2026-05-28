@@ -136,7 +136,7 @@ export class StatsManager {
         StatsManager.recalculateStats(state, upgradesList);
         MapGenerator.generateMap(state);
 
-        const startNode = state.mapNodes.find(n => n.id === 0);
+        const startNode = state.getMapNode(0);
         if (startNode) {
             const coords = state.getNodeCombatCoords(startNode);
             state.player.setSpawnPosition(coords.x, coords.y);
