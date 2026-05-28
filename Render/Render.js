@@ -16,12 +16,12 @@ export class Renderer {
         this.render3D = new Render3D();
         this.effectPasses = [
             { zIndex: 0,  fn: (state, viewport) => this.drawRangeIndicator(state, viewport) },
-            { zIndex: 50, fn: (state) => this.drawPlayerAndTurrets(state) },
-            { zIndex: 60, fn: (state) => this.renderExplosions(state) },
+            { zIndex: 50, fn: (state, viewport) => this.drawPlayerAndTurrets(state, viewport) },
+            { zIndex: 60, fn: (state, viewport) => this.renderExplosions(state, viewport) },
             { zIndex: 70, fn: (state, viewport) => this.render3D.draw3DBuildings(this.ctx, state, viewport) },
-            { zIndex: 75, fn: (state) => this.drawEntityBars(state) },
+            { zIndex: 75, fn: (state, viewport) => this.drawEntityBars(state, viewport) },
             { zIndex: 80, fn: (state, viewport) => this.drawVisibilityMask(this.ctx, state, viewport) },
-            { zIndex: 85, fn: (state) => this.drawTargetMarkers(state) },
+            { zIndex: 85, fn: (state, viewport) => this.drawTargetMarkers(state, viewport) },
         ];
 
     }
@@ -52,7 +52,7 @@ export class Renderer {
     buildCombatPipeline(state, viewport) {
         const entityPasses = state.entityLayers.map(layer => ({
             zIndex: layer.zIndex,
-            fn: (state) => this.renderEntityCollection(state[layer.key], state)
+            fn: (state, viewport) => this.renderEntityCollection(state[layer.key], state, viewport)
         }));
 
         const pipeline = [...this.effectPasses, ...entityPasses];
@@ -136,9 +136,12 @@ export class Renderer {
         }
     }
 
-    renderEntityCollection(collection, state) {
+    renderEntityCollection(collection, state, viewport) {
         if (!collection) return;
         for (const entity of collection) {
+            if (viewport && typeof entity.isVisible === "function" && !entity.isVisible(viewport)) {
+                continue;
+            }
             entity.render(this.ctx, this, state);
         }
     }
@@ -155,33 +158,43 @@ export class Renderer {
         }
     }
 
-    drawPlayerAndTurrets(state) {
+    drawPlayerAndTurrets(state, viewport) {
         state.player.render(this.ctx, this, state);
         for (const turret of state.turrets) {
             turret.render(this.ctx, state.player.x, state.player.y, state.player.radius, this);
         }
     }
 
-    drawEntityBars(state) {
+    drawEntityBars(state, viewport) {
         for (const enemy of state.enemies) {
             if (!enemy.isDead) {
+                if (viewport && typeof enemy.isVisible === "function" && !enemy.isVisible(viewport)) {
+                    continue;
+                }
                 enemy.renderStatusBars(this.ctx, this, state);
             }
         }
         state.player.renderStatusBars(this.ctx, this, state);
     }
 
-    drawTargetMarkers(state) {
+    drawTargetMarkers(state, viewport) {
         if (state.player.queuedTargetX != null && state.player.queuedTargetY != null) {
-            this._drawTargetMarker(this.ctx, state.player.queuedTargetX, state.player.queuedTargetY);
+            if (!viewport || viewport.isVisible(state.player.queuedTargetX, state.player.queuedTargetY, 6)) {
+                this._drawTargetMarker(this.ctx, state.player.queuedTargetX, state.player.queuedTargetY);
+            }
         } else if (state.player.isMoving && state.player.targetX !== null && state.player.targetY !== null) {
-            this._drawTargetMarker(this.ctx, state.player.targetX, state.player.targetY);
+            if (!viewport || viewport.isVisible(state.player.targetX, state.player.targetY, 6)) {
+                this._drawTargetMarker(this.ctx, state.player.targetX, state.player.targetY);
+            }
         }
     }
 
-    renderExplosions(state) {
+    renderExplosions(state, viewport) {
         if (!state.explosions) return;
         for (const exp of state.explosions) {
+            if (viewport && !viewport.isVisible(exp.x, exp.y, exp.maxRadius)) {
+                continue;
+            }
             const canvasSize = exp.maxRadius * 2;
             if (canvasSize <= 0) continue;
 

@@ -62,6 +62,12 @@ export class FloatingText {
         if (remaining <= 0) this.isDead = true;
     }
 
+    isVisible(viewport) {
+        if (!viewport) return true;
+        const radius = Math.max(this.cx, this.cy) || 20;
+        return viewport.isVisible(this.x, this.y, radius);
+    }
+
     static spawnBlastDamageText(state, x, y, damage, decimalPlaces = 0) {
         const text = `-${damage.toFixed(decimalPlaces)} BLAST`;
         FloatingText.spawn(state, x, y - 20, text, "#FF5722", "blast", {

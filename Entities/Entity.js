@@ -13,6 +13,15 @@ export class Entity {
     render(ctx, ...caches) {
     }
 
+    getBoundingRadius() {
+        return this.radius || 0;
+    }
+
+    isVisible(viewport) {
+        if (!viewport) return true;
+        return viewport.isVisible(this.x, this.y, this.getBoundingRadius());
+    }
+
     renderCachedSprite(ctx, cache, cacheKey, generateFn, ...generateArgs) {
         const cachedSprite = cache.get(cacheKey, generateFn, ...generateArgs);
         ctx.save();

@@ -82,4 +82,16 @@ export class Viewport {
             this.zoom = this.mapZoom;
         }
     }
+
+    isVisible(worldX, worldY, radius = 0, padding = 20) {
+        const halfW = this.cx / this.zoom;
+        const halfH = this.cy / this.zoom;
+        const limit = radius + padding;
+        return (
+            worldX >= this.x - halfW - limit &&
+            worldX <= this.x + halfW + limit &&
+            worldY >= this.y - halfH - limit &&
+            worldY <= this.y + halfH + limit
+        );
+    }
 }
