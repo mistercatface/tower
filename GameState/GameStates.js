@@ -1,3 +1,4 @@
+import { ConnectedGenerator } from "../Generator/ConnectedGenerator.js";
 import { FloatingText } from "../FloatingText.js";
 import { ProgressionManager } from "../ProgressionManager.js";
 import { CollisionSystem } from "../Spatial/CollisionSystem.js";
@@ -5,10 +6,12 @@ import { SpatialHash } from "../Spatial/SpatialHash.js";
 import { Enemy } from "../Entities/Enemy.js";
 import { Projectile } from "../Entities/Projectile.js";
 import { WeaponSystem } from "../WeaponSystem.js";
-import { WallGenerator } from "../Generator/Generator.js";
+import { WallGenerator, spawnPickup } from "../Generator/Generator.js";
 import { showNodeConfirm } from "../UI.js";
 import { Utilities } from "../Utilities.js";
 import { Explosion } from "../Entities/Explosion/Explosion.js";
+import { Segment } from "../Entities/Wall.js";
+import { pickupSpawnSettings } from "../Config.js";
 
 export class MapState {
     onEnter(ctx) {
@@ -43,17 +46,80 @@ export class MapState {
 export class MapTransitionState {
     onEnter(ctx) {
         ctx.state.phase = "map_transition";
-    }
-    update(dt, ctx) {
-        if (ctx.state.updateMapTransition(dt, ctx.viewport)) {
-            ctx.updateUI(ctx.state, ctx.upgrades);
+        
+        const prevNode = ctx.state.mapNodes.find((n) => n.id === ctx.state.currentNodeId);
+        const targetNode = ctx.state.mapNodes.find((n) => n.id === ctx.state.mapTargetNodeId);
+        
+        if (prevNode && targetNode) {
+            ConnectedGenerator.generateConnected(ctx.state, prevNode, targetNode);
         }
+        
+        const prevCoords = ctx.state.getNodeCombatCoords(prevNode);
+        ctx.state.player.x = prevCoords.x;
+        ctx.state.player.y = prevCoords.y;
+        ctx.state.player.stopMovement();
+        ctx.state.player.vx = 0;
+        ctx.state.player.vy = 0;
+
+        const targetCoords = ctx.state.getNodeCombatCoords(targetNode);
+        console.log("TRAVERSAL ENTER:", {
+            prevNodeId: prevNode ? prevNode.id : null,
+            targetNodeId: targetNode ? targetNode.id : null,
+            prevCoords: prevCoords,
+            targetCoords: targetCoords,
+            playerX: ctx.state.player.x,
+            playerY: ctx.state.player.y
+        });
+        ctx.state.player.setTarget(targetCoords.x, targetCoords.y);
+        ctx.state.gridSystem.buildPlayerFlowField(targetCoords.x, targetCoords.y);
+        
+        ctx.viewport.snapTo(ctx.state.player.x, ctx.state.player.y);
+        ctx.updateUI(ctx.state, ctx.upgrades);
+    }
+
+    update(dt, ctx) {
+        const oldGridPos = ctx.state.gridSystem.worldToGrid(ctx.state.player.x, ctx.state.player.y);
+        ctx.state.player.update(dt, ctx.state.gridSystem, ctx.state.walls, null);
+        const newGridPos = ctx.state.gridSystem.worldToGrid(ctx.state.player.x, ctx.state.player.y);
+        if (oldGridPos.col !== newGridPos.col || oldGridPos.row !== newGridPos.row) {
+            ctx.state.gridSystem.buildFlowField(ctx.state.player.x, ctx.state.player.y);
+        }
+
+        WeaponSystem.updateTurretAndWeapon(dt, true, ctx.state, ctx.upgrades);
+
+        const targetNode = ctx.state.mapNodes.find((n) => n.id === ctx.state.mapTargetNodeId);
+        if (targetNode) {
+            const targetCoords = ctx.state.getNodeCombatCoords(targetNode);
+            const dist = Math.hypot(ctx.state.player.x - targetCoords.x, ctx.state.player.y - targetCoords.y);
+            console.log("TRAVERSAL UPDATE:", {
+                playerX: ctx.state.player.x,
+                playerY: ctx.state.player.y,
+                targetX: targetCoords.x,
+                targetY: targetCoords.y,
+                dist: dist
+            });
+            if (dist < 50) {
+                console.log("ARRIVED AT DESTINATION! Transitioning to combat.");
+                ctx.state.currentNodeId = targetNode.id;
+                ctx.state.mapPlayerX = targetNode.x;
+                ctx.state.mapPlayerY = targetNode.y;
+                ctx.state.isTransitioningFromTravel = true;
+                ctx.fsm.transition("combat");
+                return;
+            }
+        }
+
         FloatingText.updateAll(ctx.state, dt);
     }
+
     render(ctx) {
         ctx.viewport.updateZoomLimits(ctx.state);
-        ctx.viewport.follow(ctx.state.mapPlayerX, ctx.state.mapPlayerY - 200);
-        ctx.renderer.renderMapScene(ctx.state, ctx.viewport);
+        ctx.viewport.follow(ctx.state.player.x, ctx.state.player.y);
+        ctx.renderer.renderCombatScene(ctx.state, ctx.viewport);
+    }
+
+    handleInteraction(worldCoords, isDoubleTap, ctx) {
+
     }
 }
 
@@ -70,13 +136,43 @@ export class CombatState {
         ctx.state.enemies = [];
         ctx.state.activeLasers = [];
         ctx.state.floatingTexts = [];
+        
+        const currentNode = ctx.state.mapNodes.find(n => n.id === ctx.state.currentNodeId);
+        const combatCoords = ctx.state.getNodeCombatCoords(currentNode);
+        ctx.state.player.setSpawnPosition(combatCoords.x, combatCoords.y);
         ctx.state.player.resetToSpawn();
+        
         ctx.state.waveManager.startCombat();
         ctx.state.turrets.forEach(t => t.currentLaserLength = 0);
-        WallGenerator.generate(ctx.state);
-        const offsetX = ctx.state.mapPlayerX - ctx.viewport.x;
-        const offsetY = ctx.state.mapPlayerY - ctx.viewport.y;
-        ctx.viewport.snapTo(ctx.state.player.x - offsetX, ctx.state.player.y - offsetY);
+        
+        if (ctx.state.isTransitioningFromTravel && ctx.state.travelSourceCoords && ctx.state.travelTargetCoords) {
+            console.log("CombatState.onEnter: PRESERVING travel-generated arena layout for Node " + ctx.state.currentNodeId);
+            ctx.state.isTransitioningFromTravel = false;
+            
+            const bx = ctx.state.travelTargetCoords.x;
+            const by = ctx.state.travelTargetCoords.y;
+            
+            ctx.state.gridSystem.centerX = bx;
+            ctx.state.gridSystem.centerY = by;
+            ctx.state.walls.gridSystem = ctx.state.gridSystem;
+            
+            ctx.state.gridSystem.rebuild(ctx.state.walls, bx, by);
+            
+            if (!ctx.state.discoveredAbilities.has("Laser")) {
+                spawnPickup(ctx.state, bx, by, pickupSpawnSettings.coinMinRadius, pickupSpawnSettings.coinMaxRadius, "coin");
+            }
+            spawnPickup(ctx.state, bx, by, pickupSpawnSettings.eyeballMinRadius, pickupSpawnSettings.eyeballMaxRadius, "eyeball");
+
+            const numBarrels = pickupSpawnSettings.barrelMinCount + Math.floor(Math.random() * pickupSpawnSettings.barrelRandomRange);
+            for (let i = 0; i < numBarrels; i++) {
+                spawnPickup(ctx.state, bx, by, pickupSpawnSettings.barrelMinRadius, pickupSpawnSettings.barrelMaxRadius, "barrel");
+            }
+        } else {
+            console.log("CombatState.onEnter: GENERATING new standard arena layout (reason: not travel transition)");
+            WallGenerator.generate(ctx.state);
+        }
+        
+        ctx.viewport.snapTo(ctx.state.player.x, ctx.state.player.y);
         ctx.updateUI(ctx.state, ctx.upgrades);
     }
 

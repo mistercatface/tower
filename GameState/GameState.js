@@ -195,6 +195,24 @@ export class GameState {
 
         this.recalculateStats(upgradesList);
         this.generateMap();
+
+        const startNode = this.mapNodes.find(n => n.id === 0);
+        if (startNode) {
+            const coords = this.getNodeCombatCoords(startNode);
+            this.player.setSpawnPosition(coords.x, coords.y);
+            this.player.resetToSpawn();
+        }
+    }
+
+    getNodeCombatCoords(node) {
+        if (!node) return { x: 0, y: 0 };
+        const scale = 7.0;
+        const baseSpawnX = this.canvasBounds.width > 0 ? this.canvasBounds.width / 2 : 225;
+        const baseSpawnY = this.canvasBounds.height > 0 ? this.canvasBounds.height / 2 : 225;
+        return {
+            x: baseSpawnX + node.x * scale,
+            y: baseSpawnY + node.y * scale
+        };
     }
 
     grantXP(amount) {

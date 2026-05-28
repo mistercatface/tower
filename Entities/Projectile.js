@@ -6,7 +6,7 @@ export class Projectile extends Entity {
     static updateAll(state, dt) {
         for (let i = state.projectiles.length - 1; i >= 0; i--) {
             const p = state.projectiles[i];
-            p.update(dt, state.canvasBounds);
+            p.update(dt, state);
             if (p.isDead) state.projectiles.splice(i, 1);
         }
     }
@@ -32,18 +32,18 @@ export class Projectile extends Entity {
         this.y += Math.sin(this.angle) * this.speed * (dt / 1000);
     }
 
-    checkOutOfBounds(canvasBounds) {
-        const padding = 500;
-        if (this.x < -padding || this.x > canvasBounds.width + padding || this.y < -padding || this.y > canvasBounds.height + padding) {
+    checkOutOfBounds(state) {
+        const dist = Math.hypot(this.x - state.player.x, this.y - state.player.y);
+        if (dist > 1500) {
             this.isDead = true;
             return true;
         }
         return false;
     }
 
-    update(dt, canvasBounds) {
+    update(dt, state) {
         this.move(dt);
-        this.checkOutOfBounds(canvasBounds);
+        this.checkOutOfBounds(state);
     }
 
     resolveFactionCollisions(state, events, system) {

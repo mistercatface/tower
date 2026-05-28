@@ -63,5 +63,15 @@ export class InputManager {
             const worldCoords = viewport.screenToWorld(screenX, screenY);
             fsm.handleInteraction(worldCoords, isDoubleTap);
         });
+
+        canvas.addEventListener("pointermove", (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const screenX = e.clientX - rect.left;
+            const screenY = e.clientY - rect.top;
+            const worldCoords = viewport.screenToWorld(screenX, screenY);
+            if (fsm.currentState && fsm.currentState.handlePointerMove) {
+                fsm.currentState.handlePointerMove(worldCoords, { x: screenX, y: screenY }, fsm.context);
+            }
+        });
     }
 }

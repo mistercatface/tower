@@ -70,7 +70,82 @@ export class Renderer {
             this._combatPipeline[i](state, viewport);
         }
 
+        if (state.phase === "map_transition") {
+            this.drawTransitionGuides(state);
+        }
+
         this.ctx.restore();
+    }
+
+    drawTransitionGuides(state) {
+        const prevNode = state.mapNodes.find(n => n.id === state.currentNodeId);
+        const targetNode = state.mapNodes.find(n => n.id === state.mapTargetNodeId);
+        if (!prevNode || !targetNode) return;
+
+        const coordsA = state.getNodeCombatCoords(prevNode);
+        const coordsB = state.getNodeCombatCoords(targetNode);
+
+        this.ctx.save();
+        this.ctx.beginPath();
+        this.ctx.moveTo(coordsA.x, coordsA.y);
+        this.ctx.lineTo(coordsB.x, coordsB.y);
+        this.ctx.strokeStyle = "rgba(0, 188, 212, 0.4)";
+        this.ctx.lineWidth = 6;
+        this.ctx.setLineDash([15, 20]);
+        this.ctx.lineDashOffset = -((Date.now() / 25) % 35);
+        this.ctx.stroke();
+        this.ctx.restore();
+
+        this.ctx.save();
+        const pulse = Math.sin(Date.now() / 150) * 4;
+        const radius = 55 + pulse;
+
+        this.ctx.beginPath();
+        this.ctx.arc(coordsB.x, coordsB.y, radius, 0, Math.PI * 2);
+        this.ctx.fillStyle = "rgba(0, 188, 212, 0.08)";
+        this.ctx.fill();
+        this.ctx.strokeStyle = "rgba(0, 188, 212, 0.8)";
+        this.ctx.lineWidth = 3;
+        this.ctx.stroke();
+
+        this.ctx.fillStyle = "#00bcd4";
+        this.ctx.font = "bold 10px monospace";
+        this.ctx.textAlign = "center";
+        this.ctx.fillText("SECTOR ENTRANCE", coordsB.x, coordsB.y - 5);
+        this.ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
+        this.ctx.font = "8px monospace";
+        this.ctx.fillText("ACTIVATE MATRIX", coordsB.x, coordsB.y + 8);
+        this.ctx.restore();
+
+        const dx = coordsB.x - state.player.x;
+        const dy = coordsB.y - state.player.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > 200) {
+            this.ctx.save();
+            const angle = Math.atan2(dy, dx);
+            const arrowRadius = 80;
+            const ax = state.player.x + Math.cos(angle) * arrowRadius;
+            const ay = state.player.y + Math.sin(angle) * arrowRadius;
+
+            this.ctx.translate(ax, ay);
+            this.ctx.rotate(angle);
+
+            this.ctx.beginPath();
+            this.ctx.moveTo(-10, -6);
+            this.ctx.lineTo(2, 0);
+            this.ctx.lineTo(-10, 6);
+            this.ctx.lineWidth = 3;
+            this.ctx.strokeStyle = "#00bcd4";
+            this.ctx.lineJoin = "round";
+            this.ctx.stroke();
+
+            this.ctx.rotate(-angle);
+            this.ctx.fillStyle = "rgba(0, 188, 212, 0.8)";
+            this.ctx.font = "8px monospace";
+            this.ctx.textAlign = "center";
+            this.ctx.fillText(`${Math.round(dist)}m`, 0, -12);
+            this.ctx.restore();
+        }
     }
 
     renderEntityCollection(collection, state) {
