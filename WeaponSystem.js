@@ -1,7 +1,7 @@
 import { Projectile } from "./Entities/Projectile.js";
-import { CollisionSystem } from "./Spatial/CollisionSystem.js";
+import { CollisionSystem } from "./Spatial/Collision/CollisionSystem.js";
 import { Utilities } from "./Utilities.js";
-import { PhysicsSystem } from "./Spatial/PhysicsSystem.js";
+import { PhysicsSystem } from "./Spatial/Motion/PhysicsSystem.js";
 import { playerProjectileSettings } from "./Config.js";
 
 class WeaponTargetingStrategy {

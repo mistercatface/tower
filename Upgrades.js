@@ -1,6 +1,6 @@
 import { Projectile } from "./Entities/Projectile.js";
 import { WeaponSystem, ContinuousWeaponMode, ChargedWeaponMode } from "./WeaponSystem.js";
-import { PhysicsSystem } from "./Spatial/PhysicsSystem.js";
+import { PhysicsSystem } from "./Spatial/Motion/PhysicsSystem.js";
 import { playerBaseStats, playerProjectileSettings } from "./Config.js";
 import { Laser } from "./Entities/Laser.js";
 

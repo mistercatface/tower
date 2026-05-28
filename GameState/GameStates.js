@@ -1,7 +1,7 @@
 import { FloatingText } from "../FloatingText.js";
 import { ProgressionManager } from "../ProgressionManager.js";
-import { CollisionSystem } from "../Spatial/CollisionSystem.js";
-import { SpatialHash } from "../Spatial/SpatialHash.js";
+import { CollisionSystem } from "../Spatial/Collision/CollisionSystem.js";
+import { SpatialHash } from "../Spatial/World/SpatialHash.js";
 import { Enemy } from "../Entities/Enemy.js";
 import { Projectile } from "../Entities/Projectile.js";
 import { WeaponSystem } from "../WeaponSystem.js";

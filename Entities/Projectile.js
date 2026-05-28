@@ -1,5 +1,5 @@
 import { Entity } from "./Entity.js";
-import { PhysicsSystem } from "../Spatial/PhysicsSystem.js";
+import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
 
 export class Projectile extends Entity {

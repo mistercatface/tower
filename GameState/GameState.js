@@ -1,9 +1,9 @@
 import { Projectile } from "../Entities/Projectile.js";
 import { Turret } from "../Turret.js";
 import { Player } from "../Entities/Player.js";
-import { FlowFieldGrid } from "../Spatial/FlowFieldGrid.js";
-import { WorldObstacleGrid } from "../Spatial/ObstacleGrid.js";
-import { HierarchicalNavigator } from "../Spatial/HierarchicalNavigator.js";
+import { FlowFieldGrid } from "../Spatial/Navigation/FlowFieldGrid.js";
+import { WorldObstacleGrid } from "../Spatial/World/ObstacleGrid.js";
+import { HierarchicalNavigator } from "../Spatial/Navigation/HierarchicalNavigator.js";
 import { NavigationService } from "../Spatial/Navigation/NavigationService.js";
 import { enemyTypes, defaultUpgradeCost, perkMilestones, playerBaseStats, gridSettings, mapSettings } from "../Config.js";
 import { WallGenerator } from "../Generator/Generator.js";
@@ -12,7 +12,7 @@ import { Scheduler } from "../Scheduler.js";
 import { WaveManager } from "../WaveManager.js";
 import { Segment } from "../Entities/Wall.js";
 import { GeneratorStrategies } from "../Generator/GeneratorStrategies.js";
-import { SpatialHash } from "../Spatial/SpatialHash.js";
+import { SpatialHash } from "../Spatial/World/SpatialHash.js";
 
 export class Stat {
     constructor(baseValue, min = -Infinity, max = Infinity) {

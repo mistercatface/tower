@@ -1,6 +1,6 @@
 import { Entity } from "./Entity.js";
 import { Explosion } from "./Explosion/Explosion.js";
-import { PhysicsSystem } from "../Spatial/PhysicsSystem.js";
+import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
 
 export const PickupStrategies = {

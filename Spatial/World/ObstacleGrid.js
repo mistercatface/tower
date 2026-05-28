@@ -1,4 +1,4 @@
-import { colRowToIndex } from "./GridUtils.js";
+import { colRowToIndex } from "../Navigation/GridUtils.js";
 
 export function getWallReach(wall, padding = wall.padding) {
     return wall.size / 2 * Math.SQRT2 + padding;

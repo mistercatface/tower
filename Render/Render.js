@@ -481,6 +481,41 @@ export class Renderer {
         this.ctx.restore();
     }
 
+    drawNavigationDebugLabel(entity, navigation, color = "#ffffff") {
+        const info = navigation.getDebugInfo(entity);
+        if (!info) return;
+
+        const replanText = info.replanReason ? ` ${info.replanReason}` : "";
+        const label = `${info.mode} d=${Math.round(info.dist)} p=${info.pathLen}${replanText}`;
+
+        this.ctx.save();
+        this.ctx.font = "9px monospace";
+        this.ctx.textAlign = "center";
+        this.ctx.fillStyle = color;
+        this.ctx.fillText(label, entity.x, entity.y - entity.radius - 8);
+        this.ctx.restore();
+    }
+
+    drawEntityNavigationPath(entity, path, strokeStyle, fillStyle) {
+        if (!path || path.length === 0) return;
+
+        this.ctx.beginPath();
+        this.ctx.moveTo(entity.x, entity.y);
+        for (const wp of path) {
+            this.ctx.lineTo(wp.x, wp.y);
+        }
+        this.ctx.strokeStyle = strokeStyle;
+        this.ctx.lineWidth = 2.5;
+        this.ctx.stroke();
+
+        for (const wp of path) {
+            this.ctx.beginPath();
+            this.ctx.arc(wp.x, wp.y, 4, 0, Math.PI * 2);
+            this.ctx.fillStyle = fillStyle;
+            this.ctx.fill();
+        }
+    }
+
     drawDebugHPA(state, viewport) {
         const hnav = state.hierarchicalNavigator;
         if (!hnav || !hnav.grid) return;
@@ -607,46 +642,20 @@ export class Renderer {
             this.ctx.fill();
         }
 
-        // 4. Draw Waypoint Paths for Enemies
-        for (const enemy of state.enemies) {
-            if (enemy.isDead) continue;
-            if (enemy.hpaPath && enemy.hpaPath.length > 0) {
-                this.ctx.beginPath();
-                this.ctx.moveTo(enemy.x, enemy.y);
-                for (const wp of enemy.hpaPath) {
-                    this.ctx.lineTo(wp.x, wp.y);
-                }
-                this.ctx.strokeStyle = "#ff007f";
-                this.ctx.lineWidth = 2.5;
-                this.ctx.stroke();
-
-                // Draw circles on waypoints
-                for (const wp of enemy.hpaPath) {
-                    this.ctx.beginPath();
-                    this.ctx.arc(wp.x, wp.y, 4, 0, Math.PI * 2);
-                    this.ctx.fillStyle = "#ff007f";
-                    this.ctx.fill();
-                }
+        // 4. Draw Waypoint Paths and navigation debug for entities
+        const navigation = state.navigation;
+        if (navigation) {
+            for (const enemy of state.enemies) {
+                if (enemy.isDead) continue;
+                const path = navigation.getPath(enemy);
+                this.drawEntityNavigationPath(enemy, path, "#ff007f", "#ff007f");
+                this.drawNavigationDebugLabel(enemy, navigation, "#ff007f");
             }
-        }
 
-        // 5. Draw Waypoint Path for Player
-        if (state.player && state.player.hpaPath && state.player.hpaPath.length > 0) {
-            this.ctx.beginPath();
-            this.ctx.moveTo(state.player.x, state.player.y);
-            for (const wp of state.player.hpaPath) {
-                this.ctx.lineTo(wp.x, wp.y);
-            }
-            this.ctx.strokeStyle = "#00e5ff";
-            this.ctx.lineWidth = 2.5;
-            this.ctx.stroke();
-
-            // Draw circles on waypoints
-            for (const wp of state.player.hpaPath) {
-                this.ctx.beginPath();
-                this.ctx.arc(wp.x, wp.y, 4, 0, Math.PI * 2);
-                this.ctx.fillStyle = "#00e5ff";
-                this.ctx.fill();
+            if (state.player) {
+                const path = navigation.getPath(state.player);
+                this.drawEntityNavigationPath(state.player, path, "#00e5ff", "#00e5ff");
+                this.drawNavigationDebugLabel(state.player, navigation, "#00e5ff");
             }
         }
 

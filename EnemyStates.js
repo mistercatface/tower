@@ -1,6 +1,6 @@
-import { PhysicsSystem } from "./Spatial/PhysicsSystem.js";
+import { PhysicsSystem } from "./Spatial/Motion/PhysicsSystem.js";
 import { Utilities } from "./Utilities.js";
-import { CollisionSystem } from "./Spatial/CollisionSystem.js";
+import { CollisionSystem } from "./Spatial/Collision/CollisionSystem.js";
 
 function analyzeStrafePath(enemy, tangentX, tangentY, dir, walls, target) {
     const stepSize = 10;

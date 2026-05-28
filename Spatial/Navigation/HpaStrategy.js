@@ -1,4 +1,4 @@
-import { trimPathAhead, computePathSteering, steerTowardTarget } from "../PathFollow.js";
+import { trimPathAhead, computePathSteering, steerTowardTarget } from "./PathFollow.js";
 
 export function createNavState() {
     return {
