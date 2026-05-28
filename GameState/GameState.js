@@ -4,6 +4,7 @@ import { Player } from "../Entities/Player.js";
 import { FlowFieldGrid } from "../Spatial/FlowFieldGrid.js";
 import { WorldObstacleGrid } from "../Spatial/ObstacleGrid.js";
 import { HierarchicalNavigator } from "../Spatial/HierarchicalNavigator.js";
+import { NavigationService } from "../Spatial/Navigation/NavigationService.js";
 import { enemyTypes, defaultUpgradeCost, perkMilestones, playerBaseStats, gridSettings, mapSettings } from "../Config.js";
 import { WallGenerator } from "../Generator/Generator.js";
 import { FloatingText } from "../FloatingText.js";
@@ -88,6 +89,7 @@ export class GameState {
         this.obstacleGrid = new WorldObstacleGrid(gridSettings.cellSize);
         this.flowFieldGrid = new FlowFieldGrid(gridSettings.cellSize, gridSettings.width, gridSettings.height, this.obstacleGrid);
         this.hierarchicalNavigator = new HierarchicalNavigator(gridSettings.cellSize, gridSettings.maxCellsPerChunk, gridSettings.minCellsPerChunk, this.obstacleGrid);
+        this.navigation = new NavigationService(this.flowFieldGrid, this.hierarchicalNavigator);
         this.currentUpgradeTab = "attack";
         this.canvasBounds = { width: 0, height: 0 };
         this.upgrades = {};

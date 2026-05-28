@@ -11,7 +11,7 @@ import { markProgressDirty } from "../Storage.js";
 import { updateUI } from "../UI.js";
 import { ChargedWeaponMode } from "../WeaponSystem.js";
 import { PhysicsSystem } from "../Spatial/PhysicsSystem.js";
-import { enemyProjectileSettings } from "../Config.js";
+import { enemyProjectileSettings, NAV_PROFILES } from "../Config.js";
 import { createEntityBars } from "./EntityBars.js";
 
 const enemyBars = createEntityBars({
@@ -76,8 +76,6 @@ export class Enemy extends DestructibleEntity {
         this.startingAbilities = [];
         this.healthBar = Enemy.healthBar;
         this.chargeBar = Enemy.chargeBar;
-        this.hpaPath = null;
-        this.hpaLastUpdate = 0;
     }
 
     handleHit(baseDamage, ctx, hitType) {
@@ -105,35 +103,8 @@ export class Enemy extends DestructibleEntity {
         }
     }
 
-    steerTowardPoint(targetX, targetY, flowFieldGrid, flowField = null) {
-        const field = flowField ?? flowFieldGrid?.flowField;
-        if (flowFieldGrid && field) {
-            const dir = flowFieldGrid.sampleDirection(this.x, this.y, field);
-            if (dir) {
-                this.desiredX = dir.x;
-                this.desiredY = dir.y;
-                return;
-            }
-        }
-
-        Utilities.setDesiredDirection(this, targetX - this.x, targetY - this.y);
-    }
-
-    calculateSteering(target, flowFieldGrid, state) {
-        const dist = Math.hypot(this.x - target.x, this.y - target.y);
-
-        if (dist <= 1000) {
-            this.hpaPath = null;
-            this.steerTowardPoint(target.x, target.y, flowFieldGrid);
-            return;
-        }
-
-        if (state && state.hierarchicalNavigator) {
-            state.hierarchicalNavigator.navigateEntity(this, target.x, target.y, 1000);
-            return;
-        }
-
-        this.steerTowardPoint(target.x, target.y, flowFieldGrid);
+    calculateSteering(target, state) {
+        state.navigation.steerTo(this, target.x, target.y, NAV_PROFILES.enemyToPlayer);
     }
 
     applyLocomotion(dt, walls, spatialHash, {

@@ -56,6 +56,19 @@ export const gridSettings = {
     maxCellsPerChunk: 64,
 };
 
+export const navigationSettings = {
+    arrivalDistance: 2,
+    recenterThreshold: 400,
+    stuckReplanFrames: 20,
+    stuckMoveThreshold: 1.5,
+    targetNodeLookahead: 10,
+};
+
+export const NAV_PROFILES = {
+    enemyToPlayer: { flowField: "enemy", hpaThreshold: 1000, replanMs: 1000 },
+    playerClick: { flowField: "player", hpaThreshold: 0, replanMs: 500 },
+};
+
 export const mapSettings = {
     numLayers: 10,
     layerSpacing: 150,

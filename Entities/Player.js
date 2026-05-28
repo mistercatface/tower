@@ -1,7 +1,7 @@
 import { Enemy } from "./Enemy.js";
 import { Utilities } from "../Utilities.js";
 import { FloatingText } from "../FloatingText.js";
-import { playerBaseStats } from "../Config.js";
+import { playerBaseStats, NAV_PROFILES } from "../Config.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
 import { createEntityBars } from "./EntityBars.js";
 
@@ -60,14 +60,13 @@ export class Player extends Enemy {
         this.vy = 0;
     }
 
-    setTarget(x, y) {
+    setTarget(x, y, state = null) {
         this.targetX = x;
         this.targetY = y;
         this.targetNodeX = null;
         this.targetNodeY = null;
         this.isMoving = true;
-        this.hpaPath = null;
-        this.hpaLastUpdate = 0;
+        state?.navigation?.clear(this);
     }
 
     queueTarget(x, y) {
@@ -75,9 +74,9 @@ export class Player extends Enemy {
         this.queuedTargetY = y;
     }
 
-    applyQueuedTarget() {
+    applyQueuedTarget(state = null) {
         if (this.queuedTargetX !== null && this.queuedTargetY !== null) {
-            this.setTarget(this.queuedTargetX, this.queuedTargetY);
+            this.setTarget(this.queuedTargetX, this.queuedTargetY, state);
             this.queuedTargetX = null;
             this.queuedTargetY = null;
             return true;
@@ -85,7 +84,7 @@ export class Player extends Enemy {
         return false;
     }
 
-    stopMovement() {
+    stopMovement(state = null) {
         this.targetX = null;
         this.targetY = null;
         this.targetNodeX = null;
@@ -93,7 +92,7 @@ export class Player extends Enemy {
         this.isMoving = false;
         this.desiredX = 0;
         this.desiredY = 0;
-        this.hpaPath = null;
+        state?.navigation?.clear(this);
     }
     
     heal(amount) {
@@ -134,15 +133,9 @@ export class Player extends Enemy {
         if (this.isMoving && this.targetX !== null && this.targetY !== null) {
             const toTarget = Utilities.normalizeVector(this.targetX - this.x, this.targetY - this.y);
             if (toTarget.len < 2) {
-                this.stopMovement();
+                this.stopMovement(state);
             } else {
-                if (state && state.hierarchicalNavigator) {
-                    state.hierarchicalNavigator.navigateEntity(this, this.targetX, this.targetY, 500);
-                } else {
-                    this.steerTowardPoint(this.targetX, this.targetY, flowFieldGrid, flowFieldGrid.playerFlowField);
-                }
-                this.targetNodeX = this.x + this.desiredX * 10;
-                this.targetNodeY = this.y + this.desiredY * 10;
+                state.navigation.steerTo(this, this.targetX, this.targetY, NAV_PROFILES.playerClick);
             }
         } else {
             this.desiredX = 0;

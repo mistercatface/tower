@@ -30,8 +30,7 @@ export class Segment extends DestructibleEntity {
                 ctx.state.wallSpatialHash.remove(this);
             }
             ctx.state.obstacleGrid.patchAfterWallRemoved(this, ctx.state.wallSpatialHash);
-            ctx.state.hierarchicalNavigator.rebuildRegions();
-            ctx.state.flowFieldGrid.refresh(
+            ctx.state.navigation.onObstaclesChanged(
                 ctx.state.player.x,
                 ctx.state.player.y,
                 ctx.state.player.isMoving ? ctx.state.player.targetX : null,

@@ -6,7 +6,6 @@ import {
     generateVoronoiRegions,
     findRegionAdjacencies,
 } from "./VoronoiRegions.js";
-import { computePathSteering, steerTowardTarget, trimPathAhead } from "./PathFollow.js";
 
 export class HierarchicalNavigator {
     constructor(cellSize, maxCellsPerChunk, minCellsPerChunk, obstacleGrid) {
@@ -181,61 +180,6 @@ export class HierarchicalNavigator {
                 }
             }
         }
-    }
-
-    _replanPath(entity, targetX, targetY) {
-        const rawPath = this.findPath(entity.x, entity.y, targetX, targetY);
-        entity.hpaPath = rawPath ? trimPathAhead(entity.x, entity.y, rawPath) : null;
-        entity.hpaLastUpdate = Date.now();
-    }
-
-    navigateEntity(entity, targetX, targetY, updateInterval) {
-        const distToTarget = Math.hypot(entity.x - targetX, entity.y - targetY);
-        if (distToTarget < 2) {
-            entity.desiredX = 0;
-            entity.desiredY = 0;
-            return;
-        }
-
-        const moved = Math.hypot(
-            entity.x - (entity.hpaLastX ?? entity.x),
-            entity.y - (entity.hpaLastY ?? entity.y)
-        );
-        entity.hpaLastX = entity.x;
-        entity.hpaLastY = entity.y;
-
-        if (moved < 1.5) {
-            entity.hpaStuckFrames = (entity.hpaStuckFrames || 0) + 1;
-        } else {
-            entity.hpaStuckFrames = 0;
-        }
-
-        const now = Date.now();
-        const needsReplan = !entity.hpaPath
-            || now - entity.hpaLastUpdate > updateInterval
-            || entity.hpaStuckFrames > 20;
-
-        if (needsReplan) {
-            this._replanPath(entity, targetX, targetY);
-            entity.hpaStuckFrames = 0;
-        }
-
-        if (entity.hpaPath && entity.hpaPath.length >= 2) {
-            let steering = computePathSteering(entity, entity.hpaPath, targetX, targetY);
-            if (steering.offPath) {
-                this._replanPath(entity, targetX, targetY);
-                if (entity.hpaPath && entity.hpaPath.length >= 2) {
-                    steering = computePathSteering(entity, entity.hpaPath, targetX, targetY);
-                }
-            }
-            if (entity.hpaPath && entity.hpaPath.length >= 2) {
-                entity.desiredX = steering.desiredX;
-                entity.desiredY = steering.desiredY;
-                return;
-            }
-        }
-
-        steerTowardTarget(entity, targetX, targetY);
     }
 
     findPath(startX, startY, targetX, targetY) {
