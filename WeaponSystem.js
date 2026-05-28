@@ -101,8 +101,8 @@ export class WeaponSystem {
         const endY = startY + dy * maxDist;
 
         let candidateWalls = state.walls;
-        if (state.flowFieldGrid) {
-            candidateWalls = Utilities.getSegmentsAlongLine(startX, startY, endX, endY, state.flowFieldGrid);
+        if (state.obstacleGrid) {
+            candidateWalls = Utilities.getSegmentsAlongLine(startX, startY, endX, endY, state.obstacleGrid);
         } else {
             const minX = Math.min(startX, endX);
             const maxX = Math.max(startX, endX);

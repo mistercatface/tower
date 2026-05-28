@@ -2,6 +2,7 @@ import { Projectile } from "../Entities/Projectile.js";
 import { Turret } from "../Turret.js";
 import { Player } from "../Entities/Player.js";
 import { FlowFieldGrid } from "../Spatial/FlowFieldGrid.js";
+import { WorldObstacleGrid } from "../Spatial/ObstacleGrid.js";
 import { HierarchicalNavigator } from "../Spatial/HierarchicalNavigator.js";
 import { enemyTypes, defaultUpgradeCost, perkMilestones, playerBaseStats, gridSettings, mapSettings } from "../Config.js";
 import { WallGenerator } from "../Generator/Generator.js";
@@ -84,8 +85,9 @@ export class GameState {
             },
         };
  
-        this.flowFieldGrid = new FlowFieldGrid(gridSettings.cellSize, gridSettings.width, gridSettings.height);
-        this.hierarchicalNavigator = new HierarchicalNavigator(gridSettings.cellSize, gridSettings.maxCellsPerChunk, gridSettings.minCellsPerChunk);
+        this.obstacleGrid = new WorldObstacleGrid(gridSettings.cellSize);
+        this.flowFieldGrid = new FlowFieldGrid(gridSettings.cellSize, gridSettings.width, gridSettings.height, this.obstacleGrid);
+        this.hierarchicalNavigator = new HierarchicalNavigator(gridSettings.cellSize, gridSettings.maxCellsPerChunk, gridSettings.minCellsPerChunk, this.obstacleGrid);
         this.currentUpgradeTab = "attack";
         this.canvasBounds = { width: 0, height: 0 };
         this.upgrades = {};
@@ -435,7 +437,9 @@ export class GameState {
                 }
             }
         }
-        this.hierarchicalNavigator.initialize(this.walls, this.wallSpatialHash);
+        this.walls.obstacleGrid = this.obstacleGrid;
+        this.obstacleGrid.rebuild(this.walls);
+        this.hierarchicalNavigator.initialize();
     }
 
     pregenerateAllCombatData() {
@@ -454,15 +458,21 @@ export class GameState {
 
         const strategies = Object.keys(GeneratorStrategies);
 
+        const createMockNavigation = (centerX, centerY) => {
+            const obstacleGrid = new WorldObstacleGrid(gridSettings.cellSize);
+            const flowFieldGrid = new FlowFieldGrid(gridSettings.cellSize, gridSettings.width, gridSettings.height, obstacleGrid);
+            flowFieldGrid.centerX = centerX;
+            flowFieldGrid.centerY = centerY;
+            return { obstacleGrid, flowFieldGrid };
+        };
+
         const checkPathability = (nodeA, nodeB, wallsA, wallsB) => {
             const coordsA = this.getNodeCombatCoords(nodeA);
             const coordsB = this.getNodeCombatCoords(nodeB);
             const mx = (coordsA.x + coordsB.x) / 2;
             const my = (coordsA.y + coordsB.y) / 2;
 
-            const tempGrid = new FlowFieldGrid(gridSettings.cellSize, gridSettings.width, gridSettings.height);
-            tempGrid.centerX = mx;
-            tempGrid.centerY = my;
+            const { obstacleGrid, flowFieldGrid: tempGrid } = createMockNavigation(mx, my);
 
             const segments = [];
             for (const w of wallsA) {
@@ -472,7 +482,8 @@ export class GameState {
                 segments.push(new Segment(w.x, w.y, w.angle, w.size, w.padding, w.maxHealth));
             }
 
-            tempGrid.rebuild(segments, coordsB.x, coordsB.y);
+            obstacleGrid.rebuild(segments);
+            tempGrid.refresh(coordsB.x, coordsB.y, null, null, segments);
 
             const startPos = tempGrid.worldToGrid(coordsA.x, coordsA.y);
             if (startPos.col < 0 || startPos.col >= tempGrid.cols || startPos.row < 0 || startPos.row >= tempGrid.rows) {
@@ -488,13 +499,13 @@ export class GameState {
             const theme = themeColors[Math.floor(Math.random() * themeColors.length)];
             const coords = this.getNodeCombatCoords(startNode);
             
+            const { obstacleGrid, flowFieldGrid } = createMockNavigation(coords.x, coords.y);
             const mockState = {
                 walls: [],
-                flowFieldGrid: new FlowFieldGrid(gridSettings.cellSize, gridSettings.width, gridSettings.height),
+                obstacleGrid,
+                flowFieldGrid,
                 waveManager: this.waveManager
             };
-            mockState.flowFieldGrid.centerX = coords.x;
-            mockState.flowFieldGrid.centerY = coords.y;
 
             GeneratorStrategies[strategy].generate(mockState, coords.x, coords.y);
             
@@ -528,13 +539,13 @@ export class GameState {
                     const theme = themeColors[Math.floor(Math.random() * themeColors.length)];
                     const coordsB = this.getNodeCombatCoords(nodeB);
 
+                    const { obstacleGrid, flowFieldGrid } = createMockNavigation(coordsB.x, coordsB.y);
                     const mockState = {
                         walls: [],
-                        flowFieldGrid: new FlowFieldGrid(gridSettings.cellSize, gridSettings.width, gridSettings.height),
+                        obstacleGrid,
+                        flowFieldGrid,
                         waveManager: this.waveManager
                     };
-                    mockState.flowFieldGrid.centerX = coordsB.x;
-                    mockState.flowFieldGrid.centerY = coordsB.y;
 
                     GeneratorStrategies[strategy].generate(mockState, coordsB.x, coordsB.y);
 

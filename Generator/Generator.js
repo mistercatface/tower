@@ -30,7 +30,7 @@ export const WallGenerator = {
         const playerX = state.player.x;
         const playerY = state.player.y;
         state.walls = [];
-        state.walls.flowFieldGrid = state.flowFieldGrid;
+        state.walls.obstacleGrid = state.obstacleGrid;
         state.flowFieldGrid.centerX = playerX;
         state.flowFieldGrid.centerY = playerY;
         const patterns = Object.keys(GeneratorStrategies);
@@ -49,7 +49,11 @@ export const WallGenerator = {
         ];
         state.wallTheme = themeColors[Math.floor(Math.random() * themeColors.length)];
         GeneratorStrategies[selected].generate(state, playerX, playerY);
-        state.flowFieldGrid.rebuild(state.walls, playerX, playerY);
+        state.obstacleGrid.rebuild(state.walls);
+        if (state.hierarchicalNavigator) {
+            state.hierarchicalNavigator.rebuildRegions();
+        }
+        state.flowFieldGrid.refresh(playerX, playerY, null, null, state.walls);
         if (!state.discoveredAbilities.has("Laser")) {
             spawnPickup(state, playerX, playerY, pickupSpawnSettings.coinMinRadius, pickupSpawnSettings.coinMaxRadius, "coin");
         }

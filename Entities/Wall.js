@@ -29,13 +29,15 @@ export class Segment extends DestructibleEntity {
             if (ctx.state.wallSpatialHash) {
                 ctx.state.wallSpatialHash.remove(this);
             }
-            ctx.state.flowFieldGrid.rebuild(ctx.state.walls, ctx.state.player.x, ctx.state.player.y);
-            if (ctx.state.hierarchicalNavigator) {
-                ctx.state.hierarchicalNavigator.handleWallDestroyed(this, ctx.state.wallSpatialHash);
-            }
-            if (ctx.state.player.isMoving && ctx.state.player.targetX !== null && ctx.state.player.targetY !== null) {
-                ctx.state.flowFieldGrid.buildPlayerFlowField(ctx.state.player.targetX, ctx.state.player.targetY);
-            }
+            ctx.state.obstacleGrid.patchAfterWallRemoved(this, ctx.state.wallSpatialHash);
+            ctx.state.hierarchicalNavigator.rebuildRegions();
+            ctx.state.flowFieldGrid.refresh(
+                ctx.state.player.x,
+                ctx.state.player.y,
+                ctx.state.player.isMoving ? ctx.state.player.targetX : null,
+                ctx.state.player.isMoving ? ctx.state.player.targetY : null,
+                ctx.state.walls
+            );
         }
     }
 }

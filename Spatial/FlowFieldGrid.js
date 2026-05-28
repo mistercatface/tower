@@ -1,10 +1,11 @@
 import { markWallOnGrid } from "./ObstacleGrid.js";
 
 export class FlowFieldGrid {
-    constructor(cellSize, width, height, radii = []) {
+    constructor(cellSize, width, height, obstacleGrid, radii = []) {
         this.cellSize = cellSize;
         this.width = width;
         this.height = height;
+        this.obstacleGrid = obstacleGrid;
         this.cols = Math.ceil(width / cellSize);
         this.rows = Math.ceil(height / cellSize);
         this.radii = radii;
@@ -21,15 +22,23 @@ export class FlowFieldGrid {
         this.offsetY = (height / 2) + (cellSize / 2);
         this.centerX = 0;
         this.centerY = 0;
-        this.segmentGrid = new Array(this.cols * this.rows).fill(null).map(() => []);
     }
 
     rebuild(segments, targetX, targetY) {
-        this.clear();
-        for (const seg of segments) {
-            this.addSegment(seg);
+        if (segments) {
+            this.obstacleGrid.rebuild(segments);
         }
+        this.refresh(targetX, targetY);
+    }
+
+    refresh(targetX, targetY, playerTargetX = null, playerTargetY = null, radiusSegments = null) {
+        this.clearFlowFields();
+        this.syncLocalObstacles();
+        this.rebuildRadiusGrids(radiusSegments ?? []);
         this.buildFlowField(targetX, targetY);
+        if (playerTargetX !== null && playerTargetY !== null) {
+            this.buildPlayerFlowField(playerTargetX, playerTargetY);
+        }
     }
 
     shiftCenter(newCenterX, newCenterY, wallSpatialHash, targetX, targetY, playerTargetX = null, playerTargetY = null) {
@@ -44,11 +53,47 @@ export class FlowFieldGrid {
         const maxY = newCenterY + halfH;
 
         const localWalls = wallSpatialHash ? wallSpatialHash.queryBounds(minX, minY, maxX, maxY) : [];
+        this.refresh(targetX, targetY, playerTargetX, playerTargetY, localWalls);
+    }
 
-        this.rebuild(localWalls, targetX, targetY);
+    syncLocalObstacles() {
+        for (let row = 0; row < this.rows; row++) {
+            for (let col = 0; col < this.cols; col++) {
+                const wx = col * this.cellSize + this.centerX - this.offsetX + this.cellSize / 2;
+                const wy = row * this.cellSize + this.centerY - this.offsetY + this.cellSize / 2;
+                const worldCell = this.obstacleGrid.worldToGrid(wx, wy);
+                const idx = row * this.cols + col;
 
-        if (playerTargetX !== null && playerTargetY !== null) {
-            this.buildPlayerFlowField(playerTargetX, playerTargetY);
+                if (
+                    worldCell.col >= 0 && worldCell.col < this.obstacleGrid.cols &&
+                    worldCell.row >= 0 && worldCell.row < this.obstacleGrid.rows
+                ) {
+                    const worldIdx = worldCell.row * this.obstacleGrid.cols + worldCell.col;
+                    this.grid[idx] = this.obstacleGrid.grid[worldIdx];
+                } else {
+                    this.grid[idx] = 1;
+                }
+            }
+        }
+    }
+
+    rebuildRadiusGrids(segments) {
+        for (const r of this.radii) {
+            this.gridsByRadius[r].fill(0);
+        }
+
+        for (const seg of segments) {
+            if (seg.isDead) continue;
+            for (const radius of this.radii) {
+                markWallOnGrid(seg, this.gridsByRadius[radius], this.cols, this.rows, {
+                    worldToGrid: (x, y) => this.worldToGrid(x, y),
+                    cellCenter: (col, row) => ({
+                        x: col * this.cellSize + this.centerX - this.offsetX + this.cellSize / 2,
+                        y: row * this.cellSize + this.centerY - this.offsetY + this.cellSize / 2,
+                    }),
+                    padding: radius,
+                });
+            }
         }
     }
 
@@ -159,16 +204,19 @@ export class FlowFieldGrid {
         return this.getNodeCenterFromField(x, y, this.flowField);
     }
 
-    clear() {
-        this.grid.fill(0);
+    clearFlowFields() {
         this.flowField.fill(null);
         this.playerFlowField.fill(null);
         for (const r of this.radii) {
-            this.gridsByRadius[r].fill(0);
             this.flowFieldsByRadius[r].fill(null);
         }
-        for (let i = 0; i < this.segmentGrid.length; i++) {
-            this.segmentGrid[i].length = 0;
+    }
+
+    clear() {
+        this.grid.fill(0);
+        this.clearFlowFields();
+        for (const r of this.radii) {
+            this.gridsByRadius[r].fill(0);
         }
     }
 
@@ -176,33 +224,6 @@ export class FlowFieldGrid {
         const col = Math.floor((x - this.centerX + this.offsetX) / this.cellSize);
         const row = Math.floor((y - this.centerY + this.offsetY) / this.cellSize);
         return { col, row };
-    }
-
-    addSegment(seg) {
-        if (seg.isDead) return;
-
-        const markOnGrid = (padding, targetGrid, trackSegments = false) => {
-            markWallOnGrid(seg, targetGrid, this.cols, this.rows, {
-                worldToGrid: (x, y) => this.worldToGrid(x, y),
-                cellCenter: (col, row) => ({
-                    x: col * this.cellSize + this.centerX - this.offsetX + this.cellSize / 2,
-                    y: row * this.cellSize + this.centerY - this.offsetY + this.cellSize / 2,
-                }),
-                padding,
-                onBlockedCell: trackSegments
-                    ? (_col, _row, idx) => {
-                        if (!this.segmentGrid[idx].includes(seg)) {
-                            this.segmentGrid[idx].push(seg);
-                        }
-                    }
-                    : null,
-            });
-        };
-
-        markOnGrid(seg.padding, this.grid, true);
-        for (const r of this.radii) {
-            markOnGrid(r, this.gridsByRadius[r], false);
-        }
     }
 
     getFlowAngle(x, y, defaultAngle, radius) {
@@ -260,26 +281,6 @@ export class FlowFieldGrid {
     }
 
     getNearbySegments(entity) {
-        const boundingRadius = entity.radius;
-        const minGrid = this.worldToGrid(entity.x - boundingRadius, entity.y - boundingRadius);
-        const maxGrid = this.worldToGrid(entity.x + boundingRadius, entity.y + boundingRadius);
-        const startCol = Math.max(0, minGrid.col);
-        const endCol = Math.min(this.cols - 1, maxGrid.col);
-        const startRow = Math.max(0, minGrid.row);
-        const endRow = Math.min(this.rows - 1, maxGrid.row);
-        const nearby = [];
-        for (let col = startCol; col <= endCol; col++) {
-            for (let row = startRow; row <= endRow; row++) {
-                const idx = row * this.cols + col;
-                const cellSegs = this.segmentGrid[idx];
-                if (cellSegs) {
-                    for (let i = 0; i < cellSegs.length; i++) {
-                        const s = cellSegs[i];
-                        if (!nearby.includes(s)) nearby.push(s);
-                    }
-                }
-            }
-        }
-        return nearby;
+        return this.obstacleGrid.getNearbySegments(entity);
     }
 }

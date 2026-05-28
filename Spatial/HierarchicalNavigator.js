@@ -6,27 +6,15 @@ import {
     generateVoronoiRegions,
     findRegionAdjacencies,
 } from "./VoronoiRegions.js";
-import {
-    getWallCellBounds,
-    cellBoundsToWorldBounds,
-    markWallOnGrid,
-    clearWallCells,
-} from "./ObstacleGrid.js";
 
 export { RegionNode as Node };
 
 export class HierarchicalNavigator {
-    constructor(cellSize, maxCellsPerChunk, minCellsPerChunk) {
+    constructor(cellSize, maxCellsPerChunk, minCellsPerChunk, obstacleGrid) {
         this.cellSize = cellSize;
         this.maxCellsPerChunk = maxCellsPerChunk;
         this.minCellsPerChunk = minCellsPerChunk;
-        this.minX = 0;
-        this.maxX = 0;
-        this.minY = 0;
-        this.maxY = 0;
-        this.cols = 0;
-        this.rows = 0;
-        this.grid = null;
+        this.obstacleGrid = obstacleGrid;
         this.distToWall = null;
         this.cellToNode = null;
         this.nodesMap = {};
@@ -37,43 +25,28 @@ export class HierarchicalNavigator {
         this.aStarRunId = 0;
     }
 
-    initialize(walls, wallSpatialHash) {
-        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-        for (const w of walls) {
-            const r = w.size / 2 + w.padding;
-            minX = Math.min(minX, w.x - r);
-            maxX = Math.max(maxX, w.x + r);
-            minY = Math.min(minY, w.y - r);
-            maxY = Math.max(maxY, w.y + r);
-        }
+    get grid() {
+        return this.obstacleGrid.grid;
+    }
 
-        if (minX === Infinity) {
-            minX = -2000;
-            maxX = 2000;
-            minY = -12000;
-            maxY = 2000;
-        } else {
-            minX -= 1500;
-            maxX += 1500;
-            minY -= 1500;
-            maxY += 1500;
-        }
+    get cols() {
+        return this.obstacleGrid.cols;
+    }
 
-        minX = Math.floor(minX / this.cellSize) * this.cellSize;
-        minY = Math.floor(minY / this.cellSize) * this.cellSize;
-        maxX = Math.ceil(maxX / this.cellSize) * this.cellSize;
-        maxY = Math.ceil(maxY / this.cellSize) * this.cellSize;
+    get rows() {
+        return this.obstacleGrid.rows;
+    }
 
-        this.minX = minX;
-        this.maxX = maxX;
-        this.minY = minY;
-        this.maxY = maxY;
+    get minX() {
+        return this.obstacleGrid.minX;
+    }
 
-        this.cols = Math.ceil((maxX - minX) / this.cellSize);
-        this.rows = Math.ceil((maxY - minY) / this.cellSize);
+    get minY() {
+        return this.obstacleGrid.minY;
+    }
 
+    initialize() {
         const size = this.cols * this.rows;
-        this.grid = new Uint8Array(size);
         this.distToWall = new Float32Array(size);
         this.cellToNode = new Array(size).fill(null);
         this.nodesMap = {};
@@ -83,10 +56,6 @@ export class HierarchicalNavigator {
         this.aStarCameFrom = new Int32Array(size);
         this.aStarVisited = new Int32Array(size);
         this.aStarRunId = 0;
-
-        for (const seg of walls) {
-            this.addWallToObstacleGrid(seg);
-        }
 
         this.rebuildRegions();
     }
@@ -98,25 +67,11 @@ export class HierarchicalNavigator {
     }
 
     worldToGrid(x, y) {
-        const col = Math.floor((x - this.minX) / this.cellSize);
-        const row = Math.floor((y - this.minY) / this.cellSize);
-        return { col, row };
+        return this.obstacleGrid.worldToGrid(x, y);
     }
 
     gridToWorld(col, row) {
-        const x = this.minX + col * this.cellSize + this.cellSize / 2;
-        const y = this.minY + row * this.cellSize + this.cellSize / 2;
-        return { x, y };
-    }
-
-    addWallToObstacleGrid(seg) {
-        markWallOnGrid(seg, this.grid, this.cols, this.rows, {
-            worldToGrid: (x, y) => this.worldToGrid(x, y),
-            cellCenter: (col, row) => ({
-                x: this.minX + col * this.cellSize + this.cellSize / 2,
-                y: this.minY + row * this.cellSize + this.cellSize / 2,
-            }),
-        });
+        return this.obstacleGrid.gridToWorld(col, row);
     }
 
     generateChunks() {
@@ -157,21 +112,6 @@ export class HierarchicalNavigator {
                 }
             }
         }
-    }
-
-    handleWallDestroyed(seg, wallSpatialHash) {
-        const bounds = getWallCellBounds(seg, (x, y) => this.worldToGrid(x, y), this.cols, this.rows);
-        clearWallCells(this.grid, this.cols, bounds);
-
-        const worldBounds = cellBoundsToWorldBounds(bounds, this.minX, this.minY, this.cellSize);
-        const localWalls = wallSpatialHash
-            ? wallSpatialHash.queryBounds(worldBounds.minX, worldBounds.minY, worldBounds.maxX, worldBounds.maxY)
-            : [];
-        for (const wall of localWalls) {
-            this.addWallToObstacleGrid(wall);
-        }
-
-        this.rebuildRegions();
     }
 
     findNearestOpenCell(col, row) {
