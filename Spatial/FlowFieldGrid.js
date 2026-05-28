@@ -114,54 +114,6 @@ export class FlowFieldGrid {
         this.buildFlowFieldTarget(px, py, this.playerFlowField, this.grid);
     }
 
-    getNodeCenterFromField(x, y, field) {
-        let { col, row } = this.worldToGrid(x, y);
-
-        if (col >= 0 && col < this.cols && row >= 0 && row < this.rows) {
-            let flow = field[row * this.cols + col];
-
-            if (!flow) {
-                let bestDist = Infinity;
-                for (let r = -2; r <= 2; r++) {
-                    for (let c = -2; c <= 2; c++) {
-                        const nr = row + r;
-                        const nc = col + c;
-                        if (nr >= 0 && nr < this.rows && nc >= 0 && nc < this.cols) {
-                            const neighborFlow = field[nr * this.cols + nc];
-                            if (neighborFlow) {
-                                const dist = Math.hypot(c, r);
-                                if (dist < bestDist) {
-                                    bestDist = dist;
-                                    flow = neighborFlow;
-                                    col = nc;
-                                    row = nr;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (flow && (flow.x !== 0 || flow.y !== 0)) {
-                const nextCol = col + flow.x;
-                const nextRow = row + flow.y;
-                return {
-                    x: nextCol * this.cellSize + this.centerX - this.offsetX + (this.cellSize / 2),
-                    y: nextRow * this.cellSize + this.centerY - this.offsetY + (this.cellSize / 2)
-                };
-            }
-        }
-        return null;
-    }
-
-    getPlayerNextNodeCenter(x, y) {
-        return this.getNodeCenterFromField(x, y, this.playerFlowField);
-    }
-
-    getNextNodeCenter(x, y) {
-        return this.getNodeCenterFromField(x, y, this.flowField);
-    }
-
     clearFlowFields() {
         this.flowField.fill(null);
         this.playerFlowField.fill(null);
