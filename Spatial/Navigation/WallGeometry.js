@@ -1,11 +1,17 @@
+export function toSegmentLocal(segment, x, y) {
+    const dx = x - segment.x;
+    const dy = y - segment.y;
+    const cos = Math.cos(-segment.angle);
+    const sin = Math.sin(-segment.angle);
+    return {
+        localX: dx * cos - dy * sin,
+        localY: dx * sin + dy * cos,
+        half: segment.size / 2,
+    };
+}
+
 export function closestPointOnSegment(wall, x, y) {
-    const dx = x - wall.x;
-    const dy = y - wall.y;
-    const cos = Math.cos(-wall.angle);
-    const sin = Math.sin(-wall.angle);
-    let localX = dx * cos - dy * sin;
-    let localY = dx * sin + dy * cos;
-    const half = wall.size / 2;
+    let { localX, localY, half } = toSegmentLocal(wall, x, y);
     localX = Math.max(-half, Math.min(half, localX));
     localY = Math.max(-half, Math.min(half, localY));
 
@@ -17,11 +23,25 @@ export function closestPointOnSegment(wall, x, y) {
     };
 }
 
-export function distanceToSegment(wall, x, y) {
-    if (wall.isDead) return Infinity;
+export function distanceSqToSegment(segment, x, y) {
+    if (segment.isDead) return Infinity;
 
-    const closest = closestPointOnSegment(wall, x, y);
-    return Math.hypot(x - closest.x, y - closest.y);
+    const { localX, localY, half } = toSegmentLocal(segment, x, y);
+    const closestX = Math.max(-half, Math.min(localX, half));
+    const closestY = Math.max(-half, Math.min(localY, half));
+    const distDX = localX - closestX;
+    const distDY = localY - closestY;
+    return distDX * distDX + distDY * distDY;
+}
+
+export function distanceToSegment(wall, x, y) {
+    const distSq = distanceSqToSegment(wall, x, y);
+    return distSq === Infinity ? Infinity : Math.sqrt(distSq);
+}
+
+export function circleIntersectsSegment(circle, segment) {
+    const radiusSq = circle.radius * circle.radius;
+    return distanceSqToSegment(segment, circle.x, circle.y) < radiusSq;
 }
 
 export function pushPointFromWalls(x, y, walls, clearance) {

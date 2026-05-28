@@ -1,4 +1,5 @@
 import { SpatialHash } from "../World/SpatialHash.js";
+import { circleIntersectsSegment } from "../Navigation/WallGeometry.js";
 
 export class CollisionSystem {
     static checkCircle(a, b) {
@@ -9,21 +10,7 @@ export class CollisionSystem {
     }
 
     static checkCircleRect(circle, rect) {
-        const dx = circle.x - rect.x;
-        const dy = circle.y - rect.y;
-
-        const cos = Math.cos(-rect.angle);
-        const sin = Math.sin(-rect.angle);
-        const localX = dx * cos - dy * sin;
-        const localY = dx * sin + dy * cos;
-
-        const half = rect.size / 2;
-        const closestX = Math.max(-half, Math.min(localX, half));
-        const closestY = Math.max(-half, Math.min(localY, half));
-
-        const distDX = localX - closestX;
-        const distDY = localY - closestY;
-        return distDX * distDX + distDY * distDY < circle.radius * circle.radius;
+        return circleIntersectsSegment(circle, rect);
     }
 
     static getMissileWallCollision(missile, segments) {
