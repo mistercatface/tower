@@ -1,6 +1,7 @@
 import { SpriteCache } from "./SpriteCache.js";
 import { Render3D } from "./3D/Render3D.js";
 import { mapSettings } from "../Config/Config.js";
+import { MapGenerator } from "../GameState/MapGenerator.js";
 
 export class Renderer {
     constructor(canvas, ctx) {
@@ -97,8 +98,8 @@ export class Renderer {
         const targetNode = state.mapNodes.find(n => n.id === state.mapTargetNodeId);
         if (!prevNode || !targetNode) return;
 
-        const coordsA = state.getNodeCombatCoords(prevNode);
-        const coordsB = state.getNodeCombatCoords(targetNode);
+        const coordsA = MapGenerator.getNodeCombatCoords(state, prevNode);
+        const coordsB = MapGenerator.getNodeCombatCoords(state, targetNode);
 
 
 
@@ -143,7 +144,7 @@ export class Renderer {
     }
 
     drawRangeIndicator(state, viewport) {
-        const drawRange = (viewport && (state.phase === "combat" || state.phase === "map_transition" || state.phase === "reward")) ? (viewport.getVisualRadius() / viewport.zoom) : state.weapon.range;
+        const drawRange = (viewport && (state.phase === "combat" || state.phase === "map_transition" || state.phase === "reward")) ? (viewport.getVisualRadius() / viewport.zoom) : state.player.weapon.range;
         if (viewport && (state.phase === "combat" || state.phase === "map_transition" || state.phase === "reward")) {
             this.ctx.beginPath();
             this.ctx.arc(viewport.x, viewport.y, drawRange, 0, Math.PI * 2);
@@ -228,7 +229,7 @@ export class Renderer {
     }
 
     drawVisibilityMask(ctx, state, viewport) {
-        const weaponRange = state.weapon.range;
+        const weaponRange = state.player.weapon.range;
         if (weaponRange > 0) {
             const maskRadius = (viewport && (state.phase === "combat" || state.phase === "map_transition" || state.phase === "reward")) ? (viewport.getVisualRadius() / viewport.zoom) : weaponRange;
             ctx.save();

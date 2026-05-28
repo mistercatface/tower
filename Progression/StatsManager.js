@@ -58,11 +58,11 @@ export class StatsManager {
             });
         }
 
-        state.weapon.accuracyModifier = 0;
-        state.weapon.damage = state.stats.damage.value;
-        state.weapon.range = state.stats.range.value;
-        state.weapon.chargeTime = state.stats.chargeTime.value;
-        state.weapon.penetration = state.stats.penetration.value;
+        state.player.weapon.accuracyModifier = 0;
+        state.player.weapon.damage = state.stats.damage.value;
+        state.player.weapon.range = state.stats.range.value;
+        state.player.weapon.chargeTime = state.stats.chargeTime.value;
+        state.player.weapon.penetration = state.stats.penetration.value;
 
         state.gameSpeed = state.stats.gameSpeed.value;
         state.selectedSpeed = Math.min(state.selectedSpeed, state.gameSpeed);
@@ -84,7 +84,7 @@ export class StatsManager {
         if (upgradesList) {
             upgradesList.forEach((upg) => {
                 if (upg.isAbility && state.abilities && state.abilities[upg.id] && upg.abilityApplyFn) {
-                    upg.abilityApplyFn(state.weapon, state.player);
+                    upg.abilityApplyFn(state.player.weapon, state.player);
                 }
             });
         }
@@ -138,7 +138,7 @@ export class StatsManager {
 
         const startNode = state.mapNodes.find(n => n.id === 0);
         if (startNode) {
-            const coords = state.getNodeCombatCoords(startNode);
+            const coords = MapGenerator.getNodeCombatCoords(state, startNode);
             state.player.setSpawnPosition(coords.x, coords.y);
             state.player.resetToSpawn();
         }

@@ -240,7 +240,7 @@ export class ProgressionManager {
         if (isFinished) {
             if (currentNode && !currentNode.completed) {
                 currentNode.completed = true;
-                state.transitionPhase("reward");
+                state.fsm.transition("reward");
                 upgrades.forEach((upg) => {
                     if (state.upgrades[upg.id] && state.upgrades[upg.id].level > 0 && upg.onSectorEnd) {
                         upg.onSectorEnd(state);
@@ -252,7 +252,7 @@ export class ProgressionManager {
                     this.finalizeSectorClearance(state, upgrades, currentNode, viewport, "Reward: None");
                 }
             } else {
-                state.transitionPhase("map");
+                state.fsm.transition("map");
                 viewport.snapTo(state.player.x - state.player.x - viewport.x, state.player.y - state.player.y - viewport.y);
                 updateUI(state, upgrades);
             }
@@ -282,7 +282,7 @@ export class ProgressionManager {
 
     static finalizeSectorClearance(state, upgrades, currentNode, viewport, rewardText) {
         showSectorCleared(currentNode, rewardText, () => {
-            state.transitionPhase("map");
+            state.fsm.transition("map");
             viewport.snapTo(state.mapPlayerX - state.player.x - viewport.x, state.mapPlayerY - state.player.y - viewport.y);
             updateUI(state, upgrades);
         });

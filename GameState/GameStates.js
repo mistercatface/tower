@@ -10,6 +10,7 @@ import { showNodeConfirm } from "../UI/UI.js";
 import { Utilities } from "../Core/Utilities.js";
 import { Explosion } from "../Entities/Explosion/Explosion.js";
 import { Segment } from "../Entities/Wall.js";
+import { MapGenerator } from "./MapGenerator.js";
 import { pickupSpawnSettings, navigationSettings } from "../Config/Config.js";
 import { resolveMoveTarget } from "../Spatial/Navigation/PathClearance.js";
 
@@ -54,7 +55,7 @@ export class MapTransitionState {
         ctx.state.player.vx = 0;
         ctx.state.player.vy = 0;
 
-        const targetCoords = ctx.state.getNodeCombatCoords(targetNode);
+        const targetCoords = MapGenerator.getNodeCombatCoords(ctx.state, targetNode);
         ctx.state.player.setTarget(targetCoords.x, targetCoords.y, ctx.state);
 
         ctx.state.flowFieldGrid.shiftCenter(
@@ -85,7 +86,7 @@ export class MapTransitionState {
 
         const targetNode = ctx.state.mapNodes.find((n) => n.id === ctx.state.mapTargetNodeId);
         if (targetNode) {
-            const targetCoords = ctx.state.getNodeCombatCoords(targetNode);
+            const targetCoords = MapGenerator.getNodeCombatCoords(ctx.state, targetNode);
             const dist = Math.hypot(ctx.state.player.x - targetCoords.x, ctx.state.player.y - targetCoords.y);
             if (dist < 9.0) {
                 ctx.state.currentNodeId = targetNode.id;
@@ -126,7 +127,7 @@ export class CombatState {
         ctx.state.floatingTexts = [];
         
         const currentNode = ctx.state.mapNodes.find(n => n.id === ctx.state.currentNodeId);
-        const combatCoords = ctx.state.getNodeCombatCoords(currentNode);
+        const combatCoords = MapGenerator.getNodeCombatCoords(ctx.state, currentNode);
         
         const transitioningFromTravel = ctx.state.isTransitioningFromTravel && ctx.state.travelSourceCoords && ctx.state.travelTargetCoords;
 

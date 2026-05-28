@@ -1,21 +1,16 @@
 import { Stat } from "./Stat.js";
-import { MapGenerator } from "./MapGenerator.js";
 import { Turret } from "../Entities/Turret.js";
 import { Player } from "../Entities/Player.js";
 import { FlowFieldGrid } from "../Spatial/Navigation/FlowFieldGrid.js";
 import { WorldObstacleGrid } from "../Spatial/World/ObstacleGrid.js";
 import { HierarchicalNavigator } from "../Spatial/Navigation/HierarchicalNavigator.js";
 import { NavigationService } from "../Spatial/Navigation/NavigationService.js";
-import { defaultUpgradeCost, playerBaseStats, gridSettings, mapSettings } from "../Config/Config.js";
+import { defaultUpgradeCost, playerBaseStats, gridSettings } from "../Config/Config.js";
 import { Scheduler } from "../Core/Scheduler.js";
 import { WaveManager } from "../Combat/WaveManager.js";
 import { SpatialHash } from "../Spatial/World/SpatialHash.js";
 
 export class GameState {
-    get weapon() {
-        return this.player ? this.player.weapon : null;
-    }
-
     constructor() {
         this.fsm = null;
         this.scheduler = new Scheduler();
@@ -75,22 +70,6 @@ export class GameState {
         this.initializeDefaultState();
     }
 
-    transitionPhase(phaseName) {
-        this.phase = phaseName;
-        if (this.fsm) this.fsm.transition(phaseName);
-    }
-
-    getNodeCombatCoords(node) {
-        if (!node) return { x: 0, y: 0 };
-        const scale = mapSettings.combatCoordScale;
-        const baseSpawnX = this.mapBaseSpawnX !== undefined ? this.mapBaseSpawnX : (this.canvasBounds.width > 0 ? this.canvasBounds.width / 2 : 225);
-        const baseSpawnY = this.mapBaseSpawnY !== undefined ? this.mapBaseSpawnY : (this.canvasBounds.height > 0 ? this.canvasBounds.height / 2 : 225);
-        return {
-            x: baseSpawnX + node.x * scale,
-            y: baseSpawnY + node.y * scale
-        };
-    }
-
     initializeDefaultState() {
         this.scheduler.clear();
         this.waveManager.reset();
@@ -140,10 +119,6 @@ export class GameState {
         this.selectedSpeed = 1.0;
         this.pointBonus = 0;
     }
-
-    generateMap() {
-        MapGenerator.generateMap(this);
-    }
 }
 
-export const state = new GameState();
+export const state = new GameState();

@@ -72,7 +72,7 @@ export const createBaseUpgrades = () => [
         applyFn: (stats, level) => { stats.damage.flatModifiers += level; },
         currentStrFn: (level) => 1 + level,
         nextStrFn: (level) => 1 + (level + 1),
-        dynamicStrFn: (state) => state.weapon.damage
+        dynamicStrFn: (state) => state.player.weapon.damage
     }),
     new Upgrade({
         id: "Accuracy",
@@ -83,7 +83,7 @@ export const createBaseUpgrades = () => [
         currentStrFn: (level) => (75 + level) + "%",
         nextStrFn: (level) => (75 + level + 1) + "%",
         maxLevel: 25,
-        dynamicStrFn: (state) => (state.weapon.accuracy * 100).toFixed(0) + "%"
+        dynamicStrFn: (state) => (state.player.weapon.accuracy * 100).toFixed(0) + "%"
     }),
     new Upgrade({
         id: "Penetration",
@@ -113,7 +113,7 @@ export const createBaseUpgrades = () => [
         currentStrFn: (level) => Math.max(100, 1000 - level * 50) + "ms",
         nextStrFn: (level) => Math.max(100, 1000 - (level + 1) * 50) + "ms",
         maxLevel: 18,
-        dynamicStrFn: (state) => state.weapon.chargeTime.toFixed(0) + "ms"
+        dynamicStrFn: (state) => state.player.weapon.chargeTime.toFixed(0) + "ms"
     }),
     new Upgrade({
         id: "Range",
@@ -266,9 +266,9 @@ export const createUpgrades = () => [
                 turret.laserTimer = 0;
             }
             const baseGrowthSpeed = 200;
-            const growthSpeed = baseGrowthSpeed * Math.sqrt(1000 / state.weapon.chargeTime);
+            const growthSpeed = baseGrowthSpeed * Math.sqrt(1000 / state.player.weapon.chargeTime);
             turret.currentLaserLength = (turret.currentLaserLength || 0) + growthSpeed * (dt / 1000);
-            turret.currentLaserLength = Math.min(state.weapon.range, turret.currentLaserLength);
+            turret.currentLaserLength = Math.min(state.player.weapon.range, turret.currentLaserLength);
 
             const hit = WeaponSystem.castLaser(tx, ty, turret.angle, turret.currentLaserLength, state);
             turret.currentLaserLength = hit.dist;
@@ -276,7 +276,7 @@ export const createUpgrades = () => [
             state.activeLasers.push(new Laser(tx, ty, hit.x, hit.y));
             if (laserCanDamage) {
                 if (hit.hit === "enemy") {
-                    combatEvents.push({ target: hit.entity, damage: state.weapon.damage });
+                    combatEvents.push({ target: hit.entity, damage: state.player.weapon.damage });
                 } else if (hit.hit === "pickup" && hit.entity.strategy && hit.entity.strategy.onHit) {
                     if (!state.abilities["TargetVerification"]) {
                         hit.entity.strategy.onHit(state, hit.entity, { isDead: false }, combatEvents);
@@ -362,8 +362,8 @@ export const createUpgrades = () => [
             const r = state.player.radius * playerProjectileSettings.splitRadiusMultiplier;
             const m1 = new Projectile(tx, ty, r, playerProjectileSettings.speed, null, turretAngle - 0.1, 0, "player");
             const m2 = new Projectile(tx, ty, r, playerProjectileSettings.speed, null, turretAngle + 0.1, 0, "player");
-            m1.penetration = state.weapon.penetration;
-            m2.penetration = state.weapon.penetration;
+            m1.penetration = state.player.weapon.penetration;
+            m2.penetration = state.player.weapon.penetration;
             state.projectiles.push(m1, m2);
             if (source) {
                 PhysicsSystem.applyKnockback(source, turretAngle + Math.PI, (m1.radius + m2.radius) * playerProjectileSettings.knockbackMultiplier);
@@ -387,9 +387,9 @@ export const createUpgrades = () => [
             const m1 = new Projectile(tx, ty, r, playerProjectileSettings.speed, null, turretAngle - 0.1, 0, "player");
             const m2 = new Projectile(tx, ty, r, playerProjectileSettings.speed, null, turretAngle + 0.1, 0, "player");
             const m3 = new Projectile(tx, ty, r, playerProjectileSettings.speed, null, turretAngle, 0, "player");
-            m1.penetration = state.weapon.penetration;
-            m2.penetration = state.weapon.penetration;
-            m3.penetration = state.weapon.penetration;
+            m1.penetration = state.player.weapon.penetration;
+            m2.penetration = state.player.weapon.penetration;
+            m3.penetration = state.player.weapon.penetration;
             state.projectiles.push(m1, m2, m3);
             if (source) {
                 PhysicsSystem.applyKnockback(source, turretAngle + Math.PI, (m1.radius + m2.radius + m3.radius) * playerProjectileSettings.knockbackMultiplier);

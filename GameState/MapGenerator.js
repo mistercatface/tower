@@ -5,9 +5,21 @@ import { FlowFieldGrid } from "../Spatial/Navigation/FlowFieldGrid.js";
 import { mapSettings, gridSettings } from "../Config/Config.js";
 
 export class MapGenerator {
+    static getNodeCombatCoords(state, node) {
+        if (!node) return { x: 0, y: 0 };
+        const scale = mapSettings.combatCoordScale;
+        const baseSpawnX = state.mapBaseSpawnX !== undefined ? state.mapBaseSpawnX : (state.canvasBounds.width > 0 ? state.canvasBounds.width / 2 : 225);
+        const baseSpawnY = state.mapBaseSpawnY !== undefined ? state.mapBaseSpawnY : (state.canvasBounds.height > 0 ? state.canvasBounds.height / 2 : 225);
+        return {
+            x: baseSpawnX + node.x * scale,
+            y: baseSpawnY + node.y * scale
+        };
+    }
+
     static generateMap(state) {
         state.mapBaseSpawnX = state.canvasBounds.width > 0 ? state.canvasBounds.width / 2 : 225;
         state.mapBaseSpawnY = state.canvasBounds.height > 0 ? state.canvasBounds.height / 2 : 225;
+
         state.mapNodes = [];
         const numLayers = mapSettings.numLayers;
         const layerSpacing = mapSettings.layerSpacing;
@@ -126,8 +138,8 @@ export class MapGenerator {
         const tempFlowFieldGrid = new FlowFieldGrid(gridSettings.cellSize, gridSettings.width, gridSettings.height, tempObstacleGrid);
 
         const checkPathability = (nodeA, nodeB, wallsA, wallsB) => {
-            const coordsA = state.getNodeCombatCoords(nodeA);
-            const coordsB = state.getNodeCombatCoords(nodeB);
+            const coordsA = MapGenerator.getNodeCombatCoords(state, nodeA);
+            const coordsB = MapGenerator.getNodeCombatCoords(state, nodeB);
             const mx = (coordsA.x + coordsB.x) / 2;
             const my = (coordsA.y + coordsB.y) / 2;
 
@@ -159,7 +171,7 @@ export class MapGenerator {
         if (startNode) {
             const strategy = strategies[Math.floor(Math.random() * strategies.length)];
             const theme = themeColors[Math.floor(Math.random() * themeColors.length)];
-            const coords = state.getNodeCombatCoords(startNode);
+            const coords = MapGenerator.getNodeCombatCoords(state, startNode);
             
             tempFlowFieldGrid.centerX = coords.x;
             tempFlowFieldGrid.centerY = coords.y;
@@ -200,7 +212,7 @@ export class MapGenerator {
                     attempts++;
                     const strategy = strategies[Math.floor(Math.random() * strategies.length)];
                     const theme = themeColors[Math.floor(Math.random() * themeColors.length)];
-                    const coordsB = state.getNodeCombatCoords(nodeB);
+                    const coordsB = MapGenerator.getNodeCombatCoords(state, nodeB);
 
                     tempFlowFieldGrid.centerX = coordsB.x;
                     tempFlowFieldGrid.centerY = coordsB.y;

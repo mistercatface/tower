@@ -66,11 +66,11 @@ export class Projectile extends Entity {
             for (const e of state.enemies) {
                 if (e.isDead) continue;
                 if (system.checkCircle(this, e)) {
-                    events.push({ target: e, damage: state.weapon.damage });
+                    events.push({ target: e, damage: state.player.weapon.damage });
                     PhysicsSystem.applyKnockback(e, this.angle, this.radius * 150);
-                    if (e.health <= state.weapon.damage && this.penetration > 0) {
+                    if (e.health <= state.player.weapon.damage && this.penetration > 0) {
                         this.penetration--;
-                        e.health -= state.weapon.damage;
+                        e.health -= state.player.weapon.damage;
                     } else {
                         this.isDead = true;
                         break;
