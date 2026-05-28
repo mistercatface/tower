@@ -44,7 +44,7 @@ export class Viewport {
     }
 
     updateZoomLimits(state) {
-        if (state && (state.phase === "combat" || state.phase === "reward")) {
+        if (state && (state.phase === "combat" || state.phase === "reward" || state.phase === "map_transition")) {
             const baseRange = 150;
             const currentRange = state.weapon.range;
             const visualRadius = this.getVisualRadius();
@@ -62,7 +62,7 @@ export class Viewport {
     }
 
     setZoom(value, state) {
-        if (state && (state.phase === "combat" || state.phase === "reward")) {
+        if (state && (state.phase === "combat" || state.phase === "reward" || state.phase === "map_transition")) {
             const baseRange = 150;
             const currentRange = state.weapon.range;
             const visualRadius = this.getVisualRadius();

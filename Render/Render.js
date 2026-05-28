@@ -156,7 +156,7 @@ export class Renderer {
     }
 
     drawRangeIndicator(state, viewport) {
-        const drawRange = (viewport && state.phase === "combat") ? (viewport.getVisualRadius() / viewport.zoom) : state.weapon.range;
+        const drawRange = (viewport && (state.phase === "combat" || state.phase === "map_transition" || state.phase === "reward")) ? (viewport.getVisualRadius() / viewport.zoom) : state.weapon.range;
         state.player.renderRange(this.ctx, drawRange);
     }
 
@@ -236,7 +236,7 @@ export class Renderer {
     drawVisibilityMask(ctx, state, viewport) {
         const weaponRange = state.weapon.range;
         if (weaponRange > 0) {
-            const maskRadius = (viewport && state.phase === "combat") ? (viewport.getVisualRadius() / viewport.zoom) : weaponRange;
+            const maskRadius = (viewport && (state.phase === "combat" || state.phase === "map_transition" || state.phase === "reward")) ? (viewport.getVisualRadius() / viewport.zoom) : weaponRange;
             ctx.save();
             ctx.fillStyle = "#000000";
             ctx.beginPath();

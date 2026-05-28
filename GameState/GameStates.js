@@ -140,14 +140,19 @@ export class CombatState {
         const currentNode = ctx.state.mapNodes.find(n => n.id === ctx.state.currentNodeId);
         const combatCoords = ctx.state.getNodeCombatCoords(currentNode);
         ctx.state.player.setSpawnPosition(combatCoords.x, combatCoords.y);
-        ctx.state.player.resetToSpawn();
         
         ctx.state.waveManager.startCombat();
         ctx.state.turrets.forEach(t => t.currentLaserLength = 0);
         
-        if (ctx.state.isTransitioningFromTravel && ctx.state.travelSourceCoords && ctx.state.travelTargetCoords) {
+        const transitioningFromTravel = ctx.state.isTransitioningFromTravel && ctx.state.travelSourceCoords && ctx.state.travelTargetCoords;
+
+        if (transitioningFromTravel) {
             console.log("CombatState.onEnter: PRESERVING travel-generated arena layout for Node " + ctx.state.currentNodeId);
             ctx.state.isTransitioningFromTravel = false;
+            
+            ctx.state.player.stopMovement();
+            ctx.state.player.vx = 0;
+            ctx.state.player.vy = 0;
             
             const bx = ctx.state.travelTargetCoords.x;
             const by = ctx.state.travelTargetCoords.y;
@@ -169,10 +174,13 @@ export class CombatState {
             }
         } else {
             console.log("CombatState.onEnter: GENERATING new standard arena layout (reason: not travel transition)");
+            ctx.state.player.resetToSpawn();
             WallGenerator.generate(ctx.state);
         }
         
-        ctx.viewport.snapTo(ctx.state.player.x, ctx.state.player.y);
+        if (!transitioningFromTravel) {
+            ctx.viewport.snapTo(ctx.state.player.x, ctx.state.player.y);
+        }
         ctx.updateUI(ctx.state, ctx.upgrades);
     }
 
