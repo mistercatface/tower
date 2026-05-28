@@ -83,7 +83,7 @@ export class MapTransitionState {
         if (targetNode) {
             const targetCoords = ctx.state.getNodeCombatCoords(targetNode);
             const dist = Math.hypot(ctx.state.player.x - targetCoords.x, ctx.state.player.y - targetCoords.y);
-            if (dist < 50) {
+            if (dist < 2.0) {
                 ctx.state.currentNodeId = targetNode.id;
                 ctx.state.mapPlayerX = targetNode.x;
                 ctx.state.mapPlayerY = targetNode.y;

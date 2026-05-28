@@ -62,7 +62,6 @@ export class Renderer {
         this.ctx.save();
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-        // Draw background scrolling lens grid in screen space
         if (viewport && (state.phase === "combat" || state.phase === "reward" || state.phase === "map_transition")) {
             this.drawOscilloscopeGrid(state, viewport);
         }
@@ -83,7 +82,6 @@ export class Renderer {
 
         this.ctx.restore();
 
-        // Draw globe bezel overlay on top of entities in screen space
         if (viewport && (state.phase === "combat" || state.phase === "reward" || state.phase === "map_transition")) {
             this.drawGlobeOverlay(state, viewport);
         }
@@ -97,29 +95,9 @@ export class Renderer {
         const coordsA = state.getNodeCombatCoords(prevNode);
         const coordsB = state.getNodeCombatCoords(targetNode);
 
-        this.ctx.save();
-        this.ctx.beginPath();
-        this.ctx.moveTo(coordsA.x, coordsA.y);
-        this.ctx.lineTo(coordsB.x, coordsB.y);
-        this.ctx.strokeStyle = "rgba(0, 188, 212, 0.4)";
-        this.ctx.lineWidth = 6;
-        this.ctx.setLineDash([15, 20]);
-        this.ctx.lineDashOffset = -((Date.now() / 25) % 35);
-        this.ctx.stroke();
-        this.ctx.restore();
 
-        this.ctx.save();
-        const pulse = Math.sin(Date.now() / 150) * 4;
-        const radius = 55 + pulse;
 
-        this.ctx.beginPath();
-        this.ctx.arc(coordsB.x, coordsB.y, radius, 0, Math.PI * 2);
-        this.ctx.fillStyle = "rgba(0, 188, 212, 0.08)";
-        this.ctx.fill();
-        this.ctx.strokeStyle = "rgba(0, 188, 212, 0.8)";
-        this.ctx.lineWidth = 3;
-        this.ctx.stroke();
-        this.ctx.restore();
+
 
         const dx = coordsB.x - state.player.x;
         const dy = coordsB.y - state.player.y;
