@@ -362,7 +362,7 @@ export class Renderer {
             }
 
             const rDome = R * Math.sin(d / R);
-            const curvatureStrength = 0.45; // Blend factor: 0 = flat grid, 1 = hemispherical dome
+            const curvatureStrength = 0.45;
             const r = d * (1 - curvatureStrength) + rDome * curvatureStrength;
 
             return {

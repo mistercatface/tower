@@ -256,9 +256,8 @@ export class EnemyChargePrepareState {
         }
 
         const isStable = Math.hypot(enemy.vx, enemy.vy) < enemy.speed * 0.6;
-        const hasLOS = Utilities.hasLineOfSight(enemy.x, enemy.y, target.x, target.y, walls, enemy.radius);
         
-        if (enemy.chargeCooldown <= 0 && distToTarget < 220 && distToTarget > 80 && isStable && hasLOS) {
+        if (enemy.chargeCooldown <= 0 && distToTarget < 220 && distToTarget > 80 && isStable) {
             enemy.changeState("charging_windup", {
                 timer: 500,
                 targetX: target.x,
