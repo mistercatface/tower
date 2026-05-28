@@ -1,15 +1,11 @@
 import { Utilities } from "../../Core/Utilities.js";
 
 export function steerViaFlowField(entity, targetX, targetY, flowFieldGrid, flowFieldKey) {
-    const field = flowFieldKey === "player"
-        ? flowFieldGrid?.playerFlowField
-        : flowFieldGrid?.flowField;
+    const isPlayerField = flowFieldKey === "player";
 
-    if (flowFieldGrid && field) {
-        const dir = flowFieldGrid.sampleDirection(entity.x, entity.y, field);
-        if (dir) {
-            entity.desiredX = dir.x;
-            entity.desiredY = dir.y;
+    if (flowFieldGrid) {
+        const success = flowFieldGrid.sampleDirection(entity.x, entity.y, isPlayerField, entity);
+        if (success) {
             return "flow";
         }
     }

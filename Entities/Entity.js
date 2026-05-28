@@ -1,5 +1,8 @@
+let nextEntityId = 1;
+
 export class Entity {
     constructor(x, y, angle = 0, isDead = false) {
+        this.id = nextEntityId++;
         this.x = x;
         this.y = y;
         this.angle = angle;

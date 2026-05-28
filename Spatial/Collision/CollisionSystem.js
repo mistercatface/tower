@@ -1,3 +1,5 @@
+import { SpatialHash } from "../World/SpatialHash.js";
+
 export class CollisionSystem {
     static checkCircle(a, b) {
         const dx = a.x - b.x;
@@ -44,8 +46,24 @@ export class CollisionSystem {
 
     static run(state) {
         const events = [];
+
+        // Build a spatial hash for active pickups (including barrels)
+        const pickupHash = new SpatialHash(50);
+        const barrels = [];
+        for (let i = 0; i < state.pickups.length; i++) {
+            const p = state.pickups[i];
+            if (!p.isDead) {
+                pickupHash.insert(p);
+                if (p.type === "barrel") {
+                    barrels.push(p);
+                }
+            }
+        }
+
+        // 1. Projectiles vs Walls, Pickups, and Enemies
         for (const p of state.projectiles) {
             if (p.isDead) continue;
+            
             const segment = this.getMissileWallCollision(p, state.walls);
             if (segment) {
                 p.isDead = true;
@@ -55,7 +73,9 @@ export class CollisionSystem {
             }
 
             let hitPickup = false;
-            for (const pickup of state.pickups) {
+            const nearbyPickups = pickupHash.getNearby(p);
+            for (let i = 0; i < nearbyPickups.length; i++) {
+                const pickup = nearbyPickups[i];
                 if (!pickup.isDead && pickup.strategy && pickup.strategy.onHit) {
                     if (this.checkCircle(p, pickup)) {
                         const handled = pickup.strategy.onHit(state, pickup, p, events);
@@ -70,10 +90,14 @@ export class CollisionSystem {
             p.resolveFactionCollisions(state, events, this);
         }
 
+        // 2. Actors vs Barrels
         const actors = [state.player, ...state.enemies];
         for (const actor of actors) {
             if (!actor || actor.isDead) continue;
-            for (const pickup of state.pickups) {
+            
+            const nearbyPickups = pickupHash.getNearby(actor);
+            for (let i = 0; i < nearbyPickups.length; i++) {
+                const pickup = nearbyPickups[i];
                 if (pickup.isDead || pickup.type !== "barrel") continue;
 
                 const dx = pickup.x - actor.x;
@@ -125,12 +149,21 @@ export class CollisionSystem {
             }
         }
 
-        for (let i = 0; i < state.pickups.length; i++) {
-            const p1 = state.pickups[i];
-            if (p1.isDead || p1.type !== "barrel") continue;
-            for (let j = i + 1; j < state.pickups.length; j++) {
-                const p2 = state.pickups[j];
-                if (p2.isDead || p2.type !== "barrel") continue;
+        // 3. Barrels vs Barrels
+        const checkedPairs = new Set();
+        for (let i = 0; i < barrels.length; i++) {
+            const p1 = barrels[i];
+            if (p1.isDead) continue;
+
+            const nearbyBarrels = pickupHash.getNearby(p1);
+            for (let j = 0; j < nearbyBarrels.length; j++) {
+                const p2 = nearbyBarrels[j];
+                if (p2 === p1 || p2.isDead || p2.type !== "barrel") continue;
+
+                // Deduplicate checked collision pairs
+                const pairKey = p1.id < p2.id ? `${p1.id}:${p2.id}` : `${p2.id}:${p1.id}`;
+                if (checkedPairs.has(pairKey)) continue;
+                checkedPairs.add(pairKey);
 
                 const dx = p2.x - p1.x;
                 const dy = p2.y - p1.y;
@@ -176,6 +209,7 @@ export class CollisionSystem {
             }
         }
 
+        // 4. Charging Enemies vs Player
         for (const e of state.enemies) {
             if (e.isDead) continue;
             if (e.attackType === "charge" && this.checkCircle(e, state.player)) {

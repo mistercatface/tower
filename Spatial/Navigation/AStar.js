@@ -1,78 +1,83 @@
-import {
-    colRowToIndex,
-    indexToColRow,
-    forEachOctileNeighbor,
-} from "./GridUtils.js";
+import { MinHeap } from "../../Core/MinHeap.js";
+
+const OCTILE_OFFSETS = [
+    { dc: 0, dr: -1, cost: 1 },
+    { dc: 1, dr: 0, cost: 1 },
+    { dc: 0, dr: 1, cost: 1 },
+    { dc: -1, dr: 0, cost: 1 },
+    { dc: 1, dr: -1, cost: 1.41421356 },
+    { dc: 1, dr: 1, cost: 1.41421356 },
+    { dc: -1, dr: 1, cost: 1.41421356 },
+    { dc: -1, dr: -1, cost: 1.41421356 },
+];
 
 export function runLocalAStarFlat(
     startCol, startRow, targetCol, targetRow,
     grid, cols, rows,
     maxPathLen, gScore, cameFrom, visited, runId
 ) {
-    const startIdx = colRowToIndex(startCol, startRow, cols);
-    const targetIdx = colRowToIndex(targetCol, targetRow, cols);
+    const startIdx = startRow * cols + startCol;
+    const targetIdx = targetRow * cols + targetCol;
     if (startIdx === targetIdx) {
         return [{ col: startCol, row: startRow }];
     }
 
-    const openSet = [startIdx];
+    const openSet = new MinHeap((a, b) => a.f - b.f);
 
     gScore[startIdx] = 0;
     visited[startIdx] = runId;
     cameFrom[startIdx] = -1;
 
-    while (openSet.length > 0) {
-        let lowestIdx = 0;
-        let lowestF = Infinity;
-        for (let i = 0; i < openSet.length; i++) {
-            const idx = openSet[i];
-            const { col: c, row: r } = indexToColRow(idx, cols);
-            const f = gScore[idx] + Math.hypot(c - targetCol, r - targetRow);
-            if (f < lowestF) {
-                lowestF = f;
-                lowestIdx = i;
-            }
-        }
+    openSet.push({ idx: startIdx, f: Math.sqrt((startCol - targetCol) ** 2 + (startRow - targetRow) ** 2) });
 
-        const currIdx = openSet[lowestIdx];
-        openSet.splice(lowestIdx, 1);
+    while (openSet.size > 0) {
+        const curr = openSet.pop();
+        const currIdx = curr.idx;
 
         if (currIdx === targetIdx) {
             const path = [];
-            let curr = currIdx;
-            while (curr !== -1) {
-                const { col, row } = indexToColRow(curr, cols);
-                path.push({ col, row });
-                curr = cameFrom[curr];
+            let currNode = currIdx;
+            while (currNode !== -1) {
+                path.push({ col: currNode % cols, row: (currNode / cols) | 0 });
+                currNode = cameFrom[currNode];
             }
             path.reverse();
             return path;
         }
 
-        const { col: currCol, row: currRow } = indexToColRow(currIdx, cols);
+        const currCol = currIdx % cols;
+        const currRow = (currIdx / cols) | 0;
         const currentG = gScore[currIdx];
         if (currentG > maxPathLen) continue;
 
-        forEachOctileNeighbor(currCol, currRow, cols, rows, (nc, nr, nIdx, stepCost) => {
-            if (grid[nIdx] === 1) return;
+        for (let i = 0; i < 8; i++) {
+            const offset = OCTILE_OFFSETS[i];
+            const nc = currCol + offset.dc;
+            const nr = currRow + offset.dr;
 
-            if (nc !== currCol && nr !== currRow) {
-                if (grid[colRowToIndex(nc, currRow, cols)] === 1 || grid[colRowToIndex(currCol, nr, cols)] === 1) {
-                    return;
+            if (nc >= 0 && nc < cols && nr >= 0 && nr < rows) {
+                const nIdx = nr * cols + nc;
+                if (grid[nIdx] === 1) continue;
+
+                // Corner cutting checks
+                if (offset.dc !== 0 && offset.dr !== 0) {
+                    if (grid[nr * cols + currCol] === 1 || grid[currRow * cols + nc] === 1) {
+                        continue;
+                    }
+                }
+
+                const tentativeG = currentG + offset.cost;
+
+                if (visited[nIdx] !== runId || tentativeG < gScore[nIdx]) {
+                    visited[nIdx] = runId;
+                    gScore[nIdx] = tentativeG;
+                    cameFrom[nIdx] = currIdx;
+
+                    const h = Math.sqrt((nc - targetCol) ** 2 + (nr - targetRow) ** 2);
+                    openSet.push({ idx: nIdx, f: tentativeG + h });
                 }
             }
-
-            const tentativeG = currentG + stepCost;
-
-            if (visited[nIdx] !== runId || tentativeG < gScore[nIdx]) {
-                visited[nIdx] = runId;
-                gScore[nIdx] = tentativeG;
-                cameFrom[nIdx] = currIdx;
-                if (!openSet.includes(nIdx)) {
-                    openSet.push(nIdx);
-                }
-            }
-        });
+        }
     }
     return null;
 }
@@ -82,41 +87,32 @@ export function runAbstractAStar(startNodeId, targetNodeId, nodesMap) {
     const targetNode = nodesMap[targetNodeId];
     if (!startNode || !targetNode) return null;
 
-    const openSet = new Set([startNodeId]);
+    const openSet = new MinHeap((a, b) => a.f - b.f);
     const cameFrom = {};
 
     const gScore = {};
     gScore[startNodeId] = 0;
 
-    const fScore = {};
-    fScore[startNodeId] = Math.hypot(startNode.col - targetNode.col, startNode.row - targetNode.row);
-
-    const getLowestFScoreNode = () => {
-        let lowest = null;
-        let lowestVal = Infinity;
-        for (const id of openSet) {
-            if (fScore[id] < lowestVal) {
-                lowestVal = fScore[id];
-                lowest = id;
-            }
-        }
-        return lowest;
-    };
+    openSet.push({
+        id: startNodeId,
+        f: Math.sqrt((startNode.col - targetNode.col) ** 2 + (startNode.row - targetNode.row) ** 2)
+    });
 
     while (openSet.size > 0) {
-        const currentId = getLowestFScoreNode();
+        const curr = openSet.pop();
+        const currentId = curr.id;
+
         if (currentId === targetNodeId) {
             const path = [];
-            let curr = currentId;
-            while (curr !== undefined) {
-                path.push(nodesMap[curr]);
-                curr = cameFrom[curr];
+            let currNodeId = currentId;
+            while (currNodeId !== undefined) {
+                path.push(nodesMap[currNodeId]);
+                currNodeId = cameFrom[currNodeId];
             }
             path.reverse();
             return path;
         }
 
-        openSet.delete(currentId);
         const currentNode = nodesMap[currentId];
         const currentG = gScore[currentId];
 
@@ -129,8 +125,9 @@ export function runAbstractAStar(startNodeId, targetNodeId, nodesMap) {
             if (gScore[neighborId] === undefined || tentativeG < gScore[neighborId]) {
                 cameFrom[neighborId] = currentId;
                 gScore[neighborId] = tentativeG;
-                fScore[neighborId] = tentativeG + Math.hypot(neighborNode.col - targetNode.col, neighborNode.row - targetNode.row);
-                openSet.add(neighborId);
+
+                const h = Math.sqrt((neighborNode.col - targetNode.col) ** 2 + (neighborNode.row - targetNode.row) ** 2);
+                openSet.push({ id: neighborId, f: tentativeG + h });
             }
         }
     }

@@ -6,9 +6,18 @@ export class FlowFieldGrid {
         this.obstacleGrid = obstacleGrid;
         this.cols = Math.ceil(width / cellSize);
         this.rows = Math.ceil(height / cellSize);
-        this.grid = new Array(this.cols * this.rows).fill(0);
-        this.flowField = new Array(this.cols * this.rows).fill(null);
-        this.playerFlowField = new Array(this.cols * this.rows).fill(null);
+        const size = this.cols * this.rows;
+        
+        this.grid = new Uint8Array(size);
+        
+        this.flowFieldX = new Float32Array(size);
+        this.flowFieldY = new Float32Array(size);
+        this.flowFieldDist = new Float32Array(size);
+        
+        this.playerFlowFieldX = new Float32Array(size);
+        this.playerFlowFieldY = new Float32Array(size);
+        this.playerFlowFieldDist = new Float32Array(size);
+        
         this.offsetX = (width / 2) + (cellSize / 2);
         this.offsetY = (height / 2) + (cellSize / 2);
         this.centerX = 0;
@@ -51,48 +60,57 @@ export class FlowFieldGrid {
         }
     }
 
-    buildFlowFieldTarget(px, py, targetField, gridData) {
-        targetField.fill(null);
+    buildFlowFieldTarget(px, py, targetFieldX, targetFieldY, targetFieldDist, gridData) {
+        targetFieldDist.fill(999999);
         const start = this.worldToGrid(px, py);
         if (start.col < 0 || start.col >= this.cols || start.row < 0 || start.row >= this.rows) return;
 
-        const queue = [start];
-        targetField[start.row * this.cols + start.col] = { x: 0, y: 0, dist: 0 };
-        
-        const dirs = [
-            {c: 0, r: -1}, {c: 1, r: -1}, {c: 1, r: 0}, {c: 1, r: 1},
-            {c: 0, r: 1}, {c: -1, r: 1}, {c: -1, r: 0}, {c: -1, r: -1}
-        ];
+        const cols = this.cols;
+        const rows = this.rows;
 
+        const startIdx = start.row * cols + start.col;
+        const queue = [startIdx];
         let head = 0;
-        while(head < queue.length) {
-            const curr = queue[head++];
-            const currIdx = curr.row * this.cols + curr.col;
-            const currData = targetField[currIdx];
 
-            for (const d of dirs) {
-                const nc = curr.col + d.c;
-                const nr = curr.row + d.r;
-                if (nc >= 0 && nc < this.cols && nr >= 0 && nr < this.rows) {
-                    const nIdx = nr * this.cols + nc;
+        targetFieldX[startIdx] = 0;
+        targetFieldY[startIdx] = 0;
+        targetFieldDist[startIdx] = 0;
+        
+        const dCols = [0, 1, 1, 1, 0, -1, -1, -1];
+        const dRows = [-1, -1, 0, 1, 1, 1, 0, -1];
+        const dCosts = [1.0, 1.41421356, 1.0, 1.41421356, 1.0, 1.41421356, 1.0, 1.41421356];
+
+        while (head < queue.length) {
+            const currIdx = queue[head++];
+            const currCol = currIdx % cols;
+            const currRow = (currIdx / cols) | 0;
+            const currDist = targetFieldDist[currIdx];
+
+            for (let i = 0; i < 8; i++) {
+                const dc = dCols[i];
+                const dr = dRows[i];
+                const nc = currCol + dc;
+                const nr = currRow + dr;
+
+                if (nc >= 0 && nc < cols && nr >= 0 && nr < rows) {
+                    const nIdx = nr * cols + nc;
                     if (gridData[nIdx] === 1) continue;
                     
-                    if (d.c !== 0 && d.r !== 0) {
-                        const check1 = gridData[curr.row * this.cols + nc];
-                        const check2 = gridData[nr * this.cols + curr.col];
+                    if (dc !== 0 && dr !== 0) {
+                        const check1 = gridData[currRow * cols + nc];
+                        const check2 = gridData[nr * cols + currCol];
                         if (check1 === 1 || check2 === 1) {
                             continue;
                         }
                     }
 
-                    const dist = currData.dist + Math.hypot(d.c, d.r);
-                    if (!targetField[nIdx] || dist < targetField[nIdx].dist) {
-                        targetField[nIdx] = {
-                            x: -d.c,
-                            y: -d.r,
-                            dist: dist
-                        };
-                        queue.push({col: nc, row: nr});
+                    const dist = currDist + dCosts[i];
+                    if (dist < targetFieldDist[nIdx]) {
+                        const cost = dCosts[i];
+                        targetFieldX[nIdx] = -dc / cost;
+                        targetFieldY[nIdx] = -dr / cost;
+                        targetFieldDist[nIdx] = dist;
+                        queue.push(nIdx);
                     }
                 }
             }
@@ -100,16 +118,16 @@ export class FlowFieldGrid {
     }
 
     buildFlowField(px, py) {
-        this.buildFlowFieldTarget(px, py, this.flowField, this.grid);
+        this.buildFlowFieldTarget(px, py, this.flowFieldX, this.flowFieldY, this.flowFieldDist, this.grid);
     }
 
     buildPlayerFlowField(px, py) {
-        this.buildFlowFieldTarget(px, py, this.playerFlowField, this.grid);
+        this.buildFlowFieldTarget(px, py, this.playerFlowFieldX, this.playerFlowFieldY, this.playerFlowFieldDist, this.grid);
     }
 
     clearFlowFields() {
-        this.flowField.fill(null);
-        this.playerFlowField.fill(null);
+        this.flowFieldDist.fill(999999);
+        this.playerFlowFieldDist.fill(999999);
     }
 
     clear() {
@@ -150,7 +168,11 @@ export class FlowFieldGrid {
         return dx * dx + dy * dy <= radius * radius;
     }
 
-    sampleDirection(x, y, targetField) {
+    sampleDirection(x, y, isPlayerField, outEntity) {
+        const targetFieldX = isPlayerField ? this.playerFlowFieldX : this.flowFieldX;
+        const targetFieldY = isPlayerField ? this.playerFlowFieldY : this.flowFieldY;
+        const targetFieldDist = isPlayerField ? this.playerFlowFieldDist : this.flowFieldDist;
+        
         const halfCell = this.cellSize / 2;
         const gx = (x - (this.centerX - this.offsetX + halfCell)) / this.cellSize;
         const gy = (y - (this.centerY - this.offsetY + halfCell)) / this.cellSize;
@@ -160,32 +182,64 @@ export class FlowFieldGrid {
         const row1 = row0 + 1;
         const tx = gx - col0;
         const ty = gy - row0;
-        const getFlowVec = (c, r) => {
-            if (c < 0 || c >= this.cols || r < 0 || r >= this.rows) return null;
-            const f = targetField[r * this.cols + c];
-            if (!f) return null;
-            const len = Math.hypot(f.x, f.y);
-            return len > 0 ? { x: f.x / len, y: f.y / len } : null;
-        };
-        const v00 = getFlowVec(col0, row0);
-        const v10 = getFlowVec(col1, row0);
-        const v01 = getFlowVec(col0, row1);
-        const v11 = getFlowVec(col1, row1);
-        const w00 = (1 - tx) * (1 - ty);
-        const w10 = tx * (1 - ty);
-        const w01 = (1 - tx) * ty;
-        const w11 = tx * ty;
+
+        const cols = this.cols;
+        const rows = this.rows;
+
+        const c0_valid = col0 >= 0 && col0 < cols;
+        const c1_valid = col1 >= 0 && col1 < cols;
+        const r0_valid = row0 >= 0 && row0 < rows;
+        const r1_valid = row1 >= 0 && row1 < rows;
+
         let flowX = 0;
         let flowY = 0;
         let totalWeight = 0;
-        if (v00) { flowX += v00.x * w00; flowY += v00.y * w00; totalWeight += w00; }
-        if (v10) { flowX += v10.x * w10; flowY += v10.y * w10; totalWeight += w10; }
-        if (v01) { flowX += v01.x * w01; flowY += v01.y * w01; totalWeight += w01; }
-        if (v11) { flowX += v11.x * w11; flowY += v11.y * w11; totalWeight += w11; }
-        if (totalWeight > 0) {
-            const len = Math.hypot(flowX, flowY);
-            return len > 0 ? { x: flowX / len, y: flowY / len } : null;
+
+        if (c0_valid && r0_valid) {
+            const idx = row0 * cols + col0;
+            if (targetFieldDist[idx] < 999999) {
+                const w = (1 - tx) * (1 - ty);
+                flowX += targetFieldX[idx] * w;
+                flowY += targetFieldY[idx] * w;
+                totalWeight += w;
+            }
         }
-        return null;
+        if (c1_valid && r0_valid) {
+            const idx = row0 * cols + col1;
+            if (targetFieldDist[idx] < 999999) {
+                const w = tx * (1 - ty);
+                flowX += targetFieldX[idx] * w;
+                flowY += targetFieldY[idx] * w;
+                totalWeight += w;
+            }
+        }
+        if (c0_valid && r1_valid) {
+            const idx = row1 * cols + col0;
+            if (targetFieldDist[idx] < 999999) {
+                const w = (1 - tx) * ty;
+                flowX += targetFieldX[idx] * w;
+                flowY += targetFieldY[idx] * w;
+                totalWeight += w;
+            }
+        }
+        if (c1_valid && r1_valid) {
+            const idx = row1 * cols + col1;
+            if (targetFieldDist[idx] < 999999) {
+                const w = tx * ty;
+                flowX += targetFieldX[idx] * w;
+                flowY += targetFieldY[idx] * w;
+                totalWeight += w;
+            }
+        }
+
+        if (totalWeight > 0) {
+            const len = Math.sqrt(flowX * flowX + flowY * flowY);
+            if (len > 0) {
+                outEntity.desiredX = flowX / len;
+                outEntity.desiredY = flowY / len;
+                return true;
+            }
+        }
+        return false;
     }
 }

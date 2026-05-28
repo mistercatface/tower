@@ -461,13 +461,9 @@ export class GameState {
 
         const strategies = Object.keys(GeneratorStrategies);
 
-        const createMockNavigation = (centerX, centerY) => {
-            const obstacleGrid = new WorldObstacleGrid(gridSettings.cellSize);
-            const flowFieldGrid = new FlowFieldGrid(gridSettings.cellSize, gridSettings.width, gridSettings.height, obstacleGrid);
-            flowFieldGrid.centerX = centerX;
-            flowFieldGrid.centerY = centerY;
-            return { obstacleGrid, flowFieldGrid };
-        };
+        // Reuse single temporary grid instances to avoid thousands of object allocations
+        const tempObstacleGrid = new WorldObstacleGrid(gridSettings.cellSize);
+        const tempFlowFieldGrid = new FlowFieldGrid(gridSettings.cellSize, gridSettings.width, gridSettings.height, tempObstacleGrid);
 
         const checkPathability = (nodeA, nodeB, wallsA, wallsB) => {
             const coordsA = this.getNodeCombatCoords(nodeA);
@@ -475,25 +471,28 @@ export class GameState {
             const mx = (coordsA.x + coordsB.x) / 2;
             const my = (coordsA.y + coordsB.y) / 2;
 
-            const { obstacleGrid, flowFieldGrid: tempGrid } = createMockNavigation(mx, my);
+            tempFlowFieldGrid.centerX = mx;
+            tempFlowFieldGrid.centerY = my;
 
             const segments = [];
-            for (const w of wallsA) {
+            for (let i = 0; i < wallsA.length; i++) {
+                const w = wallsA[i];
                 segments.push(new Segment(w.x, w.y, w.angle, w.size, w.padding, w.maxHealth));
             }
-            for (const w of wallsB) {
+            for (let i = 0; i < wallsB.length; i++) {
+                const w = wallsB[i];
                 segments.push(new Segment(w.x, w.y, w.angle, w.size, w.padding, w.maxHealth));
             }
 
-            obstacleGrid.rebuild(segments);
-            tempGrid.refresh(coordsB.x, coordsB.y);
+            tempObstacleGrid.rebuild(segments);
+            tempFlowFieldGrid.refresh(coordsB.x, coordsB.y);
 
-            const startPos = tempGrid.worldToGrid(coordsA.x, coordsA.y);
-            if (startPos.col < 0 || startPos.col >= tempGrid.cols || startPos.row < 0 || startPos.row >= tempGrid.rows) {
+            const startPos = tempFlowFieldGrid.worldToGrid(coordsA.x, coordsA.y);
+            if (startPos.col < 0 || startPos.col >= tempFlowFieldGrid.cols || startPos.row < 0 || startPos.row >= tempFlowFieldGrid.rows) {
                 return false;
             }
-            const idx = startPos.row * tempGrid.cols + startPos.col;
-            return tempGrid.flowField[idx] !== null;
+            const idx = startPos.row * tempFlowFieldGrid.cols + startPos.col;
+            return tempFlowFieldGrid.flowFieldDist[idx] < 999999;
         };
 
         const startNode = this.mapNodes.find(n => n.id === 0);
@@ -502,11 +501,12 @@ export class GameState {
             const theme = themeColors[Math.floor(Math.random() * themeColors.length)];
             const coords = this.getNodeCombatCoords(startNode);
             
-            const { obstacleGrid, flowFieldGrid } = createMockNavigation(coords.x, coords.y);
+            tempFlowFieldGrid.centerX = coords.x;
+            tempFlowFieldGrid.centerY = coords.y;
             const mockState = {
                 walls: [],
-                obstacleGrid,
-                flowFieldGrid,
+                obstacleGrid: tempObstacleGrid,
+                flowFieldGrid: tempFlowFieldGrid,
                 waveManager: this.waveManager
             };
 
@@ -542,11 +542,12 @@ export class GameState {
                     const theme = themeColors[Math.floor(Math.random() * themeColors.length)];
                     const coordsB = this.getNodeCombatCoords(nodeB);
 
-                    const { obstacleGrid, flowFieldGrid } = createMockNavigation(coordsB.x, coordsB.y);
+                    tempFlowFieldGrid.centerX = coordsB.x;
+                    tempFlowFieldGrid.centerY = coordsB.y;
                     const mockState = {
                         walls: [],
-                        obstacleGrid,
-                        flowFieldGrid,
+                        obstacleGrid: tempObstacleGrid,
+                        flowFieldGrid: tempFlowFieldGrid,
                         waveManager: this.waveManager
                     };
 

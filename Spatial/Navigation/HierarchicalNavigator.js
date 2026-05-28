@@ -162,9 +162,11 @@ export class HierarchicalNavigator {
         }
 
         const neighborIds = new Set();
-        for (let i = 0; i < this.cellToNode.length; i++) {
-            if (this.cellToNode[i]?.id !== node.id) continue;
-            const { col, row } = indexToColRow(i, this.cols);
+        const nodeCells = node.cells;
+        for (let i = 0; i < nodeCells.length; i++) {
+            const idx = nodeCells[i];
+            const col = idx % this.cols;
+            const row = (idx / this.cols) | 0;
             forEachCardinalNeighbor(col, row, this.cols, this.rows, (nc, nr, nIdx) => {
                 const other = this.cellToNode[nIdx];
                 if (other && other.id !== node.id) {
@@ -181,11 +183,13 @@ export class HierarchicalNavigator {
     _mergeRegionInto(keep, absorb) {
         if (!keep || !absorb || keep.id === absorb.id) return;
 
-        for (let i = 0; i < this.cellToNode.length; i++) {
-            if (this.cellToNode[i]?.id === absorb.id) {
-                this.cellToNode[i] = keep;
-            }
+        const absorbCells = absorb.cells;
+        for (let i = 0; i < absorbCells.length; i++) {
+            const idx = absorbCells[i];
+            this.cellToNode[idx] = keep;
+            keep.cells.push(idx);
         }
+        absorb.cells = [];
 
         for (const id in this.nodesMap) {
             this.nodesMap[id].edges = this.nodesMap[id].edges.filter(e => e.targetId !== absorb.id);
@@ -204,7 +208,8 @@ export class HierarchicalNavigator {
             const startIdx = unassigned.values().next().value;
             unassigned.delete(startIdx);
 
-            const { col: startCol, row: startRow } = indexToColRow(startIdx, this.cols);
+            const startCol = startIdx % this.cols;
+            const startRow = (startIdx / this.cols) | 0;
             const id = `node_${++this.nodeIdCounter}`;
             const node = new RegionNode(
                 id, startCol, startRow, startCol, startRow,
@@ -214,17 +219,20 @@ export class HierarchicalNavigator {
 
             const queue = [startIdx];
             this.cellToNode[startIdx] = node;
+            node.cells.push(startIdx);
             let cellCount = 1;
 
             let head = 0;
             while (head < queue.length && cellCount < this.maxCellsPerChunk) {
                 const currIdx = queue[head++];
-                const { col, row } = indexToColRow(currIdx, this.cols);
+                const col = currIdx % this.cols;
+                const row = (currIdx / this.cols) | 0;
 
                 forEachCardinalNeighbor(col, row, this.cols, this.rows, (nc, nr, nIdx) => {
                     if (this.grid[nIdx] !== 0 || !unassigned.has(nIdx)) return;
                     unassigned.delete(nIdx);
                     this.cellToNode[nIdx] = node;
+                    node.cells.push(nIdx);
                     queue.push(nIdx);
                     cellCount++;
                 });
@@ -283,6 +291,7 @@ export class HierarchicalNavigator {
                     }
                     for (const cellIdx of component) {
                         this.cellToNode[cellIdx] = keep;
+                        keep.cells.push(cellIdx);
                     }
                     repositionNodeCentroid(
                         keep, this.cellToNode, this.grid, this.cols, this.rows,
