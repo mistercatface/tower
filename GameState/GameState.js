@@ -255,6 +255,8 @@ export class GameState {
 
         this.player.fullHeal();
         this.player.clearHealAccumulator();
+        this.player.isDead = false;
+        this.player.changeState("navigating");
         this.turrets = [new Turret(0, 10)];
 
         this.enemies = [];
