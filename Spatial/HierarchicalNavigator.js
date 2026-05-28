@@ -6,6 +6,7 @@ import {
     generateVoronoiRegions,
     findRegionAdjacencies,
 } from "./VoronoiRegions.js";
+import { computePathSteering, steerTowardTarget, trimPathAhead } from "./PathFollow.js";
 
 export { RegionNode as Node };
 
@@ -184,65 +185,59 @@ export class HierarchicalNavigator {
         }
     }
 
-    _advancePathWaypoint(entity, path) {
-        if (!path || path.length === 0) return 0;
-
-        const reach = Math.max(24, (entity.speed || 50) * 0.15);
-        let idx = 0;
-
-        while (idx < path.length - 1) {
-            const wp = path[idx];
-            const next = path[idx + 1];
-            const dist = Math.hypot(entity.x - wp.x, entity.y - wp.y);
-
-            const segDx = next.x - wp.x;
-            const segDy = next.y - wp.y;
-            const segLenSq = segDx * segDx + segDy * segDy;
-
-            let passed = dist <= reach;
-            if (!passed && segLenSq > 0) {
-                const t = ((entity.x - wp.x) * segDx + (entity.y - wp.y) * segDy) / segLenSq;
-                passed = t > 1;
-            }
-
-            if (passed) {
-                idx++;
-            } else {
-                break;
-            }
-        }
-
-        if (idx < path.length && Math.hypot(entity.x - path[idx].x, entity.y - path[idx].y) <= reach) {
-            idx++;
-        }
-
-        return idx;
+    _replanPath(entity, targetX, targetY) {
+        const rawPath = this.findPath(entity.x, entity.y, targetX, targetY);
+        entity.hpaPath = rawPath ? trimPathAhead(entity.x, entity.y, rawPath) : null;
+        entity.hpaLastUpdate = Date.now();
     }
 
     navigateEntity(entity, targetX, targetY, updateInterval) {
-        const now = Date.now();
-        if (!entity.hpaPath || now - entity.hpaLastUpdate > updateInterval) {
-            entity.hpaPath = this.findPath(entity.x, entity.y, targetX, targetY);
-            entity.hpaLastUpdate = now;
+        const distToTarget = Math.hypot(entity.x - targetX, entity.y - targetY);
+        if (distToTarget < 2) {
+            entity.desiredX = 0;
+            entity.desiredY = 0;
+            return;
         }
-        if (entity.hpaPath && entity.hpaPath.length > 0) {
-            const waypointIdx = this._advancePathWaypoint(entity, entity.hpaPath);
-            if (waypointIdx < entity.hpaPath.length) {
-                const wp = entity.hpaPath[waypointIdx];
-                const dx = wp.x - entity.x;
-                const dy = wp.y - entity.y;
-                const len = Math.hypot(dx, dy);
-                if (len > 0) {
-                    entity.desiredX = dx / len;
-                    entity.desiredY = dy / len;
-                } else {
-                    entity.desiredX = 0;
-                    entity.desiredY = 0;
+
+        const moved = Math.hypot(
+            entity.x - (entity.hpaLastX ?? entity.x),
+            entity.y - (entity.hpaLastY ?? entity.y)
+        );
+        entity.hpaLastX = entity.x;
+        entity.hpaLastY = entity.y;
+
+        if (moved < 1.5) {
+            entity.hpaStuckFrames = (entity.hpaStuckFrames || 0) + 1;
+        } else {
+            entity.hpaStuckFrames = 0;
+        }
+
+        const now = Date.now();
+        const needsReplan = !entity.hpaPath
+            || now - entity.hpaLastUpdate > updateInterval
+            || entity.hpaStuckFrames > 20;
+
+        if (needsReplan) {
+            this._replanPath(entity, targetX, targetY);
+            entity.hpaStuckFrames = 0;
+        }
+
+        if (entity.hpaPath && entity.hpaPath.length >= 2) {
+            let steering = computePathSteering(entity, entity.hpaPath, targetX, targetY);
+            if (steering.offPath) {
+                this._replanPath(entity, targetX, targetY);
+                if (entity.hpaPath && entity.hpaPath.length >= 2) {
+                    steering = computePathSteering(entity, entity.hpaPath, targetX, targetY);
                 }
-                return true;
+            }
+            if (entity.hpaPath && entity.hpaPath.length >= 2) {
+                entity.desiredX = steering.desiredX;
+                entity.desiredY = steering.desiredY;
+                return;
             }
         }
-        return false;
+
+        steerTowardTarget(entity, targetX, targetY);
     }
 
     findPath(startX, startY, targetX, targetY) {

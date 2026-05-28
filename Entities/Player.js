@@ -4,6 +4,7 @@ import { FloatingText } from "../FloatingText.js";
 import { playerBaseStats } from "../Config.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
 import { createEntityBars } from "./EntityBars.js";
+import { blendWallRepulsion, PATH_CLEARANCE_MARGIN } from "../Spatial/PathFollow.js";
 
 const playerBars = createEntityBars({
     healthWidth: 48,
@@ -136,18 +137,25 @@ export class Player extends Enemy {
             if (toTarget.len < 2) {
                 this.stopMovement();
             } else {
-                let navigated = false;
                 if (state && state.hierarchicalNavigator) {
-                    if (state.hierarchicalNavigator.navigateEntity(this, this.targetX, this.targetY, 500)) {
-                        this.targetNodeX = this.x + this.desiredX * 10;
-                        this.targetNodeY = this.y + this.desiredY * 10;
-                        navigated = true;
-                    }
-                }
-                if (!navigated) {
+                    state.hierarchicalNavigator.navigateEntity(this, this.targetX, this.targetY, 500);
+                } else {
                     this.steerTowardPoint(this.targetX, this.targetY, flowFieldGrid, flowFieldGrid.playerFlowField);
-                    this.targetNodeX = this.x + this.desiredX * 10;
-                    this.targetNodeY = this.y + this.desiredY * 10;
+                }
+                this.targetNodeX = this.x + this.desiredX * 10;
+                this.targetNodeY = this.y + this.desiredY * 10;
+
+                if (state && state.obstacleGrid && (this.desiredX !== 0 || this.desiredY !== 0)) {
+                    const repelled = blendWallRepulsion(
+                        this.x,
+                        this.y,
+                        this.desiredX,
+                        this.desiredY,
+                        state.obstacleGrid,
+                        this.radius + PATH_CLEARANCE_MARGIN
+                    );
+                    this.desiredX = repelled.x;
+                    this.desiredY = repelled.y;
                 }
             }
         } else {

@@ -130,9 +130,8 @@ export class Enemy extends DestructibleEntity {
         }
 
         if (state && state.hierarchicalNavigator) {
-            if (state.hierarchicalNavigator.navigateEntity(this, target.x, target.y, 1000)) {
-                return;
-            }
+            state.hierarchicalNavigator.navigateEntity(this, target.x, target.y, 1000);
+            return;
         }
 
         this.steerTowardPoint(target.x, target.y, flowFieldGrid);
