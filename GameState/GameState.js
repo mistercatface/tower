@@ -7,6 +7,8 @@ import { WallGenerator } from "../Generator/Generator.js";
 import { FloatingText } from "../FloatingText.js";
 import { Scheduler } from "../Scheduler.js";
 import { WaveManager } from "../WaveManager.js";
+import { Segment } from "../Entities/Wall.js";
+import { GeneratorStrategies } from "../Generator/GeneratorStrategies.js";
 
 export class Stat {
     constructor(baseValue, min = -Infinity, max = Infinity) {
@@ -409,6 +411,153 @@ export class GameState {
         this.currentNodeId = 0;
         this.mapPlayerX = 0;
         this.mapPlayerY = 0;
+
+        this.pregenerateAllCombatData();
+    }
+
+    pregenerateAllCombatData() {
+        const themeColors = [
+            { r: 0, g: 188, b: 212 },
+            { r: 76, g: 175, b: 80 },
+            { r: 255, g: 152, b: 0 },
+            { r: 156, g: 39, b: 176 },
+            { r: 63, g: 81, b: 181 },
+            { r: 244, g: 67, b: 54 },
+            { r: 233, g: 30, b: 99 },
+            { r: 0, g: 150, b: 136 },
+            { r: 205, g: 220, b: 57 },
+            { r: 121, g: 85, b: 72 }
+        ];
+
+        const strategies = Object.keys(GeneratorStrategies);
+
+        // Helper to check pathability between two nodes using specific wall lists
+        const checkPathability = (nodeA, nodeB, wallsA, wallsB) => {
+            const coordsA = this.getNodeCombatCoords(nodeA);
+            const coordsB = this.getNodeCombatCoords(nodeB);
+            const mx = (coordsA.x + coordsB.x) / 2;
+            const my = (coordsA.y + coordsB.y) / 2;
+
+            const tempGrid = new GridSystem(gridSettings.cellSize, gridSettings.width, gridSettings.height);
+            tempGrid.centerX = mx;
+            tempGrid.centerY = my;
+
+            const segments = [];
+            for (const w of wallsA) {
+                segments.push(new Segment(w.x, w.y, w.angle, w.size, w.padding, w.maxHealth));
+            }
+            for (const w of wallsB) {
+                segments.push(new Segment(w.x, w.y, w.angle, w.size, w.padding, w.maxHealth));
+            }
+
+            tempGrid.rebuild(segments, coordsB.x, coordsB.y);
+
+            const startPos = tempGrid.worldToGrid(coordsA.x, coordsA.y);
+            if (startPos.col < 0 || startPos.col >= tempGrid.cols || startPos.row < 0 || startPos.row >= tempGrid.rows) {
+                return false;
+            }
+            const idx = startPos.row * tempGrid.cols + startPos.col;
+            return tempGrid.flowField[idx] !== null;
+        };
+
+        // 1. Generate walls for start node (layer 0)
+        const startNode = this.mapNodes.find(n => n.id === 0);
+        if (startNode) {
+            const strategy = strategies[Math.floor(Math.random() * strategies.length)];
+            const theme = themeColors[Math.floor(Math.random() * themeColors.length)];
+            const coords = this.getNodeCombatCoords(startNode);
+            
+            const mockState = {
+                walls: [],
+                gridSystem: new GridSystem(gridSettings.cellSize, gridSettings.width, gridSettings.height),
+                waveManager: this.waveManager
+            };
+            mockState.gridSystem.centerX = coords.x;
+            mockState.gridSystem.centerY = coords.y;
+
+            GeneratorStrategies[strategy].generate(mockState, coords.x, coords.y);
+            
+            startNode.wallsData = mockState.walls.map(w => ({
+                x: w.x,
+                y: w.y,
+                angle: w.angle,
+                size: w.size,
+                padding: w.padding,
+                maxHealth: w.maxHealth || 30
+            }));
+            startNode.wallTheme = theme;
+            startNode.strategy = strategy;
+        }
+
+        // 2. Generate and validate walls layer by layer
+        const numLayers = mapSettings.numLayers;
+        for (let l = 1; l < numLayers; l++) {
+            const layerNodes = this.mapNodes.filter(n => n.layer === l);
+            for (const nodeB of layerNodes) {
+                // Find incoming nodes A
+                const incomingNodes = this.mapNodes.filter(n => n.connections.includes(nodeB.id));
+
+                let attempts = 0;
+                let success = false;
+                let chosenWalls = [];
+                let chosenTheme = null;
+                let chosenStrategy = null;
+
+                while (!success && attempts < 50) {
+                    attempts++;
+                    const strategy = strategies[Math.floor(Math.random() * strategies.length)];
+                    const theme = themeColors[Math.floor(Math.random() * themeColors.length)];
+                    const coordsB = this.getNodeCombatCoords(nodeB);
+
+                    const mockState = {
+                        walls: [],
+                        gridSystem: new GridSystem(gridSettings.cellSize, gridSettings.width, gridSettings.height),
+                        waveManager: this.waveManager
+                    };
+                    mockState.gridSystem.centerX = coordsB.x;
+                    mockState.gridSystem.centerY = coordsB.y;
+
+                    GeneratorStrategies[strategy].generate(mockState, coordsB.x, coordsB.y);
+
+                    const wallsB = mockState.walls.map(w => ({
+                        x: w.x,
+                        y: w.y,
+                        angle: w.angle,
+                        size: w.size,
+                        padding: w.padding,
+                        maxHealth: w.maxHealth || 30
+                    }));
+
+                    // Check if nodeB is pathable from all incoming nodes A
+                    let allPathable = true;
+                    for (const nodeA of incomingNodes) {
+                        if (!checkPathability(nodeA, nodeB, nodeA.wallsData || [], wallsB)) {
+                            allPathable = false;
+                            break;
+                        }
+                    }
+
+                    if (allPathable) {
+                        chosenWalls = wallsB;
+                        chosenTheme = theme;
+                        chosenStrategy = strategy;
+                        success = true;
+                    }
+                }
+
+                // Fallback to empty walls to guarantee pathability
+                if (!success) {
+                    console.warn(`Could not find a pathable wall layout for node ${nodeB.id} after 50 attempts. Falling back to empty walls.`);
+                    chosenWalls = [];
+                    chosenTheme = themeColors[0];
+                    chosenStrategy = "None";
+                }
+
+                nodeB.wallsData = chosenWalls;
+                nodeB.wallTheme = chosenTheme;
+                nodeB.strategy = chosenStrategy;
+            }
+        }
     }
 }
 

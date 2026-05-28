@@ -55,7 +55,7 @@ export const gridSettings = {
 };
 
 export const mapSettings = {
-    numLayers: 50,
+    numLayers: 10,
     layerSpacing: 150,
     xSpacing: 120,
 };

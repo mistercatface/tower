@@ -157,7 +157,29 @@ export class CombatState {
             }
         } else {
             ctx.state.player.resetToSpawn();
-            WallGenerator.generate(ctx.state);
+            ctx.state.walls = [];
+            ctx.state.walls.gridSystem = ctx.state.gridSystem;
+            ctx.state.gridSystem.centerX = ctx.state.player.x;
+            ctx.state.gridSystem.centerY = ctx.state.player.y;
+            ctx.state.wallTheme = currentNode.wallTheme || { r: 0, g: 188, b: 212 };
+
+            if (currentNode.wallsData) {
+                for (const w of currentNode.wallsData) {
+                    ctx.state.walls.push(new Segment(w.x, w.y, w.angle, w.size, w.padding, w.maxHealth));
+                }
+            }
+
+            ctx.state.gridSystem.rebuild(ctx.state.walls, ctx.state.player.x, ctx.state.player.y);
+
+            if (!ctx.state.discoveredAbilities.has("Laser")) {
+                spawnPickup(ctx.state, ctx.state.player.x, ctx.state.player.y, pickupSpawnSettings.coinMinRadius, pickupSpawnSettings.coinMaxRadius, "coin");
+            }
+            spawnPickup(ctx.state, ctx.state.player.x, ctx.state.player.y, pickupSpawnSettings.eyeballMinRadius, pickupSpawnSettings.eyeballMaxRadius, "eyeball");
+
+            const numBarrels = pickupSpawnSettings.barrelMinCount + Math.floor(Math.random() * pickupSpawnSettings.barrelRandomRange);
+            for (let i = 0; i < numBarrels; i++) {
+                spawnPickup(ctx.state, ctx.state.player.x, ctx.state.player.y, pickupSpawnSettings.barrelMinRadius, pickupSpawnSettings.barrelMaxRadius, "barrel");
+            }
         }
         
         if (!transitioningFromTravel) {
