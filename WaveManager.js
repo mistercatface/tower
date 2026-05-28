@@ -160,7 +160,10 @@ export class WaveManager {
         }
 
         if (selectedType.spawnType === "group") {
-            const groupSize = selectedType.groupSettings.baseGroupSize + Math.floor(this.wave * selectedType.groupSettings.growthPerWave);
+            let groupSize = selectedType.groupSettings.baseGroupSize + Math.floor(this.wave * selectedType.groupSettings.growthPerWave);
+            if (selectedType.groupSettings.maxGroupSize !== undefined) {
+                groupSize = Math.min(selectedType.groupSettings.maxGroupSize, groupSize);
+            }
             return this.spawnGroup(state, selectedType, groupSize);
         } else {
             const baseSimultaneous = 1 + Math.floor(this.wave / 3);
