@@ -161,7 +161,14 @@ export class Renderer {
 
     drawRangeIndicator(state, viewport) {
         const drawRange = (viewport && (state.phase === "combat" || state.phase === "map_transition" || state.phase === "reward")) ? (viewport.getVisualRadius() / viewport.zoom) : state.weapon.range;
-        state.player.renderRange(this.ctx, drawRange);
+        if (viewport && (state.phase === "combat" || state.phase === "map_transition" || state.phase === "reward")) {
+            this.ctx.beginPath();
+            this.ctx.arc(viewport.x, viewport.y, drawRange, 0, Math.PI * 2);
+            this.ctx.fillStyle = "rgba(76, 255, 80, 0.16)";
+            this.ctx.fill();
+        } else {
+            state.player.renderRange(this.ctx, drawRange);
+        }
     }
 
     drawPlayerAndTurrets(state) {
@@ -244,8 +251,10 @@ export class Renderer {
             ctx.save();
             ctx.fillStyle = "#000000";
             ctx.beginPath();
-            ctx.rect(state.player.x - 10000, state.player.y - 10000, 20000, 20000);
-            ctx.arc(state.player.x, state.player.y, maskRadius, 0, Math.PI * 2);
+            const cx = (viewport && (state.phase === "combat" || state.phase === "map_transition" || state.phase === "reward")) ? viewport.x : state.player.x;
+            const cy = (viewport && (state.phase === "combat" || state.phase === "map_transition" || state.phase === "reward")) ? viewport.y : state.player.y;
+            ctx.rect(cx - 10000, cy - 10000, 20000, 20000);
+            ctx.arc(cx, cy, maskRadius, 0, Math.PI * 2);
             ctx.fill("evenodd");
             ctx.restore();
         }
@@ -353,10 +362,10 @@ export class Renderer {
         const gridSpacing = 40; 
         const worldRadius = R / zoom;
 
-        const minX = state.player.x - worldRadius * 1.57;
-        const maxX = state.player.x + worldRadius * 1.57;
-        const minY = state.player.y - worldRadius * 1.57;
-        const maxY = state.player.y + worldRadius * 1.57;
+        const minX = viewport.x - worldRadius * 1.57;
+        const maxX = viewport.x + worldRadius * 1.57;
+        const minY = viewport.y - worldRadius * 1.57;
+        const maxY = viewport.y + worldRadius * 1.57;
 
         const startX = Math.floor(minX / gridSpacing) * gridSpacing;
         const endX = Math.ceil(maxX / gridSpacing) * gridSpacing;
@@ -364,8 +373,8 @@ export class Renderer {
         const endY = Math.ceil(maxY / gridSpacing) * gridSpacing;
 
         const projectLens = (wx, wy) => {
-            const dx = (wx - state.player.x) * zoom;
-            const dy = (wy - state.player.y) * zoom;
+            const dx = (wx - viewport.x) * zoom;
+            const dy = (wy - viewport.y) * zoom;
             const d = Math.hypot(dx, dy);
             if (d === 0) return { x: cx, y: cy, visible: true };
 
@@ -374,7 +383,10 @@ export class Renderer {
                 return { x: cx + (dx / d) * R, y: cy + (dy / d) * R, visible: false };
             }
 
-            const r = R * Math.sin(d / R);
+            const rDome = R * Math.sin(d / R);
+            const curvatureStrength = 0.45; // Blend factor: 0 = flat grid, 1 = hemispherical dome
+            const r = d * (1 - curvatureStrength) + rDome * curvatureStrength;
+
             return {
                 x: cx + (dx / d) * r,
                 y: cy + (dy / d) * r,
