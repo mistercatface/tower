@@ -483,7 +483,7 @@ export class GameState {
             }
 
             obstacleGrid.rebuild(segments);
-            tempGrid.refresh(coordsB.x, coordsB.y, null, null, segments);
+            tempGrid.refresh(coordsB.x, coordsB.y);
 
             const startPos = tempGrid.worldToGrid(coordsA.x, coordsA.y);
             if (startPos.col < 0 || startPos.col >= tempGrid.cols || startPos.row < 0 || startPos.row >= tempGrid.rows) {

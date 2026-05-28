@@ -59,7 +59,6 @@ export class MapTransitionState {
         ctx.state.flowFieldGrid.shiftCenter(
             ctx.state.player.x,
             ctx.state.player.y,
-            ctx.state.wallSpatialHash,
             ctx.state.player.x,
             ctx.state.player.y,
             targetCoords.x,
@@ -82,7 +81,6 @@ export class MapTransitionState {
             ctx.state.flowFieldGrid.shiftCenter(
                 ctx.state.player.x,
                 ctx.state.player.y,
-                ctx.state.wallSpatialHash,
                 ctx.state.player.x,
                 ctx.state.player.y,
                 ctx.state.player.targetX,
@@ -156,11 +154,10 @@ export class CombatState {
         ctx.state.waveManager.startCombat();
         ctx.state.turrets.forEach(t => t.currentLaserLength = 0);
         
-        // Shift grid center to player position and rebuild local flow field using wallSpatialHash
+        // Shift grid center to player position and rebuild local flow field
         ctx.state.flowFieldGrid.shiftCenter(
             ctx.state.player.x,
             ctx.state.player.y,
-            ctx.state.wallSpatialHash,
             ctx.state.player.x,
             ctx.state.player.y
         );
@@ -201,7 +198,6 @@ export class CombatState {
             ctx.state.flowFieldGrid.shiftCenter(
                 ctx.state.player.x,
                 ctx.state.player.y,
-                ctx.state.wallSpatialHash,
                 ctx.state.player.x,
                 ctx.state.player.y,
                 ctx.state.player.targetX,

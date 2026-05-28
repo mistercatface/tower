@@ -53,7 +53,7 @@ export const WallGenerator = {
         if (state.hierarchicalNavigator) {
             state.hierarchicalNavigator.rebuildRegions();
         }
-        state.flowFieldGrid.refresh(playerX, playerY, null, null, state.walls);
+        state.flowFieldGrid.refresh(playerX, playerY);
         if (!state.discoveredAbilities.has("Laser")) {
             spawnPickup(state, playerX, playerY, pickupSpawnSettings.coinMinRadius, pickupSpawnSettings.coinMaxRadius, "coin");
         }

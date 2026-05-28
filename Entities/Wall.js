@@ -35,8 +35,7 @@ export class Segment extends DestructibleEntity {
                 ctx.state.player.x,
                 ctx.state.player.y,
                 ctx.state.player.isMoving ? ctx.state.player.targetX : null,
-                ctx.state.player.isMoving ? ctx.state.player.targetY : null,
-                ctx.state.walls
+                ctx.state.player.isMoving ? ctx.state.player.targetY : null
             );
         }
     }
