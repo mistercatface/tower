@@ -71,7 +71,7 @@ export class MapTransitionState {
 
     update(dt, ctx) {
         const oldGridPos = ctx.state.flowFieldGrid.worldToGrid(ctx.state.player.x, ctx.state.player.y);
-        ctx.state.player.update(dt, ctx.state.flowFieldGrid, ctx.state.walls, null);
+        ctx.state.player.update(dt, ctx.state.flowFieldGrid, ctx.state.walls, null, ctx.state);
         const newGridPos = ctx.state.flowFieldGrid.worldToGrid(ctx.state.player.x, ctx.state.player.y);
         const distToCenter = Math.max(
             Math.abs(ctx.state.player.x - ctx.state.flowFieldGrid.centerX),
@@ -188,7 +188,7 @@ export class CombatState {
         spatialHash.insert(ctx.state.player);
 
         const oldGridPos = ctx.state.flowFieldGrid.worldToGrid(ctx.state.player.x, ctx.state.player.y);
-        ctx.state.player.update(dt, ctx.state.flowFieldGrid, ctx.state.walls, spatialHash, abilityState.externalSpeedMod);
+        ctx.state.player.update(dt, ctx.state.flowFieldGrid, ctx.state.walls, spatialHash, ctx.state, abilityState.externalSpeedMod);
         const newGridPos = ctx.state.flowFieldGrid.worldToGrid(ctx.state.player.x, ctx.state.player.y);
         const distToCenter = Math.max(
             Math.abs(ctx.state.player.x - ctx.state.flowFieldGrid.centerX),

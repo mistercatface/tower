@@ -45,22 +45,30 @@ export class HierarchicalNavigator {
         return this.obstacleGrid.minY;
     }
 
-    initialize() {
+    ensureBuffers() {
         const size = this.cols * this.rows;
-        this.distToWall = new Float32Array(size);
-        this.cellToNode = new Array(size).fill(null);
+        if (size === 0) return;
+
+        if (!this.aStarGScore || this.aStarGScore.length !== size) {
+            this.distToWall = new Float32Array(size);
+            this.cellToNode = new Array(size).fill(null);
+            this.aStarGScore = new Float32Array(size);
+            this.aStarCameFrom = new Int32Array(size);
+            this.aStarVisited = new Int32Array(size);
+            this.aStarRunId = 0;
+        }
+    }
+
+    initialize() {
+        this.ensureBuffers();
         this.nodesMap = {};
         this.nodeIdCounter = 0;
-
-        this.aStarGScore = new Float32Array(size);
-        this.aStarCameFrom = new Int32Array(size);
-        this.aStarVisited = new Int32Array(size);
-        this.aStarRunId = 0;
-
         this.rebuildRegions();
     }
 
     rebuildRegions() {
+        this.ensureBuffers();
+        if (this.cols === 0 || this.rows === 0) return;
         computeDistanceTransform(this.grid, this.cols, this.rows, this.distToWall);
         this.generateChunks();
         this.connectAllNodes();
@@ -176,6 +184,41 @@ export class HierarchicalNavigator {
         }
     }
 
+    _advancePathWaypoint(entity, path) {
+        if (!path || path.length === 0) return 0;
+
+        const reach = Math.max(24, (entity.speed || 50) * 0.15);
+        let idx = 0;
+
+        while (idx < path.length - 1) {
+            const wp = path[idx];
+            const next = path[idx + 1];
+            const dist = Math.hypot(entity.x - wp.x, entity.y - wp.y);
+
+            const segDx = next.x - wp.x;
+            const segDy = next.y - wp.y;
+            const segLenSq = segDx * segDx + segDy * segDy;
+
+            let passed = dist <= reach;
+            if (!passed && segLenSq > 0) {
+                const t = ((entity.x - wp.x) * segDx + (entity.y - wp.y) * segDy) / segLenSq;
+                passed = t > 1;
+            }
+
+            if (passed) {
+                idx++;
+            } else {
+                break;
+            }
+        }
+
+        if (idx < path.length && Math.hypot(entity.x - path[idx].x, entity.y - path[idx].y) <= reach) {
+            idx++;
+        }
+
+        return idx;
+    }
+
     navigateEntity(entity, targetX, targetY, updateInterval) {
         const now = Date.now();
         if (!entity.hpaPath || now - entity.hpaLastUpdate > updateInterval) {
@@ -183,15 +226,7 @@ export class HierarchicalNavigator {
             entity.hpaLastUpdate = now;
         }
         if (entity.hpaPath && entity.hpaPath.length > 0) {
-            let waypointIdx = 0;
-            while (waypointIdx < entity.hpaPath.length) {
-                const wp = entity.hpaPath[waypointIdx];
-                const distToWp = Math.hypot(entity.x - wp.x, entity.y - wp.y);
-                if (distToWp > 24) {
-                    break;
-                }
-                waypointIdx++;
-            }
+            const waypointIdx = this._advancePathWaypoint(entity, entity.hpaPath);
             if (waypointIdx < entity.hpaPath.length) {
                 const wp = entity.hpaPath[waypointIdx];
                 const dx = wp.x - entity.x;
