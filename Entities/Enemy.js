@@ -1,4 +1,3 @@
-import { Navigator } from "../Spatial/Navigator.js";
 import { Utilities } from "../Utilities.js";
 import { Projectile } from "./Projectile.js";
 import { Turret } from "../Turret.js";
@@ -109,10 +108,10 @@ export class Enemy extends DestructibleEntity {
     steerTowardPoint(targetX, targetY, flowFieldGrid, flowField = null) {
         const field = flowField ?? flowFieldGrid?.flowField;
         if (flowFieldGrid && field) {
-            const angle = Navigator.getSteeringAngle(this.x, this.y, flowFieldGrid, field);
-            if (angle !== null) {
-                this.desiredX = Math.cos(angle);
-                this.desiredY = Math.sin(angle);
+            const dir = flowFieldGrid.sampleDirection(this.x, this.y, field);
+            if (dir) {
+                this.desiredX = dir.x;
+                this.desiredY = dir.y;
                 return;
             }
         }

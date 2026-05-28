@@ -257,38 +257,6 @@ export class Renderer {
         ctx.restore();
     }
 
-    drawDebugSpawnRadius(state) {
-        const visualRadius = state.spawnRadius - 50;
-        this.ctx.save();
-        this.ctx.beginPath();
-        this.ctx.rect(state.player.x - 10000, state.player.y - 10000, 20000, 20000);
-        this.ctx.rect(state.player.x - visualRadius, state.player.y - visualRadius, visualRadius * 2, visualRadius * 2);
-        this.ctx.fillStyle = "#000000";
-        this.ctx.fill("evenodd");
-        this.ctx.restore();
-    }
-
-    drawDebugFlowField(state) {
-        const grid = state.flowFieldGrid;
-        if (!grid) return;
-        const px = grid.centerX;
-        const py = grid.centerY;
-        for (let row = 0; row < grid.rows; row++) {
-            for (let col = 0; col < grid.cols; col++) {
-                const flow = grid.flowField[row * grid.cols + col];
-                const cx = col * grid.cellSize + px - grid.offsetX;
-                const cy = row * grid.cellSize + py - grid.offsetY;
-                if (flow) {
-                    this.ctx.fillStyle = "rgba(76, 175, 80, 0.15)";
-                    this.ctx.fillRect(cx, cy, grid.cellSize - 1, grid.cellSize - 1);
-                } else if (grid.grid[row * grid.cols + col] === 1) {
-                    this.ctx.fillStyle = "rgba(244, 67, 54, 0.15)";
-                    this.ctx.fillRect(cx, cy, grid.cellSize - 1, grid.cellSize - 1);
-                }
-            }
-        }
-    }
-
     drawMap(state) {
         const baseSpawnX = state.mapBaseSpawnX !== undefined ? state.mapBaseSpawnX : (state.canvasBounds.width > 0 ? state.canvasBounds.width / 2 : 225);
         const baseSpawnY = state.mapBaseSpawnY !== undefined ? state.mapBaseSpawnY : (state.canvasBounds.height > 0 ? state.canvasBounds.height / 2 : 225);

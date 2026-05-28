@@ -8,8 +8,6 @@ import {
 } from "./VoronoiRegions.js";
 import { computePathSteering, steerTowardTarget, trimPathAhead } from "./PathFollow.js";
 
-export { RegionNode as Node };
-
 export class HierarchicalNavigator {
     constructor(cellSize, maxCellsPerChunk, minCellsPerChunk, obstacleGrid) {
         this.cellSize = cellSize;

@@ -1,40 +1,4 @@
-export const PATH_CLEARANCE_MARGIN = 10;
-
-export function distanceToWall(wall, x, y, extraPadding = 0) {
-    if (wall.isDead) return Infinity;
-
-    const dx = x - wall.x;
-    const dy = y - wall.y;
-    const cos = Math.cos(-wall.angle);
-    const sin = Math.sin(-wall.angle);
-    const localX = dx * cos - dy * sin;
-    const localY = dx * sin + dy * cos;
-    const half = wall.size / 2 + wall.padding + extraPadding;
-    const distX = Math.max(0, Math.abs(localX) - half);
-    const distY = Math.max(0, Math.abs(localY) - half);
-    return Math.hypot(distX, distY);
-}
-
-export function closestPointOnWall(wall, x, y, extraPadding = 0) {
-    const dx = x - wall.x;
-    const dy = y - wall.y;
-    const cos = Math.cos(-wall.angle);
-    const sin = Math.sin(-wall.angle);
-    let localX = dx * cos - dy * sin;
-    let localY = dx * sin + dy * cos;
-    const half = wall.size / 2 + wall.padding + extraPadding;
-    localX = Math.max(-half, Math.min(half, localX));
-    localY = Math.max(-half, Math.min(half, localY));
-
-    const worldCos = Math.cos(wall.angle);
-    const worldSin = Math.sin(wall.angle);
-    return {
-        x: wall.x + localX * worldCos - localY * worldSin,
-        y: wall.y + localX * worldSin + localY * worldCos,
-    };
-}
-
-export function projectOntoPath(x, y, path) {
+function projectOntoPath(x, y, path) {
     let bestDistSq = Infinity;
     let segmentIdx = 0;
     let t = 0;
@@ -77,7 +41,7 @@ export function projectOntoPath(x, y, path) {
     };
 }
 
-export function remainingPathLength(path, segmentIdx, t) {
+function remainingPathLength(path, segmentIdx, t) {
     if (path.length < 2) return 0;
 
     const ax = path[segmentIdx].x;
@@ -93,7 +57,7 @@ export function remainingPathLength(path, segmentIdx, t) {
     return length;
 }
 
-export function samplePathAhead(path, segmentIdx, t, aheadDist) {
+function samplePathAhead(path, segmentIdx, t, aheadDist) {
     if (path.length < 2) {
         return { x: path[0].x, y: path[0].y };
     }
@@ -154,42 +118,6 @@ export function trimPathAhead(x, y, path) {
     }
 
     return trimmed;
-}
-
-export function blendWallRepulsion(x, y, dirX, dirY, obstacleGrid, clearance) {
-    const walls = obstacleGrid.getNearbySegments({ x, y, radius: clearance + 48 });
-    let repX = 0;
-    let repY = 0;
-
-    for (const wall of walls) {
-        const dist = distanceToWall(wall, x, y);
-        if (dist >= clearance) continue;
-
-        const closest = closestPointOnWall(wall, x, y);
-        let pushX = x - closest.x;
-        let pushY = y - closest.y;
-        let pushLen = Math.hypot(pushX, pushY);
-
-        if (pushLen < 0.01) {
-            pushX = x - wall.x;
-            pushY = y - wall.y;
-            pushLen = Math.hypot(pushX, pushY) || 1;
-        }
-
-        const strength = (clearance - dist) / clearance;
-        repX += (pushX / pushLen) * strength;
-        repY += (pushY / pushLen) * strength;
-    }
-
-    let finalX = dirX + repX;
-    let finalY = dirY + repY;
-    const len = Math.hypot(finalX, finalY);
-
-    if (len <= 0) {
-        return { x: dirX, y: dirY };
-    }
-
-    return { x: finalX / len, y: finalY / len };
 }
 
 export function computePathSteering(entity, path, targetX, targetY) {

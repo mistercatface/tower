@@ -15,13 +15,6 @@ export class FlowFieldGrid {
         this.centerY = 0;
     }
 
-    rebuild(segments, targetX, targetY) {
-        if (segments) {
-            this.obstacleGrid.rebuild(segments);
-        }
-        this.refresh(targetX, targetY);
-    }
-
     refresh(targetX, targetY, playerTargetX = null, playerTargetY = null) {
         this.clearFlowFields();
         this.syncLocalObstacles();
@@ -130,7 +123,42 @@ export class FlowFieldGrid {
         return { col, row };
     }
 
-    getNearbySegments(entity) {
-        return this.obstacleGrid.getNearbySegments(entity);
+    sampleDirection(x, y, targetField) {
+        const halfCell = this.cellSize / 2;
+        const gx = (x - (this.centerX - this.offsetX + halfCell)) / this.cellSize;
+        const gy = (y - (this.centerY - this.offsetY + halfCell)) / this.cellSize;
+        const col0 = Math.floor(gx);
+        const row0 = Math.floor(gy);
+        const col1 = col0 + 1;
+        const row1 = row0 + 1;
+        const tx = gx - col0;
+        const ty = gy - row0;
+        const getFlowVec = (c, r) => {
+            if (c < 0 || c >= this.cols || r < 0 || r >= this.rows) return null;
+            const f = targetField[r * this.cols + c];
+            if (!f) return null;
+            const len = Math.hypot(f.x, f.y);
+            return len > 0 ? { x: f.x / len, y: f.y / len } : null;
+        };
+        const v00 = getFlowVec(col0, row0);
+        const v10 = getFlowVec(col1, row0);
+        const v01 = getFlowVec(col0, row1);
+        const v11 = getFlowVec(col1, row1);
+        const w00 = (1 - tx) * (1 - ty);
+        const w10 = tx * (1 - ty);
+        const w01 = (1 - tx) * ty;
+        const w11 = tx * ty;
+        let flowX = 0;
+        let flowY = 0;
+        let totalWeight = 0;
+        if (v00) { flowX += v00.x * w00; flowY += v00.y * w00; totalWeight += w00; }
+        if (v10) { flowX += v10.x * w10; flowY += v10.y * w10; totalWeight += w10; }
+        if (v01) { flowX += v01.x * w01; flowY += v01.y * w01; totalWeight += w01; }
+        if (v11) { flowX += v11.x * w11; flowY += v11.y * w11; totalWeight += w11; }
+        if (totalWeight > 0) {
+            const len = Math.hypot(flowX, flowY);
+            return len > 0 ? { x: flowX / len, y: flowY / len } : null;
+        }
+        return null;
     }
 }
