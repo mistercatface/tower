@@ -1,4 +1,5 @@
 import { colRowToIndex } from "../Grid/GridUtils.js";
+import { pointToSegmentPaddingDistanceSq } from "../Navigation/WallGeometry.js";
 
 export function getWallReach(wall, padding = wall.padding) {
     return wall.size / 2 * Math.SQRT2 + padding;
@@ -29,26 +30,14 @@ export function cellBoundsToWorldBounds(bounds, originX, originY, cellSize) {
 export function markWallOnGrid(wall, grid, cols, rows, { worldToGrid, cellCenter, padding = wall.padding, onBlockedCell }) {
     if (wall.isDead) return;
 
-    const halfSize = wall.size / 2;
     const bounds = getWallCellBounds(wall, worldToGrid, cols, rows, padding);
-    const cos = Math.cos(-wall.angle);
-    const sin = Math.sin(-wall.angle);
     const paddingSq = padding * padding + 0.01;
 
     for (let col = bounds.startCol; col <= bounds.endCol; col++) {
         for (let row = bounds.startRow; row <= bounds.endRow; row++) {
             const { x: cx, y: cy } = cellCenter(col, row);
 
-            const dx = cx - wall.x;
-            const dy = cy - wall.y;
-
-            const localX = dx * cos - dy * sin;
-            const localY = dx * sin + dy * cos;
-
-            const distX = Math.max(0, Math.abs(localX) - halfSize);
-            const distY = Math.max(0, Math.abs(localY) - halfSize);
-
-            if (distX * distX + distY * distY <= paddingSq) {
+            if (pointToSegmentPaddingDistanceSq(wall, cx, cy) <= paddingSq) {
                 const idx = colRowToIndex(col, row, cols);
                 grid[idx] = 1;
                 if (onBlockedCell) {

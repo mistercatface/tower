@@ -44,6 +44,15 @@ export function circleIntersectsSegment(circle, segment) {
     return distanceSqToSegment(segment, circle.x, circle.y) < radiusSq;
 }
 
+export function pointToSegmentPaddingDistanceSq(segment, x, y) {
+    if (segment.isDead) return Infinity;
+
+    const { localX, localY, half } = toSegmentLocal(segment, x, y);
+    const distX = Math.max(0, Math.abs(localX) - half);
+    const distY = Math.max(0, Math.abs(localY) - half);
+    return distX * distX + distY * distY;
+}
+
 export function getCircleSegmentPenetration(circle, segment) {
     if (segment.isDead) return null;
 
