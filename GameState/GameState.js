@@ -5,7 +5,7 @@ import { FlowFieldGrid } from "../Spatial/Navigation/FlowFieldGrid.js";
 import { WorldObstacleGrid } from "../Spatial/World/ObstacleGrid.js";
 import { HierarchicalNavigator } from "../Spatial/Navigation/HierarchicalNavigator.js";
 import { NavigationService } from "../Spatial/Navigation/NavigationService.js";
-import { defaultUpgradeCost, playerBaseStats, gridSettings } from "../Config/Config.js";
+import { defaultUpgradeCost, playerBaseStats, gridSettings, mapSettings } from "../Config/Config.js";
 import { Scheduler } from "../Core/Scheduler.js";
 import { WaveManager } from "../Combat/WaveManager.js";
 import { SpatialHash } from "../Spatial/World/SpatialHash.js";
@@ -68,6 +68,23 @@ export class GameState {
         this.wallSpatialHash = new SpatialHash(100);
  
         this.initializeDefaultState();
+    }
+
+    getCombatSpawnOrigin() {
+        return {
+            x: this.mapBaseSpawnX !== undefined ? this.mapBaseSpawnX : (this.canvasBounds.width > 0 ? this.canvasBounds.width / 2 : 225),
+            y: this.mapBaseSpawnY !== undefined ? this.mapBaseSpawnY : (this.canvasBounds.height > 0 ? this.canvasBounds.height / 2 : 225),
+        };
+    }
+
+    getNodeCombatCoords(node) {
+        if (!node) return { x: 0, y: 0 };
+        const { x: baseSpawnX, y: baseSpawnY } = this.getCombatSpawnOrigin();
+        const scale = mapSettings.combatCoordScale;
+        return {
+            x: baseSpawnX + node.x * scale,
+            y: baseSpawnY + node.y * scale,
+        };
     }
 
     initializeDefaultState() {

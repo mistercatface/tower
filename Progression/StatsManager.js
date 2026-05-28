@@ -1,7 +1,7 @@
 import { Turret } from "../Entities/Turret.js";
 import { defaultUpgradeCost, perkMilestones, playerBaseStats } from "../Config/Config.js";
 import { FloatingText } from "../Render/FloatingText.js";
-import { MapGenerator } from "../GameState/MapGenerator.js";
+import { MapGenerator } from "../Generator/MapGenerator.js";
 import { saveProgress } from "./Storage.js";
 
 export class StatsManager {
@@ -138,7 +138,7 @@ export class StatsManager {
 
         const startNode = state.mapNodes.find(n => n.id === 0);
         if (startNode) {
-            const coords = MapGenerator.getNodeCombatCoords(state, startNode);
+            const coords = state.getNodeCombatCoords(startNode);
             state.player.setSpawnPosition(coords.x, coords.y);
             state.player.resetToSpawn();
         }

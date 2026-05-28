@@ -1,21 +1,8 @@
 import { Segment } from "../Entities/Wall.js";
-import { GeneratorStrategies } from "../Generator/GeneratorStrategies.js";
+import { GeneratorStrategies } from "./GeneratorStrategies.js";
 import { WorldObstacleGrid } from "../Spatial/World/ObstacleGrid.js";
 import { FlowFieldGrid } from "../Spatial/Navigation/FlowFieldGrid.js";
-import { mapSettings, gridSettings } from "../Config/Config.js";
-
-const THEME_COLORS = [
-    { r: 0, g: 188, b: 212 },
-    { r: 76, g: 175, b: 80 },
-    { r: 255, g: 152, b: 0 },
-    { r: 156, g: 39, b: 176 },
-    { r: 63, g: 81, b: 181 },
-    { r: 244, g: 67, b: 54 },
-    { r: 233, g: 30, b: 99 },
-    { r: 0, g: 150, b: 136 },
-    { r: 205, g: 220, b: 57 },
-    { r: 121, g: 85, b: 72 }
-];
+import { mapSettings, gridSettings, THEME_COLORS } from "../Config/Config.js";
 
 const STRATEGIES = Object.keys(GeneratorStrategies);
 
@@ -62,17 +49,6 @@ function buildIncomingNodesMap(mapNodes) {
 }
 
 export class MapGenerator {
-    static getNodeCombatCoords(state, node) {
-        if (!node) return { x: 0, y: 0 };
-        const scale = mapSettings.combatCoordScale;
-        const baseSpawnX = state.mapBaseSpawnX !== undefined ? state.mapBaseSpawnX : (state.canvasBounds.width > 0 ? state.canvasBounds.width / 2 : 225);
-        const baseSpawnY = state.mapBaseSpawnY !== undefined ? state.mapBaseSpawnY : (state.canvasBounds.height > 0 ? state.canvasBounds.height / 2 : 225);
-        return {
-            x: baseSpawnX + node.x * scale,
-            y: baseSpawnY + node.y * scale
-        };
-    }
-
     static generateMap(state) {
         state.mapBaseSpawnX = state.canvasBounds.width > 0 ? state.canvasBounds.width / 2 : 225;
         state.mapBaseSpawnY = state.canvasBounds.height > 0 ? state.canvasBounds.height / 2 : 225;
@@ -163,7 +139,7 @@ export class MapGenerator {
             if (node.wallsData) {
                 for (const w of node.wallsData) {
                     const segment = new Segment(w.x, w.y, w.angle, w.size, w.padding, w.maxHealth);
-                    segment.theme = node.wallTheme || { r: 0, g: 188, b: 212 };
+                    segment.theme = node.wallTheme || THEME_COLORS[0];
                     state.walls.push(segment);
                     state.wallSpatialHash.insert(segment);
                 }
@@ -182,7 +158,7 @@ export class MapGenerator {
         if (startNode) {
             const strategy = STRATEGIES[Math.floor(Math.random() * STRATEGIES.length)];
             const theme = THEME_COLORS[Math.floor(Math.random() * THEME_COLORS.length)];
-            const coords = MapGenerator.getNodeCombatCoords(state, startNode);
+            const coords = state.getNodeCombatCoords(startNode);
 
             tempFlowFieldGrid.centerX = coords.x;
             tempFlowFieldGrid.centerY = coords.y;
@@ -216,7 +192,7 @@ export class MapGenerator {
                     attempts++;
                     const strategy = STRATEGIES[Math.floor(Math.random() * STRATEGIES.length)];
                     const theme = THEME_COLORS[Math.floor(Math.random() * THEME_COLORS.length)];
-                    const coordsB = MapGenerator.getNodeCombatCoords(state, nodeB);
+                    const coordsB = state.getNodeCombatCoords(nodeB);
 
                     tempFlowFieldGrid.centerX = coordsB.x;
                     tempFlowFieldGrid.centerY = coordsB.y;
@@ -259,8 +235,8 @@ export class MapGenerator {
     }
 
     static checkPathability(state, nodeA, nodeB, wallsA, wallsB, tempObstacleGrid, tempFlowFieldGrid) {
-        const coordsA = MapGenerator.getNodeCombatCoords(state, nodeA);
-        const coordsB = MapGenerator.getNodeCombatCoords(state, nodeB);
+        const coordsA = state.getNodeCombatCoords(nodeA);
+        const coordsB = state.getNodeCombatCoords(nodeB);
         const mx = (coordsA.x + coordsB.x) / 2;
         const my = (coordsA.y + coordsB.y) / 2;
 

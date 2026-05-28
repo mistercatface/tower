@@ -5,13 +5,10 @@ import { SpatialHash } from "../Spatial/World/SpatialHash.js";
 import { Enemy } from "../Entities/Enemy.js";
 import { Projectile } from "../Entities/Projectile.js";
 import { WeaponSystem } from "../Combat/WeaponSystem.js";
-import { WallGenerator, spawnPickup } from "../Generator/Generator.js";
+import { spawnInitialPickups } from "../Entities/Pickup.js";
 import { showNodeConfirm } from "../UI/UI.js";
-import { Utilities } from "../Core/Utilities.js";
 import { Explosion } from "../Entities/Explosion/Explosion.js";
-import { Segment } from "../Entities/Wall.js";
-import { MapGenerator } from "./MapGenerator.js";
-import { pickupSpawnSettings, navigationSettings } from "../Config/Config.js";
+import { navigationSettings } from "../Config/Config.js";
 import { resolveMoveTarget } from "../Spatial/Navigation/PathClearance.js";
 
 export class MapState {
@@ -55,7 +52,7 @@ export class MapTransitionState {
         ctx.state.player.vx = 0;
         ctx.state.player.vy = 0;
 
-        const targetCoords = MapGenerator.getNodeCombatCoords(ctx.state, targetNode);
+        const targetCoords = ctx.state.getNodeCombatCoords(targetNode);
         ctx.state.player.setTarget(targetCoords.x, targetCoords.y, ctx.state);
 
         ctx.state.flowFieldGrid.shiftCenter(
@@ -86,7 +83,7 @@ export class MapTransitionState {
 
         const targetNode = ctx.state.mapNodes.find((n) => n.id === ctx.state.mapTargetNodeId);
         if (targetNode) {
-            const targetCoords = MapGenerator.getNodeCombatCoords(ctx.state, targetNode);
+            const targetCoords = ctx.state.getNodeCombatCoords(targetNode);
             const dist = Math.hypot(ctx.state.player.x - targetCoords.x, ctx.state.player.y - targetCoords.y);
             if (dist < 9.0) {
                 ctx.state.currentNodeId = targetNode.id;
@@ -127,7 +124,7 @@ export class CombatState {
         ctx.state.floatingTexts = [];
         
         const currentNode = ctx.state.mapNodes.find(n => n.id === ctx.state.currentNodeId);
-        const combatCoords = MapGenerator.getNodeCombatCoords(ctx.state, currentNode);
+        const combatCoords = ctx.state.getNodeCombatCoords(currentNode);
         
         const transitioningFromTravel = ctx.state.isTransitioningFromTravel && ctx.state.travelSourceCoords && ctx.state.travelTargetCoords;
 
@@ -154,15 +151,7 @@ export class CombatState {
             ctx.state.player.y
         );
         
-        if (!ctx.state.discoveredAbilities.has("Laser")) {
-            spawnPickup(ctx.state, ctx.state.player.x, ctx.state.player.y, pickupSpawnSettings.coinMinRadius, pickupSpawnSettings.coinMaxRadius, "coin");
-        }
-        spawnPickup(ctx.state, ctx.state.player.x, ctx.state.player.y, pickupSpawnSettings.eyeballMinRadius, pickupSpawnSettings.eyeballMaxRadius, "eyeball");
-
-        const numBarrels = pickupSpawnSettings.barrelMinCount + Math.floor(Math.random() * pickupSpawnSettings.barrelRandomRange);
-        for (let i = 0; i < numBarrels; i++) {
-            spawnPickup(ctx.state, ctx.state.player.x, ctx.state.player.y, pickupSpawnSettings.barrelMinRadius, pickupSpawnSettings.barrelMaxRadius, "barrel");
-        }
+        spawnInitialPickups(ctx.state, ctx.state.player.x, ctx.state.player.y);
         
         ctx.viewport.snapTo(ctx.state.player.x, ctx.state.player.y);
         ctx.updateUI(ctx.state, ctx.upgrades);

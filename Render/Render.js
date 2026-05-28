@@ -1,7 +1,6 @@
 import { SpriteCache } from "./SpriteCache.js";
 import { Render3D } from "./3D/Render3D.js";
 import { mapSettings } from "../Config/Config.js";
-import { MapGenerator } from "../GameState/MapGenerator.js";
 
 export class Renderer {
     constructor(canvas, ctx) {
@@ -98,8 +97,8 @@ export class Renderer {
         const targetNode = state.mapNodes.find(n => n.id === state.mapTargetNodeId);
         if (!prevNode || !targetNode) return;
 
-        const coordsA = MapGenerator.getNodeCombatCoords(state, prevNode);
-        const coordsB = MapGenerator.getNodeCombatCoords(state, targetNode);
+        const coordsA = state.getNodeCombatCoords(prevNode);
+        const coordsB = state.getNodeCombatCoords(targetNode);
 
 
 
@@ -273,8 +272,7 @@ export class Renderer {
     }
 
     drawMap(state) {
-        const baseSpawnX = state.mapBaseSpawnX !== undefined ? state.mapBaseSpawnX : (state.canvasBounds.width > 0 ? state.canvasBounds.width / 2 : 225);
-        const baseSpawnY = state.mapBaseSpawnY !== undefined ? state.mapBaseSpawnY : (state.canvasBounds.height > 0 ? state.canvasBounds.height / 2 : 225);
+        const { x: baseSpawnX, y: baseSpawnY } = state.getCombatSpawnOrigin();
         const scale = mapSettings.combatCoordScale;
 
         const currentNode = state.mapNodes.find((n) => n.id === state.currentNodeId);

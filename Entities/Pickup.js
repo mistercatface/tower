@@ -3,6 +3,7 @@ import { Explosion } from "./Explosion/Explosion.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
 import { StatsManager } from "../Progression/StatsManager.js";
+import { pickupSpawnSettings } from "../Config/Config.js";
 
 export const PickupStrategies = {
     coin: {
@@ -125,5 +126,39 @@ export class Pickup extends Entity {
         }
         const cacheKey = `${this.type}_${this.radius}`;
         this.renderCachedSprite(ctx, renderer.pickupCache, cacheKey, RenderSprites.pickup, this.type, this.radius, this.strategy);
+    }
+}
+
+export function spawnPickup(state, playerX, playerY, minRadius, maxRadius, type) {
+    const grid = state.flowFieldGrid;
+    let spawned = false;
+    let attempts = 0;
+    while (!spawned && attempts < 100) {
+        attempts++;
+        const angle = Math.random() * Math.PI * 2;
+        const dist = minRadius + Math.random() * (maxRadius - minRadius);
+        const testX = playerX + Math.cos(angle) * dist;
+        const testY = playerY + Math.sin(angle) * dist;
+        const gridPos = grid.worldToGrid(testX, testY);
+        if (gridPos.col >= 0 && gridPos.col < grid.cols && gridPos.row >= 0 && gridPos.row < grid.rows) {
+            const idx = gridPos.row * grid.cols + gridPos.col;
+            if (grid.grid[idx] !== 1) {
+                const { x: centerX, y: centerY } = grid.gridToWorld(gridPos.col, gridPos.row);
+                state.pickups.push(new Pickup(centerX, centerY, type));
+                spawned = true;
+            }
+        }
+    }
+}
+
+export function spawnInitialPickups(state, playerX, playerY) {
+    if (!state.discoveredAbilities.has("Laser")) {
+        spawnPickup(state, playerX, playerY, pickupSpawnSettings.coinMinRadius, pickupSpawnSettings.coinMaxRadius, "coin");
+    }
+    spawnPickup(state, playerX, playerY, pickupSpawnSettings.eyeballMinRadius, pickupSpawnSettings.eyeballMaxRadius, "eyeball");
+
+    const numBarrels = pickupSpawnSettings.barrelMinCount + Math.floor(Math.random() * pickupSpawnSettings.barrelRandomRange);
+    for (let i = 0; i < numBarrels; i++) {
+        spawnPickup(state, playerX, playerY, pickupSpawnSettings.barrelMinRadius, pickupSpawnSettings.barrelMaxRadius, "barrel");
     }
 }
