@@ -107,14 +107,6 @@ export class Renderer {
         this.ctx.strokeStyle = "rgba(0, 188, 212, 0.8)";
         this.ctx.lineWidth = 3;
         this.ctx.stroke();
-
-        this.ctx.fillStyle = "#00bcd4";
-        this.ctx.font = "bold 10px monospace";
-        this.ctx.textAlign = "center";
-        this.ctx.fillText("SECTOR ENTRANCE", coordsB.x, coordsB.y - 5);
-        this.ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
-        this.ctx.font = "8px monospace";
-        this.ctx.fillText("ACTIVATE MATRIX", coordsB.x, coordsB.y + 8);
         this.ctx.restore();
 
         const dx = coordsB.x - state.player.x;
