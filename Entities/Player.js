@@ -154,11 +154,8 @@ export class Player extends Enemy {
         }
     }
 
-    render(ctx, renderer, state) {
+    renderStatusBars(ctx, renderer, state) {
         const cache = renderer.playerCache;
-        const cacheKey = `${this.radius}_${this.color}`;
-        this.renderCachedSprite(ctx, cache, cacheKey, RenderSprites.player, this.radius, this.color);
-        
         const chargeRatios = [];
         if (state && state.turrets && this.weapon) {
             for (const turret of state.turrets) {
@@ -168,5 +165,11 @@ export class Player extends Enemy {
             }
         }
         this.renderBars(ctx, cache, this.radius + 14, chargeRatios);
+    }
+
+    render(ctx, renderer, state) {
+        const cache = renderer.playerCache;
+        const cacheKey = `${this.radius}_${this.color}`;
+        this.renderCachedSprite(ctx, cache, cacheKey, RenderSprites.player, this.radius, this.color);
     }
 }

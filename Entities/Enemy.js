@@ -223,6 +223,11 @@ export class Enemy extends DestructibleEntity {
         }
     }
 
+    renderStatusBars(ctx, renderer, state) {
+        const chargeRatio = this.turret && this.turret.charge > 0 ? this.turret.charge / (this.weapon.chargeTime || 1) : 0;
+        this.renderBars(ctx, renderer.enemyCache, 14, [chargeRatio]);
+    }
+
     render(ctx, renderer, state) {
         if (this.currentState && this.currentState.render) {
             this.currentState.render(this, ctx, renderer.enemyCache, renderer.turretCache);
@@ -230,9 +235,6 @@ export class Enemy extends DestructibleEntity {
 
         const cacheKey = `${this.radius}_${this.color}`;
         this.renderCachedSprite(ctx, renderer.enemyCache, cacheKey, RenderSprites.enemy, this.radius, this.color);
-        
-        const chargeRatio = this.turret && this.turret.charge > 0 ? this.turret.charge / (this.weapon.chargeTime || 1) : 0;
-        this.renderBars(ctx, renderer.enemyCache, 14, [chargeRatio]);
 
         if (this.turret) {
             this.turret.render(ctx, this.x, this.y, this.radius, renderer, this.color);

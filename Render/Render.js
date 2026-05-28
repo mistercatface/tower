@@ -17,6 +17,7 @@ export class Renderer {
             { zIndex: 50, fn: (state) => this.drawPlayerAndTurrets(state) },
             { zIndex: 60, fn: (state) => this.renderExplosions(state) },
             { zIndex: 70, fn: (state, viewport) => this.render3D.draw3DBuildings(this.ctx, state, viewport) },
+            { zIndex: 75, fn: (state) => this.drawEntityBars(state) },
             { zIndex: 80, fn: (state, viewport) => this.drawVisibilityMask(this.ctx, state, viewport) },
             { zIndex: 85, fn: (state) => this.drawTargetMarkers(state) },
         ];
@@ -89,6 +90,15 @@ export class Renderer {
         for (const turret of state.turrets) {
             turret.render(this.ctx, state.player.x, state.player.y, state.player.radius, this);
         }
+    }
+
+    drawEntityBars(state) {
+        for (const enemy of state.enemies) {
+            if (!enemy.isDead) {
+                enemy.renderStatusBars(this.ctx, this, state);
+            }
+        }
+        state.player.renderStatusBars(this.ctx, this, state);
     }
 
     drawTargetMarkers(state) {
