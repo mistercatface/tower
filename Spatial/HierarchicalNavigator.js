@@ -1,15 +1,13 @@
-export class Node {
-    constructor(id, col, row, sectorCol, sectorRow, minX, minY, cellSize) {
-        this.id = id;
-        this.col = col;
-        this.row = row;
-        this.sectorCol = sectorCol;
-        this.sectorRow = sectorRow;
-        this.x = minX + col * cellSize + cellSize / 2;
-        this.y = minY + row * cellSize + cellSize / 2;
-        this.edges = [];
-    }
-}
+import { colRowToIndex } from "./GridUtils.js";
+import { runLocalAStarFlat, runAbstractAStar } from "./AStar.js";
+import {
+    RegionNode,
+    computeDistanceTransform,
+    generateVoronoiRegions,
+    findRegionAdjacencies,
+} from "./VoronoiRegions.js";
+
+export { RegionNode as Node };
 
 export class HierarchicalNavigator {
     constructor(cellSize, maxCellsPerChunk, minCellsPerChunk) {
@@ -84,7 +82,11 @@ export class HierarchicalNavigator {
             this.addWallToObstacleGrid(seg);
         }
 
-        this.computeDistanceTransform();
+        this.rebuildRegions();
+    }
+
+    rebuildRegions() {
+        computeDistanceTransform(this.grid, this.cols, this.rows, this.distToWall);
         this.generateChunks();
         this.connectAllNodes();
     }
@@ -133,227 +135,29 @@ export class HierarchicalNavigator {
                 const distY = Math.max(0, Math.abs(localY) - halfSize);
 
                 if ((distX * distX + distY * distY) <= padding * padding + 0.01) {
-                    const idx = row * this.cols + col;
-                    this.grid[idx] = 1;
+                    this.grid[colRowToIndex(col, row, this.cols)] = 1;
                 }
-            }
-        }
-    }
-
-    computeDistanceTransform() {
-        const size = this.cols * this.rows;
-        this.distToWall.fill(Infinity);
-
-        const queue = [];
-        let head = 0;
-
-        for (let i = 0; i < size; i++) {
-            if (this.grid[i] === 1) {
-                this.distToWall[i] = 0;
-                const r = Math.floor(i / this.cols);
-                const c = i % this.cols;
-                queue.push(c, r);
-            }
-        }
-
-        const cols = this.cols;
-        const rows = this.rows;
-
-        const dc = [0, 1, 0, -1, 1, 1, -1, -1];
-        const dr = [-1, 0, 1, 0, -1, 1, 1, -1];
-        const ds = [1, 1, 1, 1, Math.SQRT2, Math.SQRT2, Math.SQRT2, Math.SQRT2];
-
-        while (head < queue.length) {
-            const c = queue[head++];
-            const r = queue[head++];
-            const currIdx = r * cols + c;
-            const currDist = this.distToWall[currIdx];
-
-            for (let d = 0; d < 8; d++) {
-                const nc = c + dc[d];
-                const nr = r + dr[d];
-                if (nc >= 0 && nc < cols && nr >= 0 && nr < rows) {
-                    const nIdx = nr * cols + nc;
-                    const nextDist = currDist + ds[d];
-                    if (nextDist < this.distToWall[nIdx]) {
-                        this.distToWall[nIdx] = nextDist;
-                        queue.push(nc, nr);
-                    }
-                }
-            }
-        }
-
-        for (let i = 0; i < size; i++) {
-            if (this.distToWall[i] === Infinity) {
-                this.distToWall[i] = 1000;
             }
         }
     }
 
     generateChunks() {
-        const size = this.cols * this.rows;
-        this.cellToNode.fill(null);
-        this.nodesMap = {};
-        this.nodeIdCounter = 0;
+        const result = generateVoronoiRegions({
+            grid: this.grid,
+            distToWall: this.distToWall,
+            cols: this.cols,
+            rows: this.rows,
+            minX: this.minX,
+            minY: this.minY,
+            cellSize: this.cellSize,
+            maxCellsPerChunk: this.maxCellsPerChunk,
+            minCellsPerChunk: this.minCellsPerChunk,
+            cellToNode: this.cellToNode,
+        });
 
-        const nodeCellsMap = new Map();
-
-        const emptyCells = [];
-        for (let i = 0; i < size; i++) {
-            if (this.grid[i] === 0) {
-                emptyCells.push(i);
-            }
-        }
-
-        emptyCells.sort((a, b) => this.distToWall[b] - this.distToWall[a]);
-
-        const dc = [0, 1, 0, -1];
-        const dr = [-1, 0, 1, 0];
-
-        for (let i = 0; i < emptyCells.length; i++) {
-            const startIdx = emptyCells[i];
-            if (this.cellToNode[startIdx] !== null) continue;
-
-            const startCol = startIdx % this.cols;
-            const startRow = Math.floor(startIdx / this.cols);
-
-            const id = `node_${++this.nodeIdCounter}`;
-            const node = new Node(id, startCol, startRow, startCol, startRow, this.minX, this.minY, this.cellSize);
-            this.nodesMap[id] = node;
-
-            const nodeCells = [];
-            nodeCellsMap.set(id, nodeCells);
-
-            let cellCount = 0;
-            const queue = [startIdx];
-            this.cellToNode[startIdx] = node;
-            nodeCells.push(startIdx);
-            cellCount++;
-
-            let head = 0;
-            while (head < queue.length && cellCount < this.maxCellsPerChunk) {
-                const currIdx = queue[head++];
-                const c = currIdx % this.cols;
-                const r = Math.floor(currIdx / this.cols);
-
-                for (let d = 0; d < 4; d++) {
-                    const nc = c + dc[d];
-                    const nr = r + dr[d];
-                    if (nc >= 0 && nc < this.cols && nr >= 0 && nr < this.rows) {
-                        const nIdx = nr * this.cols + nc;
-                        if (this.grid[nIdx] === 0 && this.cellToNode[nIdx] === null) {
-                            this.cellToNode[nIdx] = node;
-                            nodeCells.push(nIdx);
-                            queue.push(nIdx);
-                            cellCount++;
-                            if (cellCount >= this.maxCellsPerChunk) break;
-                        }
-                    }
-                }
-            }
-        }
-
-        if (this.minCellsPerChunk > 0) {
-            let merged;
-            do {
-                merged = false;
-                const nodeIds = Object.keys(this.nodesMap);
-                for (const id of nodeIds) {
-                    if (!this.nodesMap[id]) continue;
-
-                    const nodeCells = nodeCellsMap.get(id);
-                    if (nodeCells && nodeCells.length > 0 && nodeCells.length < this.minCellsPerChunk) {
-                        let neighborNode = null;
-                        for (const cellIdx of nodeCells) {
-                            const c = cellIdx % this.cols;
-                            const r = Math.floor(cellIdx / this.cols);
-                            for (let d = 0; d < 4; d++) {
-                                const nc = c + dc[d];
-                                const nr = r + dr[d];
-                                if (nc >= 0 && nc < this.cols && nr >= 0 && nr < this.rows) {
-                                    const nIdx = nr * this.cols + nc;
-                                    const nNode = this.cellToNode[nIdx];
-                                    if (nNode && nNode.id !== id) {
-                                        neighborNode = nNode;
-                                        break;
-                                    }
-                                }
-                            }
-                            if (neighborNode) break;
-                        }
-
-                        if (neighborNode) {
-                            const targetCells = nodeCellsMap.get(neighborNode.id);
-                            for (const cellIdx of nodeCells) {
-                                this.cellToNode[cellIdx] = neighborNode;
-                                targetCells.push(cellIdx);
-                            }
-                            nodeCellsMap.delete(id);
-                            delete this.nodesMap[id];
-                            merged = true;
-                        }
-                    }
-                }
-            } while (merged);
-        }
-
-        for (const id in this.nodesMap) {
-            const node = this.nodesMap[id];
-            const nodeCells = nodeCellsMap.get(id);
-
-            if (nodeCells && nodeCells.length > 0) {
-                let sumCol = 0, sumRow = 0;
-                for (const cellIdx of nodeCells) {
-                    sumCol += cellIdx % this.cols;
-                    sumRow += Math.floor(cellIdx / this.cols);
-                }
-
-                const startCol = node.col;
-                const startRow = node.row;
-
-                node.col = Math.floor(sumCol / nodeCells.length);
-                node.row = Math.floor(sumRow / nodeCells.length);
-
-                if (this.grid[node.row * this.cols + node.col] === 1 || this.cellToNode[node.row * this.cols + node.col]?.id !== node.id) {
-                    node.col = startCol;
-                    node.row = startRow;
-                }
-
-                node.x = this.minX + node.col * this.cellSize + this.cellSize / 2;
-                node.y = this.minY + node.row * this.cellSize + this.cellSize / 2;
-            }
-        }
-    }
-
-    findAdjacencies() {
-        const adjacencies = new Set();
-        const cols = this.cols;
-        const rows = this.rows;
-
-        for (let r = 0; r < rows; r++) {
-            for (let c = 0; c < cols; c++) {
-                const idx = r * cols + c;
-                const nodeA = this.cellToNode[idx];
-                if (!nodeA) continue;
-
-                if (c + 1 < cols) {
-                    const nodeB = this.cellToNode[idx + 1];
-                    if (nodeB && nodeA.id !== nodeB.id) {
-                        const key = nodeA.id < nodeB.id ? `${nodeA.id}:${nodeB.id}` : `${nodeB.id}:${nodeA.id}`;
-                        adjacencies.add(key);
-                    }
-                }
-
-                if (r + 1 < rows) {
-                    const nodeB = this.cellToNode[idx + cols];
-                    if (nodeB && nodeA.id !== nodeB.id) {
-                        const key = nodeA.id < nodeB.id ? `${nodeA.id}:${nodeB.id}` : `${nodeB.id}:${nodeA.id}`;
-                        adjacencies.add(key);
-                    }
-                }
-            }
-        }
-        return adjacencies;
+        this.nodesMap = result.nodesMap;
+        this.cellToNode = result.cellToNode;
+        this.nodeIdCounter = result.nodeIdCounter;
     }
 
     connectAllNodes() {
@@ -362,7 +166,7 @@ export class HierarchicalNavigator {
             n.edges = [];
         }
 
-        const adjacencies = this.findAdjacencies();
+        const adjacencies = findRegionAdjacencies(this.cellToNode, this.grid, this.cols, this.rows);
         for (const key of adjacencies) {
             const [idA, idB] = key.split(":");
             const nodeA = this.nodesMap[idA];
@@ -392,7 +196,7 @@ export class HierarchicalNavigator {
 
         for (let r = startRow; r <= endRow; r++) {
             for (let c = startCol; c <= endCol; c++) {
-                this.grid[r * this.cols + c] = 0;
+                this.grid[colRowToIndex(c, r, this.cols)] = 0;
             }
         }
 
@@ -406,20 +210,18 @@ export class HierarchicalNavigator {
             this.addWallToObstacleGrid(wall);
         }
 
-        this.computeDistanceTransform();
-        this.generateChunks();
-        this.connectAllNodes();
+        this.rebuildRegions();
     }
 
     findNearestOpenCell(col, row) {
-        if (this.grid[row * this.cols + col] === 0) return { col, row };
+        if (this.grid[colRowToIndex(col, row, this.cols)] === 0) return { col, row };
         for (let r = 1; r <= 5; r++) {
             for (let dr = -r; dr <= r; dr++) {
                 for (let dc = -r; dc <= r; dc++) {
                     const nc = col + dc;
                     const nr = row + dr;
                     if (nc >= 0 && nc < this.cols && nr >= 0 && nr < this.rows) {
-                        if (this.grid[nr * this.cols + nc] === 0) {
+                        if (this.grid[colRowToIndex(nc, nr, this.cols)] === 0) {
                             return { col: nc, row: nr };
                         }
                     }
@@ -433,7 +235,7 @@ export class HierarchicalNavigator {
         this.aStarRunId++;
         return runLocalAStarFlat(
             startCol, startRow, targetCol, targetRow,
-            this.grid, this.cols, this.rows, this.distToWall,
+            this.grid, this.cols, this.rows,
             maxPathLen, this.aStarGScore, this.aStarCameFrom,
             this.aStarVisited, this.aStarRunId
         );
@@ -524,8 +326,8 @@ export class HierarchicalNavigator {
         targetCol = targetOpen.col;
         targetRow = targetOpen.row;
 
-        const startIdx = startRow * this.cols + startCol;
-        const targetIdx = targetRow * this.cols + targetCol;
+        const startIdx = colRowToIndex(startCol, startRow, this.cols);
+        const targetIdx = colRowToIndex(targetCol, targetRow, this.cols);
 
         const startNode = this.cellToNode[startIdx];
         const targetNode = this.cellToNode[targetIdx];
@@ -538,8 +340,8 @@ export class HierarchicalNavigator {
             }
         }
 
-        const startTempNode = new Node("start", startCol, startRow, -999, -999, this.minX, this.minY, this.cellSize);
-        const targetTempNode = new Node("target", targetCol, targetRow, -999, -999, this.minX, this.minY, this.cellSize);
+        const startTempNode = new RegionNode("start", startCol, startRow, -999, -999, this.minX, this.minY, this.cellSize);
+        const targetTempNode = new RegionNode("target", targetCol, targetRow, -999, -999, this.minX, this.minY, this.cellSize);
 
         this.nodesMap["start"] = startTempNode;
         this.nodesMap["target"] = targetTempNode;
@@ -548,7 +350,7 @@ export class HierarchicalNavigator {
             this._connectTempNode(startTempNode, startCol, startRow, startNode, true);
             this._connectTempNode(targetTempNode, targetCol, targetRow, targetNode, false);
 
-            const abstractPath = runAStar("start", "target", this.nodesMap);
+            const abstractPath = runAbstractAStar("start", "target", this.nodesMap);
 
             if (abstractPath) {
                 let fullCellPath = [];
@@ -587,147 +389,4 @@ export class HierarchicalNavigator {
             node.edges = node.edges.filter(e => e.targetId !== "target");
         }
     }
-}
-
-function runLocalAStarFlat(startCol, startRow, targetCol, targetRow, grid, cols, rows, distToWall, maxPathLen, gScore, cameFrom, visited, runId) {
-    const startIdx = startRow * cols + startCol;
-    const targetIdx = targetRow * cols + targetCol;
-    if (startIdx === targetIdx) {
-        return [{ col: startCol, row: startRow }];
-    }
-
-    const openSet = [startIdx];
-    
-    gScore[startIdx] = 0;
-    visited[startIdx] = runId;
-    cameFrom[startIdx] = -1;
-
-    const dc = [0, 1, 0, -1, 1, 1, -1, -1];
-    const dr = [-1, 0, 1, 0, -1, 1, 1, -1];
-    const ds = [1, 1, 1, 1, Math.SQRT2, Math.SQRT2, Math.SQRT2, Math.SQRT2];
-
-    while (openSet.length > 0) {
-        let lowestIdx = 0;
-        let lowestF = Infinity;
-        for (let i = 0; i < openSet.length; i++) {
-            const idx = openSet[i];
-            const c = idx % cols;
-            const r = Math.floor(idx / cols);
-            const f = gScore[idx] + Math.hypot(c - targetCol, r - targetRow);
-            if (f < lowestF) {
-                lowestF = f;
-                lowestIdx = i;
-            }
-        }
-
-        const currIdx = openSet[lowestIdx];
-        openSet.splice(lowestIdx, 1);
-
-        if (currIdx === targetIdx) {
-            const path = [];
-            let curr = currIdx;
-            while (curr !== -1) {
-                const c = curr % cols;
-                const r = Math.floor(curr / cols);
-                path.push({ col: c, row: r });
-                curr = cameFrom[curr];
-            }
-            path.reverse();
-            return path;
-        }
-
-        const currCol = currIdx % cols;
-        const currRow = Math.floor(currIdx / cols);
-        const currentG = gScore[currIdx];
-        if (currentG > maxPathLen) continue;
-
-        for (let d = 0; d < 8; d++) {
-            const nc = currCol + dc[d];
-            const nr = currRow + dr[d];
-            if (nc >= 0 && nc < cols && nr >= 0 && nr < rows) {
-                const nIdx = nr * cols + nc;
-                if (grid[nIdx] === 1) continue;
-
-                if (dc[d] !== 0 && dr[d] !== 0) {
-                    if (grid[currRow * cols + nc] === 1 || grid[nr * cols + currCol] === 1) {
-                        continue;
-                    }
-                }
-
-                const stepCost = ds[d];
-                const tentativeG = currentG + stepCost;
-
-                if (visited[nIdx] !== runId || tentativeG < gScore[nIdx]) {
-                    visited[nIdx] = runId;
-                    gScore[nIdx] = tentativeG;
-                    cameFrom[nIdx] = currIdx;
-                    if (!openSet.includes(nIdx)) {
-                        openSet.push(nIdx);
-                    }
-                }
-            }
-        }
-    }
-    return null;
-}
-
-function runAStar(startNodeId, targetNodeId, nodesMap) {
-    const startNode = nodesMap[startNodeId];
-    const targetNode = nodesMap[targetNodeId];
-    if (!startNode || !targetNode) return null;
-
-    const openSet = new Set([startNodeId]);
-    const cameFrom = {};
-    
-    const gScore = {};
-    gScore[startNodeId] = 0;
-    
-    const fScore = {};
-    fScore[startNodeId] = Math.hypot(startNode.col - targetNode.col, startNode.row - targetNode.row);
-    
-    const getLowestFScoreNode = () => {
-        let lowest = null;
-        let lowestVal = Infinity;
-        for (const id of openSet) {
-            if (fScore[id] < lowestVal) {
-                lowestVal = fScore[id];
-                lowest = id;
-            }
-        }
-        return lowest;
-    };
-
-    while (openSet.size > 0) {
-        const currentId = getLowestFScoreNode();
-        if (currentId === targetNodeId) {
-            const path = [];
-            let curr = currentId;
-            while (curr !== undefined) {
-                path.push(nodesMap[curr]);
-                curr = cameFrom[curr];
-            }
-            path.reverse();
-            return path;
-        }
-
-        openSet.delete(currentId);
-        const currentNode = nodesMap[currentId];
-        const currentG = gScore[currentId];
-
-        for (const edge of currentNode.edges) {
-            const neighborId = edge.targetId;
-            const neighborNode = nodesMap[neighborId];
-            if (!neighborNode) continue;
-            
-            const tentativeG = currentG + edge.cost;
-            if (gScore[neighborId] === undefined || tentativeG < gScore[neighborId]) {
-                cameFrom[neighborId] = currentId;
-                gScore[neighborId] = tentativeG;
-                fScore[neighborId] = tentativeG + Math.hypot(neighborNode.col - targetNode.col, neighborNode.row - targetNode.row);
-                openSet.add(neighborId);
-            }
-        }
-    }
-    
-    return null;
 }
