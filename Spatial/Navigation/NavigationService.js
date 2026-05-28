@@ -1,4 +1,4 @@
-import { navigationSettings, NAV_PROFILES } from "../../Config.js";
+import { navigationSettings, NAV_PROFILES } from "../../Config/Config.js";
 import { steerViaFlowField } from "./FlowFieldStrategy.js";
 import { createNavState, steerViaHpa } from "./HpaStrategy.js";
 

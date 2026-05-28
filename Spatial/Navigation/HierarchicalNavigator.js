@@ -1,4 +1,4 @@
-import { navigationSettings } from "../../Config.js";
+import { navigationSettings } from "../../Config/Config.js";
 import { colRowToIndex, indexToColRow, forEachCardinalNeighbor } from "./GridUtils.js";
 import { runLocalAStarFlat, runAbstractAStar } from "./AStar.js";
 import {

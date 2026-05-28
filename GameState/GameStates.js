@@ -1,16 +1,16 @@
-import { FloatingText } from "../FloatingText.js";
-import { ProgressionManager } from "../ProgressionManager.js";
+import { FloatingText } from "../Render/FloatingText.js";
+import { ProgressionManager } from "../Progression/ProgressionManager.js";
 import { CollisionSystem } from "../Spatial/Collision/CollisionSystem.js";
 import { SpatialHash } from "../Spatial/World/SpatialHash.js";
 import { Enemy } from "../Entities/Enemy.js";
 import { Projectile } from "../Entities/Projectile.js";
-import { WeaponSystem } from "../WeaponSystem.js";
+import { WeaponSystem } from "../Combat/WeaponSystem.js";
 import { WallGenerator, spawnPickup } from "../Generator/Generator.js";
-import { showNodeConfirm } from "../UI.js";
-import { Utilities } from "../Utilities.js";
+import { showNodeConfirm } from "../UI/UI.js";
+import { Utilities } from "../Core/Utilities.js";
 import { Explosion } from "../Entities/Explosion/Explosion.js";
 import { Segment } from "../Entities/Wall.js";
-import { pickupSpawnSettings, navigationSettings } from "../Config.js";
+import { pickupSpawnSettings, navigationSettings } from "../Config/Config.js";
 import { resolveMoveTarget } from "../Spatial/Navigation/PathClearance.js";
 
 export class MapState {

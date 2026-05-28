@@ -1,17 +1,17 @@
-import { Utilities } from "../Utilities.js";
+import { Utilities } from "../Core/Utilities.js";
 import { Projectile } from "./Projectile.js";
-import { Turret } from "../Turret.js";
+import { Turret } from "./Turret.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
-import { enemyStates } from "../EnemyStates.js";
+import { enemyStates } from "./EnemyStates.js";
 import { DestructibleEntity } from "./Entity.js";
-import { FloatingText } from "../FloatingText.js";
+import { FloatingText } from "../Render/FloatingText.js";
 import { Separation } from "../Spatial/Motion/Separation.js";
-import { ProgressionManager } from "../ProgressionManager.js";
-import { markProgressDirty } from "../Storage.js";
-import { updateUI } from "../UI.js";
-import { ChargedWeaponMode } from "../WeaponSystem.js";
+import { ProgressionManager } from "../Progression/ProgressionManager.js";
+import { markProgressDirty } from "../Progression/Storage.js";
+import { updateUI } from "../UI/UI.js";
+import { ChargedWeaponMode } from "../Combat/WeaponSystem.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
-import { enemyProjectileSettings, NAV_PROFILES } from "../Config.js";
+import { enemyProjectileSettings, NAV_PROFILES } from "../Config/Config.js";
 import { createEntityBars } from "./EntityBars.js";
 
 const enemyBars = createEntityBars({

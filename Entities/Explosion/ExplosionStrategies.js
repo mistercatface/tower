@@ -1,5 +1,5 @@
 import { CollisionSystem } from "../../Spatial/Collision/CollisionSystem.js";
-import { Utilities } from "../../Utilities.js";
+import { Utilities } from "../../Core/Utilities.js";
 import { PhysicsSystem } from "../../Spatial/Motion/PhysicsSystem.js";
 
 function repelEntities(state, exp, dt) {

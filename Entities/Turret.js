@@ -1,5 +1,5 @@
-import { Utilities } from "./Utilities.js";
-import { RenderSprites } from "./Render/RenderSprites.js";
+import { Utilities } from "../Core/Utilities.js";
+import { RenderSprites } from "../Render/RenderSprites.js";
 
 export class Turret {
     constructor(angle, turnSpeed) {

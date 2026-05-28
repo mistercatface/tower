@@ -1,7 +1,7 @@
 import { Enemy } from "./Enemy.js";
-import { Utilities } from "../Utilities.js";
-import { FloatingText } from "../FloatingText.js";
-import { playerBaseStats, NAV_PROFILES, navigationSettings } from "../Config.js";
+import { Utilities } from "../Core/Utilities.js";
+import { FloatingText } from "../Render/FloatingText.js";
+import { playerBaseStats, NAV_PROFILES, navigationSettings } from "../Config/Config.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
 import { createEntityBars } from "./EntityBars.js";
 

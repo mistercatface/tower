@@ -1,11 +1,11 @@
 import { state } from "./GameState/GameState.js";
-import { createUpgrades, createBaseUpgrades } from "./Upgrades.js";
-import { initializeSaveSystem, loadProgress } from "./Storage.js";
-import { initUI, updateUI, updateHud } from "./UI.js";
+import { createUpgrades, createBaseUpgrades } from "./Progression/Upgrades.js";
+import { initializeSaveSystem, loadProgress } from "./Progression/Storage.js";
+import { initUI, updateUI, updateHud } from "./UI/UI.js";
 import { Renderer } from "./Render/Render.js";
 import { Viewport } from "./Render/Viewport.js";
-import { InputManager } from "./InputManager.js";
-import { ProgressionManager } from "./ProgressionManager.js";
+import { InputManager } from "./Core/InputManager.js";
+import { ProgressionManager } from "./Progression/ProgressionManager.js";
 import { GameStateMachine } from "./GameState/GameStateMachine.js";
 import { MapState, MapTransitionState, CombatState, RewardState } from "./GameState/GameStates.js";
 

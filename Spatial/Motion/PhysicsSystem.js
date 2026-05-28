@@ -1,4 +1,4 @@
-import { Utilities } from "../../Utilities.js";
+import { Utilities } from "../../Core/Utilities.js";
 
 export class PhysicsSystem {
     static applyMovement(entity, dt, ignoreSeparation = false, shouldMove = true, alignAngleWithMovement = true) {

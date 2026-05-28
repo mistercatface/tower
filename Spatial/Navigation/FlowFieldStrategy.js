@@ -1,4 +1,4 @@
-import { Utilities } from "../../Utilities.js";
+import { Utilities } from "../../Core/Utilities.js";
 
 export function steerViaFlowField(entity, targetX, targetY, flowFieldGrid, flowFieldKey) {
     const field = flowFieldKey === "player"

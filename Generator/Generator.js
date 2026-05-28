@@ -1,6 +1,6 @@
 import { Pickup } from "../Entities/Pickup.js";
 import { GeneratorStrategies } from "./GeneratorStrategies.js";
-import { pickupSpawnSettings } from "../Config.js";
+import { pickupSpawnSettings } from "../Config/Config.js";
 
 export function spawnPickup(state, playerX, playerY, minRadius, maxRadius, type) {
     const grid = state.flowFieldGrid;
