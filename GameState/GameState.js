@@ -85,7 +85,7 @@ export class GameState {
         };
  
         this.gridSystem = new GridSystem(gridSettings.cellSize, gridSettings.width, gridSettings.height);
-        this.hierarchicalNavigator = new HierarchicalNavigator(gridSettings.cellSize, gridSettings.anchorSpacing);
+        this.hierarchicalNavigator = new HierarchicalNavigator(gridSettings.cellSize, gridSettings.maxCellsPerChunk, gridSettings.minCellsPerChunk);
         this.currentUpgradeTab = "attack";
         this.canvasBounds = { width: 0, height: 0 };
         this.upgrades = {};
@@ -422,7 +422,6 @@ export class GameState {
  
         this.pregenerateAllCombatData();
 
-        // Instantiate all wall segments statically in the global coordinate space
         this.walls = [];
         this.walls.spatialHash = this.wallSpatialHash;
         this.wallSpatialHash.clear();
@@ -455,7 +454,6 @@ export class GameState {
 
         const strategies = Object.keys(GeneratorStrategies);
 
-        // Helper to check pathability between two nodes using specific wall lists
         const checkPathability = (nodeA, nodeB, wallsA, wallsB) => {
             const coordsA = this.getNodeCombatCoords(nodeA);
             const coordsB = this.getNodeCombatCoords(nodeB);
@@ -484,7 +482,6 @@ export class GameState {
             return tempGrid.flowField[idx] !== null;
         };
 
-        // 1. Generate walls for start node (layer 0)
         const startNode = this.mapNodes.find(n => n.id === 0);
         if (startNode) {
             const strategy = strategies[Math.floor(Math.random() * strategies.length)];
@@ -513,12 +510,10 @@ export class GameState {
             startNode.strategy = strategy;
         }
 
-        // 2. Generate and validate walls layer by layer
         const numLayers = mapSettings.numLayers;
         for (let l = 1; l < numLayers; l++) {
             const layerNodes = this.mapNodes.filter(n => n.layer === l);
             for (const nodeB of layerNodes) {
-                // Find incoming nodes A
                 const incomingNodes = this.mapNodes.filter(n => n.connections.includes(nodeB.id));
 
                 let attempts = 0;
@@ -552,7 +547,6 @@ export class GameState {
                         maxHealth: w.maxHealth || 30
                     }));
 
-                    // Check if nodeB is pathable from all incoming nodes A
                     let allPathable = true;
                     for (const nodeA of incomingNodes) {
                         if (!checkPathability(nodeA, nodeB, nodeA.wallsData || [], wallsB)) {
@@ -569,9 +563,7 @@ export class GameState {
                     }
                 }
 
-                // Fallback to empty walls to guarantee pathability
                 if (!success) {
-                    console.warn(`Could not find a pathable wall layout for node ${nodeB.id} after 50 attempts. Falling back to empty walls.`);
                     chosenWalls = [];
                     chosenTheme = themeColors[0];
                     chosenStrategy = "None";

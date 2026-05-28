@@ -52,7 +52,8 @@ export const gridSettings = {
     cellSize: 16,
     width: 2400,
     height: 2400,
-    anchorSpacing: 16,
+    minCellsPerChunk: 8,
+    maxCellsPerChunk: 64,
 };
 
 export const mapSettings = {
