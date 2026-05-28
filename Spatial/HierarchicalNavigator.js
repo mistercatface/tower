@@ -6,6 +6,12 @@ import {
     generateVoronoiRegions,
     findRegionAdjacencies,
 } from "./VoronoiRegions.js";
+import {
+    getWallCellBounds,
+    cellBoundsToWorldBounds,
+    markWallOnGrid,
+    clearWallCells,
+} from "./ObstacleGrid.js";
 
 export { RegionNode as Node };
 
@@ -104,41 +110,13 @@ export class HierarchicalNavigator {
     }
 
     addWallToObstacleGrid(seg) {
-        if (seg.isDead) return;
-        const halfSize = seg.size / 2;
-        const padding = seg.padding;
-        const boundingRadius = halfSize * Math.SQRT2 + padding;
-
-        const minGrid = this.worldToGrid(seg.x - boundingRadius, seg.y - boundingRadius);
-        const maxGrid = this.worldToGrid(seg.x + boundingRadius, seg.y + boundingRadius);
-
-        const startCol = Math.max(0, minGrid.col);
-        const endCol = Math.min(this.cols - 1, maxGrid.col);
-        const startRow = Math.max(0, minGrid.row);
-        const endRow = Math.min(this.rows - 1, maxGrid.row);
-
-        const cos = Math.cos(-seg.angle);
-        const sin = Math.sin(-seg.angle);
-
-        for (let col = startCol; col <= endCol; col++) {
-            for (let row = startRow; row <= endRow; row++) {
-                const cx = this.minX + col * this.cellSize + (this.cellSize / 2);
-                const cy = this.minY + row * this.cellSize + (this.cellSize / 2);
-
-                const dx = cx - seg.x;
-                const dy = cy - seg.y;
-
-                const localX = dx * cos - dy * sin;
-                const localY = dx * sin + dy * cos;
-
-                const distX = Math.max(0, Math.abs(localX) - halfSize);
-                const distY = Math.max(0, Math.abs(localY) - halfSize);
-
-                if ((distX * distX + distY * distY) <= padding * padding + 0.01) {
-                    this.grid[colRowToIndex(col, row, this.cols)] = 1;
-                }
-            }
-        }
+        markWallOnGrid(seg, this.grid, this.cols, this.rows, {
+            worldToGrid: (x, y) => this.worldToGrid(x, y),
+            cellCenter: (col, row) => ({
+                x: this.minX + col * this.cellSize + this.cellSize / 2,
+                y: this.minY + row * this.cellSize + this.cellSize / 2,
+            }),
+        });
     }
 
     generateChunks() {
@@ -182,30 +160,13 @@ export class HierarchicalNavigator {
     }
 
     handleWallDestroyed(seg, wallSpatialHash) {
-        const halfSize = seg.size / 2;
-        const padding = seg.padding;
-        const boundingRadius = halfSize * Math.SQRT2 + padding;
+        const bounds = getWallCellBounds(seg, (x, y) => this.worldToGrid(x, y), this.cols, this.rows);
+        clearWallCells(this.grid, this.cols, bounds);
 
-        const minGrid = this.worldToGrid(seg.x - boundingRadius, seg.y - boundingRadius);
-        const maxGrid = this.worldToGrid(seg.x + boundingRadius, seg.y + boundingRadius);
-
-        const startCol = Math.max(0, minGrid.col);
-        const endCol = Math.min(this.cols - 1, maxGrid.col);
-        const startRow = Math.max(0, minGrid.row);
-        const endRow = Math.min(this.rows - 1, maxGrid.row);
-
-        for (let r = startRow; r <= endRow; r++) {
-            for (let c = startCol; c <= endCol; c++) {
-                this.grid[colRowToIndex(c, r, this.cols)] = 0;
-            }
-        }
-
-        const minX = this.minX + startCol * this.cellSize;
-        const maxX = this.minX + (endCol + 1) * this.cellSize;
-        const minY = this.minY + startRow * this.cellSize;
-        const maxY = this.minY + (endRow + 1) * this.cellSize;
-
-        const localWalls = wallSpatialHash ? wallSpatialHash.queryBounds(minX, minY, maxX, maxY) : [];
+        const worldBounds = cellBoundsToWorldBounds(bounds, this.minX, this.minY, this.cellSize);
+        const localWalls = wallSpatialHash
+            ? wallSpatialHash.queryBounds(worldBounds.minX, worldBounds.minY, worldBounds.maxX, worldBounds.maxY)
+            : [];
         for (const wall of localWalls) {
             this.addWallToObstacleGrid(wall);
         }

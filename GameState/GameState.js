@@ -1,7 +1,7 @@
 import { Projectile } from "../Entities/Projectile.js";
 import { Turret } from "../Turret.js";
 import { Player } from "../Entities/Player.js";
-import { GridSystem } from "../Spatial/GridSystem.js";
+import { FlowFieldGrid } from "../Spatial/FlowFieldGrid.js";
 import { HierarchicalNavigator } from "../Spatial/HierarchicalNavigator.js";
 import { enemyTypes, defaultUpgradeCost, perkMilestones, playerBaseStats, gridSettings, mapSettings } from "../Config.js";
 import { WallGenerator } from "../Generator/Generator.js";
@@ -84,7 +84,7 @@ export class GameState {
             },
         };
  
-        this.gridSystem = new GridSystem(gridSettings.cellSize, gridSettings.width, gridSettings.height);
+        this.flowFieldGrid = new FlowFieldGrid(gridSettings.cellSize, gridSettings.width, gridSettings.height);
         this.hierarchicalNavigator = new HierarchicalNavigator(gridSettings.cellSize, gridSettings.maxCellsPerChunk, gridSettings.minCellsPerChunk);
         this.currentUpgradeTab = "attack";
         this.canvasBounds = { width: 0, height: 0 };
@@ -273,7 +273,7 @@ export class GameState {
         this.walls.spatialHash = this.wallSpatialHash;
         this.pickups = [];
         this.activeLasers = [];
-        this.gridSystem.clear();
+        this.flowFieldGrid.clear();
 
         this.entityLayers = [
             { key: "pickups", zIndex: 10 },
@@ -460,7 +460,7 @@ export class GameState {
             const mx = (coordsA.x + coordsB.x) / 2;
             const my = (coordsA.y + coordsB.y) / 2;
 
-            const tempGrid = new GridSystem(gridSettings.cellSize, gridSettings.width, gridSettings.height);
+            const tempGrid = new FlowFieldGrid(gridSettings.cellSize, gridSettings.width, gridSettings.height);
             tempGrid.centerX = mx;
             tempGrid.centerY = my;
 
@@ -490,11 +490,11 @@ export class GameState {
             
             const mockState = {
                 walls: [],
-                gridSystem: new GridSystem(gridSettings.cellSize, gridSettings.width, gridSettings.height),
+                flowFieldGrid: new FlowFieldGrid(gridSettings.cellSize, gridSettings.width, gridSettings.height),
                 waveManager: this.waveManager
             };
-            mockState.gridSystem.centerX = coords.x;
-            mockState.gridSystem.centerY = coords.y;
+            mockState.flowFieldGrid.centerX = coords.x;
+            mockState.flowFieldGrid.centerY = coords.y;
 
             GeneratorStrategies[strategy].generate(mockState, coords.x, coords.y);
             
@@ -530,11 +530,11 @@ export class GameState {
 
                     const mockState = {
                         walls: [],
-                        gridSystem: new GridSystem(gridSettings.cellSize, gridSettings.width, gridSettings.height),
+                        flowFieldGrid: new FlowFieldGrid(gridSettings.cellSize, gridSettings.width, gridSettings.height),
                         waveManager: this.waveManager
                     };
-                    mockState.gridSystem.centerX = coordsB.x;
-                    mockState.gridSystem.centerY = coordsB.y;
+                    mockState.flowFieldGrid.centerX = coordsB.x;
+                    mockState.flowFieldGrid.centerY = coordsB.y;
 
                     GeneratorStrategies[strategy].generate(mockState, coordsB.x, coordsB.y);
 

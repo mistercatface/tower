@@ -269,7 +269,7 @@ export class Renderer {
     }
 
     drawDebugFlowField(state) {
-        const grid = state.gridSystem;
+        const grid = state.flowFieldGrid;
         if (!grid) return;
         const px = grid.centerX;
         const py = grid.centerY;

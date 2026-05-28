@@ -7,14 +7,14 @@ export class Utilities {
         return Math.hypot(px - (vx + t * (wx - vx)), py - (vy + t * (wy - vy)));
     }
 
-    static getSegmentsAlongLine(x1, y1, x2, y2, gridSystem) {
-        const p1 = gridSystem.worldToGrid(x1, y1);
-        const p2 = gridSystem.worldToGrid(x2, y2);
+    static getSegmentsAlongLine(x1, y1, x2, y2, flowFieldGrid) {
+        const p1 = flowFieldGrid.worldToGrid(x1, y1);
+        const p2 = flowFieldGrid.worldToGrid(x2, y2);
         
-        const col0 = Math.max(0, Math.min(gridSystem.cols - 1, p1.col));
-        const row0 = Math.max(0, Math.min(gridSystem.rows - 1, p1.row));
-        const col1 = Math.max(0, Math.min(gridSystem.cols - 1, p2.col));
-        const row1 = Math.max(0, Math.min(gridSystem.rows - 1, p2.row));
+        const col0 = Math.max(0, Math.min(flowFieldGrid.cols - 1, p1.col));
+        const row0 = Math.max(0, Math.min(flowFieldGrid.rows - 1, p1.row));
+        const col1 = Math.max(0, Math.min(flowFieldGrid.cols - 1, p2.col));
+        const row1 = Math.max(0, Math.min(flowFieldGrid.rows - 1, p2.row));
         
         const dcol = Math.abs(col1 - col0);
         const drow = Math.abs(row1 - row0);
@@ -29,8 +29,8 @@ export class Utilities {
         const checked = new Set();
         
         while (true) {
-            const idx = r * gridSystem.cols + c;
-            const cellSegs = gridSystem.segmentGrid[idx];
+            const idx = r * flowFieldGrid.cols + c;
+            const cellSegs = flowFieldGrid.segmentGrid[idx];
             if (cellSegs) {
                 for (let i = 0; i < cellSegs.length; i++) {
                     const seg = cellSegs[i];
@@ -57,8 +57,8 @@ export class Utilities {
 
     static hasLineOfSight(x1, y1, x2, y2, segments, padding = 0) {
         let candidateWalls = segments;
-        if (segments && segments.gridSystem) {
-            candidateWalls = this.getSegmentsAlongLine(x1, y1, x2, y2, segments.gridSystem);
+        if (segments && segments.flowFieldGrid) {
+            candidateWalls = this.getSegmentsAlongLine(x1, y1, x2, y2, segments.flowFieldGrid);
         }
 
         const minX = Math.min(x1, x2);

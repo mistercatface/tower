@@ -56,7 +56,7 @@ export class MapTransitionState {
         const targetCoords = ctx.state.getNodeCombatCoords(targetNode);
         ctx.state.player.setTarget(targetCoords.x, targetCoords.y);
 
-        ctx.state.gridSystem.shiftCenter(
+        ctx.state.flowFieldGrid.shiftCenter(
             ctx.state.player.x,
             ctx.state.player.y,
             ctx.state.wallSpatialHash,
@@ -71,15 +71,15 @@ export class MapTransitionState {
     }
 
     update(dt, ctx) {
-        const oldGridPos = ctx.state.gridSystem.worldToGrid(ctx.state.player.x, ctx.state.player.y);
-        ctx.state.player.update(dt, ctx.state.gridSystem, ctx.state.walls, null);
-        const newGridPos = ctx.state.gridSystem.worldToGrid(ctx.state.player.x, ctx.state.player.y);
+        const oldGridPos = ctx.state.flowFieldGrid.worldToGrid(ctx.state.player.x, ctx.state.player.y);
+        ctx.state.player.update(dt, ctx.state.flowFieldGrid, ctx.state.walls, null);
+        const newGridPos = ctx.state.flowFieldGrid.worldToGrid(ctx.state.player.x, ctx.state.player.y);
         const distToCenter = Math.max(
-            Math.abs(ctx.state.player.x - ctx.state.gridSystem.centerX),
-            Math.abs(ctx.state.player.y - ctx.state.gridSystem.centerY)
+            Math.abs(ctx.state.player.x - ctx.state.flowFieldGrid.centerX),
+            Math.abs(ctx.state.player.y - ctx.state.flowFieldGrid.centerY)
         );
         if (distToCenter > 400) {
-            ctx.state.gridSystem.shiftCenter(
+            ctx.state.flowFieldGrid.shiftCenter(
                 ctx.state.player.x,
                 ctx.state.player.y,
                 ctx.state.wallSpatialHash,
@@ -89,7 +89,7 @@ export class MapTransitionState {
                 ctx.state.player.targetY
             );
         } else if (oldGridPos.col !== newGridPos.col || oldGridPos.row !== newGridPos.row) {
-            ctx.state.gridSystem.buildFlowField(ctx.state.player.x, ctx.state.player.y);
+            ctx.state.flowFieldGrid.buildFlowField(ctx.state.player.x, ctx.state.player.y);
         }
 
         WeaponSystem.updateTurretAndWeapon(dt, true, ctx.state, ctx.upgrades);
@@ -157,7 +157,7 @@ export class CombatState {
         ctx.state.turrets.forEach(t => t.currentLaserLength = 0);
         
         // Shift grid center to player position and rebuild local flow field using wallSpatialHash
-        ctx.state.gridSystem.shiftCenter(
+        ctx.state.flowFieldGrid.shiftCenter(
             ctx.state.player.x,
             ctx.state.player.y,
             ctx.state.wallSpatialHash,
@@ -182,7 +182,7 @@ export class CombatState {
     update(dt, ctx) {
         const abilityState = ProgressionManager.updateAbilities(ctx.state, dt, ctx.upgrades);
         if (!abilityState.isDiving && ctx.state.player.applyQueuedTarget()) {
-            ctx.state.gridSystem.buildPlayerFlowField(ctx.state.player.targetX, ctx.state.player.targetY);
+            ctx.state.flowFieldGrid.buildPlayerFlowField(ctx.state.player.targetX, ctx.state.player.targetY);
         }
 
         const spatialHash = this.spatialHash;
@@ -190,15 +190,15 @@ export class CombatState {
         for (const e of ctx.state.enemies) spatialHash.insert(e);
         spatialHash.insert(ctx.state.player);
 
-        const oldGridPos = ctx.state.gridSystem.worldToGrid(ctx.state.player.x, ctx.state.player.y);
-        ctx.state.player.update(dt, ctx.state.gridSystem, ctx.state.walls, spatialHash, abilityState.externalSpeedMod);
-        const newGridPos = ctx.state.gridSystem.worldToGrid(ctx.state.player.x, ctx.state.player.y);
+        const oldGridPos = ctx.state.flowFieldGrid.worldToGrid(ctx.state.player.x, ctx.state.player.y);
+        ctx.state.player.update(dt, ctx.state.flowFieldGrid, ctx.state.walls, spatialHash, abilityState.externalSpeedMod);
+        const newGridPos = ctx.state.flowFieldGrid.worldToGrid(ctx.state.player.x, ctx.state.player.y);
         const distToCenter = Math.max(
-            Math.abs(ctx.state.player.x - ctx.state.gridSystem.centerX),
-            Math.abs(ctx.state.player.y - ctx.state.gridSystem.centerY)
+            Math.abs(ctx.state.player.x - ctx.state.flowFieldGrid.centerX),
+            Math.abs(ctx.state.player.y - ctx.state.flowFieldGrid.centerY)
         );
         if (distToCenter > 400) {
-            ctx.state.gridSystem.shiftCenter(
+            ctx.state.flowFieldGrid.shiftCenter(
                 ctx.state.player.x,
                 ctx.state.player.y,
                 ctx.state.wallSpatialHash,
@@ -208,7 +208,7 @@ export class CombatState {
                 ctx.state.player.targetY
             );
         } else if (oldGridPos.col !== newGridPos.col || oldGridPos.row !== newGridPos.row) {
-            ctx.state.gridSystem.buildFlowField(ctx.state.player.x, ctx.state.player.y);
+            ctx.state.flowFieldGrid.buildFlowField(ctx.state.player.x, ctx.state.player.y);
         }
 
         ctx.state.waveManager.manageSpawning(dt, ctx.state, ctx.upgrades, ctx.viewport);
@@ -242,11 +242,11 @@ export class CombatState {
     handleInteraction(worldCoords, isDoubleTap, ctx) {
         if (ctx.state.player.currentState && ctx.state.player.currentState.blocksInput) return;
         if (!ctx.state.player.canReposition(ctx.state)) return;
-        const gridPos = ctx.state.gridSystem.worldToGrid(worldCoords.x, worldCoords.y);
-        if (gridPos.col >= 0 && gridPos.col < ctx.state.gridSystem.cols && gridPos.row >= 0 && gridPos.row < ctx.state.gridSystem.rows) {
-            if (ctx.state.gridSystem.grid[gridPos.row * ctx.state.gridSystem.cols + gridPos.col] !== 1) {
-                const targetX = gridPos.col * ctx.state.gridSystem.cellSize + ctx.state.gridSystem.centerX - ctx.state.gridSystem.offsetX + ctx.state.gridSystem.cellSize / 2;
-                const targetY = gridPos.row * ctx.state.gridSystem.cellSize + ctx.state.gridSystem.centerY - ctx.state.gridSystem.offsetY + ctx.state.gridSystem.cellSize / 2;
+        const gridPos = ctx.state.flowFieldGrid.worldToGrid(worldCoords.x, worldCoords.y);
+        if (gridPos.col >= 0 && gridPos.col < ctx.state.flowFieldGrid.cols && gridPos.row >= 0 && gridPos.row < ctx.state.flowFieldGrid.rows) {
+            if (ctx.state.flowFieldGrid.grid[gridPos.row * ctx.state.flowFieldGrid.cols + gridPos.col] !== 1) {
+                const targetX = gridPos.col * ctx.state.flowFieldGrid.cellSize + ctx.state.flowFieldGrid.centerX - ctx.state.flowFieldGrid.offsetX + ctx.state.flowFieldGrid.cellSize / 2;
+                const targetY = gridPos.row * ctx.state.flowFieldGrid.cellSize + ctx.state.flowFieldGrid.centerY - ctx.state.flowFieldGrid.offsetY + ctx.state.flowFieldGrid.cellSize / 2;
                 let isDiving = false;
                 ctx.upgrades
                     .filter((u) => u.isAbility && u.triggerType === "double_tap_move" && ctx.state.abilities[u.id])
@@ -259,7 +259,7 @@ export class CombatState {
                     ctx.state.player.queueTarget(targetX, targetY);
                 } else {
                     ctx.state.player.setTarget(targetX, targetY);
-                    ctx.state.gridSystem.buildPlayerFlowField(targetX, targetY);
+                    ctx.state.flowFieldGrid.buildPlayerFlowField(targetX, targetY);
                     if (isDoubleTap) {
                         ctx.upgrades
                             .filter((u) => u.isAbility && u.triggerType === "double_tap_move" && ctx.state.abilities[u.id])

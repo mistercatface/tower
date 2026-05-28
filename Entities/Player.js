@@ -126,9 +126,9 @@ export class Player extends Enemy {
         return state.upgrades["Reposition"] && state.upgrades["Reposition"].level > 0;
     }
 
-    update(dt, gridSystem, walls, spatialHash, state, externalSpeedMod = 1.0) {
+    update(dt, flowFieldGrid, walls, spatialHash, state, externalSpeedMod = 1.0) {
         if (this.currentState && this.currentState.customMovement) {
-            this.currentState.update(this, dt, null, gridSystem, walls, null, spatialHash, null, null);
+            this.currentState.update(this, dt, null, flowFieldGrid, walls, null, spatialHash, null, null);
             return;
         }
         if (this.isMoving && this.targetX !== null && this.targetY !== null) {
@@ -145,7 +145,7 @@ export class Player extends Enemy {
                     }
                 }
                 if (!navigated) {
-                    this.steerTowardPoint(this.targetX, this.targetY, gridSystem, gridSystem.playerFlowField);
+                    this.steerTowardPoint(this.targetX, this.targetY, flowFieldGrid, flowFieldGrid.playerFlowField);
                     this.targetNodeX = this.x + this.desiredX * 10;
                     this.targetNodeY = this.y + this.desiredY * 10;
                 }

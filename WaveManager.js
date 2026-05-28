@@ -71,8 +71,8 @@ export class WaveManager {
             y = state.player.y + pos;
         }
 
-        if (state.gridSystem) {
-            const grid = state.gridSystem;
+        if (state.flowFieldGrid) {
+            const grid = state.flowFieldGrid;
             const gridPos = grid.worldToGrid(x, y);
             let targetCol = Math.max(0, Math.min(grid.cols - 1, gridPos.col));
             let targetRow = Math.max(0, Math.min(grid.rows - 1, gridPos.row));

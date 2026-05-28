@@ -1,4 +1,6 @@
-export class GridSystem {
+import { markWallOnGrid } from "./ObstacleGrid.js";
+
+export class FlowFieldGrid {
     constructor(cellSize, width, height, radii = []) {
         this.cellSize = cellSize;
         this.width = width;
@@ -178,54 +180,28 @@ export class GridSystem {
 
     addSegment(seg) {
         if (seg.isDead) return;
-        
-        const halfSize = seg.size / 2;
 
-        const processGrid = (padding, targetGrid, isMainGrid = false) => {
-            const effectivePadding = padding;
-            const boundingRadius = halfSize * Math.SQRT2 + effectivePadding;
-            
-            const minGrid = this.worldToGrid(seg.x - boundingRadius, seg.y - boundingRadius);
-            const maxGrid = this.worldToGrid(seg.x + boundingRadius, seg.y + boundingRadius);
-            
-            const startCol = Math.max(0, minGrid.col);
-            const endCol = Math.min(this.cols - 1, maxGrid.col);
-            const startRow = Math.max(0, minGrid.row);
-            const endRow = Math.min(this.rows - 1, maxGrid.row);
-            
-            const cos = Math.cos(-seg.angle);
-            const sin = Math.sin(-seg.angle);
-            
-            for (let col = startCol; col <= endCol; col++) {
-                for (let row = startRow; row <= endRow; row++) {
-                    const cx = col * this.cellSize + this.centerX - this.offsetX + (this.cellSize / 2);
-                    const cy = row * this.cellSize + this.centerY - this.offsetY + (this.cellSize / 2);
-                    
-                    const dx = cx - seg.x;
-                    const dy = cy - seg.y;
-                    
-                    const localX = dx * cos - dy * sin;
-                    const localY = dx * sin + dy * cos;
-                    
-                    const distX = Math.max(0, Math.abs(localX) - halfSize);
-                    const distY = Math.max(0, Math.abs(localY) - halfSize);
-                    
-                    if ((distX * distX + distY * distY) <= effectivePadding * effectivePadding + 0.01) {
-                        const idx = row * this.cols + col;
-                        targetGrid[idx] = 1;
-                        if (isMainGrid) {
-                            if (!this.segmentGrid[idx].includes(seg)) {
-                                this.segmentGrid[idx].push(seg);
-                            }
+        const markOnGrid = (padding, targetGrid, trackSegments = false) => {
+            markWallOnGrid(seg, targetGrid, this.cols, this.rows, {
+                worldToGrid: (x, y) => this.worldToGrid(x, y),
+                cellCenter: (col, row) => ({
+                    x: col * this.cellSize + this.centerX - this.offsetX + this.cellSize / 2,
+                    y: row * this.cellSize + this.centerY - this.offsetY + this.cellSize / 2,
+                }),
+                padding,
+                onBlockedCell: trackSegments
+                    ? (_col, _row, idx) => {
+                        if (!this.segmentGrid[idx].includes(seg)) {
+                            this.segmentGrid[idx].push(seg);
                         }
                     }
-                }
-            }
+                    : null,
+            });
         };
 
-        processGrid(seg.padding, this.grid, true);
+        markOnGrid(seg.padding, this.grid, true);
         for (const r of this.radii) {
-            processGrid(r, this.gridsByRadius[r], false);
+            markOnGrid(r, this.gridsByRadius[r], false);
         }
     }
 

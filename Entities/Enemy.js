@@ -28,7 +28,7 @@ export class Enemy extends DestructibleEntity {
     static updateAll(state, dt, spatialHash) {
         for (let i = state.enemies.length - 1; i >= 0; i--) {
             const e = state.enemies[i];
-            e.currentState.update(e, dt, state.player, state.gridSystem, state.walls, state.projectiles, spatialHash, state.scheduler, state);
+            e.currentState.update(e, dt, state.player, state.flowFieldGrid, state.walls, state.projectiles, spatialHash, state.scheduler, state);
             if (e.isDead) state.enemies.splice(i, 1);
         }
     }
@@ -106,10 +106,10 @@ export class Enemy extends DestructibleEntity {
         }
     }
 
-    steerTowardPoint(targetX, targetY, gridSystem, flowField = null) {
-        const field = flowField ?? gridSystem?.flowField;
-        if (gridSystem && field) {
-            const angle = Navigator.getSteeringAngle(this.x, this.y, gridSystem, field);
+    steerTowardPoint(targetX, targetY, flowFieldGrid, flowField = null) {
+        const field = flowField ?? flowFieldGrid?.flowField;
+        if (flowFieldGrid && field) {
+            const angle = Navigator.getSteeringAngle(this.x, this.y, flowFieldGrid, field);
             if (angle !== null) {
                 this.desiredX = Math.cos(angle);
                 this.desiredY = Math.sin(angle);
@@ -120,12 +120,12 @@ export class Enemy extends DestructibleEntity {
         Utilities.setDesiredDirection(this, targetX - this.x, targetY - this.y);
     }
 
-    calculateSteering(target, gridSystem, state) {
+    calculateSteering(target, flowFieldGrid, state) {
         const dist = Math.hypot(this.x - target.x, this.y - target.y);
 
         if (dist <= 1000) {
             this.hpaPath = null;
-            this.steerTowardPoint(target.x, target.y, gridSystem);
+            this.steerTowardPoint(target.x, target.y, flowFieldGrid);
             return;
         }
 
@@ -135,7 +135,7 @@ export class Enemy extends DestructibleEntity {
             }
         }
 
-        this.steerTowardPoint(target.x, target.y, gridSystem);
+        this.steerTowardPoint(target.x, target.y, flowFieldGrid);
     }
 
     applyLocomotion(dt, walls, spatialHash, {
@@ -157,7 +157,7 @@ export class Enemy extends DestructibleEntity {
         PhysicsSystem.resolveWallCollisions(this, walls, state);
     }
 
-    shouldTriggerDodge(projectiles, gridSystem, scheduler) {
+    shouldTriggerDodge(projectiles, flowFieldGrid, scheduler) {
         for (const m of projectiles) {
             if (m.faction === "enemy") continue;
 
@@ -178,7 +178,7 @@ export class Enemy extends DestructibleEntity {
                             const destX = this.x + Math.cos(dodgeAngle) * dodgeDist;
                             const destY = this.y + Math.sin(dodgeAngle) * dodgeDist;
 
-                            if (this.isValidDodgeTarget(destX, destY, gridSystem)) {
+                            if (this.isValidDodgeTarget(destX, destY, flowFieldGrid)) {
                                 this.dodgeTargetX = destX;
                                 this.dodgeTargetY = destY;
                                 this.dodgeTimerId = scheduler.schedule(2000);
@@ -194,11 +194,11 @@ export class Enemy extends DestructibleEntity {
         return false;
     }
 
-    isValidDodgeTarget(x, y, gridSystem) {
-        if (!gridSystem) return true;
-        const { col, row } = gridSystem.worldToGrid(x, y);
-        if (col >= 0 && col < gridSystem.cols && row >= 0 && row < gridSystem.rows) {
-            return gridSystem.grid[row * gridSystem.cols + col] === 0;
+    isValidDodgeTarget(x, y, flowFieldGrid) {
+        if (!flowFieldGrid) return true;
+        const { col, row } = flowFieldGrid.worldToGrid(x, y);
+        if (col >= 0 && col < flowFieldGrid.cols && row >= 0 && row < flowFieldGrid.rows) {
+            return flowFieldGrid.grid[row * flowFieldGrid.cols + col] === 0;
         }
         return false;
     }

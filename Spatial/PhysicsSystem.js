@@ -40,8 +40,8 @@ export class PhysicsSystem {
         let candidateWalls = segments;
         if (segments.spatialHash) {
             candidateWalls = segments.spatialHash.getNearby(entity);
-        } else if (segments.gridSystem) {
-            candidateWalls = segments.gridSystem.getNearbySegments(entity);
+        } else if (segments.flowFieldGrid) {
+            candidateWalls = segments.flowFieldGrid.getNearbySegments(entity);
         }
 
         let collided = false;

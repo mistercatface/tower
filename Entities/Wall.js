@@ -1,4 +1,5 @@
 import { DestructibleEntity } from "./Entity.js";
+import { getWallReach } from "../Spatial/ObstacleGrid.js";
 
 export class Segment extends DestructibleEntity {
     constructor(x, y, angle, size, padding = 10, maxHealth = 30, health = 30, isDead = false) {
@@ -9,12 +10,12 @@ export class Segment extends DestructibleEntity {
     }
 
     getBounds() {
-        const boundingRadius = (this.size / 2) * Math.SQRT2 + this.padding;
+        const reach = getWallReach(this);
         return {
-            minX: this.x - boundingRadius,
-            minY: this.y - boundingRadius,
-            maxX: this.x + boundingRadius,
-            maxY: this.y + boundingRadius
+            minX: this.x - reach,
+            minY: this.y - reach,
+            maxX: this.x + reach,
+            maxY: this.y + reach,
         };
     }
 
@@ -28,12 +29,12 @@ export class Segment extends DestructibleEntity {
             if (ctx.state.wallSpatialHash) {
                 ctx.state.wallSpatialHash.remove(this);
             }
-            ctx.state.gridSystem.rebuild(ctx.state.walls, ctx.state.player.x, ctx.state.player.y);
+            ctx.state.flowFieldGrid.rebuild(ctx.state.walls, ctx.state.player.x, ctx.state.player.y);
             if (ctx.state.hierarchicalNavigator) {
                 ctx.state.hierarchicalNavigator.handleWallDestroyed(this, ctx.state.wallSpatialHash);
             }
             if (ctx.state.player.isMoving && ctx.state.player.targetX !== null && ctx.state.player.targetY !== null) {
-                ctx.state.gridSystem.buildPlayerFlowField(ctx.state.player.targetX, ctx.state.player.targetY);
+                ctx.state.flowFieldGrid.buildPlayerFlowField(ctx.state.player.targetX, ctx.state.player.targetY);
             }
         }
     }

@@ -3,7 +3,7 @@ import { GeneratorStrategies } from "./GeneratorStrategies.js";
 import { pickupSpawnSettings } from "../Config.js";
 
 export function spawnPickup(state, playerX, playerY, minRadius, maxRadius, type) {
-    const grid = state.gridSystem;
+    const grid = state.flowFieldGrid;
     let spawned = false;
     let attempts = 0;
     while (!spawned && attempts < 100) {
@@ -30,9 +30,9 @@ export const WallGenerator = {
         const playerX = state.player.x;
         const playerY = state.player.y;
         state.walls = [];
-        state.walls.gridSystem = state.gridSystem;
-        state.gridSystem.centerX = playerX;
-        state.gridSystem.centerY = playerY;
+        state.walls.flowFieldGrid = state.flowFieldGrid;
+        state.flowFieldGrid.centerX = playerX;
+        state.flowFieldGrid.centerY = playerY;
         const patterns = Object.keys(GeneratorStrategies);
         const selected = patterns[Math.floor(Math.random() * patterns.length)];
         const themeColors = [
@@ -49,7 +49,7 @@ export const WallGenerator = {
         ];
         state.wallTheme = themeColors[Math.floor(Math.random() * themeColors.length)];
         GeneratorStrategies[selected].generate(state, playerX, playerY);
-        state.gridSystem.rebuild(state.walls, playerX, playerY);
+        state.flowFieldGrid.rebuild(state.walls, playerX, playerY);
         if (!state.discoveredAbilities.has("Laser")) {
             spawnPickup(state, playerX, playerY, pickupSpawnSettings.coinMinRadius, pickupSpawnSettings.coinMaxRadius, "coin");
         }

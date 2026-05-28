@@ -1,8 +1,8 @@
 export class Navigator {
-    static getSteeringAngle(x, y, gridSystem, targetField) {
-        const halfCell = gridSystem.cellSize / 2;
-        const gx = (x - (gridSystem.centerX - gridSystem.offsetX + halfCell)) / gridSystem.cellSize;
-        const gy = (y - (gridSystem.centerY - gridSystem.offsetY + halfCell)) / gridSystem.cellSize;
+    static getSteeringAngle(x, y, flowFieldGrid, targetField) {
+        const halfCell = flowFieldGrid.cellSize / 2;
+        const gx = (x - (flowFieldGrid.centerX - flowFieldGrid.offsetX + halfCell)) / flowFieldGrid.cellSize;
+        const gy = (y - (flowFieldGrid.centerY - flowFieldGrid.offsetY + halfCell)) / flowFieldGrid.cellSize;
         const col0 = Math.floor(gx);
         const row0 = Math.floor(gy);
         const col1 = col0 + 1;
@@ -10,8 +10,8 @@ export class Navigator {
         const tx = gx - col0;
         const ty = gy - row0;
         const getFlowVec = (c, r) => {
-            if (c < 0 || c >= gridSystem.cols || r < 0 || r >= gridSystem.rows) return null;
-            const f = targetField[r * gridSystem.cols + c];
+            if (c < 0 || c >= flowFieldGrid.cols || r < 0 || r >= flowFieldGrid.rows) return null;
+            const f = targetField[r * flowFieldGrid.cols + c];
             if (!f) return null;
             const len = Math.hypot(f.x, f.y);
             return len > 0 ? { x: f.x / len, y: f.y / len } : null;

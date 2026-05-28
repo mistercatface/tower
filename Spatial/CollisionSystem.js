@@ -28,7 +28,7 @@ export class CollisionSystem {
         if (!segments) return null;
 
         let candidateWalls = segments;
-        if (segments.gridSystem) candidateWalls = segments.gridSystem.getNearbySegments(missile);
+        if (segments.flowFieldGrid) candidateWalls = segments.flowFieldGrid.getNearbySegments(missile);
 
         const missileRad = missile.radius;
         for (const seg of candidateWalls) {

@@ -9,7 +9,7 @@ function generateMaze(state, px, py, config = {}) {
         gateDepth = 4
     } = config;
 
-    const cellSize = state.gridSystem.cellSize;
+    const cellSize = state.flowFieldGrid.cellSize;
     const wallWidth = 1;
     const step = pathWidth + wallWidth;
     const nodesX = 15;
@@ -166,7 +166,7 @@ const HoneycombStrategy = {
 
 const SquareStrategy = {
     generate(state, px, py) {
-        const cellSize = state.gridSystem.cellSize;
+        const cellSize = state.flowFieldGrid.cellSize;
         const cols = 61;
         const rows = 61;
         const grid = new Array(cols * rows).fill(1);
