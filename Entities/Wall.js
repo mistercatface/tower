@@ -25,7 +25,13 @@ export class Segment extends DestructibleEntity {
             if (idx !== -1) {
                 ctx.state.walls.splice(idx, 1);
             }
+            if (ctx.state.wallSpatialHash) {
+                ctx.state.wallSpatialHash.remove(this);
+            }
             ctx.state.gridSystem.rebuild(ctx.state.walls, ctx.state.player.x, ctx.state.player.y);
+            if (ctx.state.hierarchicalNavigator) {
+                ctx.state.hierarchicalNavigator.handleWallDestroyed(this, ctx.state.wallSpatialHash);
+            }
             if (ctx.state.player.isMoving && ctx.state.player.targetX !== null && ctx.state.player.targetY !== null) {
                 ctx.state.gridSystem.buildPlayerFlowField(ctx.state.player.targetX, ctx.state.player.targetY);
             }

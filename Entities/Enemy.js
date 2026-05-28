@@ -77,6 +77,8 @@ export class Enemy extends DestructibleEntity {
         this.startingAbilities = [];
         this.healthBar = Enemy.healthBar;
         this.chargeBar = Enemy.chargeBar;
+        this.hpaPath = null;
+        this.hpaLastUpdate = 0;
     }
 
     handleHit(baseDamage, ctx, hitType) {
@@ -118,7 +120,42 @@ export class Enemy extends DestructibleEntity {
         Utilities.setDesiredDirection(this, targetX - this.x, targetY - this.y);
     }
 
-    calculateSteering(target, gridSystem) {
+    calculateSteering(target, gridSystem, state) {
+        const globalState = state || window.gameState;
+        const dist = Math.hypot(this.x - target.x, this.y - target.y);
+
+        if (dist <= 1000) {
+            this.hpaPath = null;
+            this.steerTowardPoint(target.x, target.y, gridSystem);
+            return;
+        }
+
+        if (globalState && globalState.hierarchicalNavigator) {
+            const now = Date.now();
+            if (!this.hpaPath || now - this.hpaLastUpdate > 1000) {
+                this.hpaPath = globalState.hierarchicalNavigator.findPath(this.x, this.y, target.x, target.y);
+                this.hpaLastUpdate = now;
+            }
+
+            if (this.hpaPath && this.hpaPath.length > 0) {
+                let waypointIdx = 0;
+                while (waypointIdx < this.hpaPath.length) {
+                    const wp = this.hpaPath[waypointIdx];
+                    const distToWp = Math.hypot(this.x - wp.x, this.y - wp.y);
+                    if (distToWp > 24) {
+                        break;
+                    }
+                    waypointIdx++;
+                }
+
+                if (waypointIdx < this.hpaPath.length) {
+                    const wp = this.hpaPath[waypointIdx];
+                    Utilities.setDesiredDirection(this, wp.x - this.x, wp.y - this.y);
+                    return;
+                }
+            }
+        }
+
         this.steerTowardPoint(target.x, target.y, gridSystem);
     }
 

@@ -80,6 +80,10 @@ export class Renderer {
             this.drawTransitionGuides(state);
         }
 
+        if (state.debugMode) {
+            this.drawDebugHPA(state, viewport);
+        }
+
         this.ctx.restore();
 
         if (viewport && (state.phase === "combat" || state.phase === "reward" || state.phase === "map_transition")) {
@@ -506,6 +510,178 @@ export class Renderer {
         }
         this.ctx.stroke();
         this.ctx.restore();
+        this.ctx.restore();
+    }
+
+    drawDebugHPA(state, viewport) {
+        const hnav = state.hierarchicalNavigator;
+        if (!hnav || !hnav.grid) return;
+        if (!viewport) return;
+
+        this.ctx.save();
+
+        // Get visible world bounds
+        const pad = hnav.cellSize * 2;
+        const screenW = state.canvasBounds.width || this.canvas.width;
+        const screenH = state.canvasBounds.height || this.canvas.height;
+        const wMin = viewport.screenToWorld(0, 0);
+        const wMax = viewport.screenToWorld(screenW, screenH);
+        const vxMin = Math.min(wMin.x, wMax.x) - pad;
+        const vxMax = Math.max(wMin.x, wMax.x) + pad;
+        const vyMin = Math.min(wMin.y, wMax.y) - pad;
+        const vyMax = Math.max(wMin.y, wMax.y) + pad;
+
+        // Map visible bounds to grid cell ranges
+        const startGrid = hnav.worldToGrid(vxMin, vyMin);
+        const endGrid = hnav.worldToGrid(vxMax, vyMax);
+
+        const startCol = Math.max(0, Math.min(hnav.cols - 1, startGrid.col));
+        const endCol = Math.max(0, Math.min(hnav.cols - 1, endGrid.col));
+        const startRow = Math.max(0, Math.min(hnav.rows - 1, startGrid.row));
+        const endRow = Math.max(0, Math.min(hnav.rows - 1, endGrid.row));
+
+        // 1. Draw Grid Cells & Voronoi Regions
+        for (let row = startRow; row <= endRow; row++) {
+            for (let col = startCol; col <= endCol; col++) {
+                const isBlocked = hnav.grid[row * hnav.cols + col] === 1;
+                const wx = hnav.minX + col * hnav.cellSize;
+                const wy = hnav.minY + row * hnav.cellSize;
+
+                if (isBlocked) {
+                    this.ctx.fillStyle = "rgba(244, 67, 54, 0.25)"; // Translucent Red for blocked
+                    this.ctx.fillRect(wx, wy, hnav.cellSize - 1, hnav.cellSize - 1);
+                } else if (!hnav.cellToNode || !hnav.cellToNode[row * hnav.cols + col]) {
+                    this.ctx.fillStyle = "rgba(76, 175, 80, 0.05)"; // Very Faint Green for unassigned/fallback
+                    this.ctx.fillRect(wx, wy, hnav.cellSize - 1, hnav.cellSize - 1);
+                }
+            }
+        }
+
+        // Draw Region Perimeters
+        if (hnav.cellToNode) {
+            this.ctx.beginPath();
+            this.ctx.strokeStyle = "rgba(0, 229, 255, 0.5)"; // Translucent Cyan for borders
+            this.ctx.lineWidth = 1.5;
+
+            for (let row = startRow; row <= endRow; row++) {
+                for (let col = startCol; col <= endCol; col++) {
+                    const idx = row * hnav.cols + col;
+                    if (hnav.grid[idx] === 1) continue;
+
+                    const node = hnav.cellToNode[idx];
+                    if (!node) continue;
+
+                    const wx = hnav.minX + col * hnav.cellSize;
+                    const wy = hnav.minY + row * hnav.cellSize;
+                    const cellSize = hnav.cellSize;
+
+                    // Check Right Neighbor
+                    if (col + 1 < hnav.cols) {
+                        const rIdx = idx + 1;
+                        if (hnav.grid[rIdx] === 0) {
+                            const rightNode = hnav.cellToNode[rIdx];
+                            if (rightNode && rightNode.id !== node.id) {
+                                this.ctx.moveTo(wx + cellSize, wy);
+                                this.ctx.lineTo(wx + cellSize, wy + cellSize);
+                            }
+                        }
+                    }
+
+                    // Check Bottom Neighbor
+                    if (row + 1 < hnav.rows) {
+                        const bIdx = idx + hnav.cols;
+                        if (hnav.grid[bIdx] === 0) {
+                            const bottomNode = hnav.cellToNode[bIdx];
+                            if (bottomNode && bottomNode.id !== node.id) {
+                                this.ctx.moveTo(wx, wy + cellSize);
+                                this.ctx.lineTo(wx + cellSize, wy + cellSize);
+                            }
+                        }
+                    }
+                }
+            }
+            this.ctx.stroke();
+        }
+
+        // 2. Draw HPA* Abstract Nodes & Edges
+        for (const id in hnav.nodesMap) {
+            const node = hnav.nodesMap[id];
+            // Draw edges
+            for (const edge of node.edges) {
+                const targetNode = hnav.nodesMap[edge.targetId];
+                if (targetNode) {
+                    if (edge.path && edge.path.length > 0) {
+                        this.ctx.beginPath();
+                        const p0 = hnav.gridToWorld(edge.path[0].col, edge.path[0].row);
+                        this.ctx.moveTo(p0.x, p0.y);
+                        for (let k = 1; k < edge.path.length; k++) {
+                            const pk = hnav.gridToWorld(edge.path[k].col, edge.path[k].row);
+                            this.ctx.lineTo(pk.x, pk.y);
+                        }
+                        this.ctx.strokeStyle = "#ff9800";
+                        this.ctx.lineWidth = 2.5;
+                        this.ctx.stroke();
+                    } else {
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(node.x, node.y);
+                        this.ctx.lineTo(targetNode.x, targetNode.y);
+                        this.ctx.strokeStyle = "#ff9800";
+                        this.ctx.lineWidth = 2.5;
+                        this.ctx.stroke();
+                    }
+                }
+            }
+
+            // Draw node
+            this.ctx.beginPath();
+            this.ctx.arc(node.x, node.y, 4, 0, Math.PI * 2);
+            this.ctx.fillStyle = "#00e5ff";
+            this.ctx.fill();
+        }
+
+        // 4. Draw Waypoint Paths for Enemies
+        for (const enemy of state.enemies) {
+            if (enemy.isDead) continue;
+            if (enemy.hpaPath && enemy.hpaPath.length > 0) {
+                this.ctx.beginPath();
+                this.ctx.moveTo(enemy.x, enemy.y);
+                for (const wp of enemy.hpaPath) {
+                    this.ctx.lineTo(wp.x, wp.y);
+                }
+                this.ctx.strokeStyle = "#ff007f";
+                this.ctx.lineWidth = 2.5;
+                this.ctx.stroke();
+
+                // Draw circles on waypoints
+                for (const wp of enemy.hpaPath) {
+                    this.ctx.beginPath();
+                    this.ctx.arc(wp.x, wp.y, 4, 0, Math.PI * 2);
+                    this.ctx.fillStyle = "#ff007f";
+                    this.ctx.fill();
+                }
+            }
+        }
+
+        // 5. Draw Waypoint Path for Player
+        if (state.player && state.player.hpaPath && state.player.hpaPath.length > 0) {
+            this.ctx.beginPath();
+            this.ctx.moveTo(state.player.x, state.player.y);
+            for (const wp of state.player.hpaPath) {
+                this.ctx.lineTo(wp.x, wp.y);
+            }
+            this.ctx.strokeStyle = "#00e5ff";
+            this.ctx.lineWidth = 2.5;
+            this.ctx.stroke();
+
+            // Draw circles on waypoints
+            for (const wp of state.player.hpaPath) {
+                this.ctx.beginPath();
+                this.ctx.arc(wp.x, wp.y, 4, 0, Math.PI * 2);
+                this.ctx.fillStyle = "#00e5ff";
+                this.ctx.fill();
+            }
+        }
+
         this.ctx.restore();
     }
 }

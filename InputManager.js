@@ -73,5 +73,12 @@ export class InputManager {
                 fsm.currentState.handlePointerMove(worldCoords, { x: screenX, y: screenY }, fsm.context);
             }
         });
+
+        window.addEventListener("keydown", (e) => {
+            if (e.key === "d" || e.key === "D") {
+                fsm.context.state.debugMode = !fsm.context.state.debugMode;
+                console.log("Debug Mode: " + fsm.context.state.debugMode);
+            }
+        });
     }
 }

@@ -66,6 +66,8 @@ export class Player extends Enemy {
         this.targetNodeX = null;
         this.targetNodeY = null;
         this.isMoving = true;
+        this.hpaPath = null;
+        this.hpaLastUpdate = 0;
     }
 
     queueTarget(x, y) {
@@ -91,6 +93,7 @@ export class Player extends Enemy {
         this.isMoving = false;
         this.desiredX = 0;
         this.desiredY = 0;
+        this.hpaPath = null;
     }
     
     heal(amount) {
@@ -133,9 +136,42 @@ export class Player extends Enemy {
             if (toTarget.len < 2) {
                 this.stopMovement();
             } else {
-                this.steerTowardPoint(this.targetX, this.targetY, gridSystem, gridSystem.playerFlowField);
-                this.targetNodeX = this.x + this.desiredX * 10;
-                this.targetNodeY = this.y + this.desiredY * 10;
+                const globalState = window.gameState;
+                let navigated = false;
+
+                if (globalState && globalState.hierarchicalNavigator) {
+                    const now = Date.now();
+                    if (!this.hpaPath || now - this.hpaLastUpdate > 500) {
+                        this.hpaPath = globalState.hierarchicalNavigator.findPath(this.x, this.y, this.targetX, this.targetY);
+                        this.hpaLastUpdate = now;
+                    }
+
+                    if (this.hpaPath && this.hpaPath.length > 0) {
+                        let waypointIdx = 0;
+                        while (waypointIdx < this.hpaPath.length) {
+                            const wp = this.hpaPath[waypointIdx];
+                            const distToWp = Math.hypot(this.x - wp.x, this.y - wp.y);
+                            if (distToWp > 24) {
+                                break;
+                            }
+                            waypointIdx++;
+                        }
+
+                        if (waypointIdx < this.hpaPath.length) {
+                            const wp = this.hpaPath[waypointIdx];
+                            Utilities.setDesiredDirection(this, wp.x - this.x, wp.y - this.y);
+                            this.targetNodeX = this.x + this.desiredX * 10;
+                            this.targetNodeY = this.y + this.desiredY * 10;
+                            navigated = true;
+                        }
+                    }
+                }
+
+                if (!navigated) {
+                    this.steerTowardPoint(this.targetX, this.targetY, gridSystem, gridSystem.playerFlowField);
+                    this.targetNodeX = this.x + this.desiredX * 10;
+                    this.targetNodeY = this.y + this.desiredY * 10;
+                }
             }
         } else {
             this.desiredX = 0;

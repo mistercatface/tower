@@ -2,6 +2,7 @@ import { Projectile } from "../Entities/Projectile.js";
 import { Turret } from "../Turret.js";
 import { Player } from "../Entities/Player.js";
 import { GridSystem } from "../Spatial/GridSystem.js";
+import { HierarchicalNavigator } from "../Spatial/HierarchicalNavigator.js";
 import { enemyTypes, defaultUpgradeCost, perkMilestones, playerBaseStats, gridSettings, mapSettings } from "../Config.js";
 import { WallGenerator } from "../Generator/Generator.js";
 import { FloatingText } from "../FloatingText.js";
@@ -84,6 +85,7 @@ export class GameState {
         };
  
         this.gridSystem = new GridSystem(gridSettings.cellSize, gridSettings.width, gridSettings.height);
+        this.hierarchicalNavigator = new HierarchicalNavigator(gridSettings.cellSize, gridSettings.anchorSpacing || 24);
         this.currentUpgradeTab = "attack";
         this.canvasBounds = { width: 0, height: 0 };
         this.upgrades = {};
@@ -247,6 +249,7 @@ export class GameState {
         this.kills = 0;
         this.isGameOver = false;
         this.isPaused = false;
+        this.debugMode = false;
         this.spawnRadius = 950;
         this.pendingPerkPicks = [];
 
@@ -433,6 +436,7 @@ export class GameState {
                 }
             }
         }
+        this.hierarchicalNavigator.initialize(this.walls, this.wallSpatialHash);
     }
 
     pregenerateAllCombatData() {

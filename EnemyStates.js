@@ -60,7 +60,7 @@ export class EnemyNavigatingState {
             return enemy.currentState.update(enemy, dt, target, gridSystem, walls, missiles, spatialHash, scheduler, state);
         }
 
-        enemy.calculateSteering(target, gridSystem);
+        enemy.calculateSteering(target, gridSystem, state);
         enemy.applyLocomotion(dt, walls, spatialHash, { state, ignoreSeparationInDesired: true });
 
         if (enemy.turret) {
@@ -237,7 +237,7 @@ export class EnemyChargePrepareState {
         const stagingDist = 125;
         
         if (distToTarget > stagingDist + 25) {
-            enemy.calculateSteering(target, gridSystem);
+            enemy.calculateSteering(target, gridSystem, state);
         } else if (distToTarget < stagingDist - 20) {
             const dx = enemy.x - target.x;
             const dy = enemy.y - target.y;

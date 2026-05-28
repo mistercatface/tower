@@ -52,6 +52,7 @@ export const gridSettings = {
     cellSize: 16,
     width: 2400,
     height: 2400,
+    anchorSpacing: 16,
 };
 
 export const mapSettings = {
