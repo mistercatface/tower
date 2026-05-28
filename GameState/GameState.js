@@ -216,7 +216,7 @@ export class GameState {
 
     getNodeCombatCoords(node) {
         if (!node) return { x: 0, y: 0 };
-        const scale = 7.0;
+        const scale = mapSettings.combatCoordScale;
         const baseSpawnX = this.mapBaseSpawnX !== undefined ? this.mapBaseSpawnX : (this.canvasBounds.width > 0 ? this.canvasBounds.width / 2 : 225);
         const baseSpawnY = this.mapBaseSpawnY !== undefined ? this.mapBaseSpawnY : (this.canvasBounds.height > 0 ? this.canvasBounds.height / 2 : 225);
         return {
@@ -352,6 +352,7 @@ export class GameState {
         const numLayers = mapSettings.numLayers;
         const layerSpacing = mapSettings.layerSpacing;
         const xSpacing = mapSettings.xSpacing;
+        const nodeJitter = mapSettings.nodeJitter ?? 20;
 
         let nodeIdCounter = 0;
         let layers = [];
@@ -365,8 +366,8 @@ export class GameState {
             let startX = -((numNodesInLayer - 1) * xSpacing) / 2;
 
             for (let i = 0; i < numNodesInLayer; i++) {
-                let jitterX = (Math.random() - 0.5) * 40;
-                let jitterY = (Math.random() - 0.5) * 40;
+                let jitterX = (Math.random() - 0.5) * nodeJitter * 2;
+                let jitterY = (Math.random() - 0.5) * nodeJitter * 2;
 
                 let type = "combat";
                 let reward = { type: "random_permanent_upgrade" };

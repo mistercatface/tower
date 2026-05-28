@@ -74,8 +74,11 @@ export const NAV_PROFILES = {
 
 export const mapSettings = {
     numLayers: 10,
-    layerSpacing: 150,
-    xSpacing: 120,
+    // Generators span ~1000px; combat coords use scale 7 (see getNodeCombatCoords).
+    layerSpacing: 200,
+    xSpacing: 200,
+    nodeJitter: 12,
+    combatCoordScale: 7.0,
 };
 
 export const playerProjectileSettings = {

@@ -1,5 +1,6 @@
 import { SpriteCache } from "./SpriteCache.js";
 import { Render3D } from "./3D/Render3D.js";
+import { mapSettings } from "../Config/Config.js";
 
 export class Renderer {
     constructor(canvas, ctx) {
@@ -260,7 +261,7 @@ export class Renderer {
     drawMap(state) {
         const baseSpawnX = state.mapBaseSpawnX !== undefined ? state.mapBaseSpawnX : (state.canvasBounds.width > 0 ? state.canvasBounds.width / 2 : 225);
         const baseSpawnY = state.mapBaseSpawnY !== undefined ? state.mapBaseSpawnY : (state.canvasBounds.height > 0 ? state.canvasBounds.height / 2 : 225);
-        const scale = 7.0;
+        const scale = mapSettings.combatCoordScale;
 
         const currentNode = state.mapNodes.find((n) => n.id === state.currentNodeId);
         for (const node of state.mapNodes) {
