@@ -1,4 +1,5 @@
 import { trimPathAhead, computePathSteering, steerTowardTarget } from "./PathFollow.js";
+import { adjustPathForClearance } from "./PathClearance.js";
 
 export function createNavState() {
     return {
@@ -7,16 +8,28 @@ export function createNavState() {
         lastX: null,
         lastY: null,
         stuckFrames: 0,
+        pathProgressIdx: 0,
     };
 }
 
-function replanPath(entity, targetX, targetY, hierarchicalNavigator, navState) {
+function replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings) {
     const rawPath = hierarchicalNavigator.findPath(entity.x, entity.y, targetX, targetY);
-    navState.path = rawPath ? trimPathAhead(entity.x, entity.y, rawPath) : null;
+    let path = rawPath ? trimPathAhead(entity.x, entity.y, rawPath) : null;
+    if (path && obstacleGrid) {
+        const clearance = entity.radius + settings.pathClearanceMargin;
+        path = adjustPathForClearance(path, obstacleGrid, clearance);
+    }
+    if (path) {
+        path = trimPathAhead(entity.x, entity.y, path);
+    }
+    navState.path = path;
+    navState.pathProgressIdx = 0;
     navState.lastUpdate = Date.now();
 }
 
-export function steerViaHpa(entity, targetX, targetY, hierarchicalNavigator, navState, replanMs, settings) {
+export function steerViaHpa(entity, targetX, targetY, hierarchicalNavigator, navState, profile, settings, obstacleGrid) {
+    const replanMs = profile.replanMs;
+    const replanWhileMoving = profile.replanWhileMoving !== false;
     const moved = Math.hypot(
         entity.x - (navState.lastX ?? entity.x),
         entity.y - (navState.lastY ?? entity.y)
@@ -33,8 +46,8 @@ export function steerViaHpa(entity, targetX, targetY, hierarchicalNavigator, nav
     const now = Date.now();
     let replanReason = null;
     const needsReplan = !navState.path
-        || now - navState.lastUpdate > replanMs
-        || navState.stuckFrames > settings.stuckReplanFrames;
+        || navState.stuckFrames > settings.stuckReplanFrames
+        || (replanWhileMoving && now - navState.lastUpdate > replanMs);
 
     if (needsReplan) {
         if (!navState.path) {
@@ -44,17 +57,17 @@ export function steerViaHpa(entity, targetX, targetY, hierarchicalNavigator, nav
         } else {
             replanReason = "interval";
         }
-        replanPath(entity, targetX, targetY, hierarchicalNavigator, navState);
+        replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings);
         navState.stuckFrames = 0;
     }
 
     if (navState.path && navState.path.length >= 2) {
-        let steering = computePathSteering(entity, navState.path, targetX, targetY);
+        let steering = computePathSteering(entity, navState.path, targetX, targetY, settings, navState);
         if (steering.offPath) {
             replanReason = "offPath";
-            replanPath(entity, targetX, targetY, hierarchicalNavigator, navState);
+            replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings);
             if (navState.path && navState.path.length >= 2) {
-                steering = computePathSteering(entity, navState.path, targetX, targetY);
+                steering = computePathSteering(entity, navState.path, targetX, targetY, settings, navState);
             }
         }
         if (navState.path && navState.path.length >= 2) {

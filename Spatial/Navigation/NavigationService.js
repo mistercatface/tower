@@ -55,8 +55,9 @@ export class NavigationService {
                 targetY,
                 this.hierarchicalNavigator,
                 navState,
-                profile.replanMs,
-                settings
+                profile,
+                settings,
+                this.flowFieldGrid.obstacleGrid
             );
         } else {
             navState.path = null;

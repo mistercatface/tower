@@ -1,11 +1,20 @@
-function projectOntoPath(x, y, path) {
-    let bestDistSq = Infinity;
-    let segmentIdx = 0;
-    let t = 0;
-    let closestX = path[0].x;
-    let closestY = path[0].y;
+function projectOntoPathFrom(path, x, y, startSegmentIdx = 0) {
+    if (!path || path.length === 0) {
+        return { segmentIdx: 0, t: 0, closestX: x, closestY: y, dist: 0 };
+    }
+    if (path.length === 1) {
+        const dist = Math.hypot(x - path[0].x, y - path[0].y);
+        return { segmentIdx: 0, t: 0, closestX: path[0].x, closestY: path[0].y, dist };
+    }
 
-    for (let i = 0; i < path.length - 1; i++) {
+    const firstSegment = Math.max(0, Math.min(startSegmentIdx, path.length - 2));
+    let bestDistSq = Infinity;
+    let segmentIdx = firstSegment;
+    let t = 0;
+    let closestX = path[firstSegment].x;
+    let closestY = path[firstSegment].y;
+
+    for (let i = firstSegment; i < path.length - 1; i++) {
         const ax = path[i].x;
         const ay = path[i].y;
         const bx = path[i + 1].x;
@@ -39,6 +48,23 @@ function projectOntoPath(x, y, path) {
         closestY,
         dist: Math.sqrt(bestDistSq),
     };
+}
+
+function projectOntoPath(x, y, path) {
+    return projectOntoPathFrom(path, x, y, 0);
+}
+
+function getForwardPathStartIndex(path, x, y, navState) {
+    const proj = projectOntoPath(x, y, path);
+    let minIdx = proj.segmentIdx + (proj.t > 0.85 ? 2 : 1);
+    minIdx = Math.max(0, Math.min(minIdx, path.length - 1));
+
+    if (navState) {
+        navState.pathProgressIdx = Math.max(navState.pathProgressIdx ?? 0, minIdx);
+        return navState.pathProgressIdx;
+    }
+
+    return minIdx;
 }
 
 function remainingPathLength(path, segmentIdx, t) {
@@ -99,16 +125,15 @@ function samplePathAhead(path, segmentIdx, t, aheadDist) {
 
 export function trimPathAhead(x, y, path) {
     if (!path || path.length === 0) return path;
-    if (path.length === 1) return [path[0]];
+    if (path.length === 1) return [{ x, y }, path[0]];
 
     const proj = projectOntoPath(x, y, path);
-    const trimmed = [{ x: proj.closestX, y: proj.closestY }];
     let startIdx = proj.segmentIdx + 1;
-
     if (proj.t > 0.95) {
         startIdx = proj.segmentIdx + 2;
     }
 
+    const trimmed = [{ x, y }];
     for (let i = startIdx; i < path.length; i++) {
         trimmed.push(path[i]);
     }
@@ -120,41 +145,70 @@ export function trimPathAhead(x, y, path) {
     return trimmed;
 }
 
-export function computePathSteering(entity, path, targetX, targetY) {
-    const proj = projectOntoPath(entity.x, entity.y, path);
-    const remaining = remainingPathLength(path, proj.segmentIdx, proj.t);
-
-    if (remaining < 24) {
-        let dirX = targetX - entity.x;
-        let dirY = targetY - entity.y;
-        const dirLen = Math.hypot(dirX, dirY);
-        if (dirLen < 0.01) {
-            return { desiredX: 0, desiredY: 0, offPath: false };
+function getActiveWaypointIndex(entity, path, arrivalDist, startIdx) {
+    for (let i = startIdx; i < path.length; i++) {
+        const wp = path[i];
+        const toWpX = wp.x - entity.x;
+        const toWpY = wp.y - entity.y;
+        const dist = Math.hypot(toWpX, toWpY);
+        if (dist <= arrivalDist) {
+            continue;
         }
-        return { desiredX: dirX / dirLen, desiredY: dirY / dirLen, offPath: false };
+
+        if (i + 1 < path.length) {
+            const next = path[i + 1];
+            const pathDx = next.x - wp.x;
+            const pathDy = next.y - wp.y;
+            const pathLenSq = pathDx * pathDx + pathDy * pathDy;
+            if (pathLenSq > 0) {
+                const along = (toWpX * pathDx + toWpY * pathDy) / pathLenSq;
+                if (along < -0.2) {
+                    continue;
+                }
+            }
+        }
+
+        return i;
+    }
+    return path.length - 1;
+}
+
+export function computePathSteering(entity, path, targetX, targetY, settings = {}, navState = null) {
+    const waypointArrival = Math.max(
+        settings.pathWaypointArrival ?? 10,
+        (entity.radius || 6) * 1.2
+    );
+    const offPathDistance = settings.pathOffPathDistance ?? 80;
+    const arrivalDistance = settings.arrivalDistance ?? 2;
+
+    const startIdx = getForwardPathStartIndex(path, entity.x, entity.y, navState);
+    const proj = projectOntoPathFrom(path, entity.x, entity.y, Math.max(0, startIdx - 1));
+    const activeIdx = getActiveWaypointIndex(entity, path, waypointArrival, startIdx);
+    const steerTarget = activeIdx >= path.length - 1
+        ? { x: targetX, y: targetY }
+        : path[activeIdx];
+
+    if (navState) {
+        navState.pathProgressIdx = Math.max(navState.pathProgressIdx ?? 0, activeIdx);
     }
 
-    const lookahead = Math.max(40, (entity.speed || 50) * 0.4);
-    const ahead = samplePathAhead(path, proj.segmentIdx, proj.t, lookahead);
+    const distToSteerTarget = Math.hypot(entity.x - steerTarget.x, entity.y - steerTarget.y);
+    if (distToSteerTarget <= arrivalDistance) {
+        return { desiredX: 0, desiredY: 0, offPath: false };
+    }
 
-    let dirX = ahead.x - entity.x;
-    let dirY = ahead.y - entity.y;
+    const dirX = steerTarget.x - entity.x;
+    const dirY = steerTarget.y - entity.y;
     const dirLen = Math.hypot(dirX, dirY);
 
     if (dirLen < 0.01) {
-        dirX = targetX - entity.x;
-        dirY = targetY - entity.y;
-        const fallbackLen = Math.hypot(dirX, dirY);
-        if (fallbackLen < 0.01) {
-            return { desiredX: 0, desiredY: 0, offPath: false };
-        }
-        return { desiredX: dirX / fallbackLen, desiredY: dirY / fallbackLen, offPath: proj.dist > 80 };
+        return { desiredX: 0, desiredY: 0, offPath: proj.dist > offPathDistance };
     }
 
     return {
         desiredX: dirX / dirLen,
         desiredY: dirY / dirLen,
-        offPath: proj.dist > 80,
+        offPath: proj.dist > offPathDistance,
     };
 }
 
