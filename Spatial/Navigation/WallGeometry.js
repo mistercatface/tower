@@ -44,6 +44,52 @@ export function circleIntersectsSegment(circle, segment) {
     return distanceSqToSegment(segment, circle.x, circle.y) < radiusSq;
 }
 
+export function getCircleSegmentPenetration(circle, segment) {
+    if (segment.isDead) return null;
+
+    const { localX, localY, half } = toSegmentLocal(segment, circle.x, circle.y);
+    const closestX = Math.max(-half, Math.min(localX, half));
+    const closestY = Math.max(-half, Math.min(localY, half));
+    const distDX = localX - closestX;
+    const distDY = localY - closestY;
+    const distanceSq = distDX * distDX + distDY * distDY;
+    const radiusSq = circle.radius * circle.radius;
+    if (distanceSq >= radiusSq) return null;
+
+    let normalX;
+    let normalY;
+    let overlap;
+    if (distanceSq === 0) {
+        const distToLeft = localX - -half;
+        const distToRight = half - localX;
+        const distToTop = localY - -half;
+        const distToBottom = half - localY;
+        const minDist = Math.min(distToLeft, distToRight, distToTop, distToBottom);
+        let localNormX = 0;
+        let localNormY = 0;
+        if (minDist === distToLeft) localNormX = -1;
+        else if (minDist === distToRight) localNormX = 1;
+        else if (minDist === distToTop) localNormY = -1;
+        else localNormY = 1;
+        const invCos = Math.cos(segment.angle);
+        const invSin = Math.sin(segment.angle);
+        normalX = localNormX * invCos - localNormY * invSin;
+        normalY = localNormX * invSin + localNormY * invCos;
+        overlap = circle.radius + minDist;
+    } else {
+        const distance = Math.sqrt(distanceSq);
+        overlap = circle.radius - distance;
+        const localNormX = distDX / distance;
+        const localNormY = distDY / distance;
+        const invCos = Math.cos(segment.angle);
+        const invSin = Math.sin(segment.angle);
+        normalX = localNormX * invCos - localNormY * invSin;
+        normalY = localNormX * invSin + localNormY * invCos;
+    }
+
+    return { normalX, normalY, overlap, distanceSq };
+}
+
 export function pushPointFromWalls(x, y, walls, clearance) {
     let px = x;
     let py = y;
