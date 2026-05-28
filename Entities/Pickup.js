@@ -5,6 +5,41 @@ import { RenderSprites } from "../Render/RenderSprites.js";
 import { StatsManager } from "../Progression/StatsManager.js";
 import { pickupSpawnSettings } from "../Config/Config.js";
 
+const PICKUP_STRATEGY_DEFAULTS = {
+    isPushable: false,
+    renderMode: "sprite",
+    render3DKey: null,
+    isExplosive: false,
+    laserTargetable: false,
+    mass: 1,
+    friction: 8,
+    wallPhysics: null,
+    maxHealth: null,
+};
+
+function withPickupDefaults(strategy) {
+    return { ...PICKUP_STRATEGY_DEFAULTS, ...strategy };
+}
+
+function spawnExplosion(state, x, y, config) {
+    if (!state.explosions) state.explosions = [];
+    state.explosions.push(new Explosion(x, y, config.type, config));
+}
+
+function explosiveOnHit(state, pickup, projectile, events) {
+    pickup.isDead = true;
+    if (projectile?.isDead !== undefined) projectile.isDead = true;
+    spawnExplosion(state, pickup.x, pickup.y, pickup.strategy.explosion);
+    return true;
+}
+
+function damageOnHit(state, pickup, projectile, events) {
+    const dmg = projectile?.damage ?? state.player.weapon.damage;
+    pickup.takeDamage(dmg);
+    if (projectile?.isDead !== undefined) projectile.isDead = true;
+    return true;
+}
+
 export const PickupStrategies = {
     coin: {
         radius: 8,
@@ -70,8 +105,23 @@ export const PickupStrategies = {
             return false;
         }
     },
-    barrel: {
+    barrel: withPickupDefaults({
         radius: 8,
+        isPushable: true,
+        renderMode: "3d",
+        render3DKey: "barrel",
+        isExplosive: true,
+        laserTargetable: true,
+        wallPhysics: { restitution: 0.25, friction: 0.75 },
+        explosion: {
+            type: "standard",
+            radius: 0,
+            maxRadius: 100,
+            speed: 300,
+            damage: 100,
+            lingerTimer: 750,
+            fadeTimer: 250,
+        },
         render(ctx, cx, cy, radius) {
             ctx.beginPath();
             ctx.arc(cx, cy, radius, 0, Math.PI * 2);
@@ -84,44 +134,45 @@ export const PickupStrategies = {
         onCollect(state, pickup, upgrades) {
             return null;
         },
-        onHit(state, pickup, projectile, events) {
-            pickup.isDead = true;
-            projectile.isDead = true;
-            if (!state.explosions) state.explosions = [];
-            state.explosions.push(new Explosion(pickup.x, pickup.y, "standard", {
-                radius: 0,
-                maxRadius: 100,
-                speed: 300,
-                damage: 100,
-                lingerTimer: 750,
-                fadeTimer: 250
-            }));
-            return true;
-        }
-    }
+        onHit: explosiveOnHit,
+    }),
 };
 
 export class Pickup extends Entity {
     constructor(x, y, type) {
         super(x, y, 0, false);
         this.type = type;
-        this.strategy = PickupStrategies[type];
+        this.strategy = withPickupDefaults(PickupStrategies[type]);
         this.radius = this.strategy.radius;
         this.vx = 0;
         this.vy = 0;
-        this.mass = 1;
+        this.mass = this.strategy.mass;
         this.zIndex = 10;
+        if (this.strategy.maxHealth != null) {
+            this.maxHealth = this.strategy.maxHealth;
+            this.health = this.strategy.maxHealth;
+        }
+    }
+
+    takeDamage(amount) {
+        if (this.maxHealth == null) return false;
+        this.health -= amount;
+        if (this.health <= 0 && !this.isDead) {
+            this.isDead = true;
+            return true;
+        }
+        return false;
     }
 
     update(dt, walls) {
-        PhysicsSystem.applyFrictionAndDrag(this, dt, 8);
-        if (this.type === "barrel" && walls) {
+        PhysicsSystem.applyFrictionAndDrag(this, dt, this.strategy.friction);
+        if (this.strategy.isPushable && walls) {
             PhysicsSystem.resolveWallCollisions(this, walls);
         }
     }
 
     render(ctx, renderer) {
-        if (this.type === "barrel") {
+        if (this.strategy.renderMode === "3d") {
             return;
         }
         const cacheKey = `${this.type}_${this.radius}`;

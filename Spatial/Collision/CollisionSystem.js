@@ -36,13 +36,13 @@ export class CollisionSystem {
 
         // Build a spatial hash for active pickups (including barrels)
         const pickupHash = new SpatialHash(50);
-        const barrels = [];
+        const pushables = [];
         for (let i = 0; i < state.pickups.length; i++) {
             const p = state.pickups[i];
             if (!p.isDead) {
                 pickupHash.insert(p);
-                if (p.type === "barrel") {
-                    barrels.push(p);
+                if (p.strategy?.isPushable) {
+                    pushables.push(p);
                 }
             }
         }
@@ -77,7 +77,7 @@ export class CollisionSystem {
             p.resolveFactionCollisions(state, events, this);
         }
 
-        // 2. Actors vs Barrels
+        // 2. Actors vs Pushables
         const actors = [state.player, ...state.enemies];
         for (const actor of actors) {
             if (!actor || actor.isDead) continue;
@@ -85,7 +85,7 @@ export class CollisionSystem {
             const nearbyPickups = pickupHash.getNearby(actor);
             for (let i = 0; i < nearbyPickups.length; i++) {
                 const pickup = nearbyPickups[i];
-                if (pickup.isDead || pickup.type !== "barrel") continue;
+                if (pickup.isDead || !pickup.strategy?.isPushable) continue;
 
                 const dx = pickup.x - actor.x;
                 const dy = pickup.y - actor.y;
@@ -136,16 +136,16 @@ export class CollisionSystem {
             }
         }
 
-        // 3. Barrels vs Barrels
+        // 3. Pushables vs Pushables
         const checkedPairs = new Set();
-        for (let i = 0; i < barrels.length; i++) {
-            const p1 = barrels[i];
+        for (let i = 0; i < pushables.length; i++) {
+            const p1 = pushables[i];
             if (p1.isDead) continue;
 
-            const nearbyBarrels = pickupHash.getNearby(p1);
-            for (let j = 0; j < nearbyBarrels.length; j++) {
-                const p2 = nearbyBarrels[j];
-                if (p2 === p1 || p2.isDead || p2.type !== "barrel") continue;
+            const nearbyPushables = pickupHash.getNearby(p1);
+            for (let j = 0; j < nearbyPushables.length; j++) {
+                const p2 = nearbyPushables[j];
+                if (p2 === p1 || p2.isDead || !p2.strategy?.isPushable) continue;
 
                 // Deduplicate checked collision pairs
                 const pairKey = p1.id < p2.id ? `${p1.id}:${p2.id}` : `${p2.id}:${p1.id}`;

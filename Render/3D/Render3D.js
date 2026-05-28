@@ -359,6 +359,12 @@ export class Render3D {
         }
     }
 
+    getPropRenderers() {
+        return {
+            barrel: (ctx, obj, px, py) => this.draw3DBarrel(ctx, obj, px, py),
+        };
+    }
+
     draw3DBuildings(ctx, state, viewport) {
         const px = state.player.x;
         const py = state.player.y;
@@ -383,11 +389,11 @@ export class Render3D {
         if (state.pickups) {
             for (let i = 0; i < state.pickups.length; i++) {
                 const p = state.pickups[i];
-                if (p.isDead || p.type !== "barrel") continue;
+                if (p.isDead || p.strategy?.renderMode !== "3d") continue;
                 const distSq = (p.x - px) ** 2 + (p.y - py) ** 2;
                 if (distSq <= 2250000) {
                     p._distSq = distSq;
-                    p._renderType = "barrel";
+                    p._renderType = p.strategy.render3DKey;
                     visibleObjects.push(p);
                 }
             }
@@ -421,8 +427,9 @@ export class Render3D {
 
                     this.drawProjectedFace(ctx, p1, p2, px, py, wallColor, true);
                 }
-            } else if (obj._renderType === "barrel") {
-                this.draw3DBarrel(ctx, obj, px, py);
+            } else {
+                const draw = this.getPropRenderers()[obj._renderType];
+                if (draw) draw.call(this, ctx, obj, px, py);
             }
         }
 

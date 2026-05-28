@@ -278,7 +278,8 @@ export const createUpgrades = () => [
                 if (hit.hit === "enemy") {
                     combatEvents.push({ target: hit.entity, damage: state.player.weapon.damage });
                 } else if (hit.hit === "pickup" && hit.entity.strategy && hit.entity.strategy.onHit) {
-                    if (!state.abilities["TargetVerification"]) {
+                    const skipExplosive = state.abilities["TargetVerification"] && hit.entity.strategy.isExplosive;
+                    if (!skipExplosive) {
                         hit.entity.strategy.onHit(state, hit.entity, { isDead: false }, combatEvents);
                     }
                 }
@@ -290,7 +291,7 @@ export const createUpgrades = () => [
         category: "abilities",
         name: "Target Verification",
         toggleName: "Organic",
-        description: "When Active: Laser ignores explosive barrels, only damaging enemies.",
+        description: "When Active: Laser ignores explosive props, only damaging enemies.",
         maxLevel: 1,
         isAbility: true,
         requires: ["Laser"],

@@ -61,10 +61,11 @@ export class PhysicsSystem {
                 entity.y += normalY * overlap;
                 const dot = entity.vx !== undefined && entity.vy !== undefined ? entity.vx * normalX + entity.vy * normalY : 0;
                 if (entity.vx !== undefined && entity.vy !== undefined && dot < 0) {
-                    const restitution = entity.type === "barrel" ? 0.25 : 0.0;
+                    const wp = entity.strategy?.wallPhysics;
+                    const restitution = wp?.restitution ?? 0.0;
                     entity.vx -= (1 + restitution) * dot * normalX;
                     entity.vy -= (1 + restitution) * dot * normalY;
-                    const wallFriction = entity.type === "barrel" ? 0.75 : 0.9;
+                    const wallFriction = wp?.friction ?? 0.9;
                     const tx = -normalY;
                     const ty = normalX;
                     const tangentDot = entity.vx * tx + entity.vy * ty;

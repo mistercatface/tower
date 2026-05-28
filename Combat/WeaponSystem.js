@@ -155,7 +155,7 @@ export class WeaponSystem {
             }
 
             for (const p of state.pickups) {
-                if (p.isDead || p.type !== "barrel") continue;
+                if (p.isDead || !p.strategy?.laserTargetable) continue;
                 if (CollisionSystem.checkCircle(rayCircle, p)) {
                     const distToPickup = Math.hypot(p.x - startX, p.y - startY);
                     const exactDist = distToPickup - p.radius;
