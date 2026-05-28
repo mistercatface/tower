@@ -162,7 +162,9 @@ export class CombatState {
 
             if (currentNode.wallsData) {
                 for (const w of currentNode.wallsData) {
-                    ctx.state.walls.push(new Segment(w.x, w.y, w.angle, w.size, w.padding, w.maxHealth));
+                    const segment = new Segment(w.x, w.y, w.angle, w.size, w.padding, w.maxHealth);
+                    segment.theme = currentNode.wallTheme || { r: 0, g: 188, b: 212 };
+                    ctx.state.walls.push(segment);
                 }
             }
 

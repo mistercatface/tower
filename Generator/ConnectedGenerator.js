@@ -20,7 +20,9 @@ export const ConnectedGenerator = {
         const tempWalls = [...existingWalls];
         if (nodeB.wallsData) {
             for (const w of nodeB.wallsData) {
-                tempWalls.push(new Segment(w.x, w.y, w.angle, w.size, w.padding, w.maxHealth));
+                const segment = new Segment(w.x, w.y, w.angle, w.size, w.padding, w.maxHealth);
+                segment.theme = nodeB.wallTheme || { r: 0, g: 188, b: 212 };
+                tempWalls.push(segment);
             }
         }
 

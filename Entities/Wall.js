@@ -5,6 +5,7 @@ export class Segment extends DestructibleEntity {
         super(x, y, angle, maxHealth, health, isDead);
         this.size = size;
         this.padding = padding;
+        this.theme = null;
     }
 
     handleHit(damage, ctx) {
