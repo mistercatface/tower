@@ -21,6 +21,7 @@ export class Renderer {
             { zIndex: 80, fn: (state, viewport) => this.drawVisibilityMask(this.ctx, state, viewport) },
             { zIndex: 85, fn: (state) => this.drawTargetMarkers(state) },
         ];
+
     }
 
     renderMapScene(state, viewport) {
@@ -60,6 +61,12 @@ export class Renderer {
     renderCombatScene(state, viewport) {
         this.ctx.save();
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Draw background scrolling lens grid in screen space
+        if (viewport && (state.phase === "combat" || state.phase === "reward" || state.phase === "map_transition")) {
+            this.drawOscilloscopeGrid(state, viewport);
+        }
+
         if (viewport) viewport.apply(this.ctx);
 
         if (!this._combatPipeline) {
@@ -75,6 +82,11 @@ export class Renderer {
         }
 
         this.ctx.restore();
+
+        // Draw globe bezel overlay on top of entities in screen space
+        if (viewport && (state.phase === "combat" || state.phase === "reward" || state.phase === "map_transition")) {
+            this.drawGlobeOverlay(state, viewport);
+        }
     }
 
     drawTransitionGuides(state) {
@@ -325,5 +337,157 @@ export class Renderer {
             this.ctx.strokeStyle = "#FFF";
             this.ctx.stroke();
         }
+    }
+
+
+    drawOscilloscopeGrid(state, viewport) {
+        const R = viewport.getVisualRadius();
+        const cx = viewport.cx;
+        const cy = viewport.cy;
+        const zoom = viewport.zoom;
+
+        this.ctx.save();
+        this.ctx.strokeStyle = "rgba(0, 188, 212, 0.12)";
+        this.ctx.lineWidth = 1.0;
+
+        const gridSpacing = 40; 
+        const worldRadius = R / zoom;
+
+        const minX = state.player.x - worldRadius * 1.57;
+        const maxX = state.player.x + worldRadius * 1.57;
+        const minY = state.player.y - worldRadius * 1.57;
+        const maxY = state.player.y + worldRadius * 1.57;
+
+        const startX = Math.floor(minX / gridSpacing) * gridSpacing;
+        const endX = Math.ceil(maxX / gridSpacing) * gridSpacing;
+        const startY = Math.floor(minY / gridSpacing) * gridSpacing;
+        const endY = Math.ceil(maxY / gridSpacing) * gridSpacing;
+
+        const projectLens = (wx, wy) => {
+            const dx = (wx - state.player.x) * zoom;
+            const dy = (wy - state.player.y) * zoom;
+            const d = Math.hypot(dx, dy);
+            if (d === 0) return { x: cx, y: cy, visible: true };
+
+            const maxD = R * (Math.PI / 2);
+            if (d > maxD) {
+                return { x: cx + (dx / d) * R, y: cy + (dy / d) * R, visible: false };
+            }
+
+            const r = R * Math.sin(d / R);
+            return {
+                x: cx + (dx / d) * r,
+                y: cy + (dy / d) * r,
+                visible: true
+            };
+        };
+
+        for (let x = startX; x <= endX; x += gridSpacing) {
+            this.ctx.beginPath();
+            let first = true;
+            for (let y = minY; y <= maxY; y += 8) {
+                const pt = projectLens(x, y);
+                if (pt.visible) {
+                    if (first) {
+                        this.ctx.moveTo(pt.x, pt.y);
+                        first = false;
+                    } else {
+                        this.ctx.lineTo(pt.x, pt.y);
+                    }
+                } else {
+                    first = true;
+                }
+            }
+            this.ctx.stroke();
+        }
+
+        for (let y = startY; y <= endY; y += gridSpacing) {
+            this.ctx.beginPath();
+            let first = true;
+            for (let x = minX; x <= maxX; x += 8) {
+                const pt = projectLens(x, y);
+                if (pt.visible) {
+                    if (first) {
+                        this.ctx.moveTo(pt.x, pt.y);
+                        first = false;
+                    } else {
+                        this.ctx.lineTo(pt.x, pt.y);
+                    }
+                } else {
+                    first = true;
+                }
+            }
+            this.ctx.stroke();
+        }
+
+        this.ctx.restore();
+    }
+
+
+    drawGlobeOverlay(state, viewport) {
+        if (!viewport) return;
+        const R = viewport.getVisualRadius();
+        const cx = viewport.cx;
+        const cy = viewport.cy;
+
+        this.ctx.save();
+
+        const vignette = this.ctx.createRadialGradient(cx, cy, R * 0.7, cx, cy, R);
+        vignette.addColorStop(0, "rgba(0, 0, 0, 0)");
+        vignette.addColorStop(0.7, "rgba(0, 20, 30, 0.15)");
+        vignette.addColorStop(0.95, "rgba(0, 30, 45, 0.5)");
+        vignette.addColorStop(1.0, "rgba(0, 0, 0, 0.95)");
+
+        this.ctx.fillStyle = vignette;
+        this.ctx.beginPath();
+        this.ctx.arc(cx, cy, R, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        this.ctx.strokeStyle = "rgba(0, 229, 255, 0.6)";
+        this.ctx.lineWidth = 2.0;
+        this.ctx.shadowColor = "#00bcd4";
+        this.ctx.shadowBlur = 8;
+        this.ctx.beginPath();
+        this.ctx.arc(cx, cy, R, 0, Math.PI * 2);
+        this.ctx.stroke();
+        this.ctx.shadowBlur = 0;
+
+        const borderOuter = R + 14;
+        const bezelGrad = this.ctx.createRadialGradient(cx, cy, R, cx, cy, borderOuter);
+        bezelGrad.addColorStop(0.0, "#0a0c10");
+        bezelGrad.addColorStop(0.2, "#1b2028");
+        bezelGrad.addColorStop(0.5, "#404c5e");
+        bezelGrad.addColorStop(0.8, "#1b2028");
+        bezelGrad.addColorStop(1.0, "#07080a");
+
+        this.ctx.fillStyle = bezelGrad;
+        this.ctx.strokeStyle = "#404c5e";
+        this.ctx.lineWidth = 1.0;
+        this.ctx.beginPath();
+        this.ctx.arc(cx, cy, borderOuter, 0, Math.PI * 2);
+        this.ctx.arc(cx, cy, R, 0, Math.PI * 2, true);
+        this.ctx.fill();
+        this.ctx.stroke();
+
+        this.ctx.save();
+        this.ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
+        this.ctx.lineWidth = 1.5;
+        this.ctx.beginPath();
+        for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 18) {
+            const cos = Math.cos(angle);
+            const sin = Math.sin(angle);
+            const isMajor = (angle % (Math.PI / 2) === 0);
+            const length = isMajor ? 8 : 4;
+            if (isMajor) {
+                this.ctx.strokeStyle = "rgba(0, 229, 255, 0.6)";
+            } else {
+                this.ctx.strokeStyle = "rgba(255, 255, 255, 0.25)";
+            }
+            this.ctx.moveTo(cx + cos * R, cy + sin * R);
+            this.ctx.lineTo(cx + cos * (R + length), cy + sin * R);
+        }
+        this.ctx.stroke();
+        this.ctx.restore();
+        this.ctx.restore();
     }
 }
