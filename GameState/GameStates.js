@@ -62,14 +62,6 @@ export class MapTransitionState {
         ctx.state.player.vy = 0;
 
         const targetCoords = ctx.state.getNodeCombatCoords(targetNode);
-        console.log("TRAVERSAL ENTER:", {
-            prevNodeId: prevNode ? prevNode.id : null,
-            targetNodeId: targetNode ? targetNode.id : null,
-            prevCoords: prevCoords,
-            targetCoords: targetCoords,
-            playerX: ctx.state.player.x,
-            playerY: ctx.state.player.y
-        });
         ctx.state.player.setTarget(targetCoords.x, targetCoords.y);
         ctx.state.gridSystem.buildPlayerFlowField(targetCoords.x, targetCoords.y);
         
@@ -91,15 +83,7 @@ export class MapTransitionState {
         if (targetNode) {
             const targetCoords = ctx.state.getNodeCombatCoords(targetNode);
             const dist = Math.hypot(ctx.state.player.x - targetCoords.x, ctx.state.player.y - targetCoords.y);
-            console.log("TRAVERSAL UPDATE:", {
-                playerX: ctx.state.player.x,
-                playerY: ctx.state.player.y,
-                targetX: targetCoords.x,
-                targetY: targetCoords.y,
-                dist: dist
-            });
             if (dist < 50) {
-                console.log("ARRIVED AT DESTINATION! Transitioning to combat.");
                 ctx.state.currentNodeId = targetNode.id;
                 ctx.state.mapPlayerX = targetNode.x;
                 ctx.state.mapPlayerY = targetNode.y;
@@ -147,7 +131,6 @@ export class CombatState {
         const transitioningFromTravel = ctx.state.isTransitioningFromTravel && ctx.state.travelSourceCoords && ctx.state.travelTargetCoords;
 
         if (transitioningFromTravel) {
-            console.log("CombatState.onEnter: PRESERVING travel-generated arena layout for Node " + ctx.state.currentNodeId);
             ctx.state.isTransitioningFromTravel = false;
             
             ctx.state.player.stopMovement();
@@ -173,7 +156,6 @@ export class CombatState {
                 spawnPickup(ctx.state, bx, by, pickupSpawnSettings.barrelMinRadius, pickupSpawnSettings.barrelMaxRadius, "barrel");
             }
         } else {
-            console.log("CombatState.onEnter: GENERATING new standard arena layout (reason: not travel transition)");
             ctx.state.player.resetToSpawn();
             WallGenerator.generate(ctx.state);
         }
