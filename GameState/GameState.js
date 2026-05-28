@@ -6,8 +6,7 @@ import { FlowFieldGrid } from "../Spatial/Navigation/FlowFieldGrid.js";
 import { WorldObstacleGrid } from "../Spatial/World/ObstacleGrid.js";
 import { HierarchicalNavigator } from "../Spatial/Navigation/HierarchicalNavigator.js";
 import { NavigationService } from "../Spatial/Navigation/NavigationService.js";
-import { defaultUpgradeCost, perkMilestones, playerBaseStats, gridSettings, mapSettings } from "../Config/Config.js";
-import { FloatingText } from "../Render/FloatingText.js";
+import { defaultUpgradeCost, playerBaseStats, gridSettings, mapSettings } from "../Config/Config.js";
 import { Scheduler } from "../Core/Scheduler.js";
 import { WaveManager } from "../Combat/WaveManager.js";
 import { SpatialHash } from "../Spatial/World/SpatialHash.js";
@@ -81,117 +80,6 @@ export class GameState {
         if (this.fsm) this.fsm.transition(phaseName);
     }
 
-    enterRewardPhase() {
-        this.transitionPhase("reward");
-    }
-
-    enterMapPhase() {
-        this.transitionPhase("map");
-    }
-
-    startRun() {
-        this.mapTargetNodeId = 0;
-        this.transitionPhase("map_transition");
-    }
-
-    enterCombatPhase() {
-        this.transitionPhase("combat");
-    }
-
-    updateMapTransition(dt, viewport) {
-        const targetNode = this.mapNodes.find((n) => n.id === this.mapTargetNodeId);
-        if (targetNode) {
-            const dx = targetNode.x - this.mapPlayerX;
-            const dy = targetNode.y - this.mapPlayerY;
-            const dist = Math.hypot(dx, dy);
-            const speed = 150;
-            if (dist === 0 || dist <= speed * (dt / 1000)) {
-                this.mapPlayerX = targetNode.x;
-                this.mapPlayerY = targetNode.y;
-                this.currentNodeId = targetNode.id;
-                if (!targetNode.completed) {
-                    this.transitionPhase("combat");
-                } else {
-                    this.transitionPhase("map");
-                }
-                return true;
-            } else {
-                this.mapPlayerX += (dx / dist) * speed * (dt / 1000);
-                this.mapPlayerY += (dy / dist) * speed * (dt / 1000);
-            }
-        }
-        return false;
-    }
-
-    initUpgradesList(upgradeList) {
-        this.upgradeDefs = upgradeList;
-        if (Object.keys(this.upgrades).length === 0) {
-            for (const upg of upgradeList) {
-                this.upgrades[upg.id] = { level: 0, baseLevel: 0, ptsCost: defaultUpgradeCost };
-            }
-            this.resetUpgradesToDefault();
-        }
-        for (const upg of upgradeList) {
-            if (upg.isAbility && !this.abilityTimers[upg.id]) {
-                this.abilityTimers[upg.id] = { readyTime: 0, activeUntil: 0, activeId: null, cooldownId: null };
-            }
-        }
-    }
-
-    resetRun(upgradesList) {
-        this.initializeDefaultState();
-        this.mapTargetNodeId = 0;
-
-        if (upgradesList) {
-            upgradesList.forEach((upg) => {
-                if (upg.isAbility) {
-                    this.abilityTimers[upg.id] = { readyTime: 0, activeUntil: 0, activeId: null, cooldownId: null };
-                }
-            });
-        }
-
-        this.recalculateStats(upgradesList);
-        for (const key in this.upgrades) {
-            if (upgradesList) {
-                const upgDef = upgradesList.find((u) => u.id === key);
-                if (upgDef) {
-                    if (upgDef.isAbility) {
-                        if (this.player && this.player.startingAbilities && this.player.startingAbilities.includes(key)) {
-                            this.upgrades[key].baseLevel = 1;
-                        } else {
-                            this.upgrades[key].baseLevel = 0;
-                        }
-                    }
-                    this.upgrades[key].baseLevel = Math.min(this.upgrades[key].baseLevel, upgDef.maxLevel);
-                }
-            }
-            this.upgrades[key].level = this.upgrades[key].baseLevel;
-            this.upgrades[key].ptsCost = this.stats.baseUpgradeCost.value;
-        }
-
-        if (this.player && this.player.startingAbilities) {
-            this.player.startingAbilities.forEach((abilityId) => {
-                this.abilities[abilityId] = true;
-            });
-        }
-
-        if (upgradesList) {
-            upgradesList.forEach((upg) => {
-                if (upg.onRunStart && this.upgrades[upg.id] && this.upgrades[upg.id].baseLevel > 0) upg.onRunStart(this);
-            });
-        }
-
-        this.recalculateStats(upgradesList);
-        this.generateMap();
-
-        const startNode = this.mapNodes.find(n => n.id === 0);
-        if (startNode) {
-            const coords = this.getNodeCombatCoords(startNode);
-            this.player.setSpawnPosition(coords.x, coords.y);
-            this.player.resetToSpawn();
-        }
-    }
-
     getNodeCombatCoords(node) {
         if (!node) return { x: 0, y: 0 };
         const scale = mapSettings.combatCoordScale;
@@ -201,23 +89,6 @@ export class GameState {
             x: baseSpawnX + node.x * scale,
             y: baseSpawnY + node.y * scale
         };
-    }
-
-    grantXP(amount) {
-        this.xp += amount;
-        let xpNeeded = Math.floor(25 * Math.pow(1.5, this.level));
-        while (this.xp >= xpNeeded) {
-            this.xp -= xpNeeded;
-            this.level++;
-            if (perkMilestones.includes(this.level) && !this.claimedPerkMilestones.includes(this.level)) {
-                this.pendingPerkPicks.push(this.level);
-                this.claimedPerkMilestones.push(this.level);
-            }
-            this.pendingLevelUps++;
-            if (this.level > this.highestLevelReached) this.highestLevelReached = this.level;
-            xpNeeded = Math.floor(25 * Math.pow(1.5, this.level));
-            FloatingText.spawn(this, this.player.x, this.player.y - 40, "LEVEL UP", "#FFEB3B");
-        }
     }
 
     initializeDefaultState() {
@@ -268,59 +139,6 @@ export class GameState {
         this.gameSpeed = 2.0;
         this.selectedSpeed = 1.0;
         this.pointBonus = 0;
-    }
-
-    recalculateStats(upgradesList) {
-        for (const key in this.stats) {
-            this.stats[key].reset();
-        }
-        if (upgradesList) {
-            upgradesList.forEach((upg) => {
-                const level = this.upgrades[upg.id] ? this.upgrades[upg.id].level : 0;
-                if (level > 0 && upg.applyFn) {
-                    if (upg.isAbility && !this.abilities[upg.id]) return;
-                    upg.applyFn(this.stats, level);
-                }
-            });
-        }
-
-        this.weapon.accuracyModifier = 0;
-        this.weapon.damage = this.stats.damage.value;
-        this.weapon.range = this.stats.range.value;
-        this.weapon.chargeTime = this.stats.chargeTime.value;
-        this.weapon.penetration = this.stats.penetration.value;
-
-        this.gameSpeed = this.stats.gameSpeed.value;
-        this.selectedSpeed = Math.min(this.selectedSpeed, this.gameSpeed);
-        this.pointBonus = this.stats.pointBonus.value;
-        this.player.updateMaxHealth(this.stats.maxHealth.value);
-        this.player.speed = playerBaseStats.speed * this.stats.moveSpeedMultiplier.value;
-        this.player.turrets = this.turrets;
-
-        const targetTurretCount = Math.floor(this.stats.turretCount.value);
-        while (this.turrets.length < targetTurretCount) {
-            const newAngle = (this.turrets.length / targetTurretCount) * Math.PI * 2;
-            this.turrets.push(new Turret(newAngle, this.stats.turnSpeed.value));
-        }
-        while (this.turrets.length > targetTurretCount) {
-            this.turrets.pop();
-        }
-        this.turrets.forEach(t => t.turnSpeed = this.stats.turnSpeed.value);
-
-        if (upgradesList) {
-            upgradesList.forEach((upg) => {
-                if (upg.isAbility && this.abilities && this.abilities[upg.id] && upg.abilityApplyFn) {
-                    upg.abilityApplyFn(this.weapon, this.player);
-                }
-            });
-        }
-    }
-
-    resetUpgradesToDefault() {
-        for (const key in this.upgrades) {
-            this.upgrades[key].baseLevel = 0;
-            this.upgrades[key].level = 0;
-        }
     }
 
     generateMap() {

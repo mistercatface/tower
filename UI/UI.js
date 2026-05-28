@@ -1,5 +1,6 @@
 import { hardResetProgress } from "../Progression/Storage.js";
 import { perkMilestones } from "../Config/Config.js";
+import { StatsManager } from "../Progression/StatsManager.js";
 
 const elements = {
     sectorClearedModal: document.getElementById("sectorClearedModal"),
@@ -327,7 +328,7 @@ export function initUI(state, upgrades, resetGameCallback) {
                 () => {
                     if (upg.hasToggle) {
                         state.abilities[upg.id] = !state.abilities[upg.id];
-                        state.recalculateStats(upgrades);
+                        StatsManager.recalculateStats(state, upgrades);
                         updateUI(state, upgrades);
                     }
                 },
@@ -365,7 +366,7 @@ export function initUI(state, upgrades, resetGameCallback) {
                     state.score -= cost;
                     uState.ptsCost = Math.floor(uState.ptsCost * 1.5);
                     uState.level++;
-                    state.recalculateStats(upgrades);
+                    StatsManager.recalculateStats(state, upgrades);
                     if (upg.onPurchase) upg.onPurchase(state);
                     updateUI(state, upgrades);
                 }

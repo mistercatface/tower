@@ -2,6 +2,7 @@ import { Entity } from "./Entity.js";
 import { Explosion } from "./Explosion/Explosion.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
+import { StatsManager } from "../Progression/StatsManager.js";
 
 export const PickupStrategies = {
     coin: {
@@ -37,7 +38,7 @@ export const PickupStrategies = {
                     state.abilities[repId] = false;
                 });
 
-                state.recalculateStats(upgrades);
+                StatsManager.recalculateStats(state, upgrades);
                 unlockedLaser = true;
             }
             pickup.isDead = true;

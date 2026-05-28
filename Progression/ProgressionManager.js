@@ -1,6 +1,7 @@
 import { FloatingText } from "../Render/FloatingText.js";
 import { markProgressDirty, saveProgress } from "./Storage.js";
 import { showUpgradeChoice, showSectorCleared, updateUI } from "../UI/UI.js";
+import { StatsManager } from "./StatsManager.js";
 
 export class ProgressionManager {
     static processEnemyKillRewards(enemy, state, upgrades) {
@@ -16,7 +17,7 @@ export class ProgressionManager {
         state.kills++;
         state.score += pointsReward;
 
-        state.grantXP(xpGain);
+        StatsManager.grantXP(state, xpGain);
 
         FloatingText.spawn(state, enemy.x, enemy.y, `+${pointsReward} Points`, "#FFF");
         FloatingText.spawn(state, enemy.x, enemy.y - 30, `+${xpGain} XP`, "#4CAF50");
@@ -139,7 +140,7 @@ export class ProgressionManager {
         showUpgradeChoice(title, description, choices, customUpgrades, (pickedId) => {
             this.applyUpgradeChoice(state, upgrades, pickedId, pointsAmount, !isNewRun);
             if (isNewRun) saveProgress(state);
-            state.recalculateStats(upgrades);
+            StatsManager.recalculateStats(state, upgrades);
             state.isPaused = previousPauseState;
             updateUI(state, upgrades);
         });
@@ -165,7 +166,7 @@ export class ProgressionManager {
             state.upgrades[pickedId].baseLevel = 1;
             state.upgrades[pickedId].level = 1;
             saveProgress(state);
-            state.recalculateStats(upgrades);
+            StatsManager.recalculateStats(state, upgrades);
             if (upg.onPurchase) upg.onPurchase(state);
             state.isPaused = previousPauseState;
             updateUI(state, upgrades);
@@ -239,7 +240,7 @@ export class ProgressionManager {
         if (isFinished) {
             if (currentNode && !currentNode.completed) {
                 currentNode.completed = true;
-                state.enterRewardPhase();
+                state.transitionPhase("reward");
                 upgrades.forEach((upg) => {
                     if (state.upgrades[upg.id] && state.upgrades[upg.id].level > 0 && upg.onSectorEnd) {
                         upg.onSectorEnd(state);
@@ -251,7 +252,7 @@ export class ProgressionManager {
                     this.finalizeSectorClearance(state, upgrades, currentNode, viewport, "Reward: None");
                 }
             } else {
-                state.enterMapPhase();
+                state.transitionPhase("map");
                 viewport.snapTo(state.player.x - state.player.x - viewport.x, state.player.y - state.player.y - viewport.y);
                 updateUI(state, upgrades);
             }
@@ -272,7 +273,7 @@ export class ProgressionManager {
             uState.baseLevel++;
             uState.level = Math.min(pickedUpg.maxLevel, uState.level + 1);
             saveProgress(state);
-            state.recalculateStats(upgrades);
+            StatsManager.recalculateStats(state, upgrades);
             if (pickedUpg.onPurchase) pickedUpg.onPurchase(state);
             rewardText = `Reward: Permanent ${pickedUpg.name} Upgrade!`;
         }
@@ -281,7 +282,7 @@ export class ProgressionManager {
 
     static finalizeSectorClearance(state, upgrades, currentNode, viewport, rewardText) {
         showSectorCleared(currentNode, rewardText, () => {
-            state.enterMapPhase();
+            state.transitionPhase("map");
             viewport.snapTo(state.mapPlayerX - state.player.x - viewport.x, state.mapPlayerY - state.player.y - viewport.y);
             updateUI(state, upgrades);
         });

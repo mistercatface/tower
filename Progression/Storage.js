@@ -1,3 +1,5 @@
+import { StatsManager } from "./StatsManager.js";
+
 const SAVE_VERSION = 3;
 const SAVE_KEY = "tower_save_v3";
 const SAVE_DEBOUNCE_MS = 800;
@@ -20,7 +22,7 @@ function resetProgress(state) {
     state.highestLevelReached = 0;
     state.claimedPerkMilestones = [];
     state.discoveredAbilities = new Set();
-    state.resetUpgradesToDefault();
+    StatsManager.resetUpgradesToDefault(state);
 }
 
 function serializeProgress(state) {
