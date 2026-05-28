@@ -211,8 +211,8 @@ export class GameState {
     getNodeCombatCoords(node) {
         if (!node) return { x: 0, y: 0 };
         const scale = 7.0;
-        const baseSpawnX = this.canvasBounds.width > 0 ? this.canvasBounds.width / 2 : 225;
-        const baseSpawnY = this.canvasBounds.height > 0 ? this.canvasBounds.height / 2 : 225;
+        const baseSpawnX = this.mapBaseSpawnX !== undefined ? this.mapBaseSpawnX : (this.canvasBounds.width > 0 ? this.canvasBounds.width / 2 : 225);
+        const baseSpawnY = this.mapBaseSpawnY !== undefined ? this.mapBaseSpawnY : (this.canvasBounds.height > 0 ? this.canvasBounds.height / 2 : 225);
         return {
             x: baseSpawnX + node.x * scale,
             y: baseSpawnY + node.y * scale
@@ -339,6 +339,8 @@ export class GameState {
     }
 
     generateMap() {
+        this.mapBaseSpawnX = this.canvasBounds.width > 0 ? this.canvasBounds.width / 2 : 225;
+        this.mapBaseSpawnY = this.canvasBounds.height > 0 ? this.canvasBounds.height / 2 : 225;
         this.mapNodes = [];
         const numLayers = mapSettings.numLayers;
         const layerSpacing = mapSettings.layerSpacing;

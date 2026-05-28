@@ -60,7 +60,7 @@ export class SpatialHash {
 
     getNearby(entity) {
         const bounds = this.getBounds(entity);
-        // Query slightly larger area around the entity bounds for safe separation/collision
+
         const minCol = Math.floor((bounds.minX - this.cellSize) / this.cellSize);
         const maxCol = Math.floor((bounds.maxX + this.cellSize) / this.cellSize);
         const minRow = Math.floor((bounds.minY - this.cellSize) / this.cellSize);

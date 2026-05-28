@@ -286,6 +286,10 @@ export class Renderer {
     }
 
     drawMap(state) {
+        const baseSpawnX = state.mapBaseSpawnX !== undefined ? state.mapBaseSpawnX : (state.canvasBounds.width > 0 ? state.canvasBounds.width / 2 : 225);
+        const baseSpawnY = state.mapBaseSpawnY !== undefined ? state.mapBaseSpawnY : (state.canvasBounds.height > 0 ? state.canvasBounds.height / 2 : 225);
+        const scale = 7.0;
+
         const currentNode = state.mapNodes.find((n) => n.id === state.currentNodeId);
         for (const node of state.mapNodes) {
             for (const connId of node.connections) {
@@ -294,21 +298,45 @@ export class Renderer {
                 this.ctx.beginPath();
                 this.ctx.moveTo(node.x, node.y);
                 this.ctx.lineTo(targetNode.x, targetNode.y);
-                this.ctx.lineWidth = 2;
+                this.ctx.lineWidth = 1.5;
                 if (node.completed && (targetNode.completed || targetNode.id === state.currentNodeId)) {
-                    this.ctx.strokeStyle = "#4CAF50";
+                    this.ctx.strokeStyle = "rgba(76, 175, 80, 0.4)";
                 } else if (node.id === state.currentNodeId) {
-                    this.ctx.strokeStyle = "#FFEB3B";
+                    this.ctx.strokeStyle = "rgba(255, 235, 59, 0.5)";
                 } else {
-                    this.ctx.strokeStyle = "#555";
+                    this.ctx.strokeStyle = "rgba(85, 85, 85, 0.3)";
                 }
                 this.ctx.stroke();
             }
         }
+
+        for (const seg of state.walls) {
+            if (seg.isDead) continue;
+
+            const mx = (seg.x - baseSpawnX) / scale;
+            const my = (seg.y - baseSpawnY) / scale;
+            const msize = seg.size / scale;
+            const mhalf = msize / 2;
+
+            this.ctx.save();
+            this.ctx.translate(mx, my);
+            this.ctx.rotate(seg.angle);
+
+            const theme = seg.theme || { r: 0, g: 188, b: 212 };
+            this.ctx.fillStyle = `rgba(${theme.r}, ${theme.g}, ${theme.b}, 0.75)`;
+            this.ctx.fillRect(-mhalf, -mhalf, msize, msize);
+
+            this.ctx.strokeStyle = `rgba(${theme.r}, ${theme.g}, ${theme.b}, 0.95)`;
+            this.ctx.lineWidth = 0.5;
+            this.ctx.strokeRect(-mhalf, -mhalf, msize, msize);
+
+            this.ctx.restore();
+        }
+
         const waveColors = ["#03A9F4", "#7E57C2", "#AB47BC", "#EC407A", "#F44336"];
         for (const node of state.mapNodes) {
             this.ctx.beginPath();
-            this.ctx.arc(node.x, node.y, 12, 0, Math.PI * 2);
+            this.ctx.arc(node.x, node.y, 8, 0, Math.PI * 2);
             if (node.id === state.currentNodeId) {
                 this.ctx.fillStyle = "#FFEB3B";
             } else if (node.completed) {
@@ -320,7 +348,7 @@ export class Renderer {
                 this.ctx.fillStyle = "#333";
             }
             this.ctx.fill();
-            this.ctx.lineWidth = 2;
+            this.ctx.lineWidth = 1.5;
             this.ctx.strokeStyle = "#FFF";
             this.ctx.stroke();
         }
