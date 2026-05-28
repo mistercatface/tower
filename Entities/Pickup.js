@@ -69,7 +69,7 @@ export const PickupStrategies = {
         }
     },
     barrel: {
-        radius: 3,
+        radius: 8,
         render(ctx, cx, cy, radius) {
             ctx.beginPath();
             ctx.arc(cx, cy, radius, 0, Math.PI * 2);
@@ -119,6 +119,9 @@ export class Pickup extends Entity {
     }
 
     render(ctx, renderer) {
+        if (this.type === "barrel") {
+            return;
+        }
         const cacheKey = `${this.type}_${this.radius}`;
         this.renderCachedSprite(ctx, renderer.pickupCache, cacheKey, RenderSprites.pickup, this.type, this.radius, this.strategy);
     }

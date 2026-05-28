@@ -184,6 +184,189 @@ export class Render3D {
         }
     }
 
+    draw3DBarrel(ctx, p, px, py) {
+        const cx = p.x;
+        const cy = p.y;
+        const radius = p.radius || 8;
+
+        // Calculate distance from player to barrel
+        const dx = cx - px;
+        const dy = cy - py;
+        const dist = Math.hypot(dx, dy);
+
+        // Perspective parameters
+        const BARREL_HEIGHT = 14; // Shorter, stubbier height
+        const CAMERA_HEIGHT = 160; // Camera height
+        const alpha = BARREL_HEIGHT / (CAMERA_HEIGHT - BARREL_HEIGHT);
+
+        // Calculate the top center
+        let tx, ty;
+        if (dist === 0) {
+            tx = cx;
+            ty = cy;
+        } else {
+            tx = cx + dx * alpha;
+            ty = cy + dy * alpha;
+        }
+
+        // Top radius is also scaled due to perspective
+        const scale = 1 + alpha;
+        const topRadius = radius * scale;
+
+        // Calculate view angle
+        const viewAngle = Math.atan2(dy, dx);
+
+        // Silhouette points on base circle (perpendicular to view angle)
+        const p1_base_x = cx + Math.cos(viewAngle + Math.PI / 2) * radius;
+        const p1_base_y = cy + Math.sin(viewAngle + Math.PI / 2) * radius;
+        const p2_base_x = cx + Math.cos(viewAngle - Math.PI / 2) * radius;
+        const p2_base_y = cy + Math.sin(viewAngle - Math.PI / 2) * radius;
+
+        // Silhouette points on top circle
+        const p1_top_x = tx + Math.cos(viewAngle + Math.PI / 2) * topRadius;
+        const p1_top_y = ty + Math.sin(viewAngle + Math.PI / 2) * topRadius;
+        const p2_top_x = tx + Math.cos(viewAngle - Math.PI / 2) * topRadius;
+        const p2_top_y = ty + Math.sin(viewAngle - Math.PI / 2) * topRadius;
+
+        // --- RENDER SIDE FACES ---
+        // Shading: calculate highlight position based on a fixed light direction in the world (top-left)
+        const lightAngle = -3 * Math.PI / 4;
+        const lx = Math.cos(lightAngle);
+        const ly = Math.sin(lightAngle);
+        
+        // Transverse normal vector
+        const nx = Math.cos(viewAngle + Math.PI / 2);
+        const ny = Math.sin(viewAngle + Math.PI / 2);
+        const dot = lx * nx + ly * ny;
+        const t_highlight = Math.max(0.1, Math.min(0.9, 0.5 + dot * 0.5));
+
+        const sideGrad = ctx.createLinearGradient(p1_base_x, p1_base_y, p2_base_x, p2_base_y);
+        sideGrad.addColorStop(0.0, "#3F0000"); // Left shadow
+        sideGrad.addColorStop(Math.max(0.0, t_highlight - 0.25), "#B71C1C");
+        sideGrad.addColorStop(t_highlight, "#FF5252"); // Light highlight
+        sideGrad.addColorStop(Math.min(1.0, t_highlight + 0.25), "#B71C1C");
+        sideGrad.addColorStop(1.0, "#3F0000"); // Right shadow
+
+        ctx.fillStyle = sideGrad;
+        ctx.strokeStyle = "#4A0E0E";
+        ctx.lineWidth = 1.0;
+
+        ctx.beginPath();
+        ctx.moveTo(p1_top_x, p1_top_y);
+        ctx.lineTo(p2_top_x, p2_top_y);
+        ctx.lineTo(p2_base_x, p2_base_y);
+        
+        // Curved bottom arc facing the player (sweeps from p2_base to p1_base counter-clockwise)
+        ctx.arc(cx, cy, radius, viewAngle - Math.PI / 2, viewAngle + Math.PI / 2, true);
+        
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // --- RENDER YELLOW HAZARD BAND AROUND MIDDLE ---
+        ctx.fillStyle = "#FFEB3B";
+        ctx.strokeStyle = "#4A0E0E";
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        const t1 = 0.35;
+        const t2 = 0.65;
+        const rx1 = cx + (tx - cx) * t1;
+        const ry1 = cy + (ty - cy) * t1;
+        const r_rib1 = radius * (1 + alpha * t1);
+        const rx2 = cx + (tx - cx) * t2;
+        const ry2 = cy + (ty - cy) * t2;
+        const r_rib2 = radius * (1 + alpha * t2);
+
+        // Path: arc 1 -> line -> arc 2 -> line
+        ctx.arc(rx1, ry1, r_rib1, viewAngle - Math.PI / 2, viewAngle + Math.PI / 2, true);
+        ctx.lineTo(rx2 + Math.cos(viewAngle + Math.PI / 2) * r_rib2, ry2 + Math.sin(viewAngle + Math.PI / 2) * r_rib2);
+        ctx.arc(rx2, ry2, r_rib2, viewAngle + Math.PI / 2, viewAngle - Math.PI / 2, false);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Draw diagonal black hazard lines inside the yellow band
+        ctx.strokeStyle = "#000000";
+        ctx.lineWidth = 1.5;
+        for (const fAngleOffset of [-Math.PI/6, 0, Math.PI/6]) {
+            const angle = viewAngle + Math.PI + fAngleOffset;
+            const cosA = Math.cos(angle);
+            const sinA = Math.sin(angle);
+            const x1 = rx1 + cosA * r_rib1;
+            const y1 = ry1 + sinA * r_rib1;
+            const angleShifted = angle + Math.PI / 12;
+            const x2 = rx2 + Math.cos(angleShifted) * r_rib2;
+            const y2 = ry2 + Math.sin(angleShifted) * r_rib2;
+            
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+        }
+
+        // --- RENDER HOOPS/RIBS (CURVED ARCS) ---
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.45)";
+        ctx.lineWidth = 1.2;
+        for (const t of [0.25, 0.75]) {
+            const rx = cx + (tx - cx) * t;
+            const ry = cy + (ty - cy) * t;
+            const r_rib = radius * (1 + alpha * t);
+            
+            ctx.beginPath();
+            ctx.arc(rx, ry, r_rib, viewAngle - Math.PI / 2, viewAngle + Math.PI / 2, true);
+            ctx.stroke();
+        }
+
+        // Draw front seam line (adds strong cylindrical 3D depth)
+        const px_front_base = cx + Math.cos(viewAngle + Math.PI) * radius;
+        const py_front_base = cy + Math.sin(viewAngle + Math.PI) * radius;
+        const px_front_top = tx + Math.cos(viewAngle + Math.PI) * topRadius;
+        const py_front_top = ty + Math.sin(viewAngle + Math.PI) * topRadius;
+
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.25)";
+        ctx.lineWidth = 1.0;
+        ctx.beginPath();
+        ctx.moveTo(px_front_base, py_front_base);
+        ctx.lineTo(px_front_top, py_front_top);
+        ctx.stroke();
+
+        // --- RENDER TOP LID (METALLIC GREY) ---
+        const topGrad = ctx.createRadialGradient(tx, ty, 0, tx, ty, topRadius);
+        topGrad.addColorStop(0.0, "#455A64"); // Bright center steel grey
+        topGrad.addColorStop(0.7, "#37474F"); // Slate steel grey
+        topGrad.addColorStop(1.0, "#263238"); // Dark edge steel
+
+        ctx.fillStyle = topGrad;
+        ctx.strokeStyle = "#1A0A00";
+        ctx.lineWidth = 1.0;
+        ctx.beginPath();
+        ctx.arc(tx, ty, topRadius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // --- RENDER TOP WARNING TRIANGLE ---
+        const triSize = topRadius * 0.55;
+        if (triSize > 2) {
+            ctx.fillStyle = "#FFEB3B"; // yellow warning triangle
+            ctx.strokeStyle = "#000000";
+            ctx.lineWidth = 0.8;
+            ctx.beginPath();
+            ctx.moveTo(tx, ty - triSize * 0.7);
+            ctx.lineTo(tx + triSize * 0.86, ty + triSize * 0.4);
+            ctx.lineTo(tx - triSize * 0.86, ty + triSize * 0.4);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // Black exclamation point in triangle
+            ctx.fillStyle = "#000000";
+            ctx.font = `bold ${Math.round(triSize * 1.1)}px monospace`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("!", tx, ty + triSize * 0.05);
+        }
+    }
+
     draw3DBuildings(ctx, state, viewport) {
         const px = state.player.x;
         const py = state.player.y;
@@ -192,42 +375,61 @@ export class Render3D {
 
         ctx.save();
 
-        const visibleWalls = [];
+        const visibleObjects = [];
         for (let i = 0; i < state.walls.length; i++) {
             const seg = state.walls[i];
             if (seg.isDead) continue;
             const distSq = (seg.x - px) ** 2 + (seg.y - py) ** 2;
             if (distSq <= 2250000) {
                 seg._distSq = distSq;
-                visibleWalls.push(seg);
+                seg._renderType = "wall";
+                visibleObjects.push(seg);
             }
         }
-        visibleWalls.sort((a, b) => b._distSq - a._distSq);
 
-        for (const seg of visibleWalls) {
-
-            const wallColor = this.getWallColor(seg, state.wallTheme, 1.0);
-            const edges = this.getSegmentEdges(seg);
-
-            if (!seg.sharedEdges) {
-                seg.sharedEdges = [false, false, false, false];
+        if (state.pickups) {
+            for (let i = 0; i < state.pickups.length; i++) {
+                const p = state.pickups[i];
+                if (p.isDead || p.type !== "barrel") continue;
+                const distSq = (p.x - px) ** 2 + (p.y - py) ** 2;
+                if (distSq <= 2250000) {
+                    p._distSq = distSq;
+                    p._renderType = "barrel";
+                    visibleObjects.push(p);
+                }
             }
+        }
 
-            for (let i = 0; i < 4; i++) {
-                if (seg.sharedEdges[i]) continue;
+        visibleObjects.sort((a, b) => b._distSq - a._distSq);
 
-                const p1 = edges[i][0];
-                const p2 = edges[i][1];
-                const edgeCx = (p1.x + p2.x) / 2;
-                const edgeCy = (p1.y + p2.y) / 2;
-                const outX = edgeCx - seg.x;
-                const outY = edgeCy - seg.y;
+        for (const obj of visibleObjects) {
+            if (obj._renderType === "wall") {
+                const seg = obj;
+                const wallColor = this.getWallColor(seg, state.wallTheme, 1.0);
+                const edges = this.getSegmentEdges(seg);
 
-                const viewX = edgeCx - px;
-                const viewY = edgeCy - py;
-                if (outX * viewX + outY * viewY >= 0) continue;
+                if (!seg.sharedEdges) {
+                    seg.sharedEdges = [false, false, false, false];
+                }
 
-                this.drawProjectedFace(ctx, p1, p2, px, py, wallColor, true);
+                for (let i = 0; i < 4; i++) {
+                    if (seg.sharedEdges[i]) continue;
+
+                    const p1 = edges[i][0];
+                    const p2 = edges[i][1];
+                    const edgeCx = (p1.x + p2.x) / 2;
+                    const edgeCy = (p1.y + p2.y) / 2;
+                    const outX = edgeCx - seg.x;
+                    const outY = edgeCy - seg.y;
+
+                    const viewX = edgeCx - px;
+                    const viewY = edgeCy - py;
+                    if (outX * viewX + outY * viewY >= 0) continue;
+
+                    this.drawProjectedFace(ctx, p1, p2, px, py, wallColor, true);
+                }
+            } else if (obj._renderType === "barrel") {
+                this.draw3DBarrel(ctx, obj, px, py);
             }
         }
 
