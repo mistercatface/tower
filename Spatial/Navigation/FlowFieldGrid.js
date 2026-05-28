@@ -1,3 +1,5 @@
+import { OCTILE_OFFSETS } from "../Grid/GridUtils.js";
+
 export class FlowFieldGrid {
     constructor(cellSize, width, height, obstacleGrid) {
         this.cellSize = cellSize;
@@ -76,19 +78,13 @@ export class FlowFieldGrid {
         targetFieldY[startIdx] = 0;
         targetFieldDist[startIdx] = 0;
 
-        const dCols = [0, 1, 1, 1, 0, -1, -1, -1];
-        const dRows = [-1, -1, 0, 1, 1, 1, 0, -1];
-        const dCosts = [1.0, 1.41421356, 1.0, 1.41421356, 1.0, 1.41421356, 1.0, 1.41421356];
-
         while (head < queue.length) {
             const currIdx = queue[head++];
             const currCol = currIdx % cols;
             const currRow = (currIdx / cols) | 0;
             const currDist = targetFieldDist[currIdx];
 
-            for (let i = 0; i < 8; i++) {
-                const dc = dCols[i];
-                const dr = dRows[i];
+            for (const { dc, dr, cost } of OCTILE_OFFSETS) {
                 const nc = currCol + dc;
                 const nr = currRow + dr;
 
@@ -104,9 +100,8 @@ export class FlowFieldGrid {
                         }
                     }
 
-                    const dist = currDist + dCosts[i];
+                    const dist = currDist + cost;
                     if (dist < targetFieldDist[nIdx]) {
-                        const cost = dCosts[i];
                         targetFieldX[nIdx] = -dc / cost;
                         targetFieldY[nIdx] = -dr / cost;
                         targetFieldDist[nIdx] = dist;

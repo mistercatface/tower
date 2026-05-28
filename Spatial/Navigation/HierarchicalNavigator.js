@@ -1,5 +1,5 @@
 import { navigationSettings } from "../../Config/Config.js";
-import { colRowToIndex, indexToColRow, forEachCardinalNeighbor } from "./GridUtils.js";
+import { colRowToIndex, indexToColRow, forEachCardinalNeighbor } from "../Grid/GridUtils.js";
 import { runLocalAStarFlat, runAbstractAStar } from "./AStar.js";
 import {
     RegionNode,

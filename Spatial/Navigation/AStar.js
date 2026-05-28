@@ -1,15 +1,5 @@
 import { MinHeap } from "../../Core/MinHeap.js";
-
-const OCTILE_OFFSETS = [
-    { dc: 0, dr: -1, cost: 1 },
-    { dc: 1, dr: 0, cost: 1 },
-    { dc: 0, dr: 1, cost: 1 },
-    { dc: -1, dr: 0, cost: 1 },
-    { dc: 1, dr: -1, cost: 1.41421356 },
-    { dc: 1, dr: 1, cost: 1.41421356 },
-    { dc: -1, dr: 1, cost: 1.41421356 },
-    { dc: -1, dr: -1, cost: 1.41421356 },
-];
+import { OCTILE_OFFSETS } from "../Grid/GridUtils.js";
 
 export function runLocalAStarFlat(
     startCol, startRow, targetCol, targetRow,
@@ -50,8 +40,7 @@ export function runLocalAStarFlat(
         const currentG = gScore[currIdx];
         if (currentG > maxPathLen) continue;
 
-        for (let i = 0; i < 8; i++) {
-            const offset = OCTILE_OFFSETS[i];
+        for (const offset of OCTILE_OFFSETS) {
             const nc = currCol + offset.dc;
             const nr = currRow + offset.dr;
 
