@@ -54,9 +54,6 @@ export class MapTransitionState {
             ConnectedGenerator.generateConnected(ctx.state, prevNode, targetNode);
         }
         
-        const prevCoords = ctx.state.getNodeCombatCoords(prevNode);
-        ctx.state.player.x = prevCoords.x;
-        ctx.state.player.y = prevCoords.y;
         ctx.state.player.stopMovement();
         ctx.state.player.vx = 0;
         ctx.state.player.vy = 0;
