@@ -17,7 +17,8 @@ function replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, o
     let path = rawPath ? trimPathAhead(entity.x, entity.y, rawPath) : null;
     if (path && obstacleGrid) {
         const clearance = entity.radius + settings.pathClearanceMargin;
-        path = adjustPathForClearance(path, obstacleGrid, clearance);
+        const destination = { x: targetX, y: targetY };
+        path = adjustPathForClearance(path, obstacleGrid, clearance, destination);
     }
     if (path) {
         path = trimPathAhead(entity.x, entity.y, path);

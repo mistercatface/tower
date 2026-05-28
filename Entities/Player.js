@@ -1,7 +1,7 @@
 import { Enemy } from "./Enemy.js";
 import { Utilities } from "../Utilities.js";
 import { FloatingText } from "../FloatingText.js";
-import { playerBaseStats, NAV_PROFILES } from "../Config.js";
+import { playerBaseStats, NAV_PROFILES, navigationSettings } from "../Config.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
 import { createEntityBars } from "./EntityBars.js";
 
@@ -25,8 +25,12 @@ export class Player extends Enemy {
         this.healAccumulator = 0;
         this.targetX = null;
         this.targetY = null;
+        this.targetGridCol = null;
+        this.targetGridRow = null;
         this.queuedTargetX = null;
         this.queuedTargetY = null;
+        this.queuedTargetCol = null;
+        this.queuedTargetRow = null;
         this.isMoving = false;
         this.targetNodeX = null;
         this.targetNodeY = null;
@@ -60,25 +64,50 @@ export class Player extends Enemy {
         this.vy = 0;
     }
 
-    setTarget(x, y, state = null) {
+    hasReachedTarget(flowFieldGrid) {
+        if (this.targetGridCol !== null && this.targetGridRow !== null && flowFieldGrid) {
+            return flowFieldGrid.entityIntersectsCell(
+                this.x,
+                this.y,
+                this.radius,
+                this.targetGridCol,
+                this.targetGridRow
+            );
+        }
+        if (this.targetX === null || this.targetY === null) {
+            return false;
+        }
+        return Math.hypot(this.x - this.targetX, this.y - this.targetY) < navigationSettings.arrivalDistance;
+    }
+
+    setTarget(x, y, state = null, targetCell = null) {
         this.targetX = x;
         this.targetY = y;
+        this.targetGridCol = targetCell?.col ?? null;
+        this.targetGridRow = targetCell?.row ?? null;
         this.targetNodeX = null;
         this.targetNodeY = null;
         this.isMoving = true;
         state?.navigation?.clear(this);
     }
 
-    queueTarget(x, y) {
+    queueTarget(x, y, targetCell = null) {
         this.queuedTargetX = x;
         this.queuedTargetY = y;
+        this.queuedTargetCol = targetCell?.col ?? null;
+        this.queuedTargetRow = targetCell?.row ?? null;
     }
 
     applyQueuedTarget(state = null) {
         if (this.queuedTargetX !== null && this.queuedTargetY !== null) {
-            this.setTarget(this.queuedTargetX, this.queuedTargetY, state);
+            const targetCell = this.queuedTargetCol !== null && this.queuedTargetRow !== null
+                ? { col: this.queuedTargetCol, row: this.queuedTargetRow }
+                : null;
+            this.setTarget(this.queuedTargetX, this.queuedTargetY, state, targetCell);
             this.queuedTargetX = null;
             this.queuedTargetY = null;
+            this.queuedTargetCol = null;
+            this.queuedTargetRow = null;
             return true;
         }
         return false;
@@ -87,11 +116,15 @@ export class Player extends Enemy {
     stopMovement(state = null) {
         this.targetX = null;
         this.targetY = null;
+        this.targetGridCol = null;
+        this.targetGridRow = null;
         this.targetNodeX = null;
         this.targetNodeY = null;
         this.isMoving = false;
         this.desiredX = 0;
         this.desiredY = 0;
+        this.vx = 0;
+        this.vy = 0;
         state?.navigation?.clear(this);
     }
     
@@ -131,11 +164,10 @@ export class Player extends Enemy {
             return;
         }
         if (this.isMoving && this.targetX !== null && this.targetY !== null) {
-            const toTarget = Utilities.normalizeVector(this.targetX - this.x, this.targetY - this.y);
-            if (toTarget.len < 2) {
+            if (this.hasReachedTarget(flowFieldGrid)) {
                 this.stopMovement(state);
             } else {
-                state.navigation.steerTo(this, this.targetX, this.targetY, NAV_PROFILES.playerClick);
+                state.navigation.steerTo(this, this.targetX, this.targetY, NAV_PROFILES.playerClick, flowFieldGrid);
             }
         } else {
             this.desiredX = 0;

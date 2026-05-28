@@ -10,7 +10,8 @@ import { showNodeConfirm } from "../UI.js";
 import { Utilities } from "../Utilities.js";
 import { Explosion } from "../Entities/Explosion/Explosion.js";
 import { Segment } from "../Entities/Wall.js";
-import { pickupSpawnSettings } from "../Config.js";
+import { pickupSpawnSettings, navigationSettings } from "../Config.js";
+import { resolveMoveTarget } from "../Spatial/Navigation/PathClearance.js";
 
 export class MapState {
     onEnter(ctx) {
@@ -221,8 +222,9 @@ export class CombatState {
         const gridPos = ctx.state.flowFieldGrid.worldToGrid(worldCoords.x, worldCoords.y);
         if (gridPos.col >= 0 && gridPos.col < ctx.state.flowFieldGrid.cols && gridPos.row >= 0 && gridPos.row < ctx.state.flowFieldGrid.rows) {
             if (ctx.state.flowFieldGrid.grid[gridPos.row * ctx.state.flowFieldGrid.cols + gridPos.col] !== 1) {
-                const targetX = gridPos.col * ctx.state.flowFieldGrid.cellSize + ctx.state.flowFieldGrid.centerX - ctx.state.flowFieldGrid.offsetX + ctx.state.flowFieldGrid.cellSize / 2;
-                const targetY = gridPos.row * ctx.state.flowFieldGrid.cellSize + ctx.state.flowFieldGrid.centerY - ctx.state.flowFieldGrid.offsetY + ctx.state.flowFieldGrid.cellSize / 2;
+                const cellCenter = ctx.state.flowFieldGrid.gridToWorld(gridPos.col, gridPos.row);
+                const clearance = ctx.state.player.radius + navigationSettings.pathClearanceMargin;
+                const target = resolveMoveTarget(ctx.state.obstacleGrid, cellCenter.x, cellCenter.y, clearance);
                 let isDiving = false;
                 ctx.upgrades
                     .filter((u) => u.isAbility && u.triggerType === "double_tap_move" && ctx.state.abilities[u.id])
@@ -232,10 +234,10 @@ export class CombatState {
                         }
                     });
                 if (isDiving) {
-                    ctx.state.player.queueTarget(targetX, targetY);
+                    ctx.state.player.queueTarget(target.x, target.y, gridPos);
                 } else {
-                    ctx.state.player.setTarget(targetX, targetY, ctx.state);
-                    ctx.state.flowFieldGrid.buildPlayerFlowField(targetX, targetY);
+                    ctx.state.player.setTarget(target.x, target.y, ctx.state, gridPos);
+                    ctx.state.flowFieldGrid.buildPlayerFlowField(target.x, target.y);
                     if (isDoubleTap) {
                         ctx.upgrades
                             .filter((u) => u.isAbility && u.triggerType === "double_tap_move" && ctx.state.abilities[u.id])

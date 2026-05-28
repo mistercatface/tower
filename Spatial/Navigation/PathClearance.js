@@ -36,7 +36,7 @@ function refineSegment(ax, ay, bx, by, obstacleGrid, clearance, maxDepth = 4) {
     return [...left, pushed, ...right];
 }
 
-export function adjustPathForClearance(path, obstacleGrid, clearance) {
+export function adjustPathForClearance(path, obstacleGrid, clearance, destination = null) {
     if (!path || path.length === 0 || !obstacleGrid) {
         return path;
     }
@@ -65,5 +65,17 @@ export function adjustPathForClearance(path, obstacleGrid, clearance) {
         refined.push(next);
     }
 
+    if (destination && refined.length > 0) {
+        refined[refined.length - 1] = { x: destination.x, y: destination.y };
+    }
+
     return refined;
+}
+
+export function resolveMoveTarget(obstacleGrid, x, y, clearance) {
+    if (!obstacleGrid) {
+        return { x, y };
+    }
+    const walls = getWallsNearPoint(obstacleGrid, x, y, clearance);
+    return pushPointFromWalls(x, y, walls, clearance);
 }

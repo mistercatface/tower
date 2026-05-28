@@ -123,6 +123,33 @@ export class FlowFieldGrid {
         return { col, row };
     }
 
+    gridToWorld(col, row) {
+        return {
+            x: col * this.cellSize + this.centerX - this.offsetX + this.cellSize / 2,
+            y: row * this.cellSize + this.centerY - this.offsetY + this.cellSize / 2,
+        };
+    }
+
+    getCellBounds(col, row) {
+        const minX = col * this.cellSize + this.centerX - this.offsetX;
+        const minY = row * this.cellSize + this.centerY - this.offsetY;
+        return {
+            minX,
+            minY,
+            maxX: minX + this.cellSize,
+            maxY: minY + this.cellSize,
+        };
+    }
+
+    entityIntersectsCell(x, y, radius, col, row) {
+        const { minX, minY, maxX, maxY } = this.getCellBounds(col, row);
+        const closestX = Math.max(minX, Math.min(x, maxX));
+        const closestY = Math.max(minY, Math.min(y, maxY));
+        const dx = x - closestX;
+        const dy = y - closestY;
+        return dx * dx + dy * dy <= radius * radius;
+    }
+
     sampleDirection(x, y, targetField) {
         const halfCell = this.cellSize / 2;
         const gx = (x - (this.centerX - this.offsetX + halfCell)) / this.cellSize;

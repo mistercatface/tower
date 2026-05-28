@@ -33,8 +33,21 @@ export class NavigationService {
         entity.hpaPath = null;
     }
 
-    steerTo(entity, targetX, targetY, profile) {
+    steerTo(entity, targetX, targetY, profile, flowFieldGrid = null) {
         const settings = navigationSettings;
+        const grid = flowFieldGrid ?? this.flowFieldGrid;
+
+        if (
+            entity.targetGridCol !== null
+            && entity.targetGridRow !== null
+            && grid?.entityIntersectsCell(entity.x, entity.y, entity.radius, entity.targetGridCol, entity.targetGridRow)
+        ) {
+            entity.desiredX = 0;
+            entity.desiredY = 0;
+            this._setDebug(entity, { mode: "arrived", dist: 0, replanReason: null, pathLen: 0 });
+            return;
+        }
+
         const dist = Math.hypot(entity.x - targetX, entity.y - targetY);
 
         if (dist < settings.arrivalDistance) {
