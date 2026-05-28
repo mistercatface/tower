@@ -197,7 +197,7 @@ export class Enemy extends DestructibleEntity {
 
     getMovementSpeedRatio() {
         if (this.speed <= 0) return 0;
-        return Math.min(1, this.getVelocityMagnitude() / maxSpeed);
+        return Math.min(1, this.getVelocityMagnitude() / this.speed);
     }
 
     applyMovementAccuracyPenalty(baseAccuracy, minMultiplier = 0.5) {
