@@ -134,10 +134,7 @@ export class Player extends Enemy {
             if (toTarget.len < 2) {
                 this.stopMovement();
             } else {
-                this.steerTowardPoint(this.targetX, this.targetY, gridSystem, walls, {
-                    flowField: gridSystem.playerFlowField,
-                    preferDirectWithLos: true,
-                });
+                this.steerTowardPoint(this.targetX, this.targetY, gridSystem, gridSystem.playerFlowField);
                 this.targetNodeX = this.x + this.desiredX * 10;
                 this.targetNodeY = this.y + this.desiredY * 10;
             }

@@ -104,12 +104,7 @@ export class Enemy extends DestructibleEntity {
         }
     }
 
-    steerTowardPoint(targetX, targetY, gridSystem, walls = null, { flowField = null, preferDirectWithLos = false } = {}) {
-        if (preferDirectWithLos && walls && Utilities.hasLineOfSight(this.x, this.y, targetX, targetY, walls, this.radius)) {
-            Utilities.setDesiredDirection(this, targetX - this.x, targetY - this.y);
-            return;
-        }
-
+    steerTowardPoint(targetX, targetY, gridSystem, flowField = null) {
         const field = flowField ?? gridSystem?.flowField;
         if (gridSystem && field) {
             const angle = Navigator.getSteeringAngle(this.x, this.y, gridSystem, field);
