@@ -212,6 +212,64 @@ export function generateVoronoiRegions({
     return { nodesMap, cellToNode: assignment, nodeIdCounter };
 }
 
+export function findRegionAdjacenciesInBox(cellToNode, cols, rows, startCol, endCol, startRow, endRow) {
+    const adjacencies = new Set();
+
+    for (let r = startRow; r <= endRow; r++) {
+        for (let c = startCol; c <= endCol; c++) {
+            const idx = colRowToIndex(c, r, cols);
+            const nodeA = cellToNode[idx];
+            if (!nodeA) continue;
+
+            if (c + 1 <= endCol) {
+                const nodeB = cellToNode[idx + 1];
+                if (nodeB && nodeA.id !== nodeB.id) {
+                    adjacencies.add(makeAdjacencyKey(nodeA.id, nodeB.id));
+                }
+            }
+
+            if (r + 1 <= endRow) {
+                const nodeB = cellToNode[idx + cols];
+                if (nodeB && nodeA.id !== nodeB.id) {
+                    adjacencies.add(makeAdjacencyKey(nodeA.id, nodeB.id));
+                }
+            }
+        }
+    }
+
+    return adjacencies;
+}
+
+export function repositionNodeCentroid(node, cellToNode, grid, cols, rows, minX, minY, cellSize) {
+    let sumCol = 0;
+    let sumRow = 0;
+    let count = 0;
+
+    for (let i = 0; i < cellToNode.length; i++) {
+        if (cellToNode[i]?.id !== node.id) continue;
+        const { col, row } = indexToColRow(i, cols);
+        sumCol += col;
+        sumRow += row;
+        count++;
+    }
+
+    if (count === 0) return;
+
+    const startCol = node.col;
+    const startRow = node.row;
+    node.col = Math.floor(sumCol / count);
+    node.row = Math.floor(sumRow / count);
+
+    const centroidIdx = colRowToIndex(node.col, node.row, cols);
+    if (grid[centroidIdx] === 1 || cellToNode[centroidIdx]?.id !== node.id) {
+        node.col = startCol;
+        node.row = startRow;
+    }
+
+    node.x = minX + node.col * cellSize + cellSize / 2;
+    node.y = minY + node.row * cellSize + cellSize / 2;
+}
+
 export function findRegionAdjacencies(cellToNode, grid, cols, rows) {
     const adjacencies = new Set();
 

@@ -1,10 +1,12 @@
-import { colRowToIndex } from "./GridUtils.js";
+import { navigationSettings } from "../../Config.js";
+import { colRowToIndex, indexToColRow, forEachCardinalNeighbor } from "./GridUtils.js";
 import { runLocalAStarFlat, runAbstractAStar } from "./AStar.js";
 import {
     RegionNode,
     computeDistanceTransform,
     generateVoronoiRegions,
     findRegionAdjacencies,
+    repositionNodeCentroid,
 } from "./VoronoiRegions.js";
 
 export class HierarchicalNavigator {
@@ -100,23 +102,210 @@ export class HierarchicalNavigator {
     }
 
     connectAllNodes() {
-        const nodes = Object.values(this.nodesMap);
-        for (const n of nodes) {
-            n.edges = [];
+        for (const node of Object.values(this.nodesMap)) {
+            node.edges = [];
         }
 
         const adjacencies = findRegionAdjacencies(this.cellToNode, this.grid, this.cols, this.rows);
+        this._connectAdjacencies(adjacencies);
+    }
+
+    _connectAdjacencies(adjacencies) {
         for (const key of adjacencies) {
             const [idA, idB] = key.split(":");
-            const nodeA = this.nodesMap[idA];
-            const nodeB = this.nodesMap[idB];
-            if (nodeA && nodeB) {
-                const path = this.runLocalAStar(nodeA.col, nodeA.row, nodeB.col, nodeB.row, 96);
-                if (path) {
-                    nodeA.edges.push({ targetId: nodeB.id, cost: path.length, path: path });
-                    nodeB.edges.push({ targetId: nodeA.id, cost: path.length, path: [...path].reverse() });
+            this._connectRegionPair(this.nodesMap[idA], this.nodesMap[idB]);
+        }
+    }
+
+    _connectRegionPair(nodeA, nodeB) {
+        if (!nodeA || !nodeB || nodeA.id === nodeB.id) return;
+        if (nodeA.edges.some(e => e.targetId === nodeB.id)) return;
+
+        const path = this.runLocalAStar(nodeA.col, nodeA.row, nodeB.col, nodeB.row, 96);
+        if (path) {
+            nodeA.edges.push({ targetId: nodeB.id, cost: path.length, path });
+            nodeB.edges.push({ targetId: nodeA.id, cost: path.length, path: [...path].reverse() });
+        }
+    }
+
+    _expandDamageBounds(bounds, padding = navigationSettings.hpaDamagePadding) {
+        return {
+            startCol: Math.max(0, bounds.startCol - padding),
+            endCol: Math.min(this.cols - 1, bounds.endCol + padding),
+            startRow: Math.max(0, bounds.startRow - padding),
+            endRow: Math.min(this.rows - 1, bounds.endRow + padding),
+        };
+    }
+
+    _collectRegionIdsInBox(startCol, endCol, startRow, endRow) {
+        const ids = new Set();
+        for (let row = startRow; row <= endRow; row++) {
+            for (let col = startCol; col <= endCol; col++) {
+                const node = this.cellToNode[colRowToIndex(col, row, this.cols)];
+                if (node) ids.add(node.id);
+            }
+        }
+        return ids;
+    }
+
+    _stripEdgePair(nodeA, nodeB) {
+        if (!nodeA || !nodeB) return;
+        nodeA.edges = nodeA.edges.filter(e => e.targetId !== nodeB.id);
+        nodeB.edges = nodeB.edges.filter(e => e.targetId !== nodeA.id);
+    }
+
+    _reconnectRegionEdges(node) {
+        if (!node) return;
+
+        for (const edge of [...node.edges]) {
+            this._stripEdgePair(node, this.nodesMap[edge.targetId]);
+        }
+
+        const neighborIds = new Set();
+        for (let i = 0; i < this.cellToNode.length; i++) {
+            if (this.cellToNode[i]?.id !== node.id) continue;
+            const { col, row } = indexToColRow(i, this.cols);
+            forEachCardinalNeighbor(col, row, this.cols, this.rows, (nc, nr, nIdx) => {
+                const other = this.cellToNode[nIdx];
+                if (other && other.id !== node.id) {
+                    neighborIds.add(other.id);
+                }
+            });
+        }
+
+        for (const otherId of neighborIds) {
+            this._connectRegionPair(node, this.nodesMap[otherId]);
+        }
+    }
+
+    _mergeRegionInto(keep, absorb) {
+        if (!keep || !absorb || keep.id === absorb.id) return;
+
+        for (let i = 0; i < this.cellToNode.length; i++) {
+            if (this.cellToNode[i]?.id === absorb.id) {
+                this.cellToNode[i] = keep;
+            }
+        }
+
+        for (const id in this.nodesMap) {
+            this.nodesMap[id].edges = this.nodesMap[id].edges.filter(e => e.targetId !== absorb.id);
+        }
+        delete this.nodesMap[absorb.id];
+
+        repositionNodeCentroid(
+            keep, this.cellToNode, this.grid, this.cols, this.rows,
+            this.minX, this.minY, this.cellSize
+        );
+    }
+
+    _createRegionFromCells(cells) {
+        const unassigned = new Set(cells);
+        while (unassigned.size > 0) {
+            const startIdx = unassigned.values().next().value;
+            unassigned.delete(startIdx);
+
+            const { col: startCol, row: startRow } = indexToColRow(startIdx, this.cols);
+            const id = `node_${++this.nodeIdCounter}`;
+            const node = new RegionNode(
+                id, startCol, startRow, startCol, startRow,
+                this.minX, this.minY, this.cellSize
+            );
+            this.nodesMap[id] = node;
+
+            const queue = [startIdx];
+            this.cellToNode[startIdx] = node;
+            let cellCount = 1;
+
+            let head = 0;
+            while (head < queue.length && cellCount < this.maxCellsPerChunk) {
+                const currIdx = queue[head++];
+                const { col, row } = indexToColRow(currIdx, this.cols);
+
+                forEachCardinalNeighbor(col, row, this.cols, this.rows, (nc, nr, nIdx) => {
+                    if (this.grid[nIdx] !== 0 || !unassigned.has(nIdx)) return;
+                    unassigned.delete(nIdx);
+                    this.cellToNode[nIdx] = node;
+                    queue.push(nIdx);
+                    cellCount++;
+                });
+            }
+
+            repositionNodeCentroid(
+                node, this.cellToNode, this.grid, this.cols, this.rows,
+                this.minX, this.minY, this.cellSize
+            );
+        }
+    }
+
+    _assignOpenedCells(startCol, endCol, startRow, endRow) {
+        const visited = new Uint8Array(this.cols * this.rows);
+
+        for (let row = startRow; row <= endRow; row++) {
+            for (let col = startCol; col <= endCol; col++) {
+                const idx = colRowToIndex(col, row, this.cols);
+                if (this.grid[idx] !== 0 || this.cellToNode[idx] || visited[idx]) continue;
+
+                const component = [];
+                const neighborRegions = new Map();
+                const queue = [idx];
+                visited[idx] = 1;
+
+                let head = 0;
+                while (head < queue.length) {
+                    const currIdx = queue[head++];
+                    component.push(currIdx);
+                    const { col: c, row: r } = indexToColRow(currIdx, this.cols);
+
+                    forEachCardinalNeighbor(c, r, this.cols, this.rows, (nc, nr, nIdx) => {
+                        if (this.grid[nIdx] !== 0) return;
+
+                        const neighborNode = this.cellToNode[nIdx];
+                        if (neighborNode) {
+                            neighborRegions.set(neighborNode.id, neighborNode);
+                            return;
+                        }
+
+                        if (visited[nIdx]) return;
+                        if (nc < startCol || nc > endCol || nr < startRow || nr > endRow) return;
+
+                        visited[nIdx] = 1;
+                        queue.push(nIdx);
+                    });
+                }
+
+                if (neighborRegions.size === 0) {
+                    this._createRegionFromCells(component);
+                } else {
+                    const regions = [...neighborRegions.values()];
+                    let keep = regions[0];
+                    for (let i = 1; i < regions.length; i++) {
+                        this._mergeRegionInto(keep, regions[i]);
+                    }
+                    for (const cellIdx of component) {
+                        this.cellToNode[cellIdx] = keep;
+                    }
+                    repositionNodeCentroid(
+                        keep, this.cellToNode, this.grid, this.cols, this.rows,
+                        this.minX, this.minY, this.cellSize
+                    );
                 }
             }
+        }
+    }
+
+    rebuildDamagedArea(bounds) {
+        if (!bounds || this.cols === 0 || this.rows === 0) return;
+
+        this.ensureBuffers();
+        const box = this._expandDamageBounds(bounds);
+
+        this._assignOpenedCells(box.startCol, box.endCol, box.startRow, box.endRow);
+
+        const affectedIds = this._collectRegionIdsInBox(
+            box.startCol, box.endCol, box.startRow, box.endRow
+        );
+        for (const id of affectedIds) {
+            this._reconnectRegionEdges(this.nodesMap[id]);
         }
     }
 
@@ -204,13 +393,14 @@ export class HierarchicalNavigator {
 
         const startNode = this.cellToNode[startIdx];
         const targetNode = this.cellToNode[targetIdx];
-
         const cellDist = Math.hypot(startCol - targetCol, startRow - targetRow);
+
         if (cellDist < 32 || (startNode && targetNode && startNode.id === targetNode.id)) {
-            const path = this.runLocalAStar(startCol, startRow, targetCol, targetRow, 96);
-            if (path) {
-                return path.map(cell => this.gridToWorld(cell.col, cell.row));
+            const localPath = this.runLocalAStar(startCol, startRow, targetCol, targetRow, 96);
+            if (localPath) {
+                return localPath.map(cell => this.gridToWorld(cell.col, cell.row));
             }
+            return null;
         }
 
         const startTempNode = new RegionNode("start", startCol, startRow, -999, -999, this.minX, this.minY, this.cellSize);

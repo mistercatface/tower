@@ -159,6 +159,8 @@ export class WorldObstacleGrid {
         for (const localWall of localWalls) {
             this.addWall(localWall);
         }
+
+        return bounds;
     }
 
     worldToGrid(x, y) {

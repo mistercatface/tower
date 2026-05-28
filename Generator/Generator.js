@@ -50,7 +50,7 @@ export const WallGenerator = {
         state.wallTheme = themeColors[Math.floor(Math.random() * themeColors.length)];
         GeneratorStrategies[selected].generate(state, playerX, playerY);
         state.obstacleGrid.rebuild(state.walls);
-        state.navigation.onObstaclesChanged(playerX, playerY);
+        state.navigation.rebuildNavigationGraph(playerX, playerY);
         if (!state.discoveredAbilities.has("Laser")) {
             spawnPickup(state, playerX, playerY, pickupSpawnSettings.coinMinRadius, pickupSpawnSettings.coinMaxRadius, "coin");
         }

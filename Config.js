@@ -64,7 +64,7 @@ export const navigationSettings = {
     targetNodeLookahead: 10,
     pathClearanceMargin: 4,
     pathWaypointArrival: 10,
-    pathOffPathDistance: 80,
+    hpaDamagePadding: 12,
 };
 
 export const NAV_PROFILES = {

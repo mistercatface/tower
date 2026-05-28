@@ -10,6 +10,7 @@ export class NavigationService {
         this.hierarchicalNavigator = hierarchicalNavigator;
         this.navStates = new WeakMap();
         this.debugByEntity = new WeakMap();
+        this.obstacleGeneration = 0;
     }
 
     getNavState(entity) {
@@ -70,7 +71,8 @@ export class NavigationService {
                 navState,
                 profile,
                 settings,
-                this.flowFieldGrid.obstacleGrid
+                this.flowFieldGrid.obstacleGrid,
+                this.obstacleGeneration
             );
         } else {
             navState.path = null;
@@ -120,11 +122,20 @@ export class NavigationService {
         return newGridPos;
     }
 
-    onObstaclesChanged(playerX, playerY, playerTargetX = null, playerTargetY = null) {
+    onObstaclesChanged(damageBounds, playerX, playerY, playerTargetX = null, playerTargetY = null) {
+        if (this.hierarchicalNavigator && damageBounds) {
+            this.hierarchicalNavigator.rebuildDamagedArea(damageBounds);
+        }
+        this.flowFieldGrid.refresh(playerX, playerY, playerTargetX, playerTargetY);
+        this.obstacleGeneration += 1;
+    }
+
+    rebuildNavigationGraph(playerX, playerY, playerTargetX = null, playerTargetY = null) {
         if (this.hierarchicalNavigator) {
             this.hierarchicalNavigator.rebuildRegions();
         }
         this.flowFieldGrid.refresh(playerX, playerY, playerTargetX, playerTargetY);
+        this.obstacleGeneration += 1;
     }
 
     _setDebug(entity, info) {
