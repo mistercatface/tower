@@ -7,7 +7,7 @@ export class Node {
         this.sectorRow = sectorRow;
         this.x = minX + col * cellSize + cellSize / 2;
         this.y = minY + row * cellSize + cellSize / 2;
-        this.edges = []; // array of { targetId, cost, type: "intra" | "temp" }
+        this.edges = [];
     }
 }
 
@@ -24,10 +24,9 @@ export class HierarchicalNavigator {
         this.grid = null;
         this.distToWall = null;
         this.cellToNode = null;
-        this.nodesMap = {}; // id -> Node
+        this.nodesMap = {};
         this.nodeIdCounter = 0;
 
-        // Optimized A* scratchpad arrays
         this.aStarGScore = null;
         this.aStarCameFrom = null;
         this.aStarVisited = null;
@@ -76,7 +75,6 @@ export class HierarchicalNavigator {
         this.nodesMap = {};
         this.nodeIdCounter = 0;
 
-        // Pre-allocate A* arrays
         this.aStarGScore = new Float32Array(size);
         this.aStarCameFrom = new Int32Array(size);
         this.aStarVisited = new Int32Array(size);
@@ -210,7 +208,6 @@ export class HierarchicalNavigator {
     generateNodeForAnchor(anchorCol, anchorRow) {
         const rMax = Math.floor(this.anchorSpacing / 2);
         
-        // Clamp anchor coordinates to grid boundary to handle edge cases correctly
         const clampedCol = Math.max(0, Math.min(this.cols - 1, anchorCol));
         const clampedRow = Math.max(0, Math.min(this.rows - 1, anchorRow));
 
@@ -385,7 +382,6 @@ export class HierarchicalNavigator {
 
         this.computeDistanceTransform();
         
-        // Rebuild all nodes, Voronoi regions, and edges
         this.nodesMap = {};
         this.nodeIdCounter = 0;
         this.generateAllNodes();
@@ -419,6 +415,72 @@ export class HierarchicalNavigator {
             maxPathLen, this.aStarGScore, this.aStarCameFrom,
             this.aStarVisited, this.aStarRunId
         );
+    }
+
+    _connectTempNode(tempNode, gridCol, gridRow, targetNode, isStart) {
+        const candidates = new Set();
+        if (targetNode) {
+            candidates.add(targetNode);
+            for (const edge of targetNode.edges) {
+                const neighbor = this.nodesMap[edge.targetId];
+                if (neighbor) candidates.add(neighbor);
+            }
+        } else {
+            for (const id in this.nodesMap) {
+                if (id === "start" || id === "target") continue;
+                const node = this.nodesMap[id];
+                const d = Math.hypot(gridCol - node.col, gridRow - node.row);
+                if (d <= this.anchorSpacing * 2) {
+                    candidates.add(node);
+                }
+            }
+        }
+        for (const candidate of candidates) {
+            const path = isStart 
+                ? this.runLocalAStar(tempNode.col, tempNode.row, candidate.col, candidate.row, 96)
+                : this.runLocalAStar(candidate.col, candidate.row, tempNode.col, tempNode.row, 96);
+            if (path) {
+                if (isStart) {
+                    tempNode.edges.push({ targetId: candidate.id, cost: path.length, path: path });
+                } else {
+                    candidate.edges.push({ targetId: "target", cost: path.length, path: path });
+                }
+            }
+        }
+    }
+
+    navigateEntity(entity, targetX, targetY, updateInterval) {
+        const now = Date.now();
+        if (!entity.hpaPath || now - entity.hpaLastUpdate > updateInterval) {
+            entity.hpaPath = this.findPath(entity.x, entity.y, targetX, targetY);
+            entity.hpaLastUpdate = now;
+        }
+        if (entity.hpaPath && entity.hpaPath.length > 0) {
+            let waypointIdx = 0;
+            while (waypointIdx < entity.hpaPath.length) {
+                const wp = entity.hpaPath[waypointIdx];
+                const distToWp = Math.hypot(entity.x - wp.x, entity.y - wp.y);
+                if (distToWp > 24) {
+                    break;
+                }
+                waypointIdx++;
+            }
+            if (waypointIdx < entity.hpaPath.length) {
+                const wp = entity.hpaPath[waypointIdx];
+                const dx = wp.x - entity.x;
+                const dy = wp.y - entity.y;
+                const len = Math.hypot(dx, dy);
+                if (len > 0) {
+                    entity.desiredX = dx / len;
+                    entity.desiredY = dy / len;
+                } else {
+                    entity.desiredX = 0;
+                    entity.desiredY = 0;
+                }
+                return true;
+            }
+        }
+        return false;
     }
 
     findPath(startX, startY, targetX, targetY) {
@@ -459,53 +521,8 @@ export class HierarchicalNavigator {
         this.nodesMap["target"] = targetTempNode;
 
         try {
-            const startCandidates = new Set();
-            if (startNode) {
-                startCandidates.add(startNode);
-                for (const edge of startNode.edges) {
-                    const neighbor = this.nodesMap[edge.targetId];
-                    if (neighbor) startCandidates.add(neighbor);
-                }
-            } else {
-                for (const id in this.nodesMap) {
-                    if (id === "start" || id === "target") continue;
-                    const node = this.nodesMap[id];
-                    const d = Math.hypot(startCol - node.col, startRow - node.row);
-                    if (d <= this.anchorSpacing * 2) {
-                        startCandidates.add(node);
-                    }
-                }
-            }
-            for (const candidate of startCandidates) {
-                const path = this.runLocalAStar(startTempNode.col, startTempNode.row, candidate.col, candidate.row, 96);
-                if (path) {
-                    startTempNode.edges.push({ targetId: candidate.id, cost: path.length, path: path });
-                }
-            }
-
-            const targetCandidates = new Set();
-            if (targetNode) {
-                targetCandidates.add(targetNode);
-                for (const edge of targetNode.edges) {
-                    const neighbor = this.nodesMap[edge.targetId];
-                    if (neighbor) targetCandidates.add(neighbor);
-                }
-            } else {
-                for (const id in this.nodesMap) {
-                    if (id === "start" || id === "target") continue;
-                    const node = this.nodesMap[id];
-                    const d = Math.hypot(targetCol - node.col, targetRow - node.row);
-                    if (d <= this.anchorSpacing * 2) {
-                        targetCandidates.add(node);
-                    }
-                }
-            }
-            for (const candidate of targetCandidates) {
-                const path = this.runLocalAStar(candidate.col, candidate.row, targetTempNode.col, targetTempNode.row, 96);
-                if (path) {
-                    candidate.edges.push({ targetId: "target", cost: path.length, path: path });
-                }
-            }
+            this._connectTempNode(startTempNode, startCol, startRow, startNode, true);
+            this._connectTempNode(targetTempNode, targetCol, targetRow, targetNode, false);
 
             const abstractPath = runAStar("start", "target", this.nodesMap);
 

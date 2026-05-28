@@ -126,7 +126,7 @@ export class Player extends Enemy {
         return state.upgrades["Reposition"] && state.upgrades["Reposition"].level > 0;
     }
 
-    update(dt, gridSystem, walls, spatialHash, externalSpeedMod = 1.0) {
+    update(dt, gridSystem, walls, spatialHash, state, externalSpeedMod = 1.0) {
         if (this.currentState && this.currentState.customMovement) {
             this.currentState.update(this, dt, null, gridSystem, walls, null, spatialHash, null, null);
             return;
@@ -136,37 +136,14 @@ export class Player extends Enemy {
             if (toTarget.len < 2) {
                 this.stopMovement();
             } else {
-                const globalState = window.gameState;
                 let navigated = false;
-
-                if (globalState && globalState.hierarchicalNavigator) {
-                    const now = Date.now();
-                    if (!this.hpaPath || now - this.hpaLastUpdate > 500) {
-                        this.hpaPath = globalState.hierarchicalNavigator.findPath(this.x, this.y, this.targetX, this.targetY);
-                        this.hpaLastUpdate = now;
-                    }
-
-                    if (this.hpaPath && this.hpaPath.length > 0) {
-                        let waypointIdx = 0;
-                        while (waypointIdx < this.hpaPath.length) {
-                            const wp = this.hpaPath[waypointIdx];
-                            const distToWp = Math.hypot(this.x - wp.x, this.y - wp.y);
-                            if (distToWp > 24) {
-                                break;
-                            }
-                            waypointIdx++;
-                        }
-
-                        if (waypointIdx < this.hpaPath.length) {
-                            const wp = this.hpaPath[waypointIdx];
-                            Utilities.setDesiredDirection(this, wp.x - this.x, wp.y - this.y);
-                            this.targetNodeX = this.x + this.desiredX * 10;
-                            this.targetNodeY = this.y + this.desiredY * 10;
-                            navigated = true;
-                        }
+                if (state && state.hierarchicalNavigator) {
+                    if (state.hierarchicalNavigator.navigateEntity(this, this.targetX, this.targetY, 500)) {
+                        this.targetNodeX = this.x + this.desiredX * 10;
+                        this.targetNodeY = this.y + this.desiredY * 10;
+                        navigated = true;
                     }
                 }
-
                 if (!navigated) {
                     this.steerTowardPoint(this.targetX, this.targetY, gridSystem, gridSystem.playerFlowField);
                     this.targetNodeX = this.x + this.desiredX * 10;

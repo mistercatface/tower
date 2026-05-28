@@ -121,7 +121,6 @@ export class Enemy extends DestructibleEntity {
     }
 
     calculateSteering(target, gridSystem, state) {
-        const globalState = state || window.gameState;
         const dist = Math.hypot(this.x - target.x, this.y - target.y);
 
         if (dist <= 1000) {
@@ -130,29 +129,9 @@ export class Enemy extends DestructibleEntity {
             return;
         }
 
-        if (globalState && globalState.hierarchicalNavigator) {
-            const now = Date.now();
-            if (!this.hpaPath || now - this.hpaLastUpdate > 1000) {
-                this.hpaPath = globalState.hierarchicalNavigator.findPath(this.x, this.y, target.x, target.y);
-                this.hpaLastUpdate = now;
-            }
-
-            if (this.hpaPath && this.hpaPath.length > 0) {
-                let waypointIdx = 0;
-                while (waypointIdx < this.hpaPath.length) {
-                    const wp = this.hpaPath[waypointIdx];
-                    const distToWp = Math.hypot(this.x - wp.x, this.y - wp.y);
-                    if (distToWp > 24) {
-                        break;
-                    }
-                    waypointIdx++;
-                }
-
-                if (waypointIdx < this.hpaPath.length) {
-                    const wp = this.hpaPath[waypointIdx];
-                    Utilities.setDesiredDirection(this, wp.x - this.x, wp.y - this.y);
-                    return;
-                }
+        if (state && state.hierarchicalNavigator) {
+            if (state.hierarchicalNavigator.navigateEntity(this, target.x, target.y, 1000)) {
+                return;
             }
         }
 
