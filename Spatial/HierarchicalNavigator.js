@@ -12,7 +12,7 @@ export class Node {
 }
 
 export class HierarchicalNavigator {
-    constructor(cellSize = 16, anchorSpacing = 24) {
+    constructor(cellSize = 16, anchorSpacing = 16) {
         this.cellSize = cellSize;
         this.anchorSpacing = anchorSpacing;
         this.minX = 0;

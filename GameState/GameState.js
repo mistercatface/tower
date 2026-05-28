@@ -85,7 +85,7 @@ export class GameState {
         };
  
         this.gridSystem = new GridSystem(gridSettings.cellSize, gridSettings.width, gridSettings.height);
-        this.hierarchicalNavigator = new HierarchicalNavigator(gridSettings.cellSize, gridSettings.anchorSpacing || 24);
+        this.hierarchicalNavigator = new HierarchicalNavigator(gridSettings.cellSize, gridSettings.anchorSpacing);
         this.currentUpgradeTab = "attack";
         this.canvasBounds = { width: 0, height: 0 };
         this.upgrades = {};
