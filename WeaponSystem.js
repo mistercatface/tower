@@ -37,7 +37,7 @@ export class ChargedWeaponMode extends WeaponTargetingStrategy {
         const ty = source.y + Math.sin(turret.angle) * turretDist;
         const aimTarget = this.determineAimTarget(source, target, blocksTargeting, turret);
         
-        const sway = WeaponSystem.computeAccuracySway(source, turret, state, true);
+        const sway = WeaponSystem.computeAccuracySway(source, turret, dt, true);
 
         const isAimed = WeaponSystem.aimTurret(turret, source.x, source.y, aimTarget.x, aimTarget.y, dt, sway);
         if (target && !blocksTargeting) {
@@ -71,7 +71,7 @@ export class ContinuousWeaponMode extends WeaponTargetingStrategy {
         const ty = source.y + Math.sin(turret.angle) * turretDist;
         const aimTarget = this.determineAimTarget(source, target, blocksTargeting, turret);
 
-        const sway = WeaponSystem.computeAccuracySway(source, turret, state);
+        const sway = WeaponSystem.computeAccuracySway(source, turret, dt);
 
         WeaponSystem.aimTurret(turret, source.x, source.y, aimTarget.x, aimTarget.y, dt, sway);
         this.onTick(dt, state, tx, ty, turret, combatEvents, source);
@@ -196,7 +196,7 @@ export class WeaponSystem {
         return nearest;
     }
 
-    static computeAccuracySway(source, turret, state, requireCharge = false) {
+    static computeAccuracySway(source, turret, dt, requireCharge = false) {
         const weapon = source.weapon;
         if (!weapon || weapon.accuracy === undefined) return 0;
         if (requireCharge && turret.charge <= 0) return 0;
@@ -204,10 +204,10 @@ export class WeaponSystem {
         const effectiveAccuracy = source.applyMovementAccuracyPenalty(weapon.accuracy);
         const accuracySpread = ((1 - effectiveAccuracy) * Math.PI) / 2 * 0.5;
         const frequency = 0.005;
+        turret.swayPhase += dt * frequency;
         const turretsList = source.turrets || (source.turret ? [source.turret] : null);
-        const phase = turretsList ? turretsList.indexOf(turret) * 2.0 : 0;
-        const time = state.lastTime || Date.now();
-        return Math.sin(time * frequency + phase) * accuracySpread;
+        const phaseOffset = turretsList ? turretsList.indexOf(turret) * 2.0 : 0;
+        return Math.sin(turret.swayPhase + phaseOffset) * accuracySpread;
     }
 
     static aimTurret(turret, currentX, currentY, targetX, targetY, dt, sway = 0) {

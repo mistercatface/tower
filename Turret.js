@@ -7,6 +7,7 @@ export class Turret {
         this.turnSpeed = turnSpeed;
         this.charge = 0;
         this.target = null;
+        this.swayPhase = 0;
     }
 
     render(ctx, playerX, playerY, playerRadius, renderer, explicitColor = null) {
