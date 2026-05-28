@@ -285,23 +285,24 @@ export class Render3D {
         ctx.fill();
         ctx.stroke();
 
-        // Draw diagonal black hazard lines inside the yellow band
+        // Draw diagonal black hazard lines inside the yellow band (FIXED WORLD ORIENTATION)
         ctx.strokeStyle = "#000000";
         ctx.lineWidth = 1.5;
-        for (const fAngleOffset of [-Math.PI/6, 0, Math.PI/6]) {
-            const angle = viewAngle + Math.PI + fAngleOffset;
-            const cosA = Math.cos(angle);
-            const sinA = Math.sin(angle);
-            const x1 = rx1 + cosA * r_rib1;
-            const y1 = ry1 + sinA * r_rib1;
-            const angleShifted = angle + Math.PI / 12;
-            const x2 = rx2 + Math.cos(angleShifted) * r_rib2;
-            const y2 = ry2 + Math.sin(angleShifted) * r_rib2;
-            
-            ctx.beginPath();
-            ctx.moveTo(x1, y1);
-            ctx.lineTo(x2, y2);
-            ctx.stroke();
+        for (let i = 0; i < 8; i++) {
+            const phi = (i * Math.PI) / 4;
+            // Only draw if this stripe is on the side facing the player
+            if (Math.cos(phi - viewAngle) < 0) {
+                const x1 = rx1 + Math.cos(phi) * r_rib1;
+                const y1 = ry1 + Math.sin(phi) * r_rib1;
+                const phi2 = phi + 0.25; // tilt the stripe slightly
+                const x2 = rx2 + Math.cos(phi2) * r_rib2;
+                const y2 = ry2 + Math.sin(phi2) * r_rib2;
+                
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+            }
         }
 
         // --- RENDER HOOPS/RIBS (CURVED ARCS) ---
@@ -316,19 +317,6 @@ export class Render3D {
             ctx.arc(rx, ry, r_rib, viewAngle - Math.PI / 2, viewAngle + Math.PI / 2, true);
             ctx.stroke();
         }
-
-        // Draw front seam line (adds strong cylindrical 3D depth)
-        const px_front_base = cx + Math.cos(viewAngle + Math.PI) * radius;
-        const py_front_base = cy + Math.sin(viewAngle + Math.PI) * radius;
-        const px_front_top = tx + Math.cos(viewAngle + Math.PI) * topRadius;
-        const py_front_top = ty + Math.sin(viewAngle + Math.PI) * topRadius;
-
-        ctx.strokeStyle = "rgba(0, 0, 0, 0.25)";
-        ctx.lineWidth = 1.0;
-        ctx.beginPath();
-        ctx.moveTo(px_front_base, py_front_base);
-        ctx.lineTo(px_front_top, py_front_top);
-        ctx.stroke();
 
         // --- RENDER TOP LID (METALLIC GREY) ---
         const topGrad = ctx.createRadialGradient(tx, ty, 0, tx, ty, topRadius);
