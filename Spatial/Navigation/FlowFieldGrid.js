@@ -7,17 +7,17 @@ export class FlowFieldGrid {
         this.cols = Math.ceil(width / cellSize);
         this.rows = Math.ceil(height / cellSize);
         const size = this.cols * this.rows;
-        
+
         this.grid = new Uint8Array(size);
-        
+
         this.flowFieldX = new Float32Array(size);
         this.flowFieldY = new Float32Array(size);
         this.flowFieldDist = new Float32Array(size);
-        
+
         this.playerFlowFieldX = new Float32Array(size);
         this.playerFlowFieldY = new Float32Array(size);
         this.playerFlowFieldDist = new Float32Array(size);
-        
+
         this.offsetX = (width / 2) + (cellSize / 2);
         this.offsetY = (height / 2) + (cellSize / 2);
         this.centerX = 0;
@@ -75,7 +75,7 @@ export class FlowFieldGrid {
         targetFieldX[startIdx] = 0;
         targetFieldY[startIdx] = 0;
         targetFieldDist[startIdx] = 0;
-        
+
         const dCols = [0, 1, 1, 1, 0, -1, -1, -1];
         const dRows = [-1, -1, 0, 1, 1, 1, 0, -1];
         const dCosts = [1.0, 1.41421356, 1.0, 1.41421356, 1.0, 1.41421356, 1.0, 1.41421356];
@@ -95,7 +95,7 @@ export class FlowFieldGrid {
                 if (nc >= 0 && nc < cols && nr >= 0 && nr < rows) {
                     const nIdx = nr * cols + nc;
                     if (gridData[nIdx] === 1) continue;
-                    
+
                     if (dc !== 0 && dr !== 0) {
                         const check1 = gridData[currRow * cols + nc];
                         const check2 = gridData[nr * cols + currCol];
@@ -172,7 +172,7 @@ export class FlowFieldGrid {
         const targetFieldX = isPlayerField ? this.playerFlowFieldX : this.flowFieldX;
         const targetFieldY = isPlayerField ? this.playerFlowFieldY : this.flowFieldY;
         const targetFieldDist = isPlayerField ? this.playerFlowFieldDist : this.flowFieldDist;
-        
+
         const halfCell = this.cellSize / 2;
         const gx = (x - (this.centerX - this.offsetX + halfCell)) / this.cellSize;
         const gy = (y - (this.centerY - this.offsetY + halfCell)) / this.cellSize;

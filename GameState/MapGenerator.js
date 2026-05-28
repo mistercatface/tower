@@ -4,6 +4,63 @@ import { WorldObstacleGrid } from "../Spatial/World/ObstacleGrid.js";
 import { FlowFieldGrid } from "../Spatial/Navigation/FlowFieldGrid.js";
 import { mapSettings, gridSettings } from "../Config/Config.js";
 
+const THEME_COLORS = [
+    { r: 0, g: 188, b: 212 },
+    { r: 76, g: 175, b: 80 },
+    { r: 255, g: 152, b: 0 },
+    { r: 156, g: 39, b: 176 },
+    { r: 63, g: 81, b: 181 },
+    { r: 244, g: 67, b: 54 },
+    { r: 233, g: 30, b: 99 },
+    { r: 0, g: 150, b: 136 },
+    { r: 205, g: 220, b: 57 },
+    { r: 121, g: 85, b: 72 }
+];
+
+const STRATEGIES = Object.keys(GeneratorStrategies);
+
+let tempObstacleGrid = null;
+let tempFlowFieldGrid = null;
+
+function getTempGrids() {
+    if (!tempObstacleGrid) {
+        tempObstacleGrid = new WorldObstacleGrid(gridSettings.cellSize);
+        tempFlowFieldGrid = new FlowFieldGrid(gridSettings.cellSize, gridSettings.width, gridSettings.height, tempObstacleGrid);
+    }
+    return { tempObstacleGrid, tempFlowFieldGrid };
+}
+
+function serializeWalls(walls) {
+    const out = new Array(walls.length);
+    for (let i = 0; i < walls.length; i++) {
+        const w = walls[i];
+        out[i] = {
+            x: w.x,
+            y: w.y,
+            angle: w.angle,
+            size: w.size,
+            padding: w.padding,
+            maxHealth: w.maxHealth || 30
+        };
+    }
+    return out;
+}
+
+function buildIncomingNodesMap(mapNodes) {
+    const incomingByNodeId = new Map();
+    for (const node of mapNodes) {
+        for (const targetId of node.connections) {
+            let incoming = incomingByNodeId.get(targetId);
+            if (!incoming) {
+                incoming = [];
+                incomingByNodeId.set(targetId, incoming);
+            }
+            incoming.push(node);
+        }
+    }
+    return incomingByNodeId;
+}
+
 export class MapGenerator {
     static getNodeCombatCoords(state, node) {
         if (!node) return { x: 0, y: 0 };
@@ -118,61 +175,15 @@ export class MapGenerator {
     }
 
     static pregenerateAllCombatData(state) {
-        const themeColors = [
-            { r: 0, g: 188, b: 212 },
-            { r: 76, g: 175, b: 80 },
-            { r: 255, g: 152, b: 0 },
-            { r: 156, g: 39, b: 176 },
-            { r: 63, g: 81, b: 181 },
-            { r: 244, g: 67, b: 54 },
-            { r: 233, g: 30, b: 99 },
-            { r: 0, g: 150, b: 136 },
-            { r: 205, g: 220, b: 57 },
-            { r: 121, g: 85, b: 72 }
-        ];
-
-        const strategies = Object.keys(GeneratorStrategies);
-
-        // Reuse single temporary grid instances to avoid thousands of object allocations
-        const tempObstacleGrid = new WorldObstacleGrid(gridSettings.cellSize);
-        const tempFlowFieldGrid = new FlowFieldGrid(gridSettings.cellSize, gridSettings.width, gridSettings.height, tempObstacleGrid);
-
-        const checkPathability = (nodeA, nodeB, wallsA, wallsB) => {
-            const coordsA = MapGenerator.getNodeCombatCoords(state, nodeA);
-            const coordsB = MapGenerator.getNodeCombatCoords(state, nodeB);
-            const mx = (coordsA.x + coordsB.x) / 2;
-            const my = (coordsA.y + coordsB.y) / 2;
-
-            tempFlowFieldGrid.centerX = mx;
-            tempFlowFieldGrid.centerY = my;
-
-            const segments = [];
-            for (let i = 0; i < wallsA.length; i++) {
-                const w = wallsA[i];
-                segments.push(new Segment(w.x, w.y, w.angle, w.size, w.padding, w.maxHealth));
-            }
-            for (let i = 0; i < wallsB.length; i++) {
-                const w = wallsB[i];
-                segments.push(new Segment(w.x, w.y, w.angle, w.size, w.padding, w.maxHealth));
-            }
-
-            tempObstacleGrid.rebuild(segments);
-            tempFlowFieldGrid.refresh(coordsB.x, coordsB.y);
-
-            const startPos = tempFlowFieldGrid.worldToGrid(coordsA.x, coordsA.y);
-            if (startPos.col < 0 || startPos.col >= tempFlowFieldGrid.cols || startPos.row < 0 || startPos.row >= tempFlowFieldGrid.rows) {
-                return false;
-            }
-            const idx = startPos.row * tempFlowFieldGrid.cols + startPos.col;
-            return tempFlowFieldGrid.flowFieldDist[idx] < 999999;
-        };
+        const { tempObstacleGrid, tempFlowFieldGrid } = getTempGrids();
+        const incomingByNodeId = buildIncomingNodesMap(state.mapNodes);
 
         const startNode = state.mapNodes.find(n => n.id === 0);
         if (startNode) {
-            const strategy = strategies[Math.floor(Math.random() * strategies.length)];
-            const theme = themeColors[Math.floor(Math.random() * themeColors.length)];
+            const strategy = STRATEGIES[Math.floor(Math.random() * STRATEGIES.length)];
+            const theme = THEME_COLORS[Math.floor(Math.random() * THEME_COLORS.length)];
             const coords = MapGenerator.getNodeCombatCoords(state, startNode);
-            
+
             tempFlowFieldGrid.centerX = coords.x;
             tempFlowFieldGrid.centerY = coords.y;
             const mockState = {
@@ -183,15 +194,8 @@ export class MapGenerator {
             };
 
             GeneratorStrategies[strategy].generate(mockState, coords.x, coords.y);
-            
-            startNode.wallsData = mockState.walls.map(w => ({
-                x: w.x,
-                y: w.y,
-                angle: w.angle,
-                size: w.size,
-                padding: w.padding,
-                maxHealth: w.maxHealth || 30
-            }));
+
+            startNode.wallsData = serializeWalls(mockState.walls);
             startNode.wallTheme = theme;
             startNode.strategy = strategy;
         }
@@ -200,7 +204,7 @@ export class MapGenerator {
         for (let l = 1; l < numLayers; l++) {
             const layerNodes = state.mapNodes.filter(n => n.layer === l);
             for (const nodeB of layerNodes) {
-                const incomingNodes = state.mapNodes.filter(n => n.connections.includes(nodeB.id));
+                const incomingNodes = incomingByNodeId.get(nodeB.id) || [];
 
                 let attempts = 0;
                 let success = false;
@@ -210,8 +214,8 @@ export class MapGenerator {
 
                 while (!success && attempts < 50) {
                     attempts++;
-                    const strategy = strategies[Math.floor(Math.random() * strategies.length)];
-                    const theme = themeColors[Math.floor(Math.random() * themeColors.length)];
+                    const strategy = STRATEGIES[Math.floor(Math.random() * STRATEGIES.length)];
+                    const theme = THEME_COLORS[Math.floor(Math.random() * THEME_COLORS.length)];
                     const coordsB = MapGenerator.getNodeCombatCoords(state, nodeB);
 
                     tempFlowFieldGrid.centerX = coordsB.x;
@@ -225,25 +229,16 @@ export class MapGenerator {
 
                     GeneratorStrategies[strategy].generate(mockState, coordsB.x, coordsB.y);
 
-                    const wallsB = mockState.walls.map(w => ({
-                        x: w.x,
-                        y: w.y,
-                        angle: w.angle,
-                        size: w.size,
-                        padding: w.padding,
-                        maxHealth: w.maxHealth || 30
-                    }));
-
                     let allPathable = true;
                     for (const nodeA of incomingNodes) {
-                        if (!checkPathability(nodeA, nodeB, nodeA.wallsData || [], wallsB)) {
+                        if (!MapGenerator.checkPathability(state, nodeA, nodeB, nodeA.wallsData || [], mockState.walls, tempObstacleGrid, tempFlowFieldGrid)) {
                             allPathable = false;
                             break;
                         }
                     }
 
                     if (allPathable) {
-                        chosenWalls = wallsB;
+                        chosenWalls = serializeWalls(mockState.walls);
                         chosenTheme = theme;
                         chosenStrategy = strategy;
                         success = true;
@@ -252,7 +247,7 @@ export class MapGenerator {
 
                 if (!success) {
                     chosenWalls = [];
-                    chosenTheme = themeColors[0];
+                    chosenTheme = THEME_COLORS[0];
                     chosenStrategy = "None";
                 }
 
@@ -261,5 +256,32 @@ export class MapGenerator {
                 nodeB.strategy = chosenStrategy;
             }
         }
+    }
+
+    static checkPathability(state, nodeA, nodeB, wallsA, wallsB, tempObstacleGrid, tempFlowFieldGrid) {
+        const coordsA = MapGenerator.getNodeCombatCoords(state, nodeA);
+        const coordsB = MapGenerator.getNodeCombatCoords(state, nodeB);
+        const mx = (coordsA.x + coordsB.x) / 2;
+        const my = (coordsA.y + coordsB.y) / 2;
+
+        tempFlowFieldGrid.centerX = mx;
+        tempFlowFieldGrid.centerY = my;
+
+        tempObstacleGrid.rebuildFixed(mx, my, gridSettings.width, gridSettings.height);
+        for (let i = 0; i < wallsA.length; i++) {
+            tempObstacleGrid.markWall(wallsA[i]);
+        }
+        for (let i = 0; i < wallsB.length; i++) {
+            tempObstacleGrid.markWall(wallsB[i]);
+        }
+
+        tempFlowFieldGrid.refresh(coordsB.x, coordsB.y);
+
+        const startPos = tempFlowFieldGrid.worldToGrid(coordsA.x, coordsA.y);
+        if (startPos.col < 0 || startPos.col >= tempFlowFieldGrid.cols || startPos.row < 0 || startPos.row >= tempFlowFieldGrid.rows) {
+            return false;
+        }
+        const idx = startPos.row * tempFlowFieldGrid.cols + startPos.col;
+        return tempFlowFieldGrid.flowFieldDist[idx] < 999999;
     }
 }

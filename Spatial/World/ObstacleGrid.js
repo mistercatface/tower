@@ -64,7 +64,7 @@ export function clearWallCells(grid, cols, bounds, segmentGrid = null) {
         for (let col = bounds.startCol; col <= bounds.endCol; col++) {
             const idx = colRowToIndex(col, row, cols);
             grid[idx] = 0;
-            if (segmentGrid) {
+            if (segmentGrid && segmentGrid[idx]) {
                 segmentGrid[idx].length = 0;
             }
         }
@@ -129,11 +129,31 @@ export class WorldObstacleGrid {
 
         const size = this.cols * this.rows;
         this.grid = new Uint8Array(size);
-        this.segmentGrid = new Array(size).fill(null).map(() => []);
+        this.segmentGrid = new Array(size);
 
         for (const wall of walls) {
             this.addWall(wall);
         }
+    }
+
+    rebuildFixed(centerX, centerY, width, height) {
+        this.minX = centerX - width / 2;
+        this.minY = centerY - height / 2;
+        this.maxX = centerX + width / 2;
+        this.maxY = centerY + height / 2;
+        this.cols = Math.ceil(width / this.cellSize);
+        this.rows = Math.ceil(height / this.cellSize);
+
+        const size = this.cols * this.rows;
+        this.grid = new Uint8Array(size);
+        this.segmentGrid = null;
+    }
+
+    markWall(wall) {
+        markWallOnGrid(wall, this.grid, this.cols, this.rows, {
+            worldToGrid: (x, y) => this.worldToGrid(x, y),
+            cellCenter: (col, row) => this.gridToWorld(col, row),
+        });
     }
 
     addWall(wall) {
@@ -141,6 +161,9 @@ export class WorldObstacleGrid {
             worldToGrid: (x, y) => this.worldToGrid(x, y),
             cellCenter: (col, row) => this.gridToWorld(col, row),
             onBlockedCell: (_col, _row, idx) => {
+                if (!this.segmentGrid[idx]) {
+                    this.segmentGrid[idx] = [];
+                }
                 if (!this.segmentGrid[idx].includes(wall)) {
                     this.segmentGrid[idx].push(wall);
                 }

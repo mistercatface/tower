@@ -349,7 +349,7 @@ export class HierarchicalNavigator {
     _connectTempNode(tempNode, gridCol, gridRow, targetNode, isStart) {
         const candidates = new Set();
         const searchRadius = Math.ceil(Math.sqrt(this.maxCellsPerChunk)) * 2;
-        
+
         if (targetNode) {
             candidates.add(targetNode);
             for (const edge of targetNode.edges) {
@@ -367,7 +367,7 @@ export class HierarchicalNavigator {
             }
         }
         for (const candidate of candidates) {
-            const path = isStart 
+            const path = isStart
                 ? this.runLocalAStar(tempNode.col, tempNode.row, candidate.col, candidate.row, 96)
                 : this.runLocalAStar(candidate.col, candidate.row, tempNode.col, tempNode.row, 96);
             if (path) {
