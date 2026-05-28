@@ -17,7 +17,7 @@ export class Player extends Enemy {
     static chargeBar = playerBars.chargeBar;
 
     constructor(x, y, radius, maxHealth) {
-        super(x, y, radius, playerBaseStats.moveSpeed, maxHealth, "#4CAF50", 0, "player");
+        super(x, y, radius, playerBaseStats.speed, maxHealth, "#4CAF50", 0, "player");
         this.healthBar = Player.healthBar;
         this.chargeBar = Player.chargeBar;
         this.spawnX = x;
@@ -31,7 +31,6 @@ export class Player extends Enemy {
         this.targetNodeX = null;
         this.targetNodeY = null;
         this.mass = 50.0;
-        this.moveSpeed = playerBaseStats.moveSpeed;
         this.canDamageWalls = true;
         this.startingAbilities = playerBaseStats.startingAbilities || [];
     }

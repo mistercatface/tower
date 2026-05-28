@@ -75,7 +75,6 @@ export class GameState {
             accuracyModifier: 0,
             get accuracy() {
                 let acc = self.stats.accuracy.value;
-                if (self.player && self.player.isMoving) acc *= 0.5;
                 acc += this.accuracyModifier;
                 return Math.min(1, acc);
             },
@@ -285,7 +284,7 @@ export class GameState {
         this.selectedSpeed = Math.min(this.selectedSpeed, this.gameSpeed);
         this.pointBonus = this.stats.pointBonus.value;
         this.player.updateMaxHealth(this.stats.maxHealth.value);
-        this.player.moveSpeed = playerBaseStats.moveSpeed * this.stats.moveSpeedMultiplier.value;
+        this.player.speed = playerBaseStats.speed * this.stats.moveSpeedMultiplier.value;
         this.player.turrets = this.turrets;
 
         const targetTurretCount = Math.floor(this.stats.turretCount.value);

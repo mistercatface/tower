@@ -37,16 +37,7 @@ export class ChargedWeaponMode extends WeaponTargetingStrategy {
         const ty = source.y + Math.sin(turret.angle) * turretDist;
         const aimTarget = this.determineAimTarget(source, target, blocksTargeting, turret);
         
-        let sway = 0;
-        const weapon = source.weapon;
-        if (weapon && weapon.accuracy !== undefined && turret.charge > 0) {
-            const accuracySpread = ((1 - weapon.accuracy) * Math.PI) / 2 * 0.5;
-            const frequency = 0.005; // speed of sway
-            const turretsList = source.turrets || (source.turret ? [source.turret] : null);
-            const phase = turretsList ? turretsList.indexOf(turret) * 2.0 : 0;
-            const time = state.lastTime || Date.now();
-            sway = Math.sin(time * frequency + phase) * accuracySpread;
-        }
+        const sway = WeaponSystem.computeAccuracySway(source, turret, state, true);
 
         const isAimed = WeaponSystem.aimTurret(turret, source.x, source.y, aimTarget.x, aimTarget.y, dt, sway);
         if (target && !blocksTargeting) {
@@ -80,16 +71,7 @@ export class ContinuousWeaponMode extends WeaponTargetingStrategy {
         const ty = source.y + Math.sin(turret.angle) * turretDist;
         const aimTarget = this.determineAimTarget(source, target, blocksTargeting, turret);
 
-        let sway = 0;
-        const weapon = source.weapon;
-        if (weapon && weapon.accuracy !== undefined) {
-            const accuracySpread = ((1 - weapon.accuracy) * Math.PI) / 2 * 0.5;
-            const frequency = 0.005; // speed of sway
-            const turretsList = source.turrets || (source.turret ? [source.turret] : null);
-            const phase = turretsList ? turretsList.indexOf(turret) * 2.0 : 0;
-            const time = state.lastTime || Date.now();
-            sway = Math.sin(time * frequency + phase) * accuracySpread;
-        }
+        const sway = WeaponSystem.computeAccuracySway(source, turret, state);
 
         WeaponSystem.aimTurret(turret, source.x, source.y, aimTarget.x, aimTarget.y, dt, sway);
         this.onTick(dt, state, tx, ty, turret, combatEvents, source);
@@ -212,6 +194,20 @@ export class WeaponSystem {
             }
         }
         return nearest;
+    }
+
+    static computeAccuracySway(source, turret, state, requireCharge = false) {
+        const weapon = source.weapon;
+        if (!weapon || weapon.accuracy === undefined) return 0;
+        if (requireCharge && turret.charge <= 0) return 0;
+
+        const effectiveAccuracy = source.applyMovementAccuracyPenalty(weapon.accuracy);
+        const accuracySpread = ((1 - effectiveAccuracy) * Math.PI) / 2 * 0.5;
+        const frequency = 0.005;
+        const turretsList = source.turrets || (source.turret ? [source.turret] : null);
+        const phase = turretsList ? turretsList.indexOf(turret) * 2.0 : 0;
+        const time = state.lastTime || Date.now();
+        return Math.sin(time * frequency + phase) * accuracySpread;
     }
 
     static aimTurret(turret, currentX, currentY, targetX, targetY, dt, sway = 0) {

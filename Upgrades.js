@@ -158,7 +158,7 @@ export const createBaseUpgrades = () => [
         currentStrFn: (level) => "x" + (1.0 + level * 0.25).toFixed(2),
         nextStrFn: (level) => "x" + (1.0 + (level + 1) * 0.25).toFixed(2),
         maxLevel: 4,
-        dynamicStrFn: (state) => "x" + (state.player.moveSpeed / playerBaseStats.moveSpeed).toFixed(2)
+        dynamicStrFn: (state) => "x" + (state.player.speed / playerBaseStats.speed).toFixed(2)
     }),
 ]
 
@@ -405,7 +405,7 @@ export const createUpgrades = () => [
         isAbility: true,
         abilityApplyFn: (weapon, player) => {
             weapon.chargeTime *= 1.33;
-            player.moveSpeed *= 0.5;
+            player.speed *= 0.5;
             weapon.accuracyModifier += 0.33;
         },
         showInHud: true,

@@ -442,7 +442,7 @@ export class EnemyBlastedState {
         }
 
         const ratio = Math.max(0, stateData.timer / 500);
-        const launchSpeed = (enemy.moveSpeed || enemy.speed || 50) * 6;
+        const launchSpeed = enemy.speed * 6;
         const speed = launchSpeed * Math.pow(ratio, 1.5);
 
         enemy.vx = Math.cos(stateData.angle) * speed;

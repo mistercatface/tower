@@ -43,7 +43,7 @@ export const playerBaseStats = {
     accuracy: 0.75,
     penetration: 0,
     moveSpeedMultiplier: 1.0,
-    moveSpeed: 50,
+    speed: 50,
     turretCount: 1,
     startingAbilities: ["Reposition"],
 };

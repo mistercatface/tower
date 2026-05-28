@@ -130,10 +130,14 @@ export class Enemy extends DestructibleEntity {
         alignAngleWithMovement = true,
     } = {}) {
         this.separation.update(this, spatialHash);
-        if (this.moveSpeed !== undefined) {
-            this.speed = this.moveSpeed * externalSpeedMod;
+        const baseSpeed = this.speed;
+        if (externalSpeedMod !== 1) {
+            this.speed = baseSpeed * externalSpeedMod;
         }
         PhysicsSystem.applyMovement(this, dt, ignoreSeparationInDesired, shouldMove, alignAngleWithMovement);
+        if (externalSpeedMod !== 1) {
+            this.speed = baseSpeed;
+        }
         PhysicsSystem.resolveWallCollisions(this, walls, state);
     }
 
@@ -185,6 +189,20 @@ export class Enemy extends DestructibleEntity {
 
     canReposition(state) {
         return false;
+    }
+
+    getVelocityMagnitude() {
+        return Math.hypot(this.vx, this.vy);
+    }
+
+    getMovementSpeedRatio() {
+        if (this.speed <= 0) return 0;
+        return Math.min(1, this.getVelocityMagnitude() / maxSpeed);
+    }
+
+    applyMovementAccuracyPenalty(baseAccuracy, minMultiplier = 0.5) {
+        const ratio = this.getMovementSpeedRatio();
+        return baseAccuracy * (1 - (1 - minMultiplier) * ratio);
     }
 
     renderBars(ctx, cache, yOffset, chargeRatios) {
