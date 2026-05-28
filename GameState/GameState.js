@@ -9,6 +9,7 @@ import { Scheduler } from "../Scheduler.js";
 import { WaveManager } from "../WaveManager.js";
 import { Segment } from "../Entities/Wall.js";
 import { GeneratorStrategies } from "../Generator/GeneratorStrategies.js";
+import { SpatialHash } from "../Spatial/SpatialHash.js";
 
 export class Stat {
     constructor(baseValue, min = -Infinity, max = Infinity) {
@@ -86,6 +87,7 @@ export class GameState {
         this.currentUpgradeTab = "attack";
         this.canvasBounds = { width: 0, height: 0 };
         this.upgrades = {};
+        this.wallSpatialHash = new SpatialHash(100);
  
         this.initializeDefaultState();
     }
@@ -265,6 +267,7 @@ export class GameState {
         this.projectiles = [];
         this.floatingTexts = [];
         this.walls = [];
+        this.walls.spatialHash = this.wallSpatialHash;
         this.pickups = [];
         this.activeLasers = [];
         this.gridSystem.clear();
@@ -411,8 +414,23 @@ export class GameState {
         this.currentNodeId = 0;
         this.mapPlayerX = 0;
         this.mapPlayerY = 0;
-
+ 
         this.pregenerateAllCombatData();
+
+        // Instantiate all wall segments statically in the global coordinate space
+        this.walls = [];
+        this.walls.spatialHash = this.wallSpatialHash;
+        this.wallSpatialHash.clear();
+        for (const node of this.mapNodes) {
+            if (node.wallsData) {
+                for (const w of node.wallsData) {
+                    const segment = new Segment(w.x, w.y, w.angle, w.size, w.padding, w.maxHealth);
+                    segment.theme = node.wallTheme || { r: 0, g: 188, b: 212 };
+                    this.walls.push(segment);
+                    this.wallSpatialHash.insert(segment);
+                }
+            }
+        }
     }
 
     pregenerateAllCombatData() {

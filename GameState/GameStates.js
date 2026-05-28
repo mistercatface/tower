@@ -1,4 +1,3 @@
-import { ConnectedGenerator } from "../Generator/ConnectedGenerator.js";
 import { FloatingText } from "../FloatingText.js";
 import { ProgressionManager } from "../ProgressionManager.js";
 import { CollisionSystem } from "../Spatial/CollisionSystem.js";
@@ -50,17 +49,22 @@ export class MapTransitionState {
         const prevNode = ctx.state.mapNodes.find((n) => n.id === ctx.state.currentNodeId);
         const targetNode = ctx.state.mapNodes.find((n) => n.id === ctx.state.mapTargetNodeId);
         
-        if (prevNode && targetNode) {
-            ConnectedGenerator.generateConnected(ctx.state, prevNode, targetNode);
-        }
-        
         ctx.state.player.stopMovement();
         ctx.state.player.vx = 0;
         ctx.state.player.vy = 0;
 
         const targetCoords = ctx.state.getNodeCombatCoords(targetNode);
         ctx.state.player.setTarget(targetCoords.x, targetCoords.y);
-        ctx.state.gridSystem.buildPlayerFlowField(targetCoords.x, targetCoords.y);
+
+        ctx.state.gridSystem.shiftCenter(
+            ctx.state.player.x,
+            ctx.state.player.y,
+            ctx.state.wallSpatialHash,
+            ctx.state.player.x,
+            ctx.state.player.y,
+            targetCoords.x,
+            targetCoords.y
+        );
         
         ctx.viewport.snapTo(ctx.state.player.x, ctx.state.player.y);
         ctx.updateUI(ctx.state, ctx.upgrades);
@@ -70,7 +74,21 @@ export class MapTransitionState {
         const oldGridPos = ctx.state.gridSystem.worldToGrid(ctx.state.player.x, ctx.state.player.y);
         ctx.state.player.update(dt, ctx.state.gridSystem, ctx.state.walls, null);
         const newGridPos = ctx.state.gridSystem.worldToGrid(ctx.state.player.x, ctx.state.player.y);
-        if (oldGridPos.col !== newGridPos.col || oldGridPos.row !== newGridPos.row) {
+        const distToCenter = Math.max(
+            Math.abs(ctx.state.player.x - ctx.state.gridSystem.centerX),
+            Math.abs(ctx.state.player.y - ctx.state.gridSystem.centerY)
+        );
+        if (distToCenter > 400) {
+            ctx.state.gridSystem.shiftCenter(
+                ctx.state.player.x,
+                ctx.state.player.y,
+                ctx.state.wallSpatialHash,
+                ctx.state.player.x,
+                ctx.state.player.y,
+                ctx.state.player.targetX,
+                ctx.state.player.targetY
+            );
+        } else if (oldGridPos.col !== newGridPos.col || oldGridPos.row !== newGridPos.row) {
             ctx.state.gridSystem.buildFlowField(ctx.state.player.x, ctx.state.player.y);
         }
 
@@ -120,70 +138,44 @@ export class CombatState {
         
         const currentNode = ctx.state.mapNodes.find(n => n.id === ctx.state.currentNodeId);
         const combatCoords = ctx.state.getNodeCombatCoords(currentNode);
-        ctx.state.player.setSpawnPosition(combatCoords.x, combatCoords.y);
-        
-        ctx.state.waveManager.startCombat();
-        ctx.state.turrets.forEach(t => t.currentLaserLength = 0);
         
         const transitioningFromTravel = ctx.state.isTransitioningFromTravel && ctx.state.travelSourceCoords && ctx.state.travelTargetCoords;
 
         if (transitioningFromTravel) {
             ctx.state.isTransitioningFromTravel = false;
-            
             ctx.state.player.stopMovement();
             ctx.state.player.vx = 0;
             ctx.state.player.vy = 0;
-            
-            const bx = ctx.state.travelTargetCoords.x;
-            const by = ctx.state.travelTargetCoords.y;
-            
-            ctx.state.gridSystem.centerX = bx;
-            ctx.state.gridSystem.centerY = by;
-            ctx.state.walls.gridSystem = ctx.state.gridSystem;
-            
-            ctx.state.gridSystem.rebuild(ctx.state.walls, bx, by);
-            
-            if (!ctx.state.discoveredAbilities.has("Laser")) {
-                spawnPickup(ctx.state, bx, by, pickupSpawnSettings.coinMinRadius, pickupSpawnSettings.coinMaxRadius, "coin");
-            }
-            spawnPickup(ctx.state, bx, by, pickupSpawnSettings.eyeballMinRadius, pickupSpawnSettings.eyeballMaxRadius, "eyeball");
-
-            const numBarrels = pickupSpawnSettings.barrelMinCount + Math.floor(Math.random() * pickupSpawnSettings.barrelRandomRange);
-            for (let i = 0; i < numBarrels; i++) {
-                spawnPickup(ctx.state, bx, by, pickupSpawnSettings.barrelMinRadius, pickupSpawnSettings.barrelMaxRadius, "barrel");
-            }
+            ctx.state.player.x = combatCoords.x;
+            ctx.state.player.y = combatCoords.y;
         } else {
+            ctx.state.player.setSpawnPosition(combatCoords.x, combatCoords.y);
             ctx.state.player.resetToSpawn();
-            ctx.state.walls = [];
-            ctx.state.walls.gridSystem = ctx.state.gridSystem;
-            ctx.state.gridSystem.centerX = ctx.state.player.x;
-            ctx.state.gridSystem.centerY = ctx.state.player.y;
-            ctx.state.wallTheme = currentNode.wallTheme || { r: 0, g: 188, b: 212 };
-
-            if (currentNode.wallsData) {
-                for (const w of currentNode.wallsData) {
-                    const segment = new Segment(w.x, w.y, w.angle, w.size, w.padding, w.maxHealth);
-                    segment.theme = currentNode.wallTheme || { r: 0, g: 188, b: 212 };
-                    ctx.state.walls.push(segment);
-                }
-            }
-
-            ctx.state.gridSystem.rebuild(ctx.state.walls, ctx.state.player.x, ctx.state.player.y);
-
-            if (!ctx.state.discoveredAbilities.has("Laser")) {
-                spawnPickup(ctx.state, ctx.state.player.x, ctx.state.player.y, pickupSpawnSettings.coinMinRadius, pickupSpawnSettings.coinMaxRadius, "coin");
-            }
-            spawnPickup(ctx.state, ctx.state.player.x, ctx.state.player.y, pickupSpawnSettings.eyeballMinRadius, pickupSpawnSettings.eyeballMaxRadius, "eyeball");
-
-            const numBarrels = pickupSpawnSettings.barrelMinCount + Math.floor(Math.random() * pickupSpawnSettings.barrelRandomRange);
-            for (let i = 0; i < numBarrels; i++) {
-                spawnPickup(ctx.state, ctx.state.player.x, ctx.state.player.y, pickupSpawnSettings.barrelMinRadius, pickupSpawnSettings.barrelMaxRadius, "barrel");
-            }
         }
         
-        if (!transitioningFromTravel) {
-            ctx.viewport.snapTo(ctx.state.player.x, ctx.state.player.y);
+        ctx.state.waveManager.startCombat();
+        ctx.state.turrets.forEach(t => t.currentLaserLength = 0);
+        
+        // Shift grid center to player position and rebuild local flow field using wallSpatialHash
+        ctx.state.gridSystem.shiftCenter(
+            ctx.state.player.x,
+            ctx.state.player.y,
+            ctx.state.wallSpatialHash,
+            ctx.state.player.x,
+            ctx.state.player.y
+        );
+        
+        if (!ctx.state.discoveredAbilities.has("Laser")) {
+            spawnPickup(ctx.state, ctx.state.player.x, ctx.state.player.y, pickupSpawnSettings.coinMinRadius, pickupSpawnSettings.coinMaxRadius, "coin");
         }
+        spawnPickup(ctx.state, ctx.state.player.x, ctx.state.player.y, pickupSpawnSettings.eyeballMinRadius, pickupSpawnSettings.eyeballMaxRadius, "eyeball");
+
+        const numBarrels = pickupSpawnSettings.barrelMinCount + Math.floor(Math.random() * pickupSpawnSettings.barrelRandomRange);
+        for (let i = 0; i < numBarrels; i++) {
+            spawnPickup(ctx.state, ctx.state.player.x, ctx.state.player.y, pickupSpawnSettings.barrelMinRadius, pickupSpawnSettings.barrelMaxRadius, "barrel");
+        }
+        
+        ctx.viewport.snapTo(ctx.state.player.x, ctx.state.player.y);
         ctx.updateUI(ctx.state, ctx.upgrades);
     }
 
@@ -201,7 +193,21 @@ export class CombatState {
         const oldGridPos = ctx.state.gridSystem.worldToGrid(ctx.state.player.x, ctx.state.player.y);
         ctx.state.player.update(dt, ctx.state.gridSystem, ctx.state.walls, spatialHash, abilityState.externalSpeedMod);
         const newGridPos = ctx.state.gridSystem.worldToGrid(ctx.state.player.x, ctx.state.player.y);
-        if (oldGridPos.col !== newGridPos.col || oldGridPos.row !== newGridPos.row) {
+        const distToCenter = Math.max(
+            Math.abs(ctx.state.player.x - ctx.state.gridSystem.centerX),
+            Math.abs(ctx.state.player.y - ctx.state.gridSystem.centerY)
+        );
+        if (distToCenter > 400) {
+            ctx.state.gridSystem.shiftCenter(
+                ctx.state.player.x,
+                ctx.state.player.y,
+                ctx.state.wallSpatialHash,
+                ctx.state.player.x,
+                ctx.state.player.y,
+                ctx.state.player.targetX,
+                ctx.state.player.targetY
+            );
+        } else if (oldGridPos.col !== newGridPos.col || oldGridPos.row !== newGridPos.row) {
             ctx.state.gridSystem.buildFlowField(ctx.state.player.x, ctx.state.player.y);
         }
 

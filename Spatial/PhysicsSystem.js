@@ -38,7 +38,11 @@ export class PhysicsSystem {
         if (!segments) return false;
 
         let candidateWalls = segments;
-        if (segments.gridSystem) candidateWalls = segments.gridSystem.getNearbySegments(entity);
+        if (segments.spatialHash) {
+            candidateWalls = segments.spatialHash.getNearby(entity);
+        } else if (segments.gridSystem) {
+            candidateWalls = segments.gridSystem.getNearbySegments(entity);
+        }
 
         let collided = false;
         for (let i = 0; i < 2; i++) {

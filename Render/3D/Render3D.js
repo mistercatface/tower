@@ -83,8 +83,9 @@ export class Render3D {
 
         const maxDistSq = maxDist * maxDist;
         const visibleWalls = [];
-        for (let i = 0; i < state.walls.length; i++) {
-            const seg = state.walls[i];
+        const candidateWalls = state.wallSpatialHash ? state.wallSpatialHash.queryBounds(px - maxDist, py - maxDist, px + maxDist, py + maxDist) : state.walls;
+        for (let i = 0; i < candidateWalls.length; i++) {
+            const seg = candidateWalls[i];
             if (seg.isDead) continue;
             const distSq = (seg.x - px) ** 2 + (seg.y - py) ** 2;
             if (distSq <= maxDistSq) {
@@ -365,8 +366,9 @@ export class Render3D {
         ctx.save();
 
         const visibleObjects = [];
-        for (let i = 0; i < state.walls.length; i++) {
-            const seg = state.walls[i];
+        const candidateWalls = state.wallSpatialHash ? state.wallSpatialHash.queryBounds(px - 1500, py - 1500, px + 1500, py + 1500) : state.walls;
+        for (let i = 0; i < candidateWalls.length; i++) {
+            const seg = candidateWalls[i];
             if (seg.isDead) continue;
             const distSq = (seg.x - px) ** 2 + (seg.y - py) ** 2;
             if (distSq <= 2250000) {

@@ -8,6 +8,16 @@ export class Segment extends DestructibleEntity {
         this.theme = null;
     }
 
+    getBounds() {
+        const boundingRadius = (this.size / 2) * Math.SQRT2 + this.padding;
+        return {
+            minX: this.x - boundingRadius,
+            minY: this.y - boundingRadius,
+            maxX: this.x + boundingRadius,
+            maxY: this.y + boundingRadius
+        };
+    }
+
     handleHit(damage, ctx) {
         const died = this.takeDamage(damage);
         if (died) {

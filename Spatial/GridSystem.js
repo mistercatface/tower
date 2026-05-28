@@ -30,6 +30,26 @@ export class GridSystem {
         this.buildFlowField(targetX, targetY);
     }
 
+    shiftCenter(newCenterX, newCenterY, wallSpatialHash, targetX, targetY, playerTargetX = null, playerTargetY = null) {
+        this.centerX = newCenterX;
+        this.centerY = newCenterY;
+
+        const halfW = this.width / 2;
+        const halfH = this.height / 2;
+        const minX = newCenterX - halfW;
+        const maxX = newCenterX + halfW;
+        const minY = newCenterY - halfH;
+        const maxY = newCenterY + halfH;
+
+        const localWalls = wallSpatialHash ? wallSpatialHash.queryBounds(minX, minY, maxX, maxY) : [];
+
+        this.rebuild(localWalls, targetX, targetY);
+
+        if (playerTargetX !== null && playerTargetY !== null) {
+            this.buildPlayerFlowField(playerTargetX, playerTargetY);
+        }
+    }
+
     buildFlowFieldTarget(px, py, targetField, gridData) {
         targetField.fill(null);
         const start = this.worldToGrid(px, py);
