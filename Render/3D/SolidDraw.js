@@ -200,7 +200,6 @@ export function drawRadialCap(ctx, pc, {
     return { projection, topX, topY, capRadius };
 }
 
-/** Round foliage blob anchored on a parent projection height slice (tree canopy). */
 export function drawFoliageBlob(ctx, projection, {
     t,
     radius,
@@ -211,9 +210,8 @@ export function drawFoliageBlob(ctx, projection, {
     lineWidth = 0.9,
 }) {
     const slice = getHeightSlice(projection, radius, t);
-    const scale = 1 + projection.alpha * t;
-    const centerX = slice.centerX + offsetX * scale;
-    const centerY = slice.centerY + offsetY * scale;
+    const centerX = slice.centerX + offsetX;
+    const centerY = slice.centerY + offsetY;
     const { viewAngle } = projection;
     const litX = centerX + Math.cos(viewAngle + Math.PI) * slice.size * 0.18;
     const litY = centerY + Math.sin(viewAngle + Math.PI) * slice.size * 0.18;

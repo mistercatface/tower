@@ -45,32 +45,4 @@ export const worldPropDefinitions = {
             randomRange: 17,
         },
     }),
-    tree: prop("tree", {
-        hitBehavior: "damage",
-        radius: 6,
-        isPushable: true,
-        laserTargetable: false,
-        maxHealth: 60,
-        mass: 3,
-        wallPhysics: { restitution: 0.08, friction: 0.85 },
-        spawn: {
-            minCount: 6,
-            randomRange: 14,
-            minRadius: 100,
-            maxRadius: 950,
-        },
-    }),
-    lampPost: prop("lampPost", {
-        hitBehavior: "damage",
-        radius: 5,
-        isPushable: false,
-        laserTargetable: true,
-        maxHealth: 45,
-        mass: 4,
-        wallPhysics: { restitution: 0.05, friction: 0.95 },
-        spawn: {
-            minCount: 5,
-            randomRange: 12,
-        },
-    }),
 };

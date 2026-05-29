@@ -1,15 +1,13 @@
 import { THEME_COLORS, wallTextureSettings } from "../../Config/Config.js";
 import { createPropDrawContext } from "./PropDrawContext.js";
-import { drawTree, drawBarrel, drawCrate, drawLampPost, drawFireBarrel } from "./PropRecipes.js";
+import { drawBarrel, drawCrate, drawFireBarrel } from "./PropRecipes.js";
 import { getWallTextureCanvas } from "./WallTextures.js";
 import { CAMERA_HEIGHT } from "./Projection3D.js";
 
 const PROP_RECIPES = {
-    tree: drawTree,
     barrel: drawBarrel,
     fire_barrel: drawFireBarrel,
     crate: drawCrate,
-    lampPost: drawLampPost,
 };
 
 export class Render3D {
