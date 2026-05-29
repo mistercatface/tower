@@ -191,7 +191,7 @@ export class Render3D {
         }
     }
 
-    drawProjectedFace(ctx, p1, p2, px, py, fillStyle, shouldStroke = false, textureCanvas = null, damageAlpha = 0, height = 40) {
+    drawProjectedFace(ctx, p1, p2, px, py, fillStyle, textureCanvas = null, damageAlpha = 0, height = 40) {
         const face = this.computeProjectedFace(p1, p2, px, py, height);
 
         this.traceProjectedFace(ctx, p1, p2, face);
@@ -209,13 +209,6 @@ export class Render3D {
             ctx.fillStyle = `rgba(244, 67, 54, ${damageAlpha})`;
             ctx.fill();
             ctx.restore();
-        }
-
-        if (shouldStroke) {
-            this.traceProjectedFace(ctx, p1, p2, face);
-            ctx.strokeStyle = "rgba(0, 0, 0, 0.4)";
-            ctx.lineWidth = 1.0;
-            ctx.stroke();
         }
     }
 
@@ -296,15 +289,9 @@ export class Render3D {
             ctx.fill();
         }
 
-        // 4. Draw outer border (theme color)
         ctx.strokeStyle = `rgb(${baseR}, ${baseG}, ${baseB})`;
         ctx.lineWidth = 1.5;
         ctx.stroke();
-
-        // 5. Draw inset panel lines for premium paneled detail
-        ctx.strokeStyle = `rgba(${baseR}, ${baseG}, ${baseB}, 0.4)`;
-        ctx.lineWidth = 0.5;
-        ctx.beginPath();
         
         for (let i = 0; i < 4; i++) {
             const p = projCorners[i];
@@ -320,7 +307,6 @@ export class Render3D {
         }
         ctx.closePath();
         ctx.stroke();
-
         ctx.restore();
     }
 
@@ -365,7 +351,7 @@ export class Render3D {
 
                 const healthRatio = Math.max(0, seg.health / seg.maxHealth);
                 const damageAlpha = (1 - healthRatio) * 0.45;
-                this.drawProjectedFace(targetCtx, p1, p2, px, py, wallColor, false, getWallTextureCanvas(seg.theme || THEME_COLORS[0]), damageAlpha, seg.height);
+                this.drawProjectedFace(targetCtx, p1, p2, px, py, wallColor, getWallTextureCanvas(seg.theme || THEME_COLORS[0]), damageAlpha, seg.height);
             }
 
             // Mask roof in explosion
@@ -522,7 +508,7 @@ export class Render3D {
                     const viewY = edgeCy - py;
                     if (outX * viewX + outY * viewY >= 0) continue;
 
-                    this.drawProjectedFace(ctx, p1, p2, px, py, wallColor, true, wallTexture, damageAlpha, seg.height);
+                    this.drawProjectedFace(ctx, p1, p2, px, py, wallColor, wallTexture, damageAlpha, seg.height);
                 }
 
                 this.drawRoof(ctx, seg, px, py, activeTheme, damageAlpha);
