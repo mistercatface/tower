@@ -1,27 +1,27 @@
 export const TextStyles = {
     standard: {
-        font: "bold 12px monospace",
-        strokeWidth: 2.5,
+        font: "bold 10px monospace",
+        strokeWidth: 1.0,
         scaleFn: (ageRatio) => {
             if (ageRatio < 0.15) {
-                return 1.5 - 0.5 * (ageRatio / 0.15);
+                return 1.4 - 0.4 * (ageRatio / 0.15);
             }
             return 1.0;
         },
         getFill: (ctx, color) => color
     },
     blast: {
-        font: "bold 13px monospace",
-        strokeWidth: 3.0,
+        font: "bold 10px monospace",
+        strokeWidth: 1.0,
         scaleFn: (ageRatio) => {
             if (ageRatio < 0.25) {
                 const t = ageRatio / 0.25;
-                return 1.5 - (1.5 - 1.1) * t;
+                return 1.4 - (1.4 - 1.1) * t;
             }
             return 1.1;
         },
         getFill: (ctx) => {
-            const gradient = ctx.createLinearGradient(0, -6, 0, 6);
+            const gradient = ctx.createLinearGradient(0, -5, 0, 5);
             gradient.addColorStop(0, "#FFF9C4");
             gradient.addColorStop(0.3, "#FFEB3B");
             gradient.addColorStop(0.65, "#FF5722");
@@ -149,7 +149,7 @@ export class FloatingText {
         this.cy = cy;
     }
 
-    render(ctx) {
+    render(ctx, renderer, state) {
         if (!this.offCanvas) {
             this._initCanvas(ctx);
         }
@@ -158,7 +158,11 @@ export class FloatingText {
         ctx.globalAlpha = Math.max(0, this.life);
         
         const ageRatio = 1.0 - this.life;
-        const scale = this.style.scaleFn(ageRatio);
+        let scale = this.style.scaleFn(ageRatio);
+        
+        if (state && state.viewport) {
+            scale /= state.viewport.zoom;
+        }
         
         ctx.translate(this.x, this.y);
         ctx.scale(scale, scale);
