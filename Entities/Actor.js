@@ -34,6 +34,14 @@ export class Actor extends DestructibleEntity {
         transitionEntity(this, enemyStates, stateName, stateDataInit);
     }
 
+    changeStateAndUpdate(stateName, stateDataInit, dt, target, flowFieldGrid, walls, missiles, spatialHash, scheduler, gameState) {
+        this.changeState(stateName, stateDataInit);
+        if (this.currentState?.update) {
+            return this.currentState.update(this, dt, target, flowFieldGrid, walls, missiles, spatialHash, scheduler, gameState);
+        }
+        return false;
+    }
+
     applyLocomotion(dt, walls, spatialHash, {
         state = null,
         externalSpeedMod = 1,

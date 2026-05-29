@@ -1,4 +1,5 @@
 import { enemyTypes, difficultyCurve, spawnSettings, timingSettings } from "../Config/Config.js";
+import { canRunWaveSpawning } from "../GameState/GamePhase.js";
 import { Enemy } from "../Entities/Enemy.js";
 import { updateUI } from "../UI/UI.js";
 import { ProgressionManager } from "../Progression/ProgressionManager.js";
@@ -190,7 +191,7 @@ export class WaveManager {
     }
 
     manageSpawning(dt, state, upgrades, viewport) {
-        if (state.phase === "map" || state.phase === "reward" || state.isTransitioning) return;
+        if (!canRunWaveSpawning(state)) return;
 
         if (this.enemiesSpawned < this.enemiesToSpawn && !this.spawnIntervalId) {
             const currentSpawnDelay = Math.max(spawnSettings.minSpawnDelay, spawnSettings.baseSpawnDelay - this.wave * spawnSettings.delayReductionPerWave);

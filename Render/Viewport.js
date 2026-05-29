@@ -1,3 +1,5 @@
+import { isWorldScene } from "../GameState/GamePhase.js";
+
 export class Viewport {
     constructor(x, y, zoom = 1.0) {
         this.x = x;
@@ -44,7 +46,7 @@ export class Viewport {
     }
 
     updateZoomLimits(state) {
-        if (state && (state.phase === "combat" || state.phase === "reward" || state.phase === "map_transition")) {
+        if (state && isWorldScene(state.phase)) {
             const baseRange = 150;
             const currentRange = state.player.weapon.range;
             const visualRadius = this.getVisualRadius();
@@ -62,7 +64,7 @@ export class Viewport {
     }
 
     setZoom(value, state) {
-        if (state && (state.phase === "combat" || state.phase === "reward" || state.phase === "map_transition")) {
+        if (state && isWorldScene(state.phase)) {
             const baseRange = 150;
             const currentRange = state.player.weapon.range;
             const visualRadius = this.getVisualRadius();

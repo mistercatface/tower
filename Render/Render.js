@@ -1,6 +1,7 @@
 import { SpriteCache } from "./SpriteCache.js";
 import { Render3D } from "./3D/Render3D.js";
 import { mapSettings } from "../Config/Config.js";
+import { getWorldDrawCoords, isMapTransition, isWorldScene } from "../GameState/GamePhase.js";
 
 export class Renderer {
     constructor(canvas, ctx) {
@@ -62,7 +63,7 @@ export class Renderer {
         this.ctx.save();
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-        if (viewport && (state.phase === "combat" || state.phase === "reward" || state.phase === "map_transition")) {
+        if (viewport && isWorldScene(state.phase)) {
             this.drawOscilloscopeGrid(state, viewport);
         }
 
@@ -76,7 +77,7 @@ export class Renderer {
             this._combatPipeline[i](state, viewport);
         }
 
-        if (state.phase === "map_transition") {
+        if (isMapTransition(state.phase)) {
             this.drawTransitionGuides(state);
         }
 
@@ -86,7 +87,7 @@ export class Renderer {
 
         this.ctx.restore();
 
-        if (viewport && (state.phase === "combat" || state.phase === "reward" || state.phase === "map_transition")) {
+        if (viewport && isWorldScene(state.phase)) {
             this.drawGlobeOverlay(state, viewport);
         }
     }
@@ -145,14 +146,14 @@ export class Renderer {
     }
 
     drawRangeIndicator(state, viewport) {
-        const drawRange = (viewport && (state.phase === "combat" || state.phase === "map_transition" || state.phase === "reward")) ? (viewport.getVisualRadius() / viewport.zoom) : state.player.weapon.range;
-        if (viewport && (state.phase === "combat" || state.phase === "map_transition" || state.phase === "reward")) {
+        const { useViewport, range, x, y } = getWorldDrawCoords(state, viewport);
+        if (useViewport) {
             this.ctx.beginPath();
-            this.ctx.arc(viewport.x, viewport.y, drawRange, 0, Math.PI * 2);
+            this.ctx.arc(x, y, range, 0, Math.PI * 2);
             this.ctx.fillStyle = "rgba(76, 255, 80, 0.16)";
             this.ctx.fill();
         } else {
-            state.player.renderRange(this.ctx, drawRange);
+            state.player.renderRange(this.ctx, range);
         }
     }
 
@@ -242,12 +243,10 @@ export class Renderer {
     drawVisibilityMask(ctx, state, viewport) {
         const weaponRange = state.player.weapon.range;
         if (weaponRange > 0) {
-            const maskRadius = (viewport && (state.phase === "combat" || state.phase === "map_transition" || state.phase === "reward")) ? (viewport.getVisualRadius() / viewport.zoom) : weaponRange;
+            const { range: maskRadius, x: cx, y: cy } = getWorldDrawCoords(state, viewport, weaponRange);
             ctx.save();
             ctx.fillStyle = "#000000";
             ctx.beginPath();
-            const cx = (viewport && (state.phase === "combat" || state.phase === "map_transition" || state.phase === "reward")) ? viewport.x : state.player.x;
-            const cy = (viewport && (state.phase === "combat" || state.phase === "map_transition" || state.phase === "reward")) ? viewport.y : state.player.y;
             ctx.rect(cx - 10000, cy - 10000, 20000, 20000);
             ctx.arc(cx, cy, maskRadius, 0, Math.PI * 2);
             ctx.fill("evenodd");

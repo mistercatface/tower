@@ -1,6 +1,7 @@
 import { hardResetProgress } from "../Progression/Storage.js";
 import { perkMilestones } from "../Config/Config.js";
 import { StatsManager } from "../Progression/StatsManager.js";
+import { isCombat, isCombatOrReward } from "../GameState/GamePhase.js";
 
 const elements = {
     sectorClearedModal: document.getElementById("sectorClearedModal"),
@@ -199,7 +200,7 @@ export function updateToggleButton(btnId, isUnlocked, isActive, btnText, upgDef)
 export function updateHud(state, upgrades) {
     const currentNode = state.getCurrentMapNode();
     let waveTextVal = state.waveManager.wave;
-    if (state.phase === "combat" && currentNode) {
+    if (isCombat(state.phase) && currentNode) {
         waveTextVal = `${state.waveManager.sectorWave}/${currentNode.wavesTotal}`;
     }
     setTextIfDifferent("waveDisplay", waveTextVal);
@@ -398,7 +399,7 @@ export function initUI(state, upgrades, resetGameCallback) {
             const viewport = state.fsm?.context?.viewport;
             if (!viewport) return;
             const sliderVal = parseFloat(e.target.value) / 100;
-            if (state.phase === "combat" || state.phase === "reward") {
+            if (isCombatOrReward(state.phase)) {
                 viewport.zoomProgress = sliderVal;
                 viewport.updateZoomLimits(state);
                 updateUI(state, upgrades);
@@ -556,7 +557,7 @@ export function updateUI(state, upgrades) {
     }
     if (elements.zoomSlider && viewport) {
         let sliderVal = 0.5;
-        if (state.phase === "combat" || state.phase === "reward") {
+        if (isCombatOrReward(state.phase)) {
             sliderVal = viewport.zoomProgress;
         } else {
             sliderVal = (viewport.zoom - 0.5) / 1.5;

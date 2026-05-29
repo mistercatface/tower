@@ -15,7 +15,7 @@ export class GameState {
         this.fsm = null;
         this.scheduler = new Scheduler();
         this.waveManager = new WaveManager();
-        this.phase = "map";
+        this._phase = "map";
         this.mapNodes = [];
         this.mapNodeById = new Map();
         this.currentNodeId = 0;
@@ -105,6 +105,14 @@ export class GameState {
 
     getMapTargetNode() {
         return this.getMapNode(this.mapTargetNodeId);
+    }
+
+    get phase() {
+        return this.fsm?.currentStateName ?? this._phase;
+    }
+
+    set phase(value) {
+        this._phase = value;
     }
 
     initializeDefaultState() {

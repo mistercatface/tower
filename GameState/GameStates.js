@@ -13,7 +13,6 @@ import { resolveMoveTarget } from "../Spatial/Navigation/PathClearance.js";
 
 export class MapState {
     onEnter(ctx) {
-        ctx.state.phase = "map";
         ctx.updateUI(ctx.state, ctx.upgrades);
     }
     update(dt, ctx) {
@@ -44,8 +43,6 @@ export class MapState {
 
 export class MapTransitionState {
     onEnter(ctx) {
-        ctx.state.phase = "map_transition";
-        
         const targetNode = ctx.state.getMapTargetNode();
         
         ctx.state.player.stopMovement(ctx.state);
@@ -115,7 +112,6 @@ export class CombatState {
     }
 
     onEnter(ctx) {
-        ctx.state.phase = "combat";
         ctx.state.pickups = [];
         ctx.state.projectiles = [];
         ctx.state.explosions = [];
@@ -245,7 +241,6 @@ export class CombatState {
 
 export class RewardState {
     onEnter(ctx) {
-        ctx.state.phase = "reward";
         ctx.updateUI(ctx.state, ctx.upgrades);
     }
     update(dt, ctx) {
