@@ -13,6 +13,10 @@ import {
 import { Turret } from "./Turret.js";
 import { applyActorGunModifiers, getSlotFireIntervalMs } from "../Combat/gunCombat.js";
 import { getGunDefinition } from "../Config/gunDefinitions.js";
+import {
+    getTurretCountForLoadout,
+    normalizeWeaponLoadout,
+} from "../Combat/equipmentLoadout.js";
 
 export class Actor extends DestructibleEntity {
     constructor(x, y, radius, speed, health, color, type, accelRate = 3.0, canDamageWalls = false) {
@@ -138,13 +142,13 @@ export class Actor extends DestructibleEntity {
     }
 
     applyWeaponLoadout(gunIds) {
-        this.weaponLoadout = [...gunIds];
+        const loadout = normalizeWeaponLoadout(gunIds);
+        this.weaponLoadout = loadout;
         const turnSpeed = this.stats?.turnSpeed?.value ?? this.turnSpeed;
-        this.syncTurretCount(gunIds.length, turnSpeed);
+        this.syncTurretCount(getTurretCountForLoadout(loadout), turnSpeed);
 
-        for (let i = 0; i < gunIds.length; i++) {
-            getGunDefinition(gunIds[i]);
-            this.turrets[i].gunId = gunIds[i];
+        for (let i = 0; i < loadout.length; i++) {
+            this.turrets[i].gunId = loadout[i];
         }
 
         applyActorGunModifiers(this);

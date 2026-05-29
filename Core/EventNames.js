@@ -22,6 +22,8 @@ export const Events = {
     MAP_CONTINUE_AFTER_SECTOR: "map:continueAfterSector",
     PROGRESS_PURCHASE_UPGRADE: "progress:purchaseUpgrade",
     PROGRESS_TOGGLE_ABILITY: "progress:toggleAbility",
+    PROGRESS_EQUIP_WEAPON: "progress:equipWeapon",
+    PROGRESS_UNEQUIP_WEAPON_SLOT: "progress:unequipWeaponSlot",
     PROGRESS_HARD_RESET: "progress:hardReset",
     UI_SET_UPGRADE_TAB: "ui:setUpgradeTab",
     UI_SET_STATS_SUB_TAB: "ui:setStatsSubTab",

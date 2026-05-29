@@ -99,6 +99,14 @@ export function emitToggleAbility(abilityId) {
     events.emit(Events.PROGRESS_TOGGLE_ABILITY, { abilityId });
 }
 
+export function emitToggleEquipWeapon(gunId) {
+    events.emit(Events.PROGRESS_EQUIP_WEAPON, { gunId });
+}
+
+export function emitUnequipWeaponSlot(slotIndex) {
+    events.emit(Events.PROGRESS_UNEQUIP_WEAPON_SLOT, { slotIndex });
+}
+
 export function emitSetUpgradeTab(tab) {
     events.emit(Events.UI_SET_UPGRADE_TAB, { tab });
 }

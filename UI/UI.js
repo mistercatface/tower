@@ -3,8 +3,15 @@ import { xpForLevel } from "../Config/configHelpers.js";
 import { buildAbilityTreeLayout } from "../Config/abilityTreeLayout.js";
 import { isCombat, isCombatOrReward } from "../GameState/GamePhase.js";
 import { formatWeaponLoadoutLabel } from "../Combat/weaponLoadout.js";
-import { getGunDefinition } from "../Config/gunDefinitions.js";
+import { getGunDefinition, playerEquipmentCatalog } from "../Config/gunDefinitions.js";
 import { getSlotFireIntervalMs } from "../Combat/gunCombat.js";
+import {
+    countGunInLoadout,
+    formatHandednessLabel,
+    getEquipmentSlotCount,
+    getGunEquipAction,
+    normalizeWeaponLoadout,
+} from "../Combat/equipmentLoadout.js";
 import {
     events,
     Events,
@@ -13,6 +20,8 @@ import {
     emitToggleAbility,
     emitSetUpgradeTab,
     emitSetStatsSubTab,
+    emitToggleEquipWeapon,
+    emitUnequipWeaponSlot,
     adjustGameSpeed,
     setGameZoomFromSlider,
     emitHardReset,
@@ -73,6 +82,8 @@ const elements = {
     statsSubTabButtons: document.querySelectorAll(".statsSubTabBtn"),
     statsSubTabs: document.getElementById("statsSubTabs"),
     equipmentPanel: document.getElementById("equipmentPanel"),
+    equipmentSlots: document.getElementById("equipmentSlots"),
+    equipmentArmory: document.getElementById("equipmentArmory"),
     zoomSlider: document.getElementById("zoomSlider"),
     zoomDisplay: document.getElementById("zoomDisplay"),
 };
@@ -394,6 +405,8 @@ export function initUI(state, upgrades) {
         });
     });
 
+    initEquipmentUI();
+
     elements.upgradesContainer.innerHTML = "";
     upgrades.forEach((upg) => {
         const styles =
@@ -470,56 +483,149 @@ function setTabButtonActive(buttons, activeValue, attrName) {
     });
 }
 
-function formatGunStatLines(gun, actor) {
-    const lines = [`<div style="color: #FF9800; font-weight: bold; font-size: 14px;">${gun.name ?? gun.id}</div>`];
-
+function formatGunSummary(gun, actor) {
     if (gun.kind === "beam") {
-        lines.push(`<div>Type: Beam</div>`);
-        if (gun.tickDamage != null) lines.push(`<div>Tick damage: ${gun.tickDamage}</div>`);
-        if (gun.tickIntervalMs != null) lines.push(`<div>Tick interval: ${gun.tickIntervalMs} ms</div>`);
-        if (gun.beamRadius != null) lines.push(`<div>Beam radius: ${gun.beamRadius}</div>`);
-    } else {
-        lines.push(`<div>Type: Projectile</div>`);
-        if (gun.damage != null) lines.push(`<div>Damage: ${gun.damage}</div>`);
-        if (gun.fireIntervalMs != null) {
-            const interval = getSlotFireIntervalMs(gun, actor);
-            lines.push(`<div>Fire interval: ${Math.round(interval)} ms</div>`);
-        }
-        if (gun.bulletRadius != null) lines.push(`<div>Bullet radius: ${gun.bulletRadius}</div>`);
-        if (gun.muzzleSpeed != null) lines.push(`<div>Muzzle speed: ${gun.muzzleSpeed}</div>`);
+        const parts = ["Beam"];
+        if (gun.tickDamage != null) parts.push(`${gun.tickDamage} dmg/tick`);
+        if (gun.tickIntervalMs != null) parts.push(`${gun.tickIntervalMs}ms`);
+        return parts.join(" · ");
     }
 
-    if (gun.equipModifiers?.turnSpeedMultiplier != null) {
-        const pct = Math.round(gun.equipModifiers.turnSpeedMultiplier * 100);
-        lines.push(`<div style="color: #90CAF9;">Turn speed: ${pct}%</div>`);
+    const parts = ["Projectile"];
+    if (gun.damage != null) parts.push(`${gun.damage} dmg`);
+    if (gun.fireIntervalMs != null) {
+        parts.push(`${Math.round(getSlotFireIntervalMs(gun, actor))}ms`);
+    }
+    return parts.join(" · ");
+}
+
+function initEquipmentUI() {
+    if (!elements.equipmentSlots || !elements.equipmentArmory) return;
+
+    elements.equipmentSlots.innerHTML = "";
+    dynamicElements.equipmentSlotEls = [];
+
+    for (let i = 0; i < 2; i++) {
+        const slot = document.createElement("div");
+        slot.className = "equipment-slot equipment-slot-empty";
+
+        const body = document.createElement("div");
+        body.className = "equipment-slot-body";
+
+        const label = document.createElement("div");
+        label.className = "equipment-slot-label";
+
+        const name = document.createElement("div");
+        name.className = "equipment-slot-name";
+
+        const stats = document.createElement("div");
+        stats.className = "equipment-slot-stats";
+
+        body.appendChild(label);
+        body.appendChild(name);
+        body.appendChild(stats);
+
+        const unequipBtn = createButton("", "Unequip", () => emitUnequipWeaponSlot(i), `equipmentUnequip_${i}`);
+        unequipBtn.className = "equipment-btn equipment-btn-unequip";
+        unequipBtn.style.display = "none";
+
+        slot.appendChild(body);
+        slot.appendChild(unequipBtn);
+        elements.equipmentSlots.appendChild(slot);
+
+        dynamicElements[`equipmentUnequip_${i}`] = unequipBtn;
+        dynamicElements.equipmentSlotEls.push({ slot, label, name, stats, unequipBtn });
     }
 
-    return lines.join("");
+    elements.equipmentArmory.innerHTML = "";
+    playerEquipmentCatalog.forEach((gunId) => {
+        const row = document.createElement("div");
+        row.className = "equipment-armory-row";
+        row.dataset.gunId = gunId;
+
+        const info = document.createElement("div");
+        info.className = "equipment-armory-info";
+
+        const name = document.createElement("div");
+        name.className = "equipment-armory-name";
+
+        const meta = document.createElement("div");
+        meta.className = "equipment-armory-meta";
+
+        info.appendChild(name);
+        info.appendChild(meta);
+
+        const actionBtn = createButton("", "Equip", () => emitToggleEquipWeapon(gunId), `equipmentAction_${gunId}`);
+        actionBtn.className = "equipment-btn equipment-btn-equip";
+
+        row.appendChild(info);
+        row.appendChild(actionBtn);
+        elements.equipmentArmory.appendChild(row);
+
+        dynamicElements[`equipmentArmory_${gunId}`] = { row, name, meta, actionBtn };
+    });
 }
 
 function drawEquipmentPanel(state) {
-    if (!elements.equipmentPanel) return;
+    if (!dynamicElements.equipmentSlotEls) return;
 
-    const loadout = state.player?.weaponLoadout ?? [];
-    if (loadout.length === 0) {
-        elements.equipmentPanel.innerHTML =
-            '<div style="color: #888;">No equipment equipped.</div>';
-        return;
-    }
+    const player = state.player;
+    const loadout = normalizeWeaponLoadout(player?.weaponLoadout ?? []);
+    const slotCount = getEquipmentSlotCount(loadout);
+    const disabled = state.isGameOver;
 
-    const slotsHtml = loadout
-        .map((gunId, index) => {
+    dynamicElements.equipmentSlotEls.forEach((el, index) => {
+        const visible = index < slotCount;
+        el.slot.style.display = visible ? "flex" : "none";
+        if (!visible) return;
+
+        const gunId = loadout[index];
+        if (gunId) {
             const gun = getGunDefinition(gunId);
-            const slotLabel = loadout.length > 1 ? `Slot ${index + 1}` : "Primary";
-            return `<div style="margin-bottom: 10px;"><div style="color: #00BCD4; font-size: 11px; margin-bottom: 4px;">${slotLabel}</div>${formatGunStatLines(gun, state.player)}</div>`;
-        })
-        .join("");
+            el.slot.classList.remove("equipment-slot-empty");
+            el.slot.classList.add("equipment-slot-filled");
+            el.label.textContent = `Slot ${index + 1} · ${formatHandednessLabel(gunId)}`;
+            el.name.textContent = gun.name ?? gun.id;
+            el.stats.textContent = formatGunSummary(gun, player);
+            el.unequipBtn.style.display = "block";
+            el.unequipBtn.disabled = disabled;
+        } else {
+            el.slot.classList.add("equipment-slot-empty");
+            el.slot.classList.remove("equipment-slot-filled");
+            el.label.textContent = `Slot ${index + 1} · Empty`;
+            el.name.textContent = "—";
+            el.stats.textContent = "Select a weapon from the armory";
+            el.unequipBtn.style.display = "none";
+        }
+    });
 
-    const targetHTML = slotsHtml;
-    if (elements.equipmentPanel.dataset.lastHtml !== targetHTML) {
-        elements.equipmentPanel.innerHTML = targetHTML;
-        elements.equipmentPanel.dataset.lastHtml = targetHTML;
-    }
+    playerEquipmentCatalog.forEach((gunId) => {
+        const el = dynamicElements[`equipmentArmory_${gunId}`];
+        if (!el) return;
+
+        const gun = getGunDefinition(gunId);
+        const action = getGunEquipAction(loadout, gunId);
+        const equippedCount = countGunInLoadout(loadout, gunId);
+
+        el.name.textContent = gun.name ?? gun.id;
+        el.meta.textContent = `${formatHandednessLabel(gunId)} · ${formatGunSummary(gun, player)}`;
+
+        el.row.classList.toggle("equipment-armory-equipped", equippedCount > 0);
+        el.row.classList.toggle("equipment-armory-blocked", action === "blocked");
+
+        el.actionBtn.disabled = disabled || action === "blocked";
+        el.actionBtn.classList.remove("equipment-btn-equip", "equipment-btn-unequip");
+
+        if (action === "unequip") {
+            el.actionBtn.textContent = equippedCount > 1 ? `Unequip (${equippedCount})` : "Unequip";
+            el.actionBtn.classList.add("equipment-btn-unequip");
+        } else if (action === "equip") {
+            el.actionBtn.textContent = equippedCount > 0 ? "Equip +1" : "Equip";
+            el.actionBtn.classList.add("equipment-btn-equip");
+        } else {
+            el.actionBtn.textContent = "Full";
+        }
+    });
 }
 
 function drawStat(state, upg, abilityLayoutById) {
@@ -680,7 +786,7 @@ export function updateUI(state, upgrades) {
         elements.statsSubTabs.style.display = onStatsTab ? "flex" : "none";
     }
     if (elements.equipmentPanel) {
-        elements.equipmentPanel.style.display = onEquipmentTab ? "block" : "none";
+        elements.equipmentPanel.style.display = onEquipmentTab ? "flex" : "none";
     }
     if (elements.upgradesContainer) {
         elements.upgradesContainer.style.display = onEquipmentTab ? "none" : "flex";
@@ -713,4 +819,6 @@ export function updateUI(state, upgrades) {
     }
 
     upgrades.forEach((upg) => drawStat(state, upg, abilityLayoutById));
+
+    setTextIfDifferent("weaponDisplay", formatWeaponLoadoutLabel(state.player));
 }

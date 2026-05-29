@@ -1,4 +1,5 @@
 import { enemyProjectileSettings, playerProjectileSettings } from "./Config.js";
+import { Handedness } from "./equipmentConfig.js";
 
 export const defaultGunId = "servicePistol";
 export const defaultEnemyGunId = "enemyRifle";
@@ -7,11 +8,15 @@ export const defaultEnemyGunId = "enemyRifle";
 export const playerStartGunPool = ["servicePistol", "beamLaser"];
 export const enemyStartGunPool = ["enemyRifle", "servicePistol"];
 
+/** Guns the player can equip from the Equipment tab. */
+export const playerEquipmentCatalog = ["servicePistol", "beamLaser"];
+
 /** Fixed ballistics and damage per gun. */
 export const gunDefinitions = {
     servicePistol: {
         id: "servicePistol",
         name: "Service Pistol",
+        handedness: Handedness.ONE_HANDED,
         kind: "projectile",
         fireIntervalMs: 1000,
         muzzleSpeed: playerProjectileSettings.speed,
@@ -21,6 +26,7 @@ export const gunDefinitions = {
     beamLaser: {
         id: "beamLaser",
         name: "Beam Laser",
+        handedness: Handedness.TWO_HANDED,
         kind: "beam",
         beamRadius: 1,
         tickIntervalMs: 200,
@@ -33,6 +39,7 @@ export const gunDefinitions = {
     enemyRifle: {
         id: "enemyRifle",
         name: "Enemy Rifle",
+        handedness: Handedness.TWO_HANDED,
         kind: "projectile",
         fireIntervalMs: 1500,
         muzzleSpeed: enemyProjectileSettings.speed,

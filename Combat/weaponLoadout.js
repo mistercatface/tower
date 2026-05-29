@@ -1,31 +1,27 @@
 import { enemyStartGunPool, getGunDefinition, playerStartGunPool } from "../Config/gunDefinitions.js";
+import { rollRandomLoadoutFromPool } from "./equipmentLoadout.js";
 
 export function formatWeaponLoadoutLabel(actor) {
-    if (!actor?.weaponLoadout?.length) {
+    const loadout = actor?.weaponLoadout ?? [];
+    if (!loadout.length) {
         return "Weapon: —";
     }
 
-    const gun = getGunDefinition(actor.weaponLoadout[0]);
-    const name = gun.name ?? gun.id;
-    const damage = gun.damage ?? gun.tickDamage;
-    const damageHint = damage != null ? ` · ${damage} dmg` : "";
-    return `Weapon: ${name}${damageHint}`;
-}
+    const parts = loadout.map((gunId) => {
+        const gun = getGunDefinition(gunId);
+        const name = gun.name ?? gun.id;
+        const damage = gun.damage ?? gun.tickDamage;
+        const damageHint = damage != null ? ` (${damage} dmg)` : "";
+        return `${name}${damageHint}`;
+    });
 
-export function rollRandomWeaponLoadout(pool, slotCount = 1) {
-    if (slotCount <= 0 || pool.length === 0) return [];
-
-    const guns = [];
-    for (let i = 0; i < slotCount; i++) {
-        guns.push(pool[Math.floor(Math.random() * pool.length)]);
-    }
-    return guns;
+    return `Weapon: ${parts.join(" + ")}`;
 }
 
 export function rollPlayerStartLoadout() {
-    return rollRandomWeaponLoadout(playerStartGunPool, 1);
+    return rollRandomLoadoutFromPool(playerStartGunPool);
 }
 
 export function rollEnemyStartLoadout() {
-    return rollRandomWeaponLoadout(enemyStartGunPool, 1);
+    return rollRandomLoadoutFromPool(enemyStartGunPool);
 }

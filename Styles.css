@@ -109,6 +109,156 @@ canvas {
     background: rgba(0, 188, 212, 0.6);
 }
 
+.equipment-panel {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-right: 2px;
+}
+
+.equipment-section-title {
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #00bcd4;
+    margin-bottom: 6px;
+}
+
+.equipment-slots {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.equipment-slot {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+    padding: 8px;
+    background: #1a1a1a;
+    border: 1px solid #444;
+    border-radius: 6px;
+    min-height: 52px;
+}
+
+.equipment-slot.equipment-slot-filled {
+    border-color: #ff9800;
+}
+
+.equipment-slot.equipment-slot-empty {
+    border-style: dashed;
+    border-color: #333;
+}
+
+.equipment-slot-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.equipment-slot-label {
+    font-size: 10px;
+    color: #888;
+    margin-bottom: 2px;
+}
+
+.equipment-slot-name {
+    font-size: 13px;
+    font-weight: bold;
+    color: #ff9800;
+}
+
+.equipment-slot-stats {
+    font-size: 11px;
+    color: #aaa;
+    margin-top: 2px;
+}
+
+.equipment-slot-empty-text {
+    font-size: 12px;
+    color: #555;
+    align-self: center;
+}
+
+.equipment-armory {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.equipment-armory-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    background: #1a1a1a;
+    border: 1px solid #444;
+    border-radius: 6px;
+}
+
+.equipment-armory-row.equipment-armory-equipped {
+    border-color: #4caf50;
+}
+
+.equipment-armory-row.equipment-armory-blocked {
+    opacity: 0.55;
+}
+
+.equipment-armory-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.equipment-armory-name {
+    font-size: 13px;
+    font-weight: bold;
+    color: #fff;
+}
+
+.equipment-armory-meta {
+    font-size: 11px;
+    color: #888;
+    margin-top: 2px;
+}
+
+.equipment-btn {
+    flex-shrink: 0;
+    padding: 6px 10px;
+    font-family: monospace;
+    font-size: 11px;
+    font-weight: bold;
+    border-radius: 4px;
+    border: 1px solid #555;
+    cursor: pointer;
+    background: #333;
+    color: #fff;
+}
+
+.equipment-btn:hover:not(:disabled) {
+    background: #444;
+    border-color: #888;
+}
+
+.equipment-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.equipment-btn-equip {
+    background: #1b3322;
+    border-color: #4caf50;
+    color: #a5d6a7;
+}
+
+.equipment-btn-unequip {
+    background: #3d1f1f;
+    border-color: #e57373;
+    color: #ffcdd2;
+}
+
 .control-btn {
     background: linear-gradient(to bottom, #2d2d2d, #1a1a1a);
     color: #cbd5e1;

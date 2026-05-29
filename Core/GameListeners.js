@@ -1,3 +1,4 @@
+import { toggleGunInLoadout, unequipSlot } from "../Combat/equipmentLoadout.js";
 import { Events, requestProgressDirty, requestUiUpdate } from "./EventSystem.js";
 import { ProgressionManager } from "../Progression/ProgressionManager.js";
 import { hardResetProgress, registerProgressListeners } from "../Progression/Storage.js";
@@ -56,6 +57,22 @@ export function registerGameListeners(eventBus, pauseManager) {
 
         state.abilities[abilityId] = !state.abilities[abilityId];
         StatsManager.recalculateStats(state, upgrades);
+        requestUiUpdate();
+    });
+
+    eventBus.on(Events.PROGRESS_EQUIP_WEAPON, ({ state, gunId }) => {
+        if (state.isGameOver || !state.player) return;
+
+        const loadout = toggleGunInLoadout(state.player.weaponLoadout, gunId);
+        state.player.applyWeaponLoadout(loadout);
+        requestUiUpdate();
+    });
+
+    eventBus.on(Events.PROGRESS_UNEQUIP_WEAPON_SLOT, ({ state, slotIndex }) => {
+        if (state.isGameOver || !state.player) return;
+
+        const loadout = unequipSlot(state.player.weaponLoadout, slotIndex);
+        state.player.applyWeaponLoadout(loadout);
         requestUiUpdate();
     });
 

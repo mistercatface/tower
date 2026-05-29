@@ -107,8 +107,15 @@
                     <button class="statsSubTabBtn tabBtn" data-stats-tab="meta"
                         style="flex: 1; padding: 4px; background: #222; color: white; border: 1px solid #555; cursor: pointer; font-family: monospace; font-size: 12px; font-weight: bold;">Meta</button>
                 </div>
-                <div id="equipmentPanel"
-                    style="display: none; padding: 8px; background: #222; border: 1px solid #555; font-family: monospace; font-size: 12px; color: #ccc; line-height: 1.5;">
+                <div id="equipmentPanel" class="equipment-panel" style="display: none;">
+                    <div class="equipment-section">
+                        <div class="equipment-section-title">Equipped</div>
+                        <div id="equipmentSlots" class="equipment-slots"></div>
+                    </div>
+                    <div class="equipment-section">
+                        <div class="equipment-section-title">Armory</div>
+                        <div id="equipmentArmory" class="equipment-armory"></div>
+                    </div>
                 </div>
                 <div id="upgradesContainer"></div>
             </div>
