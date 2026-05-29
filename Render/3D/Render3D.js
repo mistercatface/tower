@@ -385,17 +385,17 @@ export class Render3D {
                     const outX = edgeCx - seg.x;
                     const outY = edgeCy - seg.y;
 
-                    const viewX = edgeCx - vx;
-                    const viewY = edgeCy - vy;
+                    const viewX = edgeCx - px;
+                    const viewY = edgeCy - py;
                     if (outX * viewX + outY * viewY >= 0) continue;
 
                     const healthRatio = Math.max(0, seg.health / seg.maxHealth);
                     const damageAlpha = (1 - healthRatio) * 0.45;
-                    this.drawProjectedFace(ctx, p1, p2, vx, vy, wallColor, true, wallTexture, damageAlpha);
+                    this.drawProjectedFace(ctx, p1, p2, px, py, wallColor, true, wallTexture, damageAlpha);
                 }
             } else {
                 ctx.save();
-                const pc = createPropDrawContext(obj, vx, vy);
+                const pc = createPropDrawContext(obj, px, py);
                 const draw = PROP_RECIPES[obj._renderType];
                 if (draw) draw(ctx, pc);
                 ctx.restore();
