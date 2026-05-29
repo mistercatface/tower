@@ -179,7 +179,7 @@ export class CombatState {
         ctx.state.waveManager.manageSpawning(dt, ctx.state, ctx.upgrades, ctx.viewport);
         Enemy.updateAll(ctx.state, dt, spatialHash);
         Projectile.updateAll(ctx.state, dt);
-        ProgressionManager.updatePickups(ctx.state, dt, ctx.upgrades);
+        ProgressionManager.updatePickups(ctx.state, dt);
 
         const turretEvents = WeaponSystem.updateTurretAndWeapon(dt, abilityState.blocksTargeting, ctx.state, ctx.upgrades);
         const collisionEvents = CollisionSystem.run(ctx.state);

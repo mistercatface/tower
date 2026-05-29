@@ -23,32 +23,12 @@ export class ProgressionManager {
         FloatingText.spawn(state, enemy.x, enemy.y - 30, `+${xpGain} XP`, "#4CAF50");
     }
 
-    static updatePickups(state, dt, upgrades) {
+    static updatePickups(state, dt) {
         for (let i = state.pickups.length - 1; i >= 0; i--) {
             const p = state.pickups[i];
             p.update(dt, state.walls);
-
             if (p.isDead) {
                 state.pickups.splice(i, 1);
-                continue;
-            }
-
-            const dist = Math.hypot(p.x - state.player.x, p.y - state.player.y);
-            if (dist < state.player.radius + p.radius) {
-                if (p.strategy && p.strategy.onCollect) {
-                    const result = p.strategy.onCollect(state, p, upgrades);
-                    if (result) {
-                        if (result.type === "coin") {
-                            if (result.unlockedLaser) {
-                                updateUI(state, upgrades);
-                                FloatingText.spawn(state, p.x, p.y - 20, "LASER UNLOCKED", "#00BCD4");
-                            }
-                            markProgressDirty(state);
-                        } else if (result.type === "eyeball") {
-                            FloatingText.spawn(state, p.x, p.y, "EYEBALL", "#FFFFFF");
-                        }
-                    }
-                }
             }
         }
     }
@@ -109,7 +89,6 @@ export class ProgressionManager {
 
     static getValidAbilities(state, upgrades) {
         return upgrades.filter((u) => {
-            if (u.id === "Laser" && (!state.discoveredAbilities || !state.discoveredAbilities.has("Laser"))) return false;
             const uState = state.upgrades[u.id];
             if (u.category !== "abilities" || uState.level > 0) return false;
             if (u.requires && u.requires.some((req) => !state.upgrades[req] || state.upgrades[req].level === 0)) return false;

@@ -109,10 +109,6 @@ export const THEME_COLORS = [
 ];
 
 export const pickupSpawnSettings = {
-    coinMinRadius: 250,
-    coinMaxRadius: 300,
-    eyeballMinRadius: 175,
-    eyeballMaxRadius: 200,
     barrelMinCount: 25,
     barrelRandomRange: 125,
     barrelMinRadius: 150,

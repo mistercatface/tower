@@ -1,9 +1,8 @@
 import { Entity } from "./Entity.js";
 import { Explosion } from "./Explosion/Explosion.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
-import { RenderSprites } from "../Render/RenderSprites.js";
-import { StatsManager } from "../Progression/StatsManager.js";
 import { pickupSpawnSettings } from "../Config/Config.js";
+import { worldPropDefinitions } from "../Config/PropDefinitions.js";
 
 const PICKUP_STRATEGY_DEFAULTS = {
     isPushable: false,
@@ -40,124 +39,26 @@ function damageOnHit(state, pickup, projectile, events) {
     return true;
 }
 
-export const PickupStrategies = {
-    coin: {
-        radius: 8,
-        render(ctx, cx, cy, radius) {
-            ctx.beginPath();
-            ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-            ctx.fillStyle = "#FFEB3B";
-            ctx.fill();
-            ctx.lineWidth = 1;
-            ctx.strokeStyle = "#FBC02D";
-            ctx.stroke();
-
-            ctx.fillStyle = "#000";
-            ctx.font = "10px monospace";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText("$", cx, cy + 1);
-        },
-        onCollect(state, pickup, upgrades) {
-            let unlockedLaser = false;
-            if (state.upgrades["Laser"].level === 0) {
-                state.upgrades["Laser"].baseLevel = 1;
-                state.upgrades["Laser"].level = 1;
-                state.abilities["Laser"] = true;
-                state.discoveredAbilities.add("Laser");
-
-                ["TwinStrike", "TripleStrike"].forEach((repId) => {
-                    if (state.upgrades[repId]) {
-                        state.upgrades[repId].level = 0;
-                        state.upgrades[repId].baseLevel = 0;
-                    }
-                    state.abilities[repId] = false;
-                });
-
-                StatsManager.recalculateStats(state, upgrades);
-                unlockedLaser = true;
-            }
-            pickup.isDead = true;
-            return { type: "coin", unlockedLaser };
-        },
-        onHit(state, pickup, projectile, events) {
-            return false;
-        }
-    },
-    eyeball: {
-        radius: 8,
-        render(ctx, cx, cy, radius) {
-            ctx.beginPath();
-            ctx.arc(cx, cy, radius * 0.5, 0, Math.PI * 2);
-            ctx.fillStyle = "#2196F3";
-            ctx.fill();
-
-            ctx.beginPath();
-            ctx.arc(cx, cy, radius * 0.25, 0, Math.PI * 2);
-            ctx.fillStyle = "#000000";
-            ctx.fill();
-        },
-        onCollect(state, pickup, upgrades) {
-            pickup.isDead = true;
-            return { type: "eyeball" };
-        },
-        onHit(state, pickup, projectile, events) {
-            return false;
-        }
-    },
-    barrel: withPickupDefaults({
-        radius: 8,
-        isPushable: true,
-        renderMode: "3d",
-        render3DKey: "barrel",
-        isExplosive: true,
-        laserTargetable: true,
-        wallPhysics: { restitution: 0.25, friction: 0.75 },
-        explosion: {
-            type: "standard",
-            radius: 0,
-            maxRadius: 100,
-            speed: 300,
-            damage: 100,
-            lingerTimer: 750,
-            fadeTimer: 250,
-        },
-        render(ctx, cx, cy, radius) {
-            ctx.beginPath();
-            ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-            ctx.fillStyle = "#E53935";
-            ctx.fill();
-            ctx.lineWidth = 2;
-            ctx.strokeStyle = "#B71C1C";
-            ctx.stroke();
-        },
-        onCollect(state, pickup, upgrades) {
-            return null;
-        },
-        onHit: explosiveOnHit,
-    }),
-    crate: withPickupDefaults({
-        radius: 8,
-        isPushable: true,
-        renderMode: "3d",
-        render3DKey: "crate",
-        laserTargetable: true,
-        maxHealth: 30,
-        mass: 1.5,
-        wallPhysics: { restitution: 0.15, friction: 0.8 },
-        render(ctx, cx, cy, radius) {
-            ctx.fillStyle = "#8D6E63";
-            ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
-            ctx.strokeStyle = "#5D4037";
-            ctx.lineWidth = 1;
-            ctx.strokeRect(cx - radius, cy - radius, radius * 2, radius * 2);
-        },
-        onCollect(state, pickup, upgrades) {
-            return null;
-        },
-        onHit: damageOnHit,
-    }),
+const HIT_BEHAVIORS = {
+    none: () => false,
+    explosive: explosiveOnHit,
+    damage: damageOnHit,
 };
+
+function buildWorldPropStrategy(def) {
+    const { hitBehavior, spawn, ...strategyFields } = def;
+
+    return withPickupDefaults({
+        ...strategyFields,
+        onHit: HIT_BEHAVIORS[hitBehavior] ?? HIT_BEHAVIORS.none,
+    });
+}
+
+export const PickupStrategies = {};
+
+for (const [type, def] of Object.entries(worldPropDefinitions)) {
+    PickupStrategies[type] = buildWorldPropStrategy(def);
+}
 
 export class Pickup extends Entity {
     constructor(x, y, type) {
@@ -191,14 +92,6 @@ export class Pickup extends Entity {
             PhysicsSystem.resolveWallCollisions(this, walls);
         }
     }
-
-    render(ctx, renderer) {
-        if (this.strategy.renderMode === "3d") {
-            return;
-        }
-        const cacheKey = `${this.type}_${this.radius}`;
-        this.renderCachedSprite(ctx, renderer.pickupCache, cacheKey, RenderSprites.pickup, this.type, this.radius, this.strategy);
-    }
 }
 
 export function spawnPickup(state, playerX, playerY, minRadius, maxRadius, type) {
@@ -224,11 +117,6 @@ export function spawnPickup(state, playerX, playerY, minRadius, maxRadius, type)
 }
 
 export function spawnInitialPickups(state, playerX, playerY) {
-    if (!state.discoveredAbilities.has("Laser")) {
-        spawnPickup(state, playerX, playerY, pickupSpawnSettings.coinMinRadius, pickupSpawnSettings.coinMaxRadius, "coin");
-    }
-    spawnPickup(state, playerX, playerY, pickupSpawnSettings.eyeballMinRadius, pickupSpawnSettings.eyeballMaxRadius, "eyeball");
-
     const numBarrels = pickupSpawnSettings.barrelMinCount + Math.floor(Math.random() * pickupSpawnSettings.barrelRandomRange);
     for (let i = 0; i < numBarrels; i++) {
         spawnPickup(state, playerX, playerY, pickupSpawnSettings.barrelMinRadius, pickupSpawnSettings.barrelMaxRadius, "barrel");
