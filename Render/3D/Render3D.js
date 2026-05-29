@@ -211,18 +211,88 @@ export class Render3D {
         }
     }
 
-    setWorldAlignedPatternTransform(pattern, seg) {
-        const { tileWorldSize, textureSize } = wallTextureSettings;
-        const scale = tileWorldSize / textureSize;
-        const phaseU = (((seg.x / tileWorldSize) % 1) + 1) % 1 * textureSize;
-        const phaseV = (((seg.y / tileWorldSize) % 1) + 1) % 1 * textureSize;
+    drawAffineTexturedTriangle(ctx, ax, ay, bx, by, cx, cy, ua, va, ub, vb, uc, vc, pattern) {
+        const du = ub - ua;
+        const dv = vb - va;
+        const du2 = uc - ua;
+        const dv2 = vc - va;
+        const det = du * dv2 - du2 * dv;
+        if (Math.abs(det) < 1e-8) return;
 
-        const matrix = new DOMMatrix();
-        matrix.translateSelf(seg.x, seg.y);
-        matrix.rotateSelf((seg.angle * 180) / Math.PI);
-        matrix.scaleSelf(scale, scale);
-        matrix.translateSelf(-phaseU, -phaseV);
-        pattern.setTransform(matrix);
+        const a = ((bx - ax) * dv2 - (cx - ax) * dv) / det;
+        const c = ((cx - ax) * du - (bx - ax) * du2) / det;
+        const e = ax - a * ua - c * va;
+        const b = ((by - ay) * dv2 - (cy - ay) * dv) / det;
+        const d = ((cy - ay) * du - (by - ay) * du2) / det;
+        const f = ay - b * ua - d * va;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(ax, ay);
+        ctx.lineTo(bx, by);
+        ctx.lineTo(cx, cy);
+        ctx.closePath();
+        ctx.clip();
+
+        pattern.setTransform(new DOMMatrix([a, b, c, d, e, f]));
+        ctx.fillStyle = pattern;
+
+        const minX = Math.min(ax, bx, cx);
+        const maxX = Math.max(ax, bx, cx);
+        const minY = Math.min(ay, by, cy);
+        const maxY = Math.max(ay, by, cy);
+        ctx.fillRect(minX - 1, minY - 1, maxX - minX + 2, maxY - minY + 2);
+        ctx.restore();
+    }
+
+    drawRoofTexture(ctx, projCorners, worldCorners, textureCanvas) {
+        const { tileWorldSize } = wallTextureSettings;
+        const texW = textureCanvas.width;
+        const texH = textureCanvas.height;
+        const w0 = worldCorners[0];
+        const w1 = worldCorners[1];
+        const w3 = worldCorners[3];
+
+        const uLen = Math.hypot(w1.x - w0.x, w1.y - w0.y) || 1;
+        const vLen = Math.hypot(w3.x - w0.x, w3.y - w0.y) || 1;
+        const uDirX = (w1.x - w0.x) / uLen;
+        const uDirY = (w1.y - w0.y) / uLen;
+        const vDirX = (w3.x - w0.x) / vLen;
+        const vDirY = (w3.y - w0.y) / vLen;
+
+        const uvAt = (w) => {
+            const alongU = (w.x - w0.x) * uDirX + (w.y - w0.y) * uDirY;
+            const alongV = (w.x - w0.x) * vDirX + (w.y - w0.y) * vDirY;
+            return {
+                u: (alongU / tileWorldSize) * texW,
+                v: (alongV / tileWorldSize) * texH,
+            };
+        };
+
+        const pattern = ctx.createPattern(textureCanvas, "repeat");
+        const uv = worldCorners.map((w) => uvAt(w));
+        const p = projCorners;
+
+        this.drawAffineTexturedTriangle(
+            ctx,
+            p[0].x, p[0].y,
+            p[1].x, p[1].y,
+            p[2].x, p[2].y,
+            uv[0].u, uv[0].v,
+            uv[1].u, uv[1].v,
+            uv[2].u, uv[2].v,
+            pattern
+        );
+        this.drawAffineTexturedTriangle(
+            ctx,
+            p[0].x, p[0].y,
+            p[2].x, p[2].y,
+            p[3].x, p[3].y,
+            uv[0].u, uv[0].v,
+            uv[2].u, uv[2].v,
+            uv[3].u, uv[3].v,
+            pattern
+        );
     }
 
     drawRoof(ctx, seg, px, py, damageAlpha = 0) {
@@ -247,6 +317,7 @@ export class Render3D {
 
         const activeTheme = seg.theme || THEME_COLORS[0];
         const wallColor = this.getWallColor(seg, THEME_COLORS[0], 1.0);
+        const worldCorners = [edges[0][0], edges[1][0], edges[2][0], edges[3][0]];
 
         ctx.save();
         ctx.beginPath();
@@ -261,13 +332,16 @@ export class Render3D {
 
         const wallTexture = getWallTextureCanvas(activeTheme);
         if (wallTexture && wallTextureSettings.enabled) {
-            const pattern = ctx.createPattern(wallTexture, "repeat");
-            this.setWorldAlignedPatternTransform(pattern, seg);
-            ctx.fillStyle = pattern;
-            ctx.fill();
+            this.drawRoofTexture(ctx, projCorners, worldCorners, wallTexture);
         }
 
         if (damageAlpha > 0) {
+            ctx.beginPath();
+            ctx.moveTo(projCorners[0].x, projCorners[0].y);
+            for (let i = 1; i < 4; i++) {
+                ctx.lineTo(projCorners[i].x, projCorners[i].y);
+            }
+            ctx.closePath();
             ctx.fillStyle = `rgba(244, 67, 54, ${damageAlpha})`;
             ctx.fill();
         }
