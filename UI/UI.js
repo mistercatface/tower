@@ -2,6 +2,9 @@ import { perkMilestones } from "../Config/Config.js";
 import { xpForLevel } from "../Config/configHelpers.js";
 import { buildAbilityTreeLayout } from "../Config/abilityTreeLayout.js";
 import { isCombat, isCombatOrReward } from "../GameState/GamePhase.js";
+import { formatWeaponLoadoutLabel } from "../Combat/weaponLoadout.js";
+import { getGunDefinition } from "../Config/gunDefinitions.js";
+import { getSlotFireIntervalMs } from "../Combat/gunCombat.js";
 import {
     events,
     Events,
@@ -9,6 +12,7 @@ import {
     emitPurchaseUpgrade,
     emitToggleAbility,
     emitSetUpgradeTab,
+    emitSetStatsSubTab,
     adjustGameSpeed,
     setGameZoomFromSlider,
     emitHardReset,
@@ -46,6 +50,7 @@ const elements = {
     scoreDisplay: document.getElementById("scoreDisplay"),
     levelDisplay: document.getElementById("levelDisplay"),
     nextPerkDisplay: document.getElementById("nextPerkDisplay"),
+    weaponDisplay: document.getElementById("weaponDisplay"),
     xpDisplay: document.getElementById("xpDisplay"),
     healthSegments: document.getElementById("healthSegments"),
     healthText: document.getElementById("healthText"),
@@ -64,7 +69,10 @@ const elements = {
     closeSettingsBtn: document.getElementById("closeSettingsBtn"),
     hardResetBtn: document.getElementById("hardResetBtn"),
     settingsModal: document.getElementById("settingsModal"),
-    tabButtons: document.querySelectorAll(".tabBtn"),
+    mainTabButtons: document.querySelectorAll(".mainTabBtn"),
+    statsSubTabButtons: document.querySelectorAll(".statsSubTabBtn"),
+    statsSubTabs: document.getElementById("statsSubTabs"),
+    equipmentPanel: document.getElementById("equipmentPanel"),
     zoomSlider: document.getElementById("zoomSlider"),
     zoomDisplay: document.getElementById("zoomDisplay"),
 };
@@ -227,6 +235,8 @@ export function updateHud(state, upgrades) {
     const nextPerk = perkMilestones.find((m) => m > state.highestLevelReached);
     if (elements.nextPerkDisplay) elements.nextPerkDisplay.innerText = nextPerk ? `Next Perk: Level ${nextPerk}` : "All Perks Claimed";
 
+    setTextIfDifferent("weaponDisplay", formatWeaponLoadoutLabel(state.player));
+
     const xpNeeded = xpForLevel(state.level);
     setTextIfDifferent("xpDisplay", `${state.xp}/${xpNeeded}`);
 
@@ -372,11 +382,15 @@ export function initUI(state, upgrades) {
             elements.abilitiesContainer.appendChild(btn);
         });
 
-    elements.tabButtons.forEach((btn) => {
+    elements.mainTabButtons.forEach((btn) => {
         btn.addEventListener("click", (e) => {
-            elements.tabButtons.forEach((b) => (b.style.background = "#222"));
-            e.target.style.background = "#555";
             emitSetUpgradeTab(e.target.getAttribute("data-tab"));
+        });
+    });
+
+    elements.statsSubTabButtons.forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+            emitSetStatsSubTab(e.target.getAttribute("data-stats-tab"));
         });
     });
 
@@ -436,6 +450,78 @@ export function initUI(state, upgrades) {
     updateHud(state);
 }
 
+function isUpgradeVisibleInTab(state, upg, currentLevelToCheck) {
+    if (state.currentUpgradeTab === "stats" && upg.category === state.statsSubTab) {
+        return true;
+    }
+    if (state.currentUpgradeTab === "abilities" && upg.category === "abilities") {
+        return true;
+    }
+    if (state.currentUpgradeTab === "perk" && upg.category === "perk") {
+        return currentLevelToCheck > 0;
+    }
+    return false;
+}
+
+function setTabButtonActive(buttons, activeValue, attrName) {
+    buttons.forEach((btn) => {
+        const isActive = btn.getAttribute(attrName) === activeValue;
+        btn.style.background = isActive ? "#555" : "#222";
+    });
+}
+
+function formatGunStatLines(gun, actor) {
+    const lines = [`<div style="color: #FF9800; font-weight: bold; font-size: 14px;">${gun.name ?? gun.id}</div>`];
+
+    if (gun.kind === "beam") {
+        lines.push(`<div>Type: Beam</div>`);
+        if (gun.tickDamage != null) lines.push(`<div>Tick damage: ${gun.tickDamage}</div>`);
+        if (gun.tickIntervalMs != null) lines.push(`<div>Tick interval: ${gun.tickIntervalMs} ms</div>`);
+        if (gun.beamRadius != null) lines.push(`<div>Beam radius: ${gun.beamRadius}</div>`);
+    } else {
+        lines.push(`<div>Type: Projectile</div>`);
+        if (gun.damage != null) lines.push(`<div>Damage: ${gun.damage}</div>`);
+        if (gun.fireIntervalMs != null) {
+            const interval = getSlotFireIntervalMs(gun, actor);
+            lines.push(`<div>Fire interval: ${Math.round(interval)} ms</div>`);
+        }
+        if (gun.bulletRadius != null) lines.push(`<div>Bullet radius: ${gun.bulletRadius}</div>`);
+        if (gun.muzzleSpeed != null) lines.push(`<div>Muzzle speed: ${gun.muzzleSpeed}</div>`);
+    }
+
+    if (gun.equipModifiers?.turnSpeedMultiplier != null) {
+        const pct = Math.round(gun.equipModifiers.turnSpeedMultiplier * 100);
+        lines.push(`<div style="color: #90CAF9;">Turn speed: ${pct}%</div>`);
+    }
+
+    return lines.join("");
+}
+
+function drawEquipmentPanel(state) {
+    if (!elements.equipmentPanel) return;
+
+    const loadout = state.player?.weaponLoadout ?? [];
+    if (loadout.length === 0) {
+        elements.equipmentPanel.innerHTML =
+            '<div style="color: #888;">No equipment equipped.</div>';
+        return;
+    }
+
+    const slotsHtml = loadout
+        .map((gunId, index) => {
+            const gun = getGunDefinition(gunId);
+            const slotLabel = loadout.length > 1 ? `Slot ${index + 1}` : "Primary";
+            return `<div style="margin-bottom: 10px;"><div style="color: #00BCD4; font-size: 11px; margin-bottom: 4px;">${slotLabel}</div>${formatGunStatLines(gun, state.player)}</div>`;
+        })
+        .join("");
+
+    const targetHTML = slotsHtml;
+    if (elements.equipmentPanel.dataset.lastHtml !== targetHTML) {
+        elements.equipmentPanel.innerHTML = targetHTML;
+        elements.equipmentPanel.dataset.lastHtml = targetHTML;
+    }
+}
+
 function drawStat(state, upg, abilityLayoutById) {
     const btn = dynamicElements["upg_" + upg.id];
     if (!btn) return;
@@ -443,16 +529,7 @@ function drawStat(state, upg, abilityLayoutById) {
     const uState = state.player.upgrades[upg.id];
     const currentLevelToCheck = uState.level;
 
-    let isVisible = false;
-    if (upg.category === state.currentUpgradeTab) {
-        if (upg.category === "abilities") {
-            isVisible = true;
-        } else if (upg.category === "perk") {
-            isVisible = currentLevelToCheck > 0;
-        } else {
-            isVisible = true;
-        }
-    }
+    const isVisible = isUpgradeVisibleInTab(state, upg, currentLevelToCheck);
 
     btn.style.display = isVisible ? "block" : "none";
     if (!isVisible) return;
@@ -595,6 +672,28 @@ export function updateUI(state, upgrades) {
 
     const abilityLayout = buildAbilityTreeLayout(upgrades);
     const abilityLayoutById = new Map(abilityLayout.map((entry) => [entry.id, entry]));
+
+    const onStatsTab = state.currentUpgradeTab === "stats";
+    const onEquipmentTab = state.currentUpgradeTab === "equipment";
+
+    if (elements.statsSubTabs) {
+        elements.statsSubTabs.style.display = onStatsTab ? "flex" : "none";
+    }
+    if (elements.equipmentPanel) {
+        elements.equipmentPanel.style.display = onEquipmentTab ? "block" : "none";
+    }
+    if (elements.upgradesContainer) {
+        elements.upgradesContainer.style.display = onEquipmentTab ? "none" : "flex";
+    }
+
+    setTabButtonActive(elements.mainTabButtons, state.currentUpgradeTab, "data-tab");
+    if (onStatsTab) {
+        setTabButtonActive(elements.statsSubTabButtons, state.statsSubTab, "data-stats-tab");
+    }
+
+    if (onEquipmentTab) {
+        drawEquipmentPanel(state);
+    }
 
     if (state.currentUpgradeTab === "abilities") {
         elements.upgradesContainer.style.flexDirection = "column";

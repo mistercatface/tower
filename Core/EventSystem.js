@@ -103,6 +103,10 @@ export function emitSetUpgradeTab(tab) {
     events.emit(Events.UI_SET_UPGRADE_TAB, { tab });
 }
 
+export function emitSetStatsSubTab(subTab) {
+    events.emit(Events.UI_SET_STATS_SUB_TAB, { subTab });
+}
+
 export function adjustGameSpeed(delta) {
     events.emit(Events.GAME_SET_SPEED, { delta });
 }

@@ -3,10 +3,15 @@ import { enemyProjectileSettings, playerProjectileSettings } from "./Config.js";
 export const defaultGunId = "servicePistol";
 export const defaultEnemyGunId = "enemyRifle";
 
+/** Random equipment pools (1 slot). Enemies never roll beamLaser. */
+export const playerStartGunPool = ["servicePistol", "beamLaser"];
+export const enemyStartGunPool = ["enemyRifle", "servicePistol"];
+
 /** Fixed ballistics and damage per gun. */
 export const gunDefinitions = {
     servicePistol: {
         id: "servicePistol",
+        name: "Service Pistol",
         kind: "projectile",
         fireIntervalMs: 1000,
         muzzleSpeed: playerProjectileSettings.speed,
@@ -15,6 +20,7 @@ export const gunDefinitions = {
     },
     beamLaser: {
         id: "beamLaser",
+        name: "Beam Laser",
         kind: "beam",
         beamRadius: 1,
         tickIntervalMs: 200,
@@ -26,6 +32,7 @@ export const gunDefinitions = {
     },
     enemyRifle: {
         id: "enemyRifle",
+        name: "Enemy Rifle",
         kind: "projectile",
         fireIntervalMs: 1500,
         muzzleSpeed: enemyProjectileSettings.speed,

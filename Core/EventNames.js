@@ -24,5 +24,6 @@ export const Events = {
     PROGRESS_TOGGLE_ABILITY: "progress:toggleAbility",
     PROGRESS_HARD_RESET: "progress:hardReset",
     UI_SET_UPGRADE_TAB: "ui:setUpgradeTab",
+    UI_SET_STATS_SUB_TAB: "ui:setStatsSubTab",
     GAME_RESTART: "game:restart",
 };

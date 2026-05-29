@@ -3,6 +3,7 @@ import { xpForLevel } from "../Config/configHelpers.js";
 import { createUpgradeLevels, resetUpgradeLevels } from "../Entities/CombatantStats.js";
 import { spawnFloatingText } from "../Core/EventSystem.js";
 import { MapGenerator } from "../Generator/MapGenerator.js";
+import { rollPlayerStartLoadout } from "../Combat/weaponLoadout.js";
 
 export class StatsManager {
     static initUpgradesList(state, upgradeList) {
@@ -94,6 +95,7 @@ export class StatsManager {
         }
 
         StatsManager.recalculateStats(state, upgradesList);
+        player.applyWeaponLoadout(rollPlayerStartLoadout());
         MapGenerator.generateMap(state);
 
         const startNode = state.getMapNode(0);

@@ -11,9 +11,8 @@ import {
     initCombatantUpgradeSlots,
 } from "./CombatantStats.js";
 import { Turret } from "./Turret.js";
-import { getSlotFireIntervalMs } from "../Combat/gunCombat.js";
+import { applyActorGunModifiers, getSlotFireIntervalMs } from "../Combat/gunCombat.js";
 import { getGunDefinition } from "../Config/gunDefinitions.js";
-import { resolveActorTurretLoadouts } from "../Config/TurretLoadoutDefinitions.js";
 
 export class Actor extends DestructibleEntity {
     constructor(x, y, radius, speed, health, color, type, accelRate = 3.0, canDamageWalls = false) {
@@ -40,6 +39,7 @@ export class Actor extends DestructibleEntity {
         this.upgrades = {};
         this.baseMoveSpeed = speed;
         this.turrets = [];
+        this.weaponLoadout = [];
         this.currentState = enemyStates.navigating;
         this.currentStateName = "navigating";
         this.stateData = {};
@@ -137,8 +137,17 @@ export class Actor extends DestructibleEntity {
         }
     }
 
-    resolveTurretLoadouts(state, upgradeDefs = []) {
-        resolveActorTurretLoadouts(this, state, upgradeDefs);
+    applyWeaponLoadout(gunIds) {
+        this.weaponLoadout = [...gunIds];
+        const turnSpeed = this.stats?.turnSpeed?.value ?? this.turnSpeed;
+        this.syncTurretCount(gunIds.length, turnSpeed);
+
+        for (let i = 0; i < gunIds.length; i++) {
+            getGunDefinition(gunIds[i]);
+            this.turrets[i].gunId = gunIds[i];
+        }
+
+        applyActorGunModifiers(this);
     }
 
     renderTurrets(ctx, renderer, color = this.color) {

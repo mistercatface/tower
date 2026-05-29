@@ -28,13 +28,13 @@ export class GameState {
 
         this.runStats = createRunStats(runBaseStats);
         this.player = new Player(0, 0, 8);
-        this.player.syncTurretCount(this.runStats.turretCount.value, this.player.stats.turnSpeed.value);
 
         this.obstacleGrid = new WorldObstacleGrid(gridSettings.cellSize);
         this.flowFieldGrid = new FlowFieldGrid(gridSettings.cellSize, gridSettings.width, gridSettings.height, this.obstacleGrid);
         this.hierarchicalNavigator = new HierarchicalNavigator(gridSettings.cellSize, gridSettings.maxCellsPerChunk, gridSettings.minCellsPerChunk, this.obstacleGrid);
         this.navigation = new NavigationService(this.flowFieldGrid, this.hierarchicalNavigator);
-        this.currentUpgradeTab = "attack";
+        this.currentUpgradeTab = "stats";
+        this.statsSubTab = "attack";
         this.canvasBounds = { width: 0, height: 0 };
         this.upgradeDefs = [];
         this.wallSpatialHash = new SpatialHash(100);
@@ -113,7 +113,6 @@ export class GameState {
         this.player.clearHealAccumulator();
         this.player.isDead = false;
         this.player.changeState("navigating");
-        this.player.syncTurretCount(this.runStats.turretCount.value, this.player.stats.turnSpeed.value);
 
         this.enemies = [];
         if (this.projectiles) {

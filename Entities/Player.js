@@ -45,16 +45,13 @@ export class Player extends Actor {
             runStats: state.runStats,
             shouldApply,
             afterSync: (player) => {
-                player.syncTurrets(state.runStats);
-                player.resolveTurretLoadouts(state, upgradeDefs);
+                if (player.weaponLoadout.length > 0) {
+                    player.applyWeaponLoadout(player.weaponLoadout);
+                }
             },
         });
 
         state.selectedSpeed = Math.min(state.selectedSpeed, state.runStats.gameSpeed.value);
-    }
-
-    syncTurrets(runStats) {
-        this.syncTurretCount(runStats.turretCount.value, this.stats.turnSpeed.value);
     }
 
     handleHit(damage, ctx, hitType) {

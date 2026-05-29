@@ -3,7 +3,7 @@ import { RenderSprites } from "../Render/RenderSprites.js";
 import { Actor } from "./Actor.js";
 import { spawnFloatingText, emitCombatEnemyKilled } from "../Core/EventSystem.js";
 import { NAV_PROFILES } from "../Config/Config.js";
-import { defaultEnemyGunId } from "../Config/gunDefinitions.js";
+import { rollEnemyStartLoadout } from "../Combat/weaponLoadout.js";
 import { createEntityBars } from "./EntityBars.js";
 import {
     buildEnemyCombatStats,
@@ -36,6 +36,7 @@ export class Enemy extends Actor {
         const levels = computeEnemyUpgradeLevels(wave, enemyType, combatStats);
 
         enemy.applySpawnUpgradeLevels(levels, baseUpgradeDefs);
+        enemy.applyWeaponLoadout(rollEnemyStartLoadout());
         enemy.health = enemy.maxHealth;
         return enemy;
     }
@@ -57,8 +58,6 @@ export class Enemy extends Actor {
         this.canDodge = enemyType.canDodge ?? false;
         this.enemyType = enemyType;
         this.setupCombatant(combatStats, baseUpgradeDefs);
-        this.syncTurretCount(1, combatStats.turnSpeed);
-        this.getPrimaryTurret().gunId = defaultEnemyGunId;
         this.initCombatWeapon();
         this.isEngaged = false;
         this.blastAngle = 0;

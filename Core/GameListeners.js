@@ -64,6 +64,11 @@ export function registerGameListeners(eventBus, pauseManager) {
         requestUiUpdate();
     });
 
+    eventBus.on(Events.UI_SET_STATS_SUB_TAB, ({ state, subTab }) => {
+        state.statsSubTab = subTab;
+        requestUiUpdate();
+    });
+
     eventBus.on(Events.GAME_SET_SPEED, ({ state, delta }) => {
         if (delta < 0) {
             state.selectedSpeed = Math.max(0.5, state.selectedSpeed + delta);
