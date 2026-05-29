@@ -2,7 +2,7 @@ import { Segment } from "../Entities/Wall.js";
 import { GeneratorStrategies } from "./GeneratorStrategies.js";
 import { WorldObstacleGrid } from "../Spatial/World/ObstacleGrid.js";
 import { FlowFieldGrid } from "../Spatial/Navigation/FlowFieldGrid.js";
-import { mapSettings, gridSettings, THEME_COLORS, mapGenerationSettings } from "../Config/Config.js";
+import { mapSettings, gridSettings, THEME_COLORS, mapGenerationSettings, WALL_PATTERNS } from "../Config/Config.js";
 
 const STRATEGIES = Object.keys(GeneratorStrategies);
 
@@ -167,7 +167,9 @@ export class MapGenerator {
         const startNode = state.getMapNode(0);
         if (startNode) {
             const strategy = STRATEGIES[Math.floor(Math.random() * STRATEGIES.length)];
-            const theme = THEME_COLORS[Math.floor(Math.random() * THEME_COLORS.length)];
+            const colorTheme = THEME_COLORS[Math.floor(Math.random() * THEME_COLORS.length)];
+            const patternType = WALL_PATTERNS[Math.floor(Math.random() * WALL_PATTERNS.length)];
+            const theme = { ...colorTheme, patternType };
             const coords = state.getNodeCombatCoords(startNode);
 
             tempFlowFieldGrid.centerX = coords.x;
@@ -201,7 +203,9 @@ export class MapGenerator {
                 while (!success && attempts < 50) {
                     attempts++;
                     const strategy = STRATEGIES[Math.floor(Math.random() * STRATEGIES.length)];
-                    const theme = THEME_COLORS[Math.floor(Math.random() * THEME_COLORS.length)];
+                    const colorTheme = THEME_COLORS[Math.floor(Math.random() * THEME_COLORS.length)];
+                    const patternType = WALL_PATTERNS[Math.floor(Math.random() * WALL_PATTERNS.length)];
+                    const theme = { ...colorTheme, patternType };
                     const coordsB = state.getNodeCombatCoords(nodeB);
 
                     tempFlowFieldGrid.centerX = coordsB.x;
@@ -233,7 +237,7 @@ export class MapGenerator {
 
                 if (!success) {
                     chosenWalls = [];
-                    chosenTheme = THEME_COLORS[0];
+                    chosenTheme = { ...THEME_COLORS[0], patternType: "brick" };
                     chosenStrategy = "None";
                 }
 

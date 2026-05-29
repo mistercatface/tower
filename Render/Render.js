@@ -1,6 +1,7 @@
 import { SpriteCache } from "./SpriteCache.js";
 import { Render3D } from "./3D/Render3D.js";
-import { mapSettings } from "../Config/Config.js";
+import { getWallTextureCanvas } from "./3D/WallTextures.js";
+import { mapSettings, THEME_COLORS, wallTextureSettings } from "../Config/Config.js";
 import { getWorldDrawCoords, isMapTransition, isWorldScene } from "../GameState/GamePhase.js";
 
 export class Renderer {
@@ -62,7 +63,7 @@ export class Renderer {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
         if (viewport && isWorldScene(state.phase)) {
-            this.drawOscilloscopeGrid(state, viewport);
+            this.drawFloorPattern(state, viewport);
         }
 
         if (viewport) viewport.apply(this.ctx);
@@ -334,88 +335,43 @@ export class Renderer {
     }
 
 
-    drawOscilloscopeGrid(state, viewport) {
+    drawFloorPattern(state, viewport) {
         const R = viewport.getVisualRadius();
         const cx = viewport.cx;
         const cy = viewport.cy;
         const zoom = viewport.zoom;
 
+        const currentNode = state.getCurrentMapNode();
+        const theme = currentNode?.wallTheme || THEME_COLORS[0];
+        const textureCanvas = getWallTextureCanvas(theme);
+
+        if (!textureCanvas) return;
+
         this.ctx.save();
-        this.ctx.strokeStyle = "rgba(0, 188, 212, 0.12)";
-        this.ctx.lineWidth = 1.0;
 
-        const gridSpacing = 40; 
-        const worldRadius = R / zoom;
+        // 1. Draw solid dark background for the floor
+        this.ctx.beginPath();
+        this.ctx.arc(cx, cy, R, 0, Math.PI * 2);
+        this.ctx.fillStyle = "#0c0d12"; // Sleek dark slate base
+        this.ctx.fill();
 
-        const minX = viewport.x - worldRadius * 1.57;
-        const maxX = viewport.x + worldRadius * 1.57;
-        const minY = viewport.y - worldRadius * 1.57;
-        const maxY = viewport.y + worldRadius * 1.57;
+        // 2. Create and transform the pattern to align with world movement & scale
+        const pattern = this.ctx.createPattern(textureCanvas, "repeat");
+        const matrix = new DOMMatrix();
+        
+        // Translate to align pattern origin with world coordinate origin
+        matrix.translateSelf(cx - viewport.x * zoom, cy - viewport.y * zoom);
+        
+        // Scale pattern so that texture size matches world tiles scaled by zoom
+        const scale = (wallTextureSettings.tileWorldSize * zoom) / wallTextureSettings.textureSize;
+        matrix.scaleSelf(scale, scale);
+        
+        pattern.setTransform(matrix);
 
-        const startX = Math.floor(minX / gridSpacing) * gridSpacing;
-        const endX = Math.ceil(maxX / gridSpacing) * gridSpacing;
-        const startY = Math.floor(minY / gridSpacing) * gridSpacing;
-        const endY = Math.ceil(maxY / gridSpacing) * gridSpacing;
-
-        const projectLens = (wx, wy) => {
-            const dx = (wx - viewport.x) * zoom;
-            const dy = (wy - viewport.y) * zoom;
-            const d = Math.hypot(dx, dy);
-            if (d === 0) return { x: cx, y: cy, visible: true };
-
-            const maxD = R * (Math.PI / 2);
-            if (d > maxD) {
-                return { x: cx + (dx / d) * R, y: cy + (dy / d) * R, visible: false };
-            }
-
-            const rDome = R * Math.sin(d / R);
-            const curvatureStrength = 0.45;
-            const r = d * (1 - curvatureStrength) + rDome * curvatureStrength;
-
-            return {
-                x: cx + (dx / d) * r,
-                y: cy + (dy / d) * r,
-                visible: true
-            };
-        };
-
-        for (let x = startX; x <= endX; x += gridSpacing) {
-            this.ctx.beginPath();
-            let first = true;
-            for (let y = minY; y <= maxY; y += 8) {
-                const pt = projectLens(x, y);
-                if (pt.visible) {
-                    if (first) {
-                        this.ctx.moveTo(pt.x, pt.y);
-                        first = false;
-                    } else {
-                        this.ctx.lineTo(pt.x, pt.y);
-                    }
-                } else {
-                    first = true;
-                }
-            }
-            this.ctx.stroke();
-        }
-
-        for (let y = startY; y <= endY; y += gridSpacing) {
-            this.ctx.beginPath();
-            let first = true;
-            for (let x = minX; x <= maxX; x += 8) {
-                const pt = projectLens(x, y);
-                if (pt.visible) {
-                    if (first) {
-                        this.ctx.moveTo(pt.x, pt.y);
-                        first = false;
-                    } else {
-                        this.ctx.lineTo(pt.x, pt.y);
-                    }
-                } else {
-                    first = true;
-                }
-            }
-            this.ctx.stroke();
-        }
+        // 3. Draw the wall pattern on the floor with premium translucency
+        this.ctx.globalAlpha = 0.35;
+        this.ctx.fillStyle = pattern;
+        this.ctx.fill();
 
         this.ctx.restore();
     }

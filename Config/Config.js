@@ -178,3 +178,5 @@ export const wallTextureSettings = {
     tileWorldSize: 10,
     textureSize: 64,
 };
+
+export const WALL_PATTERNS = ["brick", "tech-grid", "stripes", "stone-block", "cyber-core", "diamond-mesh"];
