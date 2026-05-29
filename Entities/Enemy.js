@@ -3,10 +3,9 @@ import { Projectile } from "./Projectile.js";
 import { Turret } from "./Turret.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
 import { Actor } from "./Actor.js";
-import { FloatingText } from "../Render/FloatingText.js";
+import { spawnFloatingText, requestUiUpdate } from "../Core/EventSystem.js";
 import { ProgressionManager } from "../Progression/ProgressionManager.js";
 import { markProgressDirty } from "../Progression/Storage.js";
-import { requestUiUpdate } from "../Core/EventSystem.js";
 import { ChargedWeaponMode } from "../Combat/WeaponSystem.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { enemyProjectileSettings, NAV_PROFILES } from "../Config/Config.js";
@@ -65,7 +64,7 @@ export class Enemy extends Actor {
         const died = this.takeDamage(baseDamage);
         
         if (hitType === "blast") {
-            FloatingText.spawnBlastDamageText(ctx.state, this.x, this.y, baseDamage, 0);
+            spawnFloatingText({ variant: "blastDamage", x: this.x, y: this.y, damage: baseDamage, decimalPlaces: 0 });
         }
         
         if (died) {

@@ -1,4 +1,4 @@
-import { FloatingText } from "../Render/FloatingText.js";
+import { spawnFloatingText } from "../Core/EventSystem.js";
 import { markProgressDirty, saveProgress } from "./Storage.js";
 import { events, Events, requestUiUpdate } from "../Core/EventSystem.js";
 import { StatsManager } from "./StatsManager.js";
@@ -19,8 +19,8 @@ export class ProgressionManager {
 
         StatsManager.grantXP(state, xpGain);
 
-        FloatingText.spawn(state, enemy.x, enemy.y, `+${pointsReward} Points`, "#FFF");
-        FloatingText.spawn(state, enemy.x, enemy.y - 30, `+${xpGain} XP`, "#4CAF50");
+        spawnFloatingText({ x: enemy.x, y: enemy.y, text: `+${pointsReward} Points`, color: "#FFF" });
+        spawnFloatingText({ x: enemy.x, y: enemy.y - 30, text: `+${xpGain} XP`, color: "#4CAF50" });
     }
 
     static updatePickups(state, dt) {
@@ -63,7 +63,7 @@ export class ProgressionManager {
     static applyUpgradeChoice(state, upgrades, choice, pointsAmount, setBaseLevel) {
         if (choice === "take_points") {
             state.score += pointsAmount;
-            FloatingText.spawn(state, state.player.x, state.player.y - 60, `+${pointsAmount} Pts`, "#FFEB3B");
+            spawnFloatingText({ x: state.player.x, y: state.player.y - 60, text: `+${pointsAmount} Pts`, color: "#FFEB3B" });
         } else {
             const upg = upgrades.find((u) => u.id === choice);
             if (upg.replaces && upg.replaces.length > 0) {

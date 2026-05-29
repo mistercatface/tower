@@ -1,6 +1,6 @@
 import { Actor } from "./Actor.js";
 import { Utilities } from "../Core/Utilities.js";
-import { FloatingText } from "../Render/FloatingText.js";
+import { spawnFloatingText } from "../Core/EventSystem.js";
 import { playerBaseStats, NAV_PROFILES, navigationSettings } from "../Config/Config.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
 import { createEntityBars } from "./EntityBars.js";
@@ -43,9 +43,9 @@ export class Player extends Actor {
         this.takeDamage(damage);
 
         if (hitType === "blast") {
-            FloatingText.spawnBlastDamageText(ctx.state, this.x, this.y, damage, 1);
+            spawnFloatingText({ variant: "blastDamage", x: this.x, y: this.y, damage, decimalPlaces: 1 });
         } else {
-            FloatingText.spawnStandardDamageText(ctx.state, this.x, this.y, damage);
+            spawnFloatingText({ variant: "standardDamage", x: this.x, y: this.y, damage });
         }
     }
 

@@ -1,6 +1,6 @@
 import { Turret } from "../Entities/Turret.js";
 import { defaultUpgradeCost, perkMilestones, playerBaseStats } from "../Config/Config.js";
-import { FloatingText } from "../Render/FloatingText.js";
+import { spawnFloatingText } from "../Core/EventSystem.js";
 import { MapGenerator } from "../Generator/MapGenerator.js";
 import { saveProgress } from "./Storage.js";
 
@@ -40,7 +40,7 @@ export class StatsManager {
             state.pendingLevelUps++;
             if (state.level > state.highestLevelReached) state.highestLevelReached = state.level;
             xpNeeded = Math.floor(25 * Math.pow(1.5, state.level));
-            FloatingText.spawn(state, state.player.x, state.player.y - 40, "LEVEL UP", "#FFEB3B");
+            spawnFloatingText({ x: state.player.x, y: state.player.y - 40, text: "LEVEL UP", color: "#FFEB3B" });
         }
     }
 

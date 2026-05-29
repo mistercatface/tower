@@ -3,6 +3,7 @@ import { createUpgrades, createBaseUpgrades } from "./Progression/Upgrades.js";
 import { initializeSaveSystem, loadProgress } from "./Progression/Storage.js";
 import { initUI } from "./UI/UI.js";
 import { events, requestUiUpdate, requestUiHudUpdate } from "./Core/EventSystem.js";
+import { FloatingText } from "./Render/FloatingText.js";
 import { Renderer } from "./Render/Render.js";
 import { Viewport } from "./Render/Viewport.js";
 import { InputManager } from "./Core/InputManager.js";
@@ -36,6 +37,7 @@ fsm.addState("combat", new CombatState());
 fsm.addState("reward", new RewardState());
 
 events.setContext({ state, upgrades, viewport, fsm });
+FloatingText.registerEventListener(events);
 
 function resetGame() {
     StatsManager.resetRun(state, upgrades);

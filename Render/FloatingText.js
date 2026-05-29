@@ -1,3 +1,5 @@
+import { Events } from "../Core/EventNames.js";
+
 export const TextStyles = {
     standard: {
         font: "bold 10px monospace",
@@ -107,6 +109,24 @@ export class FloatingText {
             ft.update(dt, state.scheduler);
             if (ft.isDead) state.floatingTexts.splice(i, 1);
         }
+    }
+
+    static handleSpawnEvent({ state, variant = "custom", x, y, text, color, style, options, damage, decimalPlaces }) {
+        switch (variant) {
+            case "blastDamage":
+                FloatingText.spawnBlastDamageText(state, x, y, damage, decimalPlaces ?? 0);
+                break;
+            case "standardDamage":
+                FloatingText.spawnStandardDamageText(state, x, y, damage);
+                break;
+            default:
+                FloatingText.spawn(state, x, y, text, color, style ?? "standard", options ?? {});
+                break;
+        }
+    }
+
+    static registerEventListener(eventBus) {
+        eventBus.on(Events.FX_FLOATING_TEXT, FloatingText.handleSpawnEvent);
     }
 
     _initCanvas(ctx) {
