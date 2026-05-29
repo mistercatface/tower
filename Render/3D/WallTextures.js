@@ -727,8 +727,6 @@ function buildProceduralWallTexture(theme, size) {
         case "diamond-mesh":
             drawWallDiamondMesh(ctx, size, theme);
             break;
-        default:
-            drawWallBrick(ctx, size, theme);
     }
 
     applyTextureSoftening(ctx, size);
@@ -762,8 +760,6 @@ function buildProceduralFloorTexture(theme, size) {
         case "diamond-mesh":
             drawFloorDiamondMesh(ctx, size, theme);
             break;
-        default:
-            drawFloorBrick(ctx, size, theme);
     }
 
     applyTextureSoftening(ctx, size);
@@ -786,25 +782,6 @@ export function getFloorTextureCanvas(theme) {
     return floorTextureCache.get(key, () => {
         return buildProceduralFloorTexture(theme, wallTextureSettings.textureSize);
     });
-}
-
-export async function loadWallTextureFromImage(url, theme) {
-    const img = new Image();
-    img.src = url;
-    await img.decode();
-
-    const canvas = document.createElement("canvas");
-    canvas.width = img.naturalWidth;
-    canvas.height = img.naturalHeight;
-    const imgCtx = canvas.getContext("2d");
-    imgCtx.drawImage(img, 0, 0);
-    applyTextureSoftening(imgCtx, canvas.width);
-
-    const key = themeKey(theme);
-    // Overwrite cached canvases manually to match the legacy fallback
-    wallTextureCache.cache.set(key, canvas);
-    floorTextureCache.cache.set(key, canvas);
-    return canvas;
 }
 
 export function clearWallTextureCache() {
