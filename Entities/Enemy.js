@@ -62,7 +62,7 @@ export class Enemy extends Actor {
         this.syncTurretCount(1, combatStats.turnSpeed);
         const weaponMode = Enemy.createWeaponMode();
         this.getPrimaryTurret().weaponMode = weaponMode;
-        this.initCombatWeapon({ linkAccuracyToStats: false });
+        this.initCombatWeapon();
         this.isEngaged = false;
         this.blastAngle = 0;
         this.blastTimer = 0;

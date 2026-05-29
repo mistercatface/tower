@@ -68,16 +68,11 @@ export function applyUpgradesToStats(combatStats, upgradeLevels, upgradeDefs, sh
 export function syncActorCombatFromStats(actor, stats, baseMoveSpeed) {
     if (!actor.weapon) return;
 
-    actor.weapon.accuracyModifier = 0;
     actor.weapon.damage = stats.damage.value;
     actor.weapon.range = stats.range.value;
     actor.weapon.chargeTime = stats.chargeTime.value;
     actor.weapon.penetration = stats.penetration.value;
-
-    const accuracyDesc = Object.getOwnPropertyDescriptor(actor.weapon, "accuracy");
-    if (!accuracyDesc?.get) {
-        actor.weapon.accuracy = stats.accuracy.value;
-    }
+    actor.weapon.accuracy = stats.accuracy.value;
 
     if (baseMoveSpeed !== undefined) {
         actor.baseMoveSpeed = baseMoveSpeed;

@@ -283,7 +283,7 @@ export const createUpgrades = () => [
         abilityApplyFn: (weapon, player) => {
             weapon.chargeTime *= 1.33;
             player.speed *= 0.5;
-            weapon.accuracyModifier += 0.33;
+            weapon.accuracy = Math.min(1, player.stats.accuracy.value + 0.33);
         },
         showInHud: true,
         hasToggle: true

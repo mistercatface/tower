@@ -58,29 +58,14 @@ export class Actor extends DestructibleEntity {
         initCombatantUpgradeSlots(this.upgrades, upgradeDefs);
     }
 
-    initCombatWeapon({ weaponMode = null, linkAccuracyToStats = false } = {}) {
-        const actor = this;
-        const weapon = {
+    initCombatWeapon() {
+        this.weapon = {
             chargeTime: this.stats.chargeTime.baseValue,
             range: this.stats.range.baseValue,
             damage: this.stats.damage.baseValue,
             penetration: this.stats.penetration.baseValue,
-            accuracyModifier: 0,
-            weaponMode,
+            accuracy: this.stats.accuracy.baseValue,
         };
-
-        if (linkAccuracyToStats) {
-            Object.defineProperty(weapon, "accuracy", {
-                get() {
-                    return Math.min(1, actor.stats.accuracy.value + this.accuracyModifier);
-                },
-                configurable: true,
-            });
-        } else {
-            weapon.accuracy = this.stats.accuracy.baseValue;
-        }
-
-        this.weapon = weapon;
     }
 
     setUpgradeLevel(upgradeId, level) {

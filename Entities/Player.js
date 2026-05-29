@@ -20,7 +20,7 @@ export class Player extends Actor {
     constructor(x, y, radius) {
         super(x, y, radius, playerBaseStats.speed, playerBaseStats.maxHealth, "#4CAF50", "player", 3.0, true);
         this.setupCombatant(playerBaseStats);
-        this.initCombatWeapon({ linkAccuracyToStats: true });
+        this.initCombatWeapon();
         this.healthBar = Player.healthBar;
         this.chargeBar = Player.chargeBar;
         this.spawnX = x;
