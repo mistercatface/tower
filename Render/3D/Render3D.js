@@ -102,29 +102,32 @@ export class Render3D {
         const edgeDirY = (p2.y - p1.y) / edgeLen;
         const uAlongEdge = p1.x * edgeDirX + p1.y * edgeDirY;
         const uPatternOffset = ((uAlongEdge / tileWorldSize) % 1 + 1) % 1 * texW;
-        const verticalTiles = WALL_PROJECTION_DISTANCE / tileWorldSize;
 
         ctx.save();
         this.traceProjectedFace(ctx, p1, p2, face);
         ctx.clip();
 
         const pattern = ctx.createPattern(textureCanvas, "repeat");
-        ctx.translate(p1.x, p1.y);
-        ctx.transform(
-            (edgeDirX * tileWorldSize) / texW,
-            (edgeDirY * tileWorldSize) / texW,
-            ((face.proj1X - p1.x) * tileWorldSize) / (WALL_PROJECTION_DISTANCE * texH),
-            ((face.proj1Y - p1.y) * tileWorldSize) / (WALL_PROJECTION_DISTANCE * texH),
-            0,
-            0
-        );
+
+        const a = (edgeDirX * tileWorldSize) / texW;
+        const b = (edgeDirY * tileWorldSize) / texW;
+        const c = ((face.proj1X - p1.x) * tileWorldSize) / (WALL_PROJECTION_DISTANCE * texH);
+        const d = ((face.proj1Y - p1.y) * tileWorldSize) / (WALL_PROJECTION_DISTANCE * texH);
+        const e = p1.x - a * uPatternOffset;
+        const f = p1.y - b * uPatternOffset;
+
+        const wallMatrix = new DOMMatrix([a, b, c, d, e, f]);
+        const finalMatrix = ctx.getTransform().multiply(wallMatrix);
+        pattern.setTransform(finalMatrix);
+
         ctx.fillStyle = pattern;
-        ctx.fillRect(
-            -uPatternOffset,
-            0,
-            (edgeLen / tileWorldSize) * texW + texW,
-            verticalTiles * texH
-        );
+
+        const minX = Math.min(p1.x, p2.x, face.proj1X, face.proj2X);
+        const maxX = Math.max(p1.x, p2.x, face.proj1X, face.proj2X);
+        const minY = Math.min(p1.y, p2.y, face.proj1Y, face.proj2Y);
+        const maxY = Math.max(p1.y, p2.y, face.proj1Y, face.proj2Y);
+
+        ctx.fillRect(minX, minY, maxX - minX, maxY - minY);
         ctx.restore();
     }
 
