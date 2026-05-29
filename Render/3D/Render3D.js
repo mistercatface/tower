@@ -7,13 +7,10 @@ import {
     drawCap,
     drawBox,
     drawSphere,
-    drawCone,
-    drawStack,
     drawBarkLines,
 } from "./PropPrimitives.js";
 import { createPropDrawContext } from "./PropDrawContext.js";
-import { drawTrafficCone } from "./SolidDraw.js";
-import { getHeightSlice, isFaceTowardViewer } from "./Projection3D.js";
+import { isFaceTowardViewer } from "./Projection3D.js";
 
 export class Render3D {
     constructor() {
@@ -336,113 +333,6 @@ export class Render3D {
             colors: { shadow: "#33691E", mid: "#4CAF50", highlight: "#A5D6A7" },
             stroke: "#1B4332",
             facing,
-        });
-    }
-
-    draw3DTrafficCone(ctx, pc) {
-        drawTrafficCone(ctx, pc);
-    }
-
-    draw3DSnowman(ctx, pc) {
-        const { x, y, facing, px, py } = pc;
-        const stackHeight = 38;
-        const snow = { shadow: "#B0BEC5", mid: "#ECEFF1", highlight: "#FFFFFF" };
-
-        drawStack(ctx, x, y, px, py, {
-            height: stackHeight,
-            segments: [
-                { t: 0.18, radius: 8, blobHeight: 16, colors: snow, stroke: "#90A4AE" },
-                { t: 0.48, radius: 6, blobHeight: 13, colors: snow, stroke: "#90A4AE" },
-                { t: 0.76, radius: 4.5, blobHeight: 10, colors: snow, stroke: "#90A4AE" },
-            ],
-            facing,
-        });
-
-        const projection = pc.project(stackHeight);
-        const head = getHeightSlice(projection, 4.5, 0.76);
-        const noseX = head.centerX + Math.cos(facing) * 5;
-        const noseY = head.centerY + Math.sin(facing) * 5;
-
-        drawCone(ctx, noseX, noseY, px, py, {
-            baseRadius: 1.2,
-            height: 5,
-            colors: { shadow: "#E65100", mid: "#FF9800", highlight: "#FFB74D" },
-            stroke: "#E65100",
-            lineWidth: 0.7,
-            facing,
-        });
-
-        ctx.fillStyle = "#212121";
-        const eyeOffset = 2.2;
-        const perp = facing + Math.PI / 2;
-        for (const side of [-1, 1]) {
-            ctx.beginPath();
-            ctx.arc(
-                head.centerX + Math.cos(facing) * 2 + Math.cos(perp) * eyeOffset * side,
-                head.centerY + Math.sin(facing) * 2 + Math.sin(perp) * eyeOffset * side,
-                0.7, 0, Math.PI * 2
-            );
-            ctx.fill();
-        }
-    }
-
-    draw3DPalm(ctx, pc) {
-        const trunkRadius = 3.5;
-        const trunkHeight = 48;
-        const { x, y, facing, px, py } = pc;
-
-        const { projection } = drawCylinder(ctx, x, y, px, py, {
-            radius: trunkRadius,
-            height: trunkHeight,
-            colors: { shadow: "#5D4037", mid: "#8D6E63", highlight: "#BCAAA4" },
-            stroke: "#4E342E",
-            facing,
-        });
-
-        const { topX, topY } = projection;
-        const frondColors = { shadow: "#33691E", mid: "#558B2F", highlight: "#9CCC65" };
-        for (let i = 0; i < 6; i++) {
-            const frondFacing = (i / 6) * Math.PI * 2 - Math.PI / 2;
-            const fx = topX + Math.cos(frondFacing) * 5;
-            const fy = topY + Math.sin(frondFacing) * 5;
-            drawCone(ctx, fx, fy, px, py, {
-                baseRadius: 3.5,
-                height: 16,
-                colors: frondColors,
-                stroke: "#1B5E20",
-                lineWidth: 0.8,
-                facing: frondFacing,
-            });
-        }
-
-        drawSphere(ctx, topX, topY, px, py, {
-            radius: 4,
-            height: 8,
-            colors: { shadow: "#689F38", mid: "#7CB342", highlight: "#AED581" },
-            stroke: "#33691E",
-            lineWidth: 0.7,
-            facing,
-        });
-    }
-
-    draw3DRock(ctx, pc) {
-        const { x, y, facing, px, py } = pc;
-        const gray = { shadow: "#424242", mid: "#757575", highlight: "#BDBDBD" };
-
-        drawSphere(ctx, x - 1.5, y + 1, px, py, {
-            radius: 7,
-            height: 12,
-            colors: gray,
-            stroke: "#37474F",
-            facing,
-        });
-        drawSphere(ctx, x + 2, y - 1.5, px, py, {
-            radius: 5,
-            height: 9,
-            colors: { shadow: "#616161", mid: "#9E9E9E", highlight: "#E0E0E0" },
-            stroke: "#424242",
-            lineWidth: 0.8,
-            facing: facing + 0.4,
         });
     }
 

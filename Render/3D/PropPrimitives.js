@@ -6,7 +6,6 @@ import {
     drawRadialRibs,
     drawRadialCap,
     drawExtrudedSphere,
-    drawStackedSpheres,
     drawExtrudedBox,
     drawBarkLines as drawBarkLinesSolid,
 } from "./SolidDraw.js";
@@ -50,22 +49,6 @@ export function drawCap(ctx, x, y, px, py, options) {
 
 export function drawSphere(ctx, x, y, px, py, options) {
     drawExtrudedSphere(ctx, legacyContext(x, y, px, py, options.facing), options);
-}
-
-export function drawCone(ctx, x, y, px, py, { baseRadius, height, colors, stroke, lineWidth = 1.0, facing }) {
-    drawExtrudedRadial(ctx, legacyContext(x, y, px, py, facing), {
-        baseRadius,
-        topRadius: 0,
-        height,
-        colors,
-        stroke,
-        lineWidth,
-        facing,
-    });
-}
-
-export function drawStack(ctx, x, y, px, py, options) {
-    drawStackedSpheres(ctx, legacyContext(x, y, px, py, options.facing), options);
 }
 
 export function drawBox(ctx, x, y, px, py, options) {

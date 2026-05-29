@@ -4,10 +4,11 @@ import {
     pointOnFrustum,
     radiusAtT,
     getHeightSlice,
+    getRadialSilhouette,
+    traceVisibleArc,
     isFaceTowardViewer,
     createSideGradient,
 } from "./Projection3D.js";
-import { propAt } from "./PropDrawContext.js";
 
 export const DEFAULT_PROP_HEIGHT = 14;
 export const RADIAL_SEGMENTS = 14;
@@ -30,19 +31,27 @@ function isFaceVisible(pc, originX, originY, edgeMidX, edgeMidY) {
     return isFaceTowardViewer(edgeMidX, edgeMidY, originX, originY, pc.px, pc.py);
 }
 
-export function drawExtrudedRadial(ctx, pc, options) {
-    const baseRadius = options.baseRadius ?? options.radius;
-    const {
-        topRadius,
-        height,
-        facing = pc.facing,
-        colors,
-        stroke,
-        lineWidth = 1.0,
-        segments = RADIAL_SEGMENTS,
-    } = options;
-    const projection = pc.project(height);
-    const resolvedTop = topRadius === 0 ? 0 : (topRadius ?? baseRadius * (1 + projection.alpha));
+function drawRadialSilhouetteBody(ctx, projection, baseRadius, resolvedTop, colors) {
+    const sil = getRadialSilhouette(projection, baseRadius, resolvedTop);
+    const { cx, cy, topX, topY, viewAngle } = projection;
+    const { perpA, perpB, baseLeft, baseRight, topRight } = sil;
+
+    ctx.beginPath();
+    ctx.moveTo(baseLeft.x, baseLeft.y);
+    traceVisibleArc(ctx, cx, cy, sil.baseRadius, perpA, perpB, viewAngle);
+    if (resolvedTop === 0) {
+        ctx.lineTo(topX, topY);
+    } else {
+        ctx.lineTo(topRight.x, topRight.y);
+        traceVisibleArc(ctx, topX, topY, sil.topRadius, perpB, perpA, viewAngle);
+    }
+    ctx.closePath();
+
+    ctx.fillStyle = createSideGradient(ctx, baseLeft, baseRight, viewAngle + Math.PI, colors);
+    ctx.fill();
+}
+
+function drawFacetedRadialBody(ctx, pc, projection, baseRadius, topRadius, facing, segments, colors, stroke, lineWidth) {
     const { faces, cx, cy } = extrudeRadial(projection, baseRadius, topRadius, facing, segments);
 
     for (const face of faces) {
@@ -55,6 +64,28 @@ export function drawExtrudedRadial(ctx, pc, options) {
             stroke,
             lineWidth,
         });
+    }
+}
+
+export function drawExtrudedRadial(ctx, pc, options) {
+    const baseRadius = options.baseRadius ?? options.radius;
+    const {
+        topRadius,
+        height,
+        facing = pc.facing,
+        colors,
+        stroke,
+        lineWidth = 1.0,
+        segments = RADIAL_SEGMENTS,
+        bodyMode = "silhouette",
+    } = options;
+    const projection = pc.project(height);
+    const resolvedTop = topRadius === 0 ? 0 : (topRadius ?? baseRadius * (1 + projection.alpha));
+
+    if (bodyMode === "silhouette") {
+        drawRadialSilhouetteBody(ctx, projection, baseRadius, resolvedTop, colors);
+    } else {
+        drawFacetedRadialBody(ctx, pc, projection, baseRadius, topRadius, facing, segments, colors, stroke, lineWidth);
     }
 
     return { projection, orientAngle: facing };
@@ -187,7 +218,6 @@ export function drawExtrudedSphere(ctx, pc, {
         height: blobHeight,
         facing,
         colors,
-        stroke,
         lineWidth,
     });
 
@@ -205,20 +235,6 @@ export function drawExtrudedSphere(ctx, pc, {
     ctx.arc(projection.topX, projection.topY, topRadius, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
-}
-
-export function drawStackedSpheres(ctx, pc, { height, segments, facing = pc.facing }) {
-    const projection = pc.project(height);
-    for (const seg of segments) {
-        const slice = getHeightSlice(projection, seg.radius, seg.t);
-        drawExtrudedSphere(ctx, propAt(pc, slice.centerX, slice.centerY), {
-            radius: seg.radius,
-            height: seg.blobHeight ?? seg.radius * 2.2,
-            colors: seg.colors,
-            stroke: seg.stroke ?? "#000",
-            facing,
-        });
-    }
 }
 
 export function drawExtrudedBox(ctx, pc, {
@@ -329,37 +345,4 @@ export function drawBarkLines(ctx, pc, {
         );
         ctx.stroke();
     }
-}
-
-export function drawTrafficCone(ctx, pc) {
-    const baseRadius = pc.prop.radius || 6;
-    const height = 20;
-    const coneColors = { shadow: "#E65100", mid: "#FF6D00", highlight: "#FFAB40" };
-
-    drawExtrudedRadial(ctx, pc, {
-        baseRadius,
-        topRadius: 0,
-        height,
-        colors: coneColors,
-        stroke: "#BF360C",
-    });
-    drawRadialBand(ctx, pc, {
-        baseRadius,
-        topRadius: 0,
-        height,
-        t0: 0.52,
-        t1: 0.68,
-        fill: "#FAFAFA",
-        stroke: "#BDBDBD",
-    });
-    drawRadialBand(ctx, pc, {
-        baseRadius,
-        topRadius: 0,
-        height,
-        t0: 0.15,
-        t1: 0.35,
-        fill: "#EEEEEE",
-        stroke: "#BDBDBD",
-        lineWidth: 0.6,
-    });
 }

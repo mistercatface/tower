@@ -1,7 +1,6 @@
 // World props: geometry is built in world space (prop.facing at spawn).
-// The viewer is used only for height projection and face culling (isFaceTowardViewer).
-// Do not rotate silhouettes toward the player.
-
+// Symmetric cylinders use a viewer-facing silhouette (viewAngle for rim tangents only).
+// Faceted extrusion remains available via bodyMode: "faceted".
 export const CAMERA_HEIGHT = 160;
 
 export function projectVertical(objX, objY, viewerX, viewerY, height) {
@@ -27,7 +26,6 @@ export function getHeightSlice(projection, baseSize, t) {
         size: scaleAtHeight(baseSize, alpha, t),
     };
 }
-
 export function radiusAtT(baseRadius, topRadius, t) {
     return baseRadius + (topRadius - baseRadius) * t;
 }
@@ -43,11 +41,66 @@ export function pointOnFrustum(projection, baseRadius, topRadius, t, angle) {
     };
 }
 
+function angleDelta(from, to) {
+    let delta = to - from;
+    while (delta <= -Math.PI) delta += Math.PI * 2;
+    while (delta > Math.PI) delta -= Math.PI * 2;
+    return delta;
+}
+
+/** Arc on a circle rim that bulges toward the viewer (symmetric cylinder silhouette). */
+export function traceVisibleArc(ctx, centerX, centerY, radius, fromAngle, toAngle, viewAngle) {
+    const towardViewer = viewAngle + Math.PI;
+    const delta = angleDelta(fromAngle, toAngle);
+    const midShort = fromAngle + delta / 2;
+    const midLong = midShort + (delta > 0 ? -Math.PI : Math.PI);
+    const useShort = Math.abs(angleDelta(midShort, towardViewer)) < Math.abs(angleDelta(midLong, towardViewer));
+    const counterClockwise = delta > 0 ? !useShort : useShort;
+    ctx.arc(centerX, centerY, radius, fromAngle, toAngle, counterClockwise);
+}
+
+export function getRadialSilhouette(projection, baseRadius, topRadius = null) {
+    const { cx, cy, topX, topY, alpha, viewAngle } = projection;
+    const resolvedTop = topRadius === null ? baseRadius * (1 + alpha) : topRadius;
+    const perpA = viewAngle + Math.PI / 2;
+    const perpB = viewAngle - Math.PI / 2;
+    const rimPoint = (centerX, centerY, radius, angle) => ({
+        x: centerX + Math.cos(angle) * radius,
+        y: centerY + Math.sin(angle) * radius,
+    });
+
+    if (resolvedTop === 0) {
+        const apex = { x: topX, y: topY };
+        return {
+            viewAngle,
+            perpA,
+            perpB,
+            baseRadius,
+            topRadius: 0,
+            baseLeft: rimPoint(cx, cy, baseRadius, perpA),
+            baseRight: rimPoint(cx, cy, baseRadius, perpB),
+            topLeft: apex,
+            topRight: apex,
+        };
+    }
+
+    return {
+        viewAngle,
+        perpA,
+        perpB,
+        baseRadius,
+        topRadius: resolvedTop,
+        baseLeft: rimPoint(cx, cy, baseRadius, perpA),
+        baseRight: rimPoint(cx, cy, baseRadius, perpB),
+        topLeft: rimPoint(topX, topY, resolvedTop, perpA),
+        topRight: rimPoint(topX, topY, resolvedTop, perpB),
+    };
+}
+
 export function extrudeRadial(projection, baseRadius, topRadius, facing, segments = 12) {
     const { cx, cy, topX, topY, alpha } = projection;
     const resolvedTop = topRadius === 0 ? 0 : (topRadius ?? baseRadius * (1 + alpha));
     const faces = [];
-
     for (let i = 0; i < segments; i++) {
         const a0 = facing + (i / segments) * Math.PI * 2;
         const a1 = facing + ((i + 1) / segments) * Math.PI * 2;
