@@ -24,27 +24,40 @@ export function getHeightSlice(projection, baseSize, t) {
     };
 }
 
-export function getRadialSilhouette(projection, baseRadius, topRadius = null) {
-    const { cx, cy, topX, topY, alpha, viewAngle } = projection;
-    const resolvedTopRadius = topRadius ?? baseRadius * (1 + alpha);
-    const perpA = viewAngle + Math.PI / 2;
-    const perpB = viewAngle - Math.PI / 2;
-    const apex = { x: topX, y: topY };
-    const topLeft = resolvedTopRadius === 0
-        ? apex
-        : { x: topX + Math.cos(perpA) * resolvedTopRadius, y: topY + Math.sin(perpA) * resolvedTopRadius };
-    const topRight = resolvedTopRadius === 0
-        ? apex
-        : { x: topX + Math.cos(perpB) * resolvedTopRadius, y: topY + Math.sin(perpB) * resolvedTopRadius };
+export function radiusAtT(baseRadius, topRadius, t) {
+    return baseRadius + (topRadius - baseRadius) * t;
+}
+
+export function pointOnFrustum(projection, baseRadius, topRadius, t, angle) {
+    const { cx, cy, topX, topY } = projection;
+    const radius = radiusAtT(baseRadius, topRadius, t);
+    const centerX = cx + (topX - cx) * t;
+    const centerY = cy + (topY - cy) * t;
     return {
-        viewAngle,
-        topRadius: resolvedTopRadius,
-        baseLeft: { x: cx + Math.cos(perpA) * baseRadius, y: cy + Math.sin(perpA) * baseRadius },
-        baseRight: { x: cx + Math.cos(perpB) * baseRadius, y: cy + Math.sin(perpB) * baseRadius },
-        topLeft,
-        topRight,
-        apex,
+        x: centerX + Math.cos(angle) * radius,
+        y: centerY + Math.sin(angle) * radius,
     };
+}
+
+export function extrudeRadial(projection, baseRadius, topRadius, facing, segments = 12) {
+    const { cx, cy, topX, topY, alpha } = projection;
+    const resolvedTop = topRadius === 0 ? 0 : (topRadius ?? baseRadius * (1 + alpha));
+    const faces = [];
+
+    for (let i = 0; i < segments; i++) {
+        const a0 = facing + (i / segments) * Math.PI * 2;
+        const a1 = facing + ((i + 1) / segments) * Math.PI * 2;
+        const apex = { x: topX, y: topY };
+        faces.push({
+            baseA: { x: cx + Math.cos(a0) * baseRadius, y: cy + Math.sin(a0) * baseRadius },
+            baseB: { x: cx + Math.cos(a1) * baseRadius, y: cy + Math.sin(a1) * baseRadius },
+            topA: resolvedTop === 0 ? apex : { x: topX + Math.cos(a0) * resolvedTop, y: topY + Math.sin(a0) * resolvedTop },
+            topB: resolvedTop === 0 ? apex : { x: topX + Math.cos(a1) * resolvedTop, y: topY + Math.sin(a1) * resolvedTop },
+            midAngle: (a0 + a1) / 2,
+        });
+    }
+
+    return { faces, cx, cy, topX, topY, topRadius: resolvedTop };
 }
 
 export function getBoxCorners(centerX, centerY, halfSize) {

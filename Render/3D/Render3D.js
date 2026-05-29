@@ -11,7 +11,7 @@ import {
     drawStack,
     drawBarkLines,
 } from "./PropPrimitives.js";
-import { projectVertical, getHeightSlice } from "./Projection3D.js";
+import { projectVertical, getHeightSlice, isFaceTowardViewer } from "./Projection3D.js";
 
 export class Render3D {
     constructor() {
@@ -205,52 +205,54 @@ export class Render3D {
 
     draw3DBarrel(ctx, p, px, py) {
         const radius = p.radius || 8;
-        const { x, y } = p;
+        const { x, y, facing = 0 } = p;
 
         drawCylinder(ctx, x, y, px, py, {
             radius,
             height: DEFAULT_PROP_HEIGHT,
             colors: { shadow: "#3F0000", mid: "#B71C1C", highlight: "#FF5252" },
             stroke: "#4A0E0E",
+            facing,
         });
 
-        const { slice1, slice2, viewAngle } = drawBand(ctx, x, y, px, py, {
+        const { slice1, slice2 } = drawBand(ctx, x, y, px, py, {
             radius,
             t0: 0.35,
             t1: 0.65,
             fill: "#FFEB3B",
             stroke: "#4A0E0E",
+            facing,
         });
 
         ctx.strokeStyle = "#000000";
         ctx.lineWidth = 1.5;
         for (let i = 0; i < 8; i++) {
-            const phi = (i * Math.PI) / 4;
-            if (Math.cos(phi - viewAngle) < 0) {
-                const phi2 = phi + 0.25;
-                ctx.beginPath();
-                ctx.moveTo(
-                    slice1.centerX + Math.cos(phi) * slice1.size,
-                    slice1.centerY + Math.sin(phi) * slice1.size
-                );
-                ctx.lineTo(
-                    slice2.centerX + Math.cos(phi2) * slice2.size,
-                    slice2.centerY + Math.sin(phi2) * slice2.size
-                );
-                ctx.stroke();
-            }
+            const phi = facing + (i * Math.PI) / 4;
+            const rivetX = slice1.centerX + Math.cos(phi) * slice1.size;
+            const rivetY = slice1.centerY + Math.sin(phi) * slice1.size;
+            if (!isFaceTowardViewer(rivetX, rivetY, x, y, px, py)) continue;
+            const phi2 = phi + 0.25;
+            ctx.beginPath();
+            ctx.moveTo(rivetX, rivetY);
+            ctx.lineTo(
+                slice2.centerX + Math.cos(phi2) * slice2.size,
+                slice2.centerY + Math.sin(phi2) * slice2.size
+            );
+            ctx.stroke();
         }
 
         drawCylinderRibs(ctx, x, y, px, py, {
             radius,
             ts: [0.25, 0.75],
             stroke: "rgba(0, 0, 0, 0.45)",
+            facing,
         });
 
         const { topX, topY, capRadius } = drawCap(ctx, x, y, px, py, {
             radius,
             capColors: { inner: "#455A64", mid: "#37474F", outer: "#263238" },
             stroke: "#1A0A00",
+            facing,
         });
 
         const triSize = capRadius * 0.55;
@@ -283,6 +285,7 @@ export class Render3D {
             stroke: "#3E2723",
             plankTs: { values: [0.33, 0.66], stroke: "rgba(62, 39, 35, 0.55)" },
             topCross: { stroke: "rgba(62, 39, 35, 0.6)" },
+            facing: p.facing ?? 0,
         });
     }
 
@@ -296,6 +299,7 @@ export class Render3D {
             height: trunkHeight,
             colors: { shadow: "#3E2723", mid: "#6D4C41", highlight: "#A1887F" },
             stroke: "#2E1B14",
+            facing,
         });
 
         drawBarkLines(ctx, x, y, px, py, {
@@ -303,6 +307,7 @@ export class Render3D {
             height: trunkHeight,
             ts: [0.2, 0.45, 0.7],
             stroke: "rgba(46, 27, 20, 0.45)",
+            facing,
         });
 
         const { topX, topY } = projection;
@@ -312,28 +317,31 @@ export class Render3D {
             height: 26,
             colors: { shadow: "#1B5E20", mid: "#388E3C", highlight: "#66BB6A" },
             stroke: "#1B4332",
+            facing,
         });
         drawSphere(ctx, topX + Math.cos(facing + 0.6) * 3, topY + Math.sin(facing + 0.6) * 3, px, py, {
             radius: 10,
             height: 20,
             colors: { shadow: "#2E7D32", mid: "#43A047", highlight: "#81C784" },
             stroke: "#1B4332",
+            facing,
         });
         drawSphere(ctx, topX + Math.cos(facing - 0.5) * 2, topY + Math.sin(facing - 0.5) * 2, px, py, {
             radius: 11,
             height: 22,
             colors: { shadow: "#33691E", mid: "#4CAF50", highlight: "#A5D6A7" },
             stroke: "#1B4332",
+            facing,
         });
     }
 
     draw3DTrafficCone(ctx, p, px, py) {
         const baseRadius = p.radius || 6;
         const height = 20;
-        const { x, y } = p;
+        const { x, y, facing = 0 } = p;
         const coneColors = { shadow: "#E65100", mid: "#FF6D00", highlight: "#FFAB40" };
 
-        drawCone(ctx, x, y, px, py, { baseRadius, height, colors: coneColors, stroke: "#BF360C" });
+        drawCone(ctx, x, y, px, py, { baseRadius, height, colors: coneColors, stroke: "#BF360C", facing });
         drawBand(ctx, x, y, px, py, {
             radius: baseRadius,
             height,
@@ -341,15 +349,19 @@ export class Render3D {
             t1: 0.68,
             fill: "#FAFAFA",
             stroke: "#BDBDBD",
+            facing,
+            topRadius: 0,
         });
         drawBand(ctx, x, y, px, py, {
-            radius: baseRadius * 0.55,
-            height: height * 0.55,
+            radius: baseRadius,
+            height,
             t0: 0.15,
             t1: 0.35,
             fill: "#EEEEEE",
             stroke: "#BDBDBD",
             lineWidth: 0.6,
+            facing,
+            topRadius: 0,
         });
     }
 
@@ -365,6 +377,7 @@ export class Render3D {
                 { t: 0.48, radius: 6, blobHeight: 13, colors: snow, stroke: "#90A4AE" },
                 { t: 0.76, radius: 4.5, blobHeight: 10, colors: snow, stroke: "#90A4AE" },
             ],
+            facing,
         });
 
         const projection = projectVertical(x, y, px, py, stackHeight);
@@ -378,6 +391,7 @@ export class Render3D {
             colors: { shadow: "#E65100", mid: "#FF9800", highlight: "#FFB74D" },
             stroke: "#E65100",
             lineWidth: 0.7,
+            facing,
         });
 
         ctx.fillStyle = "#212121";
@@ -397,27 +411,29 @@ export class Render3D {
     draw3DPalm(ctx, p, px, py) {
         const trunkRadius = 3.5;
         const trunkHeight = 48;
-        const { x, y } = p;
+        const { x, y, facing = 0 } = p;
 
         const { projection } = drawCylinder(ctx, x, y, px, py, {
             radius: trunkRadius,
             height: trunkHeight,
             colors: { shadow: "#5D4037", mid: "#8D6E63", highlight: "#BCAAA4" },
             stroke: "#4E342E",
+            facing,
         });
 
         const { topX, topY } = projection;
         const frondColors = { shadow: "#33691E", mid: "#558B2F", highlight: "#9CCC65" };
         for (let i = 0; i < 6; i++) {
-            const angle = (i / 6) * Math.PI * 2 - Math.PI / 2;
-            const fx = topX + Math.cos(angle) * 5;
-            const fy = topY + Math.sin(angle) * 5;
+            const frondFacing = (i / 6) * Math.PI * 2 - Math.PI / 2;
+            const fx = topX + Math.cos(frondFacing) * 5;
+            const fy = topY + Math.sin(frondFacing) * 5;
             drawCone(ctx, fx, fy, px, py, {
                 baseRadius: 3.5,
                 height: 16,
                 colors: frondColors,
                 stroke: "#1B5E20",
                 lineWidth: 0.8,
+                facing: frondFacing,
             });
         }
 
@@ -427,11 +443,12 @@ export class Render3D {
             colors: { shadow: "#689F38", mid: "#7CB342", highlight: "#AED581" },
             stroke: "#33691E",
             lineWidth: 0.7,
+            facing,
         });
     }
 
     draw3DRock(ctx, p, px, py) {
-        const { x, y } = p;
+        const { x, y, facing = 0 } = p;
         const gray = { shadow: "#424242", mid: "#757575", highlight: "#BDBDBD" };
 
         drawSphere(ctx, x - 1.5, y + 1, px, py, {
@@ -439,6 +456,7 @@ export class Render3D {
             height: 12,
             colors: gray,
             stroke: "#37474F",
+            facing,
         });
         drawSphere(ctx, x + 2, y - 1.5, px, py, {
             radius: 5,
@@ -446,11 +464,12 @@ export class Render3D {
             colors: { shadow: "#616161", mid: "#9E9E9E", highlight: "#E0E0E0" },
             stroke: "#424242",
             lineWidth: 0.8,
+            facing: facing + 0.4,
         });
     }
 
     draw3DLampPost(ctx, p, px, py) {
-        const { x, y } = p;
+        const { x, y, facing = 0 } = p;
         const poleHeight = 46;
 
         const { projection } = drawCylinder(ctx, x, y, px, py, {
@@ -459,6 +478,7 @@ export class Render3D {
             colors: { shadow: "#263238", mid: "#546E7A", highlight: "#90A4AE" },
             stroke: "#263238",
             lineWidth: 0.8,
+            facing,
         });
 
         const { topX, topY } = projection;
@@ -469,6 +489,7 @@ export class Render3D {
             topColors: { light: "#CFD8DC", mid: "#90A4AE", dark: "#546E7A" },
             stroke: "#263238",
             lineWidth: 0.8,
+            facing,
         });
 
         drawCap(ctx, topX, topY, px, py, {
@@ -477,6 +498,7 @@ export class Render3D {
             capColors: { inner: "#FFF9C4", mid: "#FFEB3B", outer: "#FBC02D" },
             stroke: "#F57F17",
             lineWidth: 0.7,
+            facing,
         });
     }
 
