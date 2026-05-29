@@ -205,7 +205,6 @@ export const createUpgrades = () => [
         description: "Passive: Replaces projectiles with a continuous laser beam. Turn Speed -50%.",
         maxLevel: 1,
         isAbility: true,
-        replaces: ["TwinStrike", "TripleStrike"],
         turretLoadout: { gun: "beamLaser", scope: "all", priority: 30 },
     }),
     new Upgrade({
@@ -245,26 +244,6 @@ export const createUpgrades = () => [
             run.turretCount.flatModifiers += 2;
         },
         minPlayerLevel: 8
-    }),
-    new Upgrade({
-        id: "TwinStrike",
-        category: "abilities",
-        name: "Twin Strike",
-        description: "When Active: Fire 2 smaller projectiles at half damage.",
-        maxLevel: 1,
-        isAbility: true,
-        turretLoadout: { preset: "twin", scope: "all", priority: 10 },
-    }),
-    new Upgrade({
-        id: "TripleStrike",
-        category: "abilities",
-        name: "Triple Strike",
-        description: "When Active: Fire 3 smaller projectiles at one-third damage.",
-        maxLevel: 1,
-        isAbility: true,
-        requires: ['TwinStrike'],
-        replaces: ['TwinStrike'],
-        turretLoadout: { preset: "triple", scope: "all", priority: 20 },
     }),
     new Upgrade({
         id: "SteadyWeapon",

@@ -16,6 +16,7 @@ import { spawnFloatingText } from "../Core/EventSystem.js";
 import { resolveWeaponModeForGun } from "../Combat/WeaponSystem.js";
 import { applyActorGunModifiers, getSlotFireIntervalMs } from "../Combat/gunCombat.js";
 import { getGunDefinition } from "../Config/gunDefinitions.js";
+import { resolveActorTurretLoadouts } from "../Config/TurretLoadoutDefinitions.js";
 import {
     getTurretCountForLoadout,
     normalizeWeaponLoadout,
@@ -140,17 +141,24 @@ export class Actor extends DestructibleEntity {
         }
     }
 
-    applyWeaponLoadout(gunIds) {
+    applyWeaponLoadout(gunIds, resolveContext) {
         const loadout = normalizeWeaponLoadout(gunIds);
         this.weaponLoadout = loadout;
         const turnSpeed = this.stats?.turnSpeed?.value ?? this.turnSpeed;
         this.syncTurretCount(getTurretCountForLoadout(loadout), turnSpeed);
 
-        for (let i = 0; i < loadout.length; i++) {
-            this.turrets[i].gunId = loadout[i];
+        if (resolveContext?.state) {
+            resolveActorTurretLoadouts(
+                this,
+                resolveContext.state,
+                resolveContext.upgradeDefs ?? resolveContext.state.upgradeDefs
+            );
+        } else {
+            for (let i = 0; i < loadout.length; i++) {
+                this.turrets[i].gunId = loadout[i];
+            }
+            applyActorGunModifiers(this);
         }
-
-        applyActorGunModifiers(this);
     }
 
     turnAllTurretsTowards(targetAngle, dt) {
@@ -179,7 +187,9 @@ export class Actor extends DestructibleEntity {
             shouldApply,
             afterSync: (actor) => {
                 if (actor.weaponLoadout.length > 0) {
-                    actor.applyWeaponLoadout(actor.weaponLoadout);
+                    actor.applyWeaponLoadout(actor.weaponLoadout, { state, upgradeDefs });
+                } else {
+                    resolveActorTurretLoadouts(actor, state, upgradeDefs);
                 }
             },
         });

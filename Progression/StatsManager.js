@@ -95,7 +95,7 @@ export class StatsManager {
         }
 
         StatsManager.recalculateStats(state, upgradesList);
-        player.applyWeaponLoadout(rollPlayerStartLoadout());
+        player.applyWeaponLoadout(rollPlayerStartLoadout(), { state, upgradeDefs: upgradesList });
         MapGenerator.generateMap(state);
 
         const startNode = state.getMapNode(0);

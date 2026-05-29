@@ -13,15 +13,41 @@ export const turretLoadoutPresets = {
         radiusMultiplier: playerProjectileSettings.splitRadiusMultiplier,
         angleOffsets: [-0.1, 0.1, 0],
     },
+    shotgun: {
+        radiusMultiplier: playerProjectileSettings.splitRadiusMultiplier,
+        pelletCount: 3,
+        spreadRadians: 0.1,
+    },
 };
 
 export const defaultTurretLoadout = turretLoadoutPresets.standard;
 
 export function cloneTurretLoadout(loadout) {
-    return {
+    const cloned = {
         radiusMultiplier: loadout.radiusMultiplier,
-        angleOffsets: [...loadout.angleOffsets],
     };
+    if (loadout.angleOffsets) {
+        cloned.angleOffsets = [...loadout.angleOffsets];
+    }
+    if (loadout.pelletCount != null) {
+        cloned.pelletCount = loadout.pelletCount;
+    }
+    if (loadout.spreadRadians != null) {
+        cloned.spreadRadians = loadout.spreadRadians;
+    }
+    return cloned;
+}
+
+/** Per-shot angles: fixed offsets, or random uniform spread in [-spreadRadians, spreadRadians]. */
+export function resolveFireAngleOffsets(loadout) {
+    if (loadout.pelletCount != null && loadout.spreadRadians != null) {
+        const offsets = [];
+        for (let i = 0; i < loadout.pelletCount; i++) {
+            offsets.push((Math.random() * 2 - 1) * loadout.spreadRadians);
+        }
+        return offsets;
+    }
+    return loadout.angleOffsets ?? [0];
 }
 
 export function resolveLoadoutFromConfig(loadoutConfig) {
@@ -37,7 +63,9 @@ export function resolveLoadoutFromConfig(loadoutConfig) {
 
     return cloneTurretLoadout({
         radiusMultiplier: loadoutConfig.radiusMultiplier ?? defaultTurretLoadout.radiusMultiplier,
-        angleOffsets: loadoutConfig.angleOffsets ?? defaultTurretLoadout.angleOffsets,
+        angleOffsets: loadoutConfig.angleOffsets,
+        pelletCount: loadoutConfig.pelletCount,
+        spreadRadians: loadoutConfig.spreadRadians,
     });
 }
 

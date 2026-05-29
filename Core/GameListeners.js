@@ -64,7 +64,7 @@ export function registerGameListeners(eventBus, pauseManager) {
         if (state.isGameOver || !state.player) return;
 
         const loadout = toggleGunInLoadout(state.player.weaponLoadout, gunId);
-        state.player.applyWeaponLoadout(loadout);
+        state.player.applyWeaponLoadout(loadout, { state, upgradeDefs: state.upgradeDefs });
         requestUiUpdate();
     });
 
@@ -72,7 +72,7 @@ export function registerGameListeners(eventBus, pauseManager) {
         if (state.isGameOver || !state.player) return;
 
         const loadout = unequipSlot(state.player.weaponLoadout, slotIndex);
-        state.player.applyWeaponLoadout(loadout);
+        state.player.applyWeaponLoadout(loadout, { state, upgradeDefs: state.upgradeDefs });
         requestUiUpdate();
     });
 

@@ -1,5 +1,6 @@
 import { applyActorGunModifiers } from "../Combat/gunCombat.js";
-import { defaultGunId } from "./gunDefinitions.js";
+import { normalizeWeaponLoadout } from "../Combat/equipmentLoadout.js";
+import { defaultGunId, getGunDefinition } from "./gunDefinitions.js";
 import {
     cloneTurretLoadout,
     defaultTurretLoadout,
@@ -26,9 +27,13 @@ export function resolveActorTurretLoadouts(actor, state, upgradeDefs = []) {
     const turrets = actor.getTurrets();
     if (turrets.length === 0) return;
 
-    for (const turret of turrets) {
-        turret.loadout = cloneTurretLoadout(defaultTurretLoadout);
-        turret.gunId = defaultGunId;
+    const weaponLoadout = normalizeWeaponLoadout(actor.weaponLoadout ?? []);
+
+    for (let i = 0; i < turrets.length; i++) {
+        const gunId = weaponLoadout[i] ?? defaultGunId;
+        const gun = getGunDefinition(gunId);
+        turrets[i].gunId = gunId;
+        turrets[i].loadout = resolveLoadoutFromConfig(gun.turretLoadout ?? { preset: "standard" });
     }
 
     const loadoutUpgrades = upgradeDefs

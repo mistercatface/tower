@@ -2,7 +2,7 @@ import { Utilities } from "../Core/Utilities.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
 import { enemyProjectileSettings, playerProjectileSettings } from "../Config/Config.js";
 import { defaultGunId, getGunDefinition } from "../Config/gunDefinitions.js";
-import { defaultTurretLoadout } from "../Config/turretLoadoutPresets.js";
+import { defaultTurretLoadout, resolveFireAngleOffsets } from "../Config/turretLoadoutPresets.js";
 import { Pools } from "../Core/Pools.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 
@@ -12,7 +12,9 @@ export class Turret {
         this.turnSpeed = turnSpeed;
         this.loadout = {
             radiusMultiplier: loadout.radiusMultiplier,
-            angleOffsets: [...loadout.angleOffsets],
+            ...(loadout.angleOffsets ? { angleOffsets: [...loadout.angleOffsets] } : {}),
+            ...(loadout.pelletCount != null ? { pelletCount: loadout.pelletCount } : {}),
+            ...(loadout.spreadRadians != null ? { spreadRadians: loadout.spreadRadians } : {}),
         };
         this.gunId = defaultGunId;
         this.charge = 0;
@@ -35,7 +37,8 @@ export class Turret {
         const { x: tx, y: ty } = this.getMuzzlePosition(source);
 
         if (source.type === "player") {
-            const { radiusMultiplier, angleOffsets } = this.loadout;
+            const { radiusMultiplier } = this.loadout;
+            const angleOffsets = resolveFireAngleOffsets(this.loadout);
             this.spawnProjectiles(state, source, tx, ty, this.angle, gun, radiusMultiplier, angleOffsets, "player");
             return;
         }
