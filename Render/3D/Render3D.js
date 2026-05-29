@@ -228,7 +228,7 @@ export class Render3D {
                 const distSq = (p.x - px) ** 2 + (p.y - py) ** 2;
                 if (distSq <= 2250000) {
                     p._distSq = distSq;
-                    p._renderType = (p.currentState === "on_fire" && p.strategy.render3DKey === "barrel") ? "fire_barrel" : p.strategy.render3DKey;
+                    p._renderType = p.getRender3DKey();
                     visibleObjects.push(p);
                 }
             }

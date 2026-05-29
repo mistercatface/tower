@@ -2,6 +2,7 @@ import { DestructibleEntity } from "./Entity.js";
 import { Separation } from "../Spatial/Motion/Separation.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { enemyStates } from "./EnemyStates.js";
+import { transitionEntity } from "./EntityFsm.js";
 
 export class Actor extends DestructibleEntity {
     constructor(x, y, radius, speed, health, color, type, accelRate = 3.0, canDamageWalls = false) {
@@ -25,18 +26,12 @@ export class Actor extends DestructibleEntity {
         this.chargeBar = null;
         this.weapon = null;
         this.currentState = enemyStates.navigating;
+        this.currentStateName = "navigating";
         this.stateData = {};
     }
 
     changeState(stateName, stateDataInit = null) {
-        if (this.currentState && this.currentState.onExit) {
-            this.currentState.onExit(this);
-        }
-        this.currentState = enemyStates[stateName];
-        this.stateData = stateDataInit || {};
-        if (this.currentState && this.currentState.onEnter) {
-            this.currentState.onEnter(this);
-        }
+        transitionEntity(this, enemyStates, stateName, stateDataInit);
     }
 
     applyLocomotion(dt, walls, spatialHash, {

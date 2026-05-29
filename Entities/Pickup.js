@@ -1,7 +1,8 @@
 import { Entity } from "./Entity.js";
-import { Explosion } from "./Explosion/Explosion.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { worldPropDefinitions } from "../Config/PropDefinitions.js";
+import { transitionEntity } from "./EntityFsm.js";
+import { pickupStates } from "./PickupStates.js";
 
 const PICKUP_STRATEGY_DEFAULTS = {
     isPushable: false,
@@ -17,11 +18,6 @@ const PICKUP_STRATEGY_DEFAULTS = {
 
 function withPickupDefaults(strategy) {
     return { ...PICKUP_STRATEGY_DEFAULTS, ...strategy };
-}
-
-function spawnExplosion(state, x, y, config) {
-    if (!state.explosions) state.explosions = [];
-    state.explosions.push(new Explosion(x, y, config.type, config));
 }
 
 function explosiveOnHit(state, pickup, projectile, events) {
@@ -75,36 +71,41 @@ export class Pickup extends Entity {
             this.maxHealth = this.strategy.maxHealth;
             this.health = this.strategy.maxHealth;
         }
-        this.currentState = "normal";
         this.stateTimer = 0;
+        this.stateData = {};
+        this.changeState("normal");
     }
 
-    takeDamage(amount, state) {
-        if (this.maxHealth == null) return false;
-        
+    changeState(stateName, stateDataInit = null) {
+        transitionEntity(this, pickupStates, stateName, stateDataInit);
+    }
+
+    getRender3DKey() {
+        if (this.currentState?.getRender3DKey) {
+            return this.currentState.getRender3DKey(this);
+        }
+        return this.strategy.render3DKey;
+    }
+
+    takeDamage(amount, gameState) {
+        if (this.maxHealth == null || this.isDead) return false;
+
         this.health -= amount;
         if (this.health <= 0) {
             this.health = 0;
-            if (this.currentState === "normal" && this.type === "barrel") {
-                this.currentState = "on_fire";
-                this.maxHealth = 15;
-                this.health = 15;
-                this.stateTimer = 2000;
+            if (this.currentStateName === "normal" && this.type === "barrel") {
+                this.changeState("on_fire");
             } else {
-                this.explode(state);
+                this.changeState("exploded", { gameState });
                 return true;
             }
         }
         return false;
     }
 
-    explode(state) {
-        if (this.isDead) return;
-        this.isDead = true;
-        this.currentState = "exploded";
-        if (state) {
-            spawnExplosion(state, this.x, this.y, this.strategy.explosion);
-        }
+    explode(gameState) {
+        if (this.isDead || this.currentStateName === "exploded") return;
+        this.changeState("exploded", { gameState });
     }
 
     update(dt, walls, state) {
@@ -113,13 +114,8 @@ export class Pickup extends Entity {
             PhysicsSystem.resolveWallCollisions(this, walls);
         }
 
-        if (this.currentState === "on_fire") {
-            this.stateTimer -= dt;
-            this.health -= 15 * (dt / 2000);
-            if (this.health <= 0 || this.stateTimer <= 0) {
-                this.health = 0;
-                this.explode(state);
-            }
+        if (this.currentState?.update) {
+            this.currentState.update(this, dt, walls, state);
         }
     }
 }
