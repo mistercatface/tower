@@ -64,8 +64,10 @@ export class MapTransitionState {
     }
 
     update(dt, ctx) {
+        const speedUpDt = dt * 5.0;
+        
         const oldGridPos = ctx.state.flowFieldGrid.worldToGrid(ctx.state.player.x, ctx.state.player.y);
-        ctx.state.player.update(dt, ctx.state.flowFieldGrid, ctx.state.walls, null, ctx.state);
+        ctx.state.player.update(speedUpDt, ctx.state.flowFieldGrid, ctx.state.walls, null, ctx.state);
         ctx.state.navigation.updateFlowField({
             playerX: ctx.state.player.x,
             playerY: ctx.state.player.y,
@@ -74,7 +76,7 @@ export class MapTransitionState {
             previousGridPos: oldGridPos,
         });
 
-        WeaponSystem.updateActorTurrets(dt, ctx.state.player, ctx.state, ctx.upgrades, true);
+        WeaponSystem.updateActorTurrets(speedUpDt, ctx.state.player, ctx.state, ctx.upgrades, true);
 
         const targetNode = ctx.state.getMapTargetNode();
         if (targetNode) {
@@ -90,7 +92,7 @@ export class MapTransitionState {
             }
         }
 
-        FloatingText.updateAll(ctx.state, dt);
+        FloatingText.updateAll(ctx.state, speedUpDt);
     }
 
     render(ctx) {
