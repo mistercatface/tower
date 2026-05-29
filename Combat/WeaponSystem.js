@@ -33,11 +33,38 @@ export class ChargedWeaponMode extends WeaponTargetingStrategy {
     }
 
     processTurret(dt, state, source, gun, turret, target, blocksTargeting, combatEvents) {
+        if (turret.currentGunId !== turret.gunId || turret.ammo === undefined) {
+            turret.currentGunId = turret.gunId;
+            turret.ammo = gun.maxAmmo;
+            turret.reloading = false;
+            turret.reloadTimer = 0;
+        }
+
+        if (turret.reloading) {
+            turret.reloadTimer += dt;
+            if (turret.reloadTimer >= gun.reloadTimeMs) {
+                turret.reloading = false;
+                turret.reloadTimer = 0;
+                turret.ammo = gun.maxAmmo;
+            }
+        }
+
+        if (!turret.reloading && turret.ammo <= 0) {
+            turret.reloading = true;
+            turret.reloadTimer = 0;
+        }
+
         const aimTarget = this.determineAimTarget(source, target, blocksTargeting, turret);
         const fireIntervalMs = getSlotFireIntervalMs(gun, source);
         const sway = WeaponSystem.computeAccuracySway(source, turret, dt, true);
 
         const isAimed = WeaponSystem.aimTurret(turret, source.x, source.y, aimTarget.x, aimTarget.y, dt, sway);
+
+        if (turret.reloading) {
+            turret.charge = 0;
+            return;
+        }
+
         if (target && !blocksTargeting) {
             if (turret.lastTarget !== target) {
                 turret.charge = 0;
@@ -46,8 +73,15 @@ export class ChargedWeaponMode extends WeaponTargetingStrategy {
             if (isAimed) {
                 turret.charge += dt;
                 if (turret.charge >= fireIntervalMs) {
-                    this.onFire(state, turret, source);
-                    turret.charge = 0;
+                    if (turret.ammo > 0) {
+                        this.onFire(state, turret, source);
+                        turret.ammo--;
+                        turret.charge = 0;
+                        if (turret.ammo <= 0) {
+                            turret.reloading = true;
+                            turret.reloadTimer = 0;
+                        }
+                    }
                 }
             }
         } else {
@@ -63,7 +97,28 @@ export class ContinuousWeaponMode extends WeaponTargetingStrategy {
         this.onTick = onTickFn;
     }
 
-    processTurret(dt, state, source, _gun, turret, target, blocksTargeting, combatEvents) {
+    processTurret(dt, state, source, gun, turret, target, blocksTargeting, combatEvents) {
+        if (turret.currentGunId !== turret.gunId || turret.ammo === undefined) {
+            turret.currentGunId = turret.gunId;
+            turret.ammo = gun.maxAmmo;
+            turret.reloading = false;
+            turret.reloadTimer = 0;
+        }
+
+        if (turret.reloading) {
+            turret.reloadTimer += dt;
+            if (turret.reloadTimer >= gun.reloadTimeMs) {
+                turret.reloading = false;
+                turret.reloadTimer = 0;
+                turret.ammo = gun.maxAmmo;
+            }
+        }
+
+        if (!turret.reloading && turret.ammo <= 0) {
+            turret.reloading = true;
+            turret.reloadTimer = 0;
+        }
+
         const turretDist = source.radius + 4 + 4 * (source.radius / 8);
         const tx = source.x + Math.cos(turret.angle) * turretDist;
         const ty = source.y + Math.sin(turret.angle) * turretDist;
@@ -85,6 +140,12 @@ export function createLaserWeaponMode() {
         const gun = getGunDefinition(turret.gunId ?? defaultGunId);
         if (gun.kind !== "beam") return;
 
+        if (turret.reloading) {
+            turret.currentLaserLength = 0;
+            turret.laserTimer = 0;
+            return;
+        }
+
         turret.laserTimer = (turret.laserTimer || 0) + dt;
         let laserCanDamage = false;
         if (turret.laserTimer >= gun.tickIntervalMs) {
@@ -100,6 +161,14 @@ export function createLaserWeaponMode() {
 
         state.activeLasers.push(new Laser(tx, ty, hit.x, hit.y));
         if (laserCanDamage) {
+            if (turret.ammo > 0) {
+                turret.ammo--;
+                if (turret.ammo <= 0) {
+                    turret.reloading = true;
+                    turret.reloadTimer = 0;
+                }
+            }
+
             const tickDamage = getBeamTickDamage(gun);
             if (hit.hit === "enemy") {
                 combatEvents.push({ target: hit.entity, damage: tickDamage });

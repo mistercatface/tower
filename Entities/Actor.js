@@ -41,7 +41,7 @@ export class Actor extends DestructibleEntity {
 
         this.separation = new Separation();
         this.healthBar = null;
-        this.chargeBar = null;
+        this.reloadBar = null;
         this.weapon = null;
         this.stats = null;
         this.upgrades = {};
@@ -138,6 +138,10 @@ export class Actor extends DestructibleEntity {
             turret.lastTarget = null;
             turret.currentLaserLength = 0;
             turret.laserTimer = 0;
+            turret.ammo = undefined;
+            turret.reloading = false;
+            turret.reloadTimer = 0;
+            turret.currentGunId = null;
         }
     }
 
@@ -220,15 +224,15 @@ export class Actor extends DestructibleEntity {
         }
     }
 
-    getChargeRatios() {
+    getReloadRatios() {
         const ratios = [];
 
         for (const turret of this.turrets) {
-            if (turret.charge <= 0) continue;
-            const gun = getGunDefinition(turret.gunId);
-            const fireIntervalMs = getSlotFireIntervalMs(gun, this);
-            if (fireIntervalMs > 0) {
-                ratios.push(turret.charge / fireIntervalMs);
+            if (turret.reloading) {
+                const gun = getGunDefinition(turret.gunId);
+                if (gun.reloadTimeMs > 0) {
+                    ratios.push(turret.reloadTimer / gun.reloadTimeMs);
+                }
             }
         }
 
@@ -236,7 +240,7 @@ export class Actor extends DestructibleEntity {
     }
 
     renderStatusBars(ctx, cache, yOffset) {
-        this.renderBars(ctx, cache, yOffset, this.getChargeRatios());
+        this.renderBars(ctx, cache, yOffset, this.getReloadRatios());
     }
 
     changeState(stateName, stateDataInit = null) {
@@ -284,18 +288,18 @@ export class Actor extends DestructibleEntity {
         return baseAccuracy * (1 - (1 - minMultiplier) * ratio);
     }
 
-    renderBars(ctx, cache, yOffset, chargeRatios) {
+    renderBars(ctx, cache, yOffset, reloadRatios) {
         if (this.health < this.maxHealth && this.healthBar) {
             const currentHealth = Math.max(0, this.health);
             this.healthBar.render(ctx, this.x, this.y - yOffset, currentHealth / this.maxHealth, cache);
         }
 
-        if (chargeRatios && chargeRatios.length > 0 && this.chargeBar) {
+        if (reloadRatios && reloadRatios.length > 0 && this.reloadBar) {
             let activeBarsCount = 0;
-            for (let i = 0; i < chargeRatios.length; i++) {
-                const ratio = chargeRatios[i];
+            for (let i = 0; i < reloadRatios.length; i++) {
+                const ratio = reloadRatios[i];
                 if (ratio > 0) {
-                    this.chargeBar.render(ctx, this.x, this.y - (yOffset + 5 + activeBarsCount * 5), ratio, cache);
+                    this.reloadBar.render(ctx, this.x, this.y - (yOffset + 5 + activeBarsCount * 5), ratio, cache);
                     activeBarsCount++;
                 }
             }

@@ -4,9 +4,9 @@ export function createEntityBars({
     healthWidth,
     healthHeight,
     healthBorderRadius,
-    chargeWidth = healthWidth,
-    chargeHeight = 2,
-    chargeBorderRadius = 1,
+    reloadWidth = healthWidth,
+    reloadHeight = 2,
+    reloadBorderRadius = 1,
 }) {
     return {
         healthBar: new ProgressBar({
@@ -15,12 +15,12 @@ export function createEntityBars({
             borderRadius: healthBorderRadius,
             quantizationSteps: 20,
         }),
-        chargeBar: new ProgressBar({
-            width: chargeWidth,
-            height: chargeHeight,
-            borderRadius: chargeBorderRadius,
+        reloadBar: new ProgressBar({
+            width: reloadWidth,
+            height: reloadHeight,
+            borderRadius: reloadBorderRadius,
             quantizationSteps: 20,
-            colorFn: () => "#00E5FF",
+            colorFn: () => "#FFC107",
         }),
     };
 }

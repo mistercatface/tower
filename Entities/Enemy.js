@@ -19,7 +19,7 @@ const enemyBars = createEntityBars({
 
 export class Enemy extends Actor {
     static healthBar = enemyBars.healthBar;
-    static chargeBar = enemyBars.chargeBar;
+    static reloadBar = enemyBars.reloadBar;
 
     static updateAll(state, dt, spatialHash) {
         for (let i = state.enemies.length - 1; i >= 0; i--) {
@@ -68,7 +68,7 @@ export class Enemy extends Actor {
         this.chargeCooldown = 0;
         this.startingAbilities = [];
         this.healthBar = Enemy.healthBar;
-        this.chargeBar = Enemy.chargeBar;
+        this.reloadBar = Enemy.reloadBar;
     }
 
     onHitAfterDamage(_damage, _ctx, _hitType, died) {

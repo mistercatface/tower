@@ -22,6 +22,8 @@ export const gunDefinitions = {
         muzzleSpeed: playerProjectileSettings.speed,
         bulletRadius: 2,
         damage: 1,
+        maxAmmo: 12,
+        reloadTimeMs: 1200,
         turretLoadout: { preset: "standard" },
     },
     shotgun: {
@@ -33,6 +35,8 @@ export const gunDefinitions = {
         muzzleSpeed: playerProjectileSettings.speed,
         bulletRadius: 2,
         damage: 1,
+        maxAmmo: 6,
+        reloadTimeMs: 1800,
         turretLoadout: { preset: "shotgun" },
     },
     beamLaser: {
@@ -44,6 +48,8 @@ export const gunDefinitions = {
         tickIntervalMs: 200,
         beamGrowthSpeed: 200,
         tickDamage: 0.33,
+        maxAmmo: 25,
+        reloadTimeMs: 2000,
         equipModifiers: {
             turnSpeedMultiplier: 0.5,
         },
@@ -57,6 +63,8 @@ export const gunDefinitions = {
         muzzleSpeed: enemyProjectileSettings.speed,
         bulletRadius: 2,
         damage: 10,
+        maxAmmo: 10,
+        reloadTimeMs: 1500,
     },
 };
 
