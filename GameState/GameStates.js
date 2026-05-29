@@ -6,14 +6,14 @@ import { Enemy } from "../Entities/Enemy.js";
 import { Projectile } from "../Entities/Projectile.js";
 import { WeaponSystem } from "../Combat/WeaponSystem.js";
 import { spawnInitialPickups } from "../Entities/Pickup.js";
-import { events } from "../Core/EventSystem.js";
+import { events, Events, requestUiUpdate } from "../Core/EventSystem.js";
 import { Explosion } from "../Entities/Explosion/Explosion.js";
 import { navigationSettings } from "../Config/Config.js";
 import { resolveMoveTarget } from "../Spatial/Navigation/PathClearance.js";
 
 export class MapState {
     onEnter(ctx) {
-        events.emit("ui:update", { state: ctx.state, upgrades: ctx.upgrades });
+        requestUiUpdate();
     }
     update(dt, ctx) {
         FloatingText.updateAll(ctx.state, dt);
@@ -31,7 +31,7 @@ export class MapState {
             if (!neighbor) continue;
             const dist = Math.hypot(neighbor.x - worldCoords.x, neighbor.y - worldCoords.y);
             if (dist < 20) {
-                events.emit("ui:showNodeConfirm", {
+                events.emit(Events.UI_SHOW_NODE_CONFIRM, {
                     node: neighbor,
                     onConfirm: () => {
                         ctx.state.mapTargetNodeId = neighbor.id;
@@ -65,7 +65,7 @@ export class MapTransitionState {
         );
         
         ctx.viewport.snapTo(ctx.state.player.x, ctx.state.player.y);
-        events.emit("ui:update", { state: ctx.state, upgrades: ctx.upgrades });
+        requestUiUpdate();
     }
 
     update(dt, ctx) {
@@ -151,7 +151,7 @@ export class CombatState {
         spawnInitialPickups(ctx.state, ctx.state.player.x, ctx.state.player.y);
         
         ctx.viewport.snapTo(ctx.state.player.x, ctx.state.player.y);
-        events.emit("ui:update", { state: ctx.state, upgrades: ctx.upgrades });
+        requestUiUpdate();
     }
 
     update(dt, ctx) {
@@ -244,7 +244,7 @@ export class CombatState {
 
 export class RewardState {
     onEnter(ctx) {
-        events.emit("ui:update", { state: ctx.state, upgrades: ctx.upgrades });
+        requestUiUpdate();
     }
     update(dt, ctx) {
         FloatingText.updateAll(ctx.state, dt);

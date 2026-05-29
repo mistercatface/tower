@@ -2,7 +2,7 @@ import { state } from "./GameState/GameState.js";
 import { createUpgrades, createBaseUpgrades } from "./Progression/Upgrades.js";
 import { initializeSaveSystem, loadProgress } from "./Progression/Storage.js";
 import { initUI } from "./UI/UI.js";
-import { events } from "./Core/EventSystem.js";
+import { events, requestUiUpdate, requestUiHudUpdate } from "./Core/EventSystem.js";
 import { Renderer } from "./Render/Render.js";
 import { Viewport } from "./Render/Viewport.js";
 import { InputManager } from "./Core/InputManager.js";
@@ -35,6 +35,8 @@ fsm.addState("map_transition", new MapTransitionState());
 fsm.addState("combat", new CombatState());
 fsm.addState("reward", new RewardState());
 
+events.setContext({ state, upgrades, viewport, fsm });
+
 function resetGame() {
     StatsManager.resetRun(state, upgrades);
 
@@ -43,7 +45,7 @@ function resetGame() {
     viewport.snapTo(0, 0);
     fsm.transition("map_transition");
     ProgressionManager.setupNewRunAbilities(state, upgrades);
-    events.emit("ui:update", { state, upgrades });
+    requestUiUpdate();
     requestAnimationFrame(loop);
 }
 
@@ -65,15 +67,15 @@ function loop(timestamp) {
         state.scheduler.update(dt);
         if (!state.isPaused) fsm.update(dt * state.selectedSpeed);
         fsm.render();
-        events.emit("ui:updateHud", { state, upgrades });
-        if (didPlayerStateChange()) events.emit("ui:update", { state, upgrades });
+        requestUiHudUpdate();
+        if (didPlayerStateChange()) requestUiUpdate();
         requestAnimationFrame(loop);
     } else if (!state.isGameOver) {
         state.isGameOver = true;
         fsm.render();
         gameOverUI.style.display = "flex";
-        events.emit("ui:update", { state, upgrades });
-        events.emit("ui:updateHud", { state, upgrades });
+        requestUiUpdate();
+        requestUiHudUpdate();
     }
 }
 

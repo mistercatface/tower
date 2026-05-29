@@ -1,6 +1,17 @@
+import { Events } from "./EventNames.js";
+
 class EventSystem {
     constructor() {
         this.listeners = new Map();
+        this.context = null;
+    }
+
+    setContext(ctx) {
+        this.context = ctx;
+    }
+
+    getContext() {
+        return this.context;
     }
 
     on(event, callback) {
@@ -16,10 +27,21 @@ class EventSystem {
         this.listeners.set(event, filtered);
     }
 
-    emit(event, data) {
+    emit(event, data = {}) {
         if (!this.listeners.has(event)) return;
-        this.listeners.get(event).forEach((callback) => callback(data));
+        const payload = this.context ? { ...this.context, ...data } : { ...data };
+        this.listeners.get(event).forEach((callback) => callback(payload));
     }
 }
 
 export const events = new EventSystem();
+
+export function requestUiUpdate() {
+    events.emit(Events.UI_UPDATE);
+}
+
+export function requestUiHudUpdate() {
+    events.emit(Events.UI_UPDATE_HUD);
+}
+
+export { Events } from "./EventNames.js";

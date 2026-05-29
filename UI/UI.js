@@ -2,7 +2,7 @@ import { hardResetProgress } from "../Progression/Storage.js";
 import { perkMilestones } from "../Config/Config.js";
 import { StatsManager } from "../Progression/StatsManager.js";
 import { isCombat, isCombatOrReward } from "../GameState/GamePhase.js";
-import { events } from "../Core/EventSystem.js";
+import { events, Events } from "../Core/EventSystem.js";
 
 const elements = {
     sectorClearedModal: document.getElementById("sectorClearedModal"),
@@ -429,11 +429,11 @@ export function initUI(state, upgrades, resetGameCallback) {
         }
     });
 
-    events.on("ui:update", (data) => updateUI(data.state, data.upgrades));
-    events.on("ui:updateHud", (data) => updateHud(data.state, data.upgrades));
-    events.on("ui:showUpgradeChoice", (data) => showUpgradeChoice(data.title, data.description, data.choices, data.upgrades, data.onPick));
-    events.on("ui:showSectorCleared", (data) => showSectorCleared(data.node, data.rewardText, data.onContinue));
-    events.on("ui:showNodeConfirm", (data) => showNodeConfirm(data.node, data.onConfirm));
+    events.on(Events.UI_UPDATE, (data) => updateUI(data.state, data.upgrades));
+    events.on(Events.UI_UPDATE_HUD, (data) => updateHud(data.state, data.upgrades));
+    events.on(Events.UI_SHOW_UPGRADE_CHOICE, (data) => showUpgradeChoice(data.title, data.description, data.choices, data.upgrades, data.onPick));
+    events.on(Events.UI_SHOW_SECTOR_CLEARED, (data) => showSectorCleared(data.node, data.rewardText, data.onContinue));
+    events.on(Events.UI_SHOW_NODE_CONFIRM, (data) => showNodeConfirm(data.node, data.onConfirm));
 
     updateUI(state, upgrades);
     updateHud(state);

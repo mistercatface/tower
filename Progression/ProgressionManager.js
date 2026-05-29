@@ -1,6 +1,6 @@
 import { FloatingText } from "../Render/FloatingText.js";
 import { markProgressDirty, saveProgress } from "./Storage.js";
-import { events } from "../Core/EventSystem.js";
+import { events, Events, requestUiUpdate } from "../Core/EventSystem.js";
 import { StatsManager } from "./StatsManager.js";
 
 export class ProgressionManager {
@@ -116,7 +116,7 @@ export class ProgressionManager {
         const previousPauseState = state.isPaused;
         state.isPaused = true;
 
-        events.emit("ui:showUpgradeChoice", {
+        events.emit(Events.UI_SHOW_UPGRADE_CHOICE, {
             title,
             description,
             choices,
@@ -126,7 +126,7 @@ export class ProgressionManager {
                 if (isNewRun) saveProgress(state);
                 StatsManager.recalculateStats(state, upgrades);
                 state.isPaused = previousPauseState;
-                events.emit("ui:update", { state, upgrades });
+                requestUiUpdate();
             }
         });
     }
@@ -146,7 +146,7 @@ export class ProgressionManager {
         const previousPauseState = state.isPaused;
         state.isPaused = true;
 
-        events.emit("ui:showUpgradeChoice", {
+        events.emit(Events.UI_SHOW_UPGRADE_CHOICE, {
             title,
             description,
             choices,
@@ -159,7 +159,7 @@ export class ProgressionManager {
                 StatsManager.recalculateStats(state, upgrades);
                 if (upg.onPurchase) upg.onPurchase(state);
                 state.isPaused = previousPauseState;
-                events.emit("ui:update", { state, upgrades });
+                requestUiUpdate();
             }
         });
     }
@@ -245,11 +245,11 @@ export class ProgressionManager {
             } else {
                 state.fsm.transition("map");
                 viewport.snapTo(state.player.x - state.player.x - viewport.x, state.player.y - state.player.y - viewport.y);
-                events.emit("ui:update", { state, upgrades });
+                requestUiUpdate();
             }
             return;
         }
-        events.emit("ui:update", { state, upgrades });
+        requestUiUpdate();
     }
 
     static awardPermanentUpgrade(state, upgrades, currentNode, viewport) {
@@ -272,13 +272,13 @@ export class ProgressionManager {
     }
 
     static finalizeSectorClearance(state, upgrades, currentNode, viewport, rewardText) {
-        events.emit("ui:showSectorCleared", {
+        events.emit(Events.UI_SHOW_SECTOR_CLEARED, {
             node: currentNode,
             rewardText,
             onContinue: () => {
                 state.fsm.transition("map");
                 viewport.snapTo(state.mapPlayerX - state.player.x - viewport.x, state.mapPlayerY - state.player.y - viewport.y);
-                events.emit("ui:update", { state, upgrades });
+                requestUiUpdate();
             }
         });
     }
