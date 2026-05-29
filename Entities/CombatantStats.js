@@ -33,6 +33,12 @@ export function resetUpgradeLevels(upgrades) {
     }
 }
 
+export function initCombatantUpgradeSlots(upgrades, upgradeDefs) {
+    for (const def of upgradeDefs) {
+        upgrades[def.id] = { level: 0, baseLevel: 0 };
+    }
+}
+
 export function applyUpgradesToStats(stats, upgradeLevels, upgradeDefs, shouldApply) {
     for (const key in stats) {
         stats[key].reset();
@@ -53,6 +59,11 @@ export function syncActorCombatFromStats(actor, stats, baseMoveSpeed) {
     actor.weapon.range = stats.range.value;
     actor.weapon.chargeTime = stats.chargeTime.value;
     actor.weapon.penetration = stats.penetration.value;
+
+    const accuracyDesc = Object.getOwnPropertyDescriptor(actor.weapon, "accuracy");
+    if (!accuracyDesc?.get) {
+        actor.weapon.accuracy = stats.accuracy.value;
+    }
 
     if (typeof actor.updateMaxHealth === "function") {
         actor.updateMaxHealth(stats.maxHealth.value);

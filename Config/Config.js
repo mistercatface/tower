@@ -27,6 +27,12 @@ export const spawnSettings = { baseSpawnDelay: 3000, minSpawnDelay: 150, delayRe
 
 export const difficultyCurve = { healthMultiplier: 1.015, speedMultiplier: 1.002, rewardMultiplier: 1.04 };
 
+export const enemySpawnSettings = {
+    healthUpgradePerLevel: 20,
+    moveSpeedUpgradePerLevel: 0.25,
+    moveSpeedUpgradeMaxLevel: 4,
+};
+
 export const perkMilestones = [2, 4, 6, 8, 10, 12, 14, 16];
 
 export const defaultUpgradeCost = 50;
@@ -93,6 +99,27 @@ export const enemyProjectileSettings = {
     radiusMultiplier: 0.333,
     damage: 10,
     knockbackMultiplier: 120,
+};
+
+export const enemyDefaults = {
+    rangeMin: 75,
+    rangeMax: 144,
+};
+
+export const enemyBaseStats = {
+    damage: 10,
+    turnSpeed: 10,
+    chargeTime: 1500,
+    minChargeTime: 100,
+    maxChargeTime: 3000,
+    range: 112,
+    maxHealth: 1,
+    gameSpeed: 1,
+    accuracy: 0.9,
+    penetration: 0,
+    moveSpeedMultiplier: 1.0,
+    speed: 100,
+    turretCount: 1,
 };
 
 export const THEME_COLORS = [

@@ -64,6 +64,10 @@ export class Upgrade {
     }
 }
 
+export function isBaseStatUpgrade(upgrade) {
+    return (upgrade.category === "attack" || upgrade.category === "defense") && !upgrade.isAbility && !upgrade.isPerk;
+}
+
 export const createBaseUpgrades = () => [
     new Upgrade({
         id: "Damage",

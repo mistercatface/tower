@@ -1,5 +1,4 @@
 import { Utilities } from "../Core/Utilities.js";
-import { Projectile } from "./Projectile.js";
 import { Turret } from "./Turret.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
 import { Actor } from "./Actor.js";
@@ -9,6 +8,11 @@ import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { enemyProjectileSettings, NAV_PROFILES } from "../Config/Config.js";
 import { createEntityBars } from "./EntityBars.js";
 import { Pools } from "../Core/Pools.js";
+import {
+    buildEnemyCombatStats,
+    computeEnemyUpgradeLevels,
+    computeSpawnReward,
+} from "../Combat/EnemySpawn.js";
 
 const enemyBars = createEntityBars({
     healthWidth: 22,
@@ -28,28 +32,46 @@ export class Enemy extends Actor {
         }
     }
 
-    constructor(x, y, radius, speed, health, color, reward, type = "standard", attackType = "ranged", canDodge = false, accelRate = 3.0, canDamageWalls = false) {
-        super(x, y, radius, speed, health, color, type, accelRate, canDamageWalls);
+    static spawn(x, y, enemyType, wave, baseUpgradeDefs) {
+        const combatStats = buildEnemyCombatStats(enemyType);
+        const reward = computeSpawnReward(wave, enemyType);
+        const enemy = new Enemy(x, y, enemyType, combatStats, baseUpgradeDefs, reward);
+
+        const levels = computeEnemyUpgradeLevels(wave, enemyType, combatStats);
+        for (const [upgradeId, level] of Object.entries(levels)) {
+            if (enemy.upgrades[upgradeId] !== undefined) {
+                enemy.setUpgradeLevel(upgradeId, level);
+            }
+        }
+
+        enemy.recalculateCombatStats(baseUpgradeDefs);
+        enemy.health = enemy.maxHealth;
+        return enemy;
+    }
+
+    constructor(x, y, enemyType, combatStats, baseUpgradeDefs, reward) {
+        super(
+            x,
+            y,
+            enemyType.radius,
+            combatStats.speed,
+            combatStats.maxHealth,
+            enemyType.color,
+            enemyType.type,
+            enemyType.accelRate ?? 3.0,
+            enemyType.canDamageWalls ?? false
+        );
         this.reward = reward;
-        this.attackType = attackType;
-        this.canDodge = canDodge;
-        this.turret = new Turret(0, 10);
+        this.attackType = enemyType.attackType ?? "ranged";
+        this.canDodge = enemyType.canDodge ?? false;
+        this.enemyType = enemyType;
+        this.initCombatant(combatStats);
+        this.initCombatantUpgradeSlots(baseUpgradeDefs);
+        this.turret = new Turret(0, combatStats.turnSpeed);
+        this.initWeapon();
         this.isEngaged = false;
         this.blastAngle = 0;
         this.blastTimer = 0;
-        const calculatedRange = 75 + Math.floor(Math.random() * 70);
-        this.weapon = {
-            chargeTime: 1500,
-            range: calculatedRange,
-            accuracy: 0.9,
-            weaponMode: new ChargedWeaponMode((state, tx, ty, angle, source) => {
-                const m = Pools.projectiles.acquire(tx, ty, source.radius * enemyProjectileSettings.radiusMultiplier, enemyProjectileSettings.speed, state.player, angle, enemyProjectileSettings.damage, "enemy");
-                state.projectiles.push(m);
-                if (source) {
-                    PhysicsSystem.applyKnockback(source, angle + Math.PI, m.radius * enemyProjectileSettings.knockbackMultiplier);
-                }
-            })
-        };
         this.dodgeTimerId = null;
         this.dodgeTargetX = 0;
         this.dodgeTargetY = 0;
@@ -59,25 +81,47 @@ export class Enemy extends Actor {
         this.chargeBar = Enemy.chargeBar;
     }
 
+    initWeapon() {
+        this.weapon = {
+            chargeTime: 1500,
+            range: 112,
+            damage: enemyProjectileSettings.damage,
+            penetration: 0,
+            accuracy: 0.9,
+            weaponMode: new ChargedWeaponMode((state, tx, ty, angle, source) => {
+                const m = Pools.projectiles.acquire(
+                    tx,
+                    ty,
+                    source.radius * enemyProjectileSettings.radiusMultiplier,
+                    enemyProjectileSettings.speed,
+                    state.player,
+                    angle,
+                    source.weapon.damage,
+                    "enemy"
+                );
+                state.projectiles.push(m);
+                if (source) {
+                    PhysicsSystem.applyKnockback(source, angle + Math.PI, m.radius * enemyProjectileSettings.knockbackMultiplier);
+                }
+            }),
+        };
+    }
+
     handleHit(baseDamage, ctx, hitType) {
         const died = this.takeDamage(baseDamage);
-        
+
         if (hitType === "blast") {
             spawnFloatingText({ variant: "blastDamage", x: this.x, y: this.y, damage: baseDamage });
         }
-        
+
         if (died) {
             emitCombatEnemyKilled(this);
         }
     }
 
-
-
     calculateSteering(target, state) {
         state.navigation.steerTo(this, target.x, target.y, NAV_PROFILES.enemyToPlayer);
     }
-
-
 
     shouldTriggerDodge(projectiles, flowFieldGrid, scheduler) {
         for (const m of projectiles) {
@@ -128,8 +172,6 @@ export class Enemy extends Actor {
     canReposition(state) {
         return false;
     }
-
-
 
     renderStatusBars(ctx, renderer, state) {
         const chargeRatio = this.turret && this.turret.charge > 0 ? this.turret.charge / (this.weapon.chargeTime || 1) : 0;
