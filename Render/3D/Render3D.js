@@ -239,6 +239,15 @@ export class Render3D {
             });
         }
 
+        // Compute projected roof center
+        let cx = 0, cy = 0;
+        for (let i = 0; i < 4; i++) {
+            cx += projCorners[i].x;
+            cy += projCorners[i].y;
+        }
+        cx /= 4;
+        cy /= 4;
+
         ctx.save();
         ctx.beginPath();
         ctx.moveTo(projCorners[0].x, projCorners[0].y);
@@ -247,9 +256,35 @@ export class Render3D {
         }
         ctx.closePath();
 
+        // 1. Sleek metallic dark roof base
         ctx.fillStyle = "#12161f";
         ctx.fill();
 
+        // 2. Render repeating wall texture matching the wall style
+        const wallTexture = getWallTextureCanvas(themeColor);
+        if (wallTexture && wallTextureSettings.enabled) {
+            const pattern = ctx.createPattern(wallTexture, "repeat");
+            const matrix = new DOMMatrix();
+            // a. Translate to projected center
+            matrix.translateSelf(cx, cy);
+            // b. Rotate by segment angle (DOMMatrix rotateSelf takes degrees)
+            matrix.rotateSelf((seg.angle * 180) / Math.PI);
+            // c. Scale pattern to match world size at the roof height
+            const scale = (wallTextureSettings.tileWorldSize / wallTextureSettings.textureSize) * (1 + alpha);
+            matrix.scaleSelf(scale, scale);
+            // d. Translate texture coordinate origin to its center
+            matrix.translateSelf(-wallTextureSettings.textureSize / 2, -wallTextureSettings.textureSize / 2);
+            
+            pattern.setTransform(matrix);
+            
+            ctx.save();
+            ctx.fillStyle = pattern;
+            ctx.globalAlpha = 0.55; // Semi-translucent for depth and neon readability
+            ctx.fill();
+            ctx.restore();
+        }
+
+        // 3. Soft theme color overlay for high-tech glow
         const baseR = themeColor.r;
         const baseG = themeColor.g;
         const baseB = themeColor.b;
@@ -261,22 +296,16 @@ export class Render3D {
             ctx.fill();
         }
 
+        // 4. Draw outer border (theme color)
         ctx.strokeStyle = `rgb(${baseR}, ${baseG}, ${baseB})`;
         ctx.lineWidth = 1.5;
         ctx.stroke();
 
+        // 5. Draw inset panel lines for premium paneled detail
         ctx.strokeStyle = `rgba(${baseR}, ${baseG}, ${baseB}, 0.4)`;
         ctx.lineWidth = 0.5;
         ctx.beginPath();
         
-        let cx = 0, cy = 0;
-        for (let i = 0; i < 4; i++) {
-            cx += projCorners[i].x;
-            cy += projCorners[i].y;
-        }
-        cx /= 4;
-        cy /= 4;
-
         for (let i = 0; i < 4; i++) {
             const p = projCorners[i];
             const dx = p.x - cx;
