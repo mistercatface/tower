@@ -8,7 +8,9 @@ class ObjectPool {
     initPool() {
         if (this.pool.length === 0 && this.createFn) {
             for (let i = 0; i < this.initialSize; i++) {
-                this.pool.push(this.createFn());
+                const obj = this.createFn();
+                obj._inPool = true;
+                this.pool.push(obj);
             }
         }
     }
@@ -21,12 +23,14 @@ class ObjectPool {
         } else {
             obj = this.createFn();
         }
+        obj._inPool = false;
         obj.reset(...args);
         return obj;
     }
 
     release(obj) {
-        if (obj && !this.pool.includes(obj)) {
+        if (obj && !obj._inPool) {
+            obj._inPool = true;
             this.pool.push(obj);
         }
     }
