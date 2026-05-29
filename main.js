@@ -40,10 +40,6 @@ fsm.addState("reward", new RewardState());
 
 const pauseManager = new PauseManager(state);
 
-events.setContext({ state, upgrades, viewport, fsm });
-FloatingText.registerEventListener(events);
-registerGameListeners(events, pauseManager);
-
 function resetGame() {
     StatsManager.resetRun(state, upgrades);
 
@@ -56,6 +52,10 @@ function resetGame() {
     requestUiUpdate();
     requestAnimationFrame(loop);
 }
+
+events.setContext({ state, upgrades, viewport, fsm, resetGame });
+FloatingText.registerEventListener(events);
+registerGameListeners(events, pauseManager);
 
 function didPlayerStateChange() {
     if (state.player.health !== uiSnapshot.health || state.player.isMoving !== uiSnapshot.isMoving) {

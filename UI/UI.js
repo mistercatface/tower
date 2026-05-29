@@ -1,8 +1,16 @@
-import { hardResetProgress } from "../Progression/Storage.js";
 import { perkMilestones } from "../Config/Config.js";
-import { StatsManager } from "../Progression/StatsManager.js";
-import { isCombat, isCombatOrReward } from "../GameState/GamePhase.js";
-import { events, Events, toggleGamePause } from "../Core/EventSystem.js";
+import { isCombat } from "../GameState/GamePhase.js";
+import {
+    events,
+    Events,
+    toggleGamePause,
+    emitPurchaseUpgrade,
+    emitToggleAbility,
+    emitSetUpgradeTab,
+    adjustGameSpeed,
+    setGameZoomFromSlider,
+    emitHardReset,
+} from "../Core/EventSystem.js";
 
 const elements = {
     sectorClearedModal: document.getElementById("sectorClearedModal"),
@@ -329,9 +337,7 @@ export function initUI(state, upgrades, resetGameCallback) {
                 html,
                 () => {
                     if (upg.hasToggle) {
-                        state.abilities[upg.id] = !state.abilities[upg.id];
-                        StatsManager.recalculateStats(state, upgrades);
-                        updateUI(state, upgrades);
+                        emitToggleAbility(upg.id);
                     }
                 },
                 "btnAbility_" + upg.id,
@@ -346,8 +352,7 @@ export function initUI(state, upgrades, resetGameCallback) {
         btn.addEventListener("click", (e) => {
             elements.tabButtons.forEach((b) => (b.style.background = "#222"));
             e.target.style.background = "#555";
-            state.currentUpgradeTab = e.target.getAttribute("data-tab");
-            updateUI(state, upgrades);
+            emitSetUpgradeTab(e.target.getAttribute("data-tab"));
         });
     });
 
@@ -358,21 +363,7 @@ export function initUI(state, upgrades, resetGameCallback) {
         const btn = createButton(
             styles,
             "",
-            () => {
-                if (state.isGameOver) return;
-                if (upg.category === "abilities" || upg.category === "perk") return;
-                const uState = state.upgrades[upg.id];
-                const cost = uState.ptsCost;
-                if (state.score >= cost) {
-                    if (uState.level >= upg.maxLevel) return;
-                    state.score -= cost;
-                    uState.ptsCost = Math.floor(uState.ptsCost * 1.5);
-                    uState.level++;
-                    StatsManager.recalculateStats(state, upgrades);
-                    if (upg.onPurchase) upg.onPurchase(state);
-                    updateUI(state, upgrades);
-                }
-            },
+            () => emitPurchaseUpgrade(upg.id),
             "upg_" + upg.id,
         );
 
@@ -385,29 +376,16 @@ export function initUI(state, upgrades, resetGameCallback) {
     });
 
     elements.speedDownBtn.addEventListener("click", () => {
-        state.selectedSpeed = Math.max(0.5, state.selectedSpeed - 0.25);
-        updateUI(state, upgrades);
+        adjustGameSpeed(-0.25);
     });
 
     elements.speedUpBtn.addEventListener("click", () => {
-        state.selectedSpeed = Math.min(state.gameSpeed, state.selectedSpeed + 0.25);
-        updateUI(state, upgrades);
+        adjustGameSpeed(0.25);
     });
 
     if (elements.zoomSlider) {
         elements.zoomSlider.addEventListener("input", (e) => {
-            const viewport = state.fsm?.context?.viewport;
-            if (!viewport) return;
-            const sliderVal = parseFloat(e.target.value) / 100;
-            if (isCombatOrReward(state.phase)) {
-                viewport.zoomProgress = sliderVal;
-                viewport.updateZoomLimits(state);
-                updateUI(state, upgrades);
-            } else {
-                const rawZoom = 0.5 + sliderVal * 1.5;
-                viewport.setZoom(rawZoom, state);
-                updateUI(state, upgrades);
-            }
+            setGameZoomFromSlider(parseFloat(e.target.value));
         });
     }
 
@@ -423,7 +401,7 @@ export function initUI(state, upgrades, resetGameCallback) {
 
     elements.hardResetBtn.addEventListener("click", () => {
         if (confirm("Are you sure you want to completely reset the game? This cannot be undone.")) {
-            hardResetProgress(state, resetGameCallback);
+            emitHardReset();
             elements.settingsModal.style.display = "none";
         }
     });

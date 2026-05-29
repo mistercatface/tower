@@ -76,4 +76,28 @@ export function toggleGamePause() {
     events.emit(Events.GAME_TOGGLE_PAUSE);
 }
 
+export function emitPurchaseUpgrade(upgradeId) {
+    events.emit(Events.PROGRESS_PURCHASE_UPGRADE, { upgradeId });
+}
+
+export function emitToggleAbility(abilityId) {
+    events.emit(Events.PROGRESS_TOGGLE_ABILITY, { abilityId });
+}
+
+export function emitSetUpgradeTab(tab) {
+    events.emit(Events.UI_SET_UPGRADE_TAB, { tab });
+}
+
+export function adjustGameSpeed(delta) {
+    events.emit(Events.GAME_SET_SPEED, { delta });
+}
+
+export function setGameZoomFromSlider(sliderValue) {
+    events.emit(Events.GAME_SET_ZOOM, { sliderValue });
+}
+
+export function emitHardReset() {
+    events.emit(Events.PROGRESS_HARD_RESET);
+}
+
 export { Events } from "./EventNames.js";

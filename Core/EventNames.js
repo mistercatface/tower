@@ -13,4 +13,10 @@ export const Events = {
     GAME_PAUSE: "game:pause",
     GAME_RESUME: "game:resume",
     GAME_TOGGLE_PAUSE: "game:togglePause",
+    GAME_SET_SPEED: "game:setSpeed",
+    GAME_SET_ZOOM: "game:setZoom",
+    PROGRESS_PURCHASE_UPGRADE: "progress:purchaseUpgrade",
+    PROGRESS_TOGGLE_ABILITY: "progress:toggleAbility",
+    PROGRESS_HARD_RESET: "progress:hardReset",
+    UI_SET_UPGRADE_TAB: "ui:setUpgradeTab",
 };
