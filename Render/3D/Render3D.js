@@ -379,11 +379,11 @@ export class Render3D {
         ctx.stroke();
     }
 
-    getPropRenderers() {
-        return {
-            barrel: (ctx, obj, px, py) => this.draw3DBarrel(ctx, obj, px, py),
-            crate: (ctx, obj, px, py) => this.draw3DCrate(ctx, obj, px, py),
-        };
+    getPropRenderer(key) {
+        if (!key) return null;
+        const methodName = `draw3D${key.charAt(0).toUpperCase()}${key.slice(1)}`;
+        const method = this[methodName];
+        return method ? method.bind(this) : null;
     }
 
     draw3DBuildings(ctx, state, viewport) {
@@ -449,8 +449,8 @@ export class Render3D {
                     this.drawProjectedFace(ctx, p1, p2, px, py, wallColor, true);
                 }
             } else {
-                const draw = this.getPropRenderers()[obj._renderType];
-                if (draw) draw.call(this, ctx, obj, px, py);
+                const draw = this.getPropRenderer(obj._renderType);
+                if (draw) draw(ctx, obj, px, py);
             }
         }
 

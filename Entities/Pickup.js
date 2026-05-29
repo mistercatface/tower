@@ -1,7 +1,6 @@
 import { Entity } from "./Entity.js";
 import { Explosion } from "./Explosion/Explosion.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
-import { pickupSpawnSettings } from "../Config/Config.js";
 import { worldPropDefinitions } from "../Config/PropDefinitions.js";
 
 const PICKUP_STRATEGY_DEFAULTS = {
@@ -117,13 +116,12 @@ export function spawnPickup(state, playerX, playerY, minRadius, maxRadius, type)
 }
 
 export function spawnInitialPickups(state, playerX, playerY) {
-    const numBarrels = pickupSpawnSettings.barrelMinCount + Math.floor(Math.random() * pickupSpawnSettings.barrelRandomRange);
-    for (let i = 0; i < numBarrels; i++) {
-        spawnPickup(state, playerX, playerY, pickupSpawnSettings.barrelMinRadius, pickupSpawnSettings.barrelMaxRadius, "barrel");
-    }
-
-    const numCrates = pickupSpawnSettings.crateMinCount + Math.floor(Math.random() * pickupSpawnSettings.crateRandomRange);
-    for (let i = 0; i < numCrates; i++) {
-        spawnPickup(state, playerX, playerY, pickupSpawnSettings.crateMinRadius, pickupSpawnSettings.crateMaxRadius, "crate");
+    for (const [type, def] of Object.entries(worldPropDefinitions)) {
+        const spawn = def.spawn;
+        if (!spawn) continue;
+        const count = spawn.minCount + Math.floor(Math.random() * spawn.randomRange);
+        for (let i = 0; i < count; i++) {
+            spawnPickup(state, playerX, playerY, spawn.minRadius, spawn.maxRadius, type);
+        }
     }
 }

@@ -108,17 +108,6 @@ export const THEME_COLORS = [
     { r: 121, g: 85, b: 72 },
 ];
 
-export const pickupSpawnSettings = {
-    barrelMinCount: 25,
-    barrelRandomRange: 125,
-    barrelMinRadius: 150,
-    barrelMaxRadius: 1000,
-    crateMinCount: 8,
-    crateRandomRange: 17,
-    crateMinRadius: 150,
-    crateMaxRadius: 1000,
-};
-
 export const controlSettings = {
     doubleTapTimeout: 300,
     scrollZoomSensitivity: -0.001,
