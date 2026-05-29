@@ -1,6 +1,9 @@
-import { THEME_COLORS } from "../../Config/Config.js";
+import { THEME_COLORS, wallTextureSettings } from "../../Config/Config.js";
 import { createPropDrawContext } from "./PropDrawContext.js";
 import { drawTree, drawBarrel, drawCrate, drawLampPost, drawFireBarrel } from "./PropRecipes.js";
+import { getWallTextureCanvas } from "./WallTextures.js";
+
+const WALL_PROJECTION_DISTANCE = 3000;
 
 const PROP_RECIPES = {
     tree: drawTree,
@@ -60,7 +63,7 @@ export class Render3D {
         return `rgb(${r}, ${g}, ${b})`;
     }
 
-    drawProjectedFace(ctx, p1, p2, px, py, fillStyle, shouldStroke = false) {
+    computeProjectedFace(p1, p2, px, py) {
         let angle1 = Math.atan2(p1.y - py, p1.x - px);
         let angle2 = Math.atan2(p2.y - py, p2.x - px);
         const cross = (p1.x - px) * (p2.y - py) - (p1.y - py) * (p2.x - px);
@@ -72,20 +75,81 @@ export class Render3D {
             angle1 += spread;
             angle2 -= spread;
         }
-        const proj1X = p1.x + Math.cos(angle1) * 3000;
-        const proj1Y = p1.y + Math.sin(angle1) * 3000;
-        const proj2X = p2.x + Math.cos(angle2) * 3000;
-        const proj2Y = p2.y + Math.sin(angle2) * 3000;
-        
-        ctx.fillStyle = fillStyle;
+        const proj1X = p1.x + Math.cos(angle1) * WALL_PROJECTION_DISTANCE;
+        const proj1Y = p1.y + Math.sin(angle1) * WALL_PROJECTION_DISTANCE;
+        const proj2X = p2.x + Math.cos(angle2) * WALL_PROJECTION_DISTANCE;
+        const proj2Y = p2.y + Math.sin(angle2) * WALL_PROJECTION_DISTANCE;
+        return { proj1X, proj1Y, proj2X, proj2Y };
+    }
+
+    traceProjectedFace(ctx, p1, p2, face) {
         ctx.beginPath();
         ctx.moveTo(p1.x, p1.y);
-        ctx.lineTo(proj1X, proj1Y);
-        ctx.lineTo(proj2X, proj2Y);
+        ctx.lineTo(face.proj1X, face.proj1Y);
+        ctx.lineTo(face.proj2X, face.proj2Y);
         ctx.lineTo(p2.x, p2.y);
         ctx.closePath();
+    }
+
+    drawFaceTexture(ctx, p1, p2, face, textureCanvas) {
+        const { tileWorldSize } = wallTextureSettings;
+        const texW = textureCanvas.width;
+        const texH = textureCanvas.height;
+        const edgeLen = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+        if (edgeLen < 0.001) return;
+
+        const edgeDirX = (p2.x - p1.x) / edgeLen;
+        const edgeDirY = (p2.y - p1.y) / edgeLen;
+        const uAlongEdge = p1.x * edgeDirX + p1.y * edgeDirY;
+        const uPatternOffset = ((uAlongEdge / tileWorldSize) % 1 + 1) % 1 * texW;
+        const verticalTiles = WALL_PROJECTION_DISTANCE / tileWorldSize;
+
+        ctx.save();
+        this.traceProjectedFace(ctx, p1, p2, face);
+        ctx.clip();
+
+        const pattern = ctx.createPattern(textureCanvas, "repeat");
+        ctx.translate(p1.x, p1.y);
+        ctx.transform(
+            (edgeDirX * tileWorldSize) / texW,
+            (edgeDirY * tileWorldSize) / texW,
+            ((face.proj1X - p1.x) * tileWorldSize) / (WALL_PROJECTION_DISTANCE * texH),
+            ((face.proj1Y - p1.y) * tileWorldSize) / (WALL_PROJECTION_DISTANCE * texH),
+            0,
+            0
+        );
+        ctx.fillStyle = pattern;
+        ctx.fillRect(
+            -uPatternOffset,
+            0,
+            (edgeLen / tileWorldSize) * texW + texW,
+            verticalTiles * texH
+        );
+        ctx.restore();
+    }
+
+    drawProjectedFace(ctx, p1, p2, px, py, fillStyle, shouldStroke = false, textureCanvas = null, damageAlpha = 0) {
+        const face = this.computeProjectedFace(p1, p2, px, py);
+
+        this.traceProjectedFace(ctx, p1, p2, face);
+        ctx.fillStyle = fillStyle;
         ctx.fill();
+
+        if (textureCanvas && wallTextureSettings.enabled) {
+            this.drawFaceTexture(ctx, p1, p2, face, textureCanvas);
+        }
+
+        if (damageAlpha > 0) {
+            ctx.save();
+            this.traceProjectedFace(ctx, p1, p2, face);
+            ctx.clip();
+            ctx.fillStyle = `rgba(244, 67, 54, ${damageAlpha})`;
+            ctx.fill();
+            ctx.restore();
+        }
+
         if (shouldStroke) {
+            this.traceProjectedFace(ctx, p1, p2, face);
             ctx.strokeStyle = "rgba(0, 0, 0, 0.4)";
             ctx.lineWidth = 1.0;
             ctx.stroke();
@@ -132,7 +196,9 @@ export class Render3D {
                 const viewY = edgeCy - py;
                 if (outX * viewX + outY * viewY >= 0) continue;
 
-                this.drawProjectedFace(targetCtx, p1, p2, px, py, wallColor, false);
+                const healthRatio = Math.max(0, seg.health / seg.maxHealth);
+                const damageAlpha = (1 - healthRatio) * 0.45;
+                this.drawProjectedFace(targetCtx, p1, p2, px, py, wallColor, false, getWallTextureCanvas(seg.theme || THEME_COLORS[0]), damageAlpha);
             }
         }
     }
@@ -239,7 +305,9 @@ export class Render3D {
         for (const obj of visibleObjects) {
             if (obj._renderType === "wall") {
                 const seg = obj;
+                const activeTheme = seg.theme || THEME_COLORS[0];
                 const wallColor = this.getWallColor(seg, THEME_COLORS[0], 1.0);
+                const wallTexture = getWallTextureCanvas(activeTheme);
                 const edges = this.getSegmentEdges(seg);
 
                 if (!seg.sharedEdges) {
@@ -260,7 +328,9 @@ export class Render3D {
                     const viewY = edgeCy - py;
                     if (outX * viewX + outY * viewY >= 0) continue;
 
-                    this.drawProjectedFace(ctx, p1, p2, px, py, wallColor, true);
+                    const healthRatio = Math.max(0, seg.health / seg.maxHealth);
+                    const damageAlpha = (1 - healthRatio) * 0.45;
+                    this.drawProjectedFace(ctx, p1, p2, px, py, wallColor, true, wallTexture, damageAlpha);
                 }
             } else {
                 ctx.save();
