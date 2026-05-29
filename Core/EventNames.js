@@ -5,6 +5,7 @@ export const Events = {
     UI_SHOW_SECTOR_CLEARED: "ui:showSectorCleared",
     UI_SHOW_NODE_CONFIRM: "ui:showNodeConfirm",
     UI_SHOW_GAME_OVER: "ui:showGameOver",
+    UI_HIDE_GAME_OVER: "ui:hideGameOver",
     FX_FLOATING_TEXT: "fx:floatingText",
     COMBAT_ENEMY_KILLED: "combat:enemyKilled",
     COMBAT_WAVE_CLEARED: "combat:waveCleared",
@@ -19,4 +20,5 @@ export const Events = {
     PROGRESS_TOGGLE_ABILITY: "progress:toggleAbility",
     PROGRESS_HARD_RESET: "progress:hardReset",
     UI_SET_UPGRADE_TAB: "ui:setUpgradeTab",
+    GAME_RESTART: "game:restart",
 };

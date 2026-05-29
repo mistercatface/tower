@@ -1,5 +1,5 @@
 import { perkMilestones } from "../Config/Config.js";
-import { isCombat } from "../GameState/GamePhase.js";
+import { isCombat, isCombatOrReward } from "../GameState/GamePhase.js";
 import {
     events,
     Events,
@@ -10,6 +10,7 @@ import {
     adjustGameSpeed,
     setGameZoomFromSlider,
     emitHardReset,
+    emitGameRestart,
 } from "../Core/EventSystem.js";
 
 const elements = {
@@ -54,6 +55,7 @@ const elements = {
     speedDownBtn: document.getElementById("speedDownBtn"),
     speedUpBtn: document.getElementById("speedUpBtn"),
     restartBtn: document.getElementById("restartBtn"),
+    gameOverUI: document.getElementById("gameOverUI"),
     settingsBtn: document.getElementById("settingsBtn"),
     closeSettingsBtn: document.getElementById("closeSettingsBtn"),
     hardResetBtn: document.getElementById("hardResetBtn"),
@@ -304,7 +306,25 @@ export function updateProgressBar(containerId, textId, textString, ratio, totalS
     }
 }
 
-export function initUI(state, upgrades, resetGameCallback) {
+export function showGameOverScreen() {
+    if (elements.gameOverUI) elements.gameOverUI.style.display = "flex";
+}
+
+export function hideGameOverScreen() {
+    if (elements.gameOverUI) elements.gameOverUI.style.display = "none";
+}
+
+export function registerUiEventListeners(eventBus) {
+    eventBus.on(Events.UI_UPDATE, (data) => updateUI(data.state, data.upgrades));
+    eventBus.on(Events.UI_UPDATE_HUD, (data) => updateHud(data.state, data.upgrades));
+    eventBus.on(Events.UI_SHOW_UPGRADE_CHOICE, (data) => showUpgradeChoice(data.title, data.description, data.choices, data.upgrades, data.onPick));
+    eventBus.on(Events.UI_SHOW_SECTOR_CLEARED, (data) => showSectorCleared(data.node, data.rewardText, data.onContinue));
+    eventBus.on(Events.UI_SHOW_NODE_CONFIRM, (data) => showNodeConfirm(data.node, data.onConfirm));
+    eventBus.on(Events.UI_SHOW_GAME_OVER, () => showGameOverScreen());
+    eventBus.on(Events.UI_HIDE_GAME_OVER, () => hideGameOverScreen());
+}
+
+export function initUI(state, upgrades) {
     elements.passivesContainer.innerHTML = "";
     upgrades
         .filter((u) => u.isAbility && !u.showInHud)
@@ -389,7 +409,9 @@ export function initUI(state, upgrades, resetGameCallback) {
         });
     }
 
-    elements.restartBtn.addEventListener("click", resetGameCallback);
+    elements.restartBtn.addEventListener("click", () => {
+        emitGameRestart();
+    });
 
     elements.settingsBtn.addEventListener("click", () => {
         elements.settingsModal.style.display = "flex";
@@ -406,11 +428,7 @@ export function initUI(state, upgrades, resetGameCallback) {
         }
     });
 
-    events.on(Events.UI_UPDATE, (data) => updateUI(data.state, data.upgrades));
-    events.on(Events.UI_UPDATE_HUD, (data) => updateHud(data.state, data.upgrades));
-    events.on(Events.UI_SHOW_UPGRADE_CHOICE, (data) => showUpgradeChoice(data.title, data.description, data.choices, data.upgrades, data.onPick));
-    events.on(Events.UI_SHOW_SECTOR_CLEARED, (data) => showSectorCleared(data.node, data.rewardText, data.onContinue));
-    events.on(Events.UI_SHOW_NODE_CONFIRM, (data) => showNodeConfirm(data.node, data.onConfirm));
+    registerUiEventListeners(events);
 
     updateUI(state, upgrades);
     updateHud(state);

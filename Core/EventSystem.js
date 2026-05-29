@@ -21,6 +21,14 @@ class EventSystem {
         this.listeners.get(event).push(callback);
     }
 
+    once(event, callback) {
+        const wrapper = (data) => {
+            this.off(event, wrapper);
+            callback(data);
+        };
+        this.on(event, wrapper);
+    }
+
     off(event, callback) {
         if (!this.listeners.has(event)) return;
         const filtered = this.listeners.get(event).filter((cb) => cb !== callback);
@@ -98,6 +106,18 @@ export function setGameZoomFromSlider(sliderValue) {
 
 export function emitHardReset() {
     events.emit(Events.PROGRESS_HARD_RESET);
+}
+
+export function showGameOver() {
+    events.emit(Events.UI_SHOW_GAME_OVER);
+}
+
+export function hideGameOver() {
+    events.emit(Events.UI_HIDE_GAME_OVER);
+}
+
+export function emitGameRestart() {
+    events.emit(Events.GAME_RESTART);
 }
 
 export { Events } from "./EventNames.js";

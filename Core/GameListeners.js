@@ -4,6 +4,12 @@ import { hardResetProgress, registerProgressListeners } from "../Progression/Sto
 import { StatsManager } from "../Progression/StatsManager.js";
 import { isCombatOrReward } from "../GameState/GamePhase.js";
 import { registerPauseListeners } from "./PauseManager.js";
+import { FloatingText } from "../Render/FloatingText.js";
+
+export function registerAllListeners(eventBus, pauseManager) {
+    FloatingText.registerEventListener(eventBus);
+    registerGameListeners(eventBus, pauseManager);
+}
 
 export function registerGameListeners(eventBus, pauseManager) {
     registerProgressListeners(eventBus);
@@ -81,5 +87,9 @@ export function registerGameListeners(eventBus, pauseManager) {
 
     eventBus.on(Events.PROGRESS_HARD_RESET, ({ state, resetGame }) => {
         hardResetProgress(state, resetGame);
+    });
+
+    eventBus.on(Events.GAME_RESTART, ({ resetGame }) => {
+        resetGame();
     });
 }

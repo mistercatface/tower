@@ -2,9 +2,8 @@ import { state } from "./GameState/GameState.js";
 import { createUpgrades, createBaseUpgrades } from "./Progression/Upgrades.js";
 import { initializeSaveSystem, loadProgress } from "./Progression/Storage.js";
 import { initUI } from "./UI/UI.js";
-import { events, requestUiUpdate, requestUiHudUpdate } from "./Core/EventSystem.js";
-import { FloatingText } from "./Render/FloatingText.js";
-import { registerGameListeners } from "./Core/GameListeners.js";
+import { events, requestUiUpdate, requestUiHudUpdate, showGameOver, hideGameOver } from "./Core/EventSystem.js";
+import { registerAllListeners } from "./Core/GameListeners.js";
 import { PauseManager } from "./Core/PauseManager.js";
 import { Renderer } from "./Render/Render.js";
 import { Viewport } from "./Render/Viewport.js";
@@ -17,8 +16,6 @@ import { MapState, MapTransitionState, CombatState, RewardState } from "./GameSt
 const canvas = document.getElementById("towerCanvas");
 const ctx = canvas.getContext("2d");
 ctx.imageSmoothingEnabled = false;
-
-let gameOverUI;
 
 const renderer = new Renderer(canvas, ctx);
 const upgrades = [...createBaseUpgrades(), ...createUpgrades()];
@@ -45,7 +42,7 @@ function resetGame() {
 
     initializeSaveSystem(state);
     pauseManager.reset();
-    gameOverUI.style.display = "none";
+    hideGameOver();
     viewport.snapTo(0, 0);
     fsm.transition("map_transition");
     ProgressionManager.setupNewRunAbilities(state, upgrades);
@@ -54,8 +51,7 @@ function resetGame() {
 }
 
 events.setContext({ state, upgrades, viewport, fsm, resetGame });
-FloatingText.registerEventListener(events);
-registerGameListeners(events, pauseManager);
+registerAllListeners(events, pauseManager);
 
 function didPlayerStateChange() {
     if (state.player.health !== uiSnapshot.health || state.player.isMoving !== uiSnapshot.isMoving) {
@@ -81,7 +77,7 @@ function loop(timestamp) {
     } else if (!state.isGameOver) {
         state.isGameOver = true;
         fsm.render();
-        gameOverUI.style.display = "flex";
+        showGameOver();
         requestUiUpdate();
         requestUiHudUpdate();
     }
@@ -101,8 +97,7 @@ window.gameState = state;
 StatsManager.initUpgradesList(state, upgrades);
 loadProgress(state, upgrades);
 initializeSaveSystem(state);
-initUI(state, upgrades, resetGame);
-gameOverUI = document.getElementById("gameOverUI");
+initUI(state, upgrades);
 resizeCanvas();
 InputManager.setup(canvas, fsm, viewport);
 resetGame();
