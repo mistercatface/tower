@@ -3,6 +3,7 @@ import { CollisionSystem } from "../Spatial/Collision/CollisionSystem.js";
 import { Utilities } from "../Core/Utilities.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { playerProjectileSettings } from "../Config/Config.js";
+import { Pools } from "../Core/Pools.js";
 
 class WeaponTargetingStrategy {
     determineAimTarget(source, target, blocksTargeting, turret) {
@@ -79,7 +80,7 @@ export class ContinuousWeaponMode extends WeaponTargetingStrategy {
 }
 
 const DEFAULT_WEAPON_MODE = new ChargedWeaponMode((state, tx, ty, turretAngle, source) => {
-    const m = new Projectile(tx, ty, source.radius * playerProjectileSettings.radiusMultiplier, playerProjectileSettings.speed, null, turretAngle, 0, "player");
+    const m = Pools.projectiles.acquire(tx, ty, source.radius * playerProjectileSettings.radiusMultiplier, playerProjectileSettings.speed, null, turretAngle, 0, "player");
     m.penetration = state.player.weapon.penetration;
     state.projectiles.push(m);
     if (source) {

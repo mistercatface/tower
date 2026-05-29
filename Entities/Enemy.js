@@ -8,6 +8,7 @@ import { ChargedWeaponMode } from "../Combat/WeaponSystem.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { enemyProjectileSettings, NAV_PROFILES } from "../Config/Config.js";
 import { createEntityBars } from "./EntityBars.js";
+import { Pools } from "../Core/Pools.js";
 
 const enemyBars = createEntityBars({
     healthWidth: 22,
@@ -42,7 +43,7 @@ export class Enemy extends Actor {
             range: calculatedRange,
             accuracy: 0.9,
             weaponMode: new ChargedWeaponMode((state, tx, ty, angle, source) => {
-                const m = new Projectile(tx, ty, source.radius * enemyProjectileSettings.radiusMultiplier, enemyProjectileSettings.speed, state.player, angle, enemyProjectileSettings.damage, "enemy");
+                const m = Pools.projectiles.acquire(tx, ty, source.radius * enemyProjectileSettings.radiusMultiplier, enemyProjectileSettings.speed, state.player, angle, enemyProjectileSettings.damage, "enemy");
                 state.projectiles.push(m);
                 if (source) {
                     PhysicsSystem.applyKnockback(source, angle + Math.PI, m.radius * enemyProjectileSettings.knockbackMultiplier);

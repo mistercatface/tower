@@ -9,6 +9,7 @@ import { defaultUpgradeCost, playerBaseStats, gridSettings, mapSettings } from "
 import { Scheduler } from "../Core/Scheduler.js";
 import { WaveManager } from "../Combat/WaveManager.js";
 import { SpatialHash } from "../Spatial/World/SpatialHash.js";
+import { Pools } from "../Core/Pools.js";
 
 export class GameState {
     constructor() {
@@ -144,6 +145,11 @@ export class GameState {
         this.turrets = [new Turret(0, 10)];
 
         this.enemies = [];
+        if (this.projectiles) {
+            for (let i = 0; i < this.projectiles.length; i++) {
+                Pools.projectiles.release(this.projectiles[i]);
+            }
+        }
         this.projectiles = [];
         this.floatingTexts = [];
         this.walls = [];

@@ -3,6 +3,7 @@ import { WeaponSystem, ContinuousWeaponMode, ChargedWeaponMode } from "../Combat
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { playerBaseStats, playerProjectileSettings } from "../Config/Config.js";
 import { Laser } from "../Entities/Laser.js";
+import { Pools } from "../Core/Pools.js";
 
 export class Upgrade {
     constructor(config) {
@@ -361,8 +362,8 @@ export const createUpgrades = () => [
         },
         weaponMode: new ChargedWeaponMode((state, tx, ty, turretAngle, source) => {
             const r = state.player.radius * playerProjectileSettings.splitRadiusMultiplier;
-            const m1 = new Projectile(tx, ty, r, playerProjectileSettings.speed, null, turretAngle - 0.1, 0, "player");
-            const m2 = new Projectile(tx, ty, r, playerProjectileSettings.speed, null, turretAngle + 0.1, 0, "player");
+            const m1 = Pools.projectiles.acquire(tx, ty, r, playerProjectileSettings.speed, null, turretAngle - 0.1, 0, "player");
+            const m2 = Pools.projectiles.acquire(tx, ty, r, playerProjectileSettings.speed, null, turretAngle + 0.1, 0, "player");
             m1.penetration = state.player.weapon.penetration;
             m2.penetration = state.player.weapon.penetration;
             state.projectiles.push(m1, m2);
@@ -385,9 +386,9 @@ export const createUpgrades = () => [
         replaces: ['TwinStrike'],
         weaponMode: new ChargedWeaponMode((state, tx, ty, turretAngle, source) => {
             const r = state.player.radius * playerProjectileSettings.splitRadiusMultiplier;
-            const m1 = new Projectile(tx, ty, r, playerProjectileSettings.speed, null, turretAngle - 0.1, 0, "player");
-            const m2 = new Projectile(tx, ty, r, playerProjectileSettings.speed, null, turretAngle + 0.1, 0, "player");
-            const m3 = new Projectile(tx, ty, r, playerProjectileSettings.speed, null, turretAngle, 0, "player");
+            const m1 = Pools.projectiles.acquire(tx, ty, r, playerProjectileSettings.speed, null, turretAngle - 0.1, 0, "player");
+            const m2 = Pools.projectiles.acquire(tx, ty, r, playerProjectileSettings.speed, null, turretAngle + 0.1, 0, "player");
+            const m3 = Pools.projectiles.acquire(tx, ty, r, playerProjectileSettings.speed, null, turretAngle, 0, "player");
             m1.penetration = state.player.weapon.penetration;
             m2.penetration = state.player.weapon.penetration;
             m3.penetration = state.player.weapon.penetration;

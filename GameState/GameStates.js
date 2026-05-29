@@ -10,6 +10,7 @@ import { showNodeConfirmModal, requestUiUpdate } from "../Core/EventSystem.js";
 import { Explosion } from "../Entities/Explosion/Explosion.js";
 import { navigationSettings } from "../Config/Config.js";
 import { resolveMoveTarget } from "../Spatial/Navigation/PathClearance.js";
+import { Pools } from "../Core/Pools.js";
 
 export class MapState {
     onEnter(ctx) {
@@ -110,6 +111,11 @@ export class CombatState {
 
     onEnter(ctx) {
         ctx.state.pickups = [];
+        if (ctx.state.projectiles) {
+            for (let i = 0; i < ctx.state.projectiles.length; i++) {
+                Pools.projectiles.release(ctx.state.projectiles[i]);
+            }
+        }
         ctx.state.projectiles = [];
         ctx.state.explosions = [];
         ctx.state.enemies = [];

@@ -1,17 +1,28 @@
 import { Entity } from "./Entity.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
+import { Pools } from "../Core/Pools.js";
 
 export class Projectile extends Entity {
     static updateAll(state, dt) {
         for (let i = state.projectiles.length - 1; i >= 0; i--) {
             const p = state.projectiles[i];
             p.update(dt, state);
-            if (p.isDead) state.projectiles.splice(i, 1);
+            if (p.isDead) {
+                state.projectiles.splice(i, 1);
+                Pools.projectiles.release(p);
+            }
         }
     }
 
-    constructor(x, y, radius, speed, target, angle = null, damage = 0, faction = "player") {
+    constructor(x = 0, y = 0, radius = 0, speed = 0, target = null, angle = null, damage = 0, faction = "player") {
+        super(x, y, 0, false);
+        if (arguments.length > 0) {
+            this.reset(x, y, radius, speed, target, angle, damage, faction);
+        }
+    }
+
+    reset(x, y, radius, speed, target, angle = null, damage = 0, faction = "player") {
         let initialAngle = 0;
         if (angle !== null && angle !== undefined) {
             initialAngle = angle;
@@ -19,12 +30,13 @@ export class Projectile extends Entity {
             initialAngle = Math.atan2(target.y - y, target.x - x);
         }
         
-        super(x, y, initialAngle, false);
+        super.reset(x, y, initialAngle, false);
         this.radius = radius;
         this.speed = speed;
         this.target = target;
         this.damage = damage;
         this.faction = faction;
+        this.penetration = 0;
     }
 
     move(dt) {
@@ -92,3 +104,5 @@ export class Projectile extends Entity {
         this.renderCachedSprite(ctx, renderer.missileCache, cacheKey, RenderSprites.missile, this.radius, color);
     }
 }
+
+Pools.projectiles.createFn = () => new Projectile();
