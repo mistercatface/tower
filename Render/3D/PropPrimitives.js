@@ -5,7 +5,6 @@ import {
     drawRadialBand,
     drawRadialRibs,
     drawRadialCap,
-    drawExtrudedSphere,
     drawExtrudedBox,
     drawBarkLines as drawBarkLinesSolid,
 } from "./SolidDraw.js";
@@ -45,10 +44,6 @@ export function drawCylinderRibs(ctx, x, y, px, py, options) {
 
 export function drawCap(ctx, x, y, px, py, options) {
     return drawRadialCap(ctx, legacyContext(x, y, px, py, options.facing), options);
-}
-
-export function drawSphere(ctx, x, y, px, py, options) {
-    drawExtrudedSphere(ctx, legacyContext(x, y, px, py, options.facing), options);
 }
 
 export function drawBox(ctx, x, y, px, py, options) {

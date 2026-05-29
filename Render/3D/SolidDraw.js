@@ -200,41 +200,37 @@ export function drawRadialCap(ctx, pc, {
     return { projection, topX, topY, capRadius };
 }
 
-export function drawExtrudedSphere(ctx, pc, {
+/** Round foliage blob anchored on a parent projection height slice (tree canopy). */
+export function drawFoliageBlob(ctx, projection, {
+    t,
     radius,
-    height,
-    facing = pc.facing,
+    offsetX = 0,
+    offsetY = 0,
     colors,
     stroke,
     lineWidth = 0.9,
 }) {
-    const blobHeight = height ?? radius * 2.2;
-    const projection = pc.project(blobHeight);
-    const topRadius = radius * (1 + projection.alpha);
+    const slice = getHeightSlice(projection, radius, t);
+    const centerX = slice.centerX + offsetX;
+    const centerY = slice.centerY + offsetY;
+    const { viewAngle } = projection;
+    const litX = centerX + Math.cos(viewAngle + Math.PI) * slice.size * 0.18;
+    const litY = centerY + Math.sin(viewAngle + Math.PI) * slice.size * 0.18;
 
-    drawExtrudedRadial(ctx, pc, {
-        baseRadius: radius,
-        topRadius,
-        height: blobHeight,
-        facing,
-        colors,
-        lineWidth,
-    });
+    const grad = ctx.createRadialGradient(litX, litY, slice.size * 0.08, centerX, centerY, slice.size);
+    grad.addColorStop(0.0, colors.highlight);
+    grad.addColorStop(0.55, colors.mid);
+    grad.addColorStop(1.0, colors.shadow);
 
-    const topGrad = ctx.createRadialGradient(
-        projection.topX, projection.topY, 0,
-        projection.topX, projection.topY, topRadius
-    );
-    topGrad.addColorStop(0.0, colors.highlight);
-    topGrad.addColorStop(0.55, colors.mid);
-    topGrad.addColorStop(1.0, colors.shadow);
-    ctx.fillStyle = topGrad;
-    ctx.strokeStyle = stroke;
-    ctx.lineWidth = lineWidth;
+    ctx.fillStyle = grad;
     ctx.beginPath();
-    ctx.arc(projection.topX, projection.topY, topRadius, 0, Math.PI * 2);
+    ctx.arc(centerX, centerY, slice.size, 0, Math.PI * 2);
     ctx.fill();
-    ctx.stroke();
+    if (stroke) {
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = lineWidth;
+        ctx.stroke();
+    }
 }
 
 export function drawExtrudedBox(ctx, pc, {
