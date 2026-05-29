@@ -145,7 +145,6 @@ export class GameState {
         this.flowFieldGrid.clear();
 
         this.entityLayers = [
-            { key: "pickups", zIndex: 10 },
             { key: "projectiles", zIndex: 20 },
             { key: "enemies", zIndex: 30 },
             { key: "activeLasers", zIndex: 35 },

@@ -9,7 +9,6 @@ export class Renderer {
 
         this.enemyCache = new SpriteCache();
         this.missileCache = new SpriteCache();
-        this.pickupCache = new SpriteCache();
         this.turretCache = new SpriteCache();
         this.playerCache = new SpriteCache();
         this.render3D = new Render3D();

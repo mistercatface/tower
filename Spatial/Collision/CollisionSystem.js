@@ -34,7 +34,7 @@ export class CollisionSystem {
     static run(state) {
         const events = [];
 
-        // Build a spatial hash for active pickups (including barrels)
+        // Build a spatial hash for active props
         const pickupHash = new SpatialHash(50);
         const pushables = [];
         for (let i = 0; i < state.pickups.length; i++) {

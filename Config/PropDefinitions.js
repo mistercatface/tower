@@ -1,11 +1,19 @@
+const DEFAULT_SPAWN_RADIUS = { minRadius: 150, maxRadius: 1000 };
+
+function prop(key, { spawn, ...rest }) {
+    return {
+        render3DKey: key,
+        renderMode: "3d",
+        ...rest,
+        spawn: spawn ? { ...DEFAULT_SPAWN_RADIUS, ...spawn } : undefined,
+    };
+}
+
 export const worldPropDefinitions = {
-    barrel: {
-        render3DKey: "barrel",
+    barrel: prop("barrel", {
         hitBehavior: "explosive",
         radius: 8,
         isPushable: true,
-        renderMode: "3d",
-        isExplosive: true,
         laserTargetable: true,
         wallPhysics: { restitution: 0.25, friction: 0.75 },
         explosion: {
@@ -20,16 +28,12 @@ export const worldPropDefinitions = {
         spawn: {
             minCount: 25,
             randomRange: 125,
-            minRadius: 150,
-            maxRadius: 1000,
         },
-    },
-    crate: {
-        render3DKey: "crate",
+    }),
+    crate: prop("crate", {
         hitBehavior: "damage",
         radius: 8,
         isPushable: true,
-        renderMode: "3d",
         laserTargetable: true,
         maxHealth: 30,
         mass: 1.5,
@@ -37,16 +41,12 @@ export const worldPropDefinitions = {
         spawn: {
             minCount: 8,
             randomRange: 17,
-            minRadius: 150,
-            maxRadius: 1000,
         },
-    },
-    tree: {
-        render3DKey: "tree",
+    }),
+    tree: prop("tree", {
         hitBehavior: "damage",
         radius: 6,
         isPushable: true,
-        renderMode: "3d",
         laserTargetable: false,
         maxHealth: 60,
         mass: 3,
@@ -57,5 +57,5 @@ export const worldPropDefinitions = {
             minRadius: 100,
             maxRadius: 950,
         },
-    },
+    }),
 };

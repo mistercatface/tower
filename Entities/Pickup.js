@@ -5,7 +5,7 @@ import { worldPropDefinitions } from "../Config/PropDefinitions.js";
 
 const PICKUP_STRATEGY_DEFAULTS = {
     isPushable: false,
-    renderMode: "sprite",
+    renderMode: "3d",
     render3DKey: null,
     isExplosive: false,
     laserTargetable: false,
@@ -44,26 +44,22 @@ const HIT_BEHAVIORS = {
     damage: damageOnHit,
 };
 
-function buildWorldPropStrategy(def) {
-    const { hitBehavior, spawn, ...strategyFields } = def;
-
-    return withPickupDefaults({
-        ...strategyFields,
-        onHit: HIT_BEHAVIORS[hitBehavior] ?? HIT_BEHAVIORS.none,
-    });
-}
-
-export const PickupStrategies = {};
-
-for (const [type, def] of Object.entries(worldPropDefinitions)) {
-    PickupStrategies[type] = buildWorldPropStrategy(def);
-}
+const worldPropStrategies = Object.fromEntries(
+    Object.entries(worldPropDefinitions).map(([type, def]) => {
+        const { hitBehavior, spawn, ...strategyFields } = def;
+        return [type, withPickupDefaults({
+            ...strategyFields,
+            isExplosive: hitBehavior === "explosive",
+            onHit: HIT_BEHAVIORS[hitBehavior] ?? HIT_BEHAVIORS.none,
+        })];
+    })
+);
 
 export class Pickup extends Entity {
     constructor(x, y, type) {
         super(x, y, 0, false);
         this.type = type;
-        this.strategy = withPickupDefaults(PickupStrategies[type]);
+        this.strategy = worldPropStrategies[type];
         this.radius = this.strategy.radius;
         this.vx = 0;
         this.vy = 0;

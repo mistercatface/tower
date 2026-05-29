@@ -1,14 +1,4 @@
 export const RenderSprites = {
-    pickup: (pickupType, radius, strategy) => {
-        const canvasSize = radius * 2 + 4;
-        const cx = canvasSize / 2;
-        const cy = canvasSize / 2;
-        const offCanvas = new OffscreenCanvas(canvasSize, canvasSize);
-        const offCtx = offCanvas.getContext("2d");
-        if (strategy && strategy.render) strategy.render(offCtx, cx, cy, radius);
-        return offCanvas;
-    },
-
     enemy: (radius, color) => {
         const canvasSize = Math.ceil(radius * 2.5) * 2;
         const cx = canvasSize / 2;
