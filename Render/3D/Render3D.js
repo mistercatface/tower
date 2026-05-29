@@ -379,6 +379,100 @@ export class Render3D {
         ctx.stroke();
     }
 
+    draw3DTree(ctx, p, px, py) {
+        const trunkRadius = 5;
+        const trunkHeight = 54;
+        const projection = projectVertical(p.x, p.y, px, py, trunkHeight);
+        const { cx, cy, topX, topY, viewAngle } = projection;
+        const silhouette = getRadialSilhouette(projection, trunkRadius);
+        const { baseLeft, baseRight, topLeft, topRight } = silhouette;
+
+        const trunkGrad = createSideGradient(ctx, baseLeft, baseRight, viewAngle, {
+            shadow: "#3E2723",
+            mid: "#6D4C41",
+            highlight: "#A1887F",
+        });
+
+        ctx.fillStyle = trunkGrad;
+        ctx.strokeStyle = "#2E1B14";
+        ctx.lineWidth = 1.0;
+        ctx.beginPath();
+        ctx.moveTo(topLeft.x, topLeft.y);
+        ctx.lineTo(topRight.x, topRight.y);
+        ctx.lineTo(baseRight.x, baseRight.y);
+        ctx.arc(cx, cy, trunkRadius, viewAngle - Math.PI / 2, viewAngle + Math.PI / 2, true);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.strokeStyle = "rgba(46, 27, 20, 0.45)";
+        ctx.lineWidth = 0.7;
+        for (const t of [0.2, 0.45, 0.7]) {
+            const slice = getHeightSlice(projection, trunkRadius * (1 - t * 0.12), t);
+            ctx.beginPath();
+            ctx.moveTo(slice.centerX - Math.cos(viewAngle) * slice.size * 0.15, slice.centerY - Math.sin(viewAngle) * slice.size * 0.15);
+            ctx.lineTo(slice.centerX + Math.cos(viewAngle + Math.PI / 2) * slice.size * 0.35, slice.centerY + Math.sin(viewAngle + Math.PI / 2) * slice.size * 0.35);
+            ctx.stroke();
+        }
+
+        const drawCanopy = (centerX, centerY, radius, height, colors, stroke) => {
+            const canopyProj = projectVertical(centerX, centerY, px, py, height);
+            const canopy = getRadialSilhouette(canopyProj, radius);
+            const canopyGrad = createSideGradient(ctx, canopy.baseLeft, canopy.baseRight, canopyProj.viewAngle, colors);
+
+            ctx.fillStyle = canopyGrad;
+            ctx.strokeStyle = stroke;
+            ctx.lineWidth = 0.9;
+            ctx.beginPath();
+            ctx.moveTo(canopy.topLeft.x, canopy.topLeft.y);
+            ctx.lineTo(canopy.topRight.x, canopy.topRight.y);
+            ctx.lineTo(canopy.baseRight.x, canopy.baseRight.y);
+            ctx.arc(centerX, centerY, radius, canopyProj.viewAngle - Math.PI / 2, canopyProj.viewAngle + Math.PI / 2, true);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            const topGrad = ctx.createRadialGradient(
+                canopyProj.topX, canopyProj.topY, 0,
+                canopyProj.topX, canopyProj.topY, canopy.topRadius
+            );
+            topGrad.addColorStop(0.0, colors.highlight);
+            topGrad.addColorStop(0.55, colors.mid);
+            topGrad.addColorStop(1.0, colors.shadow);
+            ctx.fillStyle = topGrad;
+            ctx.beginPath();
+            ctx.arc(canopyProj.topX, canopyProj.topY, canopy.topRadius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+        };
+
+        const canopyOffset = 2.5;
+        drawCanopy(
+            topX - Math.cos(viewAngle) * canopyOffset,
+            topY - Math.sin(viewAngle) * canopyOffset,
+            13,
+            26,
+            { shadow: "#1B5E20", mid: "#388E3C", highlight: "#66BB6A" },
+            "#1B4332"
+        );
+        drawCanopy(
+            topX + Math.cos(viewAngle + 0.6) * 3,
+            topY + Math.sin(viewAngle + 0.6) * 3,
+            10,
+            20,
+            { shadow: "#2E7D32", mid: "#43A047", highlight: "#81C784" },
+            "#1B4332"
+        );
+        drawCanopy(
+            topX + Math.cos(viewAngle - 0.5) * 2,
+            topY + Math.sin(viewAngle - 0.5) * 2,
+            11,
+            22,
+            { shadow: "#33691E", mid: "#4CAF50", highlight: "#A5D6A7" },
+            "#1B4332"
+        );
+    }
+
     getPropRenderer(key) {
         if (!key) return null;
         const methodName = `draw3D${key.charAt(0).toUpperCase()}${key.slice(1)}`;

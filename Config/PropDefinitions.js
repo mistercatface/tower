@@ -41,4 +41,21 @@ export const worldPropDefinitions = {
             maxRadius: 1000,
         },
     },
+    tree: {
+        render3DKey: "tree",
+        hitBehavior: "damage",
+        radius: 6,
+        isPushable: true,
+        renderMode: "3d",
+        laserTargetable: false,
+        maxHealth: 60,
+        mass: 3,
+        wallPhysics: { restitution: 0.08, friction: 0.85 },
+        spawn: {
+            minCount: 6,
+            randomRange: 14,
+            minRadius: 100,
+            maxRadius: 950,
+        },
+    },
 };
