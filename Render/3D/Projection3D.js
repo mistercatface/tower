@@ -1,7 +1,10 @@
 // World props: geometry is built in world space (prop.facing at spawn).
 // Symmetric cylinders use a viewer-facing silhouette (viewAngle for rim tangents only).
 // Faceted extrusion remains available via bodyMode: "faceted".
-export const CAMERA_HEIGHT = 160;
+export let CAMERA_HEIGHT = 160;
+export function setCameraHeight(val) {
+    CAMERA_HEIGHT = val;
+}
 
 export function projectVertical(objX, objY, viewerX, viewerY, height) {
     const dx = objX - viewerX;

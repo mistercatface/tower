@@ -1,16 +1,13 @@
 import { THEME_COLORS } from "../../Config/Config.js";
-import {
-    DEFAULT_PROP_HEIGHT,
-    drawCylinder,
-    drawBand,
-    drawCylinderRibs,
-    drawCap,
-    drawBox,
-    drawBarkLines,
-} from "./PropPrimitives.js";
-import { drawFoliageBlob } from "./SolidDraw.js";
 import { createPropDrawContext } from "./PropDrawContext.js";
-import { isFaceTowardViewer } from "./Projection3D.js";
+import { drawTree, drawBarrel, drawCrate, drawLampPost } from "./PropRecipes.js";
+
+const PROP_RECIPES = {
+    tree: drawTree,
+    barrel: drawBarrel,
+    crate: drawCrate,
+    lampPost: drawLampPost,
+};
 
 export class Render3D {
     constructor() {
@@ -202,192 +199,6 @@ export class Render3D {
         }
     }
 
-    draw3DBarrel(ctx, pc) {
-        const p = pc.prop;
-        const radius = p.radius || 8;
-        const { x, y, facing, px, py } = pc;
-
-        drawCylinder(ctx, x, y, px, py, {
-            radius,
-            height: DEFAULT_PROP_HEIGHT,
-            colors: { shadow: "#3F0000", mid: "#B71C1C", highlight: "#FF5252" },
-            stroke: "#4A0E0E",
-            facing,
-        });
-
-        const { slice1, slice2 } = drawBand(ctx, x, y, px, py, {
-            radius,
-            t0: 0.35,
-            t1: 0.65,
-            fill: "#FFEB3B",
-            stroke: "#4A0E0E",
-            facing,
-        });
-
-        ctx.strokeStyle = "#000000";
-        ctx.lineWidth = 1.5;
-        for (let i = 0; i < 8; i++) {
-            const phi = facing + (i * Math.PI) / 4;
-            const rivetX = slice1.centerX + Math.cos(phi) * slice1.size;
-            const rivetY = slice1.centerY + Math.sin(phi) * slice1.size;
-            if (!isFaceTowardViewer(rivetX, rivetY, x, y, px, py)) continue;
-            const phi2 = phi + 0.25;
-            ctx.beginPath();
-            ctx.moveTo(rivetX, rivetY);
-            ctx.lineTo(
-                slice2.centerX + Math.cos(phi2) * slice2.size,
-                slice2.centerY + Math.sin(phi2) * slice2.size
-            );
-            ctx.stroke();
-        }
-
-        drawCylinderRibs(ctx, x, y, px, py, {
-            radius,
-            ts: [0.25, 0.75],
-            stroke: "rgba(0, 0, 0, 0.45)",
-            facing,
-        });
-
-        const { topX, topY, capRadius } = drawCap(ctx, x, y, px, py, {
-            radius,
-            capColors: { inner: "#455A64", mid: "#37474F", outer: "#263238" },
-            stroke: "#1A0A00",
-            facing,
-        });
-
-        const triSize = capRadius * 0.55;
-        if (triSize > 2) {
-            ctx.fillStyle = "#FFEB3B";
-            ctx.strokeStyle = "#000000";
-            ctx.lineWidth = 0.8;
-            ctx.beginPath();
-            ctx.moveTo(topX, topY - triSize * 0.7);
-            ctx.lineTo(topX + triSize * 0.86, topY + triSize * 0.4);
-            ctx.lineTo(topX - triSize * 0.86, topY + triSize * 0.4);
-            ctx.closePath();
-            ctx.fill();
-            ctx.stroke();
-
-            ctx.fillStyle = "#000000";
-            ctx.font = `bold ${Math.round(triSize * 1.1)}px monospace`;
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText("!", topX, topY + triSize * 0.05);
-        }
-    }
-
-    draw3DCrate(ctx, pc) {
-        const p = pc.prop;
-        const halfSize = p.radius || 8;
-        drawBox(ctx, pc.x, pc.y, pc.px, pc.py, {
-            halfSize,
-            faceColors: { shadow: "#4E342E", mid: "#8D6E63", highlight: "#A1887F" },
-            topColors: { light: "#BCAAA4", mid: "#A1887F", dark: "#8D6E63" },
-            stroke: "#3E2723",
-            plankTs: { values: [0.33, 0.66], stroke: "rgba(62, 39, 35, 0.55)" },
-            topCross: { stroke: "rgba(62, 39, 35, 0.6)" },
-            facing: pc.facing,
-        });
-    }
-
-    draw3DTree(ctx, pc) {
-        const trunkRadius = 5;
-        const trunkHeight = 54;
-        const { x, y, facing, px, py } = pc;
-
-        const { projection } = drawCylinder(ctx, x, y, px, py, {
-            radius: trunkRadius,
-            height: trunkHeight,
-            colors: { shadow: "#3E2723", mid: "#6D4C41", highlight: "#A1887F" },
-            stroke: "#2E1B14",
-            facing,
-        });
-
-        drawBarkLines(ctx, x, y, px, py, {
-            radius: trunkRadius,
-            height: trunkHeight,
-            ts: [0.2, 0.45, 0.7],
-            stroke: "rgba(46, 27, 20, 0.45)",
-            facing,
-        });
-
-        const stroke = "#1B4332";
-        const canopy = [
-            {
-                ox: -Math.cos(facing) * 2.5,
-                oy: -Math.sin(facing) * 2.5,
-                r: 13,
-                t: 0.93,
-                colors: { shadow: "#1B5E20", mid: "#388E3C", highlight: "#66BB6A" },
-            },
-            {
-                ox: Math.cos(facing + 0.6) * 3,
-                oy: Math.sin(facing + 0.6) * 3,
-                r: 10,
-                t: 0.9,
-                colors: { shadow: "#2E7D32", mid: "#43A047", highlight: "#81C784" },
-            },
-            {
-                ox: Math.cos(facing - 0.5) * 2,
-                oy: Math.sin(facing - 0.5) * 2,
-                r: 11,
-                t: 0.88,
-                colors: { shadow: "#33691E", mid: "#4CAF50", highlight: "#A5D6A7" },
-            },
-        ];
-        for (const leaf of canopy) {
-            drawFoliageBlob(ctx, projection, {
-                t: leaf.t,
-                radius: leaf.r,
-                offsetX: leaf.ox,
-                offsetY: leaf.oy,
-                colors: leaf.colors,
-                stroke,
-            });
-        }
-    }
-
-    draw3DLampPost(ctx, pc) {
-        const { x, y, facing, px, py } = pc;
-        const poleHeight = 46;
-
-        const { projection } = drawCylinder(ctx, x, y, px, py, {
-            radius: 2.2,
-            height: poleHeight,
-            colors: { shadow: "#263238", mid: "#546E7A", highlight: "#90A4AE" },
-            stroke: "#263238",
-            lineWidth: 0.8,
-            facing,
-        });
-
-        const { topX, topY } = projection;
-        drawBox(ctx, topX, topY, px, py, {
-            halfSize: 4,
-            height: 6,
-            faceColors: { shadow: "#37474F", mid: "#607D8B", highlight: "#B0BEC5" },
-            topColors: { light: "#CFD8DC", mid: "#90A4AE", dark: "#546E7A" },
-            stroke: "#263238",
-            lineWidth: 0.8,
-            facing,
-        });
-
-        drawCap(ctx, topX, topY, px, py, {
-            radius: 3,
-            height: 8,
-            capColors: { inner: "#FFF9C4", mid: "#FFEB3B", outer: "#FBC02D" },
-            stroke: "#F57F17",
-            lineWidth: 0.7,
-            facing,
-        });
-    }
-
-    getPropRenderer(key) {
-        if (!key) return null;
-        const methodName = `draw3D${key.charAt(0).toUpperCase()}${key.slice(1)}`;
-        const method = this[methodName];
-        return method ? method.bind(this) : null;
-    }
-
     draw3DBuildings(ctx, state, viewport) {
         const px = state.player.x;
         const py = state.player.y;
@@ -453,7 +264,7 @@ export class Render3D {
             } else {
                 ctx.save();
                 const pc = createPropDrawContext(obj, px, py);
-                const draw = this.getPropRenderer(obj._renderType);
+                const draw = PROP_RECIPES[obj._renderType];
                 if (draw) draw(ctx, pc);
                 ctx.restore();
             }

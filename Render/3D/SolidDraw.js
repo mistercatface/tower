@@ -211,8 +211,9 @@ export function drawFoliageBlob(ctx, projection, {
     lineWidth = 0.9,
 }) {
     const slice = getHeightSlice(projection, radius, t);
-    const centerX = slice.centerX + offsetX;
-    const centerY = slice.centerY + offsetY;
+    const scale = 1 + projection.alpha * t;
+    const centerX = slice.centerX + offsetX * scale;
+    const centerY = slice.centerY + offsetY * scale;
     const { viewAngle } = projection;
     const litX = centerX + Math.cos(viewAngle + Math.PI) * slice.size * 0.18;
     const litY = centerY + Math.sin(viewAngle + Math.PI) * slice.size * 0.18;

@@ -114,11 +114,11 @@ export function drawTree(ctx, pc) {
     const stroke = "#1B4332";
     const canopy = [
         {
-            ox: -Math.cos(facing) * 2.5,
-            oy: -Math.sin(facing) * 2.5,
-            r: 13,
-            t: 0.93,
-            colors: { shadow: "#1B5E20", mid: "#388E3C", highlight: "#66BB6A" },
+            ox: Math.cos(facing - 0.5) * 2,
+            oy: Math.sin(facing - 0.5) * 2,
+            r: 11,
+            t: 0.88,
+            colors: { shadow: "#33691E", mid: "#4CAF50", highlight: "#A5D6A7" },
         },
         {
             ox: Math.cos(facing + 0.6) * 3,
@@ -128,11 +128,11 @@ export function drawTree(ctx, pc) {
             colors: { shadow: "#2E7D32", mid: "#43A047", highlight: "#81C784" },
         },
         {
-            ox: Math.cos(facing - 0.5) * 2,
-            oy: Math.sin(facing - 0.5) * 2,
-            r: 11,
-            t: 0.88,
-            colors: { shadow: "#33691E", mid: "#4CAF50", highlight: "#A5D6A7" },
+            ox: -Math.cos(facing) * 2.5,
+            oy: -Math.sin(facing) * 2.5,
+            r: 13,
+            t: 0.93,
+            colors: { shadow: "#1B5E20", mid: "#388E3C", highlight: "#66BB6A" },
         },
     ];
     for (const leaf of canopy) {
