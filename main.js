@@ -5,6 +5,7 @@ import { initUI } from "./UI/UI.js";
 import { events, requestUiUpdate, requestUiHudUpdate } from "./Core/EventSystem.js";
 import { FloatingText } from "./Render/FloatingText.js";
 import { registerGameListeners } from "./Core/GameListeners.js";
+import { PauseManager } from "./Core/PauseManager.js";
 import { Renderer } from "./Render/Render.js";
 import { Viewport } from "./Render/Viewport.js";
 import { InputManager } from "./Core/InputManager.js";
@@ -37,14 +38,17 @@ fsm.addState("map_transition", new MapTransitionState());
 fsm.addState("combat", new CombatState());
 fsm.addState("reward", new RewardState());
 
+const pauseManager = new PauseManager(state);
+
 events.setContext({ state, upgrades, viewport, fsm });
 FloatingText.registerEventListener(events);
-registerGameListeners(events);
+registerGameListeners(events, pauseManager);
 
 function resetGame() {
     StatsManager.resetRun(state, upgrades);
 
     initializeSaveSystem(state);
+    pauseManager.reset();
     gameOverUI.style.display = "none";
     viewport.snapTo(0, 0);
     fsm.transition("map_transition");

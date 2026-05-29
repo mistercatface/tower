@@ -64,4 +64,16 @@ export function emitCombatWaveCleared() {
     events.emit(Events.COMBAT_WAVE_CLEARED);
 }
 
+export function requestGamePause(reason) {
+    events.emit(Events.GAME_PAUSE, { reason });
+}
+
+export function requestGameResume(reason) {
+    events.emit(Events.GAME_RESUME, { reason });
+}
+
+export function toggleGamePause() {
+    events.emit(Events.GAME_TOGGLE_PAUSE);
+}
+
 export { Events } from "./EventNames.js";

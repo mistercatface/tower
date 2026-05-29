@@ -10,4 +10,7 @@ export const Events = {
     COMBAT_WAVE_CLEARED: "combat:waveCleared",
     PROGRESS_DIRTY: "progress:dirty",
     PROGRESS_SAVE: "progress:save",
+    GAME_PAUSE: "game:pause",
+    GAME_RESUME: "game:resume",
+    GAME_TOGGLE_PAUSE: "game:togglePause",
 };

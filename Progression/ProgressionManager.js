@@ -1,4 +1,4 @@
-import { spawnFloatingText, events, Events, requestUiUpdate, requestProgressDirty, requestProgressSave } from "../Core/EventSystem.js";
+import { spawnFloatingText, events, Events, requestUiUpdate, requestProgressDirty, requestProgressSave, requestGamePause, requestGameResume } from "../Core/EventSystem.js";
 import { StatsManager } from "./StatsManager.js";
 
 export class ProgressionManager {
@@ -96,6 +96,21 @@ export class ProgressionManager {
         });
     }
 
+    static promptChoice(title, description, choices, customUpgrades, onPick) {
+        requestGamePause("modal");
+        events.emit(Events.UI_SHOW_UPGRADE_CHOICE, {
+            title,
+            description,
+            choices,
+            upgrades: customUpgrades,
+            onPick: (pickedId) => {
+                onPick(pickedId);
+                requestGameResume("modal");
+                requestUiUpdate();
+            },
+        });
+    }
+
     static promptAbilitySelection(state, upgrades, title, description, choices, isNewRun) {
         const pointsAmount = 100 + 100 * state.level;
         if (state.discoveredAbilities) {
@@ -111,21 +126,10 @@ export class ProgressionManager {
 
         const customUpgrades = [...upgrades, { id: "take_points", name: "Take Points", description: `Gain ${pointsAmount} Points` }];
 
-        const previousPauseState = state.isPaused;
-        state.isPaused = true;
-
-        events.emit(Events.UI_SHOW_UPGRADE_CHOICE, {
-            title,
-            description,
-            choices,
-            upgrades: customUpgrades,
-            onPick: (pickedId) => {
-                this.applyUpgradeChoice(state, upgrades, pickedId, pointsAmount, !isNewRun);
-                if (isNewRun) requestProgressSave();
-                StatsManager.recalculateStats(state, upgrades);
-                state.isPaused = previousPauseState;
-                requestUiUpdate();
-            }
+        this.promptChoice(title, description, choices, customUpgrades, (pickedId) => {
+            this.applyUpgradeChoice(state, upgrades, pickedId, pointsAmount, !isNewRun);
+            if (isNewRun) requestProgressSave();
+            StatsManager.recalculateStats(state, upgrades);
         });
     }
 
@@ -140,25 +144,13 @@ export class ProgressionManager {
     }
 
     static promptPerkSelection(state, upgrades, title, description, choices) {
-        const customUpgrades = [...upgrades];
-        const previousPauseState = state.isPaused;
-        state.isPaused = true;
-
-        events.emit(Events.UI_SHOW_UPGRADE_CHOICE, {
-            title,
-            description,
-            choices,
-            upgrades: customUpgrades,
-            onPick: (pickedId) => {
-                const upg = upgrades.find((u) => u.id === pickedId);
-                state.upgrades[pickedId].baseLevel = 1;
-                state.upgrades[pickedId].level = 1;
-                requestProgressSave();
-                StatsManager.recalculateStats(state, upgrades);
-                if (upg.onPurchase) upg.onPurchase(state);
-                state.isPaused = previousPauseState;
-                requestUiUpdate();
-            }
+        this.promptChoice(title, description, choices, [...upgrades], (pickedId) => {
+            const upg = upgrades.find((u) => u.id === pickedId);
+            state.upgrades[pickedId].baseLevel = 1;
+            state.upgrades[pickedId].level = 1;
+            requestProgressSave();
+            StatsManager.recalculateStats(state, upgrades);
+            if (upg.onPurchase) upg.onPurchase(state);
         });
     }
 

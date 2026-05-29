@@ -2,7 +2,7 @@ import { hardResetProgress } from "../Progression/Storage.js";
 import { perkMilestones } from "../Config/Config.js";
 import { StatsManager } from "../Progression/StatsManager.js";
 import { isCombat, isCombatOrReward } from "../GameState/GamePhase.js";
-import { events, Events } from "../Core/EventSystem.js";
+import { events, Events, toggleGamePause } from "../Core/EventSystem.js";
 
 const elements = {
     sectorClearedModal: document.getElementById("sectorClearedModal"),
@@ -381,8 +381,7 @@ export function initUI(state, upgrades, resetGameCallback) {
     });
 
     elements.pauseBtn.addEventListener("click", () => {
-        state.isPaused = !state.isPaused;
-        updateUI(state, upgrades);
+        toggleGamePause();
     });
 
     elements.speedDownBtn.addEventListener("click", () => {
