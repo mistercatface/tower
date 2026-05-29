@@ -1,18 +1,20 @@
 import { Entity } from "../Entity.js";
 import { ExplosionStrategies } from "./ExplosionStrategies.js";
+import { standardExplosionPhases } from "./ExplosionPhases.js";
+import { transitionPhase } from "../EntityFsm.js";
 
 export class Explosion extends Entity {
     static updateAll(state, dt, allEvents) {
         if (!state.explosions) return;
-        
+
         for (let i = state.explosions.length - 1; i >= 0; i--) {
             const exp = state.explosions[i];
-            if (exp.strategy && exp.strategy.update) exp.strategy.update(state, exp, dt, allEvents);
+            if (exp.strategy?.update) exp.strategy.update(state, exp, dt, allEvents);
         }
 
         for (let i = state.explosions.length - 1; i >= 0; i--) {
             const exp = state.explosions[i];
-            if (exp.strategy && exp.strategy.repel && !exp.isDead) {
+            if (exp.strategy?.repel && !exp.isDead) {
                 exp.strategy.repel(state, exp, dt);
             }
             if (exp.isDead) state.explosions.splice(i, 1);
@@ -28,9 +30,15 @@ export class Explosion extends Entity {
         this.speed = config.speed || 300;
         this.damage = config.damage || 50;
         this.hitTargets = new Set();
-        this.phase = "expanding";
         this.lingerTimer = config.lingerTimer || 750;
         this.fadeTimer = config.fadeTimer || 250;
         this.opacity = 1.0;
+        this.phaseData = {};
+        this.phases = standardExplosionPhases;
+        this.changePhase("expanding");
+    }
+
+    changePhase(name, phaseDataInit = null) {
+        transitionPhase(this, this.phases, name, phaseDataInit);
     }
 }

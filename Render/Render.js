@@ -211,7 +211,7 @@ export class Renderer {
 
             offCtx.beginPath();
             offCtx.arc(cx, cy, exp.radius, 0, Math.PI * 2);
-            if (exp.phase === "expanding") {
+            if (exp.currentPhase?.brightFill) {
                 offCtx.fillStyle = "rgba(244, 67, 54, 0.6)";
                 offCtx.fill();
             } else {
@@ -227,7 +227,7 @@ export class Renderer {
             offCtx.restore();
 
             this.ctx.save();
-            if (exp.phase === "expanding") {
+            if (exp.currentPhase?.screenBlend) {
                 this.ctx.globalCompositeOperation = "screen";
                 this.ctx.globalAlpha = 1.0;
             } else {
