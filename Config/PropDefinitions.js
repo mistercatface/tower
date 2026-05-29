@@ -15,6 +15,7 @@ export const worldPropDefinitions = {
         radius: 8,
         isPushable: true,
         laserTargetable: true,
+        maxHealth: 15,
         wallPhysics: { restitution: 0.25, friction: 0.75 },
         explosion: {
             type: "standard",

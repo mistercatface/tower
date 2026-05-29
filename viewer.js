@@ -1,5 +1,5 @@
 import { projectVertical, setCameraHeight } from "./Render/3D/Projection3D.js";
-import { drawTree, drawBarrel, drawCrate, drawLampPost } from "./Render/3D/PropRecipes.js";
+import { drawTree, drawBarrel, drawCrate, drawLampPost, drawFireBarrel } from "./Render/3D/PropRecipes.js";
 import { 
     drawExtrudedRadial, 
     drawRadialBand, 
@@ -46,7 +46,7 @@ function rebuildDynamicSliders() {
     if (asset === "tree") {
         createSlider("trunkRadius", "Trunk Radius", 2, 20, 5, "px");
         createSlider("trunkHeight", "Trunk Height", 10, 150, 54, "px");
-    } else if (asset === "barrel") {
+    } else if (asset === "barrel" || asset === "fire_barrel") {
         createSlider("radius", "Radius", 4, 30, 8, "px");
         createSlider("height", "Height", 5, 60, 14, "px");
     } else if (asset === "crate") {
@@ -218,6 +218,8 @@ function render() {
             pc.prop.radius = oldRadius;
         } else if (asset === "barrel") {
             drawBarrel(ctx, pc);
+        } else if (asset === "fire_barrel") {
+            drawFireBarrel(ctx, pc);
         } else if (asset === "crate") {
             drawCrate(ctx, pc);
         } else if (asset === "lampPost") {

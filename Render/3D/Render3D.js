@@ -1,10 +1,11 @@
 import { THEME_COLORS } from "../../Config/Config.js";
 import { createPropDrawContext } from "./PropDrawContext.js";
-import { drawTree, drawBarrel, drawCrate, drawLampPost } from "./PropRecipes.js";
+import { drawTree, drawBarrel, drawCrate, drawLampPost, drawFireBarrel } from "./PropRecipes.js";
 
 const PROP_RECIPES = {
     tree: drawTree,
     barrel: drawBarrel,
+    fire_barrel: drawFireBarrel,
     crate: drawCrate,
     lampPost: drawLampPost,
 };
@@ -227,7 +228,7 @@ export class Render3D {
                 const distSq = (p.x - px) ** 2 + (p.y - py) ** 2;
                 if (distSq <= 2250000) {
                     p._distSq = distSq;
-                    p._renderType = p.strategy.render3DKey;
+                    p._renderType = (p.currentState === "on_fire" && p.strategy.render3DKey === "barrel") ? "fire_barrel" : p.strategy.render3DKey;
                     visibleObjects.push(p);
                 }
             }

@@ -130,7 +130,7 @@ export const ExplosionStrategies = {
                                 const minDmg = exp.damage * 0.4;
                                 const proximityRatio = Math.min(1.0, dist / exp.maxRadius);
                                 const dmg = maxDmg - (maxDmg - minDmg) * proximityRatio;
-                                p.strategy.onHit(state, p, { isDead: false, damage: dmg }, allEvents);
+                                p.strategy.onHit(state, p, { isDead: false, damage: dmg, isExplosion: true }, allEvents);
                                 exp.hitTargets.add(p);
                             }
                         }

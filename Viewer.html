@@ -1,12 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>3D Asset Pipeline Troubleshooter</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Outfit:wght@300;400;600;800&display=swap"
+        rel="stylesheet">
     <style>
         :root {
             --bg-color: #0d0f13;
@@ -207,12 +210,12 @@
             border-radius: 50%;
         }
 
-        input:checked + .slider {
+        input:checked+.slider {
             background-color: rgba(0, 229, 255, 0.2);
             border-color: var(--accent-color);
         }
 
-        input:checked + .slider:before {
+        input:checked+.slider:before {
             transform: translateX(18px);
             background-color: var(--accent-color);
             box-shadow: 0 0 6px var(--accent-glow);
@@ -293,6 +296,7 @@
         }
     </style>
 </head>
+
 <body>
     <aside>
         <header>
@@ -306,6 +310,7 @@
             <select id="assetSelector">
                 <option value="tree" selected>Tree Canopy (drawTree)</option>
                 <option value="barrel">Explosive Barrel (drawBarrel)</option>
+                <option value="fire_barrel">On-Fire Barrel (drawFireBarrel)</option>
                 <option value="crate">Wooden Crate (drawCrate)</option>
                 <option value="lampPost">Lamp Post (drawLampPost)</option>
                 <option value="primitives">Primitives Playground</option>
@@ -314,7 +319,7 @@
 
         <!-- Section: Viewer Coordinates -->
         <div class="section-title">Viewer (Player) Pos</div>
-        
+
         <div class="control-group">
             <label for="viewerDist">Distance <span id="val_viewerDist" class="val">180px</span></label>
             <input type="range" id="viewerDist" min="0" max="600" value="180">
@@ -367,10 +372,6 @@ topX: 0.00
 topY: 0.00
 viewAngle: 0.00</pre>
         </div>
-
-        <footer>
-            <span>Part of the <a href="./Index.html" target="_blank">Tower Engine</a></span>
-        </footer>
     </aside>
 
     <main>
@@ -385,4 +386,5 @@ viewAngle: 0.00</pre>
     <!-- Load interactive troubleshooter logic as module -->
     <script type="module" src="./viewer.js"></script>
 </body>
+
 </html>

@@ -25,15 +25,20 @@ function spawnExplosion(state, x, y, config) {
 }
 
 function explosiveOnHit(state, pickup, projectile, events) {
-    pickup.isDead = true;
+    if (projectile?.isExplosion) {
+        pickup.explode(state);
+        return true;
+    }
+
+    const dmg = projectile?.damage ?? state.player.weapon.damage;
+    pickup.takeDamage(dmg, state);
     if (projectile?.isDead !== undefined) projectile.isDead = true;
-    spawnExplosion(state, pickup.x, pickup.y, pickup.strategy.explosion);
     return true;
 }
 
 function damageOnHit(state, pickup, projectile, events) {
     const dmg = projectile?.damage ?? state.player.weapon.damage;
-    pickup.takeDamage(dmg);
+    pickup.takeDamage(dmg, state);
     if (projectile?.isDead !== undefined) projectile.isDead = true;
     return true;
 }
@@ -70,22 +75,51 @@ export class Pickup extends Entity {
             this.maxHealth = this.strategy.maxHealth;
             this.health = this.strategy.maxHealth;
         }
+        this.currentState = "normal";
+        this.stateTimer = 0;
     }
 
-    takeDamage(amount) {
+    takeDamage(amount, state) {
         if (this.maxHealth == null) return false;
+        
         this.health -= amount;
-        if (this.health <= 0 && !this.isDead) {
-            this.isDead = true;
-            return true;
+        if (this.health <= 0) {
+            this.health = 0;
+            if (this.currentState === "normal" && this.type === "barrel") {
+                this.currentState = "on_fire";
+                this.maxHealth = 15;
+                this.health = 15;
+                this.stateTimer = 2000;
+            } else {
+                this.explode(state);
+                return true;
+            }
         }
         return false;
     }
 
-    update(dt, walls) {
+    explode(state) {
+        if (this.isDead) return;
+        this.isDead = true;
+        this.currentState = "exploded";
+        if (state) {
+            spawnExplosion(state, this.x, this.y, this.strategy.explosion);
+        }
+    }
+
+    update(dt, walls, state) {
         PhysicsSystem.applyFrictionAndDrag(this, dt, this.strategy.friction);
         if (this.strategy.isPushable && walls) {
             PhysicsSystem.resolveWallCollisions(this, walls);
+        }
+
+        if (this.currentState === "on_fire") {
+            this.stateTimer -= dt;
+            this.health -= 15 * (dt / 2000);
+            if (this.health <= 0 || this.stateTimer <= 0) {
+                this.health = 0;
+                this.explode(state);
+            }
         }
     }
 }
