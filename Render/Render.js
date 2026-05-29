@@ -12,6 +12,7 @@ export class Renderer {
         this.missileCache = new SpriteCache();
         this.turretCache = new SpriteCache();
         this.playerCache = new SpriteCache();
+        this.floatingTextCache = new SpriteCache();
         this.render3D = new Render3D();
         this.effectPasses = [
             { zIndex: 0,  fn: (state, viewport) => this.drawRangeIndicator(state, viewport) },

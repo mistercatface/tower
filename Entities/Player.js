@@ -43,7 +43,7 @@ export class Player extends Actor {
         this.takeDamage(damage);
 
         if (hitType === "blast") {
-            spawnFloatingText({ variant: "blastDamage", x: this.x, y: this.y, damage, decimalPlaces: 1 });
+            spawnFloatingText({ variant: "blastDamage", x: this.x, y: this.y, damage });
         } else {
             spawnFloatingText({ variant: "standardDamage", x: this.x, y: this.y, damage });
         }

@@ -63,7 +63,7 @@ export class Enemy extends Actor {
         const died = this.takeDamage(baseDamage);
         
         if (hitType === "blast") {
-            spawnFloatingText({ variant: "blastDamage", x: this.x, y: this.y, damage: baseDamage, decimalPlaces: 0 });
+            spawnFloatingText({ variant: "blastDamage", x: this.x, y: this.y, damage: baseDamage });
         }
         
         if (died) {

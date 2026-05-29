@@ -1,4 +1,5 @@
 import { Events } from "../Core/EventNames.js";
+import { RenderSprites } from "./RenderSprites.js";
 
 export const TextStyles = {
     standard: {
@@ -40,6 +41,7 @@ export class FloatingText {
         this.text = text;
         this.color = color;
         this.timerId = timerId;
+        this.styleName = styleName;
         this.life = 1.0;
         this.isDead = false;
         this.vx = 0;
@@ -47,9 +49,10 @@ export class FloatingText {
         this.gravity = 0;
         this.maxLife = 1000;
         this.style = TextStyles[styleName] || TextStyles.standard;
-        this.offCanvas = null;
-        this.cx = 0;
-        this.cy = 0;
+    }
+
+    getCacheKey() {
+        return `${this.styleName}_${this.color}_${this.text}`;
     }
 
     update(dt, scheduler) {
@@ -66,12 +69,11 @@ export class FloatingText {
 
     isVisible(viewport) {
         if (!viewport) return true;
-        const radius = Math.max(this.cx, this.cy) || 20;
-        return viewport.isVisible(this.x, this.y, radius);
+        return viewport.isVisible(this.x, this.y, 20);
     }
 
-    static spawnBlastDamageText(state, x, y, damage, decimalPlaces = 0) {
-        const text = `-${damage.toFixed(decimalPlaces)} BLAST`;
+    static spawnBlastDamageText(state, x, y, damage) {
+        const text = `-${Math.round(damage)} BLAST`;
         FloatingText.spawn(state, x, y - 20, text, "#FF5722", "blast", {
             vx: (Math.random() - 0.5) * 80,
             vy: -95 - Math.random() * 40,
@@ -81,7 +83,7 @@ export class FloatingText {
     }
 
     static spawnStandardDamageText(state, x, y, damage) {
-        const text = `-${damage.toFixed(1)}`;
+        const text = `-${Math.round(damage)}`;
         FloatingText.spawn(state, x, y - 20, text, "#F44336", "standard", {
             vx: (Math.random() - 0.5) * 30,
             vy: -40 - Math.random() * 20,
@@ -111,10 +113,10 @@ export class FloatingText {
         }
     }
 
-    static handleSpawnEvent({ state, variant = "custom", x, y, text, color, style, options, damage, decimalPlaces }) {
+    static handleSpawnEvent({ state, variant = "custom", x, y, text, color, style, options, damage }) {
         switch (variant) {
             case "blastDamage":
-                FloatingText.spawnBlastDamageText(state, x, y, damage, decimalPlaces ?? 0);
+                FloatingText.spawnBlastDamageText(state, x, y, damage);
                 break;
             case "standardDamage":
                 FloatingText.spawnStandardDamageText(state, x, y, damage);
@@ -129,64 +131,32 @@ export class FloatingText {
         eventBus.on(Events.FX_FLOATING_TEXT, FloatingText.handleSpawnEvent);
     }
 
-    _initCanvas(ctx) {
-        ctx.save();
-        ctx.font = this.style.font;
-        const metrics = ctx.measureText(this.text);
-        ctx.restore();
-
-        const strokeWidth = this.style.strokeWidth;
-        const textWidth = Math.ceil(metrics.width);
-        
-        const fontSizeMatch = this.style.font.match(/(\d+)px/);
-        const fontSize = fontSizeMatch ? parseInt(fontSizeMatch[1], 10) : 12;
-        const textHeight = Math.ceil(fontSize * 1.3);
-
-        const padding = strokeWidth * 2 + 4;
-        const W = textWidth + padding;
-        const H = textHeight + padding;
-
-        this.offCanvas = new OffscreenCanvas(W, H);
-        const offCtx = this.offCanvas.getContext("2d");
-
-        offCtx.textAlign = "center";
-        offCtx.textBaseline = "middle";
-        offCtx.font = this.style.font;
-
-        const cx = W / 2;
-        const cy = H / 2;
-
-        offCtx.strokeStyle = "rgba(0, 0, 0, 0.95)";
-        offCtx.lineWidth = strokeWidth;
-        offCtx.lineJoin = "round";
-        offCtx.miterLimit = 2;
-        offCtx.strokeText(this.text, cx, cy);
-
-        offCtx.fillStyle = this.style.getFill(offCtx, this.color);
-        offCtx.fillText(this.text, cx, cy);
-        
-        this.cx = cx;
-        this.cy = cy;
-    }
-
     render(ctx, renderer, state) {
-        if (!this.offCanvas) {
-            this._initCanvas(ctx);
-        }
+        const cacheKey = this.getCacheKey();
+        const sprite = renderer.floatingTextCache.get(
+            cacheKey,
+            RenderSprites.floatingText,
+            this.text,
+            this.style,
+            this.color
+        );
+        const img = sprite.offCanvas || sprite;
+        const cx = sprite.cx !== undefined ? sprite.cx : img.width / 2;
+        const cy = sprite.cy !== undefined ? sprite.cy : img.height / 2;
 
         ctx.save();
         ctx.globalAlpha = Math.max(0, this.life);
-        
+
         const ageRatio = 1.0 - this.life;
         let scale = this.style.scaleFn(ageRatio);
-        
+
         if (state && state.viewport) {
             scale /= state.viewport.zoom;
         }
-        
+
         ctx.translate(this.x, this.y);
         ctx.scale(scale, scale);
-        ctx.drawImage(this.offCanvas, -this.cx, -this.cy);
+        ctx.drawImage(img, -cx, -cy);
         ctx.restore();
     }
 }
