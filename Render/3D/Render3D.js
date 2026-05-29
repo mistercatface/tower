@@ -102,33 +102,68 @@ export class Render3D {
         const edgeDirY = (p2.y - p1.y) / edgeLen;
         const uAlongEdge = p1.x * edgeDirX + p1.y * edgeDirY;
         const uPatternOffset = ((uAlongEdge / tileWorldSize) % 1 + 1) % 1 * texW;
+        const verticalTiles = WALL_PROJECTION_DISTANCE / tileWorldSize;
+        const vMax = verticalTiles * texH;
 
-        ctx.save();
-        this.traceProjectedFace(ctx, p1, p2, face);
-        ctx.clip();
+        // Subdivide the wall face into narrow slices (approx. 4 world units wide)
+        const sliceWidthLimit = 4;
+        const numSlices = Math.max(1, Math.ceil(edgeLen / sliceWidthLimit));
 
         const pattern = ctx.createPattern(textureCanvas, "repeat");
 
-        const a = (edgeDirX * tileWorldSize) / texW;
-        const b = (edgeDirY * tileWorldSize) / texW;
-        const c = ((face.proj1X - p1.x) * tileWorldSize) / (WALL_PROJECTION_DISTANCE * texH);
-        const d = ((face.proj1Y - p1.y) * tileWorldSize) / (WALL_PROJECTION_DISTANCE * texH);
-        const e = p1.x - a * uPatternOffset;
-        const f = p1.y - b * uPatternOffset;
+        for (let i = 0; i < numSlices; i++) {
+            const t1 = i / numSlices;
+            const t2 = (i + 1) / numSlices;
 
-        const wallMatrix = new DOMMatrix([a, b, c, d, e, f]);
-        const finalMatrix = ctx.getTransform().multiply(wallMatrix);
-        pattern.setTransform(finalMatrix);
+            // World coordinates for the top edge of this slice
+            const ax = p1.x + t1 * (p2.x - p1.x);
+            const ay = p1.y + t1 * (p2.y - p1.y);
+            const bx = p1.x + t2 * (p2.x - p1.x);
+            const by = p1.y + t2 * (p2.y - p1.y);
 
-        ctx.fillStyle = pattern;
+            // Linearly interpolate the projected bottom edge of this slice
+            const projAx = face.proj1X + t1 * (face.proj2X - face.proj1X);
+            const projAy = face.proj1Y + t1 * (face.proj2Y - face.proj1Y);
+            const projBx = face.proj1X + t2 * (face.proj2X - face.proj1X);
+            const projBy = face.proj1Y + t2 * (face.proj2Y - face.proj1Y);
 
-        const minX = Math.min(p1.x, p2.x, face.proj1X, face.proj2X);
-        const maxX = Math.max(p1.x, p2.x, face.proj1X, face.proj2X);
-        const minY = Math.min(p1.y, p2.y, face.proj1Y, face.proj2Y);
-        const maxY = Math.max(p1.y, p2.y, face.proj1Y, face.proj2Y);
+            // Texture coordinates for this slice
+            const u1 = uPatternOffset + t1 * (edgeLen / tileWorldSize) * texW;
+            const u2 = uPatternOffset + t2 * (edgeLen / tileWorldSize) * texW;
+            const du = u2 - u1;
 
-        ctx.fillRect(minX, minY, maxX - minX, maxY - minY);
-        ctx.restore();
+            // Calculate the affine transform for this slice
+            const a = (bx - ax) / du;
+            const b = (by - ay) / du;
+            const c = (projAx - ax) / vMax;
+            const d = (projAy - ay) / vMax;
+            const e = ax - a * u1;
+            const f = ay - b * u1;
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(ax, ay);
+            ctx.lineTo(bx, by);
+            ctx.lineTo(projBx, projBy);
+            ctx.lineTo(projAx, projAy);
+            ctx.closePath();
+            ctx.clip();
+
+            const wallMatrix = new DOMMatrix([a, b, c, d, e, f]);
+            const finalMatrix = ctx.getTransform().multiply(wallMatrix);
+            pattern.setTransform(finalMatrix);
+
+            ctx.fillStyle = pattern;
+
+            // Fill the bounding box of the slice
+            const minX = Math.min(ax, bx, projAx, projBx);
+            const maxX = Math.max(ax, bx, projAx, projBx);
+            const minY = Math.min(ay, by, projAy, projBy);
+            const maxY = Math.max(ay, by, projAy, projBy);
+
+            ctx.fillRect(minX, minY, maxX - minX, maxY - minY);
+            ctx.restore();
+        }
     }
 
     drawProjectedFace(ctx, p1, p2, px, py, fillStyle, shouldStroke = false, textureCanvas = null, damageAlpha = 0) {
