@@ -1,4 +1,4 @@
-import { enemyTypes, spawnSettings, timingSettings } from "../Config/Config.js";
+import { enemyTypes, spawnSettings, timingSettings, waveSettings } from "../Config/Config.js";
 import { canRunWaveSpawning } from "../GameState/GamePhase.js";
 import { Enemy } from "../Entities/Enemy.js";
 import { requestUiUpdate, emitCombatWaveCleared } from "../Core/EventSystem.js";
@@ -13,7 +13,7 @@ export class WaveManager {
         this.wave = 0;
         this.sectorWave = 0;
         this.wavesCompleted = 0;
-        this.enemiesToSpawn = 5;
+        this.enemiesToSpawn = waveSettings.firstWaveEnemyCount;
         this.enemiesSpawned = 0;
         this.spawnIntervalId = null;
     }
@@ -42,14 +42,26 @@ export class WaveManager {
     }
 
     calculateEnemiesToSpawn() {
-        if (this.wave % 10 === 0) {
+        const {
+            bossWaveInterval,
+            firstWaveEnemyCount,
+            postBossBaseCount,
+            earlyWaveCap,
+            postBossMultiplierEarly,
+            postBossMultiplierLate,
+            earlyWaveGrowth,
+            lateWaveGrowthBase,
+            lateWaveGrowthDivisor,
+        } = waveSettings;
+
+        if (this.wave % bossWaveInterval === 0) {
             return 1;
-        } else if (this.wave % 10 === 1 && this.wave > 1) {
-            const multiplier = this.wave <= 10 ? 3 : 6;
-            return 5 + this.wave * multiplier;
+        } else if (this.wave % bossWaveInterval === 1 && this.wave > 1) {
+            const multiplier = this.wave <= earlyWaveCap ? postBossMultiplierEarly : postBossMultiplierLate;
+            return postBossBaseCount + this.wave * multiplier;
         } else {
-            if (this.wave === 1) return 5;
-            const growth = this.wave <= 10 ? 3 : (8 + Math.floor(this.wave / 5));
+            if (this.wave === 1) return firstWaveEnemyCount;
+            const growth = this.wave <= earlyWaveCap ? earlyWaveGrowth : (lateWaveGrowthBase + Math.floor(this.wave / lateWaveGrowthDivisor));
             return this.enemiesToSpawn + growth;
         }
     }
@@ -109,10 +121,11 @@ export class WaveManager {
 
     spawnGroup(state, enemyType, count, baseUpgradeDefs, spacing = 40) {
         const dist = state.spawnRadius;
+        const { groupSubSizeMin, groupSubSizeMax } = waveSettings;
 
         let enemiesRemaining = count;
         while (enemiesRemaining > 0) {
-            const subGroupSize = Math.min(enemiesRemaining, Math.floor(Math.random() * 6) + 5);
+            const subGroupSize = Math.min(enemiesRemaining, Math.floor(Math.random() * (groupSubSizeMax - groupSubSizeMin + 1)) + groupSubSizeMin);
             enemiesRemaining -= subGroupSize;
 
             const side = Math.floor(Math.random() * 4);
@@ -132,7 +145,7 @@ export class WaveManager {
         const baseUpgradeDefs = upgrades.filter(isBaseStatUpgrade);
         let selectedType;
 
-        if (this.wave % 10 === 0) {
+        if (this.wave % waveSettings.bossWaveInterval === 0) {
             selectedType = enemyTypes.find((e) => e.type === "boss");
         } else {
             let availableTypes = enemyTypes.filter((e) => e.type !== "boss" && (e.minLevel === undefined || state.level >= e.minLevel));
@@ -161,7 +174,7 @@ export class WaveManager {
             }
             return this.spawnGroup(state, selectedType, groupSize, baseUpgradeDefs);
         } else {
-            const baseSimultaneous = 1 + Math.floor(this.wave / 3);
+            const baseSimultaneous = 1 + Math.floor(this.wave / waveSettings.simultaneousSpawnWaveDivisor);
             const simCount = Math.min(baseSimultaneous, this.enemiesToSpawn - this.enemiesSpawned);
 
             for (let i = 0; i < simCount; i++) {

@@ -2,7 +2,7 @@ import { Segment } from "../Entities/Wall.js";
 import { GeneratorStrategies } from "./GeneratorStrategies.js";
 import { WorldObstacleGrid } from "../Spatial/World/ObstacleGrid.js";
 import { FlowFieldGrid } from "../Spatial/Navigation/FlowFieldGrid.js";
-import { mapSettings, gridSettings, THEME_COLORS } from "../Config/Config.js";
+import { mapSettings, gridSettings, THEME_COLORS, mapGenerationSettings } from "../Config/Config.js";
 
 const STRATEGIES = Object.keys(GeneratorStrategies);
 
@@ -58,16 +58,24 @@ export class MapGenerator {
         const layerSpacing = mapSettings.layerSpacing;
         const xSpacing = mapSettings.xSpacing;
         const nodeJitter = mapSettings.nodeJitter ?? 20;
+        const {
+            startNodeWaves,
+            nodesPerLayerMin,
+            nodesPerLayerMax,
+            wavesTotalMin,
+            wavesTotalMax,
+            extraConnectionChance,
+        } = mapGenerationSettings;
 
         let nodeIdCounter = 0;
         let layers = [];
 
-        state.mapNodes.push({ id: nodeIdCounter++, x: 0, y: 0, connections: [], completed: false, wavesTotal: 1, reward: null, type: "combat", layer: 0 });
+        state.mapNodes.push({ id: nodeIdCounter++, x: 0, y: 0, connections: [], completed: false, wavesTotal: startNodeWaves, reward: null, type: "combat", layer: 0 });
         layers.push([state.mapNodes[0]]);
 
         for (let l = 1; l < numLayers; l++) {
             let layerNodes = [];
-            let numNodesInLayer = Math.floor(Math.random() * 3) + 2;
+            let numNodesInLayer = Math.floor(Math.random() * (nodesPerLayerMax - nodesPerLayerMin + 1)) + nodesPerLayerMin;
             let startX = -((numNodesInLayer - 1) * xSpacing) / 2;
 
             for (let i = 0; i < numNodesInLayer; i++) {
@@ -83,7 +91,7 @@ export class MapGenerator {
                     y: -l * layerSpacing + jitterY,
                     connections: [],
                     completed: false,
-                    wavesTotal: Math.floor(Math.random() * 5) + 1,
+                    wavesTotal: Math.floor(Math.random() * (wavesTotalMax - wavesTotalMin + 1)) + wavesTotalMin,
                     reward: reward,
                     type: type,
                     layer: l,
@@ -114,7 +122,7 @@ export class MapGenerator {
             });
 
             currentLayer.forEach((node, i) => {
-                if (Math.random() < 0.3) {
+                if (Math.random() < extraConnectionChance) {
                     let targetIndex = Math.floor((i / currentLayer.length) * nextLayer.length);
                     let altTarget = targetIndex + (Math.random() < 0.5 ? 1 : -1);
                     if (altTarget >= 0 && altTarget < nextLayer.length) {

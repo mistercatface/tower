@@ -25,13 +25,43 @@ export const enemyTypes = [
 
 export const spawnSettings = { baseSpawnDelay: 3000, minSpawnDelay: 150, delayReductionPerWave: 150 };
 
-export const difficultyCurve = { healthMultiplier: 1.015, speedMultiplier: 1.002, rewardMultiplier: 1.04 };
-
-export const enemySpawnSettings = {
-    healthUpgradePerLevel: 20,
-    moveSpeedUpgradePerLevel: 0.25,
-    moveSpeedUpgradeMaxLevel: 4,
+export const progressionSettings = {
+    xpBase: 25,
+    xpExponent: 1.5,
+    upgradeCostMultiplier: 1.5,
 };
+
+export const baseUpgradeEffects = {
+    healthPerLevel: 20,
+    moveSpeedPerLevel: 0.25,
+    moveSpeedMaxLevel: 4,
+};
+
+export const waveSettings = {
+    bossWaveInterval: 10,
+    firstWaveEnemyCount: 5,
+    postBossBaseCount: 5,
+    earlyWaveCap: 10,
+    postBossMultiplierEarly: 3,
+    postBossMultiplierLate: 6,
+    earlyWaveGrowth: 3,
+    lateWaveGrowthBase: 8,
+    lateWaveGrowthDivisor: 5,
+    simultaneousSpawnWaveDivisor: 3,
+    groupSubSizeMin: 5,
+    groupSubSizeMax: 10,
+};
+
+export const mapGenerationSettings = {
+    startNodeWaves: 1,
+    nodesPerLayerMin: 2,
+    nodesPerLayerMax: 4,
+    wavesTotalMin: 1,
+    wavesTotalMax: 5,
+    extraConnectionChance: 0.3,
+};
+
+export const difficultyCurve = { healthMultiplier: 1.015, speedMultiplier: 1.002, rewardMultiplier: 1.04 };
 
 export const perkMilestones = [2, 4, 6, 8, 10, 12, 14, 16];
 

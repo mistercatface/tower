@@ -6,6 +6,13 @@ function spawnExplosion(gameState, x, y, config) {
     gameState.explosions.push(new Explosion(x, y, config.type, config));
 }
 
+function getBurnSettings(pickup) {
+    const def = pickup.strategy;
+    const maxHealth = def?.maxHealth ?? 15;
+    const burnDurationMs = def?.onFire?.burnDurationMs ?? 2000;
+    return { maxHealth, burnDurationMs };
+}
+
 export class PickupNormalState {
     getRender3DKey(pickup) {
         return pickup.strategy.render3DKey;
@@ -14,9 +21,10 @@ export class PickupNormalState {
 
 export class PickupOnFireState {
     onEnter(pickup) {
-        pickup.maxHealth = 15;
-        pickup.health = 15;
-        pickup.stateTimer = 2000;
+        const { maxHealth, burnDurationMs } = getBurnSettings(pickup);
+        pickup.maxHealth = maxHealth;
+        pickup.health = maxHealth;
+        pickup.stateTimer = burnDurationMs;
     }
 
     getRender3DKey() {
@@ -24,8 +32,9 @@ export class PickupOnFireState {
     }
 
     update(pickup, dt, walls, state) {
+        const { burnDurationMs } = getBurnSettings(pickup);
         pickup.stateTimer -= dt;
-        pickup.health -= 15 * (dt / 2000);
+        pickup.health -= pickup.maxHealth * (dt / burnDurationMs);
         if (pickup.health <= 0 || pickup.stateTimer <= 0) {
             pickup.health = 0;
             pickup.changeState("exploded", { gameState: state });

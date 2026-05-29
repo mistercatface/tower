@@ -2,6 +2,7 @@ import { Projectile } from "../Entities/Projectile.js";
 import { WeaponSystem, ContinuousWeaponMode, ChargedWeaponMode } from "../Combat/WeaponSystem.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { playerBaseStats, playerProjectileSettings } from "../Config/Config.js";
+import { upgradeCostAtLevel } from "../Config/configHelpers.js";
 import { Laser } from "../Entities/Laser.js";
 import { Pools } from "../Core/Pools.js";
 
@@ -181,10 +182,10 @@ export const createUpgrades = () => [
         },
         onPurchase: (state) => {
             for (const key in state.player.upgrades) {
-                let cost = state.player.stats.baseUpgradeCost.value;
-                for (let i = 0; i < state.player.upgrades[key].level; i++) {
-                    cost = Math.floor(cost * 1.5);
-                }
+                const cost = upgradeCostAtLevel(
+                    state.player.stats.baseUpgradeCost.value,
+                    state.player.upgrades[key].level
+                );
                 state.player.upgrades[key].ptsCost = cost;
             }
         }

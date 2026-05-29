@@ -1,5 +1,6 @@
 import { Turret } from "../Entities/Turret.js";
 import { perkMilestones } from "../Config/Config.js";
+import { xpForLevel } from "../Config/configHelpers.js";
 import { createUpgradeLevels, resetUpgradeLevels } from "../Entities/CombatantStats.js";
 import { spawnFloatingText } from "../Core/EventSystem.js";
 import { MapGenerator } from "../Generator/MapGenerator.js";
@@ -25,7 +26,7 @@ export class StatsManager {
 
     static grantXP(state, amount) {
         state.xp += amount;
-        let xpNeeded = Math.floor(25 * Math.pow(1.5, state.level));
+        let xpNeeded = xpForLevel(state.level);
         while (state.xp >= xpNeeded) {
             state.xp -= xpNeeded;
             state.level++;
@@ -35,7 +36,7 @@ export class StatsManager {
             }
             state.pendingLevelUps++;
             if (state.level > state.highestLevelReached) state.highestLevelReached = state.level;
-            xpNeeded = Math.floor(25 * Math.pow(1.5, state.level));
+            xpNeeded = xpForLevel(state.level);
             spawnFloatingText({ x: state.player.x, y: state.player.y - 40, text: "LEVEL UP", color: "#FFEB3B" });
         }
     }

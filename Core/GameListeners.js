@@ -5,6 +5,7 @@ import { StatsManager } from "../Progression/StatsManager.js";
 import { isCombatOrReward } from "../GameState/GamePhase.js";
 import { registerPauseListeners } from "./PauseManager.js";
 import { FloatingText } from "../Render/FloatingText.js";
+import { nextUpgradeCost } from "../Config/configHelpers.js";
 
 export function registerAllListeners(eventBus, pauseManager) {
     FloatingText.registerEventListener(eventBus);
@@ -42,7 +43,7 @@ export function registerGameListeners(eventBus, pauseManager) {
         if (state.score < cost || uState.level >= upg.maxLevel) return;
 
         state.score -= cost;
-        uState.ptsCost = Math.floor(uState.ptsCost * 1.5);
+        uState.ptsCost = nextUpgradeCost(uState.ptsCost);
         uState.level++;
         StatsManager.recalculateStats(state, upgrades);
         if (upg.onPurchase) upg.onPurchase(state);

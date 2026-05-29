@@ -1,4 +1,5 @@
 import { perkMilestones } from "../Config/Config.js";
+import { xpForLevel } from "../Config/configHelpers.js";
 import { isCombat, isCombatOrReward } from "../GameState/GamePhase.js";
 import {
     events,
@@ -225,7 +226,7 @@ export function updateHud(state, upgrades) {
     const nextPerk = perkMilestones.find((m) => m > state.highestLevelReached);
     if (elements.nextPerkDisplay) elements.nextPerkDisplay.innerText = nextPerk ? `Next Perk: Level ${nextPerk}` : "All Perks Claimed";
 
-    const xpNeeded = Math.floor(25 * Math.pow(1.5, state.level));
+    const xpNeeded = xpForLevel(state.level);
     setTextIfDifferent("xpDisplay", `${state.xp}/${xpNeeded}`);
 
     const healthRatio = state.player.health / state.player.maxHealth;
