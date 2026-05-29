@@ -1,6 +1,4 @@
-import { spawnFloatingText } from "../Core/EventSystem.js";
-import { markProgressDirty, saveProgress } from "./Storage.js";
-import { events, Events, requestUiUpdate } from "../Core/EventSystem.js";
+import { spawnFloatingText, events, Events, requestUiUpdate, requestProgressDirty, requestProgressSave } from "../Core/EventSystem.js";
 import { StatsManager } from "./StatsManager.js";
 
 export class ProgressionManager {
@@ -106,7 +104,7 @@ export class ProgressionManager {
                     state.discoveredAbilities.add(choiceId);
                 }
             });
-            markProgressDirty(state);
+            requestProgressDirty();
         }
 
         choices.push("take_points");
@@ -123,7 +121,7 @@ export class ProgressionManager {
             upgrades: customUpgrades,
             onPick: (pickedId) => {
                 this.applyUpgradeChoice(state, upgrades, pickedId, pointsAmount, !isNewRun);
-                if (isNewRun) saveProgress(state);
+                if (isNewRun) requestProgressSave();
                 StatsManager.recalculateStats(state, upgrades);
                 state.isPaused = previousPauseState;
                 requestUiUpdate();
@@ -155,7 +153,7 @@ export class ProgressionManager {
                 const upg = upgrades.find((u) => u.id === pickedId);
                 state.upgrades[pickedId].baseLevel = 1;
                 state.upgrades[pickedId].level = 1;
-                saveProgress(state);
+                requestProgressSave();
                 StatsManager.recalculateStats(state, upgrades);
                 if (upg.onPurchase) upg.onPurchase(state);
                 state.isPaused = previousPauseState;
@@ -263,7 +261,7 @@ export class ProgressionManager {
             const uState = state.upgrades[pickedUpg.id];
             uState.baseLevel++;
             uState.level = Math.min(pickedUpg.maxLevel, uState.level + 1);
-            saveProgress(state);
+            requestProgressSave();
             StatsManager.recalculateStats(state, upgrades);
             if (pickedUpg.onPurchase) pickedUpg.onPurchase(state);
             rewardText = `Reward: Permanent ${pickedUpg.name} Upgrade!`;

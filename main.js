@@ -4,6 +4,7 @@ import { initializeSaveSystem, loadProgress } from "./Progression/Storage.js";
 import { initUI } from "./UI/UI.js";
 import { events, requestUiUpdate, requestUiHudUpdate } from "./Core/EventSystem.js";
 import { FloatingText } from "./Render/FloatingText.js";
+import { registerGameListeners } from "./Core/GameListeners.js";
 import { Renderer } from "./Render/Render.js";
 import { Viewport } from "./Render/Viewport.js";
 import { InputManager } from "./Core/InputManager.js";
@@ -38,6 +39,7 @@ fsm.addState("reward", new RewardState());
 
 events.setContext({ state, upgrades, viewport, fsm });
 FloatingText.registerEventListener(events);
+registerGameListeners(events);
 
 function resetGame() {
     StatsManager.resetRun(state, upgrades);

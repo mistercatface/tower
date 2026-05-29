@@ -1,4 +1,5 @@
 import { StatsManager } from "./StatsManager.js";
+import { Events } from "../Core/EventNames.js";
 
 const SAVE_VERSION = 3;
 const SAVE_KEY = "tower_save_v3";
@@ -170,4 +171,9 @@ export function hardResetProgress(state, resetGameCallback) {
     localStorage.removeItem(SAVE_KEY);
     resetProgress(state);
     resetGameCallback();
+}
+
+export function registerProgressListeners(eventBus) {
+    eventBus.on(Events.PROGRESS_DIRTY, ({ state }) => markProgressDirty(state));
+    eventBus.on(Events.PROGRESS_SAVE, ({ state }) => saveProgress(state));
 }

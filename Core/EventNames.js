@@ -6,4 +6,8 @@ export const Events = {
     UI_SHOW_NODE_CONFIRM: "ui:showNodeConfirm",
     UI_SHOW_GAME_OVER: "ui:showGameOver",
     FX_FLOATING_TEXT: "fx:floatingText",
+    COMBAT_ENEMY_KILLED: "combat:enemyKilled",
+    COMBAT_WAVE_CLEARED: "combat:waveCleared",
+    PROGRESS_DIRTY: "progress:dirty",
+    PROGRESS_SAVE: "progress:save",
 };

@@ -3,9 +3,7 @@ import { Projectile } from "./Projectile.js";
 import { Turret } from "./Turret.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
 import { Actor } from "./Actor.js";
-import { spawnFloatingText, requestUiUpdate } from "../Core/EventSystem.js";
-import { ProgressionManager } from "../Progression/ProgressionManager.js";
-import { markProgressDirty } from "../Progression/Storage.js";
+import { spawnFloatingText, emitCombatEnemyKilled } from "../Core/EventSystem.js";
 import { ChargedWeaponMode } from "../Combat/WeaponSystem.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { enemyProjectileSettings, NAV_PROFILES } from "../Config/Config.js";
@@ -68,10 +66,8 @@ export class Enemy extends Actor {
         }
         
         if (died) {
-            ProgressionManager.processEnemyKillRewards(this, ctx.state, ctx.upgrades);
-            markProgressDirty(ctx.state);
+            emitCombatEnemyKilled(this);
         }
-        requestUiUpdate();
     }
 
 

@@ -1,8 +1,7 @@
 import { enemyTypes, difficultyCurve, spawnSettings, timingSettings } from "../Config/Config.js";
 import { canRunWaveSpawning } from "../GameState/GamePhase.js";
 import { Enemy } from "../Entities/Enemy.js";
-import { requestUiUpdate } from "../Core/EventSystem.js";
-import { ProgressionManager } from "../Progression/ProgressionManager.js";
+import { requestUiUpdate, emitCombatWaveCleared } from "../Core/EventSystem.js";
 
 export class WaveManager {
     constructor() {
@@ -215,7 +214,7 @@ export class WaveManager {
             state.isTransitioning = true;
             state.scheduler.schedule(timingSettings.sectorCompletedDelay, () => {
                 state.isTransitioning = false;
-                ProgressionManager.handleWaveCompletion(state, upgrades, viewport);
+                emitCombatWaveCleared();
             });
         }
     }

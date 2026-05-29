@@ -2,7 +2,6 @@ import { Turret } from "../Entities/Turret.js";
 import { defaultUpgradeCost, perkMilestones, playerBaseStats } from "../Config/Config.js";
 import { spawnFloatingText } from "../Core/EventSystem.js";
 import { MapGenerator } from "../Generator/MapGenerator.js";
-import { saveProgress } from "./Storage.js";
 
 export class StatsManager {
     static initUpgradesList(state, upgradeList) {

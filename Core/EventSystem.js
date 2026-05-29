@@ -48,4 +48,20 @@ export function spawnFloatingText(data) {
     events.emit(Events.FX_FLOATING_TEXT, data);
 }
 
+export function requestProgressDirty() {
+    events.emit(Events.PROGRESS_DIRTY);
+}
+
+export function requestProgressSave() {
+    events.emit(Events.PROGRESS_SAVE);
+}
+
+export function emitCombatEnemyKilled(enemy) {
+    events.emit(Events.COMBAT_ENEMY_KILLED, { enemy });
+}
+
+export function emitCombatWaveCleared() {
+    events.emit(Events.COMBAT_WAVE_CLEARED);
+}
+
 export { Events } from "./EventNames.js";
