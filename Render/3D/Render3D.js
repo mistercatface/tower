@@ -132,36 +132,56 @@ export class Render3D {
             const u2 = uPatternOffset + t2 * (edgeLen / tileWorldSize) * texW;
             const du = u2 - u1;
 
-            // Calculate the affine transform for this slice
-            const a = (bx - ax) / du;
-            const b = (by - ay) / du;
-            const c = (projAx - ax) / vMax;
-            const d = (projAy - ay) / vMax;
-            const e = ax - a * u1;
-            const f = ay - b * u1;
-
+            // --- Draw Triangle 1 (A, B, projA) ---
             ctx.save();
             ctx.beginPath();
             ctx.moveTo(ax, ay);
             ctx.lineTo(bx, by);
+            ctx.lineTo(projAx, projAy);
+            ctx.closePath();
+            ctx.clip();
+
+            const a1 = (bx - ax) / du;
+            const b1 = (by - ay) / du;
+            const c1 = (projAx - ax) / vMax;
+            const d1 = (projAy - ay) / vMax;
+            const e1 = ax - a1 * u1;
+            const f1 = ay - b1 * u1;
+
+            const finalMatrix1 = new DOMMatrix([a1, b1, c1, d1, e1, f1]);
+            pattern.setTransform(finalMatrix1);
+            ctx.fillStyle = pattern;
+
+            // Fill bounding box of Triangle 1 (padded by 1 to prevent seams)
+            let minX = Math.min(ax, bx, projAx), maxX = Math.max(ax, bx, projAx);
+            let minY = Math.min(ay, by, projAy), maxY = Math.max(ay, by, projAy);
+            ctx.fillRect(minX - 1, minY - 1, maxX - minX + 2, maxY - minY + 2);
+            ctx.restore();
+
+            // --- Draw Triangle 2 (B, projB, projA) ---
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(bx, by);
             ctx.lineTo(projBx, projBy);
             ctx.lineTo(projAx, projAy);
             ctx.closePath();
             ctx.clip();
 
-            const wallMatrix = new DOMMatrix([a, b, c, d, e, f]);
-            const finalMatrix = ctx.getTransform().multiply(wallMatrix);
-            pattern.setTransform(finalMatrix);
+            const a2 = (projBx - projAx) / du;
+            const b2 = (projBy - projAy) / du;
+            const c2 = (projBx - bx) / vMax;
+            const d2 = (projBy - by) / vMax;
+            const e2 = bx - a2 * u2;
+            const f2 = by - b2 * u2;
 
+            const finalMatrix2 = new DOMMatrix([a2, b2, c2, d2, e2, f2]);
+            pattern.setTransform(finalMatrix2);
             ctx.fillStyle = pattern;
 
-            // Fill the bounding box of the slice
-            const minX = Math.min(ax, bx, projAx, projBx);
-            const maxX = Math.max(ax, bx, projAx, projBx);
-            const minY = Math.min(ay, by, projAy, projBy);
-            const maxY = Math.max(ay, by, projAy, projBy);
-
-            ctx.fillRect(minX, minY, maxX - minX, maxY - minY);
+            // Fill bounding box of Triangle 2 (padded by 1 to prevent seams)
+            minX = Math.min(bx, projBx, projAx); maxX = Math.max(bx, projBx, projAx);
+            minY = Math.min(by, projBy, projAy); maxY = Math.max(by, projBy, projAy);
+            ctx.fillRect(minX - 1, minY - 1, maxX - minX + 2, maxY - minY + 2);
             ctx.restore();
         }
     }
