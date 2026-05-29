@@ -1,6 +1,7 @@
 import { Utilities } from "../Core/Utilities.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
-import { playerProjectileSettings } from "../Config/Config.js";
+import { enemyProjectileSettings, playerProjectileSettings } from "../Config/Config.js";
+import { defaultGunId, getGunDefinition } from "../Config/gunDefinitions.js";
 import { defaultTurretLoadout } from "../Config/turretLoadoutPresets.js";
 import { Pools } from "../Core/Pools.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
@@ -13,7 +14,7 @@ export class Turret {
             radiusMultiplier: loadout.radiusMultiplier,
             angleOffsets: [...loadout.angleOffsets],
         };
-        this.weaponMode = null;
+        this.gunId = defaultGunId;
         this.charge = 0;
         this.target = null;
         this.swayPhase = 0;
@@ -28,25 +29,50 @@ export class Turret {
     }
 
     fire(state, source) {
+        const gun = getGunDefinition(this.gunId);
+        if (gun.kind !== "projectile") return;
+
         const { x: tx, y: ty } = this.getMuzzlePosition(source);
-        const { radiusMultiplier, angleOffsets } = this.loadout;
-        this.spawnPlayerProjectiles(state, source, tx, ty, this.angle, radiusMultiplier, angleOffsets);
+
+        if (source.type === "player") {
+            const { radiusMultiplier, angleOffsets } = this.loadout;
+            this.spawnProjectiles(state, source, tx, ty, this.angle, gun, radiusMultiplier, angleOffsets, "player");
+            return;
+        }
+
+        const projectile = Pools.projectiles.acquire(
+            tx,
+            ty,
+            gun.bulletRadius,
+            gun.muzzleSpeed,
+            null,
+            this.angle,
+            gun.damage,
+            "enemy"
+        );
+        projectile.penetration = source.weapon.penetration;
+        state.projectiles.push(projectile);
+        PhysicsSystem.applyKnockback(
+            source,
+            this.angle + Math.PI,
+            projectile.radius * enemyProjectileSettings.knockbackMultiplier
+        );
     }
 
-    spawnPlayerProjectiles(state, source, tx, ty, baseAngle, radiusMultiplier, angleOffsets) {
+    spawnProjectiles(state, source, tx, ty, baseAngle, gun, radiusMultiplier, angleOffsets, faction) {
         const projectiles = [];
-        const radius = source.radius * radiusMultiplier;
+        const radius = gun.bulletRadius * radiusMultiplier;
 
         for (const offset of angleOffsets) {
             const projectile = Pools.projectiles.acquire(
                 tx,
                 ty,
                 radius,
-                playerProjectileSettings.speed,
+                gun.muzzleSpeed,
                 null,
                 baseAngle + offset,
-                0,
-                "player"
+                gun.damage,
+                faction
             );
             projectile.penetration = source.weapon.penetration;
             projectiles.push(projectile);

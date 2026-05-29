@@ -3,14 +3,13 @@ import { defaultUpgradeCost } from "../Config/Config.js";
 
 export function createCombatantStats(baseStats) {
     return {
-        damage: new Stat(baseStats.damage),
         turnSpeed: new Stat(baseStats.turnSpeed),
-        chargeTime: new Stat(baseStats.chargeTime, baseStats.minChargeTime, baseStats.maxChargeTime),
         range: new Stat(baseStats.range),
         maxHealth: new Stat(baseStats.maxHealth),
         accuracy: new Stat(baseStats.accuracy),
         penetration: new Stat(baseStats.penetration),
         moveSpeedMultiplier: new Stat(baseStats.moveSpeedMultiplier),
+        fireIntervalMultiplier: new Stat(baseStats.fireIntervalMultiplier ?? 1),
     };
 }
 
@@ -68,11 +67,9 @@ export function applyUpgradesToStats(combatStats, upgradeLevels, upgradeDefs, sh
 export function syncActorCombatFromStats(actor, stats, baseMoveSpeed) {
     if (!actor.weapon) return;
 
-    actor.weapon.damage = stats.damage.value;
     actor.weapon.range = stats.range.value;
-    actor.weapon.chargeTime = stats.chargeTime.value;
     actor.weapon.penetration = stats.penetration.value;
-    actor.weapon.accuracy = stats.accuracy.value;
+    actor.weapon.accuracy = Math.min(1, stats.accuracy.value);
 
     if (baseMoveSpeed !== undefined) {
         actor.baseMoveSpeed = baseMoveSpeed;

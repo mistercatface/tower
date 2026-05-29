@@ -3,6 +3,7 @@ import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { worldPropDefinitions } from "../Config/PropDefinitions.js";
 import { transitionEntity } from "./EntityFsm.js";
 import { pickupStates } from "./PickupStates.js";
+import { getProjectileDamage } from "../Combat/impactDamage.js";
 
 const PICKUP_STRATEGY_DEFAULTS = {
     isPushable: false,
@@ -26,14 +27,14 @@ function explosiveOnHit(state, pickup, projectile, events) {
         return true;
     }
 
-    const dmg = projectile?.damage ?? state.player.weapon.damage;
+    const dmg = projectile ? getProjectileDamage(projectile) : 0;
     pickup.takeDamage(dmg, state);
     if (projectile?.isDead !== undefined) projectile.isDead = true;
     return true;
 }
 
 function damageOnHit(state, pickup, projectile, events) {
-    const dmg = projectile?.damage ?? state.player.weapon.damage;
+    const dmg = projectile?.damage ?? 0;
     pickup.takeDamage(dmg, state);
     if (projectile?.isDead !== undefined) projectile.isDead = true;
     return true;

@@ -54,8 +54,7 @@ export class CollisionSystem {
             const segment = this.getMissileWallCollision(p, state.walls);
             if (segment) {
                 p.isDead = true;
-                const damage = p.faction === "player" ? state.player.weapon.damage : p.damage;
-                events.push({ target: segment, damage: damage });
+                events.push({ target: segment, damage: p.damage });
                 continue;
             }
 

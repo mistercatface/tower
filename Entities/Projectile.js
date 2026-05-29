@@ -2,6 +2,7 @@ import { Entity } from "./Entity.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
 import { Pools } from "../Core/Pools.js";
+import { getProjectileDamage } from "../Combat/impactDamage.js";
 
 export class Projectile extends Entity {
     static updateAll(state, dt) {
@@ -29,7 +30,7 @@ export class Projectile extends Entity {
         } else if (target) {
             initialAngle = Math.atan2(target.y - y, target.x - x);
         }
-        
+
         super.reset(x, y, initialAngle, false);
         this.radius = radius;
         this.speed = speed;
@@ -78,11 +79,11 @@ export class Projectile extends Entity {
             for (const e of state.enemies) {
                 if (e.isDead) continue;
                 if (system.checkCircle(this, e)) {
-                    events.push({ target: e, damage: state.player.weapon.damage });
+                    const damage = getProjectileDamage(this);
+                    events.push({ target: e, damage });
                     PhysicsSystem.applyKnockback(e, this.angle, this.radius * 150);
-                    if (e.health <= state.player.weapon.damage && this.penetration > 0) {
+                    if (e.health <= damage && this.penetration > 0) {
                         this.penetration--;
-                        e.health -= state.player.weapon.damage;
                     } else {
                         this.isDead = true;
                         break;
@@ -92,7 +93,7 @@ export class Projectile extends Entity {
         } else if (this.faction === "enemy") {
             if (system.checkCircle(this, state.player)) {
                 this.isDead = true;
-                events.push({ target: state.player, damage: this.damage });
+                events.push({ target: state.player, damage: getProjectileDamage(this) });
                 PhysicsSystem.applyKnockback(state.player, this.angle, this.radius * 150);
             }
         }

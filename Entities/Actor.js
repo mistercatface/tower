@@ -11,6 +11,8 @@ import {
     initCombatantUpgradeSlots,
 } from "./CombatantStats.js";
 import { Turret } from "./Turret.js";
+import { getSlotFireIntervalMs } from "../Combat/gunCombat.js";
+import { getGunDefinition } from "../Config/gunDefinitions.js";
 import { resolveActorTurretLoadouts } from "../Config/TurretLoadoutDefinitions.js";
 
 export class Actor extends DestructibleEntity {
@@ -61,9 +63,7 @@ export class Actor extends DestructibleEntity {
 
     initCombatWeapon() {
         this.weapon = {
-            chargeTime: this.stats.chargeTime.baseValue,
             range: this.stats.range.baseValue,
-            damage: this.stats.damage.baseValue,
             penetration: this.stats.penetration.baseValue,
             accuracy: this.stats.accuracy.baseValue,
         };
@@ -152,14 +152,14 @@ export class Actor extends DestructibleEntity {
     }
 
     getChargeRatios() {
-        if (!this.weapon) return [];
-
-        const chargeTime = this.weapon.chargeTime || 1;
         const ratios = [];
 
         for (const turret of this.turrets) {
-            if (turret.charge > 0) {
-                ratios.push(turret.charge / chargeTime);
+            if (turret.charge <= 0) continue;
+            const gun = getGunDefinition(turret.gunId);
+            const fireIntervalMs = getSlotFireIntervalMs(gun, this);
+            if (fireIntervalMs > 0) {
+                ratios.push(turret.charge / fireIntervalMs);
             }
         }
 

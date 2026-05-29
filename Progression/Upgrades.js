@@ -22,7 +22,6 @@ export class Upgrade {
         this.dynamicStrFn = config.dynamicStrFn || null;
         this.isAbility = config.isAbility || false;
         this.isPerk = config.isPerk || false;
-        this.abilityApplyFn = config.abilityApplyFn || null;
         this.requires = config.requires || [];
         this.replaces = config.replaces || [];
         this.minPlayerLevel = config.minPlayerLevel || 0;
@@ -143,7 +142,7 @@ export const createUpgrades = () => [
         maxLevel: 1,
         isPerk: true,
         applyFn: (combat, _run, level) => {
-            combat.chargeTime.multiplierModifiers /= perkSettings.fireRateChargeTimeDivisor;
+            combat.fireIntervalMultiplier.multiplierModifiers /= perkSettings.fireRateChargeTimeDivisor;
         }
     }),
     new Upgrade({
@@ -207,13 +206,7 @@ export const createUpgrades = () => [
         maxLevel: 1,
         isAbility: true,
         replaces: ["TwinStrike", "TripleStrike"],
-        applyFn: (combat, _run, level) => {
-            combat.turnSpeed.multiplierModifiers *= 0.5;
-        },
-        abilityApplyFn: (weapon, player) => {
-            weapon.damage *= 0.33;
-        },
-        turretLoadout: { weaponMode: "laser", scope: "all", priority: 30 },
+        turretLoadout: { gun: "beamLaser", scope: "all", priority: 30 },
     }),
     new Upgrade({
         id: "TargetVerification",
@@ -237,9 +230,6 @@ export const createUpgrades = () => [
         applyFn: (_combat, run, level) => {
             run.turretCount.flatModifiers += 1;
         },
-        abilityApplyFn: (weapon, player) => {
-            weapon.damage *= 0.5;
-        },
         minPlayerLevel: 5
     }),
     new Upgrade({
@@ -254,9 +244,6 @@ export const createUpgrades = () => [
         applyFn: (_combat, run, level) => {
             run.turretCount.flatModifiers += 2;
         },
-        abilityApplyFn: (weapon, player) => {
-            weapon.damage *= 0.33;
-        },
         minPlayerLevel: 8
     }),
     new Upgrade({
@@ -266,9 +253,6 @@ export const createUpgrades = () => [
         description: "When Active: Fire 2 smaller projectiles at half damage.",
         maxLevel: 1,
         isAbility: true,
-        abilityApplyFn: (weapon, player) => {
-            weapon.damage *= 0.5;
-        },
         turretLoadout: { preset: "twin", scope: "all", priority: 10 },
     }),
     new Upgrade({
@@ -278,9 +262,6 @@ export const createUpgrades = () => [
         description: "When Active: Fire 3 smaller projectiles at one-third damage.",
         maxLevel: 1,
         isAbility: true,
-        abilityApplyFn: (weapon, player) => {
-            weapon.damage *= 0.33;
-        },
         requires: ['TwinStrike'],
         replaces: ['TwinStrike'],
         turretLoadout: { preset: "triple", scope: "all", priority: 20 },
@@ -292,10 +273,10 @@ export const createUpgrades = () => [
         description: "When Active: Accuracy + 33%, Fire Rate -33%, Move Speed -50%",
         maxLevel: 1,
         isAbility: true,
-        abilityApplyFn: (weapon, player) => {
-            weapon.chargeTime *= 1.33;
-            player.speed *= 0.5;
-            weapon.accuracy = Math.min(1, player.stats.accuracy.value + 0.33);
+        applyFn: (combat, _run, level) => {
+            combat.moveSpeedMultiplier.multiplierModifiers *= 0.5;
+            combat.accuracy.flatModifiers += 0.33;
+            combat.fireIntervalMultiplier.multiplierModifiers *= 1.33;
         },
         showInHud: true,
         hasToggle: true,

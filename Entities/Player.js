@@ -47,13 +47,6 @@ export class Player extends Actor {
             afterSync: (player) => {
                 player.syncTurrets(state.runStats);
                 player.resolveTurretLoadouts(state, upgradeDefs);
-                if (upgradeDefs) {
-                    for (const upg of upgradeDefs) {
-                        if (upg.isAbility && state.abilities?.[upg.id] && upg.abilityApplyFn) {
-                            upg.abilityApplyFn(player.weapon, player);
-                        }
-                    }
-                }
             },
         });
 

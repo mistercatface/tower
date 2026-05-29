@@ -2,18 +2,6 @@ import { runBaseStats } from "./Config.js";
 
 export const baseUpgradeDefinitions = [
     {
-        id: "Damage",
-        category: "attack",
-        name: "Damage",
-        description: "Increases base weapon damage.",
-        stat: { target: "combat", key: "damage", op: "flatAdd", perLevel: 1 },
-        display: {
-            current: (level, actor) => actor.stats.damage.baseValue + level,
-            next: (level, actor) => actor.stats.damage.baseValue + level + 1,
-        },
-        dynamic: (actor) => actor.weapon?.damage,
-    },
-    {
         id: "Accuracy",
         category: "attack",
         name: "Accuracy",
@@ -48,19 +36,6 @@ export const baseUpgradeDefinitions = [
             current: (level, actor) => `${(actor.stats.turnSpeed.baseValue / Math.PI + level * 0.5).toFixed(1)}π`,
             next: (level, actor) => `${(actor.stats.turnSpeed.baseValue / Math.PI + (level + 1) * 0.5).toFixed(1)}π`,
         },
-    },
-    {
-        id: "Charge",
-        category: "attack",
-        name: "Fire Rate",
-        description: "Reduces time between shots.",
-        stat: { target: "combat", key: "chargeTime", op: "flatSubtract", perLevel: 100 },
-        maxLevel: 18,
-        display: {
-            current: (level, actor) => `${Math.max(actor.stats.chargeTime.min, actor.stats.chargeTime.baseValue - level * 50)}ms`,
-            next: (level, actor) => `${Math.max(actor.stats.chargeTime.min, actor.stats.chargeTime.baseValue - (level + 1) * 50)}ms`,
-        },
-        dynamic: (actor) => `${actor.weapon.chargeTime.toFixed(0)}ms`,
     },
     {
         id: "Range",

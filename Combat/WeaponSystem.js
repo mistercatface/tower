@@ -1,6 +1,9 @@
 import { CollisionSystem } from "../Spatial/Collision/CollisionSystem.js";
 import { Utilities } from "../Core/Utilities.js";
 import { Laser } from "../Entities/Laser.js";
+import { defaultGunId, getGunDefinition } from "../Config/gunDefinitions.js";
+import { getSlotFireIntervalMs } from "./gunCombat.js";
+import { getBeamTickDamage, createBeamHitSource } from "./impactDamage.js";
 
 class WeaponTargetingStrategy {
     determineAimTarget(source, target, blocksTargeting, turret) {
@@ -29,9 +32,9 @@ export class ChargedWeaponMode extends WeaponTargetingStrategy {
         this.onFire = onFireFn;
     }
 
-    processTurret(dt, state, source, chargeTime, turret, target, blocksTargeting, combatEvents) {
+    processTurret(dt, state, source, gun, turret, target, blocksTargeting, combatEvents) {
         const aimTarget = this.determineAimTarget(source, target, blocksTargeting, turret);
-        
+        const fireIntervalMs = getSlotFireIntervalMs(gun, source);
         const sway = WeaponSystem.computeAccuracySway(source, turret, dt, true);
 
         const isAimed = WeaponSystem.aimTurret(turret, source.x, source.y, aimTarget.x, aimTarget.y, dt, sway);
@@ -42,7 +45,7 @@ export class ChargedWeaponMode extends WeaponTargetingStrategy {
             }
             if (isAimed) {
                 turret.charge += dt;
-                if (turret.charge >= chargeTime) {
+                if (turret.charge >= fireIntervalMs) {
                     this.onFire(state, turret, source);
                     turret.charge = 0;
                 }
@@ -60,7 +63,7 @@ export class ContinuousWeaponMode extends WeaponTargetingStrategy {
         this.onTick = onTickFn;
     }
 
-    processTurret(dt, state, source, chargeTime, turret, target, blocksTargeting, combatEvents) {
+    processTurret(dt, state, source, _gun, turret, target, blocksTargeting, combatEvents) {
         const turretDist = source.radius + 4 + 4 * (source.radius / 8);
         const tx = source.x + Math.cos(turret.angle) * turretDist;
         const ty = source.y + Math.sin(turret.angle) * turretDist;
@@ -79,45 +82,53 @@ const DEFAULT_TURRET_WEAPON_MODE = new ChargedWeaponMode((state, turret, source)
 
 export function createLaserWeaponMode() {
     return new ContinuousWeaponMode((dt, state, tx, ty, turret, combatEvents, source) => {
+        const gun = getGunDefinition(turret.gunId ?? defaultGunId);
+        if (gun.kind !== "beam") return;
+
         turret.laserTimer = (turret.laserTimer || 0) + dt;
         let laserCanDamage = false;
-        if (turret.laserTimer >= 200) {
+        if (turret.laserTimer >= gun.tickIntervalMs) {
             laserCanDamage = true;
             turret.laserTimer = 0;
         }
-        const baseGrowthSpeed = 200;
-        const growthSpeed = baseGrowthSpeed * Math.sqrt(1000 / source.weapon.chargeTime);
-        turret.currentLaserLength = (turret.currentLaserLength || 0) + growthSpeed * (dt / 1000);
+
+        turret.currentLaserLength = (turret.currentLaserLength || 0) + gun.beamGrowthSpeed * (dt / 1000);
         turret.currentLaserLength = Math.min(source.weapon.range, turret.currentLaserLength);
 
-        const hit = WeaponSystem.castLaser(tx, ty, turret.angle, turret.currentLaserLength, state);
+        const hit = WeaponSystem.castLaser(tx, ty, turret.angle, turret.currentLaserLength, state, gun.beamRadius);
         turret.currentLaserLength = hit.dist;
 
         state.activeLasers.push(new Laser(tx, ty, hit.x, hit.y));
         if (laserCanDamage) {
+            const tickDamage = getBeamTickDamage(gun);
             if (hit.hit === "enemy") {
-                combatEvents.push({ target: hit.entity, damage: source.weapon.damage });
+                combatEvents.push({ target: hit.entity, damage: tickDamage });
             } else if (hit.hit === "pickup" && hit.entity.strategy?.onHit) {
                 const skipExplosive = state.abilities["TargetVerification"] && hit.entity.strategy.isExplosive;
                 if (!skipExplosive) {
-                    hit.entity.strategy.onHit(state, hit.entity, { isDead: false }, combatEvents);
+                    hit.entity.strategy.onHit(state, hit.entity, createBeamHitSource(gun), combatEvents);
                 }
             }
         }
     });
 }
 
+export function resolveWeaponModeForGun(gun) {
+    if (gun?.kind === "beam") return LASER_WEAPON_MODE;
+    return DEFAULT_TURRET_WEAPON_MODE;
+}
+
 export const LASER_WEAPON_MODE = createLaserWeaponMode();
 
 export class WeaponSystem {
-    static castLaser(startX, startY, angle, maxDist, state) {
+    static castLaser(startX, startY, angle, maxDist, state, beamRadius = 1) {
         const step = 8;
         let dist = 0;
         const dx = Math.cos(angle);
         const dy = Math.sin(angle);
         let cx = startX;
         let cy = startY;
-        const rayCircle = { x: cx, y: cy, radius: 1 };
+        const rayCircle = { x: cx, y: cy, radius: beamRadius };
 
         const endX = startX + dx * maxDist;
         const endY = startY + dy * maxDist;
@@ -287,8 +298,9 @@ export class WeaponSystem {
                 engagedTargets.add(turret.target);
             }
 
-            const mode = turret.weaponMode ?? DEFAULT_TURRET_WEAPON_MODE;
-            mode.processTurret(dt, state, actor, weapon.chargeTime, turret, turret.target, actualBlocksTargeting, combatEvents);
+            const gun = getGunDefinition(turret.gunId ?? defaultGunId);
+            const mode = resolveWeaponModeForGun(gun);
+            mode.processTurret(dt, state, actor, gun, turret, turret.target, actualBlocksTargeting, combatEvents);
         }
 
         return combatEvents;

@@ -1,4 +1,5 @@
-import { LASER_WEAPON_MODE } from "../Combat/WeaponSystem.js";
+import { applyActorGunModifiers } from "../Combat/gunCombat.js";
+import { defaultGunId } from "./gunDefinitions.js";
 import {
     cloneTurretLoadout,
     defaultTurretLoadout,
@@ -14,10 +15,6 @@ export {
     turretLoadoutPresets,
 } from "./turretLoadoutPresets.js";
 
-const weaponModesById = {
-    laser: LASER_WEAPON_MODE,
-};
-
 function isTurretLoadoutUpgradeActive(upgrade, state, actor) {
     if (upgrade.isAbility) {
         return !!state.abilities?.[upgrade.id];
@@ -31,7 +28,7 @@ export function resolveActorTurretLoadouts(actor, state, upgradeDefs = []) {
 
     for (const turret of turrets) {
         turret.loadout = cloneTurretLoadout(defaultTurretLoadout);
-        turret.weaponMode = null;
+        turret.gunId = defaultGunId;
     }
 
     const loadoutUpgrades = upgradeDefs
@@ -44,12 +41,14 @@ export function resolveActorTurretLoadouts(actor, state, upgradeDefs = []) {
 
         for (const index of indices) {
             const turret = turrets[index];
-            if (config.weaponMode) {
-                turret.weaponMode = weaponModesById[config.weaponMode] ?? null;
+            if (config.gun) {
+                turret.gunId = config.gun;
             }
             if (config.preset || config.radiusMultiplier != null || config.angleOffsets) {
                 turret.loadout = resolveLoadoutFromConfig(config);
             }
         }
     }
+
+    applyActorGunModifiers(actor);
 }

@@ -2,11 +2,9 @@ import { Utilities } from "../Core/Utilities.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
 import { Actor } from "./Actor.js";
 import { spawnFloatingText, emitCombatEnemyKilled } from "../Core/EventSystem.js";
-import { ChargedWeaponMode } from "../Combat/WeaponSystem.js";
-import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
-import { enemyProjectileSettings, NAV_PROFILES } from "../Config/Config.js";
+import { NAV_PROFILES } from "../Config/Config.js";
+import { defaultEnemyGunId } from "../Config/gunDefinitions.js";
 import { createEntityBars } from "./EntityBars.js";
-import { Pools } from "../Core/Pools.js";
 import {
     buildEnemyCombatStats,
     computeEnemyUpgradeLevels,
@@ -60,8 +58,7 @@ export class Enemy extends Actor {
         this.enemyType = enemyType;
         this.setupCombatant(combatStats, baseUpgradeDefs);
         this.syncTurretCount(1, combatStats.turnSpeed);
-        const weaponMode = Enemy.createWeaponMode();
-        this.getPrimaryTurret().weaponMode = weaponMode;
+        this.getPrimaryTurret().gunId = defaultEnemyGunId;
         this.initCombatWeapon();
         this.isEngaged = false;
         this.blastAngle = 0;
@@ -73,28 +70,6 @@ export class Enemy extends Actor {
         this.startingAbilities = [];
         this.healthBar = Enemy.healthBar;
         this.chargeBar = Enemy.chargeBar;
-    }
-
-    static createWeaponMode() {
-        return new ChargedWeaponMode((state, turret, source) => {
-            const { x: tx, y: ty } = turret.getMuzzlePosition(source);
-            const projectile = Pools.projectiles.acquire(
-                tx,
-                ty,
-                source.radius * enemyProjectileSettings.radiusMultiplier,
-                enemyProjectileSettings.speed,
-                state.player,
-                turret.angle,
-                source.weapon.damage,
-                "enemy"
-            );
-            state.projectiles.push(projectile);
-            PhysicsSystem.applyKnockback(
-                source,
-                turret.angle + Math.PI,
-                projectile.radius * enemyProjectileSettings.knockbackMultiplier
-            );
-        });
     }
 
     handleHit(baseDamage, ctx, hitType) {

@@ -78,16 +78,13 @@ export const runBaseStats = {
 };
 
 export const playerBaseStats = {
-    damage: 1,
     turnSpeed: Math.PI * 3,
-    chargeTime: 1000,
-    minChargeTime: 100,
-    maxChargeTime: 1000,
     range: 150,
     maxHealth: 100,
     accuracy: 0.75,
     penetration: 0,
     moveSpeedMultiplier: 1.0,
+    fireIntervalMultiplier: 1.0,
     speed: 50,
     startingAbilities: ["Reposition"],
 };
@@ -135,7 +132,6 @@ export const playerProjectileSettings = {
 export const enemyProjectileSettings = {
     speed: 150,
     radiusMultiplier: 0.333,
-    damage: 10,
     knockbackMultiplier: 120,
 };
 
@@ -145,16 +141,13 @@ export const enemyDefaults = {
 };
 
 export const enemyBaseStats = {
-    damage: 10,
     turnSpeed: 10,
-    chargeTime: 1500,
-    minChargeTime: 100,
-    maxChargeTime: 3000,
     range: 112,
     maxHealth: 1,
     accuracy: 0.9,
     penetration: 0,
     moveSpeedMultiplier: 1.0,
+    fireIntervalMultiplier: 1.0,
     speed: 100,
 };
 

@@ -35,11 +35,9 @@ export function computeEnemyUpgradeLevels(wave, enemyType, combatBaseStats) {
     ));
 
     return {
-        Damage: 0,
         Accuracy: 0,
         Penetration: 0,
         Speed: 0,
-        Charge: 0,
         Range: 0,
         Health: healthLevel,
         Regen: 0,

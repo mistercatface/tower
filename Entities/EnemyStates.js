@@ -1,6 +1,8 @@
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { Utilities } from "../Core/Utilities.js";
 import { CollisionSystem } from "../Spatial/Collision/CollisionSystem.js";
+import { resolveWeaponModeForGun } from "../Combat/WeaponSystem.js";
+import { getGunDefinition } from "../Config/gunDefinitions.js";
 
 function analyzeStrafePath(enemy, tangentX, tangentY, dir, walls, target) {
     const stepSize = 10;
@@ -236,8 +238,9 @@ export class EnemyEngagedState {
 
         const turret = enemy.getPrimaryTurret();
         if (turret) {
-            const mode = turret.weaponMode;
-            mode.processTurret(dt, state, enemy, enemy.weapon.chargeTime, turret, target, !hasLOS, null);
+            const gun = getGunDefinition(turret.gunId);
+            const mode = resolveWeaponModeForGun(gun);
+            mode.processTurret(dt, state, enemy, gun, turret, target, !hasLOS, null);
         }
 
         return false;
