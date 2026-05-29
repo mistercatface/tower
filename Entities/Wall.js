@@ -2,11 +2,13 @@ import { DestructibleEntity } from "./Entity.js";
 import { getWallReach } from "../Spatial/World/ObstacleGrid.js";
 
 export class Segment extends DestructibleEntity {
-    constructor(x, y, angle, size, padding = 10, maxHealth = 30, health = 30, isDead = false) {
-        super(x, y, angle, maxHealth, health, isDead);
+    constructor(x, y, angle, size, padding = 10, maxHealth = 30, health = null, isDead = false, height = 40) {
+        const actualHealth = health !== null && health !== undefined ? health : maxHealth;
+        super(x, y, angle, maxHealth, actualHealth, isDead);
         this.size = size;
         this.padding = padding;
         this.theme = null;
+        this.height = height !== undefined && height !== null ? height : 40;
     }
 
     getBounds() {

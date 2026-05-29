@@ -2,8 +2,7 @@ import { THEME_COLORS, wallTextureSettings } from "../../Config/Config.js";
 import { createPropDrawContext } from "./PropDrawContext.js";
 import { drawTree, drawBarrel, drawCrate, drawLampPost, drawFireBarrel } from "./PropRecipes.js";
 import { getWallTextureCanvas } from "./WallTextures.js";
-
-const WALL_PROJECTION_DISTANCE = 3000;
+import { CAMERA_HEIGHT } from "./Projection3D.js";
 
 const PROP_RECIPES = {
     tree: drawTree,
@@ -63,7 +62,7 @@ export class Render3D {
         return `rgb(${r}, ${g}, ${b})`;
     }
 
-    computeProjectedFace(p1, p2, px, py) {
+    computeProjectedFace(p1, p2, px, py, height = 40) {
         let angle1 = Math.atan2(p1.y - py, p1.x - px);
         let angle2 = Math.atan2(p2.y - py, p2.x - px);
         const cross = (p1.x - px) * (p2.y - py) - (p1.y - py) * (p2.x - px);
@@ -75,10 +74,16 @@ export class Render3D {
             angle1 += spread;
             angle2 -= spread;
         }
-        const proj1X = p1.x + Math.cos(angle1) * WALL_PROJECTION_DISTANCE;
-        const proj1Y = p1.y + Math.sin(angle1) * WALL_PROJECTION_DISTANCE;
-        const proj2X = p2.x + Math.cos(angle2) * WALL_PROJECTION_DISTANCE;
-        const proj2Y = p2.y + Math.sin(angle2) * WALL_PROJECTION_DISTANCE;
+        const dist1 = Math.hypot(p1.x - px, p1.y - py);
+        const dist2 = Math.hypot(p2.x - px, p2.y - py);
+
+        const clampedHeight = Math.min(height, CAMERA_HEIGHT - 10);
+        const alpha = clampedHeight / (CAMERA_HEIGHT - clampedHeight);
+
+        const proj1X = p1.x + Math.cos(angle1) * dist1 * alpha;
+        const proj1Y = p1.y + Math.sin(angle1) * dist1 * alpha;
+        const proj2X = p2.x + Math.cos(angle2) * dist2 * alpha;
+        const proj2Y = p2.y + Math.sin(angle2) * dist2 * alpha;
         return { proj1X, proj1Y, proj2X, proj2Y };
     }
 
@@ -91,7 +96,7 @@ export class Render3D {
         ctx.closePath();
     }
 
-    drawFaceTexture(ctx, p1, p2, face, textureCanvas) {
+    drawFaceTexture(ctx, p1, p2, face, textureCanvas, height = 40) {
         const { tileWorldSize } = wallTextureSettings;
         const texW = textureCanvas.width;
         const texH = textureCanvas.height;
@@ -102,7 +107,7 @@ export class Render3D {
         const edgeDirY = (p2.y - p1.y) / edgeLen;
         const uAlongEdge = p1.x * edgeDirX + p1.y * edgeDirY;
         const uPatternOffset = ((uAlongEdge / tileWorldSize) % 1 + 1) % 1 * texW;
-        const verticalTiles = WALL_PROJECTION_DISTANCE / tileWorldSize;
+        const verticalTiles = height / tileWorldSize;
         const vMax = verticalTiles * texH;
 
         // Subdivide the wall face into narrow slices (approx. 4 world units wide)
@@ -186,15 +191,15 @@ export class Render3D {
         }
     }
 
-    drawProjectedFace(ctx, p1, p2, px, py, fillStyle, shouldStroke = false, textureCanvas = null, damageAlpha = 0) {
-        const face = this.computeProjectedFace(p1, p2, px, py);
+    drawProjectedFace(ctx, p1, p2, px, py, fillStyle, shouldStroke = false, textureCanvas = null, damageAlpha = 0, height = 40) {
+        const face = this.computeProjectedFace(p1, p2, px, py, height);
 
         this.traceProjectedFace(ctx, p1, p2, face);
         ctx.fillStyle = fillStyle;
         ctx.fill();
 
         if (textureCanvas && wallTextureSettings.enabled) {
-            this.drawFaceTexture(ctx, p1, p2, face, textureCanvas);
+            this.drawFaceTexture(ctx, p1, p2, face, textureCanvas, height);
         }
 
         if (damageAlpha > 0) {
@@ -212,6 +217,82 @@ export class Render3D {
             ctx.lineWidth = 1.0;
             ctx.stroke();
         }
+    }
+
+    drawRoof(ctx, seg, px, py, themeColor, damageAlpha = 0) {
+        const edges = this.getSegmentEdges(seg);
+        const height = seg.height || 40;
+        const clampedHeight = Math.min(height, CAMERA_HEIGHT - 10);
+        const alpha = clampedHeight / (CAMERA_HEIGHT - clampedHeight);
+
+        const projCorners = [];
+        for (let i = 0; i < 4; i++) {
+            const p = edges[i][0];
+            const dx = p.x - px;
+            const dy = p.y - py;
+            const dist = Math.hypot(dx, dy);
+            const angle = Math.atan2(dy, dx);
+            
+            projCorners.push({
+                x: p.x + Math.cos(angle) * dist * alpha,
+                y: p.y + Math.sin(angle) * dist * alpha
+            });
+        }
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(projCorners[0].x, projCorners[0].y);
+        for (let i = 1; i < 4; i++) {
+            ctx.lineTo(projCorners[i].x, projCorners[i].y);
+        }
+        ctx.closePath();
+
+        ctx.fillStyle = "#12161f";
+        ctx.fill();
+
+        const baseR = themeColor.r;
+        const baseG = themeColor.g;
+        const baseB = themeColor.b;
+        ctx.fillStyle = `rgba(${baseR}, ${baseG}, ${baseB}, 0.08)`;
+        ctx.fill();
+
+        if (damageAlpha > 0) {
+            ctx.fillStyle = `rgba(244, 67, 54, ${damageAlpha})`;
+            ctx.fill();
+        }
+
+        ctx.strokeStyle = `rgb(${baseR}, ${baseG}, ${baseB})`;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.strokeStyle = `rgba(${baseR}, ${baseG}, ${baseB}, 0.4)`;
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        
+        let cx = 0, cy = 0;
+        for (let i = 0; i < 4; i++) {
+            cx += projCorners[i].x;
+            cy += projCorners[i].y;
+        }
+        cx /= 4;
+        cy /= 4;
+
+        for (let i = 0; i < 4; i++) {
+            const p = projCorners[i];
+            const dx = p.x - cx;
+            const dy = p.y - cy;
+            const dist = Math.hypot(dx, dy);
+            if (dist > 2) {
+                const ix = cx + dx * (1 - 2.5 / dist);
+                const iy = cy + dy * (1 - 2.5 / dist);
+                if (i === 0) ctx.moveTo(ix, iy);
+                else ctx.lineTo(ix, iy);
+            }
+        }
+        ctx.closePath();
+        ctx.stroke();
+
+        ctx.restore();
     }
 
     drawExplosion(px, py, maxDist, state, targetCtx) {
@@ -232,7 +313,6 @@ export class Render3D {
         visibleWalls.sort((a, b) => b._distSq - a._distSq);
 
         for (const seg of visibleWalls) {
-
             const wallColor = this.getWallColor(seg, THEME_COLORS[0], 0.5);
             const edges = this.getSegmentEdges(seg);
 
@@ -256,8 +336,29 @@ export class Render3D {
 
                 const healthRatio = Math.max(0, seg.health / seg.maxHealth);
                 const damageAlpha = (1 - healthRatio) * 0.45;
-                this.drawProjectedFace(targetCtx, p1, p2, px, py, wallColor, false, getWallTextureCanvas(seg.theme || THEME_COLORS[0]), damageAlpha);
+                this.drawProjectedFace(targetCtx, p1, p2, px, py, wallColor, false, getWallTextureCanvas(seg.theme || THEME_COLORS[0]), damageAlpha, seg.height);
             }
+
+            // Mask roof in explosion
+            const height = seg.height || 40;
+            const clampedHeight = Math.min(height, CAMERA_HEIGHT - 10);
+            const alpha = clampedHeight / (CAMERA_HEIGHT - clampedHeight);
+
+            targetCtx.beginPath();
+            for (let i = 0; i < 4; i++) {
+                const p = edges[i][0];
+                const dx = p.x - px;
+                const dy = p.y - py;
+                const dist = Math.hypot(dx, dy);
+                const angle = Math.atan2(dy, dx);
+                const projX = p.x + Math.cos(angle) * dist * alpha;
+                const projY = p.y + Math.sin(angle) * dist * alpha;
+                if (i === 0) targetCtx.moveTo(projX, projY);
+                else targetCtx.lineTo(projX, projY);
+            }
+            targetCtx.closePath();
+            targetCtx.fillStyle = "#000000";
+            targetCtx.fill();
         }
     }
 
@@ -375,6 +476,9 @@ export class Render3D {
                     seg.sharedEdges = [false, false, false, false];
                 }
 
+                const healthRatio = Math.max(0, seg.health / seg.maxHealth);
+                const damageAlpha = (1 - healthRatio) * 0.45;
+
                 for (let i = 0; i < 4; i++) {
                     if (seg.sharedEdges[i]) continue;
 
@@ -389,10 +493,10 @@ export class Render3D {
                     const viewY = edgeCy - py;
                     if (outX * viewX + outY * viewY >= 0) continue;
 
-                    const healthRatio = Math.max(0, seg.health / seg.maxHealth);
-                    const damageAlpha = (1 - healthRatio) * 0.45;
-                    this.drawProjectedFace(ctx, p1, p2, px, py, wallColor, true, wallTexture, damageAlpha);
+                    this.drawProjectedFace(ctx, p1, p2, px, py, wallColor, true, wallTexture, damageAlpha, seg.height);
                 }
+
+                this.drawRoof(ctx, seg, px, py, activeTheme, damageAlpha);
             } else {
                 ctx.save();
                 const pc = createPropDrawContext(obj, px, py);
