@@ -16,8 +16,10 @@ export class Player extends Actor {
     static healthBar = playerBars.healthBar;
     static chargeBar = playerBars.chargeBar;
 
-    constructor(x, y, radius, maxHealth) {
-        super(x, y, radius, playerBaseStats.speed, maxHealth, "#4CAF50", "player", 3.0, true);
+    constructor(x, y, radius) {
+        super(x, y, radius, playerBaseStats.speed, playerBaseStats.maxHealth, "#4CAF50", "player", 3.0, true);
+        this.initCombatant(playerBaseStats);
+        this.initWeapon();
         this.healthBar = Player.healthBar;
         this.chargeBar = Player.chargeBar;
         this.spawnX = x;
@@ -37,6 +39,22 @@ export class Player extends Actor {
         this.mass = 50.0;
         this.canDamageWalls = true;
         this.startingAbilities = playerBaseStats.startingAbilities || [];
+    }
+
+    initWeapon() {
+        const player = this;
+        this.weapon = {
+            chargeTime: playerBaseStats.chargeTime,
+            range: playerBaseStats.range,
+            damage: playerBaseStats.damage,
+            penetration: playerBaseStats.penetration,
+            accuracyModifier: 0,
+            get accuracy() {
+                let acc = player.stats.accuracy.value;
+                acc += this.accuracyModifier;
+                return Math.min(1, acc);
+            },
+        };
     }
 
     handleHit(damage, ctx, hitType) {
@@ -153,7 +171,7 @@ export class Player extends Actor {
     }
 
     canReposition(state) {
-        return state.upgrades["Reposition"] && state.upgrades["Reposition"].level > 0;
+        return this.upgrades["Reposition"] && this.upgrades["Reposition"].level > 0;
     }
 
     update(dt, flowFieldGrid, walls, spatialHash, state, externalSpeedMod = 1.0) {

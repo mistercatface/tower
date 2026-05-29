@@ -3,6 +3,7 @@ import { Separation } from "../Spatial/Motion/Separation.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { enemyStates } from "./EnemyStates.js";
 import { transitionEntity } from "./EntityFsm.js";
+import { createCombatantStats, applyUpgradesToStats, syncActorCombatFromStats } from "./CombatantStats.js";
 
 export class Actor extends DestructibleEntity {
     constructor(x, y, radius, speed, health, color, type, accelRate = 3.0, canDamageWalls = false) {
@@ -25,9 +26,31 @@ export class Actor extends DestructibleEntity {
         this.healthBar = null;
         this.chargeBar = null;
         this.weapon = null;
+        this.stats = null;
+        this.upgrades = {};
+        this.baseMoveSpeed = speed;
         this.currentState = enemyStates.navigating;
         this.currentStateName = "navigating";
         this.stateData = {};
+    }
+
+    initCombatant(baseStats) {
+        this.stats = createCombatantStats(baseStats);
+        this.baseMoveSpeed = baseStats.speed ?? this.speed;
+    }
+
+    setUpgradeLevel(upgradeId, level) {
+        if (!this.upgrades[upgradeId]) {
+            this.upgrades[upgradeId] = { level: 0, baseLevel: 0 };
+        }
+        this.upgrades[upgradeId].level = level;
+        this.upgrades[upgradeId].baseLevel = level;
+    }
+
+    recalculateCombatStats(upgradeDefs, shouldApply = () => true) {
+        if (!this.stats) return;
+        applyUpgradesToStats(this.stats, this.upgrades, upgradeDefs, shouldApply);
+        syncActorCombatFromStats(this, this.stats, this.baseMoveSpeed);
     }
 
     changeState(stateName, stateDataInit = null) {

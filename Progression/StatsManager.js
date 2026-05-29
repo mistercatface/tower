@@ -1,15 +1,15 @@
 import { Turret } from "../Entities/Turret.js";
-import { defaultUpgradeCost, perkMilestones, playerBaseStats } from "../Config/Config.js";
+import { perkMilestones } from "../Config/Config.js";
+import { createUpgradeLevels, resetUpgradeLevels } from "../Entities/CombatantStats.js";
 import { spawnFloatingText } from "../Core/EventSystem.js";
 import { MapGenerator } from "../Generator/MapGenerator.js";
 
 export class StatsManager {
     static initUpgradesList(state, upgradeList) {
         state.upgradeDefs = upgradeList;
-        if (Object.keys(state.upgrades).length === 0) {
-            for (const upg of upgradeList) {
-                state.upgrades[upg.id] = { level: 0, baseLevel: 0, ptsCost: defaultUpgradeCost };
-            }
+        const player = state.player;
+        if (Object.keys(player.upgrades).length === 0) {
+            player.upgrades = createUpgradeLevels(upgradeList, player.stats.baseUpgradeCost.value);
             StatsManager.resetUpgradesToDefault(state);
         }
         for (const upg of upgradeList) {
@@ -20,10 +20,7 @@ export class StatsManager {
     }
 
     static resetUpgradesToDefault(state) {
-        for (const key in state.upgrades) {
-            state.upgrades[key].baseLevel = 0;
-            state.upgrades[key].level = 0;
-        }
+        resetUpgradeLevels(state.player.upgrades);
     }
 
     static grantXP(state, amount) {
@@ -44,41 +41,27 @@ export class StatsManager {
     }
 
     static recalculateStats(state, upgradesList) {
-        for (const key in state.stats) {
-            state.stats[key].reset();
-        }
-        if (upgradesList) {
-            upgradesList.forEach((upg) => {
-                const level = state.upgrades[upg.id] ? state.upgrades[upg.id].level : 0;
-                if (level > 0 && upg.applyFn) {
-                    if (upg.isAbility && !state.abilities[upg.id]) return;
-                    upg.applyFn(state.stats, level);
-                }
-            });
-        }
+        const player = state.player;
+        const stats = player.stats;
 
-        state.player.weapon.accuracyModifier = 0;
-        state.player.weapon.damage = state.stats.damage.value;
-        state.player.weapon.range = state.stats.range.value;
-        state.player.weapon.chargeTime = state.stats.chargeTime.value;
-        state.player.weapon.penetration = state.stats.penetration.value;
+        player.recalculateCombatStats(upgradesList ?? state.upgradeDefs, (upg) => {
+            if (upg.isAbility && !state.abilities[upg.id]) return false;
+            return true;
+        });
 
-        state.gameSpeed = state.stats.gameSpeed.value;
+        state.gameSpeed = stats.gameSpeed.value;
         state.selectedSpeed = Math.min(state.selectedSpeed, state.gameSpeed);
-        state.pointBonus = state.stats.pointBonus.value;
-        state.player.updateMaxHealth(state.stats.maxHealth.value);
-        state.player.speed = playerBaseStats.speed * state.stats.moveSpeedMultiplier.value;
-        state.player.turrets = state.turrets;
+        state.pointBonus = stats.pointBonus.value;
 
-        const targetTurretCount = Math.floor(state.stats.turretCount.value);
+        const targetTurretCount = Math.floor(stats.turretCount.value);
         while (state.turrets.length < targetTurretCount) {
             const newAngle = (state.turrets.length / targetTurretCount) * Math.PI * 2;
-            state.turrets.push(new Turret(newAngle, state.stats.turnSpeed.value));
+            state.turrets.push(new Turret(newAngle, stats.turnSpeed.value));
         }
         while (state.turrets.length > targetTurretCount) {
             state.turrets.pop();
         }
-        state.turrets.forEach(t => t.turnSpeed = state.stats.turnSpeed.value);
+        state.turrets.forEach(t => t.turnSpeed = stats.turnSpeed.value);
 
         if (upgradesList) {
             upgradesList.forEach((upg) => {
@@ -93,6 +76,8 @@ export class StatsManager {
         state.initializeDefaultState();
         state.mapTargetNodeId = 0;
 
+        const player = state.player;
+
         if (upgradesList) {
             upgradesList.forEach((upg) => {
                 if (upg.isAbility) {
@@ -102,33 +87,33 @@ export class StatsManager {
         }
 
         StatsManager.recalculateStats(state, upgradesList);
-        for (const key in state.upgrades) {
+        for (const key in player.upgrades) {
             if (upgradesList) {
                 const upgDef = upgradesList.find((u) => u.id === key);
                 if (upgDef) {
                     if (upgDef.isAbility) {
-                        if (state.player && state.player.startingAbilities && state.player.startingAbilities.includes(key)) {
-                            state.upgrades[key].baseLevel = 1;
+                        if (player.startingAbilities && player.startingAbilities.includes(key)) {
+                            player.upgrades[key].baseLevel = 1;
                         } else {
-                            state.upgrades[key].baseLevel = 0;
+                            player.upgrades[key].baseLevel = 0;
                         }
                     }
-                    state.upgrades[key].baseLevel = Math.min(state.upgrades[key].baseLevel, upgDef.maxLevel);
+                    player.upgrades[key].baseLevel = Math.min(player.upgrades[key].baseLevel, upgDef.maxLevel);
                 }
             }
-            state.upgrades[key].level = state.upgrades[key].baseLevel;
-            state.upgrades[key].ptsCost = state.stats.baseUpgradeCost.value;
+            player.upgrades[key].level = player.upgrades[key].baseLevel;
+            player.upgrades[key].ptsCost = player.stats.baseUpgradeCost.value;
         }
 
-        if (state.player && state.player.startingAbilities) {
-            state.player.startingAbilities.forEach((abilityId) => {
+        if (player.startingAbilities) {
+            player.startingAbilities.forEach((abilityId) => {
                 state.abilities[abilityId] = true;
             });
         }
 
         if (upgradesList) {
             upgradesList.forEach((upg) => {
-                if (upg.onRunStart && state.upgrades[upg.id] && state.upgrades[upg.id].baseLevel > 0) upg.onRunStart(state);
+                if (upg.onRunStart && player.upgrades[upg.id] && player.upgrades[upg.id].baseLevel > 0) upg.onRunStart(state);
             });
         }
 

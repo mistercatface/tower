@@ -35,7 +35,7 @@ export function registerGameListeners(eventBus, pauseManager) {
         const upg = upgrades.find((u) => u.id === upgradeId);
         if (!upg || upg.category === "abilities" || upg.category === "perk") return;
 
-        const uState = state.upgrades[upgradeId];
+        const uState = state.player.upgrades[upgradeId];
         if (!uState) return;
 
         const cost = uState.ptsCost;

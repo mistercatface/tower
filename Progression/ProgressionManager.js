@@ -7,7 +7,7 @@ export class ProgressionManager {
         let xpGain = 5;
 
         upgrades.forEach((upg) => {
-            if (state.upgrades[upg.id] && state.upgrades[upg.id].level > 0 && upg.onEnemyKilled) {
+            if (state.player.upgrades[upg.id] && state.player.upgrades[upg.id].level > 0 && upg.onEnemyKilled) {
                 xpGain = upg.onEnemyKilled(state, enemy, xpGain);
             }
         });
@@ -66,16 +66,16 @@ export class ProgressionManager {
             const upg = upgrades.find((u) => u.id === choice);
             if (upg.replaces && upg.replaces.length > 0) {
                 upg.replaces.forEach((repId) => {
-                    if (state.upgrades[repId]) {
-                        state.upgrades[repId].level = 0;
-                        state.upgrades[repId].baseLevel = 0;
+                    if (state.player.upgrades[repId]) {
+                        state.player.upgrades[repId].level = 0;
+                        state.player.upgrades[repId].baseLevel = 0;
                     }
                     state.abilities[repId] = false;
                 });
             }
-            state.upgrades[choice].level = 1;
+            state.player.upgrades[choice].level = 1;
             if (setBaseLevel) {
-                state.upgrades[choice].baseLevel = 1;
+                state.player.upgrades[choice].baseLevel = 1;
             }
             state.abilities[choice] = true;
             if (state.discoveredAbilities) {
@@ -87,11 +87,11 @@ export class ProgressionManager {
 
     static getValidAbilities(state, upgrades) {
         return upgrades.filter((u) => {
-            const uState = state.upgrades[u.id];
+            const uState = state.player.upgrades[u.id];
             if (u.category !== "abilities" || uState.level > 0) return false;
-            if (u.requires && u.requires.some((req) => !state.upgrades[req] || state.upgrades[req].level === 0)) return false;
+            if (u.requires && u.requires.some((req) => !state.player.upgrades[req] || state.player.upgrades[req].level === 0)) return false;
             if (u.minPlayerLevel && state.level < u.minPlayerLevel) return false;
-            if (upgrades.some((activeUpg) => state.upgrades[activeUpg.id].level > 0 && activeUpg.replaces && activeUpg.replaces.includes(u.id))) return false;
+            if (upgrades.some((activeUpg) => state.player.upgrades[activeUpg.id].level > 0 && activeUpg.replaces && activeUpg.replaces.includes(u.id))) return false;
             return true;
         });
     }
@@ -137,7 +137,7 @@ export class ProgressionManager {
         return upgrades.filter((u) => {
             if (!u.isPerk) return false;
             if (u.minPlayerLevel && state.level < u.minPlayerLevel) return false;
-            const uState = state.upgrades[u.id];
+            const uState = state.player.upgrades[u.id];
             if (uState && uState.baseLevel >= u.maxLevel) return false;
             return true;
         });
@@ -146,8 +146,8 @@ export class ProgressionManager {
     static promptPerkSelection(state, upgrades, title, description, choices) {
         this.promptChoice(title, description, choices, [...upgrades], (pickedId) => {
             const upg = upgrades.find((u) => u.id === pickedId);
-            state.upgrades[pickedId].baseLevel = 1;
-            state.upgrades[pickedId].level = 1;
+            state.player.upgrades[pickedId].baseLevel = 1;
+            state.player.upgrades[pickedId].level = 1;
             requestProgressSave();
             StatsManager.recalculateStats(state, upgrades);
             if (upg.onPurchase) upg.onPurchase(state);
@@ -223,7 +223,7 @@ export class ProgressionManager {
                 currentNode.completed = true;
                 state.fsm.transition("reward");
                 upgrades.forEach((upg) => {
-                    if (state.upgrades[upg.id] && state.upgrades[upg.id].level > 0 && upg.onSectorEnd) {
+                    if (state.player.upgrades[upg.id] && state.player.upgrades[upg.id].level > 0 && upg.onSectorEnd) {
                         upg.onSectorEnd(state);
                     }
                 });
@@ -245,12 +245,12 @@ export class ProgressionManager {
     static awardPermanentUpgrade(state, upgrades, currentNode, viewport) {
         let rewardText = "Reward: None";
         const validUpgrades = upgrades.filter((u) => {
-            const uState = state.upgrades[u.id];
+            const uState = state.player.upgrades[u.id];
             return uState && uState.baseLevel < u.maxLevel && u.category !== "abilities" && u.category !== "perk";
         });
         if (validUpgrades.length > 0) {
             const pickedUpg = validUpgrades[Math.floor(Math.random() * validUpgrades.length)];
-            const uState = state.upgrades[pickedUpg.id];
+            const uState = state.player.upgrades[pickedUpg.id];
             uState.baseLevel++;
             uState.level = Math.min(pickedUpg.maxLevel, uState.level + 1);
             requestProgressSave();

@@ -41,7 +41,7 @@ export class Upgrade {
     }
 
     getCurrentStr(state) {
-        const lvl = state.upgrades[this.id].level;
+        const lvl = state.player.upgrades[this.id].level;
         const baseLvlVal = this.currentStrFn(lvl);
         if (this.dynamicStrFn) {
             const currentVal = String(this.dynamicStrFn(state));
@@ -54,12 +54,12 @@ export class Upgrade {
     }
 
     getNextStr(state) {
-        const lvl = state.upgrades[this.id].level;
+        const lvl = state.player.upgrades[this.id].level;
         return this.nextStrFn && this.nextStrFn(lvl);
     }
 
     update(dt, state) {
-        const level = state.upgrades[this.id].level;
+        const level = state.player.upgrades[this.id].level;
         if (this.updateFn && level > 0) this.updateFn(dt, state, level);
     }
 }
@@ -176,12 +176,12 @@ export const createUpgrades = () => [
             stats.baseUpgradeCost.flatModifiers -= 10 * level;
         },
         onPurchase: (state) => {
-            for (const key in state.upgrades) {
-                let cost = state.stats.baseUpgradeCost.value;
-                for (let i = 0; i < state.upgrades[key].level; i++) {
+            for (const key in state.player.upgrades) {
+                let cost = state.player.stats.baseUpgradeCost.value;
+                for (let i = 0; i < state.player.upgrades[key].level; i++) {
                     cost = Math.floor(cost * 1.5);
                 }
-                state.upgrades[key].ptsCost = cost;
+                state.player.upgrades[key].ptsCost = cost;
             }
         }
     }),
@@ -205,8 +205,8 @@ export const createUpgrades = () => [
         maxLevel: 1,
         isPerk: true,
         onPurchase: (state) => {
-            state.upgrades["Regen"].baseLevel += 5;
-            state.upgrades["Regen"].level += 5;
+            state.player.upgrades["Regen"].baseLevel += 5;
+            state.player.upgrades["Regen"].level += 5;
         }
     }),
     new Upgrade({

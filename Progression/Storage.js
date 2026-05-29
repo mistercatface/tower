@@ -28,8 +28,8 @@ function resetProgress(state) {
 
 function serializeProgress(state) {
     const upgrades = {};
-    Object.keys(state.upgrades).forEach((id) => {
-        const upgradeState = state.upgrades[id];
+    Object.keys(state.player.upgrades).forEach((id) => {
+        const upgradeState = state.player.upgrades[id];
         upgrades[id] = {
             baseLevel: asNonNegativeInt(upgradeState.baseLevel, 0)
         };
@@ -54,11 +54,11 @@ function applyProgress(state, upgrades, payload) {
 
     if (payload.upgrades && typeof payload.upgrades === "object") {
         Object.keys(payload.upgrades).forEach((id) => {
-            if (!state.upgrades[id]) return;
+            if (!state.player.upgrades[id]) return;
             const upgDef = upgrades.find((u) => u.id === id);
             const maxLevel = upgDef ? upgDef.maxLevel : Infinity;
             const baseLevel = asNonNegativeInt(payload.upgrades[id]?.baseLevel, 0);
-            state.upgrades[id].baseLevel = Math.min(baseLevel, maxLevel);
+            state.player.upgrades[id].baseLevel = Math.min(baseLevel, maxLevel);
         });
     }
 

@@ -451,7 +451,7 @@ function drawStat(state, upg) {
     const btn = dynamicElements["upg_" + upg.id];
     if (!btn) return;
 
-    const uState = state.upgrades[upg.id];
+    const uState = state.player.upgrades[upg.id];
     const currentLevelToCheck = uState.level;
 
     let isVisible = false;
@@ -571,7 +571,7 @@ export function updateUI(state, upgrades) {
     upgrades
         .filter((u) => u.isAbility && u.showInHud)
         .forEach((upg) => {
-            const unlocked = state.upgrades[upg.id] && state.upgrades[upg.id].level > 0 && !state.isGameOver;
+            const unlocked = state.player.upgrades[upg.id] && state.player.upgrades[upg.id].level > 0 && !state.isGameOver;
             if (unlocked) hasAnyAbilities = true;
             const active = state.abilities[upg.id];
             updateToggleButton("btnAbility_" + upg.id, unlocked, active, upg.toggleName || upg.name, upg);
@@ -580,7 +580,7 @@ export function updateUI(state, upgrades) {
     upgrades
         .filter((u) => u.isAbility && !u.showInHud)
         .forEach((upg) => {
-            const unlocked = state.upgrades[upg.id] && state.upgrades[upg.id].level > 0 && !state.isGameOver;
+            const unlocked = state.player.upgrades[upg.id] && state.player.upgrades[upg.id].level > 0 && !state.isGameOver;
             if (unlocked) hasAnyAbilities = true;
             const el = dynamicElements["btnPassive_" + upg.id];
             if (el) {
