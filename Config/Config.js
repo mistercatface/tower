@@ -117,6 +117,10 @@ export const pickupSpawnSettings = {
     barrelRandomRange: 125,
     barrelMinRadius: 150,
     barrelMaxRadius: 1000,
+    crateMinCount: 8,
+    crateRandomRange: 17,
+    crateMinRadius: 150,
+    crateMaxRadius: 1000,
 };
 
 export const controlSettings = {

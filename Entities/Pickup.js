@@ -136,6 +136,27 @@ export const PickupStrategies = {
         },
         onHit: explosiveOnHit,
     }),
+    crate: withPickupDefaults({
+        radius: 8,
+        isPushable: true,
+        renderMode: "3d",
+        render3DKey: "crate",
+        laserTargetable: true,
+        maxHealth: 30,
+        mass: 1.5,
+        wallPhysics: { restitution: 0.15, friction: 0.8 },
+        render(ctx, cx, cy, radius) {
+            ctx.fillStyle = "#8D6E63";
+            ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+            ctx.strokeStyle = "#5D4037";
+            ctx.lineWidth = 1;
+            ctx.strokeRect(cx - radius, cy - radius, radius * 2, radius * 2);
+        },
+        onCollect(state, pickup, upgrades) {
+            return null;
+        },
+        onHit: damageOnHit,
+    }),
 };
 
 export class Pickup extends Entity {
@@ -211,5 +232,10 @@ export function spawnInitialPickups(state, playerX, playerY) {
     const numBarrels = pickupSpawnSettings.barrelMinCount + Math.floor(Math.random() * pickupSpawnSettings.barrelRandomRange);
     for (let i = 0; i < numBarrels; i++) {
         spawnPickup(state, playerX, playerY, pickupSpawnSettings.barrelMinRadius, pickupSpawnSettings.barrelMaxRadius, "barrel");
+    }
+
+    const numCrates = pickupSpawnSettings.crateMinCount + Math.floor(Math.random() * pickupSpawnSettings.crateRandomRange);
+    for (let i = 0; i < numCrates; i++) {
+        spawnPickup(state, playerX, playerY, pickupSpawnSettings.crateMinRadius, pickupSpawnSettings.crateMaxRadius, "crate");
     }
 }

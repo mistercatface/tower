@@ -122,10 +122,15 @@ export const ExplosionStrategies = {
 
                 for (const p of state.pickups) {
                     if (p.isDead || exp.hitTargets.has(p)) continue;
-                    if (Math.hypot(p.x - exp.x, p.y - exp.y) <= exp.radius + p.radius) {
+                    const dist = Math.hypot(p.x - exp.x, p.y - exp.y);
+                    if (dist <= exp.radius + p.radius) {
                         if (Utilities.hasLineOfSight(exp.x, exp.y, p.x, p.y, state.walls, p.radius)) {
                             if (p.strategy && p.strategy.onHit) {
-                                p.strategy.onHit(state, p, { isDead: false }, allEvents);
+                                const maxDmg = exp.damage * 1.6;
+                                const minDmg = exp.damage * 0.4;
+                                const proximityRatio = Math.min(1.0, dist / exp.maxRadius);
+                                const dmg = maxDmg - (maxDmg - minDmg) * proximityRatio;
+                                p.strategy.onHit(state, p, { isDead: false, damage: dmg }, allEvents);
                                 exp.hitTargets.add(p);
                             }
                         }
