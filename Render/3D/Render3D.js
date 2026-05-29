@@ -1,8 +1,6 @@
-import { THEME_COLORS, wallTextureSettings } from "../../Config/Config.js";
+import { THEME_COLORS } from "../../Config/Config.js";
 import { createPropDrawContext } from "./PropDrawContext.js";
 import { drawBarrel, drawCrate, drawFireBarrel } from "./PropRecipes.js";
-import { getWallTextureCanvas } from "./WallTextures.js";
-import { CAMERA_HEIGHT } from "./Projection3D.js";
 
 const PROP_RECIPES = {
     barrel: drawBarrel,
@@ -60,7 +58,7 @@ export class Render3D {
         return `rgb(${r}, ${g}, ${b})`;
     }
 
-    computeProjectedFace(p1, p2, px, py, height = 40) {
+    drawProjectedFace(ctx, p1, p2, px, py, fillStyle, shouldStroke = false) {
         let angle1 = Math.atan2(p1.y - py, p1.x - px);
         let angle2 = Math.atan2(p2.y - py, p2.x - px);
         const cross = (p1.x - px) * (p2.y - py) - (p1.y - py) * (p2.x - px);
@@ -72,279 +70,24 @@ export class Render3D {
             angle1 += spread;
             angle2 -= spread;
         }
-        const dist1 = Math.hypot(p1.x - px, p1.y - py);
-        const dist2 = Math.hypot(p2.x - px, p2.y - py);
-
-        const clampedHeight = Math.min(height, CAMERA_HEIGHT - 10);
-        const alpha = clampedHeight / (CAMERA_HEIGHT - clampedHeight);
-
-        const proj1X = p1.x + Math.cos(angle1) * dist1 * alpha;
-        const proj1Y = p1.y + Math.sin(angle1) * dist1 * alpha;
-        const proj2X = p2.x + Math.cos(angle2) * dist2 * alpha;
-        const proj2Y = p2.y + Math.sin(angle2) * dist2 * alpha;
-        return { proj1X, proj1Y, proj2X, proj2Y };
-    }
-
-    traceProjectedFace(ctx, p1, p2, face) {
+        const proj1X = p1.x + Math.cos(angle1) * 3000;
+        const proj1Y = p1.y + Math.sin(angle1) * 3000;
+        const proj2X = p2.x + Math.cos(angle2) * 3000;
+        const proj2Y = p2.y + Math.sin(angle2) * 3000;
+        
+        ctx.fillStyle = fillStyle;
         ctx.beginPath();
         ctx.moveTo(p1.x, p1.y);
-        ctx.lineTo(face.proj1X, face.proj1Y);
-        ctx.lineTo(face.proj2X, face.proj2Y);
+        ctx.lineTo(proj1X, proj1Y);
+        ctx.lineTo(proj2X, proj2Y);
         ctx.lineTo(p2.x, p2.y);
         ctx.closePath();
-    }
-
-    drawFaceTexture(ctx, p1, p2, face, textureCanvas, height = 40) {
-        const { tileWorldSize } = wallTextureSettings;
-        const texW = textureCanvas.width;
-        const texH = textureCanvas.height;
-        const edgeLen = Math.hypot(p2.x - p1.x, p2.y - p1.y);
-        if (edgeLen < 0.001) return;
-
-        const edgeDirX = (p2.x - p1.x) / edgeLen;
-        const edgeDirY = (p2.y - p1.y) / edgeLen;
-        const uAlongEdge = p1.x * edgeDirX + p1.y * edgeDirY;
-        const uPatternOffset = ((uAlongEdge / tileWorldSize) % 1 + 1) % 1 * texW;
-        const verticalTiles = height / tileWorldSize;
-        const vMax = verticalTiles * texH;
-
-        // One slice per face avoids visible vertical seam lines between slices
-        const numSlices = 1;
-
-        const pattern = ctx.createPattern(textureCanvas, "repeat");
-
-        for (let i = 0; i < numSlices; i++) {
-            const t1 = i / numSlices;
-            const t2 = (i + 1) / numSlices;
-
-            // World coordinates for the top edge of this slice
-            const ax = p1.x + t1 * (p2.x - p1.x);
-            const ay = p1.y + t1 * (p2.y - p1.y);
-            const bx = p1.x + t2 * (p2.x - p1.x);
-            const by = p1.y + t2 * (p2.y - p1.y);
-
-            // Linearly interpolate the projected bottom edge of this slice
-            const projAx = face.proj1X + t1 * (face.proj2X - face.proj1X);
-            const projAy = face.proj1Y + t1 * (face.proj2Y - face.proj1Y);
-            const projBx = face.proj1X + t2 * (face.proj2X - face.proj1X);
-            const projBy = face.proj1Y + t2 * (face.proj2Y - face.proj1Y);
-
-            // Texture coordinates for this slice
-            const u1 = uPatternOffset + t1 * (edgeLen / tileWorldSize) * texW;
-            const u2 = uPatternOffset + t2 * (edgeLen / tileWorldSize) * texW;
-            const du = u2 - u1;
-
-            // --- Draw Triangle 1 (A, B, projA) ---
-            ctx.save();
-            ctx.beginPath();
-            ctx.moveTo(ax, ay);
-            ctx.lineTo(bx, by);
-            ctx.lineTo(projAx, projAy);
-            ctx.closePath();
-            ctx.clip();
-
-            const a1 = (bx - ax) / du;
-            const b1 = (by - ay) / du;
-            const c1 = (projAx - ax) / vMax;
-            const d1 = (projAy - ay) / vMax;
-            const e1 = ax - a1 * u1;
-            const f1 = ay - b1 * u1;
-
-            const finalMatrix1 = new DOMMatrix([a1, b1, c1, d1, e1, f1]);
-            pattern.setTransform(finalMatrix1);
-            ctx.fillStyle = pattern;
-
-            // Fill bounding box of Triangle 1 (padded by 1 to prevent seams)
-            let minX = Math.min(ax, bx, projAx), maxX = Math.max(ax, bx, projAx);
-            let minY = Math.min(ay, by, projAy), maxY = Math.max(ay, by, projAy);
-            ctx.fillRect(minX - 1, minY - 1, maxX - minX + 2, maxY - minY + 2);
-            ctx.restore();
-
-            // --- Draw Triangle 2 (B, projB, projA) ---
-            ctx.save();
-            ctx.beginPath();
-            ctx.moveTo(bx, by);
-            ctx.lineTo(projBx, projBy);
-            ctx.lineTo(projAx, projAy);
-            ctx.closePath();
-            ctx.clip();
-
-            const a2 = (projBx - projAx) / du;
-            const b2 = (projBy - projAy) / du;
-            const c2 = (projBx - bx) / vMax;
-            const d2 = (projBy - by) / vMax;
-            const e2 = bx - a2 * u2;
-            const f2 = by - b2 * u2;
-
-            const finalMatrix2 = new DOMMatrix([a2, b2, c2, d2, e2, f2]);
-            pattern.setTransform(finalMatrix2);
-            ctx.fillStyle = pattern;
-
-            // Fill bounding box of Triangle 2 (padded by 1 to prevent seams)
-            minX = Math.min(bx, projBx, projAx); maxX = Math.max(bx, projBx, projAx);
-            minY = Math.min(by, projBy, projAy); maxY = Math.max(by, projBy, projAy);
-            ctx.fillRect(minX - 1, minY - 1, maxX - minX + 2, maxY - minY + 2);
-            ctx.restore();
-        }
-    }
-
-    drawProjectedFace(ctx, p1, p2, px, py, fillStyle, textureCanvas = null, damageAlpha = 0, height = 40) {
-        const face = this.computeProjectedFace(p1, p2, px, py, height);
-
-        this.traceProjectedFace(ctx, p1, p2, face);
-        ctx.fillStyle = fillStyle;
         ctx.fill();
-
-        if (textureCanvas && wallTextureSettings.enabled) {
-            this.drawFaceTexture(ctx, p1, p2, face, textureCanvas, height);
+        if (shouldStroke) {
+            ctx.strokeStyle = "rgba(0, 0, 0, 0.4)";
+            ctx.lineWidth = 1.0;
+            ctx.stroke();
         }
-
-        if (damageAlpha > 0) {
-            ctx.save();
-            this.traceProjectedFace(ctx, p1, p2, face);
-            ctx.clip();
-            ctx.fillStyle = `rgba(244, 67, 54, ${damageAlpha})`;
-            ctx.fill();
-            ctx.restore();
-        }
-    }
-
-    drawAffineTexturedTriangle(ctx, ax, ay, bx, by, cx, cy, ua, va, ub, vb, uc, vc, pattern) {
-        const du = ub - ua;
-        const dv = vb - va;
-        const du2 = uc - ua;
-        const dv2 = vc - va;
-        const det = du * dv2 - du2 * dv;
-        if (Math.abs(det) < 1e-8) return;
-
-        const a = ((bx - ax) * dv2 - (cx - ax) * dv) / det;
-        const c = ((cx - ax) * du - (bx - ax) * du2) / det;
-        const e = ax - a * ua - c * va;
-        const b = ((by - ay) * dv2 - (cy - ay) * dv) / det;
-        const d = ((cy - ay) * du - (by - ay) * du2) / det;
-        const f = ay - b * ua - d * va;
-
-        ctx.save();
-        ctx.beginPath();
-        ctx.moveTo(ax, ay);
-        ctx.lineTo(bx, by);
-        ctx.lineTo(cx, cy);
-        ctx.closePath();
-        ctx.clip();
-
-        pattern.setTransform(new DOMMatrix([a, b, c, d, e, f]));
-        ctx.fillStyle = pattern;
-
-        const minX = Math.min(ax, bx, cx);
-        const maxX = Math.max(ax, bx, cx);
-        const minY = Math.min(ay, by, cy);
-        const maxY = Math.max(ay, by, cy);
-        ctx.fillRect(minX - 1, minY - 1, maxX - minX + 2, maxY - minY + 2);
-        ctx.restore();
-    }
-
-    drawRoofTexture(ctx, projCorners, worldCorners, textureCanvas) {
-        const { tileWorldSize } = wallTextureSettings;
-        const texW = textureCanvas.width;
-        const texH = textureCanvas.height;
-        const w0 = worldCorners[0];
-        const w1 = worldCorners[1];
-        const w3 = worldCorners[3];
-
-        const uLen = Math.hypot(w1.x - w0.x, w1.y - w0.y) || 1;
-        const vLen = Math.hypot(w3.x - w0.x, w3.y - w0.y) || 1;
-        const uDirX = (w1.x - w0.x) / uLen;
-        const uDirY = (w1.y - w0.y) / uLen;
-        const vDirX = (w3.x - w0.x) / vLen;
-        const vDirY = (w3.y - w0.y) / vLen;
-
-        const uvAt = (w) => {
-            const alongU = (w.x - w0.x) * uDirX + (w.y - w0.y) * uDirY;
-            const alongV = (w.x - w0.x) * vDirX + (w.y - w0.y) * vDirY;
-            return {
-                u: (alongU / tileWorldSize) * texW,
-                v: (alongV / tileWorldSize) * texH,
-            };
-        };
-
-        const pattern = ctx.createPattern(textureCanvas, "repeat");
-        const uv = worldCorners.map((w) => uvAt(w));
-        const p = projCorners;
-
-        this.drawAffineTexturedTriangle(
-            ctx,
-            p[0].x, p[0].y,
-            p[1].x, p[1].y,
-            p[2].x, p[2].y,
-            uv[0].u, uv[0].v,
-            uv[1].u, uv[1].v,
-            uv[2].u, uv[2].v,
-            pattern
-        );
-        this.drawAffineTexturedTriangle(
-            ctx,
-            p[0].x, p[0].y,
-            p[2].x, p[2].y,
-            p[3].x, p[3].y,
-            uv[0].u, uv[0].v,
-            uv[2].u, uv[2].v,
-            uv[3].u, uv[3].v,
-            pattern
-        );
-    }
-
-    drawRoof(ctx, seg, px, py, damageAlpha = 0) {
-        const edges = this.getSegmentEdges(seg);
-        const height = seg.height || 40;
-        const clampedHeight = Math.min(height, CAMERA_HEIGHT - 10);
-        const alpha = clampedHeight / (CAMERA_HEIGHT - clampedHeight);
-
-        const projCorners = [];
-        for (let i = 0; i < 4; i++) {
-            const p = edges[i][0];
-            const dx = p.x - px;
-            const dy = p.y - py;
-            const dist = Math.hypot(dx, dy);
-            const angle = Math.atan2(dy, dx);
-
-            projCorners.push({
-                x: p.x + Math.cos(angle) * dist * alpha,
-                y: p.y + Math.sin(angle) * dist * alpha,
-            });
-        }
-
-        const activeTheme = seg.theme || THEME_COLORS[0];
-        const wallColor = this.getWallColor(seg, THEME_COLORS[0], 1.0);
-        const worldCorners = [edges[0][0], edges[1][0], edges[2][0], edges[3][0]];
-
-        ctx.save();
-        ctx.beginPath();
-        ctx.moveTo(projCorners[0].x, projCorners[0].y);
-        for (let i = 1; i < 4; i++) {
-            ctx.lineTo(projCorners[i].x, projCorners[i].y);
-        }
-        ctx.closePath();
-
-        ctx.fillStyle = wallColor;
-        ctx.fill();
-
-        const wallTexture = getWallTextureCanvas(activeTheme);
-        if (wallTexture && wallTextureSettings.enabled) {
-            this.drawRoofTexture(ctx, projCorners, worldCorners, wallTexture);
-        }
-
-        if (damageAlpha > 0) {
-            ctx.beginPath();
-            ctx.moveTo(projCorners[0].x, projCorners[0].y);
-            for (let i = 1; i < 4; i++) {
-                ctx.lineTo(projCorners[i].x, projCorners[i].y);
-            }
-            ctx.closePath();
-            ctx.fillStyle = `rgba(244, 67, 54, ${damageAlpha})`;
-            ctx.fill();
-        }
-
-        ctx.restore();
     }
 
     drawExplosion(px, py, maxDist, state, targetCtx) {
@@ -365,6 +108,7 @@ export class Render3D {
         visibleWalls.sort((a, b) => b._distSq - a._distSq);
 
         for (const seg of visibleWalls) {
+
             const wallColor = this.getWallColor(seg, THEME_COLORS[0], 0.5);
             const edges = this.getSegmentEdges(seg);
 
@@ -386,31 +130,8 @@ export class Render3D {
                 const viewY = edgeCy - py;
                 if (outX * viewX + outY * viewY >= 0) continue;
 
-                const healthRatio = Math.max(0, seg.health / seg.maxHealth);
-                const damageAlpha = (1 - healthRatio) * 0.45;
-                this.drawProjectedFace(targetCtx, p1, p2, px, py, wallColor, getWallTextureCanvas(seg.theme || THEME_COLORS[0]), damageAlpha, seg.height);
+                this.drawProjectedFace(targetCtx, p1, p2, px, py, wallColor, false);
             }
-
-            // Mask roof in explosion
-            const height = seg.height || 40;
-            const clampedHeight = Math.min(height, CAMERA_HEIGHT - 10);
-            const alpha = clampedHeight / (CAMERA_HEIGHT - clampedHeight);
-
-            targetCtx.beginPath();
-            for (let i = 0; i < 4; i++) {
-                const p = edges[i][0];
-                const dx = p.x - px;
-                const dy = p.y - py;
-                const dist = Math.hypot(dx, dy);
-                const angle = Math.atan2(dy, dx);
-                const projX = p.x + Math.cos(angle) * dist * alpha;
-                const projY = p.y + Math.sin(angle) * dist * alpha;
-                if (i === 0) targetCtx.moveTo(projX, projY);
-                else targetCtx.lineTo(projX, projY);
-            }
-            targetCtx.closePath();
-            targetCtx.fillStyle = "#000000";
-            targetCtx.fill();
         }
     }
 
@@ -481,19 +202,16 @@ export class Render3D {
         const px = state.player.x;
         const py = state.player.y;
 
-        const vx = viewport ? viewport.x : px;
-        const vy = viewport ? viewport.y : py;
-
         this.updateSharedEdges(state);
 
         ctx.save();
 
         const visibleObjects = [];
-        const candidateWalls = state.wallSpatialHash ? state.wallSpatialHash.queryBounds(vx - 1500, vy - 1500, vx + 1500, vy + 1500) : state.walls;
+        const candidateWalls = state.wallSpatialHash ? state.wallSpatialHash.queryBounds(px - 1500, py - 1500, px + 1500, py + 1500) : state.walls;
         for (let i = 0; i < candidateWalls.length; i++) {
             const seg = candidateWalls[i];
             if (seg.isDead) continue;
-            const distSq = (seg.x - vx) ** 2 + (seg.y - vy) ** 2;
+            const distSq = (seg.x - px) ** 2 + (seg.y - py) ** 2;
             if (distSq <= 2250000) {
                 seg._distSq = distSq;
                 seg._renderType = "wall";
@@ -505,7 +223,7 @@ export class Render3D {
             for (let i = 0; i < state.pickups.length; i++) {
                 const p = state.pickups[i];
                 if (p.isDead || p.strategy?.renderMode !== "3d") continue;
-                const distSq = (p.x - vx) ** 2 + (p.y - vy) ** 2;
+                const distSq = (p.x - px) ** 2 + (p.y - py) ** 2;
                 if (distSq <= 2250000) {
                     p._distSq = distSq;
                     p._renderType = p.getRender3DKey();
@@ -519,17 +237,12 @@ export class Render3D {
         for (const obj of visibleObjects) {
             if (obj._renderType === "wall") {
                 const seg = obj;
-                const activeTheme = seg.theme || THEME_COLORS[0];
                 const wallColor = this.getWallColor(seg, THEME_COLORS[0], 1.0);
-                const wallTexture = getWallTextureCanvas(activeTheme);
                 const edges = this.getSegmentEdges(seg);
 
                 if (!seg.sharedEdges) {
                     seg.sharedEdges = [false, false, false, false];
                 }
-
-                const healthRatio = Math.max(0, seg.health / seg.maxHealth);
-                const damageAlpha = (1 - healthRatio) * 0.45;
 
                 for (let i = 0; i < 4; i++) {
                     if (seg.sharedEdges[i]) continue;
@@ -545,10 +258,8 @@ export class Render3D {
                     const viewY = edgeCy - py;
                     if (outX * viewX + outY * viewY >= 0) continue;
 
-                    this.drawProjectedFace(ctx, p1, p2, px, py, wallColor, wallTexture, damageAlpha, seg.height);
+                    this.drawProjectedFace(ctx, p1, p2, px, py, wallColor, true);
                 }
-
-                this.drawRoof(ctx, seg, px, py, damageAlpha);
             } else {
                 ctx.save();
                 const pc = createPropDrawContext(obj, px, py);

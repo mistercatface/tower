@@ -2,7 +2,7 @@ import { Segment } from "../Entities/Wall.js";
 import { GeneratorStrategies } from "./GeneratorStrategies.js";
 import { WorldObstacleGrid } from "../Spatial/World/ObstacleGrid.js";
 import { FlowFieldGrid } from "../Spatial/Navigation/FlowFieldGrid.js";
-import { mapSettings, gridSettings, THEME_COLORS, mapGenerationSettings, WALL_PATTERNS } from "../Config/Config.js";
+import { mapSettings, gridSettings, THEME_COLORS, mapGenerationSettings } from "../Config/Config.js";
 
 const STRATEGIES = Object.keys(GeneratorStrategies);
 
@@ -27,10 +27,7 @@ function serializeWalls(walls) {
             angle: w.angle,
             size: w.size,
             padding: w.padding,
-            maxHealth: w.maxHealth || 30,
-            health: w.health,
-            isDead: w.isDead,
-            height: w.height || 40
+            maxHealth: w.maxHealth || 30
         };
     }
     return out;
@@ -151,7 +148,7 @@ export class MapGenerator {
         for (const node of state.mapNodes) {
             if (node.wallsData) {
                 for (const w of node.wallsData) {
-                    const segment = new Segment(w.x, w.y, w.angle, w.size, w.padding, w.maxHealth, w.health, w.isDead, w.height);
+                    const segment = new Segment(w.x, w.y, w.angle, w.size, w.padding, w.maxHealth);
                     segment.theme = node.wallTheme || THEME_COLORS[0];
                     state.walls.push(segment);
                     state.wallSpatialHash.insert(segment);
@@ -170,9 +167,7 @@ export class MapGenerator {
         const startNode = state.getMapNode(0);
         if (startNode) {
             const strategy = STRATEGIES[Math.floor(Math.random() * STRATEGIES.length)];
-            const colorTheme = THEME_COLORS[Math.floor(Math.random() * THEME_COLORS.length)];
-            const patternType = WALL_PATTERNS[Math.floor(Math.random() * WALL_PATTERNS.length)];
-            const theme = { ...colorTheme, patternType };
+            const theme = THEME_COLORS[Math.floor(Math.random() * THEME_COLORS.length)];
             const coords = state.getNodeCombatCoords(startNode);
 
             tempFlowFieldGrid.centerX = coords.x;
@@ -186,15 +181,9 @@ export class MapGenerator {
 
             GeneratorStrategies[strategy].generate(mockState, coords.x, coords.y);
 
-            const wallHeight = Math.floor(Math.random() * 50) + 30; // Random height between 30 and 80
-            for (const w of mockState.walls) {
-                w.height = wallHeight;
-            }
-
             startNode.wallsData = serializeWalls(mockState.walls);
             startNode.wallTheme = theme;
             startNode.strategy = strategy;
-            startNode.wallHeight = wallHeight;
         }
 
         const numLayers = mapSettings.numLayers;
@@ -208,14 +197,11 @@ export class MapGenerator {
                 let chosenWalls = [];
                 let chosenTheme = null;
                 let chosenStrategy = null;
-                let chosenHeight = 40;
 
                 while (!success && attempts < 50) {
                     attempts++;
                     const strategy = STRATEGIES[Math.floor(Math.random() * STRATEGIES.length)];
-                    const colorTheme = THEME_COLORS[Math.floor(Math.random() * THEME_COLORS.length)];
-                    const patternType = WALL_PATTERNS[Math.floor(Math.random() * WALL_PATTERNS.length)];
-                    const theme = { ...colorTheme, patternType };
+                    const theme = THEME_COLORS[Math.floor(Math.random() * THEME_COLORS.length)];
                     const coordsB = state.getNodeCombatCoords(nodeB);
 
                     tempFlowFieldGrid.centerX = coordsB.x;
@@ -229,11 +215,6 @@ export class MapGenerator {
 
                     GeneratorStrategies[strategy].generate(mockState, coordsB.x, coordsB.y);
 
-                    const wallHeight = Math.floor(Math.random() * 50) + 30; // Random height between 30 and 80
-                    for (const w of mockState.walls) {
-                        w.height = wallHeight;
-                    }
-
                     let allPathable = true;
                     for (const nodeA of incomingNodes) {
                         if (!MapGenerator.checkPathability(state, nodeA, nodeB, nodeA.wallsData || [], mockState.walls, tempObstacleGrid, tempFlowFieldGrid)) {
@@ -246,22 +227,19 @@ export class MapGenerator {
                         chosenWalls = serializeWalls(mockState.walls);
                         chosenTheme = theme;
                         chosenStrategy = strategy;
-                        chosenHeight = wallHeight;
                         success = true;
                     }
                 }
 
                 if (!success) {
                     chosenWalls = [];
-                    chosenTheme = { ...THEME_COLORS[0], patternType: "brick" };
+                    chosenTheme = THEME_COLORS[0];
                     chosenStrategy = "None";
-                    chosenHeight = 40;
                 }
 
                 nodeB.wallsData = chosenWalls;
                 nodeB.wallTheme = chosenTheme;
                 nodeB.strategy = chosenStrategy;
-                nodeB.wallHeight = chosenHeight;
             }
         }
     }

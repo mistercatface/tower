@@ -172,11 +172,3 @@ export const controlSettings = {
 export const timingSettings = {
     sectorCompletedDelay: 1500,
 };
-
-export const wallTextureSettings = {
-    enabled: true,
-    tileWorldSize: 10,
-    textureSize: 64,
-};
-
-export const WALL_PATTERNS = ["brick", "tech-grid", "stripes", "stone-block", "cyber-core", "diamond-mesh"];
