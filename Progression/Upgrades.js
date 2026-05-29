@@ -1,15 +1,10 @@
-import { Projectile } from "../Entities/Projectile.js";
-import { WeaponSystem, ContinuousWeaponMode, ChargedWeaponMode } from "../Combat/WeaponSystem.js";
-import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
-import { playerBaseStats, playerProjectileSettings, perkSettings } from "../Config/Config.js";
+import { perkSettings } from "../Config/Config.js";
 import { upgradeCostAtLevel } from "../Config/configHelpers.js";
 import {
     baseUpgradeDefinitions,
     metaUpgradeDefinitions,
     upgradeFromDefinition,
 } from "../Config/UpgradeDefinitions.js";
-import { Laser } from "../Entities/Laser.js";
-import { Pools } from "../Core/Pools.js";
 
 export class Upgrade {
     constructor(config) {
@@ -190,33 +185,6 @@ export const createUpgrades = () => [
         abilityApplyFn: (weapon, player) => {
             weapon.damage *= 0.33;
         },
-        weaponMode: new ContinuousWeaponMode((dt, state, tx, ty, turret, combatEvents) => {
-            turret.laserTimer = (turret.laserTimer || 0) + dt;
-            let laserCanDamage = false;
-            if (turret.laserTimer >= 200) {
-                laserCanDamage = true;
-                turret.laserTimer = 0;
-            }
-            const baseGrowthSpeed = 200;
-            const growthSpeed = baseGrowthSpeed * Math.sqrt(1000 / state.player.weapon.chargeTime);
-            turret.currentLaserLength = (turret.currentLaserLength || 0) + growthSpeed * (dt / 1000);
-            turret.currentLaserLength = Math.min(state.player.weapon.range, turret.currentLaserLength);
-
-            const hit = WeaponSystem.castLaser(tx, ty, turret.angle, turret.currentLaserLength, state);
-            turret.currentLaserLength = hit.dist;
-
-            state.activeLasers.push(new Laser(tx, ty, hit.x, hit.y));
-            if (laserCanDamage) {
-                if (hit.hit === "enemy") {
-                    combatEvents.push({ target: hit.entity, damage: state.player.weapon.damage });
-                } else if (hit.hit === "pickup" && hit.entity.strategy && hit.entity.strategy.onHit) {
-                    const skipExplosive = state.abilities["TargetVerification"] && hit.entity.strategy.isExplosive;
-                    if (!skipExplosive) {
-                        hit.entity.strategy.onHit(state, hit.entity, { isDead: false }, combatEvents);
-                    }
-                }
-            }
-        })
     }),
     new Upgrade({
         id: "TargetVerification",
@@ -291,17 +259,6 @@ export const createUpgrades = () => [
         abilityApplyFn: (weapon, player) => {
             weapon.damage *= 0.5;
         },
-        weaponMode: new ChargedWeaponMode((state, tx, ty, turretAngle, source) => {
-            const r = state.player.radius * playerProjectileSettings.splitRadiusMultiplier;
-            const m1 = Pools.projectiles.acquire(tx, ty, r, playerProjectileSettings.speed, null, turretAngle - 0.1, 0, "player");
-            const m2 = Pools.projectiles.acquire(tx, ty, r, playerProjectileSettings.speed, null, turretAngle + 0.1, 0, "player");
-            m1.penetration = state.player.weapon.penetration;
-            m2.penetration = state.player.weapon.penetration;
-            state.projectiles.push(m1, m2);
-            if (source) {
-                PhysicsSystem.applyKnockback(source, turretAngle + Math.PI, (m1.radius + m2.radius) * playerProjectileSettings.knockbackMultiplier);
-            }
-        })
     }),
     new Upgrade({
         id: "TripleStrike",
@@ -315,19 +272,6 @@ export const createUpgrades = () => [
         },
         requires: ['TwinStrike'],
         replaces: ['TwinStrike'],
-        weaponMode: new ChargedWeaponMode((state, tx, ty, turretAngle, source) => {
-            const r = state.player.radius * playerProjectileSettings.splitRadiusMultiplier;
-            const m1 = Pools.projectiles.acquire(tx, ty, r, playerProjectileSettings.speed, null, turretAngle - 0.1, 0, "player");
-            const m2 = Pools.projectiles.acquire(tx, ty, r, playerProjectileSettings.speed, null, turretAngle + 0.1, 0, "player");
-            const m3 = Pools.projectiles.acquire(tx, ty, r, playerProjectileSettings.speed, null, turretAngle, 0, "player");
-            m1.penetration = state.player.weapon.penetration;
-            m2.penetration = state.player.weapon.penetration;
-            m3.penetration = state.player.weapon.penetration;
-            state.projectiles.push(m1, m2, m3);
-            if (source) {
-                PhysicsSystem.applyKnockback(source, turretAngle + Math.PI, (m1.radius + m2.radius + m3.radius) * playerProjectileSettings.knockbackMultiplier);
-            }
-        })
     }),
     new Upgrade({
         id: "SteadyWeapon",

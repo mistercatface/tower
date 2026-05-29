@@ -1,9 +1,6 @@
-import { Projectile } from "../Entities/Projectile.js";
 import { CollisionSystem } from "../Spatial/Collision/CollisionSystem.js";
 import { Utilities } from "../Core/Utilities.js";
-import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
-import { playerProjectileSettings } from "../Config/Config.js";
-import { Pools } from "../Core/Pools.js";
+import { Laser } from "../Entities/Laser.js";
 
 class WeaponTargetingStrategy {
     determineAimTarget(source, target, blocksTargeting, turret) {
@@ -33,9 +30,6 @@ export class ChargedWeaponMode extends WeaponTargetingStrategy {
     }
 
     processTurret(dt, state, source, chargeTime, turret, target, blocksTargeting, combatEvents) {
-        const turretDist = source.radius + 12;
-        const tx = source.x + Math.cos(turret.angle) * turretDist;
-        const ty = source.y + Math.sin(turret.angle) * turretDist;
         const aimTarget = this.determineAimTarget(source, target, blocksTargeting, turret);
         
         const sway = WeaponSystem.computeAccuracySway(source, turret, dt, true);
@@ -49,7 +43,7 @@ export class ChargedWeaponMode extends WeaponTargetingStrategy {
             if (isAimed) {
                 turret.charge += dt;
                 if (turret.charge >= chargeTime) {
-                    this.onFire(state, tx, ty, turret.angle, source);
+                    this.onFire(state, turret, source);
                     turret.charge = 0;
                 }
             }
@@ -79,14 +73,41 @@ export class ContinuousWeaponMode extends WeaponTargetingStrategy {
     }
 }
 
-const DEFAULT_WEAPON_MODE = new ChargedWeaponMode((state, tx, ty, turretAngle, source) => {
-    const m = Pools.projectiles.acquire(tx, ty, source.radius * playerProjectileSettings.radiusMultiplier, playerProjectileSettings.speed, null, turretAngle, 0, "player");
-    m.penetration = state.player.weapon.penetration;
-    state.projectiles.push(m);
-    if (source) {
-        PhysicsSystem.applyKnockback(source, turretAngle + Math.PI, m.radius * playerProjectileSettings.knockbackMultiplier);
-    }
+const DEFAULT_TURRET_WEAPON_MODE = new ChargedWeaponMode((state, turret, source) => {
+    turret.fire(state, source);
 });
+
+export function createLaserWeaponMode() {
+    return new ContinuousWeaponMode((dt, state, tx, ty, turret, combatEvents, source) => {
+        turret.laserTimer = (turret.laserTimer || 0) + dt;
+        let laserCanDamage = false;
+        if (turret.laserTimer >= 200) {
+            laserCanDamage = true;
+            turret.laserTimer = 0;
+        }
+        const baseGrowthSpeed = 200;
+        const growthSpeed = baseGrowthSpeed * Math.sqrt(1000 / source.weapon.chargeTime);
+        turret.currentLaserLength = (turret.currentLaserLength || 0) + growthSpeed * (dt / 1000);
+        turret.currentLaserLength = Math.min(source.weapon.range, turret.currentLaserLength);
+
+        const hit = WeaponSystem.castLaser(tx, ty, turret.angle, turret.currentLaserLength, state);
+        turret.currentLaserLength = hit.dist;
+
+        state.activeLasers.push(new Laser(tx, ty, hit.x, hit.y));
+        if (laserCanDamage) {
+            if (hit.hit === "enemy") {
+                combatEvents.push({ target: hit.entity, damage: source.weapon.damage });
+            } else if (hit.hit === "pickup" && hit.entity.strategy?.onHit) {
+                const skipExplosive = state.abilities["TargetVerification"] && hit.entity.strategy.isExplosive;
+                if (!skipExplosive) {
+                    hit.entity.strategy.onHit(state, hit.entity, { isDead: false }, combatEvents);
+                }
+            }
+        }
+    });
+}
+
+export const LASER_WEAPON_MODE = createLaserWeaponMode();
 
 export class WeaponSystem {
     static castLaser(startX, startY, angle, maxDist, state) {
@@ -228,17 +249,9 @@ export class WeaponSystem {
         }
     }
 
-    static updateActorTurrets(dt, actor, state, upgrades, blocksTargeting = false) {
+    static updateActorTurrets(dt, actor, state, _upgrades, blocksTargeting = false) {
         const combatEvents = [];
         state.activeLasers = [];
-
-        let mode = DEFAULT_WEAPON_MODE;
-        if (upgrades) {
-            const activeAbilityWithMode = upgrades.find(u => u.isAbility && state.abilities[u.id] && u.weaponMode);
-            if (activeAbilityWithMode) {
-                mode = activeAbilityWithMode.weaponMode;
-            }
-        }
 
         const engagedTargets = new Set();
         const actualBlocksTargeting = blocksTargeting || actor.currentState?.blocksTargeting;
@@ -274,6 +287,7 @@ export class WeaponSystem {
                 engagedTargets.add(turret.target);
             }
 
+            const mode = turret.weaponMode ?? DEFAULT_TURRET_WEAPON_MODE;
             mode.processTurret(dt, state, actor, weapon.chargeTime, turret, turret.target, actualBlocksTargeting, combatEvents);
         }
 

@@ -1,13 +1,80 @@
 import { Utilities } from "../Core/Utilities.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
+import { playerProjectileSettings } from "../Config/Config.js";
+import { Pools } from "../Core/Pools.js";
+import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
+
+export const TurretFireProfile = {
+    STANDARD: "standard",
+    TWIN: "twin",
+    TRIPLE: "triple",
+};
 
 export class Turret {
-    constructor(angle, turnSpeed) {
+    constructor(angle, turnSpeed, fireProfile = TurretFireProfile.STANDARD) {
         this.angle = Utilities.normalizeAngle(angle);
         this.turnSpeed = turnSpeed;
+        this.fireProfile = fireProfile;
+        this.weaponMode = null;
         this.charge = 0;
         this.target = null;
         this.swayPhase = 0;
+    }
+
+    getMuzzlePosition(source) {
+        const turretDist = source.radius + 12;
+        return {
+            x: source.x + Math.cos(this.angle) * turretDist,
+            y: source.y + Math.sin(this.angle) * turretDist,
+        };
+    }
+
+    fire(state, source) {
+        const { x: tx, y: ty } = this.getMuzzlePosition(source);
+        const baseAngle = this.angle;
+
+        switch (this.fireProfile) {
+            case TurretFireProfile.TWIN:
+                this.spawnPlayerProjectiles(state, source, tx, ty, baseAngle, playerProjectileSettings.splitRadiusMultiplier, [-0.1, 0.1]);
+                break;
+            case TurretFireProfile.TRIPLE:
+                this.spawnPlayerProjectiles(state, source, tx, ty, baseAngle, playerProjectileSettings.splitRadiusMultiplier, [-0.1, 0.1, 0]);
+                break;
+            default:
+                this.spawnPlayerProjectiles(state, source, tx, ty, baseAngle, playerProjectileSettings.radiusMultiplier, [0]);
+                break;
+        }
+    }
+
+    spawnPlayerProjectiles(state, source, tx, ty, baseAngle, radiusMultiplier, angleOffsets) {
+        const projectiles = [];
+        const radius = source.radius * radiusMultiplier;
+
+        for (const offset of angleOffsets) {
+            const projectile = Pools.projectiles.acquire(
+                tx,
+                ty,
+                radius,
+                playerProjectileSettings.speed,
+                null,
+                baseAngle + offset,
+                0,
+                "player"
+            );
+            projectile.penetration = source.weapon.penetration;
+            projectiles.push(projectile);
+        }
+
+        state.projectiles.push(...projectiles);
+
+        if (projectiles.length > 0) {
+            const knockbackScale = projectiles.reduce((sum, p) => sum + p.radius, 0);
+            PhysicsSystem.applyKnockback(
+                source,
+                baseAngle + Math.PI,
+                knockbackScale * playerProjectileSettings.knockbackMultiplier
+            );
+        }
     }
 
     render(ctx, playerX, playerY, playerRadius, renderer, explicitColor = null) {

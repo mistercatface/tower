@@ -236,7 +236,8 @@ export class EnemyEngagedState {
 
         const turret = enemy.getPrimaryTurret();
         if (turret) {
-            enemy.weapon.weaponMode.processTurret(dt, state, enemy, enemy.weapon.chargeTime, turret, target, !hasLOS, null);
+            const mode = turret.weaponMode;
+            mode.processTurret(dt, state, enemy, enemy.weapon.chargeTime, turret, target, !hasLOS, null);
         }
 
         return false;

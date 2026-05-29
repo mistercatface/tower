@@ -60,7 +60,9 @@ export class Enemy extends Actor {
         this.enemyType = enemyType;
         this.setupCombatant(combatStats, baseUpgradeDefs);
         this.syncTurretCount(1, combatStats.turnSpeed);
-        this.initCombatWeapon({ weaponMode: Enemy.createWeaponMode() });
+        const weaponMode = Enemy.createWeaponMode();
+        this.getPrimaryTurret().weaponMode = weaponMode;
+        this.initCombatWeapon({ linkAccuracyToStats: false });
         this.isEngaged = false;
         this.blastAngle = 0;
         this.blastTimer = 0;
@@ -74,21 +76,24 @@ export class Enemy extends Actor {
     }
 
     static createWeaponMode() {
-        return new ChargedWeaponMode((state, tx, ty, angle, source) => {
-            const m = Pools.projectiles.acquire(
+        return new ChargedWeaponMode((state, turret, source) => {
+            const { x: tx, y: ty } = turret.getMuzzlePosition(source);
+            const projectile = Pools.projectiles.acquire(
                 tx,
                 ty,
                 source.radius * enemyProjectileSettings.radiusMultiplier,
                 enemyProjectileSettings.speed,
                 state.player,
-                angle,
+                turret.angle,
                 source.weapon.damage,
                 "enemy"
             );
-            state.projectiles.push(m);
-            if (source) {
-                PhysicsSystem.applyKnockback(source, angle + Math.PI, m.radius * enemyProjectileSettings.knockbackMultiplier);
-            }
+            state.projectiles.push(projectile);
+            PhysicsSystem.applyKnockback(
+                source,
+                turret.angle + Math.PI,
+                projectile.radius * enemyProjectileSettings.knockbackMultiplier
+            );
         });
     }
 
