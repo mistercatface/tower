@@ -1,6 +1,6 @@
 import { SpriteCache } from "./SpriteCache.js";
 import { Render3D } from "./3D/Render3D.js";
-import { getWallTextureCanvas } from "./3D/WallTextures.js";
+import { getWallTextureCanvas, getFloorTextureCanvas } from "./3D/WallTextures.js";
 import { mapSettings, THEME_COLORS, wallTextureSettings } from "../Config/Config.js";
 import { getWorldDrawCoords, isMapTransition, isWorldScene } from "../GameState/GamePhase.js";
 
@@ -343,7 +343,7 @@ export class Renderer {
 
         const currentNode = state.getCurrentMapNode();
         const theme = currentNode?.wallTheme || THEME_COLORS[0];
-        const textureCanvas = getWallTextureCanvas(theme);
+        const textureCanvas = getFloorTextureCanvas(theme);
 
         if (!textureCanvas) return;
 
