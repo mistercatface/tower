@@ -1,8 +1,13 @@
 import { Projectile } from "../Entities/Projectile.js";
 import { WeaponSystem, ContinuousWeaponMode, ChargedWeaponMode } from "../Combat/WeaponSystem.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
-import { playerBaseStats, playerProjectileSettings } from "../Config/Config.js";
+import { playerBaseStats, playerProjectileSettings, perkSettings } from "../Config/Config.js";
 import { upgradeCostAtLevel } from "../Config/configHelpers.js";
+import {
+    baseUpgradeDefinitions,
+    metaUpgradeDefinitions,
+    upgradeFromDefinition,
+} from "../Config/UpgradeDefinitions.js";
 import { Laser } from "../Entities/Laser.js";
 import { Pools } from "../Core/Pools.js";
 
@@ -39,13 +44,19 @@ export class Upgrade {
         this.toggleName = config.toggleName || null;
         this.showInHud = config.showInHud || false;
         this.hasToggle = config.hasToggle || false;
+        this.usesRunStatsDisplay = config.usesRunStatsDisplay || false;
     }
 
-    getCurrentStr(state) {
-        const lvl = state.player.upgrades[this.id].level;
-        const baseLvlVal = this.currentStrFn(lvl);
+    getUpgradeLevel(actor) {
+        return actor.upgrades[this.id]?.level ?? 0;
+    }
+
+    getCurrentStr(state, actor = state.player) {
+        const lvl = this.getUpgradeLevel(actor);
+        const runStats = this.usesRunStatsDisplay ? state.runStats : undefined;
+        const baseLvlVal = this.currentStrFn(lvl, actor, runStats);
         if (this.dynamicStrFn) {
-            const currentVal = String(this.dynamicStrFn(state));
+            const currentVal = String(this.dynamicStrFn(actor));
             const baseStr = String(baseLvlVal);
             if (currentVal !== baseStr) {
                 return `${baseStr} (${currentVal})`;
@@ -54,14 +65,15 @@ export class Upgrade {
         return baseLvlVal;
     }
 
-    getNextStr(state) {
-        const lvl = state.player.upgrades[this.id].level;
-        return this.nextStrFn && this.nextStrFn(lvl);
+    getNextStr(state, actor = state.player) {
+        const lvl = this.getUpgradeLevel(actor);
+        const runStats = this.usesRunStatsDisplay ? state.runStats : undefined;
+        return this.nextStrFn && this.nextStrFn(lvl, actor, runStats);
     }
 
-    update(dt, state) {
-        const level = state.player.upgrades[this.id].level;
-        if (this.updateFn && level > 0) this.updateFn(dt, state, level);
+    update(dt, state, actor = state.player) {
+        const level = this.getUpgradeLevel(actor);
+        if (this.updateFn && level > 0) this.updateFn(dt, actor, level);
     }
 }
 
@@ -69,104 +81,18 @@ export function isBaseStatUpgrade(upgrade) {
     return (upgrade.category === "attack" || upgrade.category === "defense") && !upgrade.isAbility && !upgrade.isPerk;
 }
 
-export const createBaseUpgrades = () => [
-    new Upgrade({
-        id: "Damage",
-        category: "attack",
-        name: "Damage",
-        description: "Increases base weapon damage.",
-        applyFn: (combat, _run, level) => { combat.damage.flatModifiers += level; },
-        currentStrFn: (level) => 1 + level,
-        nextStrFn: (level) => 1 + (level + 1),
-        dynamicStrFn: (state) => state.player.weapon.damage
-    }),
-    new Upgrade({
-        id: "Accuracy",
-        category: "attack",
-        name: "Accuracy",
-        description: "Reduces weapon spread.",
-        applyFn: (combat, _run, level) => { combat.accuracy.flatModifiers += level * 0.01; },
-        currentStrFn: (level) => (75 + level) + "%",
-        nextStrFn: (level) => (75 + level + 1) + "%",
-        maxLevel: 25,
-        dynamicStrFn: (state) => (state.player.weapon.accuracy * 100).toFixed(0) + "%"
-    }),
-    new Upgrade({
-        id: "Penetration",
-        category: "attack",
-        name: "Penetration",
-        description: "Projectiles pierce enemies they kill.",
-        applyFn: (combat, _run, level) => { combat.penetration.flatModifiers += level; },
-        currentStrFn: (level) => "+" + level,
-        nextStrFn: (level) => "+" + (level + 1),
-        maxLevel: 2
-    }),
-    new Upgrade({
-        id: "Speed",
-        category: "attack",
-        name: "Turn Speed",
-        description: "Increases turret rotation speed.",
-        applyFn: (combat, _run, level) => { combat.turnSpeed.flatModifiers += level * Math.PI * 0.5; },
-        currentStrFn: (level) => (3 + level * 0.5).toFixed(1) + "π",
-        nextStrFn: (level) => (3 + (level + 1) * 0.5).toFixed(1) + "π"
-    }),
-    new Upgrade({
-        id: "Charge",
-        category: "attack",
-        name: "Fire Rate",
-        description: "Reduces time between shots.",
-        applyFn: (combat, _run, level) => { combat.chargeTime.flatModifiers -= level * 100; },
-        currentStrFn: (level) => Math.max(100, 1000 - level * 50) + "ms",
-        nextStrFn: (level) => Math.max(100, 1000 - (level + 1) * 50) + "ms",
-        maxLevel: 18,
-        dynamicStrFn: (state) => state.player.weapon.chargeTime.toFixed(0) + "ms"
-    }),
-    new Upgrade({
-        id: "Range",
-        category: "attack",
-        name: "Range",
-        description: "Increases weapon targeting range.",
-        applyFn: (combat, _run, level) => { combat.range.flatModifiers += level * 10; },
-        currentStrFn: (level) => 150 + level * 10,
-        nextStrFn: (level) => 150 + (level + 1) * 10
-    }),
-    new Upgrade({
-        id: "Health",
-        category: "defense",
-        name: "Health",
-        description: "Increases maximum player health.",
-        applyFn: (combat, _run, level) => { combat.maxHealth.flatModifiers += level * 20; },
-        currentStrFn: (level) => 100 + level * 20,
-        nextStrFn: (level) => 100 + (level + 1) * 20,
-        onPurchase: (state) => { state.player.heal(20); }
-    }),
-    new Upgrade({
-        id: "Regen",
-        category: "defense",
-        name: "Regenerate",
-        description: "Restore health over time.",
-        currentStrFn: (level) => level + " HP/s",
-        nextStrFn: (level) => (level + 1) + " HP/s",
-        updateFn: (dt, state, level) => {
-            if (state.player.health < state.player.maxHealth) {
-                state.player.addHealAccumulator(level * (dt / 1000));
-            } else {
-                state.player.clearHealAccumulator();
-            }
-        },
-    }),
-    new Upgrade({
-        id: "MoveSpeed",
-        category: "defense",
-        name: "Move Speed",
-        description: "Increases player movement speed.",
-        applyFn: (combat, _run, level) => { combat.moveSpeedMultiplier.flatModifiers += level * 0.25; },
-        currentStrFn: (level) => "x" + (1.0 + level * 0.25).toFixed(2),
-        nextStrFn: (level) => "x" + (1.0 + (level + 1) * 0.25).toFixed(2),
-        maxLevel: 4,
-        dynamicStrFn: (state) => "x" + (state.player.speed / playerBaseStats.speed).toFixed(2)
-    }),
-]
+const healthUpgradeDef = baseUpgradeDefinitions.find((def) => def.id === "Health");
+
+export const createBaseUpgrades = () =>
+    baseUpgradeDefinitions.map((def) => {
+        const upgrade = upgradeFromDefinition(def, Upgrade);
+        if (def.id === "Health") {
+            upgrade.onPurchase = (state) => {
+                state.player.heal(healthUpgradeDef.stat.perLevel);
+            };
+        }
+        return upgrade;
+    });
 
 export const createUpgrades = () => [
     new Upgrade({
@@ -178,7 +104,7 @@ export const createUpgrades = () => [
         minPlayerLevel: 8,
         isPerk: true,
         applyFn: (_combat, run, level) => {
-            run.baseUpgradeCost.flatModifiers -= 10 * level;
+            run.baseUpgradeCost.flatModifiers -= perkSettings.baseCostReduction * level;
         },
         onPurchase: (state) => {
             for (const key in state.player.upgrades) {
@@ -198,7 +124,7 @@ export const createUpgrades = () => [
         maxLevel: 1,
         isPerk: true,
         onSectorEnd: (state) => {
-            const healAmount = state.player.maxHealth * 0.5;
+            const healAmount = state.player.maxHealth * perkSettings.recoverySectorHealRatio;
             state.player.heal(healAmount);
         }
     }),
@@ -210,8 +136,8 @@ export const createUpgrades = () => [
         maxLevel: 1,
         isPerk: true,
         onPurchase: (state) => {
-            state.player.upgrades["Regen"].baseLevel += 5;
-            state.player.upgrades["Regen"].level += 5;
+            state.player.upgrades["Regen"].baseLevel += perkSettings.regenerateLevelBonus;
+            state.player.upgrades["Regen"].level += perkSettings.regenerateLevelBonus;
         }
     }),
     new Upgrade({
@@ -222,7 +148,7 @@ export const createUpgrades = () => [
         maxLevel: 1,
         isPerk: true,
         applyFn: (combat, _run, level) => {
-            combat.chargeTime.multiplierModifiers /= 1.1;
+            combat.chargeTime.multiplierModifiers /= perkSettings.fireRateChargeTimeDivisor;
         }
     }),
     new Upgrade({
@@ -233,7 +159,7 @@ export const createUpgrades = () => [
         maxLevel: 1,
         isPerk: true,
         onEnemyKilled: (state, enemy, xp) => {
-            return xp * 2;
+            return xp * perkSettings.xpGainMultiplier;
         }
     }),
     new Upgrade({
@@ -244,10 +170,10 @@ export const createUpgrades = () => [
         maxLevel: 1,
         isPerk: true,
         onRunStart: (state) => {
-            state.score += 250;
+            state.score += perkSettings.startingWealthPoints;
         },
         onPurchase: (state) => {
-            state.score += 250;
+            state.score += perkSettings.startingWealthPoints;
         }
     }),
     new Upgrade({
@@ -435,23 +361,5 @@ export const createUpgrades = () => [
         maxLevel: 1,
         minPlayerLevel: 3
     }),
-    new Upgrade({
-        id: "GameSpeed",
-        category: "meta",
-        name: "Game Speed",
-        description: "Unlocks faster game speed options.",
-        applyFn: (_combat, run, level) => { run.gameSpeed.flatModifiers += level * 0.25; },
-        currentStrFn: (level) => "x" + (2.0 + level * 0.25).toFixed(2),
-        nextStrFn: (level) => "x" + (2.0 + (level + 1) * 0.25).toFixed(2),
-        maxLevel: 2,
-    }),
-    new Upgrade({
-        id: "Points",
-        category: "meta",
-        name: "Bonus Points",
-        description: "Bonus points per kill.",
-        applyFn: (_combat, run, level) => { run.pointBonus.flatModifiers += level; },
-        currentStrFn: (level) => "+" + level,
-        nextStrFn: (level) => "+" + (level + 1),
-    })
+    ...metaUpgradeDefinitions.map((def) => upgradeFromDefinition(def, Upgrade)),
 ];

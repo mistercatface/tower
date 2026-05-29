@@ -1,4 +1,5 @@
-import { difficultyCurve, enemyDefaults, enemyBaseStats, baseUpgradeEffects } from "../Config/Config.js";
+import { difficultyCurve, enemyDefaults, enemyBaseStats } from "../Config/Config.js";
+import { baseUpgradeEffects } from "../Config/UpgradeDefinitions.js";
 
 export function buildEnemyCombatStats(enemyType) {
     const range = enemyDefaults.rangeMin + Math.floor(Math.random() * (enemyDefaults.rangeMax - enemyDefaults.rangeMin + 1));

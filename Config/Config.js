@@ -31,12 +31,6 @@ export const progressionSettings = {
     upgradeCostMultiplier: 1.5,
 };
 
-export const baseUpgradeEffects = {
-    healthPerLevel: 20,
-    moveSpeedPerLevel: 0.25,
-    moveSpeedMaxLevel: 4,
-};
-
 export const waveSettings = {
     bossWaveInterval: 10,
     firstWaveEnemyCount: 5,
@@ -66,6 +60,15 @@ export const difficultyCurve = { healthMultiplier: 1.015, speedMultiplier: 1.002
 export const perkMilestones = [2, 4, 6, 8, 10, 12, 14, 16];
 
 export const defaultUpgradeCost = 50;
+
+export const perkSettings = {
+    baseCostReduction: 10,
+    recoverySectorHealRatio: 0.5,
+    regenerateLevelBonus: 5,
+    fireRateChargeTimeDivisor: 1.1,
+    xpGainMultiplier: 2,
+    startingWealthPoints: 250,
+};
 
 export const runBaseStats = {
     gameSpeed: 2.0,
