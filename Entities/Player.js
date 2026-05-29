@@ -3,7 +3,6 @@ import { spawnFloatingText } from "../Core/EventSystem.js";
 import { playerBaseStats, NAV_PROFILES, navigationSettings } from "../Config/Config.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
 import { createEntityBars } from "./EntityBars.js";
-import { Turret } from "./Turret.js";
 
 const playerBars = createEntityBars({
     healthWidth: 48,
@@ -39,7 +38,6 @@ export class Player extends Actor {
         this.mass = 50.0;
         this.canDamageWalls = true;
         this.startingAbilities = playerBaseStats.startingAbilities || [];
-        this.turrets = [];
     }
 
     recalculate(state, upgradeDefs, shouldApply = () => true) {
@@ -62,19 +60,7 @@ export class Player extends Actor {
     }
 
     syncTurrets(runStats) {
-        const turnSpeed = this.stats.turnSpeed.value;
-        const targetTurretCount = Math.floor(runStats.turretCount.value);
-
-        while (this.turrets.length < targetTurretCount) {
-            const newAngle = (this.turrets.length / targetTurretCount) * Math.PI * 2;
-            this.turrets.push(new Turret(newAngle, turnSpeed));
-        }
-        while (this.turrets.length > targetTurretCount) {
-            this.turrets.pop();
-        }
-        this.turrets.forEach((turret) => {
-            turret.turnSpeed = turnSpeed;
-        });
+        this.syncTurretCount(runStats.turretCount.value, this.stats.turnSpeed.value);
     }
 
     handleHit(damage, ctx, hitType) {

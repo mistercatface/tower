@@ -1,4 +1,3 @@
-import { Turret } from "../Entities/Turret.js";
 import { Player } from "../Entities/Player.js";
 import { FlowFieldGrid } from "../Spatial/Navigation/FlowFieldGrid.js";
 import { WorldObstacleGrid } from "../Spatial/World/ObstacleGrid.js";
@@ -29,7 +28,7 @@ export class GameState {
 
         this.runStats = createRunStats(runBaseStats);
         this.player = new Player(0, 0, 8);
-        this.player.turrets = [new Turret(0, this.player.stats.turnSpeed.value)];
+        this.player.syncTurretCount(this.runStats.turretCount.value, this.player.stats.turnSpeed.value);
 
         this.obstacleGrid = new WorldObstacleGrid(gridSettings.cellSize);
         this.flowFieldGrid = new FlowFieldGrid(gridSettings.cellSize, gridSettings.width, gridSettings.height, this.obstacleGrid);
@@ -114,7 +113,7 @@ export class GameState {
         this.player.clearHealAccumulator();
         this.player.isDead = false;
         this.player.changeState("navigating");
-        this.player.turrets = [new Turret(0, this.player.stats.turnSpeed.value)];
+        this.player.syncTurretCount(this.runStats.turretCount.value, this.player.stats.turnSpeed.value);
 
         this.enemies = [];
         if (this.projectiles) {

@@ -1,5 +1,4 @@
 import { Utilities } from "../Core/Utilities.js";
-import { Turret } from "./Turret.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
 import { Actor } from "./Actor.js";
 import { spawnFloatingText, emitCombatEnemyKilled } from "../Core/EventSystem.js";
@@ -60,7 +59,7 @@ export class Enemy extends Actor {
         this.canDodge = enemyType.canDodge ?? false;
         this.enemyType = enemyType;
         this.setupCombatant(combatStats, baseUpgradeDefs);
-        this.turret = new Turret(0, combatStats.turnSpeed);
+        this.syncTurretCount(1, combatStats.turnSpeed);
         this.initCombatWeapon({ weaponMode: Enemy.createWeaponMode() });
         this.isEngaged = false;
         this.blastAngle = 0;
@@ -170,9 +169,6 @@ export class Enemy extends Actor {
 
         const cacheKey = `${this.radius}_${this.color}`;
         this.renderCachedSprite(ctx, renderer.enemyCache, cacheKey, RenderSprites.enemy, this.radius, this.color);
-
-        if (this.turret) {
-            this.turret.render(ctx, this.x, this.y, this.radius, renderer, this.color);
-        }
+        this.renderTurrets(ctx, renderer, this.color);
     }
 }

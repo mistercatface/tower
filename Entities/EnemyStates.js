@@ -49,6 +49,12 @@ function cancelEngagedStrafeTimers(enemy) {
     if (data.linearStrafeTimerId != null) scheduler.cancel(data.linearStrafeTimerId);
 }
 
+function turnPrimaryTurretTowards(enemy, targetAngle, dt) {
+    const turret = enemy.getPrimaryTurret();
+    if (!turret) return;
+    turret.angle = Utilities.turnAngleTowards(turret.angle, targetAngle, turret.turnSpeed, dt);
+}
+
 export class EnemyNavigatingState {
     onEnter(enemy) {
         enemy.isEngaged = false;
@@ -72,9 +78,7 @@ export class EnemyNavigatingState {
         enemy.calculateSteering(target, state);
         enemy.applyLocomotion(dt, walls, spatialHash, { state, ignoreSeparationInDesired: true });
 
-        if (enemy.turret) {
-            enemy.turret.angle = Utilities.turnAngleTowards(enemy.turret.angle, enemy.angle, enemy.turret.turnSpeed, dt);
-        }
+        turnPrimaryTurretTowards(enemy, enemy.angle, dt);
 
         return false;
     }
@@ -230,7 +234,10 @@ export class EnemyEngagedState {
         const angleToTarget = Math.atan2(-dy, -dx);
         enemy.angle = Utilities.turnAngleTowards(enemy.angle, angleToTarget, enemy.turnSpeed, dt);
 
-        enemy.weapon.weaponMode.processTurret(dt, state, enemy, enemy.weapon.chargeTime, enemy.turret, target, !hasLOS, null);
+        const turret = enemy.getPrimaryTurret();
+        if (turret) {
+            enemy.weapon.weaponMode.processTurret(dt, state, enemy, enemy.weapon.chargeTime, turret, target, !hasLOS, null);
+        }
 
         return false;
     }
@@ -262,9 +269,7 @@ export class EnemyChargePrepareState {
         PhysicsSystem.applyMovement(enemy, dt, false, true);
         PhysicsSystem.resolveWallCollisions(enemy, walls, state);
         
-        if (enemy.turret) {
-            enemy.turret.angle = Utilities.turnAngleTowards(enemy.turret.angle, enemy.angle, enemy.turret.turnSpeed, dt);
-        }
+        turnPrimaryTurretTowards(enemy, enemy.angle, dt);
 
         const isStable = Math.hypot(enemy.vx, enemy.vy) < enemy.speed * 0.6;
         
@@ -296,9 +301,7 @@ export class EnemyChargeWindupState {
         const angleToTarget = Math.atan2(dy, dx);
         enemy.angle = Utilities.turnAngleTowards(enemy.angle, angleToTarget, enemy.turnSpeed * 1.5, dt);
 
-        if (enemy.turret) {
-            enemy.turret.angle = Utilities.turnAngleTowards(enemy.turret.angle, enemy.angle, enemy.turret.turnSpeed, dt);
-        }
+        turnPrimaryTurretTowards(enemy, enemy.angle, dt);
 
         const stateData = enemy.stateData;
         stateData.timer -= dt;
@@ -354,8 +357,9 @@ export class EnemyChargeDashState {
         enemy.desiredX = Math.cos(stateData.dashAngle);
         enemy.desiredY = Math.sin(stateData.dashAngle);
         enemy.angle = stateData.dashAngle;
-        if (enemy.turret) {
-            enemy.turret.angle = enemy.angle;
+        const turret = enemy.getPrimaryTurret();
+        if (turret) {
+            turret.angle = enemy.angle;
         }
 
         const originalSpeed = enemy.speed;
@@ -421,9 +425,7 @@ export class EnemyDodgingState {
             enemy.y += (dy / dist) * moveDist;
         }
 
-        if (enemy.turret) {
-            enemy.turret.angle = Utilities.turnAngleTowards(enemy.turret.angle, enemy.angle, enemy.turret.turnSpeed, dt);
-        }
+        turnPrimaryTurretTowards(enemy, enemy.angle, dt);
 
         return false;
     }
@@ -480,9 +482,7 @@ export class EnemyBlastedState {
         const targetAngle = stateData.angle;
         enemy.angle = Utilities.turnAngleTowards(enemy.angle, targetAngle, enemy.turnSpeed, dt);
 
-        if (enemy.turret) {
-            enemy.turret.angle = Utilities.turnAngleTowards(enemy.turret.angle, targetAngle, enemy.turret.turnSpeed, dt);
-        }
+        turnPrimaryTurretTowards(enemy, targetAngle, dt);
 
         PhysicsSystem.resolveWallCollisions(enemy, walls, state);
 

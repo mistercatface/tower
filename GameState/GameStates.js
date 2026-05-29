@@ -74,7 +74,7 @@ export class MapTransitionState {
             previousGridPos: oldGridPos,
         });
 
-        WeaponSystem.updateTurretAndWeapon(dt, true, ctx.state, ctx.upgrades);
+        WeaponSystem.updateActorTurrets(dt, ctx.state.player, ctx.state, ctx.upgrades, true);
 
         const targetNode = ctx.state.getMapTargetNode();
         if (targetNode) {
@@ -138,7 +138,7 @@ export class CombatState {
         }
         
         ctx.state.waveManager.startCombat();
-        ctx.state.player.turrets.forEach(t => t.currentLaserLength = 0);
+        ctx.state.player.resetTurretCombatState();
         
         // Shift grid center to player position and rebuild local flow field
         ctx.state.flowFieldGrid.shiftCenter(
@@ -180,7 +180,7 @@ export class CombatState {
         Projectile.updateAll(ctx.state, dt);
         ProgressionManager.updatePickups(ctx.state, dt);
 
-        const turretEvents = WeaponSystem.updateTurretAndWeapon(dt, abilityState.blocksTargeting, ctx.state, ctx.upgrades);
+        const turretEvents = WeaponSystem.updateActorTurrets(dt, ctx.state.player, ctx.state, ctx.upgrades, abilityState.blocksTargeting);
         const collisionEvents = CollisionSystem.run(ctx.state);
         const allEvents = [...turretEvents, ...collisionEvents];
 

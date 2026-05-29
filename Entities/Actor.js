@@ -10,6 +10,7 @@ import {
     syncActorCombatFromStats,
     initCombatantUpgradeSlots,
 } from "./CombatantStats.js";
+import { Turret } from "./Turret.js";
 
 export class Actor extends DestructibleEntity {
     constructor(x, y, radius, speed, health, color, type, accelRate = 3.0, canDamageWalls = false) {
@@ -35,8 +36,7 @@ export class Actor extends DestructibleEntity {
         this.stats = null;
         this.upgrades = {};
         this.baseMoveSpeed = speed;
-        this.turret = null;
-        this.turrets = null;
+        this.turrets = [];
         this.currentState = enemyStates.navigating;
         this.currentStateName = "navigating";
         this.stateData = {};
@@ -113,15 +113,62 @@ export class Actor extends DestructibleEntity {
         afterSync?.(this);
     }
 
+    getTurrets() {
+        return this.turrets;
+    }
+
+    getPrimaryTurret() {
+        return this.turrets[0] ?? null;
+    }
+
+    syncTurretCount(count, turnSpeed) {
+        const targetCount = Math.max(0, Math.floor(count));
+
+        while (this.turrets.length < targetCount) {
+            const newAngle = targetCount > 0 ? (this.turrets.length / targetCount) * Math.PI * 2 : 0;
+            this.turrets.push(new Turret(newAngle, turnSpeed));
+        }
+        while (this.turrets.length > targetCount) {
+            this.turrets.pop();
+        }
+
+        this.setTurretTurnSpeed(turnSpeed);
+    }
+
+    setTurretTurnSpeed(turnSpeed) {
+        for (const turret of this.turrets) {
+            turret.turnSpeed = turnSpeed;
+        }
+    }
+
+    resetTurretCombatState() {
+        for (const turret of this.turrets) {
+            turret.charge = 0;
+            turret.target = null;
+            turret.lastTarget = null;
+            turret.currentLaserLength = 0;
+            turret.laserTimer = 0;
+        }
+    }
+
+    renderTurrets(ctx, renderer, color = this.color) {
+        this.renderTurretsAt(ctx, renderer, this.x, this.y, color);
+    }
+
+    renderTurretsAt(ctx, renderer, x, y, color = this.color) {
+        for (const turret of this.turrets) {
+            turret.render(ctx, x, y, this.radius, renderer, color);
+        }
+    }
+
     getChargeRatios() {
         if (!this.weapon) return [];
 
         const chargeTime = this.weapon.chargeTime || 1;
-        const sources = this.turrets?.length ? this.turrets : (this.turret ? [this.turret] : []);
         const ratios = [];
 
-        for (const turret of sources) {
-            if (turret?.charge > 0) {
+        for (const turret of this.turrets) {
+            if (turret.charge > 0) {
                 ratios.push(turret.charge / chargeTime);
             }
         }

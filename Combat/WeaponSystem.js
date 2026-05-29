@@ -206,8 +206,8 @@ export class WeaponSystem {
         const accuracySpread = ((1 - effectiveAccuracy) * Math.PI) / 2 * 0.5;
         const frequency = 0.005;
         turret.swayPhase += dt * frequency;
-        const turretsList = source.turrets || (source.turret ? [source.turret] : null);
-        const phaseOffset = turretsList ? turretsList.indexOf(turret) * 2.0 : 0;
+        const turretsList = source.getTurrets();
+        const phaseOffset = turretsList.indexOf(turret) * 2.0;
         return Math.sin(turret.swayPhase + phaseOffset) * accuracySpread;
     }
 
@@ -228,7 +228,7 @@ export class WeaponSystem {
         }
     }
 
-    static updateTurretAndWeapon(dt, blocksTargeting, state, upgrades) {
+    static updateActorTurrets(dt, actor, state, upgrades, blocksTargeting = false) {
         const combatEvents = [];
         state.activeLasers = [];
 
@@ -241,20 +241,22 @@ export class WeaponSystem {
         }
 
         const engagedTargets = new Set();
-        const actualBlocksTargeting = blocksTargeting || (state.player && state.player.currentState && state.player.currentState.blocksTargeting);
+        const actualBlocksTargeting = blocksTargeting || actor.currentState?.blocksTargeting;
+        const weapon = actor.weapon;
+        if (!weapon) return combatEvents;
 
-        for (const turret of state.player.turrets) {
+        for (const turret of actor.getTurrets()) {
             if (turret.target) {
-                const dist = Math.hypot(turret.target.x - state.player.x, turret.target.y - state.player.y);
+                const dist = Math.hypot(turret.target.x - actor.x, turret.target.y - actor.y);
                 if (
                     turret.target.isDead ||
-                    dist > state.player.weapon.range ||
-                    !Utilities.hasLineOfSight(state.player.x, state.player.y, turret.target.x, turret.target.y, state.walls) ||
+                    dist > weapon.range ||
+                    !Utilities.hasLineOfSight(actor.x, actor.y, turret.target.x, turret.target.y, state.walls) ||
                     actualBlocksTargeting
                 ) {
                     turret.target = null;
                 } else if (engagedTargets.has(turret.target)) {
-                    const betterTarget = this.getNearestEnemy(state, state.player, state.player.weapon.range, engagedTargets);
+                    const betterTarget = this.getNearestEnemy(state, actor, weapon.range, engagedTargets);
                     if (betterTarget) {
                         turret.target = betterTarget;
                     }
@@ -262,9 +264,9 @@ export class WeaponSystem {
             }
 
             if (!turret.target && !actualBlocksTargeting) {
-                turret.target = this.getNearestEnemy(state, state.player, state.player.weapon.range, engagedTargets);
+                turret.target = this.getNearestEnemy(state, actor, weapon.range, engagedTargets);
                 if (!turret.target) {
-                    turret.target = this.getNearestEnemy(state, state.player, state.player.weapon.range);
+                    turret.target = this.getNearestEnemy(state, actor, weapon.range);
                 }
             }
 
@@ -272,7 +274,7 @@ export class WeaponSystem {
                 engagedTargets.add(turret.target);
             }
 
-            mode.processTurret(dt, state, state.player, state.player.weapon.chargeTime, turret, turret.target, actualBlocksTargeting, combatEvents);
+            mode.processTurret(dt, state, actor, weapon.chargeTime, turret, turret.target, actualBlocksTargeting, combatEvents);
         }
 
         return combatEvents;

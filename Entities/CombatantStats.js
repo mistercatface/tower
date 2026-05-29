@@ -86,9 +86,6 @@ export function syncActorCombatFromStats(actor, stats, baseMoveSpeed) {
 
     actor.updateMaxHealth(stats.maxHealth.value);
 
-    if (actor.turret) {
-        actor.turret.turnSpeed = stats.turnSpeed.value;
-    } else {
-        actor.turnSpeed = stats.turnSpeed.value;
-    }
+    actor.turnSpeed = stats.turnSpeed.value;
+    actor.setTurretTurnSpeed(stats.turnSpeed.value);
 }
