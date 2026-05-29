@@ -110,9 +110,8 @@ export class Render3D {
         const verticalTiles = height / tileWorldSize;
         const vMax = verticalTiles * texH;
 
-        // Subdivide the wall face into narrow slices (approx. 4 world units wide)
-        const sliceWidthLimit = 4;
-        const numSlices = Math.max(1, Math.ceil(edgeLen / sliceWidthLimit));
+        // One slice per face avoids visible vertical seam lines between slices
+        const numSlices = 1;
 
         const pattern = ctx.createPattern(textureCanvas, "repeat");
 
@@ -212,7 +211,21 @@ export class Render3D {
         }
     }
 
-    drawRoof(ctx, seg, px, py, themeColor, damageAlpha = 0) {
+    setWorldAlignedPatternTransform(pattern, seg) {
+        const { tileWorldSize, textureSize } = wallTextureSettings;
+        const scale = tileWorldSize / textureSize;
+        const phaseU = (((seg.x / tileWorldSize) % 1) + 1) % 1 * textureSize;
+        const phaseV = (((seg.y / tileWorldSize) % 1) + 1) % 1 * textureSize;
+
+        const matrix = new DOMMatrix();
+        matrix.translateSelf(seg.x, seg.y);
+        matrix.rotateSelf((seg.angle * 180) / Math.PI);
+        matrix.scaleSelf(scale, scale);
+        matrix.translateSelf(-phaseU, -phaseV);
+        pattern.setTransform(matrix);
+    }
+
+    drawRoof(ctx, seg, px, py, damageAlpha = 0) {
         const edges = this.getSegmentEdges(seg);
         const height = seg.height || 40;
         const clampedHeight = Math.min(height, CAMERA_HEIGHT - 10);
@@ -225,21 +238,15 @@ export class Render3D {
             const dy = p.y - py;
             const dist = Math.hypot(dx, dy);
             const angle = Math.atan2(dy, dx);
-            
+
             projCorners.push({
                 x: p.x + Math.cos(angle) * dist * alpha,
-                y: p.y + Math.sin(angle) * dist * alpha
+                y: p.y + Math.sin(angle) * dist * alpha,
             });
         }
 
-        // Compute projected roof center
-        let cx = 0, cy = 0;
-        for (let i = 0; i < 4; i++) {
-            cx += projCorners[i].x;
-            cy += projCorners[i].y;
-        }
-        cx /= 4;
-        cy /= 4;
+        const activeTheme = seg.theme || THEME_COLORS[0];
+        const wallColor = this.getWallColor(seg, THEME_COLORS[0], 1.0);
 
         ctx.save();
         ctx.beginPath();
@@ -249,64 +256,22 @@ export class Render3D {
         }
         ctx.closePath();
 
-        // 1. Sleek metallic dark roof base
-        ctx.fillStyle = "#12161f";
+        ctx.fillStyle = wallColor;
         ctx.fill();
 
-        // 2. Render repeating wall texture matching the wall style
-        const wallTexture = getWallTextureCanvas(themeColor);
+        const wallTexture = getWallTextureCanvas(activeTheme);
         if (wallTexture && wallTextureSettings.enabled) {
             const pattern = ctx.createPattern(wallTexture, "repeat");
-            const matrix = new DOMMatrix();
-            // a. Translate to projected center
-            matrix.translateSelf(cx, cy);
-            // b. Rotate by segment angle (DOMMatrix rotateSelf takes degrees)
-            matrix.rotateSelf((seg.angle * 180) / Math.PI);
-            // c. Scale pattern to match world size at the roof height
-            const scale = (wallTextureSettings.tileWorldSize / wallTextureSettings.textureSize) * (1 + alpha);
-            matrix.scaleSelf(scale, scale);
-            // d. Translate texture coordinate origin to its center
-            matrix.translateSelf(-wallTextureSettings.textureSize / 2, -wallTextureSettings.textureSize / 2);
-            
-            pattern.setTransform(matrix);
-            
-            ctx.save();
+            this.setWorldAlignedPatternTransform(pattern, seg);
             ctx.fillStyle = pattern;
-            ctx.globalAlpha = 0.55; // Semi-translucent for depth and neon readability
             ctx.fill();
-            ctx.restore();
         }
-
-        // 3. Soft theme color overlay for high-tech glow
-        const baseR = themeColor.r;
-        const baseG = themeColor.g;
-        const baseB = themeColor.b;
-        ctx.fillStyle = `rgba(${baseR}, ${baseG}, ${baseB}, 0.08)`;
-        ctx.fill();
 
         if (damageAlpha > 0) {
             ctx.fillStyle = `rgba(244, 67, 54, ${damageAlpha})`;
             ctx.fill();
         }
 
-        ctx.strokeStyle = `rgb(${baseR}, ${baseG}, ${baseB})`;
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-        
-        for (let i = 0; i < 4; i++) {
-            const p = projCorners[i];
-            const dx = p.x - cx;
-            const dy = p.y - cy;
-            const dist = Math.hypot(dx, dy);
-            if (dist > 2) {
-                const ix = cx + dx * (1 - 2.5 / dist);
-                const iy = cy + dy * (1 - 2.5 / dist);
-                if (i === 0) ctx.moveTo(ix, iy);
-                else ctx.lineTo(ix, iy);
-            }
-        }
-        ctx.closePath();
-        ctx.stroke();
         ctx.restore();
     }
 
@@ -511,7 +476,7 @@ export class Render3D {
                     this.drawProjectedFace(ctx, p1, p2, px, py, wallColor, wallTexture, damageAlpha, seg.height);
                 }
 
-                this.drawRoof(ctx, seg, px, py, activeTheme, damageAlpha);
+                this.drawRoof(ctx, seg, px, py, damageAlpha);
             } else {
                 ctx.save();
                 const pc = createPropDrawContext(obj, px, py);

@@ -368,8 +368,9 @@ export class Renderer {
         
         pattern.setTransform(matrix);
 
-        // 3. Draw the wall pattern on the floor with premium translucency
-        this.ctx.globalAlpha = 0.35;
+        // 3. Soft floor tint — keep low contrast to avoid moiré on pan/zoom
+        this.ctx.globalAlpha = 0.22;
+        this.ctx.imageSmoothingEnabled = true;
         this.ctx.fillStyle = pattern;
         this.ctx.fill();
 
