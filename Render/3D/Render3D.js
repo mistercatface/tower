@@ -11,7 +11,9 @@ import {
     drawStack,
     drawBarkLines,
 } from "./PropPrimitives.js";
-import { projectVertical, getHeightSlice, isFaceTowardViewer } from "./Projection3D.js";
+import { createPropDrawContext } from "./PropDrawContext.js";
+import { drawTrafficCone } from "./SolidDraw.js";
+import { getHeightSlice, isFaceTowardViewer } from "./Projection3D.js";
 
 export class Render3D {
     constructor() {
@@ -203,9 +205,10 @@ export class Render3D {
         }
     }
 
-    draw3DBarrel(ctx, p, px, py) {
+    draw3DBarrel(ctx, pc) {
+        const p = pc.prop;
         const radius = p.radius || 8;
-        const { x, y, facing = 0 } = p;
+        const { x, y, facing, px, py } = pc;
 
         drawCylinder(ctx, x, y, px, py, {
             radius,
@@ -276,23 +279,24 @@ export class Render3D {
         }
     }
 
-    draw3DCrate(ctx, p, px, py) {
+    draw3DCrate(ctx, pc) {
+        const p = pc.prop;
         const halfSize = p.radius || 8;
-        drawBox(ctx, p.x, p.y, px, py, {
+        drawBox(ctx, pc.x, pc.y, pc.px, pc.py, {
             halfSize,
             faceColors: { shadow: "#4E342E", mid: "#8D6E63", highlight: "#A1887F" },
             topColors: { light: "#BCAAA4", mid: "#A1887F", dark: "#8D6E63" },
             stroke: "#3E2723",
             plankTs: { values: [0.33, 0.66], stroke: "rgba(62, 39, 35, 0.55)" },
             topCross: { stroke: "rgba(62, 39, 35, 0.6)" },
-            facing: p.facing ?? 0,
+            facing: pc.facing,
         });
     }
 
-    draw3DTree(ctx, p, px, py) {
+    draw3DTree(ctx, pc) {
         const trunkRadius = 5;
         const trunkHeight = 54;
-        const { x, y, facing = 0 } = p;
+        const { x, y, facing, px, py } = pc;
 
         const { projection } = drawCylinder(ctx, x, y, px, py, {
             radius: trunkRadius,
@@ -335,38 +339,12 @@ export class Render3D {
         });
     }
 
-    draw3DTrafficCone(ctx, p, px, py) {
-        const baseRadius = p.radius || 6;
-        const height = 20;
-        const { x, y, facing = 0 } = p;
-        const coneColors = { shadow: "#E65100", mid: "#FF6D00", highlight: "#FFAB40" };
-
-        drawCone(ctx, x, y, px, py, { baseRadius, height, colors: coneColors, stroke: "#BF360C", facing });
-        drawBand(ctx, x, y, px, py, {
-            radius: baseRadius,
-            height,
-            t0: 0.52,
-            t1: 0.68,
-            fill: "#FAFAFA",
-            stroke: "#BDBDBD",
-            facing,
-            topRadius: 0,
-        });
-        drawBand(ctx, x, y, px, py, {
-            radius: baseRadius,
-            height,
-            t0: 0.15,
-            t1: 0.35,
-            fill: "#EEEEEE",
-            stroke: "#BDBDBD",
-            lineWidth: 0.6,
-            facing,
-            topRadius: 0,
-        });
+    draw3DTrafficCone(ctx, pc) {
+        drawTrafficCone(ctx, pc);
     }
 
-    draw3DSnowman(ctx, p, px, py) {
-        const { x, y, facing = 0 } = p;
+    draw3DSnowman(ctx, pc) {
+        const { x, y, facing, px, py } = pc;
         const stackHeight = 38;
         const snow = { shadow: "#B0BEC5", mid: "#ECEFF1", highlight: "#FFFFFF" };
 
@@ -380,7 +358,7 @@ export class Render3D {
             facing,
         });
 
-        const projection = projectVertical(x, y, px, py, stackHeight);
+        const projection = pc.project(stackHeight);
         const head = getHeightSlice(projection, 4.5, 0.76);
         const noseX = head.centerX + Math.cos(facing) * 5;
         const noseY = head.centerY + Math.sin(facing) * 5;
@@ -408,10 +386,10 @@ export class Render3D {
         }
     }
 
-    draw3DPalm(ctx, p, px, py) {
+    draw3DPalm(ctx, pc) {
         const trunkRadius = 3.5;
         const trunkHeight = 48;
-        const { x, y, facing = 0 } = p;
+        const { x, y, facing, px, py } = pc;
 
         const { projection } = drawCylinder(ctx, x, y, px, py, {
             radius: trunkRadius,
@@ -447,8 +425,8 @@ export class Render3D {
         });
     }
 
-    draw3DRock(ctx, p, px, py) {
-        const { x, y, facing = 0 } = p;
+    draw3DRock(ctx, pc) {
+        const { x, y, facing, px, py } = pc;
         const gray = { shadow: "#424242", mid: "#757575", highlight: "#BDBDBD" };
 
         drawSphere(ctx, x - 1.5, y + 1, px, py, {
@@ -468,8 +446,8 @@ export class Render3D {
         });
     }
 
-    draw3DLampPost(ctx, p, px, py) {
-        const { x, y, facing = 0 } = p;
+    draw3DLampPost(ctx, pc) {
+        const { x, y, facing, px, py } = pc;
         const poleHeight = 46;
 
         const { projection } = drawCylinder(ctx, x, y, px, py, {
@@ -573,8 +551,9 @@ export class Render3D {
                 }
             } else {
                 ctx.save();
+                const pc = createPropDrawContext(obj, px, py);
                 const draw = this.getPropRenderer(obj._renderType);
-                if (draw) draw(ctx, obj, px, py);
+                if (draw) draw(ctx, pc);
                 ctx.restore();
             }
         }

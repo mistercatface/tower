@@ -1,3 +1,7 @@
+// World props: geometry is built in world space (prop.facing at spawn).
+// The viewer is used only for height projection and face culling (isFaceTowardViewer).
+// Do not rotate silhouettes toward the player.
+
 export const CAMERA_HEIGHT = 160;
 
 export function projectVertical(objX, objY, viewerX, viewerY, height) {
