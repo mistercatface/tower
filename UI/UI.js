@@ -2,6 +2,7 @@ import { hardResetProgress } from "../Progression/Storage.js";
 import { perkMilestones } from "../Config/Config.js";
 import { StatsManager } from "../Progression/StatsManager.js";
 import { isCombat, isCombatOrReward } from "../GameState/GamePhase.js";
+import { events } from "../Core/EventSystem.js";
 
 const elements = {
     sectorClearedModal: document.getElementById("sectorClearedModal"),
@@ -427,6 +428,12 @@ export function initUI(state, upgrades, resetGameCallback) {
             elements.settingsModal.style.display = "none";
         }
     });
+
+    events.on("ui:update", (data) => updateUI(data.state, data.upgrades));
+    events.on("ui:updateHud", (data) => updateHud(data.state, data.upgrades));
+    events.on("ui:showUpgradeChoice", (data) => showUpgradeChoice(data.title, data.description, data.choices, data.upgrades, data.onPick));
+    events.on("ui:showSectorCleared", (data) => showSectorCleared(data.node, data.rewardText, data.onContinue));
+    events.on("ui:showNodeConfirm", (data) => showNodeConfirm(data.node, data.onConfirm));
 
     updateUI(state, upgrades);
     updateHud(state);

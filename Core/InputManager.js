@@ -1,4 +1,4 @@
-import { showNodeConfirm } from "../UI/UI.js";
+import { events } from "../Core/EventSystem.js";
 import { controlSettings } from "../Config/Config.js";
 
 export class InputManager {
@@ -13,7 +13,7 @@ export class InputManager {
                 e.preventDefault();
                 const zoomAmount = e.deltaY * controlSettings.scrollZoomSensitivity;
                 viewport.setZoom(viewport.zoom + zoomAmount, fsm.context.state);
-                fsm.context.updateUI(fsm.context.state, fsm.context.upgrades);
+                events.emit("ui:update", { state: fsm.context.state, upgrades: fsm.context.upgrades });
             },
             { passive: false },
         );
@@ -41,7 +41,7 @@ export class InputManager {
                     const currentDistance = Math.hypot(dx, dy);
                     const ratio = currentDistance / initialPinchDistance;
                     viewport.setZoom(initialZoom * ratio, fsm.context.state);
-                    fsm.context.updateUI(fsm.context.state, fsm.context.upgrades);
+                    events.emit("ui:update", { state: fsm.context.state, upgrades: fsm.context.upgrades });
                 }
             },
             { passive: false },

@@ -1,6 +1,6 @@
 import { FloatingText } from "../Render/FloatingText.js";
 import { markProgressDirty, saveProgress } from "./Storage.js";
-import { showUpgradeChoice, showSectorCleared, updateUI } from "../UI/UI.js";
+import { events } from "../Core/EventSystem.js";
 import { StatsManager } from "./StatsManager.js";
 
 export class ProgressionManager {
@@ -116,12 +116,18 @@ export class ProgressionManager {
         const previousPauseState = state.isPaused;
         state.isPaused = true;
 
-        showUpgradeChoice(title, description, choices, customUpgrades, (pickedId) => {
-            this.applyUpgradeChoice(state, upgrades, pickedId, pointsAmount, !isNewRun);
-            if (isNewRun) saveProgress(state);
-            StatsManager.recalculateStats(state, upgrades);
-            state.isPaused = previousPauseState;
-            updateUI(state, upgrades);
+        events.emit("ui:showUpgradeChoice", {
+            title,
+            description,
+            choices,
+            upgrades: customUpgrades,
+            onPick: (pickedId) => {
+                this.applyUpgradeChoice(state, upgrades, pickedId, pointsAmount, !isNewRun);
+                if (isNewRun) saveProgress(state);
+                StatsManager.recalculateStats(state, upgrades);
+                state.isPaused = previousPauseState;
+                events.emit("ui:update", { state, upgrades });
+            }
         });
     }
 
@@ -140,15 +146,21 @@ export class ProgressionManager {
         const previousPauseState = state.isPaused;
         state.isPaused = true;
 
-        showUpgradeChoice(title, description, choices, customUpgrades, (pickedId) => {
-            const upg = upgrades.find((u) => u.id === pickedId);
-            state.upgrades[pickedId].baseLevel = 1;
-            state.upgrades[pickedId].level = 1;
-            saveProgress(state);
-            StatsManager.recalculateStats(state, upgrades);
-            if (upg.onPurchase) upg.onPurchase(state);
-            state.isPaused = previousPauseState;
-            updateUI(state, upgrades);
+        events.emit("ui:showUpgradeChoice", {
+            title,
+            description,
+            choices,
+            upgrades: customUpgrades,
+            onPick: (pickedId) => {
+                const upg = upgrades.find((u) => u.id === pickedId);
+                state.upgrades[pickedId].baseLevel = 1;
+                state.upgrades[pickedId].level = 1;
+                saveProgress(state);
+                StatsManager.recalculateStats(state, upgrades);
+                if (upg.onPurchase) upg.onPurchase(state);
+                state.isPaused = previousPauseState;
+                events.emit("ui:update", { state, upgrades });
+            }
         });
     }
 
@@ -233,11 +245,11 @@ export class ProgressionManager {
             } else {
                 state.fsm.transition("map");
                 viewport.snapTo(state.player.x - state.player.x - viewport.x, state.player.y - state.player.y - viewport.y);
-                updateUI(state, upgrades);
+                events.emit("ui:update", { state, upgrades });
             }
             return;
         }
-        updateUI(state, upgrades);
+        events.emit("ui:update", { state, upgrades });
     }
 
     static awardPermanentUpgrade(state, upgrades, currentNode, viewport) {
@@ -260,10 +272,14 @@ export class ProgressionManager {
     }
 
     static finalizeSectorClearance(state, upgrades, currentNode, viewport, rewardText) {
-        showSectorCleared(currentNode, rewardText, () => {
-            state.fsm.transition("map");
-            viewport.snapTo(state.mapPlayerX - state.player.x - viewport.x, state.mapPlayerY - state.player.y - viewport.y);
-            updateUI(state, upgrades);
+        events.emit("ui:showSectorCleared", {
+            node: currentNode,
+            rewardText,
+            onContinue: () => {
+                state.fsm.transition("map");
+                viewport.snapTo(state.mapPlayerX - state.player.x - viewport.x, state.mapPlayerY - state.player.y - viewport.y);
+                events.emit("ui:update", { state, upgrades });
+            }
         });
     }
 }

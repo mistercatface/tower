@@ -6,14 +6,14 @@ import { Enemy } from "../Entities/Enemy.js";
 import { Projectile } from "../Entities/Projectile.js";
 import { WeaponSystem } from "../Combat/WeaponSystem.js";
 import { spawnInitialPickups } from "../Entities/Pickup.js";
-import { showNodeConfirm } from "../UI/UI.js";
+import { events } from "../Core/EventSystem.js";
 import { Explosion } from "../Entities/Explosion/Explosion.js";
 import { navigationSettings } from "../Config/Config.js";
 import { resolveMoveTarget } from "../Spatial/Navigation/PathClearance.js";
 
 export class MapState {
     onEnter(ctx) {
-        ctx.updateUI(ctx.state, ctx.upgrades);
+        events.emit("ui:update", { state: ctx.state, upgrades: ctx.upgrades });
     }
     update(dt, ctx) {
         FloatingText.updateAll(ctx.state, dt);
@@ -31,9 +31,12 @@ export class MapState {
             if (!neighbor) continue;
             const dist = Math.hypot(neighbor.x - worldCoords.x, neighbor.y - worldCoords.y);
             if (dist < 20) {
-                showNodeConfirm(neighbor, () => {
-                    ctx.state.mapTargetNodeId = neighbor.id;
-                    ctx.fsm.transition("map_transition");
+                events.emit("ui:showNodeConfirm", {
+                    node: neighbor,
+                    onConfirm: () => {
+                        ctx.state.mapTargetNodeId = neighbor.id;
+                        ctx.fsm.transition("map_transition");
+                    }
                 });
                 break;
             }
@@ -62,7 +65,7 @@ export class MapTransitionState {
         );
         
         ctx.viewport.snapTo(ctx.state.player.x, ctx.state.player.y);
-        ctx.updateUI(ctx.state, ctx.upgrades);
+        events.emit("ui:update", { state: ctx.state, upgrades: ctx.upgrades });
     }
 
     update(dt, ctx) {
@@ -148,7 +151,7 @@ export class CombatState {
         spawnInitialPickups(ctx.state, ctx.state.player.x, ctx.state.player.y);
         
         ctx.viewport.snapTo(ctx.state.player.x, ctx.state.player.y);
-        ctx.updateUI(ctx.state, ctx.upgrades);
+        events.emit("ui:update", { state: ctx.state, upgrades: ctx.upgrades });
     }
 
     update(dt, ctx) {
@@ -241,7 +244,7 @@ export class CombatState {
 
 export class RewardState {
     onEnter(ctx) {
-        ctx.updateUI(ctx.state, ctx.upgrades);
+        events.emit("ui:update", { state: ctx.state, upgrades: ctx.upgrades });
     }
     update(dt, ctx) {
         FloatingText.updateAll(ctx.state, dt);

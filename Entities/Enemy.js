@@ -6,7 +6,7 @@ import { Actor } from "./Actor.js";
 import { FloatingText } from "../Render/FloatingText.js";
 import { ProgressionManager } from "../Progression/ProgressionManager.js";
 import { markProgressDirty } from "../Progression/Storage.js";
-import { updateUI } from "../UI/UI.js";
+import { events } from "../Core/EventSystem.js";
 import { ChargedWeaponMode } from "../Combat/WeaponSystem.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { enemyProjectileSettings, NAV_PROFILES } from "../Config/Config.js";
@@ -72,7 +72,7 @@ export class Enemy extends Actor {
             ProgressionManager.processEnemyKillRewards(this, ctx.state, ctx.upgrades);
             markProgressDirty(ctx.state);
         }
-        updateUI(ctx.state, ctx.upgrades);
+        events.emit("ui:update", { state: ctx.state, upgrades: ctx.upgrades });
     }
 
 

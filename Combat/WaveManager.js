@@ -1,7 +1,7 @@
 import { enemyTypes, difficultyCurve, spawnSettings, timingSettings } from "../Config/Config.js";
 import { canRunWaveSpawning } from "../GameState/GamePhase.js";
 import { Enemy } from "../Entities/Enemy.js";
-import { updateUI } from "../UI/UI.js";
+import { events } from "../Core/EventSystem.js";
 import { ProgressionManager } from "../Progression/ProgressionManager.js";
 
 export class WaveManager {
@@ -211,7 +211,7 @@ export class WaveManager {
 
         const aliveEnemies = state.enemies.filter(e => !e.isDead).length;
         if (this.enemiesSpawned >= this.enemiesToSpawn && aliveEnemies === 0) {
-            updateUI(state, upgrades);
+            events.emit("ui:update", { state, upgrades });
             state.isTransitioning = true;
             state.scheduler.schedule(timingSettings.sectorCompletedDelay, () => {
                 state.isTransitioning = false;
