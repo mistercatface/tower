@@ -4,6 +4,7 @@ class EventSystem {
     constructor() {
         this.listeners = new Map();
         this.context = null;
+        this.warnOnMissingListeners = false;
     }
 
     setContext(ctx) {
@@ -36,9 +37,15 @@ class EventSystem {
     }
 
     emit(event, data = {}) {
-        if (!this.listeners.has(event)) return;
+        const callbacks = this.listeners.get(event);
+        if (!callbacks || callbacks.length === 0) {
+            if (this.warnOnMissingListeners) {
+                console.warn(`[EventSystem] No listeners for "${event}"`);
+            }
+            return;
+        }
         const payload = this.context ? { ...this.context, ...data } : { ...data };
-        this.listeners.get(event).forEach((callback) => callback(payload));
+        callbacks.forEach((callback) => callback(payload));
     }
 }
 
@@ -102,6 +109,30 @@ export function adjustGameSpeed(delta) {
 
 export function setGameZoomFromSlider(sliderValue) {
     events.emit(Events.GAME_SET_ZOOM, { sliderValue });
+}
+
+export function adjustGameZoom(delta) {
+    events.emit(Events.GAME_ADJUST_ZOOM, { delta });
+}
+
+export function setGameZoomAbsolute(zoom) {
+    events.emit(Events.GAME_SET_ZOOM_ABSOLUTE, { zoom });
+}
+
+export function emitMapRequestTravel(nodeId) {
+    events.emit(Events.MAP_REQUEST_TRAVEL, { nodeId });
+}
+
+export function emitMapContinueAfterSector() {
+    events.emit(Events.MAP_CONTINUE_AFTER_SECTOR);
+}
+
+export function showNodeConfirmModal(node) {
+    events.emit(Events.UI_SHOW_NODE_CONFIRM, { node });
+}
+
+export function showSectorClearedModal(node, rewardText) {
+    events.emit(Events.UI_SHOW_SECTOR_CLEARED, { node, rewardText });
 }
 
 export function emitHardReset() {

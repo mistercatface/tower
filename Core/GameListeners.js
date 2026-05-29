@@ -85,6 +85,29 @@ export function registerGameListeners(eventBus, pauseManager) {
         requestUiUpdate();
     });
 
+    eventBus.on(Events.GAME_ADJUST_ZOOM, ({ state, viewport, delta }) => {
+        if (!viewport) return;
+        viewport.setZoom(viewport.zoom + delta, state);
+        requestUiUpdate();
+    });
+
+    eventBus.on(Events.GAME_SET_ZOOM_ABSOLUTE, ({ state, viewport, zoom }) => {
+        if (!viewport) return;
+        viewport.setZoom(zoom, state);
+        requestUiUpdate();
+    });
+
+    eventBus.on(Events.MAP_REQUEST_TRAVEL, ({ state, fsm, nodeId }) => {
+        state.mapTargetNodeId = nodeId;
+        fsm.transition("map_transition");
+    });
+
+    eventBus.on(Events.MAP_CONTINUE_AFTER_SECTOR, ({ state, viewport }) => {
+        state.fsm.transition("map");
+        viewport.snapTo(state.mapPlayerX - state.player.x - viewport.x, state.mapPlayerY - state.player.y - viewport.y);
+        requestUiUpdate();
+    });
+
     eventBus.on(Events.PROGRESS_HARD_RESET, ({ state, resetGame }) => {
         hardResetProgress(state, resetGame);
     });

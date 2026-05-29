@@ -6,7 +6,7 @@ import { Enemy } from "../Entities/Enemy.js";
 import { Projectile } from "../Entities/Projectile.js";
 import { WeaponSystem } from "../Combat/WeaponSystem.js";
 import { spawnInitialPickups } from "../Entities/Pickup.js";
-import { events, Events, requestUiUpdate } from "../Core/EventSystem.js";
+import { showNodeConfirmModal, requestUiUpdate } from "../Core/EventSystem.js";
 import { Explosion } from "../Entities/Explosion/Explosion.js";
 import { navigationSettings } from "../Config/Config.js";
 import { resolveMoveTarget } from "../Spatial/Navigation/PathClearance.js";
@@ -31,13 +31,7 @@ export class MapState {
             if (!neighbor) continue;
             const dist = Math.hypot(neighbor.x - worldCoords.x, neighbor.y - worldCoords.y);
             if (dist < 20) {
-                events.emit(Events.UI_SHOW_NODE_CONFIRM, {
-                    node: neighbor,
-                    onConfirm: () => {
-                        ctx.state.mapTargetNodeId = neighbor.id;
-                        ctx.fsm.transition("map_transition");
-                    }
-                });
+                showNodeConfirmModal(neighbor);
                 break;
             }
         }

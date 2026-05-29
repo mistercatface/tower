@@ -1,7 +1,7 @@
 import { state } from "./GameState/GameState.js";
 import { createUpgrades, createBaseUpgrades } from "./Progression/Upgrades.js";
 import { initializeSaveSystem, loadProgress } from "./Progression/Storage.js";
-import { initUI } from "./UI/UI.js";
+import { initUI, registerUiEventListeners } from "./UI/UI.js";
 import { events, requestUiUpdate, requestUiHudUpdate, showGameOver, hideGameOver } from "./Core/EventSystem.js";
 import { registerAllListeners } from "./Core/GameListeners.js";
 import { PauseManager } from "./Core/PauseManager.js";
@@ -51,7 +51,9 @@ function resetGame() {
 }
 
 events.setContext({ state, upgrades, viewport, fsm, resetGame });
+events.warnOnMissingListeners = true;
 registerAllListeners(events, pauseManager);
+registerUiEventListeners(events);
 
 function didPlayerStateChange() {
     if (state.player.health !== uiSnapshot.health || state.player.isMoving !== uiSnapshot.isMoving) {
@@ -99,5 +101,5 @@ loadProgress(state, upgrades);
 initializeSaveSystem(state);
 initUI(state, upgrades);
 resizeCanvas();
-InputManager.setup(canvas, fsm, viewport);
+InputManager.setup(canvas, fsm);
 resetGame();

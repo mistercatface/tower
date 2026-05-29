@@ -1,8 +1,8 @@
-import { requestUiUpdate } from "../Core/EventSystem.js";
+import { adjustGameZoom, setGameZoomAbsolute } from "../Core/EventSystem.js";
 import { controlSettings } from "../Config/Config.js";
 
 export class InputManager {
-    static setup(canvas, fsm, viewport) {
+    static setup(canvas, fsm) {
         let lastTapTime = 0;
         let initialPinchDistance = null;
         let initialZoom = 1;
@@ -12,8 +12,7 @@ export class InputManager {
             (e) => {
                 e.preventDefault();
                 const zoomAmount = e.deltaY * controlSettings.scrollZoomSensitivity;
-                viewport.setZoom(viewport.zoom + zoomAmount, fsm.context.state);
-                requestUiUpdate();
+                adjustGameZoom(zoomAmount);
             },
             { passive: false },
         );
@@ -25,7 +24,7 @@ export class InputManager {
                     const dx = e.touches[0].clientX - e.touches[1].clientX;
                     const dy = e.touches[0].clientY - e.touches[1].clientY;
                     initialPinchDistance = Math.hypot(dx, dy);
-                    initialZoom = viewport.zoom;
+                    initialZoom = fsm.context.viewport.zoom;
                 }
             },
             { passive: false },
@@ -40,8 +39,7 @@ export class InputManager {
                     const dy = e.touches[0].clientY - e.touches[1].clientY;
                     const currentDistance = Math.hypot(dx, dy);
                     const ratio = currentDistance / initialPinchDistance;
-                    viewport.setZoom(initialZoom * ratio, fsm.context.state);
-                    requestUiUpdate();
+                    setGameZoomAbsolute(initialZoom * ratio);
                 }
             },
             { passive: false },
@@ -60,7 +58,7 @@ export class InputManager {
             const rect = canvas.getBoundingClientRect();
             const screenX = e.clientX - rect.left;
             const screenY = e.clientY - rect.top;
-            const worldCoords = viewport.screenToWorld(screenX, screenY);
+            const worldCoords = fsm.context.viewport.screenToWorld(screenX, screenY);
             fsm.handleInteraction(worldCoords, isDoubleTap);
         });
 
@@ -68,7 +66,7 @@ export class InputManager {
             const rect = canvas.getBoundingClientRect();
             const screenX = e.clientX - rect.left;
             const screenY = e.clientY - rect.top;
-            const worldCoords = viewport.screenToWorld(screenX, screenY);
+            const worldCoords = fsm.context.viewport.screenToWorld(screenX, screenY);
             if (fsm.currentState && fsm.currentState.handlePointerMove) {
                 fsm.currentState.handlePointerMove(worldCoords, { x: screenX, y: screenY }, fsm.context);
             }

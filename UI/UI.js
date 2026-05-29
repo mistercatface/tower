@@ -11,6 +11,8 @@ import {
     setGameZoomFromSlider,
     emitHardReset,
     emitGameRestart,
+    emitMapRequestTravel,
+    emitMapContinueAfterSector,
 } from "../Core/EventSystem.js";
 
 const elements = {
@@ -93,13 +95,13 @@ function setTextIfDifferent(id, text) {
     }
 }
 
-export function showSectorCleared(node, rewardText, onContinue) {
+export function showSectorCleared(node, rewardText) {
     elements.clearedNodeDisplay.innerText = `Sector [${Math.round(node.x)}, ${Math.round(node.y)}]`;
     elements.clearedRewardDisplay.innerText = rewardText;
     elements.sectorClearedModal.style.display = "flex";
     elements.continueSectorBtn.onclick = () => {
         elements.sectorClearedModal.style.display = "none";
-        onContinue();
+        emitMapContinueAfterSector();
     };
 }
 
@@ -149,7 +151,7 @@ export function showUnlockResult(upgradeName, onContinue) {
     elements.unlockModal.style.display = "flex";
 }
 
-export function showNodeConfirm(node, onConfirm) {
+export function showNodeConfirm(node) {
     elements.nodeNameDisplay.innerText = `Sector [${Math.round(node.x)}, ${Math.round(node.y)}]`;
 
     if (node.completed) {
@@ -178,7 +180,7 @@ export function showNodeConfirm(node, onConfirm) {
 
     elements.confirmNodeBtn.onclick = () => {
         elements.nodeConfirmModal.style.display = "none";
-        onConfirm();
+        emitMapRequestTravel(node.id);
     };
 
     elements.cancelNodeBtn.onclick = () => {
@@ -318,8 +320,8 @@ export function registerUiEventListeners(eventBus) {
     eventBus.on(Events.UI_UPDATE, (data) => updateUI(data.state, data.upgrades));
     eventBus.on(Events.UI_UPDATE_HUD, (data) => updateHud(data.state, data.upgrades));
     eventBus.on(Events.UI_SHOW_UPGRADE_CHOICE, (data) => showUpgradeChoice(data.title, data.description, data.choices, data.upgrades, data.onPick));
-    eventBus.on(Events.UI_SHOW_SECTOR_CLEARED, (data) => showSectorCleared(data.node, data.rewardText, data.onContinue));
-    eventBus.on(Events.UI_SHOW_NODE_CONFIRM, (data) => showNodeConfirm(data.node, data.onConfirm));
+    eventBus.on(Events.UI_SHOW_SECTOR_CLEARED, (data) => showSectorCleared(data.node, data.rewardText));
+    eventBus.on(Events.UI_SHOW_NODE_CONFIRM, (data) => showNodeConfirm(data.node));
     eventBus.on(Events.UI_SHOW_GAME_OVER, () => showGameOverScreen());
     eventBus.on(Events.UI_HIDE_GAME_OVER, () => hideGameOverScreen());
 }
@@ -427,8 +429,6 @@ export function initUI(state, upgrades) {
             elements.settingsModal.style.display = "none";
         }
     });
-
-    registerUiEventListeners(events);
 
     updateUI(state, upgrades);
     updateHud(state);

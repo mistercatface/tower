@@ -1,4 +1,4 @@
-import { spawnFloatingText, events, Events, requestUiUpdate, requestProgressDirty, requestProgressSave, requestGamePause, requestGameResume } from "../Core/EventSystem.js";
+import { spawnFloatingText, events, Events, requestUiUpdate, requestProgressDirty, requestProgressSave, requestGamePause, requestGameResume, showSectorClearedModal } from "../Core/EventSystem.js";
 import { StatsManager } from "./StatsManager.js";
 
 export class ProgressionManager {
@@ -262,14 +262,6 @@ export class ProgressionManager {
     }
 
     static finalizeSectorClearance(state, upgrades, currentNode, viewport, rewardText) {
-        events.emit(Events.UI_SHOW_SECTOR_CLEARED, {
-            node: currentNode,
-            rewardText,
-            onContinue: () => {
-                state.fsm.transition("map");
-                viewport.snapTo(state.mapPlayerX - state.player.x - viewport.x, state.mapPlayerY - state.player.y - viewport.y);
-                requestUiUpdate();
-            }
-        });
+        showSectorClearedModal(currentNode, rewardText);
     }
 }
