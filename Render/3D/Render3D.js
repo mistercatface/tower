@@ -328,16 +328,19 @@ export class Render3D {
         const px = state.player.x;
         const py = state.player.y;
 
+        const vx = viewport ? viewport.x : px;
+        const vy = viewport ? viewport.y : py;
+
         this.updateSharedEdges(state);
 
         ctx.save();
 
         const visibleObjects = [];
-        const candidateWalls = state.wallSpatialHash ? state.wallSpatialHash.queryBounds(px - 1500, py - 1500, px + 1500, py + 1500) : state.walls;
+        const candidateWalls = state.wallSpatialHash ? state.wallSpatialHash.queryBounds(vx - 1500, vy - 1500, vx + 1500, vy + 1500) : state.walls;
         for (let i = 0; i < candidateWalls.length; i++) {
             const seg = candidateWalls[i];
             if (seg.isDead) continue;
-            const distSq = (seg.x - px) ** 2 + (seg.y - py) ** 2;
+            const distSq = (seg.x - vx) ** 2 + (seg.y - vy) ** 2;
             if (distSq <= 2250000) {
                 seg._distSq = distSq;
                 seg._renderType = "wall";
@@ -349,7 +352,7 @@ export class Render3D {
             for (let i = 0; i < state.pickups.length; i++) {
                 const p = state.pickups[i];
                 if (p.isDead || p.strategy?.renderMode !== "3d") continue;
-                const distSq = (p.x - px) ** 2 + (p.y - py) ** 2;
+                const distSq = (p.x - vx) ** 2 + (p.y - vy) ** 2;
                 if (distSq <= 2250000) {
                     p._distSq = distSq;
                     p._renderType = p.getRender3DKey();
@@ -382,17 +385,17 @@ export class Render3D {
                     const outX = edgeCx - seg.x;
                     const outY = edgeCy - seg.y;
 
-                    const viewX = edgeCx - px;
-                    const viewY = edgeCy - py;
+                    const viewX = edgeCx - vx;
+                    const viewY = edgeCy - vy;
                     if (outX * viewX + outY * viewY >= 0) continue;
 
                     const healthRatio = Math.max(0, seg.health / seg.maxHealth);
                     const damageAlpha = (1 - healthRatio) * 0.45;
-                    this.drawProjectedFace(ctx, p1, p2, px, py, wallColor, true, wallTexture, damageAlpha);
+                    this.drawProjectedFace(ctx, p1, p2, vx, vy, wallColor, true, wallTexture, damageAlpha);
                 }
             } else {
                 ctx.save();
-                const pc = createPropDrawContext(obj, px, py);
+                const pc = createPropDrawContext(obj, vx, vy);
                 const draw = PROP_RECIPES[obj._renderType];
                 if (draw) draw(ctx, pc);
                 ctx.restore();
