@@ -36,15 +36,9 @@ export class Enemy extends Actor {
         const combatStats = buildEnemyCombatStats(enemyType);
         const reward = computeSpawnReward(wave, enemyType);
         const enemy = new Enemy(x, y, enemyType, combatStats, baseUpgradeDefs, reward);
-
         const levels = computeEnemyUpgradeLevels(wave, enemyType, combatStats);
-        for (const [upgradeId, level] of Object.entries(levels)) {
-            if (enemy.upgrades[upgradeId] !== undefined) {
-                enemy.setUpgradeLevel(upgradeId, level);
-            }
-        }
 
-        enemy.recalculateCombatStats(baseUpgradeDefs);
+        enemy.applySpawnUpgradeLevels(levels, baseUpgradeDefs);
         enemy.health = enemy.maxHealth;
         return enemy;
     }
@@ -65,10 +59,9 @@ export class Enemy extends Actor {
         this.attackType = enemyType.attackType ?? "ranged";
         this.canDodge = enemyType.canDodge ?? false;
         this.enemyType = enemyType;
-        this.initCombatant(combatStats);
-        this.initCombatantUpgradeSlots(baseUpgradeDefs);
+        this.setupCombatant(combatStats, baseUpgradeDefs);
         this.turret = new Turret(0, combatStats.turnSpeed);
-        this.initWeapon();
+        this.initCombatWeapon({ weaponMode: Enemy.createWeaponMode() });
         this.isEngaged = false;
         this.blastAngle = 0;
         this.blastTimer = 0;
@@ -81,30 +74,23 @@ export class Enemy extends Actor {
         this.chargeBar = Enemy.chargeBar;
     }
 
-    initWeapon() {
-        this.weapon = {
-            chargeTime: 1500,
-            range: 112,
-            damage: enemyProjectileSettings.damage,
-            penetration: 0,
-            accuracy: 0.9,
-            weaponMode: new ChargedWeaponMode((state, tx, ty, angle, source) => {
-                const m = Pools.projectiles.acquire(
-                    tx,
-                    ty,
-                    source.radius * enemyProjectileSettings.radiusMultiplier,
-                    enemyProjectileSettings.speed,
-                    state.player,
-                    angle,
-                    source.weapon.damage,
-                    "enemy"
-                );
-                state.projectiles.push(m);
-                if (source) {
-                    PhysicsSystem.applyKnockback(source, angle + Math.PI, m.radius * enemyProjectileSettings.knockbackMultiplier);
-                }
-            }),
-        };
+    static createWeaponMode() {
+        return new ChargedWeaponMode((state, tx, ty, angle, source) => {
+            const m = Pools.projectiles.acquire(
+                tx,
+                ty,
+                source.radius * enemyProjectileSettings.radiusMultiplier,
+                enemyProjectileSettings.speed,
+                state.player,
+                angle,
+                source.weapon.damage,
+                "enemy"
+            );
+            state.projectiles.push(m);
+            if (source) {
+                PhysicsSystem.applyKnockback(source, angle + Math.PI, m.radius * enemyProjectileSettings.knockbackMultiplier);
+            }
+        });
     }
 
     handleHit(baseDamage, ctx, hitType) {
@@ -173,9 +159,8 @@ export class Enemy extends Actor {
         return false;
     }
 
-    renderStatusBars(ctx, renderer, state) {
-        const chargeRatio = this.turret && this.turret.charge > 0 ? this.turret.charge / (this.weapon.chargeTime || 1) : 0;
-        this.renderBars(ctx, renderer.enemyCache, 14, [chargeRatio]);
+    renderStatusBars(ctx, renderer, _state) {
+        super.renderStatusBars(ctx, renderer.enemyCache, 14);
     }
 
     render(ctx, renderer, state) {

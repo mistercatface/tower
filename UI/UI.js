@@ -599,10 +599,10 @@ export function updateUI(state, upgrades) {
     }
 
     if (elements.speedDisplay) {
-        state.selectedSpeed = Math.min(state.selectedSpeed, state.gameSpeed);
+        state.selectedSpeed = Math.min(state.selectedSpeed, state.runStats.gameSpeed.value);
         elements.speedDisplay.innerText = state.selectedSpeed.toFixed(2) + "x";
         elements.speedDownBtn.style.opacity = state.selectedSpeed <= 0.5 ? "0.5" : "1";
-        elements.speedUpBtn.style.opacity = state.selectedSpeed >= state.gameSpeed ? "0.5" : "1";
+        elements.speedUpBtn.style.opacity = state.selectedSpeed >= state.runStats.gameSpeed.value ? "0.5" : "1";
     }
 
     if (state.currentUpgradeTab === "abilities") {

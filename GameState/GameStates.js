@@ -138,7 +138,7 @@ export class CombatState {
         }
         
         ctx.state.waveManager.startCombat();
-        ctx.state.turrets.forEach(t => t.currentLaserLength = 0);
+        ctx.state.player.turrets.forEach(t => t.currentLaserLength = 0);
         
         // Shift grid center to player position and rebuild local flow field
         ctx.state.flowFieldGrid.shiftCenter(

@@ -68,7 +68,7 @@ export function registerGameListeners(eventBus, pauseManager) {
         if (delta < 0) {
             state.selectedSpeed = Math.max(0.5, state.selectedSpeed + delta);
         } else {
-            state.selectedSpeed = Math.min(state.gameSpeed, state.selectedSpeed + delta);
+            state.selectedSpeed = Math.min(state.runStats.gameSpeed.value, state.selectedSpeed + delta);
         }
         requestUiUpdate();
     });

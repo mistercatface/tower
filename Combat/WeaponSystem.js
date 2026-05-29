@@ -243,7 +243,7 @@ export class WeaponSystem {
         const engagedTargets = new Set();
         const actualBlocksTargeting = blocksTargeting || (state.player && state.player.currentState && state.player.currentState.blocksTargeting);
 
-        for (const turret of state.turrets) {
+        for (const turret of state.player.turrets) {
             if (turret.target) {
                 const dist = Math.hypot(turret.target.x - state.player.x, turret.target.y - state.player.y);
                 if (

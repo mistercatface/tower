@@ -1,4 +1,3 @@
-import { Turret } from "../Entities/Turret.js";
 import { perkMilestones } from "../Config/Config.js";
 import { xpForLevel } from "../Config/configHelpers.js";
 import { createUpgradeLevels, resetUpgradeLevels } from "../Entities/CombatantStats.js";
@@ -10,7 +9,7 @@ export class StatsManager {
         state.upgradeDefs = upgradeList;
         const player = state.player;
         if (Object.keys(player.upgrades).length === 0) {
-            player.upgrades = createUpgradeLevels(upgradeList, player.stats.baseUpgradeCost.value);
+            player.upgrades = createUpgradeLevels(upgradeList, state.runStats.baseUpgradeCost.value);
             StatsManager.resetUpgradesToDefault(state);
         }
         for (const upg of upgradeList) {
@@ -42,35 +41,11 @@ export class StatsManager {
     }
 
     static recalculateStats(state, upgradesList) {
-        const player = state.player;
-        const stats = player.stats;
-
-        player.recalculateCombatStats(upgradesList ?? state.upgradeDefs, (upg) => {
+        const upgradeDefs = upgradesList ?? state.upgradeDefs;
+        state.player.recalculate(state, upgradeDefs, (upg) => {
             if (upg.isAbility && !state.abilities[upg.id]) return false;
             return true;
         });
-
-        state.gameSpeed = stats.gameSpeed.value;
-        state.selectedSpeed = Math.min(state.selectedSpeed, state.gameSpeed);
-        state.pointBonus = stats.pointBonus.value;
-
-        const targetTurretCount = Math.floor(stats.turretCount.value);
-        while (state.turrets.length < targetTurretCount) {
-            const newAngle = (state.turrets.length / targetTurretCount) * Math.PI * 2;
-            state.turrets.push(new Turret(newAngle, stats.turnSpeed.value));
-        }
-        while (state.turrets.length > targetTurretCount) {
-            state.turrets.pop();
-        }
-        state.turrets.forEach(t => t.turnSpeed = stats.turnSpeed.value);
-
-        if (upgradesList) {
-            upgradesList.forEach((upg) => {
-                if (upg.isAbility && state.abilities && state.abilities[upg.id] && upg.abilityApplyFn) {
-                    upg.abilityApplyFn(state.player.weapon, state.player);
-                }
-            });
-        }
     }
 
     static resetRun(state, upgradesList) {
@@ -103,7 +78,7 @@ export class StatsManager {
                 }
             }
             player.upgrades[key].level = player.upgrades[key].baseLevel;
-            player.upgrades[key].ptsCost = player.stats.baseUpgradeCost.value;
+            player.upgrades[key].ptsCost = state.runStats.baseUpgradeCost.value;
         }
 
         if (player.startingAbilities) {

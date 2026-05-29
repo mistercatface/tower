@@ -3,7 +3,13 @@ import { Separation } from "../Spatial/Motion/Separation.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { enemyStates } from "./EnemyStates.js";
 import { transitionEntity } from "./EntityFsm.js";
-import { createCombatantStats, applyUpgradesToStats, syncActorCombatFromStats, initCombatantUpgradeSlots } from "./CombatantStats.js";
+import {
+    createCombatantStats,
+    applyUpgrades,
+    applyUpgradesToStats,
+    syncActorCombatFromStats,
+    initCombatantUpgradeSlots,
+} from "./CombatantStats.js";
 
 export class Actor extends DestructibleEntity {
     constructor(x, y, radius, speed, health, color, type, accelRate = 3.0, canDamageWalls = false) {
@@ -16,12 +22,12 @@ export class Actor extends DestructibleEntity {
         this.accelRate = accelRate;
         this.canDamageWalls = canDamageWalls;
         this.turnSpeed = 10;
-        
+
         this.desiredX = 0;
         this.desiredY = 0;
         this.vx = 0;
         this.vy = 0;
-        
+
         this.separation = new Separation();
         this.healthBar = null;
         this.chargeBar = null;
@@ -29,9 +35,18 @@ export class Actor extends DestructibleEntity {
         this.stats = null;
         this.upgrades = {};
         this.baseMoveSpeed = speed;
+        this.turret = null;
+        this.turrets = null;
         this.currentState = enemyStates.navigating;
         this.currentStateName = "navigating";
         this.stateData = {};
+    }
+
+    setupCombatant(combatStats, upgradeDefs = null) {
+        this.initCombatant(combatStats);
+        if (upgradeDefs) {
+            this.initCombatantUpgradeSlots(upgradeDefs);
+        }
     }
 
     initCombatant(baseStats) {
@@ -43,6 +58,31 @@ export class Actor extends DestructibleEntity {
         initCombatantUpgradeSlots(this.upgrades, upgradeDefs);
     }
 
+    initCombatWeapon({ weaponMode = null, linkAccuracyToStats = false } = {}) {
+        const actor = this;
+        const weapon = {
+            chargeTime: this.stats.chargeTime.baseValue,
+            range: this.stats.range.baseValue,
+            damage: this.stats.damage.baseValue,
+            penetration: this.stats.penetration.baseValue,
+            accuracyModifier: 0,
+            weaponMode,
+        };
+
+        if (linkAccuracyToStats) {
+            Object.defineProperty(weapon, "accuracy", {
+                get() {
+                    return Math.min(1, actor.stats.accuracy.value + this.accuracyModifier);
+                },
+                configurable: true,
+            });
+        } else {
+            weapon.accuracy = this.stats.accuracy.baseValue;
+        }
+
+        this.weapon = weapon;
+    }
+
     setUpgradeLevel(upgradeId, level) {
         if (!this.upgrades[upgradeId]) {
             this.upgrades[upgradeId] = { level: 0, baseLevel: 0 };
@@ -51,10 +91,46 @@ export class Actor extends DestructibleEntity {
         this.upgrades[upgradeId].baseLevel = level;
     }
 
-    recalculateCombatStats(upgradeDefs, shouldApply = () => true) {
+    applySpawnUpgradeLevels(levelById, upgradeDefs) {
+        for (const [upgradeId, level] of Object.entries(levelById)) {
+            if (this.upgrades[upgradeId] !== undefined) {
+                this.setUpgradeLevel(upgradeId, level);
+            }
+        }
+        this.recalculateStats(upgradeDefs);
+    }
+
+    recalculateStats(upgradeDefs, { runStats = null, shouldApply = () => true, afterSync = null } = {}) {
         if (!this.stats) return;
-        applyUpgradesToStats(this.stats, this.upgrades, upgradeDefs, shouldApply);
+
+        if (runStats) {
+            applyUpgrades(this.stats, runStats, this.upgrades, upgradeDefs, shouldApply);
+        } else {
+            applyUpgradesToStats(this.stats, this.upgrades, upgradeDefs, shouldApply);
+        }
+
         syncActorCombatFromStats(this, this.stats, this.baseMoveSpeed);
+        afterSync?.(this);
+    }
+
+    getChargeRatios() {
+        if (!this.weapon) return [];
+
+        const chargeTime = this.weapon.chargeTime || 1;
+        const sources = this.turrets?.length ? this.turrets : (this.turret ? [this.turret] : []);
+        const ratios = [];
+
+        for (const turret of sources) {
+            if (turret?.charge > 0) {
+                ratios.push(turret.charge / chargeTime);
+            }
+        }
+
+        return ratios;
+    }
+
+    renderStatusBars(ctx, cache, yOffset) {
+        this.renderBars(ctx, cache, yOffset, this.getChargeRatios());
     }
 
     changeState(stateName, stateDataInit = null) {

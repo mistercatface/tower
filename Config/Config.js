@@ -67,6 +67,13 @@ export const perkMilestones = [2, 4, 6, 8, 10, 12, 14, 16];
 
 export const defaultUpgradeCost = 50;
 
+export const runBaseStats = {
+    gameSpeed: 2.0,
+    pointBonus: 0,
+    baseUpgradeCost: defaultUpgradeCost,
+    turretCount: 1,
+};
+
 export const playerBaseStats = {
     damage: 1,
     turnSpeed: Math.PI * 3,
@@ -75,12 +82,10 @@ export const playerBaseStats = {
     maxChargeTime: 1000,
     range: 150,
     maxHealth: 100,
-    gameSpeed: 2.0,
     accuracy: 0.75,
     penetration: 0,
     moveSpeedMultiplier: 1.0,
     speed: 50,
-    turretCount: 1,
     startingAbilities: ["Reposition"],
 };
 
@@ -144,12 +149,10 @@ export const enemyBaseStats = {
     maxChargeTime: 3000,
     range: 112,
     maxHealth: 1,
-    gameSpeed: 1,
     accuracy: 0.9,
     penetration: 0,
     moveSpeedMultiplier: 1.0,
     speed: 100,
-    turretCount: 1,
 };
 
 export const THEME_COLORS = [

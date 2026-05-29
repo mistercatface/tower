@@ -8,13 +8,18 @@ export function createCombatantStats(baseStats) {
         chargeTime: new Stat(baseStats.chargeTime, baseStats.minChargeTime, baseStats.maxChargeTime),
         range: new Stat(baseStats.range),
         maxHealth: new Stat(baseStats.maxHealth),
-        gameSpeed: new Stat(baseStats.gameSpeed),
-        pointBonus: new Stat(0),
         accuracy: new Stat(baseStats.accuracy),
         penetration: new Stat(baseStats.penetration),
         moveSpeedMultiplier: new Stat(baseStats.moveSpeedMultiplier),
-        baseUpgradeCost: new Stat(defaultUpgradeCost),
-        turretCount: new Stat(baseStats.turretCount),
+    };
+}
+
+export function createRunStats(runBaseStats) {
+    return {
+        gameSpeed: new Stat(runBaseStats.gameSpeed),
+        pointBonus: new Stat(runBaseStats.pointBonus),
+        baseUpgradeCost: new Stat(runBaseStats.baseUpgradeCost ?? defaultUpgradeCost),
+        turretCount: new Stat(runBaseStats.turretCount),
     };
 }
 
@@ -39,16 +44,25 @@ export function initCombatantUpgradeSlots(upgrades, upgradeDefs) {
     }
 }
 
-export function applyUpgradesToStats(stats, upgradeLevels, upgradeDefs, shouldApply) {
-    for (const key in stats) {
-        stats[key].reset();
+export function applyUpgrades(combatStats, runStats, upgradeLevels, upgradeDefs, shouldApply) {
+    for (const key in combatStats) {
+        combatStats[key].reset();
+    }
+    if (runStats) {
+        for (const key in runStats) {
+            runStats[key].reset();
+        }
     }
     for (const upg of upgradeDefs) {
         const level = upgradeLevels[upg.id]?.level ?? 0;
         if (level > 0 && upg.applyFn && shouldApply(upg, level)) {
-            upg.applyFn(stats, level);
+            upg.applyFn(combatStats, runStats, level);
         }
     }
+}
+
+export function applyUpgradesToStats(combatStats, upgradeLevels, upgradeDefs, shouldApply) {
+    applyUpgrades(combatStats, null, upgradeLevels, upgradeDefs, shouldApply);
 }
 
 export function syncActorCombatFromStats(actor, stats, baseMoveSpeed) {
@@ -65,17 +79,12 @@ export function syncActorCombatFromStats(actor, stats, baseMoveSpeed) {
         actor.weapon.accuracy = stats.accuracy.value;
     }
 
-    if (typeof actor.updateMaxHealth === "function") {
-        actor.updateMaxHealth(stats.maxHealth.value);
-    } else {
-        actor.maxHealth = stats.maxHealth.value;
-        actor.health = Math.min(actor.health, actor.maxHealth);
-    }
-
     if (baseMoveSpeed !== undefined) {
         actor.baseMoveSpeed = baseMoveSpeed;
         actor.speed = baseMoveSpeed * stats.moveSpeedMultiplier.value;
     }
+
+    actor.updateMaxHealth(stats.maxHealth.value);
 
     if (actor.turret) {
         actor.turret.turnSpeed = stats.turnSpeed.value;

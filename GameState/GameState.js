@@ -4,11 +4,12 @@ import { FlowFieldGrid } from "../Spatial/Navigation/FlowFieldGrid.js";
 import { WorldObstacleGrid } from "../Spatial/World/ObstacleGrid.js";
 import { HierarchicalNavigator } from "../Spatial/Navigation/HierarchicalNavigator.js";
 import { NavigationService } from "../Spatial/Navigation/NavigationService.js";
-import { gridSettings, mapSettings } from "../Config/Config.js";
+import { gridSettings, mapSettings, runBaseStats } from "../Config/Config.js";
 import { Scheduler } from "../Core/Scheduler.js";
 import { WaveManager } from "../Combat/WaveManager.js";
 import { SpatialHash } from "../Spatial/World/SpatialHash.js";
 import { Pools } from "../Core/Pools.js";
+import { createRunStats } from "../Entities/CombatantStats.js";
 
 export class GameState {
     constructor() {
@@ -26,8 +27,9 @@ export class GameState {
         this.claimedPerkMilestones = [];
         this.discoveredAbilities = new Set();
 
+        this.runStats = createRunStats(runBaseStats);
         this.player = new Player(0, 0, 8);
-        this.turrets = [new Turret(0, this.player.stats.turnSpeed.value)];
+        this.player.turrets = [new Turret(0, this.player.stats.turnSpeed.value)];
 
         this.obstacleGrid = new WorldObstacleGrid(gridSettings.cellSize);
         this.flowFieldGrid = new FlowFieldGrid(gridSettings.cellSize, gridSettings.width, gridSettings.height, this.obstacleGrid);
@@ -112,7 +114,7 @@ export class GameState {
         this.player.clearHealAccumulator();
         this.player.isDead = false;
         this.player.changeState("navigating");
-        this.turrets = [new Turret(0, this.player.stats.turnSpeed.value)];
+        this.player.turrets = [new Turret(0, this.player.stats.turnSpeed.value)];
 
         this.enemies = [];
         if (this.projectiles) {
@@ -135,9 +137,7 @@ export class GameState {
             { key: "floatingTexts", zIndex: 90 },
         ];
 
-        this.gameSpeed = 2.0;
         this.selectedSpeed = 1.0;
-        this.pointBonus = 0;
     }
 }
 

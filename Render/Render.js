@@ -38,7 +38,7 @@ export class Renderer {
         state.player.y = state.mapPlayerY;
         state.player.render(this.ctx, this, state);
 
-        for (const turret of state.turrets) {
+        for (const turret of state.player.turrets) {
             turret.render(this.ctx, state.mapPlayerX, state.mapPlayerY, state.player.radius, this);
         }
 
@@ -160,7 +160,7 @@ export class Renderer {
 
     drawPlayerAndTurrets(state, viewport) {
         state.player.render(this.ctx, this, state);
-        for (const turret of state.turrets) {
+        for (const turret of state.player.turrets) {
             turret.render(this.ctx, state.player.x, state.player.y, state.player.radius, this);
         }
     }

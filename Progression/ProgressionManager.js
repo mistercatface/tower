@@ -3,7 +3,7 @@ import { StatsManager } from "./StatsManager.js";
 
 export class ProgressionManager {
     static processEnemyKillRewards(enemy, state, upgrades) {
-        const pointsReward = enemy.reward * 10 + state.pointBonus;
+        const pointsReward = enemy.reward * 10 + state.runStats.pointBonus.value;
         let xpGain = 5;
 
         upgrades.forEach((upg) => {

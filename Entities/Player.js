@@ -1,9 +1,9 @@
 import { Actor } from "./Actor.js";
-import { Utilities } from "../Core/Utilities.js";
 import { spawnFloatingText } from "../Core/EventSystem.js";
 import { playerBaseStats, NAV_PROFILES, navigationSettings } from "../Config/Config.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
 import { createEntityBars } from "./EntityBars.js";
+import { Turret } from "./Turret.js";
 
 const playerBars = createEntityBars({
     healthWidth: 48,
@@ -18,8 +18,8 @@ export class Player extends Actor {
 
     constructor(x, y, radius) {
         super(x, y, radius, playerBaseStats.speed, playerBaseStats.maxHealth, "#4CAF50", "player", 3.0, true);
-        this.initCombatant(playerBaseStats);
-        this.initWeapon();
+        this.setupCombatant(playerBaseStats);
+        this.initCombatWeapon({ linkAccuracyToStats: true });
         this.healthBar = Player.healthBar;
         this.chargeBar = Player.chargeBar;
         this.spawnX = x;
@@ -39,22 +39,42 @@ export class Player extends Actor {
         this.mass = 50.0;
         this.canDamageWalls = true;
         this.startingAbilities = playerBaseStats.startingAbilities || [];
+        this.turrets = [];
     }
 
-    initWeapon() {
-        const player = this;
-        this.weapon = {
-            chargeTime: playerBaseStats.chargeTime,
-            range: playerBaseStats.range,
-            damage: playerBaseStats.damage,
-            penetration: playerBaseStats.penetration,
-            accuracyModifier: 0,
-            get accuracy() {
-                let acc = player.stats.accuracy.value;
-                acc += this.accuracyModifier;
-                return Math.min(1, acc);
+    recalculate(state, upgradeDefs, shouldApply = () => true) {
+        this.recalculateStats(upgradeDefs, {
+            runStats: state.runStats,
+            shouldApply,
+            afterSync: (player) => {
+                player.syncTurrets(state.runStats);
+                if (upgradeDefs) {
+                    for (const upg of upgradeDefs) {
+                        if (upg.isAbility && state.abilities?.[upg.id] && upg.abilityApplyFn) {
+                            upg.abilityApplyFn(player.weapon, player);
+                        }
+                    }
+                }
             },
-        };
+        });
+
+        state.selectedSpeed = Math.min(state.selectedSpeed, state.runStats.gameSpeed.value);
+    }
+
+    syncTurrets(runStats) {
+        const turnSpeed = this.stats.turnSpeed.value;
+        const targetTurretCount = Math.floor(runStats.turretCount.value);
+
+        while (this.turrets.length < targetTurretCount) {
+            const newAngle = (this.turrets.length / targetTurretCount) * Math.PI * 2;
+            this.turrets.push(new Turret(newAngle, turnSpeed));
+        }
+        while (this.turrets.length > targetTurretCount) {
+            this.turrets.pop();
+        }
+        this.turrets.forEach((turret) => {
+            turret.turnSpeed = turnSpeed;
+        });
     }
 
     handleHit(damage, ctx, hitType) {
@@ -143,19 +163,6 @@ export class Player extends Actor {
         this.desiredY = 0;
         state?.navigation?.clear(this);
     }
-    
-    heal(amount) {
-        this.health = Math.min(this.maxHealth, this.health + amount);
-    }
-
-    fullHeal() {
-        this.health = this.maxHealth;
-    }
-
-    updateMaxHealth(newMaxHealth) {
-        this.maxHealth = newMaxHealth;
-        this.health = Math.min(this.health, this.maxHealth);
-    }
 
     addHealAccumulator(amount) {
         this.healAccumulator += amount;
@@ -165,7 +172,7 @@ export class Player extends Actor {
             this.healAccumulator -= healAmount;
         }
     }
-    
+
     clearHealAccumulator() {
         this.healAccumulator = 0;
     }
@@ -202,17 +209,8 @@ export class Player extends Actor {
         }
     }
 
-    renderStatusBars(ctx, renderer, state) {
-        const cache = renderer.playerCache;
-        const chargeRatios = [];
-        if (state && state.turrets && this.weapon) {
-            for (const turret of state.turrets) {
-                if (turret && turret.charge > 0) {
-                    chargeRatios.push(turret.charge / (this.weapon.chargeTime || 1));
-                }
-            }
-        }
-        this.renderBars(ctx, cache, this.radius + 14, chargeRatios);
+    renderStatusBars(ctx, renderer, _state) {
+        super.renderStatusBars(ctx, renderer.playerCache, this.radius + 14);
     }
 
     render(ctx, renderer, state) {

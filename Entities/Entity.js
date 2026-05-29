@@ -68,4 +68,17 @@ export class DestructibleEntity extends Entity {
         }
         return false;
     }
+
+    heal(amount) {
+        this.health = Math.min(this.maxHealth, this.health + amount);
+    }
+
+    fullHeal() {
+        this.health = this.maxHealth;
+    }
+
+    updateMaxHealth(newMaxHealth) {
+        this.maxHealth = newMaxHealth;
+        this.health = Math.min(this.health, this.maxHealth);
+    }
 }

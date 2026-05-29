@@ -75,7 +75,7 @@ export const createBaseUpgrades = () => [
         category: "attack",
         name: "Damage",
         description: "Increases base weapon damage.",
-        applyFn: (stats, level) => { stats.damage.flatModifiers += level; },
+        applyFn: (combat, _run, level) => { combat.damage.flatModifiers += level; },
         currentStrFn: (level) => 1 + level,
         nextStrFn: (level) => 1 + (level + 1),
         dynamicStrFn: (state) => state.player.weapon.damage
@@ -85,7 +85,7 @@ export const createBaseUpgrades = () => [
         category: "attack",
         name: "Accuracy",
         description: "Reduces weapon spread.",
-        applyFn: (stats, level) => { stats.accuracy.flatModifiers += level * 0.01; },
+        applyFn: (combat, _run, level) => { combat.accuracy.flatModifiers += level * 0.01; },
         currentStrFn: (level) => (75 + level) + "%",
         nextStrFn: (level) => (75 + level + 1) + "%",
         maxLevel: 25,
@@ -96,7 +96,7 @@ export const createBaseUpgrades = () => [
         category: "attack",
         name: "Penetration",
         description: "Projectiles pierce enemies they kill.",
-        applyFn: (stats, level) => { stats.penetration.flatModifiers += level; },
+        applyFn: (combat, _run, level) => { combat.penetration.flatModifiers += level; },
         currentStrFn: (level) => "+" + level,
         nextStrFn: (level) => "+" + (level + 1),
         maxLevel: 2
@@ -106,7 +106,7 @@ export const createBaseUpgrades = () => [
         category: "attack",
         name: "Turn Speed",
         description: "Increases turret rotation speed.",
-        applyFn: (stats, level) => { stats.turnSpeed.flatModifiers += level * Math.PI * 0.5; },
+        applyFn: (combat, _run, level) => { combat.turnSpeed.flatModifiers += level * Math.PI * 0.5; },
         currentStrFn: (level) => (3 + level * 0.5).toFixed(1) + "π",
         nextStrFn: (level) => (3 + (level + 1) * 0.5).toFixed(1) + "π"
     }),
@@ -115,7 +115,7 @@ export const createBaseUpgrades = () => [
         category: "attack",
         name: "Fire Rate",
         description: "Reduces time between shots.",
-        applyFn: (stats, level) => { stats.chargeTime.flatModifiers -= level * 100; },
+        applyFn: (combat, _run, level) => { combat.chargeTime.flatModifiers -= level * 100; },
         currentStrFn: (level) => Math.max(100, 1000 - level * 50) + "ms",
         nextStrFn: (level) => Math.max(100, 1000 - (level + 1) * 50) + "ms",
         maxLevel: 18,
@@ -126,7 +126,7 @@ export const createBaseUpgrades = () => [
         category: "attack",
         name: "Range",
         description: "Increases weapon targeting range.",
-        applyFn: (stats, level) => { stats.range.flatModifiers += level * 10; },
+        applyFn: (combat, _run, level) => { combat.range.flatModifiers += level * 10; },
         currentStrFn: (level) => 150 + level * 10,
         nextStrFn: (level) => 150 + (level + 1) * 10
     }),
@@ -135,7 +135,7 @@ export const createBaseUpgrades = () => [
         category: "defense",
         name: "Health",
         description: "Increases maximum player health.",
-        applyFn: (stats, level) => { stats.maxHealth.flatModifiers += level * 20; },
+        applyFn: (combat, _run, level) => { combat.maxHealth.flatModifiers += level * 20; },
         currentStrFn: (level) => 100 + level * 20,
         nextStrFn: (level) => 100 + (level + 1) * 20,
         onPurchase: (state) => { state.player.heal(20); }
@@ -160,7 +160,7 @@ export const createBaseUpgrades = () => [
         category: "defense",
         name: "Move Speed",
         description: "Increases player movement speed.",
-        applyFn: (stats, level) => { stats.moveSpeedMultiplier.flatModifiers += level * 0.25; },
+        applyFn: (combat, _run, level) => { combat.moveSpeedMultiplier.flatModifiers += level * 0.25; },
         currentStrFn: (level) => "x" + (1.0 + level * 0.25).toFixed(2),
         nextStrFn: (level) => "x" + (1.0 + (level + 1) * 0.25).toFixed(2),
         maxLevel: 4,
@@ -177,13 +177,13 @@ export const createUpgrades = () => [
         maxLevel: 1,
         minPlayerLevel: 8,
         isPerk: true,
-        applyFn: (stats, level) => {
-            stats.baseUpgradeCost.flatModifiers -= 10 * level;
+        applyFn: (_combat, run, level) => {
+            run.baseUpgradeCost.flatModifiers -= 10 * level;
         },
         onPurchase: (state) => {
             for (const key in state.player.upgrades) {
                 const cost = upgradeCostAtLevel(
-                    state.player.stats.baseUpgradeCost.value,
+                    state.runStats.baseUpgradeCost.value,
                     state.player.upgrades[key].level
                 );
                 state.player.upgrades[key].ptsCost = cost;
@@ -221,8 +221,8 @@ export const createUpgrades = () => [
         description: "Fire Rate +10%.",
         maxLevel: 1,
         isPerk: true,
-        applyFn: (stats, level) => {
-            stats.chargeTime.multiplierModifiers /= 1.1;
+        applyFn: (combat, _run, level) => {
+            combat.chargeTime.multiplierModifiers /= 1.1;
         }
     }),
     new Upgrade({
@@ -258,8 +258,8 @@ export const createUpgrades = () => [
         maxLevel: 1,
         isAbility: true,
         replaces: ["TwinStrike", "TripleStrike"],
-        applyFn: (stats, level) => {
-            stats.turnSpeed.multiplierModifiers *= 0.5;
+        applyFn: (combat, _run, level) => {
+            combat.turnSpeed.multiplierModifiers *= 0.5;
         },
         abilityApplyFn: (weapon, player) => {
             weapon.damage *= 0.33;
@@ -330,8 +330,8 @@ export const createUpgrades = () => [
         description: "When Active: Shoot two guns at once. Bullets deal half damage.",
         maxLevel: 1,
         isAbility: true,
-        applyFn: (stats, level) => {
-            stats.turretCount.flatModifiers += 1;
+        applyFn: (_combat, run, level) => {
+            run.turretCount.flatModifiers += 1;
         },
         abilityApplyFn: (weapon, player) => {
             weapon.damage *= 0.5;
@@ -347,8 +347,8 @@ export const createUpgrades = () => [
         isAbility: true,
         requires: ['TwoGuns'],
         replaces: ['TwoGuns'],
-        applyFn: (stats, level) => {
-            stats.turretCount.flatModifiers += 2;
+        applyFn: (_combat, run, level) => {
+            run.turretCount.flatModifiers += 2;
         },
         abilityApplyFn: (weapon, player) => {
             weapon.damage *= 0.33;
@@ -440,7 +440,7 @@ export const createUpgrades = () => [
         category: "meta",
         name: "Game Speed",
         description: "Unlocks faster game speed options.",
-        applyFn: (stats, level) => { stats.gameSpeed.flatModifiers += level * 0.25; },
+        applyFn: (_combat, run, level) => { run.gameSpeed.flatModifiers += level * 0.25; },
         currentStrFn: (level) => "x" + (2.0 + level * 0.25).toFixed(2),
         nextStrFn: (level) => "x" + (2.0 + (level + 1) * 0.25).toFixed(2),
         maxLevel: 2,
@@ -450,7 +450,7 @@ export const createUpgrades = () => [
         category: "meta",
         name: "Bonus Points",
         description: "Bonus points per kill.",
-        applyFn: (stats, level) => { stats.pointBonus.flatModifiers += level; },
+        applyFn: (_combat, run, level) => { run.pointBonus.flatModifiers += level; },
         currentStrFn: (level) => "+" + level,
         nextStrFn: (level) => "+" + (level + 1),
     })
