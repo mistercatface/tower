@@ -11,6 +11,9 @@ import {
     initCombatantUpgradeSlots,
 } from "./CombatantStats.js";
 import { Turret } from "./Turret.js";
+import { Utilities } from "../Core/Utilities.js";
+import { spawnFloatingText } from "../Core/EventSystem.js";
+import { resolveWeaponModeForGun } from "../Combat/WeaponSystem.js";
 import { applyActorGunModifiers, getSlotFireIntervalMs } from "../Combat/gunCombat.js";
 import { getGunDefinition } from "../Config/gunDefinitions.js";
 import {
@@ -107,10 +110,6 @@ export class Actor extends DestructibleEntity {
         return this.turrets;
     }
 
-    getPrimaryTurret() {
-        return this.turrets[0] ?? null;
-    }
-
     syncTurretCount(count, turnSpeed) {
         const targetCount = Math.max(0, Math.floor(count));
 
@@ -152,6 +151,53 @@ export class Actor extends DestructibleEntity {
         }
 
         applyActorGunModifiers(this);
+    }
+
+    turnAllTurretsTowards(targetAngle, dt) {
+        for (const turret of this.getTurrets()) {
+            turret.angle = Utilities.turnAngleTowards(turret.angle, targetAngle, turret.turnSpeed, dt);
+        }
+    }
+
+    processAllTurrets(dt, state, targetResolver, blocksTargeting, combatEvents = []) {
+        const resolveTarget =
+            typeof targetResolver === "function" ? targetResolver : () => targetResolver;
+
+        for (const turret of this.getTurrets()) {
+            const gun = getGunDefinition(turret.gunId);
+            const mode = resolveWeaponModeForGun(gun);
+            const target = resolveTarget(turret);
+            mode.processTurret(dt, state, this, gun, turret, target, blocksTargeting, combatEvents);
+        }
+
+        return combatEvents;
+    }
+
+    recalculateFromRun(state, upgradeDefs, shouldApply = () => true) {
+        this.recalculateStats(upgradeDefs, {
+            runStats: state.runStats,
+            shouldApply,
+            afterSync: (actor) => {
+                if (actor.weaponLoadout.length > 0) {
+                    actor.applyWeaponLoadout(actor.weaponLoadout);
+                }
+            },
+        });
+    }
+
+    onDamageFloatingText(damage, hitType) {
+        if (hitType === "blast") {
+            spawnFloatingText({ variant: "blastDamage", x: this.x, y: this.y, damage });
+        }
+    }
+
+    onHitAfterDamage(_damage, _ctx, _hitType, _died) {}
+
+    handleHit(damage, ctx, hitType) {
+        const died = this.takeDamage(damage);
+        this.onDamageFloatingText(damage, hitType);
+        this.onHitAfterDamage(damage, ctx, hitType, died);
+        return died;
     }
 
     renderTurrets(ctx, renderer, color = this.color) {

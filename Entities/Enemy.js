@@ -1,7 +1,7 @@
 import { Utilities } from "../Core/Utilities.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
 import { Actor } from "./Actor.js";
-import { spawnFloatingText, emitCombatEnemyKilled } from "../Core/EventSystem.js";
+import { emitCombatEnemyKilled } from "../Core/EventSystem.js";
 import { NAV_PROFILES } from "../Config/Config.js";
 import { rollEnemyStartLoadout } from "../Combat/weaponLoadout.js";
 import { createEntityBars } from "./EntityBars.js";
@@ -71,13 +71,7 @@ export class Enemy extends Actor {
         this.chargeBar = Enemy.chargeBar;
     }
 
-    handleHit(baseDamage, ctx, hitType) {
-        const died = this.takeDamage(baseDamage);
-
-        if (hitType === "blast") {
-            spawnFloatingText({ variant: "blastDamage", x: this.x, y: this.y, damage: baseDamage });
-        }
-
+    onHitAfterDamage(_damage, _ctx, _hitType, died) {
         if (died) {
             emitCombatEnemyKilled(this);
         }

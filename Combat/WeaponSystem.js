@@ -297,12 +297,9 @@ export class WeaponSystem {
             if (turret.target) {
                 engagedTargets.add(turret.target);
             }
-
-            const gun = getGunDefinition(turret.gunId ?? defaultGunId);
-            const mode = resolveWeaponModeForGun(gun);
-            mode.processTurret(dt, state, actor, gun, turret, turret.target, actualBlocksTargeting, combatEvents);
         }
 
+        actor.processAllTurrets(dt, state, (turret) => turret.target, actualBlocksTargeting, combatEvents);
         return combatEvents;
     }
 }

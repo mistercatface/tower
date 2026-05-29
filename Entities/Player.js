@@ -41,25 +41,13 @@ export class Player extends Actor {
     }
 
     recalculate(state, upgradeDefs, shouldApply = () => true) {
-        this.recalculateStats(upgradeDefs, {
-            runStats: state.runStats,
-            shouldApply,
-            afterSync: (player) => {
-                if (player.weaponLoadout.length > 0) {
-                    player.applyWeaponLoadout(player.weaponLoadout);
-                }
-            },
-        });
-
+        this.recalculateFromRun(state, upgradeDefs, shouldApply);
         state.selectedSpeed = Math.min(state.selectedSpeed, state.runStats.gameSpeed.value);
     }
 
-    handleHit(damage, ctx, hitType) {
-        this.takeDamage(damage);
-
-        if (hitType === "blast") {
-            spawnFloatingText({ variant: "blastDamage", x: this.x, y: this.y, damage });
-        } else {
+    onDamageFloatingText(damage, hitType) {
+        super.onDamageFloatingText(damage, hitType);
+        if (hitType !== "blast") {
             spawnFloatingText({ variant: "standardDamage", x: this.x, y: this.y, damage });
         }
     }
