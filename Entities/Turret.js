@@ -5,6 +5,7 @@ import { defaultGunId, getGunDefinition } from "../Config/gunDefinitions.js";
 import { defaultTurretLoadout, resolveFireAngleOffsets } from "../Config/turretLoadoutPresets.js";
 import { Pools } from "../Core/Pools.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
+import { getSlotFireIntervalMs } from "../Combat/gunCombat.js";
 
 export class Turret {
     constructor(angle, turnSpeed, loadout = defaultTurretLoadout) {
@@ -93,7 +94,7 @@ export class Turret {
         }
     }
 
-    render(ctx, playerX, playerY, playerRadius, renderer, explicitColor = null) {
+    render(ctx, playerX, playerY, playerRadius, renderer, explicitColor = null, source = null) {
         const turretDist = playerRadius + 4;
         const tx = playerX + Math.cos(this.angle) * turretDist;
         const ty = playerY + Math.sin(this.angle) * turretDist;
@@ -106,6 +107,37 @@ export class Turret {
         ctx.translate(tx, ty);
         ctx.rotate(this.angle);
         ctx.drawImage(cachedSprite.offCanvas, -cachedSprite.cx, -cachedSprite.cy);
+
+        // Render reload ring or cooldown/ready indicator using SpriteCache
+        if (this.reloading && this.reloadTimer !== undefined) {
+            const gun = getGunDefinition(this.gunId);
+            if (gun.reloadTimeMs > 0) {
+                const progress = Math.min(1, this.reloadTimer / gun.reloadTimeMs);
+                const activeSegments = Math.min(5, Math.floor(progress * 5));
+                const cacheKeyRing = `rr_${scale}_${activeSegments}`;
+                const cachedRing = renderer.turretCache.get(cacheKeyRing, RenderSprites.reloadRing, scale, activeSegments);
+                ctx.drawImage(cachedRing.offCanvas, -cachedRing.cx, -cachedRing.cy);
+            }
+        } else {
+            const gun = getGunDefinition(this.gunId);
+            const fireIntervalMs = source ? getSlotFireIntervalMs(gun, source) : gun.fireIntervalMs;
+            if (fireIntervalMs > 0 && !isNaN(fireIntervalMs) && this.charge !== undefined) {
+                const chargeRatio = Math.min(1, this.charge / fireIntervalMs);
+                if (chargeRatio < 1 && this.lastTarget) {
+                    const step = Math.min(10, Math.floor(chargeRatio * 10));
+                    const cacheKeyArc = `ca_${scale}_${step}`;
+                    const cachedArc = renderer.turretCache.get(cacheKeyArc, RenderSprites.cooldownArc, scale, step);
+                    ctx.drawImage(cachedArc.offCanvas, -cachedArc.cx, -cachedArc.cy);
+                } else {
+                    // Ready dot (small green light) at the back of the turret housing
+                    ctx.beginPath();
+                    ctx.arc(-scale * 2.2, 0, scale * 0.6, 0, Math.PI * 2);
+                    ctx.fillStyle = "#00E676";
+                    ctx.fill();
+                }
+            }
+        }
+
         ctx.restore();
     }
 }

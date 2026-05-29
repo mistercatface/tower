@@ -8,19 +8,16 @@ const playerBars = createEntityBars({
     healthWidth: 48,
     healthHeight: 4,
     healthBorderRadius: 2,
-    reloadWidth: 48,
 });
 
 export class Player extends Actor {
     static healthBar = playerBars.healthBar;
-    static reloadBar = playerBars.reloadBar;
 
     constructor(x, y, radius) {
         super(x, y, radius, playerBaseStats.speed, playerBaseStats.maxHealth, "#4CAF50", "player", 3.0, true);
         this.setupCombatant(playerBaseStats);
         this.initCombatWeapon();
         this.healthBar = Player.healthBar;
-        this.reloadBar = Player.reloadBar;
         this.spawnX = x;
         this.spawnY = y;
         this.healAccumulator = 0;

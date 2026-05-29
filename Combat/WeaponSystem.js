@@ -127,6 +127,7 @@ export class ContinuousWeaponMode extends WeaponTargetingStrategy {
         const sway = WeaponSystem.computeAccuracySway(source, turret, dt);
 
         WeaponSystem.aimTurret(turret, source.x, source.y, aimTarget.x, aimTarget.y, dt, sway);
+        turret.lastTarget = (target && !blocksTargeting) ? target : null;
         this.onTick(dt, state, tx, ty, turret, combatEvents, source);
     }
 }

@@ -41,7 +41,6 @@ export class Actor extends DestructibleEntity {
 
         this.separation = new Separation();
         this.healthBar = null;
-        this.reloadBar = null;
         this.weapon = null;
         this.stats = null;
         this.upgrades = {};
@@ -220,27 +219,12 @@ export class Actor extends DestructibleEntity {
 
     renderTurretsAt(ctx, renderer, x, y, color = this.color) {
         for (const turret of this.turrets) {
-            turret.render(ctx, x, y, this.radius, renderer, color);
+            turret.render(ctx, x, y, this.radius, renderer, color, this);
         }
-    }
-
-    getReloadRatios() {
-        const ratios = [];
-
-        for (const turret of this.turrets) {
-            if (turret.reloading) {
-                const gun = getGunDefinition(turret.gunId);
-                if (gun.reloadTimeMs > 0) {
-                    ratios.push(turret.reloadTimer / gun.reloadTimeMs);
-                }
-            }
-        }
-
-        return ratios;
     }
 
     renderStatusBars(ctx, cache, yOffset) {
-        this.renderBars(ctx, cache, yOffset, this.getReloadRatios());
+        this.renderBars(ctx, cache, yOffset);
     }
 
     changeState(stateName, stateDataInit = null) {
@@ -288,21 +272,10 @@ export class Actor extends DestructibleEntity {
         return baseAccuracy * (1 - (1 - minMultiplier) * ratio);
     }
 
-    renderBars(ctx, cache, yOffset, reloadRatios) {
+    renderBars(ctx, cache, yOffset) {
         if (this.health < this.maxHealth && this.healthBar) {
             const currentHealth = Math.max(0, this.health);
             this.healthBar.render(ctx, this.x, this.y - yOffset, currentHealth / this.maxHealth, cache);
-        }
-
-        if (reloadRatios && reloadRatios.length > 0 && this.reloadBar) {
-            let activeBarsCount = 0;
-            for (let i = 0; i < reloadRatios.length; i++) {
-                const ratio = reloadRatios[i];
-                if (ratio > 0) {
-                    this.reloadBar.render(ctx, this.x, this.y - (yOffset + 5 + activeBarsCount * 5), ratio, cache);
-                    activeBarsCount++;
-                }
-            }
         }
     }
 }
