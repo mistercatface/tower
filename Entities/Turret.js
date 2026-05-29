@@ -1,20 +1,18 @@
 import { Utilities } from "../Core/Utilities.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
 import { playerProjectileSettings } from "../Config/Config.js";
+import { defaultTurretLoadout } from "../Config/turretLoadoutPresets.js";
 import { Pools } from "../Core/Pools.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 
-export const TurretFireProfile = {
-    STANDARD: "standard",
-    TWIN: "twin",
-    TRIPLE: "triple",
-};
-
 export class Turret {
-    constructor(angle, turnSpeed, fireProfile = TurretFireProfile.STANDARD) {
+    constructor(angle, turnSpeed, loadout = defaultTurretLoadout) {
         this.angle = Utilities.normalizeAngle(angle);
         this.turnSpeed = turnSpeed;
-        this.fireProfile = fireProfile;
+        this.loadout = {
+            radiusMultiplier: loadout.radiusMultiplier,
+            angleOffsets: [...loadout.angleOffsets],
+        };
         this.weaponMode = null;
         this.charge = 0;
         this.target = null;
@@ -31,19 +29,8 @@ export class Turret {
 
     fire(state, source) {
         const { x: tx, y: ty } = this.getMuzzlePosition(source);
-        const baseAngle = this.angle;
-
-        switch (this.fireProfile) {
-            case TurretFireProfile.TWIN:
-                this.spawnPlayerProjectiles(state, source, tx, ty, baseAngle, playerProjectileSettings.splitRadiusMultiplier, [-0.1, 0.1]);
-                break;
-            case TurretFireProfile.TRIPLE:
-                this.spawnPlayerProjectiles(state, source, tx, ty, baseAngle, playerProjectileSettings.splitRadiusMultiplier, [-0.1, 0.1, 0]);
-                break;
-            default:
-                this.spawnPlayerProjectiles(state, source, tx, ty, baseAngle, playerProjectileSettings.radiusMultiplier, [0]);
-                break;
-        }
+        const { radiusMultiplier, angleOffsets } = this.loadout;
+        this.spawnPlayerProjectiles(state, source, tx, ty, this.angle, radiusMultiplier, angleOffsets);
     }
 
     spawnPlayerProjectiles(state, source, tx, ty, baseAngle, radiusMultiplier, angleOffsets) {

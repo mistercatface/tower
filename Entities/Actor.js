@@ -11,6 +11,7 @@ import {
     initCombatantUpgradeSlots,
 } from "./CombatantStats.js";
 import { Turret } from "./Turret.js";
+import { resolveActorTurretLoadouts } from "../Config/TurretLoadoutDefinitions.js";
 
 export class Actor extends DestructibleEntity {
     constructor(x, y, radius, speed, health, color, type, accelRate = 3.0, canDamageWalls = false) {
@@ -134,6 +135,10 @@ export class Actor extends DestructibleEntity {
             turret.currentLaserLength = 0;
             turret.laserTimer = 0;
         }
+    }
+
+    resolveTurretLoadouts(state, upgradeDefs = []) {
+        resolveActorTurretLoadouts(this, state, upgradeDefs);
     }
 
     renderTurrets(ctx, renderer, color = this.color) {

@@ -35,7 +35,7 @@ export class Upgrade {
         this.onRunStart = config.onRunStart || null;
         this.onEnemyKilled = config.onEnemyKilled || null;
         this.onSectorEnd = config.onSectorEnd || null;
-        this.weaponMode = config.weaponMode || null;
+        this.turretLoadout = config.turretLoadout || null;
         this.toggleName = config.toggleName || null;
         this.showInHud = config.showInHud || false;
         this.hasToggle = config.hasToggle || false;
@@ -171,6 +171,34 @@ export const createUpgrades = () => [
             state.score += perkSettings.startingWealthPoints;
         }
     }),
+    // Ability order in this list defines shop branch order (see buildAbilityTreeLayout).
+    new Upgrade({
+        id: "Reposition",
+        category: "abilities",
+        name: "Reposition",
+        isAbility: true,
+        description: "Passive: Tap to move.",
+        maxLevel: 1,
+    }),
+    new Upgrade({
+        id: "Dive",
+        category: "abilities",
+        name: "Dive",
+        description: "When Active: Double tap to dive in that direction. 1s cooldown.",
+        maxLevel: 1,
+        minPlayerLevel: 3,
+        requires: ["Reposition"],
+        isAbility: true,
+        triggerType: "double_tap_move",
+        cooldown: 1000,
+        activeDuration: 400,
+        blocksTargeting: true,
+        speedModFn: (activeTimer, duration) => {
+            const diveRatio = activeTimer / duration;
+            return 1.0 + (12.0 * Math.pow(diveRatio, 0.5));
+        },
+        showInHud: true,
+    }),
     new Upgrade({
         id: "Laser",
         category: "abilities",
@@ -185,6 +213,7 @@ export const createUpgrades = () => [
         abilityApplyFn: (weapon, player) => {
             weapon.damage *= 0.33;
         },
+        turretLoadout: { weaponMode: "laser", scope: "all", priority: 30 },
     }),
     new Upgrade({
         id: "TargetVerification",
@@ -196,26 +225,7 @@ export const createUpgrades = () => [
         isAbility: true,
         requires: ["Laser"],
         showInHud: true,
-        hasToggle: true
-    }),
-    new Upgrade({
-        id: "Dive",
-        category: "abilities",
-        name: "Dive",
-        description: "When Active: Double tap to dive in that direction. 1s cooldown.",
-        maxLevel: 1,
-        minPlayerLevel: 3,
-        requires: ['Reposition'],
-        isAbility: true,
-        triggerType: 'double_tap_move',
-        cooldown: 1000,
-        activeDuration: 400,
-        blocksTargeting: true,
-        speedModFn: (activeTimer, duration) => {
-            const diveRatio = activeTimer / duration;
-            return 1.0 + (12.0 * Math.pow(diveRatio, 0.5));
-        },
-        showInHud: true
+        hasToggle: true,
     }),
     new Upgrade({
         id: "TwoGuns",
@@ -259,6 +269,7 @@ export const createUpgrades = () => [
         abilityApplyFn: (weapon, player) => {
             weapon.damage *= 0.5;
         },
+        turretLoadout: { preset: "twin", scope: "all", priority: 10 },
     }),
     new Upgrade({
         id: "TripleStrike",
@@ -272,6 +283,7 @@ export const createUpgrades = () => [
         },
         requires: ['TwinStrike'],
         replaces: ['TwinStrike'],
+        turretLoadout: { preset: "triple", scope: "all", priority: 20 },
     }),
     new Upgrade({
         id: "SteadyWeapon",
@@ -286,15 +298,7 @@ export const createUpgrades = () => [
             weapon.accuracy = Math.min(1, player.stats.accuracy.value + 0.33);
         },
         showInHud: true,
-        hasToggle: true
-    }),
-    new Upgrade({
-        id: "Reposition",
-        category: "abilities",
-        name: "Reposition",
-        isAbility: true,
-        description: "Passive: Tap to move.",
-        maxLevel: 1,
+        hasToggle: true,
     }),
     new Upgrade({
         id: "Eraser",
@@ -303,7 +307,7 @@ export const createUpgrades = () => [
         description: "Passive: Player bullets destroy enemy bullets on impact.",
         isAbility: true,
         maxLevel: 1,
-        minPlayerLevel: 3
+        minPlayerLevel: 3,
     }),
     ...metaUpgradeDefinitions.map((def) => upgradeFromDefinition(def, Upgrade)),
 ];

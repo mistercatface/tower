@@ -1,5 +1,6 @@
 import { perkMilestones } from "../Config/Config.js";
 import { xpForLevel } from "../Config/configHelpers.js";
+import { buildAbilityTreeLayout } from "../Config/abilityTreeLayout.js";
 import { isCombat, isCombatOrReward } from "../GameState/GamePhase.js";
 import {
     events,
@@ -435,20 +436,7 @@ export function initUI(state, upgrades) {
     updateHud(state);
 }
 
-const abilityTree = [
-    { id: "Reposition", depth: 0 },
-    { id: "Dive", depth: 1 },
-    { id: "Laser", depth: 0 },
-    { id: "TargetVerification", depth: 1 },
-    { id: "TwoGuns", depth: 0 },
-    { id: "ThreeGuns", depth: 1 },
-    { id: "TwinStrike", depth: 0 },
-    { id: "TripleStrike", depth: 1 },
-    { id: "SteadyWeapon", depth: 0 },
-    { id: "Eraser", depth: 0 }
-];
-
-function drawStat(state, upg) {
+function drawStat(state, upg, abilityLayoutById) {
     const btn = dynamicElements["upg_" + upg.id];
     if (!btn) return;
 
@@ -471,12 +459,12 @@ function drawStat(state, upg) {
 
     if (upg.category === "abilities") {
         const isOwned = currentLevelToCheck > 0;
-        const isDiscovered = state.discoveredAbilities && state.discoveredAbilities.has(upg.id);
-        const entry = abilityTree.find((e) => e.id === upg.id) || { depth: 0 };
-        const prefix = entry.depth > 0 ? "└── " : "";
+        const isDiscovered = state.disciscoveredAbilities && state.discoveredAbilities.has(upg.id);
+        const depth = abilityLayoutById.get(upg.id)?.depth ?? 0;
+        const prefix = depth > 0 ? "└── " : "";
 
-        btn.style.marginLeft = `${entry.depth * 20}px`;
-        btn.style.width = `calc(100% - ${entry.depth * 20}px)`;
+        btn.style.marginLeft = `${depth * 20}px`;
+        btn.style.width = `calc(100% - ${depth * 20}px)`;
         btn.style.flex = "none";
         btn.style.minWidth = "0";
 
@@ -605,12 +593,15 @@ export function updateUI(state, upgrades) {
         elements.speedUpBtn.style.opacity = state.selectedSpeed >= state.runStats.gameSpeed.value ? "0.5" : "1";
     }
 
+    const abilityLayout = buildAbilityTreeLayout(upgrades);
+    const abilityLayoutById = new Map(abilityLayout.map((entry) => [entry.id, entry]));
+
     if (state.currentUpgradeTab === "abilities") {
         elements.upgradesContainer.style.flexDirection = "column";
         elements.upgradesContainer.style.flexWrap = "nowrap";
         elements.upgradesContainer.style.alignItems = "stretch";
 
-        abilityTree.forEach((entry) => {
+        abilityLayout.forEach((entry) => {
             const btn = dynamicElements["upg_" + entry.id];
             if (btn) {
                 elements.upgradesContainer.appendChild(btn);
@@ -622,5 +613,5 @@ export function updateUI(state, upgrades) {
         elements.upgradesContainer.style.alignItems = "initial";
     }
 
-    upgrades.forEach((upg) => drawStat(state, upg));
+    upgrades.forEach((upg) => drawStat(state, upg, abilityLayoutById));
 }

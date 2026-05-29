@@ -3,8 +3,6 @@ import { spawnFloatingText } from "../Core/EventSystem.js";
 import { playerBaseStats, NAV_PROFILES, navigationSettings } from "../Config/Config.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
 import { createEntityBars } from "./EntityBars.js";
-import { TurretFireProfile } from "./Turret.js";
-import { LASER_WEAPON_MODE } from "../Combat/WeaponSystem.js";
 
 const playerBars = createEntityBars({
     healthWidth: 48,
@@ -48,7 +46,7 @@ export class Player extends Actor {
             shouldApply,
             afterSync: (player) => {
                 player.syncTurrets(state.runStats);
-                player.syncTurretWeaponModes(state);
+                player.resolveTurretLoadouts(state, upgradeDefs);
                 if (upgradeDefs) {
                     for (const upg of upgradeDefs) {
                         if (upg.isAbility && state.abilities?.[upg.id] && upg.abilityApplyFn) {
@@ -64,28 +62,6 @@ export class Player extends Actor {
 
     syncTurrets(runStats) {
         this.syncTurretCount(runStats.turretCount.value, this.stats.turnSpeed.value);
-    }
-
-    syncTurretWeaponModes(state) {
-        const { abilities } = state;
-        let fireProfile = TurretFireProfile.STANDARD;
-
-        if (abilities.TripleStrike) {
-            fireProfile = TurretFireProfile.TRIPLE;
-        } else if (abilities.TwinStrike) {
-            fireProfile = TurretFireProfile.TWIN;
-        }
-
-        const laserActive = !!abilities.Laser;
-
-        for (const turret of this.turrets) {
-            if (laserActive) {
-                turret.weaponMode = LASER_WEAPON_MODE;
-            } else {
-                turret.weaponMode = null;
-                turret.fireProfile = fireProfile;
-            }
-        }
     }
 
     handleHit(damage, ctx, hitType) {
