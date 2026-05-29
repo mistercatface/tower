@@ -65,6 +65,7 @@ export class Pickup extends Entity {
         this.vy = 0;
         this.mass = this.strategy.mass;
         this.zIndex = 10;
+        this.facing = Math.random() * Math.PI * 2;
         if (this.strategy.maxHealth != null) {
             this.maxHealth = this.strategy.maxHealth;
             this.health = this.strategy.maxHealth;

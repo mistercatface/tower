@@ -24,18 +24,26 @@ export function getHeightSlice(projection, baseSize, t) {
     };
 }
 
-export function getRadialSilhouette(projection, baseRadius) {
+export function getRadialSilhouette(projection, baseRadius, topRadius = null) {
     const { cx, cy, topX, topY, alpha, viewAngle } = projection;
-    const topRadius = baseRadius * (1 + alpha);
+    const resolvedTopRadius = topRadius ?? baseRadius * (1 + alpha);
     const perpA = viewAngle + Math.PI / 2;
     const perpB = viewAngle - Math.PI / 2;
+    const apex = { x: topX, y: topY };
+    const topLeft = resolvedTopRadius === 0
+        ? apex
+        : { x: topX + Math.cos(perpA) * resolvedTopRadius, y: topY + Math.sin(perpA) * resolvedTopRadius };
+    const topRight = resolvedTopRadius === 0
+        ? apex
+        : { x: topX + Math.cos(perpB) * resolvedTopRadius, y: topY + Math.sin(perpB) * resolvedTopRadius };
     return {
         viewAngle,
-        topRadius,
+        topRadius: resolvedTopRadius,
         baseLeft: { x: cx + Math.cos(perpA) * baseRadius, y: cy + Math.sin(perpA) * baseRadius },
         baseRight: { x: cx + Math.cos(perpB) * baseRadius, y: cy + Math.sin(perpB) * baseRadius },
-        topLeft: { x: topX + Math.cos(perpA) * topRadius, y: topY + Math.sin(perpA) * topRadius },
-        topRight: { x: topX + Math.cos(perpB) * topRadius, y: topY + Math.sin(perpB) * topRadius },
+        topLeft,
+        topRight,
+        apex,
     };
 }
 

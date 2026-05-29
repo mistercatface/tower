@@ -1,14 +1,17 @@
 import { THEME_COLORS } from "../../Config/Config.js";
 import {
-    projectVertical,
-    getHeightSlice,
-    getRadialSilhouette,
-    extrudeBox,
-    isFaceTowardViewer,
-    createSideGradient,
-} from "./Projection3D.js";
-
-const PROP_HEIGHT = 14;
+    DEFAULT_PROP_HEIGHT,
+    drawCylinder,
+    drawBand,
+    drawCylinderRibs,
+    drawCap,
+    drawBox,
+    drawSphere,
+    drawCone,
+    drawStack,
+    drawBarkLines,
+} from "./PropPrimitives.js";
+import { projectVertical, getHeightSlice } from "./Projection3D.js";
 
 export class Render3D {
     constructor() {
@@ -86,6 +89,8 @@ export class Render3D {
         ctx.closePath();
         ctx.fill();
         if (shouldStroke) {
+            ctx.strokeStyle = "rgba(0, 0, 0, 0.4)";
+            ctx.lineWidth = 1.0;
             ctx.stroke();
         }
     }
@@ -200,48 +205,22 @@ export class Render3D {
 
     draw3DBarrel(ctx, p, px, py) {
         const radius = p.radius || 8;
-        const projection = projectVertical(p.x, p.y, px, py, PROP_HEIGHT);
-        const { cx, cy, viewAngle } = projection;
-        const silhouette = getRadialSilhouette(projection, radius);
-        const { baseLeft, baseRight, topLeft, topRight, topRadius } = silhouette;
+        const { x, y } = p;
 
-        const sideGrad = createSideGradient(ctx, baseLeft, baseRight, viewAngle, {
-            shadow: "#3F0000",
-            mid: "#B71C1C",
-            highlight: "#FF5252",
+        drawCylinder(ctx, x, y, px, py, {
+            radius,
+            height: DEFAULT_PROP_HEIGHT,
+            colors: { shadow: "#3F0000", mid: "#B71C1C", highlight: "#FF5252" },
+            stroke: "#4A0E0E",
         });
 
-        ctx.fillStyle = sideGrad;
-        ctx.strokeStyle = "#4A0E0E";
-        ctx.lineWidth = 1.0;
-
-        ctx.beginPath();
-        ctx.moveTo(topLeft.x, topLeft.y);
-        ctx.lineTo(topRight.x, topRight.y);
-        ctx.lineTo(baseRight.x, baseRight.y);
-        ctx.arc(cx, cy, radius, viewAngle - Math.PI / 2, viewAngle + Math.PI / 2, true);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.fillStyle = "#FFEB3B";
-        ctx.strokeStyle = "#4A0E0E";
-        ctx.lineWidth = 0.8;
-        ctx.beginPath();
-        const t1 = 0.35;
-        const t2 = 0.65;
-        const slice1 = getHeightSlice(projection, radius, t1);
-        const slice2 = getHeightSlice(projection, radius, t2);
-
-        ctx.arc(slice1.centerX, slice1.centerY, slice1.size, viewAngle - Math.PI / 2, viewAngle + Math.PI / 2, true);
-        ctx.lineTo(
-            slice2.centerX + Math.cos(viewAngle + Math.PI / 2) * slice2.size,
-            slice2.centerY + Math.sin(viewAngle + Math.PI / 2) * slice2.size
-        );
-        ctx.arc(slice2.centerX, slice2.centerY, slice2.size, viewAngle + Math.PI / 2, viewAngle - Math.PI / 2, false);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
+        const { slice1, slice2, viewAngle } = drawBand(ctx, x, y, px, py, {
+            radius,
+            t0: 0.35,
+            t1: 0.65,
+            fill: "#FFEB3B",
+            stroke: "#4A0E0E",
+        });
 
         ctx.strokeStyle = "#000000";
         ctx.lineWidth = 1.5;
@@ -262,30 +241,19 @@ export class Render3D {
             }
         }
 
-        ctx.strokeStyle = "rgba(0, 0, 0, 0.45)";
-        ctx.lineWidth = 1.2;
-        for (const t of [0.25, 0.75]) {
-            const slice = getHeightSlice(projection, radius, t);
-            ctx.beginPath();
-            ctx.arc(slice.centerX, slice.centerY, slice.size, viewAngle - Math.PI / 2, viewAngle + Math.PI / 2, true);
-            ctx.stroke();
-        }
+        drawCylinderRibs(ctx, x, y, px, py, {
+            radius,
+            ts: [0.25, 0.75],
+            stroke: "rgba(0, 0, 0, 0.45)",
+        });
 
-        const { topX, topY } = projection;
-        const topGrad = ctx.createRadialGradient(topX, topY, 0, topX, topY, topRadius);
-        topGrad.addColorStop(0.0, "#455A64");
-        topGrad.addColorStop(0.7, "#37474F");
-        topGrad.addColorStop(1.0, "#263238");
+        const { topX, topY, capRadius } = drawCap(ctx, x, y, px, py, {
+            radius,
+            capColors: { inner: "#455A64", mid: "#37474F", outer: "#263238" },
+            stroke: "#1A0A00",
+        });
 
-        ctx.fillStyle = topGrad;
-        ctx.strokeStyle = "#1A0A00";
-        ctx.lineWidth = 1.0;
-        ctx.beginPath();
-        ctx.arc(topX, topY, topRadius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-
-        const triSize = topRadius * 0.55;
+        const triSize = capRadius * 0.55;
         if (triSize > 2) {
             ctx.fillStyle = "#FFEB3B";
             ctx.strokeStyle = "#000000";
@@ -308,169 +276,208 @@ export class Render3D {
 
     draw3DCrate(ctx, p, px, py) {
         const halfSize = p.radius || 8;
-        const projection = projectVertical(p.x, p.y, px, py, PROP_HEIGHT);
-        const { cx, cy, topX, topY, viewAngle } = projection;
-        const box = extrudeBox(projection, halfSize);
-
-        const woodColors = {
-            shadow: "#4E342E",
-            mid: "#8D6E63",
-            highlight: "#A1887F",
-        };
-
-        for (const face of box.faces) {
-            const edgeMidX = (face.baseA.x + face.baseB.x) / 2;
-            const edgeMidY = (face.baseA.y + face.baseB.y) / 2;
-            if (!isFaceTowardViewer(edgeMidX, edgeMidY, cx, cy, px, py)) continue;
-
-            ctx.fillStyle = createSideGradient(ctx, face.baseA, face.baseB, viewAngle, woodColors);
-            ctx.strokeStyle = "#3E2723";
-            ctx.lineWidth = 1.0;
-            ctx.beginPath();
-            ctx.moveTo(face.topA.x, face.topA.y);
-            ctx.lineTo(face.topB.x, face.topB.y);
-            ctx.lineTo(face.baseB.x, face.baseB.y);
-            ctx.lineTo(face.baseA.x, face.baseA.y);
-            ctx.closePath();
-            ctx.fill();
-            ctx.stroke();
-
-            ctx.strokeStyle = "rgba(62, 39, 35, 0.55)";
-            ctx.lineWidth = 0.8;
-            for (const t of [0.33, 0.66]) {
-                const yA = face.topA.y + (face.baseA.y - face.topA.y) * t;
-                const xA = face.topA.x + (face.baseA.x - face.topA.x) * t;
-                const yB = face.topB.y + (face.baseB.y - face.topB.y) * t;
-                const xB = face.topB.x + (face.baseB.x - face.topB.x) * t;
-                ctx.beginPath();
-                ctx.moveTo(xA, yA);
-                ctx.lineTo(xB, yB);
-                ctx.stroke();
-            }
-        }
-
-        const topGrad = ctx.createLinearGradient(
-            topX - box.topHalfSize, topY - box.topHalfSize,
-            topX + box.topHalfSize, topY + box.topHalfSize
-        );
-        topGrad.addColorStop(0.0, "#BCAAA4");
-        topGrad.addColorStop(0.5, "#A1887F");
-        topGrad.addColorStop(1.0, "#8D6E63");
-
-        ctx.fillStyle = topGrad;
-        ctx.strokeStyle = "#3E2723";
-        ctx.lineWidth = 1.0;
-        ctx.beginPath();
-        ctx.moveTo(box.topCorners[0].x, box.topCorners[0].y);
-        for (let i = 1; i < box.topCorners.length; i++) {
-            ctx.lineTo(box.topCorners[i].x, box.topCorners[i].y);
-        }
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.strokeStyle = "rgba(62, 39, 35, 0.6)";
-        ctx.lineWidth = 0.8;
-        ctx.beginPath();
-        ctx.moveTo(box.topCorners[0].x, (box.topCorners[0].y + box.topCorners[2].y) / 2);
-        ctx.lineTo(box.topCorners[1].x, (box.topCorners[1].y + box.topCorners[3].y) / 2);
-        ctx.moveTo((box.topCorners[0].x + box.topCorners[1].x) / 2, box.topCorners[0].y);
-        ctx.lineTo((box.topCorners[2].x + box.topCorners[3].x) / 2, box.topCorners[2].y);
-        ctx.stroke();
+        drawBox(ctx, p.x, p.y, px, py, {
+            halfSize,
+            faceColors: { shadow: "#4E342E", mid: "#8D6E63", highlight: "#A1887F" },
+            topColors: { light: "#BCAAA4", mid: "#A1887F", dark: "#8D6E63" },
+            stroke: "#3E2723",
+            plankTs: { values: [0.33, 0.66], stroke: "rgba(62, 39, 35, 0.55)" },
+            topCross: { stroke: "rgba(62, 39, 35, 0.6)" },
+        });
     }
 
     draw3DTree(ctx, p, px, py) {
         const trunkRadius = 5;
         const trunkHeight = 54;
-        const projection = projectVertical(p.x, p.y, px, py, trunkHeight);
-        const { cx, cy, topX, topY, viewAngle } = projection;
-        const silhouette = getRadialSilhouette(projection, trunkRadius);
-        const { baseLeft, baseRight, topLeft, topRight } = silhouette;
+        const { x, y, facing = 0 } = p;
 
-        const trunkGrad = createSideGradient(ctx, baseLeft, baseRight, viewAngle, {
-            shadow: "#3E2723",
-            mid: "#6D4C41",
-            highlight: "#A1887F",
+        const { projection } = drawCylinder(ctx, x, y, px, py, {
+            radius: trunkRadius,
+            height: trunkHeight,
+            colors: { shadow: "#3E2723", mid: "#6D4C41", highlight: "#A1887F" },
+            stroke: "#2E1B14",
         });
 
-        ctx.fillStyle = trunkGrad;
-        ctx.strokeStyle = "#2E1B14";
-        ctx.lineWidth = 1.0;
-        ctx.beginPath();
-        ctx.moveTo(topLeft.x, topLeft.y);
-        ctx.lineTo(topRight.x, topRight.y);
-        ctx.lineTo(baseRight.x, baseRight.y);
-        ctx.arc(cx, cy, trunkRadius, viewAngle - Math.PI / 2, viewAngle + Math.PI / 2, true);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
+        drawBarkLines(ctx, x, y, px, py, {
+            radius: trunkRadius,
+            height: trunkHeight,
+            ts: [0.2, 0.45, 0.7],
+            stroke: "rgba(46, 27, 20, 0.45)",
+        });
 
-        ctx.strokeStyle = "rgba(46, 27, 20, 0.45)";
-        ctx.lineWidth = 0.7;
-        for (const t of [0.2, 0.45, 0.7]) {
-            const slice = getHeightSlice(projection, trunkRadius * (1 - t * 0.12), t);
+        const { topX, topY } = projection;
+        const canopyOffset = 2.5;
+        drawSphere(ctx, topX - Math.cos(facing) * canopyOffset, topY - Math.sin(facing) * canopyOffset, px, py, {
+            radius: 13,
+            height: 26,
+            colors: { shadow: "#1B5E20", mid: "#388E3C", highlight: "#66BB6A" },
+            stroke: "#1B4332",
+        });
+        drawSphere(ctx, topX + Math.cos(facing + 0.6) * 3, topY + Math.sin(facing + 0.6) * 3, px, py, {
+            radius: 10,
+            height: 20,
+            colors: { shadow: "#2E7D32", mid: "#43A047", highlight: "#81C784" },
+            stroke: "#1B4332",
+        });
+        drawSphere(ctx, topX + Math.cos(facing - 0.5) * 2, topY + Math.sin(facing - 0.5) * 2, px, py, {
+            radius: 11,
+            height: 22,
+            colors: { shadow: "#33691E", mid: "#4CAF50", highlight: "#A5D6A7" },
+            stroke: "#1B4332",
+        });
+    }
+
+    draw3DTrafficCone(ctx, p, px, py) {
+        const baseRadius = p.radius || 6;
+        const height = 20;
+        const { x, y } = p;
+        const coneColors = { shadow: "#E65100", mid: "#FF6D00", highlight: "#FFAB40" };
+
+        drawCone(ctx, x, y, px, py, { baseRadius, height, colors: coneColors, stroke: "#BF360C" });
+        drawBand(ctx, x, y, px, py, {
+            radius: baseRadius,
+            height,
+            t0: 0.52,
+            t1: 0.68,
+            fill: "#FAFAFA",
+            stroke: "#BDBDBD",
+        });
+        drawBand(ctx, x, y, px, py, {
+            radius: baseRadius * 0.55,
+            height: height * 0.55,
+            t0: 0.15,
+            t1: 0.35,
+            fill: "#EEEEEE",
+            stroke: "#BDBDBD",
+            lineWidth: 0.6,
+        });
+    }
+
+    draw3DSnowman(ctx, p, px, py) {
+        const { x, y, facing = 0 } = p;
+        const stackHeight = 38;
+        const snow = { shadow: "#B0BEC5", mid: "#ECEFF1", highlight: "#FFFFFF" };
+
+        drawStack(ctx, x, y, px, py, {
+            height: stackHeight,
+            segments: [
+                { t: 0.18, radius: 8, blobHeight: 16, colors: snow, stroke: "#90A4AE" },
+                { t: 0.48, radius: 6, blobHeight: 13, colors: snow, stroke: "#90A4AE" },
+                { t: 0.76, radius: 4.5, blobHeight: 10, colors: snow, stroke: "#90A4AE" },
+            ],
+        });
+
+        const projection = projectVertical(x, y, px, py, stackHeight);
+        const head = getHeightSlice(projection, 4.5, 0.76);
+        const noseX = head.centerX + Math.cos(facing) * 5;
+        const noseY = head.centerY + Math.sin(facing) * 5;
+
+        drawCone(ctx, noseX, noseY, px, py, {
+            baseRadius: 1.2,
+            height: 5,
+            colors: { shadow: "#E65100", mid: "#FF9800", highlight: "#FFB74D" },
+            stroke: "#E65100",
+            lineWidth: 0.7,
+        });
+
+        ctx.fillStyle = "#212121";
+        const eyeOffset = 2.2;
+        const perp = facing + Math.PI / 2;
+        for (const side of [-1, 1]) {
             ctx.beginPath();
-            ctx.moveTo(slice.centerX - Math.cos(viewAngle) * slice.size * 0.15, slice.centerY - Math.sin(viewAngle) * slice.size * 0.15);
-            ctx.lineTo(slice.centerX + Math.cos(viewAngle + Math.PI / 2) * slice.size * 0.35, slice.centerY + Math.sin(viewAngle + Math.PI / 2) * slice.size * 0.35);
-            ctx.stroke();
+            ctx.arc(
+                head.centerX + Math.cos(facing) * 2 + Math.cos(perp) * eyeOffset * side,
+                head.centerY + Math.sin(facing) * 2 + Math.sin(perp) * eyeOffset * side,
+                0.7, 0, Math.PI * 2
+            );
+            ctx.fill();
+        }
+    }
+
+    draw3DPalm(ctx, p, px, py) {
+        const trunkRadius = 3.5;
+        const trunkHeight = 48;
+        const { x, y } = p;
+
+        const { projection } = drawCylinder(ctx, x, y, px, py, {
+            radius: trunkRadius,
+            height: trunkHeight,
+            colors: { shadow: "#5D4037", mid: "#8D6E63", highlight: "#BCAAA4" },
+            stroke: "#4E342E",
+        });
+
+        const { topX, topY } = projection;
+        const frondColors = { shadow: "#33691E", mid: "#558B2F", highlight: "#9CCC65" };
+        for (let i = 0; i < 6; i++) {
+            const angle = (i / 6) * Math.PI * 2 - Math.PI / 2;
+            const fx = topX + Math.cos(angle) * 5;
+            const fy = topY + Math.sin(angle) * 5;
+            drawCone(ctx, fx, fy, px, py, {
+                baseRadius: 3.5,
+                height: 16,
+                colors: frondColors,
+                stroke: "#1B5E20",
+                lineWidth: 0.8,
+            });
         }
 
-        const drawCanopy = (centerX, centerY, radius, height, colors, stroke) => {
-            const canopyProj = projectVertical(centerX, centerY, px, py, height);
-            const canopy = getRadialSilhouette(canopyProj, radius);
-            const canopyGrad = createSideGradient(ctx, canopy.baseLeft, canopy.baseRight, canopyProj.viewAngle, colors);
+        drawSphere(ctx, topX, topY, px, py, {
+            radius: 4,
+            height: 8,
+            colors: { shadow: "#689F38", mid: "#7CB342", highlight: "#AED581" },
+            stroke: "#33691E",
+            lineWidth: 0.7,
+        });
+    }
 
-            ctx.fillStyle = canopyGrad;
-            ctx.strokeStyle = stroke;
-            ctx.lineWidth = 0.9;
-            ctx.beginPath();
-            ctx.moveTo(canopy.topLeft.x, canopy.topLeft.y);
-            ctx.lineTo(canopy.topRight.x, canopy.topRight.y);
-            ctx.lineTo(canopy.baseRight.x, canopy.baseRight.y);
-            ctx.arc(centerX, centerY, radius, canopyProj.viewAngle - Math.PI / 2, canopyProj.viewAngle + Math.PI / 2, true);
-            ctx.closePath();
-            ctx.fill();
-            ctx.stroke();
+    draw3DRock(ctx, p, px, py) {
+        const { x, y } = p;
+        const gray = { shadow: "#424242", mid: "#757575", highlight: "#BDBDBD" };
 
-            const topGrad = ctx.createRadialGradient(
-                canopyProj.topX, canopyProj.topY, 0,
-                canopyProj.topX, canopyProj.topY, canopy.topRadius
-            );
-            topGrad.addColorStop(0.0, colors.highlight);
-            topGrad.addColorStop(0.55, colors.mid);
-            topGrad.addColorStop(1.0, colors.shadow);
-            ctx.fillStyle = topGrad;
-            ctx.beginPath();
-            ctx.arc(canopyProj.topX, canopyProj.topY, canopy.topRadius, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.stroke();
-        };
+        drawSphere(ctx, x - 1.5, y + 1, px, py, {
+            radius: 7,
+            height: 12,
+            colors: gray,
+            stroke: "#37474F",
+        });
+        drawSphere(ctx, x + 2, y - 1.5, px, py, {
+            radius: 5,
+            height: 9,
+            colors: { shadow: "#616161", mid: "#9E9E9E", highlight: "#E0E0E0" },
+            stroke: "#424242",
+            lineWidth: 0.8,
+        });
+    }
 
-        const canopyOffset = 2.5;
-        drawCanopy(
-            topX - Math.cos(viewAngle) * canopyOffset,
-            topY - Math.sin(viewAngle) * canopyOffset,
-            13,
-            26,
-            { shadow: "#1B5E20", mid: "#388E3C", highlight: "#66BB6A" },
-            "#1B4332"
-        );
-        drawCanopy(
-            topX + Math.cos(viewAngle + 0.6) * 3,
-            topY + Math.sin(viewAngle + 0.6) * 3,
-            10,
-            20,
-            { shadow: "#2E7D32", mid: "#43A047", highlight: "#81C784" },
-            "#1B4332"
-        );
-        drawCanopy(
-            topX + Math.cos(viewAngle - 0.5) * 2,
-            topY + Math.sin(viewAngle - 0.5) * 2,
-            11,
-            22,
-            { shadow: "#33691E", mid: "#4CAF50", highlight: "#A5D6A7" },
-            "#1B4332"
-        );
+    draw3DLampPost(ctx, p, px, py) {
+        const { x, y } = p;
+        const poleHeight = 46;
+
+        const { projection } = drawCylinder(ctx, x, y, px, py, {
+            radius: 2.2,
+            height: poleHeight,
+            colors: { shadow: "#263238", mid: "#546E7A", highlight: "#90A4AE" },
+            stroke: "#263238",
+            lineWidth: 0.8,
+        });
+
+        const { topX, topY } = projection;
+        drawBox(ctx, topX, topY, px, py, {
+            halfSize: 4,
+            height: 6,
+            faceColors: { shadow: "#37474F", mid: "#607D8B", highlight: "#B0BEC5" },
+            topColors: { light: "#CFD8DC", mid: "#90A4AE", dark: "#546E7A" },
+            stroke: "#263238",
+            lineWidth: 0.8,
+        });
+
+        drawCap(ctx, topX, topY, px, py, {
+            radius: 3,
+            height: 8,
+            capColors: { inner: "#FFF9C4", mid: "#FFEB3B", outer: "#FBC02D" },
+            stroke: "#F57F17",
+            lineWidth: 0.7,
+        });
     }
 
     getPropRenderer(key) {
@@ -543,8 +550,10 @@ export class Render3D {
                     this.drawProjectedFace(ctx, p1, p2, px, py, wallColor, true);
                 }
             } else {
+                ctx.save();
                 const draw = this.getPropRenderer(obj._renderType);
                 if (draw) draw(ctx, obj, px, py);
+                ctx.restore();
             }
         }
 
