@@ -48,6 +48,12 @@ export class Sidekick extends Actor {
         }
     }
 
+    onSectorEnter(state) {
+        if (this.isDead) return;
+        this.changeState("navigating");
+        this.resetTurretCombatState();
+    }
+
     getMinLeaderDistance(leader) {
         return leader.radius + this.radius + LEADER_EDGE_GAP;
     }

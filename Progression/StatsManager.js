@@ -4,6 +4,7 @@ import { createUpgradeLevels, resetUpgradeLevels } from "../Entities/CombatantSt
 import { spawnFloatingText } from "../Core/EventSystem.js";
 import { MapGenerator } from "../Generator/MapGenerator.js";
 import { rollPlayerStartLoadout } from "../Combat/weaponLoadout.js";
+import { spawnInitialPickups } from "../Entities/Pickup.js";
 
 export class StatsManager {
     static initUpgradesList(state, upgradeList) {
@@ -103,6 +104,17 @@ export class StatsManager {
             const coords = state.getNodeCombatCoords(startNode);
             state.player.setSpawnPosition(coords.x, coords.y);
             state.player.resetToSpawn();
+
+            const followAngle = state.player.angle;
+            state.spawnSidekick(
+                state.player.x - Math.cos(followAngle) * 48,
+                state.player.y - Math.sin(followAngle) * 48
+            );
+        }
+
+        for (const node of state.mapNodes) {
+            const coords = state.getNodeCombatCoords(node);
+            spawnInitialPickups(state, coords.x, coords.y);
         }
     }
 }

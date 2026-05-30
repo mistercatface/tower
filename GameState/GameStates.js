@@ -3,7 +3,6 @@ import { ProgressionManager } from "../Progression/ProgressionManager.js";
 import { CollisionSystem } from "../Spatial/Collision/CollisionSystem.js";
 import { SpatialHash } from "../Spatial/World/SpatialHash.js";
 import { Projectile } from "../Entities/Projectile.js";
-import { spawnInitialPickups } from "../Entities/Pickup.js";
 import { showNodeConfirmModal, requestUiUpdate } from "../Core/EventSystem.js";
 import { Explosion } from "../Entities/Explosion/Explosion.js";
 import { navigationSettings } from "../Config/Config.js";
@@ -112,7 +111,6 @@ export class CombatState {
     }
 
     onEnter(ctx) {
-        ctx.state.pickups = [];
         if (ctx.state.projectiles) {
             for (let i = 0; i < ctx.state.projectiles.length; i++) {
                 Pools.projectiles.release(ctx.state.projectiles[i]);
@@ -133,8 +131,6 @@ export class CombatState {
             ctx.state.player.stopMovement(ctx.state);
             ctx.state.player.vx = 0;
             ctx.state.player.vy = 0;
-            ctx.state.player.x = combatCoords.x;
-            ctx.state.player.y = combatCoords.y;
         } else {
             ctx.state.player.setSpawnPosition(combatCoords.x, combatCoords.y);
             ctx.state.player.resetToSpawn();
@@ -143,11 +139,17 @@ export class CombatState {
         ctx.state.waveManager.startCombat();
         ctx.state.player.resetTurretCombatState();
 
-        const followAngle = ctx.state.player.angle;
-        ctx.state.spawnSidekick(
-            ctx.state.player.x - Math.cos(followAngle) * 48,
-            ctx.state.player.y - Math.sin(followAngle) * 48
-        );
+        const persistentEntities = [];
+        if (ctx.state.sidekick) {
+            persistentEntities.push(ctx.state.sidekick);
+        }
+        persistentEntities.push(...ctx.state.pickups);
+
+        for (const entity of persistentEntities) {
+            if (typeof entity.onSectorEnter === "function") {
+                entity.onSectorEnter(ctx.state);
+            }
+        }
         
         // Shift grid center to player position and rebuild local flow field
         ctx.state.flowFieldGrid.shiftCenter(
@@ -156,8 +158,6 @@ export class CombatState {
             ctx.state.player.x,
             ctx.state.player.y
         );
-        
-        spawnInitialPickups(ctx.state, ctx.state.player.x, ctx.state.player.y);
         
         ctx.viewport.snapTo(ctx.state.player.x, ctx.state.player.y);
         requestUiUpdate();
