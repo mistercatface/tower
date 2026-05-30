@@ -160,7 +160,7 @@ export class GameState {
     spawnSidekick(x, y) {
         const radius = this.player?.radius ?? 8;
         if (!this.sidekick) {
-            this.sidekick = Sidekick.create(x, y, radius);
+            this.sidekick = Sidekick.create(x, y, 6);
         }
         this.sidekick.spawnAt(x, y, this.player);
         this.sidekick.applyWeaponLoadout(this.sidekick.weaponLoadout, {
