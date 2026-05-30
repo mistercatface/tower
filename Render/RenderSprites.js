@@ -335,6 +335,70 @@ export const RenderSprites = {
         return { offCanvas, cx, cy };
     },
 
+    pea: (radius, color) => {
+        const canvasSize = Math.ceil(radius * 2) + 12;
+        const cx = canvasSize / 2;
+        const cy = canvasSize / 2;
+        const offCanvas = new OffscreenCanvas(canvasSize, canvasSize);
+        const offCtx = offCanvas.getContext("2d");
+
+        // 1. Soft ambient drop shadow beneath the pea
+        offCtx.beginPath();
+        offCtx.ellipse(cx, cy + radius * 0.42, radius * 0.85, radius * 0.35, 0, 0, Math.PI * 2);
+        offCtx.fillStyle = "rgba(0, 0, 0, 0.4)";
+        offCtx.fill();
+
+        // 2. Main pea body — slightly squashed sphere for a plump pea silhouette
+        offCtx.beginPath();
+        offCtx.ellipse(cx, cy, radius, radius * 0.92, 0, 0, Math.PI * 2);
+
+        const grad = offCtx.createRadialGradient(
+            cx - radius * 0.35, cy - radius * 0.35, radius * 0.08,
+            cx, cy, radius
+        );
+        grad.addColorStop(0.0, "#C5E1A5"); // bright yellow-green highlight
+        grad.addColorStop(0.25, "#7CB342"); // vibrant pea green
+        grad.addColorStop(0.55, "#558B2F"); // mid green
+        grad.addColorStop(0.85, "#33691E"); // deep shadow green
+        grad.addColorStop(1.0, "#1B5E20"); // outer edge
+
+        offCtx.fillStyle = grad;
+        offCtx.fill();
+
+        // 3. Waxy sheen overlay
+        const sheenGrad = offCtx.createRadialGradient(cx, cy, radius * 0.45, cx, cy, radius);
+        sheenGrad.addColorStop(0, "rgba(197, 225, 165, 0)");
+        sheenGrad.addColorStop(0.75, "rgba(197, 225, 165, 0.1)");
+        sheenGrad.addColorStop(1, "rgba(197, 225, 165, 0)");
+        offCtx.fillStyle = sheenGrad;
+        offCtx.beginPath();
+        offCtx.ellipse(cx, cy, radius, radius * 0.92, 0, 0, Math.PI * 2);
+        offCtx.fill();
+
+        // 4. Hilum — the small scar where the pea attached to the pod
+        const hcx = cx + radius * 0.3;
+        const hcy = cy + radius * 0.05;
+        offCtx.beginPath();
+        offCtx.ellipse(hcx, hcy, radius * 0.12, radius * 0.08, Math.PI / 6, 0, Math.PI * 2);
+        const hilumGrad = offCtx.createRadialGradient(
+            hcx - radius * 0.04, hcy - radius * 0.03, radius * 0.02,
+            hcx, hcy, radius * 0.12
+        );
+        hilumGrad.addColorStop(0, "#8D6E63");
+        hilumGrad.addColorStop(0.5, "#5D4037");
+        hilumGrad.addColorStop(1, "#3E2723");
+        offCtx.fillStyle = hilumGrad;
+        offCtx.fill();
+
+        // 5. Specular highlight on the upper-left
+        offCtx.beginPath();
+        offCtx.ellipse(cx - radius * 0.42, cy - radius * 0.42, radius * 0.14, radius * 0.06, Math.PI / 4, 0, Math.PI * 2);
+        offCtx.fillStyle = "rgba(255, 255, 255, 0.5)";
+        offCtx.fill();
+
+        return { offCanvas, cx, cy };
+    },
+
     wall: (size, r, g, b) => {
         const offCanvas = new OffscreenCanvas(size + 2, size + 2);
         const offCtx = offCanvas.getContext("2d");

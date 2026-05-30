@@ -14,6 +14,7 @@ export const enemyTypes = [
         accelRate: 1.0,
         groupSettings: { baseGroupSize: 2, growthPerWave: 1.0, maxGroupSize: 5 },
         canDamageWalls: true,
+        renderPath: "pea",
     },
     { type: "standard", weight: 60, radius: 6, baseSpeed: 100, baseHealth: 1, maxHealth: 500, color: "#F44336", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: false, renderPath: "tomato" },
     { type: "fast", weight: 5, radius: 5, baseSpeed: 140, baseHealth: 0.5, maxHealth: 300, color: "#FFEB3B", minLevel: 2, spawnType: "single", attackType: "ranged", canDodge: false, canDamageWalls: true, },
