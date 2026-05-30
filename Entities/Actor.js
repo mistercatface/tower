@@ -152,7 +152,28 @@ export class Actor extends DestructibleEntity {
         return this.isAbilityOwner(state) && !!state.abilities?.["Eraser"];
     }
 
-    updateCombat(_dt, _state, _spatialHash, _options = {}) {}
+    updateCombat(_dt, _state, _spatialHash, _options = {}) {
+        // Subclasses run movement, then call updateTurretCombat.
+    }
+
+    updateTurretCombat(dt, state, options = {}) {
+        if (!this.weapon || this.turrets.length === 0) {
+            return options.combatEvents ?? [];
+        }
+
+        const blocksTargeting =
+            options.blocksTargeting || this.getExternalBlocksTargeting(state, options.upgrades ?? []);
+        const combatEvents = options.combatEvents ?? [];
+
+        if (this.canRunTurretCombat()) {
+            this.acquireTurretTargets(state, blocksTargeting);
+            this.processAllTurrets(dt, state, blocksTargeting, combatEvents);
+        } else {
+            this.aimIdleTurrets(dt, state, blocksTargeting);
+        }
+
+        return combatEvents;
+    }
 
     getAITarget(state) {
         if (!state) return null;
@@ -205,8 +226,9 @@ export class Actor extends DestructibleEntity {
     getAllyActors(state) {
         if (!state) return [];
 
+        let allies = [];
         if (this.teamId != null) {
-            return state.getCombatants().filter(
+            allies = state.getCombatants().filter(
                 (other) =>
                     other !== this &&
                     !other.isDead &&
@@ -215,11 +237,11 @@ export class Actor extends DestructibleEntity {
             );
         }
 
-        if (this.faction === "player") {
-            return getPlayerActors(state).filter((ally) => ally !== this && !ally.isDead);
+        if (allies.length === 0 && this.faction === "player") {
+            allies = getPlayerActors(state).filter((ally) => ally !== this && !ally.isDead);
         }
 
-        return [];
+        return allies;
     }
 
     getEngagedTargetsFrom(ally) {
@@ -296,31 +318,48 @@ export class Actor extends DestructibleEntity {
         );
     }
 
-    findTurretTarget(state, excludedTargets = null) {
-        if (!this.weapon) return null;
+    buildIndependentTargetExclusions(ownExcluded, state) {
+        const excluded = new Set(ownExcluded ?? []);
 
-        const ownExcluded = excludedTargets ?? new Set();
-        const allyEngaged = this.getMutualAssistTargets(state);
-        const independentExcluded = new Set(ownExcluded);
-        for (const target of allyEngaged) {
-            independentExcluded.add(target);
+        for (const target of this.getMutualAssistTargets(state)) {
+            excluded.add(target);
         }
 
-        const independent = getNearestHostile(state, this, this.weapon.range, independentExcluded);
+        return excluded;
+    }
+
+    findIndependentTurretTarget(state, ownExcluded) {
+        if (!this.weapon) return null;
+
+        return getNearestHostile(
+            state,
+            this,
+            this.weapon.range,
+            this.buildIndependentTargetExclusions(ownExcluded, state)
+        );
+    }
+
+    findTurretTarget(state, ownExcluded) {
+        if (!this.weapon) return null;
+
+        const ownExcludedSet = ownExcluded ?? new Set();
+        const allyEngaged = this.getMutualAssistTargets(state);
+
+        const independent = this.findIndependentTurretTarget(state, ownExcludedSet);
         if (independent) return independent;
 
         for (const target of allyEngaged) {
-            if (ownExcluded.has(target)) continue;
+            if (ownExcludedSet.has(target)) continue;
             if (this.isValidTurretTargetForSelf(target, state)) {
                 return target;
             }
         }
 
-        const shared = getNearestHostile(state, this, this.weapon.range, ownExcluded);
+        const shared = getNearestHostile(state, this, this.weapon.range, ownExcludedSet);
         if (shared) return shared;
 
         for (const target of allyEngaged) {
-            if (ownExcluded.has(target)) continue;
+            if (ownExcludedSet.has(target)) continue;
             if (this.isValidTurretTargetForSelf(target, state)) {
                 return target;
             }
@@ -489,10 +528,15 @@ export class Actor extends DestructibleEntity {
                 if (!stillValid) {
                     turret.target = null;
                     this.clearTurretCharge(turret);
-                } else if (engagedTargets.has(turret.target)) {
-                    const betterTarget = this.findTurretTarget(state, engagedTargets);
-                    if (betterTarget) {
-                        turret.target = betterTarget;
+                } else {
+                    const independent = this.findIndependentTurretTarget(state, engagedTargets);
+                    if (independent && independent !== turret.target) {
+                        turret.target = independent;
+                    } else if (engagedTargets.has(turret.target)) {
+                        const betterTarget = this.findTurretTarget(state, engagedTargets);
+                        if (betterTarget) {
+                            turret.target = betterTarget;
+                        }
                     }
                 }
             }
@@ -505,21 +549,6 @@ export class Actor extends DestructibleEntity {
                 engagedTargets.add(turret.target);
             }
         }
-    }
-
-    updateTurrets(dt, state, { blocksTargeting = false, combatEvents = [] } = {}) {
-        if (!this.weapon || this.turrets.length === 0) {
-            return combatEvents;
-        }
-
-        if (this.canRunTurretCombat()) {
-            this.acquireTurretTargets(state, blocksTargeting);
-            this.processAllTurrets(dt, state, blocksTargeting, combatEvents);
-        } else {
-            this.aimIdleTurrets(dt, state, blocksTargeting);
-        }
-
-        return combatEvents;
     }
 
     syncTurretCount(count, turnSpeed) {

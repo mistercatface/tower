@@ -151,12 +151,13 @@ export class Player extends Actor {
         return true;
     }
 
-    updateCombat(dt, state, spatialHash, { externalSpeedMod = 1.0 } = {}) {
+    updateCombat(dt, state, spatialHash, options = {}) {
         const flowFieldGrid = state.flowFieldGrid;
         const walls = state.walls;
 
         if (this.currentState?.customMovement) {
             this.currentState.update(this, dt, null, flowFieldGrid, walls, null, spatialHash, null, null);
+            this.updateTurretCombat(dt, state, options);
             return;
         }
         if (this.isMoving && this.targetX !== null && this.targetY !== null) {
@@ -170,7 +171,11 @@ export class Player extends Actor {
             this.desiredY = 0;
         }
 
-        this.applyLocomotion(dt, walls, spatialHash, { externalSpeedMod });
+        this.applyLocomotion(dt, walls, spatialHash, {
+            externalSpeedMod: options.externalSpeedMod ?? 1.0,
+            state,
+        });
+        this.updateTurretCombat(dt, state, options);
     }
 
     renderRange(ctx, weaponRange) {

@@ -67,13 +67,14 @@ export class Enemy extends Actor {
         }
     }
 
-    updateCombat(dt, state, spatialHash, _options = {}) {
+    updateCombat(dt, state, spatialHash, options = {}) {
         const target = this.getAITarget(state);
 
         if (!target) {
             this.desiredX = 0;
             this.desiredY = 0;
             this.applyLocomotion(dt, state.walls, spatialHash, { state, ignoreSeparationInDesired: true });
+            this.updateTurretCombat(dt, state, options);
             return;
         }
 
@@ -88,6 +89,7 @@ export class Enemy extends Actor {
             state.scheduler,
             state
         );
+        this.updateTurretCombat(dt, state, options);
     }
 
     calculateSteering(target, state) {

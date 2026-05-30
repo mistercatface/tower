@@ -177,10 +177,14 @@ export class GameState {
     }
 
     updateAllCombatants(dt, spatialHash, options = {}) {
+        this.activeLasers = [];
+        const combatEvents = [];
+
         for (const actor of this.getCombatants()) {
             actor.updateCombat(dt, this, spatialHash, {
                 ...options,
                 externalSpeedMod: actor.getExternalSpeedMod(this, options),
+                combatEvents,
             });
         }
 
@@ -188,20 +192,6 @@ export class GameState {
             if (this.enemies[i].isDead) {
                 this.enemies.splice(i, 1);
             }
-        }
-    }
-
-    getActorsWithTurrets() {
-        return this.getCombatants().filter((actor) => actor.weapon && actor.turrets.length > 0);
-    }
-
-    updateAllTurrets(dt, { upgrades = [], blocksTargeting = false } = {}) {
-        this.activeLasers = [];
-        const combatEvents = [];
-
-        for (const actor of this.getActorsWithTurrets()) {
-            const actorBlocks = blocksTargeting || actor.getExternalBlocksTargeting(this, upgrades);
-            actor.updateTurrets(dt, this, { blocksTargeting: actorBlocks, combatEvents });
         }
 
         return combatEvents;

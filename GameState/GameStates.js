@@ -65,18 +65,16 @@ export class MapTransitionState {
         const speedUpDt = dt * 5.0;
         
         const oldGridPos = ctx.state.flowFieldGrid.worldToGrid(ctx.state.player.x, ctx.state.player.y);
-        ctx.state.updateAllCombatants(speedUpDt, null, {});
+        ctx.state.updateAllCombatants(speedUpDt, null, {
+            blocksTargeting: true,
+            upgrades: ctx.upgrades,
+        });
         ctx.state.navigation.updateFlowField({
             playerX: ctx.state.player.x,
             playerY: ctx.state.player.y,
             playerTargetX: ctx.state.player.targetX,
             playerTargetY: ctx.state.player.targetY,
             previousGridPos: oldGridPos,
-        });
-
-        ctx.state.updateAllTurrets(speedUpDt, {
-            upgrades: ctx.upgrades,
-            blocksTargeting: true,
         });
 
         const targetNode = ctx.state.getMapTargetNode();
@@ -176,8 +174,9 @@ export class CombatState {
         }
 
         const oldGridPos = ctx.state.flowFieldGrid.worldToGrid(ctx.state.player.x, ctx.state.player.y);
-        ctx.state.updateAllCombatants(dt, spatialHash, {
+        const combatEvents = ctx.state.updateAllCombatants(dt, spatialHash, {
             externalSpeedMod: abilityState.externalSpeedMod,
+            upgrades: ctx.upgrades,
         });
         ctx.state.navigation.updateFlowField({
             playerX: ctx.state.player.x,
@@ -191,9 +190,8 @@ export class CombatState {
         Projectile.updateAll(ctx.state, dt);
         ProgressionManager.updatePickups(ctx.state, dt);
 
-        const turretEvents = ctx.state.updateAllTurrets(dt, { upgrades: ctx.upgrades });
         const collisionEvents = CollisionSystem.run(ctx.state);
-        const allEvents = [...turretEvents, ...collisionEvents];
+        const allEvents = [...combatEvents, ...collisionEvents];
 
         Explosion.updateAll(ctx.state, dt, allEvents);
 

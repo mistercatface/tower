@@ -120,6 +120,7 @@ export class Sidekick extends Actor {
         if (!leader || leader.isDead) {
             this.holdPosition();
             this.applyLocomotion(dt, state.walls, spatialHash, { ...options, state });
+            this.updateTurretCombat(dt, state, options);
             return;
         }
 
@@ -160,5 +161,6 @@ export class Sidekick extends Actor {
         this.applyLocomotion(dt, state.walls, spatialHash, { ...options, state });
         this.speed = baseSpeed;
         this.enforceLeaderClearance(leader);
+        this.updateTurretCombat(dt, state, options);
     }
 }
