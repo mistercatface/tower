@@ -1,7 +1,6 @@
 import { Actor } from "./Actor.js";
 import { NAV_PROFILES, navigationSettings, sidekickBaseStats } from "../Config/Config.js";
 import { defaultGunId } from "../Config/gunDefinitions.js";
-import { RenderSprites } from "../Render/RenderSprites.js";
 import { createEntityBars } from "./EntityBars.js";
 
 const sidekickBars = createEntityBars({
@@ -114,10 +113,6 @@ export class Sidekick extends Actor {
         }
 
         this.holdPosition();
-    }
-
-    getBodySprite() {
-        return RenderSprites.sidekick;
     }
 
     updateCombat(dt, state, spatialHash, options = {}) {

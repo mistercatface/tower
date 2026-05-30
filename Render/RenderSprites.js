@@ -81,10 +81,7 @@ export const RenderSprites = {
         offCtx.arc(cx, cy, radius, 0, Math.PI * 2);
         offCtx.fillStyle = color;
         offCtx.fill();
-        offCtx.lineWidth = 2;
-        offCtx.strokeStyle = "rgba(255, 255, 255, 0.85)";
-        offCtx.stroke();
-        return offCanvas;
+        return { offCanvas, cx, cy };
     },
 
     wall: (size, r, g, b) => {

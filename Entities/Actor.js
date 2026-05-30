@@ -473,23 +473,35 @@ export class Actor extends DestructibleEntity {
     }
 
     getSpriteCache(renderer) {
-        return this.faction === "player" ? renderer.playerCache : renderer.enemyCache;
+        return renderer.actorCache;
     }
 
     getBodySprite() {
-        return this.faction === "player" ? RenderSprites.player : RenderSprites.enemy;
+        switch (this.type) {
+            case "player":
+                return RenderSprites.player;
+            case "companion":
+                return RenderSprites.sidekick;
+            default:
+                return RenderSprites.enemy;
+        }
+    }
+
+    getBodySpriteCacheKey() {
+        return `${this.type}_${this.radius}_${this.color}`;
     }
 
     getStatusBarYOffset() {
-        return this.faction === "player" ? this.radius + 14 : 14;
+        return this.type === "player" || this.type === "companion"
+            ? this.radius + 14
+            : 14;
     }
 
     renderBody(ctx, renderer) {
-        const cacheKey = `${this.radius}_${this.color}`;
         this.renderCachedSprite(
             ctx,
             this.getSpriteCache(renderer),
-            cacheKey,
+            this.getBodySpriteCacheKey(),
             this.getBodySprite(),
             this.radius,
             this.color

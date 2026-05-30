@@ -146,7 +146,7 @@ export class Enemy extends Actor {
 
     render(ctx, renderer, state) {
         if (this.currentState && this.currentState.render) {
-            this.currentState.render(this, ctx, renderer.enemyCache, renderer.turretCache);
+            this.currentState.render(this, ctx, renderer.actorCache, renderer.turretCache);
         }
 
         this.renderBody(ctx, renderer);

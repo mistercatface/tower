@@ -316,7 +316,7 @@ export class EnemyChargeWindupState {
 
         return false;
     }
-    render(enemy, ctx, enemyCache, turretCache) {
+    render(enemy, ctx, actorCache, turretCache) {
         const stateData = enemy.stateData;
         ctx.save();
         ctx.strokeStyle = "rgba(255, 87, 34, 0.4)";
@@ -384,7 +384,7 @@ export class EnemyChargeDashState {
 
         return false;
     }
-    render(enemy, ctx, enemyCache, turretCache) {
+    render(enemy, ctx, actorCache, turretCache) {
         const stateData = enemy.stateData;
         if (stateData.dashTrail && stateData.dashTrail.length > 0) {
             ctx.save();
