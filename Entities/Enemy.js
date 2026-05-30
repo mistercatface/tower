@@ -1,5 +1,3 @@
-import { Utilities } from "../Core/Utilities.js";
-import { areHostile } from "../Combat/Targeting.js";
 import { Actor } from "./Actor.js";
 import { emitCombatEnemyKilled } from "../Core/EventSystem.js";
 import { NAV_PROFILES } from "../Config/Config.js";
@@ -61,6 +59,11 @@ export class Enemy extends Actor {
         this.healthBar = Enemy.healthBar;
     }
 
+    getDodgeChance() {
+        if (this.canDodge) return 0.5;
+        return super.getDodgeChance();
+    }
+
     onHitAfterDamage(_damage, _ctx, _hitType, died) {
         if (died) {
             emitCombatEnemyKilled(this);
@@ -68,6 +71,10 @@ export class Enemy extends Actor {
     }
 
     updateCombat(dt, state, spatialHash, options = {}) {
+        if (this.handleCombatDodge(dt, state, spatialHash, options)) {
+            return;
+        }
+
         const target = this.getAITarget(state);
 
         if (!target) {
@@ -94,52 +101,6 @@ export class Enemy extends Actor {
 
     calculateSteering(target, state) {
         state.navigation.steerTo(this, target.x, target.y, NAV_PROFILES.enemyToPlayer);
-    }
-
-    shouldTriggerDodge(projectiles, flowFieldGrid, scheduler) {
-        for (const m of projectiles) {
-            if (!areHostile(this, m)) continue;
-
-            const dist = Math.hypot(m.x - this.x, m.y - this.y);
-            if (dist < 100 && !m.isDead) {
-                const angleToEnemy = Math.atan2(this.y - m.y, this.x - m.x);
-                let angleDiff = angleToEnemy - m.angle;
-                angleDiff = Utilities.normalizeAngle(angleDiff);
-
-                if (Math.abs(angleDiff) < 0.5) {
-                    if (Math.random() < 0.5) {
-                        const perpAngle1 = m.angle + Math.PI / 2;
-                        const perpAngle2 = m.angle - Math.PI / 2;
-                        const dodgeDist = 25;
-                        const angles = Math.random() < 0.5 ? [perpAngle1, perpAngle2] : [perpAngle2, perpAngle1];
-
-                        for (const dodgeAngle of angles) {
-                            const destX = this.x + Math.cos(dodgeAngle) * dodgeDist;
-                            const destY = this.y + Math.sin(dodgeAngle) * dodgeDist;
-
-                            if (this.isValidDodgeTarget(destX, destY, flowFieldGrid)) {
-                                this.dodgeTargetX = destX;
-                                this.dodgeTargetY = destY;
-                                this.dodgeTimerId = scheduler.schedule(2000);
-                                return true;
-                            }
-                        }
-                    } else {
-                        this.dodgeTimerId = scheduler.schedule(500);
-                    }
-                }
-            }
-        }
-        return false;
-    }
-
-    isValidDodgeTarget(x, y, flowFieldGrid) {
-        if (!flowFieldGrid) return true;
-        const { col, row } = flowFieldGrid.worldToGrid(x, y);
-        if (col >= 0 && col < flowFieldGrid.cols && row >= 0 && row < flowFieldGrid.rows) {
-            return flowFieldGrid.grid[row * flowFieldGrid.cols + col] === 0;
-        }
-        return false;
     }
 
     canReposition(state) {

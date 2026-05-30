@@ -1,6 +1,7 @@
 import { DestructibleEntity } from "./Entity.js";
 import { Separation } from "../Spatial/Motion/Separation.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
+import { CollisionSystem } from "../Spatial/Collision/CollisionSystem.js";
 import { actorStates } from "./ActorStates.js";
 import { transitionEntity } from "./EntityFsm.js";
 import {
@@ -24,6 +25,7 @@ import {
 import { RenderSprites } from "../Render/RenderSprites.js";
 import {
     areHostile,
+    getHostiles,
     getNearestHostile,
     getPlayerActors,
     isValidTurretTarget,
@@ -60,6 +62,9 @@ export class Actor extends DestructibleEntity {
         this.currentState = actorStates.navigating;
         this.currentStateName = "navigating";
         this.stateData = {};
+        this.dodgeTimerId = null;
+        this.dodgeTargetX = 0;
+        this.dodgeTargetY = 0;
     }
 
     setupCombatant(combatStats, upgradeDefs = null) {
@@ -253,10 +258,236 @@ export class Actor extends DestructibleEntity {
 
     applyAllyLaneAvoidance(state, { weight = 0.8 } = {}) {
         if (!state || !this.shouldApplyAllyLaneAvoidance(state)) return;
+        if (this.isCombatPlanted()) return;
 
         const bias = this.computeAllyLaneAvoidanceBias(state);
         if (bias.x === 0 && bias.y === 0) return;
 
+        this.blendDesiredMovement(bias, weight);
+    }
+
+    shouldApplyCoverMovement(state) {
+        if (!state || !this.weapon) return false;
+        if (!this.alwaysRunsTurretCombat && !this.canRunTurretCombat()) return false;
+
+        if (
+            this.faction === "enemy" &&
+            ["engaged", "charging_prepare", "charging_windup", "charging_dash", "dodging", "blasted"].includes(
+                this.currentStateName
+            )
+        ) {
+            return false;
+        }
+
+        const scanRange = (this.weapon.range ?? 0) + 60;
+        return getNearestHostile(state, this, scanRange, null, { requireLos: false }) != null;
+    }
+
+    analyzeCoverPath(tangentX, tangentY, dir, walls, observer, shootTarget, {
+        stepSize = 10,
+        maxSteps = 12,
+    } = {}) {
+        let walkableDist = 0;
+        let coverDist = -1;
+        let openDist = -1;
+
+        for (let step = 1; step <= maxSteps; step++) {
+            const dist = step * stepSize;
+            const tx = this.x + tangentX * dir * dist;
+            const ty = this.y + tangentY * dir * dist;
+
+            let hitWall = false;
+            const testCircle = { x: tx, y: ty, radius: this.radius };
+            for (const seg of walls) {
+                if (seg.isDead) continue;
+                if (CollisionSystem.checkCircleRect(testCircle, seg)) {
+                    hitWall = true;
+                    break;
+                }
+            }
+            if (hitWall) break;
+
+            walkableDist = dist;
+
+            if (observer) {
+                const observed = observer.hasLineOfSightFromPoint(tx, ty, walls, {
+                    sourceRadius: this.radius,
+                });
+                if (!observed && coverDist === -1) {
+                    coverDist = dist;
+                }
+            }
+
+            if (shootTarget) {
+                const canShoot = Utilities.hasLineOfSight(
+                    tx,
+                    ty,
+                    shootTarget.x,
+                    shootTarget.y,
+                    walls,
+                    this.radius,
+                    shootTarget.radius ?? 0
+                );
+                if (canShoot && openDist === -1) {
+                    openDist = dist;
+                }
+            }
+        }
+
+        return { walkableDist, coverDist, openDist };
+    }
+
+    getCoverThreat(state) {
+        let nearest = null;
+        let minDist = Infinity;
+
+        for (const hostile of getHostiles(state, this)) {
+            if (!hostile.hasLineOfSightTo(this, state)) continue;
+            const dist = Math.hypot(hostile.x - this.x, hostile.y - this.y);
+            if (dist < minDist) {
+                minDist = dist;
+                nearest = hostile;
+            }
+        }
+
+        if (nearest) return nearest;
+
+        const scanRange = (this.weapon?.range ?? 0) + 60;
+        return getNearestHostile(state, this, scanRange, null, { requireLos: false });
+    }
+
+    getCoverShootTarget(state) {
+        for (const turret of this.getTurrets()) {
+            if (turret.target && !turret.target.isDead) {
+                return turret.target;
+            }
+        }
+
+        const range = this.weapon?.range ?? Infinity;
+        return getNearestHostile(state, this, range, null, { requireLos: false });
+    }
+
+    pickCoverStrafeDir(leftPath, rightPath, { preferCover = false } = {}) {
+        const scorePath = (path) => {
+            if (preferCover) {
+                if (path.coverDist !== -1 && path.coverDist <= path.walkableDist) {
+                    return path.walkableDist - path.coverDist;
+                }
+                return path.walkableDist * 0.25;
+            }
+
+            if (path.openDist !== -1 && path.openDist <= path.walkableDist) {
+                return path.walkableDist - path.openDist;
+            }
+            return path.walkableDist * 0.25;
+        };
+
+        const leftScore = scorePath(leftPath);
+        const rightScore = scorePath(rightPath);
+        let dir = leftScore >= rightScore ? 1 : -1;
+
+        if (this._coverStrafeDir != null && Math.abs(leftScore - rightScore) < 8) {
+            dir = this._coverStrafeDir;
+        }
+
+        this._coverStrafeDir = dir;
+        return dir;
+    }
+
+    needsMandatoryCombatMovement(state) {
+        const walls = state?.walls;
+        if (!walls) return false;
+
+        const threat = this.getCoverThreat(state);
+        const shootTarget = this.getCoverShootTarget(state);
+        if (!threat && !shootTarget) return false;
+
+        const focus = threat ?? shootTarget;
+        const dx = this.x - focus.x;
+        const dy = this.y - focus.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < 1) return false;
+
+        const tangentX = -(dy / dist);
+        const tangentY = dx / dist;
+
+        const exposed = threat != null && threat.hasLineOfSightTo(this, state);
+        const canShoot = shootTarget != null && this.hasLineOfSightTo(shootTarget, state);
+
+        const leftPath = this.analyzeCoverPath(tangentX, tangentY, 1, walls, threat, shootTarget);
+        const rightPath = this.analyzeCoverPath(tangentX, tangentY, -1, walls, threat, shootTarget);
+
+        if (exposed) {
+            const leftCover =
+                leftPath.coverDist !== -1 && leftPath.coverDist <= leftPath.walkableDist;
+            const rightCover =
+                rightPath.coverDist !== -1 && rightPath.coverDist <= rightPath.walkableDist;
+            return leftCover || rightCover;
+        }
+
+        if (shootTarget && !canShoot) {
+            const leftOpen = leftPath.openDist !== -1 && leftPath.openDist <= leftPath.walkableDist;
+            const rightOpen = rightPath.openDist !== -1 && rightPath.openDist <= rightPath.walkableDist;
+            return leftOpen || rightOpen;
+        }
+
+        return false;
+    }
+
+    computeCoverMovementBias(state) {
+        if (!this.needsMandatoryCombatMovement(state)) {
+            return { x: 0, y: 0 };
+        }
+
+        const walls = state?.walls;
+        const threat = this.getCoverThreat(state);
+        const shootTarget = this.getCoverShootTarget(state);
+        const focus = threat ?? shootTarget;
+        const dx = this.x - focus.x;
+        const dy = this.y - focus.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < 1) return { x: 0, y: 0 };
+
+        const radialX = dx / dist;
+        const radialY = dy / dist;
+        const tangentX = -radialY;
+        const tangentY = radialX;
+
+        const exposed = threat != null && threat.hasLineOfSightTo(this, state);
+        const canShoot = shootTarget != null && this.hasLineOfSightTo(shootTarget, state);
+
+        const leftPath = this.analyzeCoverPath(tangentX, tangentY, 1, walls, threat, shootTarget);
+        const rightPath = this.analyzeCoverPath(tangentX, tangentY, -1, walls, threat, shootTarget);
+
+        let strafeDir = 0;
+
+        if (exposed) {
+            const leftCover =
+                leftPath.coverDist !== -1 && leftPath.coverDist <= leftPath.walkableDist;
+            const rightCover =
+                rightPath.coverDist !== -1 && rightPath.coverDist <= rightPath.walkableDist;
+
+            if (leftCover || rightCover) {
+                strafeDir = this.pickCoverStrafeDir(leftPath, rightPath, { preferCover: true });
+            }
+        } else if (shootTarget && !canShoot) {
+            const leftOpen = leftPath.openDist !== -1 && leftPath.openDist <= leftPath.walkableDist;
+            const rightOpen = rightPath.openDist !== -1 && rightPath.openDist <= rightPath.walkableDist;
+
+            if (leftOpen || rightOpen) {
+                strafeDir = this.pickCoverStrafeDir(leftPath, rightPath, { preferCover: false });
+            }
+        }
+
+        if (strafeDir === 0) return { x: 0, y: 0 };
+
+        return {
+            x: tangentX * strafeDir,
+            y: tangentY * strafeDir,
+        };
+    }
+
+    blendDesiredMovement(bias, weight) {
         const desiredLen = Math.hypot(this.desiredX, this.desiredY);
         if (desiredLen > 0.001) {
             this.desiredX = this.desiredX * (1 - weight) + bias.x * weight;
@@ -271,6 +502,204 @@ export class Actor extends DestructibleEntity {
             this.desiredX /= len;
             this.desiredY /= len;
         }
+    }
+
+    applyCoverMovement(state, { weight = 0.7 } = {}) {
+        if (!state || !this.shouldApplyCoverMovement(state)) return;
+        if (this.isCombatPlanted()) return;
+
+        const bias = this.computeCoverMovementBias(state);
+        if (bias.x === 0 && bias.y === 0) return;
+
+        this.blendDesiredMovement(bias, weight);
+    }
+
+    allowsPlantedStance(_state) {
+        if (typeof this.isRepositioning === "function" && this.isRepositioning()) {
+            return false;
+        }
+        return true;
+    }
+
+    shouldApplyPlantedStance(state) {
+        if (!state || !this.weapon) return false;
+        if (!this.alwaysRunsTurretCombat && !this.canRunTurretCombat()) return false;
+        if (!this.allowsPlantedStance(state)) return false;
+
+        const scanRange = (this.weapon.range ?? 0) + 60;
+        return getNearestHostile(state, this, scanRange, null, { requireLos: false }) != null;
+    }
+
+    isCombatPlanted() {
+        return this._combatPosture === "planted";
+    }
+
+    resetCombatPosture() {
+        this._combatPosture = "mobile";
+        this._combatPostureTimer = 0;
+    }
+
+    canHoldPlantedStance(state) {
+        const shootTarget = this.getCoverShootTarget(state);
+        if (!shootTarget) return false;
+        if (!this.hasLineOfSightTo(shootTarget, state)) return false;
+
+        const dist = Math.hypot(shootTarget.x - this.x, shootTarget.y - this.y);
+        if (dist > (this.weapon?.range ?? 0)) return false;
+
+        return !this.needsMandatoryCombatMovement(state);
+    }
+
+    shouldBreakPlantedStance(state) {
+        return !this.canHoldPlantedStance(state);
+    }
+
+    shouldIgnoreCombatSeparation(state) {
+        if (!state || !this.shouldApplyPlantedStance(state)) return false;
+        if (this.isCombatPlanted()) return true;
+        if (this.needsMandatoryCombatMovement(state)) return false;
+        return this.canHoldPlantedStance(state);
+    }
+
+    updateCombatPosture(dt, state) {
+        if (!this.shouldApplyPlantedStance(state)) {
+            this.resetCombatPosture();
+            return;
+        }
+
+        if (this._combatPosture == null) {
+            this.resetCombatPosture();
+        }
+
+        const mustMove = this.needsMandatoryCombatMovement(state);
+
+        if (this.isCombatPlanted()) {
+            this._combatPostureTimer -= dt;
+            if (mustMove || this.shouldBreakPlantedStance(state)) {
+                this._combatPosture = "mobile";
+                this._combatPostureTimer = 0;
+            } else if (this._combatPostureTimer <= 0) {
+                this._combatPostureTimer = 1800 + Math.random() * 2200;
+            }
+            return;
+        }
+
+        if (mustMove) {
+            this._combatPostureTimer = 0;
+            return;
+        }
+
+        if (this.canHoldPlantedStance(state)) {
+            this._combatPosture = "planted";
+            this._combatPostureTimer = 1800 + Math.random() * 2200;
+        }
+    }
+
+    applyPlantedStance(dt) {
+        this.desiredX = 0;
+        this.desiredY = 0;
+
+        const settle = 1 - Math.exp(-14 * (dt / 1000));
+        this.vx *= 1 - settle;
+        this.vy *= 1 - settle;
+    }
+
+    getDodgeChance() {
+        return 0.35;
+    }
+
+    canAttemptDodge(state) {
+        if (!state?.scheduler || !state?.projectiles) return false;
+        if (typeof this.isRepositioning === "function" && this.isRepositioning()) return false;
+        if (this.currentStateName === "dodging") return false;
+        if (this.currentState?.customMovement) return false;
+        if (state.scheduler.getTimeRemaining(this.dodgeTimerId) > 0) return false;
+        return true;
+    }
+
+    isValidDodgeTarget(x, y, flowFieldGrid) {
+        if (!flowFieldGrid) return true;
+        const { col, row } = flowFieldGrid.worldToGrid(x, y);
+        if (col >= 0 && col < flowFieldGrid.cols && row >= 0 && row < flowFieldGrid.rows) {
+            return flowFieldGrid.grid[row * flowFieldGrid.cols + col] === 0;
+        }
+        return false;
+    }
+
+    shouldTriggerDodge(projectiles, flowFieldGrid, scheduler) {
+        for (const projectile of projectiles) {
+            if (!areHostile(this, projectile)) continue;
+
+            const dist = Math.hypot(projectile.x - this.x, projectile.y - this.y);
+            if (dist >= 100 || projectile.isDead) continue;
+
+            const angleToSelf = Math.atan2(this.y - projectile.y, this.x - projectile.x);
+            let angleDiff = angleToSelf - projectile.angle;
+            angleDiff = Utilities.normalizeAngle(angleDiff);
+
+            if (Math.abs(angleDiff) >= 0.5) continue;
+
+            if (Math.random() < this.getDodgeChance()) {
+                const perpAngle1 = projectile.angle + Math.PI / 2;
+                const perpAngle2 = projectile.angle - Math.PI / 2;
+                const dodgeDist = 25;
+                const angles = Math.random() < 0.5 ? [perpAngle1, perpAngle2] : [perpAngle2, perpAngle1];
+
+                for (const dodgeAngle of angles) {
+                    const destX = this.x + Math.cos(dodgeAngle) * dodgeDist;
+                    const destY = this.y + Math.sin(dodgeAngle) * dodgeDist;
+
+                    if (this.isValidDodgeTarget(destX, destY, flowFieldGrid)) {
+                        this.dodgeTargetX = destX;
+                        this.dodgeTargetY = destY;
+                        this.dodgeTimerId = scheduler.schedule(2000);
+                        return true;
+                    }
+                }
+            } else {
+                this.dodgeTimerId = scheduler.schedule(500);
+            }
+        }
+
+        return false;
+    }
+
+    tryStartCombatDodge(state) {
+        if (!this.canAttemptDodge(state)) return false;
+        if (!this.shouldTriggerDodge(state.projectiles, state.flowFieldGrid, state.scheduler)) {
+            return false;
+        }
+
+        this.resetCombatPosture();
+        this.changeState("dodging", {
+            targetX: this.dodgeTargetX,
+            targetY: this.dodgeTargetY,
+        });
+        return true;
+    }
+
+    handleCombatDodge(dt, state, spatialHash, options = {}) {
+        if (this.currentStateName === "dodging") {
+            this.currentState.update(
+                this,
+                dt,
+                null,
+                state.flowFieldGrid,
+                state.walls,
+                state.projectiles,
+                spatialHash,
+                state.scheduler,
+                state
+            );
+            this.updateTurretCombat(dt, state, options);
+            return true;
+        }
+
+        if (this.tryStartCombatDodge(state)) {
+            return this.handleCombatDodge(dt, state, spatialHash, options);
+        }
+
+        return false;
     }
 
     isAbilityOwner(state) {
@@ -289,8 +718,10 @@ export class Actor extends DestructibleEntity {
         return this.isAbilityOwner(state) && !!state.abilities?.["Eraser"];
     }
 
-    updateCombat(_dt, _state, _spatialHash, _options = {}) {
-        // Subclasses run movement, then call updateTurretCombat.
+    updateCombat(dt, state, spatialHash, options = {}) {
+        if (this.handleCombatDodge(dt, state, spatialHash, options)) {
+            return;
+        }
     }
 
     updateTurretCombat(dt, state, options = {}) {
@@ -709,6 +1140,7 @@ export class Actor extends DestructibleEntity {
     }
 
     resetTurretCombatState() {
+        this.resetCombatPosture();
         for (const turret of this.turrets) {
             turret.charge = 0;
             turret.target = null;
@@ -857,15 +1289,41 @@ export class Actor extends DestructibleEntity {
         alignAngleWithMovement = true,
     } = {}) {
         if (state) {
-            this.applyAllyLaneAvoidance(state);
+            this.updateCombatPosture(dt, state);
+            if (this.isCombatPlanted()) {
+                this.applyPlantedStance(dt);
+            } else {
+                this.applyAllyLaneAvoidance(state);
+                this.applyCoverMovement(state);
+            }
         }
 
+        const ignoreSeparation =
+            ignoreSeparationInDesired ||
+            this.isCombatPlanted() ||
+            this.shouldIgnoreCombatSeparation(state);
+
         this.separation.update(this, spatialHash);
+        if (ignoreSeparation) {
+            this.separation.x = 0;
+            this.separation.y = 0;
+            if (this.isCombatPlanted()) {
+                this.separation.pushX = 0;
+                this.separation.pushY = 0;
+            }
+        }
+
         const baseSpeed = this.speed;
         if (externalSpeedMod !== 1) {
             this.speed = baseSpeed * externalSpeedMod;
         }
-        PhysicsSystem.applyMovement(this, dt, ignoreSeparationInDesired, shouldMove, alignAngleWithMovement);
+        PhysicsSystem.applyMovement(
+            this,
+            dt,
+            ignoreSeparation,
+            shouldMove,
+            alignAngleWithMovement && !this.isCombatPlanted()
+        );
         if (externalSpeedMod !== 1) {
             this.speed = baseSpeed;
         }

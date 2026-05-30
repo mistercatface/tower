@@ -1,43 +1,8 @@
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { Utilities } from "../Core/Utilities.js";
-import { CollisionSystem } from "../Spatial/Collision/CollisionSystem.js";
+
 function analyzeStrafePath(enemy, tangentX, tangentY, dir, walls, target) {
-    const stepSize = 10;
-    const maxSteps = 12;
-    let walkableDist = 0;
-    let coverDist = -1;
-    let openDist = -1;
-
-    for (let step = 1; step <= maxSteps; step++) {
-        const dist = step * stepSize;
-        const tx = enemy.x + tangentX * dir * dist;
-        const ty = enemy.y + tangentY * dir * dist;
-
-        let hitWall = false;
-        const testCircle = { x: tx, y: ty, radius: enemy.radius };
-        for (const seg of walls) {
-            if (seg.isDead) continue;
-            if (CollisionSystem.checkCircleRect(testCircle, seg)) {
-                hitWall = true;
-                break;
-            }
-        }
-        if (hitWall) {
-            break;
-        }
-
-        walkableDist = dist;
-
-        const hasLOS = target.hasLineOfSightFromPoint(tx, ty, walls, { sourceRadius: enemy.radius });
-        if (!hasLOS && coverDist === -1) {
-            coverDist = dist;
-        }
-        if (hasLOS && openDist === -1) {
-            openDist = dist;
-        }
-    }
-
-    return { walkableDist, coverDist, openDist };
+    return enemy.analyzeCoverPath(tangentX, tangentY, dir, walls, target, target);
 }
 
 function cancelEngagedStrafeTimers(enemy) {
@@ -54,10 +19,6 @@ export class EnemyNavigatingState {
     }
 
     update(enemy, dt, target, flowFieldGrid, walls, missiles, spatialHash, scheduler, state) {
-        if (enemy.canDodge && scheduler.getTimeRemaining(enemy.dodgeTimerId) <= 0 && enemy.shouldTriggerDodge(missiles, flowFieldGrid, scheduler)) {
-            return enemy.changeStateAndUpdate("dodging", { targetX: enemy.dodgeTargetX, targetY: enemy.dodgeTargetY }, dt, target, flowFieldGrid, walls, missiles, spatialHash, scheduler, state);
-        }
-
         if (enemy.attackType === "charge") {
             return enemy.changeStateAndUpdate("charging_prepare", null, dt, target, flowFieldGrid, walls, missiles, spatialHash, scheduler, state);
         }
@@ -92,10 +53,6 @@ export class EnemyEngagedState {
 
     update(enemy, dt, target, flowFieldGrid, walls, missiles, spatialHash, scheduler, state) {
         enemy.lastScheduler = scheduler;
-
-        if (enemy.canDodge && scheduler.getTimeRemaining(enemy.dodgeTimerId) <= 0 && enemy.shouldTriggerDodge(missiles, flowFieldGrid, scheduler)) {
-            return enemy.changeStateAndUpdate("dodging", { targetX: enemy.dodgeTargetX, targetY: enemy.dodgeTargetY }, dt, target, flowFieldGrid, walls, missiles, spatialHash, scheduler, state);
-        }
 
         const dx = enemy.x - target.x;
         const dy = enemy.y - target.y;
