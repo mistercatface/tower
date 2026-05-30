@@ -12,6 +12,19 @@ export const enemyStartGunPool = ["enemyRifle", "servicePistol"];
 export const playerEquipmentCatalog = ["servicePistol", "shotgun", "beamLaser"];
 
 /** Fixed ballistics and damage per gun. */
+export const projectilePresets = {
+    playerStandard: {
+        color: "#FFEB3B",
+        shooterKnockbackMultiplier: playerProjectileSettings.knockbackMultiplier,
+        hitKnockbackScale: 150,
+    },
+    enemyStandard: {
+        color: "#F44336",
+        shooterKnockbackMultiplier: enemyProjectileSettings.knockbackMultiplier,
+        hitKnockbackScale: 150,
+    },
+};
+
 export const gunDefinitions = {
     servicePistol: {
         id: "servicePistol",
@@ -25,6 +38,7 @@ export const gunDefinitions = {
         maxAmmo: 12,
         reloadTimeMs: 1200,
         turretLoadout: { preset: "standard" },
+        projectile: projectilePresets.playerStandard,
     },
     shotgun: {
         id: "shotgun",
@@ -38,6 +52,7 @@ export const gunDefinitions = {
         maxAmmo: 6,
         reloadTimeMs: 1800,
         turretLoadout: { preset: "shotgun" },
+        projectile: projectilePresets.playerStandard,
     },
     beamLaser: {
         id: "beamLaser",
@@ -65,6 +80,8 @@ export const gunDefinitions = {
         damage: 10,
         maxAmmo: 10,
         reloadTimeMs: 1500,
+        turretLoadout: { preset: "standard" },
+        projectile: projectilePresets.enemyStandard,
     },
 };
 

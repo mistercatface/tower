@@ -17,6 +17,9 @@ export function areHostile(a, b) {
 }
 
 export function getPlayerActors(state) {
+    if (typeof state.getPlayerActors === "function") {
+        return state.getPlayerActors();
+    }
     if (state.players?.length) {
         return state.players.filter((p) => p && !p.isDead);
     }
@@ -65,7 +68,7 @@ export function isValidTurretTarget(actor, target, state, range, blocksTargeting
     return true;
 }
 
-export function getNearestHostile(state, source, range, excludedTargets = null) {
+export function getNearestHostile(state, source, range, excludedTargets = null, { requireLos = true } = {}) {
     let nearest = null;
     let minDist = Infinity;
 
@@ -74,7 +77,10 @@ export function getNearestHostile(state, source, range, excludedTargets = null) 
 
         const dist = Math.hypot(target.x - source.x, target.y - source.y);
         if (dist <= range && dist < minDist) {
-            if (Utilities.hasLineOfSight(source.x, source.y, target.x, target.y, state.walls, source.radius)) {
+            if (
+                !requireLos ||
+                Utilities.hasLineOfSight(source.x, source.y, target.x, target.y, state.walls, source.radius)
+            ) {
                 minDist = dist;
                 nearest = target;
             }

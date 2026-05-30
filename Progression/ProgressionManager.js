@@ -33,7 +33,6 @@ export class ProgressionManager {
 
     static updateAbilities(state, dt, upgrades) {
         let externalSpeedMod = 1.0;
-        let blocksTargeting = false;
         let isDiving = false;
 
         upgrades
@@ -49,11 +48,10 @@ export class ProgressionManager {
                     if (upg.speedModFn) {
                         externalSpeedMod *= upg.speedModFn(activeRemaining, upg.activeDuration);
                     }
-                    if (upg.blocksTargeting) {
-                        blocksTargeting = true;
-                    }
                 }
             });
+
+        const blocksTargeting = state.player?.getExternalBlocksTargeting(state, upgrades) ?? false;
 
         return { externalSpeedMod, blocksTargeting, isDiving };
     }

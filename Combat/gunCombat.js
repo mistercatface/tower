@@ -1,8 +1,15 @@
-import { defaultGunId, gunDefinitions } from "../Config/gunDefinitions.js";
+import { defaultGunId, getGunDefinition, gunDefinitions } from "../Config/gunDefinitions.js";
 
 export function getSlotFireIntervalMs(gun, actor) {
     const multiplier = actor.stats?.fireIntervalMultiplier?.value ?? 1;
     return gun.fireIntervalMs * multiplier;
+}
+
+export function getGunProjectileConfig(gun) {
+    if (gun?.projectile) {
+        return gun.projectile;
+    }
+    throw new Error(`Gun "${gun?.id ?? "unknown"}" is missing projectile config`);
 }
 
 export function applyActorGunModifiers(actor) {

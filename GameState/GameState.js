@@ -145,17 +145,11 @@ export class GameState {
         return this.player && !this.player.isDead ? [this.player] : [];
     }
 
-    getTurretCombatants() {
-        const combatants = [];
-
-        for (const player of this.getPlayerActors()) {
-            if (player.weapon && player.canRunTurretCombat()) {
-                combatants.push(player);
-            }
-        }
+    getCombatants() {
+        const combatants = [...this.getPlayerActors()];
 
         for (const enemy of this.enemies) {
-            if (!enemy.isDead && enemy.weapon && enemy.canRunTurretCombat()) {
+            if (!enemy.isDead) {
                 combatants.push(enemy);
             }
         }
@@ -163,13 +157,17 @@ export class GameState {
         return combatants;
     }
 
-    updateAllTurrets(dt, { blocksTargetingByActor = null } = {}) {
+    getTurretCombatants() {
+        return this.getCombatants().filter((actor) => actor.weapon && actor.canRunTurretCombat());
+    }
+
+    updateAllTurrets(dt, { upgrades = [], blocksTargeting = false } = {}) {
         this.activeLasers = [];
         const combatEvents = [];
 
         for (const actor of this.getTurretCombatants()) {
-            const blocksTargeting = blocksTargetingByActor?.get(actor) ?? false;
-            actor.updateTurrets(dt, this, { blocksTargeting, combatEvents });
+            const actorBlocks = blocksTargeting || actor.getExternalBlocksTargeting(this, upgrades);
+            actor.updateTurrets(dt, this, { blocksTargeting: actorBlocks, combatEvents });
         }
 
         return combatEvents;

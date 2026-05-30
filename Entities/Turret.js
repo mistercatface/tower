@@ -1,11 +1,10 @@
 import { Utilities } from "../Core/Utilities.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
-import { enemyProjectileSettings, playerProjectileSettings } from "../Config/Config.js";
 import { defaultGunId, getGunDefinition } from "../Config/gunDefinitions.js";
 import { defaultTurretLoadout, resolveFireAngleOffsets } from "../Config/turretLoadoutPresets.js";
 import { Pools } from "../Core/Pools.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
-import { getSlotFireIntervalMs } from "../Combat/gunCombat.js";
+import { getGunProjectileConfig, getSlotFireIntervalMs } from "../Combat/gunCombat.js";
 import { inferFaction } from "../Combat/Targeting.js";
 
 export class Turret {
@@ -40,23 +39,12 @@ export class Turret {
         const { radiusMultiplier } = this.loadout;
         const angleOffsets = resolveFireAngleOffsets(this.loadout);
         const faction = inferFaction(source);
-        const knockbackSettings = faction === "player" ? playerProjectileSettings : enemyProjectileSettings;
 
-        this.spawnProjectiles(
-            state,
-            source,
-            tx,
-            ty,
-            this.angle,
-            gun,
-            radiusMultiplier,
-            angleOffsets,
-            faction,
-            knockbackSettings
-        );
+        this.spawnProjectiles(state, source, tx, ty, this.angle, gun, radiusMultiplier, angleOffsets, faction);
     }
 
-    spawnProjectiles(state, source, tx, ty, baseAngle, gun, radiusMultiplier, angleOffsets, faction, knockbackSettings) {
+    spawnProjectiles(state, source, tx, ty, baseAngle, gun, radiusMultiplier, angleOffsets, faction) {
+        const projectileConfig = getGunProjectileConfig(gun);
         const projectiles = [];
         const radius = gun.bulletRadius * radiusMultiplier;
 
@@ -71,6 +59,7 @@ export class Turret {
                 gun.damage,
                 faction
             );
+            projectile.gunId = gun.id;
             projectile.penetration = source.weapon.penetration;
             projectiles.push(projectile);
         }
@@ -82,7 +71,7 @@ export class Turret {
             PhysicsSystem.applyKnockback(
                 source,
                 baseAngle + Math.PI,
-                knockbackScale * knockbackSettings.knockbackMultiplier
+                knockbackScale * projectileConfig.shooterKnockbackMultiplier
             );
         }
     }

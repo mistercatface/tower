@@ -23,7 +23,26 @@ export class Enemy extends Actor {
     static updateAll(state, dt, spatialHash) {
         for (let i = state.enemies.length - 1; i >= 0; i--) {
             const e = state.enemies[i];
-            e.currentState.update(e, dt, e.getAITarget(state), state.flowFieldGrid, state.walls, state.projectiles, spatialHash, state.scheduler, state);
+            const target = e.getAITarget(state);
+
+            if (!target) {
+                e.desiredX = 0;
+                e.desiredY = 0;
+                e.applyLocomotion(dt, state.walls, spatialHash, { state, ignoreSeparationInDesired: true });
+            } else {
+                e.currentState.update(
+                    e,
+                    dt,
+                    target,
+                    state.flowFieldGrid,
+                    state.walls,
+                    state.projectiles,
+                    spatialHash,
+                    state.scheduler,
+                    state
+                );
+            }
+
             if (e.isDead) state.enemies.splice(i, 1);
         }
     }

@@ -8,6 +8,10 @@ function blastDamage(exp, dist, maxMultiplier, minMultiplier) {
     return maxDmg - (maxDmg - minDmg) * proximityRatio;
 }
 
+function blastMultipliersFor(actor) {
+    return actor.faction === "player" ? [1, 0.5] : [1.6, 0.4];
+}
+
 function applyExpandingDamage(state, exp, allEvents) {
     for (const seg of state.walls) {
         if (seg.isDead || exp.hitTargets.has(seg)) continue;
@@ -28,23 +32,19 @@ function applyExpandingDamage(state, exp, allEvents) {
         }
     }
 
-    for (const e of state.enemies) {
-        if (e.isDead || exp.hitTargets.has(e)) continue;
-        const dist = Math.hypot(e.x - exp.x, e.y - exp.y);
-        if (dist <= exp.radius + e.radius) {
-            if (Utilities.hasLineOfSight(exp.x, exp.y, e.x, e.y, state.walls, e.radius)) {
-                allEvents.push({ target: e, damage: blastDamage(exp, dist, 1.6, 0.4), type: "blast" });
-                exp.hitTargets.add(e);
-            }
-        }
-    }
+    for (const actor of state.getCombatants()) {
+        if (exp.hitTargets.has(actor)) continue;
 
-    if (!exp.hitTargets.has(state.player)) {
-        const dist = Math.hypot(state.player.x - exp.x, state.player.y - exp.y);
-        if (dist <= exp.radius + state.player.radius) {
-            if (Utilities.hasLineOfSight(exp.x, exp.y, state.player.x, state.player.y, state.walls, state.player.radius)) {
-                allEvents.push({ target: state.player, damage: blastDamage(exp, dist, 1, 0.5), type: "blast" });
-                exp.hitTargets.add(state.player);
+        const dist = Math.hypot(actor.x - exp.x, actor.y - exp.y);
+        if (dist <= exp.radius + actor.radius) {
+            if (Utilities.hasLineOfSight(exp.x, exp.y, actor.x, actor.y, state.walls, actor.radius)) {
+                const [maxMultiplier, minMultiplier] = blastMultipliersFor(actor);
+                allEvents.push({
+                    target: actor,
+                    damage: blastDamage(exp, dist, maxMultiplier, minMultiplier),
+                    type: "blast",
+                });
+                exp.hitTargets.add(actor);
             }
         }
     }

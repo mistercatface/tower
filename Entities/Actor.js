@@ -125,12 +125,33 @@ export class Actor extends DestructibleEntity {
 
     getAITarget(state) {
         if (!state) return null;
+
+        const aiOpts = { requireLos: false };
         const range = this.weapon?.range;
         if (range != null) {
-            const inRange = getNearestHostile(state, this, range);
+            const inRange = getNearestHostile(state, this, range, null, aiOpts);
             if (inRange) return inRange;
         }
-        return getNearestHostile(state, this, Infinity);
+        return getNearestHostile(state, this, Infinity, null, aiOpts);
+    }
+
+    getExternalBlocksTargeting(state, upgrades = []) {
+        if (this.faction !== "player" || !state?.abilities || !state?.scheduler) {
+            return false;
+        }
+
+        for (const upg of upgrades) {
+            if (!upg.isAbility || !state.abilities[upg.id] || !upg.blocksTargeting) continue;
+
+            const timers = state.abilityTimers[upg.id];
+            if (!timers) continue;
+
+            if (state.scheduler.getTimeRemaining(timers.activeId) > 0) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     getTurretAimPoint(turret, state, target, blocksTargeting) {

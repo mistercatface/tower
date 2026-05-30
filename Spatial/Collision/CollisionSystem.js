@@ -1,5 +1,6 @@
 import { SpatialHash } from "../World/SpatialHash.js";
 import { circleIntersectsSegment } from "../Navigation/WallGeometry.js";
+import { areHostile } from "../../Combat/Targeting.js";
 
 export class CollisionSystem {
     static checkCircle(a, b) {
@@ -77,8 +78,7 @@ export class CollisionSystem {
         }
 
         // 2. Actors vs Pushables
-        const actors = [state.player, ...state.enemies];
-        for (const actor of actors) {
+        for (const actor of state.getCombatants()) {
             if (!actor || actor.isDead) continue;
             
             const nearbyPickups = pickupHash.getNearby(actor);
@@ -195,12 +195,17 @@ export class CollisionSystem {
             }
         }
 
-        // 4. Charging Enemies vs Player
-        for (const e of state.enemies) {
-            if (e.isDead) continue;
-            if (e.attackType === "charge" && this.checkCircle(e, state.player)) {
-                e.isDead = true;
-                events.push({ target: state.player, damage: 5 });
+        // 4. Charging enemies vs hostile actors
+        for (const enemy of state.enemies) {
+            if (enemy.isDead || enemy.attackType !== "charge") continue;
+
+            for (const target of state.getCombatants()) {
+                if (!areHostile(enemy, target) || target.isDead) continue;
+                if (this.checkCircle(enemy, target)) {
+                    enemy.isDead = true;
+                    events.push({ target, damage: 5 });
+                    break;
+                }
             }
         }
         return events;

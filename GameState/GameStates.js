@@ -76,7 +76,8 @@ export class MapTransitionState {
         });
 
         ctx.state.updateAllTurrets(speedUpDt, {
-            blocksTargetingByActor: new Map([[ctx.state.player, true]]),
+            upgrades: ctx.upgrades,
+            blocksTargeting: true,
         });
 
         const targetNode = ctx.state.getMapTargetNode();
@@ -165,8 +166,9 @@ export class CombatState {
 
         const spatialHash = this.spatialHash;
         this.spatialHash.clear();
-        for (const e of ctx.state.enemies) spatialHash.insert(e);
-        spatialHash.insert(ctx.state.player);
+        for (const actor of ctx.state.getCombatants()) {
+            spatialHash.insert(actor);
+        }
 
         const oldGridPos = ctx.state.flowFieldGrid.worldToGrid(ctx.state.player.x, ctx.state.player.y);
         ctx.state.player.update(dt, ctx.state.flowFieldGrid, ctx.state.walls, spatialHash, ctx.state, abilityState.externalSpeedMod);
@@ -183,9 +185,7 @@ export class CombatState {
         Projectile.updateAll(ctx.state, dt);
         ProgressionManager.updatePickups(ctx.state, dt);
 
-        const turretEvents = ctx.state.updateAllTurrets(dt, {
-            blocksTargetingByActor: new Map([[ctx.state.player, abilityState.blocksTargeting]]),
-        });
+        const turretEvents = ctx.state.updateAllTurrets(dt, { upgrades: ctx.upgrades });
         const collisionEvents = CollisionSystem.run(ctx.state);
         const allEvents = [...turretEvents, ...collisionEvents];
 

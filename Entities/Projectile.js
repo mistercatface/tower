@@ -3,6 +3,8 @@ import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
 import { Pools } from "../Core/Pools.js";
 import { getProjectileDamage } from "../Combat/impactDamage.js";
+import { getGunProjectileConfig } from "../Combat/gunCombat.js";
+import { getGunDefinition } from "../Config/gunDefinitions.js";
 import { getHostilesForFaction } from "../Combat/Targeting.js";
 
 export class Projectile extends Entity {
@@ -38,6 +40,7 @@ export class Projectile extends Entity {
         this.target = target;
         this.damage = damage;
         this.faction = faction;
+        this.gunId = null;
         this.penetration = 0;
     }
 
@@ -58,6 +61,18 @@ export class Projectile extends Entity {
     update(dt, state) {
         this.move(dt);
         this.checkOutOfBounds(state);
+    }
+
+    getHitKnockbackScale() {
+        if (!this.gunId) return 150;
+        return getGunProjectileConfig(getGunDefinition(this.gunId)).hitKnockbackScale;
+    }
+
+    getRenderColor() {
+        if (!this.gunId) {
+            return this.faction === "enemy" ? "#F44336" : "#FFEB3B";
+        }
+        return getGunProjectileConfig(getGunDefinition(this.gunId)).color;
     }
 
     resolveFactionCollisions(state, events, system) {
@@ -82,7 +97,7 @@ export class Projectile extends Entity {
             if (system.checkCircle(this, target)) {
                 const damage = getProjectileDamage(this);
                 events.push({ target, damage });
-                PhysicsSystem.applyKnockback(target, this.angle, this.radius * 150);
+                PhysicsSystem.applyKnockback(target, this.angle, this.radius * this.getHitKnockbackScale());
                 if (target.health <= damage && this.penetration > 0) {
                     this.penetration--;
                 } else {
@@ -94,7 +109,7 @@ export class Projectile extends Entity {
     }
 
     render(ctx, renderer) {
-        const color = this.faction === "player" ? "#FFEB3B" : "#F44336";
+        const color = this.getRenderColor();
         const cacheKey = `${this.radius}_${color}`;
         this.renderCachedSprite(ctx, renderer.missileCache, cacheKey, RenderSprites.missile, this.radius, color);
     }
