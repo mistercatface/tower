@@ -234,6 +234,107 @@ export const RenderSprites = {
         return { offCanvas, cx, cy };
     },
 
+    tomato: (radius, color) => {
+        const canvasSize = Math.ceil(radius * 2) + 12;
+        const cx = canvasSize / 2;
+        const cy = canvasSize / 2;
+        const offCanvas = new OffscreenCanvas(canvasSize, canvasSize);
+        const offCtx = offCanvas.getContext("2d");
+
+        // 1. Soft ambient drop shadow beneath the tomato
+        offCtx.beginPath();
+        offCtx.ellipse(cx, cy + radius * 0.45, radius * 0.95, radius * 0.4, 0, 0, Math.PI * 2);
+        offCtx.fillStyle = "rgba(0, 0, 0, 0.45)";
+        offCtx.fill();
+
+        // 2. Main tomato body (slightly squashed sphere represented by a circle for uniform rotation)
+        offCtx.beginPath();
+        offCtx.arc(cx, cy, radius, 0, Math.PI * 2);
+
+        // Light source is at top-left (cx - radius * 0.3, cy - radius * 0.3)
+        const grad = offCtx.createRadialGradient(
+            cx - radius * 0.3, cy - radius * 0.3, radius * 0.1,
+            cx, cy, radius
+        );
+        
+        grad.addColorStop(0.0, "#FF8A80"); // Bright tomato highlight
+        grad.addColorStop(0.2, color || "#F44336"); // Vibrant tomato red
+        grad.addColorStop(0.6, "#D32F2F"); // Rich red shadow
+        grad.addColorStop(0.9, "#8C0000"); // Deep burgundy shadow
+        grad.addColorStop(1.0, "#3A0000"); // Outer edge shadow
+
+        offCtx.fillStyle = grad;
+        offCtx.fill();
+
+        // 3. Waxy sheen overlay for realistic texture depth
+        const sheenGrad = offCtx.createRadialGradient(cx, cy, radius * 0.5, cx, cy, radius);
+        sheenGrad.addColorStop(0, "rgba(255, 138, 128, 0)");
+        sheenGrad.addColorStop(0.8, "rgba(255, 138, 128, 0.12)"); // waxy rim light
+        sheenGrad.addColorStop(1, "rgba(255, 138, 128, 0)");
+        offCtx.fillStyle = sheenGrad;
+        offCtx.beginPath();
+        offCtx.arc(cx, cy, radius, 0, Math.PI * 2);
+        offCtx.fill();
+
+        // 4. Draw the green stem/sepals (star shape) on top of the tomato, offset slightly up-left
+        const scx = cx - radius * 0.1;
+        const scy = cy - radius * 0.1;
+        const numLobes = 5;
+        const innerR = radius * 0.12;
+        const outerR = radius * 0.38;
+
+        offCtx.beginPath();
+        for (let i = 0; i < numLobes; i++) {
+            const a = (i * 2 * Math.PI) / numLobes - Math.PI / 2;
+            const nextA = ((i + 1) * 2 * Math.PI) / numLobes - Math.PI / 2;
+            const midA = a + Math.PI / numLobes;
+
+            // Tip of the lobe (outer leaf point)
+            const tx = scx + Math.cos(a) * outerR;
+            const ty = scy + Math.sin(a) * outerR;
+
+            // Inner junction
+            const jx = scx + Math.cos(midA) * innerR;
+            const jy = scy + Math.sin(midA) * innerR;
+
+            if (i === 0) {
+                offCtx.moveTo(tx, ty);
+            } else {
+                offCtx.lineTo(tx, ty);
+            }
+            offCtx.lineTo(jx, jy);
+        }
+        offCtx.closePath();
+        
+        // Green gradient for the leaves
+        const leafGrad = offCtx.createLinearGradient(scx - outerR, scy - outerR, scx + outerR, scy + outerR);
+        leafGrad.addColorStop(0, "#81C784"); // Light green
+        leafGrad.addColorStop(0.5, "#4CAF50"); // Mid green
+        leafGrad.addColorStop(1, "#2E7D32"); // Dark forest green
+        offCtx.fillStyle = leafGrad;
+        offCtx.fill();
+        offCtx.strokeStyle = "#1B5E20";
+        offCtx.lineWidth = 0.8;
+        offCtx.stroke();
+
+        // 5. Draw the little stalk/stem stub in the center of the sepals
+        offCtx.beginPath();
+        offCtx.moveTo(scx, scy);
+        offCtx.quadraticCurveTo(scx - radius * 0.1, scy - radius * 0.1, scx - radius * 0.15, scy - radius * 0.05);
+        offCtx.strokeStyle = "#1B5E20";
+        offCtx.lineWidth = Math.max(1.5, radius * 0.15);
+        offCtx.lineCap = "round";
+        offCtx.stroke();
+
+        // 6. Specular waxy highlight on the upper-left of the tomato body
+        offCtx.beginPath();
+        offCtx.ellipse(cx - radius * 0.45, cy - radius * 0.45, radius * 0.15, radius * 0.07, Math.PI / 4, 0, Math.PI * 2);
+        offCtx.fillStyle = "rgba(255, 255, 255, 0.55)";
+        offCtx.fill();
+
+        return { offCanvas, cx, cy };
+    },
+
     wall: (size, r, g, b) => {
         const offCanvas = new OffscreenCanvas(size + 2, size + 2);
         const offCtx = offCanvas.getContext("2d");

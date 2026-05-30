@@ -767,6 +767,9 @@ export class Actor extends DestructibleEntity {
     }
 
     getBodySprite() {
+        if (this.enemyType?.renderPath === "tomato") {
+            return RenderSprites.tomato;
+        }
         switch (this.type) {
             case "player":
                 return RenderSprites.player;
