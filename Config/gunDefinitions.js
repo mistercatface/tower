@@ -68,6 +68,7 @@ export const gunDefinitions = {
         turretLoadout: { preset: "standard" },
         projectile: projectilePresets.playerStandard,
     },
+    /*
     beamLaser: {
         id: "beamLaser",
         name: "Beam Laser",
@@ -83,6 +84,7 @@ export const gunDefinitions = {
             turnSpeedMultiplier: 0.5,
         },
     },
+    */
     enemyRifle: {
         id: "enemyRifle",
         name: "Enemy Rifle",

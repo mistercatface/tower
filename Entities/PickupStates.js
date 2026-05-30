@@ -8,7 +8,7 @@ function spawnExplosion(gameState, x, y, config) {
 
 function getBurnSettings(pickup) {
     const def = pickup.strategy;
-    const maxHealth = def?.maxHealth ?? 15;
+    const maxHealth = def?.maxHealth ?? 3;
     const burnDurationMs = def?.onFire?.burnDurationMs ?? 2000;
     return { maxHealth, burnDurationMs };
 }
