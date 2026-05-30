@@ -5,17 +5,10 @@ import { emitCombatEnemyKilled } from "../Core/EventSystem.js";
 import { NAV_PROFILES } from "../Config/Config.js";
 import { rollEnemyStartLoadout } from "../Combat/weaponLoadout.js";
 import { createEntityBars } from "./EntityBars.js";
-import {
-    buildEnemyCombatStats,
-    computeEnemyUpgradeLevels,
-    computeSpawnReward,
-} from "../Combat/EnemySpawn.js";
+import { buildEnemyCombatStats, computeEnemyUpgradeLevels, computeSpawnReward } from "../Combat/EnemySpawn.js";
+import { GhostTrail } from "../Render/GhostTrail.js";
 
-const enemyBars = createEntityBars({
-    healthWidth: 22,
-    healthHeight: 3,
-    healthBorderRadius: 1.5,
-});
+const enemyBars = createEntityBars({ healthWidth: 22, healthHeight: 3, healthBorderRadius: 1.5 });
 
 export class Enemy extends Actor {
     static healthBar = enemyBars.healthBar;
@@ -33,17 +26,7 @@ export class Enemy extends Actor {
     }
 
     constructor(x, y, enemyType, combatStats, baseUpgradeDefs, reward) {
-        super(
-            x,
-            y,
-            enemyType.radius,
-            combatStats.speed,
-            combatStats.maxHealth,
-            enemyType.color,
-            enemyType.type,
-            enemyType.accelRate ?? 3.0,
-            enemyType.canDamageWalls ?? false
-        );
+        super(x, y, enemyType.radius, combatStats.speed, combatStats.maxHealth, enemyType.color, enemyType.type, enemyType.accelRate ?? 3.0, enemyType.canDamageWalls ?? false);
         this.reward = reward;
         this.attackType = enemyType.attackType ?? "ranged";
         this.canDodge = enemyType.canDodge ?? false;
@@ -79,17 +62,7 @@ export class Enemy extends Actor {
             return;
         }
 
-        this.currentState.update(
-            this,
-            dt,
-            target,
-            state.flowFieldGrid,
-            state.walls,
-            state.projectiles,
-            spatialHash,
-            state.scheduler,
-            state
-        );
+        this.currentState.update(this, dt, target, state.flowFieldGrid, state.walls, state.projectiles, spatialHash, state.scheduler, state);
         this.updateTurretCombat(dt, state, options);
     }
 

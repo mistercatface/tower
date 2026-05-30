@@ -2,12 +2,9 @@ import { Actor } from "./Actor.js";
 import { NAV_PROFILES, navigationSettings, sidekickBaseStats } from "../Config/Config.js";
 import { defaultGunId } from "../Config/gunDefinitions.js";
 import { createEntityBars } from "./EntityBars.js";
+import { GhostTrail } from "../Render/GhostTrail.js";
 
-const sidekickBars = createEntityBars({
-    healthWidth: 40,
-    healthHeight: 4,
-    healthBorderRadius: 2,
-});
+const sidekickBars = createEntityBars({ healthWidth: 40, healthHeight: 4, healthBorderRadius: 2 });
 
 const LEADER_EDGE_GAP = 16;
 const APPROACH_SLOW_RADIUS = 48;
@@ -23,17 +20,7 @@ export class Sidekick extends Actor {
     }
 
     constructor(x, y, radius) {
-        super(
-            x,
-            y,
-            radius,
-            sidekickBaseStats.speed,
-            sidekickBaseStats.maxHealth,
-            "#00BCD4",
-            "companion",
-            3.0,
-            false
-        );
+        super(x, y, radius, sidekickBaseStats.speed, sidekickBaseStats.maxHealth, "#00BCD4", "companion", 3.0, false);
         this.faction = "player";
         this.teamId = 0;
         this.alwaysRunsTurretCombat = true;
@@ -68,10 +55,7 @@ export class Sidekick extends Actor {
     getFollowPoint(leader) {
         const angle = leader.angle;
         const offset = Math.max(this.followOffset, this.getMinLeaderDistance(leader));
-        return {
-            x: leader.x - Math.cos(angle) * offset,
-            y: leader.y - Math.sin(angle) * offset,
-        };
+        return { x: leader.x - Math.cos(angle) * offset, y: leader.y - Math.sin(angle) * offset };
     }
 
     isAtFollowSlot(leader) {
@@ -143,13 +127,7 @@ export class Sidekick extends Actor {
                 this.holdPosition();
             }
         } else if (followDist > navigationSettings.arrivalDistance + 8 && leaderDist > minLeaderDist + 6) {
-            state.navigation.steerTo(
-                this,
-                followX,
-                followY,
-                NAV_PROFILES.sidekickFollow,
-                state.flowFieldGrid
-            );
+            state.navigation.steerTo(this, followX, followY, NAV_PROFILES.sidekickFollow, state.flowFieldGrid);
 
             if (leaderDist < minLeaderDist + APPROACH_SLOW_RADIUS) {
                 const t = (leaderDist - minLeaderDist) / APPROACH_SLOW_RADIUS;

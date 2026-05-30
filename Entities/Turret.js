@@ -6,6 +6,15 @@ import { Pools } from "../Core/Pools.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { getGunProjectileConfig, getSlotFireIntervalMs } from "../Combat/gunCombat.js";
 import { inferFaction } from "../Combat/Targeting.js";
+import { GhostTrail } from "../Render/GhostTrail.js";
+
+const PLAYER_TURRET_GHOST_TRAIL = {
+    length: 4,
+    alpha: 0.35,
+    minDistance: 2,
+    lifetime: 250,
+    shrink: true,
+};
 
 export class Turret {
     constructor(angle, turnSpeed, loadout = defaultTurretLoadout) {
@@ -21,6 +30,23 @@ export class Turret {
         this.charge = 0;
         this.target = null;
         this.swayPhase = 0;
+        this.ghostTrail = null;
+    }
+
+    getOrbitPosition(actorX, actorY, actorRadius) {
+        const turretDist = actorRadius + 4;
+        return {
+            x: actorX + Math.cos(this.angle) * turretDist,
+            y: actorY + Math.sin(this.angle) * turretDist,
+        };
+    }
+
+    updateGhostTrail(dt, actorX, actorY, actorRadius) {
+        if (!this.ghostTrail) {
+            this.ghostTrail = new GhostTrail(PLAYER_TURRET_GHOST_TRAIL);
+        }
+        const { x, y } = this.getOrbitPosition(actorX, actorY, actorRadius);
+        this.ghostTrail.update(dt, x, y, this.angle);
     }
 
     getMuzzlePosition(source) {
@@ -77,13 +103,15 @@ export class Turret {
     }
 
     render(ctx, playerX, playerY, playerRadius, renderer, explicitColor = null, source = null) {
-        const turretDist = playerRadius + 4;
-        const tx = playerX + Math.cos(this.angle) * turretDist;
-        const ty = playerY + Math.sin(this.angle) * turretDist;
+        const { x: tx, y: ty } = this.getOrbitPosition(playerX, playerY, playerRadius);
 
         const scale = playerRadius / 8;
         const cacheKey = `${scale}_${explicitColor || "#4CAF50"}`;
         const cachedSprite = renderer.turretCache.get(cacheKey, RenderSprites.turret, scale, explicitColor);
+
+        if (source?.type === "player" && this.ghostTrail) {
+            this.ghostTrail.render(ctx, renderer.turretCache, cacheKey, RenderSprites.turret, scale, explicitColor);
+        }
 
         ctx.save();
         ctx.translate(tx, ty);

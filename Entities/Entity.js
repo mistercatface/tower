@@ -20,9 +20,7 @@ export class Entity {
         this.angle = angle;
         this.isDead = isDead;
         this.zIndex = 0;
-        if (this.ghostTrail) {
-            this.ghostTrail.reset();
-        }
+        if (this.ghostTrail) this.ghostTrail.reset();
     }
 
     render(ctx, ...caches) {
@@ -38,15 +36,11 @@ export class Entity {
     }
 
     renderCachedSprite(ctx, cache, cacheKey, generateFn, ...generateArgs) {
-        if (this.ghostTrail) {
-            this.ghostTrail.render(ctx, cache, cacheKey, generateFn, ...generateArgs);
-        }
+        if (this.ghostTrail) this.ghostTrail.render(ctx, cache, cacheKey, generateFn, ...generateArgs);
         const cachedSprite = cache.get(cacheKey, generateFn, ...generateArgs);
         ctx.save();
         ctx.translate(this.x, this.y);
-        if (this.angle !== 0) {
-            ctx.rotate(this.angle);
-        }
+        if (this.angle !== 0)  ctx.rotate(this.angle);
         const img = cachedSprite.offCanvas || cachedSprite;
         const cx = cachedSprite.cx !== undefined ? cachedSprite.cx : img.width / 2;
         const cy = cachedSprite.cy !== undefined ? cachedSprite.cy : img.height / 2;

@@ -42,9 +42,8 @@ export class GhostTrail {
             const pt = this.history[i];
             const ageRatio = Math.max(0, 1 - pt.age / this.lifetime);
             
-            // Calculate alpha based on slot index and remaining lifetime
-            const slotRatio = (i + 1) / (this.history.length + 1);
-            const alpha = slotRatio * ageRatio * this.alpha;
+            // Calculate alpha based purely on remaining lifetime (avoiding double-fading)
+            const alpha = ageRatio * this.alpha;
 
             if (alpha <= 0.01) continue;
 
@@ -55,7 +54,7 @@ export class GhostTrail {
                 ctx.rotate(pt.angle);
             }
             if (this.shrink) {
-                const scale = (0.4 + 0.6 * slotRatio) * ageRatio;
+                const scale = 0.4 + 0.6 * ageRatio;
                 ctx.scale(scale, scale);
             }
             ctx.drawImage(img, -cx, -cy);

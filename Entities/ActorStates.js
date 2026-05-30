@@ -340,13 +340,11 @@ export class EnemyChargeWindupState {
 
 export class EnemyChargeDashState {
     onEnter(enemy) {
-        enemy.ghostTrail = new GhostTrail({ length: 4, alpha: 0.35, minDistance: 2 });
     }
 
     onExit(enemy) {
         enemy.desiredX = 0;
         enemy.desiredY = 0;
-        enemy.ghostTrail = null;
     }
 
     update(enemy, dt, target, flowFieldGrid, walls, missiles, spatialHash, scheduler, state) {

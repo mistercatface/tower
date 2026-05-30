@@ -45,12 +45,7 @@ export class Projectile extends Entity {
         this.penetration = 0;
 
         if (!this.ghostTrail) {
-            this.ghostTrail = new GhostTrail({
-                length: 4,
-                alpha: 0.35,
-                minDistance: 4,
-                shrink: true
-            });
+            this.ghostTrail = new GhostTrail({ length: 5, alpha: 0.4, minDistance: 4, lifetime: 300, shrink: true });
         } else {
             this.ghostTrail.reset();
         }

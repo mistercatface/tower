@@ -4,11 +4,7 @@ import { playerBaseStats, NAV_PROFILES, navigationSettings } from "../Config/Con
 import { createEntityBars } from "./EntityBars.js";
 import { GhostTrail } from "../Render/GhostTrail.js";
 
-const playerBars = createEntityBars({
-    healthWidth: 48,
-    healthHeight: 4,
-    healthBorderRadius: 2,
-});
+const playerBars = createEntityBars({ healthWidth: 48, healthHeight: 4, healthBorderRadius: 2 });
 
 export class Player extends Actor {
     static healthBar = playerBars.healthBar;
@@ -18,12 +14,6 @@ export class Player extends Actor {
         this.setupCombatant(playerBaseStats);
         this.initCombatWeapon();
         this.healthBar = Player.healthBar;
-        this.ghostTrail = new GhostTrail({
-            length: 5,
-            alpha: 0.25,
-            minDistance: 3,
-            shrink: true
-        });
         this.spawnX = x;
         this.spawnY = y;
         this.healAccumulator = 0;
@@ -74,13 +64,7 @@ export class Player extends Actor {
 
     hasReachedTarget(flowFieldGrid) {
         if (this.targetGridCol !== null && this.targetGridRow !== null && flowFieldGrid) {
-            return flowFieldGrid.entityIntersectsCell(
-                this.x,
-                this.y,
-                this.radius,
-                this.targetGridCol,
-                this.targetGridRow
-            );
+            return flowFieldGrid.entityIntersectsCell(this.x, this.y, this.radius, this.targetGridCol, this.targetGridRow);
         }
         if (this.targetX === null || this.targetY === null) {
             return false;
@@ -108,9 +92,7 @@ export class Player extends Actor {
 
     applyQueuedTarget(state = null) {
         if (this.queuedTargetX !== null && this.queuedTargetY !== null) {
-            const targetCell = this.queuedTargetCol !== null && this.queuedTargetRow !== null
-                ? { col: this.queuedTargetCol, row: this.queuedTargetRow }
-                : null;
+            const targetCell = this.queuedTargetCol !== null && this.queuedTargetRow !== null ? { col: this.queuedTargetCol, row: this.queuedTargetRow } : null;
             this.setTarget(this.queuedTargetX, this.queuedTargetY, state, targetCell);
             this.queuedTargetX = null;
             this.queuedTargetY = null;
@@ -179,10 +161,7 @@ export class Player extends Actor {
             this.desiredY = 0;
         }
 
-        this.applyLocomotion(dt, walls, spatialHash, {
-            externalSpeedMod: options.externalSpeedMod ?? 1.0,
-            state,
-        });
+        this.applyLocomotion(dt, walls, spatialHash, { externalSpeedMod: options.externalSpeedMod ?? 1.0, state });
         this.updateTurretCombat(dt, state, options);
     }
 

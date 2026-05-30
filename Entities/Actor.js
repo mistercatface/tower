@@ -172,7 +172,17 @@ export class Actor extends DestructibleEntity {
             this.aimIdleTurrets(dt, state, blocksTargeting);
         }
 
+        if (this.type === "player") {
+            this.updatePlayerTurretGhostTrails(dt);
+        }
+
         return combatEvents;
+    }
+
+    updatePlayerTurretGhostTrails(dt) {
+        for (const turret of this.turrets) {
+            turret.updateGhostTrail(dt, this.x, this.y, this.radius);
+        }
     }
 
     getAITarget(state) {
