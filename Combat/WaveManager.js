@@ -1,8 +1,14 @@
-import { enemyTypes, spawnSettings, timingSettings, waveSettings } from "../Config/Config.js";
+import { spawnSettings, timingSettings, waveSettings } from "../Config/Config.js";
 import { canRunWaveSpawning } from "../GameState/GamePhase.js";
 import { Enemy } from "../Entities/Enemy.js";
 import { requestUiUpdate, emitCombatWaveCleared } from "../Core/EventSystem.js";
 import { isBaseStatUpgrade } from "../Progression/Upgrades.js";
+import {
+    getBossPod,
+    getEnemyType,
+    getPodSize,
+    selectSpawnPod,
+} from "./SpawnPods.js";
 
 export class WaveManager {
     constructor() {
@@ -119,75 +125,41 @@ export class WaveManager {
         return { x, y };
     }
 
-    spawnGroup(state, enemyType, count, baseUpgradeDefs, spacing = 40) {
+    spawnPod(state, pod, baseUpgradeDefs) {
+        const spacing = waveSettings.podSpacing;
+        const side = Math.floor(Math.random() * 4);
+        const podSize = getPodSize(pod);
         const dist = state.spawnRadius;
-        const { groupSubSizeMin, groupSubSizeMax } = waveSettings;
+        const basePos = (Math.random() * 2 - 1) * (dist - (podSize * spacing) / 2);
 
-        let enemiesRemaining = count;
-        while (enemiesRemaining > 0) {
-            const subGroupSize = Math.min(enemiesRemaining, Math.floor(Math.random() * (groupSubSizeMax - groupSubSizeMin + 1)) + groupSubSizeMin);
-            enemiesRemaining -= subGroupSize;
+        let slot = 0;
+        let spawned = 0;
 
-            const side = Math.floor(Math.random() * 4);
-            const basePos = (Math.random() * 2 - 1) * (dist - (subGroupSize * spacing) / 2);
+        for (const member of pod.members) {
+            const enemyType = getEnemyType(member.type);
+            if (!enemyType) continue;
 
-            for (let i = 0; i < subGroupSize; i++) {
-                const pos = basePos + i * spacing;
+            for (let i = 0; i < member.count; i++) {
+                const pos = basePos + slot * spacing;
                 const { x, y } = this.calculateSpawnPosition(state, side, pos);
                 state.enemies.push(Enemy.spawn(x, y, enemyType, this.wave, baseUpgradeDefs));
+                slot++;
+                spawned++;
             }
         }
 
-        return count;
+        return spawned;
     }
 
     spawnEnemy(state, upgrades) {
         const baseUpgradeDefs = upgrades.filter(isBaseStatUpgrade);
-        let selectedType;
+        const remaining = this.enemiesToSpawn - this.enemiesSpawned;
 
-        if (this.wave % waveSettings.bossWaveInterval === 0) {
-            selectedType = enemyTypes.find((e) => e.type === "boss");
-        } else {
-            let availableTypes = enemyTypes.filter((e) => e.type !== "boss" && (e.minLevel === undefined || state.level >= e.minLevel));
+        const pod = this.wave % waveSettings.bossWaveInterval === 0
+            ? getBossPod()
+            : selectSpawnPod(state, remaining);
 
-            if (availableTypes.length === 0) {
-                availableTypes.push(enemyTypes.find((e) => e.type === "standard"));
-            }
-
-            const totalWeight = availableTypes.reduce((sum, e) => sum + e.weight, 0);
-            let rand = Math.random() * totalWeight;
-            selectedType = availableTypes[0];
-
-            for (const type of availableTypes) {
-                if (rand < type.weight) {
-                    selectedType = type;
-                    break;
-                }
-                rand -= type.weight;
-            }
-        }
-
-        if (selectedType.spawnType === "group") {
-            let groupSize = selectedType.groupSettings.baseGroupSize + Math.floor(this.wave * selectedType.groupSettings.growthPerWave);
-            if (selectedType.groupSettings.maxGroupSize !== undefined) {
-                groupSize = Math.min(selectedType.groupSettings.maxGroupSize, groupSize);
-            }
-            return this.spawnGroup(state, selectedType, groupSize, baseUpgradeDefs);
-        } else {
-            const baseSimultaneous = 1 + Math.floor(this.wave / waveSettings.simultaneousSpawnWaveDivisor);
-            const simCount = Math.min(baseSimultaneous, this.enemiesToSpawn - this.enemiesSpawned);
-
-            for (let i = 0; i < simCount; i++) {
-                const dist = state.spawnRadius;
-                const side = Math.floor(Math.random() * 4);
-                const pos = (Math.random() * 2 - 1) * dist;
-                const { x, y } = this.calculateSpawnPosition(state, side, pos);
-
-                state.enemies.push(Enemy.spawn(x, y, selectedType, this.wave, baseUpgradeDefs));
-            }
-
-            return simCount;
-        }
+        return this.spawnPod(state, pod, baseUpgradeDefs);
     }
 
     manageSpawning(dt, state, upgrades, viewport) {

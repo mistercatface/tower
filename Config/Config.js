@@ -24,6 +24,57 @@ export const enemyTypes = [
     { type: "boss", weight: 0, radius: 8, baseSpeed: 160, baseHealth: 50, maxHealth: 15000, color: "#B71C1C", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: true },
 ];
 
+/** Weighted spawn compositions — one pod spawns per spawn tick, all members together. */
+export const spawnPods = [
+    {
+        id: "pea_tomato_pumpkin_mix",
+        weight: 30,
+        minLevel: 0,
+        members: [
+            { type: "kamikaze", count: 3 },
+            { type: "standard", count: 5 },
+            { type: "tank", count: 2 },
+        ],
+    },
+    {
+        id: "tomato_squad",
+        weight: 25,
+        minLevel: 0,
+        members: [{ type: "standard", count: 5 }],
+    },
+    {
+        id: "pumpkin_heavy",
+        weight: 15,
+        minLevel: 0,
+        members: [{ type: "tank", count: 5 }],
+    },
+    {
+        id: "pea_rush",
+        weight: 20,
+        minLevel: 0,
+        members: [{ type: "kamikaze", count: 5 }],
+    },
+    {
+        id: "fast_skirmish",
+        weight: 15,
+        minLevel: 2,
+        members: [
+            { type: "fast", count: 4 },
+            { type: "standard", count: 2 },
+        ],
+    },
+    {
+        id: "elite_mix",
+        weight: 10,
+        minLevel: 3,
+        members: [
+            { type: "dodger", count: 2 },
+            { type: "spastic", count: 3 },
+            { type: "tank", count: 1 },
+        ],
+    },
+];
+
 export const spawnSettings = { baseSpawnDelay: 3000, minSpawnDelay: 150, delayReductionPerWave: 150 };
 
 export const progressionSettings = {
@@ -42,9 +93,7 @@ export const waveSettings = {
     earlyWaveGrowth: 3,
     lateWaveGrowthBase: 8,
     lateWaveGrowthDivisor: 5,
-    simultaneousSpawnWaveDivisor: 3,
-    groupSubSizeMin: 5,
-    groupSubSizeMax: 10,
+    podSpacing: 40,
 };
 
 export const mapGenerationSettings = {
