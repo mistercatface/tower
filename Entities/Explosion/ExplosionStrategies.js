@@ -1,4 +1,3 @@
-import { Utilities } from "../../Core/Utilities.js";
 import { PhysicsSystem } from "../../Spatial/Motion/PhysicsSystem.js";
 
 function repelActor(actor, exp, state) {
@@ -10,7 +9,7 @@ function repelActor(actor, exp, state) {
     const minDist = exp.radius + actor.radius;
     if (dist >= minDist) return;
 
-    if (!Utilities.hasLineOfSight(exp.x, exp.y, actor.x, actor.y, state.walls, actor.radius)) {
+    if (!actor.hasLineOfSightFromPoint(exp.x, exp.y, state, { sourceRadius: 0 })) {
         return;
     }
 

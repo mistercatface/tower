@@ -1,5 +1,3 @@
-import { Utilities } from "../Core/Utilities.js";
-
 export function inferFaction(actor) {
     if (actor.faction) return actor.faction;
     return actor.type === "player" ? "player" : "enemy";
@@ -61,8 +59,7 @@ export function isValidTurretTarget(actor, target, state, range, blocksTargeting
     if (dist > range) return false;
 
     if (requireLos) {
-        const losPadding = actor.radius + (target.radius ?? 0);
-        return Utilities.hasLineOfSight(actor.x, actor.y, target.x, target.y, state.walls, losPadding);
+        return actor.hasLineOfSightTo(target, state);
     }
 
     return true;
@@ -77,11 +74,7 @@ export function getNearestHostile(state, source, range, excludedTargets = null, 
 
         const dist = Math.hypot(target.x - source.x, target.y - source.y);
         if (dist <= range && dist < minDist) {
-            const losPadding = source.radius + (target.radius ?? 0);
-            if (
-                !requireLos ||
-                Utilities.hasLineOfSight(source.x, source.y, target.x, target.y, state.walls, losPadding)
-            ) {
+            if (!requireLos || source.hasLineOfSightTo(target, state)) {
                 minDist = dist;
                 nearest = target;
             }

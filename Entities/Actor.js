@@ -164,6 +164,42 @@ export class Actor extends DestructibleEntity {
         return getNearestHostile(state, this, Infinity, null, aiOpts);
     }
 
+    hasLineOfSightTo(other, stateOrWalls) {
+        if (!other) return false;
+
+        const walls = this.resolveWalls(stateOrWalls);
+        if (!walls) return true;
+
+        return Utilities.hasLineOfSight(
+            this.x,
+            this.y,
+            other.x,
+            other.y,
+            walls,
+            this.radius,
+            other.radius ?? 0
+        );
+    }
+
+    hasLineOfSightToPoint(x, y, stateOrWalls, { targetRadius = 0 } = {}) {
+        const walls = this.resolveWalls(stateOrWalls);
+        if (!walls) return true;
+
+        return Utilities.hasLineOfSight(
+            this.x,
+            this.y,
+            x,
+            y,
+            walls,
+            this.radius,
+            targetRadius
+        );
+    }
+
+    blocksTurretLineOfSight(target, state) {
+        return !target || !this.hasLineOfSightTo(target, state);
+    }
+
     getExternalBlocksTargeting(state, upgrades = []) {
         if (!this.isAbilityOwner(state) || !state?.abilities || !state?.scheduler) {
             return false;

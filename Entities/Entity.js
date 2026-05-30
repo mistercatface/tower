@@ -1,3 +1,5 @@
+import { Utilities } from "../Core/Utilities.js";
+
 let nextEntityId = 1;
 
 export class Entity {
@@ -44,6 +46,27 @@ export class Entity {
         ctx.drawImage(img, -cx, -cy);
         ctx.restore();
         return cachedSprite;
+    }
+
+    resolveWalls(stateOrWalls) {
+        if (!stateOrWalls) return null;
+        if (stateOrWalls.walls) return stateOrWalls.walls;
+        return stateOrWalls;
+    }
+
+    hasLineOfSightFromPoint(x, y, stateOrWalls, { sourceRadius = 0 } = {}) {
+        const walls = this.resolveWalls(stateOrWalls);
+        if (!walls) return true;
+
+        return Utilities.hasLineOfSight(
+            x,
+            y,
+            this.x,
+            this.y,
+            walls,
+            sourceRadius,
+            this.radius ?? 0
+        );
     }
 }
 

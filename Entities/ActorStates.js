@@ -28,7 +28,7 @@ function analyzeStrafePath(enemy, tangentX, tangentY, dir, walls, target) {
 
         walkableDist = dist;
 
-        const hasLOS = Utilities.hasLineOfSight(tx, ty, target.x, target.y, walls, enemy.radius);
+        const hasLOS = target.hasLineOfSightFromPoint(tx, ty, walls, { sourceRadius: enemy.radius });
         if (!hasLOS && coverDist === -1) {
             coverDist = dist;
         }
@@ -63,7 +63,7 @@ export class EnemyNavigatingState {
         }
 
         const distToTarget = Math.hypot(enemy.x - target.x, enemy.y - target.y);
-        const hasLOS = Utilities.hasLineOfSight(enemy.x, enemy.y, target.x, target.y, walls, enemy.radius);
+        const hasLOS = enemy.hasLineOfSightTo(target, state);
         if (distToTarget <= target.radius + enemy.weapon.range && hasLOS) {
             return enemy.changeStateAndUpdate("engaged", null, dt, target, flowFieldGrid, walls, missiles, spatialHash, scheduler, state);
         }
@@ -87,7 +87,7 @@ export class EnemyEngagedState {
     getTurretBlocksTargeting(enemy, state) {
         const target = enemy.getAITarget(state);
         if (!target) return true;
-        return !Utilities.hasLineOfSight(enemy.x, enemy.y, target.x, target.y, state.walls, enemy.radius);
+        return enemy.blocksTurretLineOfSight(target, state);
     }
 
     update(enemy, dt, target, flowFieldGrid, walls, missiles, spatialHash, scheduler, state) {
@@ -106,7 +106,7 @@ export class EnemyEngagedState {
         }
 
         const shouldStrafe = (enemy.type === "fast" || enemy.type === "dodger");
-        const hasLOS = Utilities.hasLineOfSight(enemy.x, enemy.y, target.x, target.y, walls, enemy.radius);
+        const hasLOS = enemy.hasLineOfSightTo(target, state);
 
         const radialX = dx / dist;
         const radialY = dy / dist;

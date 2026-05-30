@@ -40,7 +40,7 @@ function applyExpandingDamage(state, exp, allEvents) {
 
         const dist = Math.hypot(actor.x - exp.x, actor.y - exp.y);
         if (dist <= exp.radius + actor.radius) {
-            if (Utilities.hasLineOfSight(exp.x, exp.y, actor.x, actor.y, state.walls, actor.radius)) {
+            if (actor.hasLineOfSightFromPoint(exp.x, exp.y, state, { sourceRadius: 0 })) {
                 const [maxMultiplier, minMultiplier] = blastMultipliersFor(actor);
                 allEvents.push({
                     target: actor,
@@ -56,7 +56,7 @@ function applyExpandingDamage(state, exp, allEvents) {
         if (p.isDead || exp.hitTargets.has(p)) continue;
         const dist = Math.hypot(p.x - exp.x, p.y - exp.y);
         if (dist <= exp.radius + p.radius) {
-            if (Utilities.hasLineOfSight(exp.x, exp.y, p.x, p.y, state.walls, p.radius)) {
+            if (p.hasLineOfSightFromPoint(exp.x, exp.y, state, { sourceRadius: 0 })) {
                 if (p.strategy?.onHit) {
                     const dmg = blastDamage(exp, dist, 1.6, 0.4);
                     p.strategy.onHit(state, p, { isDead: false, damage: dmg, isExplosion: true }, allEvents);

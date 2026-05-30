@@ -13,7 +13,11 @@ export class Utilities {
         return obstacleGrid.getSegmentsAlongLine(x1, y1, x2, y2);
     }
 
-    static hasLineOfSight(x1, y1, x2, y2, segments, padding = 0) {
+    static hasLineOfSight(x1, y1, x2, y2, segments, sourceRadius = 0, targetRadius) {
+        if (targetRadius === undefined) {
+            targetRadius = sourceRadius;
+        }
+
         let candidateWalls = segments;
         if (segments?.obstacleGrid) {
             candidateWalls = this.getSegmentsAlongLine(x1, y1, x2, y2, segments.obstacleGrid);
@@ -24,15 +28,17 @@ export class Utilities {
         const lineLen = Math.hypot(dx, dy);
         if (lineLen === 0) return true;
 
+        const corridorRadius = Math.max(sourceRadius, targetRadius);
         const steps = Math.max(2, Math.ceil(lineLen / 8));
-        for (let step = 0; step <= steps; step++) {
+
+        for (let step = 1; step < steps; step++) {
             const t = step / steps;
             const px = x1 + dx * t;
             const py = y1 + dy * t;
 
             for (const seg of candidateWalls) {
                 if (seg.isDead) continue;
-                if (distanceToSegment(seg, px, py) < padding) {
+                if (distanceToSegment(seg, px, py) < corridorRadius) {
                     return false;
                 }
             }
