@@ -369,3 +369,66 @@ canvas {
 .premium-slider::-moz-range-thumb:active {
     transform: scale(0.9);
 }
+
+.jacko-fuel-inspector {
+    display: none;
+    position: absolute;
+    inset: 0;
+    z-index: 120;
+    background: rgba(0, 0, 0, 0.82);
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+    touch-action: none;
+}
+
+.jacko-fuel-inspector-panel {
+    position: relative;
+    width: min(92vw, 380px);
+    height: min(72vw, 420px);
+    background: #11151c;
+    border: 2px solid #F5F0E6;
+    box-shadow: 0 0 24px rgba(245, 240, 230, 0.15);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.jacko-fuel-inspector-title {
+    font-family: Impact, Haettenschweiler, "Arial Black", sans-serif;
+    font-size: 18px;
+    letter-spacing: 0.08em;
+    color: #F5F0E6;
+    text-align: center;
+    padding: 10px 36px 6px;
+    background: #1a1208;
+    border-bottom: 1px solid rgba(245, 240, 230, 0.2);
+}
+
+.jacko-fuel-close {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    z-index: 2;
+    width: 28px;
+    height: 28px;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    background: rgba(0, 0, 0, 0.5);
+    color: #fff;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    font-family: monospace;
+}
+
+#jackoFuelCanvas {
+    flex: 1;
+    width: 100%;
+    display: block;
+    touch-action: none;
+    cursor: grab;
+}
+
+#jackoFuelCanvas:active {
+    cursor: grabbing;
+}

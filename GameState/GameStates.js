@@ -9,6 +9,7 @@ import { navigationSettings } from "../Config/Config.js";
 import { resolveMoveTarget } from "../Spatial/Navigation/PathClearance.js";
 import { Pools } from "../Core/Pools.js";
 import { DeathPiece } from "../Entities/DeathPiece.js";
+import { findInspectableBarrel, jackoFuelInspector } from "../Render/JackoFuelInspector.js";
 
 export class MapState {
     onEnter(ctx) {
@@ -181,7 +182,15 @@ export class CombatState {
     }
 
     handleInteraction(worldCoords, isDoubleTap, ctx) {
+        if (jackoFuelInspector.isOpen()) return;
         if (ctx.state.player.currentState && ctx.state.player.currentState.blocksInput) return;
+
+        const barrel = findInspectableBarrel(ctx.state, worldCoords.x, worldCoords.y);
+        if (barrel) {
+            jackoFuelInspector.open(barrel);
+            return;
+        }
+
         if (!ctx.state.player.canReposition(ctx.state)) return;
         const gridPos = ctx.state.flowFieldGrid.worldToGrid(worldCoords.x, worldCoords.y);
         if (gridPos.col >= 0 && gridPos.col < ctx.state.flowFieldGrid.cols && gridPos.row >= 0 && gridPos.row < ctx.state.flowFieldGrid.rows) {
