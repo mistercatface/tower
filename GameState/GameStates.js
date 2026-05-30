@@ -40,35 +40,18 @@ export class MapState {
 export class MapTransitionState {
     onEnter(ctx) {
         const targetNode = ctx.state.getMapTargetNode();
-        
         ctx.state.player.stopMovement(ctx.state);
-        ctx.state.player.vx = 0;
-        ctx.state.player.vy = 0;
-
         const targetCoords = ctx.state.getNodeCombatCoords(targetNode);
         ctx.state.player.setTarget(targetCoords.x, targetCoords.y, ctx.state);
-
-        ctx.state.flowFieldGrid.shiftCenter(
-            ctx.state.player.x,
-            ctx.state.player.y,
-            ctx.state.player.x,
-            ctx.state.player.y,
-            targetCoords.x,
-            targetCoords.y
-        );
-        
-        ctx.viewport.snapTo(ctx.state.player.x, ctx.state.player.y);
+        ctx.state.flowFieldGrid.shiftCenter(ctx.state.player.x, ctx.state.player.y, ctx.state.player.x, ctx.state.player.y, targetCoords.x, targetCoords.y);
         requestUiUpdate();
     }
 
     update(dt, ctx) {
         const speedUpDt = dt * 5.0;
-        
+
         const oldGridPos = ctx.state.flowFieldGrid.worldToGrid(ctx.state.player.x, ctx.state.player.y);
-        ctx.state.updateAllCombatants(speedUpDt, null, {
-            blocksTargeting: true,
-            upgrades: ctx.upgrades,
-        });
+        ctx.state.updateAllCombatants(speedUpDt, null, { blocksTargeting: true, upgrades: ctx.upgrades });
         ctx.state.navigation.updateFlowField({
             playerX: ctx.state.player.x,
             playerY: ctx.state.player.y,
@@ -100,9 +83,7 @@ export class MapTransitionState {
         ctx.renderer.renderCombatScene(ctx.state, ctx.viewport);
     }
 
-    handleInteraction(worldCoords, isDoubleTap, ctx) {
-
-    }
+    handleInteraction(worldCoords, isDoubleTap, ctx) {}
 }
 
 export class CombatState {
@@ -122,10 +103,10 @@ export class CombatState {
         ctx.state.activeLasers = [];
         ctx.state.deathPieces = [];
         ctx.state.floatingTexts = [];
-        
+
         const currentNode = ctx.state.getCurrentMapNode();
         const combatCoords = ctx.state.getNodeCombatCoords(currentNode);
-        
+
         if (ctx.state.isTransitioningFromTravel) {
             ctx.state.isTransitioningFromTravel = false;
             ctx.state.player.stopMovement(ctx.state);
@@ -133,14 +114,12 @@ export class CombatState {
             ctx.state.player.setSpawnPosition(combatCoords.x, combatCoords.y);
             ctx.state.player.resetToSpawn();
         }
-        
+
         ctx.state.waveManager.startCombat();
         ctx.state.player.resetTurretCombatState();
 
         const persistentEntities = [];
-        if (ctx.state.sidekick) {
-            persistentEntities.push(ctx.state.sidekick);
-        }
+        if (ctx.state.sidekick) persistentEntities.push(ctx.state.sidekick);
         persistentEntities.push(...ctx.state.pickups);
 
         for (const entity of persistentEntities) {
@@ -148,7 +127,7 @@ export class CombatState {
                 entity.onSectorEnter(ctx.state);
             }
         }
-        
+
         requestUiUpdate();
     }
 
@@ -165,10 +144,7 @@ export class CombatState {
         }
 
         const oldGridPos = ctx.state.flowFieldGrid.worldToGrid(ctx.state.player.x, ctx.state.player.y);
-        const combatEvents = ctx.state.updateAllCombatants(dt, spatialHash, {
-            externalSpeedMod: abilityState.externalSpeedMod,
-            upgrades: ctx.upgrades,
-        });
+        const combatEvents = ctx.state.updateAllCombatants(dt, spatialHash, { externalSpeedMod: abilityState.externalSpeedMod, upgrades: ctx.upgrades });
         ctx.state.navigation.updateFlowField({
             playerX: ctx.state.player.x,
             playerY: ctx.state.player.y,
