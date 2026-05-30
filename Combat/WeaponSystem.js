@@ -4,6 +4,7 @@ import { Laser } from "../Entities/Laser.js";
 import { defaultGunId, getGunDefinition } from "../Config/gunDefinitions.js";
 import { getSlotFireIntervalMs } from "./gunCombat.js";
 import { getBeamTickDamage, createBeamHitSource } from "./impactDamage.js";
+import { areHostile, getHostiles, getNearestHostile } from "./Targeting.js";
 
 class WeaponTargetingStrategy {
     determineAimTarget(source, target, blocksTargeting, turret) {
@@ -157,7 +158,7 @@ export function createLaserWeaponMode() {
         turret.currentLaserLength = (turret.currentLaserLength || 0) + gun.beamGrowthSpeed * (dt / 1000);
         turret.currentLaserLength = Math.min(source.weapon.range, turret.currentLaserLength);
 
-        const hit = WeaponSystem.castLaser(tx, ty, turret.angle, turret.currentLaserLength, state, gun.beamRadius);
+        const hit = WeaponSystem.castLaser(tx, ty, turret.angle, turret.currentLaserLength, state, gun.beamRadius, source);
         turret.currentLaserLength = hit.dist;
 
         state.activeLasers.push(new Laser(tx, ty, hit.x, hit.y));
@@ -171,7 +172,7 @@ export function createLaserWeaponMode() {
             }
 
             const tickDamage = getBeamTickDamage(gun);
-            if (hit.hit === "enemy") {
+            if (hit.hit === "actor" && areHostile(source, hit.entity)) {
                 combatEvents.push({ target: hit.entity, damage: tickDamage });
             } else if (hit.hit === "pickup" && hit.entity.strategy?.onHit) {
                 const skipExplosive = state.abilities["TargetVerification"] && hit.entity.strategy.isExplosive;
@@ -191,7 +192,7 @@ export function resolveWeaponModeForGun(gun) {
 export const LASER_WEAPON_MODE = createLaserWeaponMode();
 
 export class WeaponSystem {
-    static castLaser(startX, startY, angle, maxDist, state, beamRadius = 1) {
+    static castLaser(startX, startY, angle, maxDist, state, beamRadius = 1, source = null) {
         const step = 8;
         let dist = 0;
         const dx = Math.cos(angle);
@@ -268,35 +269,23 @@ export class WeaponSystem {
                 }
             }
 
-            for (const e of state.enemies) {
+            const hostiles = source ? getHostiles(state, source) : state.enemies;
+            for (const e of hostiles) {
                 if (e.isDead) continue;
                 if (CollisionSystem.checkCircle(rayCircle, e)) {
-                    const distToEnemy = Math.hypot(e.x - startX, e.y - startY);
-                    const exactDist = distToEnemy - e.radius;
+                    const distToTarget = Math.hypot(e.x - startX, e.y - startY);
+                    const exactDist = distToTarget - e.radius;
                     const finalX = startX + dx * exactDist;
                     const finalY = startY + dy * exactDist;
-                    return { hit: "enemy", entity: e, x: finalX, y: finalY, dist: exactDist };
+                    return { hit: "actor", entity: e, x: finalX, y: finalY, dist: exactDist };
                 }
             }
         }
         return { hit: "none", x: cx, y: cy, dist: dist };
     }
 
-    static getNearestEnemy(state, source = state.player, range = state.player.weapon.range, excludedTargets = null) {
-        let nearest = null;
-        let minDist = Infinity;
-        for (let i = 0; i < state.enemies.length; i++) {
-            const e = state.enemies[i];
-            if (excludedTargets && excludedTargets.has(e)) continue;
-            const dist = Math.hypot(e.x - source.x, e.y - source.y);
-            if (dist <= range && dist < minDist) {
-                if (Utilities.hasLineOfSight(source.x, source.y, e.x, e.y, state.walls)) {
-                    minDist = dist;
-                    nearest = e;
-                }
-            }
-        }
-        return nearest;
+    static getNearestEnemy(state, source = state.player, range = source?.weapon?.range ?? state.player?.weapon?.range, excludedTargets = null) {
+        return getNearestHostile(state, source, range, excludedTargets);
     }
 
     static computeAccuracySway(source, turret, dt, requireCharge = false) {
@@ -331,45 +320,9 @@ export class WeaponSystem {
     }
 
     static updateActorTurrets(dt, actor, state, _upgrades, blocksTargeting = false) {
-        const combatEvents = [];
         state.activeLasers = [];
-
-        const engagedTargets = new Set();
-        const actualBlocksTargeting = blocksTargeting || actor.currentState?.blocksTargeting;
-        const weapon = actor.weapon;
-        if (!weapon) return combatEvents;
-
-        for (const turret of actor.getTurrets()) {
-            if (turret.target) {
-                const dist = Math.hypot(turret.target.x - actor.x, turret.target.y - actor.y);
-                if (
-                    turret.target.isDead ||
-                    dist > weapon.range ||
-                    !Utilities.hasLineOfSight(actor.x, actor.y, turret.target.x, turret.target.y, state.walls) ||
-                    actualBlocksTargeting
-                ) {
-                    turret.target = null;
-                } else if (engagedTargets.has(turret.target)) {
-                    const betterTarget = this.getNearestEnemy(state, actor, weapon.range, engagedTargets);
-                    if (betterTarget) {
-                        turret.target = betterTarget;
-                    }
-                }
-            }
-
-            if (!turret.target && !actualBlocksTargeting) {
-                turret.target = this.getNearestEnemy(state, actor, weapon.range, engagedTargets);
-                if (!turret.target) {
-                    turret.target = this.getNearestEnemy(state, actor, weapon.range);
-                }
-            }
-
-            if (turret.target) {
-                engagedTargets.add(turret.target);
-            }
-        }
-
-        actor.processAllTurrets(dt, state, (turret) => turret.target, actualBlocksTargeting, combatEvents);
+        const combatEvents = [];
+        actor.updateTurrets(dt, state, { blocksTargeting, combatEvents });
         return combatEvents;
     }
 }

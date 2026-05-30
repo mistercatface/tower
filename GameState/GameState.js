@@ -137,6 +137,43 @@ export class GameState {
 
         this.selectedSpeed = 1.0;
     }
+
+    getPlayerActors() {
+        if (this.players?.length) {
+            return this.players.filter((p) => p && !p.isDead);
+        }
+        return this.player && !this.player.isDead ? [this.player] : [];
+    }
+
+    getTurretCombatants() {
+        const combatants = [];
+
+        for (const player of this.getPlayerActors()) {
+            if (player.weapon && player.canRunTurretCombat()) {
+                combatants.push(player);
+            }
+        }
+
+        for (const enemy of this.enemies) {
+            if (!enemy.isDead && enemy.weapon && enemy.canRunTurretCombat()) {
+                combatants.push(enemy);
+            }
+        }
+
+        return combatants;
+    }
+
+    updateAllTurrets(dt, { blocksTargetingByActor = null } = {}) {
+        this.activeLasers = [];
+        const combatEvents = [];
+
+        for (const actor of this.getTurretCombatants()) {
+            const blocksTargeting = blocksTargetingByActor?.get(actor) ?? false;
+            actor.updateTurrets(dt, this, { blocksTargeting, combatEvents });
+        }
+
+        return combatEvents;
+    }
 }
 
 export const state = new GameState();

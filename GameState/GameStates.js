@@ -4,7 +4,6 @@ import { CollisionSystem } from "../Spatial/Collision/CollisionSystem.js";
 import { SpatialHash } from "../Spatial/World/SpatialHash.js";
 import { Enemy } from "../Entities/Enemy.js";
 import { Projectile } from "../Entities/Projectile.js";
-import { WeaponSystem } from "../Combat/WeaponSystem.js";
 import { spawnInitialPickups } from "../Entities/Pickup.js";
 import { showNodeConfirmModal, requestUiUpdate } from "../Core/EventSystem.js";
 import { Explosion } from "../Entities/Explosion/Explosion.js";
@@ -76,7 +75,9 @@ export class MapTransitionState {
             previousGridPos: oldGridPos,
         });
 
-        WeaponSystem.updateActorTurrets(speedUpDt, ctx.state.player, ctx.state, ctx.upgrades, true);
+        ctx.state.updateAllTurrets(speedUpDt, {
+            blocksTargetingByActor: new Map([[ctx.state.player, true]]),
+        });
 
         const targetNode = ctx.state.getMapTargetNode();
         if (targetNode) {
@@ -182,7 +183,9 @@ export class CombatState {
         Projectile.updateAll(ctx.state, dt);
         ProgressionManager.updatePickups(ctx.state, dt);
 
-        const turretEvents = WeaponSystem.updateActorTurrets(dt, ctx.state.player, ctx.state, ctx.upgrades, abilityState.blocksTargeting);
+        const turretEvents = ctx.state.updateAllTurrets(dt, {
+            blocksTargetingByActor: new Map([[ctx.state.player, abilityState.blocksTargeting]]),
+        });
         const collisionEvents = CollisionSystem.run(ctx.state);
         const allEvents = [...turretEvents, ...collisionEvents];
 

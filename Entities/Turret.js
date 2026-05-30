@@ -6,6 +6,7 @@ import { defaultTurretLoadout, resolveFireAngleOffsets } from "../Config/turretL
 import { Pools } from "../Core/Pools.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { getSlotFireIntervalMs } from "../Combat/gunCombat.js";
+import { inferFaction } from "../Combat/Targeting.js";
 
 export class Turret {
     constructor(angle, turnSpeed, loadout = defaultTurretLoadout) {
@@ -36,34 +37,26 @@ export class Turret {
         if (gun.kind !== "projectile") return;
 
         const { x: tx, y: ty } = this.getMuzzlePosition(source);
+        const { radiusMultiplier } = this.loadout;
+        const angleOffsets = resolveFireAngleOffsets(this.loadout);
+        const faction = inferFaction(source);
+        const knockbackSettings = faction === "player" ? playerProjectileSettings : enemyProjectileSettings;
 
-        if (source.type === "player") {
-            const { radiusMultiplier } = this.loadout;
-            const angleOffsets = resolveFireAngleOffsets(this.loadout);
-            this.spawnProjectiles(state, source, tx, ty, this.angle, gun, radiusMultiplier, angleOffsets, "player");
-            return;
-        }
-
-        const projectile = Pools.projectiles.acquire(
+        this.spawnProjectiles(
+            state,
+            source,
             tx,
             ty,
-            gun.bulletRadius,
-            gun.muzzleSpeed,
-            null,
             this.angle,
-            gun.damage,
-            "enemy"
-        );
-        projectile.penetration = source.weapon.penetration;
-        state.projectiles.push(projectile);
-        PhysicsSystem.applyKnockback(
-            source,
-            this.angle + Math.PI,
-            projectile.radius * enemyProjectileSettings.knockbackMultiplier
+            gun,
+            radiusMultiplier,
+            angleOffsets,
+            faction,
+            knockbackSettings
         );
     }
 
-    spawnProjectiles(state, source, tx, ty, baseAngle, gun, radiusMultiplier, angleOffsets, faction) {
+    spawnProjectiles(state, source, tx, ty, baseAngle, gun, radiusMultiplier, angleOffsets, faction, knockbackSettings) {
         const projectiles = [];
         const radius = gun.bulletRadius * radiusMultiplier;
 
@@ -89,7 +82,7 @@ export class Turret {
             PhysicsSystem.applyKnockback(
                 source,
                 baseAngle + Math.PI,
-                knockbackScale * playerProjectileSettings.knockbackMultiplier
+                knockbackScale * knockbackSettings.knockbackMultiplier
             );
         }
     }

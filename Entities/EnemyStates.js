@@ -78,8 +78,17 @@ export class EnemyNavigatingState {
 }
 
 export class EnemyEngagedState {
+    constructor() {
+        this.runsTurretCombat = true;
+    }
+
     onExit(enemy) {
         cancelEngagedStrafeTimers(enemy);
+    }
+
+    getTurretBlocksTargeting(enemy, state) {
+        const target = state.player;
+        return !Utilities.hasLineOfSight(enemy.x, enemy.y, target.x, target.y, state.walls, enemy.radius);
     }
 
     update(enemy, dt, target, flowFieldGrid, walls, missiles, spatialHash, scheduler, state) {
@@ -226,8 +235,6 @@ export class EnemyEngagedState {
 
         const angleToTarget = Math.atan2(-dy, -dx);
         enemy.angle = Utilities.turnAngleTowards(enemy.angle, angleToTarget, enemy.turnSpeed, dt);
-
-        enemy.processAllTurrets(dt, state, target, !hasLOS);
 
         return false;
     }

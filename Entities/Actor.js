@@ -21,6 +21,10 @@ import {
     getTurretCountForLoadout,
     normalizeWeaponLoadout,
 } from "../Combat/equipmentLoadout.js";
+import {
+    getNearestHostile,
+    isValidTurretTarget,
+} from "../Combat/Targeting.js";
 
 export class Actor extends DestructibleEntity {
     constructor(x, y, radius, speed, health, color, type, accelRate = 3.0, canDamageWalls = false) {
@@ -30,6 +34,8 @@ export class Actor extends DestructibleEntity {
         this.speed = speed;
         this.color = color;
         this.type = type;
+        this.faction = type === "player" ? "player" : "enemy";
+        this.teamId = null;
         this.accelRate = accelRate;
         this.canDamageWalls = canDamageWalls;
         this.turnSpeed = 10;
@@ -108,6 +114,65 @@ export class Actor extends DestructibleEntity {
 
     getTurrets() {
         return this.turrets;
+    }
+
+    canRunTurretCombat() {
+        if (this.currentState?.runsTurretCombat != null) {
+            return this.currentState.runsTurretCombat;
+        }
+        return this.faction === "player";
+    }
+
+    resolveBlocksTargeting(state, externalBlocks = false) {
+        if (externalBlocks) return true;
+        if (this.currentState?.blocksTargeting) return true;
+        if (this.currentState?.getTurretBlocksTargeting) {
+            return this.currentState.getTurretBlocksTargeting(this, state);
+        }
+        return false;
+    }
+
+    acquireTurretTargets(state, blocksTargeting = false) {
+        const weapon = this.weapon;
+        if (!weapon) return;
+
+        const actualBlocks = this.resolveBlocksTargeting(state, blocksTargeting);
+        const engagedTargets = new Set();
+
+        for (const turret of this.getTurrets()) {
+            if (turret.target) {
+                if (!isValidTurretTarget(this, turret.target, state, weapon.range, actualBlocks)) {
+                    turret.target = null;
+                } else if (engagedTargets.has(turret.target)) {
+                    const betterTarget = getNearestHostile(state, this, weapon.range, engagedTargets);
+                    if (betterTarget) {
+                        turret.target = betterTarget;
+                    }
+                }
+            }
+
+            if (!turret.target && !actualBlocks) {
+                turret.target = getNearestHostile(state, this, weapon.range, engagedTargets);
+                if (!turret.target) {
+                    turret.target = getNearestHostile(state, this, weapon.range);
+                }
+            }
+
+            if (turret.target) {
+                engagedTargets.add(turret.target);
+            }
+        }
+    }
+
+    updateTurrets(dt, state, { blocksTargeting = false, combatEvents = [] } = {}) {
+        if (!this.weapon || !this.canRunTurretCombat()) {
+            return combatEvents;
+        }
+
+        this.acquireTurretTargets(state, blocksTargeting);
+        const actualBlocks = this.resolveBlocksTargeting(state, blocksTargeting);
+        this.processAllTurrets(dt, state, (turret) => turret.target, actualBlocks, combatEvents);
+        return combatEvents;
     }
 
     syncTurretCount(count, turnSpeed) {

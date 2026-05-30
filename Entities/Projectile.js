@@ -3,6 +3,7 @@ import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
 import { Pools } from "../Core/Pools.js";
 import { getProjectileDamage } from "../Combat/impactDamage.js";
+import { getHostilesForFaction } from "../Combat/Targeting.js";
 
 export class Projectile extends Entity {
     static updateAll(state, dt) {
@@ -60,29 +61,12 @@ export class Projectile extends Entity {
     }
 
     resolveFactionCollisions(state, events, system) {
-        if (this.faction === "player") {
-            if (state.abilities["Eraser"]) {
-                for (const ep of state.projectiles) {
-                    if (ep.isDead || ep.faction !== "enemy") continue;
-                    if (system.checkCircle(this, ep)) {
-                        ep.isDead = true;
-                        if (this.penetration > 0) {
-                            this.penetration--;
-                        } else {
-                            this.isDead = true;
-                            break;
-                        }
-                    }
-                }
-                if (this.isDead) return;
-            }
-            for (const e of state.enemies) {
-                if (e.isDead) continue;
-                if (system.checkCircle(this, e)) {
-                    const damage = getProjectileDamage(this);
-                    events.push({ target: e, damage });
-                    PhysicsSystem.applyKnockback(e, this.angle, this.radius * 150);
-                    if (e.health <= damage && this.penetration > 0) {
+        if (this.faction === "player" && state.abilities["Eraser"]) {
+            for (const ep of state.projectiles) {
+                if (ep.isDead || ep.faction !== "enemy") continue;
+                if (system.checkCircle(this, ep)) {
+                    ep.isDead = true;
+                    if (this.penetration > 0) {
                         this.penetration--;
                     } else {
                         this.isDead = true;
@@ -90,11 +74,21 @@ export class Projectile extends Entity {
                     }
                 }
             }
-        } else if (this.faction === "enemy") {
-            if (system.checkCircle(this, state.player)) {
-                this.isDead = true;
-                events.push({ target: state.player, damage: getProjectileDamage(this) });
-                PhysicsSystem.applyKnockback(state.player, this.angle, this.radius * 150);
+            if (this.isDead) return;
+        }
+
+        for (const target of getHostilesForFaction(state, this.faction)) {
+            if (target.isDead) continue;
+            if (system.checkCircle(this, target)) {
+                const damage = getProjectileDamage(this);
+                events.push({ target, damage });
+                PhysicsSystem.applyKnockback(target, this.angle, this.radius * 150);
+                if (target.health <= damage && this.penetration > 0) {
+                    this.penetration--;
+                } else {
+                    this.isDead = true;
+                    break;
+                }
             }
         }
     }
