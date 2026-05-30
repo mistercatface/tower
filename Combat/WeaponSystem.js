@@ -6,30 +6,8 @@ import { getSlotFireIntervalMs } from "./gunCombat.js";
 import { getBeamTickDamage, createBeamHitSource } from "./impactDamage.js";
 import { areHostile, getHostiles, getNearestHostile } from "./Targeting.js";
 
-class WeaponTargetingStrategy {
-    determineAimTarget(source, target, blocksTargeting, turret) {
-        if (source.currentState && source.currentState.getAimTarget) {
-            return source.currentState.getAimTarget(source, target, blocksTargeting, turret);
-        }
-        if (target && !blocksTargeting) {
-            return target;
-        }
-        if (source.isMoving) {
-            return {
-                x: source.targetNodeX !== null ? source.targetNodeX : source.targetX,
-                y: source.targetNodeY !== null ? source.targetNodeY : source.targetY
-            };
-        }
-        return {
-            x: source.x + Math.cos(turret.angle) * 100,
-            y: source.y + Math.sin(turret.angle) * 100
-        };
-    }
-}
-
-export class ChargedWeaponMode extends WeaponTargetingStrategy {
+export class ChargedWeaponMode {
     constructor(onFireFn) {
-        super();
         this.onFire = onFireFn;
     }
 
@@ -64,9 +42,7 @@ export class ChargedWeaponMode extends WeaponTargetingStrategy {
         const fireTarget = source.resolveTurretTargetForProcessing(turret);
         const effectiveBlocks = source.resolveTurretBlocksForProcessing(turret, state, blocksTargeting);
 
-        const aimTarget = committed
-            ? source.getCommittedTurretTarget(turret)
-            : this.determineAimTarget(source, fireTarget, effectiveBlocks, turret);
+        const aimTarget = source.resolveTurretAimPoint(turret, state, fireTarget, effectiveBlocks);
 
         if (!aimTarget) {
             if (!committed) {
@@ -103,9 +79,8 @@ export class ChargedWeaponMode extends WeaponTargetingStrategy {
     }
 }
 
-export class ContinuousWeaponMode extends WeaponTargetingStrategy {
+export class ContinuousWeaponMode {
     constructor(onTickFn) {
-        super();
         this.onTick = onTickFn;
     }
 
@@ -134,12 +109,15 @@ export class ContinuousWeaponMode extends WeaponTargetingStrategy {
         const turretDist = source.radius + 4 + 4 * (source.radius / 8);
         const tx = source.x + Math.cos(turret.angle) * turretDist;
         const ty = source.y + Math.sin(turret.angle) * turretDist;
-        const aimTarget = this.determineAimTarget(source, target, blocksTargeting, turret);
+        const effectiveBlocks = source.resolveTurretBlocksForProcessing(turret, state, blocksTargeting);
+        const aimTarget = source.resolveTurretAimPoint(turret, state, target, effectiveBlocks);
 
         const sway = WeaponSystem.computeAccuracySway(source, turret, dt);
 
-        WeaponSystem.aimTurret(turret, source.x, source.y, aimTarget.x, aimTarget.y, dt, sway);
-        turret.lastTarget = (target && !blocksTargeting) ? target : null;
+        if (aimTarget) {
+            WeaponSystem.aimTurret(turret, source.x, source.y, aimTarget.x, aimTarget.y, dt, sway);
+        }
+        turret.lastTarget = (target && !effectiveBlocks) ? target : null;
         this.onTick(dt, state, tx, ty, turret, combatEvents, source);
     }
 }

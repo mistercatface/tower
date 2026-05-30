@@ -87,7 +87,8 @@ export class EnemyEngagedState {
     }
 
     getTurretBlocksTargeting(enemy, state) {
-        const target = state.player;
+        const target = enemy.getAITarget(state);
+        if (!target) return true;
         return !Utilities.hasLineOfSight(enemy.x, enemy.y, target.x, target.y, state.walls, enemy.radius);
     }
 

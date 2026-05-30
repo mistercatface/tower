@@ -23,7 +23,7 @@ export class Enemy extends Actor {
     static updateAll(state, dt, spatialHash) {
         for (let i = state.enemies.length - 1; i >= 0; i--) {
             const e = state.enemies[i];
-            e.currentState.update(e, dt, state.player, state.flowFieldGrid, state.walls, state.projectiles, spatialHash, state.scheduler, state);
+            e.currentState.update(e, dt, e.getAITarget(state), state.flowFieldGrid, state.walls, state.projectiles, spatialHash, state.scheduler, state);
             if (e.isDead) state.enemies.splice(i, 1);
         }
     }

@@ -123,6 +123,42 @@ export class Actor extends DestructibleEntity {
         return this.faction === "player";
     }
 
+    getAITarget(state) {
+        if (!state) return null;
+        const range = this.weapon?.range;
+        if (range != null) {
+            const inRange = getNearestHostile(state, this, range);
+            if (inRange) return inRange;
+        }
+        return getNearestHostile(state, this, Infinity);
+    }
+
+    getTurretAimPoint(turret, state, target, blocksTargeting) {
+        if (this.currentState?.getAimTarget) {
+            return this.currentState.getAimTarget(this, target, blocksTargeting, turret);
+        }
+        if (target && !blocksTargeting) {
+            return target;
+        }
+        if (this.isMoving && this.targetX != null && this.targetY != null) {
+            return {
+                x: this.targetNodeX != null ? this.targetNodeX : this.targetX,
+                y: this.targetNodeY != null ? this.targetNodeY : this.targetY,
+            };
+        }
+        return {
+            x: this.x + Math.cos(turret.angle) * 100,
+            y: this.y + Math.sin(turret.angle) * 100,
+        };
+    }
+
+    resolveTurretAimPoint(turret, state, target, blocksTargeting) {
+        if (this.isTurretChargeCommitted(turret)) {
+            return this.getCommittedTurretTarget(turret);
+        }
+        return this.getTurretAimPoint(turret, state, target, blocksTargeting);
+    }
+
     resolveBlocksTargeting(state, externalBlocks = false) {
         if (externalBlocks) return true;
         if (this.currentState?.blocksTargeting) return true;
