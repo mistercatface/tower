@@ -129,8 +129,6 @@ export class CombatState {
         if (ctx.state.isTransitioningFromTravel) {
             ctx.state.isTransitioningFromTravel = false;
             ctx.state.player.stopMovement(ctx.state);
-            ctx.state.player.vx = 0;
-            ctx.state.player.vy = 0;
         } else {
             ctx.state.player.setSpawnPosition(combatCoords.x, combatCoords.y);
             ctx.state.player.resetToSpawn();
@@ -151,15 +149,6 @@ export class CombatState {
             }
         }
         
-        // Shift grid center to player position and rebuild local flow field
-        ctx.state.flowFieldGrid.shiftCenter(
-            ctx.state.player.x,
-            ctx.state.player.y,
-            ctx.state.player.x,
-            ctx.state.player.y
-        );
-        
-        ctx.viewport.snapTo(ctx.state.player.x, ctx.state.player.y);
         requestUiUpdate();
     }
 
