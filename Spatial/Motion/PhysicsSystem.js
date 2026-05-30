@@ -12,7 +12,7 @@ export class PhysicsSystem {
             finalY /= len;
         }
 
-        if (alignAngleWithMovement) {
+        if (alignAngleWithMovement && len > 0) {
             const targetAngle = Math.atan2(finalY, finalX);
             let angleDiff = targetAngle - entity.angle;
             angleDiff = Utilities.normalizeAngle(angleDiff);

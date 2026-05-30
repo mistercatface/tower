@@ -196,10 +196,7 @@ export class Actor extends DestructibleEntity {
                 y: this.targetNodeY != null ? this.targetNodeY : this.targetY,
             };
         }
-        return {
-            x: this.x + Math.cos(this.getFacingAngle(state)) * 100,
-            y: this.y + Math.sin(this.getFacingAngle(state)) * 100,
-        };
+        return null;
     }
 
     getFacingAngle(state) {
