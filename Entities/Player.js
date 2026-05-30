@@ -151,24 +151,7 @@ export class Player extends Actor {
         return true;
     }
 
-    shouldApplyAllyLaneAvoidance(_state) {
-        return !this.isRepositioning();
-    }
-
-    isRepositioning() {
-        return this.isMoving && this.targetX !== null && this.targetY !== null;
-    }
-
-    shouldApplyCoverMovement(state) {
-        if (this.isRepositioning()) return false;
-        return super.shouldApplyCoverMovement(state);
-    }
-
     updateCombat(dt, state, spatialHash, options = {}) {
-        if (this.handleCombatDodge(dt, state, spatialHash, options)) {
-            return;
-        }
-
         const flowFieldGrid = state.flowFieldGrid;
         const walls = state.walls;
 

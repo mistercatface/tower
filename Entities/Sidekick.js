@@ -86,16 +86,6 @@ export class Sidekick extends Actor {
         this.vy = 0;
     }
 
-    allowsPlantedStance(state) {
-        const leader = state?.player;
-        if (!leader || leader.isDead) return true;
-        if (this.isAtFollowSlot(leader)) return true;
-
-        const minLeaderDist = this.getMinLeaderDistance(leader);
-        const leaderDist = Math.hypot(this.x - leader.x, this.y - leader.y);
-        return leaderDist <= minLeaderDist + 4;
-    }
-
     enforceLeaderClearance(leader) {
         const minDist = this.getMinLeaderDistance(leader);
         let dx = this.x - leader.x;
@@ -103,10 +93,6 @@ export class Sidekick extends Actor {
         let dist = Math.hypot(dx, dy);
 
         if (dist >= minDist) return;
-
-        if (this.isCombatPlanted()) {
-            this.resetCombatPosture();
-        }
 
         if (dist < 0.001) {
             const angle = leader.angle + Math.PI;
@@ -130,10 +116,6 @@ export class Sidekick extends Actor {
     }
 
     updateCombat(dt, state, spatialHash, options = {}) {
-        if (this.handleCombatDodge(dt, state, spatialHash, options)) {
-            return;
-        }
-
         const leader = state.player;
         if (!leader || leader.isDead) {
             this.holdPosition();
