@@ -23,7 +23,9 @@ import {
 } from "../Combat/equipmentLoadout.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
 import {
+    areHostile,
     getNearestHostile,
+    getPlayerActors,
     isValidTurretTarget,
 } from "../Combat/Targeting.js";
 
@@ -200,6 +202,133 @@ export class Actor extends DestructibleEntity {
         return !target || !this.hasLineOfSightTo(target, state);
     }
 
+    getAllyActors(state) {
+        if (!state) return [];
+
+        if (this.teamId != null) {
+            return state.getCombatants().filter(
+                (other) =>
+                    other !== this &&
+                    !other.isDead &&
+                    other.teamId === this.teamId &&
+                    !areHostile(this, other)
+            );
+        }
+
+        if (this.faction === "player") {
+            return getPlayerActors(state).filter((ally) => ally !== this && !ally.isDead);
+        }
+
+        return [];
+    }
+
+    getEngagedTargetsFrom(ally) {
+        const targets = [];
+
+        for (const turret of ally.getTurrets()) {
+            if (turret.target && !turret.target.isDead) {
+                targets.push(turret.target);
+            }
+            if (ally.isTurretChargeCommitted(turret)) {
+                const committed = ally.getCommittedTurretTarget(turret);
+                if (committed && !committed.isDead) {
+                    targets.push(committed);
+                }
+            }
+        }
+
+        return targets;
+    }
+
+    getMutualAssistTargets(state) {
+        const targets = [];
+        const seen = new Set();
+
+        for (const ally of this.getAllyActors(state)) {
+            for (const target of this.getEngagedTargetsFrom(ally)) {
+                if (seen.has(target)) continue;
+                seen.add(target);
+                targets.push(target);
+            }
+        }
+
+        return targets;
+    }
+
+    isTargetEngagedBy(ally, target) {
+        if (!ally || !target || target.isDead) return false;
+        return this.getEngagedTargetsFrom(ally).includes(target);
+    }
+
+    isMutualAssistTarget(state, target) {
+        if (!target) return false;
+        return this.getMutualAssistTargets(state).includes(target);
+    }
+
+    getMutualAssistRangeBonus(state, target) {
+        if (!target || !state || !this.isMutualAssistTarget(state, target)) {
+            return 0;
+        }
+
+        let bonus = 0;
+        for (const ally of this.getAllyActors(state)) {
+            if (!this.isTargetEngagedBy(ally, target)) continue;
+            bonus = Math.max(bonus, Math.hypot(ally.x - this.x, ally.y - this.y));
+        }
+        return bonus;
+    }
+
+    getEffectiveTurretRange(state, target) {
+        const baseRange = this.weapon?.range ?? 0;
+        if (!target) return baseRange;
+        return baseRange + this.getMutualAssistRangeBonus(state, target);
+    }
+
+    isValidTurretTargetForSelf(target, state, { blocksTargeting = false } = {}) {
+        if (!this.weapon || !target) return false;
+        return isValidTurretTarget(
+            this,
+            target,
+            state,
+            this.getEffectiveTurretRange(state, target),
+            blocksTargeting,
+            { requireLos: true }
+        );
+    }
+
+    findTurretTarget(state, excludedTargets = null) {
+        if (!this.weapon) return null;
+
+        const ownExcluded = excludedTargets ?? new Set();
+        const allyEngaged = this.getMutualAssistTargets(state);
+        const independentExcluded = new Set(ownExcluded);
+        for (const target of allyEngaged) {
+            independentExcluded.add(target);
+        }
+
+        const independent = getNearestHostile(state, this, this.weapon.range, independentExcluded);
+        if (independent) return independent;
+
+        for (const target of allyEngaged) {
+            if (ownExcluded.has(target)) continue;
+            if (this.isValidTurretTargetForSelf(target, state)) {
+                return target;
+            }
+        }
+
+        const shared = getNearestHostile(state, this, this.weapon.range, ownExcluded);
+        if (shared) return shared;
+
+        for (const target of allyEngaged) {
+            if (ownExcluded.has(target)) continue;
+            if (this.isValidTurretTargetForSelf(target, state)) {
+                return target;
+            }
+        }
+
+        return getNearestHostile(state, this, this.weapon.range);
+    }
+
     getExternalBlocksTargeting(state, upgrades = []) {
         if (!this.isAbilityOwner(state) || !state?.abilities || !state?.scheduler) {
             return false;
@@ -351,20 +480,17 @@ export class Actor extends DestructibleEntity {
             }
 
             if (turret.target && !committed) {
-                const stillValid = isValidTurretTarget(
-                    this,
+                const stillValid = this.isValidTurretTargetForSelf(
                     turret.target,
                     state,
-                    weapon.range,
-                    actualBlocks,
-                    { requireLos: true }
+                    { blocksTargeting: actualBlocks }
                 );
 
                 if (!stillValid) {
                     turret.target = null;
                     this.clearTurretCharge(turret);
                 } else if (engagedTargets.has(turret.target)) {
-                    const betterTarget = getNearestHostile(state, this, weapon.range, engagedTargets);
+                    const betterTarget = this.findTurretTarget(state, engagedTargets);
                     if (betterTarget) {
                         turret.target = betterTarget;
                     }
@@ -372,10 +498,7 @@ export class Actor extends DestructibleEntity {
             }
 
             if (!turret.target && !actualBlocks && !this.isTurretChargeCommitted(turret)) {
-                turret.target = getNearestHostile(state, this, weapon.range, engagedTargets);
-                if (!turret.target) {
-                    turret.target = getNearestHostile(state, this, weapon.range);
-                }
+                turret.target = this.findTurretTarget(state, engagedTargets);
             }
 
             if (turret.target) {

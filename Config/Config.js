@@ -79,7 +79,7 @@ export const runBaseStats = {
 
 export const sidekickBaseStats = {
     turnSpeed: Math.PI * 2.5,
-    range: 120,
+    range: 150,
     maxHealth: 80,
     accuracy: 0.7,
     penetration: 0,

@@ -35,6 +35,7 @@ export class Player extends Actor {
         this.canDamageWalls = true;
         this.startingAbilities = playerBaseStats.startingAbilities || [];
         this.alwaysRunsTurretCombat = true;
+        this.teamId = 0;
     }
 
     recalculate(state, upgradeDefs, shouldApply = () => true) {
