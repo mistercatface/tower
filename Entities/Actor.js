@@ -134,11 +134,7 @@ export class Actor extends DestructibleEntity {
 
     getCommittedTurretTarget(turret) {
         const target = turret.lastTarget ?? turret.target;
-        if (!target || target.isDead || !this.weapon) return null;
-
-        const dist = Math.hypot(target.x - this.x, target.y - this.y);
-        if (dist > this.weapon.range) return null;
-
+        if (!target || target.isDead) return null;
         return target;
     }
 
