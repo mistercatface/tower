@@ -692,15 +692,18 @@ export class Actor extends DestructibleEntity {
             const alpha = Math.PI / totalPieces;
             const bisector = (i / totalPieces) * Math.PI * 2 + alpha;
             
-            // Random explosion direction and velocity offset
-            const explodeAngle = bisector + (Math.random() - 0.5) * 0.5; // slight noise
-            const explodeSpeed = 30 + Math.random() * 70; // px/sec
+            // Outward separation velocity that is biased by the direction of base velocity.
+            // This forces pieces to fly in a forward-spreading cone rather than in all 360-degrees.
+            const explodeAngle = bisector;
+            const explodeSpeed = 15 + Math.random() * 25; // lateral/radial spread speed
             
             const px = this.x + Math.cos(bisector) * (this.radius * 0.25);
             const py = this.y + Math.sin(bisector) * (this.radius * 0.25);
 
-            const pvx = baseVx * 0.6 + Math.cos(explodeAngle) * explodeSpeed;
-            const pvy = baseVy * 0.6 + Math.sin(explodeAngle) * explodeSpeed;
+            // Forward momentum is preserved and forms the primary vector.
+            // Radial push is added to spread the pieces, creating a directional cone splash.
+            const pvx = baseVx * (0.8 + Math.random() * 0.4) + Math.cos(explodeAngle) * explodeSpeed;
+            const pvy = baseVy * (0.8 + Math.random() * 0.4) + Math.sin(explodeAngle) * explodeSpeed;
             
             // Spin speed
             const omega = (Math.random() - 0.5) * 8; // rad/sec
@@ -721,16 +724,14 @@ export class Actor extends DestructibleEntity {
                 // Get orbit position at the moment of death
                 const { x: tx, y: ty } = turret.getOrbitPosition(this.x, this.y, this.radius);
 
-                // Velocity is combined base, plus an outward boost
+                // Velocity is combined base, plus an outward/radial boost
                 const orbitAngle = turret.angle;
                 const turretScale = this.radius / 8;
 
-                // Spawns with outward velocity from center + random noise
-                const outwardAngle = orbitAngle + (Math.random() - 0.5) * 0.8;
-                const outwardSpeed = 50 + Math.random() * 100;
-
-                const tvx = baseVx * 0.8 + Math.cos(outwardAngle) * outwardSpeed;
-                const tvy = baseVy * 0.8 + Math.sin(outwardAngle) * outwardSpeed;
+                // Outward bounce velocity combined with forward momentum bias
+                const turretSpeed = 20 + Math.random() * 45;
+                const tvx = baseVx * (0.8 + Math.random() * 0.3) + Math.cos(orbitAngle) * turretSpeed;
+                const tvy = baseVy * (0.8 + Math.random() * 0.3) + Math.sin(orbitAngle) * turretSpeed;
 
                 // High spin speed for loose turrets
                 const omega = (Math.random() - 0.5) * 15;
