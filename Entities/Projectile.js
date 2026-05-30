@@ -116,7 +116,7 @@ export class Projectile extends Entity {
             if (target.isDead) continue;
             if (system.checkCircle(this, target)) {
                 const damage = getProjectileDamage(this);
-                events.push({ target, damage });
+                events.push({ target, damage, projectile: this });
                 PhysicsSystem.applyKnockback(target, this.angle, this.radius * this.getHitKnockbackScale());
                 if (target.health <= damage && this.penetration > 0) {
                     this.penetration--;

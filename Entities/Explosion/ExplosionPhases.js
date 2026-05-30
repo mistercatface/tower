@@ -46,6 +46,7 @@ function applyExpandingDamage(state, exp, allEvents) {
                     target: actor,
                     damage: blastDamage(exp, dist, maxMultiplier, minMultiplier),
                     type: "blast",
+                    explosion: exp,
                 });
                 exp.hitTargets.add(actor);
             }

@@ -129,10 +129,12 @@ export class GameState {
         this.walls.spatialHash = this.wallSpatialHash;
         this.pickups = [];
         this.activeLasers = [];
+        this.deathPieces = [];
         this.flowFieldGrid.clear();
 
         this.entityLayers = [
             { key: "projectiles", zIndex: 20 },
+            { key: "deathPieces", zIndex: 25 },
             { key: "activeLasers", zIndex: 35 },
             { key: "floatingTexts", zIndex: 90 },
         ];

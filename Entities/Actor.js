@@ -1,4 +1,5 @@
 import { DestructibleEntity } from "./Entity.js";
+import { DeathPiece } from "./DeathPiece.js";
 import { Separation } from "../Spatial/Motion/Separation.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { actorStates } from "./ActorStates.js";
@@ -647,13 +648,103 @@ export class Actor extends DestructibleEntity {
         }
     }
 
-    onHitAfterDamage(_damage, _ctx, _hitType, _died) {}
+    onHitAfterDamage(damage, ctx, hitType, died, event) {
+        if (died) {
+            this.spawnDeathPieces(ctx.state, event);
+        }
+    }
 
-    handleHit(damage, ctx, hitType) {
+    handleHit(damage, ctx, hitType, event) {
         const died = this.takeDamage(damage);
         this.onDamageFloatingText(damage, hitType);
-        this.onHitAfterDamage(damage, ctx, hitType, died);
+        this.onHitAfterDamage(damage, ctx, hitType, died, event);
         return died;
+    }
+
+    spawnDeathPieces(state, event) {
+        if (!state) return;
+        
+        let impactAngle = this.angle;
+        let impactForce = 0;
+
+        if (event) {
+            if (event.projectile) {
+                impactAngle = event.projectile.angle;
+                // Force proportional to projectile speed and radius (size)
+                impactForce = event.projectile.speed * (event.projectile.radius / this.radius) * 0.5;
+            } else if (event.type === "blast" && event.explosion) {
+                // Radial impact from explosion center
+                impactAngle = Math.atan2(this.y - event.explosion.y, this.x - event.explosion.x);
+                const dist = Math.hypot(this.x - event.explosion.x, this.y - event.explosion.y);
+                const proximity = Math.max(0.1, 1 - (dist / event.explosion.maxRadius));
+                impactForce = event.explosion.speed * proximity * 0.8;
+            }
+        }
+
+        // Base velocity combining actor's velocity and impact velocity
+        const baseVx = this.vx + Math.cos(impactAngle) * impactForce;
+        const baseVy = this.vy + Math.sin(impactAngle) * impactForce;
+
+        // 1. Break the body into a variable number of pieces (3 to 6)
+        const totalPieces = 3 + Math.floor(Math.random() * 4); // 3, 4, 5, or 6
+        for (let i = 0; i < totalPieces; i++) {
+            // Slight initial offset along the wedge bisector
+            const alpha = Math.PI / totalPieces;
+            const bisector = (i / totalPieces) * Math.PI * 2 + alpha;
+            
+            // Random explosion direction and velocity offset
+            const explodeAngle = bisector + (Math.random() - 0.5) * 0.5; // slight noise
+            const explodeSpeed = 30 + Math.random() * 70; // px/sec
+            
+            const px = this.x + Math.cos(bisector) * (this.radius * 0.25);
+            const py = this.y + Math.sin(bisector) * (this.radius * 0.25);
+
+            const pvx = baseVx * 0.6 + Math.cos(explodeAngle) * explodeSpeed;
+            const pvy = baseVy * 0.6 + Math.sin(explodeAngle) * explodeSpeed;
+            
+            // Spin speed
+            const omega = (Math.random() - 0.5) * 8; // rad/sec
+
+            const piece = new DeathPiece(
+                px, py, pvx, pvy, 
+                this.angle, omega, 
+                "body", this.color, this.radius,
+                { pieceIndex: i, totalPieces, lifetime: 800 + Math.random() * 600 }
+            );
+
+            state.deathPieces.push(piece);
+        }
+
+        // 2. Break turrets off into individual physics objects
+        if (this.turrets && this.turrets.length > 0) {
+            for (const turret of this.turrets) {
+                // Get orbit position at the moment of death
+                const { x: tx, y: ty } = turret.getOrbitPosition(this.x, this.y, this.radius);
+
+                // Velocity is combined base, plus an outward boost
+                const orbitAngle = turret.angle;
+                const turretScale = this.radius / 8;
+
+                // Spawns with outward velocity from center + random noise
+                const outwardAngle = orbitAngle + (Math.random() - 0.5) * 0.8;
+                const outwardSpeed = 50 + Math.random() * 100;
+
+                const tvx = baseVx * 0.8 + Math.cos(outwardAngle) * outwardSpeed;
+                const tvy = baseVy * 0.8 + Math.sin(outwardAngle) * outwardSpeed;
+
+                // High spin speed for loose turrets
+                const omega = (Math.random() - 0.5) * 15;
+
+                const piece = new DeathPiece(
+                    tx, ty, tvx, tvy,
+                    turret.angle, omega,
+                    "turret", this.color, turretScale,
+                    { lifetime: 1200 + Math.random() * 800, drag: 2.0 }
+                );
+
+                state.deathPieces.push(piece);
+            }
+        }
     }
 
     renderTurrets(ctx, renderer, color = this.color) {

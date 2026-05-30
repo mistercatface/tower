@@ -9,6 +9,7 @@ import { Explosion } from "../Entities/Explosion/Explosion.js";
 import { navigationSettings } from "../Config/Config.js";
 import { resolveMoveTarget } from "../Spatial/Navigation/PathClearance.js";
 import { Pools } from "../Core/Pools.js";
+import { DeathPiece } from "../Entities/DeathPiece.js";
 
 export class MapState {
     onEnter(ctx) {
@@ -121,6 +122,7 @@ export class CombatState {
         ctx.state.explosions = [];
         ctx.state.enemies = [];
         ctx.state.activeLasers = [];
+        ctx.state.deathPieces = [];
         ctx.state.floatingTexts = [];
         
         const currentNode = ctx.state.getCurrentMapNode();
@@ -188,6 +190,7 @@ export class CombatState {
 
         ctx.state.waveManager.manageSpawning(dt, ctx.state, ctx.upgrades, ctx.viewport);
         Projectile.updateAll(ctx.state, dt);
+        DeathPiece.updateAll(ctx.state, dt);
         ProgressionManager.updatePickups(ctx.state, dt);
 
         const collisionEvents = CollisionSystem.run(ctx.state);
@@ -197,7 +200,7 @@ export class CombatState {
 
         for (const event of allEvents) {
             if (event.target && event.target.handleHit) {
-                event.target.handleHit(event.damage, ctx, event.type);
+                event.target.handleHit(event.damage, ctx, event.type, event);
             }
         }
 

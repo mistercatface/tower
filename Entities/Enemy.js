@@ -44,9 +44,10 @@ export class Enemy extends Actor {
         this.healthBar = Enemy.healthBar;
     }
 
-    onHitAfterDamage(_damage, _ctx, _hitType, died) {
+    onHitAfterDamage(damage, ctx, hitType, died, event) {
         if (died) {
             emitCombatEnemyKilled(this);
+            this.spawnDeathPieces(ctx.state, event);
         }
     }
 
