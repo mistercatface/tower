@@ -71,6 +71,22 @@ export const RenderSprites = {
         return offCanvas;
     },
 
+    sidekick: (radius, color) => {
+        const canvasSize = Math.ceil(radius * 2) + 6;
+        const cx = canvasSize / 2;
+        const cy = canvasSize / 2;
+        const offCanvas = new OffscreenCanvas(canvasSize, canvasSize);
+        const offCtx = offCanvas.getContext("2d");
+        offCtx.beginPath();
+        offCtx.arc(cx, cy, radius, 0, Math.PI * 2);
+        offCtx.fillStyle = color;
+        offCtx.fill();
+        offCtx.lineWidth = 2;
+        offCtx.strokeStyle = "rgba(255, 255, 255, 0.85)";
+        offCtx.stroke();
+        return offCanvas;
+    },
+
     wall: (size, r, g, b) => {
         const offCanvas = new OffscreenCanvas(size + 2, size + 2);
         const offCtx = offCanvas.getContext("2d");

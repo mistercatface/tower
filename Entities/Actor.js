@@ -130,6 +130,10 @@ export class Actor extends DestructibleEntity {
         return options.externalSpeedMod ?? 1;
     }
 
+    shouldSeparateFrom(_other) {
+        return true;
+    }
+
     isAbilityOwner(state) {
         return state?.player === this;
     }
@@ -193,9 +197,19 @@ export class Actor extends DestructibleEntity {
             };
         }
         return {
-            x: this.x + Math.cos(turret.angle) * 100,
-            y: this.y + Math.sin(turret.angle) * 100,
+            x: this.x + Math.cos(this.getFacingAngle(state)) * 100,
+            y: this.y + Math.sin(this.getFacingAngle(state)) * 100,
         };
+    }
+
+    getFacingAngle(state) {
+        return this.angle;
+    }
+
+    syncTurretsToFacing(dt, state) {
+        if (this.turrets.length === 0) return;
+        if (this.alwaysRunsTurretCombat || this.canRunTurretCombat()) return;
+        this.turnAllTurretsTowards(this.getFacingAngle(state), dt);
     }
 
     resolveTurretAimPoint(turret, state, target, blocksTargeting) {
@@ -435,6 +449,10 @@ export class Actor extends DestructibleEntity {
         }
     }
 
+    render(ctx, renderer, _state) {
+        this.renderBody(ctx, renderer);
+    }
+
     getSpriteCache(renderer) {
         return this.faction === "player" ? renderer.playerCache : renderer.enemyCache;
     }
@@ -492,6 +510,7 @@ export class Actor extends DestructibleEntity {
             this.speed = baseSpeed;
         }
         PhysicsSystem.resolveWallCollisions(this, walls, state);
+        this.syncTurretsToFacing(dt, state);
     }
 
     getVelocityMagnitude() {

@@ -61,7 +61,8 @@ export function isValidTurretTarget(actor, target, state, range, blocksTargeting
     if (dist > range) return false;
 
     if (requireLos) {
-        return Utilities.hasLineOfSight(actor.x, actor.y, target.x, target.y, state.walls, actor.radius);
+        const losPadding = actor.radius + (target.radius ?? 0);
+        return Utilities.hasLineOfSight(actor.x, actor.y, target.x, target.y, state.walls, losPadding);
     }
 
     return true;
@@ -76,9 +77,10 @@ export function getNearestHostile(state, source, range, excludedTargets = null, 
 
         const dist = Math.hypot(target.x - source.x, target.y - source.y);
         if (dist <= range && dist < minDist) {
+            const losPadding = source.radius + (target.radius ?? 0);
             if (
                 !requireLos ||
-                Utilities.hasLineOfSight(source.x, source.y, target.x, target.y, state.walls, source.radius)
+                Utilities.hasLineOfSight(source.x, source.y, target.x, target.y, state.walls, losPadding)
             ) {
                 minDist = dist;
                 nearest = target;

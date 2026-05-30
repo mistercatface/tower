@@ -142,6 +142,12 @@ export class CombatState {
         
         ctx.state.waveManager.startCombat();
         ctx.state.player.resetTurretCombatState();
+
+        const followAngle = ctx.state.player.angle;
+        ctx.state.spawnSidekick(
+            ctx.state.player.x - Math.cos(followAngle) * 48,
+            ctx.state.player.y - Math.sin(followAngle) * 48
+        );
         
         // Shift grid center to player position and rebuild local flow field
         ctx.state.flowFieldGrid.shiftCenter(

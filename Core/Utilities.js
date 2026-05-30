@@ -1,3 +1,5 @@
+import { distanceToSegment } from "../Spatial/Navigation/WallGeometry.js";
+
 export class Utilities {
     static distToSegment(px, py, vx, vy, wx, wy) {
         const l2 = (wx - vx) ** 2 + (wy - vy) ** 2;
@@ -13,27 +15,29 @@ export class Utilities {
 
     static hasLineOfSight(x1, y1, x2, y2, segments, padding = 0) {
         let candidateWalls = segments;
-        if (segments && segments.obstacleGrid) {
+        if (segments?.obstacleGrid) {
             candidateWalls = this.getSegmentsAlongLine(x1, y1, x2, y2, segments.obstacleGrid);
         }
 
-        const minX = Math.min(x1, x2);
-        const maxX = Math.max(x1, x2);
-        const minY = Math.min(y1, y2);
-        const maxY = Math.max(y1, y2);
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const lineLen = Math.hypot(dx, dy);
+        if (lineLen === 0) return true;
 
-        for (const seg of candidateWalls) {
-            if (seg.isDead) continue;
-            const limit = seg.size * 0.5 + padding;
-            if (seg.x < minX - limit || seg.x > maxX + limit ||
-                seg.y < minY - limit || seg.y > maxY + limit) {
-                continue;
-            }
-            const dist = this.distToSegment(seg.x, seg.y, x1, y1, x2, y2);
-            if (dist < limit) {
-                return false;
+        const steps = Math.max(2, Math.ceil(lineLen / 8));
+        for (let step = 0; step <= steps; step++) {
+            const t = step / steps;
+            const px = x1 + dx * t;
+            const py = y1 + dy * t;
+
+            for (const seg of candidateWalls) {
+                if (seg.isDead) continue;
+                if (distanceToSegment(seg, px, py) < padding) {
+                    return false;
+                }
             }
         }
+
         return true;
     }
 

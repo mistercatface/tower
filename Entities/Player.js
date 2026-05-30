@@ -143,6 +143,13 @@ export class Player extends Actor {
         return this.upgrades["Reposition"] && this.upgrades["Reposition"].level > 0;
     }
 
+    shouldSeparateFrom(other) {
+        if (other?.teamId != null && this.teamId != null && other.teamId === this.teamId) {
+            return false;
+        }
+        return true;
+    }
+
     updateCombat(dt, state, spatialHash, { externalSpeedMod = 1.0 } = {}) {
         const flowFieldGrid = state.flowFieldGrid;
         const walls = state.walls;

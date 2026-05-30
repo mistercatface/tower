@@ -19,6 +19,7 @@ export class Separation {
         const neighbors = spatialHash.getNearby(entity);
         for (const other of neighbors) {
             if (other === entity || other.isDead) continue;
+            if (typeof entity.shouldSeparateFrom === "function" && !entity.shouldSeparateFrom(other)) continue;
             if (inferFaction(other) === "player" && entity.attackType === "charge") continue;
             if (inferFaction(entity) === "player" && other.attackType === "charge") continue;
 

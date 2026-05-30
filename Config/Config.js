@@ -77,6 +77,15 @@ export const runBaseStats = {
     turretCount: 1,
 };
 
+export const sidekickBaseStats = {
+    turnSpeed: Math.PI * 2.5,
+    range: 120,
+    maxHealth: 80,
+    accuracy: 0.7,
+    penetration: 0,
+    speed: 55,
+};
+
 export const playerBaseStats = {
     turnSpeed: Math.PI * 3,
     range: 150,
@@ -111,6 +120,7 @@ export const navigationSettings = {
 export const NAV_PROFILES = {
     enemyToPlayer: { flowField: "enemy", hpaThreshold: 1000, replanMs: 1000, replanWhileMoving: true },
     playerClick: { flowField: "player", hpaThreshold: 0, replanMs: 500, replanWhileMoving: false },
+    sidekickFollow: { flowField: "enemy", hpaThreshold: 60, replanMs: 250, replanWhileMoving: true },
 };
 
 export const mapSettings = {

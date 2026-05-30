@@ -1,4 +1,5 @@
 import { Player } from "../Entities/Player.js";
+import { Sidekick } from "../Entities/Sidekick.js";
 import { FlowFieldGrid } from "../Spatial/Navigation/FlowFieldGrid.js";
 import { WorldObstacleGrid } from "../Spatial/World/ObstacleGrid.js";
 import { HierarchicalNavigator } from "../Spatial/Navigation/HierarchicalNavigator.js";
@@ -28,6 +29,8 @@ export class GameState {
 
         this.runStats = createRunStats(runBaseStats);
         this.player = new Player(0, 0, 8);
+        this.player.teamId = 0;
+        this.sidekick = null;
 
         this.obstacleGrid = new WorldObstacleGrid(gridSettings.cellSize);
         this.flowFieldGrid = new FlowFieldGrid(gridSettings.cellSize, gridSettings.width, gridSettings.height, this.obstacleGrid);
@@ -141,7 +144,28 @@ export class GameState {
         if (this.players?.length) {
             return this.players.filter((p) => p && !p.isDead);
         }
-        return this.player && !this.player.isDead ? [this.player] : [];
+
+        const actors = [];
+        if (this.player && !this.player.isDead) {
+            actors.push(this.player);
+        }
+        if (this.sidekick && !this.sidekick.isDead) {
+            actors.push(this.sidekick);
+        }
+        return actors;
+    }
+
+    spawnSidekick(x, y) {
+        const radius = this.player?.radius ?? 8;
+        if (!this.sidekick) {
+            this.sidekick = Sidekick.create(x, y, radius);
+        }
+        this.sidekick.spawnAt(x, y, this.player);
+        this.sidekick.applyWeaponLoadout(this.sidekick.weaponLoadout, {
+            state: this,
+            upgradeDefs: this.upgradeDefs,
+        });
+        return this.sidekick;
     }
 
     getHostileActors() {
