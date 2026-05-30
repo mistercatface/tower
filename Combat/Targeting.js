@@ -51,14 +51,18 @@ export function getHostilesForFaction(state, faction) {
     return [];
 }
 
-export function isValidTurretTarget(actor, target, state, range, blocksTargeting) {
+export function isValidTurretTarget(actor, target, state, range, blocksTargeting, { requireLos = true } = {}) {
     if (blocksTargeting || !target || target.isDead) return false;
     if (!areHostile(actor, target)) return false;
 
     const dist = Math.hypot(target.x - actor.x, target.y - actor.y);
     if (dist > range) return false;
 
-    return Utilities.hasLineOfSight(actor.x, actor.y, target.x, target.y, state.walls, actor.radius);
+    if (requireLos) {
+        return Utilities.hasLineOfSight(actor.x, actor.y, target.x, target.y, state.walls, actor.radius);
+    }
+
+    return true;
 }
 
 export function getNearestHostile(state, source, range, excludedTargets = null) {

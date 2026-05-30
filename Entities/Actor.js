@@ -132,6 +132,56 @@ export class Actor extends DestructibleEntity {
         return false;
     }
 
+    getCommittedTurretTarget(turret) {
+        const target = turret.lastTarget ?? turret.target;
+        if (!target || target.isDead || !this.weapon) return null;
+
+        const dist = Math.hypot(target.x - this.x, target.y - this.y);
+        if (dist > this.weapon.range) return null;
+
+        return target;
+    }
+
+    isTurretChargeCommitted(turret) {
+        return turret.charge > 0 && this.getCommittedTurretTarget(turret) != null;
+    }
+
+    clearTurretCharge(turret) {
+        turret.charge = 0;
+        turret.lastTarget = null;
+    }
+
+    resolveTurretTargetForProcessing(turret) {
+        if (this.isTurretChargeCommitted(turret)) {
+            return this.getCommittedTurretTarget(turret);
+        }
+        return turret.target;
+    }
+
+    resolveTurretBlocksForProcessing(turret, state, externalBlocks = false) {
+        if (this.isTurretChargeCommitted(turret)) {
+            return false;
+        }
+        return this.resolveBlocksTargeting(state, externalBlocks);
+    }
+
+    canIncrementTurretCharge(turret, isAimed) {
+        if (this.isTurretChargeCommitted(turret)) {
+            return true;
+        }
+        return isAimed;
+    }
+
+    syncTurretChargeTarget(turret, target) {
+        if (this.isTurretChargeCommitted(turret)) {
+            return;
+        }
+        if (turret.lastTarget !== target) {
+            this.clearTurretCharge(turret);
+            turret.lastTarget = target;
+        }
+    }
+
     acquireTurretTargets(state, blocksTargeting = false) {
         const weapon = this.weapon;
         if (!weapon) return;
@@ -140,9 +190,31 @@ export class Actor extends DestructibleEntity {
         const engagedTargets = new Set();
 
         for (const turret of this.getTurrets()) {
-            if (turret.target) {
-                if (!isValidTurretTarget(this, turret.target, state, weapon.range, actualBlocks)) {
+            const committed = this.isTurretChargeCommitted(turret);
+
+            if (committed) {
+                const chargeTarget = this.getCommittedTurretTarget(turret);
+                if (!chargeTarget) {
+                    this.clearTurretCharge(turret);
                     turret.target = null;
+                } else {
+                    turret.target = chargeTarget;
+                }
+            }
+
+            if (turret.target && !committed) {
+                const stillValid = isValidTurretTarget(
+                    this,
+                    turret.target,
+                    state,
+                    weapon.range,
+                    actualBlocks,
+                    { requireLos: true }
+                );
+
+                if (!stillValid) {
+                    turret.target = null;
+                    this.clearTurretCharge(turret);
                 } else if (engagedTargets.has(turret.target)) {
                     const betterTarget = getNearestHostile(state, this, weapon.range, engagedTargets);
                     if (betterTarget) {
@@ -151,7 +223,7 @@ export class Actor extends DestructibleEntity {
                 }
             }
 
-            if (!turret.target && !actualBlocks) {
+            if (!turret.target && !actualBlocks && !this.isTurretChargeCommitted(turret)) {
                 turret.target = getNearestHostile(state, this, weapon.range, engagedTargets);
                 if (!turret.target) {
                     turret.target = getNearestHostile(state, this, weapon.range);
@@ -170,8 +242,7 @@ export class Actor extends DestructibleEntity {
         }
 
         this.acquireTurretTargets(state, blocksTargeting);
-        const actualBlocks = this.resolveBlocksTargeting(state, blocksTargeting);
-        this.processAllTurrets(dt, state, (turret) => turret.target, actualBlocks, combatEvents);
+        this.processAllTurrets(dt, state, blocksTargeting, combatEvents);
         return combatEvents;
     }
 
@@ -235,15 +306,13 @@ export class Actor extends DestructibleEntity {
         }
     }
 
-    processAllTurrets(dt, state, targetResolver, blocksTargeting, combatEvents = []) {
-        const resolveTarget =
-            typeof targetResolver === "function" ? targetResolver : () => targetResolver;
-
+    processAllTurrets(dt, state, blocksTargeting = false, combatEvents = []) {
         for (const turret of this.getTurrets()) {
             const gun = getGunDefinition(turret.gunId);
             const mode = resolveWeaponModeForGun(gun);
-            const target = resolveTarget(turret);
-            mode.processTurret(dt, state, this, gun, turret, target, blocksTargeting, combatEvents);
+            const target = this.resolveTurretTargetForProcessing(turret);
+            const turretBlocks = this.resolveTurretBlocksForProcessing(turret, state, blocksTargeting);
+            mode.processTurret(dt, state, this, gun, turret, target, turretBlocks, combatEvents);
         }
 
         return combatEvents;

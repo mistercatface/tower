@@ -55,29 +55,41 @@ export class ChargedWeaponMode extends WeaponTargetingStrategy {
             turret.reloadTimer = 0;
         }
 
-        const aimTarget = this.determineAimTarget(source, target, blocksTargeting, turret);
+        if (turret.reloading) {
+            source.clearTurretCharge(turret);
+            return;
+        }
+
+        const committed = source.isTurretChargeCommitted(turret);
+        const fireTarget = source.resolveTurretTargetForProcessing(turret);
+        const effectiveBlocks = source.resolveTurretBlocksForProcessing(turret, state, blocksTargeting);
+
+        const aimTarget = committed
+            ? source.getCommittedTurretTarget(turret)
+            : this.determineAimTarget(source, fireTarget, effectiveBlocks, turret);
+
+        if (!aimTarget) {
+            if (!committed) {
+                source.clearTurretCharge(turret);
+            }
+            return;
+        }
+
         const fireIntervalMs = getSlotFireIntervalMs(gun, source);
         const sway = WeaponSystem.computeAccuracySway(source, turret, dt, true);
 
         const isAimed = WeaponSystem.aimTurret(turret, source.x, source.y, aimTarget.x, aimTarget.y, dt, sway);
 
-        if (turret.reloading) {
-            turret.charge = 0;
-            return;
-        }
+        if (fireTarget && !effectiveBlocks) {
+            source.syncTurretChargeTarget(turret, fireTarget);
 
-        if (target && !blocksTargeting) {
-            if (turret.lastTarget !== target) {
-                turret.charge = 0;
-                turret.lastTarget = target;
-            }
-            if (isAimed) {
+            if (source.canIncrementTurretCharge(turret, isAimed)) {
                 turret.charge += dt;
                 if (turret.charge >= fireIntervalMs) {
                     if (turret.ammo > 0) {
                         this.onFire(state, turret, source);
                         turret.ammo--;
-                        turret.charge = 0;
+                        source.clearTurretCharge(turret);
                         if (turret.ammo <= 0) {
                             turret.reloading = true;
                             turret.reloadTimer = 0;
@@ -85,9 +97,8 @@ export class ChargedWeaponMode extends WeaponTargetingStrategy {
                     }
                 }
             }
-        } else {
-            turret.charge = 0;
-            turret.lastTarget = null;
+        } else if (!committed) {
+            source.clearTurretCharge(turret);
         }
     }
 }
