@@ -465,7 +465,7 @@ export class Actor extends DestructibleEntity {
 
     getCommittedTurretTarget(turret) {
         const target = turret.lastTarget ?? turret.target;
-        if (!target || target.isDead) return null;
+        if (!target) return null;
         return target;
     }
 
