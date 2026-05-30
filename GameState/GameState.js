@@ -191,15 +191,15 @@ export class GameState {
         }
     }
 
-    getTurretCombatants() {
-        return this.getCombatants().filter((actor) => actor.weapon && actor.canRunTurretCombat());
+    getActorsWithTurrets() {
+        return this.getCombatants().filter((actor) => actor.weapon && actor.turrets.length > 0);
     }
 
     updateAllTurrets(dt, { upgrades = [], blocksTargeting = false } = {}) {
         this.activeLasers = [];
         const combatEvents = [];
 
-        for (const actor of this.getTurretCombatants()) {
+        for (const actor of this.getActorsWithTurrets()) {
             const actorBlocks = blocksTargeting || actor.getExternalBlocksTargeting(this, upgrades);
             actor.updateTurrets(dt, this, { blocksTargeting: actorBlocks, combatEvents });
         }

@@ -13,7 +13,7 @@ import {
 import { Turret } from "./Turret.js";
 import { Utilities } from "../Core/Utilities.js";
 import { spawnFloatingText } from "../Core/EventSystem.js";
-import { resolveWeaponModeForGun } from "../Combat/WeaponSystem.js";
+import { resolveWeaponModeForGun, WeaponSystem } from "../Combat/WeaponSystem.js";
 import { applyActorGunModifiers, getSlotFireIntervalMs } from "../Combat/gunCombat.js";
 import { getGunDefinition } from "../Config/gunDefinitions.js";
 import { resolveActorTurretLoadouts } from "../Config/TurretLoadoutDefinitions.js";
@@ -190,23 +190,46 @@ export class Actor extends DestructibleEntity {
         if (target && !blocksTargeting) {
             return target;
         }
-        if (this.isMoving && this.targetX != null && this.targetY != null) {
+        return this.getMovementAimPoint(state);
+    }
+
+    getMovementAimPoint(_state) {
+        if (this.targetX != null && this.targetY != null && this.isMoving) {
             return {
                 x: this.targetNodeX != null ? this.targetNodeX : this.targetX,
                 y: this.targetNodeY != null ? this.targetNodeY : this.targetY,
             };
         }
+
+        const desiredLen = Math.hypot(this.desiredX, this.desiredY);
+        if (desiredLen > 0.001) {
+            const dist = 100;
+            return {
+                x: this.x + (this.desiredX / desiredLen) * dist,
+                y: this.y + (this.desiredY / desiredLen) * dist,
+            };
+        }
+
+        const velLen = Math.hypot(this.vx, this.vy);
+        if (velLen > 1) {
+            const dist = 100;
+            return {
+                x: this.x + (this.vx / velLen) * dist,
+                y: this.y + (this.vy / velLen) * dist,
+            };
+        }
+
         return null;
     }
 
-    getFacingAngle(state) {
-        return this.angle;
-    }
+    aimIdleTurrets(dt, state, blocksTargeting = false) {
+        const effectiveBlocks = this.resolveBlocksTargeting(state, blocksTargeting);
 
-    syncTurretsToFacing(dt, state) {
-        if (this.turrets.length === 0) return;
-        if (this.alwaysRunsTurretCombat || this.canRunTurretCombat()) return;
-        this.turnAllTurretsTowards(this.getFacingAngle(state), dt);
+        for (const turret of this.getTurrets()) {
+            const aimTarget = this.resolveTurretAimPoint(turret, state, null, effectiveBlocks);
+            if (!aimTarget) continue;
+            WeaponSystem.aimTurret(turret, this.x, this.y, aimTarget.x, aimTarget.y, dt, 0);
+        }
     }
 
     resolveTurretAimPoint(turret, state, target, blocksTargeting) {
@@ -326,12 +349,17 @@ export class Actor extends DestructibleEntity {
     }
 
     updateTurrets(dt, state, { blocksTargeting = false, combatEvents = [] } = {}) {
-        if (!this.weapon || !this.canRunTurretCombat()) {
+        if (!this.weapon || this.turrets.length === 0) {
             return combatEvents;
         }
 
-        this.acquireTurretTargets(state, blocksTargeting);
-        this.processAllTurrets(dt, state, blocksTargeting, combatEvents);
+        if (this.canRunTurretCombat()) {
+            this.acquireTurretTargets(state, blocksTargeting);
+            this.processAllTurrets(dt, state, blocksTargeting, combatEvents);
+        } else {
+            this.aimIdleTurrets(dt, state, blocksTargeting);
+        }
+
         return combatEvents;
     }
 
@@ -386,12 +414,6 @@ export class Actor extends DestructibleEntity {
                 this.turrets[i].gunId = loadout[i];
             }
             applyActorGunModifiers(this);
-        }
-    }
-
-    turnAllTurretsTowards(targetAngle, dt) {
-        for (const turret of this.getTurrets()) {
-            turret.angle = Utilities.turnAngleTowards(turret.angle, targetAngle, turret.turnSpeed, dt);
         }
     }
 
@@ -507,7 +529,6 @@ export class Actor extends DestructibleEntity {
             this.speed = baseSpeed;
         }
         PhysicsSystem.resolveWallCollisions(this, walls, state);
-        this.syncTurretsToFacing(dt, state);
     }
 
     getVelocityMagnitude() {

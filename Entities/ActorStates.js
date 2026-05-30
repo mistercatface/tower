@@ -71,8 +71,6 @@ export class EnemyNavigatingState {
         enemy.calculateSteering(target, state);
         enemy.applyLocomotion(dt, walls, spatialHash, { state, ignoreSeparationInDesired: true });
 
-        enemy.turnAllTurretsTowards(enemy.angle, dt);
-
         return false;
     }
 }
@@ -266,8 +264,6 @@ export class EnemyChargePrepareState {
         enemy.separation.update(enemy, spatialHash);
         PhysicsSystem.applyMovement(enemy, dt, false, true);
         PhysicsSystem.resolveWallCollisions(enemy, walls, state);
-        
-        enemy.turnAllTurretsTowards(enemy.angle, dt);
 
         const isStable = Math.hypot(enemy.vx, enemy.vy) < enemy.speed * 0.6;
         
@@ -288,6 +284,15 @@ export class EnemyChargeWindupState {
         enemy.vx = 0;
         enemy.vy = 0;
     }
+
+    getAimTarget(enemy, target) {
+        if (target) return target;
+        return {
+            x: enemy.x + Math.cos(enemy.angle) * 100,
+            y: enemy.y + Math.sin(enemy.angle) * 100,
+        };
+    }
+
     update(enemy, dt, target, flowFieldGrid, walls, missiles, spatialHash, scheduler, state) {
         enemy.desiredX = 0;
         enemy.desiredY = 0;
@@ -298,8 +303,6 @@ export class EnemyChargeWindupState {
         const dy = target.y - enemy.y;
         const angleToTarget = Math.atan2(dy, dx);
         enemy.angle = Utilities.turnAngleTowards(enemy.angle, angleToTarget, enemy.turnSpeed * 1.5, dt);
-
-        enemy.turnAllTurretsTowards(enemy.angle, dt);
 
         const stateData = enemy.stateData;
         stateData.timer -= dt;
@@ -355,7 +358,6 @@ export class EnemyChargeDashState {
         enemy.desiredX = Math.cos(stateData.dashAngle);
         enemy.desiredY = Math.sin(stateData.dashAngle);
         enemy.angle = stateData.dashAngle;
-        enemy.turnAllTurretsTowards(enemy.angle, dt);
 
         const originalSpeed = enemy.speed;
         enemy.speed = originalSpeed * 2.2;
@@ -411,6 +413,11 @@ export class EnemyDodgingState {
         const targetAngle = Math.atan2(dy, dx);
         enemy.angle = Utilities.turnAngleTowards(enemy.angle, targetAngle, enemy.turnSpeed * 1.5, dt);
 
+        if (dist > 0.001) {
+            enemy.desiredX = dx / dist;
+            enemy.desiredY = dy / dist;
+        }
+
         if (dist <= moveDist) {
             enemy.x = stateData.targetX;
             enemy.y = stateData.targetY;
@@ -419,8 +426,6 @@ export class EnemyDodgingState {
             enemy.x += (dx / dist) * moveDist;
             enemy.y += (dy / dist) * moveDist;
         }
-
-        enemy.turnAllTurretsTowards(enemy.angle, dt);
 
         return false;
     }
@@ -476,8 +481,6 @@ export class EnemyBlastedState {
 
         const targetAngle = stateData.angle;
         enemy.angle = Utilities.turnAngleTowards(enemy.angle, targetAngle, enemy.turnSpeed, dt);
-
-        enemy.turnAllTurretsTowards(targetAngle, dt);
 
         PhysicsSystem.resolveWallCollisions(enemy, walls, state);
 
