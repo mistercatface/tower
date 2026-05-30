@@ -1,6 +1,6 @@
 import { SpriteCache } from "./SpriteCache.js";
 import { Render3D } from "./3D/Render3D.js";
-import { mapSettings } from "../Config/Config.js";
+import { combatVisualSettings, mapSettings } from "../Config/Config.js";
 import { getWorldDrawCoords, isMapTransition, isWorldScene } from "../GameState/GamePhase.js";
 import { getPlayerActors } from "../Combat/Targeting.js";
 
@@ -160,7 +160,7 @@ export class Renderer {
         if (useViewport) {
             this.ctx.beginPath();
             this.ctx.arc(x, y, range, 0, Math.PI * 2);
-            this.ctx.fillStyle = "rgba(76, 255, 80, 0.16)";
+            this.ctx.fillStyle = combatVisualSettings.floorFill;
             this.ctx.fill();
         } else {
             state.player.renderRange(this.ctx, range);
@@ -354,7 +354,7 @@ export class Renderer {
         const zoom = viewport.zoom;
 
         this.ctx.save();
-        this.ctx.strokeStyle = "rgba(0, 188, 212, 0.12)";
+        this.ctx.strokeStyle = combatVisualSettings.gridStroke;
         this.ctx.lineWidth = 1.0;
 
         const gridSpacing = 40; 

@@ -399,6 +399,108 @@ export const RenderSprites = {
         return { offCanvas, cx, cy };
     },
 
+    pumpkin: (radius, color) => {
+        const canvasSize = Math.ceil(radius * 2) + 12;
+        const cx = canvasSize / 2;
+        const cy = canvasSize / 2;
+        const offCanvas = new OffscreenCanvas(canvasSize, canvasSize);
+        const offCtx = offCanvas.getContext("2d");
+
+        // 1. Soft ambient drop shadow beneath the pumpkin
+        offCtx.beginPath();
+        offCtx.ellipse(cx, cy + radius * 0.45, radius * 0.95, radius * 0.4, 0, 0, Math.PI * 2);
+        offCtx.fillStyle = "rgba(0, 0, 0, 0.45)";
+        offCtx.fill();
+
+        // 2. Main body — overhead sphere (circle for clean rotation)
+        offCtx.beginPath();
+        offCtx.arc(cx, cy, radius, 0, Math.PI * 2);
+
+        const grad = offCtx.createRadialGradient(
+            cx - radius * 0.3, cy - radius * 0.3, radius * 0.1,
+            cx, cy, radius
+        );
+        grad.addColorStop(0.0, "#FFCC80");
+        grad.addColorStop(0.2, color || "#FF9800");
+        grad.addColorStop(0.55, "#E65100");
+        grad.addColorStop(0.85, "#BF360C");
+        grad.addColorStop(1.0, "#4E2600");
+
+        offCtx.fillStyle = grad;
+        offCtx.fill();
+
+        // 3. Waxy sheen overlay
+        const sheenGrad = offCtx.createRadialGradient(cx, cy, radius * 0.5, cx, cy, radius);
+        sheenGrad.addColorStop(0, "rgba(255, 204, 128, 0)");
+        sheenGrad.addColorStop(0.8, "rgba(255, 204, 128, 0.12)");
+        sheenGrad.addColorStop(1, "rgba(255, 204, 128, 0)");
+        offCtx.fillStyle = sheenGrad;
+        offCtx.beginPath();
+        offCtx.arc(cx, cy, radius, 0, Math.PI * 2);
+        offCtx.fill();
+
+        // 4. Radial rib grooves — overhead segments from center to rim
+        offCtx.save();
+        offCtx.beginPath();
+        offCtx.arc(cx, cy, radius, 0, Math.PI * 2);
+        offCtx.clip();
+
+        const numRibs = 6;
+        const stemR = radius * 0.22;
+        for (let i = 0; i < numRibs; i++) {
+            const angle = (i / numRibs) * Math.PI * 2;
+            const sx = cx + Math.cos(angle) * stemR;
+            const sy = cy + Math.sin(angle) * stemR;
+            const ex = cx + Math.cos(angle) * radius * 0.94;
+            const ey = cy + Math.sin(angle) * radius * 0.94;
+
+            offCtx.beginPath();
+            offCtx.moveTo(sx, sy);
+            offCtx.lineTo(ex, ey);
+            offCtx.strokeStyle = "rgba(40, 20, 0, 0.22)";
+            offCtx.lineWidth = Math.max(1, radius * 0.1);
+            offCtx.lineCap = "round";
+            offCtx.stroke();
+        }
+        offCtx.restore();
+
+        // 5. Stem nub at sphere center (overhead view — like broccoli center floret)
+        offCtx.beginPath();
+        offCtx.arc(cx, cy, radius * 0.1, 0, Math.PI * 2);
+        const crownGrad = offCtx.createRadialGradient(
+            cx - radius * 0.03, cy - radius * 0.03, radius * 0.02,
+            cx, cy, radius * 0.1
+        );
+        crownGrad.addColorStop(0, "#3E2723");
+        crownGrad.addColorStop(1, "#5D4037");
+        offCtx.fillStyle = crownGrad;
+        offCtx.fill();
+
+        offCtx.beginPath();
+        offCtx.arc(cx, cy, radius * 0.22, 0, Math.PI * 2);
+        const stemGrad = offCtx.createRadialGradient(
+            cx - radius * 0.08, cy - radius * 0.08, radius * 0.04,
+            cx, cy, radius * 0.22
+        );
+        stemGrad.addColorStop(0, "#A5D6A7");
+        stemGrad.addColorStop(0.4, "#558B2F");
+        stemGrad.addColorStop(0.75, "#33691E");
+        stemGrad.addColorStop(1, "#1B5E20");
+        offCtx.fillStyle = stemGrad;
+        offCtx.fill();
+        offCtx.strokeStyle = "#1B5E20";
+        offCtx.lineWidth = 0.8;
+        offCtx.stroke();
+
+        // 6. Specular highlight on the upper-left
+        offCtx.beginPath();
+        offCtx.ellipse(cx - radius * 0.45, cy - radius * 0.45, radius * 0.15, radius * 0.07, Math.PI / 4, 0, Math.PI * 2);
+        offCtx.fillStyle = "rgba(255, 255, 255, 0.55)";
+        offCtx.fill();
+
+        return { offCanvas, cx, cy };
+    },
+
     wall: (size, r, g, b) => {
         const offCanvas = new OffscreenCanvas(size + 2, size + 2);
         const offCtx = offCanvas.getContext("2d");
