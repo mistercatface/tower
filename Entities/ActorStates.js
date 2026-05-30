@@ -271,8 +271,6 @@ export class EnemyChargePrepareState {
         if (enemy.chargeCooldown <= 0 && distToTarget < 220 && distToTarget > 80 && isStable) {
             return enemy.changeStateAndUpdate("charging_windup", {
                 timer: 1000,
-                targetX: target.x,
-                targetY: target.y,
             }, dt, target, flowFieldGrid, walls, missiles, spatialHash, scheduler, state);
         }
 
@@ -315,26 +313,6 @@ export class EnemyChargeWindupState {
         }
 
         return false;
-    }
-    render(enemy, ctx, actorCache, turretCache) {
-        const stateData = enemy.stateData;
-        ctx.save();
-        ctx.strokeStyle = "rgba(255, 87, 34, 0.4)";
-        ctx.lineWidth = 1;
-        ctx.setLineDash([4, 4]);
-        ctx.beginPath();
-        ctx.moveTo(enemy.x, enemy.y);
-        ctx.lineTo(stateData.targetX, stateData.targetY);
-        ctx.stroke();
-        ctx.restore();
-        
-        ctx.save();
-        ctx.strokeStyle = "rgba(255, 152, 0, 0.6)";
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.arc(enemy.x, enemy.y, enemy.radius + 3 + Math.sin(Date.now() * 0.02) * 2, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
     }
 }
 

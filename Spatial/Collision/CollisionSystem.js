@@ -1,6 +1,7 @@
 import { SpatialHash } from "../World/SpatialHash.js";
 import { circleIntersectsSegment } from "../Navigation/WallGeometry.js";
 import { areHostile } from "../../Combat/Targeting.js";
+import { PhysicsSystem } from "../Motion/PhysicsSystem.js";
 
 export class CollisionSystem {
     static checkCircle(a, b) {
@@ -195,23 +196,38 @@ export class CollisionSystem {
             }
         }
 
-        // 4. Charging actors vs hostile actors
-        for (const charger of state.getCombatants()) {
-            if (charger.isDead || charger.attackType !== "charge") continue;
-            if (charger.currentStateName === "stunned") continue;
+        // 4. Actor vs Actor
+        const combatants = state.getCombatants().filter((actor) => actor && !actor.isDead);
+        for (let i = 0; i < combatants.length; i++) {
+            const a = combatants[i];
+            for (let j = i + 1; j < combatants.length; j++) {
+                const b = combatants[j];
+                if (!this.checkCircle(a, b)) continue;
 
-            for (const target of state.getCombatants()) {
-                if (target === charger || target.isDead || !areHostile(charger, target)) continue;
-                if (this.checkCircle(charger, target)) {
-                    events.push({ target, damage: 5 });
-                    charger.changeState("stunned", {
-                        timer: 1000,
-                        returnState: "charging_prepare",
-                    });
-                    break;
+                const chargeInvolved = a.attackType === "charge" || b.attackType === "charge";
+                PhysicsSystem.resolveCircleCollision(a, b, {
+                    restitution: chargeInvolved ? 0.65 : 0.15,
+                });
+
+                if (a.attackType === "charge" && a.currentStateName !== "stunned") {
+                    this.applyChargeImpact(a, b, events);
+                }
+                if (b.attackType === "charge" && b.currentStateName !== "stunned") {
+                    this.applyChargeImpact(b, a, events);
                 }
             }
         }
+
         return events;
+    }
+
+    static applyChargeImpact(charger, other, events) {
+        if (areHostile(charger, other)) {
+            events.push({ target: other, damage: 5 });
+        }
+        charger.changeState("stunned", {
+            timer: 1000,
+            returnState: "charging_prepare",
+        });
     }
 }
