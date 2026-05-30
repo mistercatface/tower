@@ -199,15 +199,6 @@ export const createUpgrades = () => [
         showInHud: true,
     }),
     new Upgrade({
-        id: "Laser",
-        category: "abilities",
-        name: "Laser",
-        description: "Passive: Replaces projectiles with a continuous laser beam. Turn Speed -50%.",
-        maxLevel: 1,
-        isAbility: true,
-        turretLoadout: { gun: "beamLaser", scope: "all", priority: 30 },
-    }),
-    new Upgrade({
         id: "TargetVerification",
         category: "abilities",
         name: "Target Verification",
@@ -218,32 +209,6 @@ export const createUpgrades = () => [
         requires: ["Laser"],
         showInHud: true,
         hasToggle: true,
-    }),
-    new Upgrade({
-        id: "TwoGuns",
-        category: "abilities",
-        name: "Two Guns",
-        description: "When Active: Shoot two guns at once. Bullets deal half damage.",
-        maxLevel: 1,
-        isAbility: true,
-        applyFn: (_combat, run, level) => {
-            run.turretCount.flatModifiers += 1;
-        },
-        minPlayerLevel: 5
-    }),
-    new Upgrade({
-        id: "ThreeGuns",
-        category: "abilities",
-        name: "Three Guns",
-        description: "When Active: Shoot three guns at once. Bullets deal one-third damage.",
-        maxLevel: 1,
-        isAbility: true,
-        requires: ['TwoGuns'],
-        replaces: ['TwoGuns'],
-        applyFn: (_combat, run, level) => {
-            run.turretCount.flatModifiers += 2;
-        },
-        minPlayerLevel: 8
     }),
     new Upgrade({
         id: "SteadyWeapon",
