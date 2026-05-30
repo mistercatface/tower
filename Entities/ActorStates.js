@@ -154,9 +154,11 @@ export class EnemyEngagedState {
             enemy.desiredX = tangentX * stateData.strafeDir + radialX * radialFactor;
             enemy.desiredY = tangentY * stateData.strafeDir + radialY * radialFactor;
 
-            enemy.separation.update(enemy, spatialHash);
-            PhysicsSystem.applyMovement(enemy, dt, true, true, false);
-            PhysicsSystem.resolveWallCollisions(enemy, walls, state);
+            enemy.applyLocomotion(dt, walls, spatialHash, {
+                state,
+                ignoreSeparationInDesired: true,
+                alignAngleWithMovement: false,
+            });
         } else {
             if (stateData.linearStrafeState === undefined) {
                 stateData.linearStrafeState = "idle";
@@ -221,10 +223,11 @@ export class EnemyEngagedState {
                 enemy.desiredY = 0;
             }
 
-            enemy.separation.update(enemy, spatialHash);
-            PhysicsSystem.applyMovement(enemy, dt, false, true, false);
-
-            const hitWall = PhysicsSystem.resolveWallCollisions(enemy, walls, state);
+            const hitWall = enemy.applyLocomotion(dt, walls, spatialHash, {
+                state,
+                ignoreSeparationInDesired: false,
+                alignAngleWithMovement: false,
+            });
             if (hitWall) {
                 stateData.strafeDir *= -1;
                 stateData.linearStrafeState = "idle";
@@ -261,9 +264,7 @@ export class EnemyChargePrepareState {
             enemy.desiredY = 0;
         }
 
-        enemy.separation.update(enemy, spatialHash);
-        PhysicsSystem.applyMovement(enemy, dt, false, true);
-        PhysicsSystem.resolveWallCollisions(enemy, walls, state);
+        enemy.applyLocomotion(dt, walls, spatialHash, { state, ignoreSeparationInDesired: false });
 
         const isStable = Math.hypot(enemy.vx, enemy.vy) < enemy.speed * 0.6;
         
@@ -296,8 +297,7 @@ export class EnemyChargeWindupState {
     update(enemy, dt, target, flowFieldGrid, walls, missiles, spatialHash, scheduler, state) {
         enemy.desiredX = 0;
         enemy.desiredY = 0;
-        PhysicsSystem.applyMovement(enemy, dt, true, true);
-        PhysicsSystem.resolveWallCollisions(enemy, walls, state);
+        enemy.applyLocomotion(dt, walls, spatialHash, { state, ignoreSeparationInDesired: true });
 
         const dx = target.x - enemy.x;
         const dy = target.y - enemy.y;
@@ -363,13 +363,15 @@ export class EnemyChargeDashState {
         enemy.speed = originalSpeed * 2.2;
         const originalAccel = enemy.accelRate;
         enemy.accelRate = originalAccel * 5.0;
-        
-        PhysicsSystem.applyMovement(enemy, dt, true, true, false);
-        
+
+        const hitWall = enemy.applyLocomotion(dt, walls, spatialHash, {
+            state,
+            ignoreSeparationInDesired: true,
+            alignAngleWithMovement: false,
+        });
+
         enemy.speed = originalSpeed;
         enemy.accelRate = originalAccel;
-
-        const hitWall = PhysicsSystem.resolveWallCollisions(enemy, walls, state);
 
         const dx = target.x - enemy.x;
         const dy = target.y - enemy.y;

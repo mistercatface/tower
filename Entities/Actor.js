@@ -136,6 +136,143 @@ export class Actor extends DestructibleEntity {
         return true;
     }
 
+    shouldApplyAllyLaneAvoidance(_state) {
+        return true;
+    }
+
+    getFriendlyActors(state) {
+        if (!state?.getCombatants) return [];
+
+        return state.getCombatants().filter(
+            (other) => other !== this && !other.isDead && !areHostile(this, other)
+        );
+    }
+
+    isAllyMoving(ally) {
+        if (!ally || ally.isDead) return false;
+        if (ally.isMoving) return true;
+        if (Math.hypot(ally.desiredX, ally.desiredY) > 0.08) return true;
+        if (ally.speed > 0 && Math.hypot(ally.vx, ally.vy) > ally.speed * 0.15) return true;
+        return false;
+    }
+
+    getAllyLaneLines(state) {
+        const lines = [];
+
+        for (const ally of this.getFriendlyActors(state)) {
+            const seenTargets = new Set();
+            for (const target of this.getEngagedTargetsFrom(ally)) {
+                if (seenTargets.has(target)) continue;
+                seenTargets.add(target);
+                lines.push({
+                    fromX: ally.x,
+                    fromY: ally.y,
+                    toX: target.x,
+                    toY: target.y,
+                    endRadius: target.radius ?? 0,
+                    sourceRadius: ally.radius,
+                });
+            }
+
+            if (!this.isAllyMoving(ally)) continue;
+
+            const aim = ally.getMovementAimPoint(state);
+            if (!aim) continue;
+
+            lines.push({
+                fromX: ally.x,
+                fromY: ally.y,
+                toX: aim.x,
+                toY: aim.y,
+                endRadius: 0,
+                sourceRadius: ally.radius,
+            });
+        }
+
+        return lines;
+    }
+
+    blocksAllyLane(line, { minT = 0.03, maxT = 0.97, padding = 4 } = {}) {
+        const corridor = line.sourceRadius + line.endRadius + this.radius + padding;
+        const closest = Utilities.closestPointOnSegment(
+            this.x,
+            this.y,
+            line.fromX,
+            line.fromY,
+            line.toX,
+            line.toY
+        );
+        if (closest.t < minT || closest.t > maxT) return false;
+        const dist = Math.hypot(this.x - closest.x, this.y - closest.y);
+        return dist < corridor;
+    }
+
+    computeAllyLaneAvoidanceBias(state) {
+        let avoidX = 0;
+        let avoidY = 0;
+
+        for (const line of this.getAllyLaneLines(state)) {
+            if (!this.blocksAllyLane(line)) continue;
+
+            const closest = Utilities.closestPointOnSegment(
+                this.x,
+                this.y,
+                line.fromX,
+                line.fromY,
+                line.toX,
+                line.toY
+            );
+            let pushX = this.x - closest.x;
+            let pushY = this.y - closest.y;
+            let pushLen = Math.hypot(pushX, pushY);
+
+            if (pushLen < 0.001) {
+                const dx = line.toX - line.fromX;
+                const dy = line.toY - line.fromY;
+                const lineLen = Math.hypot(dx, dy) || 1;
+                pushX = -dy / lineLen;
+                pushY = dx / lineLen;
+                pushLen = 1;
+            }
+
+            const corridor = line.sourceRadius + line.endRadius + this.radius + 4;
+            const dist = Math.hypot(this.x - closest.x, this.y - closest.y);
+            const strength = Math.min(1, (corridor - dist) / corridor);
+
+            avoidX += (pushX / pushLen) * strength;
+            avoidY += (pushY / pushLen) * strength;
+        }
+
+        const len = Math.hypot(avoidX, avoidY);
+        if (len < 0.001) {
+            return { x: 0, y: 0 };
+        }
+
+        return { x: avoidX / len, y: avoidY / len };
+    }
+
+    applyAllyLaneAvoidance(state, { weight = 0.8 } = {}) {
+        if (!state || !this.shouldApplyAllyLaneAvoidance(state)) return;
+
+        const bias = this.computeAllyLaneAvoidanceBias(state);
+        if (bias.x === 0 && bias.y === 0) return;
+
+        const desiredLen = Math.hypot(this.desiredX, this.desiredY);
+        if (desiredLen > 0.001) {
+            this.desiredX = this.desiredX * (1 - weight) + bias.x * weight;
+            this.desiredY = this.desiredY * (1 - weight) + bias.y * weight;
+        } else {
+            this.desiredX = bias.x;
+            this.desiredY = bias.y;
+        }
+
+        const len = Math.hypot(this.desiredX, this.desiredY);
+        if (len > 1) {
+            this.desiredX /= len;
+            this.desiredY /= len;
+        }
+    }
+
     isAbilityOwner(state) {
         return state?.player === this;
     }
@@ -719,6 +856,10 @@ export class Actor extends DestructibleEntity {
         shouldMove = true,
         alignAngleWithMovement = true,
     } = {}) {
+        if (state) {
+            this.applyAllyLaneAvoidance(state);
+        }
+
         this.separation.update(this, spatialHash);
         const baseSpeed = this.speed;
         if (externalSpeedMod !== 1) {
@@ -728,7 +869,7 @@ export class Actor extends DestructibleEntity {
         if (externalSpeedMod !== 1) {
             this.speed = baseSpeed;
         }
-        PhysicsSystem.resolveWallCollisions(this, walls, state);
+        return PhysicsSystem.resolveWallCollisions(this, walls, state);
     }
 
     getVelocityMagnitude() {

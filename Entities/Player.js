@@ -151,6 +151,13 @@ export class Player extends Actor {
         return true;
     }
 
+    shouldApplyAllyLaneAvoidance(_state) {
+        if (this.isMoving && this.targetX !== null && this.targetY !== null) {
+            return false;
+        }
+        return true;
+    }
+
     updateCombat(dt, state, spatialHash, options = {}) {
         const flowFieldGrid = state.flowFieldGrid;
         const walls = state.walls;

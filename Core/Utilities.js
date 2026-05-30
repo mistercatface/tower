@@ -1,12 +1,21 @@
 import { distanceToSegment } from "../Spatial/Navigation/WallGeometry.js";
 
 export class Utilities {
-    static distToSegment(px, py, vx, vy, wx, wy) {
+    static closestPointOnSegment(px, py, vx, vy, wx, wy) {
         const l2 = (wx - vx) ** 2 + (wy - vy) ** 2;
-        if (l2 === 0) return Math.hypot(px - vx, py - vy);
+        if (l2 === 0) return { x: vx, y: vy, t: 0 };
         let t = ((px - vx) * (wx - vx) + (py - vy) * (wy - vy)) / l2;
         t = Math.max(0, Math.min(1, t));
-        return Math.hypot(px - (vx + t * (wx - vx)), py - (vy + t * (wy - vy)));
+        return {
+            x: vx + t * (wx - vx),
+            y: vy + t * (wy - vy),
+            t,
+        };
+    }
+
+    static distToSegment(px, py, vx, vy, wx, wy) {
+        const closest = this.closestPointOnSegment(px, py, vx, vy, wx, wy);
+        return Math.hypot(px - closest.x, py - closest.y);
     }
 
     static getSegmentsAlongLine(x1, y1, x2, y2, obstacleGrid) {
