@@ -5,11 +5,11 @@ export const defaultGunId = "servicePistol";
 export const defaultEnemyGunId = "enemyRifle";
 
 /** Random equipment pools (1 slot). Enemies never roll beamLaser. */
-export const playerStartGunPool = ["servicePistol", "shotgun", "beamLaser"];
+export const playerStartGunPool = ["servicePistol", "shotgun", "beamLaser", "tommyGun"];
 export const enemyStartGunPool = ["enemyRifle", "servicePistol"];
 
 /** Guns the player can equip from the Equipment tab. */
-export const playerEquipmentCatalog = ["servicePistol", "shotgun", "beamLaser"];
+export const playerEquipmentCatalog = ["servicePistol", "shotgun", "beamLaser", "tommyGun"];
 
 /** Fixed ballistics and damage per gun. */
 export const projectilePresets = {
@@ -52,6 +52,20 @@ export const gunDefinitions = {
         maxAmmo: 6,
         reloadTimeMs: 1800,
         turretLoadout: { preset: "shotgun" },
+        projectile: projectilePresets.playerStandard,
+    },
+    tommyGun: {
+        id: "tommyGun",
+        name: "Tommy Gun",
+        handedness: Handedness.TWO_HANDED,
+        kind: "projectile",
+        fireIntervalMs: 120,
+        muzzleSpeed: playerProjectileSettings.speed,
+        bulletRadius: 6,
+        damage: 1,
+        maxAmmo: 6,
+        reloadTimeMs: 1500,
+        turretLoadout: { preset: "standard" },
         projectile: projectilePresets.playerStandard,
     },
     beamLaser: {

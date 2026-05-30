@@ -35,7 +35,6 @@ export class ChargedWeaponMode {
 
         if (turret.reloading) {
             source.clearTurretCharge(turret);
-            return;
         }
 
         const committed = source.isTurretChargeCommitted(turret);
@@ -56,7 +55,7 @@ export class ChargedWeaponMode {
 
         const isAimed = WeaponSystem.aimTurret(turret, source.x, source.y, aimTarget.x, aimTarget.y, dt, sway);
 
-        if (fireTarget && !effectiveBlocks) {
+        if (!turret.reloading && fireTarget && !effectiveBlocks) {
             source.syncTurretChargeTarget(turret, fireTarget);
 
             if (source.canIncrementTurretCharge(turret, isAimed)) {
