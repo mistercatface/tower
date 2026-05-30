@@ -273,10 +273,6 @@ export class WeaponSystem {
         return { hit: "none", x: cx, y: cy, dist: dist };
     }
 
-    static getNearestEnemy(state, source = state.player, range = source?.weapon?.range ?? state.player?.weapon?.range, excludedTargets = null) {
-        return getNearestHostile(state, source, range, excludedTargets);
-    }
-
     static computeAccuracySway(source, turret, dt, requireCharge = false) {
         const weapon = source.weapon;
         if (!weapon || weapon.accuracy === undefined) return 0;
@@ -306,12 +302,5 @@ export class WeaponSystem {
             turret.angle = Utilities.normalizeAngle(turret.angle);
             return false;
         }
-    }
-
-    static updateActorTurrets(dt, actor, state, _upgrades, blocksTargeting = false) {
-        state.activeLasers = [];
-        const combatEvents = [];
-        actor.updateTurrets(dt, state, { blocksTargeting, combatEvents });
-        return combatEvents;
     }
 }

@@ -1,7 +1,7 @@
 import { DestructibleEntity } from "./Entity.js";
 import { Separation } from "../Spatial/Motion/Separation.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
-import { enemyStates } from "./EnemyStates.js";
+import { actorStates } from "./ActorStates.js";
 import { transitionEntity } from "./EntityFsm.js";
 import {
     createCombatantStats,
@@ -53,7 +53,7 @@ export class Actor extends DestructibleEntity {
         this.baseMoveSpeed = speed;
         this.turrets = [];
         this.weaponLoadout = [];
-        this.currentState = enemyStates.navigating;
+        this.currentState = actorStates.navigating;
         this.currentStateName = "navigating";
         this.stateData = {};
     }
@@ -120,8 +120,10 @@ export class Actor extends DestructibleEntity {
         if (this.currentState?.runsTurretCombat != null) {
             return this.currentState.runsTurretCombat;
         }
-        return this.faction === "player";
+        return false;
     }
+
+    updateCombat(_dt, _state, _spatialHash, _options = {}) {}
 
     getAITarget(state) {
         if (!state) return null;
@@ -415,7 +417,7 @@ export class Actor extends DestructibleEntity {
     }
 
     changeState(stateName, stateDataInit = null) {
-        transitionEntity(this, enemyStates, stateName, stateDataInit);
+        transitionEntity(this, actorStates, stateName, stateDataInit);
     }
 
     changeStateAndUpdate(stateName, stateDataInit, dt, target, flowFieldGrid, walls, missiles, spatialHash, scheduler, gameState) {

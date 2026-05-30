@@ -20,33 +20,6 @@ const enemyBars = createEntityBars({
 export class Enemy extends Actor {
     static healthBar = enemyBars.healthBar;
 
-    static updateAll(state, dt, spatialHash) {
-        for (let i = state.enemies.length - 1; i >= 0; i--) {
-            const e = state.enemies[i];
-            const target = e.getAITarget(state);
-
-            if (!target) {
-                e.desiredX = 0;
-                e.desiredY = 0;
-                e.applyLocomotion(dt, state.walls, spatialHash, { state, ignoreSeparationInDesired: true });
-            } else {
-                e.currentState.update(
-                    e,
-                    dt,
-                    target,
-                    state.flowFieldGrid,
-                    state.walls,
-                    state.projectiles,
-                    spatialHash,
-                    state.scheduler,
-                    state
-                );
-            }
-
-            if (e.isDead) state.enemies.splice(i, 1);
-        }
-    }
-
     static spawn(x, y, enemyType, wave, baseUpgradeDefs) {
         const combatStats = buildEnemyCombatStats(enemyType);
         const reward = computeSpawnReward(wave, enemyType);
@@ -92,6 +65,29 @@ export class Enemy extends Actor {
         if (died) {
             emitCombatEnemyKilled(this);
         }
+    }
+
+    updateCombat(dt, state, spatialHash, _options = {}) {
+        const target = this.getAITarget(state);
+
+        if (!target) {
+            this.desiredX = 0;
+            this.desiredY = 0;
+            this.applyLocomotion(dt, state.walls, spatialHash, { state, ignoreSeparationInDesired: true });
+            return;
+        }
+
+        this.currentState.update(
+            this,
+            dt,
+            target,
+            state.flowFieldGrid,
+            state.walls,
+            state.projectiles,
+            spatialHash,
+            state.scheduler,
+            state
+        );
     }
 
     calculateSteering(target, state) {

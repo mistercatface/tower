@@ -485,12 +485,12 @@ export class EnemyBlastedState {
     }
 }
 
-export const enemyStates = {
+export const actorStates = {
     navigating: new EnemyNavigatingState(),
     engaged: new EnemyEngagedState(),
     charging_prepare: new EnemyChargePrepareState(),
     charging_windup: new EnemyChargeWindupState(),
     charging_dash: new EnemyChargeDashState(),
     dodging: new EnemyDodgingState(),
-    blasted: new EnemyBlastedState()
+    blasted: new EnemyBlastedState(),
 };

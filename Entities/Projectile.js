@@ -5,7 +5,7 @@ import { Pools } from "../Core/Pools.js";
 import { getProjectileDamage } from "../Combat/impactDamage.js";
 import { getGunProjectileConfig } from "../Combat/gunCombat.js";
 import { getGunDefinition } from "../Config/gunDefinitions.js";
-import { getHostilesForFaction } from "../Combat/Targeting.js";
+import { getHostilesForFaction, getPlayerActors } from "../Combat/Targeting.js";
 
 export class Projectile extends Entity {
     static updateAll(state, dt) {
@@ -50,8 +50,15 @@ export class Projectile extends Entity {
     }
 
     checkOutOfBounds(state) {
-        const dist = Math.hypot(this.x - state.player.x, this.y - state.player.y);
-        if (dist > 1500) {
+        const anchors = getPlayerActors(state);
+        if (anchors.length === 0) return false;
+
+        let minDist = Infinity;
+        for (const anchor of anchors) {
+            minDist = Math.min(minDist, Math.hypot(this.x - anchor.x, this.y - anchor.y));
+        }
+
+        if (minDist > 1500) {
             this.isDead = true;
             return true;
         }

@@ -51,9 +51,7 @@ export class ProgressionManager {
                 }
             });
 
-        const blocksTargeting = state.player?.getExternalBlocksTargeting(state, upgrades) ?? false;
-
-        return { externalSpeedMod, blocksTargeting, isDiving };
+        return { externalSpeedMod, isDiving };
     }
 
     static applyUpgradeChoice(state, upgrades, choice, pointsAmount, setBaseLevel) {

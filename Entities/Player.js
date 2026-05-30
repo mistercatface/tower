@@ -143,8 +143,15 @@ export class Player extends Actor {
         return this.upgrades["Reposition"] && this.upgrades["Reposition"].level > 0;
     }
 
-    update(dt, flowFieldGrid, walls, spatialHash, state, externalSpeedMod = 1.0) {
-        if (this.currentState && this.currentState.customMovement) {
+    canRunTurretCombat() {
+        return true;
+    }
+
+    updateCombat(dt, state, spatialHash, { externalSpeedMod = 1.0 } = {}) {
+        const flowFieldGrid = state.flowFieldGrid;
+        const walls = state.walls;
+
+        if (this.currentState?.customMovement) {
             this.currentState.update(this, dt, null, flowFieldGrid, walls, null, spatialHash, null, null);
             return;
         }

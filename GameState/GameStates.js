@@ -2,7 +2,6 @@ import { FloatingText } from "../Render/FloatingText.js";
 import { ProgressionManager } from "../Progression/ProgressionManager.js";
 import { CollisionSystem } from "../Spatial/Collision/CollisionSystem.js";
 import { SpatialHash } from "../Spatial/World/SpatialHash.js";
-import { Enemy } from "../Entities/Enemy.js";
 import { Projectile } from "../Entities/Projectile.js";
 import { spawnInitialPickups } from "../Entities/Pickup.js";
 import { showNodeConfirmModal, requestUiUpdate } from "../Core/EventSystem.js";
@@ -66,7 +65,7 @@ export class MapTransitionState {
         const speedUpDt = dt * 5.0;
         
         const oldGridPos = ctx.state.flowFieldGrid.worldToGrid(ctx.state.player.x, ctx.state.player.y);
-        ctx.state.player.update(speedUpDt, ctx.state.flowFieldGrid, ctx.state.walls, null, ctx.state);
+        ctx.state.updateAllCombatants(speedUpDt, null, {});
         ctx.state.navigation.updateFlowField({
             playerX: ctx.state.player.x,
             playerY: ctx.state.player.y,
@@ -171,7 +170,9 @@ export class CombatState {
         }
 
         const oldGridPos = ctx.state.flowFieldGrid.worldToGrid(ctx.state.player.x, ctx.state.player.y);
-        ctx.state.player.update(dt, ctx.state.flowFieldGrid, ctx.state.walls, spatialHash, ctx.state, abilityState.externalSpeedMod);
+        ctx.state.updateAllCombatants(dt, spatialHash, {
+            externalSpeedMod: abilityState.externalSpeedMod,
+        });
         ctx.state.navigation.updateFlowField({
             playerX: ctx.state.player.x,
             playerY: ctx.state.player.y,
@@ -181,7 +182,6 @@ export class CombatState {
         });
 
         ctx.state.waveManager.manageSpawning(dt, ctx.state, ctx.upgrades, ctx.viewport);
-        Enemy.updateAll(ctx.state, dt, spatialHash);
         Projectile.updateAll(ctx.state, dt);
         ProgressionManager.updatePickups(ctx.state, dt);
 

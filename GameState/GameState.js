@@ -157,6 +157,28 @@ export class GameState {
         return combatants;
     }
 
+    updateAllCombatants(dt, spatialHash, { externalSpeedMod = 1.0 } = {}) {
+        const options = { externalSpeedMod };
+
+        for (const player of this.getPlayerActors()) {
+            player.updateCombat(dt, this, spatialHash, options);
+        }
+
+        for (let i = this.enemies.length - 1; i >= 0; i--) {
+            const enemy = this.enemies[i];
+            if (enemy.isDead) {
+                this.enemies.splice(i, 1);
+                continue;
+            }
+
+            enemy.updateCombat(dt, this, spatialHash, options);
+
+            if (enemy.isDead) {
+                this.enemies.splice(i, 1);
+            }
+        }
+    }
+
     getTurretCombatants() {
         return this.getCombatants().filter((actor) => actor.weapon && actor.canRunTurretCombat());
     }
