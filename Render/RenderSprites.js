@@ -59,28 +59,178 @@ export const RenderSprites = {
     },
 
     player: (radius, color) => {
-        const canvasSize = Math.ceil(radius * 2) + 4;
+        const canvasSize = Math.ceil(radius * 2) + 12;
         const cx = canvasSize / 2;
         const cy = canvasSize / 2;
         const offCanvas = new OffscreenCanvas(canvasSize, canvasSize);
         const offCtx = offCanvas.getContext("2d");
+
+        // 1. Soft ambient drop shadow beneath the broccoli
         offCtx.beginPath();
-        offCtx.arc(cx, cy, radius, 0, Math.PI * 2);
-        offCtx.fillStyle = color;
+        offCtx.ellipse(cx, cy + radius * 0.4, radius * 0.9, radius * 0.45, 0, 0, Math.PI * 2);
+        offCtx.fillStyle = "rgba(0, 0, 0, 0.45)";
         offCtx.fill();
-        return offCanvas;
+
+        // 2. Thick stalk pointing backward (negative X direction, since positive X is forward)
+        const stalkX = cx - radius * 0.35;
+        const stalkY = cy;
+        offCtx.beginPath();
+        offCtx.ellipse(stalkX, stalkY, radius * 0.4, radius * 0.3, Math.PI / 6, 0, Math.PI * 2);
+        const stalkGrad = offCtx.createLinearGradient(
+            stalkX - radius * 0.3, stalkY - radius * 0.2,
+            stalkX + radius * 0.3, stalkY + radius * 0.2
+        );
+        stalkGrad.addColorStop(0, "#C2E5A0"); // Light pale green highlight
+        stalkGrad.addColorStop(0.5, "#8ECA69"); // Medium green stalk
+        stalkGrad.addColorStop(1, "#548C30"); // Shadow green stalk
+        offCtx.fillStyle = stalkGrad;
+        offCtx.fill();
+        offCtx.strokeStyle = "#385E20";
+        offCtx.lineWidth = 1;
+        offCtx.stroke();
+
+        // 3. Helper to draw a volumetric floret with radial gradient shading and texture buds
+        const drawFloret = (fx, fy, frad) => {
+            offCtx.beginPath();
+            offCtx.arc(fx, fy, frad, 0, Math.PI * 2);
+            
+            const grad = offCtx.createRadialGradient(
+                fx - frad * 0.25, fy - frad * 0.25, frad * 0.1,
+                fx, fy, frad
+            );
+            grad.addColorStop(0.0, "#A3E26F"); // bright lime highlight
+            grad.addColorStop(0.3, "#4BAE4F"); // rich green midtone
+            grad.addColorStop(0.7, "#2E7D32"); // forest green shadow
+            grad.addColorStop(1.0, "#1B5E20"); // deep dark green border
+            
+            offCtx.fillStyle = grad;
+            offCtx.fill();
+            
+            // Texture buds/dots
+            offCtx.fillStyle = "rgba(163, 226, 111, 0.35)"; // yellow-green tiny buds
+            for (let i = 0; i < 6; i++) {
+                const sx = fx + (Math.sin(i * 2.3) * frad * 0.45);
+                const sy = fy + (Math.cos(i * 1.7) * frad * 0.45);
+                offCtx.beginPath();
+                offCtx.arc(sx, sy, frad * 0.12, 0, Math.PI * 2);
+                offCtx.fill();
+            }
+        };
+
+        // Draw florets in overlapping layers (back to front, then center)
+        // Floret 1: Top-Left (Back)
+        drawFloret(cx - radius * 0.35, cy - radius * 0.35, radius * 0.5);
+        // Floret 2: Bottom-Left (Back)
+        drawFloret(cx - radius * 0.35, cy + radius * 0.35, radius * 0.5);
+        // Floret 3: Top-Right
+        drawFloret(cx + radius * 0.25, cy - radius * 0.35, radius * 0.5);
+        // Floret 4: Bottom-Right
+        drawFloret(cx + radius * 0.25, cy + radius * 0.35, radius * 0.5);
+        // Floret 5: Front (pointing forward)
+        drawFloret(cx + radius * 0.4, cy, radius * 0.55);
+        // Floret 6: Center (raised on top)
+        drawFloret(cx, cy, radius * 0.6);
+
+        return { offCanvas, cx, cy };
     },
 
     sidekick: (radius, color) => {
-        const canvasSize = Math.ceil(radius * 2) + 6;
+        const canvasSize = Math.ceil(radius * 2) + 12;
         const cx = canvasSize / 2;
         const cy = canvasSize / 2;
         const offCanvas = new OffscreenCanvas(canvasSize, canvasSize);
         const offCtx = offCanvas.getContext("2d");
+
+        // 1. Soft ambient drop shadow beneath the blueberry
+        offCtx.beginPath();
+        offCtx.ellipse(cx, cy + radius * 0.4, radius * 0.9, radius * 0.35, 0, 0, Math.PI * 2);
+        offCtx.fillStyle = "rgba(0, 0, 0, 0.4)";
+        offCtx.fill();
+
+        // 2. Main berry shape filled with 3D radial gradient
         offCtx.beginPath();
         offCtx.arc(cx, cy, radius, 0, Math.PI * 2);
-        offCtx.fillStyle = color;
+
+        // Light source is at top-left (cx - radius * 0.3, cy - radius * 0.3)
+        const grad = offCtx.createRadialGradient(
+            cx - radius * 0.3, cy - radius * 0.3, radius * 0.1,
+            cx, cy, radius
+        );
+        
+        grad.addColorStop(0.0, "#A5B5F3"); // Bright waxy blue-white highlight
+        grad.addColorStop(0.2, "#5C76D9"); // Powdery violet-blue
+        grad.addColorStop(0.5, "#2C397F"); // Deep indigo/blueberry blue
+        grad.addColorStop(0.8, "#14173D"); // Dark shadow blue
+        grad.addColorStop(1.0, "#060714"); // Outer edge shadow/near black
+
+        offCtx.fillStyle = grad;
         offCtx.fill();
+
+        // 3. Soft velvet waxy bloom overlay for texture depth
+        const bloomGrad = offCtx.createRadialGradient(cx, cy, radius * 0.5, cx, cy, radius);
+        bloomGrad.addColorStop(0, "rgba(165, 181, 243, 0)");
+        bloomGrad.addColorStop(0.7, "rgba(165, 181, 243, 0.15)"); // powdery rim bloom
+        bloomGrad.addColorStop(1, "rgba(165, 181, 243, 0)");
+        offCtx.fillStyle = bloomGrad;
+        offCtx.beginPath();
+        offCtx.arc(cx, cy, radius, 0, Math.PI * 2);
+        offCtx.fill();
+
+        // 4. Draw the 3D calyx (star-shaped crown) offset forward along the X-axis (direction of travel)
+        const ccx = cx + radius * 0.25;
+        const ccy = cy;
+        const numLobes = 5;
+        const innerR = radius * 0.15;
+        const outerR = radius * 0.28;
+
+        // Calyx petals/lobes squashed vertically for a 3D tilt perspective
+        offCtx.beginPath();
+        for (let i = 0; i < numLobes; i++) {
+            const a = (i * 2 * Math.PI) / numLobes;
+            const nextA = ((i + 1) * 2 * Math.PI) / numLobes;
+            const midA = a + Math.PI / numLobes;
+
+            // Tip of the lobe (outer)
+            const tx = ccx + Math.cos(a) * outerR;
+            const ty = ccy + Math.sin(a) * outerR * 0.65;
+
+            // Inner junction
+            const jx = ccx + Math.cos(midA) * innerR;
+            const jy = ccy + Math.sin(midA) * innerR * 0.65;
+
+            if (i === 0) {
+                offCtx.moveTo(tx, ty);
+            } else {
+                offCtx.lineTo(tx, ty);
+            }
+            offCtx.lineTo(jx, jy);
+        }
+        offCtx.closePath();
+        offCtx.fillStyle = "#12142E";
+        offCtx.fill();
+        offCtx.strokeStyle = "#404C99";
+        offCtx.lineWidth = 1.0;
+        offCtx.stroke();
+
+        // Deep dark recess/center hole inside the calyx
+        offCtx.beginPath();
+        offCtx.ellipse(ccx, ccy, innerR, innerR * 0.65, 0, 0, Math.PI * 2);
+        offCtx.fillStyle = "#04050F";
+        offCtx.fill();
+
+        // Tiny rim highlight on the calyx edge
+        offCtx.beginPath();
+        offCtx.ellipse(ccx - innerR * 0.1, ccy - innerR * 0.1, innerR * 0.6, innerR * 0.4, 0, 0, Math.PI * 2);
+        offCtx.strokeStyle = "rgba(165, 181, 243, 0.4)";
+        offCtx.lineWidth = 0.8;
+        offCtx.stroke();
+
+        // 5. Specular highlight on the upper-left of the berry body
+        offCtx.beginPath();
+        offCtx.ellipse(cx - radius * 0.4, cy - radius * 0.4, radius * 0.18, radius * 0.08, Math.PI / 4, 0, Math.PI * 2);
+        offCtx.fillStyle = "rgba(255, 255, 255, 0.45)";
+        offCtx.fill();
+
         return { offCanvas, cx, cy };
     },
 
