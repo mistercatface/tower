@@ -308,7 +308,6 @@ export class EnemyChargeWindupState {
         if (stateData.timer <= 0) {
             return enemy.changeStateAndUpdate("charging_dash", {
                 timer: 1200,
-                dashAngle: Math.atan2(target.y - enemy.y, target.x - enemy.x),
             }, dt, target, flowFieldGrid, walls, missiles, spatialHash, scheduler, state);
         }
 
@@ -328,29 +327,24 @@ export class EnemyChargeDashState {
     update(enemy, dt, target, flowFieldGrid, walls, missiles, spatialHash, scheduler, state) {
         const stateData = enemy.stateData;
 
-        enemy.desiredX = Math.cos(stateData.dashAngle);
-        enemy.desiredY = Math.sin(stateData.dashAngle);
-        enemy.angle = stateData.dashAngle;
+        enemy.calculateSteering(target, state);
 
         const originalSpeed = enemy.speed;
         enemy.speed = originalSpeed * 2.2;
         const originalAccel = enemy.accelRate;
         enemy.accelRate = originalAccel * 5.0;
-        
-        PhysicsSystem.applyMovement(enemy, dt, true, true, false);
-        
+
+        PhysicsSystem.applyMovement(enemy, dt, true, true);
+
         enemy.speed = originalSpeed;
         enemy.accelRate = originalAccel;
 
-        const hitWall = PhysicsSystem.resolveWallCollisions(enemy, walls, state);
+        PhysicsSystem.resolveWallCollisions(enemy, walls, state);
 
-        const dx = target.x - enemy.x;
-        const dy = target.y - enemy.y;
-        const dot = dx * Math.cos(stateData.dashAngle) + dy * Math.sin(stateData.dashAngle);
-
+        const distToTarget = Math.hypot(enemy.x - target.x, enemy.y - target.y);
         stateData.timer -= dt;
-        
-        if (stateData.timer <= 0 || dot < -10 || hitWall) {
+
+        if (stateData.timer <= 0 || distToTarget <= target.radius + enemy.radius) {
             enemy.chargeCooldown = 1500;
             enemy.changeState("charging_prepare");
         }
