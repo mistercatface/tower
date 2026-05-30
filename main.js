@@ -89,7 +89,6 @@ function resizeCanvas() {
     canvas.width = canvas.clientWidth;
     canvas.height = canvas.clientHeight;
     state.canvasBounds = { width: canvas.width, height: canvas.height };
-    state.player.setSpawnPosition(Math.floor(canvas.width / 2), Math.floor(canvas.height / 2));
     viewport.cx = Math.floor(canvas.width / 2);
     viewport.cy = Math.floor(canvas.height / 2);
 }
