@@ -13,10 +13,7 @@ export function getEnemyType(typeName) {
     return enemyTypes.find((entry) => entry.type === typeName) ?? null;
 }
 
-function isPodEligible(pod, state, maxSize) {
-    if (pod.minLevel !== undefined && state.level < pod.minLevel) {
-        return false;
-    }
+function isPodEligible(pod, maxSize) {
     const size = getPodSize(pod);
     if (maxSize !== undefined && size > maxSize) {
         return false;
@@ -51,7 +48,7 @@ export function selectSpawnPod(state, remainingEnemies) {
         return FALLBACK_POD;
     }
 
-    const fittingPods = spawnPods.filter((pod) => isPodEligible(pod, state, remainingEnemies));
+    const fittingPods = spawnPods.filter((pod) => isPodEligible(pod, remainingEnemies));
     if (fittingPods.length > 0) {
         return pickWeightedPod(fittingPods);
     }

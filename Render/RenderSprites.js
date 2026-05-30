@@ -501,6 +501,97 @@ export const RenderSprites = {
         return { offCanvas, cx, cy };
     },
 
+    cranberry: (radius, color) => {
+        const canvasSize = Math.ceil(radius * 2) + 12;
+        const cx = canvasSize / 2;
+        const cy = canvasSize / 2;
+        const offCanvas = new OffscreenCanvas(canvasSize, canvasSize);
+        const offCtx = offCanvas.getContext("2d");
+
+        // 1. Soft ambient drop shadow beneath the cranberry
+        offCtx.beginPath();
+        offCtx.ellipse(cx, cy + radius * 0.4, radius * 0.88, radius * 0.34, 0, 0, Math.PI * 2);
+        offCtx.fillStyle = "rgba(0, 0, 0, 0.4)";
+        offCtx.fill();
+
+        // 2. Main body — slightly oblong berry (squashed sphere for rotation)
+        offCtx.beginPath();
+        offCtx.ellipse(cx, cy, radius * 0.96, radius * 0.88, 0, 0, Math.PI * 2);
+
+        const grad = offCtx.createRadialGradient(
+            cx - radius * 0.3, cy - radius * 0.3, radius * 0.08,
+            cx, cy, radius
+        );
+        grad.addColorStop(0.0, "#FF8A80");
+        grad.addColorStop(0.2, color || "#C62828");
+        grad.addColorStop(0.5, "#AD1457");
+        grad.addColorStop(0.78, "#880E4F");
+        grad.addColorStop(1.0, "#3B0518");
+
+        offCtx.fillStyle = grad;
+        offCtx.fill();
+
+        // 3. Waxy bloom overlay
+        const bloomGrad = offCtx.createRadialGradient(cx, cy, radius * 0.45, cx, cy, radius);
+        bloomGrad.addColorStop(0, "rgba(255, 138, 128, 0)");
+        bloomGrad.addColorStop(0.72, "rgba(255, 138, 128, 0.14)");
+        bloomGrad.addColorStop(1, "rgba(255, 138, 128, 0)");
+        offCtx.fillStyle = bloomGrad;
+        offCtx.beginPath();
+        offCtx.ellipse(cx, cy, radius * 0.96, radius * 0.88, 0, 0, Math.PI * 2);
+        offCtx.fill();
+
+        // 4. Subtle speckled cranberry skin texture
+        offCtx.save();
+        offCtx.beginPath();
+        offCtx.ellipse(cx, cy, radius * 0.96, radius * 0.88, 0, 0, Math.PI * 2);
+        offCtx.clip();
+        offCtx.fillStyle = "rgba(255, 205, 210, 0.2)";
+        for (let i = 0; i < 8; i++) {
+            const sx = cx + Math.sin(i * 2.1) * radius * 0.55;
+            const sy = cy + Math.cos(i * 1.8) * radius * 0.5;
+            offCtx.beginPath();
+            offCtx.arc(sx, sy, radius * 0.05, 0, Math.PI * 2);
+            offCtx.fill();
+        }
+        offCtx.restore();
+
+        // 5. Stem scar at sphere center (overhead view)
+        offCtx.beginPath();
+        offCtx.arc(cx, cy, radius * 0.09, 0, Math.PI * 2);
+        const scarGrad = offCtx.createRadialGradient(
+            cx - radius * 0.02, cy - radius * 0.02, radius * 0.01,
+            cx, cy, radius * 0.09
+        );
+        scarGrad.addColorStop(0, "#4A1020");
+        scarGrad.addColorStop(1, "#6D1B3A");
+        offCtx.fillStyle = scarGrad;
+        offCtx.fill();
+
+        offCtx.beginPath();
+        offCtx.arc(cx, cy, radius * 0.18, 0, Math.PI * 2);
+        const stemGrad = offCtx.createRadialGradient(
+            cx - radius * 0.05, cy - radius * 0.05, radius * 0.03,
+            cx, cy, radius * 0.18
+        );
+        stemGrad.addColorStop(0, "#A5D6A7");
+        stemGrad.addColorStop(0.45, "#558B2F");
+        stemGrad.addColorStop(1, "#33691E");
+        offCtx.fillStyle = stemGrad;
+        offCtx.fill();
+        offCtx.strokeStyle = "#1B5E20";
+        offCtx.lineWidth = 0.6;
+        offCtx.stroke();
+
+        // 6. Specular highlight on the upper-left
+        offCtx.beginPath();
+        offCtx.ellipse(cx - radius * 0.4, cy - radius * 0.4, radius * 0.16, radius * 0.07, Math.PI / 4, 0, Math.PI * 2);
+        offCtx.fillStyle = "rgba(255, 255, 255, 0.48)";
+        offCtx.fill();
+
+        return { offCanvas, cx, cy };
+    },
+
     wall: (size, r, g, b) => {
         const offCanvas = new OffscreenCanvas(size + 2, size + 2);
         const offCtx = offCanvas.getContext("2d");

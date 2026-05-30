@@ -1,6 +1,6 @@
 import { SpriteCache } from "./SpriteCache.js";
 import { Render3D } from "./3D/Render3D.js";
-import { combatVisualSettings, mapSettings } from "../Config/Config.js";
+import { combatVisualSettings, createFloorFillStyle, mapSettings } from "../Config/Config.js";
 import { getWorldDrawCoords, isMapTransition, isWorldScene } from "../GameState/GamePhase.js";
 import { getPlayerActors } from "../Combat/Targeting.js";
 
@@ -160,7 +160,7 @@ export class Renderer {
         if (useViewport) {
             this.ctx.beginPath();
             this.ctx.arc(x, y, range, 0, Math.PI * 2);
-            this.ctx.fillStyle = combatVisualSettings.floorFill;
+            this.ctx.fillStyle = createFloorFillStyle(this.ctx, x, y, range);
             this.ctx.fill();
         } else {
             state.player.renderRange(this.ctx, range);
@@ -442,11 +442,11 @@ export class Renderer {
 
         this.ctx.save();
 
-        const vignette = this.ctx.createRadialGradient(cx, cy, R * 0.7, cx, cy, R);
+        const vignette = this.ctx.createRadialGradient(cx, cy, R * 0.82, cx, cy, R);
         vignette.addColorStop(0, "rgba(0, 0, 0, 0)");
-        vignette.addColorStop(0.7, "rgba(0, 20, 30, 0.15)");
-        vignette.addColorStop(0.95, "rgba(0, 30, 45, 0.5)");
-        vignette.addColorStop(1.0, "rgba(0, 0, 0, 0.95)");
+        vignette.addColorStop(0.9, "rgba(0, 0, 0, 0.06)");
+        vignette.addColorStop(0.98, "rgba(0, 0, 0, 0.22)");
+        vignette.addColorStop(1.0, "rgba(0, 0, 0, 0.55)");
 
         this.ctx.fillStyle = vignette;
         this.ctx.beginPath();

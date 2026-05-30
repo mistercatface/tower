@@ -1,6 +1,6 @@
 import { Actor } from "./Actor.js";
 import { spawnFloatingText } from "../Core/EventSystem.js";
-import { combatVisualSettings, playerBaseStats, NAV_PROFILES, navigationSettings } from "../Config/Config.js";
+import { createFloorFillStyle, playerBaseStats, NAV_PROFILES, navigationSettings } from "../Config/Config.js";
 import { createEntityBars } from "./EntityBars.js";
 import { GhostTrail } from "../Render/GhostTrail.js";
 
@@ -169,7 +169,7 @@ export class Player extends Actor {
         if (weaponRange > 0) {
             ctx.beginPath();
             ctx.arc(this.x, this.y, weaponRange, 0, Math.PI * 2);
-            ctx.fillStyle = combatVisualSettings.floorFill;
+            ctx.fillStyle = createFloorFillStyle(ctx, this.x, this.y, weaponRange);
             ctx.fill();
         }
     }

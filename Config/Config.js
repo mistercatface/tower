@@ -18,60 +18,199 @@ export const enemyTypes = [
     },
     { type: "tank", weight: 25, radius: 8, baseSpeed: 66, baseHealth: 3, maxHealth: 1200, color: "#FF9800", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: false, renderPath: "pumpkin" },
     { type: "standard", weight: 60, radius: 6, baseSpeed: 100, baseHealth: 1, maxHealth: 500, color: "#F44336", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: false, renderPath: "tomato" },
-    { type: "fast", weight: 5, radius: 5, baseSpeed: 140, baseHealth: 0.5, maxHealth: 300, color: "#FFEB3B", minLevel: 2, spawnType: "single", attackType: "ranged", canDodge: false, canDamageWalls: true, },
-    { type: "spastic", weight: 15, radius: 5, baseSpeed: 200, baseHealth: 0.3, maxHealth: 50, color: "#E91E63", minLevel: 3, spawnType: "group", attackType: "charge", canDodge: false, accelRate: 5, canDamageWalls: true, groupSettings: { baseGroupSize: 3, growthPerWave: 2.0, maxGroupSize: 5 } },
-    { type: "dodger", weight: 20, radius: 6, baseSpeed: 100, baseHealth: 1, maxHealth: 450, color: "#03A9F4", minLevel: 3, spawnType: "single", attackType: "ranged", canDodge: true },
+    { type: "fast", weight: 5, radius: 5, baseSpeed: 140, baseHealth: 0.5, maxHealth: 300, color: "#FFEB3B", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: false, canDamageWalls: true, },
+    { type: "spastic", weight: 15, radius: 5, baseSpeed: 200, baseHealth: 0.3, maxHealth: 50, color: "#C62828", minLevel: 0, spawnType: "group", attackType: "charge", canDodge: false, accelRate: 5, canDamageWalls: true, groupSettings: { baseGroupSize: 3, growthPerWave: 2.0, maxGroupSize: 5 }, renderPath: "cranberry" },
+    { type: "dodger", weight: 20, radius: 6, baseSpeed: 100, baseHealth: 1, maxHealth: 450, color: "#03A9F4", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: true },
     { type: "boss", weight: 0, radius: 8, baseSpeed: 160, baseHealth: 50, maxHealth: 15000, color: "#B71C1C", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: true },
 ];
 
 /** Weighted spawn compositions — one pod spawns per spawn tick, all members together. */
 export const spawnPods = [
+    // --- Cranberry-focused (higher weight so they actually show up) ---
+    { id: "cranberry_squad", weight: 28, members: [{ type: "spastic", count: 5 }] },
+    { id: "cranberry_burst", weight: 26, members: [{ type: "spastic", count: 4 }] },
+    { id: "cranberry_swarm", weight: 24, members: [{ type: "spastic", count: 6 }] },
+    { id: "cranberry_trio", weight: 24, members: [{ type: "spastic", count: 3 }] },
+    { id: "cranberry_pair", weight: 22, members: [{ type: "spastic", count: 2 }] },
+    { id: "lone_cranberry", weight: 18, members: [{ type: "spastic", count: 1 }] },
     {
-        id: "pea_tomato_pumpkin_mix",
-        weight: 30,
-        minLevel: 0,
+        id: "charge_brigade",
+        weight: 20,
         members: [
             { type: "kamikaze", count: 3 },
-            { type: "standard", count: 5 },
-            { type: "tank", count: 2 },
+            { type: "spastic", count: 3 },
         ],
     },
     {
+        id: "charge_mix",
+        weight: 18,
+        members: [
+            { type: "kamikaze", count: 2 },
+            { type: "spastic", count: 3 },
+        ],
+    },
+
+    // --- Mixed pods (most include cranberries) ---
+    {
+        id: "starter_mix",
+        weight: 16,
+        members: [
+            { type: "kamikaze", count: 2 },
+            { type: "standard", count: 2 },
+            { type: "spastic", count: 1 },
+        ],
+    },
+    {
+        id: "pea_tomato_pumpkin_mix",
+        weight: 14,
+        members: [
+            { type: "kamikaze", count: 3 },
+            { type: "standard", count: 4 },
+            { type: "tank", count: 2 },
+            { type: "spastic", count: 1 },
+        ],
+    },
+    {
+        id: "elite_mix",
+        weight: 14,
+        members: [
+            { type: "dodger", count: 2 },
+            { type: "spastic", count: 3 },
+            { type: "tank", count: 1 },
+        ],
+    },
+    {
+        id: "full_assault",
+        weight: 12,
+        members: [
+            { type: "kamikaze", count: 2 },
+            { type: "standard", count: 2 },
+            { type: "fast", count: 2 },
+            { type: "spastic", count: 1 },
+            { type: "dodger", count: 1 },
+        ],
+    },
+    {
+        id: "mixed_three",
+        weight: 12,
+        members: [
+            { type: "kamikaze", count: 1 },
+            { type: "standard", count: 1 },
+            { type: "spastic", count: 1 },
+        ],
+    },
+    {
+        id: "pea_tomato_cranberry",
+        weight: 14,
+        members: [
+            { type: "kamikaze", count: 2 },
+            { type: "standard", count: 2 },
+            { type: "spastic", count: 2 },
+        ],
+    },
+
+    // --- Other archetypes (lower weight) ---
+    {
         id: "tomato_squad",
-        weight: 25,
-        minLevel: 0,
+        weight: 8,
         members: [{ type: "standard", count: 5 }],
     },
     {
-        id: "pumpkin_heavy",
-        weight: 15,
-        minLevel: 0,
-        members: [{ type: "tank", count: 5 }],
-    },
-    {
         id: "pea_rush",
-        weight: 20,
-        minLevel: 0,
+        weight: 8,
         members: [{ type: "kamikaze", count: 5 }],
     },
     {
+        id: "pumpkin_heavy",
+        weight: 8,
+        members: [{ type: "tank", count: 5 }],
+    },
+    {
+        id: "pumpkin_wall",
+        weight: 8,
+        members: [
+            { type: "tank", count: 4 },
+            { type: "standard", count: 4 },
+        ],
+    },
+    {
         id: "fast_skirmish",
-        weight: 15,
-        minLevel: 2,
+        weight: 10,
         members: [
             { type: "fast", count: 4 },
             { type: "standard", count: 2 },
         ],
     },
     {
-        id: "elite_mix",
+        id: "ranged_squad",
         weight: 10,
-        minLevel: 3,
         members: [
+            { type: "standard", count: 2 },
             { type: "dodger", count: 2 },
-            { type: "spastic", count: 3 },
-            { type: "tank", count: 1 },
+            { type: "fast", count: 2 },
         ],
+    },
+    {
+        id: "dodger_flank",
+        weight: 8,
+        members: [
+            { type: "dodger", count: 3 },
+            { type: "standard", count: 2 },
+        ],
+    },
+    {
+        id: "tomato_tank_duo",
+        weight: 8,
+        members: [
+            { type: "standard", count: 3 },
+            { type: "tank", count: 2 },
+        ],
+    },
+    {
+        id: "fast_lance",
+        weight: 8,
+        members: [{ type: "fast", count: 4 }],
+    },
+    {
+        id: "pea_tomato_pair",
+        weight: 8,
+        members: [
+            { type: "kamikaze", count: 2 },
+            { type: "standard", count: 2 },
+        ],
+    },
+    {
+        id: "triple_pea",
+        weight: 6,
+        members: [{ type: "kamikaze", count: 3 }],
+    },
+    {
+        id: "dodger_trio",
+        weight: 6,
+        members: [{ type: "dodger", count: 3 }],
+    },
+    {
+        id: "fast_pair",
+        weight: 6,
+        members: [{ type: "fast", count: 2 }],
+    },
+    {
+        id: "pumpkin_pea",
+        weight: 6,
+        members: [
+            { type: "tank", count: 1 },
+            { type: "kamikaze", count: 1 },
+        ],
+    },
+    {
+        id: "lone_pumpkin",
+        weight: 4,
+        members: [{ type: "tank", count: 1 }],
+    },
+    {
+        id: "lone_dodger",
+        weight: 4,
+        members: [{ type: "dodger", count: 1 }],
     },
 ];
 
@@ -157,9 +296,22 @@ export const gridSettings = {
 };
 
 export const combatVisualSettings = {
-    floorFill: "rgba(14, 18, 26, 0.82)",
-    gridStroke: "rgba(72, 84, 102, 0.16)",
+    floorHighlight: "#2c3340",
+    floorFill: "#1c2129",
+    floorShadow: "#12161c",
+    gridStroke: "rgba(90, 105, 125, 0.2)",
 };
+
+export function createFloorFillStyle(ctx, cx, cy, radius) {
+    const grad = ctx.createRadialGradient(
+        cx - radius * 0.22, cy - radius * 0.22, radius * 0.08,
+        cx, cy, radius
+    );
+    grad.addColorStop(0, combatVisualSettings.floorHighlight);
+    grad.addColorStop(0.62, combatVisualSettings.floorFill);
+    grad.addColorStop(1, combatVisualSettings.floorShadow);
+    return grad;
+}
 
 export const navigationSettings = {
     arrivalDistance: 2,
