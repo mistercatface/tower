@@ -122,7 +122,7 @@ export class Pickup extends Entity {
 }
 
 export function spawnPickup(state, playerX, playerY, minRadius, maxRadius, type) {
-    const grid = state.flowFieldGrid;
+    const grid = state.obstacleGrid;
     let spawned = false;
     let attempts = 0;
     while (!spawned && attempts < 100) {
