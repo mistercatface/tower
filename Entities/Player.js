@@ -2,6 +2,7 @@ import { Actor } from "./Actor.js";
 import { spawnFloatingText } from "../Core/EventSystem.js";
 import { playerBaseStats, NAV_PROFILES, navigationSettings } from "../Config/Config.js";
 import { createEntityBars } from "./EntityBars.js";
+import { GhostTrail } from "../Render/GhostTrail.js";
 
 const playerBars = createEntityBars({
     healthWidth: 48,
@@ -17,6 +18,12 @@ export class Player extends Actor {
         this.setupCombatant(playerBaseStats);
         this.initCombatWeapon();
         this.healthBar = Player.healthBar;
+        this.ghostTrail = new GhostTrail({
+            length: 5,
+            alpha: 0.25,
+            minDistance: 3,
+            shrink: true
+        });
         this.spawnX = x;
         this.spawnY = y;
         this.healAccumulator = 0;
@@ -152,6 +159,7 @@ export class Player extends Actor {
     }
 
     updateCombat(dt, state, spatialHash, options = {}) {
+        this.ghostTrail?.update(dt, this.x, this.y, this.angle);
         const flowFieldGrid = state.flowFieldGrid;
         const walls = state.walls;
 

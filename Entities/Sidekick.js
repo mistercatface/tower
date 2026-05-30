@@ -116,6 +116,7 @@ export class Sidekick extends Actor {
     }
 
     updateCombat(dt, state, spatialHash, options = {}) {
+        this.ghostTrail?.update(dt, this.x, this.y, this.angle);
         const leader = state.player;
         if (!leader || leader.isDead) {
             this.holdPosition();

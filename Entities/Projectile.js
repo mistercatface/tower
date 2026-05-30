@@ -2,6 +2,7 @@ import { Entity } from "./Entity.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
 import { Pools } from "../Core/Pools.js";
+import { GhostTrail } from "../Render/GhostTrail.js";
 import { getProjectileDamage } from "../Combat/impactDamage.js";
 import { getGunProjectileConfig } from "../Combat/gunCombat.js";
 import { getGunDefinition } from "../Config/gunDefinitions.js";
@@ -42,6 +43,17 @@ export class Projectile extends Entity {
         this.faction = faction;
         this.gunId = null;
         this.penetration = 0;
+
+        if (!this.ghostTrail) {
+            this.ghostTrail = new GhostTrail({
+                length: 4,
+                alpha: 0.35,
+                minDistance: 4,
+                shrink: true
+            });
+        } else {
+            this.ghostTrail.reset();
+        }
     }
 
     move(dt) {
@@ -68,6 +80,7 @@ export class Projectile extends Entity {
     update(dt, state) {
         this.move(dt);
         this.checkOutOfBounds(state);
+        this.ghostTrail?.update(dt, this.x, this.y, this.angle);
     }
 
     getHitKnockbackScale() {

@@ -68,6 +68,7 @@ export class Enemy extends Actor {
     }
 
     updateCombat(dt, state, spatialHash, options = {}) {
+        this.ghostTrail?.update(dt, this.x, this.y, this.angle);
         const target = this.getAITarget(state);
 
         if (!target) {

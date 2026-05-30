@@ -1,4 +1,5 @@
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
+import { GhostTrail } from "../Render/GhostTrail.js";
 import { Utilities } from "../Core/Utilities.js";
 import { CollisionSystem } from "../Spatial/Collision/CollisionSystem.js";
 function analyzeStrafePath(enemy, tangentX, tangentY, dir, walls, target) {
@@ -269,7 +270,7 @@ export class EnemyChargePrepareState {
         
         if (enemy.chargeCooldown <= 0 && distToTarget < 220 && distToTarget > 80 && isStable) {
             return enemy.changeStateAndUpdate("charging_windup", {
-                timer: 500,
+                timer: 1000,
                 targetX: target.x,
                 targetY: target.y,
             }, dt, target, flowFieldGrid, walls, missiles, spatialHash, scheduler, state);
@@ -310,7 +311,6 @@ export class EnemyChargeWindupState {
             return enemy.changeStateAndUpdate("charging_dash", {
                 timer: 1200,
                 dashAngle: Math.atan2(target.y - enemy.y, target.x - enemy.x),
-                dashTrail: [],
             }, dt, target, flowFieldGrid, walls, missiles, spatialHash, scheduler, state);
         }
 
@@ -340,20 +340,17 @@ export class EnemyChargeWindupState {
 
 export class EnemyChargeDashState {
     onEnter(enemy) {
-        enemy.stateData.dashTrail = enemy.stateData.dashTrail ?? [];
+        enemy.ghostTrail = new GhostTrail({ length: 4, alpha: 0.35, minDistance: 2 });
     }
 
     onExit(enemy) {
         enemy.desiredX = 0;
         enemy.desiredY = 0;
+        enemy.ghostTrail = null;
     }
 
     update(enemy, dt, target, flowFieldGrid, walls, missiles, spatialHash, scheduler, state) {
         const stateData = enemy.stateData;
-        stateData.dashTrail.push({ x: enemy.x, y: enemy.y });
-        if (stateData.dashTrail.length > 4) {
-            stateData.dashTrail.shift();
-        }
 
         enemy.desiredX = Math.cos(stateData.dashAngle);
         enemy.desiredY = Math.sin(stateData.dashAngle);
@@ -383,22 +380,6 @@ export class EnemyChargeDashState {
         }
 
         return false;
-    }
-    render(enemy, ctx, actorCache, turretCache) {
-        const stateData = enemy.stateData;
-        if (stateData.dashTrail && stateData.dashTrail.length > 0) {
-            ctx.save();
-            for (let i = 0; i < stateData.dashTrail.length; i++) {
-                const pt = stateData.dashTrail[i];
-                const alpha = ((i + 1) / (stateData.dashTrail.length + 1)) * 0.35;
-                ctx.fillStyle = enemy.color;
-                ctx.globalAlpha = alpha;
-                ctx.beginPath();
-                ctx.arc(pt.x, pt.y, enemy.radius * (0.4 + 0.6 * (i / stateData.dashTrail.length)), 0, Math.PI * 2);
-                ctx.fill();
-            }
-            ctx.restore();
-        }
     }
 }
 
