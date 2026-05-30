@@ -198,12 +198,16 @@ export class CollisionSystem {
         // 4. Charging actors vs hostile actors
         for (const charger of state.getCombatants()) {
             if (charger.isDead || charger.attackType !== "charge") continue;
+            if (charger.currentStateName === "stunned") continue;
 
             for (const target of state.getCombatants()) {
                 if (target === charger || target.isDead || !areHostile(charger, target)) continue;
                 if (this.checkCircle(charger, target)) {
-                    charger.isDead = true;
                     events.push({ target, damage: 5 });
+                    charger.changeState("stunned", {
+                        timer: 1000,
+                        returnState: "charging_prepare",
+                    });
                     break;
                 }
             }

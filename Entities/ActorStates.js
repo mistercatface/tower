@@ -410,6 +410,44 @@ export class EnemyDodgingState {
     }
 }
 
+export class EnemyStunnedState {
+    onEnter(enemy) {
+        if (enemy.stateData.timer == null) enemy.stateData.timer = 1000;
+        if (!enemy.stateData.returnState) {
+            enemy.stateData.returnState = enemy.attackType === "charge" ? "charging_prepare" : "navigating";
+        }
+    }
+
+    update(enemy, dt, target, flowFieldGrid, walls, missiles, spatialHash, scheduler, state) {
+        enemy.desiredX = 0;
+        enemy.desiredY = 0;
+
+        enemy.separation.update(enemy, spatialHash);
+        PhysicsSystem.applyFrictionAndDrag(enemy, dt, 4.0);
+        enemy.x += enemy.separation.pushX;
+        enemy.y += enemy.separation.pushY;
+        PhysicsSystem.resolveWallCollisions(enemy, walls, state);
+
+        const velLen = Math.hypot(enemy.vx, enemy.vy);
+        if (velLen > 1) {
+            const targetAngle = Math.atan2(enemy.vy, enemy.vx);
+            enemy.angle = Utilities.turnAngleTowards(enemy.angle, targetAngle, enemy.turnSpeed, dt);
+        }
+
+        enemy.stateData.timer -= dt;
+        if (enemy.stateData.timer <= 0) {
+            if (enemy.attackType === "charge") {
+                enemy.chargeCooldown = 1500;
+            }
+            enemy.vx = 0;
+            enemy.vy = 0;
+            enemy.changeState(enemy.stateData.returnState);
+        }
+
+        return false;
+    }
+}
+
 export class EnemyBlastedState {
     constructor() {
         this.customMovement = true;
@@ -474,5 +512,6 @@ export const actorStates = {
     charging_windup: new EnemyChargeWindupState(),
     charging_dash: new EnemyChargeDashState(),
     dodging: new EnemyDodgingState(),
+    stunned: new EnemyStunnedState(),
     blasted: new EnemyBlastedState(),
 };
