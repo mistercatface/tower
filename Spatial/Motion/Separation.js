@@ -1,3 +1,5 @@
+import { inferFaction } from "../../Combat/Targeting.js";
+
 export class Separation {
     constructor() {
         this.x = 0;
@@ -17,8 +19,8 @@ export class Separation {
         const neighbors = spatialHash.getNearby(entity);
         for (const other of neighbors) {
             if (other === entity || other.isDead) continue;
-            if (other.type === "player" && entity.attackType === "charge") continue;
-            if (entity.type === "player" && other.attackType === "charge") continue;
+            if (inferFaction(other) === "player" && entity.attackType === "charge") continue;
+            if (inferFaction(entity) === "player" && other.attackType === "charge") continue;
 
             let dx = entity.x - other.x;
             let dy = entity.y - other.y;

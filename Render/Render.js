@@ -2,6 +2,7 @@ import { SpriteCache } from "./SpriteCache.js";
 import { Render3D } from "./3D/Render3D.js";
 import { mapSettings } from "../Config/Config.js";
 import { getWorldDrawCoords, isMapTransition, isWorldScene } from "../GameState/GamePhase.js";
+import { getPlayerActors } from "../Combat/Targeting.js";
 
 export class Renderer {
     constructor(canvas, ctx) {
@@ -15,8 +16,23 @@ export class Renderer {
         this.floatingTextCache = new SpriteCache();
         this.render3D = new Render3D();
         this.effectPasses = [
-            { zIndex: 0,  fn: (state, viewport) => this.drawRangeIndicator(state, viewport) },
-            { zIndex: 50, fn: (state, viewport) => this.drawPlayerAndTurrets(state, viewport) },
+            { zIndex: 0, fn: (state, viewport) => this.drawRangeIndicator(state, viewport) },
+            {
+                zIndex: 30,
+                fn: (state, viewport) => {
+                    for (const actor of state.getHostileActors()) {
+                        this.drawActorAndTurrets(actor, state, viewport);
+                    }
+                },
+            },
+            {
+                zIndex: 50,
+                fn: (state, viewport) => {
+                    for (const actor of getPlayerActors(state)) {
+                        this.drawActorAndTurrets(actor, state, viewport);
+                    }
+                },
+            },
             { zIndex: 60, fn: (state, viewport) => this.renderExplosions(state, viewport) },
             { zIndex: 70, fn: (state, viewport) => this.render3D.draw3DBuildings(this.ctx, state, viewport) },
             { zIndex: 75, fn: (state, viewport) => this.drawEntityBars(state, viewport) },
@@ -36,8 +52,7 @@ export class Renderer {
         const oldY = state.player.y;
         state.player.x = state.mapPlayerX;
         state.player.y = state.mapPlayerY;
-        state.player.render(this.ctx, this, state);
-        state.player.renderTurretsAt(this.ctx, this, state.mapPlayerX, state.mapPlayerY);
+        this.drawActorAndTurrets(state.player, state, null);
 
         state.player.x = oldX;
         state.player.y = oldY;
@@ -67,9 +82,7 @@ export class Renderer {
 
         if (viewport) viewport.apply(this.ctx);
 
-        if (!this._combatPipeline) {
-            this.buildCombatPipeline(state, viewport);
-        }
+        this.buildCombatPipeline(state, viewport);
 
         for (let i = 0; i < this._combatPipeline.length; i++) {
             this._combatPipeline[i](state, viewport);
@@ -155,21 +168,22 @@ export class Renderer {
         }
     }
 
-    drawPlayerAndTurrets(state, viewport) {
-        state.player.render(this.ctx, this, state);
-        state.player.renderTurrets(this.ctx, this);
+    drawActorAndTurrets(actor, state, viewport) {
+        if (!actor || actor.isDead) return;
+        if (viewport && typeof actor.isVisible === "function" && !actor.isVisible(viewport)) {
+            return;
+        }
+        actor.render(this.ctx, this, state);
+        actor.renderTurrets(this.ctx, this);
     }
 
     drawEntityBars(state, viewport) {
-        for (const enemy of state.enemies) {
-            if (!enemy.isDead) {
-                if (viewport && typeof enemy.isVisible === "function" && !enemy.isVisible(viewport)) {
-                    continue;
-                }
-                enemy.renderStatusBars(this.ctx, this, state);
+        for (const actor of state.getCombatants()) {
+            if (viewport && typeof actor.isVisible === "function" && !actor.isVisible(viewport)) {
+                continue;
             }
+            actor.renderStatusBars(this.ctx, this, state);
         }
-        state.player.renderStatusBars(this.ctx, this, state);
     }
 
     drawTargetMarkers(state, viewport) {
@@ -652,17 +666,11 @@ export class Renderer {
         // 4. Draw Waypoint Paths and navigation debug for entities
         const navigation = state.navigation;
         if (navigation) {
-            for (const enemy of state.enemies) {
-                if (enemy.isDead) continue;
-                const path = navigation.getPath(enemy);
-                this.drawEntityNavigationPath(enemy, path, "#ff007f", "#ff007f");
-                this.drawNavigationDebugLabel(enemy, navigation, "#ff007f");
-            }
-
-            if (state.player) {
-                const path = navigation.getPath(state.player);
-                this.drawEntityNavigationPath(state.player, path, "#00e5ff", "#00e5ff");
-                this.drawNavigationDebugLabel(state.player, navigation, "#00e5ff");
+            for (const actor of state.getCombatants()) {
+                const color = actor.faction === "player" ? "#00e5ff" : "#ff007f";
+                const path = navigation.getPath(actor);
+                this.drawEntityNavigationPath(actor, path, color, color);
+                this.drawNavigationDebugLabel(actor, navigation, color);
             }
         }
 

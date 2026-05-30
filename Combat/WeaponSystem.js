@@ -258,7 +258,7 @@ export class WeaponSystem {
                 }
             }
 
-            const hostiles = source ? getHostiles(state, source) : state.enemies;
+            const hostiles = source ? getHostiles(state, source) : state.getHostileActors();
             for (const e of hostiles) {
                 if (e.isDead) continue;
                 if (CollisionSystem.checkCircle(rayCircle, e)) {

@@ -5,7 +5,7 @@ import { Pools } from "../Core/Pools.js";
 import { getProjectileDamage } from "../Combat/impactDamage.js";
 import { getGunProjectileConfig } from "../Combat/gunCombat.js";
 import { getGunDefinition } from "../Config/gunDefinitions.js";
-import { getHostilesForFaction, getPlayerActors } from "../Combat/Targeting.js";
+import { getHostilesForFaction, getPlayerActors, areHostile } from "../Combat/Targeting.js";
 
 export class Projectile extends Entity {
     static updateAll(state, dt) {
@@ -77,15 +77,20 @@ export class Projectile extends Entity {
 
     getRenderColor() {
         if (!this.gunId) {
-            return this.faction === "enemy" ? "#F44336" : "#FFEB3B";
+            return this.getProjectileColorFallback();
         }
         return getGunProjectileConfig(getGunDefinition(this.gunId)).color;
     }
 
+    getProjectileColorFallback() {
+        return this.faction === "enemy" ? "#F44336" : "#FFEB3B";
+    }
+
     resolveFactionCollisions(state, events, system) {
-        if (this.faction === "player" && state.abilities["Eraser"]) {
+        const eraserOwner = state.player;
+        if (eraserOwner?.canEraseHostileProjectiles?.(state)) {
             for (const ep of state.projectiles) {
-                if (ep.isDead || ep.faction !== "enemy") continue;
+                if (ep.isDead || ep === this || !areHostile(eraserOwner, ep)) continue;
                 if (system.checkCircle(this, ep)) {
                     ep.isDead = true;
                     if (this.penetration > 0) {

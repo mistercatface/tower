@@ -130,7 +130,6 @@ export class GameState {
 
         this.entityLayers = [
             { key: "projectiles", zIndex: 20 },
-            { key: "enemies", zIndex: 30 },
             { key: "activeLasers", zIndex: 35 },
             { key: "floatingTexts", zIndex: 90 },
         ];
@@ -145,35 +144,24 @@ export class GameState {
         return this.player && !this.player.isDead ? [this.player] : [];
     }
 
-    getCombatants() {
-        const combatants = [...this.getPlayerActors()];
-
-        for (const enemy of this.enemies) {
-            if (!enemy.isDead) {
-                combatants.push(enemy);
-            }
-        }
-
-        return combatants;
+    getHostileActors() {
+        return this.enemies.filter((actor) => !actor.isDead);
     }
 
-    updateAllCombatants(dt, spatialHash, { externalSpeedMod = 1.0 } = {}) {
-        const options = { externalSpeedMod };
+    getCombatants() {
+        return [...this.getPlayerActors(), ...this.getHostileActors()];
+    }
 
-        for (const player of this.getPlayerActors()) {
-            player.updateCombat(dt, this, spatialHash, options);
+    updateAllCombatants(dt, spatialHash, options = {}) {
+        for (const actor of this.getCombatants()) {
+            actor.updateCombat(dt, this, spatialHash, {
+                ...options,
+                externalSpeedMod: actor.getExternalSpeedMod(this, options),
+            });
         }
 
         for (let i = this.enemies.length - 1; i >= 0; i--) {
-            const enemy = this.enemies[i];
-            if (enemy.isDead) {
-                this.enemies.splice(i, 1);
-                continue;
-            }
-
-            enemy.updateCombat(dt, this, spatialHash, options);
-
-            if (enemy.isDead) {
+            if (this.enemies[i].isDead) {
                 this.enemies.splice(i, 1);
             }
         }

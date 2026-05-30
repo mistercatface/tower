@@ -195,14 +195,14 @@ export class CollisionSystem {
             }
         }
 
-        // 4. Charging enemies vs hostile actors
-        for (const enemy of state.enemies) {
-            if (enemy.isDead || enemy.attackType !== "charge") continue;
+        // 4. Charging actors vs hostile actors
+        for (const charger of state.getCombatants()) {
+            if (charger.isDead || charger.attackType !== "charge") continue;
 
             for (const target of state.getCombatants()) {
-                if (!areHostile(enemy, target) || target.isDead) continue;
-                if (this.checkCircle(enemy, target)) {
-                    enemy.isDead = true;
+                if (target === charger || target.isDead || !areHostile(charger, target)) continue;
+                if (this.checkCircle(charger, target)) {
+                    charger.isDead = true;
                     events.push({ target, damage: 5 });
                     break;
                 }

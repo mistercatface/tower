@@ -9,6 +9,9 @@ function blastDamage(exp, dist, maxMultiplier, minMultiplier) {
 }
 
 function blastMultipliersFor(actor) {
+    if (typeof actor.getExplosionBlastMultipliers === "function") {
+        return actor.getExplosionBlastMultipliers();
+    }
     return actor.faction === "player" ? [1, 0.5] : [1.6, 0.4];
 }
 

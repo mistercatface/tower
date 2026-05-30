@@ -1,7 +1,6 @@
 import { Actor } from "./Actor.js";
 import { spawnFloatingText } from "../Core/EventSystem.js";
 import { playerBaseStats, NAV_PROFILES, navigationSettings } from "../Config/Config.js";
-import { RenderSprites } from "../Render/RenderSprites.js";
 import { createEntityBars } from "./EntityBars.js";
 
 const playerBars = createEntityBars({
@@ -35,6 +34,7 @@ export class Player extends Actor {
         this.mass = 50.0;
         this.canDamageWalls = true;
         this.startingAbilities = playerBaseStats.startingAbilities || [];
+        this.alwaysRunsTurretCombat = true;
     }
 
     recalculate(state, upgradeDefs, shouldApply = () => true) {
@@ -143,10 +143,6 @@ export class Player extends Actor {
         return this.upgrades["Reposition"] && this.upgrades["Reposition"].level > 0;
     }
 
-    canRunTurretCombat() {
-        return true;
-    }
-
     updateCombat(dt, state, spatialHash, { externalSpeedMod = 1.0 } = {}) {
         const flowFieldGrid = state.flowFieldGrid;
         const walls = state.walls;
@@ -178,13 +174,7 @@ export class Player extends Actor {
         }
     }
 
-    renderStatusBars(ctx, renderer, _state) {
-        super.renderStatusBars(ctx, renderer.playerCache, this.radius + 14);
-    }
-
     render(ctx, renderer, state) {
-        const cache = renderer.playerCache;
-        const cacheKey = `${this.radius}_${this.color}`;
-        this.renderCachedSprite(ctx, cache, cacheKey, RenderSprites.player, this.radius, this.color);
+        this.renderBody(ctx, renderer);
     }
 }

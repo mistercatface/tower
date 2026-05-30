@@ -26,32 +26,31 @@ export function getPlayerActors(state) {
     return state.player && !state.player.isDead ? [state.player] : [];
 }
 
+export function getHostileActors(state) {
+    if (typeof state.getHostileActors === "function") {
+        return state.getHostileActors();
+    }
+    return (state.enemies ?? []).filter((actor) => actor && !actor.isDead);
+}
+
+function getAllCombatants(state) {
+    if (typeof state.getCombatants === "function") {
+        return state.getCombatants();
+    }
+    return [...getPlayerActors(state), ...getHostileActors(state)];
+}
+
 export function getHostiles(state, actor) {
-    const hostiles = [];
+    if (!actor) return [];
 
-    for (const player of getPlayerActors(state)) {
-        if (areHostile(actor, player)) {
-            hostiles.push(player);
-        }
-    }
-
-    for (const enemy of state.enemies) {
-        if (!enemy.isDead && areHostile(actor, enemy)) {
-            hostiles.push(enemy);
-        }
-    }
-
-    return hostiles;
+    return getAllCombatants(state).filter(
+        (other) => other !== actor && !other.isDead && areHostile(actor, other)
+    );
 }
 
 export function getHostilesForFaction(state, faction) {
-    if (faction === "player") {
-        return state.enemies.filter((e) => !e.isDead);
-    }
-    if (faction === "enemy") {
-        return getPlayerActors(state);
-    }
-    return [];
+    const source = { faction, isDead: false, teamId: null };
+    return getAllCombatants(state).filter((other) => !other.isDead && areHostile(source, other));
 }
 
 export function isValidTurretTarget(actor, target, state, range, blocksTargeting, { requireLos = true } = {}) {

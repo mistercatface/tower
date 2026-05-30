@@ -21,6 +21,7 @@ import {
     getTurretCountForLoadout,
     normalizeWeaponLoadout,
 } from "../Combat/equipmentLoadout.js";
+import { RenderSprites } from "../Render/RenderSprites.js";
 import {
     getNearestHostile,
     isValidTurretTarget,
@@ -36,6 +37,7 @@ export class Actor extends DestructibleEntity {
         this.type = type;
         this.faction = type === "player" ? "player" : "enemy";
         this.teamId = null;
+        this.alwaysRunsTurretCombat = false;
         this.accelRate = accelRate;
         this.canDamageWalls = canDamageWalls;
         this.turnSpeed = 10;
@@ -117,10 +119,31 @@ export class Actor extends DestructibleEntity {
     }
 
     canRunTurretCombat() {
+        if (this.alwaysRunsTurretCombat) return true;
         if (this.currentState?.runsTurretCombat != null) {
             return this.currentState.runsTurretCombat;
         }
         return false;
+    }
+
+    getExternalSpeedMod(_state, options = {}) {
+        return options.externalSpeedMod ?? 1;
+    }
+
+    isAbilityOwner(state) {
+        return state?.player === this;
+    }
+
+    getExplosionBlastMultipliers() {
+        return this.faction === "player" ? [1, 0.5] : [1.6, 0.4];
+    }
+
+    getProjectileColorFallback() {
+        return this.faction === "enemy" ? "#F44336" : "#FFEB3B";
+    }
+
+    canEraseHostileProjectiles(state) {
+        return this.isAbilityOwner(state) && !!state.abilities?.["Eraser"];
     }
 
     updateCombat(_dt, _state, _spatialHash, _options = {}) {}
@@ -138,7 +161,7 @@ export class Actor extends DestructibleEntity {
     }
 
     getExternalBlocksTargeting(state, upgrades = []) {
-        if (this.faction !== "player" || !state?.abilities || !state?.scheduler) {
+        if (!this.isAbilityOwner(state) || !state?.abilities || !state?.scheduler) {
             return false;
         }
 
@@ -412,8 +435,32 @@ export class Actor extends DestructibleEntity {
         }
     }
 
-    renderStatusBars(ctx, cache, yOffset) {
-        this.renderBars(ctx, cache, yOffset);
+    getSpriteCache(renderer) {
+        return this.faction === "player" ? renderer.playerCache : renderer.enemyCache;
+    }
+
+    getBodySprite() {
+        return this.faction === "player" ? RenderSprites.player : RenderSprites.enemy;
+    }
+
+    getStatusBarYOffset() {
+        return this.faction === "player" ? this.radius + 14 : 14;
+    }
+
+    renderBody(ctx, renderer) {
+        const cacheKey = `${this.radius}_${this.color}`;
+        this.renderCachedSprite(
+            ctx,
+            this.getSpriteCache(renderer),
+            cacheKey,
+            this.getBodySprite(),
+            this.radius,
+            this.color
+        );
+    }
+
+    renderStatusBars(ctx, renderer, _state) {
+        this.renderBars(ctx, this.getSpriteCache(renderer), this.getStatusBarYOffset());
     }
 
     changeState(stateName, stateDataInit = null) {

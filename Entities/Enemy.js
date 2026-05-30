@@ -1,5 +1,5 @@
 import { Utilities } from "../Core/Utilities.js";
-import { RenderSprites } from "../Render/RenderSprites.js";
+import { areHostile } from "../Combat/Targeting.js";
 import { Actor } from "./Actor.js";
 import { emitCombatEnemyKilled } from "../Core/EventSystem.js";
 import { NAV_PROFILES } from "../Config/Config.js";
@@ -96,7 +96,7 @@ export class Enemy extends Actor {
 
     shouldTriggerDodge(projectiles, flowFieldGrid, scheduler) {
         for (const m of projectiles) {
-            if (m.faction === "enemy") continue;
+            if (!areHostile(this, m)) continue;
 
             const dist = Math.hypot(m.x - this.x, m.y - this.y);
             if (dist < 100 && !m.isDead) {
@@ -144,17 +144,11 @@ export class Enemy extends Actor {
         return false;
     }
 
-    renderStatusBars(ctx, renderer, _state) {
-        super.renderStatusBars(ctx, renderer.enemyCache, 14);
-    }
-
     render(ctx, renderer, state) {
         if (this.currentState && this.currentState.render) {
             this.currentState.render(this, ctx, renderer.enemyCache, renderer.turretCache);
         }
 
-        const cacheKey = `${this.radius}_${this.color}`;
-        this.renderCachedSprite(ctx, renderer.enemyCache, cacheKey, RenderSprites.enemy, this.radius, this.color);
-        this.renderTurrets(ctx, renderer, this.color);
+        this.renderBody(ctx, renderer);
     }
 }
