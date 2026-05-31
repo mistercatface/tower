@@ -111,18 +111,6 @@ export const createUpgrades = () => [
         }
     }),
     new Upgrade({
-        id: "Recovery1",
-        category: "perk",
-        name: "Recovery 1",
-        description: "Recover up to +50% of max health at the end of each sector.",
-        maxLevel: 1,
-        isPerk: true,
-        onSectorEnd: (state) => {
-            const healAmount = state.player.maxHealth * perkSettings.recoverySectorHealRatio;
-            state.player.heal(healAmount);
-        }
-    }),
-    new Upgrade({
         id: "Regenerate1",
         category: "perk",
         name: "Regenerate 1",

@@ -124,7 +124,7 @@ export function registerGameListeners(eventBus, pauseManager) {
 
     eventBus.on(Events.MAP_REQUEST_TRAVEL, ({ state, fsm, nodeId }) => {
         state.mapTargetNodeId = nodeId;
-        fsm.transition("map_transition");
+        fsm.transition("combat");
     });
 
     eventBus.on(Events.MAP_CONTINUE_AFTER_SECTOR, ({ state, viewport }) => {

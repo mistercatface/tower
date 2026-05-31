@@ -13,7 +13,7 @@ import { DeathPiece } from "../Entities/DeathPiece.js";
 import { findInspectablePickup } from "../Render/Inspector/InspectRegistry.js";
 import { propInspector } from "../Render/Inspector/PropInspector.js";
 
-const MAP_TRANSITION_SPEED = 5.0;
+const MAP_TRAVEL_SPEED = 5.0;
 
 function runPushablePhysics(state, dt, spatialFrame) {
     ProgressionManager.updatePickups(state, dt, spatialFrame);
@@ -26,6 +26,56 @@ function runPushablePhysics(state, dt, spatialFrame) {
         }
     }
     return events;
+}
+
+function runPersistentSectorEnter(state) {
+    const persistentEntities = [];
+    if (state.sidekick) persistentEntities.push(state.sidekick);
+    persistentEntities.push(...state.pickups);
+
+    for (const entity of persistentEntities) {
+        if (typeof entity.onSectorEnter === "function") {
+            entity.onSectorEnter(state);
+        }
+    }
+}
+
+function beginMapTravel(ctx) {
+    const targetNode = ctx.state.getMapTargetNode();
+    if (!targetNode) return;
+
+    ctx.state.player.stopMovement(ctx.state);
+    const targetCoords = ctx.state.getNodeCombatCoords(targetNode);
+    ctx.state.player.setTarget(targetCoords.x, targetCoords.y, ctx.state);
+    ctx.state.flowFieldGrid.shiftCenter(
+        ctx.state.player.x,
+        ctx.state.player.y,
+        ctx.state.player.x,
+        ctx.state.player.y,
+        targetCoords.x,
+        targetCoords.y,
+    );
+    requestUiUpdate();
+}
+
+function completeMapTravel(ctx) {
+    const targetNode = ctx.state.getMapTargetNode();
+    if (!targetNode) return false;
+
+    const targetCoords = ctx.state.getNodeCombatCoords(targetNode);
+    const dist = Math.hypot(ctx.state.player.x - targetCoords.x, ctx.state.player.y - targetCoords.y);
+    if (dist >= 9.0) return false;
+
+    ctx.state.currentNodeId = targetNode.id;
+    ctx.state.mapPlayerX = targetNode.x;
+    ctx.state.mapPlayerY = targetNode.y;
+    ctx.state.mapTargetNodeId = null;
+    ctx.state.player.stopMovement(ctx.state);
+    ctx.state.waveManager.startCombat();
+    ctx.state.player.resetTurretCombatState();
+    runPersistentSectorEnter(ctx.state);
+    requestUiUpdate();
+    return true;
 }
 
 export class MapState {
@@ -55,59 +105,13 @@ export class MapState {
     }
 }
 
-export class MapTransitionState {
-    onEnter(ctx) {
-        const targetNode = ctx.state.getMapTargetNode();
-        ctx.state.player.stopMovement(ctx.state);
-        const targetCoords = ctx.state.getNodeCombatCoords(targetNode);
-        ctx.state.player.setTarget(targetCoords.x, targetCoords.y, ctx.state);
-        ctx.state.flowFieldGrid.shiftCenter(ctx.state.player.x, ctx.state.player.y, ctx.state.player.x, ctx.state.player.y, targetCoords.x, targetCoords.y);
-        requestUiUpdate();
-    }
-
-    update(dt, ctx) {
-        const speedUpDt = dt * MAP_TRANSITION_SPEED;
-        const spatialFrame = combatSpatial.begin(ctx.state);
-
-        const oldGridPos = ctx.state.flowFieldGrid.worldToGrid(ctx.state.player.x, ctx.state.player.y);
-        ctx.state.updateAllCombatants(speedUpDt, spatialFrame, { blocksTargeting: true, upgrades: ctx.upgrades });
-        runPushablePhysics(ctx.state, speedUpDt, spatialFrame);
-        ctx.state.navigation.updateFlowField({
-            playerX: ctx.state.player.x,
-            playerY: ctx.state.player.y,
-            playerTargetX: ctx.state.player.targetX,
-            playerTargetY: ctx.state.player.targetY,
-            previousGridPos: oldGridPos,
-        });
-
-        const targetNode = ctx.state.getMapTargetNode();
-        if (targetNode) {
-            const targetCoords = ctx.state.getNodeCombatCoords(targetNode);
-            const dist = Math.hypot(ctx.state.player.x - targetCoords.x, ctx.state.player.y - targetCoords.y);
-            if (dist < 9.0) {
-                ctx.state.currentNodeId = targetNode.id;
-                ctx.state.mapPlayerX = targetNode.x;
-                ctx.state.mapPlayerY = targetNode.y;
-                ctx.state.isTransitioningFromTravel = true;
-                ctx.fsm.transition("combat");
-                return;
-            }
-        }
-
-        FloatingText.updateAll(ctx.state, speedUpDt);
-    }
-
-    render(ctx) {
-        ctx.viewport.updateZoomLimits(ctx.state);
-        ctx.viewport.follow(ctx.state.player.x, ctx.state.player.y);
-        ctx.renderer.renderCombatScene(ctx.state, ctx.viewport);
-    }
-
-    handleInteraction(worldCoords, isDoubleTap, ctx) {}
-}
-
 export class CombatState {
     onEnter(ctx) {
+        if (ctx.state.mapTargetNodeId != null) {
+            beginMapTravel(ctx);
+            return;
+        }
+
         if (ctx.state.projectiles) {
             for (let i = 0; i < ctx.state.projectiles.length; i++) {
                 Pools.projectiles.release(ctx.state.projectiles[i]);
@@ -123,40 +127,33 @@ export class CombatState {
         const currentNode = ctx.state.getCurrentMapNode();
         const combatCoords = ctx.state.getNodeCombatCoords(currentNode);
 
-        if (ctx.state.isTransitioningFromTravel) {
-            ctx.state.isTransitioningFromTravel = false;
-            ctx.state.player.stopMovement(ctx.state);
-        } else {
-            ctx.state.player.setSpawnPosition(combatCoords.x, combatCoords.y);
-            ctx.state.player.resetToSpawn();
-        }
+        ctx.state.player.setSpawnPosition(combatCoords.x, combatCoords.y);
+        ctx.state.player.resetToSpawn();
 
         ctx.state.waveManager.startCombat();
         ctx.state.player.resetTurretCombatState();
-
-        const persistentEntities = [];
-        if (ctx.state.sidekick) persistentEntities.push(ctx.state.sidekick);
-        persistentEntities.push(...ctx.state.pickups);
-
-        for (const entity of persistentEntities) {
-            if (typeof entity.onSectorEnter === "function") {
-                entity.onSectorEnter(ctx.state);
-            }
-        }
+        runPersistentSectorEnter(ctx.state);
 
         requestUiUpdate();
     }
 
     update(dt, ctx) {
-        const abilityState = ProgressionManager.updateAbilities(ctx.state, dt, ctx.upgrades);
-        if (!abilityState.isDiving && ctx.state.player.applyQueuedTarget(ctx.state)) {
+        const isTraveling = ctx.state.mapTargetNodeId != null;
+        const stepDt = isTraveling ? dt * MAP_TRAVEL_SPEED : dt;
+
+        const abilityState = ProgressionManager.updateAbilities(ctx.state, stepDt, ctx.upgrades);
+
+        if (!isTraveling && !abilityState.isDiving && ctx.state.player.applyQueuedTarget(ctx.state)) {
             ctx.state.navigation.rebuildPlayerFlowField(ctx.state.player.targetX, ctx.state.player.targetY);
         }
 
         const spatialFrame = combatSpatial.begin(ctx.state);
 
         const oldGridPos = ctx.state.flowFieldGrid.worldToGrid(ctx.state.player.x, ctx.state.player.y);
-        const combatEvents = ctx.state.updateAllCombatants(dt, spatialFrame, { externalSpeedMod: abilityState.externalSpeedMod, upgrades: ctx.upgrades });
+        const combatEvents = ctx.state.updateAllCombatants(stepDt, spatialFrame, {
+            externalSpeedMod: abilityState.externalSpeedMod,
+            upgrades: ctx.upgrades,
+        });
         ctx.state.navigation.updateFlowField({
             playerX: ctx.state.player.x,
             playerY: ctx.state.player.y,
@@ -165,13 +162,13 @@ export class CombatState {
             previousGridPos: oldGridPos,
         });
 
-        ctx.state.waveManager.manageSpawning(dt, ctx.state, ctx.upgrades, ctx.viewport);
-        Projectile.updateAll(ctx.state, dt);
-        DeathPiece.updateAll(ctx.state, dt, spatialFrame);
-        const collisionEvents = runPushablePhysics(ctx.state, dt, spatialFrame);
+        ctx.state.waveManager.manageSpawning(stepDt, ctx.state, ctx.upgrades, ctx.viewport);
+        Projectile.updateAll(ctx.state, stepDt);
+        DeathPiece.updateAll(ctx.state, stepDt, spatialFrame);
+        const collisionEvents = runPushablePhysics(ctx.state, stepDt, spatialFrame);
         const allEvents = [...combatEvents, ...collisionEvents];
 
-        Explosion.updateAll(ctx.state, dt, allEvents, spatialFrame);
+        Explosion.updateAll(ctx.state, stepDt, allEvents, spatialFrame);
 
         for (const event of allEvents) {
             if (event.target && event.target.handleHit) {
@@ -179,9 +176,13 @@ export class CombatState {
             }
         }
 
-        FloatingText.updateAll(ctx.state, dt);
-        ctx.upgrades.forEach((upg) => upg.update(dt, ctx.state));
+        FloatingText.updateAll(ctx.state, stepDt);
+        ctx.upgrades.forEach((upg) => upg.update(stepDt, ctx.state));
         ProgressionManager.processLevelUps(ctx.state, ctx.upgrades);
+
+        if (isTraveling) {
+            completeMapTravel(ctx);
+        }
     }
 
     render(ctx) {
@@ -191,6 +192,7 @@ export class CombatState {
     }
 
     handleInteraction(worldCoords, isDoubleTap, ctx) {
+        if (ctx.state.mapTargetNodeId != null) return;
         if (propInspector.isOpen()) return;
         if (ctx.state.player.currentState && ctx.state.player.currentState.blocksInput) return;
 

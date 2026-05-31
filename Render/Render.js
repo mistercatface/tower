@@ -1,14 +1,13 @@
 import { SpriteCache } from "./SpriteCache.js";
 import { Render3D } from "./3D/Render3D.js";
 import { combatVisualSettings, createFloorFillStyle, mapSettings } from "../Config/Config.js";
-import { getWorldDrawCoords, isMapTransition, isWorldScene } from "../GameState/GamePhase.js";
+import { getWorldDrawCoords, isMapTraveling, isWorldScene } from "../GameState/GamePhase.js";
 import { getPlayerActors } from "../Combat/Targeting.js";
 
 export class Renderer {
     constructor(canvas, ctx) {
         this.canvas = canvas;
         this.ctx = ctx;
-
         this.actorCache = new SpriteCache();
         this.missileCache = new SpriteCache();
         this.turretCache = new SpriteCache();
@@ -38,7 +37,6 @@ export class Renderer {
             { zIndex: 80, fn: (state, viewport) => this.drawVisibilityMask(this.ctx, state, viewport) },
             { zIndex: 85, fn: (state, viewport) => this.drawTargetMarkers(state, viewport) },
         ];
-
     }
 
     renderMapScene(state, viewport) {
@@ -61,14 +59,11 @@ export class Renderer {
     }
 
     buildCombatPipeline(state, viewport) {
-        const entityPasses = state.entityLayers.map(layer => ({
-            zIndex: layer.zIndex,
-            fn: (state, viewport) => this.renderEntityCollection(state[layer.key], state, viewport)
-        }));
+        const entityPasses = state.entityLayers.map((layer) => ({ zIndex: layer.zIndex, fn: (state, viewport) => this.renderEntityCollection(state[layer.key], state, viewport) }));
 
         const pipeline = [...this.effectPasses, ...entityPasses];
         pipeline.sort((a, b) => a.zIndex - b.zIndex);
-        this._combatPipeline = pipeline.map(p => p.fn);
+        this._combatPipeline = pipeline.map((p) => p.fn);
     }
 
     renderCombatScene(state, viewport) {
@@ -87,7 +82,7 @@ export class Renderer {
             this._combatPipeline[i](state, viewport);
         }
 
-        if (isMapTransition(state.phase)) {
+        if (isMapTraveling(state)) {
             this.drawTransitionGuides(state);
         }
 
@@ -109,10 +104,6 @@ export class Renderer {
 
         const coordsA = state.getNodeCombatCoords(prevNode);
         const coordsB = state.getNodeCombatCoords(targetNode);
-
-
-
-
 
         const dx = coordsB.x - state.player.x;
         const dy = coordsB.y - state.player.y;
@@ -346,7 +337,6 @@ export class Renderer {
         }
     }
 
-
     drawOscilloscopeGrid(state, viewport) {
         const R = viewport.getVisualRadius();
         const cx = viewport.cx;
@@ -357,7 +347,7 @@ export class Renderer {
         this.ctx.strokeStyle = combatVisualSettings.gridStroke;
         this.ctx.lineWidth = 1.0;
 
-        const gridSpacing = 40; 
+        const gridSpacing = 40;
         const worldRadius = R / zoom;
 
         const minX = viewport.x - worldRadius * 1.57;
@@ -385,11 +375,7 @@ export class Renderer {
             const curvatureStrength = 0.45;
             const r = d * (1 - curvatureStrength) + rDome * curvatureStrength;
 
-            return {
-                x: cx + (dx / d) * r,
-                y: cy + (dy / d) * r,
-                visible: true
-            };
+            return { x: cx + (dx / d) * r, y: cy + (dy / d) * r, visible: true };
         };
 
         for (let x = startX; x <= endX; x += gridSpacing) {
@@ -432,7 +418,6 @@ export class Renderer {
 
         this.ctx.restore();
     }
-
 
     drawGlobeOverlay(state, viewport) {
         if (!viewport) return;
@@ -486,7 +471,7 @@ export class Renderer {
         for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 18) {
             const cos = Math.cos(angle);
             const sin = Math.sin(angle);
-            const isMajor = (angle % (Math.PI / 2) === 0);
+            const isMajor = angle % (Math.PI / 2) === 0;
             const length = isMajor ? 8 : 4;
             if (isMajor) {
                 this.ctx.strokeStyle = "rgba(0, 229, 255, 0.6)";

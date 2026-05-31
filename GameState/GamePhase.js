@@ -1,6 +1,5 @@
 export const GamePhase = {
     MAP: "map",
-    MAP_TRANSITION: "map_transition",
     COMBAT: "combat",
     REWARD: "reward",
 };
@@ -8,15 +7,18 @@ export const GamePhase = {
 const WORLD_SCENES = new Set([
     GamePhase.COMBAT,
     GamePhase.REWARD,
-    GamePhase.MAP_TRANSITION,
 ]);
 
 export function isWorldScene(phase) {
     return WORLD_SCENES.has(phase);
 }
 
-export function isMapTransition(phase) {
-    return phase === GamePhase.MAP_TRANSITION;
+export function isMapTraveling(state) {
+    return state.mapTargetNodeId != null;
+}
+
+export function isMapTransition(state) {
+    return isMapTraveling(state);
 }
 
 export function isCombatOrReward(phase) {
