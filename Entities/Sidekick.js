@@ -1,6 +1,6 @@
 import { Actor } from "./Actor.js";
 import { NAV_PROFILES, navigationSettings, sidekickBaseStats } from "../Config/Config.js";
-import { defaultGunId } from "../Config/gunDefinitions.js";
+import { barryStartGunId } from "../Config/gunDefinitions.js";
 import { createEntityBars } from "./EntityBars.js";
 
 const sidekickBars = createEntityBars({ healthWidth: 40, healthHeight: 4, healthBorderRadius: 2 });
@@ -12,7 +12,7 @@ export class Sidekick extends Actor {
 
     static create(x, y, radius) {
         const sidekick = new Sidekick(x, y, radius);
-        sidekick.applyWeaponLoadout([defaultGunId]);
+        sidekick.applyWeaponLoadout([barryStartGunId]);
         sidekick.health = sidekick.maxHealth;
         return sidekick;
     }

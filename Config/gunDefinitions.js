@@ -3,6 +3,8 @@ import { Handedness } from "./equipmentConfig.js";
 
 export const defaultGunId = "servicePistol";
 export const defaultEnemyGunId = "enemyRifle";
+/** Barry (run sidekick) always starts with this weapon. */
+export const barryStartGunId = "tommyGun";
 
 /** Random equipment pools (1 slot). Enemies never roll beamLaser. */
 export const playerStartGunPool = ["servicePistol", "shotgun", "sawedOffShotgun", "tommyGun"];

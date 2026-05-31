@@ -46,8 +46,8 @@ export const radioConversations = {
             { speakerId: "barry", text: "Who knows? With these liminal spaces it could be literally infinite. It's always the sketchiest people setting up shop in these abandoned oatlinks." },
             { speakerId: "brock", text: "Well, he has to be around here somewhere. They say he never leaves his cave, and his goons are all over the place." },
             { speakerId: "barry", text: "Okay, let's move. And keep your headset on, they might put something on the loudspeakers to uh, try to hypnotize us." },
-            { speakerId: "brock", text: "Hypnotize us? Barry, just how much do you really know about what's going on here?" },
-            { speakerId: "barry", text: "That's on a need to know basis, rookie." },
+            { speakerId: "brock", text: "Hypnotize us? That wasn't mentioned in the mission brief." },
+            { speakerId: "barry", text: "I decided it was on a need to know basis, rookie." },
         ],
     },
     inspect_wood_crate_barry_brock: {
