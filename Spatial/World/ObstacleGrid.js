@@ -1,10 +1,6 @@
 import { colRowToIndex } from "../Grid/GridUtils.js";
-import { pointToSegmentPaddingDistanceSq } from "../Geometry/WallGeometry.js";
+import { pointToSegmentPaddingDistanceSq, getWallReach } from "../Geometry/WallGeometry.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsToWorldBounds } from "../Geometry/GridCoords.js";
-
-export function getWallReach(wall, padding = wall.padding) {
-    return wall.size / 2 * Math.SQRT2 + padding;
-}
 
 export function getWallCellBounds(wall, worldToGrid, cols, rows, padding = wall.padding) {
     const reach = getWallReach(wall, padding);

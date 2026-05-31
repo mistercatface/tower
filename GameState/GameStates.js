@@ -136,7 +136,7 @@ export class CombatState {
     update(dt, ctx) {
         const abilityState = ProgressionManager.updateAbilities(ctx.state, dt, ctx.upgrades);
         if (!abilityState.isDiving && ctx.state.player.applyQueuedTarget(ctx.state)) {
-            ctx.state.flowFieldGrid.buildPlayerFlowField(ctx.state.player.targetX, ctx.state.player.targetY);
+            ctx.state.navigation.rebuildPlayerFlowField(ctx.state.player.targetX, ctx.state.player.targetY);
         }
 
         const spatialHash = this.spatialHash;
@@ -211,7 +211,7 @@ export class CombatState {
                     ctx.state.player.queueTarget(target.x, target.y, gridPos);
                 } else {
                     ctx.state.player.setTarget(target.x, target.y, ctx.state, gridPos);
-                    ctx.state.flowFieldGrid.buildPlayerFlowField(target.x, target.y);
+                    ctx.state.navigation.rebuildPlayerFlowField(target.x, target.y);
                     if (isDoubleTap) {
                         ctx.upgrades
                             .filter((u) => u.isAbility && u.triggerType === "double_tap_move" && ctx.state.abilities[u.id])

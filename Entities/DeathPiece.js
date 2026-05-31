@@ -1,5 +1,6 @@
 import { Entity } from "./Entity.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
+import { wallContextFromState } from "../Spatial/World/WallContext.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
 
 export class DeathPiece extends Entity {
@@ -59,7 +60,7 @@ export class DeathPiece extends Entity {
         this.vy *= dragFactor;
 
         // Wall collisions
-        PhysicsSystem.resolveWallCollisions(this, state.walls, state);
+        PhysicsSystem.resolveWallCollisions(this, wallContextFromState(state), state);
 
         // Fade out
         this.lifetime -= dt;

@@ -1,5 +1,5 @@
 import { DestructibleEntity } from "./Entity.js";
-import { getWallReach } from "../Spatial/World/ObstacleGrid.js";
+import { getWallReach } from "../Spatial/Geometry/WallGeometry.js";
 
 export class Segment extends DestructibleEntity {
     constructor(x, y, angle, size, padding = 10, maxHealth = 30, health = 30, isDead = false) {

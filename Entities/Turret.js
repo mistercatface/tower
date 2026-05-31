@@ -1,4 +1,4 @@
-import { Utilities } from "../Core/Utilities.js";
+import { normalizeAngle } from "../Math/Angle.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
 import { defaultGunId, getGunDefinition } from "../Config/gunDefinitions.js";
 import { defaultTurretLoadout, resolveFireAngleOffsets } from "../Config/turretLoadoutPresets.js";
@@ -18,7 +18,7 @@ const PLAYER_TURRET_GHOST_TRAIL = {
 
 export class Turret {
     constructor(angle, turnSpeed, loadout = defaultTurretLoadout) {
-        this.angle = Utilities.normalizeAngle(angle);
+        this.angle = normalizeAngle(angle);
         this.turnSpeed = turnSpeed;
         this.loadout = {
             radiusMultiplier: loadout.radiusMultiplier,

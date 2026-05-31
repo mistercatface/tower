@@ -1,5 +1,6 @@
-import { Utilities } from "../../Core/Utilities.js";
+import { normalizeAngle } from "../../Math/Angle.js";
 import { getCircleSegmentPenetration } from "../Geometry/WallGeometry.js";
+import { getNearbyWalls } from "../World/WallContext.js";
 
 export class PhysicsSystem {
     static applyMovement(entity, dt, ignoreSeparation = false, shouldMove = true, alignAngleWithMovement = true) {
@@ -15,7 +16,7 @@ export class PhysicsSystem {
         if (alignAngleWithMovement && len > 0) {
             const targetAngle = Math.atan2(finalY, finalX);
             let angleDiff = targetAngle - entity.angle;
-            angleDiff = Utilities.normalizeAngle(angleDiff);
+            angleDiff = normalizeAngle(angleDiff);
             entity.angle += angleDiff * Math.min(1, entity.turnSpeed * (dt / 1000));
         }
 
@@ -35,15 +36,10 @@ export class PhysicsSystem {
         }
     }
 
-    static resolveWallCollisions(entity, segments, state = null) {
-        if (!segments) return false;
+    static resolveWallCollisions(entity, wallCtx, state = null) {
+        if (!wallCtx) return false;
 
-        let candidateWalls = segments;
-        if (segments.spatialHash) {
-            candidateWalls = segments.spatialHash.getNearby(entity);
-        } else if (segments.obstacleGrid) {
-            candidateWalls = segments.obstacleGrid.getNearbySegments(entity);
-        }
+        const candidateWalls = getNearbyWalls(entity, wallCtx);
 
         let collided = false;
         for (let i = 0; i < 2; i++) {

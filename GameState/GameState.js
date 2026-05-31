@@ -127,7 +127,6 @@ export class GameState {
         this.projectiles = [];
         this.floatingTexts = [];
         this.walls = [];
-        this.walls.spatialHash = this.wallSpatialHash;
         this.pickups = [];
         this.activeLasers = [];
         this.deathPieces = [];

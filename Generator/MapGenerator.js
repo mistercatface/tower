@@ -143,7 +143,6 @@ export class MapGenerator {
         MapGenerator.pregenerateAllCombatData(state);
 
         state.walls = [];
-        state.walls.spatialHash = state.wallSpatialHash;
         state.wallSpatialHash.clear();
         for (const node of state.mapNodes) {
             if (node.wallsData) {
@@ -155,7 +154,6 @@ export class MapGenerator {
                 }
             }
         }
-        state.walls.obstacleGrid = state.obstacleGrid;
         state.obstacleGrid.rebuild(state.walls);
         state.hierarchicalNavigator.initialize();
     }

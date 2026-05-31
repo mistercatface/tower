@@ -1,4 +1,5 @@
 import { Utilities } from "../Core/Utilities.js";
+import { wallContextFromState } from "../Spatial/World/WallContext.js";
 
 let nextEntityId = 1;
 
@@ -49,22 +50,22 @@ export class Entity {
         return cachedSprite;
     }
 
-    resolveWalls(stateOrWalls) {
+    resolveWallContext(stateOrWalls) {
         if (!stateOrWalls) return null;
-        if (stateOrWalls.walls) return stateOrWalls.walls;
-        return stateOrWalls;
+        if (stateOrWalls.walls) return wallContextFromState(stateOrWalls);
+        return { walls: stateOrWalls, spatialHash: null, obstacleGrid: null };
     }
 
     hasLineOfSightFromPoint(x, y, stateOrWalls, { sourceRadius = 0 } = {}) {
-        const walls = this.resolveWalls(stateOrWalls);
-        if (!walls) return true;
+        const wallCtx = this.resolveWallContext(stateOrWalls);
+        if (!wallCtx) return true;
 
         return Utilities.hasLineOfSight(
             x,
             y,
             this.x,
             this.y,
-            walls,
+            wallCtx,
             sourceRadius,
             this.radius ?? 0
         );

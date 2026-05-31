@@ -161,7 +161,7 @@ export class Player extends Actor {
             this.desiredY = 0;
         }
 
-        this.applyLocomotion(dt, walls, spatialHash, { externalSpeedMod: options.externalSpeedMod ?? 1.0, state });
+        this.applyLocomotion(dt, spatialHash, { externalSpeedMod: options.externalSpeedMod ?? 1.0, state });
         this.updateTurretCombat(dt, state, options);
     }
 

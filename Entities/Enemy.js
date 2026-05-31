@@ -1,4 +1,4 @@
-import { Utilities } from "../Core/Utilities.js";
+import { normalizeAngle } from "../Math/Angle.js";
 import { areHostile } from "../Combat/Targeting.js";
 import { Actor } from "./Actor.js";
 import { emitCombatEnemyKilled } from "../Core/EventSystem.js";
@@ -58,7 +58,7 @@ export class Enemy extends Actor {
         if (!target) {
             this.desiredX = 0;
             this.desiredY = 0;
-            this.applyLocomotion(dt, state.walls, spatialHash, { state, ignoreSeparationInDesired: true });
+            this.applyLocomotion(dt, spatialHash, { state, ignoreSeparationInDesired: true });
             this.updateTurretCombat(dt, state, options);
             return;
         }
@@ -79,7 +79,7 @@ export class Enemy extends Actor {
             if (dist < 100 && !m.isDead) {
                 const angleToEnemy = Math.atan2(this.y - m.y, this.x - m.x);
                 let angleDiff = angleToEnemy - m.angle;
-                angleDiff = Utilities.normalizeAngle(angleDiff);
+                angleDiff = normalizeAngle(angleDiff);
 
                 if (Math.abs(angleDiff) < 0.5) {
                     if (Math.random() < 0.5) {

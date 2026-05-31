@@ -2,6 +2,7 @@ import { DestructibleEntity } from "./Entity.js";
 import { DeathPiece } from "./DeathPiece.js";
 import { Separation } from "../Spatial/Motion/Separation.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
+import { wallContextFromState } from "../Spatial/World/WallContext.js";
 import { actorStates } from "./ActorStates.js";
 import { transitionEntity } from "./EntityFsm.js";
 import {
@@ -201,30 +202,30 @@ export class Actor extends DestructibleEntity {
     hasLineOfSightTo(other, stateOrWalls) {
         if (!other) return false;
 
-        const walls = this.resolveWalls(stateOrWalls);
-        if (!walls) return true;
+        const wallCtx = this.resolveWallContext(stateOrWalls);
+        if (!wallCtx) return true;
 
         return Utilities.hasLineOfSight(
             this.x,
             this.y,
             other.x,
             other.y,
-            walls,
+            wallCtx,
             this.radius,
             other.radius ?? 0
         );
     }
 
     hasLineOfSightToPoint(x, y, stateOrWalls, { targetRadius = 0 } = {}) {
-        const walls = this.resolveWalls(stateOrWalls);
-        if (!walls) return true;
+        const wallCtx = this.resolveWallContext(stateOrWalls);
+        if (!wallCtx) return true;
 
         return Utilities.hasLineOfSight(
             this.x,
             this.y,
             x,
             y,
-            walls,
+            wallCtx,
             this.radius,
             targetRadius
         );
@@ -818,7 +819,7 @@ export class Actor extends DestructibleEntity {
         return false;
     }
 
-    applyLocomotion(dt, walls, spatialHash, {
+    applyLocomotion(dt, spatialHash, {
         state = null,
         externalSpeedMod = 1,
         ignoreSeparationInDesired = false,
@@ -834,7 +835,7 @@ export class Actor extends DestructibleEntity {
         if (externalSpeedMod !== 1) {
             this.speed = baseSpeed;
         }
-        PhysicsSystem.resolveWallCollisions(this, walls, state);
+        PhysicsSystem.resolveWallCollisions(this, wallContextFromState(state), state);
     }
 
     getVelocityMagnitude() {

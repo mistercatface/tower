@@ -138,6 +138,11 @@ export class NavigationService {
         this.obstacleGeneration += 1;
     }
 
+    rebuildPlayerFlowField(targetX, targetY) {
+        this.flowFieldGrid.syncLocalObstacles();
+        this.flowFieldGrid.buildPlayerFlowField(targetX, targetY);
+    }
+
     _setDebug(entity, info) {
         this.debugByEntity.set(entity, info);
     }

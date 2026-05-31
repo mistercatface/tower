@@ -1,8 +1,10 @@
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { GhostTrail } from "../Render/GhostTrail.js";
+import { turnAngleTowards } from "../Math/Angle.js";
 import { Utilities } from "../Core/Utilities.js";
 import { CollisionSystem } from "../Spatial/Collision/CollisionSystem.js";
-function analyzeStrafePath(enemy, tangentX, tangentY, dir, walls, target) {
+import { wallContextFromState } from "../Spatial/World/WallContext.js";
+function analyzeStrafePath(enemy, tangentX, tangentY, dir, walls, target, state) {
     const stepSize = 10;
     const maxSteps = 12;
     let walkableDist = 0;
@@ -29,7 +31,7 @@ function analyzeStrafePath(enemy, tangentX, tangentY, dir, walls, target) {
 
         walkableDist = dist;
 
-        const hasLOS = target.hasLineOfSightFromPoint(tx, ty, walls, { sourceRadius: enemy.radius });
+        const hasLOS = target.hasLineOfSightFromPoint(tx, ty, state, { sourceRadius: enemy.radius });
         if (!hasLOS && coverDist === -1) {
             coverDist = dist;
         }
@@ -70,7 +72,7 @@ export class EnemyNavigatingState {
         }
 
         enemy.calculateSteering(target, state);
-        enemy.applyLocomotion(dt, walls, spatialHash, { state, ignoreSeparationInDesired: true });
+        enemy.applyLocomotion(dt, spatialHash, { state, ignoreSeparationInDesired: true });
 
         return false;
     }
@@ -128,9 +130,9 @@ export class EnemyEngagedState {
                 stateData.strafeTimerId = scheduler.schedule(8000 + Math.random() * 8000);
             }
 
-            const currentPath = analyzeStrafePath(enemy, tangentX, tangentY, stateData.strafeDir, walls, target);
+            const currentPath = analyzeStrafePath(enemy, tangentX, tangentY, stateData.strafeDir, walls, target, state);
             if (currentPath.walkableDist < 45) {
-                const oppositePath = analyzeStrafePath(enemy, tangentX, tangentY, -stateData.strafeDir, walls, target);
+                const oppositePath = analyzeStrafePath(enemy, tangentX, tangentY, -stateData.strafeDir, walls, target, state);
                 if (oppositePath.walkableDist > currentPath.walkableDist) {
                     stateData.strafeDir *= -1;
                     stateData.strafeTimerId = scheduler.schedule(8000 + Math.random() * 8000);
@@ -138,7 +140,7 @@ export class EnemyEngagedState {
             }
 
             if (scheduler.getTimeRemaining(stateData.strafeTimerId) <= 0) {
-                const oppositePath = analyzeStrafePath(enemy, tangentX, tangentY, -stateData.strafeDir, walls, target);
+                const oppositePath = analyzeStrafePath(enemy, tangentX, tangentY, -stateData.strafeDir, walls, target, state);
                 if (oppositePath.walkableDist > 50) {
                     stateData.strafeDir *= -1;
                 }
@@ -157,7 +159,7 @@ export class EnemyEngagedState {
 
             enemy.separation.update(enemy, spatialHash);
             PhysicsSystem.applyMovement(enemy, dt, true, true, false);
-            PhysicsSystem.resolveWallCollisions(enemy, walls, state);
+            PhysicsSystem.resolveWallCollisions(enemy, wallContextFromState(state), state);
         } else {
             if (stateData.linearStrafeState === undefined) {
                 stateData.linearStrafeState = "idle";
@@ -167,8 +169,8 @@ export class EnemyEngagedState {
             }
 
             if (scheduler.getTimeRemaining(stateData.linearStrafeTimerId) <= 0) {
-                const leftPath = analyzeStrafePath(enemy, tangentX, tangentY, 1, walls, target);
-                const rightPath = analyzeStrafePath(enemy, tangentX, tangentY, -1, walls, target);
+                const leftPath = analyzeStrafePath(enemy, tangentX, tangentY, 1, walls, target, state);
+                const rightPath = analyzeStrafePath(enemy, tangentX, tangentY, -1, walls, target, state);
 
                 if (hasLOS) {
                     const hasLeftCover = leftPath.coverDist !== -1 && leftPath.coverDist <= leftPath.walkableDist;
@@ -225,7 +227,7 @@ export class EnemyEngagedState {
             enemy.separation.update(enemy, spatialHash);
             PhysicsSystem.applyMovement(enemy, dt, false, true, false);
 
-            const hitWall = PhysicsSystem.resolveWallCollisions(enemy, walls, state);
+            const hitWall = PhysicsSystem.resolveWallCollisions(enemy, wallContextFromState(state), state);
             if (hitWall) {
                 stateData.strafeDir *= -1;
                 stateData.linearStrafeState = "idle";
@@ -234,7 +236,7 @@ export class EnemyEngagedState {
         }
 
         const angleToTarget = Math.atan2(-dy, -dx);
-        enemy.angle = Utilities.turnAngleTowards(enemy.angle, angleToTarget, enemy.turnSpeed, dt);
+        enemy.angle = turnAngleTowards(enemy.angle, angleToTarget, enemy.turnSpeed, dt);
 
         return false;
     }
@@ -264,7 +266,7 @@ export class EnemyChargePrepareState {
 
         enemy.separation.update(enemy, spatialHash);
         PhysicsSystem.applyMovement(enemy, dt, false, true);
-        PhysicsSystem.resolveWallCollisions(enemy, walls, state);
+        PhysicsSystem.resolveWallCollisions(enemy, wallContextFromState(state), state);
 
         const isStable = Math.hypot(enemy.vx, enemy.vy) < enemy.speed * 0.6;
         
@@ -296,12 +298,12 @@ export class EnemyChargeWindupState {
         enemy.desiredX = 0;
         enemy.desiredY = 0;
         PhysicsSystem.applyMovement(enemy, dt, true, true);
-        PhysicsSystem.resolveWallCollisions(enemy, walls, state);
+        PhysicsSystem.resolveWallCollisions(enemy, wallContextFromState(state), state);
 
         const dx = target.x - enemy.x;
         const dy = target.y - enemy.y;
         const angleToTarget = Math.atan2(dy, dx);
-        enemy.angle = Utilities.turnAngleTowards(enemy.angle, angleToTarget, enemy.turnSpeed * 1.5, dt);
+        enemy.angle = turnAngleTowards(enemy.angle, angleToTarget, enemy.turnSpeed * 1.5, dt);
 
         const stateData = enemy.stateData;
         stateData.timer -= dt;
@@ -339,7 +341,7 @@ export class EnemyChargeDashState {
         enemy.speed = originalSpeed;
         enemy.accelRate = originalAccel;
 
-        PhysicsSystem.resolveWallCollisions(enemy, walls, state);
+        PhysicsSystem.resolveWallCollisions(enemy, wallContextFromState(state), state);
 
         const distToTarget = Math.hypot(enemy.x - target.x, enemy.y - target.y);
         stateData.timer -= dt;
@@ -362,7 +364,7 @@ export class EnemyDodgingState {
         const moveDist = enemy.speed * 1.5 * (dt / 1000);
 
         const targetAngle = Math.atan2(dy, dx);
-        enemy.angle = Utilities.turnAngleTowards(enemy.angle, targetAngle, enemy.turnSpeed * 1.5, dt);
+        enemy.angle = turnAngleTowards(enemy.angle, targetAngle, enemy.turnSpeed * 1.5, dt);
 
         if (dist > 0.001) {
             enemy.desiredX = dx / dist;
@@ -398,12 +400,12 @@ export class EnemyStunnedState {
         PhysicsSystem.applyFrictionAndDrag(enemy, dt, 4.0);
         enemy.x += enemy.separation.pushX;
         enemy.y += enemy.separation.pushY;
-        PhysicsSystem.resolveWallCollisions(enemy, walls, state);
+        PhysicsSystem.resolveWallCollisions(enemy, wallContextFromState(state), state);
 
         const velLen = Math.hypot(enemy.vx, enemy.vy);
         if (velLen > 1) {
             const targetAngle = Math.atan2(enemy.vy, enemy.vx);
-            enemy.angle = Utilities.turnAngleTowards(enemy.angle, targetAngle, enemy.turnSpeed, dt);
+            enemy.angle = turnAngleTowards(enemy.angle, targetAngle, enemy.turnSpeed, dt);
         }
 
         enemy.stateData.timer -= dt;
@@ -469,9 +471,9 @@ export class EnemyBlastedState {
         enemy.y += enemy.vy * (dt / 1000);
 
         const targetAngle = stateData.angle;
-        enemy.angle = Utilities.turnAngleTowards(enemy.angle, targetAngle, enemy.turnSpeed, dt);
+        enemy.angle = turnAngleTowards(enemy.angle, targetAngle, enemy.turnSpeed, dt);
 
-        PhysicsSystem.resolveWallCollisions(enemy, walls, state);
+        PhysicsSystem.resolveWallCollisions(enemy, wallContextFromState(state), state);
 
         return false;
     }

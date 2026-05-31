@@ -1,5 +1,5 @@
 import { CollisionSystem } from "../../Spatial/Collision/CollisionSystem.js";
-import { Utilities } from "../../Core/Utilities.js";
+import { distanceToLineSegment } from "../../Math/Segment2D.js";
 
 function blastDamage(exp, dist, maxMultiplier, minMultiplier) {
     const maxDmg = exp.damage * maxMultiplier;
@@ -22,7 +22,7 @@ function applyExpandingDamage(state, exp, allEvents) {
             let blocked = false;
             for (const otherSeg of state.walls) {
                 if (otherSeg === seg || otherSeg.isDead) continue;
-                const dist = Utilities.distToSegment(otherSeg.x, otherSeg.y, exp.x, exp.y, seg.x, seg.y);
+                const dist = distanceToLineSegment(otherSeg.x, otherSeg.y, exp.x, exp.y, seg.x, seg.y);
                 if (dist < otherSeg.size * 0.5) {
                     blocked = true;
                     break;

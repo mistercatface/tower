@@ -2,6 +2,7 @@ import { SpatialHash } from "../World/SpatialHash.js";
 import { circleIntersectsSegment } from "../Geometry/WallGeometry.js";
 import { areHostile } from "../../Combat/Targeting.js";
 import { PhysicsSystem } from "../Motion/PhysicsSystem.js";
+import { wallContextFromState, getNearbyWalls } from "../World/WallContext.js";
 
 export class CollisionSystem {
     static checkCircle(a, b) {
@@ -15,11 +16,10 @@ export class CollisionSystem {
         return circleIntersectsSegment(circle, rect);
     }
 
-    static getMissileWallCollision(missile, segments) {
-        if (!segments) return null;
+    static getMissileWallCollision(missile, wallCtx) {
+        if (!wallCtx) return null;
 
-        let candidateWalls = segments;
-        if (segments.obstacleGrid) candidateWalls = segments.obstacleGrid.getNearbySegments(missile);
+        const candidateWalls = getNearbyWalls(missile, wallCtx);
 
         const missileRad = missile.radius;
         for (const seg of candidateWalls) {
@@ -53,7 +53,7 @@ export class CollisionSystem {
         for (const p of state.projectiles) {
             if (p.isDead) continue;
             
-            const segment = this.getMissileWallCollision(p, state.walls);
+            const segment = this.getMissileWallCollision(p, wallContextFromState(state));
             if (segment) {
                 p.isDead = true;
                 events.push({ target: segment, damage: p.damage });

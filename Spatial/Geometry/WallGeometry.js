@@ -1,3 +1,7 @@
+export function getWallReach(wall, padding = wall.padding) {
+    return wall.size / 2 * Math.SQRT2 + padding;
+}
+
 export function toSegmentLocal(segment, x, y) {
     const dx = x - segment.x;
     const dy = y - segment.y;

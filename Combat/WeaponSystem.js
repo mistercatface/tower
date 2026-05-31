@@ -1,5 +1,6 @@
 import { CollisionSystem } from "../Spatial/Collision/CollisionSystem.js";
-import { Utilities } from "../Core/Utilities.js";
+import { normalizeAngle } from "../Math/Angle.js";
+import { getWallsAlongLine } from "../Spatial/World/WallContext.js";
 import { Laser } from "../Entities/Laser.js";
 import { defaultGunId, getGunDefinition } from "../Config/gunDefinitions.js";
 import { getSlotFireIntervalMs } from "./gunCombat.js";
@@ -194,7 +195,10 @@ export class WeaponSystem {
 
         let candidateWalls = state.walls;
         if (state.obstacleGrid) {
-            candidateWalls = Utilities.getSegmentsAlongLine(startX, startY, endX, endY, state.obstacleGrid);
+            candidateWalls = getWallsAlongLine(startX, startY, endX, endY, {
+                walls: state.walls,
+                obstacleGrid: state.obstacleGrid,
+            });
         } else {
             const minX = Math.min(startX, endX);
             const maxX = Math.max(startX, endX);
@@ -291,14 +295,14 @@ export class WeaponSystem {
         let targetAngle = Math.atan2(targetY - currentY, targetX - currentX);
         targetAngle += sway;
         let diff = targetAngle - turret.angle;
-        diff = Utilities.normalizeAngle(diff);
+        diff = normalizeAngle(diff);
 
         if (Math.abs(diff) < 0.05) {
             turret.angle = targetAngle;
             return true;
         } else {
             turret.angle += Math.sign(diff) * Math.min(Math.abs(diff), turret.turnSpeed * (dt / 1000));
-            turret.angle = Utilities.normalizeAngle(turret.angle);
+            turret.angle = normalizeAngle(turret.angle);
             return false;
         }
     }

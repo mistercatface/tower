@@ -1,26 +1,17 @@
-import { normalizeAngle as wrapAngle, turnAngleTowards as turnTowards } from "../Math/Angle.js";
-import { normalizeVector as normalizeVec2 } from "../Math/Vec2.js";
-import { distanceToLineSegment } from "../Math/Segment2D.js";
+import { normalizeVector } from "../Math/Vec2.js";
 import { distanceToSegment } from "../Spatial/Geometry/WallGeometry.js";
+import { getWallsAlongLine } from "../Spatial/World/WallContext.js";
 
 export class Utilities {
-    static distToSegment(px, py, vx, vy, wx, wy) {
-        return distanceToLineSegment(px, py, vx, vy, wx, wy);
-    }
-
-    static getSegmentsAlongLine(x1, y1, x2, y2, obstacleGrid) {
-        return obstacleGrid.getSegmentsAlongLine(x1, y1, x2, y2);
-    }
-
-    static hasLineOfSight(x1, y1, x2, y2, segments, sourceRadius = 0, targetRadius) {
+    static hasLineOfSight(x1, y1, x2, y2, wallCtx, sourceRadius = 0, targetRadius) {
         if (targetRadius === undefined) {
             targetRadius = sourceRadius;
         }
+        if (!wallCtx) return true;
 
-        let candidateWalls = segments;
-        if (segments?.obstacleGrid) {
-            candidateWalls = this.getSegmentsAlongLine(x1, y1, x2, y2, segments.obstacleGrid);
-        }
+        const candidateWalls = wallCtx.obstacleGrid
+            ? getWallsAlongLine(x1, y1, x2, y2, wallCtx)
+            : wallCtx.walls;
 
         const dx = x2 - x1;
         const dy = y2 - y1;
@@ -46,20 +37,8 @@ export class Utilities {
         return true;
     }
 
-    static normalizeAngle(angle) {
-        return wrapAngle(angle);
-    }
-
-    static turnAngleTowards(currentAngle, targetAngle, turnSpeed, dt) {
-        return turnTowards(currentAngle, targetAngle, turnSpeed, dt);
-    }
-
-    static normalizeVector(dx, dy) {
-        return normalizeVec2(dx, dy);
-    }
-
     static setDesiredDirection(entity, dx, dy) {
-        const vec = this.normalizeVector(dx, dy);
+        const vec = normalizeVector(dx, dy);
         entity.desiredX = vec.x;
         entity.desiredY = vec.y;
         return vec;
