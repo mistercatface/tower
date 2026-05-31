@@ -20,6 +20,7 @@ export function beginStartNodeInspection(state, onSectorComplete) {
     state.startNodeInspectionActive = true;
     state.startNodeInspectionSeen = new Set();
     state.startNodeInspectionPending = onSectorComplete ?? null;
+    state.propInspectorPanelOpen = false;
 
     if (state.radioSeenThisRun) {
         for (const conversationId of GUIDED_INSPECT_CONVERSATION_IDS) {
@@ -44,16 +45,30 @@ export function findStartNodeInspectionPickup(state, worldX, worldY) {
     });
 }
 
+function hasSeenAllInspectionTargets(state) {
+    return START_NODE_INSPECTION_KEYS.every((key) => state.startNodeInspectionSeen.has(key));
+}
+
+/** Run sector-complete radio only after the 3D inspect panel closes (if it was open). */
+export function tryCompleteStartNodeInspection(state) {
+    if (!state.startNodeInspectionSeen || state.startNodeInspectionCompleted) return;
+    if (!hasSeenAllInspectionTargets(state)) return;
+    if (state.propInspectorPanelOpen) return;
+    finishStartNodeInspection(state);
+}
+
 export function recordStartNodeInspection(state, inspectKey) {
     if (!state.startNodeInspectionSeen || state.startNodeInspectionCompleted || !inspectKey) return;
     if (!START_NODE_INSPECTION_KEYS.includes(inspectKey)) return;
 
     state.startNodeInspectionSeen.add(inspectKey);
+    tryCompleteStartNodeInspection(state);
+}
 
-    const allSeen = START_NODE_INSPECTION_KEYS.every((key) => state.startNodeInspectionSeen.has(key));
-    if (!allSeen) return;
-
-    finishStartNodeInspection(state);
+export function onPropInspectorPanelClosed(state) {
+    if (!state?.startNodeInspectionSeen) return;
+    state.propInspectorPanelOpen = false;
+    tryCompleteStartNodeInspection(state);
 }
 
 function finishStartNodeInspection(state) {

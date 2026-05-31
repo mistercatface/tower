@@ -114,6 +114,7 @@ export class GameState {
         this.startNodeInspectionPending = null;
         this.startNodeInspectionCompleted = false;
         this.startNodeInspectionFinishing = false;
+        this.propInspectorPanelOpen = false;
 
         this.wavesCompleted = 0;
         this.isTransitioning = false;

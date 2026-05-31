@@ -1,5 +1,9 @@
 import { isRadioDialogActive } from "../../Radio/RadioDialogController.js";
-import { playGuidedInspectRadio, recordStartNodeInspection } from "../../Combat/StartNodeInspection.js";
+import {
+    onPropInspectorPanelClosed,
+    playGuidedInspectRadio,
+    recordStartNodeInspection,
+} from "../../Combat/StartNodeInspection.js";
 import { requestGamePause, requestGameResume, requestUiUpdate } from "../../Core/EventSystem.js";
 
 const INSPECTOR_PAUSE_REASON = "inspector";
@@ -81,6 +85,10 @@ export class PropInspector {
             });
         }
 
+        if (state) {
+            state.propInspectorPanelOpen = true;
+        }
+
         this.overlay.style.display = "flex";
         requestGamePause(INSPECTOR_PAUSE_REASON);
         requestUiUpdate();
@@ -120,6 +128,10 @@ export class PropInspector {
             && !isRadioDialogActive()
         ) {
             recordStartNodeInspection(gameState, closedKey);
+        }
+
+        if (gameState) {
+            onPropInspectorPanelClosed(gameState);
         }
     }
 
