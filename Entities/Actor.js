@@ -18,6 +18,7 @@ import { spawnFloatingText } from "../Core/EventSystem.js";
 import { resolveWeaponModeForGun, WeaponSystem } from "../Combat/WeaponSystem.js";
 import { applyActorGunModifiers, getSlotFireIntervalMs } from "../Combat/gunCombat.js";
 import { getGunDefinition } from "../Config/gunDefinitions.js";
+import { explosionSettings } from "../Config/Config.js";
 import { resolveActorTurretLoadouts } from "../Config/TurretLoadoutDefinitions.js";
 import {
     getTurretCountForLoadout,
@@ -143,7 +144,9 @@ export class Actor extends DestructibleEntity {
     }
 
     getExplosionBlastMultipliers() {
-        return this.faction === "player" ? [1, 0.5] : [1.6, 0.4];
+        return this.faction === "player"
+            ? explosionSettings.playerMultipliers
+            : explosionSettings.enemyMultipliers;
     }
 
     getProjectileColorFallback() {

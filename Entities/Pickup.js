@@ -38,6 +38,11 @@ function explosiveOnHit(state, pickup, projectile, events) {
 }
 
 function damageOnHit(state, pickup, projectile, events) {
+    if (projectile?.isExplosion) {
+        pickup.explode(state);
+        return true;
+    }
+
     const dmg = projectile?.damage ?? 0;
     pickup.takeDamage(dmg, state);
     if (projectile?.isDead !== undefined) projectile.isDead = true;

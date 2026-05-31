@@ -1,18 +1,21 @@
 import { CollisionSystem } from "../../Spatial/Collision/CollisionSystem.js";
 import { distanceToLineSegment } from "../../Math/Segment2D.js";
+import { explosionSettings } from "../../Config/Config.js";
 
 function blastDamage(exp, dist, maxMultiplier, minMultiplier) {
     const maxDmg = exp.damage * maxMultiplier;
     const minDmg = exp.damage * minMultiplier;
     const proximityRatio = Math.min(1.0, dist / exp.maxRadius);
-    return maxDmg - (maxDmg - minDmg) * proximityRatio;
+    return Math.round(maxDmg - (maxDmg - minDmg) * proximityRatio);
 }
 
 function blastMultipliersFor(actor) {
     if (typeof actor.getExplosionBlastMultipliers === "function") {
         return actor.getExplosionBlastMultipliers();
     }
-    return actor.faction === "player" ? [1, 0.5] : [1.6, 0.4];
+    return actor.faction === "player"
+        ? explosionSettings.playerMultipliers
+        : explosionSettings.enemyMultipliers;
 }
 
 function applyExpandingDamage(state, exp, allEvents) {
@@ -29,7 +32,7 @@ function applyExpandingDamage(state, exp, allEvents) {
                 }
             }
             if (!blocked) {
-                allEvents.push({ target: seg, damage: 10, type: "blast" });
+                allEvents.push({ target: seg, damage: explosionSettings.wallBlastDamage, type: "blast" });
                 exp.hitTargets.add(seg);
             }
         }
@@ -59,8 +62,7 @@ function applyExpandingDamage(state, exp, allEvents) {
         if (dist <= exp.radius + p.radius) {
             if (p.hasLineOfSightFromPoint(exp.x, exp.y, state, { sourceRadius: 0 })) {
                 if (p.strategy?.onHit) {
-                    const dmg = blastDamage(exp, dist, 1.6, 0.4);
-                    p.strategy.onHit(state, p, { isDead: false, damage: dmg, isExplosion: true }, allEvents);
+                    p.strategy.onHit(state, p, { isDead: false, isExplosion: true }, allEvents);
                     exp.hitTargets.add(p);
                 }
             }

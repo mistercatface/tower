@@ -1,3 +1,5 @@
+import { explosionSettings } from "./Config.js";
+
 const DEFAULT_SPAWN_RADIUS = { minRadius: 150, maxRadius: 1000 };
 
 function prop(key, { spawn, ...rest }) {
@@ -24,7 +26,7 @@ export const worldPropDefinitions = {
             radius: 0,
             maxRadius: 100,
             speed: 300,
-            damage: 100,
+            damage: explosionSettings.barrelDamage,
             lingerTimer: 750,
             fadeTimer: 250,
         },

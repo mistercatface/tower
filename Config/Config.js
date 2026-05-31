@@ -356,6 +356,15 @@ export const enemyDefaults = {
     chargeImpactDamage: 2,
 };
 
+/** Blast tuning for integer HP (player base 10). damage is full at center, scales to min multiplier at maxRadius. */
+export const explosionSettings = {
+    defaultDamage: 5,
+    barrelDamage: 5,
+    wallBlastDamage: 5,
+    playerMultipliers: [1, 0.5],
+    enemyMultipliers: [1.6, 0.4],
+};
+
 export const enemyBaseStats = {
     turnSpeed: 10,
     range: 112,

@@ -1,4 +1,5 @@
 import { Entity } from "../Entity.js";
+import { explosionSettings } from "../../Config/Config.js";
 import { ExplosionStrategies } from "./ExplosionStrategies.js";
 import { standardExplosionPhases } from "./ExplosionPhases.js";
 import { transitionPhase } from "../EntityFsm.js";
@@ -28,7 +29,7 @@ export class Explosion extends Entity {
         this.radius = config.radius || 0;
         this.maxRadius = config.maxRadius || 100;
         this.speed = config.speed || 300;
-        this.damage = config.damage || 50;
+        this.damage = config.damage ?? explosionSettings.defaultDamage;
         this.hitTargets = new Set();
         this.lingerTimer = config.lingerTimer || 750;
         this.fadeTimer = config.fadeTimer || 250;
