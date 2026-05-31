@@ -107,11 +107,7 @@ export class StatsManager {
             state.player.setSpawnPosition(layout.spawnX, layout.spawnY);
             state.player.resetToSpawn();
 
-            const followAngle = state.player.angle;
-            state.spawnSidekick(
-                state.player.x - Math.cos(followAngle) * 48,
-                state.player.y - Math.sin(followAngle) * 48
-            );
+            state.spawnRunParty(2);
         }
 
         for (const node of state.mapNodes) {

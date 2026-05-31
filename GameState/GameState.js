@@ -30,7 +30,7 @@ export class GameState {
         this.runStats = createRunStats(runBaseStats);
         this.player = new Player(0, 0, 8);
         this.player.teamId = 0;
-        this.sidekick = null;
+        this.allies = [];
 
         this.obstacleGrid = new WorldObstacleGrid(gridSettings.cellSize);
         this.flowFieldGrid = new FlowFieldGrid(gridSettings.cellSize, gridSettings.width, gridSettings.height, this.obstacleGrid);
@@ -140,30 +140,51 @@ export class GameState {
         ];
 
         this.selectedSpeed = 1.0;
+        this.allies = [];
+    }
+
+    getLeader() {
+        return this.player;
+    }
+
+    getAllies() {
+        return this.allies.filter((ally) => ally && !ally.isDead);
+    }
+
+    getParty() {
+        const party = [];
+        if (this.player && !this.player.isDead) {
+            party.push(this.player);
+        }
+        party.push(...this.getAllies());
+        return party;
     }
 
     getPlayerActors() {
-        const actors = [];
-        if (this.player && !this.player.isDead) {
-            actors.push(this.player);
-        }
-        if (this.sidekick && !this.sidekick.isDead) {
-            actors.push(this.sidekick);
-        }
-        return actors;
+        return this.getParty();
     }
 
-    spawnSidekick(x, y) {
-        const radius = this.player?.radius ?? 8;
-        if (!this.sidekick) {
-            this.sidekick = Sidekick.create(x, y, 6);
+    spawnRunParty(count = 2) {
+        const leader = this.getLeader();
+        this.allies = [];
+
+        for (let i = 0; i < count; i++) {
+            const ally = Sidekick.create(leader.x, leader.y, 6);
+            ally.leader = leader;
+            ally.teamId = leader.teamId ?? 0;
+            const angle = leader.angle + Math.PI + (i - (count - 1) / 2) * 0.5;
+            const dist = 48;
+            const x = leader.x + Math.cos(angle) * dist;
+            const y = leader.y + Math.sin(angle) * dist;
+            ally.spawnAt(x, y, leader);
+            ally.applyWeaponLoadout(ally.weaponLoadout, {
+                state: this,
+                upgradeDefs: this.upgradeDefs,
+            });
+            this.allies.push(ally);
         }
-        this.sidekick.spawnAt(x, y, this.player);
-        this.sidekick.applyWeaponLoadout(this.sidekick.weaponLoadout, {
-            state: this,
-            upgradeDefs: this.upgradeDefs,
-        });
-        return this.sidekick;
+
+        return this.allies;
     }
 
     getHostileActors() {

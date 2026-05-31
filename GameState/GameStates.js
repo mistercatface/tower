@@ -30,9 +30,7 @@ function runPushablePhysics(state, dt, spatialFrame) {
 }
 
 function runPersistentSectorEnter(state) {
-    const persistentEntities = [];
-    if (state.sidekick) persistentEntities.push(state.sidekick);
-    persistentEntities.push(...state.pickups);
+    const persistentEntities = [...state.getAllies(), ...state.pickups];
 
     for (const entity of persistentEntities) {
         if (typeof entity.onSectorEnter === "function") {

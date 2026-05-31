@@ -6,7 +6,6 @@ import { createEntityBars } from "./EntityBars.js";
 const sidekickBars = createEntityBars({ healthWidth: 40, healthHeight: 4, healthBorderRadius: 2 });
 
 const LEADER_EDGE_GAP = 16;
-const APPROACH_SLOW_RADIUS = 48;
 
 export class Sidekick extends Actor {
     static healthBar = sidekickBars.healthBar;
@@ -25,9 +24,9 @@ export class Sidekick extends Actor {
         this.healthBar = Sidekick.healthBar;
         this.setupCombatant(sidekickBaseStats);
         this.initCombatWeapon();
-        this.followOffset = 48;
         this.spawnX = x;
         this.spawnY = y;
+        this.leader = null;
     }
 
     spawnAt(x, y, leader) {
@@ -42,6 +41,7 @@ export class Sidekick extends Actor {
         this.changeState("navigating");
         this.resetTurretCombatState();
         if (leader) {
+            this.leader = leader;
             this.teamId = leader.teamId ?? 0;
         }
     }
@@ -54,17 +54,6 @@ export class Sidekick extends Actor {
 
     getMinLeaderDistance(leader) {
         return leader.radius + this.radius + LEADER_EDGE_GAP;
-    }
-
-    getFollowPoint(leader) {
-        const angle = leader.angle;
-        const offset = Math.max(this.followOffset, this.getMinLeaderDistance(leader));
-        return { x: leader.x - Math.cos(angle) * offset, y: leader.y - Math.sin(angle) * offset };
-    }
-
-    isAtFollowSlot(leader) {
-        const { x, y } = this.getFollowPoint(leader);
-        return Math.hypot(this.x - x, this.y - y) <= navigationSettings.arrivalDistance + 8;
     }
 
     holdPosition() {
@@ -104,7 +93,7 @@ export class Sidekick extends Actor {
     }
 
     updateLocomotion(dt, state, spatialFrame, options = {}) {
-        const leader = state.player;
+        const leader = this.leader ?? state.getLeader?.() ?? state.player;
         if (!leader || leader.isDead) {
             this.holdPosition();
             this.applyLocomotion(dt, spatialFrame, { ...options, state });
@@ -113,28 +102,18 @@ export class Sidekick extends Actor {
 
         const minLeaderDist = this.getMinLeaderDistance(leader);
         const leaderDist = Math.hypot(this.x - leader.x, this.y - leader.y);
-        const { x: followX, y: followY } = this.getFollowPoint(leader);
-        const followDist = Math.hypot(this.x - followX, this.y - followY);
         const baseSpeed = this.speed;
+        const arriveDist = navigationSettings.arrivalDistance + minLeaderDist;
 
-        if (leaderDist <= minLeaderDist) {
-            if (leaderDist < minLeaderDist) {
-                const dx = this.x - leader.x;
-                const dy = this.y - leader.y;
-                const len = Math.hypot(dx, dy) || 1;
-                this.desiredX = dx / len;
-                this.desiredY = dy / len;
-                this.speed = baseSpeed * 0.35;
-            } else {
-                this.holdPosition();
-            }
-        } else if (followDist > navigationSettings.arrivalDistance + 8 && leaderDist > minLeaderDist + 6) {
-            state.navigation.steerTo(this, followX, followY, NAV_PROFILES.sidekickFollow, state.flowFieldGrid);
-
-            if (leaderDist < minLeaderDist + APPROACH_SLOW_RADIUS) {
-                const t = (leaderDist - minLeaderDist) / APPROACH_SLOW_RADIUS;
-                this.speed = baseSpeed * Math.max(0.25, t);
-            }
+        if (leaderDist > arriveDist) {
+            state.navigation.steerTo(this, leader.x, leader.y, NAV_PROFILES.sidekickFollow, state.flowFieldGrid);
+        } else if (leaderDist < minLeaderDist) {
+            const dx = this.x - leader.x;
+            const dy = this.y - leader.y;
+            const len = Math.hypot(dx, dy) || 1;
+            this.desiredX = dx / len;
+            this.desiredY = dy / len;
+            this.speed = baseSpeed * 0.35;
         } else {
             this.holdPosition();
         }
