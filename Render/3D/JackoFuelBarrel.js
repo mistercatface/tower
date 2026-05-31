@@ -146,41 +146,10 @@ function drawCanTopCombat(ctx, pc, radius, height, onFire) {
     ctx.fill();
 }
 
-function drawJackoFuelLabel(ctx, cx, cy, width, height) {
-    ctx.fillStyle = "#EDE6D8";
-    ctx.strokeStyle = "#111";
-    ctx.lineWidth = Math.max(0.8, width * 0.04);
-    ctx.beginPath();
-    ctx.rect(cx - width / 2, cy - height / 2, width, height);
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = "#111";
-    ctx.font = `900 ${height * 0.34}px Impact, monospace`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("JACKO", cx, cy - height * 0.1);
-    ctx.font = `800 ${height * 0.22}px Impact, monospace`;
-    ctx.fillText("FUEL", cx, cy + height * 0.22);
-}
-
-function drawLabelOnVisibleBand(ctx, pc, slice1, slice2, x, y, px, py) {
-    if (!isFaceTowardViewer(slice1.centerX, slice1.centerY, x, y, px, py)) return;
-    const midX = (slice1.centerX + slice2.centerX) / 2;
-    const midY = (slice1.centerY + slice2.centerY) / 2;
-    const bandW = slice1.size * 1.55;
-    const bandH = (slice2.centerY - slice1.centerY) * 0.85 + slice1.size * 0.35;
-    const angle = Math.atan2(slice2.centerY - slice1.centerY, slice2.centerX - slice1.centerX) + Math.PI / 2;
-    ctx.save();
-    ctx.translate(midX, midY);
-    ctx.rotate(angle);
-    drawJackoFuelLabel(ctx, 0, 0, bandW, Math.max(bandH, bandW * 0.42));
-    ctx.restore();
-}
-
 export function drawJackoFuelBarrelCombat(ctx, pc, { onFire = false } = {}) {
     const radius = pc.prop.radius || 8;
     const colors = onFire ? CAN_COLORS.bodyFire : CAN_COLORS.body;
-    const { facing, x, y, px, py } = pc;
+    const { facing } = pc;
 
     drawExtrudedRadial(ctx, pc, {
         baseRadius: radius,
@@ -189,7 +158,7 @@ export function drawJackoFuelBarrelCombat(ctx, pc, { onFire = false } = {}) {
         stroke: CAN_COLORS.stroke,
     });
 
-    const { slice1, slice2 } = drawRadialBand(ctx, pc, {
+    drawRadialBand(ctx, pc, {
         baseRadius: radius,
         height: CAN_COMBAT_HEIGHT,
         t0: LABEL_BAND_T0,
@@ -207,8 +176,6 @@ export function drawJackoFuelBarrelCombat(ctx, pc, { onFire = false } = {}) {
             t1: LABEL_BAND_T1,
             facing,
         });
-    } else {
-        drawLabelOnVisibleBand(ctx, pc, slice1, slice2, x, y, px, py);
     }
 
     drawCanTopCombat(ctx, pc, radius, CAN_COMBAT_HEIGHT, onFire);
