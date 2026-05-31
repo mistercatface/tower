@@ -52,7 +52,7 @@ function fixSegmentByTranslation(obstacleGrid, a, b, clearance) {
     let currentB = copyPoint(b);
     let changed = false;
 
-    for (let iter = 0; iter < 16; iter++) {
+    for (let iter = 0; iter < 6; iter++) {
         const walls = getWallsNearSegment(obstacleGrid, currentA.x, currentA.y, currentB.x, currentB.y, clearance);
         const violation = findWorstSegmentViolation(currentA.x, currentA.y, currentB.x, currentB.y, walls, clearance);
         if (!violation) break;
@@ -84,7 +84,7 @@ function fixSegmentByTranslation(obstacleGrid, a, b, clearance) {
     return { a: pushWaypointFromGeometry(obstacleGrid, currentA.x, currentA.y, clearance), b: pushWaypointFromGeometry(obstacleGrid, currentB.x, currentB.y, clearance), changed: true };
 }
 
-function relaxPathClearance(obstacleGrid, path, clearance, maxPasses = 10) {
+function relaxPathClearance(obstacleGrid, path, clearance, maxPasses = 4) {
     const adjusted = path.map(copyPoint);
 
     for (let pass = 0; pass < maxPasses; pass++) {

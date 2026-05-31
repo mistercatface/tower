@@ -283,7 +283,7 @@ export function pushPointFromWalls(x, y, walls, clearance) {
     let px = x;
     let py = y;
 
-    for (let iter = 0; iter < 12; iter++) {
+    for (let iter = 0; iter < 6; iter++) {
         for (const wall of walls) {
             if (wall.isDead) continue;
 

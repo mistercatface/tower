@@ -10,16 +10,25 @@ export function createNavState() {
         stuckFrames: 0,
         pathProgressIdx: 0,
         obstacleGeneration: -1,
+        lastTargetX: null,
+        lastTargetY: null,
+        lastOffPathReplan: 0,
     };
 }
 
-function replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings) {
+function shouldApplyClearance(navState, targetX, targetY, obstaclesChanged) {
+    if (obstaclesChanged) return true;
+    if (!navState.path) return true;
+    if (navState.lastTargetX !== targetX || navState.lastTargetY !== targetY) return true;
+    return false;
+}
+
+function replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings, applyClearance) {
     const rawPath = hierarchicalNavigator.findPath(entity.x, entity.y, targetX, targetY);
     let path = rawPath ? trimPathAhead(entity.x, entity.y, rawPath) : null;
-    if (path && obstacleGrid) {
+    if (path && obstacleGrid && applyClearance) {
         const clearance = entity.radius + settings.pathClearanceMargin;
-        const destination = { x: targetX, y: targetY };
-        path = adjustPathForClearance(path, obstacleGrid, clearance, destination);
+        path = adjustPathForClearance(path, obstacleGrid, clearance, { x: targetX, y: targetY });
     }
     if (path) {
         path = trimPathAhead(entity.x, entity.y, path);
@@ -27,6 +36,8 @@ function replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, o
     navState.path = path;
     navState.pathProgressIdx = 0;
     navState.lastUpdate = Date.now();
+    navState.lastTargetX = targetX;
+    navState.lastTargetY = targetY;
 }
 
 export function steerViaHpa(entity, targetX, targetY, hierarchicalNavigator, navState, profile, settings, obstacleGrid, obstacleGeneration) {
@@ -35,7 +46,7 @@ export function steerViaHpa(entity, targetX, targetY, hierarchicalNavigator, nav
     const obstaclesChanged = navState.obstacleGeneration !== obstacleGeneration;
     const moved = Math.hypot(
         entity.x - (navState.lastX ?? entity.x),
-        entity.y - (navState.lastY ?? entity.y)
+        entity.y - (navState.lastY ?? entity.y),
     );
     navState.lastX = entity.x;
     navState.lastY = entity.y;
@@ -52,7 +63,7 @@ export function steerViaHpa(entity, targetX, targetY, hierarchicalNavigator, nav
     if (obstaclesChanged) {
         navState.obstacleGeneration = obstacleGeneration;
         navState.path = null;
-        replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings);
+        replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings, true);
         replanReason = "obstacles";
         navState.stuckFrames = 0;
     }
@@ -69,15 +80,17 @@ export function steerViaHpa(entity, targetX, targetY, hierarchicalNavigator, nav
         } else {
             replanReason = "interval";
         }
-        replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings);
+        const applyClearance = shouldApplyClearance(navState, targetX, targetY, false);
+        replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings, applyClearance);
         navState.stuckFrames = 0;
     }
 
     if (navState.path && navState.path.length >= 2) {
         let steering = computePathSteering(entity, navState.path, targetX, targetY, settings, navState);
-        if (steering.offPath) {
+        if (steering.offPath && now - navState.lastOffPathReplan >= replanMs) {
             replanReason = "offPath";
-            replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings);
+            navState.lastOffPathReplan = now;
+            replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings, false);
             if (navState.path && navState.path.length >= 2) {
                 steering = computePathSteering(entity, navState.path, targetX, targetY, settings, navState);
             }
