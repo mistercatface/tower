@@ -1,16 +1,25 @@
 /**
  * Flat label overlay on box side faces for inspect view.
+ * Corners per face are model-space BL, BR, TR, TL (viewed from outside).
  */
 import {
     transformPoint,
+    transformNormal,
     projectPoint,
     faceVisible,
-    triangleNormal,
     averageDepth,
 } from "./core/Mesh3D.js";
 import { drawImageQuad } from "./core/AffineTexture.js";
 
 /** @typedef {"+x" | "-x" | "+z" | "-z"} BoxSideFace */
+
+/** Outward normals for vertical side faces. */
+const FACE_NORMALS = {
+    "+x": { x: 1, y: 0, z: 0 },
+    "-x": { x: -1, y: 0, z: 0 },
+    "+z": { x: 0, y: 0, z: 1 },
+    "-z": { x: 0, y: 0, z: -1 },
+};
 
 const FACE_BUILDERS = {
     "+x": (hx, hy, hz, y0, y1) => {
@@ -47,13 +56,21 @@ const FACE_BUILDERS = {
         const yBot = -hy + hy * 2 * y0;
         const yTop = -hy + hy * 2 * y1;
         return [
-            { x: hx, y: yBot, z: -hz },
             { x: -hx, y: yBot, z: -hz },
-            { x: -hx, y: yTop, z: -hz },
+            { x: hx, y: yBot, z: -hz },
             { x: hx, y: yTop, z: -hz },
+            { x: -hx, y: yTop, z: -hz },
         ];
     },
 };
+
+/** Flip U when the projected bottom edge runs right-to-left on screen. */
+function alignHorizontalUV(d0, d1, d2, d3) {
+    if (d0.x > d1.x) {
+        return [d1, d0, d3, d2];
+    }
+    return [d0, d1, d2, d3];
+}
 
 /** Draw label texture on configured vertical box faces. */
 export function drawInspectBoxLabels(ctx, cx, cy, scale, yaw, pitch, {
@@ -81,7 +98,6 @@ export function drawInspectBoxLabels(ctx, cx, cy, scale, yaw, pitch, {
     const ih = img.height;
     const sx0 = u0 * iw;
     const sx1 = u1 * iw;
-    // Screen Y grows downward; model +Y projects upward — flip V so image top meets face top.
     const syTop = v0 * ih;
     const syBot = v1 * ih;
 
@@ -92,19 +108,18 @@ export function drawInspectBoxLabels(ctx, cx, cy, scale, yaw, pitch, {
         if (!build) continue;
 
         const model = build(hx, hy, hz, y0, y1);
-        const view = model.map((p) => transformPoint(p, yaw, pitch));
-        const normal = triangleNormal(view[0], view[1], view[2]);
-        if (!faceVisible(normal)) continue;
+        const viewNormal = transformNormal(FACE_NORMALS[face], yaw, pitch);
+        if (!faceVisible(viewNormal)) continue;
 
+        const view = model.map((p) => transformPoint(p, yaw, pitch));
         const screen = view.map((p) => projectPoint(p, camera));
         if (screen.some((p) => !p)) continue;
 
+        const [d0, d1, d2, d3] = alignHorizontalUV(screen[0], screen[1], screen[2], screen[3]);
+
         quads.push({
             depth: averageDepth(view[0], view[1], view[2]),
-            d0: screen[0],
-            d1: screen[1],
-            d2: screen[2],
-            d3: screen[3],
+            d0, d1, d2, d3,
         });
     }
 
