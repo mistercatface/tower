@@ -12,6 +12,13 @@ import { DeathPiece } from "../Entities/DeathPiece.js";
 import { findInspectablePickup } from "../Render/Inspector/InspectRegistry.js";
 import { propInspector } from "../Render/Inspector/PropInspector.js";
 
+const MAP_TRANSITION_SPEED = 5.0;
+
+function runPushablePhysics(state, dt, spatialFrame) {
+    ProgressionManager.updatePickups(state, dt, spatialFrame);
+    return CollisionSystem.run(state, spatialFrame);
+}
+
 export class MapState {
     onEnter(ctx) {
         requestUiUpdate();
@@ -50,11 +57,12 @@ export class MapTransitionState {
     }
 
     update(dt, ctx) {
-        const speedUpDt = dt * 5.0;
+        const speedUpDt = dt * MAP_TRANSITION_SPEED;
         const spatialFrame = combatSpatial.begin(ctx.state);
 
         const oldGridPos = ctx.state.flowFieldGrid.worldToGrid(ctx.state.player.x, ctx.state.player.y);
         ctx.state.updateAllCombatants(speedUpDt, spatialFrame, { blocksTargeting: true, upgrades: ctx.upgrades });
+        runPushablePhysics(ctx.state, speedUpDt, spatialFrame);
         ctx.state.navigation.updateFlowField({
             playerX: ctx.state.player.x,
             playerY: ctx.state.player.y,
@@ -151,9 +159,7 @@ export class CombatState {
         ctx.state.waveManager.manageSpawning(dt, ctx.state, ctx.upgrades, ctx.viewport);
         Projectile.updateAll(ctx.state, dt);
         DeathPiece.updateAll(ctx.state, dt, spatialFrame);
-        ProgressionManager.updatePickups(ctx.state, dt, spatialFrame);
-
-        const collisionEvents = CollisionSystem.run(ctx.state, spatialFrame);
+        const collisionEvents = runPushablePhysics(ctx.state, dt, spatialFrame);
         const allEvents = [...combatEvents, ...collisionEvents];
 
         Explosion.updateAll(ctx.state, dt, allEvents, spatialFrame);
