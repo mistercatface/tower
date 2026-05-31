@@ -1,5 +1,4 @@
 import { PhysicsSystem } from "../../Spatial/Motion/PhysicsSystem.js";
-import { wallContextFromState } from "../../Spatial/World/WallContext.js";
 
 function repelActor(actor, exp, state) {
     if (actor.isDead) return;
@@ -33,7 +32,7 @@ function repelActor(actor, exp, state) {
 
     const angle = Math.atan2(pushY, pushX);
     actor.changeState("blasted", { angle, timer: 500 });
-    PhysicsSystem.resolveWallCollisions(actor, wallContextFromState(state), state);
+    PhysicsSystem.resolveWallCollisions(actor, null, state);
 }
 
 function repelEntities(state, exp, _dt) {

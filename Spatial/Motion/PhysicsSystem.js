@@ -1,6 +1,6 @@
 import { normalizeAngle } from "../../Math/Angle.js";
 import { getCircleSegmentPenetration } from "../Geometry/WallGeometry.js";
-import { getNearbyWalls } from "../World/WallContext.js";
+import { getNearbyWalls, wallContextFromState } from "../World/WallContext.js";
 
 export class PhysicsSystem {
     static applyMovement(entity, dt, ignoreSeparation = false, shouldMove = true, alignAngleWithMovement = true) {
@@ -36,11 +36,17 @@ export class PhysicsSystem {
         }
     }
 
-    static resolveWallCollisions(entity, wallCtx, state = null) {
-        if (!wallCtx) return false;
+    static resolveWallCollisions(entity, spatialFrame, state = null) {
+        let candidateWalls;
+        if (spatialFrame) {
+            candidateWalls = spatialFrame.getWallCandidates(entity, state);
+        } else if (state) {
+            candidateWalls = getNearbyWalls(entity, wallContextFromState(state));
+        } else {
+            return false;
+        }
 
-        const candidateWalls = getNearbyWalls(entity, wallCtx);
-
+        if (candidateWalls.length === 0) return false;
         let collided = false;
         for (let i = 0; i < 2; i++) {
             for (const seg of candidateWalls) {

@@ -2,7 +2,6 @@ import { DestructibleEntity } from "./Entity.js";
 import { DeathPiece } from "./DeathPiece.js";
 import { Separation } from "../Spatial/Motion/Separation.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
-import { wallContextFromState } from "../Spatial/World/WallContext.js";
 import { actorStates } from "./ActorStates.js";
 import { transitionEntity } from "./EntityFsm.js";
 import {
@@ -157,7 +156,7 @@ export class Actor extends DestructibleEntity {
         return this.isAbilityOwner(state) && !!state.abilities?.["Eraser"];
     }
 
-    updateCombat(_dt, _state, _spatialHash, _options = {}) {
+    updateCombat(_dt, _state, _spatialFrame, _options = {}) {
         // Subclasses run movement, then call updateTurretCombat.
     }
 
@@ -814,22 +813,16 @@ export class Actor extends DestructibleEntity {
         transitionEntity(this, actorStates, stateName, stateDataInit);
     }
 
-    changeStateAndUpdate(stateName, stateDataInit, dt, target, flowFieldGrid, walls, missiles, spatialHash, scheduler, gameState) {
-        this.changeState(stateName, stateDataInit);
-        if (this.currentState?.update) {
-            return this.currentState.update(this, dt, target, flowFieldGrid, walls, missiles, spatialHash, scheduler, gameState);
-        }
-        return false;
-    }
-
-    applyLocomotion(dt, spatialHash, {
+    applyLocomotion(dt, spatialFrame, {
         state = null,
         externalSpeedMod = 1,
         ignoreSeparationInDesired = false,
         shouldMove = true,
         alignAngleWithMovement = true,
     } = {}) {
-        this.separation.update(this, spatialHash);
+        if (spatialFrame) {
+            this.separation.update(this, spatialFrame);
+        }
         const baseSpeed = this.speed;
         if (externalSpeedMod !== 1) {
             this.speed = baseSpeed * externalSpeedMod;
@@ -838,7 +831,15 @@ export class Actor extends DestructibleEntity {
         if (externalSpeedMod !== 1) {
             this.speed = baseSpeed;
         }
-        PhysicsSystem.resolveWallCollisions(this, wallContextFromState(state), state);
+        PhysicsSystem.resolveWallCollisions(this, spatialFrame, state);
+    }
+
+    changeStateAndUpdate(stateName, stateDataInit, dt, target, flowFieldGrid, walls, missiles, spatialFrame, scheduler, gameState) {
+        this.changeState(stateName, stateDataInit);
+        if (this.currentState?.update) {
+            return this.currentState.update(this, dt, target, flowFieldGrid, walls, missiles, spatialFrame, scheduler, gameState);
+        }
+        return false;
     }
 
     getVelocityMagnitude() {

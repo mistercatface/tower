@@ -51,19 +51,19 @@ export class Enemy extends Actor {
         }
     }
 
-    updateCombat(dt, state, spatialHash, options = {}) {
+    updateCombat(dt, state, spatialFrame, options = {}) {
         this.ghostTrail?.update(dt, this.x, this.y, this.angle);
         const target = this.getAITarget(state);
 
         if (!target) {
             this.desiredX = 0;
             this.desiredY = 0;
-            this.applyLocomotion(dt, spatialHash, { state, ignoreSeparationInDesired: true });
+            this.applyLocomotion(dt, spatialFrame, { state, ignoreSeparationInDesired: true });
             this.updateTurretCombat(dt, state, options);
             return;
         }
 
-        this.currentState.update(this, dt, target, state.flowFieldGrid, state.walls, state.projectiles, spatialHash, state.scheduler, state);
+        this.currentState.update(this, dt, target, state.flowFieldGrid, state.walls, state.projectiles, spatialFrame, state.scheduler, state);
         this.updateTurretCombat(dt, state, options);
     }
 

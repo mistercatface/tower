@@ -140,13 +140,13 @@ export class Player extends Actor {
         return true;
     }
 
-    updateCombat(dt, state, spatialHash, options = {}) {
+    updateCombat(dt, state, spatialFrame, options = {}) {
         this.ghostTrail?.update(dt, this.x, this.y, this.angle);
         const flowFieldGrid = state.flowFieldGrid;
         const walls = state.walls;
 
         if (this.currentState?.customMovement) {
-            this.currentState.update(this, dt, null, flowFieldGrid, walls, null, spatialHash, null, null);
+            this.currentState.update(this, dt, null, flowFieldGrid, walls, null, spatialFrame, null, null);
             this.updateTurretCombat(dt, state, options);
             return;
         }
@@ -161,7 +161,7 @@ export class Player extends Actor {
             this.desiredY = 0;
         }
 
-        this.applyLocomotion(dt, spatialHash, { externalSpeedMod: options.externalSpeedMod ?? 1.0, state });
+        this.applyLocomotion(dt, spatialFrame, { externalSpeedMod: options.externalSpeedMod ?? 1.0, state });
         this.updateTurretCombat(dt, state, options);
     }
 

@@ -1,6 +1,5 @@
 import { Entity } from "./Entity.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
-import { wallContextFromState } from "../Spatial/World/WallContext.js";
 import { worldPropDefinitions } from "../Config/PropDefinitions.js";
 import { CRATE_LABEL_VARIANTS, CRATE_LABEL_FACES } from "../Config/props/Crate.js";
 import { transitionEntity } from "./EntityFsm.js";
@@ -130,11 +129,10 @@ export class Pickup extends Entity {
         this.changeState("exploded", { gameState });
     }
 
-    update(dt, state) {
+    update(dt, state, spatialFrame = null) {
         PhysicsSystem.applyFrictionAndDrag(this, dt, this.strategy.friction);
-        const wallCtx = wallContextFromState(state);
-        if (this.strategy.isPushable && wallCtx) {
-            PhysicsSystem.resolveWallCollisions(this, wallCtx);
+        if (this.strategy.isPushable) {
+            PhysicsSystem.resolveWallCollisions(this, spatialFrame, state);
         }
 
         if (this.currentState?.update) {

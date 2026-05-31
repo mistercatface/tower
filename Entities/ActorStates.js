@@ -3,7 +3,7 @@ import { GhostTrail } from "../Render/GhostTrail.js";
 import { turnAngleTowards } from "../Math/Angle.js";
 import { Utilities } from "../Core/Utilities.js";
 import { CollisionSystem } from "../Spatial/Collision/CollisionSystem.js";
-import { wallContextFromState } from "../Spatial/World/WallContext.js";
+
 function analyzeStrafePath(enemy, tangentX, tangentY, dir, walls, target, state) {
     const stepSize = 10;
     const maxSteps = 12;
@@ -56,23 +56,23 @@ export class EnemyNavigatingState {
         enemy.isEngaged = false;
     }
 
-    update(enemy, dt, target, flowFieldGrid, walls, missiles, spatialHash, scheduler, state) {
+    update(enemy, dt, target, flowFieldGrid, walls, missiles, spatialFrame, scheduler, state) {
         if (enemy.canDodge && scheduler.getTimeRemaining(enemy.dodgeTimerId) <= 0 && enemy.shouldTriggerDodge(missiles, flowFieldGrid, scheduler)) {
-            return enemy.changeStateAndUpdate("dodging", { targetX: enemy.dodgeTargetX, targetY: enemy.dodgeTargetY }, dt, target, flowFieldGrid, walls, missiles, spatialHash, scheduler, state);
+            return enemy.changeStateAndUpdate("dodging", { targetX: enemy.dodgeTargetX, targetY: enemy.dodgeTargetY }, dt, target, flowFieldGrid, walls, missiles, spatialFrame, scheduler, state);
         }
 
         if (enemy.attackType === "charge") {
-            return enemy.changeStateAndUpdate("charging_prepare", null, dt, target, flowFieldGrid, walls, missiles, spatialHash, scheduler, state);
+            return enemy.changeStateAndUpdate("charging_prepare", null, dt, target, flowFieldGrid, walls, missiles, spatialFrame, scheduler, state);
         }
 
         const distToTarget = Math.hypot(enemy.x - target.x, enemy.y - target.y);
         const hasLOS = enemy.hasLineOfSightTo(target, state);
         if (distToTarget <= target.radius + enemy.weapon.range && hasLOS) {
-            return enemy.changeStateAndUpdate("engaged", null, dt, target, flowFieldGrid, walls, missiles, spatialHash, scheduler, state);
+            return enemy.changeStateAndUpdate("engaged", null, dt, target, flowFieldGrid, walls, missiles, spatialFrame, scheduler, state);
         }
 
         enemy.calculateSteering(target, state);
-        enemy.applyLocomotion(dt, spatialHash, { state, ignoreSeparationInDesired: true });
+        enemy.applyLocomotion(dt, spatialFrame, { state, ignoreSeparationInDesired: true });
 
         return false;
     }
@@ -93,11 +93,11 @@ export class EnemyEngagedState {
         return enemy.blocksTurretLineOfSight(target, state);
     }
 
-    update(enemy, dt, target, flowFieldGrid, walls, missiles, spatialHash, scheduler, state) {
+    update(enemy, dt, target, flowFieldGrid, walls, missiles, spatialFrame, scheduler, state) {
         enemy.lastScheduler = scheduler;
 
         if (enemy.canDodge && scheduler.getTimeRemaining(enemy.dodgeTimerId) <= 0 && enemy.shouldTriggerDodge(missiles, flowFieldGrid, scheduler)) {
-            return enemy.changeStateAndUpdate("dodging", { targetX: enemy.dodgeTargetX, targetY: enemy.dodgeTargetY }, dt, target, flowFieldGrid, walls, missiles, spatialHash, scheduler, state);
+            return enemy.changeStateAndUpdate("dodging", { targetX: enemy.dodgeTargetX, targetY: enemy.dodgeTargetY }, dt, target, flowFieldGrid, walls, missiles, spatialFrame, scheduler, state);
         }
 
         const dx = enemy.x - target.x;
@@ -105,7 +105,7 @@ export class EnemyEngagedState {
         const dist = Math.hypot(dx, dy);
 
         if (dist > target.radius + enemy.weapon.range + 15) {
-            return enemy.changeStateAndUpdate("navigating", null, dt, target, flowFieldGrid, walls, missiles, spatialHash, scheduler, state);
+            return enemy.changeStateAndUpdate("navigating", null, dt, target, flowFieldGrid, walls, missiles, spatialFrame, scheduler, state);
         }
 
         const shouldStrafe = (enemy.type === "fast" || enemy.type === "dodger");
@@ -120,7 +120,7 @@ export class EnemyEngagedState {
 
         if (shouldStrafe) {
             if (!hasLOS) {
-                return enemy.changeStateAndUpdate("navigating", null, dt, target, flowFieldGrid, walls, missiles, spatialHash, scheduler, state);
+                return enemy.changeStateAndUpdate("navigating", null, dt, target, flowFieldGrid, walls, missiles, spatialFrame, scheduler, state);
             }
 
             if (stateData.strafeDir === undefined) {
@@ -157,9 +157,9 @@ export class EnemyEngagedState {
             enemy.desiredX = tangentX * stateData.strafeDir + radialX * radialFactor;
             enemy.desiredY = tangentY * stateData.strafeDir + radialY * radialFactor;
 
-            enemy.separation.update(enemy, spatialHash);
+            enemy.separation.update(enemy, spatialFrame);
             PhysicsSystem.applyMovement(enemy, dt, true, true, false);
-            PhysicsSystem.resolveWallCollisions(enemy, wallContextFromState(state), state);
+            PhysicsSystem.resolveWallCollisions(enemy, spatialFrame, state);
         } else {
             if (stateData.linearStrafeState === undefined) {
                 stateData.linearStrafeState = "idle";
@@ -211,7 +211,7 @@ export class EnemyEngagedState {
                         const targetDist = stateData.strafeDir === 1 ? leftPath.openDist : rightPath.openDist;
                         stateData.linearStrafeTimerId = scheduler.schedule((targetDist / enemy.speed) * 1000 + 300);
                     } else {
-                        return enemy.changeStateAndUpdate("navigating", null, dt, target, flowFieldGrid, walls, missiles, spatialHash, scheduler, state);
+                        return enemy.changeStateAndUpdate("navigating", null, dt, target, flowFieldGrid, walls, missiles, spatialFrame, scheduler, state);
                     }
                 }
             }
@@ -224,10 +224,10 @@ export class EnemyEngagedState {
                 enemy.desiredY = 0;
             }
 
-            enemy.separation.update(enemy, spatialHash);
+            enemy.separation.update(enemy, spatialFrame);
             PhysicsSystem.applyMovement(enemy, dt, false, true, false);
 
-            const hitWall = PhysicsSystem.resolveWallCollisions(enemy, wallContextFromState(state), state);
+            const hitWall = PhysicsSystem.resolveWallCollisions(enemy, spatialFrame, state);
             if (hitWall) {
                 stateData.strafeDir *= -1;
                 stateData.linearStrafeState = "idle";
@@ -243,7 +243,7 @@ export class EnemyEngagedState {
 }
 
 export class EnemyChargePrepareState {
-    update(enemy, dt, target, flowFieldGrid, walls, missiles, spatialHash, scheduler, state) {
+    update(enemy, dt, target, flowFieldGrid, walls, missiles, spatialFrame, scheduler, state) {
         if (enemy.chargeCooldown > 0) {
             enemy.chargeCooldown -= dt;
         }
@@ -264,16 +264,16 @@ export class EnemyChargePrepareState {
             enemy.desiredY = 0;
         }
 
-        enemy.separation.update(enemy, spatialHash);
+        enemy.separation.update(enemy, spatialFrame);
         PhysicsSystem.applyMovement(enemy, dt, false, true);
-        PhysicsSystem.resolveWallCollisions(enemy, wallContextFromState(state), state);
+        PhysicsSystem.resolveWallCollisions(enemy, spatialFrame, state);
 
         const isStable = Math.hypot(enemy.vx, enemy.vy) < enemy.speed * 0.6;
         
         if (enemy.chargeCooldown <= 0 && distToTarget < 220 && distToTarget > 80 && isStable) {
             return enemy.changeStateAndUpdate("charging_windup", {
                 timer: 1000,
-            }, dt, target, flowFieldGrid, walls, missiles, spatialHash, scheduler, state);
+            }, dt, target, flowFieldGrid, walls, missiles, spatialFrame, scheduler, state);
         }
 
         return false;
@@ -294,11 +294,11 @@ export class EnemyChargeWindupState {
         };
     }
 
-    update(enemy, dt, target, flowFieldGrid, walls, missiles, spatialHash, scheduler, state) {
+    update(enemy, dt, target, flowFieldGrid, walls, missiles, spatialFrame, scheduler, state) {
         enemy.desiredX = 0;
         enemy.desiredY = 0;
         PhysicsSystem.applyMovement(enemy, dt, true, true);
-        PhysicsSystem.resolveWallCollisions(enemy, wallContextFromState(state), state);
+        PhysicsSystem.resolveWallCollisions(enemy, spatialFrame, state);
 
         const dx = target.x - enemy.x;
         const dy = target.y - enemy.y;
@@ -310,7 +310,7 @@ export class EnemyChargeWindupState {
         if (stateData.timer <= 0) {
             return enemy.changeStateAndUpdate("charging_dash", {
                 timer: 1200,
-            }, dt, target, flowFieldGrid, walls, missiles, spatialHash, scheduler, state);
+            }, dt, target, flowFieldGrid, walls, missiles, spatialFrame, scheduler, state);
         }
 
         return false;
@@ -326,7 +326,7 @@ export class EnemyChargeDashState {
         enemy.desiredY = 0;
     }
 
-    update(enemy, dt, target, flowFieldGrid, walls, missiles, spatialHash, scheduler, state) {
+    update(enemy, dt, target, flowFieldGrid, walls, missiles, spatialFrame, scheduler, state) {
         const stateData = enemy.stateData;
 
         enemy.calculateSteering(target, state);
@@ -341,7 +341,7 @@ export class EnemyChargeDashState {
         enemy.speed = originalSpeed;
         enemy.accelRate = originalAccel;
 
-        PhysicsSystem.resolveWallCollisions(enemy, wallContextFromState(state), state);
+        PhysicsSystem.resolveWallCollisions(enemy, spatialFrame, state);
 
         const distToTarget = Math.hypot(enemy.x - target.x, enemy.y - target.y);
         stateData.timer -= dt;
@@ -356,7 +356,7 @@ export class EnemyChargeDashState {
 }
 
 export class EnemyDodgingState {
-    update(enemy, dt, target, flowFieldGrid, walls, missiles, spatialHash, scheduler, state) {
+    update(enemy, dt, target, flowFieldGrid, walls, missiles, spatialFrame, scheduler, state) {
         const stateData = enemy.stateData;
         const dx = stateData.targetX - enemy.x;
         const dy = stateData.targetY - enemy.y;
@@ -392,15 +392,15 @@ export class EnemyStunnedState {
         }
     }
 
-    update(enemy, dt, target, flowFieldGrid, walls, missiles, spatialHash, scheduler, state) {
+    update(enemy, dt, target, flowFieldGrid, walls, missiles, spatialFrame, scheduler, state) {
         enemy.desiredX = 0;
         enemy.desiredY = 0;
 
-        enemy.separation.update(enemy, spatialHash);
+        enemy.separation.update(enemy, spatialFrame);
         PhysicsSystem.applyFrictionAndDrag(enemy, dt, 4.0);
         enemy.x += enemy.separation.pushX;
         enemy.y += enemy.separation.pushY;
-        PhysicsSystem.resolveWallCollisions(enemy, wallContextFromState(state), state);
+        PhysicsSystem.resolveWallCollisions(enemy, spatialFrame, state);
 
         const velLen = Math.hypot(enemy.vx, enemy.vy);
         if (velLen > 1) {
@@ -447,7 +447,7 @@ export class EnemyBlastedState {
         };
     }
 
-    update(enemy, dt, target, flowFieldGrid, walls, missiles, spatialHash, scheduler, state) {
+    update(enemy, dt, target, flowFieldGrid, walls, missiles, spatialFrame, scheduler, state) {
         const stateData = enemy.stateData;
         stateData.timer -= dt;
         if (stateData.timer <= 0) {
@@ -473,7 +473,7 @@ export class EnemyBlastedState {
         const targetAngle = stateData.angle;
         enemy.angle = turnAngleTowards(enemy.angle, targetAngle, enemy.turnSpeed, dt);
 
-        PhysicsSystem.resolveWallCollisions(enemy, wallContextFromState(state), state);
+        PhysicsSystem.resolveWallCollisions(enemy, spatialFrame, state);
 
         return false;
     }

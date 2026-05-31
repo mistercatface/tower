@@ -7,6 +7,7 @@ import { getProjectileDamage } from "../Combat/impactDamage.js";
 import { getGunProjectileConfig } from "../Combat/gunCombat.js";
 import { getGunDefinition } from "../Config/gunDefinitions.js";
 import { getHostilesForFaction, getPlayerActors, areHostile } from "../Combat/Targeting.js";
+import { Actor } from "./Actor.js";
 
 export class Projectile extends Entity {
     static updateAll(state, dt) {
@@ -94,7 +95,7 @@ export class Projectile extends Entity {
         return this.faction === "enemy" ? "#F44336" : "#FFEB3B";
     }
 
-    resolveFactionCollisions(state, events, system) {
+    resolveFactionCollisions(state, events, system, spatialFrame = null) {
         const eraserOwner = state.player;
         if (eraserOwner?.canEraseHostileProjectiles?.(state)) {
             for (const ep of state.projectiles) {
@@ -112,19 +113,31 @@ export class Projectile extends Entity {
             if (this.isDead) return;
         }
 
-        for (const target of getHostilesForFaction(state, this.faction)) {
-            if (target.isDead) continue;
-            if (system.checkCircle(this, target)) {
-                const damage = getProjectileDamage(this);
-                events.push({ target, damage, projectile: this });
-                PhysicsSystem.applyKnockback(target, this.angle, this.radius * this.getHitKnockbackScale());
-                if (target.health <= damage && this.penetration > 0) {
-                    this.penetration--;
-                } else {
-                    this.isDead = true;
-                    break;
-                }
+        const resolveHostile = (target) => {
+            if (target.isDead) return false;
+            if (!system.checkCircle(this, target)) return false;
+            const damage = getProjectileDamage(this);
+            events.push({ target, damage, projectile: this });
+            PhysicsSystem.applyKnockback(target, this.angle, this.radius * this.getHitKnockbackScale());
+            if (target.health <= damage && this.penetration > 0) {
+                this.penetration--;
+            } else {
+                this.isDead = true;
             }
+            return true;
+        };
+
+        if (spatialFrame) {
+            spatialFrame.forEachNeighbor(this, (target) => {
+                if (this.isDead || !(target instanceof Actor)) return;
+                if (!areHostile(this, target)) return;
+                resolveHostile(target);
+            });
+            return;
+        }
+
+        for (const target of getHostilesForFaction(state, this.faction)) {
+            if (resolveHostile(target)) break;
         }
     }
 

@@ -154,7 +154,7 @@ export class WorldObstacleGrid {
 
         const worldBounds = cellBoundsToWorldBounds(bounds, this.minX, this.minY, this.cellSize);
         const localWalls = wallSpatialHash
-            ? wallSpatialHash.queryBounds(worldBounds.minX, worldBounds.minY, worldBounds.maxX, worldBounds.maxY)
+            ? wallSpatialHash.collectInBounds(worldBounds.minX, worldBounds.minY, worldBounds.maxX, worldBounds.maxY)
             : [];
         for (const localWall of localWalls) {
             this.addWall(localWall);

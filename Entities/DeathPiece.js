@@ -1,14 +1,13 @@
 import { Entity } from "./Entity.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
-import { wallContextFromState } from "../Spatial/World/WallContext.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
 
 export class DeathPiece extends Entity {
-    static updateAll(state, dt) {
+    static updateAll(state, dt, spatialFrame = null) {
         if (!state.deathPieces) return;
         for (let i = state.deathPieces.length - 1; i >= 0; i--) {
             const p = state.deathPieces[i];
-            p.update(dt, state);
+            p.update(dt, state, spatialFrame);
             if (p.isDead) {
                 state.deathPieces.splice(i, 1);
             }
@@ -46,7 +45,7 @@ export class DeathPiece extends Entity {
         this.drag = config.drag ?? 3.0; // deceleration drag
     }
 
-    update(dt, state) {
+    update(dt, state, spatialFrame = null) {
         // Move according to velocity
         this.x += this.vx * (dt / 1000);
         this.y += this.vy * (dt / 1000);
@@ -60,7 +59,7 @@ export class DeathPiece extends Entity {
         this.vy *= dragFactor;
 
         // Wall collisions
-        PhysicsSystem.resolveWallCollisions(this, wallContextFromState(state), state);
+        PhysicsSystem.resolveWallCollisions(this, spatialFrame, state);
 
         // Fade out
         this.lifetime -= dt;

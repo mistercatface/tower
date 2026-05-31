@@ -8,20 +8,19 @@ export class Separation {
         this.pushY = 0;
     }
 
-    update(entity, spatialHash) {
+    update(entity, spatialFrame) {
         this.x = 0;
         this.y = 0;
         this.pushX = 0;
         this.pushY = 0;
 
-        if (!spatialHash) return;
+        if (!spatialFrame) return;
 
-        const neighbors = spatialHash.getNearby(entity);
-        for (const other of neighbors) {
-            if (other === entity || other.isDead) continue;
-            if (typeof entity.shouldSeparateFrom === "function" && !entity.shouldSeparateFrom(other)) continue;
-            if (inferFaction(other) === "player" && entity.attackType === "charge") continue;
-            if (inferFaction(entity) === "player" && other.attackType === "charge") continue;
+        spatialFrame.forEachNeighbor(entity, (other) => {
+            if (other.isDead) return;
+            if (typeof entity.shouldSeparateFrom === "function" && !entity.shouldSeparateFrom(other)) return;
+            if (inferFaction(other) === "player" && entity.attackType === "charge") return;
+            if (inferFaction(entity) === "player" && other.attackType === "charge") return;
 
             let dx = entity.x - other.x;
             let dy = entity.y - other.y;
@@ -49,7 +48,7 @@ export class Separation {
                 this.pushX += (dx / dist) * overlap * 0.5;
                 this.pushY += (dy / dist) * overlap * 0.5;
             }
-        }
+        });
 
         let sepLen = Math.hypot(this.x, this.y);
         if (sepLen > 1.0) {

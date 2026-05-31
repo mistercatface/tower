@@ -174,12 +174,12 @@ export class GameState {
         return [...this.getPlayerActors(), ...this.getHostileActors()];
     }
 
-    updateAllCombatants(dt, spatialHash, options = {}) {
+    updateAllCombatants(dt, spatialFrame, options = {}) {
         this.activeLasers = [];
         const combatEvents = [];
 
         for (const actor of this.getCombatants()) {
-            actor.updateCombat(dt, this, spatialHash, {
+            actor.updateCombat(dt, this, spatialFrame, {
                 ...options,
                 externalSpeedMod: actor.getExternalSpeedMod(this, options),
                 combatEvents,

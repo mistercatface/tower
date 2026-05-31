@@ -1,7 +1,7 @@
 import { FloatingText } from "../Render/FloatingText.js";
 import { ProgressionManager } from "../Progression/ProgressionManager.js";
 import { CollisionSystem } from "../Spatial/Collision/CollisionSystem.js";
-import { SpatialHash } from "../Spatial/World/SpatialHash.js";
+import { SpatialFrame } from "../Spatial/World/SpatialFrame.js";
 import { Projectile } from "../Entities/Projectile.js";
 import { showNodeConfirmModal, requestUiUpdate } from "../Core/EventSystem.js";
 import { Explosion } from "../Entities/Explosion/Explosion.js";
@@ -90,7 +90,7 @@ export class MapTransitionState {
 
 export class CombatState {
     constructor() {
-        this.spatialHash = new SpatialHash(50);
+        this.spatialFrame = new SpatialFrame(50);
     }
 
     onEnter(ctx) {
@@ -139,14 +139,10 @@ export class CombatState {
             ctx.state.navigation.rebuildPlayerFlowField(ctx.state.player.targetX, ctx.state.player.targetY);
         }
 
-        const spatialHash = this.spatialHash;
-        this.spatialHash.clear();
-        for (const actor of ctx.state.getCombatants()) {
-            spatialHash.insert(actor);
-        }
+        const spatialFrame = this.spatialFrame.begin(ctx.state);
 
         const oldGridPos = ctx.state.flowFieldGrid.worldToGrid(ctx.state.player.x, ctx.state.player.y);
-        const combatEvents = ctx.state.updateAllCombatants(dt, spatialHash, { externalSpeedMod: abilityState.externalSpeedMod, upgrades: ctx.upgrades });
+        const combatEvents = ctx.state.updateAllCombatants(dt, spatialFrame, { externalSpeedMod: abilityState.externalSpeedMod, upgrades: ctx.upgrades });
         ctx.state.navigation.updateFlowField({
             playerX: ctx.state.player.x,
             playerY: ctx.state.player.y,
@@ -157,10 +153,10 @@ export class CombatState {
 
         ctx.state.waveManager.manageSpawning(dt, ctx.state, ctx.upgrades, ctx.viewport);
         Projectile.updateAll(ctx.state, dt);
-        DeathPiece.updateAll(ctx.state, dt);
-        ProgressionManager.updatePickups(ctx.state, dt);
+        DeathPiece.updateAll(ctx.state, dt, spatialFrame);
+        ProgressionManager.updatePickups(ctx.state, dt, spatialFrame);
 
-        const collisionEvents = CollisionSystem.run(ctx.state);
+        const collisionEvents = CollisionSystem.run(ctx.state, spatialFrame);
         const allEvents = [...combatEvents, ...collisionEvents];
 
         Explosion.updateAll(ctx.state, dt, allEvents);
