@@ -1,3 +1,4 @@
+import { normalizeAngle } from "../Math/Angle.js";
 import { DestructibleEntity } from "./Entity.js";
 import { DeathPiece } from "./DeathPiece.js";
 import { Separation } from "../Spatial/Motion/Separation.js";
@@ -306,6 +307,15 @@ export class Actor extends DestructibleEntity {
 
     aimIdleTurrets(dt, state, blocksTargeting = false) {
         const effectiveBlocks = this.resolveBlocksTargeting(state, blocksTargeting);
+        if (this.currentState?.locksTurretAim) {
+            for (const turret of this.getTurrets()) {
+                const aimTarget = this.getTurretAimPoint(turret, state, null, effectiveBlocks);
+                if (!aimTarget) continue;
+                turret.angle = normalizeAngle(Math.atan2(aimTarget.y - this.y, aimTarget.x - this.x));
+            }
+            return;
+        }
+
         for (const turret of this.getTurrets()) {
             const aimTarget = this.resolveTurretAimPoint(turret, state, null, effectiveBlocks);
             if (!aimTarget) continue;
@@ -314,6 +324,9 @@ export class Actor extends DestructibleEntity {
     }
 
     resolveTurretAimPoint(turret, state, target, blocksTargeting) {
+        if (this.currentState?.getAimTarget && this.currentState.blocksTargeting) {
+            return this.getTurretAimPoint(turret, state, target, blocksTargeting);
+        }
         if (this.isTurretChargeCommitted(turret)) return this.getCommittedTurretTarget(turret);
         return this.getTurretAimPoint(turret, state, target, blocksTargeting);
     }

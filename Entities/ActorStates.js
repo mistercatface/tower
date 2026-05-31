@@ -1,6 +1,6 @@
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { GhostTrail } from "../Render/GhostTrail.js";
-import { turnAngleTowards } from "../Math/Angle.js";
+import { normalizeAngle, turnAngleTowards } from "../Math/Angle.js";
 import { Utilities } from "../Core/Utilities.js";
 import { CollisionSystem } from "../Spatial/Collision/CollisionSystem.js";
 
@@ -422,16 +422,30 @@ export class EnemyStunnedState {
     }
 }
 
-export class EnemyBlastedState {
+export class EnemyKnockedBackState {
     constructor() {
         this.customMovement = true;
         this.blocksTargeting = true;
         this.blocksInput = true;
+        this.locksTurretAim = true;
     }
 
     onEnter(enemy) {
-        if (enemy.stateData.timer == null) enemy.stateData.timer = 500;
-        if (enemy.stateData.angle == null) enemy.stateData.angle = enemy.angle;
+        const data = enemy.stateData;
+        if (data.pushMs == null) data.pushMs = 500;
+        if (data.stunMs == null) data.stunMs = data.pushMs;
+        if (data.pushSpeedMultiplier == null) data.pushSpeedMultiplier = 3;
+        if (data.angle == null) data.angle = enemy.angle;
+        if (!data.returnState) {
+            data.returnState = enemy.attackType === "charge" ? "charging_prepare" : "navigating";
+        }
+        data.phase = "push";
+        data.timer = data.pushMs;
+
+        for (const turret of enemy.getTurrets()) {
+            enemy.clearTurretCharge(turret);
+            turret.target = null;
+        }
     }
 
     onExit(enemy) {
@@ -439,41 +453,77 @@ export class EnemyBlastedState {
         enemy.vy = 0;
     }
 
+    resolveTurretAimAngle(enemy) {
+        const data = enemy.stateData;
+        if (data.phase === "recovery") {
+            const velLen = Math.hypot(enemy.vx, enemy.vy);
+            if (velLen > 1) {
+                return Math.atan2(enemy.vy, enemy.vx);
+            }
+        }
+        return data.angle;
+    }
+
     getAimTarget(enemy, target, blocksTargeting, turret) {
-        const angle = enemy.stateData.angle || 0;
+        const angle = this.resolveTurretAimAngle(enemy);
         return {
             x: enemy.x + Math.cos(angle) * 100,
-            y: enemy.y + Math.sin(angle) * 100
+            y: enemy.y + Math.sin(angle) * 100,
         };
     }
 
+    finish(enemy) {
+        if (enemy.attackType === "charge") {
+            enemy.chargeCooldown = 1500;
+        }
+        enemy.vx = 0;
+        enemy.vy = 0;
+        enemy.changeState(enemy.stateData.returnState);
+    }
+
     update(enemy, dt, target, flowFieldGrid, walls, missiles, spatialFrame, scheduler, state) {
-        const stateData = enemy.stateData;
-        stateData.timer -= dt;
-        if (stateData.timer <= 0) {
-            enemy.vx = 0;
-            enemy.vy = 0;
-            if (enemy.stopMovement) {
-                enemy.stopMovement();
+        const data = enemy.stateData;
+        data.timer -= dt;
+
+        if (data.phase === "push") {
+            const ratio = Math.max(0, data.timer / data.pushMs);
+            const speed = enemy.speed * data.pushSpeedMultiplier * Math.pow(ratio, 1.5);
+            enemy.vx = Math.cos(data.angle) * speed;
+            enemy.vy = Math.sin(data.angle) * speed;
+            enemy.x += enemy.vx * (dt / 1000);
+            enemy.y += enemy.vy * (dt / 1000);
+            enemy.angle = turnAngleTowards(enemy.angle, data.angle, enemy.turnSpeed, dt);
+            PhysicsSystem.resolveWallCollisions(enemy, spatialFrame, state);
+
+            if (data.timer <= 0) {
+                const recoveryMs = data.stunMs - data.pushMs;
+                if (recoveryMs <= 0) {
+                    this.finish(enemy);
+                    return false;
+                }
+                data.phase = "recovery";
+                data.timer = recoveryMs;
             }
-            enemy.changeState("navigating");
             return false;
         }
 
-        const ratio = Math.max(0, stateData.timer / 500);
-        const launchSpeed = enemy.speed * 6;
-        const speed = launchSpeed * Math.pow(ratio, 1.5);
-
-        enemy.vx = Math.cos(stateData.angle) * speed;
-        enemy.vy = Math.sin(stateData.angle) * speed;
-
-        enemy.x += enemy.vx * (dt / 1000);
-        enemy.y += enemy.vy * (dt / 1000);
-
-        const targetAngle = stateData.angle;
-        enemy.angle = turnAngleTowards(enemy.angle, targetAngle, enemy.turnSpeed, dt);
-
+        enemy.desiredX = 0;
+        enemy.desiredY = 0;
+        enemy.separation.update(enemy, spatialFrame);
+        PhysicsSystem.applyFrictionAndDrag(enemy, dt, 4.0);
+        enemy.x += enemy.separation.pushX;
+        enemy.y += enemy.separation.pushY;
         PhysicsSystem.resolveWallCollisions(enemy, spatialFrame, state);
+
+        const velLen = Math.hypot(enemy.vx, enemy.vy);
+        if (velLen > 1) {
+            const targetAngle = Math.atan2(enemy.vy, enemy.vx);
+            enemy.angle = turnAngleTowards(enemy.angle, targetAngle, enemy.turnSpeed, dt);
+        }
+
+        if (data.timer <= 0) {
+            this.finish(enemy);
+        }
 
         return false;
     }
@@ -487,5 +537,5 @@ export const actorStates = {
     charging_dash: new EnemyChargeDashState(),
     dodging: new EnemyDodgingState(),
     stunned: new EnemyStunnedState(),
-    blasted: new EnemyBlastedState(),
+    knockedBack: new EnemyKnockedBackState(),
 };

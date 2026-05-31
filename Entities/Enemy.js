@@ -34,8 +34,6 @@ export class Enemy extends Actor {
         this.setupCombatant(combatStats, baseUpgradeDefs);
         this.initCombatWeapon();
         this.isEngaged = false;
-        this.blastAngle = 0;
-        this.blastTimer = 0;
         this.dodgeTimerId = null;
         this.dodgeTargetX = 0;
         this.dodgeTargetY = 0;

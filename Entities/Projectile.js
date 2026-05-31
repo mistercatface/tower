@@ -1,12 +1,13 @@
 import { CollisionSystem } from "../Spatial/Collision/CollisionSystem.js";
 import { Entity } from "./Entity.js";
-import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
 import { Pools } from "../Core/Pools.js";
 import { GhostTrail } from "../Render/GhostTrail.js";
 import { getProjectileDamage } from "../Combat/impactDamage.js";
-import { getGunProjectileConfig } from "../Combat/gunCombat.js";
+import { applyActorImpactKnockback } from "../Combat/impactKnockback.js";
+import { getGunImpactKnockback, getGunProjectileConfig } from "../Combat/gunCombat.js";
 import { getGunDefinition } from "../Config/gunDefinitions.js";
+import { Enemy } from "./Enemy.js";
 import { getPlayerActors, areHostile } from "../Combat/Targeting.js";
 import { Actor } from "./Actor.js";
 
@@ -90,11 +91,6 @@ export class Projectile extends Entity {
         this.ghostTrail?.update(dt, this.x, this.y, this.angle);
     }
 
-    getHitKnockbackScale() {
-        if (!this.gunId) return 150;
-        return getGunProjectileConfig(getGunDefinition(this.gunId)).hitKnockbackScale;
-    }
-
     getRenderColor() {
         if (!this.gunId) {
             return this.getProjectileColorFallback();
@@ -115,7 +111,13 @@ export class Projectile extends Entity {
 
             const damage = getProjectileDamage(this);
             events.push({ target, damage, projectile: this });
-            PhysicsSystem.applyKnockback(target, this.angle, this.radius * this.getHitKnockbackScale());
+
+            if (this.gunId && target instanceof Enemy) {
+                const impactKnockback = getGunImpactKnockback(getGunDefinition(this.gunId));
+                if (impactKnockback) {
+                    applyActorImpactKnockback(target, this.angle, impactKnockback, spatialFrame, state);
+                }
+            }
             if (target.health <= damage && this.penetration > 0) {
                 this.penetration--;
             } else {

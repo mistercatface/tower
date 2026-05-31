@@ -17,6 +17,10 @@ export function getGunProjectileConfig(gun) {
     throw new Error(`Gun "${gun?.id ?? "unknown"}" is missing projectile config`);
 }
 
+export function getGunImpactKnockback(gun) {
+    return getGunProjectileConfig(gun).impactKnockback ?? null;
+}
+
 export function applyActorGunModifiers(actor) {
     if (!actor.stats) return;
 

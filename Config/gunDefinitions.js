@@ -19,12 +19,19 @@ export const projectilePresets = {
     playerStandard: {
         color: "#FFEB3B",
         shooterKnockbackMultiplier: playerProjectileSettings.knockbackMultiplier,
-        hitKnockbackScale: 150,
+    },
+    playerKnockback: {
+        color: "#FFEB3B",
+        shooterKnockbackMultiplier: playerProjectileSettings.knockbackMultiplier,
+        impactKnockback: {
+            stunMs: 700,
+            pushMs: 280,
+            pushSpeedMultiplier: 3,
+        },
     },
     enemyStandard: {
         color: "#F44336",
         shooterKnockbackMultiplier: enemyProjectileSettings.knockbackMultiplier,
-        hitKnockbackScale: 150,
     },
 };
 
@@ -69,7 +76,7 @@ export const gunDefinitions = {
         maxAmmo: 2,
         reloadTimeMs: 2800,
         turretLoadout: { preset: "sawedOffShotgun" },
-        projectile: projectilePresets.playerStandard,
+        projectile: projectilePresets.playerKnockback,
     },
     tommyGun: {
         id: "tommyGun",
