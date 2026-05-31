@@ -1,4 +1,4 @@
-import { spawnSettings, timingSettings, waveSettings } from "../Config/Config.js";
+import { mapGenerationSettings, spawnSettings, timingSettings, waveSettings } from "../Config/Config.js";
 import { canRunWaveSpawning } from "../GameState/GamePhase.js";
 import { Enemy } from "../Entities/Enemy.js";
 import { requestUiUpdate, emitCombatWaveCleared } from "../Core/EventSystem.js";
@@ -9,6 +9,20 @@ import {
     getPodSize,
     selectSpawnPod,
 } from "./SpawnPods.js";
+
+function getSpawnRadius(state) {
+    const node = typeof state.getCurrentMapNode === "function" ? state.getCurrentMapNode() : null;
+    if (node?.id === 0) {
+        return mapGenerationSettings.startNodeSpawnRadius ?? state.spawnRadius;
+    }
+    return state.spawnRadius;
+}
+
+function pickSpawnSide(state) {
+    const node = typeof state.getCurrentMapNode === "function" ? state.getCurrentMapNode() : null;
+    if (node?.id === 0) return 0;
+    return Math.floor(Math.random() * 4);
+}
 
 export class WaveManager {
     constructor() {
@@ -75,7 +89,7 @@ export class WaveManager {
     }
 
     calculateSpawnPosition(state, side, pos) {
-        const dist = state.spawnRadius;
+        const dist = getSpawnRadius(state);
         let x, y;
 
         if (side === 0) {
@@ -129,9 +143,9 @@ export class WaveManager {
 
     spawnPod(state, pod, baseUpgradeDefs) {
         const spacing = waveSettings.podSpacing;
-        const side = Math.floor(Math.random() * 4);
+        const side = pickSpawnSide(state);
         const podSize = getPodSize(pod);
-        const dist = state.spawnRadius;
+        const dist = getSpawnRadius(state);
         const basePos = (Math.random() * 2 - 1) * (dist - (podSize * spacing) / 2);
 
         let slot = 0;

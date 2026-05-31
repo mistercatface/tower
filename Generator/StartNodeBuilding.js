@@ -1,13 +1,14 @@
 import { Segment } from "../Entities/Wall.js";
 import { snapLayoutOrigin, gridCellCenter } from "./GridLayout.js";
 
-/** Fixed layout for map node 0 — BSP building north of Brock/Barry spawn. */
+/** Fixed layout for map node 0 — player starts just south of the entrance. */
 const GRID_COLS = 49;
 const BUILDING_ROWS = 34;
-/** Walk space south of the building before the entrance (player spawns at south end). */
-const YARD_ROWS = 26;
+const ENTRANCE_ROW = BUILDING_ROWS - 1;
+const SPAWN_SOUTH_OF_ENTRANCE = 8;
+const YARD_ROWS = SPAWN_SOUTH_OF_ENTRANCE + 2;
 const GRID_ROWS = BUILDING_ROWS + YARD_ROWS;
-const SPAWN_ROW = GRID_ROWS - 4;
+const SPAWN_ROW = ENTRANCE_ROW + SPAWN_SOUTH_OF_ENTRANCE;
 const SPAWN_COL = Math.floor(GRID_COLS / 2);
 const ENTRANCE_WIDTH = 5;
 const BSP_SEED = 0x7e400001;
@@ -208,8 +209,9 @@ function carveGuardRoom(grid, cols) {
 }
 
 function carveYard(grid, cols) {
-    carveRect(grid, cols, 1, BUILDING_ROWS, GRID_COLS - 2, YARD_ROWS - 1);
-    carveRect(grid, cols, SPAWN_COL - 5, SPAWN_ROW - 2, 11, 7);
+    if (YARD_ROWS > 0) {
+        carveRect(grid, cols, 1, BUILDING_ROWS, GRID_COLS - 2, YARD_ROWS);
+    }
     for (let c = 0; c < GRID_COLS; c++) {
         grid[(GRID_ROWS - 1) * cols + c] = 0;
     }
@@ -264,7 +266,7 @@ export function getStartNodeLayout(px, py, cellSize) {
         maxY: offsetY + GRID_ROWS * cellSize,
         spawnX: spawn.x,
         spawnY: spawn.y,
-        spawnClearRadius: 72,
+        spawnClearRadius: 48,
         guardFaceX: guardFace.x,
         guardFaceY: guardFace.y,
         guardSpawns: [guardLeft, guardRight],

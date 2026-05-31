@@ -42,7 +42,7 @@ export class Viewport {
     }
 
     getVisualRadius() {
-        return Math.max(1, Math.min(this.cx, this.cy) - 15);
+        return Math.max(1, Math.min(this.cx, this.cy) - 4);
     }
 
     updateZoomLimits(state) {

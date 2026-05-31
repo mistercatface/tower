@@ -429,62 +429,18 @@ export class Renderer {
 
         this.ctx.save();
 
-        const vignette = this.ctx.createRadialGradient(cx, cy, R * 0.82, cx, cy, R);
-        vignette.addColorStop(0, "rgba(0, 0, 0, 0)");
-        vignette.addColorStop(0.9, "rgba(0, 0, 0, 0.06)");
-        vignette.addColorStop(0.98, "rgba(0, 0, 0, 0.22)");
-        vignette.addColorStop(1.0, "rgba(0, 0, 0, 0.55)");
-
-        this.ctx.fillStyle = vignette;
+        this.ctx.fillStyle = "#0a0c10";
         this.ctx.beginPath();
-        this.ctx.arc(cx, cy, R, 0, Math.PI * 2);
-        this.ctx.fill();
-
-        this.ctx.strokeStyle = "rgba(0, 229, 255, 0.6)";
-        this.ctx.lineWidth = 2.0;
-        this.ctx.shadowColor = "#00bcd4";
-        this.ctx.shadowBlur = 8;
-        this.ctx.beginPath();
-        this.ctx.arc(cx, cy, R, 0, Math.PI * 2);
-        this.ctx.stroke();
-        this.ctx.shadowBlur = 0;
-
-        const borderOuter = R + 14;
-        const bezelGrad = this.ctx.createRadialGradient(cx, cy, R, cx, cy, borderOuter);
-        bezelGrad.addColorStop(0.0, "#0a0c10");
-        bezelGrad.addColorStop(0.2, "#1b2028");
-        bezelGrad.addColorStop(0.5, "#404c5e");
-        bezelGrad.addColorStop(0.8, "#1b2028");
-        bezelGrad.addColorStop(1.0, "#07080a");
-
-        this.ctx.fillStyle = bezelGrad;
-        this.ctx.strokeStyle = "#404c5e";
-        this.ctx.lineWidth = 1.0;
-        this.ctx.beginPath();
-        this.ctx.arc(cx, cy, borderOuter, 0, Math.PI * 2);
+        this.ctx.rect(0, 0, this.canvas.width, this.canvas.height);
         this.ctx.arc(cx, cy, R, 0, Math.PI * 2, true);
-        this.ctx.fill();
+        this.ctx.fill("evenodd");
+
+        this.ctx.strokeStyle = "rgba(0, 229, 255, 0.45)";
+        this.ctx.lineWidth = 1;
+        this.ctx.beginPath();
+        this.ctx.arc(cx, cy, R, 0, Math.PI * 2);
         this.ctx.stroke();
 
-        this.ctx.save();
-        this.ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
-        this.ctx.lineWidth = 1.5;
-        this.ctx.beginPath();
-        for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 18) {
-            const cos = Math.cos(angle);
-            const sin = Math.sin(angle);
-            const isMajor = angle % (Math.PI / 2) === 0;
-            const length = isMajor ? 8 : 4;
-            if (isMajor) {
-                this.ctx.strokeStyle = "rgba(0, 229, 255, 0.6)";
-            } else {
-                this.ctx.strokeStyle = "rgba(255, 255, 255, 0.25)";
-            }
-            this.ctx.moveTo(cx + cos * R, cy + sin * R);
-            this.ctx.lineTo(cx + cos * (R + length), cy + sin * R);
-        }
-        this.ctx.stroke();
-        this.ctx.restore();
         this.ctx.restore();
     }
 

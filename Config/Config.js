@@ -293,7 +293,16 @@ export const waveSettings = {
     podSpacing: 40,
 };
 
-export const mapGenerationSettings = { startNodeWaves: 1, nodesPerLayerMin: 2, nodesPerLayerMax: 4, wavesTotalMin: 1, wavesTotalMax: 5, extraConnectionChance: 0.3 };
+export const mapGenerationSettings = {
+    startNodeWaves: 1,
+    /** Wave spawns on map node 0 — just above the player (inside the start building). */
+    startNodeSpawnRadius: 90,
+    nodesPerLayerMin: 2,
+    nodesPerLayerMax: 4,
+    wavesTotalMin: 1,
+    wavesTotalMax: 5,
+    extraConnectionChance: 0.3,
+};
 
 export const difficultyCurve = { rewardMultiplier: 1.04 };
 

@@ -35,7 +35,7 @@ export const radioConversations = {
         lines: [
             { speakerId: "brock", text: "This stuff is weirdly flammable. I don't get why they panicked like that though." },
             { speakerId: "barry", text: "I do object to how hard he's gripping that banana." },
-            { speakerId: "brock", text: "He knew what he was signing up for." },
+            { speakerId: "brock", text: "That banana knew what he was signing up for." },
         ],
     },
     start_node_inspection_complete_barry_brock: {
