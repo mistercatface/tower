@@ -6,7 +6,6 @@ import { NAV_PROFILES } from "../Config/Config.js";
 import { rollEnemyStartLoadout } from "../Combat/weaponLoadout.js";
 import { createEntityBars } from "./EntityBars.js";
 import { buildEnemyCombatStats, computeEnemyUpgradeLevels, computeSpawnReward } from "../Combat/EnemySpawn.js";
-import { GhostTrail } from "../Render/GhostTrail.js";
 
 const enemyBars = createEntityBars({ healthWidth: 22, healthHeight: 3, healthBorderRadius: 1.5, stunHeight: 2, stunBorderRadius: 1 });
 
@@ -45,26 +44,21 @@ export class Enemy extends Actor {
     }
 
     onHitAfterDamage(damage, ctx, hitType, died, event) {
-        if (died) {
-            emitCombatEnemyKilled(this);
-            this.spawnDeathPieces(ctx.state, event);
-        }
+        if (died) emitCombatEnemyKilled(this);
+        super.onHitAfterDamage(damage, ctx, hitType, died, event);
     }
 
-    updateCombat(dt, state, spatialFrame, options = {}) {
-        this.ghostTrail?.update(dt, this.x, this.y, this.angle);
+    updateLocomotion(dt, state, spatialFrame, options = {}) {
         const target = this.getAITarget(state);
 
         if (!target) {
             this.desiredX = 0;
             this.desiredY = 0;
             this.applyLocomotion(dt, spatialFrame, { state, ignoreSeparationInDesired: true });
-            this.updateTurretCombat(dt, state, options);
             return;
         }
 
         this.currentState.update(this, dt, target, state.flowFieldGrid, state.walls, state.projectiles, spatialFrame, state.scheduler, state);
-        this.updateTurretCombat(dt, state, options);
     }
 
     calculateSteering(target, state) {

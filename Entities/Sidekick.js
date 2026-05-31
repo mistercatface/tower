@@ -2,7 +2,6 @@ import { Actor } from "./Actor.js";
 import { NAV_PROFILES, navigationSettings, sidekickBaseStats } from "../Config/Config.js";
 import { defaultGunId } from "../Config/gunDefinitions.js";
 import { createEntityBars } from "./EntityBars.js";
-import { GhostTrail } from "../Render/GhostTrail.js";
 
 const sidekickBars = createEntityBars({ healthWidth: 40, healthHeight: 4, healthBorderRadius: 2 });
 
@@ -21,7 +20,6 @@ export class Sidekick extends Actor {
 
     constructor(x, y, radius) {
         super(x, y, radius, sidekickBaseStats.speed, sidekickBaseStats.maxHealth, "#00BCD4", "companion", 3.0, false);
-        this.faction = "player";
         this.teamId = 0;
         this.alwaysRunsTurretCombat = true;
         this.healthBar = Sidekick.healthBar;
@@ -105,13 +103,11 @@ export class Sidekick extends Actor {
         this.holdPosition();
     }
 
-    updateCombat(dt, state, spatialFrame, options = {}) {
-        this.ghostTrail?.update(dt, this.x, this.y, this.angle);
+    updateLocomotion(dt, state, spatialFrame, options = {}) {
         const leader = state.player;
         if (!leader || leader.isDead) {
             this.holdPosition();
             this.applyLocomotion(dt, spatialFrame, { ...options, state });
-            this.updateTurretCombat(dt, state, options);
             return;
         }
 
@@ -146,6 +142,5 @@ export class Sidekick extends Actor {
         this.applyLocomotion(dt, spatialFrame, { ...options, state });
         this.speed = baseSpeed;
         this.enforceLeaderClearance(leader);
-        this.updateTurretCombat(dt, state, options);
     }
 }

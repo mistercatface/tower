@@ -13,10 +13,11 @@ import { resolveWeaponModeForGun, WeaponSystem } from "../Combat/WeaponSystem.js
 import { applyActorGunModifiers, getSlotFireIntervalMs } from "../Combat/gunCombat.js";
 import { getGunDefinition } from "../Config/gunDefinitions.js";
 import { explosionSettings } from "../Config/Config.js";
-import { resolveActorTurretLoadouts } from "../Config/TurretLoadoutDefinitions.js";
+import { resolveActorTurretLoadouts, applyGunTurretLoadouts, applyUpgradeTurretLoadouts } from "../Config/TurretLoadoutDefinitions.js";
 import { getTurretCountForLoadout, normalizeWeaponLoadout } from "../Combat/equipmentLoadout.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
 import { areHostile, getNearestHostile, getPlayerActors, isValidTurretTarget } from "../Combat/Targeting.js";
+import { getActorProfileForActor, getActorProfileForType } from "../Config/actorProfiles.js";
 
 export class Actor extends DestructibleEntity {
     constructor(x, y, radius, speed, health, color, type, accelRate = 3.0, canDamageWalls = false) {
@@ -26,7 +27,7 @@ export class Actor extends DestructibleEntity {
         this.speed = speed;
         this.color = color;
         this.type = type;
-        this.faction = type === "player" ? "player" : "enemy";
+        this.faction = getActorProfileForType(type).faction;
         this.teamId = null;
         this.alwaysRunsTurretCombat = false;
         this.usesTurretGhostTrails = false;
@@ -119,11 +120,17 @@ export class Actor extends DestructibleEntity {
     }
 
     getProjectileColorFallback() {
-        return this.faction === "enemy" ? "#F44336" : "#FFEB3B";
+        return getActorProfileForActor(this).projectileColor;
     }
 
-    updateCombat(_dt, _state, _spatialFrame, _options = {}) {
-        // Subclasses run movement, then call updateTurretCombat.
+    updateCombat(dt, state, spatialFrame, options = {}) {
+        this.ghostTrail?.update(dt, this.x, this.y, this.angle);
+        this.updateLocomotion(dt, state, spatialFrame, options);
+        return this.updateTurretCombat(dt, state, options);
+    }
+
+    updateLocomotion(_dt, _state, _spatialFrame, _options = {}) {
+        // Subclasses implement movement; turret combat runs in updateCombat.
     }
 
     updateTurretCombat(dt, state, options = {}) {
@@ -453,14 +460,11 @@ export class Actor extends DestructibleEntity {
         this.weaponLoadout = loadout;
         const turnSpeed = this.stats?.turnSpeed?.value ?? this.turnSpeed;
         this.syncTurretCount(getTurretCountForLoadout(loadout), turnSpeed);
+        applyGunTurretLoadouts(this);
         if (resolveContext?.state) {
-            resolveActorTurretLoadouts(this, resolveContext.state, resolveContext.upgradeDefs ?? resolveContext.state.upgradeDefs);
-        } else {
-            for (let i = 0; i < loadout.length; i++) {
-                this.turrets[i].gunId = loadout[i];
-            }
-            applyActorGunModifiers(this);
+            applyUpgradeTurretLoadouts(this, resolveContext.state, resolveContext.upgradeDefs ?? resolveContext.state.upgradeDefs);
         }
+        applyActorGunModifiers(this);
     }
 
     processAllTurrets(dt, state, blocksTargeting = false, combatEvents = []) {
@@ -572,14 +576,8 @@ export class Actor extends DestructibleEntity {
         if (renderPath && RenderSprites[renderPath]) {
             return RenderSprites[renderPath];
         }
-        switch (this.type) {
-            case "player":
-                return RenderSprites.player;
-            case "companion":
-                return RenderSprites.sidekick;
-            default:
-                return RenderSprites.enemy;
-        }
+        const spriteKey = getActorProfileForActor(this).bodySprite;
+        return RenderSprites[spriteKey];
     }
 
     getBodySpriteCacheKey() {
@@ -587,7 +585,7 @@ export class Actor extends DestructibleEntity {
     }
 
     getStatusBarYOffset() {
-        return this.type === "player" || this.type === "companion" ? this.radius + 14 : 14;
+        return getActorProfileForActor(this).statusBarOffset(this.radius);
     }
 
     renderBody(ctx, renderer) {

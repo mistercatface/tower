@@ -1,6 +1,8 @@
+import { getActorProfileForActor } from "../Config/actorProfiles.js";
+
 export function inferFaction(actor) {
     if (actor.faction) return actor.faction;
-    return actor.type === "player" ? "player" : "enemy";
+    return getActorProfileForActor(actor).faction;
 }
 
 export function areHostile(a, b) {
@@ -37,10 +39,7 @@ function getAllCombatants(state) {
 
 export function getHostiles(state, actor) {
     if (!actor) return [];
-
-    return getAllCombatants(state).filter(
-        (other) => other !== actor && !other.isDead && areHostile(actor, other)
-    );
+    return getAllCombatants(state).filter((other) => other !== actor && !other.isDead && areHostile(actor, other));
 }
 
 export function getHostilesForFaction(state, faction) {

@@ -2,7 +2,6 @@ import { Actor } from "./Actor.js";
 import { spawnFloatingText } from "../Core/EventSystem.js";
 import { createFloorFillStyle, playerBaseStats, NAV_PROFILES, navigationSettings } from "../Config/Config.js";
 import { createEntityBars } from "./EntityBars.js";
-import { GhostTrail } from "../Render/GhostTrail.js";
 import { isMapTraveling } from "../GameState/GamePhase.js";
 import { entityIntersectsCellBounds } from "../Spatial/Geometry/GridCoords.js";
 
@@ -141,20 +140,16 @@ export class Player extends Actor {
     }
 
     shouldSeparateFrom(other) {
-        if (other?.teamId != null && this.teamId != null && other.teamId === this.teamId) {
-            return false;
-        }
+        if (other?.teamId != null && this.teamId != null && other.teamId === this.teamId) return false;
         return true;
     }
 
-    updateCombat(dt, state, spatialFrame, options = {}) {
-        this.ghostTrail?.update(dt, this.x, this.y, this.angle);
+    updateLocomotion(dt, state, spatialFrame, options = {}) {
         const flowFieldGrid = state.flowFieldGrid;
         const walls = state.walls;
 
         if (this.currentState?.customMovement) {
             this.currentState.update(this, dt, null, flowFieldGrid, walls, null, spatialFrame, null, null);
-            this.updateTurretCombat(dt, state, options);
             return;
         }
         if (this.isMoving && this.targetX !== null && this.targetY !== null) {
@@ -170,7 +165,6 @@ export class Player extends Actor {
         }
 
         this.applyLocomotion(dt, spatialFrame, { externalSpeedMod: options.externalSpeedMod ?? 1.0, state });
-        this.updateTurretCombat(dt, state, options);
     }
 
     renderRange(ctx, weaponRange) {

@@ -7,59 +7,53 @@ import { getSlotFireIntervalMs, getSlotReloadTimeMs } from "./gunCombat.js";
 import { getBeamTickDamage, createBeamHitSource } from "./impactDamage.js";
 import { areHostile, getHostiles, getNearestHostile } from "./Targeting.js";
 
+function advanceTurretAmmo(dt, turret, gun, source) {
+    if (turret.currentGunId !== turret.gunId || turret.ammo === undefined) {
+        turret.currentGunId = turret.gunId;
+        turret.ammo = gun.maxAmmo;
+        turret.reloading = false;
+        turret.reloadTimer = 0;
+    }
+
+    if (turret.reloading) {
+        turret.reloadTimer += dt;
+        const reloadTimeMs = getSlotReloadTimeMs(gun, source);
+        if (turret.reloadTimer >= reloadTimeMs) {
+            turret.reloading = false;
+            turret.reloadTimer = 0;
+            turret.ammo = gun.maxAmmo;
+        }
+    }
+
+    if (!turret.reloading && turret.ammo <= 0) {
+        turret.reloading = true;
+        turret.reloadTimer = 0;
+    }
+
+    return turret.reloading;
+}
+
 export class ChargedWeaponMode {
     constructor(onFireFn) {
         this.onFire = onFireFn;
     }
 
     processTurret(dt, state, source, gun, turret, target, blocksTargeting, combatEvents) {
-        if (turret.currentGunId !== turret.gunId || turret.ammo === undefined) {
-            turret.currentGunId = turret.gunId;
-            turret.ammo = gun.maxAmmo;
-            turret.reloading = false;
-            turret.reloadTimer = 0;
-        }
-
-        if (turret.reloading) {
-            turret.reloadTimer += dt;
-            const reloadTimeMs = getSlotReloadTimeMs(gun, source);
-            if (turret.reloadTimer >= reloadTimeMs) {
-                turret.reloading = false;
-                turret.reloadTimer = 0;
-                turret.ammo = gun.maxAmmo;
-            }
-        }
-
-        if (!turret.reloading && turret.ammo <= 0) {
-            turret.reloading = true;
-            turret.reloadTimer = 0;
-        }
-
-        if (turret.reloading) {
-            source.clearTurretCharge(turret);
-        }
-
+        const reloading = advanceTurretAmmo(dt, turret, gun, source);
+        if (reloading) source.clearTurretCharge(turret);
         const committed = source.isTurretChargeCommitted(turret);
         const fireTarget = source.resolveTurretTargetForProcessing(turret);
         const effectiveBlocks = source.resolveTurretBlocksForProcessing(turret, state, blocksTargeting);
-
         const aimTarget = source.resolveTurretAimPoint(turret, state, fireTarget, effectiveBlocks);
-
         if (!aimTarget) {
-            if (!committed) {
-                source.clearTurretCharge(turret);
-            }
+            if (!committed) source.clearTurretCharge(turret);
             return;
         }
-
         const fireIntervalMs = getSlotFireIntervalMs(gun, source);
         const sway = WeaponSystem.computeAccuracySway(source, turret, dt, true);
-
         const isAimed = WeaponSystem.aimTurret(turret, source.x, source.y, aimTarget.x, aimTarget.y, dt, sway);
-
         if (!turret.reloading && fireTarget && !effectiveBlocks) {
             source.syncTurretChargeTarget(turret, fireTarget);
-
             if (source.canIncrementTurretCharge(turret, isAimed)) {
                 turret.charge += dt;
                 if (turret.charge >= fireIntervalMs) {
@@ -86,31 +80,9 @@ export class ContinuousWeaponMode {
     }
 
     processTurret(dt, state, source, gun, turret, target, blocksTargeting, combatEvents) {
-        if (turret.currentGunId !== turret.gunId || turret.ammo === undefined) {
-            turret.currentGunId = turret.gunId;
-            turret.ammo = gun.maxAmmo;
-            turret.reloading = false;
-            turret.reloadTimer = 0;
-        }
-
-        if (turret.reloading) {
-            turret.reloadTimer += dt;
-            const reloadTimeMs = getSlotReloadTimeMs(gun, source);
-            if (turret.reloadTimer >= reloadTimeMs) {
-                turret.reloading = false;
-                turret.reloadTimer = 0;
-                turret.ammo = gun.maxAmmo;
-            }
-        }
-
-        if (!turret.reloading && turret.ammo <= 0) {
-            turret.reloading = true;
-            turret.reloadTimer = 0;
-        }
-
-        const turretDist = source.radius + 4 + 4 * (source.radius / 8);
-        const tx = source.x + Math.cos(turret.angle) * turretDist;
-        const ty = source.y + Math.sin(turret.angle) * turretDist;
+        advanceTurretAmmo(dt, turret, gun, source);
+        const fireTarget = source.resolveTurretTargetForProcessing(turret);
+        const { x: tx, y: ty } = turret.getMuzzlePosition(source, gun.beamRadius ?? 1, fireTarget);
         const effectiveBlocks = source.resolveTurretBlocksForProcessing(turret, state, blocksTargeting);
         const aimTarget = source.resolveTurretAimPoint(turret, state, target, effectiveBlocks);
 
@@ -119,7 +91,7 @@ export class ContinuousWeaponMode {
         if (aimTarget) {
             WeaponSystem.aimTurret(turret, source.x, source.y, aimTarget.x, aimTarget.y, dt, sway);
         }
-        turret.lastTarget = (target && !effectiveBlocks) ? target : null;
+        turret.lastTarget = target && !effectiveBlocks ? target : null;
         this.onTick(dt, state, tx, ty, turret, combatEvents, source);
     }
 }
@@ -197,10 +169,7 @@ export class WeaponSystem {
 
         let candidateWalls = state.walls;
         if (state.obstacleGrid) {
-            candidateWalls = getWallsAlongLine(startX, startY, endX, endY, {
-                walls: state.walls,
-                obstacleGrid: state.obstacleGrid,
-            });
+            candidateWalls = getWallsAlongLine(startX, startY, endX, endY, { walls: state.walls, obstacleGrid: state.obstacleGrid });
         } else {
             const minX = Math.min(startX, endX);
             const maxX = Math.max(startX, endX);
@@ -210,8 +179,7 @@ export class WeaponSystem {
             for (const seg of state.walls) {
                 if (seg.isDead) continue;
                 const limit = seg.size * 0.75 + 1.5;
-                if (seg.x < minX - limit || seg.x > maxX + limit ||
-                    seg.y < minY - limit || seg.y > maxY + limit) {
+                if (seg.x < minX - limit || seg.x > maxX + limit || seg.y < minY - limit || seg.y > maxY + limit) {
                     continue;
                 }
                 temp.push(seg);
@@ -284,7 +252,7 @@ export class WeaponSystem {
         if (requireCharge && turret.charge <= 0) return 0;
 
         const effectiveAccuracy = source.applyMovementAccuracyPenalty(weapon.accuracy);
-        const accuracySpread = ((1 - effectiveAccuracy) * Math.PI) / 2 * 0.5;
+        const accuracySpread = (((1 - effectiveAccuracy) * Math.PI) / 2) * 0.5;
         const frequency = 0.005;
         turret.swayPhase += dt * frequency;
         const turretsList = source.getTurrets();
