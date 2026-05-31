@@ -3,6 +3,7 @@ import { Render3D } from "./3D/Render3D.js";
 import { combatVisualSettings, createFloorFillStyle, mapSettings } from "../Config/Config.js";
 import { getWorldDrawCoords, isMapTraveling, isWorldScene } from "../GameState/GamePhase.js";
 import { getPlayerActors } from "../Combat/Targeting.js";
+import { drawHostileOffScreenIndicators } from "./OffScreenIndicators.js";
 
 export class Renderer {
     constructor(canvas, ctx) {
@@ -94,6 +95,7 @@ export class Renderer {
 
         if (viewport && isWorldScene(state.phase)) {
             this.drawGlobeOverlay(state, viewport);
+            drawHostileOffScreenIndicators(this.ctx, state, viewport);
         }
     }
 
