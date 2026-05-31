@@ -2,6 +2,7 @@ import { perkMilestones } from "../Config/Config.js";
 import { xpForLevel } from "../Config/configHelpers.js";
 import { buildAbilityTreeLayout } from "../Config/abilityTreeLayout.js";
 import { isCombat, isCombatOrReward, isInspector } from "../GameState/GamePhase.js";
+import { getStartNodeInspectionMissionLabel } from "../Combat/StartNodeInspection.js";
 import { formatWeaponLoadoutLabel } from "../Combat/weaponLoadout.js";
 import { getGunDefinition, playerEquipmentCatalog } from "../Config/gunDefinitions.js";
 import { getSlotFireIntervalMs, getSlotReloadTimeMs } from "../Combat/gunCombat.js";
@@ -64,6 +65,8 @@ const elements = {
     healthSegments: document.getElementById("healthSegments"),
     healthText: document.getElementById("healthText"),
     topWaveBar: document.getElementById("topWaveBar"),
+    inspectMissionBanner: document.getElementById("inspectMissionBanner"),
+    inspectMissionText: document.getElementById("inspectMissionText"),
     passivesContainer: document.getElementById("passivesContainer"),
     abilitiesContainer: document.getElementById("abilitiesContainer"),
     upgradesContainer: document.getElementById("upgradesContainer"),
@@ -231,7 +234,27 @@ export function updateToggleButton(btnId, isUnlocked, isActive, btnText, upgDef)
     }
 }
 
+function updateInspectMissionBanner(state) {
+    const banner = elements.inspectMissionBanner;
+    const textEl = elements.inspectMissionText;
+    if (!banner || !textEl) return;
+
+    const show = isInspector(state.phase) && state.startNodeInspectionActive;
+    const display = show ? "block" : "none";
+    if (banner.style.display !== display) {
+        banner.style.display = display;
+    }
+    if (!show) return;
+
+    const text = getStartNodeInspectionMissionLabel(state);
+    if (textEl.innerText !== text) {
+        textEl.innerText = text;
+    }
+}
+
 export function updateHud(state, upgrades) {
+    updateInspectMissionBanner(state);
+
     const currentNode = state.getCurrentMapNode();
     let waveTextVal = state.waveManager.wave;
     if (isInspector(state.phase)) {
@@ -733,6 +756,8 @@ function drawStat(state, upg, abilityLayoutById) {
 }
 
 export function updateUI(state, upgrades) {
+    updateInspectMissionBanner(state);
+
     const viewport = state.fsm?.context?.viewport;
     if (elements.zoomDisplay && viewport) {
         elements.zoomDisplay.innerText = Math.round(viewport.zoom * 100) + "%";

@@ -1,4 +1,4 @@
-import { fireRadioTrigger, startRadioConversation } from "../Core/EventSystem.js";
+import { fireRadioTrigger, requestUiHudUpdate, startRadioConversation } from "../Core/EventSystem.js";
 import { findInspectablePickup } from "../Render/Inspector/InspectRegistry.js";
 
 /** Inspect keys required on start node after wave 1 (barrel = energy drink, crate). */
@@ -16,6 +16,12 @@ export function shouldEnterStartNodeInspection(state) {
     return node?.id === 0 && !state.startNodeInspectionCompleted;
 }
 
+export function getStartNodeInspectionMissionLabel(state) {
+    const found = state.startNodeInspectionSeen?.size ?? 0;
+    const total = START_NODE_INSPECTION_KEYS.length;
+    return `Tap nearby objects to search for clues (${found}/${total})`;
+}
+
 export function beginStartNodeInspection(state, onSectorComplete) {
     state.startNodeInspectionActive = true;
     state.startNodeInspectionSeen = new Set();
@@ -27,6 +33,8 @@ export function beginStartNodeInspection(state, onSectorComplete) {
             delete state.radioSeenThisRun[conversationId];
         }
     }
+
+    requestUiHudUpdate();
 }
 
 export function playGuidedInspectRadio(state, inspectKey, onComplete) {
@@ -62,6 +70,7 @@ export function recordStartNodeInspection(state, inspectKey) {
     if (!START_NODE_INSPECTION_KEYS.includes(inspectKey)) return;
 
     state.startNodeInspectionSeen.add(inspectKey);
+    requestUiHudUpdate();
     tryCompleteStartNodeInspection(state);
 }
 
@@ -75,6 +84,7 @@ function finishStartNodeInspection(state) {
     if (state.startNodeInspectionFinishing) return;
     state.startNodeInspectionFinishing = true;
     state.startNodeInspectionActive = false;
+    requestUiHudUpdate();
 
     fireRadioTrigger(
         "start_node_inspection_complete",
