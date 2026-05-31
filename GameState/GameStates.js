@@ -6,7 +6,7 @@ import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { Projectile } from "../Entities/Projectile.js";
 import { showNodeConfirmModal, requestUiUpdate } from "../Core/EventSystem.js";
 import { Explosion } from "../Entities/Explosion/Explosion.js";
-import { navigationSettings } from "../Config/Config.js";
+import { navigationSettings, NAV_PROFILES } from "../Config/Config.js";
 import { resolveMoveTarget } from "../Spatial/Navigation/PathClearance.js";
 import { Pools } from "../Core/Pools.js";
 import { DeathPiece } from "../Entities/DeathPiece.js";
@@ -40,6 +40,29 @@ function runPersistentSectorEnter(state) {
     }
 }
 
+function clearTravelCombatDebris(state) {
+    if (state.projectiles) {
+        for (let i = 0; i < state.projectiles.length; i++) {
+            Pools.projectiles.release(state.projectiles[i]);
+        }
+    }
+    state.projectiles = [];
+    state.explosions = [];
+    state.activeLasers = [];
+    state.deathPieces = [];
+    state.enemies = [];
+    state.floatingTexts = [];
+
+    for (const pickup of state.pickups) {
+        if (pickup.currentStateName === "on_fire") {
+            pickup.changeState("normal");
+            if (pickup.maxHealth != null) {
+                pickup.health = pickup.maxHealth;
+            }
+        }
+    }
+}
+
 function beginMapTravel(ctx) {
     const targetNode = ctx.state.getMapTargetNode();
     if (!targetNode) return;
@@ -51,16 +74,27 @@ function beginMapTravel(ctx) {
         ctx.state.waveManager.spawnIntervalId = null;
     }
 
-    ctx.state.player.stopMovement(ctx.state);
+    clearTravelCombatDebris(ctx.state);
+
     const targetCoords = ctx.state.getNodeCombatCoords(targetNode);
-    ctx.state.player.setTarget(targetCoords.x, targetCoords.y, ctx.state);
+    const clearance = ctx.state.player.radius + navigationSettings.pathClearanceMargin;
+    const target = resolveMoveTarget(ctx.state.obstacleGrid, targetCoords.x, targetCoords.y, clearance);
+
+    ctx.state.player.setTarget(target.x, target.y, ctx.state);
     ctx.state.flowFieldGrid.shiftCenter(
         ctx.state.player.x,
         ctx.state.player.y,
         ctx.state.player.x,
         ctx.state.player.y,
-        targetCoords.x,
-        targetCoords.y,
+        target.x,
+        target.y,
+    );
+    ctx.state.navigation.steerTo(
+        ctx.state.player,
+        target.x,
+        target.y,
+        NAV_PROFILES.mapTravel,
+        ctx.state.flowFieldGrid,
     );
     requestUiUpdate();
 }
@@ -70,7 +104,9 @@ function completeMapTravel(ctx) {
     if (!targetNode) return false;
 
     const targetCoords = ctx.state.getNodeCombatCoords(targetNode);
-    const dist = Math.hypot(ctx.state.player.x - targetCoords.x, ctx.state.player.y - targetCoords.y);
+    const clearance = ctx.state.player.radius + navigationSettings.pathClearanceMargin;
+    const target = resolveMoveTarget(ctx.state.obstacleGrid, targetCoords.x, targetCoords.y, clearance);
+    const dist = Math.hypot(ctx.state.player.x - target.x, ctx.state.player.y - target.y);
     if (dist >= 9.0) return false;
 
     ctx.state.currentNodeId = targetNode.id;
@@ -170,12 +206,16 @@ export class CombatState {
         });
 
         ctx.state.waveManager.manageSpawning(stepDt, ctx.state, ctx.upgrades, ctx.viewport);
-        Projectile.updateAll(ctx.state, stepDt);
-        DeathPiece.updateAll(ctx.state, stepDt, spatialFrame);
-        const collisionEvents = runPushablePhysics(ctx.state, stepDt, spatialFrame);
+        if (!isTraveling) {
+            Projectile.updateAll(ctx.state, stepDt);
+            DeathPiece.updateAll(ctx.state, stepDt, spatialFrame);
+        }
+        const collisionEvents = isTraveling ? [] : runPushablePhysics(ctx.state, stepDt, spatialFrame);
         const allEvents = [...combatEvents, ...collisionEvents];
 
-        Explosion.updateAll(ctx.state, stepDt, allEvents, spatialFrame);
+        if (!isTraveling) {
+            Explosion.updateAll(ctx.state, stepDt, allEvents, spatialFrame);
+        }
 
         for (const event of allEvents) {
             if (event.target && event.target.handleHit) {

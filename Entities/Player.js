@@ -3,6 +3,7 @@ import { spawnFloatingText } from "../Core/EventSystem.js";
 import { createFloorFillStyle, playerBaseStats, NAV_PROFILES, navigationSettings } from "../Config/Config.js";
 import { createEntityBars } from "./EntityBars.js";
 import { GhostTrail } from "../Render/GhostTrail.js";
+import { isMapTraveling } from "../GameState/GamePhase.js";
 
 const playerBars = createEntityBars({ healthWidth: 48, healthHeight: 4, healthBorderRadius: 2 });
 
@@ -154,7 +155,8 @@ export class Player extends Actor {
             if (this.hasReachedTarget(flowFieldGrid)) {
                 this.stopMovement(state);
             } else {
-                state.navigation.steerTo(this, this.targetX, this.targetY, NAV_PROFILES.playerClick, flowFieldGrid);
+                const navProfile = isMapTraveling(state) ? NAV_PROFILES.mapTravel : NAV_PROFILES.playerClick;
+                state.navigation.steerTo(this, this.targetX, this.targetY, navProfile, flowFieldGrid);
             }
         } else {
             this.desiredX = 0;
