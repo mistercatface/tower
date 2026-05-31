@@ -645,13 +645,12 @@ export class Actor extends DestructibleEntity {
     }
 
     renderBars(ctx, cache, yOffset) {
-        const stunRatio = this.getStunBarProgress();
-
         if (this.health < this.maxHealth && this.healthBar) {
             const currentHealth = Math.max(0, this.health);
             this.healthBar.render(ctx, this.x, this.y - yOffset, currentHealth / this.maxHealth, cache);
         }
 
+        const stunRatio = this.getStunBarProgress();
         if (stunRatio != null && this.stunBar) {
             let stunOffset = yOffset;
             if (this.health < this.maxHealth && this.healthBar) {

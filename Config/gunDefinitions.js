@@ -47,7 +47,10 @@ export const gunDefinitions = {
         damage: FLAT_DAMAGE,
         maxAmmo: 12,
         reloadTimeMs: 1200,
-        turretLoadout: { preset: "standard" },
+        turretLoadout: {
+            radiusMultiplier: playerProjectileSettings.radiusMultiplier,
+            angleOffsets: [0],
+        },
         projectile: projectilePresets.playerStandard,
     },
     shotgun: {
@@ -61,7 +64,11 @@ export const gunDefinitions = {
         damage: FLAT_DAMAGE,
         maxAmmo: 6,
         reloadTimeMs: 1800,
-        turretLoadout: { preset: "shotgun" },
+        turretLoadout: {
+            radiusMultiplier: playerProjectileSettings.splitRadiusMultiplier,
+            pelletCount: 3,
+            spreadRadians: 0.1,
+        },
         projectile: projectilePresets.playerStandard,
     },
     sawedOffShotgun: {
@@ -75,7 +82,11 @@ export const gunDefinitions = {
         damage: FLAT_DAMAGE,
         maxAmmo: 2,
         reloadTimeMs: 2800,
-        turretLoadout: { preset: "sawedOffShotgun" },
+        turretLoadout: {
+            radiusMultiplier: playerProjectileSettings.splitRadiusMultiplier,
+            pelletCount: 8,
+            spreadRadians: 0.1,
+        },
         projectile: projectilePresets.playerKnockback,
     },
     tommyGun: {
@@ -89,7 +100,10 @@ export const gunDefinitions = {
         damage: FLAT_DAMAGE,
         maxAmmo: 6,
         reloadTimeMs: 1500,
-        turretLoadout: { preset: "standard" },
+        turretLoadout: {
+            radiusMultiplier: playerProjectileSettings.radiusMultiplier,
+            angleOffsets: [0],
+        },
         projectile: projectilePresets.playerStandard,
     },
     beamLaser: {
@@ -118,7 +132,10 @@ export const gunDefinitions = {
         damage: FLAT_DAMAGE,
         maxAmmo: 10,
         reloadTimeMs: 1500,
-        turretLoadout: { preset: "standard" },
+        turretLoadout: {
+            radiusMultiplier: playerProjectileSettings.radiusMultiplier,
+            angleOffsets: [0],
+        },
         projectile: projectilePresets.enemyStandard,
     },
 };

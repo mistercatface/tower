@@ -1,7 +1,7 @@
 import { normalizeAngle } from "../Math/Angle.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
 import { defaultGunId, getGunDefinition } from "../Config/gunDefinitions.js";
-import { defaultTurretLoadout, resolveFireAngleOffsets } from "../Config/turretLoadoutPresets.js";
+import { defaultTurretLoadout, resolveFireAngleOffsets } from "../Config/turretLoadout.js";
 import { Pools } from "../Core/Pools.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { getGunProjectileConfig, getSlotFireIntervalMs, getSlotReloadTimeMs } from "../Combat/gunCombat.js";

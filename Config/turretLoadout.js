@@ -1,31 +1,9 @@
 import { playerProjectileSettings } from "./Config.js";
 
-export const turretLoadoutPresets = {
-    standard: {
-        radiusMultiplier: playerProjectileSettings.radiusMultiplier,
-        angleOffsets: [0],
-    },
-    twin: {
-        radiusMultiplier: playerProjectileSettings.splitRadiusMultiplier,
-        angleOffsets: [-0.1, 0.1],
-    },
-    triple: {
-        radiusMultiplier: playerProjectileSettings.splitRadiusMultiplier,
-        angleOffsets: [-0.1, 0.1, 0],
-    },
-    shotgun: {
-        radiusMultiplier: playerProjectileSettings.splitRadiusMultiplier,
-        pelletCount: 3,
-        spreadRadians: 0.1,
-    },
-    sawedOffShotgun: {
-        radiusMultiplier: playerProjectileSettings.splitRadiusMultiplier,
-        pelletCount: 8,
-        spreadRadians: 0.1,
-    },
+export const defaultTurretLoadout = {
+    radiusMultiplier: playerProjectileSettings.radiusMultiplier,
+    angleOffsets: [0],
 };
-
-export const defaultTurretLoadout = turretLoadoutPresets.standard;
 
 export function cloneTurretLoadout(loadout) {
     const cloned = {
@@ -56,14 +34,8 @@ export function resolveFireAngleOffsets(loadout) {
 }
 
 export function resolveLoadoutFromConfig(loadoutConfig) {
-    if (!loadoutConfig) return cloneTurretLoadout(defaultTurretLoadout);
-
-    if (loadoutConfig.preset) {
-        const preset = turretLoadoutPresets[loadoutConfig.preset];
-        if (!preset) {
-            throw new Error(`Unknown turret loadout preset: ${loadoutConfig.preset}`);
-        }
-        return cloneTurretLoadout(preset);
+    if (!loadoutConfig) {
+        return cloneTurretLoadout(defaultTurretLoadout);
     }
 
     return cloneTurretLoadout({

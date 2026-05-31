@@ -1,26 +1,19 @@
 import { applyActorGunModifiers } from "../Combat/gunCombat.js";
 import { normalizeWeaponLoadout } from "../Combat/equipmentLoadout.js";
 import { defaultGunId, getGunDefinition } from "./gunDefinitions.js";
-import {
-    cloneTurretLoadout,
-    defaultTurretLoadout,
-    resolveLoadoutFromConfig,
-    resolveTurretScope,
-} from "./turretLoadoutPresets.js";
+import { defaultTurretLoadout, resolveLoadoutFromConfig, resolveTurretScope } from "./turretLoadout.js";
 
-export {
-    cloneTurretLoadout,
-    defaultTurretLoadout,
-    resolveLoadoutFromConfig,
-    resolveTurretScope,
-    turretLoadoutPresets,
-} from "./turretLoadoutPresets.js";
+export { cloneTurretLoadout, defaultTurretLoadout, resolveFireAngleOffsets, resolveLoadoutFromConfig, resolveTurretScope } from "./turretLoadout.js";
 
 function isTurretLoadoutUpgradeActive(upgrade, state, actor) {
     if (upgrade.isAbility) {
         return !!state.abilities?.[upgrade.id];
     }
     return (actor.upgrades[upgrade.id]?.level ?? 0) > 0;
+}
+
+function isInlineLoadoutConfig(config) {
+    return config.radiusMultiplier != null || config.angleOffsets || config.pelletCount != null || config.spreadRadians != null;
 }
 
 export function resolveActorTurretLoadouts(actor, state, upgradeDefs = []) {
@@ -33,7 +26,7 @@ export function resolveActorTurretLoadouts(actor, state, upgradeDefs = []) {
         const gunId = weaponLoadout[i] ?? defaultGunId;
         const gun = getGunDefinition(gunId);
         turrets[i].gunId = gunId;
-        turrets[i].loadout = resolveLoadoutFromConfig(gun.turretLoadout ?? { preset: "standard" });
+        turrets[i].loadout = resolveLoadoutFromConfig(gun.turretLoadout ?? defaultTurretLoadout);
     }
 
     const loadoutUpgrades = upgradeDefs
@@ -49,7 +42,7 @@ export function resolveActorTurretLoadouts(actor, state, upgradeDefs = []) {
             if (config.gun) {
                 turret.gunId = config.gun;
             }
-            if (config.preset || config.radiusMultiplier != null || config.angleOffsets) {
+            if (isInlineLoadoutConfig(config)) {
                 turret.loadout = resolveLoadoutFromConfig(config);
             }
         }
