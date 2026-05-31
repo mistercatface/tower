@@ -1,18 +1,8 @@
 /**
  * Cylindrical label overlay for inspect view.
  */
-import {
-    transformPoint,
-    projectPoint,
-    faceVisible,
-    triangleNormal,
-    averageDepth,
-} from "./core/Mesh3D.js";
+import { tessellateCylinderQuads } from "./CylinderSurface.js";
 import { drawImageQuad } from "./core/AffineTexture.js";
-
-function cylinderPoint(y, angle, radius) {
-    return { x: Math.cos(angle) * radius, y, z: Math.sin(angle) * radius };
-}
 
 function drawBackingHull(ctx, points, color) {
     if (points.length < 3) return;
@@ -53,30 +43,32 @@ export function drawInspectCylindricalLabel(ctx, cx, cy, scale, yaw, pitch, {
     const camera = { cx, cy, referenceDepth, screenScale };
     const yBot = -halfHeight + halfHeight * 2 * y0;
     const yTop = -halfHeight + halfHeight * 2 * y1;
-    const halfSpan = angleSpan * 0.5;
-    const radius = bodyRadius * radiusInflate;
     const iw = img.width;
     const ih = img.height;
+
+    const rawCells = tessellateCylinderQuads({
+        halfHeight,
+        bodyRadius,
+        yaw,
+        pitch,
+        camera,
+        yBot,
+        yTop,
+        angleCenter,
+        angleSpan,
+        radialSegments,
+        verticalSegments,
+        subRadial,
+        subVertical,
+        radiusInflate,
+    });
 
     const cells = [];
     const hullTop = [];
     const hullBot = [];
 
-    const pushCell = (u0, u1, v0, v1, a0, a1, yt, yb) => {
-        const model = [
-            cylinderPoint(yt, a0, radius),
-            cylinderPoint(yt, a1, radius),
-            cylinderPoint(yb, a1, radius),
-            cylinderPoint(yb, a0, radius),
-        ];
-
-        const view = model.map((p) => transformPoint(p, yaw, pitch));
-        const normal = triangleNormal(view[0], view[1], view[2]);
-        if (!faceVisible(normal)) return;
-
-        const screen = view.map((p) => projectPoint(p, camera));
-        if (screen.some((p) => !p)) return;
-
+    for (const cell of rawCells) {
+        const { u0, u1, v0, v1, d0, d1, d2, d3, depth } = cell;
         const innerU = u0 > 0;
         const outerU = u1 < 1;
         const innerV = v0 > 0;
@@ -86,41 +78,15 @@ export function drawInspectCylindricalLabel(ctx, cx, cy, scale, yaw, pitch, {
         const sy0 = v0 * ih - (innerV ? uvBleed : 0);
         const sy1 = v1 * ih + (outerV ? uvBleed : 0);
 
-        cells.push({
-            depth: averageDepth(view[0], view[1], view[2]),
-            sx0, sy0, sx1, sy1,
-            d0: screen[0],
-            d1: screen[1],
-            d2: screen[2],
-            d3: screen[3],
-        });
+        cells.push({ depth, sx0, sy0, sx1, sy1, d0, d1, d2, d3 });
 
         if (v0 === 0) {
-            if (u0 === 0) hullTop.push(screen[0]);
-            hullTop.push(screen[1]);
+            if (u0 === 0) hullTop.push(d0);
+            hullTop.push(d1);
         }
         if (v1 === 1) {
-            if (u0 === 0) hullBot.push(screen[3]);
-            hullBot.push(screen[2]);
-        }
-    };
-
-    for (let ri = 0; ri < radialSegments; ri++) {
-        for (let sri = 0; sri < subRadial; sri++) {
-            const u0 = (ri + sri / subRadial) / radialSegments;
-            const u1 = (ri + (sri + 1) / subRadial) / radialSegments;
-            const a0 = angleCenter - halfSpan + u0 * angleSpan;
-            const a1 = angleCenter - halfSpan + u1 * angleSpan;
-
-            for (let vi = 0; vi < verticalSegments; vi++) {
-                for (let svi = 0; svi < subVertical; svi++) {
-                    const v0 = (vi + svi / subVertical) / verticalSegments;
-                    const v1 = (vi + (svi + 1) / subVertical) / verticalSegments;
-                    const yt = yTop + (yBot - yTop) * v0;
-                    const yb = yTop + (yBot - yTop) * v1;
-                    pushCell(u0, u1, v0, v1, a0, a1, yt, yb);
-                }
-            }
+            if (u0 === 0) hullBot.push(d3);
+            hullBot.push(d2);
         }
     }
 
@@ -130,7 +96,6 @@ export function drawInspectCylindricalLabel(ctx, cx, cy, scale, yaw, pitch, {
 
     cells.sort((a, b) => b.depth - a.depth);
 
-    // Hull underlay only — per-triangle underlay shows through sub-pixel gaps between cells.
     const textureOpts = { underlay: null, bleedPx: screenBleed };
     const prevSmooth = ctx.imageSmoothingEnabled;
     ctx.imageSmoothingEnabled = true;

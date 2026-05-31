@@ -4,7 +4,7 @@ import {
     pushTriangle,
 } from "./core/Mesh3D.js";
 
-function bodyRadiusAtY(y, halfHeight, bodyRadius, rings) {
+export function bodyRadiusAtY(y, halfHeight, bodyRadius, rings) {
     if (!rings?.length) return bodyRadius;
     const sorted = [...rings].sort((a, b) => a.y - b.y);
     if (y <= sorted[0].y) return sorted[0].radius;
@@ -67,19 +67,21 @@ export function buildCylinderMesh(options = {}) {
     const yTop = halfHeight;
     const triangles = [];
     const materials = { ...(options.materials ?? {}) };
-    for (let i = 0; i < segments; i++) {
-        const a0 = (i / segments) * Math.PI * 2;
-        const a1 = ((i + 1) / segments) * Math.PI * 2;
+    if (options.sides !== false) {
+        for (let i = 0; i < segments; i++) {
+            const a0 = (i / segments) * Math.PI * 2;
+            const a1 = ((i + 1) / segments) * Math.PI * 2;
 
-        addCylinderSide(triangles, {
-            y0: yBottom,
-            y1: yTop,
-            r0: bodyRadiusAtY(yBottom, halfHeight, bodyRadius, options.rings),
-            r1: bodyRadiusAtY(yTop, halfHeight, bodyRadius, options.rings),
-            a0,
-            a1,
-            material: bodyMaterial,
-        });
+            addCylinderSide(triangles, {
+                y0: yBottom,
+                y1: yTop,
+                r0: bodyRadiusAtY(yBottom, halfHeight, bodyRadius, options.rings),
+                r1: bodyRadiusAtY(yTop, halfHeight, bodyRadius, options.rings),
+                a0,
+                a1,
+                material: bodyMaterial,
+            });
+        }
     }
 
     if (options.topCap !== false) {
@@ -95,6 +97,17 @@ export function buildCylinderMesh(options = {}) {
     return { triangles, materials };
 }
 
+export function getSodaCanRings(halfHeight, bodyRadius, lipRadius = bodyRadius * 1.07) {
+    const bodyTop = halfHeight * 0.9;
+    const lipY = halfHeight * 0.97;
+    return [
+        { y: -halfHeight, radius: bodyRadius * 1.03 },
+        { y: bodyTop, radius: bodyRadius },
+        { y: lipY, radius: lipRadius },
+        { y: halfHeight, radius: lipRadius },
+    ];
+}
+
 /** Soda-can profile with lip ring. Label is drawn separately in inspect view. */
 export function buildSodaCanMesh({
     halfHeight = 1.05,
@@ -105,9 +118,9 @@ export function buildSodaCanMesh({
     capMaterial = "cap",
     materials = {},
     onFire = false,
+    sides = true,
 } = {}) {
-    const bodyTop = halfHeight * 0.9;
-    const lipY = halfHeight * 0.97;
+    const rings = getSodaCanRings(halfHeight, bodyRadius, lipRadius);
 
     const mesh = buildCylinderMesh({
         halfHeight,
@@ -117,12 +130,8 @@ export function buildSodaCanMesh({
         capMaterial: "cap",
         topCap: false,
         bottomCap: true,
-        rings: [
-            { y: -halfHeight, radius: bodyRadius * 1.03 },
-            { y: bodyTop, radius: bodyRadius },
-            { y: lipY, radius: lipRadius },
-            { y: halfHeight, radius: lipRadius },
-        ],
+        sides,
+        rings,
         materials: {
             body: { type: "solid", color: onFire ? "#8A3020" : "#B4BAC2", stroke: null, lineWidth: 0 },
             cap: { type: "solid", color: onFire ? "#5A2818" : "#90969E", stroke: null, lineWidth: 0 },

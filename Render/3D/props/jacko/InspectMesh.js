@@ -3,5 +3,5 @@ import { buildSodaCanMesh } from "../../CylinderMesh.js";
 
 export function buildJackoInspectMesh() {
     const { halfHeight, bodyRadius } = JACKO_CAN;
-    return buildSodaCanMesh({ halfHeight, bodyRadius, onFire: false });
+    return buildSodaCanMesh({ halfHeight, bodyRadius, onFire: false, sides: false });
 }

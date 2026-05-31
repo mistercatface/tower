@@ -1,5 +1,7 @@
 import { renderInspectMesh } from "../MeshRenderer.js";
+import { drawInspectCylindricalBody } from "../CylinderInspectBody.js";
 import { drawInspectCylindricalLabel } from "../CylinderInspectLabel.js";
+import { getSodaCanRings } from "../CylinderMesh.js";
 import { getTexture, loadTexture, onTextureReady } from "../core/TextureCache.js";
 
 /**
@@ -26,6 +28,18 @@ export function createLabeledCanInspect(canConfig, buildMesh) {
         },
         draw(ctx, cx, cy, scale, yaw, pitch) {
             const mesh = buildMesh();
+            const rings = getSodaCanRings(halfHeight, bodyRadius);
+
+            drawInspectCylindricalBody(ctx, cx, cy, scale, yaw, pitch, {
+                halfHeight,
+                bodyRadius,
+                rings,
+                color: colors.bodyInspect,
+                radialSegments: label.radialSegments * 2,
+                verticalSegments: label.verticalSegments * 2,
+                subRadial: 2,
+                subVertical: 2,
+            });
 
             renderInspectMesh(ctx, mesh, cx, cy, scale, yaw, pitch, {
                 imageSmoothing: false,
