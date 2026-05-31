@@ -39,6 +39,30 @@ function labelU(angle, center, halfSpan) {
     return (d + halfSpan) / (halfSpan * 2);
 }
 
+function addLabelQuadPanel(triangles, y0, y1, r0, r1, a0, a1, material, label) {
+    const r = ((r0 + r1) * 0.5) * 1.001;
+    const p00 = cylinderPoint(y0, a0, r);
+    const p01 = cylinderPoint(y0, a1, r);
+    const p10 = cylinderPoint(y1, a0, r);
+    const p11 = cylinderPoint(y1, a1, r);
+
+    const halfSpan = label.halfSpan;
+    const u0 = Math.max(0, Math.min(1, labelU(a0, label.angleCenter, halfSpan)));
+    const u1 = Math.max(0, Math.min(1, labelU(a1, label.angleCenter, halfSpan)));
+
+    const uv00 = vec2(u0, 1);
+    const uv01 = vec2(u1, 1);
+    const uv10 = vec2(u0, 0);
+    const uv11 = vec2(u1, 0);
+
+    pushQuad(triangles, p10, p11, p01, p00, material, {
+        uvA: uv10,
+        uvB: uv11,
+        uvC: uv01,
+        uvD: uv00,
+    });
+}
+
 function addCylinderSide(triangles, {
     y0,
     y1,
@@ -50,23 +74,15 @@ function addCylinderSide(triangles, {
     uvMode = "none",
     label = null,
 }) {
+    if (uvMode === "label" && label) {
+        addLabelQuadPanel(triangles, y0, y1, r0, r1, a0, a1, material, label);
+        return;
+    }
+
     const p00 = cylinderPoint(y0, a0, r0);
     const p01 = cylinderPoint(y0, a1, r1 ?? r0);
     const p10 = cylinderPoint(y1, a0, r0);
     const p11 = cylinderPoint(y1, a1, r1 ?? r0);
-
-    if (uvMode === "label" && label) {
-        const u0 = labelU(a0, label.angleCenter, label.angleSpan * 0.5);
-        const u1 = labelU(a1, label.angleCenter, label.angleSpan * 0.5);
-        pushQuad(triangles, p10, p11, p01, p00, material, {
-            uvA: vec2(u0, 0),
-            uvB: vec2(u1, 0),
-            uvC: vec2(u1, 1),
-            uvD: vec2(u0, 1),
-        });
-        return;
-    }
-
     pushQuad(triangles, p10, p11, p01, p00, material);
 }
 
@@ -184,7 +200,7 @@ export function buildSodaCanMesh({
     halfHeight = 1.05,
     bodyRadius = 0.5,
     lipRadius = 0.535,
-    radialSegments = 36,
+    radialSegments = 48,
     labelMaterial = "label",
     bodyMaterial = "body",
     capMaterial = "cap",

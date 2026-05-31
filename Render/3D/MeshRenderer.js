@@ -24,26 +24,32 @@ function drawSolidTriangle(ctx, sa, sb, sc, color, stroke, lineWidth) {
 }
 
 function drawTexturedTriangle(ctx, img, s0, s1, s2, d0, d1, d2) {
+    let ts0 = s0, ts1 = s1, ts2 = s2;
+    let td0 = d0, td1 = d1, td2 = d2;
+
+    let denom = ts0.x * (ts1.y - ts2.y) + ts1.x * (ts2.y - ts0.y) + ts2.x * (ts0.y - ts1.y);
+    if (Math.abs(denom) < 0.001) return;
+
+    if (denom < 0) {
+        ts1 = s2; ts2 = s1;
+        td1 = d2; td2 = d1;
+        denom = -denom;
+    }
+
     ctx.save();
     ctx.beginPath();
-    ctx.moveTo(d0.x, d0.y);
-    ctx.lineTo(d1.x, d1.y);
-    ctx.lineTo(d2.x, d2.y);
+    ctx.moveTo(td0.x, td0.y);
+    ctx.lineTo(td1.x, td1.y);
+    ctx.lineTo(td2.x, td2.y);
     ctx.closePath();
     ctx.clip();
 
-    const denom = s0.x * (s1.y - s2.y) + s1.x * (s2.y - s0.y) + s2.x * (s0.y - s1.y);
-    if (Math.abs(denom) < 0.001) {
-        ctx.restore();
-        return;
-    }
-
-    const m11 = (d0.x * (s1.y - s2.y) + d1.x * (s2.y - s0.y) + d2.x * (s0.y - s1.y)) / denom;
-    const m12 = (d0.y * (s1.y - s2.y) + d1.y * (s2.y - s0.y) + d2.y * (s0.y - s1.y)) / denom;
-    const m21 = (d0.x * (s2.x - s1.x) + d1.x * (s0.x - s2.x) + d2.x * (s1.x - s0.x)) / denom;
-    const m22 = (d0.y * (s2.x - s1.x) + d1.y * (s0.x - s2.x) + d2.y * (s1.x - s0.x)) / denom;
-    const dx = d0.x - m11 * s0.x - m21 * s0.y;
-    const dy = d0.y - m12 * s0.x - m22 * s0.y;
+    const m11 = (td0.x * (ts1.y - ts2.y) + td1.x * (ts2.y - ts0.y) + td2.x * (ts0.y - ts1.y)) / denom;
+    const m12 = (td0.y * (ts1.y - ts2.y) + td1.y * (ts2.y - ts0.y) + td2.y * (ts0.y - ts1.y)) / denom;
+    const m21 = (td0.x * (ts2.x - ts1.x) + td1.x * (ts0.x - ts2.x) + td2.x * (ts1.x - ts0.x)) / denom;
+    const m22 = (td0.y * (ts2.x - ts1.x) + td1.y * (ts0.x - ts2.x) + td2.y * (ts1.x - ts0.x)) / denom;
+    const dx = td0.x - m11 * ts0.x - m21 * ts0.y;
+    const dy = td0.y - m12 * ts0.x - m22 * ts0.y;
 
     ctx.transform(m11, m12, m21, m22, dx, dy);
     ctx.drawImage(img, 0, 0);
