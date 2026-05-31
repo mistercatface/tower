@@ -68,15 +68,18 @@ export function showRadioDialog({ participants, line, lineIndex, lineCount }) {
     }
 
     elements.overlay.style.display = "flex";
-    elements.overlay.setAttribute("aria-hidden", "false");
 }
 
 export function hideRadioDialog() {
     bindElements();
     if (!elements.overlay) return;
 
+    const advanceBtn = document.getElementById("radioDialogAdvanceBtn");
+    if (advanceBtn && document.activeElement === advanceBtn) {
+        advanceBtn.blur();
+    }
+
     elements.overlay.style.display = "none";
-    elements.overlay.setAttribute("aria-hidden", "true");
     elements.portraitRow.innerHTML = "";
 }
 
