@@ -18,16 +18,9 @@ export class SpatialHash {
     }
 
     getBounds(entity) {
-        if (entity.getBounds) {
-            return entity.getBounds();
-        }
+        if (entity.getBounds) return entity.getBounds();
         const r = entity.radius || 0;
-        return {
-            minX: entity.x - r,
-            minY: entity.y - r,
-            maxX: entity.x + r,
-            maxY: entity.y + r,
-        };
+        return { minX: entity.x - r, minY: entity.y - r, maxX: entity.x + r, maxY: entity.y + r };
     }
 
     _cellRangeForBounds(bounds) {
@@ -58,12 +51,7 @@ export class SpatialHash {
 
     getNeighborQueryBounds(entity) {
         const bounds = this.getBounds(entity);
-        return {
-            minX: bounds.minX - this.cellSize,
-            minY: bounds.minY - this.cellSize,
-            maxX: bounds.maxX + this.cellSize,
-            maxY: bounds.maxY + this.cellSize,
-        };
+        return { minX: bounds.minX - this.cellSize, minY: bounds.minY - this.cellSize, maxX: bounds.maxX + this.cellSize, maxY: bounds.maxY + this.cellSize };
     }
 
     insert(entity) {
@@ -72,9 +60,7 @@ export class SpatialHash {
             const rowKey = r * KEY_STRIDE;
             for (let c = minCol; c <= maxCol; c++) {
                 const key = c + rowKey;
-                if (!this.cells.has(key)) {
-                    this.cells.set(key, []);
-                }
+                if (!this.cells.has(key)) this.cells.set(key, []);
                 this.cells.get(key).push(entity);
             }
         }
@@ -88,9 +74,7 @@ export class SpatialHash {
                 const list = this.cells.get(c + rowKey);
                 if (!list) continue;
                 const idx = list.indexOf(entity);
-                if (idx !== -1) {
-                    list.splice(idx, 1);
-                }
+                if (idx !== -1) list.splice(idx, 1);
             }
         }
     }
