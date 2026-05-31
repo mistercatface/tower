@@ -36,8 +36,16 @@ export class PhysicsSystem {
     }
 
     static resolveWallCollisions(entity, spatialFrame, state) {
+        if (entity._wallResolvedFrame === spatialFrame.frameId) {
+            return entity._wallResolvedCollided;
+        }
+        entity._wallResolvedFrame = spatialFrame.frameId;
+
         const candidateWalls = spatialFrame.getWallCandidates(entity, state);
-        if (candidateWalls.length === 0) return false;
+        if (candidateWalls.length === 0) {
+            entity._wallResolvedCollided = false;
+            return false;
+        }
         let collided = false;
         for (let i = 0; i < 2; i++) {
             for (const seg of candidateWalls) {
@@ -78,6 +86,7 @@ export class PhysicsSystem {
                 }
             }
         }
+        entity._wallResolvedCollided = collided;
         return collided;
     }
 

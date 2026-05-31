@@ -21,10 +21,10 @@ export class ProgressionManager {
         spawnFloatingText({ x: enemy.x, y: enemy.y - 30, text: `+${xpGain} XP`, color: "#4CAF50" });
     }
 
-    static updatePickups(state, dt, spatialFrame) {
+    static updatePickups(state, dt, spatialFrame, { resolveWalls = false } = {}) {
         for (let i = state.pickups.length - 1; i >= 0; i--) {
             const p = state.pickups[i];
-            p.update(dt, state, spatialFrame);
+            p.update(dt, state, spatialFrame, { resolveWalls });
             if (p.isDead) {
                 state.pickups.splice(i, 1);
             }

@@ -116,9 +116,13 @@ export class Pickup extends Entity {
         this.changeState("exploded", { gameState });
     }
 
-    update(dt, state, spatialFrame) {
+    needsWallCollision() {
+        return this.vx * this.vx + this.vy * this.vy > 0.25;
+    }
+
+    update(dt, state, spatialFrame, { resolveWalls = false } = {}) {
         PhysicsSystem.applyFrictionAndDrag(this, dt, this.strategy.friction);
-        if (this.strategy.isPushable) {
+        if (resolveWalls && this.strategy.isPushable && this.needsWallCollision()) {
             PhysicsSystem.resolveWallCollisions(this, spatialFrame, state);
         }
 

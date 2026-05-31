@@ -67,10 +67,14 @@ export class SpatialFrame {
         if (!wallCtx) {
             segments = [];
         } else if (wallCtx.spatialHash) {
-            segments = this.wallQuery.collectInHash(
+            segments = [];
+            this.wallQuery.forEachInHash(
                 wallCtx.spatialHash,
                 wallCtx.spatialHash.getNeighborQueryBounds(entity),
-            ).slice();
+                (segment) => {
+                    segments.push(segment);
+                },
+            );
         } else if (wallCtx.obstacleGrid) {
             segments = wallCtx.obstacleGrid.getNearbySegments(entity);
         } else {

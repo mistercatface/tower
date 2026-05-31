@@ -2,6 +2,7 @@ import { FloatingText } from "../Render/FloatingText.js";
 import { ProgressionManager } from "../Progression/ProgressionManager.js";
 import { CollisionSystem } from "../Spatial/Collision/CollisionSystem.js";
 import { combatSpatial } from "../Spatial/World/SpatialFrame.js";
+import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { Projectile } from "../Entities/Projectile.js";
 import { showNodeConfirmModal, requestUiUpdate } from "../Core/EventSystem.js";
 import { Explosion } from "../Entities/Explosion/Explosion.js";
@@ -16,7 +17,15 @@ const MAP_TRANSITION_SPEED = 5.0;
 
 function runPushablePhysics(state, dt, spatialFrame) {
     ProgressionManager.updatePickups(state, dt, spatialFrame);
-    return CollisionSystem.run(state, spatialFrame);
+    const events = CollisionSystem.run(state, spatialFrame);
+    for (let i = 0; i < state.pickups.length; i++) {
+        const pickup = state.pickups[i];
+        if (pickup.isDead || !pickup.strategy?.isPushable) continue;
+        if (pickup.needsWallCollision()) {
+            PhysicsSystem.resolveWallCollisions(pickup, spatialFrame, state);
+        }
+    }
+    return events;
 }
 
 export class MapState {
