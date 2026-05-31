@@ -4,11 +4,11 @@ import { createLabeledCanInspect } from "./inspect/LabeledCanInspect.js";
 import { createLabeledBoxInspect } from "./inspect/LabeledBoxInspect.js";
 import { buildJackoInspectMesh } from "./props/jacko/InspectMesh.js";
 import { buildCrateInspectMesh } from "./props/crate/InspectMesh.js";
-import { getCrateInspectLabelSrc } from "./props/crate/Label.js";
+import { getCrateFaceLabelSrc } from "./props/crate/Label.js";
 
 export const PROP_INSPECT_RECIPES = {
     jacko_can: createLabeledCanInspect(JACKO_CAN, buildJackoInspectMesh),
-    wood_crate: createLabeledBoxInspect(WOOD_CRATE, buildCrateInspectMesh, getCrateInspectLabelSrc),
+    wood_crate: createLabeledBoxInspect(WOOD_CRATE, buildCrateInspectMesh, getCrateFaceLabelSrc),
 };
 
 export function getPropInspectRecipe(inspectKey) {

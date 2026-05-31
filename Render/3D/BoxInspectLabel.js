@@ -74,7 +74,8 @@ function alignHorizontalUV(d0, d1, d2, d3) {
 
 /** Draw label texture on configured vertical box faces. */
 export function drawInspectBoxLabels(ctx, cx, cy, scale, yaw, pitch, {
-    img,
+    img = null,
+    resolveImg = null,
     halfExtents = { x: 0.55, y: 0.5, z: 0.55 },
     faces = ["+x", "-x", "+z", "-z"],
     y0 = 0.18,
@@ -88,22 +89,26 @@ export function drawInspectBoxLabels(ctx, cx, cy, scale, yaw, pitch, {
     screenScale = scale * 88,
     screenBleed = 1.25,
 } = {}) {
-    if (!img) return;
+    if (!img && !resolveImg) return;
 
     const camera = { cx, cy, referenceDepth, screenScale };
     const hx = halfExtents.x;
     const hy = halfExtents.y;
     const hz = halfExtents.z;
-    const iw = img.width;
-    const ih = img.height;
-    const sx0 = u0 * iw;
-    const sx1 = u1 * iw;
-    const syTop = v0 * ih;
-    const syBot = v1 * ih;
 
     const quads = [];
 
     for (const face of faces) {
+        const faceImg = resolveImg?.(face) ?? img;
+        if (!faceImg) continue;
+
+        const iw = faceImg.width;
+        const ih = faceImg.height;
+        const sx0 = u0 * iw;
+        const sx1 = u1 * iw;
+        const syTop = v0 * ih;
+        const syBot = v1 * ih;
+
         const build = FACE_BUILDERS[face];
         if (!build) continue;
 
@@ -119,6 +124,8 @@ export function drawInspectBoxLabels(ctx, cx, cy, scale, yaw, pitch, {
 
         quads.push({
             depth: averageDepth(view[0], view[1], view[2]),
+            img: faceImg,
+            sx0, sx1, syTop, syBot,
             d0, d1, d2, d3,
         });
     }
@@ -132,8 +139,8 @@ export function drawInspectBoxLabels(ctx, cx, cy, scale, yaw, pitch, {
     ctx.imageSmoothingEnabled = true;
     for (const quad of quads) {
         drawImageQuad(
-            ctx, img,
-            sx0, syBot, sx1, syTop,
+            ctx, quad.img,
+            quad.sx0, quad.syBot, quad.sx1, quad.syTop,
             quad.d0, quad.d1, quad.d2, quad.d3,
             textureOpts,
         );

@@ -6,13 +6,12 @@ import { getTexture, loadTexture, onTextureReady } from "../core/TextureCache.js
  * Factory for labeled box inspect views.
  * @param {import("../../../Config/props/Crate.js").WOOD_CRATE} boxConfig
  * @param {() => import("../BoxMesh.js").buildBoxMesh} buildMesh
- * @param {(pickup: import("../../../Entities/Pickup.js").Pickup | null | undefined) => string} resolveLabelSrc
+ * @param {(pickup: import("../../../Entities/Pickup.js").Pickup | null | undefined, face: string) => string} resolveFaceLabelSrc
  */
-export function createLabeledBoxInspect(boxConfig, buildMesh, resolveLabelSrc) {
+export function createLabeledBoxInspect(boxConfig, buildMesh, resolveFaceLabelSrc) {
     const { labelVariants, labelSrc, halfExtents, label, colors, keyWhite = true } = boxConfig;
     const sources = labelVariants ?? (labelSrc ? [labelSrc] : []);
     const textureOpts = { keyWhite };
-    const pickSrc = resolveLabelSrc ?? (() => sources[0]);
 
     return {
         preload() {
@@ -28,7 +27,6 @@ export function createLabeledBoxInspect(boxConfig, buildMesh, resolveLabelSrc) {
         },
         draw(ctx, cx, cy, scale, yaw, pitch, pickup) {
             const mesh = buildMesh();
-            const activeSrc = pickSrc(pickup);
 
             renderInspectMesh(ctx, mesh, cx, cy, scale, yaw, pitch, {
                 imageSmoothing: false,
@@ -36,7 +34,10 @@ export function createLabeledBoxInspect(boxConfig, buildMesh, resolveLabelSrc) {
             });
 
             drawInspectBoxLabels(ctx, cx, cy, scale, yaw, pitch, {
-                img: getTexture(activeSrc),
+                resolveImg: (face) => {
+                    const src = resolveFaceLabelSrc?.(pickup, face);
+                    return src ? getTexture(src) : null;
+                },
                 halfExtents,
                 faces: label.faces,
                 y0: label.y0,
