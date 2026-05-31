@@ -107,7 +107,7 @@ export class StatsManager {
             state.player.setSpawnPosition(layout.spawnX, layout.spawnY);
             state.player.resetToSpawn();
 
-            state.spawnRunParty(2);
+            state.spawnRunParty(1);
         }
 
         for (const node of state.mapNodes) {
