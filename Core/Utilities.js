@@ -1,12 +1,11 @@
-import { distanceToSegment } from "../Spatial/Navigation/WallGeometry.js";
+import { normalizeAngle as wrapAngle, turnAngleTowards as turnTowards } from "../Math/Angle.js";
+import { normalizeVector as normalizeVec2 } from "../Math/Vec2.js";
+import { distanceToLineSegment } from "../Math/Segment2D.js";
+import { distanceToSegment } from "../Spatial/Geometry/WallGeometry.js";
 
 export class Utilities {
     static distToSegment(px, py, vx, vy, wx, wy) {
-        const l2 = (wx - vx) ** 2 + (wy - vy) ** 2;
-        if (l2 === 0) return Math.hypot(px - vx, py - vy);
-        let t = ((px - vx) * (wx - vx) + (py - vy) * (wy - vy)) / l2;
-        t = Math.max(0, Math.min(1, t));
-        return Math.hypot(px - (vx + t * (wx - vx)), py - (vy + t * (wy - vy)));
+        return distanceToLineSegment(px, py, vx, vy, wx, wy);
     }
 
     static getSegmentsAlongLine(x1, y1, x2, y2, obstacleGrid) {
@@ -48,22 +47,15 @@ export class Utilities {
     }
 
     static normalizeAngle(angle) {
-        return Math.atan2(Math.sin(angle), Math.cos(angle));
+        return wrapAngle(angle);
     }
 
     static turnAngleTowards(currentAngle, targetAngle, turnSpeed, dt) {
-        let diff = targetAngle - currentAngle;
-        diff = this.normalizeAngle(diff);
-        const t = Math.min(1, turnSpeed * (dt / 1000));
-        return this.normalizeAngle(currentAngle + diff * t);
+        return turnTowards(currentAngle, targetAngle, turnSpeed, dt);
     }
 
     static normalizeVector(dx, dy) {
-        const len = Math.hypot(dx, dy);
-        if (len <= 0) {
-            return { x: 0, y: 0, len: 0 };
-        }
-        return { x: dx / len, y: dy / len, len };
+        return normalizeVec2(dx, dy);
     }
 
     static setDesiredDirection(entity, dx, dy) {

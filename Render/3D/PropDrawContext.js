@@ -1,4 +1,4 @@
-import { projectVertical } from "./Projection3D.js";
+import { projectVertical } from "./math/CombatProjection.js";
 
 export function createPropDrawContext(prop, viewerX, viewerY) {
     return {

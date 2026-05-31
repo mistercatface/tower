@@ -1,5 +1,5 @@
 import { colRowToIndex } from "../Grid/GridUtils.js";
-import { pointToSegmentPaddingDistanceSq } from "../Navigation/WallGeometry.js";
+import { pointToSegmentPaddingDistanceSq } from "../Geometry/WallGeometry.js";
 
 export function getWallReach(wall, padding = wall.padding) {
     return wall.size / 2 * Math.SQRT2 + padding;

@@ -1,12 +1,10 @@
 import {
     transformPoint,
-    triangleNormal,
-    faceVisible,
     projectPoint,
     averageDepth,
-    dot,
-    normalize,
-} from "./core/Mesh3D.js";
+} from "./math/InspectCamera.js";
+import { triangleNormal, faceVisible } from "./geometry/MeshBuilder.js";
+import { dot, normalize } from "../../Math/Vec3.js";
 
 function drawSolidTriangle(ctx, sa, sb, sc, color, stroke, lineWidth) {
     ctx.fillStyle = color;

@@ -1,6 +1,6 @@
 import { renderInspectMesh } from "../MeshRenderer.js";
 import { drawInspectCylindricalBody, drawInspectCylindricalLabel } from "../CylinderInspect.js";
-import { getSodaCanRings } from "../CylinderMesh.js";
+import { getSodaCanRings } from "../geometry/CylinderMesh.js";
 import { getTexture, loadTexture, onTextureReady } from "../core/TextureCache.js";
 
 /**

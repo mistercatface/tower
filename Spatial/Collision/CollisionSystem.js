@@ -1,5 +1,5 @@
 import { SpatialHash } from "../World/SpatialHash.js";
-import { circleIntersectsSegment } from "../Navigation/WallGeometry.js";
+import { circleIntersectsSegment } from "../Geometry/WallGeometry.js";
 import { areHostile } from "../../Combat/Targeting.js";
 import { PhysicsSystem } from "../Motion/PhysicsSystem.js";
 

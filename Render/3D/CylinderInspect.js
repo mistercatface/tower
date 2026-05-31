@@ -1,13 +1,13 @@
 /**
  * Inspect-view drawing for cylindrical props (body shell + label band).
  */
-import { createInspectCamera } from "./core/Mesh3D.js";
+import { createInspectCamera } from "./math/InspectCamera.js";
 import { drawImageQuad } from "./core/AffineTexture.js";
 import {
     tessellateCylinderQuads,
     drawSolidQuad,
     labelBandYRange,
-} from "./CylinderSurface.js";
+} from "./geometry/CylinderSurface.js";
 
 const DEFAULT_SUBDIV = { subRadial: 2, subVertical: 2 };
 const DEFAULT_BLEED = { uvBleed: 2, screenBleed: 2.5 };

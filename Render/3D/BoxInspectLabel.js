@@ -6,10 +6,11 @@ import {
     transformPoint,
     transformNormal,
     projectPoint,
-    faceVisible,
     averageDepth,
-} from "./core/Mesh3D.js";
+} from "./math/InspectCamera.js";
+import { faceVisible } from "./geometry/MeshBuilder.js";
 import { drawImageQuad } from "./core/AffineTexture.js";
+import { labelBandYRange } from "../../Math/Interpolate.js";
 
 /** @typedef {"+x" | "-x" | "+z" | "-z"} BoxSideFace */
 
@@ -23,8 +24,7 @@ const FACE_NORMALS = {
 
 const FACE_BUILDERS = {
     "+x": (hx, hy, hz, y0, y1) => {
-        const yBot = -hy + hy * 2 * y0;
-        const yTop = -hy + hy * 2 * y1;
+        const { yBot, yTop } = labelBandYRange(hy, y0, y1);
         return [
             { x: hx, y: yBot, z: hz },
             { x: hx, y: yBot, z: -hz },
@@ -33,8 +33,7 @@ const FACE_BUILDERS = {
         ];
     },
     "-x": (hx, hy, hz, y0, y1) => {
-        const yBot = -hy + hy * 2 * y0;
-        const yTop = -hy + hy * 2 * y1;
+        const { yBot, yTop } = labelBandYRange(hy, y0, y1);
         return [
             { x: -hx, y: yBot, z: -hz },
             { x: -hx, y: yBot, z: hz },
@@ -43,8 +42,7 @@ const FACE_BUILDERS = {
         ];
     },
     "+z": (hx, hy, hz, y0, y1) => {
-        const yBot = -hy + hy * 2 * y0;
-        const yTop = -hy + hy * 2 * y1;
+        const { yBot, yTop } = labelBandYRange(hy, y0, y1);
         return [
             { x: -hx, y: yBot, z: hz },
             { x: hx, y: yBot, z: hz },
@@ -53,8 +51,7 @@ const FACE_BUILDERS = {
         ];
     },
     "-z": (hx, hy, hz, y0, y1) => {
-        const yBot = -hy + hy * 2 * y0;
-        const yTop = -hy + hy * 2 * y1;
+        const { yBot, yTop } = labelBandYRange(hy, y0, y1);
         return [
             { x: -hx, y: yBot, z: -hz },
             { x: hx, y: yBot, z: -hz },

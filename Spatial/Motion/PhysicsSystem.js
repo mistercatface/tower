@@ -1,5 +1,5 @@
 import { Utilities } from "../../Core/Utilities.js";
-import { getCircleSegmentPenetration } from "../Navigation/WallGeometry.js";
+import { getCircleSegmentPenetration } from "../Geometry/WallGeometry.js";
 
 export class PhysicsSystem {
     static applyMovement(entity, dt, ignoreSeparation = false, shouldMove = true, alignAngleWithMovement = true) {

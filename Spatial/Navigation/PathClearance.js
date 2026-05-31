@@ -1,4 +1,4 @@
-import { distanceToSegment, pushPointFromWalls } from "./WallGeometry.js";
+import { distanceToSegment, pushPointFromWalls } from "../Geometry/WallGeometry.js";
 
 function getWallsNearPoint(obstacleGrid, x, y, clearance) {
     return obstacleGrid.getNearbySegments({
