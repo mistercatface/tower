@@ -17,7 +17,7 @@ export const enemyTypes = [
     },
     { type: "tank", weight: 25, radius: 8, baseSpeed: 66, maxHealth: 6, color: "#FF9800", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: false, renderPath: "pumpkin" },
     { type: "standard", weight: 60, radius: 6, baseSpeed: 100, maxHealth: 3, color: "#F44336", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: false, renderPath: "tomato" },
-    { type: "fast", weight: 5, radius: 5, baseSpeed: 140, maxHealth: 2, color: "#FFEB3B", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: false, canDamageWalls: true },
+    { type: "fast", weight: 5, radius: 5, baseSpeed: 140, maxHealth: 2, color: "#FFEB3B", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: false, canDamageWalls: true, renderPath: "chickpea" },
     {
         type: "spastic",
         weight: 15,
@@ -34,7 +34,7 @@ export const enemyTypes = [
         groupSettings: { baseGroupSize: 3, growthPerWave: 2.0, maxGroupSize: 5 },
         renderPath: "cranberry",
     },
-    { type: "dodger", weight: 20, radius: 6, baseSpeed: 100, maxHealth: 4, color: "#03A9F4", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: true },
+    { type: "dodger", weight: 20, radius: 6, baseSpeed: 100, maxHealth: 4, color: "#03A9F4", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: true, renderPath: "garbanzo" },
     { type: "boss", weight: 0, radius: 8, baseSpeed: 160, maxHealth: 6, color: "#B71C1C", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: true },
 ];
 
@@ -120,6 +120,15 @@ export const spawnPods = [
             { type: "kamikaze", count: 2 },
             { type: "standard", count: 2 },
             { type: "spastic", count: 2 },
+        ],
+    },
+    {
+        id: "legume_tomato_mix",
+        weight: 14,
+        members: [
+            { type: "dodger", count: 1 },
+            { type: "fast", count: 1 },
+            { type: "standard", count: 3 },
         ],
     },
 

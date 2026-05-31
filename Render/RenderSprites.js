@@ -592,6 +592,195 @@ export const RenderSprites = {
         return { offCanvas, cx, cy };
     },
 
+    garbanzo: (radius, color) => {
+        const canvasSize = Math.ceil(radius * 2) + 12;
+        const cx = canvasSize / 2;
+        const cy = canvasSize / 2;
+        const offCanvas = new OffscreenCanvas(canvasSize, canvasSize);
+        const offCtx = offCanvas.getContext("2d");
+
+        // 1. Soft ambient drop shadow beneath the bean
+        offCtx.beginPath();
+        offCtx.ellipse(cx, cy + radius * 0.42, radius * 0.9, radius * 0.36, 0, 0, Math.PI * 2);
+        offCtx.fillStyle = "rgba(0, 0, 0, 0.4)";
+        offCtx.fill();
+
+        // 2. Main body — plump rounded garbanzo, slightly wider than tall
+        offCtx.beginPath();
+        offCtx.ellipse(cx, cy, radius * 1.02, radius * 0.9, 0, 0, Math.PI * 2);
+
+        const grad = offCtx.createRadialGradient(
+            cx - radius * 0.32, cy - radius * 0.32, radius * 0.08,
+            cx, cy, radius
+        );
+        grad.addColorStop(0.0, "#F5E6C8");
+        grad.addColorStop(0.22, "#E8C98A");
+        grad.addColorStop(0.5, "#C9A66B");
+        grad.addColorStop(0.78, "#A67C52");
+        grad.addColorStop(1.0, "#6D4C41");
+
+        offCtx.fillStyle = grad;
+        offCtx.fill();
+
+        // 3. Matte sheen overlay
+        const sheenGrad = offCtx.createRadialGradient(cx, cy, radius * 0.45, cx, cy, radius);
+        sheenGrad.addColorStop(0, "rgba(245, 230, 200, 0)");
+        sheenGrad.addColorStop(0.75, "rgba(245, 230, 200, 0.1)");
+        sheenGrad.addColorStop(1, "rgba(245, 230, 200, 0)");
+        offCtx.fillStyle = sheenGrad;
+        offCtx.beginPath();
+        offCtx.ellipse(cx, cy, radius * 1.02, radius * 0.9, 0, 0, Math.PI * 2);
+        offCtx.fill();
+
+        // 4. Subtle wrinkle lines — garbanzo skin texture
+        offCtx.save();
+        offCtx.beginPath();
+        offCtx.ellipse(cx, cy, radius * 1.02, radius * 0.9, 0, 0, Math.PI * 2);
+        offCtx.clip();
+        offCtx.strokeStyle = "rgba(109, 76, 65, 0.22)";
+        offCtx.lineWidth = Math.max(0.6, radius * 0.06);
+        offCtx.lineCap = "round";
+        for (let i = 0; i < 4; i++) {
+            const angle = (i / 4) * Math.PI * 2 + 0.4;
+            const sx = cx + Math.cos(angle) * radius * 0.15;
+            const sy = cy + Math.sin(angle) * radius * 0.12;
+            const ex = cx + Math.cos(angle) * radius * 0.75;
+            const ey = cy + Math.sin(angle) * radius * 0.65;
+            offCtx.beginPath();
+            offCtx.moveTo(sx, sy);
+            offCtx.quadraticCurveTo(
+                cx + Math.cos(angle + 0.3) * radius * 0.5,
+                cy + Math.sin(angle + 0.3) * radius * 0.45,
+                ex, ey
+            );
+            offCtx.stroke();
+        }
+        offCtx.restore();
+
+        // 5. Characteristic dark pointed beak (sprouting end)
+        const beakX = cx + radius * 0.38;
+        const beakY = cy + radius * 0.08;
+        offCtx.beginPath();
+        offCtx.moveTo(beakX - radius * 0.08, beakY - radius * 0.06);
+        offCtx.quadraticCurveTo(beakX + radius * 0.18, beakY, beakX - radius * 0.06, beakY + radius * 0.08);
+        offCtx.quadraticCurveTo(beakX - radius * 0.14, beakY + radius * 0.02, beakX - radius * 0.08, beakY - radius * 0.06);
+        const beakGrad = offCtx.createRadialGradient(
+            beakX - radius * 0.04, beakY, radius * 0.02,
+            beakX, beakY, radius * 0.14
+        );
+        beakGrad.addColorStop(0, "#8D6E63");
+        beakGrad.addColorStop(0.6, "#5D4037");
+        beakGrad.addColorStop(1, "#3E2723");
+        offCtx.fillStyle = beakGrad;
+        offCtx.fill();
+
+        // 6. Hilum scar on opposite side
+        const hcx = cx - radius * 0.32;
+        const hcy = cy - radius * 0.05;
+        offCtx.beginPath();
+        offCtx.ellipse(hcx, hcy, radius * 0.1, radius * 0.07, -Math.PI / 8, 0, Math.PI * 2);
+        offCtx.fillStyle = "#795548";
+        offCtx.fill();
+
+        // 7. Specular highlight on the upper-left
+        offCtx.beginPath();
+        offCtx.ellipse(cx - radius * 0.4, cy - radius * 0.38, radius * 0.16, radius * 0.07, Math.PI / 4, 0, Math.PI * 2);
+        offCtx.fillStyle = "rgba(255, 255, 255, 0.45)";
+        offCtx.fill();
+
+        return { offCanvas, cx, cy };
+    },
+
+    chickpea: (radius, color) => {
+        const canvasSize = Math.ceil(radius * 2) + 12;
+        const cx = canvasSize / 2;
+        const cy = canvasSize / 2;
+        const offCanvas = new OffscreenCanvas(canvasSize, canvasSize);
+        const offCtx = offCanvas.getContext("2d");
+
+        // 1. Soft ambient drop shadow beneath the bean
+        offCtx.beginPath();
+        offCtx.ellipse(cx, cy + radius * 0.4, radius * 0.82, radius * 0.32, 0, 0, Math.PI * 2);
+        offCtx.fillStyle = "rgba(0, 0, 0, 0.38)";
+        offCtx.fill();
+
+        // 2. Main body — compact golden chickpea, slightly angular oval
+        offCtx.beginPath();
+        offCtx.ellipse(cx, cy, radius * 0.94, radius * 0.86, 0, 0, Math.PI * 2);
+
+        const grad = offCtx.createRadialGradient(
+            cx - radius * 0.34, cy - radius * 0.34, radius * 0.07,
+            cx, cy, radius
+        );
+        grad.addColorStop(0.0, "#FFF9C4");
+        grad.addColorStop(0.2, color || "#FFEB3B");
+        grad.addColorStop(0.48, "#FBC02D");
+        grad.addColorStop(0.75, "#F9A825");
+        grad.addColorStop(1.0, "#E65100");
+
+        offCtx.fillStyle = grad;
+        offCtx.fill();
+
+        // 3. Warm waxy sheen overlay
+        const sheenGrad = offCtx.createRadialGradient(cx, cy, radius * 0.4, cx, cy, radius);
+        sheenGrad.addColorStop(0, "rgba(255, 249, 196, 0)");
+        sheenGrad.addColorStop(0.72, "rgba(255, 249, 196, 0.14)");
+        sheenGrad.addColorStop(1, "rgba(255, 249, 196, 0)");
+        offCtx.fillStyle = sheenGrad;
+        offCtx.beginPath();
+        offCtx.ellipse(cx, cy, radius * 0.94, radius * 0.86, 0, 0, Math.PI * 2);
+        offCtx.fill();
+
+        // 4. Subtle golden speckle texture
+        offCtx.save();
+        offCtx.beginPath();
+        offCtx.ellipse(cx, cy, radius * 0.94, radius * 0.86, 0, 0, Math.PI * 2);
+        offCtx.clip();
+        offCtx.fillStyle = "rgba(255, 213, 79, 0.25)";
+        for (let i = 0; i < 6; i++) {
+            const sx = cx + Math.sin(i * 2.4) * radius * 0.48;
+            const sy = cy + Math.cos(i * 1.9) * radius * 0.42;
+            offCtx.beginPath();
+            offCtx.arc(sx, sy, radius * 0.045, 0, Math.PI * 2);
+            offCtx.fill();
+        }
+        offCtx.restore();
+
+        // 5. Sharp dark beak tip (characteristic chickpea point)
+        const beakX = cx + radius * 0.34;
+        const beakY = cy + radius * 0.06;
+        offCtx.beginPath();
+        offCtx.moveTo(beakX - radius * 0.06, beakY - radius * 0.05);
+        offCtx.lineTo(beakX + radius * 0.16, beakY);
+        offCtx.lineTo(beakX - radius * 0.05, beakY + radius * 0.07);
+        offCtx.closePath();
+        const beakGrad = offCtx.createRadialGradient(
+            beakX, beakY, radius * 0.02,
+            beakX, beakY, radius * 0.12
+        );
+        beakGrad.addColorStop(0, "#A1887F");
+        beakGrad.addColorStop(0.5, "#6D4C41");
+        beakGrad.addColorStop(1, "#3E2723");
+        offCtx.fillStyle = beakGrad;
+        offCtx.fill();
+
+        // 6. Small hilum on the back side
+        const hcx = cx - radius * 0.28;
+        const hcy = cy - radius * 0.04;
+        offCtx.beginPath();
+        offCtx.ellipse(hcx, hcy, radius * 0.08, radius * 0.055, -Math.PI / 6, 0, Math.PI * 2);
+        offCtx.fillStyle = "#BF360C";
+        offCtx.fill();
+
+        // 7. Bright specular highlight
+        offCtx.beginPath();
+        offCtx.ellipse(cx - radius * 0.38, cy - radius * 0.4, radius * 0.13, radius * 0.055, Math.PI / 4, 0, Math.PI * 2);
+        offCtx.fillStyle = "rgba(255, 255, 255, 0.55)";
+        offCtx.fill();
+
+        return { offCanvas, cx, cy };
+    },
+
     wall: (size, r, g, b) => {
         const offCanvas = new OffscreenCanvas(size + 2, size + 2);
         const offCtx = offCanvas.getContext("2d");
