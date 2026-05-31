@@ -18,7 +18,22 @@ export const enemyTypes = [
     { type: "tank", weight: 25, radius: 8, baseSpeed: 66, maxHealth: 6, color: "#FF9800", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: false, renderPath: "pumpkin" },
     { type: "standard", weight: 60, radius: 6, baseSpeed: 100, maxHealth: 3, color: "#F44336", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: false, renderPath: "tomato" },
     { type: "fast", weight: 5, radius: 5, baseSpeed: 140, maxHealth: 2, color: "#FFEB3B", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: false, canDamageWalls: true },
-    { type: "spastic", weight: 15, radius: 5, baseSpeed: 200, maxHealth: 2, color: "#C62828", minLevel: 0, spawnType: "group", attackType: "charge", canDodge: false, accelRate: 5, canDamageWalls: true, groupSettings: { baseGroupSize: 3, growthPerWave: 2.0, maxGroupSize: 5 }, renderPath: "cranberry" },
+    {
+        type: "spastic",
+        weight: 15,
+        radius: 5,
+        baseSpeed: 130,
+        maxHealth: 2,
+        color: "#C62828",
+        minLevel: 0,
+        spawnType: "group",
+        attackType: "charge",
+        canDodge: false,
+        accelRate: 5,
+        canDamageWalls: true,
+        groupSettings: { baseGroupSize: 3, growthPerWave: 2.0, maxGroupSize: 5 },
+        renderPath: "cranberry",
+    },
     { type: "dodger", weight: 20, radius: 6, baseSpeed: 100, maxHealth: 4, color: "#03A9F4", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: true },
     { type: "boss", weight: 0, radius: 8, baseSpeed: 160, maxHealth: 6, color: "#B71C1C", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: true },
 ];
@@ -109,21 +124,9 @@ export const spawnPods = [
     },
 
     // --- Other archetypes (lower weight) ---
-    {
-        id: "tomato_squad",
-        weight: 8,
-        members: [{ type: "standard", count: 5 }],
-    },
-    {
-        id: "pea_rush",
-        weight: 8,
-        members: [{ type: "kamikaze", count: 5 }],
-    },
-    {
-        id: "pumpkin_heavy",
-        weight: 8,
-        members: [{ type: "tank", count: 5 }],
-    },
+    { id: "tomato_squad", weight: 8, members: [{ type: "standard", count: 5 }] },
+    { id: "pea_rush", weight: 8, members: [{ type: "kamikaze", count: 5 }] },
+    { id: "pumpkin_heavy", weight: 8, members: [{ type: "tank", count: 5 }] },
     {
         id: "pumpkin_wall",
         weight: 8,
@@ -165,11 +168,7 @@ export const spawnPods = [
             { type: "tank", count: 2 },
         ],
     },
-    {
-        id: "fast_lance",
-        weight: 8,
-        members: [{ type: "fast", count: 4 }],
-    },
+    { id: "fast_lance", weight: 8, members: [{ type: "fast", count: 4 }] },
     {
         id: "pea_tomato_pair",
         weight: 8,
@@ -178,21 +177,9 @@ export const spawnPods = [
             { type: "standard", count: 2 },
         ],
     },
-    {
-        id: "triple_pea",
-        weight: 6,
-        members: [{ type: "kamikaze", count: 3 }],
-    },
-    {
-        id: "dodger_trio",
-        weight: 6,
-        members: [{ type: "dodger", count: 3 }],
-    },
-    {
-        id: "fast_pair",
-        weight: 6,
-        members: [{ type: "fast", count: 2 }],
-    },
+    { id: "triple_pea", weight: 6, members: [{ type: "kamikaze", count: 3 }] },
+    { id: "dodger_trio", weight: 6, members: [{ type: "dodger", count: 3 }] },
+    { id: "fast_pair", weight: 6, members: [{ type: "fast", count: 2 }] },
     {
         id: "pumpkin_pea",
         weight: 6,
@@ -201,25 +188,13 @@ export const spawnPods = [
             { type: "kamikaze", count: 1 },
         ],
     },
-    {
-        id: "lone_pumpkin",
-        weight: 4,
-        members: [{ type: "tank", count: 1 }],
-    },
-    {
-        id: "lone_dodger",
-        weight: 4,
-        members: [{ type: "dodger", count: 1 }],
-    },
+    { id: "lone_pumpkin", weight: 4, members: [{ type: "tank", count: 1 }] },
+    { id: "lone_dodger", weight: 4, members: [{ type: "dodger", count: 1 }] },
 ];
 
 export const spawnSettings = { baseSpawnDelay: 3000, minSpawnDelay: 150, delayReductionPerWave: 150 };
 
-export const progressionSettings = {
-    xpBase: 25,
-    xpExponent: 1.5,
-    upgradeCostMultiplier: 1.5,
-};
+export const progressionSettings = { xpBase: 25, xpExponent: 1.5, upgradeCostMultiplier: 1.5 };
 
 export const waveSettings = {
     bossWaveInterval: 10,
@@ -234,45 +209,19 @@ export const waveSettings = {
     podSpacing: 40,
 };
 
-export const mapGenerationSettings = {
-    startNodeWaves: 1,
-    nodesPerLayerMin: 2,
-    nodesPerLayerMax: 4,
-    wavesTotalMin: 1,
-    wavesTotalMax: 5,
-    extraConnectionChance: 0.3,
-};
+export const mapGenerationSettings = { startNodeWaves: 1, nodesPerLayerMin: 2, nodesPerLayerMax: 4, wavesTotalMin: 1, wavesTotalMax: 5, extraConnectionChance: 0.3 };
 
-export const difficultyCurve = { speedMultiplier: 1.002, rewardMultiplier: 1.04 };
+export const difficultyCurve = { rewardMultiplier: 1.04 };
 
 export const perkMilestones = [2, 4, 6, 8, 10, 12, 14, 16];
 
 export const defaultUpgradeCost = 50;
 
-export const perkSettings = {
-    baseCostReduction: 10,
-    recoverySectorHealRatio: 0.5,
-    regenerateLevelBonus: 5,
-    fireRateChargeTimeDivisor: 1.1,
-    xpGainMultiplier: 2,
-    startingWealthPoints: 250,
-};
+export const perkSettings = { baseCostReduction: 10, recoverySectorHealRatio: 0.5, regenerateLevelBonus: 5, fireRateChargeTimeDivisor: 1.1, xpGainMultiplier: 2, startingWealthPoints: 250 };
 
-export const runBaseStats = {
-    gameSpeed: 2.0,
-    pointBonus: 0,
-    baseUpgradeCost: defaultUpgradeCost,
-    turretCount: 1,
-};
+export const runBaseStats = { gameSpeed: 2.0, pointBonus: 0, baseUpgradeCost: defaultUpgradeCost, turretCount: 1 };
 
-export const sidekickBaseStats = {
-    turnSpeed: Math.PI * 2.5,
-    range: 150,
-    maxHealth: 10,
-    accuracy: 0.7,
-    penetration: 0,
-    speed: 55,
-};
+export const sidekickBaseStats = { turnSpeed: Math.PI * 2.5, range: 150, maxHealth: 10, accuracy: 0.7, penetration: 0, speed: 55 };
 
 export const playerBaseStats = {
     turnSpeed: Math.PI * 3,
@@ -287,26 +236,12 @@ export const playerBaseStats = {
     startingAbilities: ["Reposition"],
 };
 
-export const gridSettings = {
-    cellSize: 16,
-    width: 2400,
-    height: 2400,
-    minCellsPerChunk: 8,
-    maxCellsPerChunk: 64,
-};
+export const gridSettings = { cellSize: 16, width: 2400, height: 2400, minCellsPerChunk: 8, maxCellsPerChunk: 64 };
 
-export const combatVisualSettings = {
-    floorHighlight: "#2c3340",
-    floorFill: "#1c2129",
-    floorShadow: "#12161c",
-    gridStroke: "rgba(90, 105, 125, 0.2)",
-};
+export const combatVisualSettings = { floorHighlight: "#2c3340", floorFill: "#1c2129", floorShadow: "#12161c", gridStroke: "rgba(90, 105, 125, 0.2)" };
 
 export function createFloorFillStyle(ctx, cx, cy, radius) {
-    const grad = ctx.createRadialGradient(
-        cx - radius * 0.22, cy - radius * 0.22, radius * 0.08,
-        cx, cy, radius
-    );
+    const grad = ctx.createRadialGradient(cx - radius * 0.22, cy - radius * 0.22, radius * 0.08, cx, cy, radius);
     grad.addColorStop(0, combatVisualSettings.floorHighlight);
     grad.addColorStop(0.62, combatVisualSettings.floorFill);
     grad.addColorStop(1, combatVisualSettings.floorShadow);
@@ -330,52 +265,18 @@ export const NAV_PROFILES = {
     sidekickFollow: { flowField: "enemy", hpaThreshold: 60, replanMs: 250, replanWhileMoving: true },
 };
 
-export const mapSettings = {
-    numLayers: 10,
-    layerSpacing: 200,
-    xSpacing: 200,
-    nodeJitter: 12,
-    combatCoordScale: 7.0,
-};
+export const mapSettings = { numLayers: 10, layerSpacing: 200, xSpacing: 200, nodeJitter: 12, combatCoordScale: 7.0 };
 
-export const playerProjectileSettings = {
-    speed: 250,
-    radiusMultiplier: 0.25,
-    splitRadiusMultiplier: 0.125,
-    knockbackMultiplier: 200,
-};
+export const playerProjectileSettings = { speed: 250, radiusMultiplier: 0.25, splitRadiusMultiplier: 0.125, knockbackMultiplier: 200 };
 
-export const enemyProjectileSettings = {
-    speed: 150,
-    radiusMultiplier: 0.333,
-    knockbackMultiplier: 120,
-};
+export const enemyProjectileSettings = { speed: 150, radiusMultiplier: 0.333, knockbackMultiplier: 120 };
 
-export const enemyDefaults = {
-    rangeMin: 75,
-    rangeMax: 144,
-    chargeImpactDamage: 2,
-};
+export const enemyDefaults = { rangeMin: 75, rangeMax: 144, chargeImpactDamage: 2 };
 
 /** Blast tuning for integer HP (player base 10). damage is full at center, scales to min multiplier at maxRadius. */
-export const explosionSettings = {
-    defaultDamage: 5,
-    barrelDamage: 5,
-    wallBlastDamage: 5,
-    playerMultipliers: [1, 0.5],
-    enemyMultipliers: [1.6, 0.4],
-};
+export const explosionSettings = { defaultDamage: 5, barrelDamage: 5, wallBlastDamage: 5, playerMultipliers: [1, 0.5], enemyMultipliers: [1.6, 0.4] };
 
-export const enemyBaseStats = {
-    turnSpeed: 10,
-    range: 112,
-    accuracy: 0.9,
-    penetration: 0,
-    moveSpeedMultiplier: 1.0,
-    fireIntervalMultiplier: 1.0,
-    reloadSpeedMultiplier: 1.0,
-    speed: 100,
-};
+export const enemyBaseStats = { turnSpeed: 10, range: 112, accuracy: 0.9, penetration: 0, moveSpeedMultiplier: 1.0, fireIntervalMultiplier: 1.0, reloadSpeedMultiplier: 1.0, speed: 100 };
 
 export const THEME_COLORS = [
     { r: 0, g: 188, b: 212 },
@@ -390,11 +291,6 @@ export const THEME_COLORS = [
     { r: 121, g: 85, b: 72 },
 ];
 
-export const controlSettings = {
-    doubleTapTimeout: 300,
-    scrollZoomSensitivity: -0.001,
-};
+export const controlSettings = { doubleTapTimeout: 300, scrollZoomSensitivity: -0.001 };
 
-export const timingSettings = {
-    sectorCompletedDelay: 1500,
-};
+export const timingSettings = { sectorCompletedDelay: 1500 };

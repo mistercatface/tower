@@ -143,13 +143,6 @@ export const metaUpgradeDefinitions = [
     },
 ];
 
-const moveSpeedDef = baseUpgradeDefinitions.find((def) => def.id === "MoveSpeed");
-
-export const baseUpgradeEffects = {
-    moveSpeedPerLevel: moveSpeedDef.stat.perLevel,
-    moveSpeedMaxLevel: moveSpeedDef.maxLevel,
-};
-
 export function buildApplyFn(statDef) {
     if (!statDef) return null;
 
