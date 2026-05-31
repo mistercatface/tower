@@ -4,7 +4,8 @@ import { Enemy } from "../Entities/Enemy.js";
 import { fireRadioTrigger } from "../Core/EventSystem.js";
 import { isBaseStatUpgrade } from "../Progression/Upgrades.js";
 
-const INTRO_TRIGGER_RADIUS = 200;
+/** Tight range — player must be in the guard room (includes actor radii). */
+const GUARD_DIALOG_RADIUS = 52;
 
 const GUARD_TYPES = [
     { enemyType: "fast", spawnIndex: 0 },
@@ -22,7 +23,22 @@ export function shouldRunStartNodeIntro(state) {
 
 export function beginStartNodeIntro(state) {
     state.startNodeIntroActive = true;
+    state.startNodeGuardsDialogUnlocked = false;
     spawnStartNodeGuards(state);
+}
+
+export function unlockStartNodeGuardsDialog(state) {
+    state.startNodeGuardsDialogUnlocked = true;
+}
+
+function distanceToNearestIntroGuard(state) {
+    let nearest = Infinity;
+    for (const enemy of state.enemies) {
+        if (!enemy.isIntroGuard || enemy.isDead) continue;
+        const dist = Math.hypot(state.player.x - enemy.x, state.player.y - enemy.y);
+        if (dist < nearest) nearest = dist;
+    }
+    return nearest;
 }
 
 export function spawnStartNodeGuards(state) {
@@ -44,25 +60,20 @@ export function spawnStartNodeGuards(state) {
         const enemy = Enemy.spawn(pos.x, pos.y, typeConfig, wave, baseUpgradeDefs);
         enemy.isPassive = true;
         enemy.isIntroGuard = true;
-        enemy.angle = Math.atan2(layout.spawnY - pos.y, layout.spawnX - pos.x);
+        enemy.angle = Math.atan2(layout.guardFaceY - pos.y, layout.guardFaceX - pos.x);
         state.enemies.push(enemy);
     }
 }
 
 export function updateStartNodeIntro(state) {
     if (!state.startNodeIntroActive || state.startNodeIntroTriggered) return;
+    if (!state.startNodeGuardsDialogUnlocked) return;
 
     const node = state.getCurrentMapNode();
     if (!node || node.id !== 0) return;
 
-    const coords = state.getNodeCombatCoords(node);
-    const layout = getStartNodeLayout(coords.x, coords.y, gridSettings.cellSize);
-    const dist = Math.hypot(
-        state.player.x - layout.introTriggerX,
-        state.player.y - layout.introTriggerY,
-    );
-
-    if (dist > INTRO_TRIGGER_RADIUS) return;
+    const dist = distanceToNearestIntroGuard(state);
+    if (dist > GUARD_DIALOG_RADIUS) return;
 
     state.startNodeIntroTriggered = true;
     fireRadioTrigger("start_node_guards", () => completeStartNodeIntro(state), state);

@@ -168,6 +168,10 @@ export class CombatState {
         }
         ctx.state.player.resetToSpawn();
 
+        if (currentNode?.id === 0) {
+            ctx.state.spawnRunParty(1);
+        }
+
         ctx.state.waveManager.startCombat();
         ctx.state.player.resetTurretCombatState();
         runPersistentSectorEnter(ctx.state);

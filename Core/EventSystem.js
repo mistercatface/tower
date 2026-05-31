@@ -167,8 +167,12 @@ export function startRadioConversation(conversationId, onComplete) {
     events.emit(Events.RADIO_START, { conversationId, onComplete });
 }
 
-export function fireRadioTrigger(trigger, onComplete) {
-    events.emit(Events.RADIO_TRIGGER, { trigger, onComplete });
+export function fireRadioTrigger(trigger, onComplete, state) {
+    events.emit(Events.RADIO_TRIGGER, {
+        trigger,
+        onComplete,
+        state: state ?? events.getContext()?.state,
+    });
 }
 
 export function advanceRadioLine() {

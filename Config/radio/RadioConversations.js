@@ -18,6 +18,17 @@ export const radioConversations = {
             { speakerId: "chickpea", text: "Oh my god babe let's kill them." },
         ],
     },
+    first_wave_clear_barry_brock: {
+        trigger: "first_wave_clear",
+        oncePerRun: true,
+        lines: [
+            { speakerId: "brock", text: "They weren't happy to see us." },
+            { speakerId: "barry", text: "Yeah, that's usually what happens with these surprise inspections." },
+            { speakerId: "brock", text: "I said the proper greeting and everything." },
+            { speakerId: "barry", text: "Watch it kid, QA will dock your pay for going off script on that." },
+            { speakerId: "brock", text: "I guess we should look around." },
+        ],
+    },
     inspect_jacko_can_garbanzo: {
         trigger: "inspect:jacko_can",
         oncePerRun: true,

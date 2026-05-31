@@ -201,6 +201,81 @@ export const spawnPods = [
     { id: "lone_dodger", weight: 4, members: [{ type: "dodger", count: 1 }] },
 ];
 
+/** Wave 1 only — tomato, pumpkin, and sometimes pea (kamikaze). Pods are 3–5 enemies, ≤2 chargers. */
+export const firstWaveSpawnPods = [
+    { id: "fw_tomato_five", weight: 22, members: [{ type: "standard", count: 5 }] },
+    { id: "fw_tomato_four", weight: 20, members: [{ type: "standard", count: 4 }] },
+    { id: "fw_tomato_three", weight: 18, members: [{ type: "standard", count: 3 }] },
+    { id: "fw_pumpkin_four", weight: 18, members: [{ type: "tank", count: 4 }] },
+    { id: "fw_pumpkin_three", weight: 16, members: [{ type: "tank", count: 3 }] },
+    {
+        id: "fw_pumpkin_tomato_five",
+        weight: 20,
+        members: [
+            { type: "tank", count: 2 },
+            { type: "standard", count: 3 },
+        ],
+    },
+    {
+        id: "fw_pumpkin_tomato_four",
+        weight: 18,
+        members: [
+            { type: "tank", count: 2 },
+            { type: "standard", count: 2 },
+        ],
+    },
+    {
+        id: "fw_pumpkin_tomato_three",
+        weight: 16,
+        members: [
+            { type: "tank", count: 1 },
+            { type: "standard", count: 2 },
+        ],
+    },
+    {
+        id: "fw_pea_tomato_five",
+        weight: 10,
+        members: [
+            { type: "kamikaze", count: 2 },
+            { type: "standard", count: 3 },
+        ],
+    },
+    {
+        id: "fw_pea_tomato_four",
+        weight: 10,
+        members: [
+            { type: "kamikaze", count: 2 },
+            { type: "standard", count: 2 },
+        ],
+    },
+    {
+        id: "fw_pea_light_four",
+        weight: 8,
+        members: [
+            { type: "kamikaze", count: 1 },
+            { type: "standard", count: 3 },
+        ],
+    },
+    {
+        id: "fw_pea_pumpkin_tomato",
+        weight: 8,
+        members: [
+            { type: "kamikaze", count: 2 },
+            { type: "tank", count: 1 },
+            { type: "standard", count: 2 },
+        ],
+    },
+    {
+        id: "fw_pea_pumpkin_pair",
+        weight: 6,
+        members: [
+            { type: "kamikaze", count: 1 },
+            { type: "tank", count: 1 },
+            { type: "standard", count: 2 },
+        ],
+    },
+];
+
 export const spawnSettings = { baseSpawnDelay: 3000, minSpawnDelay: 150, delayReductionPerWave: 150 };
 
 export const progressionSettings = { xpBase: 25, xpExponent: 1.5, upgradeCostMultiplier: 1.5 };

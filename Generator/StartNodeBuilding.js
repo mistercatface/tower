@@ -4,12 +4,21 @@ import { snapLayoutOrigin, gridCellCenter } from "./GridLayout.js";
 /** Fixed layout for map node 0 — BSP building north of Brock/Barry spawn. */
 const GRID_COLS = 49;
 const BUILDING_ROWS = 34;
-const YARD_ROWS = 10;
+/** Walk space south of the building before the entrance (player spawns at south end). */
+const YARD_ROWS = 26;
 const GRID_ROWS = BUILDING_ROWS + YARD_ROWS;
 const SPAWN_ROW = GRID_ROWS - 4;
 const SPAWN_COL = Math.floor(GRID_COLS / 2);
 const ENTRANCE_WIDTH = 5;
 const BSP_SEED = 0x7e400001;
+
+/** Interior room for Chickpea / Garbanzo (grid cells). Connected to the entrance foyer. */
+const GUARD_ROOM = {
+    col: SPAWN_COL - 4,
+    row: 14,
+    cols: 9,
+    rows: 7,
+};
 
 function createRng(seed) {
     let s = seed >>> 0;
@@ -186,6 +195,18 @@ function carveEntranceAndFoyer(grid, cols) {
     }
 }
 
+function carveGuardRoom(grid, cols) {
+    carveRect(grid, cols, GUARD_ROOM.col, GUARD_ROOM.row, GUARD_ROOM.cols, GUARD_ROOM.rows);
+
+    const roomSouthRow = GUARD_ROOM.row + GUARD_ROOM.rows;
+    const foyerRow = BUILDING_ROWS - 1;
+    for (let r = roomSouthRow; r <= foyerRow; r++) {
+        for (let c = SPAWN_COL - 1; c <= SPAWN_COL + 1; c++) {
+            grid[r * cols + c] = 0;
+        }
+    }
+}
+
 function carveYard(grid, cols) {
     carveRect(grid, cols, 1, BUILDING_ROWS, GRID_COLS - 2, YARD_ROWS - 1);
     carveRect(grid, cols, SPAWN_COL - 5, SPAWN_ROW - 2, 11, 7);
@@ -201,6 +222,7 @@ export function generateStartNodeBuilding(state, px, py) {
 
     runBsp(grid, GRID_COLS, 1, 1, GRID_COLS - 2, BUILDING_ROWS - 2, random);
     carveEntranceAndFoyer(grid, GRID_COLS);
+    carveGuardRoom(grid, GRID_COLS);
     carveYard(grid, GRID_COLS);
 
     const { offsetX, offsetY } = snapLayoutOrigin(px, py, GRID_COLS, GRID_ROWS, cellSize);
@@ -228,10 +250,12 @@ export const StartBuildingStrategy = {
 export function getStartNodeLayout(px, py, cellSize) {
     const { offsetX, offsetY } = snapLayoutOrigin(px, py, GRID_COLS, GRID_ROWS, cellSize);
     const spawn = gridCellCenter(offsetX, offsetY, SPAWN_COL, SPAWN_ROW, cellSize);
-    const entrance = gridCellCenter(offsetX, offsetY, SPAWN_COL, BUILDING_ROWS - 1, cellSize);
-    const guardRow = BUILDING_ROWS + 3;
-    const guardLeft = gridCellCenter(offsetX, offsetY, SPAWN_COL - 2, guardRow, cellSize);
-    const guardRight = gridCellCenter(offsetX, offsetY, SPAWN_COL + 2, guardRow, cellSize);
+    const guardRow = GUARD_ROOM.row + Math.floor(GUARD_ROOM.rows / 2);
+    const guardLeftCol = GUARD_ROOM.col + 2;
+    const guardRightCol = GUARD_ROOM.col + GUARD_ROOM.cols - 3;
+    const guardLeft = gridCellCenter(offsetX, offsetY, guardLeftCol, guardRow, cellSize);
+    const guardRight = gridCellCenter(offsetX, offsetY, guardRightCol, guardRow, cellSize);
+    const guardFace = gridCellCenter(offsetX, offsetY, SPAWN_COL, BUILDING_ROWS - 1, cellSize);
 
     return {
         minX: offsetX,
@@ -241,8 +265,8 @@ export function getStartNodeLayout(px, py, cellSize) {
         spawnX: spawn.x,
         spawnY: spawn.y,
         spawnClearRadius: 72,
-        introTriggerX: entrance.x,
-        introTriggerY: entrance.y,
+        guardFaceX: guardFace.x,
+        guardFaceY: guardFace.y,
         guardSpawns: [guardLeft, guardRight],
     };
 }

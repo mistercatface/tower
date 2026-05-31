@@ -7,6 +7,7 @@ export function inferFaction(actor) {
 
 export function areHostile(a, b) {
     if (!a || !b || a === b || a.isDead || b.isDead) return false;
+    if (a.isPassive || b.isPassive) return false;
     if (a.teamId != null && b.teamId != null && a.teamId === b.teamId) return false;
 
     const fa = inferFaction(a);
@@ -48,7 +49,7 @@ export function getHostilesForFaction(state, faction) {
 }
 
 export function isValidTurretTarget(actor, target, state, range, blocksTargeting, { requireLos = true } = {}) {
-    if (blocksTargeting || !target || target.isDead) return false;
+    if (blocksTargeting || !target || target.isDead || target.isPassive) return false;
     if (!areHostile(actor, target)) return false;
 
     const dist = Math.hypot(target.x - actor.x, target.y - actor.y);

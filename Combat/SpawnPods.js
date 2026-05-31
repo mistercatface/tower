@@ -1,4 +1,9 @@
-import { enemyTypes, spawnPods } from "../Config/Config.js";
+import { enemyTypes, firstWaveSpawnPods, spawnPods } from "../Config/Config.js";
+
+const CHARGER_TYPES = new Set(["kamikaze", "spastic"]);
+const FIRST_WAVE_MIN_POD_SIZE = 3;
+const FIRST_WAVE_MAX_POD_SIZE = 5;
+const FIRST_WAVE_MAX_CHARGERS = 2;
 
 const FALLBACK_POD = {
     id: "fallback_standard",
@@ -7,6 +12,23 @@ const FALLBACK_POD = {
 
 export function getPodSize(pod) {
     return pod.members.reduce((sum, member) => sum + member.count, 0);
+}
+
+function countChargersInPod(pod) {
+    return pod.members.reduce(
+        (sum, member) => sum + (CHARGER_TYPES.has(member.type) ? member.count : 0),
+        0,
+    );
+}
+
+function isFirstWavePodValid(pod) {
+    const size = getPodSize(pod);
+    if (size < FIRST_WAVE_MIN_POD_SIZE || size > FIRST_WAVE_MAX_POD_SIZE) return false;
+    if (countChargersInPod(pod) > FIRST_WAVE_MAX_CHARGERS) return false;
+    return pod.members.every((member) => {
+        const type = member.type;
+        return type === "standard" || type === "tank" || type === "kamikaze";
+    });
 }
 
 export function getEnemyType(typeName) {
@@ -43,14 +65,30 @@ function buildRemainderPod(remaining) {
     };
 }
 
+function getSpawnPodPool(state) {
+    if (state.waveManager?.wave === 1) {
+        return firstWaveSpawnPods.filter(isFirstWavePodValid);
+    }
+    return spawnPods;
+}
+
 export function selectSpawnPod(state, remainingEnemies) {
     if (remainingEnemies <= 0) {
         return FALLBACK_POD;
     }
 
-    const fittingPods = spawnPods.filter((pod) => isPodEligible(pod, remainingEnemies));
+    const pool = getSpawnPodPool(state);
+    const fittingPods = pool.filter((pod) => isPodEligible(pod, remainingEnemies));
     if (fittingPods.length > 0) {
         return pickWeightedPod(fittingPods);
+    }
+
+    if (state.waveManager?.wave === 1 && remainingEnemies >= FIRST_WAVE_MIN_POD_SIZE) {
+        const standardCount = Math.min(remainingEnemies, FIRST_WAVE_MAX_POD_SIZE);
+        return {
+            id: "fw_remainder",
+            members: [{ type: "standard", count: standardCount }],
+        };
     }
 
     return buildRemainderPod(remainingEnemies);

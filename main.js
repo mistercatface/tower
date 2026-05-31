@@ -13,6 +13,7 @@ import { ProgressionManager } from "./Progression/ProgressionManager.js";
 import { StatsManager } from "./Progression/StatsManager.js";
 import { GameStateMachine } from "./GameState/GameStateMachine.js";
 import { MapState, CombatState, RewardState } from "./GameState/GameStates.js";
+import { unlockStartNodeGuardsDialog } from "./Combat/StartNodeIntro.js";
 import { propInspector } from "./Render/Inspector/PropInspector.js";
 import { preloadAllInspectAssets } from "./Render/3D/PropInspectRecipes.js";
 
@@ -46,7 +47,14 @@ function resetGame() {
     hideGameOver();
     viewport.snapTo(0, 0);
     fsm.transition("combat");
-    fireRadioTrigger("run_start", () => { ProgressionManager.setupNewRunAbilities(state, upgrades); });
+    fireRadioTrigger(
+        "run_start",
+        () => {
+            ProgressionManager.setupNewRunAbilities(state, upgrades);
+            unlockStartNodeGuardsDialog(state);
+        },
+        state,
+    );
     requestUiUpdate();
     requestAnimationFrame(loop);
 }

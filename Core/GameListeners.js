@@ -1,5 +1,5 @@
 import { toggleGunInLoadout, unequipSlot } from "../Combat/equipmentLoadout.js";
-import { Events, requestProgressDirty, requestUiUpdate } from "./EventSystem.js";
+import { Events, fireRadioTrigger, requestProgressDirty, requestUiUpdate } from "./EventSystem.js";
 import { ProgressionManager } from "../Progression/ProgressionManager.js";
 import { hardResetProgress, registerProgressListeners } from "../Progression/Storage.js";
 import { StatsManager } from "../Progression/StatsManager.js";
@@ -26,6 +26,18 @@ export function registerGameListeners(eventBus, pauseManager) {
     });
 
     eventBus.on(Events.COMBAT_WAVE_CLEARED, ({ state, upgrades, viewport }) => {
+        const node = state.getCurrentMapNode();
+        const clearedFirstWave = state.waveManager.sectorWave === 1;
+
+        if (node?.id === 0 && clearedFirstWave) {
+            fireRadioTrigger(
+                "first_wave_clear",
+                () => ProgressionManager.handleWaveCompletion(state, upgrades, viewport),
+                state,
+            );
+            return;
+        }
+
         ProgressionManager.handleWaveCompletion(state, upgrades, viewport);
     });
 

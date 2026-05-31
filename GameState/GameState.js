@@ -108,6 +108,7 @@ export class GameState {
         this.startNodeIntroActive = false;
         this.startNodeIntroTriggered = false;
         this.startNodeIntroCompleted = false;
+        this.startNodeGuardsDialogUnlocked = false;
 
         this.wavesCompleted = 0;
         this.isTransitioning = false;
