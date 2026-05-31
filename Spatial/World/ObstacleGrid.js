@@ -2,6 +2,12 @@ import { colRowToIndex } from "../Grid/GridUtils.js";
 import { pointToSegmentPaddingDistanceSq, getWallReach } from "../Geometry/WallGeometry.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsToWorldBounds } from "../Geometry/GridCoords.js";
 
+const WORLD_MARGIN = 1500;
+
+function isGridTileWall(wall, cellSize) {
+    return Math.abs(wall.angle) < 1e-6 && (wall.padding ?? 0) === 0 && wall.size === cellSize;
+}
+
 export function getWallCellBounds(wall, worldToGrid, cols, rows, padding = wall.padding) {
     const reach = getWallReach(wall, padding);
     const minGrid = worldToGrid(wall.x - reach, wall.y - reach);
@@ -15,8 +21,21 @@ export function getWallCellBounds(wall, worldToGrid, cols, rows, padding = wall.
     };
 }
 
-export function markWallOnGrid(wall, grid, cols, rows, { worldToGrid, cellCenter, padding = wall.padding, onBlockedCell }) {
+export function markWallOnGrid(wall, grid, cols, rows, { worldToGrid, cellCenter, cellSize, padding = wall.padding, onBlockedCell }) {
     if (wall.isDead) return;
+
+    if (cellSize && isGridTileWall(wall, cellSize)) {
+        const half = wall.size / 2;
+        const { col, row } = worldToGrid(wall.x - half, wall.y - half);
+        if (col >= 0 && col < cols && row >= 0 && row < rows) {
+            const idx = colRowToIndex(col, row, cols);
+            grid[idx] = 1;
+            if (onBlockedCell) {
+                onBlockedCell(col, row, idx);
+            }
+        }
+        return;
+    }
 
     const bounds = getWallCellBounds(wall, worldToGrid, cols, rows, padding);
     const paddingSq = padding * padding + 0.01;
@@ -53,13 +72,27 @@ function computeBoundsFromWalls(walls, cellSize) {
     let maxX = -Infinity;
     let minY = Infinity;
     let maxY = -Infinity;
+    let latticeMinX = Infinity;
+    let latticeMaxX = -Infinity;
+    let latticeMinY = Infinity;
+    let latticeMaxY = -Infinity;
 
     for (const wall of walls) {
-        const reach = wall.size / 2 + wall.padding;
+        const half = wall.size / 2;
+        const reach = half + wall.padding;
         minX = Math.min(minX, wall.x - reach);
         maxX = Math.max(maxX, wall.x + reach);
         minY = Math.min(minY, wall.y - reach);
         maxY = Math.max(maxY, wall.y + reach);
+
+        if (isGridTileWall(wall, cellSize)) {
+            const left = wall.x - half;
+            const top = wall.y - half;
+            latticeMinX = Math.min(latticeMinX, left);
+            latticeMaxX = Math.max(latticeMaxX, left + wall.size);
+            latticeMinY = Math.min(latticeMinY, top);
+            latticeMaxY = Math.max(latticeMaxY, top + wall.size);
+        }
     }
 
     if (minX === Infinity) {
@@ -68,16 +101,36 @@ function computeBoundsFromWalls(walls, cellSize) {
         minY = -12000;
         maxY = 2000;
     } else {
-        minX -= 1500;
-        maxX += 1500;
-        minY -= 1500;
-        maxY += 1500;
-    }
+        const marginCells = Math.ceil(WORLD_MARGIN / cellSize);
+        const margin = marginCells * cellSize;
 
-    minX = Math.floor(minX / cellSize) * cellSize;
-    minY = Math.floor(minY / cellSize) * cellSize;
-    maxX = Math.ceil(maxX / cellSize) * cellSize;
-    maxY = Math.ceil(maxY / cellSize) * cellSize;
+        if (latticeMinX !== Infinity) {
+            minX = latticeMinX - margin;
+            maxX = latticeMaxX + margin;
+            minY = latticeMinY - margin;
+            maxY = latticeMaxY + margin;
+
+            const phaseX = ((latticeMinX - minX) % cellSize + cellSize) % cellSize;
+            if (phaseX !== 0) {
+                minX += phaseX;
+                maxX += phaseX;
+            }
+            const phaseY = ((latticeMinY - minY) % cellSize + cellSize) % cellSize;
+            if (phaseY !== 0) {
+                minY += phaseY;
+                maxY += phaseY;
+            }
+        } else {
+            minX -= margin;
+            maxX += margin;
+            minY -= margin;
+            maxY += margin;
+            minX = Math.floor(minX / cellSize) * cellSize;
+            minY = Math.floor(minY / cellSize) * cellSize;
+            maxX = Math.ceil(maxX / cellSize) * cellSize;
+            maxY = Math.ceil(maxY / cellSize) * cellSize;
+        }
+    }
 
     return { minX, maxX, minY, maxY };
 }
@@ -130,6 +183,7 @@ export class WorldObstacleGrid {
         markWallOnGrid(wall, this.grid, this.cols, this.rows, {
             worldToGrid: (x, y) => this.worldToGrid(x, y),
             cellCenter: (col, row) => this.gridToWorld(col, row),
+            cellSize: this.cellSize,
         });
     }
 
@@ -137,6 +191,7 @@ export class WorldObstacleGrid {
         markWallOnGrid(wall, this.grid, this.cols, this.rows, {
             worldToGrid: (x, y) => this.worldToGrid(x, y),
             cellCenter: (col, row) => this.gridToWorld(col, row),
+            cellSize: this.cellSize,
             onBlockedCell: (_col, _row, idx) => {
                 if (!this.segmentGrid[idx]) {
                     this.segmentGrid[idx] = [];
@@ -181,6 +236,15 @@ export class WorldObstacleGrid {
     isBlockedWorld(x, y) {
         const { col, row } = this.worldToGrid(x, y);
         return this.isBlocked(col, row);
+    }
+
+    getCellBounds(col, row) {
+        return {
+            minX: this.minX + col * this.cellSize,
+            minY: this.minY + row * this.cellSize,
+            maxX: this.minX + (col + 1) * this.cellSize,
+            maxY: this.minY + (row + 1) * this.cellSize,
+        };
     }
 
     getNearbySegments(entity) {

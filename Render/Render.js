@@ -557,10 +557,10 @@ export class Renderer {
 
                 if (isBlocked) {
                     this.ctx.fillStyle = "rgba(244, 67, 54, 0.25)"; // Translucent Red for blocked
-                    this.ctx.fillRect(wx, wy, hnav.cellSize - 1, hnav.cellSize - 1);
+                    this.ctx.fillRect(wx, wy, hnav.cellSize, hnav.cellSize);
                 } else if (!hnav.cellToNode || !hnav.cellToNode[row * hnav.cols + col]) {
                     this.ctx.fillStyle = "rgba(76, 175, 80, 0.05)"; // Very Faint Green for unassigned/fallback
-                    this.ctx.fillRect(wx, wy, hnav.cellSize - 1, hnav.cellSize - 1);
+                    this.ctx.fillRect(wx, wy, hnav.cellSize, hnav.cellSize);
                 }
             }
         }

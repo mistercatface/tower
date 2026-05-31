@@ -1,4 +1,5 @@
 import { Segment } from "../Entities/Wall.js";
+import { snapLayoutOrigin, gridCellCenter } from "./GridLayout.js";
 
 /** Fixed layout for map node 0 — BSP building north of Brock/Barry spawn. */
 const GRID_COLS = 49;
@@ -202,8 +203,7 @@ export function generateStartNodeBuilding(state, px, py) {
     carveEntranceAndFoyer(grid, GRID_COLS);
     carveYard(grid, GRID_COLS);
 
-    const offsetX = px - (SPAWN_COL * cellSize + cellSize / 2);
-    const offsetY = py - (SPAWN_ROW * cellSize + cellSize / 2);
+    const { offsetX, offsetY } = snapLayoutOrigin(px, py, GRID_COLS, GRID_ROWS, cellSize);
 
     for (let r = 0; r < GRID_ROWS; r++) {
         for (let c = 0; c < GRID_COLS; c++) {
@@ -226,15 +226,15 @@ export const StartBuildingStrategy = {
 };
 
 export function getStartNodeLayout(px, py, cellSize) {
-    const offsetX = px - (SPAWN_COL * cellSize + cellSize / 2);
-    const offsetY = py - (SPAWN_ROW * cellSize + cellSize / 2);
+    const { offsetX, offsetY } = snapLayoutOrigin(px, py, GRID_COLS, GRID_ROWS, cellSize);
+    const spawn = gridCellCenter(offsetX, offsetY, SPAWN_COL, SPAWN_ROW, cellSize);
     return {
         minX: offsetX,
         minY: offsetY,
         maxX: offsetX + GRID_COLS * cellSize,
         maxY: offsetY + GRID_ROWS * cellSize,
-        spawnX: px,
-        spawnY: py,
+        spawnX: spawn.x,
+        spawnY: spawn.y,
         spawnClearRadius: 72,
     };
 }

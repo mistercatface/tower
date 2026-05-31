@@ -1,4 +1,5 @@
 import { navigationSettings, NAV_PROFILES } from "../../Config/Config.js";
+import { entityIntersectsCellBounds } from "../Geometry/GridCoords.js";
 import { steerViaFlowField } from "./FlowFieldStrategy.js";
 import { createNavState, steerViaHpa } from "./HpaStrategy.js";
 
@@ -35,7 +36,7 @@ export class NavigationService {
     steerTo(entity, targetX, targetY, profile, flowFieldGrid = null) {
         const settings = navigationSettings;
         const grid = flowFieldGrid ?? this.flowFieldGrid;
-        if (entity.targetGridCol !== null && entity.targetGridRow !== null && grid?.entityIntersectsCell(entity.x, entity.y, entity.radius, entity.targetGridCol, entity.targetGridRow)) {
+        if (entity.targetCellBounds && entityIntersectsCellBounds(entity.x, entity.y, entity.radius, entity.targetCellBounds)) {
             entity.desiredX = 0;
             entity.desiredY = 0;
             this._setDebug(entity, { mode: "arrived", dist: 0, replanReason: null, pathLen: 0 });

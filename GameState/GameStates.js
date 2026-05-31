@@ -6,8 +6,9 @@ import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { Projectile } from "../Entities/Projectile.js";
 import { showNodeConfirmModal, requestUiUpdate } from "../Core/EventSystem.js";
 import { Explosion } from "../Entities/Explosion/Explosion.js";
-import { navigationSettings, NAV_PROFILES } from "../Config/Config.js";
+import { navigationSettings, NAV_PROFILES, gridSettings } from "../Config/Config.js";
 import { resolveMoveTarget, canPlaceMoveTarget } from "../Spatial/Navigation/PathClearance.js";
+import { getStartNodeLayout } from "../Generator/StartNodeBuilding.js";
 import { Pools } from "../Core/Pools.js";
 import { DeathPiece } from "../Entities/DeathPiece.js";
 import { findInspectablePickup } from "../Render/Inspector/InspectRegistry.js";
@@ -169,8 +170,12 @@ export class CombatState {
 
         const currentNode = ctx.state.getCurrentMapNode();
         const combatCoords = ctx.state.getNodeCombatCoords(currentNode);
-
-        ctx.state.player.setSpawnPosition(combatCoords.x, combatCoords.y);
+        if (currentNode?.id === 0) {
+            const layout = getStartNodeLayout(combatCoords.x, combatCoords.y, gridSettings.cellSize);
+            ctx.state.player.setSpawnPosition(layout.spawnX, layout.spawnY);
+        } else {
+            ctx.state.player.setSpawnPosition(combatCoords.x, combatCoords.y);
+        }
         ctx.state.player.resetToSpawn();
 
         ctx.state.waveManager.startCombat();
@@ -210,7 +215,8 @@ export class CombatState {
             Projectile.updateAll(ctx.state, stepDt);
             DeathPiece.updateAll(ctx.state, stepDt, spatialFrame);
         }
-        const collisionEvents = isTraveling ? [] : runPushablePhysics(ctx.state, stepDt, spatialFrame);
+
+        const collisionEvents = runPushablePhysics(ctx.state, stepDt, spatialFrame);
         const allEvents = [...combatEvents, ...collisionEvents];
 
         if (!isTraveling) {
@@ -255,6 +261,8 @@ export class CombatState {
         const target = resolveMoveTarget(ctx.state.obstacleGrid, worldCoords.x, worldCoords.y, clearance);
         if (!canPlaceMoveTarget(ctx.state.obstacleGrid, target.x, target.y, clearance)) return;
 
+        const targetCell = ctx.state.obstacleGrid.worldToGrid(target.x, target.y);
+
         let isDiving = false;
         ctx.upgrades
             .filter((u) => u.isAbility && u.triggerType === "double_tap_move" && ctx.state.abilities[u.id])
@@ -264,9 +272,9 @@ export class CombatState {
                 }
             });
         if (isDiving) {
-            ctx.state.player.queueTarget(target.x, target.y);
+            ctx.state.player.queueTarget(target.x, target.y, targetCell);
         } else {
-            ctx.state.player.setTarget(target.x, target.y, ctx.state);
+            ctx.state.player.setTarget(target.x, target.y, ctx.state, targetCell);
             ctx.state.navigation.rebuildPlayerFlowField(target.x, target.y);
             if (isDoubleTap) {
                 ctx.upgrades

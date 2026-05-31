@@ -1,8 +1,9 @@
-import { perkMilestones } from "../Config/Config.js";
+import { perkMilestones, gridSettings } from "../Config/Config.js";
 import { xpForLevel } from "../Config/configHelpers.js";
 import { createUpgradeLevels, resetUpgradeLevels } from "../Entities/CombatantStats.js";
 import { spawnFloatingText } from "../Core/EventSystem.js";
 import { MapGenerator } from "../Generator/MapGenerator.js";
+import { getStartNodeLayout } from "../Generator/StartNodeBuilding.js";
 import { rollPlayerStartLoadout } from "../Combat/weaponLoadout.js";
 import { spawnInitialPickups, spawnStartNodePickups } from "../Entities/Pickup.js";
 
@@ -102,7 +103,8 @@ export class StatsManager {
         const startNode = state.getMapNode(0);
         if (startNode) {
             const coords = state.getNodeCombatCoords(startNode);
-            state.player.setSpawnPosition(coords.x, coords.y);
+            const layout = getStartNodeLayout(coords.x, coords.y, gridSettings.cellSize);
+            state.player.setSpawnPosition(layout.spawnX, layout.spawnY);
             state.player.resetToSpawn();
 
             const followAngle = state.player.angle;

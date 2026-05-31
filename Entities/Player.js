@@ -4,6 +4,7 @@ import { createFloorFillStyle, playerBaseStats, NAV_PROFILES, navigationSettings
 import { createEntityBars } from "./EntityBars.js";
 import { GhostTrail } from "../Render/GhostTrail.js";
 import { isMapTraveling } from "../GameState/GamePhase.js";
+import { entityIntersectsCellBounds } from "../Spatial/Geometry/GridCoords.js";
 
 const playerBars = createEntityBars({ healthWidth: 48, healthHeight: 4, healthBorderRadius: 2 });
 
@@ -22,6 +23,7 @@ export class Player extends Actor {
         this.targetY = null;
         this.targetGridCol = null;
         this.targetGridRow = null;
+        this.targetCellBounds = null;
         this.queuedTargetX = null;
         this.queuedTargetY = null;
         this.queuedTargetCol = null;
@@ -33,6 +35,7 @@ export class Player extends Actor {
         this.canDamageWalls = true;
         this.startingAbilities = playerBaseStats.startingAbilities || [];
         this.alwaysRunsTurretCombat = true;
+        this.usesTurretGhostTrails = true;
         this.teamId = 0;
     }
 
@@ -63,9 +66,9 @@ export class Player extends Actor {
         this.vy = 0;
     }
 
-    hasReachedTarget(flowFieldGrid) {
-        if (this.targetGridCol !== null && this.targetGridRow !== null && flowFieldGrid) {
-            return flowFieldGrid.entityIntersectsCell(this.x, this.y, this.radius, this.targetGridCol, this.targetGridRow);
+    hasReachedTarget(state) {
+        if (this.targetCellBounds) {
+            return entityIntersectsCellBounds(this.x, this.y, this.radius, this.targetCellBounds);
         }
         if (this.targetX === null || this.targetY === null) {
             return false;
@@ -78,6 +81,9 @@ export class Player extends Actor {
         this.targetY = y;
         this.targetGridCol = targetCell?.col ?? null;
         this.targetGridRow = targetCell?.row ?? null;
+        this.targetCellBounds = targetCell && state?.obstacleGrid
+            ? state.obstacleGrid.getCellBounds(targetCell.col, targetCell.row)
+            : null;
         this.targetNodeX = null;
         this.targetNodeY = null;
         this.isMoving = true;
@@ -109,6 +115,7 @@ export class Player extends Actor {
         this.targetY = null;
         this.targetGridCol = null;
         this.targetGridRow = null;
+        this.targetCellBounds = null;
         this.targetNodeX = null;
         this.targetNodeY = null;
         this.isMoving = false;
@@ -152,7 +159,7 @@ export class Player extends Actor {
             return;
         }
         if (this.isMoving && this.targetX !== null && this.targetY !== null) {
-            if (this.hasReachedTarget(flowFieldGrid)) {
+            if (this.hasReachedTarget(state)) {
                 this.stopMovement(state);
             } else {
                 const navProfile = isMapTraveling(state) ? NAV_PROFILES.mapTravel : NAV_PROFILES.playerClick;

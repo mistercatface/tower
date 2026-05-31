@@ -47,3 +47,11 @@ export function cellBoundsToWorldBounds(bounds, originX, originY, cellSize) {
         maxY: originY + (bounds.endRow + 1) * cellSize,
     };
 }
+
+export function entityIntersectsCellBounds(x, y, radius, { minX, minY, maxX, maxY }) {
+    const closestX = Math.max(minX, Math.min(x, maxX));
+    const closestY = Math.max(minY, Math.min(y, maxY));
+    const dx = x - closestX;
+    const dy = y - closestY;
+    return dx * dx + dy * dy <= radius * radius;
+}

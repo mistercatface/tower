@@ -1,5 +1,6 @@
 import { Segment, buildArcWall } from "../Entities/Wall.js";
 import { StartBuildingStrategy } from "./StartNodeBuilding.js";
+import { snapLayoutOrigin } from "./GridLayout.js";
 
 function generateMaze(state, px, py, config = {}) {
     const {
@@ -83,8 +84,7 @@ function generateMaze(state, px, py, config = {}) {
     carveArea(0, cy - gateSize, gateDepth, gateSpan);
     carveArea(cols - gateDepth, cy - gateSize, gateDepth, gateSpan);
 
-    const offsetX = px - (cols * cellSize) / 2;
-    const offsetY = py - (rows * cellSize) / 2;
+    const { offsetX, offsetY } = snapLayoutOrigin(px, py, cols, rows, cellSize);
     for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
             if (grid[r * cols + c] === 1) {
@@ -330,8 +330,7 @@ const SquareStrategy = {
                 }
             }
         }
-        const offsetX = px - (cols * cellSize) / 2;
-        const offsetY = py - (rows * cellSize) / 2;
+        const { offsetX, offsetY } = snapLayoutOrigin(px, py, cols, rows, cellSize);
         for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
                 if (grid[r * cols + c] === 1) state.walls.push(new Segment(offsetX + c * cellSize + cellSize / 2, offsetY + r * cellSize + cellSize / 2, 0, cellSize, 0));
