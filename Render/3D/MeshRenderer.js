@@ -59,9 +59,6 @@ export function renderMesh(ctx, mesh, camera, opts = {}) {
 
         queue.push({
             sa, sb, sc,
-            uvA: tri.uvA,
-            uvB: tri.uvB,
-            uvC: tri.uvC,
             material: tri.material,
             depth: averageDepth(a, b, c),
             normal: viewNormal,
@@ -72,7 +69,7 @@ export function renderMesh(ctx, mesh, camera, opts = {}) {
 
     for (const tri of queue) {
         const mat = mesh.materials[tri.material];
-        if (!mat || mat.type === "texture") continue;
+        if (!mat) continue;
 
         const shade = flatShading
             ? 1

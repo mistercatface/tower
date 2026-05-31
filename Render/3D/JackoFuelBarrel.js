@@ -5,6 +5,7 @@ import {
     drawRadialBand,
     RADIAL_SEGMENTS,
 } from "./SolidDraw.js";
+import { drawImageQuad } from "./AffineTexture.js";
 import { buildSodaCanMesh } from "./CylinderMesh.js";
 import { renderInspectMesh } from "./MeshRenderer.js";
 import { drawInspectCylindricalLabel } from "./CylinderInspectLabel.js";
@@ -48,39 +49,9 @@ function labelU(angle, frontAngle, arcHalf) {
     return (normalizeAngle(angle - frontAngle) + arcHalf) / (arcHalf * 2);
 }
 
-function drawImageTriangle(ctx, img, s0, s1, s2, d0, d1, d2) {
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(d0.x, d0.y);
-    ctx.lineTo(d1.x, d1.y);
-    ctx.lineTo(d2.x, d2.y);
-    ctx.closePath();
-    ctx.clip();
-
-    const denom = s0.x * (s1.y - s2.y) + s1.x * (s2.y - s0.y) + s2.x * (s0.y - s1.y);
-    if (Math.abs(denom) < 0.001) {
-        ctx.restore();
-        return;
-    }
-
-    const m11 = (d0.x * (s1.y - s2.y) + d1.x * (s2.y - s0.y) + d2.x * (s0.y - s1.y)) / denom;
-    const m12 = (d0.y * (s1.y - s2.y) + d1.y * (s2.y - s0.y) + d2.y * (s0.y - s1.y)) / denom;
-    const m21 = (d0.x * (s2.x - s1.x) + d1.x * (s0.x - s2.x) + d2.x * (s1.x - s0.x)) / denom;
-    const m22 = (d0.y * (s2.x - s1.x) + d1.y * (s0.x - s2.x) + d2.y * (s1.x - s0.x)) / denom;
-    const dx = d0.x - m11 * s0.x - m21 * s0.y;
-    const dy = d0.y - m12 * s0.x - m22 * s0.y;
-
-    ctx.transform(m11, m12, m21, m22, dx, dy);
-    ctx.drawImage(img, 0, 0);
-    ctx.restore();
-}
-
-function drawImageQuad(ctx, img, sx0, sy0, sx1, sy1, d0, d1, d2, d3) {
-    drawImageTriangle(ctx, img, { x: sx0, y: sy0 }, { x: sx1, y: sy0 }, { x: sx1, y: sy1 }, d0, d1, d2);
-    drawImageTriangle(ctx, img, { x: sx0, y: sy0 }, { x: sx1, y: sy1 }, { x: sx0, y: sy1 }, d0, d2, d3);
-}
-
 function drawCylindricalLabelCombat(ctx, pc, img, { baseRadius, height, t0, t1, facing, arcHalf = 0.92 }) {
+    if (!img) return;
+
     const projection = pc.project(height);
     const resolvedTop = baseRadius * (1 + projection.alpha);
     const { cx, cy } = projection;
@@ -167,16 +138,13 @@ export function drawJackoFuelBarrelCombat(ctx, pc, { onFire = false } = {}) {
         stroke: CAN_COLORS.stroke,
     });
 
-    const labelImg = getTexture(JACKO_LABEL_SRC);
-    if (labelImg) {
-        drawCylindricalLabelCombat(ctx, pc, labelImg, {
-            baseRadius: radius,
-            height: CAN_COMBAT_HEIGHT,
-            t0: LABEL_BAND_T0,
-            t1: LABEL_BAND_T1,
-            facing,
-        });
-    }
+    drawCylindricalLabelCombat(ctx, pc, getTexture(JACKO_LABEL_SRC), {
+        baseRadius: radius,
+        height: CAN_COMBAT_HEIGHT,
+        t0: LABEL_BAND_T0,
+        t1: LABEL_BAND_T1,
+        facing,
+    });
 
     drawCanTopCombat(ctx, pc, radius, CAN_COMBAT_HEIGHT, onFire);
 }
@@ -200,21 +168,18 @@ export function drawJackoFuelBarrelInspect(ctx, cx, cy, scale, yaw, pitch, { onF
 
     renderInspectMesh(ctx, mesh, cx, cy, scale, yaw, pitch, { imageSmoothing: false, flatShading: true });
 
-    const labelImg = getTexture(JACKO_LABEL_SRC);
-    if (labelImg) {
-        drawInspectCylindricalLabel(ctx, cx, cy, scale, yaw, pitch, {
-            img: labelImg,
-            halfHeight: 1.05,
-            bodyRadius: 0.5,
-            y0: 0.21,
-            y1: 0.79,
-            angleCenter: -Math.PI / 2,
-            angleSpan: Math.PI * 1.15,
-            radialSegments: 10,
-            verticalSegments: 18,
-            underlay: onFire ? "#8A3020" : "#B4BAC2",
-        });
-    }
+    drawInspectCylindricalLabel(ctx, cx, cy, scale, yaw, pitch, {
+        img: getTexture(JACKO_LABEL_SRC),
+        halfHeight: 1.05,
+        bodyRadius: 0.5,
+        y0: 0.21,
+        y1: 0.79,
+        angleCenter: -Math.PI / 2,
+        angleSpan: Math.PI * 1.15,
+        radialSegments: 10,
+        verticalSegments: 18,
+        underlay: onFire ? "#8A3020" : "#B4BAC2",
+    });
 
     if (onFire) {
         const camera = createInspectCamera(cx, cy, scale, yaw, pitch);
@@ -239,5 +204,3 @@ export function drawJackoFuelBarrelInspect(ctx, cx, cy, scale, yaw, pitch, { onF
         }
     }
 }
-
-preloadJackoFuelLabel();
