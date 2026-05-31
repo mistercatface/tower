@@ -48,6 +48,10 @@ export function makeAdjacencyKey(idA, idB) {
     return idA < idB ? `${idA}:${idB}` : `${idB}:${idA}`;
 }
 
+export function manhattanDistance(col, row, targetCol, targetRow) {
+    return Math.abs(col - targetCol) + Math.abs(row - targetRow);
+}
+
 export function octileDistance(col, row, targetCol, targetRow) {
     const dx = Math.abs(col - targetCol);
     const dy = Math.abs(row - targetRow);

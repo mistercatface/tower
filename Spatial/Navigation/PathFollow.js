@@ -1,5 +1,8 @@
 import { projectOntoPath, projectOntoPathFrom } from "../Geometry/PathGeometry.js";
 
+const WAYPOINT_SLACK = 2;
+const CORNER_DOT_THRESHOLD = 0.15;
+
 function getForwardPathStartIndex(path, x, y, navState) {
     const proj = projectOntoPath(x, y, path);
     let minIdx = proj.segmentIdx + (proj.t > 0.85 ? 2 : 1);
@@ -11,62 +14,6 @@ function getForwardPathStartIndex(path, x, y, navState) {
     }
 
     return minIdx;
-}
-
-function remainingPathLength(path, segmentIdx, t) {
-    if (path.length < 2) return 0;
-
-    const ax = path[segmentIdx].x;
-    const ay = path[segmentIdx].y;
-    const bx = path[segmentIdx + 1].x;
-    const by = path[segmentIdx + 1].y;
-    let length = Math.hypot(bx - ax, by - ay) * (1 - t);
-
-    for (let i = segmentIdx + 1; i < path.length - 1; i++) {
-        length += Math.hypot(path[i + 1].x - path[i].x, path[i + 1].y - path[i].y);
-    }
-
-    return length;
-}
-
-function samplePathAhead(path, segmentIdx, t, aheadDist) {
-    if (path.length < 2) {
-        return { x: path[0].x, y: path[0].y };
-    }
-
-    let remaining = aheadDist;
-    let seg = segmentIdx;
-    let segT = t;
-
-    while (seg < path.length - 1) {
-        const ax = path[seg].x;
-        const ay = path[seg].y;
-        const bx = path[seg + 1].x;
-        const by = path[seg + 1].y;
-        const segLen = Math.hypot(bx - ax, by - ay);
-
-        if (segLen === 0) {
-            seg++;
-            segT = 0;
-            continue;
-        }
-
-        const distLeftOnSeg = segLen * (1 - segT);
-        if (remaining <= distLeftOnSeg) {
-            const frac = segT + remaining / segLen;
-            return {
-                x: ax + (bx - ax) * frac,
-                y: ay + (by - ay) * frac,
-            };
-        }
-
-        remaining -= distLeftOnSeg;
-        seg++;
-        segT = 0;
-    }
-
-    const last = path[path.length - 1];
-    return { x: last.x, y: last.y };
 }
 
 export function trimPathAhead(x, y, path) {
@@ -91,8 +38,52 @@ export function trimPathAhead(x, y, path) {
     return trimmed;
 }
 
+function isAxisAlignedSegment(from, to) {
+    return Math.abs(to.x - from.x) < 1 || Math.abs(to.y - from.y) < 1;
+}
+
+/** L-turn between two axis-aligned corridor legs (wall corner). */
+export function isWallCornerWaypoint(path, idx) {
+    if (idx <= 0 || idx >= path.length - 1) return false;
+
+    const from = path[idx - 1];
+    const corner = path[idx];
+    const to = path[idx + 1];
+
+    if (!isAxisAlignedSegment(from, corner) || !isAxisAlignedSegment(corner, to)) {
+        return false;
+    }
+
+    const inDx = corner.x - from.x;
+    const inDy = corner.y - from.y;
+    const outDx = to.x - corner.x;
+    const outDy = to.y - corner.y;
+    const inLen = Math.hypot(inDx, inDy);
+    const outLen = Math.hypot(outDx, outDy);
+    if (inLen < 1 || outLen < 1) return false;
+
+    const dot = (inDx * outDx + inDy * outDy) / (inLen * outLen);
+    return dot < CORNER_DOT_THRESHOLD;
+}
+
+function hasPassedWaypoint(entity, from, to) {
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    if (Math.abs(dx) >= Math.abs(dy)) {
+        return dx >= 0 ? entity.x >= to.x - WAYPOINT_SLACK : entity.x <= to.x + WAYPOINT_SLACK;
+    }
+    return dy >= 0 ? entity.y >= to.y - WAYPOINT_SLACK : entity.y <= to.y + WAYPOINT_SLACK;
+}
+
 function getActiveWaypointIndex(entity, path, arrivalDist, startIdx) {
     for (let i = startIdx; i < path.length; i++) {
+        if (i > 0 && isWallCornerWaypoint(path, i)) {
+            if (!hasPassedWaypoint(entity, path[i - 1], path[i])) {
+                return i;
+            }
+            continue;
+        }
+
         const wp = path[i];
         const toWpX = wp.x - entity.x;
         const toWpY = wp.y - entity.y;
@@ -119,10 +110,26 @@ function getActiveWaypointIndex(entity, path, arrivalDist, startIdx) {
     return path.length - 1;
 }
 
+function constrainToSegmentAxis(entity, from, to) {
+    const segDx = to.x - from.x;
+    const segDy = to.y - from.y;
+    if (Math.abs(segDx) < 1) {
+        const dy = to.y - entity.y;
+        if (Math.abs(dy) < 0.01) return null;
+        return { x: 0, y: Math.sign(dy) };
+    }
+    if (Math.abs(segDy) < 1) {
+        const dx = to.x - entity.x;
+        if (Math.abs(dx) < 0.01) return null;
+        return { x: Math.sign(dx), y: 0 };
+    }
+    return null;
+}
+
 export function computePathSteering(entity, path, targetX, targetY, settings = {}, navState = null) {
     const waypointArrival = Math.max(
         settings.pathWaypointArrival ?? 10,
-        (entity.radius || 6) * 1.2
+        (entity.radius || 6) * 1.2,
     );
     const offPathDistance = settings.pathOffPathDistance ?? 80;
     const arrivalDistance = settings.arrivalDistance ?? 2;
@@ -130,9 +137,7 @@ export function computePathSteering(entity, path, targetX, targetY, settings = {
     const startIdx = getForwardPathStartIndex(path, entity.x, entity.y, navState);
     const proj = projectOntoPathFrom(path, entity.x, entity.y, Math.max(0, startIdx - 1));
     const activeIdx = getActiveWaypointIndex(entity, path, waypointArrival, startIdx);
-    const steerTarget = activeIdx >= path.length - 1
-        ? path[path.length - 1]
-        : path[activeIdx];
+    const steerTarget = path[activeIdx];
 
     if (navState) {
         navState.pathProgressIdx = Math.max(navState.pathProgressIdx ?? 0, activeIdx);
@@ -143,17 +148,29 @@ export function computePathSteering(entity, path, targetX, targetY, settings = {
         return { desiredX: 0, desiredY: 0, offPath: false };
     }
 
-    const dirX = steerTarget.x - entity.x;
-    const dirY = steerTarget.y - entity.y;
-    const dirLen = Math.hypot(dirX, dirY);
+    const prev = activeIdx > 0 ? path[activeIdx - 1] : null;
+    const atWallCorner = isWallCornerWaypoint(path, activeIdx);
+    const axisDir = atWallCorner && prev ? constrainToSegmentAxis(entity, prev, steerTarget) : null;
+    let dirX;
+    let dirY;
 
-    if (dirLen < 0.01) {
-        return { desiredX: 0, desiredY: 0, offPath: proj.dist > offPathDistance };
+    if (axisDir) {
+        dirX = axisDir.x;
+        dirY = axisDir.y;
+    } else {
+        dirX = steerTarget.x - entity.x;
+        dirY = steerTarget.y - entity.y;
+        const dirLen = Math.hypot(dirX, dirY);
+        if (dirLen < 0.01) {
+            return { desiredX: 0, desiredY: 0, offPath: proj.dist > offPathDistance };
+        }
+        dirX /= dirLen;
+        dirY /= dirLen;
     }
 
     return {
-        desiredX: dirX / dirLen,
-        desiredY: dirY / dirLen,
+        desiredX: dirX,
+        desiredY: dirY,
         offPath: proj.dist > offPathDistance,
     };
 }

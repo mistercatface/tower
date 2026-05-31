@@ -1,5 +1,5 @@
 import { trimPathAhead, computePathSteering, steerTowardTarget } from "./PathFollow.js";
-import { adjustPathForClearance } from "./PathClearance.js";
+import { prepareNavigationPath } from "./PathClearance.js";
 
 export function createNavState() {
     return {
@@ -28,7 +28,7 @@ function replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, o
     let path = rawPath ? trimPathAhead(entity.x, entity.y, rawPath) : null;
     if (path && obstacleGrid && applyClearance) {
         const clearance = entity.radius + settings.pathClearanceMargin;
-        path = adjustPathForClearance(path, obstacleGrid, clearance, { x: targetX, y: targetY });
+        path = prepareNavigationPath(path, obstacleGrid, clearance, { x: targetX, y: targetY });
     }
     if (path) {
         path = trimPathAhead(entity.x, entity.y, path);

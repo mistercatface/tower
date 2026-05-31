@@ -125,11 +125,110 @@ export function adjustPathForClearance(path, obstacleGrid, clearance, destinatio
     return relaxPathClearance(obstacleGrid, adjusted, clearance);
 }
 
+const PATH_POINT_EPS = 1;
+
+function pointsNear(a, b) {
+    return Math.hypot(a.x - b.x, a.y - b.y) < PATH_POINT_EPS;
+}
+
+function isWorldSegmentClear(obstacleGrid, ax, ay, bx, by, clearance) {
+    const pad = clearance + WALL_QUERY_PAD;
+    const minX = Math.min(ax, bx) - pad;
+    const maxX = Math.max(ax, bx) + pad;
+    const minY = Math.min(ay, by) - pad;
+    const maxY = Math.max(ay, by) + pad;
+    const walls = obstacleGrid.getSegmentsInBounds(minX, minY, maxX, maxY);
+    for (const wall of walls) {
+        if (wall.isDead) continue;
+        if (minDistanceSegmentToWall(ax, ay, bx, by, wall) < clearance - CLEARANCE_EPS) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/** Split a world diagonal only when it would clip through a wall corner. */
+export function orthogonalizePath(path, obstacleGrid, clearance) {
+    if (!path || path.length < 2 || !obstacleGrid) {
+        return path;
+    }
+
+    const out = [{ x: path[0].x, y: path[0].y }];
+
+    for (let i = 1; i < path.length; i++) {
+        const prev = out[out.length - 1];
+        const curr = path[i];
+        const dx = curr.x - prev.x;
+        const dy = curr.y - prev.y;
+
+        const isDiagonal = Math.abs(dx) > PATH_POINT_EPS && Math.abs(dy) > PATH_POINT_EPS;
+        if (isDiagonal && !isWorldSegmentClear(obstacleGrid, prev.x, prev.y, curr.x, curr.y, clearance)) {
+            const viaHorizontalFirst = { x: curr.x, y: prev.y };
+            const viaVerticalFirst = { x: prev.x, y: curr.y };
+
+            let via = viaVerticalFirst;
+            if (i >= 2) {
+                const legDx = path[i - 1].x - path[i - 2].x;
+                const legDy = path[i - 1].y - path[i - 2].y;
+                via = Math.abs(legDx) >= Math.abs(legDy) ? viaHorizontalFirst : viaVerticalFirst;
+            } else {
+                const horizClear = isWorldSegmentClear(obstacleGrid, prev.x, prev.y, viaHorizontalFirst.x, viaHorizontalFirst.y, clearance)
+                    && isWorldSegmentClear(obstacleGrid, viaHorizontalFirst.x, viaHorizontalFirst.y, curr.x, curr.y, clearance);
+                const vertClear = isWorldSegmentClear(obstacleGrid, prev.x, prev.y, viaVerticalFirst.x, viaVerticalFirst.y, clearance)
+                    && isWorldSegmentClear(obstacleGrid, viaVerticalFirst.x, viaVerticalFirst.y, curr.x, curr.y, clearance);
+                if (horizClear && !vertClear) via = viaHorizontalFirst;
+                else if (vertClear) via = viaVerticalFirst;
+            }
+
+            if (!pointsNear(prev, via)) {
+                out.push({ x: via.x, y: via.y });
+            }
+        }
+
+        if (!pointsNear(out[out.length - 1], curr)) {
+            out.push({ x: curr.x, y: curr.y });
+        }
+    }
+
+    return out;
+}
+
+export function prepareNavigationPath(path, obstacleGrid, clearance, destination = null) {
+    if (!path || path.length === 0) {
+        return path;
+    }
+    const adjusted = adjustPathForClearance(path, obstacleGrid, clearance, destination);
+    return orthogonalizePath(adjusted, obstacleGrid, clearance);
+}
+
 export function resolveMoveTarget(obstacleGrid, x, y, clearance) {
     if (!obstacleGrid) {
         return { x, y };
     }
     return pushWaypointFromGeometry(obstacleGrid, x, y, clearance);
+}
+
+/** Reposition markers use body radius — not path margin — so 1-cell-wide corridors remain valid. */
+export function resolveRepositionTarget(obstacleGrid, x, y, playerRadius) {
+    if (!obstacleGrid) {
+        return { x, y, col: null, row: null };
+    }
+
+    const resolved = resolveMoveTarget(obstacleGrid, x, y, playerRadius);
+    if (canPlaceMoveTarget(obstacleGrid, resolved.x, resolved.y, playerRadius)) {
+        const cell = obstacleGrid.worldToGrid(resolved.x, resolved.y);
+        return { x: resolved.x, y: resolved.y, col: cell.col, row: cell.row };
+    }
+
+    const clickCell = obstacleGrid.worldToGrid(x, y);
+    if (clickCell.col >= 0 && clickCell.col < obstacleGrid.cols && clickCell.row >= 0 && clickCell.row < obstacleGrid.rows && !obstacleGrid.isBlocked(clickCell.col, clickCell.row)) {
+        const center = obstacleGrid.gridToWorld(clickCell.col, clickCell.row);
+        if (canPlaceMoveTarget(obstacleGrid, center.x, center.y, playerRadius)) {
+            return { x: center.x, y: center.y, col: clickCell.col, row: clickCell.row };
+        }
+    }
+
+    return null;
 }
 
 /** Whether a world point satisfies player clearance against wall segments (not grid cells). */

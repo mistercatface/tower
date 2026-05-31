@@ -6,7 +6,7 @@ const STALE_F_EPSILON = 1e-4;
 export function runLocalAStarFlat(
     startCol, startRow, targetCol, targetRow,
     grid, cols, rows,
-    maxPathLen, gScore, cameFrom, visited, runId
+    maxPathLen, gScore, cameFrom, visited, runId,
 ) {
     const startIdx = startRow * cols + startCol;
     const targetIdx = targetRow * cols + targetCol;

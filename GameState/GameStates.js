@@ -7,7 +7,7 @@ import { Projectile } from "../Entities/Projectile.js";
 import { showNodeConfirmModal, requestUiUpdate } from "../Core/EventSystem.js";
 import { Explosion } from "../Entities/Explosion/Explosion.js";
 import { navigationSettings, NAV_PROFILES, gridSettings } from "../Config/Config.js";
-import { resolveMoveTarget, canPlaceMoveTarget } from "../Spatial/Navigation/PathClearance.js";
+import { resolveMoveTarget, resolveRepositionTarget } from "../Spatial/Navigation/PathClearance.js";
 import { getStartNodeLayout } from "../Generator/StartNodeBuilding.js";
 import { Pools } from "../Core/Pools.js";
 import { DeathPiece } from "../Entities/DeathPiece.js";
@@ -82,21 +82,8 @@ function beginMapTravel(ctx) {
     const target = resolveMoveTarget(ctx.state.obstacleGrid, targetCoords.x, targetCoords.y, clearance);
 
     ctx.state.player.setTarget(target.x, target.y, ctx.state);
-    ctx.state.flowFieldGrid.shiftCenter(
-        ctx.state.player.x,
-        ctx.state.player.y,
-        ctx.state.player.x,
-        ctx.state.player.y,
-        target.x,
-        target.y,
-    );
-    ctx.state.navigation.steerTo(
-        ctx.state.player,
-        target.x,
-        target.y,
-        NAV_PROFILES.mapTravel,
-        ctx.state.flowFieldGrid,
-    );
+    ctx.state.flowFieldGrid.shiftCenter(ctx.state.player.x, ctx.state.player.y, ctx.state.player.x, ctx.state.player.y, target.x, target.y);
+    ctx.state.navigation.steerTo(ctx.state.player, target.x, target.y, NAV_PROFILES.mapTravel, ctx.state.flowFieldGrid);
     requestUiUpdate();
 }
 
@@ -198,10 +185,7 @@ export class CombatState {
         const spatialFrame = combatSpatial.begin(ctx.state);
 
         const oldGridPos = ctx.state.flowFieldGrid.worldToGrid(ctx.state.player.x, ctx.state.player.y);
-        const combatEvents = ctx.state.updateAllCombatants(stepDt, spatialFrame, {
-            externalSpeedMod: abilityState.externalSpeedMod,
-            upgrades: ctx.upgrades,
-        });
+        const combatEvents = ctx.state.updateAllCombatants(stepDt, spatialFrame, { externalSpeedMod: abilityState.externalSpeedMod, upgrades: ctx.upgrades });
         ctx.state.navigation.updateFlowField({
             playerX: ctx.state.player.x,
             playerY: ctx.state.player.y,
@@ -257,11 +241,10 @@ export class CombatState {
 
         if (!ctx.state.player.canReposition(ctx.state)) return;
 
-        const clearance = ctx.state.player.radius + navigationSettings.pathClearanceMargin;
-        const target = resolveMoveTarget(ctx.state.obstacleGrid, worldCoords.x, worldCoords.y, clearance);
-        if (!canPlaceMoveTarget(ctx.state.obstacleGrid, target.x, target.y, clearance)) return;
+        const target = resolveRepositionTarget(ctx.state.obstacleGrid, worldCoords.x, worldCoords.y, ctx.state.player.radius);
+        if (!target) return;
 
-        const targetCell = ctx.state.obstacleGrid.worldToGrid(target.x, target.y);
+        const targetCell = target.col != null ? { col: target.col, row: target.row } : null;
 
         let isDiving = false;
         ctx.upgrades
