@@ -29,7 +29,6 @@ function explosiveOnHit(state, pickup, projectile, events) {
         pickup.explode(state);
         return true;
     }
-
     const dmg = projectile ? getProjectileDamage(projectile) : 0;
     pickup.takeDamage(dmg, state);
     if (projectile?.isDead !== undefined) projectile.isDead = true;
@@ -41,7 +40,6 @@ function damageOnHit(state, pickup, projectile, events) {
         pickup.explode(state);
         return true;
     }
-
     const dmg = projectile?.damage ?? 0;
     pickup.takeDamage(dmg, state);
     if (projectile?.isDead !== undefined) projectile.isDead = true;
@@ -85,9 +83,7 @@ export class Pickup extends Entity {
     }
 
     getRender3DKey() {
-        if (this.currentState?.getRender3DKey) {
-            return this.currentState.getRender3DKey(this);
-        }
+        if (this.currentState?.getRender3DKey) return this.currentState.getRender3DKey(this);
         return this.strategy.render3DKey;
     }
 
@@ -122,13 +118,8 @@ export class Pickup extends Entity {
 
     update(dt, state, spatialFrame, { resolveWalls = false } = {}) {
         PhysicsSystem.applyFrictionAndDrag(this, dt, this.strategy.friction);
-        if (resolveWalls && this.strategy.isPushable && this.needsWallCollision()) {
-            PhysicsSystem.resolveWallCollisions(this, spatialFrame, state);
-        }
-
-        if (this.currentState?.update) {
-            this.currentState.update(this, dt, state.walls, state);
-        }
+        if (resolveWalls && this.strategy.isPushable && this.needsWallCollision()) PhysicsSystem.resolveWallCollisions(this, spatialFrame, state);
+        if (this.currentState?.update) this.currentState.update(this, dt, state.walls, state);
     }
 }
 
