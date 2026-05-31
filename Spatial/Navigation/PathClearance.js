@@ -208,27 +208,27 @@ export function resolveMoveTarget(obstacleGrid, x, y, clearance) {
     return pushWaypointFromGeometry(obstacleGrid, x, y, clearance);
 }
 
-/** Reposition markers use body radius — not path margin — so 1-cell-wide corridors remain valid. */
+/** Reposition: snap to the clicked walkable cell center — no geometry push/adjust. */
 export function resolveRepositionTarget(obstacleGrid, x, y, playerRadius) {
     if (!obstacleGrid) {
         return { x, y, col: null, row: null };
     }
 
-    const resolved = resolveMoveTarget(obstacleGrid, x, y, playerRadius);
-    if (canPlaceMoveTarget(obstacleGrid, resolved.x, resolved.y, playerRadius)) {
-        const cell = obstacleGrid.worldToGrid(resolved.x, resolved.y);
-        return { x: resolved.x, y: resolved.y, col: cell.col, row: cell.row };
-    }
-
     const clickCell = obstacleGrid.worldToGrid(x, y);
-    if (clickCell.col >= 0 && clickCell.col < obstacleGrid.cols && clickCell.row >= 0 && clickCell.row < obstacleGrid.rows && !obstacleGrid.isBlocked(clickCell.col, clickCell.row)) {
-        const center = obstacleGrid.gridToWorld(clickCell.col, clickCell.row);
-        if (canPlaceMoveTarget(obstacleGrid, center.x, center.y, playerRadius)) {
-            return { x: center.x, y: center.y, col: clickCell.col, row: clickCell.row };
-        }
+    if (
+        clickCell.col < 0 || clickCell.col >= obstacleGrid.cols ||
+        clickCell.row < 0 || clickCell.row >= obstacleGrid.rows ||
+        obstacleGrid.isBlocked(clickCell.col, clickCell.row)
+    ) {
+        return null;
     }
 
-    return null;
+    const center = obstacleGrid.gridToWorld(clickCell.col, clickCell.row);
+    if (!canPlaceMoveTarget(obstacleGrid, center.x, center.y, playerRadius)) {
+        return null;
+    }
+
+    return { x: center.x, y: center.y, col: clickCell.col, row: clickCell.row };
 }
 
 /** Whether a world point satisfies player clearance against wall segments (not grid cells). */

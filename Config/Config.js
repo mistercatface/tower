@@ -261,7 +261,7 @@ export const navigationSettings = {
 
 export const NAV_PROFILES = {
     enemyToPlayer: { flowField: "enemy", hpaThreshold: 1000, replanMs: 1000, replanWhileMoving: true },
-    playerClick: { flowField: "player", hpaThreshold: 0, replanMs: 500, replanWhileMoving: false },
+    playerClick: { flowField: "player", hpaThreshold: 0, replanMs: 500, replanWhileMoving: false, skipPathClearance: true },
     mapTravel: { flowField: "player", hpaThreshold: 0, replanMs: 250, replanWhileMoving: true },
     sidekickFollow: { flowField: "enemy", hpaThreshold: 60, replanMs: 250, replanWhileMoving: true },
 };
