@@ -1,3 +1,4 @@
+import { CollisionSystem } from "../Spatial/Collision/CollisionSystem.js";
 import { Entity } from "./Entity.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
@@ -10,6 +11,14 @@ import { getPlayerActors, areHostile } from "../Combat/Targeting.js";
 import { Actor } from "./Actor.js";
 
 export class Projectile extends Entity {
+    static checkSpawnCollisions(state, spatialFrame, events) {
+        for (const p of state.projectiles) {
+            if (!p._spawnFrameCheck || p.isDead) continue;
+            p._spawnFrameCheck = false;
+            p.resolveFactionCollisions(state, events, CollisionSystem, spatialFrame);
+        }
+    }
+
     static updateAll(state, dt) {
         for (let i = state.projectiles.length - 1; i >= 0; i--) {
             const p = state.projectiles[i];
@@ -44,6 +53,7 @@ export class Projectile extends Entity {
         this.faction = faction;
         this.gunId = null;
         this.penetration = 0;
+        this._spawnFrameCheck = true;
 
         if (!this.ghostTrail) {
             this.ghostTrail = new GhostTrail({ length: 5, alpha: 0.4, minDistance: 4, lifetime: 300, shrink: true });
@@ -74,6 +84,7 @@ export class Projectile extends Entity {
     }
 
     update(dt, state) {
+        if (this.isDead) return;
         this.move(dt);
         this.checkOutOfBounds(state);
         this.ghostTrail?.update(dt, this.x, this.y, this.angle);

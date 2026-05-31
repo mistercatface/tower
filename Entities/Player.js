@@ -35,7 +35,6 @@ export class Player extends Actor {
         this.canDamageWalls = true;
         this.startingAbilities = playerBaseStats.startingAbilities || [];
         this.alwaysRunsTurretCombat = true;
-        this.usesTurretGhostTrails = true;
         this.teamId = 0;
     }
 

@@ -5,7 +5,7 @@ import { defaultTurretLoadout, resolveFireAngleOffsets } from "../Config/turretL
 import { Pools } from "../Core/Pools.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { getGunProjectileConfig, getSlotFireIntervalMs, getSlotReloadTimeMs } from "../Combat/gunCombat.js";
-import { inferFaction } from "../Combat/Targeting.js";
+import { inferFaction, areHostile } from "../Combat/Targeting.js";
 import { GhostTrail } from "../Render/GhostTrail.js";
 
 const TURRET_GHOST_TRAIL = {
@@ -49,11 +49,38 @@ export class Turret {
         this.ghostTrail.update(dt, x, y, this.angle);
     }
 
-    getMuzzlePosition(source) {
-        const turretDist = source.radius + 12;
+    computeMuzzleDistance(source, projectileRadius, target = null) {
+        const defaultDist = source.radius + 12;
+        const minDist = source.radius + projectileRadius + 0.5;
+
+        if (!target || !areHostile(source, target)) {
+            return defaultDist;
+        }
+
+        const dx = target.x - source.x;
+        const dy = target.y - source.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < 0.01) {
+            return minDist;
+        }
+
+        const aimX = Math.cos(this.angle);
+        const aimY = Math.sin(this.angle);
+        const dot = (dx / dist) * aimX + (dy / dist) * aimY;
+        if (dot < 0.5) {
+            return defaultDist;
+        }
+
+        const targetRadius = target.radius ?? 8;
+        const maxDist = dist - targetRadius + projectileRadius;
+        return Math.max(minDist, Math.min(defaultDist, maxDist));
+    }
+
+    getMuzzlePosition(source, projectileRadius = 2, target = null) {
+        const dist = this.computeMuzzleDistance(source, projectileRadius, target);
         return {
-            x: source.x + Math.cos(this.angle) * turretDist,
-            y: source.y + Math.sin(this.angle) * turretDist,
+            x: source.x + Math.cos(this.angle) * dist,
+            y: source.y + Math.sin(this.angle) * dist,
         };
     }
 
@@ -61,8 +88,10 @@ export class Turret {
         const gun = getGunDefinition(this.gunId);
         if (gun.kind !== "projectile") return;
 
-        const { x: tx, y: ty } = this.getMuzzlePosition(source);
         const { radiusMultiplier } = this.loadout;
+        const radius = gun.bulletRadius * radiusMultiplier;
+        const target = this.lastTarget ?? this.target;
+        const { x: tx, y: ty } = this.getMuzzlePosition(source, radius, target);
         const angleOffsets = resolveFireAngleOffsets(this.loadout);
         const faction = inferFaction(source);
 

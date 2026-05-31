@@ -195,13 +195,15 @@ export class CombatState {
         });
 
         ctx.state.waveManager.manageSpawning(stepDt, ctx.state, ctx.upgrades, ctx.viewport);
+        let spawnHitEvents = [];
         if (!isTraveling) {
+            Projectile.checkSpawnCollisions(ctx.state, spatialFrame, spawnHitEvents);
             Projectile.updateAll(ctx.state, stepDt);
             DeathPiece.updateAll(ctx.state, stepDt, spatialFrame);
         }
 
         const collisionEvents = runPushablePhysics(ctx.state, stepDt, spatialFrame);
-        const allEvents = [...combatEvents, ...collisionEvents];
+        const allEvents = [...combatEvents, ...spawnHitEvents, ...collisionEvents];
 
         if (!isTraveling) {
             Explosion.updateAll(ctx.state, stepDt, allEvents, spatialFrame);
