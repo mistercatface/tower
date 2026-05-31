@@ -1,4 +1,4 @@
-import { drawExtrudedRadial, drawRadialBand } from "../../SolidDraw.js";
+import { drawExtrudedRadial, drawRadialBand } from "../../draw/SolidDraw.js";
 import { JACKO_CAN } from "../../../../Config/props/JackoCan.js";
 
 function drawCanTopCombat(ctx, pc, radius, height, onFire) {

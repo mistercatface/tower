@@ -1,5 +1,5 @@
-import { renderInspectMesh } from "../MeshRenderer.js";
-import { drawInspectBoxLabels } from "../BoxInspectLabel.js";
+import { renderInspectMesh } from "../draw/MeshRenderer.js";
+import { drawInspectBoxLabels } from "../draw/BoxInspectLabel.js";
 import { getTexture, loadTexture, onTextureReady } from "../core/TextureCache.js";
 
 /**

@@ -7,10 +7,10 @@ import {
     transformNormal,
     projectPoint,
     averageDepth,
-} from "./math/InspectCamera.js";
-import { faceVisible } from "./geometry/MeshBuilder.js";
-import { drawImageQuad } from "./core/AffineTexture.js";
-import { labelBandYRange } from "../../Math/Interpolate.js";
+} from "../math/InspectCamera.js";
+import { faceVisible } from "../geometry/MeshBuilder.js";
+import { drawImageQuad } from "./AffineTexture.js";
+import { labelBandYRange } from "../../../Math/Interpolate.js";
 
 /** @typedef {"+x" | "-x" | "+z" | "-z"} BoxSideFace */
 

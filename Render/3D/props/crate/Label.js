@@ -1,6 +1,6 @@
 import { CRATE_LABEL_VARIANTS } from "../../../../Config/props/Crate.js";
 
-/** @typedef {import("../../BoxInspectLabel.js").BoxSideFace} BoxSideFace */
+/** @typedef {import("../../draw/BoxInspectLabel.js").BoxSideFace} BoxSideFace */
 
 /** @param {import("../../../../Entities/Pickup.js").Pickup | null | undefined} pickup */
 /** @param {BoxSideFace} face */

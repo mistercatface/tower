@@ -1,4 +1,4 @@
-import { extrudeRadial, extrudeBox, pointOnFrustum, radiusAtT, getHeightSlice, getRadialSilhouette, traceVisibleArc, isFaceTowardViewer, createSideGradient } from "./math/CombatProjection.js";
+import { extrudeRadial, extrudeBox, pointOnFrustum, radiusAtT, getHeightSlice, getRadialSilhouette, traceVisibleArc, isFaceTowardViewer, createSideGradient } from "../math/CombatProjection.js";
 
 export const DEFAULT_PROP_HEIGHT = 14;
 export const RADIAL_SEGMENTS = 14;

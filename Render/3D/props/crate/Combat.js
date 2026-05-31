@@ -1,5 +1,5 @@
 import { WOOD_CRATE } from "../../../../Config/props/Crate.js";
-import { drawExtrudedBox } from "../../SolidDraw.js";
+import { drawExtrudedBox } from "../../draw/SolidDraw.js";
 
 export function drawCrateCombat(ctx, pc) {
     const { colors, combat } = WOOD_CRATE;
