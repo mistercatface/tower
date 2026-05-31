@@ -43,8 +43,10 @@ export function drawInspectCylindricalLabel(ctx, cx, cy, scale, yaw, pitch, {
     underlay = "#B4BAC2",
     referenceDepth = 420,
     screenScale = scale * 88,
-    uvBleed = 1.5,
-    screenBleed = 1.25,
+    uvBleed = 2,
+    screenBleed = 2.5,
+    subRadial = 2,
+    subVertical = 2,
 } = {}) {
     if (!img) return;
 
@@ -60,53 +62,64 @@ export function drawInspectCylindricalLabel(ctx, cx, cy, scale, yaw, pitch, {
     const hullTop = [];
     const hullBot = [];
 
+    const pushCell = (u0, u1, v0, v1, a0, a1, yt, yb) => {
+        const model = [
+            cylinderPoint(yt, a0, radius),
+            cylinderPoint(yt, a1, radius),
+            cylinderPoint(yb, a1, radius),
+            cylinderPoint(yb, a0, radius),
+        ];
+
+        const view = model.map((p) => transformPoint(p, yaw, pitch));
+        const normal = triangleNormal(view[0], view[1], view[2]);
+        if (!faceVisible(normal)) return;
+
+        const screen = view.map((p) => projectPoint(p, camera));
+        if (screen.some((p) => !p)) return;
+
+        const innerU = u0 > 0;
+        const outerU = u1 < 1;
+        const innerV = v0 > 0;
+        const outerV = v1 < 1;
+        const sx0 = u0 * iw - (innerU ? uvBleed : 0);
+        const sx1 = u1 * iw + (outerU ? uvBleed : 0);
+        const sy0 = v0 * ih - (innerV ? uvBleed : 0);
+        const sy1 = v1 * ih + (outerV ? uvBleed : 0);
+
+        cells.push({
+            depth: averageDepth(view[0], view[1], view[2]),
+            sx0, sy0, sx1, sy1,
+            d0: screen[0],
+            d1: screen[1],
+            d2: screen[2],
+            d3: screen[3],
+        });
+
+        if (v0 === 0) {
+            if (u0 === 0) hullTop.push(screen[0]);
+            hullTop.push(screen[1]);
+        }
+        if (v1 === 1) {
+            if (u0 === 0) hullBot.push(screen[3]);
+            hullBot.push(screen[2]);
+        }
+    };
+
     for (let ri = 0; ri < radialSegments; ri++) {
-        const u0 = ri / radialSegments;
-        const u1 = (ri + 1) / radialSegments;
-        const a0 = angleCenter - halfSpan + u0 * angleSpan;
-        const a1 = angleCenter - halfSpan + u1 * angleSpan;
+        for (let sri = 0; sri < subRadial; sri++) {
+            const u0 = (ri + sri / subRadial) / radialSegments;
+            const u1 = (ri + (sri + 1) / subRadial) / radialSegments;
+            const a0 = angleCenter - halfSpan + u0 * angleSpan;
+            const a1 = angleCenter - halfSpan + u1 * angleSpan;
 
-        for (let vi = 0; vi < verticalSegments; vi++) {
-            const v0 = vi / verticalSegments;
-            const v1 = (vi + 1) / verticalSegments;
-            const yt = yTop + (yBot - yTop) * v0;
-            const yb = yTop + (yBot - yTop) * v1;
-
-            const model = [
-                cylinderPoint(yt, a0, radius),
-                cylinderPoint(yt, a1, radius),
-                cylinderPoint(yb, a1, radius),
-                cylinderPoint(yb, a0, radius),
-            ];
-
-            const view = model.map((p) => transformPoint(p, yaw, pitch));
-            const normal = triangleNormal(view[0], view[1], view[2]);
-            if (!faceVisible(normal)) continue;
-
-            const screen = view.map((p) => projectPoint(p, camera));
-            if (screen.some((p) => !p)) continue;
-
-            const sx0 = u0 * iw - (ri > 0 ? uvBleed : 0);
-            const sx1 = u1 * iw + (ri < radialSegments - 1 ? uvBleed : 0);
-            const sy0 = v0 * ih - (vi > 0 ? uvBleed : 0);
-            const sy1 = v1 * ih + (vi < verticalSegments - 1 ? uvBleed : 0);
-
-            cells.push({
-                depth: averageDepth(view[0], view[1], view[2]),
-                sx0, sy0, sx1, sy1,
-                d0: screen[0],
-                d1: screen[1],
-                d2: screen[2],
-                d3: screen[3],
-            });
-
-            if (vi === 0) {
-                if (ri === 0) hullTop.push(screen[0]);
-                hullTop.push(screen[1]);
-            }
-            if (vi === verticalSegments - 1) {
-                if (ri === 0) hullBot.push(screen[3]);
-                hullBot.push(screen[2]);
+            for (let vi = 0; vi < verticalSegments; vi++) {
+                for (let svi = 0; svi < subVertical; svi++) {
+                    const v0 = (vi + svi / subVertical) / verticalSegments;
+                    const v1 = (vi + (svi + 1) / subVertical) / verticalSegments;
+                    const yt = yTop + (yBot - yTop) * v0;
+                    const yb = yTop + (yBot - yTop) * v1;
+                    pushCell(u0, u1, v0, v1, a0, a1, yt, yb);
+                }
             }
         }
     }
@@ -117,7 +130,8 @@ export function drawInspectCylindricalLabel(ctx, cx, cy, scale, yaw, pitch, {
 
     cells.sort((a, b) => b.depth - a.depth);
 
-    const textureOpts = { underlay, bleedPx: screenBleed };
+    // Hull underlay only — per-triangle underlay shows through sub-pixel gaps between cells.
+    const textureOpts = { underlay: null, bleedPx: screenBleed };
     const prevSmooth = ctx.imageSmoothingEnabled;
     ctx.imageSmoothingEnabled = true;
     for (const cell of cells) {

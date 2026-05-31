@@ -62,6 +62,13 @@ export function drawImageTriangle(ctx, img, s0, s1, s2, d0, d1, d2, opts = {}) {
 
 /** Affine-map an image quad onto a screen quad (two triangles). */
 export function drawImageQuad(ctx, img, sx0, sy0, sx1, sy1, d0, d1, d2, d3, opts = {}) {
+    const diag02 = (d2.x - d0.x) ** 2 + (d2.y - d0.y) ** 2;
+    const diag13 = (d3.x - d1.x) ** 2 + (d3.y - d1.y) ** 2;
+    if (diag13 < diag02) {
+        drawImageTriangle(ctx, img, { x: sx0, y: sy0 }, { x: sx1, y: sy0 }, { x: sx0, y: sy1 }, d0, d1, d3, opts);
+        drawImageTriangle(ctx, img, { x: sx1, y: sy0 }, { x: sx1, y: sy1 }, { x: sx0, y: sy1 }, d1, d2, d3, opts);
+        return;
+    }
     drawImageTriangle(ctx, img, { x: sx0, y: sy0 }, { x: sx1, y: sy0 }, { x: sx1, y: sy1 }, d0, d1, d2, opts);
     drawImageTriangle(ctx, img, { x: sx0, y: sy0 }, { x: sx1, y: sy1 }, { x: sx0, y: sy1 }, d0, d2, d3, opts);
 }
