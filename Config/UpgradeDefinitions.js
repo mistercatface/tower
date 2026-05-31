@@ -1,5 +1,16 @@
 import { runBaseStats } from "./Config.js";
 
+export const REGEN_HP_PER_LEVEL = 0.25;
+export const REGEN_MAX_LEVEL = 8;
+
+export function regenHpPerSec(level) {
+    return level * REGEN_HP_PER_LEVEL;
+}
+
+function formatRegenRate(level) {
+    return `${parseFloat(regenHpPerSec(level).toFixed(2))} HP/s`;
+}
+
 export const baseUpgradeDefinitions = [
     {
         id: "Accuracy",
@@ -64,10 +75,11 @@ export const baseUpgradeDefinitions = [
         category: "defense",
         name: "Regenerate",
         description: "Restore health over time.",
-        update: { type: "healOverTime", perLevel: 1 },
+        maxLevel: REGEN_MAX_LEVEL,
+        update: { type: "healOverTime", perLevel: REGEN_HP_PER_LEVEL },
         display: {
-            current: (level) => `${level} HP/s`,
-            next: (level) => `${level + 1} HP/s`,
+            current: (level) => formatRegenRate(level),
+            next: (level) => formatRegenRate(level + 1),
         },
     },
     {
