@@ -18,6 +18,11 @@ export const turretLoadoutPresets = {
         pelletCount: 3,
         spreadRadians: 0.1,
     },
+    sawedOffShotgun: {
+        radiusMultiplier: playerProjectileSettings.splitRadiusMultiplier,
+        pelletCount: 8,
+        spreadRadians: 0.1,
+    },
 };
 
 export const defaultTurretLoadout = turretLoadoutPresets.standard;
