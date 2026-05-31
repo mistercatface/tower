@@ -23,11 +23,7 @@ export function scaleAtHeight(baseSize, alpha, t) {
 
 export function getHeightSlice(projection, baseSize, t) {
     const { cx, cy, topX, topY, alpha } = projection;
-    return {
-        centerX: cx + (topX - cx) * t,
-        centerY: cy + (topY - cy) * t,
-        size: scaleAtHeight(baseSize, alpha, t),
-    };
+    return { centerX: cx + (topX - cx) * t, centerY: cy + (topY - cy) * t, size: scaleAtHeight(baseSize, alpha, t) };
 }
 export function radiusAtT(baseRadius, topRadius, t) {
     return baseRadius + (topRadius - baseRadius) * t;
@@ -38,10 +34,7 @@ export function pointOnFrustum(projection, baseRadius, topRadius, t, angle) {
     const radius = radiusAtT(baseRadius, topRadius, t);
     const centerX = cx + (topX - cx) * t;
     const centerY = cy + (topY - cy) * t;
-    return {
-        x: centerX + Math.cos(angle) * radius,
-        y: centerY + Math.sin(angle) * radius,
-    };
+    return { x: centerX + Math.cos(angle) * radius, y: centerY + Math.sin(angle) * radius };
 }
 
 function angleDelta(from, to) {
@@ -67,24 +60,11 @@ export function getRadialSilhouette(projection, baseRadius, topRadius = null) {
     const resolvedTop = topRadius === null ? baseRadius * (1 + alpha) : topRadius;
     const perpA = viewAngle + Math.PI / 2;
     const perpB = viewAngle - Math.PI / 2;
-    const rimPoint = (centerX, centerY, radius, angle) => ({
-        x: centerX + Math.cos(angle) * radius,
-        y: centerY + Math.sin(angle) * radius,
-    });
+    const rimPoint = (centerX, centerY, radius, angle) => ({ x: centerX + Math.cos(angle) * radius, y: centerY + Math.sin(angle) * radius });
 
     if (resolvedTop === 0) {
         const apex = { x: topX, y: topY };
-        return {
-            viewAngle,
-            perpA,
-            perpB,
-            baseRadius,
-            topRadius: 0,
-            baseLeft: rimPoint(cx, cy, baseRadius, perpA),
-            baseRight: rimPoint(cx, cy, baseRadius, perpB),
-            topLeft: apex,
-            topRight: apex,
-        };
+        return { viewAngle, perpA, perpB, baseRadius, topRadius: 0, baseLeft: rimPoint(cx, cy, baseRadius, perpA), baseRight: rimPoint(cx, cy, baseRadius, perpB), topLeft: apex, topRight: apex };
     }
 
     return {
@@ -120,20 +100,23 @@ export function extrudeRadial(projection, baseRadius, topRadius, facing, segment
     return { faces, cx, cy, topX, topY, topRadius: resolvedTop };
 }
 
-export function getBoxCorners(centerX, centerY, halfSize) {
-    return [
-        { x: centerX - halfSize, y: centerY - halfSize },
-        { x: centerX + halfSize, y: centerY - halfSize },
-        { x: centerX + halfSize, y: centerY + halfSize },
-        { x: centerX - halfSize, y: centerY + halfSize },
+export function getBoxCorners(centerX, centerY, halfSize, angle = 0) {
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    const local = [
+        { lx: -halfSize, ly: -halfSize },
+        { lx: halfSize, ly: -halfSize },
+        { lx: halfSize, ly: halfSize },
+        { lx: -halfSize, ly: halfSize },
     ];
+    return local.map(({ lx, ly }) => ({ x: centerX + lx * cos - ly * sin, y: centerY + lx * sin + ly * cos }));
 }
 
-export function extrudeBox(projection, halfSize) {
+export function extrudeBox(projection, halfSize, angle = 0) {
     const { cx, cy, topX, topY, alpha } = projection;
     const topHalfSize = scaleAtHeight(halfSize, alpha, 1);
-    const baseCorners = getBoxCorners(cx, cy, halfSize);
-    const topCorners = getBoxCorners(topX, topY, topHalfSize);
+    const baseCorners = getBoxCorners(cx, cy, halfSize, angle);
+    const topCorners = getBoxCorners(topX, topY, topHalfSize, angle);
     return {
         halfSize,
         topHalfSize,
@@ -141,12 +124,7 @@ export function extrudeBox(projection, halfSize) {
         topCorners,
         faces: baseCorners.map((_, i) => {
             const next = (i + 1) % 4;
-            return {
-                baseA: baseCorners[i],
-                baseB: baseCorners[next],
-                topA: topCorners[i],
-                topB: topCorners[next],
-            };
+            return { baseA: baseCorners[i], baseB: baseCorners[next], topA: topCorners[i], topB: topCorners[next] };
         }),
     };
 }
@@ -159,7 +137,7 @@ export function isFaceTowardViewer(edgeMidX, edgeMidY, originX, originY, viewerX
     return outX * viewX + outY * viewY < 0;
 }
 
-export function getSideHighlightT(viewAngle, lightAngle = -3 * Math.PI / 4) {
+export function getSideHighlightT(viewAngle, lightAngle = (-3 * Math.PI) / 4) {
     const lx = Math.cos(lightAngle);
     const ly = Math.sin(lightAngle);
     const nx = Math.cos(viewAngle + Math.PI / 2);

@@ -1,14 +1,4 @@
-import {
-    extrudeRadial,
-    extrudeBox,
-    pointOnFrustum,
-    radiusAtT,
-    getHeightSlice,
-    getRadialSilhouette,
-    traceVisibleArc,
-    isFaceTowardViewer,
-    createSideGradient,
-} from "./Projection3D.js";
+import { extrudeRadial, extrudeBox, pointOnFrustum, radiusAtT, getHeightSlice, getRadialSilhouette, traceVisibleArc, isFaceTowardViewer, createSideGradient } from "./Projection3D.js";
 
 export const DEFAULT_PROP_HEIGHT = 14;
 export const RADIAL_SEGMENTS = 14;
@@ -59,26 +49,13 @@ function drawFacetedRadialBody(ctx, pc, projection, baseRadius, topRadius, facin
         const edgeMidY = (face.baseA.y + face.baseB.y) / 2;
         if (!isFaceVisible(pc, cx, cy, edgeMidX, edgeMidY)) continue;
 
-        drawCullFace(ctx, face, face.midAngle, {
-            fill: createSideGradient(ctx, face.baseA, face.baseB, face.midAngle, colors),
-            stroke,
-            lineWidth,
-        });
+        drawCullFace(ctx, face, face.midAngle, { fill: createSideGradient(ctx, face.baseA, face.baseB, face.midAngle, colors), stroke, lineWidth });
     }
 }
 
 export function drawExtrudedRadial(ctx, pc, options) {
     const baseRadius = options.baseRadius ?? options.radius;
-    const {
-        topRadius,
-        height,
-        facing = pc.facing,
-        colors,
-        stroke,
-        lineWidth = 1.0,
-        segments = RADIAL_SEGMENTS,
-        bodyMode = "silhouette",
-    } = options;
+    const { topRadius, height, facing = pc.facing, colors, stroke, lineWidth = 1.0, segments = RADIAL_SEGMENTS, bodyMode = "silhouette" } = options;
     const projection = pc.project(height);
     const resolvedTop = topRadius === 0 ? 0 : (topRadius ?? baseRadius * (1 + projection.alpha));
 
@@ -93,17 +70,7 @@ export function drawExtrudedRadial(ctx, pc, options) {
 
 export function drawRadialBand(ctx, pc, options) {
     const baseRadius = options.baseRadius ?? options.radius;
-    const {
-        topRadius = null,
-        height = DEFAULT_PROP_HEIGHT,
-        t0,
-        t1,
-        fill,
-        stroke,
-        lineWidth = 0.8,
-        facing = pc.facing,
-        segments = RADIAL_SEGMENTS,
-    } = options;
+    const { topRadius = null, height = DEFAULT_PROP_HEIGHT, t0, t1, fill, stroke, lineWidth = 0.8, facing = pc.facing, segments = RADIAL_SEGMENTS } = options;
     const projection = pc.project(height);
     const resolvedTop = topRadius === 0 ? 0 : (topRadius ?? baseRadius * (1 + projection.alpha));
     const { cx, cy } = projection;
@@ -140,15 +107,7 @@ export function drawRadialBand(ctx, pc, options) {
 
 export function drawRadialRibs(ctx, pc, options) {
     const baseRadius = options.baseRadius ?? options.radius;
-    const {
-        topRadius = null,
-        height = DEFAULT_PROP_HEIGHT,
-        ts,
-        stroke,
-        lineWidth = 1.2,
-        facing = pc.facing,
-        segments = RADIAL_SEGMENTS,
-    } = options;
+    const { topRadius = null, height = DEFAULT_PROP_HEIGHT, ts, stroke, lineWidth = 1.2, facing = pc.facing, segments = RADIAL_SEGMENTS } = options;
     const projection = pc.project(height);
     const resolvedTop = topRadius ?? baseRadius * (1 + projection.alpha);
     const { cx, cy } = projection;
@@ -172,14 +131,7 @@ export function drawRadialRibs(ctx, pc, options) {
     }
 }
 
-export function drawRadialCap(ctx, pc, {
-    radius,
-    height = DEFAULT_PROP_HEIGHT,
-    topRadius,
-    capColors,
-    stroke,
-    lineWidth = 1.0,
-}) {
+export function drawRadialCap(ctx, pc, { radius, height = DEFAULT_PROP_HEIGHT, topRadius, capColors, stroke, lineWidth = 1.0 }) {
     const projection = pc.project(height);
     const { topX, topY, alpha } = projection;
     const capRadius = topRadius ?? radius * (1 + alpha);
@@ -200,15 +152,7 @@ export function drawRadialCap(ctx, pc, {
     return { projection, topX, topY, capRadius };
 }
 
-export function drawFoliageBlob(ctx, projection, {
-    t,
-    radius,
-    offsetX = 0,
-    offsetY = 0,
-    colors,
-    stroke,
-    lineWidth = 0.9,
-}) {
+export function drawFoliageBlob(ctx, projection, { t, radius, offsetX = 0, offsetY = 0, colors, stroke, lineWidth = 0.9 }) {
     const slice = getHeightSlice(projection, radius, t);
     const scale = 1 + projection.alpha * t;
     const centerX = slice.centerX + offsetX * scale;
@@ -233,52 +177,76 @@ export function drawFoliageBlob(ctx, projection, {
     }
 }
 
-export function drawExtrudedBox(ctx, pc, {
-    halfSize,
-    height = DEFAULT_PROP_HEIGHT,
-    faceColors,
-    topColors,
-    stroke,
-    plankTs,
-    topCross,
-    lineWidth = 1.0,
-    facing = pc.facing,
-}) {
+function faceViewAngle(face, originX, originY) {
+    const edgeMidX = (face.baseA.x + face.baseB.x) / 2;
+    const edgeMidY = (face.baseA.y + face.baseB.y) / 2;
+    return Math.atan2(edgeMidY - originY, edgeMidX - originX);
+}
+
+function drawBoxSideFace(ctx, pc, face, originX, originY, colors, { stroke, lineWidth, plankTs, drawPlanks }) {
+    const shadeAngle = faceViewAngle(face, originX, originY);
+    drawCullFace(ctx, face, shadeAngle, { fill: createSideGradient(ctx, face.baseA, face.baseB, shadeAngle, colors), stroke, lineWidth });
+
+    if (drawPlanks && plankTs) {
+        ctx.strokeStyle = plankTs.stroke ?? "rgba(0,0,0,0.55)";
+        ctx.lineWidth = plankTs.lineWidth ?? 0.8;
+        for (const t of plankTs.values) {
+            const xA = face.topA.x + (face.baseA.x - face.topA.x) * t;
+            const yA = face.topA.y + (face.baseA.y - face.topA.y) * t;
+            const xB = face.topB.x + (face.baseB.x - face.topB.x) * t;
+            const yB = face.topB.y + (face.baseB.y - face.topB.y) * t;
+            ctx.beginPath();
+            ctx.moveTo(xA, yA);
+            ctx.lineTo(xB, yB);
+            ctx.stroke();
+        }
+    }
+}
+
+export function drawExtrudedBox(
+    ctx,
+    pc,
+    { halfSize, height = DEFAULT_PROP_HEIGHT, faceColors, backFaceColors = null, bottomColors = null, topColors, stroke, plankTs, topCross, lineWidth = 1.0, facing = pc.facing },
+) {
     const projection = pc.project(height);
     const { cx, cy, topX, topY } = projection;
-    const box = extrudeBox(projection, halfSize);
+    const box = extrudeBox(projection, halfSize, facing);
+    const backColors = backFaceColors ?? { shadow: faceColors.shadow, mid: faceColors.shadow, highlight: faceColors.mid };
+    const baseColors = bottomColors ?? { light: faceColors.shadow, mid: faceColors.shadow, dark: faceColors.shadow };
 
+    const backFaces = [];
+    const frontFaces = [];
     for (const face of box.faces) {
         const edgeMidX = (face.baseA.x + face.baseB.x) / 2;
         const edgeMidY = (face.baseA.y + face.baseB.y) / 2;
-        if (!isFaceVisible(pc, cx, cy, edgeMidX, edgeMidY)) continue;
-
-        drawCullFace(ctx, face, facing, {
-            fill: createSideGradient(ctx, face.baseA, face.baseB, facing, faceColors),
-            stroke,
-            lineWidth,
-        });
-
-        if (plankTs) {
-            ctx.strokeStyle = plankTs.stroke ?? "rgba(0,0,0,0.55)";
-            ctx.lineWidth = plankTs.lineWidth ?? 0.8;
-            for (const t of plankTs.values) {
-                const xA = face.topA.x + (face.baseA.x - face.topA.x) * t;
-                const yA = face.topA.y + (face.baseA.y - face.topA.y) * t;
-                const xB = face.topB.x + (face.baseB.x - face.topB.x) * t;
-                const yB = face.topB.y + (face.baseB.y - face.topB.y) * t;
-                ctx.beginPath();
-                ctx.moveTo(xA, yA);
-                ctx.lineTo(xB, yB);
-                ctx.stroke();
-            }
-        }
+        if (isFaceVisible(pc, cx, cy, edgeMidX, edgeMidY)) frontFaces.push(face);
+        else backFaces.push(face);
     }
 
-    const topGrad = ctx.createLinearGradient(
-        topX - box.topHalfSize, topY - box.topHalfSize,
-        topX + box.topHalfSize, topY + box.topHalfSize
-    );
+    const baseGrad = ctx.createLinearGradient(box.baseCorners[0].x, box.baseCorners[0].y, box.baseCorners[2].x, box.baseCorners[2].y);
+    baseGrad.addColorStop(0.0, baseColors.light);
+    baseGrad.addColorStop(0.5, baseColors.mid);
+    baseGrad.addColorStop(1.0, baseColors.dark);
+    ctx.fillStyle = baseGrad;
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = lineWidth;
+    ctx.beginPath();
+    ctx.moveTo(box.baseCorners[0].x, box.baseCorners[0].y);
+    for (let i = 1; i < box.baseCorners.length; i++) {
+        ctx.lineTo(box.baseCorners[i].x, box.baseCorners[i].y);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    for (const face of backFaces) {
+        drawBoxSideFace(ctx, pc, face, cx, cy, backColors, { stroke, lineWidth, plankTs, drawPlanks: false });
+    }
+    for (const face of frontFaces) {
+        drawBoxSideFace(ctx, pc, face, cx, cy, faceColors, { stroke, lineWidth, plankTs, drawPlanks: true });
+    }
+
+    const topGrad = ctx.createLinearGradient(topX - box.topHalfSize, topY - box.topHalfSize, topX + box.topHalfSize, topY + box.topHalfSize);
     topGrad.addColorStop(0.0, topColors.light);
     topGrad.addColorStop(0.5, topColors.mid);
     topGrad.addColorStop(1.0, topColors.dark);
@@ -307,15 +275,7 @@ export function drawExtrudedBox(ctx, pc, {
     }
 }
 
-export function drawBarkLines(ctx, pc, {
-    radius,
-    height,
-    ts,
-    stroke,
-    lineWidth = 0.7,
-    taper = 0.12,
-    facing = pc.facing,
-}) {
+export function drawBarkLines(ctx, pc, { radius, height, ts, stroke, lineWidth = 0.7, taper = 0.12, facing = pc.facing }) {
     const projection = pc.project(height);
     const resolvedTop = radius * (1 + projection.alpha);
     const { cx, cy } = projection;
@@ -331,14 +291,8 @@ export function drawBarkLines(ctx, pc, {
         const edgeMidY = (p0.y + p1.y) / 2;
         if (!isFaceVisible(pc, cx, cy, edgeMidX, edgeMidY)) continue;
         ctx.beginPath();
-        ctx.moveTo(
-            slice.centerX - Math.cos(facing) * slice.size * 0.15,
-            slice.centerY - Math.sin(facing) * slice.size * 0.15
-        );
-        ctx.lineTo(
-            slice.centerX + Math.cos(facing + Math.PI / 2) * slice.size * 0.35,
-            slice.centerY + Math.sin(facing + Math.PI / 2) * slice.size * 0.35
-        );
+        ctx.moveTo(slice.centerX - Math.cos(facing) * slice.size * 0.15, slice.centerY - Math.sin(facing) * slice.size * 0.15);
+        ctx.lineTo(slice.centerX + Math.cos(facing + Math.PI / 2) * slice.size * 0.35, slice.centerY + Math.sin(facing + Math.PI / 2) * slice.size * 0.35);
         ctx.stroke();
     }
 }

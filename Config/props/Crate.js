@@ -1,8 +1,4 @@
-export const CRATE_LABEL_VARIANTS = [
-    "Images/crate_label_1.png",
-    "Images/crate_label_2.png",
-    "Images/crate_label_3.png",
-];
+export const CRATE_LABEL_VARIANTS = ["Images/crate_label_1.png", "Images/crate_label_2.png", "Images/crate_label_3.png"];
 
 export const CRATE_LABEL_FACES = ["+x", "-x", "+z", "-z"];
 
@@ -22,12 +18,7 @@ export const WOOD_CRATE = {
         u1: 1,
         v1: 1,
     },
-    colors: {
-        side: "#8D6E63",
-        sideShadow: "#6D4C41",
-        top: "#A1887F",
-        bottom: "#5D4037",
-        bodyInspect: "#8D6E63",
-        stroke: "#3E2723",
-    },
+    colors: { side: "#8D6E63", sideShadow: "#6D4C41", top: "#A1887F", bottom: "#5D4037", bodyInspect: "#8D6E63", stroke: "#3E2723" },
+    /** In-game isometric box — shorter than DEFAULT_PROP_HEIGHT to match inspect proportions. */
+    combat: { height: 10 },
 };
