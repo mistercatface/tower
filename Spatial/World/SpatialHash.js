@@ -39,22 +39,21 @@ export class SpatialHash {
         };
     }
 
-    _forEachCell(minCol, maxCol, minRow, maxRow, fn) {
+    forEachInBounds(bounds, exclude, queryGen, fn) {
+        const { minCol, maxCol, minRow, maxRow } = this._cellRangeForBounds(bounds);
         for (let r = minRow; r <= maxRow; r++) {
+            const rowKey = r * KEY_STRIDE;
             for (let c = minCol; c <= maxCol; c++) {
-                fn(c, r, this.cells.get(this._cellKey(c, r)));
+                const list = this.cells.get(c + rowKey);
+                if (!list) continue;
+                for (let i = 0; i < list.length; i++) {
+                    const entity = list[i];
+                    if (entity === exclude || entity._spatialGen === queryGen) continue;
+                    entity._spatialGen = queryGen;
+                    fn(entity);
+                }
             }
         }
-    }
-
-    _forEachInBounds(bounds, entityFn) {
-        const { minCol, maxCol, minRow, maxRow } = this._cellRangeForBounds(bounds);
-        this._forEachCell(minCol, maxCol, minRow, maxRow, (_c, _r, list) => {
-            if (!list) return;
-            for (let i = 0; i < list.length; i++) {
-                entityFn(list[i]);
-            }
-        });
     }
 
     getNeighborQueryBounds(entity) {
@@ -70,8 +69,9 @@ export class SpatialHash {
     insert(entity) {
         const { minCol, maxCol, minRow, maxRow } = this._cellRangeForBounds(this.getBounds(entity));
         for (let r = minRow; r <= maxRow; r++) {
+            const rowKey = r * KEY_STRIDE;
             for (let c = minCol; c <= maxCol; c++) {
-                const key = this._cellKey(c, r);
+                const key = c + rowKey;
                 if (!this.cells.has(key)) {
                     this.cells.set(key, []);
                 }
@@ -83,9 +83,9 @@ export class SpatialHash {
     remove(entity) {
         const { minCol, maxCol, minRow, maxRow } = this._cellRangeForBounds(this.getBounds(entity));
         for (let r = minRow; r <= maxRow; r++) {
+            const rowKey = r * KEY_STRIDE;
             for (let c = minCol; c <= maxCol; c++) {
-                const key = this._cellKey(c, r);
-                const list = this.cells.get(key);
+                const list = this.cells.get(c + rowKey);
                 if (!list) continue;
                 const idx = list.indexOf(entity);
                 if (idx !== -1) {

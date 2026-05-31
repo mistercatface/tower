@@ -3,6 +3,12 @@ import { SpatialQuery } from "./SpatialQuery.js";
 import { wallContextFromState } from "./WallContext.js";
 import { Actor } from "../../Entities/Actor.js";
 
+const MOVING_PUSHABLE_SPEED_SQ = 0.25;
+
+function isMovingPushable(pickup) {
+    return pickup.vx * pickup.vx + pickup.vy * pickup.vy > MOVING_PUSHABLE_SPEED_SQ;
+}
+
 /**
  * Per-tick spatial context for combat.
  *
@@ -22,6 +28,7 @@ export class SpatialFrame {
         this._wallCache = new Map();
         this._combatants = [];
         this._pushables = [];
+        this._movingPushables = [];
     }
 
     begin(state) {
@@ -29,6 +36,7 @@ export class SpatialFrame {
         this._wallCache.clear();
         this._combatants.length = 0;
         this._pushables.length = 0;
+        this._movingPushables.length = 0;
 
         this.entityHash.clear();
         for (const actor of state.getCombatants()) {
@@ -42,6 +50,9 @@ export class SpatialFrame {
             this.entityHash.insert(pickup);
             if (pickup.strategy?.isPushable) {
                 this._pushables.push(pickup);
+                if (isMovingPushable(pickup)) {
+                    this._movingPushables.push(pickup);
+                }
             }
         }
         return this;
@@ -108,8 +119,9 @@ export class SpatialFrame {
     }
 
     forEachPushablePair(fn) {
-        for (let i = 0; i < this._pushables.length; i++) {
-            const p1 = this._pushables[i];
+        if (this._movingPushables.length < 2) return;
+        for (let i = 0; i < this._movingPushables.length; i++) {
+            const p1 = this._movingPushables[i];
             if (p1.isDead) continue;
             this.forEachNeighbor(p1, (p2) => {
                 if (p2 === p1 || p2.isDead || !p2.strategy?.isPushable || p1.id >= p2.id) return;

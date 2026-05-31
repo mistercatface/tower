@@ -13,14 +13,7 @@ export class SpatialQuery {
 
     forEachInHash(hash, bounds, fn, exclude = null) {
         this.nextQuery();
-        const gen = this.generation;
-        hash._forEachInBounds(bounds, (entity) => {
-            if (entity === exclude || entity._spatialGen === gen) {
-                return;
-            }
-            entity._spatialGen = gen;
-            fn(entity);
-        });
+        hash.forEachInBounds(bounds, exclude, this.generation, fn);
     }
 
     collectInHash(hash, bounds, exclude = null) {
