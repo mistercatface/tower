@@ -7,7 +7,7 @@ import { Projectile } from "../Entities/Projectile.js";
 import { showNodeConfirmModal, requestUiUpdate } from "../Core/EventSystem.js";
 import { Explosion } from "../Entities/Explosion/Explosion.js";
 import { navigationSettings, NAV_PROFILES } from "../Config/Config.js";
-import { resolveMoveTarget } from "../Spatial/Navigation/PathClearance.js";
+import { resolveMoveTarget, canPlaceMoveTarget } from "../Spatial/Navigation/PathClearance.js";
 import { Pools } from "../Core/Pools.js";
 import { DeathPiece } from "../Entities/DeathPiece.js";
 import { findInspectablePickup } from "../Render/Inspector/InspectRegistry.js";
@@ -250,37 +250,34 @@ export class CombatState {
         }
 
         if (!ctx.state.player.canReposition(ctx.state)) return;
-        const gridPos = ctx.state.flowFieldGrid.worldToGrid(worldCoords.x, worldCoords.y);
-        if (gridPos.col >= 0 && gridPos.col < ctx.state.flowFieldGrid.cols && gridPos.row >= 0 && gridPos.row < ctx.state.flowFieldGrid.rows) {
-            if (ctx.state.flowFieldGrid.grid[gridPos.row * ctx.state.flowFieldGrid.cols + gridPos.col] !== 1) {
-                const cellCenter = ctx.state.flowFieldGrid.gridToWorld(gridPos.col, gridPos.row);
-                const clearance = ctx.state.player.radius + navigationSettings.pathClearanceMargin;
-                const target = resolveMoveTarget(ctx.state.obstacleGrid, cellCenter.x, cellCenter.y, clearance);
-                let isDiving = false;
+
+        const clearance = ctx.state.player.radius + navigationSettings.pathClearanceMargin;
+        const target = resolveMoveTarget(ctx.state.obstacleGrid, worldCoords.x, worldCoords.y, clearance);
+        if (!canPlaceMoveTarget(ctx.state.obstacleGrid, target.x, target.y, clearance)) return;
+
+        let isDiving = false;
+        ctx.upgrades
+            .filter((u) => u.isAbility && u.triggerType === "double_tap_move" && ctx.state.abilities[u.id])
+            .forEach((upg) => {
+                if (ctx.state.scheduler.getTimeRemaining(ctx.state.abilityTimers[upg.id].activeId) > 0) {
+                    isDiving = true;
+                }
+            });
+        if (isDiving) {
+            ctx.state.player.queueTarget(target.x, target.y);
+        } else {
+            ctx.state.player.setTarget(target.x, target.y, ctx.state);
+            ctx.state.navigation.rebuildPlayerFlowField(target.x, target.y);
+            if (isDoubleTap) {
                 ctx.upgrades
                     .filter((u) => u.isAbility && u.triggerType === "double_tap_move" && ctx.state.abilities[u.id])
                     .forEach((upg) => {
-                        if (ctx.state.scheduler.getTimeRemaining(ctx.state.abilityTimers[upg.id].activeId) > 0) {
-                            isDiving = true;
+                        if (ctx.state.scheduler.getTimeRemaining(ctx.state.abilityTimers[upg.id].cooldownId) <= 0) {
+                            ctx.state.abilityTimers[upg.id].activeId = ctx.state.scheduler.schedule(upg.activeDuration);
+                            ctx.state.abilityTimers[upg.id].cooldownId = ctx.state.scheduler.schedule(upg.cooldown);
+                            if (upg.onTrigger) upg.onTrigger(ctx.state);
                         }
                     });
-                if (isDiving) {
-                    ctx.state.player.queueTarget(target.x, target.y, gridPos);
-                } else {
-                    ctx.state.player.setTarget(target.x, target.y, ctx.state, gridPos);
-                    ctx.state.navigation.rebuildPlayerFlowField(target.x, target.y);
-                    if (isDoubleTap) {
-                        ctx.upgrades
-                            .filter((u) => u.isAbility && u.triggerType === "double_tap_move" && ctx.state.abilities[u.id])
-                            .forEach((upg) => {
-                                if (ctx.state.scheduler.getTimeRemaining(ctx.state.abilityTimers[upg.id].cooldownId) <= 0) {
-                                    ctx.state.abilityTimers[upg.id].activeId = ctx.state.scheduler.schedule(upg.activeDuration);
-                                    ctx.state.abilityTimers[upg.id].cooldownId = ctx.state.scheduler.schedule(upg.cooldown);
-                                    if (upg.onTrigger) upg.onTrigger(ctx.state);
-                                }
-                            });
-                    }
-                }
             }
         }
     }
