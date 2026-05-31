@@ -1,6 +1,7 @@
 import { Entity } from "./Entity.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { worldPropDefinitions } from "../Config/PropDefinitions.js";
+import { CRATE_LABEL_VARIANTS } from "../Config/props/Crate.js";
 import { transitionEntity } from "./EntityFsm.js";
 import { pickupStates } from "./PickupStates.js";
 import { getProjectileDamage } from "../Combat/impactDamage.js";
@@ -70,6 +71,9 @@ export class Pickup extends Entity {
         this.mass = this.strategy.mass;
         this.zIndex = 10;
         this.facing = Math.random() * Math.PI * 2;
+        if (type === "crate") {
+            this.labelVariant = Math.floor(Math.random() * CRATE_LABEL_VARIANTS.length);
+        }
         if (this.strategy.maxHealth != null) {
             this.maxHealth = this.strategy.maxHealth;
             this.health = this.strategy.maxHealth;

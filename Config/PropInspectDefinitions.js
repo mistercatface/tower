@@ -4,4 +4,8 @@ export const propInspectDefinitions = {
         title: "JACKO FUEL",
         tapPadding: 14,
     },
+    wood_crate: {
+        title: "SHIPPING CRATE",
+        tapPadding: 14,
+    },
 };

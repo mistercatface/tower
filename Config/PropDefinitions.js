@@ -34,6 +34,7 @@ export const worldPropDefinitions = {
         },
     }),
     crate: prop("crate", {
+        inspectKey: "wood_crate",
         hitBehavior: "damage",
         radius: 8,
         isPushable: true,
