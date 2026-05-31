@@ -4,7 +4,7 @@ import { buildAbilityTreeLayout } from "../Config/abilityTreeLayout.js";
 import { isCombat, isCombatOrReward } from "../GameState/GamePhase.js";
 import { formatWeaponLoadoutLabel } from "../Combat/weaponLoadout.js";
 import { getGunDefinition, playerEquipmentCatalog } from "../Config/gunDefinitions.js";
-import { getSlotFireIntervalMs } from "../Combat/gunCombat.js";
+import { getSlotFireIntervalMs, getSlotReloadTimeMs } from "../Combat/gunCombat.js";
 import {
     countGunInLoadout,
     formatHandednessLabel,
@@ -488,6 +488,9 @@ function formatGunSummary(gun, actor) {
         const parts = ["Beam"];
         if (gun.tickDamage != null) parts.push(`${gun.tickDamage} dmg/tick`);
         if (gun.tickIntervalMs != null) parts.push(`${gun.tickIntervalMs}ms`);
+        if (gun.reloadTimeMs != null) {
+            parts.push(`${Math.round(getSlotReloadTimeMs(gun, actor))}ms reload`);
+        }
         return parts.join(" · ");
     }
 
@@ -495,6 +498,9 @@ function formatGunSummary(gun, actor) {
     if (gun.damage != null) parts.push(`${gun.damage} dmg`);
     if (gun.fireIntervalMs != null) {
         parts.push(`${Math.round(getSlotFireIntervalMs(gun, actor))}ms`);
+    }
+    if (gun.reloadTimeMs != null) {
+        parts.push(`${Math.round(getSlotReloadTimeMs(gun, actor))}ms reload`);
     }
     return parts.join(" · ");
 }

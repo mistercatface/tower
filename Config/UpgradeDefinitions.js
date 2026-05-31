@@ -11,6 +11,13 @@ function formatRegenRate(level) {
     return `${parseFloat(regenHpPerSec(level).toFixed(2))} HP/s`;
 }
 
+export const RELOAD_SPEED_BONUS_PER_LEVEL = 0.05;
+export const RELOAD_SPEED_MAX_LEVEL = 4;
+
+function formatReloadSpeedBonus(level) {
+    return `+${Math.round(level * RELOAD_SPEED_BONUS_PER_LEVEL * 100)}%`;
+}
+
 export const baseUpgradeDefinitions = [
     {
         id: "Accuracy",
@@ -58,6 +65,19 @@ export const baseUpgradeDefinitions = [
             current: (level, actor) => actor.stats.range.baseValue + level * 10,
             next: (level, actor) => actor.stats.range.baseValue + (level + 1) * 10,
         },
+    },
+    {
+        id: "ReloadSpeed",
+        category: "attack",
+        name: "Reload Speed",
+        description: "Reload weapons faster.",
+        stat: { target: "combat", key: "reloadSpeedMultiplier", op: "flatAdd", perLevel: RELOAD_SPEED_BONUS_PER_LEVEL },
+        maxLevel: RELOAD_SPEED_MAX_LEVEL,
+        display: {
+            current: (level) => formatReloadSpeedBonus(level),
+            next: (level) => formatReloadSpeedBonus(level + 1),
+        },
+        dynamic: (actor) => `+${Math.round((actor.stats.reloadSpeedMultiplier.value - 1) * 100)}%`,
     },
     {
         id: "Health",

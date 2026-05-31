@@ -4,7 +4,7 @@ import { defaultGunId, getGunDefinition } from "../Config/gunDefinitions.js";
 import { defaultTurretLoadout, resolveFireAngleOffsets } from "../Config/turretLoadoutPresets.js";
 import { Pools } from "../Core/Pools.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
-import { getGunProjectileConfig, getSlotFireIntervalMs } from "../Combat/gunCombat.js";
+import { getGunProjectileConfig, getSlotFireIntervalMs, getSlotReloadTimeMs } from "../Combat/gunCombat.js";
 import { inferFaction } from "../Combat/Targeting.js";
 import { GhostTrail } from "../Render/GhostTrail.js";
 
@@ -121,8 +121,9 @@ export class Turret {
         // Render reload ring or cooldown/ready indicator using SpriteCache
         if (this.reloading && this.reloadTimer !== undefined) {
             const gun = getGunDefinition(this.gunId);
-            if (gun.reloadTimeMs > 0) {
-                const progress = Math.min(1, this.reloadTimer / gun.reloadTimeMs);
+            const reloadTimeMs = source ? getSlotReloadTimeMs(gun, source) : gun.reloadTimeMs;
+            if (reloadTimeMs > 0) {
+                const progress = Math.min(1, this.reloadTimer / reloadTimeMs);
                 const activeSegments = Math.min(5, Math.floor(progress * 5));
                 const cacheKeyRing = `rr_${scale}_${activeSegments}`;
                 const cachedRing = renderer.turretCache.get(cacheKeyRing, RenderSprites.reloadRing, scale, activeSegments);

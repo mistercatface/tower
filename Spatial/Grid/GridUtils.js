@@ -47,3 +47,12 @@ export function forEachOctileNeighbor(col, row, cols, rows, fn) {
 export function makeAdjacencyKey(idA, idB) {
     return idA < idB ? `${idA}:${idB}` : `${idB}:${idA}`;
 }
+
+export function octileDistance(col, row, targetCol, targetRow) {
+    const dx = Math.abs(col - targetCol);
+    const dy = Math.abs(row - targetRow);
+    if (dx < dy) {
+        return dx * Math.SQRT2 + (dy - dx);
+    }
+    return dy * Math.SQRT2 + (dx - dy);
+}

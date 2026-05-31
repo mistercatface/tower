@@ -5,6 +5,11 @@ export function getSlotFireIntervalMs(gun, actor) {
     return gun.fireIntervalMs * multiplier;
 }
 
+export function getSlotReloadTimeMs(gun, actor) {
+    const speedMultiplier = actor.stats?.reloadSpeedMultiplier?.value ?? 1;
+    return gun.reloadTimeMs / Math.max(speedMultiplier, 0.01);
+}
+
 export function getGunProjectileConfig(gun) {
     if (gun?.projectile) {
         return gun.projectile;

@@ -10,6 +10,7 @@ export function createCombatantStats(baseStats) {
         penetration: new Stat(baseStats.penetration),
         moveSpeedMultiplier: new Stat(baseStats.moveSpeedMultiplier),
         fireIntervalMultiplier: new Stat(baseStats.fireIntervalMultiplier ?? 1),
+        reloadSpeedMultiplier: new Stat(baseStats.reloadSpeedMultiplier ?? 1),
     };
 }
 

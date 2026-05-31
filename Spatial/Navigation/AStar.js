@@ -1,5 +1,7 @@
-import { MinHeap } from "../../Core/MinHeap.js";
-import { OCTILE_OFFSETS } from "../Grid/GridUtils.js";
+import { MinHeap, IdxMinHeap } from "../../Core/MinHeap.js";
+import { OCTILE_OFFSETS, octileDistance } from "../Grid/GridUtils.js";
+
+const STALE_F_EPSILON = 1e-4;
 
 export function runLocalAStarFlat(
     startCol, startRow, targetCol, targetRow,
@@ -12,17 +14,25 @@ export function runLocalAStarFlat(
         return [{ col: startCol, row: startRow }];
     }
 
-    const openSet = new MinHeap((a, b) => a.f - b.f);
+    const openSet = new IdxMinHeap();
 
     gScore[startIdx] = 0;
     visited[startIdx] = runId;
     cameFrom[startIdx] = -1;
 
-    openSet.push({ idx: startIdx, f: Math.sqrt((startCol - targetCol) ** 2 + (startRow - targetRow) ** 2) });
+    openSet.push(startIdx, octileDistance(startCol, startRow, targetCol, targetRow));
 
     while (openSet.size > 0) {
         const curr = openSet.pop();
         const currIdx = curr.idx;
+        const currCol = currIdx % cols;
+        const currRow = (currIdx / cols) | 0;
+        const currentG = gScore[currIdx];
+
+        if (curr.f > currentG + octileDistance(currCol, currRow, targetCol, targetRow) + STALE_F_EPSILON) {
+            continue;
+        }
+        if (currentG > maxPathLen) continue;
 
         if (currIdx === targetIdx) {
             const path = [];
@@ -35,11 +45,6 @@ export function runLocalAStarFlat(
             return path;
         }
 
-        const currCol = currIdx % cols;
-        const currRow = (currIdx / cols) | 0;
-        const currentG = gScore[currIdx];
-        if (currentG > maxPathLen) continue;
-
         for (const offset of OCTILE_OFFSETS) {
             const nc = currCol + offset.dc;
             const nr = currRow + offset.dr;
@@ -48,7 +53,6 @@ export function runLocalAStarFlat(
                 const nIdx = nr * cols + nc;
                 if (grid[nIdx] === 1) continue;
 
-                // Corner cutting checks
                 if (offset.dc !== 0 && offset.dr !== 0) {
                     if (grid[nr * cols + currCol] === 1 || grid[currRow * cols + nc] === 1) {
                         continue;
@@ -61,9 +65,7 @@ export function runLocalAStarFlat(
                     visited[nIdx] = runId;
                     gScore[nIdx] = tentativeG;
                     cameFrom[nIdx] = currIdx;
-
-                    const h = Math.sqrt((nc - targetCol) ** 2 + (nr - targetRow) ** 2);
-                    openSet.push({ idx: nIdx, f: tentativeG + h });
+                    openSet.push(nIdx, tentativeG + octileDistance(nc, nr, targetCol, targetRow));
                 }
             }
         }
@@ -78,18 +80,24 @@ export function runAbstractAStar(startNodeId, targetNodeId, nodesMap) {
 
     const openSet = new MinHeap((a, b) => a.f - b.f);
     const cameFrom = {};
-
     const gScore = {};
     gScore[startNodeId] = 0;
 
     openSet.push({
         id: startNodeId,
-        f: Math.sqrt((startNode.col - targetNode.col) ** 2 + (startNode.row - targetNode.row) ** 2)
+        f: octileDistance(startNode.col, startNode.row, targetNode.col, targetNode.row),
     });
 
     while (openSet.size > 0) {
         const curr = openSet.pop();
         const currentId = curr.id;
+        const currentNode = nodesMap[currentId];
+        const currentG = gScore[currentId];
+        const bestF = currentG + octileDistance(
+            currentNode.col, currentNode.row, targetNode.col, targetNode.row
+        );
+
+        if (curr.f > bestF + STALE_F_EPSILON) continue;
 
         if (currentId === targetNodeId) {
             const path = [];
@@ -102,9 +110,6 @@ export function runAbstractAStar(startNodeId, targetNodeId, nodesMap) {
             return path;
         }
 
-        const currentNode = nodesMap[currentId];
-        const currentG = gScore[currentId];
-
         for (const edge of currentNode.edges) {
             const neighborId = edge.targetId;
             const neighborNode = nodesMap[neighborId];
@@ -114,9 +119,12 @@ export function runAbstractAStar(startNodeId, targetNodeId, nodesMap) {
             if (gScore[neighborId] === undefined || tentativeG < gScore[neighborId]) {
                 cameFrom[neighborId] = currentId;
                 gScore[neighborId] = tentativeG;
-
-                const h = Math.sqrt((neighborNode.col - targetNode.col) ** 2 + (neighborNode.row - targetNode.row) ** 2);
-                openSet.push({ id: neighborId, f: tentativeG + h });
+                openSet.push({
+                    id: neighborId,
+                    f: tentativeG + octileDistance(
+                        neighborNode.col, neighborNode.row, targetNode.col, targetNode.row
+                    ),
+                });
             }
         }
     }

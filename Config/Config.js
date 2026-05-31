@@ -282,6 +282,7 @@ export const playerBaseStats = {
     penetration: 0,
     moveSpeedMultiplier: 1.0,
     fireIntervalMultiplier: 1.0,
+    reloadSpeedMultiplier: 1.0,
     speed: 50,
     startingAbilities: ["Reposition"],
 };
@@ -372,6 +373,7 @@ export const enemyBaseStats = {
     penetration: 0,
     moveSpeedMultiplier: 1.0,
     fireIntervalMultiplier: 1.0,
+    reloadSpeedMultiplier: 1.0,
     speed: 100,
 };
 

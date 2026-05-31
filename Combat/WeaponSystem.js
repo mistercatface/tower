@@ -3,7 +3,7 @@ import { normalizeAngle } from "../Math/Angle.js";
 import { getWallsAlongLine } from "../Spatial/World/WallContext.js";
 import { Laser } from "../Entities/Laser.js";
 import { defaultGunId, getGunDefinition } from "../Config/gunDefinitions.js";
-import { getSlotFireIntervalMs } from "./gunCombat.js";
+import { getSlotFireIntervalMs, getSlotReloadTimeMs } from "./gunCombat.js";
 import { getBeamTickDamage, createBeamHitSource } from "./impactDamage.js";
 import { areHostile, getHostiles, getNearestHostile } from "./Targeting.js";
 
@@ -22,7 +22,8 @@ export class ChargedWeaponMode {
 
         if (turret.reloading) {
             turret.reloadTimer += dt;
-            if (turret.reloadTimer >= gun.reloadTimeMs) {
+            const reloadTimeMs = getSlotReloadTimeMs(gun, source);
+            if (turret.reloadTimer >= reloadTimeMs) {
                 turret.reloading = false;
                 turret.reloadTimer = 0;
                 turret.ammo = gun.maxAmmo;
@@ -94,7 +95,8 @@ export class ContinuousWeaponMode {
 
         if (turret.reloading) {
             turret.reloadTimer += dt;
-            if (turret.reloadTimer >= gun.reloadTimeMs) {
+            const reloadTimeMs = getSlotReloadTimeMs(gun, source);
+            if (turret.reloadTimer >= reloadTimeMs) {
                 turret.reloading = false;
                 turret.reloadTimer = 0;
                 turret.ammo = gun.maxAmmo;
