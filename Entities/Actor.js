@@ -28,6 +28,7 @@ export class Actor extends DestructibleEntity {
         this.faction = type === "player" ? "player" : "enemy";
         this.teamId = null;
         this.alwaysRunsTurretCombat = false;
+        this.usesTurretGhostTrails = false;
         this.accelRate = accelRate;
         this.canDamageWalls = canDamageWalls;
         this.turnSpeed = 10;
@@ -134,11 +135,12 @@ export class Actor extends DestructibleEntity {
         } else {
             this.aimIdleTurrets(dt, state, blocksTargeting);
         }
-        if (this.type === "player") this.updatePlayerTurretGhostTrails(dt);
+        this.updateTurretGhostTrails(dt);
         return combatEvents;
     }
 
-    updatePlayerTurretGhostTrails(dt) {
+    updateTurretGhostTrails(dt) {
+        if (!this.usesTurretGhostTrails) return;
         for (const turret of this.turrets) {
             turret.updateGhostTrail(dt, this.x, this.y, this.radius);
         }

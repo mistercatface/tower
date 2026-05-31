@@ -8,7 +8,7 @@ import { getGunProjectileConfig, getSlotFireIntervalMs, getSlotReloadTimeMs } fr
 import { inferFaction } from "../Combat/Targeting.js";
 import { GhostTrail } from "../Render/GhostTrail.js";
 
-const PLAYER_TURRET_GHOST_TRAIL = {
+const TURRET_GHOST_TRAIL = {
     length: 4,
     alpha: 0.35,
     minDistance: 2,
@@ -43,7 +43,7 @@ export class Turret {
 
     updateGhostTrail(dt, actorX, actorY, actorRadius) {
         if (!this.ghostTrail) {
-            this.ghostTrail = new GhostTrail(PLAYER_TURRET_GHOST_TRAIL);
+            this.ghostTrail = new GhostTrail(TURRET_GHOST_TRAIL);
         }
         const { x, y } = this.getOrbitPosition(actorX, actorY, actorRadius);
         this.ghostTrail.update(dt, x, y, this.angle);
@@ -109,7 +109,7 @@ export class Turret {
         const cacheKey = `${scale}_${explicitColor || "#4CAF50"}`;
         const cachedSprite = renderer.turretCache.get(cacheKey, RenderSprites.turret, scale, explicitColor);
 
-        if (source?.type === "player" && this.ghostTrail) {
+        if (source?.usesTurretGhostTrails && this.ghostTrail) {
             this.ghostTrail.render(ctx, renderer.turretCache, cacheKey, RenderSprites.turret, scale, explicitColor);
         }
 
