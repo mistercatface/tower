@@ -6,7 +6,7 @@ import { getTexture, loadTexture, onTextureReady } from "../core/TextureCache.js
 /**
  * Factory for cylindrical labeled-can inspect views.
  * @param {import("../../../Config/props/JackoCan.js").JACKO_CAN} canConfig — optional `inspect.initialPitch`
- * @param {() => import("../CylinderMesh.js").buildSodaCanMesh} buildMesh
+ * @param {() => import("../geometry/CylinderMesh.js").buildSodaCanMesh} buildMesh
  */
 export function createLabeledCanInspect(canConfig, buildMesh) {
     const { labelSrc, halfHeight, bodyRadius, label, colors } = canConfig;

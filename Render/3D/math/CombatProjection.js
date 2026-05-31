@@ -92,15 +92,11 @@ export function extrudeRadial(projection, baseRadius, topRadius, facing, segment
     return { faces, cx, cy, topX, topY, topRadius: resolvedTop };
 }
 
-export function getBoxCorners(centerX, centerY, halfSize, angle = 0) {
-    return rectCorners(centerX, centerY, halfSize, angle);
-}
-
 export function extrudeBox(projection, halfSize, angle = 0) {
     const { cx, cy, topX, topY, alpha } = projection;
     const topHalfSize = scaleAtHeight(halfSize, alpha, 1);
-    const baseCorners = getBoxCorners(cx, cy, halfSize, angle);
-    const topCorners = getBoxCorners(topX, topY, topHalfSize, angle);
+    const baseCorners = rectCorners(cx, cy, halfSize, angle);
+    const topCorners = rectCorners(topX, topY, topHalfSize, angle);
     return {
         halfSize,
         topHalfSize,

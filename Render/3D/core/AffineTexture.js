@@ -1,7 +1,5 @@
 import { inflateTri } from "../../../Math/Screen2D.js";
 
-export { inflateTri };
-
 /**
  * Affine-map an image triangle onto a screen triangle.
  * @param {{ underlay?: string|null, bleedPx?: number }} [opts]

@@ -17,6 +17,3 @@ export function rectCorners(centerX, centerY, halfSize, angle = 0) {
     ];
     return local.map(({ lx, ly }) => rotatePoint(centerX, centerY, lx, ly, angle));
 }
-
-/** @deprecated Use rectCorners */
-export const getBoxCorners = rectCorners;
