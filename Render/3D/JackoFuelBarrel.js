@@ -231,7 +231,7 @@ export function drawJackoFuelBarrelInspect(ctx, cx, cy, scale, yaw, pitch, { onF
     const mesh = buildSodaCanMesh({ onFire });
     appendPullTab(mesh, 1.05, 0.5, onFire);
 
-    renderInspectMesh(ctx, mesh, cx, cy, scale, yaw, pitch, { imageSmoothing: false });
+    renderInspectMesh(ctx, mesh, cx, cy, scale, yaw, pitch, { imageSmoothing: false, flatShading: true });
 
     const labelImg = getTexture(JACKO_LABEL_SRC);
     if (labelImg) {
@@ -239,11 +239,12 @@ export function drawJackoFuelBarrelInspect(ctx, cx, cy, scale, yaw, pitch, { onF
             img: labelImg,
             halfHeight: 1.05,
             bodyRadius: 0.5,
-            y0: 0.22,
-            y1: 0.78,
+            y0: 0.21,
+            y1: 0.79,
             angleCenter: -Math.PI / 2,
             angleSpan: Math.PI * 1.15,
-            radialSegments: 20,
+            radialSegments: 10,
+            verticalSegments: 18,
             underlay: onFire ? "#8A3020" : "#B4BAC2",
         });
     }

@@ -38,7 +38,7 @@ function computeSolidShade(normal, lightDir) {
 
 export function renderMesh(ctx, mesh, camera, opts = {}) {
     const lightDir = normalize(opts.lightDir ?? { x: -0.35, y: 0.45, z: -0.85 });
-    const textureMap = opts.textureMap ?? {};
+    const flatShading = opts.flatShading ?? false;
     const prevSmooth = ctx.imageSmoothingEnabled;
     ctx.imageSmoothingEnabled = opts.imageSmoothing ?? false;
 
@@ -74,7 +74,9 @@ export function renderMesh(ctx, mesh, camera, opts = {}) {
         const mat = mesh.materials[tri.material];
         if (!mat || mat.type === "texture") continue;
 
-        const shade = computeSolidShade(tri.normal, lightDir);
+        const shade = flatShading
+            ? 1
+            : computeSolidShade(tri.normal, lightDir);
         drawSolidTriangle(
             ctx,
             tri.sa,

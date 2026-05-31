@@ -104,7 +104,7 @@ export function buildSodaCanMesh({
     halfHeight = 1.05,
     bodyRadius = 0.5,
     lipRadius = 0.535,
-    radialSegments = 32,
+    radialSegments = 24,
     bodyMaterial = "body",
     capMaterial = "cap",
     materials = {},
