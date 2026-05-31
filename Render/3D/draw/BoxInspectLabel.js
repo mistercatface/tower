@@ -10,6 +10,7 @@ import {
 } from "../math/InspectCamera.js";
 import { faceVisible } from "../geometry/MeshBuilder.js";
 import { drawImageQuad } from "./AffineTexture.js";
+import { containTextureInQuad } from "./TextureAspect.js";
 import { labelBandYRange } from "../../../Math/Interpolate.js";
 
 /** @typedef {"+x" | "-x" | "+z" | "-z"} BoxSideFace */
@@ -135,10 +136,14 @@ export function drawInspectBoxLabels(ctx, cx, cy, scale, yaw, pitch, {
     const prevSmooth = ctx.imageSmoothingEnabled;
     ctx.imageSmoothingEnabled = true;
     for (const quad of quads) {
+        const fit = containTextureInQuad(
+            quad.sx0, quad.syTop, quad.sx1, quad.syBot,
+            quad.d0, quad.d1, quad.d2, quad.d3,
+        );
         drawImageQuad(
             ctx, quad.img,
-            quad.sx0, quad.syBot, quad.sx1, quad.syTop,
-            quad.d0, quad.d1, quad.d2, quad.d3,
+            fit.sx0, fit.sy1, fit.sx1, fit.sy0,
+            fit.d0, fit.d1, fit.d2, fit.d3,
             textureOpts,
         );
     }

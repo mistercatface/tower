@@ -9,7 +9,8 @@ export const JACKO_CAN = {
         y0: 0.21,
         y1: 0.79,
         angleCenter: -Math.PI / 2,
-        angleSpan: Math.PI * 1.15,
+        /** Arc width tuned to jacko_fuel_barrel.png aspect (~558×1000) vs label band height. */
+        angleSpan: 1.36,
         radialSegments: 10,
         verticalSegments: 18,
     },

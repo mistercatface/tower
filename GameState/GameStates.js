@@ -6,7 +6,7 @@ import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { Projectile } from "../Entities/Projectile.js";
 import { showNodeConfirmModal, requestUiUpdate } from "../Core/EventSystem.js";
 import { Explosion } from "../Entities/Explosion/Explosion.js";
-import { navigationSettings, NAV_PROFILES, gridSettings } from "../Config/Config.js";
+import { navigationSettings, NAV_PROFILES, gridSettings, debugStartNodeInspectionImmediate } from "../Config/Config.js";
 import { resolveMoveTarget, resolveRepositionTarget } from "../Spatial/Navigation/PathClearance.js";
 import { getStartNodeLayout } from "../Generator/StartNodeBuilding.js";
 import { Pools } from "../Core/Pools.js";
@@ -17,7 +17,7 @@ import {
     shouldRunStartNodeIntro,
     updateStartNodeIntro,
 } from "../Combat/StartNodeIntro.js";
-import { findStartNodeInspectionPickup } from "../Combat/StartNodeInspection.js";
+import { findStartNodeInspectionPickup, beginStartNodeInspection, shouldEnterStartNodeInspection } from "../Combat/StartNodeInspection.js";
 
 const MAP_TRAVEL_SPEED = 5.0;
 
@@ -178,6 +178,19 @@ export class CombatState {
 
         if (shouldRunStartNodeIntro(ctx.state)) {
             beginStartNodeIntro(ctx.state);
+        }
+
+        if (
+            currentNode?.id === 0
+            && debugStartNodeInspectionImmediate
+            && shouldEnterStartNodeInspection(ctx.state)
+        ) {
+            beginStartNodeInspection(ctx.state, null);
+            requestAnimationFrame(() => {
+                if (shouldEnterStartNodeInspection(ctx.state)) {
+                    ctx.state.fsm.transition("inspector");
+                }
+            });
         }
 
         requestUiUpdate();

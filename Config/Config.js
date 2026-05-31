@@ -387,3 +387,6 @@ export const THEME_COLORS = [
 export const controlSettings = { doubleTapTimeout: 300, scrollZoomSensitivity: -0.001 };
 
 export const timingSettings = { sectorCompletedDelay: 1500 };
+
+/** TEMP: skip wave 1 on start node and enter inspection mode immediately. */
+export const debugStartNodeInspectionImmediate = true;
