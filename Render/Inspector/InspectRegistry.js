@@ -1,4 +1,7 @@
-/** @typedef {import("../Entities/Pickup.js").Pickup} Pickup */
+/** @typedef {import("../../Entities/Pickup.js").Pickup} Pickup */
+
+import { propInspectDefinitions } from "../../Config/PropInspectDefinitions.js";
+import { getPropInspectRecipe } from "../3D/PropInspectRecipes.js";
 
 /**
  * @typedef {Object} PropInspectDescriptor
@@ -11,27 +14,35 @@
  * @property {number} [tapPadding] - Extra tap radius beyond pickup.radius (default 14)
  */
 
-/** @type {Map<string, PropInspectDescriptor>} */
-const registry = new Map();
+/** @type {Map<string, PropInspectDescriptor|null>} */
+const descriptorCache = new Map();
 
-/** Register an inspect view for a pickup type (e.g. "barrel"). */
-export function registerPropInspect(pickupType, descriptor) {
-    registry.set(pickupType, descriptor);
+function buildDescriptor(inspectKey) {
+    const meta = propInspectDefinitions[inspectKey];
+    const recipe = getPropInspectRecipe(inspectKey);
+    if (!meta || !recipe) return null;
+
+    return {
+        title: meta.title,
+        tapPadding: meta.tapPadding,
+        preload: recipe.preload,
+        onReady: recipe.onReady,
+        getInitialYaw: (pickup) => pickup.facing ?? 0,
+        draw: recipe.draw,
+    };
 }
 
-export function getPropInspect(pickupType) {
-    return registry.get(pickupType) ?? null;
+function getDescriptorForInspectKey(inspectKey) {
+    if (!inspectKey) return null;
+    if (!descriptorCache.has(inspectKey)) {
+        descriptorCache.set(inspectKey, buildDescriptor(inspectKey));
+    }
+    return descriptorCache.get(inspectKey);
 }
 
 export function resolvePickupInspect(pickup) {
     if (!pickup || pickup.isDead) return null;
-    return registry.get(pickup.type) ?? null;
-}
-
-export function preloadAllInspectAssets() {
-    for (const descriptor of registry.values()) {
-        descriptor.preload?.();
-    }
+    return getDescriptorForInspectKey(pickup.strategy?.inspectKey);
 }
 
 /**
@@ -44,7 +55,7 @@ export function findInspectablePickup(state, worldX, worldY) {
     let bestDistSq = Infinity;
 
     for (const pickup of state.pickups) {
-        const descriptor = resolvePickupInspect(pickup);
+        const descriptor = pickup.resolveInspect();
         if (!descriptor) continue;
 
         const tapRadius = pickup.radius + (descriptor.tapPadding ?? 14);

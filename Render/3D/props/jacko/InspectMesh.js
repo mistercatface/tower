@@ -1,6 +1,6 @@
 import { JACKO_CAN } from "../../../../Config/props/JackoCan.js";
 import { buildSodaCanMesh } from "../../CylinderMesh.js";
-import { vec3, pushTriangle } from "../../Mesh3D.js";
+import { vec3, pushTriangle } from "../../core/Mesh3D.js";
 
 function appendPullTab(mesh, halfHeight, bodyRadius, tabColor) {
     const y = halfHeight + 0.035;

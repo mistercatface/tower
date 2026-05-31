@@ -7,8 +7,8 @@ import {
     faceVisible,
     triangleNormal,
     averageDepth,
-} from "./Mesh3D.js";
-import { drawImageQuad } from "./AffineTexture.js";
+} from "./core/Mesh3D.js";
+import { drawImageQuad } from "./core/AffineTexture.js";
 
 function cylinderPoint(y, angle, radius) {
     return { x: Math.cos(angle) * radius, y, z: Math.sin(angle) * radius };

@@ -9,8 +9,8 @@ import { navigationSettings } from "../Config/Config.js";
 import { resolveMoveTarget } from "../Spatial/Navigation/PathClearance.js";
 import { Pools } from "../Core/Pools.js";
 import { DeathPiece } from "../Entities/DeathPiece.js";
-import { findInspectablePickup } from "../Render/InspectRegistry.js";
-import { propInspector } from "../Render/PropInspector.js";
+import { findInspectablePickup } from "../Render/Inspector/InspectRegistry.js";
+import { propInspector } from "../Render/Inspector/PropInspector.js";
 
 export class MapState {
     onEnter(ctx) {

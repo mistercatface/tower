@@ -1,5 +1,4 @@
-import { resolvePickupInspect } from "./InspectRegistry.js";
-import { requestGamePause, requestGameResume, requestUiUpdate } from "../Core/EventSystem.js";
+import { requestGamePause, requestGameResume, requestUiUpdate } from "../../Core/EventSystem.js";
 
 const INSPECTOR_PAUSE_REASON = "inspector";
 
@@ -44,7 +43,7 @@ export class PropInspector {
     }
 
     open(pickup, onClose) {
-        const descriptor = resolvePickupInspect(pickup);
+        const descriptor = pickup.resolveInspect();
         if (!descriptor) return;
 
         this.mount();

@@ -4,6 +4,7 @@ import { worldPropDefinitions } from "../Config/PropDefinitions.js";
 import { transitionEntity } from "./EntityFsm.js";
 import { pickupStates } from "./PickupStates.js";
 import { getProjectileDamage } from "../Combat/impactDamage.js";
+import { resolvePickupInspect } from "../Render/Inspector/InspectRegistry.js";
 
 const PICKUP_STRATEGY_DEFAULTS = {
     isPushable: false,
@@ -87,6 +88,10 @@ export class Pickup extends Entity {
             return this.currentState.getRender3DKey(this);
         }
         return this.strategy.render3DKey;
+    }
+
+    resolveInspect() {
+        return resolvePickupInspect(this);
     }
 
     takeDamage(amount, gameState) {

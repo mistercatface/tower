@@ -1,4 +1,4 @@
-import { drawJackoFuelBarrelCombat } from "./JackoFuelBarrel.js";
+import { drawJackoFuelBarrelCombat } from "./props/jacko/Combat.js";
 import { drawExtrudedBox } from "./SolidDraw.js";
 
 export function drawBarrel(ctx, pc) {

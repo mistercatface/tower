@@ -6,7 +6,7 @@ import {
     averageDepth,
     dot,
     normalize,
-} from "./Mesh3D.js";
+} from "./core/Mesh3D.js";
 
 function drawSolidTriangle(ctx, sa, sb, sc, color, stroke, lineWidth) {
     ctx.fillStyle = color;

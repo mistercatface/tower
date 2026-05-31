@@ -2,7 +2,7 @@ import {
     vec3,
     pushQuad,
     pushTriangle,
-} from "./Mesh3D.js";
+} from "./core/Mesh3D.js";
 
 function bodyRadiusAtY(y, halfHeight, bodyRadius, rings) {
     if (!rings?.length) return bodyRadius;

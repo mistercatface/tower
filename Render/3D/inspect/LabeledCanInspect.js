@@ -1,6 +1,6 @@
 import { renderInspectMesh } from "../MeshRenderer.js";
 import { drawInspectCylindricalLabel } from "../CylinderInspectLabel.js";
-import { getTexture, loadTexture, onTextureReady } from "../TextureCache.js";
+import { getTexture, loadTexture, onTextureReady } from "../core/TextureCache.js";
 
 /**
  * Factory for cylindrical labeled-can inspect views.

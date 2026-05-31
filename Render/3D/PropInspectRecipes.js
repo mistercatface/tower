@@ -9,3 +9,9 @@ export const PROP_INSPECT_RECIPES = {
 export function getPropInspectRecipe(inspectKey) {
     return PROP_INSPECT_RECIPES[inspectKey] ?? null;
 }
+
+export function preloadAllInspectAssets() {
+    for (const recipe of Object.values(PROP_INSPECT_RECIPES)) {
+        recipe.preload?.();
+    }
+}
