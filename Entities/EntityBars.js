@@ -4,6 +4,9 @@ export function createEntityBars({
     healthWidth,
     healthHeight,
     healthBorderRadius,
+    stunWidth,
+    stunHeight,
+    stunBorderRadius,
 }) {
     return {
         healthBar: new ProgressBar({
@@ -11,6 +14,13 @@ export function createEntityBars({
             height: healthHeight,
             borderRadius: healthBorderRadius,
             quantizationSteps: 20,
+        }),
+        stunBar: new ProgressBar({
+            width: stunWidth ?? healthWidth,
+            height: stunHeight ?? 2,
+            borderRadius: stunBorderRadius ?? 1,
+            quantizationSteps: 30,
+            colorFn: () => "#B388FF",
         }),
     };
 }

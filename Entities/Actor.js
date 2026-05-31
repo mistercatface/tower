@@ -637,10 +637,27 @@ export class Actor extends DestructibleEntity {
         return baseAccuracy * (1 - (1 - minMultiplier) * ratio);
     }
 
+    getStunBarProgress() {
+        if (this.currentState?.getStunBarProgress) {
+            return this.currentState.getStunBarProgress(this);
+        }
+        return null;
+    }
+
     renderBars(ctx, cache, yOffset) {
+        const stunRatio = this.getStunBarProgress();
+
         if (this.health < this.maxHealth && this.healthBar) {
             const currentHealth = Math.max(0, this.health);
             this.healthBar.render(ctx, this.x, this.y - yOffset, currentHealth / this.maxHealth, cache);
+        }
+
+        if (stunRatio != null && this.stunBar) {
+            let stunOffset = yOffset;
+            if (this.health < this.maxHealth && this.healthBar) {
+                stunOffset += this.healthBar.height + 4;
+            }
+            this.stunBar.render(ctx, this.x, this.y - stunOffset, stunRatio, cache);
         }
     }
 }

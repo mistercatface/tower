@@ -8,10 +8,11 @@ import { createEntityBars } from "./EntityBars.js";
 import { buildEnemyCombatStats, computeEnemyUpgradeLevels, computeSpawnReward } from "../Combat/EnemySpawn.js";
 import { GhostTrail } from "../Render/GhostTrail.js";
 
-const enemyBars = createEntityBars({ healthWidth: 22, healthHeight: 3, healthBorderRadius: 1.5 });
+const enemyBars = createEntityBars({ healthWidth: 22, healthHeight: 3, healthBorderRadius: 1.5, stunHeight: 2, stunBorderRadius: 1 });
 
 export class Enemy extends Actor {
     static healthBar = enemyBars.healthBar;
+    static stunBar = enemyBars.stunBar;
 
     static spawn(x, y, enemyType, wave, baseUpgradeDefs) {
         const combatStats = buildEnemyCombatStats(enemyType);
@@ -40,6 +41,7 @@ export class Enemy extends Actor {
         this.chargeCooldown = 0;
         this.startingAbilities = [];
         this.healthBar = Enemy.healthBar;
+        this.stunBar = Enemy.stunBar;
     }
 
     onHitAfterDamage(damage, ctx, hitType, died, event) {

@@ -387,9 +387,19 @@ export class EnemyDodgingState {
 export class EnemyStunnedState {
     onEnter(enemy) {
         if (enemy.stateData.timer == null) enemy.stateData.timer = 1000;
+        if (enemy.stateData.stunDurationMs == null) {
+            enemy.stateData.stunDurationMs = enemy.stateData.timer;
+        }
         if (!enemy.stateData.returnState) {
             enemy.stateData.returnState = enemy.attackType === "charge" ? "charging_prepare" : "navigating";
         }
+    }
+
+    getStunBarProgress(enemy) {
+        const data = enemy.stateData;
+        const total = data.stunDurationMs;
+        if (!total || total <= 0) return null;
+        return Math.max(0, Math.min(1, data.timer / total));
     }
 
     update(enemy, dt, target, flowFieldGrid, walls, missiles, spatialFrame, scheduler, state) {
@@ -470,6 +480,18 @@ export class EnemyKnockedBackState {
             x: enemy.x + Math.cos(angle) * 100,
             y: enemy.y + Math.sin(angle) * 100,
         };
+    }
+
+    getStunBarProgress(enemy) {
+        const data = enemy.stateData;
+        if (!data.stunMs || data.stunMs <= 0) return null;
+
+        let remaining = data.timer;
+        if (data.phase === "push") {
+            remaining += Math.max(0, data.stunMs - data.pushMs);
+        }
+
+        return Math.max(0, Math.min(1, remaining / data.stunMs));
     }
 
     finish(enemy) {
