@@ -49,13 +49,16 @@ export function resolvePickupInspect(pickup) {
 /**
  * Find the nearest tap-hit pickup that has a registered inspect descriptor.
  */
-export function findInspectablePickup(state, worldX, worldY) {
+export function findInspectablePickup(state, worldX, worldY, { allowedInspectKeys = null } = {}) {
     if (!state.pickups) return null;
 
     let best = null;
     let bestDistSq = Infinity;
 
     for (const pickup of state.pickups) {
+        const inspectKey = pickup.strategy?.inspectKey;
+        if (allowedInspectKeys && !allowedInspectKeys.includes(inspectKey)) continue;
+
         const descriptor = pickup.resolveInspect();
         if (!descriptor) continue;
 

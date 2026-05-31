@@ -37,7 +37,7 @@ function shouldSkipConversation(conversationId, state) {
     return resolved.oncePerRun && state?.radioSeenThisRun?.[conversationId];
 }
 
-function startSession(conversationId, onComplete, state) {
+function startSession(conversationId, onComplete, state, { force = false } = {}) {
     if (isActive()) {
         console.warn("[Radio] Already in a conversation");
         return false;
@@ -46,8 +46,7 @@ function startSession(conversationId, onComplete, state) {
     const resolved = resolveConversation(conversationId);
     if (!resolved) return false;
 
-    if (shouldSkipConversation(conversationId, state)) {
-        if (onComplete) onComplete();
+    if (!force && shouldSkipConversation(conversationId, state)) {
         return false;
     }
 
@@ -91,8 +90,8 @@ function advanceSession() {
 }
 
 export function registerRadioListeners(eventBus) {
-    eventBus.on(Events.RADIO_START, ({ conversationId, onComplete, state }) => {
-        startSession(conversationId, onComplete, state);
+    eventBus.on(Events.RADIO_START, ({ conversationId, onComplete, state, force }) => {
+        startSession(conversationId, onComplete, state, { force });
     });
 
     eventBus.on(Events.RADIO_TRIGGER, ({ trigger, onComplete, state }) => {

@@ -12,7 +12,7 @@ import { InputManager } from "./Core/InputManager.js";
 import { ProgressionManager } from "./Progression/ProgressionManager.js";
 import { StatsManager } from "./Progression/StatsManager.js";
 import { GameStateMachine } from "./GameState/GameStateMachine.js";
-import { MapState, CombatState, RewardState } from "./GameState/GameStates.js";
+import { MapState, CombatState, InspectorState, RewardState } from "./GameState/GameStates.js";
 import { unlockStartNodeGuardsDialog } from "./Combat/StartNodeIntro.js";
 import { propInspector } from "./Render/Inspector/PropInspector.js";
 import { preloadAllInspectAssets } from "./Render/3D/PropInspectRecipes.js";
@@ -36,6 +36,7 @@ stateMachineContext.fsm = fsm;
 state.fsm = fsm;
 fsm.addState("map", new MapState());
 fsm.addState("combat", new CombatState());
+fsm.addState("inspector", new InspectorState());
 fsm.addState("reward", new RewardState());
 
 const pauseManager = new PauseManager(state);

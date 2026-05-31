@@ -163,8 +163,13 @@ export function emitGameRestart() {
     events.emit(Events.GAME_RESTART);
 }
 
-export function startRadioConversation(conversationId, onComplete) {
-    events.emit(Events.RADIO_START, { conversationId, onComplete });
+export function startRadioConversation(conversationId, onComplete, state, { force = false } = {}) {
+    events.emit(Events.RADIO_START, {
+        conversationId,
+        onComplete,
+        state: state ?? events.getContext()?.state,
+        force,
+    });
 }
 
 export function fireRadioTrigger(trigger, onComplete, state) {

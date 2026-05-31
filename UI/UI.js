@@ -1,7 +1,7 @@
 import { perkMilestones } from "../Config/Config.js";
 import { xpForLevel } from "../Config/configHelpers.js";
 import { buildAbilityTreeLayout } from "../Config/abilityTreeLayout.js";
-import { isCombat, isCombatOrReward } from "../GameState/GamePhase.js";
+import { isCombat, isCombatOrReward, isInspector } from "../GameState/GamePhase.js";
 import { formatWeaponLoadoutLabel } from "../Combat/weaponLoadout.js";
 import { getGunDefinition, playerEquipmentCatalog } from "../Config/gunDefinitions.js";
 import { getSlotFireIntervalMs, getSlotReloadTimeMs } from "../Combat/gunCombat.js";
@@ -234,7 +234,9 @@ export function updateToggleButton(btnId, isUnlocked, isActive, btnText, upgDef)
 export function updateHud(state, upgrades) {
     const currentNode = state.getCurrentMapNode();
     let waveTextVal = state.waveManager.wave;
-    if (isCombat(state.phase) && currentNode) {
+    if (isInspector(state.phase)) {
+        waveTextVal = "Inspect";
+    } else if (isCombat(state.phase) && currentNode) {
         waveTextVal = `${state.waveManager.sectorWave}/${currentNode.wavesTotal}`;
     }
     setTextIfDifferent("waveDisplay", waveTextVal);

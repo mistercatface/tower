@@ -11,13 +11,13 @@ import { resolveMoveTarget, resolveRepositionTarget } from "../Spatial/Navigatio
 import { getStartNodeLayout } from "../Generator/StartNodeBuilding.js";
 import { Pools } from "../Core/Pools.js";
 import { DeathPiece } from "../Entities/DeathPiece.js";
-import { findInspectablePickup } from "../Render/Inspector/InspectRegistry.js";
 import { propInspector } from "../Render/Inspector/PropInspector.js";
 import {
     beginStartNodeIntro,
     shouldRunStartNodeIntro,
     updateStartNodeIntro,
 } from "../Combat/StartNodeIntro.js";
+import { findStartNodeInspectionPickup } from "../Combat/StartNodeInspection.js";
 
 const MAP_TRAVEL_SPEED = 5.0;
 
@@ -250,9 +250,103 @@ export class CombatState {
         if (propInspector.isOpen()) return;
         if (ctx.state.player.currentState && ctx.state.player.currentState.blocksInput) return;
 
-        const inspectTarget = findInspectablePickup(ctx.state, worldCoords.x, worldCoords.y);
+        if (!ctx.state.player.canReposition(ctx.state)) return;
+
+        const target = resolveRepositionTarget(ctx.state.obstacleGrid, worldCoords.x, worldCoords.y, ctx.state.player.radius);
+        if (!target) return;
+
+        const targetCell = target.col != null ? { col: target.col, row: target.row } : null;
+
+        let isDiving = false;
+        ctx.upgrades
+            .filter((u) => u.isAbility && u.triggerType === "double_tap_move" && ctx.state.abilities[u.id])
+            .forEach((upg) => {
+                if (ctx.state.scheduler.getTimeRemaining(ctx.state.abilityTimers[upg.id].activeId) > 0) {
+                    isDiving = true;
+                }
+            });
+        if (isDiving) {
+            ctx.state.player.queueTarget(target.x, target.y, targetCell);
+        } else {
+            ctx.state.player.setTarget(target.x, target.y, ctx.state, targetCell);
+            ctx.state.navigation.rebuildPlayerFlowField(target.x, target.y);
+            if (isDoubleTap) {
+                ctx.upgrades
+                    .filter((u) => u.isAbility && u.triggerType === "double_tap_move" && ctx.state.abilities[u.id])
+                    .forEach((upg) => {
+                        if (ctx.state.scheduler.getTimeRemaining(ctx.state.abilityTimers[upg.id].cooldownId) <= 0) {
+                            ctx.state.abilityTimers[upg.id].activeId = ctx.state.scheduler.schedule(upg.activeDuration);
+                            ctx.state.abilityTimers[upg.id].cooldownId = ctx.state.scheduler.schedule(upg.cooldown);
+                            if (upg.onTrigger) upg.onTrigger(ctx.state);
+                        }
+                    });
+            }
+        }
+    }
+}
+
+export class InspectorState {
+    onEnter(ctx) {
+        if (ctx.state.projectiles) {
+            for (let i = 0; i < ctx.state.projectiles.length; i++) {
+                Pools.projectiles.release(ctx.state.projectiles[i]);
+            }
+        }
+        ctx.state.projectiles = [];
+        ctx.state.activeLasers = [];
+        requestUiUpdate();
+    }
+
+    update(dt, ctx) {
+        const abilityState = ProgressionManager.updateAbilities(ctx.state, dt, ctx.upgrades);
+
+        if (!abilityState.isDiving && ctx.state.player.applyQueuedTarget(ctx.state)) {
+            ctx.state.navigation.rebuildPlayerFlowField(ctx.state.player.targetX, ctx.state.player.targetY);
+        }
+
+        const spatialFrame = combatSpatial.begin(ctx.state);
+        const oldGridPos = ctx.state.flowFieldGrid.worldToGrid(ctx.state.player.x, ctx.state.player.y);
+        const partyOpts = {
+            externalSpeedMod: abilityState.externalSpeedMod,
+            upgrades: ctx.upgrades,
+            blocksTargeting: true,
+        };
+
+        for (const actor of ctx.state.getPlayerActors()) {
+            actor.updateCombat(dt, ctx.state, spatialFrame, partyOpts);
+        }
+
+        ctx.state.navigation.updateFlowField({
+            playerX: ctx.state.player.x,
+            playerY: ctx.state.player.y,
+            playerTargetX: ctx.state.player.isMoving ? ctx.state.player.targetX : null,
+            playerTargetY: ctx.state.player.isMoving ? ctx.state.player.targetY : null,
+            previousGridPos: oldGridPos,
+        });
+
+        const collisionEvents = runPushablePhysics(ctx.state, dt, spatialFrame);
+        for (const event of collisionEvents) {
+            if (event.target?.handleHit) {
+                event.target.handleHit(event.damage, ctx, event.type, event);
+            }
+        }
+
+        FloatingText.updateAll(ctx.state, dt);
+    }
+
+    render(ctx) {
+        ctx.viewport.updateZoomLimits(ctx.state);
+        ctx.viewport.follow(ctx.state.player.x, ctx.state.player.y);
+        ctx.renderer.renderCombatScene(ctx.state, ctx.viewport);
+    }
+
+    handleInteraction(worldCoords, isDoubleTap, ctx) {
+        if (propInspector.isOpen()) return;
+        if (ctx.state.player.currentState?.blocksInput) return;
+
+        const inspectTarget = findStartNodeInspectionPickup(ctx.state, worldCoords.x, worldCoords.y);
         if (inspectTarget) {
-            propInspector.open(inspectTarget);
+            propInspector.open(inspectTarget, null, ctx.state);
             return;
         }
 

@@ -1,4 +1,6 @@
-import { fireRadioTrigger, requestGamePause, requestGameResume, requestUiUpdate } from "../../Core/EventSystem.js";
+import { isRadioDialogActive } from "../../Radio/RadioDialogController.js";
+import { playGuidedInspectRadio, recordStartNodeInspection } from "../../Combat/StartNodeInspection.js";
+import { requestGamePause, requestGameResume, requestUiUpdate } from "../../Core/EventSystem.js";
 
 const INSPECTOR_PAUSE_REASON = "inspector";
 const BASE_SCALE_DIVISOR = 235;
@@ -25,6 +27,7 @@ export class PropInspector {
         this.titleEl = null;
         this.ctx = null;
         this.onClose = null;
+        this.gameState = null;
     }
 
     mount() {
@@ -52,7 +55,7 @@ export class PropInspector {
         return this.pickup != null;
     }
 
-    open(pickup, onClose) {
+    open(pickup, onClose, state = null) {
         const descriptor = pickup.resolveInspect();
         if (!descriptor) return;
 
@@ -60,6 +63,7 @@ export class PropInspector {
         this.pickup = pickup;
         this.descriptor = descriptor;
         this.onClose = onClose;
+        this.gameState = state;
         this.yaw = descriptor.getInitialYaw?.(pickup) ?? pickup.facing ?? 0;
         this.pitch = descriptor.getInitialPitch?.(pickup) ?? 0.2;
         this.zoom = 1;
@@ -84,22 +88,39 @@ export class PropInspector {
         this.render();
 
         const inspectKey = pickup.strategy?.inspectKey;
-        if (inspectKey) fireRadioTrigger(`inspect:${inspectKey}`);
+        if (inspectKey && state?.startNodeInspectionSeen != null) {
+            playGuidedInspectRadio(state, inspectKey, () => recordStartNodeInspection(state, inspectKey));
+        }
     }
 
     close() {
         if (!this.overlay) return;
+
+        const closedPickup = this.pickup;
+        const closedKey = closedPickup?.strategy?.inspectKey;
+        const gameState = this.gameState;
+
         this.overlay.style.display = "none";
         requestGameResume(INSPECTOR_PAUSE_REASON);
         requestUiUpdate();
         this.pickup = null;
         this.descriptor = null;
+        this.gameState = null;
         this.dragging = false;
         this.pinching = false;
         this.pointers.clear();
         this.zoom = 1;
         if (this.onClose) this.onClose();
         this.onClose = null;
+
+        if (
+            closedKey
+            && gameState?.startNodeInspectionSeen
+            && !gameState.startNodeInspectionSeen.has(closedKey)
+            && !isRadioDialogActive()
+        ) {
+            recordStartNodeInspection(gameState, closedKey);
+        }
     }
 
     resize() {

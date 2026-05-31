@@ -3,6 +3,7 @@ import { Events, fireRadioTrigger, requestProgressDirty, requestUiUpdate } from 
 import { ProgressionManager } from "../Progression/ProgressionManager.js";
 import { hardResetProgress, registerProgressListeners } from "../Progression/Storage.js";
 import { StatsManager } from "../Progression/StatsManager.js";
+import { beginStartNodeInspection } from "../Combat/StartNodeInspection.js";
 import { isCombatOrReward } from "../GameState/GamePhase.js";
 import { registerPauseListeners } from "./PauseManager.js";
 import { FloatingText } from "../Render/FloatingText.js";
@@ -25,14 +26,19 @@ export function registerGameListeners(eventBus, pauseManager) {
         requestUiUpdate();
     });
 
-    eventBus.on(Events.COMBAT_WAVE_CLEARED, ({ state, upgrades, viewport }) => {
+    eventBus.on(Events.COMBAT_WAVE_CLEARED, ({ state, upgrades, viewport, fsm }) => {
         const node = state.getCurrentMapNode();
         const clearedFirstWave = state.waveManager.sectorWave === 1;
 
         if (node?.id === 0 && clearedFirstWave) {
             fireRadioTrigger(
                 "first_wave_clear",
-                () => ProgressionManager.handleWaveCompletion(state, upgrades, viewport),
+                () => {
+                    beginStartNodeInspection(state, () => {
+                        ProgressionManager.handleWaveCompletion(state, upgrades, viewport);
+                    });
+                    fsm?.transition("inspector");
+                },
                 state,
             );
             return;

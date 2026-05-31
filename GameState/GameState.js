@@ -109,6 +109,11 @@ export class GameState {
         this.startNodeIntroTriggered = false;
         this.startNodeIntroCompleted = false;
         this.startNodeGuardsDialogUnlocked = false;
+        this.startNodeInspectionActive = false;
+        this.startNodeInspectionSeen = null;
+        this.startNodeInspectionPending = null;
+        this.startNodeInspectionCompleted = false;
+        this.startNodeInspectionFinishing = false;
 
         this.wavesCompleted = 0;
         this.isTransitioning = false;

@@ -33,10 +33,21 @@ export const radioConversations = {
         trigger: "inspect:jacko_can",
         oncePerRun: true,
         lines: [
-            { speakerId: "brock", text: "So what are we doing here anyway?" },
-            { speakerId: "barry", text: "I was hoping it would just be a routine inspection." },
-            { speakerId: "brock", text: "I do object to how hard he's gripping that banana." },
-            { speakerId: "barry", text: "He knew what he was signing up for." },
+            { speakerId: "brock", text: "This stuff is weirdly flammable. I don't get why they panicked like that though." },
+            { speakerId: "barry", text: "I do object to how hard he's gripping that banana." },
+            { speakerId: "brock", text: "He knew what he was signing up for." },
+        ],
+    },
+    start_node_inspection_complete_barry_brock: {
+        trigger: "start_node_inspection_complete",
+        oncePerRun: true,
+        lines: [
+            { speakerId: "brock", text: "I guess we need to find this Jacko guy. How big is this place?" },
+            { speakerId: "barry", text: "Who knows? With these liminal spaces it could be literally infinite. It's always the sketchiest people setting up shop in these abandoned oatlinks." },
+            { speakerId: "brock", text: "Well, he has to be around here somewhere. They say he never leaves his cave, and his goons are all over the place." },
+            { speakerId: "barry", text: "Okay, let's move. And keep your headset on, they might put something on the loudspeakers to uh, try to hypnotize us." },
+            { speakerId: "brock", text: "Hypnotize us? Barry, just how much do you really know about what's going on here?" },
+            { speakerId: "barry", text: "That's on a need to know basis, rookie." },
         ],
     },
     inspect_wood_crate_barry_brock: {

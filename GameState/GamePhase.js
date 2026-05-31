@@ -1,11 +1,13 @@
 export const GamePhase = {
     MAP: "map",
     COMBAT: "combat",
+    INSPECTOR: "inspector",
     REWARD: "reward",
 };
 
 const WORLD_SCENES = new Set([
     GamePhase.COMBAT,
+    GamePhase.INSPECTOR,
     GamePhase.REWARD,
 ]);
 
@@ -29,12 +31,18 @@ export function isCombat(phase) {
     return phase === GamePhase.COMBAT;
 }
 
+export function isInspector(phase) {
+    return phase === GamePhase.INSPECTOR;
+}
+
 export function canRunWaveSpawning(state) {
     return state.phase !== GamePhase.MAP
         && state.phase !== GamePhase.REWARD
+        && state.phase !== GamePhase.INSPECTOR
         && !state.isTransitioning
         && !isMapTraveling(state)
-        && !state.startNodeIntroActive;
+        && !state.startNodeIntroActive
+        && !state.startNodeInspectionActive;
 }
 
 /** Range and center for drawing combat rings / masks in world vs map space. */
