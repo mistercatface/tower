@@ -8,32 +8,117 @@ function getWallsNearPoint(obstacleGrid, x, y, clearance) {
     });
 }
 
-function isPointClear(x, y, walls, clearance) {
-    for (const wall of walls) {
-        if (distanceToSegment(wall, x, y) < clearance) {
-            return false;
+function mergeWallLists(...lists) {
+    const seen = new Set();
+    const merged = [];
+    for (const list of lists) {
+        for (const wall of list) {
+            if (!seen.has(wall)) {
+                seen.add(wall);
+                merged.push(wall);
+            }
         }
     }
-    return true;
+    return merged;
 }
 
-function refineSegment(ax, ay, bx, by, obstacleGrid, clearance, maxDepth = 4) {
+function getWallsNearSegment(obstacleGrid, ax, ay, bx, by, clearance) {
     const midX = (ax + bx) / 2;
     const midY = (ay + by) / 2;
-    const walls = getWallsNearPoint(obstacleGrid, midX, midY, clearance);
+    const halfLen = Math.hypot(bx - ax, by - ay) / 2;
+    return mergeWallLists(
+        obstacleGrid.getSegmentsAlongLine(ax, ay, bx, by),
+        getWallsNearPoint(obstacleGrid, midX, midY, clearance + halfLen),
+    );
+}
 
-    if (isPointClear(midX, midY, walls, clearance)) {
-        return [{ x: midX, y: midY }];
+function pushWaypointFromGeometry(obstacleGrid, x, y, clearance) {
+    const walls = getWallsNearPoint(obstacleGrid, x, y, clearance);
+    return pushPointFromWalls(x, y, walls, clearance);
+}
+
+function findWorstSegmentViolation(ax, ay, bx, by, walls, clearance) {
+    const segLen = Math.hypot(bx - ax, by - ay);
+    if (segLen < 0.01) return null;
+
+    const samples = Math.max(4, Math.ceil(segLen / Math.max(clearance, 8)));
+    let worst = null;
+
+    for (const wall of walls) {
+        if (wall.isDead) continue;
+
+        for (let i = 0; i <= samples; i++) {
+            const t = i / samples;
+            const px = ax + (bx - ax) * t;
+            const py = ay + (by - ay) * t;
+            const dist = distanceToSegment(wall, px, py);
+            if (dist < clearance && (!worst || dist < worst.dist)) {
+                worst = { x: px, y: py, t, dist };
+            }
+        }
     }
 
-    if (maxDepth <= 0) {
-        return [pushPointFromWalls(midX, midY, walls, clearance)];
+    return worst;
+}
+
+function relaxSegmentEndpoints(obstacleGrid, a, b, clearance) {
+    const walls = getWallsNearSegment(obstacleGrid, a.x, a.y, b.x, b.y, clearance);
+    const violation = findWorstSegmentViolation(a.x, a.y, b.x, b.y, walls, clearance);
+    if (!violation) {
+        return { a, b, changed: false };
     }
 
-    const pushed = pushPointFromWalls(midX, midY, walls, clearance);
-    const left = refineSegment(ax, ay, pushed.x, pushed.y, obstacleGrid, clearance, maxDepth - 1);
-    const right = refineSegment(pushed.x, pushed.y, bx, by, obstacleGrid, clearance, maxDepth - 1);
-    return [...left, pushed, ...right];
+    const pushed = pushPointFromWalls(violation.x, violation.y, walls, clearance);
+    const dx = pushed.x - violation.x;
+    const dy = pushed.y - violation.y;
+    const w0 = 1 - violation.t;
+    const w1 = violation.t;
+
+    return {
+        a: pushWaypointFromGeometry(obstacleGrid, a.x + dx * w0, a.y + dy * w0, clearance),
+        b: pushWaypointFromGeometry(obstacleGrid, b.x + dx * w1, b.y + dy * w1, clearance),
+        changed: true,
+    };
+}
+
+function relaxPathEndpoints(obstacleGrid, path, clearance, passes = 4) {
+    const adjusted = path.map((wp) => pushWaypointFromGeometry(obstacleGrid, wp.x, wp.y, clearance));
+
+    for (let pass = 0; pass < passes; pass++) {
+        let anyChanged = false;
+        for (let i = 0; i < adjusted.length - 1; i++) {
+            const result = relaxSegmentEndpoints(
+                obstacleGrid,
+                adjusted[i],
+                adjusted[i + 1],
+                clearance,
+            );
+            adjusted[i] = result.a;
+            adjusted[i + 1] = result.b;
+            anyChanged = anyChanged || result.changed;
+        }
+        if (!anyChanged) break;
+    }
+
+    return adjusted;
+}
+
+function insertSegmentDetours(obstacleGrid, path, clearance) {
+    const refined = [path[0]];
+
+    for (let i = 1; i < path.length; i++) {
+        const prev = refined[refined.length - 1];
+        const next = path[i];
+        const walls = getWallsNearSegment(obstacleGrid, prev.x, prev.y, next.x, next.y, clearance);
+        const violation = findWorstSegmentViolation(prev.x, prev.y, next.x, next.y, walls, clearance);
+
+        if (violation) {
+            refined.push(pushPointFromWalls(violation.x, violation.y, walls, clearance));
+        }
+        refined.push(next);
+    }
+
+    return refined;
 }
 
 export function adjustPathForClearance(path, obstacleGrid, clearance, destination = null) {
@@ -41,41 +126,20 @@ export function adjustPathForClearance(path, obstacleGrid, clearance, destinatio
         return path;
     }
 
-    const adjusted = [];
-    for (let i = 0; i < path.length; i++) {
-        const wp = path[i];
-        const walls = getWallsNearPoint(obstacleGrid, wp.x, wp.y, clearance);
-        adjusted.push(pushPointFromWalls(wp.x, wp.y, walls, clearance));
+    let adjusted = relaxPathEndpoints(obstacleGrid, path, clearance);
+    adjusted = insertSegmentDetours(obstacleGrid, adjusted, clearance);
+    adjusted = relaxPathEndpoints(obstacleGrid, adjusted, clearance, 2);
+
+    if (destination && adjusted.length > 0) {
+        adjusted[adjusted.length - 1] = { x: destination.x, y: destination.y };
     }
 
-    const refined = [adjusted[0]];
-    for (let i = 1; i < adjusted.length; i++) {
-        const prev = refined[refined.length - 1];
-        const next = adjusted[i];
-        const segmentWalls = obstacleGrid.getSegmentsAlongLine(prev.x, prev.y, next.x, next.y);
-        const midX = (prev.x + next.x) / 2;
-        const midY = (prev.y + next.y) / 2;
-        const midWalls = segmentWalls.length > 0
-            ? segmentWalls
-            : getWallsNearPoint(obstacleGrid, midX, midY, clearance);
-
-        if (!isPointClear(midX, midY, midWalls, clearance)) {
-            refined.push(...refineSegment(prev.x, prev.y, next.x, next.y, obstacleGrid, clearance));
-        }
-        refined.push(next);
-    }
-
-    if (destination && refined.length > 0) {
-        refined[refined.length - 1] = { x: destination.x, y: destination.y };
-    }
-
-    return refined;
+    return adjusted;
 }
 
 export function resolveMoveTarget(obstacleGrid, x, y, clearance) {
     if (!obstacleGrid) {
         return { x, y };
     }
-    const walls = getWallsNearPoint(obstacleGrid, x, y, clearance);
-    return pushPointFromWalls(x, y, walls, clearance);
+    return pushWaypointFromGeometry(obstacleGrid, x, y, clearance);
 }
