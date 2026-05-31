@@ -254,4 +254,32 @@ export class WorldObstacleGrid {
 
         return result;
     }
+
+    getSegmentsInBounds(minX, minY, maxX, maxY) {
+        if (!this.segmentGrid) return [];
+
+        const minGrid = this.worldToGrid(minX, minY);
+        const maxGrid = this.worldToGrid(maxX, maxY);
+        const startCol = Math.max(0, minGrid.col);
+        const endCol = Math.min(this.cols - 1, maxGrid.col);
+        const startRow = Math.max(0, minGrid.row);
+        const endRow = Math.min(this.rows - 1, maxGrid.row);
+        const result = [];
+        const checked = new Set();
+
+        for (let row = startRow; row <= endRow; row++) {
+            for (let col = startCol; col <= endCol; col++) {
+                const cellSegs = this.segmentGrid[colRowToIndex(col, row, this.cols)];
+                if (!cellSegs) continue;
+                for (const segment of cellSegs) {
+                    if (!checked.has(segment)) {
+                        checked.add(segment);
+                        result.push(segment);
+                    }
+                }
+            }
+        }
+
+        return result;
+    }
 }

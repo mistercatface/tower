@@ -131,7 +131,7 @@ export function computePathSteering(entity, path, targetX, targetY, settings = {
     const proj = projectOntoPathFrom(path, entity.x, entity.y, Math.max(0, startIdx - 1));
     const activeIdx = getActiveWaypointIndex(entity, path, waypointArrival, startIdx);
     const steerTarget = activeIdx >= path.length - 1
-        ? { x: targetX, y: targetY }
+        ? path[path.length - 1]
         : path[activeIdx];
 
     if (navState) {

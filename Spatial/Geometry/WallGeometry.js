@@ -43,6 +43,182 @@ export function distanceToSegment(wall, x, y) {
     return distSq === Infinity ? Infinity : Math.sqrt(distSq);
 }
 
+function distancePointToAabb(px, py, minX, minY, maxX, maxY) {
+    const dx = px < minX ? minX - px : px > maxX ? px - maxX : 0;
+    const dy = py < minY ? minY - py : py > maxY ? py - maxY : 0;
+    return Math.hypot(dx, dy);
+}
+
+function segmentsIntersect(ax, ay, bx, by, cx, cy, dx, dy) {
+    const d1x = bx - ax;
+    const d1y = by - ay;
+    const d2x = dx - cx;
+    const d2y = dy - cy;
+    const cross = d1x * (cy - ay) - d1y * (cx - ax);
+    const cross2 = d1x * (dy - ay) - d1y * (dx - ax);
+    const cross3 = d2x * (ay - cy) - d2y * (ax - cx);
+    const cross4 = d2x * (by - cy) - d2y * (bx - cx);
+    if (((cross >= 0 && cross2 <= 0) || (cross <= 0 && cross2 >= 0))
+        && ((cross3 >= 0 && cross4 <= 0) || (cross3 <= 0 && cross4 >= 0))) {
+        return true;
+    }
+    return false;
+}
+
+function segmentIntersectsAabb(ax, ay, bx, by, minX, minY, maxX, maxY) {
+    if (distancePointToAabb(ax, ay, minX, minY, maxX, maxY) === 0) return true;
+    if (distancePointToAabb(bx, by, minX, minY, maxX, maxY) === 0) return true;
+    const edges = [
+        [minX, minY, maxX, minY],
+        [maxX, minY, maxX, maxY],
+        [maxX, maxY, minX, maxY],
+        [minX, maxY, minX, minY],
+    ];
+    for (const [ex0, ey0, ex1, ey1] of edges) {
+        if (segmentsIntersect(ax, ay, bx, by, ex0, ey0, ex1, ey1)) return true;
+    }
+    return false;
+}
+
+export function distanceSegmentToSegment(ax, ay, bx, by, cx, cy, dx, dy) {
+    const ux = bx - ax;
+    const uy = by - ay;
+    const vx = dx - cx;
+    const vy = dy - cy;
+    const wx = ax - cx;
+    const wy = ay - cy;
+    const a = ux * ux + uy * uy;
+    const b = ux * vx + uy * vy;
+    const c = vx * vx + vy * vy;
+    const d = ux * wx + uy * wy;
+    const e = vx * wx + vy * wy;
+    const D = a * c - b * b;
+    let sc;
+    let sN;
+    let sD = D;
+    let tc;
+    let tN;
+    let tD = D;
+
+    if (D < 1e-10) {
+        sN = 0;
+        sD = 1;
+        tN = e;
+        tD = c;
+    } else {
+        sN = b * e - c * d;
+        tN = a * e - b * d;
+        if (sN < 0) {
+            sN = 0;
+            tN = e;
+            tD = c;
+        } else if (sN > sD) {
+            sN = sD;
+            tN = e + b;
+            tD = c;
+        }
+    }
+
+    if (tN < 0) {
+        tN = 0;
+        if (-d < 0) sN = 0;
+        else if (-d > a) sN = sD;
+        else {
+            sN = -d;
+            sD = a;
+        }
+    } else if (tN > tD) {
+        tN = tD;
+        if (-d + b < 0) sN = 0;
+        else if (-d + b > a) sN = sD;
+        else {
+            sN = -d + b;
+            sD = a;
+        }
+    }
+
+    sc = Math.abs(sN) < 1e-10 ? 0 : sN / sD;
+    tc = Math.abs(tN) < 1e-10 ? 0 : tN / tD;
+
+    const px = ax + sc * ux;
+    const py = ay + sc * uy;
+    const qx = cx + tc * vx;
+    const qy = cy + tc * vy;
+    return Math.hypot(px - qx, py - qy);
+}
+
+function minDistanceSegmentToAabb(ax, ay, bx, by, minX, minY, maxX, maxY) {
+    if (segmentIntersectsAabb(ax, ay, bx, by, minX, minY, maxX, maxY)) return 0;
+
+    let minDist = Infinity;
+    const edges = [
+        [minX, minY, maxX, minY],
+        [maxX, minY, maxX, maxY],
+        [maxX, maxY, minX, maxY],
+        [minX, maxY, minX, minY],
+    ];
+    for (const [ex0, ey0, ex1, ey1] of edges) {
+        minDist = Math.min(minDist, distanceSegmentToSegment(ax, ay, bx, by, ex0, ey0, ex1, ey1));
+    }
+    minDist = Math.min(minDist, distancePointToAabb(ax, ay, minX, minY, maxX, maxY));
+    minDist = Math.min(minDist, distancePointToAabb(bx, by, minX, minY, maxX, maxY));
+    return minDist;
+}
+
+/** Minimum distance between a path segment and a wall's collision box. */
+export function minDistanceSegmentToWall(ax, ay, bx, by, wall) {
+    if (wall.isDead) return Infinity;
+
+    const half = wall.size / 2;
+    const cos = Math.cos(-wall.angle);
+    const sin = Math.sin(-wall.angle);
+    const axL = (ax - wall.x) * cos - (ay - wall.y) * sin;
+    const ayL = (ax - wall.x) * sin + (ay - wall.y) * cos;
+    const bxL = (bx - wall.x) * cos - (by - wall.y) * sin;
+    const byL = (bx - wall.x) * sin + (by - wall.y) * cos;
+
+    return minDistanceSegmentToAabb(axL, ayL, bxL, byL, -half, -half, half, half);
+}
+
+/** Closest point on path segment AB to wall box — used for push direction. */
+export function findClosestPointOnPathToWall(ax, ay, bx, by, wall) {
+    const segLen = Math.hypot(bx - ax, by - ay);
+    if (segLen < 0.01) {
+        return { x: ax, y: ay, t: 0, dist: distanceToSegment(wall, ax, ay) };
+    }
+
+    const samples = Math.max(16, Math.ceil(segLen));
+    let bestT = 0;
+    let bestDist = Infinity;
+
+    for (let i = 0; i <= samples; i++) {
+        const t = i / samples;
+        const px = ax + (bx - ax) * t;
+        const py = ay + (by - ay) * t;
+        const dist = distanceToSegment(wall, px, py);
+        if (dist < bestDist) {
+            bestDist = dist;
+            bestT = t;
+        }
+    }
+
+    let lo = Math.max(0, bestT - 1 / samples);
+    let hi = Math.min(1, bestT + 1 / samples);
+    for (let i = 0; i < 10; i++) {
+        const m1 = lo + (hi - lo) / 3;
+        const m2 = hi - (hi - lo) / 3;
+        const d1 = distanceToSegment(wall, ax + (bx - ax) * m1, ay + (by - ay) * m1);
+        const d2 = distanceToSegment(wall, ax + (bx - ax) * m2, ay + (by - ay) * m2);
+        if (d1 < d2) hi = m2;
+        else lo = m1;
+    }
+
+    const t = (lo + hi) / 2;
+    const x = ax + (bx - ax) * t;
+    const y = ay + (by - ay) * t;
+    return { x, y, t, dist: distanceToSegment(wall, x, y) };
+}
+
 export function circleIntersectsSegment(circle, segment) {
     const radiusSq = circle.radius * circle.radius;
     return distanceSqToSegment(segment, circle.x, circle.y) < radiusSq;
@@ -107,7 +283,7 @@ export function pushPointFromWalls(x, y, walls, clearance) {
     let px = x;
     let py = y;
 
-    for (let iter = 0; iter < 5; iter++) {
+    for (let iter = 0; iter < 12; iter++) {
         for (const wall of walls) {
             if (wall.isDead) continue;
 

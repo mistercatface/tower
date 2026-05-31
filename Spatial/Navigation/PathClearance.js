@@ -1,35 +1,33 @@
-import { closestPointOnSegment, distanceToSegment, pushPointFromWalls } from "../Geometry/WallGeometry.js";
+import {
+    closestPointOnSegment,
+    distanceToSegment,
+    findClosestPointOnPathToWall,
+    minDistanceSegmentToWall,
+    pushPointFromWalls,
+} from "../Geometry/WallGeometry.js";
+
+const CLEARANCE_EPS = 0.01;
+const WALL_QUERY_PAD = 48;
 
 function getWallsNearPoint(obstacleGrid, x, y, clearance) {
     return obstacleGrid.getNearbySegments({
         x,
         y,
-        radius: clearance + 48,
+        radius: clearance + WALL_QUERY_PAD,
     });
 }
 
-function mergeWallLists(...lists) {
-    const seen = new Set();
-    const merged = [];
-    for (const list of lists) {
-        for (const wall of list) {
-            if (!seen.has(wall)) {
-                seen.add(wall);
-                merged.push(wall);
-            }
-        }
-    }
-    return merged;
+function getWallsNearSegment(obstacleGrid, ax, ay, bx, by, clearance) {
+    const pad = clearance + WALL_QUERY_PAD;
+    const minX = Math.min(ax, bx) - pad;
+    const maxX = Math.max(ax, bx) + pad;
+    const minY = Math.min(ay, by) - pad;
+    const maxY = Math.max(ay, by) + pad;
+    return obstacleGrid.getSegmentsInBounds(minX, minY, maxX, maxY);
 }
 
-function getWallsNearSegment(obstacleGrid, ax, ay, bx, by, clearance) {
-    const midX = (ax + bx) / 2;
-    const midY = (ay + by) / 2;
-    const halfLen = Math.hypot(bx - ax, by - ay) / 2;
-    return mergeWallLists(
-        obstacleGrid.getSegmentsAlongLine(ax, ay, bx, by),
-        getWallsNearPoint(obstacleGrid, midX, midY, clearance + halfLen),
-    );
+function copyPoint(p) {
+    return { x: p.x, y: p.y };
 }
 
 function pushWaypointFromGeometry(obstacleGrid, x, y, clearance) {
@@ -38,56 +36,105 @@ function pushWaypointFromGeometry(obstacleGrid, x, y, clearance) {
 }
 
 function findWorstSegmentViolation(ax, ay, bx, by, walls, clearance) {
-    const segLen = Math.hypot(bx - ax, by - ay);
-    if (segLen < 0.01) return null;
-
-    const samples = Math.max(4, Math.ceil(segLen / Math.max(clearance, 8)));
     let worst = null;
 
     for (const wall of walls) {
         if (wall.isDead) continue;
 
-        for (let i = 0; i <= samples; i++) {
-            const t = i / samples;
-            const px = ax + (bx - ax) * t;
-            const py = ay + (by - ay) * t;
-            const dist = distanceToSegment(wall, px, py);
-            if (dist < clearance && (!worst || dist < worst.dist)) {
-                worst = { x: px, y: py, t, dist };
-            }
+        const segDist = minDistanceSegmentToWall(ax, ay, bx, by, wall);
+        if (segDist >= clearance - CLEARANCE_EPS) continue;
+
+        const closest = findClosestPointOnPathToWall(ax, ay, bx, by, wall);
+        if (!worst || closest.dist < worst.dist) {
+            worst = closest;
         }
     }
 
     return worst;
 }
 
-function relaxSegmentEndpoints(obstacleGrid, a, b, clearance) {
-    const walls = getWallsNearSegment(obstacleGrid, a.x, a.y, b.x, b.y, clearance);
-    const violation = findWorstSegmentViolation(a.x, a.y, b.x, b.y, walls, clearance);
-    if (!violation) {
+function segmentHasClearance(ax, ay, bx, by, walls, clearance) {
+    for (const wall of walls) {
+        if (wall.isDead) continue;
+        if (minDistanceSegmentToWall(ax, ay, bx, by, wall) < clearance - CLEARANCE_EPS) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/** Shift a segment parallel so the worst clearance violation lands at exactly `clearance`. */
+function fixSegmentByTranslation(obstacleGrid, a, b, clearance) {
+    let currentA = copyPoint(a);
+    let currentB = copyPoint(b);
+    let changed = false;
+
+    for (let iter = 0; iter < 16; iter++) {
+        const walls = getWallsNearSegment(obstacleGrid, currentA.x, currentA.y, currentB.x, currentB.y, clearance);
+        const violation = findWorstSegmentViolation(currentA.x, currentA.y, currentB.x, currentB.y, walls, clearance);
+        if (!violation) break;
+
+        const pushed = pushPointFromWalls(violation.x, violation.y, walls, clearance);
+        const dx = pushed.x - violation.x;
+        const dy = pushed.y - violation.y;
+        if (Math.hypot(dx, dy) < CLEARANCE_EPS) break;
+
+        const nextA = { x: currentA.x + dx, y: currentA.y + dy };
+        const nextB = { x: currentB.x + dx, y: currentB.y + dy };
+
+        if (segmentHasClearance(nextA.x, nextA.y, nextB.x, nextB.y, walls, clearance)) {
+            currentA = nextA;
+            currentB = nextB;
+            changed = true;
+            continue;
+        }
+
+        // Parallel shift wasn't enough (corner/angled approach) — push the nearer endpoint.
+        if (violation.t <= 0.5) {
+            currentA = pushWaypointFromGeometry(
+                obstacleGrid,
+                currentA.x + dx,
+                currentA.y + dy,
+                clearance,
+            );
+        } else {
+            currentB = pushWaypointFromGeometry(
+                obstacleGrid,
+                currentB.x + dx,
+                currentB.y + dy,
+                clearance,
+            );
+        }
+        changed = true;
+    }
+
+    if (!changed) {
         return { a, b, changed: false };
     }
 
-    const pushed = pushPointFromWalls(violation.x, violation.y, walls, clearance);
-    const dx = pushed.x - violation.x;
-    const dy = pushed.y - violation.y;
-    const w0 = 1 - violation.t;
-    const w1 = violation.t;
-
     return {
-        a: pushWaypointFromGeometry(obstacleGrid, a.x + dx * w0, a.y + dy * w0, clearance),
-        b: pushWaypointFromGeometry(obstacleGrid, b.x + dx * w1, b.y + dy * w1, clearance),
+        a: pushWaypointFromGeometry(obstacleGrid, currentA.x, currentA.y, clearance),
+        b: pushWaypointFromGeometry(obstacleGrid, currentB.x, currentB.y, clearance),
         changed: true,
     };
 }
 
-function relaxPathEndpoints(obstacleGrid, path, clearance, passes = 4) {
-    const adjusted = path.map((wp) => pushWaypointFromGeometry(obstacleGrid, wp.x, wp.y, clearance));
+function relaxPathClearance(obstacleGrid, path, clearance, maxPasses = 10) {
+    const adjusted = path.map(copyPoint);
 
-    for (let pass = 0; pass < passes; pass++) {
+    for (let pass = 0; pass < maxPasses; pass++) {
         let anyChanged = false;
+
+        for (let i = 0; i < adjusted.length; i++) {
+            const pushed = pushWaypointFromGeometry(obstacleGrid, adjusted[i].x, adjusted[i].y, clearance);
+            if (Math.hypot(pushed.x - adjusted[i].x, pushed.y - adjusted[i].y) > CLEARANCE_EPS) {
+                adjusted[i] = pushed;
+                anyChanged = true;
+            }
+        }
+
         for (let i = 0; i < adjusted.length - 1; i++) {
-            const result = relaxSegmentEndpoints(
+            const result = fixSegmentByTranslation(
                 obstacleGrid,
                 adjusted[i],
                 adjusted[i + 1],
@@ -97,28 +144,11 @@ function relaxPathEndpoints(obstacleGrid, path, clearance, passes = 4) {
             adjusted[i + 1] = result.b;
             anyChanged = anyChanged || result.changed;
         }
+
         if (!anyChanged) break;
     }
 
     return adjusted;
-}
-
-function insertSegmentDetours(obstacleGrid, path, clearance) {
-    const refined = [path[0]];
-
-    for (let i = 1; i < path.length; i++) {
-        const prev = refined[refined.length - 1];
-        const next = path[i];
-        const walls = getWallsNearSegment(obstacleGrid, prev.x, prev.y, next.x, next.y, clearance);
-        const violation = findWorstSegmentViolation(prev.x, prev.y, next.x, next.y, walls, clearance);
-
-        if (violation) {
-            refined.push(pushPointFromWalls(violation.x, violation.y, walls, clearance));
-        }
-        refined.push(next);
-    }
-
-    return refined;
 }
 
 export function adjustPathForClearance(path, obstacleGrid, clearance, destination = null) {
@@ -126,15 +156,18 @@ export function adjustPathForClearance(path, obstacleGrid, clearance, destinatio
         return path;
     }
 
-    let adjusted = relaxPathEndpoints(obstacleGrid, path, clearance);
-    adjusted = insertSegmentDetours(obstacleGrid, adjusted, clearance);
-    adjusted = relaxPathEndpoints(obstacleGrid, adjusted, clearance, 2);
+    const adjusted = path.map(copyPoint);
 
     if (destination && adjusted.length > 0) {
-        adjusted[adjusted.length - 1] = { x: destination.x, y: destination.y };
+        adjusted[adjusted.length - 1] = pushWaypointFromGeometry(
+            obstacleGrid,
+            destination.x,
+            destination.y,
+            clearance,
+        );
     }
 
-    return adjusted;
+    return relaxPathClearance(obstacleGrid, adjusted, clearance);
 }
 
 export function resolveMoveTarget(obstacleGrid, x, y, clearance) {
