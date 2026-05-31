@@ -144,10 +144,6 @@ export class GameState {
     }
 
     getPlayerActors() {
-        if (this.players?.length) {
-            return this.players.filter((p) => p && !p.isDead);
-        }
-
         const actors = [];
         if (this.player && !this.player.isDead) {
             actors.push(this.player);

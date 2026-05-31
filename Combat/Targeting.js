@@ -18,9 +18,6 @@ export function getPlayerActors(state) {
     if (typeof state.getPlayerActors === "function") {
         return state.getPlayerActors();
     }
-    if (state.players?.length) {
-        return state.players.filter((p) => p && !p.isDead);
-    }
     return state.player && !state.player.isDead ? [state.player] : [];
 }
 

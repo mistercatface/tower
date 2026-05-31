@@ -3,11 +3,8 @@
  */
 import { createInspectCamera } from "../math/InspectCamera.js";
 import { drawImageQuad } from "./AffineTexture.js";
-import {
-    tessellateCylinderQuads,
-    drawSolidQuad,
-    labelBandYRange,
-} from "../geometry/CylinderSurface.js";
+import { tessellateCylinderQuads, drawSolidQuad } from "../geometry/CylinderSurface.js";
+import { labelBandYRange } from "../../../Math/Interpolate.js";
 
 const DEFAULT_SUBDIV = { subRadial: 2, subVertical: 2 };
 const DEFAULT_BLEED = { uvBleed: 2, screenBleed: 2.5 };

@@ -1,6 +1,5 @@
 // World props: geometry is built in world space (prop.facing at spawn).
 // Symmetric cylinders use a viewer-facing silhouette (viewAngle for rim tangents only).
-// Faceted extrusion remains available via bodyMode: "faceted".
 import { angleDelta } from "../../../Math/Angle.js";
 import { radiusAtT, scaleAtHeight } from "../../../Math/Interpolate.js";
 import { rectCorners } from "../../../Math/Poly2D.js";
@@ -70,26 +69,6 @@ export function getRadialSilhouette(projection, baseRadius, topRadius = null) {
         topLeft: rimPoint(topX, topY, resolvedTop, perpA),
         topRight: rimPoint(topX, topY, resolvedTop, perpB),
     };
-}
-
-export function extrudeRadial(projection, baseRadius, topRadius, facing, segments = 12) {
-    const { cx, cy, topX, topY, alpha } = projection;
-    const resolvedTop = topRadius === 0 ? 0 : (topRadius ?? baseRadius * (1 + alpha));
-    const faces = [];
-    for (let i = 0; i < segments; i++) {
-        const a0 = facing + (i / segments) * Math.PI * 2;
-        const a1 = facing + ((i + 1) / segments) * Math.PI * 2;
-        const apex = { x: topX, y: topY };
-        faces.push({
-            baseA: { x: cx + Math.cos(a0) * baseRadius, y: cy + Math.sin(a0) * baseRadius },
-            baseB: { x: cx + Math.cos(a1) * baseRadius, y: cy + Math.sin(a1) * baseRadius },
-            topA: resolvedTop === 0 ? apex : { x: topX + Math.cos(a0) * resolvedTop, y: topY + Math.sin(a0) * resolvedTop },
-            topB: resolvedTop === 0 ? apex : { x: topX + Math.cos(a1) * resolvedTop, y: topY + Math.sin(a1) * resolvedTop },
-            midAngle: (a0 + a1) / 2,
-        });
-    }
-
-    return { faces, cx, cy, topX, topY, topRadius: resolvedTop };
 }
 
 export function extrudeBox(projection, halfSize, angle = 0) {

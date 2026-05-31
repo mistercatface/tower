@@ -1,5 +1,6 @@
 import { navigationSettings } from "../../Config/Config.js";
 import { colRowToIndex, indexToColRow, forEachCardinalNeighbor } from "../Grid/GridUtils.js";
+import { worldToGridAtOrigin, gridToWorldAtOrigin } from "../Geometry/GridCoords.js";
 import { runLocalAStarFlat, runAbstractAStar } from "./AStar.js";
 import {
     RegionNode,
@@ -75,11 +76,21 @@ export class HierarchicalNavigator {
     }
 
     worldToGrid(x, y) {
-        return this.obstacleGrid.worldToGrid(x, y);
+        return worldToGridAtOrigin(
+            x, y,
+            this.obstacleGrid.minX,
+            this.obstacleGrid.minY,
+            this.obstacleGrid.cellSize,
+        );
     }
 
     gridToWorld(col, row) {
-        return this.obstacleGrid.gridToWorld(col, row);
+        return gridToWorldAtOrigin(
+            col, row,
+            this.obstacleGrid.minX,
+            this.obstacleGrid.minY,
+            this.obstacleGrid.cellSize,
+        );
     }
 
     generateChunks() {

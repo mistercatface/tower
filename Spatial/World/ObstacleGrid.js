@@ -1,5 +1,6 @@
 import { colRowToIndex } from "../Grid/GridUtils.js";
 import { pointToSegmentPaddingDistanceSq } from "../Geometry/WallGeometry.js";
+import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsToWorldBounds } from "../Geometry/GridCoords.js";
 
 export function getWallReach(wall, padding = wall.padding) {
     return wall.size / 2 * Math.SQRT2 + padding;
@@ -15,15 +16,6 @@ export function getWallCellBounds(wall, worldToGrid, cols, rows, padding = wall.
         endCol: Math.min(cols - 1, maxGrid.col),
         startRow: Math.max(0, minGrid.row),
         endRow: Math.min(rows - 1, maxGrid.row),
-    };
-}
-
-export function cellBoundsToWorldBounds(bounds, originX, originY, cellSize) {
-    return {
-        minX: originX + bounds.startCol * cellSize,
-        maxX: originX + (bounds.endCol + 1) * cellSize,
-        minY: originY + bounds.startRow * cellSize,
-        maxY: originY + (bounds.endRow + 1) * cellSize,
     };
 }
 
@@ -176,17 +168,11 @@ export class WorldObstacleGrid {
     }
 
     worldToGrid(x, y) {
-        return {
-            col: Math.floor((x - this.minX) / this.cellSize),
-            row: Math.floor((y - this.minY) / this.cellSize),
-        };
+        return worldToGridAtOrigin(x, y, this.minX, this.minY, this.cellSize);
     }
 
     gridToWorld(col, row) {
-        return {
-            x: this.minX + col * this.cellSize + this.cellSize / 2,
-            y: this.minY + row * this.cellSize + this.cellSize / 2,
-        };
+        return gridToWorldAtOrigin(col, row, this.minX, this.minY, this.cellSize);
     }
 
     isBlocked(col, row) {

@@ -1,4 +1,4 @@
-import { extrudeRadial, extrudeBox, pointOnFrustum, radiusAtT, getHeightSlice, getRadialSilhouette, traceVisibleArc, isFaceTowardViewer, createSideGradient } from "../math/CombatProjection.js";
+import { extrudeBox, pointOnFrustum, radiusAtT, getHeightSlice, getRadialSilhouette, traceVisibleArc, isFaceTowardViewer, createSideGradient } from "../math/CombatProjection.js";
 
 export const DEFAULT_PROP_HEIGHT = 14;
 export const RADIAL_SEGMENTS = 14;
@@ -41,29 +41,13 @@ function drawRadialSilhouetteBody(ctx, projection, baseRadius, resolvedTop, colo
     ctx.fill();
 }
 
-function drawFacetedRadialBody(ctx, pc, projection, baseRadius, topRadius, facing, segments, colors, stroke, lineWidth) {
-    const { faces, cx, cy } = extrudeRadial(projection, baseRadius, topRadius, facing, segments);
-
-    for (const face of faces) {
-        const edgeMidX = (face.baseA.x + face.baseB.x) / 2;
-        const edgeMidY = (face.baseA.y + face.baseB.y) / 2;
-        if (!isFaceVisible(pc, cx, cy, edgeMidX, edgeMidY)) continue;
-
-        drawCullFace(ctx, face, face.midAngle, { fill: createSideGradient(ctx, face.baseA, face.baseB, face.midAngle, colors), stroke, lineWidth });
-    }
-}
-
 export function drawExtrudedRadial(ctx, pc, options) {
     const baseRadius = options.baseRadius ?? options.radius;
-    const { topRadius, height, facing = pc.facing, colors, stroke, lineWidth = 1.0, segments = RADIAL_SEGMENTS, bodyMode = "silhouette" } = options;
+    const { topRadius, height, facing = pc.facing, colors } = options;
     const projection = pc.project(height);
     const resolvedTop = topRadius === 0 ? 0 : (topRadius ?? baseRadius * (1 + projection.alpha));
 
-    if (bodyMode === "silhouette") {
-        drawRadialSilhouetteBody(ctx, projection, baseRadius, resolvedTop, colors);
-    } else {
-        drawFacetedRadialBody(ctx, pc, projection, baseRadius, topRadius, facing, segments, colors, stroke, lineWidth);
-    }
+    drawRadialSilhouetteBody(ctx, projection, baseRadius, resolvedTop, colors);
 
     return { projection, orientAngle: facing };
 }

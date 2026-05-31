@@ -11,10 +11,8 @@ import {
     faceVisible,
 } from "./MeshBuilder.js";
 import { vec3 } from "../../../Math/Vec3.js";
-import { lerp, labelBandYRange } from "../../../Math/Interpolate.js";
+import { lerp } from "../../../Math/Interpolate.js";
 import { inflateQuad } from "../../../Math/Screen2D.js";
-
-export { labelBandYRange };
 
 export function cylinderPoint(y, angle, radius) {
     return vec3(Math.cos(angle) * radius, y, Math.sin(angle) * radius);

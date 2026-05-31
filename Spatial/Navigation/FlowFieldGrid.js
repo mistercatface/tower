@@ -1,4 +1,9 @@
 import { OCTILE_OFFSETS } from "../Grid/GridUtils.js";
+import {
+    worldToGridCentered,
+    gridToWorldCentered,
+    getCellBoundsCentered,
+} from "../Geometry/GridCoords.js";
 
 export class FlowFieldGrid {
     constructor(cellSize, width, height, obstacleGrid) {
@@ -131,27 +136,30 @@ export class FlowFieldGrid {
     }
 
     worldToGrid(x, y) {
-        const col = Math.floor((x - this.centerX + this.offsetX) / this.cellSize);
-        const row = Math.floor((y - this.centerY + this.offsetY) / this.cellSize);
-        return { col, row };
+        return worldToGridCentered(
+            x, y,
+            this.centerX, this.centerY,
+            this.offsetX, this.offsetY,
+            this.cellSize,
+        );
     }
 
     gridToWorld(col, row) {
-        return {
-            x: col * this.cellSize + this.centerX - this.offsetX + this.cellSize / 2,
-            y: row * this.cellSize + this.centerY - this.offsetY + this.cellSize / 2,
-        };
+        return gridToWorldCentered(
+            col, row,
+            this.centerX, this.centerY,
+            this.offsetX, this.offsetY,
+            this.cellSize,
+        );
     }
 
     getCellBounds(col, row) {
-        const minX = col * this.cellSize + this.centerX - this.offsetX;
-        const minY = row * this.cellSize + this.centerY - this.offsetY;
-        return {
-            minX,
-            minY,
-            maxX: minX + this.cellSize,
-            maxY: minY + this.cellSize,
-        };
+        return getCellBoundsCentered(
+            col, row,
+            this.centerX, this.centerY,
+            this.offsetX, this.offsetY,
+            this.cellSize,
+        );
     }
 
     entityIntersectsCell(x, y, radius, col, row) {
