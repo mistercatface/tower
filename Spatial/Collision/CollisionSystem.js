@@ -129,10 +129,6 @@ export class CollisionSystem {
     static run(state, spatialFrame) {
         const events = [];
 
-        if (!spatialFrame) {
-            return events;
-        }
-
         // 1. Projectiles vs Walls, Pickups, and Enemies
         for (const p of state.projectiles) {
             if (p.isDead) continue;

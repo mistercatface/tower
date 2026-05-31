@@ -4,13 +4,7 @@ import { Separation } from "../Spatial/Motion/Separation.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { actorStates } from "./ActorStates.js";
 import { transitionEntity } from "./EntityFsm.js";
-import {
-    createCombatantStats,
-    applyUpgrades,
-    applyUpgradesToStats,
-    syncActorCombatFromStats,
-    initCombatantUpgradeSlots,
-} from "./CombatantStats.js";
+import { createCombatantStats, applyUpgrades, applyUpgradesToStats, syncActorCombatFromStats, initCombatantUpgradeSlots } from "./CombatantStats.js";
 import { Turret } from "./Turret.js";
 import { Utilities } from "../Core/Utilities.js";
 import { spawnFloatingText } from "../Core/EventSystem.js";
@@ -19,17 +13,9 @@ import { applyActorGunModifiers, getSlotFireIntervalMs } from "../Combat/gunComb
 import { getGunDefinition } from "../Config/gunDefinitions.js";
 import { explosionSettings } from "../Config/Config.js";
 import { resolveActorTurretLoadouts } from "../Config/TurretLoadoutDefinitions.js";
-import {
-    getTurretCountForLoadout,
-    normalizeWeaponLoadout,
-} from "../Combat/equipmentLoadout.js";
+import { getTurretCountForLoadout, normalizeWeaponLoadout } from "../Combat/equipmentLoadout.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
-import {
-    areHostile,
-    getNearestHostile,
-    getPlayerActors,
-    isValidTurretTarget,
-} from "../Combat/Targeting.js";
+import { areHostile, getNearestHostile, getPlayerActors, isValidTurretTarget } from "../Combat/Targeting.js";
 
 export class Actor extends DestructibleEntity {
     constructor(x, y, radius, speed, health, color, type, accelRate = 3.0, canDamageWalls = false) {
@@ -45,12 +31,10 @@ export class Actor extends DestructibleEntity {
         this.accelRate = accelRate;
         this.canDamageWalls = canDamageWalls;
         this.turnSpeed = 10;
-
         this.desiredX = 0;
         this.desiredY = 0;
         this.vx = 0;
         this.vy = 0;
-
         this.separation = new Separation();
         this.healthBar = null;
         this.weapon = null;
@@ -66,9 +50,7 @@ export class Actor extends DestructibleEntity {
 
     setupCombatant(combatStats, upgradeDefs = null) {
         this.initCombatant(combatStats);
-        if (upgradeDefs) {
-            this.initCombatantUpgradeSlots(upgradeDefs);
-        }
+        if (upgradeDefs) this.initCombatantUpgradeSlots(upgradeDefs);
     }
 
     initCombatant(baseStats) {
@@ -81,39 +63,29 @@ export class Actor extends DestructibleEntity {
     }
 
     initCombatWeapon() {
-        this.weapon = {
-            range: this.stats.range.baseValue,
-            penetration: this.stats.penetration.baseValue,
-            accuracy: this.stats.accuracy.baseValue,
-        };
+        this.weapon = { range: this.stats.range.baseValue, penetration: this.stats.penetration.baseValue, accuracy: this.stats.accuracy.baseValue };
     }
 
     setUpgradeLevel(upgradeId, level) {
-        if (!this.upgrades[upgradeId]) {
-            this.upgrades[upgradeId] = { level: 0, baseLevel: 0 };
-        }
+        if (!this.upgrades[upgradeId]) this.upgrades[upgradeId] = { level: 0, baseLevel: 0 };
         this.upgrades[upgradeId].level = level;
         this.upgrades[upgradeId].baseLevel = level;
     }
 
     applySpawnUpgradeLevels(levelById, upgradeDefs) {
         for (const [upgradeId, level] of Object.entries(levelById)) {
-            if (this.upgrades[upgradeId] !== undefined) {
-                this.setUpgradeLevel(upgradeId, level);
-            }
+            if (this.upgrades[upgradeId] !== undefined) this.setUpgradeLevel(upgradeId, level);
         }
         this.recalculateStats(upgradeDefs);
     }
 
     recalculateStats(upgradeDefs, { runStats = null, shouldApply = () => true, afterSync = null } = {}) {
         if (!this.stats) return;
-
         if (runStats) {
             applyUpgrades(this.stats, runStats, this.upgrades, upgradeDefs, shouldApply);
         } else {
             applyUpgradesToStats(this.stats, this.upgrades, upgradeDefs, shouldApply);
         }
-
         syncActorCombatFromStats(this, this.stats, this.baseMoveSpeed);
         afterSync?.(this);
     }
@@ -124,9 +96,7 @@ export class Actor extends DestructibleEntity {
 
     canRunTurretCombat() {
         if (this.alwaysRunsTurretCombat) return true;
-        if (this.currentState?.runsTurretCombat != null) {
-            return this.currentState.runsTurretCombat;
-        }
+        if (this.currentState?.runsTurretCombat != null) return this.currentState.runsTurretCombat;
         return false;
     }
 
@@ -143,9 +113,7 @@ export class Actor extends DestructibleEntity {
     }
 
     getExplosionBlastMultipliers() {
-        return this.faction === "player"
-            ? explosionSettings.playerMultipliers
-            : explosionSettings.enemyMultipliers;
+        return this.faction === "player" ? explosionSettings.playerMultipliers : explosionSettings.enemyMultipliers;
     }
 
     getProjectileColorFallback() {
@@ -161,25 +129,16 @@ export class Actor extends DestructibleEntity {
     }
 
     updateTurretCombat(dt, state, options = {}) {
-        if (!this.weapon || this.turrets.length === 0) {
-            return options.combatEvents ?? [];
-        }
-
-        const blocksTargeting =
-            options.blocksTargeting || this.getExternalBlocksTargeting(state, options.upgrades ?? []);
+        if (!this.weapon || this.turrets.length === 0) return options.combatEvents ?? [];
+        const blocksTargeting = options.blocksTargeting || this.getExternalBlocksTargeting(state, options.upgrades ?? []);
         const combatEvents = options.combatEvents ?? [];
-
         if (this.canRunTurretCombat()) {
             this.acquireTurretTargets(state, blocksTargeting);
             this.processAllTurrets(dt, state, blocksTargeting, combatEvents);
         } else {
             this.aimIdleTurrets(dt, state, blocksTargeting);
         }
-
-        if (this.type === "player") {
-            this.updatePlayerTurretGhostTrails(dt);
-        }
-
+        if (this.type === "player") this.updatePlayerTurretGhostTrails(dt);
         return combatEvents;
     }
 
@@ -191,7 +150,6 @@ export class Actor extends DestructibleEntity {
 
     getAITarget(state) {
         if (!state) return null;
-
         const aiOpts = { requireLos: false };
         const range = this.weapon?.range;
         if (range != null) {
@@ -203,34 +161,15 @@ export class Actor extends DestructibleEntity {
 
     hasLineOfSightTo(other, stateOrWalls) {
         if (!other) return false;
-
         const wallCtx = this.resolveWallContext(stateOrWalls);
         if (!wallCtx) return true;
-
-        return Utilities.hasLineOfSight(
-            this.x,
-            this.y,
-            other.x,
-            other.y,
-            wallCtx,
-            this.radius,
-            other.radius ?? 0
-        );
+        return Utilities.hasLineOfSight(this.x, this.y, other.x, other.y, wallCtx, this.radius, other.radius ?? 0);
     }
 
     hasLineOfSightToPoint(x, y, stateOrWalls, { targetRadius = 0 } = {}) {
         const wallCtx = this.resolveWallContext(stateOrWalls);
         if (!wallCtx) return true;
-
-        return Utilities.hasLineOfSight(
-            this.x,
-            this.y,
-            x,
-            y,
-            wallCtx,
-            this.radius,
-            targetRadius
-        );
+        return Utilities.hasLineOfSight(this.x, this.y, x, y, wallCtx, this.radius, targetRadius);
     }
 
     blocksTurretLineOfSight(target, state) {
@@ -239,47 +178,27 @@ export class Actor extends DestructibleEntity {
 
     getAllyActors(state) {
         if (!state) return [];
-
         let allies = [];
-        if (this.teamId != null) {
-            allies = state.getCombatants().filter(
-                (other) =>
-                    other !== this &&
-                    !other.isDead &&
-                    other.teamId === this.teamId &&
-                    !areHostile(this, other)
-            );
-        }
-
-        if (allies.length === 0 && this.faction === "player") {
-            allies = getPlayerActors(state).filter((ally) => ally !== this && !ally.isDead);
-        }
-
+        if (this.teamId != null) allies = state.getCombatants().filter((other) => other !== this && !other.isDead && other.teamId === this.teamId && !areHostile(this, other));
+        if (allies.length === 0 && this.faction === "player") allies = getPlayerActors(state).filter((ally) => ally !== this && !ally.isDead);
         return allies;
     }
 
     getEngagedTargetsFrom(ally) {
         const targets = [];
-
         for (const turret of ally.getTurrets()) {
-            if (turret.target && !turret.target.isDead) {
-                targets.push(turret.target);
-            }
+            if (turret.target && !turret.target.isDead)   targets.push(turret.target);
             if (ally.isTurretChargeCommitted(turret)) {
                 const committed = ally.getCommittedTurretTarget(turret);
-                if (committed && !committed.isDead) {
-                    targets.push(committed);
-                }
+                if (committed && !committed.isDead) targets.push(committed);
             }
         }
-
         return targets;
     }
 
     getMutualAssistTargets(state) {
         const targets = [];
         const seen = new Set();
-
         for (const ally of this.getAllyActors(state)) {
             for (const target of this.getEngagedTargetsFrom(ally)) {
                 if (seen.has(target)) continue;
@@ -287,7 +206,6 @@ export class Actor extends DestructibleEntity {
                 targets.push(target);
             }
         }
-
         return targets;
     }
 
@@ -302,10 +220,7 @@ export class Actor extends DestructibleEntity {
     }
 
     getMutualAssistRangeBonus(state, target) {
-        if (!target || !state || !this.isMutualAssistTarget(state, target)) {
-            return 0;
-        }
-
+        if (!target || !state || !this.isMutualAssistTarget(state, target))  return 0;
         let bonus = 0;
         for (const ally of this.getAllyActors(state)) {
             if (!this.isTargetEngagedBy(ally, target)) continue;
@@ -322,127 +237,77 @@ export class Actor extends DestructibleEntity {
 
     isValidTurretTargetForSelf(target, state, { blocksTargeting = false } = {}) {
         if (!this.weapon || !target) return false;
-        return isValidTurretTarget(
-            this,
-            target,
-            state,
-            this.getEffectiveTurretRange(state, target),
-            blocksTargeting,
-            { requireLos: true }
-        );
+        return isValidTurretTarget(this, target, state, this.getEffectiveTurretRange(state, target), blocksTargeting, { requireLos: true });
     }
 
     buildIndependentTargetExclusions(ownExcluded, state) {
         const excluded = new Set(ownExcluded ?? []);
-
-        for (const target of this.getMutualAssistTargets(state)) {
-            excluded.add(target);
-        }
-
+        for (const target of this.getMutualAssistTargets(state))  excluded.add(target);
         return excluded;
     }
 
     findIndependentTurretTarget(state, ownExcluded) {
         if (!this.weapon) return null;
-
-        return getNearestHostile(
-            state,
-            this,
-            this.weapon.range,
-            this.buildIndependentTargetExclusions(ownExcluded, state)
-        );
+        return getNearestHostile(state, this, this.weapon.range, this.buildIndependentTargetExclusions(ownExcluded, state));
     }
 
     findTurretTarget(state, ownExcluded) {
         if (!this.weapon) return null;
-
         const ownExcludedSet = ownExcluded ?? new Set();
         const allyEngaged = this.getMutualAssistTargets(state);
-
         const independent = this.findIndependentTurretTarget(state, ownExcludedSet);
         if (independent) return independent;
-
         for (const target of allyEngaged) {
             if (ownExcludedSet.has(target)) continue;
-            if (this.isValidTurretTargetForSelf(target, state)) {
-                return target;
-            }
+            if (this.isValidTurretTargetForSelf(target, state)) return target;
+
         }
 
         const shared = getNearestHostile(state, this, this.weapon.range, ownExcludedSet);
         if (shared) return shared;
-
         for (const target of allyEngaged) {
             if (ownExcludedSet.has(target)) continue;
-            if (this.isValidTurretTargetForSelf(target, state)) {
-                return target;
-            }
+            if (this.isValidTurretTargetForSelf(target, state))  return target;
         }
-
         return getNearestHostile(state, this, this.weapon.range);
     }
 
     getExternalBlocksTargeting(state, upgrades = []) {
-        if (!this.isAbilityOwner(state) || !state?.abilities || !state?.scheduler) {
-            return false;
-        }
-
+        if (!this.isAbilityOwner(state) || !state?.abilities || !state?.scheduler) return false;
         for (const upg of upgrades) {
             if (!upg.isAbility || !state.abilities[upg.id] || !upg.blocksTargeting) continue;
-
             const timers = state.abilityTimers[upg.id];
             if (!timers) continue;
-
-            if (state.scheduler.getTimeRemaining(timers.activeId) > 0) {
-                return true;
-            }
+            if (state.scheduler.getTimeRemaining(timers.activeId) > 0)  return true;
         }
-
         return false;
     }
 
     getTurretAimPoint(turret, state, target, blocksTargeting) {
-        if (this.currentState?.getAimTarget) {
-            return this.currentState.getAimTarget(this, target, blocksTargeting, turret);
-        }
-        if (target && !blocksTargeting) {
-            return target;
-        }
+        if (this.currentState?.getAimTarget)  return this.currentState.getAimTarget(this, target, blocksTargeting, turret);
+        if (target && !blocksTargeting) return target;
         return this.getMovementAimPoint(state);
     }
 
     getMovementAimPoint(_state) {
         if (this.targetX != null && this.targetY != null && this.isMoving) {
-            return {
-                x: this.targetNodeX != null ? this.targetNodeX : this.targetX,
-                y: this.targetNodeY != null ? this.targetNodeY : this.targetY,
-            };
+            return { x: this.targetNodeX != null ? this.targetNodeX : this.targetX, y: this.targetNodeY != null ? this.targetNodeY : this.targetY };
         }
-
         const desiredLen = Math.hypot(this.desiredX, this.desiredY);
         if (desiredLen > 0.001) {
             const dist = 100;
-            return {
-                x: this.x + (this.desiredX / desiredLen) * dist,
-                y: this.y + (this.desiredY / desiredLen) * dist,
-            };
+            return { x: this.x + (this.desiredX / desiredLen) * dist, y: this.y + (this.desiredY / desiredLen) * dist };
         }
-
         const velLen = Math.hypot(this.vx, this.vy);
         if (velLen > 1) {
             const dist = 100;
-            return {
-                x: this.x + (this.vx / velLen) * dist,
-                y: this.y + (this.vy / velLen) * dist,
-            };
+            return { x: this.x + (this.vx / velLen) * dist, y: this.y + (this.vy / velLen) * dist };
         }
-
         return null;
     }
 
     aimIdleTurrets(dt, state, blocksTargeting = false) {
         const effectiveBlocks = this.resolveBlocksTargeting(state, blocksTargeting);
-
         for (const turret of this.getTurrets()) {
             const aimTarget = this.resolveTurretAimPoint(turret, state, null, effectiveBlocks);
             if (!aimTarget) continue;
@@ -451,18 +316,14 @@ export class Actor extends DestructibleEntity {
     }
 
     resolveTurretAimPoint(turret, state, target, blocksTargeting) {
-        if (this.isTurretChargeCommitted(turret)) {
-            return this.getCommittedTurretTarget(turret);
-        }
+        if (this.isTurretChargeCommitted(turret)) return this.getCommittedTurretTarget(turret);
         return this.getTurretAimPoint(turret, state, target, blocksTargeting);
     }
 
     resolveBlocksTargeting(state, externalBlocks = false) {
         if (externalBlocks) return true;
         if (this.currentState?.blocksTargeting) return true;
-        if (this.currentState?.getTurretBlocksTargeting) {
-            return this.currentState.getTurretBlocksTargeting(this, state);
-        }
+        if (this.currentState?.getTurretBlocksTargeting) return this.currentState.getTurretBlocksTargeting(this, state);
         return false;
     }
 
@@ -482,16 +343,12 @@ export class Actor extends DestructibleEntity {
     }
 
     resolveTurretTargetForProcessing(turret) {
-        if (this.isTurretChargeCommitted(turret)) {
-            return this.getCommittedTurretTarget(turret);
-        }
+        if (this.isTurretChargeCommitted(turret)) return this.getCommittedTurretTarget(turret);
         return turret.target;
     }
 
     resolveTurretBlocksForProcessing(turret, state, externalBlocks = false) {
-        if (this.isTurretChargeCommitted(turret)) {
-            return false;
-        }
+        if (this.isTurretChargeCommitted(turret)) return false;
         return this.resolveBlocksTargeting(state, externalBlocks);
     }
 
@@ -503,9 +360,7 @@ export class Actor extends DestructibleEntity {
     }
 
     syncTurretChargeTarget(turret, target) {
-        if (this.isTurretChargeCommitted(turret)) {
-            return;
-        }
+        if (this.isTurretChargeCommitted(turret)) return;
         if (turret.lastTarget !== target) {
             this.clearTurretCharge(turret);
             turret.lastTarget = target;
@@ -515,13 +370,10 @@ export class Actor extends DestructibleEntity {
     acquireTurretTargets(state, blocksTargeting = false) {
         const weapon = this.weapon;
         if (!weapon) return;
-
         const actualBlocks = this.resolveBlocksTargeting(state, blocksTargeting);
         const engagedTargets = new Set();
-
         for (const turret of this.getTurrets()) {
             const committed = this.isTurretChargeCommitted(turret);
-
             if (committed) {
                 const chargeTarget = this.getCommittedTurretTarget(turret);
                 if (!chargeTarget) {
@@ -531,14 +383,8 @@ export class Actor extends DestructibleEntity {
                     turret.target = chargeTarget;
                 }
             }
-
             if (turret.target && !committed) {
-                const stillValid = this.isValidTurretTargetForSelf(
-                    turret.target,
-                    state,
-                    { blocksTargeting: actualBlocks }
-                );
-
+                const stillValid = this.isValidTurretTargetForSelf(turret.target, state, { blocksTargeting: actualBlocks });
                 if (!stillValid) {
                     turret.target = null;
                     this.clearTurretCharge(turret);
@@ -554,20 +400,13 @@ export class Actor extends DestructibleEntity {
                     }
                 }
             }
-
-            if (!turret.target && !actualBlocks && !this.isTurretChargeCommitted(turret)) {
-                turret.target = this.findTurretTarget(state, engagedTargets);
-            }
-
-            if (turret.target) {
-                engagedTargets.add(turret.target);
-            }
+            if (!turret.target && !actualBlocks && !this.isTurretChargeCommitted(turret)) turret.target = this.findTurretTarget(state, engagedTargets);
+            if (turret.target) engagedTargets.add(turret.target);
         }
     }
 
     syncTurretCount(count, turnSpeed) {
         const targetCount = Math.max(0, Math.floor(count));
-
         while (this.turrets.length < targetCount) {
             const newAngle = targetCount > 0 ? (this.turrets.length / targetCount) * Math.PI * 2 : 0;
             this.turrets.push(new Turret(newAngle, turnSpeed));
@@ -575,7 +414,6 @@ export class Actor extends DestructibleEntity {
         while (this.turrets.length > targetCount) {
             this.turrets.pop();
         }
-
         this.setTurretTurnSpeed(turnSpeed);
     }
 
@@ -604,13 +442,8 @@ export class Actor extends DestructibleEntity {
         this.weaponLoadout = loadout;
         const turnSpeed = this.stats?.turnSpeed?.value ?? this.turnSpeed;
         this.syncTurretCount(getTurretCountForLoadout(loadout), turnSpeed);
-
         if (resolveContext?.state) {
-            resolveActorTurretLoadouts(
-                this,
-                resolveContext.state,
-                resolveContext.upgradeDefs ?? resolveContext.state.upgradeDefs
-            );
+            resolveActorTurretLoadouts(this, resolveContext.state, resolveContext.upgradeDefs ?? resolveContext.state.upgradeDefs);
         } else {
             for (let i = 0; i < loadout.length; i++) {
                 this.turrets[i].gunId = loadout[i];
@@ -627,7 +460,6 @@ export class Actor extends DestructibleEntity {
             const turretBlocks = this.resolveTurretBlocksForProcessing(turret, state, blocksTargeting);
             mode.processTurret(dt, state, this, gun, turret, target, turretBlocks, combatEvents);
         }
-
         return combatEvents;
     }
 
@@ -646,15 +478,11 @@ export class Actor extends DestructibleEntity {
     }
 
     onDamageFloatingText(damage, hitType) {
-        if (hitType === "blast") {
-            spawnFloatingText({ variant: "blastDamage", x: this.x, y: this.y, damage });
-        }
+        if (hitType === "blast") spawnFloatingText({ variant: "blastDamage", x: this.x, y: this.y, damage });
     }
 
     onHitAfterDamage(damage, ctx, hitType, died, event) {
-        if (died) {
-            this.spawnDeathPieces(ctx.state, event);
-        }
+        if (died) this.spawnDeathPieces(ctx.state, event);
     }
 
     handleHit(damage, ctx, hitType, event) {
@@ -666,86 +494,45 @@ export class Actor extends DestructibleEntity {
 
     spawnDeathPieces(state, event) {
         if (!state) return;
-        
         let impactAngle = this.angle;
         let impactForce = 0;
-
         if (event) {
             if (event.projectile) {
                 impactAngle = event.projectile.angle;
-                // Force proportional to projectile speed and radius (size)
                 impactForce = event.projectile.speed * (event.projectile.radius / this.radius) * 0.5;
             } else if (event.type === "blast" && event.explosion) {
-                // Radial impact from explosion center
                 impactAngle = Math.atan2(this.y - event.explosion.y, this.x - event.explosion.x);
                 const dist = Math.hypot(this.x - event.explosion.x, this.y - event.explosion.y);
-                const proximity = Math.max(0.1, 1 - (dist / event.explosion.maxRadius));
+                const proximity = Math.max(0.1, 1 - dist / event.explosion.maxRadius);
                 impactForce = event.explosion.speed * proximity * 0.8;
             }
         }
-
-        // Base velocity combining actor's velocity and impact velocity
         const baseVx = this.vx + Math.cos(impactAngle) * impactForce;
         const baseVy = this.vy + Math.sin(impactAngle) * impactForce;
-
-        // 1. Break the body into a variable number of pieces (3 to 6)
-        const totalPieces = 3 + Math.floor(Math.random() * 4); // 3, 4, 5, or 6
+        const totalPieces = 3 + Math.floor(Math.random() * 4);
         for (let i = 0; i < totalPieces; i++) {
-            // Slight initial offset along the wedge bisector
             const alpha = Math.PI / totalPieces;
             const bisector = (i / totalPieces) * Math.PI * 2 + alpha;
-            
-            // Outward separation velocity that is biased by the direction of base velocity.
-            // This forces pieces to fly in a forward-spreading cone rather than in all 360-degrees.
             const explodeAngle = bisector;
-            const explodeSpeed = 15 + Math.random() * 25; // lateral/radial spread speed
-            
+            const explodeSpeed = 15 + Math.random() * 25;
             const px = this.x + Math.cos(bisector) * (this.radius * 0.25);
             const py = this.y + Math.sin(bisector) * (this.radius * 0.25);
-
-            // Forward momentum is preserved and forms the primary vector.
-            // Radial push is added to spread the pieces, creating a directional cone splash.
             const pvx = baseVx * (0.8 + Math.random() * 0.4) + Math.cos(explodeAngle) * explodeSpeed;
             const pvy = baseVy * (0.8 + Math.random() * 0.4) + Math.sin(explodeAngle) * explodeSpeed;
-            
-            // Spin speed
             const omega = (Math.random() - 0.5) * 8; // rad/sec
-
-            const piece = new DeathPiece(
-                px, py, pvx, pvy, 
-                this.angle, omega, 
-                "body", this.color, this.radius,
-                { pieceIndex: i, totalPieces, lifetime: 800 + Math.random() * 600 }
-            );
-
+            const piece = new DeathPiece(px, py, pvx, pvy, this.angle, omega, "body", this.color, this.radius, { pieceIndex: i, totalPieces, lifetime: 800 + Math.random() * 600 });
             state.deathPieces.push(piece);
         }
-
-        // 2. Break turrets off into individual physics objects
         if (this.turrets && this.turrets.length > 0) {
             for (const turret of this.turrets) {
-                // Get orbit position at the moment of death
                 const { x: tx, y: ty } = turret.getOrbitPosition(this.x, this.y, this.radius);
-
-                // Velocity is combined base, plus an outward/radial boost
                 const orbitAngle = turret.angle;
                 const turretScale = this.radius / 8;
-
-                // Outward bounce velocity combined with forward momentum bias
                 const turretSpeed = 20 + Math.random() * 45;
                 const tvx = baseVx * (0.8 + Math.random() * 0.3) + Math.cos(orbitAngle) * turretSpeed;
                 const tvy = baseVy * (0.8 + Math.random() * 0.3) + Math.sin(orbitAngle) * turretSpeed;
-
-                // High spin speed for loose turrets
                 const omega = (Math.random() - 0.5) * 15;
-
-                const piece = new DeathPiece(
-                    tx, ty, tvx, tvy,
-                    turret.angle, omega,
-                    "turret", this.color, turretScale,
-                    { lifetime: 1200 + Math.random() * 800, drag: 2.0 }
-                );
-
+                const piece = new DeathPiece(tx, ty, tvx, tvy, turret.angle, omega, "turret", this.color, turretScale, { lifetime: 1200 + Math.random() * 800, drag: 2.0 });
                 state.deathPieces.push(piece);
             }
         }
@@ -789,20 +576,11 @@ export class Actor extends DestructibleEntity {
     }
 
     getStatusBarYOffset() {
-        return this.type === "player" || this.type === "companion"
-            ? this.radius + 14
-            : 14;
+        return this.type === "player" || this.type === "companion" ? this.radius + 14 : 14;
     }
 
     renderBody(ctx, renderer) {
-        this.renderCachedSprite(
-            ctx,
-            this.getSpriteCache(renderer),
-            this.getBodySpriteCacheKey(),
-            this.getBodySprite(),
-            this.radius,
-            this.color
-        );
+        this.renderCachedSprite(ctx, this.getSpriteCache(renderer), this.getBodySpriteCacheKey(), this.getBodySprite(), this.radius, this.color);
     }
 
     renderStatusBars(ctx, renderer, _state) {
@@ -813,16 +591,8 @@ export class Actor extends DestructibleEntity {
         transitionEntity(this, actorStates, stateName, stateDataInit);
     }
 
-    applyLocomotion(dt, spatialFrame, {
-        state = null,
-        externalSpeedMod = 1,
-        ignoreSeparationInDesired = false,
-        shouldMove = true,
-        alignAngleWithMovement = true,
-    } = {}) {
-        if (spatialFrame) {
-            this.separation.update(this, spatialFrame);
-        }
+    applyLocomotion(dt, spatialFrame, { state = null, externalSpeedMod = 1, ignoreSeparationInDesired = false, shouldMove = true, alignAngleWithMovement = true } = {}) {
+        this.separation.update(this, spatialFrame);
         const baseSpeed = this.speed;
         if (externalSpeedMod !== 1) {
             this.speed = baseSpeed * externalSpeedMod;

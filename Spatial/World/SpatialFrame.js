@@ -7,7 +7,7 @@ import { Actor } from "../../Entities/Actor.js";
  * Per-tick spatial context for combat.
  *
  * Lifecycle:
- *   const frame = spatialFrame.begin(state);  // once at top of CombatState.update
+ *   const frame = combatSpatial.begin(state);  // once per combat/map-transition tick
  *   ... pass frame to systems ...
  *   // frame is invalid after the next begin()
  *
@@ -114,3 +114,6 @@ export class SpatialFrame {
         }
     }
 }
+
+/** Shared frame for combat and map-transition ticks. Call begin() once per update. */
+export const combatSpatial = new SpatialFrame(50);

@@ -1,7 +1,7 @@
 import { FloatingText } from "../Render/FloatingText.js";
 import { ProgressionManager } from "../Progression/ProgressionManager.js";
 import { CollisionSystem } from "../Spatial/Collision/CollisionSystem.js";
-import { SpatialFrame } from "../Spatial/World/SpatialFrame.js";
+import { combatSpatial } from "../Spatial/World/SpatialFrame.js";
 import { Projectile } from "../Entities/Projectile.js";
 import { showNodeConfirmModal, requestUiUpdate } from "../Core/EventSystem.js";
 import { Explosion } from "../Entities/Explosion/Explosion.js";
@@ -51,9 +51,10 @@ export class MapTransitionState {
 
     update(dt, ctx) {
         const speedUpDt = dt * 5.0;
+        const spatialFrame = combatSpatial.begin(ctx.state);
 
         const oldGridPos = ctx.state.flowFieldGrid.worldToGrid(ctx.state.player.x, ctx.state.player.y);
-        ctx.state.updateAllCombatants(speedUpDt, null, { blocksTargeting: true, upgrades: ctx.upgrades });
+        ctx.state.updateAllCombatants(speedUpDt, spatialFrame, { blocksTargeting: true, upgrades: ctx.upgrades });
         ctx.state.navigation.updateFlowField({
             playerX: ctx.state.player.x,
             playerY: ctx.state.player.y,
@@ -89,10 +90,6 @@ export class MapTransitionState {
 }
 
 export class CombatState {
-    constructor() {
-        this.spatialFrame = new SpatialFrame(50);
-    }
-
     onEnter(ctx) {
         if (ctx.state.projectiles) {
             for (let i = 0; i < ctx.state.projectiles.length; i++) {
@@ -139,7 +136,7 @@ export class CombatState {
             ctx.state.navigation.rebuildPlayerFlowField(ctx.state.player.targetX, ctx.state.player.targetY);
         }
 
-        const spatialFrame = this.spatialFrame.begin(ctx.state);
+        const spatialFrame = combatSpatial.begin(ctx.state);
 
         const oldGridPos = ctx.state.flowFieldGrid.worldToGrid(ctx.state.player.x, ctx.state.player.y);
         const combatEvents = ctx.state.updateAllCombatants(dt, spatialFrame, { externalSpeedMod: abilityState.externalSpeedMod, upgrades: ctx.upgrades });
@@ -159,7 +156,7 @@ export class CombatState {
         const collisionEvents = CollisionSystem.run(ctx.state, spatialFrame);
         const allEvents = [...combatEvents, ...collisionEvents];
 
-        Explosion.updateAll(ctx.state, dt, allEvents);
+        Explosion.updateAll(ctx.state, dt, allEvents, spatialFrame);
 
         for (const event of allEvents) {
             if (event.target && event.target.handleHit) {

@@ -48,21 +48,13 @@ function damageOnHit(state, pickup, projectile, events) {
     return true;
 }
 
-const HIT_BEHAVIORS = {
-    none: () => false,
-    explosive: explosiveOnHit,
-    damage: damageOnHit,
-};
+const HIT_BEHAVIORS = { none: () => false, explosive: explosiveOnHit, damage: damageOnHit };
 
 const worldPropStrategies = Object.fromEntries(
     Object.entries(worldPropDefinitions).map(([type, def]) => {
         const { hitBehavior, spawn, ...strategyFields } = def;
-        return [type, withPickupDefaults({
-            ...strategyFields,
-            isExplosive: hitBehavior === "explosive",
-            onHit: HIT_BEHAVIORS[hitBehavior] ?? HIT_BEHAVIORS.none,
-        })];
-    })
+        return [type, withPickupDefaults({ ...strategyFields, isExplosive: hitBehavior === "explosive", onHit: HIT_BEHAVIORS[hitBehavior] ?? HIT_BEHAVIORS.none })];
+    }),
 );
 
 export class Pickup extends Entity {
@@ -77,12 +69,7 @@ export class Pickup extends Entity {
         this.zIndex = 10;
         this.facing = Math.random() * Math.PI * 2;
         if (type === "crate") {
-            this.faceLabelVariants = Object.fromEntries(
-                CRATE_LABEL_FACES.map((face) => [
-                    face,
-                    Math.floor(Math.random() * CRATE_LABEL_VARIANTS.length),
-                ]),
-            );
+            this.faceLabelVariants = Object.fromEntries(CRATE_LABEL_FACES.map((face) => [face, Math.floor(Math.random() * CRATE_LABEL_VARIANTS.length)]));
         }
         if (this.strategy.maxHealth != null) {
             this.maxHealth = this.strategy.maxHealth;
@@ -129,7 +116,7 @@ export class Pickup extends Entity {
         this.changeState("exploded", { gameState });
     }
 
-    update(dt, state, spatialFrame = null) {
+    update(dt, state, spatialFrame) {
         PhysicsSystem.applyFrictionAndDrag(this, dt, this.strategy.friction);
         if (this.strategy.isPushable) {
             PhysicsSystem.resolveWallCollisions(this, spatialFrame, state);

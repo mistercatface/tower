@@ -3,7 +3,7 @@ import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
 
 export class DeathPiece extends Entity {
-    static updateAll(state, dt, spatialFrame = null) {
+    static updateAll(state, dt, spatialFrame) {
         if (!state.deathPieces) return;
         for (let i = state.deathPieces.length - 1; i >= 0; i--) {
             const p = state.deathPieces[i];
@@ -45,7 +45,7 @@ export class DeathPiece extends Entity {
         this.drag = config.drag ?? 3.0; // deceleration drag
     }
 
-    update(dt, state, spatialFrame = null) {
+    update(dt, state, spatialFrame) {
         // Move according to velocity
         this.x += this.vx * (dt / 1000);
         this.y += this.vy * (dt / 1000);

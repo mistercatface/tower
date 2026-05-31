@@ -14,8 +14,6 @@ export class Separation {
         this.pushX = 0;
         this.pushY = 0;
 
-        if (!spatialFrame) return;
-
         spatialFrame.forEachNeighbor(entity, (other) => {
             if (other.isDead) return;
             if (typeof entity.shouldSeparateFrom === "function" && !entity.shouldSeparateFrom(other)) return;

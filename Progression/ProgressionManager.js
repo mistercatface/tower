@@ -21,7 +21,7 @@ export class ProgressionManager {
         spawnFloatingText({ x: enemy.x, y: enemy.y - 30, text: `+${xpGain} XP`, color: "#4CAF50" });
     }
 
-    static updatePickups(state, dt, spatialFrame = null) {
+    static updatePickups(state, dt, spatialFrame) {
         for (let i = state.pickups.length - 1; i >= 0; i--) {
             const p = state.pickups[i];
             p.update(dt, state, spatialFrame);
