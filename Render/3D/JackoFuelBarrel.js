@@ -6,9 +6,10 @@ import {
     RADIAL_SEGMENTS,
 } from "./SolidDraw.js";
 import { buildSodaCanMesh } from "./CylinderMesh.js";
-import { drawTexturedCylinderInspect, onCylinderTexturesReady } from "./CylinderInspect.js";
+import { renderInspectMesh } from "./MeshRenderer.js";
+import { drawInspectCylindricalLabel } from "./CylinderInspectLabel.js";
 import { vec3, pushTriangle, transformPoint, projectPoint, createInspectCamera } from "./Mesh3D.js";
-import { getTexture, loadTexture } from "./TextureCache.js";
+import { getTexture, loadTexture, onTextureReady } from "./TextureCache.js";
 
 export const JACKO_LABEL_SRC = "Images/jacko_fuel_barrel.png";
 const CAN_COMBAT_HEIGHT = 22;
@@ -29,7 +30,8 @@ export function preloadJackoFuelLabel() {
 }
 
 export function onJackoFuelLabelReady(fn) {
-    onCylinderTexturesReady({ label: JACKO_LABEL_SRC }, fn);
+    loadTexture(JACKO_LABEL_SRC);
+    onTextureReady(JACKO_LABEL_SRC, fn);
 }
 
 function normalizeAngle(a) {
@@ -215,7 +217,7 @@ export function drawJackoFuelBarrelCombat(ctx, pc, { onFire = false } = {}) {
 function appendPullTab(mesh, halfHeight, bodyRadius, onFire) {
     const y = halfHeight + 0.035;
     const tabColor = onFire ? "#C0A090" : CAN_COLORS.tab;
-    mesh.materials.tab = { type: "solid", color: tabColor, stroke: CAN_COLORS.stroke, lineWidth: 0.5 };
+    mesh.materials.tab = { type: "solid", color: tabColor, stroke: null, lineWidth: 0 };
 
     const a = vec3(bodyRadius * 0.14, y, -bodyRadius * 0.04);
     const b = vec3(bodyRadius * 0.32, y + 0.005, -bodyRadius * 0.18);
@@ -229,10 +231,22 @@ export function drawJackoFuelBarrelInspect(ctx, cx, cy, scale, yaw, pitch, { onF
     const mesh = buildSodaCanMesh({ onFire });
     appendPullTab(mesh, 1.05, 0.5, onFire);
 
-    drawTexturedCylinderInspect(ctx, cx, cy, scale, yaw, pitch, {
-        mesh,
-        textureSources: { label: JACKO_LABEL_SRC },
-    });
+    renderInspectMesh(ctx, mesh, cx, cy, scale, yaw, pitch, { imageSmoothing: false });
+
+    const labelImg = getTexture(JACKO_LABEL_SRC);
+    if (labelImg) {
+        drawInspectCylindricalLabel(ctx, cx, cy, scale, yaw, pitch, {
+            img: labelImg,
+            halfHeight: 1.05,
+            bodyRadius: 0.5,
+            y0: 0.22,
+            y1: 0.78,
+            angleCenter: -Math.PI / 2,
+            angleSpan: Math.PI * 1.15,
+            radialSegments: 20,
+            underlay: onFire ? "#8A3020" : "#B4BAC2",
+        });
+    }
 
     if (onFire) {
         const camera = createInspectCamera(cx, cy, scale, yaw, pitch);

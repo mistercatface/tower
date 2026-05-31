@@ -1,6 +1,5 @@
 import {
     vec3,
-    vec2,
     pushQuad,
     pushTriangle,
 } from "./Mesh3D.js";
@@ -25,44 +24,6 @@ function cylinderPoint(y, angle, radius) {
     return vec3(Math.cos(angle) * radius, y, Math.sin(angle) * radius);
 }
 
-function angleInRange(angle, center, halfSpan) {
-    let d = angle - center;
-    while (d <= -Math.PI) d += Math.PI * 2;
-    while (d > Math.PI) d -= Math.PI * 2;
-    return Math.abs(d) <= halfSpan;
-}
-
-function labelU(angle, center, halfSpan) {
-    let d = angle - center;
-    while (d <= -Math.PI) d += Math.PI * 2;
-    while (d > Math.PI) d -= Math.PI * 2;
-    return (d + halfSpan) / (halfSpan * 2);
-}
-
-function addLabelQuadPanel(triangles, y0, y1, r0, r1, a0, a1, material, label) {
-    const r = ((r0 + r1) * 0.5) * 1.001;
-    const p00 = cylinderPoint(y0, a0, r);
-    const p01 = cylinderPoint(y0, a1, r);
-    const p10 = cylinderPoint(y1, a0, r);
-    const p11 = cylinderPoint(y1, a1, r);
-
-    const halfSpan = label.halfSpan;
-    const u0 = Math.max(0, Math.min(1, labelU(a0, label.angleCenter, halfSpan)));
-    const u1 = Math.max(0, Math.min(1, labelU(a1, label.angleCenter, halfSpan)));
-
-    const uv00 = vec2(u0, 1);
-    const uv01 = vec2(u1, 1);
-    const uv10 = vec2(u0, 0);
-    const uv11 = vec2(u1, 0);
-
-    pushQuad(triangles, p10, p11, p01, p00, material, {
-        uvA: uv10,
-        uvB: uv11,
-        uvC: uv01,
-        uvD: uv00,
-    });
-}
-
 function addCylinderSide(triangles, {
     y0,
     y1,
@@ -71,14 +32,7 @@ function addCylinderSide(triangles, {
     a0,
     a1,
     material,
-    uvMode = "none",
-    label = null,
 }) {
-    if (uvMode === "label" && label) {
-        addLabelQuadPanel(triangles, y0, y1, r0, r1, a0, a1, material, label);
-        return;
-    }
-
     const p00 = cylinderPoint(y0, a0, r0);
     const p01 = cylinderPoint(y0, a1, r1 ?? r0);
     const p10 = cylinderPoint(y1, a0, r0);
@@ -108,7 +62,6 @@ export function buildCylinderMesh(options = {}) {
     const segments = options.radialSegments ?? 36;
     const bodyMaterial = options.bodyMaterial ?? "body";
     const capMaterial = options.capMaterial ?? "cap";
-    const labels = options.labels ?? [];
 
     const yBottom = -halfHeight;
     const yTop = halfHeight;
@@ -118,68 +71,19 @@ export function buildCylinderMesh(options = {}) {
     for (let i = 0; i < segments; i++) {
         const a0 = (i / segments) * Math.PI * 2;
         const a1 = ((i + 1) / segments) * Math.PI * 2;
-        const midA = (a0 + a1) / 2;
-
-        let label = null;
-        for (const entry of labels) {
-            const y0 = yBottom + (yTop - yBottom) * entry.y0;
-            const y1 = yBottom + (yTop - yBottom) * entry.y1;
-            const halfSpan = entry.angleSpan * 0.5;
-            if (angleInRange(midA, entry.angleCenter, halfSpan)) {
-                label = { ...entry, y0, y1, halfSpan };
-                break;
-            }
-        }
 
         const rBot = bodyRadiusAtY(yBottom, halfHeight, bodyRadius, options.rings);
         const rTop = bodyRadiusAtY(yTop, halfHeight, bodyRadius, options.rings);
 
-        if (label) {
-            addCylinderSide(triangles, {
-                y0: label.y0,
-                y1: label.y1,
-                r0: bodyRadiusAtY(label.y0, halfHeight, bodyRadius, options.rings),
-                r1: bodyRadiusAtY(label.y1, halfHeight, bodyRadius, options.rings),
-                a0,
-                a1,
-                material: label.materialId,
-                uvMode: "label",
-                label,
-            });
-
-            if (label.y0 > yBottom) {
-                addCylinderSide(triangles, {
-                    y0: yBottom,
-                    y1: label.y0,
-                    r0: rBot,
-                    r1: bodyRadiusAtY(label.y0, halfHeight, bodyRadius, options.rings),
-                    a0,
-                    a1,
-                    material: bodyMaterial,
-                });
-            }
-            if (label.y1 < yTop) {
-                addCylinderSide(triangles, {
-                    y0: label.y1,
-                    y1: yTop,
-                    r0: bodyRadiusAtY(label.y1, halfHeight, bodyRadius, options.rings),
-                    r1: rTop,
-                    a0,
-                    a1,
-                    material: bodyMaterial,
-                });
-            }
-        } else {
-            addCylinderSide(triangles, {
-                y0: yBottom,
-                y1: yTop,
-                r0: rBot,
-                r1: rTop,
-                a0,
-                a1,
-                material: bodyMaterial,
-            });
-        }
+        addCylinderSide(triangles, {
+            y0: yBottom,
+            y1: yTop,
+            r0: rBot,
+            r1: rTop,
+            a0,
+            a1,
+            material: bodyMaterial,
+        });
     }
 
     if (options.topCap !== false) {
@@ -195,22 +99,15 @@ export function buildCylinderMesh(options = {}) {
     return { triangles, materials };
 }
 
-/** Soda-can profile with lip ring and cylindrical label band. */
+/** Soda-can profile with lip ring. Label is drawn separately in inspect view. */
 export function buildSodaCanMesh({
     halfHeight = 1.05,
     bodyRadius = 0.5,
     lipRadius = 0.535,
-    radialSegments = 48,
-    labelMaterial = "label",
+    radialSegments = 32,
     bodyMaterial = "body",
     capMaterial = "cap",
     materials = {},
-    label = {
-        y0: 0.22,
-        y1: 0.78,
-        angleCenter: -Math.PI / 2,
-        angleSpan: Math.PI * 1.15,
-    },
     onFire = false,
 } = {}) {
     const bodyTop = halfHeight * 0.9;
@@ -230,17 +127,9 @@ export function buildSodaCanMesh({
             { y: lipY, radius: lipRadius },
             { y: halfHeight, radius: lipRadius },
         ],
-        labels: label ? [{
-            materialId: labelMaterial,
-            y0: label.y0,
-            y1: label.y1,
-            angleCenter: label.angleCenter,
-            angleSpan: label.angleSpan,
-        }] : [],
         materials: {
-            body: { type: "solid", color: onFire ? "#8A3020" : "#B4BAC2" },
-            cap: { type: "solid", color: onFire ? "#5A2818" : "#90969E" },
-            [labelMaterial]: { type: "texture", source: labelMaterial },
+            body: { type: "solid", color: onFire ? "#8A3020" : "#B4BAC2", stroke: null, lineWidth: 0 },
+            cap: { type: "solid", color: onFire ? "#5A2818" : "#90969E", stroke: null, lineWidth: 0 },
             ...materials,
         },
     });
@@ -248,8 +137,8 @@ export function buildSodaCanMesh({
     addCap(mesh.triangles, halfHeight + 0.002, lipRadius, radialSegments, "lip", true);
     addCap(mesh.triangles, halfHeight + 0.012, bodyRadius * 0.9, radialSegments, capMaterial, true);
 
-    mesh.materials.lip = { type: "solid", color: onFire ? "#6A3020" : "#9AA0A8" };
-    mesh.materials.cap = { type: "solid", color: onFire ? "#5A2818" : "#C8CDD4" };
+    mesh.materials.lip = { type: "solid", color: onFire ? "#6A3020" : "#9AA0A8", stroke: null, lineWidth: 0 };
+    mesh.materials.cap = { type: "solid", color: onFire ? "#5A2818" : "#C8CDD4", stroke: null, lineWidth: 0 };
 
     return mesh;
 }

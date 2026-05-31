@@ -6,6 +6,7 @@ import { buildCylinderMesh, buildSodaCanMesh } from "./CylinderMesh.js";
 import { renderInspectMesh } from "./MeshRenderer.js";
 import { loadTexture, getTexture, onTextureReady } from "./TextureCache.js";
 
+export { drawInspectCylindricalLabel } from "./CylinderInspectLabel.js";
 export { buildCylinderMesh, buildSodaCanMesh } from "./CylinderMesh.js";
 export { renderInspectMesh, renderMesh } from "./MeshRenderer.js";
 export { loadTexture, getTexture, onTextureReady } from "./TextureCache.js";
