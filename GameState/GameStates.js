@@ -13,6 +13,11 @@ import { Pools } from "../Core/Pools.js";
 import { DeathPiece } from "../Entities/DeathPiece.js";
 import { findInspectablePickup } from "../Render/Inspector/InspectRegistry.js";
 import { propInspector } from "../Render/Inspector/PropInspector.js";
+import {
+    beginStartNodeIntro,
+    shouldRunStartNodeIntro,
+    updateStartNodeIntro,
+} from "../Combat/StartNodeIntro.js";
 
 const MAP_TRAVEL_SPEED = 5.0;
 
@@ -167,6 +172,10 @@ export class CombatState {
         ctx.state.player.resetTurretCombatState();
         runPersistentSectorEnter(ctx.state);
 
+        if (shouldRunStartNodeIntro(ctx.state)) {
+            beginStartNodeIntro(ctx.state);
+        }
+
         requestUiUpdate();
     }
 
@@ -191,6 +200,10 @@ export class CombatState {
             playerTargetY: ctx.state.player.isMoving ? ctx.state.player.targetY : null,
             previousGridPos: oldGridPos,
         });
+
+        if (!isTraveling) {
+            updateStartNodeIntro(ctx.state);
+        }
 
         ctx.state.waveManager.manageSpawning(stepDt, ctx.state, ctx.upgrades, ctx.viewport);
         let spawnHitEvents = [];

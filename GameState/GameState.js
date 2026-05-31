@@ -105,6 +105,9 @@ export class GameState {
         this.spawnRadius = 950;
         this.pendingPerkPicks = [];
         this.radioSeenThisRun = {};
+        this.startNodeIntroActive = false;
+        this.startNodeIntroTriggered = false;
+        this.startNodeIntroCompleted = false;
 
         this.wavesCompleted = 0;
         this.isTransitioning = false;

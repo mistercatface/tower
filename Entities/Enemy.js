@@ -34,6 +34,8 @@ export class Enemy extends Actor {
         this.setupCombatant(combatStats, baseUpgradeDefs);
         this.initCombatWeapon();
         this.isEngaged = false;
+        this.isPassive = false;
+        this.isIntroGuard = false;
         this.dodgeTimerId = null;
         this.dodgeTargetX = 0;
         this.dodgeTargetY = 0;
@@ -46,6 +48,16 @@ export class Enemy extends Actor {
     onHitAfterDamage(damage, ctx, hitType, died, event) {
         if (died) emitCombatEnemyKilled(this);
         super.onHitAfterDamage(damage, ctx, hitType, died, event);
+    }
+
+    getAITarget(state) {
+        if (this.isPassive) return null;
+        return super.getAITarget(state);
+    }
+
+    handleHit(damage, ctx, hitType, event) {
+        if (this.isPassive && this.isIntroGuard) return false;
+        return super.handleHit(damage, ctx, hitType, event);
     }
 
     updateLocomotion(dt, state, spatialFrame, options = {}) {

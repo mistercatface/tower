@@ -1,4 +1,8 @@
 import { Events, advanceRadioLine } from "../Core/EventSystem.js";
+import { getSpeaker } from "../Radio/RadioDialogRegistry.js";
+
+/** Player character — always shown in the left codec slot (MGS-style). */
+const MAIN_CHARACTER_ID = "brock";
 
 const elements = {
     overlay: null,
@@ -9,6 +13,8 @@ const elements = {
 };
 
 let keyListenerBound = false;
+/** Last non-Brock speaker — stays on the right through Brock's reply (MGS codec). */
+let lastRemoteSpeaker = null;
 
 function bindElements() {
     elements.overlay = document.getElementById("radioDialog");
@@ -18,33 +24,50 @@ function bindElements() {
     elements.hint = elements.overlay?.querySelector(".radio-dialog-hint") ?? null;
 }
 
-function getPortraitSideClass(index, count) {
-    if (count <= 1) return " radio-dialog-portrait-left";
-    if (count === 2) {
-        return index === 0 ? " radio-dialog-portrait-left" : " radio-dialog-portrait-right";
-    }
-    if (index === 0) return " radio-dialog-portrait-left";
-    if (index === count - 1) return " radio-dialog-portrait-right";
-    return " radio-dialog-portrait-center";
+function findParticipant(participants, id) {
+    return participants.find((p) => p.id === id) ?? null;
 }
 
-function createPortraitSlot(participant, isActive, sideClass) {
+function resolveSpeaker(participants, speakerId) {
+    const fromList = findParticipant(participants, speakerId);
+    if (fromList) return fromList;
+    const speaker = getSpeaker(speakerId);
+    if (!speaker) return null;
+    return { id: speakerId, ...speaker };
+}
+
+function getMainCharacter(participants) {
+    return resolveSpeaker(participants, MAIN_CHARACTER_ID);
+}
+
+function createPortraitSlot(sideClass, participant, isActive, { empty = false } = {}) {
     const slot = document.createElement("div");
     slot.className =
         "radio-dialog-portrait-slot" + sideClass + (isActive ? " radio-dialog-portrait-active" : "");
+    if (empty) {
+        slot.classList.add("radio-dialog-portrait-empty");
+    }
 
-    const img = document.createElement("img");
-    img.className = "radio-dialog-portrait-img";
-    img.src = participant.portrait;
-    img.alt = participant.name;
-    img.draggable = false;
+    const frame = document.createElement("div");
+    frame.className = "radio-dialog-portrait-frame";
+    slot.appendChild(frame);
+
+    if (!empty && participant) {
+        const img = document.createElement("img");
+        img.className = "radio-dialog-portrait-img";
+        img.src = participant.portrait;
+        img.alt = participant.name;
+        img.draggable = false;
+        frame.appendChild(img);
+    }
 
     const label = document.createElement("div");
     label.className = "radio-dialog-portrait-label";
-    label.textContent = participant.name;
-
-    slot.appendChild(img);
+    if (!empty && participant) {
+        label.textContent = participant.name;
+    }
     slot.appendChild(label);
+
     return slot;
 }
 
@@ -53,12 +76,28 @@ export function showRadioDialog({ participants, line, lineIndex, lineCount }) {
     if (!elements.overlay) return;
 
     elements.portraitRow.innerHTML = "";
-    const count = participants.length;
-    participants.forEach((participant, index) => {
-        const isActive = participant.id === line.speakerId;
-        const sideClass = getPortraitSideClass(index, count);
-        elements.portraitRow.appendChild(createPortraitSlot(participant, isActive, sideClass));
-    });
+
+    const mainCharacter = getMainCharacter(participants);
+    const isMainSpeaking = line.speakerId === MAIN_CHARACTER_ID;
+
+    if (!isMainSpeaking) {
+        lastRemoteSpeaker = resolveSpeaker(participants, line.speakerId);
+    }
+
+    const remoteSpeaker = lastRemoteSpeaker;
+    const isRemoteSpeaking = !isMainSpeaking && remoteSpeaker != null;
+
+    if (mainCharacter) {
+        elements.portraitRow.appendChild(
+            createPortraitSlot(" radio-dialog-portrait-left", mainCharacter, isMainSpeaking),
+        );
+    }
+
+    elements.portraitRow.appendChild(
+        createPortraitSlot(" radio-dialog-portrait-right", remoteSpeaker, isRemoteSpeaking, {
+            empty: !remoteSpeaker,
+        }),
+    );
 
     elements.speakerName.textContent = line.speakerName;
     elements.lineText.textContent = line.text;
@@ -81,6 +120,7 @@ export function hideRadioDialog() {
 
     elements.overlay.style.display = "none";
     elements.portraitRow.innerHTML = "";
+    lastRemoteSpeaker = null;
 }
 
 function onAdvanceInput(e) {

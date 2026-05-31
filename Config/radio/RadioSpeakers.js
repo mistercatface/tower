@@ -12,4 +12,8 @@ export const radioSpeakers = {
         name: "Garbanzo",
         portrait: "Images/RadioPortraits/garbanzo.png",
     },
+    chickpea: {
+        name: "Chickpea",
+        portrait: "Images/RadioPortraits/chickpea.png",
+    },
 };

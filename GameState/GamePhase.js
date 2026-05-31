@@ -33,7 +33,8 @@ export function canRunWaveSpawning(state) {
     return state.phase !== GamePhase.MAP
         && state.phase !== GamePhase.REWARD
         && !state.isTransitioning
-        && !isMapTraveling(state);
+        && !isMapTraveling(state)
+        && !state.startNodeIntroActive;
 }
 
 /** Range and center for drawing combat rings / masks in world vs map space. */

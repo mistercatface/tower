@@ -487,9 +487,18 @@ canvas {
     align-items: center;
     gap: 6px;
     flex: 0 0 auto;
+    min-width: 96px;
     opacity: 0.45;
     filter: grayscale(0.35) brightness(0.75);
     transition: opacity 0.15s ease, filter 0.15s ease;
+}
+
+.radio-dialog-portrait-left {
+    align-items: flex-start;
+}
+
+.radio-dialog-portrait-right {
+    align-items: flex-end;
 }
 
 .radio-dialog-portrait-active {
@@ -497,20 +506,32 @@ canvas {
     filter: none;
 }
 
-.radio-dialog-portrait-img {
+.radio-dialog-portrait-frame {
     width: 96px;
     height: 96px;
-    object-fit: cover;
-    object-position: top center;
+    box-sizing: border-box;
     border: 2px solid #2a5c3a;
     background: #0a1a10;
-    image-rendering: pixelated;
-    image-rendering: crisp-edges;
+    overflow: hidden;
 }
 
-.radio-dialog-portrait-active .radio-dialog-portrait-img {
+.radio-dialog-portrait-active .radio-dialog-portrait-frame {
     border-color: #6fcf97;
     box-shadow: 0 0 12px rgba(108, 207, 151, 0.45);
+}
+
+.radio-dialog-portrait-empty .radio-dialog-portrait-frame {
+    background: rgba(4, 14, 8, 0.85);
+}
+
+.radio-dialog-portrait-img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top center;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
 }
 
 .radio-dialog-portrait-label {

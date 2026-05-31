@@ -228,6 +228,11 @@ export const StartBuildingStrategy = {
 export function getStartNodeLayout(px, py, cellSize) {
     const { offsetX, offsetY } = snapLayoutOrigin(px, py, GRID_COLS, GRID_ROWS, cellSize);
     const spawn = gridCellCenter(offsetX, offsetY, SPAWN_COL, SPAWN_ROW, cellSize);
+    const entrance = gridCellCenter(offsetX, offsetY, SPAWN_COL, BUILDING_ROWS - 1, cellSize);
+    const guardRow = BUILDING_ROWS + 3;
+    const guardLeft = gridCellCenter(offsetX, offsetY, SPAWN_COL - 2, guardRow, cellSize);
+    const guardRight = gridCellCenter(offsetX, offsetY, SPAWN_COL + 2, guardRow, cellSize);
+
     return {
         minX: offsetX,
         minY: offsetY,
@@ -236,5 +241,8 @@ export function getStartNodeLayout(px, py, cellSize) {
         spawnX: spawn.x,
         spawnY: spawn.y,
         spawnClearRadius: 72,
+        introTriggerX: entrance.x,
+        introTriggerY: entrance.y,
+        guardSpawns: [guardLeft, guardRight],
     };
 }

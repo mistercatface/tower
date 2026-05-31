@@ -8,6 +8,16 @@ export const radioConversations = {
             { speakerId: "brock", text: "Okay, I'm ready." },
         ],
     },
+    start_node_guards_chickpea_garbanzo: {
+        trigger: "start_node_guards",
+        oncePerRun: true,
+        lines: [
+            { speakerId: "chickpea", text: "Um, who are you?" },
+            { speakerId: "brock", text: "Hi, I'm Brock with the FDA. We're here for the surprise inspection. Which one of you is Garbanzo?" },
+            { speakerId: "garbanzo", text: "Which one do you think, holmes?" },
+            { speakerId: "chickpea", text: "Oh my god babe let's kill them." },
+        ],
+    },
     inspect_jacko_can_garbanzo: {
         trigger: "inspect:jacko_can",
         oncePerRun: true,
