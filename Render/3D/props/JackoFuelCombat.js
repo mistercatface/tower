@@ -2,7 +2,7 @@ import { isFaceTowardViewer, pointOnFrustum } from "../Projection3D.js";
 import { drawExtrudedRadial, drawRadialBand, RADIAL_SEGMENTS } from "../SolidDraw.js";
 import { drawImageQuad } from "../AffineTexture.js";
 import { getTexture } from "../TextureCache.js";
-import { JACKO_CAN, JACKO_LABEL_SRC } from "./JackoFuelCan.js";
+import { JACKO_CAN, JACKO_LABEL_SRC } from "../../../Config/props/JackoCan.js";
 
 function normalizeAngle(a) {
     while (a <= -Math.PI) a += Math.PI * 2;

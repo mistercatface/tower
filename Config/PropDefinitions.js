@@ -11,6 +11,7 @@ function prop(key, { spawn, ...rest }) {
 
 export const worldPropDefinitions = {
     barrel: prop("barrel", {
+        inspectKey: "jacko_can",
         hitBehavior: "explosive",
         radius: 8,
         isPushable: true,

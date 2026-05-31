@@ -1,19 +1,25 @@
+import { worldPropDefinitions } from "../../Config/PropDefinitions.js";
+import { propInspectDefinitions } from "../../Config/PropInspectDefinitions.js";
 import { registerPropInspect } from "../InspectRegistry.js";
-import {
-    drawJackoFuelBarrelInspect,
-    preloadJackoFuelLabel,
-    onJackoFuelLabelReady,
-} from "../3D/JackoFuelBarrel.js";
+import { getPropInspectRecipe } from "../3D/PropInspectRecipes.js";
 
-/** Wire all props that support tap-to-inspect. Add new registrations here. */
+/** Wire inspectable props from Config → recipes. No per-prop registration blocks. */
 export function registerInspectableProps() {
-    registerPropInspect("barrel", {
-        title: "JACKO FUEL",
-        preload: preloadJackoFuelLabel,
-        onReady: onJackoFuelLabelReady,
-        getInitialYaw: (pickup) => pickup.facing ?? 0,
-        draw(ctx, cx, cy, scale, yaw, pitch) {
-            drawJackoFuelBarrelInspect(ctx, cx, cy, scale, yaw, pitch);
-        },
-    });
+    for (const [pickupType, def] of Object.entries(worldPropDefinitions)) {
+        const inspectKey = def.inspectKey;
+        if (!inspectKey) continue;
+
+        const meta = propInspectDefinitions[inspectKey];
+        const recipe = getPropInspectRecipe(inspectKey);
+        if (!meta || !recipe) continue;
+
+        registerPropInspect(pickupType, {
+            title: meta.title,
+            tapPadding: meta.tapPadding,
+            preload: recipe.preload,
+            onReady: recipe.onReady,
+            getInitialYaw: (pickup) => pickup.facing ?? 0,
+            draw: recipe.draw,
+        });
+    }
 }

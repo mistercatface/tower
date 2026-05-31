@@ -9,6 +9,7 @@ const PICKUP_STRATEGY_DEFAULTS = {
     isPushable: false,
     renderMode: "3d",
     render3DKey: null,
+    inspectKey: null,
     isExplosive: false,
     laserTargetable: false,
     mass: 1,
