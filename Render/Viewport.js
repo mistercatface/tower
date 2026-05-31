@@ -96,4 +96,17 @@ export class Viewport {
             worldY <= this.y + halfH + limit
         );
     }
+
+    getWorldBounds(canvasWidth, canvasHeight, padding = 0) {
+        const w = canvasWidth ?? this.cx * 2;
+        const h = canvasHeight ?? this.cy * 2;
+        const wMin = this.screenToWorld(0, 0);
+        const wMax = this.screenToWorld(w, h);
+        return {
+            minX: Math.min(wMin.x, wMax.x) - padding,
+            minY: Math.min(wMin.y, wMax.y) - padding,
+            maxX: Math.max(wMin.x, wMax.x) + padding,
+            maxY: Math.max(wMin.y, wMax.y) + padding,
+        };
+    }
 }

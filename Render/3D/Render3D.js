@@ -198,6 +198,24 @@ export class Render3D {
         }
     }
 
+    getViewQueryBounds(viewport, state) {
+        const screenW = state.canvasBounds?.width ?? viewport.cx * 2;
+        const screenH = state.canvasBounds?.height ?? viewport.cy * 2;
+        const halfW = viewport.cx / viewport.zoom;
+        const halfH = viewport.cy / viewport.zoom;
+        const pad = Math.max(halfW, halfH) + 40;
+        return viewport.getWorldBounds(screenW, screenH, pad);
+    }
+
+    clipToViewport(ctx, viewport, state) {
+        const screenW = state.canvasBounds?.width ?? viewport.cx * 2;
+        const screenH = state.canvasBounds?.height ?? viewport.cy * 2;
+        const { minX, minY, maxX, maxY } = viewport.getWorldBounds(screenW, screenH, 0);
+        ctx.beginPath();
+        ctx.rect(minX, minY, maxX - minX, maxY - minY);
+        ctx.clip();
+    }
+
     draw3DBuildings(ctx, state, viewport) {
         const px = state.player.x;
         const py = state.player.y;
@@ -206,29 +224,42 @@ export class Render3D {
 
         ctx.save();
 
+        if (viewport) {
+            this.clipToViewport(ctx, viewport, state);
+        }
+
         const visibleObjects = [];
-        const candidateWalls = state.wallSpatialHash ? state.wallSpatialHash.collectInBounds(px - 1500, py - 1500, px + 1500, py + 1500) : state.walls;
+        let candidateWalls;
+
+        if (viewport) {
+            const { minX, minY, maxX, maxY } = this.getViewQueryBounds(viewport, state);
+            candidateWalls = state.wallSpatialHash
+                ? state.wallSpatialHash.collectInBounds(minX, minY, maxX, maxY)
+                : state.walls;
+        } else {
+            candidateWalls = state.wallSpatialHash
+                ? state.wallSpatialHash.collectInBounds(px - 1500, py - 1500, px + 1500, py + 1500)
+                : state.walls;
+        }
+
         for (let i = 0; i < candidateWalls.length; i++) {
             const seg = candidateWalls[i];
             if (seg.isDead) continue;
             const distSq = (seg.x - px) ** 2 + (seg.y - py) ** 2;
-            if (distSq <= 2250000) {
-                seg._distSq = distSq;
-                seg._renderType = "wall";
-                visibleObjects.push(seg);
-            }
+            seg._distSq = distSq;
+            seg._renderType = "wall";
+            visibleObjects.push(seg);
         }
 
         if (state.pickups) {
             for (let i = 0; i < state.pickups.length; i++) {
                 const p = state.pickups[i];
                 if (p.isDead || p.strategy?.renderMode !== "3d") continue;
+                if (viewport && typeof p.isVisible === "function" && !p.isVisible(viewport)) continue;
                 const distSq = (p.x - px) ** 2 + (p.y - py) ** 2;
-                if (distSq <= 2250000) {
-                    p._distSq = distSq;
-                    p._renderType = p.getRender3DKey();
-                    visibleObjects.push(p);
-                }
+                p._distSq = distSq;
+                p._renderType = p.getRender3DKey();
+                visibleObjects.push(p);
             }
         }
 
