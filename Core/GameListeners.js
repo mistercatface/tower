@@ -7,9 +7,11 @@ import { isCombatOrReward } from "../GameState/GamePhase.js";
 import { registerPauseListeners } from "./PauseManager.js";
 import { FloatingText } from "../Render/FloatingText.js";
 import { nextUpgradeCost } from "../Config/configHelpers.js";
+import { registerRadioListeners } from "../Radio/RadioDialogController.js";
 
 export function registerAllListeners(eventBus, pauseManager) {
     FloatingText.registerEventListener(eventBus);
+    registerRadioListeners(eventBus);
     registerGameListeners(eventBus, pauseManager);
 }
 

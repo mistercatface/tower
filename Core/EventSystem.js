@@ -163,4 +163,16 @@ export function emitGameRestart() {
     events.emit(Events.GAME_RESTART);
 }
 
+export function startRadioConversation(conversationId, onComplete) {
+    events.emit(Events.RADIO_START, { conversationId, onComplete });
+}
+
+export function advanceRadioLine() {
+    events.emit(Events.RADIO_ADVANCE);
+}
+
+export function endRadioConversation() {
+    events.emit(Events.RADIO_END);
+}
+
 export { Events } from "./EventNames.js";

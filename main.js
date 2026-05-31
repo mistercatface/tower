@@ -2,7 +2,8 @@ import { state } from "./GameState/GameState.js";
 import { createUpgrades, createBaseUpgrades } from "./Progression/Upgrades.js";
 import { initializeSaveSystem, loadProgress } from "./Progression/Storage.js";
 import { initUI, registerUiEventListeners } from "./UI/UI.js";
-import { events, requestUiUpdate, requestUiHudUpdate, showGameOver, hideGameOver } from "./Core/EventSystem.js";
+import { registerRadioUiListeners } from "./UI/RadioDialogUI.js";
+import { events, requestUiUpdate, requestUiHudUpdate, showGameOver, hideGameOver, startRadioConversation } from "./Core/EventSystem.js";
 import { registerAllListeners } from "./Core/GameListeners.js";
 import { PauseManager } from "./Core/PauseManager.js";
 import { Renderer } from "./Render/Render.js";
@@ -47,7 +48,9 @@ function resetGame() {
     hideGameOver();
     viewport.snapTo(0, 0);
     fsm.transition("map_transition");
-    ProgressionManager.setupNewRunAbilities(state, upgrades);
+    startRadioConversation("run_start_barry_brock", () => {
+        ProgressionManager.setupNewRunAbilities(state, upgrades);
+    });
     requestUiUpdate();
     requestAnimationFrame(loop);
 }
@@ -56,6 +59,7 @@ events.setContext({ state, upgrades, viewport, fsm, resetGame });
 events.warnOnMissingListeners = true;
 registerAllListeners(events, pauseManager);
 registerUiEventListeners(events);
+registerRadioUiListeners(events);
 
 function didPlayerStateChange() {
     if (state.player.health !== uiSnapshot.health || state.player.isMoving !== uiSnapshot.isMoving) {

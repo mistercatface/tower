@@ -28,4 +28,9 @@ export const Events = {
     UI_SET_UPGRADE_TAB: "ui:setUpgradeTab",
     UI_SET_STATS_SUB_TAB: "ui:setStatsSubTab",
     GAME_RESTART: "game:restart",
+    RADIO_START: "radio:start",
+    RADIO_ADVANCE: "radio:advance",
+    RADIO_END: "radio:end",
+    UI_SHOW_RADIO: "ui:showRadio",
+    UI_HIDE_RADIO: "ui:hideRadio",
 };

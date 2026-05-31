@@ -104,6 +104,7 @@ export class GameState {
         this.debugMode = false;
         this.spawnRadius = 950;
         this.pendingPerkPicks = [];
+        this.radioSeenThisRun = {};
 
         this.wavesCompleted = 0;
         this.isTransitioning = false;
