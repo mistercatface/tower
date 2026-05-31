@@ -14,9 +14,7 @@ export class NavigationService {
     }
 
     getNavState(entity) {
-        if (!this.navStates.has(entity)) {
-            this.navStates.set(entity, createNavState());
-        }
+        if (!this.navStates.has(entity)) this.navStates.set(entity, createNavState());
         return this.navStates.get(entity);
     }
 
@@ -37,103 +35,57 @@ export class NavigationService {
     steerTo(entity, targetX, targetY, profile, flowFieldGrid = null) {
         const settings = navigationSettings;
         const grid = flowFieldGrid ?? this.flowFieldGrid;
-
-        if (
-            entity.targetGridCol !== null
-            && entity.targetGridRow !== null
-            && grid?.entityIntersectsCell(entity.x, entity.y, entity.radius, entity.targetGridCol, entity.targetGridRow)
-        ) {
+        if (entity.targetGridCol !== null && entity.targetGridRow !== null && grid?.entityIntersectsCell(entity.x, entity.y, entity.radius, entity.targetGridCol, entity.targetGridRow)) {
             entity.desiredX = 0;
             entity.desiredY = 0;
             this._setDebug(entity, { mode: "arrived", dist: 0, replanReason: null, pathLen: 0 });
             return;
         }
-
         const dist = Math.hypot(entity.x - targetX, entity.y - targetY);
-
         if (dist < settings.arrivalDistance) {
             entity.desiredX = 0;
             entity.desiredY = 0;
             this._setDebug(entity, { mode: "arrived", dist, replanReason: null, pathLen: 0 });
             return;
         }
-
         const useHpa = this.hierarchicalNavigator && dist > profile.hpaThreshold;
         const navState = this.getNavState(entity);
         let debug;
-
         if (useHpa) {
-            debug = steerViaHpa(
-                entity,
-                targetX,
-                targetY,
-                this.hierarchicalNavigator,
-                navState,
-                profile,
-                settings,
-                this.flowFieldGrid.obstacleGrid,
-                this.obstacleGeneration
-            );
+            debug = steerViaHpa(entity, targetX, targetY, this.hierarchicalNavigator, navState, profile, settings, this.flowFieldGrid.obstacleGrid, this.obstacleGeneration);
         } else {
             navState.path = null;
-            const mode = steerViaFlowField(
-                entity,
-                targetX,
-                targetY,
-                this.flowFieldGrid,
-                profile.flowField
-            );
+            const mode = steerViaFlowField(entity, targetX, targetY, this.flowFieldGrid, profile.flowField);
             debug = { mode, replanReason: null, pathLen: 0 };
         }
-
         entity.hpaPath = navState.path;
         this._setDebug(entity, { ...debug, dist });
-
         if (entity.isMoving) {
             entity.targetNodeX = entity.x + entity.desiredX * settings.targetNodeLookahead;
             entity.targetNodeY = entity.y + entity.desiredY * settings.targetNodeLookahead;
         }
     }
 
-    updateFlowField({
-        playerX,
-        playerY,
-        playerTargetX = null,
-        playerTargetY = null,
-        previousGridPos = null,
-        recenterThreshold = navigationSettings.recenterThreshold,
-    }) {
+    updateFlowField({ playerX, playerY, playerTargetX = null, playerTargetY = null, previousGridPos = null, recenterThreshold = navigationSettings.recenterThreshold }) {
         const grid = this.flowFieldGrid;
         const newGridPos = grid.worldToGrid(playerX, playerY);
-        const distToCenter = Math.max(
-            Math.abs(playerX - grid.centerX),
-            Math.abs(playerY - grid.centerY)
-        );
-
+        const distToCenter = Math.max(Math.abs(playerX - grid.centerX), Math.abs(playerY - grid.centerY));
         if (distToCenter > recenterThreshold) {
             grid.shiftCenter(playerX, playerY, playerX, playerY, playerTargetX, playerTargetY);
-        } else if (
-            previousGridPos
-            && (previousGridPos.col !== newGridPos.col || previousGridPos.row !== newGridPos.row)
-        ) {
+        } else if (previousGridPos && (previousGridPos.col !== newGridPos.col || previousGridPos.row !== newGridPos.row)) {
             grid.buildFlowField(playerX, playerY);
         }
-
         return newGridPos;
     }
 
     onObstaclesChanged(damageBounds, playerX, playerY, playerTargetX = null, playerTargetY = null) {
-        if (this.hierarchicalNavigator && damageBounds) {
-            this.hierarchicalNavigator.rebuildDamagedArea(damageBounds);
-        }
+        if (this.hierarchicalNavigator && damageBounds) this.hierarchicalNavigator.rebuildDamagedArea(damageBounds);
         this.flowFieldGrid.refresh(playerX, playerY, playerTargetX, playerTargetY);
         this.obstacleGeneration += 1;
     }
 
     rebuildNavigationGraph(playerX, playerY, playerTargetX = null, playerTargetY = null) {
-        if (this.hierarchicalNavigator) {
-            this.hierarchicalNavigator.rebuildRegions();
-        }
+        if (this.hierarchicalNavigator) this.hierarchicalNavigator.rebuildRegions();
         this.flowFieldGrid.refresh(playerX, playerY, playerTargetX, playerTargetY);
         this.obstacleGeneration += 1;
     }
