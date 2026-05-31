@@ -3,7 +3,7 @@ import { createUpgrades, createBaseUpgrades } from "./Progression/Upgrades.js";
 import { initializeSaveSystem, loadProgress } from "./Progression/Storage.js";
 import { initUI, registerUiEventListeners } from "./UI/UI.js";
 import { registerRadioUiListeners } from "./UI/RadioDialogUI.js";
-import { events, requestUiUpdate, requestUiHudUpdate, showGameOver, hideGameOver, startRadioConversation } from "./Core/EventSystem.js";
+import { events, requestUiUpdate, requestUiHudUpdate, showGameOver, hideGameOver, fireRadioTrigger } from "./Core/EventSystem.js";
 import { registerAllListeners } from "./Core/GameListeners.js";
 import { PauseManager } from "./Core/PauseManager.js";
 import { Renderer } from "./Render/Render.js";
@@ -42,15 +42,12 @@ const pauseManager = new PauseManager(state);
 
 function resetGame() {
     StatsManager.resetRun(state, upgrades);
-
     initializeSaveSystem(state);
     pauseManager.reset();
     hideGameOver();
     viewport.snapTo(0, 0);
     fsm.transition("map_transition");
-    startRadioConversation("run_start_barry_brock", () => {
-        ProgressionManager.setupNewRunAbilities(state, upgrades);
-    });
+    fireRadioTrigger("run_start", () => { ProgressionManager.setupNewRunAbilities(state, upgrades); });
     requestUiUpdate();
     requestAnimationFrame(loop);
 }

@@ -1,6 +1,22 @@
 import { radioSpeakers } from "../Config/radio/RadioSpeakers.js";
 import { radioConversations } from "../Config/radio/RadioConversations.js";
 
+/** @type {Map<string, string[]>} */
+const conversationsByTrigger = new Map();
+
+for (const [conversationId, conversation] of Object.entries(radioConversations)) {
+    const trigger = conversation.trigger;
+    if (!trigger) continue;
+    if (!conversationsByTrigger.has(trigger)) {
+        conversationsByTrigger.set(trigger, []);
+    }
+    conversationsByTrigger.get(trigger).push(conversationId);
+}
+
+export function getConversationIdsForTrigger(trigger) {
+    return conversationsByTrigger.get(trigger) ?? [];
+}
+
 export function getConversation(conversationId) {
     const conversation = radioConversations[conversationId];
     if (!conversation) {

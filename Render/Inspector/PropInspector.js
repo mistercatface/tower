@@ -1,4 +1,4 @@
-import { requestGamePause, requestGameResume, requestUiUpdate } from "../../Core/EventSystem.js";
+import { fireRadioTrigger, requestGamePause, requestGameResume, requestUiUpdate } from "../../Core/EventSystem.js";
 
 const INSPECTOR_PAUSE_REASON = "inspector";
 const BASE_SCALE_DIVISOR = 235;
@@ -82,6 +82,9 @@ export class PropInspector {
         requestUiUpdate();
         this.resize();
         this.render();
+
+        const inspectKey = pickup.strategy?.inspectKey;
+        if (inspectKey) fireRadioTrigger(`inspect:${inspectKey}`);
     }
 
     close() {

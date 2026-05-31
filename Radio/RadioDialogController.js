@@ -1,5 +1,5 @@
 import { events, Events, requestGamePause, requestGameResume } from "../Core/EventSystem.js";
-import { resolveConversation } from "./RadioDialogRegistry.js";
+import { getConversationIdsForTrigger, resolveConversation } from "./RadioDialogRegistry.js";
 
 const PAUSE_REASON = "radio";
 
@@ -31,18 +31,24 @@ function finishSession() {
     if (onComplete) onComplete();
 }
 
+function shouldSkipConversation(conversationId, state) {
+    const resolved = resolveConversation(conversationId);
+    if (!resolved) return true;
+    return resolved.oncePerRun && state?.radioSeenThisRun?.[conversationId];
+}
+
 function startSession(conversationId, onComplete, state) {
     if (isActive()) {
         console.warn("[Radio] Already in a conversation");
-        return;
+        return false;
     }
 
     const resolved = resolveConversation(conversationId);
-    if (!resolved) return;
+    if (!resolved) return false;
 
-    if (resolved.oncePerRun && state?.radioSeenThisRun?.[conversationId]) {
+    if (shouldSkipConversation(conversationId, state)) {
         if (onComplete) onComplete();
-        return;
+        return false;
     }
 
     session = {
@@ -59,6 +65,17 @@ function startSession(conversationId, onComplete, state) {
 
     requestGamePause(PAUSE_REASON);
     showCurrentLine();
+    return true;
+}
+
+export function fireRadioTrigger(trigger, onComplete, state) {
+    for (const conversationId of getConversationIdsForTrigger(trigger)) {
+        if (shouldSkipConversation(conversationId, state)) continue;
+        if (startSession(conversationId, onComplete, state)) return true;
+    }
+
+    if (onComplete) onComplete();
+    return false;
 }
 
 function advanceSession() {
@@ -76,6 +93,10 @@ function advanceSession() {
 export function registerRadioListeners(eventBus) {
     eventBus.on(Events.RADIO_START, ({ conversationId, onComplete, state }) => {
         startSession(conversationId, onComplete, state);
+    });
+
+    eventBus.on(Events.RADIO_TRIGGER, ({ trigger, onComplete, state }) => {
+        fireRadioTrigger(trigger, onComplete, state);
     });
 
     eventBus.on(Events.RADIO_ADVANCE, () => {
