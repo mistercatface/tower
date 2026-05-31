@@ -4,7 +4,7 @@ import { createUpgradeLevels, resetUpgradeLevels } from "../Entities/CombatantSt
 import { spawnFloatingText } from "../Core/EventSystem.js";
 import { MapGenerator } from "../Generator/MapGenerator.js";
 import { rollPlayerStartLoadout } from "../Combat/weaponLoadout.js";
-import { spawnInitialPickups } from "../Entities/Pickup.js";
+import { spawnInitialPickups, spawnStartNodePickups } from "../Entities/Pickup.js";
 
 export class StatsManager {
     static initUpgradesList(state, upgradeList) {
@@ -114,7 +114,11 @@ export class StatsManager {
 
         for (const node of state.mapNodes) {
             const coords = state.getNodeCombatCoords(node);
-            spawnInitialPickups(state, coords.x, coords.y);
+            if (node.id === 0) {
+                spawnStartNodePickups(state, coords.x, coords.y);
+            } else {
+                spawnInitialPickups(state, coords.x, coords.y);
+            }
         }
     }
 }

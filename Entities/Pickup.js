@@ -6,6 +6,7 @@ import { transitionEntity } from "./EntityFsm.js";
 import { pickupStates } from "./PickupStates.js";
 import { getProjectileDamage } from "../Combat/impactDamage.js";
 import { resolvePickupInspect } from "../Render/Inspector/InspectRegistry.js";
+import { getStartNodeLayout } from "../Generator/StartNodeBuilding.js";
 
 const PICKUP_STRATEGY_DEFAULTS = {
     isPushable: false,
@@ -56,7 +57,7 @@ const worldPropStrategies = Object.fromEntries(
 );
 
 export class Pickup extends Entity {
-    constructor(x, y, type) {
+    constructor(x, y, type, facing = null) {
         super(x, y, 0, false);
         this.type = type;
         this.strategy = worldPropStrategies[type];
@@ -65,7 +66,7 @@ export class Pickup extends Entity {
         this.vy = 0;
         this.mass = this.strategy.mass;
         this.zIndex = 10;
-        this.facing = Math.random() * Math.PI * 2;
+        this.facing = facing ?? Math.random() * Math.PI * 2;
         if (type === "crate") {
             this.faceLabelVariants = Object.fromEntries(CRATE_LABEL_FACES.map((face) => [face, Math.floor(Math.random() * CRATE_LABEL_VARIANTS.length)]));
         }
@@ -133,15 +134,107 @@ export function spawnPickup(state, playerX, playerY, minRadius, maxRadius, type)
         const dist = minRadius + Math.random() * (maxRadius - minRadius);
         const testX = playerX + Math.cos(angle) * dist;
         const testY = playerY + Math.sin(angle) * dist;
-        const gridPos = grid.worldToGrid(testX, testY);
-        if (gridPos.col >= 0 && gridPos.col < grid.cols && gridPos.row >= 0 && gridPos.row < grid.rows) {
-            const idx = gridPos.row * grid.cols + gridPos.col;
-            if (grid.grid[idx] !== 1) {
-                const { x: centerX, y: centerY } = grid.gridToWorld(gridPos.col, gridPos.row);
-                state.pickups.push(new Pickup(centerX, centerY, type));
-                spawned = true;
-            }
+        if (trySpawnPickupAt(state, testX, testY, type)) {
+            spawned = true;
         }
+    }
+}
+
+function trySpawnPickupAt(state, x, y, type) {
+    const grid = state.obstacleGrid;
+    const gridPos = grid.worldToGrid(x, y);
+    if (gridPos.col < 0 || gridPos.col >= grid.cols || gridPos.row < 0 || gridPos.row >= grid.rows) {
+        return false;
+    }
+    const idx = gridPos.row * grid.cols + gridPos.col;
+    if (grid.grid[idx] === 1) return false;
+    const { x: centerX, y: centerY } = grid.gridToWorld(gridPos.col, gridPos.row);
+    state.pickups.push(new Pickup(centerX, centerY, type));
+    return true;
+}
+
+function shuffleInPlace(items) {
+    for (let i = items.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [items[i], items[j]] = [items[j], items[i]];
+    }
+}
+
+function touchesWallCell(grid, cols, rows, col, row) {
+    for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nc = col + dc;
+        const nr = row + dr;
+        if (nc < 0 || nc >= cols || nr < 0 || nr >= rows) continue;
+        if (grid[nr * cols + nc] === 1) return true;
+    }
+    return false;
+}
+
+/** Axis-aligned facing so crate side faces sit flush on cardinal walls (facing=0 aligns box to world axes). */
+function facingForWallCell(grid, cols, rows, col, row) {
+    return 0;
+}
+
+function nudgeTowardWall(x, y, grid, cols, rows, col, row, cellSize) {
+    const nudge = cellSize * 0.2;
+    let nx = x;
+    let ny = y;
+    if (row > 0 && grid[(row - 1) * cols + col] === 1) ny -= nudge;
+    if (row < rows - 1 && grid[(row + 1) * cols + col] === 1) ny += nudge;
+    if (col > 0 && grid[row * cols + (col - 1)] === 1) nx -= nudge;
+    if (col < cols - 1 && grid[row * cols + (col + 1)] === 1) nx += nudge;
+    return { x: nx, y: ny };
+}
+
+function collectWallAdjacentCells(state, layout) {
+    const grid = state.obstacleGrid;
+    const minGrid = grid.worldToGrid(layout.minX, layout.minY);
+    const maxGrid = grid.worldToGrid(layout.maxX, layout.maxY);
+    const startCol = Math.max(0, minGrid.col);
+    const endCol = Math.min(grid.cols - 1, maxGrid.col);
+    const startRow = Math.max(0, minGrid.row);
+    const endRow = Math.min(grid.rows - 1, maxGrid.row);
+    const cells = [];
+
+    for (let row = startRow; row <= endRow; row++) {
+        for (let col = startCol; col <= endCol; col++) {
+            const idx = row * grid.cols + col;
+            if (grid.grid[idx] !== 0) continue;
+            if (!touchesWallCell(grid.grid, grid.cols, grid.rows, col, row)) continue;
+            const { x, y } = grid.gridToWorld(col, row);
+            const nudged = nudgeTowardWall(x, y, grid.grid, grid.cols, grid.rows, col, row, grid.cellSize);
+            if (Math.hypot(nudged.x - layout.spawnX, nudged.y - layout.spawnY) < layout.spawnClearRadius) continue;
+            cells.push({
+                col,
+                row,
+                x: nudged.x,
+                y: nudged.y,
+                facing: facingForWallCell(grid.grid, grid.cols, grid.rows, col, row),
+            });
+        }
+    }
+
+    return cells;
+}
+
+export function spawnStartNodePickups(state, playerX, playerY) {
+    const layout = getStartNodeLayout(playerX, playerY, state.obstacleGrid.cellSize);
+    const wallCells = collectWallAdjacentCells(state, layout);
+    shuffleInPlace(wallCells);
+
+    const crateCount = Math.min(50 + Math.floor(Math.random() * 26), wallCells.length);
+
+    for (let i = 0; i < crateCount; i++) {
+        const cell = wallCells[i];
+        state.pickups.push(new Pickup(cell.x, cell.y, "crate", cell.facing));
+    }
+
+    const barrelCount = 20 + Math.floor(Math.random() * 11);
+    const barrelsToPlace = Math.min(barrelCount, wallCells.length - crateCount);
+
+    for (let i = 0; i < barrelsToPlace; i++) {
+        const cell = wallCells[crateCount + i];
+        state.pickups.push(new Pickup(cell.x, cell.y, "barrel"));
     }
 }
 

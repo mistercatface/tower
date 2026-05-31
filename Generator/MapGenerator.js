@@ -1,5 +1,6 @@
 import { Segment } from "../Entities/Wall.js";
 import { GeneratorStrategies } from "./GeneratorStrategies.js";
+import { StartBuildingStrategy } from "./StartNodeBuilding.js";
 import { WorldObstacleGrid } from "../Spatial/World/ObstacleGrid.js";
 import { FlowFieldGrid } from "../Spatial/Navigation/FlowFieldGrid.js";
 import { mapSettings, gridSettings, THEME_COLORS, mapGenerationSettings } from "../Config/Config.js";
@@ -164,8 +165,7 @@ export class MapGenerator {
 
         const startNode = state.getMapNode(0);
         if (startNode) {
-            const strategy = STRATEGIES[Math.floor(Math.random() * STRATEGIES.length)];
-            const theme = THEME_COLORS[Math.floor(Math.random() * THEME_COLORS.length)];
+            const theme = THEME_COLORS[0];
             const coords = state.getNodeCombatCoords(startNode);
 
             tempFlowFieldGrid.centerX = coords.x;
@@ -174,14 +174,14 @@ export class MapGenerator {
                 walls: [],
                 obstacleGrid: tempObstacleGrid,
                 flowFieldGrid: tempFlowFieldGrid,
-                waveManager: state.waveManager
+                waveManager: state.waveManager,
             };
 
-            GeneratorStrategies[strategy].generate(mockState, coords.x, coords.y);
+            StartBuildingStrategy.generate(mockState, coords.x, coords.y);
 
             startNode.wallsData = serializeWalls(mockState.walls);
             startNode.wallTheme = theme;
-            startNode.strategy = strategy;
+            startNode.strategy = "StartBuilding";
         }
 
         const numLayers = mapSettings.numLayers;

@@ -1,4 +1,5 @@
 import { Segment, buildArcWall } from "../Entities/Wall.js";
+import { StartBuildingStrategy } from "./StartNodeBuilding.js";
 
 function generateMaze(state, px, py, config = {}) {
     const {
@@ -363,6 +364,7 @@ const DiamondStrategy = {
 }
 
 export const GeneratorStrategies = {
+    StartBuildingStrategy,
     MazeStrategy,
     Maze2Strategy,
     DenseMazeStrategy,
