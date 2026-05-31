@@ -4,9 +4,8 @@ export const radioConversations = {
         trigger: "run_start",
         oncePerRun: true,
         lines: [
-            { speakerId: "barry", text: "Brock, you copy? Tower uplink is live." },
-            { speakerId: "brock", text: "Loud and clear. Try not to trip the alarms this time." },
-            { speakerId: "barry", text: "No promises. Let's move." },
+            { speakerId: "barry", text: "Okay Brock, I'm letting you take the lead on this one." },
+            { speakerId: "brock", text: "Okay, I'm ready." },
         ],
     },
 };

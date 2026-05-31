@@ -484,23 +484,12 @@ canvas {
 .radio-dialog-portrait-slot {
     display: flex;
     flex-direction: column;
+    align-items: center;
     gap: 6px;
     flex: 0 0 auto;
     opacity: 0.45;
     filter: grayscale(0.35) brightness(0.75);
     transition: opacity 0.15s ease, filter 0.15s ease;
-}
-
-.radio-dialog-portrait-left {
-    align-items: flex-start;
-}
-
-.radio-dialog-portrait-right {
-    align-items: flex-end;
-}
-
-.radio-dialog-portrait-center {
-    align-items: center;
 }
 
 .radio-dialog-portrait-active {
@@ -525,10 +514,12 @@ canvas {
 }
 
 .radio-dialog-portrait-label {
+    width: 100%;
     font-size: 11px;
     color: #8fbc9a;
     letter-spacing: 0.06em;
     text-transform: uppercase;
+    text-align: center;
 }
 
 .radio-dialog-portrait-active .radio-dialog-portrait-label {
