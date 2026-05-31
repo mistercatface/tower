@@ -1,17 +1,33 @@
 /**
- * Shared cylindrical quad tessellation for inspect view (body + label).
+ * Cylindrical geometry and quad tessellation for inspect view.
  */
 import {
+    vec3,
     transformPoint,
     projectPoint,
     faceVisible,
     triangleNormal,
     averageDepth,
 } from "./core/Mesh3D.js";
-import { bodyRadiusAtY } from "./CylinderMesh.js";
 
 export function cylinderPoint(y, angle, radius) {
-    return { x: Math.cos(angle) * radius, y, z: Math.sin(angle) * radius };
+    return vec3(Math.cos(angle) * radius, y, Math.sin(angle) * radius);
+}
+
+export function bodyRadiusAtY(y, halfHeight, bodyRadius, rings) {
+    if (!rings?.length) return bodyRadius;
+    const sorted = [...rings].sort((a, b) => a.y - b.y);
+    if (y <= sorted[0].y) return sorted[0].radius;
+    if (y >= sorted[sorted.length - 1].y) return sorted[sorted.length - 1].radius;
+    for (let i = 0; i < sorted.length - 1; i++) {
+        const lo = sorted[i];
+        const hi = sorted[i + 1];
+        if (y >= lo.y && y <= hi.y) {
+            const t = (y - lo.y) / (hi.y - lo.y);
+            return lo.radius + (hi.radius - lo.radius) * t;
+        }
+    }
+    return bodyRadius;
 }
 
 export function inflateQuad(d0, d1, d2, d3, px) {
@@ -38,6 +54,14 @@ export function drawSolidQuad(ctx, d0, d1, d2, d3, color, bleedPx = 0) {
     ctx.lineTo(p3.x, p3.y);
     ctx.closePath();
     ctx.fill();
+}
+
+/** Map normalized label band coords (0–1) to model-space Y. */
+export function labelBandYRange(halfHeight, y0, y1) {
+    return {
+        yBot: -halfHeight + halfHeight * 2 * y0,
+        yTop: -halfHeight + halfHeight * 2 * y1,
+    };
 }
 
 /**
@@ -71,14 +95,13 @@ export function tessellateCylinderQuads({
     };
 
     const cells = [];
-    const halfSpanAngle = halfSpan;
 
     for (let ri = 0; ri < radialSegments; ri++) {
         for (let sri = 0; sri < subRadial; sri++) {
             const u0 = (ri + sri / subRadial) / radialSegments;
             const u1 = (ri + (sri + 1) / subRadial) / radialSegments;
-            const a0 = angleCenter - halfSpanAngle + u0 * angleSpan;
-            const a1 = angleCenter - halfSpanAngle + u1 * angleSpan;
+            const a0 = angleCenter - halfSpan + u0 * angleSpan;
+            const a1 = angleCenter - halfSpan + u1 * angleSpan;
 
             for (let vi = 0; vi < verticalSegments; vi++) {
                 for (let svi = 0; svi < subVertical; svi++) {
@@ -87,16 +110,11 @@ export function tessellateCylinderQuads({
                     const yt = yTop + (yBot - yTop) * v0;
                     const yb = yTop + (yBot - yTop) * v1;
 
-                    const rTop0 = resolveRadius(yt);
-                    const rTop1 = resolveRadius(yt);
-                    const rBot0 = resolveRadius(yb);
-                    const rBot1 = resolveRadius(yb);
-
                     const model = [
-                        cylinderPoint(yt, a0, rTop0),
-                        cylinderPoint(yt, a1, rTop1),
-                        cylinderPoint(yb, a1, rBot1),
-                        cylinderPoint(yb, a0, rBot0),
+                        cylinderPoint(yt, a0, resolveRadius(yt)),
+                        cylinderPoint(yt, a1, resolveRadius(yt)),
+                        cylinderPoint(yb, a1, resolveRadius(yb)),
+                        cylinderPoint(yb, a0, resolveRadius(yb)),
                     ];
 
                     const view = model.map((p) => transformPoint(p, yaw, pitch));

@@ -1,6 +1,5 @@
 import { renderInspectMesh } from "../MeshRenderer.js";
-import { drawInspectCylindricalBody } from "../CylinderInspectBody.js";
-import { drawInspectCylindricalLabel } from "../CylinderInspectLabel.js";
+import { drawInspectCylindricalBody, drawInspectCylindricalLabel } from "../CylinderInspect.js";
 import { getSodaCanRings } from "../CylinderMesh.js";
 import { getTexture, loadTexture, onTextureReady } from "../core/TextureCache.js";
 
@@ -27,35 +26,30 @@ export function createLabeledCanInspect(canConfig, buildMesh) {
             onTextureReady(labelSrc, fn);
         },
         draw(ctx, cx, cy, scale, yaw, pitch) {
-            const mesh = buildMesh();
-            const rings = getSodaCanRings(halfHeight, bodyRadius);
+            const surface = { halfHeight, bodyRadius, rings: getSodaCanRings(halfHeight, bodyRadius) };
+            const { radialSegments, verticalSegments, y0, y1, angleCenter, angleSpan } = label;
 
             drawInspectCylindricalBody(ctx, cx, cy, scale, yaw, pitch, {
-                halfHeight,
-                bodyRadius,
-                rings,
+                ...surface,
                 color: colors.bodyInspect,
-                radialSegments: label.radialSegments * 2,
-                verticalSegments: label.verticalSegments * 2,
-                subRadial: 2,
-                subVertical: 2,
+                radialSegments: radialSegments * 2,
+                verticalSegments: verticalSegments * 2,
             });
 
-            renderInspectMesh(ctx, mesh, cx, cy, scale, yaw, pitch, {
+            renderInspectMesh(ctx, buildMesh(), cx, cy, scale, yaw, pitch, {
                 imageSmoothing: false,
                 flatShading: true,
             });
 
             drawInspectCylindricalLabel(ctx, cx, cy, scale, yaw, pitch, {
+                ...surface,
                 img: getTexture(labelSrc),
-                halfHeight,
-                bodyRadius,
-                y0: label.y0,
-                y1: label.y1,
-                angleCenter: label.angleCenter,
-                angleSpan: label.angleSpan,
-                radialSegments: label.radialSegments,
-                verticalSegments: label.verticalSegments,
+                y0,
+                y1,
+                angleCenter,
+                angleSpan,
+                radialSegments,
+                verticalSegments,
                 underlay: colors.bodyInspect,
             });
         },
