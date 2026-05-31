@@ -60,9 +60,10 @@ export class JackoFuelInspector {
 
     resize() {
         if (!this.canvas) return;
-        const rect = this.canvas.parentElement.getBoundingClientRect();
+        const rect = this.canvas.getBoundingClientRect();
         this.canvas.width = Math.floor(rect.width);
         this.canvas.height = Math.floor(rect.height);
+        if (this.isOpen()) this.render();
     }
 
     onPointerDown(e) {
@@ -102,12 +103,13 @@ export class JackoFuelInspector {
         this.ctx.fillRect(0, 0, w, h);
 
         const onFire = this.pickup.currentStateName === "on_fire";
-        drawJackoFuelBarrelInspect(this.ctx, w / 2, h * 0.5, 0.95, this.yaw, this.pitch, { onFire });
+        const scale = h / 235;
+        drawJackoFuelBarrelInspect(this.ctx, w / 2, h * 0.46, scale, this.yaw, this.pitch, { onFire });
 
         this.ctx.fillStyle = "rgba(255,255,255,0.55)";
         this.ctx.font = "11px monospace";
         this.ctx.textAlign = "center";
-        this.ctx.fillText("Drag to rotate", w / 2, h - 18);
+        this.ctx.fillText("Drag to rotate", w / 2, h - 14);
     }
 }
 

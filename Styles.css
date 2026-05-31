@@ -384,8 +384,9 @@ canvas {
 
 .jacko-fuel-inspector-panel {
     position: relative;
-    width: min(92vw, 380px);
-    height: min(72vw, 420px);
+    width: min(88vw, 340px);
+    max-height: 90vh;
+    aspect-ratio: 9 / 16;
     background: #11151c;
     border: 2px solid #F5F0E6;
     box-shadow: 0 0 24px rgba(245, 240, 230, 0.15);
@@ -396,11 +397,12 @@ canvas {
 
 .jacko-fuel-inspector-title {
     font-family: Impact, Haettenschweiler, "Arial Black", sans-serif;
-    font-size: 18px;
+    font-size: 17px;
     letter-spacing: 0.08em;
     color: #F5F0E6;
     text-align: center;
-    padding: 10px 36px 6px;
+    padding: 8px 36px 6px;
+    flex-shrink: 0;
     background: #1a1208;
     border-bottom: 1px solid rgba(245, 240, 230, 0.2);
 }
@@ -424,6 +426,7 @@ canvas {
 #jackoFuelCanvas {
     flex: 1;
     width: 100%;
+    min-height: 0;
     display: block;
     touch-action: none;
     cursor: grab;
