@@ -7,6 +7,8 @@ import { pickupStates } from "./PickupStates.js";
 import { getProjectileDamage } from "../Combat/impactDamage.js";
 import { resolvePickupInspect } from "../Render/Inspector/InspectRegistry.js";
 import { getStartNodeLayout } from "../Generator/StartNodeBuilding.js";
+import { placeAtWallClearance } from "../Spatial/Navigation/PathClearance.js";
+import { distanceToSegment } from "../Spatial/Geometry/WallGeometry.js";
 
 const PICKUP_STRATEGY_DEFAULTS = {
     isPushable: false,
@@ -170,23 +172,19 @@ function touchesWallCell(grid, cols, rows, col, row) {
     return false;
 }
 
-/** Axis-aligned facing so crate side faces sit flush on cardinal walls (facing=0 aligns box to world axes). */
-function facingForWallCell(grid, cols, rows, col, row) {
-    return 0;
+function isValidWallPropSpot(obstacleGrid, x, y, radius, layout) {
+    if (Math.hypot(x - layout.spawnX, y - layout.spawnY) < layout.spawnClearRadius) return false;
+    if (obstacleGrid.isBlockedWorld(x, y)) return false;
+
+    const walls = obstacleGrid.getNearbySegments({ x, y, radius: radius + 48 });
+    for (const wall of walls) {
+        if (wall.isDead) continue;
+        if (distanceToSegment(wall, x, y) < radius - 0.5) return false;
+    }
+    return true;
 }
 
-function nudgeTowardWall(x, y, grid, cols, rows, col, row, cellSize) {
-    const nudge = cellSize * 0.2;
-    let nx = x;
-    let ny = y;
-    if (row > 0 && grid[(row - 1) * cols + col] === 1) ny -= nudge;
-    if (row < rows - 1 && grid[(row + 1) * cols + col] === 1) ny += nudge;
-    if (col > 0 && grid[row * cols + (col - 1)] === 1) nx -= nudge;
-    if (col < cols - 1 && grid[row * cols + (col + 1)] === 1) nx += nudge;
-    return { x: nx, y: ny };
-}
-
-function collectWallAdjacentCells(state, layout) {
+function collectWallAdjacentCells(state, layout, propRadius) {
     const grid = state.obstacleGrid;
     const minGrid = grid.worldToGrid(layout.minX, layout.minY);
     const maxGrid = grid.worldToGrid(layout.maxX, layout.maxY);
@@ -195,21 +193,28 @@ function collectWallAdjacentCells(state, layout) {
     const startRow = Math.max(0, minGrid.row);
     const endRow = Math.min(grid.rows - 1, maxGrid.row);
     const cells = [];
+    const seen = new Set();
 
     for (let row = startRow; row <= endRow; row++) {
         for (let col = startCol; col <= endCol; col++) {
             const idx = row * grid.cols + col;
             if (grid.grid[idx] !== 0) continue;
             if (!touchesWallCell(grid.grid, grid.cols, grid.rows, col, row)) continue;
-            const { x, y } = grid.gridToWorld(col, row);
-            const nudged = nudgeTowardWall(x, y, grid.grid, grid.cols, grid.rows, col, row, grid.cellSize);
-            if (Math.hypot(nudged.x - layout.spawnX, nudged.y - layout.spawnY) < layout.spawnClearRadius) continue;
+
+            const seed = grid.gridToWorld(col, row);
+            const spot = placeAtWallClearance(grid, seed.x, seed.y, propRadius);
+            if (!isValidWallPropSpot(grid, spot.x, spot.y, propRadius, layout)) continue;
+
+            const resolvedGrid = grid.worldToGrid(spot.x, spot.y);
+            const key = `${resolvedGrid.col},${resolvedGrid.row}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
             cells.push({
-                col,
-                row,
-                x: nudged.x,
-                y: nudged.y,
-                facing: facingForWallCell(grid.grid, grid.cols, grid.rows, col, row),
+                col: resolvedGrid.col,
+                row: resolvedGrid.row,
+                x: spot.x,
+                y: spot.y,
+                facing: spot.facing,
             });
         }
     }
@@ -219,7 +224,8 @@ function collectWallAdjacentCells(state, layout) {
 
 export function spawnStartNodePickups(state, playerX, playerY) {
     const layout = getStartNodeLayout(playerX, playerY, state.obstacleGrid.cellSize);
-    const wallCells = collectWallAdjacentCells(state, layout);
+    const propRadius = worldPropDefinitions.crate.radius;
+    const wallCells = collectWallAdjacentCells(state, layout, propRadius);
     shuffleInPlace(wallCells);
 
     const crateCount = Math.min(50 + Math.floor(Math.random() * 26), wallCells.length);

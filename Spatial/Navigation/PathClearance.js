@@ -1,4 +1,4 @@
-import { distanceToSegment, pushPointFromWalls } from "../Geometry/WallGeometry.js";
+import { closestPointOnSegment, distanceToSegment, pushPointFromWalls } from "../Geometry/WallGeometry.js";
 
 function getWallsNearPoint(obstacleGrid, x, y, clearance) {
     return obstacleGrid.getNearbySegments({
@@ -142,4 +142,48 @@ export function resolveMoveTarget(obstacleGrid, x, y, clearance) {
         return { x, y };
     }
     return pushWaypointFromGeometry(obstacleGrid, x, y, clearance);
+}
+
+/** Snap a seed point to sit flush against the nearest wall segment (geometry, not grid). */
+export function placeAtWallClearance(obstacleGrid, x, y, clearance) {
+    const walls = getWallsNearPoint(obstacleGrid, x, y, clearance);
+    if (walls.length === 0) {
+        return { x, y, facing: 0 };
+    }
+
+    let nearestWall = null;
+    let nearestDist = Infinity;
+    for (const wall of walls) {
+        if (wall.isDead) continue;
+        const dist = distanceToSegment(wall, x, y);
+        if (dist < nearestDist) {
+            nearestDist = dist;
+            nearestWall = wall;
+        }
+    }
+
+    if (!nearestWall) {
+        return { x, y, facing: 0 };
+    }
+
+    const closest = closestPointOnSegment(nearestWall, x, y);
+    let dx = x - closest.x;
+    let dy = y - closest.y;
+    let dist = Math.hypot(dx, dy);
+
+    if (dist < 0.01) {
+        dx = Math.cos(nearestWall.angle + Math.PI / 2);
+        dy = Math.sin(nearestWall.angle + Math.PI / 2);
+        dist = 1;
+    }
+
+    const px = closest.x + (dx / dist) * clearance;
+    const py = closest.y + (dy / dist) * clearance;
+    const resolved = pushPointFromWalls(px, py, walls, clearance);
+
+    return {
+        x: resolved.x,
+        y: resolved.y,
+        facing: nearestWall.angle,
+    };
 }
