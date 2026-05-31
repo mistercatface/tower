@@ -22,6 +22,7 @@ export class WaveManager {
         this.enemiesToSpawn = waveSettings.firstWaveEnemyCount;
         this.enemiesSpawned = 0;
         this.spawnIntervalId = null;
+        this.waveClearScheduled = false;
     }
 
     startCombat() {
@@ -29,6 +30,7 @@ export class WaveManager {
         this.sectorWave = 1;
         this.enemiesToSpawn = this.calculateEnemiesToSpawn();
         this.enemiesSpawned = 0;
+        this.waveClearScheduled = false;
     }
 
     advance() {
@@ -183,9 +185,12 @@ export class WaveManager {
 
         const aliveEnemies = state.enemies.filter(e => !e.isDead).length;
         if (this.enemiesSpawned >= this.enemiesToSpawn && aliveEnemies === 0) {
+            if (this.waveClearScheduled) return;
+            this.waveClearScheduled = true;
             requestUiUpdate();
             state.isTransitioning = true;
             state.scheduler.schedule(timingSettings.sectorCompletedDelay, () => {
+                this.waveClearScheduled = false;
                 state.isTransitioning = false;
                 emitCombatWaveCleared();
             });

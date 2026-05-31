@@ -32,7 +32,8 @@ export function isCombat(phase) {
 export function canRunWaveSpawning(state) {
     return state.phase !== GamePhase.MAP
         && state.phase !== GamePhase.REWARD
-        && !state.isTransitioning;
+        && !state.isTransitioning
+        && !isMapTraveling(state);
 }
 
 /** Range and center for drawing combat rings / masks in world vs map space. */

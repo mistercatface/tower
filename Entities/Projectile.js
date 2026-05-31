@@ -96,23 +96,6 @@ export class Projectile extends Entity {
     }
 
     resolveFactionCollisions(state, events, system, spatialFrame) {
-        const eraserOwner = state.player;
-        if (eraserOwner?.canEraseHostileProjectiles?.(state)) {
-            for (const ep of state.projectiles) {
-                if (ep.isDead || ep === this || !areHostile(eraserOwner, ep)) continue;
-                if (system.checkCircle(this, ep)) {
-                    ep.isDead = true;
-                    if (this.penetration > 0) {
-                        this.penetration--;
-                    } else {
-                        this.isDead = true;
-                        break;
-                    }
-                }
-            }
-            if (this.isDead) return;
-        }
-
         spatialFrame.forEachNeighbor(this, (target) => {
             if (this.isDead || !(target instanceof Actor)) return;
             if (!areHostile(this, target)) return;

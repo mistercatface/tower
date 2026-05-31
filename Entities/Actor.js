@@ -120,10 +120,6 @@ export class Actor extends DestructibleEntity {
         return this.faction === "enemy" ? "#F44336" : "#FFEB3B";
     }
 
-    canEraseHostileProjectiles(state) {
-        return this.isAbilityOwner(state) && !!state.abilities?.["Eraser"];
-    }
-
     updateCombat(_dt, _state, _spatialFrame, _options = {}) {
         // Subclasses run movement, then call updateTurretCombat.
     }

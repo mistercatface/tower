@@ -44,6 +44,13 @@ function beginMapTravel(ctx) {
     const targetNode = ctx.state.getMapTargetNode();
     if (!targetNode) return;
 
+    ctx.state.waveManager.waveClearScheduled = false;
+    ctx.state.isTransitioning = false;
+    if (ctx.state.waveManager.spawnIntervalId) {
+        ctx.state.scheduler.cancel(ctx.state.waveManager.spawnIntervalId);
+        ctx.state.waveManager.spawnIntervalId = null;
+    }
+
     ctx.state.player.stopMovement(ctx.state);
     const targetCoords = ctx.state.getNodeCombatCoords(targetNode);
     ctx.state.player.setTarget(targetCoords.x, targetCoords.y, ctx.state);

@@ -213,14 +213,5 @@ export const createUpgrades = () => [
         showInHud: true,
         hasToggle: true,
     }),
-    new Upgrade({
-        id: "Eraser",
-        category: "abilities",
-        name: "Eraser",
-        description: "Passive: Player bullets destroy enemy bullets on impact.",
-        isAbility: true,
-        maxLevel: 1,
-        minPlayerLevel: 3,
-    }),
     ...metaUpgradeDefinitions.map((def) => upgradeFromDefinition(def, Upgrade)),
 ];
