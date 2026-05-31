@@ -67,19 +67,15 @@ export function buildCylinderMesh(options = {}) {
     const yTop = halfHeight;
     const triangles = [];
     const materials = { ...(options.materials ?? {}) };
-
     for (let i = 0; i < segments; i++) {
         const a0 = (i / segments) * Math.PI * 2;
         const a1 = ((i + 1) / segments) * Math.PI * 2;
 
-        const rBot = bodyRadiusAtY(yBottom, halfHeight, bodyRadius, options.rings);
-        const rTop = bodyRadiusAtY(yTop, halfHeight, bodyRadius, options.rings);
-
         addCylinderSide(triangles, {
             y0: yBottom,
             y1: yTop,
-            r0: rBot,
-            r1: rTop,
+            r0: bodyRadiusAtY(yBottom, halfHeight, bodyRadius, options.rings),
+            r1: bodyRadiusAtY(yTop, halfHeight, bodyRadius, options.rings),
             a0,
             a1,
             material: bodyMaterial,

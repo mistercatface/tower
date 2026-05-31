@@ -27,6 +27,6 @@ export const JACKO_CAN = {
         lip: "#9AA0A8",
         top: "#C8CDD4",
         stroke: "#505860",
-        tab: "#D8DCE2",
+        tab: "#8A9098",
     },
 };

@@ -27,7 +27,8 @@ function buildDescriptor(inspectKey) {
         tapPadding: meta.tapPadding,
         preload: recipe.preload,
         onReady: recipe.onReady,
-        getInitialYaw: (pickup) => pickup.facing ?? 0,
+        getInitialYaw: recipe.getInitialYaw ?? ((pickup) => pickup.facing ?? 0),
+        getInitialPitch: recipe.getInitialPitch ?? (() => 0.2),
         draw: recipe.draw,
     };
 }

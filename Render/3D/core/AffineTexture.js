@@ -1,4 +1,4 @@
-function inflateTri(d0, d1, d2, px) {
+export function inflateTri(d0, d1, d2, px) {
     const cx = (d0.x + d1.x + d2.x) / 3;
     const cy = (d0.y + d1.y + d2.y) / 3;
     const puff = (p) => {

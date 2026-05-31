@@ -4,13 +4,19 @@ import { getTexture, loadTexture, onTextureReady } from "../core/TextureCache.js
 
 /**
  * Factory for cylindrical labeled-can inspect views.
- * @param {import("../../../Config/props/JackoCan.js").JACKO_CAN} canConfig
+ * @param {import("../../../Config/props/JackoCan.js").JACKO_CAN} canConfig — optional `inspect.initialPitch`
  * @param {() => import("../CylinderMesh.js").buildSodaCanMesh} buildMesh
  */
 export function createLabeledCanInspect(canConfig, buildMesh) {
     const { labelSrc, halfHeight, bodyRadius, label, colors } = canConfig;
+    const angleCenter = label.angleCenter ?? -Math.PI / 2;
+    /** Face the label toward the inspect camera (-Z); ignore pickup spawn facing. */
+    const initialYaw = -Math.PI / 2 - angleCenter;
+    const initialPitch = canConfig.inspect?.initialPitch ?? 0.2;
 
     return {
+        getInitialYaw: () => initialYaw,
+        getInitialPitch: () => initialPitch,
         preload() {
             loadTexture(labelSrc);
         },
