@@ -1,6 +1,9 @@
 import { THEME_COLORS } from "../../Config/Config.js";
 import { createPropDrawContext } from "./PropDrawContext.js";
 import { drawBarrel, drawCrate, drawFireBarrel } from "./PropRecipes.js";
+import { SpatialQuery } from "../../Spatial/World/SpatialQuery.js";
+
+const VIEW_QUERY_PAD = 48;
 
 const PROP_RECIPES = {
     barrel: drawBarrel,
@@ -13,6 +16,10 @@ export class Render3D {
         this.lastWalls = null;
         this.lastAliveCount = 0;
         this.sharedEdgesDirty = true;
+        this._wallQuery = new SpatialQuery();
+        this._visibleObjects = [];
+        this._cachedWalls = [];
+        this._lastQueryKey = null;
     }
 
     getSegmentEdges(seg) {
@@ -42,6 +49,7 @@ export class Render3D {
             this.lastWalls = state.walls;
             this.lastAliveCount = aliveCount;
             this.sharedEdgesDirty = false;
+            this._lastQueryKey = null;
             this.rebuildSharedEdges(state);
         }
     }
@@ -198,13 +206,49 @@ export class Render3D {
         }
     }
 
-    getViewQueryBounds(viewport, state) {
-        const screenW = state.canvasBounds?.width ?? viewport.cx * 2;
-        const screenH = state.canvasBounds?.height ?? viewport.cy * 2;
+    getViewQueryBounds(viewport, px, py) {
         const halfW = viewport.cx / viewport.zoom;
         const halfH = viewport.cy / viewport.zoom;
-        const pad = Math.max(halfW, halfH) + 40;
-        return viewport.getWorldBounds(screenW, screenH, pad);
+        return {
+            minX: px - halfW - VIEW_QUERY_PAD,
+            minY: py - halfH - VIEW_QUERY_PAD,
+            maxX: px + halfW + VIEW_QUERY_PAD,
+            maxY: py + halfH + VIEW_QUERY_PAD,
+        };
+    }
+
+    alignBoundsToHash(bounds, cellSize) {
+        return {
+            minX: Math.floor(bounds.minX / cellSize) * cellSize,
+            minY: Math.floor(bounds.minY / cellSize) * cellSize,
+            maxX: Math.ceil(bounds.maxX / cellSize) * cellSize,
+            maxY: Math.ceil(bounds.maxY / cellSize) * cellSize,
+        };
+    }
+
+    collectVisibleWalls(state, viewport, px, py) {
+        const hash = state.wallSpatialHash;
+        if (!viewport || !hash) {
+            this._lastQueryKey = null;
+            return hash
+                ? hash.collectInBounds(px - 1500, py - 1500, px + 1500, py + 1500, this._wallQuery)
+                : state.walls;
+        }
+
+        const bounds = this.alignBoundsToHash(this.getViewQueryBounds(viewport, px, py), hash.cellSize);
+        const cellSize = hash.cellSize;
+        const minCol = Math.floor(bounds.minX / cellSize);
+        const maxCol = Math.floor((bounds.maxX - 1) / cellSize);
+        const minRow = Math.floor(bounds.minY / cellSize);
+        const maxRow = Math.floor((bounds.maxY - 1) / cellSize);
+        const queryKey = `${minCol}|${minRow}|${maxCol}|${maxRow}|${state.walls.length}`;
+
+        if (queryKey !== this._lastQueryKey) {
+            this._lastQueryKey = queryKey;
+            this._cachedWalls = hash.collectInBounds(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY, this._wallQuery);
+        }
+
+        return this._cachedWalls;
     }
 
     clipToViewport(ctx, viewport, state) {
@@ -228,19 +272,10 @@ export class Render3D {
             this.clipToViewport(ctx, viewport, state);
         }
 
-        const visibleObjects = [];
-        let candidateWalls;
+        const visibleObjects = this._visibleObjects;
+        visibleObjects.length = 0;
 
-        if (viewport) {
-            const { minX, minY, maxX, maxY } = this.getViewQueryBounds(viewport, state);
-            candidateWalls = state.wallSpatialHash
-                ? state.wallSpatialHash.collectInBounds(minX, minY, maxX, maxY)
-                : state.walls;
-        } else {
-            candidateWalls = state.wallSpatialHash
-                ? state.wallSpatialHash.collectInBounds(px - 1500, py - 1500, px + 1500, py + 1500)
-                : state.walls;
-        }
+        const candidateWalls = this.collectVisibleWalls(state, viewport, px, py);
 
         for (let i = 0; i < candidateWalls.length; i++) {
             const seg = candidateWalls[i];
