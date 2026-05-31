@@ -107,10 +107,6 @@ export class Actor extends DestructibleEntity {
         return options.externalSpeedMod ?? 1;
     }
 
-    shouldSeparateFrom(_other) {
-        return true;
-    }
-
     isAbilityOwner(state) {
         return state?.player === this;
     }

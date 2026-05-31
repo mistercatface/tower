@@ -16,7 +16,7 @@ export class Separation {
 
         spatialFrame.forEachNeighbor(entity, (other) => {
             if (other.isDead) return;
-            if (typeof entity.shouldSeparateFrom === "function" && !entity.shouldSeparateFrom(other)) return;
+            if (entity.teamId != null && other.teamId != null && entity.teamId === other.teamId) return;
             if (inferFaction(other) === "player" && entity.attackType === "charge") return;
             if (inferFaction(entity) === "player" && other.attackType === "charge") return;
 

@@ -139,11 +139,6 @@ export class Player extends Actor {
         return this.upgrades["Reposition"] && this.upgrades["Reposition"].level > 0;
     }
 
-    shouldSeparateFrom(other) {
-        if (other?.teamId != null && this.teamId != null && other.teamId === this.teamId) return false;
-        return true;
-    }
-
     updateLocomotion(dt, state, spatialFrame, options = {}) {
         const flowFieldGrid = state.flowFieldGrid;
         const walls = state.walls;
