@@ -53,10 +53,10 @@ export const baseUpgradeDefinitions = [
         category: "defense",
         name: "Health",
         description: "Increases maximum health.",
-        stat: { target: "combat", key: "maxHealth", op: "flatAdd", perLevel: 20 },
+        stat: { target: "combat", key: "maxHealth", op: "flatAdd", perLevel: 1 },
         display: {
-            current: (level, actor) => actor.stats.maxHealth.baseValue + level * 20,
-            next: (level, actor) => actor.stats.maxHealth.baseValue + (level + 1) * 20,
+            current: (level, actor) => actor.stats.maxHealth.baseValue + level,
+            next: (level, actor) => actor.stats.maxHealth.baseValue + level + 1,
         },
     },
     {
@@ -111,11 +111,9 @@ export const metaUpgradeDefinitions = [
     },
 ];
 
-const healthDef = baseUpgradeDefinitions.find((def) => def.id === "Health");
 const moveSpeedDef = baseUpgradeDefinitions.find((def) => def.id === "MoveSpeed");
 
 export const baseUpgradeEffects = {
-    healthPerLevel: healthDef.stat.perLevel,
     moveSpeedPerLevel: moveSpeedDef.stat.perLevel,
     moveSpeedMaxLevel: moveSpeedDef.maxLevel,
 };

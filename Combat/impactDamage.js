@@ -1,12 +1,12 @@
 export function getProjectileDamage(projectile) {
-    return projectile.damage;
+    return Math.round(projectile.damage);
 }
 
 export function getBeamTickDamage(gun) {
-    return gun.tickDamage;
+    return Math.round(gun.tickDamage);
 }
 
 /** Hit payload for beam ticks on props (pickup onHit). */
 export function createBeamHitSource(gun) {
-    return { damage: gun.tickDamage };
+    return { damage: getBeamTickDamage(gun) };
 }

@@ -6,27 +6,18 @@ export function buildEnemyCombatStats(enemyType) {
     return {
         ...enemyBaseStats,
         speed: enemyType.baseSpeed,
-        maxHealth: enemyBaseStats.maxHealth,
+        maxHealth: enemyType.maxHealth,
         range,
     };
 }
 
 export function computeSpawnReward(wave, enemyType) {
     const waveFactor = Math.pow(difficultyCurve.rewardMultiplier, wave - 1);
-    return Math.max(1, Math.floor(enemyType.baseHealth * waveFactor));
+    return Math.max(1, Math.floor(enemyType.maxHealth * waveFactor));
 }
 
-export function computeEnemyUpgradeLevels(wave, enemyType, combatBaseStats) {
-    const { healthPerLevel, moveSpeedPerLevel, moveSpeedMaxLevel } = baseUpgradeEffects;
-
-    const healthWaveFactor = Math.pow(difficultyCurve.healthMultiplier, wave - 1);
-    const typeHealthTier = Math.max(1, Math.floor(enemyType.baseHealth * healthWaveFactor));
-
-    let healthLevel = Math.max(0, Math.round((typeHealthTier - combatBaseStats.maxHealth) / healthPerLevel));
-    if (enemyType.maxHealth !== undefined) {
-        const maxHealthLevel = Math.max(0, Math.floor((enemyType.maxHealth - combatBaseStats.maxHealth) / healthPerLevel));
-        healthLevel = Math.min(healthLevel, maxHealthLevel);
-    }
+export function computeEnemyUpgradeLevels(wave) {
+    const { moveSpeedPerLevel, moveSpeedMaxLevel } = baseUpgradeEffects;
 
     const speedWaveFactor = Math.pow(difficultyCurve.speedMultiplier, wave - 1);
     const moveSpeedLevel = Math.max(0, Math.min(
@@ -39,7 +30,6 @@ export function computeEnemyUpgradeLevels(wave, enemyType, combatBaseStats) {
         Penetration: 0,
         Speed: 0,
         Range: 0,
-        Health: healthLevel,
         Regen: 0,
         MoveSpeed: moveSpeedLevel,
     };

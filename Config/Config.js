@@ -4,8 +4,7 @@ export const enemyTypes = [
         weight: 15,
         radius: 5,
         baseSpeed: 160,
-        baseHealth: 0.25,
-        maxHealth: 200,
+        maxHealth: 2,
         color: "#FF9800",
         minLevel: 0,
         spawnType: "group",
@@ -16,12 +15,12 @@ export const enemyTypes = [
         canDamageWalls: true,
         renderPath: "pea",
     },
-    { type: "tank", weight: 25, radius: 8, baseSpeed: 66, baseHealth: 3, maxHealth: 1200, color: "#FF9800", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: false, renderPath: "pumpkin" },
-    { type: "standard", weight: 60, radius: 6, baseSpeed: 100, baseHealth: 1, maxHealth: 500, color: "#F44336", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: false, renderPath: "tomato" },
-    { type: "fast", weight: 5, radius: 5, baseSpeed: 140, baseHealth: 0.5, maxHealth: 300, color: "#FFEB3B", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: false, canDamageWalls: true, },
-    { type: "spastic", weight: 15, radius: 5, baseSpeed: 200, baseHealth: 0.3, maxHealth: 50, color: "#C62828", minLevel: 0, spawnType: "group", attackType: "charge", canDodge: false, accelRate: 5, canDamageWalls: true, groupSettings: { baseGroupSize: 3, growthPerWave: 2.0, maxGroupSize: 5 }, renderPath: "cranberry" },
-    { type: "dodger", weight: 20, radius: 6, baseSpeed: 100, baseHealth: 1, maxHealth: 450, color: "#03A9F4", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: true },
-    { type: "boss", weight: 0, radius: 8, baseSpeed: 160, baseHealth: 50, maxHealth: 15000, color: "#B71C1C", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: true },
+    { type: "tank", weight: 25, radius: 8, baseSpeed: 66, maxHealth: 6, color: "#FF9800", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: false, renderPath: "pumpkin" },
+    { type: "standard", weight: 60, radius: 6, baseSpeed: 100, maxHealth: 3, color: "#F44336", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: false, renderPath: "tomato" },
+    { type: "fast", weight: 5, radius: 5, baseSpeed: 140, maxHealth: 2, color: "#FFEB3B", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: false, canDamageWalls: true },
+    { type: "spastic", weight: 15, radius: 5, baseSpeed: 200, maxHealth: 2, color: "#C62828", minLevel: 0, spawnType: "group", attackType: "charge", canDodge: false, accelRate: 5, canDamageWalls: true, groupSettings: { baseGroupSize: 3, growthPerWave: 2.0, maxGroupSize: 5 }, renderPath: "cranberry" },
+    { type: "dodger", weight: 20, radius: 6, baseSpeed: 100, maxHealth: 4, color: "#03A9F4", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: true },
+    { type: "boss", weight: 0, radius: 8, baseSpeed: 160, maxHealth: 6, color: "#B71C1C", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: true },
 ];
 
 /** Weighted spawn compositions — one pod spawns per spawn tick, all members together. */
@@ -244,7 +243,7 @@ export const mapGenerationSettings = {
     extraConnectionChance: 0.3,
 };
 
-export const difficultyCurve = { healthMultiplier: 1.015, speedMultiplier: 1.002, rewardMultiplier: 1.04 };
+export const difficultyCurve = { speedMultiplier: 1.002, rewardMultiplier: 1.04 };
 
 export const perkMilestones = [2, 4, 6, 8, 10, 12, 14, 16];
 
@@ -269,7 +268,7 @@ export const runBaseStats = {
 export const sidekickBaseStats = {
     turnSpeed: Math.PI * 2.5,
     range: 150,
-    maxHealth: 80,
+    maxHealth: 10,
     accuracy: 0.7,
     penetration: 0,
     speed: 55,
@@ -278,7 +277,7 @@ export const sidekickBaseStats = {
 export const playerBaseStats = {
     turnSpeed: Math.PI * 3,
     range: 150,
-    maxHealth: 100,
+    maxHealth: 10,
     accuracy: 0.75,
     penetration: 0,
     moveSpeedMultiplier: 1.0,
@@ -359,7 +358,6 @@ export const enemyDefaults = {
 export const enemyBaseStats = {
     turnSpeed: 10,
     range: 112,
-    maxHealth: 1,
     accuracy: 0.9,
     penetration: 0,
     moveSpeedMultiplier: 1.0,

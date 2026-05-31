@@ -17,7 +17,7 @@ export class Enemy extends Actor {
         const combatStats = buildEnemyCombatStats(enemyType);
         const reward = computeSpawnReward(wave, enemyType);
         const enemy = new Enemy(x, y, enemyType, combatStats, baseUpgradeDefs, reward);
-        const levels = computeEnemyUpgradeLevels(wave, enemyType, combatStats);
+        const levels = computeEnemyUpgradeLevels(wave);
 
         enemy.applySpawnUpgradeLevels(levels, baseUpgradeDefs);
         enemy.applyWeaponLoadout(rollEnemyStartLoadout());

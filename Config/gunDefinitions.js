@@ -11,6 +11,9 @@ export const enemyStartGunPool = ["enemyRifle", "servicePistol"];
 /** Guns the player can equip from the Equipment tab. */
 export const playerEquipmentCatalog = ["servicePistol", "shotgun", "tommyGun"];
 
+/** All projectile hits and beam ticks deal flat damage (matches integer HP). */
+const FLAT_DAMAGE = 1;
+
 /** Fixed ballistics and damage per gun. */
 export const projectilePresets = {
     playerStandard: {
@@ -34,7 +37,7 @@ export const gunDefinitions = {
         fireIntervalMs: 1000,
         muzzleSpeed: playerProjectileSettings.speed,
         bulletRadius: 6,
-        damage: 1,
+        damage: FLAT_DAMAGE,
         maxAmmo: 12,
         reloadTimeMs: 1200,
         turretLoadout: { preset: "standard" },
@@ -48,7 +51,7 @@ export const gunDefinitions = {
         fireIntervalMs: 1000,
         muzzleSpeed: playerProjectileSettings.speed,
         bulletRadius: 6,
-        damage: 1,
+        damage: FLAT_DAMAGE,
         maxAmmo: 6,
         reloadTimeMs: 1800,
         turretLoadout: { preset: "shotgun" },
@@ -62,7 +65,7 @@ export const gunDefinitions = {
         fireIntervalMs: 120,
         muzzleSpeed: playerProjectileSettings.speed,
         bulletRadius: 6,
-        damage: 1,
+        damage: FLAT_DAMAGE,
         maxAmmo: 6,
         reloadTimeMs: 1500,
         turretLoadout: { preset: "standard" },
@@ -76,7 +79,7 @@ export const gunDefinitions = {
         beamRadius: 1,
         tickIntervalMs: 200,
         beamGrowthSpeed: 200,
-        tickDamage: 0.33,
+        tickDamage: FLAT_DAMAGE,
         maxAmmo: 25,
         reloadTimeMs: 2000,
         equipModifiers: {
@@ -91,7 +94,7 @@ export const gunDefinitions = {
         fireIntervalMs: 1500,
         muzzleSpeed: enemyProjectileSettings.speed,
         bulletRadius: 6,
-        damage: 10,
+        damage: FLAT_DAMAGE,
         maxAmmo: 10,
         reloadTimeMs: 1500,
         turretLoadout: { preset: "standard" },
