@@ -3,6 +3,7 @@ import { circleIntersectsSegment } from "../Geometry/WallGeometry.js";
 import { areHostile } from "../../Combat/Targeting.js";
 import { PhysicsSystem } from "../Motion/PhysicsSystem.js";
 import { wallContextFromState, getNearbyWalls } from "../World/WallContext.js";
+import { enemyDefaults } from "../../Config/Config.js";
 
 export class CollisionSystem {
     static checkCircle(a, b) {
@@ -223,7 +224,7 @@ export class CollisionSystem {
 
     static applyChargeImpact(charger, other, events) {
         if (areHostile(charger, other)) {
-            events.push({ target: other, damage: 5 });
+            events.push({ target: other, damage: enemyDefaults.chargeImpactDamage });
         }
         charger.changeState("stunned", {
             timer: 1000,

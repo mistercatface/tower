@@ -353,6 +353,7 @@ export const enemyProjectileSettings = {
 export const enemyDefaults = {
     rangeMin: 75,
     rangeMax: 144,
+    chargeImpactDamage: 2,
 };
 
 export const enemyBaseStats = {
