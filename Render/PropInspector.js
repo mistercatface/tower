@@ -1,8 +1,12 @@
-import { drawJackoFuelBarrelInspect, onJackoFuelLabelReady } from "./3D/JackoFuelBarrel.js";
+import { resolvePickupInspect } from "./InspectRegistry.js";
+import { requestGamePause, requestGameResume, requestUiUpdate } from "../Core/EventSystem.js";
 
-export class JackoFuelInspector {
+const INSPECTOR_PAUSE_REASON = "inspector";
+
+export class PropInspector {
     constructor() {
         this.pickup = null;
+        this.descriptor = null;
         this.yaw = 0;
         this.pitch = 0.2;
         this.dragging = false;
@@ -10,17 +14,21 @@ export class JackoFuelInspector {
         this.lastY = 0;
         this.overlay = null;
         this.canvas = null;
+        this.titleEl = null;
         this.ctx = null;
         this.onClose = null;
     }
 
     mount() {
         if (this.overlay) return;
-        this.overlay = document.getElementById("jackoFuelInspector");
-        this.canvas = document.getElementById("jackoFuelCanvas");
+
+        this.overlay = document.getElementById("propInspector");
+        this.canvas = document.getElementById("propInspectorCanvas");
+        this.titleEl = document.getElementById("propInspectorTitle");
         this.ctx = this.canvas.getContext("2d");
         this.ctx.imageSmoothingEnabled = false;
-        const closeBtn = document.getElementById("jackoFuelCloseBtn");
+
+        const closeBtn = document.getElementById("propInspectorCloseBtn");
         this.canvas.addEventListener("pointerdown", (e) => this.onPointerDown(e));
         this.canvas.addEventListener("pointermove", (e) => this.onPointerMove(e));
         this.canvas.addEventListener("pointerup", (e) => this.onPointerUp(e));
@@ -29,9 +37,6 @@ export class JackoFuelInspector {
         this.overlay.addEventListener("pointerup", (e) => this.onPointerUp(e));
         this.overlay.addEventListener("pointercancel", (e) => this.onPointerUp(e));
         closeBtn.addEventListener("click", () => this.close());
-        onJackoFuelLabelReady(() => {
-            if (this.isOpen()) this.render();
-        });
     }
 
     isOpen() {
@@ -39,12 +44,29 @@ export class JackoFuelInspector {
     }
 
     open(pickup, onClose) {
+        const descriptor = resolvePickupInspect(pickup);
+        if (!descriptor) return;
+
         this.mount();
         this.pickup = pickup;
+        this.descriptor = descriptor;
         this.onClose = onClose;
-        this.yaw = pickup.facing ?? 0;
-        this.pitch = 0.2;
+        this.yaw = descriptor.getInitialYaw?.(pickup) ?? pickup.facing ?? 0;
+        this.pitch = descriptor.getInitialPitch?.(pickup) ?? 0.2;
+
+        if (this.titleEl) {
+            this.titleEl.textContent = descriptor.title;
+        }
+
+        if (descriptor.onReady) {
+            descriptor.onReady(() => {
+                if (this.isOpen() && this.pickup === pickup) this.render();
+            });
+        }
+
         this.overlay.style.display = "flex";
+        requestGamePause(INSPECTOR_PAUSE_REASON);
+        requestUiUpdate();
         this.resize();
         this.render();
     }
@@ -52,7 +74,10 @@ export class JackoFuelInspector {
     close() {
         if (!this.overlay) return;
         this.overlay.style.display = "none";
+        requestGameResume(INSPECTOR_PAUSE_REASON);
+        requestUiUpdate();
         this.pickup = null;
+        this.descriptor = null;
         this.dragging = false;
         if (this.onClose) this.onClose();
         this.onClose = null;
@@ -67,7 +92,7 @@ export class JackoFuelInspector {
     }
 
     onPointerDown(e) {
-        if (e.target.closest("#jackoFuelCloseBtn")) return;
+        if (e.target.closest("#propInspectorCloseBtn")) return;
         this.dragging = true;
         this.lastX = e.clientX;
         this.lastY = e.clientY;
@@ -91,20 +116,20 @@ export class JackoFuelInspector {
     }
 
     render() {
-        if (!this.ctx || !this.pickup) return;
+        if (!this.ctx || !this.pickup || !this.descriptor) return;
         if (this.pickup.isDead) {
             this.close();
             return;
         }
+
         const w = this.canvas.width;
         const h = this.canvas.height;
         this.ctx.clearRect(0, 0, w, h);
         this.ctx.fillStyle = "#0a0c10";
         this.ctx.fillRect(0, 0, w, h);
 
-        const onFire = this.pickup.currentStateName === "on_fire";
         const scale = h / 235;
-        drawJackoFuelBarrelInspect(this.ctx, w / 2, h * 0.46, scale, this.yaw, this.pitch, { onFire });
+        this.descriptor.draw(this.ctx, w / 2, h * 0.46, scale, this.yaw, this.pitch, this.pickup);
 
         this.ctx.fillStyle = "rgba(255,255,255,0.55)";
         this.ctx.font = "11px monospace";
@@ -113,20 +138,4 @@ export class JackoFuelInspector {
     }
 }
 
-export const jackoFuelInspector = new JackoFuelInspector();
-
-export function findInspectableBarrel(state, worldX, worldY) {
-    if (!state.pickups) return null;
-    let best = null;
-    let bestDistSq = Infinity;
-    for (const pickup of state.pickups) {
-        if (pickup.isDead || pickup.type !== "barrel") continue;
-        const tapRadius = pickup.radius + 14;
-        const distSq = (pickup.x - worldX) ** 2 + (pickup.y - worldY) ** 2;
-        if (distSq <= tapRadius * tapRadius && distSq < bestDistSq) {
-            best = pickup;
-            bestDistSq = distSq;
-        }
-    }
-    return best;
-}
+export const propInspector = new PropInspector();

@@ -12,8 +12,9 @@ import { ProgressionManager } from "./Progression/ProgressionManager.js";
 import { StatsManager } from "./Progression/StatsManager.js";
 import { GameStateMachine } from "./GameState/GameStateMachine.js";
 import { MapState, MapTransitionState, CombatState, RewardState } from "./GameState/GameStates.js";
-import { jackoFuelInspector } from "./Render/JackoFuelInspector.js";
-import { preloadJackoFuelLabel } from "./Render/3D/JackoFuelBarrel.js";
+import { propInspector } from "./Render/PropInspector.js";
+import { preloadAllInspectAssets } from "./Render/InspectRegistry.js";
+import { registerInspectableProps } from "./Render/inspect/registerInspectableProps.js";
 
 const canvas = document.getElementById("towerCanvas");
 const ctx = canvas.getContext("2d");
@@ -93,7 +94,7 @@ function resizeCanvas() {
     state.canvasBounds = { width: canvas.width, height: canvas.height };
     viewport.cx = Math.floor(canvas.width / 2);
     viewport.cy = Math.floor(canvas.height / 2);
-    jackoFuelInspector.resize();
+    propInspector.resize();
 }
 
 window.addEventListener("resize", resizeCanvas);
@@ -102,8 +103,9 @@ StatsManager.initUpgradesList(state, upgrades);
 loadProgress(state, upgrades);
 initializeSaveSystem(state);
 initUI(state, upgrades);
-jackoFuelInspector.mount();
-preloadJackoFuelLabel();
+registerInspectableProps();
+propInspector.mount();
+preloadAllInspectAssets();
 resizeCanvas();
 InputManager.setup(canvas, fsm);
 resetGame();

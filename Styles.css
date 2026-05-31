@@ -370,7 +370,7 @@ canvas {
     transform: scale(0.9);
 }
 
-.jacko-fuel-inspector {
+.prop-inspector {
     display: none;
     position: absolute;
     inset: 0;
@@ -382,7 +382,7 @@ canvas {
     touch-action: none;
 }
 
-.jacko-fuel-inspector-panel {
+.prop-inspector-panel {
     position: relative;
     width: min(88vw, 340px);
     max-height: 90vh;
@@ -395,7 +395,7 @@ canvas {
     overflow: hidden;
 }
 
-.jacko-fuel-inspector-title {
+.prop-inspector-title {
     font-family: Impact, Haettenschweiler, "Arial Black", sans-serif;
     font-size: 17px;
     letter-spacing: 0.08em;
@@ -407,7 +407,7 @@ canvas {
     border-bottom: 1px solid rgba(245, 240, 230, 0.2);
 }
 
-.jacko-fuel-close {
+.prop-inspector-close {
     position: absolute;
     top: 6px;
     right: 8px;
@@ -423,7 +423,7 @@ canvas {
     font-family: monospace;
 }
 
-#jackoFuelCanvas {
+#propInspectorCanvas {
     flex: 1;
     width: 100%;
     min-height: 0;
@@ -432,6 +432,6 @@ canvas {
     cursor: grab;
 }
 
-#jackoFuelCanvas:active {
+#propInspectorCanvas:active {
     cursor: grabbing;
 }

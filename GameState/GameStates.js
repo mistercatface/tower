@@ -9,7 +9,8 @@ import { navigationSettings } from "../Config/Config.js";
 import { resolveMoveTarget } from "../Spatial/Navigation/PathClearance.js";
 import { Pools } from "../Core/Pools.js";
 import { DeathPiece } from "../Entities/DeathPiece.js";
-import { findInspectableBarrel, jackoFuelInspector } from "../Render/JackoFuelInspector.js";
+import { findInspectablePickup } from "../Render/InspectRegistry.js";
+import { propInspector } from "../Render/PropInspector.js";
 
 export class MapState {
     onEnter(ctx) {
@@ -182,12 +183,12 @@ export class CombatState {
     }
 
     handleInteraction(worldCoords, isDoubleTap, ctx) {
-        if (jackoFuelInspector.isOpen()) return;
+        if (propInspector.isOpen()) return;
         if (ctx.state.player.currentState && ctx.state.player.currentState.blocksInput) return;
 
-        const barrel = findInspectableBarrel(ctx.state, worldCoords.x, worldCoords.y);
-        if (barrel) {
-            jackoFuelInspector.open(barrel);
+        const inspectTarget = findInspectablePickup(ctx.state, worldCoords.x, worldCoords.y);
+        if (inspectTarget) {
+            propInspector.open(inspectTarget);
             return;
         }
 
