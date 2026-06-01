@@ -1,24 +1,33 @@
-import { blend, ease, getSeg, solveIK, applyLocalTilt, getAimingArmAngles } from "./KinematicsMath.js";
+import {
+    blend,
+    blendAngle,
+    ease,
+    getSeg,
+    solveIK,
+    applyLocalTilt,
+    getAimingArmAngles,
+} from "./KinematicsMath.js";
+import { normalizeAngle } from "../../Math/Angle.js";
 import { resolveWeaponDrawSlots } from "./KinematicsWeaponVisuals.js";
 
-function applyWeaponAimToVals(vals, actor, aimStrength) {
+function applyWeaponAimToVals(vals, actor, aimStrength, renderRotation) {
     const slots = resolveWeaponDrawSlots(actor);
     if (slots.length === 0 || aimStrength <= 0.001) return vals;
 
-    const diveDir = actor.angle ?? 0;
+    const bodyFacing = normalizeAngle(renderRotation ?? actor.angle ?? 0);
     const turrets = actor.turrets ?? [];
     let merged = { ...vals };
 
     if (slots.length === 1 && slots[0].aimArms === "both") {
-        const aim = turrets[0]?.angle ?? diveDir;
-        const arms = getAimingArmAngles(aim, "both", -1.5, diveDir);
+        const aim = turrets[0]?.angle ?? bodyFacing;
+        const arms = getAimingArmAngles(aim, "both", -1.5, bodyFacing);
         merged = blendArmVals(merged, arms, aimStrength);
         return merged;
     }
 
     for (const slot of slots) {
-        const aim = turrets[slot.turretIndex]?.angle ?? diveDir;
-        const arms = getAimingArmAngles(aim, slot.aimArms, -1.5, diveDir);
+        const aim = turrets[slot.turretIndex]?.angle ?? bodyFacing;
+        const arms = getAimingArmAngles(aim, slot.aimArms, -1.5, bodyFacing);
         if (slot.aimArms === "right") {
             merged.rArm = blend(vals.rArm, arms.rArm, aimStrength);
             merged.rElbow = blend(vals.rElbow, arms.rElbow, aimStrength);
@@ -35,18 +44,18 @@ function applyWeaponAimToVals(vals, actor, aimStrength) {
 function blendArmVals(base, target, t) {
     return {
         ...base,
-        rArm: blend(base.rArm, target.rArm, t),
-        lArm: blend(base.lArm, target.lArm, t),
-        rElbow: blend(base.rElbow, target.rElbow, t),
-        lElbow: blend(base.lElbow, target.lElbow, t),
-        rArmZ: blend(base.rArmZ, target.rArmZ, t),
-        lArmZ: blend(base.lArmZ, target.lArmZ, t),
-        rElbowZ: blend(base.rElbowZ ?? 0, target.rElbowZ ?? 0, t),
-        lElbowZ: blend(base.lElbowZ ?? 0, target.lElbowZ ?? 0, t),
+        rArm: blendAngle(base.rArm, target.rArm, t),
+        lArm: blendAngle(base.lArm, target.lArm, t),
+        rElbow: blendAngle(base.rElbow, target.rElbow, t),
+        lElbow: blendAngle(base.lElbow, target.lElbow, t),
+        rArmZ: blendAngle(base.rArmZ, target.rArmZ, t),
+        lArmZ: blendAngle(base.lArmZ, target.lArmZ, t),
+        rElbowZ: blendAngle(base.rElbowZ ?? 0, target.rElbowZ ?? 0, t),
+        lElbowZ: blendAngle(base.lElbowZ ?? 0, target.lElbowZ ?? 0, t),
     };
 }
 
-export function calculateCharacterRig(state, cycle, config, rig, poses, actor = null) {
+export function calculateCharacterRig(state, cycle, config, rig, poses, actor = null, renderRotation = 0) {
     const cf = state.crouchFactor || 0;
     const walkTargets = poses.WALK.getTargets(cycle);
     const walkMods = poses.WALK.getModifiers(cycle);
@@ -138,7 +147,7 @@ export function calculateCharacterRig(state, cycle, config, rig, poses, actor = 
 
     if (actor) {
         const aimStrength = 1 - armT;
-        const aimed = applyWeaponAimToVals(vals, actor, aimStrength);
+        const aimed = applyWeaponAimToVals(vals, actor, aimStrength, renderRotation);
         vals.rArm = aimed.rArm;
         vals.lArm = aimed.lArm;
         vals.rElbow = aimed.rElbow;

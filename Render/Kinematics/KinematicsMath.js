@@ -1,4 +1,9 @@
+import { angleDelta } from "../../Math/Angle.js";
+
 export const blend = (a, b, t) => a + (b - a) * t;
+
+/** Blend two angles along the shortest arc (radians). */
+export const blendAngle = (a, b, t) => a + angleDelta(a, b) * t;
 
 export const ease = (t) => t * t * t * (t * (t * 6 - 15) + 10);
 
@@ -31,10 +36,7 @@ export function solveIK(startX, startY, targetX, targetY, len1, len2) {
 }
 
 export function getRelativeAimAngle(diveDir, aimAngle) {
-    let rel = aimAngle - diveDir;
-    while (rel > Math.PI) rel -= 2 * Math.PI;
-    while (rel < -Math.PI) rel += 2 * Math.PI;
-    return rel;
+    return angleDelta(diveDir, aimAngle);
 }
 
 /** Aim rig arms toward world angle; whichArms: 'left' | 'right' | 'both'. */

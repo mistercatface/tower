@@ -6,6 +6,7 @@ import { calculateCharacterRig } from "./KinematicsRigCalculator.js";
 import { projectRig } from "./KinematicsProjector.js";
 import { drawCharacterToCanvas } from "./KinematicsDraw.js";
 import { blend, ease } from "./KinematicsMath.js";
+import { normalizeAngle } from "../../Math/Angle.js";
 import { normalizeWeaponLoadout } from "../../Combat/equipmentLoadout.js";
 import { resolveWeaponStaticPoseName } from "./KinematicsWeaponVisuals.js";
 
@@ -43,6 +44,16 @@ function getQuantizedAimKey(actor, rotationSteps = 32) {
     };
     const turrets = actor.turrets ?? [];
     return `${quantize(turrets[0]?.angle)}_${quantize(turrets[1]?.angle)}`;
+}
+
+function computeFinalRenderRotation(state, quantizedRotation) {
+    const lastBodyOffset = state.lastStaticPose.rotation?.bodyOffset ?? 0;
+    const currentBodyOffset = state.currentStaticPose.rotation?.bodyOffset ?? 0;
+    const sEased = state.staticBlendFactor * state.staticBlendFactor;
+    const blendedBodyOffset = blend(lastBodyOffset, currentBodyOffset, sEased);
+    const t = ease(state.poseFactor);
+    const finalBodyOffset = blend(blendedBodyOffset, 0, t);
+    return normalizeAngle(quantizedRotation + finalBodyOffset);
 }
 
 function syncWeaponPose(state, actor, poses) {
@@ -199,13 +210,7 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
         viewContext.shiftX = 0;
         viewContext.shiftY = 0;
 
-        const lastBodyOffset = state.lastStaticPose.rotation?.bodyOffset ?? 0;
-        const currentBodyOffset = state.currentStaticPose.rotation?.bodyOffset ?? 0;
-        const sEased = state.staticBlendFactor * state.staticBlendFactor;
-        const blendedBodyOffset = blend(lastBodyOffset, currentBodyOffset, sEased);
-        const t = ease(state.poseFactor);
-        const finalBodyOffset = blend(blendedBodyOffset, 0, t);
-        const finalRenderRotation = q.rotation + finalBodyOffset;
+        const finalRenderRotation = computeFinalRenderRotation(state, q.rotation);
 
         const rigData = calculateCharacterRig(
             { ...state, staticBlendFactor: state.staticBlendFactor },
@@ -214,6 +219,7 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
             rig,
             poses,
             actor,
+            finalRenderRotation,
         );
         const scene = projectRig(rigData, finalRenderRotation, viewContext, config, rig);
         const canvas = drawCharacterToCanvas(

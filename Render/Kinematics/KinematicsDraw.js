@@ -69,7 +69,7 @@ function drawHeldWeapons(scene, actor, sceneRenderer, config, finalRenderRotatio
 
     for (const slot of slots) {
         const turret = turrets[slot.turretIndex];
-        const aimAngle = getSpriteAimAngle(turret?.angle ?? actor.angle ?? 0, config);
+        const aimAngle = getSpriteAimAngle(turret?.angle ?? actor.angle ?? 0, finalRenderRotation);
         let hand;
         if (slot.aimArms === "both") {
             const right = scene.rArm.p3;
