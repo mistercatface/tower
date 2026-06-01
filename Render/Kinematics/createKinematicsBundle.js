@@ -9,6 +9,7 @@ import { blend, ease } from "./KinematicsMath.js";
 import { resolveCombatFacing, resolveSpriteBodyRotation } from "./KinematicsFacing.js";
 import { normalizeWeaponLoadout } from "../../Combat/equipmentLoadout.js";
 import { resolveWeaponStaticPoseName } from "./KinematicsWeaponVisuals.js";
+import { resolveMuzzleFromScene } from "./KinematicsMuzzle.js";
 
 const sharedCanvas = document.createElement("canvas");
 const sharedCtx = sharedCanvas.getContext("2d", { alpha: true });
@@ -272,6 +273,35 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
         };
     }
 
+    function buildLiveScene(actor, camera) {
+        const state = getOrCreateState(actor);
+        syncWeaponPose(state, actor, poses);
+        const spriteBodyRotation = resolveSpriteBodyRotation(actor);
+        const naturalCycle = state.animCycle % (Math.PI * 2);
+        const { rawTiltFactor, viewContext } = buildViewContext(actor, camera);
+        const q = spriteCache.getQuantizedValues(spriteBodyRotation, naturalCycle, rawTiltFactor);
+        viewContext.yFactor = minYFactor + (maxYFactor - minYFactor) * q.tilt;
+        viewContext.shiftX = 0;
+        viewContext.shiftY = 0;
+        const facing = resolveCombatFacing(actor, state, spriteBodyRotation, config);
+        const rigData = calculateCharacterRig(
+            { ...state, staticBlendFactor: state.staticBlendFactor },
+            naturalCycle,
+            config,
+            rig,
+            poses,
+            actor,
+            facing,
+        );
+        const scene = projectRig(rigData, facing.renderRotation, viewContext, config, rig);
+        return { scene, config, facing };
+    }
+
+    function resolveMuzzleWorldPosition(actor, camera, turretIndex, displayDiameter) {
+        const { scene, config, facing } = buildLiveScene(actor, camera);
+        return resolveMuzzleFromScene(actor, scene, config, facing, turretIndex, displayDiameter);
+    }
+
     return {
         config,
         rig,
@@ -287,5 +317,6 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
         captureActorRigForRagdoll,
         clearActorState,
         clearAllStates: () => entityStates.clear(),
+        resolveMuzzleWorldPosition,
     };
 }

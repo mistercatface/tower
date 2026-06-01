@@ -64,6 +64,16 @@ export function captureActorRigForRagdoll(actor, camera, radius = actor.radius) 
     };
 }
 
+export function resolveKinematicsMuzzlePosition(actor, turretIndex, camera) {
+    const kinematics = getKinematicsRenderer(actor.radius);
+    return kinematics.bundle.resolveMuzzleWorldPosition(
+        actor,
+        camera,
+        turretIndex,
+        kinematics.displayDiameter,
+    );
+}
+
 export function renderActorKinematicsBody(ctx, actor, camera, radius = actor.radius) {
     const kinematics = getKinematicsRenderer(radius);
     const sprite = kinematics.getSprite(actor, camera);

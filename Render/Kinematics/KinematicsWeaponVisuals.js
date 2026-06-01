@@ -138,3 +138,17 @@ export function resolveWeaponDrawSlots(actor) {
 export function getHandProjected(scene, handKey) {
     return handKey === "right" ? scene.rArm.p3 : scene.lArm.p3;
 }
+
+/** Barrel length as a fraction of character display width (matches draw* gun meshes). */
+const BARREL_RATIO = {
+    servicePistol: 0.2,
+    shotgun: 0.32,
+    sawedOffShotgun: 0.32,
+    tommyGun: 0.28,
+    beamLaser: 0.32,
+    enemyRifle: 0.32,
+};
+
+export function getBarrelRatioForGunId(gunId) {
+    return BARREL_RATIO[gunId] ?? 0.2;
+}
