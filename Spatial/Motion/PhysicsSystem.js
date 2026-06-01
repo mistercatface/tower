@@ -119,10 +119,10 @@ export class PhysicsSystem {
                     const denom = invMassVal + cross * cross * invI;
                     const j = -(1 + restitution) * dot / denom;
                     
-                    entity.vx -= j * normalX * invMassVal;
-                    entity.vy -= j * normalY * invMassVal;
+                    entity.vx += j * normalX * invMassVal;
+                    entity.vy += j * normalY * invMassVal;
                     if (entity.momentOfInertia) {
-                        entity.angularVelocity -= j * cross * invI;
+                        entity.angularVelocity += j * cross * invI;
                     }
                     
                     // Friction

@@ -66,6 +66,7 @@ function damageOnHit(state, pickup, projectile, events) {
                     const ry = projectile.y - pickup.y;
                     const torque = rx * fy - ry * fx;
                     pickup.angularVelocity += torque / pickup.momentOfInertia;
+                    pickup.angularVelocity = Math.max(-30, Math.min(30, pickup.angularVelocity));
                 }
             }
             if (projectile && projectile.isDead !== undefined) projectile.isDead = true;
