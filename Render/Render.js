@@ -310,7 +310,7 @@ export class Renderer {
             this.ctx.translate(mx, my);
             this.ctx.rotate(seg.angle);
 
-            const theme = seg.theme || { r: 240, g: 240, b: 242 };
+            const theme = seg.theme || { r: 0, g: 188, b: 212 };
             this.ctx.fillStyle = `rgba(${theme.r}, ${theme.g}, ${theme.b}, 0.75)`;
             this.ctx.fillRect(-mhalf, -mhalf, msize, msize);
 
