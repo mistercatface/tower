@@ -17,13 +17,7 @@ export function createProjector(viewContext, rotation, config, rig) {
         const dShiftX = shiftX + rx * ratio;
         const dShiftY = shiftY + rz * ratio;
         const rzVis = Math.max(-boundsZ, Math.min(boundsZ, rz));
-        return {
-            x: cx + rx + dShiftX * heightNorm,
-            y: groundY + rz - worldHeight * yFactor + dShiftY * heightNorm,
-            z: rz,
-            sortZ: rzVis - p.y * depthWeight,
-            scale: 0.9 + (rzVis / config.SIZE) * 0.5,
-        };
+        return { x: cx + rx + dShiftX * heightNorm, y: groundY + rz - worldHeight * yFactor + dShiftY * heightNorm, z: rz, sortZ: rzVis - p.y * depthWeight, scale: 0.9 + (rzVis / config.SIZE) * 0.5 };
     };
 }
 
@@ -50,24 +44,28 @@ export function projectRig(rigData, rotation, viewContext, config, rig) {
     };
 }
 
-export function projectRagdollRig(rigData, rotation, viewContext, config, rig, rawPoints = null) {
+export function projectRagdollRig(rigData, rotation, viewContext, config, rig, rawPoints = null, referenceScale = null) {
     const proj = createProjector(viewContext, rotation, config, rig);
-    const headP = proj(rigData.head);
+    const finalize = (point) => {
+        if (!point || referenceScale == null) return point;
+        return { ...point, scale: referenceScale };
+    };
+    const headP = finalize(proj(rigData.head));
     const scene = {
         head: headP,
         headY: headP.y,
-        spineTop: proj(rigData.spineTop),
-        spineBot: proj(rigData.spineBot),
-        rArm: { p1: proj(rigData.rArm.p1), p2: proj(rigData.rArm.p2), p3: proj(rigData.rArm.p3) },
-        lArm: { p1: proj(rigData.lArm.p1), p2: proj(rigData.lArm.p2), p3: proj(rigData.lArm.p3) },
-        rLeg: { p1: proj(rigData.rLeg.p1), p2: proj(rigData.rLeg.p2), p3: proj(rigData.rLeg.p3) },
-        lLeg: { p1: proj(rigData.lLeg.p1), p2: proj(rigData.lLeg.p2), p3: proj(rigData.lLeg.p3) },
+        spineTop: finalize(proj(rigData.spineTop)),
+        spineBot: finalize(proj(rigData.spineBot)),
+        rArm: { p1: finalize(proj(rigData.rArm.p1)), p2: finalize(proj(rigData.rArm.p2)), p3: finalize(proj(rigData.rArm.p3)) },
+        lArm: { p1: finalize(proj(rigData.lArm.p1)), p2: finalize(proj(rigData.lArm.p2)), p3: finalize(proj(rigData.lArm.p3)) },
+        rLeg: { p1: finalize(proj(rigData.rLeg.p1)), p2: finalize(proj(rigData.rLeg.p2)), p3: finalize(proj(rigData.rLeg.p3)) },
+        lLeg: { p1: finalize(proj(rigData.lLeg.p1)), p2: finalize(proj(rigData.lLeg.p2)), p3: finalize(proj(rigData.lLeg.p3)) },
     };
 
     if (rawPoints) {
         const lookup = {};
         for (const key of Object.keys(rawPoints)) {
-            lookup[key] = proj(rawPoints[key]);
+            lookup[key] = finalize(proj(rawPoints[key]));
         }
         scene.lookup = lookup;
         if (lookup.head) scene.head = lookup.head;

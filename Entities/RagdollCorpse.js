@@ -5,10 +5,7 @@ import { projectRagdollRig } from "../Render/Kinematics/KinematicsProjector.js";
 import { drawRagdollCorpseToCanvas } from "../Render/Kinematics/KinematicsDraw.js";
 import { seedRagdollBloodOnDeath, updateBloodEffects, addRagdollBleedEmitter } from "../Render/Kinematics/Ragdoll/RagdollBlood.js";
 import { createObstacleWallChecker, createRagdollState, resolveDeathImpact } from "../Render/Kinematics/Ragdoll/ragdollFromActor.js";
-import {
-    buildCorpseKinematicsViewContext,
-    captureActorRigForRagdoll,
-} from "../Render/Kinematics/PlayerKinematicsRenderer.js";
+import { captureActorRigForRagdoll } from "../Render/Kinematics/PlayerKinematicsRenderer.js";
 import { CombatParticles } from "../Render/CombatParticles.js";
 
 const CORPSE_MAX_MS = 12000;
@@ -28,34 +25,17 @@ export class RagdollCorpse extends Entity {
             const fy = -forceScale * 0.25;
             const fz = Math.sin(projectile.angle) * forceScale;
 
-            applyRagdollImpulse(
-                corpse.ragdoll,
-                fx,
-                fy,
-                fz,
-                hit.part,
-                corpse.snapshot.rig,
-                corpse.ragdoll.rotation,
-                corpse.snapshot.config,
-                22,
-                hit.offsetT ?? 0.5,
-            );
+            applyRagdollImpulse(corpse.ragdoll, fx, fy, fz, hit.part, corpse.snapshot.rig, corpse.ragdoll.rotation, corpse.snapshot.config, 22, hit.offsetT ?? 0.5);
 
             addRagdollBleedEmitter(corpse.ragdoll, hit.part, corpse.snapshot.rig, 0.8);
 
             const { x: bx, y: by } = ragdollPartToWorld(corpse, hit.part);
-            CombatParticles.spawnBlood(state, bx, by, {
-                impactAngle: projectile.angle,
-                count: 4,
-                sizePx: 2,
-            });
+            CombatParticles.spawnBlood(state, bx, by, { impactAngle: projectile.angle, count: 4, sizePx: 2 });
 
             if (projectile.penetration > 0) {
                 projectile.penetration--;
             } else {
-                CombatParticles.spawnImpactSparks(state, projectile.x, projectile.y, {
-                    impactAngle: projectile.angle,
-                });
+                CombatParticles.spawnImpactSparks(state, projectile.x, projectile.y, { impactAngle: projectile.angle });
                 projectile.isDead = true;
             }
             return true;
@@ -82,13 +62,7 @@ export class RagdollCorpse extends Entity {
 
         const snapshot = captureActorRigForRagdoll(actor, camera);
         const impact = resolveDeathImpact(actor, event);
-        const ragdoll = createRagdollState(
-            snapshot.rigData,
-            snapshot.rotation,
-            impact,
-            snapshot.config,
-            snapshot.rig,
-        );
+        const ragdoll = createRagdollState(snapshot.rigData, snapshot.rotation, impact, snapshot.config, snapshot.rig);
 
         seedRagdollBloodOnDeath(ragdoll, impact.hitBone, snapshot.rig);
 
@@ -119,17 +93,7 @@ export class RagdollCorpse extends Entity {
 
         const { rig, config } = this.snapshot;
         const dtSec = dt / 1000;
-        updateRagdoll(
-            this.ragdoll,
-            dtSec,
-            this.x,
-            this.y,
-            this.ragdoll.rotation,
-            wallChecker,
-            player?.x ?? this.x,
-            player?.y ?? this.y,
-            rig,
-        );
+        updateRagdoll(this.ragdoll, dtSec, this.x, this.y, this.ragdoll.rotation, wallChecker, player?.x ?? this.x, player?.y ?? this.y, rig);
         updateBloodEffects(this.ragdoll, dtSec, rig);
 
         if (this.ragdoll.settled) {
@@ -148,48 +112,15 @@ export class RagdollCorpse extends Entity {
         return viewport.isVisible(this.x, this.y, this.radius * 3);
     }
 
-    getKinematicsCamera(state) {
-        if (typeof this.actor?.getKinematicsCamera === "function") {
-            return this.actor.getKinematicsCamera(state);
-        }
-        const player = state?.player;
-        return player ? { x: player.x, y: player.y } : { x: this.x, y: this.y };
-    }
-
-    render(ctx, _renderer, state) {
+    render(ctx, _renderer, _state) {
         if (this.opacity <= 0) return;
 
-        const { config, rig, renderRotation } = this.snapshot;
-        const camera = this.getKinematicsCamera(state);
-        const viewContext = buildCorpseKinematicsViewContext(
-            this.x,
-            this.y,
-            camera,
-            this.radius,
-        );
+        const { config, rig, renderRotation, viewContext, referenceScale } = this.snapshot;
         const rigData = getRagdollRig(this.ragdoll);
-        const scene = projectRagdollRig(
-            rigData,
-            renderRotation,
-            viewContext,
-            config,
-            rig,
-            this.ragdoll.points,
-        );
+        const scene = projectRagdollRig(rigData, renderRotation, viewContext, config, rig, this.ragdoll.points, referenceScale);
         const facing = { renderRotation, gunCanvasAim: () => renderRotation };
 
-        const sprite = drawRagdollCorpseToCanvas(
-            this.bundle.sharedCanvas,
-            this.bundle.sharedCtx,
-            scene,
-            this.actor,
-            viewContext,
-            facing,
-            config,
-            rig,
-            this.bundle.sceneRenderer,
-            this.ragdoll,
-        );
+        const sprite = drawRagdollCorpseToCanvas(this.bundle.sharedCanvas, this.bundle.sharedCtx, scene, this.actor, viewContext, facing, config, rig, this.bundle.sceneRenderer, this.ragdoll);
 
         const drawRatio = sprite.drawRatio ?? 1;
         const drawW = this.displayDiameter * drawRatio;
