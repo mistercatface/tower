@@ -10,6 +10,7 @@ import { resolvePickupInspect } from "../Render/Inspector/InspectRegistry.js";
 import { getStartNodeLayout } from "../Generator/StartNodeBuilding.js";
 import { placeAtWallClearance } from "../Spatial/Navigation/PathClearance.js";
 import { distanceToSegment } from "../Spatial/Geometry/WallGeometry.js";
+import { MOVING_SPEED_SQ } from "../Spatial/Collision/PairBroadphase.js";
 
 const PICKUP_STRATEGY_DEFAULTS = {
     isPushable: false,
@@ -192,7 +193,7 @@ export class Pickup extends Entity {
     }
 
     needsWallCollision() {
-        return this.vx * this.vx + this.vy * this.vy > 0.25;
+        return this.vx * this.vx + this.vy * this.vy > MOVING_SPEED_SQ;
     }
 
     update(dt, state, spatialFrame, { resolveWalls = false } = {}) {

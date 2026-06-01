@@ -2,12 +2,7 @@ import { SpatialHash } from "./SpatialHash.js";
 import { SpatialQuery } from "./SpatialQuery.js";
 import { wallContextFromState } from "./WallContext.js";
 import { Actor } from "../../Entities/Actor.js";
-
-const MOVING_PUSHABLE_SPEED_SQ = 0.25;
-
-function isMovingPushable(pickup) {
-    return pickup.vx * pickup.vx + pickup.vy * pickup.vy > MOVING_PUSHABLE_SPEED_SQ;
-}
+import { isMovingEntity, shouldResolveActorPushable } from "../Collision/PairBroadphase.js";
 
 /**
  * Per-tick spatial context for combat.
@@ -108,6 +103,7 @@ export class SpatialFrame {
             if (actor.isDead) continue;
             this.forEachNeighbor(actor, (pickup) => {
                 if (pickup.isDead || !pickup.strategy?.isPushable) return;
+                if (!shouldResolveActorPushable(actor, pickup)) return;
                 fn(actor, pickup);
             });
         }
@@ -119,7 +115,7 @@ export class SpatialFrame {
             if (p1.isDead) continue;
             this.forEachNeighbor(p1, (p2) => {
                 if (p2 === p1 || p2.isDead || !p2.strategy?.isPushable || p1.id >= p2.id) return;
-                if (isMovingPushable(p1) || isMovingPushable(p2)) {
+                if (isMovingEntity(p1) || isMovingEntity(p2)) {
                     fn(p1, p2);
                 }
             });

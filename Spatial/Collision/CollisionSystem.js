@@ -1,5 +1,6 @@
 import { circleIntersectsSegment } from "../Geometry/WallGeometry.js";
 import { SatCollision } from "./SatCollision.js";
+import { shouldResolveActorPushable } from "./PairBroadphase.js";
 import { areHostile } from "../../Combat/Targeting.js";
 import { PhysicsSystem } from "../Motion/PhysicsSystem.js";
 import { enemyDefaults } from "../../Config/Config.js";
@@ -34,6 +35,8 @@ export class CollisionSystem {
     }
 
     static resolveActorPushable(actor, pickup) {
+        if (!shouldResolveActorPushable(actor, pickup)) return;
+
         const collisionInfo = SatCollision.checkCollision(
             actor, actor.getShape(),
             pickup, pickup.getShape()
