@@ -77,11 +77,9 @@ export class Render3D {
         const wallColor = this.getWallColor(seg, THEME_COLORS[0], 1.0);
         const healthRatio = seg.health / seg.maxHealth;
         const damageAlpha = healthRatio < 1 ? (1 - healthRatio) * 0.45 : 0;
-        const textureCanvas = useTiles && state.floorTiles
-            ? state.floorTiles.getTileTextureCanvas(state)
-            : null;
+        const floorTiles = useTiles ? state.floorTiles : null;
 
-        drawProjectedWallFace(ctx, p1, p2, px, py, wallColor, textureCanvas, {
+        drawProjectedWallFace(ctx, p1, p2, px, py, wallColor, floorTiles, state, {
             viewport,
             damageAlpha,
             textureEnabled: useTiles,

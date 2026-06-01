@@ -101,6 +101,19 @@ export function bakeFloorCellCanvas(worldX, worldY, obstacleGrid, seed) {
     return canvas;
 }
 
+/** Wall face tile — story row mixed into hash so vertical bands stay stable while moving. */
+export function bakeWallCellCanvas(worldX, worldY, storyRow, obstacleGrid, seed) {
+    const cellSize = obstacleGrid.cellSize;
+    const canvas = document.createElement("canvas");
+    canvas.width = cellSize;
+    canvas.height = cellSize;
+    const ctx = canvas.getContext("2d");
+    ctx.imageSmoothingEnabled = false;
+    const hash = hashTileSeed(seed ^ Math.imul(storyRow, 2246822519), worldX, worldY);
+    paintCell(ctx, 0, 0, cellSize, hash, false, worldX, worldY, { wallSurface: true });
+    return canvas;
+}
+
 export function bakeFloorTileTextureCanvas(seed, cellSize = gridSettings.cellSize) {
     return bakeFloorCellCanvas(0, 0, { cellSize }, seed);
 }

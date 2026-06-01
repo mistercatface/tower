@@ -1,4 +1,5 @@
 import { floorTileSettings, gridSettings } from "../../Config/Config.js";
+import { drawImageQuad } from "./draw/AffineTexture.js";
 import { CAMERA_HEIGHT } from "./math/CombatProjection.js";
 
 const WALL_ANGLE_SPREAD = 0.002;
@@ -62,117 +63,87 @@ function rowBoundsIntersects(bl, br, tl, tr, bounds) {
     return !(maxX < bounds.minX || minX > bounds.maxX || maxY < bounds.minY || minY > bounds.maxY);
 }
 
-function estimateFaceScreenSpan(p1, p2, face) {
-    const topMidX = (face.proj1X + face.proj2X) * 0.5;
-    const topMidY = (face.proj1Y + face.proj2Y) * 0.5;
-    const baseMidX = (p1.x + p2.x) * 0.5;
-    const baseMidY = (p1.y + p2.y) * 0.5;
-    return Math.hypot(topMidX - baseMidX, topMidY - baseMidY);
+function getWallTextureStoryCount() {
+    return floorTileSettings.wallTextureStories ?? 16;
 }
 
-/** Even story bands on the face; LOD tiers avoid sub-pixel scanlines without swimming every frame. */
-function getWallStoryCount(p1, p2, face) {
-    const maxStories = floorTileSettings.maxWallStories ?? 32;
-    const minStories = floorTileSettings.minWallStories ?? 12;
-    const minPxPerStory = floorTileSettings.minPxPerStory ?? 4;
-    const tiers = floorTileSettings.wallStoryLodTiers ?? [12, 16, 24, 32];
-
-    const faceSpan = estimateFaceScreenSpan(p1, p2, face);
-    const target = Math.min(maxStories, Math.max(minStories, Math.floor(faceSpan / minPxPerStory)));
-
-    let chosen = tiers[0] ?? minStories;
-    for (const tier of tiers) {
-        if (tier <= target) chosen = tier;
-    }
-    return Math.min(maxStories, Math.max(minStories, chosen));
-}
-
-function paintPatternTriangle(ctx, pattern, matrix, x0, y0, x1, y1, x2, y2) {
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(x0, y0);
-    ctx.lineTo(x1, y1);
-    ctx.lineTo(x2, y2);
-    ctx.closePath();
-    ctx.clip();
-
-    pattern.setTransform(matrix);
-    ctx.fillStyle = pattern;
-    const minX = Math.min(x0, x1, x2) - 1;
-    const maxX = Math.max(x0, x1, x2) + 1;
-    const minY = Math.min(y0, y1, y2) - 1;
-    const maxY = Math.max(y0, y1, y2) + 1;
-    ctx.fillRect(minX, minY, maxX - minX, maxY - minY);
-    ctx.restore();
-}
-
-function bandCorners(p1, p2, leftTop, rightTop, t0, t1) {
-    return {
-        bl: lerpPoint(p1, leftTop, t0),
-        br: lerpPoint(p2, rightTop, t0),
-        tl: lerpPoint(p1, leftTop, t1),
-        tr: lerpPoint(p2, rightTop, t1),
-    };
-}
-
-function drawTextureBand(ctx, pattern, u1, u2, du, bl, br, tl, tr, v1, v2) {
-    const dv = v2 - v1;
-    if (Math.abs(dv) < 1e-6) return;
-
-    const a1 = (br.x - bl.x) / du;
-    const b1 = (br.y - bl.y) / du;
-    const c1 = (tl.x - bl.x) / dv;
-    const d1 = (tl.y - bl.y) / dv;
-    const e1 = bl.x - a1 * u1 - c1 * v1;
-    const f1 = bl.y - b1 * u1 - d1 * v1;
-    paintPatternTriangle(ctx, pattern, new DOMMatrix([a1, b1, c1, d1, e1, f1]), bl.x, bl.y, br.x, br.y, tl.x, tl.y);
-
-    const a2 = (tr.x - tl.x) / du;
-    const b2 = (tr.y - tl.y) / du;
-    const c2 = (tr.x - br.x) / dv;
-    const d2 = (tr.y - br.y) / dv;
-    const e2 = br.x - a2 * u2 - c2 * v1;
-    const f2 = br.y - b2 * u2 - d2 * v1;
-    paintPatternTriangle(ctx, pattern, new DOMMatrix([a2, b2, c2, d2, e2, f2]), br.x, br.y, tr.x, tr.y, tl.x, tl.y);
-}
-
-/**
- * N evenly spaced stories on the projected face. Absolute world U keeps grout continuous
- * across maze cells; geometry height stays on wallVisualHeight.
- */
-function drawFaceTexture(ctx, p1, p2, face, textureCanvas, viewport) {
-    const tileWorldSize = floorTileSettings.tileWorldSize ?? gridSettings.cellSize;
-    const texW = textureCanvas.width;
-    const texH = textureCanvas.height;
+/** World-aligned slices along the wall base edge (stable when the camera moves). */
+function wallFaceColumns(p1, p2, tileWorldSize) {
     const edgeLen = Math.hypot(p2.x - p1.x, p2.y - p1.y);
-    if (edgeLen < 0.001) return;
+    if (edgeLen < 0.001) return [];
 
     const edgeDirX = (p2.x - p1.x) / edgeLen;
     const edgeDirY = (p2.y - p1.y) / edgeLen;
-    const uAlongEdge = p1.x * edgeDirX + p1.y * edgeDirY;
-    const u1 = (uAlongEdge / tileWorldSize) * texW;
-    const u2 = u1 + (edgeLen / tileWorldSize) * texW;
-    const du = u2 - u1;
-    if (Math.abs(du) < 1e-6) return;
+    const uStart = p1.x * edgeDirX + p1.y * edgeDirY;
+    const uEnd = uStart + edgeLen;
+    const firstTile = Math.floor(uStart / tileWorldSize);
+    const lastTile = Math.ceil(uEnd / tileWorldSize);
+    const columns = [];
 
-    const storyCount = getWallStoryCount(p1, p2, face);
+    for (let tile = firstTile; tile < lastTile; tile++) {
+        const u0World = tile * tileWorldSize;
+        const u1World = (tile + 1) * tileWorldSize;
+        let u0 = (u0World - uStart) / edgeLen;
+        let u1 = (u1World - uStart) / edgeLen;
+        u0 = Math.max(0, Math.min(1, u0));
+        u1 = Math.max(0, Math.min(1, u1));
+        if (u1 - u0 < 1e-6) continue;
+
+        const midU = (u0 + u1) * 0.5;
+        columns.push({
+            u0,
+            u1,
+            worldX: p1.x + (p2.x - p1.x) * midU,
+            worldY: p1.y + (p2.y - p1.y) * midU,
+        });
+    }
+
+    return columns;
+}
+
+function faceCorner(p1, p2, leftTop, rightTop, u, v) {
+    const bottom = lerpPoint(p1, p2, u);
+    const top = lerpPoint(leftTop, rightTop, u);
+    return lerpPoint(bottom, top, v);
+}
+
+/**
+ * Per-grid-cell textures on the projected face (same variety as floor).
+ * Affine quads use bleed to hide the internal triangle split.
+ */
+function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport) {
+    const tileWorldSize = floorTileSettings.tileWorldSize ?? gridSettings.cellSize;
+    if (!floorTiles || !state) return;
+
+    const columns = wallFaceColumns(p1, p2, tileWorldSize);
+    if (columns.length === 0) return;
+
+    const storyCount = getWallTextureStoryCount();
     const leftTop = { x: face.proj1X, y: face.proj1Y };
     const rightTop = { x: face.proj2X, y: face.proj2Y };
-    const pattern = ctx.createPattern(textureCanvas, "repeat");
     const worldBounds = getViewportWorldBounds(viewport);
+    const bleedPx = floorTileSettings.wallTextureBleedPx ?? 1;
 
     ctx.save();
     traceProjectedFace(ctx, p1, p2, face);
     ctx.clip();
 
     for (let row = 0; row < storyCount; row++) {
-        const t0 = row / storyCount;
-        const t1 = (row + 1) / storyCount;
-        const { bl, br, tl, tr } = bandCorners(p1, p2, leftTop, rightTop, t0, t1);
+        const v0 = row / storyCount;
+        const v1 = (row + 1) / storyCount;
 
-        if (!rowBoundsIntersects(bl, br, tl, tr, worldBounds)) continue;
+        for (const col of columns) {
+            const d0 = faceCorner(p1, p2, leftTop, rightTop, col.u0, v0);
+            const d1 = faceCorner(p1, p2, leftTop, rightTop, col.u1, v0);
+            const d2 = faceCorner(p1, p2, leftTop, rightTop, col.u1, v1);
+            const d3 = faceCorner(p1, p2, leftTop, rightTop, col.u0, v1);
 
-        drawTextureBand(ctx, pattern, u1, u2, du, bl, br, tl, tr, row * texH, (row + 1) * texH);
+            if (!rowBoundsIntersects(d0, d1, d2, d3, worldBounds)) continue;
+
+            const cellCanvas = floorTiles.getWallCellCanvas(col.worldX, col.worldY, row, state);
+            const s = cellCanvas.width;
+            drawImageQuad(ctx, cellCanvas, 0, 0, s, s, d0, d1, d2, d3, { bleedPx });
+        }
     }
 
     ctx.restore();
@@ -185,7 +156,8 @@ export function drawProjectedWallFace(
     px,
     py,
     fillStyle,
-    textureCanvas,
+    floorTiles,
+    state,
     {
         viewport = null,
         damageAlpha = 0,
@@ -201,8 +173,8 @@ export function drawProjectedWallFace(
     ctx.fillStyle = fillStyle;
     ctx.fill();
 
-    if (textureCanvas && textureEnabled) {
-        drawFaceTexture(ctx, p1, p2, face, textureCanvas, viewport);
+    if (floorTiles && textureEnabled) {
+        drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport);
     }
 
     if (shadeOverlay > 0) {

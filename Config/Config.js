@@ -349,11 +349,15 @@ export const floorTileSettings = {
     /** Tile rows painted on each wall face (geometry height is separate). */
     maxWallStories: 32,
     minWallStories: 12,
+    /** Fixed vertical tile count for wall textures (camera-independent). */
+    wallTextureStories: 16,
     /** Target minimum pixels per story; LOD snaps down via wallStoryLodTiers when the face is shorter. */
     minPxPerStory: 4,
     wallStoryLodTiers: [12, 16, 24, 32],
     /** Darken wall tiles vs floor (0 = none, 1 = black). */
     wallShadeOverlay: 0.22,
+    /** Overlap when affine-mapping wall cells (hides triangle seam). */
+    wallTextureBleedPx: 1,
     maxCachedWallCells: 512,
 };
 
