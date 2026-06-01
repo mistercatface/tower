@@ -79,6 +79,7 @@ export class Render3D {
         const damageAlpha = healthRatio < 1 ? (1 - healthRatio) * 0.45 : 0;
 
         drawProjectedWallFace(ctx, p1, p2, px, py, wallColor, useTiles ? state.floorTiles : null, state, {
+            viewport,
             damageAlpha,
             textureEnabled: useTiles,
             shouldStroke,

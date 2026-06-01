@@ -346,6 +346,8 @@ export const floorTileSettings = {
     /** Darken wall tiles vs floor (0 = none, 1 = black). */
     wallShadeOverlay: 0.22,
     maxCachedWallCells: 512,
+    /** Tile rows drawn up each wall face (one affine band per row). */
+    wallMaxVisibleRows: 32,
 };
 
 export const combatVisualSettings = { floorHighlight: "#2c3340", floorFill: "#1c2129", floorShadow: "#12161c", gridStroke: "rgba(90, 105, 125, 0.2)" };
