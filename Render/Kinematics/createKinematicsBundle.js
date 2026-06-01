@@ -186,7 +186,7 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
             actor,
             facing,
             drawOptions = {},
-            padding = config.PADDING,
+            padding = spriteCache.cachePadding,
         } = frame;
         const viewContext = buildFrameViewContext(x, y, camera, bodyRotation, animCycle);
         return drawKinematicsFrameToCanvas(
@@ -258,6 +258,7 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
             actor: corpse.actor,
             facing: { renderRotation, gunCanvasAim: () => renderRotation },
             drawOptions: { ragdoll: corpse.ragdoll },
+            padding: spriteCache.cachePadding,
         };
     }
 

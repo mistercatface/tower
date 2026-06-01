@@ -119,7 +119,8 @@ export function renderActorKinematicsBody(ctx, actor, camera, radius = actor.rad
 
 export function renderCorpseKinematicsBody(ctx, corpse, state) {
     const kinematics = getCorpseKinematics(corpse);
-    const camera = resolveKinematicsCamera(corpse.actor, state);
+    const player = state?.player;
+    const camera = player ? { x: player.x, y: player.y } : resolveKinematicsCamera(corpse.actor, state);
     const frame = kinematics.bundle.resolveCorpseFrame(corpse, camera);
     renderKinematicsBody(ctx, { ...frame, radius: corpse.radius, opacity: corpse.opacity });
 }
