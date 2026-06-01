@@ -140,6 +140,7 @@ export class CollisionSystem {
             for (let i = 0; i < state.pickups.length; i++) {
                 const pickup = state.pickups[i];
                 if (pickup.isDead || !pickup.strategy?.isPushable) continue;
+                if (!pickup.needsWallCollision()) continue;
                 PhysicsSystem.resolveWallCollisions(pickup, spatialFrame, state);
             }
         }
