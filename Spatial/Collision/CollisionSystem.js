@@ -1,6 +1,7 @@
 import { circleIntersectsSegment } from "../Geometry/WallGeometry.js";
 import { SatCollision } from "./SatCollision.js";
 import { shouldResolveActorPushable } from "./PairBroadphase.js";
+import { wakePushable } from "./PushableSleep.js";
 import { areHostile } from "../../Combat/Targeting.js";
 import { PhysicsSystem } from "../Motion/PhysicsSystem.js";
 import { enemyDefaults } from "../../Config/Config.js";
@@ -63,6 +64,7 @@ export class CollisionSystem {
         actor._wallResolvedFrame = null;
         pickup._wallResolvedFrame = null;
 
+        wakePushable(pickup);
         PhysicsSystem.applyRigidBodyImpulse(actor, pickup, collisionInfo, 0.15);
     }
 
@@ -93,6 +95,8 @@ export class CollisionSystem {
         p1._wallResolvedFrame = null;
         p2._wallResolvedFrame = null;
 
+        wakePushable(p1);
+        wakePushable(p2);
         PhysicsSystem.applyRigidBodyImpulse(p1, p2, collisionInfo, 0.4);
     }
 
@@ -140,7 +144,7 @@ export class CollisionSystem {
             for (let i = 0; i < state.pickups.length; i++) {
                 const pickup = state.pickups[i];
                 if (pickup.isDead || !pickup.strategy?.isPushable) continue;
-                if (!pickup.needsWallCollision()) continue;
+                if (pickup.isSleeping || !pickup.needsWallCollision()) continue;
                 PhysicsSystem.resolveWallCollisions(pickup, spatialFrame, state);
             }
         }

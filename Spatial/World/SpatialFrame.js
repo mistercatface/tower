@@ -41,7 +41,7 @@ export class SpatialFrame {
         for (const pickup of state.pickups) {
             if (pickup.isDead) continue;
             this.entityHash.insert(pickup);
-            if (pickup.strategy?.isPushable) {
+            if (pickup.strategy?.isPushable && !pickup.isSleeping) {
                 this._pushables.push(pickup);
             }
         }

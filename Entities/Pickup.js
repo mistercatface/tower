@@ -11,6 +11,7 @@ import { getStartNodeLayout } from "../Generator/StartNodeBuilding.js";
 import { placeAtWallClearance } from "../Spatial/Navigation/PathClearance.js";
 import { distanceToSegment } from "../Spatial/Geometry/WallGeometry.js";
 import { MOVING_SPEED_SQ } from "../Spatial/Collision/PairBroadphase.js";
+import { SLEEP_FRAMES, canSleepPushable, wakePushable as wakePushablePickup } from "../Spatial/Collision/PushableSleep.js";
 
 const PICKUP_STRATEGY_DEFAULTS = {
     isPushable: false,
@@ -69,6 +70,7 @@ function damageOnHit(state, pickup, projectile, events) {
                     pickup.angularVelocity += torque / pickup.momentOfInertia;
                     pickup.angularVelocity = Math.max(-30, Math.min(30, pickup.angularVelocity));
                 }
+                wakePushablePickup(pickup);
             }
             if (projectile && projectile.isDead !== undefined) projectile.isDead = true;
             return true;
@@ -101,6 +103,7 @@ function damageOnHit(state, pickup, projectile, events) {
             const torque = rx * fy - ry * fx;
             pickup.angularVelocity += torque / pickup.momentOfInertia;
         }
+        wakePushablePickup(pickup);
     }
 
     if (projectile?.isDead !== undefined) projectile.isDead = true;
@@ -143,9 +146,32 @@ export class Pickup extends Entity {
             this.maxHealth = this.strategy.maxHealth;
             this.health = this.strategy.maxHealth;
         }
+        this._sleepFrames = 0;
+        this.isSleeping = false;
         this.stateTimer = 0;
         this.stateData = {};
         this.changeState("normal");
+    }
+
+    wakePushable() {
+        wakePushablePickup(this);
+    }
+
+    canSleep() {
+        return canSleepPushable(this);
+    }
+
+    tickSleep(eligible) {
+        if (!this.strategy?.isPushable) return;
+        if (!eligible) {
+            this._sleepFrames = 0;
+            this.isSleeping = false;
+            return;
+        }
+        this._sleepFrames++;
+        if (this._sleepFrames >= SLEEP_FRAMES) {
+            this.isSleeping = true;
+        }
     }
 
     get momentOfInertia() {
@@ -159,6 +185,7 @@ export class Pickup extends Entity {
     }
 
     changeState(stateName, stateDataInit = null) {
+        if (this.strategy?.isPushable) wakePushablePickup(this);
         transitionEntity(this, pickupStates, stateName, stateDataInit);
     }
 
@@ -247,6 +274,7 @@ export class Pickup extends Entity {
             const speed = 40 + Math.random() * 60;
             shard.vx = this.vx + dx * speed + (Math.random() - 0.5) * 15;
             shard.vy = this.vy + dy * speed + (Math.random() - 0.5) * 15;
+            shard.wakePushable();
 
             shard.changeState("shard_flying");
             gameState.pickups.push(shard);

@@ -3,6 +3,7 @@ import { CombatParticles } from "../Render/CombatParticles.js";
 import { RagdollCorpse } from "../Entities/RagdollCorpse.js";
 import { ProgressionManager } from "../Progression/ProgressionManager.js";
 import { CollisionSystem } from "../Spatial/Collision/CollisionSystem.js";
+import { tickAllPushableSleep, wakeAllPushables } from "../Spatial/Collision/PushableSleep.js";
 import { combatSpatial } from "../Spatial/World/SpatialFrame.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { Projectile } from "../Entities/Projectile.js";
@@ -28,14 +29,15 @@ function runPushablePhysics(state, dt, spatialFrame) {
     for (let i = 0; i < state.pickups.length; i++) {
         const pickup = state.pickups[i];
         if (pickup.isDead || !pickup.strategy?.isPushable) continue;
-        if (pickup.needsWallCollision()) {
-            PhysicsSystem.resolveWallCollisions(pickup, spatialFrame, state);
-        }
+        if (pickup.isSleeping || !pickup.needsWallCollision()) continue;
+        PhysicsSystem.resolveWallCollisions(pickup, spatialFrame, state);
     }
+    tickAllPushableSleep(state, spatialFrame);
     return events;
 }
 
 function runPersistentSectorEnter(state) {
+    wakeAllPushables(state);
     const persistentEntities = [...state.getAllies(), ...state.pickups];
 
     for (const entity of persistentEntities) {
