@@ -3,6 +3,8 @@ import { Handedness } from "./equipmentConfig.js";
 
 export const defaultGunId = "servicePistol";
 export const defaultEnemyGunId = "enemyRifle";
+/** Player always starts with this weapon. */
+export const playerStartGunId = "sawedOffShotgun";
 /** Barry (run sidekick) always starts with this weapon. */
 export const barryStartGunId = "tommyGun";
 

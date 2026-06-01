@@ -1,4 +1,4 @@
-import { enemyStartGunPool, getGunDefinition, playerStartGunPool } from "../Config/gunDefinitions.js";
+import { enemyStartGunPool, getGunDefinition, playerStartGunId } from "../Config/gunDefinitions.js";
 import { rollRandomLoadoutFromPool } from "./equipmentLoadout.js";
 
 export function formatWeaponLoadoutLabel(actor) {
@@ -19,7 +19,7 @@ export function formatWeaponLoadoutLabel(actor) {
 }
 
 export function rollPlayerStartLoadout() {
-    return rollRandomLoadoutFromPool(playerStartGunPool);
+    return [playerStartGunId];
 }
 
 export function rollEnemyStartLoadout() {

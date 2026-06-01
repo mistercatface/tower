@@ -10,7 +10,6 @@ import {
 } from "../math/InspectCamera.js";
 import { faceVisible } from "../geometry/MeshBuilder.js";
 import { drawImageQuad } from "./AffineTexture.js";
-import { containTextureInQuad } from "./TextureAspect.js";
 import { labelBandYRange } from "../../../Math/Interpolate.js";
 
 /** @typedef {"+x" | "-x" | "+z" | "-z"} BoxSideFace */
@@ -70,6 +69,17 @@ function alignHorizontalUV(d0, d1, d2, d3) {
     return [d0, d1, d2, d3];
 }
 
+/** Narrow the face width so band height × texture aspect fits without vertical stretch. */
+function clampFaceWidthToTextureAspect(model, face, targetHalfWidth) {
+    const axis = face === "+x" || face === "-x" ? "z" : "x";
+    for (const p of model) {
+        const w = p[axis];
+        if (Math.abs(w) > targetHalfWidth) {
+            p[axis] = Math.sign(w || 1) * targetHalfWidth;
+        }
+    }
+}
+
 /** Draw label texture on configured vertical box faces. */
 export function drawInspectBoxLabels(ctx, cx, cy, scale, yaw, pitch, {
     img = null,
@@ -110,7 +120,13 @@ export function drawInspectBoxLabels(ctx, cx, cy, scale, yaw, pitch, {
         const build = FACE_BUILDERS[face];
         if (!build) continue;
 
+        const { yBot, yTop } = labelBandYRange(hy, y0, y1);
+        const bandHeight = yTop - yBot;
+        const texAspect = (sx1 - sx0) / Math.max(syBot - syTop, 1e-6);
+        const targetHalfWidth = (bandHeight * texAspect) / 2;
+
         const model = build(hx, hy, hz, y0, y1);
+        clampFaceWidthToTextureAspect(model, face, targetHalfWidth);
         const viewNormal = transformNormal(FACE_NORMALS[face], yaw, pitch);
         if (!faceVisible(viewNormal)) continue;
 
@@ -136,14 +152,10 @@ export function drawInspectBoxLabels(ctx, cx, cy, scale, yaw, pitch, {
     const prevSmooth = ctx.imageSmoothingEnabled;
     ctx.imageSmoothingEnabled = true;
     for (const quad of quads) {
-        const fit = containTextureInQuad(
-            quad.sx0, quad.syTop, quad.sx1, quad.syBot,
-            quad.d0, quad.d1, quad.d2, quad.d3,
-        );
         drawImageQuad(
             ctx, quad.img,
-            fit.sx0, fit.sy1, fit.sx1, fit.sy0,
-            fit.d0, fit.d1, fit.d2, fit.d3,
+            quad.sx0, quad.syBot, quad.sx1, quad.syTop,
+            quad.d0, quad.d1, quad.d2, quad.d3,
             textureOpts,
         );
     }
