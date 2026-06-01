@@ -49,11 +49,24 @@ function damageOnHit(state, pickup, projectile, events) {
         if (!canSplit) {
             if (projectile) {
                 const pushForce = projectile.isExplosion ? 250 : 120;
-                const angle = (projectile.x !== undefined && projectile.y !== undefined)
-                    ? Math.atan2(pickup.y - projectile.y, pickup.x - projectile.x)
-                    : (projectile.angle ?? Math.atan2(pickup.y - (projectile.y ?? 0), pickup.x - (projectile.x ?? 0)));
-                pickup.vx += Math.cos(angle) * pushForce;
-                pickup.vy += Math.sin(angle) * pushForce;
+                
+                let forceAngle;
+                if (projectile.isExplosion) {
+                    forceAngle = Math.atan2(pickup.y - projectile.y, pickup.x - projectile.x);
+                } else {
+                    forceAngle = projectile.angle !== undefined ? projectile.angle : Math.atan2(pickup.y - projectile.y, pickup.x - projectile.x);
+                }
+
+                const fx = Math.cos(forceAngle) * pushForce;
+                const fy = Math.sin(forceAngle) * pushForce;
+                pickup.vx += fx;
+                pickup.vy += fy;
+                if (projectile.x !== undefined && projectile.y !== undefined && !projectile.isExplosion) {
+                    const rx = projectile.x - pickup.x;
+                    const ry = projectile.y - pickup.y;
+                    const torque = rx * fy - ry * fx;
+                    pickup.angularVelocity += torque / pickup.momentOfInertia;
+                }
             }
             if (projectile && projectile.isDead !== undefined) projectile.isDead = true;
             return true;
@@ -69,11 +82,23 @@ function damageOnHit(state, pickup, projectile, events) {
 
     if (pickup.health > 0 && projectile) {
         const pushForce = 80;
-        const angle = (projectile.x !== undefined && projectile.y !== undefined)
-            ? Math.atan2(pickup.y - projectile.y, pickup.x - projectile.x)
-            : (projectile.angle ?? Math.atan2(pickup.y - (projectile.y ?? 0), pickup.x - (projectile.x ?? 0)));
-        pickup.vx += Math.cos(angle) * pushForce;
-        pickup.vy += Math.sin(angle) * pushForce;
+        let forceAngle;
+        if (projectile.isExplosion) {
+            forceAngle = Math.atan2(pickup.y - projectile.y, pickup.x - projectile.x);
+        } else {
+            forceAngle = projectile.angle !== undefined ? projectile.angle : Math.atan2(pickup.y - projectile.y, pickup.x - projectile.x);
+        }
+        
+        const fx = Math.cos(forceAngle) * pushForce;
+        const fy = Math.sin(forceAngle) * pushForce;
+        pickup.vx += fx;
+        pickup.vy += fy;
+        if (projectile.x !== undefined && projectile.y !== undefined && !projectile.isExplosion) {
+            const rx = projectile.x - pickup.x;
+            const ry = projectile.y - pickup.y;
+            const torque = rx * fy - ry * fx;
+            pickup.angularVelocity += torque / pickup.momentOfInertia;
+        }
     }
 
     if (projectile?.isDead !== undefined) projectile.isDead = true;
@@ -97,9 +122,11 @@ export class Pickup extends Entity {
         this.radius = this.strategy.radius;
         this.vx = 0;
         this.vy = 0;
+        this.angularVelocity = 0;
         this.mass = this.strategy.mass;
         this.zIndex = 10;
         this.facing = facing ?? Math.random() * Math.PI * 2;
+
         if (type === "crate") {
             this.faceLabelVariants = Object.fromEntries(CRATE_LABEL_FACES.map((face) => [face, Math.floor(Math.random() * CRATE_LABEL_VARIANTS.length)]));
             const r = this.radius;
@@ -117,6 +144,16 @@ export class Pickup extends Entity {
         this.stateTimer = 0;
         this.stateData = {};
         this.changeState("normal");
+    }
+
+    get momentOfInertia() {
+        const m = this.mass || 1.0;
+        if (this.shape && this.shape.type === 'Polygon') {
+            const w = this.halfExtents ? this.halfExtents.x * 2 : this.radius * 2;
+            const h = this.halfExtents ? this.halfExtents.y * 2 : this.radius * 2;
+            return m * (w * w + h * h) / 12;
+        }
+        return m * this.radius * this.radius / 2;
     }
 
     changeState(stateName, stateDataInit = null) {

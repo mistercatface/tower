@@ -44,10 +44,13 @@ export class SatCollision {
             return null;
         }
         const dist = Math.sqrt(distSq);
+        const overlap = radii - dist;
         return {
-            overlap: radii - dist,
+            overlap: overlap,
             nx: dx / dist,
-            ny: dy / dist
+            ny: dy / dist,
+            cx: posA.x + (dx / dist) * (shapeA.radius - overlap / 2),
+            cy: posA.y + (dy / dist) * (shapeA.radius - overlap / 2)
         };
     }
 
@@ -91,10 +94,43 @@ export class SatCollision {
             minNormal = { x: -minNormal.x, y: -minNormal.y };
         }
 
+        // Approximate contact point
+        let minProjB = Infinity;
+        let contactB = posB;
+        const cosB = Math.cos(posB.facing ?? posB.angle ?? 0);
+        const sinB = Math.sin(posB.facing ?? posB.angle ?? 0);
+        for (let i = 0; i < shapeB.vertices.length; i++) {
+            const v = shapeB.vertices[i];
+            const vx = posB.x + (v.x * cosB - v.y * sinB);
+            const vy = posB.y + (v.x * sinB + v.y * cosB);
+            const proj = vx * minNormal.x + vy * minNormal.y;
+            if (proj < minProjB) {
+                minProjB = proj;
+                contactB = { x: vx, y: vy };
+            }
+        }
+
+        let maxProjA = -Infinity;
+        let contactA = posA;
+        const cosA = Math.cos(posA.facing ?? posA.angle ?? 0);
+        const sinA = Math.sin(posA.facing ?? posA.angle ?? 0);
+        for (let i = 0; i < shapeA.vertices.length; i++) {
+            const v = shapeA.vertices[i];
+            const vx = posA.x + (v.x * cosA - v.y * sinA);
+            const vy = posA.y + (v.x * sinA + v.y * cosA);
+            const proj = vx * minNormal.x + vy * minNormal.y;
+            if (proj > maxProjA) {
+                maxProjA = proj;
+                contactA = { x: vx, y: vy };
+            }
+        }
+
         return {
             overlap: minOverlap,
             nx: minNormal.x,
-            ny: minNormal.y
+            ny: minNormal.y,
+            cx: (contactA.x + contactB.x) / 2,
+            cy: (contactA.y + contactB.y) / 2
         };
     }
 
@@ -173,7 +209,9 @@ export class SatCollision {
         return {
             overlap: minOverlap,
             nx: minNormal.x,
-            ny: minNormal.y
+            ny: minNormal.y,
+            cx: posCircle.x + minNormal.x * (circleShape.radius - minOverlap / 2),
+            cy: posCircle.y + minNormal.y * (circleShape.radius - minOverlap / 2)
         };
     }
 

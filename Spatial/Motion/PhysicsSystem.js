@@ -58,7 +58,7 @@ export class PhysicsSystem {
                 const maxDist = radius + seg.size * 0.75;
                 if (Math.abs(entity.x - seg.x) > maxDist || Math.abs(entity.y - seg.y) > maxDist) continue;
 
-                let normalX, normalY, overlap;
+                let normalX, normalY, overlap, coll;
 
                 if (shape.type === 'Circle') {
                     const penetration = getCircleSegmentPenetration(entity, seg);
@@ -77,7 +77,7 @@ export class PhysicsSystem {
                         ]);
                     }
 
-                    const coll = SatCollision.checkCollision(entity, shape, seg, seg.shape);
+                    coll = SatCollision.checkCollision(entity, shape, seg, seg.shape);
                     if (!coll) continue;
                     normalX = -coll.nx;
                     normalY = -coll.ny;
@@ -89,19 +89,64 @@ export class PhysicsSystem {
                 collided = true;
                 entity.x += normalX * overlap;
                 entity.y += normalY * overlap;
-                const dot = entity.vx !== undefined && entity.vy !== undefined ? entity.vx * normalX + entity.vy * normalY : 0;
+
+                let cx, cy;
+                if (shape.type === 'Circle') {
+                    cx = entity.x - normalX * entity.radius;
+                    cy = entity.y - normalY * entity.radius;
+                } else {
+                    cx = coll.cx !== undefined ? coll.cx : entity.x - normalX * overlap;
+                    cy = coll.cy !== undefined ? coll.cy : entity.y - normalY * overlap;
+                }
+
+                const rx = cx - entity.x;
+                const ry = cy - entity.y;
+                const w = entity.angularVelocity || 0;
+
+                const vpx = (entity.vx || 0) - w * ry;
+                const vpy = (entity.vy || 0) + w * rx;
+                
+                const dot = vpx * normalX + vpy * normalY;
+
                 if (entity.vx !== undefined && entity.vy !== undefined && dot < 0) {
                     const wp = entity.strategy?.wallPhysics;
                     const restitution = wp?.restitution ?? 0.0;
-                    entity.vx -= (1 + restitution) * dot * normalX;
-                    entity.vy -= (1 + restitution) * dot * normalY;
+                    
+                    const invMassVal = entity.mass ? (1 / entity.mass) : (entity.radius ? 1 / entity.radius : 1/15);
+                    const invI = entity.momentOfInertia ? 1 / entity.momentOfInertia : 0;
+                    
+                    const cross = rx * normalY - ry * normalX;
+                    const denom = invMassVal + cross * cross * invI;
+                    const j = -(1 + restitution) * dot / denom;
+                    
+                    entity.vx -= j * normalX * invMassVal;
+                    entity.vy -= j * normalY * invMassVal;
+                    if (entity.momentOfInertia) {
+                        entity.angularVelocity -= j * cross * invI;
+                    }
+                    
+                    // Friction
                     const wallFriction = wp?.friction ?? 0.9;
                     const tx = -normalY;
                     const ty = normalX;
-                    const tangentDot = entity.vx * tx + entity.vy * ty;
-                    entity.vx = tx * tangentDot * wallFriction;
-                    entity.vy = ty * tangentDot * wallFriction;
+                    
+                    const wNew = entity.angularVelocity || 0;
+                    const vpxNew = entity.vx - wNew * ry;
+                    const vpyNew = entity.vy + wNew * rx;
+                    
+                    const tangentDot = vpxNew * tx + vpyNew * ty;
+                    
+                    const crossT = rx * ty - ry * tx;
+                    const denomT = invMassVal + crossT * crossT * invI;
+                    const jt = -tangentDot * (1 - wallFriction) / denomT;
+                    
+                    entity.vx += jt * tx * invMassVal;
+                    entity.vy += jt * ty * invMassVal;
+                    if (entity.momentOfInertia) {
+                        entity.angularVelocity += jt * crossT * invI;
+                    }
                 }
+                
                 if (entity.canDamageWalls && state && dot < 0) {
                     const impactSpeed = -dot;
                     if (impactSpeed > 75) {
@@ -131,6 +176,14 @@ export class PhysicsSystem {
                 entity.vy = 0;
             }
         }
+        if (entity.angularVelocity) {
+            entity.facing = (entity.facing || 0) + entity.angularVelocity * (dt / 1000);
+            const angularDrag = Math.exp(-friction * 0.8 * (dt / 1000));
+            entity.angularVelocity *= angularDrag;
+            if (Math.abs(entity.angularVelocity) < 0.1) {
+                entity.angularVelocity = 0;
+            }
+        }
     }
 
     static applyImpulse(entity, fx, fy) {
@@ -144,6 +197,55 @@ export class PhysicsSystem {
         const fx = Math.cos(angle) * magnitude;
         const fy = Math.sin(angle) * magnitude;
         this.applyImpulse(entity, fx, fy);
+    }
+
+    static applyRigidBodyImpulse(p1, p2, collisionInfo, restitution = 0.15) {
+        const nx = collisionInfo.nx;
+        const ny = collisionInfo.ny;
+        const cx = collisionInfo.cx !== undefined ? collisionInfo.cx : p1.x + nx * (collisionInfo.overlap / 2);
+        const cy = collisionInfo.cy !== undefined ? collisionInfo.cy : p1.y + ny * (collisionInfo.overlap / 2);
+
+        const rx1 = cx - p1.x;
+        const ry1 = cy - p1.y;
+        const rx2 = cx - p2.x;
+        const ry2 = cy - p2.y;
+
+        const w1 = p1.angularVelocity || 0;
+        const w2 = p2.angularVelocity || 0;
+
+        const v1x = (p1.vx || 0) - w1 * ry1;
+        const v1y = (p1.vy || 0) + w1 * rx1;
+        const v2x = (p2.vx || 0) - w2 * ry2;
+        const v2y = (p2.vy || 0) + w2 * rx2;
+
+        const rvx = v2x - v1x;
+        const rvy = v2y - v1y;
+        const velAlongNormal = rvx * nx + rvy * ny;
+
+        if (velAlongNormal >= 0) return;
+
+        const m1 = p1.mass !== undefined ? p1.mass : (p1.radius || 15);
+        const m2 = p2.mass !== undefined ? p2.mass : (p2.radius || 15);
+        const invMass1 = 1 / m1;
+        const invMass2 = 1 / m2;
+
+        // Actors generally don't spin from physics, so momentOfInertia might be undefined for them.
+        const invI1 = p1.momentOfInertia ? 1 / p1.momentOfInertia : 0;
+        const invI2 = p2.momentOfInertia ? 1 / p2.momentOfInertia : 0;
+
+        const cross1 = (rx1 * ny - ry1 * nx);
+        const cross2 = (rx2 * ny - ry2 * nx);
+
+        const denom = invMass1 + invMass2 + cross1 * cross1 * invI1 + cross2 * cross2 * invI2;
+        const j = -(1 + restitution) * velAlongNormal / denom;
+
+        if (p1.vx !== undefined) p1.vx -= j * nx * invMass1;
+        if (p1.vy !== undefined) p1.vy -= j * ny * invMass1;
+        if (p1.momentOfInertia) p1.angularVelocity -= j * cross1 * invI1;
+
+        if (p2.vx !== undefined) p2.vx += j * nx * invMass2;
+        if (p2.vy !== undefined) p2.vy += j * ny * invMass2;
+        if (p2.momentOfInertia) p2.angularVelocity += j * cross2 * invI2;
     }
 
     static resolveCircleCollision(a, b, { restitution = 0.5 } = {}) {

@@ -57,11 +57,6 @@ export class PickupShardFlyingState {
             if (pickup.stateTimer < 500) {
                 pickup.opacity = pickup.stateTimer / 500;
             }
-            pickup.facing += pickup.angularVelocity * (dt / 1000);
-
-            // Apply rotational friction/drag to slow down and stop the spin
-            const dragFactor = Math.exp(-3.5 * (dt / 1000));
-            pickup.angularVelocity *= dragFactor;
         }
     }
 }

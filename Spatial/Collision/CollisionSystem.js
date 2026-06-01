@@ -60,19 +60,7 @@ export class CollisionSystem {
         actor._wallResolvedFrame = null;
         pickup._wallResolvedFrame = null;
 
-        const rvx = (pickup.vx || 0) - (actor.vx || 0);
-        const rvy = (pickup.vy || 0) - (actor.vy || 0);
-        const velAlongNormal = rvx * pushX + rvy * pushY;
-
-        if (velAlongNormal < 0) {
-            const restitution = 0.15;
-            const impulseScalar = -(1 + restitution) * velAlongNormal / ((1 / actorMass) + (1 / pickupMass));
-
-            actor.vx -= (impulseScalar / actorMass) * pushX;
-            actor.vy -= (impulseScalar / actorMass) * pushY;
-            pickup.vx += (impulseScalar / pickupMass) * pushX;
-            pickup.vy += (impulseScalar / pickupMass) * pushY;
-        }
+        PhysicsSystem.applyRigidBodyImpulse(actor, pickup, collisionInfo, 0.15);
     }
 
     static resolvePushablePair(p1, p2) {
@@ -87,29 +75,22 @@ export class CollisionSystem {
         const pushY = collisionInfo.ny;
         const overlap = collisionInfo.overlap;
 
-        p1.x -= pushX * overlap * 0.5;
-        p1.y -= pushY * overlap * 0.5;
-        p2.x += pushX * overlap * 0.5;
-        p2.y += pushY * overlap * 0.5;
+        const p1Mass = p1.mass !== undefined ? p1.mass : 15.0;
+        const p2Mass = p2.mass !== undefined ? p2.mass : 15.0;
+        const totalMass = p1Mass + p2Mass;
+
+        const p1Shift = overlap * (p2Mass / totalMass);
+        const p2Shift = overlap * (p1Mass / totalMass);
+
+        p1.x -= pushX * p1Shift;
+        p1.y -= pushY * p1Shift;
+        p2.x += pushX * p2Shift;
+        p2.y += pushY * p2Shift;
 
         p1._wallResolvedFrame = null;
         p2._wallResolvedFrame = null;
 
-        const rvx = (p2.vx || 0) - (p1.vx || 0);
-        const rvy = (p2.vy || 0) - (p1.vy || 0);
-        const velAlongNormal = rvx * pushX + rvy * pushY;
-
-        if (velAlongNormal < 0) {
-            const p1Mass = p1.mass !== undefined ? p1.mass : 15.0;
-            const p2Mass = p2.mass !== undefined ? p2.mass : 15.0;
-            const restitution = 0.4;
-            const impulseScalar = -(1 + restitution) * velAlongNormal / ((1 / p1Mass) + (1 / p2Mass));
-
-            p1.vx -= (impulseScalar / p1Mass) * pushX;
-            p1.vy -= (impulseScalar / p1Mass) * pushY;
-            p2.vx += (impulseScalar / p2Mass) * pushX;
-            p2.vy += (impulseScalar / p2Mass) * pushY;
-        }
+        PhysicsSystem.applyRigidBodyImpulse(p1, p2, collisionInfo, 0.4);
     }
 
     static run(state, spatialFrame) {
