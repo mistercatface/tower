@@ -37,6 +37,8 @@ export function projectRig(rigData, rotation, viewContext, config, rig) {
     return {
         head: headP,
         headY: headP.y,
+        headLocal: rigData.head,
+        spineTopLocal: rigData.spineTop,
         spineTop: proj(rigData.spineTop),
         spineBot: proj(rigData.spineBot),
         rArm: { p1: proj(rigData.rArm.p1), p2: rArmP2, p3: proj(rigData.rArm.p3) },

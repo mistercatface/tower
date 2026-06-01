@@ -116,6 +116,22 @@ const HERO_SKIN_SLOT = {
     player: 1,
 };
 
+/** Fixed hair for Barry / Brock (style keys match KinematicsHair.js). */
+const HERO_HAIR = {
+    companion: {
+        hairStyle: "barry",
+        hairColor: "#5c5048",
+        hairLight: "#7a6e62",
+        hairDark: "#3a322c",
+    },
+    player: {
+        hairStyle: "brock",
+        hairColor: "#241810",
+        hairLight: "#3d2a20",
+        hairDark: "#120a08",
+    },
+};
+
 function applyHeroSkin(char, actor) {
     const slot = HERO_SKIN_SLOT[actor?.type];
     if (slot === undefined) return char;
@@ -127,6 +143,12 @@ function applyHeroSkin(char, actor) {
         skinDark: skin.dark,
         skinType: skin.type,
     };
+}
+
+function applyHeroHair(char, actor) {
+    const hair = HERO_HAIR[actor?.type];
+    if (!hair) return char;
+    return { ...char, ...hair };
 }
 
 export function generateCharacter(seed) {
@@ -197,6 +219,7 @@ export function getCharacterForActor(actor, seedOverride = null) {
             char = applyEnemyTypeAppearance(char, actor.enemyType);
         }
         char = applyHeroSkin(char, actor);
+        char = applyHeroHair(char, actor);
         characterCache.set(actor.id, char);
     }
     return characterCache.get(actor.id);

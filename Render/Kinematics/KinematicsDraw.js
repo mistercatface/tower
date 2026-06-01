@@ -1,5 +1,6 @@
 import { getCharacterForActor } from "./CharacterAppearance.js";
 import { getHandProjected, resolveWeaponDrawSlots } from "./KinematicsWeaponVisuals.js";
+import { drawHeadNeckAndHair } from "./KinematicsHead.js";
 import { queueRagdollBloodDraw } from "./Ragdoll/RagdollBlood.js";
 import { drawRagdollBody } from "./Ragdoll/RagdollDrawBody.js";
 
@@ -54,8 +55,10 @@ export function drawStandardCharacter(scene, actor, sceneRenderer, config, rig) 
     Renderer.addCylinder(scene.lArm.p2, scene.lArm.p3, armRad * 0.8, armPalette);
     Renderer.addSphere(scene.lArm.p3, rig.handR * 1.5, palettes.skin);
 
-    if (scene.head) scene.head.sortZ += 0.5;
-    Renderer.addSphere(scene.head, rig.headR, palettes.skin);
+    drawHeadNeckAndHair(Renderer, scene, rig, char, {
+        skinPalette: palettes.skin,
+        getPalette: (b, l, d) => ({ base: b, light: l, dark: d }),
+    });
 }
 
 function drawHeldWeapons(scene, actor, sceneRenderer, config, facing) {

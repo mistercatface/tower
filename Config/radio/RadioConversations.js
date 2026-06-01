@@ -13,7 +13,7 @@ export const radioConversations = {
         oncePerRun: true,
         lines: [
             { speakerId: "brock", text: "Are you going to let us pass?" },
-            { speakerId: "raider", text: "Nope." },
+            { speakerId: "garbanzo", text: "Nope." },
         ],
     },
     first_wave_clear_barry_brock: {
