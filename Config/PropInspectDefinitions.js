@@ -1,7 +1,7 @@
 /** UI metadata for inspect recipes keyed by inspectKey (see PropDefinitions.inspectKey). */
 export const propInspectDefinitions = {
     jacko_can: {
-        title: "JACKO FUEL",
+        title: "VOLATILE FLUID",
         tapPadding: 14,
     },
     wood_crate: {

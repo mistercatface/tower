@@ -22,7 +22,7 @@ export const radioConversations = {
         lines: [
             { speakerId: "brock", text: "You said this place was deserted." },
             { speakerId: "barry", text: "Guess they thought so too." },
-            { speakerId: "brock", text: "I guess we should look around." },
+            { speakerId: "brock", text: "Let's look around." },
         ],
     },
     inspect_jacko_can_garbanzo: {
