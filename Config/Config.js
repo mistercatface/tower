@@ -337,12 +337,12 @@ export const floorTileSettings = {
      */
     wallVisualHeight: null,
     /** Fixed vertical tile count for wall textures (camera-independent). */
-    wallTextureStories: 32,
+    wallTextureStories: 16,
     /** Darken wall tiles vs floor (0 = none, 1 = black). */
     wallShadeOverlay: 0.22,
     /** Overlap when affine-mapping wall cells (hides triangle seam). */
     wallTextureBleedPx: 1,
-    maxCachedWallCells: 512,
+    maxCachedWallCells: 8192,
 };
 
 export const combatVisualSettings = { floorHighlight: "#2c3340", floorFill: "#1c2129", floorShadow: "#12161c", gridStroke: "rgba(90, 105, 125, 0.2)" };

@@ -25,7 +25,7 @@ export function computeProjectedFace(p1, p2, px, py, wallHeight = getWallVisualH
 
     const dist1 = Math.hypot(p1.x - px, p1.y - py);
     const dist2 = Math.hypot(p2.x - px, p2.y - py);
-    const clampedHeight = Math.min(wallHeight, CAMERA_HEIGHT - 10);
+    const clampedHeight = Math.min(wallHeight, CAMERA_HEIGHT - 1);
     const alpha = clampedHeight / (CAMERA_HEIGHT - clampedHeight);
 
     return {
@@ -111,7 +111,7 @@ function faceCorner(p1, p2, leftTop, rightTop, u, v) {
  * Per-grid-cell textures on the projected face (same variety as floor).
  * Affine quads use bleed to hide the internal triangle split.
  */
-function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport) {
+function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHeight) {
     const tileWorldSize = floorTileSettings.tileWorldSize ?? gridSettings.cellSize;
     if (!floorTiles || !state) return;
 
@@ -124,13 +124,30 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport) {
     const worldBounds = getViewportWorldBounds(viewport);
     const bleedPx = floorTileSettings.wallTextureBleedPx ?? 1;
 
+    const clampedHeight = Math.min(wallHeight, CAMERA_HEIGHT - 1);
+    const alphaMax = clampedHeight / (CAMERA_HEIGHT - clampedHeight);
+    if (alphaMax <= 0) return;
+
+    const storyHeight = wallHeight / storyCount;
+
     ctx.save();
     traceProjectedFace(ctx, p1, p2, face);
     ctx.clip();
 
     for (let row = 0; row < storyCount; row++) {
-        const v0 = row / storyCount;
-        const v1 = (row + 1) / storyCount;
+        const bottomZ = row * storyHeight;
+        let topZ = (row + 1) * storyHeight;
+
+        if (bottomZ >= CAMERA_HEIGHT) break;
+        if (topZ >= CAMERA_HEIGHT) {
+            topZ = CAMERA_HEIGHT - 1;
+        }
+
+        const alphaBottom = bottomZ / (CAMERA_HEIGHT - bottomZ);
+        const alphaTop = topZ / (CAMERA_HEIGHT - topZ);
+
+        const v0 = alphaBottom / alphaMax;
+        const v1 = alphaTop / alphaMax;
 
         for (const col of columns) {
             const d0 = faceCorner(p1, p2, leftTop, rightTop, col.u0, v0);
@@ -174,7 +191,7 @@ export function drawProjectedWallFace(
     ctx.fill();
 
     if (floorTiles && textureEnabled) {
-        drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport);
+        drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHeight);
     }
 
     if (shadeOverlay > 0) {

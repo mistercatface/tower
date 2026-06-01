@@ -7,7 +7,11 @@ export class FloorChunkCache {
     }
 
     get(key) {
-        return this.cache.get(key) ?? null;
+        const value = this.cache.get(key);
+        if (value === undefined) return null;
+        this.cache.delete(key);
+        this.cache.set(key, value);
+        return value;
     }
 
     set(key, canvas) {
