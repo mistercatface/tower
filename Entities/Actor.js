@@ -527,14 +527,10 @@ export class Actor extends DestructibleEntity {
         clearActorKinematics(this);
     }
 
-    renderCombatHudClassic(ctx, renderer, { alpha = 1 } = {}) {
-        ctx.save();
-        ctx.globalAlpha = alpha;
+    renderCombatHudClassic(ctx, renderer) {
         this.renderCachedSprite(ctx, this.getSpriteCache(renderer), `hud_${this.type}_${this.radius}_${this.color}`, RenderSprites.enemy, this.radius, this.color);
-        ctx.restore();
-
         for (const turret of this.turrets) {
-            turret.renderHudTriangle(ctx, renderer, this, { alpha });
+            turret.renderHudTriangle(ctx, renderer, this);
         }
     }
 

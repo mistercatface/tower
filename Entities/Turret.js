@@ -83,7 +83,7 @@ export class Turret {
         };
     }
 
-    renderHudTriangle(ctx, renderer, source, { alpha = 1, color = null } = {}) {
+    renderHudTriangle(ctx, renderer, source, color = null) {
         const { x, y, angle, scale } = this.getHudAnchorPosition(source);
         const fillColor = color ?? source.color;
         const cacheKey = `hud_${scale}_${fillColor}`;
@@ -92,7 +92,6 @@ export class Turret {
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(angle);
-        ctx.globalAlpha = alpha;
         ctx.drawImage(cachedSprite.offCanvas, -cachedSprite.cx, -cachedSprite.cy);
         ctx.restore();
     }

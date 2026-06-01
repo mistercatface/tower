@@ -182,7 +182,10 @@ export class Renderer {
             if (viewport && typeof actor.isVisible === "function" && !actor.isVisible(viewport)) {
                 continue;
             }
-            actor.renderCombatHudClassic(this.ctx, this, { alpha: hudSettings.combatOverlayAlpha });
+            this.ctx.save();
+            this.ctx.globalAlpha = hudSettings.combatOverlayAlpha;
+            actor.renderCombatHudClassic(this.ctx, this);
+            this.ctx.restore();
         }
     }
 
