@@ -7,7 +7,7 @@ export function createKinematicsSpriteCache() {
         tiltSteps: 5,
         cachePadding: 40,
 
-        getKey(id, pose, rotation, cycle, crouch, tiltFactor) {
+        getKey(id, pose, rotation, cycle, crouch, tiltFactor, weaponKey = "", aimKey = "") {
             const rotStep = (Math.PI * 2) / this.rotationSteps;
             let r = rotation % (Math.PI * 2);
             if (r < 0) r += Math.PI * 2;
@@ -21,7 +21,7 @@ export function createKinematicsSpriteCache() {
             const qCrouch = crouch > 0.5 ? 1 : 0;
             const qTilt = Math.floor(tiltFactor * (this.tiltSteps - 1));
 
-            return `${id}_${pose}_${qRot}_${qCyc}_${qCrouch}_${qTilt}`;
+            return `${id}_${pose}_${weaponKey}_${aimKey}_${qRot}_${qCyc}_${qCrouch}_${qTilt}`;
         },
 
         get(key) {

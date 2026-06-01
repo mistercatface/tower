@@ -1,4 +1,9 @@
 import { getCharacterForActor } from "./CharacterAppearance.js";
+import {
+    getHandProjected,
+    getSpriteAimAngle,
+    resolveWeaponDrawSlots,
+} from "./KinematicsWeaponVisuals.js";
 
 export function drawStandardCharacter(scene, actor, sceneRenderer, config, rig) {
     const char = getCharacterForActor(actor);
@@ -55,7 +60,50 @@ export function drawStandardCharacter(scene, actor, sceneRenderer, config, rig) 
     Renderer.addSphere(scene.head, rig.headR, palettes.skin);
 }
 
-export function drawCharacterToCanvas(sharedCanvas, sharedCtx, scene, actor, viewContext, rotation, config, rig, sceneRenderer, overridePadding = null) {
+function drawHeldWeapons(scene, actor, sceneRenderer, config, finalRenderRotation) {
+    const slots = resolveWeaponDrawSlots(actor);
+    if (slots.length === 0) return;
+
+    const turrets = actor.turrets ?? [];
+    const handScale = scene.rArm.p3.scale ?? 1;
+
+    for (const slot of slots) {
+        const turret = turrets[slot.turretIndex];
+        const aimAngle = getSpriteAimAngle(turret?.angle ?? actor.angle ?? 0, config);
+        let hand;
+        if (slot.aimArms === "both") {
+            const right = scene.rArm.p3;
+            const left = scene.lArm.p3;
+            hand = {
+                x: (right.x + left.x) * 0.5,
+                y: (right.y + left.y) * 0.5,
+                scale: ((right.scale ?? 1) + (left.scale ?? 1)) * 0.5,
+                sortZ: Math.max(right.sortZ ?? 0, left.sortZ ?? 0),
+            };
+        } else {
+            hand = getHandProjected(scene, slot.drawHand);
+        }
+        const z = (hand.sortZ ?? 0) + 0.15;
+
+        sceneRenderer.addCustom(z, (ctx) => {
+            slot.visual.draw(ctx, hand, hand.scale ?? handScale, aimAngle, config);
+        });
+    }
+}
+
+export function drawCharacterToCanvas(
+    sharedCanvas,
+    sharedCtx,
+    scene,
+    actor,
+    viewContext,
+    rotation,
+    config,
+    rig,
+    sceneRenderer,
+    overridePadding = null,
+    finalRenderRotation = rotation,
+) {
     const padding = overridePadding !== null ? overridePadding : config.PADDING;
     const canvasSize = Math.ceil(config.SIZE + padding * 2);
 
@@ -70,6 +118,7 @@ export function drawCharacterToCanvas(sharedCanvas, sharedCtx, scene, actor, vie
     sharedCtx.translate(padding, padding);
     sceneRenderer.begin(sharedCtx, viewContext, rotation, rig);
     drawStandardCharacter(scene, actor, sceneRenderer, config, rig);
+    drawHeldWeapons(scene, actor, sceneRenderer, config, finalRenderRotation);
     sceneRenderer.flush();
     sharedCtx.restore();
 

@@ -1,6 +1,52 @@
-import { blend, ease, getSeg, solveIK, applyLocalTilt } from "./KinematicsMath.js";
+import { blend, ease, getSeg, solveIK, applyLocalTilt, getAimingArmAngles } from "./KinematicsMath.js";
+import { resolveWeaponDrawSlots } from "./KinematicsWeaponVisuals.js";
 
-export function calculateCharacterRig(state, cycle, config, rig, poses) {
+function applyWeaponAimToVals(vals, actor, aimStrength) {
+    const slots = resolveWeaponDrawSlots(actor);
+    if (slots.length === 0 || aimStrength <= 0.001) return vals;
+
+    const diveDir = actor.angle ?? 0;
+    const turrets = actor.turrets ?? [];
+    let merged = { ...vals };
+
+    if (slots.length === 1 && slots[0].aimArms === "both") {
+        const aim = turrets[0]?.angle ?? diveDir;
+        const arms = getAimingArmAngles(aim, "both", -1.5, diveDir);
+        merged = blendArmVals(merged, arms, aimStrength);
+        return merged;
+    }
+
+    for (const slot of slots) {
+        const aim = turrets[slot.turretIndex]?.angle ?? diveDir;
+        const arms = getAimingArmAngles(aim, slot.aimArms, -1.5, diveDir);
+        if (slot.aimArms === "right") {
+            merged.rArm = blend(vals.rArm, arms.rArm, aimStrength);
+            merged.rElbow = blend(vals.rElbow, arms.rElbow, aimStrength);
+            merged.rArmZ = blend(vals.rArmZ, arms.rArmZ, aimStrength);
+        } else {
+            merged.lArm = blend(vals.lArm, arms.lArm, aimStrength);
+            merged.lElbow = blend(vals.lElbow, arms.lElbow, aimStrength);
+            merged.lArmZ = blend(vals.lArmZ, arms.lArmZ, aimStrength);
+        }
+    }
+    return merged;
+}
+
+function blendArmVals(base, target, t) {
+    return {
+        ...base,
+        rArm: blend(base.rArm, target.rArm, t),
+        lArm: blend(base.lArm, target.lArm, t),
+        rElbow: blend(base.rElbow, target.rElbow, t),
+        lElbow: blend(base.lElbow, target.lElbow, t),
+        rArmZ: blend(base.rArmZ, target.rArmZ, t),
+        lArmZ: blend(base.lArmZ, target.lArmZ, t),
+        rElbowZ: blend(base.rElbowZ ?? 0, target.rElbowZ ?? 0, t),
+        lElbowZ: blend(base.lElbowZ ?? 0, target.lElbowZ ?? 0, t),
+    };
+}
+
+export function calculateCharacterRig(state, cycle, config, rig, poses, actor = null) {
     const cf = state.crouchFactor || 0;
     const walkTargets = poses.WALK.getTargets(cycle);
     const walkMods = poses.WALK.getModifiers(cycle);
@@ -87,6 +133,19 @@ export function calculateCharacterRig(state, cycle, config, rig, poses) {
         rElbowZ: blend(sREZ, activeWalkArms.rElbowZ, t),
         lElbowZ: blend(sLEZ, activeWalkArms.lElbowZ, t),
     };
+
+    if (actor) {
+        const aimStrength = 1 - t;
+        const aimed = applyWeaponAimToVals(vals, actor, aimStrength);
+        vals.rArm = aimed.rArm;
+        vals.lArm = aimed.lArm;
+        vals.rElbow = aimed.rElbow;
+        vals.lElbow = aimed.lElbow;
+        vals.rArmZ = aimed.rArmZ;
+        vals.lArmZ = aimed.lArmZ;
+        vals.rElbowZ = aimed.rElbowZ;
+        vals.lElbowZ = aimed.lElbowZ;
+    }
 
     const totalYOffset = vals.bob + vals.lift;
     const sY = rig.baseShoulderY - totalYOffset;

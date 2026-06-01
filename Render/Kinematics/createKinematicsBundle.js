@@ -6,6 +6,8 @@ import { calculateCharacterRig } from "./KinematicsRigCalculator.js";
 import { projectRig } from "./KinematicsProjector.js";
 import { drawCharacterToCanvas } from "./KinematicsDraw.js";
 import { blend, ease } from "./KinematicsMath.js";
+import { normalizeWeaponLoadout } from "../../Combat/equipmentLoadout.js";
+import { resolveWeaponStaticPoseName } from "./KinematicsWeaponVisuals.js";
 
 const sharedCanvas = document.createElement("canvas");
 const sharedCtx = sharedCanvas.getContext("2d", { alpha: true });
@@ -22,7 +24,36 @@ function createEntityAnimState(poses) {
         smoothedSpeed: 0,
         poseFactor: 0,
         crouchFactor: 0,
+        weaponLoadoutKey: "",
+        lastStaticChange: 0,
     };
+}
+
+function getWeaponLoadoutKey(actor) {
+    return normalizeWeaponLoadout(actor.weaponLoadout ?? []).join("+") || "none";
+}
+
+function getQuantizedAimKey(actor, rotationSteps = 32) {
+    const step = (Math.PI * 2) / rotationSteps;
+    const quantize = (angle) => {
+        let r = (angle ?? 0) % (Math.PI * 2);
+        if (r < 0) r += Math.PI * 2;
+        return Math.floor(r / step);
+    };
+    const turrets = actor.turrets ?? [];
+    return `${quantize(turrets[0]?.angle)}_${quantize(turrets[1]?.angle)}`;
+}
+
+function syncWeaponPose(state, actor, poses) {
+    const weaponKey = getWeaponLoadoutKey(actor);
+    if (weaponKey === state.weaponLoadoutKey) return;
+    state.weaponLoadoutKey = weaponKey;
+    const poseName = resolveWeaponStaticPoseName(actor);
+    const nextPose = poses[poseName] ?? poses.IDLE;
+    state.lastStaticPose = state.currentStaticPose;
+    state.currentStaticPose = nextPose;
+    state.staticBlendFactor = 0;
+    state.lastStaticChange = 0;
 }
 
 export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 120 }) {
@@ -71,6 +102,8 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
             actor.isMoving
             || Math.hypot(actor.desiredX ?? 0, actor.desiredY ?? 0) > 0.05
             || Math.hypot(actor.vx ?? 0, actor.vy ?? 0) > 2;
+        syncWeaponPose(state, actor, poses);
+
         const isWalking = walkPlayback > 0.12 || hasMoveIntent;
         const targetPoseFactor = isWalking ? 1 : 0;
         const transitionSpeed = state.poseFactor > 0.5 ? 3 : 1.5;
@@ -78,14 +111,15 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
         state.poseFactor = Math.max(0, Math.min(1, state.poseFactor));
 
         if (!isWalking) {
-            if (state.currentStaticPose !== poses.IDLE) {
+            const idlePose = poses[resolveWeaponStaticPoseName(actor)] ?? poses.IDLE;
+            if (state.currentStaticPose !== idlePose) {
                 state.lastStaticPose = state.currentStaticPose;
-                state.currentStaticPose = poses.IDLE;
+                state.currentStaticPose = idlePose;
                 state.staticBlendFactor = 0;
             } else {
                 state.staticBlendFactor = Math.min(1, state.staticBlendFactor + dtSec / 0.75);
             }
-            state.pose = "IDLE";
+            state.pose = idlePose.name;
         } else {
             state.staticBlendFactor = 1;
             state.currentStaticPose = poses.IDLE;
@@ -125,6 +159,8 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
         const naturalCycle = state.animCycle % (Math.PI * 2);
         const { rawTiltFactor, viewContext } = buildViewContext(actor, camera);
 
+        const weaponKey = getWeaponLoadoutKey(actor);
+        const aimKey = getQuantizedAimKey(actor, spriteCache.rotationSteps);
         const cacheKey = spriteCache.getKey(
             actor.id,
             state.pose,
@@ -132,6 +168,8 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
             naturalCycle,
             state.crouchFactor,
             rawTiltFactor,
+            weaponKey,
+            aimKey,
         );
 
         const cached = spriteCache.get(cacheKey);
@@ -157,6 +195,7 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
             config,
             rig,
             poses,
+            actor,
         );
         const scene = projectRig(rigData, finalRenderRotation, viewContext, config, rig);
         const canvas = drawCharacterToCanvas(
@@ -170,6 +209,7 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
             rig,
             sceneRenderer,
             spriteCache.cachePadding,
+            finalRenderRotation,
         );
 
         return spriteCache.set(cacheKey, canvas);

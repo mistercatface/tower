@@ -8,6 +8,11 @@
 export { getCharacterForActor, generateCharacter, clearCharacterAppearanceCache } from "./CharacterAppearance.js";
 export { createKinematicsBundle } from "./createKinematicsBundle.js";
 export {
+    resolveWeaponDrawSlots,
+    resolveWeaponStaticPoseName,
+    getWeaponVisualForGunId,
+} from "./KinematicsWeaponVisuals.js";
+export {
     PlayerKinematicsRenderer,
     getKinematicsRenderer,
     getPlayerKinematicsRenderer,

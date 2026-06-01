@@ -30,6 +30,59 @@ export function solveIK(startX, startY, targetX, targetY, len1, len2) {
     };
 }
 
+export function getRelativeAimAngle(diveDir, aimAngle) {
+    let rel = aimAngle - diveDir;
+    while (rel > Math.PI) rel -= 2 * Math.PI;
+    while (rel < -Math.PI) rel += 2 * Math.PI;
+    return rel;
+}
+
+/** Aim rig arms toward world angle; whichArms: 'left' | 'right' | 'both'. */
+export function getAimingArmAngles(aimAngle, whichArms = "right", extension = -1.5, diveDir = 0) {
+    const relAim = getRelativeAimAngle(diveDir, aimAngle);
+    let rArm;
+    let lArm;
+    let rElbow;
+    let lElbow;
+    let rArmZ = 0;
+    let lArmZ = 0;
+
+    if (whichArms === "both") {
+        rArm = -Math.PI / 2;
+        lArm = -Math.PI / 2;
+        rElbow = extension;
+        lElbow = extension;
+        const handConvergence = 0.35;
+        rArmZ = relAim + handConvergence;
+        lArmZ = -(relAim - handConvergence);
+    } else if (whichArms === "left") {
+        lArm = -Math.PI / 2;
+        lElbow = extension;
+        lArmZ = -relAim;
+        rArm = 0.1;
+        rElbow = -0.2;
+        rArmZ = 0;
+    } else {
+        rArm = -Math.PI / 2;
+        rElbow = extension;
+        rArmZ = relAim;
+        lArm = 0.1;
+        lElbow = -0.2;
+        lArmZ = 0;
+    }
+
+    return {
+        rArm,
+        lArm,
+        rElbow,
+        lElbow,
+        rArmZ,
+        lArmZ,
+        rElbowZ: 0,
+        lElbowZ: 0,
+    };
+}
+
 export function applyLocalTilt(p, angle, anchorY) {
     const pyShifted = p.y - anchorY;
     const tCos = Math.cos(angle);

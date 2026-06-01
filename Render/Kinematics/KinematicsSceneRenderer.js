@@ -35,6 +35,7 @@ function drawPixelLine(ctx, x0, y0, x1, y1, thickness, color) {
 export function createSceneRenderer(config) {
     const TYPE_SPHERE = 0;
     const TYPE_CYLINDER = 1;
+    const TYPE_CUSTOM = 2;
 
     return {
         queue: [],
@@ -72,6 +73,14 @@ export function createSceneRenderer(config) {
             this.queue.push(item);
         },
 
+        addCustom(z, callback) {
+            const item = this.getItem();
+            item.type = TYPE_CUSTOM;
+            item.z = z;
+            item.callback = callback;
+            this.queue.push(item);
+        },
+
         addCylinder(start, end, radius, palette, scaleWidth = 1.0) {
             const s = this.project(start);
             const e = this.project(end);
@@ -101,6 +110,8 @@ export function createSceneRenderer(config) {
                     }
                 } else if (item.type === TYPE_CYLINDER) {
                     drawPixelLine(ctx, item.sx, item.sy, item.ex, item.ey, item.thickness, item.palette.base);
+                } else if (item.type === TYPE_CUSTOM) {
+                    item.callback(ctx);
                 }
             }
             this.queue.length = 0;

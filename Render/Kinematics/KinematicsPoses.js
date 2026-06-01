@@ -107,6 +107,49 @@ export function createKinematicsPoses(config, rig) {
                 return { rArm: swing, lArm: -swing, rElbow: -0.2, lElbow: -0.2 };
             },
         }),
+        PISTOL: createPose("PISTOL", {
+            feet: { rightOffsetX: 0.1, leftOffsetX: -0.05 },
+            body: { leanBase: -0.05, bobRange: 0.005, bobSpeed: 1.5 },
+            getArmAngles(cycle) {
+                const sway = Math.sin(cycle * 0.5) * 0.05;
+                return {
+                    lArm: -Math.PI / 2 - sway,
+                    lElbow: -Math.PI / 2,
+                    rArm: 0.1 + sway,
+                    rElbow: -0.1,
+                };
+            },
+        }),
+        DUAL_WIELD: createPose("DUAL_WIELD", {
+            feet: { rightOffsetX: 0.08, leftOffsetX: -0.08 },
+            body: { leanBase: -0.04, bobRange: 0.005, bobSpeed: 1.5 },
+            getArmAngles(cycle) {
+                const sway = Math.sin(cycle * 0.5) * 0.05;
+                return {
+                    rArm: -Math.PI / 2 + sway,
+                    rElbow: -Math.PI / 2,
+                    lArm: -Math.PI / 2 - sway,
+                    lElbow: -Math.PI / 2,
+                };
+            },
+        }),
+        SHOTGUN: createPose("SHOTGUN", {
+            feet: { rightOffsetX: 0.07, leftOffsetX: -0.072 },
+            body: { lift: -0.035, leanBase: 0.18, leanRange: 0.02, bobRange: 0.008, bobSpeed: 1.5 },
+            getArmAngles(cycle) {
+                const sway = Math.sin(cycle * 0.5) * 0.05;
+                return {
+                    lArm: -1.342 - sway,
+                    lElbow: -1.442,
+                    rArm: -1.322 + sway,
+                    rElbow: -1.322,
+                    lArmZ: 0.398,
+                    lElbowZ: 0.128,
+                    rArmZ: 0.378,
+                    rElbowZ: 0.198,
+                };
+            },
+        }),
     };
 
     return poses;
