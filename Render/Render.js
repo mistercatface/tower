@@ -11,7 +11,6 @@ export class Renderer {
         this.canvas = canvas;
         this.ctx = ctx;
         this.actorCache = new SpriteCache();
-        this.missileCache = new SpriteCache();
         this.turretCache = new SpriteCache();
         this.floatingTextCache = new SpriteCache();
         this.render3D = new Render3D();

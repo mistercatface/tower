@@ -192,7 +192,7 @@ export class Actor extends DestructibleEntity {
     getEngagedTargetsFrom(ally) {
         const targets = [];
         for (const turret of ally.getTurrets()) {
-            if (turret.target && !turret.target.isDead)   targets.push(turret.target);
+            if (turret.target && !turret.target.isDead) targets.push(turret.target);
             if (ally.isTurretChargeCommitted(turret)) {
                 const committed = ally.getCommittedTurretTarget(turret);
                 if (committed && !committed.isDead) targets.push(committed);
@@ -225,7 +225,7 @@ export class Actor extends DestructibleEntity {
     }
 
     getMutualAssistRangeBonus(state, target) {
-        if (!target || !state || !this.isMutualAssistTarget(state, target))  return 0;
+        if (!target || !state || !this.isMutualAssistTarget(state, target)) return 0;
         let bonus = 0;
         for (const ally of this.getAllyActors(state)) {
             if (!this.isTargetEngagedBy(ally, target)) continue;
@@ -247,7 +247,7 @@ export class Actor extends DestructibleEntity {
 
     buildIndependentTargetExclusions(ownExcluded, state) {
         const excluded = new Set(ownExcluded ?? []);
-        for (const target of this.getMutualAssistTargets(state))  excluded.add(target);
+        for (const target of this.getMutualAssistTargets(state)) excluded.add(target);
         return excluded;
     }
 
@@ -265,14 +265,13 @@ export class Actor extends DestructibleEntity {
         for (const target of allyEngaged) {
             if (ownExcludedSet.has(target)) continue;
             if (this.isValidTurretTargetForSelf(target, state)) return target;
-
         }
 
         const shared = getNearestHostile(state, this, this.weapon.range, ownExcludedSet);
         if (shared) return shared;
         for (const target of allyEngaged) {
             if (ownExcludedSet.has(target)) continue;
-            if (this.isValidTurretTargetForSelf(target, state))  return target;
+            if (this.isValidTurretTargetForSelf(target, state)) return target;
         }
         return getNearestHostile(state, this, this.weapon.range);
     }
@@ -284,21 +283,19 @@ export class Actor extends DestructibleEntity {
             if (!upg.isAbility || !state.abilities[upg.id] || !upg.blocksTargeting) continue;
             const timers = state.abilityTimers[upg.id];
             if (!timers) continue;
-            if (state.scheduler.getTimeRemaining(timers.activeId) > 0)  return true;
+            if (state.scheduler.getTimeRemaining(timers.activeId) > 0) return true;
         }
         return false;
     }
 
     getTurretAimPoint(turret, state, target, blocksTargeting) {
-        if (this.currentState?.getAimTarget)  return this.currentState.getAimTarget(this, target, blocksTargeting, turret);
+        if (this.currentState?.getAimTarget) return this.currentState.getAimTarget(this, target, blocksTargeting, turret);
         if (target && !blocksTargeting) return target;
         return this.getMovementAimPoint(state);
     }
 
     hasLocomotionIntent() {
-        return this.isMoving
-            || Math.hypot(this.desiredX ?? 0, this.desiredY ?? 0) > 0.05
-            || (this.targetX != null && this.targetY != null);
+        return this.isMoving || Math.hypot(this.desiredX ?? 0, this.desiredY ?? 0) > 0.05 || (this.targetX != null && this.targetY != null);
     }
 
     getMovementAimPoint(_state) {
@@ -511,9 +508,7 @@ export class Actor extends DestructibleEntity {
     onHitAfterDamage(damage, ctx, hitType, died, event) {
         CombatParticles.spawnBloodForActorHit(ctx?.state, this, damage, hitType, died, event);
         if (event?.projectile && !this.usesKinematicsBody) {
-            CombatParticles.spawnImpactSparks(ctx?.state, event.projectile.x, event.projectile.y, {
-                impactAngle: event.projectile.angle,
-            });
+            CombatParticles.spawnImpactSparks(ctx?.state, event.projectile.x, event.projectile.y, { impactAngle: event.projectile.angle });
         }
         if (died && this.usesKinematicsBody) this.spawnRagdollOnDeath(ctx.state, event);
     }
@@ -535,14 +530,7 @@ export class Actor extends DestructibleEntity {
     renderCombatHudClassic(ctx, renderer, { alpha = 1 } = {}) {
         ctx.save();
         ctx.globalAlpha = alpha;
-        this.renderCachedSprite(
-            ctx,
-            this.getSpriteCache(renderer),
-            `hud_${this.getBodySpriteCacheKey()}`,
-            RenderSprites.enemy,
-            this.radius,
-            this.color,
-        );
+        this.renderCachedSprite(ctx, this.getSpriteCache(renderer), `hud_${this.type}_${this.radius}_${this.color}`, RenderSprites.enemy, this.radius, this.color);
         ctx.restore();
 
         for (const turret of this.turrets) {
@@ -558,21 +546,12 @@ export class Actor extends DestructibleEntity {
         return renderer.actorCache;
     }
 
-    getBodySprite() {
-        const spriteKey = getActorProfileForActor(this).bodySprite;
-        return RenderSprites[spriteKey];
-    }
-
-    getBodySpriteCacheKey() {
-        return `${this.type}_${this.radius}_${this.color}`;
-    }
-
     getStatusBarYOffset() {
         return getActorProfileForActor(this).statusBarOffset(this.radius);
     }
 
-    renderBody(ctx, renderer) {
-        this.renderCachedSprite(ctx, this.getSpriteCache(renderer), this.getBodySpriteCacheKey(), this.getBodySprite(), this.radius, this.color);
+    renderBody(_ctx, _renderer) {
+        // Subclasses draw kinematics bodies.
     }
 
     renderStatusBars(ctx, renderer, _state) {
@@ -629,13 +608,7 @@ export class Actor extends DestructibleEntity {
 
     get reloadBar() {
         if (!this._reloadBar && this.healthBar) {
-            this._reloadBar = new ProgressBar({
-                width: this.healthBar.width,
-                height: 2,
-                borderRadius: 1,
-                quantizationSteps: 30,
-                colorFn: () => "#FF9800",
-            });
+            this._reloadBar = new ProgressBar({ width: this.healthBar.width, height: 2, borderRadius: 1, quantizationSteps: 30, colorFn: () => "#FF9800" });
         }
         return this._reloadBar;
     }

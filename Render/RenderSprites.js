@@ -12,19 +12,6 @@ export const RenderSprites = {
         return offCanvas;
     },
 
-    missile: (radius, color) => {
-        const canvasSize = Math.ceil(radius * 2);
-        const cx = canvasSize / 2;
-        const cy = canvasSize / 2;
-        const offCanvas = new OffscreenCanvas(canvasSize, canvasSize);
-        const offCtx = offCanvas.getContext("2d");
-        offCtx.beginPath();
-        offCtx.arc(cx, cy, radius, 0, Math.PI * 2);
-        offCtx.fillStyle = color;
-        offCtx.fill();
-        return offCanvas;
-    },
-
     turret: (scale, explicitColor) => {
         const margin = Math.max(2, scale);
         const cx = Math.ceil(2 * scale + margin);
@@ -60,14 +47,6 @@ export const RenderSprites = {
 
     /** Distance from sprite anchor to muzzle tip in unscaled turret units (see `turret()`). */
     turretTipOffset: 4,
-
-    wall: (size, r, g, b) => {
-        const offCanvas = new OffscreenCanvas(size + 2, size + 2);
-        const offCtx = offCanvas.getContext("2d");
-        offCtx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-        offCtx.fillRect(1, 1, size, size);
-        return offCanvas;
-    },
 
     floatingText: (text, style, color) => {
         const measureCanvas = new OffscreenCanvas(1, 1);

@@ -6,19 +6,16 @@ const enemyStatusBarOffset = () => 14;
 export const actorProfiles = {
     player: {
         faction: "player",
-        bodySprite: "player",
         statusBarOffset: allyStatusBarOffset,
         projectileColor: projectilePresets.playerStandard.color,
     },
     companion: {
         faction: "player",
-        bodySprite: "sidekick",
         statusBarOffset: allyStatusBarOffset,
         projectileColor: projectilePresets.playerStandard.color,
     },
     enemy: {
         faction: "enemy",
-        bodySprite: "enemy",
         statusBarOffset: enemyStatusBarOffset,
         projectileColor: projectilePresets.enemyStandard.color,
     },
