@@ -69,17 +69,12 @@ export class PhysicsSystem {
                 } else if (shape.type === 'Polygon') {
                     if (!seg.shape) {
                         const half = seg.size / 2;
-                        const cos = Math.cos(seg.angle);
-                        const sin = Math.sin(seg.angle);
                         seg.shape = new PolygonShape([
                             { x: -half, y: -half },
                             { x: half, y: -half },
                             { x: half, y: half },
                             { x: -half, y: half }
-                        ].map(pt => ({
-                            x: pt.x * cos - pt.y * sin,
-                            y: pt.x * sin + pt.y * cos
-                        })));
+                        ]);
                     }
 
                     const coll = SatCollision.checkCollision(entity, shape, seg, seg.shape);

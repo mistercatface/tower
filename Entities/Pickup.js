@@ -132,6 +132,106 @@ export class Pickup extends Entity {
         if (resolveWalls && this.strategy.isPushable && this.needsWallCollision()) PhysicsSystem.resolveWallCollisions(this, spatialFrame, state);
         if (this.currentState?.update) this.currentState.update(this, dt, state.walls, state);
     }
+
+    spawnShards(gameState) {
+        if (!gameState || !gameState.pickups) return;
+
+        const width = this.radius * 2;
+        const height = this.radius * 2;
+        const minSize = 3;
+        const localRects = partitionCrateLocal(width, height, minSize, 2);
+
+        const cos = Math.cos(this.facing);
+        const sin = Math.sin(this.facing);
+
+        for (const rect of localRects) {
+            const localCx = (rect.minX + rect.maxX) / 2;
+            const localCy = (rect.minY + rect.maxY) / 2;
+            const hx = (rect.maxX - rect.minX) / 2;
+            const hy = (rect.maxY - rect.minY) / 2;
+
+            const worldX = this.x + localCx * cos - localCy * sin;
+            const worldY = this.y + localCx * sin + localCy * cos;
+
+            const shard = new Pickup(worldX, worldY, "crate_shard", this.facing);
+            shard.halfExtents = { x: hx, y: hy };
+            shard.radius = Math.hypot(hx, hy);
+            shard.shape = new PolygonShape([
+                { x: -hx, y: -hy },
+                { x: hx, y: -hy },
+                { x: hx, y: hy },
+                { x: -hx, y: hy }
+            ]);
+
+            let dx = worldX - this.x;
+            let dy = worldY - this.y;
+            let dist = Math.hypot(dx, dy);
+            if (dist > 0) {
+                dx /= dist;
+                dy /= dist;
+            } else {
+                const angle = Math.random() * Math.PI * 2;
+                dx = Math.cos(angle);
+                dy = Math.sin(angle);
+            }
+
+            const speed = 40 + Math.random() * 60;
+            shard.vx = this.vx + dx * speed + (Math.random() - 0.5) * 15;
+            shard.vy = this.vy + dy * speed + (Math.random() - 0.5) * 15;
+
+            shard.changeState("shard_flying");
+            gameState.pickups.push(shard);
+        }
+    }
+}
+
+function partitionCrateLocal(width, height, minSize, maxDepth = 2) {
+    const results = [];
+    
+    function recurse(rect, depth) {
+        const w = rect.maxX - rect.minX;
+        const h = rect.maxY - rect.minY;
+        
+        const canSplitH = h >= minSize * 2;
+        const canSplitV = w >= minSize * 2;
+        
+        if (depth >= maxDepth || (!canSplitH && !canSplitV)) {
+            results.push(rect);
+            return;
+        }
+        
+        let splitVertical = false;
+        if (canSplitH && canSplitV) {
+            if (w > h * 1.3) {
+                splitVertical = true;
+            } else if (h > w * 1.3) {
+                splitVertical = false;
+            } else {
+                splitVertical = Math.random() < 0.5;
+            }
+        } else if (canSplitV) {
+            splitVertical = true;
+        } else {
+            splitVertical = false;
+        }
+        
+        if (splitVertical) {
+            const minT = rect.minX + minSize;
+            const maxT = rect.maxX - minSize;
+            const t = minT + Math.random() * (maxT - minT);
+            recurse({ minX: rect.minX, minY: rect.minY, maxX: t, maxY: rect.maxY }, depth + 1);
+            recurse({ minX: t, minY: rect.minY, maxX: rect.maxX, maxY: rect.maxY }, depth + 1);
+        } else {
+            const minT = rect.minY + minSize;
+            const maxT = rect.maxY - minSize;
+            const t = minT + Math.random() * (maxT - minT);
+            recurse({ minX: rect.minX, minY: rect.minY, maxX: rect.maxX, maxY: t }, depth + 1);
+            recurse({ minX: rect.minX, minY: t, maxX: rect.maxX, maxY: rect.maxY }, depth + 1);
+        }
+    }
+    
+    recurse({ minX: -width/2, minY: -height/2, maxX: width/2, maxY: height/2 }, 0);
+    return results;
 }
 
 export function spawnPickup(state, playerX, playerY, minRadius, maxRadius, type) {

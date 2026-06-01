@@ -41,12 +41,22 @@ export const worldPropDefinitions = {
         radius: 8,
         isPushable: true,
         laserTargetable: true,
-        maxHealth: 30,
+        maxHealth: 2,
         mass: 1.5,
         wallPhysics: { restitution: 0.15, friction: 0.8 },
         spawn: {
             minCount: 8,
             randomRange: 17,
         },
+    }),
+    crate_shard: prop("crate_shard", {
+        inspectKey: null,
+        hitBehavior: "none",
+        radius: 3,
+        isPushable: true,
+        laserTargetable: false,
+        maxHealth: null,
+        mass: 0.05,
+        wallPhysics: { restitution: 0.45, friction: 0.5 },
     }),
 };

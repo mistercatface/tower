@@ -1,6 +1,6 @@
 import { THEME_COLORS } from "../../Config/Config.js";
 import { createPropDrawContext } from "./PropDrawContext.js";
-import { drawBarrel, drawCrate, drawFireBarrel } from "./PropRecipes.js";
+import { drawBarrel, drawCrate, drawFireBarrel, drawCrateShard } from "./PropRecipes.js";
 import { SpatialQuery } from "../../Spatial/World/SpatialQuery.js";
 
 const VIEW_QUERY_PAD = 48;
@@ -9,6 +9,7 @@ const PROP_RECIPES = {
     barrel: drawBarrel,
     fire_barrel: drawFireBarrel,
     crate: drawCrate,
+    crate_shard: drawCrateShard,
 };
 
 export class Render3D {

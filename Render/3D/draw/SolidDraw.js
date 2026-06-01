@@ -230,7 +230,9 @@ export function drawExtrudedBox(
         drawBoxSideFace(ctx, pc, face, cx, cy, faceColors, { stroke, lineWidth, plankTs, drawPlanks: true });
     }
 
-    const topGrad = ctx.createLinearGradient(topX - box.topHalfSize, topY - box.topHalfSize, topX + box.topHalfSize, topY + box.topHalfSize);
+    const topHx = typeof box.topHalfSize === "number" ? box.topHalfSize : (box.topHalfSize.x ?? box.topHalfSize.hx);
+    const topHy = typeof box.topHalfSize === "number" ? box.topHalfSize : (box.topHalfSize.y ?? box.topHalfSize.hy);
+    const topGrad = ctx.createLinearGradient(topX - topHx, topY - topHy, topX + topHx, topY + topHy);
     topGrad.addColorStop(0.0, topColors.light);
     topGrad.addColorStop(0.5, topColors.mid);
     topGrad.addColorStop(1.0, topColors.dark);

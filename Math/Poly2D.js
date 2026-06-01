@@ -9,11 +9,13 @@ export function rotatePoint(centerX, centerY, lx, ly, angle) {
 }
 
 export function rectCorners(centerX, centerY, halfSize, angle = 0) {
+    const hx = typeof halfSize === "number" ? halfSize : (halfSize.x ?? halfSize.hx);
+    const hy = typeof halfSize === "number" ? halfSize : (halfSize.y ?? halfSize.hy);
     const local = [
-        { lx: -halfSize, ly: -halfSize },
-        { lx: halfSize, ly: -halfSize },
-        { lx: halfSize, ly: halfSize },
-        { lx: -halfSize, ly: halfSize },
+        { lx: -hx, ly: -hy },
+        { lx: hx, ly: -hy },
+        { lx: hx, ly: hy },
+        { lx: -hx, ly: hy },
     ];
     return local.map(({ lx, ly }) => rotatePoint(centerX, centerY, lx, ly, angle));
 }

@@ -73,12 +73,15 @@ export function getRadialSilhouette(projection, baseRadius, topRadius = null) {
 
 export function extrudeBox(projection, halfSize, angle = 0) {
     const { cx, cy, topX, topY, alpha } = projection;
-    const topHalfSize = scaleAtHeight(halfSize, alpha, 1);
-    const baseCorners = rectCorners(cx, cy, halfSize, angle);
-    const topCorners = rectCorners(topX, topY, topHalfSize, angle);
+    const hx = typeof halfSize === "number" ? halfSize : (halfSize.x ?? halfSize.hx);
+    const hy = typeof halfSize === "number" ? halfSize : (halfSize.y ?? halfSize.hy);
+    const topHx = scaleAtHeight(hx, alpha, 1);
+    const topHy = scaleAtHeight(hy, alpha, 1);
+    const baseCorners = rectCorners(cx, cy, { x: hx, y: hy }, angle);
+    const topCorners = rectCorners(topX, topY, { x: topHx, y: topHy }, angle);
     return {
-        halfSize,
-        topHalfSize,
+        halfSize: { x: hx, y: hy },
+        topHalfSize: { x: topHx, y: topHy },
         baseCorners,
         topCorners,
         faces: baseCorners.map((_, i) => {

@@ -42,11 +42,39 @@ export class PickupOnFireState {
     }
 }
 
+export class PickupShardFlyingState {
+    onEnter(pickup) {
+        pickup.stateTimer = 5500; // 5000ms wait + 500ms fade out
+        pickup.opacity = 1.0;
+        pickup.angularVelocity = (Math.random() - 0.5) * 8;
+    }
+
+    update(pickup, dt, walls, state) {
+        pickup.stateTimer -= dt;
+        if (pickup.stateTimer <= 0) {
+            pickup.isDead = true;
+        } else {
+            if (pickup.stateTimer < 500) {
+                pickup.opacity = pickup.stateTimer / 500;
+            }
+            pickup.facing += pickup.angularVelocity * (dt / 1000);
+            
+            // Apply rotational friction/drag to slow down and stop the spin
+            const dragFactor = Math.exp(-3.5 * (dt / 1000));
+            pickup.angularVelocity *= dragFactor;
+        }
+    }
+}
+
 export class PickupExplodedState {
     onEnter(pickup) {
         pickup.isDead = true;
         const gameState = pickup.stateData.gameState;
-        spawnExplosion(gameState, pickup.x, pickup.y, pickup.strategy?.explosion);
+        if (pickup.type === "crate" && typeof pickup.spawnShards === "function") {
+            pickup.spawnShards(gameState);
+        } else {
+            spawnExplosion(gameState, pickup.x, pickup.y, pickup.strategy?.explosion);
+        }
     }
 }
 
@@ -54,4 +82,5 @@ export const pickupStates = {
     normal: new PickupNormalState(),
     on_fire: new PickupOnFireState(),
     exploded: new PickupExplodedState(),
+    shard_flying: new PickupShardFlyingState(),
 };

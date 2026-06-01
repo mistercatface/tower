@@ -56,10 +56,17 @@ export class SatCollision {
         let minNormal = null;
 
         const checkAxes = (polyA, pA, polyB, pB) => {
+            const angleA = pA.facing ?? pA.angle ?? 0;
+            const cosA = Math.cos(angleA);
+            const sinA = Math.sin(angleA);
             for (let i = 0; i < polyA.normals.length; i++) {
                 const n = polyA.normals[i];
-                const projA = this._projectPolygon(n, polyA, pA);
-                const projB = this._projectPolygon(n, polyB, pB);
+                const rx = n.x * cosA - n.y * sinA;
+                const ry = n.x * sinA + n.y * cosA;
+                const rotatedNormal = { x: rx, y: ry };
+
+                const projA = this._projectPolygon(rotatedNormal, polyA, pA, angleA);
+                const projB = this._projectPolygon(rotatedNormal, polyB, pB, pB.facing ?? pB.angle ?? 0);
                 
                 if (projA.min >= projB.max || projB.min >= projA.max) {
                     return false; // Separating axis found
@@ -68,7 +75,7 @@ export class SatCollision {
                 const overlap = Math.min(projA.max - projB.min, projB.max - projA.min);
                 if (overlap < minOverlap) {
                     minOverlap = overlap;
-                    minNormal = n;
+                    minNormal = rotatedNormal;
                 }
             }
             return true;
@@ -94,12 +101,19 @@ export class SatCollision {
     static _circlePolygon(posCircle, circleShape, posPoly, polyShape) {
         let minOverlap = Infinity;
         let minNormal = null;
+        const polyAngle = posPoly.facing ?? posPoly.angle ?? 0;
+        const cosP = Math.cos(polyAngle);
+        const sinP = Math.sin(polyAngle);
 
         // Check polygon axes
         for (let i = 0; i < polyShape.normals.length; i++) {
             const n = polyShape.normals[i];
-            const projCircle = this._projectCircle(n, posCircle, circleShape);
-            const projPoly = this._projectPolygon(n, polyShape, posPoly);
+            const rx = n.x * cosP - n.y * sinP;
+            const ry = n.x * sinP + n.y * cosP;
+            const rotatedNormal = { x: rx, y: ry };
+
+            const projCircle = this._projectCircle(rotatedNormal, posCircle, circleShape);
+            const projPoly = this._projectPolygon(rotatedNormal, polyShape, posPoly, polyAngle);
 
             if (projCircle.min >= projPoly.max || projPoly.min >= projCircle.max) {
                 return null;
@@ -108,7 +122,7 @@ export class SatCollision {
             const overlap = Math.min(projCircle.max - projPoly.min, projPoly.max - projCircle.min);
             if (overlap < minOverlap) {
                 minOverlap = overlap;
-                minNormal = n;
+                minNormal = rotatedNormal;
             }
         }
 
@@ -117,8 +131,10 @@ export class SatCollision {
         let closestVertex = null;
         for (let i = 0; i < polyShape.vertices.length; i++) {
             const v = polyShape.vertices[i];
-            const vx = posPoly.x + v.x;
-            const vy = posPoly.y + v.y;
+            const rx = v.x * cosP - v.y * sinP;
+            const ry = v.x * sinP + v.y * cosP;
+            const vx = posPoly.x + rx;
+            const vy = posPoly.y + ry;
             const dx = posCircle.x - vx;
             const dy = posCircle.y - vy;
             const distSq = dx * dx + dy * dy;
@@ -134,7 +150,7 @@ export class SatCollision {
             const len = Math.sqrt(dx * dx + dy * dy);
             const n = { x: dx / len, y: dy / len };
             const projCircle = this._projectCircle(n, posCircle, circleShape);
-            const projPoly = this._projectPolygon(n, polyShape, posPoly);
+            const projPoly = this._projectPolygon(n, polyShape, posPoly, polyAngle);
 
             if (projCircle.min >= projPoly.max || projPoly.min >= projCircle.max) {
                 return null;
@@ -161,13 +177,17 @@ export class SatCollision {
         };
     }
 
-    static _projectPolygon(axis, shape, pos) {
+    static _projectPolygon(axis, shape, pos, angle = 0) {
         let min = Infinity;
         let max = -Infinity;
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
         for (let i = 0; i < shape.vertices.length; i++) {
             const v = shape.vertices[i];
-            const vx = pos.x + v.x;
-            const vy = pos.y + v.y;
+            const rx = v.x * cos - v.y * sin;
+            const ry = v.x * sin + v.y * cos;
+            const vx = pos.x + rx;
+            const vy = pos.y + ry;
             const projection = vx * axis.x + vy * axis.y;
             if (projection < min) min = projection;
             if (projection > max) max = projection;
