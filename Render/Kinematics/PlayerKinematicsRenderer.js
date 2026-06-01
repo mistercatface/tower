@@ -1,6 +1,5 @@
 import { CAMERA_HEIGHT } from "../3D/math/CombatProjection.js";
 import { createKinematicsBundle } from "./createKinematicsBundle.js";
-import { getRagdollRenderRig } from "./Ragdoll/RagdollPhysics.js";
 
 /** World radius → kinematics pixel size (tuned to match cw803 proportions). */
 export function kinematicsPixelSizeForRadius(radius) {
@@ -102,65 +101,25 @@ export function blitKinematicsCanvas(ctx, sprite, x, y, displayDiameter, opacity
     ctx.restore();
 }
 
-/**
- * Unified world render — live (cached sprite) or corpse (uncached ragdoll frame).
- * Same projection, draw, and blit for both.
- */
+/** Live: cached sprite. Corpse: pass rigData for direct render. Same blit either way. */
 export function renderKinematicsBody(ctx, spec) {
     const kinematics = getKinematicsRenderer(spec.radius);
     const camera = spec.camera ?? resolveKinematicsCamera(spec.actor, spec.state);
 
-    let sprite;
-    if (spec.rigData) {
-        const facing = spec.facing ?? {
-            renderRotation: spec.renderRotation,
-            gunCanvasAim: () => spec.renderRotation,
-        };
-        sprite = kinematics.bundle.renderKinematicsFrame({
-            x: spec.x,
-            y: spec.y,
-            camera,
-            rigData: spec.rigData,
-            renderRotation: spec.renderRotation,
-            bodyRotation: spec.bodyRotation ?? 0,
-            animCycle: spec.animCycle ?? 0,
-            actor: spec.actor,
-            facing,
-            drawOptions: spec.drawOptions ?? {},
-        });
-    } else {
-        sprite = kinematics.getSprite(spec.actor, camera);
-    }
+    const sprite = spec.rigData
+        ? kinematics.bundle.renderKinematicsFrame({ ...spec, camera })
+        : kinematics.getSprite(spec.actor, camera);
 
     blitKinematicsCanvas(ctx, sprite, spec.x, spec.y, kinematics.displayDiameter, spec.opacity ?? 1);
 }
 
 export function renderActorKinematicsBody(ctx, actor, camera, radius = actor.radius) {
-    renderKinematicsBody(ctx, {
-        x: actor.x,
-        y: actor.y,
-        radius,
-        actor,
-        camera,
-    });
+    renderKinematicsBody(ctx, { x: actor.x, y: actor.y, radius, actor, camera });
 }
 
 export function renderCorpseKinematicsBody(ctx, corpse, state) {
-    const { renderRotation, rotation } = corpse.deathPose;
     const kinematics = getCorpseKinematics(corpse);
-    const { config, rig } = kinematics.bundle;
-    renderKinematicsBody(ctx, {
-        x: corpse.x,
-        y: corpse.y,
-        radius: corpse.radius,
-        actor: corpse.actor,
-        state,
-        renderRotation,
-        bodyRotation: rotation,
-        animCycle: 0,
-        rigData: getRagdollRenderRig(corpse.ragdoll, rig, renderRotation, config),
-        facing: { renderRotation, gunCanvasAim: () => renderRotation },
-        drawOptions: { ragdoll: corpse.ragdoll },
-        opacity: corpse.opacity,
-    });
+    const camera = resolveKinematicsCamera(corpse.actor, state);
+    const frame = kinematics.bundle.resolveCorpseFrame(corpse, camera);
+    renderKinematicsBody(ctx, { ...frame, radius: corpse.radius, opacity: corpse.opacity });
 }

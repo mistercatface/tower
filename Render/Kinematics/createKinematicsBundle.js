@@ -10,6 +10,7 @@ import { resolveCombatFacing, resolveSpriteBodyRotation } from "./KinematicsFaci
 import { normalizeWeaponLoadout } from "../../Combat/equipmentLoadout.js";
 import { resolveWeaponStaticPoseName } from "./KinematicsWeaponVisuals.js";
 import { resolveMuzzleFromScene } from "./KinematicsMuzzle.js";
+import { getRagdollRenderRig } from "./Ragdoll/RagdollPhysics.js";
 
 const sharedCanvas = document.createElement("canvas");
 const sharedCtx = sharedCanvas.getContext("2d", { alpha: true });
@@ -170,18 +171,14 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
         return buildQuantizedViewContext(x, y, camera, 0, 0);
     }
 
-    /** @deprecated Use buildKinematicsViewContext */
-    function buildRagdollViewContext(x, y, camera) {
-        return buildKinematicsViewContext(x, y, camera);
-    }
-
     function buildProjectedSceneAt(x, y, camera, rigData, renderRotation, bodyRotation = 0, animCycle = 0) {
         const viewContext = buildQuantizedViewContext(x, y, camera, bodyRotation, animCycle);
         const scene = projectRig(rigData, renderRotation, viewContext, config, rig);
         return { scene, viewContext };
     }
 
-    function resolveLiveFrame(actor, camera) {
+    function resolveLiveFrameSpec(actor, camera, options = {}) {
+        const { freezePose = false } = options;
         const state = getOrCreateState(actor);
         syncWeaponPose(state, actor, poses);
         const bodyRotation = resolveSpriteBodyRotation(actor);
@@ -190,7 +187,7 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
         const q = spriteCache.getQuantizedValues(bodyRotation, animCycle, rawTiltFactor);
         const facing = resolveCombatFacing(actor, state, q.rotation, config);
         const rigData = calculateCharacterRig(
-            { ...state, staticBlendFactor: state.staticBlendFactor },
+            { ...state, staticBlendFactor: freezePose ? 1 : state.staticBlendFactor },
             q.cycle,
             config,
             rig,
@@ -209,26 +206,48 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
             actor,
             facing,
             drawOptions: { drawWeapons: true },
-            cacheMeta: { state, q, rawTiltFactor, weaponKey: getWeaponLoadoutKey(actor), aimKey: getQuantizedAimKey(actor, spriteCache.rotationSteps) },
+            cacheMeta: freezePose
+                ? null
+                : {
+                    state,
+                    q,
+                    rawTiltFactor,
+                    weaponKey: getWeaponLoadoutKey(actor),
+                    aimKey: getQuantizedAimKey(actor, spriteCache.rotationSteps),
+                },
         };
     }
 
-    /**
-     * Single render path: project rig + draw character mesh (+ optional weapons / ragdoll gore).
-     */
-    function renderKinematicsFrame({
-        x,
-        y,
-        camera,
-        rigData,
-        renderRotation,
-        bodyRotation = 0,
-        animCycle = 0,
-        actor,
-        facing,
-        drawOptions = {},
-        padding = config.PADDING,
-    }) {
+    function resolveCorpseFrame(corpse, camera) {
+        const { renderRotation, rotation } = corpse.deathPose;
+        return {
+            x: corpse.x,
+            y: corpse.y,
+            camera,
+            rigData: getRagdollRenderRig(corpse.ragdoll),
+            renderRotation,
+            bodyRotation: rotation,
+            animCycle: 0,
+            actor: corpse.actor,
+            facing: { renderRotation, gunCanvasAim: () => renderRotation },
+            drawOptions: { ragdoll: corpse.ragdoll },
+        };
+    }
+
+    function renderKinematicsFrame(frame) {
+        const {
+            x,
+            y,
+            camera,
+            rigData,
+            renderRotation,
+            bodyRotation = 0,
+            animCycle = 0,
+            actor,
+            facing,
+            drawOptions = {},
+            padding = config.PADDING,
+        } = frame;
         const { scene, viewContext } = buildProjectedSceneAt(x, y, camera, rigData, renderRotation, bodyRotation, animCycle);
         return drawKinematicsFrameToCanvas(
             sharedCanvas,
@@ -247,7 +266,7 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
     }
 
     function buildSprite(actor, camera) {
-        const frame = resolveLiveFrame(actor, camera);
+        const frame = resolveLiveFrameSpec(actor, camera);
         const { state, q, rawTiltFactor, weaponKey, aimKey } = frame.cacheMeta;
         const cacheKey = spriteCache.getKey(actor.id, state.pose, q.rotation, frame.animCycle, state.crouchFactor, rawTiltFactor, weaponKey, aimKey);
 
@@ -268,20 +287,16 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
 
     /** Snapshot posed rig at death before clearing anim state. */
     function captureActorRigForRagdoll(actor, camera) {
-        const animState = getOrCreateState(actor);
-        syncWeaponPose(animState, actor, poses);
-        const bodyRotation = resolveSpriteBodyRotation(actor);
-        const naturalCycle = animState.animCycle % (Math.PI * 2);
-        const { rawTiltFactor } = buildViewContextAt(actor.x, actor.y, camera);
-        const q = spriteCache.getQuantizedValues(bodyRotation, naturalCycle, rawTiltFactor);
-        const facing = resolveCombatFacing(actor, animState, q.rotation, config);
-        const rigData = calculateCharacterRig({ ...animState, staticBlendFactor: 1 }, q.cycle, config, rig, poses, actor, facing);
-
-        return { rigData, rotation: bodyRotation, renderRotation: facing.renderRotation };
+        const frame = resolveLiveFrameSpec(actor, camera, { freezePose: true });
+        return {
+            rigData: frame.rigData,
+            rotation: frame.bodyRotation,
+            renderRotation: frame.facing.renderRotation,
+        };
     }
 
     function buildLiveScene(actor, camera) {
-        const frame = resolveLiveFrame(actor, camera);
+        const frame = resolveLiveFrameSpec(actor, camera);
         const { scene, viewContext } = buildProjectedSceneAt(
             frame.x,
             frame.y,
@@ -311,9 +326,9 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
         advanceAnimation,
         buildSprite,
         buildKinematicsViewContext,
-        buildRagdollViewContext,
         buildProjectedSceneAt,
         renderKinematicsFrame,
+        resolveCorpseFrame,
         captureActorRigForRagdoll,
         clearActorState,
         clearAllStates: () => entityStates.clear(),

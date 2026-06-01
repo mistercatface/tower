@@ -161,33 +161,3 @@ export function drawKinematicsFrameToCanvas(
 
     return sharedCanvas;
 }
-
-/** @deprecated Use drawKinematicsFrameToCanvas */
-export function drawCharacterToCanvas(
-    sharedCanvas,
-    sharedCtx,
-    scene,
-    actor,
-    viewContext,
-    facing,
-    config,
-    rig,
-    sceneRenderer,
-    overridePadding = null,
-    options = {},
-) {
-    return drawKinematicsFrameToCanvas(
-        sharedCanvas,
-        sharedCtx,
-        options.rigLocal ?? scene,
-        scene,
-        actor,
-        viewContext,
-        facing,
-        config,
-        rig,
-        sceneRenderer,
-        overridePadding,
-        { ...options, drawWeapons: options.drawWeapons !== false },
-    );
-}
