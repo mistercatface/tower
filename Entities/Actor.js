@@ -555,6 +555,7 @@ export class Actor extends DestructibleEntity {
     }
 
     renderTurretsAt(ctx, renderer, x, y, color = this.color) {
+        if (this.usesKinematicsBody) return;
         for (const turret of this.turrets) {
             turret.render(ctx, x, y, this.radius, renderer, color, this);
         }

@@ -22,6 +22,7 @@ export class Sidekick extends Actor {
         super(x, y, radius, sidekickBaseStats.speed, sidekickBaseStats.maxHealth, "#00BCD4", "companion", 3.0, false);
         this.teamId = 0;
         this.alwaysRunsTurretCombat = true;
+        this.usesKinematicsBody = true;
         this.healthBar = Sidekick.healthBar;
         this.setupCombatant(sidekickBaseStats);
         this.initCombatWeapon();
