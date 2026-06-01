@@ -40,12 +40,42 @@ function explosiveOnHit(state, pickup, projectile, events) {
 }
 
 function damageOnHit(state, pickup, projectile, events) {
+    if (pickup.type === "crate" || pickup.type === "crate_shard") {
+        const width = pickup.halfExtents ? pickup.halfExtents.x * 2 : pickup.radius * 2;
+        const height = pickup.halfExtents ? pickup.halfExtents.y * 2 : pickup.radius * 2;
+        const minSize = 3;
+        const canSplit = (width >= minSize * 2 && height >= minSize * 2);
+
+        if (!canSplit) {
+            if (projectile) {
+                const pushForce = projectile.isExplosion ? 250 : 120;
+                const angle = (projectile.x !== undefined && projectile.y !== undefined)
+                    ? Math.atan2(pickup.y - projectile.y, pickup.x - projectile.x)
+                    : (projectile.angle ?? Math.atan2(pickup.y - (projectile.y ?? 0), pickup.x - (projectile.x ?? 0)));
+                pickup.vx += Math.cos(angle) * pushForce;
+                pickup.vy += Math.sin(angle) * pushForce;
+            }
+            if (projectile && projectile.isDead !== undefined) projectile.isDead = true;
+            return true;
+        }
+    }
+
     if (projectile?.isExplosion) {
         pickup.explode(state);
         return true;
     }
     const dmg = projectile?.damage ?? 0;
     pickup.takeDamage(dmg, state);
+
+    if (pickup.health > 0 && projectile) {
+        const pushForce = 80;
+        const angle = (projectile.x !== undefined && projectile.y !== undefined)
+            ? Math.atan2(pickup.y - projectile.y, pickup.x - projectile.x)
+            : (projectile.angle ?? Math.atan2(pickup.y - (projectile.y ?? 0), pickup.x - (projectile.x ?? 0)));
+        pickup.vx += Math.cos(angle) * pushForce;
+        pickup.vy += Math.sin(angle) * pushForce;
+    }
+
     if (projectile?.isDead !== undefined) projectile.isDead = true;
     return true;
 }
@@ -136,10 +166,10 @@ export class Pickup extends Entity {
     spawnShards(gameState) {
         if (!gameState || !gameState.pickups) return;
 
-        const width = this.radius * 2;
-        const height = this.radius * 2;
+        const width = this.halfExtents ? this.halfExtents.x * 2 : this.radius * 2;
+        const height = this.halfExtents ? this.halfExtents.y * 2 : this.radius * 2;
         const minSize = 3;
-        const localRects = partitionCrateLocal(width, height, minSize, 2);
+        const localRects = partitionCrateLocal(width, height, minSize, 1);
 
         const cos = Math.cos(this.facing);
         const sin = Math.sin(this.facing);
@@ -187,19 +217,19 @@ export class Pickup extends Entity {
 
 function partitionCrateLocal(width, height, minSize, maxDepth = 2) {
     const results = [];
-    
+
     function recurse(rect, depth) {
         const w = rect.maxX - rect.minX;
         const h = rect.maxY - rect.minY;
-        
+
         const canSplitH = h >= minSize * 2;
         const canSplitV = w >= minSize * 2;
-        
+
         if (depth >= maxDepth || (!canSplitH && !canSplitV)) {
             results.push(rect);
             return;
         }
-        
+
         let splitVertical = false;
         if (canSplitH && canSplitV) {
             if (w > h * 1.3) {
@@ -214,7 +244,7 @@ function partitionCrateLocal(width, height, minSize, maxDepth = 2) {
         } else {
             splitVertical = false;
         }
-        
+
         if (splitVertical) {
             const minT = rect.minX + minSize;
             const maxT = rect.maxX - minSize;
@@ -229,8 +259,8 @@ function partitionCrateLocal(width, height, minSize, maxDepth = 2) {
             recurse({ minX: rect.minX, minY: t, maxX: rect.maxX, maxY: rect.maxY }, depth + 1);
         }
     }
-    
-    recurse({ minX: -width/2, minY: -height/2, maxX: width/2, maxY: height/2 }, 0);
+
+    recurse({ minX: -width / 2, minY: -height / 2, maxX: width / 2, maxY: height / 2 }, 0);
     return results;
 }
 

@@ -62,7 +62,7 @@ function applyExpandingDamage(state, exp, allEvents) {
         if (dist <= exp.radius + p.radius) {
             if (p.hasLineOfSightFromPoint(exp.x, exp.y, state, { sourceRadius: 0 })) {
                 if (p.strategy?.onHit) {
-                    p.strategy.onHit(state, p, { isDead: false, isExplosion: true }, allEvents);
+                    p.strategy.onHit(state, p, { isDead: false, isExplosion: true, x: exp.x, y: exp.y }, allEvents);
                     exp.hitTargets.add(p);
                 }
             }

@@ -51,11 +51,11 @@ export const worldPropDefinitions = {
     }),
     crate_shard: prop("crate_shard", {
         inspectKey: null,
-        hitBehavior: "none",
+        hitBehavior: "damage",
         radius: 3,
         isPushable: true,
         laserTargetable: false,
-        maxHealth: null,
+        maxHealth: 1,
         mass: 0.05,
         wallPhysics: { restitution: 0.45, friction: 0.5 },
     }),
