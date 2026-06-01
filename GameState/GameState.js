@@ -4,7 +4,7 @@ import { FlowFieldGrid } from "../Spatial/Navigation/FlowFieldGrid.js";
 import { WorldObstacleGrid } from "../Spatial/World/ObstacleGrid.js";
 import { HierarchicalNavigator } from "../Spatial/Navigation/HierarchicalNavigator.js";
 import { NavigationService } from "../Spatial/Navigation/NavigationService.js";
-import { gridSettings, mapSettings, runBaseStats } from "../Config/Config.js";
+import { combatActorRadius, gridSettings, mapSettings, runBaseStats } from "../Config/Config.js";
 import { Scheduler } from "../Core/Scheduler.js";
 import { WaveManager } from "../Combat/WaveManager.js";
 import { SpatialHash } from "../Spatial/World/SpatialHash.js";
@@ -28,7 +28,7 @@ export class GameState {
         this.discoveredAbilities = new Set();
 
         this.runStats = createRunStats(runBaseStats);
-        this.player = new Player(0, 0, 8);
+        this.player = new Player(0, 0, combatActorRadius);
         this.player.teamId = 0;
         this.allies = [];
 

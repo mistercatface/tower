@@ -570,10 +570,6 @@ export class Actor extends DestructibleEntity {
     }
 
     getBodySprite() {
-        const renderPath = this.enemyType?.renderPath;
-        if (renderPath && RenderSprites[renderPath]) {
-            return RenderSprites[renderPath];
-        }
         const spriteKey = getActorProfileForActor(this).bodySprite;
         return RenderSprites[spriteKey];
     }

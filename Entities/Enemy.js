@@ -6,6 +6,7 @@ import { NAV_PROFILES } from "../Config/Config.js";
 import { rollEnemyStartLoadout } from "../Combat/weaponLoadout.js";
 import { createEntityBars } from "./EntityBars.js";
 import { buildEnemyCombatStats, computeEnemyUpgradeLevels, computeSpawnReward } from "../Combat/EnemySpawn.js";
+import { advanceActorKinematics, renderActorKinematicsBody } from "../Render/Kinematics/PlayerKinematicsRenderer.js";
 
 const enemyBars = createEntityBars({ healthWidth: 22, healthHeight: 3, healthBorderRadius: 1.5, stunHeight: 2, stunBorderRadius: 1 });
 
@@ -43,6 +44,13 @@ export class Enemy extends Actor {
         this.startingAbilities = [];
         this.healthBar = Enemy.healthBar;
         this.stunBar = Enemy.stunBar;
+        this.usesKinematicsBody = true;
+        this._kinematicsCamera = { x, y };
+    }
+
+    getKinematicsCamera(state) {
+        const player = state?.player;
+        return player ? { x: player.x, y: player.y } : { x: this.x, y: this.y };
     }
 
     onHitAfterDamage(damage, ctx, hitType, died, event) {
@@ -61,16 +69,20 @@ export class Enemy extends Actor {
     }
 
     updateLocomotion(dt, state, spatialFrame, options = {}) {
+        this._kinematicsCamera = this.getKinematicsCamera(state);
+
         const target = this.getAITarget(state);
 
         if (!target) {
             this.desiredX = 0;
             this.desiredY = 0;
             this.applyLocomotion(dt, spatialFrame, { state, ignoreSeparationInDesired: true });
+            advanceActorKinematics(this, dt, this._kinematicsCamera);
             return;
         }
 
         this.currentState.update(this, dt, target, state.flowFieldGrid, state.walls, state.projectiles, spatialFrame, state.scheduler, state);
+        advanceActorKinematics(this, dt, this._kinematicsCamera);
     }
 
     calculateSteering(target, state) {
@@ -127,11 +139,7 @@ export class Enemy extends Actor {
         return false;
     }
 
-    render(ctx, renderer, state) {
-        if (this.currentState && this.currentState.render) {
-            this.currentState.render(this, ctx, renderer.actorCache, renderer.turretCache);
-        }
-
-        this.renderBody(ctx, renderer);
+    renderBody(ctx, _renderer) {
+        renderActorKinematicsBody(ctx, this, this._kinematicsCamera ?? { x: this.x, y: this.y });
     }
 }

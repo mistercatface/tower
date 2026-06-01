@@ -49,6 +49,59 @@ const createSeededRandom = (seed) => {
     };
 };
 
+const FABRIC_PALETTES = [
+    { base: "#7e8c96", light: "#9daab4", dark: "#5f6d77" },
+    { base: "#6b7c9e", light: "#8b9cbe", dark: "#4c5d7e" },
+    { base: "#7da37d", light: "#9cc49c", dark: "#5f845f" },
+    { base: "#6b969e", light: "#8bb6be", dark: "#4c777e" },
+];
+
+/** Muted shirt/pants pairing per enemy archetype (same palette family as allies). */
+const ENEMY_TYPE_OUTFIT = {
+    standard: { top: 0, bottom: 1 },
+    tank: { top: 1, bottom: 0 },
+    fast: { top: 2, bottom: 3 },
+    kamikaze: { top: 3, bottom: 2 },
+    spastic: { top: 0, bottom: 3 },
+    dodger: { top: 2, bottom: 1 },
+    boss: { top: 1, bottom: 2 },
+};
+
+function hashEnemyType(type) {
+    let h = 0;
+    for (let i = 0; i < type.length; i++) {
+        h = (Math.imul(31, h) + type.charCodeAt(i)) | 0;
+    }
+    return h;
+}
+
+function applyFabricPalette(char, palette) {
+    return {
+        ...char,
+        topColor: palette.base,
+        topLight: palette.light,
+        topDark: palette.dark,
+    };
+}
+
+function applyEnemyTypeAppearance(char, enemyType) {
+    const outfit = ENEMY_TYPE_OUTFIT[enemyType.type] ?? { top: 0, bottom: 1 };
+    const top = FABRIC_PALETTES[outfit.top % FABRIC_PALETTES.length];
+    const bottom = FABRIC_PALETTES[outfit.bottom % FABRIC_PALETTES.length];
+    let next = applyFabricPalette(char, top);
+    next = {
+        ...next,
+        bottomColor: bottom.base,
+        bottomLight: bottom.light,
+        bottomDark: bottom.dark,
+    };
+    if (!next.hairColor) {
+        next.hairColor = "#402010";
+        next.hairStyle = next.hairStyle === "none" ? "short" : next.hairStyle;
+    }
+    return next;
+}
+
 export function generateCharacter(seed) {
     const rng = createSeededRandom(seed);
     const race = RACES.human;
@@ -71,12 +124,7 @@ export function generateCharacter(seed) {
         { name: "triangle", shoulderMult: 1.2, waistMult: 0.8 },
         { name: "hourglass", shoulderMult: 1.1, waistMult: 0.75 },
     ];
-    const fabricColors = [
-        { base: "#7e8c96", light: "#9daab4", dark: "#5f6d77" },
-        { base: "#6b7c9e", light: "#8b9cbe", dark: "#4c5d7e" },
-        { base: "#7da37d", light: "#9cc49c", dark: "#5f845f" },
-        { base: "#6b969e", light: "#8bb6be", dark: "#4c777e" },
-    ];
+    const fabricColors = FABRIC_PALETTES;
     const hairColors = [null, "#402010", "#1a1a1a", "#8b4513", "#d4a460"];
     const hairStyles = ["none", "short", "buzzcut", "mohawk"];
 
@@ -121,8 +169,13 @@ export function generateCharacter(seed) {
 export function getCharacterForActor(actor, seedOverride = null) {
     if (!actor || actor.id === undefined) return generateCharacter(0);
     if (!characterCache.has(actor.id)) {
-        const seed = seedOverride ?? (actor.id ^ WORLD_SEED);
-        characterCache.set(actor.id, generateCharacter(seed));
+        const typeSalt = actor.enemyType ? hashEnemyType(actor.enemyType.type) : 0;
+        const seed = seedOverride ?? ((actor.id ^ WORLD_SEED) ^ typeSalt);
+        let char = generateCharacter(seed);
+        if (actor.enemyType) {
+            char = applyEnemyTypeAppearance(char, actor.enemyType);
+        }
+        characterCache.set(actor.id, char);
     }
     return characterCache.get(actor.id);
 }
