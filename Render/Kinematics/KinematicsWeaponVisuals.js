@@ -1,4 +1,3 @@
-import { angleDelta } from "../../Math/Angle.js";
 import { getGunDefinition } from "../../Config/gunDefinitions.js";
 import { isTwoHandedGun, normalizeWeaponLoadout } from "../../Combat/equipmentLoadout.js";
 
@@ -134,11 +133,6 @@ export function resolveWeaponDrawSlots(actor) {
             aimArms: isRight ? "right" : "left",
         };
     });
-}
-
-/** Gun rotation in sprite space (relative to the same rotation passed to the scene). */
-export function getSpriteAimAngle(turretAngle, renderRotation = 0) {
-    return angleDelta(renderRotation, turretAngle ?? 0);
 }
 
 export function getHandProjected(scene, handKey) {

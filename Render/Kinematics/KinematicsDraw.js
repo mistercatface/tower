@@ -1,9 +1,5 @@
 import { getCharacterForActor } from "./CharacterAppearance.js";
-import {
-    getHandProjected,
-    getSpriteAimAngle,
-    resolveWeaponDrawSlots,
-} from "./KinematicsWeaponVisuals.js";
+import { getHandProjected, resolveWeaponDrawSlots } from "./KinematicsWeaponVisuals.js";
 
 export function drawStandardCharacter(scene, actor, sceneRenderer, config, rig) {
     const char = getCharacterForActor(actor);
@@ -60,7 +56,7 @@ export function drawStandardCharacter(scene, actor, sceneRenderer, config, rig) 
     Renderer.addSphere(scene.head, rig.headR, palettes.skin);
 }
 
-function drawHeldWeapons(scene, actor, sceneRenderer, config, finalRenderRotation) {
+function drawHeldWeapons(scene, actor, sceneRenderer, config, facing) {
     const slots = resolveWeaponDrawSlots(actor);
     if (slots.length === 0) return;
 
@@ -69,7 +65,7 @@ function drawHeldWeapons(scene, actor, sceneRenderer, config, finalRenderRotatio
 
     for (const slot of slots) {
         const turret = turrets[slot.turretIndex];
-        const aimAngle = getSpriteAimAngle(turret?.angle ?? actor.angle ?? 0, finalRenderRotation);
+        const aimAngle = facing.gunCanvasAim(turret?.angle ?? actor.angle ?? 0);
         let hand;
         if (slot.aimArms === "both") {
             const right = scene.rArm.p3;
@@ -97,12 +93,11 @@ export function drawCharacterToCanvas(
     scene,
     actor,
     viewContext,
-    rotation,
+    facing,
     config,
     rig,
     sceneRenderer,
     overridePadding = null,
-    finalRenderRotation = rotation,
 ) {
     const padding = overridePadding !== null ? overridePadding : config.PADDING;
     const canvasSize = Math.ceil(config.SIZE + padding * 2);
@@ -116,9 +111,9 @@ export function drawCharacterToCanvas(
 
     sharedCtx.save();
     sharedCtx.translate(padding, padding);
-    sceneRenderer.begin(sharedCtx, viewContext, rotation, rig);
+    sceneRenderer.begin(sharedCtx, viewContext, facing.renderRotation, rig);
     drawStandardCharacter(scene, actor, sceneRenderer, config, rig);
-    drawHeldWeapons(scene, actor, sceneRenderer, config, finalRenderRotation);
+    drawHeldWeapons(scene, actor, sceneRenderer, config, facing);
     sceneRenderer.flush();
     sharedCtx.restore();
 

@@ -10,23 +10,23 @@ import {
 import { normalizeAngle } from "../../Math/Angle.js";
 import { resolveWeaponDrawSlots } from "./KinematicsWeaponVisuals.js";
 
-function applyWeaponAimToVals(vals, actor, aimStrength, renderRotation) {
+function applyWeaponAimToVals(vals, actor, aimStrength, facing) {
     const slots = resolveWeaponDrawSlots(actor);
     if (slots.length === 0 || aimStrength <= 0.001) return vals;
 
-    const bodyFacing = normalizeAngle(renderRotation ?? actor.angle ?? 0);
+    const bodyFacing = facing?.rigAimFacing ?? normalizeAngle(actor.angle ?? 0);
     const turrets = actor.turrets ?? [];
     let merged = { ...vals };
 
     if (slots.length === 1 && slots[0].aimArms === "both") {
-        const aim = turrets[0]?.angle ?? bodyFacing;
+        const aim = facing?.turretWorldAngle(0) ?? turrets[0]?.angle ?? bodyFacing;
         const arms = getAimingArmAngles(aim, "both", -1.5, bodyFacing);
         merged = blendArmVals(merged, arms, aimStrength);
         return merged;
     }
 
     for (const slot of slots) {
-        const aim = turrets[slot.turretIndex]?.angle ?? bodyFacing;
+        const aim = facing?.turretWorldAngle(slot.turretIndex) ?? turrets[slot.turretIndex]?.angle ?? bodyFacing;
         const arms = getAimingArmAngles(aim, slot.aimArms, -1.5, bodyFacing);
         if (slot.aimArms === "right") {
             merged.rArm = blend(vals.rArm, arms.rArm, aimStrength);
@@ -55,7 +55,7 @@ function blendArmVals(base, target, t) {
     };
 }
 
-export function calculateCharacterRig(state, cycle, config, rig, poses, actor = null, renderRotation = 0) {
+export function calculateCharacterRig(state, cycle, config, rig, poses, actor = null, facing = null) {
     const cf = state.crouchFactor || 0;
     const walkTargets = poses.WALK.getTargets(cycle);
     const walkMods = poses.WALK.getModifiers(cycle);
@@ -147,7 +147,7 @@ export function calculateCharacterRig(state, cycle, config, rig, poses, actor = 
 
     if (actor) {
         const aimStrength = 1 - armT;
-        const aimed = applyWeaponAimToVals(vals, actor, aimStrength, renderRotation);
+        const aimed = applyWeaponAimToVals(vals, actor, aimStrength, facing);
         vals.rArm = aimed.rArm;
         vals.lArm = aimed.lArm;
         vals.rElbow = aimed.rElbow;
