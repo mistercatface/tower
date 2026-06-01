@@ -6,7 +6,7 @@ export const enemyTypes = [
         type: "kamikaze",
         weight: 15,
         radius: combatActorRadius,
-        baseSpeed: 160,
+        baseSpeed: 115,
         maxHealth: 2,
         color: "#FF9800",
         minLevel: 0,
@@ -17,26 +17,26 @@ export const enemyTypes = [
         groupSettings: { baseGroupSize: 2, growthPerWave: 1.0, maxGroupSize: 5 },
         canDamageWalls: true,
     },
-    { type: "tank", weight: 25, radius: combatActorRadius, baseSpeed: 66, maxHealth: 6, color: "#FF9800", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: false },
-    { type: "standard", weight: 60, radius: combatActorRadius, baseSpeed: 100, maxHealth: 3, color: "#F44336", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: false },
-    { type: "fast", weight: 5, radius: combatActorRadius, baseSpeed: 140, maxHealth: 2, color: "#FFEB3B", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: false, canDamageWalls: true },
+    { type: "tank", weight: 25, radius: combatActorRadius, baseSpeed: 50, maxHealth: 6, color: "#FF9800", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: false },
+    { type: "standard", weight: 60, radius: combatActorRadius, baseSpeed: 75, maxHealth: 3, color: "#F44336", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: false },
+    { type: "fast", weight: 5, radius: combatActorRadius, baseSpeed: 102, maxHealth: 2, color: "#FFEB3B", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: false, canDamageWalls: true },
     {
         type: "spastic",
         weight: 15,
         radius: combatActorRadius,
-        baseSpeed: 130,
+        baseSpeed: 95,
         maxHealth: 2,
         color: "#C62828",
         minLevel: 0,
         spawnType: "group",
         attackType: "charge",
         canDodge: false,
-        accelRate: 5,
+        accelRate: 3,
         canDamageWalls: true,
         groupSettings: { baseGroupSize: 3, growthPerWave: 2.0, maxGroupSize: 5 },
     },
-    { type: "dodger", weight: 20, radius: combatActorRadius, baseSpeed: 100, maxHealth: 4, color: "#03A9F4", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: true },
-    { type: "boss", weight: 0, radius: combatActorRadius, baseSpeed: 160, maxHealth: 6, color: "#B71C1C", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: true },
+    { type: "dodger", weight: 20, radius: combatActorRadius, baseSpeed: 75, maxHealth: 4, color: "#03A9F4", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: true },
+    { type: "boss", weight: 0, radius: combatActorRadius, baseSpeed: 115, maxHealth: 6, color: "#B71C1C", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: true },
 ];
 
 /** Weighted spawn compositions — one pod spawns per spawn tick, all members together. */
@@ -364,11 +364,17 @@ export const playerProjectileSettings = { speed: 250, radiusMultiplier: 0.25, sp
 
 export const enemyProjectileSettings = { speed: 150, radiusMultiplier: 0.333, knockbackMultiplier: 120 };
 
-export const enemyDefaults = { rangeMin: 75, rangeMax: 144, chargeImpactDamage: 2 };
+export const enemyDefaults = {
+    rangeMin: 75,
+    rangeMax: 144,
+    chargeImpactDamage: 2,
+    chargeDashSpeedMultiplier: 1.35,
+    chargeDashAccelMultiplier: 2.5,
+};
 
 export const explosionSettings = { defaultDamage: 5, barrelDamage: 5, wallBlastDamage: 5, playerMultipliers: [1, 0.5], enemyMultipliers: [1.6, 0.4] };
 
-export const enemyBaseStats = { turnSpeed: 10, range: 112, accuracy: 0.9, penetration: 0, moveSpeedMultiplier: 1.0, fireIntervalMultiplier: 1.0, reloadSpeedMultiplier: 1.0, speed: 100 };
+export const enemyBaseStats = { turnSpeed: 10, range: 112, accuracy: 0.9, penetration: 0, moveSpeedMultiplier: 1.0, fireIntervalMultiplier: 1.0, reloadSpeedMultiplier: 1.0, speed: 75 };
 
 export const THEME_COLORS = [
     { r: 245, g: 245, b: 247 }, // 1. Near-White / Light Silver (High Brightness)

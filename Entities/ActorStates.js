@@ -3,6 +3,7 @@ import { GhostTrail } from "../Render/GhostTrail.js";
 import { normalizeAngle, turnAngleTowards } from "../Math/Angle.js";
 import { Utilities } from "../Core/Utilities.js";
 import { CollisionSystem } from "../Spatial/Collision/CollisionSystem.js";
+import { enemyDefaults } from "../Config/Config.js";
 
 function analyzeStrafePath(enemy, tangentX, tangentY, dir, walls, target, state) {
     const stepSize = 10;
@@ -332,9 +333,9 @@ export class EnemyChargeDashState {
         enemy.calculateSteering(target, state);
 
         const originalSpeed = enemy.speed;
-        enemy.speed = originalSpeed * 2.2;
+        enemy.speed = originalSpeed * enemyDefaults.chargeDashSpeedMultiplier;
         const originalAccel = enemy.accelRate;
-        enemy.accelRate = originalAccel * 5.0;
+        enemy.accelRate = originalAccel * enemyDefaults.chargeDashAccelMultiplier;
 
         PhysicsSystem.applyMovement(enemy, dt, true, true);
 
