@@ -14,11 +14,7 @@ function partScaleFromRzVis(rzVis, config) {
     return 0.9 + (rzVis / config.SIZE) * 0.5;
 }
 
-/**
- * Project one rig-local point to canvas space.
- * Position always from p; part scale from scaleAt (defaults to p — live actors).
- * Corpses pass scaleAt = death-pose baseline so physics flail cannot inflate scale.
- */
+/** Project rig-local {x,y,z} to canvas space (live + corpse). */
 export function projectLocalPoint(p, bCos, bSin, viewContext, config) {
     const { yFactor = 0.8, shiftX = 0, shiftY = 0, ratio = 0 } = viewContext || {};
     const cx = config.SIZE / 2;
@@ -26,9 +22,7 @@ export function projectLocalPoint(p, bCos, bSin, viewContext, config) {
     const depthWeight = Math.max(0, 0.9 - yFactor) * 4.0;
 
     const pos = rotateXZ(p, bCos, bSin);
-    const scaleSrc = p.scaleAt ?? p;
-    const scaleRz = rotateXZ(scaleSrc, bCos, bSin).rz;
-    const rzVis = clampRzVis(scaleRz, config);
+    const rzVis = clampRzVis(pos.rz, config);
     const scale = partScaleFromRzVis(rzVis, config);
 
     const worldHeight = groundY - p.y;
@@ -49,11 +43,10 @@ export function createProjector(viewContext, rotation, config, rig) {
     const bRot = rotation + config.BODY_OFFSET;
     const bCos = Math.cos(bRot);
     const bSin = Math.sin(bRot);
-    const proj = (p) => {
+    return (p) => {
         if (p.scale !== undefined) return p;
         return projectLocalPoint(p, bCos, bSin, viewContext, config);
     };
-    return proj;
 }
 
 export function projectRig(rigData, rotation, viewContext, config, rig) {

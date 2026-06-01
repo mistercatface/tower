@@ -1,38 +1,73 @@
 import { RAGDOLL_CONFIG, getScaledPhysics } from "./RagdollConfig.js";
 import { processRagdollGoreHit } from "./RagdollGore.js";
 
-function clonePoint(p) {
-    return { x: p.x, y: p.y, z: p.z || 0 };
+/** Frozen render depth at death — sim never writes this. */
+export function getRagdollPointZ(ragdoll, key) {
+    const depth = ragdoll.renderDepth?.[key];
+    if (depth !== undefined) return depth.z ?? 0;
+    const legacy = ragdoll.renderPoseBaseline?.[key];
+    return legacy?.z ?? 0;
+}
+
+export function setRagdollPointZ(ragdoll, key, z) {
+    if (!ragdoll.renderDepth) ragdoll.renderDepth = {};
+    ragdoll.renderDepth[key] = { z };
+}
+
+/** Sim xy + frozen z for hit tests, blood spawn, world mapping. */
+export function mergeRagdollPoint(ragdoll, key) {
+    const sim = ragdoll.points?.[key];
+    if (!sim) return null;
+    return { x: sim.x, y: sim.y, z: getRagdollPointZ(ragdoll, key) };
+}
+
+export function getRagdollCollisionPoints(ragdoll) {
+    const out = {};
+    for (const key of Object.keys(ragdoll.points ?? {})) {
+        out[key] = mergeRagdollPoint(ragdoll, key);
+    }
+    return out;
+}
+
+function toRenderPoint(ragdoll, key) {
+    return mergeRagdollPoint(ragdoll, key);
 }
 
 export function initializeRagdoll(rigData, rotation, impactProfile, config, rig) {
-    const points = {
-        head: clonePoint(rigData.head),
-        spineTop: clonePoint(rigData.spineTop),
-        spineBot: clonePoint(rigData.spineBot),
-        rShoulder: clonePoint(rigData.rArm.p1),
-        rElbow: clonePoint(rigData.rArm.p2),
-        rHand: clonePoint(rigData.rArm.p3),
-        lShoulder: clonePoint(rigData.lArm.p1),
-        lElbow: clonePoint(rigData.lArm.p2),
-        lHand: clonePoint(rigData.lArm.p3),
-        rHip: clonePoint(rigData.rLeg.p1),
-        rKnee: clonePoint(rigData.rLeg.p2),
-        rFoot: clonePoint(rigData.rLeg.p3),
-        lHip: clonePoint(rigData.lLeg.p1),
-        lKnee: clonePoint(rigData.lLeg.p2),
-        lFoot: clonePoint(rigData.lLeg.p3),
+    const fullPoints = {
+        head: { x: rigData.head.x, y: rigData.head.y, z: rigData.head.z ?? 0 },
+        spineTop: { x: rigData.spineTop.x, y: rigData.spineTop.y, z: rigData.spineTop.z ?? 0 },
+        spineBot: { x: rigData.spineBot.x, y: rigData.spineBot.y, z: rigData.spineBot.z ?? 0 },
+        rShoulder: { x: rigData.rArm.p1.x, y: rigData.rArm.p1.y, z: rigData.rArm.p1.z ?? 0 },
+        rElbow: { x: rigData.rArm.p2.x, y: rigData.rArm.p2.y, z: rigData.rArm.p2.z ?? 0 },
+        rHand: { x: rigData.rArm.p3.x, y: rigData.rArm.p3.y, z: rigData.rArm.p3.z ?? 0 },
+        lShoulder: { x: rigData.lArm.p1.x, y: rigData.lArm.p1.y, z: rigData.lArm.p1.z ?? 0 },
+        lElbow: { x: rigData.lArm.p2.x, y: rigData.lArm.p2.y, z: rigData.lArm.p2.z ?? 0 },
+        lHand: { x: rigData.lArm.p3.x, y: rigData.lArm.p3.y, z: rigData.lArm.p3.z ?? 0 },
+        rHip: { x: rigData.rLeg.p1.x, y: rigData.rLeg.p1.y, z: rigData.rLeg.p1.z ?? 0 },
+        rKnee: { x: rigData.rLeg.p2.x, y: rigData.rLeg.p2.y, z: rigData.rLeg.p2.z ?? 0 },
+        rFoot: { x: rigData.rLeg.p3.x, y: rigData.rLeg.p3.y, z: rigData.rLeg.p3.z ?? 0 },
+        lHip: { x: rigData.lLeg.p1.x, y: rigData.lLeg.p1.y, z: rigData.lLeg.p1.z ?? 0 },
+        lKnee: { x: rigData.lLeg.p2.x, y: rigData.lLeg.p2.y, z: rigData.lLeg.p2.z ?? 0 },
+        lFoot: { x: rigData.lLeg.p3.x, y: rigData.lLeg.p3.y, z: rigData.lLeg.p3.z ?? 0 },
     };
 
     const yOffset = (rig.size / 32) * 2.0;
-    for (const key of Object.keys(points)) {
-        points[key].y -= yOffset;
+    for (const key of Object.keys(fullPoints)) {
+        fullPoints[key].y -= yOffset;
+    }
+
+    const renderDepth = {};
+    const points = {};
+    for (const key of Object.keys(fullPoints)) {
+        renderDepth[key] = { z: fullPoints[key].z };
+        points[key] = { x: fullPoints[key].x, y: fullPoints[key].y };
     }
 
     const dist = (a, b) => Math.hypot(
-        points[a].x - points[b].x,
-        points[a].y - points[b].y,
-        points[a].z - points[b].z,
+        fullPoints[a].x - fullPoints[b].x,
+        fullPoints[a].y - fullPoints[b].y,
+        fullPoints[a].z - fullPoints[b].z,
     );
 
     const constraints = [
@@ -64,28 +99,19 @@ export function initializeRagdoll(rigData, rotation, impactProfile, config, rig)
         const p = points[key];
         let vx;
         let vy;
-        let vz;
         if (key === hit) {
             vx = force.x * velocityScaler;
             vy = force.y * velocityScaler;
-            vz = force.z * velocityScaler;
         } else {
-            const d = Math.hypot(p.x - points[hit].x, p.y - points[hit].y, p.z - points[hit].z);
+            const d = Math.hypot(p.x - points[hit].x, p.y - points[hit].y);
             const distFactor = Math.max(0, 1 - d / (rig.size * 1.5));
             const transfer = phys.IMPACT_DISTRIBUTION * distFactor;
             vx = force.x * transfer * velocityScaler;
             vy = force.y * transfer * velocityScaler;
-            vz = force.z * transfer * velocityScaler;
         }
         vx += (Math.random() - 0.5) * phys.CHAOS;
         vy += (Math.random() - 0.5) * phys.CHAOS;
-        vz += (Math.random() - 0.5) * phys.CHAOS;
-        prevPoints[key] = { x: p.x - vx, y: p.y - vy, z: p.z - vz };
-    }
-
-    const renderPoseBaseline = {};
-    for (const key of Object.keys(points)) {
-        renderPoseBaseline[key] = clonePoint(points[key]);
+        prevPoints[key] = { x: p.x - vx, y: p.y - vy };
     }
 
     return {
@@ -103,7 +129,7 @@ export function initializeRagdoll(rigData, rotation, impactProfile, config, rig)
         particles: [],
         emitters: [],
         floorStains: [],
-        renderPoseBaseline,
+        renderDepth,
     };
 }
 
@@ -174,8 +200,7 @@ export function applyRagdollImpulse(
     const cos = Math.cos(-bRot);
     const sin = Math.sin(-bRot);
     const localFx = forceX * cos - forceZ * sin;
-    const localFz = forceX * sin + forceZ * cos;
-    const forceVec = { x: localFx, y: forceY, z: localFz };
+    const forceVec = { x: localFx, y: forceY };
 
     const phys = getScaledPhysics(rig.size);
     const velocityScaler = phys.VELOCITY_SCALER;
@@ -232,17 +257,15 @@ export function applyRagdollImpulse(
         if (key === impulseCenter) {
             prev.x -= forceVec.x * velocityScaler;
             prev.y -= forceVec.y * velocityScaler;
-            prev.z -= forceVec.z * velocityScaler;
             continue;
         }
-        const d = Math.hypot(p.x - centerP.x, p.y - centerP.y, p.z - centerP.z);
+        const d = Math.hypot(p.x - centerP.x, p.y - centerP.y);
         if (d > maxInfluence) continue;
         const distFactor = Math.max(0, 1 - d / maxInfluence);
         const transfer = phys.IMPACT_DISTRIBUTION * distFactor * distFactor;
         if (transfer <= 1e-6) continue;
         prev.x -= forceVec.x * transfer * velocityScaler;
         prev.y -= forceVec.y * transfer * velocityScaler;
-        prev.z -= forceVec.z * transfer * velocityScaler;
     }
 
     processRagdollGoreHit(
@@ -257,58 +280,31 @@ export function applyRagdollImpulse(
     );
 }
 
-export function getRagdollRig(ragdoll) {
-    const { points } = ragdoll;
-    return {
-        spineTop: points.spineTop,
-        spineBot: points.spineBot,
-        head: points.head,
-        rArm: { p1: points.rShoulder, p2: points.rElbow, p3: points.rHand },
-        lArm: { p1: points.lShoulder, p2: points.lElbow, p3: points.lHand },
-        rLeg: { p1: points.rHip, p2: points.rKnee, p3: points.rFoot },
-        lLeg: { p1: points.lHip, p2: points.lKnee, p3: points.lFoot },
-    };
-}
-
-function mapRenderPoint(p, baseline, baseKey) {
-    if (!p) return p;
-    const scaleAt = baseline[baseKey];
-    return {
-        x: p.x,
-        y: p.y,
-        z: scaleAt?.z ?? (p.z ?? 0),
-        scaleAt,
-    };
-}
-
-/** Physics xy pose + death baseline scaleAt — same projector as live actors. */
+/** Character rig for render: sim xy + frozen death z. */
 export function getRagdollRenderRig(ragdoll) {
-    const source = getRagdollRig(ragdoll);
-    const baseline = ragdoll.renderPoseBaseline ?? {};
-
     return {
-        spineTop: mapRenderPoint(source.spineTop, baseline, "spineTop"),
-        spineBot: mapRenderPoint(source.spineBot, baseline, "spineBot"),
-        head: mapRenderPoint(source.head, baseline, "head"),
+        spineTop: toRenderPoint(ragdoll, "spineTop"),
+        spineBot: toRenderPoint(ragdoll, "spineBot"),
+        head: toRenderPoint(ragdoll, "head"),
         rArm: {
-            p1: mapRenderPoint(source.rArm.p1, baseline, "rShoulder"),
-            p2: mapRenderPoint(source.rArm.p2, baseline, "rElbow"),
-            p3: mapRenderPoint(source.rArm.p3, baseline, "rHand"),
+            p1: toRenderPoint(ragdoll, "rShoulder"),
+            p2: toRenderPoint(ragdoll, "rElbow"),
+            p3: toRenderPoint(ragdoll, "rHand"),
         },
         lArm: {
-            p1: mapRenderPoint(source.lArm.p1, baseline, "lShoulder"),
-            p2: mapRenderPoint(source.lArm.p2, baseline, "lElbow"),
-            p3: mapRenderPoint(source.lArm.p3, baseline, "lHand"),
+            p1: toRenderPoint(ragdoll, "lShoulder"),
+            p2: toRenderPoint(ragdoll, "lElbow"),
+            p3: toRenderPoint(ragdoll, "lHand"),
         },
         rLeg: {
-            p1: mapRenderPoint(source.rLeg.p1, baseline, "rHip"),
-            p2: mapRenderPoint(source.rLeg.p2, baseline, "rKnee"),
-            p3: mapRenderPoint(source.rLeg.p3, baseline, "rFoot"),
+            p1: toRenderPoint(ragdoll, "rHip"),
+            p2: toRenderPoint(ragdoll, "rKnee"),
+            p3: toRenderPoint(ragdoll, "rFoot"),
         },
         lLeg: {
-            p1: mapRenderPoint(source.lLeg.p1, baseline, "lHip"),
-            p2: mapRenderPoint(source.lLeg.p2, baseline, "lKnee"),
-            p3: mapRenderPoint(source.lLeg.p3, baseline, "lFoot"),
+            p1: toRenderPoint(ragdoll, "lHip"),
+            p2: toRenderPoint(ragdoll, "lKnee"),
+            p3: toRenderPoint(ragdoll, "lFoot"),
         },
     };
 }
@@ -349,20 +345,16 @@ export function updateRagdoll(ragdoll, dtSec, worldX, worldY, rotation, wallChec
         const prev = prevPoints[key];
         let vx = (p.x - prev.x) * phys.AIR_DRAG;
         let vy = (p.y - prev.y) * phys.AIR_DRAG;
-        let vz = (p.z - prev.z) * phys.AIR_DRAG;
-        const speed = Math.hypot(vx, vy, vz);
+        const speed = Math.hypot(vx, vy);
         if (speed > phys.SPEED_CAP) {
-            const scale = phys.SPEED_CAP / speed;
-            vx *= scale;
-            vy *= scale;
-            vz *= scale;
+            const cap = phys.SPEED_CAP / speed;
+            vx *= cap;
+            vy *= cap;
         }
         prev.x = p.x;
         prev.y = p.y;
-        prev.z = p.z;
         p.x += vx;
         p.y += vy + phys.GRAVITY * 1000 * dt2;
-        p.z += vz;
     }
 
     const scale = 1 / rig.size;
@@ -386,8 +378,9 @@ export function updateRagdoll(ragdoll, dtSec, worldX, worldY, rotation, wallChec
                 const p = points[key];
                 const prev = prevPoints[key];
                 const worldRadius = getBodyPartRadius(key) * scale * 0.85;
+                const depthZ = getRagdollPointZ(ragdoll, key);
                 const localX = p.x * scale;
-                const localZ = p.z * scale;
+                const localZ = depthZ * scale;
                 const worldOffsetX = localX * cos - localZ * sin;
                 const worldOffsetY = localX * sin + localZ * cos;
                 const wX = worldX + worldOffsetX;
@@ -396,12 +389,10 @@ export function updateRagdoll(ragdoll, dtSec, worldX, worldY, rotation, wallChec
                 if (!wallChecker(wX, wY)) continue;
 
                 const pushLen = worldRadius * 0.5;
-                const pushLocalX = (-worldOffsetX / (Math.hypot(worldOffsetX, worldOffsetY) || 1)) * pushLen * invScale;
-                const pushLocalZ = (-worldOffsetY / (Math.hypot(worldOffsetX, worldOffsetY) || 1)) * pushLen * invScale;
+                const pushDist = Math.hypot(worldOffsetX, worldOffsetY) || 1;
+                const pushLocalX = (-worldOffsetX / pushDist) * pushLen * invScale;
                 p.x += pushLocalX;
-                p.z += pushLocalZ;
                 prev.x = p.x - (p.x - prev.x) * phys.WALL_FRICTION;
-                prev.z = p.z - (p.z - prev.z) * phys.WALL_FRICTION;
             }
         }
 
@@ -414,20 +405,17 @@ export function updateRagdoll(ragdoll, dtSec, worldX, worldY, rotation, wallChec
                 const pB = points[c.b];
                 const dx = pB.x - pA.x;
                 const dy = pB.y - pA.y;
-                const dz = pB.z - pA.z;
+                const dz = getRagdollPointZ(ragdoll, c.b) - getRagdollPointZ(ragdoll, c.a);
                 const dist = Math.hypot(dx, dy, dz);
                 if (dist < 0.0001) continue;
                 const diff = (dist - c.len) / dist;
                 const m = 0.5 * cfg.CONSTRAINTS.STIFFNESS;
                 const ox = dx * diff * m;
                 const oy = dy * diff * m;
-                const oz = dz * diff * m;
                 pA.x += ox;
                 pA.y += oy;
-                pA.z += oz;
                 pB.x -= ox;
                 pB.y -= oy;
-                pB.z -= oz;
             }
             applyJointLimits(ragdoll);
         }
@@ -442,16 +430,14 @@ export function updateRagdoll(ragdoll, dtSec, worldX, worldY, rotation, wallChec
             p.y = floor;
             prev.y = floor;
             const vx = p.x - prev.x;
-            const vz = p.z - prev.z;
             prev.x = p.x - vx * phys.GROUND_FRICTION;
-            prev.z = p.z - vz * phys.GROUND_FRICTION;
         }
     }
 
     for (const key of Object.keys(points)) {
         const p = points[key];
         const prev = prevPoints[key];
-        totalMotion += (p.x - prev.x) ** 2 + (p.y - prev.y) ** 2 + (p.z - prev.z) ** 2;
+        totalMotion += (p.x - prev.x) ** 2 + (p.y - prev.y) ** 2;
     }
 
     if (totalMotion < 0.005) {

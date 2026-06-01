@@ -1,4 +1,5 @@
 import { RAGDOLL_CONFIG, SEVER_MAP } from "./RagdollConfig.js";
+import { getRagdollPointZ, mergeRagdollPoint, setRagdollPointZ } from "./RagdollPhysics.js";
 
 const PARENT_PEER = {
     rArm: "spineTop",
@@ -28,18 +29,18 @@ export function resolveSeverTarget(hitPart, ragdoll) {
     if (clean === "head") return null;
 
     if (clean === "spineTop") {
-        const rs = points.rShoulder;
-        const ls = points.lShoulder;
-        if (rs && ls) {
-            return Math.abs(rs.z) >= Math.abs(ls.z) ? "rArm" : "lArm";
+        const rsZ = getRagdollPointZ(ragdoll, "rShoulder");
+        const lsZ = getRagdollPointZ(ragdoll, "lShoulder");
+        if (points.rShoulder && points.lShoulder) {
+            return Math.abs(rsZ) >= Math.abs(lsZ) ? "rArm" : "lArm";
         }
         return Math.random() < 0.5 ? "rArm" : "lArm";
     }
     if (clean === "spineBot") {
-        const rh = points.rHip;
-        const lh = points.lHip;
-        if (rh && lh) {
-            return Math.abs(rh.z) >= Math.abs(lh.z) ? "rLeg" : "lLeg";
+        const rhZ = getRagdollPointZ(ragdoll, "rHip");
+        const lhZ = getRagdollPointZ(ragdoll, "lHip");
+        if (points.rHip && points.lHip) {
+            return Math.abs(rhZ) >= Math.abs(lhZ) ? "rLeg" : "lLeg";
         }
         return Math.random() < 0.5 ? "rLeg" : "lLeg";
     }
@@ -180,13 +181,14 @@ export function severLimb(ragdoll, limbId, rig) {
         ragdoll.points[headChunkId] = {
             x: rootPoint.x,
             y: rootPoint.y + rig.headR * 0.5,
-            z: rootPoint.z,
         };
+        setRagdollPointZ(ragdoll, headChunkId, getRagdollPointZ(ragdoll, data.root));
         ragdoll.prevPoints[headChunkId] = { ...ragdoll.points[headChunkId] };
         ragdoll.constraints.push({ a: data.root, b: headChunkId, len: rig.headR * 0.5 });
     } else if (data.type === "joint") {
         const newPointId = `${data.root}_severed_${Date.now()}`;
-        ragdoll.points[newPointId] = { ...rootPoint };
+        ragdoll.points[newPointId] = { x: rootPoint.x, y: rootPoint.y };
+        setRagdollPointZ(ragdoll, newPointId, getRagdollPointZ(ragdoll, data.root));
         ragdoll.prevPoints[newPointId] = { ...prevPoints[data.root] };
         for (const c of ragdoll.constraints) {
             if (c.a === data.root) c.a = newPointId;
@@ -194,18 +196,18 @@ export function severLimb(ragdoll, limbId, rig) {
         const kick = rig.size * 0.08;
         const side = limbId.startsWith("l") ? -1 : 1;
         ragdoll.prevPoints[newPointId].x -= side * kick;
-        ragdoll.prevPoints[newPointId].z += (Math.random() - 0.5) * kick * 2;
         ragdoll.prevPoints[newPointId].y -= kick * 0.5;
     }
 
+    const mergedRoot = mergeRagdollPoint(ragdoll, data.root);
     const bCfg = RAGDOLL_CONFIG.BLOOD;
     const scale = rig.size / 32;
     for (let i = 0; i < bCfg.BURST_COUNT; i++) {
         const lifeDur = bCfg.LIFESPAN_MIN + Math.random();
         ragdoll.particles.push({
-            x: rootPoint.x,
-            y: rootPoint.y,
-            z: rootPoint.z,
+            x: mergedRoot.x,
+            y: mergedRoot.y,
+            z: mergedRoot.z,
             vx: (Math.random() - 0.5) * 8 * scale,
             vy: (-5 - Math.random() * 10) * scale,
             vz: (Math.random() - 0.5) * 8 * scale,
@@ -277,23 +279,20 @@ export function splitBone(ragdoll, boneStartName, t, rig) {
     if (!p1 || !p2) return null;
 
     const newPointId = `${basePart}_fr_${Math.floor(Math.random() * 9999)}`;
+    const z1 = getRagdollPointZ(ragdoll, p1Name);
+    const z2 = getRagdollPointZ(ragdoll, p2Name);
     ragdoll.points[newPointId] = {
         x: p1.x + (p2.x - p1.x) * t,
         y: p1.y + (p2.y - p1.y) * t,
-        z: p1.z + (p2.z - p1.z) * t,
     };
+    setRagdollPointZ(ragdoll, newPointId, z1 + (z2 - z1) * t);
     ragdoll.prevPoints[newPointId] = { ...ragdoll.points[newPointId] };
     constraints.splice(constraintIndex, 1);
-    const dist1 = Math.hypot(
-        p1.x - ragdoll.points[newPointId].x,
-        p1.y - ragdoll.points[newPointId].y,
-        p1.z - ragdoll.points[newPointId].z,
-    );
-    const dist2 = Math.hypot(
-        p2.x - ragdoll.points[newPointId].x,
-        p2.y - ragdoll.points[newPointId].y,
-        p2.z - ragdoll.points[newPointId].z,
-    );
+    const newP = mergeRagdollPoint(ragdoll, newPointId);
+    const merged1 = mergeRagdollPoint(ragdoll, p1Name);
+    const merged2 = mergeRagdollPoint(ragdoll, p2Name);
+    const dist1 = Math.hypot(merged1.x - newP.x, merged1.y - newP.y, merged1.z - newP.z);
+    const dist2 = Math.hypot(merged2.x - newP.x, merged2.y - newP.y, merged2.z - newP.z);
     constraints.push({ a: p1Name, b: newPointId, len: dist1 });
     constraints.push({ a: newPointId, b: p2Name, len: dist2 });
     incrementSplitCount(ragdoll, boneStartName);
@@ -359,7 +358,7 @@ export function processRagdollGoreHit(
     const canSever = !!severTarget && !ragdoll.severed[severTarget];
 
     if (!isHealthDepleted && !isInstantBreak) {
-        const impulseCenter = ragdoll.points[hitPart] ?? ragdoll.points[cleanType];
+        const impulseCenter = mergeRagdollPoint(ragdoll, hitPart) ?? mergeRagdollPoint(ragdoll, cleanType);
         if (impulseCenter) {
             ragdoll.particles.push({
                 x: impulseCenter.x,
@@ -390,7 +389,8 @@ export function processRagdollGoreHit(
         const brokenBoneId = splitBone(ragdoll, hitPart, offsetT ?? 0.5, rig);
         if (brokenBoneId) {
             ragdoll.partHealth[brokenBoneId] = maxHP * 0.5;
-            const bP = ragdoll.points[brokenBoneId];
+            const bP = mergeRagdollPoint(ragdoll, brokenBoneId);
+            if (bP) {
             const boneColor = bCfg.PALETTE.BONE ?? "#e8e6d1";
             for (let i = 0; i < 3; i++) {
                 ragdoll.particles.push({
@@ -420,6 +420,7 @@ export function processRagdollGoreHit(
                 color: bCfg.PALETTE.ARTERIAL,
                 onGround: false,
             });
+            }
         }
     } else if (action === "SEVER") {
         severLimb(ragdoll, severTarget, rig);

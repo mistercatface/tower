@@ -1,4 +1,5 @@
 import { RAGDOLL_CONFIG } from "./RagdollConfig.js";
+import { mergeRagdollPoint } from "./RagdollPhysics.js";
 
 function createBloodParticle(point, bCfg, scale = 1) {
     const life = bCfg.LIFESPAN_MIN + Math.random() * (bCfg.LIFESPAN_MAX - bCfg.LIFESPAN_MIN);
@@ -45,7 +46,7 @@ export function seedRagdollBloodOnDeath(ragdoll, hitBone, rig) {
 
     const burstBones = [anchor, "spineTop", "head"];
     for (const bone of burstBones) {
-        const burstPoint = ragdoll.points[bone];
+        const burstPoint = mergeRagdollPoint(ragdoll, bone);
         if (!burstPoint) continue;
         for (let i = 0; i < bCfg.BURST_COUNT; i++) {
             ragdoll.particles.push(createBloodParticle(burstPoint, bCfg, scale));
@@ -104,10 +105,11 @@ export function updateBloodEffects(ragdoll, deltaSec, rig) {
         }
         const bone = points[e.bone];
         if (!bone) continue;
+        const merged = mergeRagdollPoint(ragdoll, e.bone);
+        if (!merged) continue;
         const flowStrength = Math.min(1, e.life / bCfg.SPRAY_LIFE);
         const prev = prevPoints[e.bone];
         const moveX = prev ? (bone.x - prev.x) * 0.15 : 0;
-        const moveZ = prev ? (bone.z - prev.z) * 0.15 : 0;
         const emitterScale = e.scale || scale;
         const speed = 1.2 * flowStrength * emitterScale;
 
@@ -115,12 +117,12 @@ export function updateBloodEffects(ragdoll, deltaSec, rig) {
 
         const dropLife = bCfg.LIFESPAN_MIN + Math.random() * (bCfg.LIFESPAN_MAX - bCfg.LIFESPAN_MIN);
         particles.push({
-            x: bone.x + (Math.random() - 0.5) * 0.06 * emitterScale,
-            y: bone.y + (Math.random() - 0.5) * 0.04 * emitterScale,
-            z: bone.z + (Math.random() - 0.5) * 0.06 * emitterScale,
+            x: merged.x + (Math.random() - 0.5) * 0.06 * emitterScale,
+            y: merged.y + (Math.random() - 0.5) * 0.04 * emitterScale,
+            z: merged.z + (Math.random() - 0.5) * 0.06 * emitterScale,
             vx: e.dir.x * speed + moveX,
             vy: e.dir.y * speed,
-            vz: e.dir.z * speed + moveZ,
+            vz: e.dir.z * speed,
             life: dropLife,
             startLife: dropLife,
             size: 0.45 + Math.random() * 0.35,

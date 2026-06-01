@@ -1,6 +1,7 @@
 import { getCharacterForActor } from "../CharacterAppearance.js";
 import { RAGDOLL_CONFIG } from "./RagdollConfig.js";
 import { isNeckConstraint, isRagdollConstraintVisible } from "./RagdollGore.js";
+import { mergeRagdollPoint } from "./RagdollPhysics.js";
 
 function drawPixelCircle(ctx, cx, cy, r, color) {
     ctx.fillStyle = color;
@@ -56,15 +57,13 @@ function constraintPalette(nameA, nameB, palettes, armPalette, rig) {
 export function drawRagdollGoreStumps(ragdoll, sceneRenderer, rig) {
     const severed = ragdoll.severed ?? {};
     if (Object.keys(severed).length === 0) return;
-
-    const points = ragdoll.points;
-    if (!points) return;
+    if (!ragdoll.points) return;
 
     const bPalette = RAGDOLL_CONFIG.BLOOD.PALETTE;
     const stumpPalette = { base: bPalette.VENOUS, light: bPalette.VENOUS, dark: bPalette.VENOUS };
 
     const stump = (pointName, radiusMult) => {
-        const p = points[pointName];
+        const p = mergeRagdollPoint(ragdoll, pointName);
         if (!p) return;
         sceneRenderer.addSphere(p, rig.torsoHalfWidth * radiusMult, stumpPalette);
     };

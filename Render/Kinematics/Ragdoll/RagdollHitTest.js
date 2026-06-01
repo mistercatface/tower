@@ -1,6 +1,7 @@
 /** Bone hit tests for ragdoll corpses (2D gameplay, rig-local space). */
 
 import { getCorpseKinematics } from "../PlayerKinematicsRenderer.js";
+import { getRagdollCollisionPoints, mergeRagdollPoint } from "./RagdollPhysics.js";
 
 function distToSegmentXZ(p, v, w) {
     const dx = w.x - v.x;
@@ -83,7 +84,7 @@ export function checkRagdollHit(corpse, worldX, worldY, projectileRadius = 2) {
     const local = worldToRigLocal(corpse, worldX, worldY);
     const hitRadiusScale = projectileRadius * (rig.size / corpse.radius) * 0.35;
     const bones = buildRagdollBones(
-        corpse.ragdoll.points,
+        getRagdollCollisionPoints(corpse.ragdoll),
         corpse.ragdoll.constraints,
         rig,
     );
@@ -112,7 +113,7 @@ export function checkRagdollHit(corpse, worldX, worldY, projectileRadius = 2) {
 }
 
 export function ragdollPartToWorld(corpse, partName) {
-    const p = corpse.ragdoll.points[partName];
+    const p = mergeRagdollPoint(corpse.ragdoll, partName);
     if (!p) return { x: corpse.x, y: corpse.y };
     const kinematics = getCorpseKinematics(corpse);
     const { config, rig } = kinematics.bundle;
