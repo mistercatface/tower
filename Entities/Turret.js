@@ -4,19 +4,10 @@ import { defaultGunId, getGunDefinition } from "../Config/gunDefinitions.js";
 import { defaultTurretLoadout, resolveFireAngleOffsets } from "../Config/turretLoadout.js";
 import { Pools } from "../Core/Pools.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
-import { getGunProjectileConfig, getSlotFireIntervalMs, getSlotReloadTimeMs } from "../Combat/gunCombat.js";
+import { getGunProjectileConfig } from "../Combat/gunCombat.js";
 import { inferFaction, areHostile } from "../Combat/Targeting.js";
-import { GhostTrail } from "../Render/GhostTrail.js";
 import { CombatParticles } from "../Render/CombatParticles.js";
 import { resolveKinematicsMuzzlePosition, resolveActorKinematicsCamera } from "../Render/Kinematics/PlayerKinematicsRenderer.js";
-
-const TURRET_GHOST_TRAIL = {
-    length: 4,
-    alpha: 0.35,
-    minDistance: 2,
-    lifetime: 250,
-    shrink: true,
-};
 
 export class Turret {
     constructor(angle, turnSpeed, loadout = defaultTurretLoadout) {
@@ -32,23 +23,6 @@ export class Turret {
         this.charge = 0;
         this.target = null;
         this.swayPhase = 0;
-        this.ghostTrail = null;
-    }
-
-    getOrbitPosition(actorX, actorY, actorRadius) {
-        const turretDist = actorRadius + 4;
-        return {
-            x: actorX + Math.cos(this.angle) * turretDist,
-            y: actorY + Math.sin(this.angle) * turretDist,
-        };
-    }
-
-    updateGhostTrail(dt, actorX, actorY, actorRadius) {
-        if (!this.ghostTrail) {
-            this.ghostTrail = new GhostTrail(TURRET_GHOST_TRAIL);
-        }
-        const { x, y } = this.getOrbitPosition(actorX, actorY, actorRadius);
-        this.ghostTrail.update(dt, x, y, this.angle);
     }
 
     computeMuzzleDistance(source, projectileRadius, target = null) {
@@ -79,16 +53,14 @@ export class Turret {
     }
 
     getMuzzlePosition(source, projectileRadius = 2, target = null) {
-        if (source.usesKinematicsBody) {
-            const turretIndex = source.turrets.indexOf(this);
-            const camera = resolveActorKinematicsCamera(source);
-            const muzzle = resolveKinematicsMuzzlePosition(
-                source,
-                turretIndex >= 0 ? turretIndex : 0,
-                camera,
-            );
-            if (muzzle) return muzzle;
-        }
+        const turretIndex = source.turrets.indexOf(this);
+        const camera = resolveActorKinematicsCamera(source);
+        const muzzle = resolveKinematicsMuzzlePosition(
+            source,
+            turretIndex >= 0 ? turretIndex : 0,
+            camera,
+        );
+        if (muzzle) return muzzle;
 
         const dist = this.computeMuzzleDistance(source, projectileRadius, target);
         return {
@@ -174,55 +146,5 @@ export class Turret {
                 knockbackScale * projectileConfig.shooterKnockbackMultiplier
             );
         }
-    }
-
-    render(ctx, playerX, playerY, playerRadius, renderer, explicitColor = null, source = null) {
-        const { x: tx, y: ty } = this.getOrbitPosition(playerX, playerY, playerRadius);
-
-        const scale = playerRadius / 8;
-        const cacheKey = `${scale}_${explicitColor || "#4CAF50"}`;
-        const cachedSprite = renderer.turretCache.get(cacheKey, RenderSprites.turret, scale, explicitColor);
-
-        if (source?.usesTurretGhostTrails && this.ghostTrail) {
-            this.ghostTrail.render(ctx, renderer.turretCache, cacheKey, RenderSprites.turret, scale, explicitColor);
-        }
-
-        ctx.save();
-        ctx.translate(tx, ty);
-        ctx.rotate(this.angle);
-        ctx.drawImage(cachedSprite.offCanvas, -cachedSprite.cx, -cachedSprite.cy);
-
-        // Render reload ring or cooldown/ready indicator using SpriteCache
-        if (this.reloading && this.reloadTimer !== undefined) {
-            const gun = getGunDefinition(this.gunId);
-            const reloadTimeMs = source ? getSlotReloadTimeMs(gun, source) : gun.reloadTimeMs;
-            if (reloadTimeMs > 0) {
-                const progress = Math.min(1, this.reloadTimer / reloadTimeMs);
-                const activeSegments = Math.min(5, Math.floor(progress * 5));
-                const cacheKeyRing = `rr_${scale}_${activeSegments}`;
-                const cachedRing = renderer.turretCache.get(cacheKeyRing, RenderSprites.reloadRing, scale, activeSegments);
-                ctx.drawImage(cachedRing.offCanvas, -cachedRing.cx, -cachedRing.cy);
-            }
-        } else {
-            const gun = getGunDefinition(this.gunId);
-            const fireIntervalMs = source ? getSlotFireIntervalMs(gun, source) : gun.fireIntervalMs;
-            if (fireIntervalMs > 0 && !isNaN(fireIntervalMs) && this.charge !== undefined) {
-                const chargeRatio = Math.min(1, this.charge / fireIntervalMs);
-                if (chargeRatio < 1 && this.lastTarget) {
-                    const step = Math.min(10, Math.floor(chargeRatio * 10));
-                    const cacheKeyArc = `ca_${scale}_${step}`;
-                    const cachedArc = renderer.turretCache.get(cacheKeyArc, RenderSprites.cooldownArc, scale, step);
-                    ctx.drawImage(cachedArc.offCanvas, -cachedArc.cx, -cachedArc.cy);
-                } else {
-                    // Ready dot (small green light) at the back of the turret housing
-                    ctx.beginPath();
-                    ctx.arc(-scale * 2.2, 0, scale * 0.6, 0, Math.PI * 2);
-                    ctx.fillStyle = "#00E676";
-                    ctx.fill();
-                }
-            }
-        }
-
-        ctx.restore();
     }
 }

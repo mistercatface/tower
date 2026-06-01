@@ -174,7 +174,6 @@ export class Renderer {
             return;
         }
         actor.render(this.ctx, this, state);
-        actor.renderTurrets(this.ctx, this);
     }
 
     drawCombatHudOverlay(state, viewport) {

@@ -1,5 +1,4 @@
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
-import { GhostTrail } from "../Render/GhostTrail.js";
 import { normalizeAngle, turnAngleTowards } from "../Math/Angle.js";
 import { Utilities } from "../Core/Utilities.js";
 import { CollisionSystem } from "../Spatial/Collision/CollisionSystem.js";

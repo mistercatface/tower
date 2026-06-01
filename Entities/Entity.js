@@ -11,7 +11,6 @@ export class Entity {
         this.angle = angle;
         this.isDead = isDead;
         this.zIndex = 0;
-        this.ghostTrail = null;
     }
 
     reset(x, y, angle = 0, isDead = false) {
@@ -21,7 +20,6 @@ export class Entity {
         this.angle = angle;
         this.isDead = isDead;
         this.zIndex = 0;
-        if (this.ghostTrail) this.ghostTrail.reset();
     }
 
     render(ctx, ...caches) {
@@ -37,7 +35,6 @@ export class Entity {
     }
 
     renderCachedSprite(ctx, cache, cacheKey, generateFn, ...generateArgs) {
-        if (this.ghostTrail) this.ghostTrail.render(ctx, cache, cacheKey, generateFn, ...generateArgs);
         const cachedSprite = cache.get(cacheKey, generateFn, ...generateArgs);
         ctx.save();
         ctx.translate(this.x, this.y);

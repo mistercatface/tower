@@ -33,7 +33,6 @@ export class Actor extends DestructibleEntity {
         this.faction = getActorProfileForType(type).faction;
         this.teamId = null;
         this.alwaysRunsTurretCombat = false;
-        this.usesTurretGhostTrails = false;
         this.accelRate = accelRate;
         this.canDamageWalls = canDamageWalls;
         this.turnSpeed = 10;
@@ -127,7 +126,6 @@ export class Actor extends DestructibleEntity {
     }
 
     updateCombat(dt, state, spatialFrame, options = {}) {
-        this.ghostTrail?.update(dt, this.x, this.y, this.angle);
         this.updateLocomotion(dt, state, spatialFrame, options);
         const combatEvents = options.combatEvents ?? [];
         const events = this.updateTurretCombat(dt, state, { ...options, combatEvents }) ?? combatEvents;
@@ -152,15 +150,7 @@ export class Actor extends DestructibleEntity {
         } else {
             this.aimIdleTurrets(dt, state, blocksTargeting);
         }
-        this.updateTurretGhostTrails(dt);
         return combatEvents;
-    }
-
-    updateTurretGhostTrails(dt) {
-        if (!this.usesTurretGhostTrails) return;
-        for (const turret of this.turrets) {
-            turret.updateGhostTrail(dt, this.x, this.y, this.radius);
-        }
     }
 
     getAITarget(state) {
@@ -540,17 +530,6 @@ export class Actor extends DestructibleEntity {
         const camera = this._kinematicsCamera ?? { x: this.x, y: this.y };
         RagdollCorpse.spawnFromActor(state, this, event, camera);
         clearActorKinematics(this);
-    }
-
-    renderTurrets(ctx, renderer, color = this.color) {
-        this.renderTurretsAt(ctx, renderer, this.x, this.y, color);
-    }
-
-    renderTurretsAt(ctx, renderer, x, y, color = this.color) {
-        if (this.usesKinematicsBody) return;
-        for (const turret of this.turrets) {
-            turret.render(ctx, x, y, this.radius, renderer, color, this);
-        }
     }
 
     renderCombatHudClassic(ctx, renderer, { alpha = 1 } = {}) {
