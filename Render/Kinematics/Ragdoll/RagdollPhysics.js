@@ -132,6 +132,97 @@ function applyJointLimits(ragdoll) {
     }
 }
 
+const PART_ALIASES = {
+    torso: "spineTop",
+    rLeg: "rHip",
+    lLeg: "lHip",
+    rArm: "rShoulder",
+    lArm: "lShoulder",
+};
+
+/**
+ * Apply impulse to ragdoll bones (physics only — no sever/fracture).
+ */
+export function applyRagdollImpulse(ragdoll, forceX, forceY, forceZ, hitPart, rig, rotation, config) {
+    if (!ragdoll?.points) return;
+
+    const bodyOffset = config?.BODY_OFFSET ?? Math.PI;
+    const bRot = rotation + bodyOffset;
+    const cos = Math.cos(-bRot);
+    const sin = Math.sin(-bRot);
+    const localFx = forceX * cos - forceZ * sin;
+    const localFz = forceX * sin + forceZ * cos;
+    const forceVec = { x: localFx, y: forceY, z: localFz };
+
+    const phys = getScaledPhysics(rig.size);
+    const velocityScaler = phys.VELOCITY_SCALER;
+    const { points, prevPoints, constraints } = ragdoll;
+
+    let impulseCenter = hitPart;
+    if (!points[impulseCenter]) {
+        const clean = hitPart.split("_")[0];
+        impulseCenter = PART_ALIASES[clean] ?? clean;
+    }
+    if (!points[impulseCenter] && hitPart.includes("_")) {
+        const segments = hitPart.split("_");
+        for (let i = segments.length - 1; i >= 0; i--) {
+            const candidate = segments.slice(0, i + 1).join("_");
+            if (points[candidate]) {
+                impulseCenter = candidate;
+                break;
+            }
+        }
+    }
+    if (!points[impulseCenter]) {
+        impulseCenter = "spineTop";
+    }
+    if (!points[impulseCenter]) return;
+
+    ragdoll.settled = false;
+    ragdoll.sleepTimer = 0;
+
+    const affectedSet = new Set();
+    const queue = [{ id: impulseCenter, depth: 0 }];
+    affectedSet.add(impulseCenter);
+    while (queue.length > 0) {
+        const { id, depth } = queue.shift();
+        if (depth >= 2) continue;
+        for (const c of constraints) {
+            if (c.a === id && !affectedSet.has(c.b)) {
+                affectedSet.add(c.b);
+                queue.push({ id: c.b, depth: depth + 1 });
+            } else if (c.b === id && !affectedSet.has(c.a)) {
+                affectedSet.add(c.a);
+                queue.push({ id: c.a, depth: depth + 1 });
+            }
+        }
+    }
+
+    const maxInfluence = rig.size * 0.45;
+    const centerP = points[impulseCenter];
+
+    for (const key of Object.keys(points)) {
+        if (!affectedSet.has(key)) continue;
+        const p = points[key];
+        const prev = prevPoints[key];
+        if (!prev) continue;
+        if (key === impulseCenter) {
+            prev.x -= forceVec.x * velocityScaler;
+            prev.y -= forceVec.y * velocityScaler;
+            prev.z -= forceVec.z * velocityScaler;
+            continue;
+        }
+        const d = Math.hypot(p.x - centerP.x, p.y - centerP.y, p.z - centerP.z);
+        if (d > maxInfluence) continue;
+        const distFactor = Math.max(0, 1 - d / maxInfluence);
+        const transfer = phys.IMPACT_DISTRIBUTION * distFactor * distFactor;
+        if (transfer <= 1e-6) continue;
+        prev.x -= forceVec.x * transfer * velocityScaler;
+        prev.y -= forceVec.y * transfer * velocityScaler;
+        prev.z -= forceVec.z * transfer * velocityScaler;
+    }
+}
+
 export function getRagdollRig(ragdoll) {
     const { points } = ragdoll;
     return {

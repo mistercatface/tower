@@ -1,5 +1,6 @@
 import { Entity } from "./Entity.js";
-import { getRagdollRig, updateRagdoll } from "../Render/Kinematics/Ragdoll/RagdollPhysics.js";
+import { applyRagdollImpulse, getRagdollRig, updateRagdoll } from "../Render/Kinematics/Ragdoll/RagdollPhysics.js";
+import { checkRagdollHit, ragdollPartToWorld } from "../Render/Kinematics/Ragdoll/RagdollHitTest.js";
 import { projectRagdollRig } from "../Render/Kinematics/KinematicsProjector.js";
 import { drawCharacterToCanvas } from "../Render/Kinematics/KinematicsDraw.js";
 import { createObstacleWallChecker, createRagdollState, resolveDeathImpact } from "../Render/Kinematics/Ragdoll/ragdollFromActor.js";
@@ -10,6 +11,48 @@ const CORPSE_MAX_MS = 12000;
 const CORPSE_FADE_MS = 2500;
 
 export class RagdollCorpse extends Entity {
+    static tryProjectileHit(state, projectile) {
+        if (!state.ragdollCorpses?.length || projectile.isDead) return false;
+
+        for (const corpse of state.ragdollCorpses) {
+            if (corpse.isDead) continue;
+            const hit = checkRagdollHit(corpse, projectile.x, projectile.y, projectile.radius);
+            if (!hit) continue;
+
+            const forceScale = Math.max(8, (projectile.speed ?? 100) * 0.035);
+            const fx = Math.cos(projectile.angle) * forceScale;
+            const fy = -forceScale * 0.25;
+            const fz = Math.sin(projectile.angle) * forceScale;
+
+            applyRagdollImpulse(
+                corpse.ragdoll,
+                fx,
+                fy,
+                fz,
+                hit.part,
+                corpse.snapshot.rig,
+                corpse.ragdoll.rotation,
+                corpse.snapshot.config,
+            );
+
+            const { x: bx, y: by } = ragdollPartToWorld(corpse, hit.part);
+            CombatParticles.spawnBlood(state, bx, by, {
+                impactAngle: projectile.angle,
+                count: 6,
+                intensity: 1.1,
+                sizeBase: Math.max(4, corpse.radius * 0.4),
+            });
+
+            if (projectile.penetration > 0) {
+                projectile.penetration--;
+            } else {
+                projectile.isDead = true;
+            }
+            return true;
+        }
+        return false;
+    }
+
     static updateAll(state, dt, spatialFrame) {
         if (!state.ragdollCorpses?.length) return;
         const player = state.player;
