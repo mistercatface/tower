@@ -82,6 +82,7 @@ export class Render3D {
             : null;
 
         drawProjectedWallFace(ctx, p1, p2, px, py, wallColor, textureCanvas, {
+            viewport,
             damageAlpha,
             textureEnabled: useTiles,
             shouldStroke,

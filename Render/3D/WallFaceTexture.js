@@ -9,6 +9,10 @@ export function getWallVisualHeight() {
     return CAMERA_HEIGHT - 10;
 }
 
+export function getWallTextureDistance() {
+    return floorTileSettings.wallTextureDistance ?? 3000;
+}
+
 /** Distance-scaled projection — walls extend offscreen when wallVisualHeight is near CAMERA_HEIGHT. */
 export function computeProjectedFace(p1, p2, px, py, wallHeight = getWallVisualHeight()) {
     let angle1 = Math.atan2(p1.y - py, p1.x - px);
@@ -48,6 +52,20 @@ function lerpPoint(a, b, t) {
     return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
 }
 
+function getViewportWorldBounds(viewport, padding = floorTileSettings.viewPaddingPx ?? 128) {
+    if (!viewport) return null;
+    return viewport.getWorldBounds(viewport.cx * 2, viewport.cy * 2, padding);
+}
+
+function rowBoundsIntersects(bl, br, tl, tr, bounds) {
+    if (!bounds) return true;
+    const minX = Math.min(bl.x, br.x, tl.x, tr.x);
+    const maxX = Math.max(bl.x, br.x, tl.x, tr.x);
+    const minY = Math.min(bl.y, br.y, tl.y, tr.y);
+    const maxY = Math.max(bl.y, br.y, tl.y, tr.y);
+    return !(maxX < bounds.minX || minX > bounds.maxX || maxY < bounds.minY || minY > bounds.maxY);
+}
+
 function paintPatternTriangle(ctx, pattern, matrix, x0, y0, x1, y1, x2, y2) {
     ctx.save();
     ctx.beginPath();
@@ -68,10 +86,10 @@ function paintPatternTriangle(ctx, pattern, matrix, x0, y0, x1, y1, x2, y2) {
 }
 
 /**
- * One tile row per band on the face surface. Absolute world U (no per-face modulo) so maze
- * cell faces share continuous grout across segment boundaries.
+ * Tile rows span wallTextureDistance (many rows), while face geometry uses wallVisualHeight
+ * (offscreen projection). Absolute world U keeps grout continuous across maze cells.
  */
-function drawFaceTexture(ctx, p1, p2, face, textureCanvas, wallHeight) {
+function drawFaceTexture(ctx, p1, p2, face, textureCanvas, viewport) {
     const tileWorldSize = floorTileSettings.tileWorldSize ?? gridSettings.cellSize;
     const texW = textureCanvas.width;
     const texH = textureCanvas.height;
@@ -86,10 +104,11 @@ function drawFaceTexture(ctx, p1, p2, face, textureCanvas, wallHeight) {
     const du = u2 - u1;
     if (Math.abs(du) < 1e-6) return;
 
-    const rowCount = Math.max(1, Math.ceil(wallHeight / tileWorldSize));
+    const rowCount = Math.max(1, Math.ceil(getWallTextureDistance() / tileWorldSize));
     const leftTop = { x: face.proj1X, y: face.proj1Y };
     const rightTop = { x: face.proj2X, y: face.proj2Y };
     const pattern = ctx.createPattern(textureCanvas, "repeat");
+    const worldBounds = getViewportWorldBounds(viewport);
 
     ctx.save();
     traceProjectedFace(ctx, p1, p2, face);
@@ -102,6 +121,8 @@ function drawFaceTexture(ctx, p1, p2, face, textureCanvas, wallHeight) {
         const br = lerpPoint(p2, rightTop, t0);
         const tl = lerpPoint(p1, leftTop, t1);
         const tr = lerpPoint(p2, rightTop, t1);
+
+        if (!rowBoundsIntersects(bl, br, tl, tr, worldBounds)) continue;
 
         const v1 = row * texH;
         const v2 = (row + 1) * texH;
@@ -136,6 +157,7 @@ export function drawProjectedWallFace(
     fillStyle,
     textureCanvas,
     {
+        viewport = null,
         damageAlpha = 0,
         textureEnabled = true,
         shouldStroke = false,
@@ -150,7 +172,7 @@ export function drawProjectedWallFace(
     ctx.fill();
 
     if (textureCanvas && textureEnabled) {
-        drawFaceTexture(ctx, p1, p2, face, textureCanvas, wallHeight);
+        drawFaceTexture(ctx, p1, p2, face, textureCanvas, viewport);
     }
 
     if (shadeOverlay > 0) {

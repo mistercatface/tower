@@ -346,6 +346,8 @@ export const floorTileSettings = {
      * Defaults near CAMERA_HEIGHT so faces extend offscreen without a visible cap.
      */
     wallVisualHeight: null,
+    /** World distance of tile rows mapped up the face (independent of projection height). */
+    wallTextureDistance: 3000,
     /** Darken wall tiles vs floor (0 = none, 1 = black). */
     wallShadeOverlay: 0.22,
     maxCachedWallCells: 512,
