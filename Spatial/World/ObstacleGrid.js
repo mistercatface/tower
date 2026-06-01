@@ -2,7 +2,7 @@ import { colRowToIndex } from "../Grid/GridUtils.js";
 import { pointToSegmentPaddingDistanceSq, getWallReach } from "../Geometry/WallGeometry.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsToWorldBounds } from "../Geometry/GridCoords.js";
 
-const WORLD_MARGIN = 1500;
+const WORLD_MARGIN = 1600;
 
 function isGridTileWall(wall, cellSize) {
     return Math.abs(wall.angle) < 1e-6 && (wall.padding ?? 0) === 0 && wall.size === cellSize;

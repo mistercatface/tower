@@ -223,7 +223,7 @@ export class Render3D {
         if (!viewport || !hash) {
             this._lastQueryKey = null;
             return hash
-                ? hash.collectInBounds(px - 1500, py - 1500, px + 1500, py + 1500, this._wallQuery)
+                ? hash.collectInBounds(px - 1600, py - 1600, px + 1600, py + 1600, this._wallQuery)
                 : state.walls;
         }
 
