@@ -345,6 +345,7 @@ export const floorTileSettings = {
     wallProjectionDistance: 3000,
     /** Darken wall tiles vs floor (0 = none, 1 = black). */
     wallShadeOverlay: 0.22,
+    maxCachedWallCells: 512,
 };
 
 export const combatVisualSettings = { floorHighlight: "#2c3340", floorFill: "#1c2129", floorShadow: "#12161c", gridStroke: "rgba(90, 105, 125, 0.2)" };

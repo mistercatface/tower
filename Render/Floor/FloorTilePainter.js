@@ -83,15 +83,20 @@ function paintCell(ctx, localX, localY, cellSize, hash, blocked, worldX, worldY,
     }
 }
 
-export function bakeFloorTileTextureCanvas(seed, cellSize = gridSettings.cellSize) {
+export function bakeFloorCellCanvas(worldX, worldY, obstacleGrid, seed) {
+    const cellSize = obstacleGrid.cellSize;
     const canvas = document.createElement("canvas");
     canvas.width = cellSize;
     canvas.height = cellSize;
     const ctx = canvas.getContext("2d");
     ctx.imageSmoothingEnabled = false;
-    const hash = hashTileSeed(seed, 0, 0);
-    paintCell(ctx, 0, 0, cellSize, hash, false, 0, 0, { wallSurface: true });
+    const hash = hashTileSeed(seed, worldX, worldY);
+    paintCell(ctx, 0, 0, cellSize, hash, false, worldX, worldY, { wallSurface: true });
     return canvas;
+}
+
+export function bakeFloorTileTextureCanvas(seed, cellSize = gridSettings.cellSize) {
+    return bakeFloorCellCanvas(0, 0, { cellSize }, seed);
 }
 
 export function bakeFloorChunkCanvas({

@@ -7,18 +7,21 @@ import {
     gridBoundsToChunkRange,
     worldBoundsToChunkRange,
 } from "../../Spatial/Grid/ChunkGrid.js";
+import { snapWorldToCellOrigin } from "../../Spatial/Geometry/GridCoords.js";
 import { FloorChunkCache } from "./FloorChunkCache.js";
-import { bakeFloorChunkCanvas, bakeFloorTileTextureCanvas } from "./FloorTilePainter.js";
+import { bakeFloorChunkCanvas, bakeFloorCellCanvas, bakeFloorTileTextureCanvas } from "./FloorTilePainter.js";
 
 export class FloorTileSystem {
     constructor() {
         this.cache = new FloorChunkCache();
+        this.cellCache = new FloorChunkCache(floorTileSettings.maxCachedWallCells ?? 512);
         this._tileTexture = null;
         this._tileTextureSeed = null;
     }
 
     clear() {
         this.cache.clear();
+        this.cellCache.clear();
         this._tileTexture = null;
         this._tileTextureSeed = null;
     }
@@ -37,6 +40,11 @@ export class FloorTileSystem {
                 this.cache.delete(chunkKey(chunkCol, chunkRow));
             }
         }
+        for (let row = bounds.startRow; row <= bounds.endRow; row++) {
+            for (let col = bounds.startCol; col <= bounds.endCol; col++) {
+                this.cellCache.delete(`c:${col},${row}`);
+            }
+        }
     }
 
     getTileTextureCanvas(state) {
@@ -47,6 +55,24 @@ export class FloorTileSystem {
         this._tileTextureSeed = seed;
         this._tileTexture = bakeFloorTileTextureCanvas(seed, state.obstacleGrid?.cellSize);
         return this._tileTexture;
+    }
+
+    getCellCanvas(worldX, worldY, state) {
+        const obstacleGrid = state.obstacleGrid;
+        const { col, row, x, y } = snapWorldToCellOrigin(
+            worldX,
+            worldY,
+            obstacleGrid.minX,
+            obstacleGrid.minY,
+            obstacleGrid.cellSize,
+        );
+        const key = `c:${col},${row}`;
+        let canvas = this.cellCache.get(key);
+        if (canvas) return canvas;
+
+        canvas = bakeFloorCellCanvas(x, y, obstacleGrid, state.floorTileSeed ?? 0);
+        this.cellCache.set(key, canvas);
+        return canvas;
     }
 
     getChunkCanvas(chunkCol, chunkRow, state) {

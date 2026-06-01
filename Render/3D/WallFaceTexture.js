@@ -6,24 +6,41 @@ export function getWallProjectionDistance() {
     return floorTileSettings.wallProjectionDistance ?? 3000;
 }
 
-/** Original offscreen wall projection — rays extend toward the viewer, not fixed building height. */
-export function computeProjectedFace(p1, p2, px, py, distance = getWallProjectionDistance()) {
-    let angle1 = Math.atan2(p1.y - py, p1.x - px);
-    let angle2 = Math.atan2(p2.y - py, p2.x - px);
+function getEdgeSpread(p1, p2, px, py) {
     const cross = (p1.x - px) * (p2.y - py) - (p1.y - py) * (p2.x - px);
-    if (cross > 0) {
-        angle1 -= WALL_ANGLE_SPREAD;
-        angle2 += WALL_ANGLE_SPREAD;
-    } else {
-        angle1 += WALL_ANGLE_SPREAD;
-        angle2 -= WALL_ANGLE_SPREAD;
-    }
+    return cross > 0
+        ? { spread1: -WALL_ANGLE_SPREAD, spread2: WALL_ANGLE_SPREAD }
+        : { spread1: WALL_ANGLE_SPREAD, spread2: -WALL_ANGLE_SPREAD };
+}
 
+function spreadAtPoint(p, p1, p2, spread1, spread2) {
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const lenSq = dx * dx + dy * dy;
+    if (lenSq < 1e-6) return (spread1 + spread2) * 0.5;
+    const t = Math.max(0, Math.min(1, ((p.x - p1.x) * dx + (p.y - p1.y) * dy) / lenSq));
+    return spread1 + (spread2 - spread1) * t;
+}
+
+function projectFar(p, p1, p2, px, py, spread1, spread2, distance) {
+    const adjust = spreadAtPoint(p, p1, p2, spread1, spread2);
+    const angle = Math.atan2(p.y - py, p.x - px) + adjust;
     return {
-        proj1X: p1.x + Math.cos(angle1) * distance,
-        proj1Y: p1.y + Math.sin(angle1) * distance,
-        proj2X: p2.x + Math.cos(angle2) * distance,
-        proj2Y: p2.y + Math.sin(angle2) * distance,
+        x: p.x + Math.cos(angle) * distance,
+        y: p.y + Math.sin(angle) * distance,
+    };
+}
+
+/** Original offscreen wall projection — rays extend toward the viewer. */
+export function computeProjectedFace(p1, p2, px, py, distance = getWallProjectionDistance()) {
+    const { spread1, spread2 } = getEdgeSpread(p1, p2, px, py);
+    const far1 = projectFar(p1, p1, p2, px, py, spread1, spread2, distance);
+    const far2 = projectFar(p2, p1, p2, px, py, spread1, spread2, distance);
+    return {
+        proj1X: far1.x,
+        proj1Y: far1.y,
+        proj2X: far2.x,
+        proj2Y: far2.y,
     };
 }
 
@@ -36,7 +53,12 @@ export function traceProjectedFace(ctx, p1, p2, face) {
     ctx.closePath();
 }
 
-export function drawFaceTexture(ctx, p1, p2, face, textureCanvas, tileWorldSize, projectionDistance = getWallProjectionDistance()) {
+/**
+ * World-anchored repeating pattern on two face triangles (reference fork technique).
+ * U follows world position along the wall edge; V runs base → far projection.
+ */
+function drawFaceTexture(ctx, p1, p2, face, textureCanvas, projectionDistance) {
+    const tileWorldSize = floorTileSettings.tileWorldSize ?? gridSettings.cellSize;
     const texW = textureCanvas.width;
     const texH = textureCanvas.height;
     const edgeLen = Math.hypot(p2.x - p1.x, p2.y - p1.y);
@@ -46,8 +68,8 @@ export function drawFaceTexture(ctx, p1, p2, face, textureCanvas, tileWorldSize,
     const edgeDirY = (p2.y - p1.y) / edgeLen;
     const uAlongEdge = p1.x * edgeDirX + p1.y * edgeDirY;
     const uPatternOffset = (((uAlongEdge / tileWorldSize) % 1) + 1) % 1 * texW;
-    const vMax = (projectionDistance / tileWorldSize) * texH;
-    const pattern = ctx.createPattern(textureCanvas, "repeat");
+    const verticalTiles = projectionDistance / tileWorldSize;
+    const vMax = verticalTiles * texH;
 
     const ax = p1.x;
     const ay = p1.y;
@@ -61,6 +83,8 @@ export function drawFaceTexture(ctx, p1, p2, face, textureCanvas, tileWorldSize,
     const u1 = uPatternOffset;
     const u2 = uPatternOffset + (edgeLen / tileWorldSize) * texW;
     const du = u2 - u1;
+
+    const pattern = ctx.createPattern(textureCanvas, "repeat");
 
     ctx.save();
     ctx.beginPath();
@@ -76,6 +100,7 @@ export function drawFaceTexture(ctx, p1, p2, face, textureCanvas, tileWorldSize,
     const d1 = (projAy - ay) / vMax;
     const e1 = ax - a1 * u1;
     const f1 = ay - b1 * u1;
+
     pattern.setTransform(new DOMMatrix([a1, b1, c1, d1, e1, f1]));
     ctx.fillStyle = pattern;
 
@@ -100,6 +125,7 @@ export function drawFaceTexture(ctx, p1, p2, face, textureCanvas, tileWorldSize,
     const d2 = (projBy - by) / vMax;
     const e2 = bx - a2 * u2;
     const f2 = by - b2 * u2;
+
     pattern.setTransform(new DOMMatrix([a2, b2, c2, d2, e2, f2]));
     ctx.fillStyle = pattern;
 
@@ -118,23 +144,27 @@ export function drawProjectedWallFace(
     px,
     py,
     fillStyle,
-    textureCanvas,
+    floorTiles,
+    state,
     {
         damageAlpha = 0,
-        tileWorldSize = floorTileSettings.tileWorldSize ?? gridSettings.cellSize,
         textureEnabled = true,
         shouldStroke = false,
         shadeOverlay = 0,
     } = {},
 ) {
-    const face = computeProjectedFace(p1, p2, px, py);
+    const projectionDistance = getWallProjectionDistance();
+    const face = computeProjectedFace(p1, p2, px, py, projectionDistance);
 
     traceProjectedFace(ctx, p1, p2, face);
     ctx.fillStyle = fillStyle;
     ctx.fill();
 
-    if (textureCanvas && textureEnabled) {
-        drawFaceTexture(ctx, p1, p2, face, textureCanvas, tileWorldSize);
+    if (floorTiles && textureEnabled) {
+        const textureCanvas = floorTiles.getTileTextureCanvas(state);
+        if (textureCanvas) {
+            drawFaceTexture(ctx, p1, p2, face, textureCanvas, projectionDistance);
+        }
     }
 
     if (shadeOverlay > 0) {

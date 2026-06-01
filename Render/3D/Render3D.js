@@ -69,7 +69,7 @@ export class Render3D {
         return `rgb(${r}, ${g}, ${b})`;
     }
 
-    drawWallFace(ctx, seg, p1, p2, px, py, state, {
+    drawWallFace(ctx, seg, p1, p2, px, py, state, viewport, {
         shouldStroke = true,
         shadeOverlay = floorTileSettings.wallShadeOverlay,
         useTiles = floorTileSettings.enabled,
@@ -77,20 +77,16 @@ export class Render3D {
         const wallColor = this.getWallColor(seg, THEME_COLORS[0], 1.0);
         const healthRatio = seg.health / seg.maxHealth;
         const damageAlpha = healthRatio < 1 ? (1 - healthRatio) * 0.45 : 0;
-        const textureCanvas = useTiles && state.floorTiles
-            ? state.floorTiles.getTileTextureCanvas(state)
-            : null;
 
-        drawProjectedWallFace(ctx, p1, p2, px, py, wallColor, textureCanvas, {
+        drawProjectedWallFace(ctx, p1, p2, px, py, wallColor, useTiles ? state.floorTiles : null, state, {
             damageAlpha,
-            tileWorldSize: floorTileSettings.tileWorldSize,
             textureEnabled: useTiles,
             shouldStroke,
             shadeOverlay: useTiles ? shadeOverlay : 0,
         });
     }
 
-    drawWallSegmentFaces(ctx, seg, px, py, state, options = {}) {
+    drawWallSegmentFaces(ctx, seg, px, py, state, viewport, options = {}) {
         const edges = this.getSegmentEdges(seg);
 
         if (!seg.sharedEdges) {
@@ -106,7 +102,7 @@ export class Render3D {
             const edgeCy = (p1.y + p2.y) / 2;
             if (!isFaceTowardViewer(edgeCx, edgeCy, seg.x, seg.y, px, py)) continue;
 
-            this.drawWallFace(ctx, seg, p1, p2, px, py, state, options);
+            this.drawWallFace(ctx, seg, p1, p2, px, py, state, viewport, options);
         }
     }
 
@@ -128,7 +124,7 @@ export class Render3D {
         visibleWalls.sort((a, b) => b._distSq - a._distSq);
 
         for (const seg of visibleWalls) {
-            this.drawWallSegmentFaces(targetCtx, seg, px, py, state, {
+            this.drawWallSegmentFaces(targetCtx, seg, px, py, state, null, {
                 shouldStroke: false,
                 shadeOverlay: floorTileSettings.wallShadeOverlay + 0.12,
             });
@@ -294,7 +290,7 @@ export class Render3D {
 
         for (const obj of visibleObjects) {
             if (obj._renderType === "wall") {
-                this.drawWallSegmentFaces(ctx, obj, px, py, state, { shouldStroke: true });
+                this.drawWallSegmentFaces(ctx, obj, px, py, state, viewport, { shouldStroke: true });
             } else {
                 ctx.save();
                 const pc = createPropDrawContext(obj, px, py);

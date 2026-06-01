@@ -2,10 +2,10 @@ import { inflateTri } from "../../../Math/Screen2D.js";
 
 /**
  * Affine-map an image triangle onto a screen triangle.
- * @param {{ underlay?: string|null, bleedPx?: number }} [opts]
+ * @param {{ underlay?: string|null, bleedPx?: number, skipClip?: boolean }} [opts]
  */
 export function drawImageTriangle(ctx, img, s0, s1, s2, d0, d1, d2, opts = {}) {
-    const { underlay = null, bleedPx = 0 } = opts;
+    const { underlay = null, bleedPx = 0, skipClip = false } = opts;
 
     let ts0 = s0;
     let ts1 = s1;
@@ -25,6 +25,30 @@ export function drawImageTriangle(ctx, img, s0, s1, s2, d0, d1, d2, opts = {}) {
         denom = -denom;
     }
 
+    const m11 = (td0.x * (ts1.y - ts2.y) + td1.x * (ts2.y - ts0.y) + td2.x * (ts0.y - ts1.y)) / denom;
+    const m12 = (td0.y * (ts1.y - ts2.y) + td1.y * (ts2.y - ts0.y) + td2.y * (ts0.y - ts1.y)) / denom;
+    const m21 = (td0.x * (ts2.x - ts1.x) + td1.x * (ts0.x - ts2.x) + td2.x * (ts1.x - ts0.x)) / denom;
+    const m22 = (td0.y * (ts2.x - ts1.x) + td1.y * (ts0.x - ts2.x) + td2.y * (ts1.x - ts0.x)) / denom;
+    const dx = td0.x - m11 * ts0.x - m21 * ts0.y;
+    const dy = td0.y - m12 * ts0.x - m22 * ts0.y;
+
+    if (skipClip) {
+        ctx.save();
+        if (underlay) {
+            ctx.beginPath();
+            ctx.moveTo(td0.x, td0.y);
+            ctx.lineTo(td1.x, td1.y);
+            ctx.lineTo(td2.x, td2.y);
+            ctx.closePath();
+            ctx.fillStyle = underlay;
+            ctx.fill();
+        }
+        ctx.transform(m11, m12, m21, m22, dx, dy);
+        ctx.drawImage(img, 0, 0);
+        ctx.restore();
+        return;
+    }
+
     ctx.save();
     ctx.beginPath();
     ctx.moveTo(td0.x, td0.y);
@@ -37,13 +61,6 @@ export function drawImageTriangle(ctx, img, s0, s1, s2, d0, d1, d2, opts = {}) {
         ctx.fillStyle = underlay;
         ctx.fill();
     }
-
-    const m11 = (td0.x * (ts1.y - ts2.y) + td1.x * (ts2.y - ts0.y) + td2.x * (ts0.y - ts1.y)) / denom;
-    const m12 = (td0.y * (ts1.y - ts2.y) + td1.y * (ts2.y - ts0.y) + td2.y * (ts0.y - ts1.y)) / denom;
-    const m21 = (td0.x * (ts2.x - ts1.x) + td1.x * (ts0.x - ts2.x) + td2.x * (ts1.x - ts0.x)) / denom;
-    const m22 = (td0.y * (ts2.x - ts1.x) + td1.y * (ts0.x - ts2.x) + td2.y * (ts1.x - ts0.x)) / denom;
-    const dx = td0.x - m11 * ts0.x - m21 * ts0.y;
-    const dy = td0.y - m12 * ts0.x - m22 * ts0.y;
 
     ctx.transform(m11, m12, m21, m22, dx, dy);
     ctx.drawImage(img, 0, 0);
