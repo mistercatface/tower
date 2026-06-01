@@ -1,4 +1,5 @@
 import { FloatingText } from "../Render/FloatingText.js";
+import { CombatParticles } from "../Render/CombatParticles.js";
 import { ProgressionManager } from "../Progression/ProgressionManager.js";
 import { CollisionSystem } from "../Spatial/Collision/CollisionSystem.js";
 import { combatSpatial } from "../Spatial/World/SpatialFrame.js";
@@ -54,6 +55,7 @@ function clearTravelCombatDebris(state) {
     state.explosions = [];
     state.activeLasers = [];
     state.deathPieces = [];
+    state.combatParticles = [];
     state.enemies = [];
     state.floatingTexts = [];
 
@@ -156,6 +158,7 @@ export class CombatState {
         ctx.state.enemies = [];
         ctx.state.activeLasers = [];
         ctx.state.deathPieces = [];
+        ctx.state.combatParticles = [];
         ctx.state.floatingTexts = [];
 
         const currentNode = ctx.state.getCurrentMapNode();
@@ -228,6 +231,7 @@ export class CombatState {
             Projectile.checkSpawnCollisions(ctx.state, spatialFrame, spawnHitEvents);
             Projectile.updateAll(ctx.state, stepDt);
             DeathPiece.updateAll(ctx.state, stepDt, spatialFrame);
+            CombatParticles.updateAll(ctx.state, stepDt);
         }
 
         const collisionEvents = runPushablePhysics(ctx.state, stepDt, spatialFrame);
@@ -244,6 +248,7 @@ export class CombatState {
         }
 
         FloatingText.updateAll(ctx.state, stepDt);
+        CombatParticles.updateAll(ctx.state, stepDt);
         ctx.upgrades.forEach((upg) => upg.update(stepDt, ctx.state));
         ProgressionManager.processLevelUps(ctx.state, ctx.upgrades);
 

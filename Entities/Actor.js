@@ -18,7 +18,8 @@ import { getTurretCountForLoadout, normalizeWeaponLoadout } from "../Combat/equi
 import { RenderSprites } from "../Render/RenderSprites.js";
 import { areHostile, getNearestHostile, getPlayerActors, isValidTurretTarget } from "../Combat/Targeting.js";
 import { getActorProfileForActor, getActorProfileForType } from "../Config/actorProfiles.js";
-import { advanceActorKinematics } from "../Render/Kinematics/PlayerKinematicsRenderer.js";
+import { advanceActorKinematics, clearActorKinematics } from "../Render/Kinematics/PlayerKinematicsRenderer.js";
+import { CombatParticles } from "../Render/CombatParticles.js";
 
 export class Actor extends DestructibleEntity {
     constructor(x, y, radius, speed, health, color, type, accelRate = 3.0, canDamageWalls = false) {
@@ -517,6 +518,7 @@ export class Actor extends DestructibleEntity {
     }
 
     onHitAfterDamage(damage, ctx, hitType, died, event) {
+        CombatParticles.spawnBloodForActorHit(ctx?.state, this, damage, hitType, died, event);
         if (died) this.spawnDeathPieces(ctx.state, event);
     }
 
@@ -529,6 +531,11 @@ export class Actor extends DestructibleEntity {
 
     spawnDeathPieces(state, event) {
         if (!state) return;
+        if (this.usesKinematicsBody) {
+            clearActorKinematics(this);
+            CombatParticles.spawnDeathBlood(state, this, event);
+            return;
+        }
         let impactAngle = this.angle;
         let impactForce = 0;
         if (event) {

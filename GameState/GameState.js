@@ -140,10 +140,12 @@ export class GameState {
         this.pickups = [];
         this.activeLasers = [];
         this.deathPieces = [];
+        this.combatParticles = [];
         this.flowFieldGrid.clear();
 
         this.entityLayers = [
             { key: "projectiles", zIndex: 20 },
+            { key: "combatParticles", zIndex: 22 },
             { key: "deathPieces", zIndex: 25 },
             { key: "activeLasers", zIndex: 35 },
             { key: "floatingTexts", zIndex: 90 },

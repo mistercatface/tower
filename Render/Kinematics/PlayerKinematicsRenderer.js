@@ -48,6 +48,10 @@ export function advanceActorKinematics(actor, dt, camera, radius = actor.radius)
     getKinematicsRenderer(radius).advance(actor, dt, camera);
 }
 
+export function clearActorKinematics(actor, radius = actor.radius) {
+    getKinematicsRenderer(radius).bundle.clearActorState(actor.id);
+}
+
 export function renderActorKinematicsBody(ctx, actor, camera, radius = actor.radius) {
     const kinematics = getKinematicsRenderer(radius);
     const sprite = kinematics.getSprite(actor, camera);
