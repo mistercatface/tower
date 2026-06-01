@@ -102,16 +102,37 @@ function applyEnemyTypeAppearance(char, enemyType) {
     return next;
 }
 
+/** Human skin tones, lightest → darkest. Barry and Brock always use slots 0 and 1. */
+const HUMAN_SKINS_BY_LIGHTNESS = [
+    { base: "#ffdbac", light: "#fff0e0", dark: "#d4a574", type: "human" },
+    { base: "#e8c090", light: "#fff0d0", dark: "#a07050", type: "human" },
+    { base: "#f1c27d", light: "#ffd9a0", dark: "#c99550", type: "human" },
+    { base: "#c68642", light: "#daa06d", dark: "#8b5a2b", type: "human" },
+    { base: "#8d5524", light: "#b07040", dark: "#5c3a1a", type: "human" },
+];
+
+const HERO_SKIN_SLOT = {
+    companion: 0,
+    player: 1,
+};
+
+function applyHeroSkin(char, actor) {
+    const slot = HERO_SKIN_SLOT[actor?.type];
+    if (slot === undefined) return char;
+    const skin = HUMAN_SKINS_BY_LIGHTNESS[slot];
+    return {
+        ...char,
+        skinColor: skin.base,
+        skinLight: skin.light,
+        skinDark: skin.dark,
+        skinType: skin.type,
+    };
+}
+
 export function generateCharacter(seed) {
     const rng = createSeededRandom(seed);
     const race = RACES.human;
-    const humanSkins = [
-        { base: "#e8c090", light: "#fff0d0", dark: "#a07050" },
-        { base: "#c68642", light: "#daa06d", dark: "#8b5a2b" },
-        { base: "#8d5524", light: "#b07040", dark: "#5c3a1a" },
-        { base: "#ffdbac", light: "#fff0e0", dark: "#d4a574" },
-        { base: "#f1c27d", light: "#ffd9a0", dark: "#c99550" },
-    ];
+    const humanSkins = HUMAN_SKINS_BY_LIGHTNESS;
     const eyeColors = [
         { base: "#4080a0", light: "#60a0c0", dark: "#204060" },
         { base: "#408040", light: "#60a060", dark: "#204020" },
@@ -128,7 +149,7 @@ export function generateCharacter(seed) {
     const hairColors = [null, "#402010", "#1a1a1a", "#8b4513", "#d4a460"];
     const hairStyles = ["none", "short", "buzzcut", "mohawk"];
 
-    const skin = { ...rng.pick(humanSkins), type: "human" };
+    const skin = { ...rng.pick(humanSkins) };
     const eyes = rng.pick(eyeColors);
     const bodyType = rng.pick(bodyTypes);
     const torsoShape = rng.pick(torsoShapes);
@@ -175,6 +196,7 @@ export function getCharacterForActor(actor, seedOverride = null) {
         if (actor.enemyType) {
             char = applyEnemyTypeAppearance(char, actor.enemyType);
         }
+        char = applyHeroSkin(char, actor);
         characterCache.set(actor.id, char);
     }
     return characterCache.get(actor.id);

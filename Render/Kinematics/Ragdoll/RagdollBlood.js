@@ -23,18 +23,30 @@ export function seedRagdollBloodOnDeath(ragdoll, hitBone, rig) {
     const scale = rig.size / 32;
     const anchor = ragdoll.points[hitBone] ? hitBone : "spineTop";
 
-    for (const bone of [anchor, "spineTop", "spineBot"]) {
+    const bleedBones = [
+        anchor,
+        "head",
+        "spineTop",
+        "spineBot",
+        "rShoulder",
+        "lShoulder",
+        "rHip",
+        "lHip",
+    ];
+    for (const bone of bleedBones) {
         if (!ragdoll.points[bone]) continue;
         ragdoll.emitters.push({
             bone,
             dir: { x: (Math.random() - 0.5) * 0.5, y: -1, z: (Math.random() - 0.5) * 0.5 },
-            life: bCfg.SPRAY_LIFE * (0.75 + Math.random() * 0.35),
+            life: bCfg.SPRAY_LIFE * (1.2 + Math.random() * 0.6),
             scale,
         });
     }
 
-    const burstPoint = ragdoll.points[anchor] ?? ragdoll.points.spineTop;
-    if (burstPoint) {
+    const burstBones = [anchor, "spineTop", "head"];
+    for (const bone of burstBones) {
+        const burstPoint = ragdoll.points[bone];
+        if (!burstPoint) continue;
         for (let i = 0; i < bCfg.BURST_COUNT; i++) {
             ragdoll.particles.push(createBloodParticle(burstPoint, bCfg, scale));
         }
@@ -62,7 +74,7 @@ export function addRagdollBleedEmitter(ragdoll, boneId, rig, durationScale = 1) 
     ragdoll.emitters.push({
         bone: boneId,
         dir: { x: (Math.random() - 0.5) * 0.8, y: -1, z: (Math.random() - 0.5) * 0.8 },
-        life: bCfg.SPRAY_LIFE * 0.35 * durationScale,
+        life: bCfg.SPRAY_LIFE * 0.9 * durationScale,
         scale: rig.size / 32,
     });
 }
@@ -99,8 +111,9 @@ export function updateBloodEffects(ragdoll, deltaSec, rig) {
         const emitterScale = e.scale || scale;
         const speed = 1.2 * flowStrength * emitterScale;
 
-        if (Math.random() > 0.55) continue;
+        if (Math.random() > 0.25) continue;
 
+        const dropLife = bCfg.LIFESPAN_MIN + Math.random() * (bCfg.LIFESPAN_MAX - bCfg.LIFESPAN_MIN);
         particles.push({
             x: bone.x + (Math.random() - 0.5) * 0.06 * emitterScale,
             y: bone.y + (Math.random() - 0.5) * 0.04 * emitterScale,
@@ -108,8 +121,8 @@ export function updateBloodEffects(ragdoll, deltaSec, rig) {
             vx: e.dir.x * speed + moveX,
             vy: e.dir.y * speed,
             vz: e.dir.z * speed + moveZ,
-            life: bCfg.LIFESPAN_MIN + Math.random() * 0.8,
-            startLife: bCfg.LIFESPAN_MIN + 0.8,
+            life: dropLife,
+            startLife: dropLife,
             size: 0.45 + Math.random() * 0.35,
             color: bCfg.PALETTE.ARTERIAL,
             onGround: false,
@@ -119,7 +132,7 @@ export function updateBloodEffects(ragdoll, deltaSec, rig) {
     for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
         if (p.onGround) {
-            p.life -= dt * 0.45;
+            p.life -= dt * (bCfg.GROUND_FADE ?? 0.1);
         } else {
             p.life -= dt;
             p.vy += bCfg.GRAVITY * dt;
@@ -136,12 +149,12 @@ export function updateBloodEffects(ragdoll, deltaSec, rig) {
                 p.vz *= 0.75;
                 p.vy = 0;
                 p.onGround = true;
-                if (Math.random() < 0.35) {
+                if (Math.random() < 0.65) {
                     ragdoll.floorStains.push({
                         x: p.x,
                         y: groundY,
                         z: p.z,
-                        size: p.size * (1.5 + Math.random()),
+                        size: p.size * (2 + Math.random() * 1.5),
                         color: bCfg.PALETTE.DRIED,
                     });
                 }

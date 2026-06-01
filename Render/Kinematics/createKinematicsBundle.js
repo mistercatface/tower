@@ -153,22 +153,39 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
         return state;
     }
 
-    function buildViewContext(actor, camera) {
-        const camX = camera.x;
-        const camY = camera.y;
-        const dx = actor.x - camX;
-        const dy = actor.y - camY;
+    const minYFactor = 0.1;
+    const maxYFactor = 0.8;
+
+    function buildViewContextAt(x, y, camera) {
+        const dx = x - camera.x;
+        const dy = y - camera.y;
         const horizontalDist = Math.hypot(dx, dy);
         const rawTiltFactor = Math.min(1.0, horizontalDist / maxTiltDist);
+        return { rawTiltFactor };
+    }
 
+    function buildViewContext(actor, camera) {
+        const { rawTiltFactor } = buildViewContextAt(actor.x, actor.y, camera);
         return {
             rawTiltFactor,
             viewContext: {
-                yFactor: 0.8,
+                yFactor: maxYFactor,
                 shiftX: 0,
                 shiftY: 0,
                 ratio: globalRatio,
             },
+        };
+    }
+
+    /** Live tilt for ragdolls/corpses (recomputed each frame from world position). */
+    function buildRagdollViewContext(x, y, camera) {
+        const { rawTiltFactor } = buildViewContextAt(x, y, camera);
+        const yFactor = minYFactor + (maxYFactor - minYFactor) * rawTiltFactor;
+        return {
+            yFactor,
+            shiftX: 0,
+            shiftY: 0,
+            ratio: globalRatio,
         };
     }
 
@@ -194,8 +211,7 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
 
         const cached = spriteCache.get(cacheKey);
         if (cached) return cached;
-        const minYFactor = 0.1;
-        viewContext.yFactor = minYFactor + (0.8 - minYFactor) * q.tilt;
+        viewContext.yFactor = minYFactor + (maxYFactor - minYFactor) * q.tilt;
         viewContext.shiftX = 0;
         viewContext.shiftY = 0;
 
@@ -247,15 +263,10 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
             actor,
             facing,
         );
-        const { viewContext } = buildViewContext(actor, camera);
         return {
             rigData,
             rotation: bodyRotation,
             renderRotation: facing.renderRotation,
-            viewContext: {
-                ...viewContext.viewContext,
-                yFactor: 0.8,
-            },
             config,
             rig,
         };
@@ -268,8 +279,11 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
         sceneRenderer,
         sharedCanvas,
         sharedCtx,
+        maxTiltDist,
+        globalRatio,
         advanceAnimation,
         buildSprite,
+        buildRagdollViewContext,
         captureActorRigForRagdoll,
         clearActorState,
         clearAllStates: () => entityStates.clear(),

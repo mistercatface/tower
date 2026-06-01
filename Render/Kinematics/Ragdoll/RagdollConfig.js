@@ -40,16 +40,17 @@ export const RAGDOLL_CONFIG = {
         },
     },
     BLOOD: {
-        BURST_COUNT: 6,
-        SPRAY_LIFE: 1.8,
-        GRAVITY: 2.0,
-        DRAG: 0.96,
-        LIFESPAN_MIN: 1.2,
-        LIFESPAN_MAX: 3.0,
-        DROP_SIZE: 0.012,
-        SPLAT_SIZE: 1.0,
-        MAX_PARTICLES: 400,
-        MAX_STAINS: 24,
+        BURST_COUNT: 12,
+        SPRAY_LIFE: 5.5,
+        GRAVITY: 1.4,
+        DRAG: 0.97,
+        LIFESPAN_MIN: 4.0,
+        LIFESPAN_MAX: 8.0,
+        DROP_SIZE: 0.014,
+        SPLAT_SIZE: 1.2,
+        MAX_PARTICLES: 500,
+        MAX_STAINS: 56,
+        GROUND_FADE: 0.1,
         PALETTE: {
             ARTERIAL: "#ad0000",
             VENOUS: "#8a0000",
@@ -156,6 +157,7 @@ export function createImpactProfile(dirX, dirY, power = 1) {
         const current = processingQueue.shift();
         const limbId = SEVER_MAP[current.id];
         if (limbId && !severedLimbs.has(limbId)) {
+            if (limbId === "head" && current.id !== "head") continue;
             const fragility = gCfg.FRAGILITY[limbId] ?? 1.0;
             const threshold = gCfg.SEVER_THRESHOLD * fragility;
             if (current.force > threshold) {

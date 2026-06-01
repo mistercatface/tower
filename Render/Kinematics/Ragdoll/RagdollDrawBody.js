@@ -1,6 +1,6 @@
 import { getCharacterForActor } from "../CharacterAppearance.js";
 import { RAGDOLL_CONFIG } from "./RagdollConfig.js";
-import { isRagdollConstraintVisible } from "./RagdollGore.js";
+import { isNeckConstraint, isRagdollConstraintVisible } from "./RagdollGore.js";
 
 function drawPixelCircle(ctx, cx, cy, r, color) {
     ctx.fillStyle = color;
@@ -20,6 +20,11 @@ function resolvePoint(scene, pointName) {
     if (scene.lookup?.[pointName]) return scene.lookup[pointName];
     if (scene[pointName]?.p1) return scene[pointName].p1;
     return scene[pointName] ?? null;
+}
+
+function withSortBoost(point, boost = 0.5) {
+    if (!point) return null;
+    return { ...point, sortZ: (point.sortZ ?? 0) + boost };
 }
 
 function constraintPalette(nameA, nameB, palettes, armPalette, rig) {
@@ -66,7 +71,7 @@ export function drawRagdollBody(scene, actor, sceneRenderer, config, rig, ragdol
     const drawStump = (pointName, radiusMult = 0.6) => {
         const p = resolvePoint(scene, pointName);
         if (!p) return;
-        Renderer.addCustom(p.sortZ ?? 0, (ctx) => {
+        Renderer.addCustom((p.sortZ ?? 0) + 0.3, (ctx) => {
             const scale = p.scale || 1.0;
             const rBase = rig.torsoHalfWidth * radiusMult * scale;
             if (rBase < 1.0) {
@@ -92,9 +97,7 @@ export function drawRagdollBody(scene, actor, sceneRenderer, config, rig, ragdol
     };
 
     const headCenter = lookup.head ?? scene.head;
-    if (!severed.head && headCenter) {
-        Renderer.addSphere(headCenter, rig.headR, palettes.skin);
-    }
+    const spineTop = lookup.spineTop ?? scene.spineTop;
 
     const isHidden = (id) => {
         if (!id) return false;
@@ -107,6 +110,7 @@ export function drawRagdollBody(scene, actor, sceneRenderer, config, rig, ragdol
     for (const c of ragdoll.constraints) {
         if (!c.a || !c.b) continue;
         if (!isRagdollConstraintVisible(c, severed)) continue;
+        if (isNeckConstraint(c)) continue;
         if (c.a.toString().startsWith("head_fr_") || c.b.toString().startsWith("head_fr_")) continue;
 
         const pA = lookup[c.a] ?? resolvePoint(scene, c.a);
@@ -123,6 +127,15 @@ export function drawRagdollBody(scene, actor, sceneRenderer, config, rig, ragdol
         Renderer.addCylinder(pA, pB, radius, palette);
         if (!isHidden(c.a)) Renderer.addSphere(pA, sphereRad, palette);
         if (!isHidden(c.b)) Renderer.addSphere(pB, sphereRad, palette);
+    }
+
+    if (headCenter && spineTop && !severed.head) {
+        const neckRad = rig.torsoHalfWidth * 0.55;
+        Renderer.addCylinder(spineTop, headCenter, neckRad, palettes.skin);
+    }
+
+    if (headCenter) {
+        Renderer.addSphere(withSortBoost(headCenter, 0.6), rig.headR, palettes.skin);
     }
 
     if (severed.head) drawStump("spineTop", 0.6);

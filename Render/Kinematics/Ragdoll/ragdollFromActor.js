@@ -54,6 +54,6 @@ export function createRagdollState(rigData, rotation, impactProfile, config, rig
     };
     const ragdoll = initializeRagdoll(rigData, normalizeAngle(rotation), localImpact, config, rig);
     ragdoll.rotation = normalizeAngle(rotation);
-    applyDeathSevers(ragdoll, impactProfile.sever, rig);
+    applyDeathSevers(ragdoll, impactProfile.sever, rig, impactProfile.hitBone);
     return ragdoll;
 }

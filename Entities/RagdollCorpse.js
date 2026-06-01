@@ -5,7 +5,10 @@ import { projectRagdollRig } from "../Render/Kinematics/KinematicsProjector.js";
 import { drawRagdollCorpseToCanvas } from "../Render/Kinematics/KinematicsDraw.js";
 import { seedRagdollBloodOnDeath, updateBloodEffects, addRagdollBleedEmitter } from "../Render/Kinematics/Ragdoll/RagdollBlood.js";
 import { createObstacleWallChecker, createRagdollState, resolveDeathImpact } from "../Render/Kinematics/Ragdoll/ragdollFromActor.js";
-import { captureActorRigForRagdoll } from "../Render/Kinematics/PlayerKinematicsRenderer.js";
+import {
+    buildCorpseKinematicsViewContext,
+    captureActorRigForRagdoll,
+} from "../Render/Kinematics/PlayerKinematicsRenderer.js";
 import { CombatParticles } from "../Render/CombatParticles.js";
 
 const CORPSE_MAX_MS = 12000;
@@ -142,10 +145,25 @@ export class RagdollCorpse extends Entity {
         return viewport.isVisible(this.x, this.y, this.radius * 3);
     }
 
+    getKinematicsCamera(state) {
+        if (typeof this.actor?.getKinematicsCamera === "function") {
+            return this.actor.getKinematicsCamera(state);
+        }
+        const player = state?.player;
+        return player ? { x: player.x, y: player.y } : { x: this.x, y: this.y };
+    }
+
     render(ctx, _renderer, state) {
         if (this.opacity <= 0) return;
 
-        const { config, rig, renderRotation, viewContext } = this.snapshot;
+        const { config, rig, renderRotation } = this.snapshot;
+        const camera = this.getKinematicsCamera(state);
+        const viewContext = buildCorpseKinematicsViewContext(
+            this.x,
+            this.y,
+            camera,
+            this.radius,
+        );
         const rigData = getRagdollRig(this.ragdoll);
         const scene = projectRagdollRig(
             rigData,

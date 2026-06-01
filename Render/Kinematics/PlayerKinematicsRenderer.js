@@ -52,6 +52,10 @@ export function clearActorKinematics(actor, radius = actor.radius) {
     getKinematicsRenderer(radius).bundle.clearActorState(actor.id);
 }
 
+export function buildCorpseKinematicsViewContext(x, y, camera, radius) {
+    return getKinematicsRenderer(radius).bundle.buildRagdollViewContext(x, y, camera);
+}
+
 export function captureActorRigForRagdoll(actor, camera, radius = actor.radius) {
     const kinematics = getKinematicsRenderer(radius);
     return {

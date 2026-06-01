@@ -25,6 +25,8 @@ export function resolveSeverTarget(hitPart, ragdoll) {
     const points = ragdoll?.points;
     if (!points) return null;
 
+    if (clean === "head") return null;
+
     if (clean === "spineTop") {
         const rs = points.rShoulder;
         const ls = points.lShoulder;
@@ -88,8 +90,15 @@ function isConstraintHiddenBySever(c, severed) {
         (c.a === "lHip" && c.b === "lKnee")
         || (c.a === "lKnee" && c.b === "lHip")
     )) return true;
-    if (severed.head && (c.a === "head" || c.b === "head")) return true;
+    if (severed.head && (
+        (c.a === "head" && c.b === "spineTop")
+        || (c.a === "spineTop" && c.b === "head")
+    )) return true;
     return false;
+}
+
+export function isNeckConstraint(c) {
+    return (c.a === "head" && c.b === "spineTop") || (c.a === "spineTop" && c.b === "head");
 }
 
 export function isRagdollConstraintVisible(c, severed) {
@@ -291,8 +300,9 @@ export function splitBone(ragdoll, boneStartName, t, rig) {
     return newPointId;
 }
 
-export function applyDeathSevers(ragdoll, severList, rig) {
+export function applyDeathSevers(ragdoll, severList, rig, hitBone = null) {
     for (const limbId of severList || []) {
+        if (limbId === "head" && hitBone !== "head") continue;
         severLimb(ragdoll, limbId, rig);
     }
 }
@@ -369,7 +379,8 @@ export function processRagdollGoreHit(
     }
 
     let action = "NONE";
-    if (canSever) {
+    const allowSever = canSever && (severTarget !== "head" || cleanType === "head");
+    if (allowSever) {
         action = "SEVER";
     } else if (canFracture) {
         action = "FRACTURE";
