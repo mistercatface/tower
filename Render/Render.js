@@ -4,6 +4,7 @@ import { combatVisualSettings, createFloorFillStyle, mapSettings } from "../Conf
 import { getWorldDrawCoords, isMapTraveling, isWorldScene } from "../GameState/GamePhase.js";
 import { getPlayerActors } from "../Combat/Targeting.js";
 import { drawHostileOffScreenIndicators } from "./OffScreenIndicators.js";
+import { CombatParticles } from "./CombatParticles.js";
 
 export class Renderer {
     constructor(canvas, ctx) {
@@ -92,6 +93,8 @@ export class Renderer {
         }
 
         this.ctx.restore();
+
+        CombatParticles.renderAll(this.ctx, state, viewport);
 
         if (viewport && isWorldScene(state.phase)) {
             this.drawGlobeOverlay(state, viewport);

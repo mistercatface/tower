@@ -41,9 +41,8 @@ export class RagdollCorpse extends Entity {
             const { x: bx, y: by } = ragdollPartToWorld(corpse, hit.part);
             CombatParticles.spawnBlood(state, bx, by, {
                 impactAngle: projectile.angle,
-                count: 6,
-                intensity: 1.1,
-                sizeBase: Math.max(4, corpse.radius * 0.4),
+                count: 4,
+                sizePx: 2,
             });
 
             if (projectile.penetration > 0) {
@@ -87,7 +86,6 @@ export class RagdollCorpse extends Entity {
 
         const corpse = new RagdollCorpse(actor, snapshot, ragdoll);
         state.ragdollCorpses.push(corpse);
-        CombatParticles.spawnDeathBlood(state, actor, event);
         return corpse;
     }
 
