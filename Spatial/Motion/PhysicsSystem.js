@@ -146,6 +146,9 @@ export class PhysicsSystem {
         b.x += normalX * overlap * (massA / totalMass);
         b.y += normalY * overlap * (massA / totalMass);
 
+        a._wallResolvedFrame = null;
+        b._wallResolvedFrame = null;
+
         const avx = a.vx ?? 0;
         const avy = a.vy ?? 0;
         const bvx = b.vx ?? 0;

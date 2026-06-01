@@ -15,7 +15,7 @@ export class Separation {
         this.pushY = 0;
 
         spatialFrame.forEachNeighbor(entity, (other) => {
-            if (other.isDead) return;
+            if (other.isDead || other.faction === undefined) return;
             if (entity.teamId != null && other.teamId != null && entity.teamId === other.teamId) return;
             if (inferFaction(other) === "player" && entity.attackType === "charge") return;
             if (inferFaction(entity) === "player" && other.attackType === "charge") return;

@@ -67,6 +67,9 @@ export class CollisionSystem {
         pickup.x += pushX * pickupShift;
         pickup.y += pushY * pickupShift;
 
+        actor._wallResolvedFrame = null;
+        pickup._wallResolvedFrame = null;
+
         const rvx = (pickup.vx || 0) - (actor.vx || 0);
         const rvy = (pickup.vy || 0) - (actor.vy || 0);
         const velAlongNormal = rvx * pushX + rvy * pushY;
@@ -109,6 +112,9 @@ export class CollisionSystem {
         p1.y -= pushY * overlap * 0.5;
         p2.x += pushX * overlap * 0.5;
         p2.y += pushY * overlap * 0.5;
+
+        p1._wallResolvedFrame = null;
+        p2._wallResolvedFrame = null;
 
         const rvx = (p2.vx || 0) - (p1.vx || 0);
         const rvy = (p2.vy || 0) - (p1.vy || 0);
@@ -157,15 +163,23 @@ export class CollisionSystem {
             p.resolveFactionCollisions(state, events, this, spatialFrame);
         }
 
-        // 2. Actors vs Pushables
-        spatialFrame.forEachActorPushablePair((actor, pickup) => {
-            this.resolveActorPushable(actor, pickup);
-        });
+        // 2. Resolve pushables (Actor vs Pushable and Pushable vs Pushable) iteratively with wall constraints
+        const iterations = 4;
+        for (let iter = 0; iter < iterations; iter++) {
+            spatialFrame.forEachActorPushablePair((actor, pickup) => {
+                this.resolveActorPushable(actor, pickup);
+            });
 
-        // 3. Pushables vs Pushables
-        spatialFrame.forEachPushablePair((p1, p2) => {
-            this.resolvePushablePair(p1, p2);
-        });
+            spatialFrame.forEachPushablePair((p1, p2) => {
+                this.resolvePushablePair(p1, p2);
+            });
+
+            for (let i = 0; i < state.pickups.length; i++) {
+                const pickup = state.pickups[i];
+                if (pickup.isDead || !pickup.strategy?.isPushable) continue;
+                PhysicsSystem.resolveWallCollisions(pickup, spatialFrame, state);
+            }
+        }
 
         // 4. Actor vs Actor
         spatialFrame.forEachCombatantPair((a, b) => {

@@ -28,7 +28,6 @@ export class SpatialFrame {
         this._wallCache = new Map();
         this._combatants = [];
         this._pushables = [];
-        this._movingPushables = [];
     }
 
     begin(state) {
@@ -36,7 +35,6 @@ export class SpatialFrame {
         this._wallCache.clear();
         this._combatants.length = 0;
         this._pushables.length = 0;
-        this._movingPushables.length = 0;
 
         this.entityHash.clear();
         for (const actor of state.getCombatants()) {
@@ -50,9 +48,6 @@ export class SpatialFrame {
             this.entityHash.insert(pickup);
             if (pickup.strategy?.isPushable) {
                 this._pushables.push(pickup);
-                if (isMovingPushable(pickup)) {
-                    this._movingPushables.push(pickup);
-                }
             }
         }
         return this;
@@ -119,13 +114,14 @@ export class SpatialFrame {
     }
 
     forEachPushablePair(fn) {
-        if (this._movingPushables.length < 2) return;
-        for (let i = 0; i < this._movingPushables.length; i++) {
-            const p1 = this._movingPushables[i];
+        for (let i = 0; i < this._pushables.length; i++) {
+            const p1 = this._pushables[i];
             if (p1.isDead) continue;
             this.forEachNeighbor(p1, (p2) => {
                 if (p2 === p1 || p2.isDead || !p2.strategy?.isPushable || p1.id >= p2.id) return;
-                fn(p1, p2);
+                if (isMovingPushable(p1) || isMovingPushable(p2)) {
+                    fn(p1, p2);
+                }
             });
         }
     }
