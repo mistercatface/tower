@@ -346,8 +346,12 @@ export const floorTileSettings = {
      * Defaults near CAMERA_HEIGHT so faces extend offscreen without a visible cap.
      */
     wallVisualHeight: null,
-    /** World distance of tile rows mapped up the face (independent of projection height). */
-    wallTextureDistance: 3000,
+    /** Tile rows painted on each wall face (geometry height is separate). */
+    maxWallStories: 32,
+    minWallStories: 12,
+    /** Target minimum pixels per story; LOD snaps down via wallStoryLodTiers when the face is shorter. */
+    minPxPerStory: 4,
+    wallStoryLodTiers: [12, 16, 24, 32],
     /** Darken wall tiles vs floor (0 = none, 1 = black). */
     wallShadeOverlay: 0.22,
     maxCachedWallCells: 512,

@@ -9,10 +9,6 @@ export function getWallVisualHeight() {
     return CAMERA_HEIGHT - 10;
 }
 
-export function getWallTextureDistance() {
-    return floorTileSettings.wallTextureDistance ?? 3000;
-}
-
 /** Distance-scaled projection — walls extend offscreen when wallVisualHeight is near CAMERA_HEIGHT. */
 export function computeProjectedFace(p1, p2, px, py, wallHeight = getWallVisualHeight()) {
     let angle1 = Math.atan2(p1.y - py, p1.x - px);
@@ -66,6 +62,31 @@ function rowBoundsIntersects(bl, br, tl, tr, bounds) {
     return !(maxX < bounds.minX || minX > bounds.maxX || maxY < bounds.minY || minY > bounds.maxY);
 }
 
+function estimateFaceScreenSpan(p1, p2, face) {
+    const topMidX = (face.proj1X + face.proj2X) * 0.5;
+    const topMidY = (face.proj1Y + face.proj2Y) * 0.5;
+    const baseMidX = (p1.x + p2.x) * 0.5;
+    const baseMidY = (p1.y + p2.y) * 0.5;
+    return Math.hypot(topMidX - baseMidX, topMidY - baseMidY);
+}
+
+/** Even story bands on the face; LOD tiers avoid sub-pixel scanlines without swimming every frame. */
+function getWallStoryCount(p1, p2, face) {
+    const maxStories = floorTileSettings.maxWallStories ?? 32;
+    const minStories = floorTileSettings.minWallStories ?? 12;
+    const minPxPerStory = floorTileSettings.minPxPerStory ?? 4;
+    const tiers = floorTileSettings.wallStoryLodTiers ?? [12, 16, 24, 32];
+
+    const faceSpan = estimateFaceScreenSpan(p1, p2, face);
+    const target = Math.min(maxStories, Math.max(minStories, Math.floor(faceSpan / minPxPerStory)));
+
+    let chosen = tiers[0] ?? minStories;
+    for (const tier of tiers) {
+        if (tier <= target) chosen = tier;
+    }
+    return Math.min(maxStories, Math.max(minStories, chosen));
+}
+
 function paintPatternTriangle(ctx, pattern, matrix, x0, y0, x1, y1, x2, y2) {
     ctx.save();
     ctx.beginPath();
@@ -85,9 +106,39 @@ function paintPatternTriangle(ctx, pattern, matrix, x0, y0, x1, y1, x2, y2) {
     ctx.restore();
 }
 
+function bandCorners(p1, p2, leftTop, rightTop, t0, t1) {
+    return {
+        bl: lerpPoint(p1, leftTop, t0),
+        br: lerpPoint(p2, rightTop, t0),
+        tl: lerpPoint(p1, leftTop, t1),
+        tr: lerpPoint(p2, rightTop, t1),
+    };
+}
+
+function drawTextureBand(ctx, pattern, u1, u2, du, bl, br, tl, tr, v1, v2) {
+    const dv = v2 - v1;
+    if (Math.abs(dv) < 1e-6) return;
+
+    const a1 = (br.x - bl.x) / du;
+    const b1 = (br.y - bl.y) / du;
+    const c1 = (tl.x - bl.x) / dv;
+    const d1 = (tl.y - bl.y) / dv;
+    const e1 = bl.x - a1 * u1 - c1 * v1;
+    const f1 = bl.y - b1 * u1 - d1 * v1;
+    paintPatternTriangle(ctx, pattern, new DOMMatrix([a1, b1, c1, d1, e1, f1]), bl.x, bl.y, br.x, br.y, tl.x, tl.y);
+
+    const a2 = (tr.x - tl.x) / du;
+    const b2 = (tr.y - tl.y) / du;
+    const c2 = (tr.x - br.x) / dv;
+    const d2 = (tr.y - br.y) / dv;
+    const e2 = br.x - a2 * u2 - c2 * v1;
+    const f2 = br.y - b2 * u2 - d2 * v1;
+    paintPatternTriangle(ctx, pattern, new DOMMatrix([a2, b2, c2, d2, e2, f2]), br.x, br.y, tr.x, tr.y, tl.x, tl.y);
+}
+
 /**
- * Tile rows span wallTextureDistance (many rows), while face geometry uses wallVisualHeight
- * (offscreen projection). Absolute world U keeps grout continuous across maze cells.
+ * N evenly spaced stories on the projected face. Absolute world U keeps grout continuous
+ * across maze cells; geometry height stays on wallVisualHeight.
  */
 function drawFaceTexture(ctx, p1, p2, face, textureCanvas, viewport) {
     const tileWorldSize = floorTileSettings.tileWorldSize ?? gridSettings.cellSize;
@@ -104,7 +155,7 @@ function drawFaceTexture(ctx, p1, p2, face, textureCanvas, viewport) {
     const du = u2 - u1;
     if (Math.abs(du) < 1e-6) return;
 
-    const rowCount = Math.max(1, Math.ceil(getWallTextureDistance() / tileWorldSize));
+    const storyCount = getWallStoryCount(p1, p2, face);
     const leftTop = { x: face.proj1X, y: face.proj1Y };
     const rightTop = { x: face.proj2X, y: face.proj2Y };
     const pattern = ctx.createPattern(textureCanvas, "repeat");
@@ -114,35 +165,14 @@ function drawFaceTexture(ctx, p1, p2, face, textureCanvas, viewport) {
     traceProjectedFace(ctx, p1, p2, face);
     ctx.clip();
 
-    for (let row = 0; row < rowCount; row++) {
-        const t0 = row / rowCount;
-        const t1 = (row + 1) / rowCount;
-        const bl = lerpPoint(p1, leftTop, t0);
-        const br = lerpPoint(p2, rightTop, t0);
-        const tl = lerpPoint(p1, leftTop, t1);
-        const tr = lerpPoint(p2, rightTop, t1);
+    for (let row = 0; row < storyCount; row++) {
+        const t0 = row / storyCount;
+        const t1 = (row + 1) / storyCount;
+        const { bl, br, tl, tr } = bandCorners(p1, p2, leftTop, rightTop, t0, t1);
 
         if (!rowBoundsIntersects(bl, br, tl, tr, worldBounds)) continue;
 
-        const v1 = row * texH;
-        const v2 = (row + 1) * texH;
-        const dv = texH;
-
-        const a1 = (br.x - bl.x) / du;
-        const b1 = (br.y - bl.y) / du;
-        const c1 = (tl.x - bl.x) / dv;
-        const d1 = (tl.y - bl.y) / dv;
-        const e1 = bl.x - a1 * u1 - c1 * v1;
-        const f1 = bl.y - b1 * u1 - d1 * v1;
-        paintPatternTriangle(ctx, pattern, new DOMMatrix([a1, b1, c1, d1, e1, f1]), bl.x, bl.y, br.x, br.y, tl.x, tl.y);
-
-        const a2 = (tr.x - tl.x) / du;
-        const b2 = (tr.y - tl.y) / du;
-        const c2 = (tr.x - br.x) / dv;
-        const d2 = (tr.y - br.y) / dv;
-        const e2 = br.x - a2 * u2 - c2 * v1;
-        const f2 = br.y - b2 * u2 - d2 * v1;
-        paintPatternTriangle(ctx, pattern, new DOMMatrix([a2, b2, c2, d2, e2, f2]), br.x, br.y, tr.x, tr.y, tl.x, tl.y);
+        drawTextureBand(ctx, pattern, u1, u2, du, bl, br, tl, tr, row * texH, (row + 1) * texH);
     }
 
     ctx.restore();
