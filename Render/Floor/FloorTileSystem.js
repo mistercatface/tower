@@ -114,7 +114,7 @@ export class FloorTileSystem {
     }
 
     draw(ctx, state, viewport) {
-        if (!floorTileSettings.enabled || !viewport || !isWorldScene(state.phase) || !state.obstacleGrid?.cols) {
+        if (!viewport || !isWorldScene(state.phase) || !state.obstacleGrid?.cols) {
             return;
         }
 

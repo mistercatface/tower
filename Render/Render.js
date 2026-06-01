@@ -1,6 +1,6 @@
 import { SpriteCache } from "./SpriteCache.js";
 import { Render3D } from "./3D/Render3D.js";
-import { combatVisualSettings, createFloorFillStyle, floorTileSettings, mapSettings, COMBAT_HUD_MODE, hudSettings } from "../Config/Config.js";
+import { floorTileSettings, mapSettings, COMBAT_HUD_MODE, hudSettings } from "../Config/Config.js";
 import { getWorldDrawCoords, isMapTraveling, isWorldScene } from "../GameState/GamePhase.js";
 import { getPlayerActors } from "../Combat/Targeting.js";
 import { drawHostileOffScreenIndicators } from "./OffScreenIndicators.js";
@@ -72,10 +72,6 @@ export class Renderer {
     renderCombatScene(state, viewport) {
         this.ctx.save();
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-        if (viewport && isWorldScene(state.phase) && !floorTileSettings.enabled) {
-            this.drawOscilloscopeGrid(state, viewport);
-        }
 
         if (viewport) viewport.apply(this.ctx);
 
@@ -153,21 +149,8 @@ export class Renderer {
     }
 
     drawRangeIndicator(state, viewport) {
-        const { useViewport, range, x, y } = getWorldDrawCoords(state, viewport);
-        if (!useViewport) {
-            state.player.renderRange(this.ctx, range);
-            return;
-        }
-
-        if (floorTileSettings.enabled) {
-            this.drawFloorVignette(x, y, range);
-            return;
-        }
-
-        this.ctx.beginPath();
-        this.ctx.arc(x, y, range, 0, Math.PI * 2);
-        this.ctx.fillStyle = createFloorFillStyle(this.ctx, x, y, range);
-        this.ctx.fill();
+        const { range, x, y } = getWorldDrawCoords(state, viewport);
+        this.drawFloorVignette(x, y, range);
     }
 
     drawFloorVignette(cx, cy, radius) {
@@ -380,88 +363,6 @@ export class Renderer {
             this.ctx.strokeStyle = "#FFF";
             this.ctx.stroke();
         }
-    }
-
-    drawOscilloscopeGrid(state, viewport) {
-        const R = viewport.getVisualRadius();
-        const cx = viewport.cx;
-        const cy = viewport.cy;
-        const zoom = viewport.zoom;
-
-        this.ctx.save();
-        this.ctx.strokeStyle = combatVisualSettings.gridStroke;
-        this.ctx.lineWidth = 1.0;
-
-        const gridSpacing = 40;
-        const worldRadius = R / zoom;
-
-        const minX = viewport.x - worldRadius * 1.57;
-        const maxX = viewport.x + worldRadius * 1.57;
-        const minY = viewport.y - worldRadius * 1.57;
-        const maxY = viewport.y + worldRadius * 1.57;
-
-        const startX = Math.floor(minX / gridSpacing) * gridSpacing;
-        const endX = Math.ceil(maxX / gridSpacing) * gridSpacing;
-        const startY = Math.floor(minY / gridSpacing) * gridSpacing;
-        const endY = Math.ceil(maxY / gridSpacing) * gridSpacing;
-
-        const projectLens = (wx, wy) => {
-            const dx = (wx - viewport.x) * zoom;
-            const dy = (wy - viewport.y) * zoom;
-            const d = Math.hypot(dx, dy);
-            if (d === 0) return { x: cx, y: cy, visible: true };
-
-            const maxD = R * (Math.PI / 2);
-            if (d > maxD) {
-                return { x: cx + (dx / d) * R, y: cy + (dy / d) * R, visible: false };
-            }
-
-            const rDome = R * Math.sin(d / R);
-            const curvatureStrength = 0.45;
-            const r = d * (1 - curvatureStrength) + rDome * curvatureStrength;
-
-            return { x: cx + (dx / d) * r, y: cy + (dy / d) * r, visible: true };
-        };
-
-        for (let x = startX; x <= endX; x += gridSpacing) {
-            this.ctx.beginPath();
-            let first = true;
-            for (let y = minY; y <= maxY; y += 8) {
-                const pt = projectLens(x, y);
-                if (pt.visible) {
-                    if (first) {
-                        this.ctx.moveTo(pt.x, pt.y);
-                        first = false;
-                    } else {
-                        this.ctx.lineTo(pt.x, pt.y);
-                    }
-                } else {
-                    first = true;
-                }
-            }
-            this.ctx.stroke();
-        }
-
-        for (let y = startY; y <= endY; y += gridSpacing) {
-            this.ctx.beginPath();
-            let first = true;
-            for (let x = minX; x <= maxX; x += 8) {
-                const pt = projectLens(x, y);
-                if (pt.visible) {
-                    if (first) {
-                        this.ctx.moveTo(pt.x, pt.y);
-                        first = false;
-                    } else {
-                        this.ctx.lineTo(pt.x, pt.y);
-                    }
-                } else {
-                    first = true;
-                }
-            }
-            this.ctx.stroke();
-        }
-
-        this.ctx.restore();
     }
 
     drawGlobeOverlay(state, viewport) {

@@ -4,39 +4,31 @@ export const combatActorRadius = 8;
 export const enemyTypes = [
     {
         type: "kamikaze",
-        weight: 15,
         radius: combatActorRadius,
         baseSpeed: 115,
         maxHealth: 2,
         color: "#FF9800",
-        minLevel: 0,
-        spawnType: "group",
         attackType: "charge",
         canDodge: false,
         accelRate: 1.0,
-        groupSettings: { baseGroupSize: 2, growthPerWave: 1.0, maxGroupSize: 5 },
         canDamageWalls: true,
     },
-    { type: "tank", weight: 25, radius: combatActorRadius, baseSpeed: 50, maxHealth: 6, color: "#FF9800", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: false },
-    { type: "standard", weight: 60, radius: combatActorRadius, baseSpeed: 75, maxHealth: 3, color: "#F44336", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: false },
-    { type: "fast", weight: 5, radius: combatActorRadius, baseSpeed: 102, maxHealth: 2, color: "#FFEB3B", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: false, canDamageWalls: true },
+    { type: "tank", radius: combatActorRadius, baseSpeed: 50, maxHealth: 6, color: "#FF9800", attackType: "ranged", canDodge: false },
+    { type: "standard", radius: combatActorRadius, baseSpeed: 75, maxHealth: 3, color: "#F44336", attackType: "ranged", canDodge: false },
+    { type: "fast", radius: combatActorRadius, baseSpeed: 102, maxHealth: 2, color: "#FFEB3B", attackType: "ranged", canDodge: false, canDamageWalls: true },
     {
         type: "spastic",
-        weight: 15,
         radius: combatActorRadius,
         baseSpeed: 95,
         maxHealth: 2,
         color: "#C62828",
-        minLevel: 0,
-        spawnType: "group",
         attackType: "charge",
         canDodge: false,
         accelRate: 3,
         canDamageWalls: true,
-        groupSettings: { baseGroupSize: 3, growthPerWave: 2.0, maxGroupSize: 5 },
     },
-    { type: "dodger", weight: 20, radius: combatActorRadius, baseSpeed: 75, maxHealth: 4, color: "#03A9F4", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: true },
-    { type: "boss", weight: 0, radius: combatActorRadius, baseSpeed: 115, maxHealth: 6, color: "#B71C1C", minLevel: 0, spawnType: "single", attackType: "ranged", canDodge: true },
+    { type: "dodger", radius: combatActorRadius, baseSpeed: 75, maxHealth: 4, color: "#03A9F4", attackType: "ranged", canDodge: true },
+    { type: "boss", radius: combatActorRadius, baseSpeed: 115, maxHealth: 6, color: "#B71C1C", attackType: "ranged", canDodge: true },
 ];
 
 /** Weighted spawn compositions — one pod spawns per spawn tick, all members together. */
@@ -335,8 +327,6 @@ export const floorTileSettings = {
     cellsPerChunk: gridSettings.minCellsPerChunk,
     viewPaddingPx: 128,
     maxCachedChunks: 512,
-    /** When true, procedural tiles replace the oscilloscope grid + opaque range fill. */
-    enabled: true,
     /** Soft radial darkening on top of tiles (0 = off). */
     vignetteAlpha: 0.45,
     /** World size of one repeating floor tile on wall faces. */
@@ -346,14 +336,8 @@ export const floorTileSettings = {
      * Defaults near CAMERA_HEIGHT so faces extend offscreen without a visible cap.
      */
     wallVisualHeight: null,
-    /** Tile rows painted on each wall face (geometry height is separate). */
-    maxWallStories: 32,
-    minWallStories: 12,
     /** Fixed vertical tile count for wall textures (camera-independent). */
-    wallTextureStories: 16,
-    /** Target minimum pixels per story; LOD snaps down via wallStoryLodTiers when the face is shorter. */
-    minPxPerStory: 4,
-    wallStoryLodTiers: [12, 16, 24, 32],
+    wallTextureStories: 32,
     /** Darken wall tiles vs floor (0 = none, 1 = black). */
     wallShadeOverlay: 0.22,
     /** Overlap when affine-mapping wall cells (hides triangle seam). */
@@ -377,14 +361,6 @@ export const COMBAT_HUD_MODE_LABELS = ["off", "overlay", "classic"];
 export const hudSettings = {
     combatOverlayAlpha: 0.72,
 };
-
-export function createFloorFillStyle(ctx, cx, cy, radius) {
-    const grad = ctx.createRadialGradient(cx - radius * 0.22, cy - radius * 0.22, radius * 0.08, cx, cy, radius);
-    grad.addColorStop(0, combatVisualSettings.floorHighlight);
-    grad.addColorStop(0.62, combatVisualSettings.floorFill);
-    grad.addColorStop(1, combatVisualSettings.floorShadow);
-    return grad;
-}
 
 export const navigationSettings = {
     arrivalDistance: 2,

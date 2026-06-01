@@ -1,6 +1,6 @@
 import { Actor } from "./Actor.js";
 import { spawnFloatingText } from "../Core/EventSystem.js";
-import { createFloorFillStyle, playerBaseStats, NAV_PROFILES, navigationSettings } from "../Config/Config.js";
+import { playerBaseStats, NAV_PROFILES, navigationSettings } from "../Config/Config.js";
 import { createEntityBars } from "./EntityBars.js";
 import { isMapTraveling } from "../GameState/GamePhase.js";
 import { entityIntersectsCellBounds } from "../Spatial/Geometry/GridCoords.js";
@@ -166,15 +166,6 @@ export class Player extends Actor {
 
     renderBody(ctx, _renderer) {
         renderActorKinematicsBody(ctx, this, { x: this.x, y: this.y });
-    }
-
-    renderRange(ctx, weaponRange) {
-        if (weaponRange > 0) {
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, weaponRange, 0, Math.PI * 2);
-            ctx.fillStyle = createFloorFillStyle(ctx, this.x, this.y, weaponRange);
-            ctx.fill();
-        }
     }
 
     render(ctx, renderer, state) {
