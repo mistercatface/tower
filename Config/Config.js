@@ -337,7 +337,7 @@ export const floorTileSettings = {
      */
     wallVisualHeight: null,
     /** Fixed vertical tile count for wall textures (camera-independent). */
-    wallTextureStories: 16,
+    wallTextureStories: 8,
     /** Darken wall tiles vs floor (0 = none, 1 = black). */
     wallShadeOverlay: 0.22,
     /** Overlap when affine-mapping wall cells (hides triangle seam). */
