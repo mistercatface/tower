@@ -213,7 +213,13 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
         const facing = resolveCombatFacing(actor, animState, q.rotation, config);
         const rigData = calculateCharacterRig({ ...animState, staticBlendFactor: 1 }, q.cycle, config, rig, poses, actor, facing);
 
-        return { rigData, rotation: bodyRotation, renderRotation: facing.renderRotation, config, rig };
+        return { rigData, rotation: bodyRotation, renderRotation: facing.renderRotation };
+    }
+
+    function buildProjectedSceneAt(x, y, camera, rigData, renderRotation, bodyRotation = 0, animCycle = 0) {
+        const viewContext = buildQuantizedViewContext(x, y, camera, bodyRotation, animCycle);
+        const scene = projectRig(rigData, renderRotation, viewContext, config, rig);
+        return { scene, viewContext };
     }
 
     function buildLiveScene(actor, camera) {
@@ -222,12 +228,11 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
         const spriteBodyRotation = resolveSpriteBodyRotation(actor);
         const naturalCycle = state.animCycle % (Math.PI * 2);
         const { rawTiltFactor } = buildViewContextAt(actor.x, actor.y, camera);
-        const viewContext = buildQuantizedViewContext(actor.x, actor.y, camera, spriteBodyRotation, naturalCycle);
         const q = spriteCache.getQuantizedValues(spriteBodyRotation, naturalCycle, rawTiltFactor);
         const facing = resolveCombatFacing(actor, state, q.rotation, config);
         const rigData = calculateCharacterRig({ ...state, staticBlendFactor: state.staticBlendFactor }, q.cycle, config, rig, poses, actor, facing);
-        const scene = projectRig(rigData, facing.renderRotation, viewContext, config, rig);
-        return { scene, config, facing };
+        const { scene, viewContext } = buildProjectedSceneAt(actor.x, actor.y, camera, rigData, facing.renderRotation, spriteBodyRotation, naturalCycle);
+        return { scene, viewContext, config, facing };
     }
 
     function resolveMuzzleWorldPosition(actor, camera, turretIndex, displayDiameter) {
@@ -248,6 +253,7 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
         buildSprite,
         buildKinematicsViewContext,
         buildRagdollViewContext,
+        buildProjectedSceneAt,
         captureActorRigForRagdoll,
         clearActorState,
         clearAllStates: () => entityStates.clear(),

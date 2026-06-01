@@ -1,5 +1,7 @@
 /** Bone hit tests for ragdoll corpses (2D gameplay, rig-local space). */
 
+import { getCorpseKinematics } from "../PlayerKinematicsRenderer.js";
+
 function distToSegmentXZ(p, v, w) {
     const dx = w.x - v.x;
     const dz = w.z - v.z;
@@ -49,14 +51,16 @@ function buildRagdollBones(points, constraints, rig) {
 }
 
 function worldToRigLocal(corpse, worldX, worldY) {
-    const { rig, config } = corpse.snapshot;
+    const kinematics = getCorpseKinematics(corpse);
+    const { config, rig } = kinematics.bundle;
+    const displayDiameter = kinematics.displayDiameter;
     const bodyOffset = config.BODY_OFFSET ?? Math.PI;
     const rotation = -(corpse.ragdoll.rotation + bodyOffset);
     const cos = Math.cos(rotation);
     const sin = Math.sin(rotation);
     const dx = worldX - corpse.x;
     const dy = worldY - corpse.y;
-    const rigToWorld = (corpse.displayDiameter * 0.5) / rig.size;
+    const rigToWorld = (displayDiameter * 0.5) / rig.size;
     const scale = 1 / rigToWorld;
     return {
         x: (dx * cos - dy * sin) * scale,
@@ -75,7 +79,7 @@ export function checkRagdollHit(corpse, worldX, worldY, projectileRadius = 2) {
     const broad = corpse.radius + projectileRadius + 6;
     if (Math.hypot(worldX - corpse.x, worldY - corpse.y) > broad) return null;
 
-    const { rig } = corpse.snapshot;
+    const { rig } = getCorpseKinematics(corpse).bundle;
     const local = worldToRigLocal(corpse, worldX, worldY);
     const hitRadiusScale = projectileRadius * (rig.size / corpse.radius) * 0.35;
     const bones = buildRagdollBones(
@@ -110,11 +114,13 @@ export function checkRagdollHit(corpse, worldX, worldY, projectileRadius = 2) {
 export function ragdollPartToWorld(corpse, partName) {
     const p = corpse.ragdoll.points[partName];
     if (!p) return { x: corpse.x, y: corpse.y };
-    const { rig, config } = corpse.snapshot;
+    const kinematics = getCorpseKinematics(corpse);
+    const { config, rig } = kinematics.bundle;
+    const displayDiameter = kinematics.displayDiameter;
     const rot = corpse.ragdoll.rotation + (config.BODY_OFFSET ?? Math.PI);
     const cos = Math.cos(rot);
     const sin = Math.sin(rot);
-    const rigToWorld = (corpse.displayDiameter * 0.5) / rig.size;
+    const rigToWorld = (displayDiameter * 0.5) / rig.size;
     return {
         x: corpse.x + (p.x * cos - p.z * sin) * rigToWorld,
         y: corpse.y + (p.x * sin + p.z * cos) * rigToWorld,

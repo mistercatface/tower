@@ -1,5 +1,7 @@
 import { CAMERA_HEIGHT } from "../3D/math/CombatProjection.js";
 import { createKinematicsBundle } from "./createKinematicsBundle.js";
+import { drawRagdollCorpseToCanvas } from "./KinematicsDraw.js";
+import { getRagdollRig } from "./Ragdoll/RagdollPhysics.js";
 
 /** World radius → kinematics pixel size (tuned to match cw803 proportions). */
 export function kinematicsPixelSizeForRadius(radius) {
@@ -52,17 +54,31 @@ export function clearActorKinematics(actor, radius = actor.radius) {
     getKinematicsRenderer(radius).bundle.clearActorState(actor.id);
 }
 
-export function buildCorpseKinematicsViewContext(x, y, camera, radius) {
+/** Camera for kinematics tilt — same rules as updateCombat / body render. */
+export function resolveKinematicsCamera(actor, state) {
+    if (actor && typeof actor.getKinematicsCamera === "function") {
+        return actor.getKinematicsCamera(state);
+    }
+    const player = state?.player;
+    return player ? { x: player.x, y: player.y } : { x: actor?.x ?? 0, y: actor?.y ?? 0 };
+}
+
+/** @deprecated Use resolveKinematicsCamera */
+export function resolveCorpseKinematicsCamera(corpse, state) {
+    return resolveKinematicsCamera(corpse.actor, state);
+}
+
+export function buildKinematicsViewContextAt(x, y, camera, radius, bodyRotation = 0, animCycle = 0) {
     return getKinematicsRenderer(radius).bundle.buildKinematicsViewContext(x, y, camera);
 }
 
-/** Same camera rules as live actors (player/leader/viewport center). */
-export function resolveCorpseKinematicsCamera(corpse, state) {
-    if (typeof corpse.actor?.getKinematicsCamera === "function") {
-        return corpse.actor.getKinematicsCamera(state);
-    }
-    const player = state?.player;
-    return player ? { x: player.x, y: player.y } : { x: corpse.x, y: corpse.y };
+/** @deprecated Use buildKinematicsViewContextAt */
+export function buildCorpseKinematicsViewContext(x, y, camera, radius) {
+    return buildKinematicsViewContextAt(x, y, camera, radius);
+}
+
+export function getCorpseKinematics(corpse) {
+    return getKinematicsRenderer(corpse.radius);
 }
 
 export function captureActorRigForRagdoll(actor, camera, radius = actor.radius) {
@@ -98,6 +114,49 @@ export function renderActorKinematicsBody(ctx, actor, camera, radius = actor.rad
 
     ctx.save();
     ctx.translate(actor.x, actor.y);
+    ctx.drawImage(sprite, -drawW / 2, -drawH / 2 - vShift, drawW, drawH);
+    ctx.restore();
+}
+
+/** Uncached corpse draw — same projection path as buildLiveScene, no sprite cache. */
+export function renderCorpseKinematicsBody(ctx, corpse, state) {
+    const kinematics = getCorpseKinematics(corpse);
+    const { bundle, displayDiameter } = kinematics;
+    const { config, rig } = bundle;
+    const { renderRotation, rotation } = corpse.deathPose;
+    const camera = resolveKinematicsCamera(corpse.actor, state);
+    const rigData = getRagdollRig(corpse.ragdoll);
+    const { scene, viewContext } = bundle.buildProjectedSceneAt(
+        corpse.x,
+        corpse.y,
+        camera,
+        rigData,
+        renderRotation,
+        rotation,
+        0,
+    );
+    const facing = { renderRotation, gunCanvasAim: () => renderRotation };
+    const sprite = drawRagdollCorpseToCanvas(
+        bundle.sharedCanvas,
+        bundle.sharedCtx,
+        scene,
+        corpse.actor,
+        viewContext,
+        facing,
+        config,
+        rig,
+        bundle.sceneRenderer,
+        corpse.ragdoll,
+    );
+
+    const drawRatio = sprite.drawRatio ?? 1;
+    const drawW = displayDiameter * drawRatio;
+    const drawH = drawW * (sprite.height / sprite.width);
+    const vShift = (sprite.verticalShift ?? 0) * (drawW / sprite.width);
+
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, corpse.opacity);
+    ctx.translate(corpse.x, corpse.y);
     ctx.drawImage(sprite, -drawW / 2, -drawH / 2 - vShift, drawW, drawH);
     ctx.restore();
 }

@@ -1,11 +1,9 @@
 import { Entity } from "./Entity.js";
-import { applyRagdollImpulse, getRagdollRig, updateRagdoll } from "../Render/Kinematics/Ragdoll/RagdollPhysics.js";
+import { applyRagdollImpulse, updateRagdoll } from "../Render/Kinematics/Ragdoll/RagdollPhysics.js";
 import { checkRagdollHit, ragdollPartToWorld } from "../Render/Kinematics/Ragdoll/RagdollHitTest.js";
-import { projectRig } from "../Render/Kinematics/KinematicsProjector.js";
-import { drawRagdollCorpseToCanvas } from "../Render/Kinematics/KinematicsDraw.js";
 import { seedRagdollBloodOnDeath, updateBloodEffects, addRagdollBleedEmitter } from "../Render/Kinematics/Ragdoll/RagdollBlood.js";
 import { createObstacleWallChecker, createRagdollState, resolveDeathImpact } from "../Render/Kinematics/Ragdoll/ragdollFromActor.js";
-import { captureActorRigForRagdoll, buildCorpseKinematicsViewContext, resolveCorpseKinematicsCamera } from "../Render/Kinematics/PlayerKinematicsRenderer.js";
+import { captureActorRigForRagdoll, getCorpseKinematics, renderCorpseKinematicsBody } from "../Render/Kinematics/PlayerKinematicsRenderer.js";
 import { CombatParticles } from "../Render/CombatParticles.js";
 
 const CORPSE_MAX_MS = 12000;
@@ -20,14 +18,15 @@ export class RagdollCorpse extends Entity {
             const hit = checkRagdollHit(corpse, projectile.x, projectile.y, projectile.radius);
             if (!hit) continue;
 
+            const { rig, config } = getCorpseKinematics(corpse).bundle;
             const forceScale = Math.max(8, (projectile.speed ?? 100) * 0.035);
             const fx = Math.cos(projectile.angle) * forceScale;
             const fy = -forceScale * 0.25;
             const fz = Math.sin(projectile.angle) * forceScale;
 
-            applyRagdollImpulse(corpse.ragdoll, fx, fy, fz, hit.part, corpse.snapshot.rig, corpse.ragdoll.rotation, corpse.snapshot.config, 22, hit.offsetT ?? 0.5);
+            applyRagdollImpulse(corpse.ragdoll, fx, fy, fz, hit.part, rig, corpse.ragdoll.rotation, config, 22, hit.offsetT ?? 0.5);
 
-            addRagdollBleedEmitter(corpse.ragdoll, hit.part, corpse.snapshot.rig, 0.8);
+            addRagdollBleedEmitter(corpse.ragdoll, hit.part, rig, 0.8);
 
             const { x: bx, y: by } = ragdollPartToWorld(corpse, hit.part);
             CombatParticles.spawnBlood(state, bx, by, { impactAngle: projectile.angle, count: 4, sizePx: 2 });
@@ -60,25 +59,27 @@ export class RagdollCorpse extends Entity {
         if (!state) return null;
         if (!state.ragdollCorpses) state.ragdollCorpses = [];
 
-        const snapshot = captureActorRigForRagdoll(actor, camera);
+        const capture = captureActorRigForRagdoll(actor, camera);
+        const { config, rig } = capture.kinematics.bundle;
         const impact = resolveDeathImpact(actor, event);
-        const ragdoll = createRagdollState(snapshot.rigData, snapshot.rotation, impact, snapshot.config, snapshot.rig);
+        const ragdoll = createRagdollState(capture.rigData, capture.rotation, impact, config, rig);
 
-        seedRagdollBloodOnDeath(ragdoll, impact.hitBone, snapshot.rig);
+        seedRagdollBloodOnDeath(ragdoll, impact.hitBone, rig);
 
-        const corpse = new RagdollCorpse(actor, snapshot, ragdoll);
+        const corpse = new RagdollCorpse(actor, {
+            rotation: capture.rotation,
+            renderRotation: capture.renderRotation,
+        }, ragdoll);
         state.ragdollCorpses.push(corpse);
         return corpse;
     }
 
-    constructor(actor, snapshot, ragdoll) {
-        super(actor.x, actor.y, snapshot.rotation, false);
+    constructor(actor, deathPose, ragdoll) {
+        super(actor.x, actor.y, deathPose.rotation, false);
         this.actor = actor;
         this.radius = actor.radius;
         this.ragdoll = ragdoll;
-        this.snapshot = snapshot;
-        this.bundle = snapshot.kinematics.bundle;
-        this.displayDiameter = snapshot.kinematics.displayDiameter;
+        this.deathPose = deathPose;
         this.ageMs = 0;
         this.opacity = 1;
         this.isDead = false;
@@ -91,7 +92,7 @@ export class RagdollCorpse extends Entity {
             return;
         }
 
-        const { rig, config } = this.snapshot;
+        const { rig } = getCorpseKinematics(this).bundle;
         const dtSec = dt / 1000;
         updateRagdoll(this.ragdoll, dtSec, this.x, this.y, this.ragdoll.rotation, wallChecker, player?.x ?? this.x, player?.y ?? this.y, rig);
         updateBloodEffects(this.ragdoll, dtSec, rig);
@@ -114,25 +115,6 @@ export class RagdollCorpse extends Entity {
 
     render(ctx, _renderer, state) {
         if (this.opacity <= 0) return;
-
-        const { config, rig, renderRotation } = this.snapshot;
-        const camera = resolveCorpseKinematicsCamera(this, state);
-        const viewContext = buildCorpseKinematicsViewContext(this.x, this.y, camera, this.radius);
-        const rigData = getRagdollRig(this.ragdoll);
-        const scene = projectRig(rigData, renderRotation, viewContext, config, rig);
-        const facing = { renderRotation, gunCanvasAim: () => renderRotation };
-
-        const sprite = drawRagdollCorpseToCanvas(this.bundle.sharedCanvas, this.bundle.sharedCtx, scene, this.actor, viewContext, facing, config, rig, this.bundle.sceneRenderer, this.ragdoll);
-
-        const drawRatio = sprite.drawRatio ?? 1;
-        const drawW = this.displayDiameter * drawRatio;
-        const drawH = drawW * (sprite.height / sprite.width);
-        const vShift = (sprite.verticalShift ?? 0) * (drawW / sprite.width);
-
-        ctx.save();
-        ctx.globalAlpha = Math.max(0, this.opacity);
-        ctx.translate(this.x, this.y);
-        ctx.drawImage(sprite, -drawW / 2, -drawH / 2 - vShift, drawW, drawH);
-        ctx.restore();
+        renderCorpseKinematicsBody(ctx, this, state);
     }
 }
