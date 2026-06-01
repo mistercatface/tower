@@ -6,7 +6,12 @@
  * - PlayerKinematicsRenderer: player-facing facade
  */
 export { getCharacterForActor, generateCharacter, clearCharacterAppearanceCache } from "./CharacterAppearance.js";
-export { computeFinalRenderRotation, resolveCombatFacing } from "./KinematicsFacing.js";
+export {
+    computeFinalRenderRotation,
+    getPrimaryCombatTurret,
+    resolveCombatFacing,
+    resolveSpriteBodyRotation,
+} from "./KinematicsFacing.js";
 export { createKinematicsBundle } from "./createKinematicsBundle.js";
 export {
     resolveWeaponDrawSlots,

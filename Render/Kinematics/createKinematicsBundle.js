@@ -6,7 +6,7 @@ import { calculateCharacterRig } from "./KinematicsRigCalculator.js";
 import { projectRig } from "./KinematicsProjector.js";
 import { drawCharacterToCanvas } from "./KinematicsDraw.js";
 import { blend, ease } from "./KinematicsMath.js";
-import { resolveCombatFacing } from "./KinematicsFacing.js";
+import { resolveCombatFacing, resolveSpriteBodyRotation } from "./KinematicsFacing.js";
 import { normalizeWeaponLoadout } from "../../Combat/equipmentLoadout.js";
 import { resolveWeaponStaticPoseName } from "./KinematicsWeaponVisuals.js";
 
@@ -174,16 +174,17 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
 
     function buildSprite(actor, camera) {
         const state = getOrCreateState(actor);
-        const rotation = actor.angle ?? 0;
+        const spriteBodyRotation = resolveSpriteBodyRotation(actor);
         const naturalCycle = state.animCycle % (Math.PI * 2);
         const { rawTiltFactor, viewContext } = buildViewContext(actor, camera);
 
         const weaponKey = getWeaponLoadoutKey(actor);
         const aimKey = getQuantizedAimKey(actor, spriteCache.rotationSteps);
+        const q = spriteCache.getQuantizedValues(spriteBodyRotation, naturalCycle, rawTiltFactor);
         const cacheKey = spriteCache.getKey(
             actor.id,
             state.pose,
-            rotation,
+            q.rotation,
             naturalCycle,
             state.crouchFactor,
             rawTiltFactor,
@@ -193,8 +194,6 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
 
         const cached = spriteCache.get(cacheKey);
         if (cached) return cached;
-
-        const q = spriteCache.getQuantizedValues(rotation, naturalCycle, rawTiltFactor);
         const minYFactor = 0.1;
         viewContext.yFactor = minYFactor + (0.8 - minYFactor) * q.tilt;
         viewContext.shiftX = 0;
