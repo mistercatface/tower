@@ -317,7 +317,7 @@ export const playerBaseStats = {
     fireIntervalMultiplier: 1.0,
     reloadSpeedMultiplier: 1.0,
     speed: 50,
-    startingAbilities: ["Reposition", "Shoot"],
+    startingAbilities: ["Reposition"],
 };
 
 export const gridSettings = { cellSize: 16, width: 2400, height: 2400, minCellsPerChunk: 8, maxCellsPerChunk: 64 };

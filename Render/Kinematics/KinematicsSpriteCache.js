@@ -41,9 +41,7 @@ export function createKinematicsSpriteCache() {
                 const oldestKey = this.cache.keys().next().value;
                 this.cache.delete(oldestKey);
             }
-            const c = document.createElement("canvas");
-            c.width = sourceCanvas.width;
-            c.height = sourceCanvas.height;
+            const c = new OffscreenCanvas(sourceCanvas.width, sourceCanvas.height);
             c.drawRatio = sourceCanvas.drawRatio;
             c.verticalShift = sourceCanvas.verticalShift;
             const ctx = c.getContext("2d");

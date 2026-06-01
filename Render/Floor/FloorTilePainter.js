@@ -91,9 +91,7 @@ function paintCell(ctx, localX, localY, cellSize, hash, blocked, worldX, worldY,
 
 export function bakeFloorCellCanvas(worldX, worldY, obstacleGrid, seed) {
     const cellSize = obstacleGrid.cellSize;
-    const canvas = document.createElement("canvas");
-    canvas.width = cellSize;
-    canvas.height = cellSize;
+    const canvas = new OffscreenCanvas(cellSize, cellSize);
     const ctx = canvas.getContext("2d");
     ctx.imageSmoothingEnabled = false;
     const hash = hashTileSeed(seed, worldX, worldY);
@@ -104,9 +102,7 @@ export function bakeFloorCellCanvas(worldX, worldY, obstacleGrid, seed) {
 /** Wall face tile — story row mixed into hash so vertical bands stay stable while moving. */
 export function bakeWallCellCanvas(worldX, worldY, storyRow, obstacleGrid, seed) {
     const cellSize = obstacleGrid.cellSize;
-    const canvas = document.createElement("canvas");
-    canvas.width = cellSize;
-    canvas.height = cellSize;
+    const canvas = new OffscreenCanvas(cellSize, cellSize);
     const ctx = canvas.getContext("2d");
     ctx.imageSmoothingEnabled = false;
     const hash = hashTileSeed(seed ^ Math.imul(storyRow, 2246822519), worldX, worldY);
@@ -127,9 +123,7 @@ export function bakeFloorChunkCanvas({
 }) {
     const cellSize = obstacleGrid.cellSize;
     const chunkSizePx = cellSize * cellsPerChunk;
-    const canvas = document.createElement("canvas");
-    canvas.width = chunkSizePx;
-    canvas.height = chunkSizePx;
+    const canvas = new OffscreenCanvas(chunkSizePx, chunkSizePx);
     const ctx = canvas.getContext("2d");
     ctx.imageSmoothingEnabled = false;
 

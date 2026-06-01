@@ -12,7 +12,7 @@ import { resolveWeaponStaticPoseName } from "./KinematicsWeaponVisuals.js";
 import { resolveMuzzleFromRig } from "./KinematicsMuzzle.js";
 import { applyRigDeltas } from "./KinematicsBones.js";
 
-const sharedCanvas = document.createElement("canvas");
+const sharedCanvas = new OffscreenCanvas(300, 150);
 const sharedCtx = sharedCanvas.getContext("2d", { alpha: true });
 
 function createEntityAnimState(poses) {
