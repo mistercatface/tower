@@ -68,9 +68,10 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
     const spriteCache = createKinematicsSpriteCache();
     const entityStates = new Map();
 
+    const perspectiveWarpMultiplier = 0.6; // Tune this to scale down perspective warp/lean at screen edges
     const perspectiveHeight = config.SIZE * config.PERSPECTIVE_HEIGHT;
     const actorWorldHeight = (displayDiameter ?? (config.SIZE * 0.94)) * config.PERSPECTIVE_HEIGHT;
-    const globalRatio = perspectiveHeight / Math.max(1.0, cameraHeight - actorWorldHeight);
+    const globalRatio = (perspectiveHeight / Math.max(1.0, cameraHeight - actorWorldHeight)) * perspectiveWarpMultiplier;
 
     function getOrCreateState(actor) {
         if (!entityStates.has(actor.id)) {
@@ -163,7 +164,7 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
     function buildQuantizedViewContext(x, y, camera, bodyRotation, animCycle) {
         const { rawTiltFactor, dx, dy } = buildViewContextAt(x, y, camera);
         const q = spriteCache.getQuantizedValues(bodyRotation, animCycle, rawTiltFactor, dx, dy);
-        const yFactor = config.PERSPECTIVE_MIN_Y + (config.PERSPECTIVE_MAX_Y - config.PERSPECTIVE_MIN_Y) * q.tilt;
+        const yFactor = 0;
         return { yFactor, shiftX: q.dx * globalRatio, shiftY: q.dy * globalRatio, ratio: globalRatio };
     }
 
