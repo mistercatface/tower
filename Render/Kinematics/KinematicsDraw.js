@@ -1,5 +1,5 @@
 import { getCharacterForActor } from "./CharacterAppearance.js";
-import { getHandProjected, resolveWeaponDrawSlots } from "./KinematicsWeaponVisuals.js";
+import { resolveWeaponDrawSlots, resolveProjectedHandsForSlot } from "./KinematicsWeaponVisuals.js";
 import { drawHeadNeckAndHair } from "./KinematicsHead.js";
 import { queueRagdollBloodDraw } from "./Ragdoll/RagdollBlood.js";
 import { drawRagdollGoreStumps } from "./Ragdoll/RagdollDrawBody.js";
@@ -84,29 +84,19 @@ export function drawStandardCharacter(rigLocal, actor, sceneRenderer, config, ri
     });
 }
 
-function drawHeldWeapons(scene, actor, sceneRenderer, config, facing) {
+function drawHeldWeapons(rigLocal, actor, sceneRenderer, config, facing) {
     const slots = resolveWeaponDrawSlots(actor);
     if (slots.length === 0) return;
 
+    const project = sceneRenderer.project;
     const turrets = actor.turrets ?? [];
-    const handScale = scene.rArm.p3.scale ?? 1;
+    const defaultHand = project(rigLocal.rArm.p3);
+    const handScale = defaultHand.scale ?? 1;
 
     for (const slot of slots) {
         const turret = turrets[slot.turretIndex];
         const aimAngle = facing.gunCanvasAim(turret?.angle ?? actor.angle ?? 0);
-        let hand;
-        if (slot.aimArms === "both") {
-            const right = scene.rArm.p3;
-            const left = scene.lArm.p3;
-            hand = {
-                x: (right.x + left.x) * 0.5,
-                y: (right.y + left.y) * 0.5,
-                scale: ((right.scale ?? 1) + (left.scale ?? 1)) * 0.5,
-                sortZ: Math.max(right.sortZ ?? 0, left.sortZ ?? 0),
-            };
-        } else {
-            hand = getHandProjected(scene, slot.drawHand);
-        }
+        const hand = resolveProjectedHandsForSlot(rigLocal, slot, project);
         const z = (hand.sortZ ?? 0) + 0.15;
 
         sceneRenderer.addCustom(z, (ctx) => {
@@ -119,7 +109,6 @@ export function drawKinematicsFrameToCanvas(
     sharedCanvas,
     sharedCtx,
     rigLocal,
-    scene,
     actor,
     viewContext,
     facing,
@@ -145,7 +134,7 @@ export function drawKinematicsFrameToCanvas(
     sceneRenderer.begin(sharedCtx, viewContext, facing.renderRotation, rig);
     drawStandardCharacter(rigLocal, actor, sceneRenderer, config, rig, { severed: ragdoll?.severed ?? severed });
     if (drawWeapons) {
-        drawHeldWeapons(scene, actor, sceneRenderer, config, facing);
+        drawHeldWeapons(rigLocal, actor, sceneRenderer, config, facing);
     }
     if (ragdoll) {
         drawRagdollGoreStumps(ragdoll, sceneRenderer, rig);

@@ -3,13 +3,13 @@ import { createKinematicsPoses } from "./KinematicsPoses.js";
 import { createSceneRenderer } from "./KinematicsSceneRenderer.js";
 import { createKinematicsSpriteCache } from "./KinematicsSpriteCache.js";
 import { calculateCharacterRig } from "./KinematicsRigCalculator.js";
-import { projectRig } from "./KinematicsProjector.js";
+import { createProjector } from "./KinematicsProjector.js";
 import { drawKinematicsFrameToCanvas } from "./KinematicsDraw.js";
 import { blend, ease } from "./KinematicsMath.js";
 import { resolveCombatFacing, resolveSpriteBodyRotation } from "./KinematicsFacing.js";
 import { normalizeWeaponLoadout } from "../../Combat/equipmentLoadout.js";
 import { resolveWeaponStaticPoseName } from "./KinematicsWeaponVisuals.js";
-import { resolveMuzzleFromScene } from "./KinematicsMuzzle.js";
+import { resolveMuzzleFromRig } from "./KinematicsMuzzle.js";
 import { getRagdollRenderRig } from "./Ragdoll/RagdollPhysics.js";
 
 const sharedCanvas = document.createElement("canvas");
@@ -171,10 +171,37 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
         return buildQuantizedViewContext(x, y, camera, 0, 0);
     }
 
-    function buildProjectedSceneAt(x, y, camera, rigData, renderRotation, bodyRotation = 0, animCycle = 0) {
-        const viewContext = buildQuantizedViewContext(x, y, camera, bodyRotation, animCycle);
-        const scene = projectRig(rigData, renderRotation, viewContext, config, rig);
-        return { scene, viewContext };
+    function buildFrameViewContext(x, y, camera, bodyRotation = 0, animCycle = 0) {
+        return buildQuantizedViewContext(x, y, camera, bodyRotation, animCycle);
+    }
+
+    function renderKinematicsFrame(frame) {
+        const {
+            x,
+            y,
+            camera,
+            rigData,
+            bodyRotation = 0,
+            animCycle = 0,
+            actor,
+            facing,
+            drawOptions = {},
+            padding = config.PADDING,
+        } = frame;
+        const viewContext = buildFrameViewContext(x, y, camera, bodyRotation, animCycle);
+        return drawKinematicsFrameToCanvas(
+            sharedCanvas,
+            sharedCtx,
+            rigData,
+            actor,
+            viewContext,
+            facing,
+            config,
+            rig,
+            sceneRenderer,
+            padding,
+            drawOptions,
+        );
     }
 
     function resolveLiveFrameSpec(actor, camera, options = {}) {
@@ -234,37 +261,6 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
         };
     }
 
-    function renderKinematicsFrame(frame) {
-        const {
-            x,
-            y,
-            camera,
-            rigData,
-            renderRotation,
-            bodyRotation = 0,
-            animCycle = 0,
-            actor,
-            facing,
-            drawOptions = {},
-            padding = config.PADDING,
-        } = frame;
-        const { scene, viewContext } = buildProjectedSceneAt(x, y, camera, rigData, renderRotation, bodyRotation, animCycle);
-        return drawKinematicsFrameToCanvas(
-            sharedCanvas,
-            sharedCtx,
-            rigData,
-            scene,
-            actor,
-            viewContext,
-            facing,
-            config,
-            rig,
-            sceneRenderer,
-            padding,
-            drawOptions,
-        );
-    }
-
     function buildSprite(actor, camera) {
         const frame = resolveLiveFrameSpec(actor, camera);
         const { state, q, rawTiltFactor, weaponKey, aimKey } = frame.cacheMeta;
@@ -295,23 +291,19 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
         };
     }
 
-    function buildLiveScene(actor, camera) {
-        const frame = resolveLiveFrameSpec(actor, camera);
-        const { scene, viewContext } = buildProjectedSceneAt(
-            frame.x,
-            frame.y,
-            frame.camera,
-            frame.rigData,
-            frame.renderRotation,
-            frame.bodyRotation,
-            frame.animCycle,
-        );
-        return { scene, viewContext, config, facing: frame.facing };
-    }
-
     function resolveMuzzleWorldPosition(actor, camera, turretIndex, displayDiameter) {
-        const { scene, config, facing } = buildLiveScene(actor, camera);
-        return resolveMuzzleFromScene(actor, scene, config, facing, turretIndex, displayDiameter);
+        const frame = resolveLiveFrameSpec(actor, camera);
+        const viewContext = buildFrameViewContext(frame.x, frame.y, frame.camera, frame.bodyRotation, frame.animCycle);
+        const project = createProjector(viewContext, frame.renderRotation, config, rig);
+        return resolveMuzzleFromRig(
+            actor,
+            frame.rigData,
+            project,
+            config,
+            frame.facing,
+            turretIndex,
+            displayDiameter,
+        );
     }
 
     return {
@@ -326,7 +318,7 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
         advanceAnimation,
         buildSprite,
         buildKinematicsViewContext,
-        buildProjectedSceneAt,
+        buildFrameViewContext,
         renderKinematicsFrame,
         resolveCorpseFrame,
         captureActorRigForRagdoll,

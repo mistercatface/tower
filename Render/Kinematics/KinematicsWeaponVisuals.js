@@ -135,8 +135,24 @@ export function resolveWeaponDrawSlots(actor) {
     });
 }
 
-export function getHandProjected(scene, handKey) {
-    return handKey === "right" ? scene.rArm.p3 : scene.lArm.p3;
+export function resolveProjectedHand(rigLocal, handKey, project) {
+    const local = handKey === "right" ? rigLocal.rArm.p3 : rigLocal.lArm.p3;
+    return project(local);
+}
+
+/** Projected hand position for weapon draw / muzzle (rig-local → canvas via shared projector). */
+export function resolveProjectedHandsForSlot(rigLocal, slot, project) {
+    if (slot.aimArms === "both") {
+        const right = project(rigLocal.rArm.p3);
+        const left = project(rigLocal.lArm.p3);
+        return {
+            x: (right.x + left.x) * 0.5,
+            y: (right.y + left.y) * 0.5,
+            scale: ((right.scale ?? 1) + (left.scale ?? 1)) * 0.5,
+            sortZ: Math.max(right.sortZ ?? 0, left.sortZ ?? 0),
+        };
+    }
+    return resolveProjectedHand(rigLocal, slot.drawHand, project);
 }
 
 /** Barrel length as a fraction of character display width (matches draw* gun meshes). */

@@ -48,26 +48,3 @@ export function createProjector(viewContext, rotation, config, rig) {
         return projectLocalPoint(p, bCos, bSin, viewContext, config);
     };
 }
-
-export function projectRig(rigData, rotation, viewContext, config, rig) {
-    const proj = createProjector(viewContext, rotation, config, rig);
-    const rArmP2 = proj(rigData.rArm.p2);
-    const rLegP2 = proj(rigData.rLeg.p2);
-    const lArmP2 = proj(rigData.lArm.p2);
-    const lLegP2 = proj(rigData.lLeg.p2);
-    const headP = proj(rigData.head);
-    return {
-        head: headP,
-        headY: headP.y,
-        headLocal: rigData.head,
-        spineTopLocal: rigData.spineTop,
-        spineTop: proj(rigData.spineTop),
-        spineBot: proj(rigData.spineBot),
-        rArm: { p1: proj(rigData.rArm.p1), p2: rArmP2, p3: proj(rigData.rArm.p3) },
-        lArm: { p1: proj(rigData.lArm.p1), p2: lArmP2, p3: proj(rigData.lArm.p3) },
-        rLeg: { p1: proj(rigData.rLeg.p1), p2: rLegP2, p3: proj(rigData.rLeg.p3) },
-        lLeg: { p1: proj(rigData.lLeg.p1), p2: lLegP2, p3: proj(rigData.lLeg.p3) },
-        zRight: (rArmP2.z + rLegP2.z) / 2,
-        zLeft: (lArmP2.z + lLegP2.z) / 2,
-    };
-}

@@ -1,6 +1,10 @@
 /** Muzzle position in world space — mirrors weapon draw + sprite placement. */
 
-import { getBarrelRatioForGunId, getHandProjected, resolveWeaponDrawSlots } from "./KinematicsWeaponVisuals.js";
+import {
+    getBarrelRatioForGunId,
+    resolveProjectedHandsForSlot,
+    resolveWeaponDrawSlots,
+} from "./KinematicsWeaponVisuals.js";
 
 /** Canvas-space offset from hand to barrel tip (matches drawPistol / drawLongGun transforms). */
 export function calculateMuzzleCanvasOffset(aimAngle, handScale, config, barrelRatio) {
@@ -45,25 +49,7 @@ export function kinematicsInnerPointToWorld(actor, innerX, innerY, metrics, disp
     };
 }
 
-export function resolveHandForWeaponSlot(scene, slot) {
-    if (slot.aimArms === "both") {
-        const right = scene.rArm.p3;
-        const left = scene.lArm.p3;
-        return {
-            x: (right.x + left.x) * 0.5,
-            y: (right.y + left.y) * 0.5,
-            scale: ((right.scale ?? 1) + (left.scale ?? 1)) * 0.5,
-        };
-    }
-    const hand = getHandProjected(scene, slot.drawHand);
-    return {
-        x: hand.x,
-        y: hand.y,
-        scale: hand.scale ?? 1,
-    };
-}
-
-export function resolveMuzzleFromScene(actor, scene, config, facing, turretIndex, displayDiameter) {
+export function resolveMuzzleFromRig(actor, rigData, project, config, facing, turretIndex, displayDiameter) {
     const slots = resolveWeaponDrawSlots(actor);
     const slot = slots.find((s) => s.turretIndex === turretIndex) ?? slots[0];
     if (!slot) return null;
@@ -72,10 +58,10 @@ export function resolveMuzzleFromScene(actor, scene, config, facing, turretIndex
     const turret = turrets[turretIndex] ?? turrets[0];
     if (!turret) return null;
 
-    const hand = resolveHandForWeaponSlot(scene, slot);
+    const hand = resolveProjectedHandsForSlot(rigData, slot, project);
     const aimAngle = facing.gunCanvasAim(turret.angle);
     const barrelRatio = getBarrelRatioForGunId(slot.gunId);
-    const offset = calculateMuzzleCanvasOffset(aimAngle, hand.scale, config, barrelRatio);
+    const offset = calculateMuzzleCanvasOffset(aimAngle, hand.scale ?? 1, config, barrelRatio);
     const metrics = spriteMetricsFromConfig(config);
 
     return kinematicsInnerPointToWorld(
