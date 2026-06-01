@@ -213,6 +213,7 @@ export const createUpgrades = () => [
         showInHud: true,
         hasToggle: true,
     }),
+    /*
     new Upgrade({
         id: "Shoot",
         category: "abilities",
@@ -223,5 +224,6 @@ export const createUpgrades = () => [
         showInHud: true,
         hasToggle: true,
     }),
+    */
     ...metaUpgradeDefinitions.map((def) => upgradeFromDefinition(def, Upgrade)),
 ];
