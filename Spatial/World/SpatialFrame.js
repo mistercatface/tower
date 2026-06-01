@@ -48,13 +48,35 @@ export class SpatialFrame {
         return this;
     }
 
-    forEachNeighbor(entity, fn) {
-        this.entityQuery.forEachInHash(
+    getNeighbors(entity) {
+        let minX, minY, maxX, maxY;
+        if (entity.getBounds) {
+            const b = entity.getBounds();
+            minX = b.minX; minY = b.minY; maxX = b.maxX; maxY = b.maxY;
+        } else {
+            const r = entity.radius || 0;
+            minX = entity.x - r;
+            minY = entity.y - r;
+            maxX = entity.x + r;
+            maxY = entity.y + r;
+        }
+
+        const padding = this.entityHash.cellSize;
+        return this.entityQuery.collectInHashCoords(
             this.entityHash,
-            this.entityHash.getNeighborQueryBounds(entity),
-            fn,
-            entity,
+            minX - padding,
+            minY - padding,
+            maxX + padding,
+            maxY + padding,
+            entity
         );
+    }
+
+    forEachNeighbor(entity, fn) {
+        const neighbors = this.getNeighbors(entity);
+        for (let i = 0; i < neighbors.length; i++) {
+            fn(neighbors[i]);
+        }
     }
 
     getWallCandidates(entity, state) {
@@ -68,14 +90,27 @@ export class SpatialFrame {
         if (!wallCtx) {
             segments = [];
         } else if (wallCtx.spatialHash) {
-            segments = [];
-            this.wallQuery.forEachInHash(
+            let minX, minY, maxX, maxY;
+            if (entity.getBounds) {
+                const b = entity.getBounds();
+                minX = b.minX; minY = b.minY; maxX = b.maxX; maxY = b.maxY;
+            } else {
+                const r = entity.radius || 0;
+                minX = entity.x - r;
+                minY = entity.y - r;
+                maxX = entity.x + r;
+                maxY = entity.y + r;
+            }
+            const padding = wallCtx.spatialHash.cellSize;
+            const collected = this.wallQuery.collectInHashCoords(
                 wallCtx.spatialHash,
-                wallCtx.spatialHash.getNeighborQueryBounds(entity),
-                (segment) => {
-                    segments.push(segment);
-                },
+                minX - padding,
+                minY - padding,
+                maxX + padding,
+                maxY + padding,
+                entity
             );
+            segments = [...collected];
         } else if (wallCtx.obstacleGrid) {
             segments = wallCtx.obstacleGrid.getNearbySegments(entity);
         } else {
@@ -90,10 +125,12 @@ export class SpatialFrame {
         for (let i = 0; i < this._combatants.length; i++) {
             const a = this._combatants[i];
             if (a.isDead) continue;
-            this.forEachNeighbor(a, (b) => {
-                if (!(b instanceof Actor) || b.isDead || a.id >= b.id) return;
+            const neighbors = this.getNeighbors(a);
+            for (let j = 0; j < neighbors.length; j++) {
+                const b = neighbors[j];
+                if (!(b instanceof Actor) || b.isDead || a.id >= b.id) continue;
                 fn(a, b);
-            });
+            }
         }
     }
 
@@ -101,11 +138,13 @@ export class SpatialFrame {
         for (let i = 0; i < this._combatants.length; i++) {
             const actor = this._combatants[i];
             if (actor.isDead) continue;
-            this.forEachNeighbor(actor, (pickup) => {
-                if (pickup.isDead || !pickup.strategy?.isPushable) return;
-                if (!shouldResolveActorPushable(actor, pickup)) return;
+            const neighbors = this.getNeighbors(actor);
+            for (let j = 0; j < neighbors.length; j++) {
+                const pickup = neighbors[j];
+                if (pickup.isDead || !pickup.strategy?.isPushable) continue;
+                if (!shouldResolveActorPushable(actor, pickup)) continue;
                 fn(actor, pickup);
-            });
+            }
         }
     }
 
@@ -113,12 +152,14 @@ export class SpatialFrame {
         for (let i = 0; i < this._pushables.length; i++) {
             const p1 = this._pushables[i];
             if (p1.isDead) continue;
-            this.forEachNeighbor(p1, (p2) => {
-                if (p2 === p1 || p2.isDead || !p2.strategy?.isPushable || p1.id >= p2.id) return;
+            const neighbors = this.getNeighbors(p1);
+            for (let j = 0; j < neighbors.length; j++) {
+                const p2 = neighbors[j];
+                if (p2 === p1 || p2.isDead || !p2.strategy?.isPushable || p1.id >= p2.id) continue;
                 if (isMovingEntity(p1) || isMovingEntity(p2)) {
                     fn(p1, p2);
                 }
-            });
+            }
         }
     }
 }

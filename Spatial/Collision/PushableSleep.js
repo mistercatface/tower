@@ -29,18 +29,19 @@ export function wakeAllPushables(state) {
 }
 
 export function hasBlockingOverlap(pickup, spatialFrame) {
-    let blocked = false;
-    spatialFrame.forEachNeighbor(pickup, (other) => {
-        if (blocked || other === pickup || other.isDead) return;
+    const neighbors = spatialFrame.getNeighbors(pickup);
+    for (let i = 0; i < neighbors.length; i++) {
+        const other = neighbors[i];
+        if (other === pickup || other.isDead) continue;
         if (other.strategy?.isPushable) {
-            if (pairBroadphaseOverlap(pickup, other)) blocked = true;
-            return;
+            if (pairBroadphaseOverlap(pickup, other)) return true;
+            continue;
         }
         if (other instanceof Actor && pairBroadphaseOverlap(pickup, other)) {
-            blocked = true;
+            return true;
         }
-    });
-    return blocked;
+    }
+    return false;
 }
 
 /** Call once per frame after pickup physics and collision (same spatialFrame). */
@@ -48,7 +49,7 @@ export function tickAllPushableSleep(state, spatialFrame) {
     if (!state?.pickups) return;
     for (let i = 0; i < state.pickups.length; i++) {
         const pickup = state.pickups[i];
-        if (!pickup.strategy?.isPushable || pickup.isDead) continue;
+        if (!pickup.strategy?.isPushable || pickup.isDead || pickup.isSleeping) continue;
         const eligible = canSleepPushable(pickup) && !hasBlockingOverlap(pickup, spatialFrame);
         pickup.tickSleep(eligible);
     }

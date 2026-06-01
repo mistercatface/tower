@@ -23,17 +23,13 @@ export class SpatialHash {
         return { minX: entity.x - r, minY: entity.y - r, maxX: entity.x + r, maxY: entity.y + r };
     }
 
-    _cellRangeForBounds(bounds) {
-        return {
-            minCol: Math.floor(bounds.minX / this.cellSize),
-            maxCol: Math.floor(bounds.maxX / this.cellSize),
-            minRow: Math.floor(bounds.minY / this.cellSize),
-            maxRow: Math.floor(bounds.maxY / this.cellSize),
-        };
-    }
+    forEachInBoundsCoords(minX, minY, maxX, maxY, exclude, queryGen, fn) {
+        const cellSize = this.cellSize;
+        const minCol = Math.floor(minX / cellSize);
+        const maxCol = Math.floor(maxX / cellSize);
+        const minRow = Math.floor(minY / cellSize);
+        const maxRow = Math.floor(maxY / cellSize);
 
-    forEachInBounds(bounds, exclude, queryGen, fn) {
-        const { minCol, maxCol, minRow, maxRow } = this._cellRangeForBounds(bounds);
         for (let r = minRow; r <= maxRow; r++) {
             const rowKey = r * KEY_STRIDE;
             for (let c = minCol; c <= maxCol; c++) {
@@ -50,24 +46,76 @@ export class SpatialHash {
     }
 
     getNeighborQueryBounds(entity) {
-        const bounds = this.getBounds(entity);
-        return { minX: bounds.minX - this.cellSize, minY: bounds.minY - this.cellSize, maxX: bounds.maxX + this.cellSize, maxY: bounds.maxY + this.cellSize };
+        if (entity.getBounds) {
+            const b = entity.getBounds();
+            return {
+                minX: b.minX - this.cellSize,
+                minY: b.minY - this.cellSize,
+                maxX: b.maxX + this.cellSize,
+                maxY: b.maxY + this.cellSize
+            };
+        }
+        const r = entity.radius || 0;
+        return {
+            minX: entity.x - r - this.cellSize,
+            minY: entity.y - r - this.cellSize,
+            maxX: entity.x + r + this.cellSize,
+            maxY: entity.y + r + this.cellSize
+        };
     }
 
     insert(entity) {
-        const { minCol, maxCol, minRow, maxRow } = this._cellRangeForBounds(this.getBounds(entity));
+        let minX, minY, maxX, maxY;
+        if (entity.getBounds) {
+            const b = entity.getBounds();
+            minX = b.minX; minY = b.minY; maxX = b.maxX; maxY = b.maxY;
+        } else {
+            const r = entity.radius || 0;
+            minX = entity.x - r;
+            minY = entity.y - r;
+            maxX = entity.x + r;
+            maxY = entity.y + r;
+        }
+
+        const cellSize = this.cellSize;
+        const minCol = Math.floor(minX / cellSize);
+        const maxCol = Math.floor(maxX / cellSize);
+        const minRow = Math.floor(minY / cellSize);
+        const maxRow = Math.floor(maxY / cellSize);
+
         for (let r = minRow; r <= maxRow; r++) {
             const rowKey = r * KEY_STRIDE;
             for (let c = minCol; c <= maxCol; c++) {
                 const key = c + rowKey;
-                if (!this.cells.has(key)) this.cells.set(key, []);
-                this.cells.get(key).push(entity);
+                let list = this.cells.get(key);
+                if (!list) {
+                    list = [];
+                    this.cells.set(key, list);
+                }
+                list.push(entity);
             }
         }
     }
 
     remove(entity) {
-        const { minCol, maxCol, minRow, maxRow } = this._cellRangeForBounds(this.getBounds(entity));
+        let minX, minY, maxX, maxY;
+        if (entity.getBounds) {
+            const b = entity.getBounds();
+            minX = b.minX; minY = b.minY; maxX = b.maxX; maxY = b.maxY;
+        } else {
+            const r = entity.radius || 0;
+            minX = entity.x - r;
+            minY = entity.y - r;
+            maxX = entity.x + r;
+            maxY = entity.y + r;
+        }
+
+        const cellSize = this.cellSize;
+        const minCol = Math.floor(minX / cellSize);
+        const maxCol = Math.floor(maxX / cellSize);
+        const minRow = Math.floor(minY / cellSize);
+        const maxRow = Math.floor(maxY / cellSize);
+
         for (let r = minRow; r <= maxRow; r++) {
             const rowKey = r * KEY_STRIDE;
             for (let c = minCol; c <= maxCol; c++) {
@@ -80,10 +128,22 @@ export class SpatialHash {
     }
 
     collectNearby(entity, query = fallbackQuery) {
-        return query.collectInHash(this, this.getNeighborQueryBounds(entity));
+        let minX, minY, maxX, maxY;
+        if (entity.getBounds) {
+            const b = entity.getBounds();
+            minX = b.minX; minY = b.minY; maxX = b.maxX; maxY = b.maxY;
+        } else {
+            const r = entity.radius || 0;
+            minX = entity.x - r;
+            minY = entity.y - r;
+            maxX = entity.x + r;
+            maxY = entity.y + r;
+        }
+        const padding = this.cellSize;
+        return query.collectInHashCoords(this, minX - padding, minY - padding, maxX + padding, maxY + padding, entity);
     }
 
     collectInBounds(minX, minY, maxX, maxY, query = fallbackQuery) {
-        return query.collectInHash(this, { minX, minY, maxX, maxY });
+        return query.collectInHashCoords(this, minX, minY, maxX, maxY);
     }
 }

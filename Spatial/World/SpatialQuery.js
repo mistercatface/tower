@@ -2,6 +2,9 @@ export class SpatialQuery {
     constructor() {
         this.generation = 0;
         this._scratch = [];
+        this._collectFn = (entity) => {
+            this._scratch.push(entity);
+        };
     }
 
     nextQuery() {
@@ -11,16 +14,22 @@ export class SpatialQuery {
         }
     }
 
-    forEachInHash(hash, bounds, fn, exclude = null) {
+    forEachInHashCoords(hash, minX, minY, maxX, maxY, fn, exclude = null) {
         this.nextQuery();
-        hash.forEachInBounds(bounds, exclude, this.generation, fn);
+        hash.forEachInBoundsCoords(minX, minY, maxX, maxY, exclude, this.generation, fn);
+    }
+
+    collectInHashCoords(hash, minX, minY, maxX, maxY, exclude = null) {
+        this._scratch.length = 0;
+        this.forEachInHashCoords(hash, minX, minY, maxX, maxY, this._collectFn, exclude);
+        return this._scratch;
+    }
+
+    forEachInHash(hash, bounds, fn, exclude = null) {
+        this.forEachInHashCoords(hash, bounds.minX, bounds.minY, bounds.maxX, bounds.maxY, fn, exclude);
     }
 
     collectInHash(hash, bounds, exclude = null) {
-        this._scratch.length = 0;
-        this.forEachInHash(hash, bounds, (entity) => {
-            this._scratch.push(entity);
-        }, exclude);
-        return this._scratch;
+        return this.collectInHashCoords(hash, bounds.minX, bounds.minY, bounds.maxX, bounds.maxY, exclude);
     }
 }
