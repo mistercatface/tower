@@ -10,12 +10,13 @@ import { Turret } from "./Turret.js";
 import { Utilities } from "../Core/Utilities.js";
 import { spawnFloatingText } from "../Core/EventSystem.js";
 import { resolveWeaponModeForGun, WeaponSystem } from "../Combat/WeaponSystem.js";
-import { applyActorGunModifiers, getSlotFireIntervalMs } from "../Combat/gunCombat.js";
+import { applyActorGunModifiers, getSlotFireIntervalMs, getSlotReloadTimeMs } from "../Combat/gunCombat.js";
 import { getGunDefinition } from "../Config/gunDefinitions.js";
 import { explosionSettings } from "../Config/Config.js";
 import { resolveActorTurretLoadouts, applyGunTurretLoadouts, applyUpgradeTurretLoadouts } from "../Config/TurretLoadoutDefinitions.js";
 import { getTurretCountForLoadout, normalizeWeaponLoadout } from "../Combat/equipmentLoadout.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
+import { ProgressBar } from "../Render/ProgressBar.js";
 import { areHostile, getNearestHostile, getPlayerActors, isValidTurretTarget } from "../Combat/Targeting.js";
 import { getActorProfileForActor, getActorProfileForType } from "../Config/actorProfiles.js";
 import { advanceActorKinematics, clearActorKinematics } from "../Render/Kinematics/PlayerKinematicsRenderer.js";
@@ -670,19 +671,51 @@ export class Actor extends DestructibleEntity {
         return null;
     }
 
+    get reloadBar() {
+        if (!this._reloadBar && this.healthBar) {
+            this._reloadBar = new ProgressBar({
+                width: this.healthBar.width,
+                height: 2,
+                borderRadius: 1,
+                quantizationSteps: 30,
+                colorFn: () => "#FF9800",
+            });
+        }
+        return this._reloadBar;
+    }
+
+    getReloadBarProgress() {
+        for (const turret of this.turrets) {
+            if (turret.reloading) {
+                const gun = getGunDefinition(turret.gunId);
+                const reloadTimeMs = getSlotReloadTimeMs(gun, this);
+                if (reloadTimeMs > 0) {
+                    return Math.min(1, turret.reloadTimer / reloadTimeMs);
+                }
+            }
+        }
+        return null;
+    }
+
     renderBars(ctx, cache, yOffset) {
         if (this.health < this.maxHealth && this.healthBar) {
             const currentHealth = Math.max(0, this.health);
             this.healthBar.render(ctx, this.x, this.y - yOffset, currentHealth / this.maxHealth, cache);
         }
 
+        let secondaryOffset = yOffset;
+        if (this.health < this.maxHealth && this.healthBar) {
+            secondaryOffset += this.healthBar.height + 4;
+        }
+
         const stunRatio = this.getStunBarProgress();
         if (stunRatio != null && this.stunBar) {
-            let stunOffset = yOffset;
-            if (this.health < this.maxHealth && this.healthBar) {
-                stunOffset += this.healthBar.height + 4;
+            this.stunBar.render(ctx, this.x, this.y - secondaryOffset, stunRatio, cache);
+        } else {
+            const reloadRatio = this.getReloadBarProgress();
+            if (reloadRatio != null && this.reloadBar) {
+                this.reloadBar.render(ctx, this.x, this.y - secondaryOffset, reloadRatio, cache);
             }
-            this.stunBar.render(ctx, this.x, this.y - stunOffset, stunRatio, cache);
         }
     }
 }
