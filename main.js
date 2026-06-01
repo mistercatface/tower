@@ -1,6 +1,7 @@
 import { state } from "./GameState/GameState.js";
 import { createUpgrades, createBaseUpgrades } from "./Progression/Upgrades.js";
 import { initializeSaveSystem, loadProgress } from "./Progression/Storage.js";
+import { loadPersistentTriggers } from "./Core/PersistentTriggers.js";
 import { initUI, registerUiEventListeners } from "./UI/UI.js";
 import { registerRadioUiListeners } from "./UI/RadioDialogUI.js";
 import { events, requestUiUpdate, requestUiHudUpdate, showGameOver, hideGameOver, fireRadioTrigger } from "./Core/EventSystem.js";
@@ -109,6 +110,7 @@ window.addEventListener("resize", resizeCanvas);
 window.gameState = state;
 StatsManager.initUpgradesList(state, upgrades);
 loadProgress(state, upgrades);
+loadPersistentTriggers();
 initializeSaveSystem(state);
 initUI(state, upgrades);
 propInspector.mount();

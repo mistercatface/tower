@@ -1,5 +1,6 @@
 import { StatsManager } from "./StatsManager.js";
 import { Events } from "../Core/EventNames.js";
+import { clearPersistentTriggers } from "../Core/PersistentTriggers.js";
 
 const SAVE_VERSION = 4;
 const SAVE_KEY = "tower_save_v4";
@@ -169,6 +170,7 @@ export function hardResetProgress(state, resetGameCallback) {
     cancelAutosaveEvent();
     dirty = false;
     localStorage.removeItem(SAVE_KEY);
+    clearPersistentTriggers();
     resetProgress(state);
     resetGameCallback();
 }
