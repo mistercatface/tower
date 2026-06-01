@@ -92,6 +92,9 @@ export function initializeRagdoll(rigData, rotation, impactProfile, config, rig)
         settled: false,
         sleepTimer: 0,
         severed: {},
+        particles: [],
+        emitters: [],
+        floorStains: [],
     };
 }
 

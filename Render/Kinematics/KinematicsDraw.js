@@ -1,5 +1,6 @@
 import { getCharacterForActor } from "./CharacterAppearance.js";
 import { getHandProjected, resolveWeaponDrawSlots } from "./KinematicsWeaponVisuals.js";
+import { queueRagdollBloodDraw } from "./Ragdoll/RagdollBlood.js";
 
 export function drawStandardCharacter(scene, actor, sceneRenderer, config, rig) {
     const char = getCharacterForActor(actor);
@@ -118,6 +119,46 @@ export function drawCharacterToCanvas(
     if (drawWeapons) {
         drawHeldWeapons(scene, actor, sceneRenderer, config, facing);
     }
+    sceneRenderer.flush();
+    sharedCtx.restore();
+
+    sharedCanvas.drawRatio = canvasSize / config.SIZE;
+    const feetYInCanvas = padding + config.ANCHOR_Y * config.SIZE;
+    const canvasCenterY = canvasSize / 2;
+    sharedCanvas.verticalShift = feetYInCanvas - canvasCenterY;
+
+    return sharedCanvas;
+}
+
+/** Ragdoll corpse draw: character mesh + drips / floor stains. */
+export function drawRagdollCorpseToCanvas(
+    sharedCanvas,
+    sharedCtx,
+    scene,
+    actor,
+    viewContext,
+    facing,
+    config,
+    rig,
+    sceneRenderer,
+    ragdoll,
+    overridePadding = null,
+) {
+    const padding = overridePadding !== null ? overridePadding : config.PADDING;
+    const canvasSize = Math.ceil(config.SIZE + padding * 2);
+
+    if (sharedCanvas.width !== canvasSize || sharedCanvas.height !== canvasSize) {
+        sharedCanvas.width = canvasSize;
+        sharedCanvas.height = canvasSize;
+    } else {
+        sharedCtx.clearRect(0, 0, canvasSize, canvasSize);
+    }
+
+    sharedCtx.save();
+    sharedCtx.translate(padding, padding);
+    sceneRenderer.begin(sharedCtx, viewContext, facing.renderRotation, rig);
+    drawStandardCharacter(scene, actor, sceneRenderer, config, rig);
+    queueRagdollBloodDraw(sceneRenderer, ragdoll, config, rig, viewContext, facing.renderRotation);
     sceneRenderer.flush();
     sharedCtx.restore();
 

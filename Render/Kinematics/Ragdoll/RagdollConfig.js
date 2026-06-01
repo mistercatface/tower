@@ -25,6 +25,23 @@ export const RAGDOLL_CONFIG = {
         SEVER_THRESHOLD: 10,
         MAX_SEVER_COUNT: 0,
     },
+    BLOOD: {
+        BURST_COUNT: 6,
+        SPRAY_LIFE: 1.8,
+        GRAVITY: 2.0,
+        DRAG: 0.96,
+        LIFESPAN_MIN: 1.2,
+        LIFESPAN_MAX: 3.0,
+        DROP_SIZE: 0.012,
+        SPLAT_SIZE: 1.0,
+        MAX_PARTICLES: 400,
+        MAX_STAINS: 24,
+        PALETTE: {
+            ARTERIAL: "#ad0000",
+            VENOUS: "#8a0000",
+            DRIED: "#4a0000",
+        },
+    },
 };
 
 const HIT_ZONES = [

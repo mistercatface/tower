@@ -2,7 +2,8 @@ import { Entity } from "./Entity.js";
 import { applyRagdollImpulse, getRagdollRig, updateRagdoll } from "../Render/Kinematics/Ragdoll/RagdollPhysics.js";
 import { checkRagdollHit, ragdollPartToWorld } from "../Render/Kinematics/Ragdoll/RagdollHitTest.js";
 import { projectRagdollRig } from "../Render/Kinematics/KinematicsProjector.js";
-import { drawCharacterToCanvas } from "../Render/Kinematics/KinematicsDraw.js";
+import { drawRagdollCorpseToCanvas } from "../Render/Kinematics/KinematicsDraw.js";
+import { seedRagdollBloodOnDeath, updateBloodEffects, addRagdollBleedEmitter } from "../Render/Kinematics/Ragdoll/RagdollBlood.js";
 import { createObstacleWallChecker, createRagdollState, resolveDeathImpact } from "../Render/Kinematics/Ragdoll/ragdollFromActor.js";
 import { captureActorRigForRagdoll } from "../Render/Kinematics/PlayerKinematicsRenderer.js";
 import { CombatParticles } from "../Render/CombatParticles.js";
@@ -34,6 +35,8 @@ export class RagdollCorpse extends Entity {
                 corpse.ragdoll.rotation,
                 corpse.snapshot.config,
             );
+
+            addRagdollBleedEmitter(corpse.ragdoll, hit.part, corpse.snapshot.rig, 0.8);
 
             const { x: bx, y: by } = ragdollPartToWorld(corpse, hit.part);
             CombatParticles.spawnBlood(state, bx, by, {
@@ -80,6 +83,8 @@ export class RagdollCorpse extends Entity {
             snapshot.rig,
         );
 
+        seedRagdollBloodOnDeath(ragdoll, impact.hitBone, snapshot.rig);
+
         const corpse = new RagdollCorpse(actor, snapshot, ragdoll);
         state.ragdollCorpses.push(corpse);
         CombatParticles.spawnDeathBlood(state, actor, event);
@@ -107,9 +112,10 @@ export class RagdollCorpse extends Entity {
         }
 
         const { rig, config } = this.snapshot;
+        const dtSec = dt / 1000;
         updateRagdoll(
             this.ragdoll,
-            dt / 1000,
+            dtSec,
             this.x,
             this.y,
             this.ragdoll.rotation,
@@ -118,6 +124,7 @@ export class RagdollCorpse extends Entity {
             player?.y ?? this.y,
             rig,
         );
+        updateBloodEffects(this.ragdoll, dtSec, rig);
 
         if (this.ragdoll.settled) {
             const fadeStart = CORPSE_MAX_MS - CORPSE_FADE_MS;
@@ -143,7 +150,7 @@ export class RagdollCorpse extends Entity {
         const scene = projectRagdollRig(rigData, renderRotation, viewContext, config, rig);
         const facing = { renderRotation, gunCanvasAim: () => renderRotation };
 
-        const sprite = drawCharacterToCanvas(
+        const sprite = drawRagdollCorpseToCanvas(
             this.bundle.sharedCanvas,
             this.bundle.sharedCtx,
             scene,
@@ -153,8 +160,7 @@ export class RagdollCorpse extends Entity {
             config,
             rig,
             this.bundle.sceneRenderer,
-            null,
-            { drawWeapons: false },
+            this.ragdoll,
         );
 
         const drawRatio = sprite.drawRatio ?? 1;
