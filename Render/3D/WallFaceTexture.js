@@ -4,6 +4,29 @@ import { CAMERA_HEIGHT } from "./math/CombatProjection.js";
 
 const WALL_ANGLE_SPREAD = 0.002;
 
+class LRUCache {
+    constructor(maxSize = 500) {
+        this.cache = new Map();
+        this.maxSize = maxSize;
+    }
+    get(key) {
+        if (!this.cache.has(key)) return null;
+        const val = this.cache.get(key);
+        this.cache.delete(key);
+        this.cache.set(key, val);
+        return val;
+    }
+    set(key, val) {
+        if (this.cache.size >= this.maxSize) {
+            const oldestKey = this.cache.keys().next().value;
+            this.cache.delete(oldestKey);
+        }
+        this.cache.set(key, val);
+    }
+}
+
+const flatWallCache = new LRUCache(500);
+
 export function getWallVisualHeight() {
     const configured = floorTileSettings.wallVisualHeight;
     if (configured != null) return configured;
@@ -111,6 +134,48 @@ function faceCorner(p1, p2, leftTop, rightTop, u, v) {
  * Per-grid-cell textures on the projected face (same variety as floor).
  * Affine quads use bleed to hide the internal triangle split.
  */
+function getFlatWallCanvas(p1, p2, columns, storyCount, floorTiles, state, tileWorldSize) {
+    const kx1 = p1.x.toFixed(1);
+    const ky1 = p1.y.toFixed(1);
+    const kx2 = p2.x.toFixed(1);
+    const ky2 = p2.y.toFixed(1);
+    const key = `${kx1},${ky1}-${kx2},${ky2}`;
+
+    let cached = flatWallCache.get(key);
+    if (cached) return cached;
+
+    const edgeLen = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+    if (edgeLen < 0.001 || columns.length === 0) return null;
+
+    const sampleCanvas = floorTiles.getWallCellCanvas(columns[0].worldX, columns[0].worldY, 0, state);
+    const cellSize = sampleCanvas.width;
+    const pixelsPerUnit = cellSize / tileWorldSize;
+    
+    const canvasWidth = Math.max(1, Math.ceil(edgeLen * pixelsPerUnit));
+    const canvasHeight = Math.max(1, storyCount * cellSize);
+
+    const canvas = new OffscreenCanvas(canvasWidth, canvasHeight);
+    const ctx = canvas.getContext("2d");
+    ctx.imageSmoothingEnabled = false;
+
+    for (let row = 0; row < storyCount; row++) {
+        const dy = row * cellSize;
+        for (const col of columns) {
+            const cellCanvas = floorTiles.getWallCellCanvas(col.worldX, col.worldY, row, state);
+            const dx = col.u0 * canvasWidth;
+            const dw = (col.u1 - col.u0) * canvasWidth;
+            if (dw > 0) {
+                const drawX = Math.floor(dx);
+                const drawW = Math.ceil(dx + dw) - drawX;
+                ctx.drawImage(cellCanvas, 0, 0, cellCanvas.width, cellCanvas.height, drawX, dy, drawW, cellSize);
+            }
+        }
+    }
+
+    flatWallCache.set(key, canvas);
+    return canvas;
+}
+
 function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHeight) {
     const tileWorldSize = floorTileSettings.tileWorldSize ?? gridSettings.cellSize;
     if (!floorTiles || !state) return;
@@ -119,6 +184,9 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHei
     if (columns.length === 0) return;
 
     const storyCount = getWallTextureStoryCount();
+    const flatCanvas = getFlatWallCanvas(p1, p2, columns, storyCount, floorTiles, state, tileWorldSize);
+    if (!flatCanvas) return;
+
     const leftTop = { x: face.proj1X, y: face.proj1Y };
     const rightTop = { x: face.proj2X, y: face.proj2Y };
     const worldBounds = getViewportWorldBounds(viewport);
@@ -128,15 +196,16 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHei
     const alphaMax = clampedHeight / (CAMERA_HEIGHT - clampedHeight);
     if (alphaMax <= 0) return;
 
-    const storyHeight = wallHeight / storyCount;
-
     ctx.save();
     traceProjectedFace(ctx, p1, p2, face);
     ctx.clip();
 
-    for (let row = 0; row < storyCount; row++) {
-        const bottomZ = row * storyHeight;
-        let topZ = (row + 1) * storyHeight;
+    const SUBDIV_X = Math.max(1, Math.min(8, Math.ceil(Math.hypot(p2.x - p1.x, p2.y - p1.y) / tileWorldSize)));
+    const SUBDIV_Y = Math.max(1, Math.min(8, Math.ceil(storyCount / 2)));
+
+    for (let row = 0; row < SUBDIV_Y; row++) {
+        const bottomZ = row * (wallHeight / SUBDIV_Y);
+        let topZ = (row + 1) * (wallHeight / SUBDIV_Y);
 
         if (bottomZ >= CAMERA_HEIGHT) break;
         if (topZ >= CAMERA_HEIGHT) {
@@ -149,17 +218,24 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHei
         const v0 = alphaBottom / alphaMax;
         const v1 = alphaTop / alphaMax;
 
-        for (const col of columns) {
-            const d0 = faceCorner(p1, p2, leftTop, rightTop, col.u0, v0);
-            const d1 = faceCorner(p1, p2, leftTop, rightTop, col.u1, v0);
-            const d2 = faceCorner(p1, p2, leftTop, rightTop, col.u1, v1);
-            const d3 = faceCorner(p1, p2, leftTop, rightTop, col.u0, v1);
+        const sy0 = (row / SUBDIV_Y) * flatCanvas.height;
+        const sy1 = ((row + 1) / SUBDIV_Y) * flatCanvas.height;
+
+        for (let col = 0; col < SUBDIV_X; col++) {
+            const u0 = col / SUBDIV_X;
+            const u1 = (col + 1) / SUBDIV_X;
+
+            const d0 = faceCorner(p1, p2, leftTop, rightTop, u0, v0);
+            const d1 = faceCorner(p1, p2, leftTop, rightTop, u1, v0);
+            const d2 = faceCorner(p1, p2, leftTop, rightTop, u1, v1);
+            const d3 = faceCorner(p1, p2, leftTop, rightTop, u0, v1);
 
             if (!rowBoundsIntersects(d0, d1, d2, d3, worldBounds)) continue;
 
-            const cellCanvas = floorTiles.getWallCellCanvas(col.worldX, col.worldY, row, state);
-            const s = cellCanvas.width;
-            drawImageQuad(ctx, cellCanvas, 0, 0, s, s, d0, d1, d2, d3, { bleedPx });
+            const sx0 = u0 * flatCanvas.width;
+            const sx1 = u1 * flatCanvas.width;
+
+            drawImageQuad(ctx, flatCanvas, sx0, sy0, sx1, sy1, d0, d1, d2, d3, { bleedPx });
         }
     }
 
