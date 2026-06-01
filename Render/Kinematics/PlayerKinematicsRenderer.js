@@ -1,6 +1,6 @@
 import { CAMERA_HEIGHT } from "../3D/math/CombatProjection.js";
 import { createKinematicsBundle } from "./createKinematicsBundle.js";
-import { getRagdollRig } from "./Ragdoll/RagdollPhysics.js";
+import { getRagdollRenderRig } from "./Ragdoll/RagdollPhysics.js";
 
 /** World radius → kinematics pixel size (tuned to match cw803 proportions). */
 export function kinematicsPixelSizeForRadius(radius) {
@@ -147,6 +147,8 @@ export function renderActorKinematicsBody(ctx, actor, camera, radius = actor.rad
 
 export function renderCorpseKinematicsBody(ctx, corpse, state) {
     const { renderRotation, rotation } = corpse.deathPose;
+    const kinematics = getCorpseKinematics(corpse);
+    const { config, rig } = kinematics.bundle;
     renderKinematicsBody(ctx, {
         x: corpse.x,
         y: corpse.y,
@@ -156,7 +158,7 @@ export function renderCorpseKinematicsBody(ctx, corpse, state) {
         renderRotation,
         bodyRotation: rotation,
         animCycle: 0,
-        rigData: getRagdollRig(corpse.ragdoll),
+        rigData: getRagdollRenderRig(corpse.ragdoll, rig, renderRotation, config),
         facing: { renderRotation, gunCanvasAim: () => renderRotation },
         drawOptions: { ragdoll: corpse.ragdoll },
         opacity: corpse.opacity,

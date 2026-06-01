@@ -1,5 +1,6 @@
 import { RAGDOLL_CONFIG, getScaledPhysics } from "./RagdollConfig.js";
 import { processRagdollGoreHit } from "./RagdollGore.js";
+import { computePartScaleFromLocal } from "../KinematicsProjector.js";
 
 function clonePoint(p) {
     return { x: p.x, y: p.y, z: p.z || 0 };
@@ -83,6 +84,11 @@ export function initializeRagdoll(rigData, rotation, impactProfile, config, rig)
         prevPoints[key] = { x: p.x - vx, y: p.y - vy, z: p.z - vz };
     }
 
+    const renderPoseBaseline = {};
+    for (const key of Object.keys(points)) {
+        renderPoseBaseline[key] = clonePoint(points[key]);
+    }
+
     return {
         points,
         prevPoints,
@@ -98,6 +104,7 @@ export function initializeRagdoll(rigData, rotation, impactProfile, config, rig)
         particles: [],
         emitters: [],
         floorStains: [],
+        renderPoseBaseline,
     };
 }
 
@@ -261,6 +268,51 @@ export function getRagdollRig(ragdoll) {
         lArm: { p1: points.lShoulder, p2: points.lElbow, p3: points.lHand },
         rLeg: { p1: points.rHip, p2: points.rKnee, p3: points.rFoot },
         lLeg: { p1: points.lHip, p2: points.lKnee, p3: points.lFoot },
+    };
+}
+
+/**
+ * Render-only rig: physics xy pose for flail, death-pose z + scale so part size
+ * tracks current camera tilt (same as live) instead of ragdoll depth kicks.
+ */
+export function getRagdollRenderRig(ragdoll, rig, renderRotation, config) {
+    const source = getRagdollRig(ragdoll);
+    const baseline = ragdoll.renderPoseBaseline ?? {};
+
+    const mapPoint = (p, baseKey) => {
+        if (!p) return p;
+        const base = baseline[baseKey];
+        const z = base?.z ?? (p.z ?? 0);
+        const scaleOverride = base
+            ? computePartScaleFromLocal(base, renderRotation, config)
+            : undefined;
+        return { x: p.x, y: p.y, z, scaleOverride };
+    };
+
+    return {
+        spineTop: mapPoint(source.spineTop, "spineTop"),
+        spineBot: mapPoint(source.spineBot, "spineBot"),
+        head: mapPoint(source.head, "head"),
+        rArm: {
+            p1: mapPoint(source.rArm.p1, "rShoulder"),
+            p2: mapPoint(source.rArm.p2, "rElbow"),
+            p3: mapPoint(source.rArm.p3, "rHand"),
+        },
+        lArm: {
+            p1: mapPoint(source.lArm.p1, "lShoulder"),
+            p2: mapPoint(source.lArm.p2, "lElbow"),
+            p3: mapPoint(source.lArm.p3, "lHand"),
+        },
+        rLeg: {
+            p1: mapPoint(source.rLeg.p1, "rHip"),
+            p2: mapPoint(source.rLeg.p2, "rKnee"),
+            p3: mapPoint(source.rLeg.p3, "rFoot"),
+        },
+        lLeg: {
+            p1: mapPoint(source.lLeg.p1, "lHip"),
+            p2: mapPoint(source.lLeg.p2, "lKnee"),
+            p3: mapPoint(source.lLeg.p3, "lFoot"),
+        },
     };
 }
 

@@ -1,3 +1,12 @@
+export function computePartScaleFromLocal(local, rotation, config) {
+    const bRot = rotation + config.BODY_OFFSET;
+    const rx = local.x * Math.cos(bRot) - local.z * Math.sin(bRot);
+    const rz = local.x * Math.sin(bRot) + local.z * Math.cos(bRot);
+    const boundsZ = Math.max(8, config.SIZE * 0.6);
+    const rzVis = Math.max(-boundsZ, Math.min(boundsZ, rz));
+    return 0.9 + (rzVis / config.SIZE) * 0.5;
+}
+
 export function createProjector(viewContext, rotation, config, rig) {
     const { yFactor = 0.8, shiftX = 0, shiftY = 0, ratio = 0 } = viewContext || {};
     const bRot = rotation + config.BODY_OFFSET;
@@ -10,6 +19,7 @@ export function createProjector(viewContext, rotation, config, rig) {
 
     return (p) => {
         if (p.scale !== undefined) return p;
+        const scaleOverride = p.scaleOverride;
         const rx = p.x * bCos - p.z * bSin;
         const rz = p.x * bSin + p.z * bCos;
         const worldHeight = groundY - p.y;
@@ -17,7 +27,8 @@ export function createProjector(viewContext, rotation, config, rig) {
         const dShiftX = shiftX + rx * ratio;
         const dShiftY = shiftY + rz * ratio;
         const rzVis = Math.max(-boundsZ, Math.min(boundsZ, rz));
-        return { x: cx + rx + dShiftX * heightNorm, y: groundY + rz - worldHeight * yFactor + dShiftY * heightNorm, z: rz, sortZ: rzVis - p.y * depthWeight, scale: 0.9 + (rzVis / config.SIZE) * 0.5 };
+        const scale = scaleOverride ?? (0.9 + (rzVis / config.SIZE) * 0.5);
+        return { x: cx + rx + dShiftX * heightNorm, y: groundY + rz - worldHeight * yFactor + dShiftY * heightNorm, z: rz, sortZ: rzVis - p.y * depthWeight, scale };
     };
 }
 

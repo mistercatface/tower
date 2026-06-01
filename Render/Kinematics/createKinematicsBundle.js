@@ -233,6 +233,7 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
         return drawKinematicsFrameToCanvas(
             sharedCanvas,
             sharedCtx,
+            rigData,
             scene,
             actor,
             viewContext,
