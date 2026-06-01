@@ -213,5 +213,15 @@ export const createUpgrades = () => [
         showInHud: true,
         hasToggle: true,
     }),
+    new Upgrade({
+        id: "Shoot",
+        category: "abilities",
+        name: "Shoot",
+        description: "When Active: Click/Tap direction to shoot instead of moving.",
+        maxLevel: 1,
+        isAbility: true,
+        showInHud: true,
+        hasToggle: true,
+    }),
     ...metaUpgradeDefinitions.map((def) => upgradeFromDefinition(def, Upgrade)),
 ];

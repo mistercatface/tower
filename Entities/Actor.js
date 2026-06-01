@@ -8,8 +8,10 @@ import { createCombatantStats, applyUpgrades, applyUpgradesToStats, syncActorCom
 import { Turret } from "./Turret.js";
 import { Utilities } from "../Core/Utilities.js";
 import { spawnFloatingText } from "../Core/EventSystem.js";
-import { resolveWeaponModeForGun, WeaponSystem } from "../Combat/WeaponSystem.js";
-import { applyActorGunModifiers, getSlotReloadTimeMs } from "../Combat/gunCombat.js";
+import { resolveWeaponModeForGun, WeaponSystem, advanceTurretAmmo } from "../Combat/WeaponSystem.js";
+import { applyActorGunModifiers, getSlotReloadTimeMs, getSlotFireIntervalMs } from "../Combat/gunCombat.js";
+import { Laser } from "./Laser.js";
+import { getBeamTickDamage, createBeamHitSource } from "../Combat/impactDamage.js";
 import { getGunDefinition } from "../Config/gunDefinitions.js";
 import { explosionSettings } from "../Config/Config.js";
 import { resolveActorTurretLoadouts, applyGunTurretLoadouts, applyUpgradeTurretLoadouts } from "../Config/TurretLoadoutDefinitions.js";
@@ -127,6 +129,14 @@ export class Actor extends DestructibleEntity {
 
     updateCombat(dt, state, spatialFrame, options = {}) {
         this.updateLocomotion(dt, state, spatialFrame, options);
+        if (this.type === "player" && state.abilities["Shoot"]) {
+            for (const turret of this.getTurrets()) {
+                if (turret.manualFireCooldown === undefined) turret.manualFireCooldown = 0;
+                if (turret.manualFireCooldown > 0) {
+                    turret.manualFireCooldown -= dt;
+                }
+            }
+        }
         const combatEvents = options.combatEvents ?? [];
         const events = this.updateTurretCombat(dt, state, { ...options, combatEvents }) ?? combatEvents;
         if (this.usesKinematicsBody) {
@@ -397,6 +407,12 @@ export class Actor extends DestructibleEntity {
     acquireTurretTargets(state, blocksTargeting = false) {
         const weapon = this.weapon;
         if (!weapon) return;
+        if (this.type === "player" && state.abilities["Shoot"]) {
+            for (const turret of this.getTurrets()) {
+                turret.target = null;
+            }
+            return;
+        }
         const actualBlocks = this.resolveBlocksTargeting(state, blocksTargeting);
         const engagedTargets = new Set();
         for (const turret of this.getTurrets()) {
@@ -477,14 +493,65 @@ export class Actor extends DestructibleEntity {
     }
 
     processAllTurrets(dt, state, blocksTargeting = false, combatEvents = []) {
+        const isPlayerManualShoot = this.type === "player" && state.abilities["Shoot"];
         for (const turret of this.getTurrets()) {
             const gun = getGunDefinition(turret.gunId);
+            if (isPlayerManualShoot) {
+                advanceTurretAmmo(dt, turret, gun, this);
+                continue;
+            }
             const mode = resolveWeaponModeForGun(gun);
             const target = this.resolveTurretTargetForProcessing(turret);
             const turretBlocks = this.resolveTurretBlocksForProcessing(turret, state, blocksTargeting);
             mode.processTurret(dt, state, this, gun, turret, target, turretBlocks, combatEvents);
         }
         return combatEvents;
+    }
+
+    manualFire(state, targetX, targetY) {
+        let firedAny = false;
+        for (const turret of this.getTurrets()) {
+            const gun = getGunDefinition(turret.gunId);
+            const fireIntervalMs = getSlotFireIntervalMs(gun, this);
+
+            if (turret.manualFireCooldown === undefined) turret.manualFireCooldown = 0;
+            if (turret.reloading || turret.manualFireCooldown > 0) continue;
+
+            const angle = Math.atan2(targetY - this.y, targetX - this.x);
+            turret.angle = angle;
+
+            if (gun.kind === "projectile") {
+                turret.fire(state, this);
+                firedAny = true;
+            } else if (gun.kind === "beam") {
+                const { x: tx, y: ty } = turret.getMuzzlePosition(this, gun.bulletRadius ?? 2);
+                const range = this.weapon?.range ?? 200;
+                const hit = WeaponSystem.castLaser(tx, ty, turret.angle, range, state, gun.beamRadius, this);
+                state.activeLasers.push(new Laser(tx, ty, hit.x, hit.y));
+                
+                const tickDamage = getBeamTickDamage(gun);
+                if (hit.hit === "actor" && areHostile(this, hit.entity)) {
+                    hit.entity.handleHit(tickDamage, { state }, "beam");
+                } else if (hit.hit === "pickup" && hit.entity.strategy?.onHit) {
+                    const skipExplosive = state.abilities["TargetVerification"] && hit.entity.strategy.isExplosive;
+                    if (!skipExplosive) {
+                        hit.entity.strategy.onHit(state, hit.entity, createBeamHitSource(gun), []);
+                    }
+                }
+                firedAny = true;
+            }
+
+            if (firedAny) {
+                turret.manualFireCooldown = fireIntervalMs;
+                if (turret.ammo !== undefined && turret.ammo > 0) {
+                    turret.ammo--;
+                    if (turret.ammo <= 0) {
+                        turret.reloading = true;
+                        turret.reloadTimer = 0;
+                    }
+                }
+            }
+        }
     }
 
     recalculateFromRun(state, upgradeDefs, shouldApply = () => true) {

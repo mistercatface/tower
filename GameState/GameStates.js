@@ -268,6 +268,11 @@ export class CombatState {
         if (propInspector.isOpen()) return;
         if (ctx.state.player.currentState && ctx.state.player.currentState.blocksInput) return;
 
+        if (ctx.state.abilities["Shoot"]) {
+            ctx.state.player.manualFire(ctx.state, worldCoords.x, worldCoords.y);
+            return;
+        }
+
         if (!ctx.state.player.canReposition(ctx.state)) return;
 
         const target = resolveRepositionTarget(ctx.state.obstacleGrid, worldCoords.x, worldCoords.y, ctx.state.player.radius);

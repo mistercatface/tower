@@ -7,7 +7,7 @@ import { getSlotFireIntervalMs, getSlotReloadTimeMs } from "./gunCombat.js";
 import { getBeamTickDamage, createBeamHitSource } from "./impactDamage.js";
 import { areHostile, getHostiles, getNearestHostile } from "./Targeting.js";
 
-function advanceTurretAmmo(dt, turret, gun, source) {
+export function advanceTurretAmmo(dt, turret, gun, source) {
     if (turret.currentGunId !== turret.gunId || turret.ammo === undefined) {
         turret.currentGunId = turret.gunId;
         turret.ammo = gun.maxAmmo;
