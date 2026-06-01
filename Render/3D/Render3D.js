@@ -56,9 +56,9 @@ export class Render3D {
 
     getWallColor(seg, theme, darkenRatio = 1.0) {
         const activeTheme = seg.theme || theme;
-        const baseR = activeTheme ? activeTheme.r : 0;
-        const baseG = activeTheme ? activeTheme.g : 188;
-        const baseB = activeTheme ? activeTheme.b : 212;
+        const baseR = activeTheme ? activeTheme.r : 240;
+        const baseG = activeTheme ? activeTheme.g : 240;
+        const baseB = activeTheme ? activeTheme.b : 242;
         const healthRatio = Math.max(0, Math.round((seg.health / seg.maxHealth) * 10) / 10);
         const r = Math.floor((baseR + (244 - baseR) * (1 - healthRatio)) * darkenRatio);
         const g = Math.floor((baseG + (67 - baseG) * (1 - healthRatio)) * darkenRatio);
