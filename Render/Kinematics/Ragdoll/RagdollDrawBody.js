@@ -51,8 +51,60 @@ function constraintPalette(nameA, nameB, palettes, armPalette, rig) {
 }
 
 /**
- * Constraint-based ragdoll mesh (stumps, severed limbs, fracture points).
+ * Blood stumps at severed joints — uses rig-local points (same projection as live characters).
  */
+export function drawRagdollGoreStumps(ragdoll, sceneRenderer, rig) {
+    const severed = ragdoll.severed ?? {};
+    if (Object.keys(severed).length === 0) return;
+
+    const points = ragdoll.points;
+    if (!points) return;
+
+    const bPalette = RAGDOLL_CONFIG.BLOOD.PALETTE;
+    const stumpPalette = { base: bPalette.VENOUS, light: bPalette.VENOUS, dark: bPalette.VENOUS };
+
+    const stump = (pointName, radiusMult) => {
+        const p = points[pointName];
+        if (!p) return;
+        sceneRenderer.addSphere(p, rig.torsoHalfWidth * radiusMult, stumpPalette);
+    };
+
+    if (severed.head) stump("spineTop", 0.6);
+    if (severed.rArm) {
+        stump("rShoulder", 0.5);
+        stump("spineTop", 0.5);
+    }
+    if (severed.lArm) {
+        stump("lShoulder", 0.5);
+        stump("spineTop", 0.5);
+    }
+    if (severed.rForearm) {
+        stump("rElbow", 0.4);
+        stump("rShoulder", 0.4);
+    }
+    if (severed.lForearm) {
+        stump("lElbow", 0.4);
+        stump("lShoulder", 0.4);
+    }
+    if (severed.rLeg) {
+        stump("rHip", 0.6);
+        stump("spineBot", 0.6);
+    }
+    if (severed.lLeg) {
+        stump("lHip", 0.6);
+        stump("spineBot", 0.6);
+    }
+    if (severed.rShin) {
+        stump("rKnee", 0.5);
+        stump("rHip", 0.5);
+    }
+    if (severed.lShin) {
+        stump("lKnee", 0.5);
+        stump("lHip", 0.5);
+    }
+}
+
+/** @deprecated Corpses use drawStandardCharacter; kept for reference. */
 export function drawRagdollBody(scene, actor, sceneRenderer, config, rig, ragdoll) {
     const char = getCharacterForActor(actor);
     const getPalette = (base, light, dark) => ({ base: base || "#888", light: light || "#fff", dark: dark || "#000" });

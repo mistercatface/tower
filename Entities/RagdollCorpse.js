@@ -1,11 +1,11 @@
 import { Entity } from "./Entity.js";
 import { applyRagdollImpulse, getRagdollRig, updateRagdoll } from "../Render/Kinematics/Ragdoll/RagdollPhysics.js";
 import { checkRagdollHit, ragdollPartToWorld } from "../Render/Kinematics/Ragdoll/RagdollHitTest.js";
-import { projectRagdollRig } from "../Render/Kinematics/KinematicsProjector.js";
+import { projectRig } from "../Render/Kinematics/KinematicsProjector.js";
 import { drawRagdollCorpseToCanvas } from "../Render/Kinematics/KinematicsDraw.js";
 import { seedRagdollBloodOnDeath, updateBloodEffects, addRagdollBleedEmitter } from "../Render/Kinematics/Ragdoll/RagdollBlood.js";
 import { createObstacleWallChecker, createRagdollState, resolveDeathImpact } from "../Render/Kinematics/Ragdoll/ragdollFromActor.js";
-import { captureActorRigForRagdoll } from "../Render/Kinematics/PlayerKinematicsRenderer.js";
+import { captureActorRigForRagdoll, buildCorpseKinematicsViewContext, resolveCorpseKinematicsCamera } from "../Render/Kinematics/PlayerKinematicsRenderer.js";
 import { CombatParticles } from "../Render/CombatParticles.js";
 
 const CORPSE_MAX_MS = 12000;
@@ -112,12 +112,14 @@ export class RagdollCorpse extends Entity {
         return viewport.isVisible(this.x, this.y, this.radius * 3);
     }
 
-    render(ctx, _renderer, _state) {
+    render(ctx, _renderer, state) {
         if (this.opacity <= 0) return;
 
-        const { config, rig, renderRotation, viewContext, referenceScale } = this.snapshot;
+        const { config, rig, renderRotation } = this.snapshot;
+        const camera = resolveCorpseKinematicsCamera(this, state);
+        const viewContext = buildCorpseKinematicsViewContext(this.x, this.y, camera, this.radius);
         const rigData = getRagdollRig(this.ragdoll);
-        const scene = projectRagdollRig(rigData, renderRotation, viewContext, config, rig, this.ragdoll.points, referenceScale);
+        const scene = projectRig(rigData, renderRotation, viewContext, config, rig);
         const facing = { renderRotation, gunCanvasAim: () => renderRotation };
 
         const sprite = drawRagdollCorpseToCanvas(this.bundle.sharedCanvas, this.bundle.sharedCtx, scene, this.actor, viewContext, facing, config, rig, this.bundle.sceneRenderer, this.ragdoll);
