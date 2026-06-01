@@ -8,7 +8,7 @@ import { getGunProjectileConfig, getSlotFireIntervalMs, getSlotReloadTimeMs } fr
 import { inferFaction, areHostile } from "../Combat/Targeting.js";
 import { GhostTrail } from "../Render/GhostTrail.js";
 import { CombatParticles } from "../Render/CombatParticles.js";
-import { resolveKinematicsMuzzlePosition } from "../Render/Kinematics/PlayerKinematicsRenderer.js";
+import { resolveKinematicsMuzzlePosition, resolveActorKinematicsCamera } from "../Render/Kinematics/PlayerKinematicsRenderer.js";
 
 const TURRET_GHOST_TRAIL = {
     length: 4,
@@ -81,7 +81,7 @@ export class Turret {
     getMuzzlePosition(source, projectileRadius = 2, target = null) {
         if (source.usesKinematicsBody) {
             const turretIndex = source.turrets.indexOf(this);
-            const camera = { x: source.x, y: source.y };
+            const camera = resolveActorKinematicsCamera(source);
             const muzzle = resolveKinematicsMuzzlePosition(
                 source,
                 turretIndex >= 0 ? turretIndex : 0,

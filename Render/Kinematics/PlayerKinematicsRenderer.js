@@ -74,6 +74,11 @@ export function resolveKinematicsMuzzlePosition(actor, turretIndex, camera) {
     );
 }
 
+/** Camera reference used for kinematics tilt/perspective — must match body render. */
+export function resolveActorKinematicsCamera(actor) {
+    return actor._kinematicsCamera ?? { x: actor.x, y: actor.y };
+}
+
 export function renderActorKinematicsBody(ctx, actor, camera, radius = actor.radius) {
     const kinematics = getKinematicsRenderer(radius);
     const sprite = kinematics.getSprite(actor, camera);

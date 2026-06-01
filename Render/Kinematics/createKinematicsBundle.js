@@ -283,10 +283,10 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
         viewContext.yFactor = minYFactor + (maxYFactor - minYFactor) * q.tilt;
         viewContext.shiftX = 0;
         viewContext.shiftY = 0;
-        const facing = resolveCombatFacing(actor, state, spriteBodyRotation, config);
+        const facing = resolveCombatFacing(actor, state, q.rotation, config);
         const rigData = calculateCharacterRig(
             { ...state, staticBlendFactor: state.staticBlendFactor },
-            naturalCycle,
+            q.cycle,
             config,
             rig,
             poses,
