@@ -179,7 +179,7 @@ export class GameState {
         this.allies = [];
 
         for (let i = 0; i < count; i++) {
-            const ally = Sidekick.create(leader.x, leader.y, 6);
+            const ally = Sidekick.create(leader.x, leader.y, leader.radius);
             ally.leader = leader;
             ally.teamId = leader.teamId ?? 0;
             const angle = leader.angle + Math.PI + (i - (count - 1) / 2) * 0.5;

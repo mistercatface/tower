@@ -150,6 +150,7 @@ function trySpawnPickupAt(state, x, y, type) {
     }
     const idx = gridPos.row * grid.cols + gridPos.col;
     if (grid.grid[idx] === 1) return false;
+    if (isOneCellWideCorridor(grid.grid, grid.cols, grid.rows, gridPos.col, gridPos.row)) return false;
     const { x: centerX, y: centerY } = grid.gridToWorld(gridPos.col, gridPos.row);
     state.pickups.push(new Pickup(centerX, centerY, type));
     return true;
@@ -160,6 +161,20 @@ function shuffleInPlace(items) {
         const j = Math.floor(Math.random() * (i + 1));
         [items[i], items[j]] = [items[j], items[i]];
     }
+}
+
+function isGridCellBlocked(grid, cols, rows, col, row) {
+    if (col < 0 || col >= cols || row < 0 || row >= rows) return true;
+    return grid[row * cols + col] === 1;
+}
+
+/** True when the cell sits in a corridor only one tile wide (horizontal or vertical). */
+function isOneCellWideCorridor(grid, cols, rows, col, row) {
+    const blockedN = isGridCellBlocked(grid, cols, rows, col, row - 1);
+    const blockedS = isGridCellBlocked(grid, cols, rows, col, row + 1);
+    const blockedW = isGridCellBlocked(grid, cols, rows, col - 1, row);
+    const blockedE = isGridCellBlocked(grid, cols, rows, col + 1, row);
+    return (blockedN && blockedS) || (blockedW && blockedE);
 }
 
 function touchesWallCell(grid, cols, rows, col, row) {
@@ -199,6 +214,7 @@ function collectWallAdjacentCells(state, layout, propRadius) {
         for (let col = startCol; col <= endCol; col++) {
             const idx = row * grid.cols + col;
             if (grid.grid[idx] !== 0) continue;
+            if (isOneCellWideCorridor(grid.grid, grid.cols, grid.rows, col, row)) continue;
             if (!touchesWallCell(grid.grid, grid.cols, grid.rows, col, row)) continue;
 
             const seed = grid.gridToWorld(col, row);
@@ -206,6 +222,7 @@ function collectWallAdjacentCells(state, layout, propRadius) {
             if (!isValidWallPropSpot(grid, spot.x, spot.y, propRadius, layout)) continue;
 
             const resolvedGrid = grid.worldToGrid(spot.x, spot.y);
+            if (isOneCellWideCorridor(grid.grid, grid.cols, grid.rows, resolvedGrid.col, resolvedGrid.row)) continue;
             const key = `${resolvedGrid.col},${resolvedGrid.row}`;
             if (seen.has(key)) continue;
             seen.add(key);

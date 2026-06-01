@@ -65,71 +65,109 @@ export const RenderSprites = {
         const offCanvas = new OffscreenCanvas(canvasSize, canvasSize);
         const offCtx = offCanvas.getContext("2d");
 
-        // 1. Soft ambient drop shadow beneath the broccoli
+        const hairColor = color || "#4E342E";
+        const hairShadow = "#2E1F1A";
+        const skinHighlight = "#FFE0C2";
+        const skinMid = "#E8B89A";
+        const skinShadow = "#A67C5B";
+        const skinEdge = "#6D4C41";
+
+        // 1. Soft ambient drop shadow beneath the head
         offCtx.beginPath();
-        offCtx.ellipse(cx, cy + radius * 0.4, radius * 0.9, radius * 0.45, 0, 0, Math.PI * 2);
-        offCtx.fillStyle = "rgba(0, 0, 0, 0.45)";
+        offCtx.ellipse(cx, cy + radius * 0.42, radius * 0.88, radius * 0.4, 0, 0, Math.PI * 2);
+        offCtx.fillStyle = "rgba(0, 0, 0, 0.42)";
         offCtx.fill();
 
-        // 2. Thick stalk pointing backward (negative X direction, since positive X is forward)
-        const stalkX = cx - radius * 0.35;
-        const stalkY = cy;
+        // 2. Hair mass (outer ring — reads from above)
         offCtx.beginPath();
-        offCtx.ellipse(stalkX, stalkY, radius * 0.4, radius * 0.3, Math.PI / 6, 0, Math.PI * 2);
-        const stalkGrad = offCtx.createLinearGradient(
-            stalkX - radius * 0.3, stalkY - radius * 0.2,
-            stalkX + radius * 0.3, stalkY + radius * 0.2
+        offCtx.arc(cx, cy, radius * 1.02, 0, Math.PI * 2);
+        const hairGrad = offCtx.createRadialGradient(
+            cx - radius * 0.2, cy - radius * 0.25, radius * 0.15,
+            cx, cy, radius * 1.02
         );
-        stalkGrad.addColorStop(0, "#C2E5A0"); // Light pale green highlight
-        stalkGrad.addColorStop(0.5, "#8ECA69"); // Medium green stalk
-        stalkGrad.addColorStop(1, "#548C30"); // Shadow green stalk
-        offCtx.fillStyle = stalkGrad;
+        hairGrad.addColorStop(0, hairColor);
+        hairGrad.addColorStop(0.55, hairShadow);
+        hairGrad.addColorStop(1, "#1A120F");
+        offCtx.fillStyle = hairGrad;
         offCtx.fill();
-        offCtx.strokeStyle = "#385E20";
-        offCtx.lineWidth = 1;
+
+        // 3. Face — overhead circle (positive X is forward)
+        const faceR = radius * 0.82;
+        offCtx.beginPath();
+        offCtx.arc(cx, cy, faceR, 0, Math.PI * 2);
+        const skinGrad = offCtx.createRadialGradient(
+            cx - radius * 0.28, cy - radius * 0.28, radius * 0.08,
+            cx, cy, faceR
+        );
+        skinGrad.addColorStop(0, skinHighlight);
+        skinGrad.addColorStop(0.35, skinMid);
+        skinGrad.addColorStop(0.75, skinShadow);
+        skinGrad.addColorStop(1, skinEdge);
+        offCtx.fillStyle = skinGrad;
+        offCtx.fill();
+        offCtx.strokeStyle = "rgba(46, 31, 26, 0.35)";
+        offCtx.lineWidth = Math.max(0.5, radius * 0.06);
         offCtx.stroke();
 
-        // 3. Helper to draw a volumetric floret with radial gradient shading and texture buds
-        const drawFloret = (fx, fy, frad) => {
+        // 4. Ears (left / right of skull)
+        const drawEar = (ex, ey) => {
             offCtx.beginPath();
-            offCtx.arc(fx, fy, frad, 0, Math.PI * 2);
-            
-            const grad = offCtx.createRadialGradient(
-                fx - frad * 0.25, fy - frad * 0.25, frad * 0.1,
-                fx, fy, frad
-            );
-            grad.addColorStop(0.0, "#A3E26F"); // bright lime highlight
-            grad.addColorStop(0.3, "#4BAE4F"); // rich green midtone
-            grad.addColorStop(0.7, "#2E7D32"); // forest green shadow
-            grad.addColorStop(1.0, "#1B5E20"); // deep dark green border
-            
-            offCtx.fillStyle = grad;
+            offCtx.ellipse(ex, ey, radius * 0.14, radius * 0.2, 0, 0, Math.PI * 2);
+            const earGrad = offCtx.createRadialGradient(ex - radius * 0.04, ey, radius * 0.02, ex, ey, radius * 0.2);
+            earGrad.addColorStop(0, skinMid);
+            earGrad.addColorStop(1, skinShadow);
+            offCtx.fillStyle = earGrad;
             offCtx.fill();
-            
-            // Texture buds/dots
-            offCtx.fillStyle = "rgba(163, 226, 111, 0.35)"; // yellow-green tiny buds
-            for (let i = 0; i < 6; i++) {
-                const sx = fx + (Math.sin(i * 2.3) * frad * 0.45);
-                const sy = fy + (Math.cos(i * 1.7) * frad * 0.45);
-                offCtx.beginPath();
-                offCtx.arc(sx, sy, frad * 0.12, 0, Math.PI * 2);
-                offCtx.fill();
-            }
+            offCtx.strokeStyle = "rgba(46, 31, 26, 0.3)";
+            offCtx.lineWidth = Math.max(0.5, radius * 0.05);
+            offCtx.stroke();
         };
+        drawEar(cx - radius * 0.72, cy - radius * 0.02);
+        drawEar(cx + radius * 0.72, cy - radius * 0.02);
 
-        // Draw florets in overlapping layers (back to front, then center)
-        // Floret 1: Top-Left (Back)
-        drawFloret(cx - radius * 0.35, cy - radius * 0.35, radius * 0.5);
-        // Floret 2: Bottom-Left (Back)
-        drawFloret(cx - radius * 0.35, cy + radius * 0.35, radius * 0.5);
-        // Floret 3: Top-Right
-        drawFloret(cx + radius * 0.25, cy - radius * 0.35, radius * 0.5);
-        // Floret 4: Bottom-Right
-        drawFloret(cx + radius * 0.25, cy + radius * 0.35, radius * 0.5);
-        // Floret 5: Front (pointing forward)
-        drawFloret(cx + radius * 0.4, cy, radius * 0.55);
-        // Floret 6: Center (raised on top)
-        drawFloret(cx, cy, radius * 0.6);
+        // 5. Hair cap on top (clips to upper hemisphere)
+        offCtx.save();
+        offCtx.beginPath();
+        offCtx.arc(cx, cy, faceR, 0, Math.PI * 2);
+        offCtx.clip();
+        offCtx.beginPath();
+        offCtx.ellipse(cx - radius * 0.08, cy - radius * 0.42, radius * 0.72, radius * 0.55, 0, 0, Math.PI * 2);
+        const capGrad = offCtx.createRadialGradient(
+            cx - radius * 0.15, cy - radius * 0.5, radius * 0.1,
+            cx, cy - radius * 0.2, radius * 0.85
+        );
+        capGrad.addColorStop(0, hairColor);
+        capGrad.addColorStop(0.6, hairShadow);
+        capGrad.addColorStop(1, "rgba(26, 18, 15, 0)");
+        offCtx.fillStyle = capGrad;
+        offCtx.fill();
+        offCtx.restore();
+
+        // 6. Part line and forward-facing brow (negative X = back of head)
+        offCtx.beginPath();
+        offCtx.moveTo(cx - radius * 0.05, cy - radius * 0.55);
+        offCtx.quadraticCurveTo(cx - radius * 0.35, cy - radius * 0.15, cx - radius * 0.5, cy + radius * 0.05);
+        offCtx.strokeStyle = "rgba(26, 18, 15, 0.45)";
+        offCtx.lineWidth = Math.max(0.8, radius * 0.08);
+        offCtx.lineCap = "round";
+        offCtx.stroke();
+
+        offCtx.beginPath();
+        offCtx.ellipse(cx + radius * 0.22, cy - radius * 0.08, radius * 0.28, radius * 0.12, Math.PI / 8, 0, Math.PI * 2);
+        offCtx.fillStyle = "rgba(109, 76, 65, 0.25)";
+        offCtx.fill();
+
+        // 7. Nose toward +X (forward)
+        offCtx.beginPath();
+        offCtx.ellipse(cx + radius * 0.18, cy + radius * 0.06, radius * 0.09, radius * 0.07, 0, 0, Math.PI * 2);
+        offCtx.fillStyle = "rgba(166, 124, 91, 0.55)";
+        offCtx.fill();
+
+        // 8. Specular highlight (upper-left)
+        offCtx.beginPath();
+        offCtx.ellipse(cx - radius * 0.38, cy - radius * 0.38, radius * 0.14, radius * 0.07, Math.PI / 4, 0, Math.PI * 2);
+        offCtx.fillStyle = "rgba(255, 255, 255, 0.45)";
+        offCtx.fill();
 
         return { offCanvas, cx, cy };
     },

@@ -13,6 +13,8 @@ const elements = {
 };
 
 let keyListenerBound = false;
+/** Pointer id for an advance tap that started on the radio button (ignores inspect-tap pointerup). */
+let advancePointerId = null;
 /** Last non-Brock speaker — stays on the right through Brock's reply (MGS codec). */
 let lastRemoteSpeaker = null;
 
@@ -121,6 +123,7 @@ export function hideRadioDialog() {
     elements.overlay.style.display = "none";
     elements.portraitRow.innerHTML = "";
     lastRemoteSpeaker = null;
+    advancePointerId = null;
 }
 
 function onAdvanceInput(e) {
@@ -143,7 +146,18 @@ export function registerRadioUiListeners(eventBus) {
     const advanceBtn = document.getElementById("radioDialogAdvanceBtn");
     if (advanceBtn && !advanceBtn.dataset.bound) {
         advanceBtn.dataset.bound = "1";
-        advanceBtn.addEventListener("click", onAdvanceInput);
+        advanceBtn.addEventListener("pointerdown", (e) => {
+            e.preventDefault();
+            advancePointerId = e.pointerId;
+        });
+        advanceBtn.addEventListener("pointerup", (e) => {
+            if (e.pointerId !== advancePointerId) return;
+            advancePointerId = null;
+            onAdvanceInput(e);
+        });
+        advanceBtn.addEventListener("pointercancel", (e) => {
+            if (e.pointerId === advancePointerId) advancePointerId = null;
+        });
     }
 
     if (!keyListenerBound) {
