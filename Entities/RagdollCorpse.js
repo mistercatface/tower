@@ -3,7 +3,7 @@ import { applyRagdollImpulse, updateRagdoll } from "../Render/Kinematics/Ragdoll
 import { checkRagdollHit, ragdollPartToWorld } from "../Render/Kinematics/Ragdoll/RagdollHitTest.js";
 import { seedRagdollBloodOnDeath, updateBloodEffects, addRagdollBleedEmitter } from "../Render/Kinematics/Ragdoll/RagdollBlood.js";
 import { createObstacleWallChecker, createRagdollState, resolveDeathImpact } from "../Render/Kinematics/Ragdoll/ragdollFromActor.js";
-import { captureActorRigForRagdoll, getCorpseKinematics, renderCorpseKinematicsBody } from "../Render/Kinematics/PlayerKinematicsRenderer.js";
+import { captureActorRigForRagdoll, getKinematicsRenderer, renderCorpseKinematicsBody } from "../Render/Kinematics/PlayerKinematicsRenderer.js";
 import { CombatParticles } from "../Render/CombatParticles.js";
 
 const CORPSE_MAX_MS = 12000;
@@ -18,7 +18,7 @@ export class RagdollCorpse extends Entity {
             const hit = checkRagdollHit(corpse, projectile.x, projectile.y, projectile.radius);
             if (!hit) continue;
 
-            const { rig, config } = getCorpseKinematics(corpse).bundle;
+            const { rig, config } = getKinematicsRenderer(corpse.radius).bundle;
             const forceScale = Math.max(8, (projectile.speed ?? 100) * 0.035);
             const fx = Math.cos(projectile.angle) * forceScale;
             const fy = -forceScale * 0.25;
@@ -92,7 +92,7 @@ export class RagdollCorpse extends Entity {
             return;
         }
 
-        const { rig } = getCorpseKinematics(this).bundle;
+        const { rig } = getKinematicsRenderer(this.radius).bundle;
         const dtSec = dt / 1000;
         updateRagdoll(this.ragdoll, dtSec, this.x, this.y, this.ragdoll.rotation, wallChecker, player?.x ?? this.x, player?.y ?? this.y, rig);
         updateBloodEffects(this.ragdoll, dtSec, rig);

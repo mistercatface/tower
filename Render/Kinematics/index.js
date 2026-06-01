@@ -23,6 +23,9 @@ export {
     getKinematicsRenderer,
     getPlayerKinematicsRenderer,
     advanceActorKinematics,
+    renderKinematicsBody,
     renderActorKinematicsBody,
+    blitKinematicsCanvas,
+    resolveKinematicsCamera,
     kinematicsPixelSizeForRadius,
 } from "./PlayerKinematicsRenderer.js";

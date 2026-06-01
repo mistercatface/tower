@@ -4,7 +4,7 @@ import { createSceneRenderer } from "./KinematicsSceneRenderer.js";
 import { createKinematicsSpriteCache } from "./KinematicsSpriteCache.js";
 import { calculateCharacterRig } from "./KinematicsRigCalculator.js";
 import { projectRig } from "./KinematicsProjector.js";
-import { drawCharacterToCanvas } from "./KinematicsDraw.js";
+import { drawKinematicsFrameToCanvas } from "./KinematicsDraw.js";
 import { blend, ease } from "./KinematicsMath.js";
 import { resolveCombatFacing, resolveSpriteBodyRotation } from "./KinematicsFacing.js";
 import { normalizeWeaponLoadout } from "../../Combat/equipmentLoadout.js";
@@ -175,25 +175,88 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
         return buildKinematicsViewContext(x, y, camera);
     }
 
-    function buildSprite(actor, camera) {
+    function buildProjectedSceneAt(x, y, camera, rigData, renderRotation, bodyRotation = 0, animCycle = 0) {
+        const viewContext = buildQuantizedViewContext(x, y, camera, bodyRotation, animCycle);
+        const scene = projectRig(rigData, renderRotation, viewContext, config, rig);
+        return { scene, viewContext };
+    }
+
+    function resolveLiveFrame(actor, camera) {
         const state = getOrCreateState(actor);
-        const spriteBodyRotation = resolveSpriteBodyRotation(actor);
-        const naturalCycle = state.animCycle % (Math.PI * 2);
+        syncWeaponPose(state, actor, poses);
+        const bodyRotation = resolveSpriteBodyRotation(actor);
+        const animCycle = state.animCycle % (Math.PI * 2);
         const { rawTiltFactor } = buildViewContextAt(actor.x, actor.y, camera);
-        const q = spriteCache.getQuantizedValues(spriteBodyRotation, naturalCycle, rawTiltFactor);
-        const viewContext = buildQuantizedViewContext(actor.x, actor.y, camera, spriteBodyRotation, naturalCycle);
-        const weaponKey = getWeaponLoadoutKey(actor);
-        const aimKey = getQuantizedAimKey(actor, spriteCache.rotationSteps);
-        const cacheKey = spriteCache.getKey(actor.id, state.pose, q.rotation, naturalCycle, state.crouchFactor, rawTiltFactor, weaponKey, aimKey);
+        const q = spriteCache.getQuantizedValues(bodyRotation, animCycle, rawTiltFactor);
+        const facing = resolveCombatFacing(actor, state, q.rotation, config);
+        const rigData = calculateCharacterRig(
+            { ...state, staticBlendFactor: state.staticBlendFactor },
+            q.cycle,
+            config,
+            rig,
+            poses,
+            actor,
+            facing,
+        );
+        return {
+            x: actor.x,
+            y: actor.y,
+            camera,
+            rigData,
+            renderRotation: facing.renderRotation,
+            bodyRotation,
+            animCycle,
+            actor,
+            facing,
+            drawOptions: { drawWeapons: true },
+            cacheMeta: { state, q, rawTiltFactor, weaponKey: getWeaponLoadoutKey(actor), aimKey: getQuantizedAimKey(actor, spriteCache.rotationSteps) },
+        };
+    }
+
+    /**
+     * Single render path: project rig + draw character mesh (+ optional weapons / ragdoll gore).
+     */
+    function renderKinematicsFrame({
+        x,
+        y,
+        camera,
+        rigData,
+        renderRotation,
+        bodyRotation = 0,
+        animCycle = 0,
+        actor,
+        facing,
+        drawOptions = {},
+        padding = config.PADDING,
+    }) {
+        const { scene, viewContext } = buildProjectedSceneAt(x, y, camera, rigData, renderRotation, bodyRotation, animCycle);
+        return drawKinematicsFrameToCanvas(
+            sharedCanvas,
+            sharedCtx,
+            scene,
+            actor,
+            viewContext,
+            facing,
+            config,
+            rig,
+            sceneRenderer,
+            padding,
+            drawOptions,
+        );
+    }
+
+    function buildSprite(actor, camera) {
+        const frame = resolveLiveFrame(actor, camera);
+        const { state, q, rawTiltFactor, weaponKey, aimKey } = frame.cacheMeta;
+        const cacheKey = spriteCache.getKey(actor.id, state.pose, q.rotation, frame.animCycle, state.crouchFactor, rawTiltFactor, weaponKey, aimKey);
 
         const cached = spriteCache.get(cacheKey);
         if (cached) return cached;
 
-        const facing = resolveCombatFacing(actor, state, q.rotation, config);
-
-        const rigData = calculateCharacterRig({ ...state, staticBlendFactor: state.staticBlendFactor }, q.cycle, config, rig, poses, actor, facing);
-        const scene = projectRig(rigData, facing.renderRotation, viewContext, config, rig);
-        const canvas = drawCharacterToCanvas(sharedCanvas, sharedCtx, scene, actor, viewContext, facing, config, rig, sceneRenderer, spriteCache.cachePadding);
+        const canvas = renderKinematicsFrame({
+            ...frame,
+            padding: spriteCache.cachePadding,
+        });
 
         return spriteCache.set(cacheKey, canvas);
     }
@@ -216,23 +279,18 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
         return { rigData, rotation: bodyRotation, renderRotation: facing.renderRotation };
     }
 
-    function buildProjectedSceneAt(x, y, camera, rigData, renderRotation, bodyRotation = 0, animCycle = 0) {
-        const viewContext = buildQuantizedViewContext(x, y, camera, bodyRotation, animCycle);
-        const scene = projectRig(rigData, renderRotation, viewContext, config, rig);
-        return { scene, viewContext };
-    }
-
     function buildLiveScene(actor, camera) {
-        const state = getOrCreateState(actor);
-        syncWeaponPose(state, actor, poses);
-        const spriteBodyRotation = resolveSpriteBodyRotation(actor);
-        const naturalCycle = state.animCycle % (Math.PI * 2);
-        const { rawTiltFactor } = buildViewContextAt(actor.x, actor.y, camera);
-        const q = spriteCache.getQuantizedValues(spriteBodyRotation, naturalCycle, rawTiltFactor);
-        const facing = resolveCombatFacing(actor, state, q.rotation, config);
-        const rigData = calculateCharacterRig({ ...state, staticBlendFactor: state.staticBlendFactor }, q.cycle, config, rig, poses, actor, facing);
-        const { scene, viewContext } = buildProjectedSceneAt(actor.x, actor.y, camera, rigData, facing.renderRotation, spriteBodyRotation, naturalCycle);
-        return { scene, viewContext, config, facing };
+        const frame = resolveLiveFrame(actor, camera);
+        const { scene, viewContext } = buildProjectedSceneAt(
+            frame.x,
+            frame.y,
+            frame.camera,
+            frame.rigData,
+            frame.renderRotation,
+            frame.bodyRotation,
+            frame.animCycle,
+        );
+        return { scene, viewContext, config, facing: frame.facing };
     }
 
     function resolveMuzzleWorldPosition(actor, camera, turretIndex, displayDiameter) {
@@ -254,6 +312,7 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
         buildKinematicsViewContext,
         buildRagdollViewContext,
         buildProjectedSceneAt,
+        renderKinematicsFrame,
         captureActorRigForRagdoll,
         clearActorState,
         clearAllStates: () => entityStates.clear(),

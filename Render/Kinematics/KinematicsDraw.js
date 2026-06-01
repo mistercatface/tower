@@ -114,6 +114,53 @@ function drawHeldWeapons(scene, actor, sceneRenderer, config, facing) {
     }
 }
 
+export function drawKinematicsFrameToCanvas(
+    sharedCanvas,
+    sharedCtx,
+    scene,
+    actor,
+    viewContext,
+    facing,
+    config,
+    rig,
+    sceneRenderer,
+    overridePadding = null,
+    options = {},
+) {
+    const { drawWeapons = false, severed = {}, ragdoll = null } = options;
+    const padding = overridePadding !== null ? overridePadding : config.PADDING;
+    const canvasSize = Math.ceil(config.SIZE + padding * 2);
+
+    if (sharedCanvas.width !== canvasSize || sharedCanvas.height !== canvasSize) {
+        sharedCanvas.width = canvasSize;
+        sharedCanvas.height = canvasSize;
+    } else {
+        sharedCtx.clearRect(0, 0, canvasSize, canvasSize);
+    }
+
+    sharedCtx.save();
+    sharedCtx.translate(padding, padding);
+    sceneRenderer.begin(sharedCtx, viewContext, facing.renderRotation, rig);
+    drawStandardCharacter(scene, actor, sceneRenderer, config, rig, { severed: ragdoll?.severed ?? severed });
+    if (drawWeapons) {
+        drawHeldWeapons(scene, actor, sceneRenderer, config, facing);
+    }
+    if (ragdoll) {
+        drawRagdollGoreStumps(ragdoll, sceneRenderer, rig);
+        queueRagdollBloodDraw(sceneRenderer, ragdoll, config, rig, viewContext, facing.renderRotation);
+    }
+    sceneRenderer.flush();
+    sharedCtx.restore();
+
+    sharedCanvas.drawRatio = canvasSize / config.SIZE;
+    const feetYInCanvas = padding + config.ANCHOR_Y * config.SIZE;
+    const canvasCenterY = canvasSize / 2;
+    sharedCanvas.verticalShift = feetYInCanvas - canvasCenterY;
+
+    return sharedCanvas;
+}
+
+/** @deprecated Use drawKinematicsFrameToCanvas */
 export function drawCharacterToCanvas(
     sharedCanvas,
     sharedCtx,
@@ -127,72 +174,17 @@ export function drawCharacterToCanvas(
     overridePadding = null,
     options = {},
 ) {
-    const drawWeapons = options.drawWeapons !== false;
-    const padding = overridePadding !== null ? overridePadding : config.PADDING;
-    const canvasSize = Math.ceil(config.SIZE + padding * 2);
-
-    if (sharedCanvas.width !== canvasSize || sharedCanvas.height !== canvasSize) {
-        sharedCanvas.width = canvasSize;
-        sharedCanvas.height = canvasSize;
-    } else {
-        sharedCtx.clearRect(0, 0, canvasSize, canvasSize);
-    }
-
-    sharedCtx.save();
-    sharedCtx.translate(padding, padding);
-    sceneRenderer.begin(sharedCtx, viewContext, facing.renderRotation, rig);
-    drawStandardCharacter(scene, actor, sceneRenderer, config, rig);
-    if (drawWeapons) {
-        drawHeldWeapons(scene, actor, sceneRenderer, config, facing);
-    }
-    sceneRenderer.flush();
-    sharedCtx.restore();
-
-    sharedCanvas.drawRatio = canvasSize / config.SIZE;
-    const feetYInCanvas = padding + config.ANCHOR_Y * config.SIZE;
-    const canvasCenterY = canvasSize / 2;
-    sharedCanvas.verticalShift = feetYInCanvas - canvasCenterY;
-
-    return sharedCanvas;
-}
-
-/** Ragdoll corpse draw: character mesh + drips / floor stains. */
-export function drawRagdollCorpseToCanvas(
-    sharedCanvas,
-    sharedCtx,
-    scene,
-    actor,
-    viewContext,
-    facing,
-    config,
-    rig,
-    sceneRenderer,
-    ragdoll,
-    overridePadding = null,
-) {
-    const padding = overridePadding !== null ? overridePadding : config.PADDING;
-    const canvasSize = Math.ceil(config.SIZE + padding * 2);
-
-    if (sharedCanvas.width !== canvasSize || sharedCanvas.height !== canvasSize) {
-        sharedCanvas.width = canvasSize;
-        sharedCanvas.height = canvasSize;
-    } else {
-        sharedCtx.clearRect(0, 0, canvasSize, canvasSize);
-    }
-
-    sharedCtx.save();
-    sharedCtx.translate(padding, padding);
-    sceneRenderer.begin(sharedCtx, viewContext, facing.renderRotation, rig);
-    drawStandardCharacter(scene, actor, sceneRenderer, config, rig, { severed: ragdoll.severed });
-    drawRagdollGoreStumps(ragdoll, sceneRenderer, rig);
-    queueRagdollBloodDraw(sceneRenderer, ragdoll, config, rig, viewContext, facing.renderRotation);
-    sceneRenderer.flush();
-    sharedCtx.restore();
-
-    sharedCanvas.drawRatio = canvasSize / config.SIZE;
-    const feetYInCanvas = padding + config.ANCHOR_Y * config.SIZE;
-    const canvasCenterY = canvasSize / 2;
-    sharedCanvas.verticalShift = feetYInCanvas - canvasCenterY;
-
-    return sharedCanvas;
+    return drawKinematicsFrameToCanvas(
+        sharedCanvas,
+        sharedCtx,
+        scene,
+        actor,
+        viewContext,
+        facing,
+        config,
+        rig,
+        sceneRenderer,
+        overridePadding,
+        { ...options, drawWeapons: options.drawWeapons !== false },
+    );
 }
