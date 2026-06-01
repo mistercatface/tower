@@ -23,6 +23,7 @@ function createEntityAnimState(poses) {
         lastY: 0,
         smoothedSpeed: 0,
         poseFactor: 0,
+        legPoseFactor: 0,
         crouchFactor: 0,
         weaponLoadoutKey: "",
         lastStaticChange: 0,
@@ -104,31 +105,48 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
             || Math.hypot(actor.vx ?? 0, actor.vy ?? 0) > 2;
         syncWeaponPose(state, actor, poses);
 
+        const hasWeapons = getWeaponLoadoutKey(actor) !== "none";
         const isWalking = walkPlayback > 0.12 || hasMoveIntent;
         const targetPoseFactor = isWalking ? 1 : 0;
-        const transitionSpeed = state.poseFactor > 0.5 ? 3 : 1.5;
-        state.poseFactor += (targetPoseFactor - state.poseFactor) * dtSec * transitionSpeed;
-        state.poseFactor = Math.max(0, Math.min(1, state.poseFactor));
+        const locomotionBlend = hasWeapons ? state.legPoseFactor : state.poseFactor;
+        const transitionSpeed = locomotionBlend > 0.5 ? 3 : 1.5;
 
-        if (!isWalking) {
-            const idlePose = poses[resolveWeaponStaticPoseName(actor)] ?? poses.IDLE;
-            if (state.currentStaticPose !== idlePose) {
-                state.lastStaticPose = state.currentStaticPose;
-                state.currentStaticPose = idlePose;
-                state.staticBlendFactor = 0;
-            } else {
-                state.staticBlendFactor = Math.min(1, state.staticBlendFactor + dtSec / 0.75);
-            }
-            state.pose = idlePose.name;
-        } else {
+        if (hasWeapons) {
+            state.poseFactor = 0;
+            state.legPoseFactor += (targetPoseFactor - state.legPoseFactor) * dtSec * transitionSpeed;
+            state.legPoseFactor = Math.max(0, Math.min(1, state.legPoseFactor));
+
+            const weaponPose = poses[resolveWeaponStaticPoseName(actor)] ?? poses.IDLE;
+            state.currentStaticPose = weaponPose;
+            state.lastStaticPose = weaponPose;
             state.staticBlendFactor = 1;
-            state.currentStaticPose = poses.IDLE;
-            state.lastStaticPose = poses.IDLE;
-            state.pose = "WALK";
+            state.pose = weaponPose.name;
+        } else {
+            state.legPoseFactor = 0;
+            state.poseFactor += (targetPoseFactor - state.poseFactor) * dtSec * transitionSpeed;
+            state.poseFactor = Math.max(0, Math.min(1, state.poseFactor));
+
+            if (!isWalking) {
+                const idlePose = poses.IDLE;
+                if (state.currentStaticPose !== idlePose) {
+                    state.lastStaticPose = state.currentStaticPose;
+                    state.currentStaticPose = idlePose;
+                    state.staticBlendFactor = 0;
+                } else {
+                    state.staticBlendFactor = Math.min(1, state.staticBlendFactor + dtSec / 0.75);
+                }
+                state.pose = idlePose.name;
+            } else {
+                state.staticBlendFactor = 1;
+                state.currentStaticPose = poses.IDLE;
+                state.lastStaticPose = poses.IDLE;
+                state.pose = "WALK";
+            }
         }
 
-        const cycleSpeed = state.poseFactor > 0.1 ? config.STRIDE_SPEED : config.IDLE_SPEED;
-        const playbackSpeed = state.poseFactor > 0.1 ? walkPlayback * (config.WALK_PLAYBACK_SCALE ?? 1) : 1;
+        const locomoting = hasWeapons ? state.legPoseFactor > 0.1 : state.poseFactor > 0.1;
+        const cycleSpeed = locomoting ? config.STRIDE_SPEED : config.IDLE_SPEED;
+        const playbackSpeed = locomoting ? walkPlayback * (config.WALK_PLAYBACK_SCALE ?? 1) : 1;
         state.animCycle += playbackSpeed * dtSec * cycleSpeed;
 
         return state;

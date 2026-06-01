@@ -111,31 +111,33 @@ export function calculateCharacterRig(state, cycle, config, rig, poses, actor = 
     const sREZ = blend(lastA.rElbowZ || 0, nextA.rElbowZ || 0, sEased);
     const sLEZ = blend(lastA.lElbowZ || 0, nextA.lElbowZ || 0, sEased);
 
-    const t = ease(state.poseFactor);
+    const armed = actor && resolveWeaponDrawSlots(actor).length > 0;
+    const legT = ease(armed ? (state.legPoseFactor ?? 0) : state.poseFactor);
+    const armT = armed ? 0 : legT;
     const vals = {
-        lift: blend(staticLift, activeWalkMods.lift, t),
-        lean: blend(staticLean, activeWalkMods.lean, t),
-        bob: blend(staticBob, activeWalkMods.bob, t),
+        lift: blend(staticLift, activeWalkMods.lift, legT),
+        lean: blend(staticLean, activeWalkMods.lean, legT),
+        bob: blend(staticBob, activeWalkMods.bob, legT),
         rightFootTarget: {
-            x: blend(staticRF.x, activeWalkTargets.rightFoot.x, t),
-            y: blend(staticRF.y, activeWalkTargets.rightFoot.y, t),
+            x: blend(staticRF.x, activeWalkTargets.rightFoot.x, legT),
+            y: blend(staticRF.y, activeWalkTargets.rightFoot.y, legT),
         },
         leftFootTarget: {
-            x: blend(staticLF.x, activeWalkTargets.leftFoot.x, t),
-            y: blend(staticLF.y, activeWalkTargets.leftFoot.y, t),
+            x: blend(staticLF.x, activeWalkTargets.leftFoot.x, legT),
+            y: blend(staticLF.y, activeWalkTargets.leftFoot.y, legT),
         },
-        rArm: blend(sRA, activeWalkArms.rArm, t),
-        lArm: blend(sLA, activeWalkArms.lArm, t),
-        rElbow: blend(sRE, activeWalkArms.rElbow, t),
-        lElbow: blend(sLE, activeWalkArms.lElbow, t),
-        rArmZ: blend(sRAZ, activeWalkArms.rArmZ, t),
-        lArmZ: blend(sLAZ, activeWalkArms.lArmZ, t),
-        rElbowZ: blend(sREZ, activeWalkArms.rElbowZ, t),
-        lElbowZ: blend(sLEZ, activeWalkArms.lElbowZ, t),
+        rArm: blend(sRA, activeWalkArms.rArm, armT),
+        lArm: blend(sLA, activeWalkArms.lArm, armT),
+        rElbow: blend(sRE, activeWalkArms.rElbow, armT),
+        lElbow: blend(sLE, activeWalkArms.lElbow, armT),
+        rArmZ: blend(sRAZ, activeWalkArms.rArmZ, armT),
+        lArmZ: blend(sLAZ, activeWalkArms.lArmZ, armT),
+        rElbowZ: blend(sREZ, activeWalkArms.rElbowZ, armT),
+        lElbowZ: blend(sLEZ, activeWalkArms.lElbowZ, armT),
     };
 
     if (actor) {
-        const aimStrength = 1 - t;
+        const aimStrength = 1 - armT;
         const aimed = applyWeaponAimToVals(vals, actor, aimStrength);
         vals.rArm = aimed.rArm;
         vals.lArm = aimed.lArm;
