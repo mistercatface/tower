@@ -157,6 +157,8 @@ export class MapGenerator {
         }
         state.obstacleGrid.rebuild(state.walls);
         state.hierarchicalNavigator.initialize();
+        state.floorTileSeed = (Math.random() * 0x7fffffff) | 0;
+        state.floorTiles.clear();
     }
 
     static pregenerateAllCombatData(state) {

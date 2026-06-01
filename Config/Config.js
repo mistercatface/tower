@@ -330,6 +330,17 @@ export const playerBaseStats = {
 
 export const gridSettings = { cellSize: 16, width: 2400, height: 2400, minCellsPerChunk: 8, maxCellsPerChunk: 64 };
 
+/** Floor render chunks — one offscreen canvas per chunk, aligned to gridSettings.cellSize. */
+export const floorTileSettings = {
+    cellsPerChunk: gridSettings.minCellsPerChunk,
+    viewPaddingPx: 128,
+    maxCachedChunks: 512,
+    /** When true, procedural tiles replace the oscilloscope grid + opaque range fill. */
+    enabled: true,
+    /** Soft radial darkening on top of tiles (0 = off). */
+    vignetteAlpha: 0.45,
+};
+
 export const combatVisualSettings = { floorHighlight: "#2c3340", floorFill: "#1c2129", floorShadow: "#12161c", gridStroke: "rgba(90, 105, 125, 0.2)" };
 
 /** Classic circle + turret HUD (H cycles modes). */

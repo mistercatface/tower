@@ -1,6 +1,6 @@
 import { SpriteCache } from "./SpriteCache.js";
 import { Render3D } from "./3D/Render3D.js";
-import { combatVisualSettings, createFloorFillStyle, mapSettings, COMBAT_HUD_MODE, hudSettings } from "../Config/Config.js";
+import { combatVisualSettings, createFloorFillStyle, floorTileSettings, mapSettings, COMBAT_HUD_MODE, hudSettings } from "../Config/Config.js";
 import { getWorldDrawCoords, isMapTraveling, isWorldScene } from "../GameState/GamePhase.js";
 import { getPlayerActors } from "../Combat/Targeting.js";
 import { drawHostileOffScreenIndicators } from "./OffScreenIndicators.js";
@@ -15,6 +15,7 @@ export class Renderer {
         this.floatingTextCache = new SpriteCache();
         this.render3D = new Render3D();
         this.effectPasses = [
+            { zIndex: -5, fn: (state, viewport) => state.floorTiles.draw(this.ctx, state, viewport) },
             { zIndex: 0, fn: (state, viewport) => this.drawRangeIndicator(state, viewport) },
             {
                 zIndex: 30,
@@ -72,7 +73,7 @@ export class Renderer {
         this.ctx.save();
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-        if (viewport && isWorldScene(state.phase)) {
+        if (viewport && isWorldScene(state.phase) && !floorTileSettings.enabled) {
             this.drawOscilloscopeGrid(state, viewport);
         }
 
@@ -153,14 +154,36 @@ export class Renderer {
 
     drawRangeIndicator(state, viewport) {
         const { useViewport, range, x, y } = getWorldDrawCoords(state, viewport);
-        if (useViewport) {
-            this.ctx.beginPath();
-            this.ctx.arc(x, y, range, 0, Math.PI * 2);
-            this.ctx.fillStyle = createFloorFillStyle(this.ctx, x, y, range);
-            this.ctx.fill();
-        } else {
+        if (!useViewport) {
             state.player.renderRange(this.ctx, range);
+            return;
         }
+
+        if (floorTileSettings.enabled) {
+            this.drawFloorVignette(x, y, range);
+            return;
+        }
+
+        this.ctx.beginPath();
+        this.ctx.arc(x, y, range, 0, Math.PI * 2);
+        this.ctx.fillStyle = createFloorFillStyle(this.ctx, x, y, range);
+        this.ctx.fill();
+    }
+
+    drawFloorVignette(cx, cy, radius) {
+        const alpha = floorTileSettings.vignetteAlpha ?? 0;
+        if (alpha <= 0) return;
+
+        this.ctx.save();
+        this.ctx.beginPath();
+        this.ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+        const grad = this.ctx.createRadialGradient(cx, cy, radius * 0.35, cx, cy, radius);
+        grad.addColorStop(0, "rgba(0, 0, 0, 0)");
+        grad.addColorStop(0.72, `rgba(0, 0, 0, ${alpha * 0.35})`);
+        grad.addColorStop(1, `rgba(0, 0, 0, ${alpha})`);
+        this.ctx.fillStyle = grad;
+        this.ctx.fill();
+        this.ctx.restore();
     }
 
     drawActorAndTurrets(actor, state, viewport) {
