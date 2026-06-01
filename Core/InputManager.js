@@ -77,6 +77,10 @@ export class InputManager {
                 fsm.context.state.debugMode = !fsm.context.state.debugMode;
                 console.log("Debug Mode: " + fsm.context.state.debugMode);
             }
+            if (e.key === "h" || e.key === "H") {
+                fsm.context.state.combatHudOverlay = !fsm.context.state.combatHudOverlay;
+                console.log("Combat HUD Overlay: " + fsm.context.state.combatHudOverlay);
+            }
         });
     }
 }

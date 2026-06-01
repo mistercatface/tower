@@ -58,6 +58,9 @@ export const RenderSprites = {
         return { offCanvas, cx, cy };
     },
 
+    /** Distance from sprite anchor to muzzle tip in unscaled turret units (see `turret()`). */
+    turretTipOffset: 4,
+
     wall: (size, r, g, b) => {
         const offCanvas = new OffscreenCanvas(size + 2, size + 2);
         const offCtx = offCanvas.getContext("2d");

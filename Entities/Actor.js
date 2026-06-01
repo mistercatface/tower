@@ -11,7 +11,7 @@ import { spawnFloatingText } from "../Core/EventSystem.js";
 import { resolveWeaponModeForGun, WeaponSystem } from "../Combat/WeaponSystem.js";
 import { applyActorGunModifiers, getSlotReloadTimeMs } from "../Combat/gunCombat.js";
 import { getGunDefinition } from "../Config/gunDefinitions.js";
-import { explosionSettings } from "../Config/Config.js";
+import { explosionSettings, hudSettings } from "../Config/Config.js";
 import { resolveActorTurretLoadouts, applyGunTurretLoadouts, applyUpgradeTurretLoadouts } from "../Config/TurretLoadoutDefinitions.js";
 import { getTurretCountForLoadout, normalizeWeaponLoadout } from "../Combat/equipmentLoadout.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
@@ -550,6 +550,25 @@ export class Actor extends DestructibleEntity {
         if (this.usesKinematicsBody) return;
         for (const turret of this.turrets) {
             turret.render(ctx, x, y, this.radius, renderer, color, this);
+        }
+    }
+
+    renderCombatHudOverlay(ctx, renderer) {
+        const alpha = hudSettings.combatOverlayAlpha;
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        this.renderCachedSprite(
+            ctx,
+            this.getSpriteCache(renderer),
+            `hud_${this.getBodySpriteCacheKey()}`,
+            RenderSprites.enemy,
+            this.radius,
+            this.color,
+        );
+        ctx.restore();
+
+        for (const turret of this.turrets) {
+            turret.renderHudTriangle(ctx, renderer, this, { alpha });
         }
     }
 

@@ -79,6 +79,7 @@ const elements = {
     closeSettingsBtn: document.getElementById("closeSettingsBtn"),
     hardResetBtn: document.getElementById("hardResetBtn"),
     settingsModal: document.getElementById("settingsModal"),
+    combatHudOverlayToggle: document.getElementById("combatHudOverlayToggle"),
     mainTabButtons: document.querySelectorAll(".mainTabBtn"),
     statsSubTabButtons: document.querySelectorAll(".statsSubTabBtn"),
     statsSubTabs: document.getElementById("statsSubTabs"),
@@ -466,8 +467,17 @@ export function initUI(state, upgrades) {
     });
 
     elements.settingsBtn.addEventListener("click", () => {
+        if (elements.combatHudOverlayToggle) {
+            elements.combatHudOverlayToggle.checked = !!state.combatHudOverlay;
+        }
         elements.settingsModal.style.display = "flex";
     });
+
+    if (elements.combatHudOverlayToggle) {
+        elements.combatHudOverlayToggle.addEventListener("change", (e) => {
+            state.combatHudOverlay = e.target.checked;
+        });
+    }
 
     elements.closeSettingsBtn.addEventListener("click", () => {
         elements.settingsModal.style.display = "none";

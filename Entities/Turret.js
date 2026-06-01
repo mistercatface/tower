@@ -97,6 +97,34 @@ export class Turret {
         };
     }
 
+    getHudAnchorPosition(source) {
+        const gun = getGunDefinition(this.gunId);
+        const projectileRadius = gun.bulletRadius * this.loadout.radiusMultiplier;
+        const muzzle = this.getMuzzlePosition(source, projectileRadius, this.lastTarget ?? this.target);
+        const scale = source.radius / 8;
+        const tipOffset = RenderSprites.turretTipOffset * scale;
+        return {
+            x: muzzle.x - Math.cos(this.angle) * tipOffset,
+            y: muzzle.y - Math.sin(this.angle) * tipOffset,
+            angle: this.angle,
+            scale,
+        };
+    }
+
+    renderHudTriangle(ctx, renderer, source, { alpha = 1, color = null } = {}) {
+        const { x, y, angle, scale } = this.getHudAnchorPosition(source);
+        const fillColor = color ?? source.color;
+        const cacheKey = `hud_${scale}_${fillColor}`;
+        const cachedSprite = renderer.turretCache.get(cacheKey, RenderSprites.turret, scale, fillColor);
+
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(angle);
+        ctx.globalAlpha = alpha;
+        ctx.drawImage(cachedSprite.offCanvas, -cachedSprite.cx, -cachedSprite.cy);
+        ctx.restore();
+    }
+
     fire(state, source) {
         const gun = getGunDefinition(this.gunId);
         if (gun.kind !== "projectile") return;

@@ -102,6 +102,7 @@ export class GameState {
         this.isGameOver = false;
         this.isPaused = false;
         this.debugMode = false;
+        this.combatHudOverlay = false;
         this.spawnRadius = 950;
         this.pendingPerkPicks = [];
         this.radioSeenThisRun = {};

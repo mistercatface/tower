@@ -38,6 +38,7 @@ export class Renderer {
             { zIndex: 75, fn: (state, viewport) => this.drawEntityBars(state, viewport) },
             { zIndex: 80, fn: (state, viewport) => this.drawVisibilityMask(this.ctx, state, viewport) },
             { zIndex: 85, fn: (state, viewport) => this.drawTargetMarkers(state, viewport) },
+            { zIndex: 86, fn: (state, viewport) => this.drawCombatHudOverlay(state, viewport) },
         ];
     }
 
@@ -170,6 +171,17 @@ export class Renderer {
         }
         actor.render(this.ctx, this, state);
         actor.renderTurrets(this.ctx, this);
+    }
+
+    drawCombatHudOverlay(state, viewport) {
+        if (!state.combatHudOverlay) return;
+        for (const actor of state.getCombatants()) {
+            if (actor.isDead) continue;
+            if (viewport && typeof actor.isVisible === "function" && !actor.isVisible(viewport)) {
+                continue;
+            }
+            actor.renderCombatHudOverlay(this.ctx, this);
+        }
     }
 
     drawEntityBars(state, viewport) {
