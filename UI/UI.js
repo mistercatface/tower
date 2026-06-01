@@ -3,7 +3,6 @@ import { xpForLevel } from "../Config/configHelpers.js";
 import { buildAbilityTreeLayout } from "../Config/abilityTreeLayout.js";
 import { isCombat, isCombatOrReward, isInspector } from "../GameState/GamePhase.js";
 import { getStartNodeInspectionMissionLabel } from "../Combat/StartNodeInspection.js";
-import { formatWeaponLoadoutLabel } from "../Combat/weaponLoadout.js";
 import { getGunDefinition, playerEquipmentCatalog } from "../Config/gunDefinitions.js";
 import { getSlotFireIntervalMs, getSlotReloadTimeMs } from "../Combat/gunCombat.js";
 import {
@@ -60,7 +59,6 @@ const elements = {
     scoreDisplay: document.getElementById("scoreDisplay"),
     levelDisplay: document.getElementById("levelDisplay"),
     nextPerkDisplay: document.getElementById("nextPerkDisplay"),
-    weaponDisplay: document.getElementById("weaponDisplay"),
     xpDisplay: document.getElementById("xpDisplay"),
     healthSegments: document.getElementById("healthSegments"),
     healthText: document.getElementById("healthText"),
@@ -270,8 +268,6 @@ export function updateHud(state, upgrades) {
 
     const nextPerk = perkMilestones.find((m) => m > state.highestLevelReached);
     if (elements.nextPerkDisplay) elements.nextPerkDisplay.innerText = nextPerk ? `Next Perk: Level ${nextPerk}` : "All Perks Claimed";
-
-    setTextIfDifferent("weaponDisplay", formatWeaponLoadoutLabel(state.player));
 
     const xpNeeded = xpForLevel(state.level);
     setTextIfDifferent("xpDisplay", `${state.xp}/${xpNeeded}`);
@@ -852,6 +848,4 @@ export function updateUI(state, upgrades) {
     }
 
     upgrades.forEach((upg) => drawStat(state, upg, abilityLayoutById));
-
-    setTextIfDifferent("weaponDisplay", formatWeaponLoadoutLabel(state.player));
 }

@@ -429,17 +429,11 @@ export class Renderer {
 
         this.ctx.save();
 
-        this.ctx.fillStyle = "#0a0c10";
+        this.ctx.fillStyle = "#000000";
         this.ctx.beginPath();
         this.ctx.rect(0, 0, this.canvas.width, this.canvas.height);
         this.ctx.arc(cx, cy, R, 0, Math.PI * 2, true);
         this.ctx.fill("evenodd");
-
-        this.ctx.strokeStyle = "rgba(0, 229, 255, 0.45)";
-        this.ctx.lineWidth = 1;
-        this.ctx.beginPath();
-        this.ctx.arc(cx, cy, R, 0, Math.PI * 2);
-        this.ctx.stroke();
 
         this.ctx.restore();
     }
