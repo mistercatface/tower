@@ -224,6 +224,7 @@ export class Pickup extends Entity {
     }
 
     update(dt, state, spatialFrame, { resolveWalls = false } = {}) {
+        if (this.isSleeping) return;
         PhysicsSystem.applyFrictionAndDrag(this, dt, this.strategy.friction);
         if (resolveWalls && this.strategy.isPushable && this.needsWallCollision()) PhysicsSystem.resolveWallCollisions(this, spatialFrame, state);
         if (this.currentState?.update) this.currentState.update(this, dt, state.walls, state);
