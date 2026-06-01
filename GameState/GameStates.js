@@ -12,7 +12,6 @@ import { navigationSettings, NAV_PROFILES, gridSettings, debugStartNodeInspectio
 import { resolveMoveTarget, resolveRepositionTarget } from "../Spatial/Navigation/PathClearance.js";
 import { getStartNodeLayout } from "../Generator/StartNodeBuilding.js";
 import { Pools } from "../Core/Pools.js";
-import { DeathPiece } from "../Entities/DeathPiece.js";
 import { propInspector } from "../Render/Inspector/PropInspector.js";
 import {
     beginStartNodeIntro,
@@ -55,7 +54,6 @@ function clearTravelCombatDebris(state) {
     state.projectiles = [];
     state.explosions = [];
     state.activeLasers = [];
-    state.deathPieces = [];
     state.combatParticles = [];
     state.ragdollCorpses = [];
     state.enemies = [];
@@ -159,7 +157,6 @@ export class CombatState {
         ctx.state.explosions = [];
         ctx.state.enemies = [];
         ctx.state.activeLasers = [];
-        ctx.state.deathPieces = [];
         ctx.state.combatParticles = [];
         ctx.state.ragdollCorpses = [];
         ctx.state.floatingTexts = [];
@@ -233,7 +230,6 @@ export class CombatState {
         if (!isTraveling) {
             Projectile.checkSpawnCollisions(ctx.state, spatialFrame, spawnHitEvents);
             Projectile.updateAll(ctx.state, stepDt);
-            DeathPiece.updateAll(ctx.state, stepDt, spatialFrame);
             CombatParticles.updateAll(ctx.state, stepDt);
             RagdollCorpse.updateAll(ctx.state, stepDt, spatialFrame);
         }

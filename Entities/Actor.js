@@ -1,6 +1,5 @@
 import { normalizeAngle } from "../Math/Angle.js";
 import { DestructibleEntity } from "./Entity.js";
-import { DeathPiece } from "./DeathPiece.js";
 import { Separation } from "../Spatial/Motion/Separation.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { actorStates } from "./ActorStates.js";
@@ -526,7 +525,7 @@ export class Actor extends DestructibleEntity {
                 impactAngle: event.projectile.angle,
             });
         }
-        if (died) this.spawnDeathPieces(ctx.state, event);
+        if (died && this.usesKinematicsBody) this.spawnRagdollOnDeath(ctx.state, event);
     }
 
     handleHit(damage, ctx, hitType, event) {
@@ -536,56 +535,11 @@ export class Actor extends DestructibleEntity {
         return died;
     }
 
-    spawnDeathPieces(state, event) {
+    spawnRagdollOnDeath(state, event) {
         if (!state) return;
-        if (this.usesKinematicsBody) {
-            const camera = this._kinematicsCamera ?? { x: this.x, y: this.y };
-            RagdollCorpse.spawnFromActor(state, this, event, camera);
-            clearActorKinematics(this);
-            return;
-        }
-        let impactAngle = this.angle;
-        let impactForce = 0;
-        if (event) {
-            if (event.projectile) {
-                impactAngle = event.projectile.angle;
-                impactForce = event.projectile.speed * (event.projectile.radius / this.radius) * 0.5;
-            } else if (event.type === "blast" && event.explosion) {
-                impactAngle = Math.atan2(this.y - event.explosion.y, this.x - event.explosion.x);
-                const dist = Math.hypot(this.x - event.explosion.x, this.y - event.explosion.y);
-                const proximity = Math.max(0.1, 1 - dist / event.explosion.maxRadius);
-                impactForce = event.explosion.speed * proximity * 0.8;
-            }
-        }
-        const baseVx = this.vx + Math.cos(impactAngle) * impactForce;
-        const baseVy = this.vy + Math.sin(impactAngle) * impactForce;
-        const totalPieces = 3 + Math.floor(Math.random() * 4);
-        for (let i = 0; i < totalPieces; i++) {
-            const alpha = Math.PI / totalPieces;
-            const bisector = (i / totalPieces) * Math.PI * 2 + alpha;
-            const explodeAngle = bisector;
-            const explodeSpeed = 15 + Math.random() * 25;
-            const px = this.x + Math.cos(bisector) * (this.radius * 0.25);
-            const py = this.y + Math.sin(bisector) * (this.radius * 0.25);
-            const pvx = baseVx * (0.8 + Math.random() * 0.4) + Math.cos(explodeAngle) * explodeSpeed;
-            const pvy = baseVy * (0.8 + Math.random() * 0.4) + Math.sin(explodeAngle) * explodeSpeed;
-            const omega = (Math.random() - 0.5) * 8; // rad/sec
-            const piece = new DeathPiece(px, py, pvx, pvy, this.angle, omega, "body", this.color, this.radius, { pieceIndex: i, totalPieces, lifetime: 800 + Math.random() * 600 });
-            state.deathPieces.push(piece);
-        }
-        if (this.turrets && this.turrets.length > 0) {
-            for (const turret of this.turrets) {
-                const { x: tx, y: ty } = turret.getOrbitPosition(this.x, this.y, this.radius);
-                const orbitAngle = turret.angle;
-                const turretScale = this.radius / 8;
-                const turretSpeed = 20 + Math.random() * 45;
-                const tvx = baseVx * (0.8 + Math.random() * 0.3) + Math.cos(orbitAngle) * turretSpeed;
-                const tvy = baseVy * (0.8 + Math.random() * 0.3) + Math.sin(orbitAngle) * turretSpeed;
-                const omega = (Math.random() - 0.5) * 15;
-                const piece = new DeathPiece(tx, ty, tvx, tvy, turret.angle, omega, "turret", this.color, turretScale, { lifetime: 1200 + Math.random() * 800, drag: 2.0 });
-                state.deathPieces.push(piece);
-            }
-        }
+        const camera = this._kinematicsCamera ?? { x: this.x, y: this.y };
+        RagdollCorpse.spawnFromActor(state, this, event, camera);
+        clearActorKinematics(this);
     }
 
     renderTurrets(ctx, renderer, color = this.color) {
