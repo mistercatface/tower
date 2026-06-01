@@ -1,6 +1,6 @@
 import { SpriteCache } from "./SpriteCache.js";
 import { Render3D } from "./3D/Render3D.js";
-import { combatVisualSettings, createFloorFillStyle, mapSettings } from "../Config/Config.js";
+import { combatVisualSettings, createFloorFillStyle, mapSettings, COMBAT_HUD_MODE, hudSettings } from "../Config/Config.js";
 import { getWorldDrawCoords, isMapTraveling, isWorldScene } from "../GameState/GamePhase.js";
 import { getPlayerActors } from "../Combat/Targeting.js";
 import { drawHostileOffScreenIndicators } from "./OffScreenIndicators.js";
@@ -169,18 +169,22 @@ export class Renderer {
         if (viewport && typeof actor.isVisible === "function" && !actor.isVisible(viewport)) {
             return;
         }
+        if (state.combatHudMode === COMBAT_HUD_MODE.CLASSIC) {
+            actor.renderCombatHudClassic(this.ctx, this);
+            return;
+        }
         actor.render(this.ctx, this, state);
         actor.renderTurrets(this.ctx, this);
     }
 
     drawCombatHudOverlay(state, viewport) {
-        if (!state.combatHudOverlay) return;
+        if (state.combatHudMode !== COMBAT_HUD_MODE.OVERLAY) return;
         for (const actor of state.getCombatants()) {
             if (actor.isDead) continue;
             if (viewport && typeof actor.isVisible === "function" && !actor.isVisible(viewport)) {
                 continue;
             }
-            actor.renderCombatHudOverlay(this.ctx, this);
+            actor.renderCombatHudClassic(this.ctx, this, { alpha: hudSettings.combatOverlayAlpha });
         }
     }
 

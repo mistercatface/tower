@@ -11,7 +11,7 @@ import { spawnFloatingText } from "../Core/EventSystem.js";
 import { resolveWeaponModeForGun, WeaponSystem } from "../Combat/WeaponSystem.js";
 import { applyActorGunModifiers, getSlotReloadTimeMs } from "../Combat/gunCombat.js";
 import { getGunDefinition } from "../Config/gunDefinitions.js";
-import { explosionSettings, hudSettings } from "../Config/Config.js";
+import { explosionSettings } from "../Config/Config.js";
 import { resolveActorTurretLoadouts, applyGunTurretLoadouts, applyUpgradeTurretLoadouts } from "../Config/TurretLoadoutDefinitions.js";
 import { getTurretCountForLoadout, normalizeWeaponLoadout } from "../Combat/equipmentLoadout.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
@@ -553,8 +553,7 @@ export class Actor extends DestructibleEntity {
         }
     }
 
-    renderCombatHudOverlay(ctx, renderer) {
-        const alpha = hudSettings.combatOverlayAlpha;
+    renderCombatHudClassic(ctx, renderer, { alpha = 1 } = {}) {
         ctx.save();
         ctx.globalAlpha = alpha;
         this.renderCachedSprite(

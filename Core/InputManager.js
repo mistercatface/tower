@@ -1,5 +1,5 @@
 import { adjustGameZoom, setGameZoomAbsolute } from "../Core/EventSystem.js";
-import { controlSettings } from "../Config/Config.js";
+import { controlSettings, COMBAT_HUD_MODE_COUNT, COMBAT_HUD_MODE_LABELS } from "../Config/Config.js";
 
 export class InputManager {
     static setup(canvas, fsm) {
@@ -78,8 +78,9 @@ export class InputManager {
                 console.log("Debug Mode: " + fsm.context.state.debugMode);
             }
             if (e.key === "h" || e.key === "H") {
-                fsm.context.state.combatHudOverlay = !fsm.context.state.combatHudOverlay;
-                console.log("Combat HUD Overlay: " + fsm.context.state.combatHudOverlay);
+                const state = fsm.context.state;
+                state.combatHudMode = (state.combatHudMode + 1) % COMBAT_HUD_MODE_COUNT;
+                console.log("Combat HUD Mode: " + COMBAT_HUD_MODE_LABELS[state.combatHudMode]);
             }
         });
     }
