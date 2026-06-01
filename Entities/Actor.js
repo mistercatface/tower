@@ -10,7 +10,7 @@ import { Turret } from "./Turret.js";
 import { Utilities } from "../Core/Utilities.js";
 import { spawnFloatingText } from "../Core/EventSystem.js";
 import { resolveWeaponModeForGun, WeaponSystem } from "../Combat/WeaponSystem.js";
-import { applyActorGunModifiers, getSlotFireIntervalMs, getSlotReloadTimeMs } from "../Combat/gunCombat.js";
+import { applyActorGunModifiers, getSlotReloadTimeMs } from "../Combat/gunCombat.js";
 import { getGunDefinition } from "../Config/gunDefinitions.js";
 import { explosionSettings } from "../Config/Config.js";
 import { resolveActorTurretLoadouts, applyGunTurretLoadouts, applyUpgradeTurretLoadouts } from "../Config/TurretLoadoutDefinitions.js";
@@ -702,32 +702,6 @@ export class Actor extends DestructibleEntity {
         return null;
     }
 
-    get fireDelayBar() {
-        if (!this._fireDelayBar && this.healthBar) {
-            this._fireDelayBar = new ProgressBar({
-                width: this.healthBar.width,
-                height: 2,
-                borderRadius: 1,
-                quantizationSteps: 30,
-                colorFn: () => "#E53935",
-            });
-        }
-        return this._fireDelayBar;
-    }
-
-    getFireDelayBarProgress() {
-        for (const turret of this.turrets) {
-            if (!turret.reloading && turret.charge > 0) {
-                const gun = getGunDefinition(turret.gunId);
-                const fireIntervalMs = getSlotFireIntervalMs(gun, this);
-                if (fireIntervalMs > 0) {
-                    return Math.min(1, turret.charge / fireIntervalMs);
-                }
-            }
-        }
-        return null;
-    }
-
     renderBars(ctx, cache, yOffset) {
         if (this.health < this.maxHealth && this.healthBar) {
             const currentHealth = Math.max(0, this.health);
@@ -746,11 +720,6 @@ export class Actor extends DestructibleEntity {
             const reloadRatio = this.getReloadBarProgress();
             if (reloadRatio != null && this.reloadBar) {
                 this.reloadBar.render(ctx, this.x, this.y - secondaryOffset, reloadRatio, cache);
-            } else {
-                const fireDelayRatio = this.getFireDelayBarProgress();
-                if (fireDelayRatio != null && this.fireDelayBar) {
-                    this.fireDelayBar.render(ctx, this.x, this.y - secondaryOffset, fireDelayRatio, cache);
-                }
             }
         }
     }
