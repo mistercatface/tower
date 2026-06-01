@@ -231,12 +231,46 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
         entityStates.delete(actorId);
     }
 
+    /** Snapshot posed rig at death before clearing anim state. */
+    function captureActorRigForRagdoll(actor, camera) {
+        const animState = getOrCreateState(actor);
+        syncWeaponPose(animState, actor, poses);
+        const bodyRotation = resolveSpriteBodyRotation(actor);
+        const naturalCycle = animState.animCycle % (Math.PI * 2);
+        const facing = resolveCombatFacing(actor, animState, bodyRotation, config);
+        const rigData = calculateCharacterRig(
+            { ...animState, staticBlendFactor: 1 },
+            naturalCycle,
+            config,
+            rig,
+            poses,
+            actor,
+            facing,
+        );
+        const { viewContext } = buildViewContext(actor, camera);
+        return {
+            rigData,
+            rotation: bodyRotation,
+            renderRotation: facing.renderRotation,
+            viewContext: {
+                ...viewContext.viewContext,
+                yFactor: 0.8,
+            },
+            config,
+            rig,
+        };
+    }
+
     return {
         config,
         rig,
         poses,
+        sceneRenderer,
+        sharedCanvas,
+        sharedCtx,
         advanceAnimation,
         buildSprite,
+        captureActorRigForRagdoll,
         clearActorState,
         clearAllStates: () => entityStates.clear(),
     };

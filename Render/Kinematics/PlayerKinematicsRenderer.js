@@ -52,6 +52,14 @@ export function clearActorKinematics(actor, radius = actor.radius) {
     getKinematicsRenderer(radius).bundle.clearActorState(actor.id);
 }
 
+export function captureActorRigForRagdoll(actor, camera, radius = actor.radius) {
+    const kinematics = getKinematicsRenderer(radius);
+    return {
+        ...kinematics.bundle.captureActorRigForRagdoll(actor, camera),
+        kinematics,
+    };
+}
+
 export function renderActorKinematicsBody(ctx, actor, camera, radius = actor.radius) {
     const kinematics = getKinematicsRenderer(radius);
     const sprite = kinematics.getSprite(actor, camera);

@@ -47,3 +47,18 @@ export function projectRig(rigData, rotation, viewContext, config, rig) {
         zLeft: (lArmP2.z + lLegP2.z) / 2,
     };
 }
+
+export function projectRagdollRig(rigData, rotation, viewContext, config, rig) {
+    const proj = createProjector(viewContext, rotation, config, rig);
+    const headP = proj(rigData.head);
+    return {
+        head: headP,
+        headY: headP.y,
+        spineTop: proj(rigData.spineTop),
+        spineBot: proj(rigData.spineBot),
+        rArm: { p1: proj(rigData.rArm.p1), p2: proj(rigData.rArm.p2), p3: proj(rigData.rArm.p3) },
+        lArm: { p1: proj(rigData.lArm.p1), p2: proj(rigData.lArm.p2), p3: proj(rigData.lArm.p3) },
+        rLeg: { p1: proj(rigData.rLeg.p1), p2: proj(rigData.rLeg.p2), p3: proj(rigData.rLeg.p3) },
+        lLeg: { p1: proj(rigData.lLeg.p1), p2: proj(rigData.lLeg.p2), p3: proj(rigData.lLeg.p3) },
+    };
+}

@@ -20,6 +20,7 @@ import { areHostile, getNearestHostile, getPlayerActors, isValidTurretTarget } f
 import { getActorProfileForActor, getActorProfileForType } from "../Config/actorProfiles.js";
 import { advanceActorKinematics, clearActorKinematics } from "../Render/Kinematics/PlayerKinematicsRenderer.js";
 import { CombatParticles } from "../Render/CombatParticles.js";
+import { RagdollCorpse } from "./RagdollCorpse.js";
 
 export class Actor extends DestructibleEntity {
     constructor(x, y, radius, speed, health, color, type, accelRate = 3.0, canDamageWalls = false) {
@@ -532,8 +533,9 @@ export class Actor extends DestructibleEntity {
     spawnDeathPieces(state, event) {
         if (!state) return;
         if (this.usesKinematicsBody) {
+            const camera = this._kinematicsCamera ?? { x: this.x, y: this.y };
+            RagdollCorpse.spawnFromActor(state, this, event, camera);
             clearActorKinematics(this);
-            CombatParticles.spawnDeathBlood(state, this, event);
             return;
         }
         let impactAngle = this.angle;

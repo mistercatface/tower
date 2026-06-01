@@ -98,7 +98,9 @@ export function drawCharacterToCanvas(
     rig,
     sceneRenderer,
     overridePadding = null,
+    options = {},
 ) {
+    const drawWeapons = options.drawWeapons !== false;
     const padding = overridePadding !== null ? overridePadding : config.PADDING;
     const canvasSize = Math.ceil(config.SIZE + padding * 2);
 
@@ -113,7 +115,9 @@ export function drawCharacterToCanvas(
     sharedCtx.translate(padding, padding);
     sceneRenderer.begin(sharedCtx, viewContext, facing.renderRotation, rig);
     drawStandardCharacter(scene, actor, sceneRenderer, config, rig);
-    drawHeldWeapons(scene, actor, sceneRenderer, config, facing);
+    if (drawWeapons) {
+        drawHeldWeapons(scene, actor, sceneRenderer, config, facing);
+    }
     sceneRenderer.flush();
     sharedCtx.restore();
 
