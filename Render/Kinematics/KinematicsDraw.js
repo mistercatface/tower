@@ -1,6 +1,7 @@
 import { getCharacterForActor } from "./CharacterAppearance.js";
 import { getHandProjected, resolveWeaponDrawSlots } from "./KinematicsWeaponVisuals.js";
 import { queueRagdollBloodDraw } from "./Ragdoll/RagdollBlood.js";
+import { drawRagdollBody } from "./Ragdoll/RagdollDrawBody.js";
 
 export function drawStandardCharacter(scene, actor, sceneRenderer, config, rig) {
     const char = getCharacterForActor(actor);
@@ -157,7 +158,7 @@ export function drawRagdollCorpseToCanvas(
     sharedCtx.save();
     sharedCtx.translate(padding, padding);
     sceneRenderer.begin(sharedCtx, viewContext, facing.renderRotation, rig);
-    drawStandardCharacter(scene, actor, sceneRenderer, config, rig);
+    drawRagdollBody(scene, actor, sceneRenderer, config, rig, ragdoll);
     queueRagdollBloodDraw(sceneRenderer, ragdoll, config, rig, viewContext, facing.renderRotation);
     sceneRenderer.flush();
     sharedCtx.restore();

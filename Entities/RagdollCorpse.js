@@ -34,6 +34,8 @@ export class RagdollCorpse extends Entity {
                 corpse.snapshot.rig,
                 corpse.ragdoll.rotation,
                 corpse.snapshot.config,
+                22,
+                hit.offsetT ?? 0.5,
             );
 
             addRagdollBleedEmitter(corpse.ragdoll, hit.part, corpse.snapshot.rig, 0.8);
@@ -145,7 +147,14 @@ export class RagdollCorpse extends Entity {
 
         const { config, rig, renderRotation, viewContext } = this.snapshot;
         const rigData = getRagdollRig(this.ragdoll);
-        const scene = projectRagdollRig(rigData, renderRotation, viewContext, config, rig);
+        const scene = projectRagdollRig(
+            rigData,
+            renderRotation,
+            viewContext,
+            config,
+            rig,
+            this.ragdoll.points,
+        );
         const facing = { renderRotation, gunCanvasAim: () => renderRotation };
 
         const sprite = drawRagdollCorpseToCanvas(

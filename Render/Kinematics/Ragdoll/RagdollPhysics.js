@@ -1,4 +1,5 @@
 import { RAGDOLL_CONFIG, getScaledPhysics } from "./RagdollConfig.js";
+import { processRagdollGoreHit } from "./RagdollGore.js";
 
 function clonePoint(p) {
     return { x: p.x, y: p.y, z: p.z || 0 };
@@ -92,6 +93,8 @@ export function initializeRagdoll(rigData, rotation, impactProfile, config, rig)
         settled: false,
         sleepTimer: 0,
         severed: {},
+        partHealth: {},
+        splitCounts: {},
         particles: [],
         emitters: [],
         floorStains: [],
@@ -144,9 +147,20 @@ const PART_ALIASES = {
 };
 
 /**
- * Apply impulse to ragdoll bones (physics only — no sever/fracture).
+ * Apply impulse to ragdoll bones; may fracture or sever on repeated hits.
  */
-export function applyRagdollImpulse(ragdoll, forceX, forceY, forceZ, hitPart, rig, rotation, config) {
+export function applyRagdollImpulse(
+    ragdoll,
+    forceX,
+    forceY,
+    forceZ,
+    hitPart,
+    rig,
+    rotation,
+    config,
+    damageVal = 12,
+    offsetT = 0.5,
+) {
     if (!ragdoll?.points) return;
 
     const bodyOffset = config?.BODY_OFFSET ?? Math.PI;
@@ -224,6 +238,17 @@ export function applyRagdollImpulse(ragdoll, forceX, forceY, forceZ, hitPart, ri
         prev.y -= forceVec.y * transfer * velocityScaler;
         prev.z -= forceVec.z * transfer * velocityScaler;
     }
+
+    processRagdollGoreHit(
+        ragdoll,
+        forceX,
+        forceY,
+        forceZ,
+        hitPart,
+        damageVal,
+        offsetT,
+        rig,
+    );
 }
 
 export function getRagdollRig(ragdoll) {

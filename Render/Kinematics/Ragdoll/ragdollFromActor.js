@@ -1,6 +1,7 @@
 import { normalizeAngle } from "../../../Math/Angle.js";
 import { createImpactProfile } from "./RagdollConfig.js";
 import { initializeRagdoll } from "./RagdollPhysics.js";
+import { applyDeathSevers } from "./RagdollGore.js";
 
 export function createObstacleWallChecker(state) {
     const grid = state?.flowFieldGrid;
@@ -53,5 +54,6 @@ export function createRagdollState(rigData, rotation, impactProfile, config, rig
     };
     const ragdoll = initializeRagdoll(rigData, normalizeAngle(rotation), localImpact, config, rig);
     ragdoll.rotation = normalizeAngle(rotation);
+    applyDeathSevers(ragdoll, impactProfile.sever, rig);
     return ragdoll;
 }
