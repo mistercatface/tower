@@ -2,6 +2,7 @@ import { getCharacterForActor } from "../CharacterAppearance.js";
 import { RAGDOLL_CONFIG } from "./RagdollConfig.js";
 import { isNeckConstraint, isRagdollConstraintVisible } from "./RagdollGore.js";
 import { mergeRagdollPoint } from "./RagdollPhysics.js";
+import { SEVER_STUMP_BONES } from "../KinematicsBones.js";
 
 function drawPixelCircle(ctx, cx, cy, r, color) {
     ctx.fillStyle = color;
@@ -68,38 +69,11 @@ export function drawRagdollGoreStumps(ragdoll, sceneRenderer, rig) {
         sceneRenderer.addSphere(p, rig.torsoHalfWidth * radiusMult, stumpPalette);
     };
 
-    if (severed.head) stump("spineTop", 0.6);
-    if (severed.rArm) {
-        stump("rShoulder", 0.5);
-        stump("spineTop", 0.5);
-    }
-    if (severed.lArm) {
-        stump("lShoulder", 0.5);
-        stump("spineTop", 0.5);
-    }
-    if (severed.rForearm) {
-        stump("rElbow", 0.4);
-        stump("rShoulder", 0.4);
-    }
-    if (severed.lForearm) {
-        stump("lElbow", 0.4);
-        stump("lShoulder", 0.4);
-    }
-    if (severed.rLeg) {
-        stump("rHip", 0.6);
-        stump("spineBot", 0.6);
-    }
-    if (severed.lLeg) {
-        stump("lHip", 0.6);
-        stump("spineBot", 0.6);
-    }
-    if (severed.rShin) {
-        stump("rKnee", 0.5);
-        stump("rHip", 0.5);
-    }
-    if (severed.lShin) {
-        stump("lKnee", 0.5);
-        stump("lHip", 0.5);
+    for (const [limbId, stumps] of Object.entries(SEVER_STUMP_BONES)) {
+        if (!severed[limbId]) continue;
+        for (const { bone, radius } of stumps) {
+            stump(bone, radius);
+        }
     }
 }
 

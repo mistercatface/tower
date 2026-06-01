@@ -1,5 +1,6 @@
 import { RAGDOLL_CONFIG } from "./RagdollConfig.js";
 import { mergeRagdollPoint } from "./RagdollPhysics.js";
+import { PHYSICS_BONES, resolvePhysicsBoneId } from "../KinematicsBones.js";
 
 function createBloodParticle(point, bCfg, scale = 1) {
     const life = bCfg.LIFESPAN_MIN + Math.random() * (bCfg.LIFESPAN_MAX - bCfg.LIFESPAN_MIN);
@@ -22,17 +23,11 @@ export function seedRagdollBloodOnDeath(ragdoll, hitBone, rig) {
     if (!ragdoll?.points) return;
     const bCfg = RAGDOLL_CONFIG.BLOOD;
     const scale = rig.size / 32;
-    const anchor = ragdoll.points[hitBone] ? hitBone : "spineTop";
+    const anchor = resolvePhysicsBoneId(hitBone, ragdoll.points) ?? "spineTop";
 
     const bleedBones = [
         anchor,
-        "head",
-        "spineTop",
-        "spineBot",
-        "rShoulder",
-        "lShoulder",
-        "rHip",
-        "lHip",
+        ...PHYSICS_BONES.filter((id) => id !== anchor),
     ];
     for (const bone of bleedBones) {
         if (!ragdoll.points[bone]) continue;
@@ -54,20 +49,8 @@ export function seedRagdollBloodOnDeath(ragdoll, hitBone, rig) {
     }
 }
 
-function resolveBoneId(ragdoll, boneId) {
-    if (ragdoll.points[boneId]) return boneId;
-    if (boneId.includes("_")) {
-        const parts = boneId.split("_");
-        for (let i = parts.length - 1; i >= 0; i--) {
-            const candidate = parts.slice(0, i + 1).join("_");
-            if (ragdoll.points[candidate]) return candidate;
-        }
-    }
-    return ragdoll.points.spineTop ? "spineTop" : null;
-}
-
 export function addRagdollBleedEmitter(ragdoll, boneId, rig, durationScale = 1) {
-    const resolved = resolveBoneId(ragdoll, boneId);
+    const resolved = resolvePhysicsBoneId(boneId, ragdoll?.points);
     if (!resolved) return;
     boneId = resolved;
     if (!ragdoll?.points?.[boneId]) return;

@@ -1,5 +1,12 @@
 import { RAGDOLL_CONFIG, getScaledPhysics } from "./RagdollConfig.js";
 import { processRagdollGoreHit } from "./RagdollGore.js";
+import {
+    PHYSICS_BONES,
+    RAGDOLL_CONSTRAINT_EDGES,
+    boneMapFromCharacterRig,
+    characterRigFromBoneMap,
+    resolvePhysicsBoneId,
+} from "../KinematicsBones.js";
 
 /** Frozen render depth at death — sim never writes this. */
 export function getRagdollPointZ(ragdoll, key) {
@@ -34,23 +41,7 @@ function toRenderPoint(ragdoll, key) {
 }
 
 export function initializeRagdoll(rigData, rotation, impactProfile, config, rig) {
-    const fullPoints = {
-        head: { x: rigData.head.x, y: rigData.head.y, z: rigData.head.z ?? 0 },
-        spineTop: { x: rigData.spineTop.x, y: rigData.spineTop.y, z: rigData.spineTop.z ?? 0 },
-        spineBot: { x: rigData.spineBot.x, y: rigData.spineBot.y, z: rigData.spineBot.z ?? 0 },
-        rShoulder: { x: rigData.rArm.p1.x, y: rigData.rArm.p1.y, z: rigData.rArm.p1.z ?? 0 },
-        rElbow: { x: rigData.rArm.p2.x, y: rigData.rArm.p2.y, z: rigData.rArm.p2.z ?? 0 },
-        rHand: { x: rigData.rArm.p3.x, y: rigData.rArm.p3.y, z: rigData.rArm.p3.z ?? 0 },
-        lShoulder: { x: rigData.lArm.p1.x, y: rigData.lArm.p1.y, z: rigData.lArm.p1.z ?? 0 },
-        lElbow: { x: rigData.lArm.p2.x, y: rigData.lArm.p2.y, z: rigData.lArm.p2.z ?? 0 },
-        lHand: { x: rigData.lArm.p3.x, y: rigData.lArm.p3.y, z: rigData.lArm.p3.z ?? 0 },
-        rHip: { x: rigData.rLeg.p1.x, y: rigData.rLeg.p1.y, z: rigData.rLeg.p1.z ?? 0 },
-        rKnee: { x: rigData.rLeg.p2.x, y: rigData.rLeg.p2.y, z: rigData.rLeg.p2.z ?? 0 },
-        rFoot: { x: rigData.rLeg.p3.x, y: rigData.rLeg.p3.y, z: rigData.rLeg.p3.z ?? 0 },
-        lHip: { x: rigData.lLeg.p1.x, y: rigData.lLeg.p1.y, z: rigData.lLeg.p1.z ?? 0 },
-        lKnee: { x: rigData.lLeg.p2.x, y: rigData.lLeg.p2.y, z: rigData.lLeg.p2.z ?? 0 },
-        lFoot: { x: rigData.lLeg.p3.x, y: rigData.lLeg.p3.y, z: rigData.lLeg.p3.z ?? 0 },
-    };
+    const fullPoints = boneMapFromCharacterRig(rigData);
 
     const yOffset = (rig.size / 32) * 2.0;
     for (const key of Object.keys(fullPoints)) {
@@ -70,24 +61,11 @@ export function initializeRagdoll(rigData, rotation, impactProfile, config, rig)
         fullPoints[a].z - fullPoints[b].z,
     );
 
-    const constraints = [
-        { a: "head", b: "spineTop", len: dist("head", "spineTop") },
-        { a: "spineTop", b: "spineBot", len: dist("spineTop", "spineBot") },
-        { a: "spineTop", b: "rShoulder", len: dist("spineTop", "rShoulder") },
-        { a: "rShoulder", b: "rElbow", len: dist("rShoulder", "rElbow") },
-        { a: "rElbow", b: "rHand", len: dist("rElbow", "rHand") },
-        { a: "spineTop", b: "lShoulder", len: dist("spineTop", "lShoulder") },
-        { a: "lShoulder", b: "lElbow", len: dist("lShoulder", "lElbow") },
-        { a: "lElbow", b: "lHand", len: dist("lElbow", "lHand") },
-        { a: "spineBot", b: "rHip", len: dist("spineBot", "rHip") },
-        { a: "rHip", b: "rKnee", len: dist("rHip", "rKnee") },
-        { a: "rKnee", b: "rFoot", len: dist("rKnee", "rFoot") },
-        { a: "spineBot", b: "lHip", len: dist("spineBot", "lHip") },
-        { a: "lHip", b: "lKnee", len: dist("lHip", "lKnee") },
-        { a: "lKnee", b: "lFoot", len: dist("lKnee", "lFoot") },
-        { a: "rShoulder", b: "lShoulder", len: dist("rShoulder", "lShoulder") },
-        { a: "rHip", b: "lHip", len: dist("rHip", "lHip") },
-    ];
+    const constraints = RAGDOLL_CONSTRAINT_EDGES.map(([a, b]) => ({
+        a,
+        b,
+        len: dist(a, b),
+    }));
 
     const prevPoints = {};
     const { force, hitBone } = impactProfile;
@@ -170,14 +148,6 @@ function applyJointLimits(ragdoll) {
     }
 }
 
-const PART_ALIASES = {
-    torso: "spineTop",
-    rLeg: "rHip",
-    lLeg: "lHip",
-    rArm: "rShoulder",
-    lArm: "lShoulder",
-};
-
 /**
  * Apply impulse to ragdoll bones; may fracture or sever on repeated hits.
  */
@@ -206,25 +176,8 @@ export function applyRagdollImpulse(
     const velocityScaler = phys.VELOCITY_SCALER;
     const { points, prevPoints, constraints } = ragdoll;
 
-    let impulseCenter = hitPart;
-    if (!points[impulseCenter]) {
-        const clean = hitPart.split("_")[0];
-        impulseCenter = PART_ALIASES[clean] ?? clean;
-    }
-    if (!points[impulseCenter] && hitPart.includes("_")) {
-        const segments = hitPart.split("_");
-        for (let i = segments.length - 1; i >= 0; i--) {
-            const candidate = segments.slice(0, i + 1).join("_");
-            if (points[candidate]) {
-                impulseCenter = candidate;
-                break;
-            }
-        }
-    }
-    if (!points[impulseCenter]) {
-        impulseCenter = "spineTop";
-    }
-    if (!points[impulseCenter]) return;
+    let impulseCenter = resolvePhysicsBoneId(hitPart, points);
+    if (!impulseCenter) return;
 
     ragdoll.settled = false;
     ragdoll.sleepTimer = 0;
@@ -282,31 +235,12 @@ export function applyRagdollImpulse(
 
 /** Character rig for render: sim xy + frozen death z. */
 export function getRagdollRenderRig(ragdoll) {
-    return {
-        spineTop: toRenderPoint(ragdoll, "spineTop"),
-        spineBot: toRenderPoint(ragdoll, "spineBot"),
-        head: toRenderPoint(ragdoll, "head"),
-        rArm: {
-            p1: toRenderPoint(ragdoll, "rShoulder"),
-            p2: toRenderPoint(ragdoll, "rElbow"),
-            p3: toRenderPoint(ragdoll, "rHand"),
-        },
-        lArm: {
-            p1: toRenderPoint(ragdoll, "lShoulder"),
-            p2: toRenderPoint(ragdoll, "lElbow"),
-            p3: toRenderPoint(ragdoll, "lHand"),
-        },
-        rLeg: {
-            p1: toRenderPoint(ragdoll, "rHip"),
-            p2: toRenderPoint(ragdoll, "rKnee"),
-            p3: toRenderPoint(ragdoll, "rFoot"),
-        },
-        lLeg: {
-            p1: toRenderPoint(ragdoll, "lHip"),
-            p2: toRenderPoint(ragdoll, "lKnee"),
-            p3: toRenderPoint(ragdoll, "lFoot"),
-        },
-    };
+    const boneMap = {};
+    for (const boneId of PHYSICS_BONES) {
+        const p = toRenderPoint(ragdoll, boneId);
+        if (p) boneMap[boneId] = p;
+    }
+    return characterRigFromBoneMap(boneMap);
 }
 
 /**

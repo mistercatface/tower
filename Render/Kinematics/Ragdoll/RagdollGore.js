@@ -1,16 +1,10 @@
 import { RAGDOLL_CONFIG, SEVER_MAP } from "./RagdollConfig.js";
 import { getRagdollPointZ, mergeRagdollPoint, setRagdollPointZ } from "./RagdollPhysics.js";
-
-const PARENT_PEER = {
-    rArm: "spineTop",
-    lArm: "spineTop",
-    rLeg: "spineBot",
-    lLeg: "spineBot",
-    rForearm: "rShoulder",
-    lForearm: "lShoulder",
-    rShin: "rHip",
-    lShin: "lHip",
-};
+import {
+    PHYSICS_BONE_ALIASES,
+    SEVER_LIMB_DEF,
+    SEVER_TORSO_PEER,
+} from "../KinematicsBones.js";
 
 /** Map hit bone (incl. torso capsules) to a severable limb id. */
 export function resolveSeverTarget(hitPart, ragdoll) {
@@ -48,7 +42,7 @@ export function resolveSeverTarget(hitPart, ragdoll) {
 }
 
 function disconnectLimbFromTorso(constraints, limbId, root) {
-    const peer = PARENT_PEER[limbId];
+    const peer = SEVER_TORSO_PEER[limbId];
     if (!peer) return constraints;
     return constraints.filter(
         (c) => !(
@@ -106,18 +100,6 @@ export function isRagdollConstraintVisible(c, severed) {
     return !isConstraintHiddenBySever(c, severed || {});
 }
 
-const VISUAL_TO_PHYSICS = {
-    rLeg: "rHip",
-    lLeg: "lHip",
-    rArm: "rShoulder",
-    lArm: "lShoulder",
-    rForearm: "rElbow",
-    lForearm: "lElbow",
-    torso: "spineTop",
-    spineTop: "spineTop",
-    head: "head",
-};
-
 function getPartCategory(partName) {
     const clean = partName.split("_fr_")[0].split("_fracture_")[0];
     if (clean === "head") return "head";
@@ -152,18 +134,7 @@ function canSplitPart(ragdoll, partName) {
 export function severLimb(ragdoll, limbId, rig) {
     if (!ragdoll || !limbId || ragdoll.severed[limbId]) return;
 
-    const severData = {
-        head: { root: "head", type: "simple" },
-        rArm: { root: "rShoulder", type: "joint" },
-        lArm: { root: "lShoulder", type: "joint" },
-        rForearm: { root: "rElbow", type: "joint" },
-        lForearm: { root: "lElbow", type: "joint" },
-        rLeg: { root: "rHip", type: "joint" },
-        lLeg: { root: "lHip", type: "joint" },
-        rShin: { root: "rKnee", type: "joint" },
-        lShin: { root: "lKnee", type: "joint" },
-    };
-    const data = severData[limbId];
+    const data = SEVER_LIMB_DEF[limbId];
     if (!data) return;
 
     ragdoll.severed[limbId] = true;
@@ -240,8 +211,8 @@ export function splitBone(ragdoll, boneStartName, t, rig) {
     let searchID = boneStartName;
     if (boneStartName.includes("_fr_")) {
         searchID = boneStartName;
-    } else if (VISUAL_TO_PHYSICS[boneStartName]) {
-        searchID = VISUAL_TO_PHYSICS[boneStartName];
+    } else if (PHYSICS_BONE_ALIASES[boneStartName]) {
+        searchID = PHYSICS_BONE_ALIASES[boneStartName];
     }
 
     let constraintIndex = -1;
