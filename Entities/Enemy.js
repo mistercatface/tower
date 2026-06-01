@@ -6,7 +6,7 @@ import { NAV_PROFILES } from "../Config/Config.js";
 import { rollEnemyStartLoadout } from "../Combat/weaponLoadout.js";
 import { createEntityBars } from "./EntityBars.js";
 import { buildEnemyCombatStats, computeEnemyUpgradeLevels, computeSpawnReward } from "../Combat/EnemySpawn.js";
-import { advanceActorKinematics, renderActorKinematicsBody } from "../Render/Kinematics/PlayerKinematicsRenderer.js";
+import { renderActorKinematicsBody } from "../Render/Kinematics/PlayerKinematicsRenderer.js";
 
 const enemyBars = createEntityBars({ healthWidth: 22, healthHeight: 3, healthBorderRadius: 1.5, stunHeight: 2, stunBorderRadius: 1 });
 
@@ -69,20 +69,16 @@ export class Enemy extends Actor {
     }
 
     updateLocomotion(dt, state, spatialFrame, options = {}) {
-        this._kinematicsCamera = this.getKinematicsCamera(state);
-
         const target = this.getAITarget(state);
 
         if (!target) {
             this.desiredX = 0;
             this.desiredY = 0;
             this.applyLocomotion(dt, spatialFrame, { state, ignoreSeparationInDesired: true });
-            advanceActorKinematics(this, dt, this._kinematicsCamera);
             return;
         }
 
         this.currentState.update(this, dt, target, state.flowFieldGrid, state.walls, state.projectiles, spatialFrame, state.scheduler, state);
-        advanceActorKinematics(this, dt, this._kinematicsCamera);
     }
 
     calculateSteering(target, state) {

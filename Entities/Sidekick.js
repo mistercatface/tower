@@ -2,7 +2,7 @@ import { Actor } from "./Actor.js";
 import { NAV_PROFILES, navigationSettings, sidekickBaseStats } from "../Config/Config.js";
 import { barryStartGunId } from "../Config/gunDefinitions.js";
 import { createEntityBars } from "./EntityBars.js";
-import { advanceActorKinematics, renderActorKinematicsBody } from "../Render/Kinematics/PlayerKinematicsRenderer.js";
+import { renderActorKinematicsBody } from "../Render/Kinematics/PlayerKinematicsRenderer.js";
 
 const sidekickBars = createEntityBars({ healthWidth: 40, healthHeight: 4, healthBorderRadius: 2 });
 
@@ -123,17 +123,14 @@ export class Sidekick extends Actor {
         this.applyLocomotion(dt, spatialFrame, { ...options, state });
         this.speed = baseSpeed;
         this.enforceLeaderClearance(leader);
-
-        const camera = { x: leader.x, y: leader.y };
-        advanceActorKinematics(this, dt, camera);
     }
 
-    getKinematicsCamera() {
-        const leader = this.leader;
+    getKinematicsCamera(state) {
+        const leader = this.leader ?? state?.getLeader?.() ?? state?.player;
         return leader ? { x: leader.x, y: leader.y } : { x: this.x, y: this.y };
     }
 
     renderBody(ctx, _renderer) {
-        renderActorKinematicsBody(ctx, this, this.getKinematicsCamera());
+        renderActorKinematicsBody(ctx, this, this._kinematicsCamera ?? { x: this.x, y: this.y });
     }
 }

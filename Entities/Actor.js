@@ -18,6 +18,7 @@ import { getTurretCountForLoadout, normalizeWeaponLoadout } from "../Combat/equi
 import { RenderSprites } from "../Render/RenderSprites.js";
 import { areHostile, getNearestHostile, getPlayerActors, isValidTurretTarget } from "../Combat/Targeting.js";
 import { getActorProfileForActor, getActorProfileForType } from "../Config/actorProfiles.js";
+import { advanceActorKinematics } from "../Render/Kinematics/PlayerKinematicsRenderer.js";
 
 export class Actor extends DestructibleEntity {
     constructor(x, y, radius, speed, health, color, type, accelRate = 3.0, canDamageWalls = false) {
@@ -119,10 +120,20 @@ export class Actor extends DestructibleEntity {
         return getActorProfileForActor(this).projectileColor;
     }
 
+    getKinematicsCamera(state) {
+        return { x: this.x, y: this.y };
+    }
+
     updateCombat(dt, state, spatialFrame, options = {}) {
         this.ghostTrail?.update(dt, this.x, this.y, this.angle);
         this.updateLocomotion(dt, state, spatialFrame, options);
-        return this.updateTurretCombat(dt, state, options);
+        const combatEvents = options.combatEvents ?? [];
+        const events = this.updateTurretCombat(dt, state, { ...options, combatEvents }) ?? combatEvents;
+        if (this.usesKinematicsBody) {
+            this._kinematicsCamera = this.getKinematicsCamera(state);
+            advanceActorKinematics(this, dt, this._kinematicsCamera);
+        }
+        return events;
     }
 
     updateLocomotion(_dt, _state, _spatialFrame, _options = {}) {
@@ -292,6 +303,12 @@ export class Actor extends DestructibleEntity {
         return this.getMovementAimPoint(state);
     }
 
+    hasLocomotionIntent() {
+        return this.isMoving
+            || Math.hypot(this.desiredX ?? 0, this.desiredY ?? 0) > 0.05
+            || (this.targetX != null && this.targetY != null);
+    }
+
     getMovementAimPoint(_state) {
         if (this.targetX != null && this.targetY != null && this.isMoving) {
             return { x: this.targetNodeX != null ? this.targetNodeX : this.targetX, y: this.targetNodeY != null ? this.targetNodeY : this.targetY };
@@ -301,10 +318,16 @@ export class Actor extends DestructibleEntity {
             const dist = 100;
             return { x: this.x + (this.desiredX / desiredLen) * dist, y: this.y + (this.desiredY / desiredLen) * dist };
         }
-        const velLen = Math.hypot(this.vx, this.vy);
-        if (velLen > 1) {
+        if (this.hasLocomotionIntent()) {
+            const velLen = Math.hypot(this.vx, this.vy);
+            if (velLen > 1) {
+                const dist = 100;
+                return { x: this.x + (this.vx / velLen) * dist, y: this.y + (this.vy / velLen) * dist };
+            }
+        }
+        if (normalizeWeaponLoadout(this.weaponLoadout ?? []).length > 0) {
             const dist = 100;
-            return { x: this.x + (this.vx / velLen) * dist, y: this.y + (this.vy / velLen) * dist };
+            return { x: this.x + Math.cos(this.angle) * dist, y: this.y + Math.sin(this.angle) * dist };
         }
         return null;
     }
@@ -600,7 +623,9 @@ export class Actor extends DestructibleEntity {
         if (externalSpeedMod !== 1) {
             this.speed = baseSpeed * externalSpeedMod;
         }
-        PhysicsSystem.applyMovement(this, dt, ignoreSeparationInDesired, shouldMove, alignAngleWithMovement);
+        const armed = normalizeWeaponLoadout(this.weaponLoadout ?? []).length > 0;
+        const alignAngle = alignAngleWithMovement && (!armed || this.hasLocomotionIntent());
+        PhysicsSystem.applyMovement(this, dt, ignoreSeparationInDesired, shouldMove, alignAngle);
         if (externalSpeedMod !== 1) {
             this.speed = baseSpeed;
         }

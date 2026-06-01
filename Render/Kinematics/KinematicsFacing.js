@@ -5,7 +5,7 @@
  * - rigAimFacing: reference for arm IK relative to turret world angles
  * - gunCanvasAim: rotation for weapon draw at projected hand (canvas space)
  */
-import { normalizeAngle } from "../../Math/Angle.js";
+import { angleDelta, normalizeAngle } from "../../Math/Angle.js";
 import { blend, ease } from "./KinematicsMath.js";
 import { normalizeWeaponLoadout } from "../../Combat/equipmentLoadout.js";
 
@@ -28,9 +28,17 @@ export function resolveSpriteBodyRotation(actor) {
     const loadout = normalizeWeaponLoadout(actor?.weaponLoadout ?? []);
     if (loadout.length === 0) return base;
 
-    const combatTurret = getPrimaryCombatTurret(actor);
-    if (combatTurret?.target && !combatTurret.target.isDead) {
-        return normalizeAngle(combatTurret.angle);
+    const turret = getPrimaryCombatTurret(actor) ?? actor.turrets?.[0];
+    if (!turret) return base;
+    const turretAngle = normalizeAngle(turret.angle);
+
+    if (turret.target && !turret.target.isDead) {
+        return turretAngle;
+    }
+
+    // After combat / recoil skid: body and gun can disagree briefly — keep sprite on the barrel.
+    if (Math.abs(angleDelta(base, turretAngle)) > 0.5) {
+        return turretAngle;
     }
     return base;
 }
