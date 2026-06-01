@@ -1,54 +1,37 @@
 import { floorTileSettings, gridSettings } from "../../Config/Config.js";
+import { CAMERA_HEIGHT } from "./math/CombatProjection.js";
 
-export const WALL_ANGLE_SPREAD = 0.002;
+const WALL_ANGLE_SPREAD = 0.002;
 
-export function getWallProjectionDistance() {
-    return floorTileSettings.wallProjectionDistance ?? 3000;
+export function getWallVisualHeight() {
+    const configured = floorTileSettings.wallVisualHeight;
+    if (configured != null) return configured;
+    return CAMERA_HEIGHT - 10;
 }
 
-function getEdgeSpread(p1, p2, px, py) {
+/** Distance-scaled projection — walls extend offscreen when wallVisualHeight is near CAMERA_HEIGHT. */
+export function computeProjectedFace(p1, p2, px, py, wallHeight = getWallVisualHeight()) {
+    let angle1 = Math.atan2(p1.y - py, p1.x - px);
+    let angle2 = Math.atan2(p2.y - py, p2.x - px);
     const cross = (p1.x - px) * (p2.y - py) - (p1.y - py) * (p2.x - px);
-    return cross > 0
-        ? { spread1: -WALL_ANGLE_SPREAD, spread2: WALL_ANGLE_SPREAD }
-        : { spread1: WALL_ANGLE_SPREAD, spread2: -WALL_ANGLE_SPREAD };
-}
+    if (cross > 0) {
+        angle1 -= WALL_ANGLE_SPREAD;
+        angle2 += WALL_ANGLE_SPREAD;
+    } else {
+        angle1 += WALL_ANGLE_SPREAD;
+        angle2 -= WALL_ANGLE_SPREAD;
+    }
 
-function spreadAtPoint(p, p1, p2, spread1, spread2) {
-    const dx = p2.x - p1.x;
-    const dy = p2.y - p1.y;
-    const lenSq = dx * dx + dy * dy;
-    if (lenSq < 1e-6) return (spread1 + spread2) * 0.5;
-    const t = Math.max(0, Math.min(1, ((p.x - p1.x) * dx + (p.y - p1.y) * dy) / lenSq));
-    return spread1 + (spread2 - spread1) * t;
-}
+    const dist1 = Math.hypot(p1.x - px, p1.y - py);
+    const dist2 = Math.hypot(p2.x - px, p2.y - py);
+    const clampedHeight = Math.min(wallHeight, CAMERA_HEIGHT - 10);
+    const alpha = clampedHeight / (CAMERA_HEIGHT - clampedHeight);
 
-function projectFar(p, p1, p2, px, py, spread1, spread2, distance) {
-    const adjust = spreadAtPoint(p, p1, p2, spread1, spread2);
-    const angle = Math.atan2(p.y - py, p.x - px) + adjust;
     return {
-        x: p.x + Math.cos(angle) * distance,
-        y: p.y + Math.sin(angle) * distance,
-    };
-}
-
-function lerp(a, b, t) {
-    return a + (b - a) * t;
-}
-
-function lerpPoint(a, b, t) {
-    return { x: lerp(a.x, b.x, t), y: lerp(a.y, b.y, t) };
-}
-
-/** Original offscreen wall projection — rays extend toward the viewer. */
-export function computeProjectedFace(p1, p2, px, py, distance = getWallProjectionDistance()) {
-    const { spread1, spread2 } = getEdgeSpread(p1, p2, px, py);
-    const far1 = projectFar(p1, p1, p2, px, py, spread1, spread2, distance);
-    const far2 = projectFar(p2, p1, p2, px, py, spread1, spread2, distance);
-    return {
-        proj1X: far1.x,
-        proj1Y: far1.y,
-        proj2X: far2.x,
-        proj2Y: far2.y,
+        proj1X: p1.x + Math.cos(angle1) * dist1 * alpha,
+        proj1Y: p1.y + Math.sin(angle1) * dist1 * alpha,
+        proj2X: p2.x + Math.cos(angle2) * dist2 * alpha,
+        proj2Y: p2.y + Math.sin(angle2) * dist2 * alpha,
     };
 }
 
@@ -61,17 +44,11 @@ export function traceProjectedFace(ctx, p1, p2, face) {
     ctx.closePath();
 }
 
-function getVisibleWallRows(fullRows, viewport) {
-    const maxRows = floorTileSettings.wallMaxVisibleRows ?? 32;
-    if (!viewport) return Math.min(fullRows, maxRows);
-
-    const cellSize = floorTileSettings.tileWorldSize ?? gridSettings.cellSize;
-    const halfH = viewport.cy / Math.max(viewport.zoom, 0.001);
-    const screenEstimate = Math.ceil(halfH / cellSize) + 2;
-    return Math.min(fullRows, maxRows, Math.max(1, screenEstimate));
+function lerpPoint(a, b, t) {
+    return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
 }
 
-function fillPatternTriangle(ctx, pattern, matrix, x0, y0, x1, y1, x2, y2) {
+function paintPatternTriangle(ctx, pattern, matrix, x0, y0, x1, y1, x2, y2) {
     ctx.save();
     ctx.beginPath();
     ctx.moveTo(x0, y0);
@@ -82,7 +59,6 @@ function fillPatternTriangle(ctx, pattern, matrix, x0, y0, x1, y1, x2, y2) {
 
     pattern.setTransform(matrix);
     ctx.fillStyle = pattern;
-
     const minX = Math.min(x0, x1, x2) - 1;
     const maxX = Math.max(x0, x1, x2) + 1;
     const minY = Math.min(y0, y1, y2) - 1;
@@ -92,10 +68,10 @@ function fillPatternTriangle(ctx, pattern, matrix, x0, y0, x1, y1, x2, y2) {
 }
 
 /**
- * World-anchored pattern split into one-tile row bands. A single affine map over the
- * full 3000px face bends horizontal grid lines; thin rows keep them straight.
+ * One tile row per band on the face surface. Absolute world U (no per-face modulo) so maze
+ * cell faces share continuous grout across segment boundaries.
  */
-function drawFaceTexture(ctx, p1, p2, face, textureCanvas, projectionDistance, viewport) {
+function drawFaceTexture(ctx, p1, p2, face, textureCanvas, wallHeight) {
     const tileWorldSize = floorTileSettings.tileWorldSize ?? gridSettings.cellSize;
     const texW = textureCanvas.width;
     const texH = textureCanvas.height;
@@ -105,25 +81,23 @@ function drawFaceTexture(ctx, p1, p2, face, textureCanvas, projectionDistance, v
     const edgeDirX = (p2.x - p1.x) / edgeLen;
     const edgeDirY = (p2.y - p1.y) / edgeLen;
     const uAlongEdge = p1.x * edgeDirX + p1.y * edgeDirY;
-    const u1 = (((uAlongEdge / tileWorldSize) % 1) + 1) % 1 * texW;
+    const u1 = (uAlongEdge / tileWorldSize) * texW;
     const u2 = u1 + (edgeLen / tileWorldSize) * texW;
     const du = u2 - u1;
     if (Math.abs(du) < 1e-6) return;
 
-    const fullRows = Math.max(1, Math.ceil(projectionDistance / tileWorldSize));
-    const visibleRows = getVisibleWallRows(fullRows, viewport);
-    const pattern = ctx.createPattern(textureCanvas, "repeat");
-
+    const rowCount = Math.max(1, Math.ceil(wallHeight / tileWorldSize));
     const leftTop = { x: face.proj1X, y: face.proj1Y };
     const rightTop = { x: face.proj2X, y: face.proj2Y };
+    const pattern = ctx.createPattern(textureCanvas, "repeat");
 
     ctx.save();
     traceProjectedFace(ctx, p1, p2, face);
     ctx.clip();
 
-    for (let row = 0; row < visibleRows; row++) {
-        const t0 = row / fullRows;
-        const t1 = (row + 1) / fullRows;
+    for (let row = 0; row < rowCount; row++) {
+        const t0 = row / rowCount;
+        const t1 = (row + 1) / rowCount;
         const bl = lerpPoint(p1, leftTop, t0);
         const br = lerpPoint(p2, rightTop, t0);
         const tl = lerpPoint(p1, leftTop, t1);
@@ -139,7 +113,7 @@ function drawFaceTexture(ctx, p1, p2, face, textureCanvas, projectionDistance, v
         const d1 = (tl.y - bl.y) / dv;
         const e1 = bl.x - a1 * u1 - c1 * v1;
         const f1 = bl.y - b1 * u1 - d1 * v1;
-        fillPatternTriangle(ctx, pattern, new DOMMatrix([a1, b1, c1, d1, e1, f1]), bl.x, bl.y, br.x, br.y, tl.x, tl.y);
+        paintPatternTriangle(ctx, pattern, new DOMMatrix([a1, b1, c1, d1, e1, f1]), bl.x, bl.y, br.x, br.y, tl.x, tl.y);
 
         const a2 = (tr.x - tl.x) / du;
         const b2 = (tr.y - tl.y) / du;
@@ -147,7 +121,7 @@ function drawFaceTexture(ctx, p1, p2, face, textureCanvas, projectionDistance, v
         const d2 = (tr.y - br.y) / dv;
         const e2 = br.x - a2 * u2 - c2 * v1;
         const f2 = br.y - b2 * u2 - d2 * v1;
-        fillPatternTriangle(ctx, pattern, new DOMMatrix([a2, b2, c2, d2, e2, f2]), br.x, br.y, tr.x, tr.y, tl.x, tl.y);
+        paintPatternTriangle(ctx, pattern, new DOMMatrix([a2, b2, c2, d2, e2, f2]), br.x, br.y, tr.x, tr.y, tl.x, tl.y);
     }
 
     ctx.restore();
@@ -160,28 +134,23 @@ export function drawProjectedWallFace(
     px,
     py,
     fillStyle,
-    floorTiles,
-    state,
+    textureCanvas,
     {
-        viewport = null,
         damageAlpha = 0,
         textureEnabled = true,
         shouldStroke = false,
         shadeOverlay = 0,
     } = {},
 ) {
-    const projectionDistance = getWallProjectionDistance();
-    const face = computeProjectedFace(p1, p2, px, py, projectionDistance);
+    const wallHeight = getWallVisualHeight();
+    const face = computeProjectedFace(p1, p2, px, py, wallHeight);
 
     traceProjectedFace(ctx, p1, p2, face);
     ctx.fillStyle = fillStyle;
     ctx.fill();
 
-    if (floorTiles && textureEnabled) {
-        const textureCanvas = floorTiles.getTileTextureCanvas(state);
-        if (textureCanvas) {
-            drawFaceTexture(ctx, p1, p2, face, textureCanvas, projectionDistance, viewport);
-        }
+    if (textureCanvas && textureEnabled) {
+        drawFaceTexture(ctx, p1, p2, face, textureCanvas, wallHeight);
     }
 
     if (shadeOverlay > 0) {

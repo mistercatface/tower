@@ -61,12 +61,18 @@ function paintCell(ctx, localX, localY, cellSize, hash, blocked, worldX, worldY,
     if (blocked && !wallSurface) return;
 
     const seam = parseHexColor(combatVisualSettings.gridStroke.startsWith("rgba") ? "#5a697d" : combatVisualSettings.gridStroke);
-    ctx.fillStyle = `rgba(${seam.r}, ${seam.g}, ${seam.b}, 0.55)`;
+    const seamSoft = `rgba(${seam.r}, ${seam.g}, ${seam.b}, 0.55)`;
+    const seamHard = `rgba(${seam.r}, ${seam.g}, ${seam.b}, 0.85)`;
+    ctx.fillStyle = seamSoft;
     ctx.fillRect(localX, localY, cellSize, 1);
     ctx.fillRect(localX, localY, 1, cellSize);
 
-    if (localX === 0 || localY === 0) {
-        ctx.fillStyle = `rgba(${seam.r}, ${seam.g}, ${seam.b}, 0.85)`;
+    if (wallSurface) {
+        ctx.fillStyle = seamHard;
+        ctx.fillRect(localX + cellSize - 1, localY, 1, cellSize);
+        ctx.fillRect(localX, localY + cellSize - 1, cellSize, 1);
+    } else if (localX === 0 || localY === 0) {
+        ctx.fillStyle = seamHard;
         if (localX === 0) ctx.fillRect(localX, localY, 1, cellSize);
         if (localY === 0) ctx.fillRect(localX, localY, cellSize, 1);
     }

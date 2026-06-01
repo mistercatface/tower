@@ -42,7 +42,7 @@ export class FloorTileSystem {
         }
         for (let row = bounds.startRow; row <= bounds.endRow; row++) {
             for (let col = bounds.startCol; col <= bounds.endCol; col++) {
-                this.cellCache.delete(`c:${col},${row}`);
+                this.cellCache.delete(`c:v2:${col},${row}`);
             }
         }
     }
@@ -66,7 +66,7 @@ export class FloorTileSystem {
             obstacleGrid.minY,
             obstacleGrid.cellSize,
         );
-        const key = `c:${col},${row}`;
+        const key = `c:v2:${col},${row}`;
         let canvas = this.cellCache.get(key);
         if (canvas) return canvas;
 

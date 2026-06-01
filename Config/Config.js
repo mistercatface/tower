@@ -341,13 +341,14 @@ export const floorTileSettings = {
     vignetteAlpha: 0.45,
     /** World size of one repeating floor tile on wall faces. */
     tileWorldSize: gridSettings.cellSize,
-    /** How far visible wall faces extend toward the viewer (offscreen projection). */
-    wallProjectionDistance: 3000,
+    /**
+     * Global wall projection height (rendering only — not per-building).
+     * Defaults near CAMERA_HEIGHT so faces extend offscreen without a visible cap.
+     */
+    wallVisualHeight: null,
     /** Darken wall tiles vs floor (0 = none, 1 = black). */
     wallShadeOverlay: 0.22,
     maxCachedWallCells: 512,
-    /** Tile rows drawn up each wall face (one affine band per row). */
-    wallMaxVisibleRows: 32,
 };
 
 export const combatVisualSettings = { floorHighlight: "#2c3340", floorFill: "#1c2129", floorShadow: "#12161c", gridStroke: "rgba(90, 105, 125, 0.2)" };

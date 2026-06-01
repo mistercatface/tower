@@ -70,16 +70,18 @@ export class Render3D {
     }
 
     drawWallFace(ctx, seg, p1, p2, px, py, state, viewport, {
-        shouldStroke = true,
+        shouldStroke = !floorTileSettings.enabled,
         shadeOverlay = floorTileSettings.wallShadeOverlay,
         useTiles = floorTileSettings.enabled,
     } = {}) {
         const wallColor = this.getWallColor(seg, THEME_COLORS[0], 1.0);
         const healthRatio = seg.health / seg.maxHealth;
         const damageAlpha = healthRatio < 1 ? (1 - healthRatio) * 0.45 : 0;
+        const textureCanvas = useTiles && state.floorTiles
+            ? state.floorTiles.getTileTextureCanvas(state)
+            : null;
 
-        drawProjectedWallFace(ctx, p1, p2, px, py, wallColor, useTiles ? state.floorTiles : null, state, {
-            viewport,
+        drawProjectedWallFace(ctx, p1, p2, px, py, wallColor, textureCanvas, {
             damageAlpha,
             textureEnabled: useTiles,
             shouldStroke,
@@ -291,7 +293,9 @@ export class Render3D {
 
         for (const obj of visibleObjects) {
             if (obj._renderType === "wall") {
-                this.drawWallSegmentFaces(ctx, obj, px, py, state, viewport, { shouldStroke: true });
+                this.drawWallSegmentFaces(ctx, obj, px, py, state, viewport, {
+                    shouldStroke: !floorTileSettings.enabled,
+                });
             } else {
                 ctx.save();
                 const pc = createPropDrawContext(obj, px, py);
