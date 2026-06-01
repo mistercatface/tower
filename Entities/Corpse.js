@@ -3,7 +3,7 @@ import {
     captureCorpseBindFrame,
     clearActorKinematics,
     renderCorpseKinematicsBody,
-} from "../Render/Kinematics/PlayerKinematicsRenderer.js";
+} from "../Render/Kinematics/Kinematics.js";
 
 const CORPSE_MAX_MS = 12000;
 const CORPSE_FADE_MS = 2500;

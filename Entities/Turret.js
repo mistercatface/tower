@@ -7,7 +7,7 @@ import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { getGunProjectileConfig } from "../Combat/gunCombat.js";
 import { inferFaction, areHostile } from "../Combat/Targeting.js";
 import { CombatParticles } from "../Render/CombatParticles.js";
-import { resolveKinematicsMuzzlePosition, resolveActorKinematicsCamera } from "../Render/Kinematics/PlayerKinematicsRenderer.js";
+import { resolveKinematicsMuzzlePosition, resolvePerspectiveCamera } from "../Render/Kinematics/Kinematics.js";
 
 export class Turret {
     constructor(angle, turnSpeed, loadout = defaultTurretLoadout) {
@@ -54,7 +54,7 @@ export class Turret {
 
     getMuzzlePosition(source, projectileRadius = 2, target = null) {
         const turretIndex = source.turrets.indexOf(this);
-        const camera = resolveActorKinematicsCamera(source);
+        const camera = source._perspectiveCamera ?? resolvePerspectiveCamera(source, null);
         const muzzle = resolveKinematicsMuzzlePosition(
             source,
             turretIndex >= 0 ? turretIndex : 0,

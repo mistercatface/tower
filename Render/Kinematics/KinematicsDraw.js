@@ -1,9 +1,9 @@
 import { getCharacterForActor } from "./CharacterAppearance.js";
 import { resolveWeaponDrawSlots, resolveProjectedHandsForSlot } from "./KinematicsWeaponVisuals.js";
 import { drawHeadNeckAndHair } from "./KinematicsHead.js";
+
 /** Draw mesh from rig-local coords — every part projects through sceneRenderer (same as head). */
-export function drawStandardCharacter(rigLocal, actor, sceneRenderer, config, rig, options = {}) {
-    const severed = options.severed ?? {};
+export function drawStandardCharacter(rigLocal, actor, sceneRenderer, config, rig) {
     const char = getCharacterForActor(actor);
     const getPalette = (base, light, dark) => ({ base: base || "#888", light: light || "#fff", dark: dark || "#000" });
     const palettes = {
@@ -29,55 +29,36 @@ export function drawStandardCharacter(rigLocal, actor, sceneRenderer, config, ri
     Renderer.addSphere(spineBot, rig.hipHalfWidth * 1.1, palettes.pants);
 
     const legRad = rig.legL1 * 0.35;
-    if (!severed.rLeg && !severed.rShin) {
-        Renderer.addSphere(rigLocal.rLeg.p1, legRad, palettes.pants);
-        Renderer.addCylinder(rigLocal.rLeg.p1, rigLocal.rLeg.p2, legRad, palettes.pants);
-        Renderer.addSphere(rigLocal.rLeg.p2, legRad * 0.9, palettes.pants);
-        Renderer.addCylinder(rigLocal.rLeg.p2, rigLocal.rLeg.p3, legRad * 0.8, palettes.pants);
-        Renderer.addSphere(rigLocal.rLeg.p3, legRad * 1.2, palettes.shoe);
-    }
-    if (!severed.lLeg && !severed.lShin) {
-        Renderer.addSphere(rigLocal.lLeg.p1, legRad, palettes.pants);
-        Renderer.addCylinder(rigLocal.lLeg.p1, rigLocal.lLeg.p2, legRad, palettes.pants);
-        Renderer.addSphere(rigLocal.lLeg.p2, legRad * 0.9, palettes.pants);
-        Renderer.addCylinder(rigLocal.lLeg.p2, rigLocal.lLeg.p3, legRad * 0.8, palettes.pants);
-        Renderer.addSphere(rigLocal.lLeg.p3, legRad * 1.2, palettes.shoe);
-    }
+    Renderer.addSphere(rigLocal.rLeg.p1, legRad, palettes.pants);
+    Renderer.addCylinder(rigLocal.rLeg.p1, rigLocal.rLeg.p2, legRad, palettes.pants);
+    Renderer.addSphere(rigLocal.rLeg.p2, legRad * 0.9, palettes.pants);
+    Renderer.addCylinder(rigLocal.rLeg.p2, rigLocal.rLeg.p3, legRad * 0.8, palettes.pants);
+    Renderer.addSphere(rigLocal.rLeg.p3, legRad * 1.2, palettes.shoe);
+
+    Renderer.addSphere(rigLocal.lLeg.p1, legRad, palettes.pants);
+    Renderer.addCylinder(rigLocal.lLeg.p1, rigLocal.lLeg.p2, legRad, palettes.pants);
+    Renderer.addSphere(rigLocal.lLeg.p2, legRad * 0.9, palettes.pants);
+    Renderer.addCylinder(rigLocal.lLeg.p2, rigLocal.lLeg.p3, legRad * 0.8, palettes.pants);
+    Renderer.addSphere(rigLocal.lLeg.p3, legRad * 1.2, palettes.shoe);
 
     const armRad = rig.armL1 * 0.3;
-    if (!severed.rArm) {
-        if (!severed.rForearm) {
-            Renderer.addSphere(rigLocal.rArm.p1, armRad, palettes.shirt);
-            Renderer.addCylinder(rigLocal.rArm.p1, rigLocal.rArm.p2, armRad, palettes.shirt);
-            Renderer.addSphere(rigLocal.rArm.p2, armRad * 0.9, armPalette);
-            Renderer.addCylinder(rigLocal.rArm.p2, rigLocal.rArm.p3, armRad * 0.8, armPalette);
-            Renderer.addSphere(rigLocal.rArm.p3, rig.handR * 1.5, palettes.skin);
-        } else {
-            Renderer.addSphere(rigLocal.rArm.p1, armRad, palettes.shirt);
-            Renderer.addCylinder(rigLocal.rArm.p1, rigLocal.rArm.p2, armRad, palettes.shirt);
-            Renderer.addSphere(rigLocal.rArm.p2, armRad * 0.9, armPalette);
-        }
-    }
-    if (!severed.lArm) {
-        if (!severed.lForearm) {
-            Renderer.addSphere(rigLocal.lArm.p1, armRad, palettes.shirt);
-            Renderer.addCylinder(rigLocal.lArm.p1, rigLocal.lArm.p2, armRad, palettes.shirt);
-            Renderer.addSphere(rigLocal.lArm.p2, armRad * 0.9, armPalette);
-            Renderer.addCylinder(rigLocal.lArm.p2, rigLocal.lArm.p3, armRad * 0.8, armPalette);
-            Renderer.addSphere(rigLocal.lArm.p3, rig.handR * 1.5, palettes.skin);
-        } else {
-            Renderer.addSphere(rigLocal.lArm.p1, armRad, palettes.shirt);
-            Renderer.addCylinder(rigLocal.lArm.p1, rigLocal.lArm.p2, armRad, palettes.shirt);
-            Renderer.addSphere(rigLocal.lArm.p2, armRad * 0.9, armPalette);
-        }
-    }
+    Renderer.addSphere(rigLocal.rArm.p1, armRad, palettes.shirt);
+    Renderer.addCylinder(rigLocal.rArm.p1, rigLocal.rArm.p2, armRad, palettes.shirt);
+    Renderer.addSphere(rigLocal.rArm.p2, armRad * 0.9, armPalette);
+    Renderer.addCylinder(rigLocal.rArm.p2, rigLocal.rArm.p3, armRad * 0.8, armPalette);
+    Renderer.addSphere(rigLocal.rArm.p3, rig.handR * 1.5, palettes.skin);
+
+    Renderer.addSphere(rigLocal.lArm.p1, armRad, palettes.shirt);
+    Renderer.addCylinder(rigLocal.lArm.p1, rigLocal.lArm.p2, armRad, palettes.shirt);
+    Renderer.addSphere(rigLocal.lArm.p2, armRad * 0.9, armPalette);
+    Renderer.addCylinder(rigLocal.lArm.p2, rigLocal.lArm.p3, armRad * 0.8, armPalette);
+    Renderer.addSphere(rigLocal.lArm.p3, rig.handR * 1.5, palettes.skin);
 
     drawHeadNeckAndHair(Renderer, null, rig, char, {
         headLocal: rigLocal.head,
         spineTopLocal: rigLocal.spineTop,
         skinPalette: palettes.skin,
         getPalette: (b, l, d) => ({ base: b, light: l, dark: d }),
-        severedHead: !!severed.head,
     });
 }
 
@@ -115,7 +96,7 @@ export function drawKinematicsFrameToCanvas(
     overridePadding = null,
     options = {},
 ) {
-    const { drawWeapons = false, severed = {} } = options;
+    const { drawWeapons = false } = options;
     const padding = overridePadding !== null ? overridePadding : config.PADDING;
     const canvasSize = Math.ceil(config.SIZE + padding * 2);
 
@@ -129,7 +110,7 @@ export function drawKinematicsFrameToCanvas(
     sharedCtx.save();
     sharedCtx.translate(padding, padding);
     sceneRenderer.begin(sharedCtx, viewContext, facing.renderRotation, rig);
-    drawStandardCharacter(rigLocal, actor, sceneRenderer, config, rig, { severed });
+    drawStandardCharacter(rigLocal, actor, sceneRenderer, config, rig);
     if (drawWeapons) {
         drawHeldWeapons(rigLocal, actor, sceneRenderer, config, facing);
     }

@@ -22,7 +22,7 @@ export function drawHeadNeckAndHair(sceneRenderer, scene, rig, character, option
     const skin = getPalette(skinPalette.base, skinPalette.light, skinPalette.dark);
     const Renderer = sceneRenderer;
 
-    if (spineTopLocal && !options.severedHead) {
+    if (spineTopLocal) {
         const neckRad = rig.torsoHalfWidth * 0.38;
         Renderer.addCylinder(spineTopLocal, headLocal, neckRad, skin);
     }

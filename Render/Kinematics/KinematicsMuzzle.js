@@ -23,15 +23,15 @@ export function calculateMuzzleCanvasOffset(aimAngle, handScale, config, barrelR
     };
 }
 
-export function spriteMetricsFromConfig(config) {
-    const canvasSize = config.SIZE + config.PADDING * 2;
-    const feetYInCanvas = config.PADDING + config.ANCHOR_Y * config.SIZE;
+export function spriteMetricsFromPadding(config, padding) {
+    const canvasSize = config.SIZE + padding * 2;
+    const feetYInCanvas = padding + config.ANCHOR_Y * config.SIZE;
     return {
         width: canvasSize,
         height: canvasSize,
         drawRatio: canvasSize / config.SIZE,
         verticalShift: feetYInCanvas - canvasSize / 2,
-        padding: config.PADDING,
+        padding,
     };
 }
 
@@ -49,7 +49,7 @@ export function kinematicsInnerPointToWorld(actor, innerX, innerY, metrics, disp
     };
 }
 
-export function resolveMuzzleFromRig(actor, rigData, project, config, facing, turretIndex, displayDiameter) {
+export function resolveMuzzleFromRig(actor, rigData, project, config, facing, turretIndex, displayDiameter, padding) {
     const slots = resolveWeaponDrawSlots(actor);
     const slot = slots.find((s) => s.turretIndex === turretIndex) ?? slots[0];
     if (!slot) return null;
@@ -62,7 +62,7 @@ export function resolveMuzzleFromRig(actor, rigData, project, config, facing, tu
     const aimAngle = facing.gunCanvasAim(turret.angle);
     const barrelRatio = getBarrelRatioForGunId(slot.gunId);
     const offset = calculateMuzzleCanvasOffset(aimAngle, hand.scale ?? 1, config, barrelRatio);
-    const metrics = spriteMetricsFromConfig(config);
+    const metrics = spriteMetricsFromPadding(config, padding);
 
     return kinematicsInnerPointToWorld(
         actor,

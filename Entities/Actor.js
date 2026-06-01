@@ -18,7 +18,7 @@ import { RenderSprites } from "../Render/RenderSprites.js";
 import { ProgressBar } from "../Render/ProgressBar.js";
 import { areHostile, getNearestHostile, getPlayerActors, isValidTurretTarget } from "../Combat/Targeting.js";
 import { getActorProfileForActor, getActorProfileForType } from "../Config/actorProfiles.js";
-import { advanceActorKinematics } from "../Render/Kinematics/PlayerKinematicsRenderer.js";
+import { advanceActorKinematics, resolvePerspectiveCamera } from "../Render/Kinematics/Kinematics.js";
 import { CombatParticles } from "../Render/CombatParticles.js";
 import { Corpse } from "./Corpse.js";
 
@@ -130,8 +130,8 @@ export class Actor extends DestructibleEntity {
         const combatEvents = options.combatEvents ?? [];
         const events = this.updateTurretCombat(dt, state, { ...options, combatEvents }) ?? combatEvents;
         if (this.usesKinematicsBody) {
-            this._kinematicsCamera = this.getKinematicsCamera(state);
-            advanceActorKinematics(this, dt, this._kinematicsCamera);
+            this._perspectiveCamera = resolvePerspectiveCamera(this, state);
+            advanceActorKinematics(this, dt, this._perspectiveCamera);
         }
         return events;
     }
@@ -522,7 +522,7 @@ export class Actor extends DestructibleEntity {
 
     spawnCorpseOnDeath(state, event) {
         if (!state) return;
-        const camera = this._kinematicsCamera ?? { x: this.x, y: this.y };
+        const camera = this._perspectiveCamera ?? resolvePerspectiveCamera(this, state);
         Corpse.spawnFromActor(state, this, event, camera);
     }
 
@@ -533,8 +533,8 @@ export class Actor extends DestructibleEntity {
         }
     }
 
-    render(ctx, renderer, _state) {
-        this.renderBody(ctx, renderer);
+    render(ctx, renderer, state) {
+        this.renderBody(ctx, renderer, state);
     }
 
     getSpriteCache(renderer) {
@@ -545,7 +545,7 @@ export class Actor extends DestructibleEntity {
         return getActorProfileForActor(this).statusBarOffset(this.radius);
     }
 
-    renderBody(_ctx, _renderer) {
+    renderBody(_ctx, _renderer, _state) {
         // Subclasses draw kinematics bodies.
     }
 
