@@ -4,6 +4,7 @@ import { worldPropDefinitions } from "../Config/PropDefinitions.js";
 import { CRATE_LABEL_VARIANTS, CRATE_LABEL_FACES } from "../Config/props/Crate.js";
 import { transitionEntity } from "./EntityFsm.js";
 import { pickupStates } from "./PickupStates.js";
+import { PolygonShape } from "../Spatial/Geometry/Shapes.js";
 import { getProjectileDamage } from "../Combat/impactDamage.js";
 import { resolvePickupInspect } from "../Render/Inspector/InspectRegistry.js";
 import { getStartNodeLayout } from "../Generator/StartNodeBuilding.js";
@@ -71,6 +72,13 @@ export class Pickup extends Entity {
         this.facing = facing ?? Math.random() * Math.PI * 2;
         if (type === "crate") {
             this.faceLabelVariants = Object.fromEntries(CRATE_LABEL_FACES.map((face) => [face, Math.floor(Math.random() * CRATE_LABEL_VARIANTS.length)]));
+            const r = this.radius;
+            this.shape = new PolygonShape([
+                { x: -r, y: -r },
+                { x: r, y: -r },
+                { x: r, y: r },
+                { x: -r, y: r }
+            ]);
         }
         if (this.strategy.maxHealth != null) {
             this.maxHealth = this.strategy.maxHealth;

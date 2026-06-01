@@ -1,5 +1,7 @@
 import { normalizeAngle } from "../../Math/Angle.js";
 import { getCircleSegmentPenetration } from "../Geometry/WallGeometry.js";
+import { SatCollision } from "../Collision/SatCollision.js";
+import { PolygonShape } from "../Geometry/Shapes.js";
 
 export class PhysicsSystem {
     static applyMovement(entity, dt, ignoreSeparation = false, shouldMove = true, alignAngleWithMovement = true) {
@@ -50,14 +52,46 @@ export class PhysicsSystem {
         for (let i = 0; i < 2; i++) {
             for (const seg of candidateWalls) {
                 if (seg.isDead) continue;
-                const maxDist = entity.radius + seg.size * 0.75;
+                
+                const shape = entity.getShape();
+                const radius = shape.getBoundingRadius();
+                const maxDist = radius + seg.size * 0.75;
                 if (Math.abs(entity.x - seg.x) > maxDist || Math.abs(entity.y - seg.y) > maxDist) continue;
 
-                const penetration = getCircleSegmentPenetration(entity, seg);
-                if (!penetration) continue;
+                let normalX, normalY, overlap;
+
+                if (shape.type === 'Circle') {
+                    const penetration = getCircleSegmentPenetration(entity, seg);
+                    if (!penetration) continue;
+                    normalX = penetration.normalX;
+                    normalY = penetration.normalY;
+                    overlap = penetration.overlap;
+                } else if (shape.type === 'Polygon') {
+                    if (!seg.shape) {
+                        const half = seg.size / 2;
+                        const cos = Math.cos(seg.angle);
+                        const sin = Math.sin(seg.angle);
+                        seg.shape = new PolygonShape([
+                            { x: -half, y: -half },
+                            { x: half, y: -half },
+                            { x: half, y: half },
+                            { x: -half, y: half }
+                        ].map(pt => ({
+                            x: pt.x * cos - pt.y * sin,
+                            y: pt.x * sin + pt.y * cos
+                        })));
+                    }
+
+                    const coll = SatCollision.checkCollision(entity, shape, seg, seg.shape);
+                    if (!coll) continue;
+                    normalX = -coll.nx;
+                    normalY = -coll.ny;
+                    overlap = coll.overlap;
+                } else {
+                    continue;
+                }
 
                 collided = true;
-                const { normalX, normalY, overlap } = penetration;
                 entity.x += normalX * overlap;
                 entity.y += normalY * overlap;
                 const dot = entity.vx !== undefined && entity.vy !== undefined ? entity.vx * normalX + entity.vy * normalY : 0;

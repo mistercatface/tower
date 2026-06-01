@@ -1,5 +1,6 @@
 import { Utilities } from "../Core/Utilities.js";
 import { wallContextFromState } from "../Spatial/World/WallContext.js";
+import { CircleShape } from "../Spatial/Geometry/Shapes.js";
 
 let nextEntityId = 1;
 
@@ -11,6 +12,7 @@ export class Entity {
         this.angle = angle;
         this.isDead = isDead;
         this.zIndex = 0;
+        this.shape = null; // initialized lazily or by subclasses
     }
 
     reset(x, y, angle = 0, isDead = false) {
@@ -20,12 +22,21 @@ export class Entity {
         this.angle = angle;
         this.isDead = isDead;
         this.zIndex = 0;
+        this.shape = null; // reset shape
     }
 
     render(ctx, ...caches) {
     }
 
+    getShape() {
+        if (!this.shape) {
+            this.shape = new CircleShape(this.radius || 0);
+        }
+        return this.shape;
+    }
+
     getBoundingRadius() {
+        if (this.shape) return this.shape.getBoundingRadius();
         return this.radius || 0;
     }
 

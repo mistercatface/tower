@@ -1,4 +1,5 @@
 import { circleIntersectsSegment } from "../Geometry/WallGeometry.js";
+import { SatCollision } from "./SatCollision.js";
 import { areHostile } from "../../Combat/Targeting.js";
 import { PhysicsSystem } from "../Motion/PhysicsSystem.js";
 import { enemyDefaults } from "../../Config/Config.js";
@@ -33,27 +34,16 @@ export class CollisionSystem {
     }
 
     static resolveActorPushable(actor, pickup) {
-        const dx = pickup.x - actor.x;
-        const dy = pickup.y - actor.y;
-        const dist = Math.hypot(dx, dy);
-        const minDist = actor.radius + pickup.radius;
+        const collisionInfo = SatCollision.checkCollision(
+            actor, actor.getShape(),
+            pickup, pickup.getShape()
+        );
 
-        if (dist >= minDist) return;
+        if (!collisionInfo) return;
 
-        let pushX;
-        let pushY;
-        let pushDist = dist;
-        if (pushDist === 0) {
-            const angle = Math.random() * Math.PI * 2;
-            pushX = Math.cos(angle);
-            pushY = Math.sin(angle);
-            pushDist = 0.1;
-        } else {
-            pushX = dx / pushDist;
-            pushY = dy / pushDist;
-        }
-
-        const overlap = minDist - pushDist;
+        const pushX = collisionInfo.nx;
+        const pushY = collisionInfo.ny;
+        const overlap = collisionInfo.overlap;
 
         const actorMass = actor.mass !== undefined ? actor.mass : actor.radius;
         const pickupMass = pickup.mass !== undefined ? pickup.mass : 1.0;
@@ -86,27 +76,16 @@ export class CollisionSystem {
     }
 
     static resolvePushablePair(p1, p2) {
-        const dx = p2.x - p1.x;
-        const dy = p2.y - p1.y;
-        const dist = Math.hypot(dx, dy);
-        const minDist = p1.radius + p2.radius;
+        const collisionInfo = SatCollision.checkCollision(
+            p1, p1.getShape(),
+            p2, p2.getShape()
+        );
 
-        if (dist >= minDist) return;
+        if (!collisionInfo) return;
 
-        let pushX;
-        let pushY;
-        let pushDist = dist;
-        if (pushDist === 0) {
-            const angle = Math.random() * Math.PI * 2;
-            pushX = Math.cos(angle);
-            pushY = Math.sin(angle);
-            pushDist = 0.1;
-        } else {
-            pushX = dx / pushDist;
-            pushY = dy / pushDist;
-        }
-
-        const overlap = minDist - pushDist;
+        const pushX = collisionInfo.nx;
+        const pushY = collisionInfo.ny;
+        const overlap = collisionInfo.overlap;
 
         p1.x -= pushX * overlap * 0.5;
         p1.y -= pushY * overlap * 0.5;
