@@ -1,5 +1,5 @@
 import { RAGDOLL_CONFIG, SEVER_MAP } from "./RagdollConfig.js";
-import { getRagdollPointZ, mergeRagdollPoint, setRagdollPointZ } from "./RagdollPhysics.js";
+import { absRagdollPoint, ensureSimBone, getRagdollPointZ, mergeRagdollPoint } from "./RagdollPhysics.js";
 import {
     PHYSICS_BONE_ALIASES,
     SEVER_LIMB_DEF,
@@ -140,8 +140,8 @@ export function severLimb(ragdoll, limbId, rig) {
     ragdoll.severed[limbId] = true;
     const { points, prevPoints } = ragdoll;
     let { constraints } = ragdoll;
-    const rootPoint = points[data.root];
-    if (!rootPoint) return;
+    const rootAbs = absRagdollPoint(ragdoll, data.root);
+    if (!rootAbs) return;
 
     constraints = disconnectLimbFromTorso(constraints, limbId, data.root);
     ragdoll.constraints = constraints;
@@ -149,28 +149,25 @@ export function severLimb(ragdoll, limbId, rig) {
     if (data.type === "simple") {
         ragdoll.constraints = constraints.filter((c) => c.a !== data.root && c.b !== data.root);
         const headChunkId = `${data.root}_chunk`;
-        ragdoll.points[headChunkId] = {
-            x: rootPoint.x,
-            y: rootPoint.y + rig.headR * 0.5,
-        };
-        setRagdollPointZ(ragdoll, headChunkId, getRagdollPointZ(ragdoll, data.root));
-        ragdoll.prevPoints[headChunkId] = { ...ragdoll.points[headChunkId] };
+        ensureSimBone(ragdoll, headChunkId, {
+            x: rootAbs.x,
+            y: rootAbs.y + rig.headR * 0.5,
+            z: rootAbs.z,
+        });
         ragdoll.constraints.push({ a: data.root, b: headChunkId, len: rig.headR * 0.5 });
     } else if (data.type === "joint") {
         const newPointId = `${data.root}_severed_${Date.now()}`;
-        ragdoll.points[newPointId] = { x: rootPoint.x, y: rootPoint.y };
-        setRagdollPointZ(ragdoll, newPointId, getRagdollPointZ(ragdoll, data.root));
-        ragdoll.prevPoints[newPointId] = { ...prevPoints[data.root] };
+        ensureSimBone(ragdoll, newPointId, rootAbs);
         for (const c of ragdoll.constraints) {
             if (c.a === data.root) c.a = newPointId;
         }
         const kick = rig.size * 0.08;
         const side = limbId.startsWith("l") ? -1 : 1;
-        ragdoll.prevPoints[newPointId].x -= side * kick;
-        ragdoll.prevPoints[newPointId].y -= kick * 0.5;
+        prevPoints[newPointId].x -= side * kick;
+        prevPoints[newPointId].y -= kick * 0.5;
     }
 
-    const mergedRoot = mergeRagdollPoint(ragdoll, data.root);
+    const mergedRoot = absRagdollPoint(ragdoll, data.root);
     const bCfg = RAGDOLL_CONFIG.BLOOD;
     const scale = rig.size / 32;
     for (let i = 0; i < bCfg.BURST_COUNT; i++) {
@@ -245,25 +242,20 @@ export function splitBone(ragdoll, boneStartName, t, rig) {
 
     const p1Name = oldConstraint.a;
     const p2Name = oldConstraint.b;
-    const p1 = points[p1Name];
-    const p2 = points[p2Name];
-    if (!p1 || !p2) return null;
+    const abs1 = absRagdollPoint(ragdoll, p1Name);
+    const abs2 = absRagdollPoint(ragdoll, p2Name);
+    if (!abs1 || !abs2) return null;
 
     const newPointId = `${basePart}_fr_${Math.floor(Math.random() * 9999)}`;
-    const z1 = getRagdollPointZ(ragdoll, p1Name);
-    const z2 = getRagdollPointZ(ragdoll, p2Name);
-    ragdoll.points[newPointId] = {
-        x: p1.x + (p2.x - p1.x) * t,
-        y: p1.y + (p2.y - p1.y) * t,
-    };
-    setRagdollPointZ(ragdoll, newPointId, z1 + (z2 - z1) * t);
-    ragdoll.prevPoints[newPointId] = { ...ragdoll.points[newPointId] };
+    ensureSimBone(ragdoll, newPointId, {
+        x: abs1.x + (abs2.x - abs1.x) * t,
+        y: abs1.y + (abs2.y - abs1.y) * t,
+        z: abs1.z + (abs2.z - abs1.z) * t,
+    });
     constraints.splice(constraintIndex, 1);
-    const newP = mergeRagdollPoint(ragdoll, newPointId);
-    const merged1 = mergeRagdollPoint(ragdoll, p1Name);
-    const merged2 = mergeRagdollPoint(ragdoll, p2Name);
-    const dist1 = Math.hypot(merged1.x - newP.x, merged1.y - newP.y, merged1.z - newP.z);
-    const dist2 = Math.hypot(merged2.x - newP.x, merged2.y - newP.y, merged2.z - newP.z);
+    const newP = absRagdollPoint(ragdoll, newPointId);
+    const dist1 = Math.hypot(abs1.x - newP.x, abs1.y - newP.y, abs1.z - newP.z);
+    const dist2 = Math.hypot(abs2.x - newP.x, abs2.y - newP.y, abs2.z - newP.z);
     constraints.push({ a: p1Name, b: newPointId, len: dist1 });
     constraints.push({ a: newPointId, b: p2Name, len: dist2 });
     incrementSplitCount(ragdoll, boneStartName);

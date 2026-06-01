@@ -66,20 +66,17 @@ export class RagdollCorpse extends Entity {
 
         seedRagdollBloodOnDeath(ragdoll, impact.hitBone, rig);
 
-        const corpse = new RagdollCorpse(actor, {
-            rotation: capture.rotation,
-            renderRotation: capture.renderRotation,
-        }, ragdoll);
+        const corpse = new RagdollCorpse(actor, capture.bindFrame, ragdoll);
         state.ragdollCorpses.push(corpse);
         return corpse;
     }
 
-    constructor(actor, deathPose, ragdoll) {
-        super(actor.x, actor.y, deathPose.rotation, false);
+    constructor(actor, bindFrame, ragdoll) {
+        super(actor.x, actor.y, bindFrame.bodyRotation, false);
         this.actor = actor;
         this.radius = actor.radius;
         this.ragdoll = ragdoll;
-        this.deathPose = deathPose;
+        this.bindFrame = bindFrame;
         this.ageMs = 0;
         this.opacity = 1;
         this.isDead = false;

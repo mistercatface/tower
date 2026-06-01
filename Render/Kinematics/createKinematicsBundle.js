@@ -10,7 +10,7 @@ import { resolveCombatFacing, resolveSpriteBodyRotation } from "./KinematicsFaci
 import { normalizeWeaponLoadout } from "../../Combat/equipmentLoadout.js";
 import { resolveWeaponStaticPoseName } from "./KinematicsWeaponVisuals.js";
 import { resolveMuzzleFromRig } from "./KinematicsMuzzle.js";
-import { getRagdollRenderRig } from "./Ragdoll/RagdollPhysics.js";
+import { applyRigDeltas } from "./KinematicsBones.js";
 
 const sharedCanvas = document.createElement("canvas");
 const sharedCtx = sharedCanvas.getContext("2d", { alpha: true });
@@ -245,19 +245,41 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
         };
     }
 
+    function cloneRigPoint(p) {
+        if (!p) return p;
+        return { x: p.x, y: p.y, z: p.z ?? 0 };
+    }
+
+    function cloneRigData(rigData) {
+        const limb = (l) => ({
+            p1: cloneRigPoint(l.p1),
+            p2: cloneRigPoint(l.p2),
+            p3: cloneRigPoint(l.p3),
+        });
+        return {
+            head: cloneRigPoint(rigData.head),
+            spineTop: cloneRigPoint(rigData.spineTop),
+            spineBot: cloneRigPoint(rigData.spineBot),
+            rArm: limb(rigData.rArm),
+            lArm: limb(rigData.lArm),
+            rLeg: limb(rigData.rLeg),
+            lLeg: limb(rigData.lLeg),
+        };
+    }
+
     function resolveCorpseFrame(corpse, camera) {
-        const { renderRotation, rotation } = corpse.deathPose;
+        const bind = corpse.bindFrame;
+        const ragdoll = corpse.ragdoll;
         return {
             x: corpse.x,
             y: corpse.y,
             camera,
-            rigData: getRagdollRenderRig(corpse.ragdoll),
-            renderRotation,
-            bodyRotation: rotation,
-            animCycle: 0,
+            rigData: applyRigDeltas(bind.rigData, ragdoll?.points),
+            bodyRotation: bind.bodyRotation,
+            animCycle: bind.animCycle,
             actor: corpse.actor,
-            facing: { renderRotation, gunCanvasAim: () => renderRotation },
-            drawOptions: { ragdoll: corpse.ragdoll },
+            facing: bind.facing,
+            drawOptions: ragdoll ? { ragdoll, severed: ragdoll.severed } : {},
             padding: spriteCache.cachePadding,
         };
     }
@@ -282,11 +304,18 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
         entityStates.delete(actorId);
     }
 
-    /** Snapshot posed rig at death before clearing anim state. */
+    /** Snapshot live frame at death — render uses this until sim deltas are wired in. */
     function captureActorRigForRagdoll(actor, camera) {
         const frame = resolveLiveFrameSpec(actor, camera, { freezePose: true });
+        const rigData = cloneRigData(frame.rigData);
         return {
-            rigData: frame.rigData,
+            rigData,
+            bindFrame: {
+                rigData,
+                bodyRotation: frame.bodyRotation,
+                animCycle: frame.animCycle,
+                facing: frame.facing,
+            },
             rotation: frame.bodyRotation,
             renderRotation: frame.facing.renderRotation,
         };

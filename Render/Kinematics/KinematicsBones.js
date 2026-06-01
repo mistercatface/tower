@@ -114,6 +114,33 @@ export function getRigPoint(rig, boneId) {
     return node;
 }
 
+export function applyRigDeltas(rigData, deltas) {
+    const point = (boneId) => {
+        const base = getRigPoint(rigData, boneId);
+        if (!base) return null;
+        const d = deltas?.[boneId];
+        return {
+            x: base.x + (d?.x ?? 0),
+            y: base.y + (d?.y ?? 0),
+            z: base.z ?? 0,
+        };
+    };
+    const limb = (a, b, c) => ({
+        p1: point(a),
+        p2: point(b),
+        p3: point(c),
+    });
+    return {
+        head: point("head"),
+        spineTop: point("spineTop"),
+        spineBot: point("spineBot"),
+        rArm: limb("rShoulder", "rElbow", "rHand"),
+        lArm: limb("lShoulder", "lElbow", "lHand"),
+        rLeg: limb("rHip", "rKnee", "rFoot"),
+        lLeg: limb("lHip", "lKnee", "lFoot"),
+    };
+}
+
 export function boneMapFromCharacterRig(rigData) {
     const out = {};
     for (const boneId of PHYSICS_BONES) {
