@@ -8,12 +8,14 @@ export function kinematicsPixelSizeForRadius(radius) {
 
 export class PlayerKinematicsRenderer {
     constructor(radius) {
+        const displayDiameter = radius * 4;
         this.bundle = createKinematicsBundle({
             pixelSize: kinematicsPixelSizeForRadius(radius),
             cameraHeight: CAMERA_HEIGHT,
             maxTiltDist: radius * 15,
+            displayDiameter,
         });
-        this.displayDiameter = radius * 4;
+        this.displayDiameter = displayDiameter;
     }
 
     advance(actor, dt, camera) {

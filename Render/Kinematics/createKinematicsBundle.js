@@ -60,7 +60,7 @@ function syncWeaponPose(state, actor, poses) {
     state.lastStaticChange = 0;
 }
 
-export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 120 }) {
+export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 120, displayDiameter = null }) {
     const config = createKinematicsConfig(pixelSize);
     const rig = createKinematicsRig(config);
     const poses = createKinematicsPoses(config, rig);
@@ -68,8 +68,9 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
     const spriteCache = createKinematicsSpriteCache();
     const entityStates = new Map();
 
-    const perspectiveHeight = config.PERSPECTIVE_HEIGHT;
-    const globalRatio = perspectiveHeight / Math.max(0.1, cameraHeight - perspectiveHeight);
+    const perspectiveHeight = config.SIZE * config.PERSPECTIVE_HEIGHT;
+    const actorWorldHeight = (displayDiameter ?? (config.SIZE * 0.94)) * config.PERSPECTIVE_HEIGHT;
+    const globalRatio = perspectiveHeight / Math.max(1.0, cameraHeight - actorWorldHeight);
 
     function getOrCreateState(actor) {
         if (!entityStates.has(actor.id)) {
@@ -156,14 +157,14 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
         const dy = y - camera.y;
         const horizontalDist = Math.hypot(dx, dy);
         const rawTiltFactor = Math.min(1.0, horizontalDist / maxTiltDist);
-        return { rawTiltFactor };
+        return { rawTiltFactor, dx, dy };
     }
 
     function buildQuantizedViewContext(x, y, camera, bodyRotation, animCycle) {
-        const { rawTiltFactor } = buildViewContextAt(x, y, camera);
-        const q = spriteCache.getQuantizedValues(bodyRotation, animCycle, rawTiltFactor);
+        const { rawTiltFactor, dx, dy } = buildViewContextAt(x, y, camera);
+        const q = spriteCache.getQuantizedValues(bodyRotation, animCycle, rawTiltFactor, dx, dy);
         const yFactor = config.PERSPECTIVE_MIN_Y + (config.PERSPECTIVE_MAX_Y - config.PERSPECTIVE_MIN_Y) * q.tilt;
-        return { yFactor, shiftX: 0, shiftY: 0, ratio: globalRatio };
+        return { yFactor, shiftX: q.dx * globalRatio, shiftY: q.dy * globalRatio, ratio: globalRatio };
     }
 
     function renderKinematicsFrame(frame) {
@@ -201,8 +202,8 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
         syncWeaponPose(state, actor, poses);
         const bodyRotation = resolveSpriteBodyRotation(actor);
         const animCycle = state.animCycle % (Math.PI * 2);
-        const { rawTiltFactor } = buildViewContextAt(actor.x, actor.y, camera);
-        const q = spriteCache.getQuantizedValues(bodyRotation, animCycle, rawTiltFactor);
+        const { rawTiltFactor, dx, dy } = buildViewContextAt(actor.x, actor.y, camera);
+        const q = spriteCache.getQuantizedValues(bodyRotation, animCycle, rawTiltFactor, dx, dy);
         const facing = resolveCombatFacing(actor, state, q.rotation, config);
         const rigData = calculateCharacterRig(
             { ...state, staticBlendFactor: freezePose ? 1 : state.staticBlendFactor },
@@ -230,6 +231,8 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
                     state,
                     q,
                     rawTiltFactor,
+                    dx,
+                    dy,
                     weaponKey: getWeaponLoadoutKey(actor),
                     aimKey: getQuantizedAimKey(actor, spriteCache.rotationSteps),
                 },
@@ -277,8 +280,8 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
 
     function buildSprite(actor, camera) {
         const frame = resolveLiveFrameSpec(actor, camera);
-        const { state, q, rawTiltFactor, weaponKey, aimKey } = frame.cacheMeta;
-        const cacheKey = spriteCache.getKey(actor.id, state.pose, q.rotation, frame.animCycle, state.crouchFactor, rawTiltFactor, weaponKey, aimKey);
+        const { state, q, rawTiltFactor, dx, dy, weaponKey, aimKey } = frame.cacheMeta;
+        const cacheKey = spriteCache.getKey(actor.id, state.pose, q.rotation, frame.animCycle, state.crouchFactor, rawTiltFactor, weaponKey, aimKey, dx, dy);
 
         const cached = spriteCache.get(cacheKey);
         if (cached) return cached;

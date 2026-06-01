@@ -263,11 +263,11 @@ export function applyRagdollImpulse(
 }
 
 export function updateRagdoll(ragdoll, dtSec, worldX, worldY, rotation, wallChecker, playerX, playerY, rig) {
-    if (!ragdoll) return;
+    if (!ragdoll) return { shiftX: 0, shiftY: 0 };
 
     const distToPlayer = Math.abs(worldX - playerX) + Math.abs(worldY - playerY);
-    if (distToPlayer > 400 && ragdoll.sleepTimer > 0.1) return;
-    if (distToPlayer > 240 && Math.random() > 0.5) return;
+    if (distToPlayer > 400 && ragdoll.sleepTimer > 0.1) return { shiftX: 0, shiftY: 0 };
+    if (distToPlayer > 240 && Math.random() > 0.5) return { shiftX: 0, shiftY: 0 };
 
     if (ragdoll.settled) {
         ragdoll.sleepTimer += dtSec;
