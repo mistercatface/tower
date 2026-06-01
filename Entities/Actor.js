@@ -18,9 +18,9 @@ import { RenderSprites } from "../Render/RenderSprites.js";
 import { ProgressBar } from "../Render/ProgressBar.js";
 import { areHostile, getNearestHostile, getPlayerActors, isValidTurretTarget } from "../Combat/Targeting.js";
 import { getActorProfileForActor, getActorProfileForType } from "../Config/actorProfiles.js";
-import { advanceActorKinematics, clearActorKinematics } from "../Render/Kinematics/PlayerKinematicsRenderer.js";
+import { advanceActorKinematics } from "../Render/Kinematics/PlayerKinematicsRenderer.js";
 import { CombatParticles } from "../Render/CombatParticles.js";
-import { RagdollCorpse } from "./RagdollCorpse.js";
+import { Corpse } from "./Corpse.js";
 
 export class Actor extends DestructibleEntity {
     constructor(x, y, radius, speed, health, color, type, accelRate = 3.0, canDamageWalls = false) {
@@ -510,7 +510,7 @@ export class Actor extends DestructibleEntity {
         if (event?.projectile && !this.usesKinematicsBody) {
             CombatParticles.spawnImpactSparks(ctx?.state, event.projectile.x, event.projectile.y, { impactAngle: event.projectile.angle });
         }
-        if (died && this.usesKinematicsBody) this.spawnRagdollOnDeath(ctx.state, event);
+        if (died && this.usesKinematicsBody) this.spawnCorpseOnDeath(ctx.state, event);
     }
 
     handleHit(damage, ctx, hitType, event) {
@@ -520,11 +520,10 @@ export class Actor extends DestructibleEntity {
         return died;
     }
 
-    spawnRagdollOnDeath(state, event) {
+    spawnCorpseOnDeath(state, event) {
         if (!state) return;
         const camera = this._kinematicsCamera ?? { x: this.x, y: this.y };
-        RagdollCorpse.spawnFromActor(state, this, event, camera);
-        clearActorKinematics(this);
+        Corpse.spawnFromActor(state, this, event, camera);
     }
 
     renderCombatHudClassic(ctx, renderer) {

@@ -1,9 +1,6 @@
 import { getCharacterForActor } from "./CharacterAppearance.js";
 import { resolveWeaponDrawSlots, resolveProjectedHandsForSlot } from "./KinematicsWeaponVisuals.js";
 import { drawHeadNeckAndHair } from "./KinematicsHead.js";
-import { queueRagdollBloodDraw } from "./Ragdoll/RagdollBlood.js";
-import { drawRagdollGoreStumps } from "./Ragdoll/RagdollDrawBody.js";
-
 /** Draw mesh from rig-local coords — every part projects through sceneRenderer (same as head). */
 export function drawStandardCharacter(rigLocal, actor, sceneRenderer, config, rig, options = {}) {
     const severed = options.severed ?? {};
@@ -118,7 +115,7 @@ export function drawKinematicsFrameToCanvas(
     overridePadding = null,
     options = {},
 ) {
-    const { drawWeapons = false, severed = {}, ragdoll = null } = options;
+    const { drawWeapons = false, severed = {} } = options;
     const padding = overridePadding !== null ? overridePadding : config.PADDING;
     const canvasSize = Math.ceil(config.SIZE + padding * 2);
 
@@ -132,13 +129,9 @@ export function drawKinematicsFrameToCanvas(
     sharedCtx.save();
     sharedCtx.translate(padding, padding);
     sceneRenderer.begin(sharedCtx, viewContext, facing.renderRotation, rig);
-    drawStandardCharacter(rigLocal, actor, sceneRenderer, config, rig, { severed: ragdoll?.severed ?? severed });
+    drawStandardCharacter(rigLocal, actor, sceneRenderer, config, rig, { severed });
     if (drawWeapons) {
         drawHeldWeapons(rigLocal, actor, sceneRenderer, config, facing);
-    }
-    if (ragdoll) {
-        drawRagdollGoreStumps(ragdoll, sceneRenderer, rig);
-        queueRagdollBloodDraw(sceneRenderer, ragdoll, config, rig, viewContext, facing.renderRotation);
     }
     sceneRenderer.flush();
     sharedCtx.restore();

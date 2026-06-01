@@ -62,12 +62,9 @@ export function resolveKinematicsCamera(actor, state) {
     return player ? { x: player.x, y: player.y } : { x: actor?.x ?? 0, y: actor?.y ?? 0 };
 }
 
-export function captureActorRigForRagdoll(actor, camera, radius = actor.radius) {
+export function captureCorpseBindFrame(actor, camera, radius = actor.radius) {
     const kinematics = getKinematicsRenderer(radius);
-    return {
-        ...kinematics.bundle.captureActorRigForRagdoll(actor, camera),
-        kinematics,
-    };
+    return kinematics.bundle.captureCorpseBindFrame(actor, camera);
 }
 
 export function resolveKinematicsMuzzlePosition(actor, turretIndex, camera) {

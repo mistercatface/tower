@@ -10,7 +10,6 @@ import { resolveCombatFacing, resolveSpriteBodyRotation } from "./KinematicsFaci
 import { normalizeWeaponLoadout } from "../../Combat/equipmentLoadout.js";
 import { resolveWeaponStaticPoseName } from "./KinematicsWeaponVisuals.js";
 import { resolveMuzzleFromRig } from "./KinematicsMuzzle.js";
-import { applyRigDeltas } from "./KinematicsBones.js";
 
 const sharedCanvas = document.createElement("canvas");
 const sharedCtx = sharedCanvas.getContext("2d", { alpha: true });
@@ -267,17 +266,15 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
 
     function resolveCorpseFrame(corpse, camera) {
         const bind = corpse.bindFrame;
-        const ragdoll = corpse.ragdoll;
         return {
             x: corpse.x,
             y: corpse.y,
             camera,
-            rigData: applyRigDeltas(bind.rigData, ragdoll?.points),
+            rigData: bind.rigData,
             bodyRotation: bind.bodyRotation,
             animCycle: bind.animCycle,
             actor: corpse.actor,
             facing: bind.facing,
-            drawOptions: ragdoll ? { ragdoll, severed: ragdoll.severed } : {},
             padding: spriteCache.cachePadding,
         };
     }
@@ -302,8 +299,8 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
         entityStates.delete(actorId);
     }
 
-    /** Snapshot live frame at death. */
-    function captureActorRigForRagdoll(actor, camera) {
+    /** Snapshot live frame at death — frozen pose for corpse render. */
+    function captureCorpseBindFrame(actor, camera) {
         const frame = resolveLiveFrameSpec(actor, camera, { freezePose: true });
         const rigData = cloneRigData(frame.rigData);
         return {
@@ -344,7 +341,7 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
         buildSprite,
         renderKinematicsFrame,
         resolveCorpseFrame,
-        captureActorRigForRagdoll,
+        captureCorpseBindFrame,
         clearActorState,
         clearAllStates: () => entityStates.clear(),
         resolveMuzzleWorldPosition,
