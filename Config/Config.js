@@ -295,8 +295,6 @@ export const waveSettings = {
 
 export const mapGenerationSettings = {
     startNodeWaves: 1,
-    /** Wave spawns on map node 0 — just above the player (inside the start building). */
-    startNodeSpawnRadius: 90,
     nodesPerLayerMin: 2,
     nodesPerLayerMax: 4,
     wavesTotalMin: 1,

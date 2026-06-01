@@ -1,8 +1,8 @@
 import { StatsManager } from "./StatsManager.js";
 import { Events } from "../Core/EventNames.js";
 
-const SAVE_VERSION = 3;
-const SAVE_KEY = "tower_save_v3";
+const SAVE_VERSION = 4;
+const SAVE_KEY = "tower_save_v4";
 const SAVE_DEBOUNCE_MS = 800;
 const SAVE_INTERVAL_MS = 30000;
 
