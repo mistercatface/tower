@@ -1,6 +1,6 @@
 import { FloatingText } from "../Render/FloatingText.js";
 import { CombatParticles } from "../Render/CombatParticles.js";
-import { Corpse } from "../Entities/Corpse.js";
+import { RagdollCorpse } from "../Entities/RagdollCorpse.js";
 import { ProgressionManager } from "../Progression/ProgressionManager.js";
 import { CollisionSystem } from "../Spatial/Collision/CollisionSystem.js";
 import { combatSpatial } from "../Spatial/World/SpatialFrame.js";
@@ -55,7 +55,7 @@ function clearTravelCombatDebris(state) {
     state.explosions = [];
     state.activeLasers = [];
     state.combatParticles = [];
-    state.corpses = [];
+    state.ragdollCorpses = [];
     state.enemies = [];
     state.floatingTexts = [];
 
@@ -158,7 +158,7 @@ export class CombatState {
         ctx.state.enemies = [];
         ctx.state.activeLasers = [];
         ctx.state.combatParticles = [];
-        ctx.state.corpses = [];
+        ctx.state.ragdollCorpses = [];
         ctx.state.floatingTexts = [];
 
         const currentNode = ctx.state.getCurrentMapNode();
@@ -231,7 +231,7 @@ export class CombatState {
             Projectile.checkSpawnCollisions(ctx.state, spatialFrame, spawnHitEvents);
             Projectile.updateAll(ctx.state, stepDt);
             CombatParticles.updateAll(ctx.state, stepDt);
-            Corpse.updateAll(ctx.state, stepDt);
+            RagdollCorpse.updateAll(ctx.state, stepDt, spatialFrame);
         }
 
         const collisionEvents = runPushablePhysics(ctx.state, stepDt, spatialFrame);

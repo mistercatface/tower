@@ -9,6 +9,8 @@ import { getGunDefinition } from "../Config/gunDefinitions.js";
 import { Enemy } from "./Enemy.js";
 import { getPlayerActors, areHostile } from "../Combat/Targeting.js";
 import { Actor } from "./Actor.js";
+import { RagdollCorpse } from "./RagdollCorpse.js";
+
 export class Projectile extends Entity {
     static checkSpawnCollisions(state, spatialFrame, events) {
         for (const p of state.projectiles) {
@@ -22,6 +24,9 @@ export class Projectile extends Entity {
         for (let i = state.projectiles.length - 1; i >= 0; i--) {
             const p = state.projectiles[i];
             p.update(dt, state);
+            if (!p.isDead) {
+                RagdollCorpse.tryProjectileHit(state, p);
+            }
             if (p.isDead) {
                 state.projectiles.splice(i, 1);
                 Pools.projectiles.release(p);

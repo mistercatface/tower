@@ -4,7 +4,7 @@ import { createFloorFillStyle, playerBaseStats, NAV_PROFILES, navigationSettings
 import { createEntityBars } from "./EntityBars.js";
 import { isMapTraveling } from "../GameState/GamePhase.js";
 import { entityIntersectsCellBounds } from "../Spatial/Geometry/GridCoords.js";
-import { renderActorKinematicsBody } from "../Render/Kinematics/Kinematics.js";
+import { renderActorKinematicsBody } from "../Render/Kinematics/PlayerKinematicsRenderer.js";
 
 const playerBars = createEntityBars({ healthWidth: 48, healthHeight: 4, healthBorderRadius: 2 });
 
@@ -164,8 +164,8 @@ export class Player extends Actor {
         this.applyLocomotion(dt, spatialFrame, { externalSpeedMod: options.externalSpeedMod ?? 1.0, state });
     }
 
-    renderBody(ctx, _renderer, state) {
-        renderActorKinematicsBody(ctx, this, state);
+    renderBody(ctx, _renderer) {
+        renderActorKinematicsBody(ctx, this, { x: this.x, y: this.y });
     }
 
     renderRange(ctx, weaponRange) {
@@ -178,6 +178,6 @@ export class Player extends Actor {
     }
 
     render(ctx, renderer, state) {
-        this.renderBody(ctx, renderer, state);
+        this.renderBody(ctx, renderer);
     }
 }

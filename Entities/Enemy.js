@@ -6,7 +6,7 @@ import { NAV_PROFILES } from "../Config/Config.js";
 import { rollEnemyStartLoadout } from "../Combat/weaponLoadout.js";
 import { createEntityBars } from "./EntityBars.js";
 import { buildEnemyCombatStats, computeEnemyUpgradeLevels, computeSpawnReward } from "../Combat/EnemySpawn.js";
-import { renderActorKinematicsBody } from "../Render/Kinematics/Kinematics.js";
+import { renderActorKinematicsBody } from "../Render/Kinematics/PlayerKinematicsRenderer.js";
 
 const enemyBars = createEntityBars({ healthWidth: 22, healthHeight: 3, healthBorderRadius: 1.5, stunHeight: 2, stunBorderRadius: 1 });
 
@@ -45,7 +45,7 @@ export class Enemy extends Actor {
         this.healthBar = Enemy.healthBar;
         this.stunBar = Enemy.stunBar;
         this.usesKinematicsBody = true;
-        this._perspectiveCamera = { x, y };
+        this._kinematicsCamera = { x, y };
     }
 
     getKinematicsCamera(state) {
@@ -135,7 +135,7 @@ export class Enemy extends Actor {
         return false;
     }
 
-    renderBody(ctx, _renderer, state) {
-        renderActorKinematicsBody(ctx, this, state);
+    renderBody(ctx, _renderer) {
+        renderActorKinematicsBody(ctx, this, this._kinematicsCamera ?? { x: this.x, y: this.y });
     }
 }
