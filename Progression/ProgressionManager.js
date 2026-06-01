@@ -211,7 +211,7 @@ export class ProgressionManager {
         }
     }
 
-    static handleWaveCompletion(state, upgrades, viewport) {
+    static handleWaveCompletion(state, upgrades, viewport, options = {}) {
         if (isMapTraveling(state)) return;
 
         const currentNode = state.getCurrentMapNode();
@@ -220,12 +220,16 @@ export class ProgressionManager {
         if (isFinished) {
             if (currentNode && !currentNode.completed) {
                 currentNode.completed = true;
-                state.fsm.transition("reward");
                 upgrades.forEach((upg) => {
                     if (state.player.upgrades[upg.id] && state.player.upgrades[upg.id].level > 0 && upg.onSectorEnd) {
                         upg.onSectorEnd(state);
                     }
                 });
+                if (options.skipSectorComplete) {
+                    requestUiUpdate();
+                    return;
+                }
+                state.fsm.transition("reward");
                 if (currentNode.reward && currentNode.reward.type === "random_permanent_upgrade") {
                     this.awardPermanentUpgrade(state, upgrades, currentNode, viewport);
                 } else {

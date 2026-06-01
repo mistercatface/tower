@@ -36,13 +36,15 @@ export function isInspector(phase) {
 }
 
 export function canRunWaveSpawning(state) {
+    const currentNode = state.getCurrentMapNode();
     return state.phase !== GamePhase.MAP
         && state.phase !== GamePhase.REWARD
         && state.phase !== GamePhase.INSPECTOR
         && !state.isTransitioning
         && !isMapTraveling(state)
         && !state.startNodeIntroActive
-        && !state.startNodeInspectionActive;
+        && !state.startNodeInspectionActive
+        && !currentNode?.completed;
 }
 
 /** Range and center for drawing combat rings / masks in world vs map space. */

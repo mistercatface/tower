@@ -150,6 +150,12 @@ export class CombatState {
             return;
         }
 
+        if (ctx.state.skipCombatEnterReset) {
+            ctx.state.skipCombatEnterReset = false;
+            requestUiUpdate();
+            return;
+        }
+
         if (ctx.state.projectiles) {
             for (let i = 0; i < ctx.state.projectiles.length; i++) {
                 Pools.projectiles.release(ctx.state.projectiles[i]);

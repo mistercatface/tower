@@ -37,7 +37,9 @@ export function registerGameListeners(eventBus, pauseManager) {
                 "first_wave_clear",
                 () => {
                     beginStartNodeInspection(state, () => {
-                        ProgressionManager.handleWaveCompletion(state, upgrades, viewport);
+                        state.skipCombatEnterReset = true;
+                        ProgressionManager.handleWaveCompletion(state, upgrades, viewport, { skipSectorComplete: true });
+                        fsm?.transition("combat");
                     });
                     fsm?.transition("inspector");
                 },

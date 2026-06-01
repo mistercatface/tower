@@ -119,6 +119,7 @@ export class GameState {
         this.startNodeInspectionCompleted = false;
         this.startNodeInspectionFinishing = false;
         this.propInspectorPanelOpen = false;
+        this.skipCombatEnterReset = false;
 
         this.wavesCompleted = 0;
         this.isTransitioning = false;
