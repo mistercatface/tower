@@ -1,11 +1,10 @@
 import { CollisionSystem } from "../Spatial/Collision/CollisionSystem.js";
 import { Entity } from "./Entity.js";
-import { RenderSprites } from "../Render/RenderSprites.js";
 import { Pools } from "../Core/Pools.js";
-import { GhostTrail } from "../Render/GhostTrail.js";
+import { drawProjectileTracer } from "../Render/ProjectileDraw.js";
 import { getProjectileDamage } from "../Combat/impactDamage.js";
 import { applyActorImpactKnockback } from "../Combat/impactKnockback.js";
-import { getGunImpactKnockback, getGunProjectileConfig } from "../Combat/gunCombat.js";
+import { getGunImpactKnockback } from "../Combat/gunCombat.js";
 import { getGunDefinition } from "../Config/gunDefinitions.js";
 import { Enemy } from "./Enemy.js";
 import { getPlayerActors, areHostile } from "../Combat/Targeting.js";
@@ -58,13 +57,9 @@ export class Projectile extends Entity {
         this.faction = faction;
         this.gunId = null;
         this.penetration = 0;
+        this.isPellet = false;
+        this.spawnTime = performance.now();
         this._spawnFrameCheck = true;
-
-        if (!this.ghostTrail) {
-            this.ghostTrail = new GhostTrail({ length: 5, alpha: 0.4, minDistance: 4, lifetime: 300, shrink: true });
-        } else {
-            this.ghostTrail.reset();
-        }
     }
 
     move(dt) {
@@ -92,18 +87,6 @@ export class Projectile extends Entity {
         if (this.isDead) return;
         this.move(dt);
         this.checkOutOfBounds(state);
-        this.ghostTrail?.update(dt, this.x, this.y, this.angle);
-    }
-
-    getRenderColor() {
-        if (!this.gunId) {
-            return this.getProjectileColorFallback();
-        }
-        return getGunProjectileConfig(getGunDefinition(this.gunId)).color;
-    }
-
-    getProjectileColorFallback() {
-        return this.faction === "enemy" ? "#F44336" : "#FFEB3B";
     }
 
     resolveFactionCollisions(state, events, system, spatialFrame) {
@@ -130,10 +113,8 @@ export class Projectile extends Entity {
         });
     }
 
-    render(ctx, renderer) {
-        const color = this.getRenderColor();
-        const cacheKey = `${this.radius}_${color}`;
-        this.renderCachedSprite(ctx, renderer.missileCache, cacheKey, RenderSprites.missile, this.radius, color);
+    render(ctx) {
+        drawProjectileTracer(ctx, this);
     }
 }
 

@@ -3,6 +3,7 @@ import { areHostile } from "../../Combat/Targeting.js";
 import { PhysicsSystem } from "../Motion/PhysicsSystem.js";
 import { enemyDefaults } from "../../Config/Config.js";
 import { Actor } from "../../Entities/Actor.js";
+import { CombatParticles } from "../../Render/CombatParticles.js";
 
 export class CollisionSystem {
     static checkCircle(a, b) {
@@ -136,6 +137,7 @@ export class CollisionSystem {
             const wallCandidates = spatialFrame.getWallCandidates(p, state);
             const segment = this.getMissileWallCollision(p, wallCandidates);
             if (segment) {
+                CombatParticles.spawnImpactSparks(state, p.x, p.y, { impactAngle: p.angle });
                 p.isDead = true;
                 events.push({ target: segment, damage: p.damage });
                 continue;

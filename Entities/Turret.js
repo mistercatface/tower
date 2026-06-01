@@ -7,6 +7,7 @@ import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { getGunProjectileConfig, getSlotFireIntervalMs, getSlotReloadTimeMs } from "../Combat/gunCombat.js";
 import { inferFaction, areHostile } from "../Combat/Targeting.js";
 import { GhostTrail } from "../Render/GhostTrail.js";
+import { CombatParticles } from "../Render/CombatParticles.js";
 
 const TURRET_GHOST_TRAIL = {
     length: 4,
@@ -96,6 +97,9 @@ export class Turret {
         const faction = inferFaction(source);
 
         this.spawnProjectiles(state, source, tx, ty, this.angle, gun, radiusMultiplier, angleOffsets, faction);
+        CombatParticles.spawnMuzzleFlash(state, tx, ty, this.angle, {
+            isPellet: this.loadout.pelletCount != null,
+        });
     }
 
     spawnProjectiles(state, source, tx, ty, baseAngle, gun, radiusMultiplier, angleOffsets, faction) {
@@ -116,6 +120,7 @@ export class Turret {
             );
             projectile.gunId = gun.id;
             projectile.penetration = source.weapon.penetration;
+            projectile.isPellet = this.loadout.pelletCount != null;
             projectiles.push(projectile);
         }
 

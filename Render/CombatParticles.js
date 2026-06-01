@@ -1,11 +1,23 @@
-/** Crisp screen-pixel blood bursts on hits (separate from ragdoll drip blood). */
+/** Screen-space combat VFX: blood, muzzle flash, smoke, impact sparks. */
 
-const MAX_PARTICLES = 200;
+const MAX_PARTICLES = 240;
 
 const BLOOD_PALETTE = ["#b81414", "#7a0909", "#ad0000"];
+const SPARK_PALETTE = ["#fffebb", "#ffaa00"];
+const RICOCHET_PALETTE = ["#ffffff", "#aaddff"];
 
 function pickBloodColor() {
     return BLOOD_PALETTE[Math.floor(Math.random() * BLOOD_PALETTE.length)];
+}
+
+function pickSparkColor(palette) {
+    return palette[Math.floor(Math.random() * palette.length)];
+}
+
+function trimParticles(particles) {
+    while (particles.length > MAX_PARTICLES) {
+        particles.shift();
+    }
 }
 
 class PixelParticle {
@@ -39,7 +51,6 @@ class PixelParticle {
         return viewport.isVisible(this.x, this.y, 14);
     }
 
-    /** Draw in screen space (call after viewport transform is restored). */
     renderScreen(ctx, viewport) {
         const t = this.life / this.maxLife;
         if (t <= 0.12) return;
@@ -56,6 +67,90 @@ class PixelParticle {
             const half = Math.floor(size / 2);
             ctx.fillRect(px - half, py - half, size, size);
         }
+    }
+}
+
+class MuzzleFlashParticle {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.life = 0.1;
+        this.maxLife = 0.1;
+        this.decay = 10;
+        this.isDead = false;
+    }
+
+    update(dtMs) {
+        const dtSec = dtMs / 1000;
+        this.life -= dtSec * this.decay;
+        if (this.life <= 0) {
+            this.isDead = true;
+        }
+    }
+
+    isVisible(viewport) {
+        if (!viewport?.isVisible) return true;
+        return viewport.isVisible(this.x, this.y, 20);
+    }
+
+    renderScreen(ctx, viewport) {
+        const t = this.life / this.maxLife;
+        if (t <= 0.05) return;
+
+        const screen = viewport.worldToScreen(this.x, this.y);
+        const radius = 6 + t * 2;
+
+        ctx.globalAlpha = t;
+        ctx.fillStyle = "#FFFFFF";
+        ctx.beginPath();
+        ctx.arc(screen.x, screen.y, radius, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
+
+class SmokeParticle {
+    constructor(x, y, vx, vy, lifeSec) {
+        this.x = x;
+        this.y = y;
+        this.vx = vx;
+        this.vy = vy;
+        this.life = lifeSec;
+        this.maxLife = lifeSec;
+        this.decay = 2;
+        this.alpha = 0.6;
+        this.isDead = false;
+    }
+
+    update(dtMs) {
+        const dtSec = dtMs / 1000;
+        this.x += this.vx * dtSec;
+        this.y += this.vy * dtSec;
+        this.life -= dtSec * this.decay;
+        if (this.life <= 0) {
+            this.isDead = true;
+        }
+    }
+
+    isVisible(viewport) {
+        if (!viewport?.isVisible) return true;
+        return viewport.isVisible(this.x, this.y, 16);
+    }
+
+    renderScreen(ctx, viewport) {
+        const t = this.life / this.maxLife;
+        if (t <= 0.08) return;
+
+        const screen = viewport.worldToScreen(this.x, this.y);
+        const size = 4.5 * (1 - (1 - t) * 0.3);
+
+        ctx.globalAlpha = Math.min(this.alpha, t);
+        ctx.fillStyle = "#AAAAAA";
+        ctx.fillRect(
+            Math.floor(screen.x - size / 2),
+            Math.floor(screen.y - size / 2),
+            Math.ceil(size),
+            Math.ceil(size),
+        );
     }
 }
 
@@ -99,9 +194,68 @@ export class CombatParticles {
             );
         }
 
-        while (state.combatParticles.length > MAX_PARTICLES) {
-            state.combatParticles.shift();
+        trimParticles(state.combatParticles);
+    }
+
+    static spawnImpactSparks(state, x, y, options = {}) {
+        CombatParticles.ensure(state);
+        const kind = options.kind ?? "default";
+        const palette = kind === "ricochet" ? RICOCHET_PALETTE : SPARK_PALETTE;
+        const count = kind === "ricochet" ? 3 : 4;
+        const impactAngle = options.impactAngle;
+
+        for (let i = 0; i < count; i++) {
+            let angle;
+            if (kind === "ricochet" && impactAngle != null) {
+                angle = impactAngle + (Math.random() - 0.5) * 1.2;
+            } else if (impactAngle != null) {
+                angle = impactAngle + Math.PI + (Math.random() - 0.5) * 1.4;
+            } else {
+                angle = Math.random() * Math.PI * 2;
+            }
+
+            const speed = 160 + Math.random() * 120;
+            const vx = Math.cos(angle) * speed;
+            const vy = Math.sin(angle) * speed;
+            const life = 0.22 + Math.random() * 0.16;
+
+            state.combatParticles.push(
+                new PixelParticle(
+                    x + (Math.random() - 0.5) * 2,
+                    y + (Math.random() - 0.5) * 2,
+                    vx,
+                    vy,
+                    pickSparkColor(palette),
+                    Math.random() > 0.5 ? 2 : 1,
+                    life,
+                    3,
+                ),
+            );
         }
+
+        trimParticles(state.combatParticles);
+    }
+
+    static spawnMuzzleFlash(state, x, y, angle, options = {}) {
+        CombatParticles.ensure(state);
+        const isPellet = options.isPellet ?? false;
+
+        state.combatParticles.push(new MuzzleFlashParticle(x, y));
+
+        if (!isPellet || Math.random() > 0.5) {
+            const drift = 35 + Math.random() * 25;
+            state.combatParticles.push(
+                new SmokeParticle(
+                    x,
+                    y,
+                    Math.cos(angle) * drift + (Math.random() - 0.5) * 12,
+                    Math.sin(angle) * drift + (Math.random() - 0.5) * 12,
+                    0.35 + Math.random() * 0.25,
+                ),
+            );
+        }
+
+        trimParticles(state.combatParticles);
     }
 
     static resolveImpactAngle(actor, event) {
@@ -152,7 +306,9 @@ export class CombatParticles {
 
         for (const p of state.combatParticles) {
             if (!p.isVisible(viewport)) continue;
+            ctx.save();
             p.renderScreen(ctx, viewport);
+            ctx.restore();
         }
 
         ctx.restore();

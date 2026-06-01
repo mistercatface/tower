@@ -521,6 +521,11 @@ export class Actor extends DestructibleEntity {
 
     onHitAfterDamage(damage, ctx, hitType, died, event) {
         CombatParticles.spawnBloodForActorHit(ctx?.state, this, damage, hitType, died, event);
+        if (event?.projectile && !this.usesKinematicsBody) {
+            CombatParticles.spawnImpactSparks(ctx?.state, event.projectile.x, event.projectile.y, {
+                impactAngle: event.projectile.angle,
+            });
+        }
         if (died) this.spawnDeathPieces(ctx.state, event);
     }
 

@@ -53,6 +53,9 @@ export class RagdollCorpse extends Entity {
             if (projectile.penetration > 0) {
                 projectile.penetration--;
             } else {
+                CombatParticles.spawnImpactSparks(state, projectile.x, projectile.y, {
+                    impactAngle: projectile.angle,
+                });
                 projectile.isDead = true;
             }
             return true;
