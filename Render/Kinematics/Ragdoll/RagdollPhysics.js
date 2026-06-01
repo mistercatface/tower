@@ -23,7 +23,7 @@ export function absRagdollPoint(ragdoll, key) {
     return {
         x: bind.x + delta.x,
         y: bind.y + delta.y,
-        z: bind.z ?? 0,
+        z: bind.z + (delta.z ?? 0),
     };
 }
 
@@ -39,12 +39,13 @@ export function getRagdollCollisionPoints(ragdoll) {
     return out;
 }
 
-function setAbsXY(ragdoll, key, x, y) {
+function setAbsXYZ(ragdoll, key, x, y, z) {
     const bind = getBind(ragdoll, key);
     const delta = getDelta(ragdoll, key);
     if (!bind || !delta) return;
     delta.x = x - bind.x;
     delta.y = y - bind.y;
+    delta.z = z - bind.z;
 }
 
 export function ensureSimBone(ragdoll, key, bindPos) {
@@ -55,8 +56,8 @@ export function ensureSimBone(ragdoll, key, bindPos) {
         ragdoll.bindBones[key] = { x: bindPos.x, y: bindPos.y, z: bindPos.z ?? 0 };
     }
     if (!ragdoll.points[key]) {
-        ragdoll.points[key] = { x: 0, y: 0 };
-        ragdoll.prevPoints[key] = { x: 0, y: 0 };
+        ragdoll.points[key] = { x: 0, y: 0, z: 0 };
+        ragdoll.prevPoints[key] = { x: 0, y: 0, z: 0 };
     }
 }
 
@@ -67,8 +68,8 @@ export function initializeRagdoll(rigData, rotation, impactProfile, config, rig)
     const prevPoints = {};
 
     for (const key of PHYSICS_BONES) {
-        points[key] = { x: 0, y: 0 };
-        prevPoints[key] = { x: 0, y: 0 };
+        points[key] = { x: 0, y: 0, z: 0 };
+        prevPoints[key] = { x: 0, y: 0, z: 0 };
     }
 
     const dist3 = (a, b) => {
@@ -90,22 +91,24 @@ export function initializeRagdoll(rigData, rotation, impactProfile, config, rig)
     const hitBind = bindBones[hit];
 
     for (const key of PHYSICS_BONES) {
-        let vx;
-        let vy;
+        let vx, vy, vz;
         if (key === hit) {
             vx = force.x * velocityScaler;
             vy = force.y * velocityScaler;
+            vz = force.z * velocityScaler;
         } else {
             const b = bindBones[key];
-            const d = Math.hypot(b.x - hitBind.x, b.y - hitBind.y);
+            const d = Math.hypot(b.x - hitBind.x, b.y - hitBind.y, b.z - hitBind.z);
             const distFactor = Math.max(0, 1 - d / (rig.size * 1.5));
             const transfer = phys.IMPACT_DISTRIBUTION * distFactor;
             vx = force.x * transfer * velocityScaler;
             vy = force.y * transfer * velocityScaler;
+            vz = force.z * transfer * velocityScaler;
         }
         vx += (Math.random() - 0.5) * phys.CHAOS;
         vy += (Math.random() - 0.5) * phys.CHAOS;
-        prevPoints[key] = { x: -vx, y: -vy };
+        vz += (Math.random() - 0.5) * phys.CHAOS;
+        prevPoints[key] = { x: -vx, y: -vy, z: -vz };
     }
 
     return {
@@ -148,11 +151,12 @@ function applyJointLimits(ragdoll) {
             const clamped = Math.max(minAngle, Math.min(maxAngle, angle));
             const len = Math.hypot(v2x, v2y);
             const baseAngle = Math.atan2(v1y, v1x);
-            setAbsXY(
+            setAbsXYZ(
                 ragdoll,
                 hand,
                 e.x + Math.cos(baseAngle + clamped) * len,
                 e.y + Math.sin(baseAngle + clamped) * len,
+                h.z
             );
         }
     };
@@ -192,7 +196,8 @@ export function applyRagdollImpulse(
     const cos = Math.cos(-bRot);
     const sin = Math.sin(-bRot);
     const localFx = forceX * cos - forceZ * sin;
-    const forceVec = { x: localFx, y: forceY };
+    const localFz = forceX * sin + forceZ * cos;
+    const forceVec = { x: localFx, y: forceY, z: localFz };
 
     const phys = getScaledPhysics(rig.size);
     const velocityScaler = phys.VELOCITY_SCALER;
@@ -232,15 +237,17 @@ export function applyRagdollImpulse(
         if (key === impulseCenter) {
             prev.x -= forceVec.x * velocityScaler;
             prev.y -= forceVec.y * velocityScaler;
+            prev.z -= forceVec.z * velocityScaler;
             continue;
         }
-        const d = Math.hypot(abs.x - centerAbs.x, abs.y - centerAbs.y);
+        const d = Math.hypot(abs.x - centerAbs.x, abs.y - centerAbs.y, abs.z - centerAbs.z);
         if (d > maxInfluence) continue;
         const distFactor = Math.max(0, 1 - d / maxInfluence);
         const transfer = phys.IMPACT_DISTRIBUTION * distFactor * distFactor;
         if (transfer <= 1e-6) continue;
         prev.x -= forceVec.x * transfer * velocityScaler;
         prev.y -= forceVec.y * transfer * velocityScaler;
+        prev.z -= forceVec.z * transfer * velocityScaler;
     }
 
     processRagdollGoreHit(
@@ -264,7 +271,7 @@ export function updateRagdoll(ragdoll, dtSec, worldX, worldY, rotation, wallChec
 
     if (ragdoll.settled) {
         ragdoll.sleepTimer += dtSec;
-        return;
+        return { shiftX: 0, shiftY: 0 };
     }
 
     let totalMotion = 0;
@@ -280,16 +287,20 @@ export function updateRagdoll(ragdoll, dtSec, worldX, worldY, rotation, wallChec
         const prev = prevPoints[key];
         let vx = (delta.x - prev.x) * phys.AIR_DRAG;
         let vy = (delta.y - prev.y) * phys.AIR_DRAG;
-        const speed = Math.hypot(vx, vy);
+        let vz = ((delta.z ?? 0) - (prev.z ?? 0)) * phys.AIR_DRAG;
+        const speed = Math.hypot(vx, vy, vz);
         if (speed > phys.SPEED_CAP) {
             const cap = phys.SPEED_CAP / speed;
             vx *= cap;
             vy *= cap;
+            vz *= cap;
         }
         prev.x = delta.x;
         prev.y = delta.y;
+        prev.z = delta.z ?? 0;
         delta.x += vx;
         delta.y += vy + phys.GRAVITY * 1000 * dt2;
+        delta.z = (delta.z ?? 0) + vz;
     }
 
     const scale = 1 / rig.size;
@@ -326,7 +337,8 @@ export function updateRagdoll(ragdoll, dtSec, worldX, worldY, rotation, wallChec
                 const pushLen = worldRadius * 0.5;
                 const pushDist = Math.hypot(worldOffsetX, worldOffsetY) || 1;
                 const pushLocalX = (-worldOffsetX / pushDist) * pushLen * invScale;
-                setAbsXY(ragdoll, key, abs.x + pushLocalX, abs.y);
+                const pushLocalZ = (-worldOffsetY / pushDist) * pushLen * invScale;
+                setAbsXYZ(ragdoll, key, abs.x + pushLocalX, abs.y, abs.z + pushLocalZ);
                 const delta = points[key];
                 prev.x = delta.x - (delta.x - prev.x) * phys.WALL_FRICTION;
             }
@@ -349,8 +361,9 @@ export function updateRagdoll(ragdoll, dtSec, worldX, worldY, rotation, wallChec
                 const m = 0.5 * cfg.CONSTRAINTS.STIFFNESS;
                 const ox = dx * diff * m;
                 const oy = dy * diff * m;
-                setAbsXY(ragdoll, c.a, absA.x + ox, absA.y + oy);
-                setAbsXY(ragdoll, c.b, absB.x - ox, absB.y - oy);
+                const oz = dz * diff * m;
+                setAbsXYZ(ragdoll, c.a, absA.x + ox, absA.y + oy, absA.z + oz);
+                setAbsXYZ(ragdoll, c.b, absB.x - ox, absB.y - oy, absB.z - oz);
             }
             applyJointLimits(ragdoll);
         }
@@ -368,7 +381,9 @@ export function updateRagdoll(ragdoll, dtSec, worldX, worldY, rotation, wallChec
             delta.y = floor - bind.y;
             prev.y = delta.y;
             const vx = delta.x - prev.x;
+            const vz = (delta.z ?? 0) - (prev.z ?? 0);
             prev.x = delta.x - vx * phys.GROUND_FRICTION;
+            prev.z = (delta.z ?? 0) - vz * phys.GROUND_FRICTION;
         }
     }
 
@@ -387,4 +402,26 @@ export function updateRagdoll(ragdoll, dtSec, worldX, worldY, rotation, wallChec
         ragdoll.sleepTimer = 0;
         ragdoll.settled = false;
     }
+
+    const spineTopDelta = points.spineTop;
+    const localShiftX = spineTopDelta.x;
+    const localShiftZ = spineTopDelta.z ?? 0;
+    
+    if (Math.hypot(localShiftX, localShiftZ) > 1.0) {
+        for (const key of Object.keys(points)) {
+            points[key].x -= localShiftX;
+            points[key].z = (points[key].z ?? 0) - localShiftZ;
+            prevPoints[key].x -= localShiftX;
+            prevPoints[key].z = (prevPoints[key].z ?? 0) - localShiftZ;
+        }
+        
+        const localX = localShiftX * scale;
+        const localZ = localShiftZ * scale;
+        const worldShiftX = localX * cos - localZ * sin;
+        const worldShiftY = localX * sin + localZ * cos;
+        
+        return { shiftX: worldShiftX, shiftY: worldShiftY };
+    }
+    
+    return { shiftX: 0, shiftY: 0 };
 }

@@ -6,12 +6,12 @@ function rotateXZ(p, bCos, bSin) {
 }
 
 function clampRzVis(rz, config) {
-    const boundsZ = Math.max(8, config.SIZE * 0.6);
+    const boundsZ = Math.max(8, config.SIZE * config.PERSPECTIVE_Z_CLAMP);
     return Math.max(-boundsZ, Math.min(boundsZ, rz));
 }
 
 function partScaleFromRzVis(rzVis, config) {
-    return 0.9 + (rzVis / config.SIZE) * 0.5;
+    return config.PERSPECTIVE_SCALE_BASE + (rzVis / config.SIZE) * config.PERSPECTIVE_SCALE_RANGE;
 }
 
 /** Project rig-local {x,y,z} to canvas space (live + corpse). */

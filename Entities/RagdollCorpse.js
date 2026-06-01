@@ -89,7 +89,11 @@ export class RagdollCorpse extends Entity {
 
         const { rig } = getKinematicsRenderer(this.radius).bundle;
         const dtSec = dt / 1000;
-        updateRagdoll(this.ragdoll, dtSec, this.x, this.y, this.ragdoll.rotation, wallChecker, player?.x ?? this.x, player?.y ?? this.y, rig);
+        const { shiftX, shiftY } = updateRagdoll(this.ragdoll, dtSec, this.x, this.y, this.ragdoll.rotation, wallChecker, player?.x ?? this.x, player?.y ?? this.y, rig);
+        if (shiftX || shiftY) {
+            this.x += shiftX;
+            this.y += shiftY;
+        }
         updateBloodEffects(this.ragdoll, dtSec, rig);
 
         if (this.ragdoll.settled) {

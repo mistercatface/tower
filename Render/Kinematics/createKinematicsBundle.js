@@ -68,7 +68,7 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
     const spriteCache = createKinematicsSpriteCache();
     const entityStates = new Map();
 
-    const perspectiveHeight = 1.0;
+    const perspectiveHeight = config.PERSPECTIVE_HEIGHT;
     const globalRatio = perspectiveHeight / Math.max(0.1, cameraHeight - perspectiveHeight);
 
     function getOrCreateState(actor) {
@@ -150,8 +150,6 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
         return state;
     }
 
-    const minYFactor = 0.1;
-    const maxYFactor = 0.8;
 
     function buildViewContextAt(x, y, camera) {
         const dx = x - camera.x;
@@ -164,13 +162,8 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
     function buildQuantizedViewContext(x, y, camera, bodyRotation, animCycle) {
         const { rawTiltFactor } = buildViewContextAt(x, y, camera);
         const q = spriteCache.getQuantizedValues(bodyRotation, animCycle, rawTiltFactor);
-        return { yFactor: minYFactor + (maxYFactor - minYFactor) * q.tilt, shiftX: 0, shiftY: 0, ratio: globalRatio };
-    }
-
-    function buildQuantizedViewContext(x, y, camera, bodyRotation, animCycle) {
-        const { rawTiltFactor } = buildViewContextAt(x, y, camera);
-        const q = spriteCache.getQuantizedValues(bodyRotation, animCycle, rawTiltFactor);
-        return { yFactor: minYFactor + (maxYFactor - minYFactor) * q.tilt, shiftX: 0, shiftY: 0, ratio: globalRatio };
+        const yFactor = config.PERSPECTIVE_MIN_Y + (config.PERSPECTIVE_MAX_Y - config.PERSPECTIVE_MIN_Y) * q.tilt;
+        return { yFactor, shiftX: 0, shiftY: 0, ratio: globalRatio };
     }
 
     function renderKinematicsFrame(frame) {

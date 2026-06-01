@@ -21,8 +21,15 @@ export function createKinematicsConfig(pixelSize) {
         LEG_L1: 0.15,
         LEG_L2: 0.15,
         LEG_FLARE: 0.0,
-        TILT: 0.4,
+        LEAN_MULTIPLIER: 0.4,
         HAND_R: 0.04,
+        // Perspective projection constants
+        PERSPECTIVE_MIN_Y: 0.1,
+        PERSPECTIVE_MAX_Y: 0.8,
+        PERSPECTIVE_HEIGHT: 1.0,
+        PERSPECTIVE_Z_CLAMP: 0.6,
+        PERSPECTIVE_SCALE_BASE: 0.9,
+        PERSPECTIVE_SCALE_RANGE: 0.5,
     });
 }
 
