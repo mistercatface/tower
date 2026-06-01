@@ -55,3 +55,15 @@ export function entityIntersectsCellBounds(x, y, radius, { minX, minY, maxX, max
     const dy = y - closestY;
     return dx * dx + dy * dy <= radius * radius;
 }
+
+/** Snap a world point to the min corner of its obstacle-grid cell. */
+export function snapWorldToCellOrigin(worldX, worldY, minX, minY, cellSize) {
+    const col = Math.floor((worldX - minX) / cellSize);
+    const row = Math.floor((worldY - minY) / cellSize);
+    return {
+        col,
+        row,
+        x: minX + col * cellSize,
+        y: minY + row * cellSize,
+    };
+}

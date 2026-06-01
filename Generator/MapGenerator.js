@@ -28,7 +28,7 @@ function serializeWalls(walls) {
             angle: w.angle,
             size: w.size,
             padding: w.padding,
-            maxHealth: w.maxHealth || 30
+            maxHealth: w.maxHealth || 30,
         };
     }
     return out;

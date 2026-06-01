@@ -8,15 +8,19 @@ import {
     worldBoundsToChunkRange,
 } from "../../Spatial/Grid/ChunkGrid.js";
 import { FloorChunkCache } from "./FloorChunkCache.js";
-import { bakeFloorChunkCanvas } from "./FloorTilePainter.js";
+import { bakeFloorChunkCanvas, bakeFloorTileTextureCanvas } from "./FloorTilePainter.js";
 
 export class FloorTileSystem {
     constructor() {
         this.cache = new FloorChunkCache();
+        this._tileTexture = null;
+        this._tileTextureSeed = null;
     }
 
     clear() {
         this.cache.clear();
+        this._tileTexture = null;
+        this._tileTextureSeed = null;
     }
 
     invalidateGridBounds(bounds, cellsPerChunk = floorTileSettings.cellsPerChunk) {
@@ -33,6 +37,16 @@ export class FloorTileSystem {
                 this.cache.delete(chunkKey(chunkCol, chunkRow));
             }
         }
+    }
+
+    getTileTextureCanvas(state) {
+        const seed = state.floorTileSeed ?? 0;
+        if (this._tileTexture && this._tileTextureSeed === seed) {
+            return this._tileTexture;
+        }
+        this._tileTextureSeed = seed;
+        this._tileTexture = bakeFloorTileTextureCanvas(seed, state.obstacleGrid?.cellSize);
+        return this._tileTexture;
     }
 
     getChunkCanvas(chunkCol, chunkRow, state) {

@@ -339,6 +339,12 @@ export const floorTileSettings = {
     enabled: true,
     /** Soft radial darkening on top of tiles (0 = off). */
     vignetteAlpha: 0.45,
+    /** World size of one repeating floor tile on wall faces. */
+    tileWorldSize: gridSettings.cellSize,
+    /** How far visible wall faces extend toward the viewer (offscreen projection). */
+    wallProjectionDistance: 3000,
+    /** Darken wall tiles vs floor (0 = none, 1 = black). */
+    wallShadeOverlay: 0.22,
 };
 
 export const combatVisualSettings = { floorHighlight: "#2c3340", floorFill: "#1c2129", floorShadow: "#12161c", gridStroke: "rgba(90, 105, 125, 0.2)" };

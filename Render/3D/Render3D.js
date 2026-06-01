@@ -1,7 +1,9 @@
-import { THEME_COLORS } from "../../Config/Config.js";
+import { THEME_COLORS, floorTileSettings } from "../../Config/Config.js";
 import { createPropDrawContext } from "./PropDrawContext.js";
 import { drawBarrel, drawCrate, drawFireBarrel, drawCrateShard } from "./PropRecipes.js";
 import { SpatialQuery } from "../../Spatial/World/SpatialQuery.js";
+import { isFaceTowardViewer } from "./math/CombatProjection.js";
+import { drawProjectedWallFace } from "./WallFaceTexture.js";
 
 const VIEW_QUERY_PAD = 48;
 
@@ -67,35 +69,44 @@ export class Render3D {
         return `rgb(${r}, ${g}, ${b})`;
     }
 
-    drawProjectedFace(ctx, p1, p2, px, py, fillStyle, shouldStroke = false) {
-        let angle1 = Math.atan2(p1.y - py, p1.x - px);
-        let angle2 = Math.atan2(p2.y - py, p2.x - px);
-        const cross = (p1.x - px) * (p2.y - py) - (p1.y - py) * (p2.x - px);
-        const spread = 0.002;
-        if (cross > 0) {
-            angle1 -= spread;
-            angle2 += spread;
-        } else {
-            angle1 += spread;
-            angle2 -= spread;
-        }
-        const proj1X = p1.x + Math.cos(angle1) * 3000;
-        const proj1Y = p1.y + Math.sin(angle1) * 3000;
-        const proj2X = p2.x + Math.cos(angle2) * 3000;
-        const proj2Y = p2.y + Math.sin(angle2) * 3000;
+    drawWallFace(ctx, seg, p1, p2, px, py, state, {
+        shouldStroke = true,
+        shadeOverlay = floorTileSettings.wallShadeOverlay,
+        useTiles = floorTileSettings.enabled,
+    } = {}) {
+        const wallColor = this.getWallColor(seg, THEME_COLORS[0], 1.0);
+        const healthRatio = seg.health / seg.maxHealth;
+        const damageAlpha = healthRatio < 1 ? (1 - healthRatio) * 0.45 : 0;
+        const textureCanvas = useTiles && state.floorTiles
+            ? state.floorTiles.getTileTextureCanvas(state)
+            : null;
 
-        ctx.fillStyle = fillStyle;
-        ctx.beginPath();
-        ctx.moveTo(p1.x, p1.y);
-        ctx.lineTo(proj1X, proj1Y);
-        ctx.lineTo(proj2X, proj2Y);
-        ctx.lineTo(p2.x, p2.y);
-        ctx.closePath();
-        ctx.fill();
-        if (shouldStroke) {
-            ctx.strokeStyle = "rgba(0, 0, 0, 0.4)";
-            ctx.lineWidth = 1.0;
-            ctx.stroke();
+        drawProjectedWallFace(ctx, p1, p2, px, py, wallColor, textureCanvas, {
+            damageAlpha,
+            tileWorldSize: floorTileSettings.tileWorldSize,
+            textureEnabled: useTiles,
+            shouldStroke,
+            shadeOverlay: useTiles ? shadeOverlay : 0,
+        });
+    }
+
+    drawWallSegmentFaces(ctx, seg, px, py, state, options = {}) {
+        const edges = this.getSegmentEdges(seg);
+
+        if (!seg.sharedEdges) {
+            seg.sharedEdges = [false, false, false, false];
+        }
+
+        for (let i = 0; i < 4; i++) {
+            if (seg.sharedEdges[i]) continue;
+
+            const p1 = edges[i][0];
+            const p2 = edges[i][1];
+            const edgeCx = (p1.x + p2.x) / 2;
+            const edgeCy = (p1.y + p2.y) / 2;
+            if (!isFaceTowardViewer(edgeCx, edgeCy, seg.x, seg.y, px, py)) continue;
+
+            this.drawWallFace(ctx, seg, p1, p2, px, py, state, options);
         }
     }
 
@@ -117,30 +128,10 @@ export class Render3D {
         visibleWalls.sort((a, b) => b._distSq - a._distSq);
 
         for (const seg of visibleWalls) {
-
-            const wallColor = this.getWallColor(seg, THEME_COLORS[0], 0.5);
-            const edges = this.getSegmentEdges(seg);
-
-            if (!seg.sharedEdges) {
-                seg.sharedEdges = [false, false, false, false];
-            }
-
-            for (let i = 0; i < 4; i++) {
-                if (seg.sharedEdges[i]) continue;
-
-                const p1 = edges[i][0];
-                const p2 = edges[i][1];
-                const edgeCx = (p1.x + p2.x) / 2;
-                const edgeCy = (p1.y + p2.y) / 2;
-                const outX = edgeCx - seg.x;
-                const outY = edgeCy - seg.y;
-
-                const viewX = edgeCx - px;
-                const viewY = edgeCy - py;
-                if (outX * viewX + outY * viewY >= 0) continue;
-
-                this.drawProjectedFace(targetCtx, p1, p2, px, py, wallColor, false);
-            }
+            this.drawWallSegmentFaces(targetCtx, seg, px, py, state, {
+                shouldStroke: false,
+                shadeOverlay: floorTileSettings.wallShadeOverlay + 0.12,
+            });
         }
     }
 
@@ -303,30 +294,7 @@ export class Render3D {
 
         for (const obj of visibleObjects) {
             if (obj._renderType === "wall") {
-                const seg = obj;
-                const wallColor = this.getWallColor(seg, THEME_COLORS[0], 1.0);
-                const edges = this.getSegmentEdges(seg);
-
-                if (!seg.sharedEdges) {
-                    seg.sharedEdges = [false, false, false, false];
-                }
-
-                for (let i = 0; i < 4; i++) {
-                    if (seg.sharedEdges[i]) continue;
-
-                    const p1 = edges[i][0];
-                    const p2 = edges[i][1];
-                    const edgeCx = (p1.x + p2.x) / 2;
-                    const edgeCy = (p1.y + p2.y) / 2;
-                    const outX = edgeCx - seg.x;
-                    const outY = edgeCy - seg.y;
-
-                    const viewX = edgeCx - px;
-                    const viewY = edgeCy - py;
-                    if (outX * viewX + outY * viewY >= 0) continue;
-
-                    this.drawProjectedFace(ctx, p1, p2, px, py, wallColor, true);
-                }
+                this.drawWallSegmentFaces(ctx, obj, px, py, state, { shouldStroke: true });
             } else {
                 ctx.save();
                 const pc = createPropDrawContext(obj, px, py);

@@ -1,4 +1,4 @@
-import { combatVisualSettings, floorTileSettings } from "../../Config/Config.js";
+import { combatVisualSettings, floorTileSettings, gridSettings } from "../../Config/Config.js";
 import { colRowToIndex } from "../../Spatial/Grid/GridUtils.js";
 
 function hashTileSeed(seed, worldX, worldY) {
@@ -45,12 +45,12 @@ function panelTone(hash, panelParity) {
     );
 }
 
-function paintCell(ctx, localX, localY, cellSize, hash, blocked, worldX, worldY) {
+function paintCell(ctx, localX, localY, cellSize, hash, blocked, worldX, worldY, { wallSurface = false } = {}) {
     const panelCol = Math.floor(worldX / (cellSize * 2));
     const panelRow = Math.floor(worldY / (cellSize * 2));
     const panelParity = (panelCol + panelRow) & 1;
 
-    if (blocked) {
+    if (blocked && !wallSurface) {
         const shadow = parseHexColor(combatVisualSettings.floorShadow);
         ctx.fillStyle = rgbString(shadow.r, shadow.g, shadow.b);
     } else {
@@ -58,7 +58,7 @@ function paintCell(ctx, localX, localY, cellSize, hash, blocked, worldX, worldY)
     }
     ctx.fillRect(localX, localY, cellSize, cellSize);
 
-    if (blocked) return;
+    if (blocked && !wallSurface) return;
 
     const seam = parseHexColor(combatVisualSettings.gridStroke.startsWith("rgba") ? "#5a697d" : combatVisualSettings.gridStroke);
     ctx.fillStyle = `rgba(${seam.r}, ${seam.g}, ${seam.b}, 0.55)`;
@@ -81,6 +81,17 @@ function paintCell(ctx, localX, localY, cellSize, hash, blocked, worldX, worldY)
         ctx.fillRect(localX + cellSize - 4, localY + 4, 2, 2);
         ctx.fillRect(localX + 4, localY + cellSize - 4, 2, 2);
     }
+}
+
+export function bakeFloorTileTextureCanvas(seed, cellSize = gridSettings.cellSize) {
+    const canvas = document.createElement("canvas");
+    canvas.width = cellSize;
+    canvas.height = cellSize;
+    const ctx = canvas.getContext("2d");
+    ctx.imageSmoothingEnabled = false;
+    const hash = hashTileSeed(seed, 0, 0);
+    paintCell(ctx, 0, 0, cellSize, hash, false, 0, 0, { wallSurface: true });
+    return canvas;
 }
 
 export function bakeFloorChunkCanvas({
