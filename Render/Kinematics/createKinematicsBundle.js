@@ -167,12 +167,10 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
         return { yFactor: minYFactor + (maxYFactor - minYFactor) * q.tilt, shiftX: 0, shiftY: 0, ratio: globalRatio };
     }
 
-    function buildKinematicsViewContext(x, y, camera) {
-        return buildQuantizedViewContext(x, y, camera, 0, 0);
-    }
-
-    function buildFrameViewContext(x, y, camera, bodyRotation = 0, animCycle = 0) {
-        return buildQuantizedViewContext(x, y, camera, bodyRotation, animCycle);
+    function buildQuantizedViewContext(x, y, camera, bodyRotation, animCycle) {
+        const { rawTiltFactor } = buildViewContextAt(x, y, camera);
+        const q = spriteCache.getQuantizedValues(bodyRotation, animCycle, rawTiltFactor);
+        return { yFactor: minYFactor + (maxYFactor - minYFactor) * q.tilt, shiftX: 0, shiftY: 0, ratio: globalRatio };
     }
 
     function renderKinematicsFrame(frame) {
@@ -188,7 +186,7 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
             drawOptions = {},
             padding = spriteCache.cachePadding,
         } = frame;
-        const viewContext = buildFrameViewContext(x, y, camera, bodyRotation, animCycle);
+        const viewContext = buildQuantizedViewContext(x, y, camera, bodyRotation, animCycle);
         return drawKinematicsFrameToCanvas(
             sharedCanvas,
             sharedCtx,
@@ -304,26 +302,23 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
         entityStates.delete(actorId);
     }
 
-    /** Snapshot live frame at death — render uses this until sim deltas are wired in. */
+    /** Snapshot live frame at death. */
     function captureActorRigForRagdoll(actor, camera) {
         const frame = resolveLiveFrameSpec(actor, camera, { freezePose: true });
         const rigData = cloneRigData(frame.rigData);
         return {
-            rigData,
             bindFrame: {
                 rigData,
                 bodyRotation: frame.bodyRotation,
                 animCycle: frame.animCycle,
                 facing: frame.facing,
             },
-            rotation: frame.bodyRotation,
-            renderRotation: frame.facing.renderRotation,
         };
     }
 
     function resolveMuzzleWorldPosition(actor, camera, turretIndex, displayDiameter) {
         const frame = resolveLiveFrameSpec(actor, camera);
-        const viewContext = buildFrameViewContext(frame.x, frame.y, frame.camera, frame.bodyRotation, frame.animCycle);
+        const viewContext = buildQuantizedViewContext(frame.x, frame.y, frame.camera, frame.bodyRotation, frame.animCycle);
         const project = createProjector(viewContext, frame.renderRotation, config, rig);
         return resolveMuzzleFromRig(
             actor,
@@ -347,8 +342,6 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
         globalRatio,
         advanceAnimation,
         buildSprite,
-        buildKinematicsViewContext,
-        buildFrameViewContext,
         renderKinematicsFrame,
         resolveCorpseFrame,
         captureActorRigForRagdoll,

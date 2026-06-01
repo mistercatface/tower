@@ -1,5 +1,5 @@
 import { RAGDOLL_CONFIG, SEVER_MAP } from "./RagdollConfig.js";
-import { absRagdollPoint, ensureSimBone, getRagdollPointZ, mergeRagdollPoint } from "./RagdollPhysics.js";
+import { absRagdollPoint, ensureSimBone, getRagdollPointZ } from "./RagdollPhysics.js";
 import {
     PHYSICS_BONE_ALIASES,
     SEVER_LIMB_DEF,
@@ -50,54 +50,6 @@ function disconnectLimbFromTorso(constraints, limbId, root) {
             || (c.a === root && c.b === peer)
         ),
     );
-}
-
-function isConstraintHiddenBySever(c, severed) {
-    if (severed.rArm && (
-        (c.a === "spineTop" && c.b === "rShoulder")
-        || (c.a === "rShoulder" && c.b === "spineTop")
-    )) return true;
-    if (severed.lArm && (
-        (c.a === "spineTop" && c.b === "lShoulder")
-        || (c.a === "lShoulder" && c.b === "spineTop")
-    )) return true;
-    if (severed.rLeg && (
-        (c.a === "spineBot" && c.b === "rHip")
-        || (c.a === "rHip" && c.b === "spineBot")
-    )) return true;
-    if (severed.lLeg && (
-        (c.a === "spineBot" && c.b === "lHip")
-        || (c.a === "lHip" && c.b === "spineBot")
-    )) return true;
-    if (severed.rForearm && (
-        (c.a === "rShoulder" && c.b === "rElbow")
-        || (c.a === "rElbow" && c.b === "rShoulder")
-    )) return true;
-    if (severed.lForearm && (
-        (c.a === "lShoulder" && c.b === "lElbow")
-        || (c.a === "lElbow" && c.b === "lShoulder")
-    )) return true;
-    if (severed.rShin && (
-        (c.a === "rHip" && c.b === "rKnee")
-        || (c.a === "rKnee" && c.b === "rHip")
-    )) return true;
-    if (severed.lShin && (
-        (c.a === "lHip" && c.b === "lKnee")
-        || (c.a === "lKnee" && c.b === "lHip")
-    )) return true;
-    if (severed.head && (
-        (c.a === "head" && c.b === "spineTop")
-        || (c.a === "spineTop" && c.b === "head")
-    )) return true;
-    return false;
-}
-
-export function isNeckConstraint(c) {
-    return (c.a === "head" && c.b === "spineTop") || (c.a === "spineTop" && c.b === "head");
-}
-
-export function isRagdollConstraintVisible(c, severed) {
-    return !isConstraintHiddenBySever(c, severed || {});
 }
 
 function getPartCategory(partName) {
@@ -321,7 +273,7 @@ export function processRagdollGoreHit(
     const canSever = !!severTarget && !ragdoll.severed[severTarget];
 
     if (!isHealthDepleted && !isInstantBreak) {
-        const impulseCenter = mergeRagdollPoint(ragdoll, hitPart) ?? mergeRagdollPoint(ragdoll, cleanType);
+        const impulseCenter = absRagdollPoint(ragdoll, hitPart) ?? absRagdollPoint(ragdoll, cleanType);
         if (impulseCenter) {
             ragdoll.particles.push({
                 x: impulseCenter.x,
@@ -352,7 +304,7 @@ export function processRagdollGoreHit(
         const brokenBoneId = splitBone(ragdoll, hitPart, offsetT ?? 0.5, rig);
         if (brokenBoneId) {
             ragdoll.partHealth[brokenBoneId] = maxHP * 0.5;
-            const bP = mergeRagdollPoint(ragdoll, brokenBoneId);
+            const bP = absRagdollPoint(ragdoll, brokenBoneId);
             if (bP) {
             const boneColor = bCfg.PALETTE.BONE ?? "#e8e6d1";
             for (let i = 0; i < 3; i++) {

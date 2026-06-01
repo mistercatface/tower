@@ -23,9 +23,7 @@ export class RagdollCorpse extends Entity {
             const fx = Math.cos(projectile.angle) * forceScale;
             const fy = -forceScale * 0.25;
             const fz = Math.sin(projectile.angle) * forceScale;
-
             applyRagdollImpulse(corpse.ragdoll, fx, fy, fz, hit.part, rig, corpse.ragdoll.rotation, config, 22, hit.offsetT ?? 0.5);
-
             addRagdollBleedEmitter(corpse.ragdoll, hit.part, rig, 0.8);
 
             const { x: bx, y: by } = ragdollPartToWorld(corpse, hit.part);
@@ -62,7 +60,7 @@ export class RagdollCorpse extends Entity {
         const capture = captureActorRigForRagdoll(actor, camera);
         const { config, rig } = capture.kinematics.bundle;
         const impact = resolveDeathImpact(actor, event);
-        const ragdoll = createRagdollState(capture.rigData, capture.rotation, impact, config, rig);
+        const ragdoll = createRagdollState(capture.bindFrame.rigData, capture.bindFrame.bodyRotation, impact, config, rig);
 
         seedRagdollBloodOnDeath(ragdoll, impact.hitBone, rig);
 

@@ -21,7 +21,6 @@ export {
 export {
     PlayerKinematicsRenderer,
     getKinematicsRenderer,
-    getPlayerKinematicsRenderer,
     advanceActorKinematics,
     renderKinematicsBody,
     renderActorKinematicsBody,

@@ -31,20 +31,6 @@ export function getRagdollPointZ(ragdoll, key) {
     return getBind(ragdoll, key)?.z ?? 0;
 }
 
-export function setRagdollPointZ(ragdoll, key, z) {
-    if (!ragdoll.bindBones) ragdoll.bindBones = {};
-    if (!ragdoll.bindBones[key]) {
-        ragdoll.bindBones[key] = { x: 0, y: 0, z };
-    } else {
-        ragdoll.bindBones[key].z = z;
-    }
-}
-
-/** @deprecated Use absRagdollPoint */
-export function mergeRagdollPoint(ragdoll, key) {
-    return absRagdollPoint(ragdoll, key);
-}
-
 export function getRagdollCollisionPoints(ragdoll) {
     const out = {};
     for (const key of Object.keys(ragdoll.points ?? {})) {
@@ -61,7 +47,7 @@ function setAbsXY(ragdoll, key, x, y) {
     delta.y = y - bind.y;
 }
 
-function ensureSimBone(ragdoll, key, bindPos) {
+export function ensureSimBone(ragdoll, key, bindPos) {
     if (!ragdoll.bindBones) ragdoll.bindBones = {};
     if (!ragdoll.points) ragdoll.points = {};
     if (!ragdoll.prevPoints) ragdoll.prevPoints = {};
@@ -124,6 +110,7 @@ export function initializeRagdoll(rigData, rotation, impactProfile, config, rig)
 
     return {
         bindBones,
+        /** Per-bone xy offset from bind pose (sim only; z lives in bindBones). */
         points,
         prevPoints,
         constraints,
@@ -267,8 +254,6 @@ export function applyRagdollImpulse(
         rig,
     );
 }
-
-export { ensureSimBone };
 
 export function updateRagdoll(ragdoll, dtSec, worldX, worldY, rotation, wallChecker, playerX, playerY, rig) {
     if (!ragdoll) return;

@@ -150,19 +150,7 @@ export function boneMapFromCharacterRig(rigData) {
     return out;
 }
 
-export function characterRigFromBoneMap(boneMap) {
-    return {
-        head: boneMap.head,
-        spineTop: boneMap.spineTop,
-        spineBot: boneMap.spineBot,
-        rArm: { p1: boneMap.rShoulder, p2: boneMap.rElbow, p3: boneMap.rHand },
-        lArm: { p1: boneMap.lShoulder, p2: boneMap.lElbow, p3: boneMap.lHand },
-        rLeg: { p1: boneMap.rHip, p2: boneMap.rKnee, p3: boneMap.rFoot },
-        lLeg: { p1: boneMap.lHip, p2: boneMap.lKnee, p3: boneMap.lFoot },
-    };
-}
-
-/** Resolve hit / sever / capsule ids to a ragdoll.points key. */
+/** Resolve hit / sever / capsule ids to a sim bone key. */
 export function resolvePhysicsBoneId(rawId, points) {
     if (!rawId) return points?.spineTop ? "spineTop" : null;
     if (points?.[rawId]) return rawId;

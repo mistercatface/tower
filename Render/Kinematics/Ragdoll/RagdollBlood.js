@@ -1,5 +1,5 @@
 import { RAGDOLL_CONFIG } from "./RagdollConfig.js";
-import { mergeRagdollPoint } from "./RagdollPhysics.js";
+import { absRagdollPoint } from "./RagdollPhysics.js";
 import { PHYSICS_BONES, resolvePhysicsBoneId } from "../KinematicsBones.js";
 
 function createBloodParticle(point, bCfg, scale = 1) {
@@ -41,7 +41,7 @@ export function seedRagdollBloodOnDeath(ragdoll, hitBone, rig) {
 
     const burstBones = [anchor, "spineTop", "head"];
     for (const bone of burstBones) {
-        const burstPoint = mergeRagdollPoint(ragdoll, bone);
+        const burstPoint = absRagdollPoint(ragdoll, bone);
         if (!burstPoint) continue;
         for (let i = 0; i < bCfg.BURST_COUNT; i++) {
             ragdoll.particles.push(createBloodParticle(burstPoint, bCfg, scale));
@@ -88,7 +88,7 @@ export function updateBloodEffects(ragdoll, deltaSec, rig) {
         }
         const bone = points[e.bone];
         if (!bone) continue;
-        const merged = mergeRagdollPoint(ragdoll, e.bone);
+        const merged = absRagdollPoint(ragdoll, e.bone);
         if (!merged) continue;
         const flowStrength = Math.min(1, e.life / bCfg.SPRAY_LIFE);
         const prev = prevPoints[e.bone];

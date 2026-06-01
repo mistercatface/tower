@@ -41,9 +41,6 @@ export function getKinematicsRenderer(radius) {
     return renderer;
 }
 
-/** @deprecated Use getKinematicsRenderer */
-export const getPlayerKinematicsRenderer = getKinematicsRenderer;
-
 export function advanceActorKinematics(actor, dt, camera, radius = actor.radius) {
     getKinematicsRenderer(radius).advance(actor, dt, camera);
 }
