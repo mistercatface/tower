@@ -1,6 +1,7 @@
 import { floorTileSettings, gridSettings } from "../../Config/Config.js";
 import { drawImageQuad } from "./draw/AffineTexture.js";
 import { CAMERA_HEIGHT } from "./math/CombatProjection.js";
+import { getFloorTextureProfileId } from "../Floor/floorTextureProfile.js";
 
 const WALL_ANGLE_SPREAD = 0.002;
 
@@ -167,11 +168,12 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHei
     const tileWorldSize = floorTileSettings.tileWorldSize ?? gridSettings.cellSize;
     if (!floorTiles || !state) return;
 
+    const profileId = getFloorTextureProfileId(state);
     const kx1 = p1.x.toFixed(1);
     const ky1 = p1.y.toFixed(1);
     const kx2 = p2.x.toFixed(1);
     const ky2 = p2.y.toFixed(1);
-    const key = `${kx1},${ky1}-${kx2},${ky2}`;
+    const key = `${profileId}:${kx1},${ky1}-${kx2},${ky2}`;
 
     const storyCount = getWallTextureStoryCount();
     let flatCanvas = flatWallCache.get(key);

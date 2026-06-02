@@ -20,6 +20,7 @@ import {
     updateStartNodeIntro,
 } from "../Combat/StartNodeIntro.js";
 import { findStartNodeInspectionPickup, beginStartNodeInspection, shouldEnterStartNodeInspection } from "../Combat/StartNodeInspection.js";
+import { syncFloorTextureProfile } from "../Render/Floor/floorTextureProfile.js";
 
 const MAP_TRAVEL_SPEED = 5.0;
 
@@ -37,6 +38,7 @@ function runPushablePhysics(state, dt, spatialFrame) {
 }
 
 function runPersistentSectorEnter(state) {
+    syncFloorTextureProfile(state);
     wakeAllPushables(state);
     const persistentEntities = [...state.getAllies(), ...state.pickups];
 

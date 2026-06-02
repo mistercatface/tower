@@ -21,7 +21,7 @@ export function composeFloorPixel(surface, paintContext) {
     }
 
     const { lookupX, lookupY } = applyDomainWarp(surface.evalX, surface.evalY, profile.warp);
-    const sample = { ...surface, lookupX, lookupY };
+    const sample = { ...surface, lookupX, lookupY, seed: paintContext.seed };
 
     const [baseR, baseG, baseB] = profile.palette.base;
     const rgb = { r: baseR, g: baseG, b: baseB };

@@ -19,9 +19,9 @@ export function paintPixelArea(
     obstacleGrid,
     seed,
     options = {},
-    profileId = defaultFloorProceduralProfileId
+    profileId
 ) {
-    const profile = getFloorProceduralProfile(profileId);
+    const profile = getFloorProceduralProfile(profileId ?? defaultFloorProceduralProfileId);
     const paintContext = createPaintContext(profile, seed);
 
     const isWall = options.isWall === true;

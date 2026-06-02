@@ -1,10 +1,14 @@
 import { floorTileSettings, combatVisualSettings } from "../../Config/Config.js";
-import { defaultFloorProceduralProfileId } from "../../Config/floorProceduralConfig.js";
 import { isWorldScene } from "../../GameState/GamePhase.js";
-import { chunkKey, chunkToWorldOrigin, getChunkSizePx, gridBoundsToChunkRange, worldBoundsToChunkRange } from "../../Spatial/Grid/ChunkGrid.js";
+import { chunkToWorldOrigin, getChunkSizePx, gridBoundsToChunkRange, worldBoundsToChunkRange } from "../../Spatial/Grid/ChunkGrid.js";
 import { snapWorldToCellOrigin } from "../../Spatial/Geometry/GridCoords.js";
 import { FloorChunkCache } from "./FloorChunkCache.js";
 import { bakeFloorChunkCanvas, bakeFloorCellCanvas, bakeFloorTileTextureCanvas, drawWallCell, paintWallFace } from "./FloorTilePainter.js";
+import {
+    floorCellCacheKey,
+    floorChunkCacheKey,
+    getFloorTextureProfileId,
+} from "./floorTextureProfile.js";
 
 export class FloorTileSystem {
     constructor() {
@@ -12,7 +16,8 @@ export class FloorTileSystem {
         this.cellCache = new FloorChunkCache(floorTileSettings.maxCachedWallCells);
         this._tileTexture = null;
         this._tileTextureSeed = null;
-        this.proceduralProfileId = defaultFloorProceduralProfileId;
+        this._tileTextureProfileId = null;
+        this.proceduralProfileId = null;
     }
 
     clear() {
@@ -20,52 +25,63 @@ export class FloorTileSystem {
         this.cellCache.clear();
         this._tileTexture = null;
         this._tileTextureSeed = null;
+        this._tileTextureProfileId = null;
     }
 
-    invalidateGridBounds(bounds, cellsPerChunk = floorTileSettings.cellsPerChunk) {
+    invalidateGridBounds(bounds, state, cellsPerChunk = floorTileSettings.cellsPerChunk) {
         if (!bounds) return;
+        const profileId = getFloorTextureProfileId(state);
         const range = gridBoundsToChunkRange(bounds.startCol, bounds.endCol, bounds.startRow, bounds.endRow, cellsPerChunk);
         for (let chunkRow = range.minChunkRow; chunkRow <= range.maxChunkRow; chunkRow++) {
             for (let chunkCol = range.minChunkCol; chunkCol <= range.maxChunkCol; chunkCol++) {
-                this.cache.delete(chunkKey(chunkCol, chunkRow));
+                this.cache.delete(floorChunkCacheKey(chunkCol, chunkRow, profileId));
             }
         }
         for (let row = bounds.startRow; row <= bounds.endRow; row++) {
             for (let col = bounds.startCol; col <= bounds.endCol; col++) {
-                this.cellCache.delete(`c:v2:${col},${row}`);
+                this.cellCache.delete(floorCellCacheKey(col, row, profileId));
             }
         }
     }
 
     getTileTextureCanvas(state) {
         const seed = state.floorTileSeed ?? 0;
-        if (this._tileTexture && this._tileTextureSeed === seed) {
+        const profileId = getFloorTextureProfileId(state);
+        if (
+            this._tileTexture &&
+            this._tileTextureSeed === seed &&
+            this._tileTextureProfileId === profileId
+        ) {
             return this._tileTexture;
         }
         this._tileTextureSeed = seed;
-        this._tileTexture = bakeFloorTileTextureCanvas(seed, state.obstacleGrid?.cellSize, this.proceduralProfileId);
+        this._tileTextureProfileId = profileId;
+        this._tileTexture = bakeFloorTileTextureCanvas(seed, state.obstacleGrid?.cellSize, profileId);
         return this._tileTexture;
     }
 
     getCellCanvas(worldX, worldY, state) {
+        const profileId = getFloorTextureProfileId(state);
         const obstacleGrid = state.obstacleGrid;
         const { col, row, x, y } = snapWorldToCellOrigin(worldX, worldY, obstacleGrid.minX, obstacleGrid.minY, obstacleGrid.cellSize);
-        const key = `c:v2:${col},${row}`;
+        const key = floorCellCacheKey(col, row, profileId);
         let canvas = this.cellCache.get(key);
         if (canvas) return canvas;
 
-        canvas = bakeFloorCellCanvas(x, y, obstacleGrid, state.floorTileSeed ?? 0, this.proceduralProfileId);
+        canvas = bakeFloorCellCanvas(x, y, obstacleGrid, state.floorTileSeed ?? 0, profileId);
         this.cellCache.set(key, canvas);
         return canvas;
     }
 
     drawWallCell(ctx, worldX, worldY, storyRow, state) {
+        const profileId = getFloorTextureProfileId(state);
         const obstacleGrid = state.obstacleGrid;
         const { x, y } = snapWorldToCellOrigin(worldX, worldY, obstacleGrid.minX, obstacleGrid.minY, obstacleGrid.cellSize);
-        drawWallCell(ctx, x, y, storyRow, obstacleGrid, state.floorTileSeed ?? 0, this.proceduralProfileId);
+        drawWallCell(ctx, x, y, storyRow, obstacleGrid, state.floorTileSeed ?? 0, profileId);
     }
 
     paintWallFace(ctx, width, height, p1, p2, pixelsPerUnit, state) {
+        const profileId = getFloorTextureProfileId(state);
         paintWallFace(
             ctx,
             width,
@@ -75,12 +91,13 @@ export class FloorTileSystem {
             pixelsPerUnit,
             state.obstacleGrid,
             state.floorTileSeed ?? 0,
-            this.proceduralProfileId
+            profileId
         );
     }
 
     getChunkCanvas(chunkCol, chunkRow, state) {
-        const key = chunkKey(chunkCol, chunkRow);
+        const profileId = getFloorTextureProfileId(state);
+        const key = floorChunkCacheKey(chunkCol, chunkRow, profileId);
         let canvas = this.cache.get(key);
         if (canvas) return canvas;
 
@@ -89,7 +106,7 @@ export class FloorTileSystem {
             chunkRow,
             obstacleGrid: state.obstacleGrid,
             seed: state.floorTileSeed ?? 0,
-            profileId: this.proceduralProfileId,
+            profileId,
         });
         this.cache.set(key, canvas);
         return canvas;

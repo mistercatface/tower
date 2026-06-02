@@ -4,6 +4,8 @@ import { StartBuildingStrategy } from "./StartNodeBuilding.js";
 import { WorldObstacleGrid } from "../Spatial/World/ObstacleGrid.js";
 import { FlowFieldGrid } from "../Spatial/Navigation/FlowFieldGrid.js";
 import { mapSettings, gridSettings, THEME_COLORS, mapGenerationSettings } from "../Config/Config.js";
+import { resolveFloorTextureProfileId } from "../Config/floorProceduralConfig.js";
+import { syncFloorTextureProfile } from "../Render/Floor/floorTextureProfile.js";
 
 const STRATEGIES = Object.keys(GeneratorStrategies);
 
@@ -159,6 +161,7 @@ export class MapGenerator {
         state.hierarchicalNavigator.initialize();
         state.floorTileSeed = (Math.random() * 0x7fffffff) | 0;
         state.floorTiles.clear();
+        syncFloorTextureProfile(state);
     }
 
     static pregenerateAllCombatData(state) {
@@ -184,6 +187,7 @@ export class MapGenerator {
             startNode.wallsData = serializeWalls(mockState.walls);
             startNode.wallTheme = theme;
             startNode.strategy = "StartBuilding";
+            startNode.floorTextureProfileId = resolveFloorTextureProfileId({ layer: 0, strategy: "StartBuildingStrategy" });
         }
 
         const numLayers = mapSettings.numLayers;
@@ -240,6 +244,10 @@ export class MapGenerator {
                 nodeB.wallsData = chosenWalls;
                 nodeB.wallTheme = chosenTheme;
                 nodeB.strategy = chosenStrategy;
+                nodeB.floorTextureProfileId =
+                    chosenStrategy === "None"
+                        ? "cleanserStation"
+                        : resolveFloorTextureProfileId({ layer: l, strategy: chosenStrategy });
             }
         }
     }
