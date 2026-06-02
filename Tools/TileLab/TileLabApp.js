@@ -20,15 +20,41 @@ import {
     bindToolbarControls,
 } from "./LabToolbar.js";
 import { ensureLabWorld, getLabWorld, resetLabWorld } from "./LabWorldSession.js";
-import { initProfileEditor, RUNTIME_LAB_PROFILE_ID } from "./profile/ProfileEditor.js";
+import { initProfileEditor, RUNTIME_LAB_PROFILE_ID, getActiveLabProfile } from "./profile/ProfileEditor.js";
 import { getFloorProceduralProfile } from "../../Config/floorProceduralConfig.js";
 import {
     renderTileInspectPreviews,
+    drawInspectPreviews,
+    inspectFrameIndexFromTime,
+    isAnimatedInspectSource,
     downloadInspectExport,
 } from "./inspect/TileInspectBakes.js";
 
 /** @type {ReturnType<typeof renderTileInspectPreviews> | null} */
 let inspectSources = null;
+/** @type {ReturnType<typeof readControls> | null} */
+let inspectCtrl = null;
+
+function updateExportTabUi() {
+    const pick = document.getElementById("exportTarget")?.value ?? "floor";
+    const btn = document.getElementById("exportBtn");
+    const hint = document.getElementById("exportFormatHint");
+    const animated = isAnimatedInspectSource(inspectSources, pick);
+    if (btn) {
+        btn.textContent = animated ? "Download WebM" : "Download PNG";
+    }
+    if (hint) {
+        if (animated) {
+            const frames = inspectSources[pick].length;
+            hint.textContent = `Animated (${frames} frames) — exports WebM at 30 fps.`;
+        } else {
+            const profile = getActiveLabProfile();
+            hint.textContent = profile?.animation
+                ? "Animation is off for this target, or only 1 frame — exports PNG."
+                : "Static tile — exports PNG. Enable animation in Global tab to export WebM.";
+        }
+    }
+}
 
 function renderAll() {
     registerEditorProfiles();
@@ -38,7 +64,9 @@ function renderAll() {
     const world = ensureLabWorld(ctrl);
     applyGameDefaultsToForm(world);
 
-    inspectSources = renderTileInspectPreviews(ctrl);
+    inspectCtrl = ctrl;
+    inspectSources = renderTileInspectPreviews(ctrl, world?.gameTime ?? 0);
+    updateExportTabUi();
     renderMapPreview(ctrl, world);
 }
 
@@ -65,6 +93,7 @@ bindToolbarControls({
     onResetMap: resetLabWorld,
     onStageResize,
 });
+document.getElementById("exportTarget")?.addEventListener("change", updateExportTabUi);
 initToolbarDefaults();
 
 let lastRafTime = 0;
@@ -74,14 +103,16 @@ function appLoop(timestamp) {
     lastRafTime = timestamp;
 
     const profile = getFloorProceduralProfile(RUNTIME_LAB_PROFILE_ID);
-    if (profile && profile.animation) {
+    if (profile?.animation) {
         const world = getLabWorld();
-        if (world) {
+        if (world && inspectSources && inspectCtrl) {
             world.gameTime = (world.gameTime || 0) + dt;
-            renderMapPreview(readControls(), world);
+            const frameIndex = inspectFrameIndexFromTime(RUNTIME_LAB_PROFILE_ID, world.gameTime);
+            drawInspectPreviews(inspectSources, inspectCtrl, frameIndex);
+            renderMapPreview(inspectCtrl, world);
         }
     }
-    
+
     requestAnimationFrame(appLoop);
 }
 

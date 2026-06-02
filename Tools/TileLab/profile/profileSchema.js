@@ -552,3 +552,12 @@ export const PALETTE_FIELDS = [
     { path: "palette.wallBase.1", label: "Wall G", min: 0, max: 64, step: 1 },
     { path: "palette.wallBase.2", label: "Wall B", min: 0, max: 64, step: 1 },
 ];
+
+/** Numeric motif params that can drive profile.animation. */
+export function getAnimatableMotifFields(motifConfig) {
+    const schema = MOTIF_TYPES[motifConfig?.type];
+    if (!schema) {
+        return [];
+    }
+    return schema.fields.filter((field) => !field.options);
+}

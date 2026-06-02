@@ -1,13 +1,14 @@
 import {
-    bakeFloorTileTextureCanvas,
     paintPixelArea,
     bakeWallFaceCanvases,
     bakeFloorChunkCanvas,
+    bakeWallCellCanvases,
 } from "../../../Render/Floor/FloorTilePainter.js";
 import {
     bakePixelsForWorldSpan,
     getTexturePixelsPerWorldUnit,
 } from "../../../Render/Floor/floorTextureResolution.js";
+import { getFloorProceduralProfile } from "../../../Config/floorProceduralConfig.js";
 
 const MICRO_PREVIEW_MAX = 112;
 const REPEAT_PREVIEW_MAX = 180;
@@ -33,27 +34,30 @@ function toCanvas(source) {
     return canvas;
 }
 
-function bakeWallCellCanvas(worldX, worldY, storyRow, cellSize, seed, profileId) {
-    const stub = makeStubGrid(cellSize);
-    const bakeSize = bakePixelsForWorldSpan(cellSize);
-    const canvas = new OffscreenCanvas(bakeSize, bakeSize);
-    const ctx = canvas.getContext("2d");
-    ctx.imageSmoothingEnabled = false;
-    paintPixelArea(ctx, bakeSize, bakeSize, worldX, worldY, stub, seed, {
-        isWall: true,
-        zOffset: storyRow * cellSize,
-    }, profileId);
-    return canvas;
+function pickFrame(source, frameIndex) {
+    if (Array.isArray(source)) {
+        const idx = Math.min(source.length - 1, Math.max(0, frameIndex));
+        return source[idx];
+    }
+    return source;
 }
 
-function bakeWallColumnCanvas(worldX, worldY, cellSize, storyCount, seed, profileId) {
+function bakeWallColumnCanvas(worldX, worldY, cellSize, storyCount, seed, profileId, frameIndex) {
     const bakeSize = bakePixelsForWorldSpan(cellSize);
     const canvas = new OffscreenCanvas(bakeSize, bakeSize * storyCount);
     const ctx = canvas.getContext("2d");
     ctx.imageSmoothingEnabled = false;
+    const stub = makeStubGrid(cellSize);
     for (let s = 0; s < storyCount; s++) {
-        const row = bakeWallCellCanvas(worldX, worldY, s, cellSize, seed, profileId);
-        ctx.drawImage(row, 0, s * bakeSize);
+        const rowFrames = bakeWallCellCanvases(
+            worldX,
+            worldY,
+            s,
+            stub,
+            seed,
+            profileId
+        );
+        ctx.drawImage(pickFrame(rowFrames, frameIndex), 0, s * bakeSize);
     }
     return canvas;
 }
@@ -63,16 +67,19 @@ function bakeWallFacePreviewCanvas(cellSize, storyCount, seed, profileId) {
     const ppwu = getTexturePixelsPerWorldUnit();
     const width = bakePixelsForWorldSpan(cellSize);
     const height = bakePixelsForWorldSpan(cellSize * storyCount);
-    const canvases = bakeWallFaceCanvases(width, height, { x: 0, y: 0 }, { x: cellSize, y: 0 }, ppwu, stub, seed, profileId);
-    return canvases;
+    return bakeWallFaceCanvases(width, height, { x: 0, y: 0 }, { x: cellSize, y: 0 }, ppwu, stub, seed, profileId);
 }
 
 function bakeFloorCellAt(worldX, worldY, cellSize, seed, profileId) {
     const stub = makeStubGrid(cellSize);
-    const canvases = bakeFloorChunkCanvas({
-        chunkCol: 0, chunkRow: 0, obstacleGrid: stub, seed, cellsPerChunk: 1, profileId
+    return bakeFloorChunkCanvas({
+        chunkCol: 0,
+        chunkRow: 0,
+        obstacleGrid: stub,
+        seed,
+        cellsPerChunk: 1,
+        profileId,
     });
-    return canvases;
 }
 
 function drawTiled(ctx, source, destX, destY, tileW, tileH, cols, rows, zoom) {
@@ -130,56 +137,20 @@ function drawRepeatPreview(canvasEl, source, tileW, tileH, cols, rows, zoom, max
     drawTiled(ctx, source, 0, 0, tileW, tileH, cols, rows, z);
 }
 
-/**
- * Bake and draw micro-tile / 5×5 inspect previews.
- * @param {object} ctrl — lab control values (seed, cellSize, profileId, etc.)
- * @returns {{ floor, wallCell, wallColumn, wallFace, profileId, seed }}
- */
-export function renderTileInspectPreviews(ctrl) {
-    const floorSourceArray = bakeFloorCellAt(ctrl.worldX, ctrl.worldY, ctrl.cellSize, ctrl.seed, ctrl.profileId);
-    const floorSource = Array.isArray(floorSourceArray) ? floorSourceArray[0] : floorSourceArray;
-    
-    const wallCellSourceArray = bakeWallCellCanvas(
-        ctrl.worldX,
-        ctrl.worldY,
-        ctrl.storyRow,
-        ctrl.cellSize,
-        ctrl.seed,
-        ctrl.profileId
+export function inspectFrameIndexFromTime(profileId, gameTime) {
+    const profile = getFloorProceduralProfile(profileId);
+    if (!profile?.animation) {
+        return 0;
+    }
+    const frames = profile.animation.frames ?? 1;
+    const duration = profile.animation.durationMs ?? 1000;
+    return Math.min(
+        frames - 1,
+        Math.max(0, Math.floor(((gameTime % duration) / duration) * frames))
     );
-    const wallCellSource = Array.isArray(wallCellSourceArray) ? wallCellSourceArray[0] : wallCellSourceArray;
-    
-    const wallColumnSource = bakeWallColumnCanvas(
-        ctrl.worldX,
-        ctrl.worldY,
-        ctrl.cellSize,
-        ctrl.storyCount,
-        ctrl.seed,
-        ctrl.profileId
-    );
-    const wallFaceSourceArray = bakeWallFacePreviewCanvas(
-        ctrl.cellSize,
-        ctrl.storyCount,
-        ctrl.seed,
-        ctrl.profileId
-    );
-    const wallFaceSource = Array.isArray(wallFaceSourceArray) ? wallFaceSourceArray[0] : wallFaceSourceArray;
+}
 
-    drawZoomedPreview(document.getElementById("floorPreview"), floorSource, ctrl.zoom);
-    drawZoomedPreview(document.getElementById("wallCellPreview"), wallCellSource, ctrl.zoom);
-    drawZoomedPreview(document.getElementById("wallColumnPreview"), wallColumnSource, ctrl.zoom);
-    drawZoomedPreview(document.getElementById("wallFacePreview"), wallFaceSource, ctrl.zoom);
-
-    drawRepeatPreview(
-        document.getElementById("floorRepeat"),
-        floorSource,
-        floorSource.width,
-        floorSource.height,
-        5,
-        5,
-        ctrl.zoom
-    );
-
+function drawWallRepeat(ctrl, wallCellSource, frameIndex) {
     const wallRepeat = document.getElementById("wallRepeat");
     const tileZ = Math.max(1, Math.floor(ctrl.zoom));
     let wrW = wallCellSource.width * tileZ * 5;
@@ -196,16 +167,18 @@ export function renderTileInspectPreviews(ctrl) {
     const wrCtx = wallRepeat.getContext("2d");
     wrCtx.clearRect(0, 0, wrW, wrH);
     const z = tileZ * wrScale;
+    const stub = makeStubGrid(ctrl.cellSize);
     for (let row = 0; row < 5; row++) {
         for (let col = 0; col < 5; col++) {
-            const cell = bakeWallCellCanvas(
+            const cellFrames = bakeWallCellCanvases(
                 ctrl.worldX + col * ctrl.cellSize,
                 ctrl.worldY + row * ctrl.cellSize,
                 ctrl.storyRow,
-                ctrl.cellSize,
+                stub,
                 ctrl.seed,
                 ctrl.profileId
             );
+            const cell = pickFrame(cellFrames, frameIndex);
             wrCtx.drawImage(
                 cell,
                 col * wallCellSource.width * z,
@@ -215,34 +188,122 @@ export function renderTileInspectPreviews(ctrl) {
             );
         }
     }
+}
+
+/**
+ * Draw cached inspect sources at a given animation frame.
+ * @param {ReturnType<typeof bakeInspectSources>} sources
+ * @param {object} ctrl
+ * @param {number} [frameIndex=0]
+ */
+export function drawInspectPreviews(sources, ctrl, frameIndex = 0) {
+    if (!sources) {
+        return;
+    }
+    const floorSource = pickFrame(sources.floor, frameIndex);
+    const wallCellSource = pickFrame(sources.wallCell, frameIndex);
+    const wallFaceSource = pickFrame(sources.wallFace, frameIndex);
+    const wallColumnSource = Array.isArray(sources.wallCell) && sources.wallCell.length > 1
+        ? bakeWallColumnCanvas(
+            ctrl.worldX,
+            ctrl.worldY,
+            ctrl.cellSize,
+            ctrl.storyCount,
+            ctrl.seed,
+            ctrl.profileId,
+            frameIndex
+        )
+        : sources.wallColumn;
+
+    drawZoomedPreview(document.getElementById("floorPreview"), floorSource, ctrl.zoom);
+    drawZoomedPreview(document.getElementById("wallCellPreview"), wallCellSource, ctrl.zoom);
+    drawZoomedPreview(document.getElementById("wallColumnPreview"), wallColumnSource, ctrl.zoom);
+    drawZoomedPreview(document.getElementById("wallFacePreview"), wallFaceSource, ctrl.zoom);
+
+    drawRepeatPreview(
+        document.getElementById("floorRepeat"),
+        floorSource,
+        floorSource.width,
+        floorSource.height,
+        5,
+        5,
+        ctrl.zoom
+    );
+    drawWallRepeat(ctrl, wallCellSource, frameIndex);
+}
+
+/**
+ * Bake inspect tile sources (may be multi-frame arrays when profile.animation is set).
+ */
+export function bakeInspectSources(ctrl) {
+    const floor = bakeFloorCellAt(ctrl.worldX, ctrl.worldY, ctrl.cellSize, ctrl.seed, ctrl.profileId);
+    const stub = makeStubGrid(ctrl.cellSize);
+    const wallCell = bakeWallCellCanvases(
+        ctrl.worldX,
+        ctrl.worldY,
+        ctrl.storyRow,
+        stub,
+        ctrl.seed,
+        ctrl.profileId
+    );
+    const wallFace = bakeWallFacePreviewCanvas(
+        ctrl.cellSize,
+        ctrl.storyCount,
+        ctrl.seed,
+        ctrl.profileId
+    );
 
     return {
-        floor: floorSourceArray,
-        wallCell: wallCellSourceArray,
-        wallColumn: wallColumnSource, // Unused for animation currently
-        wallFace: wallFaceSourceArray,
+        floor,
+        wallCell,
+        wallColumn: bakeWallColumnCanvas(
+            ctrl.worldX,
+            ctrl.worldY,
+            ctrl.cellSize,
+            ctrl.storyCount,
+            ctrl.seed,
+            ctrl.profileId,
+            0
+        ),
+        wallFace,
         profileId: ctrl.profileId,
         seed: ctrl.seed,
     };
 }
 
+/**
+ * Bake and draw micro-tile / 5×5 inspect previews.
+ * @param {object} ctrl — lab control values (seed, cellSize, profileId, etc.)
+ * @param {number} [gameTime=0]
+ */
+export function renderTileInspectPreviews(ctrl, gameTime = 0) {
+    const sources = bakeInspectSources(ctrl);
+    const frameIndex = inspectFrameIndexFromTime(ctrl.profileId, gameTime);
+    drawInspectPreviews(sources, ctrl, frameIndex);
+    return sources;
+}
+
+export function isAnimatedInspectSource(sources, pick) {
+    return Array.isArray(sources?.[pick]) && sources[pick].length > 1;
+}
+
 export async function downloadInspectExport(sources, pick) {
     const src = sources?.[pick];
     if (!src) return;
-    
+
     const { profileId, seed } = sources;
 
     if (Array.isArray(src)) {
         const frames = src;
         const width = frames[0].width;
         const height = frames[0].height;
-        
+
         const canvas = document.createElement("canvas");
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext("2d");
         ctx.imageSmoothingEnabled = false;
-        
+
         const stream = canvas.captureStream(30);
         let recorder;
         try {
@@ -250,22 +311,24 @@ export async function downloadInspectExport(sources, pick) {
         } catch (e) {
             recorder = new MediaRecorder(stream, { mimeType: "video/webm" });
         }
-        
+
         const chunks = [];
-        recorder.ondataavailable = e => chunks.push(e.data);
-        const stopped = new Promise(resolve => recorder.onstop = resolve);
-        
+        recorder.ondataavailable = (e) => chunks.push(e.data);
+        const stopped = new Promise((resolve) => {
+            recorder.onstop = resolve;
+        });
+
         recorder.start();
-        
+
         for (let i = 0; i < frames.length; i++) {
             ctx.clearRect(0, 0, width, height);
             ctx.drawImage(frames[i], 0, 0);
-            await new Promise(r => setTimeout(r, 1000 / 30));
+            await new Promise((r) => setTimeout(r, 1000 / 30));
         }
-        
+
         recorder.stop();
         await stopped;
-        
+
         const blob = new Blob(chunks, { type: "video/webm" });
         const link = document.createElement("a");
         link.download = `tile-${pick}-${profileId}-seed${seed}.webm`;

@@ -117,6 +117,42 @@ export function bakeFloorCellCanvas(worldX, worldY, obstacleGrid, seed, profileI
     return canvas;
 }
 
+export function bakeWallCellCanvases(worldX, worldY, storyRow, obstacleGrid, seed, profileId) {
+    const profile = getFloorProceduralProfile(profileId ?? defaultFloorProceduralProfileId);
+    const anim = profile.animation;
+    const cellSize = obstacleGrid.cellSize;
+    const bakeSize = bakePixelsForWorldSpan(cellSize);
+    const zOffset = storyRow * cellSize;
+    const wallOpts = { isWall: true, zOffset };
+
+    if (!anim) {
+        const canvas = new OffscreenCanvas(bakeSize, bakeSize);
+        const ctx = canvas.getContext("2d");
+        ctx.imageSmoothingEnabled = false;
+        paintPixelArea(ctx, bakeSize, bakeSize, worldX, worldY, obstacleGrid, seed, wallOpts, profileId);
+        return [canvas];
+    }
+
+    const frames = [];
+    for (let i = 0; i < anim.frames; i++) {
+        const t = i / (anim.frames - 1);
+        const val = anim.startValue + (anim.endValue - anim.startValue) * t;
+        const tempId = `${profileId}_anim_wallcell_${i}`;
+        const cloned = JSON.parse(JSON.stringify(profile));
+        setDeep(cloned, anim.targetPath, val);
+        registerRuntimeFloorProfile(tempId, cloned);
+
+        const canvas = new OffscreenCanvas(bakeSize, bakeSize);
+        const ctx = canvas.getContext("2d");
+        ctx.imageSmoothingEnabled = false;
+        paintPixelArea(ctx, bakeSize, bakeSize, worldX, worldY, obstacleGrid, seed, wallOpts, tempId);
+
+        frames.push(canvas);
+        unregisterRuntimeFloorProfile(tempId);
+    }
+    return frames;
+}
+
 export function drawWallCell(ctx, destX, destY, storyRow, obstacleGrid, seed, profileId) {
     const cellSize = obstacleGrid.cellSize;
     const bakeSize = bakePixelsForWorldSpan(cellSize);

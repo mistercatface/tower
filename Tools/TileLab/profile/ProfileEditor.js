@@ -8,6 +8,7 @@ import {
     MOTIF_TYPES,
     PALETTE_FIELDS,
     WARP_FIELDS,
+    getAnimatableMotifFields,
 } from "./profileSchema.js";
 
 export const RUNTIME_LAB_PROFILE_ID = "__labA__";
@@ -15,6 +16,74 @@ let editorState = null;
 let selectedMotifId = null;
 let onChangeCallback = null;
 let nextMotifId = 1;
+
+function defaultAnimation() {
+    return {
+        enabled: false,
+        editorMotifIndex: 0,
+        paramPath: "hueShift",
+        startValue: 0,
+        endValue: 360,
+        frames: 30,
+        durationMs: 2000,
+    };
+}
+
+function parseAnimationTargetPath(targetPath) {
+    const match = /^motifs\[(\d+)\]\.(.+)$/.exec(targetPath ?? "");
+    if (!match) {
+        return null;
+    }
+    return { exportIndex: Number(match[1]), paramPath: match[2] };
+}
+
+function editorMotifIndexFromExportIndex(motifs, exportIndex) {
+    let idx = 0;
+    for (let i = 0; i < motifs.length; i++) {
+        if (!motifs[i].enabled) {
+            continue;
+        }
+        if (idx === exportIndex) {
+            return i;
+        }
+        idx++;
+    }
+    return motifs.findIndex((row) => row.enabled);
+}
+
+function motifExportIndex(motifs, editorMotifIndex) {
+    let idx = 0;
+    for (let i = 0; i < motifs.length; i++) {
+        if (!motifs[i].enabled) {
+            continue;
+        }
+        if (i === editorMotifIndex) {
+            return idx;
+        }
+        idx++;
+    }
+    return 0;
+}
+
+function animationFromProfile(profile, motifs) {
+    const anim = profile.animation;
+    if (!anim) {
+        return defaultAnimation();
+    }
+    const parsed = parseAnimationTargetPath(anim.targetPath);
+    const editorMotifIndex = parsed
+        ? editorMotifIndexFromExportIndex(motifs, parsed.exportIndex)
+        : 0;
+    return {
+        enabled: true,
+        editorMotifIndex: Math.max(0, editorMotifIndex),
+        paramPath: parsed?.paramPath ?? "hueShift",
+        startValue: anim.startValue ?? 0,
+        endValue: anim.endValue ?? 360,
+        frames: anim.frames ?? 30,
+        durationMs: anim.durationMs ?? 2000,
+    };
+}
 
 function deepClone(value) {
     return JSON.parse(JSON.stringify(value));
@@ -84,12 +153,17 @@ function motifsFromProfile(profile) {
 function loadEditorFromProfileId(profileId) {
     nextMotifId = 1;
     const profile = deepClone(getFloorProceduralProfile(profileId));
+    const motifs = motifsFromProfile(profile);
     editorState = {
         sourceProfileId: profileId,
         warp: profile.warp ?? defaultWarp(),
         palette: { ...defaultPalette(), ...profile.palette },
-        motifs: motifsFromProfile(profile),
+        motifs,
+        animation: animationFromProfile(profile, motifs),
     };
+    if (editorState.animation.editorMotifIndex >= editorState.motifs.length) {
+        editorState.animation.editorMotifIndex = 0;
+    }
     selectedMotifId = editorState.motifs[0]?.id ?? null;
     notifyChange();
     return editorState;
@@ -119,6 +193,17 @@ export function buildProfileFromEditor(state = editorState) {
         config.blendMode = row.blendMode ?? "add";
         config.opacity = row.opacity ?? 1;
         profile.motifs.push(config);
+    }
+
+    if (state.animation?.enabled) {
+        const exportIdx = motifExportIndex(state.motifs, state.animation.editorMotifIndex);
+        profile.animation = {
+            targetPath: `motifs[${exportIdx}].${state.animation.paramPath}`,
+            startValue: state.animation.startValue,
+            endValue: state.animation.endValue,
+            frames: Math.max(2, Math.round(state.animation.frames)),
+            durationMs: Math.max(100, Math.round(state.animation.durationMs)),
+        };
     }
 
     return profile;
@@ -287,6 +372,133 @@ function renderGlobalParams(container) {
     container.appendChild(h2);
     renderScalarFields(container, paletteRoot, PALETTE_FIELDS);
     editorState.palette = paletteRoot.palette;
+
+    renderAnimationParams(container);
+}
+
+function getSelectedMotifRow() {
+    if (!editorState?.motifs.length) {
+        return null;
+    }
+    const idx = editorState.animation?.editorMotifIndex ?? 0;
+    return editorState.motifs[idx] ?? editorState.motifs[0];
+}
+
+function syncAnimationParamDefaults(row) {
+    if (!row || !editorState?.animation) {
+        return;
+    }
+    const fields = getAnimatableMotifFields(row.config);
+    const field = fields.find((f) => f.path === editorState.animation.paramPath) ?? fields[0];
+    if (!field) {
+        return;
+    }
+    editorState.animation.paramPath = field.path;
+    const current = Number(getByPath(row.config, field.path) ?? field.min ?? 0);
+    if (editorState.animation.startValue === editorState.animation.endValue) {
+        editorState.animation.startValue = current;
+        editorState.animation.endValue = field.max ?? current + 180;
+    }
+}
+
+function renderAnimationParams(container) {
+    if (!editorState) {
+        return;
+    }
+    const h = document.createElement("h3");
+    h.textContent = "Animation";
+    container.appendChild(h);
+
+    const enableWrap = document.createElement("label");
+    enableWrap.className = "check-inline";
+    enableWrap.style.display = "block";
+    enableWrap.style.marginBottom = "8px";
+    const enableInput = document.createElement("input");
+    enableInput.type = "checkbox";
+    enableInput.checked = editorState.animation.enabled === true;
+    enableInput.addEventListener("change", () => {
+        editorState.animation.enabled = enableInput.checked;
+        notifyChange();
+        renderGlobalParams(container);
+    });
+    enableWrap.appendChild(enableInput);
+    enableWrap.append(" Enable tile animation");
+    container.appendChild(enableWrap);
+
+    if (!editorState.animation.enabled) {
+        const hint = document.createElement("p");
+        hint.style.cssText = "margin:0;color:var(--muted);font-size:10px";
+        hint.textContent = "Pick a motif slider to animate, then export as WebM from Tile inspect.";
+        container.appendChild(hint);
+        return;
+    }
+
+    const enabledRows = editorState.motifs
+        .map((row, index) => ({ row, index }))
+        .filter(({ row }) => row.enabled);
+
+    if (enabledRows.length === 0) {
+        const msg = document.createElement("p");
+        msg.textContent = "Enable at least one motif layer to animate.";
+        container.appendChild(msg);
+        return;
+    }
+
+    const motifOptions = enabledRows.map(({ row, index }) => {
+        const label = MOTIF_TYPES[row.config.type]?.label ?? row.config.type;
+        return { value: String(index), label: `${label} (${row.surfaceMask})` };
+    });
+
+    const motifSelect = new SelectControl(
+        "Motif layer",
+        motifOptions,
+        String(editorState.animation.editorMotifIndex),
+        (val) => {
+            editorState.animation.editorMotifIndex = Number(val);
+            syncAnimationParamDefaults(getSelectedMotifRow());
+            notifyChange();
+            renderGlobalParams(container);
+        }
+    );
+    container.appendChild(motifSelect.element);
+
+    const row = getSelectedMotifRow();
+    const animFields = getAnimatableMotifFields(row?.config);
+    if (animFields.length === 0) {
+        const msg = document.createElement("p");
+        msg.textContent = "Selected motif has no numeric sliders.";
+        container.appendChild(msg);
+        return;
+    }
+
+    const paramOptions = animFields.map((field) => ({
+        value: field.path,
+        label: field.label,
+    }));
+    const paramSelect = new SelectControl(
+        "Animated parameter",
+        paramOptions,
+        editorState.animation.paramPath,
+        (val) => {
+            editorState.animation.paramPath = val;
+            syncAnimationParamDefaults(getSelectedMotifRow());
+            notifyChange();
+            renderGlobalParams(container);
+        }
+    );
+    container.appendChild(paramSelect.element);
+
+    const activeField = animFields.find((f) => f.path === editorState.animation.paramPath) ?? animFields[0];
+    editorState.animation.paramPath = activeField.path;
+
+    const animRoot = { animation: editorState.animation };
+    renderScalarFields(container, animRoot, [
+        { path: "animation.startValue", label: "Start", min: activeField.min, max: activeField.max, step: activeField.step },
+        { path: "animation.endValue", label: "End", min: activeField.min, max: activeField.max, step: activeField.step },
+        { path: "animation.frames", label: "Frames", min: 2, max: 120, step: 1 },
+        { path: "animation.durationMs", label: "Duration (ms)", min: 200, max: 20000, step: 100 },
+    ]);
+    editorState.animation = animRoot.animation;
 }
 
 export function initProfileEditor({ onChange }) {
