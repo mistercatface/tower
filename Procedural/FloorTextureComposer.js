@@ -1,7 +1,8 @@
 import { blendMotifRgb } from "./util/blend.js";
 import { ensureNoiseInitialized } from "./Noise/Perlin2D.js";
-import { writeDomainWarp } from "./Fields/DomainWarp.js";
+import { warpPoint, writeDomainWarp } from "./Fields/DomainWarp.js";
 import { getMotif } from "./MotifRegistry.js";
+import { readTranslateConfig, TRANSLATE_COORDINATE_MODES } from "./Motifs/translate.js";
 
 class LRUCache {
     constructor(maxSize = 200) {
@@ -87,6 +88,43 @@ function motifMatchesSurface(config, surface) {
     return true;
 }
 
+function createTranslateContext() {
+    return { x: 0, y: 0, mode: TRANSLATE_COORDINATE_MODES.evalAndWarped, active: false };
+}
+
+function pushTranslateLayer(context, config) {
+    const layer = readTranslateConfig(config);
+    context.x += layer.x;
+    context.y += layer.y;
+    context.mode = layer.mode;
+    context.active = true;
+}
+
+function applyTranslateToSample(scratch, samples, pixelIndex, translateContext, warp) {
+    if (!translateContext.active) {
+        scratch.evalX = samples.evalX[pixelIndex];
+        scratch.evalY = samples.evalY[pixelIndex];
+        scratch.lookupX = samples.lookupX[pixelIndex];
+        scratch.lookupY = samples.lookupY[pixelIndex];
+        return;
+    }
+
+    const tx = translateContext.x;
+    const ty = translateContext.y;
+    scratch.evalX = samples.evalX[pixelIndex] - tx;
+    scratch.evalY = samples.evalY[pixelIndex] - ty;
+
+    if (translateContext.mode === TRANSLATE_COORDINATE_MODES.evalOnly) {
+        scratch.lookupX = samples.lookupX[pixelIndex] - tx;
+        scratch.lookupY = samples.lookupY[pixelIndex] - ty;
+        return;
+    }
+
+    const warped = warpPoint(scratch.evalX, scratch.evalY, warp);
+    scratch.lookupX = warped.x;
+    scratch.lookupY = warped.y;
+}
+
 export function composeFloorImage(samples, profile, seed, requestKey) {
     ensureNoiseInitialized(seed);
     const numPixels = samples.width * samples.height;
@@ -113,6 +151,7 @@ export function composeFloorImage(samples, profile, seed, requestKey) {
     }
 
     const motifs = resolveMotifStack(profile);
+    const translateContext = createTranslateContext();
 
     for (let m = 0; m < motifs.length; m++) {
         const motifConfig = motifs[m];
@@ -121,6 +160,15 @@ export function composeFloorImage(samples, profile, seed, requestKey) {
         const cached = layerCache.get(currentHash);
         if (cached) {
             rgbBuffer.set(cached);
+            if (motifConfig.type === "translate") {
+                pushTranslateLayer(translateContext, motifConfig);
+            }
+            continue;
+        }
+
+        if (motifConfig.type === "translate") {
+            pushTranslateLayer(translateContext, motifConfig);
+            layerCache.set(currentHash, new Float32Array(rgbBuffer));
             continue;
         }
 
@@ -129,10 +177,7 @@ export function composeFloorImage(samples, profile, seed, requestKey) {
         const opacity = motifConfig.opacity ?? 1;
 
         for (let i = 0; i < numPixels; i++) {
-            sampleScratch.evalX = samples.evalX[i];
-            sampleScratch.evalY = samples.evalY[i];
-            sampleScratch.lookupX = samples.lookupX[i];
-            sampleScratch.lookupY = samples.lookupY[i];
+            applyTranslateToSample(sampleScratch, samples, i, translateContext, warp);
             sampleScratch.wallU = samples.wallU[i];
             sampleScratch.wallV = samples.wallV[i];
             sampleScratch.blocked = samples.blocked ? samples.blocked[i] : 0;

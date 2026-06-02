@@ -164,12 +164,18 @@ const organicPulse = {
     motifs: [
         { type: "baseMetal", structure: { frequency: 0.004, octaves: 2, rgbDelta: [1, 3, 2] }, grain: { frequency: 0.3, octaves: 1, amplitude: 1.0 } },
         {
+            type: "translate",
+            x: 0,
+            y: 0,
+            coordinateMode: "evalAndWarped",
+            followPlayer: true,
+        },
+        {
             type: "concentricRings",
             coordinateSpace: "warped",
             frequency: 0.03,
             ringWidth: 0.06,
             peak: 14,
-            offset: [0, 0],
             tint: [0.1, 4.0, 2.5],
             blendMode: "add",
             opacity: 0.75
@@ -197,8 +203,8 @@ const organicPulse = {
         frames: 30,
         durationMs: 2000,
         tracks: [
-            { targetPath: "motifs[1].frequency", startValue: 0.015, endValue: 0.065 },
-            { targetPath: "motifs[3].hueShift", startValue: -60, endValue: 60 }
+            { targetPath: "motifs[2].frequency", startValue: 0.015, endValue: 0.065 },
+            { targetPath: "motifs[4].hueShift", startValue: -60, endValue: 60 }
         ]
     }
 };
@@ -210,7 +216,7 @@ export const floorProceduralProfiles = {
     organicPulse
 };
 
-export const START_STATION_ID = "cyberGrid";
+export const START_STATION_ID = "organicPulse";
 
 export const defaultFloorProceduralProfileId = START_STATION_ID;
 

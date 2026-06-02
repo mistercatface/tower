@@ -22,8 +22,10 @@ import { filterHSVMotif } from "./Motifs/Filters/filterHSV.js";
 import { filterLevelsMotif } from "./Motifs/Filters/filterLevels.js";
 import { filterPosterizeMotif } from "./Motifs/Filters/filterPosterize.js";
 import { filterRGBAdjustMotif } from "./Motifs/Filters/filterRGBAdjust.js";
+import { translateMotif } from "./Motifs/translate.js";
 
 const MOTIF_BY_TYPE = {
+    translate: translateMotif,
     baseMetal: baseMetalMotif,
     ridgeLines: ridgeLinesMotif,
     stainBlotch: stainBlotchMotif,

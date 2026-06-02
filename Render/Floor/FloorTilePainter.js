@@ -152,7 +152,23 @@ function buildBakeContextFromPayload(payload) {
     if (payload.paramOverrides?.length) {
         bindings.push(createParamOverrideBinding(payload.paramOverrides));
     }
-    if (payload.player && payload.playerAnchorPath) {
+    if (payload.tetherOrigin && payload.playerAnchorBinding?.kind === "xy") {
+        bindings.push(
+            createParamOverrideBinding([
+                { path: payload.playerAnchorBinding.pathX, value: payload.tetherOrigin.x },
+                { path: payload.playerAnchorBinding.pathY, value: payload.tetherOrigin.y },
+            ]),
+        );
+    } else if (payload.tetherOrigin && payload.playerAnchorBinding?.kind === "point") {
+        bindings.push(
+            createParamOverrideBinding([
+                {
+                    path: payload.playerAnchorBinding.path,
+                    value: [payload.tetherOrigin.x, payload.tetherOrigin.y],
+                },
+            ]),
+        );
+    } else if (payload.player && payload.playerAnchorPath) {
         bindings.push(createWorldPointBinding(payload.playerAnchorPath, (bakeCtx) => bakeCtx.player));
     }
     if (bindings.length) {

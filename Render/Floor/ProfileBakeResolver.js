@@ -174,15 +174,39 @@ export function createWorldPointBinding(targetPath, getPoint) {
     };
 }
 
-/** Collect default bindings for a bake (timeline + any extras on the context). */
+/**
+ * Bind separate x/y params (e.g. translate motif) from a world-space point.
+ * @param {string} pathX
+ * @param {string} pathY
+ * @param {(ctx: BakeContext) => { x: number, y: number } | null | undefined} getPoint
+ * @returns {Binding}
+ */
+export function createWorldPointBindingXY(pathX, pathY, getPoint) {
+    const refX = compileParamRef(pathX);
+    const refY = compileParamRef(pathY);
+    return {
+        id: `worldPoint:${pathX},${pathY}`,
+        refs: [refX, refY],
+        apply(scratch, ctx) {
+            const point = getPoint(ctx);
+            if (point == null) {
+                return;
+            }
+            refX.set(scratch, point.x);
+            refY.set(scratch, point.y);
+        },
+    };
+}
+
+/** Collect default bindings for a bake (runtime sources first, timeline last so tracks win). */
 export function buildBakeBindings(baseProfile, ctx) {
     const bindings = [];
+    if (ctx.bindings?.length) {
+        bindings.push(...ctx.bindings);
+    }
     const timeline = createTimelineBinding(baseProfile);
     if (timeline) {
         bindings.push(timeline);
-    }
-    if (ctx.bindings?.length) {
-        bindings.push(...ctx.bindings);
     }
     return bindings;
 }

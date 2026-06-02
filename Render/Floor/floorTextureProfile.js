@@ -3,7 +3,9 @@ import { defaultFloorProceduralProfileId, getFloorProceduralProfile } from "../.
 import { getPixelsPerWorldUnit } from "./floorTextureResolution.js";
 
 /** Bump when profile motif stacks change so chunk caches rebake. */
-const FLOOR_TEXTURE_CACHE_REVISION = 14;
+const FLOOR_TEXTURE_CACHE_REVISION = 18;
+
+/** @typedef {{ kind: "xy", pathX: string, pathY: string } | { kind: "point", path: string }} PlayerAnchorBinding */
 
 export function getFloorTextureProfileId(state) {
     if (state.floorTextureProfileOverride) {
@@ -26,13 +28,13 @@ export function syncFloorTextureProfile(state) {
     state.floorTiles.clear();
 }
 
-/** Motif param path that receives player world position (e.g. concentricRings offset). */
-export function getPlayerAnchorPath(profile) {
+/** Resolve player-follow binding for runtime bakes (translate preferred over legacy ring offset). */
+export function getPlayerAnchorBinding(profile) {
     if (!profile) {
         return null;
     }
     if (typeof profile.playerAnchorPath === "string") {
-        return profile.playerAnchorPath;
+        return { kind: "point", path: profile.playerAnchorPath };
     }
     const motifs = profile.motifs;
     if (!Array.isArray(motifs)) {
@@ -40,11 +42,45 @@ export function getPlayerAnchorPath(profile) {
     }
     for (let i = 0; i < motifs.length; i++) {
         const motif = motifs[i];
-        if (motif?.type === "concentricRings" && motif.followPlayer !== false) {
-            return `motifs[${i}].offset`;
+        if (motif?.type === "translate" && motif.followPlayer === true) {
+            return { kind: "xy", pathX: `motifs[${i}].x`, pathY: `motifs[${i}].y` };
+        }
+    }
+    for (let i = 0; i < motifs.length; i++) {
+        const motif = motifs[i];
+        if (motif?.type === "concentricRings" && motif.followPlayer === true) {
+            return { kind: "point", path: `motifs[${i}].offset` };
         }
     }
     return null;
+}
+
+/** True when timeline tracks animate a translate layer's X or Y (player follow should not fight it). */
+export function profileHasTranslateTimeline(profile) {
+    const motifs = profile?.motifs;
+    const tracks = profile?.animation?.tracks;
+    if (!Array.isArray(motifs) || !Array.isArray(tracks)) {
+        return false;
+    }
+    for (let i = 0; i < motifs.length; i++) {
+        if (motifs[i]?.type !== "translate") {
+            continue;
+        }
+        const pathX = `motifs[${i}].x`;
+        const pathY = `motifs[${i}].y`;
+        for (const track of tracks) {
+            if (track.targetPath === pathX || track.targetPath === pathY) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+/** @deprecated Use getPlayerAnchorBinding */
+export function getPlayerAnchorPath(profile) {
+    const binding = getPlayerAnchorBinding(profile);
+    return binding?.kind === "point" ? binding.path : null;
 }
 
 export function quantizePlayerForBake(player, stepPx = gridSettings.cellSize) {
@@ -54,19 +90,19 @@ export function quantizePlayerForBake(player, stepPx = gridSettings.cellSize) {
     };
 }
 
-export function floorChunkCacheKey(chunkCol, chunkRow, profileId, playerQuant = null) {
+export function floorChunkCacheKey(chunkCol, chunkRow, profileId, tetherOrigin = null) {
     let key = `${FLOOR_TEXTURE_CACHE_REVISION}:${getPixelsPerWorldUnit()}:${profileId}:${chunkCol},${chunkRow}`;
-    if (playerQuant) {
-        key += `:p${playerQuant.x},${playerQuant.y}`;
+    if (tetherOrigin) {
+        key += `:t${tetherOrigin.x},${tetherOrigin.y}`;
     }
     return key;
 }
 
 /** Worker-serializable chunk bake payload from live game state. */
-export function buildFloorChunkBakePayload(state, chunkCol, chunkRow) {
+export function buildFloorChunkBakePayload(state, chunkCol, chunkRow, tetherOrigin = null) {
     const profileId = getFloorTextureProfileId(state);
     const profile = getFloorProceduralProfile(profileId);
-    const playerAnchorPath = getPlayerAnchorPath(profile);
+    const playerAnchorBinding = getPlayerAnchorBinding(profile);
 
     const payload = {
         chunkCol,
@@ -81,9 +117,9 @@ export function buildFloorChunkBakePayload(state, chunkCol, chunkRow) {
         payload.gameTime = state.gameTime ?? 0;
     }
 
-    if (playerAnchorPath && state.player) {
-        payload.playerAnchorPath = playerAnchorPath;
-        payload.player = quantizePlayerForBake(state.player);
+    if (playerAnchorBinding && tetherOrigin && !profileHasTranslateTimeline(profile)) {
+        payload.playerAnchorBinding = playerAnchorBinding;
+        payload.tetherOrigin = tetherOrigin;
     }
 
     return payload;

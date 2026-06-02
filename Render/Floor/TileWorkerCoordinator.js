@@ -15,8 +15,8 @@ function whenWorkersReady(run) {
 
 function chunkDedupeKey(payload) {
     let key = `chunk:${payload.profileId}:${payload.chunkCol},${payload.chunkRow}:${payload.seed ?? 0}`;
-    if (payload.player && payload.playerAnchorPath) {
-        key += `:p${payload.player.x},${payload.player.y}`;
+    if (payload.tetherOrigin) {
+        key += `:t${payload.tetherOrigin.x},${payload.tetherOrigin.y}`;
     }
     return key;
 }
@@ -135,7 +135,7 @@ export const TileWorkerCoordinator = {
 
         const profile = getFloorProceduralProfile(payload.profileId);
         const hasAnimation = Boolean(profile.animation);
-        const hasPlayerAnchor = Boolean(payload.player && payload.playerAnchorPath);
+        const hasPlayerAnchor = Boolean(payload.player && (payload.playerAnchorBinding || payload.playerAnchorPath));
 
         const promise = hasAnimation
             ? requestAnimatedChunkFrames(payload, priority)

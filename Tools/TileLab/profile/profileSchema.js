@@ -13,7 +13,34 @@ export const BLEND_OPTIONS = [
     "hard-light", "soft-light", "color-dodge", "color-burn", "difference"
 ];
 
+/** Context motifs shift coordinates for layers below; they are not painted or blended. */
+export function isContextMotif(type) {
+    return type === "translate";
+}
+
 export const MOTIF_TYPES = {
+    translate: {
+        label: "Translate",
+        defaults: {
+            type: "translate",
+            x: 0,
+            y: 0,
+            coordinateMode: "evalAndWarped",
+            followPlayer: false,
+        },
+        fields: [
+            { path: "x", label: "X", min: -2000, max: 2000, step: 5 },
+            { path: "y", label: "Y", min: -2000, max: 2000, step: 5 },
+            {
+                path: "coordinateMode",
+                label: "Coordinate space",
+                options: [
+                    { value: "evalAndWarped", label: "Eval + warped" },
+                    { value: "evalOnly", label: "Eval only" },
+                ],
+            },
+        ],
+    },
     baseMetal: {
         label: "Base metal",
         defaults: {

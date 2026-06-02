@@ -13,6 +13,9 @@ export function shouldSmoothTextureDownsample() {
 }
 
 export function drawBakedTexture(ctx, canvas, destX, destY, destWorldW, destWorldH) {
+    if (!canvas || canvas.isPlaceholder) {
+        return;
+    }
     const prevSmoothing = ctx.imageSmoothingEnabled;
     ctx.imageSmoothingEnabled = shouldSmoothTextureDownsample();
     ctx.drawImage(canvas, destX, destY, destWorldW, destWorldH);

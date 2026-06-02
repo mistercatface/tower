@@ -8,6 +8,7 @@ import {
     PALETTE_FIELDS,
     WARP_FIELDS,
     getAnimatableMotifFields,
+    isContextMotif,
 } from "./profileSchema.js";
 
 export const RUNTIME_LAB_PROFILE_ID = "__labA__";
@@ -231,9 +232,11 @@ export function buildProfileFromEditor(state = editorState) {
         }
         const config = deepClone(row.config);
         delete config.enabled;
-        config.surfaceMask = row.surfaceMask;
-        config.blendMode = row.blendMode ?? "add";
-        config.opacity = row.opacity ?? 1;
+        if (!isContextMotif(config.type)) {
+            config.surfaceMask = row.surfaceMask;
+            config.blendMode = row.blendMode ?? "add";
+            config.opacity = row.opacity ?? 1;
+        }
         profile.motifs.push(config);
     }
 
@@ -364,27 +367,30 @@ function renderMotifList(container) {
         item.dataset.id = row.id;
 
         const label = MOTIF_TYPES[row.config.type]?.label ?? row.config.type;
+        const isContext = isContextMotif(row.config.type);
 
         // Build blend mode select inline in row
         const blendSel = document.createElement("select");
         blendSel.className = "motif-row-blend";
-        for (const mode of BLEND_OPTIONS) {
-            const o = document.createElement("option");
-            o.value = mode;
-            o.textContent = mode;
-            if (mode === (row.blendMode ?? "add")) o.selected = true;
-            blendSel.appendChild(o);
+        if (!isContext) {
+            for (const mode of BLEND_OPTIONS) {
+                const o = document.createElement("option");
+                o.value = mode;
+                o.textContent = mode;
+                if (mode === (row.blendMode ?? "add")) o.selected = true;
+                blendSel.appendChild(o);
+            }
+            blendSel.addEventListener("change", (e) => {
+                row.blendMode = e.target.value;
+                notifyChange();
+            });
+            blendSel.addEventListener("click", (e) => e.stopPropagation());
         }
-        blendSel.addEventListener("change", (e) => {
-            row.blendMode = e.target.value;
-            notifyChange();
-        });
-        blendSel.addEventListener("click", (e) => e.stopPropagation());
 
         item.innerHTML = `
             <label class="motif-enable"><input type="checkbox" data-action="toggle" ${row.enabled ? "checked" : ""}></label>
             <span class="motif-label">${label}</span>
-            <span class="motif-layer">${row.surfaceMask}</span>
+            <span class="motif-layer">${isContext ? "moves below" : row.surfaceMask}</span>
             <span class="motif-blend-slot"></span>
             <span class="motif-actions">
                 <button type="button" data-action="up" title="Move up">↑</button>
@@ -392,7 +398,9 @@ function renderMotifList(container) {
                 <button type="button" data-action="remove" title="Remove">✕</button>
             </span>
         `;
-        item.querySelector(".motif-blend-slot").appendChild(blendSel);
+        if (!isContext) {
+            item.querySelector(".motif-blend-slot").appendChild(blendSel);
+        }
 
         item.addEventListener("click", (e) => {
             if (e.target.closest("button") || e.target.closest("input") || e.target.closest("select")) {
@@ -511,27 +519,34 @@ function renderMotifParams(container) {
         return;
     }
 
-    const layerSelect = new SelectControl("Surface Mask", LAYER_OPTIONS, row.surfaceMask, (val) => {
-        row.surfaceMask = val;
-        notifyChange();
-        refreshEditorPanels({ motifParams: false, animation: true, global: false });
-    });
-    container.appendChild(layerSelect.element);
+    if (isContextMotif(row.config.type)) {
+        const hint = document.createElement("p");
+        hint.className = "editor-hint";
+        hint.textContent = "Moves every layer below. Set X/Y here, animate X/Y in the Animation panel, or enable Follow player.";
+        container.appendChild(hint);
+    } else {
+        const layerSelect = new SelectControl("Surface Mask", LAYER_OPTIONS, row.surfaceMask, (val) => {
+            row.surfaceMask = val;
+            notifyChange();
+            refreshEditorPanels({ motifParams: false, animation: true, global: false });
+        });
+        container.appendChild(layerSelect.element);
+    }
 
-    if (row.config.type === "concentricRings") {
+    if (row.config.type === "translate") {
         const followWrap = document.createElement("label");
         followWrap.className = "check-inline";
         followWrap.style.display = "block";
         followWrap.style.marginBottom = "8px";
         const followInput = document.createElement("input");
         followInput.type = "checkbox";
-        followInput.checked = row.config.followPlayer !== false;
+        followInput.checked = row.config.followPlayer === true;
         followInput.addEventListener("change", () => {
             row.config.followPlayer = followInput.checked;
             notifyChange();
         });
         followWrap.appendChild(followInput);
-        followWrap.append(" Follow player");
+        followWrap.append(" Follow player (rings slide toward you — see tetherMaxUnitsPerSecond in Config)");
         container.appendChild(followWrap);
     }
 
@@ -603,7 +618,7 @@ function renderAnimationParams(container) {
     if (!editorState.animation.enabled) {
         const hint = document.createElement("p");
         hint.className = "editor-hint";
-        hint.textContent = "Select a motif layer, pick a parameter below, then export as WebM from Tile inspect.";
+        hint.textContent = "Enable animation, select a Translate layer, add tracks for X and/or Y, then press Play on the map preview.";
         container.appendChild(hint);
         return;
     }
@@ -671,16 +686,17 @@ function renderAnimationParams(container) {
     addTrackBtn.style.marginBottom = "10px";
     addTrackBtn.textContent = "+ Add Animation Track";
     addTrackBtn.addEventListener("click", () => {
-        const defaultMotifIndex = 0;
+        const selectedIndex = getSelectedMotifIndex();
+        const defaultMotifIndex = selectedIndex >= 0 ? selectedIndex : 0;
         const motif = editorState.motifs[defaultMotifIndex];
         const fields = getAnimatableMotifFields(motif?.config) ?? [];
         const paramPath = fields[0]?.path ?? "hueShift";
-        
+
         editorState.animation.tracks.push({
             editorMotifIndex: defaultMotifIndex,
             paramPath: paramPath,
             startValue: 0,
-            endValue: 360
+            endValue: fields[0]?.max ?? 360,
         });
         editorState.animation.selectedTrackIndex = editorState.animation.tracks.length - 1;
         syncAnimationParamRange(editorState.animation.selectedTrackIndex);
