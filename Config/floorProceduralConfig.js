@@ -2,12 +2,20 @@ import cyberGrid from "./TileLabStorage/cyberGrid.js";
 import toxicSludge from "./TileLabStorage/toxicSludge.js";
 import neonWireframe from "./TileLabStorage/neonWireframe.js";
 import shatteredDimension from "./TileLabStorage/shatteredDimension.js";
+import pulseRings from "./TileLabStorage/pulseRings.js";
+import emberLattice from "./TileLabStorage/emberLattice.js";
+import synthWeave from "./TileLabStorage/synthWeave.js";
+import auroraBurst from "./TileLabStorage/auroraBurst.js";
 
 export const floorProceduralProfiles = {
     cyberGrid,
     toxicSludge,
     neonWireframe,
     shatteredDimension,
+    pulseRings,
+    emberLattice,
+    synthWeave,
+    auroraBurst,
 };
 
 export const START_STATION_ID = "cyberGrid";
