@@ -1,7 +1,6 @@
-import { gridSettings, floorTileSettings, playerBaseStats } from "../../Config/Config.js";
+import { playerBaseStats } from "../../Config/Config.js";
 import { defaultFloorProceduralProfileId } from "../../Config/floorProceduralConfig.js";
 import { getDefaultCombatZoom } from "../../Render/Viewport.js";
-import { getGameLabDefaults } from "./LabSettings.js";
 import { getLabWorld } from "./LabWorldSession.js";
 
 function getStageSize() {
@@ -17,12 +16,6 @@ export function readControls() {
     const world = getLabWorld();
     return {
         seed: Number(document.getElementById("seedInput").value) || 0,
-        worldX: Number(document.getElementById("worldXInput").value) || 0,
-        worldY: Number(document.getElementById("worldYInput").value) || 0,
-        cellSize: gridSettings.cellSize,
-        zoom: Number(document.getElementById("zoomInput").value) || 6,
-        storyRow: Number(document.getElementById("storyRowInput").value) || 0,
-        storyCount: floorTileSettings.wallTextureStories,
         gameZoom: Number(document.getElementById("gameZoomInput").value) || 1,
         weaponRange: world?.player?.weapon?.range ?? playerBaseStats.range,
         showRangeRing: document.getElementById("showRangeRingInput").checked,
@@ -41,28 +34,10 @@ export function syncCombatZoomToStage(world) {
 }
 
 export function applyGameDefaultsToForm(world) {
-    const { viewW, viewH } = getStageSize();
-    const defaults = getGameLabDefaults(viewW, viewH, world);
-
-    const cellEl = document.getElementById("cellSizeInput");
-    if (cellEl) {
-        cellEl.value = String(defaults.cellSize);
-    }
-    const storiesEl = document.getElementById("storyCountInput");
-    if (storiesEl) {
-        storiesEl.value = String(defaults.storyCount);
-    }
-    const worldXEl = document.getElementById("worldXInput");
-    const worldYEl = document.getElementById("worldYInput");
-    if (worldXEl) {
-        worldXEl.step = String(defaults.cellSize);
-    }
-    if (worldYEl) {
-        worldYEl.step = String(defaults.cellSize);
-    }
     const rangeMeta = document.getElementById("rangeMeta");
     if (rangeMeta) {
-        rangeMeta.textContent = `range ${defaults.weaponRange}`;
+        const weaponRange = world?.player?.weapon?.range ?? playerBaseStats.range;
+        rangeMeta.textContent = `range ${weaponRange}`;
     }
 }
 
@@ -79,8 +54,6 @@ export function initPresetSelect(profileIds) {
 
 export function initToolbarDefaults() {
     document.getElementById("mapSeedInput").value = "42";
-    document.getElementById("cellSizeInput").value = String(gridSettings.cellSize);
-    document.getElementById("storyCountInput").value = String(floorTileSettings.wallTextureStories ?? 8);
     document.getElementById("seedInput").value = "42";
     const gameZoomEl = document.getElementById("gameZoomInput");
     if (gameZoomEl) {
@@ -97,10 +70,6 @@ export function bindToolbarControls(handlers) {
     const { onRender, onStageResize } = handlers;
     const ids = [
         "seedInput",
-        "worldXInput",
-        "worldYInput",
-        "zoomInput",
-        "storyRowInput",
         "gameZoomInput",
         "mapSeedInput",
         "mapNodeSelect",
@@ -114,11 +83,6 @@ export function bindToolbarControls(handlers) {
     document.getElementById("gameZoomValue").textContent = document.getElementById("gameZoomInput").value;
     document.getElementById("gameZoomInput").addEventListener("input", (e) => {
         document.getElementById("gameZoomValue").textContent = e.target.value;
-        onRender();
-    });
-    document.getElementById("zoomValue").textContent = document.getElementById("zoomInput").value;
-    document.getElementById("zoomInput").addEventListener("input", (e) => {
-        document.getElementById("zoomValue").textContent = e.target.value;
         onRender();
     });
     document.getElementById("regenerateBtn").addEventListener("click", onRender);
