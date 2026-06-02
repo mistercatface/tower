@@ -3,7 +3,7 @@ import { isWorldScene } from "../../GameState/GamePhase.js";
 import { chunkKey, chunkToWorldOrigin, getChunkSizePx, gridBoundsToChunkRange, worldBoundsToChunkRange } from "../../Spatial/Grid/ChunkGrid.js";
 import { snapWorldToCellOrigin } from "../../Spatial/Geometry/GridCoords.js";
 import { FloorChunkCache } from "./FloorChunkCache.js";
-import { bakeFloorChunkCanvas, bakeFloorCellCanvas, bakeFloorTileTextureCanvas, bakeWallCellCanvas } from "./FloorTilePainter.js";
+import { bakeFloorChunkCanvas, bakeFloorCellCanvas, bakeFloorTileTextureCanvas, drawWallCell } from "./FloorTilePainter.js";
 
 export class FloorTileSystem {
     constructor() {
@@ -28,13 +28,9 @@ export class FloorTileSystem {
                 this.cache.delete(chunkKey(chunkCol, chunkRow));
             }
         }
-        const wallStories = floorTileSettings.wallTextureStories ?? 16;
         for (let row = bounds.startRow; row <= bounds.endRow; row++) {
             for (let col = bounds.startCol; col <= bounds.endCol; col++) {
                 this.cellCache.delete(`c:v2:${col},${row}`);
-                for (let s = 0; s < wallStories; s++) {
-                    this.cellCache.delete(`c:wall:v1:${col},${row}:${s}`);
-                }
             }
         }
     }
@@ -61,17 +57,10 @@ export class FloorTileSystem {
         return canvas;
     }
 
-    /** Stable cache key from world grid + story row (not camera-projected coords). */
-    getWallCellCanvas(worldX, worldY, storyRow, state) {
+    drawWallCell(ctx, worldX, worldY, storyRow, state) {
         const obstacleGrid = state.obstacleGrid;
-        const { col, row, x, y } = snapWorldToCellOrigin(worldX, worldY, obstacleGrid.minX, obstacleGrid.minY, obstacleGrid.cellSize);
-        const key = `c:wall:v1:${col},${row}:${storyRow}`;
-        let canvas = this.cellCache.get(key);
-        if (canvas) return canvas;
-
-        canvas = bakeWallCellCanvas(x, y, storyRow, obstacleGrid, state.floorTileSeed ?? 0);
-        this.cellCache.set(key, canvas);
-        return canvas;
+        const { x, y } = snapWorldToCellOrigin(worldX, worldY, obstacleGrid.minX, obstacleGrid.minY, obstacleGrid.cellSize);
+        drawWallCell(ctx, x, y, storyRow, obstacleGrid, state.floorTileSeed ?? 0);
     }
 
     getChunkCanvas(chunkCol, chunkRow, state) {

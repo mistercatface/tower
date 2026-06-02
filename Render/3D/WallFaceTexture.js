@@ -27,6 +27,9 @@ class LRUCache {
 
 const flatWallCache = new LRUCache(500);
 
+let sharedCellCanvas = null;
+let sharedCellCtx = null;
+
 export function getWallVisualHeight() {
     const configured = floorTileSettings.wallVisualHeight;
     if (configured != null) return configured;
@@ -142,10 +145,9 @@ function getFlatWallCanvas(p1, p2, columns, storyCount, floorTiles, state, tileW
     const edgeLen = Math.hypot(p2.x - p1.x, p2.y - p1.y);
     if (edgeLen < 0.001 || columns.length === 0) return null;
 
-    const sampleCanvas = floorTiles.getWallCellCanvas(columns[0].worldX, columns[0].worldY, 0, state);
-    const cellSize = sampleCanvas.width;
+    const cellSize = state.obstacleGrid?.cellSize ?? 32;
     const pixelsPerUnit = cellSize / tileWorldSize;
-
+    
     const canvasWidth = Math.max(1, Math.ceil(edgeLen * pixelsPerUnit));
     const canvasHeight = Math.max(1, storyCount * cellSize);
 
@@ -153,16 +155,25 @@ function getFlatWallCanvas(p1, p2, columns, storyCount, floorTiles, state, tileW
     const ctx = canvas.getContext("2d");
     ctx.imageSmoothingEnabled = false;
 
+    if (!sharedCellCanvas || sharedCellCanvas.width !== cellSize) {
+        sharedCellCanvas = new OffscreenCanvas(cellSize, cellSize);
+        sharedCellCtx = sharedCellCanvas.getContext("2d");
+        sharedCellCtx.imageSmoothingEnabled = false;
+    }
+
     for (let row = 0; row < storyCount; row++) {
         const dy = row * cellSize;
         for (const col of columns) {
-            const cellCanvas = floorTiles.getWallCellCanvas(col.worldX, col.worldY, row, state);
             const dx = col.u0 * canvasWidth;
             const dw = (col.u1 - col.u0) * canvasWidth;
             if (dw > 0) {
                 const drawX = Math.floor(dx);
                 const drawW = Math.ceil(dx + dw) - drawX;
-                ctx.drawImage(cellCanvas, 0, 0, cellCanvas.width, cellCanvas.height, drawX, dy, drawW, cellSize);
+                
+                sharedCellCtx.clearRect(0, 0, cellSize, cellSize);
+                floorTiles.drawWallCell(sharedCellCtx, col.worldX, col.worldY, row, state);
+
+                ctx.drawImage(sharedCellCanvas, 0, 0, cellSize, cellSize, drawX, dy, drawW, cellSize);
             }
         }
     }
