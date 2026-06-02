@@ -47,11 +47,15 @@ const ancientRuins = {
         { type: "filterLevels", blackPoint: 49, whitePoint: 255, gamma: 0.8, surfaceMask: "all", blendMode: "replace", opacity: 1 },
     ],
     animation: {
-        frames: 100,
-        durationMs: 15800,
-        tracks: [
-            { targetPath: "motifs[3].hueShift", startValue: -180, endValue: 180 },
-            { targetPath: "motifs[2].gridSize", startValue: 8, endValue: 80 },
+        stages: [
+            {
+                frames: 100,
+                durationMs: 15800,
+                tracks: [
+                    { targetPath: "motifs[3].hueShift", startValue: -180, endValue: 180 },
+                    { targetPath: "motifs[2].gridSize", startValue: 8, endValue: 80 },
+                ],
+            },
         ],
     },
 };
@@ -97,12 +101,16 @@ const cyberGrid = {
         }
     ],
     animation: {
-        frames: 35,
-        durationMs: 2500,
-        tracks: [
-            { targetPath: "motifs[2].gridSize", startValue: 12, endValue: 48 },
-            { targetPath: "motifs[3].hueShift", startValue: 0, endValue: 360 }
-        ]
+        stages: [
+            {
+                frames: 35,
+                durationMs: 2500,
+                tracks: [
+                    { targetPath: "motifs[2].gridSize", startValue: 12, endValue: 48 },
+                    { targetPath: "motifs[3].hueShift", startValue: 0, endValue: 360 },
+                ],
+            },
+        ],
     }
 };
 
@@ -141,12 +149,16 @@ const magmaFlow = {
         }
     ],
     animation: {
-        frames: 40,
-        durationMs: 3000,
-        tracks: [
-            { targetPath: "motifs[1].radius", startValue: 8, endValue: 32 },
-            { targetPath: "motifs[3].bands", startValue: 4, endValue: 16 }
-        ]
+        stages: [
+            {
+                frames: 40,
+                durationMs: 3000,
+                tracks: [
+                    { targetPath: "motifs[1].radius", startValue: 8, endValue: 32 },
+                    { targetPath: "motifs[3].bands", startValue: 4, endValue: 16 },
+                ],
+            },
+        ],
     }
 };
 
@@ -185,11 +197,15 @@ const organicPulse = {
         }
     ],
     animation: {
-        frames: 30,
-        durationMs: 2000,
-        tracks: [
-            { targetPath: "motifs[1].frequency", startValue: 0.015, endValue: 0.065 },
-            { targetPath: "motifs[3].hueShift", startValue: -60, endValue: 60 }
+        stages: [
+            {
+                frames: 30,
+                durationMs: 2000,
+                tracks: [
+                    { targetPath: "motifs[1].frequency", startValue: 0.015, endValue: 0.065 },
+                    { targetPath: "motifs[3].hueShift", startValue: -60, endValue: 60 }
+                ]
+            }
         ]
     }
 };
@@ -203,12 +219,16 @@ const toxicSludge = {
         { type: "filterHSV", hueShift: 0, saturation: 1.5, value: 0.9, blendMode: "replace", opacity: 1 }
     ],
     animation: {
-        frames: 60,
-        durationMs: 4000,
-        tracks: [
-            { targetPath: "motifs[1].density", startValue: 0.06, endValue: 0.1 },
-            { targetPath: "motifs[2].hueShift", startValue: -20, endValue: 20 }
-        ]
+        stages: [
+            {
+                frames: 60,
+                durationMs: 4000,
+                tracks: [
+                    { targetPath: "motifs[1].density", startValue: 0.06, endValue: 0.1 },
+                    { targetPath: "motifs[2].hueShift", startValue: -20, endValue: 20 },
+                ],
+            },
+        ],
     }
 };
 
@@ -250,12 +270,16 @@ const abyssalDepths = {
         { type: "starburst", coordinateSpace: "warped", gridSize: 48, density: 0.2, radius: 15, spikes: 4, peak: 8, tint: [2, 8, 20], blendMode: "add", opacity: 0.7 }
     ],
     animation: {
-        frames: 120,
-        durationMs: 8000,
-        tracks: [
-            { targetPath: "motifs[1].frequency", startValue: 0.04, endValue: 0.06 },
-            { targetPath: "motifs[2].radius", startValue: 10, endValue: 20 }
-        ]
+        stages: [
+            {
+                frames: 120,
+                durationMs: 8000,
+                tracks: [
+                    { targetPath: "motifs[1].frequency", startValue: 0.04, endValue: 0.06 },
+                    { targetPath: "motifs[2].radius", startValue: 10, endValue: 20 },
+                ],
+            },
+        ],
     }
 };
 
@@ -269,10 +293,115 @@ const neonWireframe = {
         { type: "filterHSV", hueShift: 0, saturation: 2.0, value: 1.5, blendMode: "replace", opacity: 1 }
     ],
     animation: {
-        frames: 90,
-        durationMs: 6000,
-        tracks: [
-            { targetPath: "motifs[3].hueShift", startValue: 0, endValue: 360 }
+        stages: [
+            {
+                frames: 90,
+                durationMs: 6000,
+                tracks: [
+                    { targetPath: "motifs[3].hueShift", startValue: 0, endValue: 360 },
+                ],
+            },
+        ],
+    }
+};
+
+const pulsingPortal = {
+    warp: { frequency: 0.003, amplitude: 6, octaves: 2, sampleOffset: [200, 200] },
+    palette: { base: [10, 5, 20], floorBase: [5, 2, 12], wallBase: [15, 8, 25] },
+    motifs: [
+        { type: "baseMetal", structure: { frequency: 0.005, octaves: 2, rgbDelta: [2, 2, 4] }, grain: { frequency: 0.2, octaves: 1, amplitude: 0.5 } },
+        {
+            type: "concentricRings",
+            coordinateSpace: "warped",
+            frequency: 0.03,
+            ringWidth: 0.08,
+            peak: 15,
+            offset: [0, 0],
+            tint: [0.2, 3.5, 5.0],
+            opacity: 0.9,
+            blendMode: "add"
+        },
+        {
+            type: "filterHSV",
+            hueShift: 0,
+            saturation: 1.5,
+            value: 1.2,
+            blendMode: "replace",
+            opacity: 1
+        }
+    ],
+    animation: {
+        stages: [
+            {
+                frames: 45,
+                durationMs: 3000,
+                tracks: [
+                    { targetPath: "motifs[1].frequency", startValue: 0.02, endValue: 0.08 },
+                    { targetPath: "motifs[2].hueShift", startValue: 0, endValue: 180 }
+                ]
+            },
+            {
+                frames: 45,
+                durationMs: 3000,
+                tracks: [
+                    { targetPath: "motifs[1].frequency", startValue: 0.08, endValue: 0.02 },
+                    { targetPath: "motifs[2].hueShift", startValue: 180, endValue: 360 }
+                ]
+            }
+        ]
+    }
+};
+
+const neonGridwave = {
+    warp: { frequency: 0.001, amplitude: 2, octaves: 1, sampleOffset: [0, 0] },
+    palette: { base: [5, 5, 10], floorBase: [2, 2, 5], wallBase: [10, 10, 15] },
+    motifs: [
+        { type: "baseMetal", structure: { frequency: 0.001, octaves: 1, rgbDelta: [0, 0, 0] }, grain: { frequency: 0.1, octaves: 1, amplitude: 0.1 } },
+        {
+            type: "hexGrid",
+            cellWorldSize: 24,
+            groutWidth: 0.05,
+            groutPeak: 12,
+            groutTint: [0, 4, 8],
+            bevelWidth: 0.02,
+            highlightPeak: 6,
+            shadowPeak: -4,
+            cellVariation: 1,
+            blendMode: "add",
+            opacity: 0.85
+        },
+        {
+            type: "circuitTraces",
+            coordinateSpace: "warped",
+            gridSize: 32,
+            lineWidth: 3,
+            density: 0.5,
+            diagDensity: 0.2,
+            peak: 15,
+            tint: [8, 0, 8],
+            padEnabled: true,
+            blendMode: "color-dodge",
+            opacity: 0.9
+        }
+    ],
+    animation: {
+        stages: [
+            {
+                frames: 40,
+                durationMs: 2000,
+                tracks: [
+                    { targetPath: "motifs[1].cellWorldSize", startValue: 16, endValue: 32 },
+                    { targetPath: "motifs[2].gridSize", startValue: 48, endValue: 16 }
+                ]
+            },
+            {
+                frames: 40,
+                durationMs: 2000,
+                tracks: [
+                    { targetPath: "motifs[1].cellWorldSize", startValue: 32, endValue: 16 },
+                    { targetPath: "motifs[2].gridSize", startValue: 16, endValue: 48 }
+                ]
+            }
         ]
     }
 };
@@ -287,7 +416,9 @@ export const floorProceduralProfiles = {
     obsidianGlass,
     goldenTemple,
     abyssalDepths,
-    neonWireframe
+    neonWireframe,
+    pulsingPortal,
+    neonGridwave
 };
 
 export const START_STATION_ID = "organicPulse";

@@ -4,6 +4,7 @@ import { CAMERA_HEIGHT } from "./math/CombatProjection.js";
 import { getFloorTextureProfileId } from "../Floor/floorTextureProfile.js";
 import { getFloorProceduralProfile } from "../../Config/floorProceduralConfig.js";
 import { bakePixelsForWorldSpan, getPixelsPerWorldUnit, shouldSmoothTextureDownsample } from "../Floor/floorTextureResolution.js";
+import { getAnimationFrameIndex } from "../Floor/ProfileBakeResolver.js";
 
 const WALL_ANGLE_SPREAD = 0.002;
 
@@ -238,11 +239,8 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHei
     if (!flatCanvas || flatCanvas.isPlaceholder) return; // Skip if it's not ready
 
     if (profile.animation && flatCanvases.length > 1) {
-        const frames = flatCanvases.length;
-        const duration = profile.animation.durationMs ?? 1000;
-        const clock = state.gameTime ?? 0;
-        const currentFrame = Math.floor((clock % duration) / duration * frames);
-        flatCanvas = flatCanvases[Math.min(frames - 1, Math.max(0, currentFrame))];
+        const currentFrame = getAnimationFrameIndex(profile.animation, state.gameTime ?? 0);
+        flatCanvas = flatCanvases[Math.min(flatCanvases.length - 1, Math.max(0, currentFrame))];
     }
 
     const worldBounds = getViewportWorldBounds(viewport);

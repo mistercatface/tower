@@ -549,3 +549,37 @@
             color: var(--text);
             background: rgba(255, 255, 255, 0.1);
         }
+
+        .col-body button {
+            background: var(--accent-dim);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            padding: 6px 12px;
+            border-radius: 4px;
+            font: inherit;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all var(--transition);
+        }
+
+        .col-body button:hover {
+            background: var(--accent);
+            color: var(--bg);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 188, 212, 0.3);
+        }
+
+        .col-body button.secondary {
+            background: transparent;
+            border-color: var(--border);
+            color: var(--text);
+        }
+
+        .col-body button.secondary:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text);
+            box-shadow: none;
+            transform: none;
+        }

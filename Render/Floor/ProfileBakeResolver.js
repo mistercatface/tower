@@ -76,19 +76,85 @@ function trackRefs(entry, bindings) {
     }
 }
 
-function timelinePhase(profile, ctx) {
-    const anim = profile.animation;
-    const frames = anim.frames;
+export function getAnimationStages(anim) {
+    return anim?.stages || [];
+}
+
+export function getAnimationFrames(anim) {
+    if (!anim) return 1;
+    const stages = getAnimationStages(anim);
+    return stages.reduce((sum, s) => sum + (s.frames ?? 30), 0) || 1;
+}
+
+export function getAnimationDuration(anim) {
+    if (!anim) return 1000;
+    const stages = getAnimationStages(anim);
+    return stages.reduce((sum, s) => sum + (s.durationMs ?? 1000), 0) || 1000;
+}
+
+export function getAnimationFrameIndex(anim, gameTime) {
+    if (!anim) return 0;
+    const stages = getAnimationStages(anim);
+    if (stages.length === 0) return 0;
+
+    const totalDuration = getAnimationDuration(anim);
+    const clock = ((gameTime % totalDuration) + totalDuration) % totalDuration;
+
+    let elapsedMs = 0;
+    let elapsedFrames = 0;
+    for (const stage of stages) {
+        const stageDuration = stage.durationMs ?? 1000;
+        const stageFrames = stage.frames ?? 30;
+        if (clock >= elapsedMs && clock < elapsedMs + stageDuration) {
+            const localProgress = (clock - elapsedMs) / stageDuration;
+            const localFrame = Math.floor(localProgress * stageFrames);
+            return elapsedFrames + Math.min(stageFrames - 1, Math.max(0, localFrame));
+        }
+        elapsedMs += stageDuration;
+        elapsedFrames += stageFrames;
+    }
+    const totalFrames = getAnimationFrames(anim);
+    return Math.max(0, totalFrames - 1);
+}
+
+export function getActiveStageInfo(anim, ctx) {
+    const stages = getAnimationStages(anim);
+    if (stages.length === 0) return null;
+
     if (ctx.frameIndex != null) {
-        const idx = Math.min(frames - 1, Math.max(0, ctx.frameIndex));
-        return frames > 1 ? idx / (frames - 1) : 0;
+        let elapsedFrames = 0;
+        for (let i = 0; i < stages.length; i++) {
+            const stage = stages[i];
+            const stageFrames = stage.frames ?? 30;
+            if (ctx.frameIndex >= elapsedFrames && ctx.frameIndex < elapsedFrames + stageFrames) {
+                const localT = stageFrames > 1 ? (ctx.frameIndex - elapsedFrames) / (stageFrames - 1) : 0;
+                return { stageIndex: i, stage, t: localT };
+            }
+            elapsedFrames += stageFrames;
+        }
+        const lastIdx = stages.length - 1;
+        return { stageIndex: lastIdx, stage: stages[lastIdx], t: 1 };
     }
+
     if (ctx.gameTime != null) {
-        const duration = anim.durationMs ?? 1000;
-        const clock = ((ctx.gameTime % duration) + duration) % duration;
-        return clock / duration;
+        const totalDuration = getAnimationDuration(anim);
+        const clock = ((ctx.gameTime % totalDuration) + totalDuration) % totalDuration;
+
+        let elapsedMs = 0;
+        for (let i = 0; i < stages.length; i++) {
+            const stage = stages[i];
+            const stageDuration = stage.durationMs ?? 1000;
+            if (clock >= elapsedMs && clock < elapsedMs + stageDuration) {
+                const localT = (clock - elapsedMs) / stageDuration;
+                return { stageIndex: i, stage, t: localT };
+            }
+            elapsedMs += stageDuration;
+        }
+        const lastIdx = stages.length - 1;
+        return { stageIndex: lastIdx, stage: stages[lastIdx], t: 1 };
     }
-    return 0;
+
+    return { stageIndex: 0, stage: stages[0], t: 0 };
 }
 
 /**
@@ -101,27 +167,79 @@ export function createTimelineBinding(profile) {
         return null;
     }
 
-    const rawTracks = anim.tracks || [{ targetPath: anim.targetPath, startValue: anim.startValue, endValue: anim.endValue }];
-    const tracks = rawTracks
-        .filter((track) => track?.targetPath)
-        .map((track) => ({
-            ref: compileParamRef(track.targetPath),
-            startValue: track.startValue ?? 0,
-            endValue: track.endValue ?? 0,
-        }));
+    const stages = getAnimationStages(anim);
+    if (stages.length === 0) {
+        return null;
+    }
 
-    if (tracks.length === 0) {
+    const allTargetPaths = new Set();
+    for (const stage of stages) {
+        if (stage.tracks) {
+            for (const track of stage.tracks) {
+                if (track?.targetPath) {
+                    allTargetPaths.add(track.targetPath);
+                }
+            }
+        }
+    }
+
+    const compiledTracks = Array.from(allTargetPaths).map((targetPath) => ({
+        targetPath,
+        ref: compileParamRef(targetPath),
+    }));
+
+    if (compiledTracks.length === 0) {
         return null;
     }
 
     return {
         id: "timeline",
-        refs: tracks.map((track) => track.ref),
+        refs: compiledTracks.map((t) => t.ref),
         apply(scratch, ctx) {
-            const t = timelinePhase(profile, ctx);
-            for (const track of tracks) {
-                const value = track.startValue + (track.endValue - track.startValue) * t;
-                track.ref.set(scratch, value);
+            const activeInfo = getActiveStageInfo(anim, ctx);
+            if (!activeInfo) return;
+
+            const { stageIndex, t } = activeInfo;
+
+            for (const compiled of compiledTracks) {
+                const targetPath = compiled.targetPath;
+                let value = null;
+                let found = false;
+
+                const activeStage = stages[stageIndex];
+                const activeTrack = activeStage.tracks?.find((tr) => tr.targetPath === targetPath);
+                if (activeTrack) {
+                    const start = activeTrack.startValue ?? 0;
+                    const end = activeTrack.endValue ?? 0;
+                    value = start + (end - start) * t;
+                    found = true;
+                }
+
+                if (!found) {
+                    for (let i = stageIndex - 1; i >= 0; i--) {
+                        const tr = stages[i].tracks?.find((tr) => tr.targetPath === targetPath);
+                        if (tr) {
+                            value = tr.endValue ?? 0;
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!found) {
+                    for (let i = stageIndex + 1; i < stages.length; i++) {
+                        const tr = stages[i].tracks?.find((tr) => tr.targetPath === targetPath);
+                        if (tr) {
+                            value = tr.startValue ?? 0;
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (found) {
+                    compiled.ref.set(scratch, value);
+                }
             }
         },
     };

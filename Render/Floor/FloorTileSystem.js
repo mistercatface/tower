@@ -11,6 +11,7 @@ import {
     getFloorTextureProfileId,
 } from "./floorTextureProfile.js";
 import { drawBakedTexture } from "./floorTextureResolution.js";
+import { getAnimationFrameIndex } from "./ProfileBakeResolver.js";
 
 export class FloorTileSystem {
     constructor() {
@@ -106,11 +107,8 @@ export class FloorTileSystem {
             if (canvas.isPlaceholder) continue;
 
             if (profile.animation && canvases.length > 1) {
-                const frames = canvases.length;
-                const duration = profile.animation.durationMs ?? 1000;
-                const clock = state.gameTime ?? 0;
-                const currentFrame = Math.floor(((clock % duration) / duration) * frames);
-                canvas = canvases[Math.min(frames - 1, Math.max(0, currentFrame))];
+                const currentFrame = getAnimationFrameIndex(profile.animation, state.gameTime ?? 0);
+                canvas = canvases[Math.min(canvases.length - 1, Math.max(0, currentFrame))];
             }
 
             drawBakedTexture(ctx, canvas, chunk.origin.x, chunk.origin.y, chunkSizePx, chunkSizePx);

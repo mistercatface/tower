@@ -20,14 +20,24 @@ let nextMotifId = 1;
 function defaultAnimation() {
     return {
         enabled: false,
-        frames: 30,
-        durationMs: 2000,
+        selectedStageIndex: 0,
+        selectedTrackIndex: 0,
+        stages: [
+            {
+                frames: 30,
+                durationMs: 2000,
+            }
+        ],
         tracks: [
             {
                 editorMotifIndex: 0,
                 paramPath: "hueShift",
-                startValue: 0,
-                endValue: 360,
+                stages: [
+                    {
+                        startValue: 0,
+                        endValue: 360,
+                    }
+                ],
             }
         ]
     };
@@ -71,50 +81,62 @@ function motifExportIndex(motifs, editorMotifIndex) {
 
 function animationFromProfile(profile, motifs) {
     const anim = profile.animation;
-    if (!anim) {
+    if (!anim || !anim.stages || !Array.isArray(anim.stages)) {
         return defaultAnimation();
     }
-    const tracks = [];
-    if (anim.tracks && Array.isArray(anim.tracks)) {
-        for (const track of anim.tracks) {
-            const parsed = parseAnimationTargetPath(track.targetPath);
-            const editorMotifIndex = parsed
-                ? editorMotifIndexFromExportIndex(motifs, parsed.exportIndex)
-                : 0;
-            tracks.push({
-                editorMotifIndex: Math.max(0, editorMotifIndex),
-                paramPath: parsed?.paramPath ?? "hueShift",
-                startValue: track.startValue ?? 0,
-                endValue: track.endValue ?? 360,
-            });
-        }
-    } else if (anim.targetPath) {
-        const parsed = parseAnimationTargetPath(anim.targetPath);
-        const editorMotifIndex = parsed
-            ? editorMotifIndexFromExportIndex(motifs, parsed.exportIndex)
-            : 0;
-        tracks.push({
-            editorMotifIndex: Math.max(0, editorMotifIndex),
-            paramPath: parsed?.paramPath ?? "hueShift",
-            startValue: anim.startValue ?? 0,
-            endValue: anim.endValue ?? 360,
+
+    const stages = [];
+    for (const stage of anim.stages) {
+        stages.push({
+            durationMs: stage.durationMs ?? 2000,
+            frames: stage.frames ?? 30,
         });
     }
 
-    if (tracks.length === 0) {
+    const targetPaths = [];
+    for (const stage of anim.stages) {
+        if (stage.tracks) {
+            for (const t of stage.tracks) {
+                if (t.targetPath && !targetPaths.includes(t.targetPath)) {
+                    targetPaths.push(t.targetPath);
+                }
+            }
+        }
+    }
+
+    if (targetPaths.length === 0) {
+        targetPaths.push("motifs[0].hueShift");
+    }
+
+    const tracks = [];
+    for (const path of targetPaths) {
+        const parsed = parseAnimationTargetPath(path);
+        const editorMotifIndex = parsed ? editorMotifIndexFromExportIndex(motifs, parsed.exportIndex) : 0;
+        const paramPath = parsed?.paramPath ?? "hueShift";
+
+        const trackStages = [];
+        for (let i = 0; i < anim.stages.length; i++) {
+            const stage = anim.stages[i];
+            const stageTrack = stage.tracks?.find(t => t.targetPath === path);
+            trackStages.push({
+                startValue: stageTrack?.startValue ?? 0,
+                endValue: stageTrack?.endValue ?? 360,
+            });
+        }
+
         tracks.push({
-            editorMotifIndex: 0,
-            paramPath: "hueShift",
-            startValue: 0,
-            endValue: 360,
+            editorMotifIndex: Math.max(0, editorMotifIndex),
+            paramPath,
+            stages: trackStages
         });
     }
 
     return {
         enabled: true,
-        frames: anim.frames ?? 30,
-        durationMs: anim.durationMs ?? 2000,
-        tracks,
+        selectedStageIndex: 0,
+        selectedTrackIndex: 0,
+        stages,
+        tracks
     };
 }
 
@@ -241,19 +263,27 @@ export function buildProfileFromEditor(state = editorState) {
     }
 
     if (state.animation?.enabled) {
-        const tracks = [];
-        for (const track of state.animation.tracks) {
-            const exportIdx = motifExportIndex(state.motifs, track.editorMotifIndex);
-            tracks.push({
-                targetPath: `motifs[${exportIdx}].${track.paramPath}`,
-                startValue: track.startValue,
-                endValue: track.endValue,
+        const stages = [];
+        for (let i = 0; i < state.animation.stages.length; i++) {
+            const stageConfig = state.animation.stages[i];
+            const tracks = [];
+            for (const track of state.animation.tracks) {
+                const exportIdx = motifExportIndex(state.motifs, track.editorMotifIndex);
+                const stageTrackData = track.stages[i] || { startValue: 0, endValue: 360 };
+                tracks.push({
+                    targetPath: `motifs[${exportIdx}].${track.paramPath}`,
+                    startValue: stageTrackData.startValue,
+                    endValue: stageTrackData.endValue,
+                });
+            }
+            stages.push({
+                frames: Math.max(2, Math.round(stageConfig.frames)),
+                durationMs: Math.max(100, Math.round(stageConfig.durationMs)),
+                tracks,
             });
         }
         profile.animation = {
-            frames: Math.max(2, Math.round(state.animation.frames)),
-            durationMs: Math.max(100, Math.round(state.animation.durationMs)),
-            tracks,
+            stages
         };
     }
 
@@ -341,12 +371,23 @@ function syncAnimationParamRange(trackIndex = editorState?.animation?.selectedTr
     const current = Number(getByPath(row.config, field.path) ?? field.min ?? 0);
     const min = field.min ?? 0;
     const max = field.max ?? current + 180;
-    track.startValue = current;
-    let end = track.endValue;
+    
+    if (!track.stages) {
+        track.stages = [];
+    }
+    while (track.stages.length < editorState.animation.stages.length) {
+        track.stages.push({ startValue: current, endValue: max });
+    }
+    
+    const activeStageIndex = editorState.animation.selectedStageIndex;
+    const stageData = track.stages[activeStageIndex];
+    
+    stageData.startValue = stageData.startValue ?? current;
+    let end = stageData.endValue;
     if (!Number.isFinite(end) || end <= min || end > max || end === current) {
         end = max;
     }
-    track.endValue = end;
+    stageData.endValue = end;
 }
 
 function selectMotifById(motifId) {
@@ -568,12 +609,13 @@ function renderSharedAnimationControls(container) {
     divider.style.margin = "10px 0";
     container.appendChild(divider);
 
-    const animRoot = { animation: editorState.animation };
-    renderScalarFields(container, animRoot, [
-        { path: "animation.frames", label: "Frames", min: 2, max: 120, step: 1 },
-        { path: "animation.durationMs", label: "Duration (ms)", min: 200, max: 20000, step: 100 },
+    const activeStageIndex = editorState.animation.selectedStageIndex;
+    const activeStage = editorState.animation.stages[activeStageIndex];
+
+    renderScalarFields(container, activeStage, [
+        { path: "frames", label: `Stage ${activeStageIndex + 1} Frames`, min: 2, max: 120, step: 1 },
+        { path: "durationMs", label: `Stage ${activeStageIndex + 1} Duration (ms)`, min: 200, max: 20000, step: 100 },
     ], { lightweight: true });
-    editorState.animation = animRoot.animation;
 }
 
 function renderAnimationParams(container) {
@@ -606,17 +648,100 @@ function renderAnimationParams(container) {
         return;
     }
 
+    if (!editorState.animation.stages || editorState.animation.stages.length === 0) {
+        editorState.animation.stages = [{ durationMs: 2000, frames: 30 }];
+        editorState.animation.selectedStageIndex = 0;
+    }
+
     if (!editorState.animation.tracks || editorState.animation.tracks.length === 0) {
         editorState.animation.tracks = [
             {
                 editorMotifIndex: 0,
                 paramPath: "hueShift",
-                startValue: 0,
-                endValue: 360
+                stages: [{ startValue: 0, endValue: 360 }]
             }
         ];
         editorState.animation.selectedTrackIndex = 0;
     }
+
+    // Render stage tabs
+    const stageHeader = document.createElement("div");
+    stageHeader.className = "stage-header";
+    stageHeader.style.display = "flex";
+    stageHeader.style.alignItems = "center";
+    stageHeader.style.gap = "6px";
+    stageHeader.style.marginBottom = "10px";
+    stageHeader.style.flexWrap = "wrap";
+
+    const stagesList = editorState.animation.stages;
+    stagesList.forEach((stage, idx) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = idx === editorState.animation.selectedStageIndex ? "primary" : "secondary";
+        btn.style.padding = "4px 8px";
+        btn.style.fontSize = "11px";
+        btn.style.margin = "0";
+        btn.textContent = `Stage ${idx + 1}`;
+        btn.addEventListener("click", () => {
+            editorState.animation.selectedStageIndex = idx;
+            notifyChange({ lightweight: true });
+            renderAnimationParams(container);
+        });
+        stageHeader.appendChild(btn);
+    });
+
+    const addStageBtn = document.createElement("button");
+    addStageBtn.type = "button";
+    addStageBtn.className = "secondary";
+    addStageBtn.style.padding = "4px 8px";
+    addStageBtn.style.fontSize = "11px";
+    addStageBtn.style.margin = "0";
+    addStageBtn.textContent = "+";
+    addStageBtn.title = "Add Stage";
+    addStageBtn.addEventListener("click", () => {
+        const lastStage = stagesList[stagesList.length - 1];
+        stagesList.push({
+            durationMs: lastStage?.durationMs ?? 2000,
+            frames: lastStage?.frames ?? 30
+        });
+        for (const track of editorState.animation.tracks) {
+            if (!track.stages) track.stages = [];
+            const lastStageData = track.stages[track.stages.length - 1];
+            const val = lastStageData ? lastStageData.endValue : 0;
+            track.stages.push({
+                startValue: val,
+                endValue: val
+            });
+        }
+        editorState.animation.selectedStageIndex = stagesList.length - 1;
+        notifyChange({ lightweight: true });
+        renderAnimationParams(container);
+    });
+    stageHeader.appendChild(addStageBtn);
+
+    if (stagesList.length > 1) {
+        const removeStageBtn = document.createElement("button");
+        removeStageBtn.type = "button";
+        removeStageBtn.className = "secondary";
+        removeStageBtn.style.padding = "4px 8px";
+        removeStageBtn.style.fontSize = "11px";
+        removeStageBtn.style.margin = "0";
+        removeStageBtn.textContent = "✕";
+        removeStageBtn.title = "Remove Current Stage";
+        removeStageBtn.addEventListener("click", () => {
+            const currentIdx = editorState.animation.selectedStageIndex;
+            stagesList.splice(currentIdx, 1);
+            for (const track of editorState.animation.tracks) {
+                track.stages.splice(currentIdx, 1);
+            }
+            editorState.animation.selectedStageIndex = Math.max(0, currentIdx - 1);
+            notifyChange({ lightweight: true });
+            renderAnimationParams(container);
+        });
+        stageHeader.appendChild(removeStageBtn);
+    }
+
+    container.appendChild(stageHeader);
 
     // Render list of tracks
     const trackListContainer = document.createElement("div");
@@ -678,8 +803,10 @@ function renderAnimationParams(container) {
         editorState.animation.tracks.push({
             editorMotifIndex: defaultMotifIndex,
             paramPath: paramPath,
-            startValue: 0,
-            endValue: fields[0]?.max ?? 360,
+            stages: editorState.animation.stages.map(() => ({
+                startValue: 0,
+                endValue: fields[0]?.max ?? 360,
+            }))
         });
         editorState.animation.selectedTrackIndex = editorState.animation.tracks.length - 1;
         syncAnimationParamRange(editorState.animation.selectedTrackIndex);
@@ -765,11 +892,14 @@ function renderAnimationParams(container) {
     const activeField = animFields.find((f) => f.path === activeTrack.paramPath) ?? animFields[0];
     activeTrack.paramPath = activeField.path;
 
-    const trackRoot = { track: activeTrack };
-    renderScalarFields(container, trackRoot, [
-        { path: "track.startValue", label: "Start", min: activeField.min, max: activeField.max, step: activeField.step },
-        { path: "track.endValue", label: "End", min: activeField.min, max: activeField.max, step: activeField.step },
-    ], { lightweight: true });
+    const activeStageIndex = editorState.animation.selectedStageIndex;
+    const stageData = activeTrack.stages[activeStageIndex];
+    if (stageData) {
+        renderScalarFields(container, stageData, [
+            { path: "startValue", label: "Start", min: activeField.min, max: activeField.max, step: activeField.step },
+            { path: "endValue", label: "End", min: activeField.min, max: activeField.max, step: activeField.step },
+        ], { lightweight: true });
+    }
 
     renderSharedAnimationControls(container);
 }
