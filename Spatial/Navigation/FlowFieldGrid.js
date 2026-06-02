@@ -1,9 +1,5 @@
-import { OCTILE_OFFSETS } from "../Grid/GridUtils.js";
-import {
-    worldToGridCentered,
-    gridToWorldCentered,
-    getCellBoundsCentered,
-} from "../Geometry/GridCoords.js";
+import { worldToGridCentered, gridToWorldCentered, getCellBoundsCentered } from "../Geometry/GridCoords.js";
+import { FLOW_FIELD_UNREACHABLE, syncLocalObstacles, buildFlowFieldTarget, getFlowFieldLayout } from "./flowFieldCompute.js";
 
 export class FlowFieldGrid {
     constructor(cellSize, width, height, obstacleGrid) {
@@ -25,8 +21,8 @@ export class FlowFieldGrid {
         this.playerFlowFieldY = new Float32Array(size);
         this.playerFlowFieldDist = new Float32Array(size);
 
-        this.offsetX = (width / 2) + (cellSize / 2);
-        this.offsetY = (height / 2) + (cellSize / 2);
+        this.offsetX = width / 2 + cellSize / 2;
+        this.offsetY = height / 2 + cellSize / 2;
         this.centerX = 0;
         this.centerY = 0;
     }
@@ -47,87 +43,20 @@ export class FlowFieldGrid {
     }
 
     syncLocalObstacles() {
-        for (let row = 0; row < this.rows; row++) {
-            for (let col = 0; col < this.cols; col++) {
-                const wx = col * this.cellSize + this.centerX - this.offsetX + this.cellSize / 2;
-                const wy = row * this.cellSize + this.centerY - this.offsetY + this.cellSize / 2;
-                const worldCell = this.obstacleGrid.worldToGrid(wx, wy);
-                const idx = row * this.cols + col;
-
-                if (
-                    worldCell.col >= 0 && worldCell.col < this.obstacleGrid.cols &&
-                    worldCell.row >= 0 && worldCell.row < this.obstacleGrid.rows
-                ) {
-                    const worldIdx = worldCell.row * this.obstacleGrid.cols + worldCell.col;
-                    this.grid[idx] = this.obstacleGrid.grid[worldIdx];
-                } else {
-                    this.grid[idx] = 1;
-                }
-            }
-        }
-    }
-
-    buildFlowFieldTarget(px, py, targetFieldX, targetFieldY, targetFieldDist, gridData) {
-        targetFieldDist.fill(999999);
-        const start = this.worldToGrid(px, py);
-        if (start.col < 0 || start.col >= this.cols || start.row < 0 || start.row >= this.rows) return;
-
-        const cols = this.cols;
-        const rows = this.rows;
-
-        const startIdx = start.row * cols + start.col;
-        const queue = [startIdx];
-        let head = 0;
-
-        targetFieldX[startIdx] = 0;
-        targetFieldY[startIdx] = 0;
-        targetFieldDist[startIdx] = 0;
-
-        while (head < queue.length) {
-            const currIdx = queue[head++];
-            const currCol = currIdx % cols;
-            const currRow = (currIdx / cols) | 0;
-            const currDist = targetFieldDist[currIdx];
-
-            for (const { dc, dr, cost } of OCTILE_OFFSETS) {
-                const nc = currCol + dc;
-                const nr = currRow + dr;
-
-                if (nc >= 0 && nc < cols && nr >= 0 && nr < rows) {
-                    const nIdx = nr * cols + nc;
-                    if (gridData[nIdx] === 1) continue;
-
-                    if (dc !== 0 && dr !== 0) {
-                        const check1 = gridData[currRow * cols + nc];
-                        const check2 = gridData[nr * cols + currCol];
-                        if (check1 === 1 || check2 === 1) {
-                            continue;
-                        }
-                    }
-
-                    const dist = currDist + cost;
-                    if (dist < targetFieldDist[nIdx]) {
-                        targetFieldX[nIdx] = -dc / cost;
-                        targetFieldY[nIdx] = -dr / cost;
-                        targetFieldDist[nIdx] = dist;
-                        queue.push(nIdx);
-                    }
-                }
-            }
-        }
+        syncLocalObstacles(this.grid, getFlowFieldLayout(this), this.obstacleGrid);
     }
 
     buildFlowField(px, py) {
-        this.buildFlowFieldTarget(px, py, this.flowFieldX, this.flowFieldY, this.flowFieldDist, this.grid);
+        buildFlowFieldTarget(px, py, this.flowFieldX, this.flowFieldY, this.flowFieldDist, this.grid, getFlowFieldLayout(this));
     }
 
     buildPlayerFlowField(px, py) {
-        this.buildFlowFieldTarget(px, py, this.playerFlowFieldX, this.playerFlowFieldY, this.playerFlowFieldDist, this.grid);
+        buildFlowFieldTarget(px, py, this.playerFlowFieldX, this.playerFlowFieldY, this.playerFlowFieldDist, this.grid, getFlowFieldLayout(this));
     }
 
     clearFlowFields() {
-        this.flowFieldDist.fill(999999);
-        this.playerFlowFieldDist.fill(999999);
+        this.flowFieldDist.fill(FLOW_FIELD_UNREACHABLE);
+        this.playerFlowFieldDist.fill(FLOW_FIELD_UNREACHABLE);
     }
 
     clear() {
@@ -136,30 +65,15 @@ export class FlowFieldGrid {
     }
 
     worldToGrid(x, y) {
-        return worldToGridCentered(
-            x, y,
-            this.centerX, this.centerY,
-            this.offsetX, this.offsetY,
-            this.cellSize,
-        );
+        return worldToGridCentered(x, y, this.centerX, this.centerY, this.offsetX, this.offsetY, this.cellSize);
     }
 
     gridToWorld(col, row) {
-        return gridToWorldCentered(
-            col, row,
-            this.centerX, this.centerY,
-            this.offsetX, this.offsetY,
-            this.cellSize,
-        );
+        return gridToWorldCentered(col, row, this.centerX, this.centerY, this.offsetX, this.offsetY, this.cellSize);
     }
 
     getCellBounds(col, row) {
-        return getCellBoundsCentered(
-            col, row,
-            this.centerX, this.centerY,
-            this.offsetX, this.offsetY,
-            this.cellSize,
-        );
+        return getCellBoundsCentered(col, row, this.centerX, this.centerY, this.offsetX, this.offsetY, this.cellSize);
     }
 
     entityIntersectsCell(x, y, radius, col, row) {
@@ -200,7 +114,7 @@ export class FlowFieldGrid {
 
         if (c0_valid && r0_valid) {
             const idx = row0 * cols + col0;
-            if (targetFieldDist[idx] < 999999) {
+            if (targetFieldDist[idx] < FLOW_FIELD_UNREACHABLE) {
                 const w = (1 - tx) * (1 - ty);
                 flowX += targetFieldX[idx] * w;
                 flowY += targetFieldY[idx] * w;
@@ -209,7 +123,7 @@ export class FlowFieldGrid {
         }
         if (c1_valid && r0_valid) {
             const idx = row0 * cols + col1;
-            if (targetFieldDist[idx] < 999999) {
+            if (targetFieldDist[idx] < FLOW_FIELD_UNREACHABLE) {
                 const w = tx * (1 - ty);
                 flowX += targetFieldX[idx] * w;
                 flowY += targetFieldY[idx] * w;
@@ -218,7 +132,7 @@ export class FlowFieldGrid {
         }
         if (c0_valid && r1_valid) {
             const idx = row1 * cols + col0;
-            if (targetFieldDist[idx] < 999999) {
+            if (targetFieldDist[idx] < FLOW_FIELD_UNREACHABLE) {
                 const w = (1 - tx) * ty;
                 flowX += targetFieldX[idx] * w;
                 flowY += targetFieldY[idx] * w;
@@ -227,7 +141,7 @@ export class FlowFieldGrid {
         }
         if (c1_valid && r1_valid) {
             const idx = row1 * cols + col1;
-            if (targetFieldDist[idx] < 999999) {
+            if (targetFieldDist[idx] < FLOW_FIELD_UNREACHABLE) {
                 const w = tx * ty;
                 flowX += targetFieldX[idx] * w;
                 flowY += targetFieldY[idx] * w;
