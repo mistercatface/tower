@@ -3,10 +3,17 @@ import { clearFlatWallFaceCache } from "./Render/3D/WallFaceTexture.js";
 import { Render3D } from "./Render/3D/Render3D.js";
 import { Viewport } from "./Render/Viewport.js";
 import { isWorldScene } from "./GameState/GamePhase.js";
+import { playerBaseStats } from "./Config/Config.js";
 import { applyLabProfileOverride } from "./tile-lab-map-world.js";
 
 const render3D = new Render3D();
 let lastBakeKey = "";
+let isNavigating = false;
+let navRenderPending = false;
+let lastQualityRenderAt = 0;
+
+const NAV_RENDER_INTERVAL_MS = 32;
+const MOVE_SPEED_SCALE = 1;
 
 /** @type {{ x: number, y: number }} */
 export const labCamera = { x: 0, y: 0 };
@@ -73,7 +80,7 @@ function syncCameraToPlayer(worldState) {
     labCamera.y = worldState.player.y;
 }
 
-function drawLabWorldFrame(ctx, canvas, viewW, viewH, worldState, profileId, gameZoom, showRangeRing, weaponRange) {
+function drawLabWorldFrame(ctx, canvas, viewW, viewH, worldState, profileId, gameZoom, showRangeRing, weaponRange, fastNav = false) {
     worldState.phase = GamePhase.COMBAT;
     applyLabProfileOverride(worldState, profileId);
     maybeClearBakeCaches(worldState, profileId);
@@ -103,7 +110,10 @@ function drawLabWorldFrame(ctx, canvas, viewW, viewH, worldState, profileId, gam
         worldState.floorTiles.draw(ctx, worldState, viewport);
     }
 
-    render3D.draw3DBuildings(ctx, worldState, viewport);
+    render3D.draw3DBuildings(ctx, worldState, viewport, {
+        fastNav,
+        textureEnabled: !fastNav,
+    });
 
     worldState.canvasBounds = prevCanvasBounds;
 
@@ -124,14 +134,14 @@ function drawLabWorldFrame(ctx, canvas, viewW, viewH, worldState, profileId, gam
  * @param {{ worldState: object, profileId: string, gameZoom: number, showRangeRing: boolean, weaponRange: number, viewWidth: number, viewHeight: number }} options
  */
 export function renderGamePreview(canvas, options) {
-    const { worldState, profileId, gameZoom, showRangeRing, weaponRange, viewWidth, viewHeight } = options;
+    const { worldState, profileId, gameZoom, showRangeRing, weaponRange, viewWidth, viewHeight, fastNav = false } = options;
 
     if (!worldState || !profileId || !viewWidth || !viewHeight) {
         return { zoom: gameZoom };
     }
 
     const ctx = canvas.getContext("2d");
-    return drawLabWorldFrame(
+    const result = drawLabWorldFrame(
         ctx,
         canvas,
         viewWidth,
@@ -140,8 +150,42 @@ export function renderGamePreview(canvas, options) {
         profileId,
         gameZoom,
         showRangeRing,
-        weaponRange
+        weaponRange,
+        fastNav
     );
+    if (!fastNav) {
+        lastQualityRenderAt = performance.now();
+    }
+    return result;
+}
+
+let lastFrameRenderAt = 0;
+
+/** Throttled map redraw while moving — solid wall fills; textured pass when idle. */
+export function requestNavMapRender(renderFn) {
+    if (navRenderPending) {
+        return;
+    }
+    navRenderPending = true;
+    requestAnimationFrame(() => {
+        navRenderPending = false;
+        const now = performance.now();
+        if (now - lastFrameRenderAt < NAV_RENDER_INTERVAL_MS) {
+            return;
+        }
+        lastFrameRenderAt = now;
+        renderFn({ fastNav: isNavigating });
+    });
+}
+
+/** Full-quality textured pass after movement stops or settings change. */
+export function requestQualityMapRender(renderFn) {
+    lastQualityRenderAt = performance.now();
+    renderFn({ fastNav: false });
+}
+
+export function setLabNavigating(active) {
+    isNavigating = active;
 }
 
 /** Invalidate baked floor/wall caches after profile or floor seed change. */
@@ -160,7 +204,7 @@ export function initMapPreviewNavigation(getOptions, onChange) {
     const moveKeys = new Set();
     let moveRaf = null;
 
-    const moveSpeed = () => 280 / (getOptions().gameZoom || 1);
+    const moveSpeed = () => (playerBaseStats.speed * MOVE_SPEED_SCALE) / (getOptions().gameZoom || 1);
 
     const applyPlayerDelta = (dx, dy) => {
         const world = getOptions().worldState;
@@ -172,6 +216,7 @@ export function initMapPreviewNavigation(getOptions, onChange) {
         world.player.x += (dx / len) * step;
         world.player.y += (dy / len) * step;
         syncCameraToPlayer(world);
+        setLabNavigating(true);
         onChange("move");
     };
 
@@ -214,6 +259,8 @@ export function initMapPreviewNavigation(getOptions, onChange) {
         if (moveKeys.size === 0 && moveRaf) {
             cancelAnimationFrame(moveRaf);
             moveRaf = null;
+            setLabNavigating(false);
+            onChange("idle-quality");
         }
     });
 
@@ -262,15 +309,19 @@ export function initMapPreviewNavigation(getOptions, onChange) {
             world.player.x = dragState.playerX - dx / dragState.zoom;
             world.player.y = dragState.playerY - dy / dragState.zoom;
             syncCameraToPlayer(world);
+            setLabNavigating(true);
             onChange("drag");
         });
 
-        canvas.addEventListener("pointerup", () => {
-            dragState = null;
-        });
-        canvas.addEventListener("pointercancel", () => {
-            dragState = null;
-        });
+        const endDrag = () => {
+            if (dragState?.canvas === canvas) {
+                dragState = null;
+                setLabNavigating(false);
+                onChange("idle-quality");
+            }
+        };
+        canvas.addEventListener("pointerup", endDrag);
+        canvas.addEventListener("pointercancel", endDrag);
     }
 }
 

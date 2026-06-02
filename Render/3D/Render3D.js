@@ -64,11 +64,16 @@ export class Render3D {
         return `rgb(${r}, ${g}, ${b})`;
     }
 
-    drawWallFace(ctx, seg, p1, p2, px, py, state, viewport) {
+    drawWallFace(ctx, seg, p1, p2, px, py, state, viewport, options = {}) {
         const wallColor = this.getWallColor(seg, THEME_COLORS[0], 1.0);
         const healthRatio = seg.health / seg.maxHealth;
         const damageAlpha = healthRatio < 1 ? (1 - healthRatio) * 0.45 : 0;
-        drawProjectedWallFace(ctx, p1, p2, px, py, wallColor, state.floorTiles, state, { viewport, damageAlpha, textureEnabled: true });
+        const textureEnabled = options.textureEnabled !== false;
+        drawProjectedWallFace(ctx, p1, p2, px, py, wallColor, state.floorTiles, state, {
+            viewport,
+            damageAlpha,
+            textureEnabled,
+        });
     }
 
     drawWallSegmentFaces(ctx, seg, px, py, state, viewport, options = {}) {
@@ -203,10 +208,14 @@ export class Render3D {
         ctx.clip();
     }
 
-    draw3DBuildings(ctx, state, viewport) {
+    draw3DBuildings(ctx, state, viewport, options = {}) {
         const px = state.player.x;
         const py = state.player.y;
-        this.updateSharedEdges(state);
+        const fastNav = options.fastNav === true;
+        const wallDrawOptions = { textureEnabled: options.textureEnabled !== false && !fastNav };
+        if (!fastNav) {
+            this.updateSharedEdges(state);
+        }
         ctx.save();
         if (viewport) this.clipToViewport(ctx, viewport, state);
         const visibleObjects = this._visibleObjects;
@@ -220,7 +229,7 @@ export class Render3D {
             seg._renderType = "wall";
             visibleObjects.push(seg);
         }
-        if (state.pickups) {
+        if (!fastNav && state.pickups) {
             for (let i = 0; i < state.pickups.length; i++) {
                 const p = state.pickups[i];
                 if (p.isDead || p.strategy?.renderMode !== "3d") continue;
@@ -234,7 +243,7 @@ export class Render3D {
         visibleObjects.sort((a, b) => b._distSq - a._distSq);
         for (const obj of visibleObjects) {
             if (obj._renderType === "wall") {
-                this.drawWallSegmentFaces(ctx, obj, px, py, state, viewport);
+                this.drawWallSegmentFaces(ctx, obj, px, py, state, viewport, wallDrawOptions);
             } else {
                 ctx.save();
                 const pc = createPropDrawContext(obj, px, py);

@@ -1,4 +1,4 @@
-import { gridSettings, floorTileSettings } from "./Config/Config.js";
+import { gridSettings, floorTileSettings, playerBaseStats } from "./Config/Config.js";
 import {
     floorProceduralProfiles,
     defaultFloorProceduralProfileId,
@@ -21,7 +21,10 @@ import {
     focusCameraOnPlayer,
     labCamera,
     invalidateMapPreviewBakes,
+    requestNavMapRender,
+    requestQualityMapRender,
 } from "./tile-lab-game-preview.js";
+import { getGameLabDefaults, computeCombatZoom } from "./tile-lab-settings.js";
 import {
     createLabMapWorld,
     focusLabNode,
@@ -88,8 +91,6 @@ function ensureLabWorld(ctrl, forceRegen = false) {
     const mapSeed = Number(document.getElementById("mapSeedInput")?.value) || 1;
     if (!labWorld || forceRegen || labWorldMapSeed !== mapSeed) {
         labWorld = createLabMapWorld({
-            canvasWidth: 900,
-            canvasHeight: 700,
             mapSeed,
             floorTileSeed: ctrl.seed,
         });
@@ -232,19 +233,63 @@ function downloadCanvas(canvas, filename) {
 }
 
 function readControls() {
+    const cellSize = gridSettings.cellSize;
     return {
         profileId: LAB_PROFILE_MAIN,
         seed: Number(document.getElementById("seedInput").value) || 0,
         worldX: Number(document.getElementById("worldXInput").value) || 0,
         worldY: Number(document.getElementById("worldYInput").value) || 0,
-        cellSize: Number(document.getElementById("cellSizeInput").value) || gridSettings.cellSize,
+        cellSize,
         zoom: Number(document.getElementById("zoomInput").value) || 6,
         storyRow: Number(document.getElementById("storyRowInput").value) || 0,
-        storyCount: Number(document.getElementById("storyCountInput").value) || floorTileSettings.wallTextureStories,
+        storyCount: floorTileSettings.wallTextureStories,
         gameZoom: Number(document.getElementById("gameZoomInput").value) || 1,
-        weaponRange: 150,
+        weaponRange: labWorld?.player?.weapon?.range ?? playerBaseStats.range,
         showRangeRing: document.getElementById("showRangeRingInput").checked,
     };
+}
+
+function syncCombatZoomToStage(world) {
+    const stage = document.getElementById("mapStage");
+    const rect = stage?.getBoundingClientRect();
+    const viewW = Math.max(320, Math.floor(rect?.width ?? 800));
+    const viewH = Math.max(240, Math.floor(rect?.height ?? 600));
+    const zoom = computeCombatZoom(viewW, viewH, world?.player?.weapon?.range ?? playerBaseStats.range);
+    const zoomEl = document.getElementById("gameZoomInput");
+    if (zoomEl) {
+        zoomEl.value = String(zoom.toFixed(2));
+        document.getElementById("gameZoomValue").textContent = zoomEl.value;
+    }
+}
+
+function applyGameDefaultsToForm(world) {
+    const stage = document.getElementById("mapStage");
+    const rect = stage?.getBoundingClientRect();
+    const viewW = Math.max(320, Math.floor(rect?.width ?? 800));
+    const viewH = Math.max(240, Math.floor(rect?.height ?? 600));
+    const defaults = getGameLabDefaults(viewW, viewH, world);
+
+    const cellEl = document.getElementById("cellSizeInput");
+    if (cellEl) {
+        cellEl.value = String(defaults.cellSize);
+    }
+    const storiesEl = document.getElementById("storyCountInput");
+    if (storiesEl) {
+        storiesEl.value = String(defaults.storyCount);
+    }
+    const worldXEl = document.getElementById("worldXInput");
+    const worldYEl = document.getElementById("worldYInput");
+    if (worldXEl) {
+        worldXEl.step = String(defaults.cellSize);
+    }
+    if (worldYEl) {
+        worldYEl.step = String(defaults.cellSize);
+    }
+
+    const rangeMeta = document.getElementById("rangeMeta");
+    if (rangeMeta) {
+        rangeMeta.textContent = `range ${defaults.weaponRange}`;
+    }
 }
 
 function bakeFloorCellAt(worldX, worldY, cellSize, seed, profileId) {
@@ -257,7 +302,7 @@ function bakeFloorCellAt(worldX, worldY, cellSize, seed, profileId) {
     return canvas;
 }
 
-function renderMapPreview(ctrl, world) {
+function renderMapPreview(ctrl, world, { fastNav = false } = {}) {
     const size = syncGameCanvasSize();
     if (!size) {
         return;
@@ -270,13 +315,25 @@ function renderMapPreview(ctrl, world) {
         weaponRange: ctrl.weaponRange,
         viewWidth: size.width,
         viewHeight: size.height,
+        fastNav,
     });
     const gameMeta = document.getElementById("gameMetaLine");
     if (gameMeta && world) {
         const node = world.getCurrentMapNode();
+        const mode = fastNav ? "move" : "full";
         gameMeta.textContent =
             `node ${world.currentNodeId} ${node?.strategy ?? ""} · map ${labWorldMapSeed} · ` +
-            `player ${Math.round(world.player.x)},${Math.round(world.player.y)} · cam ${ctrl.gameZoom.toFixed(2)} · WASD`;
+            `player ${Math.round(world.player.x)},${Math.round(world.player.y)} · ` +
+            `zoom ${ctrl.gameZoom.toFixed(2)} · range ${ctrl.weaponRange} · ${mode} · WASD`;
+    }
+}
+
+function runMapPreviewPass({ fastNav = false } = {}) {
+    registerEditorProfiles();
+    const ctrl = readControls();
+    const world = ensureLabWorld(ctrl);
+    if (world) {
+        renderMapPreview(ctrl, world, { fastNav });
     }
 }
 
@@ -286,6 +343,7 @@ function renderAll() {
 
     const ctrl = readControls();
     const world = ensureLabWorld(ctrl);
+    applyGameDefaultsToForm(world);
 
     const floorSource = bakeFloorTileTextureCanvas(ctrl.seed, ctrl.cellSize, ctrl.profileId);
     const floorAtOffset = bakeFloorCellAt(ctrl.worldX, ctrl.worldY, ctrl.cellSize, ctrl.seed, ctrl.profileId);
@@ -396,10 +454,8 @@ function bindControls() {
         "seedInput",
         "worldXInput",
         "worldYInput",
-        "cellSizeInput",
         "zoomInput",
         "storyRowInput",
-        "storyCountInput",
         "gameZoomInput",
         "mapSeedInput",
         "mapNodeSelect",
@@ -440,37 +496,41 @@ function bindControls() {
 
     const stage = document.getElementById("mapStage");
     if (stage && typeof ResizeObserver !== "undefined") {
-        const ro = new ResizeObserver(() => schedulePanRender());
+        const ro = new ResizeObserver(() => {
+            applyGameDefaultsToForm(labWorld);
+            syncCombatZoomToStage(labWorld);
+            requestQualityMapRender(({ fastNav }) => runMapPreviewPass({ fastNav }));
+        });
         ro.observe(stage);
     }
     requestAnimationFrame(() => {
-        requestAnimationFrame(() => renderAll());
+        requestAnimationFrame(() => {
+            renderAll();
+            syncCombatZoomToStage(labWorld);
+        });
     });
 }
 
-let panRenderPending = false;
-function schedulePanRender() {
-    if (panRenderPending) {
+function onMapNavChange(reason) {
+    if (reason === "idle-quality" || reason === "zoom") {
+        requestQualityMapRender(({ fastNav }) => runMapPreviewPass({ fastNav }));
         return;
     }
-    panRenderPending = true;
-    requestAnimationFrame(() => {
-        panRenderPending = false;
-        registerEditorProfiles();
-        const ctrl = readControls();
-        const world = ensureLabWorld(ctrl);
-        if (world) {
-            renderMapPreview(ctrl, world);
-        }
-    });
+    requestNavMapRender(({ fastNav }) => runMapPreviewPass({ fastNav }));
 }
 
 initPresetSelect();
 initTabs();
 initProfileEditor({ onChange: renderAll });
-initMapPreviewNavigation(() => ({ ...readControls(), worldState: labWorld }), schedulePanRender);
+initMapPreviewNavigation(() => ({ ...readControls(), worldState: labWorld }), onMapNavChange);
 bindControls();
 document.getElementById("mapSeedInput").value = "42";
 document.getElementById("cellSizeInput").value = String(gridSettings.cellSize);
 document.getElementById("storyCountInput").value = String(floorTileSettings.wallTextureStories ?? 8);
 document.getElementById("seedInput").value = "42";
+const gameZoomEl = document.getElementById("gameZoomInput");
+if (gameZoomEl) {
+    const z = computeCombatZoom(800, 600, playerBaseStats.range);
+    gameZoomEl.value = String(z.toFixed(2));
+    document.getElementById("gameZoomValue").textContent = gameZoomEl.value;
+}

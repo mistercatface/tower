@@ -1,4 +1,5 @@
 import { gridSettings } from "./Config/Config.js";
+import { mapGenCanvasBounds } from "./tile-lab-settings.js";
 import { GamePhase } from "./GameState/GamePhase.js";
 import { GameState } from "./GameState/GameState.js";
 import { MapGenerator } from "./Generator/MapGenerator.js";
@@ -30,14 +31,12 @@ export function withSeededRandom(seed, fn) {
  */
 export function createLabMapWorld(options = {}) {
     const {
-        canvasWidth = 800,
-        canvasHeight = 600,
         mapSeed = Date.now() & 0x7fffffff,
         floorTileSeed,
     } = options;
 
     const state = new GameState();
-    state.canvasBounds = { width: canvasWidth, height: canvasHeight };
+    state.canvasBounds = { ...mapGenCanvasBounds };
     state.phase = GamePhase.COMBAT;
 
     withSeededRandom(mapSeed, () => {
