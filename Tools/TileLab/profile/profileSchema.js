@@ -13,6 +13,17 @@ export const BLEND_OPTIONS = [
     "hard-light", "soft-light", "color-dodge", "color-burn", "difference"
 ];
 
+export const EASING_OPTIONS = [
+    "linear",
+    "easeInQuad", "easeOutQuad", "easeInOutQuad",
+    "easeInCubic", "easeOutCubic", "easeInOutCubic",
+    "easeInQuart", "easeOutQuart", "easeInOutQuart",
+    "easeInQuint", "easeOutQuint", "easeInOutQuint",
+    "easeInSine", "easeOutSine", "easeInOutSine",
+    "easeInExpo", "easeOutExpo", "easeInOutExpo",
+    "easeInCirc", "easeOutCirc", "easeInOutCirc"
+];
+
 /** Context motifs shift coordinates for layers below; they are not painted or blended. */
 export function isContextMotif(type) {
     return type === "translate";

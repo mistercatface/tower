@@ -3,6 +3,7 @@ import { SliderControl } from "../ui/controls/SliderControl.js";
 import { SelectControl } from "../ui/controls/SelectControl.js";
 import {
     BLEND_OPTIONS,
+    EASING_OPTIONS,
     LAYER_OPTIONS,
     MOTIF_TYPES,
     PALETTE_FIELDS,
@@ -36,6 +37,7 @@ function defaultAnimation() {
                     {
                         startValue: 0,
                         endValue: 360,
+                        easing: "linear",
                     }
                 ],
             }
@@ -121,6 +123,7 @@ function animationFromProfile(profile, motifs) {
             trackStages.push({
                 startValue: stageTrack?.startValue ?? 0,
                 endValue: stageTrack?.endValue ?? 360,
+                easing: stageTrack?.easing ?? "linear",
             });
         }
 
@@ -269,11 +272,12 @@ export function buildProfileFromEditor(state = editorState) {
             const tracks = [];
             for (const track of state.animation.tracks) {
                 const exportIdx = motifExportIndex(state.motifs, track.editorMotifIndex);
-                const stageTrackData = track.stages[i] || { startValue: 0, endValue: 360 };
+                const stageTrackData = track.stages[i] || { startValue: 0, endValue: 360, easing: "linear" };
                 tracks.push({
                     targetPath: `motifs[${exportIdx}].${track.paramPath}`,
                     startValue: stageTrackData.startValue,
                     endValue: stageTrackData.endValue,
+                    easing: stageTrackData.easing ?? "linear",
                 });
             }
             stages.push({
@@ -376,7 +380,7 @@ function syncAnimationParamRange(trackIndex = editorState?.animation?.selectedTr
         track.stages = [];
     }
     while (track.stages.length < editorState.animation.stages.length) {
-        track.stages.push({ startValue: current, endValue: max });
+        track.stages.push({ startValue: current, endValue: max, easing: "linear" });
     }
     
     const activeStageIndex = editorState.animation.selectedStageIndex;
@@ -388,6 +392,7 @@ function syncAnimationParamRange(trackIndex = editorState?.animation?.selectedTr
         end = max;
     }
     stageData.endValue = end;
+    stageData.easing = stageData.easing ?? "linear";
 }
 
 function selectMotifById(motifId) {
@@ -708,9 +713,11 @@ function renderAnimationParams(container) {
             if (!track.stages) track.stages = [];
             const lastStageData = track.stages[track.stages.length - 1];
             const val = lastStageData ? lastStageData.endValue : 0;
+            const easing = lastStageData ? (lastStageData.easing ?? "linear") : "linear";
             track.stages.push({
                 startValue: val,
-                endValue: val
+                endValue: val,
+                easing: easing
             });
         }
         editorState.animation.selectedStageIndex = stagesList.length - 1;
@@ -806,6 +813,7 @@ function renderAnimationParams(container) {
             stages: editorState.animation.stages.map(() => ({
                 startValue: 0,
                 endValue: fields[0]?.max ?? 360,
+                easing: "linear",
             }))
         });
         editorState.animation.selectedTrackIndex = editorState.animation.tracks.length - 1;
@@ -898,6 +906,7 @@ function renderAnimationParams(container) {
         renderScalarFields(container, stageData, [
             { path: "startValue", label: "Start", min: activeField.min, max: activeField.max, step: activeField.step },
             { path: "endValue", label: "End", min: activeField.min, max: activeField.max, step: activeField.step },
+            { path: "easing", label: "Easing", options: EASING_OPTIONS },
         ], { lightweight: true });
     }
 

@@ -406,6 +406,311 @@ const neonGridwave = {
     }
 };
 
+const chronosEngine = {
+    warp: { frequency: 0.004, amplitude: 8, octaves: 2, sampleOffset: [300, 400] },
+    palette: { base: [15, 10, 25], floorBase: [8, 5, 18], wallBase: [20, 15, 30] },
+    motifs: [
+        {
+            type: "baseMetal",
+            structure: { frequency: 0.01, octaves: 2, rgbDelta: [3, 2, 6] },
+            grain: { frequency: 0.5, octaves: 1, amplitude: 1.0 },
+            surfaceMask: "all",
+            blendMode: "add",
+            opacity: 1
+        },
+        {
+            type: "translate",
+            x: 0,
+            y: 0,
+            coordinateMode: "evalAndWarped",
+            surfaceMask: "all",
+            blendMode: "add",
+            opacity: 1
+        },
+        {
+            type: "concentricRings",
+            coordinateSpace: "warped",
+            frequency: 0.025,
+            ringWidth: 0.05,
+            peak: 12,
+            offset: [0, 0],
+            tint: [0.2, 2.5, 4.0],
+            surfaceMask: "all",
+            blendMode: "add",
+            opacity: 0.8
+        },
+        {
+            type: "starburst",
+            coordinateSpace: "warped",
+            gridSize: 48,
+            density: 0.3,
+            radius: 12,
+            spikes: 6,
+            peak: 14,
+            tint: [4.0, 1.2, 0.5],
+            surfaceMask: "all",
+            blendMode: "add",
+            opacity: 0.75
+        },
+        {
+            type: "filterHSV",
+            hueShift: 0,
+            saturation: 1.6,
+            value: 1.3,
+            surfaceMask: "all",
+            blendMode: "replace",
+            opacity: 1
+        }
+    ],
+    animation: {
+        stages: [
+            {
+                frames: 40,
+                durationMs: 2000,
+                tracks: [
+                    { targetPath: "motifs[1].x", startValue: 0, endValue: 40, easing: "easeInOutQuad" },
+                    { targetPath: "motifs[1].y", startValue: 0, endValue: -40, easing: "easeInOutQuad" },
+                    { targetPath: "motifs[2].ringWidth", startValue: 0.04, endValue: 0.16, easing: "easeInCubic" },
+                    { targetPath: "motifs[3].radius", startValue: 8, endValue: 24, easing: "easeOutQuad" },
+                    { targetPath: "motifs[4].hueShift", startValue: 0, endValue: 120, easing: "linear" }
+                ]
+            },
+            {
+                frames: 40,
+                durationMs: 2000,
+                tracks: [
+                    { targetPath: "motifs[1].x", startValue: 40, endValue: -40, easing: "easeInOutQuad" },
+                    { targetPath: "motifs[1].y", startValue: -40, endValue: 40, easing: "easeInOutQuad" },
+                    { targetPath: "motifs[2].ringWidth", startValue: 0.16, endValue: 0.08, easing: "easeInOutSine" },
+                    { targetPath: "motifs[3].radius", startValue: 24, endValue: 12, easing: "easeInQuad" },
+                    { targetPath: "motifs[4].hueShift", startValue: 120, endValue: 240, easing: "linear" }
+                ]
+            },
+            {
+                frames: 40,
+                durationMs: 2000,
+                tracks: [
+                    { targetPath: "motifs[1].x", startValue: -40, endValue: 0, easing: "easeInOutQuad" },
+                    { targetPath: "motifs[1].y", startValue: 40, endValue: 0, easing: "easeInOutQuad" },
+                    { targetPath: "motifs[2].ringWidth", startValue: 0.08, endValue: 0.04, easing: "easeOutCubic" },
+                    { targetPath: "motifs[3].radius", startValue: 12, endValue: 8, easing: "easeInOutQuad" },
+                    { targetPath: "motifs[4].hueShift", startValue: 240, endValue: 360, easing: "linear" }
+                ]
+            }
+        ]
+    }
+};
+
+const hyperDrive = {
+    warp: { frequency: 0.002, amplitude: 4, octaves: 1, sampleOffset: [100, 500] },
+    palette: { base: [5, 5, 10], floorBase: [2, 2, 6], wallBase: [10, 10, 15] },
+    motifs: [
+        {
+            type: "baseMetal",
+            structure: { frequency: 0.005, octaves: 2, rgbDelta: [2, 2, 4] },
+            grain: { frequency: 0.8, octaves: 1, amplitude: 0.5 },
+            surfaceMask: "all",
+            blendMode: "add",
+            opacity: 1
+        },
+        {
+            type: "translate",
+            x: 0,
+            y: 0,
+            coordinateMode: "evalAndWarped",
+            surfaceMask: "all",
+            blendMode: "add",
+            opacity: 1
+        },
+        {
+            type: "circuitPanels",
+            coordinateSpace: "warped",
+            gridSize: 20,
+            density: 0.6,
+            cellVariation: 4,
+            groutWidth: 0.06,
+            groutPeak: -8,
+            groutTint: [1, 1, 1],
+            bevelWidth: 0.04,
+            highlightPeak: 6,
+            shadowPeak: -4,
+            bevelTint: [1, 1, 1],
+            sunkenDarken: 4,
+            sunkenShadowPeak: -4,
+            sunkenHighlightPeak: 3,
+            rivetRadius: 0.1,
+            rivetSpacing: 0.15,
+            rivetPeak: 5,
+            rivetTint: [1.2, 1.2, 1.8],
+            surfaceMask: "all",
+            blendMode: "add",
+            opacity: 1
+        },
+        {
+            type: "circuitTraces",
+            coordinateSpace: "warped",
+            gridSize: 40,
+            lineWidth: 2,
+            density: 0.55,
+            diagDensity: 0.1,
+            peak: 10,
+            tint: [0.8, 3.5, 5.0],
+            padEnabled: true,
+            surfaceMask: "all",
+            blendMode: "add",
+            opacity: 0.85
+        },
+        {
+            type: "filterHSV",
+            hueShift: 0,
+            saturation: 1.5,
+            value: 1.0,
+            surfaceMask: "all",
+            blendMode: "replace",
+            opacity: 1
+        }
+    ],
+    animation: {
+        stages: [
+            {
+                frames: 30,
+                durationMs: 1500,
+                tracks: [
+                    { targetPath: "motifs[1].x", startValue: 0, endValue: 8, easing: "easeInQuad" },
+                    { targetPath: "motifs[1].y", startValue: 0, endValue: 6, easing: "easeInQuad" },
+                    { targetPath: "motifs[2].highlightPeak", startValue: 6, endValue: 16, easing: "easeInExpo" },
+                    { targetPath: "motifs[3].lineWidth", startValue: 1.5, endValue: 5.5, easing: "easeInQuint" },
+                    { targetPath: "motifs[4].value", startValue: 1.0, endValue: 1.8, easing: "easeInSine" },
+                    { targetPath: "motifs[4].hueShift", startValue: 0, endValue: 90, easing: "linear" }
+                ]
+            },
+            {
+                frames: 20,
+                durationMs: 800,
+                tracks: [
+                    { targetPath: "motifs[1].x", startValue: 8, endValue: -12, easing: "easeInOutExpo" },
+                    { targetPath: "motifs[1].y", startValue: 6, endValue: -10, easing: "easeInOutExpo" },
+                    { targetPath: "motifs[2].highlightPeak", startValue: 16, endValue: 4, easing: "easeOutCirc" },
+                    { targetPath: "motifs[3].lineWidth", startValue: 5.5, endValue: 1.0, easing: "easeOutExpo" },
+                    { targetPath: "motifs[4].value", startValue: 1.8, endValue: 0.6, easing: "easeOutQuint" },
+                    { targetPath: "motifs[4].hueShift", startValue: 90, endValue: 210, easing: "linear" }
+                ]
+            },
+            {
+                frames: 40,
+                durationMs: 2200,
+                tracks: [
+                    { targetPath: "motifs[1].x", startValue: -12, endValue: 0, easing: "easeOutQuad" },
+                    { targetPath: "motifs[1].y", startValue: -10, endValue: 0, easing: "easeOutQuad" },
+                    { targetPath: "motifs[2].highlightPeak", startValue: 4, endValue: 6, easing: "easeInOutQuad" },
+                    { targetPath: "motifs[3].lineWidth", startValue: 1.0, endValue: 1.5, easing: "easeInOutSine" },
+                    { targetPath: "motifs[4].value", startValue: 0.6, endValue: 1.0, easing: "easeInOutCubic" },
+                    { targetPath: "motifs[4].hueShift", startValue: 210, endValue: 360, easing: "linear" }
+                ]
+            }
+        ]
+    }
+};
+
+const plasmaReactor = {
+    warp: { frequency: 0.003, amplitude: 6, octaves: 2, sampleOffset: [200, 300] },
+    palette: { base: [10, 15, 20], floorBase: [5, 8, 15], wallBase: [15, 20, 25] },
+    motifs: [
+        {
+            type: "baseMetal",
+            structure: { frequency: 0.004, octaves: 3, rgbDelta: [2, 3, 5] },
+            grain: { frequency: 1.0, octaves: 1, amplitude: 0.8 },
+            surfaceMask: "all",
+            blendMode: "add",
+            opacity: 1
+        },
+        {
+            type: "translate",
+            x: 0,
+            y: 0,
+            coordinateMode: "evalAndWarped",
+            surfaceMask: "all",
+            blendMode: "add",
+            opacity: 1
+        },
+        {
+            type: "concentricRings",
+            coordinateSpace: "warped",
+            frequency: 0.04,
+            ringWidth: 0.06,
+            peak: 14,
+            offset: [0, 0],
+            tint: [0.2, 3.0, 5.0],
+            surfaceMask: "all",
+            blendMode: "add",
+            opacity: 0.9
+        },
+        {
+            type: "circuitTraces",
+            coordinateSpace: "warped",
+            gridSize: 32,
+            lineWidth: 2,
+            density: 0.5,
+            diagDensity: 0.15,
+            peak: 12,
+            tint: [4.5, 4.0, 0.5],
+            padEnabled: true,
+            surfaceMask: "all",
+            blendMode: "add",
+            opacity: 0.8
+        },
+        {
+            type: "filterHSV",
+            hueShift: -10,
+            saturation: 1.4,
+            value: 1.0,
+            surfaceMask: "all",
+            blendMode: "replace",
+            opacity: 1
+        }
+    ],
+    animation: {
+        stages: [
+            {
+                frames: 30,
+                durationMs: 1200,
+                tracks: [
+                    { targetPath: "motifs[1].x", startValue: 0, endValue: 6, easing: "easeInQuad" },
+                    { targetPath: "motifs[1].y", startValue: 0, endValue: 6, easing: "easeInQuad" },
+                    { targetPath: "motifs[2].ringWidth", startValue: 0.03, endValue: 0.18, easing: "easeInCubic" },
+                    { targetPath: "motifs[3].lineWidth", startValue: 1.5, endValue: 3.5, easing: "easeInQuad" },
+                    { targetPath: "motifs[4].value", startValue: 1.0, endValue: 1.7, easing: "easeInQuad" },
+                    { targetPath: "motifs[4].hueShift", startValue: -10, endValue: 10, easing: "easeInOutSine" }
+                ]
+            },
+            {
+                frames: 20,
+                durationMs: 600,
+                tracks: [
+                    { targetPath: "motifs[1].x", startValue: 6, endValue: -10, easing: "easeInOutExpo" },
+                    { targetPath: "motifs[1].y", startValue: 6, endValue: -10, easing: "easeInOutExpo" },
+                    { targetPath: "motifs[2].ringWidth", startValue: 0.18, endValue: 0.06, easing: "easeOutExpo" },
+                    { targetPath: "motifs[3].lineWidth", startValue: 3.5, endValue: 7.0, easing: "easeInExpo" },
+                    { targetPath: "motifs[4].value", startValue: 1.7, endValue: 0.7, easing: "easeOutQuint" },
+                    { targetPath: "motifs[4].hueShift", startValue: 10, endValue: -5, easing: "easeInOutSine" }
+                ]
+            },
+            {
+                frames: 40,
+                durationMs: 1800,
+                tracks: [
+                    { targetPath: "motifs[1].x", startValue: -10, endValue: 0, easing: "easeOutQuad" },
+                    { targetPath: "motifs[1].y", startValue: -10, endValue: 0, easing: "easeOutQuad" },
+                    { targetPath: "motifs[2].ringWidth", startValue: 0.06, endValue: 0.03, easing: "easeInOutSine" },
+                    { targetPath: "motifs[3].lineWidth", startValue: 7.0, endValue: 1.5, easing: "easeOutQuint" },
+                    { targetPath: "motifs[4].value", startValue: 0.7, endValue: 1.0, easing: "easeInOutCubic" },
+                    { targetPath: "motifs[4].hueShift", startValue: -5, endValue: -10, easing: "easeInOutSine" }
+                ]
+            }
+        ]
+    }
+};
+
 export const floorProceduralProfiles = {
     ancientRuins,
     cyberGrid,
@@ -418,7 +723,10 @@ export const floorProceduralProfiles = {
     abyssalDepths,
     neonWireframe,
     pulsingPortal,
-    neonGridwave
+    neonGridwave,
+    chronosEngine,
+    hyperDrive,
+    plasmaReactor
 };
 
 export const START_STATION_ID = "organicPulse";
@@ -458,7 +766,7 @@ export function getFloorProceduralProfile(profileId) {
 }
 
 export function listShippedFloorProfileIds() {
-    return Object.keys(floorProceduralProfiles).sort();
+    return Object.keys(floorProceduralProfiles);
 }
 
 export function resolveFloorTextureProfileId({ layer, strategy }) {

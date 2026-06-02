@@ -11,6 +11,8 @@
 
 /** @typedef {{ path: string, get: (root: object) => unknown, set: (root: object, value: unknown) => void }} ParamRef */
 
+import { applyEasing } from "../../Math/Easing.js";
+
 const scratchEntries = new Map();
 
 function parseTargetPath(path) {
@@ -211,7 +213,9 @@ export function createTimelineBinding(profile) {
                 if (activeTrack) {
                     const start = activeTrack.startValue ?? 0;
                     const end = activeTrack.endValue ?? 0;
-                    value = start + (end - start) * t;
+                    const easingType = activeTrack.easing ?? "linear";
+                    const easedT = applyEasing(easingType, t);
+                    value = start + (end - start) * easedT;
                     found = true;
                 }
 
