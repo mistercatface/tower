@@ -352,7 +352,7 @@ export const combatVisualSettings = {
     gridStroke: "rgba(90, 105, 125, 0.2)",
     bloom: {
         enabled: true,
-        blur: 16,
+        blur: 8,
     }
 };
 
