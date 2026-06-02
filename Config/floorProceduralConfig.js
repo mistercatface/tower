@@ -427,6 +427,66 @@ export const floorProceduralProfiles = {
             }
         ]
     },
+
+    neonPulse: {
+        warp: { frequency: 0.008, amplitude: 20, octaves: 2, sampleOffset: [300, 300] },
+        palette: {
+            base: [5, 12, 28],
+            floorBase: [5, 12, 28],
+            wallBase: [22, 5, 28],
+            shadow: "#080c14",
+        },
+        sharedMotifs: [
+            {
+                type: "starburst", coordinateSpace: "warped",
+                gridSize: 16, density: 0.3, radius: 30, spikes: 2, peak: 16, tint: [2.5, 0.8, -0.4], opacity: 1
+            },
+            {
+                type: "circuitLattice", coordinateSpace: "warped",
+                frequency: 0.025, octaves: 2, angle: 0.1, ridgeThreshold: 0.1, peak: 7, tint: [1.8, 0.2, 0.6], opacity: 0.5
+            }
+        ]
+    },
+
+    acidCore: {
+        warp: { frequency: 0.01, amplitude: 22, octaves: 2, sampleOffset: [700, 150] },
+        palette: {
+            base: [8, 16, 12],
+            floorBase: [8, 16, 12],
+            wallBase: [6, 10, 24],
+            shadow: "#060a08",
+        },
+        sharedMotifs: [
+            {
+                type: "starburst", coordinateSpace: "warped",
+                gridSize: 12, density: 0.25, radius: 28, spikes: 3, peak: 18, tint: [-0.5, 2.5, 0.5], opacity: 1
+            },
+            {
+                type: "circuitLattice", coordinateSpace: "warped",
+                frequency: 0.03, octaves: 2, angle: 0.8, ridgeThreshold: 0.08, peak: 9, tint: [-0.2, 1.8, 1.2], opacity: 0.45
+            }
+        ]
+    },
+
+    solarFlare: {
+        warp: { frequency: 0.0075, amplitude: 26, octaves: 2, sampleOffset: [100, 900] },
+        palette: {
+            base: [22, 12, 6],
+            floorBase: [22, 12, 6],
+            wallBase: [12, 18, 10],
+            shadow: "#120804",
+        },
+        sharedMotifs: [
+            {
+                type: "starburst", coordinateSpace: "warped",
+                gridSize: 20, density: 0.4, radius: 35, spikes: 4, peak: 20, tint: [2.5, 1.6, -0.6], opacity: 1
+            },
+            {
+                type: "circuitLattice", coordinateSpace: "warped",
+                frequency: 0.018, octaves: 2, angle: 0.35, ridgeThreshold: 0.11, peak: 8, tint: [1.8, 0.6, 0.1], opacity: 0.4
+            }
+        ]
+    },
 };
 
 export const defaultFloorProceduralProfileId = "tetris";
