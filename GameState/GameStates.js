@@ -180,6 +180,7 @@ export class CombatState {
             ctx.state.player.setSpawnPosition(combatCoords.x, combatCoords.y);
         }
         ctx.state.player.resetToSpawn();
+        ctx.viewport.snapTo(ctx.state.player.x, ctx.state.player.y);
 
         if (currentNode?.id === 0) {
             ctx.state.spawnRunParty(1);
