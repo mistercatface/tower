@@ -1,0 +1,105 @@
+import { clampByte } from "../util/color.js";
+import { noise2D } from "../Noise/Perlin2D.js";
+
+const SQRT3 = Math.sqrt(3);
+
+/** Flat-top hex: circumradius `size` (center to vertex). */
+function axialRound(q, r) {
+    let x = q;
+    let z = r;
+    let y = -x - z;
+    let rx = Math.round(x);
+    let ry = Math.round(y);
+    let rz = Math.round(z);
+    const xDiff = Math.abs(rx - x);
+    const yDiff = Math.abs(ry - y);
+    const zDiff = Math.abs(rz - z);
+    if (xDiff > yDiff && xDiff > zDiff) {
+        rx = -ry - rz;
+    } else if (yDiff > zDiff) {
+        ry = -rx - rz;
+    } else {
+        rz = -rx - ry;
+    }
+    return { q: rx, r: rz };
+}
+
+function pixelToAxial(wx, wy, size) {
+    const q = ((2 / 3) * wx) / size;
+    const r = ((-1 / 3) * wx + (SQRT3 / 3) * wy) / size;
+    return axialRound(q, r);
+}
+
+function axialToPixel(q, r, size) {
+    return {
+        x: size * 1.5 * q,
+        y: size * SQRT3 * (r + q * 0.5),
+    };
+}
+
+/** Signed distance: negative inside hex, positive outside (flat-top). */
+function hexSignedDistance(lx, ly, size) {
+    const ax = Math.abs(lx);
+    const ay = Math.abs(ly);
+    const d = size * SQRT3 * 0.5;
+    return Math.max(ay - d, (ax * SQRT3 + ay) * 0.5 - size, (-ax * SQRT3 + ay) * 0.5 - size);
+}
+
+function hexMetrics(sample, config) {
+    const cellWorld = config.cellWorldSize ?? 16;
+    const size = cellWorld / SQRT3;
+    const { q, r } = pixelToAxial(sample.evalX, sample.evalY, size);
+    const center = axialToPixel(q, r, size);
+    const lx = sample.evalX - center.x;
+    const ly = sample.evalY - center.y;
+    const sdf = hexSignedDistance(lx, ly, size);
+    const distInside = Math.max(0, -sdf);
+    const edgeDist = distInside / Math.max(1, size * 0.5);
+    return { q, r, edgeDist, distInside, size };
+}
+
+function applyGrout(rgb, edgeDist, config) {
+    const groutW = config.groutWidth ?? 0.08;
+    if (edgeDist >= groutW) {
+        return;
+    }
+    const t = (1 - edgeDist / groutW) * (config.groutPeak ?? 12);
+    const tint = config.groutTint ?? [4, 2, -2];
+    rgb.r = clampByte(rgb.r + t * tint[0]);
+    rgb.g = clampByte(rgb.g + t * tint[1]);
+    rgb.b = clampByte(rgb.b + t * tint[2]);
+}
+
+function applyWarmAccent(rgb, edgeDist, config) {
+    const accentW = config.accentWidth;
+    if (accentW == null || accentW <= 0) {
+        return;
+    }
+    if (edgeDist >= accentW) {
+        return;
+    }
+    const t = (1 - edgeDist / accentW) * (config.accentPeak ?? 5);
+    const tint = config.accentTint ?? [4, 1, -2];
+    rgb.r = clampByte(rgb.r + t * tint[0]);
+    rgb.g = clampByte(rgb.g + t * tint[1]);
+    rgb.b = clampByte(rgb.b + t * tint[2]);
+}
+
+function applyCellFill(rgb, q, r, config) {
+    const [jx, jy] = config.jitterOffset ?? [0, 0];
+    const jitter = noise2D(q * 0.63 + jx, r * 0.47 + jy, 1);
+    const delta = jitter * (config.cellVariation ?? 2);
+    rgb.r = clampByte(rgb.r + delta);
+    rgb.g = clampByte(rgb.g + delta * 0.98);
+    rgb.b = clampByte(rgb.b + delta * 1.02);
+}
+
+/** World-aligned flat-top hex grid — grout lines continue across floor and wall bases. */
+export const hexGridMotif = {
+    apply(sample, rgb, config) {
+        const { q, r, edgeDist } = hexMetrics(sample, config);
+        applyCellFill(rgb, q, r, config);
+        applyGrout(rgb, edgeDist, config);
+        applyWarmAccent(rgb, edgeDist, config);
+    },
+};

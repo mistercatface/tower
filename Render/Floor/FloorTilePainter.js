@@ -80,6 +80,7 @@ export function paintPixelArea(
                     wallV: mapped.wallV,
                     blocked,
                     isWall,
+                    surfaceKind,
                 },
                 paintContext
             );

@@ -392,7 +392,7 @@ export function initProfileEditor({ onChange }) {
         onChange?.();
     };
 
-    loadEditorFromProfileId(presetSelect?.value || "spaceStation");
+    loadEditorFromProfileId(presetSelect?.value || "techCorridor");
     renderMotifList(motifList);
     renderMotifParams(motifParams);
     renderGlobalParams(globalParams);

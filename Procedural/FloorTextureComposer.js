@@ -58,7 +58,30 @@ function resolveMotifStack(profile, isWall) {
     return stack;
 }
 
+function motifMatchesSurface(config, surface) {
+    const mask = config.surfaceMask ?? "all";
+    if (mask === "all") {
+        return true;
+    }
+    if (mask === "floor") {
+        return !surface.isWall;
+    }
+    if (mask === "wall") {
+        return surface.isWall === true;
+    }
+    if (mask === "wallFace") {
+        return surface.surfaceKind === "wallFace";
+    }
+    if (mask === "wallCell") {
+        return surface.surfaceKind === "wallCell";
+    }
+    return true;
+}
+
 function applyMotifLayer(sample, rgb, motifConfig) {
+    if (!motifMatchesSurface(motifConfig, sample)) {
+        return;
+    }
     const before = { r: rgb.r, g: rgb.g, b: rgb.b };
     const layer = { r: rgb.r, g: rgb.g, b: rgb.b };
     getMotif(motifConfig.type).apply(sample, layer, motifConfig);

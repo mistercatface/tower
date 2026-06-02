@@ -2,13 +2,13 @@ import { combatVisualSettings } from "./Config.js";
 
 /** @typedef {"eval" | "warped"} ProceduralCoordinateSpace */
 
-/** Station deck — grid plates + subtle grain; accents kept very light. */
+/** Station deck — grid plates + continuous warped vein field (floor→wall). */
 const spaceStation = {
     warp: {
-        frequency: 0.005,
-        amplitude: 0,
-        octaves: 1,
-        sampleOffset: [0, 0],
+        frequency: 0.004,
+        amplitude: 9,
+        octaves: 2,
+        sampleOffset: [120, 480],
     },
     palette: {
         base: [22, 24, 28],
@@ -19,8 +19,27 @@ const spaceStation = {
     underlay: [
         {
             type: "baseMetal",
-            structure: { frequency: 0.0025, octaves: 1, rgbDelta: [3, 3, 4] },
+            structure: { frequency: 0.0025, octaves: 2, rgbDelta: [3, 3, 4] },
             grain: { frequency: 0.18, octaves: 1, amplitude: 1 },
+        },
+    ],
+    sharedMotifs: [
+        {
+            type: "circuitLattice",
+            coordinateSpace: "warped",
+            frequency: 0.015,
+            octaves: 2,
+            angle: 0.22,
+            offset: [200, 600],
+            ridgeThreshold: 0.12,
+            peak: 7,
+            tint: [0.2, 0.35, 0.55],
+            intersectionThreshold: 0.13,
+            intersectionPeak: 9,
+            intersectionTint: [0.35, 0.85, 1.25],
+            interiorVariation: { frequency: 0.05, amplitude: 1, tint: [0.5, 1, 1.5] },
+            blendMode: "add",
+            opacity: 0.48,
         },
     ],
     structure: [
@@ -29,56 +48,114 @@ const spaceStation = {
             cellWorldSize: 16,
             plateCells: 2,
             groutWidth: 0.045,
-            groutPeak: 11,
+            groutPeak: 9,
             groutTint: [-6, -6, -5],
-            plateVariation: 3,
+            plateVariation: 2,
             jitterOffset: [40, 120],
             rivetSpacing: 16,
             rivetInset: 4,
             rivetRadius: 0.018,
-            rivetPeak: 5,
+            rivetPeak: 4,
             rivetTint: [2, 4, 5],
             blendMode: "multiply",
-            opacity: 0.85,
+            opacity: 0.72,
         },
     ],
     floorMotifs: [],
     wallMotifs: [
         {
-            type: "deckPlates",
-            cellWorldSize: 16,
-            plateCells: 1,
-            plateRows: 2,
-            groutWidth: 0.05,
-            groutPeak: 9,
-            groutTint: [-5, -5, -4],
-            plateVariation: 2,
-            jitterOffset: [80, 20],
-            rivetSpacing: 0,
-            blendMode: "multiply",
-            opacity: 0.75,
-        },
-        {
             type: "wallLighting",
             power: 1,
-            topDarken: 4,
+            topDarken: 5,
             coolBias: 1.04,
         },
     ],
-    accents: [
+    accents: [],
+};
+
+/** Clinical sci-fi corridor — deck plates + unified warped veins (rootForest-style cohesion). */
+const techCorridor = {
+    warp: {
+        frequency: 0.0035,
+        amplitude: 11,
+        octaves: 2,
+        sampleOffset: [400, 800],
+    },
+    palette: {
+        base: [34, 36, 40],
+        floorBase: [36, 38, 42],
+        wallBase: [38, 40, 44],
+        shadow: combatVisualSettings.floorShadow,
+    },
+    underlay: [
         {
-            type: "stainBlotch",
-            coordinateSpace: "eval",
-            frequency: 0.008,
-            threshold: 0.55,
-            peak: 5,
-            offset: [200, 500],
-            tint: [1, 2, 2],
-            octaves: 1,
-            opacity: 0.15,
-            blendMode: "add",
+            type: "baseMetal",
+            structure: { frequency: 0.002, octaves: 2, rgbDelta: [1, 1, 2] },
+            grain: { frequency: 0.15, octaves: 1, amplitude: 0.35 },
         },
     ],
+    sharedMotifs: [
+        {
+            type: "circuitLattice",
+            coordinateSpace: "warped",
+            frequency: 0.016,
+            octaves: 2,
+            angle: 0.28,
+            offset: [500, 200],
+            ridgeThreshold: 0.12,
+            peak: 9,
+            tint: [0.45, 0.3, 0.08],
+            intersectionThreshold: 0.13,
+            intersectionPeak: 10,
+            intersectionTint: [0.35, 0.85, 1.15],
+            interiorVariation: { frequency: 0.05, amplitude: 1.2, tint: [0.4, 0.5, 1] },
+            blendMode: "add",
+            opacity: 0.52,
+        },
+    ],
+    structure: [
+        {
+            type: "deckPlates",
+            cellWorldSize: 16,
+            plateCells: 2,
+            groutWidth: 0.04,
+            groutPeak: 5,
+            groutTint: [-4, -4, -3],
+            accentWidth: 0.018,
+            accentPeak: 4,
+            accentTint: [5, 1, -2],
+            plateVariation: 0.5,
+            jitterOffset: [20, 60],
+            rivetSpacing: 0,
+            blendMode: "multiply",
+            opacity: 0.65,
+        },
+    ],
+    floorMotifs: [],
+    wallMotifs: [
+        {
+            type: "panelBay",
+            rows: 5,
+            cols: 2,
+            inset: 0.16,
+            frameWidth: 0.07,
+            highlightPeak: 3,
+            shadowPeak: 4,
+            rimPeak: 4,
+            rimTint: [0.3, 0.85, 1.2],
+            interiorDarken: 4,
+            surfaceMask: "wallFace",
+            opacity: 0.55,
+            blendMode: "add",
+        },
+        {
+            type: "wallLighting",
+            power: 0.95,
+            topDarken: 3,
+            coolBias: 1.02,
+        },
+    ],
+    accents: [],
 };
 
 /**
@@ -87,26 +164,31 @@ const spaceStation = {
  */
 export const floorProceduralProfiles = {
     spaceStation,
+    techCorridor,
     cleanserStation: spaceStation,
     startStation: spaceStation,
 
     cargoBay: {
         warp: {
             frequency: 0.004,
-            amplitude: 8,
+            amplitude: 10,
             octaves: 2,
             sampleOffset: [300, 700],
         },
         palette: {
             base: [27, 25, 22],
+            floorBase: [28, 26, 23],
+            wallBase: [25, 23, 20],
             shadow: combatVisualSettings.floorShadow,
         },
-        motifs: [
+        underlay: [
             {
                 type: "baseMetal",
                 structure: { frequency: 0.004, octaves: 2, rgbDelta: [4, 3, 2] },
-                grain: { frequency: 1.0, octaves: 1, amplitude: 2 },
+                grain: { frequency: 0.85, octaves: 1, amplitude: 1.5 },
             },
+        ],
+        sharedMotifs: [
             {
                 type: "circuitLattice",
                 coordinateSpace: "warped",
@@ -116,16 +198,42 @@ export const floorProceduralProfiles = {
                 offset: [400, 1100],
                 ridgeThreshold: 0.11,
                 peak: 8,
-                tint: [-2, -2, -2],
+                tint: [-1, -1, -1],
                 grooveThreshold: 0.17,
-                groovePeak: 4,
+                groovePeak: 3,
                 grooveTint: [-2, -2, -3],
                 intersectionThreshold: 0.12,
-                intersectionPeak: 13,
+                intersectionPeak: 12,
                 intersectionTint: [0.45, 0.95, 1.25],
-                interiorVariation: { frequency: 0.06, amplitude: 1.2, tint: [1, 1, 0] },
+                interiorVariation: { frequency: 0.06, amplitude: 1, tint: [1, 1, 0] },
+                blendMode: "add",
+                opacity: 0.55,
             },
         ],
+        structure: [
+            {
+                type: "deckPlates",
+                cellWorldSize: 16,
+                plateCells: 2,
+                groutWidth: 0.05,
+                groutPeak: 8,
+                groutTint: [-5, -5, -4],
+                plateVariation: 2.5,
+                jitterOffset: [300, 900],
+                rivetSpacing: 0,
+                blendMode: "multiply",
+                opacity: 0.62,
+            },
+        ],
+        wallMotifs: [
+            {
+                type: "wallLighting",
+                power: 1.05,
+                topDarken: 6,
+                coolBias: 1.03,
+            },
+        ],
+        accents: [],
     },
 
     rootForest: {
@@ -164,20 +272,20 @@ export const floorProceduralProfiles = {
     },
 };
 
-export const defaultFloorProceduralProfileId = "spaceStation";
+export const defaultFloorProceduralProfileId = "techCorridor";
 
 /** Layer-0 / start node floor look (independent of generator strategy). */
-export const startFloorProceduralProfileId = "spaceStation";
+export const startFloorProceduralProfileId = "techCorridor";
 
 /** Generator strategy name → floor profile id */
 export const floorProceduralProfileByStrategy = {
-    StartBuildingStrategy: "spaceStation",
+    StartBuildingStrategy: "techCorridor",
     MazeStrategy: "cargoBay",
     Maze2Strategy: "cargoBay",
     DenseMazeStrategy: "cargoBay",
     SquareStrategy: "cargoBay",
-    GeometricStrategy: "spaceStation",
-    FortressStrategy: "spaceStation",
+    GeometricStrategy: "techCorridor",
+    FortressStrategy: "techCorridor",
     HoneycombStrategy: "rootForest",
     DiamondStrategy: "rootForest",
 };

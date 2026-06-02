@@ -27,6 +27,21 @@ function applyGrout(rgb, edgeDist, config) {
     rgb.b = clampByte(rgb.b + t * tint[2]);
 }
 
+function applyWarmAccent(rgb, edgeDist, config) {
+    const accentW = config.accentWidth;
+    if (accentW == null || accentW <= 0) {
+        return;
+    }
+    if (edgeDist >= accentW) {
+        return;
+    }
+    const t = (1 - edgeDist / accentW) * (config.accentPeak ?? 5);
+    const tint = config.accentTint ?? [4, 1, -2];
+    rgb.r = clampByte(rgb.r + t * tint[0]);
+    rgb.g = clampByte(rgb.g + t * tint[1]);
+    rgb.b = clampByte(rgb.b + t * tint[2]);
+}
+
 function applyPlateFill(rgb, plateCol, plateRow, config) {
     const [jx, jy] = config.jitterOffset ?? [0, 0];
     const jitter = noise2D(plateCol * 0.71 + jx, plateRow * 0.53 + jy, 1);
@@ -67,6 +82,7 @@ export const deckPlatesMotif = {
         const { plateCol, plateRow, localX, localY, plateW, plateH, edgeDist } = plateMetrics(sample, config);
         applyPlateFill(rgb, plateCol, plateRow, config);
         applyGrout(rgb, edgeDist, config);
+        applyWarmAccent(rgb, edgeDist, config);
         applyRivets(rgb, localX, localY, plateW, plateH, config);
     },
 };

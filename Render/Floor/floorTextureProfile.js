@@ -2,7 +2,7 @@ import { defaultFloorProceduralProfileId } from "../../Config/floorProceduralCon
 import { getTexturePixelsPerWorldUnit } from "./floorTextureResolution.js";
 
 /** Bump when profile motif stacks change so chunk caches rebake. */
-const FLOOR_TEXTURE_CACHE_REVISION = 9;
+const FLOOR_TEXTURE_CACHE_REVISION = 14;
 
 export function getFloorTextureProfileId(state) {
     if (state.floorTextureProfileOverride) {

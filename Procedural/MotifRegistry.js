@@ -3,12 +3,14 @@ import { ridgeLinesMotif } from "./Motifs/ridgeLines.js";
 import { stainBlotchMotif } from "./Motifs/stainBlotch.js";
 import { panelGridMotif } from "./Motifs/panelGrid.js";
 import { deckPlatesMotif } from "./Motifs/deckPlates.js";
+import { hexGridMotif } from "./Motifs/hexGrid.js";
 import { voronoiCellMotif } from "./Motifs/voronoiCell.js";
 import { circuitLatticeMotif } from "./Motifs/circuitLattice.js";
 import { surfaceGrainMotif } from "./Motifs/surfaceGrain.js";
 import { wallLightingMotif } from "./Motifs/wallLighting.js";
 import { wallCircuitSnakeMotif } from "./Motifs/wallCircuitSnake.js";
 import { wallHorizontalBevelMotif } from "./Motifs/wallHorizontalBevel.js";
+import { panelBayMotif } from "./Motifs/panelBay.js";
 
 const MOTIF_BY_TYPE = {
     baseMetal: baseMetalMotif,
@@ -16,12 +18,14 @@ const MOTIF_BY_TYPE = {
     stainBlotch: stainBlotchMotif,
     panelGrid: panelGridMotif,
     deckPlates: deckPlatesMotif,
+    hexGrid: hexGridMotif,
     voronoiCell: voronoiCellMotif,
     circuitLattice: circuitLatticeMotif,
     surfaceGrain: surfaceGrainMotif,
     wallLighting: wallLightingMotif,
     wallCircuitSnake: wallCircuitSnakeMotif,
     wallHorizontalBevel: wallHorizontalBevelMotif,
+    panelBay: panelBayMotif,
 };
 
 export function getMotif(type) {
