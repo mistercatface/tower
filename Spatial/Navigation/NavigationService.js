@@ -71,11 +71,7 @@ export class NavigationService {
         const grid = this.flowFieldGrid;
         const newGridPos = grid.worldToGrid(playerX, playerY);
         const distToCenter = Math.max(Math.abs(playerX - grid.centerX), Math.abs(playerY - grid.centerY));
-        if (distToCenter > recenterThreshold) {
-            grid.shiftCenter(playerX, playerY, playerX, playerY, playerTargetX, playerTargetY);
-        } else if (previousGridPos && (previousGridPos.col !== newGridPos.col || previousGridPos.row !== newGridPos.row)) {
-            grid.buildFlowField(playerX, playerY);
-        }
+        if (distToCenter > recenterThreshold) grid.shiftCenter(playerX, playerY, playerX, playerY, playerTargetX, playerTargetY);
         return newGridPos;
     }
 
@@ -93,7 +89,6 @@ export class NavigationService {
 
     rebuildPlayerFlowField(targetX, targetY) {
         this.flowFieldGrid.syncLocalObstacles();
-        this.flowFieldGrid.buildPlayerFlowField(targetX, targetY);
     }
 
     _setDebug(entity, info) {

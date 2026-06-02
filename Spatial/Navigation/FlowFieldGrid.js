@@ -5,6 +5,10 @@ import {
     getCellBoundsCentered,
 } from "../Geometry/GridCoords.js";
 
+const MAX_CACHE = 100;
+const FLOW_DECODE_X = new Float32Array([-0.707, 0, 0.707, -1, 0, 1, -0.707, 0, 0.707]);
+const FLOW_DECODE_Y = new Float32Array([-0.707, -1, -0.707, 0, 0, 0, 0.707, 1, 0.707]);
+
 export class FlowFieldGrid {
     constructor(cellSize, width, height, obstacleGrid) {
         this.cellSize = cellSize;
@@ -15,15 +19,41 @@ export class FlowFieldGrid {
         this.rows = Math.ceil(height / cellSize);
         const size = this.cols * this.rows;
 
-        this.grid = new Uint8Array(size);
+        this.sabObstacle = new SharedArrayBuffer(size);
+        this.grid = new Uint8Array(this.sabObstacle);
 
-        this.flowFieldX = new Float32Array(size);
-        this.flowFieldY = new Float32Array(size);
-        this.flowFieldDist = new Float32Array(size);
+        this.sabNeighbors = new SharedArrayBuffer(size * 8 * 4);
+        const neighborGrid = new Int32Array(this.sabNeighbors).fill(-1);
+        for (let row = 0; row < this.rows; row++) {
+            for (let col = 0; col < this.cols; col++) {
+                const base = (row * this.cols + col) * 8;
+                let i = 0;
+                for (const { dc, dr } of OCTILE_OFFSETS) {
+                    const nc = col + dc;
+                    const nr = row + dr;
+                    if (nc >= 0 && nc < this.cols && nr >= 0 && nr < this.rows) {
+                        neighborGrid[base + i] = nr * this.cols + nc;
+                    }
+                    i++;
+                }
+            }
+        }
 
-        this.playerFlowFieldX = new Float32Array(size);
-        this.playerFlowFieldY = new Float32Array(size);
-        this.playerFlowFieldDist = new Float32Array(size);
+        this.sabFlowPool = new SharedArrayBuffer(size * MAX_CACHE);
+        this.cacheLookup = new Int32Array(size).fill(-1);
+        this.cacheCounter = 0;
+
+        this.worker = new Worker(new URL('./FlowFieldWorker.js', import.meta.url), { type: 'module' });
+        this.worker.postMessage({
+            type: 'init',
+            data: {
+                GRID_WIDTH: this.cols,
+                GRID_SIZE: size,
+                sabObstacle: this.sabObstacle,
+                sabNeighbors: this.sabNeighbors,
+                sabFlowPool: this.sabFlowPool,
+            }
+        });
 
         this.offsetX = (width / 2) + (cellSize / 2);
         this.offsetY = (height / 2) + (cellSize / 2);
@@ -32,12 +62,7 @@ export class FlowFieldGrid {
     }
 
     refresh(targetX, targetY, playerTargetX = null, playerTargetY = null) {
-        this.clearFlowFields();
         this.syncLocalObstacles();
-        this.buildFlowField(targetX, targetY);
-        if (playerTargetX !== null && playerTargetY !== null) {
-            this.buildPlayerFlowField(playerTargetX, playerTargetY);
-        }
     }
 
     shiftCenter(newCenterX, newCenterY, targetX, targetY, playerTargetX = null, playerTargetY = null) {
@@ -65,74 +90,98 @@ export class FlowFieldGrid {
                 }
             }
         }
+        // Invalidate cache when obstacles change
+        this.cacheLookup.fill(-1);
+        this.cacheCounter = 0;
     }
 
-    buildFlowFieldTarget(px, py, targetFieldX, targetFieldY, targetFieldDist, gridData) {
-        targetFieldDist.fill(999999);
-        const start = this.worldToGrid(px, py);
-        if (start.col < 0 || start.col >= this.cols || start.row < 0 || start.row >= this.rows) return;
+    getFlowField(targetX, targetY, range = 999999) {
+        const target = this.worldToGrid(targetX, targetY);
+        if (target.col < 0 || target.col >= this.cols || target.row < 0 || target.row >= this.rows) {
+            return null;
+        }
 
-        const cols = this.cols;
-        const rows = this.rows;
+        const targetIdx = target.row * this.cols + target.col;
+        let slot = this.cacheLookup[targetIdx];
 
-        const startIdx = start.row * cols + start.col;
+        if (slot === -1) {
+            if (this.cacheCounter >= MAX_CACHE) {
+                this.cacheLookup.fill(-1);
+                this.cacheCounter = 0;
+            }
+            slot = this.cacheCounter++;
+            this.cacheLookup[targetIdx] = slot;
+            
+            const size = this.cols * this.rows;
+            const flowField = new Uint8Array(this.sabFlowPool, slot * size, size);
+            flowField.fill(255); // Fill with unreachable initially
+
+            this.worker.postMessage({ 
+                type: 'updateFlow', 
+                slot: slot, 
+                tx: target.col, 
+                ty: target.row, 
+                range: range 
+            });
+            return flowField;
+        }
+
+        const size = this.cols * this.rows;
+        return new Uint8Array(this.sabFlowPool, slot * size, size);
+    }
+
+    checkReachability(startX, startY, targetX, targetY) {
+        const start = this.worldToGrid(startX, startY);
+        const target = this.worldToGrid(targetX, targetY);
+
+        if (start.col < 0 || start.col >= this.cols || start.row < 0 || start.row >= this.rows) return false;
+        if (target.col < 0 || target.col >= this.cols || target.row < 0 || target.row >= this.rows) return false;
+
+        const startIdx = start.row * this.cols + start.col;
+        const targetIdx = target.row * this.cols + target.col;
+
+        if (this.grid[startIdx] === 1 || this.grid[targetIdx] === 1) return false;
+
+        const visited = new Uint8Array(this.cols * this.rows);
         const queue = [startIdx];
+        visited[startIdx] = 1;
+
         let head = 0;
-
-        targetFieldX[startIdx] = 0;
-        targetFieldY[startIdx] = 0;
-        targetFieldDist[startIdx] = 0;
-
         while (head < queue.length) {
             const currIdx = queue[head++];
-            const currCol = currIdx % cols;
-            const currRow = (currIdx / cols) | 0;
-            const currDist = targetFieldDist[currIdx];
+            if (currIdx === targetIdx) return true;
 
-            for (const { dc, dr, cost } of OCTILE_OFFSETS) {
-                const nc = currCol + dc;
-                const nr = currRow + dr;
+            const currCol = currIdx % this.cols;
+            const currRow = (currIdx / this.cols) | 0;
 
-                if (nc >= 0 && nc < cols && nr >= 0 && nr < rows) {
-                    const nIdx = nr * cols + nc;
-                    if (gridData[nIdx] === 1) continue;
+            for (let i = 0; i < 8; i++) {
+                const nIdx = new Int32Array(this.sabNeighbors)[currIdx * 8 + i];
+                if (nIdx !== -1 && !visited[nIdx]) {
+                    if (this.grid[nIdx] === 1) continue;
 
-                    if (dc !== 0 && dr !== 0) {
-                        const check1 = gridData[currRow * cols + nc];
-                        const check2 = gridData[nr * cols + currCol];
-                        if (check1 === 1 || check2 === 1) {
-                            continue;
-                        }
+                    const nc = nIdx % this.cols;
+                    const nr = (nIdx / this.cols) | 0;
+                    const dx = currCol - nc;
+                    const dy = currRow - nr;
+
+                    if (dx !== 0 && dy !== 0) {
+                        const check1 = this.grid[currRow * this.cols + nc];
+                        const check2 = this.grid[nr * this.cols + currCol];
+                        if (check1 === 1 || check2 === 1) continue;
                     }
 
-                    const dist = currDist + cost;
-                    if (dist < targetFieldDist[nIdx]) {
-                        targetFieldX[nIdx] = -dc / cost;
-                        targetFieldY[nIdx] = -dr / cost;
-                        targetFieldDist[nIdx] = dist;
-                        queue.push(nIdx);
-                    }
+                    visited[nIdx] = 1;
+                    queue.push(nIdx);
                 }
             }
         }
-    }
-
-    buildFlowField(px, py) {
-        this.buildFlowFieldTarget(px, py, this.flowFieldX, this.flowFieldY, this.flowFieldDist, this.grid);
-    }
-
-    buildPlayerFlowField(px, py) {
-        this.buildFlowFieldTarget(px, py, this.playerFlowFieldX, this.playerFlowFieldY, this.playerFlowFieldDist, this.grid);
-    }
-
-    clearFlowFields() {
-        this.flowFieldDist.fill(999999);
-        this.playerFlowFieldDist.fill(999999);
+        return false;
     }
 
     clear() {
         this.grid.fill(0);
-        this.clearFlowFields();
+        this.cacheLookup.fill(-1);
+        this.cacheCounter = 0;
     }
 
     worldToGrid(x, y) {
@@ -171,10 +220,8 @@ export class FlowFieldGrid {
         return dx * dx + dy * dy <= radius * radius;
     }
 
-    sampleDirection(x, y, isPlayerField, outEntity) {
-        const targetFieldX = isPlayerField ? this.playerFlowFieldX : this.flowFieldX;
-        const targetFieldY = isPlayerField ? this.playerFlowFieldY : this.flowFieldY;
-        const targetFieldDist = isPlayerField ? this.playerFlowFieldDist : this.flowFieldDist;
+    sampleDirection(x, y, flowField, outEntity) {
+        if (!flowField) return false;
 
         const halfCell = this.cellSize / 2;
         const gx = (x - (this.centerX - this.offsetX + halfCell)) / this.cellSize;
@@ -200,37 +247,41 @@ export class FlowFieldGrid {
 
         if (c0_valid && r0_valid) {
             const idx = row0 * cols + col0;
-            if (targetFieldDist[idx] < 999999) {
+            const val = flowField[idx];
+            if (val !== 255) {
                 const w = (1 - tx) * (1 - ty);
-                flowX += targetFieldX[idx] * w;
-                flowY += targetFieldY[idx] * w;
+                flowX += FLOW_DECODE_X[val] * w;
+                flowY += FLOW_DECODE_Y[val] * w;
                 totalWeight += w;
             }
         }
         if (c1_valid && r0_valid) {
             const idx = row0 * cols + col1;
-            if (targetFieldDist[idx] < 999999) {
+            const val = flowField[idx];
+            if (val !== 255) {
                 const w = tx * (1 - ty);
-                flowX += targetFieldX[idx] * w;
-                flowY += targetFieldY[idx] * w;
+                flowX += FLOW_DECODE_X[val] * w;
+                flowY += FLOW_DECODE_Y[val] * w;
                 totalWeight += w;
             }
         }
         if (c0_valid && r1_valid) {
             const idx = row1 * cols + col0;
-            if (targetFieldDist[idx] < 999999) {
+            const val = flowField[idx];
+            if (val !== 255) {
                 const w = (1 - tx) * ty;
-                flowX += targetFieldX[idx] * w;
-                flowY += targetFieldY[idx] * w;
+                flowX += FLOW_DECODE_X[val] * w;
+                flowY += FLOW_DECODE_Y[val] * w;
                 totalWeight += w;
             }
         }
         if (c1_valid && r1_valid) {
             const idx = row1 * cols + col1;
-            if (targetFieldDist[idx] < 999999) {
+            const val = flowField[idx];
+            if (val !== 255) {
                 const w = tx * ty;
-                flowX += targetFieldX[idx] * w;
-                flowY += targetFieldY[idx] * w;
+                flowX += FLOW_DECODE_X[val] * w;
+                flowY += FLOW_DECODE_Y[val] * w;
                 totalWeight += w;
             }
         }

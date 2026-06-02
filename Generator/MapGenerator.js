@@ -269,13 +269,7 @@ export class MapGenerator {
             tempObstacleGrid.markWall(wallsB[i]);
         }
 
-        tempFlowFieldGrid.refresh(coordsB.x, coordsB.y);
-
-        const startPos = tempFlowFieldGrid.worldToGrid(coordsA.x, coordsA.y);
-        if (startPos.col < 0 || startPos.col >= tempFlowFieldGrid.cols || startPos.row < 0 || startPos.row >= tempFlowFieldGrid.rows) {
-            return false;
-        }
-        const idx = startPos.row * tempFlowFieldGrid.cols + startPos.col;
-        return tempFlowFieldGrid.flowFieldDist[idx] < 999999;
+        tempFlowFieldGrid.syncLocalObstacles();
+        return tempFlowFieldGrid.checkReachability(coordsA.x, coordsA.y, coordsB.x, coordsB.y);
     }
 }
