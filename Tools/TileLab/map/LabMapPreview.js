@@ -231,9 +231,7 @@ async function encodeCanvasesToWebm(frameCanvases, sizePx, msPerFrame) {
         return null;
     }
 
-    const encodeCanvas = document.createElement("canvas");
-    encodeCanvas.width = sizePx;
-    encodeCanvas.height = sizePx;
+    const encodeCanvas = new OffscreenCanvas(sizePx, sizePx);
     const encodeCtx = encodeCanvas.getContext("2d");
     encodeCtx.imageSmoothingEnabled = false;
 

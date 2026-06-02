@@ -17,9 +17,7 @@ function makeStubGrid(cellSize) {
 }
 
 function toCanvas(source) {
-    const canvas = document.createElement("canvas");
-    canvas.width = source.width;
-    canvas.height = source.height;
+    const canvas = new OffscreenCanvas(source.width, source.height);
     const ctx = canvas.getContext("2d");
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(source, 0, 0);
