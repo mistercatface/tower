@@ -14,6 +14,9 @@ function getWorker() {
                     reject(new Error(error));
                 } else {
                     resolve(bitmaps);
+                    if (typeof window !== 'undefined') {
+                        window.dispatchEvent(new CustomEvent('tileBakeComplete'));
+                    }
                 }
             }
         };

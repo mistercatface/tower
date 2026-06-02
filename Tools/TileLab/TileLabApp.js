@@ -264,6 +264,11 @@ bindToolbarControls({
 });
 document.getElementById("exportTarget")?.addEventListener("change", updateExportTabUi);
 document.getElementById("exportDownloadBtn")?.addEventListener("click", downloadExportPreview);
+
+window.addEventListener("tileBakeComplete", () => {
+    handleMapNavChange("idle-quality", readControls);
+});
+
 initToolbarDefaults();
 
 function bootstrap() {
