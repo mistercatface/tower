@@ -7,12 +7,7 @@ import { drawProjectedWallFace } from "./WallFaceTexture.js";
 
 const VIEW_QUERY_PAD = 48;
 
-const PROP_RECIPES = {
-    barrel: drawBarrel,
-    fire_barrel: drawFireBarrel,
-    crate: drawCrate,
-    crate_shard: drawCrateShard,
-};
+const PROP_RECIPES = { barrel: drawBarrel, fire_barrel: drawFireBarrel, crate: drawCrate, crate_shard: drawCrateShard };
 
 export class Render3D {
     constructor() {
@@ -69,45 +64,29 @@ export class Render3D {
         return `rgb(${r}, ${g}, ${b})`;
     }
 
-    drawWallFace(ctx, seg, p1, p2, px, py, state, viewport, {
-        shadeOverlay = floorTileSettings.wallShadeOverlay,
-    } = {}) {
+    drawWallFace(ctx, seg, p1, p2, px, py, state, viewport) {
         const wallColor = this.getWallColor(seg, THEME_COLORS[0], 1.0);
         const healthRatio = seg.health / seg.maxHealth;
         const damageAlpha = healthRatio < 1 ? (1 - healthRatio) * 0.45 : 0;
-
-        drawProjectedWallFace(ctx, p1, p2, px, py, wallColor, state.floorTiles, state, {
-            viewport,
-            damageAlpha,
-            textureEnabled: true,
-            shouldStroke: false,
-            shadeOverlay,
-        });
+        drawProjectedWallFace(ctx, p1, p2, px, py, wallColor, state.floorTiles, state, { viewport, damageAlpha, textureEnabled: true });
     }
 
     drawWallSegmentFaces(ctx, seg, px, py, state, viewport, options = {}) {
         const edges = this.getSegmentEdges(seg);
-
-        if (!seg.sharedEdges) {
-            seg.sharedEdges = [false, false, false, false];
-        }
-
+        if (!seg.sharedEdges) seg.sharedEdges = [false, false, false, false];
         for (let i = 0; i < 4; i++) {
             if (seg.sharedEdges[i]) continue;
-
             const p1 = edges[i][0];
             const p2 = edges[i][1];
             const edgeCx = (p1.x + p2.x) / 2;
             const edgeCy = (p1.y + p2.y) / 2;
             if (!isFaceTowardViewer(edgeCx, edgeCy, seg.x, seg.y, px, py)) continue;
-
             this.drawWallFace(ctx, seg, p1, p2, px, py, state, viewport, options);
         }
     }
 
     drawExplosion(px, py, maxDist, state, targetCtx) {
         this.updateSharedEdges(state);
-
         const maxDistSq = maxDist * maxDist;
         const visibleWalls = [];
         const candidateWalls = state.wallSpatialHash ? state.wallSpatialHash.collectInBounds(px - maxDist, py - maxDist, px + maxDist, py + maxDist) : state.walls;
@@ -121,11 +100,8 @@ export class Render3D {
             }
         }
         visibleWalls.sort((a, b) => b._distSq - a._distSq);
-
         for (const seg of visibleWalls) {
-            this.drawWallSegmentFaces(targetCtx, seg, px, py, state, null, {
-                shadeOverlay: floorTileSettings.wallShadeOverlay + 0.12,
-            });
+            this.drawWallSegmentFaces(targetCtx, seg, px, py, state, null);
         }
     }
 
@@ -141,21 +117,13 @@ export class Render3D {
                 const p2 = edges[i][1];
                 const edgeCx = (p1.x + p2.x) / 2;
                 const edgeCy = (p1.y + p2.y) / 2;
-                segmentEdges.push({
-                    p1, p2,
-                    cx: edgeCx, cy: edgeCy,
-                    outX: edgeCx - seg.x, outY: edgeCy - seg.y,
-                    seg,
-                    edgeIndex: i
-                });
+                segmentEdges.push({ p1, p2, cx: edgeCx, cy: edgeCy, outX: edgeCx - seg.x, outY: edgeCy - seg.y, seg, edgeIndex: i });
             }
             activeWalls.push({ seg, edges: segmentEdges });
         }
-
         const grid = new Map();
         const cellSize = 5;
         const getBucketKey = (x, y) => `${Math.floor(x / cellSize)},${Math.floor(y / cellSize)}`;
-
         for (const w of activeWalls) {
             for (const edge of w.edges) {
                 const key = getBucketKey(edge.cx, edge.cy);
@@ -163,7 +131,6 @@ export class Render3D {
                 grid.get(key).push(edge);
             }
         }
-
         const thresholdSq = 9.0;
         for (const w1 of activeWalls) {
             for (const e1 of w1.edges) {
@@ -195,12 +162,7 @@ export class Render3D {
     getViewQueryBounds(viewport, px, py) {
         const halfW = viewport.cx / viewport.zoom;
         const halfH = viewport.cy / viewport.zoom;
-        return {
-            minX: px - halfW - VIEW_QUERY_PAD,
-            minY: py - halfH - VIEW_QUERY_PAD,
-            maxX: px + halfW + VIEW_QUERY_PAD,
-            maxY: py + halfH + VIEW_QUERY_PAD,
-        };
+        return { minX: px - halfW - VIEW_QUERY_PAD, minY: py - halfH - VIEW_QUERY_PAD, maxX: px + halfW + VIEW_QUERY_PAD, maxY: py + halfH + VIEW_QUERY_PAD };
     }
 
     alignBoundsToHash(bounds, cellSize) {
@@ -216,11 +178,8 @@ export class Render3D {
         const hash = state.wallSpatialHash;
         if (!viewport || !hash) {
             this._lastQueryKey = null;
-            return hash
-                ? hash.collectInBounds(px - 1600, py - 1600, px + 1600, py + 1600, this._wallQuery)
-                : state.walls;
+            return hash ? hash.collectInBounds(px - 1600, py - 1600, px + 1600, py + 1600, this._wallQuery) : state.walls;
         }
-
         const bounds = this.alignBoundsToHash(this.getViewQueryBounds(viewport, px, py), hash.cellSize);
         const cellSize = hash.cellSize;
         const minCol = Math.floor(bounds.minX / cellSize);
@@ -228,12 +187,10 @@ export class Render3D {
         const minRow = Math.floor(bounds.minY / cellSize);
         const maxRow = Math.floor((bounds.maxY - 1) / cellSize);
         const queryKey = `${minCol}|${minRow}|${maxCol}|${maxRow}|${state.walls.length}`;
-
         if (queryKey !== this._lastQueryKey) {
             this._lastQueryKey = queryKey;
             this._cachedWalls = hash.collectInBounds(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY, this._wallQuery);
         }
-
         return this._cachedWalls;
     }
 
@@ -249,20 +206,12 @@ export class Render3D {
     draw3DBuildings(ctx, state, viewport) {
         const px = state.player.x;
         const py = state.player.y;
-
         this.updateSharedEdges(state);
-
         ctx.save();
-
-        if (viewport) {
-            this.clipToViewport(ctx, viewport, state);
-        }
-
+        if (viewport) this.clipToViewport(ctx, viewport, state);
         const visibleObjects = this._visibleObjects;
         visibleObjects.length = 0;
-
         const candidateWalls = this.collectVisibleWalls(state, viewport, px, py);
-
         for (let i = 0; i < candidateWalls.length; i++) {
             const seg = candidateWalls[i];
             if (seg.isDead) continue;
@@ -271,7 +220,6 @@ export class Render3D {
             seg._renderType = "wall";
             visibleObjects.push(seg);
         }
-
         if (state.pickups) {
             for (let i = 0; i < state.pickups.length; i++) {
                 const p = state.pickups[i];
@@ -283,9 +231,7 @@ export class Render3D {
                 visibleObjects.push(p);
             }
         }
-
         visibleObjects.sort((a, b) => b._distSq - a._distSq);
-
         for (const obj of visibleObjects) {
             if (obj._renderType === "wall") {
                 this.drawWallSegmentFaces(ctx, obj, px, py, state, viewport);
@@ -297,7 +243,6 @@ export class Render3D {
                 ctx.restore();
             }
         }
-
         ctx.restore();
     }
 }

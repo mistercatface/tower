@@ -113,12 +113,7 @@ function wallFaceColumns(p1, p2, tileWorldSize) {
         if (u1 - u0 < 1e-6) continue;
 
         const midU = (u0 + u1) * 0.5;
-        columns.push({
-            u0,
-            u1,
-            worldX: p1.x + (p2.x - p1.x) * midU,
-            worldY: p1.y + (p2.y - p1.y) * midU,
-        });
+        columns.push({ u0, u1, worldX: p1.x + (p2.x - p1.x) * midU, worldY: p1.y + (p2.y - p1.y) * midU });
     }
 
     return columns;
@@ -150,7 +145,7 @@ function getFlatWallCanvas(p1, p2, columns, storyCount, floorTiles, state, tileW
     const sampleCanvas = floorTiles.getWallCellCanvas(columns[0].worldX, columns[0].worldY, 0, state);
     const cellSize = sampleCanvas.width;
     const pixelsPerUnit = cellSize / tileWorldSize;
-    
+
     const canvasWidth = Math.max(1, Math.ceil(edgeLen * pixelsPerUnit));
     const canvasHeight = Math.max(1, storyCount * cellSize);
 
@@ -242,43 +237,13 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHei
     ctx.restore();
 }
 
-export function drawProjectedWallFace(
-    ctx,
-    p1,
-    p2,
-    px,
-    py,
-    fillStyle,
-    floorTiles,
-    state,
-    {
-        viewport = null,
-        damageAlpha = 0,
-        textureEnabled = true,
-        shouldStroke = false,
-        shadeOverlay = 0,
-    } = {},
-) {
+export function drawProjectedWallFace(ctx, p1, p2, px, py, fillStyle, floorTiles, state, { viewport = null, damageAlpha = 0, textureEnabled = true } = {}) {
     const wallHeight = getWallVisualHeight();
     const face = computeProjectedFace(p1, p2, px, py, wallHeight);
-
     traceProjectedFace(ctx, p1, p2, face);
     ctx.fillStyle = fillStyle;
     ctx.fill();
-
-    if (floorTiles && textureEnabled) {
-        drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHeight);
-    }
-
-    if (shadeOverlay > 0) {
-        ctx.save();
-        traceProjectedFace(ctx, p1, p2, face);
-        ctx.clip();
-        ctx.fillStyle = `rgba(0, 0, 0, ${shadeOverlay})`;
-        ctx.fill();
-        ctx.restore();
-    }
-
+    if (floorTiles && textureEnabled) drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHeight);
     if (damageAlpha > 0) {
         ctx.save();
         traceProjectedFace(ctx, p1, p2, face);
@@ -286,11 +251,5 @@ export function drawProjectedWallFace(
         ctx.fillStyle = `rgba(244, 67, 54, ${damageAlpha})`;
         ctx.fill();
         ctx.restore();
-    }
-
-    if (shouldStroke) {
-        ctx.strokeStyle = "rgba(0, 0, 0, 0.4)";
-        ctx.lineWidth = 1.0;
-        ctx.stroke();
     }
 }

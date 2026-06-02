@@ -1,8 +1,4 @@
-import {
-    transformPoint,
-    projectPoint,
-    averageDepth,
-} from "../math/InspectCamera.js";
+import { transformPoint, projectPoint, averageDepth } from "../math/InspectCamera.js";
 import { triangleNormal, faceVisible } from "../geometry/MeshBuilder.js";
 import { dot, normalize } from "../../../Math/Vec3.js";
 
@@ -55,12 +51,7 @@ export function renderMesh(ctx, mesh, camera, opts = {}) {
         const sc = projectPoint(c, camera);
         if (!sa || !sb || !sc) continue;
 
-        queue.push({
-            sa, sb, sc,
-            material: tri.material,
-            depth: averageDepth(a, b, c),
-            normal: viewNormal,
-        });
+        queue.push({ sa, sb, sc, material: tri.material, depth: averageDepth(a, b, c), normal: viewNormal });
     }
 
     queue.sort((x, y) => y.depth - x.depth);
@@ -68,32 +59,14 @@ export function renderMesh(ctx, mesh, camera, opts = {}) {
     for (const tri of queue) {
         const mat = mesh.materials[tri.material];
         if (!mat) continue;
-
-        const shade = flatShading
-            ? 1
-            : computeSolidShade(tri.normal, lightDir);
-        drawSolidTriangle(
-            ctx,
-            tri.sa,
-            tri.sb,
-            tri.sc,
-            shadeColor(mat.color, shade),
-            mat.stroke,
-            mat.lineWidth ?? 0,
-        );
+        const shade = flatShading ? 1 : computeSolidShade(tri.normal, lightDir);
+        drawSolidTriangle(ctx, tri.sa, tri.sb, tri.sc, shadeColor(mat.color, shade), mat.stroke, mat.lineWidth ?? 0);
     }
 
     ctx.imageSmoothingEnabled = prevSmooth;
 }
 
 export function renderInspectMesh(ctx, mesh, cx, cy, scale, yaw, pitch, opts = {}) {
-    const camera = {
-        cx,
-        cy,
-        referenceDepth: opts.referenceDepth ?? 420,
-        screenScale: (opts.screenScale ?? scale * 88),
-        yaw,
-        pitch,
-    };
+    const camera = { cx, cy, referenceDepth: opts.referenceDepth ?? 420, screenScale: opts.screenScale ?? scale * 88, yaw, pitch };
     renderMesh(ctx, mesh, camera, opts);
 }
