@@ -623,6 +623,49 @@ function renderGlobalParams(container) {
     editorState.palette = paletteRoot.palette;
 }
 
+const REVERSE_EASING = {
+    "linear": "linear",
+    "ease-in": "ease-out",
+    "ease-out": "ease-in",
+    "ease-in-out": "ease-in-out"
+};
+
+function reverseStage(stageIndex) {
+    if (!editorState || !editorState.animation || !editorState.animation.tracks) return;
+    for (const track of editorState.animation.tracks) {
+        if (!track.stages || !track.stages[stageIndex]) continue;
+        const stageData = track.stages[stageIndex];
+        const temp = stageData.startValue;
+        stageData.startValue = stageData.endValue;
+        stageData.endValue = temp;
+        if (stageData.easing && REVERSE_EASING[stageData.easing]) {
+            stageData.easing = REVERSE_EASING[stageData.easing];
+        }
+    }
+}
+
+function reverseAllStages() {
+    if (!editorState || !editorState.animation || !editorState.animation.stages) return;
+    
+    // Reverse the overall stages array (duration/frames)
+    editorState.animation.stages.reverse();
+    
+    // For each track, reverse the order of its stages, and then apply start/end swap and easing inversion to all
+    for (const track of editorState.animation.tracks) {
+        if (!track.stages) continue;
+        track.stages.reverse();
+        for (let i = 0; i < track.stages.length; i++) {
+            const stageData = track.stages[i];
+            const temp = stageData.startValue;
+            stageData.startValue = stageData.endValue;
+            stageData.endValue = temp;
+            if (stageData.easing && REVERSE_EASING[stageData.easing]) {
+                stageData.easing = REVERSE_EASING[stageData.easing];
+            }
+        }
+    }
+}
+
 function renderSharedAnimationControls(container) {
     const divider = document.createElement("div");
     divider.style.borderTop = "1px solid var(--border)";
@@ -636,6 +679,20 @@ function renderSharedAnimationControls(container) {
         { path: "frames", label: `Stage ${activeStageIndex + 1} Frames`, min: 2, max: 120, step: 1 },
         { path: "durationMs", label: `Stage ${activeStageIndex + 1} Duration (ms)`, min: 200, max: 20000, step: 100 },
     ], { lightweight: true });
+
+    const reverseStageBtn = document.createElement("button");
+    reverseStageBtn.type = "button";
+    reverseStageBtn.className = "secondary";
+    reverseStageBtn.style.marginTop = "8px";
+    reverseStageBtn.style.width = "100%";
+    reverseStageBtn.textContent = "⟲ Reverse Current Stage";
+    reverseStageBtn.title = "Swaps start and end values for all tracks in this stage";
+    reverseStageBtn.addEventListener("click", () => {
+        reverseStage(activeStageIndex);
+        notifyChange({ lightweight: true });
+        renderAnimationParams(container);
+    });
+    container.appendChild(reverseStageBtn);
 }
 
 function renderAnimationParams(container) {
@@ -761,6 +818,23 @@ function renderAnimationParams(container) {
             renderAnimationParams(container);
         });
         stageHeader.appendChild(removeStageBtn);
+    }
+
+    if (stagesList.length > 1) {
+        const reverseAllBtn = document.createElement("button");
+        reverseAllBtn.type = "button";
+        reverseAllBtn.className = "secondary";
+        reverseAllBtn.style.padding = "4px 8px";
+        reverseAllBtn.style.fontSize = "11px";
+        reverseAllBtn.style.margin = "0";
+        reverseAllBtn.textContent = "⟲ Reverse All";
+        reverseAllBtn.title = "Reverses the entire animation sequence";
+        reverseAllBtn.addEventListener("click", () => {
+            reverseAllStages();
+            notifyChange({ lightweight: true });
+            renderAnimationParams(container);
+        });
+        stageHeader.appendChild(reverseAllBtn);
     }
 
     container.appendChild(stageHeader);

@@ -1,16 +1,30 @@
-import cyberGrid from "./TileLabStorage/cyberGrid.js";
-import toxicSludge from "./TileLabStorage/toxicSludge.js";
-import neonWireframe from "./TileLabStorage/neonWireframe.js";
-import shatteredDimension from "./TileLabStorage/shatteredDimension.js";
+export const floorProceduralProfiles = {};
 
-export const floorProceduralProfiles = {
-    cyberGrid,
-    toxicSludge,
-    neonWireframe,
-    shatteredDimension,
-};
+async function loadDynamicProfiles() {
+    try {
+        const response = await fetch('/Config/TileLabStorage/');
+        if (!response.ok) return;
+        const text = await response.text();
+        const matches = text.matchAll(/href="([^"]+\.js)"/g);
+        for (const match of matches) {
+            const fileName = match[1];
+            const profileId = fileName.replace('.js', '');
+            try {
+                const module = await import(`./TileLabStorage/${fileName}`);
+                floorProceduralProfiles[profileId] = module.default;
+            } catch (e) {
+                console.error(`Failed to load profile ${fileName}`, e);
+            }
+        }
+    } catch (e) {
+        console.warn("Failed to dynamically fetch directory listing (expected if directory indexing is disabled on production server).", e);
+    }
+}
 
-export const START_STATION_ID = "cyberGrid";
+await loadDynamicProfiles();
+
+
+export const START_STATION_ID = "shatteredDimension";
 
 export const defaultFloorProceduralProfileId = START_STATION_ID;
 
