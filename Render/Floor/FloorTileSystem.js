@@ -3,7 +3,7 @@ import { isWorldScene } from "../../GameState/GamePhase.js";
 import { chunkKey, chunkToWorldOrigin, getChunkSizePx, gridBoundsToChunkRange, worldBoundsToChunkRange } from "../../Spatial/Grid/ChunkGrid.js";
 import { snapWorldToCellOrigin } from "../../Spatial/Geometry/GridCoords.js";
 import { FloorChunkCache } from "./FloorChunkCache.js";
-import { bakeFloorChunkCanvas, bakeFloorCellCanvas, bakeFloorTileTextureCanvas, drawWallCell } from "./FloorTilePainter.js";
+import { bakeFloorChunkCanvas, bakeFloorCellCanvas, bakeFloorTileTextureCanvas, drawWallCell, paintWallFace } from "./FloorTilePainter.js";
 
 export class FloorTileSystem {
     constructor() {
@@ -61,6 +61,10 @@ export class FloorTileSystem {
         const obstacleGrid = state.obstacleGrid;
         const { x, y } = snapWorldToCellOrigin(worldX, worldY, obstacleGrid.minX, obstacleGrid.minY, obstacleGrid.cellSize);
         drawWallCell(ctx, x, y, storyRow, obstacleGrid, state.floorTileSeed ?? 0, state.hierarchicalNavigator);
+    }
+
+    paintWallFace(ctx, width, height, p1, p2, pixelsPerUnit, state) {
+        paintWallFace(ctx, width, height, p1, p2, pixelsPerUnit, state.obstacleGrid, state.floorTileSeed ?? 0, state.hierarchicalNavigator);
     }
 
     getChunkCanvas(chunkCol, chunkRow, state) {

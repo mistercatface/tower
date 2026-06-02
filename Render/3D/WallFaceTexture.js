@@ -157,28 +157,7 @@ function getFlatWallCanvas(p1, p2, columns, storyCount, floorTiles, state, tileW
     const ctx = canvas.getContext("2d");
     ctx.imageSmoothingEnabled = false;
 
-    if (!sharedCellCanvas || sharedCellCanvas.width !== cellSize) {
-        sharedCellCanvas = new OffscreenCanvas(cellSize, cellSize);
-        sharedCellCtx = sharedCellCanvas.getContext("2d");
-        sharedCellCtx.imageSmoothingEnabled = false;
-    }
-
-    for (let row = 0; row < storyCount; row++) {
-        const dy = row * cellSize;
-        for (const col of columns) {
-            const dx = col.u0 * canvasWidth;
-            const dw = (col.u1 - col.u0) * canvasWidth;
-            if (dw > 0) {
-                const drawX = Math.floor(dx);
-                const drawW = Math.ceil(dx + dw) - drawX;
-                
-                sharedCellCtx.clearRect(0, 0, cellSize, cellSize);
-                floorTiles.drawWallCell(sharedCellCtx, col.worldX, col.worldY, row, state);
-
-                ctx.drawImage(sharedCellCanvas, 0, 0, cellSize, cellSize, drawX, dy, drawW, cellSize);
-            }
-        }
-    }
+    floorTiles.paintWallFace(ctx, canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, state);
 
     flatWallCache.set(key, canvas);
     return canvas;

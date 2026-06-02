@@ -112,7 +112,15 @@ function getNodeAt(col, row, cols, rows, hnav, isWall) {
 
 export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, obstacleGrid, seed, hnav, options = {}) {
     const isWall = options.isWall || false;
-    const zOffset = options.zOffset || 0;
+    let dirX = 0, dirY = 0, foldX = 0, foldY = 0, pixelsPerUnit = 1;
+    if (isWall && options.p1) {
+        const edgeLen = Math.hypot(options.p2.x - options.p1.x, options.p2.y - options.p1.y);
+        dirX = (options.p2.x - options.p1.x) / edgeLen;
+        dirY = (options.p2.y - options.p1.y) / edgeLen;
+        foldX = -dirY;
+        foldY = dirX;
+        pixelsPerUnit = options.pixelsPerUnit;
+    }
     
     const imgData = ctx.createImageData(width, height);
     const data = imgData.data;
@@ -137,12 +145,20 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, obs
     
     let idx = 0;
     for (let y = 0; y < height; y++) {
-        let evalY = startWorldY + y;
-        if (isWall) {
-            evalY = startWorldY + (cellSize - y) + zOffset;
-        }
         for (let x = 0; x < width; x++) {
-            let evalX = startWorldX + x;
+            let evalX, evalY;
+            if (isWall && options.p1) {
+                const z = (height - 1 - y) / pixelsPerUnit;
+                const dist = x / pixelsPerUnit;
+                evalX = options.p1.x + dist * dirX + foldX * z;
+                evalY = options.p1.y + dist * dirY + foldY * z;
+            } else if (isWall) {
+                evalX = startWorldX + x;
+                evalY = startWorldY + (cellSize - y) + (options.zOffset || 0);
+            } else {
+                evalX = startWorldX + x;
+                evalY = startWorldY + y;
+            }
             
             // 1. Domain Warp
             const warpX = noise2D(evalX * scaleWarp, evalY * scaleWarp, 2) * warpAmp;
@@ -332,4 +348,11 @@ export function bakeFloorChunkCanvas({ chunkCol, chunkRow, obstacleGrid, seed, h
     paintPixelArea(ctx, chunkSizePx, chunkSizePx, chunkWorldX, chunkWorldY, obstacleGrid, seed, hnav);
 
     return canvas;
+}
+
+export function paintWallFace(ctx, width, height, p1, p2, pixelsPerUnit, obstacleGrid, seed, hnav) {
+    paintPixelArea(ctx, width, height, 0, 0, obstacleGrid, seed, hnav, {
+        isWall: true,
+        p1, p2, pixelsPerUnit
+    });
 }
