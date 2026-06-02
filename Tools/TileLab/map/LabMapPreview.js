@@ -8,7 +8,6 @@ const render3D = new Render3D();
 let lastBakeKey = "";
 let isNavigating = false;
 let navRenderPending = false;
-let lastQualityRenderAt = 0;
 
 const NAV_RENDER_INTERVAL_MS = 32;
 const MOVE_SPEED_SCALE = 1;
@@ -144,9 +143,6 @@ export function renderGamePreview(canvas, options) {
         weaponRange,
         fastNav
     );
-    if (!fastNav) {
-        lastQualityRenderAt = performance.now();
-    }
     return result;
 }
 
@@ -171,7 +167,6 @@ export function requestNavMapRender(renderFn) {
 
 /** Full-quality textured pass after movement stops or settings change. */
 export function requestQualityMapRender(renderFn) {
-    lastQualityRenderAt = performance.now();
     renderFn({ fastNav: false });
 }
 

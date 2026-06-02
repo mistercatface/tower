@@ -1,4 +1,8 @@
-import { floorProceduralProfiles } from "../../Config/floorProceduralConfig.js";
+/**
+ * Tile Lab — procedural floor/wall profile editor and full-map preview.
+ * Open via Tools/TileLab/index.html (local server required).
+ */
+import { listShippedFloorProfileIds } from "../../Config/floorProceduralConfig.js";
 import { initMapPreviewNavigation } from "./map/LabMapPreview.js";
 import {
     invalidateLabCaches,
@@ -21,10 +25,6 @@ import {
     renderTileInspectPreviews,
     downloadInspectExport,
 } from "./inspect/TileInspectBakes.js";
-
-const PROFILE_IDS = Object.keys(floorProceduralProfiles)
-    .filter((id) => !id.startsWith("__lab"))
-    .sort();
 
 /** @type {ReturnType<typeof renderTileInspectPreviews> | null} */
 let inspectSources = null;
@@ -51,7 +51,7 @@ function onStageResize() {
     handleMapNavChange("idle-quality", readControls);
 }
 
-initPresetSelect(PROFILE_IDS);
+initPresetSelect(listShippedFloorProfileIds());
 initInspectTabs();
 initProfileEditor({ onChange: renderAll });
 initMapPreviewNavigation(

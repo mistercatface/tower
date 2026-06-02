@@ -7,12 +7,11 @@ import {
     requestNavMapRender,
     requestQualityMapRender,
 } from "./map/LabMapPreview.js";
-import { getActiveLabProfiles, LAB_PROFILE_A } from "./profile/ProfileEditor.js";
+import { getActiveLabProfile, RUNTIME_LAB_PROFILE_ID } from "./profile/ProfileEditor.js";
 import { ensureLabWorld, getLabWorldMapSeed } from "./LabWorldSession.js";
 
 export function registerEditorProfiles() {
-    const { profileA } = getActiveLabProfiles();
-    registerRuntimeFloorProfile(LAB_PROFILE_A, profileA);
+    registerRuntimeFloorProfile(RUNTIME_LAB_PROFILE_ID, getActiveLabProfile());
 }
 
 export function invalidateLabCaches() {
@@ -40,7 +39,7 @@ export function renderMapPreview(ctrl, world, { fastNav = false } = {}) {
     }
     renderGamePreview(document.getElementById("gamePreview"), {
         worldState: world,
-        profileId: LAB_PROFILE_A,
+        profileId: RUNTIME_LAB_PROFILE_ID,
         gameZoom: ctrl.gameZoom,
         showRangeRing: ctrl.showRangeRing,
         weaponRange: ctrl.weaponRange,

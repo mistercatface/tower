@@ -29,7 +29,6 @@ export function createLabMapWorld(options = {}) {
         state.floorTiles.clear();
     }
 
-    state.__mapSeed = mapSeed;
     return state;
 }
 

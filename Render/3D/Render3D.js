@@ -208,6 +208,13 @@ export class Render3D {
         ctx.clip();
     }
 
+    /**
+     * @param {CanvasRenderingContext2D} ctx
+     * @param {object} state
+     * @param {import("../Viewport.js").Viewport | null} viewport
+     * @param {{ fastNav?: boolean, textureEnabled?: boolean }} [options]
+     *   fastNav — lighter pass for dev preview panning (no shared edges, pickups, or wall textures).
+     */
     draw3DBuildings(ctx, state, viewport, options = {}) {
         const px = state.player.x;
         const py = state.player.y;

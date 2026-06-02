@@ -8,7 +8,7 @@ import {
     WARP_FIELDS,
 } from "./profileSchema.js";
 
-export const LAB_PROFILE_A = "__labA__";
+export const RUNTIME_LAB_PROFILE_ID = "__labA__";
 let editorState = null;
 let selectedMotifId = null;
 let onChangeCallback = null;
@@ -96,7 +96,7 @@ function motifsFromProfile(profile) {
     return rows;
 }
 
-export function loadEditorFromProfileId(profileId) {
+function loadEditorFromProfileId(profileId) {
     nextMotifId = 1;
     const profile = deepClone(getFloorProceduralProfile(profileId));
     editorState = {
@@ -110,7 +110,7 @@ export function loadEditorFromProfileId(profileId) {
     return editorState;
 }
 
-export function getEditorState() {
+function getEditorState() {
     return editorState;
 }
 
@@ -399,6 +399,6 @@ export function initProfileEditor({ onChange }) {
     exportArea.value = exportProfileSnippet();
 }
 
-export function getActiveLabProfiles() {
-    return { profileA: buildProfileFromEditor() };
+export function getActiveLabProfile() {
+    return buildProfileFromEditor();
 }

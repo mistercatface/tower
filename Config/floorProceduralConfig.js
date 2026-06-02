@@ -205,6 +205,11 @@ export function getFloorProceduralProfile(profileId) {
     return profile;
 }
 
+/** Shipped profile ids only (excludes runtime/dev overlays). */
+export function listShippedFloorProfileIds() {
+    return Object.keys(floorProceduralProfiles).sort();
+}
+
 export function resolveFloorTextureProfileId({ layer, strategy }) {
     if (layer === 0) {
         return startFloorProceduralProfileId;
