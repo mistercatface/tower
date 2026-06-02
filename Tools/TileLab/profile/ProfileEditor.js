@@ -273,19 +273,15 @@ function getSelectedMotifRow() {
     return editorState.motifs[index];
 }
 
-function syncAnimationMotifIndex() {
-    const index = getSelectedMotifIndex();
-    if (index >= 0 && editorState?.animation) {
-        editorState.animation.editorMotifIndex = index;
-    }
-}
-
-function syncAnimationParamRange() {
+function syncAnimationParamRange(index = editorState?.animation?.editorMotifIndex ?? 0) {
     if (!editorState?.animation) {
         return;
     }
-    syncAnimationMotifIndex();
-    const row = getSelectedMotifRow();
+    if (index < 0 || index >= editorState.motifs.length) {
+        return;
+    }
+    editorState.animation.editorMotifIndex = index;
+    const row = editorState.motifs[index];
     const fields = getAnimatableMotifFields(row?.config);
     if (fields.length === 0) {
         return;
@@ -305,13 +301,8 @@ function syncAnimationParamRange() {
     editorState.animation.endValue = end;
 }
 
-function selectMotifById(motifId, { syncAnimation = true } = {}) {
+function selectMotifById(motifId) {
     selectedMotifId = motifId;
-    if (syncAnimation) {
-        syncAnimationParamRange();
-    } else {
-        syncAnimationMotifIndex();
-    }
     refreshEditorPanels({ global: false });
 }
 
@@ -375,7 +366,13 @@ function renderMotifList(container) {
                 const tmp = editorState.motifs[i - 1];
                 editorState.motifs[i - 1] = editorState.motifs[i];
                 editorState.motifs[i] = tmp;
-                syncAnimationMotifIndex();
+                if (editorState.animation) {
+                    if (editorState.animation.editorMotifIndex === i) {
+                        editorState.animation.editorMotifIndex = i - 1;
+                    } else if (editorState.animation.editorMotifIndex === i - 1) {
+                        editorState.animation.editorMotifIndex = i;
+                    }
+                }
                 refreshEditorPanels();
                 notifyChange();
             }
@@ -385,7 +382,13 @@ function renderMotifList(container) {
                 const tmp = editorState.motifs[i + 1];
                 editorState.motifs[i + 1] = editorState.motifs[i];
                 editorState.motifs[i] = tmp;
-                syncAnimationMotifIndex();
+                if (editorState.animation) {
+                    if (editorState.animation.editorMotifIndex === i) {
+                        editorState.animation.editorMotifIndex = i + 1;
+                    } else if (editorState.animation.editorMotifIndex === i + 1) {
+                        editorState.animation.editorMotifIndex = i;
+                    }
+                }
                 refreshEditorPanels();
                 notifyChange();
             }
@@ -394,11 +397,14 @@ function renderMotifList(container) {
             editorState.motifs.splice(i, 1);
             if (selectedMotifId === row.id) {
                 selectedMotifId = editorState.motifs[0]?.id ?? null;
-                syncAnimationParamRange();
-            } else if (editorState.animation) {
-                const selectedIndex = getSelectedMotifIndex();
-                if (selectedIndex >= 0) {
-                    editorState.animation.editorMotifIndex = selectedIndex;
+            }
+            if (editorState.animation) {
+                const animIdx = editorState.animation.editorMotifIndex;
+                if (animIdx === i) {
+                    editorState.animation.editorMotifIndex = 0;
+                    syncAnimationParamRange(0);
+                } else if (animIdx > i) {
+                    editorState.animation.editorMotifIndex = animIdx - 1;
                 }
             }
             refreshEditorPanels();
@@ -512,20 +518,40 @@ function renderAnimationParams(container) {
         return;
     }
 
-    const row = getSelectedMotifRow();
+    let animIndex = editorState.animation.editorMotifIndex;
+    if (animIndex < 0 || animIndex >= editorState.motifs.length) {
+        animIndex = 0;
+        editorState.animation.editorMotifIndex = 0;
+    }
+    const row = editorState.motifs[animIndex];
     if (!row) {
         const msg = document.createElement("p");
         msg.className = "editor-hint";
-        msg.textContent = "Select a motif layer to configure animation.";
+        msg.textContent = "Add a motif layer to configure animation.";
         container.appendChild(msg);
         return;
     }
 
-    const label = MOTIF_TYPES[row.config.type]?.label ?? row.config.type;
-    const targetHint = document.createElement("p");
-    targetHint.className = "editor-hint";
-    targetHint.textContent = `Target: ${label} (${row.surfaceMask})`;
-    container.appendChild(targetHint);
+    const targetOptions = editorState.motifs.map((m, idx) => {
+        const label = MOTIF_TYPES[m.config.type]?.label ?? m.config.type;
+        return {
+            value: idx.toString(),
+            label: `#${idx + 1}: ${label} (${m.surfaceMask})${m.enabled ? "" : " (Disabled)"}`
+        };
+    });
+
+    const targetSelect = new SelectControl(
+        "Target Motif",
+        targetOptions,
+        animIndex.toString(),
+        (val) => {
+            const newIndex = parseInt(val, 10);
+            syncAnimationParamRange(newIndex);
+            notifyChange({ lightweight: true });
+            refreshEditorPanels({ motifList: false, motifParams: false, animation: true, global: false });
+        }
+    );
+    container.appendChild(targetSelect.element);
 
     if (!row.enabled) {
         const msg = document.createElement("p");
@@ -535,7 +561,6 @@ function renderAnimationParams(container) {
         return;
     }
 
-    syncAnimationMotifIndex();
     const animFields = getAnimatableMotifFields(row.config);
     if (animFields.length === 0) {
         const msg = document.createElement("p");
@@ -611,7 +636,6 @@ export function initProfileEditor({ onChange }) {
 
     loadBtn.addEventListener("click", () => {
         loadEditorFromProfileId(presetSelect.value, { silent: true });
-        syncAnimationMotifIndex();
         refreshEditorPanels({ global: true });
         exportArea.value = exportProfileSnippet();
         notifyChange({ lightweight: true });
@@ -630,7 +654,6 @@ export function initProfileEditor({ onChange }) {
     };
 
     loadEditorFromProfileId(presetSelect?.value || "techCorridor", { silent: true });
-    syncAnimationMotifIndex();
     refreshEditorPanels({ global: true });
     exportArea.value = exportProfileSnippet();
 }
