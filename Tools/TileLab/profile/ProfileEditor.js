@@ -64,11 +64,18 @@ function motifsFromProfile(profile) {
         return rows;
     }
     for (const motif of profile.motifs) {
+        const config = deepClone(motif);
+        const blendMode = config.blendMode ?? "add";
+        const opacity = config.opacity ?? 1;
+        delete config.blendMode;
+        delete config.opacity;
         rows.push({
             id: `m${nextMotifId++}`,
             enabled: motif.enabled !== false,
             surfaceMask: motif.surfaceMask ?? "all",
-            config: deepClone(motif),
+            blendMode,
+            opacity,
+            config,
         });
     }
     return rows;
@@ -109,6 +116,8 @@ export function buildProfileFromEditor(state = editorState) {
         const config = deepClone(row.config);
         delete config.enabled;
         config.surfaceMask = row.surfaceMask;
+        config.blendMode = row.blendMode ?? "add";
+        config.opacity = row.opacity ?? 1;
         profile.motifs.push(config);
     }
 
@@ -138,16 +147,35 @@ function renderMotifList(container) {
         item.dataset.id = row.id;
 
         const label = MOTIF_TYPES[row.config.type]?.label ?? row.config.type;
+
+        // Build blend mode select inline in row
+        const blendSel = document.createElement("select");
+        blendSel.className = "motif-row-blend";
+        for (const mode of BLEND_OPTIONS) {
+            const o = document.createElement("option");
+            o.value = mode;
+            o.textContent = mode;
+            if (mode === (row.blendMode ?? "add")) o.selected = true;
+            blendSel.appendChild(o);
+        }
+        blendSel.addEventListener("change", (e) => {
+            row.blendMode = e.target.value;
+            notifyChange();
+        });
+        blendSel.addEventListener("click", (e) => e.stopPropagation());
+
         item.innerHTML = `
             <label class="motif-enable"><input type="checkbox" data-action="toggle" ${row.enabled ? "checked" : ""}></label>
             <span class="motif-label">${label}</span>
             <span class="motif-layer">${row.surfaceMask}</span>
+            <span class="motif-blend-slot"></span>
             <span class="motif-actions">
                 <button type="button" data-action="up" title="Move up">↑</button>
                 <button type="button" data-action="down" title="Move down">↓</button>
                 <button type="button" data-action="remove" title="Remove">✕</button>
             </span>
         `;
+        item.querySelector(".motif-blend-slot").appendChild(blendSel);
 
         item.addEventListener("click", (e) => {
             if (e.target.closest("button") || e.target.closest("input")) {
@@ -238,12 +266,6 @@ function renderMotifParams(container) {
     });
     container.appendChild(layerSelect.element);
 
-    const blendSelect = new SelectControl("Blend", BLEND_OPTIONS, row.config.blendMode ?? "add", (val) => {
-        row.config.blendMode = val;
-        notifyChange();
-    });
-    container.appendChild(blendSelect.element);
-
     renderScalarFields(container, row.config, schema.fields);
 }
 
@@ -306,6 +328,8 @@ export function initProfileEditor({ onChange }) {
             id: `m${nextMotifId++}`,
             enabled: true,
             surfaceMask: "all",
+            blendMode: "add",
+            opacity: 1,
             config: deepClone(schema.defaults),
         };
         editorState.motifs.push(row);
