@@ -246,7 +246,7 @@ export class MapGenerator {
                 nodeB.strategy = chosenStrategy;
                 nodeB.floorTextureProfileId =
                     chosenStrategy === "None"
-                        ? "cleanserStation"
+                        ? resolveFloorTextureProfileId({ layer: 0 })
                         : resolveFloorTextureProfileId({ layer: l, strategy: chosenStrategy });
             }
         }
