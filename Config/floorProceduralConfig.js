@@ -373,6 +373,26 @@ export const floorProceduralProfiles = {
         },
         "sharedMotifs": [
             {
+                "type": "circuitPanels",
+                "coordinateSpace": "warped",
+                "gridSize": 16,
+                "density": 0.35,
+                "cellVariation": 3,
+                "groutWidth": 0.06,
+                "groutPeak": -12,
+                "groutTint": [1, 1, 1],
+                "bevelWidth": 0.05,
+                "highlightPeak": 5,
+                "shadowPeak": -4,
+                "bevelTint": [1, 1, 1],
+                "rivetRadius": 0.1,
+                "rivetSpacing": 0.16,
+                "rivetPeak": 5,
+                "rivetTint": [0.5, 1.0, 2.5],
+                "blendMode": "add",
+                "opacity": 1
+            },
+            {
                 "type": "starburst",
                 "coordinateSpace": "warped",
                 "gridSize": 16,
@@ -437,6 +457,14 @@ export const floorProceduralProfiles = {
             shadow: "#080c14",
         },
         sharedMotifs: [
+            {
+                type: "circuitPanels", coordinateSpace: "warped",
+                gridSize: 16, density: 0.3, cellVariation: 3,
+                groutWidth: 0.06, groutPeak: -12, groutTint: [1, 1, 1],
+                bevelWidth: 0.05, highlightPeak: 5, shadowPeak: -4, bevelTint: [1, 1, 1],
+                rivetRadius: 0.1, rivetSpacing: 0.16, rivetPeak: 5, rivetTint: [0.5, 1.0, 2.5],
+                blendMode: "add", opacity: 1
+            },
             {
                 type: "starburst", coordinateSpace: "warped",
                 gridSize: 16, density: 0.3, radius: 30, spikes: 2, peak: 16, tint: [2.5, 0.8, -0.4], opacity: 1

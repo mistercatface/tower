@@ -16,6 +16,7 @@ import { circuitTracesMotif } from "./Motifs/circuitTraces.js";
 import { celticWeaveMotif } from "./Motifs/celticWeave.js";
 import { topoContoursMotif } from "./Motifs/topoContours.js";
 import { starburstMotif } from "./Motifs/starburst.js";
+import { circuitPanelsMotif } from "./Motifs/circuitPanels.js";
 
 const MOTIF_BY_TYPE = {
     baseMetal: baseMetalMotif,
@@ -36,6 +37,7 @@ const MOTIF_BY_TYPE = {
     celticWeave: celticWeaveMotif,
     topoContours: topoContoursMotif,
     starburst: starburstMotif,
+    circuitPanels: circuitPanelsMotif,
 };
 
 export function getMotif(type) {
