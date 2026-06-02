@@ -57,29 +57,31 @@
                         <button type="button" id="copyExportBtn">Copy export</button>
                     </div>
                     <div class="editor-scroll">
-                        <div class="editor-block">
-                            <h3>Motifs</h3>
+                        <details class="editor-block" open>
+                            <summary>Motifs</summary>
                             <div id="motifList"></div>
-                        </div>
-                        <div class="editor-block">
-                            <h3>Selected</h3>
+                        </details>
+                        <details class="editor-block" open>
+                            <summary>Selected</summary>
                             <div id="motifParamsPanel"></div>
-                        </div>
-                        <div class="editor-block">
-                            <h3>Animation</h3>
+                        </details>
+                        <details class="editor-block" open>
+                            <summary>Animation</summary>
                             <div id="animationParamsPanel"></div>
-                        </div>
-                        <div class="editor-block">
-                            <h3>Global</h3>
+                        </details>
+                        <details class="editor-block" open>
+                            <summary>Global</summary>
                             <div id="globalParamsPanel"></div>
-                        </div>
-                        <div class="editor-block">
-                            <h3>Export</h3>
+                        </details>
+                        <details class="editor-block" open>
+                            <summary>Export</summary>
                             <textarea id="profileExport" readonly></textarea>
-                        </div>
+                        </details>
                     </div>
                 </div>
             </aside>
+
+            <div class="resizer" id="resizer"></div>
 
             <section class="col col-map">
                 <div class="map-status" id="gameMetaLine">WASD move · drag · wheel zoom</div>
