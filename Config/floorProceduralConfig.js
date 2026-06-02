@@ -144,6 +144,80 @@ const techCorridor = {
     ],
 };
 
+const neonVaporwave = {
+    warp: { frequency: 0.005, amplitude: 10, octaves: 2, sampleOffset: [0, 0] },
+    palette: {
+        base: [28, 12, 38],
+        floorBase: [24, 10, 34],
+        wallBase: [32, 14, 42],
+        shadow: combatVisualSettings.floorShadow,
+    },
+    motifs: [
+        {
+            type: "hexGrid",
+            cellWorldSize: 32, groutWidth: 0.08, groutPeak: -4, groutTint: [1, 1, 1],
+            bevelWidth: 0.06, highlightPeak: 6, shadowPeak: -4, bevelTint: [1, 1, 1],
+            bevelCurve: "smooth", bevelFalloff: 1.0,
+            cellVariation: 1.5, opacity: 0.9, blendMode: "overlay"
+        },
+        {
+            type: "circuitLattice", coordinateSpace: "warped",
+            frequency: 0.015, octaves: 2, angle: 0.2, ridgeThreshold: 0.1, peak: 10, tint: [0.2, 1.8, 2.5], opacity: 0.7, blendMode: "add"
+        },
+        {
+            type: "filterPosterize", bands: 8, blendMode: "replace", opacity: 1
+        },
+        {
+            type: "filterHSV", hueShift: 15, saturation: 1.5, value: 1.2, blendMode: "replace", opacity: 1
+        }
+    ]
+};
+
+const abyssalForge = {
+    warp: { frequency: 0.008, amplitude: 12, octaves: 2, sampleOffset: [100, 200] },
+    palette: {
+        base: [16, 4, 4],
+        floorBase: [14, 3, 3],
+        wallBase: [20, 5, 5],
+        shadow: "#0a0202",
+    },
+    motifs: [
+        {
+            type: "baseMetal", structure: { frequency: 0.005, octaves: 2, rgbDelta: [2, 1, 1] }, grain: { frequency: 0.5, octaves: 1, amplitude: 1 }
+        },
+        {
+            type: "deckPlates", cellWorldSize: 24, plateCells: 1, groutWidth: 0.05, groutPeak: -6, groutTint: [1, 1, 1], plateVariation: 2, rivetSpacing: 0, opacity: 0.8, blendMode: "multiply"
+        },
+        {
+            type: "fractalCracks", frequency: 0.015, octaves: 3, threshold: 0.6, peak: -25, tint: [-3, -1, 0], opacity: 0.9, blendMode: "add"
+        },
+        {
+            type: "filterLevels", blackPoint: 12, whitePoint: 220, gamma: 1.3, blendMode: "replace", opacity: 1
+        }
+    ]
+};
+
+const glitchMatrix = {
+    warp: { frequency: 0.003, amplitude: 5, octaves: 1, sampleOffset: [500, 500] },
+    palette: {
+        base: [10, 20, 15],
+        floorBase: [8, 18, 12],
+        wallBase: [12, 22, 18],
+        shadow: "#050a08",
+    },
+    motifs: [
+        {
+            type: "circuitPanels", coordinateSpace: "warped", gridSize: 24, density: 0.4, cellVariation: 5, groutWidth: 0.05, groutPeak: -8, groutTint: [1, 1, 1], bevelWidth: 0.05, highlightPeak: 4, shadowPeak: -3, bevelTint: [1, 1, 1], rivetRadius: 0, rivetSpacing: 0, blendMode: "add", opacity: 1
+        },
+        {
+            type: "fractalCracks", frequency: 0.02, octaves: 4, threshold: 0.5, peak: 20, tint: [1, 1, 1], opacity: 1, blendMode: "difference"
+        },
+        {
+            type: "filterRGBAdjust", rMult: 0.5, gMult: 1.5, bMult: 0.8, rOffset: -10, gOffset: 20, bOffset: -5, blendMode: "replace", opacity: 1
+        }
+    ]
+};
+
 /**
  * Procedural floor/wall texture profiles. Add motifs here to change the look;
  * implement new motif types under Procedural/Motifs/.
@@ -151,6 +225,9 @@ const techCorridor = {
 export const floorProceduralProfiles = {
     spaceStation,
     techCorridor,
+    neonVaporwave,
+    abyssalForge,
+    glitchMatrix,
     cleanserStation: spaceStation,
     startStation: spaceStation,
 
