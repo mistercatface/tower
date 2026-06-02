@@ -6,10 +6,33 @@ import { isWorldScene } from "./GameState/GamePhase.js";
 import { applyLabProfileOverride } from "./tile-lab-map-world.js";
 
 const render3D = new Render3D();
-const lastBakeKeyBySlot = { a: "", b: "" };
+let lastBakeKey = "";
 
 /** @type {{ x: number, y: number }} */
 export const labCamera = { x: 0, y: 0 };
+
+/**
+ * Match backing store to the stage box (no CSS stretch). Returns null if not laid out yet.
+ * @returns {{ width: number, height: number, changed: boolean } | null}
+ */
+export function prepareGameCanvas(canvas, stage) {
+    if (!canvas || !stage) {
+        return null;
+    }
+    const rect = stage.getBoundingClientRect();
+    const width = Math.floor(rect.width);
+    const height = Math.floor(rect.height);
+    if (width < 32 || height < 32) {
+        return null;
+    }
+    let changed = false;
+    if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+        changed = true;
+    }
+    return { width, height, changed };
+}
 
 let dragState = null;
 
@@ -35,12 +58,12 @@ function drawPlayerMarker(ctx, x, y) {
     ctx.restore();
 }
 
-function maybeClearBakeCaches(slot, worldState, profileId) {
+function maybeClearBakeCaches(worldState, profileId) {
     const key = `${profileId}:${worldState.floorTileSeed}`;
-    if (lastBakeKeyBySlot[slot] === key) {
+    if (lastBakeKey === key) {
         return;
     }
-    lastBakeKeyBySlot[slot] = key;
+    lastBakeKey = key;
     worldState.floorTiles.clear();
     clearFlatWallFaceCache();
 }
@@ -50,24 +73,27 @@ function syncCameraToPlayer(worldState) {
     labCamera.y = worldState.player.y;
 }
 
-function drawLabWorldFrame(ctx, canvas, slot, worldState, profileId, gameZoom, showRangeRing, weaponRange) {
+function drawLabWorldFrame(ctx, canvas, viewW, viewH, worldState, profileId, gameZoom, showRangeRing, weaponRange) {
     worldState.phase = GamePhase.COMBAT;
     applyLabProfileOverride(worldState, profileId);
-    maybeClearBakeCaches(slot, worldState, profileId);
+    maybeClearBakeCaches(worldState, profileId);
 
     syncCameraToPlayer(worldState);
     const cameraX = worldState.player.x;
     const cameraY = worldState.player.y;
 
     const viewport = new Viewport(cameraX, cameraY, gameZoom);
-    viewport.cx = canvas.width / 2;
-    viewport.cy = canvas.height / 2;
+    viewport.cx = viewW / 2;
+    viewport.cy = viewH / 2;
     viewport.zoom = gameZoom;
+
+    const prevCanvasBounds = worldState.canvasBounds;
+    worldState.canvasBounds = { width: viewW, height: viewH };
 
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = "#080a0e";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, viewW, viewH);
     ctx.restore();
 
     ctx.save();
@@ -78,6 +104,8 @@ function drawLabWorldFrame(ctx, canvas, slot, worldState, profileId, gameZoom, s
     }
 
     render3D.draw3DBuildings(ctx, worldState, viewport);
+
+    worldState.canvasBounds = prevCanvasBounds;
 
     if (showRangeRing) {
         drawWeaponRangeRing(ctx, worldState.player.x, worldState.player.y, weaponRange);
@@ -90,20 +118,24 @@ function drawLabWorldFrame(ctx, canvas, slot, worldState, profileId, gameZoom, s
     return { zoom: gameZoom, cameraX, cameraY };
 }
 
-/** Full generated map preview — camera locked to player (combat-style). */
+/**
+ * Full generated map preview — camera locked to player (combat-style).
+ * @param {HTMLCanvasElement} canvas
+ * @param {{ worldState: object, profileId: string, gameZoom: number, showRangeRing: boolean, weaponRange: number, viewWidth: number, viewHeight: number }} options
+ */
 export function renderGamePreview(canvas, options) {
-    const { worldState, profileId, gameZoom, showRangeRing, weaponRange } = options;
+    const { worldState, profileId, gameZoom, showRangeRing, weaponRange, viewWidth, viewHeight } = options;
 
-    if (!worldState || !profileId) {
+    if (!worldState || !profileId || !viewWidth || !viewHeight) {
         return { zoom: gameZoom };
     }
 
-    const slot = canvas.id === "gamePreviewB" ? "b" : "a";
     const ctx = canvas.getContext("2d");
     return drawLabWorldFrame(
         ctx,
         canvas,
-        slot,
+        viewWidth,
+        viewHeight,
         worldState,
         profileId,
         gameZoom,
@@ -114,8 +146,7 @@ export function renderGamePreview(canvas, options) {
 
 /** Invalidate baked floor/wall caches after profile or floor seed change. */
 export function invalidateMapPreviewBakes() {
-    lastBakeKeyBySlot.a = "";
-    lastBakeKeyBySlot.b = "";
+    lastBakeKey = "";
 }
 
 /**
@@ -124,10 +155,7 @@ export function invalidateMapPreviewBakes() {
  * @param {(reason: string) => void} onChange
  */
 export function initMapPreviewNavigation(getOptions, onChange) {
-    const canvases = () => [
-        document.getElementById("gamePreviewA"),
-        document.getElementById("gamePreviewB"),
-    ].filter(Boolean);
+    const canvases = () => [document.getElementById("gamePreview")].filter(Boolean);
 
     const moveKeys = new Set();
     let moveRaf = null;

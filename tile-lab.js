@@ -16,6 +16,7 @@ import {
 } from "./Render/Floor/floorTextureResolution.js";
 import {
     renderGamePreview,
+    prepareGameCanvas,
     initMapPreviewNavigation,
     focusCameraOnPlayer,
     labCamera,
@@ -30,7 +31,6 @@ import {
     initProfileEditor,
     getActiveLabProfiles,
     LAB_PROFILE_A,
-    LAB_PROFILE_B,
 } from "./tile-lab-profile-editor.js";
 
 const PROFILE_IDS = Object.keys(floorProceduralProfiles)
@@ -38,20 +38,34 @@ const PROFILE_IDS = Object.keys(floorProceduralProfiles)
     .sort();
 
 const LAB_PROFILE_MAIN = LAB_PROFILE_A;
+const MICRO_PREVIEW_MAX = 112;
+const REPEAT_PREVIEW_MAX = 180;
 
 /** @type {import("./GameState/GameState.js").GameState | null} */
 let labWorld = null;
 let labWorldMapSeed = null;
 
 function registerEditorProfiles() {
-    const { profileA, profileB } = getActiveLabProfiles();
+    const { profileA } = getActiveLabProfiles();
     registerLabProceduralProfile(LAB_PROFILE_A, profileA);
-    registerLabProceduralProfile(LAB_PROFILE_B, profileB);
 }
 
 function invalidateLabCaches() {
     clearFlatWallFaceCache();
     invalidateMapPreviewBakes();
+}
+
+function syncGameCanvasSize() {
+    const stage = document.getElementById("mapStage");
+    const canvas = document.getElementById("gamePreview");
+    const size = prepareGameCanvas(canvas, stage);
+    if (!size) {
+        return null;
+    }
+    if (size.changed) {
+        invalidateMapPreviewBakes();
+    }
+    return size;
 }
 
 function populateNodeSelect(state) {
@@ -64,14 +78,10 @@ function populateNodeSelect(state) {
     for (const node of listLabMapNodes(state)) {
         const opt = document.createElement("option");
         opt.value = String(node.id);
-        opt.textContent = `Node ${node.id} · L${node.layer} · ${node.strategy}`;
+        opt.textContent = `${node.id}·L${node.layer}`;
         select.appendChild(opt);
     }
-    if (state.getMapNode(prev)) {
-        select.value = String(prev);
-    } else {
-        select.value = "0";
-    }
+    select.value = state.getMapNode(prev) ? String(prev) : "0";
 }
 
 function ensureLabWorld(ctrl, forceRegen = false) {
@@ -150,14 +160,12 @@ function bakeWallColumnCanvas(worldX, worldY, cellSize, storyCount, seed, profil
 function bakeWallFacePreviewCanvas(cellSize, storyCount, seed, profileId) {
     const stub = makeStubGrid(cellSize);
     const ppwu = getTexturePixelsPerWorldUnit();
-    const p1 = { x: 0, y: 0 };
-    const p2 = { x: cellSize, y: 0 };
     const width = bakePixelsForWorldSpan(cellSize);
     const height = bakePixelsForWorldSpan(cellSize * storyCount);
     const canvas = new OffscreenCanvas(width, height);
     const ctx = canvas.getContext("2d");
     ctx.imageSmoothingEnabled = false;
-    paintWallFace(ctx, width, height, p1, p2, ppwu, stub, seed, profileId);
+    paintWallFace(ctx, width, height, { x: 0, y: 0 }, { x: cellSize, y: 0 }, ppwu, stub, seed, profileId);
     return canvas;
 }
 
@@ -172,14 +180,48 @@ function drawTiled(ctx, source, destX, destY, tileW, tileH, cols, rows, zoom) {
     }
 }
 
-function drawZoomedPreview(canvasEl, source, zoom) {
+function drawZoomedPreview(canvasEl, source, zoom, maxPx = MICRO_PREVIEW_MAX) {
     const z = Math.max(1, Math.floor(zoom));
-    canvasEl.width = source.width * z;
-    canvasEl.height = source.height * z;
+    let w = source.width * z;
+    let h = source.height * z;
+    const maxDim = Math.max(w, h);
+    if (maxDim > maxPx) {
+        const s = maxPx / maxDim;
+        w = Math.max(1, Math.floor(w * s));
+        h = Math.max(1, Math.floor(h * s));
+    }
+    canvasEl.width = w;
+    canvasEl.height = h;
     const ctx = canvasEl.getContext("2d");
     ctx.imageSmoothingEnabled = false;
-    ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
-    ctx.drawImage(source, 0, 0, canvasEl.width, canvasEl.height);
+    ctx.clearRect(0, 0, w, h);
+    ctx.drawImage(source, 0, 0, w, h);
+}
+
+function drawRepeatPreview(canvasEl, source, tileW, tileH, cols, rows, zoom, maxPx = REPEAT_PREVIEW_MAX) {
+    const z = Math.max(1, Math.floor(zoom));
+    let w = tileW * z * cols;
+    let h = tileH * z * rows;
+    const maxDim = Math.max(w, h);
+    if (maxDim > maxPx) {
+        const s = maxPx / maxDim;
+        w = Math.max(1, Math.floor(w * s));
+        h = Math.max(1, Math.floor(h * s));
+        const z2 = w / (tileW * cols);
+        canvasEl.width = w;
+        canvasEl.height = h;
+        const ctx = canvasEl.getContext("2d");
+        ctx.imageSmoothingEnabled = false;
+        ctx.clearRect(0, 0, w, h);
+        drawTiled(ctx, source, 0, 0, tileW, tileH, cols, rows, z2);
+        return;
+    }
+    canvasEl.width = w;
+    canvasEl.height = h;
+    const ctx = canvasEl.getContext("2d");
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, w, h);
+    drawTiled(ctx, source, 0, 0, tileW, tileH, cols, rows, z);
 }
 
 function downloadCanvas(canvas, filename) {
@@ -190,41 +232,19 @@ function downloadCanvas(canvas, filename) {
 }
 
 function readControls() {
-    const seed = Number(document.getElementById("seedInput").value) || 0;
-    const worldX = Number(document.getElementById("worldXInput").value) || 0;
-    const worldY = Number(document.getElementById("worldYInput").value) || 0;
-    const cellSize = Number(document.getElementById("cellSizeInput").value) || gridSettings.cellSize;
-    const zoom = Number(document.getElementById("zoomInput").value) || 8;
-    const storyRow = Number(document.getElementById("storyRowInput").value) || 0;
-    const storyCount = Number(document.getElementById("storyCountInput").value) || floorTileSettings.wallTextureStories;
-    const gameZoom = Number(document.getElementById("gameZoomInput").value) || 1;
-    const weaponRange = Number(document.getElementById("weaponRangeInput").value) || 150;
-    const mapSeed = Number(document.getElementById("mapSeedInput")?.value) || 1;
-    const showRangeRing = document.getElementById("showRangeRingInput").checked;
-    const compareB = document.getElementById("compareBInput")?.checked ?? true;
     return {
         profileId: LAB_PROFILE_MAIN,
-        seed,
-        worldX,
-        worldY,
-        cellSize,
-        zoom,
-        storyRow,
-        storyCount,
-        gameZoom,
-        weaponRange,
-        showRangeRing,
-        compareB,
-        mapSeed,
+        seed: Number(document.getElementById("seedInput").value) || 0,
+        worldX: Number(document.getElementById("worldXInput").value) || 0,
+        worldY: Number(document.getElementById("worldYInput").value) || 0,
+        cellSize: Number(document.getElementById("cellSizeInput").value) || gridSettings.cellSize,
+        zoom: Number(document.getElementById("zoomInput").value) || 6,
+        storyRow: Number(document.getElementById("storyRowInput").value) || 0,
+        storyCount: Number(document.getElementById("storyCountInput").value) || floorTileSettings.wallTextureStories,
+        gameZoom: Number(document.getElementById("gameZoomInput").value) || 1,
+        weaponRange: 150,
+        showRangeRing: document.getElementById("showRangeRingInput").checked,
     };
-}
-
-function updateMeta({ seed, cellSize, storyCount }) {
-    const ppwu = getTexturePixelsPerWorldUnit();
-    const bakePx = bakePixelsForWorldSpan(cellSize);
-    const el = document.getElementById("metaLine");
-    el.textContent =
-        `Live editor profile · seed ${seed} · cell ${cellSize}px · bake ${bakePx}×${bakePx}px · ppwu ${ppwu} · wall stories ${storyCount}`;
 }
 
 function bakeFloorCellAt(worldX, worldY, cellSize, seed, profileId) {
@@ -237,104 +257,102 @@ function bakeFloorCellAt(worldX, worldY, cellSize, seed, profileId) {
     return canvas;
 }
 
+function renderMapPreview(ctrl, world) {
+    const size = syncGameCanvasSize();
+    if (!size) {
+        return;
+    }
+    renderGamePreview(document.getElementById("gamePreview"), {
+        worldState: world,
+        profileId: LAB_PROFILE_A,
+        gameZoom: ctrl.gameZoom,
+        showRangeRing: ctrl.showRangeRing,
+        weaponRange: ctrl.weaponRange,
+        viewWidth: size.width,
+        viewHeight: size.height,
+    });
+    const gameMeta = document.getElementById("gameMetaLine");
+    if (gameMeta && world) {
+        const node = world.getCurrentMapNode();
+        gameMeta.textContent =
+            `node ${world.currentNodeId} ${node?.strategy ?? ""} · map ${labWorldMapSeed} · ` +
+            `player ${Math.round(world.player.x)},${Math.round(world.player.y)} · cam ${ctrl.gameZoom.toFixed(2)} · WASD`;
+    }
+}
+
 function renderAll() {
     registerEditorProfiles();
     invalidateLabCaches();
 
     const ctrl = readControls();
-    const {
-        profileId,
-        seed,
-        worldX,
-        worldY,
-        cellSize,
-        zoom,
-        storyRow,
-        storyCount,
-        gameZoom,
-        weaponRange,
-        showRangeRing,
-        compareB,
-    } = ctrl;
-
     const world = ensureLabWorld(ctrl);
 
-    const floorSource = bakeFloorTileTextureCanvas(seed, cellSize, profileId);
-    const floorAtOffset = bakeFloorCellAt(worldX, worldY, cellSize, seed, profileId);
-    const wallCellSource = bakeWallCellCanvas(worldX, worldY, storyRow, cellSize, seed, profileId);
-    const wallColumnSource = bakeWallColumnCanvas(worldX, worldY, cellSize, storyCount, seed, profileId);
-    const wallFaceSource = bakeWallFacePreviewCanvas(cellSize, storyCount, seed, profileId);
+    const floorSource = bakeFloorTileTextureCanvas(ctrl.seed, ctrl.cellSize, ctrl.profileId);
+    const floorAtOffset = bakeFloorCellAt(ctrl.worldX, ctrl.worldY, ctrl.cellSize, ctrl.seed, ctrl.profileId);
+    const wallCellSource = bakeWallCellCanvas(ctrl.worldX, ctrl.worldY, ctrl.storyRow, ctrl.cellSize, ctrl.seed, ctrl.profileId);
+    const wallColumnSource = bakeWallColumnCanvas(ctrl.worldX, ctrl.worldY, ctrl.cellSize, ctrl.storyCount, ctrl.seed, ctrl.profileId);
+    const wallFaceSource = bakeWallFacePreviewCanvas(ctrl.cellSize, ctrl.storyCount, ctrl.seed, ctrl.profileId);
 
-    drawZoomedPreview(document.getElementById("floorPreview"), floorSource, zoom);
-    drawZoomedPreview(document.getElementById("wallCellPreview"), wallCellSource, zoom);
-    drawZoomedPreview(document.getElementById("wallColumnPreview"), wallColumnSource, zoom);
-    drawZoomedPreview(document.getElementById("wallFacePreview"), wallFaceSource, zoom);
+    drawZoomedPreview(document.getElementById("floorPreview"), floorSource, ctrl.zoom);
+    drawZoomedPreview(document.getElementById("wallCellPreview"), wallCellSource, ctrl.zoom);
+    drawZoomedPreview(document.getElementById("wallColumnPreview"), wallColumnSource, ctrl.zoom);
+    drawZoomedPreview(document.getElementById("wallFacePreview"), wallFaceSource, ctrl.zoom);
 
-    const floorRepeat = document.getElementById("floorRepeat");
-    const tileZ = Math.max(1, Math.floor(zoom));
-    const repeatCols = 5;
-    const repeatRows = 5;
-    floorRepeat.width = floorSource.width * tileZ * repeatCols;
-    floorRepeat.height = floorSource.height * tileZ * repeatRows;
-    const frCtx = floorRepeat.getContext("2d");
-    frCtx.clearRect(0, 0, floorRepeat.width, floorRepeat.height);
-    drawTiled(frCtx, floorAtOffset, 0, 0, floorSource.width, floorSource.height, repeatCols, repeatRows, tileZ);
+    drawRepeatPreview(
+        document.getElementById("floorRepeat"),
+        floorAtOffset,
+        floorSource.width,
+        floorSource.height,
+        5,
+        5,
+        ctrl.zoom
+    );
 
     const wallRepeat = document.getElementById("wallRepeat");
-    wallRepeat.width = wallCellSource.width * tileZ * repeatCols;
-    wallRepeat.height = wallCellSource.height * tileZ * repeatRows;
+    const tileZ = Math.max(1, Math.floor(ctrl.zoom));
+    let wrW = wallCellSource.width * tileZ * 5;
+    let wrH = wallCellSource.height * tileZ * 5;
+    const wrMax = REPEAT_PREVIEW_MAX;
+    let wrScale = 1;
+    if (Math.max(wrW, wrH) > wrMax) {
+        wrScale = wrMax / Math.max(wrW, wrH);
+        wrW = Math.floor(wrW * wrScale);
+        wrH = Math.floor(wrH * wrScale);
+    }
+    wallRepeat.width = wrW;
+    wallRepeat.height = wrH;
     const wrCtx = wallRepeat.getContext("2d");
-    wrCtx.clearRect(0, 0, wallRepeat.width, wallRepeat.height);
-    for (let row = 0; row < repeatRows; row++) {
-        for (let col = 0; col < repeatCols; col++) {
-            const wx = worldX + col * cellSize;
-            const wy = worldY + row * cellSize;
-            const cell = bakeWallCellCanvas(wx, wy, storyRow, cellSize, seed, profileId);
-            wrCtx.drawImage(cell, col * wallCellSource.width * tileZ, row * wallCellSource.height * tileZ,
-                wallCellSource.width * tileZ, wallCellSource.height * tileZ);
+    wrCtx.clearRect(0, 0, wrW, wrH);
+    const z = tileZ * wrScale;
+    for (let row = 0; row < 5; row++) {
+        for (let col = 0; col < 5; col++) {
+            const cell = bakeWallCellCanvas(
+                ctrl.worldX + col * ctrl.cellSize,
+                ctrl.worldY + row * ctrl.cellSize,
+                ctrl.storyRow,
+                ctrl.cellSize,
+                ctrl.seed,
+                ctrl.profileId
+            );
+            wrCtx.drawImage(
+                cell,
+                col * wallCellSource.width * z,
+                row * wallCellSource.height * z,
+                wallCellSource.width * z,
+                wallCellSource.height * z
+            );
         }
     }
 
-    const previewOpts = {
-        worldState: world,
-        gameZoom,
-        showRangeRing,
-        weaponRange,
-    };
+    renderMapPreview(ctrl, world);
 
-    renderGamePreview(document.getElementById("gamePreviewA"), {
-        ...previewOpts,
-        profileId: LAB_PROFILE_A,
-    });
-
-    const panelB = document.getElementById("gamePreviewBPanel");
-    if (compareB && panelB) {
-        panelB.style.display = "";
-        renderGamePreview(document.getElementById("gamePreviewB"), {
-            ...previewOpts,
-            profileId: LAB_PROFILE_B,
-        });
-    } else if (panelB) {
-        panelB.style.display = "none";
-    }
-
-    const gameMeta = document.getElementById("gameMetaLine");
-    if (gameMeta) {
-        const node = world.getCurrentMapNode();
-        gameMeta.textContent =
-            `Full map · node ${world.currentNodeId} (${node?.strategy ?? "?"}) · map seed ${labWorldMapSeed} · ` +
-            `player ${Math.round(world.player.x)}, ${Math.round(world.player.y)} · zoom ${gameZoom.toFixed(2)} · ` +
-            `WASD move · drag move · wheel zoom`;
-    }
-
-    updateMeta(ctrl);
     window.__tileLabSources = {
         floor: floorSource,
         wallCell: wallCellSource,
         wallColumn: wallColumnSource,
         wallFace: wallFaceSource,
-        profileId,
-        seed,
+        profileId: ctrl.profileId,
+        seed: ctrl.seed,
     };
 }
 
@@ -345,8 +363,7 @@ function exportActive() {
         return;
     }
     const { profileId, seed } = window.__tileLabSources;
-    const png = toCanvas(src);
-    downloadCanvas(png, `tile-${pick}-${profileId}-seed${seed}.png`);
+    downloadCanvas(toCanvas(src), `tile-${pick}-${profileId}-seed${seed}.png`);
 }
 
 function initPresetSelect() {
@@ -360,9 +377,22 @@ function initPresetSelect() {
     select.value = defaultFloorProceduralProfileId;
 }
 
+function initTabs() {
+    const buttons = document.querySelectorAll(".tab-btn");
+    const panels = document.querySelectorAll(".tab-panel");
+    for (const btn of buttons) {
+        btn.addEventListener("click", () => {
+            buttons.forEach((b) => b.classList.remove("active"));
+            panels.forEach((p) => p.classList.remove("active"));
+            btn.classList.add("active");
+            document.getElementById(`tab-${btn.dataset.tab}`)?.classList.add("active");
+        });
+    }
+}
+
 function bindControls() {
     const rerender = () => renderAll();
-    for (const id of [
+    const ids = [
         "seedInput",
         "worldXInput",
         "worldYInput",
@@ -373,12 +403,11 @@ function bindControls() {
         "gameZoomInput",
         "mapSeedInput",
         "mapNodeSelect",
-        "weaponRangeInput",
         "showRangeRingInput",
-        "compareBInput",
-    ]) {
-        document.getElementById(id).addEventListener("input", rerender);
-        document.getElementById(id).addEventListener("change", rerender);
+    ];
+    for (const id of ids) {
+        document.getElementById(id)?.addEventListener("input", rerender);
+        document.getElementById(id)?.addEventListener("change", rerender);
     }
     document.getElementById("gameZoomValue").textContent = document.getElementById("gameZoomInput").value;
     document.getElementById("gameZoomInput").addEventListener("input", (e) => {
@@ -396,24 +425,26 @@ function bindControls() {
         document.getElementById("seedInput").value = String(Math.floor(Math.random() * 1_000_000));
         renderAll();
     });
-    document.getElementById("regenMapBtn")?.addEventListener("click", () => {
+    document.getElementById("regenMapBtn").addEventListener("click", () => {
         labWorld = null;
         renderAll();
     });
-    document.getElementById("focusPlayerBtn")?.addEventListener("click", () => {
-        if (labWorld) {
-            focusCameraOnPlayer(labWorld);
-            renderAll();
-        }
-    });
     document.getElementById("mapNodeSelect")?.addEventListener("change", () => {
         if (labWorld) {
-            const nodeId = Number(document.getElementById("mapNodeSelect").value) || 0;
-            const pos = focusLabNode(labWorld, nodeId);
+            const pos = focusLabNode(labWorld, Number(document.getElementById("mapNodeSelect").value) || 0);
             labCamera.x = pos.x;
             labCamera.y = pos.y;
             renderAll();
         }
+    });
+
+    const stage = document.getElementById("mapStage");
+    if (stage && typeof ResizeObserver !== "undefined") {
+        const ro = new ResizeObserver(() => schedulePanRender());
+        ro.observe(stage);
+    }
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => renderAll());
     });
 }
 
@@ -428,26 +459,14 @@ function schedulePanRender() {
         registerEditorProfiles();
         const ctrl = readControls();
         const world = ensureLabWorld(ctrl);
-        const previewOpts = {
-            worldState: world,
-            gameZoom: ctrl.gameZoom,
-            showRangeRing: ctrl.showRangeRing,
-            weaponRange: ctrl.weaponRange,
-        };
-        renderGamePreview(document.getElementById("gamePreviewA"), {
-            ...previewOpts,
-            profileId: LAB_PROFILE_A,
-        });
-        if (ctrl.compareB) {
-            renderGamePreview(document.getElementById("gamePreviewB"), {
-                ...previewOpts,
-                profileId: LAB_PROFILE_B,
-            });
+        if (world) {
+            renderMapPreview(ctrl, world);
         }
     });
 }
 
 initPresetSelect();
+initTabs();
 initProfileEditor({ onChange: renderAll });
 initMapPreviewNavigation(() => ({ ...readControls(), worldState: labWorld }), schedulePanRender);
 bindControls();
@@ -455,4 +474,3 @@ document.getElementById("mapSeedInput").value = "42";
 document.getElementById("cellSizeInput").value = String(gridSettings.cellSize);
 document.getElementById("storyCountInput").value = String(floorTileSettings.wallTextureStories ?? 8);
 document.getElementById("seedInput").value = "42";
-renderAll();

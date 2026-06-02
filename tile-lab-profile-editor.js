@@ -9,8 +9,6 @@ import {
 } from "./tile-lab-profile-schema.js";
 
 export const LAB_PROFILE_A = "__labA__";
-export const LAB_PROFILE_B = "__labB__";
-
 let editorState = null;
 let selectedMotifId = null;
 let onChangeCallback = null;
@@ -346,7 +344,6 @@ export function initProfileEditor({ onChange }) {
     const addSelect = document.getElementById("addMotifType");
     const loadBtn = document.getElementById("loadPresetBtn");
     const copyExportBtn = document.getElementById("copyExportBtn");
-    const copyToBBtn = document.getElementById("copyToBBtn");
     const presetSelect = document.getElementById("presetSelect");
 
     for (const type of Object.keys(MOTIF_TYPES)) {
@@ -388,11 +385,6 @@ export function initProfileEditor({ onChange }) {
         await navigator.clipboard.writeText(exportArea.value);
     });
 
-    copyToBBtn.addEventListener("click", () => {
-        window.__tileLabProfileB = deepClone(buildProfileFromEditor());
-        notifyChange();
-    });
-
     onChangeCallback = () => {
         if (exportArea) {
             exportArea.value = exportProfileSnippet();
@@ -408,7 +400,5 @@ export function initProfileEditor({ onChange }) {
 }
 
 export function getActiveLabProfiles() {
-    const profileA = buildProfileFromEditor();
-    const profileB = window.__tileLabProfileB ?? profileA;
-    return { profileA, profileB };
+    return { profileA: buildProfileFromEditor() };
 }

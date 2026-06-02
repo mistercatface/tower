@@ -14,230 +14,211 @@
             --muted: #7a8799;
             --accent: #00bcd4;
             --accent-dim: #007a8c;
+            --editor-w: 300px;
+            --inspect-w: 280px;
+            --toolbar-h: 44px;
+            --status-h: 28px;
         }
 
         * {
             box-sizing: border-box;
         }
 
+        html,
         body {
             margin: 0;
-            min-height: 100vh;
+            height: 100%;
+            overflow: hidden;
             background: var(--bg);
             color: var(--text);
             font-family: ui-monospace, "Cascadia Code", "Consolas", monospace;
-            font-size: 13px;
-            line-height: 1.45;
+            font-size: 12px;
         }
 
-        header {
-            padding: 16px 20px;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            flex-wrap: wrap;
-            align-items: baseline;
-            gap: 12px 24px;
-        }
-
-        header h1 {
-            margin: 0;
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--accent);
-            letter-spacing: 0.04em;
-        }
-
-        header p {
-            margin: 0;
-            color: var(--muted);
-            max-width: 52rem;
-        }
-
-        header a {
-            color: var(--accent);
-            margin-left: auto;
-        }
-
-        .controls {
-            padding: 14px 20px;
-            background: var(--panel);
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px 20px;
-            align-items: flex-end;
-        }
-
-        label {
+        .app {
             display: flex;
             flex-direction: column;
-            gap: 4px;
-            color: var(--muted);
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
+            height: 100%;
         }
 
-        select,
-        input[type="number"],
-        input[type="range"] {
+        .toolbar {
+            flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            gap: 10px 14px;
+            padding: 0 12px;
+            height: var(--toolbar-h);
+            background: var(--panel);
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+            min-height: var(--toolbar-h);
+        }
+
+        .toolbar h1 {
+            margin: 0;
+            font-size: 14px;
+            color: var(--accent);
+            white-space: nowrap;
+        }
+
+        .toolbar a {
+            color: var(--accent);
+            text-decoration: none;
+            margin-left: auto;
+            white-space: nowrap;
+        }
+
+        .toolbar label {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--muted);
+            font-size: 11px;
+            white-space: nowrap;
+        }
+
+        .toolbar input[type="number"],
+        .toolbar select {
+            width: 4.5rem;
             background: var(--bg);
             border: 1px solid var(--border);
             color: var(--text);
-            padding: 6px 8px;
-            border-radius: 4px;
+            padding: 4px 6px;
+            border-radius: 3px;
             font: inherit;
+        }
+
+        .toolbar select {
+            width: auto;
             min-width: 5rem;
+            max-width: 10rem;
         }
 
-        select {
-            min-width: 10rem;
+        .toolbar input[type="range"] {
+            width: 72px;
+            vertical-align: middle;
         }
 
-        .zoom-wrap {
-            min-width: 140px;
-        }
-
-        .zoom-wrap input[type="range"] {
-            width: 100%;
-            padding: 0;
-        }
-
-        button {
+        .toolbar button {
             background: var(--accent-dim);
             border: 1px solid var(--accent);
             color: #e8f8fb;
-            padding: 8px 14px;
-            border-radius: 4px;
+            padding: 4px 10px;
+            border-radius: 3px;
             font: inherit;
+            font-size: 11px;
             cursor: pointer;
+            white-space: nowrap;
         }
 
-        button:hover {
-            background: var(--accent);
-            color: #061014;
-        }
-
-        button.secondary {
+        .toolbar button.secondary {
             background: transparent;
             border-color: var(--border);
             color: var(--text);
         }
 
-        button.secondary:hover {
-            border-color: var(--accent);
-            color: var(--accent);
+        .toolbar .sep {
+            width: 1px;
+            height: 20px;
+            background: var(--border);
         }
 
-        #metaLine {
-            width: 100%;
-            margin: 0;
-            padding: 0 20px 10px;
-            color: var(--muted);
-            font-size: 11px;
-        }
-
-        main {
-            padding: 16px 20px 32px;
+        .workspace {
+            flex: 1 1 0;
+            min-height: 0;
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 20px;
+            grid-template-columns: var(--editor-w) minmax(0, 1fr) var(--inspect-w);
         }
 
-        section {
+        .col {
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            min-width: 0;
+            border-right: 1px solid var(--border);
             background: var(--panel);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            padding: 12px;
         }
 
-        section h2 {
-            margin: 0 0 4px;
-            font-size: 12px;
+        .col:last-child {
+            border-right: none;
+        }
+
+        .col-head {
+            flex: 0 0 auto;
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--border);
+            font-size: 11px;
             text-transform: uppercase;
-            letter-spacing: 0.08em;
+            letter-spacing: 0.06em;
             color: var(--accent);
         }
 
-        section .hint {
-            margin: 0 0 10px;
-            color: var(--muted);
-            font-size: 11px;
+        .col-body {
+            flex: 1 1 0;
+            min-height: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
 
-        .preview-wrap {
-            overflow: auto;
-            max-height: 420px;
-            background: repeating-conic-gradient(#1a2030 0% 25%, #141a24 0% 50%) 50% / 16px 16px;
-            border-radius: 4px;
+        /* —— Editor column —— */
+        .editor-tools {
+            flex: 0 0 auto;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            padding: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .editor-tools select {
+            flex: 1 1 100%;
+            min-width: 0;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 4px 6px;
+            font: inherit;
+        }
+
+        .editor-scroll {
+            flex: 1 1 0;
+            min-height: 0;
+            overflow-y: auto;
             padding: 8px;
         }
 
-        canvas {
-            display: block;
-            image-rendering: pixelated;
-            image-rendering: crisp-edges;
+        .editor-block {
+            margin-bottom: 10px;
         }
 
-        .wide {
-            grid-column: 1 / -1;
-        }
-
-        .game-preview-wrap {
-            padding: 0;
-            background: #080a0e;
-        }
-
-        .game-ab {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-        }
-
-        .game-ab canvas {
-            width: 100%;
-            height: auto;
-            display: block;
-            image-rendering: auto;
-        }
-
-        .game-ab h3 {
+        .editor-block h3 {
             margin: 0 0 6px;
-            font-size: 11px;
+            font-size: 10px;
             color: var(--muted);
             text-transform: uppercase;
         }
 
-        .editor-layout {
-            display: grid;
-            grid-template-columns: 220px 1fr 260px;
-            gap: 12px;
-            min-height: 320px;
-        }
-
-        @media (max-width: 900px) {
-            .editor-layout {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .editor-panel {
+        #motifList {
+            max-height: 140px;
+            overflow-y: auto;
             background: var(--bg);
             border: 1px solid var(--border);
             border-radius: 4px;
-            padding: 8px;
-            overflow: auto;
-            max-height: 480px;
         }
 
         .motif-row {
             display: flex;
             align-items: center;
-            gap: 6px;
-            padding: 6px 4px;
-            border-radius: 4px;
+            gap: 4px;
+            padding: 5px 6px;
+            font-size: 11px;
             cursor: pointer;
-            font-size: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .motif-row:last-child {
+            border-bottom: none;
         }
 
         .motif-row:hover,
@@ -247,27 +228,39 @@
 
         .motif-row .motif-label {
             flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .motif-row .motif-layer {
             color: var(--muted);
-            font-size: 10px;
+            font-size: 9px;
         }
 
         .motif-row .motif-actions button {
-            padding: 2px 6px;
-            font-size: 11px;
+            padding: 1px 5px;
+            font-size: 10px;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            color: var(--text);
+            cursor: pointer;
         }
 
         .param-field {
             display: grid;
-            grid-template-columns: 90px 1fr 36px;
-            gap: 6px;
+            grid-template-columns: 72px 1fr 32px;
+            gap: 4px;
             align-items: center;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             font-size: 11px;
-            text-transform: none;
             color: var(--text);
+        }
+
+        .param-field span:first-child {
+            color: var(--muted);
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .param-field input[type="range"] {
@@ -278,247 +271,284 @@
         .param-value {
             color: var(--accent);
             text-align: right;
+            font-size: 10px;
         }
 
         #profileExport {
             width: 100%;
-            min-height: 120px;
+            height: 72px;
             background: var(--bg);
             border: 1px solid var(--border);
             color: var(--text);
             font: inherit;
-            font-size: 11px;
-            padding: 8px;
+            font-size: 10px;
+            padding: 6px;
             border-radius: 4px;
-            resize: vertical;
+            resize: none;
         }
 
-        .editor-toolbar {
+        /* —— Map column —— */
+        .col-map {
+            background: var(--bg);
+        }
+
+        .map-status {
+            flex: 0 0 var(--status-h);
+            padding: 0 10px;
             display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-bottom: 10px;
             align-items: center;
-        }
-
-        .editor-toolbar select {
-            min-width: 8rem;
-        }
-
-        .game-controls {
-            border-bottom: none;
-            padding-bottom: 0;
-        }
-
-        label.check {
-            flex-direction: row;
-            align-items: center;
-            gap: 8px;
-            text-transform: none;
-            font-size: 13px;
-            color: var(--text);
-        }
-
-        label.check input {
-            width: auto;
-            min-width: 0;
-        }
-
-        #gameMetaLine {
-            margin: 0 0 12px;
-            padding: 0;
-        }
-
-        .row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-        }
-
-        .row section {
-            flex: 1 1 280px;
-        }
-
-        footer {
-            padding: 12px 20px;
-            border-top: 1px solid var(--border);
+            font-size: 10px;
             color: var(--muted);
+            border-bottom: 1px solid var(--border);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .map-stage {
+            flex: 1 1 0;
+            min-height: 0;
+            display: flex;
+            align-items: stretch;
+            justify-content: stretch;
+            background: #080a0e;
+            overflow: hidden;
+        }
+
+        #gamePreview {
+            display: block;
+            flex: 1 1 0;
+            min-width: 0;
+            min-height: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* —— Inspect column —— */
+        .tab-bar {
+            flex: 0 0 auto;
+            display: flex;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tab-bar button {
+            flex: 1;
+            padding: 8px;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: var(--muted);
+            font: inherit;
             font-size: 11px;
+            cursor: pointer;
+        }
+
+        .tab-bar button.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+
+        .tab-panel {
+            display: none;
+            flex: 1 1 0;
+            min-height: 0;
+            overflow-y: auto;
+            padding: 8px;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        .micro-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .micro-card {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .micro-card .label {
+            padding: 4px 6px;
+            font-size: 9px;
+            color: var(--muted);
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .micro-view {
+            height: 120px;
+            overflow: auto;
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-start;
+            background: repeating-conic-gradient(#1a2030 0% 25%, #141a24 0% 50%) 50% / 12px 12px;
+            padding: 4px;
+        }
+
+        .micro-view canvas {
+            display: block;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            max-width: 100%;
+        }
+
+        .repeat-view {
+            height: 200px;
+            overflow: auto;
+            background: repeating-conic-gradient(#1a2030 0% 25%, #141a24 0% 50%) 50% / 12px 12px;
+            padding: 4px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+        }
+
+        .repeat-view canvas {
+            display: block;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+
+        label.check-inline {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        label.check-inline input {
+            width: auto;
+            margin: 0;
+        }
+
+        @media (max-width: 1100px) {
+            :root {
+                --editor-w: 260px;
+                --inspect-w: 240px;
+            }
         }
     </style>
 </head>
 
 <body>
-    <header>
-        <h1>Tile Lab</h1>
-        <p>Same baker as the game (<code>FloorTilePainter</code> / profiles in <code>floorProceduralConfig.js</code>).
-            Edit config, save, click Regenerate (hard refresh if the module is cached).</p>
-        <a href="Index.html">← Game</a>
-    </header>
+    <div class="app">
+        <div class="toolbar">
+            <h1>Tile Lab</h1>
+            <span class="sep"></span>
+            <label>Tex seed <input id="seedInput" type="number" value="42" step="1"></label>
+            <button type="button" id="randomSeedBtn" class="secondary">Rand</button>
+            <span class="sep"></span>
+            <label>Map <input id="mapSeedInput" type="number" value="42"></label>
+            <button type="button" id="regenMapBtn" class="secondary">New map</button>
+            <label>Node <select id="mapNodeSelect"></select></label>
+            <span class="sep"></span>
+            <label>W <input id="worldXInput" type="number" value="0" step="16"></label>
+            <label>H <input id="worldYInput" type="number" value="0" step="16"></label>
+            <label>Cell <input id="cellSizeInput" type="number" value="16" min="4" max="64"></label>
+            <span class="sep"></span>
+            <label>Tile <span id="zoomValue">6</span>×<input id="zoomInput" type="range" min="2" max="16" value="6" step="1"></label>
+            <label>Cam <span id="gameZoomValue">1</span>×<input id="gameZoomInput" type="range" min="0.25" max="2.5" value="1" step="0.05"></label>
+            <span class="sep"></span>
+            <label>Story <input id="storyRowInput" type="number" value="0" min="0" max="31"></label>
+            <label>Stories <input id="storyCountInput" type="number" value="8" min="1" max="32"></label>
+            <label class="check-inline"><input id="showRangeRingInput" type="checkbox" checked> Range</label>
+            <button type="button" id="regenerateBtn">Redraw</button>
+            <a href="Index.html">Game</a>
+        </div>
 
-    <div class="controls">
-        <label>Seed
-            <input id="seedInput" type="number" value="42" step="1">
-        </label>
-        <button type="button" id="randomSeedBtn" class="secondary">Random seed</button>
-        <label>World X
-            <input id="worldXInput" type="number" value="0" step="16">
-        </label>
-        <label>World Y
-            <input id="worldYInput" type="number" value="0" step="16">
-        </label>
-        <label>Cell size (px)
-            <input id="cellSizeInput" type="number" value="16" min="4" max="128" step="1">
-        </label>
-        <label>Wall story row
-            <input id="storyRowInput" type="number" value="0" min="0" max="31" step="1">
-        </label>
-        <label>Wall stories (column / face)
-            <input id="storyCountInput" type="number" value="8" min="1" max="32" step="1">
-        </label>
-        <label class="zoom-wrap">Zoom <span id="zoomValue">8</span>×
-            <input id="zoomInput" type="range" min="1" max="32" value="8" step="1">
-        </label>
-        <label>Export
-            <select id="exportTarget">
-                <option value="floor">Floor cell</option>
-                <option value="wallCell">Wall cell</option>
-                <option value="wallColumn">Wall column</option>
-                <option value="wallFace">Wall face</option>
-            </select>
-        </label>
-        <button type="button" id="regenerateBtn">Regenerate</button>
-        <button type="button" id="exportBtn">Export PNG</button>
-    </div>
-
-    <div class="controls game-controls">
-        <label>Map seed
-            <input id="mapSeedInput" type="number" value="42" step="1">
-        </label>
-        <button type="button" id="regenMapBtn" class="secondary">Regenerate map</button>
-        <label>Combat node
-            <select id="mapNodeSelect"></select>
-        </label>
-        <button type="button" id="focusPlayerBtn" class="secondary">Focus player</button>
-        <label class="zoom-wrap">Camera zoom <span id="gameZoomValue">1</span>×
-            <input id="gameZoomInput" type="range" min="0.25" max="2.5" value="1" step="0.05">
-        </label>
-        <label>Weapon range (ring)
-            <input id="weaponRangeInput" type="number" value="150" min="50" max="400" step="10">
-        </label>
-        <label class="check">
-            <input id="showRangeRingInput" type="checkbox" checked>
-            Weapon range ring
-        </label>
-    </div>
-    <p id="metaLine"></p>
-
-    <main>
-        <section class="wide">
-            <h2>Profile editor</h2>
-            <p class="hint">Live profile drives all previews. Load a preset, tune layers, copy export into
-                <code>floorProceduralConfig.js</code>. <strong>Copy → B</strong> snapshots A/B compare.</p>
-            <div class="editor-toolbar">
-                <label>Preset
-                    <select id="presetSelect"></select>
-                </label>
-                <button type="button" id="loadPresetBtn">Load preset</button>
-                <label>Add motif
-                    <select id="addMotifType"></select>
-                </label>
-                <button type="button" id="addMotifBtn" class="secondary">+ Add</button>
-                <button type="button" id="copyToBBtn" class="secondary">Copy → B</button>
-                <button type="button" id="copyExportBtn">Copy export</button>
-            </div>
-            <div class="editor-layout">
-                <div class="editor-panel">
-                    <h3 style="margin:0 0 8px;font-size:11px;color:var(--muted)">Motif stack</h3>
-                    <div id="motifList"></div>
-                </div>
-                <div class="editor-panel">
-                    <h3 style="margin:0 0 8px;font-size:11px;color:var(--muted)">Motif params</h3>
-                    <div id="motifParamsPanel"></div>
-                </div>
-                <div class="editor-panel">
-                    <h3 style="margin:0 0 8px;font-size:11px;color:var(--muted)">Global</h3>
-                    <div id="globalParamsPanel"></div>
-                    <h3 style="margin:12px 0 8px;font-size:11px;color:var(--muted)">Export</h3>
-                    <textarea id="profileExport" readonly></textarea>
-                </div>
-            </div>
-        </section>
-        <section class="wide">
-            <h2>In-game preview (A / B) — full map</h2>
-            <p class="hint">Same as a new game: <code>MapGenerator.generateMap</code>, all node walls, chunk floors, projected faces.
-                <strong>WASD / arrows</strong> or <strong>drag</strong> to move the player · <strong>wheel</strong> zoom · view follows the cyan dot (combat camera).</p>
-            <p id="gameMetaLine" class="hint"></p>
-            <label class="check" style="margin-bottom:10px">
-                <input id="compareBInput" type="checkbox" checked>
-                Show B compare panel
-            </label>
-            <div class="game-ab">
-                <div>
-                    <h3>A — live editor</h3>
-                    <div class="preview-wrap game-preview-wrap">
-                        <canvas id="gamePreviewA" width="480" height="300"></canvas>
+        <div class="workspace">
+            <aside class="col col-editor">
+                <div class="col-head">Profile editor</div>
+                <div class="col-body">
+                    <div class="editor-tools">
+                        <select id="presetSelect"></select>
+                        <button type="button" id="loadPresetBtn">Load</button>
+                        <select id="addMotifType"></select>
+                        <button type="button" id="addMotifBtn" class="secondary">+ Motif</button>
+                        <button type="button" id="copyExportBtn">Copy export</button>
+                    </div>
+                    <div class="editor-scroll">
+                        <div class="editor-block">
+                            <h3>Motifs</h3>
+                            <div id="motifList"></div>
+                        </div>
+                        <div class="editor-block">
+                            <h3>Selected</h3>
+                            <div id="motifParamsPanel"></div>
+                        </div>
+                        <div class="editor-block">
+                            <h3>Global</h3>
+                            <div id="globalParamsPanel"></div>
+                        </div>
+                        <div class="editor-block">
+                            <h3>Export</h3>
+                            <textarea id="profileExport" readonly></textarea>
+                        </div>
                     </div>
                 </div>
-                <div id="gamePreviewBPanel">
-                    <h3>B — snapshot</h3>
-                    <div class="preview-wrap game-preview-wrap">
-                        <canvas id="gamePreviewB" width="480" height="300"></canvas>
+            </aside>
+
+            <section class="col col-map">
+                <div class="map-status" id="gameMetaLine">WASD move · drag · wheel zoom</div>
+                <div class="map-stage" id="mapStage">
+                    <canvas id="gamePreview"></canvas>
+                </div>
+            </section>
+
+            <aside class="col col-inspect">
+                <div class="col-head">Tile inspect</div>
+                <div class="col-body">
+                    <div class="tab-bar">
+                        <button type="button" class="tab-btn active" data-tab="cells">Cells</button>
+                        <button type="button" class="tab-btn" data-tab="repeat">5×5</button>
+                        <button type="button" class="tab-btn" data-tab="export">Export</button>
+                    </div>
+                    <div class="tab-panel active" id="tab-cells">
+                        <div class="micro-grid">
+                            <div class="micro-card">
+                                <div class="label">Floor</div>
+                                <div class="micro-view"><canvas id="floorPreview"></canvas></div>
+                            </div>
+                            <div class="micro-card">
+                                <div class="label">Wall cell</div>
+                                <div class="micro-view"><canvas id="wallCellPreview"></canvas></div>
+                            </div>
+                            <div class="micro-card">
+                                <div class="label">Wall column</div>
+                                <div class="micro-view"><canvas id="wallColumnPreview"></canvas></div>
+                            </div>
+                            <div class="micro-card">
+                                <div class="label">Wall face</div>
+                                <div class="micro-view"><canvas id="wallFacePreview"></canvas></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tab-panel" id="tab-repeat">
+                        <p style="margin:0 0 6px;color:var(--muted);font-size:10px">Seam check — world X/Y shifts grid</p>
+                        <div class="label" style="font-size:9px;color:var(--muted);margin-bottom:4px">Floor</div>
+                        <div class="repeat-view" style="margin-bottom:8px"><canvas id="floorRepeat"></canvas></div>
+                        <div class="label" style="font-size:9px;color:var(--muted);margin-bottom:4px">Wall</div>
+                        <div class="repeat-view"><canvas id="wallRepeat"></canvas></div>
+                    </div>
+                    <div class="tab-panel" id="tab-export">
+                        <label style="display:block;margin-bottom:8px;color:var(--muted);font-size:11px">
+                            Bake
+                            <select id="exportTarget" style="width:100%;margin-top:4px;padding:6px;background:var(--bg);border:1px solid var(--border);color:var(--text);font:inherit">
+                                <option value="floor">Floor cell</option>
+                                <option value="wallCell">Wall cell</option>
+                                <option value="wallColumn">Wall column</option>
+                                <option value="wallFace">Wall face</option>
+                            </select>
+                        </label>
+                        <button type="button" id="exportBtn" style="width:100%">Download PNG</button>
                     </div>
                 </div>
-            </div>
-        </section>
-        <section>
-            <h2>Floor — one cell</h2>
-            <p class="hint">Baked at game resolution, nearest-neighbor upscale.</p>
-            <div class="preview-wrap">
-                <canvas id="floorPreview"></canvas>
-            </div>
-        </section>
-        <section>
-            <h2>Wall — one cell</h2>
-            <p class="hint">Single story row (<code>zOffset</code>).</p>
-            <div class="preview-wrap">
-                <canvas id="wallCellPreview"></canvas>
-            </div>
-        </section>
-        <section>
-            <h2>Wall — stacked stories</h2>
-            <p class="hint">All story rows for one grid cell (vertical strip).</p>
-            <div class="preview-wrap">
-                <canvas id="wallColumnPreview"></canvas>
-            </div>
-        </section>
-        <section>
-            <h2>Wall — face along edge</h2>
-            <p class="hint">Horizontal edge p1→p2, same as projected wall bake.</p>
-            <div class="preview-wrap">
-                <canvas id="wallFacePreview"></canvas>
-            </div>
-        </section>
-        <section class="wide">
-            <h2>5×5 repeat — floor</h2>
-            <p class="hint">Slide world X/Y to check seams across cells. Should tile cleanly at cell boundaries.</p>
-            <div class="preview-wrap">
-                <canvas id="floorRepeat"></canvas>
-            </div>
-        </section>
-        <section class="wide">
-            <h2>5×5 repeat — wall (one story)</h2>
-            <p class="hint">Each tile is a different world position; same story row.</p>
-            <div class="preview-wrap">
-                <canvas id="wallRepeat"></canvas>
-            </div>
-        </section>
-    </main>
-
-    <footer>
-        Serve from the project root (e.g. <code>npx serve .</code> or VS Code Live Server) — same as
-        <code>Index.html</code>. Opening via <code>file://</code> may block ES module imports.
-    </footer>
+            </aside>
+        </div>
+    </div>
 
     <script type="module" src="tile-lab.js"></script>
 </body>
