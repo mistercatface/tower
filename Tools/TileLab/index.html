@@ -38,6 +38,9 @@
             </label>
             <label class="check-inline"><input id="showRangeRingInput" type="checkbox" checked> Range ring</label>
             <label class="check-inline"><input id="showVignetteInput" type="checkbox"> Circular Overlay</label>
+            <span class="sep"></span>
+            <button type="button" id="playBtn">Play</button>
+            <button type="button" id="pauseBtn" disabled>Pause</button>
             <button type="button" id="regenerateBtn">Redraw</button>
             <a href="../../Index.html">Game</a>
         </div>
@@ -84,66 +87,6 @@
                     <canvas id="gamePreview"></canvas>
                 </div>
             </section>
-
-            <aside class="col col-inspect">
-                <div class="col-head">Tile inspect</div>
-                <div class="col-body">
-                    <div class="tab-bar">
-                        <button type="button" class="tab-btn active" data-tab="cells">Cells</button>
-                        <button type="button" class="tab-btn" data-tab="repeat">5×5</button>
-                        <button type="button" class="tab-btn" data-tab="export">Export</button>
-                    </div>
-                    <div class="tab-panel active" id="tab-cells">
-                        <div class="micro-grid">
-                            <div class="micro-card">
-                                <div class="label">Floor</div>
-                                <div class="micro-view"><canvas id="floorPreview"></canvas></div>
-                            </div>
-                            <div class="micro-card">
-                                <div class="label">Wall cell</div>
-                                <div class="micro-view"><canvas id="wallCellPreview"></canvas></div>
-                            </div>
-                            <div class="micro-card">
-                                <div class="label">Wall column</div>
-                                <div class="micro-view"><canvas id="wallColumnPreview"></canvas></div>
-                            </div>
-                            <div class="micro-card">
-                                <div class="label">Wall face</div>
-                                <div class="micro-view"><canvas id="wallFacePreview"></canvas></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="tab-panel" id="tab-repeat">
-                        <p style="margin:0 0 6px;color:var(--muted);font-size:10px">Seam check — world X/Y shifts grid</p>
-                        <div class="label" style="font-size:9px;color:var(--muted);margin-bottom:4px">Floor</div>
-                        <div class="repeat-view" style="margin-bottom:8px"><canvas id="floorRepeat"></canvas></div>
-                        <div class="label" style="font-size:9px;color:var(--muted);margin-bottom:4px">Wall</div>
-                        <div class="repeat-view"><canvas id="wallRepeat"></canvas></div>
-                    </div>
-                    <div class="tab-panel" id="tab-export">
-                        <div id="exportTileGroup">
-                            <label style="display:block;margin-bottom:8px;color:var(--muted);font-size:11px">
-                                Bake tile (PNG)
-                                <select id="exportTarget" style="width:100%;margin-top:4px;padding:6px;background:var(--bg);border:1px solid var(--border);color:var(--text);font:inherit">
-                                    <option value="floor">Floor cell</option>
-                                    <option value="wallCell">Wall cell</option>
-                                    <option value="wallColumn">Wall column</option>
-                                    <option value="wallFace">Wall face</option>
-                                </select>
-                            </label>
-                        </div>
-                        <p id="exportFormatHint" style="margin:0 0 8px;color:var(--muted);font-size:10px">
-                            Static tile — exports PNG.
-                        </p>
-                        <div id="exportPreviewGroup" class="export-preview-group" hidden>
-                            <div class="label">Preview</div>
-                            <video id="exportPreviewVideo" autoplay loop muted playsinline controls></video>
-                        </div>
-                        <button type="button" id="exportBtn">Download PNG</button>
-                        <button type="button" id="exportDownloadBtn" hidden>Download WebM</button>
-                    </div>
-                </div>
-            </aside>
         </div>
     </div>
 

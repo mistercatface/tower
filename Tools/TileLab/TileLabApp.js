@@ -1,10 +1,5 @@
-/**
- * Tile Lab — procedural floor/wall profile editor and full-map preview.
- * Open via Tools/TileLab/index.html (local server required).
- */
 import { listShippedFloorProfileIds } from "../../Config/floorProceduralConfig.js";
-import { initMapPreviewNavigation, exportMapOverlayWebm } from "./map/LabMapPreview.js";
-import { clearFlatWallFaceCache } from "../../Render/3D/WallFaceTexture.js";
+import { initMapPreviewNavigation } from "./map/LabMapPreview.js";
 import {
     invalidateLabCaches,
     registerEditorProfiles,
@@ -15,123 +10,15 @@ import {
     applyGameDefaultsToForm,
     syncCombatZoomToStage,
     initPresetSelect,
-    initInspectTabs,
     initToolbarDefaults,
     bindToolbarControls,
 } from "./LabToolbar.js";
-import { exportOverlayPx } from "./LabSettings.js";
 import { ensureLabWorld, getLabWorld, resetLabWorld } from "./LabWorldSession.js";
-import { initProfileEditor, RUNTIME_LAB_PROFILE_ID } from "./profile/ProfileEditor.js";
-import { getFloorProceduralProfile } from "../../Config/floorProceduralConfig.js";
-import {
-    drawInspectQuick,
-    drawInspectAtFrame,
-    inspectFrameIndexFromTime,
-    isProfileAnimated,
-    downloadInspectExport,
-} from "./inspect/TileInspectBakes.js";
+import { initProfileEditor } from "./profile/ProfileEditor.js";
 
-/** @type {ReturnType<typeof readControls> | null} */
-let inspectCtrl = null;
 let mapPreviewTimer = null;
 let fullRenderTimer = null;
-let inspectAnimTick = 0;
-/** @type {string | null} */
-let exportPreviewUrl = null;
-/** @type {string | null} */
-let exportPreviewFilename = null;
-
-function switchToExportTab() {
-    const buttons = document.querySelectorAll(".col-inspect .tab-btn");
-    const panels = document.querySelectorAll(".col-inspect .tab-panel");
-    buttons.forEach((btn) => btn.classList.toggle("active", btn.dataset.tab === "export"));
-    panels.forEach((panel) => panel.classList.toggle("active", panel.id === "tab-export"));
-}
-
-function clearExportPreview() {
-    const group = document.getElementById("exportPreviewGroup");
-    const video = document.getElementById("exportPreviewVideo");
-    const downloadBtn = document.getElementById("exportDownloadBtn");
-    if (exportPreviewUrl) {
-        URL.revokeObjectURL(exportPreviewUrl);
-        exportPreviewUrl = null;
-    }
-    exportPreviewFilename = null;
-    if (video) {
-        video.pause();
-        video.removeAttribute("src");
-        video.load();
-    }
-    if (group) {
-        group.hidden = true;
-    }
-    if (downloadBtn) {
-        downloadBtn.hidden = true;
-    }
-}
-
-function showExportPreview(blob, filename) {
-    const group = document.getElementById("exportPreviewGroup");
-    const video = document.getElementById("exportPreviewVideo");
-    const downloadBtn = document.getElementById("exportDownloadBtn");
-    if (!group || !video || !blob) {
-        return;
-    }
-    if (exportPreviewUrl) {
-        URL.revokeObjectURL(exportPreviewUrl);
-    }
-    exportPreviewUrl = URL.createObjectURL(blob);
-    exportPreviewFilename = filename ?? "map-overlay.webm";
-    video.src = exportPreviewUrl;
-    group.hidden = false;
-    if (downloadBtn) {
-        downloadBtn.hidden = false;
-    }
-    switchToExportTab();
-    video.play().catch(() => {});
-}
-
-function downloadExportPreview() {
-    if (!exportPreviewUrl || !exportPreviewFilename) {
-        return;
-    }
-    const link = document.createElement("a");
-    link.download = exportPreviewFilename;
-    link.href = exportPreviewUrl;
-    link.click();
-}
-
-function updateExportTabUi() {
-    const ctrl = inspectCtrl ?? readControls();
-    const btn = document.getElementById("exportBtn");
-    const hint = document.getElementById("exportFormatHint");
-    const tileGroup = document.getElementById("exportTileGroup");
-    const animated = isProfileAnimated(ctrl.profileId);
-    if (tileGroup) {
-        tileGroup.style.display = animated ? "none" : "block";
-    }
-    if (!animated) {
-        clearExportPreview();
-    }
-    if (btn) {
-        btn.textContent = animated ? "Bake WebM" : "Download PNG";
-        btn.disabled = false;
-    }
-    const downloadBtn = document.getElementById("exportDownloadBtn");
-    if (downloadBtn) {
-        downloadBtn.hidden = !animated || !exportPreviewUrl;
-    }
-    if (hint) {
-        if (animated) {
-            const hasPreview = Boolean(exportPreviewUrl);
-            hint.textContent = hasPreview
-                ? "Preview ready below. Bake again to refresh, or download when you're happy with it."
-                : `Bakes a ${exportOverlayPx}×${exportOverlayPx} circular overlay (no player dot) for preview.`;
-        } else {
-            hint.textContent = "Static tile — exports PNG from the selection above.";
-        }
-    }
-}
+let isPlaying = true;
 
 function scheduleMapPreview() {
     if (mapPreviewTimer != null) {
@@ -149,19 +36,12 @@ function scheduleMapPreview() {
     }, 400);
 }
 
-async function renderLightweight() {
+function renderLightweight() {
     registerEditorProfiles();
-
-    const ctrl = readControls();
-    inspectCtrl = ctrl;
-    const world = getLabWorld();
-    const frameIndex = inspectFrameIndexFromTime(ctrl.profileId, world?.gameTime ?? 0);
-    await drawInspectQuick(ctrl, frameIndex);
-    updateExportTabUi();
     scheduleMapPreview();
 }
 
-async function renderAll({ fullQuality = false } = {}) {
+function renderAll() {
     registerEditorProfiles();
 
     const ctrl = readControls();
@@ -171,10 +51,6 @@ async function renderAll({ fullQuality = false } = {}) {
     invalidateLabCaches();
     world.floorTiles.clear();
 
-    inspectCtrl = ctrl;
-    const frameIndex = inspectFrameIndexFromTime(ctrl.profileId, world?.gameTime ?? 0);
-    await drawInspectAtFrame(ctrl, frameIndex);
-    updateExportTabUi();
     renderMapPreview(ctrl, world);
 }
 
@@ -184,7 +60,7 @@ function scheduleFullRender() {
     }
     fullRenderTimer = setTimeout(() => {
         fullRenderTimer = null;
-        renderAll({ fullQuality: false });
+        renderAll();
     }, 300);
 }
 
@@ -194,52 +70,6 @@ function handleEditorChange(options = {}) {
         return;
     }
     scheduleFullRender();
-}
-
-async function exportActive() {
-    const ctrl = inspectCtrl ?? readControls();
-    const pick = document.getElementById("exportTarget").value;
-    const btn = document.getElementById("exportBtn");
-    const hint = document.getElementById("exportFormatHint");
-    const profile = getFloorProceduralProfile(RUNTIME_LAB_PROFILE_ID);
-
-    if (profile?.animation) {
-        if (btn) btn.disabled = true;
-        registerEditorProfiles();
-        const world = ensureLabWorld(ctrl);
-        try {
-            const result = await exportMapOverlayWebm(ctrl, world, RUNTIME_LAB_PROFILE_ID, {
-                onProgress: (current, total, phase) => {
-                    if (hint) {
-                        hint.textContent = phase === "encode"
-                            ? "Encoding WebM…"
-                            : `Rendering frame ${current}/${total}…`;
-                    }
-                },
-            });
-            if (result?.ok && result.blob) {
-                showExportPreview(result.blob, result.filename);
-                if (hint) {
-                    hint.textContent = "Preview ready below. Bake again to refresh, or download when you're happy with it.";
-                }
-            } else if (hint) {
-                hint.textContent = "WebM export failed — try Chrome/Edge, or reduce frame count.";
-            }
-        } finally {
-            world.floorTiles.clear();
-            clearFlatWallFaceCache();
-            invalidateLabCaches();
-            renderMapPreview(ctrl, world);
-            updateExportTabUi();
-        }
-        return;
-    }
-
-    try {
-        await downloadInspectExport(ctrl, pick);
-    } finally {
-        updateExportTabUi();
-    }
 }
 
 function onStageResize() {
@@ -256,26 +86,31 @@ function mapPreviewLoop() {
     requestAnimationFrame(mapPreviewLoop);
 }
 
+function setPlayState(playing) {
+    isPlaying = playing;
+    const playBtn = document.getElementById("playBtn");
+    const pauseBtn = document.getElementById("pauseBtn");
+    if (playBtn) playBtn.disabled = playing;
+    if (pauseBtn) pauseBtn.disabled = !playing;
+}
+
+document.getElementById("playBtn")?.addEventListener("click", () => setPlayState(true));
+document.getElementById("pauseBtn")?.addEventListener("click", () => setPlayState(false));
+
 initPresetSelect(listShippedFloorProfileIds());
-initInspectTabs();
 initProfileEditor({ onChange: handleEditorChange });
 initMapPreviewNavigation(() => ({ ...readControls(), worldState: getLabWorld() }));
 bindToolbarControls({
-    onRender: () => renderAll({ fullQuality: true }),
-    onExport: exportActive,
+    onRender: () => renderAll(),
     onResetMap: resetLabWorld,
     onStageResize,
 });
-document.getElementById("exportTarget")?.addEventListener("change", updateExportTabUi);
-document.getElementById("exportDownloadBtn")?.addEventListener("click", downloadExportPreview);
 
 initToolbarDefaults();
 
 function bootstrap() {
     registerEditorProfiles();
-    inspectCtrl = readControls();
-    drawInspectQuick(inspectCtrl, 0);
-    updateExportTabUi();
+    setPlayState(true);
 
     requestAnimationFrame(() => {
         const ctrl = readControls();
@@ -293,20 +128,10 @@ function appLoop(timestamp) {
     const dt = timestamp - lastRafTime;
     lastRafTime = timestamp;
 
-    const profile = getFloorProceduralProfile(RUNTIME_LAB_PROFILE_ID);
-    if (profile?.animation && inspectCtrl) {
-        inspectAnimTick += dt;
-        if (inspectAnimTick >= 120) {
-            inspectAnimTick = 0;
-            const world = getLabWorld();
-            const frameIndex = inspectFrameIndexFromTime(
-                RUNTIME_LAB_PROFILE_ID,
-                world?.gameTime ?? 0
-            );
-            if (world) {
-                world.gameTime = (world.gameTime || 0) + 120;
-            }
-            drawInspectQuick(inspectCtrl, frameIndex);
+    if (isPlaying) {
+        const world = getLabWorld();
+        if (world) {
+            world.gameTime = (world.gameTime || 0) + dt;
         }
     }
 

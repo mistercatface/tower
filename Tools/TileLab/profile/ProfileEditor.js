@@ -641,10 +641,5 @@ export function getActiveLabProfile() {
 
 /** Map preview uses a static profile so chunks never sync-bake animation frames. */
 export function getActiveLabMapProfile() {
-    const profile = buildProfileFromEditor();
-    if (!profile?.animation) {
-        return profile;
-    }
-    const { animation: _anim, ...rest } = profile;
-    return rest;
+    return buildProfileFromEditor();
 }

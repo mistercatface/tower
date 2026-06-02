@@ -79,18 +79,7 @@ export function initPresetSelect(profileIds) {
     select.value = defaultFloorProceduralProfileId;
 }
 
-export function initInspectTabs() {
-    const buttons = document.querySelectorAll(".tab-btn");
-    const panels = document.querySelectorAll(".tab-panel");
-    for (const btn of buttons) {
-        btn.addEventListener("click", () => {
-            buttons.forEach((b) => b.classList.remove("active"));
-            panels.forEach((p) => p.classList.remove("active"));
-            btn.classList.add("active");
-            document.getElementById(`tab-${btn.dataset.tab}`)?.classList.add("active");
-        });
-    }
-}
+
 
 export function initToolbarDefaults() {
     document.getElementById("mapSeedInput").value = "42";
@@ -106,10 +95,10 @@ export function initToolbarDefaults() {
 }
 
 /**
- * @param {{ onRender: () => void, onExport: () => void, onStageResize: () => void }} handlers
+ * @param {{ onRender: () => void, onStageResize: () => void }} handlers
  */
 export function bindToolbarControls(handlers) {
-    const { onRender, onExport, onStageResize } = handlers;
+    const { onRender, onStageResize } = handlers;
     const ids = [
         "seedInput",
         "worldXInput",
@@ -137,7 +126,6 @@ export function bindToolbarControls(handlers) {
         onRender();
     });
     document.getElementById("regenerateBtn").addEventListener("click", onRender);
-    document.getElementById("exportBtn").addEventListener("click", onExport);
     document.getElementById("randomSeedBtn").addEventListener("click", () => {
         document.getElementById("seedInput").value = String(Math.floor(Math.random() * 1_000_000));
         onRender();
