@@ -9,6 +9,7 @@ import {
     floorChunkCacheKey,
     getFloorTextureProfileId,
 } from "./floorTextureProfile.js";
+import { drawBakedTexture, getTexturePixelsPerWorldUnit } from "./floorTextureResolution.js";
 
 export class FloorTileSystem {
     constructor() {
@@ -17,6 +18,7 @@ export class FloorTileSystem {
         this._tileTexture = null;
         this._tileTextureSeed = null;
         this._tileTextureProfileId = null;
+        this._tileTexturePpwu = null;
         this.proceduralProfileId = null;
     }
 
@@ -26,6 +28,7 @@ export class FloorTileSystem {
         this._tileTexture = null;
         this._tileTextureSeed = null;
         this._tileTextureProfileId = null;
+        this._tileTexturePpwu = null;
     }
 
     invalidateGridBounds(bounds, state, cellsPerChunk = floorTileSettings.cellsPerChunk) {
@@ -47,15 +50,18 @@ export class FloorTileSystem {
     getTileTextureCanvas(state) {
         const seed = state.floorTileSeed ?? 0;
         const profileId = getFloorTextureProfileId(state);
+        const ppwu = getTexturePixelsPerWorldUnit();
         if (
             this._tileTexture &&
             this._tileTextureSeed === seed &&
-            this._tileTextureProfileId === profileId
+            this._tileTextureProfileId === profileId &&
+            this._tileTexturePpwu === ppwu
         ) {
             return this._tileTexture;
         }
         this._tileTextureSeed = seed;
         this._tileTextureProfileId = profileId;
+        this._tileTexturePpwu = ppwu;
         this._tileTexture = bakeFloorTileTextureCanvas(seed, state.obstacleGrid?.cellSize, profileId);
         return this._tileTexture;
     }
@@ -131,7 +137,7 @@ export class FloorTileSystem {
             for (let chunkCol = range.minChunkCol; chunkCol <= range.maxChunkCol; chunkCol++) {
                 const canvas = this.getChunkCanvas(chunkCol, chunkRow, state);
                 const origin = chunkToWorldOrigin(chunkCol, chunkRow, obstacleGrid.minX, obstacleGrid.minY, chunkSizePx);
-                ctx.drawImage(canvas, origin.x, origin.y);
+                drawBakedTexture(ctx, canvas, origin.x, origin.y, chunkSizePx, chunkSizePx);
             }
         }
     }

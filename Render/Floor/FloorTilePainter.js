@@ -9,6 +9,11 @@ import {
     mapPixelToEval,
     queryObstacleBlocked,
 } from "./SurfaceCoordinateMapper.js";
+import {
+    bakePixelsForWorldSpan,
+    drawBakedTexture,
+    getTexturePixelsPerWorldUnit,
+} from "./floorTextureResolution.js";
 
 export function paintPixelArea(
     ctx,
@@ -26,10 +31,11 @@ export function paintPixelArea(
 
     const isWall = options.isWall === true;
     const cellSize = obstacleGrid.cellSize;
+    const texturePixelsPerWorldUnit = options.texturePixelsPerWorldUnit ?? getTexturePixelsPerWorldUnit();
 
     let surfaceKind = "floor";
     let wallFace = null;
-    let pixelsPerUnit = 1;
+    let pixelsPerUnit = texturePixelsPerWorldUnit;
     let zOffset = 0;
 
     if (isWall && options.p1 && options.p2) {
@@ -57,6 +63,7 @@ export function paintPixelArea(
                 surfaceKind,
                 height,
                 pixelsPerUnit,
+                texturePixelsPerWorldUnit,
                 zOffset,
                 wallFace,
             });
@@ -76,19 +83,25 @@ export function paintPixelArea(
 
 export function bakeFloorCellCanvas(worldX, worldY, obstacleGrid, seed, profileId) {
     const cellSize = obstacleGrid.cellSize;
-    const canvas = new OffscreenCanvas(cellSize, cellSize);
+    const bakeSize = bakePixelsForWorldSpan(cellSize);
+    const canvas = new OffscreenCanvas(bakeSize, bakeSize);
     const ctx = canvas.getContext("2d");
     ctx.imageSmoothingEnabled = false;
-    paintPixelArea(ctx, cellSize, cellSize, worldX, worldY, obstacleGrid, seed, {}, profileId);
+    paintPixelArea(ctx, bakeSize, bakeSize, worldX, worldY, obstacleGrid, seed, {}, profileId);
     return canvas;
 }
 
-export function drawWallCell(ctx, worldX, worldY, storyRow, obstacleGrid, seed, profileId) {
+export function drawWallCell(ctx, destX, destY, storyRow, obstacleGrid, seed, profileId) {
     const cellSize = obstacleGrid.cellSize;
-    paintPixelArea(ctx, cellSize, cellSize, worldX, worldY, obstacleGrid, seed, {
+    const bakeSize = bakePixelsForWorldSpan(cellSize);
+    const canvas = new OffscreenCanvas(bakeSize, bakeSize);
+    const bakeCtx = canvas.getContext("2d");
+    bakeCtx.imageSmoothingEnabled = false;
+    paintPixelArea(bakeCtx, bakeSize, bakeSize, destX, destY, obstacleGrid, seed, {
         isWall: true,
         zOffset: storyRow * cellSize,
     }, profileId);
+    drawBakedTexture(ctx, canvas, destX, destY, cellSize, cellSize);
 }
 
 export function bakeFloorTileTextureCanvas(seed, cellSize = gridSettings.cellSize, profileId) {
@@ -112,8 +125,9 @@ export function bakeFloorChunkCanvas({
     profileId,
 }) {
     const cellSize = obstacleGrid.cellSize;
-    const chunkSizePx = cellSize * cellsPerChunk;
-    const canvas = new OffscreenCanvas(chunkSizePx, chunkSizePx);
+    const chunkWorldSize = cellSize * cellsPerChunk;
+    const bakeSize = bakePixelsForWorldSpan(chunkWorldSize);
+    const canvas = new OffscreenCanvas(bakeSize, bakeSize);
     const ctx = canvas.getContext("2d");
     ctx.imageSmoothingEnabled = false;
 
@@ -122,7 +136,7 @@ export function bakeFloorChunkCanvas({
     const chunkWorldX = obstacleGrid.minX + startCol * cellSize;
     const chunkWorldY = obstacleGrid.minY + startRow * cellSize;
 
-    paintPixelArea(ctx, chunkSizePx, chunkSizePx, chunkWorldX, chunkWorldY, obstacleGrid, seed, {}, profileId);
+    paintPixelArea(ctx, bakeSize, bakeSize, chunkWorldX, chunkWorldY, obstacleGrid, seed, {}, profileId);
 
     return canvas;
 }

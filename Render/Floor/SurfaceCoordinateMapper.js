@@ -17,6 +17,7 @@ export function mapPixelToEval({
     surfaceKind,
     height,
     pixelsPerUnit,
+    texturePixelsPerWorldUnit,
     zOffset,
     wallFace,
 }) {
@@ -30,16 +31,18 @@ export function mapPixelToEval({
         };
     }
 
+    const ppwu = texturePixelsPerWorldUnit;
+
     if (surfaceKind === "wallCell") {
         return {
-            evalX: startWorldX + x,
-            evalY: startWorldY + (cellSize - y) + zOffset,
+            evalX: startWorldX + x / ppwu,
+            evalY: startWorldY + (cellSize - y / ppwu) + zOffset,
         };
     }
 
     return {
-        evalX: startWorldX + x,
-        evalY: startWorldY + y,
+        evalX: startWorldX + x / ppwu,
+        evalY: startWorldY + y / ppwu,
     };
 }
 

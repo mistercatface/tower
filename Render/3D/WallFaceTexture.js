@@ -2,6 +2,7 @@ import { floorTileSettings, gridSettings } from "../../Config/Config.js";
 import { drawImageQuad } from "./draw/AffineTexture.js";
 import { CAMERA_HEIGHT } from "./math/CombatProjection.js";
 import { getFloorTextureProfileId } from "../Floor/floorTextureProfile.js";
+import { bakePixelsForWorldSpan, getTexturePixelsPerWorldUnit } from "../Floor/floorTextureResolution.js";
 
 const WALL_ANGLE_SPREAD = 0.002;
 
@@ -149,10 +150,11 @@ function getFlatWallCanvas(p1, p2, columns, storyCount, floorTiles, state, tileW
     if (edgeLen < 0.001 || columns.length === 0) return null;
 
     const cellSize = state.obstacleGrid?.cellSize ?? 32;
-    const pixelsPerUnit = cellSize / tileWorldSize;
-    
+    const ppwu = getTexturePixelsPerWorldUnit();
+    const pixelsPerUnit = (cellSize / tileWorldSize) * ppwu;
+
     const canvasWidth = Math.max(1, Math.ceil(edgeLen * pixelsPerUnit));
-    const canvasHeight = Math.max(1, storyCount * cellSize);
+    const canvasHeight = bakePixelsForWorldSpan(storyCount * cellSize);
 
     const canvas = new OffscreenCanvas(canvasWidth, canvasHeight);
     const ctx = canvas.getContext("2d");
@@ -169,11 +171,12 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHei
     if (!floorTiles || !state) return;
 
     const profileId = getFloorTextureProfileId(state);
+    const ppwu = getTexturePixelsPerWorldUnit();
     const kx1 = p1.x.toFixed(1);
     const ky1 = p1.y.toFixed(1);
     const kx2 = p2.x.toFixed(1);
     const ky2 = p2.y.toFixed(1);
-    const key = `${profileId}:${kx1},${ky1}-${kx2},${ky2}`;
+    const key = `${ppwu}:${profileId}:${kx1},${ky1}-${kx2},${ky2}`;
 
     const storyCount = getWallTextureStoryCount();
     let flatCanvas = flatWallCache.get(key);

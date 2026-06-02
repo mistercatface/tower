@@ -325,6 +325,10 @@ export const gridSettings = { cellSize: 16, width: 2400, height: 2400, minCellsP
 /** Floor render chunks — one offscreen canvas per chunk, aligned to gridSettings.cellSize. */
 export const floorTileSettings = {
     cellsPerChunk: gridSettings.minCellsPerChunk,
+    /** Bake pixels per world unit; drawn down into the same world footprint (e.g. 2 = 2× supersample). */
+    texturePixelsPerWorldUnit: 2,
+    /** When supersampling, smooth on drawImage downscale (procedural). Off for crisp pixel-art tiles. */
+    textureDownsampleSmoothing: true,
     viewPaddingPx: 128,
     maxCachedChunks: 512,
     /** Soft radial darkening on top of tiles (0 = off). */
