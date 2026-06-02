@@ -5,8 +5,6 @@ import {
     renderGamePreview,
     prepareGameCanvas,
     invalidateMapPreviewBakes,
-    requestNavMapRender,
-    requestQualityMapRender,
 } from "./map/LabMapPreview.js";
 import {
     getActiveLabProfile,
@@ -45,7 +43,7 @@ function syncGameCanvasSize() {
     return size;
 }
 
-export function renderMapPreview(ctrl, world, { fastNav = true } = {}) {
+export function renderMapPreview(ctrl, world) {
     const size = syncGameCanvasSize();
     if (!size) {
         return;
@@ -58,33 +56,23 @@ export function renderMapPreview(ctrl, world, { fastNav = true } = {}) {
         weaponRange: ctrl.weaponRange,
         viewWidth: size.width,
         viewHeight: size.height,
-        fastNav,
         showVignette: ctrl.showVignette,
     });
     const gameMeta = document.getElementById("gameMetaLine");
     if (gameMeta && world) {
         const node = world.getCurrentMapNode();
-        const mode = fastNav ? "fast" : "full";
         gameMeta.textContent =
             `node ${world.currentNodeId} ${node?.strategy ?? ""} · map ${getLabWorldMapSeed()} · ` +
             `player ${Math.round(world.player.x)},${Math.round(world.player.y)} · ` +
-            `zoom ${ctrl.gameZoom.toFixed(2)} · range ${ctrl.weaponRange} · ${mode} · WASD`;
+            `zoom ${ctrl.gameZoom.toFixed(2)} · range ${ctrl.weaponRange} · WASD`;
     }
 }
 
-export function runMapPreviewPass(readControls, { fastNav = true } = {}) {
+export function runMapPreviewPass(readControls) {
     registerEditorProfiles();
     const ctrl = readControls();
     const world = ensureLabWorld(ctrl);
     if (world) {
-        renderMapPreview(ctrl, world, { fastNav });
+        renderMapPreview(ctrl, world);
     }
-}
-
-export function handleMapNavChange(reason, readControls) {
-    if (reason === "idle-quality" || reason === "zoom") {
-        requestQualityMapRender(({ fastNav }) => runMapPreviewPass(readControls, { fastNav }));
-        return;
-    }
-    requestNavMapRender(({ fastNav }) => runMapPreviewPass(readControls, { fastNav }));
 }

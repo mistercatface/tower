@@ -9,10 +9,7 @@ import { getFloorProceduralProfile, unregisterRuntimeFloorProfile } from "../../
 
 const render3D = new Render3D();
 let lastBakeKey = "";
-let isNavigating = false;
-let navRenderPending = false;
 
-const NAV_RENDER_INTERVAL_MS = 32;
 const MOVE_SPEED_SCALE = 1;
 
 /**
@@ -74,7 +71,6 @@ function maybeClearBakeCaches(worldState, profileId) {
 
 function drawLabWorldFrame(ctx, canvas, viewW, viewH, worldState, profileId, gameZoom, weaponRange, drawOptions = {}) {
     const {
-        fastNav = false,
         showVignette = false,
         showRangeRing = false,
         showPlayerMarker = true,
@@ -109,12 +105,9 @@ function drawLabWorldFrame(ctx, canvas, viewW, viewH, worldState, profileId, gam
         worldState.floorTiles.draw(ctx, worldState, viewport);
     }
 
-    render3D.draw3DBuildings(ctx, worldState, viewport, {
-        fastNav,
-        textureEnabled: !fastNav,
-    });
+    render3D.draw3DBuildings(ctx, worldState, viewport);
 
-    if (combatVisualSettings.bloom?.enabled && !fastNav) {
+    if (combatVisualSettings.bloom?.enabled) {
         ctx.save();
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.globalCompositeOperation = "screen";
@@ -157,10 +150,10 @@ function drawLabWorldFrame(ctx, canvas, viewW, viewH, worldState, profileId, gam
 /**
  * Full generated map preview — camera locked to player (combat-style).
  * @param {HTMLCanvasElement} canvas
- * @param {{ worldState: object, profileId: string, gameZoom: number, showRangeRing: boolean, weaponRange: number, viewWidth: number, viewHeight: number, fastNav?: boolean, showVignette?: boolean }} options
+ * @param {{ worldState: object, profileId: string, gameZoom: number, showRangeRing: boolean, weaponRange: number, viewWidth: number, viewHeight: number, showVignette?: boolean }} options
  */
 export function renderGamePreview(canvas, options) {
-    const { worldState, profileId, gameZoom, showRangeRing, weaponRange, viewWidth, viewHeight, fastNav = false, showVignette = false } = options;
+    const { worldState, profileId, gameZoom, showRangeRing, weaponRange, viewWidth, viewHeight, showVignette = false } = options;
 
     if (!worldState || !profileId || !viewWidth || !viewHeight) {
         return { zoom: gameZoom };
@@ -177,7 +170,6 @@ export function renderGamePreview(canvas, options) {
         gameZoom,
         weaponRange,
         {
-            fastNav,
             showVignette,
             showRangeRing,
             showPlayerMarker: true,
@@ -219,7 +211,6 @@ function renderExportOverlayFrame(world, frameProfileId, ctrl, sizePx) {
         ctrl.gameZoom,
         ctrl.weaponRange,
         {
-            fastNav: true,
             showVignette: true,
             showRangeRing: false,
             showPlayerMarker: false,
@@ -326,34 +317,6 @@ export async function exportMapOverlayWebm(ctrl, world, profileId, { onProgress 
     };
 }
 
-let lastFrameRenderAt = 0;
-
-/** Throttled map redraw while moving — solid wall fills; textured pass when idle. */
-export function requestNavMapRender(renderFn) {
-    if (navRenderPending) {
-        return;
-    }
-    navRenderPending = true;
-    requestAnimationFrame(() => {
-        navRenderPending = false;
-        const now = performance.now();
-        if (now - lastFrameRenderAt < NAV_RENDER_INTERVAL_MS) {
-            return;
-        }
-        lastFrameRenderAt = now;
-        renderFn({ fastNav: isNavigating });
-    });
-}
-
-/** Full-quality textured pass after movement stops or settings change. */
-export function requestQualityMapRender(renderFn) {
-    renderFn({ fastNav: false });
-}
-
-export function setLabNavigating(active) {
-    isNavigating = active;
-}
-
 /** Invalidate baked floor/wall caches after profile or floor seed change. */
 export function invalidateMapPreviewBakes() {
     lastBakeKey = "";
@@ -362,9 +325,8 @@ export function invalidateMapPreviewBakes() {
 /**
  * WASD / arrows move player; drag moves player; wheel zoom. Camera follows player.
  * @param {() => { worldState?: object, gameZoom?: number }} getOptions
- * @param {(reason: string) => void} onChange
  */
-export function initMapPreviewNavigation(getOptions, onChange) {
+export function initMapPreviewNavigation(getOptions) {
     const canvases = () => [document.getElementById("gamePreview")].filter(Boolean);
 
     const moveKeys = new Set();
@@ -381,8 +343,6 @@ export function initMapPreviewNavigation(getOptions, onChange) {
         const step = moveSpeed() * 0.016;
         world.player.x += (dx / len) * step;
         world.player.y += (dy / len) * step;
-        setLabNavigating(true);
-        onChange("move");
     };
 
     const tickMove = () => {
@@ -424,8 +384,6 @@ export function initMapPreviewNavigation(getOptions, onChange) {
         if (moveKeys.size === 0 && moveRaf) {
             cancelAnimationFrame(moveRaf);
             moveRaf = null;
-            setLabNavigating(false);
-            onChange("idle-quality");
         }
     });
 
@@ -439,7 +397,6 @@ export function initMapPreviewNavigation(getOptions, onChange) {
                 el.value = String(next);
                 document.getElementById("gameZoomValue").textContent = el.value;
             }
-            onChange("zoom");
         }, { passive: false });
 
         canvas.addEventListener("pointerdown", (e) => {
@@ -473,15 +430,11 @@ export function initMapPreviewNavigation(getOptions, onChange) {
             const dy = e.clientY - dragState.startY;
             world.player.x = dragState.playerX - dx / dragState.zoom;
             world.player.y = dragState.playerY - dy / dragState.zoom;
-            setLabNavigating(true);
-            onChange("drag");
         });
 
         const endDrag = () => {
             if (dragState?.canvas === canvas) {
                 dragState = null;
-                setLabNavigating(false);
-                onChange("idle-quality");
             }
         };
         canvas.addEventListener("pointerup", endDrag);

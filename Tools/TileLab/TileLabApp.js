@@ -9,7 +9,6 @@ import {
     invalidateLabCaches,
     registerEditorProfiles,
     renderMapPreview,
-    handleMapNavChange,
 } from "./LabMapView.js";
 import {
     readControls,
@@ -145,7 +144,7 @@ function scheduleMapPreview() {
         if (world) {
             invalidateLabCaches();
             world.floorTiles.clear();
-            renderMapPreview(ctrl, world, { fastNav: false });
+            renderMapPreview(ctrl, world);
         }
     }, 400);
 }
@@ -176,7 +175,7 @@ async function renderAll({ fullQuality = false } = {}) {
     const frameIndex = inspectFrameIndexFromTime(ctrl.profileId, world?.gameTime ?? 0);
     await drawInspectAtFrame(ctrl, frameIndex);
     updateExportTabUi();
-    renderMapPreview(ctrl, world, { fastNav: false });
+    renderMapPreview(ctrl, world);
 }
 
 function scheduleFullRender() {
@@ -230,7 +229,7 @@ async function exportActive() {
             world.floorTiles.clear();
             clearFlatWallFaceCache();
             invalidateLabCaches();
-            renderMapPreview(ctrl, world, { fastNav: true });
+            renderMapPreview(ctrl, world);
             updateExportTabUi();
         }
         return;
@@ -246,16 +245,21 @@ async function exportActive() {
 function onStageResize() {
     applyGameDefaultsToForm(getLabWorld());
     syncCombatZoomToStage(getLabWorld());
-    handleMapNavChange("idle-quality", readControls);
+}
+
+function mapPreviewLoop() {
+    const ctrl = readControls();
+    const world = ensureLabWorld(ctrl);
+    if (world) {
+        renderMapPreview(ctrl, world);
+    }
+    requestAnimationFrame(mapPreviewLoop);
 }
 
 initPresetSelect(listShippedFloorProfileIds());
 initInspectTabs();
 initProfileEditor({ onChange: handleEditorChange });
-initMapPreviewNavigation(
-    () => ({ ...readControls(), worldState: getLabWorld() }),
-    (reason) => handleMapNavChange(reason, readControls)
-);
+initMapPreviewNavigation(() => ({ ...readControls(), worldState: getLabWorld() }));
 bindToolbarControls({
     onRender: () => renderAll({ fullQuality: true }),
     onExport: exportActive,
@@ -264,10 +268,6 @@ bindToolbarControls({
 });
 document.getElementById("exportTarget")?.addEventListener("change", updateExportTabUi);
 document.getElementById("exportDownloadBtn")?.addEventListener("click", downloadExportPreview);
-
-window.addEventListener("tileBakeComplete", () => {
-    handleMapNavChange("idle-quality", readControls);
-});
 
 initToolbarDefaults();
 
@@ -281,8 +281,8 @@ function bootstrap() {
         const ctrl = readControls();
         const world = ensureLabWorld(ctrl);
         applyGameDefaultsToForm(world);
-        renderMapPreview(ctrl, world, { fastNav: true });
         syncCombatZoomToStage(world);
+        mapPreviewLoop();
         requestAnimationFrame(appLoop);
     });
 }
