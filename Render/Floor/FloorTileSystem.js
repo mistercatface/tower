@@ -4,7 +4,7 @@ import { getFloorProceduralProfile } from "../../Config/floorProceduralConfig.js
 import { chunkToWorldOrigin, getChunkSizePx, gridBoundsToChunkRange, worldBoundsToChunkRange } from "../../Spatial/Grid/ChunkGrid.js";
 import { FloorChunkCache } from "./FloorChunkCache.js";
 import { TileWorkerCoordinator } from "./TileWorkerCoordinator.js";
-import { floorChunkCacheKey, getFloorTextureProfileId } from "./floorTextureProfile.js";
+import { buildFloorChunkBakePayload, floorChunkCacheKey, getFloorTextureProfileId } from "./floorTextureProfile.js";
 import { drawBakedTexture } from "./floorTextureResolution.js";
 
 export class FloorTileSystem {
@@ -34,18 +34,15 @@ export class FloorTileSystem {
     }
 
     getChunkCanvas(chunkCol, chunkRow, state, priority = Infinity) {
-        const profileId = getFloorTextureProfileId(state);
-        const key = floorChunkCacheKey(chunkCol, chunkRow, profileId);
+        const payload = buildFloorChunkBakePayload(state, chunkCol, chunkRow);
+        const key = floorChunkCacheKey(chunkCol, chunkRow, payload.profileId, payload.player ?? null);
         let canvases = this.cache.get(key);
         if (canvases) return canvases;
 
         const placeholder = [{ isPlaceholder: true }];
         this.cache.set(key, placeholder);
 
-        TileWorkerCoordinator.requestFloorChunkBake(
-            { chunkCol, chunkRow, minX: state.obstacleGrid.minX, minY: state.obstacleGrid.minY, seed: state.floorTileSeed ?? 0, profileId },
-            priority,
-        ).then((bitmaps) => {
+        TileWorkerCoordinator.requestFloorChunkBake(payload, priority).then((bitmaps) => {
             const existing = this.cache.get(key);
             if (existing === placeholder) {
                 this.cache.set(key, bitmaps);

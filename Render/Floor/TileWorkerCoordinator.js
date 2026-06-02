@@ -14,7 +14,11 @@ function whenWorkersReady(run) {
 }
 
 function chunkDedupeKey(payload) {
-    return `chunk:${payload.profileId}:${payload.chunkCol},${payload.chunkRow}:${payload.seed ?? 0}`;
+    let key = `chunk:${payload.profileId}:${payload.chunkCol},${payload.chunkRow}:${payload.seed ?? 0}`;
+    if (payload.player && payload.playerAnchorPath) {
+        key += `:p${payload.player.x},${payload.player.y}`;
+    }
+    return key;
 }
 
 function insertJob(job) {
@@ -130,9 +134,14 @@ export const TileWorkerCoordinator = {
         }
 
         const profile = getFloorProceduralProfile(payload.profileId);
-        const promise = profile.animation
+        const hasAnimation = Boolean(profile.animation);
+        const hasPlayerAnchor = Boolean(payload.player && payload.playerAnchorPath);
+
+        const promise = hasAnimation
             ? requestAnimatedChunkFrames(payload, priority)
-            : sendRequest("bakeFloorChunk", payload, priority);
+            : hasPlayerAnchor
+                ? sendRequest("bakeFloorChunkFrame", { ...payload, frameIndex: 0 }, priority)
+                : sendRequest("bakeFloorChunk", payload, priority);
 
         inFlightByKey.set(dedupeKey, promise);
         promise.finally(() => inFlightByKey.delete(dedupeKey));

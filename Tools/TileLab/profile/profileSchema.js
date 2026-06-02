@@ -332,6 +332,7 @@ export const MOTIF_TYPES = {
             ringWidth: 0.08,
             peak: 10,
             offset: [0, 0],
+            followPlayer: true,
             tint: [0.3, 0.8, 1.2],
             opacity: 0.7,
             blendMode: "add",

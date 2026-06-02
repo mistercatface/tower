@@ -518,6 +518,23 @@ function renderMotifParams(container) {
     });
     container.appendChild(layerSelect.element);
 
+    if (row.config.type === "concentricRings") {
+        const followWrap = document.createElement("label");
+        followWrap.className = "check-inline";
+        followWrap.style.display = "block";
+        followWrap.style.marginBottom = "8px";
+        const followInput = document.createElement("input");
+        followInput.type = "checkbox";
+        followInput.checked = row.config.followPlayer !== false;
+        followInput.addEventListener("change", () => {
+            row.config.followPlayer = followInput.checked;
+            notifyChange();
+        });
+        followWrap.appendChild(followInput);
+        followWrap.append(" Follow player");
+        container.appendChild(followWrap);
+    }
+
     renderScalarFields(
         container,
         row.config,
