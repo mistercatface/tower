@@ -4,6 +4,10 @@ import { stainBlotchMotif } from "./Motifs/stainBlotch.js";
 import { panelGridMotif } from "./Motifs/panelGrid.js";
 import { voronoiCellMotif } from "./Motifs/voronoiCell.js";
 import { circuitLatticeMotif } from "./Motifs/circuitLattice.js";
+import { surfaceGrainMotif } from "./Motifs/surfaceGrain.js";
+import { wallLightingMotif } from "./Motifs/wallLighting.js";
+import { wallCircuitSnakeMotif } from "./Motifs/wallCircuitSnake.js";
+import { wallHorizontalBevelMotif } from "./Motifs/wallHorizontalBevel.js";
 
 const MOTIF_BY_TYPE = {
     baseMetal: baseMetalMotif,
@@ -12,6 +16,10 @@ const MOTIF_BY_TYPE = {
     panelGrid: panelGridMotif,
     voronoiCell: voronoiCellMotif,
     circuitLattice: circuitLatticeMotif,
+    surfaceGrain: surfaceGrainMotif,
+    wallLighting: wallLightingMotif,
+    wallCircuitSnake: wallCircuitSnakeMotif,
+    wallHorizontalBevel: wallHorizontalBevelMotif,
 };
 
 export function getMotif(type) {

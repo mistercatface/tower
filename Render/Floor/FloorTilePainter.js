@@ -40,8 +40,9 @@ export function paintPixelArea(
 
     if (isWall && options.p1 && options.p2) {
         surfaceKind = "wallFace";
+        const edgeLen = Math.hypot(options.p2.x - options.p1.x, options.p2.y - options.p1.y);
         const axes = createWallFaceAxes(options.p1, options.p2);
-        wallFace = { p1: options.p1, ...axes };
+        wallFace = { p1: options.p1, edgeLen, ...axes };
         pixelsPerUnit = options.pixelsPerUnit;
     } else if (isWall) {
         surfaceKind = "wallCell";
@@ -54,7 +55,7 @@ export function paintPixelArea(
 
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
-            const { evalX, evalY } = mapPixelToEval({
+            const mapped = mapPixelToEval({
                 x,
                 y,
                 startWorldX,
@@ -62,14 +63,26 @@ export function paintPixelArea(
                 cellSize,
                 surfaceKind,
                 height,
+                width,
                 pixelsPerUnit,
                 texturePixelsPerWorldUnit,
+                bakeWidth: width,
                 zOffset,
                 wallFace,
             });
 
-            const blocked = queryObstacleBlocked(evalX, evalY, obstacleGrid);
-            const rgb = composeFloorPixel({ evalX, evalY, blocked, isWall }, paintContext);
+            const blocked = queryObstacleBlocked(mapped.evalX, mapped.evalY, obstacleGrid);
+            const rgb = composeFloorPixel(
+                {
+                    evalX: mapped.evalX,
+                    evalY: mapped.evalY,
+                    wallU: mapped.wallU,
+                    wallV: mapped.wallV,
+                    blocked,
+                    isWall,
+                },
+                paintContext
+            );
 
             data[idx++] = rgb.r;
             data[idx++] = rgb.g;
