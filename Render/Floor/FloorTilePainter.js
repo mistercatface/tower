@@ -90,26 +90,6 @@ function mixChannel(base, delta) {
     return clampByte(base + delta);
 }
 
-function getNodeAt(col, row, cols, rows, hnav, isWall) {
-    if (col < 0 || row < 0 || col >= cols || row >= rows) return null;
-    let node = hnav.cellToNode[row * cols + col];
-    if (!node && isWall) {
-        for (let r = 1; r <= 3; r++) {
-            for (let dr = -r; dr <= r; dr++) {
-                for (let dc = -r; dc <= r; dc++) {
-                    const nc = col + dc;
-                    const nr = row + dr;
-                    if (nc >= 0 && nc < cols && nr >= 0 && nr < rows) {
-                        const n = hnav.cellToNode[nr * cols + nc];
-                        if (n) return n;
-                    }
-                }
-            }
-        }
-    }
-    return node;
-}
-
 export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, obstacleGrid, seed, hnav, options = {}) {
     const isWall = options.isWall || false;
     let dirX = 0, dirY = 0, foldX = 0, foldY = 0, pixelsPerUnit = 1;
@@ -167,9 +147,9 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, obs
             const lookupX = evalX + warpX;
             const lookupY = evalY + warpY;
             
-            // 2. Grid Index
-            const col = Math.floor((lookupX - minX) / cellSize);
-            const row = Math.floor((lookupY - minY) / cellSize);
+            // 2. Obstacle Check (MUST use unwarped evalX/evalY so it aligns perfectly with 3D walls)
+            const col = Math.floor((evalX - minX) / cellSize);
+            const row = Math.floor((evalY - minY) / cellSize);
             const inGrid = col >= 0 && row >= 0 && col < cols && row < rows;
             const cellIdx = inGrid ? row * cols + col : -1;
             const blocked = inGrid && obstacleGrid.grid[cellIdx] === 1;
@@ -182,33 +162,15 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, obs
                 continue;
             }
             
-            const node = getNodeAt(col, row, cols, rows, hnav, isWall);
-            
-            if (!node) {
-                data[idx++] = baseColor.r;
-                data[idx++] = baseColor.g;
-                data[idx++] = baseColor.b;
-                data[idx++] = 255;
-                continue;
-            }
-            
             // 3. Base Palette Cleanser Station Aesthetic
-            const nodeHash = hashTileSeed(seed, node.col, node.row);
-            
             // Base dark steel/metal color
             let r = 24, g = 26, b = 30;
             
-            // Subtle zone variation using nodeHash
-            const nodeTone = ((nodeHash & 0xff) / 255 - 0.5) * 6;
-            r = clampByte(r + nodeTone);
-            g = clampByte(g + nodeTone);
-            b = clampByte(b + nodeTone);
-            
-            // Large scale structure noise (panels/grime)
-            const structureNoise = noise2D(evalX * 0.05, evalY * 0.05, 2);
-            r = clampByte(r + structureNoise * 4);
-            g = clampByte(g + structureNoise * 4);
-            b = clampByte(b + structureNoise * 4);
+            // Smooth large scale structure noise (replaces hard Voronoi banding)
+            const structureNoise = noise2D(evalX * 0.005, evalY * 0.005, 2);
+            r = clampByte(r + structureNoise * 6);
+            g = clampByte(g + structureNoise * 6);
+            b = clampByte(b + structureNoise * 8);
             
             // Fine grain metal texture
             const fineNoise = noise2D(evalX * 0.8, evalY * 0.8, 1) * 3;
@@ -216,44 +178,26 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, obs
             g = clampByte(g + fineNoise);
             b = clampByte(b + fineNoise);
 
-            // 4. Circuitry / Nerves Cords Effect
-            // We use domain-warped coordinates to make the nerves organic and winding
-            const nerveFreq1 = 0.04;
+            // 4. Cellular / Perlin Circuitry Nerves Effect
+            // We use domain-warped coordinates (lookupX, lookupY) to make the nerves organic and winding
+            const nerveFreq1 = 0.03;
             const nerveNoise1 = Math.abs(noise2D(lookupX * nerveFreq1, lookupY * nerveFreq1, 2));
-            if (nerveNoise1 < 0.06) {
-                const intensity = (1.0 - nerveNoise1 / 0.06) * 18; 
+            if (nerveNoise1 < 0.05) {
+                const intensity = (1.0 - nerveNoise1 / 0.05) * 16; 
                 // Subtle cyan/blue circuitry glow
                 r = clampByte(r + intensity * 0.5);
                 g = clampByte(g + intensity * 1.5);
                 b = clampByte(b + intensity * 2.0);
             }
             
-            const nerveFreq2 = 0.07;
-            const nerveNoise2 = Math.abs(noise2D((lookupX + 300) * nerveFreq2, (lookupY + 300) * nerveFreq2, 2));
+            const nerveFreq2 = 0.05;
+            const nerveNoise2 = Math.abs(noise2D((lookupX + 500) * nerveFreq2, (lookupY + 500) * nerveFreq2, 2));
             if (nerveNoise2 < 0.04) {
-                const intensity = (1.0 - nerveNoise2 / 0.04) * 22; 
+                const intensity = (1.0 - nerveNoise2 / 0.04) * 20; 
                 // Subtle copper circuitry
                 r = clampByte(r + intensity * 1.5);
                 g = clampByte(g + intensity * 1.0);
                 b = clampByte(b + intensity * 0.5);
-            }
-            
-            // 5. Seams / Boundaries check (Subtle panel grooves)
-            const nX_col = Math.floor((lookupX + seamWidth - minX) / cellSize);
-            const nX_row = Math.floor((lookupY - minY) / cellSize);
-            const nY_col = Math.floor((lookupX - minX) / cellSize);
-            const nY_row = Math.floor((lookupY + seamWidth - minY) / cellSize);
-            
-            const nodeX = getNodeAt(nX_col, nX_row, cols, rows, hnav, isWall);
-            const nodeY = getNodeAt(nY_col, nY_row, cols, rows, hnav, isWall);
-            
-            const isSeam = (nodeX !== node || nodeY !== node);
-            
-            if (isSeam) {
-                // Dark structural grooves instead of bright glowing lava
-                r = Math.floor(r * 0.4);
-                g = Math.floor(g * 0.4);
-                b = Math.floor(b * 0.45);
             }
             
             data[idx++] = r;
