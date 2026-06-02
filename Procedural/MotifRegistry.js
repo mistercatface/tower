@@ -11,6 +11,8 @@ import { wallLightingMotif } from "./Motifs/wallLighting.js";
 import { wallCircuitSnakeMotif } from "./Motifs/wallCircuitSnake.js";
 import { wallHorizontalBevelMotif } from "./Motifs/wallHorizontalBevel.js";
 import { panelBayMotif } from "./Motifs/panelBay.js";
+import { concentricRingsMotif } from "./Motifs/concentricRings.js";
+import { circuitTracesMotif } from "./Motifs/circuitTraces.js";
 
 const MOTIF_BY_TYPE = {
     baseMetal: baseMetalMotif,
@@ -26,6 +28,8 @@ const MOTIF_BY_TYPE = {
     wallCircuitSnake: wallCircuitSnakeMotif,
     wallHorizontalBevel: wallHorizontalBevelMotif,
     panelBay: panelBayMotif,
+    concentricRings: concentricRingsMotif,
+    circuitTraces: circuitTracesMotif,
 };
 
 export function getMotif(type) {
@@ -35,3 +39,4 @@ export function getMotif(type) {
     }
     return motif;
 }
+
