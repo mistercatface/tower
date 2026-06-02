@@ -30,6 +30,11 @@ const flatWallCache = new LRUCache(500);
 let sharedCellCanvas = null;
 let sharedCellCtx = null;
 
+const sCorner0 = { x: 0, y: 0 };
+const sCorner1 = { x: 0, y: 0 };
+const sCorner2 = { x: 0, y: 0 };
+const sCorner3 = { x: 0, y: 0 };
+
 export function getWallVisualHeight() {
     const configured = floorTileSettings.wallVisualHeight;
     if (configured != null) return configured;
@@ -122,23 +127,20 @@ function wallFaceColumns(p1, p2, tileWorldSize) {
     return columns;
 }
 
-function faceCorner(p1, p2, leftTop, rightTop, u, v) {
-    const bottom = lerpPoint(p1, p2, u);
-    const top = lerpPoint(leftTop, rightTop, u);
-    return lerpPoint(bottom, top, v);
+function computeFaceCorner(out, p1, p2, proj1X, proj1Y, proj2X, proj2Y, u, v) {
+    const bx = p1.x + (p2.x - p1.x) * u;
+    const by = p1.y + (p2.y - p1.y) * u;
+    const tx = proj1X + (proj2X - proj1X) * u;
+    const ty = proj1Y + (proj2Y - proj1Y) * u;
+    out.x = bx + (tx - bx) * v;
+    out.y = by + (ty - by) * v;
 }
 
 /**
  * Per-grid-cell textures on the projected face (same variety as floor).
  * Affine quads use bleed to hide the internal triangle split.
  */
-function getFlatWallCanvas(p1, p2, columns, storyCount, floorTiles, state, tileWorldSize) {
-    const kx1 = p1.x.toFixed(1);
-    const ky1 = p1.y.toFixed(1);
-    const kx2 = p2.x.toFixed(1);
-    const ky2 = p2.y.toFixed(1);
-    const key = `${kx1},${ky1}-${kx2},${ky2}`;
-
+function getFlatWallCanvas(p1, p2, columns, storyCount, floorTiles, state, tileWorldSize, key) {
     let cached = flatWallCache.get(key);
     if (cached) return cached;
 
@@ -186,15 +188,21 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHei
     const tileWorldSize = floorTileSettings.tileWorldSize ?? gridSettings.cellSize;
     if (!floorTiles || !state) return;
 
-    const columns = wallFaceColumns(p1, p2, tileWorldSize);
-    if (columns.length === 0) return;
+    const kx1 = p1.x.toFixed(1);
+    const ky1 = p1.y.toFixed(1);
+    const kx2 = p2.x.toFixed(1);
+    const ky2 = p2.y.toFixed(1);
+    const key = `${kx1},${ky1}-${kx2},${ky2}`;
 
     const storyCount = getWallTextureStoryCount();
-    const flatCanvas = getFlatWallCanvas(p1, p2, columns, storyCount, floorTiles, state, tileWorldSize);
-    if (!flatCanvas) return;
+    let flatCanvas = flatWallCache.get(key);
+    if (!flatCanvas) {
+        const columns = wallFaceColumns(p1, p2, tileWorldSize);
+        if (columns.length === 0) return;
+        flatCanvas = getFlatWallCanvas(p1, p2, columns, storyCount, floorTiles, state, tileWorldSize, key);
+        if (!flatCanvas) return;
+    }
 
-    const leftTop = { x: face.proj1X, y: face.proj1Y };
-    const rightTop = { x: face.proj2X, y: face.proj2Y };
     const worldBounds = getViewportWorldBounds(viewport);
     const bleedPx = floorTileSettings.wallTextureBleedPx ?? 1;
 
@@ -206,8 +214,18 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHei
     traceProjectedFace(ctx, p1, p2, face);
     ctx.clip();
 
-    const SUBDIV_X = Math.max(1, Math.min(8, Math.ceil(Math.hypot(p2.x - p1.x, p2.y - p1.y) / tileWorldSize)));
-    const SUBDIV_Y = Math.max(1, Math.min(8, Math.ceil(storyCount / 2)));
+    // Compute Level of Detail (LOD) based on player distance to wall center
+    const wallCx = (p1.x + p2.x) * 0.5;
+    const wallCy = (p1.y + p2.y) * 0.5;
+    const px = state.player.x;
+    const py = state.player.y;
+    const dist = Math.hypot(wallCx - px, wallCy - py);
+
+    // subdivScale ranges from 1.0 (distance <= 100) down to 0.15 (distance >= 500)
+    const subdivScale = Math.max(0.15, Math.min(1.0, 1.0 - (dist - 100) / 400));
+
+    const SUBDIV_X = Math.max(1, Math.min(8, Math.ceil((Math.hypot(p2.x - p1.x, p2.y - p1.y) / tileWorldSize) * subdivScale)));
+    const SUBDIV_Y = Math.max(1, Math.min(8, Math.ceil((storyCount / 2) * subdivScale)));
 
     for (let row = 0; row < SUBDIV_Y; row++) {
         const bottomZ = row * (wallHeight / SUBDIV_Y);
@@ -231,17 +249,17 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHei
             const u0 = col / SUBDIV_X;
             const u1 = (col + 1) / SUBDIV_X;
 
-            const d0 = faceCorner(p1, p2, leftTop, rightTop, u0, v0);
-            const d1 = faceCorner(p1, p2, leftTop, rightTop, u1, v0);
-            const d2 = faceCorner(p1, p2, leftTop, rightTop, u1, v1);
-            const d3 = faceCorner(p1, p2, leftTop, rightTop, u0, v1);
+            computeFaceCorner(sCorner0, p1, p2, face.proj1X, face.proj1Y, face.proj2X, face.proj2Y, u0, v0);
+            computeFaceCorner(sCorner1, p1, p2, face.proj1X, face.proj1Y, face.proj2X, face.proj2Y, u1, v0);
+            computeFaceCorner(sCorner2, p1, p2, face.proj1X, face.proj1Y, face.proj2X, face.proj2Y, u1, v1);
+            computeFaceCorner(sCorner3, p1, p2, face.proj1X, face.proj1Y, face.proj2X, face.proj2Y, u0, v1);
 
-            if (!rowBoundsIntersects(d0, d1, d2, d3, worldBounds)) continue;
+            if (!rowBoundsIntersects(sCorner0, sCorner1, sCorner2, sCorner3, worldBounds)) continue;
 
             const sx0 = u0 * flatCanvas.width;
             const sx1 = u1 * flatCanvas.width;
 
-            drawImageQuad(ctx, flatCanvas, sx0, sy0, sx1, sy1, d0, d1, d2, d3, { bleedPx });
+            drawImageQuad(ctx, flatCanvas, sx0, sy0, sx1, sy1, sCorner0, sCorner1, sCorner2, sCorner3, { bleedPx });
         }
     }
 
