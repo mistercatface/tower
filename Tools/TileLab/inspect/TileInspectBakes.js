@@ -172,7 +172,7 @@ export function renderTileInspectPreviews(ctrl) {
 
     drawRepeatPreview(
         document.getElementById("floorRepeat"),
-        floorAtOffset,
+        floorSource,
         floorSource.width,
         floorSource.height,
         5,
