@@ -80,5 +80,9 @@ export const TileWorkerCoordinator = {
 
     requestLabWallFaceBake(payload) {
         return sendRequest('labBakeWallFace', { ...payload, obstacleGrid: copyObstacleGrid(payload.obstacleGrid) });
+    },
+
+    registerRuntimeProfile(profileId, profile) {
+        return sendRequest('registerRuntimeProfile', { profileId, profile });
     }
 };

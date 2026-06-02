@@ -7,7 +7,7 @@ import {
 } from "./FloorTilePainter.js";
 
 import { bakePixelsForWorldSpan } from "./floorTextureResolution.js";
-import { getFloorProceduralProfile } from "../../Config/floorProceduralConfig.js";
+import { getFloorProceduralProfile, registerRuntimeFloorProfile } from "../../Config/floorProceduralConfig.js";
 import { withLabAnimationFrame } from "./FloorTilePainter.js";
 
 self.onmessage = function (e) {
@@ -86,6 +86,10 @@ self.onmessage = function (e) {
                     );
                     return canvas;
                 })];
+                break;
+            case "registerRuntimeProfile":
+                registerRuntimeFloorProfile(payload.profileId, payload.profile);
+                canvases = [];
                 break;
             default:
                 throw new Error(`Unknown TileWorker request type: ${type}`);
