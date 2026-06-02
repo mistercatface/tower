@@ -13,9 +13,6 @@ let lastQualityRenderAt = 0;
 const NAV_RENDER_INTERVAL_MS = 32;
 const MOVE_SPEED_SCALE = 1;
 
-/** @type {{ x: number, y: number }} */
-export const labCamera = { x: 0, y: 0 };
-
 /**
  * Match backing store to the stage box (no CSS stretch). Returns null if not laid out yet.
  * @returns {{ width: number, height: number, changed: boolean } | null}
@@ -73,18 +70,12 @@ function maybeClearBakeCaches(worldState, profileId) {
     clearFlatWallFaceCache();
 }
 
-function syncCameraToPlayer(worldState) {
-    labCamera.x = worldState.player.x;
-    labCamera.y = worldState.player.y;
-}
-
 function drawLabWorldFrame(ctx, canvas, viewW, viewH, worldState, profileId, gameZoom, showRangeRing, weaponRange, fastNav = false) {
     worldState.phase = GamePhase.COMBAT;
     const prevProfileOverride = worldState.floorTextureProfileOverride;
     worldState.floorTextureProfileOverride = profileId;
     maybeClearBakeCaches(worldState, profileId);
 
-    syncCameraToPlayer(worldState);
     const cameraX = worldState.player.x;
     const cameraY = worldState.player.y;
 
@@ -215,7 +206,6 @@ export function initMapPreviewNavigation(getOptions, onChange) {
         const step = moveSpeed() * 0.016;
         world.player.x += (dx / len) * step;
         world.player.y += (dy / len) * step;
-        syncCameraToPlayer(world);
         setLabNavigating(true);
         onChange("move");
     };
@@ -308,7 +298,6 @@ export function initMapPreviewNavigation(getOptions, onChange) {
             const dy = e.clientY - dragState.startY;
             world.player.x = dragState.playerX - dx / dragState.zoom;
             world.player.y = dragState.playerY - dy / dragState.zoom;
-            syncCameraToPlayer(world);
             setLabNavigating(true);
             onChange("drag");
         });
@@ -323,11 +312,4 @@ export function initMapPreviewNavigation(getOptions, onChange) {
         canvas.addEventListener("pointerup", endDrag);
         canvas.addEventListener("pointercancel", endDrag);
     }
-}
-
-export function focusCameraOnPlayer(worldState) {
-    if (!worldState) {
-        return;
-    }
-    syncCameraToPlayer(worldState);
 }
