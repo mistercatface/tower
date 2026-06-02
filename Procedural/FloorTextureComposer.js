@@ -1,4 +1,3 @@
-import { parseHexColor } from "./util/color.js";
 import { blendMotifRgbInto } from "./util/blend.js";
 import { ensureNoiseInitialized } from "./Noise/Perlin2D.js";
 import { writeDomainWarp } from "./Fields/DomainWarp.js";
@@ -50,12 +49,7 @@ export function clearLayerCache() {
 
 export function createPaintContext(profile, seed) {
     ensureNoiseInitialized(seed);
-    const shadow = parseHexColor(profile.palette.shadow);
-    return {
-        profile,
-        seed,
-        shadowRgb: { r: shadow.r, g: shadow.g, b: shadow.b },
-    };
+    return { profile, seed };
 }
 
 function resolvePaletteBase(profile, isWall) {

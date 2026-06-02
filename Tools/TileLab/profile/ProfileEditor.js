@@ -1,4 +1,3 @@
-import { combatVisualSettings } from "../../../Config/Config.js";
 import { getFloorProceduralProfile } from "../../../Config/floorProceduralConfig.js";
 import { SliderControl } from "../ui/controls/SliderControl.js";
 import { SelectControl } from "../ui/controls/SelectControl.js";
@@ -157,7 +156,6 @@ function defaultPalette() {
         base: [22, 24, 28],
         floorBase: [20, 22, 26],
         wallBase: [24, 26, 30],
-        shadow: combatVisualSettings.floorShadow,
     };
 }
 

@@ -5,7 +5,7 @@ import { combatVisualSettings } from "./Config.js";
 /** Ancient glowing ruins with pulsing light networks and cracked energy channels. */
 const ancientRuins = {
     warp: { frequency: 0.002, amplitude: 5, octaves: 2, sampleOffset: [200, 900] },
-    palette: { base: [30, 26, 22], floorBase: [20, 22, 26], wallBase: [24, 26, 30], shadow: "#12161c" },
+    palette: { base: [30, 26, 22], floorBase: [20, 22, 26], wallBase: [24, 26, 30] },
     motifs: [
         {
             type: "baseMetal",
@@ -64,7 +64,7 @@ const ancientRuins = {
 /** Shifting neon cyberspace network with multiple grid-scale animations. */
 const cyberGrid = {
     warp: { frequency: 0.005, amplitude: 8, octaves: 2, sampleOffset: [100, 100] },
-    palette: { base: [10, 10, 20], floorBase: [8, 8, 16], wallBase: [12, 12, 24], shadow: "#04040d" },
+    palette: { base: [10, 10, 20], floorBase: [8, 8, 16], wallBase: [12, 12, 24] },
     motifs: [
         { type: "baseMetal", structure: { frequency: 0.002, octaves: 2, rgbDelta: [2, 2, 4] }, grain: { frequency: 0.2, octaves: 1, amplitude: 0.5 } },
         {
@@ -115,7 +115,7 @@ const cyberGrid = {
 /** High-intensity magma forge with expanding hot-spots and cycling thermal bands. */
 const magmaFlow = {
     warp: { frequency: 0.006, amplitude: 14, octaves: 2, sampleOffset: [400, 300] },
-    palette: { base: [24, 8, 4], floorBase: [20, 6, 2], wallBase: [28, 10, 6], shadow: "#0a0302" },
+    palette: { base: [24, 8, 4], floorBase: [20, 6, 2], wallBase: [28, 10, 6] },
     motifs: [
         { type: "baseMetal", structure: { frequency: 0.003, octaves: 2, rgbDelta: [5, 2, 1] }, grain: { frequency: 0.4, octaves: 1, amplitude: 1.5 } },
         {
@@ -160,7 +160,7 @@ const magmaFlow = {
 /** Bioluminescent organic deck pulsing with shifting light frequencies. */
 const organicPulse = {
     warp: { frequency: 0.007, amplitude: 18, octaves: 3, sampleOffset: [600, 900] },
-    palette: { base: [2, 16, 12], floorBase: [1, 12, 10], wallBase: [4, 20, 16], shadow: "#010a08" },
+    palette: { base: [2, 16, 12], floorBase: [1, 12, 10], wallBase: [4, 20, 16] },
     motifs: [
         { type: "baseMetal", structure: { frequency: 0.004, octaves: 2, rgbDelta: [1, 3, 2] }, grain: { frequency: 0.3, octaves: 1, amplitude: 1.0 } },
         {
