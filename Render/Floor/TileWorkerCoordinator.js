@@ -1,93 +1,173 @@
+import { getFloorProceduralProfile } from "../../Config/floorProceduralConfig.js";
+
 const workers = [];
-let nextWorkerIdx = 0;
-let nextReqId = 1;
+const workerBusy = [];
+const jobQueue = [];
 const pending = new Map();
+const inFlightByKey = new Map();
+let nextReqId = 1;
+/** Bakes wait on this chain so runtime profiles reach workers before paint jobs run. */
+let workerReady = Promise.resolve();
+
+function whenWorkersReady(run) {
+    return Promise.resolve(workerReady).then(run);
+}
+
+function chunkDedupeKey(payload) {
+    return `chunk:${payload.profileId}:${payload.chunkCol},${payload.chunkRow}:${payload.seed ?? 0}`;
+}
+
+function insertJob(job) {
+    let lo = 0;
+    let hi = jobQueue.length;
+    while (lo < hi) {
+        const mid = (lo + hi) >> 1;
+        if (jobQueue[mid].priority < job.priority) {
+            lo = mid + 1;
+        } else {
+            hi = mid;
+        }
+    }
+    jobQueue.splice(lo, 0, job);
+}
+
+function dispatchJobs() {
+    for (let wi = 0; wi < workers.length; wi++) {
+        if (workerBusy[wi] || jobQueue.length === 0) {
+            continue;
+        }
+        const job = jobQueue.shift();
+        workerBusy[wi] = true;
+        workers[wi]._currentJobId = job.id;
+        workers[wi].postMessage({ id: job.id, type: job.type, payload: job.payload });
+    }
+}
+
+function finishJob(workerIndex, id, bitmaps, error) {
+    workerBusy[workerIndex] = false;
+    workers[workerIndex]._currentJobId = null;
+
+    if (!pending.has(id)) {
+        dispatchJobs();
+        return;
+    }
+
+    const { resolve, reject } = pending.get(id);
+    pending.delete(id);
+
+    if (error) {
+        reject(new Error(error));
+    } else {
+        resolve(bitmaps);
+    }
+    dispatchJobs();
+}
+
+function enqueueJob(type, payload, priority = Infinity) {
+    const id = nextReqId++;
+    return new Promise((resolve, reject) => {
+        pending.set(id, { resolve, reject });
+        insertJob({ id, type, payload, priority });
+        dispatchJobs();
+    });
+}
 
 function getWorkerPool() {
     if (workers.length === 0) {
         let poolSize = 4;
         if (typeof navigator !== "undefined" && navigator.hardwareConcurrency) {
-            poolSize = Math.min(4, Math.floor(navigator.hardwareConcurrency * 0.5))
+            poolSize = Math.min(8, Math.max(2, Math.floor(navigator.hardwareConcurrency * 0.75)));
         }
-
-        const handleMessage = (e) => {
-            const { id, bitmaps, error } = e.data;
-            if (pending.has(id)) {
-                const { resolve, reject } = pending.get(id);
-                pending.delete(id);
-                if (error) {
-                    reject(new Error(error));
-                } else {
-                    resolve(bitmaps);
-                    if (typeof window !== "undefined") {
-                        window.dispatchEvent(new CustomEvent("tileBakeComplete"));
-                    }
-                }
-            }
-        };
 
         for (let i = 0; i < poolSize; i++) {
             const w = new Worker(new URL("./TileWorker.js", import.meta.url), { type: "module" });
-            w.onmessage = handleMessage;
+            w.onmessage = (e) => {
+                const { id, bitmaps, error } = e.data;
+                const wi = workers.indexOf(w);
+                finishJob(wi, id, bitmaps, error);
+            };
             workers.push(w);
+            workerBusy.push(false);
         }
     }
     return workers;
 }
 
-function sendRequest(type, payload) {
-    const id = nextReqId++;
-    return new Promise((resolve, reject) => {
-        pending.set(id, { resolve, reject });
-        const pool = getWorkerPool();
-        const w = pool[nextWorkerIdx];
-        nextWorkerIdx = (nextWorkerIdx + 1) % pool.length;
-        w.postMessage({ id, type, payload });
-    });
+function sendRequest(type, payload, priority = Infinity) {
+    getWorkerPool();
+    return whenWorkersReady(() => enqueueJob(type, payload, priority));
 }
 
 function broadcastRequest(type, payload) {
-    const pool = getWorkerPool();
-    const promises = pool.map(w => {
-        const id = nextReqId++;
-        return new Promise((resolve, reject) => {
-            pending.set(id, { resolve, reject });
-            w.postMessage({ id, type, payload });
-        });
+    getWorkerPool();
+    // Negative priority keeps registration ahead of viewport bakes (lower = sooner).
+    return Promise.all(workers.map((_, i) => enqueueJob(type, payload, -1000 + i)));
+}
+
+function requestAnimatedChunkFrames(payload, priority) {
+    return whenWorkersReady(() => {
+        const profile = getFloorProceduralProfile(payload.profileId);
+        const frameCount = profile.animation.frames;
+        const frameJobs = [];
+        for (let fi = 0; fi < frameCount; fi++) {
+            frameJobs.push(
+                enqueueJob(
+                    "bakeFloorChunkFrame",
+                    { ...payload, frameIndex: fi },
+                    priority + fi * 1e-6,
+                ),
+            );
+        }
+        return Promise.all(frameJobs).then((results) => results.flat());
     });
-    return Promise.all(promises);
 }
 
 export const TileWorkerCoordinator = {
-    requestFloorChunkBake(payload) {
-        return sendRequest("bakeFloorChunk", payload);
+    requestFloorChunkBake(payload, priority = Infinity) {
+        const dedupeKey = chunkDedupeKey(payload);
+        if (inFlightByKey.has(dedupeKey)) {
+            return inFlightByKey.get(dedupeKey);
+        }
+
+        const profile = getFloorProceduralProfile(payload.profileId);
+        const promise = profile.animation
+            ? requestAnimatedChunkFrames(payload, priority)
+            : sendRequest("bakeFloorChunk", payload, priority);
+
+        inFlightByKey.set(dedupeKey, promise);
+        promise.finally(() => inFlightByKey.delete(dedupeKey));
+        return promise;
     },
 
-    requestFloorCellBake(payload) {
-        return sendRequest("bakeFloorCell", payload);
+    requestFloorCellBake(payload, priority = Infinity) {
+        return sendRequest("bakeFloorCell", payload, priority);
     },
 
-    requestWallFaceBake(payload) {
-        return sendRequest("bakeWallFace", payload);
+    requestWallFaceBake(payload, priority = Infinity) {
+        return sendRequest("bakeWallFace", payload, priority);
     },
 
-    requestTileTextureBake(payload) {
-        return sendRequest("bakeTileTexture", payload);
+    requestTileTextureBake(payload, priority = Infinity) {
+        return sendRequest("bakeTileTexture", payload, priority);
     },
 
-    requestLabFloorCellBake(payload) {
-        return sendRequest("labBakeFloorCell", payload);
+    requestLabFloorCellBake(payload, priority = Infinity) {
+        return sendRequest("labBakeFloorCell", payload, priority);
     },
 
-    requestLabWallCellBake(payload) {
-        return sendRequest("labBakeWallCell", payload);
+    requestLabWallCellBake(payload, priority = Infinity) {
+        return sendRequest("labBakeWallCell", payload, priority);
     },
 
-    requestLabWallFaceBake(payload) {
-        return sendRequest("labBakeWallFace", payload);
+    requestLabWallFaceBake(payload, priority = Infinity) {
+        return sendRequest("labBakeWallFace", payload, priority);
     },
 
     registerRuntimeProfile(profileId, profile) {
-        return broadcastRequest("registerRuntimeProfile", { profileId, profile });
+        getWorkerPool();
+        workerReady = workerReady.then(() =>
+            broadcastRequest("registerRuntimeProfile", { profileId, profile }),
+        );
+        return workerReady;
     },
 };

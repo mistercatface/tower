@@ -134,7 +134,7 @@ export class FloorTileSystem {
         return TileWorkerCoordinator.requestWallFaceBake({ width, height, p1, p2, pixelsPerUnit, seed: state.floorTileSeed ?? 0, profileId });
     }
 
-    getChunkCanvas(chunkCol, chunkRow, state) {
+    getChunkCanvas(chunkCol, chunkRow, state, priority = Infinity) {
         const profileId = getFloorTextureProfileId(state);
         const key = floorChunkCacheKey(chunkCol, chunkRow, profileId);
         let canvases = this.cache.get(key);
@@ -143,7 +143,10 @@ export class FloorTileSystem {
         const placeholder = [{ isPlaceholder: true }];
         this.cache.set(key, placeholder);
 
-        TileWorkerCoordinator.requestFloorChunkBake({ chunkCol, chunkRow, minX: state.obstacleGrid.minX, minY: state.obstacleGrid.minY, seed: state.floorTileSeed ?? 0, profileId }).then((bitmaps) => {
+        TileWorkerCoordinator.requestFloorChunkBake(
+            { chunkCol, chunkRow, minX: state.obstacleGrid.minX, minY: state.obstacleGrid.minY, seed: state.floorTileSeed ?? 0, profileId },
+            priority,
+        ).then((bitmaps) => {
             const existing = this.cache.get(key);
             if (existing === placeholder) {
                 this.cache.set(key, bitmaps);
@@ -187,7 +190,7 @@ export class FloorTileSystem {
         chunksToDraw.sort((a, b) => a.distSq - b.distSq);
 
         for (const chunk of chunksToDraw) {
-            const canvases = this.getChunkCanvas(chunk.chunkCol, chunk.chunkRow, state);
+            const canvases = this.getChunkCanvas(chunk.chunkCol, chunk.chunkRow, state, chunk.distSq);
             let canvas = canvases[0];
             if (canvas.isPlaceholder) continue;
 

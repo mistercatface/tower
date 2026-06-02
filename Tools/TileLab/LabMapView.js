@@ -14,15 +14,15 @@ import {
 } from "./profile/ProfileEditor.js";
 import { ensureLabWorld, getLabWorldMapSeed } from "./LabWorldSession.js";
 
-export function registerEditorProfiles() {
+export async function registerEditorProfiles() {
     const labProfile = getActiveLabProfile();
     const mapProfile = getActiveLabMapProfile();
-    
+
     registerRuntimeFloorProfile(RUNTIME_LAB_PROFILE_ID, labProfile);
     registerRuntimeFloorProfile(RUNTIME_LAB_MAP_PROFILE_ID, mapProfile);
 
-    TileWorkerCoordinator.registerRuntimeProfile(RUNTIME_LAB_PROFILE_ID, labProfile);
-    TileWorkerCoordinator.registerRuntimeProfile(RUNTIME_LAB_MAP_PROFILE_ID, mapProfile);
+    await TileWorkerCoordinator.registerRuntimeProfile(RUNTIME_LAB_PROFILE_ID, labProfile);
+    await TileWorkerCoordinator.registerRuntimeProfile(RUNTIME_LAB_MAP_PROFILE_ID, mapProfile);
 }
 
 export function invalidateLabCaches() {
@@ -68,8 +68,8 @@ export function renderMapPreview(ctrl, world) {
     }
 }
 
-export function runMapPreviewPass(readControls) {
-    registerEditorProfiles();
+export async function runMapPreviewPass(readControls) {
+    await registerEditorProfiles();
     const ctrl = readControls();
     const world = ensureLabWorld(ctrl);
     if (world) {

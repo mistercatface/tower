@@ -1,4 +1,4 @@
-import { bakeFloorCellCanvas, bakeFloorChunkCanvas, bakeFloorTileTextureCanvas, bakeWallFaceCanvases, bakeWallCellCanvas, bakeWallFaceCanvas, withLabAnimationFrame } from "./FloorTilePainter.js";
+import { bakeFloorCellCanvas, bakeFloorChunkCanvas, bakeFloorChunkFrameCanvas, bakeFloorTileTextureCanvas, bakeWallFaceCanvases, bakeWallCellCanvas, bakeWallFaceCanvas, withLabAnimationFrame } from "./FloorTilePainter.js";
 
 import { bakePixelsForWorldSpan } from "./floorTextureResolution.js";
 import { registerRuntimeFloorProfile } from "../../Config/floorProceduralConfig.js";
@@ -6,6 +6,10 @@ import { registerRuntimeFloorProfile } from "../../Config/floorProceduralConfig.
 const HANDLERS = {
     bakeFloorChunk(payload) {
         return bakeFloorChunkCanvas(payload);
+    },
+
+    bakeFloorChunkFrame(payload) {
+        return [bakeFloorChunkFrameCanvas(payload)];
     },
 
     bakeFloorCell(payload) {

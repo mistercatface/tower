@@ -37,21 +37,20 @@ function scheduleMapPreview() {
 }
 
 function renderLightweight() {
-    registerEditorProfiles();
-    scheduleMapPreview();
+    registerEditorProfiles().then(() => scheduleMapPreview());
 }
 
 function renderAll() {
-    registerEditorProfiles();
+    registerEditorProfiles().then(() => {
+        const ctrl = readControls();
+        const world = ensureLabWorld(ctrl);
+        applyGameDefaultsToForm(world);
 
-    const ctrl = readControls();
-    const world = ensureLabWorld(ctrl);
-    applyGameDefaultsToForm(world);
+        invalidateLabCaches();
+        world.floorTiles.clear();
 
-    invalidateLabCaches();
-    world.floorTiles.clear();
-
-    renderMapPreview(ctrl, world);
+        renderMapPreview(ctrl, world);
+    });
 }
 
 function scheduleFullRender() {
@@ -139,17 +138,18 @@ function initResizer() {
 }
 
 function bootstrap() {
-    registerEditorProfiles();
-    setPlayState(true);
-    initResizer();
+    registerEditorProfiles().then(() => {
+        setPlayState(true);
+        initResizer();
 
-    requestAnimationFrame(() => {
-        const ctrl = readControls();
-        const world = ensureLabWorld(ctrl);
-        applyGameDefaultsToForm(world);
-        syncCombatZoomToStage(world);
-        mapPreviewLoop();
-        requestAnimationFrame(appLoop);
+        requestAnimationFrame(() => {
+            const ctrl = readControls();
+            const world = ensureLabWorld(ctrl);
+            applyGameDefaultsToForm(world);
+            syncCombatZoomToStage(world);
+            mapPreviewLoop();
+            requestAnimationFrame(appLoop);
+        });
     });
 }
 

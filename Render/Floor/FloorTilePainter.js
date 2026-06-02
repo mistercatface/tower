@@ -172,52 +172,37 @@ export function bakeFloorTileTextureCanvas(seed, profileId) {
     return bakeFloorCellCanvas(0, 0, seed, profileId);
 }
 
-export function bakeFloorChunkCanvas({ chunkCol, chunkRow, minX, minY, seed, cellsPerChunk = floorTileSettings.cellsPerChunk, profileId }) {
+function chunkWorldOrigin(chunkCol, chunkRow, minX, minY, cellsPerChunk = floorTileSettings.cellsPerChunk) {
     const cellSize = gridSettings.cellSize;
-    const chunkWorldSize = cellSize * cellsPerChunk;
-    const bakeSize = bakePixelsForWorldSpan(chunkWorldSize);
-    const profile = getFloorProceduralProfile(profileId ?? defaultFloorProceduralProfileId);
-    const anim = profile.animation;
-
     const startCol = chunkCol * cellsPerChunk;
     const startRow = chunkRow * cellsPerChunk;
-    const chunkWorldX = minX + startCol * cellSize;
-    const chunkWorldY = minY + startRow * cellSize;
+    return {
+        x: minX + startCol * cellSize,
+        y: minY + startRow * cellSize,
+        bakeSize: bakePixelsForWorldSpan(cellSize * cellsPerChunk),
+    };
+}
 
-    if (!anim) {
+/** Static chunk bake — animated profiles use bakeFloorChunkFrameCanvas via the coordinator. */
+export function bakeFloorChunkCanvas({ chunkCol, chunkRow, minX, minY, seed, cellsPerChunk = floorTileSettings.cellsPerChunk, profileId }) {
+    const { x: chunkWorldX, y: chunkWorldY, bakeSize } = chunkWorldOrigin(chunkCol, chunkRow, minX, minY, cellsPerChunk);
+    const canvas = new OffscreenCanvas(bakeSize, bakeSize);
+    const ctx = canvas.getContext("2d");
+    ctx.imageSmoothingEnabled = false;
+    paintPixelArea(ctx, bakeSize, bakeSize, chunkWorldX, chunkWorldY, seed, {}, profileId);
+    return [canvas];
+}
+
+/** Single animation frame for a floor chunk — dispatched as its own worker job. */
+export function bakeFloorChunkFrameCanvas({ chunkCol, chunkRow, minX, minY, seed, frameIndex, cellsPerChunk = floorTileSettings.cellsPerChunk, profileId }) {
+    const { x: chunkWorldX, y: chunkWorldY, bakeSize } = chunkWorldOrigin(chunkCol, chunkRow, minX, minY, cellsPerChunk);
+    return withLabAnimationFrame(profileId, frameIndex, (tempProfileId) => {
         const canvas = new OffscreenCanvas(bakeSize, bakeSize);
         const ctx = canvas.getContext("2d");
         ctx.imageSmoothingEnabled = false;
-        paintPixelArea(ctx, bakeSize, bakeSize, chunkWorldX, chunkWorldY, seed, {}, profileId);
-        return [canvas];
-    }
-
-    const frames = [];
-    const tracks = anim.tracks || [{ targetPath: anim.targetPath, startValue: anim.startValue, endValue: anim.endValue }];
-    for (let i = 0; i < anim.frames; i++) {
-        const t = anim.frames > 1 ? i / (anim.frames - 1) : 0;
-
-        const tempId = `${profileId}_anim_chunk_${i}`;
-        const cloned = JSON.parse(JSON.stringify(profile));
-        for (const track of tracks) {
-            if (track.targetPath) {
-                const val = track.startValue + (track.endValue - track.startValue) * t;
-                setDeep(cloned, track.targetPath, val);
-            }
-        }
-
-        registerRuntimeFloorProfile(tempId, cloned);
-
-        const canvas = new OffscreenCanvas(bakeSize, bakeSize);
-        const ctx = canvas.getContext("2d");
-        ctx.imageSmoothingEnabled = false;
-        paintPixelArea(ctx, bakeSize, bakeSize, chunkWorldX, chunkWorldY, seed, {}, tempId);
-
-        frames.push(canvas);
-        unregisterRuntimeFloorProfile(tempId);
-    }
-
-    return frames;
+        paintPixelArea(ctx, bakeSize, bakeSize, chunkWorldX, chunkWorldY, seed, {}, tempProfileId);
+        return canvas;
+    });
 }
 
 function setDeep(obj, path, value) {

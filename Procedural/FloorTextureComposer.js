@@ -1,7 +1,7 @@
 import { parseHexColor } from "./util/color.js";
-import { blendMotifRgb } from "./util/blend.js";
+import { blendMotifRgbInto } from "./util/blend.js";
 import { ensureNoiseInitialized } from "./Noise/Perlin2D.js";
-import { applyDomainWarp } from "./Fields/DomainWarp.js";
+import { writeDomainWarp } from "./Fields/DomainWarp.js";
 import { getMotif } from "./MotifRegistry.js";
 
 class LRUCache {
@@ -28,6 +28,22 @@ class LRUCache {
 }
 const layerCache = new LRUCache(200);
 
+const sampleScratch = {
+    evalX: 0,
+    evalY: 0,
+    lookupX: 0,
+    lookupY: 0,
+    wallU: 0,
+    wallV: 0,
+    blocked: 0,
+    isWall: false,
+    surfaceKind: "floor",
+    seed: 0,
+};
+const beforeRgb = { r: 0, g: 0, b: 0 };
+const layerRgb = { r: 0, g: 0, b: 0 };
+const blendOut = { r: 0, g: 0, b: 0 };
+
 export function clearLayerCache() {
     layerCache.clear();
 }
@@ -50,18 +66,6 @@ function resolvePaletteBase(profile, isWall) {
         return profile.palette.floorBase;
     }
     return profile.palette.base;
-}
-
-function pushEnabledMotifs(target, list) {
-    if (!list) {
-        return;
-    }
-    for (const motifConfig of list) {
-        if (motifConfig?.enabled === false) {
-            continue;
-        }
-        target.push(motifConfig);
-    }
 }
 
 function resolveMotifStack(profile) {
@@ -98,21 +102,8 @@ function motifMatchesSurface(config, surface) {
     return true;
 }
 
-function applyMotifLayer(sample, rgb, motifConfig) {
-    if (!motifMatchesSurface(motifConfig, sample)) {
-        return;
-    }
-    const before = { r: rgb.r, g: rgb.g, b: rgb.b };
-    const layer = { r: rgb.r, g: rgb.g, b: rgb.b };
-    getMotif(motifConfig.type).apply(sample, layer, motifConfig);
-    const blended = blendMotifRgb(before, layer, motifConfig.blendMode ?? "add", motifConfig.opacity ?? 1);
-    rgb.r = blended.r;
-    rgb.g = blended.g;
-    rgb.b = blended.b;
-}
-
 export function composeFloorImage(samples, paintContext, requestKey) {
-    const { profile, shadowRgb, seed } = paintContext;
+    const { profile, seed } = paintContext;
     const numPixels = samples.width * samples.height;
 
     const warpHash = JSON.stringify(profile.warp ?? null);
@@ -122,17 +113,18 @@ export function composeFloorImage(samples, paintContext, requestKey) {
 
     const baseFloor = resolvePaletteBase(profile, false);
     const baseWall = resolvePaletteBase(profile, true);
+    const warp = profile.warp;
 
-    // Apply domain warp and fill base
+    sampleScratch.isWall = samples.isWall;
+    sampleScratch.surfaceKind = samples.surfaceKind;
+    sampleScratch.seed = seed;
+
     for (let i = 0; i < numPixels; i++) {
         const base = samples.isWall ? baseWall : baseFloor;
         rgbBuffer[i * 3] = base[0];
         rgbBuffer[i * 3 + 1] = base[1];
         rgbBuffer[i * 3 + 2] = base[2];
-
-        const { lookupX, lookupY } = applyDomainWarp(samples.evalX[i], samples.evalY[i], profile.warp);
-        samples.lookupX[i] = lookupX;
-        samples.lookupY[i] = lookupY;
+        writeDomainWarp(samples.evalX[i], samples.evalY[i], warp, samples.lookupX, samples.lookupY, i);
     }
 
     const motifs = resolveMotifStack(profile);
@@ -148,42 +140,36 @@ export function composeFloorImage(samples, paintContext, requestKey) {
         }
 
         const motifImpl = getMotif(motifConfig.type);
+        const blendMode = motifConfig.blendMode ?? "add";
+        const opacity = motifConfig.opacity ?? 1;
 
         for (let i = 0; i < numPixels; i++) {
-            const sample = {
-                evalX: samples.evalX[i],
-                evalY: samples.evalY[i],
-                lookupX: samples.lookupX[i],
-                lookupY: samples.lookupY[i],
-                wallU: samples.wallU[i],
-                wallV: samples.wallV[i],
-                blocked: samples.blocked ? samples.blocked[i] : 0,
-                isWall: samples.isWall,
-                surfaceKind: samples.surfaceKind,
-                seed: seed
-            };
+            sampleScratch.evalX = samples.evalX[i];
+            sampleScratch.evalY = samples.evalY[i];
+            sampleScratch.lookupX = samples.lookupX[i];
+            sampleScratch.lookupY = samples.lookupY[i];
+            sampleScratch.wallU = samples.wallU[i];
+            sampleScratch.wallV = samples.wallV[i];
+            sampleScratch.blocked = samples.blocked ? samples.blocked[i] : 0;
 
-            if (!motifMatchesSurface(motifConfig, sample)) {
+            if (!motifMatchesSurface(motifConfig, sampleScratch)) {
                 continue;
             }
 
-            const beforeR = rgbBuffer[i * 3];
-            const beforeG = rgbBuffer[i * 3 + 1];
-            const beforeB = rgbBuffer[i * 3 + 2];
+            const idx = i * 3;
+            beforeRgb.r = rgbBuffer[idx];
+            beforeRgb.g = rgbBuffer[idx + 1];
+            beforeRgb.b = rgbBuffer[idx + 2];
 
-            const layerRgb = { r: beforeR, g: beforeG, b: beforeB };
-            motifImpl.apply(sample, layerRgb, motifConfig);
+            layerRgb.r = beforeRgb.r;
+            layerRgb.g = beforeRgb.g;
+            layerRgb.b = beforeRgb.b;
+            motifImpl.apply(sampleScratch, layerRgb, motifConfig);
 
-            const blended = blendMotifRgb(
-                { r: beforeR, g: beforeG, b: beforeB },
-                layerRgb,
-                motifConfig.blendMode ?? "add",
-                motifConfig.opacity ?? 1
-            );
-
-            rgbBuffer[i * 3] = blended.r;
-            rgbBuffer[i * 3 + 1] = blended.g;
-            rgbBuffer[i * 3 + 2] = blended.b;
+            blendMotifRgbInto(blendOut, beforeRgb, layerRgb, blendMode, opacity);
+            rgbBuffer[idx] = blendOut.r;
+            rgbBuffer[idx + 1] = blendOut.g;
+            rgbBuffer[idx + 2] = blendOut.b;
         }
 
         layerCache.set(currentHash, new Float32Array(rgbBuffer));

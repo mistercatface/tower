@@ -203,25 +203,21 @@ const organicPulse = {
     }
 };
 
-const startStation = "cyberGrid";
-
 export const floorProceduralProfiles = {
     ancientRuins,
     cyberGrid,
     magmaFlow,
-    organicPulse,
-    startStation,
+    organicPulse
 };
 
+export const START_STATION_ID = "cyberGrid";
 
-export const defaultFloorProceduralProfileId = startStation;
+export const defaultFloorProceduralProfileId = START_STATION_ID;
 
-/** Layer-0 / start node floor look (independent of generator strategy). */
-export const startFloorProceduralProfileId = startStation;
+export const startFloorProceduralProfileId = START_STATION_ID;
 
-/** Generator strategy name → floor profile id */
 export const floorProceduralProfileByStrategy = {
-    StartBuildingStrategy: startStation,
+    StartBuildingStrategy: START_STATION_ID,
     MazeStrategy: "cyberGrid",
     Maze2Strategy: "cyberGrid",
     DenseMazeStrategy: "cyberGrid",
@@ -232,13 +228,8 @@ export const floorProceduralProfileByStrategy = {
     DiamondStrategy: "organicPulse",
 };
 
-/** @type {Record<string, object>} */
 const runtimeFloorProfiles = {};
 
-/**
- * Register a runtime-only floor profile (dev tools, A/B overlays).
- * Checked before shipped profiles in getFloorProceduralProfile.
- */
 export function registerRuntimeFloorProfile(profileId, profile) {
     runtimeFloorProfiles[profileId] = profile;
 }
@@ -255,7 +246,6 @@ export function getFloorProceduralProfile(profileId) {
     return profile;
 }
 
-/** Shipped profile ids only (excludes runtime/dev overlays). */
 export function listShippedFloorProfileIds() {
     return Object.keys(floorProceduralProfiles).sort();
 }
