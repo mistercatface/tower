@@ -202,6 +202,27 @@ export function bakeFloorChunkFrameCanvas(payload) {
     return canvas;
 }
 
+/** All animation frames for one chunk in a single worker job (one postMessage round-trip). */
+export function bakeFloorChunkAnimatedCanvas(payload) {
+    const profileId = payload.profileId ?? defaultFloorProceduralProfileId;
+    const baseProfile = getFloorProceduralProfile(profileId);
+    const frames = baseProfile.animation?.frames ?? 1;
+    const { chunkCol, chunkRow, minX, minY, seed, cellsPerChunk } = payload;
+    const { x: chunkWorldX, y: chunkWorldY, bakeSize } = chunkWorldOrigin(chunkCol, chunkRow, minX, minY, cellsPerChunk);
+    const canvases = [];
+
+    for (let frameIndex = 0; frameIndex < frames; frameIndex++) {
+        const bakeContext = buildBakeContextFromPayload({ ...payload, frameIndex, profileId });
+        const canvas = new OffscreenCanvas(bakeSize, bakeSize);
+        const ctx = canvas.getContext("2d");
+        ctx.imageSmoothingEnabled = false;
+        bakeResolvedProfile(ctx, bakeSize, bakeSize, chunkWorldX, chunkWorldY, seed, {}, baseProfile, profileId, bakeContext);
+        canvases.push(canvas);
+    }
+
+    return canvases;
+}
+
 export function bakeWallFaceCanvases(width, height, p1, p2, pixelsPerUnit, seed, profileId, payload = {}) {
     const baseProfile = getFloorProceduralProfile(profileId ?? defaultFloorProceduralProfileId);
     if (!baseProfile.animation) {

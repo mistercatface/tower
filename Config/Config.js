@@ -347,7 +347,7 @@ export const floorTileSettings = {
     /** Snap to target when within this distance (idle). */
     tetherSnapDistance: 6,
     /** Rebake when sliding origin crosses this world-unit grid (~maxSpeed / desired rebake Hz). */
-    tetherBakeQuantizePx: 20,
+    tetherBakeQuantizePx: 32,
 };
 
 export const combatVisualSettings = { 

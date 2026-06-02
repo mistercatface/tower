@@ -108,22 +108,11 @@ function broadcastRequest(type, payload) {
     return Promise.all(workers.map((_, i) => enqueueJob(type, payload, -1000 + i)));
 }
 
-function requestAnimatedChunkFrames(payload, priority) {
-    return whenWorkersReady(() => {
-        const profile = getFloorProceduralProfile(payload.profileId);
-        const frameCount = profile.animation.frames;
-        const frameJobs = [];
-        for (let fi = 0; fi < frameCount; fi++) {
-            frameJobs.push(
-                enqueueJob(
-                    "bakeFloorChunkFrame",
-                    { ...payload, frameIndex: fi },
-                    priority + fi * 1e-6,
-                ),
-            );
-        }
-        return Promise.all(frameJobs).then((results) => results.flat());
-    });
+function hasPlayerAnchorPayload(payload) {
+    if (payload.tetherOrigin && payload.playerAnchorBinding) {
+        return true;
+    }
+    return Boolean(payload.player && (payload.playerAnchorBinding || payload.playerAnchorPath));
 }
 
 export const TileWorkerCoordinator = {
@@ -135,10 +124,10 @@ export const TileWorkerCoordinator = {
 
         const profile = getFloorProceduralProfile(payload.profileId);
         const hasAnimation = Boolean(profile.animation);
-        const hasPlayerAnchor = Boolean(payload.player && (payload.playerAnchorBinding || payload.playerAnchorPath));
+        const hasPlayerAnchor = hasPlayerAnchorPayload(payload);
 
         const promise = hasAnimation
-            ? requestAnimatedChunkFrames(payload, priority)
+            ? sendRequest("bakeFloorChunkAnimated", payload, priority)
             : hasPlayerAnchor
                 ? sendRequest("bakeFloorChunkFrame", { ...payload, frameIndex: 0 }, priority)
                 : sendRequest("bakeFloorChunk", payload, priority);
