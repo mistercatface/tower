@@ -1,4 +1,5 @@
 import { navigationSettings, NAV_PROFILES } from "../../Config/Config.js";
+import { Utilities } from "../../Core/Utilities.js";
 import { entityIntersectsCellBounds } from "../Geometry/GridCoords.js";
 import { steerViaFlowField } from "./FlowFieldStrategy.js";
 import { createNavState, steerViaHpa } from "./HpaStrategy.js";
@@ -13,6 +14,7 @@ export class NavigationService {
         this.navStates = new WeakMap();
         this.debugByEntity = new WeakMap();
         this.obstacleGeneration = 0;
+        this._playerWasMoving = false;
     }
 
     getNavState(entity) {
@@ -57,8 +59,18 @@ export class NavigationService {
             debug = steerViaHpa(entity, targetX, targetY, this.hierarchicalNavigator, navState, profile, settings, this.flowFieldGrid.obstacleGrid, this.obstacleGeneration);
         } else {
             navState.path = null;
-            const mode = steerViaFlowField(entity, targetX, targetY, this.flowFieldGrid, profile.flowField);
-            debug = { mode, replanReason: null, pathLen: 0 };
+            let mode = steerViaFlowField(entity, targetX, targetY, this.flowFieldGrid, profile.flowField);
+            if (mode === null) {
+                if (profile.fallbackToHpa && this.hierarchicalNavigator) {
+                    debug = steerViaHpa(entity, targetX, targetY, this.hierarchicalNavigator, navState, profile, settings, this.flowFieldGrid.obstacleGrid, this.obstacleGeneration);
+                } else {
+                    Utilities.setDesiredDirection(entity, targetX - entity.x, targetY - entity.y);
+                    mode = "direct";
+                    debug = { mode, replanReason: null, pathLen: 0 };
+                }
+            } else {
+                debug = { mode, replanReason: null, pathLen: 0 };
+            }
         }
         entity.hpaPath = navState.path;
         this._setDebug(entity, { ...debug, dist });
@@ -68,18 +80,31 @@ export class NavigationService {
         }
     }
 
-    updateFlowField({ playerX, playerY, playerTargetX = null, playerTargetY = null, previousGridPos = null, recenterThreshold = navigationSettings.recenterThreshold }) {
+    updateFlowField({
+        playerX,
+        playerY,
+        playerTargetX = null,
+        playerTargetY = null,
+        previousGridPos = null,
+        playerIsMoving = false,
+        recenterThreshold = navigationSettings.recenterThreshold,
+    }) {
         const grid = this.flowFieldGrid;
         const newGridPos = grid.worldToGrid(playerX, playerY);
         const distToCenter = Math.max(Math.abs(playerX - grid.centerX), Math.abs(playerY - grid.centerY));
+        const maxRange = navigationSettings.flowFieldFullRebuild
+            ? FLOW_FIELD_FULL_RANGE
+            : navigationSettings.flowFieldLocalRange;
+
         if (distToCenter > recenterThreshold) {
             grid.shiftCenter(playerX, playerY, playerX, playerY, playerTargetX, playerTargetY);
         } else if (previousGridPos && (previousGridPos.col !== newGridPos.col || previousGridPos.row !== newGridPos.row)) {
-            const maxRange = navigationSettings.flowFieldFullRebuild
-                ? FLOW_FIELD_FULL_RANGE
-                : navigationSettings.flowFieldLocalRange;
+            grid.buildFlowField(playerX, playerY, maxRange);
+        } else if (this._playerWasMoving && !playerIsMoving && playerTargetX == null && playerTargetY == null) {
             grid.buildFlowField(playerX, playerY, maxRange);
         }
+
+        this._playerWasMoving = playerIsMoving;
         return newGridPos;
     }
 

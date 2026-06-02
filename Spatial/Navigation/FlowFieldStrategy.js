@@ -1,5 +1,3 @@
-import { Utilities } from "../../Core/Utilities.js";
-
 export function steerViaFlowField(entity, targetX, targetY, flowFieldGrid, flowFieldKey) {
     const isPlayerField = flowFieldKey === "player";
 
@@ -7,6 +5,5 @@ export function steerViaFlowField(entity, targetX, targetY, flowFieldGrid, flowF
         return "flow";
     }
 
-    Utilities.setDesiredDirection(entity, targetX - entity.x, targetY - entity.y);
-    return "direct";
+    return null;
 }
