@@ -634,21 +634,33 @@ const plasmaReactor = {
             opacity: 1
         },
         {
-            type: "concentricRings",
+            type: "circuitPanels",
             coordinateSpace: "warped",
-            frequency: 0.04,
-            ringWidth: 0.06,
-            peak: 14,
-            offset: [0, 0],
-            tint: [0.2, 3.0, 5.0],
+            gridSize: 18,
+            density: 0.5,
+            cellVariation: 3,
+            groutWidth: 0.06,
+            groutPeak: -8,
+            groutTint: [1, 1, 1],
+            bevelWidth: 0.03,
+            highlightPeak: 5,
+            shadowPeak: -4,
+            bevelTint: [1, 1, 1],
+            sunkenDarken: 4,
+            sunkenShadowPeak: -4,
+            sunkenHighlightPeak: 3,
+            rivetRadius: 0.08,
+            rivetSpacing: 0.12,
+            rivetPeak: 4,
+            rivetTint: [1.2, 1.2, 1.8],
             surfaceMask: "all",
             blendMode: "add",
-            opacity: 0.9
+            opacity: 1
         },
         {
             type: "circuitTraces",
             coordinateSpace: "warped",
-            gridSize: 32,
+            gridSize: 36,
             lineWidth: 2,
             density: 0.5,
             diagDensity: 0.15,
@@ -657,11 +669,24 @@ const plasmaReactor = {
             padEnabled: true,
             surfaceMask: "all",
             blendMode: "add",
-            opacity: 0.8
+            opacity: 0.55
+        },
+        {
+            type: "starburst",
+            coordinateSpace: "warped",
+            gridSize: 36,
+            density: 0.35,
+            radius: 8,
+            spikes: 8,
+            peak: 12,
+            tint: [0.2, 3.0, 5.0],
+            surfaceMask: "floor",
+            blendMode: "add",
+            opacity: 0.9
         },
         {
             type: "filterHSV",
-            hueShift: -10,
+            hueShift: 0,
             saturation: 1.4,
             value: 1.0,
             surfaceMask: "all",
@@ -675,36 +700,36 @@ const plasmaReactor = {
                 frames: 30,
                 durationMs: 1200,
                 tracks: [
-                    { targetPath: "motifs[1].x", startValue: 0, endValue: 6, easing: "easeInQuad" },
-                    { targetPath: "motifs[1].y", startValue: 0, endValue: 6, easing: "easeInQuad" },
-                    { targetPath: "motifs[2].ringWidth", startValue: 0.03, endValue: 0.18, easing: "easeInCubic" },
-                    { targetPath: "motifs[3].lineWidth", startValue: 1.5, endValue: 3.5, easing: "easeInQuad" },
-                    { targetPath: "motifs[4].value", startValue: 1.0, endValue: 1.7, easing: "easeInQuad" },
-                    { targetPath: "motifs[4].hueShift", startValue: -10, endValue: 10, easing: "easeInOutSine" }
+                    { targetPath: "motifs[1].x", startValue: 0, endValue: 3, easing: "easeInQuad" },
+                    { targetPath: "motifs[1].y", startValue: 0, endValue: 2, easing: "easeInQuad" },
+                    { targetPath: "motifs[2].highlightPeak", startValue: 5, endValue: 15, easing: "easeInCubic" },
+                    { targetPath: "motifs[3].lineWidth", startValue: 1.5, endValue: 4.5, easing: "easeInQuint" },
+                    { targetPath: "motifs[4].radius", startValue: 6, endValue: 24, easing: "easeInQuad" },
+                    { targetPath: "motifs[5].value", startValue: 1.0, endValue: 1.6, easing: "easeInSine" }
                 ]
             },
             {
                 frames: 20,
                 durationMs: 600,
                 tracks: [
-                    { targetPath: "motifs[1].x", startValue: 6, endValue: -10, easing: "easeInOutExpo" },
-                    { targetPath: "motifs[1].y", startValue: 6, endValue: -10, easing: "easeInOutExpo" },
-                    { targetPath: "motifs[2].ringWidth", startValue: 0.18, endValue: 0.06, easing: "easeOutExpo" },
-                    { targetPath: "motifs[3].lineWidth", startValue: 3.5, endValue: 7.0, easing: "easeInExpo" },
-                    { targetPath: "motifs[4].value", startValue: 1.7, endValue: 0.7, easing: "easeOutQuint" },
-                    { targetPath: "motifs[4].hueShift", startValue: 10, endValue: -5, easing: "easeInOutSine" }
+                    { targetPath: "motifs[1].x", startValue: 3, endValue: -5, easing: "easeInOutExpo" },
+                    { targetPath: "motifs[1].y", startValue: 2, endValue: -4, easing: "easeInOutExpo" },
+                    { targetPath: "motifs[2].highlightPeak", startValue: 15, endValue: 4, easing: "easeOutCirc" },
+                    { targetPath: "motifs[3].lineWidth", startValue: 4.5, endValue: 6.5, easing: "easeInExpo" },
+                    { targetPath: "motifs[4].radius", startValue: 24, endValue: 32, easing: "easeOutExpo" },
+                    { targetPath: "motifs[5].value", startValue: 1.6, endValue: 0.7, easing: "easeOutQuint" }
                 ]
             },
             {
                 frames: 40,
                 durationMs: 1800,
                 tracks: [
-                    { targetPath: "motifs[1].x", startValue: -10, endValue: 0, easing: "easeOutQuad" },
-                    { targetPath: "motifs[1].y", startValue: -10, endValue: 0, easing: "easeOutQuad" },
-                    { targetPath: "motifs[2].ringWidth", startValue: 0.06, endValue: 0.03, easing: "easeInOutSine" },
-                    { targetPath: "motifs[3].lineWidth", startValue: 7.0, endValue: 1.5, easing: "easeOutQuint" },
-                    { targetPath: "motifs[4].value", startValue: 0.7, endValue: 1.0, easing: "easeInOutCubic" },
-                    { targetPath: "motifs[4].hueShift", startValue: -5, endValue: -10, easing: "easeInOutSine" }
+                    { targetPath: "motifs[1].x", startValue: -5, endValue: 0, easing: "easeOutQuad" },
+                    { targetPath: "motifs[1].y", startValue: -4, endValue: 0, easing: "easeOutQuad" },
+                    { targetPath: "motifs[2].highlightPeak", startValue: 4, endValue: 5, easing: "easeInOutQuad" },
+                    { targetPath: "motifs[3].lineWidth", startValue: 6.5, endValue: 1.5, easing: "easeOutQuint" },
+                    { targetPath: "motifs[4].radius", startValue: 32, endValue: 6, easing: "easeOutQuad" },
+                    { targetPath: "motifs[5].value", startValue: 0.7, endValue: 1.0, easing: "easeInOutCubic" }
                 ]
             }
         ]
