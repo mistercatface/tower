@@ -28,7 +28,7 @@ export function getGameLabDefaults(viewWidth, viewHeight, worldState) {
         gameZoom: getDefaultCombatZoom(viewWidth, viewHeight, weaponRange),
         viewPaddingPx: floorTileSettings.viewPaddingPx,
         cellsPerChunk: floorTileSettings.cellsPerChunk,
-        texturePixelsPerWorldUnit: floorTileSettings.texturePixelsPerWorldUnit,
+        tileResolution: floorTileSettings.tileResolution,
         tileWorldSize: floorTileSettings.tileWorldSize ?? gridSettings.cellSize,
         mapGenCanvas: mapGenCanvasBounds,
         playerMoveSpeed: playerBaseStats.speed,

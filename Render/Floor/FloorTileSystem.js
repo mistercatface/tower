@@ -6,7 +6,7 @@ import { snapWorldToCellOrigin } from "../../Spatial/Geometry/GridCoords.js";
 import { FloorChunkCache } from "./FloorChunkCache.js";
 import { TileWorkerCoordinator } from "./TileWorkerCoordinator.js";
 import { floorCellCacheKey, floorChunkCacheKey, getFloorTextureProfileId } from "./floorTextureProfile.js";
-import { drawBakedTexture, getTexturePixelsPerWorldUnit } from "./floorTextureResolution.js";
+import { drawBakedTexture, getPixelsPerWorldUnit } from "./floorTextureResolution.js";
 
 export class FloorTileSystem {
     constructor() {
@@ -47,7 +47,7 @@ export class FloorTileSystem {
     getTileTextureCanvas(state) {
         const seed = state.floorTileSeed ?? 0;
         const profileId = getFloorTextureProfileId(state);
-        const ppwu = getTexturePixelsPerWorldUnit();
+        const ppwu = getPixelsPerWorldUnit();
         if (this._tileTexture && this._tileTextureSeed === seed && this._tileTextureProfileId === profileId && this._tileTexturePpwu === ppwu) {
             return this._tileTexture;
         }

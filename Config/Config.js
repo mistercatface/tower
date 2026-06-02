@@ -325,8 +325,8 @@ export const gridSettings = { cellSize: 16, width: 2400, height: 2400, minCellsP
 /** Floor render chunks — one offscreen canvas per chunk, aligned to gridSettings.cellSize. */
 export const floorTileSettings = {
     cellsPerChunk: gridSettings.minCellsPerChunk,
-    /** Bake pixels per world unit; drawn down into the same world footprint (e.g. 2 = 2× supersample). */
-    texturePixelsPerWorldUnit: 1,
+    /** The pixel resolution of a single tile (e.g., 16 = 16x16 pixels). Decoupled from world size. */
+    tileResolution: 6,
     /** When supersampling, smooth on drawImage downscale (procedural). Off for crisp pixel-art tiles. */
     textureDownsampleSmoothing: false,
     viewPaddingPx: 128,
@@ -339,7 +339,7 @@ export const floorTileSettings = {
      */
     wallVisualHeight: null,
     /** Fixed vertical tile count for wall textures (camera-independent). */
-    wallTextureStories: 6,
+    wallTextureStories: 7,
     /** Overlap when affine-mapping wall cells (hides triangle seam). */
     wallTextureBleedPx: 1,
     maxCachedWallCells: 8192,

@@ -17,7 +17,6 @@ export function mapPixelToEval({
     surfaceKind,
     height,
     pixelsPerUnit,
-    texturePixelsPerWorldUnit,
     bakeWidth,
     zOffset,
     wallFace,
@@ -36,7 +35,7 @@ export function mapPixelToEval({
         };
     }
 
-    const ppwu = texturePixelsPerWorldUnit;
+    const ppwu = pixelsPerUnit;
 
     if (surfaceKind === "wallCell") {
         const wallV = height > 1 ? (height - 1 - y) / (height - 1) : 0;

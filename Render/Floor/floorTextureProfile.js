@@ -1,5 +1,5 @@
 import { defaultFloorProceduralProfileId } from "../../Config/floorProceduralConfig.js";
-import { getTexturePixelsPerWorldUnit } from "./floorTextureResolution.js";
+import { getPixelsPerWorldUnit } from "./floorTextureResolution.js";
 
 /** Bump when profile motif stacks change so chunk caches rebake. */
 const FLOOR_TEXTURE_CACHE_REVISION = 14;
@@ -26,9 +26,9 @@ export function syncFloorTextureProfile(state) {
 }
 
 export function floorChunkCacheKey(chunkCol, chunkRow, profileId) {
-    return `${FLOOR_TEXTURE_CACHE_REVISION}:${getTexturePixelsPerWorldUnit()}:${profileId}:${chunkCol},${chunkRow}`;
+    return `${FLOOR_TEXTURE_CACHE_REVISION}:${getPixelsPerWorldUnit()}:${profileId}:${chunkCol},${chunkRow}`;
 }
 
 export function floorCellCacheKey(col, row, profileId) {
-    return `${FLOOR_TEXTURE_CACHE_REVISION}:${getTexturePixelsPerWorldUnit()}:${profileId}:c:${col},${row}`;
+    return `${FLOOR_TEXTURE_CACHE_REVISION}:${getPixelsPerWorldUnit()}:${profileId}:c:${col},${row}`;
 }

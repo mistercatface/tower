@@ -2,7 +2,7 @@ import { floorTileSettings, gridSettings } from "../../Config/Config.js";
 import { defaultFloorProceduralProfileId, getFloorProceduralProfile, registerRuntimeFloorProfile, unregisterRuntimeFloorProfile } from "../../Config/floorProceduralConfig.js";
 import { createPaintContext, composeFloorImage } from "../../Procedural/FloorTextureComposer.js";
 import { createWallFaceAxes, mapPixelToEval } from "./SurfaceCoordinateMapper.js";
-import { bakePixelsForWorldSpan, drawBakedTexture, getTexturePixelsPerWorldUnit } from "./floorTextureResolution.js";
+import { bakePixelsForWorldSpan, drawBakedTexture, getPixelsPerWorldUnit } from "./floorTextureResolution.js";
 
 class TileMemoryPool {
     constructor() {
@@ -34,11 +34,10 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, see
 
     const isWall = options.isWall === true;
     const cellSize = options.cellSize ?? gridSettings.cellSize;
-    const texturePixelsPerWorldUnit = options.texturePixelsPerWorldUnit ?? getTexturePixelsPerWorldUnit();
 
     let surfaceKind = "floor";
     let wallFace = null;
-    let pixelsPerUnit = texturePixelsPerWorldUnit;
+    let pixelsPerUnit = options.pixelsPerUnit ?? getPixelsPerWorldUnit();
     let zOffset = 0;
 
     if (isWall && options.p1 && options.p2) {
@@ -46,7 +45,6 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, see
         const edgeLen = Math.hypot(options.p2.x - options.p1.x, options.p2.y - options.p1.y);
         const axes = createWallFaceAxes(options.p1, options.p2);
         wallFace = { p1: options.p1, edgeLen, ...axes };
-        pixelsPerUnit = options.pixelsPerUnit;
     } else if (isWall) {
         surfaceKind = "wallCell";
         zOffset = options.zOffset ?? 0;
@@ -73,7 +71,7 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, see
     let idx = 0;
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
-            const mapped = mapPixelToEval({ x, y, startWorldX, startWorldY, cellSize, surfaceKind, height, width, pixelsPerUnit, texturePixelsPerWorldUnit, bakeWidth: width, zOffset, wallFace });
+            const mapped = mapPixelToEval({ x, y, startWorldX, startWorldY, cellSize, surfaceKind, height, width, pixelsPerUnit, bakeWidth: width, zOffset, wallFace });
 
             samples.evalX[idx] = mapped.evalX;
             samples.evalY[idx] = mapped.evalY;
