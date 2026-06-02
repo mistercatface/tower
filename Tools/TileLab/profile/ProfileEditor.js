@@ -58,42 +58,18 @@ function defaultPalette() {
     };
 }
 
-function layerKeyForExport(layerId) {
-    if (layerId === "floor") {
-        return "floorMotifs";
-    }
-    if (layerId === "wall") {
-        return "wallMotifs";
-    }
-    if (layerId === "shared") {
-        return "sharedMotifs";
-    }
-    return layerId;
-}
-
 function motifsFromProfile(profile) {
     const rows = [];
-    const addFromLayer = (layerId, list) => {
-        if (!list) {
-            return;
-        }
-        for (const motif of list) {
-            rows.push({
-                id: `m${nextMotifId++}`,
-                enabled: motif.enabled !== false,
-                layer: layerId,
-                config: deepClone(motif),
-            });
-        }
-    };
-    addFromLayer("underlay", profile.underlay);
-    addFromLayer("structure", profile.structure);
-    addFromLayer("accents", profile.accents);
-    addFromLayer("shared", profile.sharedMotifs);
-    addFromLayer("floor", profile.floorMotifs);
-    addFromLayer("wall", profile.wallMotifs);
-    if (profile.motifs) {
-        addFromLayer("shared", profile.motifs);
+    if (!profile.motifs) {
+        return rows;
+    }
+    for (const motif of profile.motifs) {
+        rows.push({
+            id: `m${nextMotifId++}`,
+            enabled: motif.enabled !== false,
+            surfaceMask: motif.surfaceMask ?? "all",
+            config: deepClone(motif),
+        });
     }
     return rows;
 }
@@ -123,14 +99,7 @@ export function buildProfileFromEditor(state = editorState) {
     const profile = {
         warp: deepClone(state.warp),
         palette: deepClone(state.palette),
-    };
-    const buckets = {
-        underlay: [],
-        structure: [],
-        accents: [],
-        sharedMotifs: [],
-        floorMotifs: [],
-        wallMotifs: [],
+        motifs: [],
     };
 
     for (const row of state.motifs) {
@@ -139,15 +108,10 @@ export function buildProfileFromEditor(state = editorState) {
         }
         const config = deepClone(row.config);
         delete config.enabled;
-        const key = layerKeyForExport(row.layer);
-        buckets[key].push(config);
+        config.surfaceMask = row.surfaceMask;
+        profile.motifs.push(config);
     }
 
-    for (const [key, list] of Object.entries(buckets)) {
-        if (list.length > 0) {
-            profile[key] = list;
-        }
-    }
     return profile;
 }
 
@@ -177,7 +141,7 @@ function renderMotifList(container) {
         item.innerHTML = `
             <label class="motif-enable"><input type="checkbox" data-action="toggle" ${row.enabled ? "checked" : ""}></label>
             <span class="motif-label">${label}</span>
-            <span class="motif-layer">${row.layer}</span>
+            <span class="motif-layer">${row.surfaceMask}</span>
             <span class="motif-actions">
                 <button type="button" data-action="up" title="Move up">↑</button>
                 <button type="button" data-action="down" title="Move down">↓</button>
@@ -267,8 +231,8 @@ function renderMotifParams(container) {
         return;
     }
 
-    const layerSelect = new SelectControl("Layer", LAYER_OPTIONS, row.layer, (val) => {
-        row.layer = val;
+    const layerSelect = new SelectControl("Surface Mask", LAYER_OPTIONS, row.surfaceMask, (val) => {
+        row.surfaceMask = val;
         notifyChange();
         renderMotifList(document.getElementById("motifList"));
     });
@@ -341,7 +305,7 @@ export function initProfileEditor({ onChange }) {
         const row = {
             id: `m${nextMotifId++}`,
             enabled: true,
-            layer: "structure",
+            surfaceMask: "all",
             config: deepClone(schema.defaults),
         };
         editorState.motifs.push(row);

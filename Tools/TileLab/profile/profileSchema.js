@@ -1,15 +1,17 @@
 /** Motif field metadata for the tile lab profile editor. */
 
 export const LAYER_OPTIONS = [
-    { id: "underlay", label: "Underlay" },
-    { id: "structure", label: "Structure" },
-    { id: "accents", label: "Accents" },
+    { id: "all", label: "All" },
     { id: "floor", label: "Floor only" },
     { id: "wall", label: "Wall only" },
-    { id: "shared", label: "Shared" },
+    { id: "wallFace", label: "Wall face" },
+    { id: "wallCell", label: "Wall cell top" },
 ];
 
-export const BLEND_OPTIONS = ["add", "multiply", "replace"];
+export const BLEND_OPTIONS = [
+    "replace", "add", "multiply", "screen", "overlay", 
+    "hard-light", "soft-light", "color-dodge", "color-burn", "difference"
+];
 
 export const MOTIF_TYPES = {
     baseMetal: {
@@ -488,6 +490,51 @@ export const MOTIF_TYPES = {
             { path: "rivetPeak", label: "Rivet peak", min: 0, max: 20, step: 1 },
             { path: "opacity", label: "Opacity", min: 0, max: 1, step: 0.05 },
         ],
+    },
+    filterHSV: {
+        label: "Filter: HSV Adjust",
+        defaults: { type: "filterHSV", hueShift: 0, saturation: 1, value: 1, blendMode: "replace", opacity: 1 },
+        fields: [
+            { path: "hueShift", label: "Hue Shift", min: -180, max: 180, step: 1 },
+            { path: "saturation", label: "Saturation", min: 0, max: 5, step: 0.1 },
+            { path: "value", label: "Value (Brightness)", min: 0, max: 5, step: 0.1 },
+            { path: "blendMode", label: "Blend Mode", options: BLEND_OPTIONS },
+            { path: "opacity", label: "Opacity", min: 0, max: 1, step: 0.05 },
+        ]
+    },
+    filterLevels: {
+        label: "Filter: Levels",
+        defaults: { type: "filterLevels", blackPoint: 0, whitePoint: 255, gamma: 1.0, blendMode: "replace", opacity: 1 },
+        fields: [
+            { path: "blackPoint", label: "Black Point", min: 0, max: 254, step: 1 },
+            { path: "whitePoint", label: "White Point", min: 1, max: 255, step: 1 },
+            { path: "gamma", label: "Gamma", min: 0.1, max: 5.0, step: 0.1 },
+            { path: "blendMode", label: "Blend Mode", options: BLEND_OPTIONS },
+            { path: "opacity", label: "Opacity", min: 0, max: 1, step: 0.05 },
+        ]
+    },
+    filterPosterize: {
+        label: "Filter: Posterize",
+        defaults: { type: "filterPosterize", bands: 4, blendMode: "replace", opacity: 1 },
+        fields: [
+            { path: "bands", label: "Bands", min: 2, max: 64, step: 1 },
+            { path: "blendMode", label: "Blend Mode", options: BLEND_OPTIONS },
+            { path: "opacity", label: "Opacity", min: 0, max: 1, step: 0.05 },
+        ]
+    },
+    filterRGBAdjust: {
+        label: "Filter: RGB Adjust",
+        defaults: { type: "filterRGBAdjust", rMult: 1, gMult: 1, bMult: 1, rOffset: 0, gOffset: 0, bOffset: 0, blendMode: "replace", opacity: 1 },
+        fields: [
+            { path: "rMult", label: "R Multiplier", min: 0, max: 5, step: 0.1 },
+            { path: "gMult", label: "G Multiplier", min: 0, max: 5, step: 0.1 },
+            { path: "bMult", label: "B Multiplier", min: 0, max: 5, step: 0.1 },
+            { path: "rOffset", label: "R Offset", min: -255, max: 255, step: 1 },
+            { path: "gOffset", label: "G Offset", min: -255, max: 255, step: 1 },
+            { path: "bOffset", label: "B Offset", min: -255, max: 255, step: 1 },
+            { path: "blendMode", label: "Blend Mode", options: BLEND_OPTIONS },
+            { path: "opacity", label: "Opacity", min: 0, max: 1, step: 0.05 },
+        ]
     },
 };
 

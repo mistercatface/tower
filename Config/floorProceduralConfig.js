@@ -16,14 +16,12 @@ const spaceStation = {
         wallBase: [24, 26, 30],
         shadow: combatVisualSettings.floorShadow,
     },
-    underlay: [
+    motifs: [
         {
             type: "baseMetal",
             structure: { frequency: 0.0025, octaves: 2, rgbDelta: [3, 3, 4] },
             grain: { frequency: 0.18, octaves: 1, amplitude: 1 },
         },
-    ],
-    sharedMotifs: [
         {
             type: "circuitLattice",
             coordinateSpace: "warped",
@@ -41,8 +39,6 @@ const spaceStation = {
             blendMode: "add",
             opacity: 0.48,
         },
-    ],
-    structure: [
         {
             type: "deckPlates",
             cellWorldSize: 16,
@@ -60,17 +56,14 @@ const spaceStation = {
             blendMode: "multiply",
             opacity: 0.72,
         },
-    ],
-    floorMotifs: [],
-    wallMotifs: [
         {
             type: "wallLighting",
             power: 1,
             topDarken: 5,
             coolBias: 1.04,
+            surfaceMask: "wall",
         },
     ],
-    accents: [],
 };
 
 /** Clinical sci-fi corridor — deck plates + unified warped veins (rootForest-style cohesion). */
@@ -87,14 +80,12 @@ const techCorridor = {
         wallBase: [38, 40, 44],
         shadow: combatVisualSettings.floorShadow,
     },
-    underlay: [
+    motifs: [
         {
             type: "baseMetal",
             structure: { frequency: 0.002, octaves: 2, rgbDelta: [1, 1, 2] },
             grain: { frequency: 0.15, octaves: 1, amplitude: 0.35 },
         },
-    ],
-    sharedMotifs: [
         {
             type: "circuitLattice",
             coordinateSpace: "warped",
@@ -112,8 +103,6 @@ const techCorridor = {
             blendMode: "add",
             opacity: 0.52,
         },
-    ],
-    structure: [
         {
             type: "deckPlates",
             cellWorldSize: 16,
@@ -130,9 +119,6 @@ const techCorridor = {
             blendMode: "multiply",
             opacity: 0.65,
         },
-    ],
-    floorMotifs: [],
-    wallMotifs: [
         {
             type: "panelBay",
             rows: 5,
@@ -153,9 +139,9 @@ const techCorridor = {
             power: 0.95,
             topDarken: 3,
             coolBias: 1.02,
+            surfaceMask: "wall",
         },
     ],
-    accents: [],
 };
 
 /**
@@ -181,14 +167,12 @@ export const floorProceduralProfiles = {
             wallBase: [25, 23, 20],
             shadow: combatVisualSettings.floorShadow,
         },
-        underlay: [
+        motifs: [
             {
                 type: "baseMetal",
                 structure: { frequency: 0.004, octaves: 2, rgbDelta: [4, 3, 2] },
                 grain: { frequency: 0.85, octaves: 1, amplitude: 1.5 },
             },
-        ],
-        sharedMotifs: [
             {
                 type: "circuitLattice",
                 coordinateSpace: "warped",
@@ -209,8 +193,6 @@ export const floorProceduralProfiles = {
                 blendMode: "add",
                 opacity: 0.55,
             },
-        ],
-        structure: [
             {
                 type: "deckPlates",
                 cellWorldSize: 16,
@@ -224,16 +206,14 @@ export const floorProceduralProfiles = {
                 blendMode: "multiply",
                 opacity: 0.62,
             },
-        ],
-        wallMotifs: [
             {
                 type: "wallLighting",
                 power: 1.05,
                 topDarken: 6,
                 coolBias: 1.03,
+                surfaceMask: "wall",
             },
         ],
-        accents: [],
     },
 
     rootForest: {
@@ -371,7 +351,7 @@ export const floorProceduralProfiles = {
             ],
             "shadow": "#12161c"
         },
-        "sharedMotifs": [
+        "motifs": [
             {
                 "type": "circuitPanels",
                 "coordinateSpace": "warped",
@@ -463,7 +443,7 @@ export const floorProceduralProfiles = {
             wallBase: [22, 5, 28],
             shadow: "#080c14",
         },
-        sharedMotifs: [
+        motifs: [
             {
                 type: "circuitPanels", coordinateSpace: "warped",
                 gridSize: 16, density: 0.3, cellVariation: 3,
@@ -491,7 +471,7 @@ export const floorProceduralProfiles = {
             wallBase: [6, 10, 24],
             shadow: "#060a08",
         },
-        sharedMotifs: [
+        motifs: [
             {
                 type: "starburst", coordinateSpace: "warped",
                 gridSize: 12, density: 0.25, radius: 28, spikes: 3, peak: 18, tint: [-0.5, 2.5, 0.5], opacity: 1
@@ -511,7 +491,7 @@ export const floorProceduralProfiles = {
             wallBase: [12, 18, 10],
             shadow: "#120804",
         },
-        sharedMotifs: [
+        motifs: [
             {
                 type: "starburst", coordinateSpace: "warped",
                 gridSize: 20, density: 0.4, radius: 35, spikes: 4, peak: 20, tint: [2.5, 1.6, -0.6], opacity: 1

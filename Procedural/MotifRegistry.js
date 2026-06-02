@@ -18,6 +18,10 @@ import { topoContoursMotif } from "./Motifs/topoContours.js";
 import { starburstMotif } from "./Motifs/starburst.js";
 import { circuitPanelsMotif } from "./Motifs/circuitPanels.js";
 import { fractalCracksMotif } from "./Motifs/fractalCracks.js";
+import { filterHSVMotif } from "./Motifs/Filters/filterHSV.js";
+import { filterLevelsMotif } from "./Motifs/Filters/filterLevels.js";
+import { filterPosterizeMotif } from "./Motifs/Filters/filterPosterize.js";
+import { filterRGBAdjustMotif } from "./Motifs/Filters/filterRGBAdjust.js";
 
 const MOTIF_BY_TYPE = {
     baseMetal: baseMetalMotif,
@@ -40,6 +44,10 @@ const MOTIF_BY_TYPE = {
     starburst: starburstMotif,
     circuitPanels: circuitPanelsMotif,
     fractalCracks: fractalCracksMotif,
+    filterHSV: filterHSVMotif,
+    filterLevels: filterLevelsMotif,
+    filterPosterize: filterPosterizeMotif,
+    filterRGBAdjust: filterRGBAdjustMotif,
 };
 
 export function getMotif(type) {

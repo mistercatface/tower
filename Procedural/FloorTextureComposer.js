@@ -36,25 +36,17 @@ function pushEnabledMotifs(target, list) {
     }
 }
 
-function resolveMotifStack(profile, isWall) {
+function resolveMotifStack(profile) {
     const stack = [];
-    pushEnabledMotifs(stack, profile.underlay);
-    pushEnabledMotifs(stack, profile.sharedMotifs);
-    pushEnabledMotifs(stack, profile.structure);
-
-    if (isWall) {
-        pushEnabledMotifs(stack, profile.wallMotifs);
-        if (!profile.wallMotifs?.length && profile.motifs) {
-            pushEnabledMotifs(stack, profile.motifs);
-        }
-    } else {
-        pushEnabledMotifs(stack, profile.floorMotifs);
-        if (!profile.floorMotifs?.length && !profile.structure?.length && profile.motifs) {
-            pushEnabledMotifs(stack, profile.motifs);
-        }
+    if (!profile.motifs) {
+        return stack;
     }
-
-    pushEnabledMotifs(stack, profile.accents);
+    for (const motifConfig of profile.motifs) {
+        if (motifConfig?.enabled === false) {
+            continue;
+        }
+        stack.push(motifConfig);
+    }
     return stack;
 }
 
@@ -104,7 +96,7 @@ export function composeFloorPixel(surface, paintContext) {
     const [baseR, baseG, baseB] = resolvePaletteBase(profile, surface.isWall);
     const rgb = { r: baseR, g: baseG, b: baseB };
 
-    for (const motifConfig of resolveMotifStack(profile, surface.isWall)) {
+    for (const motifConfig of resolveMotifStack(profile)) {
         applyMotifLayer(sample, rgb, motifConfig);
     }
 
