@@ -403,6 +403,7 @@ export const floorProceduralProfiles = {
     ancientRuins: {
         warp: { frequency: 0.002, amplitude: 5, octaves: 2, sampleOffset: [200, 900] },
         palette: { base: [30, 26, 22], floorBase: [20, 22, 26], wallBase: [24, 26, 30], shadow: "#12161c" },
+        animation: { targetPath: "motifs[3].hueShift", startValue: -180, endValue: 180, frames: 60, durationMs: 4000 },
         motifs: [
             {
                 type: "baseMetal",
