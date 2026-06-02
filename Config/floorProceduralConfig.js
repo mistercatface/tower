@@ -144,79 +144,56 @@ const techCorridor = {
     ],
 };
 
-const neonVaporwave = {
-    warp: { frequency: 0.005, amplitude: 10, octaves: 2, sampleOffset: [0, 0] },
-    palette: {
-        base: [28, 12, 38],
-        floorBase: [24, 10, 34],
-        wallBase: [32, 14, 42],
-        shadow: combatVisualSettings.floorShadow,
-    },
+// Bioluminescent alien organic — deep teal base, glowing cyan veins, pulsing light nodes
+const bioneural = {
+    warp: { frequency: 0.006, amplitude: 18, octaves: 2, sampleOffset: [400, 800] },
+    palette: { base: [4, 14, 18], floorBase: [3, 12, 16], wallBase: [6, 16, 22], shadow: "#020a0d" },
     motifs: [
-        {
-            type: "hexGrid",
-            cellWorldSize: 32, groutWidth: 0.08, groutPeak: -4, groutTint: [1, 1, 1],
-            bevelWidth: 0.06, highlightPeak: 6, shadowPeak: -4, bevelTint: [1, 1, 1],
-            bevelCurve: "smooth", bevelFalloff: 1.0,
-            cellVariation: 1.5, opacity: 0.9, blendMode: "overlay"
-        },
-        {
-            type: "circuitLattice", coordinateSpace: "warped",
-            frequency: 0.015, octaves: 2, angle: 0.2, ridgeThreshold: 0.1, peak: 10, tint: [0.2, 1.8, 2.5], opacity: 0.7, blendMode: "add"
-        },
-        {
-            type: "filterPosterize", bands: 8, blendMode: "replace", opacity: 1
-        },
-        {
-            type: "filterHSV", hueShift: 15, saturation: 1.5, value: 1.2, blendMode: "replace", opacity: 1
-        }
+        { type: "baseMetal", structure: { frequency: 0.004, octaves: 2, rgbDelta: [1, 2, 3] }, grain: { frequency: 0.3, octaves: 1, amplitude: 2 } },
+        { type: "voronoiCell", coordinateSpace: "warped", density: 0.035, edgeWidth: 3.5, peak: 10, tint: [0.3, 2.2, 2.8], seedSalt: 42, opacity: 0.85, blendMode: "add" },
+        { type: "circuitLattice", coordinateSpace: "warped", frequency: 0.018, octaves: 2, angle: 0.6, ridgeThreshold: 0.1, peak: 12, tint: [0.2, 2.5, 3.0], intersectionPeak: 18, intersectionTint: [0.5, 3.5, 4.0], opacity: 0.8, blendMode: "add" },
+        { type: "fractalCracks", frequency: 0.012, octaves: 3, threshold: 0.7, peak: 14, tint: [0.3, 2.0, 2.5], opacity: 0.9, blendMode: "screen" },
+        { type: "starburst", coordinateSpace: "warped", gridSize: 24, density: 0.4, radius: 22, spikes: 4, peak: 18, tint: [0.3, 3.0, 3.5], opacity: 0.75, blendMode: "add" },
+        { type: "filterHSV", hueShift: 5, saturation: 1.35, value: 1.05, blendMode: "replace", opacity: 1 },
+        { type: "filterLevels", blackPoint: 4, whitePoint: 240, gamma: 1.15, blendMode: "replace", opacity: 1 },
+        { type: "wallLighting", power: 1.1, topDarken: 6, coolBias: 1.08, surfaceMask: "wall" },
     ]
 };
 
-const abyssalForge = {
-    warp: { frequency: 0.008, amplitude: 12, octaves: 2, sampleOffset: [100, 200] },
-    palette: {
-        base: [16, 4, 4],
-        floorBase: [14, 3, 3],
-        wallBase: [20, 5, 5],
-        shadow: "#0a0202",
-    },
+// Amber forge halls — molten industrial with hot rivets and ember veins
+const forgeHalls = {
+    warp: { frequency: 0.005, amplitude: 10, octaves: 2, sampleOffset: [900, 300] },
+    palette: { base: [20, 12, 6], floorBase: [18, 10, 5], wallBase: [24, 14, 8], shadow: "#0d0704" },
     motifs: [
-        {
-            type: "baseMetal", structure: { frequency: 0.005, octaves: 2, rgbDelta: [2, 1, 1] }, grain: { frequency: 0.5, octaves: 1, amplitude: 1 }
-        },
-        {
-            type: "deckPlates", cellWorldSize: 24, plateCells: 1, groutWidth: 0.05, groutPeak: -6, groutTint: [1, 1, 1], plateVariation: 2, rivetSpacing: 0, opacity: 0.8, blendMode: "multiply"
-        },
-        {
-            type: "fractalCracks", frequency: 0.015, octaves: 3, threshold: 0.6, peak: -25, tint: [-3, -1, 0], opacity: 0.9, blendMode: "add"
-        },
-        {
-            type: "filterLevels", blackPoint: 12, whitePoint: 220, gamma: 1.3, blendMode: "replace", opacity: 1
-        }
+        { type: "baseMetal", structure: { frequency: 0.004, octaves: 2, rgbDelta: [3, 2, 1] }, grain: { frequency: 0.6, octaves: 1, amplitude: 2.5 } },
+        { type: "deckPlates", cellWorldSize: 20, plateCells: 2, groutWidth: 0.05, groutPeak: -8, groutTint: [1, 1, 1], plateVariation: 1.5, jitterOffset: [100, 200], rivetSpacing: 20, rivetInset: 5, rivetRadius: 0.02, rivetPeak: 8, rivetTint: [3, 1.5, 0.3], blendMode: "multiply", opacity: 0.7 },
+        { type: "circuitLattice", coordinateSpace: "warped", frequency: 0.016, octaves: 2, angle: 0.15, ridgeThreshold: 0.11, peak: 14, tint: [3.5, 1.2, 0.1], intersectionPeak: 20, intersectionTint: [4.0, 2.0, 0.2], opacity: 0.85, blendMode: "add" },
+        { type: "fractalCracks", frequency: 0.013, octaves: 3, threshold: 0.68, peak: 18, tint: [4.0, 1.5, 0.2], opacity: 0.85, blendMode: "screen" },
+        { type: "starburst", coordinateSpace: "warped", gridSize: 28, density: 0.35, radius: 28, spikes: 2, peak: 20, tint: [4.0, 2.0, 0.3], opacity: 0.65, blendMode: "add" },
+        { type: "filterHSV", hueShift: 8, saturation: 1.4, value: 1.0, blendMode: "replace", opacity: 1 },
+        { type: "filterLevels", blackPoint: 8, whitePoint: 235, gamma: 1.2, blendMode: "replace", opacity: 1 },
+        { type: "panelBay", rows: 4, cols: 2, inset: 0.14, frameWidth: 0.06, highlightPeak: 4, shadowPeak: 5, rimPeak: 5, rimTint: [2.5, 1.0, 0.1], interiorDarken: 5, surfaceMask: "wallFace", opacity: 0.65, blendMode: "add" },
+        { type: "wallLighting", power: 1.05, topDarken: 8, coolBias: 0.95, surfaceMask: "wall" },
     ]
 };
 
-const glitchMatrix = {
-    warp: { frequency: 0.003, amplitude: 5, octaves: 1, sampleOffset: [500, 500] },
-    palette: {
-        base: [10, 20, 15],
-        floorBase: [8, 18, 12],
-        wallBase: [12, 22, 18],
-        shadow: "#050a08",
-    },
+// Phantom station — cold violet-blue, ghostly circuit traces, deep recessed panels
+const phantomStation = {
+    warp: { frequency: 0.004, amplitude: 12, octaves: 2, sampleOffset: [1800, 700] },
+    palette: { base: [8, 6, 22], floorBase: [6, 5, 18], wallBase: [10, 8, 28], shadow: "#040312" },
     motifs: [
-        {
-            type: "circuitPanels", coordinateSpace: "warped", gridSize: 24, density: 0.4, cellVariation: 5, groutWidth: 0.05, groutPeak: -8, groutTint: [1, 1, 1], bevelWidth: 0.05, highlightPeak: 4, shadowPeak: -3, bevelTint: [1, 1, 1], rivetRadius: 0, rivetSpacing: 0, blendMode: "add", opacity: 1
-        },
-        {
-            type: "fractalCracks", frequency: 0.02, octaves: 4, threshold: 0.5, peak: 20, tint: [1, 1, 1], opacity: 1, blendMode: "difference"
-        },
-        {
-            type: "filterRGBAdjust", rMult: 0.5, gMult: 1.5, bMult: 0.8, rOffset: -10, gOffset: 20, bOffset: -5, blendMode: "replace", opacity: 1
-        }
+        { type: "baseMetal", structure: { frequency: 0.003, octaves: 2, rgbDelta: [1, 1, 3] }, grain: { frequency: 0.2, octaves: 1, amplitude: 1 } },
+        { type: "circuitPanels", coordinateSpace: "warped", gridSize: 20, density: 0.45, cellVariation: 3, groutWidth: 0.05, groutPeak: -12, groutTint: [1, 1, 1], bevelWidth: 0.05, highlightPeak: 7, shadowPeak: -5, bevelTint: [0.8, 0.9, 1.0], rivetRadius: 0.08, rivetSpacing: 0.14, rivetPeak: 6, rivetTint: [1.5, 1.8, 3.5], blendMode: "add", opacity: 0.9 },
+        { type: "circuitLattice", coordinateSpace: "warped", frequency: 0.022, octaves: 2, angle: 0.4, ridgeThreshold: 0.09, peak: 10, tint: [1.5, 1.8, 3.5], intersectionPeak: 16, intersectionTint: [2.0, 2.5, 4.5], opacity: 0.7, blendMode: "add" },
+        { type: "fractalCracks", frequency: 0.01, octaves: 4, threshold: 0.78, peak: 16, tint: [1.5, 2.0, 4.0], opacity: 0.75, blendMode: "screen" },
+        { type: "starburst", coordinateSpace: "warped", gridSize: 18, density: 0.3, radius: 20, spikes: 3, peak: 22, tint: [1.8, 2.2, 4.5], opacity: 0.6, blendMode: "add" },
+        { type: "filterHSV", hueShift: -10, saturation: 1.3, value: 1.0, blendMode: "replace", opacity: 1 },
+        { type: "filterLevels", blackPoint: 6, whitePoint: 245, gamma: 1.1, blendMode: "replace", opacity: 1 },
+        { type: "panelBay", rows: 6, cols: 2, inset: 0.18, frameWidth: 0.07, highlightPeak: 3, shadowPeak: 4, rimPeak: 5, rimTint: [1.2, 1.5, 3.5], interiorDarken: 6, surfaceMask: "wallFace", opacity: 0.6, blendMode: "add" },
+        { type: "wallLighting", power: 1.0, topDarken: 5, coolBias: 1.12, surfaceMask: "wall" },
     ]
 };
+
 
 /**
  * Procedural floor/wall texture profiles. Add motifs here to change the look;
@@ -225,9 +202,9 @@ const glitchMatrix = {
 export const floorProceduralProfiles = {
     spaceStation,
     techCorridor,
-    neonVaporwave,
-    abyssalForge,
-    glitchMatrix,
+    bioneural,
+    forgeHalls,
+    phantomStation,
     cleanserStation: spaceStation,
     startStation: spaceStation,
 
@@ -581,14 +558,16 @@ export const floorProceduralProfiles = {
     },
 };
 
-export const defaultFloorProceduralProfileId = "neonPulse";
+const startStation = "startStation";
+
+export const defaultFloorProceduralProfileId = startStation;
 
 /** Layer-0 / start node floor look (independent of generator strategy). */
-export const startFloorProceduralProfileId = "neonPulse";
+export const startFloorProceduralProfileId = startStation;
 
 /** Generator strategy name → floor profile id */
 export const floorProceduralProfileByStrategy = {
-    StartBuildingStrategy: "neonPulse",
+    StartBuildingStrategy: startStation,
     MazeStrategy: "cargoBay",
     Maze2Strategy: "cargoBay",
     DenseMazeStrategy: "cargoBay",
