@@ -68,7 +68,7 @@ export class InputManager {
             const screenY = e.clientY - rect.top;
             const worldCoords = fsm.context.viewport.screenToWorld(screenX, screenY);
             if (fsm.currentState && fsm.currentState.handlePointerMove) {
-                fsm.currentState.handlePointerMove(worldCoords, { x: screenX, y: screenY }, fsm.context);
+                fsm.currentState.handlePointerMove(worldCoords, { x: screenX, y: screenY }, e.buttons === 1, fsm.context);
             }
         });
 

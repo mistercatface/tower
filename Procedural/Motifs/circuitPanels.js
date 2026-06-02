@@ -32,14 +32,18 @@ export const circuitPanelsMotif = {
         // Distance to the cell boundary (0.0 at edge, 0.5 at center)
         const edgeDist = Math.min(u, 1 - u, v, 1 - v);
         
-        // 2. Panel density / hash to decide if this cell is rendered
+        // 2. Panel density / hash to decide if this cell is raised (active) or sunken (inactive)
         const h = hash2(col, row);
         const density = config.density ?? 1.0;
-        if (h > density) return;
+        const isActive = h <= density;
         
         // 3. Panel base fill variation
         const cellVariation = config.cellVariation ?? 4;
-        const delta = (h - 0.5) * cellVariation;
+        let delta = (h - 0.5) * cellVariation;
+        if (!isActive) {
+            // Sunken panels are darker
+            delta -= (config.sunkenDarken ?? 6);
+        }
         rgb.r = clampByte(rgb.r + delta);
         rgb.g = clampByte(rgb.g + delta);
         rgb.b = clampByte(rgb.b + delta);
@@ -62,7 +66,16 @@ export const circuitPanelsMotif = {
                 const t = (1.0 - distInBevel / bevelWidth);
                 // Highlight top-left, shadow bottom-right for a 3D bevel look
                 const isTopLeft = (u < 0.5 && u - groutWidth < bevelWidth && u < v) || (v < 0.5 && v - groutWidth < bevelWidth && v < u);
-                const peak = isTopLeft ? (config.highlightPeak ?? 8) : (config.shadowPeak ?? -6);
+                
+                let peak = 0;
+                if (isActive) {
+                    // Raised/outset panel: top-left is highlight, bottom-right is shadow
+                    peak = isTopLeft ? (config.highlightPeak ?? 8) : (config.shadowPeak ?? -6);
+                } else {
+                    // Sunken/inset panel: top-left is shadow, bottom-right is highlight
+                    peak = isTopLeft ? (config.sunkenShadowPeak ?? -5) : (config.sunkenHighlightPeak ?? 4);
+                }
+                
                 const tint = config.bevelTint ?? [1, 1, 1];
                 rgb.r = clampByte(rgb.r + t * peak * tint[0]);
                 rgb.g = clampByte(rgb.g + t * peak * tint[1]);
@@ -70,25 +83,27 @@ export const circuitPanelsMotif = {
             }
         }
         
-        // 5. Optional rivet/nodes in the corners of each panel
-        const rivetRadius = config.rivetRadius ?? 0.12; // relative to cell size
-        const rivetSpacing = config.rivetSpacing ?? 0.18; // inset from corners
-        const nearLeft = Math.abs(u - rivetSpacing) < rivetRadius;
-        const nearRight = Math.abs(u - (1 - rivetSpacing)) < rivetRadius;
-        const nearTop = Math.abs(v - rivetSpacing) < rivetRadius;
-        const nearBottom = Math.abs(v - (1 - rivetSpacing)) < rivetRadius;
-        
-        if ((nearLeft || nearRight) && (nearTop || nearBottom)) {
-            // Find coordinate distance to closest corner node center
-            const cu = u < 0.5 ? rivetSpacing : 1 - rivetSpacing;
-            const cv = v < 0.5 ? rivetSpacing : 1 - rivetSpacing;
-            const rDist = Math.hypot(u - cu, v - cv);
-            if (rDist < rivetRadius) {
-                const t = (1.0 - rDist / rivetRadius) * (config.rivetPeak ?? 6);
-                const tint = config.rivetTint ?? [1.5, 1.5, 2.0]; // glowing blue/teal rivets
-                rgb.r = clampByte(rgb.r + t * tint[0]);
-                rgb.g = clampByte(rgb.g + t * tint[1]);
-                rgb.b = clampByte(rgb.b + t * tint[2]);
+        // 5. Optional rivet/nodes in the corners of each raised (active) panel
+        if (isActive) {
+            const rivetRadius = config.rivetRadius ?? 0.12; // relative to cell size
+            const rivetSpacing = config.rivetSpacing ?? 0.18; // inset from corners
+            const nearLeft = Math.abs(u - rivetSpacing) < rivetRadius;
+            const nearRight = Math.abs(u - (1 - rivetSpacing)) < rivetRadius;
+            const nearTop = Math.abs(v - rivetSpacing) < rivetRadius;
+            const nearBottom = Math.abs(v - (1 - rivetSpacing)) < rivetRadius;
+            
+            if ((nearLeft || nearRight) && (nearTop || nearBottom)) {
+                // Find coordinate distance to closest corner node center
+                const cu = u < 0.5 ? rivetSpacing : 1 - rivetSpacing;
+                const cv = v < 0.5 ? rivetSpacing : 1 - rivetSpacing;
+                const rDist = Math.hypot(u - cu, v - cv);
+                if (rDist < rivetRadius) {
+                    const t = (1.0 - rDist / rivetRadius) * (config.rivetPeak ?? 6);
+                    const tint = config.rivetTint ?? [1.5, 1.5, 2.0]; // glowing blue/teal rivets
+                    rgb.r = clampByte(rgb.r + t * tint[0]);
+                    rgb.g = clampByte(rgb.g + t * tint[1]);
+                    rgb.b = clampByte(rgb.b + t * tint[2]);
+                }
             }
         }
     }

@@ -316,6 +316,23 @@ export class CombatState {
             }
         }
     }
+
+    handlePointerMove(worldCoords, screenCoords, isPrimaryDown, ctx) {
+        if (!isPrimaryDown) return;
+        if (ctx.state.mapTargetNodeId != null) return;
+        if (propInspector.isOpen()) return;
+        if (ctx.state.player.currentState && ctx.state.player.currentState.blocksInput) return;
+        if (ctx.state.abilities["Shoot"]) return;
+
+        if (!ctx.state.player.canReposition(ctx.state)) return;
+
+        const target = resolveRepositionTarget(ctx.state.obstacleGrid, worldCoords.x, worldCoords.y, ctx.state.player.radius);
+        if (!target) return;
+
+        const targetCell = target.col != null ? { col: target.col, row: target.row } : null;
+        ctx.state.player.setTarget(target.x, target.y, ctx.state, targetCell);
+        ctx.state.navigation.rebuildPlayerFlowField(target.x, target.y);
+    }
 }
 
 export class InspectorState {
@@ -415,6 +432,21 @@ export class InspectorState {
                     });
             }
         }
+    }
+
+    handlePointerMove(worldCoords, screenCoords, isPrimaryDown, ctx) {
+        if (!isPrimaryDown) return;
+        if (propInspector.isOpen()) return;
+        if (ctx.state.player.currentState?.blocksInput) return;
+
+        if (!ctx.state.player.canReposition(ctx.state)) return;
+
+        const target = resolveRepositionTarget(ctx.state.obstacleGrid, worldCoords.x, worldCoords.y, ctx.state.player.radius);
+        if (!target) return;
+
+        const targetCell = target.col != null ? { col: target.col, row: target.row } : null;
+        ctx.state.player.setTarget(target.x, target.y, ctx.state, targetCell);
+        ctx.state.navigation.rebuildPlayerFlowField(target.x, target.y);
     }
 }
 

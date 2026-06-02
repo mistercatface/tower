@@ -517,14 +517,14 @@ export const floorProceduralProfiles = {
     },
 };
 
-export const defaultFloorProceduralProfileId = "tetris";
+export const defaultFloorProceduralProfileId = "neonPulse";
 
 /** Layer-0 / start node floor look (independent of generator strategy). */
-export const startFloorProceduralProfileId = "tetris";
+export const startFloorProceduralProfileId = "neonPulse";
 
 /** Generator strategy name → floor profile id */
 export const floorProceduralProfileByStrategy = {
-    StartBuildingStrategy: "tetris",
+    StartBuildingStrategy: "neonPulse",
     MazeStrategy: "cargoBay",
     Maze2Strategy: "cargoBay",
     DenseMazeStrategy: "cargoBay",
