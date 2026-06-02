@@ -173,22 +173,32 @@ export class FloorTileSystem {
         const profileId = getFloorTextureProfileId(state);
         const profile = getFloorProceduralProfile(profileId);
 
+        const chunksToDraw = [];
         for (let chunkRow = range.minChunkRow; chunkRow <= range.maxChunkRow; chunkRow++) {
             for (let chunkCol = range.minChunkCol; chunkCol <= range.maxChunkCol; chunkCol++) {
-                const canvases = this.getChunkCanvas(chunkCol, chunkRow, state);
-                let canvas = canvases[0];
-                if (canvas.isPlaceholder) continue;
-
-                if (profile.animation && canvases.length > 1) {
-                    const frames = canvases.length;
-                    const duration = profile.animation.durationMs ?? 1000;
-                    const clock = state.gameTime ?? 0;
-                    const currentFrame = Math.floor(((clock % duration) / duration) * frames);
-                    canvas = canvases[Math.min(frames - 1, Math.max(0, currentFrame))];
-                }
                 const origin = chunkToWorldOrigin(chunkCol, chunkRow, obstacleGrid.minX, obstacleGrid.minY, chunkSizePx);
-                drawBakedTexture(ctx, canvas, origin.x, origin.y, chunkSizePx, chunkSizePx);
+                const centerX = origin.x + chunkSizePx / 2;
+                const centerY = origin.y + chunkSizePx / 2;
+                const distSq = (centerX - viewport.x) ** 2 + (centerY - viewport.y) ** 2;
+                chunksToDraw.push({ chunkCol, chunkRow, origin, distSq });
             }
+        }
+
+        chunksToDraw.sort((a, b) => a.distSq - b.distSq);
+
+        for (const chunk of chunksToDraw) {
+            const canvases = this.getChunkCanvas(chunk.chunkCol, chunk.chunkRow, state);
+            let canvas = canvases[0];
+            if (canvas.isPlaceholder) continue;
+
+            if (profile.animation && canvases.length > 1) {
+                const frames = canvases.length;
+                const duration = profile.animation.durationMs ?? 1000;
+                const clock = state.gameTime ?? 0;
+                const currentFrame = Math.floor(((clock % duration) / duration) * frames);
+                canvas = canvases[Math.min(frames - 1, Math.max(0, currentFrame))];
+            }
+            drawBakedTexture(ctx, canvas, chunk.origin.x, chunk.origin.y, chunkSizePx, chunkSizePx);
         }
     }
 }
