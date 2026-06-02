@@ -1,3 +1,5 @@
+import { listShippedFloorProfileIds, getFloorProceduralProfile } from "../../Config/floorProceduralConfig.js";
+
 const workers = [];
 const workerBusy = [];
 const jobQueue = [];
@@ -6,6 +8,7 @@ const inFlightByKey = new Map();
 let nextReqId = 1;
 /** Bakes wait on this chain so runtime profiles reach workers before paint jobs run. */
 let workerReady = Promise.resolve();
+const registeredRuntimeProfileIds = new Set();
 
 function whenWorkersReady(run) {
     return Promise.resolve(workerReady).then(run);
@@ -104,6 +107,16 @@ function broadcastRequest(type, payload) {
 
 export const TileWorkerCoordinator = {
     requestFloorChunkBake(payload, priority = Infinity) {
+        const profileId = payload.profileId;
+        if (profileId && !listShippedFloorProfileIds().includes(profileId) && !registeredRuntimeProfileIds.has(profileId)) {
+            try {
+                const profile = getFloorProceduralProfile(profileId);
+                this.registerRuntimeProfile(profileId, profile);
+            } catch (err) {
+                console.warn(`TileWorkerCoordinator: custom profile not found/registered for ${profileId}`, err);
+            }
+        }
+
         const dedupeKey = chunkDedupeKey(payload);
         if (inFlightByKey.has(dedupeKey)) {
             return inFlightByKey.get(dedupeKey);
@@ -122,6 +135,7 @@ export const TileWorkerCoordinator = {
 
     registerRuntimeProfile(profileId, profile) {
         getWorkerPool();
+        registeredRuntimeProfileIds.add(profileId);
         workerReady = workerReady.then(() => broadcastRequest("registerRuntimeProfile", { profileId, profile }));
         return workerReady;
     },
