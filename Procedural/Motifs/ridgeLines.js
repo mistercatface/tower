@@ -11,7 +11,7 @@ function sampleCoords(sample, coordinateSpace) {
 export const ridgeLinesMotif = {
     apply(sample, rgb, config) {
         const { x, y } = sampleCoords(sample, config.coordinateSpace);
-        const [offsetX, offsetY] = config.offset;
+        const [offsetX, offsetY] = config.offset ?? [0, 0];
         let value = noise2D(
             (x + offsetX) * config.frequency,
             (y + offsetY) * config.frequency,

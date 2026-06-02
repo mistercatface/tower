@@ -270,6 +270,101 @@ export const floorProceduralProfiles = {
             },
         ],
     },
+
+    cyberWeave: {
+        warp: { frequency: 0.008, amplitude: 6, octaves: 2, sampleOffset: [120, 340] },
+        palette: {
+            base: [15, 18, 22],
+            shadow: combatVisualSettings.floorShadow,
+        },
+        motifs: [
+            {
+                type: "celticWeave", coordinateSpace: "warped",
+                gridSize: 32, pipeWidth: 5, peak: 12, tint: [0.1, 0.8, 1.2], opacity: 0.85
+            },
+            {
+                type: "circuitTraces", coordinateSpace: "warped",
+                gridSize: 16, lineWidth: 1.5, density: 0.6, diagDensity: 0.2, peak: 10, tint: [1.2, 0.3, 0.8], opacity: 0.7
+            }
+        ]
+    },
+
+    alienHive: {
+        warp: { frequency: 0.004, amplitude: 18, octaves: 3, sampleOffset: [800, 100] },
+        palette: {
+            base: [12, 10, 14],
+            shadow: combatVisualSettings.floorShadow,
+        },
+        motifs: [
+            {
+                type: "topoContours", coordinateSpace: "warped",
+                frequency: 0.012, bands: 14, thickness: 0.15, peak: 8, tint: [0.4, 0.9, 0.2], opacity: 0.9
+            },
+            {
+                type: "concentricRings", coordinateSpace: "warped",
+                frequency: 0.02, ringWidth: 0.1, peak: 10, tint: [0.8, 0.1, 0.5], opacity: 0.6
+            }
+        ]
+    },
+
+    holoDeck: {
+        warp: { frequency: 0.001, amplitude: 2, octaves: 1, sampleOffset: [0, 0] },
+        palette: {
+            base: [5, 5, 8],
+            shadow: combatVisualSettings.floorShadow,
+        },
+        motifs: [
+            {
+                type: "circuitTraces", coordinateSpace: "warped",
+                gridSize: 32, lineWidth: 2, density: 0.8, diagDensity: 0.4, peak: 14, tint: [0.2, 1.5, 1.5], opacity: 0.9
+            },
+            {
+                type: "topoContours", coordinateSpace: "eval",
+                frequency: 0.005, bands: 8, thickness: 0.05, peak: 6, tint: [1.2, 0.2, 1.2], opacity: 0.5
+            }
+        ]
+    },
+
+    plasmaCore: {
+        warp: { frequency: 0.006, amplitude: 24, octaves: 2, sampleOffset: [500, 500] },
+        palette: {
+            base: [8, 12, 24],
+            shadow: combatVisualSettings.floorShadow,
+        },
+        motifs: [
+            {
+                type: "starburst", coordinateSpace: "warped",
+                gridSize: 64, density: 0.4, radius: 48, spikes: 12, peak: 18, tint: [0.5, 1.2, 2.0], opacity: 0.95
+            },
+            {
+                type: "circuitLattice", coordinateSpace: "warped",
+                frequency: 0.02, octaves: 2, angle: 0.5, ridgeThreshold: 0.1, peak: 8, tint: [0.2, 0.5, 1.5], opacity: 0.4
+            }
+        ]
+    },
+
+    ancientRuins: {
+        warp: { frequency: 0.002, amplitude: 5, octaves: 2, sampleOffset: [200, 900] },
+        palette: {
+            base: [30, 26, 22],
+            shadow: combatVisualSettings.floorShadow,
+        },
+        motifs: [
+            {
+                type: "baseMetal",
+                structure: { frequency: 0.005, octaves: 2, rgbDelta: [4, 3, 2] },
+                grain: { frequency: 0.5, octaves: 1, amplitude: 2 }
+            },
+            {
+                type: "hexGrid",
+                cellWorldSize: 24, groutWidth: 0.1, groutPeak: 12, groutTint: [-4, -3, -2], cellVariation: 3, opacity: 0.8, blendMode: "multiply"
+            },
+            {
+                type: "celticWeave", coordinateSpace: "warped",
+                gridSize: 48, pipeWidth: 6, peak: 5, tint: [0.4, 0.3, 0.2], opacity: 0.5
+            }
+        ]
+    },
 };
 
 export const defaultFloorProceduralProfileId = "techCorridor";

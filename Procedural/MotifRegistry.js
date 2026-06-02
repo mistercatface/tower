@@ -13,6 +13,9 @@ import { wallHorizontalBevelMotif } from "./Motifs/wallHorizontalBevel.js";
 import { panelBayMotif } from "./Motifs/panelBay.js";
 import { concentricRingsMotif } from "./Motifs/concentricRings.js";
 import { circuitTracesMotif } from "./Motifs/circuitTraces.js";
+import { celticWeaveMotif } from "./Motifs/celticWeave.js";
+import { topoContoursMotif } from "./Motifs/topoContours.js";
+import { starburstMotif } from "./Motifs/starburst.js";
 
 const MOTIF_BY_TYPE = {
     baseMetal: baseMetalMotif,
@@ -30,6 +33,9 @@ const MOTIF_BY_TYPE = {
     panelBay: panelBayMotif,
     concentricRings: concentricRingsMotif,
     circuitTraces: circuitTracesMotif,
+    celticWeave: celticWeaveMotif,
+    topoContours: topoContoursMotif,
+    starburst: starburstMotif,
 };
 
 export function getMotif(type) {
@@ -39,4 +45,5 @@ export function getMotif(type) {
     }
     return motif;
 }
+
 

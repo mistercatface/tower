@@ -24,7 +24,7 @@ function applyTint(rgb, intensity, tint) {
 export const circuitLatticeMotif = {
     apply(sample, rgb, config) {
         const { x, y } = sampleCoords(sample, config.coordinateSpace);
-        const [offsetX, offsetY] = config.offset;
+        const [offsetX, offsetY] = config.offset ?? [0, 0];
         const freq = config.frequency;
         const octaves = config.octaves;
         const angle = config.angle ?? 0;
