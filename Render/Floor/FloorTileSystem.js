@@ -41,7 +41,7 @@ export class FloorTileSystem {
             return this._tileTexture;
         }
         this._tileTextureSeed = seed;
-        this._tileTexture = bakeFloorTileTextureCanvas(seed, state.obstacleGrid?.cellSize);
+        this._tileTexture = bakeFloorTileTextureCanvas(seed, state.obstacleGrid?.cellSize, state.hierarchicalNavigator);
         return this._tileTexture;
     }
 
@@ -52,7 +52,7 @@ export class FloorTileSystem {
         let canvas = this.cellCache.get(key);
         if (canvas) return canvas;
 
-        canvas = bakeFloorCellCanvas(x, y, obstacleGrid, state.floorTileSeed ?? 0);
+        canvas = bakeFloorCellCanvas(x, y, obstacleGrid, state.floorTileSeed ?? 0, state.hierarchicalNavigator);
         this.cellCache.set(key, canvas);
         return canvas;
     }
@@ -60,7 +60,7 @@ export class FloorTileSystem {
     drawWallCell(ctx, worldX, worldY, storyRow, state) {
         const obstacleGrid = state.obstacleGrid;
         const { x, y } = snapWorldToCellOrigin(worldX, worldY, obstacleGrid.minX, obstacleGrid.minY, obstacleGrid.cellSize);
-        drawWallCell(ctx, x, y, storyRow, obstacleGrid, state.floorTileSeed ?? 0);
+        drawWallCell(ctx, x, y, storyRow, obstacleGrid, state.floorTileSeed ?? 0, state.hierarchicalNavigator);
     }
 
     getChunkCanvas(chunkCol, chunkRow, state) {
@@ -68,7 +68,7 @@ export class FloorTileSystem {
         let canvas = this.cache.get(key);
         if (canvas) return canvas;
 
-        canvas = bakeFloorChunkCanvas({ chunkCol, chunkRow, obstacleGrid: state.obstacleGrid, seed: state.floorTileSeed ?? 0 });
+        canvas = bakeFloorChunkCanvas({ chunkCol, chunkRow, obstacleGrid: state.obstacleGrid, seed: state.floorTileSeed ?? 0, hnav: state.hierarchicalNavigator });
         this.cache.set(key, canvas);
         return canvas;
     }

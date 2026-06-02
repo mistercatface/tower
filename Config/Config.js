@@ -345,6 +345,15 @@ export const floorTileSettings = {
 
 export const combatVisualSettings = { floorHighlight: "#2c3340", floorFill: "#1c2129", floorShadow: "#12161c", gridStroke: "rgba(90, 105, 125, 0.2)" };
 
+export const voronoiFloorSettings = {
+    warpAmplitude: 10.0,
+    warpFrequency: 0.005,
+    biomeFrequency: 0.002,
+    stoneNoiseFreq: 0.15,
+    seamWidth: 1.5,
+};
+
+
 /** Classic circle + turret HUD (H cycles modes). */
 export const COMBAT_HUD_MODE = {
     OFF: 0,
