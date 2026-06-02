@@ -20,7 +20,8 @@ import {
     bindToolbarControls,
 } from "./LabToolbar.js";
 import { ensureLabWorld, getLabWorld, resetLabWorld } from "./LabWorldSession.js";
-import { initProfileEditor } from "./profile/ProfileEditor.js";
+import { initProfileEditor, RUNTIME_LAB_PROFILE_ID } from "./profile/ProfileEditor.js";
+import { getFloorProceduralProfile } from "../../Config/floorProceduralConfig.js";
 import {
     renderTileInspectPreviews,
     downloadInspectExport,
@@ -66,9 +67,29 @@ bindToolbarControls({
 });
 initToolbarDefaults();
 
+let lastRafTime = 0;
+function appLoop(timestamp) {
+    if (lastRafTime === 0) lastRafTime = timestamp;
+    const dt = timestamp - lastRafTime;
+    lastRafTime = timestamp;
+
+    const profile = getFloorProceduralProfile(RUNTIME_LAB_PROFILE_ID);
+    if (profile && profile.animation) {
+        const world = getLabWorld();
+        if (world) {
+            world.gameTime = (world.gameTime || 0) + dt;
+            renderMapPreview(readControls(), world);
+        }
+    }
+    
+    requestAnimationFrame(appLoop);
+}
+
 requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
+    requestAnimationFrame((timestamp) => {
+        lastRafTime = timestamp;
         renderAll();
         syncCombatZoomToStage(getLabWorld());
+        requestAnimationFrame(appLoop);
     });
 });

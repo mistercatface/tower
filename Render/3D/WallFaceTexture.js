@@ -197,7 +197,7 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHei
     if (profile.animation && flatCanvases.length > 1) {
         const frames = flatCanvases.length;
         const duration = profile.animation.durationMs ?? 1000;
-        const clock = state.gameClock ?? 0;
+        const clock = state.gameTime ?? 0;
         const currentFrame = Math.floor((clock % duration) / duration * frames);
         flatCanvas = flatCanvases[Math.min(frames - 1, Math.max(0, currentFrame))];
     }

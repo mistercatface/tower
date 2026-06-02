@@ -83,7 +83,10 @@ function loop(timestamp) {
     dt = Math.min(dt, 50);
     if (state.player.health > 0) {
         state.scheduler.update(dt);
-        if (!state.isPaused) fsm.update(dt * state.selectedSpeed);
+        if (!state.isPaused) {
+            state.gameTime += dt * state.selectedSpeed;
+            fsm.update(dt * state.selectedSpeed);
+        }
         fsm.render();
         requestUiHudUpdate();
         if (didPlayerStateChange()) requestUiUpdate();

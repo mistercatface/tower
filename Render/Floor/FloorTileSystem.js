@@ -149,7 +149,7 @@ export class FloorTileSystem {
                 if (profile.animation && canvases.length > 1) {
                     const frames = canvases.length;
                     const duration = profile.animation.durationMs ?? 1000;
-                    const clock = state.gameClock ?? 0;
+                    const clock = state.gameTime ?? 0;
                     const currentFrame = Math.floor((clock % duration) / duration * frames);
                     canvas = canvases[Math.min(frames - 1, Math.max(0, currentFrame))];
                 }

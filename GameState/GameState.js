@@ -99,6 +99,7 @@ export class GameState {
         this.scheduler.clear();
         this.waveManager.reset();
         this.lastTime = 0;
+        this.gameTime = 0;
         this.score = 0;
         this.xp = 0;
         this.level = 0;
