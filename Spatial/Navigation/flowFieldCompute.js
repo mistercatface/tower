@@ -2,6 +2,7 @@ import { OCTILE_OFFSETS } from "../Grid/GridUtils.js";
 import { worldToGridCentered } from "../Geometry/GridCoords.js";
 
 export const FLOW_FIELD_UNREACHABLE = 999999;
+export const FLOW_FIELD_NEIGHBOR_STRIDE = 8;
 
 /**
  * @param {Uint8Array} localGrid
@@ -28,10 +29,53 @@ export function syncLocalObstacles(localGrid, layout, obstacleGrid) {
     }
 }
 
+export function createNeighborBuffers(cols, rows) {
+    const size = cols * rows;
+    return {
+        neighborGrid: new Int32Array(size * FLOW_FIELD_NEIGHBOR_STRIDE).fill(-1),
+        neighborCost: new Float32Array(size * FLOW_FIELD_NEIGHBOR_STRIDE),
+    };
+}
+
+/** Eight fixed slots per cell (OCTILE_OFFSETS order); unused slots are -1. */
+export function buildNeighborGrid(gridData, cols, rows, neighborGrid, neighborCost) {
+    for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+            const idx = row * cols + col;
+            const base = idx << 3;
+
+            for (let i = 0; i < FLOW_FIELD_NEIGHBOR_STRIDE; i++) {
+                const { dc, dr, cost } = OCTILE_OFFSETS[i];
+                const nc = col + dc;
+                const nr = row + dr;
+                let nIdx = -1;
+
+                if (nc >= 0 && nc < cols && nr >= 0 && nr < rows) {
+                    nIdx = nr * cols + nc;
+                    if (gridData[nIdx] === 1) {
+                        nIdx = -1;
+                    } else if (dc !== 0 && dr !== 0) {
+                        const check1 = gridData[row * cols + nc];
+                        const check2 = gridData[nr * cols + col];
+                        if (check1 === 1 || check2 === 1) {
+                            nIdx = -1;
+                        }
+                    }
+                } else {
+                    nIdx = -1;
+                }
+
+                neighborGrid[base + i] = nIdx;
+                neighborCost[base + i] = nIdx === -1 ? 0 : cost;
+            }
+        }
+    }
+}
+
 /**
  * @param {object} layout - { cols, rows, cellSize, centerX, centerY, offsetX, offsetY }
  */
-export function buildFlowFieldTarget(px, py, targetFieldX, targetFieldY, targetFieldDist, gridData, layout) {
+export function buildFlowFieldTarget(px, py, targetFieldX, targetFieldY, targetFieldDist, neighborGrid, neighborCost, layout) {
     targetFieldDist.fill(FLOW_FIELD_UNREACHABLE);
     const { cols, rows, cellSize, centerX, centerY, offsetX, offsetY } = layout;
 
@@ -48,33 +92,20 @@ export function buildFlowFieldTarget(px, py, targetFieldX, targetFieldY, targetF
 
     while (head < queue.length) {
         const currIdx = queue[head++];
-        const currCol = currIdx % cols;
-        const currRow = (currIdx / cols) | 0;
         const currDist = targetFieldDist[currIdx];
+        const base = currIdx << 3;
 
-        for (const { dc, dr, cost } of OCTILE_OFFSETS) {
-            const nc = currCol + dc;
-            const nr = currRow + dr;
+        for (let i = 0; i < FLOW_FIELD_NEIGHBOR_STRIDE; i++) {
+            const nIdx = neighborGrid[base + i];
+            if (nIdx === -1) continue;
 
-            if (nc >= 0 && nc < cols && nr >= 0 && nr < rows) {
-                const nIdx = nr * cols + nc;
-                if (gridData[nIdx] === 1) continue;
-
-                if (dc !== 0 && dr !== 0) {
-                    const check1 = gridData[currRow * cols + nc];
-                    const check2 = gridData[nr * cols + currCol];
-                    if (check1 === 1 || check2 === 1) {
-                        continue;
-                    }
-                }
-
-                const dist = currDist + cost;
-                if (dist < targetFieldDist[nIdx]) {
-                    targetFieldX[nIdx] = -dc / cost;
-                    targetFieldY[nIdx] = -dr / cost;
-                    targetFieldDist[nIdx] = dist;
-                    queue.push(nIdx);
-                }
+            const dist = currDist + neighborCost[base + i];
+            if (dist < targetFieldDist[nIdx]) {
+                const { dc, dr, cost } = OCTILE_OFFSETS[i];
+                targetFieldX[nIdx] = -dc / cost;
+                targetFieldY[nIdx] = -dr / cost;
+                targetFieldDist[nIdx] = dist;
+                queue.push(nIdx);
             }
         }
     }

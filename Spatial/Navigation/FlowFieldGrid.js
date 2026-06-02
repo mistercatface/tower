@@ -1,5 +1,12 @@
 import { worldToGridCentered, gridToWorldCentered, getCellBoundsCentered } from "../Geometry/GridCoords.js";
-import { FLOW_FIELD_UNREACHABLE, syncLocalObstacles, buildFlowFieldTarget, getFlowFieldLayout } from "./flowFieldCompute.js";
+import {
+    FLOW_FIELD_UNREACHABLE,
+    syncLocalObstacles,
+    buildFlowFieldTarget,
+    getFlowFieldLayout,
+    createNeighborBuffers,
+    buildNeighborGrid,
+} from "./flowFieldCompute.js";
 
 export class FlowFieldGrid {
     constructor(cellSize, width, height, obstacleGrid) {
@@ -12,6 +19,10 @@ export class FlowFieldGrid {
         const size = this.cols * this.rows;
 
         this.grid = new Uint8Array(size);
+        const { neighborGrid, neighborCost } = createNeighborBuffers(this.cols, this.rows);
+        this.neighborGrid = neighborGrid;
+        this.neighborCost = neighborCost;
+        buildNeighborGrid(this.grid, this.cols, this.rows, this.neighborGrid, this.neighborCost);
 
         this.flowFieldX = new Float32Array(size);
         this.flowFieldY = new Float32Array(size);
@@ -44,14 +55,29 @@ export class FlowFieldGrid {
 
     syncLocalObstacles() {
         syncLocalObstacles(this.grid, getFlowFieldLayout(this), this.obstacleGrid);
+        this.rebuildNeighborGrid();
+    }
+
+    rebuildNeighborGrid() {
+        buildNeighborGrid(this.grid, this.cols, this.rows, this.neighborGrid, this.neighborCost);
     }
 
     buildFlowField(px, py) {
-        buildFlowFieldTarget(px, py, this.flowFieldX, this.flowFieldY, this.flowFieldDist, this.grid, getFlowFieldLayout(this));
+        buildFlowFieldTarget(
+            px, py,
+            this.flowFieldX, this.flowFieldY, this.flowFieldDist,
+            this.neighborGrid, this.neighborCost,
+            getFlowFieldLayout(this),
+        );
     }
 
     buildPlayerFlowField(px, py) {
-        buildFlowFieldTarget(px, py, this.playerFlowFieldX, this.playerFlowFieldY, this.playerFlowFieldDist, this.grid, getFlowFieldLayout(this));
+        buildFlowFieldTarget(
+            px, py,
+            this.playerFlowFieldX, this.playerFlowFieldY, this.playerFlowFieldDist,
+            this.neighborGrid, this.neighborCost,
+            getFlowFieldLayout(this),
+        );
     }
 
     clearFlowFields() {
@@ -61,6 +87,7 @@ export class FlowFieldGrid {
 
     clear() {
         this.grid.fill(0);
+        this.rebuildNeighborGrid();
         this.clearFlowFields();
     }
 
