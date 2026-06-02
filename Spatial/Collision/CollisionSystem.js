@@ -141,10 +141,9 @@ export class CollisionSystem {
                 this.resolvePushablePair(p1, p2);
             });
 
-            for (let i = 0; i < state.pickups.length; i++) {
-                const pickup = state.pickups[i];
-                if (pickup.isDead || !pickup.strategy?.isPushable) continue;
-                if (pickup.isSleeping || !pickup.needsWallCollision()) continue;
+            for (let i = 0; i < spatialFrame._pushables.length; i++) {
+                const pickup = spatialFrame._pushables[i];
+                if (pickup.isDead || !pickup.needsWallCollision()) continue;
                 PhysicsSystem.resolveWallCollisions(pickup, spatialFrame, state);
             }
         }

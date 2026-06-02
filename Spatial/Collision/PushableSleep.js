@@ -46,10 +46,10 @@ export function hasBlockingOverlap(pickup, spatialFrame) {
 
 /** Call once per frame after pickup physics and collision (same spatialFrame). */
 export function tickAllPushableSleep(state, spatialFrame) {
-    if (!state?.pickups) return;
-    for (let i = 0; i < state.pickups.length; i++) {
-        const pickup = state.pickups[i];
-        if (!pickup.strategy?.isPushable || pickup.isDead || pickup.isSleeping) continue;
+    const pushables = spatialFrame._pushables;
+    for (let i = 0; i < pushables.length; i++) {
+        const pickup = pushables[i];
+        if (pickup.isDead) continue;
         const eligible = canSleepPushable(pickup) && !hasBlockingOverlap(pickup, spatialFrame);
         pickup.tickSleep(eligible);
     }
