@@ -339,7 +339,7 @@ export const floorTileSettings = {
      */
     wallVisualHeight: null,
     /** Fixed vertical tile count for wall textures (camera-independent). */
-    wallTextureStories: 8,
+    wallTextureStories: 6,
     /** Overlap when affine-mapping wall cells (hides triangle seam). */
     wallTextureBleedPx: 1,
     maxCachedWallCells: 8192,

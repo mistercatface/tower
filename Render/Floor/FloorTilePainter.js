@@ -4,6 +4,30 @@ import { createPaintContext, composeFloorImage } from "../../Procedural/FloorTex
 import { createWallFaceAxes, mapPixelToEval } from "./SurfaceCoordinateMapper.js";
 import { bakePixelsForWorldSpan, drawBakedTexture, getTexturePixelsPerWorldUnit } from "./floorTextureResolution.js";
 
+class TileMemoryPool {
+    constructor() {
+        this.buffers = new Map();
+    }
+    getSamples(numPixels) {
+        if (!this.buffers.has(numPixels)) this.buffers.set(numPixels, []);
+        const pool = this.buffers.get(numPixels);
+        if (pool.length > 0) return pool.pop();
+        return {
+            evalX: new Float32Array(numPixels),
+            evalY: new Float32Array(numPixels),
+            lookupX: new Float32Array(numPixels),
+            lookupY: new Float32Array(numPixels),
+            wallU: new Float32Array(numPixels),
+            wallV: new Float32Array(numPixels)
+        };
+    }
+    release(samples, numPixels) {
+        const pool = this.buffers.get(numPixels);
+        if (pool) pool.push(samples);
+    }
+}
+const memoryPool = new TileMemoryPool();
+
 export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, seed, options = {}, profileId) {
     const profile = getFloorProceduralProfile(profileId ?? defaultFloorProceduralProfileId);
     const paintContext = createPaintContext(profile, seed);
@@ -32,15 +56,16 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, see
     const data = imgData.data;
 
     const numPixels = width * height;
+    const pooled = memoryPool.getSamples(numPixels);
     const samples = {
         width,
         height,
-        evalX: new Float32Array(numPixels),
-        evalY: new Float32Array(numPixels),
-        lookupX: new Float32Array(numPixels),
-        lookupY: new Float32Array(numPixels),
-        wallU: new Float32Array(numPixels),
-        wallV: new Float32Array(numPixels),
+        evalX: pooled.evalX,
+        evalY: pooled.evalY,
+        lookupX: pooled.lookupX,
+        lookupY: pooled.lookupY,
+        wallU: pooled.wallU,
+        wallV: pooled.wallV,
         isWall,
         surfaceKind,
     };
@@ -74,6 +99,7 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, see
     }
 
     ctx.putImageData(imgData, 0, 0);
+    memoryPool.release(pooled, numPixels);
 }
 
 export function bakeFloorCellCanvas(worldX, worldY, seed, profileId) {

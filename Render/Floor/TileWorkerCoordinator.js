@@ -1,11 +1,16 @@
-let worker = null;
+const workers = [];
+let nextWorkerIdx = 0;
 let nextReqId = 1;
 const pending = new Map();
 
-function getWorker() {
-    if (!worker) {
-        worker = new Worker(new URL("./TileWorker.js", import.meta.url), { type: "module" });
-        worker.onmessage = (e) => {
+function getWorkerPool() {
+    if (workers.length === 0) {
+        let poolSize = 4;
+        if (typeof navigator !== "undefined" && navigator.hardwareConcurrency) {
+            poolSize = Math.max(2, Math.min(16, Math.floor(navigator.hardwareConcurrency * 0.75)));
+        }
+
+        const handleMessage = (e) => {
             const { id, bitmaps, error } = e.data;
             if (pending.has(id)) {
                 const { resolve, reject } = pending.get(id);
@@ -20,16 +25,37 @@ function getWorker() {
                 }
             }
         };
+
+        for (let i = 0; i < poolSize; i++) {
+            const w = new Worker(new URL("./TileWorker.js", import.meta.url), { type: "module" });
+            w.onmessage = handleMessage;
+            workers.push(w);
+        }
     }
-    return worker;
+    return workers;
 }
 
 function sendRequest(type, payload) {
     const id = nextReqId++;
     return new Promise((resolve, reject) => {
         pending.set(id, { resolve, reject });
-        getWorker().postMessage({ id, type, payload });
+        const pool = getWorkerPool();
+        const w = pool[nextWorkerIdx];
+        nextWorkerIdx = (nextWorkerIdx + 1) % pool.length;
+        w.postMessage({ id, type, payload });
     });
+}
+
+function broadcastRequest(type, payload) {
+    const pool = getWorkerPool();
+    const promises = pool.map(w => {
+        const id = nextReqId++;
+        return new Promise((resolve, reject) => {
+            pending.set(id, { resolve, reject });
+            w.postMessage({ id, type, payload });
+        });
+    });
+    return Promise.all(promises);
 }
 
 export const TileWorkerCoordinator = {
@@ -62,6 +88,6 @@ export const TileWorkerCoordinator = {
     },
 
     registerRuntimeProfile(profileId, profile) {
-        return sendRequest("registerRuntimeProfile", { profileId, profile });
+        return broadcastRequest("registerRuntimeProfile", { profileId, profile });
     },
 };
