@@ -25,9 +25,17 @@ class LRUCache {
         }
         this.cache.set(key, val);
     }
+    clear() {
+        this.cache.clear();
+    }
 }
 
 const flatWallCache = new LRUCache(500);
+
+/** Clears baked wall-face textures (e.g. tile lab after seed/profile change). */
+export function clearFlatWallFaceCache() {
+    flatWallCache.clear();
+}
 
 let sharedCellCanvas = null;
 let sharedCellCtx = null;

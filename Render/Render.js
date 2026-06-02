@@ -1,6 +1,6 @@
 import { SpriteCache } from "./SpriteCache.js";
 import { Render3D } from "./3D/Render3D.js";
-import { floorTileSettings, mapSettings, COMBAT_HUD_MODE, hudSettings } from "../Config/Config.js";
+import { mapSettings, COMBAT_HUD_MODE, hudSettings } from "../Config/Config.js";
 import { getWorldDrawCoords, isMapTraveling, isWorldScene } from "../GameState/GamePhase.js";
 import { getPlayerActors } from "../Combat/Targeting.js";
 import { drawHostileOffScreenIndicators } from "./OffScreenIndicators.js";
@@ -16,7 +16,6 @@ export class Renderer {
         this.render3D = new Render3D();
         this.effectPasses = [
             { zIndex: -5, fn: (state, viewport) => state.floorTiles.draw(this.ctx, state, viewport) },
-            { zIndex: 0, fn: (state, viewport) => this.drawRangeIndicator(state, viewport) },
             {
                 zIndex: 30,
                 fn: (state, viewport) => {
@@ -146,27 +145,6 @@ export class Renderer {
             }
             entity.render(this.ctx, this, state);
         }
-    }
-
-    drawRangeIndicator(state, viewport) {
-        const { range, x, y } = getWorldDrawCoords(state, viewport);
-        this.drawFloorVignette(x, y, range);
-    }
-
-    drawFloorVignette(cx, cy, radius) {
-        const alpha = floorTileSettings.vignetteAlpha ?? 0;
-        if (alpha <= 0) return;
-
-        this.ctx.save();
-        this.ctx.beginPath();
-        this.ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-        const grad = this.ctx.createRadialGradient(cx, cy, radius * 0.35, cx, cy, radius);
-        grad.addColorStop(0, "rgba(0, 0, 0, 0)");
-        grad.addColorStop(0.72, `rgba(0, 0, 0, ${alpha * 0.35})`);
-        grad.addColorStop(1, `rgba(0, 0, 0, ${alpha})`);
-        this.ctx.fillStyle = grad;
-        this.ctx.fill();
-        this.ctx.restore();
     }
 
     drawActorAndTurrets(actor, state, viewport) {

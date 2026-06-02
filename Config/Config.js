@@ -331,8 +331,6 @@ export const floorTileSettings = {
     textureDownsampleSmoothing: false,
     viewPaddingPx: 128,
     maxCachedChunks: 512,
-    /** Soft radial darkening on top of tiles (0 = off). */
-    vignetteAlpha: 0.45,
     /** World size of one repeating floor tile on wall faces. */
     tileWorldSize: gridSettings.cellSize,
     /**
