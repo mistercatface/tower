@@ -190,8 +190,6 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHei
     if (alphaMax <= 0) return;
 
     ctx.save();
-    traceProjectedFace(ctx, p1, p2, face);
-    ctx.clip();
 
     // Compute Level of Detail (LOD) based on player distance to wall center
     const wallCx = (p1.x + p2.x) * 0.5;
@@ -249,8 +247,6 @@ export function drawProjectedWallFace(ctx, p1, p2, px, py, fillStyle, floorTiles
     const wallHeight = getWallVisualHeight();
     const face = computeProjectedFace(p1, p2, px, py, wallHeight);
     traceProjectedFace(ctx, p1, p2, face);
-    ctx.fillStyle = fillStyle;
-    ctx.fill();
     if (floorTiles && textureEnabled) drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHeight);
     if (damageAlpha > 0) {
         ctx.save();
