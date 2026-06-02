@@ -7,11 +7,17 @@ import {
     requestNavMapRender,
     requestQualityMapRender,
 } from "./map/LabMapPreview.js";
-import { getActiveLabProfile, RUNTIME_LAB_PROFILE_ID } from "./profile/ProfileEditor.js";
+import {
+    getActiveLabProfile,
+    getActiveLabMapProfile,
+    RUNTIME_LAB_PROFILE_ID,
+    RUNTIME_LAB_MAP_PROFILE_ID,
+} from "./profile/ProfileEditor.js";
 import { ensureLabWorld, getLabWorldMapSeed } from "./LabWorldSession.js";
 
 export function registerEditorProfiles() {
     registerRuntimeFloorProfile(RUNTIME_LAB_PROFILE_ID, getActiveLabProfile());
+    registerRuntimeFloorProfile(RUNTIME_LAB_MAP_PROFILE_ID, getActiveLabMapProfile());
 }
 
 export function invalidateLabCaches() {
@@ -32,14 +38,14 @@ function syncGameCanvasSize() {
     return size;
 }
 
-export function renderMapPreview(ctrl, world, { fastNav = false } = {}) {
+export function renderMapPreview(ctrl, world, { fastNav = true } = {}) {
     const size = syncGameCanvasSize();
     if (!size) {
         return;
     }
     renderGamePreview(document.getElementById("gamePreview"), {
         worldState: world,
-        profileId: RUNTIME_LAB_PROFILE_ID,
+        profileId: RUNTIME_LAB_MAP_PROFILE_ID,
         gameZoom: ctrl.gameZoom,
         showRangeRing: ctrl.showRangeRing,
         weaponRange: ctrl.weaponRange,
@@ -51,7 +57,7 @@ export function renderMapPreview(ctrl, world, { fastNav = false } = {}) {
     const gameMeta = document.getElementById("gameMetaLine");
     if (gameMeta && world) {
         const node = world.getCurrentMapNode();
-        const mode = fastNav ? "move" : "full";
+        const mode = fastNav ? "fast" : "full";
         gameMeta.textContent =
             `node ${world.currentNodeId} ${node?.strategy ?? ""} · map ${getLabWorldMapSeed()} · ` +
             `player ${Math.round(world.player.x)},${Math.round(world.player.y)} · ` +
@@ -59,7 +65,7 @@ export function renderMapPreview(ctrl, world, { fastNav = false } = {}) {
     }
 }
 
-export function runMapPreviewPass(readControls, { fastNav = false } = {}) {
+export function runMapPreviewPass(readControls, { fastNav = true } = {}) {
     registerEditorProfiles();
     const ctrl = readControls();
     const world = ensureLabWorld(ctrl);

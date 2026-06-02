@@ -12,6 +12,7 @@ import {
 } from "./profileSchema.js";
 
 export const RUNTIME_LAB_PROFILE_ID = "__labA__";
+export const RUNTIME_LAB_MAP_PROFILE_ID = "__labA_map__";
 let editorState = null;
 let selectedMotifId = null;
 let onChangeCallback = null;
@@ -150,7 +151,7 @@ function motifsFromProfile(profile) {
     return rows;
 }
 
-function loadEditorFromProfileId(profileId) {
+function loadEditorFromProfileId(profileId, { silent = false } = {}) {
     nextMotifId = 1;
     const profile = deepClone(getFloorProceduralProfile(profileId));
     const motifs = motifsFromProfile(profile);
@@ -165,7 +166,9 @@ function loadEditorFromProfileId(profileId) {
         editorState.animation.editorMotifIndex = 0;
     }
     selectedMotifId = editorState.motifs[0]?.id ?? null;
-    notifyChange();
+    if (!silent) {
+        notifyChange({ lightweight: true });
+    }
     return editorState;
 }
 
@@ -215,8 +218,8 @@ export function exportProfileSnippet(state = editorState, varName = "myProfile")
     return `const ${varName} = ${json};`;
 }
 
-function notifyChange() {
-    onChangeCallback?.();
+function notifyChange(options = {}) {
+    onChangeCallback?.(options);
 }
 
 function renderMotifList(container) {
@@ -307,13 +310,13 @@ function renderMotifList(container) {
     }
 }
 
-function renderScalarFields(container, target, fields) {
+function renderScalarFields(container, target, fields, changeOptions = {}) {
     for (const field of fields) {
         if (field.options) {
             const val = getByPath(target, field.path) ?? field.options[0];
             const select = new SelectControl(field.label, field.options, val, (newVal) => {
                 setByPath(target, field.path, newVal);
-                notifyChange();
+                notifyChange(changeOptions);
             });
             container.appendChild(select.element);
         } else {
@@ -321,7 +324,7 @@ function renderScalarFields(container, target, fields) {
             const num = Number(value ?? 0);
             const slider = new SliderControl(field.label, field.min, field.max, field.step, num, (newVal) => {
                 setByPath(target, field.path, newVal);
-                notifyChange();
+                notifyChange(changeOptions);
             });
             container.appendChild(slider.element);
         }
@@ -418,8 +421,8 @@ function renderAnimationParams(container) {
     enableInput.checked = editorState.animation.enabled === true;
     enableInput.addEventListener("change", () => {
         editorState.animation.enabled = enableInput.checked;
-        notifyChange();
-        renderGlobalParams(container);
+        notifyChange({ lightweight: true });
+        renderGlobalParams(document.getElementById("globalParamsPanel"));
     });
     enableWrap.appendChild(enableInput);
     enableWrap.append(" Enable tile animation");
@@ -456,8 +459,8 @@ function renderAnimationParams(container) {
         (val) => {
             editorState.animation.editorMotifIndex = Number(val);
             syncAnimationParamDefaults(getSelectedMotifRow());
-            notifyChange();
-            renderGlobalParams(container);
+            notifyChange({ lightweight: true });
+            renderGlobalParams(document.getElementById("globalParamsPanel"));
         }
     );
     container.appendChild(motifSelect.element);
@@ -482,8 +485,8 @@ function renderAnimationParams(container) {
         (val) => {
             editorState.animation.paramPath = val;
             syncAnimationParamDefaults(getSelectedMotifRow());
-            notifyChange();
-            renderGlobalParams(container);
+            notifyChange({ lightweight: true });
+            renderGlobalParams(document.getElementById("globalParamsPanel"));
         }
     );
     container.appendChild(paramSelect.element);
@@ -497,7 +500,7 @@ function renderAnimationParams(container) {
         { path: "animation.endValue", label: "End", min: activeField.min, max: activeField.max, step: activeField.step },
         { path: "animation.frames", label: "Frames", min: 2, max: 120, step: 1 },
         { path: "animation.durationMs", label: "Duration (ms)", min: 200, max: 20000, step: 100 },
-    ]);
+    ], { lightweight: true });
     editorState.animation = animRoot.animation;
 }
 
@@ -552,11 +555,12 @@ export function initProfileEditor({ onChange }) {
     });
 
     loadBtn.addEventListener("click", () => {
-        loadEditorFromProfileId(presetSelect.value);
+        loadEditorFromProfileId(presetSelect.value, { silent: true });
         renderMotifList(motifList);
         renderMotifParams(motifParams);
         renderGlobalParams(globalParams);
         exportArea.value = exportProfileSnippet();
+        notifyChange({ lightweight: true });
     });
 
     copyExportBtn.addEventListener("click", async () => {
@@ -564,14 +568,14 @@ export function initProfileEditor({ onChange }) {
         await navigator.clipboard.writeText(exportArea.value);
     });
 
-    onChangeCallback = () => {
+    onChangeCallback = (options) => {
         if (exportArea) {
             exportArea.value = exportProfileSnippet();
         }
-        onChange?.();
+        onChange?.(options);
     };
 
-    loadEditorFromProfileId(presetSelect?.value || "techCorridor");
+    loadEditorFromProfileId(presetSelect?.value || "techCorridor", { silent: true });
     renderMotifList(motifList);
     renderMotifParams(motifParams);
     renderGlobalParams(globalParams);
@@ -580,4 +584,14 @@ export function initProfileEditor({ onChange }) {
 
 export function getActiveLabProfile() {
     return buildProfileFromEditor();
+}
+
+/** Map preview uses a static profile so chunks never sync-bake animation frames. */
+export function getActiveLabMapProfile() {
+    const profile = buildProfileFromEditor();
+    if (!profile?.animation) {
+        return profile;
+    }
+    const { animation: _anim, ...rest } = profile;
+    return rest;
 }

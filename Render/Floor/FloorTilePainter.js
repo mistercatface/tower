@@ -237,6 +237,29 @@ function setDeep(obj, path, value) {
     curr[parts[parts.length - 1]] = value;
 }
 
+/** Bake using a single animation frame's profile override (Tile Lab preview / export). */
+export function withLabAnimationFrame(profileId, frameIndex, fn) {
+    const profile = getFloorProceduralProfile(profileId ?? defaultFloorProceduralProfileId);
+    if (!profile?.animation) {
+        return fn(profileId ?? defaultFloorProceduralProfileId);
+    }
+
+    const anim = profile.animation;
+    const frames = anim.frames;
+    const idx = Math.min(frames - 1, Math.max(0, frameIndex ?? 0));
+    const t = frames > 1 ? idx / (frames - 1) : 0;
+    const val = anim.startValue + (anim.endValue - anim.startValue) * t;
+    const tempId = `${profileId}_lab_frame_${idx}`;
+    const cloned = JSON.parse(JSON.stringify(profile));
+    setDeep(cloned, anim.targetPath, val);
+    registerRuntimeFloorProfile(tempId, cloned);
+    try {
+        return fn(tempId);
+    } finally {
+        unregisterRuntimeFloorProfile(tempId);
+    }
+}
+
 export function bakeWallFaceCanvases(width, height, p1, p2, pixelsPerUnit, obstacleGrid, seed, profileId) {
     const profile = getFloorProceduralProfile(profileId ?? defaultFloorProceduralProfileId);
     const anim = profile.animation;
