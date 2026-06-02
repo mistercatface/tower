@@ -343,6 +343,68 @@ export const floorProceduralProfiles = {
         ]
     },
 
+    tetris: {
+        "warp": {
+            "frequency": 0.009,
+            "amplitude": 24,
+            "octaves": 2,
+            "sampleOffset": [
+                500,
+                500
+            ]
+        },
+        "palette": {
+            "base": [
+                8,
+                12,
+                24
+            ],
+            "floorBase": [
+                5,
+                18,
+                35
+            ],
+            "wallBase": [
+                5,
+                18,
+                35
+            ],
+            "shadow": "#12161c"
+        },
+        "sharedMotifs": [
+            {
+                "type": "starburst",
+                "coordinateSpace": "warped",
+                "gridSize": 16,
+                "density": 0.35,
+                "radius": 33,
+                "spikes": 2,
+                "peak": 18,
+                "tint": [
+                    -0.4,
+                    1.4,
+                    2.3
+                ],
+                "opacity": 1
+            },
+            {
+                "type": "circuitLattice",
+                "coordinateSpace": "warped",
+                "frequency": 0.02,
+                "octaves": 2,
+                "angle": 0.5,
+                "ridgeThreshold": 0.1,
+                "peak": 8,
+                "tint": [
+                    0.2,
+                    0.5,
+                    1.5
+                ],
+                "opacity": 0.4
+            }
+        ]
+    },
+
     ancientRuins: {
         warp: { frequency: 0.002, amplitude: 5, octaves: 2, sampleOffset: [200, 900] },
         palette: {
@@ -367,14 +429,14 @@ export const floorProceduralProfiles = {
     },
 };
 
-export const defaultFloorProceduralProfileId = "techCorridor";
+export const defaultFloorProceduralProfileId = "tetris";
 
 /** Layer-0 / start node floor look (independent of generator strategy). */
-export const startFloorProceduralProfileId = "techCorridor";
+export const startFloorProceduralProfileId = "tetris";
 
 /** Generator strategy name → floor profile id */
 export const floorProceduralProfileByStrategy = {
-    StartBuildingStrategy: "techCorridor",
+    StartBuildingStrategy: "tetris",
     MazeStrategy: "cargoBay",
     Maze2Strategy: "cargoBay",
     DenseMazeStrategy: "cargoBay",

@@ -2,7 +2,7 @@ import { GamePhase, isWorldScene } from "../../../GameState/GamePhase.js";
 import { clearFlatWallFaceCache } from "../../../Render/3D/WallFaceTexture.js";
 import { Render3D } from "../../../Render/3D/Render3D.js";
 import { Viewport } from "../../../Render/Viewport.js";
-import { playerBaseStats } from "../../../Config/Config.js";
+import { playerBaseStats, combatVisualSettings } from "../../../Config/Config.js";
 
 const render3D = new Render3D();
 let lastBakeKey = "";
@@ -69,7 +69,7 @@ function maybeClearBakeCaches(worldState, profileId) {
     clearFlatWallFaceCache();
 }
 
-function drawLabWorldFrame(ctx, canvas, viewW, viewH, worldState, profileId, gameZoom, showRangeRing, weaponRange, fastNav = false) {
+function drawLabWorldFrame(ctx, canvas, viewW, viewH, worldState, profileId, gameZoom, showRangeRing, weaponRange, fastNav = false, showVignette = false) {
     worldState.phase = GamePhase.COMBAT;
     const prevProfileOverride = worldState.floorTextureProfileOverride;
     worldState.floorTextureProfileOverride = profileId;
@@ -104,6 +104,15 @@ function drawLabWorldFrame(ctx, canvas, viewW, viewH, worldState, profileId, gam
         textureEnabled: !fastNav,
     });
 
+    if (combatVisualSettings.bloom?.enabled && !fastNav) {
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.globalCompositeOperation = "screen";
+        ctx.filter = `blur(${combatVisualSettings.bloom.blur}px)`;
+        ctx.drawImage(canvas, 0, 0);
+        ctx.restore();
+    }
+
     worldState.canvasBounds = prevCanvasBounds;
     worldState.floorTextureProfileOverride = prevProfileOverride;
 
@@ -115,16 +124,30 @@ function drawLabWorldFrame(ctx, canvas, viewW, viewH, worldState, profileId, gam
 
     ctx.restore();
 
+    if (showVignette) {
+        const R = viewport.getVisualRadius();
+        const cx = viewport.cx;
+        const cy = viewport.cy;
+
+        ctx.save();
+        ctx.fillStyle = "#000000";
+        ctx.beginPath();
+        ctx.rect(0, 0, viewW, viewH);
+        ctx.arc(cx, cy, R, 0, Math.PI * 2, true);
+        ctx.fill("evenodd");
+        ctx.restore();
+    }
+
     return { zoom: gameZoom, cameraX, cameraY };
 }
 
 /**
  * Full generated map preview — camera locked to player (combat-style).
  * @param {HTMLCanvasElement} canvas
- * @param {{ worldState: object, profileId: string, gameZoom: number, showRangeRing: boolean, weaponRange: number, viewWidth: number, viewHeight: number }} options
+ * @param {{ worldState: object, profileId: string, gameZoom: number, showRangeRing: boolean, weaponRange: number, viewWidth: number, viewHeight: number, fastNav?: boolean, showVignette?: boolean }} options
  */
 export function renderGamePreview(canvas, options) {
-    const { worldState, profileId, gameZoom, showRangeRing, weaponRange, viewWidth, viewHeight, fastNav = false } = options;
+    const { worldState, profileId, gameZoom, showRangeRing, weaponRange, viewWidth, viewHeight, fastNav = false, showVignette = false } = options;
 
     if (!worldState || !profileId || !viewWidth || !viewHeight) {
         return { zoom: gameZoom };
@@ -141,7 +164,8 @@ export function renderGamePreview(canvas, options) {
         gameZoom,
         showRangeRing,
         weaponRange,
-        fastNav
+        fastNav,
+        showVignette
     );
     return result;
 }

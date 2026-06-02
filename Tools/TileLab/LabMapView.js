@@ -46,6 +46,7 @@ export function renderMapPreview(ctrl, world, { fastNav = false } = {}) {
         viewWidth: size.width,
         viewHeight: size.height,
         fastNav,
+        showVignette: ctrl.showVignette,
     });
     const gameMeta = document.getElementById("gameMetaLine");
     if (gameMeta && world) {

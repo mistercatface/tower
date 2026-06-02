@@ -1,6 +1,6 @@
 import { SpriteCache } from "./SpriteCache.js";
 import { Render3D } from "./3D/Render3D.js";
-import { mapSettings, COMBAT_HUD_MODE, hudSettings } from "../Config/Config.js";
+import { mapSettings, COMBAT_HUD_MODE, hudSettings, combatVisualSettings } from "../Config/Config.js";
 import { getWorldDrawCoords, isMapTraveling, isWorldScene } from "../GameState/GamePhase.js";
 import { getPlayerActors } from "../Combat/Targeting.js";
 import { drawHostileOffScreenIndicators } from "./OffScreenIndicators.js";
@@ -34,6 +34,19 @@ export class Renderer {
             },
             { zIndex: 60, fn: (state, viewport) => this.renderExplosions(state, viewport) },
             { zIndex: 70, fn: (state, viewport) => this.render3D.draw3DBuildings(this.ctx, state, viewport) },
+            {
+                zIndex: 74,
+                fn: (state, viewport) => {
+                    if (combatVisualSettings.bloom?.enabled) {
+                        this.ctx.save();
+                        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+                        this.ctx.globalCompositeOperation = "screen";
+                        this.ctx.filter = `blur(${combatVisualSettings.bloom.blur}px)`;
+                        this.ctx.drawImage(this.canvas, 0, 0);
+                        this.ctx.restore();
+                    }
+                },
+            },
             { zIndex: 75, fn: (state, viewport) => this.drawEntityBars(state, viewport) },
             { zIndex: 80, fn: (state, viewport) => this.drawVisibilityMask(this.ctx, state, viewport) },
             { zIndex: 85, fn: (state, viewport) => this.drawTargetMarkers(state, viewport) },

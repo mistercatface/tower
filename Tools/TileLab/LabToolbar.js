@@ -28,6 +28,7 @@ export function readControls() {
         gameZoom: Number(document.getElementById("gameZoomInput").value) || 1,
         weaponRange: world?.player?.weapon?.range ?? playerBaseStats.range,
         showRangeRing: document.getElementById("showRangeRingInput").checked,
+        showVignette: document.getElementById("showVignetteInput").checked,
     };
 }
 
@@ -119,6 +120,7 @@ export function bindToolbarControls(handlers) {
         "mapSeedInput",
         "mapNodeSelect",
         "showRangeRingInput",
+        "showVignetteInput",
     ];
     for (const id of ids) {
         document.getElementById(id)?.addEventListener("input", onRender);

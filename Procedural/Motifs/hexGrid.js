@@ -37,12 +37,11 @@ function axialToPixel(q, r, size) {
     };
 }
 
-/** Signed distance: negative inside hex, positive outside (flat-top). */
 function hexSignedDistance(lx, ly, size) {
     const ax = Math.abs(lx);
     const ay = Math.abs(ly);
     const d = size * SQRT3 * 0.5;
-    return Math.max(ay - d, (ax * SQRT3 + ay) * 0.5 - size, (-ax * SQRT3 + ay) * 0.5 - size);
+    return Math.max(ay - d, (ax * SQRT3 + ay) * 0.5 - d);
 }
 
 function hexMetrics(sample, config) {
