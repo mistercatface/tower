@@ -1,9 +1,9 @@
-import { gridSettings } from "./Config/Config.js";
-import { mapGenCanvasBounds } from "./tile-lab-settings.js";
-import { GamePhase } from "./GameState/GamePhase.js";
-import { GameState } from "./GameState/GameState.js";
-import { MapGenerator } from "./Generator/MapGenerator.js";
-import { getStartNodeLayout } from "./Generator/StartNodeBuilding.js";
+import { gridSettings } from "../../../Config/Config.js";
+import { mapGenCanvasBounds } from "../LabSettings.js";
+import { GamePhase } from "../../../GameState/GamePhase.js";
+import { GameState } from "../../../GameState/GameState.js";
+import { MapGenerator } from "../../../Generator/MapGenerator.js";
+import { getStartNodeLayout } from "../../../Generator/StartNodeBuilding.js";
 
 /** @type {(() => number) | null} */
 let savedRandom = null;
@@ -27,7 +27,7 @@ export function withSeededRandom(seed, fn) {
 
 /**
  * Full run map — same pipeline as a new game (all nodes, walls, obstacle grid).
- * @param {{ canvasWidth?: number, canvasHeight?: number, mapSeed?: number, floorTileSeed?: number }} options
+ * @param {{ mapSeed?: number, floorTileSeed?: number }} options
  */
 export function createLabMapWorld(options = {}) {
     const {

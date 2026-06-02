@@ -1,10 +1,9 @@
-import { GamePhase } from "./GameState/GamePhase.js";
-import { clearFlatWallFaceCache } from "./Render/3D/WallFaceTexture.js";
-import { Render3D } from "./Render/3D/Render3D.js";
-import { Viewport } from "./Render/Viewport.js";
-import { isWorldScene } from "./GameState/GamePhase.js";
-import { playerBaseStats } from "./Config/Config.js";
-import { applyLabProfileOverride } from "./tile-lab-map-world.js";
+import { GamePhase, isWorldScene } from "../../../GameState/GamePhase.js";
+import { clearFlatWallFaceCache } from "../../../Render/3D/WallFaceTexture.js";
+import { Render3D } from "../../../Render/3D/Render3D.js";
+import { Viewport } from "../../../Render/Viewport.js";
+import { playerBaseStats } from "../../../Config/Config.js";
+import { applyLabProfileOverride } from "./LabMapWorld.js";
 
 const render3D = new Render3D();
 let lastBakeKey = "";

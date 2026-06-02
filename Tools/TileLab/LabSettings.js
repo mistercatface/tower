@@ -4,7 +4,7 @@ import {
     mapSettings,
     playerBaseStats,
     combatActorRadius,
-} from "./Config/Config.js";
+} from "../../Config/Config.js";
 
 /** Same canvas footprint used for map spawn / node combat coords as a new game. */
 export const mapGenCanvasBounds = {

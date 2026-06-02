@@ -1,12 +1,12 @@
-import { combatVisualSettings } from "./Config/Config.js";
-import { getFloorProceduralProfile } from "./Config/floorProceduralConfig.js";
+import { combatVisualSettings } from "../../../Config/Config.js";
+import { getFloorProceduralProfile } from "../../../Config/floorProceduralConfig.js";
 import {
     BLEND_OPTIONS,
     LAYER_OPTIONS,
     MOTIF_TYPES,
     PALETTE_FIELDS,
     WARP_FIELDS,
-} from "./tile-lab-profile-schema.js";
+} from "./profileSchema.js";
 
 export const LAB_PROFILE_A = "__labA__";
 let editorState = null;
