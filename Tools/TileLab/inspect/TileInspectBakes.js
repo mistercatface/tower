@@ -271,10 +271,6 @@ export function renderTileInspectPreviews(ctrl, gameTime = 0) {
     drawInspectAtFrame(ctrl, frameIndex);
 }
 
-export function isAnimatedExportTarget(ctrl, pick) {
-    return Boolean(ctrl && pick && isProfileAnimated(ctrl.profileId));
-}
-
 export async function downloadInspectExport(ctrl, pick) {
     if (!ctrl) {
         return;
@@ -284,48 +280,6 @@ export async function downloadInspectExport(ctrl, pick) {
     const { profileId, seed } = ctrl;
 
     if (profile?.animation) {
-        const frameCount = profile.animation.frames ?? 1;
-        const frames = [];
-        for (let i = 0; i < frameCount; i++) {
-            frames.push(bakeInspectPickAtFrame(ctrl, pick, i));
-        }
-
-        const width = frames[0].width;
-        const height = frames[0].height;
-        const canvas = new OffscreenCanvas(width, height);
-        const ctx = canvas.getContext("2d");
-        ctx.imageSmoothingEnabled = false;
-
-        const stream = canvas.captureStream(30);
-        let recorder;
-        try {
-            recorder = new MediaRecorder(stream, { mimeType: "video/webm; codecs=vp9" });
-        } catch (e) {
-            recorder = new MediaRecorder(stream, { mimeType: "video/webm" });
-        }
-
-        const chunks = [];
-        recorder.ondataavailable = (e) => chunks.push(e.data);
-        const stopped = new Promise((resolve) => {
-            recorder.onstop = resolve;
-        });
-
-        recorder.start();
-
-        for (let i = 0; i < frames.length; i++) {
-            ctx.clearRect(0, 0, width, height);
-            ctx.drawImage(frames[i], 0, 0);
-            await new Promise((r) => setTimeout(r, 1000 / 30));
-        }
-
-        recorder.stop();
-        await stopped;
-
-        const blob = new Blob(chunks, { type: "video/webm" });
-        const link = document.createElement("a");
-        link.download = `tile-${pick}-${profileId}-seed${seed}.webm`;
-        link.href = URL.createObjectURL(blob);
-        link.click();
         return;
     }
 

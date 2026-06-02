@@ -165,7 +165,12 @@ function loadEditorFromProfileId(profileId, { silent = false } = {}) {
     if (editorState.animation.editorMotifIndex >= editorState.motifs.length) {
         editorState.animation.editorMotifIndex = 0;
     }
-    selectedMotifId = editorState.motifs[0]?.id ?? null;
+    const animRow = editorState.motifs[editorState.animation.editorMotifIndex];
+    if (editorState.animation.enabled && animRow) {
+        selectedMotifId = animRow.id;
+    } else {
+        selectedMotifId = editorState.motifs[0]?.id ?? null;
+    }
     if (!silent) {
         notifyChange({ lightweight: true });
     }
@@ -222,6 +227,94 @@ function notifyChange(options = {}) {
     onChangeCallback?.(options);
 }
 
+function getEditorPanels() {
+    return {
+        motifList: document.getElementById("motifList"),
+        motifParams: document.getElementById("motifParamsPanel"),
+        animationParams: document.getElementById("animationParamsPanel"),
+        globalParams: document.getElementById("globalParamsPanel"),
+    };
+}
+
+function refreshEditorPanels(options = {}) {
+    const {
+        motifList = true,
+        motifParams = true,
+        animation = true,
+        global = false,
+    } = options;
+    const panels = getEditorPanels();
+    if (motifList && panels.motifList) {
+        renderMotifList(panels.motifList);
+    }
+    if (motifParams && panels.motifParams) {
+        renderMotifParams(panels.motifParams);
+    }
+    if (animation && panels.animationParams) {
+        renderAnimationParams(panels.animationParams);
+    }
+    if (global && panels.globalParams) {
+        renderGlobalParams(panels.globalParams);
+    }
+}
+
+function getSelectedMotifIndex() {
+    if (!selectedMotifId || !editorState?.motifs.length) {
+        return -1;
+    }
+    return editorState.motifs.findIndex((row) => row.id === selectedMotifId);
+}
+
+function getSelectedMotifRow() {
+    const index = getSelectedMotifIndex();
+    if (index < 0) {
+        return null;
+    }
+    return editorState.motifs[index];
+}
+
+function syncAnimationMotifIndex() {
+    const index = getSelectedMotifIndex();
+    if (index >= 0 && editorState?.animation) {
+        editorState.animation.editorMotifIndex = index;
+    }
+}
+
+function syncAnimationParamRange() {
+    if (!editorState?.animation) {
+        return;
+    }
+    syncAnimationMotifIndex();
+    const row = getSelectedMotifRow();
+    const fields = getAnimatableMotifFields(row?.config);
+    if (fields.length === 0) {
+        return;
+    }
+    if (!fields.some((field) => field.path === editorState.animation.paramPath)) {
+        editorState.animation.paramPath = fields[0].path;
+    }
+    const field = fields.find((f) => f.path === editorState.animation.paramPath) ?? fields[0];
+    const current = Number(getByPath(row.config, field.path) ?? field.min ?? 0);
+    const min = field.min ?? 0;
+    const max = field.max ?? current + 180;
+    editorState.animation.startValue = current;
+    let end = editorState.animation.endValue;
+    if (!Number.isFinite(end) || end <= min || end > max || end === current) {
+        end = max;
+    }
+    editorState.animation.endValue = end;
+}
+
+function selectMotifById(motifId, { syncAnimation = true } = {}) {
+    selectedMotifId = motifId;
+    if (syncAnimation) {
+        syncAnimationParamRange();
+    } else {
+        syncAnimationMotifIndex();
+    }
+    refreshEditorPanels({ global: false });
+}
+
 function renderMotifList(container) {
     container.innerHTML = "";
     if (!editorState) {
@@ -266,24 +359,24 @@ function renderMotifList(container) {
         item.querySelector(".motif-blend-slot").appendChild(blendSel);
 
         item.addEventListener("click", (e) => {
-            if (e.target.closest("button") || e.target.closest("input")) {
+            if (e.target.closest("button") || e.target.closest("input") || e.target.closest("select")) {
                 return;
             }
-            selectedMotifId = row.id;
-            renderMotifList(container);
-            renderMotifParams(document.getElementById("motifParamsPanel"));
+            selectMotifById(row.id);
         });
 
         item.querySelector('[data-action="toggle"]').addEventListener("change", (e) => {
             row.enabled = e.target.checked;
             notifyChange();
+            refreshEditorPanels({ motifParams: false, animation: true, global: false });
         });
         item.querySelector('[data-action="up"]').addEventListener("click", () => {
             if (i > 0) {
                 const tmp = editorState.motifs[i - 1];
                 editorState.motifs[i - 1] = editorState.motifs[i];
                 editorState.motifs[i] = tmp;
-                renderMotifList(container);
+                syncAnimationMotifIndex();
+                refreshEditorPanels();
                 notifyChange();
             }
         });
@@ -292,7 +385,8 @@ function renderMotifList(container) {
                 const tmp = editorState.motifs[i + 1];
                 editorState.motifs[i + 1] = editorState.motifs[i];
                 editorState.motifs[i] = tmp;
-                renderMotifList(container);
+                syncAnimationMotifIndex();
+                refreshEditorPanels();
                 notifyChange();
             }
         });
@@ -300,9 +394,14 @@ function renderMotifList(container) {
             editorState.motifs.splice(i, 1);
             if (selectedMotifId === row.id) {
                 selectedMotifId = editorState.motifs[0]?.id ?? null;
+                syncAnimationParamRange();
+            } else if (editorState.animation) {
+                const selectedIndex = getSelectedMotifIndex();
+                if (selectedIndex >= 0) {
+                    editorState.animation.editorMotifIndex = selectedIndex;
+                }
             }
-            renderMotifList(container);
-            renderMotifParams(document.getElementById("motifParamsPanel"));
+            refreshEditorPanels();
             notifyChange();
         });
 
@@ -350,11 +449,15 @@ function renderMotifParams(container) {
     const layerSelect = new SelectControl("Surface Mask", LAYER_OPTIONS, row.surfaceMask, (val) => {
         row.surfaceMask = val;
         notifyChange();
-        renderMotifList(document.getElementById("motifList"));
+        refreshEditorPanels({ motifParams: false, animation: true, global: false });
     });
     container.appendChild(layerSelect.element);
 
-    renderScalarFields(container, row.config, schema.fields);
+    renderScalarFields(
+        container,
+        row.config,
+        schema.fields.filter((field) => field.path !== "blendMode")
+    );
 }
 
 function renderGlobalParams(container) {
@@ -364,53 +467,26 @@ function renderGlobalParams(container) {
     }
     const warpRoot = { warp: editorState.warp };
     const paletteRoot = { palette: editorState.palette };
-    const h = document.createElement("h3");
+    const h = document.createElement("h4");
+    h.className = "editor-subhead";
     h.textContent = "Warp";
     container.appendChild(h);
     renderScalarFields(container, warpRoot, WARP_FIELDS);
     editorState.warp = warpRoot.warp;
 
-    const h2 = document.createElement("h3");
+    const h2 = document.createElement("h4");
+    h2.className = "editor-subhead";
     h2.textContent = "Palette";
     container.appendChild(h2);
     renderScalarFields(container, paletteRoot, PALETTE_FIELDS);
     editorState.palette = paletteRoot.palette;
-
-    renderAnimationParams(container);
-}
-
-function getSelectedMotifRow() {
-    if (!editorState?.motifs.length) {
-        return null;
-    }
-    const idx = editorState.animation?.editorMotifIndex ?? 0;
-    return editorState.motifs[idx] ?? editorState.motifs[0];
-}
-
-function syncAnimationParamDefaults(row) {
-    if (!row || !editorState?.animation) {
-        return;
-    }
-    const fields = getAnimatableMotifFields(row.config);
-    const field = fields.find((f) => f.path === editorState.animation.paramPath) ?? fields[0];
-    if (!field) {
-        return;
-    }
-    editorState.animation.paramPath = field.path;
-    const current = Number(getByPath(row.config, field.path) ?? field.min ?? 0);
-    if (editorState.animation.startValue === editorState.animation.endValue) {
-        editorState.animation.startValue = current;
-        editorState.animation.endValue = field.max ?? current + 180;
-    }
 }
 
 function renderAnimationParams(container) {
+    container.innerHTML = "";
     if (!editorState) {
         return;
     }
-    const h = document.createElement("h3");
-    h.textContent = "Animation";
-    container.appendChild(h);
 
     const enableWrap = document.createElement("label");
     enableWrap.className = "check-inline";
@@ -422,7 +498,7 @@ function renderAnimationParams(container) {
     enableInput.addEventListener("change", () => {
         editorState.animation.enabled = enableInput.checked;
         notifyChange({ lightweight: true });
-        renderGlobalParams(document.getElementById("globalParamsPanel"));
+        renderAnimationParams(container);
     });
     enableWrap.appendChild(enableInput);
     enableWrap.append(" Enable tile animation");
@@ -430,45 +506,40 @@ function renderAnimationParams(container) {
 
     if (!editorState.animation.enabled) {
         const hint = document.createElement("p");
-        hint.style.cssText = "margin:0;color:var(--muted);font-size:10px";
-        hint.textContent = "Pick a motif slider to animate, then export as WebM from Tile inspect.";
+        hint.className = "editor-hint";
+        hint.textContent = "Select a motif layer, pick a parameter below, then export as WebM from Tile inspect.";
         container.appendChild(hint);
         return;
     }
 
-    const enabledRows = editorState.motifs
-        .map((row, index) => ({ row, index }))
-        .filter(({ row }) => row.enabled);
-
-    if (enabledRows.length === 0) {
+    const row = getSelectedMotifRow();
+    if (!row) {
         const msg = document.createElement("p");
-        msg.textContent = "Enable at least one motif layer to animate.";
+        msg.className = "editor-hint";
+        msg.textContent = "Select a motif layer to configure animation.";
         container.appendChild(msg);
         return;
     }
 
-    const motifOptions = enabledRows.map(({ row, index }) => {
-        const label = MOTIF_TYPES[row.config.type]?.label ?? row.config.type;
-        return { value: String(index), label: `${label} (${row.surfaceMask})` };
-    });
+    const label = MOTIF_TYPES[row.config.type]?.label ?? row.config.type;
+    const targetHint = document.createElement("p");
+    targetHint.className = "editor-hint";
+    targetHint.textContent = `Target: ${label} (${row.surfaceMask})`;
+    container.appendChild(targetHint);
 
-    const motifSelect = new SelectControl(
-        "Motif layer",
-        motifOptions,
-        String(editorState.animation.editorMotifIndex),
-        (val) => {
-            editorState.animation.editorMotifIndex = Number(val);
-            syncAnimationParamDefaults(getSelectedMotifRow());
-            notifyChange({ lightweight: true });
-            renderGlobalParams(document.getElementById("globalParamsPanel"));
-        }
-    );
-    container.appendChild(motifSelect.element);
+    if (!row.enabled) {
+        const msg = document.createElement("p");
+        msg.className = "editor-hint";
+        msg.textContent = "Enable this motif layer to animate it.";
+        container.appendChild(msg);
+        return;
+    }
 
-    const row = getSelectedMotifRow();
-    const animFields = getAnimatableMotifFields(row?.config);
+    syncAnimationMotifIndex();
+    const animFields = getAnimatableMotifFields(row.config);
     if (animFields.length === 0) {
         const msg = document.createElement("p");
+        msg.className = "editor-hint";
         msg.textContent = "Selected motif has no numeric sliders.";
         container.appendChild(msg);
         return;
@@ -484,9 +555,9 @@ function renderAnimationParams(container) {
         editorState.animation.paramPath,
         (val) => {
             editorState.animation.paramPath = val;
-            syncAnimationParamDefaults(getSelectedMotifRow());
+            syncAnimationParamRange();
             notifyChange({ lightweight: true });
-            renderGlobalParams(document.getElementById("globalParamsPanel"));
+            renderAnimationParams(container);
         }
     );
     container.appendChild(paramSelect.element);
@@ -506,9 +577,6 @@ function renderAnimationParams(container) {
 
 export function initProfileEditor({ onChange }) {
     onChangeCallback = onChange;
-    const motifList = document.getElementById("motifList");
-    const motifParams = document.getElementById("motifParamsPanel");
-    const globalParams = document.getElementById("globalParamsPanel");
     const exportArea = document.getElementById("profileExport");
     const addSelect = document.getElementById("addMotifType");
     const loadBtn = document.getElementById("loadPresetBtn");
@@ -520,17 +588,6 @@ export function initProfileEditor({ onChange }) {
         opt.value = type;
         opt.textContent = MOTIF_TYPES[type].label;
         addSelect.appendChild(opt);
-    }
-
-    const tabBtns = document.querySelectorAll(".editor-tab-btn");
-    const tabPanels = document.querySelectorAll(".editor-tab-panel");
-    for (const btn of tabBtns) {
-        btn.addEventListener("click", () => {
-            tabBtns.forEach((b) => b.classList.remove("active"));
-            tabPanels.forEach((p) => p.classList.remove("active"));
-            btn.classList.add("active");
-            document.getElementById(`editor-tab-${btn.dataset.tab}`)?.classList.add("active");
-        });
     }
 
     document.getElementById("addMotifBtn").addEventListener("click", () => {
@@ -548,17 +605,14 @@ export function initProfileEditor({ onChange }) {
             config: deepClone(schema.defaults),
         };
         editorState.motifs.push(row);
-        selectedMotifId = row.id;
-        renderMotifList(motifList);
-        renderMotifParams(motifParams);
+        selectMotifById(row.id);
         notifyChange();
     });
 
     loadBtn.addEventListener("click", () => {
         loadEditorFromProfileId(presetSelect.value, { silent: true });
-        renderMotifList(motifList);
-        renderMotifParams(motifParams);
-        renderGlobalParams(globalParams);
+        syncAnimationMotifIndex();
+        refreshEditorPanels({ global: true });
         exportArea.value = exportProfileSnippet();
         notifyChange({ lightweight: true });
     });
@@ -576,9 +630,8 @@ export function initProfileEditor({ onChange }) {
     };
 
     loadEditorFromProfileId(presetSelect?.value || "techCorridor", { silent: true });
-    renderMotifList(motifList);
-    renderMotifParams(motifParams);
-    renderGlobalParams(globalParams);
+    syncAnimationMotifIndex();
+    refreshEditorPanels({ global: true });
     exportArea.value = exportProfileSnippet();
 }
 

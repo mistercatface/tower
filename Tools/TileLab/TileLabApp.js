@@ -3,7 +3,8 @@
  * Open via Tools/TileLab/index.html (local server required).
  */
 import { listShippedFloorProfileIds } from "../../Config/floorProceduralConfig.js";
-import { initMapPreviewNavigation } from "./map/LabMapPreview.js";
+import { initMapPreviewNavigation, exportMapOverlayWebm } from "./map/LabMapPreview.js";
+import { clearFlatWallFaceCache } from "../../Render/3D/WallFaceTexture.js";
 import {
     invalidateLabCaches,
     registerEditorProfiles,
@@ -19,6 +20,7 @@ import {
     initToolbarDefaults,
     bindToolbarControls,
 } from "./LabToolbar.js";
+import { exportOverlayPx } from "./LabSettings.js";
 import { ensureLabWorld, getLabWorld, resetLabWorld } from "./LabWorldSession.js";
 import { initProfileEditor, RUNTIME_LAB_PROFILE_ID } from "./profile/ProfileEditor.js";
 import { getFloorProceduralProfile } from "../../Config/floorProceduralConfig.js";
@@ -26,7 +28,7 @@ import {
     drawInspectQuick,
     drawInspectAtFrame,
     inspectFrameIndexFromTime,
-    isAnimatedExportTarget,
+    isProfileAnimated,
     downloadInspectExport,
 } from "./inspect/TileInspectBakes.js";
 
@@ -35,23 +37,99 @@ let inspectCtrl = null;
 let mapPreviewTimer = null;
 let fullRenderTimer = null;
 let inspectAnimTick = 0;
+/** @type {string | null} */
+let exportPreviewUrl = null;
+/** @type {string | null} */
+let exportPreviewFilename = null;
+
+function switchToExportTab() {
+    const buttons = document.querySelectorAll(".col-inspect .tab-btn");
+    const panels = document.querySelectorAll(".col-inspect .tab-panel");
+    buttons.forEach((btn) => btn.classList.toggle("active", btn.dataset.tab === "export"));
+    panels.forEach((panel) => panel.classList.toggle("active", panel.id === "tab-export"));
+}
+
+function clearExportPreview() {
+    const group = document.getElementById("exportPreviewGroup");
+    const video = document.getElementById("exportPreviewVideo");
+    const downloadBtn = document.getElementById("exportDownloadBtn");
+    if (exportPreviewUrl) {
+        URL.revokeObjectURL(exportPreviewUrl);
+        exportPreviewUrl = null;
+    }
+    exportPreviewFilename = null;
+    if (video) {
+        video.pause();
+        video.removeAttribute("src");
+        video.load();
+    }
+    if (group) {
+        group.hidden = true;
+    }
+    if (downloadBtn) {
+        downloadBtn.hidden = true;
+    }
+}
+
+function showExportPreview(blob, filename) {
+    const group = document.getElementById("exportPreviewGroup");
+    const video = document.getElementById("exportPreviewVideo");
+    const downloadBtn = document.getElementById("exportDownloadBtn");
+    if (!group || !video || !blob) {
+        return;
+    }
+    if (exportPreviewUrl) {
+        URL.revokeObjectURL(exportPreviewUrl);
+    }
+    exportPreviewUrl = URL.createObjectURL(blob);
+    exportPreviewFilename = filename ?? "map-overlay.webm";
+    video.src = exportPreviewUrl;
+    group.hidden = false;
+    if (downloadBtn) {
+        downloadBtn.hidden = false;
+    }
+    switchToExportTab();
+    video.play().catch(() => {});
+}
+
+function downloadExportPreview() {
+    if (!exportPreviewUrl || !exportPreviewFilename) {
+        return;
+    }
+    const link = document.createElement("a");
+    link.download = exportPreviewFilename;
+    link.href = exportPreviewUrl;
+    link.click();
+}
 
 function updateExportTabUi() {
     const ctrl = inspectCtrl ?? readControls();
-    const pick = document.getElementById("exportTarget")?.value ?? "floor";
     const btn = document.getElementById("exportBtn");
     const hint = document.getElementById("exportFormatHint");
-    const animated = isAnimatedExportTarget(ctrl, pick);
+    const tileGroup = document.getElementById("exportTileGroup");
+    const animated = isProfileAnimated(ctrl.profileId);
+    if (tileGroup) {
+        tileGroup.style.display = animated ? "none" : "block";
+    }
+    if (!animated) {
+        clearExportPreview();
+    }
     if (btn) {
-        btn.textContent = animated ? "Download WebM" : "Download PNG";
+        btn.textContent = animated ? "Bake WebM" : "Download PNG";
         btn.disabled = false;
+    }
+    const downloadBtn = document.getElementById("exportDownloadBtn");
+    if (downloadBtn) {
+        downloadBtn.hidden = !animated || !exportPreviewUrl;
     }
     if (hint) {
         if (animated) {
-            const frames = getFloorProceduralProfile(ctrl.profileId)?.animation?.frames ?? 0;
-            hint.textContent = `Animated (${frames} frames) — WebM bakes on download. Map preview stays static.`;
+            const hasPreview = Boolean(exportPreviewUrl);
+            hint.textContent = hasPreview
+                ? "Preview ready below. Bake again to refresh, or download when you're happy with it."
+                : `Bakes a ${exportOverlayPx}×${exportOverlayPx} circular overlay (no player dot) for preview.`;
         } else {
-            hint.textContent = "Static tile — exports PNG.";
+            hint.textContent = "Static tile — exports PNG from the selection above.";
         }
     }
 }
@@ -65,8 +143,9 @@ function scheduleMapPreview() {
         const ctrl = readControls();
         const world = getLabWorld() ?? ensureLabWorld(ctrl);
         if (world) {
+            invalidateLabCaches();
             world.floorTiles.clear();
-            renderMapPreview(ctrl, world, { fastNav: true });
+            renderMapPreview(ctrl, world, { fastNav: false });
         }
     }, 400);
 }
@@ -90,17 +169,14 @@ function renderAll({ fullQuality = false } = {}) {
     const world = ensureLabWorld(ctrl);
     applyGameDefaultsToForm(world);
 
-    if (fullQuality) {
-        invalidateLabCaches();
-    } else {
-        world.floorTiles.clear();
-    }
+    invalidateLabCaches();
+    world.floorTiles.clear();
 
     inspectCtrl = ctrl;
     const frameIndex = inspectFrameIndexFromTime(ctrl.profileId, world?.gameTime ?? 0);
     drawInspectAtFrame(ctrl, frameIndex);
     updateExportTabUi();
-    renderMapPreview(ctrl, world, { fastNav: !fullQuality });
+    renderMapPreview(ctrl, world, { fastNav: false });
 }
 
 function scheduleFullRender() {
@@ -126,12 +202,40 @@ async function exportActive() {
     const pick = document.getElementById("exportTarget").value;
     const btn = document.getElementById("exportBtn");
     const hint = document.getElementById("exportFormatHint");
-    if (isAnimatedExportTarget(ctrl, pick) && btn) {
-        btn.disabled = true;
-        if (hint) {
-            hint.textContent = "Baking frames for WebM…";
+    const profile = getFloorProceduralProfile(RUNTIME_LAB_PROFILE_ID);
+
+    if (profile?.animation) {
+        if (btn) btn.disabled = true;
+        registerEditorProfiles();
+        const world = ensureLabWorld(ctrl);
+        try {
+            const result = await exportMapOverlayWebm(ctrl, world, RUNTIME_LAB_PROFILE_ID, {
+                onProgress: (current, total, phase) => {
+                    if (hint) {
+                        hint.textContent = phase === "encode"
+                            ? "Encoding WebM…"
+                            : `Rendering frame ${current}/${total}…`;
+                    }
+                },
+            });
+            if (result?.ok && result.blob) {
+                showExportPreview(result.blob, result.filename);
+                if (hint) {
+                    hint.textContent = "Preview ready below. Bake again to refresh, or download when you're happy with it.";
+                }
+            } else if (hint) {
+                hint.textContent = "WebM export failed — try Chrome/Edge, or reduce frame count.";
+            }
+        } finally {
+            world.floorTiles.clear();
+            clearFlatWallFaceCache();
+            invalidateLabCaches();
+            renderMapPreview(ctrl, world, { fastNav: true });
+            updateExportTabUi();
         }
+        return;
     }
+
     try {
         await downloadInspectExport(ctrl, pick);
     } finally {
@@ -159,6 +263,7 @@ bindToolbarControls({
     onStageResize,
 });
 document.getElementById("exportTarget")?.addEventListener("change", updateExportTabUi);
+document.getElementById("exportDownloadBtn")?.addEventListener("click", downloadExportPreview);
 initToolbarDefaults();
 
 function bootstrap() {

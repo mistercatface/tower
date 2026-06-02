@@ -53,11 +53,7 @@
                         <button type="button" id="addMotifBtn" class="secondary">+ Motif</button>
                         <button type="button" id="copyExportBtn">Copy export</button>
                     </div>
-                    <div class="tab-bar">
-                        <button type="button" class="editor-tab-btn active" data-tab="motifs">Motifs</button>
-                        <button type="button" class="editor-tab-btn" data-tab="global">Global</button>
-                    </div>
-                    <div class="editor-scroll editor-tab-panel active" id="editor-tab-motifs">
+                    <div class="editor-scroll">
                         <div class="editor-block">
                             <h3>Motifs</h3>
                             <div id="motifList"></div>
@@ -66,8 +62,10 @@
                             <h3>Selected</h3>
                             <div id="motifParamsPanel"></div>
                         </div>
-                    </div>
-                    <div class="editor-scroll editor-tab-panel" id="editor-tab-global">
+                        <div class="editor-block">
+                            <h3>Animation</h3>
+                            <div id="animationParamsPanel"></div>
+                        </div>
                         <div class="editor-block">
                             <h3>Global</h3>
                             <div id="globalParamsPanel"></div>
@@ -123,19 +121,26 @@
                         <div class="repeat-view"><canvas id="wallRepeat"></canvas></div>
                     </div>
                     <div class="tab-panel" id="tab-export">
-                        <label style="display:block;margin-bottom:8px;color:var(--muted);font-size:11px">
-                            Bake
-                            <select id="exportTarget" style="width:100%;margin-top:4px;padding:6px;background:var(--bg);border:1px solid var(--border);color:var(--text);font:inherit">
-                                <option value="floor">Floor cell</option>
-                                <option value="wallCell">Wall cell</option>
-                                <option value="wallColumn">Wall column</option>
-                                <option value="wallFace">Wall face</option>
-                            </select>
-                        </label>
+                        <div id="exportTileGroup">
+                            <label style="display:block;margin-bottom:8px;color:var(--muted);font-size:11px">
+                                Bake tile (PNG)
+                                <select id="exportTarget" style="width:100%;margin-top:4px;padding:6px;background:var(--bg);border:1px solid var(--border);color:var(--text);font:inherit">
+                                    <option value="floor">Floor cell</option>
+                                    <option value="wallCell">Wall cell</option>
+                                    <option value="wallColumn">Wall column</option>
+                                    <option value="wallFace">Wall face</option>
+                                </select>
+                            </label>
+                        </div>
                         <p id="exportFormatHint" style="margin:0 0 8px;color:var(--muted);font-size:10px">
                             Static tile — exports PNG.
                         </p>
-                        <button type="button" id="exportBtn" style="width:100%">Download PNG</button>
+                        <div id="exportPreviewGroup" class="export-preview-group" hidden>
+                            <div class="label">Preview</div>
+                            <video id="exportPreviewVideo" autoplay loop muted playsinline controls></video>
+                        </div>
+                        <button type="button" id="exportBtn">Download PNG</button>
+                        <button type="button" id="exportDownloadBtn" hidden>Download WebM</button>
                     </div>
                 </div>
             </aside>

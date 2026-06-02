@@ -3,6 +3,9 @@ import { clearFlatWallFaceCache } from "../../../Render/3D/WallFaceTexture.js";
 import { Render3D } from "../../../Render/3D/Render3D.js";
 import { Viewport } from "../../../Render/Viewport.js";
 import { playerBaseStats, combatVisualSettings } from "../../../Config/Config.js";
+import { exportOverlayPx } from "../LabSettings.js";
+import { withLabAnimationFrame } from "../../../Render/Floor/FloorTilePainter.js";
+import { getFloorProceduralProfile, unregisterRuntimeFloorProfile } from "../../../Config/floorProceduralConfig.js";
 
 const render3D = new Render3D();
 let lastBakeKey = "";
@@ -69,7 +72,14 @@ function maybeClearBakeCaches(worldState, profileId) {
     clearFlatWallFaceCache();
 }
 
-function drawLabWorldFrame(ctx, canvas, viewW, viewH, worldState, profileId, gameZoom, showRangeRing, weaponRange, fastNav = false, showVignette = false) {
+function drawLabWorldFrame(ctx, canvas, viewW, viewH, worldState, profileId, gameZoom, weaponRange, drawOptions = {}) {
+    const {
+        fastNav = false,
+        showVignette = false,
+        showRangeRing = false,
+        showPlayerMarker = true,
+    } = drawOptions;
+
     worldState.phase = GamePhase.COMBAT;
     const prevProfileOverride = worldState.floorTextureProfileOverride;
     worldState.floorTextureProfileOverride = profileId;
@@ -120,7 +130,9 @@ function drawLabWorldFrame(ctx, canvas, viewW, viewH, worldState, profileId, gam
         drawWeaponRangeRing(ctx, worldState.player.x, worldState.player.y, weaponRange);
     }
 
-    drawPlayerMarker(ctx, worldState.player.x, worldState.player.y);
+    if (showPlayerMarker) {
+        drawPlayerMarker(ctx, worldState.player.x, worldState.player.y);
+    }
 
     ctx.restore();
 
@@ -130,6 +142,7 @@ function drawLabWorldFrame(ctx, canvas, viewW, viewH, worldState, profileId, gam
         const cy = viewport.cy;
 
         ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.fillStyle = "#000000";
         ctx.beginPath();
         ctx.rect(0, 0, viewW, viewH);
@@ -138,7 +151,7 @@ function drawLabWorldFrame(ctx, canvas, viewW, viewH, worldState, profileId, gam
         ctx.restore();
     }
 
-    return { zoom: gameZoom, cameraX, cameraY };
+    return { zoom: gameZoom, cameraX, cameraY, visualRadius: viewport.getVisualRadius() };
 }
 
 /**
@@ -162,12 +175,155 @@ export function renderGamePreview(canvas, options) {
         worldState,
         profileId,
         gameZoom,
-        showRangeRing,
         weaponRange,
-        fastNav,
-        showVignette
+        {
+            fastNav,
+            showVignette,
+            showRangeRing,
+            showPlayerMarker: true,
+        }
     );
     return result;
+}
+
+function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function pickRecorderMimeType() {
+    const candidates = [
+        "video/webm;codecs=vp9",
+        "video/webm;codecs=vp8",
+        "video/webm",
+    ];
+    for (const mimeType of candidates) {
+        if (MediaRecorder.isTypeSupported(mimeType)) {
+            return mimeType;
+        }
+    }
+    return "";
+}
+
+/** Render one export frame to an offscreen canvas (circular overlay, no HUD). */
+function renderExportOverlayFrame(world, frameProfileId, ctrl, sizePx) {
+    const canvas = new OffscreenCanvas(sizePx, sizePx);
+    const ctx = canvas.getContext("2d");
+    ctx.imageSmoothingEnabled = false;
+    drawLabWorldFrame(
+        ctx,
+        canvas,
+        sizePx,
+        sizePx,
+        world,
+        frameProfileId,
+        ctrl.gameZoom,
+        ctrl.weaponRange,
+        {
+            fastNav: true,
+            showVignette: true,
+            showRangeRing: false,
+            showPlayerMarker: false,
+        }
+    );
+    return canvas;
+}
+
+/** Copy offscreen canvas → document canvas for MediaRecorder. */
+function blitFrame(targetCtx, sizePx, source) {
+    targetCtx.clearRect(0, 0, sizePx, sizePx);
+    targetCtx.drawImage(source, 0, 0);
+}
+
+async function encodeCanvasesToWebm(frameCanvases, sizePx, msPerFrame) {
+    const mimeType = pickRecorderMimeType();
+    if (!mimeType) {
+        return null;
+    }
+
+    const encodeCanvas = document.createElement("canvas");
+    encodeCanvas.width = sizePx;
+    encodeCanvas.height = sizePx;
+    const encodeCtx = encodeCanvas.getContext("2d");
+    encodeCtx.imageSmoothingEnabled = false;
+
+    const stream = encodeCanvas.captureStream(0);
+    const track = stream.getVideoTracks()[0];
+    const recorder = new MediaRecorder(stream, {
+        mimeType,
+        videoBitsPerSecond: 2_500_000,
+    });
+
+    const chunks = [];
+    recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+            chunks.push(e.data);
+        }
+    };
+    const stopped = new Promise((resolve) => {
+        recorder.onstop = resolve;
+    });
+
+    recorder.start(100);
+
+    for (let i = 0; i < frameCanvases.length; i++) {
+        blitFrame(encodeCtx, sizePx, frameCanvases[i]);
+        if (typeof track.requestFrame === "function") {
+            track.requestFrame();
+        }
+        await sleep(Math.max(16, msPerFrame));
+    }
+
+    await sleep(100);
+    recorder.stop();
+    await stopped;
+
+    const blob = new Blob(chunks, { type: "video/webm" });
+    return blob.size >= 1024 ? blob : null;
+}
+
+/**
+ * Bake each animation frame to an offscreen canvas, then mux to WebM.
+ * Does not touch the on-screen map preview.
+ */
+export async function exportMapOverlayWebm(ctrl, world, profileId, { onProgress } = {}) {
+    const profile = getFloorProceduralProfile(profileId);
+    if (!profile?.animation || !world || !ctrl) {
+        return { ok: false };
+    }
+
+    const sizePx = exportOverlayPx;
+    const frameCount = Math.max(2, profile.animation.frames ?? 2);
+    const durationMs = profile.animation.durationMs ?? 1000;
+    const msPerFrame = durationMs / frameCount;
+    const exportProfileId = `${profileId}_export`;
+
+    const frameCanvases = [];
+    for (let i = 0; i < frameCount; i++) {
+        onProgress?.(i + 1, frameCount, "render");
+        world.floorTiles.clear();
+
+        withLabAnimationFrame(profileId, i, (frameProfileId) => {
+            frameCanvases.push(renderExportOverlayFrame(world, frameProfileId, ctrl, sizePx));
+        }, { staticBake: true, stableId: true });
+
+        if (i % 3 === 2) {
+            await sleep(0);
+        }
+    }
+
+    unregisterRuntimeFloorProfile(exportProfileId);
+
+    onProgress?.(frameCount, frameCount, "encode");
+    const blob = await encodeCanvasesToWebm(frameCanvases, sizePx, msPerFrame);
+    if (!blob) {
+        return { ok: false };
+    }
+
+    return {
+        ok: true,
+        blob,
+        filename: `map-overlay-${profileId}-seed${world.floorTileSeed ?? 0}.webm`,
+    };
 }
 
 let lastFrameRenderAt = 0;

@@ -238,7 +238,7 @@ function setDeep(obj, path, value) {
 }
 
 /** Bake using a single animation frame's profile override (Tile Lab preview / export). */
-export function withLabAnimationFrame(profileId, frameIndex, fn) {
+export function withLabAnimationFrame(profileId, frameIndex, fn, { staticBake = false, stableId = false } = {}) {
     const profile = getFloorProceduralProfile(profileId ?? defaultFloorProceduralProfileId);
     if (!profile?.animation) {
         return fn(profileId ?? defaultFloorProceduralProfileId);
@@ -247,16 +247,23 @@ export function withLabAnimationFrame(profileId, frameIndex, fn) {
     const anim = profile.animation;
     const frames = anim.frames;
     const idx = Math.min(frames - 1, Math.max(0, frameIndex ?? 0));
-    const t = frames > 1 ? idx / (frames - 1) : 0;
+    const t = frames > 1 ? idx / (anim.frames - 1) : 0;
     const val = anim.startValue + (anim.endValue - anim.startValue) * t;
-    const tempId = `${profileId}_lab_frame_${idx}`;
+    const tempId = stableId
+        ? `${profileId}_export`
+        : `${profileId}_lab_frame_${idx}`;
     const cloned = JSON.parse(JSON.stringify(profile));
     setDeep(cloned, anim.targetPath, val);
+    if (staticBake) {
+        delete cloned.animation;
+    }
     registerRuntimeFloorProfile(tempId, cloned);
     try {
         return fn(tempId);
     } finally {
-        unregisterRuntimeFloorProfile(tempId);
+        if (!stableId) {
+            unregisterRuntimeFloorProfile(tempId);
+        }
     }
 }
 
