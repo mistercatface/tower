@@ -9,15 +9,22 @@ function lcg(seed) {
     };
 }
 
-const NOISE_SIZE = 256;
-const NOISE_MASK = NOISE_SIZE - 1;
-const noiseTable = new Float32Array(NOISE_SIZE * NOISE_SIZE);
+const PERM_SIZE = 512;
+const perm = new Uint8Array(PERM_SIZE);
 let currentNoiseSeed = null;
 
 export function initNoiseTable(seed) {
     const rand = lcg(seed || 12345);
-    for (let i = 0; i < noiseTable.length; i++) {
-        noiseTable[i] = rand() * 2 - 1;
+    const p = new Uint8Array(256);
+    for (let i = 0; i < 256; i++) p[i] = i;
+    for (let i = 255; i > 0; i--) {
+        const j = Math.floor(rand() * (i + 1));
+        const temp = p[i];
+        p[i] = p[j];
+        p[j] = temp;
+    }
+    for (let i = 0; i < 512; i++) {
+        perm[i] = p[i & 255];
     }
 }
 
@@ -28,28 +35,33 @@ function ensureNoiseInitialized(seed) {
     }
 }
 
+function grad(hash, x, y) {
+    const h = hash & 3;
+    const u = h < 2 ? x : y;
+    const v = h < 2 ? y : x;
+    return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
+}
+
 function rawNoise2D(x, y) {
     const xi = Math.floor(x);
     const yi = Math.floor(y);
     const xf = x - xi;
     const yf = y - yi;
     
-    // Hermite interpolation (smoothstep)
-    const u = xf * xf * (3 - 2 * xf);
-    const v = yf * yf * (3 - 2 * yf);
+    // Quintic interpolation curve for smoother gradients (6t^5 - 15t^4 + 10t^3)
+    const u = xf * xf * xf * (xf * (xf * 6 - 15) + 10);
+    const v = yf * yf * yf * (yf * (yf * 6 - 15) + 10);
     
-    const x0 = xi & NOISE_MASK;
-    const x1 = (xi + 1) & NOISE_MASK;
-    const y0 = (yi & NOISE_MASK) * NOISE_SIZE;
-    const y1 = ((yi + 1) & NOISE_MASK) * NOISE_SIZE;
+    const X = xi & 255;
+    const Y = yi & 255;
     
-    const n00 = noiseTable[x0 + y0];
-    const n10 = noiseTable[x1 + y0];
-    const n01 = noiseTable[x0 + y1];
-    const n11 = noiseTable[x1 + y1];
+    const g00 = grad(perm[X + perm[Y]], xf, yf);
+    const g10 = grad(perm[X + 1 + perm[Y]], xf - 1, yf);
+    const g01 = grad(perm[X + perm[Y + 1]], xf, yf - 1);
+    const g11 = grad(perm[X + 1 + perm[Y + 1]], xf - 1, yf - 1);
     
-    const ix0 = n00 + u * (n10 - n00);
-    const ix1 = n01 + u * (n11 - n01);
+    const ix0 = g00 + u * (g10 - g00);
+    const ix1 = g01 + u * (g11 - g01);
     
     return ix0 + v * (ix1 - ix0);
 }
