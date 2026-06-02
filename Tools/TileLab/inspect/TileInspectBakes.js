@@ -1,13 +1,6 @@
-import {
-    paintPixelArea,
-    bakeFloorCellCanvas,
-    withLabAnimationFrame,
-} from "../../../Render/Floor/FloorTilePainter.js";
-import {
-    bakePixelsForWorldSpan,
-    getTexturePixelsPerWorldUnit,
-} from "../../../Render/Floor/floorTextureResolution.js";
 import { getFloorProceduralProfile } from "../../../Config/floorProceduralConfig.js";
+import { TileWorkerCoordinator } from "../../../Render/Floor/TileWorkerCoordinator.js";
+import { getTexturePixelsPerWorldUnit } from "../../../Render/Floor/floorTextureResolution.js";
 
 const MICRO_PREVIEW_MAX = 112;
 const REPEAT_PREVIEW_MAX = 180;
@@ -31,67 +24,67 @@ function toCanvas(source) {
     return canvas;
 }
 
-function bakeFloorCellAtFrame(ctrl, frameIndex) {
+async function bakeFloorCellAtFrame(ctrl, frameIndex) {
     const stub = makeStubGrid(ctrl.cellSize);
-    return withLabAnimationFrame(ctrl.profileId, frameIndex, (profileId) =>
-        bakeFloorCellCanvas(ctrl.worldX, ctrl.worldY, stub, ctrl.seed, profileId)
-    );
-}
-
-function bakeWallCellAtFrame(ctrl, frameIndex) {
-    const stub = makeStubGrid(ctrl.cellSize);
-    return withLabAnimationFrame(ctrl.profileId, frameIndex, (profileId) => {
-        const bakeSize = bakePixelsForWorldSpan(ctrl.cellSize);
-        const canvas = new OffscreenCanvas(bakeSize, bakeSize);
-        const ctx = canvas.getContext("2d");
-        ctx.imageSmoothingEnabled = false;
-        paintPixelArea(
-            ctx,
-            bakeSize,
-            bakeSize,
-            ctrl.worldX,
-            ctrl.worldY,
-            stub,
-            ctrl.seed,
-            { isWall: true, zOffset: ctrl.storyRow * ctrl.cellSize },
-            profileId
-        );
-        return canvas;
+    const bitmaps = await TileWorkerCoordinator.requestLabFloorCellBake({
+        worldX: ctrl.worldX,
+        worldY: ctrl.worldY,
+        obstacleGrid: stub,
+        seed: ctrl.seed,
+        profileId: ctrl.profileId,
+        frameIndex
     });
+    return bitmaps[0];
 }
 
-function bakeWallFaceAtFrame(ctrl, frameIndex) {
+async function bakeWallCellAtFrame(ctrl, frameIndex) {
+    const stub = makeStubGrid(ctrl.cellSize);
+    const bitmaps = await TileWorkerCoordinator.requestLabWallCellBake({
+        worldX: ctrl.worldX,
+        worldY: ctrl.worldY,
+        cellSize: ctrl.cellSize,
+        storyRow: ctrl.storyRow,
+        obstacleGrid: stub,
+        seed: ctrl.seed,
+        profileId: ctrl.profileId,
+        frameIndex
+    });
+    return bitmaps[0];
+}
+
+async function bakeWallFaceAtFrame(ctrl, frameIndex) {
     const stub = makeStubGrid(ctrl.cellSize);
     const ppwu = getTexturePixelsPerWorldUnit();
-    const width = bakePixelsForWorldSpan(ctrl.cellSize);
-    const height = bakePixelsForWorldSpan(ctrl.cellSize * ctrl.storyCount);
-    return withLabAnimationFrame(ctrl.profileId, frameIndex, (profileId) => {
-        const canvas = new OffscreenCanvas(width, height);
-        const ctx = canvas.getContext("2d");
-        ctx.imageSmoothingEnabled = false;
-        paintPixelArea(
-            ctx,
-            width,
-            height,
-            0,
-            0,
-            stub,
-            ctrl.seed,
-            { isWall: true, p1: { x: 0, y: 0 }, p2: { x: ctrl.cellSize, y: 0 }, pixelsPerUnit: ppwu },
-            profileId
-        );
-        return canvas;
+    const bitmaps = await TileWorkerCoordinator.requestLabWallFaceBake({
+        cellSize: ctrl.cellSize,
+        storyCount: ctrl.storyCount,
+        pixelsPerUnit: ppwu,
+        obstacleGrid: stub,
+        seed: ctrl.seed,
+        profileId: ctrl.profileId,
+        frameIndex
     });
+    return bitmaps[0];
 }
 
-function bakeWallColumnAtFrame(ctrl, frameIndex) {
-    const bakeSize = bakePixelsForWorldSpan(ctrl.cellSize);
+async function bakeWallColumnAtFrame(ctrl, frameIndex) {
+    // Wait for all rows to bake, then composite them
+    const promises = [];
+    for (let s = 0; s < ctrl.storyCount; s++) {
+        promises.push(bakeWallCellAtFrame({ ...ctrl, storyRow: s }, frameIndex));
+    }
+    const rows = await Promise.all(promises);
+    
+    if (rows.length === 0) return null;
+    
+    const bakeSize = rows[0].width;
     const canvas = new OffscreenCanvas(bakeSize, bakeSize * ctrl.storyCount);
     const ctx = canvas.getContext("2d");
     ctx.imageSmoothingEnabled = false;
-    for (let s = 0; s < ctrl.storyCount; s++) {
-        const row = bakeWallCellAtFrame({ ...ctrl, storyRow: s }, frameIndex);
-        ctx.drawImage(row, 0, s * bakeSize);
+    
+    for (let s = 0; s < rows.length; s++) {
+        ctx.drawImage(rows[s], 0, s * bakeSize);
+        rows[s].close(); // We just copied it, can close the bitmap
     }
     return canvas;
 }
@@ -168,16 +161,16 @@ export function isProfileAnimated(profileId) {
     return Boolean(getFloorProceduralProfile(profileId)?.animation);
 }
 
-function bakeInspectPickAtFrame(ctrl, pick, frameIndex) {
+async function bakeInspectPickAtFrame(ctrl, pick, frameIndex) {
     switch (pick) {
         case "floor":
-            return bakeFloorCellAtFrame(ctrl, frameIndex);
+            return await bakeFloorCellAtFrame(ctrl, frameIndex);
         case "wallCell":
-            return bakeWallCellAtFrame(ctrl, frameIndex);
+            return await bakeWallCellAtFrame(ctrl, frameIndex);
         case "wallColumn":
-            return bakeWallColumnAtFrame(ctrl, frameIndex);
+            return await bakeWallColumnAtFrame(ctrl, frameIndex);
         case "wallFace":
-            return bakeWallFaceAtFrame(ctrl, frameIndex);
+            return await bakeWallFaceAtFrame(ctrl, frameIndex);
         default:
             return null;
     }
@@ -186,9 +179,11 @@ function bakeInspectPickAtFrame(ctrl, pick, frameIndex) {
 /**
  * Fast inspect draw — floor + wall cell only (used on load and lightweight edits).
  */
-export function drawInspectQuick(ctrl, frameIndex = 0) {
-    const floorSource = bakeFloorCellAtFrame(ctrl, frameIndex);
-    const wallCellSource = bakeWallCellAtFrame(ctrl, frameIndex);
+export async function drawInspectQuick(ctrl, frameIndex = 0) {
+    const [floorSource, wallCellSource] = await Promise.all([
+        bakeFloorCellAtFrame(ctrl, frameIndex),
+        bakeWallCellAtFrame(ctrl, frameIndex)
+    ]);
 
     drawZoomedPreview(document.getElementById("floorPreview"), floorSource, ctrl.zoom);
     drawZoomedPreview(document.getElementById("wallCellPreview"), wallCellSource, ctrl.zoom);
@@ -221,16 +216,21 @@ export function drawInspectQuick(ctrl, frameIndex = 0) {
     const wrCtx = wallRepeat.getContext("2d");
     wrCtx.clearRect(0, 0, wrW, wrH);
     drawTiled(wrCtx, wallCellSource, 0, 0, wallCellSource.width, wallCellSource.height, 5, 5, tileZ * wrScale);
+    
+    floorSource.close();
+    wallCellSource.close();
 }
 
 /**
  * Draw inspect previews for one animation frame (full targets).
  */
-export function drawInspectAtFrame(ctrl, frameIndex = 0) {
-    const floorSource = bakeFloorCellAtFrame(ctrl, frameIndex);
-    const wallCellSource = bakeWallCellAtFrame(ctrl, frameIndex);
-    const wallColumnSource = bakeWallColumnAtFrame(ctrl, frameIndex);
-    const wallFaceSource = bakeWallFaceAtFrame(ctrl, frameIndex);
+export async function drawInspectAtFrame(ctrl, frameIndex = 0) {
+    const [floorSource, wallCellSource, wallColumnSource, wallFaceSource] = await Promise.all([
+        bakeFloorCellAtFrame(ctrl, frameIndex),
+        bakeWallCellAtFrame(ctrl, frameIndex),
+        bakeWallColumnAtFrame(ctrl, frameIndex),
+        bakeWallFaceAtFrame(ctrl, frameIndex)
+    ]);
 
     drawZoomedPreview(document.getElementById("floorPreview"), floorSource, ctrl.zoom);
     drawZoomedPreview(document.getElementById("wallCellPreview"), wallCellSource, ctrl.zoom);
@@ -264,11 +264,16 @@ export function drawInspectAtFrame(ctrl, frameIndex = 0) {
     wrCtx.clearRect(0, 0, wrW, wrH);
     const z = tileZ * wrScale;
     drawTiled(wrCtx, wallCellSource, 0, 0, wallCellSource.width, wallCellSource.height, 5, 5, z);
+    
+    floorSource.close();
+    wallCellSource.close();
+    // wallColumnSource is an OffscreenCanvas (not ImageBitmap), we don't close it, wait, we returned an OffscreenCanvas in bakeWallColumnAtFrame.
+    wallFaceSource.close();
 }
 
-export function renderTileInspectPreviews(ctrl, gameTime = 0) {
+export async function renderTileInspectPreviews(ctrl, gameTime = 0) {
     const frameIndex = inspectFrameIndexFromTime(ctrl.profileId, gameTime);
-    drawInspectAtFrame(ctrl, frameIndex);
+    await drawInspectAtFrame(ctrl, frameIndex);
 }
 
 export async function downloadInspectExport(ctrl, pick) {
@@ -283,9 +288,13 @@ export async function downloadInspectExport(ctrl, pick) {
         return;
     }
 
-    const src = bakeInspectPickAtFrame(ctrl, pick, 0);
+    const src = await bakeInspectPickAtFrame(ctrl, pick, 0);
     const link = document.createElement("a");
     link.download = `tile-${pick}-${profileId}-seed${seed}.png`;
     link.href = toCanvas(src).toDataURL("image/png");
     link.click();
+    
+    if (src instanceof ImageBitmap) {
+        src.close();
+    }
 }

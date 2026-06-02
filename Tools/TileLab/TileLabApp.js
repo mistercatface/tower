@@ -150,19 +150,19 @@ function scheduleMapPreview() {
     }, 400);
 }
 
-function renderLightweight() {
+async function renderLightweight() {
     registerEditorProfiles();
 
     const ctrl = readControls();
     inspectCtrl = ctrl;
     const world = getLabWorld();
     const frameIndex = inspectFrameIndexFromTime(ctrl.profileId, world?.gameTime ?? 0);
-    drawInspectQuick(ctrl, frameIndex);
+    await drawInspectQuick(ctrl, frameIndex);
     updateExportTabUi();
     scheduleMapPreview();
 }
 
-function renderAll({ fullQuality = false } = {}) {
+async function renderAll({ fullQuality = false } = {}) {
     registerEditorProfiles();
 
     const ctrl = readControls();
@@ -174,7 +174,7 @@ function renderAll({ fullQuality = false } = {}) {
 
     inspectCtrl = ctrl;
     const frameIndex = inspectFrameIndexFromTime(ctrl.profileId, world?.gameTime ?? 0);
-    drawInspectAtFrame(ctrl, frameIndex);
+    await drawInspectAtFrame(ctrl, frameIndex);
     updateExportTabUi();
     renderMapPreview(ctrl, world, { fastNav: false });
 }

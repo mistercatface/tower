@@ -19,14 +19,45 @@ class LRUCache {
         this.cache.set(key, val);
         return val;
     }
+
+    _closeBitmaps(value) {
+        if (!value) return;
+        if (Array.isArray(value)) {
+            value.forEach(item => {
+                if (item instanceof ImageBitmap) {
+                    item.close();
+                }
+            });
+        } else if (value instanceof ImageBitmap) {
+            value.close();
+        }
+    }
+
     set(key, val) {
-        if (this.cache.size >= this.maxSize) {
+        if (this.cache.size >= this.maxSize && !this.cache.has(key)) {
             const oldestKey = this.cache.keys().next().value;
+            this._closeBitmaps(this.cache.get(oldestKey));
             this.cache.delete(oldestKey);
+        }
+        const existing = this.cache.get(key);
+        if (existing && existing !== val) {
+            this._closeBitmaps(existing);
         }
         this.cache.set(key, val);
     }
+
+    delete(key) {
+        const existing = this.cache.get(key);
+        if (existing) {
+            this._closeBitmaps(existing);
+            this.cache.delete(key);
+        }
+    }
+
     clear() {
+        for (const value of this.cache.values()) {
+            this._closeBitmaps(value);
+        }
         this.cache.clear();
     }
 }
@@ -165,10 +196,20 @@ function getFlatWallCanvas(p1, p2, columns, storyCount, floorTiles, state, tileW
     const canvasWidth = Math.max(1, Math.ceil(edgeLen * pixelsPerUnit));
     const canvasHeight = bakePixelsForWorldSpan(storyCount * cellSize);
 
-    const canvases = floorTiles.bakeWallFace(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, state);
+    const placeholder = [{ isPlaceholder: true }];
+    flatWallCache.set(key, placeholder);
 
-    flatWallCache.set(key, canvases);
-    return canvases;
+    // bakeWallFace returns a Promise from the worker coordinator
+    floorTiles.bakeWallFace(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, state).then(bitmaps => {
+        const existing = flatWallCache.get(key);
+        if (existing === placeholder) {
+            flatWallCache.set(key, bitmaps);
+        } else {
+            bitmaps.forEach(b => b.close());
+        }
+    });
+
+    return placeholder;
 }
 
 function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHeight) {
@@ -194,6 +235,8 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHei
 
     const profile = getFloorProceduralProfile(profileId);
     let flatCanvas = flatCanvases[0];
+    if (!flatCanvas || flatCanvas.isPlaceholder) return; // Skip if it's not ready
+
     if (profile.animation && flatCanvases.length > 1) {
         const frames = flatCanvases.length;
         const duration = profile.animation.durationMs ?? 1000;

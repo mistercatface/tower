@@ -14,19 +14,44 @@ export class FloorChunkCache {
         return value;
     }
 
+    _closeBitmaps(value) {
+        if (!value) return;
+        if (Array.isArray(value)) {
+            value.forEach(item => {
+                if (item instanceof ImageBitmap) {
+                    item.close();
+                }
+            });
+        } else if (value instanceof ImageBitmap) {
+            value.close();
+        }
+    }
+
     set(key, canvas) {
         if (this.cache.size >= this.maxEntries && !this.cache.has(key)) {
             const oldestKey = this.cache.keys().next().value;
+            this._closeBitmaps(this.cache.get(oldestKey));
             this.cache.delete(oldestKey);
+        }
+        const existing = this.cache.get(key);
+        if (existing && existing !== canvas) {
+            this._closeBitmaps(existing);
         }
         this.cache.set(key, canvas);
     }
 
     delete(key) {
-        this.cache.delete(key);
+        const existing = this.cache.get(key);
+        if (existing) {
+            this._closeBitmaps(existing);
+            this.cache.delete(key);
+        }
     }
 
     clear() {
+        for (const value of this.cache.values()) {
+            this._closeBitmaps(value);
+        }
         this.cache.clear();
     }
 }
