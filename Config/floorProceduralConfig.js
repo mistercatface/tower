@@ -1,8 +1,3 @@
-import { combatVisualSettings } from "./Config.js";
-
-/** @typedef {"eval" | "warped"} ProceduralCoordinateSpace */
-
-/** Ancient glowing ruins with pulsing light networks and cracked energy channels. */
 const ancientRuins = {
     warp: { frequency: 0.002, amplitude: 5, octaves: 2, sampleOffset: [200, 900] },
     palette: { base: [30, 26, 22], floorBase: [20, 22, 26], wallBase: [24, 26, 30] },
@@ -61,7 +56,6 @@ const ancientRuins = {
     },
 };
 
-/** Shifting neon cyberspace network with multiple grid-scale animations. */
 const cyberGrid = {
     warp: { frequency: 0.005, amplitude: 8, octaves: 2, sampleOffset: [100, 100] },
     palette: { base: [10, 10, 20], floorBase: [8, 8, 16], wallBase: [12, 12, 24] },
@@ -112,7 +106,6 @@ const cyberGrid = {
     }
 };
 
-/** High-intensity magma forge with expanding hot-spots and cycling thermal bands. */
 const magmaFlow = {
     warp: { frequency: 0.006, amplitude: 14, octaves: 2, sampleOffset: [400, 300] },
     palette: { base: [24, 8, 4], floorBase: [20, 6, 2], wallBase: [28, 10, 6] },
@@ -157,7 +150,6 @@ const magmaFlow = {
     }
 };
 
-/** Bioluminescent organic deck pulsing with shifting light frequencies. */
 const organicPulse = {
     warp: { frequency: 0.007, amplitude: 18, octaves: 3, sampleOffset: [600, 900] },
     palette: { base: [2, 16, 12], floorBase: [1, 12, 10], wallBase: [4, 20, 16] },
@@ -202,11 +194,100 @@ const organicPulse = {
     }
 };
 
+const toxicSludge = {
+    warp: { frequency: 0.008, amplitude: 20, octaves: 3, sampleOffset: [500, 500] },
+    palette: { base: [10, 25, 5], floorBase: [5, 15, 2], wallBase: [15, 30, 8] },
+    motifs: [
+        { type: "baseMetal", structure: { frequency: 0.005, octaves: 3, rgbDelta: [2, 8, 2] }, grain: { frequency: 0.5, octaves: 2, amplitude: 1.0 } },
+        { type: "voronoiCell", coordinateSpace: "warped", density: 0.08, edgeWidth: 0.1, peak: 15, tint: [2, 8, 1], blendMode: "add", opacity: 0.8 },
+        { type: "filterHSV", hueShift: 0, saturation: 1.5, value: 0.9, blendMode: "replace", opacity: 1 }
+    ],
+    animation: {
+        frames: 60,
+        durationMs: 4000,
+        tracks: [
+            { targetPath: "motifs[1].density", startValue: 0.06, endValue: 0.1 },
+            { targetPath: "motifs[2].hueShift", startValue: -20, endValue: 20 }
+        ]
+    }
+};
+
+const frozenTundra = {
+    warp: { frequency: 0.001, amplitude: 3, octaves: 1, sampleOffset: [100, 200] },
+    palette: { base: [30, 35, 45], floorBase: [25, 30, 40], wallBase: [35, 40, 50] },
+    motifs: [
+        { type: "baseMetal", structure: { frequency: 0.01, octaves: 4, rgbDelta: [5, 5, 10] }, grain: { frequency: 0.8, octaves: 2, amplitude: 0.3 } },
+        { type: "fractalCracks", frequency: 0.008, octaves: 5, threshold: 0.5, peak: 20, tint: [10, 15, 25], blendMode: "screen", opacity: 0.9 },
+        { type: "filterLevels", blackPoint: 20, whitePoint: 240, gamma: 1.1, blendMode: "replace", opacity: 1 }
+    ]
+};
+
+const obsidianGlass = {
+    warp: { frequency: 0.005, amplitude: 5, octaves: 2, sampleOffset: [0, 0] },
+    palette: { base: [2, 2, 2], floorBase: [1, 1, 1], wallBase: [3, 3, 3] },
+    motifs: [
+        { type: "baseMetal", structure: { frequency: 0.002, octaves: 1, rgbDelta: [1, 1, 1] }, grain: { frequency: 0.1, octaves: 1, amplitude: 0.1 } },
+        { type: "fractalCracks", frequency: 0.003, octaves: 2, threshold: 0.8, peak: 5, tint: [2, 1, 4], blendMode: "color-dodge", opacity: 0.6 }
+    ]
+};
+
+const goldenTemple = {
+    warp: { frequency: 0.003, amplitude: 10, octaves: 2, sampleOffset: [800, 100] },
+    palette: { base: [30, 20, 5], floorBase: [25, 15, 3], wallBase: [35, 25, 8] },
+    motifs: [
+        { type: "baseMetal", structure: { frequency: 0.008, octaves: 3, rgbDelta: [10, 5, 1] }, grain: { frequency: 1.2, octaves: 1, amplitude: 0.4 } },
+        { type: "celticWeave", coordinateSpace: "warped", gridSize: 64, pipeWidth: 8, peak: 12, tint: [15, 10, 2], blendMode: "screen", opacity: 0.8 },
+        { type: "filterPosterize", bands: 8, blendMode: "replace", opacity: 0.7 }
+    ]
+};
+
+const abyssalDepths = {
+    warp: { frequency: 0.01, amplitude: 25, octaves: 4, sampleOffset: [1000, 1000] },
+    palette: { base: [1, 3, 8], floorBase: [0, 2, 6], wallBase: [2, 5, 12] },
+    motifs: [
+        { type: "baseMetal", structure: { frequency: 0.004, octaves: 3, rgbDelta: [1, 2, 5] }, grain: { frequency: 0.6, octaves: 2, amplitude: 0.8 } },
+        { type: "concentricRings", coordinateSpace: "warped", frequency: 0.05, ringWidth: 0.02, peak: 10, tint: [1, 5, 15], blendMode: "screen", opacity: 0.5 },
+        { type: "starburst", coordinateSpace: "warped", gridSize: 48, density: 0.2, radius: 15, spikes: 4, peak: 8, tint: [2, 8, 20], blendMode: "add", opacity: 0.7 }
+    ],
+    animation: {
+        frames: 120,
+        durationMs: 8000,
+        tracks: [
+            { targetPath: "motifs[1].frequency", startValue: 0.04, endValue: 0.06 },
+            { targetPath: "motifs[2].radius", startValue: 10, endValue: 20 }
+        ]
+    }
+};
+
+const neonWireframe = {
+    warp: { frequency: 0.0, amplitude: 0, octaves: 1, sampleOffset: [0, 0] },
+    palette: { base: [0, 0, 0], floorBase: [0, 0, 0], wallBase: [2, 2, 2] },
+    motifs: [
+        { type: "baseMetal", structure: { frequency: 0.001, octaves: 1, rgbDelta: [0, 0, 0] }, grain: { frequency: 0.1, octaves: 1, amplitude: 0.1 } },
+        { type: "hexGrid", cellWorldSize: 32, groutWidth: 0.02, groutPeak: 20, groutTint: [0, 25, 15], bevelWidth: 0, highlightPeak: 0, shadowPeak: 0, cellVariation: 0, blendMode: "screen", opacity: 1 },
+        { type: "circuitTraces", coordinateSpace: "eval", gridSize: 64, lineWidth: 2.0, density: 0.8, diagDensity: 0.5, peak: 25, tint: [25, 0, 20], padEnabled: false, blendMode: "add", opacity: 1 },
+        { type: "filterHSV", hueShift: 0, saturation: 2.0, value: 1.5, blendMode: "replace", opacity: 1 }
+    ],
+    animation: {
+        frames: 90,
+        durationMs: 6000,
+        tracks: [
+            { targetPath: "motifs[3].hueShift", startValue: 0, endValue: 360 }
+        ]
+    }
+};
+
 export const floorProceduralProfiles = {
     ancientRuins,
     cyberGrid,
     magmaFlow,
-    organicPulse
+    organicPulse,
+    toxicSludge,
+    frozenTundra,
+    obsidianGlass,
+    goldenTemple,
+    abyssalDepths,
+    neonWireframe
 };
 
 export const START_STATION_ID = "organicPulse";
