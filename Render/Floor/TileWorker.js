@@ -1,5 +1,6 @@
 import { bakeFloorChunkCanvas, bakeFloorChunkFrameCanvas, bakeWallFaceCanvases } from "./FloorTilePainter.js";
 import { registerRuntimeFloorProfile } from "../../Config/floorProceduralConfig.js";
+import { invalidateProfileScratch } from "./ProfileBakeResolver.js";
 
 const HANDLERS = {
     bakeFloorChunk(payload) {
@@ -11,11 +12,21 @@ const HANDLERS = {
     },
 
     bakeWallFace(payload) {
-        return bakeWallFaceCanvases(payload.width, payload.height, payload.p1, payload.p2, payload.pixelsPerUnit, payload.seed, payload.profileId);
+        return bakeWallFaceCanvases(
+            payload.width,
+            payload.height,
+            payload.p1,
+            payload.p2,
+            payload.pixelsPerUnit,
+            payload.seed,
+            payload.profileId,
+            payload,
+        );
     },
 
     registerRuntimeProfile(payload) {
         registerRuntimeFloorProfile(payload.profileId, payload.profile);
+        invalidateProfileScratch(payload.profileId);
         return [];
     },
 };

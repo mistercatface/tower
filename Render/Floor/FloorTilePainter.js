@@ -1,8 +1,9 @@
 import { floorTileSettings, gridSettings } from "../../Config/Config.js";
-import { defaultFloorProceduralProfileId, getFloorProceduralProfile, registerRuntimeFloorProfile, unregisterRuntimeFloorProfile } from "../../Config/floorProceduralConfig.js";
+import { defaultFloorProceduralProfileId, getFloorProceduralProfile } from "../../Config/floorProceduralConfig.js";
 import { composeFloorImage } from "../../Procedural/FloorTextureComposer.js";
 import { createWallFaceAxes, mapPixelToEval } from "./SurfaceCoordinateMapper.js";
 import { bakePixelsForWorldSpan, getPixelsPerWorldUnit } from "./floorTextureResolution.js";
+import { resolveBakeProfile, createParamOverrideBinding, createWorldPointBinding } from "./ProfileBakeResolver.js";
 
 class TileMemoryPool {
     constructor() {
@@ -18,7 +19,7 @@ class TileMemoryPool {
             lookupX: new Float32Array(numPixels),
             lookupY: new Float32Array(numPixels),
             wallU: new Float32Array(numPixels),
-            wallV: new Float32Array(numPixels)
+            wallV: new Float32Array(numPixels),
         };
     }
     release(samples, numPixels) {
@@ -28,8 +29,15 @@ class TileMemoryPool {
 }
 const memoryPool = new TileMemoryPool();
 
-export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, seed, options = {}, profileId) {
-    const profile = getFloorProceduralProfile(profileId ?? defaultFloorProceduralProfileId);
+function resolvePaintProfile(profileOrId) {
+    if (profileOrId != null && typeof profileOrId === "object") {
+        return profileOrId;
+    }
+    return getFloorProceduralProfile(profileOrId ?? defaultFloorProceduralProfileId);
+}
+
+export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, seed, options = {}, profileOrId) {
+    const profile = resolvePaintProfile(profileOrId);
 
     const isWall = options.isWall === true;
     const cellSize = options.cellSize ?? gridSettings.cellSize;
@@ -99,11 +107,24 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, see
     memoryPool.release(pooled, numPixels);
 }
 
-export function bakeWallFaceCanvas(width, height, p1, p2, pixelsPerUnit, seed, profileId) {
+function bakeResolvedProfile(ctx, width, height, startWorldX, startWorldY, seed, options, baseProfile, profileKey, bakeContext) {
+    const profile = resolveBakeProfile(baseProfile, profileKey, bakeContext);
+    paintPixelArea(ctx, width, height, startWorldX, startWorldY, seed, options, profile);
+}
+
+export function bakeWallFaceCanvas(width, height, p1, p2, pixelsPerUnit, seed, profileOrId, bakeContext = null) {
     const canvas = new OffscreenCanvas(width, height);
     const ctx = canvas.getContext("2d");
     ctx.imageSmoothingEnabled = false;
-    paintPixelArea(ctx, width, height, 0, 0, seed, { isWall: true, p1, p2, pixelsPerUnit }, profileId);
+
+    if (bakeContext) {
+        const profileKey = typeof profileOrId === "string" ? profileOrId : defaultFloorProceduralProfileId;
+        const baseProfile = resolvePaintProfile(profileOrId);
+        bakeResolvedProfile(ctx, width, height, 0, 0, seed, { isWall: true, p1, p2, pixelsPerUnit }, baseProfile, profileKey, bakeContext);
+    } else {
+        paintPixelArea(ctx, width, height, 0, 0, seed, { isWall: true, p1, p2, pixelsPerUnit }, profileOrId);
+    }
+
     return canvas;
 }
 
@@ -118,7 +139,30 @@ function chunkWorldOrigin(chunkCol, chunkRow, minX, minY, cellsPerChunk = floorT
     };
 }
 
-/** Static chunk bake — animated profiles use bakeFloorChunkFrameCanvas via the coordinator. */
+function buildBakeContextFromPayload(payload) {
+    const ctx = {
+        frameIndex: payload.frameIndex,
+        gameTime: payload.gameTime,
+    };
+    if (payload.player) {
+        ctx.player = payload.player;
+    }
+
+    const bindings = [];
+    if (payload.paramOverrides?.length) {
+        bindings.push(createParamOverrideBinding(payload.paramOverrides));
+    }
+    if (payload.player && payload.playerAnchorPath) {
+        bindings.push(createWorldPointBinding(payload.playerAnchorPath, (bakeCtx) => bakeCtx.player));
+    }
+    if (bindings.length) {
+        ctx.bindings = bindings;
+    }
+
+    return ctx;
+}
+
+/** Static chunk bake — no binding sources active. */
 export function bakeFloorChunkCanvas({ chunkCol, chunkRow, minX, minY, seed, cellsPerChunk = floorTileSettings.cellsPerChunk, profileId }) {
     const { x: chunkWorldX, y: chunkWorldY, bakeSize } = chunkWorldOrigin(chunkCol, chunkRow, minX, minY, cellsPerChunk);
     const canvas = new OffscreenCanvas(bakeSize, bakeSize);
@@ -128,92 +172,31 @@ export function bakeFloorChunkCanvas({ chunkCol, chunkRow, minX, minY, seed, cel
     return [canvas];
 }
 
-/** Single animation frame for a floor chunk — dispatched as its own worker job. */
-export function bakeFloorChunkFrameCanvas({ chunkCol, chunkRow, minX, minY, seed, frameIndex, cellsPerChunk = floorTileSettings.cellsPerChunk, profileId }) {
+/** Single animation frame for a floor chunk — bindings resolved into scratch profile. */
+export function bakeFloorChunkFrameCanvas(payload) {
+    const { chunkCol, chunkRow, minX, minY, seed, profileId, cellsPerChunk } = payload;
     const { x: chunkWorldX, y: chunkWorldY, bakeSize } = chunkWorldOrigin(chunkCol, chunkRow, minX, minY, cellsPerChunk);
-    return withLabAnimationFrame(profileId, frameIndex, (tempProfileId) => {
-        const canvas = new OffscreenCanvas(bakeSize, bakeSize);
-        const ctx = canvas.getContext("2d");
-        ctx.imageSmoothingEnabled = false;
-        paintPixelArea(ctx, bakeSize, bakeSize, chunkWorldX, chunkWorldY, seed, {}, tempProfileId);
-        return canvas;
-    });
+    const baseProfile = getFloorProceduralProfile(profileId ?? defaultFloorProceduralProfileId);
+    const bakeContext = buildBakeContextFromPayload(payload);
+
+    const canvas = new OffscreenCanvas(bakeSize, bakeSize);
+    const ctx = canvas.getContext("2d");
+    ctx.imageSmoothingEnabled = false;
+    bakeResolvedProfile(ctx, bakeSize, bakeSize, chunkWorldX, chunkWorldY, seed, {}, baseProfile, profileId, bakeContext);
+    return canvas;
 }
 
-function setDeep(obj, path, value) {
-    const parts = path
-        .replace(/\]/g, "")
-        .split(/[\[\.]+/)
-        .filter(Boolean);
-    let curr = obj;
-    for (let i = 0; i < parts.length - 1; i++) {
-        curr = curr[parts[i]];
-    }
-    curr[parts[parts.length - 1]] = value;
-}
-
-/** Apply one animation frame via a temporary profile override (chunk frames, export). */
-export function withLabAnimationFrame(profileId, frameIndex, fn, { staticBake = false, stableId = false } = {}) {
-    const profile = getFloorProceduralProfile(profileId ?? defaultFloorProceduralProfileId);
-    if (!profile?.animation) {
-        return fn(profileId ?? defaultFloorProceduralProfileId);
-    }
-
-    const anim = profile.animation;
-    const frames = anim.frames;
-    const idx = Math.min(frames - 1, Math.max(0, frameIndex ?? 0));
-    const t = frames > 1 ? idx / (anim.frames - 1) : 0;
-    const tempId = stableId ? `${profileId}_export` : `${profileId}_lab_frame_${idx}`;
-    const cloned = JSON.parse(JSON.stringify(profile));
-
-    const tracks = anim.tracks || [{ targetPath: anim.targetPath, startValue: anim.startValue, endValue: anim.endValue }];
-    for (const track of tracks) {
-        if (track.targetPath) {
-            const val = track.startValue + (track.endValue - track.startValue) * t;
-            setDeep(cloned, track.targetPath, val);
-        }
-    }
-    if (staticBake) {
-        delete cloned.animation;
-    }
-    registerRuntimeFloorProfile(tempId, cloned);
-    try {
-        return fn(tempId);
-    } finally {
-        if (!stableId) {
-            unregisterRuntimeFloorProfile(tempId);
-        }
-    }
-}
-
-export function bakeWallFaceCanvases(width, height, p1, p2, pixelsPerUnit, seed, profileId) {
-    const profile = getFloorProceduralProfile(profileId ?? defaultFloorProceduralProfileId);
-    const anim = profile.animation;
-
-    if (!anim) {
+export function bakeWallFaceCanvases(width, height, p1, p2, pixelsPerUnit, seed, profileId, payload = {}) {
+    const baseProfile = getFloorProceduralProfile(profileId ?? defaultFloorProceduralProfileId);
+    if (!baseProfile.animation) {
         return [bakeWallFaceCanvas(width, height, p1, p2, pixelsPerUnit, seed, profileId)];
     }
 
-    const frames = [];
-    const tracks = anim.tracks || [{ targetPath: anim.targetPath, startValue: anim.startValue, endValue: anim.endValue }];
-    for (let i = 0; i < anim.frames; i++) {
-        const t = anim.frames > 1 ? i / (anim.frames - 1) : 0;
-
-        const tempId = `${profileId}_anim_${i}`;
-        const cloned = JSON.parse(JSON.stringify(profile));
-        for (const track of tracks) {
-            if (track.targetPath) {
-                const val = track.startValue + (track.endValue - track.startValue) * t;
-                setDeep(cloned, track.targetPath, val);
-            }
-        }
-
-        registerRuntimeFloorProfile(tempId, cloned);
-
-        const canvas = bakeWallFaceCanvas(width, height, p1, p2, pixelsPerUnit, seed, tempId);
-
-        frames.push(canvas);
-        unregisterRuntimeFloorProfile(tempId);
+    const frames = baseProfile.animation.frames;
+    const canvases = [];
+    for (let frameIndex = 0; frameIndex < frames; frameIndex++) {
+        const bakeContext = buildBakeContextFromPayload({ ...payload, frameIndex, profileId });
+        canvases.push(bakeWallFaceCanvas(width, height, p1, p2, pixelsPerUnit, seed, profileId, bakeContext));
     }
-    return frames;
+    return canvases;
 }

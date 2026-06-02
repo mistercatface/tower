@@ -1,5 +1,6 @@
 import { registerRuntimeFloorProfile } from "../../Config/floorProceduralConfig.js";
 import { clearFlatWallFaceCache } from "../../Render/3D/WallFaceTexture.js";
+import { invalidateProfileScratch } from "../../Render/Floor/ProfileBakeResolver.js";
 import { TileWorkerCoordinator } from "../../Render/Floor/TileWorkerCoordinator.js";
 import {
     renderGamePreview,
@@ -12,6 +13,7 @@ import { ensureLabWorld, getLabWorldMapSeed } from "./LabWorldSession.js";
 export async function registerEditorProfiles() {
     const labProfile = getActiveLabProfile();
     registerRuntimeFloorProfile(RUNTIME_LAB_PROFILE_ID, labProfile);
+    invalidateProfileScratch(RUNTIME_LAB_PROFILE_ID);
     await TileWorkerCoordinator.registerRuntimeProfile(RUNTIME_LAB_PROFILE_ID, labProfile);
 }
 
