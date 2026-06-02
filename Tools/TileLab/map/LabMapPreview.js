@@ -3,8 +3,6 @@ import { clearFlatWallFaceCache } from "../../../Render/3D/WallFaceTexture.js";
 import { Render3D } from "../../../Render/3D/Render3D.js";
 import { Viewport } from "../../../Render/Viewport.js";
 import { playerBaseStats, combatVisualSettings } from "../../../Config/Config.js";
-import { withLabAnimationFrame } from "../../../Render/Floor/FloorTilePainter.js";
-import { getFloorProceduralProfile, unregisterRuntimeFloorProfile } from "../../../Config/floorProceduralConfig.js";
 
 const render3D = new Render3D();
 let lastBakeKey = "";

@@ -1,6 +1,6 @@
 import { floorTileSettings, gridSettings } from "../../Config/Config.js";
 import { defaultFloorProceduralProfileId, getFloorProceduralProfile, registerRuntimeFloorProfile, unregisterRuntimeFloorProfile } from "../../Config/floorProceduralConfig.js";
-import { createPaintContext, composeFloorImage } from "../../Procedural/FloorTextureComposer.js";
+import { composeFloorImage } from "../../Procedural/FloorTextureComposer.js";
 import { createWallFaceAxes, mapPixelToEval } from "./SurfaceCoordinateMapper.js";
 import { bakePixelsForWorldSpan, drawBakedTexture, getPixelsPerWorldUnit } from "./floorTextureResolution.js";
 
@@ -30,7 +30,6 @@ const memoryPool = new TileMemoryPool();
 
 export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, seed, options = {}, profileId) {
     const profile = getFloorProceduralProfile(profileId ?? defaultFloorProceduralProfileId);
-    const paintContext = createPaintContext(profile, seed);
 
     const isWall = options.isWall === true;
     const cellSize = options.cellSize ?? gridSettings.cellSize;
@@ -86,7 +85,7 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, see
         faceKey = `_p1:${wallFace.p1.x},${wallFace.p1.y}_p2:${options.p2.x},${options.p2.y}`;
     }
     const requestKey = `${surfaceKind}_${startWorldX},${startWorldY}_${width}x${height}_${pixelsPerUnit}_${zOffset}_${seed}${faceKey}`;
-    const rgbBuffer = composeFloorImage(samples, paintContext, requestKey);
+    const rgbBuffer = composeFloorImage(samples, profile, seed, requestKey);
 
     let dataIdx = 0;
     for (let i = 0; i < numPixels; i++) {

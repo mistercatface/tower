@@ -47,11 +47,6 @@ export function clearLayerCache() {
     layerCache.clear();
 }
 
-export function createPaintContext(profile, seed) {
-    ensureNoiseInitialized(seed);
-    return { profile, seed };
-}
-
 function resolvePaletteBase(profile, isWall) {
     if (isWall && profile.palette.wallBase) {
         return profile.palette.wallBase;
@@ -96,8 +91,8 @@ function motifMatchesSurface(config, surface) {
     return true;
 }
 
-export function composeFloorImage(samples, paintContext, requestKey) {
-    const { profile, seed } = paintContext;
+export function composeFloorImage(samples, profile, seed, requestKey) {
+    ensureNoiseInitialized(seed);
     const numPixels = samples.width * samples.height;
 
     const warpHash = JSON.stringify(profile.warp ?? null);
