@@ -5,11 +5,7 @@ import { chunkToWorldOrigin, getChunkSizePx, gridBoundsToChunkRange, worldBounds
 import { snapWorldToCellOrigin } from "../../Spatial/Geometry/GridCoords.js";
 import { FloorChunkCache } from "./FloorChunkCache.js";
 import { TileWorkerCoordinator } from "./TileWorkerCoordinator.js";
-import {
-    floorCellCacheKey,
-    floorChunkCacheKey,
-    getFloorTextureProfileId,
-} from "./floorTextureProfile.js";
+import { floorCellCacheKey, floorChunkCacheKey, getFloorTextureProfileId } from "./floorTextureProfile.js";
 import { drawBakedTexture, getTexturePixelsPerWorldUnit } from "./floorTextureResolution.js";
 
 export class FloorTileSystem {
@@ -52,33 +48,24 @@ export class FloorTileSystem {
         const seed = state.floorTileSeed ?? 0;
         const profileId = getFloorTextureProfileId(state);
         const ppwu = getTexturePixelsPerWorldUnit();
-        if (
-            this._tileTexture &&
-            this._tileTextureSeed === seed &&
-            this._tileTextureProfileId === profileId &&
-            this._tileTexturePpwu === ppwu
-        ) {
+        if (this._tileTexture && this._tileTextureSeed === seed && this._tileTextureProfileId === profileId && this._tileTexturePpwu === ppwu) {
             return this._tileTexture;
         }
         this._tileTextureSeed = seed;
         this._tileTextureProfileId = profileId;
         this._tileTexturePpwu = ppwu;
-        
+
         const placeholder = [{ isPlaceholder: true }];
         this._tileTexture = placeholder;
-        
-        TileWorkerCoordinator.requestTileTextureBake({
-            seed,
-            cellSize: state.obstacleGrid?.cellSize,
-            profileId
-        }).then(canvases => {
+
+        TileWorkerCoordinator.requestTileTextureBake({ seed, profileId }).then((canvases) => {
             if (this._tileTextureSeed === seed && this._tileTextureProfileId === profileId) {
                 this._tileTexture = canvases;
             } else {
-                canvases.forEach(c => c.close());
+                canvases.forEach((c) => c.close());
             }
         });
-        
+
         return placeholder;
     }
 
@@ -93,18 +80,12 @@ export class FloorTileSystem {
         const placeholder = [{ isPlaceholder: true }];
         this.cellCache.set(key, placeholder);
 
-        TileWorkerCoordinator.requestFloorCellBake({
-            worldX: x,
-            worldY: y,
-            obstacleGrid,
-            seed: state.floorTileSeed ?? 0,
-            profileId
-        }).then(bitmaps => {
+        TileWorkerCoordinator.requestFloorCellBake({ worldX: x, worldY: y, seed: state.floorTileSeed ?? 0, profileId }).then((bitmaps) => {
             const existing = this.cellCache.get(key);
             if (existing === placeholder) {
                 this.cellCache.set(key, bitmaps);
             } else {
-                bitmaps.forEach(b => b.close());
+                bitmaps.forEach((b) => b.close());
             }
         });
 
@@ -115,55 +96,42 @@ export class FloorTileSystem {
         const profileId = getFloorTextureProfileId(state);
         const obstacleGrid = state.obstacleGrid;
         const { col, row, x, y } = snapWorldToCellOrigin(worldX, worldY, obstacleGrid.minX, obstacleGrid.minY, obstacleGrid.cellSize);
-        
+
         // Wall cells can reuse the cell cache but need a unique key incorporating storyRow
         const key = `wall_${floorCellCacheKey(col, row, profileId)}_${storyRow}`;
         let canvases = this.cellCache.get(key);
-        
+
         if (!canvases) {
             const placeholder = [{ isPlaceholder: true }];
             this.cellCache.set(key, placeholder);
-            
+
             TileWorkerCoordinator.requestLabWallCellBake({
                 worldX: x,
                 worldY: y,
-                obstacleGrid,
                 seed: state.floorTileSeed ?? 0,
                 profileId,
-                cellSize: obstacleGrid.cellSize,
                 storyRow,
-                frameIndex: 0 // Assumes no animation for immediate wall cell draw in game right now, or needs GameTime
-            }).then(bitmaps => {
+                frameIndex: 0, // Assumes no animation for immediate wall cell draw in game right now, or needs GameTime
+            }).then((bitmaps) => {
                 const existing = this.cellCache.get(key);
                 if (existing === placeholder) {
                     this.cellCache.set(key, bitmaps);
                 } else {
-                    bitmaps.forEach(b => b.close());
+                    bitmaps.forEach((b) => b.close());
                 }
             });
             return;
         }
 
         if (canvases[0]?.isPlaceholder) return;
-        
+
         // Assume non-animated or first frame for now if drawn immediately
         drawBakedTexture(ctx, canvases[0], x, y, obstacleGrid.cellSize, obstacleGrid.cellSize);
     }
 
     bakeWallFace(width, height, p1, p2, pixelsPerUnit, state) {
         const profileId = getFloorTextureProfileId(state);
-        // Wall face async fetching could be complex if caller expects sync return.
-        // Returning the promise from Coordinator instead.
-        return TileWorkerCoordinator.requestWallFaceBake({
-            width,
-            height,
-            p1,
-            p2,
-            pixelsPerUnit,
-            obstacleGrid: state.obstacleGrid,
-            seed: state.floorTileSeed ?? 0,
-            profileId
-        });
+        return TileWorkerCoordinator.requestWallFaceBake({ width, height, p1, p2, pixelsPerUnit, seed: state.floorTileSeed ?? 0, profileId });
     }
 
     getChunkCanvas(chunkCol, chunkRow, state) {
@@ -175,18 +143,12 @@ export class FloorTileSystem {
         const placeholder = [{ isPlaceholder: true }];
         this.cache.set(key, placeholder);
 
-        TileWorkerCoordinator.requestFloorChunkBake({
-            chunkCol,
-            chunkRow,
-            obstacleGrid: state.obstacleGrid,
-            seed: state.floorTileSeed ?? 0,
-            profileId,
-        }).then(bitmaps => {
+        TileWorkerCoordinator.requestFloorChunkBake({ chunkCol, chunkRow, minX: state.obstacleGrid.minX, minY: state.obstacleGrid.minY, seed: state.floorTileSeed ?? 0, profileId }).then((bitmaps) => {
             const existing = this.cache.get(key);
             if (existing === placeholder) {
                 this.cache.set(key, bitmaps);
             } else {
-                bitmaps.forEach(b => b.close());
+                bitmaps.forEach((b) => b.close());
             }
         });
 
@@ -221,7 +183,7 @@ export class FloorTileSystem {
                     const frames = canvases.length;
                     const duration = profile.animation.durationMs ?? 1000;
                     const clock = state.gameTime ?? 0;
-                    const currentFrame = Math.floor((clock % duration) / duration * frames);
+                    const currentFrame = Math.floor(((clock % duration) / duration) * frames);
                     canvas = canvases[Math.min(frames - 1, Math.max(0, currentFrame))];
                 }
                 const origin = chunkToWorldOrigin(chunkCol, chunkRow, obstacleGrid.minX, obstacleGrid.minY, chunkSizePx);

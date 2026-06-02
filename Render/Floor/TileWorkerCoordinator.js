@@ -4,7 +4,7 @@ const pending = new Map();
 
 function getWorker() {
     if (!worker) {
-        worker = new Worker(new URL('./TileWorker.js', import.meta.url), { type: 'module' });
+        worker = new Worker(new URL("./TileWorker.js", import.meta.url), { type: "module" });
         worker.onmessage = (e) => {
             const { id, bitmaps, error } = e.data;
             if (pending.has(id)) {
@@ -14,8 +14,8 @@ function getWorker() {
                     reject(new Error(error));
                 } else {
                     resolve(bitmaps);
-                    if (typeof window !== 'undefined') {
-                        window.dispatchEvent(new CustomEvent('tileBakeComplete'));
+                    if (typeof window !== "undefined") {
+                        window.dispatchEvent(new CustomEvent("tileBakeComplete"));
                     }
                 }
             }
@@ -32,76 +32,36 @@ function sendRequest(type, payload) {
     });
 }
 
-function copyObstacleGrid(grid) {
-    if (!grid) return null;
-    return {
-        cellSize: grid.cellSize,
-        minX: grid.minX,
-        minY: grid.minY,
-        cols: grid.cols,
-        rows: grid.rows,
-        grid: new Uint8Array(grid.grid)
-    };
-}
-
-let lastGridRef = null;
-let lastGridVersion = null;
-
-function ensureObstacleGridSynchronized(grid) {
-    if (!grid) return;
-    const version = grid.version || 0;
-    if (grid !== lastGridRef || version !== lastGridVersion) {
-        lastGridRef = grid;
-        lastGridVersion = version;
-        sendRequest('setObstacleGrid', copyObstacleGrid(grid));
-    }
-}
-
 export const TileWorkerCoordinator = {
     requestFloorChunkBake(payload) {
-        ensureObstacleGridSynchronized(payload.obstacleGrid);
-        const payloadCopy = {
-            ...payload,
-            obstacleGrid: null
-        };
-        return sendRequest('bakeFloorChunk', payloadCopy);
+        return sendRequest("bakeFloorChunk", payload);
     },
 
     requestFloorCellBake(payload) {
-        ensureObstacleGridSynchronized(payload.obstacleGrid);
-        const payloadCopy = {
-            ...payload,
-            obstacleGrid: null
-        };
-        return sendRequest('bakeFloorCell', payloadCopy);
+        return sendRequest("bakeFloorCell", payload);
     },
 
     requestWallFaceBake(payload) {
-        ensureObstacleGridSynchronized(payload.obstacleGrid);
-        const payloadCopy = {
-            ...payload,
-            obstacleGrid: null
-        };
-        return sendRequest('bakeWallFace', payloadCopy);
+        return sendRequest("bakeWallFace", payload);
     },
 
     requestTileTextureBake(payload) {
-        return sendRequest('bakeTileTexture', payload);
+        return sendRequest("bakeTileTexture", payload);
     },
 
     requestLabFloorCellBake(payload) {
-        return sendRequest('labBakeFloorCell', { ...payload, obstacleGrid: copyObstacleGrid(payload.obstacleGrid) });
+        return sendRequest("labBakeFloorCell", payload);
     },
 
     requestLabWallCellBake(payload) {
-        return sendRequest('labBakeWallCell', { ...payload, obstacleGrid: copyObstacleGrid(payload.obstacleGrid) });
+        return sendRequest("labBakeWallCell", payload);
     },
 
     requestLabWallFaceBake(payload) {
-        return sendRequest('labBakeWallFace', { ...payload, obstacleGrid: copyObstacleGrid(payload.obstacleGrid) });
+        return sendRequest("labBakeWallFace", payload);
     },
 
     registerRuntimeProfile(profileId, profile) {
-        return sendRequest('registerRuntimeProfile', { profileId, profile });
-    }
+        return sendRequest("registerRuntimeProfile", { profileId, profile });
+    },
 };

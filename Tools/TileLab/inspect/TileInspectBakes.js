@@ -5,19 +5,10 @@ import { getTexturePixelsPerWorldUnit } from "../../../Render/Floor/floorTexture
 const MICRO_PREVIEW_MAX = 112;
 const REPEAT_PREVIEW_MAX = 180;
 
-function makeStubGrid(cellSize) {
-    return {
-        cellSize,
-        minX: 0,
-        minY: 0,
-        cols: 1,
-        rows: 1,
-        grid: new Uint8Array(1),
-    };
-}
-
 function toCanvas(source) {
-    const canvas = new OffscreenCanvas(source.width, source.height);
+    const canvas = document.createElement("canvas");
+    canvas.width = source.width;
+    canvas.height = source.height;
     const ctx = canvas.getContext("2d");
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(source, 0, 0);
@@ -25,63 +16,42 @@ function toCanvas(source) {
 }
 
 async function bakeFloorCellAtFrame(ctrl, frameIndex) {
-    const stub = makeStubGrid(ctrl.cellSize);
-    const bitmaps = await TileWorkerCoordinator.requestLabFloorCellBake({
-        worldX: ctrl.worldX,
-        worldY: ctrl.worldY,
-        obstacleGrid: stub,
-        seed: ctrl.seed,
-        profileId: ctrl.profileId,
-        frameIndex
-    });
+    const bitmaps = await TileWorkerCoordinator.requestLabFloorCellBake({ worldX: ctrl.worldX, worldY: ctrl.worldY, seed: ctrl.seed, profileId: ctrl.profileId, frameIndex });
     return bitmaps[0];
 }
 
 async function bakeWallCellAtFrame(ctrl, frameIndex) {
-    const stub = makeStubGrid(ctrl.cellSize);
-    const bitmaps = await TileWorkerCoordinator.requestLabWallCellBake({
-        worldX: ctrl.worldX,
-        worldY: ctrl.worldY,
-        cellSize: ctrl.cellSize,
-        storyRow: ctrl.storyRow,
-        obstacleGrid: stub,
-        seed: ctrl.seed,
-        profileId: ctrl.profileId,
-        frameIndex
-    });
+    const bitmaps = await TileWorkerCoordinator.requestLabWallCellBake({ worldX: ctrl.worldX, worldY: ctrl.worldY, storyRow: ctrl.storyRow, seed: ctrl.seed, profileId: ctrl.profileId, frameIndex });
     return bitmaps[0];
 }
 
 async function bakeWallFaceAtFrame(ctrl, frameIndex) {
-    const stub = makeStubGrid(ctrl.cellSize);
     const ppwu = getTexturePixelsPerWorldUnit();
     const bitmaps = await TileWorkerCoordinator.requestLabWallFaceBake({
         cellSize: ctrl.cellSize,
         storyCount: ctrl.storyCount,
         pixelsPerUnit: ppwu,
-        obstacleGrid: stub,
         seed: ctrl.seed,
         profileId: ctrl.profileId,
-        frameIndex
+        frameIndex,
     });
     return bitmaps[0];
 }
 
 async function bakeWallColumnAtFrame(ctrl, frameIndex) {
-    // Wait for all rows to bake, then composite them
     const promises = [];
     for (let s = 0; s < ctrl.storyCount; s++) {
         promises.push(bakeWallCellAtFrame({ ...ctrl, storyRow: s }, frameIndex));
     }
     const rows = await Promise.all(promises);
-    
+
     if (rows.length === 0) return null;
-    
+
     const bakeSize = rows[0].width;
     const canvas = new OffscreenCanvas(bakeSize, bakeSize * ctrl.storyCount);
     const ctx = canvas.getContext("2d");
     ctx.imageSmoothingEnabled = false;
-    
+
     for (let s = 0; s < rows.length; s++) {
         ctx.drawImage(rows[s], 0, s * bakeSize);
         rows[s].close(); // We just copied it, can close the bitmap
@@ -151,10 +121,7 @@ export function inspectFrameIndexFromTime(profileId, gameTime) {
     }
     const frames = profile.animation.frames ?? 1;
     const duration = profile.animation.durationMs ?? 1000;
-    return Math.min(
-        frames - 1,
-        Math.max(0, Math.floor(((gameTime % duration) / duration) * frames))
-    );
+    return Math.min(frames - 1, Math.max(0, Math.floor(((gameTime % duration) / duration) * frames)));
 }
 
 export function isProfileAnimated(profileId) {
@@ -180,25 +147,13 @@ async function bakeInspectPickAtFrame(ctrl, pick, frameIndex) {
  * Fast inspect draw — floor + wall cell only (used on load and lightweight edits).
  */
 export async function drawInspectQuick(ctrl, frameIndex = 0) {
-    const [floorSource, wallCellSource] = await Promise.all([
-        bakeFloorCellAtFrame(ctrl, frameIndex),
-        bakeWallCellAtFrame(ctrl, frameIndex)
-    ]);
+    const [floorSource, wallCellSource] = await Promise.all([bakeFloorCellAtFrame(ctrl, frameIndex), bakeWallCellAtFrame(ctrl, frameIndex)]);
 
     drawZoomedPreview(document.getElementById("floorPreview"), floorSource, ctrl.zoom);
     drawZoomedPreview(document.getElementById("wallCellPreview"), wallCellSource, ctrl.zoom);
     drawZoomedPreview(document.getElementById("wallColumnPreview"), wallCellSource, ctrl.zoom);
     drawZoomedPreview(document.getElementById("wallFacePreview"), wallCellSource, ctrl.zoom);
-
-    drawRepeatPreview(
-        document.getElementById("floorRepeat"),
-        floorSource,
-        floorSource.width,
-        floorSource.height,
-        5,
-        5,
-        ctrl.zoom
-    );
+    drawRepeatPreview(document.getElementById("floorRepeat"), floorSource, floorSource.width, floorSource.height, 5, 5, ctrl.zoom);
 
     const wallRepeat = document.getElementById("wallRepeat");
     const tileZ = Math.max(1, Math.floor(ctrl.zoom));
@@ -216,7 +171,7 @@ export async function drawInspectQuick(ctrl, frameIndex = 0) {
     const wrCtx = wallRepeat.getContext("2d");
     wrCtx.clearRect(0, 0, wrW, wrH);
     drawTiled(wrCtx, wallCellSource, 0, 0, wallCellSource.width, wallCellSource.height, 5, 5, tileZ * wrScale);
-    
+
     floorSource.close();
     wallCellSource.close();
 }
@@ -229,7 +184,7 @@ export async function drawInspectAtFrame(ctrl, frameIndex = 0) {
         bakeFloorCellAtFrame(ctrl, frameIndex),
         bakeWallCellAtFrame(ctrl, frameIndex),
         bakeWallColumnAtFrame(ctrl, frameIndex),
-        bakeWallFaceAtFrame(ctrl, frameIndex)
+        bakeWallFaceAtFrame(ctrl, frameIndex),
     ]);
 
     drawZoomedPreview(document.getElementById("floorPreview"), floorSource, ctrl.zoom);
@@ -237,15 +192,7 @@ export async function drawInspectAtFrame(ctrl, frameIndex = 0) {
     drawZoomedPreview(document.getElementById("wallColumnPreview"), wallColumnSource, ctrl.zoom);
     drawZoomedPreview(document.getElementById("wallFacePreview"), wallFaceSource, ctrl.zoom);
 
-    drawRepeatPreview(
-        document.getElementById("floorRepeat"),
-        floorSource,
-        floorSource.width,
-        floorSource.height,
-        5,
-        5,
-        ctrl.zoom
-    );
+    drawRepeatPreview(document.getElementById("floorRepeat"), floorSource, floorSource.width, floorSource.height, 5, 5, ctrl.zoom);
 
     const wallRepeat = document.getElementById("wallRepeat");
     const tileZ = Math.max(1, Math.floor(ctrl.zoom));
@@ -264,7 +211,7 @@ export async function drawInspectAtFrame(ctrl, frameIndex = 0) {
     wrCtx.clearRect(0, 0, wrW, wrH);
     const z = tileZ * wrScale;
     drawTiled(wrCtx, wallCellSource, 0, 0, wallCellSource.width, wallCellSource.height, 5, 5, z);
-    
+
     floorSource.close();
     wallCellSource.close();
     // wallColumnSource is an OffscreenCanvas, so it doesn't need to be closed like ImageBitmap
@@ -293,7 +240,7 @@ export async function downloadInspectExport(ctrl, pick) {
     link.download = `tile-${pick}-${profileId}-seed${seed}.png`;
     link.href = toCanvas(src).toDataURL("image/png");
     link.click();
-    
+
     if (src instanceof ImageBitmap) {
         src.close();
     }
