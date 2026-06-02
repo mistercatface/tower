@@ -44,27 +44,43 @@ function copyObstacleGrid(grid) {
     };
 }
 
+let lastGridRef = null;
+let lastGridVersion = null;
+
+function ensureObstacleGridSynchronized(grid) {
+    if (!grid) return;
+    const version = grid.version || 0;
+    if (grid !== lastGridRef || version !== lastGridVersion) {
+        lastGridRef = grid;
+        lastGridVersion = version;
+        sendRequest('setObstacleGrid', copyObstacleGrid(grid));
+    }
+}
+
 export const TileWorkerCoordinator = {
     requestFloorChunkBake(payload) {
+        ensureObstacleGridSynchronized(payload.obstacleGrid);
         const payloadCopy = {
             ...payload,
-            obstacleGrid: copyObstacleGrid(payload.obstacleGrid)
+            obstacleGrid: null
         };
         return sendRequest('bakeFloorChunk', payloadCopy);
     },
 
     requestFloorCellBake(payload) {
+        ensureObstacleGridSynchronized(payload.obstacleGrid);
         const payloadCopy = {
             ...payload,
-            obstacleGrid: copyObstacleGrid(payload.obstacleGrid)
+            obstacleGrid: null
         };
         return sendRequest('bakeFloorCell', payloadCopy);
     },
 
     requestWallFaceBake(payload) {
+        ensureObstacleGridSynchronized(payload.obstacleGrid);
         const payloadCopy = {
             ...payload,
-            obstacleGrid: copyObstacleGrid(payload.obstacleGrid)
+            obstacleGrid: null
         };
         return sendRequest('bakeWallFace', payloadCopy);
     },

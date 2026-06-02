@@ -146,6 +146,7 @@ export class WorldObstacleGrid {
         this.rows = 0;
         this.grid = new Uint8Array(0);
         this.segmentGrid = [];
+        this.version = 0;
     }
 
     rebuild(walls) {
@@ -164,6 +165,7 @@ export class WorldObstacleGrid {
         for (const wall of walls) {
             this.addWall(wall);
         }
+        this.version++;
     }
 
     rebuildFixed(centerX, centerY, width, height) {
@@ -177,6 +179,7 @@ export class WorldObstacleGrid {
         const size = this.cols * this.rows;
         this.grid = new Uint8Array(size);
         this.segmentGrid = null;
+        this.version++;
     }
 
     markWall(wall) {
@@ -185,6 +188,7 @@ export class WorldObstacleGrid {
             cellCenter: (col, row) => this.gridToWorld(col, row),
             cellSize: this.cellSize,
         });
+        this.version++;
     }
 
     addWall(wall) {
@@ -201,6 +205,7 @@ export class WorldObstacleGrid {
                 }
             },
         });
+        this.version++;
     }
 
     patchAfterWallRemoved(wall, wallSpatialHash) {
@@ -215,6 +220,7 @@ export class WorldObstacleGrid {
             this.addWall(localWall);
         }
 
+        this.version++;
         return bounds;
     }
 
