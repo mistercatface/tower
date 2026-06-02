@@ -3,6 +3,7 @@ import { worldToGridCentered } from "../Geometry/GridCoords.js";
 
 export const FLOW_FIELD_UNREACHABLE = 999999;
 export const FLOW_FIELD_NEIGHBOR_STRIDE = 8;
+export const FLOW_FIELD_FULL_RANGE = Infinity;
 
 /**
  * @param {Uint8Array} localGrid
@@ -74,9 +75,20 @@ export function buildNeighborGrid(gridData, cols, rows, neighborGrid, neighborCo
 
 /**
  * @param {object} layout - { cols, rows, cellSize, centerX, centerY, offsetX, offsetY }
+ * @param {number} [maxRange=FLOW_FIELD_FULL_RANGE] - stop expanding past this octile cost; partial rebuilds skip the dist fill
  */
-export function buildFlowFieldTarget(px, py, targetFieldX, targetFieldY, targetFieldDist, neighborGrid, neighborCost, layout) {
-    targetFieldDist.fill(FLOW_FIELD_UNREACHABLE);
+export function buildFlowFieldTarget(
+    px, py,
+    targetFieldX, targetFieldY, targetFieldDist,
+    neighborGrid, neighborCost,
+    layout,
+    maxRange = FLOW_FIELD_FULL_RANGE,
+) {
+    const fullRebuild = maxRange === FLOW_FIELD_FULL_RANGE;
+    if (fullRebuild) {
+        targetFieldDist.fill(FLOW_FIELD_UNREACHABLE);
+    }
+
     const { cols, rows, cellSize, centerX, centerY, offsetX, offsetY } = layout;
 
     const start = worldToGridCentered(px, py, centerX, centerY, offsetX, offsetY, cellSize);
@@ -93,6 +105,8 @@ export function buildFlowFieldTarget(px, py, targetFieldX, targetFieldY, targetF
     while (head < queue.length) {
         const currIdx = queue[head++];
         const currDist = targetFieldDist[currIdx];
+        if (!fullRebuild && currDist >= maxRange) continue;
+
         const base = currIdx << 3;
 
         for (let i = 0; i < FLOW_FIELD_NEIGHBOR_STRIDE; i++) {
@@ -100,6 +114,8 @@ export function buildFlowFieldTarget(px, py, targetFieldX, targetFieldY, targetF
             if (nIdx === -1) continue;
 
             const dist = currDist + neighborCost[base + i];
+            if (!fullRebuild && dist > maxRange) continue;
+
             if (dist < targetFieldDist[nIdx]) {
                 const { dc, dr, cost } = OCTILE_OFFSETS[i];
                 targetFieldX[nIdx] = -dc / cost;

@@ -379,6 +379,10 @@ export const navigationSettings = {
     pathClearanceMargin: 4,
     pathWaypointArrival: 10,
     hpaDamagePadding: 12,
+    /** When true, every enemy-field rebuild floods the full local grid (pre–step 3 behavior). */
+    flowFieldFullRebuild: false,
+    /** Octile-cost radius for incremental enemy-field rebuilds on player cell change. */
+    flowFieldLocalRange: 96,
 };
 
 export const NAV_PROFILES = {

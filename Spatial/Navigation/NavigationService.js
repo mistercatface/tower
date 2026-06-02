@@ -2,6 +2,7 @@ import { navigationSettings, NAV_PROFILES } from "../../Config/Config.js";
 import { entityIntersectsCellBounds } from "../Geometry/GridCoords.js";
 import { steerViaFlowField } from "./FlowFieldStrategy.js";
 import { createNavState, steerViaHpa } from "./HpaStrategy.js";
+import { FLOW_FIELD_FULL_RANGE } from "./flowFieldCompute.js";
 
 export { NAV_PROFILES };
 
@@ -74,7 +75,10 @@ export class NavigationService {
         if (distToCenter > recenterThreshold) {
             grid.shiftCenter(playerX, playerY, playerX, playerY, playerTargetX, playerTargetY);
         } else if (previousGridPos && (previousGridPos.col !== newGridPos.col || previousGridPos.row !== newGridPos.row)) {
-            grid.buildFlowField(playerX, playerY);
+            const maxRange = navigationSettings.flowFieldFullRebuild
+                ? FLOW_FIELD_FULL_RANGE
+                : navigationSettings.flowFieldLocalRange;
+            grid.buildFlowField(playerX, playerY, maxRange);
         }
         return newGridPos;
     }
@@ -93,7 +97,7 @@ export class NavigationService {
 
     rebuildPlayerFlowField(targetX, targetY) {
         this.flowFieldGrid.syncLocalObstacles();
-        this.flowFieldGrid.buildPlayerFlowField(targetX, targetY);
+        this.flowFieldGrid.buildPlayerFlowField(targetX, targetY, FLOW_FIELD_FULL_RANGE);
     }
 
     _setDebug(entity, info) {

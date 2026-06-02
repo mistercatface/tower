@@ -1,6 +1,7 @@
 import { worldToGridCentered, gridToWorldCentered, getCellBoundsCentered } from "../Geometry/GridCoords.js";
 import {
     FLOW_FIELD_UNREACHABLE,
+    FLOW_FIELD_FULL_RANGE,
     syncLocalObstacles,
     buildFlowFieldTarget,
     getFlowFieldLayout,
@@ -62,21 +63,23 @@ export class FlowFieldGrid {
         buildNeighborGrid(this.grid, this.cols, this.rows, this.neighborGrid, this.neighborCost);
     }
 
-    buildFlowField(px, py) {
+    buildFlowField(px, py, maxRange = FLOW_FIELD_FULL_RANGE) {
         buildFlowFieldTarget(
             px, py,
             this.flowFieldX, this.flowFieldY, this.flowFieldDist,
             this.neighborGrid, this.neighborCost,
             getFlowFieldLayout(this),
+            maxRange,
         );
     }
 
-    buildPlayerFlowField(px, py) {
+    buildPlayerFlowField(px, py, maxRange = FLOW_FIELD_FULL_RANGE) {
         buildFlowFieldTarget(
             px, py,
             this.playerFlowFieldX, this.playerFlowFieldY, this.playerFlowFieldDist,
             this.neighborGrid, this.neighborCost,
             getFlowFieldLayout(this),
+            maxRange,
         );
     }
 
@@ -113,6 +116,18 @@ export class FlowFieldGrid {
     }
 
     sampleDirection(x, y, isPlayerField, outEntity) {
+        const sample = this._sampleFlowAt(x, y, isPlayerField);
+        if (!sample || sample.totalWeight <= 0) return false;
+
+        const len = Math.sqrt(sample.flowX * sample.flowX + sample.flowY * sample.flowY);
+        if (len <= 0) return false;
+
+        outEntity.desiredX = sample.flowX / len;
+        outEntity.desiredY = sample.flowY / len;
+        return true;
+    }
+
+    _sampleFlowAt(x, y, isPlayerField) {
         const targetFieldX = isPlayerField ? this.playerFlowFieldX : this.flowFieldX;
         const targetFieldY = isPlayerField ? this.playerFlowFieldY : this.flowFieldY;
         const targetFieldDist = isPlayerField ? this.playerFlowFieldDist : this.flowFieldDist;
@@ -176,14 +191,7 @@ export class FlowFieldGrid {
             }
         }
 
-        if (totalWeight > 0) {
-            const len = Math.sqrt(flowX * flowX + flowY * flowY);
-            if (len > 0) {
-                outEntity.desiredX = flowX / len;
-                outEntity.desiredY = flowY / len;
-                return true;
-            }
-        }
-        return false;
+        if (totalWeight <= 0) return null;
+        return { flowX, flowY, totalWeight };
     }
 }
