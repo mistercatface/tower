@@ -192,85 +192,53 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, obs
                 continue;
             }
             
-            // 3. Biome Selection
+            // 3. Base Palette Cleanser Station Aesthetic
             const nodeHash = hashTileSeed(seed, node.col, node.row);
-            const biomeNoise = noise2D(node.x * biomeScale, node.y * biomeScale, 2);
-            let biome = 0;
-            if (biomeNoise < -0.35) {
-                biome = 2; // Magma
-            } else if (biomeNoise > 0.35) {
-                biome = 1; // Mossy
-            } else {
-                if ((nodeHash & 0xff) < 55) {
-                    biome = 3; // Energy
-                } else {
-                    biome = 0; // Pristine
-                }
+            
+            // Base dark steel/metal color
+            let r = 24, g = 26, b = 30;
+            
+            // Subtle zone variation using nodeHash
+            const nodeTone = ((nodeHash & 0xff) / 255 - 0.5) * 6;
+            r = clampByte(r + nodeTone);
+            g = clampByte(g + nodeTone);
+            b = clampByte(b + nodeTone);
+            
+            // Large scale structure noise (panels/grime)
+            const structureNoise = noise2D(evalX * 0.05, evalY * 0.05, 2);
+            r = clampByte(r + structureNoise * 4);
+            g = clampByte(g + structureNoise * 4);
+            b = clampByte(b + structureNoise * 4);
+            
+            // Fine grain metal texture
+            const fineNoise = noise2D(evalX * 0.8, evalY * 0.8, 1) * 3;
+            r = clampByte(r + fineNoise);
+            g = clampByte(g + fineNoise);
+            b = clampByte(b + fineNoise);
+
+            // 4. Circuitry / Nerves Cords Effect
+            // We use domain-warped coordinates to make the nerves organic and winding
+            const nerveFreq1 = 0.04;
+            const nerveNoise1 = Math.abs(noise2D(lookupX * nerveFreq1, lookupY * nerveFreq1, 2));
+            if (nerveNoise1 < 0.06) {
+                const intensity = (1.0 - nerveNoise1 / 0.06) * 18; 
+                // Subtle cyan/blue circuitry glow
+                r = clampByte(r + intensity * 0.5);
+                g = clampByte(g + intensity * 1.5);
+                b = clampByte(b + intensity * 2.0);
             }
             
-            // 4. Base Color and Texture
-            let r = 0, g = 0, b = 0;
-            const nodeTone = ((nodeHash & 0xff) / 255 - 0.5) * 16;
-            
-            if (biome === 0) { // Pristine Slate
-                const pick = (nodeHash & 1);
-                const c = pick ? highlightColor : baseColor;
-                r = mixChannel(c.r, nodeTone);
-                g = mixChannel(c.g, nodeTone);
-                b = mixChannel(c.b, nodeTone);
-                
-                const n = noise2D(evalX * stoneNoiseFreq, evalY * stoneNoiseFreq, 1) * 6;
-                r = mixChannel(r, n);
-                g = mixChannel(g, n);
-                b = mixChannel(b, n);
-            } else if (biome === 1) { // Mossy Ruins
-                const pick = (nodeHash & 1);
-                const c = pick ? highlightColor : baseColor;
-                r = mixChannel(c.r, nodeTone - 10);
-                g = mixChannel(c.g, nodeTone + 8);
-                b = mixChannel(c.b, nodeTone - 8);
-                
-                const n = noise2D(evalX * stoneNoiseFreq, evalY * stoneNoiseFreq, 1) * 6;
-                r = mixChannel(r, n);
-                g = mixChannel(g, n);
-                b = mixChannel(b, n);
-                
-                const mossNoise = noise2D(evalX * 0.05, evalY * 0.05, 2);
-                if (mossNoise > 0.0) {
-                    const mossFactor = Math.min(1.0, mossNoise * 2.0);
-                    const mr = Math.floor(45 + (nodeHash & 7));
-                    const mg = Math.floor(75 + ((nodeHash >> 3) & 15));
-                    const mb = Math.floor(35 + ((nodeHash >> 7) & 7));
-                    r = Math.floor(r + (mr - r) * mossFactor);
-                    g = Math.floor(g + (mg - g) * mossFactor);
-                    b = Math.floor(b + (mb - b) * mossFactor);
-                }
-            } else if (biome === 2) { // Cracked Magma
-                r = mixChannel(shadowColor.r, -4);
-                g = mixChannel(shadowColor.g, -4);
-                b = mixChannel(shadowColor.b, -4);
-                
-                const crackVal = Math.abs(noise2D(evalX * 0.08, evalY * 0.08, 2));
-                if (crackVal < 0.12) {
-                    const intensity = (1.0 - crackVal / 0.12) * 255;
-                    r = clampByte(r + intensity);
-                    g = clampByte(g + intensity * 0.4);
-                    b = clampByte(b + intensity * 0.1);
-                }
-            } else if (biome === 3) { // Energy Conduits
-                r = mixChannel(baseColor.r, -6);
-                g = mixChannel(baseColor.g, -2);
-                b = mixChannel(baseColor.b, 6);
-                
-                const detailNoise = noise2D(evalX * 0.25, evalY * 0.25, 1);
-                if (detailNoise > 0.5) {
-                    r = mixChannel(r, 8);
-                    g = mixChannel(g, 12);
-                    b = mixChannel(b, 16);
-                }
+            const nerveFreq2 = 0.07;
+            const nerveNoise2 = Math.abs(noise2D((lookupX + 300) * nerveFreq2, (lookupY + 300) * nerveFreq2, 2));
+            if (nerveNoise2 < 0.04) {
+                const intensity = (1.0 - nerveNoise2 / 0.04) * 22; 
+                // Subtle copper circuitry
+                r = clampByte(r + intensity * 1.5);
+                g = clampByte(g + intensity * 1.0);
+                b = clampByte(b + intensity * 0.5);
             }
             
-            // 5. Seams / Boundaries check
+            // 5. Seams / Boundaries check (Subtle panel grooves)
             const nX_col = Math.floor((lookupX + seamWidth - minX) / cellSize);
             const nX_row = Math.floor((lookupY - minY) / cellSize);
             const nY_col = Math.floor((lookupX - minX) / cellSize);
@@ -282,24 +250,10 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, obs
             const isSeam = (nodeX !== node || nodeY !== node);
             
             if (isSeam) {
-                const seamHash = hashTileSeed(seed, Math.floor(evalX), Math.floor(evalY));
-                if (biome === 0) { // Pristine
-                    r = Math.floor(shadowColor.r * 0.7);
-                    g = Math.floor(shadowColor.g * 0.7);
-                    b = Math.floor(shadowColor.b * 0.7);
-                } else if (biome === 1) { // Mossy
-                    r = Math.floor(shadowColor.r * 0.6);
-                    g = Math.floor(shadowColor.g * 0.8);
-                    b = Math.floor(shadowColor.b * 0.6);
-                } else if (biome === 2) { // Magma
-                    r = 255;
-                    g = 60 + (seamHash % 60);
-                    b = 0;
-                } else if (biome === 3) { // Energy
-                    r = 0;
-                    g = 200 + (seamHash % 55);
-                    b = 255;
-                }
+                // Dark structural grooves instead of bright glowing lava
+                r = Math.floor(r * 0.4);
+                g = Math.floor(g * 0.4);
+                b = Math.floor(b * 0.45);
             }
             
             data[idx++] = r;
