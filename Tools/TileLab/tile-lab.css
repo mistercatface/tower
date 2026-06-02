@@ -1,15 +1,20 @@
-:root {
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+        :root {
             --bg: #0e1116;
-            --panel: #161b24;
-            --border: #2a3344;
-            --text: #c8d0dc;
-            --muted: #7a8799;
+            --panel: rgba(22, 27, 36, 0.7);
+            --panel-solid: #161b24;
+            --border: rgba(42, 51, 68, 0.6);
+            --text: #e2e8f0;
+            --muted: #94a3b8;
             --accent: #00bcd4;
-            --accent-dim: #007a8c;
-            --editor-w: 300px;
-            --inspect-w: 280px;
-            --toolbar-h: 44px;
+            --accent-dim: rgba(0, 188, 212, 0.2);
+            --accent-hover: #00d4ff;
+            --editor-w: 320px;
+            --inspect-w: 300px;
+            --toolbar-h: 48px;
             --status-h: 28px;
+            --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         * {
@@ -23,8 +28,23 @@
             overflow: hidden;
             background: var(--bg);
             color: var(--text);
-            font-family: ui-monospace, "Cascadia Code", "Consolas", monospace;
-            font-size: 12px;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            font-size: 13px;
+        }
+        
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.3);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(148, 163, 184, 0.5);
         }
 
         .app {
@@ -38,12 +58,15 @@
             display: flex;
             align-items: center;
             gap: 10px 14px;
-            padding: 0 12px;
+            padding: 0 16px;
             height: var(--toolbar-h);
             background: var(--panel);
+            backdrop-filter: blur(12px);
             border-bottom: 1px solid var(--border);
             flex-wrap: wrap;
             min-height: var(--toolbar-h);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            z-index: 10;
         }
 
         .toolbar h1 {
@@ -70,15 +93,27 @@
         }
 
         .toolbar input[type="number"],
-        .toolbar select {
-            width: 4.5rem;
-            background: var(--bg);
+        .toolbar select,
+        .editor-tools select {
+            width: 5rem;
+            background: rgba(0, 0, 0, 0.2);
             border: 1px solid var(--border);
             color: var(--text);
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: border-color var(--transition), box-shadow var(--transition);
+        }
+
+        .toolbar input[type="number"]:focus,
+        .toolbar select:focus,
+        .editor-tools select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px var(--accent-dim);
         }
 
         .toolbar input[readonly] {
-            opacity: 0.85;
+            opacity: 0.6;
             cursor: default;
         }
 
@@ -96,21 +131,37 @@
             max-width: 10rem;
         }
 
-        .toolbar input[type="range"] {
+        .toolbar input[type="range"],
+        .param-field input[type="range"] {
             width: 72px;
             vertical-align: middle;
+            accent-color: var(--accent);
+            cursor: pointer;
         }
 
-        .toolbar button {
+        .toolbar button,
+        .editor-tools button,
+        #exportBtn {
             background: var(--accent-dim);
             border: 1px solid var(--accent);
-            color: #e8f8fb;
-            padding: 4px 10px;
-            border-radius: 3px;
+            color: var(--accent);
+            padding: 6px 12px;
+            border-radius: 4px;
             font: inherit;
-            font-size: 11px;
+            font-size: 12px;
+            font-weight: 500;
             cursor: pointer;
             white-space: nowrap;
+            transition: all var(--transition);
+        }
+
+        .toolbar button:hover,
+        .editor-tools button:hover,
+        #exportBtn:hover {
+            background: var(--accent);
+            color: var(--bg);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 188, 212, 0.3);
         }
 
         .toolbar button.secondary {
@@ -139,6 +190,7 @@
             min-width: 0;
             border-right: 1px solid var(--border);
             background: var(--panel);
+            backdrop-filter: blur(12px);
         }
 
         .col:last-child {
@@ -202,30 +254,32 @@
         }
 
         #motifList {
-            max-height: 140px;
+            max-height: 180px;
             overflow-y: auto;
-            background: var(--bg);
+            background: rgba(0, 0, 0, 0.2);
             border: 1px solid var(--border);
-            border-radius: 4px;
+            border-radius: 6px;
+            padding: 2px;
         }
 
         .motif-row {
             display: flex;
             align-items: center;
-            gap: 4px;
-            padding: 5px 6px;
-            font-size: 11px;
+            gap: 6px;
+            padding: 6px 8px;
+            font-size: 12px;
             cursor: pointer;
-            border-bottom: 1px solid var(--border);
+            border-radius: 4px;
+            transition: background var(--transition);
         }
 
-        .motif-row:last-child {
-            border-bottom: none;
+        .motif-row:hover {
+            background: rgba(255, 255, 255, 0.05);
         }
 
-        .motif-row:hover,
         .motif-row.selected {
-            background: #1e2634;
+            background: rgba(0, 188, 212, 0.15);
+            border: 1px solid rgba(0, 188, 212, 0.3);
         }
 
         .motif-row .motif-label {
@@ -237,25 +291,36 @@
 
         .motif-row .motif-layer {
             color: var(--muted);
-            font-size: 9px;
+            font-size: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2px 6px;
+            border-radius: 10px;
         }
 
         .motif-row .motif-actions button {
-            padding: 1px 5px;
-            font-size: 10px;
-            background: var(--panel);
-            border: 1px solid var(--border);
-            color: var(--text);
+            padding: 2px 6px;
+            font-size: 11px;
+            background: transparent;
+            border: none;
+            color: var(--muted);
             cursor: pointer;
+            border-radius: 3px;
+        }
+
+        .motif-row .motif-actions button:hover {
+            color: var(--text);
+            background: rgba(255, 255, 255, 0.1);
+            transform: none;
+            box-shadow: none;
         }
 
         .param-field {
             display: grid;
-            grid-template-columns: 72px 1fr 32px;
-            gap: 4px;
+            grid-template-columns: 80px 1fr 40px;
+            gap: 8px;
             align-items: center;
-            margin-bottom: 6px;
-            font-size: 11px;
+            margin-bottom: 8px;
+            font-size: 12px;
             color: var(--text);
         }
 
@@ -263,6 +328,7 @@
             color: var(--muted);
             overflow: hidden;
             text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .param-field input[type="range"] {
@@ -333,7 +399,8 @@
             border-bottom: 1px solid var(--border);
         }
 
-        .tab-bar button {
+        .tab-bar button,
+        .editor-tab-btn {
             flex: 1;
             padding: 8px;
             background: transparent;
@@ -345,12 +412,14 @@
             cursor: pointer;
         }
 
-        .tab-bar button.active {
+        .tab-bar button.active,
+        .editor-tab-btn.active {
             color: var(--accent);
             border-bottom-color: var(--accent);
         }
 
-        .tab-panel {
+        .tab-panel,
+        .editor-tab-panel {
             display: none;
             flex: 1 1 0;
             min-height: 0;
@@ -358,7 +427,8 @@
             padding: 8px;
         }
 
-        .tab-panel.active {
+        .tab-panel.active,
+        .editor-tab-panel.active {
             display: block;
         }
 
@@ -369,10 +439,16 @@
         }
 
         .micro-card {
-            background: var(--bg);
+            background: rgba(0, 0, 0, 0.2);
             border: 1px solid var(--border);
-            border-radius: 4px;
+            border-radius: 6px;
             overflow: hidden;
+            transition: transform var(--transition), box-shadow var(--transition);
+        }
+        
+        .micro-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         }
 
         .micro-card .label {

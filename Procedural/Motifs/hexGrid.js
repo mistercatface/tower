@@ -67,7 +67,21 @@ function applyBevel(rgb, lx, ly, edgeDist, config) {
     if (distInBevel < 0 || distInBevel >= bevelW) {
         return;
     }
-    const t = (1 - distInBevel / bevelW);
+    let t = (1 - distInBevel / bevelW);
+    
+    const curve = config.bevelCurve ?? "linear";
+    const falloff = config.bevelFalloff ?? 1.0;
+    
+    if (curve === "smooth") {
+        t = t * t * (3 - 2 * t);
+    } else if (curve === "steep") {
+        t = Math.pow(t, falloff);
+    } else {
+        // linear with optional falloff
+        if (falloff !== 1.0) {
+            t = Math.pow(t, falloff);
+        }
+    }
     
     // Light from top-left (lx + ly < 0)
     const isTopLeft = (lx + ly) < 0;

@@ -1,5 +1,7 @@
 import { combatVisualSettings } from "../../../Config/Config.js";
 import { getFloorProceduralProfile } from "../../../Config/floorProceduralConfig.js";
+import { SliderControl } from "../ui/controls/SliderControl.js";
+import { SelectControl } from "../ui/controls/SelectControl.js";
 import {
     BLEND_OPTIONS,
     LAYER_OPTIONS,
@@ -230,28 +232,22 @@ function renderMotifList(container) {
 
 function renderScalarFields(container, target, fields) {
     for (const field of fields) {
-        const wrap = document.createElement("label");
-        wrap.className = "param-field";
-        const value = getByPath(target, field.path);
-        const num = Number(value ?? 0);
-        wrap.innerHTML = `<span>${field.label}</span>`;
-        const input = document.createElement("input");
-        input.type = "range";
-        input.min = String(field.min);
-        input.max = String(field.max);
-        input.step = String(field.step);
-        input.value = String(num);
-        const out = document.createElement("span");
-        out.className = "param-value";
-        out.textContent = String(num);
-        input.addEventListener("input", () => {
-            setByPath(target, field.path, Number(input.value));
-            out.textContent = input.value;
-            notifyChange();
-        });
-        wrap.appendChild(input);
-        wrap.appendChild(out);
-        container.appendChild(wrap);
+        if (field.options) {
+            const val = getByPath(target, field.path) ?? field.options[0];
+            const select = new SelectControl(field.label, field.options, val, (newVal) => {
+                setByPath(target, field.path, newVal);
+                notifyChange();
+            });
+            container.appendChild(select.element);
+        } else {
+            const value = getByPath(target, field.path);
+            const num = Number(value ?? 0);
+            const slider = new SliderControl(field.label, field.min, field.max, field.step, num, (newVal) => {
+                setByPath(target, field.path, newVal);
+                notifyChange();
+            });
+            container.appendChild(slider.element);
+        }
     }
 }
 
@@ -271,46 +267,18 @@ function renderMotifParams(container) {
         return;
     }
 
-    const layerSelect = document.createElement("label");
-    layerSelect.className = "param-field";
-    layerSelect.innerHTML = "<span>Layer</span>";
-    const layerEl = document.createElement("select");
-    for (const opt of LAYER_OPTIONS) {
-        const o = document.createElement("option");
-        o.value = opt.id;
-        o.textContent = opt.label;
-        if (row.layer === opt.id) {
-            o.selected = true;
-        }
-        layerEl.appendChild(o);
-    }
-    layerEl.addEventListener("change", () => {
-        row.layer = layerEl.value;
+    const layerSelect = new SelectControl("Layer", LAYER_OPTIONS, row.layer, (val) => {
+        row.layer = val;
         notifyChange();
         renderMotifList(document.getElementById("motifList"));
     });
-    layerSelect.appendChild(layerEl);
-    container.appendChild(layerSelect);
+    container.appendChild(layerSelect.element);
 
-    const blendLabel = document.createElement("label");
-    blendLabel.className = "param-field";
-    blendLabel.innerHTML = "<span>Blend</span>";
-    const blendEl = document.createElement("select");
-    for (const mode of BLEND_OPTIONS) {
-        const o = document.createElement("option");
-        o.value = mode;
-        o.textContent = mode;
-        if ((row.config.blendMode ?? "add") === mode) {
-            o.selected = true;
-        }
-        blendEl.appendChild(o);
-    }
-    blendEl.addEventListener("change", () => {
-        row.config.blendMode = blendEl.value;
+    const blendSelect = new SelectControl("Blend", BLEND_OPTIONS, row.config.blendMode ?? "add", (val) => {
+        row.config.blendMode = val;
         notifyChange();
     });
-    blendLabel.appendChild(blendEl);
-    container.appendChild(blendLabel);
+    container.appendChild(blendSelect.element);
 
     renderScalarFields(container, row.config, schema.fields);
 }
@@ -351,6 +319,17 @@ export function initProfileEditor({ onChange }) {
         opt.value = type;
         opt.textContent = MOTIF_TYPES[type].label;
         addSelect.appendChild(opt);
+    }
+
+    const tabBtns = document.querySelectorAll(".editor-tab-btn");
+    const tabPanels = document.querySelectorAll(".editor-tab-panel");
+    for (const btn of tabBtns) {
+        btn.addEventListener("click", () => {
+            tabBtns.forEach((b) => b.classList.remove("active"));
+            tabPanels.forEach((p) => p.classList.remove("active"));
+            btn.classList.add("active");
+            document.getElementById(`editor-tab-${btn.dataset.tab}`)?.classList.add("active");
+        });
     }
 
     document.getElementById("addMotifBtn").addEventListener("click", () => {

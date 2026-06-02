@@ -17,6 +17,7 @@ import { celticWeaveMotif } from "./Motifs/celticWeave.js";
 import { topoContoursMotif } from "./Motifs/topoContours.js";
 import { starburstMotif } from "./Motifs/starburst.js";
 import { circuitPanelsMotif } from "./Motifs/circuitPanels.js";
+import { fractalCracksMotif } from "./Motifs/fractalCracks.js";
 
 const MOTIF_BY_TYPE = {
     baseMetal: baseMetalMotif,
@@ -38,6 +39,7 @@ const MOTIF_BY_TYPE = {
     topoContours: topoContoursMotif,
     starburst: starburstMotif,
     circuitPanels: circuitPanelsMotif,
+    fractalCracks: fractalCracksMotif,
 };
 
 export function getMotif(type) {
