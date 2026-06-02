@@ -90,7 +90,30 @@ function mixChannel(base, delta) {
     return clampByte(base + delta);
 }
 
-export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, obstacleGrid, seed, hnav) {
+function getNodeAt(col, row, cols, rows, hnav, isWall) {
+    if (col < 0 || row < 0 || col >= cols || row >= rows) return null;
+    let node = hnav.cellToNode[row * cols + col];
+    if (!node && isWall) {
+        for (let r = 1; r <= 3; r++) {
+            for (let dr = -r; dr <= r; dr++) {
+                for (let dc = -r; dc <= r; dc++) {
+                    const nc = col + dc;
+                    const nr = row + dr;
+                    if (nc >= 0 && nc < cols && nr >= 0 && nr < rows) {
+                        const n = hnav.cellToNode[nr * cols + nc];
+                        if (n) return n;
+                    }
+                }
+            }
+        }
+    }
+    return node;
+}
+
+export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, obstacleGrid, seed, hnav, options = {}) {
+    const isWall = options.isWall || false;
+    const zOffset = options.zOffset || 0;
+    
     const imgData = ctx.createImageData(width, height);
     const data = imgData.data;
     
@@ -114,16 +137,19 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, obs
     
     let idx = 0;
     for (let y = 0; y < height; y++) {
-        const worldY = startWorldY + y;
+        let evalY = startWorldY + y;
+        if (isWall) {
+            evalY = startWorldY + (cellSize - y) + zOffset;
+        }
         for (let x = 0; x < width; x++) {
-            const worldX = startWorldX + x;
+            let evalX = startWorldX + x;
             
             // 1. Domain Warp
-            const warpX = noise2D(worldX * scaleWarp, worldY * scaleWarp, 2) * warpAmp;
-            const warpY = noise2D((worldX + 500) * scaleWarp, (worldY + 500) * scaleWarp, 2) * warpAmp;
+            const warpX = noise2D(evalX * scaleWarp, evalY * scaleWarp, 2) * warpAmp;
+            const warpY = noise2D((evalX + 500) * scaleWarp, (evalY + 500) * scaleWarp, 2) * warpAmp;
             
-            const lookupX = worldX + warpX;
-            const lookupY = worldY + warpY;
+            const lookupX = evalX + warpX;
+            const lookupY = evalY + warpY;
             
             // 2. Grid Index
             const col = Math.floor((lookupX - minX) / cellSize);
@@ -132,7 +158,7 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, obs
             const cellIdx = inGrid ? row * cols + col : -1;
             const blocked = inGrid && obstacleGrid.grid[cellIdx] === 1;
             
-            if (blocked || !inGrid) {
+            if (blocked && !isWall) {
                 data[idx++] = shadowColor.r;
                 data[idx++] = shadowColor.g;
                 data[idx++] = shadowColor.b;
@@ -140,7 +166,8 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, obs
                 continue;
             }
             
-            const node = hnav.cellToNode[cellIdx];
+            const node = getNodeAt(col, row, cols, rows, hnav, isWall);
+            
             if (!node) {
                 data[idx++] = baseColor.r;
                 data[idx++] = baseColor.g;
@@ -176,7 +203,7 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, obs
                 g = mixChannel(c.g, nodeTone);
                 b = mixChannel(c.b, nodeTone);
                 
-                const n = noise2D(worldX * stoneNoiseFreq, worldY * stoneNoiseFreq, 1) * 6;
+                const n = noise2D(evalX * stoneNoiseFreq, evalY * stoneNoiseFreq, 1) * 6;
                 r = mixChannel(r, n);
                 g = mixChannel(g, n);
                 b = mixChannel(b, n);
@@ -187,12 +214,12 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, obs
                 g = mixChannel(c.g, nodeTone + 8);
                 b = mixChannel(c.b, nodeTone - 8);
                 
-                const n = noise2D(worldX * stoneNoiseFreq, worldY * stoneNoiseFreq, 1) * 6;
+                const n = noise2D(evalX * stoneNoiseFreq, evalY * stoneNoiseFreq, 1) * 6;
                 r = mixChannel(r, n);
                 g = mixChannel(g, n);
                 b = mixChannel(b, n);
                 
-                const mossNoise = noise2D(worldX * 0.05, worldY * 0.05, 2);
+                const mossNoise = noise2D(evalX * 0.05, evalY * 0.05, 2);
                 if (mossNoise > 0.0) {
                     const mossFactor = Math.min(1.0, mossNoise * 2.0);
                     const mr = Math.floor(45 + (nodeHash & 7));
@@ -207,7 +234,7 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, obs
                 g = mixChannel(shadowColor.g, -4);
                 b = mixChannel(shadowColor.b, -4);
                 
-                const crackVal = Math.abs(noise2D(worldX * 0.08, worldY * 0.08, 2));
+                const crackVal = Math.abs(noise2D(evalX * 0.08, evalY * 0.08, 2));
                 if (crackVal < 0.12) {
                     const intensity = (1.0 - crackVal / 0.12) * 255;
                     r = clampByte(r + intensity);
@@ -219,7 +246,7 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, obs
                 g = mixChannel(baseColor.g, -2);
                 b = mixChannel(baseColor.b, 6);
                 
-                const detailNoise = noise2D(worldX * 0.25, worldY * 0.25, 1);
+                const detailNoise = noise2D(evalX * 0.25, evalY * 0.25, 1);
                 if (detailNoise > 0.5) {
                     r = mixChannel(r, 8);
                     g = mixChannel(g, 12);
@@ -233,16 +260,13 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, obs
             const nY_col = Math.floor((lookupX - minX) / cellSize);
             const nY_row = Math.floor((lookupY + seamWidth - minY) / cellSize);
             
-            const idxX = nX_col >= 0 && nX_row >= 0 && nX_col < cols && nX_row < rows ? nX_row * cols + nX_col : -1;
-            const idxY = nY_col >= 0 && nY_row >= 0 && nY_col < cols && nY_row < rows ? nY_row * cols + nY_col : -1;
-            
-            const nodeX = idxX !== -1 ? hnav.cellToNode[idxX] : null;
-            const nodeY = idxY !== -1 ? hnav.cellToNode[idxY] : null;
+            const nodeX = getNodeAt(nX_col, nX_row, cols, rows, hnav, isWall);
+            const nodeY = getNodeAt(nY_col, nY_row, cols, rows, hnav, isWall);
             
             const isSeam = (nodeX !== node || nodeY !== node);
             
             if (isSeam) {
-                const seamHash = hashTileSeed(seed, Math.floor(worldX), Math.floor(worldY));
+                const seamHash = hashTileSeed(seed, Math.floor(evalX), Math.floor(evalY));
                 if (biome === 0) { // Pristine
                     r = Math.floor(shadowColor.r * 0.7);
                     g = Math.floor(shadowColor.g * 0.7);
@@ -283,7 +307,10 @@ export function bakeFloorCellCanvas(worldX, worldY, obstacleGrid, seed, hnav) {
 
 export function drawWallCell(ctx, worldX, worldY, storyRow, obstacleGrid, seed, hnav) {
     const cellSize = obstacleGrid.cellSize;
-    paintPixelArea(ctx, cellSize, cellSize, worldX, worldY, obstacleGrid, seed ^ Math.imul(storyRow, 2246822519), hnav);
+    paintPixelArea(ctx, cellSize, cellSize, worldX, worldY, obstacleGrid, seed, hnav, {
+        isWall: true,
+        zOffset: storyRow * cellSize
+    });
 }
 
 export function bakeFloorTileTextureCanvas(seed, cellSize = gridSettings.cellSize, hnav) {
