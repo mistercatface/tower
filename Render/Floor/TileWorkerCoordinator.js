@@ -7,7 +7,7 @@ function getWorkerPool() {
     if (workers.length === 0) {
         let poolSize = 4;
         if (typeof navigator !== "undefined" && navigator.hardwareConcurrency) {
-            poolSize = Math.max(2, Math.min(16, Math.floor(navigator.hardwareConcurrency * 0.75)));
+            poolSize = Math.min(4, Math.floor(navigator.hardwareConcurrency * 0.5))
         }
 
         const handleMessage = (e) => {
