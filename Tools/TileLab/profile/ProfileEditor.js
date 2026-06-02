@@ -16,6 +16,7 @@ import {
 import { TileWorkerCoordinator } from "../../../Render/Floor/TileWorkerCoordinator.js";
 import { SliderControl } from "../ui/controls/SliderControl.js";
 import { SelectControl } from "../ui/controls/SelectControl.js";
+import { mirrorEasingForReversedStage } from "../../../Math/Easing.js";
 import {
     BLEND_OPTIONS,
     EASING_OPTIONS,
@@ -623,6 +624,51 @@ function renderGlobalParams(container) {
     editorState.palette = paletteRoot.palette;
 }
 
+function reverseStageTrackData(stageData) {
+    if (!stageData) {
+        return;
+    }
+    const start = stageData.startValue;
+    stageData.startValue = stageData.endValue;
+    stageData.endValue = start;
+    stageData.easing = mirrorEasingForReversedStage(stageData.easing);
+}
+
+function duplicateAnimationStage(stageIndex) {
+    const anim = editorState?.animation;
+    const source = anim?.stages?.[stageIndex];
+    if (!anim || !source) {
+        return;
+    }
+    const insertAt = stageIndex + 1;
+    anim.stages.splice(insertAt, 0, {
+        durationMs: source.durationMs ?? 2000,
+        frames: source.frames ?? 30,
+    });
+    for (const track of anim.tracks) {
+        if (!track.stages) {
+            track.stages = [];
+        }
+        const src = track.stages[stageIndex] ?? { startValue: 0, endValue: 0, easing: "linear" };
+        track.stages.splice(insertAt, 0, {
+            startValue: src.startValue,
+            endValue: src.endValue,
+            easing: src.easing ?? "linear",
+        });
+    }
+    anim.selectedStageIndex = insertAt;
+}
+
+function reverseAnimationStage(stageIndex) {
+    const anim = editorState?.animation;
+    if (!anim) {
+        return;
+    }
+    for (const track of anim.tracks) {
+        reverseStageTrackData(track.stages?.[stageIndex]);
+    }
+}
+
 function renderSharedAnimationControls(container) {
     const divider = document.createElement("div");
     divider.style.borderTop = "1px solid var(--border)";
@@ -740,6 +786,36 @@ function renderAnimationParams(container) {
         renderAnimationParams(container);
     });
     stageHeader.appendChild(addStageBtn);
+
+    const dupStageBtn = document.createElement("button");
+    dupStageBtn.type = "button";
+    dupStageBtn.className = "secondary";
+    dupStageBtn.style.padding = "4px 8px";
+    dupStageBtn.style.fontSize = "11px";
+    dupStageBtn.style.margin = "0";
+    dupStageBtn.textContent = "Dup";
+    dupStageBtn.title = "Duplicate current stage (inserts copy after it)";
+    dupStageBtn.addEventListener("click", () => {
+        duplicateAnimationStage(editorState.animation.selectedStageIndex);
+        notifyChange({ lightweight: true });
+        renderAnimationParams(container);
+    });
+    stageHeader.appendChild(dupStageBtn);
+
+    const revStageBtn = document.createElement("button");
+    revStageBtn.type = "button";
+    revStageBtn.className = "secondary";
+    revStageBtn.style.padding = "4px 8px";
+    revStageBtn.style.fontSize = "11px";
+    revStageBtn.style.margin = "0";
+    revStageBtn.textContent = "Rev";
+    revStageBtn.title = "Reverse current stage: swap start/end; easeIn ↔ easeOut (linear & easeInOut unchanged)";
+    revStageBtn.addEventListener("click", () => {
+        reverseAnimationStage(editorState.animation.selectedStageIndex);
+        notifyChange({ lightweight: true });
+        renderAnimationParams(container);
+    });
+    stageHeader.appendChild(revStageBtn);
 
     if (stagesList.length > 1) {
         const removeStageBtn = document.createElement("button");

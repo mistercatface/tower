@@ -67,3 +67,29 @@ export function applyEasing(type, t) {
     const fn = EASING_FUNCTIONS[type] || EASING_FUNCTIONS.linear;
     return fn(t);
 }
+
+/**
+ * Easing to use after reversing a stage (start/end swapped).
+ * easeIn* ↔ easeOut* preserves perceived acceleration; linear and easeInOut* stay
+ * (symmetric or directionless).
+ */
+export function mirrorEasingForReversedStage(type) {
+    const easing = type ?? "linear";
+    if (easing === "linear" || easing.includes("InOut")) {
+        return easing;
+    }
+
+    const inMatch = /^easeIn(\w+)$/.exec(easing);
+    if (inMatch) {
+        const mirrored = `easeOut${inMatch[1]}`;
+        return mirrored in EASING_FUNCTIONS ? mirrored : easing;
+    }
+
+    const outMatch = /^easeOut(\w+)$/.exec(easing);
+    if (outMatch) {
+        const mirrored = `easeIn${outMatch[1]}`;
+        return mirrored in EASING_FUNCTIONS ? mirrored : easing;
+    }
+
+    return easing;
+}
