@@ -17,7 +17,9 @@ function makeStubGrid(cellSize) {
 }
 
 function toCanvas(source) {
-    const canvas = new OffscreenCanvas(source.width, source.height);
+    const canvas = document.createElement("canvas");
+    canvas.width = source.width;
+    canvas.height = source.height;
     const ctx = canvas.getContext("2d");
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(source, 0, 0);
@@ -267,7 +269,7 @@ export async function drawInspectAtFrame(ctrl, frameIndex = 0) {
     
     floorSource.close();
     wallCellSource.close();
-    // wallColumnSource is an OffscreenCanvas (not ImageBitmap), we don't close it, wait, we returned an OffscreenCanvas in bakeWallColumnAtFrame.
+    // wallColumnSource is an OffscreenCanvas, so it doesn't need to be closed like ImageBitmap
     wallFaceSource.close();
 }
 
