@@ -379,17 +379,13 @@ export const navigationSettings = {
     pathClearanceMargin: 4,
     pathWaypointArrival: 10,
     hpaDamagePadding: 12,
-    /** When true, every enemy-field rebuild floods the full local grid (pre–step 3 behavior). */
-    flowFieldFullRebuild: false,
-    /** Octile-cost radius for incremental enemy-field rebuilds on player cell change. */
-    flowFieldLocalRange: 96,
 };
 
 export const NAV_PROFILES = {
     enemyToPlayer: { flowField: "enemy", hpaThreshold: 1000, replanMs: 1000, replanWhileMoving: true },
     playerClick: { flowField: "player", hpaThreshold: 0, replanMs: 500, replanWhileMoving: false, skipPathClearance: true },
     mapTravel: { flowField: "player", hpaThreshold: 0, replanMs: 250, replanWhileMoving: true },
-    sidekickFollow: { flowField: "enemy", hpaThreshold: 60, replanMs: 250, replanWhileMoving: true, fallbackToHpa: true },
+    sidekickFollow: { flowField: "enemy", hpaThreshold: 60, replanMs: 250, replanWhileMoving: true },
 };
 
 export const mapSettings = { numLayers: 10, layerSpacing: 200, xSpacing: 200, nodeJitter: 12, combatCoordScale: 7.0 };

@@ -230,7 +230,6 @@ export class CombatState {
             playerTargetX: ctx.state.player.isMoving ? ctx.state.player.targetX : null,
             playerTargetY: ctx.state.player.isMoving ? ctx.state.player.targetY : null,
             previousGridPos: oldGridPos,
-            playerIsMoving: ctx.state.player.isMoving,
         });
 
         if (!isTraveling) {
@@ -374,7 +373,6 @@ export class InspectorState {
             playerTargetX: ctx.state.player.isMoving ? ctx.state.player.targetX : null,
             playerTargetY: ctx.state.player.isMoving ? ctx.state.player.targetY : null,
             previousGridPos: oldGridPos,
-            playerIsMoving: ctx.state.player.isMoving,
         });
 
         const collisionEvents = runPushablePhysics(ctx.state, dt, spatialFrame);
