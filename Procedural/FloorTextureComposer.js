@@ -125,16 +125,10 @@ export function composeFloorImage(samples, paintContext, requestKey) {
 
     // Apply domain warp and fill base
     for (let i = 0; i < numPixels; i++) {
-        if (samples.blocked[i] && !samples.isWall) {
-            rgbBuffer[i * 3] = shadowRgb.r;
-            rgbBuffer[i * 3 + 1] = shadowRgb.g;
-            rgbBuffer[i * 3 + 2] = shadowRgb.b;
-        } else {
-            const base = samples.isWall ? baseWall : baseFloor;
-            rgbBuffer[i * 3] = base[0];
-            rgbBuffer[i * 3 + 1] = base[1];
-            rgbBuffer[i * 3 + 2] = base[2];
-        }
+        const base = samples.isWall ? baseWall : baseFloor;
+        rgbBuffer[i * 3] = base[0];
+        rgbBuffer[i * 3 + 1] = base[1];
+        rgbBuffer[i * 3 + 2] = base[2];
 
         const { lookupX, lookupY } = applyDomainWarp(samples.evalX[i], samples.evalY[i], profile.warp);
         samples.lookupX[i] = lookupX;
@@ -156,8 +150,6 @@ export function composeFloorImage(samples, paintContext, requestKey) {
         const motifImpl = getMotif(motifConfig.type);
 
         for (let i = 0; i < numPixels; i++) {
-            if (samples.blocked[i] && !samples.isWall) continue;
-
             const sample = {
                 evalX: samples.evalX[i],
                 evalY: samples.evalY[i],
@@ -165,7 +157,7 @@ export function composeFloorImage(samples, paintContext, requestKey) {
                 lookupY: samples.lookupY[i],
                 wallU: samples.wallU[i],
                 wallV: samples.wallV[i],
-                blocked: samples.blocked[i],
+                blocked: samples.blocked ? samples.blocked[i] : 0,
                 isWall: samples.isWall,
                 surfaceKind: samples.surfaceKind,
                 seed: seed

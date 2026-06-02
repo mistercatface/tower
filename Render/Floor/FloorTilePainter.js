@@ -1,7 +1,7 @@
 import { floorTileSettings, gridSettings } from "../../Config/Config.js";
 import { defaultFloorProceduralProfileId, getFloorProceduralProfile, registerRuntimeFloorProfile, unregisterRuntimeFloorProfile } from "../../Config/floorProceduralConfig.js";
 import { createPaintContext, composeFloorImage } from "../../Procedural/FloorTextureComposer.js";
-import { createWallFaceAxes, mapPixelToEval, queryObstacleBlocked } from "./SurfaceCoordinateMapper.js";
+import { createWallFaceAxes, mapPixelToEval } from "./SurfaceCoordinateMapper.js";
 import { bakePixelsForWorldSpan, drawBakedTexture, getTexturePixelsPerWorldUnit } from "./floorTextureResolution.js";
 
 export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, obstacleGrid, seed, options = {}, profileId) {
@@ -41,7 +41,6 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, obs
         lookupY: new Float32Array(numPixels),
         wallU: new Float32Array(numPixels),
         wallV: new Float32Array(numPixels),
-        blocked: new Uint8Array(numPixels),
         isWall,
         surfaceKind,
     };
@@ -51,13 +50,10 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, obs
         for (let x = 0; x < width; x++) {
             const mapped = mapPixelToEval({ x, y, startWorldX, startWorldY, cellSize, surfaceKind, height, width, pixelsPerUnit, texturePixelsPerWorldUnit, bakeWidth: width, zOffset, wallFace });
 
-            const blocked = queryObstacleBlocked(mapped.evalX, mapped.evalY, obstacleGrid);
-
             samples.evalX[idx] = mapped.evalX;
             samples.evalY[idx] = mapped.evalY;
             samples.wallU[idx] = mapped.wallU ?? 0;
             samples.wallV[idx] = mapped.wallV ?? 0;
-            samples.blocked[idx] = blocked ? 1 : 0;
             idx++;
         }
     }
