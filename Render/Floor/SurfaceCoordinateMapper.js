@@ -55,14 +55,3 @@ export function mapPixelToEval({
         wallV: null,
     };
 }
-
-export function queryObstacleBlocked(evalX, evalY, obstacleGrid) {
-    const { minX, minY, cols, rows, cellSize, grid } = obstacleGrid;
-    const col = Math.floor((evalX - minX) / cellSize);
-    const row = Math.floor((evalY - minY) / cellSize);
-    const inGrid = col >= 0 && row >= 0 && col < cols && row < rows;
-    if (!inGrid) {
-        return false;
-    }
-    return grid[row * cols + col] === 1;
-}

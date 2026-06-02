@@ -342,7 +342,6 @@ export const floorTileSettings = {
     wallTextureStories: 7,
     /** Overlap when affine-mapping wall cells (hides triangle seam). */
     wallTextureBleedPx: 1,
-    maxCachedWallCells: 8192,
 };
 
 export const combatVisualSettings = { 

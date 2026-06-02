@@ -11,7 +11,6 @@ import {
 } from "./profileSchema.js";
 
 export const RUNTIME_LAB_PROFILE_ID = "__labA__";
-export const RUNTIME_LAB_MAP_PROFILE_ID = "__labA_map__";
 let editorState = null;
 let selectedMotifId = null;
 let onChangeCallback = null;
@@ -818,10 +817,5 @@ export function initProfileEditor({ onChange }) {
 }
 
 export function getActiveLabProfile() {
-    return buildProfileFromEditor();
-}
-
-/** Map preview uses a static profile so chunks never sync-bake animation frames. */
-export function getActiveLabMapProfile() {
     return buildProfileFromEditor();
 }

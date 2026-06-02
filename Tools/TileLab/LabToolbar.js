@@ -3,7 +3,6 @@ import { defaultFloorProceduralProfileId } from "../../Config/floorProceduralCon
 import { getDefaultCombatZoom } from "../../Render/Viewport.js";
 import { getGameLabDefaults } from "./LabSettings.js";
 import { getLabWorld } from "./LabWorldSession.js";
-import { RUNTIME_LAB_PROFILE_ID } from "./profile/ProfileEditor.js";
 
 function getStageSize() {
     const stage = document.getElementById("mapStage");
@@ -17,7 +16,6 @@ function getStageSize() {
 export function readControls() {
     const world = getLabWorld();
     return {
-        profileId: RUNTIME_LAB_PROFILE_ID,
         seed: Number(document.getElementById("seedInput").value) || 0,
         worldX: Number(document.getElementById("worldXInput").value) || 0,
         worldY: Number(document.getElementById("worldYInput").value) || 0,
@@ -78,8 +76,6 @@ export function initPresetSelect(profileIds) {
     }
     select.value = defaultFloorProceduralProfileId;
 }
-
-
 
 export function initToolbarDefaults() {
     document.getElementById("mapSeedInput").value = "42";

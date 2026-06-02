@@ -28,7 +28,3 @@ export function syncFloorTextureProfile(state) {
 export function floorChunkCacheKey(chunkCol, chunkRow, profileId) {
     return `${FLOOR_TEXTURE_CACHE_REVISION}:${getPixelsPerWorldUnit()}:${profileId}:${chunkCol},${chunkRow}`;
 }
-
-export function floorCellCacheKey(col, row, profileId) {
-    return `${FLOOR_TEXTURE_CACHE_REVISION}:${getPixelsPerWorldUnit()}:${profileId}:c:${col},${row}`;
-}

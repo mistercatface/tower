@@ -6,23 +6,13 @@ import {
     prepareGameCanvas,
     invalidateMapPreviewBakes,
 } from "./map/LabMapPreview.js";
-import {
-    getActiveLabProfile,
-    getActiveLabMapProfile,
-    RUNTIME_LAB_PROFILE_ID,
-    RUNTIME_LAB_MAP_PROFILE_ID,
-} from "./profile/ProfileEditor.js";
+import { getActiveLabProfile, RUNTIME_LAB_PROFILE_ID } from "./profile/ProfileEditor.js";
 import { ensureLabWorld, getLabWorldMapSeed } from "./LabWorldSession.js";
 
 export async function registerEditorProfiles() {
     const labProfile = getActiveLabProfile();
-    const mapProfile = getActiveLabMapProfile();
-
     registerRuntimeFloorProfile(RUNTIME_LAB_PROFILE_ID, labProfile);
-    registerRuntimeFloorProfile(RUNTIME_LAB_MAP_PROFILE_ID, mapProfile);
-
     await TileWorkerCoordinator.registerRuntimeProfile(RUNTIME_LAB_PROFILE_ID, labProfile);
-    await TileWorkerCoordinator.registerRuntimeProfile(RUNTIME_LAB_MAP_PROFILE_ID, mapProfile);
 }
 
 export function invalidateLabCaches() {
@@ -50,7 +40,7 @@ export function renderMapPreview(ctrl, world) {
     }
     renderGamePreview(document.getElementById("gamePreview"), {
         worldState: world,
-        profileId: RUNTIME_LAB_MAP_PROFILE_ID,
+        profileId: RUNTIME_LAB_PROFILE_ID,
         gameZoom: ctrl.gameZoom,
         showRangeRing: ctrl.showRangeRing,
         weaponRange: ctrl.weaponRange,

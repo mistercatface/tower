@@ -139,28 +139,8 @@ export const TileWorkerCoordinator = {
         return promise;
     },
 
-    requestFloorCellBake(payload, priority = Infinity) {
-        return sendRequest("bakeFloorCell", payload, priority);
-    },
-
     requestWallFaceBake(payload, priority = Infinity) {
         return sendRequest("bakeWallFace", payload, priority);
-    },
-
-    requestTileTextureBake(payload, priority = Infinity) {
-        return sendRequest("bakeTileTexture", payload, priority);
-    },
-
-    requestLabFloorCellBake(payload, priority = Infinity) {
-        return sendRequest("labBakeFloorCell", payload, priority);
-    },
-
-    requestLabWallCellBake(payload, priority = Infinity) {
-        return sendRequest("labBakeWallCell", payload, priority);
-    },
-
-    requestLabWallFaceBake(payload, priority = Infinity) {
-        return sendRequest("labBakeWallFace", payload, priority);
     },
 
     registerRuntimeProfile(profileId, profile) {

@@ -175,8 +175,6 @@ export function renderGamePreview(canvas, options) {
     return result;
 }
 
-
-
 /** Invalidate baked floor/wall caches after profile or floor seed change. */
 export function invalidateMapPreviewBakes() {
     lastBakeKey = "";

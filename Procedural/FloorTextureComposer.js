@@ -1,4 +1,4 @@
-import { blendMotifRgbInto } from "./util/blend.js";
+import { blendMotifRgb } from "./util/blend.js";
 import { ensureNoiseInitialized } from "./Noise/Perlin2D.js";
 import { writeDomainWarp } from "./Fields/DomainWarp.js";
 import { getMotif } from "./MotifRegistry.js";
@@ -42,10 +42,6 @@ const sampleScratch = {
 const beforeRgb = { r: 0, g: 0, b: 0 };
 const layerRgb = { r: 0, g: 0, b: 0 };
 const blendOut = { r: 0, g: 0, b: 0 };
-
-export function clearLayerCache() {
-    layerCache.clear();
-}
 
 function resolvePaletteBase(profile, isWall) {
     if (isWall && profile.palette.wallBase) {
@@ -155,7 +151,7 @@ export function composeFloorImage(samples, profile, seed, requestKey) {
             layerRgb.b = beforeRgb.b;
             motifImpl.apply(sampleScratch, layerRgb, motifConfig);
 
-            blendMotifRgbInto(blendOut, beforeRgb, layerRgb, blendMode, opacity);
+            blendMotifRgb(blendOut, beforeRgb, layerRgb, blendMode, opacity);
             rgbBuffer[idx] = blendOut.r;
             rgbBuffer[idx + 1] = blendOut.g;
             rgbBuffer[idx + 2] = blendOut.b;

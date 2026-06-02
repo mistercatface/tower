@@ -2,30 +2,19 @@ import { floorTileSettings, combatVisualSettings } from "../../Config/Config.js"
 import { isWorldScene } from "../../GameState/GamePhase.js";
 import { getFloorProceduralProfile } from "../../Config/floorProceduralConfig.js";
 import { chunkToWorldOrigin, getChunkSizePx, gridBoundsToChunkRange, worldBoundsToChunkRange } from "../../Spatial/Grid/ChunkGrid.js";
-import { snapWorldToCellOrigin } from "../../Spatial/Geometry/GridCoords.js";
 import { FloorChunkCache } from "./FloorChunkCache.js";
 import { TileWorkerCoordinator } from "./TileWorkerCoordinator.js";
-import { floorCellCacheKey, floorChunkCacheKey, getFloorTextureProfileId } from "./floorTextureProfile.js";
-import { drawBakedTexture, getPixelsPerWorldUnit } from "./floorTextureResolution.js";
+import { floorChunkCacheKey, getFloorTextureProfileId } from "./floorTextureProfile.js";
+import { drawBakedTexture } from "./floorTextureResolution.js";
 
 export class FloorTileSystem {
     constructor() {
         this.cache = new FloorChunkCache();
-        this.cellCache = new FloorChunkCache(floorTileSettings.maxCachedWallCells);
-        this._tileTexture = null;
-        this._tileTextureSeed = null;
-        this._tileTextureProfileId = null;
-        this._tileTexturePpwu = null;
         this.proceduralProfileId = null;
     }
 
     clear() {
         this.cache.clear();
-        this.cellCache.clear();
-        this._tileTexture = null;
-        this._tileTextureSeed = null;
-        this._tileTextureProfileId = null;
-        this._tileTexturePpwu = null;
     }
 
     invalidateGridBounds(bounds, state, cellsPerChunk = floorTileSettings.cellsPerChunk) {
@@ -37,96 +26,6 @@ export class FloorTileSystem {
                 this.cache.delete(floorChunkCacheKey(chunkCol, chunkRow, profileId));
             }
         }
-        for (let row = bounds.startRow; row <= bounds.endRow; row++) {
-            for (let col = bounds.startCol; col <= bounds.endCol; col++) {
-                this.cellCache.delete(floorCellCacheKey(col, row, profileId));
-            }
-        }
-    }
-
-    getTileTextureCanvas(state) {
-        const seed = state.floorTileSeed ?? 0;
-        const profileId = getFloorTextureProfileId(state);
-        const ppwu = getPixelsPerWorldUnit();
-        if (this._tileTexture && this._tileTextureSeed === seed && this._tileTextureProfileId === profileId && this._tileTexturePpwu === ppwu) {
-            return this._tileTexture;
-        }
-        this._tileTextureSeed = seed;
-        this._tileTextureProfileId = profileId;
-        this._tileTexturePpwu = ppwu;
-
-        const placeholder = [{ isPlaceholder: true }];
-        this._tileTexture = placeholder;
-
-        TileWorkerCoordinator.requestTileTextureBake({ seed, profileId }).then((canvases) => {
-            if (this._tileTextureSeed === seed && this._tileTextureProfileId === profileId) {
-                this._tileTexture = canvases;
-            } else {
-                canvases.forEach((c) => c.close());
-            }
-        });
-
-        return placeholder;
-    }
-
-    getCellCanvas(worldX, worldY, state) {
-        const profileId = getFloorTextureProfileId(state);
-        const obstacleGrid = state.obstacleGrid;
-        const { col, row, x, y } = snapWorldToCellOrigin(worldX, worldY, obstacleGrid.minX, obstacleGrid.minY, obstacleGrid.cellSize);
-        const key = floorCellCacheKey(col, row, profileId);
-        let canvases = this.cellCache.get(key);
-        if (canvases) return canvases;
-
-        const placeholder = [{ isPlaceholder: true }];
-        this.cellCache.set(key, placeholder);
-
-        TileWorkerCoordinator.requestFloorCellBake({ worldX: x, worldY: y, seed: state.floorTileSeed ?? 0, profileId }).then((bitmaps) => {
-            const existing = this.cellCache.get(key);
-            if (existing === placeholder) {
-                this.cellCache.set(key, bitmaps);
-            } else {
-                bitmaps.forEach((b) => b.close());
-            }
-        });
-
-        return placeholder;
-    }
-
-    drawWallCell(ctx, worldX, worldY, storyRow, state) {
-        const profileId = getFloorTextureProfileId(state);
-        const obstacleGrid = state.obstacleGrid;
-        const { col, row, x, y } = snapWorldToCellOrigin(worldX, worldY, obstacleGrid.minX, obstacleGrid.minY, obstacleGrid.cellSize);
-
-        // Wall cells can reuse the cell cache but need a unique key incorporating storyRow
-        const key = `wall_${floorCellCacheKey(col, row, profileId)}_${storyRow}`;
-        let canvases = this.cellCache.get(key);
-
-        if (!canvases) {
-            const placeholder = [{ isPlaceholder: true }];
-            this.cellCache.set(key, placeholder);
-
-            TileWorkerCoordinator.requestLabWallCellBake({
-                worldX: x,
-                worldY: y,
-                seed: state.floorTileSeed ?? 0,
-                profileId,
-                storyRow,
-                frameIndex: 0, // Assumes no animation for immediate wall cell draw in game right now, or needs GameTime
-            }).then((bitmaps) => {
-                const existing = this.cellCache.get(key);
-                if (existing === placeholder) {
-                    this.cellCache.set(key, bitmaps);
-                } else {
-                    bitmaps.forEach((b) => b.close());
-                }
-            });
-            return;
-        }
-
-        if (canvases[0]?.isPlaceholder) return;
-
-        // Assume non-animated or first frame for now if drawn immediately
-        drawBakedTexture(ctx, canvases[0], x, y, obstacleGrid.cellSize, obstacleGrid.cellSize);
     }
 
     bakeWallFace(width, height, p1, p2, pixelsPerUnit, state) {
