@@ -176,7 +176,7 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHei
     const ky1 = p1.y.toFixed(1);
     const kx2 = p2.x.toFixed(1);
     const ky2 = p2.y.toFixed(1);
-    const key = `v5:${ppwu}:${profileId}:${kx1},${ky1}-${kx2},${ky2}`;
+    const key = `v8:${ppwu}:${profileId}:${kx1},${ky1}-${kx2},${ky2}`;
 
     const storyCount = getWallTextureStoryCount();
     let flatCanvas = flatWallCache.get(key);

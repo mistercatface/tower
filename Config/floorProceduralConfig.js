@@ -2,112 +2,46 @@ import { combatVisualSettings } from "./Config.js";
 
 /** @typedef {"eval" | "warped"} ProceduralCoordinateSpace */
 
+/** Clean station hull — one material pass, no warp/veins (avoids noisy random look). */
+const spaceStation = {
+    warp: {
+        frequency: 0.005,
+        amplitude: 0,
+        octaves: 1,
+        sampleOffset: [0, 0],
+    },
+    palette: {
+        base: [22, 24, 28],
+        floorBase: [20, 22, 26],
+        wallBase: [24, 26, 30],
+        shadow: combatVisualSettings.floorShadow,
+    },
+    sharedMotifs: [
+        {
+            type: "baseMetal",
+            structure: { frequency: 0.0025, octaves: 1, rgbDelta: [3, 3, 4] },
+            grain: { frequency: 0.2, octaves: 1, amplitude: 1 },
+        },
+    ],
+    floorMotifs: [],
+    wallMotifs: [
+        {
+            type: "wallLighting",
+            power: 1,
+            topDarken: 4,
+            coolBias: 1.04,
+        },
+    ],
+};
+
 /**
  * Procedural floor/wall texture profiles. Add motifs here to change the look;
  * implement new motif types under Procedural/Motifs/.
  */
 export const floorProceduralProfiles = {
-    cleanserStation: {
-        warp: {
-            frequency: 0.005,
-            amplitude: 0,
-            octaves: 2,
-            sampleOffset: [500, 500],
-        },
-        palette: {
-            base: [24, 26, 30],
-            floorBase: [14, 16, 20],
-            wallBase: [30, 32, 36],
-            shadow: combatVisualSettings.floorShadow,
-        },
-        sharedMotifs: [
-            {
-                type: "baseMetal",
-                structure: { frequency: 0.005, octaves: 2, rgbDelta: [4, 4, 6] },
-                grain: { frequency: 0.75, octaves: 1, amplitude: 1.5 },
-            },
-        ],
-        floorMotifs: [
-            {
-                type: "surfaceGrain",
-                axis: "horizontal",
-                frequency: 0.03,
-                axisStretch: 0.25,
-                amplitude: 0.6,
-                tint: [1, 1, 1],
-            },
-        ],
-        wallMotifs: [
-            {
-                type: "wallHorizontalBevel",
-                bands: 10,
-                snakeStrength: 0.38,
-                snakeAlong: 3,
-                ribFill: 0.62,
-                highlightPeak: 10,
-                shadowPeak: 12,
-                coreTint: [0.25, 1.0, 1.6],
-                corePeak: 5,
-            },
-            {
-                type: "wallLighting",
-                power: 1.15,
-                topDarken: 8,
-                coolBias: 1.04,
-            },
-        ],
-    },
-
-    startStation: {
-        warp: {
-            frequency: 0.005,
-            amplitude: 0,
-            octaves: 2,
-            sampleOffset: [500, 500],
-        },
-        palette: {
-            base: [24, 26, 30],
-            floorBase: [14, 16, 20],
-            wallBase: [30, 32, 36],
-            shadow: combatVisualSettings.floorShadow,
-        },
-        sharedMotifs: [
-            {
-                type: "baseMetal",
-                structure: { frequency: 0.005, octaves: 2, rgbDelta: [4, 4, 6] },
-                grain: { frequency: 0.75, octaves: 1, amplitude: 1.5 },
-            },
-        ],
-        floorMotifs: [
-            {
-                type: "surfaceGrain",
-                axis: "horizontal",
-                frequency: 0.03,
-                axisStretch: 0.25,
-                amplitude: 0.6,
-                tint: [1, 1, 1],
-            },
-        ],
-        wallMotifs: [
-            {
-                type: "wallHorizontalBevel",
-                bands: 10,
-                snakeStrength: 0.38,
-                snakeAlong: 3,
-                ribFill: 0.62,
-                highlightPeak: 10,
-                shadowPeak: 12,
-                coreTint: [0.25, 1.0, 1.6],
-                corePeak: 5,
-            },
-            {
-                type: "wallLighting",
-                power: 1.15,
-                topDarken: 8,
-                coolBias: 1.04,
-            },
-        ],
-    },
+    spaceStation,
+    cleanserStation: spaceStation,
+    startStation: spaceStation,
 
     cargoBay: {
         warp: {
@@ -183,20 +117,20 @@ export const floorProceduralProfiles = {
     },
 };
 
-export const defaultFloorProceduralProfileId = "cleanserStation";
+export const defaultFloorProceduralProfileId = "spaceStation";
 
 /** Layer-0 / start node floor look (independent of generator strategy). */
-export const startFloorProceduralProfileId = "startStation";
+export const startFloorProceduralProfileId = "spaceStation";
 
 /** Generator strategy name → floor profile id */
 export const floorProceduralProfileByStrategy = {
-    StartBuildingStrategy: "cleanserStation",
+    StartBuildingStrategy: "spaceStation",
     MazeStrategy: "cargoBay",
     Maze2Strategy: "cargoBay",
     DenseMazeStrategy: "cargoBay",
     SquareStrategy: "cargoBay",
-    GeometricStrategy: "cleanserStation",
-    FortressStrategy: "cleanserStation",
+    GeometricStrategy: "spaceStation",
+    FortressStrategy: "spaceStation",
     HoneycombStrategy: "rootForest",
     DiamondStrategy: "rootForest",
 };
