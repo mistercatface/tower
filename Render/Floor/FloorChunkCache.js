@@ -48,6 +48,14 @@ export class FloorChunkCache {
         }
     }
 
+    deleteByPrefix(prefix) {
+        for (const key of [...this.cache.keys()]) {
+            if (key.startsWith(prefix)) {
+                this.delete(key);
+            }
+        }
+    }
+
     clear() {
         for (const value of this.cache.values()) {
             this._closeBitmaps(value);

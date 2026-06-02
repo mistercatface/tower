@@ -522,7 +522,7 @@ function renderMotifParams(container) {
     if (isContextMotif(row.config.type)) {
         const hint = document.createElement("p");
         hint.className = "editor-hint";
-        hint.textContent = "Moves every layer below. Set X/Y here, animate X/Y in the Animation panel, or enable Follow player.";
+        hint.textContent = "Moves every layer below. Set X/Y here or animate X/Y in the Animation panel.";
         container.appendChild(hint);
     } else {
         const layerSelect = new SelectControl("Surface Mask", LAYER_OPTIONS, row.surfaceMask, (val) => {
@@ -531,23 +531,6 @@ function renderMotifParams(container) {
             refreshEditorPanels({ motifParams: false, animation: true, global: false });
         });
         container.appendChild(layerSelect.element);
-    }
-
-    if (row.config.type === "translate") {
-        const followWrap = document.createElement("label");
-        followWrap.className = "check-inline";
-        followWrap.style.display = "block";
-        followWrap.style.marginBottom = "8px";
-        const followInput = document.createElement("input");
-        followInput.type = "checkbox";
-        followInput.checked = row.config.followPlayer === true;
-        followInput.addEventListener("change", () => {
-            row.config.followPlayer = followInput.checked;
-            notifyChange();
-        });
-        followWrap.appendChild(followInput);
-        followWrap.append(" Follow player (rings slide toward you — see tetherMaxUnitsPerSecond in Config)");
-        container.appendChild(followWrap);
     }
 
     renderScalarFields(

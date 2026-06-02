@@ -1,36 +1,14 @@
-import {
-    bakeFloorChunkAnimatedCanvas,
-    bakeFloorChunkCanvas,
-    bakeFloorChunkFrameCanvas,
-    bakeWallFaceCanvases,
-} from "./FloorTilePainter.js";
+import { bakeFloorChunkCanvases, bakeWallFaceCanvases } from "./FloorTilePainter.js";
 import { registerRuntimeFloorProfile } from "../../Config/floorProceduralConfig.js";
 import { invalidateProfileScratch } from "./ProfileBakeResolver.js";
 
 const HANDLERS = {
     bakeFloorChunk(payload) {
-        return bakeFloorChunkCanvas(payload);
-    },
-
-    bakeFloorChunkFrame(payload) {
-        return [bakeFloorChunkFrameCanvas(payload)];
-    },
-
-    bakeFloorChunkAnimated(payload) {
-        return bakeFloorChunkAnimatedCanvas(payload);
+        return bakeFloorChunkCanvases(payload);
     },
 
     bakeWallFace(payload) {
-        return bakeWallFaceCanvases(
-            payload.width,
-            payload.height,
-            payload.p1,
-            payload.p2,
-            payload.pixelsPerUnit,
-            payload.seed,
-            payload.profileId,
-            payload,
-        );
+        return bakeWallFaceCanvases(payload.width, payload.height, payload.p1, payload.p2, payload.pixelsPerUnit, payload.seed, payload.profileId, payload);
     },
 
     registerRuntimeProfile(payload) {

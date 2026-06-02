@@ -3,7 +3,7 @@ import { defaultFloorProceduralProfileId, getFloorProceduralProfile } from "../.
 import { composeFloorImage } from "../../Procedural/FloorTextureComposer.js";
 import { createWallFaceAxes, mapPixelToEval } from "./SurfaceCoordinateMapper.js";
 import { bakePixelsForWorldSpan, getPixelsPerWorldUnit } from "./floorTextureResolution.js";
-import { resolveBakeProfile, createParamOverrideBinding, createWorldPointBinding } from "./ProfileBakeResolver.js";
+import { resolveBakeProfile } from "./ProfileBakeResolver.js";
 
 class TileMemoryPool {
     constructor() {
@@ -62,18 +62,7 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, see
 
     const numPixels = width * height;
     const pooled = memoryPool.getSamples(numPixels);
-    const samples = {
-        width,
-        height,
-        evalX: pooled.evalX,
-        evalY: pooled.evalY,
-        lookupX: pooled.lookupX,
-        lookupY: pooled.lookupY,
-        wallU: pooled.wallU,
-        wallV: pooled.wallV,
-        isWall,
-        surfaceKind,
-    };
+    const samples = { width, height, evalX: pooled.evalX, evalY: pooled.evalY, lookupX: pooled.lookupX, lookupY: pooled.lookupY, wallU: pooled.wallU, wallV: pooled.wallV, isWall, surfaceKind };
 
     let idx = 0;
     for (let y = 0; y < height; y++) {
@@ -132,91 +121,41 @@ function chunkWorldOrigin(chunkCol, chunkRow, minX, minY, cellsPerChunk = floorT
     const cellSize = gridSettings.cellSize;
     const startCol = chunkCol * cellsPerChunk;
     const startRow = chunkRow * cellsPerChunk;
-    return {
-        x: minX + startCol * cellSize,
-        y: minY + startRow * cellSize,
-        bakeSize: bakePixelsForWorldSpan(cellSize * cellsPerChunk),
-    };
+    return { x: minX + startCol * cellSize, y: minY + startRow * cellSize, bakeSize: bakePixelsForWorldSpan(cellSize * cellsPerChunk) };
 }
 
 function buildBakeContextFromPayload(payload) {
-    const ctx = {
+    return {
         frameIndex: payload.frameIndex,
         gameTime: payload.gameTime,
     };
-    if (payload.player) {
-        ctx.player = payload.player;
-    }
-
-    const bindings = [];
-    if (payload.paramOverrides?.length) {
-        bindings.push(createParamOverrideBinding(payload.paramOverrides));
-    }
-    if (payload.tetherOrigin && payload.playerAnchorBinding?.kind === "xy") {
-        bindings.push(
-            createParamOverrideBinding([
-                { path: payload.playerAnchorBinding.pathX, value: payload.tetherOrigin.x },
-                { path: payload.playerAnchorBinding.pathY, value: payload.tetherOrigin.y },
-            ]),
-        );
-    } else if (payload.tetherOrigin && payload.playerAnchorBinding?.kind === "point") {
-        bindings.push(
-            createParamOverrideBinding([
-                {
-                    path: payload.playerAnchorBinding.path,
-                    value: [payload.tetherOrigin.x, payload.tetherOrigin.y],
-                },
-            ]),
-        );
-    } else if (payload.player && payload.playerAnchorPath) {
-        bindings.push(createWorldPointBinding(payload.playerAnchorPath, (bakeCtx) => bakeCtx.player));
-    }
-    if (bindings.length) {
-        ctx.bindings = bindings;
-    }
-
-    return ctx;
 }
 
-/** Static chunk bake — no binding sources active. */
-export function bakeFloorChunkCanvas({ chunkCol, chunkRow, minX, minY, seed, cellsPerChunk = floorTileSettings.cellsPerChunk, profileId }) {
-    const { x: chunkWorldX, y: chunkWorldY, bakeSize } = chunkWorldOrigin(chunkCol, chunkRow, minX, minY, cellsPerChunk);
-    const canvas = new OffscreenCanvas(bakeSize, bakeSize);
-    const ctx = canvas.getContext("2d");
-    ctx.imageSmoothingEnabled = false;
-    paintPixelArea(ctx, bakeSize, bakeSize, chunkWorldX, chunkWorldY, seed, {}, profileId);
-    return [canvas];
+function chunkNeedsRuntimeResolve(profile) {
+    return Boolean(profile.animation);
 }
 
-/** Single animation frame for a floor chunk — bindings resolved into scratch profile. */
-export function bakeFloorChunkFrameCanvas(payload) {
-    const { chunkCol, chunkRow, minX, minY, seed, profileId, cellsPerChunk } = payload;
-    const { x: chunkWorldX, y: chunkWorldY, bakeSize } = chunkWorldOrigin(chunkCol, chunkRow, minX, minY, cellsPerChunk);
-    const baseProfile = getFloorProceduralProfile(profileId ?? defaultFloorProceduralProfileId);
-    const bakeContext = buildBakeContextFromPayload(payload);
-
-    const canvas = new OffscreenCanvas(bakeSize, bakeSize);
-    const ctx = canvas.getContext("2d");
-    ctx.imageSmoothingEnabled = false;
-    bakeResolvedProfile(ctx, bakeSize, bakeSize, chunkWorldX, chunkWorldY, seed, {}, baseProfile, profileId, bakeContext);
-    return canvas;
-}
-
-/** All animation frames for one chunk in a single worker job (one postMessage round-trip). */
-export function bakeFloorChunkAnimatedCanvas(payload) {
+/** Bake one or more chunk canvases from a single worker payload. */
+export function bakeFloorChunkCanvases(payload) {
     const profileId = payload.profileId ?? defaultFloorProceduralProfileId;
     const baseProfile = getFloorProceduralProfile(profileId);
     const frames = baseProfile.animation?.frames ?? 1;
-    const { chunkCol, chunkRow, minX, minY, seed, cellsPerChunk } = payload;
+    const { chunkCol, chunkRow, minX, minY, seed, cellsPerChunk = floorTileSettings.cellsPerChunk } = payload;
     const { x: chunkWorldX, y: chunkWorldY, bakeSize } = chunkWorldOrigin(chunkCol, chunkRow, minX, minY, cellsPerChunk);
+    const useResolver = chunkNeedsRuntimeResolve(baseProfile);
     const canvases = [];
 
     for (let frameIndex = 0; frameIndex < frames; frameIndex++) {
-        const bakeContext = buildBakeContextFromPayload({ ...payload, frameIndex, profileId });
         const canvas = new OffscreenCanvas(bakeSize, bakeSize);
         const ctx = canvas.getContext("2d");
         ctx.imageSmoothingEnabled = false;
-        bakeResolvedProfile(ctx, bakeSize, bakeSize, chunkWorldX, chunkWorldY, seed, {}, baseProfile, profileId, bakeContext);
+
+        if (useResolver) {
+            const bakeContext = buildBakeContextFromPayload({ ...payload, frameIndex, profileId });
+            bakeResolvedProfile(ctx, bakeSize, bakeSize, chunkWorldX, chunkWorldY, seed, {}, baseProfile, profileId, bakeContext);
+        } else {
+            paintPixelArea(ctx, bakeSize, bakeSize, chunkWorldX, chunkWorldY, seed, {}, profileId);
+        }
         canvases.push(canvas);
     }
 

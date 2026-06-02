@@ -1,5 +1,3 @@
-import { getFloorProceduralProfile } from "../../Config/floorProceduralConfig.js";
-
 const workers = [];
 const workerBusy = [];
 const jobQueue = [];
@@ -14,11 +12,7 @@ function whenWorkersReady(run) {
 }
 
 function chunkDedupeKey(payload) {
-    let key = `chunk:${payload.profileId}:${payload.chunkCol},${payload.chunkRow}:${payload.seed ?? 0}`;
-    if (payload.tetherOrigin) {
-        key += `:t${payload.tetherOrigin.x},${payload.tetherOrigin.y}`;
-    }
-    return key;
+    return `chunk:${payload.profileId}:${payload.chunkCol},${payload.chunkRow}:${payload.seed ?? 0}`;
 }
 
 function insertJob(job) {
@@ -108,13 +102,6 @@ function broadcastRequest(type, payload) {
     return Promise.all(workers.map((_, i) => enqueueJob(type, payload, -1000 + i)));
 }
 
-function hasPlayerAnchorPayload(payload) {
-    if (payload.tetherOrigin && payload.playerAnchorBinding) {
-        return true;
-    }
-    return Boolean(payload.player && (payload.playerAnchorBinding || payload.playerAnchorPath));
-}
-
 export const TileWorkerCoordinator = {
     requestFloorChunkBake(payload, priority = Infinity) {
         const dedupeKey = chunkDedupeKey(payload);
@@ -122,15 +109,7 @@ export const TileWorkerCoordinator = {
             return inFlightByKey.get(dedupeKey);
         }
 
-        const profile = getFloorProceduralProfile(payload.profileId);
-        const hasAnimation = Boolean(profile.animation);
-        const hasPlayerAnchor = hasPlayerAnchorPayload(payload);
-
-        const promise = hasAnimation
-            ? sendRequest("bakeFloorChunkAnimated", payload, priority)
-            : hasPlayerAnchor
-                ? sendRequest("bakeFloorChunkFrame", { ...payload, frameIndex: 0 }, priority)
-                : sendRequest("bakeFloorChunk", payload, priority);
+        const promise = sendRequest("bakeFloorChunk", payload, priority);
 
         inFlightByKey.set(dedupeKey, promise);
         promise.finally(() => inFlightByKey.delete(dedupeKey));
@@ -143,9 +122,7 @@ export const TileWorkerCoordinator = {
 
     registerRuntimeProfile(profileId, profile) {
         getWorkerPool();
-        workerReady = workerReady.then(() =>
-            broadcastRequest("registerRuntimeProfile", { profileId, profile }),
-        );
+        workerReady = workerReady.then(() => broadcastRequest("registerRuntimeProfile", { profileId, profile }));
         return workerReady;
     },
 };

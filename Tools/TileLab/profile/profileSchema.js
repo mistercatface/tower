@@ -26,7 +26,6 @@ export const MOTIF_TYPES = {
             x: 0,
             y: 0,
             coordinateMode: "evalAndWarped",
-            followPlayer: false,
         },
         fields: [
             { path: "x", label: "X", min: -2000, max: 2000, step: 5 },
@@ -359,7 +358,6 @@ export const MOTIF_TYPES = {
             ringWidth: 0.08,
             peak: 10,
             offset: [0, 0],
-            followPlayer: true,
             tint: [0.3, 0.8, 1.2],
             opacity: 0.7,
             blendMode: "add",

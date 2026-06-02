@@ -342,12 +342,6 @@ export const floorTileSettings = {
     wallTextureStories: 7,
     /** Overlap when affine-mapping wall cells (hides triangle seam). */
     wallTextureBleedPx: 1,
-    /** Translate follow-player: max world-units/sec the ring origin slides toward the player. */
-    tetherMaxUnitsPerSecond: 140,
-    /** Snap to target when within this distance (idle). */
-    tetherSnapDistance: 6,
-    /** Rebake when sliding origin crosses this world-unit grid (~maxSpeed / desired rebake Hz). */
-    tetherBakeQuantizePx: 32,
 };
 
 export const combatVisualSettings = { 
