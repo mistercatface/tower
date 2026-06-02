@@ -5,6 +5,9 @@ import { getTexturePixelsPerWorldUnit } from "./floorTextureResolution.js";
 const FLOOR_TEXTURE_CACHE_REVISION = 9;
 
 export function getFloorTextureProfileId(state) {
+    if (state.floorTextureProfileOverride) {
+        return state.floorTextureProfileOverride;
+    }
     const node = state.getCurrentMapNode();
     if (node?.floorTextureProfileId) {
         return node.floorTextureProfileId;

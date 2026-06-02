@@ -182,17 +182,27 @@ export const floorProceduralProfileByStrategy = {
     DiamondStrategy: "rootForest",
 };
 
+/** @type {Record<string, object>} */
+const runtimeFloorProfiles = {};
+
+/**
+ * Register a runtime-only floor profile (dev tools, A/B overlays).
+ * Checked before shipped profiles in getFloorProceduralProfile.
+ */
+export function registerRuntimeFloorProfile(profileId, profile) {
+    runtimeFloorProfiles[profileId] = profile;
+}
+
+export function unregisterRuntimeFloorProfile(profileId) {
+    delete runtimeFloorProfiles[profileId];
+}
+
 export function getFloorProceduralProfile(profileId) {
-    const profile = floorProceduralProfiles[profileId];
+    const profile = runtimeFloorProfiles[profileId] ?? floorProceduralProfiles[profileId];
     if (!profile) {
         throw new Error(`Unknown floor procedural profile: ${profileId}`);
     }
     return profile;
-}
-
-/** Tile lab: register a live-edited profile under a synthetic id. */
-export function registerLabProceduralProfile(profileId, profile) {
-    floorProceduralProfiles[profileId] = profile;
 }
 
 export function resolveFloorTextureProfileId({ layer, strategy }) {

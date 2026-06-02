@@ -2,7 +2,7 @@ import { gridSettings, floorTileSettings, playerBaseStats } from "../../Config/C
 import {
     floorProceduralProfiles,
     defaultFloorProceduralProfileId,
-    registerLabProceduralProfile,
+    registerRuntimeFloorProfile,
 } from "../../Config/floorProceduralConfig.js";
 import { clearFlatWallFaceCache } from "../../Render/3D/WallFaceTexture.js";
 import {
@@ -14,7 +14,8 @@ import {
     requestNavMapRender,
     requestQualityMapRender,
 } from "./map/LabMapPreview.js";
-import { getGameLabDefaults, computeCombatZoom } from "./LabSettings.js";
+import { getGameLabDefaults } from "./LabSettings.js";
+import { getDefaultCombatZoom } from "../../Render/Viewport.js";
 import {
     createLabMapWorld,
     focusLabNode,
@@ -44,7 +45,7 @@ let inspectSources = null;
 
 function registerEditorProfiles() {
     const { profileA } = getActiveLabProfiles();
-    registerLabProceduralProfile(LAB_PROFILE_A, profileA);
+    registerRuntimeFloorProfile(LAB_PROFILE_A, profileA);
 }
 
 function invalidateLabCaches() {
@@ -128,7 +129,7 @@ function syncCombatZoomToStage(world) {
     const rect = stage?.getBoundingClientRect();
     const viewW = Math.max(320, Math.floor(rect?.width ?? 800));
     const viewH = Math.max(240, Math.floor(rect?.height ?? 600));
-    const zoom = computeCombatZoom(viewW, viewH, world?.player?.weapon?.range ?? playerBaseStats.range);
+    const zoom = getDefaultCombatZoom(viewW, viewH, world?.player?.weapon?.range ?? playerBaseStats.range);
     const zoomEl = document.getElementById("gameZoomInput");
     if (zoomEl) {
         zoomEl.value = String(zoom.toFixed(2));
@@ -324,7 +325,7 @@ document.getElementById("storyCountInput").value = String(floorTileSettings.wall
 document.getElementById("seedInput").value = "42";
 const gameZoomEl = document.getElementById("gameZoomInput");
 if (gameZoomEl) {
-    const z = computeCombatZoom(800, 600, playerBaseStats.range);
+    const z = getDefaultCombatZoom(800, 600, playerBaseStats.range);
     gameZoomEl.value = String(z.toFixed(2));
     document.getElementById("gameZoomValue").textContent = gameZoomEl.value;
 }

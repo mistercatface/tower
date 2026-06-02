@@ -5,6 +5,7 @@ import {
     playerBaseStats,
     combatActorRadius,
 } from "../../Config/Config.js";
+import { getDefaultCombatZoom } from "../../Render/Viewport.js";
 
 /** Same canvas footprint used for map spawn / node combat coords as a new game. */
 export const mapGenCanvasBounds = {
@@ -12,26 +13,13 @@ export const mapGenCanvasBounds = {
     height: gridSettings.height,
 };
 
-const COMBAT_BASE_RANGE = 150;
-
-/** Combat min zoom — same math as Viewport.updateZoomLimits. */
-export function computeCombatZoom(viewWidth, viewHeight, weaponRange = playerBaseStats.range) {
-    const visualRadius = Math.max(1, Math.min(viewWidth, viewHeight) / 2 - 4);
-    const minZoom = visualRadius / Math.max(1, weaponRange);
-    const maxZoom = visualRadius / COMBAT_BASE_RANGE;
-    if (maxZoom <= minZoom) {
-        return minZoom;
-    }
-    return minZoom;
-}
-
 export function getGameLabDefaults(viewWidth, viewHeight, worldState) {
     const weaponRange = worldState?.player?.weapon?.range ?? playerBaseStats.range;
     return {
         cellSize: gridSettings.cellSize,
         storyCount: floorTileSettings.wallTextureStories,
         weaponRange,
-        gameZoom: computeCombatZoom(viewWidth, viewHeight, weaponRange),
+        gameZoom: getDefaultCombatZoom(viewWidth, viewHeight, weaponRange),
         viewPaddingPx: floorTileSettings.viewPaddingPx,
         cellsPerChunk: floorTileSettings.cellsPerChunk,
         texturePixelsPerWorldUnit: floorTileSettings.texturePixelsPerWorldUnit,

@@ -44,6 +44,8 @@ export class GameState {
         this.wallSpatialHash = new SpatialHash(100);
         this.floorTiles = new FloorTileSystem();
         this.floorTileSeed = 0;
+        /** @type {string | null} Dev/preview override — see getFloorTextureProfileId */
+        this.floorTextureProfileOverride = null;
 
         this.initializeDefaultState();
     }

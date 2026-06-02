@@ -1,29 +1,10 @@
 import { gridSettings } from "../../../Config/Config.js";
+import { withSeededRandom } from "../../../Core/SeededRandom.js";
 import { mapGenCanvasBounds } from "../LabSettings.js";
 import { GamePhase } from "../../../GameState/GamePhase.js";
 import { GameState } from "../../../GameState/GameState.js";
 import { MapGenerator } from "../../../Generator/MapGenerator.js";
 import { getStartNodeLayout } from "../../../Generator/StartNodeBuilding.js";
-
-/** @type {(() => number) | null} */
-let savedRandom = null;
-
-export function withSeededRandom(seed, fn) {
-    let s = (seed >>> 0) || 1;
-    savedRandom = Math.random;
-    Math.random = () => {
-        s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
-        return s / 4294967296;
-    };
-    try {
-        return fn();
-    } finally {
-        if (savedRandom) {
-            Math.random = savedRandom;
-            savedRandom = null;
-        }
-    }
-}
 
 /**
  * Full run map — same pipeline as a new game (all nodes, walls, obstacle grid).
@@ -49,26 +30,7 @@ export function createLabMapWorld(options = {}) {
     }
 
     state.__mapSeed = mapSeed;
-    state.__baseGetCurrentMapNode = state.getCurrentMapNode.bind(state);
     return state;
-}
-
-/** Route floor/wall bakes through the tile lab profile id. */
-export function applyLabProfileOverride(state, profileId) {
-    const base = state.__baseGetCurrentMapNode ?? state.getCurrentMapNode.bind(state);
-    state.getCurrentMapNode = () => {
-        const node = base();
-        if (!node) {
-            return { floorTextureProfileId: profileId };
-        }
-        return { ...node, floorTextureProfileId: profileId };
-    };
-}
-
-export function restoreLabProfileOverride(state) {
-    if (state.__baseGetCurrentMapNode) {
-        state.getCurrentMapNode = state.__baseGetCurrentMapNode;
-    }
 }
 
 /** Move player to a map node combat position; returns world coords. */

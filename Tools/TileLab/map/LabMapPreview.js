@@ -3,7 +3,6 @@ import { clearFlatWallFaceCache } from "../../../Render/3D/WallFaceTexture.js";
 import { Render3D } from "../../../Render/3D/Render3D.js";
 import { Viewport } from "../../../Render/Viewport.js";
 import { playerBaseStats } from "../../../Config/Config.js";
-import { applyLabProfileOverride } from "./LabMapWorld.js";
 
 const render3D = new Render3D();
 let lastBakeKey = "";
@@ -81,7 +80,8 @@ function syncCameraToPlayer(worldState) {
 
 function drawLabWorldFrame(ctx, canvas, viewW, viewH, worldState, profileId, gameZoom, showRangeRing, weaponRange, fastNav = false) {
     worldState.phase = GamePhase.COMBAT;
-    applyLabProfileOverride(worldState, profileId);
+    const prevProfileOverride = worldState.floorTextureProfileOverride;
+    worldState.floorTextureProfileOverride = profileId;
     maybeClearBakeCaches(worldState, profileId);
 
     syncCameraToPlayer(worldState);
@@ -115,6 +115,7 @@ function drawLabWorldFrame(ctx, canvas, viewW, viewH, worldState, profileId, gam
     });
 
     worldState.canvasBounds = prevCanvasBounds;
+    worldState.floorTextureProfileOverride = prevProfileOverride;
 
     if (showRangeRing) {
         drawWeaponRangeRing(ctx, worldState.player.x, worldState.player.y, weaponRange);
