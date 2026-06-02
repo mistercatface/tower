@@ -13,10 +13,7 @@ export function worldToChunkRow(worldY, gridMinY, chunkSizePx) {
 }
 
 export function chunkToWorldOrigin(chunkCol, chunkRow, gridMinX, gridMinY, chunkSizePx) {
-    return {
-        x: gridMinX + chunkCol * chunkSizePx,
-        y: gridMinY + chunkRow * chunkSizePx,
-    };
+    return { x: gridMinX + chunkCol * chunkSizePx, y: gridMinY + chunkRow * chunkSizePx };
 }
 
 export function gridBoundsToChunkRange(startCol, endCol, startRow, endRow, cellsPerChunk) {

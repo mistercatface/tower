@@ -12,11 +12,7 @@ function hashTileSeed(seed, worldX, worldY) {
 
 function parseHexColor(hex) {
     const value = hex.startsWith("#") ? hex.slice(1) : hex;
-    return {
-        r: parseInt(value.slice(0, 2), 16),
-        g: parseInt(value.slice(2, 4), 16),
-        b: parseInt(value.slice(4, 6), 16),
-    };
+    return { r: parseInt(value.slice(0, 2), 16), g: parseInt(value.slice(2, 4), 16), b: parseInt(value.slice(4, 6), 16) };
 }
 
 function clampByte(value) {
@@ -38,11 +34,7 @@ function panelTone(hash, panelParity) {
     const source = pick ? alt : base;
     const tone = (hash & 0xff) / 255;
     const delta = Math.floor((tone - 0.5) * 24);
-    return rgbString(
-        mixChannel(source.r, delta),
-        mixChannel(source.g, delta),
-        mixChannel(source.b, delta),
-    );
+    return rgbString(mixChannel(source.r, delta), mixChannel(source.g, delta), mixChannel(source.b, delta));
 }
 
 function paintCell(ctx, localX, localY, cellSize, hash, blocked, worldX, worldY, { wallSurface = false } = {}) {
@@ -114,13 +106,7 @@ export function bakeFloorTileTextureCanvas(seed, cellSize = gridSettings.cellSiz
     return bakeFloorCellCanvas(0, 0, { cellSize }, seed);
 }
 
-export function bakeFloorChunkCanvas({
-    chunkCol,
-    chunkRow,
-    obstacleGrid,
-    seed,
-    cellsPerChunk = floorTileSettings.cellsPerChunk,
-}) {
+export function bakeFloorChunkCanvas({ chunkCol, chunkRow, obstacleGrid, seed, cellsPerChunk = floorTileSettings.cellsPerChunk }) {
     const cellSize = obstacleGrid.cellSize;
     const chunkSizePx = cellSize * cellsPerChunk;
     const canvas = new OffscreenCanvas(chunkSizePx, chunkSizePx);
@@ -145,16 +131,7 @@ export function bakeFloorChunkCanvas({
             const inGrid = col >= 0 && row >= 0 && col < cols && row < rows;
             const blocked = inGrid && grid[colRowToIndex(col, row, cols)] === 1;
             const hash = hashTileSeed(seed, worldX, worldY);
-            paintCell(
-                ctx,
-                localCol * cellSize,
-                localRow * cellSize,
-                cellSize,
-                hash,
-                blocked,
-                worldX,
-                worldY,
-            );
+            paintCell(ctx, localCol * cellSize, localRow * cellSize, cellSize, hash, blocked, worldX, worldY);
         }
     }
 

@@ -1,12 +1,6 @@
 import { floorTileSettings, combatVisualSettings } from "../../Config/Config.js";
 import { isWorldScene } from "../../GameState/GamePhase.js";
-import {
-    chunkKey,
-    chunkToWorldOrigin,
-    getChunkSizePx,
-    gridBoundsToChunkRange,
-    worldBoundsToChunkRange,
-} from "../../Spatial/Grid/ChunkGrid.js";
+import { chunkKey, chunkToWorldOrigin, getChunkSizePx, gridBoundsToChunkRange, worldBoundsToChunkRange } from "../../Spatial/Grid/ChunkGrid.js";
 import { snapWorldToCellOrigin } from "../../Spatial/Geometry/GridCoords.js";
 import { FloorChunkCache } from "./FloorChunkCache.js";
 import { bakeFloorChunkCanvas, bakeFloorCellCanvas, bakeFloorTileTextureCanvas, bakeWallCellCanvas } from "./FloorTilePainter.js";
@@ -28,13 +22,7 @@ export class FloorTileSystem {
 
     invalidateGridBounds(bounds, cellsPerChunk = floorTileSettings.cellsPerChunk) {
         if (!bounds) return;
-        const range = gridBoundsToChunkRange(
-            bounds.startCol,
-            bounds.endCol,
-            bounds.startRow,
-            bounds.endRow,
-            cellsPerChunk,
-        );
+        const range = gridBoundsToChunkRange(bounds.startCol, bounds.endCol, bounds.startRow, bounds.endRow, cellsPerChunk);
         for (let chunkRow = range.minChunkRow; chunkRow <= range.maxChunkRow; chunkRow++) {
             for (let chunkCol = range.minChunkCol; chunkCol <= range.maxChunkCol; chunkCol++) {
                 this.cache.delete(chunkKey(chunkCol, chunkRow));
@@ -63,13 +51,7 @@ export class FloorTileSystem {
 
     getCellCanvas(worldX, worldY, state) {
         const obstacleGrid = state.obstacleGrid;
-        const { col, row, x, y } = snapWorldToCellOrigin(
-            worldX,
-            worldY,
-            obstacleGrid.minX,
-            obstacleGrid.minY,
-            obstacleGrid.cellSize,
-        );
+        const { col, row, x, y } = snapWorldToCellOrigin(worldX, worldY, obstacleGrid.minX, obstacleGrid.minY, obstacleGrid.cellSize);
         const key = `c:v2:${col},${row}`;
         let canvas = this.cellCache.get(key);
         if (canvas) return canvas;
@@ -82,13 +64,7 @@ export class FloorTileSystem {
     /** Stable cache key from world grid + story row (not camera-projected coords). */
     getWallCellCanvas(worldX, worldY, storyRow, state) {
         const obstacleGrid = state.obstacleGrid;
-        const { col, row, x, y } = snapWorldToCellOrigin(
-            worldX,
-            worldY,
-            obstacleGrid.minX,
-            obstacleGrid.minY,
-            obstacleGrid.cellSize,
-        );
+        const { col, row, x, y } = snapWorldToCellOrigin(worldX, worldY, obstacleGrid.minX, obstacleGrid.minY, obstacleGrid.cellSize);
         const key = `c:wall:v1:${col},${row}:${storyRow}`;
         let canvas = this.cellCache.get(key);
         if (canvas) return canvas;
@@ -103,12 +79,7 @@ export class FloorTileSystem {
         let canvas = this.cache.get(key);
         if (canvas) return canvas;
 
-        canvas = bakeFloorChunkCanvas({
-            chunkCol,
-            chunkRow,
-            obstacleGrid: state.obstacleGrid,
-            seed: state.floorTileSeed ?? 0,
-        });
+        canvas = bakeFloorChunkCanvas({ chunkCol, chunkRow, obstacleGrid: state.obstacleGrid, seed: state.floorTileSeed ?? 0 });
         this.cache.set(key, canvas);
         return canvas;
     }
@@ -121,35 +92,17 @@ export class FloorTileSystem {
         const obstacleGrid = state.obstacleGrid;
         const cellsPerChunk = floorTileSettings.cellsPerChunk;
         const chunkSizePx = getChunkSizePx(obstacleGrid.cellSize, cellsPerChunk);
-        const bounds = viewport.getWorldBounds(
-            ctx.canvas?.width ?? viewport.cx * 2,
-            ctx.canvas?.height ?? viewport.cy * 2,
-            floorTileSettings.viewPaddingPx,
-        );
+        const bounds = viewport.getWorldBounds(ctx.canvas?.width ?? viewport.cx * 2, ctx.canvas?.height ?? viewport.cy * 2, floorTileSettings.viewPaddingPx);
 
         ctx.fillStyle = combatVisualSettings.floorShadow;
         ctx.fillRect(bounds.minX, bounds.minY, bounds.maxX - bounds.minX, bounds.maxY - bounds.minY);
 
-        const range = worldBoundsToChunkRange(
-            bounds.minX,
-            bounds.minY,
-            bounds.maxX,
-            bounds.maxY,
-            obstacleGrid.minX,
-            obstacleGrid.minY,
-            chunkSizePx,
-        );
+        const range = worldBoundsToChunkRange(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY, obstacleGrid.minX, obstacleGrid.minY, chunkSizePx);
 
         for (let chunkRow = range.minChunkRow; chunkRow <= range.maxChunkRow; chunkRow++) {
             for (let chunkCol = range.minChunkCol; chunkCol <= range.maxChunkCol; chunkCol++) {
                 const canvas = this.getChunkCanvas(chunkCol, chunkRow, state);
-                const origin = chunkToWorldOrigin(
-                    chunkCol,
-                    chunkRow,
-                    obstacleGrid.minX,
-                    obstacleGrid.minY,
-                    chunkSizePx,
-                );
+                const origin = chunkToWorldOrigin(chunkCol, chunkRow, obstacleGrid.minX, obstacleGrid.minY, chunkSizePx);
                 ctx.drawImage(canvas, origin.x, origin.y);
             }
         }
