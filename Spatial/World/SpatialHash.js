@@ -7,10 +7,15 @@ export class SpatialHash {
     constructor(cellSize) {
         this.cellSize = cellSize;
         this.cells = new Map();
+        this.activeKeys = [];
     }
 
     clear() {
-        this.cells.clear();
+        for (let i = 0; i < this.activeKeys.length; i++) {
+            const list = this.cells.get(this.activeKeys[i]);
+            if (list) list.length = 0;
+        }
+        this.activeKeys.length = 0;
     }
 
     _cellKey(col, row) {
@@ -91,6 +96,9 @@ export class SpatialHash {
                 if (!list) {
                     list = [];
                     this.cells.set(key, list);
+                }
+                if (list.length === 0) {
+                    this.activeKeys.push(key);
                 }
                 list.push(entity);
             }

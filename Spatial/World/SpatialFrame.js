@@ -49,6 +49,16 @@ export class SpatialFrame {
     }
 
     getNeighbors(entity) {
+        if (entity._neighborsFrameId === this.frameId) {
+            return entity._neighbors;
+        }
+
+        if (!entity._neighbors) {
+            entity._neighbors = [];
+        } else {
+            entity._neighbors.length = 0;
+        }
+
         let minX, minY, maxX, maxY;
         if (entity.getBounds) {
             const b = entity.getBounds();
@@ -62,7 +72,7 @@ export class SpatialFrame {
         }
 
         const padding = this.entityHash.cellSize;
-        return this.entityQuery.collectInHashCoords(
+        const res = this.entityQuery.collectInHashCoords(
             this.entityHash,
             minX - padding,
             minY - padding,
@@ -70,6 +80,13 @@ export class SpatialFrame {
             maxY + padding,
             entity
         );
+
+        for (let i = 0; i < res.length; i++) {
+            entity._neighbors.push(res[i]);
+        }
+
+        entity._neighborsFrameId = this.frameId;
+        return entity._neighbors;
     }
 
     forEachNeighbor(entity, fn) {
