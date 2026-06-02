@@ -403,7 +403,6 @@ export const floorProceduralProfiles = {
     ancientRuins: {
         warp: { frequency: 0.002, amplitude: 5, octaves: 2, sampleOffset: [200, 900] },
         palette: { base: [30, 26, 22], floorBase: [20, 22, 26], wallBase: [24, 26, 30], shadow: "#12161c" },
-        animation: { targetPath: "motifs[3].hueShift", startValue: -180, endValue: 180, frames: 30, durationMs: 4000 },
         motifs: [
             {
                 type: "baseMetal",
@@ -444,11 +443,19 @@ export const floorProceduralProfiles = {
                 blendMode: "color-dodge",
                 opacity: 1,
             },
-            { type: "filterHSV", hueShift: -180, saturation: 2.6, value: 0.1, blendMode: "add", opacity: 1, surfaceMask: "all" },
+            { type: "filterHSV", hueShift: -180, saturation: 2.6, value: 0.1, surfaceMask: "all", blendMode: "add", opacity: 1 },
             { type: "fractalCracks", frequency: 0.012, octaves: 4, threshold: 0.43, peak: 15, tint: [0.4, -4.3, -4.9], surfaceMask: "all", blendMode: "hard-light", opacity: 0.95 },
             { type: "celticWeave", coordinateSpace: "warped", gridSize: 48, pipeWidth: 6, peak: 5, tint: [0.4, 0.3, 0.2], surfaceMask: "all", blendMode: "add", opacity: 0.5 },
             { type: "filterLevels", blackPoint: 49, whitePoint: 255, gamma: 0.8, surfaceMask: "all", blendMode: "replace", opacity: 1 },
         ],
+        animation: {
+            frames: 100,
+            durationMs: 15800,
+            tracks: [
+                { targetPath: "motifs[3].hueShift", startValue: -180, endValue: 180 },
+                { targetPath: "motifs[2].gridSize", startValue: 8, endValue: 80 },
+            ],
+        },
     },
 
     neonPulse: {

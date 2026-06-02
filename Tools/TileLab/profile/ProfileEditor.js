@@ -21,12 +21,16 @@ let nextMotifId = 1;
 function defaultAnimation() {
     return {
         enabled: false,
-        editorMotifIndex: 0,
-        paramPath: "hueShift",
-        startValue: 0,
-        endValue: 360,
         frames: 30,
         durationMs: 2000,
+        tracks: [
+            {
+                editorMotifIndex: 0,
+                paramPath: "hueShift",
+                startValue: 0,
+                endValue: 360,
+            }
+        ]
     };
 }
 
@@ -71,18 +75,47 @@ function animationFromProfile(profile, motifs) {
     if (!anim) {
         return defaultAnimation();
     }
-    const parsed = parseAnimationTargetPath(anim.targetPath);
-    const editorMotifIndex = parsed
-        ? editorMotifIndexFromExportIndex(motifs, parsed.exportIndex)
-        : 0;
+    const tracks = [];
+    if (anim.tracks && Array.isArray(anim.tracks)) {
+        for (const track of anim.tracks) {
+            const parsed = parseAnimationTargetPath(track.targetPath);
+            const editorMotifIndex = parsed
+                ? editorMotifIndexFromExportIndex(motifs, parsed.exportIndex)
+                : 0;
+            tracks.push({
+                editorMotifIndex: Math.max(0, editorMotifIndex),
+                paramPath: parsed?.paramPath ?? "hueShift",
+                startValue: track.startValue ?? 0,
+                endValue: track.endValue ?? 360,
+            });
+        }
+    } else if (anim.targetPath) {
+        const parsed = parseAnimationTargetPath(anim.targetPath);
+        const editorMotifIndex = parsed
+            ? editorMotifIndexFromExportIndex(motifs, parsed.exportIndex)
+            : 0;
+        tracks.push({
+            editorMotifIndex: Math.max(0, editorMotifIndex),
+            paramPath: parsed?.paramPath ?? "hueShift",
+            startValue: anim.startValue ?? 0,
+            endValue: anim.endValue ?? 360,
+        });
+    }
+
+    if (tracks.length === 0) {
+        tracks.push({
+            editorMotifIndex: 0,
+            paramPath: "hueShift",
+            startValue: 0,
+            endValue: 360,
+        });
+    }
+
     return {
         enabled: true,
-        editorMotifIndex: Math.max(0, editorMotifIndex),
-        paramPath: parsed?.paramPath ?? "hueShift",
-        startValue: anim.startValue ?? 0,
-        endValue: anim.endValue ?? 360,
         frames: anim.frames ?? 30,
         durationMs: anim.durationMs ?? 2000,
+        tracks,
     };
 }
 
@@ -162,10 +195,14 @@ function loadEditorFromProfileId(profileId, { silent = false } = {}) {
         motifs,
         animation: animationFromProfile(profile, motifs),
     };
-    if (editorState.animation.editorMotifIndex >= editorState.motifs.length) {
-        editorState.animation.editorMotifIndex = 0;
+    editorState.animation.selectedTrackIndex = 0;
+    for (const track of editorState.animation.tracks) {
+        if (track.editorMotifIndex >= editorState.motifs.length) {
+            track.editorMotifIndex = 0;
+        }
     }
-    const animRow = editorState.motifs[editorState.animation.editorMotifIndex];
+    const activeTrack = editorState.animation.tracks[0];
+    const animRow = editorState.motifs[activeTrack?.editorMotifIndex ?? 0];
     if (editorState.animation.enabled && animRow) {
         selectedMotifId = animRow.id;
     } else {
@@ -204,13 +241,19 @@ export function buildProfileFromEditor(state = editorState) {
     }
 
     if (state.animation?.enabled) {
-        const exportIdx = motifExportIndex(state.motifs, state.animation.editorMotifIndex);
+        const tracks = [];
+        for (const track of state.animation.tracks) {
+            const exportIdx = motifExportIndex(state.motifs, track.editorMotifIndex);
+            tracks.push({
+                targetPath: `motifs[${exportIdx}].${track.paramPath}`,
+                startValue: track.startValue,
+                endValue: track.endValue,
+            });
+        }
         profile.animation = {
-            targetPath: `motifs[${exportIdx}].${state.animation.paramPath}`,
-            startValue: state.animation.startValue,
-            endValue: state.animation.endValue,
             frames: Math.max(2, Math.round(state.animation.frames)),
             durationMs: Math.max(100, Math.round(state.animation.durationMs)),
+            tracks,
         };
     }
 
@@ -273,32 +316,37 @@ function getSelectedMotifRow() {
     return editorState.motifs[index];
 }
 
-function syncAnimationParamRange(index = editorState?.animation?.editorMotifIndex ?? 0) {
+function syncAnimationParamRange(trackIndex = editorState?.animation?.selectedTrackIndex ?? 0) {
     if (!editorState?.animation) {
         return;
     }
-    if (index < 0 || index >= editorState.motifs.length) {
+    const tracks = editorState.animation.tracks;
+    if (trackIndex < 0 || trackIndex >= tracks.length) {
         return;
     }
-    editorState.animation.editorMotifIndex = index;
-    const row = editorState.motifs[index];
+    const track = tracks[trackIndex];
+    const motifIndex = track.editorMotifIndex;
+    if (motifIndex < 0 || motifIndex >= editorState.motifs.length) {
+        return;
+    }
+    const row = editorState.motifs[motifIndex];
     const fields = getAnimatableMotifFields(row?.config);
     if (fields.length === 0) {
         return;
     }
-    if (!fields.some((field) => field.path === editorState.animation.paramPath)) {
-        editorState.animation.paramPath = fields[0].path;
+    if (!fields.some((field) => field.path === track.paramPath)) {
+        track.paramPath = fields[0].path;
     }
-    const field = fields.find((f) => f.path === editorState.animation.paramPath) ?? fields[0];
+    const field = fields.find((f) => f.path === track.paramPath) ?? fields[0];
     const current = Number(getByPath(row.config, field.path) ?? field.min ?? 0);
     const min = field.min ?? 0;
     const max = field.max ?? current + 180;
-    editorState.animation.startValue = current;
-    let end = editorState.animation.endValue;
+    track.startValue = current;
+    let end = track.endValue;
     if (!Number.isFinite(end) || end <= min || end > max || end === current) {
         end = max;
     }
-    editorState.animation.endValue = end;
+    track.endValue = end;
 }
 
 function selectMotifById(motifId) {
@@ -366,11 +414,13 @@ function renderMotifList(container) {
                 const tmp = editorState.motifs[i - 1];
                 editorState.motifs[i - 1] = editorState.motifs[i];
                 editorState.motifs[i] = tmp;
-                if (editorState.animation) {
-                    if (editorState.animation.editorMotifIndex === i) {
-                        editorState.animation.editorMotifIndex = i - 1;
-                    } else if (editorState.animation.editorMotifIndex === i - 1) {
-                        editorState.animation.editorMotifIndex = i;
+                if (editorState.animation?.tracks) {
+                    for (const track of editorState.animation.tracks) {
+                        if (track.editorMotifIndex === i) {
+                            track.editorMotifIndex = i - 1;
+                        } else if (track.editorMotifIndex === i - 1) {
+                            track.editorMotifIndex = i;
+                        }
                     }
                 }
                 refreshEditorPanels();
@@ -382,11 +432,13 @@ function renderMotifList(container) {
                 const tmp = editorState.motifs[i + 1];
                 editorState.motifs[i + 1] = editorState.motifs[i];
                 editorState.motifs[i] = tmp;
-                if (editorState.animation) {
-                    if (editorState.animation.editorMotifIndex === i) {
-                        editorState.animation.editorMotifIndex = i + 1;
-                    } else if (editorState.animation.editorMotifIndex === i + 1) {
-                        editorState.animation.editorMotifIndex = i;
+                if (editorState.animation?.tracks) {
+                    for (const track of editorState.animation.tracks) {
+                        if (track.editorMotifIndex === i) {
+                            track.editorMotifIndex = i + 1;
+                        } else if (track.editorMotifIndex === i + 1) {
+                            track.editorMotifIndex = i;
+                        }
                     }
                 }
                 refreshEditorPanels();
@@ -398,13 +450,23 @@ function renderMotifList(container) {
             if (selectedMotifId === row.id) {
                 selectedMotifId = editorState.motifs[0]?.id ?? null;
             }
-            if (editorState.animation) {
-                const animIdx = editorState.animation.editorMotifIndex;
-                if (animIdx === i) {
-                    editorState.animation.editorMotifIndex = 0;
-                    syncAnimationParamRange(0);
-                } else if (animIdx > i) {
-                    editorState.animation.editorMotifIndex = animIdx - 1;
+            if (editorState.animation?.tracks) {
+                editorState.animation.tracks = editorState.animation.tracks.filter((track) => {
+                    const animIdx = track.editorMotifIndex;
+                    if (animIdx === i) {
+                        if (editorState.animation.tracks.length === 1) {
+                            track.editorMotifIndex = 0;
+                            syncAnimationParamRange(0);
+                            return true;
+                        }
+                        return false;
+                    } else if (animIdx > i) {
+                        track.editorMotifIndex = animIdx - 1;
+                    }
+                    return true;
+                });
+                if (editorState.animation.selectedTrackIndex >= editorState.animation.tracks.length) {
+                    editorState.animation.selectedTrackIndex = editorState.animation.tracks.length - 1;
                 }
             }
             refreshEditorPanels();
@@ -488,6 +550,20 @@ function renderGlobalParams(container) {
     editorState.palette = paletteRoot.palette;
 }
 
+function renderSharedAnimationControls(container) {
+    const divider = document.createElement("div");
+    divider.style.borderTop = "1px solid var(--border)";
+    divider.style.margin = "10px 0";
+    container.appendChild(divider);
+
+    const animRoot = { animation: editorState.animation };
+    renderScalarFields(container, animRoot, [
+        { path: "animation.frames", label: "Frames", min: 2, max: 120, step: 1 },
+        { path: "animation.durationMs", label: "Duration (ms)", min: 200, max: 20000, step: 100 },
+    ], { lightweight: true });
+    editorState.animation = animRoot.animation;
+}
+
 function renderAnimationParams(container) {
     container.innerHTML = "";
     if (!editorState) {
@@ -518,17 +594,100 @@ function renderAnimationParams(container) {
         return;
     }
 
-    let animIndex = editorState.animation.editorMotifIndex;
-    if (animIndex < 0 || animIndex >= editorState.motifs.length) {
-        animIndex = 0;
-        editorState.animation.editorMotifIndex = 0;
+    if (!editorState.animation.tracks || editorState.animation.tracks.length === 0) {
+        editorState.animation.tracks = [
+            {
+                editorMotifIndex: 0,
+                paramPath: "hueShift",
+                startValue: 0,
+                endValue: 360
+            }
+        ];
+        editorState.animation.selectedTrackIndex = 0;
     }
-    const row = editorState.motifs[animIndex];
+
+    // Render list of tracks
+    const trackListContainer = document.createElement("div");
+    trackListContainer.className = "track-list";
+    
+    editorState.animation.tracks.forEach((track, idx) => {
+        const row = document.createElement("div");
+        row.className = `track-row${idx === editorState.animation.selectedTrackIndex ? " selected" : ""}`;
+        
+        const motif = editorState.motifs[track.editorMotifIndex];
+        const motifLabel = motif ? (MOTIF_TYPES[motif.config.type]?.label ?? motif.config.type) : "Unknown";
+        const motifSurface = motif ? ` (${motif.surfaceMask})` : "";
+        const paramLabel = track.paramPath;
+        
+        row.innerHTML = `
+            <span class="track-label"><strong>Track #${idx + 1}:</strong> ${motifLabel}${motifSurface} - <span style="color: var(--accent); font-weight: 500;">${paramLabel}</span></span>
+            <span class="track-actions">
+                <button type="button" data-action="remove" title="Remove track">✕</button>
+            </span>
+        `;
+        
+        row.addEventListener("click", (e) => {
+            if (e.target.closest("button")) return;
+            editorState.animation.selectedTrackIndex = idx;
+            renderAnimationParams(container);
+        });
+        
+        const removeBtn = row.querySelector('[data-action="remove"]');
+        if (editorState.animation.tracks.length > 1) {
+            removeBtn.addEventListener("click", () => {
+                editorState.animation.tracks.splice(idx, 1);
+                editorState.animation.selectedTrackIndex = Math.max(0, editorState.animation.selectedTrackIndex - 1);
+                notifyChange({ lightweight: true });
+                renderAnimationParams(container);
+            });
+        } else {
+            removeBtn.style.display = "none";
+        }
+        
+        trackListContainer.appendChild(row);
+    });
+    
+    container.appendChild(trackListContainer);
+    
+    // Add track button
+    const addTrackBtn = document.createElement("button");
+    addTrackBtn.type = "button";
+    addTrackBtn.className = "secondary";
+    addTrackBtn.style.width = "100%";
+    addTrackBtn.style.marginBottom = "10px";
+    addTrackBtn.textContent = "+ Add Animation Track";
+    addTrackBtn.addEventListener("click", () => {
+        const defaultMotifIndex = 0;
+        const motif = editorState.motifs[defaultMotifIndex];
+        const fields = getAnimatableMotifFields(motif?.config) ?? [];
+        const paramPath = fields[0]?.path ?? "hueShift";
+        
+        editorState.animation.tracks.push({
+            editorMotifIndex: defaultMotifIndex,
+            paramPath: paramPath,
+            startValue: 0,
+            endValue: 360
+        });
+        editorState.animation.selectedTrackIndex = editorState.animation.tracks.length - 1;
+        syncAnimationParamRange(editorState.animation.selectedTrackIndex);
+        notifyChange({ lightweight: true });
+        renderAnimationParams(container);
+    });
+    container.appendChild(addTrackBtn);
+
+    const activeTrackIndex = editorState.animation.selectedTrackIndex;
+    const activeTrack = editorState.animation.tracks[activeTrackIndex];
+    if (!activeTrack) {
+        return;
+    }
+
+    const row = editorState.motifs[activeTrack.editorMotifIndex];
     if (!row) {
         const msg = document.createElement("p");
         msg.className = "editor-hint";
-        msg.textContent = "Add a motif layer to configure animation.";
+        msg.textContent = "Select a motif layer for this track.";
         container.appendChild(msg);
+        renderSharedAnimationControls(container);
         return;
     }
 
@@ -543,10 +702,11 @@ function renderAnimationParams(container) {
     const targetSelect = new SelectControl(
         "Target Motif",
         targetOptions,
-        animIndex.toString(),
+        activeTrack.editorMotifIndex.toString(),
         (val) => {
             const newIndex = parseInt(val, 10);
-            syncAnimationParamRange(newIndex);
+            activeTrack.editorMotifIndex = newIndex;
+            syncAnimationParamRange(activeTrackIndex);
             notifyChange({ lightweight: true });
             refreshEditorPanels({ motifList: false, motifParams: false, animation: true, global: false });
         }
@@ -558,6 +718,7 @@ function renderAnimationParams(container) {
         msg.className = "editor-hint";
         msg.textContent = "Enable this motif layer to animate it.";
         container.appendChild(msg);
+        renderSharedAnimationControls(container);
         return;
     }
 
@@ -567,6 +728,7 @@ function renderAnimationParams(container) {
         msg.className = "editor-hint";
         msg.textContent = "Selected motif has no numeric sliders.";
         container.appendChild(msg);
+        renderSharedAnimationControls(container);
         return;
     }
 
@@ -577,27 +739,26 @@ function renderAnimationParams(container) {
     const paramSelect = new SelectControl(
         "Animated parameter",
         paramOptions,
-        editorState.animation.paramPath,
+        activeTrack.paramPath,
         (val) => {
-            editorState.animation.paramPath = val;
-            syncAnimationParamRange();
+            activeTrack.paramPath = val;
+            syncAnimationParamRange(activeTrackIndex);
             notifyChange({ lightweight: true });
             renderAnimationParams(container);
         }
     );
     container.appendChild(paramSelect.element);
 
-    const activeField = animFields.find((f) => f.path === editorState.animation.paramPath) ?? animFields[0];
-    editorState.animation.paramPath = activeField.path;
+    const activeField = animFields.find((f) => f.path === activeTrack.paramPath) ?? animFields[0];
+    activeTrack.paramPath = activeField.path;
 
-    const animRoot = { animation: editorState.animation };
-    renderScalarFields(container, animRoot, [
-        { path: "animation.startValue", label: "Start", min: activeField.min, max: activeField.max, step: activeField.step },
-        { path: "animation.endValue", label: "End", min: activeField.min, max: activeField.max, step: activeField.step },
-        { path: "animation.frames", label: "Frames", min: 2, max: 120, step: 1 },
-        { path: "animation.durationMs", label: "Duration (ms)", min: 200, max: 20000, step: 100 },
+    const trackRoot = { track: activeTrack };
+    renderScalarFields(container, trackRoot, [
+        { path: "track.startValue", label: "Start", min: activeField.min, max: activeField.max, step: activeField.step },
+        { path: "track.endValue", label: "End", min: activeField.min, max: activeField.max, step: activeField.step },
     ], { lightweight: true });
-    editorState.animation = animRoot.animation;
+
+    renderSharedAnimationControls(container);
 }
 
 export function initProfileEditor({ onChange }) {

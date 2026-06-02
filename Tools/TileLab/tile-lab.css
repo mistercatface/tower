@@ -499,3 +499,53 @@
                 --editor-w: 40vw;
             }
         }
+
+        .track-list {
+            margin-bottom: 8px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 4px;
+        }
+
+        .track-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 8px;
+            font-size: 11px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background var(--transition);
+        }
+
+        .track-row:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .track-row.selected {
+            background: rgba(56, 189, 248, 0.15);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+        }
+
+        .track-row .track-label {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .track-row .track-actions button {
+            padding: 2px 6px;
+            font-size: 11px;
+            background: transparent;
+            border: none;
+            color: var(--muted);
+            cursor: pointer;
+            border-radius: 3px;
+        }
+
+        .track-row .track-actions button:hover {
+            color: var(--text);
+            background: rgba(255, 255, 255, 0.1);
+        }

@@ -137,12 +137,17 @@ export function bakeWallCellCanvases(worldX, worldY, storyRow, seed, profileId) 
     }
 
     const frames = [];
+    const tracks = anim.tracks || [{ targetPath: anim.targetPath, startValue: anim.startValue, endValue: anim.endValue }];
     for (let i = 0; i < anim.frames; i++) {
-        const t = i / (anim.frames - 1);
-        const val = anim.startValue + (anim.endValue - anim.startValue) * t;
+        const t = anim.frames > 1 ? i / (anim.frames - 1) : 0;
         const tempId = `${profileId}_anim_wallcell_${i}`;
         const cloned = JSON.parse(JSON.stringify(profile));
-        setDeep(cloned, anim.targetPath, val);
+        for (const track of tracks) {
+            if (track.targetPath) {
+                const val = track.startValue + (track.endValue - track.startValue) * t;
+                setDeep(cloned, track.targetPath, val);
+            }
+        }
         registerRuntimeFloorProfile(tempId, cloned);
 
         const canvas = bakeWallCellCanvas(worldX, worldY, storyRow, seed, tempId);
@@ -188,13 +193,18 @@ export function bakeFloorChunkCanvas({ chunkCol, chunkRow, minX, minY, seed, cel
     }
 
     const frames = [];
+    const tracks = anim.tracks || [{ targetPath: anim.targetPath, startValue: anim.startValue, endValue: anim.endValue }];
     for (let i = 0; i < anim.frames; i++) {
-        const t = i / (anim.frames - 1);
-        const val = anim.startValue + (anim.endValue - anim.startValue) * t;
+        const t = anim.frames > 1 ? i / (anim.frames - 1) : 0;
 
         const tempId = `${profileId}_anim_chunk_${i}`;
         const cloned = JSON.parse(JSON.stringify(profile));
-        setDeep(cloned, anim.targetPath, val);
+        for (const track of tracks) {
+            if (track.targetPath) {
+                const val = track.startValue + (track.endValue - track.startValue) * t;
+                setDeep(cloned, track.targetPath, val);
+            }
+        }
 
         registerRuntimeFloorProfile(tempId, cloned);
 
@@ -233,10 +243,16 @@ export function withLabAnimationFrame(profileId, frameIndex, fn, { staticBake = 
     const frames = anim.frames;
     const idx = Math.min(frames - 1, Math.max(0, frameIndex ?? 0));
     const t = frames > 1 ? idx / (anim.frames - 1) : 0;
-    const val = anim.startValue + (anim.endValue - anim.startValue) * t;
     const tempId = stableId ? `${profileId}_export` : `${profileId}_lab_frame_${idx}`;
     const cloned = JSON.parse(JSON.stringify(profile));
-    setDeep(cloned, anim.targetPath, val);
+    
+    const tracks = anim.tracks || [{ targetPath: anim.targetPath, startValue: anim.startValue, endValue: anim.endValue }];
+    for (const track of tracks) {
+        if (track.targetPath) {
+            const val = track.startValue + (track.endValue - track.startValue) * t;
+            setDeep(cloned, track.targetPath, val);
+        }
+    }
     if (staticBake) {
         delete cloned.animation;
     }
@@ -259,13 +275,18 @@ export function bakeWallFaceCanvases(width, height, p1, p2, pixelsPerUnit, seed,
     }
 
     const frames = [];
+    const tracks = anim.tracks || [{ targetPath: anim.targetPath, startValue: anim.startValue, endValue: anim.endValue }];
     for (let i = 0; i < anim.frames; i++) {
-        const t = i / (anim.frames - 1);
-        const val = anim.startValue + (anim.endValue - anim.startValue) * t;
+        const t = anim.frames > 1 ? i / (anim.frames - 1) : 0;
 
         const tempId = `${profileId}_anim_${i}`;
         const cloned = JSON.parse(JSON.stringify(profile));
-        setDeep(cloned, anim.targetPath, val);
+        for (const track of tracks) {
+            if (track.targetPath) {
+                const val = track.startValue + (track.endValue - track.startValue) * t;
+                setDeep(cloned, track.targetPath, val);
+            }
+        }
 
         registerRuntimeFloorProfile(tempId, cloned);
 
