@@ -1,4 +1,5 @@
 import { parseHexColor } from "./util/color.js";
+import { blendMotifRgb } from "./util/blend.js";
 import { ensureNoiseInitialized } from "./Noise/Perlin2D.js";
 import { applyDomainWarp } from "./Fields/DomainWarp.js";
 import { getMotif } from "./MotifRegistry.js";
@@ -23,12 +24,48 @@ function resolvePaletteBase(profile, isWall) {
     return profile.palette.base;
 }
 
-function resolveMotifStack(profile, isWall) {
-    const shared = profile.sharedMotifs ?? [];
-    if (isWall) {
-        return [...shared, ...(profile.wallMotifs ?? profile.motifs ?? [])];
+function pushEnabledMotifs(target, list) {
+    if (!list) {
+        return;
     }
-    return [...shared, ...(profile.floorMotifs ?? profile.motifs ?? [])];
+    for (const motifConfig of list) {
+        if (motifConfig?.enabled === false) {
+            continue;
+        }
+        target.push(motifConfig);
+    }
+}
+
+function resolveMotifStack(profile, isWall) {
+    const stack = [];
+    pushEnabledMotifs(stack, profile.underlay);
+    pushEnabledMotifs(stack, profile.sharedMotifs);
+    pushEnabledMotifs(stack, profile.structure);
+
+    if (isWall) {
+        pushEnabledMotifs(stack, profile.wallMotifs);
+        if (!profile.wallMotifs?.length && profile.motifs) {
+            pushEnabledMotifs(stack, profile.motifs);
+        }
+    } else {
+        pushEnabledMotifs(stack, profile.floorMotifs);
+        if (!profile.floorMotifs?.length && !profile.structure?.length && profile.motifs) {
+            pushEnabledMotifs(stack, profile.motifs);
+        }
+    }
+
+    pushEnabledMotifs(stack, profile.accents);
+    return stack;
+}
+
+function applyMotifLayer(sample, rgb, motifConfig) {
+    const before = { r: rgb.r, g: rgb.g, b: rgb.b };
+    const layer = { r: rgb.r, g: rgb.g, b: rgb.b };
+    getMotif(motifConfig.type).apply(sample, layer, motifConfig);
+    const blended = blendMotifRgb(before, layer, motifConfig.blendMode ?? "add", motifConfig.opacity ?? 1);
+    rgb.r = blended.r;
+    rgb.g = blended.g;
+    rgb.b = blended.b;
 }
 
 export function composeFloorPixel(surface, paintContext) {
@@ -45,7 +82,7 @@ export function composeFloorPixel(surface, paintContext) {
     const rgb = { r: baseR, g: baseG, b: baseB };
 
     for (const motifConfig of resolveMotifStack(profile, surface.isWall)) {
-        getMotif(motifConfig.type).apply(sample, rgb, motifConfig);
+        applyMotifLayer(sample, rgb, motifConfig);
     }
 
     return rgb;

@@ -2,6 +2,7 @@ import { baseMetalMotif } from "./Motifs/baseMetal.js";
 import { ridgeLinesMotif } from "./Motifs/ridgeLines.js";
 import { stainBlotchMotif } from "./Motifs/stainBlotch.js";
 import { panelGridMotif } from "./Motifs/panelGrid.js";
+import { deckPlatesMotif } from "./Motifs/deckPlates.js";
 import { voronoiCellMotif } from "./Motifs/voronoiCell.js";
 import { circuitLatticeMotif } from "./Motifs/circuitLattice.js";
 import { surfaceGrainMotif } from "./Motifs/surfaceGrain.js";
@@ -14,6 +15,7 @@ const MOTIF_BY_TYPE = {
     ridgeLines: ridgeLinesMotif,
     stainBlotch: stainBlotchMotif,
     panelGrid: panelGridMotif,
+    deckPlates: deckPlatesMotif,
     voronoiCell: voronoiCellMotif,
     circuitLattice: circuitLatticeMotif,
     surfaceGrain: surfaceGrainMotif,

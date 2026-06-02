@@ -2,7 +2,7 @@ import { combatVisualSettings } from "./Config.js";
 
 /** @typedef {"eval" | "warped"} ProceduralCoordinateSpace */
 
-/** Clean station hull — one material pass, no warp/veins (avoids noisy random look). */
+/** Station deck — grid plates + subtle grain; accents kept very light. */
 const spaceStation = {
     warp: {
         frequency: 0.005,
@@ -16,20 +16,67 @@ const spaceStation = {
         wallBase: [24, 26, 30],
         shadow: combatVisualSettings.floorShadow,
     },
-    sharedMotifs: [
+    underlay: [
         {
             type: "baseMetal",
             structure: { frequency: 0.0025, octaves: 1, rgbDelta: [3, 3, 4] },
-            grain: { frequency: 0.2, octaves: 1, amplitude: 1 },
+            grain: { frequency: 0.18, octaves: 1, amplitude: 1 },
+        },
+    ],
+    structure: [
+        {
+            type: "deckPlates",
+            cellWorldSize: 16,
+            plateCells: 2,
+            groutWidth: 0.045,
+            groutPeak: 11,
+            groutTint: [-6, -6, -5],
+            plateVariation: 3,
+            jitterOffset: [40, 120],
+            rivetSpacing: 16,
+            rivetInset: 4,
+            rivetRadius: 0.018,
+            rivetPeak: 5,
+            rivetTint: [2, 4, 5],
+            blendMode: "multiply",
+            opacity: 0.85,
         },
     ],
     floorMotifs: [],
     wallMotifs: [
         {
+            type: "deckPlates",
+            cellWorldSize: 16,
+            plateCells: 1,
+            plateRows: 2,
+            groutWidth: 0.05,
+            groutPeak: 9,
+            groutTint: [-5, -5, -4],
+            plateVariation: 2,
+            jitterOffset: [80, 20],
+            rivetSpacing: 0,
+            blendMode: "multiply",
+            opacity: 0.75,
+        },
+        {
             type: "wallLighting",
             power: 1,
             topDarken: 4,
             coolBias: 1.04,
+        },
+    ],
+    accents: [
+        {
+            type: "stainBlotch",
+            coordinateSpace: "eval",
+            frequency: 0.008,
+            threshold: 0.55,
+            peak: 5,
+            offset: [200, 500],
+            tint: [1, 2, 2],
+            octaves: 1,
+            opacity: 0.15,
+            blendMode: "add",
         },
     ],
 };
@@ -141,6 +188,11 @@ export function getFloorProceduralProfile(profileId) {
         throw new Error(`Unknown floor procedural profile: ${profileId}`);
     }
     return profile;
+}
+
+/** Tile lab: register a live-edited profile under a synthetic id. */
+export function registerLabProceduralProfile(profileId, profile) {
+    floorProceduralProfiles[profileId] = profile;
 }
 
 export function resolveFloorTextureProfileId({ layer, strategy }) {

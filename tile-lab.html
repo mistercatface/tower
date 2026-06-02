@@ -188,13 +188,121 @@
             background: #080a0e;
         }
 
-        #gamePreview {
+        .game-ab {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .game-ab canvas {
             width: 100%;
-            max-width: 720px;
             height: auto;
             display: block;
-            margin: 0 auto;
             image-rendering: auto;
+        }
+
+        .game-ab h3 {
+            margin: 0 0 6px;
+            font-size: 11px;
+            color: var(--muted);
+            text-transform: uppercase;
+        }
+
+        .editor-layout {
+            display: grid;
+            grid-template-columns: 220px 1fr 260px;
+            gap: 12px;
+            min-height: 320px;
+        }
+
+        @media (max-width: 900px) {
+            .editor-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .editor-panel {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 8px;
+            overflow: auto;
+            max-height: 480px;
+        }
+
+        .motif-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 4px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .motif-row:hover,
+        .motif-row.selected {
+            background: #1e2634;
+        }
+
+        .motif-row .motif-label {
+            flex: 1;
+        }
+
+        .motif-row .motif-layer {
+            color: var(--muted);
+            font-size: 10px;
+        }
+
+        .motif-row .motif-actions button {
+            padding: 2px 6px;
+            font-size: 11px;
+        }
+
+        .param-field {
+            display: grid;
+            grid-template-columns: 90px 1fr 36px;
+            gap: 6px;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 11px;
+            text-transform: none;
+            color: var(--text);
+        }
+
+        .param-field input[type="range"] {
+            width: 100%;
+            padding: 0;
+        }
+
+        .param-value {
+            color: var(--accent);
+            text-align: right;
+        }
+
+        #profileExport {
+            width: 100%;
+            min-height: 120px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            font: inherit;
+            font-size: 11px;
+            padding: 8px;
+            border-radius: 4px;
+            resize: vertical;
+        }
+
+        .editor-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+
+        .editor-toolbar select {
+            min-width: 8rem;
         }
 
         .game-controls {
@@ -249,9 +357,6 @@
     </header>
 
     <div class="controls">
-        <label>Profile
-            <select id="profileSelect"></select>
-        </label>
         <label>Seed
             <input id="seedInput" type="number" value="42" step="1">
         </label>
@@ -287,11 +392,16 @@
     </div>
 
     <div class="controls game-controls">
+        <label>Map seed
+            <input id="mapSeedInput" type="number" value="42" step="1">
+        </label>
+        <button type="button" id="regenMapBtn" class="secondary">Regenerate map</button>
+        <label>Combat node
+            <select id="mapNodeSelect"></select>
+        </label>
+        <button type="button" id="focusPlayerBtn" class="secondary">Focus player</button>
         <label class="zoom-wrap">Camera zoom <span id="gameZoomValue">1</span>×
             <input id="gameZoomInput" type="range" min="0.25" max="2.5" value="1" step="0.05">
-        </label>
-        <label>Preview room (cells)
-            <input id="roomCellsInput" type="number" value="10" min="4" max="24" step="1">
         </label>
         <label>Weapon range (ring)
             <input id="weaponRangeInput" type="number" value="150" min="50" max="400" step="10">
@@ -305,13 +415,60 @@
 
     <main>
         <section class="wide">
-            <h2>In-game preview</h2>
-            <p class="hint">Same path as combat: <code>FloorTileSystem.draw</code>, projected wall faces
-                (<code>drawProjectedWallFace</code>). Cyan dot = player at world X/Y. Square room shows wall textures in
-                perspective.</p>
+            <h2>Profile editor</h2>
+            <p class="hint">Live profile drives all previews. Load a preset, tune layers, copy export into
+                <code>floorProceduralConfig.js</code>. <strong>Copy → B</strong> snapshots A/B compare.</p>
+            <div class="editor-toolbar">
+                <label>Preset
+                    <select id="presetSelect"></select>
+                </label>
+                <button type="button" id="loadPresetBtn">Load preset</button>
+                <label>Add motif
+                    <select id="addMotifType"></select>
+                </label>
+                <button type="button" id="addMotifBtn" class="secondary">+ Add</button>
+                <button type="button" id="copyToBBtn" class="secondary">Copy → B</button>
+                <button type="button" id="copyExportBtn">Copy export</button>
+            </div>
+            <div class="editor-layout">
+                <div class="editor-panel">
+                    <h3 style="margin:0 0 8px;font-size:11px;color:var(--muted)">Motif stack</h3>
+                    <div id="motifList"></div>
+                </div>
+                <div class="editor-panel">
+                    <h3 style="margin:0 0 8px;font-size:11px;color:var(--muted)">Motif params</h3>
+                    <div id="motifParamsPanel"></div>
+                </div>
+                <div class="editor-panel">
+                    <h3 style="margin:0 0 8px;font-size:11px;color:var(--muted)">Global</h3>
+                    <div id="globalParamsPanel"></div>
+                    <h3 style="margin:12px 0 8px;font-size:11px;color:var(--muted)">Export</h3>
+                    <textarea id="profileExport" readonly></textarea>
+                </div>
+            </div>
+        </section>
+        <section class="wide">
+            <h2>In-game preview (A / B) — full map</h2>
+            <p class="hint">Same as a new game: <code>MapGenerator.generateMap</code>, all node walls, chunk floors, projected faces.
+                <strong>WASD / arrows</strong> or <strong>drag</strong> to move the player · <strong>wheel</strong> zoom · view follows the cyan dot (combat camera).</p>
             <p id="gameMetaLine" class="hint"></p>
-            <div class="preview-wrap game-preview-wrap">
-                <canvas id="gamePreview" width="640" height="400"></canvas>
+            <label class="check" style="margin-bottom:10px">
+                <input id="compareBInput" type="checkbox" checked>
+                Show B compare panel
+            </label>
+            <div class="game-ab">
+                <div>
+                    <h3>A — live editor</h3>
+                    <div class="preview-wrap game-preview-wrap">
+                        <canvas id="gamePreviewA" width="480" height="300"></canvas>
+                    </div>
+                </div>
+                <div id="gamePreviewBPanel">
+                    <h3>B — snapshot</h3>
+                    <div class="preview-wrap game-preview-wrap">
+                        <canvas id="gamePreviewB" width="480" height="300"></canvas>
+                    </div>
+                </div>
             </div>
         </section>
         <section>
