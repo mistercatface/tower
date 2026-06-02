@@ -54,7 +54,28 @@ function hexMetrics(sample, config) {
     const sdf = hexSignedDistance(lx, ly, size);
     const distInside = Math.max(0, -sdf);
     const edgeDist = distInside / Math.max(1, size * 0.5);
-    return { q, r, edgeDist, distInside, size };
+    return { q, r, edgeDist, distInside, size, lx, ly };
+}
+
+function applyBevel(rgb, lx, ly, edgeDist, config) {
+    const groutW = config.groutWidth ?? 0.08;
+    const bevelW = config.bevelWidth;
+    if (bevelW == null || bevelW <= 0) {
+        return;
+    }
+    const distInBevel = edgeDist - groutW;
+    if (distInBevel < 0 || distInBevel >= bevelW) {
+        return;
+    }
+    const t = (1 - distInBevel / bevelW);
+    
+    // Light from top-left (lx + ly < 0)
+    const isTopLeft = (lx + ly) < 0;
+    const peak = isTopLeft ? (config.highlightPeak ?? 8) : (config.shadowPeak ?? -6);
+    const tint = config.bevelTint ?? [1, 1, 1];
+    rgb.r = clampByte(rgb.r + t * peak * tint[0]);
+    rgb.g = clampByte(rgb.g + t * peak * tint[1]);
+    rgb.b = clampByte(rgb.b + t * peak * tint[2]);
 }
 
 function applyGrout(rgb, edgeDist, config) {
@@ -96,8 +117,9 @@ function applyCellFill(rgb, q, r, config) {
 /** World-aligned flat-top hex grid — grout lines continue across floor and wall bases. */
 export const hexGridMotif = {
     apply(sample, rgb, config) {
-        const { q, r, edgeDist } = hexMetrics(sample, config);
+        const { q, r, edgeDist, lx, ly } = hexMetrics(sample, config);
         applyCellFill(rgb, q, r, config);
+        applyBevel(rgb, lx, ly, edgeDist, config);
         applyGrout(rgb, edgeDist, config);
         applyWarmAccent(rgb, edgeDist, config);
     },

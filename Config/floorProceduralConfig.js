@@ -439,7 +439,9 @@ export const floorProceduralProfiles = {
             },
             {
                 type: "hexGrid",
-                cellWorldSize: 24, groutWidth: 0.1, groutPeak: 12, groutTint: [-4, -3, -2], cellVariation: 3, opacity: 0.8, blendMode: "multiply"
+                cellWorldSize: 24, groutWidth: 0.1, groutPeak: 15, groutTint: [2.2, 1.0, 0.2],
+                bevelWidth: 0.05, highlightPeak: 5, shadowPeak: -4, bevelTint: [1, 1, 1],
+                cellVariation: 3, opacity: 0.95, blendMode: "add"
             },
             {
                 type: "celticWeave", coordinateSpace: "warped",
