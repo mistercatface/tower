@@ -130,6 +130,39 @@ function applyCellFill(rgb, q, r, config) {
 
 /** World-aligned flat-top hex grid — grout lines continue across floor and wall bases. */
 export const hexGridMotif = {
+    metadata: {
+        label: "Hex grid",
+        defaults: {
+            type: "hexGrid",
+            cellWorldSize: 16,
+            groutWidth: 0.08,
+            groutPeak: 12,
+            groutTint: [5, 2, -3],
+            cellVariation: 2,
+            jitterOffset: [0, 0],
+            bevelWidth: 0.0,
+            highlightPeak: 8,
+            shadowPeak: -6,
+            bevelTint: [1, 1, 1],
+            blendMode: "multiply",
+            opacity: 0.9,
+        },
+        fields: [
+            { path: "cellWorldSize", label: "Cell world px", min: 8, max: 64, step: 1 },
+            { path: "groutWidth", label: "Grout width", min: 0.02, max: 0.2, step: 0.005 },
+            { path: "groutPeak", label: "Grout peak", min: -20, max: 20, step: 1 },
+            { path: "groutTint.0", label: "Grout R Δ", min: -12, max: 12, step: 1 },
+            { path: "groutTint.1", label: "Grout G Δ", min: -12, max: 12, step: 1 },
+            { path: "groutTint.2", label: "Grout B Δ", min: -12, max: 12, step: 1 },
+            { path: "bevelWidth", label: "Bevel width", min: 0.0, max: 0.15, step: 0.005 },
+            { path: "highlightPeak", label: "Highlight peak", min: 0, max: 20, step: 1 },
+            { path: "shadowPeak", label: "Shadow peak", min: -20, max: 0, step: 1 },
+            { path: "cellVariation", label: "Cell jitter", min: 0, max: 8, step: 0.5 },
+            { path: "bevelCurve", label: "Bevel Curve", options: ["linear", "smooth", "steep"] },
+            { path: "bevelFalloff", label: "Falloff", min: 0.1, max: 4.0, step: 0.1 },
+            { path: "opacity", label: "Opacity", min: 0, max: 1, step: 0.05 },
+        ],
+    },
     apply(sample, rgb, config) {
         const { q, r, edgeDist, lx, ly } = hexMetrics(sample, config);
         applyCellFill(rgb, q, r, config);

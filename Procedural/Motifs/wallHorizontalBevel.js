@@ -15,6 +15,30 @@ function snakeOffset(wallU, bandIndex, seed, config, spacing) {
  * wallV: 0 = floor seam, 1 = top. wallU: 0..1 along the wall edge.
  */
 export const wallHorizontalBevelMotif = {
+    metadata: {
+        label: "Wall panel ribs",
+        defaults: {
+            type: "wallHorizontalBevel",
+            bands: 8,
+            ribFill: 0.55,
+            highlightPeak: 8,
+            shadowPeak: 10,
+            coreWidth: 0.2,
+            corePeak: 6,
+            coreTint: [0.4, 1.0, 1.6],
+            snakeStrength: 0.25,
+            opacity: 0.85,
+            blendMode: "add",
+        },
+        fields: [
+            { path: "bands", label: "Band count", min: 3, max: 16, step: 1 },
+            { path: "ribFill", label: "Rib fill", min: 0.2, max: 0.9, step: 0.05 },
+            { path: "highlightPeak", label: "Highlight", min: 0, max: 16, step: 1 },
+            { path: "shadowPeak", label: "Shadow", min: 0, max: 16, step: 1 },
+            { path: "corePeak", label: "Core glow", min: 0, max: 12, step: 1 },
+            { path: "opacity", label: "Opacity", min: 0, max: 1, step: 0.05 },
+        ],
+    },
     apply(sample, rgb, config) {
         if (!sample.isWall || sample.wallU == null || sample.wallV == null) {
             return;

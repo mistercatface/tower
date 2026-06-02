@@ -57,6 +57,8 @@ export const EASING_FUNCTIONS = {
     easeInOutCirc: (t) => (t < 0.5 ? (1 - Math.sqrt(1 - 4 * t * t)) / 2 : (Math.sqrt(1 - Math.pow(-2 * t + 2, 2)) + 1) / 2),
 };
 
+export const EASING_OPTIONS = Object.keys(EASING_FUNCTIONS);
+
 /**
  * Applies a selected easing function by name to a normalized time t.
  * Falls back to linear if the function is not found.

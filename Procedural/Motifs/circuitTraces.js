@@ -34,6 +34,33 @@ function distToSegment(px, py, x1, y1, x2, y2) {
  * Grid-aligned continuous circuit traces. When warped, they snake organically.
  */
 export const circuitTracesMotif = {
+    metadata: {
+        label: "Circuit traces",
+        defaults: {
+            type: "circuitTraces",
+            coordinateSpace: "warped",
+            gridSize: 24,
+            lineWidth: 2,
+            density: 0.5,
+            diagDensity: 0.15,
+            peak: 10,
+            tint: [0.9, 0.4, 1.1],
+            padEnabled: true,
+            opacity: 0.8,
+            blendMode: "add",
+        },
+        fields: [
+            { path: "gridSize", label: "Grid size", min: 8, max: 80, step: 2 },
+            { path: "lineWidth", label: "Line width", min: 0.5, max: 10, step: 0.5 },
+            { path: "density", label: "Density", min: 0.1, max: 0.9, step: 0.05 },
+            { path: "diagDensity", label: "Diag density", min: 0.0, max: 0.8, step: 0.05 },
+            { path: "peak", label: "Peak", min: 0, max: 20, step: 1 },
+            { path: "tint.0", label: "Tint R", min: -5, max: 5, step: 0.1 },
+            { path: "tint.1", label: "Tint G", min: -5, max: 5, step: 0.1 },
+            { path: "tint.2", label: "Tint B", min: -5, max: 5, step: 0.1 },
+            { path: "opacity", label: "Opacity", min: 0, max: 1, step: 0.05 },
+        ],
+    },
     apply(sample, rgb, config) {
         const { x, y } = sampleCoords(sample, config.coordinateSpace);
         

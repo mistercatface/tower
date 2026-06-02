@@ -35,7 +35,20 @@ function hsvToRgb(h, s, v) {
     return [r * 255, g * 255, b * 255];
 }
 
+import { BLEND_OPTIONS } from "../../util/blend.js";
+
 export const filterHSVMotif = {
+    metadata: {
+        label: "Filter: HSV Adjust",
+        defaults: { type: "filterHSV", hueShift: 0, saturation: 1, value: 1, blendMode: "replace", opacity: 1 },
+        fields: [
+            { path: "hueShift", label: "Hue Shift", min: -180, max: 180, step: 1 },
+            { path: "saturation", label: "Saturation", min: 0, max: 5, step: 0.1 },
+            { path: "value", label: "Value (Brightness)", min: 0, max: 5, step: 0.1 },
+            { path: "blendMode", label: "Blend Mode", options: BLEND_OPTIONS },
+            { path: "opacity", label: "Opacity", min: 0, max: 1, step: 0.05 },
+        ]
+    },
     apply(sample, rgb, config) {
         const [h, s, v] = rgbToHsv(rgb.r, rgb.g, rgb.b);
         

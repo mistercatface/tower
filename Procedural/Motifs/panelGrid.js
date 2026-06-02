@@ -2,6 +2,26 @@ import { clampByte } from "../util/color.js";
 import { noise2D } from "../Noise/Perlin2D.js";
 
 export const panelGridMotif = {
+    metadata: {
+        label: "Panel grid (legacy)",
+        defaults: {
+            type: "panelGrid",
+            cellWorldSize: 16,
+            groutWidth: 0.06,
+            peak: 8,
+            tint: [-4, -4, -3],
+            variationFrequency: 0.1,
+            variationAmplitude: 1,
+            opacity: 0.7,
+            blendMode: "multiply",
+        },
+        fields: [
+            { path: "cellWorldSize", label: "Cell world px", min: 8, max: 64, step: 1 },
+            { path: "groutWidth", label: "Grout width", min: 0.01, max: 0.2, step: 0.005 },
+            { path: "peak", label: "Peak", min: 0, max: 20, step: 1 },
+            { path: "opacity", label: "Opacity", min: 0, max: 1, step: 0.05 },
+        ],
+    },
     apply(sample, rgb, config) {
         const cellSize = config.cellWorldSize;
         const localX = ((sample.evalX % cellSize) + cellSize) % cellSize;

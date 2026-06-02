@@ -60,4 +60,15 @@ export function getMotif(type) {
     return motif;
 }
 
+export const MOTIF_TYPES = {};
+for (const [type, motif] of Object.entries(MOTIF_BY_TYPE)) {
+    if (motif.metadata) {
+        MOTIF_TYPES[type] = {
+            ...motif.metadata,
+            type,
+        };
+    }
+}
+
+
 

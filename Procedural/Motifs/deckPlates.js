@@ -78,6 +78,40 @@ function applyRivets(rgb, localX, localY, plateW, plateH, config) {
 
 /** World-aligned deck plates (grout, fill jitter, optional rivets). */
 export const deckPlatesMotif = {
+    metadata: {
+        label: "Deck plates",
+        defaults: {
+            type: "deckPlates",
+            cellWorldSize: 16,
+            plateCells: 2,
+            plateRows: 2,
+            groutWidth: 0.045,
+            groutPeak: 11,
+            groutTint: [-6, -6, -5],
+            plateVariation: 3,
+            jitterOffset: [0, 0],
+            rivetSpacing: 16,
+            rivetInset: 4,
+            rivetRadius: 0.018,
+            rivetPeak: 5,
+            rivetTint: [2, 4, 5],
+            blendMode: "multiply",
+            opacity: 0.85,
+        },
+        fields: [
+            { path: "cellWorldSize", label: "Cell world px", min: 8, max: 64, step: 1 },
+            { path: "plateCells", label: "Plate cells (W)", min: 1, max: 8, step: 1 },
+            { path: "plateRows", label: "Plate cells (H)", min: 1, max: 8, step: 1 },
+            { path: "groutWidth", label: "Grout width", min: 0.01, max: 0.15, step: 0.005 },
+            { path: "groutPeak", label: "Grout peak", min: 0, max: 20, step: 1 },
+            { path: "plateVariation", label: "Plate jitter", min: 0, max: 10, step: 0.5 },
+            { path: "rivetSpacing", label: "Rivet spacing (0=off)", min: 0, max: 32, step: 1 },
+            { path: "rivetPeak", label: "Rivet peak", min: 0, max: 12, step: 1 },
+            { path: "accentWidth", label: "Warm seam (0=off)", min: 0, max: 0.06, step: 0.002 },
+            { path: "accentPeak", label: "Seam peak", min: 0, max: 12, step: 1 },
+            { path: "opacity", label: "Opacity", min: 0, max: 1, step: 0.05 },
+        ],
+    },
     apply(sample, rgb, config) {
         const { plateCol, plateRow, localX, localY, plateW, plateH, edgeDist } = plateMetrics(sample, config);
         applyPlateFill(rgb, plateCol, plateRow, config);

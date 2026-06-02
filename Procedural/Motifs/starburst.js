@@ -22,6 +22,32 @@ function hash2(x, y) {
  * Radial starbursts on a sparse grid. When domain-warped, they tear and smear into plasma flows or biological spores.
  */
 export const starburstMotif = {
+    metadata: {
+        label: "Starburst nodes",
+        defaults: {
+            type: "starburst",
+            coordinateSpace: "warped",
+            gridSize: 64,
+            density: 0.25,
+            radius: 28,
+            spikes: 8,
+            peak: 12,
+            tint: [1.5, 0.5, 0.2],
+            opacity: 0.85,
+            blendMode: "add",
+        },
+        fields: [
+            { path: "gridSize", label: "Grid size", min: 16, max: 128, step: 4 },
+            { path: "density", label: "Density", min: 0.05, max: 1.0, step: 0.05 },
+            { path: "radius", label: "Radius", min: 4, max: 64, step: 1 },
+            { path: "spikes", label: "Spikes", min: 0, max: 20, step: 1 },
+            { path: "peak", label: "Peak", min: 0, max: 20, step: 1 },
+            { path: "tint.0", label: "Tint R", min: -5, max: 5, step: 0.1 },
+            { path: "tint.1", label: "Tint G", min: -5, max: 5, step: 0.1 },
+            { path: "tint.2", label: "Tint B", min: -5, max: 5, step: 0.1 },
+            { path: "opacity", label: "Opacity", min: 0, max: 1, step: 0.05 },
+        ],
+    },
     apply(sample, rgb, config) {
         const { x, y } = sampleCoords(sample, config.coordinateSpace);
         

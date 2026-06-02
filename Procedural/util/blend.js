@@ -1,6 +1,9 @@
 import { clampByte } from "./color.js";
 
-/** @typedef {"add" | "multiply" | "replace"} MotifBlendMode */
+export const BLEND_OPTIONS = [
+    "replace", "add", "multiply", "screen", "overlay", 
+    "hard-light", "soft-light", "color-dodge", "color-burn", "difference"
+];
 
 /**
  * Blend motif layer into `out` without allocating a result object.

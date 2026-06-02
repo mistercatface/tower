@@ -1,8 +1,26 @@
-/**
- * Stack context motif — shifts eval (and optionally warped lookup) for downstream layers.
- * Pixel output is handled in FloorTextureComposer; apply() is intentionally empty.
- */
 export const translateMotif = {
+    metadata: {
+        label: "Translate",
+        isContext: true,
+        defaults: {
+            type: "translate",
+            x: 0,
+            y: 0,
+            coordinateMode: "evalAndWarped",
+        },
+        fields: [
+            { path: "x", label: "X", min: -2000, max: 2000, step: 5 },
+            { path: "y", label: "Y", min: -2000, max: 2000, step: 5 },
+            {
+                path: "coordinateMode",
+                label: "Coordinate space",
+                options: [
+                    { value: "evalAndWarped", label: "Eval + warped" },
+                    { value: "evalOnly", label: "Eval only" },
+                ],
+            },
+        ],
+    },
     apply() {},
 };
 

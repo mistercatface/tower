@@ -2,6 +2,28 @@ import { clampByte } from "../util/color.js";
 import { noise2D } from "../Noise/Perlin2D.js";
 
 export const surfaceGrainMotif = {
+    metadata: {
+        label: "Surface grain",
+        defaults: {
+            type: "surfaceGrain",
+            frequency: 0.05,
+            axis: "none",
+            axisStretch: 0.25,
+            octaves: 1,
+            amplitude: 1.0,
+            tint: [1, 1, 1],
+            opacity: 1,
+            blendMode: "add",
+        },
+        fields: [
+            { path: "frequency", label: "Frequency", min: 0.005, max: 0.5, step: 0.005 },
+            { path: "axis", label: "Stretch Axis", options: ["none", "horizontal", "vertical"] },
+            { path: "axisStretch", label: "Stretch factor", min: 0.05, max: 1.0, step: 0.05 },
+            { path: "octaves", label: "Octaves", min: 1, max: 4, step: 1 },
+            { path: "amplitude", label: "Amplitude", min: 0, max: 10, step: 0.5 },
+            { path: "opacity", label: "Opacity", min: 0, max: 1, step: 0.05 },
+        ],
+    },
     apply(sample, rgb, config) {
         const freq = config.frequency;
         let nx = sample.evalX;

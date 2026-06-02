@@ -736,6 +736,89 @@ const plasmaReactor = {
     }
 };
 
+const shatteredDimension = {
+    warp: { frequency: 0.005, amplitude: 10, octaves: 2, sampleOffset: [500, 100] },
+    palette: { base: [10, 5, 20], floorBase: [8, 4, 15], wallBase: [15, 8, 30] },
+    motifs: [
+        { type: "baseMetal", structure: { frequency: 0.005, octaves: 2, rgbDelta: [2, 1, 4] }, grain: { frequency: 0.3, octaves: 1, amplitude: 0.5 } },
+        {
+            type: "fractalCracks",
+            frequency: 0.01,
+            octaves: 4,
+            threshold: 0.6,
+            peak: 18,
+            tint: [5, 1, 8],
+            blendMode: "screen",
+            opacity: 0.9
+        },
+        { type: "filterHSV", hueShift: 0, saturation: 1.5, value: 1.2, blendMode: "replace", opacity: 1 }
+    ],
+    animation: {
+        stages: [
+            {
+                frames: 50,
+                durationMs: 3000,
+                tracks: [
+                    { targetPath: "motifs[1].threshold", startValue: 0.7, endValue: 0.4, easing: "easeInOutSine" },
+                    { targetPath: "motifs[1].peak", startValue: 10, endValue: 25, easing: "easeOutQuad" },
+                    { targetPath: "motifs[2].hueShift", startValue: 0, endValue: 60, easing: "linear" }
+                ]
+            },
+            {
+                frames: 50,
+                durationMs: 3000,
+                tracks: [
+                    { targetPath: "motifs[1].threshold", startValue: 0.4, endValue: 0.7, easing: "easeInOutSine" },
+                    { targetPath: "motifs[1].peak", startValue: 25, endValue: 10, easing: "easeInQuad" },
+                    { targetPath: "motifs[2].hueShift", startValue: 60, endValue: 0, easing: "linear" }
+                ]
+            }
+        ]
+    }
+};
+
+const voidFissures = {
+    warp: { frequency: 0.002, amplitude: 4, octaves: 2, sampleOffset: [1000, 2000] },
+    palette: { base: [2, 2, 5], floorBase: [1, 1, 3], wallBase: [4, 4, 8] },
+    motifs: [
+        { type: "baseMetal", structure: { frequency: 0.002, octaves: 3, rgbDelta: [1, 1, 2] }, grain: { frequency: 0.5, octaves: 2, amplitude: 0.6 } },
+        { type: "translate", x: 0, y: 0, coordinateMode: "evalAndWarped", blendMode: "add", opacity: 1 },
+        {
+            type: "fractalCracks",
+            frequency: 0.015,
+            octaves: 3,
+            threshold: 0.8,
+            peak: 20,
+            tint: [0.5, 8.0, 4.0],
+            blendMode: "color-dodge",
+            opacity: 1
+        },
+        { type: "filterHSV", hueShift: 0, saturation: 1.8, value: 1.5, blendMode: "replace", opacity: 1 }
+    ],
+    animation: {
+        stages: [
+            {
+                frames: 60,
+                durationMs: 4000,
+                tracks: [
+                    { targetPath: "motifs[1].x", startValue: 0, endValue: 20, easing: "linear" },
+                    { targetPath: "motifs[1].y", startValue: 0, endValue: 15, easing: "linear" },
+                    { targetPath: "motifs[2].threshold", startValue: 0.85, endValue: 0.75, easing: "easeInOutQuad" }
+                ]
+            },
+            {
+                frames: 60,
+                durationMs: 4000,
+                tracks: [
+                    { targetPath: "motifs[1].x", startValue: 20, endValue: 40, easing: "linear" },
+                    { targetPath: "motifs[1].y", startValue: 15, endValue: 30, easing: "linear" },
+                    { targetPath: "motifs[2].threshold", startValue: 0.75, endValue: 0.85, easing: "easeInOutQuad" }
+                ]
+            }
+        ]
+    }
+};
+
 export const floorProceduralProfiles = {
     ancientRuins,
     cyberGrid,
@@ -751,7 +834,9 @@ export const floorProceduralProfiles = {
     neonGridwave,
     chronosEngine,
     hyperDrive,
-    plasmaReactor
+    plasmaReactor,
+    shatteredDimension,
+    voidFissures
 };
 
 export const START_STATION_ID = "organicPulse";

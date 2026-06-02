@@ -1,6 +1,19 @@
 import { clampByte } from "../../util/color.js";
 
+import { BLEND_OPTIONS } from "../../util/blend.js";
+
 export const filterLevelsMotif = {
+    metadata: {
+        label: "Filter: Levels",
+        defaults: { type: "filterLevels", blackPoint: 0, whitePoint: 255, gamma: 1.0, blendMode: "replace", opacity: 1 },
+        fields: [
+            { path: "blackPoint", label: "Black Point", min: 0, max: 254, step: 1 },
+            { path: "whitePoint", label: "White Point", min: 1, max: 255, step: 1 },
+            { path: "gamma", label: "Gamma", min: 0.1, max: 5.0, step: 0.1 },
+            { path: "blendMode", label: "Blend Mode", options: BLEND_OPTIONS },
+            { path: "opacity", label: "Opacity", min: 0, max: 1, step: 0.05 },
+        ]
+    },
     apply(sample, rgb, config) {
         const bp = config.blackPoint ?? 0;
         const wp = Math.max(bp + 1, config.whitePoint ?? 255);
