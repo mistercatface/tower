@@ -2,6 +2,7 @@ import { floorTileSettings, gridSettings } from "../../Config/Config.js";
 import { drawImageQuad } from "./draw/AffineTexture.js";
 import { CAMERA_HEIGHT } from "./math/CombatProjection.js";
 import { getFloorTextureProfileId } from "../Floor/floorTextureProfile.js";
+import { getFloorProceduralProfile } from "../../Config/floorProceduralConfig.js";
 import { bakePixelsForWorldSpan, getTexturePixelsPerWorldUnit } from "../Floor/floorTextureResolution.js";
 
 const WALL_ANGLE_SPREAD = 0.002;
@@ -164,14 +165,10 @@ function getFlatWallCanvas(p1, p2, columns, storyCount, floorTiles, state, tileW
     const canvasWidth = Math.max(1, Math.ceil(edgeLen * pixelsPerUnit));
     const canvasHeight = bakePixelsForWorldSpan(storyCount * cellSize);
 
-    const canvas = new OffscreenCanvas(canvasWidth, canvasHeight);
-    const ctx = canvas.getContext("2d");
-    ctx.imageSmoothingEnabled = false;
+    const canvases = floorTiles.bakeWallFace(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, state);
 
-    floorTiles.paintWallFace(ctx, canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, state);
-
-    flatWallCache.set(key, canvas);
-    return canvas;
+    flatWallCache.set(key, canvases);
+    return canvases;
 }
 
 function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHeight) {
@@ -187,12 +184,22 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHei
     const key = `v14:${ppwu}:${profileId}:${kx1},${ky1}-${kx2},${ky2}`;
 
     const storyCount = getWallTextureStoryCount();
-    let flatCanvas = flatWallCache.get(key);
-    if (!flatCanvas) {
+    let flatCanvases = flatWallCache.get(key);
+    if (!flatCanvases) {
         const columns = wallFaceColumns(p1, p2, tileWorldSize);
         if (columns.length === 0) return;
-        flatCanvas = getFlatWallCanvas(p1, p2, columns, storyCount, floorTiles, state, tileWorldSize, key);
-        if (!flatCanvas) return;
+        flatCanvases = getFlatWallCanvas(p1, p2, columns, storyCount, floorTiles, state, tileWorldSize, key);
+        if (!flatCanvases || flatCanvases.length === 0) return;
+    }
+
+    const profile = getFloorProceduralProfile(profileId);
+    let flatCanvas = flatCanvases[0];
+    if (profile.animation && flatCanvases.length > 1) {
+        const frames = flatCanvases.length;
+        const duration = profile.animation.durationMs ?? 1000;
+        const clock = state.gameClock ?? 0;
+        const currentFrame = Math.floor((clock % duration) / duration * frames);
+        flatCanvas = flatCanvases[Math.min(frames - 1, Math.max(0, currentFrame))];
     }
 
     const worldBounds = getViewportWorldBounds(viewport);

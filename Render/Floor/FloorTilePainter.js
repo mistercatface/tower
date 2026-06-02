@@ -2,8 +2,10 @@ import { floorTileSettings, gridSettings } from "../../Config/Config.js";
 import {
     defaultFloorProceduralProfileId,
     getFloorProceduralProfile,
+    registerRuntimeFloorProfile,
+    unregisterRuntimeFloorProfile,
 } from "../../Config/floorProceduralConfig.js";
-import { createPaintContext, composeFloorPixel } from "../../Procedural/FloorTextureComposer.js";
+import { createPaintContext, composeFloorImage } from "../../Procedural/FloorTextureComposer.js";
 import {
     createWallFaceAxes,
     mapPixelToEval,
@@ -51,45 +53,55 @@ export function paintPixelArea(
 
     const imgData = ctx.createImageData(width, height);
     const data = imgData.data;
-    let idx = 0;
 
+    const numPixels = width * height;
+    const samples = {
+        width,
+        height,
+        evalX: new Float32Array(numPixels),
+        evalY: new Float32Array(numPixels),
+        lookupX: new Float32Array(numPixels),
+        lookupY: new Float32Array(numPixels),
+        wallU: new Float32Array(numPixels),
+        wallV: new Float32Array(numPixels),
+        blocked: new Uint8Array(numPixels),
+        isWall,
+        surfaceKind
+    };
+
+    let idx = 0;
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
             const mapped = mapPixelToEval({
-                x,
-                y,
-                startWorldX,
-                startWorldY,
-                cellSize,
-                surfaceKind,
-                height,
-                width,
-                pixelsPerUnit,
-                texturePixelsPerWorldUnit,
-                bakeWidth: width,
-                zOffset,
-                wallFace,
+                x, y, startWorldX, startWorldY, cellSize, surfaceKind,
+                height, width, pixelsPerUnit, texturePixelsPerWorldUnit,
+                bakeWidth: width, zOffset, wallFace,
             });
 
             const blocked = queryObstacleBlocked(mapped.evalX, mapped.evalY, obstacleGrid);
-            const rgb = composeFloorPixel(
-                {
-                    evalX: mapped.evalX,
-                    evalY: mapped.evalY,
-                    wallU: mapped.wallU,
-                    wallV: mapped.wallV,
-                    blocked,
-                    isWall,
-                    surfaceKind,
-                },
-                paintContext
-            );
-
-            data[idx++] = rgb.r;
-            data[idx++] = rgb.g;
-            data[idx++] = rgb.b;
-            data[idx++] = 255;
+            
+            samples.evalX[idx] = mapped.evalX;
+            samples.evalY[idx] = mapped.evalY;
+            samples.wallU[idx] = mapped.wallU ?? 0;
+            samples.wallV[idx] = mapped.wallV ?? 0;
+            samples.blocked[idx] = blocked ? 1 : 0;
+            idx++;
         }
+    }
+
+    let faceKey = "";
+    if (wallFace && options.p2) {
+        faceKey = `_p1:${wallFace.p1.x},${wallFace.p1.y}_p2:${options.p2.x},${options.p2.y}`;
+    }
+    const requestKey = `${surfaceKind}_${startWorldX},${startWorldY}_${width}x${height}_${pixelsPerUnit}_${zOffset}_${seed}${faceKey}`;
+    const rgbBuffer = composeFloorImage(samples, paintContext, requestKey);
+
+    let dataIdx = 0;
+    for (let i = 0; i < numPixels; i++) {
+        data[dataIdx++] = rgbBuffer[i * 3];
+        data[dataIdx++] = rgbBuffer[i * 3 + 1];
+        data[dataIdx++] = rgbBuffer[i * 3 + 2];
+        data[dataIdx++] = 255;
     }
 
     ctx.putImageData(imgData, 0, 0);
@@ -141,25 +153,86 @@ export function bakeFloorChunkCanvas({
     const cellSize = obstacleGrid.cellSize;
     const chunkWorldSize = cellSize * cellsPerChunk;
     const bakeSize = bakePixelsForWorldSpan(chunkWorldSize);
-    const canvas = new OffscreenCanvas(bakeSize, bakeSize);
-    const ctx = canvas.getContext("2d");
-    ctx.imageSmoothingEnabled = false;
+    const profile = getFloorProceduralProfile(profileId ?? defaultFloorProceduralProfileId);
+    const anim = profile.animation;
 
     const startCol = chunkCol * cellsPerChunk;
     const startRow = chunkRow * cellsPerChunk;
     const chunkWorldX = obstacleGrid.minX + startCol * cellSize;
     const chunkWorldY = obstacleGrid.minY + startRow * cellSize;
 
-    paintPixelArea(ctx, bakeSize, bakeSize, chunkWorldX, chunkWorldY, obstacleGrid, seed, {}, profileId);
+    if (!anim) {
+        const canvas = new OffscreenCanvas(bakeSize, bakeSize);
+        const ctx = canvas.getContext("2d");
+        ctx.imageSmoothingEnabled = false;
+        paintPixelArea(ctx, bakeSize, bakeSize, chunkWorldX, chunkWorldY, obstacleGrid, seed, {}, profileId);
+        return [canvas];
+    }
 
-    return canvas;
+    const frames = [];
+    for (let i = 0; i < anim.frames; i++) {
+        const t = i / (anim.frames - 1);
+        const val = anim.startValue + (anim.endValue - anim.startValue) * t;
+        
+        const tempId = `${profileId}_anim_chunk_${i}`;
+        const cloned = JSON.parse(JSON.stringify(profile));
+        setDeep(cloned, anim.targetPath, val);
+        
+        registerRuntimeFloorProfile(tempId, cloned);
+        
+        const canvas = new OffscreenCanvas(bakeSize, bakeSize);
+        const ctx = canvas.getContext("2d");
+        ctx.imageSmoothingEnabled = false;
+        paintPixelArea(ctx, bakeSize, bakeSize, chunkWorldX, chunkWorldY, obstacleGrid, seed, {}, tempId);
+        
+        frames.push(canvas);
+        unregisterRuntimeFloorProfile(tempId);
+    }
+
+    return frames;
 }
 
-export function paintWallFace(ctx, width, height, p1, p2, pixelsPerUnit, obstacleGrid, seed, profileId) {
-    paintPixelArea(ctx, width, height, 0, 0, obstacleGrid, seed, {
-        isWall: true,
-        p1,
-        p2,
-        pixelsPerUnit,
-    }, profileId);
+function setDeep(obj, path, value) {
+    const parts = path.replace(/\]/g, "").split(/[\[\.]+/).filter(Boolean);
+    let curr = obj;
+    for (let i = 0; i < parts.length - 1; i++) {
+        curr = curr[parts[i]];
+    }
+    curr[parts[parts.length - 1]] = value;
+}
+
+export function bakeWallFaceCanvases(width, height, p1, p2, pixelsPerUnit, obstacleGrid, seed, profileId) {
+    const profile = getFloorProceduralProfile(profileId ?? defaultFloorProceduralProfileId);
+    const anim = profile.animation;
+    
+    if (!anim) {
+        const canvas = new OffscreenCanvas(width, height);
+        const ctx = canvas.getContext("2d");
+        ctx.imageSmoothingEnabled = false;
+        paintPixelArea(ctx, width, height, 0, 0, obstacleGrid, seed, { isWall: true, p1, p2, pixelsPerUnit }, profileId);
+        return [canvas];
+    }
+
+    const frames = [];
+    for (let i = 0; i < anim.frames; i++) {
+        const t = i / (anim.frames - 1);
+        const val = anim.startValue + (anim.endValue - anim.startValue) * t;
+        
+        // We override the profile in the registry temporarily, or better, pass the modified profile.
+        // Wait, paintPixelArea looks up the profile by ID. We can just create a temporary ID.
+        const tempId = `${profileId}_anim_${i}`;
+        const cloned = JSON.parse(JSON.stringify(profile));
+        setDeep(cloned, anim.targetPath, val);
+        
+        registerRuntimeFloorProfile(tempId, cloned);
+        
+        const canvas = new OffscreenCanvas(width, height);
+        const ctx = canvas.getContext("2d");
+        ctx.imageSmoothingEnabled = false;
+        paintPixelArea(ctx, width, height, 0, 0, obstacleGrid, seed, { isWall: true, p1, p2, pixelsPerUnit }, tempId);
+        
+        frames.push(canvas);
+        unregisterRuntimeFloorProfile(tempId);
+    }
+    return frames;
 }

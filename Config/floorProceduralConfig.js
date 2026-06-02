@@ -108,6 +108,7 @@ const techCorridor = {
 const bioneural = {
     warp: { frequency: 0.006, amplitude: 18, octaves: 2, sampleOffset: [400, 800] },
     palette: { base: [4, 14, 18], floorBase: [3, 12, 16], wallBase: [6, 16, 22], shadow: "#020a0d" },
+    animation: { targetPath: "motifs[5].hueShift", startValue: 0, endValue: 360, frames: 30, durationMs: 2000 },
     motifs: [
         { type: "baseMetal", structure: { frequency: 0.004, octaves: 2, rgbDelta: [1, 2, 3] }, grain: { frequency: 0.3, octaves: 1, amplitude: 2 } },
         { type: "voronoiCell", coordinateSpace: "warped", density: 0.035, edgeWidth: 3.5, peak: 10, tint: [0.3, 2.2, 2.8], seedSalt: 42, opacity: 0.85, blendMode: "add" },
@@ -489,7 +490,7 @@ export const floorProceduralProfiles = {
     },
 };
 
-const startStation = "ancientRuins";
+const startStation = "bioneural";
 
 export const defaultFloorProceduralProfileId = startStation;
 

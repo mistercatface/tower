@@ -1,7 +1,7 @@
 import {
     bakeFloorTileTextureCanvas,
     paintPixelArea,
-    paintWallFace,
+    bakeWallFaceCanvases,
 } from "../../../Render/Floor/FloorTilePainter.js";
 import {
     bakePixelsForWorldSpan,
@@ -62,11 +62,8 @@ function bakeWallFacePreviewCanvas(cellSize, storyCount, seed, profileId) {
     const ppwu = getTexturePixelsPerWorldUnit();
     const width = bakePixelsForWorldSpan(cellSize);
     const height = bakePixelsForWorldSpan(cellSize * storyCount);
-    const canvas = new OffscreenCanvas(width, height);
-    const ctx = canvas.getContext("2d");
-    ctx.imageSmoothingEnabled = false;
-    paintWallFace(ctx, width, height, { x: 0, y: 0 }, { x: cellSize, y: 0 }, ppwu, stub, seed, profileId);
-    return canvas;
+    const canvases = bakeWallFaceCanvases(width, height, { x: 0, y: 0 }, { x: cellSize, y: 0 }, ppwu, stub, seed, profileId);
+    return canvases[0];
 }
 
 function bakeFloorCellAt(worldX, worldY, cellSize, seed, profileId) {

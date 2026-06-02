@@ -1,9 +1,16 @@
 import { floorTileSettings, combatVisualSettings } from "../../Config/Config.js";
 import { isWorldScene } from "../../GameState/GamePhase.js";
+import { getFloorProceduralProfile } from "../../Config/floorProceduralConfig.js";
 import { chunkToWorldOrigin, getChunkSizePx, gridBoundsToChunkRange, worldBoundsToChunkRange } from "../../Spatial/Grid/ChunkGrid.js";
 import { snapWorldToCellOrigin } from "../../Spatial/Geometry/GridCoords.js";
 import { FloorChunkCache } from "./FloorChunkCache.js";
-import { bakeFloorChunkCanvas, bakeFloorCellCanvas, bakeFloorTileTextureCanvas, drawWallCell, paintWallFace } from "./FloorTilePainter.js";
+import {
+    bakeFloorCellCanvas,
+    bakeFloorChunkCanvas,
+    drawWallCell,
+    bakeWallFaceCanvases,
+    bakeFloorTileTextureCanvas,
+} from "./FloorTilePainter.js";
 import {
     floorCellCacheKey,
     floorChunkCacheKey,
@@ -86,10 +93,9 @@ export class FloorTileSystem {
         drawWallCell(ctx, x, y, storyRow, obstacleGrid, state.floorTileSeed ?? 0, profileId);
     }
 
-    paintWallFace(ctx, width, height, p1, p2, pixelsPerUnit, state) {
+    bakeWallFace(width, height, p1, p2, pixelsPerUnit, state) {
         const profileId = getFloorTextureProfileId(state);
-        paintWallFace(
-            ctx,
+        return bakeWallFaceCanvases(
             width,
             height,
             p1,
@@ -133,9 +139,20 @@ export class FloorTileSystem {
 
         const range = worldBoundsToChunkRange(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY, obstacleGrid.minX, obstacleGrid.minY, chunkSizePx);
 
+        const profileId = getFloorTextureProfileId(state);
+        const profile = getFloorProceduralProfile(profileId);
+
         for (let chunkRow = range.minChunkRow; chunkRow <= range.maxChunkRow; chunkRow++) {
             for (let chunkCol = range.minChunkCol; chunkCol <= range.maxChunkCol; chunkCol++) {
-                const canvas = this.getChunkCanvas(chunkCol, chunkRow, state);
+                const canvases = this.getChunkCanvas(chunkCol, chunkRow, state);
+                let canvas = canvases[0];
+                if (profile.animation && canvases.length > 1) {
+                    const frames = canvases.length;
+                    const duration = profile.animation.durationMs ?? 1000;
+                    const clock = state.gameClock ?? 0;
+                    const currentFrame = Math.floor((clock % duration) / duration * frames);
+                    canvas = canvases[Math.min(frames - 1, Math.max(0, currentFrame))];
+                }
                 const origin = chunkToWorldOrigin(chunkCol, chunkRow, obstacleGrid.minX, obstacleGrid.minY, chunkSizePx);
                 drawBakedTexture(ctx, canvas, origin.x, origin.y, chunkSizePx, chunkSizePx);
             }
