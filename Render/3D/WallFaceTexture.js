@@ -288,10 +288,8 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHei
     const py = state.player.y;
     const dist = Math.hypot(wallCx - px, wallCy - py);
 
-    // subdivScale ranges from 1.0 (distance <= 80) down to 0.05 (distance >= 400)
-    const subdivScale = Math.max(0.05, Math.min(1.0, 1.0 - (dist - 80) / 320));
-    const SUBDIV_X = Math.max(1, Math.min(3, Math.ceil((edgeLen / tileWorldSize) * subdivScale)));
-    const SUBDIV_Y = Math.max(1, Math.min(3, Math.ceil((storyCount / 2) * subdivScale)));
+    const SUBDIV_X = 2;
+    const SUBDIV_Y = 2;
 
     for (let row = 0; row < SUBDIV_Y; row++) {
         const bottomZ = row * (wallHeight / SUBDIV_Y);
