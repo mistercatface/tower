@@ -1,8 +1,6 @@
 import { defaultFloorProceduralProfileId, getFloorProceduralProfile } from "../../Config/floorProceduralConfig.js";
 import { getPixelsPerWorldUnit } from "./floorTextureResolution.js";
-
-/** Bump when profile motif stacks change so chunk caches rebake. */
-const FLOOR_TEXTURE_CACHE_REVISION = 19;
+import { getProfileRevision } from "./TileWorkerCoordinator.js";
 
 export function getFloorTextureProfileId(state) {
     if (state.floorTextureProfileOverride) {
@@ -26,7 +24,8 @@ export function syncFloorTextureProfile(state) {
 }
 
 export function floorChunkCachePrefix(chunkCol, chunkRow, profileId) {
-    return `${FLOOR_TEXTURE_CACHE_REVISION}:${getPixelsPerWorldUnit()}:${profileId}:${chunkCol},${chunkRow}`;
+    const rev = getProfileRevision(profileId);
+    return `${rev}:${getPixelsPerWorldUnit()}:${profileId}:${chunkCol},${chunkRow}`;
 }
 
 /** Worker-serializable chunk bake payload from live game state. */
@@ -34,14 +33,7 @@ export function buildFloorChunkBakePayload(state, chunkCol, chunkRow) {
     const profileId = getFloorTextureProfileId(state);
     const profile = getFloorProceduralProfile(profileId);
 
-    const payload = {
-        chunkCol,
-        chunkRow,
-        minX: state.obstacleGrid.minX,
-        minY: state.obstacleGrid.minY,
-        seed: state.floorTileSeed ?? 0,
-        profileId,
-    };
+    const payload = { chunkCol, chunkRow, minX: state.obstacleGrid.minX, minY: state.obstacleGrid.minY, seed: state.floorTileSeed ?? 0, profileId };
 
     if (profile.animation) {
         payload.gameTime = state.gameTime ?? 0;

@@ -127,7 +127,7 @@ function computeFaceCorner(out, p1, p2, proj1X, proj1Y, proj2X, proj2Y, u, v) {
 }
 
 function buildWallCacheKey(p1, p2, state, profileId, ppwu) {
-    const chunkWorldSize = floorTileSettings.chunkWorldSize || (128 * 16);
+    const chunkWorldSize = floorTileSettings.chunkWorldSize || 128 * 16;
     const wx1 = ((p1.x % chunkWorldSize) + chunkWorldSize) % chunkWorldSize;
     const wy1 = ((p1.y % chunkWorldSize) + chunkWorldSize) % chunkWorldSize;
     const dx = p2.x - p1.x;
@@ -141,13 +141,9 @@ function buildWallCacheKey(p1, p2, state, profileId, ppwu) {
     const ky2 = wy2.toFixed(1);
     const seed = state.floorTileSeed ?? 0;
     const rev = TileWorkerCoordinator.getProfileRevision(profileId);
-    const key = `v17:${ppwu}:${profileId}:${rev}:${seed}:${kx1},${ky1}-${kx2},${ky2}`;
+    const key = `${rev}:${ppwu}:${profileId}:${seed}:${kx1},${ky1}-${kx2},${ky2}`;
 
-    return {
-        key,
-        wrappedP1: { x: wx1, y: wy1 },
-        wrappedP2: { x: wx2, y: wy2 },
-    };
+    return { key, wrappedP1: { x: wx1, y: wy1 }, wrappedP2: { x: wx2, y: wy2 } };
 }
 
 /**
@@ -158,12 +154,7 @@ function buildWallCacheKey(p1, p2, state, profileId, ppwu) {
 function getWallCacheInfo(p1, p2, state, profileId, ppwu, cacheObj) {
     const seed = state.floorTileSeed ?? 0;
     const rev = TileWorkerCoordinator.getProfileRevision(profileId);
-    if (cacheObj
-        && cacheObj._wkInfo
-        && cacheObj._wkProfileId === profileId
-        && cacheObj._wkPpwu === ppwu
-        && cacheObj._wkRev === rev
-        && cacheObj._wkSeed === seed) {
+    if (cacheObj && cacheObj._wkInfo && cacheObj._wkProfileId === profileId && cacheObj._wkPpwu === ppwu && cacheObj._wkRev === rev && cacheObj._wkSeed === seed) {
         return cacheObj._wkInfo;
     }
     const info = buildWallCacheKey(p1, p2, state, profileId, ppwu);
@@ -193,10 +184,7 @@ function scheduleWallAnimationBatch(key, floorTiles, state, canvases, totalFrame
     wallAnimationBatchInFlight.add(flightKey);
 
     const { width, height, p1, p2, pixelsPerUnit } = bakeCtx;
-    floorTiles.bakeWallFace(width, height, p1, p2, pixelsPerUnit, state, {
-        frameStart: batch.frameStart,
-        frameCount: batch.frameCount,
-    }).then((bitmaps) => {
+    floorTiles.bakeWallFace(width, height, p1, p2, pixelsPerUnit, state, { frameStart: batch.frameStart, frameCount: batch.frameCount }).then((bitmaps) => {
         wallAnimationBatchInFlight.delete(flightKey);
         const existing = flatWallCache.get(key);
         if (!existing || existing[0]?.isPlaceholder) {
@@ -235,9 +223,7 @@ function getFlatWallCanvas(p1, p2, columns, storyCount, floorTiles, state, tileW
     wallBakeContext.set(key, { width: canvasWidth, height: canvasHeight, p1, p2, pixelsPerUnit });
 
     if (isAnimated) {
-        floorTiles.bakeWallFace(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, state, {
-            firstFrameOnly: true,
-        }).then((firstFrameBitmaps) => {
+        floorTiles.bakeWallFace(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, state, { firstFrameOnly: true }).then((firstFrameBitmaps) => {
             const existing = flatWallCache.get(key);
             if (existing === placeholder) {
                 flatWallCache.set(key, firstFrameBitmaps);
