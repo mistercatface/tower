@@ -325,7 +325,7 @@ export const gridSettings = { cellSize: 16, width: 2400, height: 2400, minCellsP
 /** Floor render chunks — one offscreen canvas per chunk, aligned to gridSettings.cellSize. */
 export const floorTileSettings = {
     cellsPerChunk: gridSettings.minCellsPerChunk,
-    tileResolution: 16,
+    tileResolution: 8,
     viewPaddingPx: 128,
     preLoadPaddingPx: 512,
     maxCachedChunks: 512,

@@ -50,28 +50,7 @@ export class WaveManager {
     }
 
     calculateEnemiesToSpawn() {
-        const {
-            bossWaveInterval,
-            firstWaveEnemyCount,
-            postBossBaseCount,
-            earlyWaveCap,
-            postBossMultiplierEarly,
-            postBossMultiplierLate,
-            earlyWaveGrowth,
-            lateWaveGrowthBase,
-            lateWaveGrowthDivisor,
-        } = waveSettings;
-
-        if (this.wave % bossWaveInterval === 0) {
-            return 1;
-        } else if (this.wave % bossWaveInterval === 1 && this.wave > 1) {
-            const multiplier = this.wave <= earlyWaveCap ? postBossMultiplierEarly : postBossMultiplierLate;
-            return postBossBaseCount + this.wave * multiplier;
-        } else {
-            if (this.wave === 1) return firstWaveEnemyCount;
-            const growth = this.wave <= earlyWaveCap ? earlyWaveGrowth : (lateWaveGrowthBase + Math.floor(this.wave / lateWaveGrowthDivisor));
-            return this.enemiesToSpawn + growth;
-        }
+        return Infinity;
     }
 
     calculateSpawnPosition(state, side, pos) {
