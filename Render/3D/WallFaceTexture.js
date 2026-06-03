@@ -1,7 +1,7 @@
 import { floorTileSettings, gridSettings } from "../../Config/Config.js";
 import { drawImageQuad } from "./draw/AffineTexture.js";
 import { CAMERA_HEIGHT } from "./math/CombatProjection.js";
-import { getFloorTextureProfileId, isFloorTileAnimationEnabled } from "../Floor/floorTextureProfile.js";
+import { getFloorTextureProfileId, isWallFaceAnimationEnabled } from "../Floor/floorTextureProfile.js";
 import { getFloorProceduralProfile } from "../../Config/floorProceduralConfig.js";
 import { getPixelsPerWorldUnit, shouldSmoothTextureDownsample } from "../Floor/floorTextureResolution.js";
 import { animationFrameIndex } from "../Floor/ProfileBakeResolver.js";
@@ -144,7 +144,7 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHei
     }
 
     // Use the nearest already-baked frame; the loop sharpens as frames stream in.
-    if (isFloorTileAnimationEnabled(profile) && flatCanvases.length > 1) {
+    if (isWallFaceAnimationEnabled(profile) && flatCanvases.length > 1) {
         const currentFrame = animationFrameIndex(profile.animation, { gameTime: state.gameTime ?? 0 });
         flatCanvas = flatCanvases[Math.min(flatCanvases.length - 1, Math.max(0, currentFrame))];
     }

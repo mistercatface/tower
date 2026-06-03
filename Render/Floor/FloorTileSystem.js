@@ -4,7 +4,7 @@ import { getFloorProceduralProfile } from "../../Config/floorProceduralConfig.js
 import { chunkToWorldOrigin, getChunkSizePx, gridBoundsToChunkRange, worldBoundsToChunkRange } from "../../Spatial/Grid/ChunkGrid.js";
 import { ProgressiveFrameCache } from "./ProgressiveFrameCache.js";
 import { TileWorkerCoordinator } from "./TileWorkerCoordinator.js";
-import { buildFloorChunkBakePayload, floorChunkCachePrefix, getFloorTextureProfileId, getFloorTileAnimationInfo } from "./floorTextureProfile.js";
+import { buildFloorChunkBakePayload, floorChunkCachePrefix, getFloorTextureProfileId, getFloorChunkAnimationInfo, getWallFaceAnimationInfo } from "./floorTextureProfile.js";
 import { drawBakedTexture, bakePixelsForWorldSpan, getPixelsPerWorldUnit } from "./floorTextureResolution.js";
 import { animationFrameIndex } from "./ProfileBakeResolver.js";
 import { bakeFrameRange, nextAnimationBatchRange } from "./AnimationFrameBake.js";
@@ -93,7 +93,7 @@ export class FloorTileSystem {
         if (canvases) return canvases;
 
         const profile = getFloorProceduralProfile(payload.profileId);
-        const { enabled: isAnimated, totalFrames } = getFloorTileAnimationInfo(profile);
+        const { enabled: isAnimated, totalFrames } = getFloorChunkAnimationInfo(profile);
 
         const meta = { kind: 'chunk', payload, totalFrames };
 
@@ -125,7 +125,7 @@ export class FloorTileSystem {
 
         const profileId = getFloorTextureProfileId(state);
         const profile = getFloorProceduralProfile(profileId);
-        const { enabled: isAnimated, totalFrames } = getFloorTileAnimationInfo(profile);
+        const { enabled: isAnimated, totalFrames } = getWallFaceAnimationInfo(profile);
 
         const meta = { kind: 'wall', width: canvasWidth, height: canvasHeight, p1, p2, pixelsPerUnit, totalFrames };
 
@@ -174,7 +174,7 @@ export class FloorTileSystem {
 
         chunksToDraw.sort((a, b) => a.distSq - b.distSq);
 
-        const { enabled: animationEnabled } = getFloorTileAnimationInfo(profile);
+        const { enabled: animationEnabled } = getFloorChunkAnimationInfo(profile);
 
         for (const chunk of chunksToDraw) {
             const payload = this._buildChunkPayload(state, chunk.chunkCol, chunk.chunkRow);
@@ -188,29 +188,6 @@ export class FloorTileSystem {
             }
 
             drawBakedTexture(ctx, canvas, chunk.origin.x, chunk.origin.y, chunkSizePx, chunkSizePx);
-        }
-    }
-
-    preloadChunks(state, viewport, padPx) {
-        if (!viewport || !isWorldScene(state.phase) || !state.obstacleGrid?.cols) {
-            return;
-        }
-
-        const obstacleGrid = state.obstacleGrid;
-        const cellsPerChunk = floorTileSettings.cellsPerChunk;
-        const chunkSizePx = getChunkSizePx(obstacleGrid.cellSize, cellsPerChunk);
-        
-        const screenW = state.canvasBounds?.width ?? viewport.cx * 2;
-        const screenH = state.canvasBounds?.height ?? viewport.cy * 2;
-        const bounds = viewport.getWorldBounds(screenW, screenH, padPx);
-
-        const range = worldBoundsToChunkRange(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY, obstacleGrid.minX, obstacleGrid.minY, chunkSizePx);
-
-        for (let chunkRow = range.minChunkRow; chunkRow <= range.maxChunkRow; chunkRow++) {
-            for (let chunkCol = range.minChunkCol; chunkCol <= range.maxChunkCol; chunkCol++) {
-                const payload = this._buildChunkPayload(state, chunkCol, chunkRow);
-                this.getChunkCanvas(chunkCol, chunkRow, state, payload);
-            }
         }
     }
 }

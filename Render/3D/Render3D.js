@@ -246,32 +246,5 @@ export class Render3D {
     getPropRecipe(key) {
         return PROP_RECIPES[key];
     }
-
-    preloadWalls(state, viewport, padPx) {
-        if (!viewport || !state.floorTiles) return;
-
-        const px = state.player.x;
-        const py = state.player.y;
-
-        const candidateWalls = this.collectVisibleWalls(state, viewport, px, py);
-
-        for (let i = 0; i < candidateWalls.length; i++) {
-            const seg = candidateWalls[i];
-            if (seg.isDead) continue;
-
-            const edges = this.getSegmentEdges(seg);
-            if (!seg.sharedEdges) seg.sharedEdges = [false, false, false, false];
-
-            for (let j = 0; j < 4; j++) {
-                if (seg.sharedEdges[j]) continue;
-                const edge = edges[j];
-                const viewX = edge.cx - px;
-                const viewY = edge.cy - py;
-                if (edge.outX * viewX + edge.outY * viewY >= 0) continue;
-
-                preloadProjectedWallFace(edge[0], edge[1], state.floorTiles, state, edge);
-            }
-        }
-    }
 }
 

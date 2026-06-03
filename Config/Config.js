@@ -336,7 +336,8 @@ export const floorTileSettings = {
     wallVisualHeight: null,
     wallTextureStories: 5,
     wallTextureBleedPx: 1,
-    enableTileAnimation: false,
+    floorAnimationsOn: false,
+    wallAnimationsOn: false,
 };
 
 export const combatVisualSettings = { 

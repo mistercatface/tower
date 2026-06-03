@@ -199,12 +199,6 @@ export class CombatState {
             });
         }
 
-        const pad = floorTileSettings.preLoadPaddingPx || 512;
-        if (pad > 0 && ctx.state.floorTiles && ctx.renderer?.render3D) {
-            ctx.state.floorTiles.preloadChunks(ctx.state, ctx.viewport, pad);
-            ctx.renderer.render3D.preloadWalls(ctx.state, ctx.viewport, pad);
-        }
-
         requestUiUpdate();
     }
 

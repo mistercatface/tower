@@ -9,8 +9,8 @@ export default {
     animation: {
         stages: [
             {
-                frames: 15,
-                durationMs: 8000,
+                frames: 30,
+                durationMs: 4000,
                 tracks: [
                     { targetPath: "motifs[1].density", startValue: 0.06, endValue: 0.1, easing: "linear" },
                     { targetPath: "motifs[2].hueShift", startValue: -20, endValue: 20, easing: "linear" },

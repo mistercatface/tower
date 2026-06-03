@@ -4,12 +4,24 @@ import { getAnimationFrames } from "./ProfileBakeResolver.js";
 import { getPixelsPerWorldUnit } from "./floorTextureResolution.js";
 import { getProfileRevision } from "./TileWorkerCoordinator.js";
 
-export function isFloorTileAnimationEnabled(profile) {
-    return Boolean(profile?.animation) && floorTileSettings.enableTileAnimation !== false;
+export function isFloorChunkAnimationEnabled(profile) {
+    return Boolean(profile?.animation) && floorTileSettings.floorAnimationsOn !== false;
 }
 
-export function getFloorTileAnimationInfo(profile) {
-    const enabled = isFloorTileAnimationEnabled(profile);
+export function isWallFaceAnimationEnabled(profile) {
+    return Boolean(profile?.animation) && floorTileSettings.wallAnimationsOn !== false;
+}
+
+export function getFloorChunkAnimationInfo(profile) {
+    const enabled = isFloorChunkAnimationEnabled(profile);
+    return {
+        enabled,
+        totalFrames: enabled ? getAnimationFrames(profile.animation) : 1,
+    };
+}
+
+export function getWallFaceAnimationInfo(profile) {
+    const enabled = isWallFaceAnimationEnabled(profile);
     return {
         enabled,
         totalFrames: enabled ? getAnimationFrames(profile.animation) : 1,
@@ -49,7 +61,7 @@ export function buildFloorChunkBakePayload(state, chunkCol, chunkRow) {
 
     const payload = { chunkCol, chunkRow, minX: state.obstacleGrid.minX, minY: state.obstacleGrid.minY, seed: state.floorTileSeed ?? 0, profileId };
 
-    if (isFloorTileAnimationEnabled(profile)) {
+    if (isFloorChunkAnimationEnabled(profile)) {
         payload.gameTime = state.gameTime ?? 0;
     }
 
