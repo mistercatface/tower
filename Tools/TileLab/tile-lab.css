@@ -480,6 +480,8 @@
         /* —— Map column —— */
         .col-map {
             background: var(--bg);
+            display: flex;
+            flex-direction: column;
         }
 
         .map-status {
@@ -495,6 +497,13 @@
             white-space: nowrap;
         }
 
+        .map-container {
+            flex: 1 1 0;
+            min-height: 0;
+            display: flex;
+            flex-direction: row;
+        }
+
         .map-stage {
             flex: 1 1 0;
             min-height: 0;
@@ -504,6 +513,33 @@
             background: radial-gradient(circle at center, #151a24 0%, #080a0e 100%);
             overflow: hidden;
             box-shadow: inset 0 0 40px rgba(0,0,0,0.5);
+        }
+
+        .animation-stage {
+            flex: 0 0 auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: var(--panel-solid);
+            padding: 16px;
+            border-left: 1px solid var(--border);
+            box-shadow: inset 1px 0 0 rgba(255,255,255,0.05);
+        }
+
+        .animation-stage-header {
+            font-size: 11px;
+            color: var(--muted);
+            text-transform: uppercase;
+            margin-bottom: 16px;
+            letter-spacing: 0.05em;
+        }
+
+        #animationPreviewCanvas {
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            background: #000;
         }
 
         #gamePreview {

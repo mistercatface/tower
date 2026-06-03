@@ -14,7 +14,8 @@ import {
     bindToolbarControls,
 } from "./LabToolbar.js";
 import { ensureLabWorld, getLabWorld, resetLabWorld } from "./LabWorldSession.js";
-import { initProfileEditor } from "./profile/ProfileEditor.js";
+import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEditor.js";
+import { initAnimationPreview } from "./LabAnimationPreview.js";
 
 let previewRefreshTimer = null;
 let bakeRepaintRaf = null;
@@ -148,6 +149,12 @@ function initResizer() {
 function bootstrap() {
     registerEditorProfiles().then(() => {
         initResizer();
+        
+        const animCanvas = document.getElementById("animationPreviewCanvas");
+        if (animCanvas) {
+            initAnimationPreview(animCanvas, buildProfileFromEditor);
+        }
+
         const ctrl = readControls();
         const world = ensureLabWorld(ctrl);
         applyGameDefaultsToForm(world);

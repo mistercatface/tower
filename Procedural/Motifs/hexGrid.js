@@ -47,13 +47,14 @@ function hexSignedDistance(lx, ly, size) {
 function hexMetrics(sample, config) {
     const cellWorld = config.cellWorldSize ?? 16;
     const size = cellWorld / SQRT3;
+    const apothem = size * SQRT3 * 0.5;
     const { q, r } = pixelToAxial(sample.evalX, sample.evalY, size);
     const center = axialToPixel(q, r, size);
     const lx = sample.evalX - center.x;
     const ly = sample.evalY - center.y;
     const sdf = hexSignedDistance(lx, ly, size);
     const distInside = Math.max(0, -sdf);
-    const edgeDist = distInside / Math.max(1, size * 0.5);
+    const edgeDist = distInside / Math.max(1, apothem);
     return { q, r, edgeDist, distInside, size, lx, ly };
 }
 

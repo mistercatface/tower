@@ -72,8 +72,14 @@
 
             <section class="col col-map">
                 <div class="map-status" id="gameMetaLine">WASD move · drag · wheel zoom</div>
-                <div class="map-stage" id="mapStage">
-                    <canvas id="gamePreview"></canvas>
+                <div class="map-container">
+                    <div class="map-stage" id="mapStage">
+                        <canvas id="gamePreview"></canvas>
+                    </div>
+                    <div class="animation-stage" id="animationStage">
+                        <div class="animation-stage-header">Animation Preview</div>
+                        <canvas id="animationPreviewCanvas" width="256" height="256"></canvas>
+                    </div>
                 </div>
             </section>
         </div>
