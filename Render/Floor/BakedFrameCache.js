@@ -1,3 +1,5 @@
+import { LRUCache } from "../../Core/LRUCache.js";
+
 /**
  * LRU cache of baked frame sets (arrays of ImageBitmap, or a single bitmap).
  *
@@ -7,17 +9,12 @@
  */
 export class BakedFrameCache {
     constructor(maxEntries = 512) {
-        this.maxEntries = maxEntries;
-        this.cache = new Map();
+        this._lru = new LRUCache(maxEntries);
     }
 
     get(key) {
-        const value = this.cache.get(key);
-        if (value === undefined) return null;
-        // Refresh recency.
-        this.cache.delete(key);
-        this.cache.set(key, value);
-        return value;
+        const value = this._lru.get(key);
+        return value === undefined ? null : value;
     }
 
     _closeBitmaps(value) {
@@ -31,48 +28,40 @@ export class BakedFrameCache {
         }
     }
 
-    _evictIfFull(incomingKey) {
-        if (this.cache.size >= this.maxEntries && !this.cache.has(incomingKey)) {
-            const oldestKey = this.cache.keys().next().value;
-            this._closeBitmaps(this.cache.get(oldestKey));
-            this.cache.delete(oldestKey);
-        }
-    }
-
     set(key, value) {
-        this._evictIfFull(key);
-        const existing = this.cache.get(key);
+        const existing = this._lru.peek(key);
         if (existing && existing !== value) {
             this._closeBitmaps(existing);
         }
-        this.cache.set(key, value);
+
+        const evicted = this._lru.set(key, value);
+        if (evicted) {
+            this._closeBitmaps(evicted.evictedValue);
+        }
     }
 
     /** Append baked frames without closing reused bitmaps already in the entry. */
     mergeFrames(key, frameStart, newBitmaps) {
-        const existing = this.cache.get(key);
+        const existing = this._lru.peek(key);
         if (!existing || existing[0]?.isPlaceholder) return;
 
-        this.cache.delete(key);
         const merged = existing.slice();
         for (let i = 0; i < newBitmaps.length; i++) {
             merged[frameStart + i] = newBitmaps[i];
         }
 
-        this._evictIfFull(key);
-        this.cache.set(key, merged);
+        this.set(key, merged);
     }
 
     delete(key) {
-        const existing = this.cache.get(key);
-        if (existing) {
+        const existing = this._lru.delete(key);
+        if (existing !== undefined) {
             this._closeBitmaps(existing);
-            this.cache.delete(key);
         }
     }
 
     deleteByPrefix(prefix) {
-        for (const key of [...this.cache.keys()]) {
+        for (const key of [...this._lru.keys()]) {
             if (key.startsWith(prefix)) {
                 this.delete(key);
             }
@@ -80,9 +69,9 @@ export class BakedFrameCache {
     }
 
     clear() {
-        for (const value of this.cache.values()) {
+        for (const value of this._lru.values()) {
             this._closeBitmaps(value);
         }
-        this.cache.clear();
+        this._lru.clear();
     }
 }

@@ -2,7 +2,7 @@ import { floorTileSettings, combatVisualSettings } from "../../Config/Config.js"
 import { isWorldScene } from "../../GameState/GamePhase.js";
 import { getFloorProceduralProfile } from "../../Config/floorProceduralConfig.js";
 import { chunkToWorldOrigin, getChunkSizePx, gridBoundsToChunkRange, worldBoundsToChunkRange } from "../../Spatial/Grid/ChunkGrid.js";
-import { FloorChunkCache } from "./FloorChunkCache.js";
+import { BakedFrameCache } from "./BakedFrameCache.js";
 import { TileWorkerCoordinator } from "./TileWorkerCoordinator.js";
 import {
     buildFloorChunkBakePayload,
@@ -15,7 +15,7 @@ import { nextAnimationBatchRange } from "./AnimationFrameBake.js";
 
 export class FloorTileSystem {
     constructor() {
-        this.cache = new FloorChunkCache();
+        this.cache = new BakedFrameCache(floorTileSettings.maxCachedChunks);
         this.proceduralProfileId = null;
         /** @type {Map<string, number>} */
         this._chunkBakeGeneration = new Map();
