@@ -3,6 +3,7 @@ import { getStartNodeLayout } from "../Generator/StartNodeBuilding.js";
 import { Enemy } from "../Entities/Enemy.js";
 import { fireRadioTrigger } from "../Core/EventSystem.js";
 import { isBaseStatUpgrade } from "../Progression/Upgrades.js";
+import { spawnStartNodeMapPopulation } from "./StartNodeMapSpawns.js";
 
 /** Tight range — player must be in the guard room (includes actor radii). */
 const GUARD_DIALOG_RADIUS = 52;
@@ -25,6 +26,7 @@ export function beginStartNodeIntro(state) {
     state.startNodeIntroActive = true;
     state.startNodeGuardsDialogUnlocked = false;
     spawnStartNodeGuards(state);
+    spawnStartNodeMapPopulation(state);
 }
 
 export function unlockStartNodeGuardsDialog(state) {
@@ -81,7 +83,7 @@ export function updateStartNodeIntro(state) {
 
 export function completeStartNodeIntro(state) {
     for (const enemy of state.enemies) {
-        if (enemy.isIntroGuard) {
+        if (enemy.isPassive) {
             enemy.isPassive = false;
         }
     }

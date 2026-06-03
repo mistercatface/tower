@@ -276,6 +276,8 @@ export const progressionSettings = { xpBase: 25, xpExponent: 1.5, upgradeCostMul
 export const waveSettings = {
     bossWaveInterval: 10,
     firstWaveEnemyCount: 5,
+    /** Start node: total enemies placed across the map at combat start (pod compositions). */
+    startNodeInitialEnemyCount: 200,
     postBossBaseCount: 5,
     earlyWaveCap: 10,
     postBossMultiplierEarly: 3,
