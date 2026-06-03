@@ -6,18 +6,15 @@ import { getFloorProceduralProfile } from "../../Config/floorProceduralConfig.js
 import { bakePixelsForWorldSpan, getPixelsPerWorldUnit, shouldSmoothTextureDownsample } from "../Floor/floorTextureResolution.js";
 import { animationFrameIndex, getAnimationFrames } from "../Floor/ProfileBakeResolver.js";
 import { TileWorkerCoordinator } from "../Floor/TileWorkerCoordinator.js";
-import { bakeFrameRange, nextAnimationBatchRange } from "../Floor/AnimationFrameBake.js";
+import { bakeFrameRange } from "../Floor/AnimationFrameBake.js";
 import { ProgressiveFrameCache } from "../Floor/ProgressiveFrameCache.js";
 
 const WALL_ANGLE_SPREAD = 0.002;
 
 const flatWallCache = new ProgressiveFrameCache(5000);
-/** @type {Map<string, { width: number, height: number, p1: object, p2: object, pixelsPerUnit: number }>} */
-const wallBakeContext = new Map();
 
 export function clearFlatWallFaceCache() {
     flatWallCache.clear();
-    wallBakeContext.clear();
 }
 
 const sCorner0 = { x: 0, y: 0 };
@@ -187,16 +184,23 @@ function getFlatWallCanvas(p1, p2, columns, storyCount, floorTiles, state, tileW
     const canvasWidth = Math.max(1, Math.ceil(edgeLen * pixelsPerUnit));
     const canvasHeight = bakePixelsForWorldSpan(storyCount * cellSize);
 
-    const placeholder = flatWallCache.getOrStart(key);
+    const bakeMeta = { width: canvasWidth, height: canvasHeight, p1, p2, pixelsPerUnit };
+    const placeholder = flatWallCache.getOrStart(key, bakeMeta);
     const generation = flatWallCache.getCurrentGeneration(key);
 
     const profileId = getFloorTextureProfileId(state);
     const profile = getFloorProceduralProfile(profileId);
     const isAnimated = Boolean(profile.animation);
 
-    wallBakeContext.set(key, { width: canvasWidth, height: canvasHeight, p1, p2, pixelsPerUnit });
-
     if (isAnimated) {
+        const totalFrames = getAnimationFrames(profile.animation);
+        flatWallCache.requestFill(key, (batch) => {
+            const meta = flatWallCache.getMeta(key);
+            if (!meta) return Promise.resolve([]);
+            const { width, height, p1: bakeP1, p2: bakeP2, pixelsPerUnit } = meta;
+            return floorTiles.bakeWallFace(width, height, bakeP1, bakeP2, pixelsPerUnit, state, batch);
+        }, totalFrames);
+
         floorTiles.bakeWallFace(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, state, bakeFrameRange.first()).then((firstFrameBitmaps) => {
             flatWallCache.commitFirstFrame(key, generation, firstFrameBitmaps);
         });
@@ -238,16 +242,6 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHei
         ctx.fillStyle = fillStyle;
         ctx.fill();
         return;
-    }
-
-    const totalFrames = getAnimationFrames(profile.animation);
-    if (profile.animation && wallCacheKey) {
-        flatWallCache.requestFill(wallCacheKey, (batch) => {
-            const bakeCtx = wallBakeContext.get(wallCacheKey);
-            if (!bakeCtx) return Promise.resolve([]);
-            const { width, height, p1, p2, pixelsPerUnit } = bakeCtx;
-            return floorTiles.bakeWallFace(width, height, p1, p2, pixelsPerUnit, state, batch);
-        }, totalFrames);
     }
 
     // Use the nearest already-baked frame; the loop sharpens as frames stream in.

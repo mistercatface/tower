@@ -4,9 +4,27 @@ export class ProgressiveFrameCache {
     constructor(maxEntries = 512) {
         this.maxEntries = maxEntries;
         this.cache = new Map();
+        /** Bake/load params keyed with cache entries; cleared on delete, eviction, and clear. */
+        this._meta = new Map();
         this._generation = new Map();
         this._globalGeneration = 0;
         this._pendingFill = new Map();
+    }
+
+    _dropEntry(key) {
+        this._generation.delete(key);
+        this._pendingFill.delete(key);
+        this._meta.delete(key);
+    }
+
+    setMeta(key, meta) {
+        if (this.cache.has(key)) {
+            this._meta.set(key, meta);
+        }
+    }
+
+    getMeta(key) {
+        return this._meta.get(key);
     }
 
     get(key) {
@@ -51,8 +69,7 @@ export class ProgressiveFrameCache {
             const oldestValue = this.cache.get(oldestKey);
             this._closeOrphanedBitmaps(oldestValue, null);
             this.cache.delete(oldestKey);
-            this._generation.delete(oldestKey);
-            this._pendingFill.delete(oldestKey);
+            this._dropEntry(oldestKey);
         }
         this.cache.delete(key);
         this.cache.set(key, value);
@@ -73,8 +90,7 @@ export class ProgressiveFrameCache {
         if (existing !== undefined) {
             this._closeOrphanedBitmaps(existing, null);
             this.cache.delete(key);
-            this._generation.delete(key);
-            this._pendingFill.delete(key);
+            this._dropEntry(key);
         }
     }
 
@@ -93,20 +109,26 @@ export class ProgressiveFrameCache {
         this.cache.clear();
         this._generation.clear();
         this._pendingFill.clear();
+        this._meta.clear();
     }
 
     /**
      * Retrieves the canvas array for the key. If empty, sets a placeholder and returns it.
+     * @param {string} key
+     * @param {object} [meta] — optional bake spec stored for the lifetime of this cache entry
      */
-    getOrStart(key) {
+    getOrStart(key, meta) {
         let canvases = this.get(key);
         if (canvases) return canvases;
 
         const placeholder = [{ isPlaceholder: true }];
         this.set(key, placeholder);
-        
+
         const generation = ++this._globalGeneration;
         this._generation.set(key, generation);
+        if (meta !== undefined) {
+            this._meta.set(key, meta);
+        }
 
         return placeholder;
     }
@@ -160,7 +182,14 @@ export class ProgressiveFrameCache {
         for (const [key, { fetchBatch, totalFrames }] of entries) {
             const canvases = this.peek(key);
 
-            if (!canvases || canvases[0]?.isPlaceholder || canvases.length >= totalFrames) {
+            if (!canvases) {
+                continue;
+            }
+            if (canvases[0]?.isPlaceholder) {
+                this._pendingFill.set(key, { fetchBatch, totalFrames });
+                continue;
+            }
+            if (canvases.length >= totalFrames) {
                 continue;
             }
 
