@@ -57,5 +57,6 @@ export function ensureLabWorld(ctrl, forceRegen = false) {
         focusLabNode(labWorld, nodeId);
     }
 
+    labWorld.gameTime = 0;
     return labWorld;
 }

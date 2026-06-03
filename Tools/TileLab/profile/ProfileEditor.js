@@ -709,7 +709,7 @@ function renderAnimationParams(container) {
     if (!editorState.animation.enabled) {
         const hint = document.createElement("p");
         hint.className = "editor-hint";
-        hint.textContent = "Enable animation, select a Translate layer, add tracks for X and/or Y, then press Play on the map preview.";
+        hint.textContent = "Timeline is included in export and used in-game. The map preview uses motif slider values only.";
         container.appendChild(hint);
         return;
     }
@@ -1331,6 +1331,11 @@ export function initProfileEditor({ onChange }) {
     initFolderConnection();
 }
 
-export function getActiveLabProfile() {
-    return buildProfileFromEditor();
+/** Runtime map preview: motif/warp/palette only (no timeline playback). */
+export function getLabPreviewProfile() {
+    const profile = buildProfileFromEditor();
+    if (profile?.animation) {
+        delete profile.animation;
+    }
+    return profile;
 }

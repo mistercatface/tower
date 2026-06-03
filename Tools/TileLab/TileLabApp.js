@@ -16,101 +16,97 @@ import {
 import { ensureLabWorld, getLabWorld, resetLabWorld } from "./LabWorldSession.js";
 import { initProfileEditor } from "./profile/ProfileEditor.js";
 
-let mapPreviewTimer = null;
-let fullRenderTimer = null;
-let isPlaying = true;
+let previewRefreshTimer = null;
+let bakeRepaintRaf = null;
 
-function scheduleMapPreview() {
-    if (mapPreviewTimer != null) {
-        clearTimeout(mapPreviewTimer);
-    }
-    mapPreviewTimer = setTimeout(() => {
-        mapPreviewTimer = null;
-        const ctrl = readControls();
-        const world = getLabWorld() ?? ensureLabWorld(ctrl);
-        if (world) {
-            invalidateLabCaches();
-            world.floorTiles.clear();
-            renderMapPreview(ctrl, world);
-        }
-    }, 400);
-}
-
-function renderLightweight() {
-    registerEditorProfiles().then(() => scheduleMapPreview());
-}
-
-function renderAll() {
-    registerEditorProfiles().then(() => {
-        const ctrl = readControls();
-        const world = ensureLabWorld(ctrl);
-        applyGameDefaultsToForm(world);
-
-        invalidateLabCaches();
-        world.floorTiles.clear();
-
+function redrawMapPreview() {
+    const ctrl = readControls();
+    const world = getLabWorld() ?? ensureLabWorld(ctrl);
+    if (world) {
         renderMapPreview(ctrl, world);
-    });
+    }
 }
 
-function scheduleFullRender() {
-    if (fullRenderTimer != null) {
-        clearTimeout(fullRenderTimer);
+function runBakeRepaintLoop() {
+    if (bakeRepaintRaf != null) {
+        cancelAnimationFrame(bakeRepaintRaf);
     }
-    fullRenderTimer = setTimeout(() => {
-        fullRenderTimer = null;
-        renderAll();
-    }, 300);
+    const tick = () => {
+        redrawMapPreview();
+        const world = getLabWorld();
+        if (world?.floorTiles?.hasPendingSurfaceBakes?.()) {
+            bakeRepaintRaf = requestAnimationFrame(tick);
+        } else {
+            bakeRepaintRaf = null;
+        }
+    };
+    bakeRepaintRaf = requestAnimationFrame(tick);
+}
+
+async function refreshLabPreview() {
+    const ctrl = readControls();
+    const world = getLabWorld() ?? ensureLabWorld(ctrl);
+    if (!world) {
+        return;
+    }
+    invalidateLabCaches();
+    world.floorTiles.clear();
+    await registerEditorProfiles();
+    redrawMapPreview();
+    runBakeRepaintLoop();
+}
+
+function schedulePreviewRefresh(debounceMs) {
+    if (previewRefreshTimer != null) {
+        clearTimeout(previewRefreshTimer);
+    }
+    if (debounceMs <= 0) {
+        refreshLabPreview();
+        return;
+    }
+    previewRefreshTimer = setTimeout(() => {
+        previewRefreshTimer = null;
+        refreshLabPreview();
+    }, debounceMs);
 }
 
 function handleEditorChange(options = {}) {
     if (options.reloadProfile) {
-        registerEditorProfiles().then(() => {
-            const ctrl = readControls();
-            const world = getLabWorld();
-            if (world) {
-                renderMapPreview(ctrl, world);
-            }
-        });
+        schedulePreviewRefresh(0);
         return;
     }
     if (options.lightweight) {
-        renderLightweight();
+        schedulePreviewRefresh(150);
         return;
     }
-    scheduleFullRender();
+    schedulePreviewRefresh(300);
 }
 
 function onStageResize() {
     applyGameDefaultsToForm(getLabWorld());
     syncCombatZoomToStage(getLabWorld());
+    redrawMapPreview();
 }
 
-function mapPreviewLoop() {
-    const ctrl = readControls();
-    const world = ensureLabWorld(ctrl);
-    if (world) {
-        // Same tick as combat: stream animation batches before picking a frame to draw.
-        world.floorTiles.updateFills();
-        renderMapPreview(ctrl, world);
-    }
-    requestAnimationFrame(mapPreviewLoop);
+function renderAll() {
+    refreshLabPreview().then(() => {
+        applyGameDefaultsToForm(getLabWorld());
+    });
 }
-
-function setPlayState(playing) {
-    isPlaying = playing;
-    const playBtn = document.getElementById("playBtn");
-    const pauseBtn = document.getElementById("pauseBtn");
-    if (playBtn) playBtn.disabled = playing;
-    if (pauseBtn) pauseBtn.disabled = !playing;
-}
-
-document.getElementById("playBtn")?.addEventListener("click", () => setPlayState(true));
-document.getElementById("pauseBtn")?.addEventListener("click", () => setPlayState(false));
 
 initPresetSelect(listShippedFloorProfileIds());
 initProfileEditor({ onChange: handleEditorChange });
-initMapPreviewNavigation(() => ({ ...readControls(), worldState: getLabWorld() }));
+initMapPreviewNavigation(
+    () => ({ ...readControls(), worldState: getLabWorld() }),
+    {
+        onViewChange: () => {
+            redrawMapPreview();
+            if (getLabWorld()?.floorTiles?.hasPendingSurfaceBakes?.()) {
+                runBakeRepaintLoop();
+            }
+        },
+    },
+);
 bindToolbarControls({
     onRender: () => renderAll(),
     onResetMap: resetLabWorld,
@@ -122,7 +118,7 @@ initToolbarDefaults();
 function initResizer() {
     const resizer = document.getElementById("resizer");
     if (!resizer) return;
-    
+
     let isResizing = false;
 
     resizer.addEventListener("mousedown", (e) => {
@@ -151,34 +147,14 @@ function initResizer() {
 
 function bootstrap() {
     registerEditorProfiles().then(() => {
-        setPlayState(true);
         initResizer();
-
-        requestAnimationFrame(() => {
-            const ctrl = readControls();
-            const world = ensureLabWorld(ctrl);
-            applyGameDefaultsToForm(world);
-            syncCombatZoomToStage(world);
-            mapPreviewLoop();
-            requestAnimationFrame(appLoop);
-        });
+        const ctrl = readControls();
+        const world = ensureLabWorld(ctrl);
+        applyGameDefaultsToForm(world);
+        syncCombatZoomToStage(world);
+        redrawMapPreview();
+        runBakeRepaintLoop();
     });
-}
-
-let lastRafTime = 0;
-function appLoop(timestamp) {
-    if (lastRafTime === 0) lastRafTime = timestamp;
-    const dt = timestamp - lastRafTime;
-    lastRafTime = timestamp;
-
-    if (isPlaying) {
-        const world = getLabWorld();
-        if (world) {
-            world.gameTime = (world.gameTime || 0) + dt;
-        }
-    }
-
-    requestAnimationFrame(appLoop);
 }
 
 bootstrap();

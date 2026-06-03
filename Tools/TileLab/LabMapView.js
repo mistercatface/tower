@@ -6,7 +6,7 @@ import {
     prepareGameCanvas,
     invalidateMapPreviewBakes,
 } from "./map/LabMapPreview.js";
-import { getActiveLabProfile, RUNTIME_LAB_PROFILE_ID } from "./profile/ProfileEditor.js";
+import { getLabPreviewProfile, RUNTIME_LAB_PROFILE_ID } from "./profile/ProfileEditor.js";
 import { ensureLabWorld, getLabWorld, getLabWorldMapSeed } from "./LabWorldSession.js";
 import { invalidateWallSurfaceKeyMemos } from "../../Render/Floor/FloorTileSystem.js";
 
@@ -14,7 +14,7 @@ let registerEditorProfilesSerial = Promise.resolve();
 
 export function registerEditorProfiles() {
     registerEditorProfilesSerial = registerEditorProfilesSerial.then(async () => {
-        const labProfile = getActiveLabProfile();
+        const labProfile = getLabPreviewProfile();
         registerRuntimeFloorProfile(RUNTIME_LAB_PROFILE_ID, labProfile);
         invalidateProfileScratch(RUNTIME_LAB_PROFILE_ID);
         const world = getLabWorld();

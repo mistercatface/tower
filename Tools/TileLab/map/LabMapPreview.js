@@ -185,8 +185,10 @@ export function invalidateMapPreviewBakes() {
 /**
  * WASD / arrows move player; drag moves player; wheel zoom. Camera follows player.
  * @param {() => { worldState?: object, gameZoom?: number }} getOptions
+ * @param {{ onViewChange?: () => void }} [handlers]
  */
-export function initMapPreviewNavigation(getOptions) {
+export function initMapPreviewNavigation(getOptions, handlers = {}) {
+    const onViewChange = handlers.onViewChange;
     const canvases = () => [document.getElementById("gamePreview")].filter(Boolean);
 
     const moveKeys = new Set();
@@ -222,6 +224,7 @@ export function initMapPreviewNavigation(getOptions) {
         }
         if (dx !== 0 || dy !== 0) {
             applyPlayerDelta(dx, dy);
+            onViewChange?.();
         }
         moveRaf = requestAnimationFrame(tickMove);
     };
@@ -257,6 +260,7 @@ export function initMapPreviewNavigation(getOptions) {
                 el.value = String(next);
                 document.getElementById("gameZoomValue").textContent = el.value;
             }
+            onViewChange?.();
         }, { passive: false });
 
         canvas.addEventListener("pointerdown", (e) => {
@@ -290,6 +294,7 @@ export function initMapPreviewNavigation(getOptions) {
             const dy = e.clientY - dragState.startY;
             world.player.x = dragState.playerX - dx / dragState.zoom;
             world.player.y = dragState.playerY - dy / dragState.zoom;
+            onViewChange?.();
         });
 
         const endDrag = () => {

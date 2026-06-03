@@ -65,6 +65,10 @@ export class FloorTileSystem {
         this.surfaceCache.updateFills();
     }
 
+    hasPendingSurfaceBakes() {
+        return this.surfaceCache.hasPlaceholders();
+    }
+
     _scheduleAnimatedEntry(key, meta, bakeFirstFn, bakeBatchFn) {
         const placeholder = this.surfaceCache.getOrStart(key, meta);
         const generation = this.surfaceCache.getCurrentGeneration(key);

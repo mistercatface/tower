@@ -112,6 +112,16 @@ export class ProgressiveFrameCache {
         this._meta.clear();
     }
 
+    /** True while any cached surface is still waiting on its first worker bake. */
+    hasPlaceholders() {
+        for (const value of this.cache.values()) {
+            if (Array.isArray(value) && value[0]?.isPlaceholder) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /**
      * Retrieves the canvas array for the key. If empty, sets a placeholder and returns it.
      * @param {string} key
