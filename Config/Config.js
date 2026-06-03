@@ -326,7 +326,6 @@ export const gridSettings = { cellSize: 16, width: 2400, height: 2400, minCellsP
 export const floorTileSettings = {
     cellsPerChunk: gridSettings.minCellsPerChunk,
     tileResolution: 4,
-    textureDownsampleSmoothing: false,
     viewPaddingPx: 128,
     preLoadPaddingPx: 512,
     maxCachedChunks: 512,

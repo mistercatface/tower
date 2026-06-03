@@ -9,7 +9,7 @@ export function bakePixelsForWorldSpan(worldSpan) {
 }
 
 export function shouldSmoothTextureDownsample() {
-    return getPixelsPerWorldUnit() > 1 && floorTileSettings.textureDownsampleSmoothing === true;
+    return getPixelsPerWorldUnit() > 1;
 }
 
 export function drawBakedTexture(ctx, canvas, destX, destY, destWorldW, destWorldH) {

@@ -13,22 +13,25 @@ export function initAnimationPreview(canvas, getProfileConfig) {
     ctx.imageSmoothingEnabled = false;
 
     // A simple ticker that advances gameTime based on elapsed real time.
+    let currentProfileStr = null;
+
     function tick(timestamp) {
         rafId = requestAnimationFrame(tick);
         
         const profile = getProfileConfig();
         if (!profile) return;
         
-        const enabled = Boolean(profile.animation?.enabled);
-        if (enabled !== isAnimationEnabled) {
-            isAnimationEnabled = enabled;
-            // Force redraw immediately when animation is toggled
-            lastDrawTime = 0; 
+        let forceDraw = false;
+        const profileStr = JSON.stringify(profile);
+        if (profileStr !== currentProfileStr) {
+            currentProfileStr = profileStr;
+            isAnimationEnabled = Boolean(profile.animation);
+            forceDraw = true;
         }
 
         if (!isAnimationEnabled) {
             // Draw once and stop ticking if no animation
-            if (lastDrawTime === 0) {
+            if (forceDraw || lastDrawTime === 0) {
                 drawFrame(profile, 0);
                 lastDrawTime = timestamp;
             }
@@ -37,10 +40,12 @@ export function initAnimationPreview(canvas, getProfileConfig) {
 
         const delta = timestamp - lastDrawTime;
         // Cap updates to ~30fps to save resources (or 60fps if desired, 30fps is ~33ms)
-        if (delta > 32 || lastDrawTime === 0) {
+        if (forceDraw || delta > 32 || lastDrawTime === 0) {
             const duration = getAnimationDuration(profile.animation);
-            // Advance gameTime
-            lastGameTime = (lastGameTime + delta) % duration;
+            // Advance gameTime only by actual elapsed time, not full timestamp
+            if (!forceDraw || delta <= 32) {
+                lastGameTime = (lastGameTime + delta) % duration;
+            }
             drawFrame(profile, lastGameTime);
             lastDrawTime = timestamp;
         }

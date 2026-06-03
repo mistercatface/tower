@@ -30,6 +30,7 @@ export function compileParamRef(path) {
         get(root) {
             let curr = root;
             for (const part of parts) {
+                if (curr == null) return undefined;
                 curr = curr[part];
             }
             return curr;
@@ -37,9 +38,12 @@ export function compileParamRef(path) {
         set(root, value) {
             let curr = root;
             for (let i = 0; i < parts.length - 1; i++) {
+                if (curr == null) return;
                 curr = curr[parts[i]];
             }
-            curr[parts[parts.length - 1]] = value;
+            if (curr != null) {
+                curr[parts[parts.length - 1]] = value;
+            }
         },
     };
 }
