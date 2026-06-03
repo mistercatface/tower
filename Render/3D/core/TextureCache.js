@@ -60,10 +60,6 @@ export function getTexture(src) {
     return entry?.ready ? entry.canvas : null;
 }
 
-export function isTextureReady(src) {
-    return entries.get(src)?.ready ?? false;
-}
-
 export function onTextureReady(src, fn) {
     const entry = ensureEntry(src);
     if (entry.ready) {
@@ -72,8 +68,4 @@ export function onTextureReady(src, fn) {
     }
     entry.listeners.add(fn);
     loadTexture(src);
-}
-
-export function onAnyTextureReady(fn) {
-    window.addEventListener("texture-ready", (e) => fn(e.detail.src));
 }

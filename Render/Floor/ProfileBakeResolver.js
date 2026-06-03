@@ -249,77 +249,6 @@ export function createTimelineBinding(profile) {
     };
 }
 
-/**
- * Explicit param writes, e.g. from triggers or gameplay systems.
- * @param {{ path: string, value: unknown }[]} overrides
- * @returns {Binding}
- */
-export function createParamOverrideBinding(overrides) {
-    const entries = overrides.map((override) => ({
-        ref: compileParamRef(override.path),
-        value: override.value,
-    }));
-
-    return {
-        id: "paramOverride",
-        refs: entries.map((entry) => entry.ref),
-        apply(scratch) {
-            for (const entry of entries) {
-                entry.ref.set(scratch, entry.value);
-            }
-        },
-    };
-}
-
-/**
- * Bind a world-space point to a motif param (e.g. concentricRings offset).
- * @param {string} targetPath
- * @param {(ctx: BakeContext) => { x: number, y: number } | [number, number] | null | undefined} getPoint
- * @returns {Binding}
- */
-export function createWorldPointBinding(targetPath, getPoint) {
-    const ref = compileParamRef(targetPath);
-    return {
-        id: `worldPoint:${targetPath}`,
-        refs: [ref],
-        apply(scratch, ctx) {
-            const point = getPoint(ctx);
-            if (point == null) {
-                return;
-            }
-            if (Array.isArray(point)) {
-                ref.set(scratch, point);
-                return;
-            }
-            ref.set(scratch, [point.x, point.y]);
-        },
-    };
-}
-
-/**
- * Bind separate x/y params (e.g. translate motif) from a world-space point.
- * @param {string} pathX
- * @param {string} pathY
- * @param {(ctx: BakeContext) => { x: number, y: number } | null | undefined} getPoint
- * @returns {Binding}
- */
-export function createWorldPointBindingXY(pathX, pathY, getPoint) {
-    const refX = compileParamRef(pathX);
-    const refY = compileParamRef(pathY);
-    return {
-        id: `worldPoint:${pathX},${pathY}`,
-        refs: [refX, refY],
-        apply(scratch, ctx) {
-            const point = getPoint(ctx);
-            if (point == null) {
-                return;
-            }
-            refX.set(scratch, point.x);
-            refY.set(scratch, point.y);
-        },
-    };
-}
-
 /** Collect default bindings for a bake (runtime sources first, timeline last so tracks win). */
 export function buildBakeBindings(baseProfile, ctx) {
     const bindings = [];
@@ -357,8 +286,4 @@ export function resolveBakeProfile(baseProfile, profileKey, ctx = {}) {
 /** Drop cached scratch when a runtime profile is replaced (lab edit, worker sync). */
 export function invalidateProfileScratch(profileKey) {
     scratchEntries.delete(profileKey);
-}
-
-export function clearProfileScratchCache() {
-    scratchEntries.clear();
 }

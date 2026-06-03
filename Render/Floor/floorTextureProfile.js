@@ -29,10 +29,6 @@ export function floorChunkCachePrefix(chunkCol, chunkRow, profileId) {
     return `${FLOOR_TEXTURE_CACHE_REVISION}:${getPixelsPerWorldUnit()}:${profileId}:${chunkCol},${chunkRow}`;
 }
 
-export function floorChunkCacheKey(chunkCol, chunkRow, profileId) {
-    return floorChunkCachePrefix(chunkCol, chunkRow, profileId);
-}
-
 /** Worker-serializable chunk bake payload from live game state. */
 export function buildFloorChunkBakePayload(state, chunkCol, chunkRow) {
     const profileId = getFloorTextureProfileId(state);

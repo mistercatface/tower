@@ -10,20 +10,6 @@ const RACES = {
     },
 };
 
-export const DEFAULT_CHARACTER = {
-    skinColor: "#e8c090",
-    skinLight: "#fff0d0",
-    skinDark: "#a07050",
-    eyeColor: "#4080a0",
-    eyeLight: "#60a0c0",
-    eyeDark: "#204060",
-    hairColor: null,
-    hairStyle: "none",
-    pantsColor: "#111",
-    pantsDark: "#000",
-    shoeColor: "#201008",
-};
-
 const WORLD_SEED = 42069;
 const characterCache = new Map();
 
@@ -223,8 +209,4 @@ export function getCharacterForActor(actor, seedOverride = null) {
         characterCache.set(actor.id, char);
     }
     return characterCache.get(actor.id);
-}
-
-export function clearCharacterAppearanceCache() {
-    characterCache.clear();
 }

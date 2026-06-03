@@ -89,78 +89,6 @@ export function drawRadialBand(ctx, prop, px, py, options) {
     return { projection, orientAngle: facing, slice1, slice2 };
 }
 
-export function drawRadialRibs(ctx, prop, px, py, options) {
-    const baseRadius = options.baseRadius ?? options.radius;
-    const { topRadius = null, height = DEFAULT_PROP_HEIGHT, ts, stroke, lineWidth = 1.2, facing = prop.facing, segments = RADIAL_SEGMENTS } = options;
-    const projection = projectVertical(prop.x, prop.y, px, py, height);
-    const resolvedTop = topRadius ?? baseRadius * (1 + projection.alpha);
-    const { cx, cy } = projection;
-
-    ctx.strokeStyle = stroke;
-    ctx.lineWidth = lineWidth;
-    for (const t of ts) {
-        for (let i = 0; i < segments; i++) {
-            const a0 = facing + (i / segments) * Math.PI * 2;
-            const a1 = facing + ((i + 1) / segments) * Math.PI * 2;
-            const p0 = pointOnFrustum(projection, baseRadius, resolvedTop, t, a0);
-            const p1 = pointOnFrustum(projection, baseRadius, resolvedTop, t, a1);
-            const edgeMidX = (p0.x + p1.x) / 2;
-            const edgeMidY = (p0.y + p1.y) / 2;
-            if (!isFaceVisible(px, py, cx, cy, edgeMidX, edgeMidY)) continue;
-            ctx.beginPath();
-            ctx.moveTo(p0.x, p0.y);
-            ctx.lineTo(p1.x, p1.y);
-            ctx.stroke();
-        }
-    }
-}
-
-export function drawRadialCap(ctx, prop, px, py, { radius, height = DEFAULT_PROP_HEIGHT, topRadius, capColors, stroke, lineWidth = 1.0 }) {
-    const projection = projectVertical(prop.x, prop.y, px, py, height);
-    const { topX, topY, alpha } = projection;
-    const capRadius = topRadius ?? radius * (1 + alpha);
-
-    const topGrad = ctx.createRadialGradient(topX, topY, 0, topX, topY, capRadius);
-    topGrad.addColorStop(0.0, capColors.inner);
-    topGrad.addColorStop(0.7, capColors.mid);
-    topGrad.addColorStop(1.0, capColors.outer);
-
-    ctx.fillStyle = topGrad;
-    ctx.strokeStyle = stroke;
-    ctx.lineWidth = lineWidth;
-    ctx.beginPath();
-    ctx.arc(topX, topY, capRadius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    return { projection, topX, topY, capRadius };
-}
-
-export function drawFoliageBlob(ctx, projection, { t, radius, offsetX = 0, offsetY = 0, colors, stroke, lineWidth = 0.9 }) {
-    const slice = getHeightSlice(projection, radius, t);
-    const scale = 1 + projection.alpha * t;
-    const centerX = slice.centerX + offsetX * scale;
-    const centerY = slice.centerY + offsetY * scale;
-    const { viewAngle } = projection;
-    const litX = centerX + Math.cos(viewAngle + Math.PI) * slice.size * 0.18;
-    const litY = centerY + Math.sin(viewAngle + Math.PI) * slice.size * 0.18;
-
-    const grad = ctx.createRadialGradient(litX, litY, slice.size * 0.08, centerX, centerY, slice.size);
-    grad.addColorStop(0.0, colors.highlight);
-    grad.addColorStop(0.55, colors.mid);
-    grad.addColorStop(1.0, colors.shadow);
-
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, slice.size, 0, Math.PI * 2);
-    ctx.fill();
-    if (stroke) {
-        ctx.strokeStyle = stroke;
-        ctx.lineWidth = lineWidth;
-        ctx.stroke();
-    }
-}
-
 function faceViewAngle(face, originX, originY) {
     const edgeMidX = (face.baseA.x + face.baseB.x) / 2;
     const edgeMidY = (face.baseA.y + face.baseB.y) / 2;
@@ -257,28 +185,6 @@ export function drawExtrudedBox(
         ctx.lineTo(box.topCorners[1].x, (box.topCorners[1].y + box.topCorners[3].y) / 2);
         ctx.moveTo((box.topCorners[0].x + box.topCorners[1].x) / 2, box.topCorners[0].y);
         ctx.lineTo((box.topCorners[2].x + box.topCorners[3].x) / 2, box.topCorners[2].y);
-        ctx.stroke();
-    }
-}
-
-export function drawBarkLines(ctx, prop, px, py, { radius, height, ts, stroke, lineWidth = 0.7, taper = 0.12, facing = prop.facing }) {
-    const projection = projectVertical(prop.x, prop.y, px, py, height);
-    const resolvedTop = radius * (1 + projection.alpha);
-    const { cx, cy } = projection;
-
-    ctx.strokeStyle = stroke;
-    ctx.lineWidth = lineWidth;
-    for (const t of ts) {
-        const sliceRadius = radiusAtT(radius * (1 - t * taper), resolvedTop * (1 - t * taper), t);
-        const slice = getHeightSlice(projection, sliceRadius, t);
-        const p0 = pointOnFrustum(projection, radius * (1 - t * taper), resolvedTop * (1 - t * taper), t, facing);
-        const p1 = pointOnFrustum(projection, radius * (1 - t * taper), resolvedTop * (1 - t * taper), t, facing + Math.PI / 2);
-        const edgeMidX = (p0.x + p1.x) / 2;
-        const edgeMidY = (p0.y + p1.y) / 2;
-        if (!isFaceVisible(px, py, cx, cy, edgeMidX, edgeMidY)) continue;
-        ctx.beginPath();
-        ctx.moveTo(slice.centerX - Math.cos(facing) * slice.size * 0.15, slice.centerY - Math.sin(facing) * slice.size * 0.15);
-        ctx.lineTo(slice.centerX + Math.cos(facing + Math.PI / 2) * slice.size * 0.35, slice.centerY + Math.sin(facing + Math.PI / 2) * slice.size * 0.35);
         ctx.stroke();
     }
 }

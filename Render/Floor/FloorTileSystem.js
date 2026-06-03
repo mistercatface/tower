@@ -6,7 +6,6 @@ import { FloorChunkCache } from "./FloorChunkCache.js";
 import { TileWorkerCoordinator } from "./TileWorkerCoordinator.js";
 import {
     buildFloorChunkBakePayload,
-    floorChunkCacheKey,
     floorChunkCachePrefix,
     getFloorTextureProfileId,
 } from "./floorTextureProfile.js";
@@ -42,7 +41,7 @@ export class FloorTileSystem {
         }
     }
 
-    bakeWallFace(width, height, p1, p2, pixelsPerUnit, state, { firstFrameOnly = false, frameStart, frameCount, priority = Infinity } = {}) {
+    bakeWallFace(width, height, p1, p2, pixelsPerUnit, state, { firstFrameOnly = false, frameStart, frameCount } = {}) {
         const profileId = getFloorTextureProfileId(state);
         const centerX = (p1.x + p2.x) / 2;
         const centerY = (p1.y + p2.y) / 2;
@@ -59,7 +58,7 @@ export class FloorTileSystem {
             frameCount,
             centerX,
             centerY,
-        }, priority);
+        });
     }
 
     _buildChunkPayload(state, chunkCol, chunkRow) {
@@ -74,7 +73,7 @@ export class FloorTileSystem {
         return payload;
     }
 
-    _scheduleAnimationBatch(key, payload, priority, canvases, totalFrames) {
+    _scheduleAnimationBatch(key, payload, canvases, totalFrames) {
         if (!canvases || canvases[0]?.isPlaceholder || canvases.length >= totalFrames) {
             return;
         }
@@ -96,7 +95,7 @@ export class FloorTileSystem {
             frameCount: batch.frameCount,
         };
 
-        TileWorkerCoordinator.requestFloorChunkBake(batchPayload, priority).then((bitmaps) => {
+        TileWorkerCoordinator.requestFloorChunkBake(batchPayload).then((bitmaps) => {
             this._animationBatchInFlight.delete(flightKey);
             if (this._chunkBakeGeneration.get(key) !== generation) {
                 bitmaps.forEach((b) => b.close());
@@ -111,10 +110,10 @@ export class FloorTileSystem {
         });
     }
 
-    getChunkCanvas(chunkCol, chunkRow, state, priority = Infinity, payload = null) {
+    getChunkCanvas(chunkCol, chunkRow, state, payload = null) {
         if (!payload) payload = this._buildChunkPayload(state, chunkCol, chunkRow);
 
-        const key = floorChunkCacheKey(chunkCol, chunkRow, payload.profileId);
+        const key = floorChunkCachePrefix(chunkCol, chunkRow, payload.profileId);
         let canvases = this.cache.get(key);
         if (canvases) return canvases;
 
@@ -129,7 +128,7 @@ export class FloorTileSystem {
 
         if (isAnimated) {
             const firstFramePayload = { ...payload, firstFrameOnly: true };
-            TileWorkerCoordinator.requestFloorChunkBake(firstFramePayload, priority).then((firstFrameBitmaps) => {
+            TileWorkerCoordinator.requestFloorChunkBake(firstFramePayload).then((firstFrameBitmaps) => {
                 if (this._chunkBakeGeneration.get(key) !== generation) {
                     firstFrameBitmaps.forEach((b) => b.close());
                     return;
@@ -142,7 +141,7 @@ export class FloorTileSystem {
                 }
             });
         } else {
-            TileWorkerCoordinator.requestFloorChunkBake(payload, priority).then((bitmaps) => {
+            TileWorkerCoordinator.requestFloorChunkBake(payload).then((bitmaps) => {
                 if (this._chunkBakeGeneration.get(key) !== generation) {
                     bitmaps.forEach((b) => b.close());
                     return;
@@ -194,13 +193,13 @@ export class FloorTileSystem {
 
         for (const chunk of chunksToDraw) {
             const payload = this._buildChunkPayload(state, chunk.chunkCol, chunk.chunkRow);
-            const canvases = this.getChunkCanvas(chunk.chunkCol, chunk.chunkRow, state, chunk.distSq, payload);
+            const canvases = this.getChunkCanvas(chunk.chunkCol, chunk.chunkRow, state, payload);
             let canvas = canvases[0];
             if (canvas.isPlaceholder) continue;
 
             if (profile.animation) {
-                const key = floorChunkCacheKey(chunk.chunkCol, chunk.chunkRow, profileId);
-                this._scheduleAnimationBatch(key, payload, chunk.distSq, canvases, totalFrames);
+                const key = floorChunkCachePrefix(chunk.chunkCol, chunk.chunkRow, profileId);
+                this._scheduleAnimationBatch(key, payload, canvases, totalFrames);
             }
 
             // Animate with whatever contiguous frames have baked so far; the loop

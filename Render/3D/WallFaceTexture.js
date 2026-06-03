@@ -23,9 +23,6 @@ export function clearFlatWallFaceCache() {
     wallAnimationBatchInFlight.clear();
 }
 
-let sharedCellCanvas = null;
-let sharedCellCtx = null;
-
 const sCorner0 = { x: 0, y: 0 };
 const sCorner1 = { x: 0, y: 0 };
 const sCorner2 = { x: 0, y: 0 };
@@ -71,10 +68,6 @@ export function traceProjectedFace(ctx, p1, p2, face) {
     ctx.lineTo(face.proj2X, face.proj2Y);
     ctx.lineTo(p2.x, p2.y);
     ctx.closePath();
-}
-
-function lerpPoint(a, b, t) {
-    return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
 }
 
 function getViewportWorldBounds(viewport, padding = floorTileSettings.viewPaddingPx ?? 128) {
@@ -184,7 +177,7 @@ function getWallCacheInfo(p1, p2, state, profileId, ppwu, cacheObj) {
     return info;
 }
 
-function scheduleWallAnimationBatch(key, floorTiles, state, canvases, totalFrames, priority) {
+function scheduleWallAnimationBatch(key, floorTiles, state, canvases, totalFrames) {
     if (!canvases || canvases[0]?.isPlaceholder || canvases.length >= totalFrames) {
         return;
     }
@@ -203,7 +196,6 @@ function scheduleWallAnimationBatch(key, floorTiles, state, canvases, totalFrame
     floorTiles.bakeWallFace(width, height, p1, p2, pixelsPerUnit, state, {
         frameStart: batch.frameStart,
         frameCount: batch.frameCount,
-        priority,
     }).then((bitmaps) => {
         wallAnimationBatchInFlight.delete(flightKey);
         const existing = flatWallCache.get(key);
@@ -219,7 +211,7 @@ function scheduleWallAnimationBatch(key, floorTiles, state, canvases, totalFrame
  * Per-grid-cell textures on the projected face (same variety as floor).
  * Affine quads use bleed to hide the internal triangle split.
  */
-function getFlatWallCanvas(p1, p2, columns, storyCount, floorTiles, state, tileWorldSize, key, priority = Infinity) {
+function getFlatWallCanvas(p1, p2, columns, storyCount, floorTiles, state, tileWorldSize, key) {
     let cached = flatWallCache.get(key);
     if (cached) return cached;
 
@@ -245,7 +237,6 @@ function getFlatWallCanvas(p1, p2, columns, storyCount, floorTiles, state, tileW
     if (isAnimated) {
         floorTiles.bakeWallFace(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, state, {
             firstFrameOnly: true,
-            priority,
         }).then((firstFrameBitmaps) => {
             const existing = flatWallCache.get(key);
             if (existing === placeholder) {
@@ -255,7 +246,7 @@ function getFlatWallCanvas(p1, p2, columns, storyCount, floorTiles, state, tileW
             }
         });
     } else {
-        floorTiles.bakeWallFace(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, state, { priority }).then((bitmaps) => {
+        floorTiles.bakeWallFace(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, state).then((bitmaps) => {
             const existing = flatWallCache.get(key);
             if (existing === placeholder) {
                 flatWallCache.set(key, bitmaps);
@@ -278,9 +269,6 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHei
 
     const wallCx = cacheObj && cacheObj.cx !== undefined ? cacheObj.cx : (p1.x + p2.x) * 0.5;
     const wallCy = cacheObj && cacheObj.cy !== undefined ? cacheObj.cy : (p1.y + p2.y) * 0.5;
-    const distSq = viewport
-        ? (wallCx - viewport.x) ** 2 + (wallCy - viewport.y) ** 2
-        : Infinity;
 
     const { key: wallCacheKey, wrappedP1, wrappedP2 } = getWallCacheInfo(p1, p2, state, profileId, ppwu, cacheObj);
 
@@ -290,7 +278,7 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHei
     if (!flatCanvases) {
         const columns = wallFaceColumns(wrappedP1, wrappedP2, tileWorldSize);
         if (columns.length === 0) return;
-        flatCanvases = getFlatWallCanvas(wrappedP1, wrappedP2, columns, storyCount, floorTiles, state, tileWorldSize, wallCacheKey, distSq);
+        flatCanvases = getFlatWallCanvas(wrappedP1, wrappedP2, columns, storyCount, floorTiles, state, tileWorldSize, wallCacheKey);
         if (!flatCanvases || flatCanvases.length === 0) return;
     }
 
@@ -304,7 +292,7 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHei
 
     const totalFrames = getAnimationFrames(profile.animation);
     if (profile.animation && wallCacheKey) {
-        scheduleWallAnimationBatch(wallCacheKey, floorTiles, state, flatCanvases, totalFrames, distSq);
+        scheduleWallAnimationBatch(wallCacheKey, floorTiles, state, flatCanvases, totalFrames);
     }
 
     // Use the nearest already-baked frame; the loop sharpens as frames stream in.

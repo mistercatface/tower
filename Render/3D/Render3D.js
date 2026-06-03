@@ -141,7 +141,7 @@ export class Render3D {
         this._sharedEdgeGen = (this._sharedEdgeGen || 0) + 1;
         const currentGen = this._sharedEdgeGen;
 
-        TileWorkerCoordinator.requestSharedEdges(numWalls, 0).then(() => {
+        TileWorkerCoordinator.requestSharedEdges(numWalls).then(() => {
             if (this._sharedEdgeGen !== currentGen) return;
             if (this.lastWalls !== state.walls) return;
 
