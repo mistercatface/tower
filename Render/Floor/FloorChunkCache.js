@@ -40,6 +40,25 @@ export class FloorChunkCache {
         this.cache.set(key, canvas);
     }
 
+    /** Append baked frames without closing reused bitmaps already in the cache entry. */
+    mergeFrames(key, frameStart, newBitmaps) {
+        const existing = this.cache.get(key);
+        if (!existing || existing[0]?.isPlaceholder) return;
+
+        this.cache.delete(key);
+        const merged = existing.slice();
+        for (let i = 0; i < newBitmaps.length; i++) {
+            merged[frameStart + i] = newBitmaps[i];
+        }
+
+        if (this.cache.size >= this.maxEntries) {
+            const oldestKey = this.cache.keys().next().value;
+            this._closeBitmaps(this.cache.get(oldestKey));
+            this.cache.delete(oldestKey);
+        }
+        this.cache.set(key, merged);
+    }
+
     delete(key) {
         const existing = this.cache.get(key);
         if (existing) {

@@ -6,6 +6,7 @@ import { getFloorProceduralProfile } from "../../Config/floorProceduralConfig.js
 import { bakePixelsForWorldSpan, getPixelsPerWorldUnit, shouldSmoothTextureDownsample } from "../Floor/floorTextureResolution.js";
 import { getAnimationFrameIndex, getAnimationFrames } from "../Floor/ProfileBakeResolver.js";
 import { TileWorkerCoordinator } from "../Floor/TileWorkerCoordinator.js";
+import { nextAnimationBatchRange } from "../Floor/AnimationFrameBake.js";
 
 const WALL_ANGLE_SPREAD = 0.002;
 
@@ -48,6 +49,24 @@ class LRUCache {
         this.cache.set(key, val);
     }
 
+    mergeFrames(key, frameStart, newBitmaps) {
+        const existing = this.cache.get(key);
+        if (!existing || existing[0]?.isPlaceholder) return;
+
+        this.cache.delete(key);
+        const merged = existing.slice();
+        for (let i = 0; i < newBitmaps.length; i++) {
+            merged[frameStart + i] = newBitmaps[i];
+        }
+
+        if (this.cache.size >= this.maxSize) {
+            const oldestKey = this.cache.keys().next().value;
+            this._closeBitmaps(this.cache.get(oldestKey));
+            this.cache.delete(oldestKey);
+        }
+        this.cache.set(key, merged);
+    }
+
     delete(key) {
         const existing = this.cache.get(key);
         if (existing) {
@@ -65,9 +84,15 @@ class LRUCache {
 }
 
 const flatWallCache = new LRUCache(5000);
+/** @type {Map<string, { width: number, height: number, p1: object, p2: object, pixelsPerUnit: number }>} */
+const wallBakeContext = new Map();
+/** @type {Set<string>} */
+const wallAnimationBatchInFlight = new Set();
 
 export function clearFlatWallFaceCache() {
     flatWallCache.clear();
+    wallBakeContext.clear();
+    wallAnimationBatchInFlight.clear();
 }
 
 let sharedCellCanvas = null;
@@ -180,11 +205,66 @@ function computeFaceCorner(out, p1, p2, proj1X, proj1Y, proj2X, proj2Y, u, v) {
     out.y = by + (ty - by) * v;
 }
 
+function buildWallCacheKey(p1, p2, state, profileId, ppwu) {
+    const chunkWorldSize = floorTileSettings.chunkWorldSize || (128 * 16);
+    const wx1 = ((p1.x % chunkWorldSize) + chunkWorldSize) % chunkWorldSize;
+    const wy1 = ((p1.y % chunkWorldSize) + chunkWorldSize) % chunkWorldSize;
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const wx2 = wx1 + dx;
+    const wy2 = wy1 + dy;
+
+    const kx1 = wx1.toFixed(1);
+    const ky1 = wy1.toFixed(1);
+    const kx2 = wx2.toFixed(1);
+    const ky2 = wy2.toFixed(1);
+    const seed = state.floorTileSeed ?? 0;
+    const rev = TileWorkerCoordinator.getProfileRevision(profileId);
+    const key = `v17:${ppwu}:${profileId}:${rev}:${seed}:${kx1},${ky1}-${kx2},${ky2}`;
+
+    return {
+        key,
+        wrappedP1: { x: wx1, y: wy1 },
+        wrappedP2: { x: wx2, y: wy2 },
+    };
+}
+
+function scheduleWallAnimationBatch(key, floorTiles, state, canvases, totalFrames, priority) {
+    if (!canvases || canvases[0]?.isPlaceholder || canvases.length >= totalFrames) {
+        return;
+    }
+
+    const bakeCtx = wallBakeContext.get(key);
+    if (!bakeCtx) return;
+
+    const batch = nextAnimationBatchRange(canvases.length, totalFrames);
+    if (!batch) return;
+
+    const flightKey = `${key}${batch.frameStart}`;
+    if (wallAnimationBatchInFlight.has(flightKey)) return;
+    wallAnimationBatchInFlight.add(flightKey);
+
+    const { width, height, p1, p2, pixelsPerUnit } = bakeCtx;
+    floorTiles.bakeWallFace(width, height, p1, p2, pixelsPerUnit, state, {
+        frameStart: batch.frameStart,
+        frameCount: batch.frameCount,
+        priority,
+    }).then((bitmaps) => {
+        wallAnimationBatchInFlight.delete(flightKey);
+        const existing = flatWallCache.get(key);
+        if (!existing || existing[0]?.isPlaceholder) {
+            bitmaps.forEach((b) => b.close());
+            return;
+        }
+        flatWallCache.mergeFrames(key, batch.frameStart, bitmaps);
+    });
+}
+
 /**
  * Per-grid-cell textures on the projected face (same variety as floor).
  * Affine quads use bleed to hide the internal triangle split.
  */
-function getFlatWallCanvas(p1, p2, columns, storyCount, floorTiles, state, tileWorldSize, key) {
+function getFlatWallCanvas(p1, p2, columns, storyCount, floorTiles, state, tileWorldSize, key, priority = Infinity) {
     let cached = flatWallCache.get(key);
     if (cached) return cached;
 
@@ -205,35 +285,22 @@ function getFlatWallCanvas(p1, p2, columns, storyCount, floorTiles, state, tileW
     const profile = getFloorProceduralProfile(profileId);
     const isAnimated = Boolean(profile.animation);
 
+    wallBakeContext.set(key, { width: canvasWidth, height: canvasHeight, p1, p2, pixelsPerUnit });
+
     if (isAnimated) {
-        // bake first frame immediately
-        floorTiles.bakeWallFace(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, state, true).then((firstFrameBitmaps) => {
+        floorTiles.bakeWallFace(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, state, {
+            firstFrameOnly: true,
+            priority,
+        }).then((firstFrameBitmaps) => {
             const existing = flatWallCache.get(key);
             if (existing === placeholder) {
                 flatWallCache.set(key, firstFrameBitmaps);
-            } else if (existing === firstFrameBitmaps) {
-                // Already set by a deduped promise callback, do not close
-                return;
-            } else {
+            } else if (existing !== firstFrameBitmaps) {
                 firstFrameBitmaps.forEach((b) => b.close());
-                return;
             }
-
-            // then bake all frames async
-            floorTiles.bakeWallFace(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, state, false).then((allBitmaps) => {
-                const existingNow = flatWallCache.get(key);
-                if (existingNow === firstFrameBitmaps) {
-                    flatWallCache.set(key, allBitmaps);
-                } else if (existingNow === allBitmaps) {
-                    // Already set by a deduped promise callback, do not close
-                    return;
-                } else {
-                    allBitmaps.forEach((b) => b.close());
-                }
-            });
         });
     } else {
-        floorTiles.bakeWallFace(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, state, false).then((bitmaps) => {
+        floorTiles.bakeWallFace(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, state, { priority }).then((bitmaps) => {
             const existing = flatWallCache.get(key);
             if (existing === placeholder) {
                 flatWallCache.set(key, bitmaps);
@@ -254,7 +321,14 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHei
     const ppwu = getPixelsPerWorldUnit();
     const storyCount = getWallTextureStoryCount();
 
+    const wallCx = cacheObj && cacheObj.cx !== undefined ? cacheObj.cx : (p1.x + p2.x) * 0.5;
+    const wallCy = cacheObj && cacheObj.cy !== undefined ? cacheObj.cy : (p1.y + p2.y) * 0.5;
+    const distSq = viewport
+        ? (wallCx - viewport.x) ** 2 + (wallCy - viewport.y) ** 2
+        : Infinity;
+
     let flatCanvases = null;
+    let wallCacheKey = null;
     if (cacheObj) {
         if (cacheObj._cachedCanvases && cacheObj._cachedProfileId === profileId && cacheObj._cachedPpwu === ppwu) {
             const testCanvas = cacheObj._cachedCanvases[0];
@@ -267,29 +341,14 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHei
     }
 
     if (!flatCanvases) {
-        const chunkWorldSize = floorTileSettings.chunkWorldSize || (128 * 16);
-        const wx1 = ((p1.x % chunkWorldSize) + chunkWorldSize) % chunkWorldSize;
-        const wy1 = ((p1.y % chunkWorldSize) + chunkWorldSize) % chunkWorldSize;
-        const dx = p2.x - p1.x;
-        const dy = p2.y - p1.y;
-        const wx2 = wx1 + dx;
-        const wy2 = wy1 + dy;
-
-        const kx1 = wx1.toFixed(1);
-        const ky1 = wy1.toFixed(1);
-        const kx2 = wx2.toFixed(1);
-        const ky2 = wy2.toFixed(1);
-        const seed = state.floorTileSeed ?? 0;
-        const rev = TileWorkerCoordinator.getProfileRevision(profileId);
-        const key = `v17:${ppwu}:${profileId}:${rev}:${seed}:${kx1},${ky1}-${kx2},${ky2}`;
+        const { key, wrappedP1, wrappedP2 } = buildWallCacheKey(p1, p2, state, profileId, ppwu);
+        wallCacheKey = key;
 
         flatCanvases = flatWallCache.get(key);
         if (!flatCanvases) {
-            const wrappedP1 = { x: wx1, y: wy1 };
-            const wrappedP2 = { x: wx2, y: wy2 };
             const columns = wallFaceColumns(wrappedP1, wrappedP2, tileWorldSize);
             if (columns.length === 0) return;
-            flatCanvases = getFlatWallCanvas(wrappedP1, wrappedP2, columns, storyCount, floorTiles, state, tileWorldSize, key);
+            flatCanvases = getFlatWallCanvas(wrappedP1, wrappedP2, columns, storyCount, floorTiles, state, tileWorldSize, key, distSq);
             if (!flatCanvases || flatCanvases.length === 0) return;
         }
 
@@ -297,6 +356,16 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHei
             cacheObj._cachedCanvases = flatCanvases;
             cacheObj._cachedProfileId = profileId;
             cacheObj._cachedPpwu = ppwu;
+        }
+    } else {
+        ({ key: wallCacheKey } = buildWallCacheKey(p1, p2, state, profileId, ppwu));
+    }
+
+    if (wallCacheKey) {
+        const latest = flatWallCache.get(wallCacheKey);
+        if (latest) {
+            flatCanvases = latest;
+            if (cacheObj) cacheObj._cachedCanvases = latest;
         }
     }
 
@@ -309,6 +378,10 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHei
     }
 
     const totalFrames = getAnimationFrames(profile.animation);
+    if (profile.animation && wallCacheKey) {
+        scheduleWallAnimationBatch(wallCacheKey, floorTiles, state, flatCanvases, totalFrames, distSq);
+    }
+
     if (profile.animation && flatCanvases.length >= totalFrames) {
         const currentFrame = getAnimationFrameIndex(profile.animation, state.gameTime ?? 0);
         flatCanvas = flatCanvases[Math.min(flatCanvases.length - 1, Math.max(0, currentFrame))];
@@ -325,8 +398,6 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHei
     ctx.imageSmoothingEnabled = shouldSmoothTextureDownsample();
 
     const edgeLen = cacheObj && cacheObj.edgeLen !== undefined ? cacheObj.edgeLen : Math.hypot(p2.x - p1.x, p2.y - p1.y);
-    const wallCx = cacheObj && cacheObj.cx !== undefined ? cacheObj.cx : (p1.x + p2.x) * 0.5;
-    const wallCy = cacheObj && cacheObj.cy !== undefined ? cacheObj.cy : (p1.y + p2.y) * 0.5;
     const px = state.player.x;
     const py = state.player.y;
     const dist = Math.hypot(wallCx - px, wallCy - py);

@@ -1,4 +1,5 @@
 import { listShippedFloorProfileIds, getFloorProceduralProfile } from "../../Config/floorProceduralConfig.js";
+import { frameRangeDedupeSuffix, isFirstFrameBakeRequest } from "./AnimationFrameBake.js";
 
 export const MAX_WALLS = 10000;
 export const STRIDE = 5;
@@ -30,12 +31,12 @@ export function getProfileRevision(profileId) {
 
 function chunkDedupeKey(payload) {
     const rev = getProfileRevision(payload.profileId);
-    return `chunk:${payload.profileId}:${rev}:${payload.chunkCol},${payload.chunkRow}:${payload.seed ?? 0}${payload.firstFrameOnly ? ":first" : ""}`;
+    return `chunk:${payload.profileId}:${rev}:${payload.chunkCol},${payload.chunkRow}:${payload.seed ?? 0}${frameRangeDedupeSuffix(payload)}`;
 }
 
 function wallDedupeKey(payload) {
     const rev = getProfileRevision(payload.profileId);
-    return `wall:${payload.profileId}:${rev}:${payload.p1.x.toFixed(1)},${payload.p1.y.toFixed(1)}-${payload.p2.x.toFixed(1)},${payload.p2.y.toFixed(1)}:${payload.seed ?? 0}${payload.firstFrameOnly ? ":first" : ""}`;
+    return `wall:${payload.profileId}:${rev}:${payload.p1.x.toFixed(1)},${payload.p1.y.toFixed(1)}-${payload.p2.x.toFixed(1)},${payload.p2.y.toFixed(1)}:${payload.seed ?? 0}${frameRangeDedupeSuffix(payload)}`;
 }
 
 const activeAnimationBakes = new Set();
@@ -239,7 +240,7 @@ export const TileWorkerCoordinator = {
         }
 
         let promise;
-        if (isAnimated && !payload.firstFrameOnly) {
+        if (isAnimated && !isFirstFrameBakeRequest(payload)) {
             promise = requestAnimationBake("bakeFloorChunk", payload, priority);
         } else {
             promise = sendRequest("bakeFloorChunk", payload, priority);
@@ -261,7 +262,7 @@ export const TileWorkerCoordinator = {
         }
 
         let promise;
-        if (isAnimated && !payload.firstFrameOnly) {
+        if (isAnimated && !isFirstFrameBakeRequest(payload)) {
             promise = requestAnimationBake("bakeWallFace", payload, priority);
         } else {
             promise = sendRequest("bakeWallFace", payload, priority);

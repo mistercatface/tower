@@ -4,6 +4,7 @@ import { composeFloorImage } from "../../Procedural/FloorTextureComposer.js";
 import { createWallFaceAxes, mapPixelToEval } from "./SurfaceCoordinateMapper.js";
 import { bakePixelsForWorldSpan, getPixelsPerWorldUnit } from "./floorTextureResolution.js";
 import { getAnimationFrames, resolveBakeProfile } from "./ProfileBakeResolver.js";
+import { resolveBakeFrameRange } from "./AnimationFrameBake.js";
 
 class TileMemoryPool {
     constructor() {
@@ -139,13 +140,15 @@ function chunkNeedsRuntimeResolve(profile) {
 export function bakeFloorChunkCanvases(payload) {
     const profileId = payload.profileId ?? defaultFloorProceduralProfileId;
     const baseProfile = getFloorProceduralProfile(profileId);
-    const frames = payload.firstFrameOnly ? 1 : getAnimationFrames(baseProfile.animation);
+    const totalFrames = getAnimationFrames(baseProfile.animation);
+    const { frameStart, frameCount } = resolveBakeFrameRange(payload, totalFrames);
     const { chunkCol, chunkRow, minX, minY, seed, cellsPerChunk = floorTileSettings.cellsPerChunk } = payload;
     const { x: chunkWorldX, y: chunkWorldY, bakeSize } = chunkWorldOrigin(chunkCol, chunkRow, minX, minY, cellsPerChunk);
     const useResolver = chunkNeedsRuntimeResolve(baseProfile);
     const canvases = [];
 
-    for (let frameIndex = 0; frameIndex < frames; frameIndex++) {
+    for (let i = 0; i < frameCount; i++) {
+        const frameIndex = frameStart + i;
         const canvas = new OffscreenCanvas(bakeSize, bakeSize);
         const ctx = canvas.getContext("2d");
         ctx.imageSmoothingEnabled = false;
@@ -168,9 +171,11 @@ export function bakeWallFaceCanvases(width, height, p1, p2, pixelsPerUnit, seed,
         return [bakeWallFaceCanvas(width, height, p1, p2, pixelsPerUnit, seed, profileId)];
     }
 
-    const frames = payload.firstFrameOnly ? 1 : getAnimationFrames(baseProfile.animation);
+    const totalFrames = getAnimationFrames(baseProfile.animation);
+    const { frameStart, frameCount } = resolveBakeFrameRange(payload, totalFrames);
     const canvases = [];
-    for (let frameIndex = 0; frameIndex < frames; frameIndex++) {
+    for (let i = 0; i < frameCount; i++) {
+        const frameIndex = frameStart + i;
         const bakeContext = buildBakeContextFromPayload({ ...payload, frameIndex, profileId });
         canvases.push(bakeWallFaceCanvas(width, height, p1, p2, pixelsPerUnit, seed, profileId, bakeContext));
     }
