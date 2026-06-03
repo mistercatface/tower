@@ -210,6 +210,11 @@ export class ProgressiveFrameCache {
                     return;
                 }
                 this.mergeFrames(key, batch.frameStart, bitmaps);
+
+                const merged = this.peek(key);
+                if (merged && merged.length < totalFrames) {
+                    this.requestFill(key, fetchBatch, totalFrames);
+                }
             });
         }
     }

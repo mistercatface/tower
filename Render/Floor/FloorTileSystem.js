@@ -210,6 +210,22 @@ export function buildWallCacheKey(p1, p2, state, profileId, ppwu) {
     return { key, wrappedP1: { x: wx1, y: wy1 }, wrappedP2: { x: wx2, y: wy2 } };
 }
 
+/** Drop per-edge wall cache key memo after profile revision / surface cache clear. */
+export function invalidateWallSurfaceKeyMemos(state) {
+    if (!state?.walls) return;
+    for (const seg of state.walls) {
+        const edges = seg._cachedEdges;
+        if (!edges) continue;
+        for (const edge of edges) {
+            delete edge._wkInfo;
+            delete edge._wkProfileId;
+            delete edge._wkPpwu;
+            delete edge._wkRev;
+            delete edge._wkSeed;
+        }
+    }
+}
+
 export function getWallCacheInfo(p1, p2, state, profileId, ppwu, cacheObj) {
     const seed = state.floorTileSeed ?? 0;
     const rev = TileWorkerCoordinator.getProfileRevision(profileId);

@@ -64,6 +64,16 @@ function scheduleFullRender() {
 }
 
 function handleEditorChange(options = {}) {
+    if (options.reloadProfile) {
+        registerEditorProfiles().then(() => {
+            const ctrl = readControls();
+            const world = getLabWorld();
+            if (world) {
+                renderMapPreview(ctrl, world);
+            }
+        });
+        return;
+    }
     if (options.lightweight) {
         renderLightweight();
         return;
@@ -80,6 +90,8 @@ function mapPreviewLoop() {
     const ctrl = readControls();
     const world = ensureLabWorld(ctrl);
     if (world) {
+        // Same tick as combat: stream animation batches before picking a frame to draw.
+        world.floorTiles.updateFills();
         renderMapPreview(ctrl, world);
     }
     requestAnimationFrame(mapPreviewLoop);

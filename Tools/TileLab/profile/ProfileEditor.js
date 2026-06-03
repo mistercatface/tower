@@ -1301,7 +1301,7 @@ export function initProfileEditor({ onChange }) {
         loadEditorFromProfileId(selectedId, { silent: true });
         refreshEditorPanels({ global: true });
         exportArea.value = exportProfileSnippet();
-        notifyChange({ lightweight: true });
+        notifyChange({ reloadProfile: true });
     });
 
     saveBtn.addEventListener("click", saveCurrentPreset);

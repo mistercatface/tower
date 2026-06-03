@@ -7,13 +7,26 @@ import {
     invalidateMapPreviewBakes,
 } from "./map/LabMapPreview.js";
 import { getActiveLabProfile, RUNTIME_LAB_PROFILE_ID } from "./profile/ProfileEditor.js";
-import { ensureLabWorld, getLabWorldMapSeed } from "./LabWorldSession.js";
+import { ensureLabWorld, getLabWorld, getLabWorldMapSeed } from "./LabWorldSession.js";
+import { invalidateWallSurfaceKeyMemos } from "../../Render/Floor/FloorTileSystem.js";
 
-export async function registerEditorProfiles() {
-    const labProfile = getActiveLabProfile();
-    registerRuntimeFloorProfile(RUNTIME_LAB_PROFILE_ID, labProfile);
-    invalidateProfileScratch(RUNTIME_LAB_PROFILE_ID);
-    await TileWorkerCoordinator.registerRuntimeProfile(RUNTIME_LAB_PROFILE_ID, labProfile);
+let registerEditorProfilesSerial = Promise.resolve();
+
+export function registerEditorProfiles() {
+    registerEditorProfilesSerial = registerEditorProfilesSerial.then(async () => {
+        const labProfile = getActiveLabProfile();
+        registerRuntimeFloorProfile(RUNTIME_LAB_PROFILE_ID, labProfile);
+        invalidateProfileScratch(RUNTIME_LAB_PROFILE_ID);
+        const world = getLabWorld();
+        if (world?.floorTiles) {
+            invalidateWallSurfaceKeyMemos(world);
+            world.floorTiles.clear();
+        }
+        invalidateMapPreviewBakes();
+
+        await TileWorkerCoordinator.registerRuntimeProfile(RUNTIME_LAB_PROFILE_ID, labProfile);
+    });
+    return registerEditorProfilesSerial;
 }
 
 export function invalidateLabCaches() {

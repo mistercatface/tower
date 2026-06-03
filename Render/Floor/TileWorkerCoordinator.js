@@ -263,14 +263,7 @@ export const TileWorkerCoordinator = {
         const isAnimated = Boolean(profile?.animation);
         const normalized = withBakeFrameRange(payload, profile);
 
-        const dedupeKey = chunkDedupeKey(normalized);
-        const existing = inFlightByKey.get(dedupeKey);
-        if (existing) return existing;
-
-        const promise = requestBake("bakeFloorChunk", normalized, isAnimated);
-        inFlightByKey.set(dedupeKey, promise);
-        promise.finally(() => inFlightByKey.delete(dedupeKey));
-        return promise;
+        return requestBake("bakeFloorChunk", normalized, isAnimated);
     },
 
     requestWallFaceBake(payload) {
@@ -279,14 +272,7 @@ export const TileWorkerCoordinator = {
         const isAnimated = Boolean(profile?.animation);
         const normalized = withBakeFrameRange(payload, profile);
 
-        const dedupeKey = wallDedupeKey(normalized);
-        const existing = inFlightByKey.get(dedupeKey);
-        if (existing) return existing;
-
-        const promise = requestBake("bakeWallFace", normalized, isAnimated);
-        inFlightByKey.set(dedupeKey, promise);
-        promise.finally(() => inFlightByKey.delete(dedupeKey));
-        return promise;
+        return requestBake("bakeWallFace", normalized, isAnimated);
     },
 
     registerRuntimeProfile(profileId, profile) {

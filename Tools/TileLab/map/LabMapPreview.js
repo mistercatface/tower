@@ -2,6 +2,8 @@ import { GamePhase, isWorldScene } from "../../../GameState/GamePhase.js";
 import { Render3D } from "../../../Render/3D/Render3D.js";
 import { Viewport } from "../../../Render/Viewport.js";
 import { playerBaseStats, combatVisualSettings } from "../../../Config/Config.js";
+import { TileWorkerCoordinator } from "../../../Render/Floor/TileWorkerCoordinator.js";
+import { invalidateWallSurfaceKeyMemos } from "../../../Render/Floor/FloorTileSystem.js";
 
 const render3D = new Render3D();
 let lastBakeKey = "";
@@ -56,11 +58,13 @@ function drawPlayerMarker(ctx, x, y) {
 }
 
 function maybeClearBakeCaches(worldState, profileId) {
-    const key = `${profileId}:${worldState.floorTileSeed}`;
+    const rev = TileWorkerCoordinator.getProfileRevision(profileId);
+    const key = `${profileId}:${rev}:${worldState.floorTileSeed ?? 0}`;
     if (lastBakeKey === key) {
         return;
     }
     lastBakeKey = key;
+    invalidateWallSurfaceKeyMemos(worldState);
     worldState.floorTiles.clear();
 }
 
