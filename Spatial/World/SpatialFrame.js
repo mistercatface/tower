@@ -1,4 +1,4 @@
-import { SpatialHash } from "./SpatialHash.js";
+import { EntitySpatialGrid } from "./EntitySpatialGrid.js";
 import { SpatialQuery } from "./SpatialQuery.js";
 import { wallContextFromState } from "./WallContext.js";
 import { Actor } from "../../Entities/Actor.js";
@@ -16,8 +16,7 @@ import { isMovingEntity, shouldResolveActorPushable } from "../Collision/PairBro
  */
 export class SpatialFrame {
     constructor(cellSize = 50) {
-        this.entityHash = new SpatialHash(cellSize);
-        this.entityQuery = new SpatialQuery();
+        this.entityHash = new EntitySpatialGrid(cellSize);
         this.wallQuery = new SpatialQuery();
         this.frameId = 0;
         this._wallCache = new Map();
@@ -32,14 +31,19 @@ export class SpatialFrame {
         this._pushables.length = 0;
 
         this.entityHash.clear();
+        
+        let physIdCounter = 0;
+        
         for (const actor of state.getCombatants()) {
             if (!actor?.isDead) {
+                actor._physId = physIdCounter++;
                 this.entityHash.insert(actor);
                 this._combatants.push(actor);
             }
         }
         for (const pickup of state.pickups) {
             if (pickup.isDead) continue;
+            pickup._physId = physIdCounter++;
             this.entityHash.insert(pickup);
             if (pickup.strategy?.isPushable && !pickup.isSleeping) {
                 this._pushables.push(pickup);
@@ -59,27 +63,7 @@ export class SpatialFrame {
             entity._neighbors.length = 0;
         }
 
-        let minX, minY, maxX, maxY;
-        if (entity.getBounds) {
-            const b = entity.getBounds();
-            minX = b.minX; minY = b.minY; maxX = b.maxX; maxY = b.maxY;
-        } else {
-            const r = entity.radius || 0;
-            minX = entity.x - r;
-            minY = entity.y - r;
-            maxX = entity.x + r;
-            maxY = entity.y + r;
-        }
-
-        const padding = this.entityHash.cellSize;
-        const res = this.entityQuery.collectInHashCoords(
-            this.entityHash,
-            minX - padding,
-            minY - padding,
-            maxX + padding,
-            maxY + padding,
-            entity
-        );
+        const res = this.entityHash.collectNearby(entity);
 
         for (let i = 0; i < res.length; i++) {
             entity._neighbors.push(res[i]);
