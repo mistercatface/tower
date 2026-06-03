@@ -4,6 +4,7 @@ import { drawBarrel, drawCrate, drawFireBarrel, drawCrateShard } from "./PropRec
 import { SpatialQuery } from "../../Spatial/World/SpatialQuery.js";
 import { isFaceTowardViewer } from "./math/CombatProjection.js";
 import { drawProjectedWallFace } from "./WallFaceTexture.js";
+import { TileWorkerCoordinator, wallGeometryView, wallSharedEdgesView, MAX_WALLS, STRIDE } from "../Floor/TileWorkerCoordinator.js";
 
 const VIEW_QUERY_PAD = 48;
 
@@ -63,7 +64,7 @@ export class Render3D {
             this.lastAliveCount = aliveCount;
             this.sharedEdgesDirty = false;
             this._lastQueryKey = null;
-            this.rebuildSharedEdges(state);
+            this.rebuildSharedEdgesAsync(state);
         }
     }
 
@@ -125,55 +126,40 @@ export class Render3D {
         }
     }
 
-    rebuildSharedEdges(state) {
-        const activeWalls = [];
-        for (const seg of state.walls) {
-            if (seg.isDead) continue;
-            seg.sharedEdges = [false, false, false, false];
-            const edges = this.getSegmentEdges(seg);
-            const segmentEdges = [];
-            for (let i = 0; i < 4; i++) {
-                const edge = edges[i];
-                segmentEdges.push({ p1: edge[0], p2: edge[1], cx: edge.cx, cy: edge.cy, outX: edge.outX, outY: edge.outY, seg, edgeIndex: i });
-            }
-            activeWalls.push({ seg, edges: segmentEdges });
-        }
-        const grid = new Map();
-        const cellSize = 5;
-        const getBucketKey = (x, y) => `${Math.floor(x / cellSize)},${Math.floor(y / cellSize)}`;
-        for (const w of activeWalls) {
-            for (const edge of w.edges) {
-                const key = getBucketKey(edge.cx, edge.cy);
-                if (!grid.has(key)) grid.set(key, []);
-                grid.get(key).push(edge);
+    rebuildSharedEdgesAsync(state) {
+        const walls = state.walls;
+        const numWalls = Math.min(walls.length, MAX_WALLS);
+
+        for (let i = 0; i < numWalls; i++) {
+            const seg = walls[i];
+            const offset = i * STRIDE;
+            wallGeometryView[offset] = seg.x;
+            wallGeometryView[offset + 1] = seg.y;
+            wallGeometryView[offset + 2] = seg.angle;
+            wallGeometryView[offset + 3] = seg.size;
+            wallGeometryView[offset + 4] = seg.isDead ? 1 : 0;
+            if (!seg.sharedEdges) {
+                seg.sharedEdges = [false, false, false, false];
             }
         }
-        const thresholdSq = 9.0;
-        for (const w1 of activeWalls) {
-            for (const e1 of w1.edges) {
-                if (e1.seg.sharedEdges[e1.edgeIndex]) continue;
-                const col = Math.floor(e1.cx / cellSize);
-                const row = Math.floor(e1.cy / cellSize);
-                let found = false;
-                for (let r = -1; r <= 1 && !found; r++) {
-                    for (let c = -1; c <= 1 && !found; c++) {
-                        const key = `${col + c},${row + r}`;
-                        const bucket = grid.get(key);
-                        if (!bucket) continue;
-                        for (const e2 of bucket) {
-                            if (e1 === e2) continue;
-                            const distSq = (e1.cx - e2.cx) ** 2 + (e1.cy - e2.cy) ** 2;
-                            if (distSq < thresholdSq) {
-                                e1.seg.sharedEdges[e1.edgeIndex] = true;
-                                e2.seg.sharedEdges[e2.edgeIndex] = true;
-                                found = true;
-                                break;
-                            }
-                        }
-                    }
-                }
+
+        this._sharedEdgeGen = (this._sharedEdgeGen || 0) + 1;
+        const currentGen = this._sharedEdgeGen;
+
+        TileWorkerCoordinator.requestSharedEdges(numWalls, 0).then(() => {
+            if (this._sharedEdgeGen !== currentGen) return;
+            if (this.lastWalls !== state.walls) return;
+
+            for (let i = 0; i < numWalls; i++) {
+                const seg = walls[i];
+                if (seg.isDead) continue;
+                const flags = wallSharedEdgesView[i];
+                seg.sharedEdges[0] = (flags & 1) !== 0;
+                seg.sharedEdges[1] = (flags & 2) !== 0;
+                seg.sharedEdges[2] = (flags & 4) !== 0;
+                seg.sharedEdges[3] = (flags & 8) !== 0;
             }
-        }
+        });
     }
 
     getViewQueryBounds(viewport, px, py) {

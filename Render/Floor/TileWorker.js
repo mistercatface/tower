@@ -1,6 +1,12 @@
 import { bakeFloorChunkCanvases, bakeWallFaceCanvases } from "./FloorTilePainter.js";
 import { registerRuntimeFloorProfile } from "../../Config/floorProceduralConfig.js";
 import { invalidateProfileScratch } from "./ProfileBakeResolver.js";
+import { SharedEdgeSolver } from "../3D/SharedEdgeSolver.js";
+
+let wallGeometrySab = null;
+let wallGeometryView = null;
+let wallSharedEdgesSab = null;
+let wallSharedEdgesView = null;
 
 const HANDLERS = {
     bakeFloorChunk(payload) {
@@ -14,6 +20,20 @@ const HANDLERS = {
     registerRuntimeProfile(payload) {
         registerRuntimeFloorProfile(payload.profileId, payload.profile);
         invalidateProfileScratch(payload.profileId);
+        return [];
+    },
+
+    initSharedEdgesSAB(payload) {
+        wallGeometrySab = payload.wallGeometrySab;
+        wallGeometryView = new Float32Array(wallGeometrySab);
+        wallSharedEdgesSab = payload.wallSharedEdgesSab;
+        wallSharedEdgesView = new Uint8Array(wallSharedEdgesSab);
+        return [];
+    },
+
+    rebuildSharedEdges(payload) {
+        if (!wallGeometryView) return [];
+        SharedEdgeSolver.solve(wallGeometryView, wallSharedEdgesView, payload.numWalls);
         return [];
     },
 };

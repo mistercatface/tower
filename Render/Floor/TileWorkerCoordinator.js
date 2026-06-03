@@ -1,5 +1,13 @@
 import { listShippedFloorProfileIds, getFloorProceduralProfile } from "../../Config/floorProceduralConfig.js";
 
+export const MAX_WALLS = 10000;
+export const STRIDE = 5;
+export const wallGeometrySab = new SharedArrayBuffer(MAX_WALLS * STRIDE * 4);
+export const wallGeometryView = new Float32Array(wallGeometrySab);
+export const wallSharedEdgesSab = new SharedArrayBuffer(MAX_WALLS);
+export const wallSharedEdgesView = new Uint8Array(wallSharedEdgesSab);
+
+
 const workers = [];
 const workerBusy = [];
 const jobQueue = [];
@@ -82,6 +90,11 @@ function getWorkerPool() {
 
         for (let i = 0; i < poolSize; i++) {
             const w = new Worker(new URL("./TileWorker.js", import.meta.url), { type: "module" });
+            w.postMessage({
+                id: -1,
+                type: "initSharedEdgesSAB",
+                payload: { wallGeometrySab, wallSharedEdgesSab }
+            });
             w.onmessage = (e) => {
                 const { id, bitmaps, error } = e.data;
                 const wi = workers.indexOf(w);
@@ -138,5 +151,9 @@ export const TileWorkerCoordinator = {
         registeredRuntimeProfileIds.add(profileId);
         workerReady = workerReady.then(() => broadcastRequest("registerRuntimeProfile", { profileId, profile }));
         return workerReady;
+    },
+
+    requestSharedEdges(numWalls, priority = Infinity) {
+        return sendRequest("rebuildSharedEdges", { numWalls }, priority);
     },
 };
