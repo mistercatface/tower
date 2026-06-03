@@ -28,7 +28,7 @@ export const floorProceduralProfiles = {
     circuitLoop,
 };
 
-export const START_STATION_ID = "shatteredCircuitry";
+export const START_STATION_ID = "decayedStation";
 
 export const defaultFloorProceduralProfileId = START_STATION_ID;
 

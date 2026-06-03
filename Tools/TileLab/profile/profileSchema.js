@@ -16,6 +16,8 @@ export const WARP_FIELDS = [
     { path: "warp.frequency", label: "Warp frequency", min: 0, max: 0.02, step: 0.0005 },
     { path: "warp.amplitude", label: "Warp amplitude", min: 0, max: 20, step: 1 },
     { path: "warp.octaves", label: "Warp octaves", min: 1, max: 4, step: 1 },
+    { path: "warp.sampleOffset.0", label: "Warp offset X", min: -10000, max: 10000, step: 10 },
+    { path: "warp.sampleOffset.1", label: "Warp offset Y", min: -10000, max: 10000, step: 10 },
 ];
 
 export const PALETTE_FIELDS = [

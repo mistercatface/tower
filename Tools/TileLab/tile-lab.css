@@ -314,7 +314,7 @@
         }
 
         details.editor-block > *:not(summary) {
-            padding: 10px 12px;
+            padding: 6px 10px;
             border-top: 1px solid rgba(255, 255, 255, 0.04);
         }
 
@@ -420,10 +420,10 @@
         .param-field {
             display: grid;
             grid-template-columns: 80px 1fr 40px;
-            gap: 8px;
+            gap: 6px;
             align-items: center;
-            margin-bottom: 8px;
-            font-size: 12px;
+            margin-bottom: 4px;
+            font-size: 11px;
             color: var(--text);
         }
 

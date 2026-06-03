@@ -325,7 +325,7 @@ export const gridSettings = { cellSize: 16, width: 2400, height: 2400, minCellsP
 /** Floor render chunks — one offscreen canvas per chunk, aligned to gridSettings.cellSize. */
 export const floorTileSettings = {
     cellsPerChunk: gridSettings.minCellsPerChunk,
-    tileResolution: 4,
+    tileResolution: 16,
     viewPaddingPx: 128,
     preLoadPaddingPx: 512,
     maxCachedChunks: 512,
@@ -346,7 +346,7 @@ export const combatVisualSettings = {
     gridStroke: "rgba(90, 105, 125, 0.2)",
     bloom: {
         enabled: true,
-        blur: 4,
+        blur: 2,
     }
 };
 

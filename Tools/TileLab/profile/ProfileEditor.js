@@ -297,7 +297,7 @@ export function buildProfileFromEditor(state = editorState) {
 export function exportProfileSnippet(state = editorState, varName = "myProfile") {
     const profile = buildProfileFromEditor(state);
     const json = JSON.stringify(profile, null, 4);
-    return `const ${varName} = ${json};`;
+    return `export default { ${json};`;
 }
 
 function notifyChange(options = {}) {

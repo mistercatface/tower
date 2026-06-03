@@ -1,7 +1,7 @@
-export default{
+export default {
     "warp": {
-        "frequency": 0.003,
-        "amplitude": 5,
+        "frequency": 0.01,
+        "amplitude": 0,
         "octaves": 2,
         "sampleOffset": [
             200,
@@ -15,61 +15,45 @@ export default{
             15
         ],
         "floorBase": [
-            4,
-            8,
-            12
+            32,
+            32,
+            32
         ],
         "wallBase": [
-            8,
-            15,
-            20
+            32,
+            32,
+            32
         ]
     },
     "motifs": [
         {
             "type": "fractalCracks",
             "coordinateSpace": "eval",
-            "frequency": 0.03,
-            "octaves": 2,
-            "threshold": 0.2,
-            "peak": 8,
+            "frequency": 0.036,
+            "octaves": 3,
+            "threshold": 0.59,
+            "peak": 2,
             "offset": [
                 0,
                 0
             ],
             "tint": [
                 3.7,
-                3.5,
+                3.2,
                 2.6
             ],
-            "opacity": 1,
+            "surfaceMask": "all",
             "blendMode": "add",
-            "surfaceMask": "all"
+            "opacity": 1
         },
         {
             "type": "filterHSV",
-            "hueShift": -180,
+            "hueShift": 171,
             "saturation": 5,
-            "value": 0.3,
+            "value": 1.6,
+            "surfaceMask": "all",
             "blendMode": "add",
-            "opacity": 1,
-            "surfaceMask": "all"
-        },
-        {
-            "type": "surfaceGrain",
-            "frequency": 0.225,
-            "axis": "none",
-            "axisStretch": 0.7,
-            "octaves": 2,
-            "amplitude": 5.5,
-            "tint": [
-                1,
-                1,
-                1
-            ],
-            "opacity": 1,
-            "blendMode": "add",
-            "surfaceMask": "all"
+            "opacity": 1
         },
         {
             "type": "fractalCracks",
@@ -87,25 +71,27 @@ export default{
                 1.9,
                 5
             ],
-            "opacity": 1,
+            "surfaceMask": "all",
+            "blendMode": "replace",
+            "opacity": 1
+        },
+        {
+            "type": "filterHSV",
+            "hueShift": 7,
+            "saturation": 5,
+            "value": 0,
+            "surfaceMask": "all",
             "blendMode": "add",
+            "opacity": 1
+        },
+        {
+            "type": "filterLevels",
+            "blackPoint": 0,
+            "whitePoint": 194,
+            "gamma": 0.2,
+            "blendMode": "replace",
+            "opacity": 1,
             "surfaceMask": "all"
         }
-    ],
-    "animation": {
-        "stages": [
-            {
-                "frames": 2,
-                "durationMs": 20000,
-                "tracks": [
-                    {
-                        "targetPath": "motifs[2].frequency",
-                        "startValue": 0,
-                        "endValue": 360,
-                        "easing": "linear"
-                    }
-                ]
-            }
-        ]
-    }
+    ]
 };
