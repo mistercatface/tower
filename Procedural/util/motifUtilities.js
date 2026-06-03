@@ -24,3 +24,14 @@ export function applyTint(rgb, intensity, tint) {
     rgb.g = clampByte(rgb.g + intensity * tint[1]);
     rgb.b = clampByte(rgb.b + intensity * tint[2]);
 }
+
+/**
+ * Simple 2D hash returning a pseudo-random value in [0, 1).
+ * @param {number} x
+ * @param {number} y
+ * @returns {number}
+ */
+export function hash2(x, y) {
+    const h = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453123;
+    return h - Math.floor(h);
+}

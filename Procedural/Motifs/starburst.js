@@ -1,9 +1,4 @@
-import { sampleCoords, applyTint } from "../util/motifUtilities.js";
-
-function hash2(x, y) {
-    const h = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453123;
-    return h - Math.floor(h);
-}
+import { sampleCoords, applyTint, hash2 } from "../util/motifUtilities.js";
 
 /**
  * Radial starbursts on a sparse grid. When domain-warped, they tear and smear into plasma flows or biological spores.

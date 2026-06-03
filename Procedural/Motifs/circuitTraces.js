@@ -1,9 +1,4 @@
-import { sampleCoords, applyTint } from "../util/motifUtilities.js";
-
-function hash2(x, y) {
-    const h = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453123;
-    return h - Math.floor(h);
-}
+import { sampleCoords, applyTint, hash2 } from "../util/motifUtilities.js";
 
 function distToSegment(px, py, x1, y1, x2, y2) {
     const dx = x2 - x1;
