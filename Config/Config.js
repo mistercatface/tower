@@ -332,17 +332,11 @@ export const floorTileSettings = {
     maxCachedChunks: 512,
     chunkCacheTiles: 128,
     chunkWorldSize: 128 * gridSettings.cellSize,
-    /** World size of one repeating floor tile on wall faces. */
     tileWorldSize: gridSettings.cellSize,
-    /**
-     * Global wall projection height (rendering only — not per-building).
-     * Defaults near CAMERA_HEIGHT so faces extend offscreen without a visible cap.
-     */
     wallVisualHeight: null,
-    /** Fixed vertical tile count for wall textures (camera-independent). */
     wallTextureStories: 5,
-    /** Overlap when affine-mapping wall cells (hides triangle seam). */
     wallTextureBleedPx: 1,
+    enableTileAnimation: false,
 };
 
 export const combatVisualSettings = { 

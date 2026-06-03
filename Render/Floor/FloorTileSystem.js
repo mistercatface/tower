@@ -4,9 +4,9 @@ import { getFloorProceduralProfile } from "../../Config/floorProceduralConfig.js
 import { chunkToWorldOrigin, getChunkSizePx, gridBoundsToChunkRange, worldBoundsToChunkRange } from "../../Spatial/Grid/ChunkGrid.js";
 import { ProgressiveFrameCache } from "./ProgressiveFrameCache.js";
 import { TileWorkerCoordinator } from "./TileWorkerCoordinator.js";
-import { buildFloorChunkBakePayload, floorChunkCachePrefix, getFloorTextureProfileId } from "./floorTextureProfile.js";
+import { buildFloorChunkBakePayload, floorChunkCachePrefix, getFloorTextureProfileId, getFloorTileAnimationInfo } from "./floorTextureProfile.js";
 import { drawBakedTexture, bakePixelsForWorldSpan, getPixelsPerWorldUnit } from "./floorTextureResolution.js";
-import { animationFrameIndex, getAnimationFrames } from "./ProfileBakeResolver.js";
+import { animationFrameIndex } from "./ProfileBakeResolver.js";
 import { bakeFrameRange, nextAnimationBatchRange } from "./AnimationFrameBake.js";
 
 export class FloorTileSystem {
@@ -93,13 +93,12 @@ export class FloorTileSystem {
         if (canvases) return canvases;
 
         const profile = getFloorProceduralProfile(payload.profileId);
-        const isAnimated = Boolean(profile.animation);
-        const totalFrames = getAnimationFrames(profile.animation);
+        const { enabled: isAnimated, totalFrames } = getFloorTileAnimationInfo(profile);
 
         const meta = { kind: 'chunk', payload, totalFrames };
 
         const bakeFirstFn = () => {
-            const framePayload = { ...payload, ...(isAnimated ? bakeFrameRange.first() : bakeFrameRange.all(totalFrames)) };
+            const framePayload = { ...payload, ...bakeFrameRange.first() };
             return TileWorkerCoordinator.requestFloorChunkBake(framePayload);
         };
 
@@ -126,13 +125,12 @@ export class FloorTileSystem {
 
         const profileId = getFloorTextureProfileId(state);
         const profile = getFloorProceduralProfile(profileId);
-        const isAnimated = Boolean(profile.animation);
-        const totalFrames = getAnimationFrames(profile.animation);
+        const { enabled: isAnimated, totalFrames } = getFloorTileAnimationInfo(profile);
 
         const meta = { kind: 'wall', width: canvasWidth, height: canvasHeight, p1, p2, pixelsPerUnit, totalFrames };
 
         const bakeFirstFn = () => {
-            const frameRange = isAnimated ? bakeFrameRange.first() : bakeFrameRange.all(totalFrames);
+            const frameRange = bakeFrameRange.first();
             return this.bakeWallFace(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, state, frameRange);
         };
 
@@ -176,7 +174,7 @@ export class FloorTileSystem {
 
         chunksToDraw.sort((a, b) => a.distSq - b.distSq);
 
-        const totalFrames = getAnimationFrames(profile.animation);
+        const { enabled: animationEnabled } = getFloorTileAnimationInfo(profile);
 
         for (const chunk of chunksToDraw) {
             const payload = this._buildChunkPayload(state, chunk.chunkCol, chunk.chunkRow);
@@ -184,7 +182,7 @@ export class FloorTileSystem {
             let canvas = canvases[0];
             if (canvas.isPlaceholder) continue;
 
-            if (profile.animation && canvases.length > 1) {
+            if (animationEnabled && canvases.length > 1) {
                 const currentFrame = animationFrameIndex(profile.animation, { gameTime: state.gameTime ?? 0 });
                 canvas = canvases[Math.min(canvases.length - 1, Math.max(0, currentFrame))];
             }
