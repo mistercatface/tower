@@ -22,8 +22,8 @@ export default {
     animation: {
         stages: [
             {
-                frames: 35,
-                durationMs: 2400,
+                frames: 5,
+                durationMs: 3200,
                 tracks: [
                     { targetPath: "motifs[1].ridgeThreshold", startValue: 0.11, endValue: 0.06, easing: "easeOutQuad" },
                     { targetPath: "motifs[1].peak", startValue: 10, endValue: 17, easing: "easeOutCubic" },
@@ -33,8 +33,8 @@ export default {
                 ]
             },
             {
-                frames: 35,
-                durationMs: 2400,
+                frames: 5,
+                durationMs: 3200,
                 tracks: [
                     { targetPath: "motifs[1].ridgeThreshold", startValue: 0.06, endValue: 0.15, easing: "easeInOutSine" },
                     { targetPath: "motifs[1].peak", startValue: 17, endValue: 7, easing: "easeInQuad" },
@@ -44,8 +44,8 @@ export default {
                 ]
             },
             {
-                frames: 35,
-                durationMs: 2400,
+                frames: 5,
+                durationMs: 3200,
                 tracks: [
                     { targetPath: "motifs[1].ridgeThreshold", startValue: 0.15, endValue: 0.11, easing: "easeInQuad" },
                     { targetPath: "motifs[1].peak", startValue: 7, endValue: 10, easing: "easeOutQuad" },
