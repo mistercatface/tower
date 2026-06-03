@@ -4,11 +4,7 @@ import { getFloorProceduralProfile } from "../../Config/floorProceduralConfig.js
 import { chunkToWorldOrigin, getChunkSizePx, gridBoundsToChunkRange, worldBoundsToChunkRange } from "../../Spatial/Grid/ChunkGrid.js";
 import { BakedFrameCache } from "./BakedFrameCache.js";
 import { TileWorkerCoordinator } from "./TileWorkerCoordinator.js";
-import {
-    buildFloorChunkBakePayload,
-    floorChunkCachePrefix,
-    getFloorTextureProfileId,
-} from "./floorTextureProfile.js";
+import { buildFloorChunkBakePayload, floorChunkCachePrefix, getFloorTextureProfileId } from "./floorTextureProfile.js";
 import { drawBakedTexture } from "./floorTextureResolution.js";
 import { getAnimationFrameIndex, getAnimationFrames } from "./ProfileBakeResolver.js";
 import { nextAnimationBatchRange } from "./AnimationFrameBake.js";
@@ -17,9 +13,7 @@ export class FloorTileSystem {
     constructor() {
         this.cache = new BakedFrameCache(floorTileSettings.maxCachedChunks);
         this.proceduralProfileId = null;
-        /** @type {Map<string, number>} */
         this._chunkBakeGeneration = new Map();
-        /** @type {Set<string>} */
         this._animationBatchInFlight = new Set();
         this._globalGeneration = 0;
     }
@@ -45,20 +39,7 @@ export class FloorTileSystem {
         const profileId = getFloorTextureProfileId(state);
         const centerX = (p1.x + p2.x) / 2;
         const centerY = (p1.y + p2.y) / 2;
-        return TileWorkerCoordinator.requestWallFaceBake({
-            width,
-            height,
-            p1,
-            p2,
-            pixelsPerUnit,
-            seed: state.floorTileSeed ?? 0,
-            profileId,
-            firstFrameOnly,
-            frameStart,
-            frameCount,
-            centerX,
-            centerY,
-        });
+        return TileWorkerCoordinator.requestWallFaceBake({ width, height, p1, p2, pixelsPerUnit, seed: state.floorTileSeed ?? 0, profileId, firstFrameOnly, frameStart, frameCount, centerX, centerY });
     }
 
     _buildChunkPayload(state, chunkCol, chunkRow) {
@@ -88,12 +69,7 @@ export class FloorTileSystem {
         if (this._animationBatchInFlight.has(flightKey)) return;
         this._animationBatchInFlight.add(flightKey);
 
-        const batchPayload = {
-            ...payload,
-            firstFrameOnly: false,
-            frameStart: batch.frameStart,
-            frameCount: batch.frameCount,
-        };
+        const batchPayload = { ...payload, firstFrameOnly: false, frameStart: batch.frameStart, frameCount: batch.frameCount };
 
         TileWorkerCoordinator.requestFloorChunkBake(batchPayload).then((bitmaps) => {
             this._animationBatchInFlight.delete(flightKey);
@@ -202,8 +178,6 @@ export class FloorTileSystem {
                 this._scheduleAnimationBatch(key, payload, canvases, totalFrames);
             }
 
-            // Animate with whatever contiguous frames have baked so far; the loop
-            // refines as more arrive instead of freezing on frame 0 until complete.
             if (profile.animation && canvases.length > 1) {
                 const currentFrame = getAnimationFrameIndex(profile.animation, state.gameTime ?? 0);
                 canvas = canvases[Math.min(canvases.length - 1, Math.max(0, currentFrame))];
