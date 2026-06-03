@@ -20,6 +20,10 @@ export class PickupNormalState {
 }
 
 export class PickupOnFireState {
+    blocksSleep() {
+        return true;
+    }
+
     onEnter(pickup) {
         const { maxHealth, burnDurationMs } = getBurnSettings(pickup);
         pickup.maxHealth = maxHealth;
@@ -43,6 +47,10 @@ export class PickupOnFireState {
 }
 
 export class PickupShardFlyingState {
+    blocksSleep() {
+        return true;
+    }
+
     onEnter(pickup) {
         pickup.stateTimer = 15000; // 14500ms wait + 500ms fade out
         pickup.opacity = 1.0;

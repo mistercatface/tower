@@ -9,6 +9,7 @@ export const SLEEP_ANGULAR_EPS = 0.1;
 
 export function canSleepPushable(pickup) {
     if (!pickup?.strategy?.isPushable || pickup.isDead) return false;
+    if (pickup.currentState?.blocksSleep?.()) return false;
     if (isMovingEntity(pickup)) return false;
     const w = pickup.angularVelocity || 0;
     return Math.abs(w) <= SLEEP_ANGULAR_EPS;
