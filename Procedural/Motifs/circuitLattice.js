@@ -1,21 +1,8 @@
-import { clampByte } from "../util/color.js";
 import { noise2D } from "../Noise/Perlin2D.js";
-
-function sampleCoords(sample, coordinateSpace) {
-    if (coordinateSpace === "warped") {
-        return { x: sample.lookupX, y: sample.lookupY };
-    }
-    return { x: sample.evalX, y: sample.evalY };
-}
+import { sampleCoords, applyTint } from "../util/motifUtilities.js";
 
 function ridgedNoise(x, y, octaves) {
     return Math.abs(noise2D(x, y, octaves));
-}
-
-function applyTint(rgb, intensity, tint) {
-    rgb.r = clampByte(rgb.r + intensity * tint[0]);
-    rgb.g = clampByte(rgb.g + intensity * tint[1]);
-    rgb.b = clampByte(rgb.b + intensity * tint[2]);
 }
 
 /**

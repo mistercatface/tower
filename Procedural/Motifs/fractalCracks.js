@@ -1,5 +1,5 @@
-import { clampByte } from "../util/color.js";
 import { noise2D } from "../Noise/Perlin2D.js";
+import { sampleCoords, applyTint } from "../util/motifUtilities.js";
 
 function fbmRidged(x, y, octaves) {
     let sum = 0;
@@ -45,8 +45,7 @@ export const fractalCracksMotif = {
         ],
     },
     apply(sample, rgb, config) {
-        const x = sample.evalX;
-        const y = sample.evalY;
+        const { x, y } = sampleCoords(sample, config.coordinateSpace);
         
         const freq = config.frequency ?? 0.01;
         const octaves = config.octaves ?? 3;
@@ -65,11 +64,6 @@ export const fractalCracksMotif = {
         // Apply edge smoothstep
         t = t * t * (3 - 2 * t);
 
-        const peak = config.peak ?? 10;
-        const tint = config.tint ?? [1, 1, 1];
-        
-        rgb.r = clampByte(rgb.r - t * peak * tint[0]);
-        rgb.g = clampByte(rgb.g - t * peak * tint[1]);
-        rgb.b = clampByte(rgb.b - t * peak * tint[2]);
+        applyTint(rgb, -t * (config.peak ?? 10), config.tint ?? [1, 1, 1]);
     }
 };

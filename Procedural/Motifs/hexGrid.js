@@ -1,5 +1,5 @@
-import { clampByte } from "../util/color.js";
 import { noise2D } from "../Noise/Perlin2D.js";
+import { applyTint } from "../util/motifUtilities.js";
 
 const SQRT3 = Math.sqrt(3);
 
@@ -87,9 +87,7 @@ function applyBevel(rgb, lx, ly, edgeDist, config) {
     const isTopLeft = (lx + ly) < 0;
     const peak = isTopLeft ? (config.highlightPeak ?? 8) : (config.shadowPeak ?? -6);
     const tint = config.bevelTint ?? [1, 1, 1];
-    rgb.r = clampByte(rgb.r + t * peak * tint[0]);
-    rgb.g = clampByte(rgb.g + t * peak * tint[1]);
-    rgb.b = clampByte(rgb.b + t * peak * tint[2]);
+    applyTint(rgb, t * peak, tint);
 }
 
 function applyGrout(rgb, edgeDist, config) {
@@ -99,9 +97,7 @@ function applyGrout(rgb, edgeDist, config) {
     }
     const t = (1 - edgeDist / groutW) * (config.groutPeak ?? 12);
     const tint = config.groutTint ?? [4, 2, -2];
-    rgb.r = clampByte(rgb.r + t * tint[0]);
-    rgb.g = clampByte(rgb.g + t * tint[1]);
-    rgb.b = clampByte(rgb.b + t * tint[2]);
+    applyTint(rgb, t, tint);
 }
 
 function applyWarmAccent(rgb, edgeDist, config) {
@@ -114,18 +110,14 @@ function applyWarmAccent(rgb, edgeDist, config) {
     }
     const t = (1 - edgeDist / accentW) * (config.accentPeak ?? 5);
     const tint = config.accentTint ?? [4, 1, -2];
-    rgb.r = clampByte(rgb.r + t * tint[0]);
-    rgb.g = clampByte(rgb.g + t * tint[1]);
-    rgb.b = clampByte(rgb.b + t * tint[2]);
+    applyTint(rgb, t, tint);
 }
 
 function applyCellFill(rgb, q, r, config) {
     const [jx, jy] = config.jitterOffset ?? [0, 0];
     const jitter = noise2D(q * 0.63 + jx, r * 0.47 + jy, 1);
     const delta = jitter * (config.cellVariation ?? 2);
-    rgb.r = clampByte(rgb.r + delta);
-    rgb.g = clampByte(rgb.g + delta * 0.98);
-    rgb.b = clampByte(rgb.b + delta * 1.02);
+    applyTint(rgb, delta, [1, 0.98, 1.02]);
 }
 
 /** World-aligned flat-top hex grid — grout lines continue across floor and wall bases. */

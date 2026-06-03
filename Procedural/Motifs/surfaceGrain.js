@@ -1,5 +1,5 @@
-import { clampByte } from "../util/color.js";
 import { noise2D } from "../Noise/Perlin2D.js";
+import { applyTint } from "../util/motifUtilities.js";
 
 export const surfaceGrainMotif = {
     metadata: {
@@ -34,8 +34,6 @@ export const surfaceGrainMotif = {
             nx *= config.axisStretch ?? 0.25;
         }
         const grain = noise2D(nx * freq, ny * freq, config.octaves ?? 1) * config.amplitude;
-        rgb.r = clampByte(rgb.r + grain * config.tint[0]);
-        rgb.g = clampByte(rgb.g + grain * config.tint[1]);
-        rgb.b = clampByte(rgb.b + grain * config.tint[2]);
+        applyTint(rgb, grain, config.tint);
     },
 };

@@ -1,5 +1,5 @@
-import { clampByte } from "../util/color.js";
 import { noise2D } from "../Noise/Perlin2D.js";
+import { applyTint } from "../util/motifUtilities.js";
 
 function plateMetrics(sample, config) {
     const cell = config.cellWorldSize;
@@ -22,9 +22,7 @@ function applyGrout(rgb, edgeDist, config) {
     }
     const t = (1 - edgeDist / groutW) * (config.groutPeak ?? 10);
     const tint = config.groutTint ?? [-5, -5, -4];
-    rgb.r = clampByte(rgb.r + t * tint[0]);
-    rgb.g = clampByte(rgb.g + t * tint[1]);
-    rgb.b = clampByte(rgb.b + t * tint[2]);
+    applyTint(rgb, t, tint);
 }
 
 function applyWarmAccent(rgb, edgeDist, config) {
@@ -37,18 +35,14 @@ function applyWarmAccent(rgb, edgeDist, config) {
     }
     const t = (1 - edgeDist / accentW) * (config.accentPeak ?? 5);
     const tint = config.accentTint ?? [4, 1, -2];
-    rgb.r = clampByte(rgb.r + t * tint[0]);
-    rgb.g = clampByte(rgb.g + t * tint[1]);
-    rgb.b = clampByte(rgb.b + t * tint[2]);
+    applyTint(rgb, t, tint);
 }
 
 function applyPlateFill(rgb, plateCol, plateRow, config) {
     const [jx, jy] = config.jitterOffset ?? [0, 0];
     const jitter = noise2D(plateCol * 0.71 + jx, plateRow * 0.53 + jy, 1);
     const delta = jitter * (config.plateVariation ?? 3);
-    rgb.r = clampByte(rgb.r + delta);
-    rgb.g = clampByte(rgb.g + delta * 0.95);
-    rgb.b = clampByte(rgb.b + delta * 1.05);
+    applyTint(rgb, delta, [1, 0.95, 1.05]);
 }
 
 function applyRivets(rgb, localX, localY, plateW, plateH, config) {
@@ -71,9 +65,7 @@ function applyRivets(rgb, localX, localY, plateW, plateH, config) {
     const dx = Math.min(nx, spacing - nx) / (radius * spacing);
     const dy = Math.min(ny, spacing - ny) / (radius * spacing);
     const t = (1 - Math.max(dx, dy)) * peak;
-    rgb.r = clampByte(rgb.r + t * tint[0]);
-    rgb.g = clampByte(rgb.g + t * tint[1]);
-    rgb.b = clampByte(rgb.b + t * tint[2]);
+    applyTint(rgb, t, tint);
 }
 
 /** World-aligned deck plates (grout, fill jitter, optional rivets). */

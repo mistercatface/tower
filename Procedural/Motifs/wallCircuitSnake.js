@@ -1,5 +1,5 @@
-import { clampByte } from "../util/color.js";
 import { noise2D } from "../Noise/Perlin2D.js";
+import { applyTint } from "../util/motifUtilities.js";
 
 /**
  * Horizontal-ish circuit traces on walls. Uses world eval coords so the base edge
@@ -52,8 +52,6 @@ export const wallCircuitSnakeMotif = {
         }
 
         const intensity = (1.0 - value / config.threshold) * config.peak;
-        rgb.r = clampByte(rgb.r + intensity * config.tint[0]);
-        rgb.g = clampByte(rgb.g + intensity * config.tint[1]);
-        rgb.b = clampByte(rgb.b + intensity * config.tint[2]);
+        applyTint(rgb, intensity, config.tint);
     },
 };

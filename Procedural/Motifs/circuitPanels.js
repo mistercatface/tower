@@ -1,11 +1,4 @@
-import { clampByte } from "../util/color.js";
-
-function sampleCoords(sample, coordinateSpace) {
-    if (coordinateSpace === "warped") {
-        return { x: sample.lookupX, y: sample.lookupY };
-    }
-    return { x: sample.evalX, y: sample.evalY };
-}
+import { sampleCoords, applyTint } from "../util/motifUtilities.js";
 
 function hash2(x, y) {
     const h = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453123;
@@ -87,9 +80,7 @@ export const circuitPanelsMotif = {
             // Sunken panels are darker
             delta -= (config.sunkenDarken ?? 6);
         }
-        rgb.r = clampByte(rgb.r + delta);
-        rgb.g = clampByte(rgb.g + delta);
-        rgb.b = clampByte(rgb.b + delta);
+        applyTint(rgb, delta, [1, 1, 1]);
         
         // 4. Panel bevel / border (make it look 3D and panel-like!)
         const groutWidth = config.groutWidth ?? 0.08;
@@ -98,9 +89,7 @@ export const circuitPanelsMotif = {
             const t = (1.0 - edgeDist / groutWidth);
             const peak = config.groutPeak ?? -10; // negative peak to darken grout lines
             const tint = config.groutTint ?? [1, 1, 1];
-            rgb.r = clampByte(rgb.r + t * peak * tint[0]);
-            rgb.g = clampByte(rgb.g + t * peak * tint[1]);
-            rgb.b = clampByte(rgb.b + t * peak * tint[2]);
+            applyTint(rgb, t * peak, tint);
         } else {
             // Draw a subtle inner highlights (inner bevel) just inside the grout line
             const bevelWidth = config.bevelWidth ?? 0.05;
@@ -120,9 +109,7 @@ export const circuitPanelsMotif = {
                 }
                 
                 const tint = config.bevelTint ?? [1, 1, 1];
-                rgb.r = clampByte(rgb.r + t * peak * tint[0]);
-                rgb.g = clampByte(rgb.g + t * peak * tint[1]);
-                rgb.b = clampByte(rgb.b + t * peak * tint[2]);
+                applyTint(rgb, t * peak, tint);
             }
         }
         
@@ -143,9 +130,7 @@ export const circuitPanelsMotif = {
                 if (rDist < rivetRadius) {
                     const t = (1.0 - rDist / rivetRadius) * (config.rivetPeak ?? 6);
                     const tint = config.rivetTint ?? [1.5, 1.5, 2.0]; // glowing blue/teal rivets
-                    rgb.r = clampByte(rgb.r + t * tint[0]);
-                    rgb.g = clampByte(rgb.g + t * tint[1]);
-                    rgb.b = clampByte(rgb.b + t * tint[2]);
+                    applyTint(rgb, t, tint);
                 }
             }
         }

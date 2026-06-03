@@ -1,4 +1,4 @@
-import { clampByte } from "../util/color.js";
+import { applyTint } from "../util/motifUtilities.js";
 
 /**
  * Recessed module bays on wall faces (wallU/wallV). Reads as layered tech panels top-down.
@@ -50,9 +50,7 @@ export const panelBayMotif = {
 
         if (distToEdge >= inset) {
             const interior = config.interiorDarken ?? 7;
-            rgb.r = clampByte(rgb.r - interior);
-            rgb.g = clampByte(rgb.g - interior);
-            rgb.b = clampByte(rgb.b - interior * (config.interiorCool ?? 1.05));
+            applyTint(rgb, -interior, [1, 1, config.interiorCool ?? 1.05]);
             return;
         }
 
@@ -63,22 +61,16 @@ export const panelBayMotif = {
         if (distToEdgeU < frame || distToEdgeV < frame) {
             const rim = (1 - Math.min(distToEdgeU, distToEdgeV) / frame) * (config.rimPeak ?? 6);
             const [tr, tg, tb] = config.rimTint ?? [0.35, 0.9, 1.3];
-            rgb.r = clampByte(rgb.r + rim * tr);
-            rgb.g = clampByte(rgb.g + rim * tg);
-            rgb.b = clampByte(rgb.b + rim * tb);
+            applyTint(rgb, rim, [tr, tg, tb]);
             return;
         }
 
         const hi = config.highlightPeak ?? 5;
         const sh = config.shadowPeak ?? 6;
         if (localV < 0.5) {
-            rgb.r = clampByte(rgb.r + bevelSq * hi);
-            rgb.g = clampByte(rgb.g + bevelSq * hi);
-            rgb.b = clampByte(rgb.b + bevelSq * hi * (config.coolBias ?? 1.04));
+            applyTint(rgb, bevelSq * hi, [1, 1, config.coolBias ?? 1.04]);
         } else {
-            rgb.r = clampByte(rgb.r - bevelSq * sh);
-            rgb.g = clampByte(rgb.g - bevelSq * sh);
-            rgb.b = clampByte(rgb.b - bevelSq * sh * (config.coolBias ?? 1.04));
+            applyTint(rgb, -bevelSq * sh, [1, 1, config.coolBias ?? 1.04]);
         }
     },
 };

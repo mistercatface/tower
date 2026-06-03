@@ -1,5 +1,5 @@
-import { clampByte } from "../util/color.js";
 import { noise2D } from "../Noise/Perlin2D.js";
+import { applyTint } from "../util/motifUtilities.js";
 
 export const panelGridMotif = {
     metadata: {
@@ -38,8 +38,6 @@ export const panelGridMotif = {
             noise2D(sample.evalX * config.variationFrequency, sample.evalY * config.variationFrequency, 1) *
             config.variationAmplitude;
         const t = (1.0 - edgeDist / config.groutWidth) * (config.peak + variation);
-        rgb.r = clampByte(rgb.r + t * config.tint[0]);
-        rgb.g = clampByte(rgb.g + t * config.tint[1]);
-        rgb.b = clampByte(rgb.b + t * config.tint[2]);
+        applyTint(rgb, t, config.tint);
     },
 };

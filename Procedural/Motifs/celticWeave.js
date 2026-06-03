@@ -1,17 +1,4 @@
-import { clampByte } from "../util/color.js";
-
-function sampleCoords(sample, coordinateSpace) {
-    if (coordinateSpace === "warped") {
-        return { x: sample.lookupX, y: sample.lookupY };
-    }
-    return { x: sample.evalX, y: sample.evalY };
-}
-
-function applyTint(rgb, intensity, tint) {
-    rgb.r = clampByte(rgb.r + intensity * tint[0]);
-    rgb.g = clampByte(rgb.g + intensity * tint[1]);
-    rgb.b = clampByte(rgb.b + intensity * tint[2]);
-}
+import { sampleCoords, applyTint } from "../util/motifUtilities.js";
 
 function hash2(x, y) {
     const h = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453123;
