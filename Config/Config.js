@@ -339,7 +339,7 @@ export const floorTileSettings = {
      */
     wallVisualHeight: null,
     /** Fixed vertical tile count for wall textures (camera-independent). */
-    wallTextureStories: 7,
+    wallTextureStories: 5,
     /** Overlap when affine-mapping wall cells (hides triangle seam). */
     wallTextureBleedPx: 1,
 };
@@ -351,7 +351,7 @@ export const combatVisualSettings = {
     gridStroke: "rgba(90, 105, 125, 0.2)",
     bloom: {
         enabled: true,
-        blur: 8,
+        blur: 4,
     }
 };
 
