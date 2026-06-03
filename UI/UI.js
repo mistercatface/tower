@@ -111,11 +111,14 @@ function getUpgradeButtonHTML(leftText, rightText, rightColor, statText) {
     `;
 }
 
-function setTextIfDifferent(id, text) {
+const hudLabelCache = {};
+
+function setHudLabel(id, text) {
+    const next = String(text);
+    if (hudLabelCache[id] === next) return;
+    hudLabelCache[id] = next;
     const el = elements[id];
-    if (el && el.innerText != text) {
-        el.innerText = text;
-    }
+    if (el) el.textContent = next;
 }
 
 export function showSectorCleared(node, rewardText) {
@@ -261,17 +264,16 @@ export function updateHud(state, upgrades) {
     } else if (isCombat(state.phase) && currentNode) {
         waveTextVal = `${state.waveManager.sectorWave}/${currentNode.wavesTotal}`;
     }
-    setTextIfDifferent("waveDisplay", waveTextVal);
-
-    setTextIfDifferent("killsDisplay", state.kills);
-    setTextIfDifferent("scoreDisplay", state.score);
-    setTextIfDifferent("levelDisplay", state.level);
+    setHudLabel("waveDisplay", waveTextVal);
+    setHudLabel("killsDisplay", state.kills);
+    setHudLabel("scoreDisplay", state.score);
+    setHudLabel("levelDisplay", state.level);
 
     const nextPerk = perkMilestones.find((m) => m > state.highestLevelReached);
     if (elements.nextPerkDisplay) elements.nextPerkDisplay.innerText = nextPerk ? `Next Perk: Level ${nextPerk}` : "All Perks Claimed";
 
     const xpNeeded = xpForLevel(state.level);
-    setTextIfDifferent("xpDisplay", `${state.xp}/${xpNeeded}`);
+    setHudLabel("xpDisplay", `${state.xp}/${xpNeeded}`);
 
     const healthRatio = state.player.health / state.player.maxHealth;
 

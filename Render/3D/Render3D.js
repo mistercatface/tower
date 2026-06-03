@@ -37,14 +37,29 @@ export class Render3D {
                 [corners[2], corners[3]],
                 [corners[3], corners[0]],
             ];
+            for (let i = 0; i < 4; i++) {
+                const edge = seg.edges[i];
+                const p1 = edge[0];
+                const p2 = edge[1];
+                edge.edgeLen = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+                edge.cx = (p1.x + p2.x) / 2;
+                edge.cy = (p1.y + p2.y) / 2;
+                edge.outX = edge.cx - seg.x;
+                edge.outY = edge.cy - seg.y;
+            }
         }
         return seg.edges;
     }
 
     updateSharedEdges(state) {
-        const aliveCount = state.walls.reduce((acc, seg) => acc + (seg.isDead ? 0 : 1), 0);
-        if (state.walls !== this.lastWalls || aliveCount !== this.lastAliveCount || this.sharedEdgesDirty) {
-            this.lastWalls = state.walls;
+        let aliveCount = 0;
+        const walls = state.walls;
+        const len = walls.length;
+        for (let i = 0; i < len; i++) {
+            if (!walls[i].isDead) aliveCount++;
+        }
+        if (walls !== this.lastWalls || aliveCount !== this.lastAliveCount || this.sharedEdgesDirty) {
+            this.lastWalls = walls;
             this.lastAliveCount = aliveCount;
             this.sharedEdgesDirty = false;
             this._lastQueryKey = null;
@@ -64,7 +79,7 @@ export class Render3D {
         return `rgb(${r}, ${g}, ${b})`;
     }
 
-    drawWallFace(ctx, seg, p1, p2, px, py, state, viewport, options = {}) {
+    drawWallFace(ctx, seg, p1, p2, px, py, state, viewport, options = {}, cacheObj = null) {
         const wallColor = this.getWallColor(seg, THEME_COLORS[0], 1.0);
         const healthRatio = seg.health / seg.maxHealth;
         const damageAlpha = healthRatio < 1 ? (1 - healthRatio) * 0.45 : 0;
@@ -73,6 +88,7 @@ export class Render3D {
             viewport,
             damageAlpha,
             textureEnabled,
+            cacheObj,
         });
     }
 
@@ -81,12 +97,11 @@ export class Render3D {
         if (!seg.sharedEdges) seg.sharedEdges = [false, false, false, false];
         for (let i = 0; i < 4; i++) {
             if (seg.sharedEdges[i]) continue;
-            const p1 = edges[i][0];
-            const p2 = edges[i][1];
-            const edgeCx = (p1.x + p2.x) / 2;
-            const edgeCy = (p1.y + p2.y) / 2;
-            if (!isFaceTowardViewer(edgeCx, edgeCy, seg.x, seg.y, px, py)) continue;
-            this.drawWallFace(ctx, seg, p1, p2, px, py, state, viewport, options);
+            const edge = edges[i];
+            const viewX = edge.cx - px;
+            const viewY = edge.cy - py;
+            if (edge.outX * viewX + edge.outY * viewY >= 0) continue;
+            this.drawWallFace(ctx, seg, edge[0], edge[1], px, py, state, viewport, options, edge);
         }
     }
 
@@ -118,11 +133,8 @@ export class Render3D {
             const edges = this.getSegmentEdges(seg);
             const segmentEdges = [];
             for (let i = 0; i < 4; i++) {
-                const p1 = edges[i][0];
-                const p2 = edges[i][1];
-                const edgeCx = (p1.x + p2.x) / 2;
-                const edgeCy = (p1.y + p2.y) / 2;
-                segmentEdges.push({ p1, p2, cx: edgeCx, cy: edgeCy, outX: edgeCx - seg.x, outY: edgeCy - seg.y, seg, edgeIndex: i });
+                const edge = edges[i];
+                segmentEdges.push({ p1: edge[0], p2: edge[1], cx: edge.cx, cy: edge.cy, outX: edge.outX, outY: edge.outY, seg, edgeIndex: i });
             }
             activeWalls.push({ seg, edges: segmentEdges });
         }

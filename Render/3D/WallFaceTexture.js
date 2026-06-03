@@ -213,30 +213,55 @@ function getFlatWallCanvas(p1, p2, columns, storyCount, floorTiles, state, tileW
     return placeholder;
 }
 
-function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHeight) {
+function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHeight, fillStyle, cacheObj = null) {
     const tileWorldSize = floorTileSettings.tileWorldSize ?? gridSettings.cellSize;
     if (!floorTiles || !state) return;
 
     const profileId = getFloorTextureProfileId(state);
     const ppwu = getPixelsPerWorldUnit();
-    const kx1 = p1.x.toFixed(1);
-    const ky1 = p1.y.toFixed(1);
-    const kx2 = p2.x.toFixed(1);
-    const ky2 = p2.y.toFixed(1);
-    const key = `v14:${ppwu}:${profileId}:${kx1},${ky1}-${kx2},${ky2}`;
-
     const storyCount = getWallTextureStoryCount();
-    let flatCanvases = flatWallCache.get(key);
+
+    let flatCanvases = null;
+    if (cacheObj) {
+        if (cacheObj._cachedCanvases && cacheObj._cachedProfileId === profileId && cacheObj._cachedPpwu === ppwu) {
+            const testCanvas = cacheObj._cachedCanvases[0];
+            if (testCanvas && !testCanvas.isPlaceholder && testCanvas.width === 0) {
+                cacheObj._cachedCanvases = null;
+            } else {
+                flatCanvases = cacheObj._cachedCanvases;
+            }
+        }
+    }
+
     if (!flatCanvases) {
-        const columns = wallFaceColumns(p1, p2, tileWorldSize);
-        if (columns.length === 0) return;
-        flatCanvases = getFlatWallCanvas(p1, p2, columns, storyCount, floorTiles, state, tileWorldSize, key);
-        if (!flatCanvases || flatCanvases.length === 0) return;
+        const kx1 = p1.x.toFixed(1);
+        const ky1 = p1.y.toFixed(1);
+        const kx2 = p2.x.toFixed(1);
+        const ky2 = p2.y.toFixed(1);
+        const key = `v14:${ppwu}:${profileId}:${kx1},${ky1}-${kx2},${ky2}`;
+
+        flatCanvases = flatWallCache.get(key);
+        if (!flatCanvases) {
+            const columns = wallFaceColumns(p1, p2, tileWorldSize);
+            if (columns.length === 0) return;
+            flatCanvases = getFlatWallCanvas(p1, p2, columns, storyCount, floorTiles, state, tileWorldSize, key);
+            if (!flatCanvases || flatCanvases.length === 0) return;
+        }
+
+        if (cacheObj && flatCanvases[0] && !flatCanvases[0].isPlaceholder) {
+            cacheObj._cachedCanvases = flatCanvases;
+            cacheObj._cachedProfileId = profileId;
+            cacheObj._cachedPpwu = ppwu;
+        }
     }
 
     const profile = getFloorProceduralProfile(profileId);
     let flatCanvas = flatCanvases[0];
-    if (!flatCanvas || flatCanvas.isPlaceholder) return; // Skip if it's not ready
+    if (!flatCanvas || flatCanvas.isPlaceholder) {
+        ctx.fillStyle = fillStyle;
+        ctx.fill();
+        return;
+    }
 
     if (profile.animation && flatCanvases.length > 1) {
         const currentFrame = getAnimationFrameIndex(profile.animation, state.gameTime ?? 0);
@@ -254,16 +279,17 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHei
     ctx.imageSmoothingEnabled = shouldSmoothTextureDownsample();
 
     // Compute Level of Detail (LOD) based on player distance to wall center
-    const wallCx = (p1.x + p2.x) * 0.5;
-    const wallCy = (p1.y + p2.y) * 0.5;
+    const edgeLen = (cacheObj && cacheObj.edgeLen !== undefined) ? cacheObj.edgeLen : Math.hypot(p2.x - p1.x, p2.y - p1.y);
+    const wallCx = (cacheObj && cacheObj.cx !== undefined) ? cacheObj.cx : (p1.x + p2.x) * 0.5;
+    const wallCy = (cacheObj && cacheObj.cy !== undefined) ? cacheObj.cy : (p1.y + p2.y) * 0.5;
     const px = state.player.x;
     const py = state.player.y;
     const dist = Math.hypot(wallCx - px, wallCy - py);
 
-    // subdivScale ranges from 1.0 (distance <= 100) down to 0.15 (distance >= 500)
-    const subdivScale = Math.max(0.15, Math.min(1.0, 1.0 - (dist - 100) / 400));
+    // subdivScale ranges from 1.0 (distance <= 80) down to 0.05 (distance >= 400)
+    const subdivScale = Math.max(0.05, Math.min(1.0, 1.0 - (dist - 80) / 320));
 
-    const SUBDIV_X = Math.max(1, Math.min(8, Math.ceil((Math.hypot(p2.x - p1.x, p2.y - p1.y) / tileWorldSize) * subdivScale)));
+    const SUBDIV_X = Math.max(1, Math.min(8, Math.ceil((edgeLen / tileWorldSize) * subdivScale)));
     const SUBDIV_Y = Math.max(1, Math.min(8, Math.ceil((storyCount / 2) * subdivScale)));
 
     for (let row = 0; row < SUBDIV_Y; row++) {
@@ -305,11 +331,16 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHei
     ctx.restore();
 }
 
-export function drawProjectedWallFace(ctx, p1, p2, px, py, fillStyle, floorTiles, state, { viewport = null, damageAlpha = 0, textureEnabled = true } = {}) {
+export function drawProjectedWallFace(ctx, p1, p2, px, py, fillStyle, floorTiles, state, { viewport = null, damageAlpha = 0, textureEnabled = true, cacheObj = null } = {}) {
     const wallHeight = getWallVisualHeight();
     const face = computeProjectedFace(p1, p2, px, py, wallHeight);
     traceProjectedFace(ctx, p1, p2, face);
-    if (floorTiles && textureEnabled) drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHeight);
+    if (floorTiles && textureEnabled) {
+        drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHeight, fillStyle, cacheObj);
+    } else {
+        ctx.fillStyle = fillStyle;
+        ctx.fill();
+    }
     if (damageAlpha > 0) {
         ctx.save();
         traceProjectedFace(ctx, p1, p2, face);
