@@ -4,7 +4,6 @@ import { composeFloorImage } from "../../Procedural/FloorTextureComposer.js";
 import { buildMapContext, createWallFaceAxes, writePixelToSamples } from "./SurfaceCoordinateMapper.js";
 import { bakePixelsForWorldSpan, getPixelsPerWorldUnit } from "./floorTextureResolution.js";
 import { getAnimationFrames, resolveBakeProfile } from "./ProfileBakeResolver.js";
-import { resolveBakeFrameRange } from "./AnimationFrameBake.js";
 
 class TileMemoryPool {
     constructor() {
@@ -97,7 +96,6 @@ export function bakeWallFaceCanvas(width, height, p1, p2, pixelsPerUnit, seed, p
     const canvas = new OffscreenCanvas(width, height);
     const ctx = canvas.getContext("2d");
     ctx.imageSmoothingEnabled = false;
-
     if (payload) {
         const profileKey = typeof profileOrId === "string" ? profileOrId : defaultFloorProceduralProfileId;
         const baseProfile = resolvePaintProfile(profileOrId);
@@ -124,8 +122,7 @@ function chunkNeedsRuntimeResolve(profile) {
 export function bakeFloorChunkCanvases(payload) {
     const profileId = payload.profileId ?? defaultFloorProceduralProfileId;
     const baseProfile = getFloorProceduralProfile(profileId);
-    const totalFrames = getAnimationFrames(baseProfile.animation);
-    const { frameStart, frameCount } = resolveBakeFrameRange(payload, totalFrames);
+    const { frameStart, frameCount } = payload;
     const { chunkCol, chunkRow, minX, minY, seed, cellsPerChunk = floorTileSettings.cellsPerChunk } = payload;
     const { x: chunkWorldX, y: chunkWorldY, bakeSize } = chunkWorldOrigin(chunkCol, chunkRow, minX, minY, cellsPerChunk);
     const useResolver = chunkNeedsRuntimeResolve(baseProfile);
@@ -151,8 +148,7 @@ export function bakeFloorChunkCanvases(payload) {
 export function bakeWallFaceCanvases(width, height, p1, p2, pixelsPerUnit, seed, profileId, payload = {}) {
     const baseProfile = getFloorProceduralProfile(profileId ?? defaultFloorProceduralProfileId);
     if (!baseProfile.animation) return [bakeWallFaceCanvas(width, height, p1, p2, pixelsPerUnit, seed, profileId)];
-    const totalFrames = getAnimationFrames(baseProfile.animation);
-    const { frameStart, frameCount } = resolveBakeFrameRange(payload, totalFrames);
+    const { frameStart, frameCount } = payload;
     const canvases = [];
     for (let i = 0; i < frameCount; i++) {
         payload.frameIndex = frameStart + i;

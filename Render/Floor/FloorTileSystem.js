@@ -7,7 +7,7 @@ import { TileWorkerCoordinator } from "./TileWorkerCoordinator.js";
 import { buildFloorChunkBakePayload, floorChunkCachePrefix, getFloorTextureProfileId } from "./floorTextureProfile.js";
 import { drawBakedTexture } from "./floorTextureResolution.js";
 import { getAnimationFrameIndex, getAnimationFrames } from "./ProfileBakeResolver.js";
-import { nextAnimationBatchRange } from "./AnimationFrameBake.js";
+import { bakeFrameRange, nextAnimationBatchRange } from "./AnimationFrameBake.js";
 
 export class FloorTileSystem {
     constructor() {
@@ -35,11 +35,22 @@ export class FloorTileSystem {
         }
     }
 
-    bakeWallFace(width, height, p1, p2, pixelsPerUnit, state, { firstFrameOnly = false, frameStart, frameCount } = {}) {
+    bakeWallFace(width, height, p1, p2, pixelsPerUnit, state, frameRange) {
         const profileId = getFloorTextureProfileId(state);
         const centerX = (p1.x + p2.x) / 2;
         const centerY = (p1.y + p2.y) / 2;
-        return TileWorkerCoordinator.requestWallFaceBake({ width, height, p1, p2, pixelsPerUnit, seed: state.floorTileSeed ?? 0, profileId, firstFrameOnly, frameStart, frameCount, centerX, centerY });
+        return TileWorkerCoordinator.requestWallFaceBake({
+            width,
+            height,
+            p1,
+            p2,
+            pixelsPerUnit,
+            seed: state.floorTileSeed ?? 0,
+            profileId,
+            ...frameRange,
+            centerX,
+            centerY,
+        });
     }
 
     _buildChunkPayload(state, chunkCol, chunkRow) {
@@ -69,7 +80,7 @@ export class FloorTileSystem {
         if (this._animationBatchInFlight.has(flightKey)) return;
         this._animationBatchInFlight.add(flightKey);
 
-        const batchPayload = { ...payload, firstFrameOnly: false, frameStart: batch.frameStart, frameCount: batch.frameCount };
+        const batchPayload = { ...payload, ...batch };
 
         TileWorkerCoordinator.requestFloorChunkBake(batchPayload).then((bitmaps) => {
             this._animationBatchInFlight.delete(flightKey);
@@ -103,7 +114,7 @@ export class FloorTileSystem {
         const isAnimated = Boolean(profile.animation);
 
         if (isAnimated) {
-            const firstFramePayload = { ...payload, firstFrameOnly: true };
+            const firstFramePayload = { ...payload, ...bakeFrameRange.first() };
             TileWorkerCoordinator.requestFloorChunkBake(firstFramePayload).then((firstFrameBitmaps) => {
                 if (this._chunkBakeGeneration.get(key) !== generation) {
                     firstFrameBitmaps.forEach((b) => b.close());
@@ -117,7 +128,8 @@ export class FloorTileSystem {
                 }
             });
         } else {
-            TileWorkerCoordinator.requestFloorChunkBake(payload).then((bitmaps) => {
+            const staticPayload = { ...payload, ...bakeFrameRange.all(getAnimationFrames(profile.animation)) };
+            TileWorkerCoordinator.requestFloorChunkBake(staticPayload).then((bitmaps) => {
                 if (this._chunkBakeGeneration.get(key) !== generation) {
                     bitmaps.forEach((b) => b.close());
                     return;

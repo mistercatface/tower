@@ -1,6 +1,19 @@
 /** Frames baked per incremental animation request (after frame 0). */
 export const ANIMATION_FRAME_BATCH_SIZE = 8;
 
+/** Explicit frame ranges for bake requests (always pass one of these at call sites). */
+export const bakeFrameRange = {
+    first() {
+        return { frameStart: 0, frameCount: 1 };
+    },
+    all(totalFrames) {
+        return { frameStart: 0, frameCount: totalFrames };
+    },
+    batch(frameStart, frameCount) {
+        return { frameStart, frameCount };
+    },
+};
+
 export function nextAnimationBatchRange(currentLength, totalFrames, batchSize = ANIMATION_FRAME_BATCH_SIZE) {
     if (currentLength >= totalFrames) return null;
     const frameStart = currentLength;
@@ -8,29 +21,30 @@ export function nextAnimationBatchRange(currentLength, totalFrames, batchSize = 
     return { frameStart, frameCount };
 }
 
-export function resolveBakeFrameRange(payload, totalFrames) {
-    if (payload.firstFrameOnly) {
-        return { frameStart: 0, frameCount: 1 };
+export function clampBakeFrameRange(range, totalFrames) {
+    if (range?.frameStart == null || range?.frameCount == null) {
+        throw new Error("Bake frame range requires frameStart and frameCount");
     }
-    if (payload.frameStart != null && payload.frameCount != null) {
-        const frameStart = Math.max(0, payload.frameStart);
-        const frameCount = Math.min(payload.frameCount, Math.max(0, totalFrames - frameStart));
-        return { frameStart, frameCount };
+    const { frameStart, frameCount } = range;
+    if (!Number.isFinite(frameStart) || !Number.isFinite(frameCount)) {
+        throw new Error("Bake frame range requires numeric frameStart and frameCount");
     }
-    return { frameStart: 0, frameCount: totalFrames };
+    if (frameStart < 0 || frameCount < 1) {
+        throw new Error("Invalid bake frame range");
+    }
+    if (frameStart >= totalFrames) {
+        throw new Error(`frameStart ${frameStart} is outside animation length ${totalFrames}`);
+    }
+    if (frameStart + frameCount > totalFrames) {
+        throw new Error(`frame range ${frameStart}+${frameCount} exceeds animation length ${totalFrames}`);
+    }
+    return { frameStart, frameCount };
 }
 
-export function frameRangeDedupeSuffix(payload) {
-    if (payload.firstFrameOnly) {
-        return ":f0-1";
-    }
-    if (payload.frameStart != null && payload.frameCount != null) {
-        return `:f${payload.frameStart}-${payload.frameStart + payload.frameCount}`;
-    }
-    return ":fall";
+export function frameRangeDedupeSuffix({ frameStart, frameCount }) {
+    return `:f${frameStart}-${frameStart + frameCount}`;
 }
 
-export function isFirstFrameBakeRequest(payload) {
-    return payload.firstFrameOnly === true
-        || (payload.frameStart === 0 && payload.frameCount === 1);
+export function isFirstFrameRange({ frameStart, frameCount }) {
+    return frameStart === 0 && frameCount === 1;
 }

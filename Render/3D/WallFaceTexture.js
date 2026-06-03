@@ -6,7 +6,7 @@ import { getFloorProceduralProfile } from "../../Config/floorProceduralConfig.js
 import { bakePixelsForWorldSpan, getPixelsPerWorldUnit, shouldSmoothTextureDownsample } from "../Floor/floorTextureResolution.js";
 import { getAnimationFrameIndex, getAnimationFrames } from "../Floor/ProfileBakeResolver.js";
 import { TileWorkerCoordinator } from "../Floor/TileWorkerCoordinator.js";
-import { nextAnimationBatchRange } from "../Floor/AnimationFrameBake.js";
+import { bakeFrameRange, nextAnimationBatchRange } from "../Floor/AnimationFrameBake.js";
 import { BakedFrameCache } from "../Floor/BakedFrameCache.js";
 
 const WALL_ANGLE_SPREAD = 0.002;
@@ -184,7 +184,7 @@ function scheduleWallAnimationBatch(key, floorTiles, state, canvases, totalFrame
     wallAnimationBatchInFlight.add(flightKey);
 
     const { width, height, p1, p2, pixelsPerUnit } = bakeCtx;
-    floorTiles.bakeWallFace(width, height, p1, p2, pixelsPerUnit, state, { frameStart: batch.frameStart, frameCount: batch.frameCount }).then((bitmaps) => {
+    floorTiles.bakeWallFace(width, height, p1, p2, pixelsPerUnit, state, batch).then((bitmaps) => {
         wallAnimationBatchInFlight.delete(flightKey);
         const existing = flatWallCache.get(key);
         if (!existing || existing[0]?.isPlaceholder) {
@@ -223,7 +223,7 @@ function getFlatWallCanvas(p1, p2, columns, storyCount, floorTiles, state, tileW
     wallBakeContext.set(key, { width: canvasWidth, height: canvasHeight, p1, p2, pixelsPerUnit });
 
     if (isAnimated) {
-        floorTiles.bakeWallFace(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, state, { firstFrameOnly: true }).then((firstFrameBitmaps) => {
+        floorTiles.bakeWallFace(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, state, bakeFrameRange.first()).then((firstFrameBitmaps) => {
             const existing = flatWallCache.get(key);
             if (existing === placeholder) {
                 flatWallCache.set(key, firstFrameBitmaps);
@@ -232,7 +232,7 @@ function getFlatWallCanvas(p1, p2, columns, storyCount, floorTiles, state, tileW
             }
         });
     } else {
-        floorTiles.bakeWallFace(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, state).then((bitmaps) => {
+        floorTiles.bakeWallFace(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, state, bakeFrameRange.all(getAnimationFrames(profile.animation))).then((bitmaps) => {
             const existing = flatWallCache.get(key);
             if (existing === placeholder) {
                 flatWallCache.set(key, bitmaps);

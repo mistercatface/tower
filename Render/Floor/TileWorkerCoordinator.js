@@ -1,5 +1,6 @@
 import { listShippedFloorProfileIds, getFloorProceduralProfile } from "../../Config/floorProceduralConfig.js";
-import { frameRangeDedupeSuffix, isFirstFrameBakeRequest } from "./AnimationFrameBake.js";
+import { clampBakeFrameRange, frameRangeDedupeSuffix, isFirstFrameRange } from "./AnimationFrameBake.js";
+import { getAnimationFrames } from "./ProfileBakeResolver.js";
 import { MinHeap } from "../../Core/MinHeap.js";
 
 export const MAX_WALLS = 10000;
@@ -223,8 +224,17 @@ function broadcastRequest(type, payload) {
     return Promise.all(workers.map(() => enqueueJob(type, payload, TIER_REGISTRATION)));
 }
 
+function withBakeFrameRange(payload, profile) {
+    const totalFrames = getAnimationFrames(profile?.animation);
+    const range = clampBakeFrameRange(
+        { frameStart: payload.frameStart, frameCount: payload.frameCount },
+        totalFrames
+    );
+    return { ...payload, ...range };
+}
+
 function requestBake(type, payload, isAnimated) {
-    const tier = isAnimated && !isFirstFrameBakeRequest(payload) ? TIER_ANIMATION : TIER_STATIC;
+    const tier = isAnimated && !isFirstFrameRange(payload) ? TIER_ANIMATION : TIER_STATIC;
     return sendRequest(type, payload, tier);
 }
 
@@ -251,12 +261,13 @@ export const TileWorkerCoordinator = {
 
         const profile = getFloorProceduralProfile(profileId);
         const isAnimated = Boolean(profile?.animation);
+        const normalized = withBakeFrameRange(payload, profile);
 
-        const dedupeKey = chunkDedupeKey(payload);
+        const dedupeKey = chunkDedupeKey(normalized);
         const existing = inFlightByKey.get(dedupeKey);
         if (existing) return existing;
 
-        const promise = requestBake("bakeFloorChunk", payload, isAnimated);
+        const promise = requestBake("bakeFloorChunk", normalized, isAnimated);
         inFlightByKey.set(dedupeKey, promise);
         promise.finally(() => inFlightByKey.delete(dedupeKey));
         return promise;
@@ -266,12 +277,13 @@ export const TileWorkerCoordinator = {
         const profileId = payload.profileId;
         const profile = getFloorProceduralProfile(profileId);
         const isAnimated = Boolean(profile?.animation);
+        const normalized = withBakeFrameRange(payload, profile);
 
-        const dedupeKey = wallDedupeKey(payload);
+        const dedupeKey = wallDedupeKey(normalized);
         const existing = inFlightByKey.get(dedupeKey);
         if (existing) return existing;
 
-        const promise = requestBake("bakeWallFace", payload, isAnimated);
+        const promise = requestBake("bakeWallFace", normalized, isAnimated);
         inFlightByKey.set(dedupeKey, promise);
         promise.finally(() => inFlightByKey.delete(dedupeKey));
         return promise;
