@@ -12,7 +12,7 @@ const PROP_RECIPES = { barrel: drawBarrel, fire_barrel: drawFireBarrel, crate: d
 export class Render3D {
     constructor() {
         this.lastWalls = null;
-        this.lastAliveCount = 0;
+        this.lastWallCount = 0;
         this.sharedEdgesDirty = true;
         this._wallQuery = new SpatialQuery();
         this._visibleObjects = [];
@@ -21,46 +21,42 @@ export class Render3D {
     }
 
     getSegmentEdges(seg) {
-        if (!seg.edges) {
-            const cos = Math.cos(seg.angle);
-            const sin = Math.sin(seg.angle);
-            const hs = seg.size / 2;
-            const corners = [
-                { x: seg.x + -hs * cos - -hs * sin, y: seg.y + -hs * sin + -hs * cos },
-                { x: seg.x + hs * cos - -hs * sin, y: seg.y + hs * sin + -hs * cos },
-                { x: seg.x + hs * cos - hs * sin, y: seg.y + hs * sin + hs * cos },
-                { x: seg.x + -hs * cos - hs * sin, y: seg.y + -hs * sin + hs * cos },
-            ];
-            seg.edges = [
-                [corners[0], corners[1]],
-                [corners[1], corners[2]],
-                [corners[2], corners[3]],
-                [corners[3], corners[0]],
-            ];
-            for (let i = 0; i < 4; i++) {
-                const edge = seg.edges[i];
-                const p1 = edge[0];
-                const p2 = edge[1];
-                edge.edgeLen = Math.hypot(p2.x - p1.x, p2.y - p1.y);
-                edge.cx = (p1.x + p2.x) / 2;
-                edge.cy = (p1.y + p2.y) / 2;
-                edge.outX = edge.cx - seg.x;
-                edge.outY = edge.cy - seg.y;
-            }
+        if (seg._cachedEdges) return seg._cachedEdges;
+        const cos = Math.cos(seg.angle);
+        const sin = Math.sin(seg.angle);
+        const hs = seg.size / 2;
+        const corners = [
+            { x: seg.x + -hs * cos - -hs * sin, y: seg.y + -hs * sin + -hs * cos },
+            { x: seg.x + hs * cos - -hs * sin, y: seg.y + hs * sin + -hs * cos },
+            { x: seg.x + hs * cos - hs * sin, y: seg.y + hs * sin + hs * cos },
+            { x: seg.x + -hs * cos - hs * sin, y: seg.y + -hs * sin + hs * cos },
+        ];
+        seg._cachedEdges = [
+            [corners[0], corners[1]],
+            [corners[1], corners[2]],
+            [corners[2], corners[3]],
+            [corners[3], corners[0]],
+        ];
+        
+        for (let i = 0; i < 4; i++) {
+            const edge = seg._cachedEdges[i];
+            const p1 = edge[0];
+            const p2 = edge[1];
+            edge.edgeLen = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+            edge.cx = (p1.x + p2.x) / 2;
+            edge.cy = (p1.y + p2.y) / 2;
+            edge.outX = edge.cx - seg.x;
+            edge.outY = edge.cy - seg.y;
         }
-        return seg.edges;
+        
+        return seg._cachedEdges;
     }
 
     updateSharedEdges(state) {
-        let aliveCount = 0;
         const walls = state.walls;
-        const len = walls.length;
-        for (let i = 0; i < len; i++) {
-            if (!walls[i].isDead) aliveCount++;
-        }
-        if (walls !== this.lastWalls || aliveCount !== this.lastAliveCount || this.sharedEdgesDirty) {
+        if (walls !== this.lastWalls || walls.length !== this.lastWallCount || this.sharedEdgesDirty) {
             this.lastWalls = walls;
-            this.lastAliveCount = aliveCount;
+            this.lastWallCount = walls.length;
             this.sharedEdgesDirty = false;
             this._lastQueryKey = null;
             this.rebuildSharedEdgesAsync(state);

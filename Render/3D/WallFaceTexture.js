@@ -9,7 +9,7 @@ import { getAnimationFrameIndex } from "../Floor/ProfileBakeResolver.js";
 const WALL_ANGLE_SPREAD = 0.002;
 
 class LRUCache {
-    constructor(maxSize = 500) {
+    constructor(maxSize = 5000) {
         this.cache = new Map();
         this.maxSize = maxSize;
     }
@@ -63,7 +63,7 @@ class LRUCache {
     }
 }
 
-const flatWallCache = new LRUCache(500);
+const flatWallCache = new LRUCache(5000);
 
 /** Clears baked wall-face textures (e.g. tile lab after seed/profile change). */
 export function clearFlatWallFaceCache() {
@@ -84,8 +84,10 @@ export function getWallVisualHeight() {
     return CAMERA_HEIGHT - 10;
 }
 
+export const sharedScratchFace = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
+
 /** Distance-scaled projection — walls extend offscreen when wallVisualHeight is near CAMERA_HEIGHT. */
-export function computeProjectedFace(p1, p2, px, py, wallHeight = getWallVisualHeight()) {
+export function computeProjectedFace(p1, p2, px, py, wallHeight = getWallVisualHeight(), out = sharedScratchFace) {
     let angle1 = Math.atan2(p1.y - py, p1.x - px);
     let angle2 = Math.atan2(p2.y - py, p2.x - px);
     const cross = (p1.x - px) * (p2.y - py) - (p1.y - py) * (p2.x - px);
@@ -102,12 +104,12 @@ export function computeProjectedFace(p1, p2, px, py, wallHeight = getWallVisualH
     const clampedHeight = Math.min(wallHeight, CAMERA_HEIGHT - 1);
     const alpha = clampedHeight / (CAMERA_HEIGHT - clampedHeight);
 
-    return {
-        proj1X: p1.x + Math.cos(angle1) * dist1 * alpha,
-        proj1Y: p1.y + Math.sin(angle1) * dist1 * alpha,
-        proj2X: p2.x + Math.cos(angle2) * dist2 * alpha,
-        proj2Y: p2.y + Math.sin(angle2) * dist2 * alpha,
-    };
+    out.proj1X = p1.x + Math.cos(angle1) * dist1 * alpha;
+    out.proj1Y = p1.y + Math.sin(angle1) * dist1 * alpha;
+    out.proj2X = p2.x + Math.cos(angle2) * dist2 * alpha;
+    out.proj2Y = p2.y + Math.sin(angle2) * dist2 * alpha;
+    
+    return out;
 }
 
 export function traceProjectedFace(ctx, p1, p2, face) {
