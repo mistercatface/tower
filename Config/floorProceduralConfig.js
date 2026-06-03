@@ -48,28 +48,13 @@ export const floorProceduralProfileByStrategy = {
 
 const runtimeFloorProfiles = {};
 
-// Custom dynamic profiles loaded from TileLabStorage in the UI
-const customFloorProfiles = {};
-
+/** Tile Lab live editor profile (`__labA__`), not persisted to disk. */
 export function registerRuntimeFloorProfile(profileId, profile) {
     runtimeFloorProfiles[profileId] = profile;
 }
 
-export function unregisterRuntimeFloorProfile(profileId) {
-    delete runtimeFloorProfiles[profileId];
-}
-
-// Dynamically registers profiles scanned from local disk (FSA API in TileLab)
-export function registerCustomFloorProfile(profileId, profile) {
-    customFloorProfiles[profileId] = profile;
-}
-
-export function unregisterCustomFloorProfile(profileId) {
-    delete customFloorProfiles[profileId];
-}
-
 export function getFloorProceduralProfile(profileId) {
-    const profile = runtimeFloorProfiles[profileId] ?? customFloorProfiles[profileId] ?? floorProceduralProfiles[profileId];
+    const profile = runtimeFloorProfiles[profileId] ?? floorProceduralProfiles[profileId];
     if (!profile) {
         throw new Error(`Unknown floor procedural profile: ${profileId}`);
     }
@@ -78,13 +63,6 @@ export function getFloorProceduralProfile(profileId) {
 
 export function listShippedFloorProfileIds() {
     return Object.keys(floorProceduralProfiles);
-}
-
-export function listAllFloorProfileIds() {
-    const shipped = listShippedFloorProfileIds();
-    const customs = Object.keys(customFloorProfiles);
-    const unique = new Set([...shipped, ...customs]);
-    return Array.from(unique);
 }
 
 export function resolveFloorTextureProfileId({ layer, strategy }) {

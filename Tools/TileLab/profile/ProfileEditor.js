@@ -1,19 +1,4 @@
-import {
-    getFloorProceduralProfile,
-    registerCustomFloorProfile,
-    unregisterCustomFloorProfile,
-    listShippedFloorProfileIds,
-    listAllFloorProfileIds
-} from "../../../Config/floorProceduralConfig.js";
-import {
-    getStoredDirectoryHandle,
-    storeDirectoryHandle,
-    verifyPermission,
-    listDirectoryPresets,
-    writePresetFile,
-    deletePresetFile
-} from "./tileLabStorageHelper.js";
-import { TileWorkerCoordinator } from "../../../Render/Floor/TileWorkerCoordinator.js";
+import { getFloorProceduralProfile } from "../../../Config/floorProceduralConfig.js";
 import { SliderControl } from "../ui/controls/SliderControl.js";
 import { SelectControl } from "../ui/controls/SelectControl.js";
 import { mirrorEasingForReversedStage } from "../../../Math/Easing.js";
@@ -228,7 +213,6 @@ function loadEditorFromProfileId(profileId, { silent = false } = {}) {
     const profile = deepClone(getFloorProceduralProfile(profileId));
     const motifs = motifsFromProfile(profile);
     editorState = {
-        sourceProfileId: profileId,
         warp: profile.warp ?? defaultWarp(),
         palette: { ...defaultPalette(), ...profile.palette },
         motifs,
@@ -1004,253 +988,6 @@ function renderAnimationParams(container) {
     renderSharedAnimationControls(container);
 }
 
-let directoryHandle = null;
-let storedHandle = null;
-const loadedCustomIds = new Set();
-
-function updatePresetDropdown(selectedId = null) {
-    const select = document.getElementById("presetSelect");
-    if (!select) return;
-    
-    const prevValue = selectedId || select.value;
-    select.innerHTML = "";
-    
-    const shippedIds = listShippedFloorProfileIds();
-    const allIds = listAllFloorProfileIds();
-    
-    for (const id of allIds) {
-        const opt = document.createElement("option");
-        opt.value = id;
-        opt.textContent = id;
-        select.appendChild(opt);
-    }
-    
-    if (allIds.includes(prevValue)) {
-        select.value = prevValue;
-    } else {
-        select.value = allIds[0] || "";
-    }
-    
-    updateDeleteButtonState();
-}
-
-function updateDeleteButtonState() {
-    const select = document.getElementById("presetSelect");
-    const deleteBtn = document.getElementById("deletePresetBtn");
-    if (!select || !deleteBtn) return;
-    
-    const selectedId = select.value;
-    const shippedIds = listShippedFloorProfileIds();
-    const isShipped = shippedIds.includes(selectedId);
-    
-    deleteBtn.disabled = isShipped || !directoryHandle;
-}
-
-function updateFolderStatusUI() {
-    const btn = document.getElementById("folderStatusBtn");
-    if (!btn) return;
-    if (directoryHandle) {
-        btn.textContent = `📁 Connected: ${directoryHandle.name}`;
-        btn.classList.remove("secondary");
-        btn.classList.add("connected");
-    } else {
-        btn.textContent = "📁 Connect Folder";
-        btn.classList.remove("connected");
-        btn.classList.add("secondary");
-    }
-    updateDeleteButtonState();
-}
-
-async function reloadCustomPresetsFromFolder() {
-    if (!directoryHandle) return;
-    
-    for (const id of loadedCustomIds) {
-        unregisterCustomFloorProfile(id);
-    }
-    loadedCustomIds.clear();
-    
-    try {
-        const presets = await listDirectoryPresets(directoryHandle);
-        for (const { id, profile } of presets) {
-            registerCustomFloorProfile(id, profile);
-            loadedCustomIds.add(id);
-        }
-    } catch (e) {
-        console.error("Error listing/parsing directory presets:", e);
-    }
-}
-
-async function initFolderConnection() {
-    try {
-        const handle = await getStoredDirectoryHandle();
-        if (handle) {
-            storedHandle = handle;
-            const btn = document.getElementById("folderStatusBtn");
-            if (btn) {
-                btn.textContent = `📁 Reconnect: ${handle.name}`;
-                btn.classList.add("secondary");
-            }
-        }
-    } catch (e) {
-        console.error("Error reading stored folder handle:", e);
-    }
-    updatePresetDropdown();
-}
-
-async function handleFolderButtonClick() {
-    const btn = document.getElementById("folderStatusBtn");
-    if (!btn) return;
-    
-    try {
-        if (directoryHandle) {
-            const handle = await window.showDirectoryPicker();
-            const hasPermission = await verifyPermission(handle, true);
-            if (hasPermission) {
-                directoryHandle = handle;
-                storedHandle = handle;
-                await storeDirectoryHandle(handle);
-                await reloadCustomPresetsFromFolder();
-                updateFolderStatusUI();
-                updatePresetDropdown();
-                notifyChange({ lightweight: true });
-            }
-            return;
-        }
-
-        if (storedHandle) {
-            btn.textContent = "Requesting permission...";
-            const hasPermission = await verifyPermission(storedHandle, true);
-            if (hasPermission) {
-                directoryHandle = storedHandle;
-                await reloadCustomPresetsFromFolder();
-                updateFolderStatusUI();
-                updatePresetDropdown();
-                notifyChange({ lightweight: true });
-                return;
-            } else {
-                btn.textContent = `📁 Reconnect: ${storedHandle.name}`;
-                alert("Permission to folder was denied.");
-                return;
-            }
-        }
-        
-        const handle = await window.showDirectoryPicker();
-        const hasPermission = await verifyPermission(handle, true);
-        if (hasPermission) {
-            directoryHandle = handle;
-            storedHandle = handle;
-            await storeDirectoryHandle(handle);
-            await reloadCustomPresetsFromFolder();
-            updateFolderStatusUI();
-            updatePresetDropdown();
-            notifyChange({ lightweight: true });
-        } else {
-            alert("Permission to folder was denied.");
-        }
-    } catch (e) {
-        if (e.name !== "AbortError") {
-            console.error("Error connecting folder:", e);
-            alert("Failed to connect folder: " + e.message);
-        }
-        if (directoryHandle) {
-            btn.textContent = `📁 Connected: ${directoryHandle.name}`;
-        } else if (storedHandle) {
-            btn.textContent = `📁 Reconnect: ${storedHandle.name}`;
-        } else {
-            btn.textContent = "📁 Connect Folder";
-        }
-    }
-}
-
-async function saveCurrentPreset() {
-    if (!directoryHandle) {
-        alert("Please connect a folder first using the 'Connect Folder' button.");
-        return;
-    }
-    
-    const nameInput = document.getElementById("profileNameInput");
-    const rawName = nameInput?.value.trim();
-    if (!rawName) {
-        alert("Please enter a preset name.");
-        return;
-    }
-    
-    const id = rawName.replace(/[^a-zA-Z0-9]/g, "");
-    if (!id) {
-        alert("Invalid preset name. Use alphanumeric characters.");
-        return;
-    }
-    
-    const shippedIds = listShippedFloorProfileIds();
-    if (shippedIds.includes(id)) {
-        alert(`Cannot overwrite shipped preset: ${id}`);
-        return;
-    }
-    
-    const profile = buildProfileFromEditor();
-    if (!profile) return;
-    
-    try {
-        await writePresetFile(directoryHandle, id, profile);
-        registerCustomFloorProfile(id, profile);
-        loadedCustomIds.add(id);
-        
-        await TileWorkerCoordinator.registerRuntimeProfile(id, profile);
-        
-        updatePresetDropdown(id);
-        alert(`Preset '${id}' saved successfully to disk.`);
-    } catch (e) {
-        console.error("Error saving preset:", e);
-        alert("Failed to save preset: " + e.message);
-    }
-}
-
-async function deleteCurrentPreset() {
-    const select = document.getElementById("presetSelect");
-    const id = select?.value;
-    if (!id) return;
-    
-    const shippedIds = listShippedFloorProfileIds();
-    if (shippedIds.includes(id)) {
-        alert("Cannot delete a shipped preset.");
-        return;
-    }
-    
-    if (!directoryHandle) {
-        alert("Please connect a folder first.");
-        return;
-    }
-    
-    if (!confirm(`Are you sure you want to delete custom preset '${id}' from disk?`)) {
-        return;
-    }
-    
-    try {
-        await deletePresetFile(directoryHandle, id);
-        unregisterCustomFloorProfile(id);
-        loadedCustomIds.delete(id);
-        
-        updatePresetDropdown();
-        alert(`Preset '${id}' deleted successfully from disk.`);
-        
-        const newSelectedId = document.getElementById("presetSelect").value;
-        loadEditorFromProfileId(newSelectedId, { silent: true });
-        refreshEditorPanels({ global: true });
-        const nameInput = document.getElementById("profileNameInput");
-        if (nameInput) {
-            nameInput.value = newSelectedId;
-        }
-        const exportArea = document.getElementById("profileExport");
-        if (exportArea) {
-            exportArea.value = exportProfileSnippet();
-        }
-        notifyChange({ lightweight: true });
-    } catch (e) {
-        console.error("Error deleting preset:", e);
-        alert("Failed to delete preset: " + e.message);
-    }
-}
-
 export function initProfileEditor({ onChange }) {
     onChangeCallback = onChange;
     const exportArea = document.getElementById("profileExport");
@@ -1258,10 +995,6 @@ export function initProfileEditor({ onChange }) {
     const loadBtn = document.getElementById("loadPresetBtn");
     const copyExportBtn = document.getElementById("copyExportBtn");
     const presetSelect = document.getElementById("presetSelect");
-    const nameInput = document.getElementById("profileNameInput");
-    const saveBtn = document.getElementById("savePresetBtn");
-    const deleteBtn = document.getElementById("deletePresetBtn");
-    const folderStatusBtn = document.getElementById("folderStatusBtn");
 
     for (const type of Object.keys(MOTIF_TYPES)) {
         const opt = document.createElement("option");
@@ -1289,24 +1022,13 @@ export function initProfileEditor({ onChange }) {
         notifyChange();
     });
 
-    presetSelect.addEventListener("change", () => {
-        updateDeleteButtonState();
-    });
-
     loadBtn.addEventListener("click", () => {
         const selectedId = presetSelect.value;
-        if (nameInput) {
-            nameInput.value = selectedId;
-        }
         loadEditorFromProfileId(selectedId, { silent: true });
         refreshEditorPanels({ global: true });
         exportArea.value = exportProfileSnippet();
         notifyChange({ reloadProfile: true });
     });
-
-    saveBtn.addEventListener("click", saveCurrentPreset);
-    deleteBtn.addEventListener("click", deleteCurrentPreset);
-    folderStatusBtn.addEventListener("click", handleFolderButtonClick);
 
     copyExportBtn.addEventListener("click", async () => {
         exportArea.value = exportProfileSnippet();
@@ -1322,13 +1044,8 @@ export function initProfileEditor({ onChange }) {
 
     const initialId = presetSelect?.value || "cyberGrid";
     loadEditorFromProfileId(initialId, { silent: true });
-    if (nameInput) {
-        nameInput.value = initialId;
-    }
     refreshEditorPanels({ global: true });
     exportArea.value = exportProfileSnippet();
-
-    initFolderConnection();
 }
 
 /** Runtime map preview: motif/warp/palette only (no timeline playback). */
