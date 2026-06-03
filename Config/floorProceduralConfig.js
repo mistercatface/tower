@@ -6,6 +6,7 @@ import pulseRings from "./TileLabStorage/pulseRings.js";
 import emberLattice from "./TileLabStorage/emberLattice.js";
 import synthWeave from "./TileLabStorage/synthWeave.js";
 import auroraBurst from "./TileLabStorage/auroraBurst.js";
+import shatteredCircuitry from "./TileLabStorage/shatteredCircuitry.js";
 
 export const floorProceduralProfiles = {
     cyberGrid,
@@ -16,9 +17,10 @@ export const floorProceduralProfiles = {
     emberLattice,
     synthWeave,
     auroraBurst,
+    shatteredCircuitry,
 };
 
-export const START_STATION_ID = "cyberGrid";
+export const START_STATION_ID = "shatteredCircuitry";
 
 export const defaultFloorProceduralProfileId = START_STATION_ID;
 
