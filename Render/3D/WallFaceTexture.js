@@ -24,7 +24,7 @@ class LRUCache {
     _closeBitmaps(value) {
         if (!value) return;
         if (Array.isArray(value)) {
-            value.forEach(item => {
+            value.forEach((item) => {
                 if (item instanceof ImageBitmap) {
                     item.close();
                 }
@@ -65,7 +65,6 @@ class LRUCache {
 
 const flatWallCache = new LRUCache(5000);
 
-/** Clears baked wall-face textures (e.g. tile lab after seed/profile change). */
 export function clearFlatWallFaceCache() {
     flatWallCache.clear();
 }
@@ -86,7 +85,6 @@ export function getWallVisualHeight() {
 
 export const sharedScratchFace = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
 
-/** Distance-scaled projection — walls extend offscreen when wallVisualHeight is near CAMERA_HEIGHT. */
 export function computeProjectedFace(p1, p2, px, py, wallHeight = getWallVisualHeight(), out = sharedScratchFace) {
     let angle1 = Math.atan2(p1.y - py, p1.x - px);
     let angle2 = Math.atan2(p2.y - py, p2.x - px);
@@ -108,7 +106,7 @@ export function computeProjectedFace(p1, p2, px, py, wallHeight = getWallVisualH
     out.proj1Y = p1.y + Math.sin(angle1) * dist1 * alpha;
     out.proj2X = p2.x + Math.cos(angle2) * dist2 * alpha;
     out.proj2Y = p2.y + Math.sin(angle2) * dist2 * alpha;
-    
+
     return out;
 }
 
@@ -203,12 +201,12 @@ function getFlatWallCanvas(p1, p2, columns, storyCount, floorTiles, state, tileW
     flatWallCache.set(key, placeholder);
 
     // bakeWallFace returns a Promise from the worker coordinator
-    floorTiles.bakeWallFace(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, state).then(bitmaps => {
+    floorTiles.bakeWallFace(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, state).then((bitmaps) => {
         const existing = flatWallCache.get(key);
         if (existing === placeholder) {
             flatWallCache.set(key, bitmaps);
         } else {
-            bitmaps.forEach(b => b.close());
+            bitmaps.forEach((b) => b.close());
         }
     });
 
@@ -280,25 +278,23 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHei
     ctx.save();
     ctx.imageSmoothingEnabled = shouldSmoothTextureDownsample();
 
-    // Compute Level of Detail (LOD) based on player distance to wall center
-    const edgeLen = (cacheObj && cacheObj.edgeLen !== undefined) ? cacheObj.edgeLen : Math.hypot(p2.x - p1.x, p2.y - p1.y);
-    const wallCx = (cacheObj && cacheObj.cx !== undefined) ? cacheObj.cx : (p1.x + p2.x) * 0.5;
-    const wallCy = (cacheObj && cacheObj.cy !== undefined) ? cacheObj.cy : (p1.y + p2.y) * 0.5;
+    const edgeLen = cacheObj && cacheObj.edgeLen !== undefined ? cacheObj.edgeLen : Math.hypot(p2.x - p1.x, p2.y - p1.y);
+    const wallCx = cacheObj && cacheObj.cx !== undefined ? cacheObj.cx : (p1.x + p2.x) * 0.5;
+    const wallCy = cacheObj && cacheObj.cy !== undefined ? cacheObj.cy : (p1.y + p2.y) * 0.5;
     const px = state.player.x;
     const py = state.player.y;
     const dist = Math.hypot(wallCx - px, wallCy - py);
 
-    const SUBDIV_X = 2;
-    const SUBDIV_Y = 2;
+    const subdivScale = Math.max(0.05, Math.min(1.0, 1.0 - (dist - 80) / 320));
+    const SUBDIV_X = Math.max(1, Math.min(2, Math.ceil((edgeLen / tileWorldSize) * subdivScale)));
+    const SUBDIV_Y = Math.max(1, Math.min(2, Math.ceil((storyCount / 2) * subdivScale)));
 
     for (let row = 0; row < SUBDIV_Y; row++) {
         const bottomZ = row * (wallHeight / SUBDIV_Y);
         let topZ = (row + 1) * (wallHeight / SUBDIV_Y);
 
         if (bottomZ >= CAMERA_HEIGHT) break;
-        if (topZ >= CAMERA_HEIGHT) {
-            topZ = CAMERA_HEIGHT - 1;
-        }
+        if (topZ >= CAMERA_HEIGHT) topZ = CAMERA_HEIGHT - 1;
 
         const alphaBottom = bottomZ / (CAMERA_HEIGHT - bottomZ);
         const alphaTop = topZ / (CAMERA_HEIGHT - topZ);
