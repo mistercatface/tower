@@ -192,6 +192,29 @@ export class FloorTileSystem {
             drawBakedTexture(ctx, canvas, chunk.origin.x, chunk.origin.y, chunkSizePx, chunkSizePx);
         }
     }
+
+    preloadChunks(state, viewport, padPx) {
+        if (!viewport || !isWorldScene(state.phase) || !state.obstacleGrid?.cols) {
+            return;
+        }
+
+        const obstacleGrid = state.obstacleGrid;
+        const cellsPerChunk = floorTileSettings.cellsPerChunk;
+        const chunkSizePx = getChunkSizePx(obstacleGrid.cellSize, cellsPerChunk);
+        
+        const screenW = state.canvasBounds?.width ?? viewport.cx * 2;
+        const screenH = state.canvasBounds?.height ?? viewport.cy * 2;
+        const bounds = viewport.getWorldBounds(screenW, screenH, padPx);
+
+        const range = worldBoundsToChunkRange(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY, obstacleGrid.minX, obstacleGrid.minY, chunkSizePx);
+
+        for (let chunkRow = range.minChunkRow; chunkRow <= range.maxChunkRow; chunkRow++) {
+            for (let chunkCol = range.minChunkCol; chunkCol <= range.maxChunkCol; chunkCol++) {
+                const payload = this._buildChunkPayload(state, chunkCol, chunkRow);
+                this.getChunkCanvas(chunkCol, chunkRow, state, payload);
+            }
+        }
+    }
 }
 
 export function buildWallCacheKey(p1, p2, state, profileId, ppwu) {

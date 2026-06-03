@@ -75,7 +75,7 @@ function getWallTextureStoryCount() {
 }
 
 /** World-aligned slices along the wall base edge (stable when the camera moves). */
-function wallFaceColumns(p1, p2, tileWorldSize) {
+export function wallFaceColumns(p1, p2, tileWorldSize) {
     const edgeLen = Math.hypot(p2.x - p1.x, p2.y - p1.y);
     if (edgeLen < 0.001) return [];
 
@@ -224,3 +224,22 @@ export function drawProjectedWallFace(ctx, p1, p2, px, py, fillStyle, floorTiles
         ctx.restore();
     }
 }
+
+export function preloadProjectedWallFace(p1, p2, floorTiles, state, cacheObj = null) {
+    const tileWorldSize = floorTileSettings.tileWorldSize ?? gridSettings.cellSize;
+    if (!floorTiles || !state) return;
+
+    const profileId = getFloorTextureProfileId(state);
+    const ppwu = getPixelsPerWorldUnit();
+    const storyCount = getWallTextureStoryCount();
+
+    const { key: wallCacheKey, wrappedP1, wrappedP2 } = getWallCacheInfo(p1, p2, state, profileId, ppwu, cacheObj);
+
+    let flatCanvases = floorTiles.surfaceCache.get(wallCacheKey);
+    if (!flatCanvases) {
+        const columns = wallFaceColumns(wrappedP1, wrappedP2, tileWorldSize);
+        if (columns.length === 0) return;
+        floorTiles.ensureWallFace(wallCacheKey, wrappedP1, wrappedP2, columns, storyCount, state, tileWorldSize);
+    }
+}
+

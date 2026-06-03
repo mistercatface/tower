@@ -328,6 +328,7 @@ export const floorTileSettings = {
     tileResolution: 4,
     textureDownsampleSmoothing: false,
     viewPaddingPx: 128,
+    preLoadPaddingPx: 512,
     maxCachedChunks: 512,
     chunkCacheTiles: 128,
     chunkWorldSize: 128 * gridSettings.cellSize,
