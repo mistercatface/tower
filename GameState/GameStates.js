@@ -17,7 +17,6 @@ import { propInspector } from "../Render/Inspector/PropInspector.js";
 import { beginStartNodeIntro, shouldRunStartNodeIntro, updateStartNodeIntro } from "../Combat/StartNodeIntro.js";
 import { findStartNodeInspectionPickup, beginStartNodeInspection, shouldEnterStartNodeInspection } from "../Combat/StartNodeInspection.js";
 import { syncFloorTextureProfile } from "../Render/Floor/floorTextureProfile.js";
-import { updateWallFills } from "../Render/3D/WallFaceTexture.js";
 
 const MAP_TRAVEL_SPEED = 5.0;
 
@@ -261,7 +260,6 @@ export class CombatState {
         }
 
         ctx.state.floorTiles.updateFills();
-        updateWallFills();
     }
 
     render(ctx) {

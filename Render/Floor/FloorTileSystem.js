@@ -5,21 +5,19 @@ import { chunkToWorldOrigin, getChunkSizePx, gridBoundsToChunkRange, worldBounds
 import { ProgressiveFrameCache } from "./ProgressiveFrameCache.js";
 import { TileWorkerCoordinator } from "./TileWorkerCoordinator.js";
 import { buildFloorChunkBakePayload, floorChunkCachePrefix, getFloorTextureProfileId } from "./floorTextureProfile.js";
-import { drawBakedTexture } from "./floorTextureResolution.js";
+import { drawBakedTexture, bakePixelsForWorldSpan, getPixelsPerWorldUnit } from "./floorTextureResolution.js";
 import { animationFrameIndex, getAnimationFrames } from "./ProfileBakeResolver.js";
 import { bakeFrameRange, nextAnimationBatchRange } from "./AnimationFrameBake.js";
 
 export class FloorTileSystem {
     constructor() {
-        this.cache = new ProgressiveFrameCache(floorTileSettings.maxCachedChunks);
+        this.surfaceCache = new ProgressiveFrameCache(floorTileSettings.maxCachedSurfaces ?? 5000);
         this.proceduralProfileId = null;
-        this._chunkBakeGeneration = new Map();
-        this._animationBatchInFlight = new Set();
         this._globalGeneration = 0;
     }
 
     clear() {
-        this.cache.clear();
+        this.surfaceCache.clear();
     }
 
     invalidateGridBounds(bounds, state, cellsPerChunk = floorTileSettings.cellsPerChunk) {
@@ -28,7 +26,7 @@ export class FloorTileSystem {
         const range = gridBoundsToChunkRange(bounds.startCol, bounds.endCol, bounds.startRow, bounds.endRow, cellsPerChunk);
         for (let chunkRow = range.minChunkRow; chunkRow <= range.maxChunkRow; chunkRow++) {
             for (let chunkCol = range.minChunkCol; chunkCol <= range.maxChunkCol; chunkCol++) {
-                this.cache.deleteByPrefix(floorChunkCachePrefix(chunkCol, chunkRow, profileId));
+                this.surfaceCache.deleteByPrefix("chunk:" + floorChunkCachePrefix(chunkCol, chunkRow, profileId).substring(6));
             }
         }
     }
@@ -64,35 +62,81 @@ export class FloorTileSystem {
     }
 
     updateFills() {
-        this.cache.updateFills();
+        this.surfaceCache.updateFills();
+    }
+
+    _scheduleAnimatedEntry(key, meta, bakeFirstFn, bakeBatchFn) {
+        const placeholder = this.surfaceCache.getOrStart(key, meta);
+        const generation = this.surfaceCache.getCurrentGeneration(key);
+        const isAnimated = meta.totalFrames > 1;
+
+        if (isAnimated) {
+            this.surfaceCache.requestFill(key, bakeBatchFn, meta.totalFrames);
+        }
+
+        bakeFirstFn().then((firstFrameBitmaps) => {
+            this.surfaceCache.commitFirstFrame(key, generation, firstFrameBitmaps);
+        });
+
+        return placeholder;
     }
 
     getChunkCanvas(chunkCol, chunkRow, state, payload = null) {
         if (!payload) payload = this._buildChunkPayload(state, chunkCol, chunkRow);
 
         const key = floorChunkCachePrefix(chunkCol, chunkRow, payload.profileId);
-        let canvases = this.cache.get(key);
+        let canvases = this.surfaceCache.get(key);
         if (canvases) return canvases;
-
-        const placeholder = this.cache.getOrStart(key);
-        const generation = this.cache.getCurrentGeneration(key);
 
         const profile = getFloorProceduralProfile(payload.profileId);
         const isAnimated = Boolean(profile.animation);
+        const totalFrames = getAnimationFrames(profile.animation);
 
-        if (isAnimated) {
-            const firstFramePayload = { ...payload, ...bakeFrameRange.first() };
-            TileWorkerCoordinator.requestFloorChunkBake(firstFramePayload).then((firstFrameBitmaps) => {
-                this.cache.commitFirstFrame(key, generation, firstFrameBitmaps);
-            });
-        } else {
-            const staticPayload = { ...payload, ...bakeFrameRange.all(getAnimationFrames(profile.animation)) };
-            TileWorkerCoordinator.requestFloorChunkBake(staticPayload).then((bitmaps) => {
-                this.cache.commitFirstFrame(key, generation, bitmaps);
-            });
-        }
+        const meta = { kind: 'chunk', payload, totalFrames };
 
-        return placeholder;
+        const bakeFirstFn = () => {
+            const framePayload = { ...payload, ...(isAnimated ? bakeFrameRange.first() : bakeFrameRange.all(totalFrames)) };
+            return TileWorkerCoordinator.requestFloorChunkBake(framePayload);
+        };
+
+        const bakeBatchFn = isAnimated ? (batch) => {
+            return TileWorkerCoordinator.requestFloorChunkBake({ ...payload, ...batch });
+        } : null;
+
+        return this._scheduleAnimatedEntry(key, meta, bakeFirstFn, bakeBatchFn);
+    }
+
+    ensureWallFace(key, p1, p2, columns, storyCount, state, tileWorldSize) {
+        let cached = this.surfaceCache.get(key);
+        if (cached) return cached;
+
+        const edgeLen = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+        if (edgeLen < 0.001 || columns.length === 0) return null;
+
+        const cellSize = state.obstacleGrid?.cellSize ?? 32;
+        const ppwu = getPixelsPerWorldUnit();
+        const pixelsPerUnit = (cellSize / tileWorldSize) * ppwu;
+
+        const canvasWidth = Math.max(1, Math.ceil(edgeLen * pixelsPerUnit));
+        const canvasHeight = bakePixelsForWorldSpan(storyCount * cellSize);
+
+        const profileId = getFloorTextureProfileId(state);
+        const profile = getFloorProceduralProfile(profileId);
+        const isAnimated = Boolean(profile.animation);
+        const totalFrames = getAnimationFrames(profile.animation);
+
+        const meta = { kind: 'wall', width: canvasWidth, height: canvasHeight, p1, p2, pixelsPerUnit, totalFrames };
+
+        const bakeFirstFn = () => {
+            const frameRange = isAnimated ? bakeFrameRange.first() : bakeFrameRange.all(totalFrames);
+            return this.bakeWallFace(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, state, frameRange);
+        };
+
+        const bakeBatchFn = isAnimated ? (batch) => {
+            return this.bakeWallFace(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, state, batch);
+        } : null;
+
+        return this._scheduleAnimatedEntry(key, meta, bakeFirstFn, bakeBatchFn);
     }
 
     draw(ctx, state, viewport) {
@@ -136,14 +180,6 @@ export class FloorTileSystem {
             let canvas = canvases[0];
             if (canvas.isPlaceholder) continue;
 
-            if (profile.animation) {
-                const key = floorChunkCachePrefix(chunk.chunkCol, chunk.chunkRow, profileId);
-                this.cache.requestFill(key, (batch) => {
-                    const batchPayload = { ...payload, ...batch };
-                    return TileWorkerCoordinator.requestFloorChunkBake(batchPayload);
-                }, totalFrames);
-            }
-
             if (profile.animation && canvases.length > 1) {
                 const currentFrame = animationFrameIndex(profile.animation, { gameTime: state.gameTime ?? 0 });
                 canvas = canvases[Math.min(canvases.length - 1, Math.max(0, currentFrame))];
@@ -152,4 +188,41 @@ export class FloorTileSystem {
             drawBakedTexture(ctx, canvas, chunk.origin.x, chunk.origin.y, chunkSizePx, chunkSizePx);
         }
     }
+}
+
+export function buildWallCacheKey(p1, p2, state, profileId, ppwu) {
+    const chunkWorldSize = floorTileSettings.chunkWorldSize || 128 * 16;
+    const wx1 = ((p1.x % chunkWorldSize) + chunkWorldSize) % chunkWorldSize;
+    const wy1 = ((p1.y % chunkWorldSize) + chunkWorldSize) % chunkWorldSize;
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const wx2 = wx1 + dx;
+    const wy2 = wy1 + dy;
+
+    const kx1 = wx1.toFixed(1);
+    const ky1 = wy1.toFixed(1);
+    const kx2 = wx2.toFixed(1);
+    const ky2 = wy2.toFixed(1);
+    const seed = state.floorTileSeed ?? 0;
+    const rev = TileWorkerCoordinator.getProfileRevision(profileId);
+    const key = `wall:${rev}:${ppwu}:${profileId}:${seed}:${kx1},${ky1}-${kx2},${ky2}`;
+
+    return { key, wrappedP1: { x: wx1, y: wy1 }, wrappedP2: { x: wx2, y: wy2 } };
+}
+
+export function getWallCacheInfo(p1, p2, state, profileId, ppwu, cacheObj) {
+    const seed = state.floorTileSeed ?? 0;
+    const rev = TileWorkerCoordinator.getProfileRevision(profileId);
+    if (cacheObj && cacheObj._wkInfo && cacheObj._wkProfileId === profileId && cacheObj._wkPpwu === ppwu && cacheObj._wkRev === rev && cacheObj._wkSeed === seed) {
+        return cacheObj._wkInfo;
+    }
+    const info = buildWallCacheKey(p1, p2, state, profileId, ppwu);
+    if (cacheObj) {
+        cacheObj._wkInfo = info;
+        cacheObj._wkProfileId = profileId;
+        cacheObj._wkPpwu = ppwu;
+        cacheObj._wkRev = rev;
+        cacheObj._wkSeed = seed;
+    }
+    return info;
 }

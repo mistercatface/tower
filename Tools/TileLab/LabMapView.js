@@ -1,5 +1,4 @@
 import { registerRuntimeFloorProfile } from "../../Config/floorProceduralConfig.js";
-import { clearFlatWallFaceCache } from "../../Render/3D/WallFaceTexture.js";
 import { invalidateProfileScratch } from "../../Render/Floor/ProfileBakeResolver.js";
 import { TileWorkerCoordinator } from "../../Render/Floor/TileWorkerCoordinator.js";
 import {
@@ -18,7 +17,6 @@ export async function registerEditorProfiles() {
 }
 
 export function invalidateLabCaches() {
-    clearFlatWallFaceCache();
     invalidateMapPreviewBakes();
 }
 

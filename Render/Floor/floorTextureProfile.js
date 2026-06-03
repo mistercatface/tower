@@ -25,7 +25,7 @@ export function syncFloorTextureProfile(state) {
 
 export function floorChunkCachePrefix(chunkCol, chunkRow, profileId) {
     const rev = getProfileRevision(profileId);
-    return `${rev}:${getPixelsPerWorldUnit()}:${profileId}:${chunkCol},${chunkRow}`;
+    return `chunk:${rev}:${getPixelsPerWorldUnit()}:${profileId}:${chunkCol},${chunkRow}`;
 }
 
 /** Worker-serializable chunk bake payload from live game state. */
