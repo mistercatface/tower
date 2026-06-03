@@ -111,8 +111,8 @@ export class FloorTileSystem {
         });
     }
 
-    getChunkCanvas(chunkCol, chunkRow, state, priority = Infinity) {
-        const payload = this._buildChunkPayload(state, chunkCol, chunkRow);
+    getChunkCanvas(chunkCol, chunkRow, state, priority = Infinity, payload = null) {
+        if (!payload) payload = this._buildChunkPayload(state, chunkCol, chunkRow);
 
         const key = floorChunkCacheKey(chunkCol, chunkRow, payload.profileId);
         let canvases = this.cache.get(key);
@@ -193,17 +193,19 @@ export class FloorTileSystem {
         const totalFrames = getAnimationFrames(profile.animation);
 
         for (const chunk of chunksToDraw) {
-            const canvases = this.getChunkCanvas(chunk.chunkCol, chunk.chunkRow, state, chunk.distSq);
+            const payload = this._buildChunkPayload(state, chunk.chunkCol, chunk.chunkRow);
+            const canvases = this.getChunkCanvas(chunk.chunkCol, chunk.chunkRow, state, chunk.distSq, payload);
             let canvas = canvases[0];
             if (canvas.isPlaceholder) continue;
 
             if (profile.animation) {
                 const key = floorChunkCacheKey(chunk.chunkCol, chunk.chunkRow, profileId);
-                const payload = this._buildChunkPayload(state, chunk.chunkCol, chunk.chunkRow);
                 this._scheduleAnimationBatch(key, payload, chunk.distSq, canvases, totalFrames);
             }
 
-            if (profile.animation && canvases.length >= totalFrames) {
+            // Animate with whatever contiguous frames have baked so far; the loop
+            // refines as more arrive instead of freezing on frame 0 until complete.
+            if (profile.animation && canvases.length > 1) {
                 const currentFrame = getAnimationFrameIndex(profile.animation, state.gameTime ?? 0);
                 canvas = canvases[Math.min(canvases.length - 1, Math.max(0, currentFrame))];
             }

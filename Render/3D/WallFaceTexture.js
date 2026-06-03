@@ -7,83 +7,11 @@ import { bakePixelsForWorldSpan, getPixelsPerWorldUnit, shouldSmoothTextureDowns
 import { getAnimationFrameIndex, getAnimationFrames } from "../Floor/ProfileBakeResolver.js";
 import { TileWorkerCoordinator } from "../Floor/TileWorkerCoordinator.js";
 import { nextAnimationBatchRange } from "../Floor/AnimationFrameBake.js";
+import { BakedFrameCache } from "../Floor/BakedFrameCache.js";
 
 const WALL_ANGLE_SPREAD = 0.002;
 
-class LRUCache {
-    constructor(maxSize = 5000) {
-        this.cache = new Map();
-        this.maxSize = maxSize;
-    }
-    get(key) {
-        if (!this.cache.has(key)) return null;
-        const val = this.cache.get(key);
-        this.cache.delete(key);
-        this.cache.set(key, val);
-        return val;
-    }
-
-    _closeBitmaps(value) {
-        if (!value) return;
-        if (Array.isArray(value)) {
-            value.forEach((item) => {
-                if (item instanceof ImageBitmap) {
-                    item.close();
-                }
-            });
-        } else if (value instanceof ImageBitmap) {
-            value.close();
-        }
-    }
-
-    set(key, val) {
-        if (this.cache.size >= this.maxSize && !this.cache.has(key)) {
-            const oldestKey = this.cache.keys().next().value;
-            this._closeBitmaps(this.cache.get(oldestKey));
-            this.cache.delete(oldestKey);
-        }
-        const existing = this.cache.get(key);
-        if (existing && existing !== val) {
-            this._closeBitmaps(existing);
-        }
-        this.cache.set(key, val);
-    }
-
-    mergeFrames(key, frameStart, newBitmaps) {
-        const existing = this.cache.get(key);
-        if (!existing || existing[0]?.isPlaceholder) return;
-
-        this.cache.delete(key);
-        const merged = existing.slice();
-        for (let i = 0; i < newBitmaps.length; i++) {
-            merged[frameStart + i] = newBitmaps[i];
-        }
-
-        if (this.cache.size >= this.maxSize) {
-            const oldestKey = this.cache.keys().next().value;
-            this._closeBitmaps(this.cache.get(oldestKey));
-            this.cache.delete(oldestKey);
-        }
-        this.cache.set(key, merged);
-    }
-
-    delete(key) {
-        const existing = this.cache.get(key);
-        if (existing) {
-            this._closeBitmaps(existing);
-            this.cache.delete(key);
-        }
-    }
-
-    clear() {
-        for (const value of this.cache.values()) {
-            this._closeBitmaps(value);
-        }
-        this.cache.clear();
-    }
-}
-
-const flatWallCache = new LRUCache(5000);
+const flatWallCache = new BakedFrameCache(5000);
 /** @type {Map<string, { width: number, height: number, p1: object, p2: object, pixelsPerUnit: number }>} */
 const wallBakeContext = new Map();
 /** @type {Set<string>} */
@@ -229,6 +157,33 @@ function buildWallCacheKey(p1, p2, state, profileId, ppwu) {
     };
 }
 
+/**
+ * Cache key/wrapped-edge info per wall edge so the hot draw loop avoids
+ * rebuilding the string key (toFixed + concat) every frame. Only recomputes
+ * when something that affects the key actually changes.
+ */
+function getWallCacheInfo(p1, p2, state, profileId, ppwu, cacheObj) {
+    const seed = state.floorTileSeed ?? 0;
+    const rev = TileWorkerCoordinator.getProfileRevision(profileId);
+    if (cacheObj
+        && cacheObj._wkInfo
+        && cacheObj._wkProfileId === profileId
+        && cacheObj._wkPpwu === ppwu
+        && cacheObj._wkRev === rev
+        && cacheObj._wkSeed === seed) {
+        return cacheObj._wkInfo;
+    }
+    const info = buildWallCacheKey(p1, p2, state, profileId, ppwu);
+    if (cacheObj) {
+        cacheObj._wkInfo = info;
+        cacheObj._wkProfileId = profileId;
+        cacheObj._wkPpwu = ppwu;
+        cacheObj._wkRev = rev;
+        cacheObj._wkSeed = seed;
+    }
+    return info;
+}
+
 function scheduleWallAnimationBatch(key, floorTiles, state, canvases, totalFrames, priority) {
     if (!canvases || canvases[0]?.isPlaceholder || canvases.length >= totalFrames) {
         return;
@@ -327,46 +282,16 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHei
         ? (wallCx - viewport.x) ** 2 + (wallCy - viewport.y) ** 2
         : Infinity;
 
-    let flatCanvases = null;
-    let wallCacheKey = null;
-    if (cacheObj) {
-        if (cacheObj._cachedCanvases && cacheObj._cachedProfileId === profileId && cacheObj._cachedPpwu === ppwu) {
-            const testCanvas = cacheObj._cachedCanvases[0];
-            if (testCanvas && !testCanvas.isPlaceholder && testCanvas.width === 0) {
-                cacheObj._cachedCanvases = null;
-            } else {
-                flatCanvases = cacheObj._cachedCanvases;
-            }
-        }
-    }
+    const { key: wallCacheKey, wrappedP1, wrappedP2 } = getWallCacheInfo(p1, p2, state, profileId, ppwu, cacheObj);
 
+    // The cache always holds the latest (possibly merged) frame array for this
+    // key, so a single lookup per frame keeps us current without local memos.
+    let flatCanvases = flatWallCache.get(wallCacheKey);
     if (!flatCanvases) {
-        const { key, wrappedP1, wrappedP2 } = buildWallCacheKey(p1, p2, state, profileId, ppwu);
-        wallCacheKey = key;
-
-        flatCanvases = flatWallCache.get(key);
-        if (!flatCanvases) {
-            const columns = wallFaceColumns(wrappedP1, wrappedP2, tileWorldSize);
-            if (columns.length === 0) return;
-            flatCanvases = getFlatWallCanvas(wrappedP1, wrappedP2, columns, storyCount, floorTiles, state, tileWorldSize, key, distSq);
-            if (!flatCanvases || flatCanvases.length === 0) return;
-        }
-
-        if (cacheObj && flatCanvases[0] && !flatCanvases[0].isPlaceholder) {
-            cacheObj._cachedCanvases = flatCanvases;
-            cacheObj._cachedProfileId = profileId;
-            cacheObj._cachedPpwu = ppwu;
-        }
-    } else {
-        ({ key: wallCacheKey } = buildWallCacheKey(p1, p2, state, profileId, ppwu));
-    }
-
-    if (wallCacheKey) {
-        const latest = flatWallCache.get(wallCacheKey);
-        if (latest) {
-            flatCanvases = latest;
-            if (cacheObj) cacheObj._cachedCanvases = latest;
-        }
+        const columns = wallFaceColumns(wrappedP1, wrappedP2, tileWorldSize);
+        if (columns.length === 0) return;
+        flatCanvases = getFlatWallCanvas(wrappedP1, wrappedP2, columns, storyCount, floorTiles, state, tileWorldSize, wallCacheKey, distSq);
+        if (!flatCanvases || flatCanvases.length === 0) return;
     }
 
     const profile = getFloorProceduralProfile(profileId);
@@ -382,7 +307,8 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHei
         scheduleWallAnimationBatch(wallCacheKey, floorTiles, state, flatCanvases, totalFrames, distSq);
     }
 
-    if (profile.animation && flatCanvases.length >= totalFrames) {
+    // Use the nearest already-baked frame; the loop sharpens as frames stream in.
+    if (profile.animation && flatCanvases.length > 1) {
         const currentFrame = getAnimationFrameIndex(profile.animation, state.gameTime ?? 0);
         flatCanvas = flatCanvases[Math.min(flatCanvases.length - 1, Math.max(0, currentFrame))];
     }

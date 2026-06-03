@@ -8,25 +8,45 @@ export const wallGeometryView = new Float32Array(wallGeometrySab);
 export const wallSharedEdgesSab = new SharedArrayBuffer(MAX_WALLS);
 export const wallSharedEdgesView = new Uint8Array(wallSharedEdgesSab);
 
+/**
+ * Job tiers. The scheduler always drains lower tiers first, then sorts by
+ * distance-to-focus within a tier. This is what guarantees the whole visible
+ * area draws (static/first frames) before any animation frames are baked,
+ * without needing a separate queue or an artificial concurrency throttle.
+ */
+const TIER_REGISTRATION = -1; // runtime profile sync — must reach workers before any paint
+const TIER_STATIC = 0;        // first-frame / non-animated bakes / shared edges
+const TIER_ANIMATION = 1;     // incremental animation frame fill
+
+/** Animation jobs farther than this from focus are dropped instead of baked. */
+const ANIMATION_CULL_DIST_SQ = 4_000_000;
+/** Re-sort the queue by focus only after the camera moves at least this far. */
+const FOCUS_RESORT_DIST_SQ = 16 * 16;
 
 const workers = [];
 const workerBusy = [];
-const jobQueue = [];
+const bakeQueue = [];
 const pending = new Map();
-const inFlightByKey = new Map();
 let nextReqId = 1;
 /** Bakes wait on this chain so runtime profiles reach workers before paint jobs run. */
 let workerReady = Promise.resolve();
 const registeredRuntimeProfileIds = new Set();
+const inFlightByKey = new Map();
 
-function whenWorkersReady(run) {
-    return Promise.resolve(workerReady).then(run);
-}
+let focusX = 0;
+let focusY = 0;
+let sortFocusX = 0;
+let sortFocusY = 0;
+let queueNeedsSort = false;
 
 const runtimeProfileRevisions = new Map();
 
 export function getProfileRevision(profileId) {
     return runtimeProfileRevisions.get(profileId) ?? 0;
+}
+
+function whenWorkersReady(run) {
+    return Promise.resolve(workerReady).then(run);
 }
 
 function chunkDedupeKey(payload) {
@@ -39,105 +59,84 @@ function wallDedupeKey(payload) {
     return `wall:${payload.profileId}:${rev}:${payload.p1.x.toFixed(1)},${payload.p1.y.toFixed(1)}-${payload.p2.x.toFixed(1)},${payload.p2.y.toFixed(1)}:${payload.seed ?? 0}${frameRangeDedupeSuffix(payload)}`;
 }
 
-const activeAnimationBakes = new Set();
-const animationBakeQueue = [];
-const MAX_CONCURRENT_ANIMATION_BAKES = 1;
-
-let focusX = 0;
-let focusY = 0;
-
-function processAnimationBakeQueue() {
-    if (activeAnimationBakes.size >= MAX_CONCURRENT_ANIMATION_BAKES) {
-        return;
-    }
-    if (animationBakeQueue.length === 0) {
-        return;
-    }
-
-    // Dynamically sort queue by distance to focus
-    animationBakeQueue.sort((a, b) => {
-        const distSqA = ((a.payload.centerX ?? focusX) - focusX) ** 2 + ((a.payload.centerY ?? focusY) - focusY) ** 2;
-        const distSqB = ((b.payload.centerX ?? focusX) - focusX) ** 2 + ((b.payload.centerY ?? focusY) - focusY) ** 2;
-        return distSqA - distSqB;
-    });
-
-    const job = animationBakeQueue.shift();
-
-    // Drop obsolete jobs if profile was edited
-    const currentRev = getProfileRevision(job.payload.profileId);
-    if (job.revision !== undefined && job.revision < currentRev) {
-        job.resolve([]); 
-        processAnimationBakeQueue();
-        return;
-    }
-
-    // Cull jobs that are ridiculously far away (no longer relevant)
-    const distSq = ((job.payload.centerX ?? focusX) - focusX) ** 2 + ((job.payload.centerY ?? focusY) - focusY) ** 2;
-    if (distSq > 4000000) { // e.g., > 2000 units away
-        job.resolve([]);
-        processAnimationBakeQueue();
-        return;
-    }
-
-    activeAnimationBakes.add(job);
-
-    const promise = sendRequest(job.type, job.payload, job.priority);
-    promise.then(
-        (bitmaps) => {
-            activeAnimationBakes.delete(job);
-            job.resolve(bitmaps);
-            processAnimationBakeQueue();
-        },
-        (error) => {
-            activeAnimationBakes.delete(job);
-            job.reject(error);
-            processAnimationBakeQueue();
-        }
-    );
+function jobDistSq(payload) {
+    const cx = payload?.centerX ?? focusX;
+    const cy = payload?.centerY ?? focusY;
+    return (cx - focusX) ** 2 + (cy - focusY) ** 2;
 }
 
-function requestAnimationBake(type, payload, priority = Infinity) {
-    return new Promise((resolve, reject) => {
-        const revision = getProfileRevision(payload.profileId);
-        const job = { type, payload, priority, resolve, reject, revision };
-        
-        let lo = 0;
-        let hi = animationBakeQueue.length;
-        while (lo < hi) {
-            const mid = (lo + hi) >> 1;
-            if (animationBakeQueue[mid].priority < job.priority) {
-                lo = mid + 1;
-            } else {
-                hi = mid;
-            }
-        }
-        animationBakeQueue.splice(lo, 0, job);
-        
-        processAnimationBakeQueue();
-    });
+function compareJobs(a, b) {
+    if (a.tier !== b.tier) return a.tier - b.tier;
+    return a.distSq - b.distSq;
 }
 
+function resortQueueIfNeeded() {
+    if (!queueNeedsSort && bakeQueue.length > 1) {
+        const movedSq = (focusX - sortFocusX) ** 2 + (focusY - sortFocusY) ** 2;
+        if (movedSq < FOCUS_RESORT_DIST_SQ) return;
+    }
+    queueNeedsSort = false;
+    sortFocusX = focusX;
+    sortFocusY = focusY;
+    for (const job of bakeQueue) {
+        job.distSq = jobDistSq(job.payload);
+    }
+    bakeQueue.sort(compareJobs);
+}
 
 function insertJob(job) {
+    // Keep the queue ordered so dispatch can just shift the front.
     let lo = 0;
-    let hi = jobQueue.length;
+    let hi = bakeQueue.length;
     while (lo < hi) {
         const mid = (lo + hi) >> 1;
-        if (jobQueue[mid].priority < job.priority) {
+        if (compareJobs(bakeQueue[mid], job) < 0) {
             lo = mid + 1;
         } else {
             hi = mid;
         }
     }
-    jobQueue.splice(lo, 0, job);
+    bakeQueue.splice(lo, 0, job);
 }
 
-function dispatchJobs() {
+/** Resolve-and-skip a job that is no longer worth baking. Returns true if dropped. */
+function dropIfObsolete(job) {
+    const currentRev = getProfileRevision(job.payload?.profileId);
+    if (job.revision !== undefined && job.revision < currentRev) {
+        resolveJob(job, []);
+        return true;
+    }
+    if (job.tier === TIER_ANIMATION && jobDistSq(job.payload) > ANIMATION_CULL_DIST_SQ) {
+        resolveJob(job, []);
+        return true;
+    }
+    return false;
+}
+
+function resolveJob(job, bitmaps) {
+    const entry = pending.get(job.id);
+    if (!entry) return;
+    pending.delete(job.id);
+    entry.resolve(bitmaps);
+}
+
+function dispatch() {
+    if (bakeQueue.length === 0) return;
+    resortQueueIfNeeded();
+
     for (let wi = 0; wi < workers.length; wi++) {
-        if (workerBusy[wi] || jobQueue.length === 0) {
-            continue;
+        if (workerBusy[wi]) continue;
+
+        let job = null;
+        while (bakeQueue.length > 0) {
+            const candidate = bakeQueue.shift();
+            if (!pending.has(candidate.id)) continue; // already settled elsewhere
+            if (dropIfObsolete(candidate)) continue;
+            job = candidate;
+            break;
         }
-        const job = jobQueue.shift();
+        if (!job) break;
+
         workerBusy[wi] = true;
         workers[wi]._currentJobId = job.id;
         workers[wi].postMessage({ id: job.id, type: job.type, payload: job.payload });
@@ -148,28 +147,32 @@ function finishJob(workerIndex, id, bitmaps, error) {
     workerBusy[workerIndex] = false;
     workers[workerIndex]._currentJobId = null;
 
-    if (!pending.has(id)) {
-        dispatchJobs();
-        return;
+    const entry = pending.get(id);
+    if (entry) {
+        pending.delete(id);
+        if (error) {
+            entry.reject(new Error(error));
+        } else {
+            entry.resolve(bitmaps);
+        }
     }
-
-    const { resolve, reject } = pending.get(id);
-    pending.delete(id);
-
-    if (error) {
-        reject(new Error(error));
-    } else {
-        resolve(bitmaps);
-    }
-    dispatchJobs();
+    dispatch();
 }
 
-function enqueueJob(type, payload, priority = Infinity) {
+function enqueueJob(type, payload, tier) {
     const id = nextReqId++;
     return new Promise((resolve, reject) => {
         pending.set(id, { resolve, reject });
-        insertJob({ id, type, payload, priority });
-        dispatchJobs();
+        const job = {
+            id,
+            type,
+            payload,
+            tier,
+            revision: getProfileRevision(payload?.profileId),
+            distSq: jobDistSq(payload),
+        };
+        insertJob(job);
+        dispatch();
     });
 }
 
@@ -199,15 +202,19 @@ function getWorkerPool() {
     return workers;
 }
 
-function sendRequest(type, payload, priority = Infinity) {
+function sendRequest(type, payload, tier = TIER_STATIC) {
     getWorkerPool();
-    return whenWorkersReady(() => enqueueJob(type, payload, priority));
+    return whenWorkersReady(() => enqueueJob(type, payload, tier));
 }
 
 function broadcastRequest(type, payload) {
     getWorkerPool();
-    // Negative priority keeps registration ahead of viewport bakes (lower = sooner).
-    return Promise.all(workers.map((_, i) => enqueueJob(type, payload, -1000 + i)));
+    return Promise.all(workers.map(() => enqueueJob(type, payload, TIER_REGISTRATION)));
+}
+
+function requestBake(type, payload, isAnimated) {
+    const tier = isAnimated && !isFirstFrameBakeRequest(payload) ? TIER_ANIMATION : TIER_STATIC;
+    return sendRequest(type, payload, tier);
 }
 
 export const TileWorkerCoordinator = {
@@ -220,7 +227,7 @@ export const TileWorkerCoordinator = {
         return getProfileRevision(profileId);
     },
 
-    requestFloorChunkBake(payload, priority = Infinity) {
+    requestFloorChunkBake(payload) {
         const profileId = payload.profileId;
         if (profileId && !listShippedFloorProfileIds().includes(profileId) && !registeredRuntimeProfileIds.has(profileId)) {
             try {
@@ -235,39 +242,25 @@ export const TileWorkerCoordinator = {
         const isAnimated = Boolean(profile?.animation);
 
         const dedupeKey = chunkDedupeKey(payload);
-        if (inFlightByKey.has(dedupeKey)) {
-            return inFlightByKey.get(dedupeKey);
-        }
+        const existing = inFlightByKey.get(dedupeKey);
+        if (existing) return existing;
 
-        let promise;
-        if (isAnimated && !isFirstFrameBakeRequest(payload)) {
-            promise = requestAnimationBake("bakeFloorChunk", payload, priority);
-        } else {
-            promise = sendRequest("bakeFloorChunk", payload, priority);
-        }
-
+        const promise = requestBake("bakeFloorChunk", payload, isAnimated);
         inFlightByKey.set(dedupeKey, promise);
         promise.finally(() => inFlightByKey.delete(dedupeKey));
         return promise;
     },
 
-    requestWallFaceBake(payload, priority = Infinity) {
+    requestWallFaceBake(payload) {
         const profileId = payload.profileId;
         const profile = getFloorProceduralProfile(profileId);
         const isAnimated = Boolean(profile?.animation);
 
         const dedupeKey = wallDedupeKey(payload);
-        if (inFlightByKey.has(dedupeKey)) {
-            return inFlightByKey.get(dedupeKey);
-        }
+        const existing = inFlightByKey.get(dedupeKey);
+        if (existing) return existing;
 
-        let promise;
-        if (isAnimated && !isFirstFrameBakeRequest(payload)) {
-            promise = requestAnimationBake("bakeWallFace", payload, priority);
-        } else {
-            promise = sendRequest("bakeWallFace", payload, priority);
-        }
-
+        const promise = requestBake("bakeWallFace", payload, isAnimated);
         inFlightByKey.set(dedupeKey, promise);
         promise.finally(() => inFlightByKey.delete(dedupeKey));
         return promise;
@@ -282,7 +275,7 @@ export const TileWorkerCoordinator = {
         return workerReady;
     },
 
-    requestSharedEdges(numWalls, priority = Infinity) {
-        return sendRequest("rebuildSharedEdges", { numWalls }, priority);
+    requestSharedEdges(numWalls) {
+        return sendRequest("rebuildSharedEdges", { numWalls }, TIER_STATIC);
     },
 };
