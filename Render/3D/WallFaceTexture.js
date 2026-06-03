@@ -234,17 +234,27 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHei
     }
 
     if (!flatCanvases) {
-        const kx1 = p1.x.toFixed(1);
-        const ky1 = p1.y.toFixed(1);
-        const kx2 = p2.x.toFixed(1);
-        const ky2 = p2.y.toFixed(1);
-        const key = `v14:${ppwu}:${profileId}:${kx1},${ky1}-${kx2},${ky2}`;
+        const chunkWorldSize = floorTileSettings.chunkWorldSize || (128 * 16);
+        const wx1 = ((p1.x % chunkWorldSize) + chunkWorldSize) % chunkWorldSize;
+        const wy1 = ((p1.y % chunkWorldSize) + chunkWorldSize) % chunkWorldSize;
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        const wx2 = wx1 + dx;
+        const wy2 = wy1 + dy;
+
+        const kx1 = wx1.toFixed(1);
+        const ky1 = wy1.toFixed(1);
+        const kx2 = wx2.toFixed(1);
+        const ky2 = wy2.toFixed(1);
+        const key = `v15:${ppwu}:${profileId}:${kx1},${ky1}-${kx2},${ky2}`;
 
         flatCanvases = flatWallCache.get(key);
         if (!flatCanvases) {
-            const columns = wallFaceColumns(p1, p2, tileWorldSize);
+            const wrappedP1 = { x: wx1, y: wy1 };
+            const wrappedP2 = { x: wx2, y: wy2 };
+            const columns = wallFaceColumns(wrappedP1, wrappedP2, tileWorldSize);
             if (columns.length === 0) return;
-            flatCanvases = getFlatWallCanvas(p1, p2, columns, storyCount, floorTiles, state, tileWorldSize, key);
+            flatCanvases = getFlatWallCanvas(wrappedP1, wrappedP2, columns, storyCount, floorTiles, state, tileWorldSize, key);
             if (!flatCanvases || flatCanvases.length === 0) return;
         }
 

@@ -329,6 +329,8 @@ export const floorTileSettings = {
     textureDownsampleSmoothing: false,
     viewPaddingPx: 128,
     maxCachedChunks: 512,
+    chunkCacheTiles: 128,
+    chunkWorldSize: 128 * gridSettings.cellSize,
     /** World size of one repeating floor tile on wall faces. */
     tileWorldSize: gridSettings.cellSize,
     /**
