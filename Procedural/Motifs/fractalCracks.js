@@ -45,8 +45,8 @@ export const fractalCracksMotif = {
         ],
     },
     apply(sample, rgb, config) {
-        const x = sample.evalX ?? sample.worldX;
-        const y = sample.evalY ?? sample.worldY;
+        const x = sample.evalX;
+        const y = sample.evalY;
         
         const freq = config.frequency ?? 0.01;
         const octaves = config.octaves ?? 3;

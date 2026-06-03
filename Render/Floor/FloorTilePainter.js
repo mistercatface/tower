@@ -78,12 +78,7 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, see
         }
     }
 
-    let faceKey = "";
-    if (wallFace && options.p2) {
-        faceKey = `_p1:${wallFace.p1.x},${wallFace.p1.y}_p2:${options.p2.x},${options.p2.y}`;
-    }
-    const requestKey = `${surfaceKind}_${startWorldX},${startWorldY}_${width}x${height}_${pixelsPerUnit}_${zOffset}_${seed}${faceKey}`;
-    const rgbBuffer = composeFloorImage(samples, profile, seed, requestKey);
+    const rgbBuffer = composeFloorImage(samples, profile, seed);
 
     let dataIdx = 0;
     for (let i = 0; i < numPixels; i++) {

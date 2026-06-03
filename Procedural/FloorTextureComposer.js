@@ -4,30 +4,6 @@ import { warpPoint, writeDomainWarp } from "./Fields/DomainWarp.js";
 import { getMotif } from "./MotifRegistry.js";
 import { readTranslateConfig, TRANSLATE_COORDINATE_MODES } from "./Motifs/translate.js";
 
-class LRUCache {
-    constructor(maxSize = 200) {
-        this.cache = new Map();
-        this.maxSize = maxSize;
-    }
-    get(key) {
-        if (!this.cache.has(key)) return null;
-        const val = this.cache.get(key);
-        this.cache.delete(key);
-        this.cache.set(key, val);
-        return val;
-    }
-    set(key, val) {
-        if (this.cache.size >= this.maxSize) {
-            this.cache.delete(this.cache.keys().next().value);
-        }
-        this.cache.set(key, val);
-    }
-    clear() {
-        this.cache.clear();
-    }
-}
-const layerCache = new LRUCache(200);
-
 const sampleScratch = {
     evalX: 0,
     evalY: 0,
@@ -35,7 +11,6 @@ const sampleScratch = {
     lookupY: 0,
     wallU: 0,
     wallV: 0,
-    blocked: 0,
     isWall: false,
     surfaceKind: "floor",
     seed: 0,
@@ -125,12 +100,9 @@ function applyTranslateToSample(scratch, samples, pixelIndex, translateContext, 
     scratch.lookupY = warped.y;
 }
 
-export function composeFloorImage(samples, profile, seed, requestKey) {
+export function composeFloorImage(samples, profile, seed) {
     ensureNoiseInitialized(seed);
     const numPixels = samples.width * samples.height;
-
-    const warpHash = JSON.stringify(profile.warp ?? null);
-    let currentHash = `${requestKey}|${warpHash}`;
 
     const rgbBuffer = new Float32Array(numPixels * 3);
 
@@ -155,20 +127,9 @@ export function composeFloorImage(samples, profile, seed, requestKey) {
 
     for (let m = 0; m < motifs.length; m++) {
         const motifConfig = motifs[m];
-        currentHash += "|" + JSON.stringify(motifConfig);
-
-        const cached = layerCache.get(currentHash);
-        if (cached) {
-            rgbBuffer.set(cached);
-            if (motifConfig.type === "translate") {
-                pushTranslateLayer(translateContext, motifConfig);
-            }
-            continue;
-        }
 
         if (motifConfig.type === "translate") {
             pushTranslateLayer(translateContext, motifConfig);
-            layerCache.set(currentHash, new Float32Array(rgbBuffer));
             continue;
         }
 
@@ -180,7 +141,6 @@ export function composeFloorImage(samples, profile, seed, requestKey) {
             applyTranslateToSample(sampleScratch, samples, i, translateContext, warp);
             sampleScratch.wallU = samples.wallU[i];
             sampleScratch.wallV = samples.wallV[i];
-            sampleScratch.blocked = samples.blocked ? samples.blocked[i] : 0;
 
             if (!motifMatchesSurface(motifConfig, sampleScratch)) {
                 continue;
@@ -201,8 +161,6 @@ export function composeFloorImage(samples, profile, seed, requestKey) {
             rgbBuffer[idx + 1] = blendOut.g;
             rgbBuffer[idx + 2] = blendOut.b;
         }
-
-        layerCache.set(currentHash, new Float32Array(rgbBuffer));
     }
 
     return rgbBuffer;
