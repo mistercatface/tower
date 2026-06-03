@@ -11,7 +11,7 @@ import {
     getFloorTextureProfileId,
 } from "./floorTextureProfile.js";
 import { drawBakedTexture } from "./floorTextureResolution.js";
-import { getAnimationFrameIndex } from "./ProfileBakeResolver.js";
+import { getAnimationFrameIndex, getAnimationFrames } from "./ProfileBakeResolver.js";
 
 export class FloorTileSystem {
     constructor() {
@@ -19,6 +19,7 @@ export class FloorTileSystem {
         this.proceduralProfileId = null;
         /** @type {Map<string, number>} */
         this._chunkBakeGeneration = new Map();
+        this._globalGeneration = 0;
     }
 
     clear() {
@@ -37,9 +38,9 @@ export class FloorTileSystem {
         }
     }
 
-    bakeWallFace(width, height, p1, p2, pixelsPerUnit, state) {
+    bakeWallFace(width, height, p1, p2, pixelsPerUnit, state, firstFrameOnly = false) {
         const profileId = getFloorTextureProfileId(state);
-        return TileWorkerCoordinator.requestWallFaceBake({ width, height, p1, p2, pixelsPerUnit, seed: state.floorTileSeed ?? 0, profileId });
+        return TileWorkerCoordinator.requestWallFaceBake({ width, height, p1, p2, pixelsPerUnit, seed: state.floorTileSeed ?? 0, profileId, firstFrameOnly });
     }
 
     getChunkCanvas(chunkCol, chunkRow, state, priority = Infinity) {
@@ -51,21 +52,54 @@ export class FloorTileSystem {
         const placeholder = [{ isPlaceholder: true }];
         this.cache.set(key, placeholder);
 
-        const generation = (this._chunkBakeGeneration.get(key) ?? 0) + 1;
+        const generation = ++this._globalGeneration;
         this._chunkBakeGeneration.set(key, generation);
 
-        TileWorkerCoordinator.requestFloorChunkBake(payload, priority).then((bitmaps) => {
-            if (this._chunkBakeGeneration.get(key) !== generation) {
-                bitmaps.forEach((b) => b.close());
-                return;
-            }
-            const existing = this.cache.get(key);
-            if (existing?.[0]?.isPlaceholder === true) {
-                this.cache.set(key, bitmaps);
-            } else if (existing !== bitmaps) {
-                bitmaps.forEach((b) => b.close());
-            }
-        });
+        const profileId = payload.profileId;
+        const profile = getFloorProceduralProfile(profileId);
+        const isAnimated = Boolean(profile.animation);
+
+        if (isAnimated) {
+            const firstFramePayload = { ...payload, firstFrameOnly: true };
+            TileWorkerCoordinator.requestFloorChunkBake(firstFramePayload, priority).then((firstFrameBitmaps) => {
+                if (this._chunkBakeGeneration.get(key) !== generation) {
+                    return;
+                }
+                const existing = this.cache.get(key);
+                if (existing?.[0]?.isPlaceholder === true) {
+                    this.cache.set(key, firstFrameBitmaps);
+                } else if (existing === firstFrameBitmaps) {
+                    // Already set by a deduped promise callback, do not close
+                    return;
+                } else {
+                    return;
+                }
+
+                // Request all frames async
+                TileWorkerCoordinator.requestFloorChunkBake(payload, priority).then((allBitmaps) => {
+                    if (this._chunkBakeGeneration.get(key) !== generation) {
+                        return;
+                    }
+                    const existingNow = this.cache.get(key);
+                    if (existingNow === firstFrameBitmaps) {
+                        this.cache.set(key, allBitmaps);
+                    } else if (existingNow === allBitmaps) {
+                        // Already set by a deduped promise callback, do not close
+                        return;
+                    }
+                });
+            });
+        } else {
+            TileWorkerCoordinator.requestFloorChunkBake(payload, priority).then((bitmaps) => {
+                if (this._chunkBakeGeneration.get(key) !== generation) {
+                    return;
+                }
+                const existing = this.cache.get(key);
+                if (existing?.[0]?.isPlaceholder === true) {
+                    this.cache.set(key, bitmaps);
+                }
+            });
+        }
 
         return placeholder;
     }
@@ -106,7 +140,8 @@ export class FloorTileSystem {
             let canvas = canvases[0];
             if (canvas.isPlaceholder) continue;
 
-            if (profile.animation && canvases.length > 1) {
+            const totalFrames = getAnimationFrames(profile.animation);
+            if (profile.animation && canvases.length >= totalFrames) {
                 const currentFrame = getAnimationFrameIndex(profile.animation, state.gameTime ?? 0);
                 canvas = canvases[Math.min(canvases.length - 1, Math.max(0, currentFrame))];
             }

@@ -139,7 +139,7 @@ function chunkNeedsRuntimeResolve(profile) {
 export function bakeFloorChunkCanvases(payload) {
     const profileId = payload.profileId ?? defaultFloorProceduralProfileId;
     const baseProfile = getFloorProceduralProfile(profileId);
-    const frames = getAnimationFrames(baseProfile.animation);
+    const frames = payload.firstFrameOnly ? 1 : getAnimationFrames(baseProfile.animation);
     const { chunkCol, chunkRow, minX, minY, seed, cellsPerChunk = floorTileSettings.cellsPerChunk } = payload;
     const { x: chunkWorldX, y: chunkWorldY, bakeSize } = chunkWorldOrigin(chunkCol, chunkRow, minX, minY, cellsPerChunk);
     const useResolver = chunkNeedsRuntimeResolve(baseProfile);
@@ -168,7 +168,7 @@ export function bakeWallFaceCanvases(width, height, p1, p2, pixelsPerUnit, seed,
         return [bakeWallFaceCanvas(width, height, p1, p2, pixelsPerUnit, seed, profileId)];
     }
 
-    const frames = getAnimationFrames(baseProfile.animation);
+    const frames = payload.firstFrameOnly ? 1 : getAnimationFrames(baseProfile.animation);
     const canvases = [];
     for (let frameIndex = 0; frameIndex < frames; frameIndex++) {
         const bakeContext = buildBakeContextFromPayload({ ...payload, frameIndex, profileId });

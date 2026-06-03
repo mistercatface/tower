@@ -23,8 +23,51 @@ function whenWorkersReady(run) {
 }
 
 function chunkDedupeKey(payload) {
-    return `chunk:${payload.profileId}:${payload.chunkCol},${payload.chunkRow}:${payload.seed ?? 0}`;
+    return `chunk:${payload.profileId}:${payload.chunkCol},${payload.chunkRow}:${payload.seed ?? 0}${payload.firstFrameOnly ? ":first" : ""}`;
 }
+
+function wallDedupeKey(payload) {
+    return `wall:${payload.profileId}:${payload.p1.x.toFixed(1)},${payload.p1.y.toFixed(1)}-${payload.p2.x.toFixed(1)},${payload.p2.y.toFixed(1)}${payload.firstFrameOnly ? ":first" : ""}`;
+}
+
+const activeAnimationBakes = new Set();
+const animationBakeQueue = [];
+const MAX_CONCURRENT_ANIMATION_BAKES = 1;
+
+function processAnimationBakeQueue() {
+    if (activeAnimationBakes.size >= MAX_CONCURRENT_ANIMATION_BAKES) {
+        return;
+    }
+    if (animationBakeQueue.length === 0) {
+        return;
+    }
+
+    const job = animationBakeQueue.shift();
+    activeAnimationBakes.add(job);
+
+    const promise = sendRequest(job.type, job.payload, job.priority);
+    promise.then(
+        (bitmaps) => {
+            activeAnimationBakes.delete(job);
+            job.resolve(bitmaps);
+            processAnimationBakeQueue();
+        },
+        (error) => {
+            activeAnimationBakes.delete(job);
+            job.reject(error);
+            processAnimationBakeQueue();
+        }
+    );
+}
+
+function requestAnimationBake(type, payload, priority = Infinity) {
+    return new Promise((resolve, reject) => {
+        const job = { type, payload, priority, resolve, reject };
+        animationBakeQueue.push(job);
+        processAnimationBakeQueue();
+    });
+}
+
 
 function insertJob(job) {
     let lo = 0;
@@ -130,12 +173,20 @@ export const TileWorkerCoordinator = {
             }
         }
 
+        const profile = getFloorProceduralProfile(profileId);
+        const isAnimated = Boolean(profile?.animation);
+
         const dedupeKey = chunkDedupeKey(payload);
         if (inFlightByKey.has(dedupeKey)) {
             return inFlightByKey.get(dedupeKey);
         }
 
-        const promise = sendRequest("bakeFloorChunk", payload, priority);
+        let promise;
+        if (isAnimated && !payload.firstFrameOnly) {
+            promise = requestAnimationBake("bakeFloorChunk", payload, priority);
+        } else {
+            promise = sendRequest("bakeFloorChunk", payload, priority);
+        }
 
         inFlightByKey.set(dedupeKey, promise);
         promise.finally(() => inFlightByKey.delete(dedupeKey));
@@ -143,7 +194,25 @@ export const TileWorkerCoordinator = {
     },
 
     requestWallFaceBake(payload, priority = Infinity) {
-        return sendRequest("bakeWallFace", payload, priority);
+        const profileId = payload.profileId;
+        const profile = getFloorProceduralProfile(profileId);
+        const isAnimated = Boolean(profile?.animation);
+
+        const dedupeKey = wallDedupeKey(payload);
+        if (inFlightByKey.has(dedupeKey)) {
+            return inFlightByKey.get(dedupeKey);
+        }
+
+        let promise;
+        if (isAnimated && !payload.firstFrameOnly) {
+            promise = requestAnimationBake("bakeWallFace", payload, priority);
+        } else {
+            promise = sendRequest("bakeWallFace", payload, priority);
+        }
+
+        inFlightByKey.set(dedupeKey, promise);
+        promise.finally(() => inFlightByKey.delete(dedupeKey));
+        return promise;
     },
 
     registerRuntimeProfile(profileId, profile) {
