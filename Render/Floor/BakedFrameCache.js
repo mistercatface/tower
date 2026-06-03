@@ -1,67 +1,76 @@
-import { LRUCache } from "../../Core/LRUCache.js";
-
-/**
- * LRU cache of baked frame sets (arrays of ImageBitmap, or a single bitmap).
- *
- * Shared by floor chunks and wall faces. Owns the lifecycle of the bitmaps it
- * stores: evicted/replaced entries are closed so the GPU-backed memory is freed.
- * Placeholder sentinels (`{ isPlaceholder: true }`) pass through untouched.
- */
 export class BakedFrameCache {
     constructor(maxEntries = 512) {
-        this._lru = new LRUCache(maxEntries);
+        this.maxEntries = maxEntries;
+        this.cache = new Map();
     }
 
     get(key) {
-        const value = this._lru.get(key);
+        const value = this.cache.get(key);
+        if (value === undefined) return null;
+        this.cache.delete(key);
+        this.cache.set(key, value);
+        return value;
+    }
+
+    peek(key) {
+        const value = this.cache.get(key);
         return value === undefined ? null : value;
     }
 
-    _closeBitmaps(value) {
-        if (!value) return;
-        if (Array.isArray(value)) {
-            for (const item of value) {
-                if (item instanceof ImageBitmap) item.close();
+    _closeOrphanedBitmaps(oldVal, newVal) {
+        if (!oldVal) return;
+        const isReused = (item) => {
+            if (!newVal) return false;
+            if (Array.isArray(newVal)) return newVal.includes(item);
+            return newVal === item;
+        };
+
+        if (Array.isArray(oldVal)) {
+            for (const item of oldVal) {
+                if (item instanceof ImageBitmap && !isReused(item)) {
+                    item.close();
+                }
             }
-        } else if (value instanceof ImageBitmap) {
-            value.close();
+        } else if (oldVal instanceof ImageBitmap && !isReused(oldVal)) {
+            oldVal.close();
         }
     }
 
     set(key, value) {
-        const existing = this._lru.peek(key);
+        const existing = this.peek(key);
         if (existing && existing !== value) {
-            this._closeBitmaps(existing);
+            this._closeOrphanedBitmaps(existing, value);
         }
-
-        const evicted = this._lru.set(key, value);
-        if (evicted) {
-            this._closeBitmaps(evicted.evictedValue);
+        if (this.cache.size >= this.maxEntries && !this.cache.has(key)) {
+            const oldestKey = this.cache.keys().next().value;
+            const oldestValue = this.cache.get(oldestKey);
+            this._closeOrphanedBitmaps(oldestValue, null);
+            this.cache.delete(oldestKey);
         }
+        this.cache.delete(key);
+        this.cache.set(key, value);
     }
 
-    /** Append baked frames without closing reused bitmaps already in the entry. */
     mergeFrames(key, frameStart, newBitmaps) {
-        const existing = this._lru.peek(key);
+        const existing = this.peek(key);
         if (!existing || existing[0]?.isPlaceholder) return;
-
         const merged = existing.slice();
         for (let i = 0; i < newBitmaps.length; i++) {
             merged[frameStart + i] = newBitmaps[i];
         }
-
         this.set(key, merged);
     }
 
     delete(key) {
-        const existing = this._lru.delete(key);
+        const existing = this.cache.get(key);
         if (existing !== undefined) {
-            this._closeBitmaps(existing);
+            this._closeOrphanedBitmaps(existing, null);
+            this.cache.delete(key);
         }
     }
 
     deleteByPrefix(prefix) {
-        for (const key of [...this._lru.keys()]) {
+        for (const key of [...this.cache.keys()]) {
             if (key.startsWith(prefix)) {
                 this.delete(key);
             }
@@ -69,9 +78,9 @@ export class BakedFrameCache {
     }
 
     clear() {
-        for (const value of this._lru.values()) {
-            this._closeBitmaps(value);
+        for (const value of this.cache.values()) {
+            this._closeOrphanedBitmaps(value, null);
         }
-        this._lru.clear();
+        this.cache.clear();
     }
 }
