@@ -44,8 +44,7 @@ export function canRunWaveSpawning(state) {
         && !isMapTraveling(state)
         && !state.startNodeIntroActive
         && !state.startNodeInspectionActive
-        && !currentNode?.completed
-        && !state.startNodeUsesMapPopulation;
+        && !currentNode?.completed;
 }
 
 /** Range and center for drawing combat rings / masks in world vs map space. */

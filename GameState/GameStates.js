@@ -15,7 +15,6 @@ import { getStartNodeLayout } from "../Generator/StartNodeBuilding.js";
 import { Pools } from "../Core/Pools.js";
 import { propInspector } from "../Render/Inspector/PropInspector.js";
 import { beginStartNodeIntro, shouldRunStartNodeIntro, updateStartNodeIntro } from "../Combat/StartNodeIntro.js";
-import { shouldSpawnStartNodeMapPopulation, spawnStartNodeMapPopulation } from "../Combat/StartNodeMapSpawns.js";
 import { findStartNodeInspectionPickup, beginStartNodeInspection, shouldEnterStartNodeInspection } from "../Combat/StartNodeInspection.js";
 import { syncFloorTextureProfile } from "../Render/Floor/floorTextureProfile.js";
 
@@ -189,8 +188,6 @@ export class CombatState {
 
         if (shouldRunStartNodeIntro(ctx.state)) {
             beginStartNodeIntro(ctx.state);
-        } else if (shouldSpawnStartNodeMapPopulation(ctx.state)) {
-            spawnStartNodeMapPopulation(ctx.state);
         }
 
         if (currentNode?.id === 0 && debugStartNodeInspectionImmediate && shouldEnterStartNodeInspection(ctx.state)) {

@@ -72,20 +72,6 @@ function getSpawnPodPool(state) {
     return spawnPods;
 }
 
-/** Full pod pool for map-wide placement (not first-wave limited). */
-export function selectMapSpawnPod(remainingEnemies) {
-    if (remainingEnemies <= 0) {
-        return FALLBACK_POD;
-    }
-
-    const fittingPods = spawnPods.filter((pod) => isPodEligible(pod, remainingEnemies));
-    if (fittingPods.length > 0) {
-        return pickWeightedPod(fittingPods);
-    }
-
-    return buildRemainderPod(remainingEnemies);
-}
-
 export function selectSpawnPod(state, remainingEnemies) {
     if (remainingEnemies <= 0) {
         return FALLBACK_POD;

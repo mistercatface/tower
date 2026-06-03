@@ -165,25 +165,22 @@ export class WaveManager {
     }
 
     manageSpawning(dt, state, upgrades, viewport) {
-        if (canRunWaveSpawning(state)) {
-            if (this.enemiesSpawned < this.enemiesToSpawn && !this.spawnIntervalId) {
-                const currentSpawnDelay = Math.max(
-                    spawnSettings.minSpawnDelay,
-                    spawnSettings.baseSpawnDelay - this.wave * spawnSettings.delayReductionPerWave,
-                );
+        if (!canRunWaveSpawning(state)) return;
 
-                this.spawnIntervalId = state.scheduler.schedule(currentSpawnDelay, () => {
-                    if (this.enemiesSpawned < this.enemiesToSpawn) {
-                        const count = this.spawnEnemy(state, upgrades);
-                        this.enemiesSpawned += count;
-                    }
+        if (this.enemiesSpawned < this.enemiesToSpawn && !this.spawnIntervalId) {
+            const currentSpawnDelay = Math.max(spawnSettings.minSpawnDelay, spawnSettings.baseSpawnDelay - this.wave * spawnSettings.delayReductionPerWave);
 
-                    if (this.enemiesSpawned >= this.enemiesToSpawn) {
-                        state.scheduler.cancel(this.spawnIntervalId);
-                        this.spawnIntervalId = null;
-                    }
-                }, true);
-            }
+            this.spawnIntervalId = state.scheduler.schedule(currentSpawnDelay, () => {
+                if (this.enemiesSpawned < this.enemiesToSpawn) {
+                    const count = this.spawnEnemy(state, upgrades);
+                    this.enemiesSpawned += count;
+                }
+
+                if (this.enemiesSpawned >= this.enemiesToSpawn) {
+                    state.scheduler.cancel(this.spawnIntervalId);
+                    this.spawnIntervalId = null;
+                }
+            }, true);
         }
 
         const aliveEnemies = state.enemies.filter(e => !e.isDead).length;

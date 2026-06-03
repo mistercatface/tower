@@ -11,7 +11,6 @@ import { SpatialHash } from "../Spatial/World/SpatialHash.js";
 import { Pools } from "../Core/Pools.js";
 import { createRunStats } from "../Entities/CombatantStats.js";
 import { FloorTileSystem } from "../Render/Floor/FloorTileSystem.js";
-import { GlobalAlertState } from "../Entities/AlertState.js";
 
 export class GameState {
     constructor() {
@@ -48,7 +47,6 @@ export class GameState {
         /** @type {string | null} Dev/preview override — see getFloorTextureProfileId */
         this.floorTextureProfileOverride = null;
 
-        this.alertState = new GlobalAlertState();
         this.initializeDefaultState();
     }
 
@@ -123,8 +121,6 @@ export class GameState {
         this.startNodeInspectionPending = null;
         this.startNodeInspectionCompleted = false;
         this.startNodeInspectionFinishing = false;
-        this.startNodeMapPopulationSpawned = false;
-        this.startNodeUsesMapPopulation = false;
         this.propInspectorPanelOpen = false;
         this.skipCombatEnterReset = false;
 
@@ -162,7 +158,6 @@ export class GameState {
             { key: "floatingTexts", zIndex: 90 },
         ];
 
-        this.alertState = new GlobalAlertState();
         this.selectedSpeed = 1.0;
         this.allies = [];
         this.floorTiles.clear();
