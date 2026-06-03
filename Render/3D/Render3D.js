@@ -1,5 +1,4 @@
 import { THEME_COLORS, floorTileSettings } from "../../Config/Config.js";
-import { createPropDrawContext } from "./PropDrawContext.js";
 import { drawBarrel, drawCrate, drawFireBarrel, drawCrateShard } from "./PropRecipes.js";
 import { SpatialQuery } from "../../Spatial/World/SpatialQuery.js";
 import { isFaceTowardViewer } from "./math/CombatProjection.js";
@@ -229,9 +228,7 @@ export class Render3D {
         for (let i = 0; i < candidateWalls.length; i++) {
             const seg = candidateWalls[i];
             if (seg.isDead) continue;
-            const distSq = (seg.x - px) ** 2 + (seg.y - py) ** 2;
-            seg._distSq = distSq;
-            seg._renderType = "wall";
+            seg._distSq = (seg.x - px) ** 2 + (seg.y - py) ** 2;
             visibleObjects.push(seg);
         }
         if (!fastNav && state.pickups) {
@@ -239,24 +236,18 @@ export class Render3D {
                 const p = state.pickups[i];
                 if (p.isDead || p.strategy?.renderMode !== "3d") continue;
                 if (viewport && typeof p.isVisible === "function" && !p.isVisible(viewport)) continue;
-                const distSq = (p.x - px) ** 2 + (p.y - py) ** 2;
-                p._distSq = distSq;
-                p._renderType = p.getRender3DKey();
+                p._distSq = (p.x - px) ** 2 + (p.y - py) ** 2;
                 visibleObjects.push(p);
             }
         }
         visibleObjects.sort((a, b) => b._distSq - a._distSq);
-        for (const obj of visibleObjects) {
-            if (obj._renderType === "wall") {
-                this.drawWallSegmentFaces(ctx, obj, px, py, state, viewport, wallDrawOptions);
-            } else {
-                ctx.save();
-                const pc = createPropDrawContext(obj, px, py);
-                const draw = PROP_RECIPES[obj._renderType];
-                if (draw) draw(ctx, pc);
-                ctx.restore();
-            }
+        for (let i = 0; i < visibleObjects.length; i++) {
+            visibleObjects[i].draw3D(ctx, this, state, px, py, viewport, wallDrawOptions);
         }
         ctx.restore();
+    }
+
+    getPropRecipe(key) {
+        return PROP_RECIPES[key];
     }
 }

@@ -12,6 +12,7 @@ export class Entity {
         this.angle = angle;
         this.isDead = isDead;
         this.zIndex = 0;
+        this._distSq = 0;
         this.shape = null; // initialized lazily or by subclasses
     }
 
@@ -22,6 +23,7 @@ export class Entity {
         this.angle = angle;
         this.isDead = isDead;
         this.zIndex = 0;
+        this._distSq = 0;
         this.shape = null; // reset shape
     }
 

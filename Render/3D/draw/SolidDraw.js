@@ -1,4 +1,4 @@
-import { extrudeBox, pointOnFrustum, radiusAtT, getHeightSlice, getRadialSilhouette, traceVisibleArc, isFaceTowardViewer, createSideGradient } from "../math/CombatProjection.js";
+import { extrudeBox, pointOnFrustum, radiusAtT, getHeightSlice, getRadialSilhouette, traceVisibleArc, isFaceTowardViewer, createSideGradient, projectVertical } from "../math/CombatProjection.js";
 
 export const DEFAULT_PROP_HEIGHT = 14;
 export const RADIAL_SEGMENTS = 14;
@@ -17,8 +17,8 @@ export function drawCullFace(ctx, face, shadeAngle, { fill, stroke, lineWidth })
     ctx.stroke();
 }
 
-function isFaceVisible(pc, originX, originY, edgeMidX, edgeMidY) {
-    return isFaceTowardViewer(edgeMidX, edgeMidY, originX, originY, pc.px, pc.py);
+function isFaceVisible(px, py, originX, originY, edgeMidX, edgeMidY) {
+    return isFaceTowardViewer(edgeMidX, edgeMidY, originX, originY, px, py);
 }
 
 function drawRadialSilhouetteBody(ctx, projection, baseRadius, resolvedTop, colors) {
@@ -41,10 +41,10 @@ function drawRadialSilhouetteBody(ctx, projection, baseRadius, resolvedTop, colo
     ctx.fill();
 }
 
-export function drawExtrudedRadial(ctx, pc, options) {
+export function drawExtrudedRadial(ctx, prop, px, py, options) {
     const baseRadius = options.baseRadius ?? options.radius;
-    const { topRadius, height, facing = pc.facing, colors } = options;
-    const projection = pc.project(height);
+    const { topRadius, height, facing = prop.facing, colors } = options;
+    const projection = projectVertical(prop.x, prop.y, px, py, height);
     const resolvedTop = topRadius === 0 ? 0 : (topRadius ?? baseRadius * (1 + projection.alpha));
 
     drawRadialSilhouetteBody(ctx, projection, baseRadius, resolvedTop, colors);
@@ -52,10 +52,10 @@ export function drawExtrudedRadial(ctx, pc, options) {
     return { projection, orientAngle: facing };
 }
 
-export function drawRadialBand(ctx, pc, options) {
+export function drawRadialBand(ctx, prop, px, py, options) {
     const baseRadius = options.baseRadius ?? options.radius;
-    const { topRadius = null, height = DEFAULT_PROP_HEIGHT, t0, t1, fill, stroke, lineWidth = 0.8, facing = pc.facing, segments = RADIAL_SEGMENTS } = options;
-    const projection = pc.project(height);
+    const { topRadius = null, height = DEFAULT_PROP_HEIGHT, t0, t1, fill, stroke, lineWidth = 0.8, facing = prop.facing, segments = RADIAL_SEGMENTS } = options;
+    const projection = projectVertical(prop.x, prop.y, px, py, height);
     const resolvedTop = topRadius === 0 ? 0 : (topRadius ?? baseRadius * (1 + projection.alpha));
     const { cx, cy } = projection;
 
@@ -64,7 +64,7 @@ export function drawRadialBand(ctx, pc, options) {
         const a1 = facing + ((i + 1) / segments) * Math.PI * 2;
         const edgeMidX = (pointOnFrustum(projection, baseRadius, resolvedTop, t0, a0).x + pointOnFrustum(projection, baseRadius, resolvedTop, t0, a1).x) / 2;
         const edgeMidY = (pointOnFrustum(projection, baseRadius, resolvedTop, t0, a0).y + pointOnFrustum(projection, baseRadius, resolvedTop, t0, a1).y) / 2;
-        if (!isFaceVisible(pc, cx, cy, edgeMidX, edgeMidY)) continue;
+        if (!isFaceVisible(px, py, cx, cy, edgeMidX, edgeMidY)) continue;
 
         const p0a = pointOnFrustum(projection, baseRadius, resolvedTop, t0, a0);
         const p0b = pointOnFrustum(projection, baseRadius, resolvedTop, t0, a1);
@@ -89,10 +89,10 @@ export function drawRadialBand(ctx, pc, options) {
     return { projection, orientAngle: facing, slice1, slice2 };
 }
 
-export function drawRadialRibs(ctx, pc, options) {
+export function drawRadialRibs(ctx, prop, px, py, options) {
     const baseRadius = options.baseRadius ?? options.radius;
-    const { topRadius = null, height = DEFAULT_PROP_HEIGHT, ts, stroke, lineWidth = 1.2, facing = pc.facing, segments = RADIAL_SEGMENTS } = options;
-    const projection = pc.project(height);
+    const { topRadius = null, height = DEFAULT_PROP_HEIGHT, ts, stroke, lineWidth = 1.2, facing = prop.facing, segments = RADIAL_SEGMENTS } = options;
+    const projection = projectVertical(prop.x, prop.y, px, py, height);
     const resolvedTop = topRadius ?? baseRadius * (1 + projection.alpha);
     const { cx, cy } = projection;
 
@@ -106,7 +106,7 @@ export function drawRadialRibs(ctx, pc, options) {
             const p1 = pointOnFrustum(projection, baseRadius, resolvedTop, t, a1);
             const edgeMidX = (p0.x + p1.x) / 2;
             const edgeMidY = (p0.y + p1.y) / 2;
-            if (!isFaceVisible(pc, cx, cy, edgeMidX, edgeMidY)) continue;
+            if (!isFaceVisible(px, py, cx, cy, edgeMidX, edgeMidY)) continue;
             ctx.beginPath();
             ctx.moveTo(p0.x, p0.y);
             ctx.lineTo(p1.x, p1.y);
@@ -115,8 +115,8 @@ export function drawRadialRibs(ctx, pc, options) {
     }
 }
 
-export function drawRadialCap(ctx, pc, { radius, height = DEFAULT_PROP_HEIGHT, topRadius, capColors, stroke, lineWidth = 1.0 }) {
-    const projection = pc.project(height);
+export function drawRadialCap(ctx, prop, px, py, { radius, height = DEFAULT_PROP_HEIGHT, topRadius, capColors, stroke, lineWidth = 1.0 }) {
+    const projection = projectVertical(prop.x, prop.y, px, py, height);
     const { topX, topY, alpha } = projection;
     const capRadius = topRadius ?? radius * (1 + alpha);
 
@@ -167,7 +167,7 @@ function faceViewAngle(face, originX, originY) {
     return Math.atan2(edgeMidY - originY, edgeMidX - originX);
 }
 
-function drawBoxSideFace(ctx, pc, face, originX, originY, colors, { stroke, lineWidth, plankTs, drawPlanks }) {
+function drawBoxSideFace(ctx, face, originX, originY, colors, { stroke, lineWidth, plankTs, drawPlanks }) {
     const shadeAngle = faceViewAngle(face, originX, originY);
     drawCullFace(ctx, face, shadeAngle, { fill: createSideGradient(ctx, face.baseA, face.baseB, shadeAngle, colors), stroke, lineWidth });
 
@@ -189,10 +189,10 @@ function drawBoxSideFace(ctx, pc, face, originX, originY, colors, { stroke, line
 
 export function drawExtrudedBox(
     ctx,
-    pc,
-    { halfSize, height = DEFAULT_PROP_HEIGHT, faceColors, backFaceColors = null, bottomColors = null, topColors, stroke, plankTs, topCross, lineWidth = 1.0, facing = pc.facing },
+    prop, px, py,
+    { halfSize, height = DEFAULT_PROP_HEIGHT, faceColors, backFaceColors = null, bottomColors = null, topColors, stroke, plankTs, topCross, lineWidth = 1.0, facing = prop.facing },
 ) {
-    const projection = pc.project(height);
+    const projection = projectVertical(prop.x, prop.y, px, py, height);
     const { cx, cy, topX, topY } = projection;
     const box = extrudeBox(projection, halfSize, facing);
     const backColors = backFaceColors ?? { shadow: faceColors.shadow, mid: faceColors.shadow, highlight: faceColors.mid };
@@ -203,7 +203,7 @@ export function drawExtrudedBox(
     for (const face of box.faces) {
         const edgeMidX = (face.baseA.x + face.baseB.x) / 2;
         const edgeMidY = (face.baseA.y + face.baseB.y) / 2;
-        if (isFaceVisible(pc, cx, cy, edgeMidX, edgeMidY)) frontFaces.push(face);
+        if (isFaceVisible(px, py, cx, cy, edgeMidX, edgeMidY)) frontFaces.push(face);
         else backFaces.push(face);
     }
 
@@ -224,10 +224,10 @@ export function drawExtrudedBox(
     ctx.stroke();
 
     for (const face of backFaces) {
-        drawBoxSideFace(ctx, pc, face, cx, cy, backColors, { stroke, lineWidth, plankTs, drawPlanks: false });
+        drawBoxSideFace(ctx, face, cx, cy, backColors, { stroke, lineWidth, plankTs, drawPlanks: false });
     }
     for (const face of frontFaces) {
-        drawBoxSideFace(ctx, pc, face, cx, cy, faceColors, { stroke, lineWidth, plankTs, drawPlanks: true });
+        drawBoxSideFace(ctx, face, cx, cy, faceColors, { stroke, lineWidth, plankTs, drawPlanks: true });
     }
 
     const topHx = typeof box.topHalfSize === "number" ? box.topHalfSize : (box.topHalfSize.x ?? box.topHalfSize.hx);
@@ -261,8 +261,8 @@ export function drawExtrudedBox(
     }
 }
 
-export function drawBarkLines(ctx, pc, { radius, height, ts, stroke, lineWidth = 0.7, taper = 0.12, facing = pc.facing }) {
-    const projection = pc.project(height);
+export function drawBarkLines(ctx, prop, px, py, { radius, height, ts, stroke, lineWidth = 0.7, taper = 0.12, facing = prop.facing }) {
+    const projection = projectVertical(prop.x, prop.y, px, py, height);
     const resolvedTop = radius * (1 + projection.alpha);
     const { cx, cy } = projection;
 
@@ -275,7 +275,7 @@ export function drawBarkLines(ctx, pc, { radius, height, ts, stroke, lineWidth =
         const p1 = pointOnFrustum(projection, radius * (1 - t * taper), resolvedTop * (1 - t * taper), t, facing + Math.PI / 2);
         const edgeMidX = (p0.x + p1.x) / 2;
         const edgeMidY = (p0.y + p1.y) / 2;
-        if (!isFaceVisible(pc, cx, cy, edgeMidX, edgeMidY)) continue;
+        if (!isFaceVisible(px, py, cx, cy, edgeMidX, edgeMidY)) continue;
         ctx.beginPath();
         ctx.moveTo(slice.centerX - Math.cos(facing) * slice.size * 0.15, slice.centerY - Math.sin(facing) * slice.size * 0.15);
         ctx.lineTo(slice.centerX + Math.cos(facing + Math.PI / 2) * slice.size * 0.35, slice.centerY + Math.sin(facing + Math.PI / 2) * slice.size * 0.35);

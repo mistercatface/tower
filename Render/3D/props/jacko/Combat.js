@@ -1,9 +1,10 @@
 import { drawExtrudedRadial, drawRadialBand } from "../../draw/SolidDraw.js";
 import { JACKO_CAN } from "../../../../Config/props/JackoCan.js";
+import { projectVertical } from "../../math/CombatProjection.js";
 
-function drawCanTopCombat(ctx, pc, radius, height, onFire) {
+function drawCanTopCombat(ctx, prop, px, py, radius, height, onFire) {
     const { colors } = JACKO_CAN;
-    const projection = pc.project(height);
+    const projection = projectVertical(prop.x, prop.y, px, py, height);
     const { topX, topY, alpha } = projection;
     const lipRadius = radius * 1.07;
     const capRadius = radius * 0.88;
@@ -32,12 +33,12 @@ function drawCanTopCombat(ctx, pc, radius, height, onFire) {
     ctx.fill();
 }
 
-export function drawJackoFuelBarrelCombat(ctx, pc, { onFire = false } = {}) {
+export function drawJackoFuelBarrelCombat(ctx, prop, px, py, { onFire = false } = {}) {
     const { combat, colors } = JACKO_CAN;
-    const radius = pc.prop.radius || 8;
+    const radius = prop.radius || 8;
     const bodyColors = onFire ? colors.bodyFire : colors.body;
 
-    drawExtrudedRadial(ctx, pc, {
+    drawExtrudedRadial(ctx, prop, px, py, {
         baseRadius: radius,
         height: combat.height,
         colors: bodyColors,
@@ -45,7 +46,7 @@ export function drawJackoFuelBarrelCombat(ctx, pc, { onFire = false } = {}) {
     });
 
     if (onFire) {
-        drawRadialBand(ctx, pc, {
+        drawRadialBand(ctx, prop, px, py, {
             baseRadius: radius,
             height: combat.height,
             t0: combat.bandT0,
@@ -55,5 +56,5 @@ export function drawJackoFuelBarrelCombat(ctx, pc, { onFire = false } = {}) {
         });
     }
 
-    drawCanTopCombat(ctx, pc, radius, combat.height, onFire);
+    drawCanTopCombat(ctx, prop, px, py, radius, combat.height, onFire);
 }
