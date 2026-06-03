@@ -1,7 +1,7 @@
 import { floorTileSettings, gridSettings } from "../../Config/Config.js";
 import { defaultFloorProceduralProfileId, getFloorProceduralProfile } from "../../Config/floorProceduralConfig.js";
 import { composeFloorImage } from "../../Procedural/FloorTextureComposer.js";
-import { createWallFaceAxes, mapPixelToEval } from "./SurfaceCoordinateMapper.js";
+import { buildMapContext, createWallFaceAxes, writePixelToSamples } from "./SurfaceCoordinateMapper.js";
 import { bakePixelsForWorldSpan, getPixelsPerWorldUnit } from "./floorTextureResolution.js";
 import { getAnimationFrames, resolveBakeProfile } from "./ProfileBakeResolver.js";
 import { resolveBakeFrameRange } from "./AnimationFrameBake.js";
@@ -64,16 +64,12 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, see
     const numPixels = width * height;
     const pooled = memoryPool.getSamples(numPixels);
     const samples = { width, height, evalX: pooled.evalX, evalY: pooled.evalY, lookupX: pooled.lookupX, lookupY: pooled.lookupY, wallU: pooled.wallU, wallV: pooled.wallV, isWall, surfaceKind };
+    const mapCtx = buildMapContext({ startWorldX, startWorldY, cellSize, surfaceKind, height, width, pixelsPerUnit, zOffset, wallFace });
 
     let idx = 0;
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
-            const mapped = mapPixelToEval({ x, y, startWorldX, startWorldY, cellSize, surfaceKind, height, width, pixelsPerUnit, bakeWidth: width, zOffset, wallFace });
-
-            samples.evalX[idx] = mapped.evalX;
-            samples.evalY[idx] = mapped.evalY;
-            samples.wallU[idx] = mapped.wallU ?? 0;
-            samples.wallV[idx] = mapped.wallV ?? 0;
+            writePixelToSamples(samples, idx, x, y, mapCtx);
             idx++;
         }
     }
