@@ -1,5 +1,6 @@
 import { listShippedFloorProfileIds, getFloorProceduralProfile } from "../../Config/floorProceduralConfig.js";
 import { frameRangeDedupeSuffix, isFirstFrameBakeRequest } from "./AnimationFrameBake.js";
+import { MinHeap } from "../../Core/MinHeap.js";
 
 export const MAX_WALLS = 10000;
 export const STRIDE = 5;
@@ -18,14 +19,13 @@ const TIER_REGISTRATION = -1; // runtime profile sync — must reach workers bef
 const TIER_STATIC = 0;        // first-frame / non-animated bakes / shared edges
 const TIER_ANIMATION = 1;     // incremental animation frame fill
 
-/** Animation jobs farther than this from focus are dropped instead of baked. */
-const ANIMATION_CULL_DIST_SQ = 4_000_000;
 /** Re-sort the queue by focus only after the camera moves at least this far. */
 const FOCUS_RESORT_DIST_SQ = 16 * 16;
 
 const workers = [];
 const workerBusy = [];
-const bakeQueue = [];
+const workerJobTier = [];
+const bakeQueue = new MinHeap(compareJobs);
 const pending = new Map();
 let nextReqId = 1;
 /** Bakes wait on this chain so runtime profiles reach workers before paint jobs run. */
@@ -71,42 +71,31 @@ function compareJobs(a, b) {
 }
 
 function resortQueueIfNeeded() {
-    if (!queueNeedsSort && bakeQueue.length > 1) {
+    if (!queueNeedsSort && bakeQueue.size > 1) {
         const movedSq = (focusX - sortFocusX) ** 2 + (focusY - sortFocusY) ** 2;
         if (movedSq < FOCUS_RESORT_DIST_SQ) return;
     }
     queueNeedsSort = false;
     sortFocusX = focusX;
     sortFocusY = focusY;
-    for (const job of bakeQueue) {
+    
+    const data = bakeQueue.data;
+    for (const job of data) {
         job.distSq = jobDistSq(job.payload);
     }
-    bakeQueue.sort(compareJobs);
+    for (let i = (data.length >> 1) - 1; i >= 0; i--) {
+        bakeQueue.down(i);
+    }
 }
 
 function insertJob(job) {
-    // Keep the queue ordered so dispatch can just shift the front.
-    let lo = 0;
-    let hi = bakeQueue.length;
-    while (lo < hi) {
-        const mid = (lo + hi) >> 1;
-        if (compareJobs(bakeQueue[mid], job) < 0) {
-            lo = mid + 1;
-        } else {
-            hi = mid;
-        }
-    }
-    bakeQueue.splice(lo, 0, job);
+    bakeQueue.push(job);
 }
 
 /** Resolve-and-skip a job that is no longer worth baking. Returns true if dropped. */
 function dropIfObsolete(job) {
     const currentRev = getProfileRevision(job.payload?.profileId);
     if (job.revision !== undefined && job.revision < currentRev) {
-        resolveJob(job, []);
-        return true;
-    }
-    if (job.tier === TIER_ANIMATION && jobDistSq(job.payload) > ANIMATION_CULL_DIST_SQ) {
         resolveJob(job, []);
         return true;
     }
@@ -121,23 +110,44 @@ function resolveJob(job, bitmaps) {
 }
 
 function dispatch() {
-    if (bakeQueue.length === 0) return;
+    if (bakeQueue.size === 0) return;
     resortQueueIfNeeded();
+
+    let activeAnimations = 0;
+    for (let wi = 0; wi < workers.length; wi++) {
+        if (workerBusy[wi] && workerJobTier[wi] === TIER_ANIMATION) {
+            activeAnimations++;
+        }
+    }
+
+    // Leave some worker threads idle from animations so the main thread and
+    // static generation have breathing room.
+    const maxAnimations = Math.max(1, workers.length - 2);
 
     for (let wi = 0; wi < workers.length; wi++) {
         if (workerBusy[wi]) continue;
 
         let job = null;
-        while (bakeQueue.length > 0) {
-            const candidate = bakeQueue.shift();
-            if (!pending.has(candidate.id)) continue; // already settled elsewhere
-            if (dropIfObsolete(candidate)) continue;
-            job = candidate;
+        while (bakeQueue.size > 0) {
+            const candidate = bakeQueue.data[0];
+            if (candidate.tier === TIER_ANIMATION && activeAnimations >= maxAnimations) {
+                break; // Top is animation and we're at limit; rest of heap is also animation
+            }
+
+            const popped = bakeQueue.pop();
+            if (!pending.has(popped.id)) continue; // already settled elsewhere
+            if (dropIfObsolete(popped)) continue;
+            
+            job = popped;
+            if (job.tier === TIER_ANIMATION) {
+                activeAnimations++;
+            }
             break;
         }
         if (!job) break;
 
         workerBusy[wi] = true;
+        workerJobTier[wi] = job.tier;
         workers[wi]._currentJobId = job.id;
         workers[wi].postMessage({ id: job.id, type: job.type, payload: job.payload });
     }
@@ -197,6 +207,7 @@ function getWorkerPool() {
             };
             workers.push(w);
             workerBusy.push(false);
+            workerJobTier.push(null);
         }
     }
     return workers;
