@@ -94,11 +94,17 @@ export function getAnimationDuration(anim) {
     return stages.reduce((sum, s) => sum + (s.durationMs ?? 1000), 0) || 1000;
 }
 
-export function getAnimationFrameIndex(anim, gameTime) {
+export function animationFrameIndex(anim, ctx) {
     if (!anim) return 0;
     const stages = getAnimationStages(anim);
     if (stages.length === 0) return 0;
 
+    if (ctx?.frameIndex != null) {
+        const totalFrames = getAnimationFrames(anim);
+        return Math.min(totalFrames - 1, Math.max(0, ctx.frameIndex));
+    }
+
+    const gameTime = ctx?.gameTime ?? 0;
     const totalDuration = getAnimationDuration(anim);
     const clock = ((gameTime % totalDuration) + totalDuration) % totalDuration;
 
@@ -123,40 +129,20 @@ export function getActiveStageInfo(anim, ctx) {
     const stages = getAnimationStages(anim);
     if (stages.length === 0) return null;
 
-    if (ctx.frameIndex != null) {
-        let elapsedFrames = 0;
-        for (let i = 0; i < stages.length; i++) {
-            const stage = stages[i];
-            const stageFrames = stage.frames ?? 30;
-            if (ctx.frameIndex >= elapsedFrames && ctx.frameIndex < elapsedFrames + stageFrames) {
-                const localT = stageFrames > 1 ? (ctx.frameIndex - elapsedFrames) / (stageFrames - 1) : 0;
-                return { stageIndex: i, stage, t: localT };
-            }
-            elapsedFrames += stageFrames;
+    const frameIndex = animationFrameIndex(anim, ctx);
+
+    let elapsedFrames = 0;
+    for (let i = 0; i < stages.length; i++) {
+        const stage = stages[i];
+        const stageFrames = stage.frames ?? 30;
+        if (frameIndex >= elapsedFrames && frameIndex < elapsedFrames + stageFrames) {
+            const localT = stageFrames > 1 ? (frameIndex - elapsedFrames) / (stageFrames - 1) : 0;
+            return { stageIndex: i, stage, t: localT };
         }
-        const lastIdx = stages.length - 1;
-        return { stageIndex: lastIdx, stage: stages[lastIdx], t: 1 };
+        elapsedFrames += stageFrames;
     }
-
-    if (ctx.gameTime != null) {
-        const totalDuration = getAnimationDuration(anim);
-        const clock = ((ctx.gameTime % totalDuration) + totalDuration) % totalDuration;
-
-        let elapsedMs = 0;
-        for (let i = 0; i < stages.length; i++) {
-            const stage = stages[i];
-            const stageDuration = stage.durationMs ?? 1000;
-            if (clock >= elapsedMs && clock < elapsedMs + stageDuration) {
-                const localT = (clock - elapsedMs) / stageDuration;
-                return { stageIndex: i, stage, t: localT };
-            }
-            elapsedMs += stageDuration;
-        }
-        const lastIdx = stages.length - 1;
-        return { stageIndex: lastIdx, stage: stages[lastIdx], t: 1 };
-    }
-
-    return { stageIndex: 0, stage: stages[0], t: 0 };
+    const lastIdx = stages.length - 1;
+    return { stageIndex: lastIdx, stage: stages[lastIdx], t: 1 };
 }
 
 /**

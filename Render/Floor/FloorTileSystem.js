@@ -2,16 +2,16 @@ import { floorTileSettings, combatVisualSettings } from "../../Config/Config.js"
 import { isWorldScene } from "../../GameState/GamePhase.js";
 import { getFloorProceduralProfile } from "../../Config/floorProceduralConfig.js";
 import { chunkToWorldOrigin, getChunkSizePx, gridBoundsToChunkRange, worldBoundsToChunkRange } from "../../Spatial/Grid/ChunkGrid.js";
-import { BakedFrameCache } from "./BakedFrameCache.js";
+import { ProgressiveFrameCache } from "./ProgressiveFrameCache.js";
 import { TileWorkerCoordinator } from "./TileWorkerCoordinator.js";
 import { buildFloorChunkBakePayload, floorChunkCachePrefix, getFloorTextureProfileId } from "./floorTextureProfile.js";
 import { drawBakedTexture } from "./floorTextureResolution.js";
-import { getAnimationFrameIndex, getAnimationFrames } from "./ProfileBakeResolver.js";
+import { animationFrameIndex, getAnimationFrames } from "./ProfileBakeResolver.js";
 import { bakeFrameRange, nextAnimationBatchRange } from "./AnimationFrameBake.js";
 
 export class FloorTileSystem {
     constructor() {
-        this.cache = new BakedFrameCache(floorTileSettings.maxCachedChunks);
+        this.cache = new ProgressiveFrameCache(floorTileSettings.maxCachedChunks);
         this.proceduralProfileId = null;
         this._chunkBakeGeneration = new Map();
         this._animationBatchInFlight = new Set();
@@ -20,8 +20,6 @@ export class FloorTileSystem {
 
     clear() {
         this.cache.clear();
-        this._chunkBakeGeneration.clear();
-        this._animationBatchInFlight.clear();
     }
 
     invalidateGridBounds(bounds, state, cellsPerChunk = floorTileSettings.cellsPerChunk) {
@@ -65,36 +63,8 @@ export class FloorTileSystem {
         return payload;
     }
 
-    _scheduleAnimationBatch(key, payload, canvases, totalFrames) {
-        if (!canvases || canvases[0]?.isPlaceholder || canvases.length >= totalFrames) {
-            return;
-        }
-
-        const generation = this._chunkBakeGeneration.get(key);
-        if (generation == null) return;
-
-        const batch = nextAnimationBatchRange(canvases.length, totalFrames);
-        if (!batch) return;
-
-        const flightKey = `${key}${batch.frameStart}`;
-        if (this._animationBatchInFlight.has(flightKey)) return;
-        this._animationBatchInFlight.add(flightKey);
-
-        const batchPayload = { ...payload, ...batch };
-
-        TileWorkerCoordinator.requestFloorChunkBake(batchPayload).then((bitmaps) => {
-            this._animationBatchInFlight.delete(flightKey);
-            if (this._chunkBakeGeneration.get(key) !== generation) {
-                bitmaps.forEach((b) => b.close());
-                return;
-            }
-            const existing = this.cache.get(key);
-            if (!existing || existing[0]?.isPlaceholder) {
-                bitmaps.forEach((b) => b.close());
-                return;
-            }
-            this.cache.mergeFrames(key, batch.frameStart, bitmaps);
-        });
+    updateFills() {
+        this.cache.updateFills();
     }
 
     getChunkCanvas(chunkCol, chunkRow, state, payload = null) {
@@ -104,11 +74,8 @@ export class FloorTileSystem {
         let canvases = this.cache.get(key);
         if (canvases) return canvases;
 
-        const placeholder = [{ isPlaceholder: true }];
-        this.cache.set(key, placeholder);
-
-        const generation = ++this._globalGeneration;
-        this._chunkBakeGeneration.set(key, generation);
+        const placeholder = this.cache.getOrStart(key);
+        const generation = this.cache.getCurrentGeneration(key);
 
         const profile = getFloorProceduralProfile(payload.profileId);
         const isAnimated = Boolean(profile.animation);
@@ -116,28 +83,12 @@ export class FloorTileSystem {
         if (isAnimated) {
             const firstFramePayload = { ...payload, ...bakeFrameRange.first() };
             TileWorkerCoordinator.requestFloorChunkBake(firstFramePayload).then((firstFrameBitmaps) => {
-                if (this._chunkBakeGeneration.get(key) !== generation) {
-                    firstFrameBitmaps.forEach((b) => b.close());
-                    return;
-                }
-                const existing = this.cache.get(key);
-                if (existing?.[0]?.isPlaceholder === true) {
-                    this.cache.set(key, firstFrameBitmaps);
-                } else if (existing !== firstFrameBitmaps) {
-                    firstFrameBitmaps.forEach((b) => b.close());
-                }
+                this.cache.commitFirstFrame(key, generation, firstFrameBitmaps);
             });
         } else {
             const staticPayload = { ...payload, ...bakeFrameRange.all(getAnimationFrames(profile.animation)) };
             TileWorkerCoordinator.requestFloorChunkBake(staticPayload).then((bitmaps) => {
-                if (this._chunkBakeGeneration.get(key) !== generation) {
-                    bitmaps.forEach((b) => b.close());
-                    return;
-                }
-                const existing = this.cache.get(key);
-                if (existing?.[0]?.isPlaceholder === true) {
-                    this.cache.set(key, bitmaps);
-                }
+                this.cache.commitFirstFrame(key, generation, bitmaps);
             });
         }
 
@@ -187,11 +138,14 @@ export class FloorTileSystem {
 
             if (profile.animation) {
                 const key = floorChunkCachePrefix(chunk.chunkCol, chunk.chunkRow, profileId);
-                this._scheduleAnimationBatch(key, payload, canvases, totalFrames);
+                this.cache.requestFill(key, (batch) => {
+                    const batchPayload = { ...payload, ...batch };
+                    return TileWorkerCoordinator.requestFloorChunkBake(batchPayload);
+                }, totalFrames);
             }
 
             if (profile.animation && canvases.length > 1) {
-                const currentFrame = getAnimationFrameIndex(profile.animation, state.gameTime ?? 0);
+                const currentFrame = animationFrameIndex(profile.animation, { gameTime: state.gameTime ?? 0 });
                 canvas = canvases[Math.min(canvases.length - 1, Math.max(0, currentFrame))];
             }
 

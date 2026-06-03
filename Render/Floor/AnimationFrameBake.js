@@ -1,3 +1,18 @@
+/**
+ * ANIMATION BAKE PIPELINE
+ * 
+ * 1. Authored timeline != Baked flipbook:
+ *    The timeline (stages/tracks) is resolved to a specific moment during bake.
+ * 
+ * 2. Progressive Fill (Floor/Wall):
+ *    - Frame 0 is baked immediately on the STATIC worker tier.
+ *    - Subsequent frames are batched and baked on the ANIMATION worker tier.
+ * 
+ * 3. Draw Time:
+ *    - The draw loop picks the target frame index based on `gameTime`.
+ *    - If the target frame hasn't baked yet, it clamps to the nearest available baked frame.
+ */
+
 /** Frames baked per incremental animation request (after frame 0). */
 export const ANIMATION_FRAME_BATCH_SIZE = 8;
 

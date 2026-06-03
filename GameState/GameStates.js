@@ -14,13 +14,10 @@ import { resolveMoveTarget, resolveRepositionTarget } from "../Spatial/Navigatio
 import { getStartNodeLayout } from "../Generator/StartNodeBuilding.js";
 import { Pools } from "../Core/Pools.js";
 import { propInspector } from "../Render/Inspector/PropInspector.js";
-import {
-    beginStartNodeIntro,
-    shouldRunStartNodeIntro,
-    updateStartNodeIntro,
-} from "../Combat/StartNodeIntro.js";
+import { beginStartNodeIntro, shouldRunStartNodeIntro, updateStartNodeIntro } from "../Combat/StartNodeIntro.js";
 import { findStartNodeInspectionPickup, beginStartNodeInspection, shouldEnterStartNodeInspection } from "../Combat/StartNodeInspection.js";
 import { syncFloorTextureProfile } from "../Render/Floor/floorTextureProfile.js";
+import { updateWallFills } from "../Render/3D/WallFaceTexture.js";
 
 const MAP_TRAVEL_SPEED = 5.0;
 
@@ -194,11 +191,7 @@ export class CombatState {
             beginStartNodeIntro(ctx.state);
         }
 
-        if (
-            currentNode?.id === 0
-            && debugStartNodeInspectionImmediate
-            && shouldEnterStartNodeInspection(ctx.state)
-        ) {
+        if (currentNode?.id === 0 && debugStartNodeInspectionImmediate && shouldEnterStartNodeInspection(ctx.state)) {
             beginStartNodeInspection(ctx.state, null);
             requestAnimationFrame(() => {
                 if (shouldEnterStartNodeInspection(ctx.state)) {
@@ -266,6 +259,9 @@ export class CombatState {
         if (isTraveling) {
             completeMapTravel(ctx);
         }
+
+        ctx.state.floorTiles.updateFills();
+        updateWallFills();
     }
 
     render(ctx) {
@@ -357,11 +353,7 @@ export class InspectorState {
 
         const spatialFrame = combatSpatial.begin(ctx.state);
         const oldGridPos = ctx.state.flowFieldGrid.worldToGrid(ctx.state.player.x, ctx.state.player.y);
-        const partyOpts = {
-            externalSpeedMod: abilityState.externalSpeedMod,
-            upgrades: ctx.upgrades,
-            blocksTargeting: true,
-        };
+        const partyOpts = { externalSpeedMod: abilityState.externalSpeedMod, upgrades: ctx.upgrades, blocksTargeting: true };
 
         for (const actor of ctx.state.getPlayerActors()) {
             actor.updateCombat(dt, ctx.state, spatialFrame, partyOpts);

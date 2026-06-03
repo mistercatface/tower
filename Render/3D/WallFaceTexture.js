@@ -4,23 +4,20 @@ import { CAMERA_HEIGHT } from "./math/CombatProjection.js";
 import { getFloorTextureProfileId } from "../Floor/floorTextureProfile.js";
 import { getFloorProceduralProfile } from "../../Config/floorProceduralConfig.js";
 import { bakePixelsForWorldSpan, getPixelsPerWorldUnit, shouldSmoothTextureDownsample } from "../Floor/floorTextureResolution.js";
-import { getAnimationFrameIndex, getAnimationFrames } from "../Floor/ProfileBakeResolver.js";
+import { animationFrameIndex, getAnimationFrames } from "../Floor/ProfileBakeResolver.js";
 import { TileWorkerCoordinator } from "../Floor/TileWorkerCoordinator.js";
 import { bakeFrameRange, nextAnimationBatchRange } from "../Floor/AnimationFrameBake.js";
-import { BakedFrameCache } from "../Floor/BakedFrameCache.js";
+import { ProgressiveFrameCache } from "../Floor/ProgressiveFrameCache.js";
 
 const WALL_ANGLE_SPREAD = 0.002;
 
-const flatWallCache = new BakedFrameCache(5000);
+const flatWallCache = new ProgressiveFrameCache(5000);
 /** @type {Map<string, { width: number, height: number, p1: object, p2: object, pixelsPerUnit: number }>} */
 const wallBakeContext = new Map();
-/** @type {Set<string>} */
-const wallAnimationBatchInFlight = new Set();
 
 export function clearFlatWallFaceCache() {
     flatWallCache.clear();
     wallBakeContext.clear();
-    wallAnimationBatchInFlight.clear();
 }
 
 const sCorner0 = { x: 0, y: 0 };
@@ -168,31 +165,8 @@ function getWallCacheInfo(p1, p2, state, profileId, ppwu, cacheObj) {
     return info;
 }
 
-function scheduleWallAnimationBatch(key, floorTiles, state, canvases, totalFrames) {
-    if (!canvases || canvases[0]?.isPlaceholder || canvases.length >= totalFrames) {
-        return;
-    }
-
-    const bakeCtx = wallBakeContext.get(key);
-    if (!bakeCtx) return;
-
-    const batch = nextAnimationBatchRange(canvases.length, totalFrames);
-    if (!batch) return;
-
-    const flightKey = `${key}${batch.frameStart}`;
-    if (wallAnimationBatchInFlight.has(flightKey)) return;
-    wallAnimationBatchInFlight.add(flightKey);
-
-    const { width, height, p1, p2, pixelsPerUnit } = bakeCtx;
-    floorTiles.bakeWallFace(width, height, p1, p2, pixelsPerUnit, state, batch).then((bitmaps) => {
-        wallAnimationBatchInFlight.delete(flightKey);
-        const existing = flatWallCache.get(key);
-        if (!existing || existing[0]?.isPlaceholder) {
-            bitmaps.forEach((b) => b.close());
-            return;
-        }
-        flatWallCache.mergeFrames(key, batch.frameStart, bitmaps);
-    });
+export function updateWallFills() {
+    flatWallCache.updateFills();
 }
 
 /**
@@ -213,8 +187,8 @@ function getFlatWallCanvas(p1, p2, columns, storyCount, floorTiles, state, tileW
     const canvasWidth = Math.max(1, Math.ceil(edgeLen * pixelsPerUnit));
     const canvasHeight = bakePixelsForWorldSpan(storyCount * cellSize);
 
-    const placeholder = [{ isPlaceholder: true }];
-    flatWallCache.set(key, placeholder);
+    const placeholder = flatWallCache.getOrStart(key);
+    const generation = flatWallCache.getCurrentGeneration(key);
 
     const profileId = getFloorTextureProfileId(state);
     const profile = getFloorProceduralProfile(profileId);
@@ -224,21 +198,11 @@ function getFlatWallCanvas(p1, p2, columns, storyCount, floorTiles, state, tileW
 
     if (isAnimated) {
         floorTiles.bakeWallFace(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, state, bakeFrameRange.first()).then((firstFrameBitmaps) => {
-            const existing = flatWallCache.get(key);
-            if (existing === placeholder) {
-                flatWallCache.set(key, firstFrameBitmaps);
-            } else if (existing !== firstFrameBitmaps) {
-                firstFrameBitmaps.forEach((b) => b.close());
-            }
+            flatWallCache.commitFirstFrame(key, generation, firstFrameBitmaps);
         });
     } else {
         floorTiles.bakeWallFace(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, state, bakeFrameRange.all(getAnimationFrames(profile.animation))).then((bitmaps) => {
-            const existing = flatWallCache.get(key);
-            if (existing === placeholder) {
-                flatWallCache.set(key, bitmaps);
-            } else {
-                bitmaps.forEach((b) => b.close());
-            }
+            flatWallCache.commitFirstFrame(key, generation, bitmaps);
         });
     }
 
@@ -278,12 +242,17 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHei
 
     const totalFrames = getAnimationFrames(profile.animation);
     if (profile.animation && wallCacheKey) {
-        scheduleWallAnimationBatch(wallCacheKey, floorTiles, state, flatCanvases, totalFrames);
+        flatWallCache.requestFill(wallCacheKey, (batch) => {
+            const bakeCtx = wallBakeContext.get(wallCacheKey);
+            if (!bakeCtx) return Promise.resolve([]);
+            const { width, height, p1, p2, pixelsPerUnit } = bakeCtx;
+            return floorTiles.bakeWallFace(width, height, p1, p2, pixelsPerUnit, state, batch);
+        }, totalFrames);
     }
 
     // Use the nearest already-baked frame; the loop sharpens as frames stream in.
     if (profile.animation && flatCanvases.length > 1) {
-        const currentFrame = getAnimationFrameIndex(profile.animation, state.gameTime ?? 0);
+        const currentFrame = animationFrameIndex(profile.animation, { gameTime: state.gameTime ?? 0 });
         flatCanvas = flatCanvases[Math.min(flatCanvases.length - 1, Math.max(0, currentFrame))];
     }
 
