@@ -1,105 +1,194 @@
 export default {
     "warp": {
-        "frequency": 0.0125,
-        "amplitude": 4,
+        "frequency": 0.006,
+        "amplitude": 14,
         "octaves": 2,
         "sampleOffset": [
-            100,
-            100
+            300,
+            120
         ]
     },
     "palette": {
         "base": [
-            10,
-            2,
-            5
+            18,
+            8,
+            4
         ],
         "floorBase": [
-            0,
-            0,
-            0
+            14,
+            6,
+            3
         ],
         "wallBase": [
-            0,
-            0,
-            0
+            28,
+            12,
+            6
         ]
     },
     "motifs": [
         {
-            "type": "fractalCracks",
-            "coordinateSpace": "eval",
-            "frequency": 0.05,
-            "octaves": 4,
-            "threshold": 0.65,
-            "peak": 13,
-            "offset": [
-                0,
-                0
-            ],
+            "type": "baseMetal",
+            "structure": {
+                "frequency": 0.004,
+                "octaves": 2,
+                "rgbDelta": [
+                    6,
+                    2,
+                    1
+                ]
+            },
+            "grain": {
+                "frequency": 0.35,
+                "octaves": 2,
+                "amplitude": 0.6
+            },
+            "surfaceMask": "all",
+            "blendMode": "add",
+            "opacity": 1
+        },
+        {
+            "type": "circuitLattice",
+            "coordinateSpace": "warped",
+            "frequency": 0.016,
+            "octaves": 2,
+            "angle": 0.15,
+            "ridgeThreshold": 0.11,
+            "peak": 10,
+            "intersectionPeak": 12,
             "tint": [
-                -5,
-                -5,
-                -5
+                0.5,
+                0.3,
+                0.2
+            ],
+            "intersectionTint": [
+                1.2,
+                0.6,
+                0.3
             ],
             "surfaceMask": "all",
             "blendMode": "add",
-            "opacity": 1
-        },
-        {
-            "type": "hexGrid",
-            "cellWorldSize": 64,
-            "groutWidth": 0.2,
-            "groutPeak": 11,
-            "groutTint": [
-                5,
-                -1,
-                4
-            ],
-            "cellVariation": 2,
-            "jitterOffset": [
-                0,
-                0
-            ],
-            "bevelWidth": 0.025,
-            "highlightPeak": 8,
-            "shadowPeak": -6,
-            "bevelTint": [
-                1,
-                1,
-                1
-            ],
-            "blendMode": "replace",
-            "opacity": 1,
-            "bevelFalloff": 0.1,
-            "surfaceMask": "all"
+            "opacity": 0.65
         },
         {
             "type": "filterHSV",
-            "hueShift": 38,
-            "saturation": 2.3,
-            "value": 0,
-            "surfaceMask": "all",
-            "blendMode": "add",
-            "opacity": 1
-        },
-        {
-            "type": "filterLevels",
-            "blackPoint": 43,
-            "whitePoint": 193,
-            "gamma": 0.6,
-            "surfaceMask": "all",
-            "blendMode": "replace",
-            "opacity": 1
-        },
-        {
-            "type": "filterHSV",
-            "hueShift": 102,
-            "saturation": 0.5,
-            "value": 1.4,
+            "hueShift": -141,
+            "saturation": 0.2,
+            "value": 1.05,
             "surfaceMask": "all",
             "blendMode": "replace",
             "opacity": 1
         }
-    ]
+    ],
+    "animation": {
+        "stages": [
+            {
+                "frames": 5,
+                "durationMs": 3200,
+                "tracks": [
+                    {
+                        "targetPath": "motifs[1].ridgeThreshold",
+                        "startValue": 0.11,
+                        "endValue": 0.06,
+                        "easing": "easeOutQuad"
+                    },
+                    {
+                        "targetPath": "motifs[1].peak",
+                        "startValue": 10,
+                        "endValue": 17,
+                        "easing": "easeOutCubic"
+                    },
+                    {
+                        "targetPath": "motifs[1].intersectionPeak",
+                        "startValue": 12,
+                        "endValue": 20,
+                        "easing": "easeInOutSine"
+                    },
+                    {
+                        "targetPath": "motifs[1].angle",
+                        "startValue": 0.15,
+                        "endValue": 0.45,
+                        "easing": "easeInOutSine"
+                    },
+                    {
+                        "targetPath": "motifs[2].hueShift",
+                        "startValue": 0,
+                        "endValue": 35,
+                        "easing": "linear"
+                    }
+                ]
+            },
+            {
+                "frames": 5,
+                "durationMs": 3200,
+                "tracks": [
+                    {
+                        "targetPath": "motifs[1].ridgeThreshold",
+                        "startValue": 0.06,
+                        "endValue": 0.15,
+                        "easing": "easeInOutSine"
+                    },
+                    {
+                        "targetPath": "motifs[1].peak",
+                        "startValue": 17,
+                        "endValue": 7,
+                        "easing": "easeInQuad"
+                    },
+                    {
+                        "targetPath": "motifs[1].intersectionPeak",
+                        "startValue": 20,
+                        "endValue": 9,
+                        "easing": "easeOutSine"
+                    },
+                    {
+                        "targetPath": "motifs[1].angle",
+                        "startValue": 0.45,
+                        "endValue": 0.05,
+                        "easing": "easeOutCubic"
+                    },
+                    {
+                        "targetPath": "motifs[2].hueShift",
+                        "startValue": 35,
+                        "endValue": 70,
+                        "easing": "linear"
+                    }
+                ]
+            },
+            {
+                "frames": 5,
+                "durationMs": 3200,
+                "tracks": [
+                    {
+                        "targetPath": "motifs[1].ridgeThreshold",
+                        "startValue": 0.15,
+                        "endValue": 0.11,
+                        "easing": "easeInQuad"
+                    },
+                    {
+                        "targetPath": "motifs[1].peak",
+                        "startValue": 7,
+                        "endValue": 10,
+                        "easing": "easeOutQuad"
+                    },
+                    {
+                        "targetPath": "motifs[1].intersectionPeak",
+                        "startValue": 9,
+                        "endValue": 12,
+                        "easing": "easeInSine"
+                    },
+                    {
+                        "targetPath": "motifs[1].angle",
+                        "startValue": 0.05,
+                        "endValue": 0.15,
+                        "easing": "easeInOutSine"
+                    },
+                    {
+                        "targetPath": "motifs[2].hueShift",
+                        "startValue": 70,
+                        "endValue": 0,
+                        "easing": "linear"
+                    }
+                ]
+            }
+        ]
+    }
 };

@@ -432,6 +432,9 @@ export class EnemyStunnedState {
     }
 }
 
+/** Enemies use PatrolController for locomotion; this Actor FSM state is a no-op holder. */
+export class EnemyPatrolIdleActorState {}
+
 export class EnemyKnockedBackState {
     constructor() {
         this.customMovement = true;
@@ -552,6 +555,7 @@ export class EnemyKnockedBackState {
 }
 
 export const actorStates = {
+    enemyPatrol: new EnemyPatrolIdleActorState(),
     navigating: new EnemyNavigatingState(),
     engaged: new EnemyEngagedState(),
     charging_prepare: new EnemyChargePrepareState(),
