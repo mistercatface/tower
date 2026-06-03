@@ -55,6 +55,7 @@ export const circuitTracesMotif = {
             { path: "density", label: "Density", min: 0.1, max: 0.9, step: 0.05 },
             { path: "diagDensity", label: "Diag density", min: 0.0, max: 0.8, step: 0.05 },
             { path: "peak", label: "Peak", min: 0, max: 20, step: 1 },
+            { path: "angle", label: "Angle", min: -360, max: 360, step: 1 },
             { path: "tint.0", label: "Tint R", min: -5, max: 5, step: 0.1 },
             { path: "tint.1", label: "Tint G", min: -5, max: 5, step: 0.1 },
             { path: "tint.2", label: "Tint B", min: -5, max: 5, step: 0.1 },
@@ -62,8 +63,19 @@ export const circuitTracesMotif = {
         ],
     },
     apply(sample, rgb, config) {
-        const { x, y } = sampleCoords(sample, config.coordinateSpace);
-        
+        const coords = sampleCoords(sample, config.coordinateSpace);
+        let x = coords.x;
+        let y = coords.y;
+
+        const angle = config.angle ?? 0;
+        if (angle !== 0) {
+            const rad = angle * Math.PI / 180;
+            const cosA = Math.cos(rad);
+            const sinA = Math.sin(rad);
+            x = coords.x * cosA - coords.y * sinA;
+            y = coords.x * sinA + coords.y * cosA;
+        }
+
         const gridSize = config.gridSize ?? 24;
         const col = Math.floor(x / gridSize);
         const row = Math.floor(y / gridSize);

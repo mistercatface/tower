@@ -10,6 +10,7 @@ import shatteredCircuitry from "./TileLabStorage/shatteredCircuitry.js";
 import chronoVortex from "./TileLabStorage/chronoVortex.js";
 import cyberPulse from "./TileLabStorage/cyberPulse.js";
 import decayedStation from "./TileLabStorage/decayedStation.js";
+import circuitLoop from "./TileLabStorage/circuitLoop.js";
 
 export const floorProceduralProfiles = {
     cyberGrid,
@@ -24,9 +25,10 @@ export const floorProceduralProfiles = {
     chronoVortex,
     cyberPulse,
     decayedStation,
+    circuitLoop,
 };
 
-export const START_STATION_ID = "decayedStation";
+export const START_STATION_ID = "circuitLoop";
 
 export const defaultFloorProceduralProfileId = START_STATION_ID;
 
