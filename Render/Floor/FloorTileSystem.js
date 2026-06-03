@@ -40,11 +40,24 @@ export class FloorTileSystem {
 
     bakeWallFace(width, height, p1, p2, pixelsPerUnit, state, firstFrameOnly = false) {
         const profileId = getFloorTextureProfileId(state);
-        return TileWorkerCoordinator.requestWallFaceBake({ width, height, p1, p2, pixelsPerUnit, seed: state.floorTileSeed ?? 0, profileId, firstFrameOnly });
+        const centerX = (p1.x + p2.x) / 2;
+        const centerY = (p1.y + p2.y) / 2;
+        return TileWorkerCoordinator.requestWallFaceBake({ width, height, p1, p2, pixelsPerUnit, seed: state.floorTileSeed ?? 0, profileId, firstFrameOnly, centerX, centerY });
     }
 
     getChunkCanvas(chunkCol, chunkRow, state, priority = Infinity) {
         const payload = buildFloorChunkBakePayload(state, chunkCol, chunkRow);
+        
+        const obstacleGrid = state.obstacleGrid;
+        const cellsPerChunk = floorTileSettings.cellsPerChunk;
+        if (obstacleGrid) {
+            const chunkSizePx = (obstacleGrid.cellSize * cellsPerChunk);
+            const originX = obstacleGrid.minX + chunkCol * chunkSizePx;
+            const originY = obstacleGrid.minY + chunkRow * chunkSizePx;
+            payload.centerX = originX + chunkSizePx / 2;
+            payload.centerY = originY + chunkSizePx / 2;
+        }
+
         const key = floorChunkCacheKey(chunkCol, chunkRow, payload.profileId);
         let canvases = this.cache.get(key);
         if (canvases) return canvases;
@@ -116,6 +129,8 @@ export class FloorTileSystem {
         const cellsPerChunk = floorTileSettings.cellsPerChunk;
         const chunkSizePx = getChunkSizePx(obstacleGrid.cellSize, cellsPerChunk);
         const bounds = viewport.getWorldBounds(ctx.canvas?.width ?? viewport.cx * 2, ctx.canvas?.height ?? viewport.cy * 2, floorTileSettings.viewPaddingPx);
+
+        TileWorkerCoordinator.updateFocus(viewport.x, viewport.y);
 
         ctx.fillStyle = combatVisualSettings.floorShadow;
         ctx.fillRect(bounds.minX, bounds.minY, bounds.maxX - bounds.minX, bounds.maxY - bounds.minY);

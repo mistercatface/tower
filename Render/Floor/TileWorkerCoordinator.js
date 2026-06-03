@@ -42,6 +42,9 @@ const activeAnimationBakes = new Set();
 const animationBakeQueue = [];
 const MAX_CONCURRENT_ANIMATION_BAKES = 1;
 
+let focusX = 0;
+let focusY = 0;
+
 function processAnimationBakeQueue() {
     if (activeAnimationBakes.size >= MAX_CONCURRENT_ANIMATION_BAKES) {
         return;
@@ -50,7 +53,31 @@ function processAnimationBakeQueue() {
         return;
     }
 
+    // Dynamically sort queue by distance to focus
+    animationBakeQueue.sort((a, b) => {
+        const distSqA = ((a.payload.centerX ?? focusX) - focusX) ** 2 + ((a.payload.centerY ?? focusY) - focusY) ** 2;
+        const distSqB = ((b.payload.centerX ?? focusX) - focusX) ** 2 + ((b.payload.centerY ?? focusY) - focusY) ** 2;
+        return distSqA - distSqB;
+    });
+
     const job = animationBakeQueue.shift();
+
+    // Drop obsolete jobs if profile was edited
+    const currentRev = getProfileRevision(job.payload.profileId);
+    if (job.revision !== undefined && job.revision < currentRev) {
+        job.resolve([]); 
+        processAnimationBakeQueue();
+        return;
+    }
+
+    // Cull jobs that are ridiculously far away (no longer relevant)
+    const distSq = ((job.payload.centerX ?? focusX) - focusX) ** 2 + ((job.payload.centerY ?? focusY) - focusY) ** 2;
+    if (distSq > 4000000) { // e.g., > 2000 units away
+        job.resolve([]);
+        processAnimationBakeQueue();
+        return;
+    }
+
     activeAnimationBakes.add(job);
 
     const promise = sendRequest(job.type, job.payload, job.priority);
@@ -70,8 +97,21 @@ function processAnimationBakeQueue() {
 
 function requestAnimationBake(type, payload, priority = Infinity) {
     return new Promise((resolve, reject) => {
-        const job = { type, payload, priority, resolve, reject };
-        animationBakeQueue.push(job);
+        const revision = getProfileRevision(payload.profileId);
+        const job = { type, payload, priority, resolve, reject, revision };
+        
+        let lo = 0;
+        let hi = animationBakeQueue.length;
+        while (lo < hi) {
+            const mid = (lo + hi) >> 1;
+            if (animationBakeQueue[mid].priority < job.priority) {
+                lo = mid + 1;
+            } else {
+                hi = mid;
+            }
+        }
+        animationBakeQueue.splice(lo, 0, job);
+        
         processAnimationBakeQueue();
     });
 }
@@ -170,6 +210,11 @@ function broadcastRequest(type, payload) {
 }
 
 export const TileWorkerCoordinator = {
+    updateFocus(x, y) {
+        focusX = x;
+        focusY = y;
+    },
+
     getProfileRevision(profileId) {
         return getProfileRevision(profileId);
     },

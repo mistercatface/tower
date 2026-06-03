@@ -28,7 +28,7 @@ export const floorProceduralProfiles = {
     circuitLoop,
 };
 
-export const START_STATION_ID = "circuitLoop";
+export const START_STATION_ID = "toxicSludge";
 
 export const defaultFloorProceduralProfileId = START_STATION_ID;
 
