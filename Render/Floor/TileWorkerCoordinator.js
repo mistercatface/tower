@@ -22,12 +22,20 @@ function whenWorkersReady(run) {
     return Promise.resolve(workerReady).then(run);
 }
 
+const runtimeProfileRevisions = new Map();
+
+export function getProfileRevision(profileId) {
+    return runtimeProfileRevisions.get(profileId) ?? 0;
+}
+
 function chunkDedupeKey(payload) {
-    return `chunk:${payload.profileId}:${payload.chunkCol},${payload.chunkRow}:${payload.seed ?? 0}${payload.firstFrameOnly ? ":first" : ""}`;
+    const rev = getProfileRevision(payload.profileId);
+    return `chunk:${payload.profileId}:${rev}:${payload.chunkCol},${payload.chunkRow}:${payload.seed ?? 0}${payload.firstFrameOnly ? ":first" : ""}`;
 }
 
 function wallDedupeKey(payload) {
-    return `wall:${payload.profileId}:${payload.p1.x.toFixed(1)},${payload.p1.y.toFixed(1)}-${payload.p2.x.toFixed(1)},${payload.p2.y.toFixed(1)}${payload.firstFrameOnly ? ":first" : ""}`;
+    const rev = getProfileRevision(payload.profileId);
+    return `wall:${payload.profileId}:${rev}:${payload.p1.x.toFixed(1)},${payload.p1.y.toFixed(1)}-${payload.p2.x.toFixed(1)},${payload.p2.y.toFixed(1)}:${payload.seed ?? 0}${payload.firstFrameOnly ? ":first" : ""}`;
 }
 
 const activeAnimationBakes = new Set();
@@ -162,6 +170,10 @@ function broadcastRequest(type, payload) {
 }
 
 export const TileWorkerCoordinator = {
+    getProfileRevision(profileId) {
+        return getProfileRevision(profileId);
+    },
+
     requestFloorChunkBake(payload, priority = Infinity) {
         const profileId = payload.profileId;
         if (profileId && !listShippedFloorProfileIds().includes(profileId) && !registeredRuntimeProfileIds.has(profileId)) {
@@ -216,6 +228,8 @@ export const TileWorkerCoordinator = {
     },
 
     registerRuntimeProfile(profileId, profile) {
+        const rev = (runtimeProfileRevisions.get(profileId) ?? 0) + 1;
+        runtimeProfileRevisions.set(profileId, rev);
         getWorkerPool();
         registeredRuntimeProfileIds.add(profileId);
         workerReady = workerReady.then(() => broadcastRequest("registerRuntimeProfile", { profileId, profile }));

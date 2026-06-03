@@ -5,6 +5,7 @@ import { getFloorTextureProfileId } from "../Floor/floorTextureProfile.js";
 import { getFloorProceduralProfile } from "../../Config/floorProceduralConfig.js";
 import { bakePixelsForWorldSpan, getPixelsPerWorldUnit, shouldSmoothTextureDownsample } from "../Floor/floorTextureResolution.js";
 import { getAnimationFrameIndex, getAnimationFrames } from "../Floor/ProfileBakeResolver.js";
+import { TileWorkerCoordinator } from "../Floor/TileWorkerCoordinator.js";
 
 const WALL_ANGLE_SPREAD = 0.002;
 
@@ -278,7 +279,9 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHei
         const ky1 = wy1.toFixed(1);
         const kx2 = wx2.toFixed(1);
         const ky2 = wy2.toFixed(1);
-        const key = `v15:${ppwu}:${profileId}:${kx1},${ky1}-${kx2},${ky2}`;
+        const seed = state.floorTileSeed ?? 0;
+        const rev = TileWorkerCoordinator.getProfileRevision(profileId);
+        const key = `v17:${ppwu}:${profileId}:${rev}:${seed}:${kx1},${ky1}-${kx2},${ky2}`;
 
         flatCanvases = flatWallCache.get(key);
         if (!flatCanvases) {

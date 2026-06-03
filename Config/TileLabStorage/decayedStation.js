@@ -51,7 +51,7 @@ export default {
         },
         {
             type: "circuitTraces",
-            surfaceMask: "floor",
+            surfaceMask: "all",
             coordinateSpace: "warped",
             gridSize: 32,
             lineWidth: 1.5,
@@ -77,7 +77,7 @@ export default {
     animation: {
         stages: [
             {
-                frames: 12,
+                frames: 30,
                 durationMs: 800,
                 tracks: [
                     { targetPath: "motifs[3].corePeak", startValue: 15, endValue: 4, easing: "easeInOutSine" },
@@ -85,7 +85,7 @@ export default {
                 ]
             },
             {
-                frames: 4,
+                frames: 10,
                 durationMs: 200,
                 tracks: [
                     { targetPath: "motifs[3].corePeak", startValue: 4, endValue: 24, easing: "easeOutQuad" },
@@ -93,7 +93,7 @@ export default {
                 ]
             },
             {
-                frames: 8,
+                frames: 20,
                 durationMs: 400,
                 tracks: [
                     { targetPath: "motifs[3].corePeak", startValue: 24, endValue: 0, easing: "easeInQuad" },
@@ -101,7 +101,7 @@ export default {
                 ]
             },
             {
-                frames: 12,
+                frames: 30,
                 durationMs: 600,
                 tracks: [
                     { targetPath: "motifs[3].corePeak", startValue: 0, endValue: 15, easing: "easeOutCubic" },
