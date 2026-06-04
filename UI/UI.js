@@ -5,13 +5,7 @@ import { GamePhase, isCombat, isCombatOrReward, isInspector } from "../GameState
 import { getStartNodeInspectionMissionLabel } from "../Combat/StartNodeInspection.js";
 import { getGunDefinition, playerEquipmentCatalog } from "../Config/gunDefinitions.js";
 import { getSlotFireIntervalMs, getSlotReloadTimeMs } from "../Combat/gunCombat.js";
-import {
-    countGunInLoadout,
-    formatHandednessLabel,
-    getEquipmentSlotCount,
-    getGunEquipAction,
-    normalizeWeaponLoadout,
-} from "../Combat/equipmentLoadout.js";
+import { countGunInLoadout, formatHandednessLabel, getEquipmentSlotCount, getGunEquipAction, normalizeWeaponLoadout } from "../Combat/equipmentLoadout.js";
 import {
     events,
     Events,
@@ -241,8 +235,7 @@ export function updateToggleButton(btnId, isUnlocked, isActive, btnText, upgDef)
 
 function updateMapNavButtons(state) {
     const onMap = state.phase === GamePhase.MAP;
-    const canOpenMap =
-        (state.phase === GamePhase.COMBAT || state.phase === GamePhase.INSPECTOR) && !state.isGameOver;
+    const canOpenMap = (state.phase === GamePhase.COMBAT || state.phase === GamePhase.INSPECTOR) && !state.isGameOver;
 
     if (elements.mapBtn) {
         elements.mapBtn.style.display = canOpenMap ? "block" : "none";
@@ -397,12 +390,7 @@ export function initUI(state, upgrades) {
         .forEach((upg) => {
             const styles =
                 "padding: 3px 8px; background: #1e293b; color: #cbd5e1; border: 1px solid #475569; font-family: monospace; font-weight: bold; border-radius: 4px; display: none; font-size: 11px; pointer-events: none; user-select: none;";
-            const btn = createButton(
-                styles,
-                upg.name,
-                null,
-                "btnPassive_" + upg.id,
-            );
+            const btn = createButton(styles, upg.name, null, "btnPassive_" + upg.id);
             dynamicElements[btn.id] = btn;
             elements.passivesContainer.appendChild(btn);
         });
@@ -416,7 +404,7 @@ export function initUI(state, upgrades) {
             const html =
                 upg.cooldown > 0
                     ? `<span style="position: relative; z-index: 2;">${upg.toggleName || upg.name}</span><div id="cooldownOverlay_${upg.id}" style="position: absolute; bottom: 0; left: 0; width: 100%; height: 0%; background: rgba(0, 0, 0, 0.6); z-index: 1;"></div>`
-                    : (upg.toggleName || upg.name);
+                    : upg.toggleName || upg.name;
 
             const btn = createButton(
                 styles,
@@ -452,12 +440,7 @@ export function initUI(state, upgrades) {
     upgrades.forEach((upg) => {
         const styles =
             "flex: 1; min-width: 45%; padding: 4px; background: #333; color: white; border: 1px solid #555; cursor: pointer; font-family: monospace; box-sizing: border-box; font-weight: bold; font-size: 14px;";
-        const btn = createButton(
-            styles,
-            "",
-            () => emitPurchaseUpgrade(upg.id),
-            "upg_" + upg.id,
-        );
+        const btn = createButton(styles, "", () => emitPurchaseUpgrade(upg.id), "upg_" + upg.id);
 
         dynamicElements[btn.id] = btn;
         elements.upgradesContainer.appendChild(btn);
