@@ -1,7 +1,7 @@
 import { THEME_COLORS, floorTileSettings } from "../../Config/Config.js";
 import { drawBarrel, drawCrate, drawFireBarrel, drawCrateShard } from "./PropRecipes.js";
 import { SpatialQuery } from "../../Spatial/World/SpatialQuery.js";
-import { isFaceTowardViewer } from "./math/CombatProjection.js";
+import { isFaceTowardViewer, CAMERA_HEIGHT } from "./math/CombatProjection.js";
 import { drawProjectedWallFace, preloadProjectedWallFace } from "./WallFaceTexture.js";
 import { TileWorkerCoordinator, wallGeometryView, wallSharedEdgesView, MAX_WALLS, STRIDE } from "../Floor/TileWorkerCoordinator.js";
 
@@ -92,13 +92,70 @@ export class Render3D {
     drawWallSegmentFaces(ctx, seg, px, py, state, viewport, options = {}) {
         const edges = this.getSegmentEdges(seg);
         if (!seg.sharedEdges) seg.sharedEdges = [false, false, false, false];
+
+        const wallHeight = seg.wallHeight ?? (floorTileSettings.wallVisualHeight ?? (CAMERA_HEIGHT - 10));
+
+        // 1. Draw side faces
         for (let i = 0; i < 4; i++) {
-            if (seg.sharedEdges[i]) continue;
+            let isShared = seg.sharedEdges[i];
+
+            // If the edge is marked as shared, check if we need to draw it anyway
+            // because the adjacent wall has a different height.
+            if (isShared && state.wallSpatialHash) {
+                const edge = edges[i];
+                const neighbors = state.wallSpatialHash.collectInBounds(edge.cx - 2, edge.cy - 2, edge.cx + 2, edge.cy + 2);
+                let sameHeightNeighborFound = false;
+                for (let n = 0; n < neighbors.length; n++) {
+                    const neighbor = neighbors[n];
+                    if (neighbor === seg || neighbor.isDead) continue;
+
+                    const distToNeighbor = Math.hypot(neighbor.x - edge.cx, neighbor.y - edge.cy);
+                    if (distToNeighbor < 9) { // 8 units is exactly from edge midpoint to segment center
+                        const neighborHeight = neighbor.wallHeight ?? (floorTileSettings.wallVisualHeight ?? (CAMERA_HEIGHT - 10));
+                        if (neighborHeight === wallHeight) {
+                            sameHeightNeighborFound = true;
+                            break;
+                        }
+                    }
+                }
+                if (!sameHeightNeighborFound) {
+                    isShared = false;
+                }
+            }
+
+            if (isShared) continue;
+
             const edge = edges[i];
             const viewX = edge.cx - px;
             const viewY = edge.cy - py;
             if (edge.outX * viewX + edge.outY * viewY >= 0) continue;
             this.drawWallFace(ctx, seg, edge[0], edge[1], px, py, state, viewport, options, edge);
+        }
+
+        // 2. Draw the roof (top cap) if the wall height is finite
+        if (wallHeight < CAMERA_HEIGHT) {
+            const alpha = wallHeight / (CAMERA_HEIGHT - wallHeight);
+            const baseCorners = [edges[0][0], edges[1][0], edges[2][0], edges[3][0]];
+            const topCorners = baseCorners.map(c => {
+                const dx = c.x - px;
+                const dy = c.y - py;
+                return {
+                    x: c.x + dx * alpha,
+                    y: c.y + dy * alpha
+                };
+            });
+
+            ctx.fillStyle = this.getWallColor(seg, THEME_COLORS[0], 1.08); // Slightly brighter for overhead lighting
+            ctx.strokeStyle = this.getWallColor(seg, THEME_COLORS[0], 0.6); // Darker border
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(topCorners[0].x, topCorners[0].y);
+            ctx.lineTo(topCorners[1].x, topCorners[1].y);
+            ctx.lineTo(topCorners[2].x, topCorners[2].y);
+            ctx.lineTo(topCorners[3].x, topCorners[3].y);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
         }
     }
 
