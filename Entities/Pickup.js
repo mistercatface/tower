@@ -49,6 +49,7 @@ function damageOnHit(state, pickup, projectile, events) {
         const canSplit = (width >= minSize * 2 && height >= minSize * 2);
 
         if (!canSplit) {
+            if (pickup.ageMs > 250) return false;
             if (projectile) {
                 const pushForce = projectile.isExplosion ? 250 : 120;
                 
@@ -146,6 +147,7 @@ export class Pickup extends Entity {
             this.maxHealth = this.strategy.maxHealth;
             this.health = this.strategy.maxHealth;
         }
+        this.ageMs = 0;
         this._sleepFrames = 0;
         this.isSleeping = false;
         this.stateTimer = 0;
@@ -234,6 +236,7 @@ export class Pickup extends Entity {
     }
 
     update(dt, state, spatialFrame, { resolveWalls = false } = {}) {
+        this.ageMs += dt;
         if (this.isSleeping) return;
         PhysicsSystem.applyFrictionAndDrag(this, dt, this.strategy.friction);
         if (resolveWalls && this.strategy.isPushable && this.needsWallCollision()) PhysicsSystem.resolveWallCollisions(this, spatialFrame, state);
