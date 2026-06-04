@@ -383,7 +383,7 @@ export const NAV_PROFILES = {
     sidekickFollow: { flowField: "enemy", hpaThreshold: 60, replanMs: 250, replanWhileMoving: true },
 };
 
-export const mapSettings = { numLayers: 5, layerSpacing: 200, xSpacing: 200, nodeJitter: 12, combatCoordScale: 7.0 };
+export const mapSettings = { numLayers: 5, layerSpacing: 145, xSpacing: 145, nodeJitter: 0, combatCoordScale: 7.0 };
 
 export const playerProjectileSettings = { speed: 250, radiusMultiplier: 0.25, splitRadiusMultiplier: 0.125, knockbackMultiplier: 200 };
 
