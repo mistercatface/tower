@@ -188,7 +188,7 @@ export class GameState {
         return this.getParty();
     }
 
-    spawnRunParty(count = 2) {
+    spawnRunParty(count = 1) {
         const leader = this.getLeader();
         this.allies = [];
 

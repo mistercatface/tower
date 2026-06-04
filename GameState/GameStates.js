@@ -179,7 +179,7 @@ export class CombatState {
         ctx.viewport.snapTo(ctx.state.player.x, ctx.state.player.y);
 
         if (currentNode?.id === 0) {
-            ctx.state.spawnRunParty(3);
+            ctx.state.spawnRunParty();
         }
 
         ctx.state.waveManager.startCombat();
