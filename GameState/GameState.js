@@ -46,6 +46,9 @@ export class GameState {
         this.floorTileSeed = 0;
         /** @type {string | null} Dev/preview override — see getFloorTextureProfileId */
         this.floorTextureProfileOverride = null;
+        this.mapWallCache = null;
+        this.mapLabWallCache = null;
+        this.mapPathDebugCache = null;
 
         this.initializeDefaultState();
     }

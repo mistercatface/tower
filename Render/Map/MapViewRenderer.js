@@ -1,9 +1,16 @@
-import { drawMapWallCache, getGameMapWallCache, getLabMapWallCache } from "./MapWallCache.js";
+import { drawMapWallCache } from "./MapWallCache.js";
+import { drawMapPathDebugCache } from "./MapPathDebugCache.js";
 import { GAME_MAP_GRAPH_STYLES, LAB_MAP_GRAPH_STYLES } from "./mapViewStyles.js";
 
 function resolveLineWidth(styles, context) {
     const width = styles.connectionLineWidth;
     return typeof width === "function" ? width(context) : width;
+}
+
+export function applyLabCamera(ctx, width, height, camera) {
+    ctx.translate(width / 2, height / 2);
+    ctx.scale(camera.zoom, camera.zoom);
+    ctx.translate(-camera.x, -camera.y);
 }
 
 export function drawMapConnections(ctx, state, styles, context = {}) {
@@ -45,20 +52,64 @@ export function drawMapNodes(ctx, state, styles, context = {}) {
     }
 }
 
-export function drawMapGraph(ctx, state, styles = GAME_MAP_GRAPH_STYLES, context = {}) {
+function drawMapGraph(ctx, state, styles, context = {}) {
     drawMapConnections(ctx, state, styles, context);
     drawMapNodes(ctx, state, styles, context);
 }
 
-export function drawGameMapLayers(ctx, state) {
-    drawMapWallCache(ctx, getGameMapWallCache(state));
-    drawMapGraph(ctx, state, GAME_MAP_GRAPH_STYLES);
+function renderMapViewContent(ctx, state, config) {
+    const {
+        mode = "game",
+        showWalls = true,
+        showGraph = true,
+        showPathDebug = false,
+        graphContext = {},
+    } = config;
+
+    if (mode === "lab" && showPathDebug) {
+        drawMapPathDebugCache(ctx, state.mapPathDebugCache);
+    }
+
+    if (showWalls) {
+        const wallCache = mode === "lab" ? state.mapLabWallCache : state.mapWallCache;
+        drawMapWallCache(ctx, wallCache);
+    }
+
+    if (showGraph) {
+        const styles = mode === "lab" ? LAB_MAP_GRAPH_STYLES : GAME_MAP_GRAPH_STYLES;
+        drawMapGraph(ctx, state, styles, graphContext);
+    }
 }
 
-export function drawLabMapWallLayer(ctx, state) {
-    drawMapWallCache(ctx, getLabMapWallCache(state));
-}
+export function renderMapView(ctx, state, config) {
+    const {
+        width,
+        height,
+        viewport,
+        camera,
+        backgroundColor = "#080a0e",
+        clearBackground = true,
+        drawOverlays,
+    } = config;
 
-export function drawLabMapGraph(ctx, state, context = {}) {
-    drawMapGraph(ctx, state, LAB_MAP_GRAPH_STYLES, context);
+    ctx.save();
+
+    if (clearBackground && width > 0 && height > 0) {
+        ctx.fillStyle = backgroundColor;
+        ctx.fillRect(0, 0, width, height);
+    }
+
+    if (viewport) {
+        viewport.apply(ctx);
+    } else if (camera && width > 0 && height > 0) {
+        applyLabCamera(ctx, width, height, camera);
+    }
+
+    renderMapViewContent(ctx, state, config);
+
+    if (drawOverlays) {
+        drawOverlays(ctx, state, config);
+    }
+
+    ctx.restore();
 }

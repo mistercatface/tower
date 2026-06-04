@@ -5,7 +5,8 @@ import { getWorldDrawCoords, isMapTraveling, isWorldScene } from "../GameState/G
 import { getPlayerActors } from "../Combat/Targeting.js";
 import { drawHostileOffScreenIndicators } from "./OffScreenIndicators.js";
 import { CombatParticles } from "./CombatParticles.js";
-import { drawGameMapLayers } from "./Map/MapViewRenderer.js";
+import { renderMapView } from "./Map/MapViewRenderer.js";
+import { createGameMapViewConfig } from "./Map/mapViewPresets.js";
 
 export class Renderer {
     constructor(canvas, ctx) {
@@ -59,8 +60,11 @@ export class Renderer {
     renderMapScene(state, viewport) {
         this.ctx.save();
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        if (viewport) viewport.apply(this.ctx);
-        this.drawMap(state);
+        renderMapView(this.ctx, state, {
+            ...createGameMapViewConfig(),
+            viewport,
+            clearBackground: false,
+        });
 
         const oldX = state.player.x;
         const oldY = state.player.y;
@@ -300,10 +304,6 @@ export class Renderer {
         ctx.lineTo(-size, size);
         ctx.stroke();
         ctx.restore();
-    }
-
-    drawMap(state) {
-        drawGameMapLayers(this.ctx, state);
     }
 
     drawGlobeOverlay(state, viewport) {

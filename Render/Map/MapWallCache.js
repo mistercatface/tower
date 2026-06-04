@@ -76,7 +76,7 @@ function computeGameMapWallBounds(walls, baseSpawnX, baseSpawnY, scale) {
     return { minX, minY, maxX, maxY };
 }
 
-function bakeGameMapWallCache(walls, baseSpawnX, baseSpawnY, scale) {
+export function bakeGameMapWallCache(walls, baseSpawnX, baseSpawnY, scale) {
     const bounds = computeGameMapWallBounds(walls, baseSpawnX, baseSpawnY, scale);
     if (!bounds) return null;
 
@@ -99,15 +99,10 @@ function bakeGameMapWallCache(walls, baseSpawnX, baseSpawnY, scale) {
         minY: bounds.minY,
         maxX: bounds.maxX,
         maxY: bounds.maxY,
-        wallsCount: walls.length,
-        baseSpawnX,
-        baseSpawnY,
-        scale,
-        mode: "game",
     };
 }
 
-function bakeLabMapWallCache(walls, minX, minY, maxX, maxY) {
+export function bakeLabMapWallCache(walls, minX, minY, maxX, maxY) {
     const width = Math.ceil(maxX - minX);
     const height = Math.ceil(maxY - minY);
     if (width <= 0 || height <= 0) return null;
@@ -127,66 +122,7 @@ function bakeLabMapWallCache(walls, minX, minY, maxX, maxY) {
         minY,
         maxX,
         maxY,
-        wallsCount: walls.length,
-        mode: "lab",
     };
-}
-
-function labGridMatches(cache, grid) {
-    return cache.minX === grid.minX
-        && cache.minY === grid.minY
-        && cache.maxX === grid.maxX
-        && cache.maxY === grid.maxY;
-}
-
-export function invalidateMapWallCache(state) {
-    state.mapWallCache = null;
-    state.mapLabWallCache = null;
-    state.mapLabPathDebugCache = null;
-}
-
-export function getGameMapWallCache(state) {
-    const { x: baseSpawnX, y: baseSpawnY } = state.getCombatSpawnOrigin();
-    const scale = mapSettings.combatCoordScale;
-    const cache = state.mapWallCache;
-
-    if (cache
-        && cache.mode === "game"
-        && cache.wallsCount === state.walls.length
-        && cache.baseSpawnX === baseSpawnX
-        && cache.baseSpawnY === baseSpawnY
-        && cache.scale === scale
-    ) {
-        return cache;
-    }
-
-    const nextCache = bakeGameMapWallCache(state.walls, baseSpawnX, baseSpawnY, scale);
-    state.mapWallCache = nextCache;
-    return nextCache;
-}
-
-export function getLabMapWallCache(state) {
-    const grid = state.obstacleGrid;
-    if (!grid) return null;
-
-    const cache = state.mapLabWallCache;
-    if (cache
-        && cache.mode === "lab"
-        && cache.wallsCount === state.walls.length
-        && labGridMatches(cache, grid)
-    ) {
-        return cache;
-    }
-
-    const nextCache = bakeLabMapWallCache(
-        state.walls,
-        grid.minX,
-        grid.minY,
-        grid.maxX,
-        grid.maxY,
-    );
-    state.mapLabWallCache = nextCache;
-    return nextCache;
 }
 
 export function drawMapWallCache(ctx, cache) {

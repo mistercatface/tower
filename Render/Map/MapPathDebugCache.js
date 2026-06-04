@@ -122,39 +122,15 @@ function bakePathDebugLayer(hnav, minX, minY, maxX, maxY) {
     };
 }
 
-function gridMatches(cache, grid) {
-    return cache.minX === grid.minX
-        && cache.minY === grid.minY
-        && cache.maxX === grid.maxX
-        && cache.maxY === grid.maxY;
-}
-
-export function getMapLabPathDebugCache(state) {
+export function bakeMapPathDebugCache(state) {
     const grid = state.obstacleGrid;
     const hnav = state.hierarchicalNavigator;
     if (!grid || !hnav) return null;
 
-    const cache = state.mapLabPathDebugCache;
-    const nodeCount = hnav.nodesMap ? Object.keys(hnav.nodesMap).length : 0;
-
-    if (cache
-        && cache.wallsCount === state.walls.length
-        && cache.hpaNodeCount === nodeCount
-        && gridMatches(cache, grid)
-    ) {
-        return cache;
-    }
-
-    const nextCache = bakePathDebugLayer(hnav, grid.minX, grid.minY, grid.maxX, grid.maxY);
-    if (!nextCache) return null;
-
-    nextCache.wallsCount = state.walls.length;
-    nextCache.hpaNodeCount = nodeCount;
-    state.mapLabPathDebugCache = nextCache;
-    return nextCache;
+    return bakePathDebugLayer(hnav, grid.minX, grid.minY, grid.maxX, grid.maxY);
 }
 
-export function drawMapLabPathDebugCache(ctx, cache) {
+export function drawMapPathDebugCache(ctx, cache) {
     if (!cache?.canvas) return;
     ctx.drawImage(cache.canvas, cache.minX, cache.minY);
 }
