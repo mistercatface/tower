@@ -51,6 +51,7 @@ const ENEMY_TYPE_OUTFIT = {
     spastic: { top: 0, bottom: 3 },
     dodger: { top: 2, bottom: 1 },
     boss: { top: 1, bottom: 2 },
+    zombie: { top: 0, bottom: 0 },
 };
 
 function hashEnemyType(type) {
@@ -81,6 +82,11 @@ function applyEnemyTypeAppearance(char, enemyType) {
         bottomLight: bottom.light,
         bottomDark: bottom.dark,
     };
+    if (enemyType.type === "zombie") {
+        next.skinColor = "#4CAF50";
+        next.skinLight = "#81C784";
+        next.skinDark = "#388E3C";
+    }
     if (!next.hairColor) {
         next.hairColor = "#402010";
         next.hairStyle = next.hairStyle === "none" ? "short" : next.hairStyle;

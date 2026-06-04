@@ -155,10 +155,16 @@ export class WaveManager {
 
     manageSpawning(dt, state, upgrades, viewport) {
         if (!canRunWaveSpawning(state)) return;
+
+        if (!state.zombieEventTriggered) {
+            state.zombieEventTriggered = true;
+            this.spawnZombieEvent(state, upgrades);
+        }
+
         if (this.enemiesSpawned < this.enemiesToSpawn && !this.spawnIntervalId) {
             const currentSpawnDelay = Math.max(spawnSettings.minSpawnDelay, spawnSettings.baseSpawnDelay - this.wave * spawnSettings.delayReductionPerWave);
             this.spawnIntervalId = state.scheduler.schedule(currentSpawnDelay, () => {
-                const aliveEnemies = state.enemies.filter(e => !e.isDead).length;
+                const aliveEnemies = state.enemies.filter(e => !e.isDead && e.enemyType.type !== "zombie").length;
                 if (aliveEnemies >= spawnSettings.maxActiveEnemies) {
                     return;
                 }
@@ -185,6 +191,71 @@ export class WaveManager {
             });
         }
     }
+
+    spawnZombieEvent(state, upgrades) {
+        const targetNode = getZombieSpawnTargetNode(state);
+        if (!targetNode) return;
+        
+        const count = 25;
+        const spots = findFreeSpotsInNode(state, targetNode, count);
+        const enemyType = getEnemyType("zombie");
+        if (!enemyType) return;
+        
+        const baseUpgradeDefs = upgrades.filter(isBaseStatUpgrade);
+        for (let i = 0; i < count; i++) {
+            const spot = spots[i] || spots[0];
+            state.enemies.push(Enemy.spawn(spot.x, spot.y, enemyType, this.wave, baseUpgradeDefs));
+        }
+    }
+}
+
+function getZombieSpawnTargetNode(state) {
+    const currentNodeId = state.currentNodeId;
+    const mapNodes = state.mapNodes;
+    
+    const adjacencyList = new Map();
+    for (const node of mapNodes) {
+        if (!adjacencyList.has(node.id)) {
+            adjacencyList.set(node.id, new Set());
+        }
+        for (const targetId of node.connections) {
+            if (!adjacencyList.has(targetId)) {
+                adjacencyList.set(targetId, new Set());
+            }
+            adjacencyList.get(node.id).add(targetId);
+            adjacencyList.get(targetId).add(node.id);
+        }
+    }
+
+    const queue = [{ id: currentNodeId, depth: 0 }];
+    const visited = new Set([currentNodeId]);
+    const candidates = [];
+
+    while (queue.length > 0) {
+        const { id, depth } = queue.shift();
+        
+        if (depth === 1) {
+            const node = state.getMapNode(id);
+            if (node) candidates.push(node);
+        }
+
+        if (depth < 1) {
+            const neighbors = adjacencyList.get(id);
+            if (neighbors) {
+                for (const neighborId of neighbors) {
+                    if (!visited.has(neighborId)) {
+                        visited.add(neighborId);
+                        queue.push({ id: neighborId, depth: depth + 1 });
+                    }
+                }
+            }
+        }
+    }
+    
+    if (candidates.length > 0) {
+        return candidates[Math.floor(Math.random() * candidates.length)];
+    }
+    return state.getMapNode(currentNodeId);
 }
 
 function getSpawnCandidateNodes(state) {

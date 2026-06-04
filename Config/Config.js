@@ -29,6 +29,17 @@ export const enemyTypes = [
     },
     { type: "dodger", radius: combatActorRadius, baseSpeed: 75, maxHealth: 4, color: "#03A9F4", attackType: "ranged", canDodge: true },
     { type: "boss", radius: combatActorRadius, baseSpeed: 115, maxHealth: 6, color: "#B71C1C", attackType: "ranged", canDodge: true },
+    {
+        type: "zombie",
+        radius: combatActorRadius,
+        baseSpeed: 25,
+        maxHealth: 2,
+        color: "#4CAF50",
+        attackType: "charge",
+        canDodge: false,
+        accelRate: 3,
+        canDamageWalls: true,
+    },
 ];
 
 export const spawnPods = [

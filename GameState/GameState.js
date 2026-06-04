@@ -123,6 +123,7 @@ export class GameState {
         this.startNodeInspectionFinishing = false;
         this.propInspectorPanelOpen = false;
         this.skipCombatEnterReset = false;
+        this.zombieEventTriggered = false;
 
         this.wavesCompleted = 0;
         this.isTransitioning = false;
