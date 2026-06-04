@@ -5,7 +5,7 @@ import { getWorldDrawCoords, isMapTraveling, isWorldScene } from "../GameState/G
 import { getPlayerActors } from "../Combat/Targeting.js";
 import { drawHostileOffScreenIndicators } from "./OffScreenIndicators.js";
 import { CombatParticles } from "./CombatParticles.js";
-import { drawMapWallCache, getGameMapWallCache } from "./Map/MapWallCache.js";
+import { drawGameMapLayers } from "./Map/MapViewRenderer.js";
 
 export class Renderer {
     constructor(canvas, ctx) {
@@ -303,48 +303,7 @@ export class Renderer {
     }
 
     drawMap(state) {
-        const currentNode = state.getCurrentMapNode();
-
-        drawMapWallCache(this.ctx, getGameMapWallCache(state));
-
-        for (const node of state.mapNodes) {
-            for (const connId of node.connections) {
-                const targetNode = state.getMapNode(connId);
-                if (!targetNode) continue;
-                this.ctx.beginPath();
-                this.ctx.moveTo(node.x, node.y);
-                this.ctx.lineTo(targetNode.x, targetNode.y);
-                this.ctx.lineWidth = 1.5;
-                if (node.completed && (targetNode.completed || targetNode.id === state.currentNodeId)) {
-                    this.ctx.strokeStyle = "rgba(76, 175, 80, 0.4)";
-                } else if (node.id === state.currentNodeId) {
-                    this.ctx.strokeStyle = "rgba(255, 235, 59, 0.5)";
-                } else {
-                    this.ctx.strokeStyle = "rgba(85, 85, 85, 0.3)";
-                }
-                this.ctx.stroke();
-            }
-        }
-
-        const waveColors = ["#03A9F4", "#7E57C2", "#AB47BC", "#EC407A", "#F44336"];
-        for (const node of state.mapNodes) {
-            this.ctx.beginPath();
-            this.ctx.arc(node.x, node.y, 8, 0, Math.PI * 2);
-            if (node.id === state.currentNodeId) {
-                this.ctx.fillStyle = "#FFEB3B";
-            } else if (node.completed) {
-                this.ctx.fillStyle = "#4CAF50";
-            } else if (currentNode && currentNode.connections.includes(node.id)) {
-                const waveIndex = Math.min(4, Math.max(0, (node.wavesTotal || 1) - 1));
-                this.ctx.fillStyle = waveColors[waveIndex];
-            } else {
-                this.ctx.fillStyle = "#333";
-            }
-            this.ctx.fill();
-            this.ctx.lineWidth = 1.5;
-            this.ctx.strokeStyle = "#FFF";
-            this.ctx.stroke();
-        }
+        drawGameMapLayers(this.ctx, state);
     }
 
     drawGlobeOverlay(state, viewport) {

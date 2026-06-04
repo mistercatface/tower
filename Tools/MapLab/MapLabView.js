@@ -1,4 +1,4 @@
-import { drawMapWallCache, getLabMapWallCache } from "../../Render/Map/MapWallCache.js";
+import { drawLabMapGraph, drawLabMapWallLayer } from "../../Render/Map/MapViewRenderer.js";
 import { drawMapLabPathDebugCache, getMapLabPathDebugCache } from "./MapLabPathDebugCache.js";
 
 export function renderMapLabView(ctx, width, height, world, camera, options, selectedNodeId, playerPos, targetPos, currentPath) {
@@ -15,7 +15,7 @@ export function renderMapLabView(ctx, width, height, world, camera, options, sel
             drawMapLabPathDebugCache(ctx, getMapLabPathDebugCache(world));
         }
         if (options.showWalls) {
-            drawMapWallCache(ctx, getLabMapWallCache(world));
+            drawLabMapWallLayer(ctx, world);
         }
     }
 
@@ -44,52 +44,10 @@ export function renderMapLabView(ctx, width, height, world, camera, options, sel
     }
 
     if (options.showNodes) {
-        ctx.lineWidth = 4 / camera.zoom;
-        for (const node of world.mapNodes) {
-            const coordsA = world.getNodeCombatCoords(node);
-            for (const targetId of node.connections) {
-                const targetNode = world.getMapNode(targetId);
-                if (!targetNode) continue;
-                const coordsB = world.getNodeCombatCoords(targetNode);
-
-                ctx.beginPath();
-                ctx.moveTo(coordsA.x, coordsA.y);
-                ctx.lineTo(coordsB.x, coordsB.y);
-                ctx.strokeStyle = "rgba(85, 85, 85, 0.4)";
-                ctx.stroke();
-            }
-        }
-    }
-
-    if (options.showNodes) {
-        for (const node of world.mapNodes) {
-            const coords = world.getNodeCombatCoords(node);
-
-            ctx.beginPath();
-            ctx.arc(coords.x, coords.y, 30 / camera.zoom, 0, Math.PI * 2);
-
-            const themeColor = node.wallTheme ? `rgb(${node.wallTheme.r}, ${node.wallTheme.g}, ${node.wallTheme.b})` : "#555";
-            ctx.fillStyle = themeColor;
-
-            if (node.id === selectedNodeId) {
-                ctx.lineWidth = 8 / camera.zoom;
-                ctx.strokeStyle = "#fff";
-            } else {
-                ctx.lineWidth = 3 / camera.zoom;
-                ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
-            }
-
-            ctx.fill();
-            ctx.stroke();
-
-            if (camera.zoom > 0.05) {
-                ctx.fillStyle = "#fff";
-                ctx.font = `bold ${20 / camera.zoom}px Inter, sans-serif`;
-                ctx.textAlign = "center";
-                ctx.textBaseline = "middle";
-                ctx.fillText(node.id.toString(), coords.x, coords.y);
-            }
-        }
+        drawLabMapGraph(ctx, world, {
+            zoom: camera.zoom,
+            selectedNodeId,
+        });
     }
 
     if (options.showPathTest) {

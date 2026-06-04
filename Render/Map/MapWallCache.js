@@ -193,8 +193,3 @@ export function drawMapWallCache(ctx, cache) {
     if (!cache?.canvas) return;
     ctx.drawImage(cache.canvas, cache.minX, cache.minY);
 }
-
-/** @deprecated use drawMapWallCache */
-export function drawGameMapWallCache(ctx, cache) {
-    drawMapWallCache(ctx, cache);
-}
