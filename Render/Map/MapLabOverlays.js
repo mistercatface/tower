@@ -37,7 +37,38 @@ function drawPathTestMarker(ctx, x, y, radius, fillStyle, label, zoom) {
     ctx.fillText(label, x, y);
 }
 
-export function drawMapLabPathTest(ctx, { playerPos, targetPos, currentPath, zoom }) {
+export function drawMapLabAbstractPath(ctx, abstractPath, zoom) {
+    if (!abstractPath || abstractPath.length < 2) return;
+
+    ctx.beginPath();
+    ctx.moveTo(abstractPath[0].x, abstractPath[0].y);
+    for (let i = 1; i < abstractPath.length; i++) {
+        ctx.lineTo(abstractPath[i].x, abstractPath[i].y);
+    }
+    ctx.strokeStyle = "#ffeb3b";
+    ctx.lineWidth = 5 / zoom;
+    ctx.setLineDash([12 / zoom, 8 / zoom]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    for (const node of abstractPath) {
+        const isEndpoint = node.id === "start" || node.id === "target";
+        const radius = (isEndpoint ? 8 : 10) / zoom;
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = isEndpoint ? "#ff9800" : "#ffeb3b";
+        ctx.fill();
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 2 / zoom;
+        ctx.stroke();
+    }
+}
+
+export function drawMapLabPathTest(ctx, { playerPos, targetPos, currentPath, abstractPath, zoom }) {
+    if (abstractPath) {
+        drawMapLabAbstractPath(ctx, abstractPath, zoom);
+    }
+
     if (currentPath && currentPath.length > 0) {
         ctx.beginPath();
         ctx.moveTo(playerPos.x, playerPos.y);
@@ -45,16 +76,16 @@ export function drawMapLabPathTest(ctx, { playerPos, targetPos, currentPath, zoo
             ctx.lineTo(wp.x, wp.y);
         }
         ctx.strokeStyle = "#00e5ff";
-        ctx.lineWidth = 4;
+        ctx.lineWidth = 4 / zoom;
         ctx.stroke();
 
         for (const wp of currentPath) {
             ctx.beginPath();
-            ctx.arc(wp.x, wp.y, 6, 0, Math.PI * 2);
+            ctx.arc(wp.x, wp.y, 6 / zoom, 0, Math.PI * 2);
             ctx.fillStyle = "#00e5ff";
             ctx.fill();
             ctx.strokeStyle = "#fff";
-            ctx.lineWidth = 1.5;
+            ctx.lineWidth = 1.5 / zoom;
             ctx.stroke();
         }
     }
@@ -69,7 +100,7 @@ export function drawMapLabPathTest(ctx, { playerPos, targetPos, currentPath, zoo
 }
 
 export function drawMapLabOverlays(ctx, state, config) {
-    const { labOptions, camera, playerPos, targetPos, currentPath } = config;
+    const { labOptions, camera, playerPos, targetPos, currentPath, abstractPath } = config;
     if (!labOptions || !camera) return;
 
     if (labOptions.showGridBounds && state.obstacleGrid) {
@@ -81,6 +112,6 @@ export function drawMapLabOverlays(ctx, state, config) {
     }
 
     if (labOptions.showPathTest) {
-        drawMapLabPathTest(ctx, { playerPos, targetPos, currentPath, zoom: camera.zoom });
+        drawMapLabPathTest(ctx, { playerPos, targetPos, currentPath, abstractPath, zoom: camera.zoom });
     }
 }

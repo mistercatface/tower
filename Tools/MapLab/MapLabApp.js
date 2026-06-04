@@ -12,6 +12,7 @@ let selectedNodeId = null;
 let playerPos = null;
 let targetPos = null;
 let currentPath = null;
+let currentAbstractPath = null;
 
 let mapSeed = Math.floor(Math.random() * 100000);
 let floorSeed = Math.floor(Math.random() * 100000);
@@ -29,25 +30,35 @@ function calculatePath() {
     const showPathTest = document.getElementById("showPathTestInput").checked;
     if (!showPathTest) {
         currentPath = null;
+        currentAbstractPath = null;
         updatePathStatus("Path test is disabled.");
         return;
     }
     if (!playerPos || !targetPos) {
         currentPath = null;
+        currentAbstractPath = null;
         updatePathStatus("Need both player and target positions.");
         return;
     }
     try {
-        const path = currentWorld.hierarchicalNavigator.findPath(playerPos.x, playerPos.y, targetPos.x, targetPos.y);
-        currentPath = path;
-        if (path) {
-            updatePathStatus(`Path found: ${path.length} waypoints.`);
+        const result = currentWorld.hierarchicalNavigator.computePath(
+            playerPos.x,
+            playerPos.y,
+            targetPos.x,
+            targetPos.y,
+        );
+        currentPath = result?.waypoints ?? null;
+        currentAbstractPath = result?.abstractNodes ?? null;
+        if (currentPath) {
+            const hops = currentAbstractPath ? currentAbstractPath.length : 0;
+            updatePathStatus(`Path found: ${currentPath.length} waypoints, ${hops} abstract nodes.`);
         } else {
             updatePathStatus("No path found (blocked or too far).", true);
         }
     } catch (err) {
         console.error(err);
         currentPath = null;
+        currentAbstractPath = null;
         updatePathStatus("Error calculating path.", true);
     }
 }
@@ -128,7 +139,8 @@ function redrawCanvas() {
         selectedNodeId,
         playerPos,
         targetPos,
-        currentPath
+        currentPath,
+        currentAbstractPath
     );
     
     const statusLine = document.getElementById("mapStatusLine");

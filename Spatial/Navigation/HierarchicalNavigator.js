@@ -444,7 +444,7 @@ export class HierarchicalNavigator {
         }
     }
 
-    findPath(startX, startY, targetX, targetY) {
+    computePath(startX, startY, targetX, targetY) {
         const startGrid = this.worldToGrid(startX, startY);
         const targetGrid = this.worldToGrid(targetX, targetY);
 
@@ -471,7 +471,15 @@ export class HierarchicalNavigator {
         if (cellDist < 32 || (startNode && targetNode && startNode.id === targetNode.id)) {
             const localPath = this.runLocalAStar(startCol, startRow, targetCol, targetRow, 96);
             if (localPath) {
-                return localPath.map(cell => this.gridToWorld(cell.col, cell.row));
+                const startWorld = this.gridToWorld(startCol, startRow);
+                const targetWorld = this.gridToWorld(targetCol, targetRow);
+                return {
+                    waypoints: localPath.map(cell => this.gridToWorld(cell.col, cell.row)),
+                    abstractNodes: [
+                        { x: startWorld.x, y: startWorld.y, id: "start" },
+                        { x: targetWorld.x, y: targetWorld.y, id: "target" },
+                    ],
+                };
             }
             return null;
         }
@@ -510,13 +518,21 @@ export class HierarchicalNavigator {
                     }
                 }
 
-                return fullCellPath.map(cell => this.gridToWorld(cell.col, cell.row));
+                return {
+                    waypoints: fullCellPath.map(cell => this.gridToWorld(cell.col, cell.row)),
+                    abstractNodes: abstractPath.map(node => ({ x: node.x, y: node.y, id: node.id })),
+                };
             }
 
             return null;
         } finally {
             this.cleanupTempEdges(modifiedCandidates);
         }
+    }
+
+    findPath(startX, startY, targetX, targetY) {
+        const result = this.computePath(startX, startY, targetX, targetY);
+        return result ? result.waypoints : null;
     }
 
     cleanupTempEdges(modifiedCandidates) {

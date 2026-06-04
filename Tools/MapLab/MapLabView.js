@@ -2,7 +2,7 @@ import { renderMapView } from "../../Render/Map/MapViewRenderer.js";
 import { createLabMapViewConfig } from "../../Render/Map/mapViewPresets.js";
 import { drawMapLabOverlays } from "../../Render/Map/MapLabOverlays.js";
 
-export function renderMapLabView(ctx, width, height, world, camera, options, selectedNodeId, playerPos, targetPos, currentPath) {
+export function renderMapLabView(ctx, width, height, world, camera, options, selectedNodeId, playerPos, targetPos, currentPath, abstractPath) {
     renderMapView(ctx, world, {
         ...createLabMapViewConfig(options, { camera, selectedNodeId }),
         width,
@@ -12,6 +12,7 @@ export function renderMapLabView(ctx, width, height, world, camera, options, sel
         playerPos,
         targetPos,
         currentPath,
+        abstractPath,
         drawOverlays: drawMapLabOverlays,
     });
 }
