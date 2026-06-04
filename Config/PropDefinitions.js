@@ -31,8 +31,8 @@ export const worldPropDefinitions = {
             fadeTimer: 250,
         },
         spawn: {
-            minCount: 25,
-            randomRange: 125,
+            minCount: 4,
+            randomRange: 8,
         },
     }),
     crate: prop("crate", {

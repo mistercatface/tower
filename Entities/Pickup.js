@@ -468,7 +468,7 @@ export function spawnStartNodePickups(state, playerX, playerY) {
         state.pickups.push(new Pickup(cell.x, cell.y, "crate", cell.facing));
     }
 
-    const barrelCount = 20 + Math.floor(Math.random() * 11);
+    const barrelCount = 4 + Math.floor(Math.random() * 5);
     const barrelsToPlace = Math.min(barrelCount, wallCells.length - crateCount);
 
     for (let i = 0; i < barrelsToPlace; i++) {
