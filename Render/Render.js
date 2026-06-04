@@ -5,7 +5,7 @@ import { getWorldDrawCoords, isMapTraveling, isWorldScene } from "../GameState/G
 import { getPlayerActors } from "../Combat/Targeting.js";
 import { drawHostileOffScreenIndicators } from "./OffScreenIndicators.js";
 import { CombatParticles } from "./CombatParticles.js";
-import { drawGameMapWallCache, getGameMapWallCache } from "./Map/MapWallCache.js";
+import { drawMapWallCache, getGameMapWallCache } from "./Map/MapWallCache.js";
 
 export class Renderer {
     constructor(canvas, ctx) {
@@ -305,7 +305,7 @@ export class Renderer {
     drawMap(state) {
         const currentNode = state.getCurrentMapNode();
 
-        drawGameMapWallCache(this.ctx, getGameMapWallCache(state));
+        drawMapWallCache(this.ctx, getGameMapWallCache(state));
 
         for (const node of state.mapNodes) {
             for (const connId of node.connections) {
