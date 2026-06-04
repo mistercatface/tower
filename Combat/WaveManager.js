@@ -107,11 +107,22 @@ export class WaveManager {
     }
 
     spawnPod(state, pod, baseUpgradeDefs) {
-        const spacing = waveSettings.podSpacing;
-        const side = Math.floor(Math.random() * 4);
-        const podSize = getPodSize(pod);
-        const dist = state.spawnRadius;
-        const basePos = (Math.random() * 2 - 1) * (dist - (podSize * spacing) / 2);
+        const candidates = getSpawnCandidateNodes(state);
+        let targetNode = null;
+        if (candidates.length > 0) {
+            targetNode = candidates[Math.floor(Math.random() * candidates.length)];
+        } else {
+            targetNode = state.getCurrentMapNode();
+        }
+
+        if (!targetNode) return 0;
+
+        let totalCount = 0;
+        for (const member of pod.members) {
+            totalCount += member.count;
+        }
+
+        const spots = findFreeSpotsInNode(state, targetNode, totalCount);
 
         let slot = 0;
         let spawned = 0;
@@ -121,9 +132,8 @@ export class WaveManager {
             if (!enemyType) continue;
 
             for (let i = 0; i < member.count; i++) {
-                const pos = basePos + slot * spacing;
-                const { x, y } = this.calculateSpawnPosition(state, side, pos);
-                state.enemies.push(Enemy.spawn(x, y, enemyType, this.wave, baseUpgradeDefs));
+                const spot = spots[slot] || spots[0];
+                state.enemies.push(Enemy.spawn(spot.x, spot.y, enemyType, this.wave, baseUpgradeDefs));
                 slot++;
                 spawned++;
             }
@@ -175,4 +185,141 @@ export class WaveManager {
             });
         }
     }
+}
+
+function getSpawnCandidateNodes(state) {
+    const currentNodeId = state.currentNodeId;
+    const mapNodes = state.mapNodes;
+
+    // 1. Build adjacency list of undirected graph
+    const adjacencyList = new Map();
+    for (const node of mapNodes) {
+        if (!adjacencyList.has(node.id)) {
+            adjacencyList.set(node.id, new Set());
+        }
+        for (const targetId of node.connections) {
+            if (!adjacencyList.has(targetId)) {
+                adjacencyList.set(targetId, new Set());
+            }
+            adjacencyList.get(node.id).add(targetId);
+            adjacencyList.get(targetId).add(node.id);
+        }
+    }
+
+    // 2. Perform BFS to find nodes at depth 2 and 3
+    const queue = [{ id: currentNodeId, depth: 0 }];
+    const visited = new Set([currentNodeId]);
+    const candidates2to3 = [];
+    const candidates1 = [];
+
+    while (queue.length > 0) {
+        const { id, depth } = queue.shift();
+        
+        if (depth >= 2 && depth <= 3) {
+            const node = state.getMapNode(id);
+            if (node) candidates2to3.push(node);
+        } else if (depth === 1) {
+            const node = state.getMapNode(id);
+            if (node) candidates1.push(node);
+        }
+
+        if (depth < 3) {
+            const neighbors = adjacencyList.get(id);
+            if (neighbors) {
+                for (const neighborId of neighbors) {
+                    if (!visited.has(neighborId)) {
+                        visited.add(neighborId);
+                        queue.push({ id: neighborId, depth: depth + 1 });
+                    }
+                }
+            }
+        }
+    }
+
+    // 3. Return the best available set of candidates
+    if (candidates2to3.length > 0) {
+        return candidates2to3;
+    }
+    if (candidates1.length > 0) {
+        return candidates1;
+    }
+    // Final fallback: the current node
+    const currentNode = state.getMapNode(currentNodeId);
+    return currentNode ? [currentNode] : [];
+}
+
+function findFreeSpotsInNode(state, targetNode, count) {
+    const coords = state.getNodeCombatCoords(targetNode);
+    const grid = state.obstacleGrid;
+    const centerCell = grid.worldToGrid(coords.x, coords.y);
+    const spots = [];
+    const visited = new Set();
+
+    let foundCount = 0;
+    const maxCellRadius = 25; // Search up to 400 units from node center
+
+    // We search concentric square rings outward
+    for (let r = 0; r <= maxCellRadius && foundCount < count; r++) {
+        for (let dc = -r; dc <= r && foundCount < count; dc++) {
+            for (let dr = -r; dr <= r && foundCount < count; dr++) {
+                if (Math.abs(dc) !== r && Math.abs(dr) !== r) continue;
+
+                const col = centerCell.col + dc;
+                const row = centerCell.row + dr;
+                const key = `${col},${row}`;
+
+                if (visited.has(key)) continue;
+                visited.add(key);
+
+                if (!grid.isBlocked(col, row)) {
+                    // Spacing check: ensure this cell is not too close to existing spots
+                    let tooClose = false;
+                    for (const spot of spots) {
+                        const dist = Math.hypot(spot.col - col, spot.row - row);
+                        if (dist < 2.5) { // At least 40 units apart
+                            tooClose = true;
+                            break;
+                        }
+                    }
+
+                    if (!tooClose) {
+                        const worldPos = grid.gridToWorld(col, row);
+                        spots.push({ x: worldPos.x, y: worldPos.y, col, row });
+                        foundCount++;
+                    }
+                }
+            }
+        }
+    }
+
+    // Fallback: if we couldn't find enough spaced-out cells, relax the spacing constraint
+    if (foundCount < count) {
+        for (let r = 0; r <= maxCellRadius && foundCount < count; r++) {
+            for (let dc = -r; dc <= r && foundCount < count; dc++) {
+                for (let dr = -r; dr <= r && foundCount < count; dr++) {
+                    if (Math.abs(dc) !== r && Math.abs(dr) !== r) continue;
+
+                    const col = centerCell.col + dc;
+                    const row = centerCell.row + dr;
+                    const key = `${col},${row}`;
+
+                    if (visited.has(key)) {
+                        const idx = spots.findIndex(s => s.col === col && s.row === row);
+                        if (idx === -1 && !grid.isBlocked(col, row)) {
+                            const worldPos = grid.gridToWorld(col, row);
+                            spots.push({ x: worldPos.x, y: worldPos.y, col, row });
+                            foundCount++;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Ultimate fallback: repeat the coords
+    while (spots.length < count) {
+        spots.push({ x: coords.x, y: coords.y, col: centerCell.col, row: centerCell.row });
+    }
+
+    return spots;
 }
