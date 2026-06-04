@@ -4,7 +4,7 @@ import { getFloorProceduralProfile } from "../../Config/floorProceduralConfig.js
 import { chunkToWorldOrigin, getChunkSizePx, gridBoundsToChunkRange, worldBoundsToChunkRange } from "../../Spatial/Grid/ChunkGrid.js";
 import { ProgressiveFrameCache } from "./ProgressiveFrameCache.js";
 import { TileWorkerCoordinator } from "./TileWorkerCoordinator.js";
-import { buildFloorChunkBakePayload, floorChunkCachePrefix, getFloorTextureProfileId, getFloorChunkAnimationInfo, getWallFaceAnimationInfo } from "./floorTextureProfile.js";
+import { buildFloorChunkBakePayload, floorChunkCachePrefix, getFloorTextureProfileIdForCoords, getFloorChunkAnimationInfo, getWallFaceAnimationInfo } from "./floorTextureProfile.js";
 import { drawBakedTexture, bakePixelsForWorldSpan, getPixelsPerWorldUnit } from "./floorTextureResolution.js";
 import { animationFrameIndex } from "./ProfileBakeResolver.js";
 import { bakeFrameRange, nextAnimationBatchRange } from "./AnimationFrameBake.js";
@@ -22,17 +22,20 @@ export class FloorTileSystem {
 
     invalidateGridBounds(bounds, state, cellsPerChunk = floorTileSettings.cellsPerChunk) {
         if (!bounds) return;
-        const profileId = getFloorTextureProfileId(state);
+        const obstacleGrid = state.obstacleGrid;
+        const chunkSizePx = obstacleGrid.cellSize * cellsPerChunk;
         const range = gridBoundsToChunkRange(bounds.startCol, bounds.endCol, bounds.startRow, bounds.endRow, cellsPerChunk);
         for (let chunkRow = range.minChunkRow; chunkRow <= range.maxChunkRow; chunkRow++) {
             for (let chunkCol = range.minChunkCol; chunkCol <= range.maxChunkCol; chunkCol++) {
+                const chunkCenterX = obstacleGrid.minX + chunkCol * chunkSizePx + chunkSizePx / 2;
+                const chunkCenterY = obstacleGrid.minY + chunkRow * chunkSizePx + chunkSizePx / 2;
+                const profileId = getFloorTextureProfileIdForCoords(state, chunkCenterX, chunkCenterY);
                 this.surfaceCache.deleteByPrefix("chunk:" + floorChunkCachePrefix(chunkCol, chunkRow, profileId).substring(6));
             }
         }
     }
 
-    bakeWallFace(width, height, p1, p2, pixelsPerUnit, state, frameRange) {
-        const profileId = getFloorTextureProfileId(state);
+    bakeWallFace(width, height, p1, p2, pixelsPerUnit, state, frameRange, profileId) {
         const centerX = (p1.x + p2.x) / 2;
         const centerY = (p1.y + p2.y) / 2;
         return TileWorkerCoordinator.requestWallFaceBake({
@@ -123,7 +126,9 @@ export class FloorTileSystem {
         const canvasWidth = Math.max(1, Math.ceil(edgeLen * pixelsPerUnit));
         const canvasHeight = bakePixelsForWorldSpan(storyCount * cellSize);
 
-        const profileId = getFloorTextureProfileId(state);
+        const wallCenterX = (p1.x + p2.x) / 2;
+        const wallCenterY = (p1.y + p2.y) / 2;
+        const profileId = getFloorTextureProfileIdForCoords(state, wallCenterX, wallCenterY);
         const profile = getFloorProceduralProfile(profileId);
         const { enabled: isAnimated, totalFrames } = getWallFaceAnimationInfo(profile);
 
@@ -131,11 +136,11 @@ export class FloorTileSystem {
 
         const bakeFirstFn = () => {
             const frameRange = bakeFrameRange.first();
-            return this.bakeWallFace(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, state, frameRange);
+            return this.bakeWallFace(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, state, frameRange, profileId);
         };
 
         const bakeBatchFn = isAnimated ? (batch) => {
-            return this.bakeWallFace(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, state, batch);
+            return this.bakeWallFace(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, state, batch, profileId);
         } : null;
 
         return this._scheduleAnimatedEntry(key, meta, bakeFirstFn, bakeBatchFn);
@@ -145,9 +150,6 @@ export class FloorTileSystem {
         if (!viewport || !isWorldScene(state.phase) || !state.obstacleGrid?.cols) {
             return;
         }
-
-        const profileId = getFloorTextureProfileId(state);
-        const profile = getFloorProceduralProfile(profileId);
 
         const obstacleGrid = state.obstacleGrid;
         const cellsPerChunk = floorTileSettings.cellsPerChunk;
@@ -174,15 +176,16 @@ export class FloorTileSystem {
 
         chunksToDraw.sort((a, b) => a.distSq - b.distSq);
 
-        const { enabled: animationEnabled } = getFloorChunkAnimationInfo(profile);
-
         for (const chunk of chunksToDraw) {
             const payload = this._buildChunkPayload(state, chunk.chunkCol, chunk.chunkRow);
             const canvases = this.getChunkCanvas(chunk.chunkCol, chunk.chunkRow, state, payload);
             let canvas = canvases[0];
             if (canvas.isPlaceholder) continue;
 
-            if (animationEnabled && canvases.length > 1) {
+            const profile = getFloorProceduralProfile(payload.profileId);
+            const { enabled: chunkAnimationEnabled } = getFloorChunkAnimationInfo(profile);
+
+            if (chunkAnimationEnabled && canvases.length > 1) {
                 const currentFrame = animationFrameIndex(profile.animation, { gameTime: state.gameTime ?? 0 });
                 canvas = canvases[Math.min(canvases.length - 1, Math.max(0, currentFrame))];
             }

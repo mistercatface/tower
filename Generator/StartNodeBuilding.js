@@ -196,6 +196,15 @@ function carveEntranceAndFoyer(grid, cols) {
     }
 }
 
+function carveNorthExit(grid, cols) {
+    const half = Math.floor(ENTRANCE_WIDTH / 2);
+    for (let c = SPAWN_COL - half; c <= SPAWN_COL + half; c++) {
+        for (let r = 0; r <= 10; r++) {
+            grid[r * cols + c] = 0;
+        }
+    }
+}
+
 function carveGuardRoom(grid, cols) {
     carveRect(grid, cols, GUARD_ROOM.col, GUARD_ROOM.row, GUARD_ROOM.cols, GUARD_ROOM.rows);
 
@@ -224,6 +233,7 @@ export function generateStartNodeBuilding(state, px, py) {
 
     runBsp(grid, GRID_COLS, 1, 1, GRID_COLS - 2, BUILDING_ROWS - 2, random);
     carveEntranceAndFoyer(grid, GRID_COLS);
+    carveNorthExit(grid, GRID_COLS);
     carveGuardRoom(grid, GRID_COLS);
     carveYard(grid, GRID_COLS);
 

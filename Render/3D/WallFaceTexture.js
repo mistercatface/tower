@@ -1,7 +1,7 @@
 import { floorTileSettings, gridSettings } from "../../Config/Config.js";
 import { drawImageQuad } from "./draw/AffineTexture.js";
 import { CAMERA_HEIGHT } from "./math/CombatProjection.js";
-import { getFloorTextureProfileId, isWallFaceAnimationEnabled } from "../Floor/floorTextureProfile.js";
+import { getFloorTextureProfileIdForCoords, isWallFaceAnimationEnabled } from "../Floor/floorTextureProfile.js";
 import { getFloorProceduralProfile } from "../../Config/floorProceduralConfig.js";
 import { getPixelsPerWorldUnit, shouldSmoothTextureDownsample } from "../Floor/floorTextureResolution.js";
 import { animationFrameIndex } from "../Floor/ProfileBakeResolver.js";
@@ -116,12 +116,12 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHei
     const tileWorldSize = floorTileSettings.tileWorldSize ?? gridSettings.cellSize;
     if (!floorTiles || !state) return;
 
-    const profileId = getFloorTextureProfileId(state);
-    const ppwu = getPixelsPerWorldUnit();
-    const storyCount = getWallTextureStoryCount();
-
     const wallCx = cacheObj && cacheObj.cx !== undefined ? cacheObj.cx : (p1.x + p2.x) * 0.5;
     const wallCy = cacheObj && cacheObj.cy !== undefined ? cacheObj.cy : (p1.y + p2.y) * 0.5;
+
+    const profileId = getFloorTextureProfileIdForCoords(state, wallCx, wallCy);
+    const ppwu = getPixelsPerWorldUnit();
+    const storyCount = getWallTextureStoryCount();
 
     const { key: wallCacheKey, wrappedP1, wrappedP2 } = getWallCacheInfo(p1, p2, state, profileId, ppwu, cacheObj);
 
@@ -229,7 +229,9 @@ export function preloadProjectedWallFace(p1, p2, floorTiles, state, cacheObj = n
     const tileWorldSize = floorTileSettings.tileWorldSize ?? gridSettings.cellSize;
     if (!floorTiles || !state) return;
 
-    const profileId = getFloorTextureProfileId(state);
+    const wallCx = cacheObj && cacheObj.cx !== undefined ? cacheObj.cx : (p1.x + p2.x) * 0.5;
+    const wallCy = cacheObj && cacheObj.cy !== undefined ? cacheObj.cy : (p1.y + p2.y) * 0.5;
+    const profileId = getFloorTextureProfileIdForCoords(state, wallCx, wallCy);
     const ppwu = getPixelsPerWorldUnit();
     const storyCount = getWallTextureStoryCount();
 

@@ -28,15 +28,28 @@ export function getWallFaceAnimationInfo(profile) {
     };
 }
 
-export function getFloorTextureProfileId(state) {
+export function getFloorTextureProfileIdForCoords(state, x, y) {
     if (state.floorTextureProfileOverride) {
         return state.floorTextureProfileOverride;
     }
-    const node = state.getCurrentMapNode();
-    if (node?.floorTextureProfileId) {
-        return node.floorTextureProfileId;
+    let closestNode = null;
+    let minDist = Infinity;
+    for (const node of state.mapNodes) {
+        const coords = state.getNodeCombatCoords(node);
+        const dist = Math.hypot(x - coords.x, y - coords.y);
+        if (dist < minDist) {
+            minDist = dist;
+            closestNode = node;
+        }
+    }
+    if (closestNode?.floorTextureProfileId) {
+        return closestNode.floorTextureProfileId;
     }
     return defaultFloorProceduralProfileId;
+}
+
+export function getFloorTextureProfileId(state) {
+    return getFloorTextureProfileIdForCoords(state, state.player.x, state.player.y);
 }
 
 /** Apply active node profile to the floor cache; clears baked tiles when the profile changes. */
@@ -46,7 +59,7 @@ export function syncFloorTextureProfile(state) {
         return;
     }
     state.floorTiles.proceduralProfileId = profileId;
-    state.floorTiles.clear();
+    // state.floorTiles.clear(); // Disabled for mega-map chunk rendering
 }
 
 export function floorChunkCachePrefix(chunkCol, chunkRow, profileId) {
@@ -56,7 +69,13 @@ export function floorChunkCachePrefix(chunkCol, chunkRow, profileId) {
 
 /** Worker-serializable chunk bake payload from live game state. */
 export function buildFloorChunkBakePayload(state, chunkCol, chunkRow) {
-    const profileId = getFloorTextureProfileId(state);
+    const obstacleGrid = state.obstacleGrid;
+    const cellsPerChunk = floorTileSettings.cellsPerChunk;
+    const chunkSizePx = obstacleGrid.cellSize * cellsPerChunk;
+    const chunkCenterX = obstacleGrid.minX + chunkCol * chunkSizePx + chunkSizePx / 2;
+    const chunkCenterY = obstacleGrid.minY + chunkRow * chunkSizePx + chunkSizePx / 2;
+
+    const profileId = getFloorTextureProfileIdForCoords(state, chunkCenterX, chunkCenterY);
     const profile = getFloorProceduralProfile(profileId);
 
     const payload = { chunkCol, chunkRow, minX: state.obstacleGrid.minX, minY: state.obstacleGrid.minY, seed: state.floorTileSeed ?? 0, profileId };
