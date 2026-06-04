@@ -223,7 +223,6 @@ export class MapGenerator {
             nextGrid = temp;
         }
 
-        // Convert CA grid to walls, carving out room zones (radius 480)
         const caWalls = [];
         state.walls = [];
         state.wallSpatialHash.clear();
@@ -239,8 +238,6 @@ export class MapGenerator {
                     let inRoomZone = false;
                     for (let i = 0; i < nodeCoords.length; i++) {
                         const distSq = (wx - nodeCoords[i].x) ** 2 + (wy - nodeCoords[i].y) ** 2;
-                        // Avoid CA walls protruding inside the 540 safety radius
-                        // (wx, wy is center of 16-width cell, so distance must be >= 540 + 8 = 548)
                         if (distSq < 548 * 548) {
                             inRoomZone = true;
                             break;
@@ -248,7 +245,7 @@ export class MapGenerator {
                     }
 
                     if (!inRoomZone) {
-                        const segment = new Segment(wx, wy, 0, cellSize, 0);
+                        const segment = new Segment(wx - cellSize / 2, wy - cellSize / 2, 0, cellSize, 0);
                         segment.theme = THEME_COLORS[0];
                         caWalls.push(segment);
                         state.walls.push(segment);
