@@ -357,7 +357,7 @@ export class HierarchicalNavigator {
         );
     }
 
-    _connectTempNode(tempNode, gridCol, gridRow, targetNode, isStart) {
+    _connectTempNode(tempNode, gridCol, gridRow, targetNode, isStart, modifiedCandidates = null) {
         const candidates = new Set();
         const searchRadius = Math.ceil(Math.sqrt(this.maxCellsPerChunk)) * 2;
 
@@ -386,6 +386,7 @@ export class HierarchicalNavigator {
                     tempNode.edges.push({ targetId: candidate.id, cost: path.length, path: path });
                 } else {
                     candidate.edges.push({ targetId: "target", cost: path.length, path: path });
+                    if (modifiedCandidates) modifiedCandidates.push(candidate);
                 }
             }
         }
@@ -429,9 +430,11 @@ export class HierarchicalNavigator {
         this.nodesMap["start"] = startTempNode;
         this.nodesMap["target"] = targetTempNode;
 
+        const modifiedCandidates = [];
+
         try {
-            this._connectTempNode(startTempNode, startCol, startRow, startNode, true);
-            this._connectTempNode(targetTempNode, targetCol, targetRow, targetNode, false);
+            this._connectTempNode(startTempNode, startCol, startRow, startNode, true, modifiedCandidates);
+            this._connectTempNode(targetTempNode, targetCol, targetRow, targetNode, false, modifiedCandidates);
 
             const abstractPath = runAbstractAStar("start", "target", this.nodesMap);
 
@@ -460,16 +463,23 @@ export class HierarchicalNavigator {
 
             return null;
         } finally {
-            this.cleanupTempEdges();
+            this.cleanupTempEdges(modifiedCandidates);
         }
     }
 
-    cleanupTempEdges() {
+    cleanupTempEdges(modifiedCandidates) {
         delete this.nodesMap["start"];
         delete this.nodesMap["target"];
-        for (const id in this.nodesMap) {
-            const node = this.nodesMap[id];
-            node.edges = node.edges.filter(e => e.targetId !== "target");
+        if (modifiedCandidates) {
+            for (let i = 0; i < modifiedCandidates.length; i++) {
+                const node = modifiedCandidates[i];
+                node.edges = node.edges.filter(e => e.targetId !== "target");
+            }
+        } else {
+            for (const id in this.nodesMap) {
+                const node = this.nodesMap[id];
+                node.edges = node.edges.filter(e => e.targetId !== "target");
+            }
         }
     }
 }

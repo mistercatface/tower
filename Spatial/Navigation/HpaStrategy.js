@@ -53,7 +53,7 @@ export function steerViaHpa(entity, targetX, targetY, hierarchicalNavigator, nav
     const replanMs = profile.replanMs;
     const viewport = state?.fsm?.context?.viewport;
     const isVisible = viewport ? viewport.isVisible(entity.x, entity.y, entity.radius, 128) : true;
-    const effectiveReplanMs = isVisible ? replanMs : replanMs * 3;
+    const effectiveReplanMs = isVisible ? replanMs : replanMs * 10;
 
     const replanWhileMoving = profile.replanWhileMoving !== false;
     const obstaclesChanged = navState.obstacleGeneration !== obstacleGeneration;
@@ -73,19 +73,23 @@ export function steerViaHpa(entity, targetX, targetY, hierarchicalNavigator, nav
     const now = Date.now();
     let replanReason = null;
 
+    let didReplanForObstacles = false;
     if (obstaclesChanged) {
         navState.obstacleGeneration = obstacleGeneration;
         navState.path = null;
-        replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings, true, profile, state);
-        replanReason = "obstacles";
-        navState.stuckFrames = 0;
+        if (isVisible || navState.stuckFrames > settings.stuckReplanFrames) {
+            replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings, true, profile, state);
+            replanReason = "obstacles";
+            navState.stuckFrames = 0;
+            didReplanForObstacles = true;
+        }
     }
 
     const needsReplan = !navState.path
         || navState.stuckFrames > settings.stuckReplanFrames
         || (replanWhileMoving && now - navState.lastUpdate > effectiveReplanMs);
 
-    if (needsReplan && !obstaclesChanged) {
+    if (needsReplan && !didReplanForObstacles) {
         if (!navState.path) {
             replanReason = "noPath";
         } else if (navState.stuckFrames > settings.stuckReplanFrames) {
@@ -94,8 +98,13 @@ export function steerViaHpa(entity, targetX, targetY, hierarchicalNavigator, nav
             replanReason = "interval";
         }
         const applyClearance = shouldApplyClearance(navState, targetX, targetY, false);
-        replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings, applyClearance, profile, state);
-        navState.stuckFrames = 0;
+        // Only actually replan if visible, or if the update interval has fully elapsed,
+        // or if we are stuck. This prevents off-screen enemies from pathfinding immediately
+        // after obstacles change (when navState.path gets cleared but they aren't ready to replan).
+        if (isVisible || navState.stuckFrames > settings.stuckReplanFrames || (now - navState.lastUpdate > effectiveReplanMs)) {
+            replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings, applyClearance, profile, state);
+            navState.stuckFrames = 0;
+        }
     }
 
     if (navState.path && navState.path.length >= 2) {
