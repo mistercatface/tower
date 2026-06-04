@@ -30,6 +30,7 @@ export class SpatialFrame {
         this._combatants.length = 0;
         this._pushables.length = 0;
 
+        this.entityHash.syncBounds(state.obstacleGrid);
         this.entityHash.clear();
         
         let physIdCounter = 0;

@@ -4,17 +4,45 @@ const MAX_ENTITIES = 4096;
 const GLOBAL_QUERY_RESULT = [];
 
 export class EntitySpatialGrid {
-    constructor(cellSize, width = gridSettings.width, height = gridSettings.height) {
+    constructor(cellSize) {
         this.cellSize = cellSize;
-        this.cols = Math.ceil(width / cellSize);
-        this.rows = Math.ceil(height / cellSize);
+        this.minX = 0;
+        this.minY = 0;
+        this.cols = 0;
+        this.rows = 0;
         
-        this.cellHead = new Int32Array(this.cols * this.rows).fill(-1);
+        this.cellHead = new Int32Array(0);
         this.entityNext = new Int32Array(MAX_ENTITIES).fill(-1);
         
         this.entities = new Array(MAX_ENTITIES);
         this.activeEntities = [];
         this.queryGen = 0;
+    }
+
+    syncBounds(obstacleGrid) {
+        if (!obstacleGrid) return;
+        const width = obstacleGrid.maxX - obstacleGrid.minX;
+        const height = obstacleGrid.maxY - obstacleGrid.minY;
+        const cols = Math.ceil(width / this.cellSize);
+        const rows = Math.ceil(height / this.cellSize);
+
+        if (this.minX === obstacleGrid.minX && 
+            this.minY === obstacleGrid.minY && 
+            this.cols === cols && 
+            this.rows === rows) {
+            return;
+        }
+
+        this.minX = obstacleGrid.minX;
+        this.minY = obstacleGrid.minY;
+        this.cols = cols;
+        this.rows = rows;
+
+        const size = this.cols * this.rows;
+        if (this.cellHead.length < size) {
+            this.cellHead = new Int32Array(size);
+        }
+        this.cellHead.fill(-1);
     }
 
     clear() {
@@ -32,8 +60,8 @@ export class EntitySpatialGrid {
     }
 
     _getCellIndex(x, y) {
-        const col = Math.floor(x / this.cellSize);
-        const row = Math.floor(y / this.cellSize);
+        const col = Math.floor((x - this.minX) / this.cellSize);
+        const row = Math.floor((y - this.minY) / this.cellSize);
         if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return -1;
         return col + row * this.cols;
     }
@@ -117,10 +145,10 @@ export class EntitySpatialGrid {
         const maxX = entity.x + searchRadius;
         const maxY = entity.y + searchRadius;
 
-        const minCol = Math.max(0, Math.floor(minX / this.cellSize));
-        const maxCol = Math.min(this.cols - 1, Math.floor(maxX / this.cellSize));
-        const minRow = Math.max(0, Math.floor(minY / this.cellSize));
-        const maxRow = Math.min(this.rows - 1, Math.floor(maxY / this.cellSize));
+        const minCol = Math.max(0, Math.floor((minX - this.minX) / this.cellSize));
+        const maxCol = Math.min(this.cols - 1, Math.floor((maxX - this.minX) / this.cellSize));
+        const minRow = Math.max(0, Math.floor((minY - this.minY) / this.cellSize));
+        const maxRow = Math.min(this.rows - 1, Math.floor((maxY - this.minY) / this.cellSize));
 
         for (let r = minRow; r <= maxRow; r++) {
             const rowOffset = r * this.cols;
