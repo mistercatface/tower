@@ -100,7 +100,7 @@ export class EnemyEngagedState {
     getTurretBlocksTargeting(enemy, state) {
         const target = enemy.getAITarget(state);
         if (!target) return true;
-        return enemy.blocksTurretLineOfSight(target, state);
+        return enemy.turretController.blocksTurretLineOfSight(target, state);
     }
 
     update(enemy, dt, target, flowFieldGrid, walls, missiles, spatialFrame, scheduler, state) {
@@ -463,7 +463,7 @@ export class EnemyKnockedBackState {
         data.timer = data.pushMs;
 
         for (const turret of enemy.getTurrets()) {
-            enemy.clearTurretCharge(turret);
+            enemy.turretController.clearTurretCharge(turret);
             turret.target = null;
         }
     }

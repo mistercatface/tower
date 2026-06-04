@@ -1,5 +1,6 @@
-import { normalizeAngle } from "../Math/Angle.js";
 import { DestructibleEntity } from "./Entity.js";
+import { TurretController } from "../Combat/TurretController.js";
+import { ActorRenderer } from "../Render/ActorRenderer.js";
 import { Separation } from "../Spatial/Motion/Separation.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { actorStates } from "./ActorStates.js";
@@ -8,17 +9,13 @@ import { createCombatantStats, applyUpgrades, applyUpgradesToStats, syncActorCom
 import { Turret } from "./Turret.js";
 import { Utilities } from "../Core/Utilities.js";
 import { spawnFloatingText } from "../Core/EventSystem.js";
-import { resolveWeaponModeForGun, WeaponSystem, advanceTurretAmmo } from "../Combat/WeaponSystem.js";
-import { applyActorGunModifiers, getSlotReloadTimeMs, getSlotFireIntervalMs } from "../Combat/gunCombat.js";
-import { Laser } from "./Laser.js";
-import { getBeamTickDamage, createBeamHitSource } from "../Combat/impactDamage.js";
+import { applyActorGunModifiers, getSlotReloadTimeMs } from "../Combat/gunCombat.js";
 import { getGunDefinition } from "../Config/gunDefinitions.js";
 import { explosionSettings } from "../Config/Config.js";
 import { resolveActorTurretLoadouts, applyGunTurretLoadouts, applyUpgradeTurretLoadouts } from "../Config/TurretLoadoutDefinitions.js";
 import { getTurretCountForLoadout, normalizeWeaponLoadout } from "../Combat/equipmentLoadout.js";
-import { RenderSprites } from "../Render/RenderSprites.js";
 import { ProgressBar } from "../Render/ProgressBar.js";
-import { areHostile, getNearestHostile, getPlayerActors, isValidTurretTarget } from "../Combat/Targeting.js";
+import { getNearestHostile } from "../Combat/Targeting.js";
 import { getActorProfileForActor, getActorProfileForType } from "../Config/actorProfiles.js";
 import { advanceActorKinematics, clearActorKinematics } from "../Render/Kinematics/PlayerKinematicsRenderer.js";
 import { CombatParticles } from "../Render/CombatParticles.js";
@@ -53,6 +50,8 @@ export class Actor extends DestructibleEntity {
         this.currentState = actorStates.navigating;
         this.currentStateName = "navigating";
         this.stateData = {};
+        this.turretController = new TurretController(this);
+        this.renderer = new ActorRenderer(this);
     }
 
     setupCombatant(combatStats, upgradeDefs = null) {
@@ -138,7 +137,7 @@ export class Actor extends DestructibleEntity {
             }
         }
         const combatEvents = options.combatEvents ?? [];
-        const events = this.updateTurretCombat(dt, state, { ...options, combatEvents }) ?? combatEvents;
+        const events = this.turretController.updateTurretCombat(dt, state, { ...options, combatEvents }) ?? combatEvents;
         if (this.usesKinematicsBody) {
             this._kinematicsCamera = this.getKinematicsCamera(state);
             advanceActorKinematics(this, dt, this._kinematicsCamera);
@@ -150,18 +149,7 @@ export class Actor extends DestructibleEntity {
         // Subclasses implement movement; turret combat runs in updateCombat.
     }
 
-    updateTurretCombat(dt, state, options = {}) {
-        if (!this.weapon || this.turrets.length === 0) return options.combatEvents ?? [];
-        const blocksTargeting = options.blocksTargeting || this.getExternalBlocksTargeting(state, options.upgrades ?? []);
-        const combatEvents = options.combatEvents ?? [];
-        if (this.canRunTurretCombat()) {
-            this.acquireTurretTargets(state, blocksTargeting);
-            this.processAllTurrets(dt, state, blocksTargeting, combatEvents);
-        } else {
-            this.aimIdleTurrets(dt, state, blocksTargeting);
-        }
-        return combatEvents;
-    }
+
 
     getAITarget(state) {
         if (!state) return null;
@@ -187,266 +175,7 @@ export class Actor extends DestructibleEntity {
         return Utilities.hasLineOfSight(this.x, this.y, x, y, wallCtx, this.radius, targetRadius);
     }
 
-    blocksTurretLineOfSight(target, state) {
-        return !target || !this.hasLineOfSightTo(target, state);
-    }
 
-    getAllyActors(state) {
-        if (!state) return [];
-        let allies = [];
-        if (this.teamId != null) allies = state.getCombatants().filter((other) => other !== this && !other.isDead && other.teamId === this.teamId && !areHostile(this, other));
-        if (allies.length === 0 && this.faction === "player") allies = getPlayerActors(state).filter((ally) => ally !== this && !ally.isDead);
-        return allies;
-    }
-
-    getEngagedTargetsFrom(ally) {
-        const targets = [];
-        for (const turret of ally.getTurrets()) {
-            if (turret.target && !turret.target.isDead) targets.push(turret.target);
-            if (ally.isTurretChargeCommitted(turret)) {
-                const committed = ally.getCommittedTurretTarget(turret);
-                if (committed && !committed.isDead) targets.push(committed);
-            }
-        }
-        return targets;
-    }
-
-    getMutualAssistTargets(state) {
-        const targets = [];
-        const seen = new Set();
-        for (const ally of this.getAllyActors(state)) {
-            for (const target of this.getEngagedTargetsFrom(ally)) {
-                if (seen.has(target)) continue;
-                seen.add(target);
-                targets.push(target);
-            }
-        }
-        return targets;
-    }
-
-    isTargetEngagedBy(ally, target) {
-        if (!ally || !target || target.isDead) return false;
-        return this.getEngagedTargetsFrom(ally).includes(target);
-    }
-
-    isMutualAssistTarget(state, target) {
-        if (!target) return false;
-        return this.getMutualAssistTargets(state).includes(target);
-    }
-
-    getMutualAssistRangeBonus(state, target) {
-        if (!target || !state || !this.isMutualAssistTarget(state, target)) return 0;
-        let bonus = 0;
-        for (const ally of this.getAllyActors(state)) {
-            if (!this.isTargetEngagedBy(ally, target)) continue;
-            bonus = Math.max(bonus, Math.hypot(ally.x - this.x, ally.y - this.y));
-        }
-        return bonus;
-    }
-
-    getEffectiveTurretRange(state, target) {
-        const baseRange = this.weapon?.range ?? 0;
-        if (!target) return baseRange;
-        return baseRange + this.getMutualAssistRangeBonus(state, target);
-    }
-
-    isValidTurretTargetForSelf(target, state, { blocksTargeting = false } = {}) {
-        if (!this.weapon || !target) return false;
-        return isValidTurretTarget(this, target, state, this.getEffectiveTurretRange(state, target), blocksTargeting, { requireLos: true });
-    }
-
-    buildIndependentTargetExclusions(ownExcluded, state) {
-        const excluded = new Set(ownExcluded ?? []);
-        for (const target of this.getMutualAssistTargets(state)) excluded.add(target);
-        return excluded;
-    }
-
-    findIndependentTurretTarget(state, ownExcluded) {
-        if (!this.weapon) return null;
-        return getNearestHostile(state, this, this.weapon.range, this.buildIndependentTargetExclusions(ownExcluded, state));
-    }
-
-    findTurretTarget(state, ownExcluded) {
-        if (!this.weapon) return null;
-        const ownExcludedSet = ownExcluded ?? new Set();
-        const allyEngaged = this.getMutualAssistTargets(state);
-        const independent = this.findIndependentTurretTarget(state, ownExcludedSet);
-        if (independent) return independent;
-        for (const target of allyEngaged) {
-            if (ownExcludedSet.has(target)) continue;
-            if (this.isValidTurretTargetForSelf(target, state)) return target;
-        }
-
-        const shared = getNearestHostile(state, this, this.weapon.range, ownExcludedSet);
-        if (shared) return shared;
-        for (const target of allyEngaged) {
-            if (ownExcludedSet.has(target)) continue;
-            if (this.isValidTurretTargetForSelf(target, state)) return target;
-        }
-        return getNearestHostile(state, this, this.weapon.range);
-    }
-
-    getExternalBlocksTargeting(state, upgrades = []) {
-        if (state?.startNodeInspectionActive) return true;
-        if (!this.isAbilityOwner(state) || !state?.abilities || !state?.scheduler) return false;
-        for (const upg of upgrades) {
-            if (!upg.isAbility || !state.abilities[upg.id] || !upg.blocksTargeting) continue;
-            const timers = state.abilityTimers[upg.id];
-            if (!timers) continue;
-            if (state.scheduler.getTimeRemaining(timers.activeId) > 0) return true;
-        }
-        return false;
-    }
-
-    getTurretAimPoint(turret, state, target, blocksTargeting) {
-        if (this.currentState?.getAimTarget) return this.currentState.getAimTarget(this, target, blocksTargeting, turret);
-        if (target && !blocksTargeting) return target;
-        return this.getMovementAimPoint(state);
-    }
-
-    hasLocomotionIntent() {
-        return this.isMoving || Math.hypot(this.desiredX ?? 0, this.desiredY ?? 0) > 0.05 || (this.targetX != null && this.targetY != null);
-    }
-
-    getMovementAimPoint(_state) {
-        if (this.targetX != null && this.targetY != null && this.isMoving) {
-            return { x: this.targetNodeX != null ? this.targetNodeX : this.targetX, y: this.targetNodeY != null ? this.targetNodeY : this.targetY };
-        }
-        const desiredLen = Math.hypot(this.desiredX, this.desiredY);
-        if (desiredLen > 0.001) {
-            const dist = 100;
-            return { x: this.x + (this.desiredX / desiredLen) * dist, y: this.y + (this.desiredY / desiredLen) * dist };
-        }
-        if (this.hasLocomotionIntent()) {
-            const velLen = Math.hypot(this.vx, this.vy);
-            if (velLen > 1) {
-                const dist = 100;
-                return { x: this.x + (this.vx / velLen) * dist, y: this.y + (this.vy / velLen) * dist };
-            }
-        }
-        if (normalizeWeaponLoadout(this.weaponLoadout ?? []).length > 0) {
-            const dist = 100;
-            return { x: this.x + Math.cos(this.angle) * dist, y: this.y + Math.sin(this.angle) * dist };
-        }
-        return null;
-    }
-
-    aimIdleTurrets(dt, state, blocksTargeting = false) {
-        const effectiveBlocks = this.resolveBlocksTargeting(state, blocksTargeting);
-        if (this.currentState?.locksTurretAim) {
-            for (const turret of this.getTurrets()) {
-                const aimTarget = this.getTurretAimPoint(turret, state, null, effectiveBlocks);
-                if (!aimTarget) continue;
-                turret.angle = normalizeAngle(Math.atan2(aimTarget.y - this.y, aimTarget.x - this.x));
-            }
-            return;
-        }
-
-        for (const turret of this.getTurrets()) {
-            const aimTarget = this.resolveTurretAimPoint(turret, state, null, effectiveBlocks);
-            if (!aimTarget) continue;
-            WeaponSystem.aimTurret(turret, this.x, this.y, aimTarget.x, aimTarget.y, dt, 0);
-        }
-    }
-
-    resolveTurretAimPoint(turret, state, target, blocksTargeting) {
-        if (this.currentState?.getAimTarget && this.currentState.blocksTargeting) {
-            return this.getTurretAimPoint(turret, state, target, blocksTargeting);
-        }
-        if (this.isTurretChargeCommitted(turret)) return this.getCommittedTurretTarget(turret);
-        return this.getTurretAimPoint(turret, state, target, blocksTargeting);
-    }
-
-    resolveBlocksTargeting(state, externalBlocks = false) {
-        if (externalBlocks) return true;
-        if (this.currentState?.blocksTargeting) return true;
-        if (this.currentState?.getTurretBlocksTargeting) return this.currentState.getTurretBlocksTargeting(this, state);
-        return false;
-    }
-
-    getCommittedTurretTarget(turret) {
-        const target = turret.lastTarget ?? turret.target;
-        if (!target) return null;
-        return target;
-    }
-
-    isTurretChargeCommitted(turret) {
-        return turret.charge > 0 && this.getCommittedTurretTarget(turret) != null;
-    }
-
-    clearTurretCharge(turret) {
-        turret.charge = 0;
-        turret.lastTarget = null;
-    }
-
-    resolveTurretTargetForProcessing(turret) {
-        if (this.isTurretChargeCommitted(turret)) return this.getCommittedTurretTarget(turret);
-        return turret.target;
-    }
-
-    resolveTurretBlocksForProcessing(turret, state, externalBlocks = false) {
-        if (this.isTurretChargeCommitted(turret)) return false;
-        return this.resolveBlocksTargeting(state, externalBlocks);
-    }
-
-    canIncrementTurretCharge(turret, isAimed) {
-        if (this.isTurretChargeCommitted(turret)) {
-            return true;
-        }
-        return isAimed;
-    }
-
-    syncTurretChargeTarget(turret, target) {
-        if (this.isTurretChargeCommitted(turret)) return;
-        if (turret.lastTarget !== target) {
-            this.clearTurretCharge(turret);
-            turret.lastTarget = target;
-        }
-    }
-
-    acquireTurretTargets(state, blocksTargeting = false) {
-        const weapon = this.weapon;
-        if (!weapon) return;
-        if (this.type === "player" && state.abilities["Shoot"]) {
-            for (const turret of this.getTurrets()) {
-                turret.target = null;
-            }
-            return;
-        }
-        const actualBlocks = this.resolveBlocksTargeting(state, blocksTargeting);
-        const engagedTargets = new Set();
-        for (const turret of this.getTurrets()) {
-            const committed = this.isTurretChargeCommitted(turret);
-            if (committed) {
-                const chargeTarget = this.getCommittedTurretTarget(turret);
-                if (!chargeTarget) {
-                    this.clearTurretCharge(turret);
-                    turret.target = null;
-                } else {
-                    turret.target = chargeTarget;
-                }
-            }
-            if (turret.target && !committed) {
-                const stillValid = this.isValidTurretTargetForSelf(turret.target, state, { blocksTargeting: actualBlocks });
-                if (!stillValid) {
-                    turret.target = null;
-                    this.clearTurretCharge(turret);
-                } else {
-                    const independent = this.findIndependentTurretTarget(state, engagedTargets);
-                    if (independent && independent !== turret.target) {
-                        turret.target = independent;
-                    } else if (engagedTargets.has(turret.target)) {
-                        const betterTarget = this.findTurretTarget(state, engagedTargets);
-                        if (betterTarget) {
-                            turret.target = betterTarget;
-                        }
-                    }
-                }
-            }
-            if (!turret.target && !actualBlocks && !this.isTurretChargeCommitted(turret)) turret.target = this.findTurretTarget(state, engagedTargets);
-            if (turret.target) engagedTargets.add(turret.target);
-        }
-    }
 
     syncTurretCount(count, turnSpeed) {
         const targetCount = Math.max(0, Math.floor(count));
@@ -492,86 +221,8 @@ export class Actor extends DestructibleEntity {
         applyActorGunModifiers(this);
     }
 
-    processAllTurrets(dt, state, blocksTargeting = false, combatEvents = []) {
-        const isPlayerManualShoot = this.type === "player" && state.abilities["Shoot"];
-        for (const turret of this.getTurrets()) {
-            const gun = turret.gun ?? getGunDefinition(turret.gunId);
-
-            let activeSight = null;
-            if (gun.attachments) {
-                for (const attachment of Object.values(gun.attachments)) {
-                    if (attachment.enabled && attachment.isSight) {
-                        activeSight = attachment;
-                        break;
-                    }
-                }
-            }
-
-            if (activeSight && state) {
-                const target = this.resolveTurretTargetForProcessing(turret);
-                const { x: tx, y: ty } = turret.getMuzzlePosition(this, gun.bulletRadius ?? 2, target);
-                const range = this.weapon?.range ?? 200;
-                const hit = WeaponSystem.castLaser(tx, ty, turret.angle, range, state, 1, this);
-                const color = (hit.hit === "actor" && areHostile(this, hit.entity)) ? "#ff0000" : "#00ff00";
-                state.activeLasers.push(new Laser(tx, ty, hit.x, hit.y, color, true));
-            }
-
-            if (isPlayerManualShoot) {
-                advanceTurretAmmo(dt, turret, gun, this);
-                continue;
-            }
-            const mode = resolveWeaponModeForGun(gun);
-            const target = this.resolveTurretTargetForProcessing(turret);
-            const turretBlocks = this.resolveTurretBlocksForProcessing(turret, state, blocksTargeting);
-            mode.processTurret(dt, state, this, gun, turret, target, turretBlocks, combatEvents);
-        }
-        return combatEvents;
-    }
-
     manualFire(state, targetX, targetY) {
-        let firedAny = false;
-        for (const turret of this.getTurrets()) {
-            const gun = turret.gun ?? getGunDefinition(turret.gunId);
-            const fireIntervalMs = getSlotFireIntervalMs(gun, this);
-
-            if (turret.manualFireCooldown === undefined) turret.manualFireCooldown = 0;
-            if (turret.reloading || turret.manualFireCooldown > 0) continue;
-
-            const angle = Math.atan2(targetY - this.y, targetX - this.x);
-            turret.angle = angle;
-
-            if (gun.kind === "projectile") {
-                turret.fire(state, this);
-                firedAny = true;
-            } else if (gun.kind === "beam") {
-                const { x: tx, y: ty } = turret.getMuzzlePosition(this, gun.bulletRadius ?? 2);
-                const range = this.weapon?.range ?? 200;
-                const hit = WeaponSystem.castLaser(tx, ty, turret.angle, range, state, gun.beamRadius, this);
-                state.activeLasers.push(new Laser(tx, ty, hit.x, hit.y));
-                
-                const tickDamage = getBeamTickDamage(gun);
-                if (hit.hit === "actor" && areHostile(this, hit.entity)) {
-                    hit.entity.handleHit(tickDamage, { state }, "beam");
-                } else if (hit.hit === "pickup" && hit.entity.strategy?.onHit) {
-                    const skipExplosive = state.abilities["TargetVerification"] && hit.entity.strategy.isExplosive;
-                    if (!skipExplosive) {
-                        hit.entity.strategy.onHit(state, hit.entity, createBeamHitSource(gun), []);
-                    }
-                }
-                firedAny = true;
-            }
-
-            if (firedAny) {
-                turret.manualFireCooldown = fireIntervalMs;
-                if (turret.ammo !== undefined && turret.ammo > 0) {
-                    turret.ammo--;
-                    if (turret.ammo <= 0) {
-                        turret.reloading = true;
-                        turret.reloadTimer = 0;
-                    }
-                }
-            }
-        }
+        this.turretController.manualFire(state, targetX, targetY);
     }
 
     recalculateFromRun(state, upgradeDefs, shouldApply = () => true) {
@@ -615,10 +266,7 @@ export class Actor extends DestructibleEntity {
     }
 
     renderCombatHudClassic(ctx, renderer) {
-        this.renderCachedSprite(ctx, this.getSpriteCache(renderer), `hud_${this.type}_${this.radius}_${this.color}`, RenderSprites.enemy, this.radius, this.color);
-        for (const turret of this.turrets) {
-            turret.renderHudTriangle(ctx, renderer, this);
-        }
+        this.renderer.renderCombatHudClassic(ctx, renderer);
     }
 
     render(ctx, renderer, _state) {
@@ -637,12 +285,16 @@ export class Actor extends DestructibleEntity {
         // Subclasses draw kinematics bodies.
     }
 
-    renderStatusBars(ctx, renderer, _state) {
-        this.renderBars(ctx, this.getSpriteCache(renderer), this.getStatusBarYOffset());
+    renderStatusBars(ctx, renderer, state) {
+        this.renderer.renderStatusBars(ctx, renderer, state);
     }
 
     changeState(stateName, stateDataInit = null) {
         transitionEntity(this, actorStates, stateName, stateDataInit);
+    }
+
+    hasLocomotionIntent() {
+        return this.isMoving || Math.hypot(this.desiredX ?? 0, this.desiredY ?? 0) > 0.05 || (this.targetX != null && this.targetY != null);
     }
 
     applyLocomotion(dt, spatialFrame, { state = null, externalSpeedMod = 1, ignoreSeparationInDesired = false, shouldMove = true, alignAngleWithMovement = true } = {}) {
@@ -709,25 +361,5 @@ export class Actor extends DestructibleEntity {
         return null;
     }
 
-    renderBars(ctx, cache, yOffset) {
-        if (this.health < this.maxHealth && this.healthBar) {
-            const currentHealth = Math.max(0, this.health);
-            this.healthBar.render(ctx, this.x, this.y - yOffset, currentHealth / this.maxHealth, cache);
-        }
 
-        let secondaryOffset = yOffset;
-        if (this.health < this.maxHealth && this.healthBar) {
-            secondaryOffset += this.healthBar.height + 4;
-        }
-
-        const stunRatio = this.getStunBarProgress();
-        if (stunRatio != null && this.stunBar) {
-            this.stunBar.render(ctx, this.x, this.y - secondaryOffset, stunRatio, cache);
-        } else {
-            const reloadRatio = this.getReloadBarProgress();
-            if (reloadRatio != null && this.reloadBar) {
-                this.reloadBar.render(ctx, this.x, this.y - secondaryOffset, reloadRatio, cache);
-            }
-        }
-    }
 }

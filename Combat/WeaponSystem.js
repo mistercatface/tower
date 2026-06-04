@@ -5,7 +5,7 @@ import { Laser } from "../Entities/Laser.js";
 import { defaultGunId, getGunDefinition } from "../Config/gunDefinitions.js";
 import { getSlotFireIntervalMs, getSlotReloadTimeMs } from "./gunCombat.js";
 import { getBeamTickDamage, createBeamHitSource } from "./impactDamage.js";
-import { areHostile, getHostiles, getNearestHostile } from "./Targeting.js";
+import { areHostile, getHostiles } from "./Targeting.js";
 
 export function advanceTurretAmmo(dt, turret, gun, source) {
     if (turret.currentGunId !== turret.gunId || turret.ammo === undefined) {
@@ -40,27 +40,27 @@ export class ChargedWeaponMode {
 
     processTurret(dt, state, source, gun, turret, target, blocksTargeting, combatEvents) {
         const reloading = advanceTurretAmmo(dt, turret, gun, source);
-        if (reloading) source.clearTurretCharge(turret);
-        const committed = source.isTurretChargeCommitted(turret);
-        const fireTarget = source.resolveTurretTargetForProcessing(turret);
-        const effectiveBlocks = source.resolveTurretBlocksForProcessing(turret, state, blocksTargeting);
-        const aimTarget = source.resolveTurretAimPoint(turret, state, fireTarget, effectiveBlocks);
+        if (reloading) source.turretController.clearTurretCharge(turret);
+        const committed = source.turretController.isTurretChargeCommitted(turret);
+        const fireTarget = source.turretController.resolveTurretTargetForProcessing(turret);
+        const effectiveBlocks = source.turretController.resolveTurretBlocksForProcessing(turret, state, blocksTargeting);
+        const aimTarget = source.turretController.resolveTurretAimPoint(turret, state, fireTarget, effectiveBlocks);
         if (!aimTarget) {
-            if (!committed) source.clearTurretCharge(turret);
+            if (!committed) source.turretController.clearTurretCharge(turret);
             return;
         }
         const fireIntervalMs = getSlotFireIntervalMs(gun, source);
         const sway = WeaponSystem.computeAccuracySway(source, turret, dt, true);
         const isAimed = WeaponSystem.aimTurret(turret, source.x, source.y, aimTarget.x, aimTarget.y, dt, sway);
         if (!turret.reloading && fireTarget && !effectiveBlocks) {
-            source.syncTurretChargeTarget(turret, fireTarget);
-            if (source.canIncrementTurretCharge(turret, isAimed)) {
+            source.turretController.syncTurretChargeTarget(turret, fireTarget);
+            if (source.turretController.canIncrementTurretCharge(turret, isAimed)) {
                 turret.charge += dt;
                 if (turret.charge >= fireIntervalMs) {
                     if (turret.ammo > 0) {
                         this.onFire(state, turret, source);
                         turret.ammo--;
-                        source.clearTurretCharge(turret);
+                        source.turretController.clearTurretCharge(turret);
                         if (turret.ammo <= 0) {
                             turret.reloading = true;
                             turret.reloadTimer = 0;
@@ -69,7 +69,7 @@ export class ChargedWeaponMode {
                 }
             }
         } else if (!committed) {
-            source.clearTurretCharge(turret);
+            source.turretController.clearTurretCharge(turret);
         }
     }
 }
@@ -81,10 +81,10 @@ export class ContinuousWeaponMode {
 
     processTurret(dt, state, source, gun, turret, target, blocksTargeting, combatEvents) {
         advanceTurretAmmo(dt, turret, gun, source);
-        const fireTarget = source.resolveTurretTargetForProcessing(turret);
+        const fireTarget = source.turretController.resolveTurretTargetForProcessing(turret);
         const { x: tx, y: ty } = turret.getMuzzlePosition(source, gun.beamRadius ?? 1, fireTarget);
-        const effectiveBlocks = source.resolveTurretBlocksForProcessing(turret, state, blocksTargeting);
-        const aimTarget = source.resolveTurretAimPoint(turret, state, target, effectiveBlocks);
+        const effectiveBlocks = source.turretController.resolveTurretBlocksForProcessing(turret, state, blocksTargeting);
+        const aimTarget = source.turretController.resolveTurretAimPoint(turret, state, target, effectiveBlocks);
 
         const sway = WeaponSystem.computeAccuracySway(source, turret, dt);
 
