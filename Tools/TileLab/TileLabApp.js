@@ -16,6 +16,7 @@ import {
 import { ensureLabWorld, getLabWorld, resetLabWorld } from "./LabWorldSession.js";
 import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEditor.js";
 import { initAnimationPreview } from "./LabAnimationPreview.js";
+import { initResizer } from "../Lab/lab-shared.js";
 
 let previewRefreshTimer = null;
 let bakeRepaintRaf = null;
@@ -116,39 +117,11 @@ bindToolbarControls({
 
 initToolbarDefaults();
 
-function initResizer() {
-    const resizer = document.getElementById("resizer");
-    if (!resizer) return;
-
-    let isResizing = false;
-
-    resizer.addEventListener("mousedown", (e) => {
-        isResizing = true;
-        document.body.style.cursor = "col-resize";
-        resizer.classList.add("active");
-        e.preventDefault();
-    });
-
-    document.addEventListener("mousemove", (e) => {
-        if (!isResizing) return;
-        let newWidth = e.clientX;
-        newWidth = Math.max(200, Math.min(newWidth, window.innerWidth - 200));
-        document.documentElement.style.setProperty("--editor-w", `${newWidth}px`);
-    });
-
-    document.addEventListener("mouseup", () => {
-        if (isResizing) {
-            isResizing = false;
-            document.body.style.cursor = "";
-            resizer.classList.remove("active");
-            onStageResize();
-        }
-    });
-}
 
 function bootstrap() {
     registerEditorProfiles().then(() => {
-        initResizer();
+        initResizer("resizer", onStageResize);
+
         
         const animCanvas = document.getElementById("animationPreviewCanvas");
         if (animCanvas) {

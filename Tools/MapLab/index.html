@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tower — Map Lab</title>
+    <link rel="stylesheet" href="map-lab.css">
+</head>
+
+<body>
+    <div class="app">
+        <div class="toolbar">
+            <h1>Map Lab</h1>
+            <span class="sep"></span>
+            <label>Map Seed <input id="mapSeedInput" type="number" value="42"></label>
+            <button type="button" id="randomMapSeedBtn" class="secondary">Rand</button>
+            <span class="sep"></span>
+            <label>Floor Seed <input id="floorSeedInput" type="number" value="42" step="1"></label>
+            <button type="button" id="randomFloorSeedBtn" class="secondary">Rand</button>
+            <span class="sep"></span>
+            <button type="button" id="regenerateBtn">Regenerate Map</button>
+            <span class="sep"></span>
+            <a href="../TileLab/index.html">Tile Lab</a>
+            <span class="sep"></span>
+            <a href="../../Index.html">Game</a>
+        </div>
+
+        <div class="workspace">
+            <aside class="col col-editor">
+                <div class="col-head">Inspector & Settings</div>
+                <div class="col-body">
+                    <div class="editor-scroll">
+                        <details class="editor-block" open>
+                            <summary>Display Overlays</summary>
+                            <div>
+                                <label class="check-inline" style="display:block; margin-bottom:4px;"><input id="showNodesInput" type="checkbox" checked> Show Nodes & Connections</label>
+                                <label class="check-inline" style="display:block; margin-bottom:4px;"><input id="showRoomZonesInput" type="checkbox" checked> Show Room Exclusion Zones</label>
+                                <label class="check-inline" style="display:block; margin-bottom:4px;"><input id="showWallsInput" type="checkbox" checked> Show Physics Walls</label>
+                                <label class="check-inline" style="display:block; margin-bottom:4px;"><input id="showGridBoundsInput" type="checkbox" checked> Show Entity Grid Bounds</label>
+                            </div>
+                        </details>
+                        <details class="editor-block" open>
+                            <summary>Generation Config</summary>
+                            <div id="mapSettingsPanel"></div>
+                        </details>
+                        <details class="editor-block" open>
+                            <summary>Node Info</summary>
+                            <div id="nodeInfoPanel">Select a node from the map or list.</div>
+                        </details>
+                        <details class="editor-block" open>
+                            <summary>Node List</summary>
+                            <div id="nodeListPanel"></div>
+                        </details>
+                    </div>
+                </div>
+            </aside>
+
+            <div class="resizer" id="resizer"></div>
+
+            <section class="col col-map">
+                <div class="map-status" id="mapStatusLine">WASD move · drag · wheel zoom</div>
+                <div class="map-container">
+                    <div class="map-stage" id="mapStage">
+                        <canvas id="mapPreview"></canvas>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script type="module" src="MapLabApp.js"></script>
+</body>
+
+</html>

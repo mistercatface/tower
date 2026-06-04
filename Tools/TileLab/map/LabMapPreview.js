@@ -4,6 +4,7 @@ import { Viewport } from "../../../Render/Viewport.js";
 import { playerBaseStats, combatVisualSettings } from "../../../Config/Config.js";
 import { TileWorkerCoordinator } from "../../../Render/Floor/TileWorkerCoordinator.js";
 import { invalidateWallSurfaceKeyMemos } from "../../../Render/Floor/FloorTileSystem.js";
+import { setupLabViewportNavigation } from "../../Lab/lab-shared.js";
 
 const render3D = new Render3D();
 let lastBakeKey = "";
@@ -182,127 +183,29 @@ export function invalidateMapPreviewBakes() {
     lastBakeKey = "";
 }
 
-/**
- * WASD / arrows move player; drag moves player; wheel zoom. Camera follows player.
- * @param {() => { worldState?: object, gameZoom?: number }} getOptions
- * @param {{ onViewChange?: () => void }} [handlers]
- */
 export function initMapPreviewNavigation(getOptions, handlers = {}) {
-    const onViewChange = handlers.onViewChange;
-    const canvases = () => [document.getElementById("gamePreview")].filter(Boolean);
-
-    const moveKeys = new Set();
-    let moveRaf = null;
-
-    const moveSpeed = () => (playerBaseStats.speed * MOVE_SPEED_SCALE) / (getOptions().gameZoom || 1);
-
-    const applyPlayerDelta = (dx, dy) => {
-        const world = getOptions().worldState;
-        if (!world?.player) {
-            return;
-        }
-        const len = Math.hypot(dx, dy) || 1;
-        const step = moveSpeed() * 0.016;
-        world.player.x += (dx / len) * step;
-        world.player.y += (dy / len) * step;
-    };
-
-    const tickMove = () => {
-        let dx = 0;
-        let dy = 0;
-        if (moveKeys.has("KeyW") || moveKeys.has("ArrowUp")) {
-            dy -= 1;
-        }
-        if (moveKeys.has("KeyS") || moveKeys.has("ArrowDown")) {
-            dy += 1;
-        }
-        if (moveKeys.has("KeyA") || moveKeys.has("ArrowLeft")) {
-            dx -= 1;
-        }
-        if (moveKeys.has("KeyD") || moveKeys.has("ArrowRight")) {
-            dx += 1;
-        }
-        if (dx !== 0 || dy !== 0) {
-            applyPlayerDelta(dx, dy);
-            onViewChange?.();
-        }
-        moveRaf = requestAnimationFrame(tickMove);
-    };
-
-    window.addEventListener("keydown", (e) => {
-        if (e.target.matches("input, textarea, select")) {
-            return;
-        }
-        if (["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) {
-            moveKeys.add(e.code);
-            e.preventDefault();
-            if (!moveRaf) {
-                moveRaf = requestAnimationFrame(tickMove);
-            }
-        }
-    });
-
-    window.addEventListener("keyup", (e) => {
-        moveKeys.delete(e.code);
-        if (moveKeys.size === 0 && moveRaf) {
-            cancelAnimationFrame(moveRaf);
-            moveRaf = null;
-        }
-    });
-
-    for (const canvas of canvases()) {
-        canvas.addEventListener("wheel", (e) => {
-            e.preventDefault();
-            const opts = getOptions();
-            const el = document.getElementById("gameZoomInput");
-            const next = Math.min(2.5, Math.max(0.25, (opts.gameZoom || 1) + (e.deltaY > 0 ? -0.05 : 0.05)));
-            if (el) {
-                el.value = String(next);
-                document.getElementById("gameZoomValue").textContent = el.value;
-            }
-            onViewChange?.();
-        }, { passive: false });
-
-        canvas.addEventListener("pointerdown", (e) => {
-            if (e.button !== 0) {
-                return;
-            }
+    setupLabViewportNavigation("gamePreview", {
+        getCamera: () => {
             const world = getOptions().worldState;
-            if (!world?.player) {
-                return;
-            }
-            dragState = {
-                canvas,
-                startX: e.clientX,
-                startY: e.clientY,
-                playerX: world.player.x,
-                playerY: world.player.y,
-                zoom: getOptions().gameZoom || 1,
+            return {
+                x: world?.player?.x ?? 0,
+                y: world?.player?.y ?? 0,
+                zoom: getOptions().gameZoom ?? 1,
             };
-            canvas.setPointerCapture(e.pointerId);
-        });
-
-        canvas.addEventListener("pointermove", (e) => {
-            if (!dragState || dragState.canvas !== canvas) {
-                return;
-            }
+        },
+        setCamera: (x, y, zoom) => {
             const world = getOptions().worldState;
-            if (!world?.player) {
-                return;
+            if (world?.player) {
+                world.player.x = x;
+                world.player.y = y;
             }
-            const dx = e.clientX - dragState.startX;
-            const dy = e.clientY - dragState.startY;
-            world.player.x = dragState.playerX - dx / dragState.zoom;
-            world.player.y = dragState.playerY - dy / dragState.zoom;
-            onViewChange?.();
-        });
-
-        const endDrag = () => {
-            if (dragState?.canvas === canvas) {
-                dragState = null;
+            const zoomInput = document.getElementById("gameZoomInput");
+            if (zoomInput) {
+                zoomInput.value = String(zoom);
+                const valEl = document.getElementById("gameZoomValue");
+                if (valEl) valEl.textContent = zoomInput.value;
             }
-        };
-        canvas.addEventListener("pointerup", endDrag);
-        canvas.addEventListener("pointercancel", endDrag);
-    }
+        },
+        onUpdate: handlers.onViewChange,
+    });
 }
