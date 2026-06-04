@@ -50,6 +50,7 @@ export const worldPropDefinitions = {
         },
     }),
     crate_shard: prop("crate_shard", {
+        renderMode: "debris",
         inspectKey: null,
         hitBehavior: "damage",
         radius: 3,

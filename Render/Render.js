@@ -16,6 +16,7 @@ export class Renderer {
         this.render3D = new Render3D();
         this.effectPasses = [
             { zIndex: -5, fn: (state, viewport) => state.floorTiles.draw(this.ctx, state, viewport) },
+            { zIndex: 19, fn: (state, viewport) => this.drawDebris(state, viewport) },
             {
                 zIndex: 30,
                 fn: (state, viewport) => {
@@ -108,6 +109,18 @@ export class Renderer {
         if (viewport && isWorldScene(state.phase)) {
             this.drawGlobeOverlay(state, viewport);
             drawHostileOffScreenIndicators(this.ctx, state, viewport);
+        }
+    }
+
+    drawDebris(state, viewport) {
+        if (!state.pickups) return;
+        const px = state.player.x;
+        const py = state.player.y;
+        for (let i = 0; i < state.pickups.length; i++) {
+            const p = state.pickups[i];
+            if (p.isDead || p.strategy?.renderMode !== "debris") continue;
+            if (viewport && typeof p.isVisible === "function" && !p.isVisible(viewport)) continue;
+            p.draw3D(this.ctx, this.render3D, state, px, py, viewport);
         }
     }
 
