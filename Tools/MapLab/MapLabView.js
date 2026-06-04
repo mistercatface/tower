@@ -1,73 +1,36 @@
-export function renderMapLabView(ctx, width, height, world, camera, options, selectedNodeId, playerPos, targetPos, currentPath) {
-    ctx.save();
-    ctx.fillStyle = "#080a0e";
-    ctx.fillRect(0, 0, width, height);
-    
-    ctx.translate(width / 2, height / 2);
-    ctx.scale(camera.zoom, camera.zoom);
-    ctx.translate(-camera.x, -camera.y);
-    
-    if (options.showGridBounds && world.obstacleGrid) {
-        const grid = world.obstacleGrid;
-        if (grid.minX !== undefined && grid.maxX !== undefined) {
-            ctx.strokeStyle = "rgba(255, 0, 0, 0.3)";
-            ctx.lineWidth = 10 / camera.zoom;
-            ctx.setLineDash([20, 20]);
-            ctx.strokeRect(grid.minX, grid.minY, grid.maxX - grid.minX, grid.maxY - grid.minY);
-            ctx.setLineDash([]);
-        }
-    }
-    
-    if (options.showRoomZones) {
-        for (const node of world.mapNodes) {
-            const coords = world.getNodeCombatCoords(node);
-            ctx.beginPath();
-            ctx.arc(coords.x, coords.y, 540, 0, Math.PI * 2);
-            ctx.fillStyle = "rgba(255, 255, 255, 0.02)";
-            ctx.fill();
-            ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
-            ctx.lineWidth = 2 / camera.zoom;
-            ctx.stroke();
-        }
-    }
-    
-    if (options.showNodes) {
-        // Draw connections
-        ctx.lineWidth = 4 / camera.zoom;
-        for (const node of world.mapNodes) {
-            const coordsA = world.getNodeCombatCoords(node);
-            for (const targetId of node.connections) {
-                const targetNode = world.getMapNode(targetId);
-                if (!targetNode) continue;
-                const coordsB = world.getNodeCombatCoords(targetNode);
-                
-                ctx.beginPath();
-                ctx.moveTo(coordsA.x, coordsA.y);
-                ctx.lineTo(coordsB.x, coordsB.y);
-                ctx.strokeStyle = "rgba(85, 85, 85, 0.4)";
-                ctx.stroke();
-            }
-        }
-    }
+function rebuildStaticCache(world, options) {
+    const grid = world.obstacleGrid;
+    if (!grid) return null;
 
-    // Draw HPA* Grid and Regions
+    const minX = grid.minX;
+    const maxX = grid.maxX;
+    const minY = grid.minY;
+    const maxY = grid.maxY;
+    const w = Math.ceil(maxX - minX);
+    const h = Math.ceil(maxY - minY);
+
+    if (w <= 0 || h <= 0) return null;
+
+    const canvas = typeof OffscreenCanvas !== 'undefined'
+        ? new OffscreenCanvas(w, h)
+        : document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+
+    const ctx = canvas.getContext('2d');
+    
+    // Translate ctx so world coordinates draw relative to (minX, minY)
+    ctx.translate(-minX, -minY);
+
+    // 1. Draw HPA* Grid and Regions
     if (options.showPathDebug && world.hierarchicalNavigator) {
         const hnav = world.hierarchicalNavigator;
         if (hnav.grid) {
             ctx.save();
-            const pad = hnav.cellSize * 2;
-            const vxMin = camera.x - width / (2 * camera.zoom) - pad;
-            const vxMax = camera.x + width / (2 * camera.zoom) + pad;
-            const vyMin = camera.y - height / (2 * camera.zoom) - pad;
-            const vyMax = camera.y + height / (2 * camera.zoom) + pad;
-
-            const startGrid = hnav.worldToGrid(vxMin, vyMin);
-            const endGrid = hnav.worldToGrid(vxMax, vyMax);
-
-            const startCol = Math.max(0, Math.min(hnav.cols - 1, startGrid.col));
-            const endCol = Math.max(0, Math.min(hnav.cols - 1, endGrid.col));
-            const startRow = Math.max(0, Math.min(hnav.rows - 1, startGrid.row));
-            const endRow = Math.max(0, Math.min(hnav.rows - 1, endGrid.row));
+            const startCol = 0;
+            const endCol = hnav.cols - 1;
+            const startRow = 0;
+            const endRow = hnav.rows - 1;
 
             // 1. Draw Grid Cells
             for (let row = startRow; row <= endRow; row++) {
@@ -171,7 +134,8 @@ export function renderMapLabView(ctx, width, height, world, camera, options, sel
             ctx.restore();
         }
     }
-    
+
+    // 2. Draw Walls
     if (options.showWalls) {
         for (const seg of world.walls) {
             if (seg.isDead) continue;
@@ -188,13 +152,99 @@ export function renderMapLabView(ctx, width, height, world, camera, options, sel
             ctx.fillRect(-halfSize, -thickness/2, seg.size, thickness);
             
             ctx.strokeStyle = `rgba(${theme.r}, ${theme.g}, ${theme.b}, 1)`;
-            ctx.lineWidth = 1 / camera.zoom;
+            ctx.lineWidth = 1.5;
             ctx.strokeRect(-halfSize, -thickness/2, seg.size, thickness);
             
             ctx.restore();
         }
     }
+
+    return {
+        canvas,
+        minX,
+        minY,
+        maxX,
+        maxY,
+        showWalls: options.showWalls,
+        showPathDebug: options.showPathDebug,
+        wallsCount: world.walls.length
+    };
+}
+
+export function renderMapLabView(ctx, width, height, world, camera, options, selectedNodeId, playerPos, targetPos, currentPath) {
+    ctx.save();
+    ctx.fillStyle = "#080a0e";
+    ctx.fillRect(0, 0, width, height);
     
+    ctx.translate(width / 2, height / 2);
+    ctx.scale(camera.zoom, camera.zoom);
+    ctx.translate(-camera.x, -camera.y);
+    
+    // Draw static layers using cache
+    if (world.obstacleGrid) {
+        let cache = world._mapLabCache;
+        if (!cache ||
+            cache.showWalls !== options.showWalls ||
+            cache.showPathDebug !== options.showPathDebug ||
+            cache.minX !== world.obstacleGrid.minX ||
+            cache.minY !== world.obstacleGrid.minY ||
+            cache.maxX !== world.obstacleGrid.maxX ||
+            cache.maxY !== world.obstacleGrid.maxY ||
+            cache.wallsCount !== world.walls.length
+        ) {
+            cache = rebuildStaticCache(world, options);
+            world._mapLabCache = cache;
+        }
+
+        if (cache && cache.canvas) {
+            ctx.drawImage(cache.canvas, cache.minX, cache.minY);
+        }
+    }
+
+    // Dynamic layers on top
+    if (options.showGridBounds && world.obstacleGrid) {
+        const grid = world.obstacleGrid;
+        if (grid.minX !== undefined && grid.maxX !== undefined) {
+            ctx.strokeStyle = "rgba(255, 0, 0, 0.3)";
+            ctx.lineWidth = 10 / camera.zoom;
+            ctx.setLineDash([20, 20]);
+            ctx.strokeRect(grid.minX, grid.minY, grid.maxX - grid.minX, grid.maxY - grid.minY);
+            ctx.setLineDash([]);
+        }
+    }
+    
+    if (options.showRoomZones) {
+        for (const node of world.mapNodes) {
+            const coords = world.getNodeCombatCoords(node);
+            ctx.beginPath();
+            ctx.arc(coords.x, coords.y, 540, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(255, 255, 255, 0.02)";
+            ctx.fill();
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
+            ctx.lineWidth = 2 / camera.zoom;
+            ctx.stroke();
+        }
+    }
+    
+    if (options.showNodes) {
+        // Draw connections
+        ctx.lineWidth = 4 / camera.zoom;
+        for (const node of world.mapNodes) {
+            const coordsA = world.getNodeCombatCoords(node);
+            for (const targetId of node.connections) {
+                const targetNode = world.getMapNode(targetId);
+                if (!targetNode) continue;
+                const coordsB = world.getNodeCombatCoords(targetNode);
+                
+                ctx.beginPath();
+                ctx.moveTo(coordsA.x, coordsA.y);
+                ctx.lineTo(coordsB.x, coordsB.y);
+                ctx.strokeStyle = "rgba(85, 85, 85, 0.4)";
+                ctx.stroke();
+            }
+        }
+    }
+
     if (options.showNodes) {
         // Draw nodes
         for (const node of world.mapNodes) {
