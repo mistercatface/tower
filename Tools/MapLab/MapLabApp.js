@@ -3,38 +3,69 @@ import { initResizer, setupLabViewportNavigation } from "../Lab/lab-shared.js";
 import { createLabMapWorld } from "../TileLab/map/LabMapWorld.js";
 import { renderMapLabView } from "./MapLabView.js";
 import { SliderControl } from "../Lab/ui/controls/SliderControl.js";
+import { resolveRepositionTarget } from "../../Spatial/Navigation/PathClearance.js";
 
 let currentWorld = null;
 let currentCamera = { x: 0, y: 0, zoom: 0.1 }; // zoomed out by default to see the whole map
 let selectedNodeId = null;
 
+let playerPos = null;
+let targetPos = null;
+let currentPath = null;
+
+let mapSeed = Math.floor(Math.random() * 100000);
+let floorSeed = Math.floor(Math.random() * 100000);
+
+function updatePathStatus(msg, isError = false) {
+    const el = document.getElementById("pathStatus");
+    if (el) {
+        el.textContent = msg;
+        el.style.color = isError ? "#f44336" : "#00bcd4";
+    }
+}
+
+function calculatePath() {
+    if (!currentWorld) return;
+    const showPathTest = document.getElementById("showPathTestInput").checked;
+    if (!showPathTest) {
+        currentPath = null;
+        updatePathStatus("Path test is disabled.");
+        return;
+    }
+    if (!playerPos || !targetPos) {
+        currentPath = null;
+        updatePathStatus("Need both player and target positions.");
+        return;
+    }
+    try {
+        const path = currentWorld.hierarchicalNavigator.findPath(playerPos.x, playerPos.y, targetPos.x, targetPos.y);
+        currentPath = path;
+        if (path) {
+            updatePathStatus(`Path found: ${path.length} waypoints.`);
+        } else {
+            updatePathStatus("No path found (blocked or too far).", true);
+        }
+    } catch (err) {
+        console.error(err);
+        currentPath = null;
+        updatePathStatus("Error calculating path.", true);
+    }
+}
+
 function readControls() {
     return {
-        mapSeed: parseInt(document.getElementById("mapSeedInput").value, 10) || 42,
-        floorSeed: parseInt(document.getElementById("floorSeedInput").value, 10) || 42,
+        mapSeed,
+        floorSeed,
         showNodes: document.getElementById("showNodesInput").checked,
         showRoomZones: document.getElementById("showRoomZonesInput").checked,
         showWalls: document.getElementById("showWallsInput").checked,
         showGridBounds: document.getElementById("showGridBoundsInput").checked,
+        showPathDebug: document.getElementById("showPathDebugInput").checked,
+        showPathTest: document.getElementById("showPathTestInput").checked,
     };
 }
 
-function updateURL() {
-    const ctrl = readControls();
-    const params = new URLSearchParams(window.location.search);
-    params.set("mapSeed", ctrl.mapSeed);
-    params.set("floorSeed", ctrl.floorSeed);
-    window.history.replaceState(null, "", "?" + params.toString());
-}
-
-function restoreFromURL() {
-    const params = new URLSearchParams(window.location.search);
-    if (params.has("mapSeed")) document.getElementById("mapSeedInput").value = params.get("mapSeed");
-    if (params.has("floorSeed")) document.getElementById("floorSeedInput").value = params.get("floorSeed");
-}
-
 function generateMap() {
-    updateURL();
     const ctrl = readControls();
     currentWorld = createLabMapWorld({
         mapSeed: ctrl.mapSeed,
@@ -47,6 +78,23 @@ function generateMap() {
         currentCamera.x = (bounds.minX + bounds.maxX) / 2;
         currentCamera.y = (bounds.minY + bounds.maxY) / 2;
     }
+
+    // Default player position to Node 0 combat center, target to Node 1 combat center
+    const startNode = currentWorld.getMapNode(0);
+    if (startNode) {
+        playerPos = currentWorld.getNodeCombatCoords(startNode);
+        const nextId = startNode.connections[0];
+        const nextNode = currentWorld.getMapNode(nextId);
+        if (nextNode) {
+            targetPos = currentWorld.getNodeCombatCoords(nextNode);
+        } else {
+            targetPos = { x: playerPos.x + 300, y: playerPos.y };
+        }
+    } else {
+        playerPos = { x: 0, y: 0 };
+        targetPos = { x: 300, y: 0 };
+    }
+    calculatePath();
 
     selectedNodeId = null;
     populateNodeList();
@@ -70,7 +118,18 @@ function redrawCanvas() {
         canvas.height = height;
     }
     
-    renderMapLabView(canvas.getContext("2d"), canvas.width, canvas.height, currentWorld, currentCamera, readControls(), selectedNodeId);
+    renderMapLabView(
+        canvas.getContext("2d"),
+        canvas.width,
+        canvas.height,
+        currentWorld,
+        currentCamera,
+        readControls(),
+        selectedNodeId,
+        playerPos,
+        targetPos,
+        currentPath
+    );
     
     const statusLine = document.getElementById("mapStatusLine");
     if (statusLine) {
@@ -171,6 +230,7 @@ function buildSettingsPanel() {
     const addSlider = (label, min, max, step, obj, key) => {
         const slider = new SliderControl(label, min, max, step, obj[key], (val) => {
             obj[key] = val;
+            generateMap();
         });
         panel.appendChild(slider.element);
     };
@@ -202,32 +262,31 @@ function buildSettingsPanel() {
     const hint = document.createElement("div");
     hint.className = "editor-hint";
     hint.style.marginTop = "8px";
-    hint.textContent = "Click 'Regenerate Map' to apply changes.";
+    hint.textContent = "Changes are applied automatically.";
     panel.appendChild(hint);
 }
 
 function bootstrap() {
     initResizer("resizer", redrawCanvas);
-    restoreFromURL();
     buildSettingsPanel();
     
-    document.getElementById("regenerateBtn").addEventListener("click", () => {
-        generateMap();
-    });
-    
-    document.getElementById("randomMapSeedBtn").addEventListener("click", () => {
-        document.getElementById("mapSeedInput").value = Math.floor(Math.random() * 100000);
-        generateMap();
-    });
-    
-    document.getElementById("randomFloorSeedBtn").addEventListener("click", () => {
-        document.getElementById("floorSeedInput").value = Math.floor(Math.random() * 100000);
-        generateMap();
-    });
-    
-    const checkboxes = ["showNodesInput", "showRoomZonesInput", "showWallsInput", "showGridBoundsInput"];
+    const checkboxes = [
+        "showNodesInput",
+        "showRoomZonesInput",
+        "showWallsInput",
+        "showGridBoundsInput",
+        "showPathDebugInput",
+        "showPathTestInput"
+    ];
     for (const id of checkboxes) {
-        document.getElementById(id).addEventListener("change", redrawCanvas);
+        document.getElementById(id).addEventListener("change", () => {
+            if (id === "showPathTestInput") {
+                const checked = document.getElementById("showPathTestInput").checked;
+                document.getElementById("pathTestControls").style.display = checked ? "block" : "none";
+                calculatePath();
+            }
+            redrawCanvas();
+        });
     }
     
     setupLabViewportNavigation("mapPreview", {
@@ -252,29 +311,57 @@ function bootstrap() {
         const worldX = (e.clientX - rect.left - cx) / currentCamera.zoom + currentCamera.x;
         const worldY = (e.clientY - rect.top - cy) / currentCamera.zoom + currentCamera.y;
         
-        // Find nearest node
-        let nearestNode = null;
-        let nearestDist = Infinity;
-        
-        for (const node of currentWorld.mapNodes) {
-            const coords = currentWorld.getNodeCombatCoords(node);
-            const dist = Math.hypot(coords.x - worldX, coords.y - worldY);
-            if (dist < 200 && dist < nearestDist) { // 200 radius click target
-                nearestDist = dist;
-                nearestNode = node;
+        const showPathTest = document.getElementById("showPathTestInput").checked;
+        const actionEl = document.querySelector('input[name="clickAction"]:checked');
+        const clickAction = (showPathTest && actionEl) ? actionEl.value : "selectNode";
+
+        if (clickAction === "selectNode") {
+            // Find nearest node
+            let nearestNode = null;
+            let nearestDist = Infinity;
+            
+            for (const node of currentWorld.mapNodes) {
+                const coords = currentWorld.getNodeCombatCoords(node);
+                const dist = Math.hypot(coords.x - worldX, coords.y - worldY);
+                if (dist < 200 && dist < nearestDist) { // 200 radius click target
+                    nearestDist = dist;
+                    nearestNode = node;
+                }
             }
-        }
-        
-        if (nearestNode) {
-            selectedNodeId = nearestNode.id;
-            populateNodeList();
-            renderSidebarDetails();
-            redrawCanvas();
+            
+            if (nearestNode) {
+                selectedNodeId = nearestNode.id;
+                populateNodeList();
+                renderSidebarDetails();
+                redrawCanvas();
+            }
+        } else if (clickAction === "repositionPlayer") {
+            const target = resolveRepositionTarget(currentWorld.obstacleGrid, worldX, worldY, currentWorld.player.radius);
+            if (target) {
+                playerPos = { x: target.x, y: target.y };
+                calculatePath();
+                redrawCanvas();
+            } else {
+                updatePathStatus("Cannot reposition player: cell is blocked or has insufficient wall clearance.", true);
+            }
+        } else if (clickAction === "setTarget") {
+            const target = resolveRepositionTarget(currentWorld.obstacleGrid, worldX, worldY, currentWorld.player.radius);
+            if (target) {
+                targetPos = { x: target.x, y: target.y };
+                calculatePath();
+                redrawCanvas();
+            } else {
+                updatePathStatus("Cannot set target: cell is blocked or has insufficient wall clearance.", true);
+            }
         }
     });
 
     window.addEventListener("resize", redrawCanvas);
     generateMap();
+
+    // Initial sync of the controls display
+    const showPathTest = document.getElementById("showPathTestInput").checked;
+    document.getElementById("pathTestControls").style.display = showPathTest ? "block" : "none";
 }
 
 bootstrap();
