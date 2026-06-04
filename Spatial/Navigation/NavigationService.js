@@ -33,7 +33,7 @@ export class NavigationService {
         entity.hpaPath = null;
     }
 
-    steerTo(entity, targetX, targetY, profile, flowFieldGrid = null) {
+    steerTo(entity, targetX, targetY, profile, flowFieldGrid = null, state = null) {
         const settings = navigationSettings;
         const grid = flowFieldGrid ?? this.flowFieldGrid;
         if (entity.targetCellBounds && entityIntersectsCellBounds(entity.x, entity.y, entity.radius, entity.targetCellBounds)) {
@@ -53,7 +53,7 @@ export class NavigationService {
         const navState = this.getNavState(entity);
         let debug;
         if (useHpa) {
-            debug = steerViaHpa(entity, targetX, targetY, this.hierarchicalNavigator, navState, profile, settings, this.flowFieldGrid.obstacleGrid, this.obstacleGeneration);
+            debug = steerViaHpa(entity, targetX, targetY, this.hierarchicalNavigator, navState, profile, settings, this.flowFieldGrid.obstacleGrid, this.obstacleGeneration, state);
         } else {
             navState.path = null;
             const mode = steerViaFlowField(entity, targetX, targetY, this.flowFieldGrid, profile.flowField);

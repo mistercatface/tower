@@ -82,7 +82,7 @@ export class Enemy extends Actor {
     }
 
     calculateSteering(target, state) {
-        state.navigation.steerTo(this, target.x, target.y, NAV_PROFILES.enemyToPlayer);
+        state.navigation.steerTo(this, target.x, target.y, NAV_PROFILES.enemyToPlayer, null, state);
     }
 
     shouldTriggerDodge(projectiles, flowFieldGrid, scheduler) {

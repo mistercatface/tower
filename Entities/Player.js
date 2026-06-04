@@ -154,7 +154,7 @@ export class Player extends Actor {
                 this.stopMovement(state);
             } else {
                 const navProfile = isMapTraveling(state) ? NAV_PROFILES.mapTravel : NAV_PROFILES.playerClick;
-                state.navigation.steerTo(this, this.targetX, this.targetY, navProfile, flowFieldGrid);
+                state.navigation.steerTo(this, this.targetX, this.targetY, navProfile, flowFieldGrid, state);
             }
         } else {
             this.desiredX = 0;

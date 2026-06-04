@@ -23,11 +23,16 @@ function shouldApplyClearance(navState, targetX, targetY, obstaclesChanged) {
     return false;
 }
 
-function replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings, applyClearance, profile) {
+function replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings, applyClearance, profile, state = null) {
     const rawPath = hierarchicalNavigator.findPath(entity.x, entity.y, targetX, targetY);
     let path = rawPath ? trimPathAhead(entity.x, entity.y, rawPath) : null;
     if (path && obstacleGrid && applyClearance) {
-        if (profile?.skipPathClearance) {
+        const viewport = state?.fsm?.context?.viewport;
+        const isVisible = viewport ? viewport.isVisible(entity.x, entity.y, entity.radius, 128) : true;
+        if (!isVisible) {
+            // Off-screen: bypass geometry-based path clearance relaxation for performance.
+            // The raw A* path is already grid-walkable.
+        } else if (profile?.skipPathClearance) {
             path = orthogonalizePath(path, obstacleGrid, entity.radius);
         } else {
             const clearance = entity.radius + settings.pathClearanceMargin;
@@ -44,8 +49,12 @@ function replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, o
     navState.lastTargetY = targetY;
 }
 
-export function steerViaHpa(entity, targetX, targetY, hierarchicalNavigator, navState, profile, settings, obstacleGrid, obstacleGeneration) {
+export function steerViaHpa(entity, targetX, targetY, hierarchicalNavigator, navState, profile, settings, obstacleGrid, obstacleGeneration, state = null) {
     const replanMs = profile.replanMs;
+    const viewport = state?.fsm?.context?.viewport;
+    const isVisible = viewport ? viewport.isVisible(entity.x, entity.y, entity.radius, 128) : true;
+    const effectiveReplanMs = isVisible ? replanMs : replanMs * 3;
+
     const replanWhileMoving = profile.replanWhileMoving !== false;
     const obstaclesChanged = navState.obstacleGeneration !== obstacleGeneration;
     const moved = Math.hypot(
@@ -67,14 +76,14 @@ export function steerViaHpa(entity, targetX, targetY, hierarchicalNavigator, nav
     if (obstaclesChanged) {
         navState.obstacleGeneration = obstacleGeneration;
         navState.path = null;
-        replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings, true, profile);
+        replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings, true, profile, state);
         replanReason = "obstacles";
         navState.stuckFrames = 0;
     }
 
     const needsReplan = !navState.path
         || navState.stuckFrames > settings.stuckReplanFrames
-        || (replanWhileMoving && now - navState.lastUpdate > replanMs);
+        || (replanWhileMoving && now - navState.lastUpdate > effectiveReplanMs);
 
     if (needsReplan && !obstaclesChanged) {
         if (!navState.path) {
@@ -85,16 +94,16 @@ export function steerViaHpa(entity, targetX, targetY, hierarchicalNavigator, nav
             replanReason = "interval";
         }
         const applyClearance = shouldApplyClearance(navState, targetX, targetY, false);
-        replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings, applyClearance, profile);
+        replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings, applyClearance, profile, state);
         navState.stuckFrames = 0;
     }
 
     if (navState.path && navState.path.length >= 2) {
         let steering = computePathSteering(entity, navState.path, targetX, targetY, settings, navState);
-        if (steering.offPath && now - navState.lastOffPathReplan >= replanMs) {
+        if (steering.offPath && now - navState.lastOffPathReplan >= effectiveReplanMs) {
             replanReason = "offPath";
             navState.lastOffPathReplan = now;
-            replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings, false, profile);
+            replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings, false, profile, state);
             if (navState.path && navState.path.length >= 2) {
                 steering = computePathSteering(entity, navState.path, targetX, targetY, settings, navState);
             }

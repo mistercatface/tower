@@ -88,7 +88,7 @@ function beginMapTravel(ctx) {
 
     ctx.state.player.setTarget(target.x, target.y, ctx.state);
     ctx.state.flowFieldGrid.shiftCenter(ctx.state.player.x, ctx.state.player.y, ctx.state.player.x, ctx.state.player.y, target.x, target.y);
-    ctx.state.navigation.steerTo(ctx.state.player, target.x, target.y, NAV_PROFILES.mapTravel, ctx.state.flowFieldGrid);
+    ctx.state.navigation.steerTo(ctx.state.player, target.x, target.y, NAV_PROFILES.mapTravel, ctx.state.flowFieldGrid, ctx.state);
     requestUiUpdate();
 }
 

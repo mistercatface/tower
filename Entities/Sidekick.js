@@ -108,7 +108,7 @@ export class Sidekick extends Actor {
         const arriveDist = navigationSettings.arrivalDistance + minLeaderDist;
 
         if (leaderDist > arriveDist) {
-            state.navigation.steerTo(this, leader.x, leader.y, NAV_PROFILES.sidekickFollow, state.flowFieldGrid);
+            state.navigation.steerTo(this, leader.x, leader.y, NAV_PROFILES.sidekickFollow, state.flowFieldGrid, state);
         } else if (leaderDist < minLeaderDist) {
             const dx = this.x - leader.x;
             const dy = this.y - leader.y;
