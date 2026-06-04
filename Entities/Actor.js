@@ -496,6 +496,16 @@ export class Actor extends DestructibleEntity {
         const isPlayerManualShoot = this.type === "player" && state.abilities["Shoot"];
         for (const turret of this.getTurrets()) {
             const gun = getGunDefinition(turret.gunId);
+
+            if (gun.hasLaserSights && state) {
+                const target = this.resolveTurretTargetForProcessing(turret);
+                const { x: tx, y: ty } = turret.getMuzzlePosition(this, gun.bulletRadius ?? 2, target);
+                const range = this.weapon?.range ?? 200;
+                const hit = WeaponSystem.castLaser(tx, ty, turret.angle, range, state, 1, this);
+                const color = (hit.hit === "actor" && areHostile(this, hit.entity)) ? "#ff0000" : "#00ff00";
+                state.activeLasers.push(new Laser(tx, ty, hit.x, hit.y, color, true));
+            }
+
             if (isPlayerManualShoot) {
                 advanceTurretAmmo(dt, turret, gun, this);
                 continue;

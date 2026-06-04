@@ -25,13 +25,21 @@ export function applyActorGunModifiers(actor) {
     if (!actor.stats) return;
 
     let turnSpeedMult = 1;
+    let accuracyFlatBonus = 0;
     for (const turret of actor.getTurrets()) {
         const gun = gunDefinitions[turret.gunId] ?? gunDefinitions[defaultGunId];
         if (gun.equipModifiers?.turnSpeedMultiplier) {
             turnSpeedMult *= gun.equipModifiers.turnSpeedMultiplier;
         }
+        if (gun.equipModifiers?.accuracyFlatBonus) {
+            accuracyFlatBonus += gun.equipModifiers.accuracyFlatBonus;
+        }
     }
 
     actor.turnSpeed = actor.stats.turnSpeed.value * turnSpeedMult;
     actor.setTurretTurnSpeed(actor.turnSpeed);
+
+    if (actor.weapon) {
+        actor.weapon.accuracy = Math.min(1, actor.stats.accuracy.value + accuracyFlatBonus);
+    }
 }

@@ -56,6 +56,10 @@ export const gunDefinitions = {
             angleOffsets: [0],
         },
         projectile: projectilePresets.playerStandard,
+        hasLaserSights: true,
+        equipModifiers: {
+            accuracyFlatBonus: 0.05,
+        },
     },
     shotgun: {
         id: "shotgun",
