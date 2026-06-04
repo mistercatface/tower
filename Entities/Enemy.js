@@ -10,14 +10,21 @@ import { renderActorKinematicsBody } from "../Render/Kinematics/PlayerKinematics
 
 const enemyBars = createEntityBars({ healthWidth: 22, healthHeight: 3, healthBorderRadius: 1.5, stunHeight: 2, stunBorderRadius: 1 });
 
+const enemySubclasses = new Map();
+
 export class Enemy extends Actor {
     static healthBar = enemyBars.healthBar;
     static stunBar = enemyBars.stunBar;
 
+    static registerSubclass(type, cls) {
+        enemySubclasses.set(type, cls);
+    }
+
     static spawn(x, y, enemyType, wave, baseUpgradeDefs) {
         const combatStats = buildEnemyCombatStats(enemyType);
         const reward = computeSpawnReward(wave, enemyType);
-        const enemy = new Enemy(x, y, enemyType, combatStats, baseUpgradeDefs, reward);
+        const Cls = enemySubclasses.get(enemyType.type) || Enemy;
+        const enemy = new Cls(x, y, enemyType, combatStats, baseUpgradeDefs, reward);
         const levels = computeEnemyUpgradeLevels();
 
         enemy.applySpawnUpgradeLevels(levels, baseUpgradeDefs);

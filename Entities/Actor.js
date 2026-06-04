@@ -47,7 +47,8 @@ export class Actor extends DestructibleEntity {
         this.baseMoveSpeed = speed;
         this.turrets = [];
         this.weaponLoadout = [];
-        this.currentState = actorStates.navigating;
+        this.states = actorStates;
+        this.currentState = this.states.navigating;
         this.currentStateName = "navigating";
         this.stateData = {};
         this.turretController = new TurretController(this);
@@ -290,7 +291,7 @@ export class Actor extends DestructibleEntity {
     }
 
     changeState(stateName, stateDataInit = null) {
-        transitionEntity(this, actorStates, stateName, stateDataInit);
+        transitionEntity(this, this.states, stateName, stateDataInit);
     }
 
     hasLocomotionIntent() {
