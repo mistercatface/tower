@@ -167,8 +167,94 @@ export class MapGenerator {
 
         state.rebuildMapNodeIndex();
 
+        // 1. Calculate CA bounds from node coordinates
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        for (const node of state.mapNodes) {
+            const coords = state.getNodeCombatCoords(node);
+            minX = Math.min(minX, coords.x);
+            maxX = Math.max(maxX, coords.x);
+            minY = Math.min(minY, coords.y);
+            maxY = Math.max(maxY, coords.y);
+        }
+        const margin = 800;
+        const caMinX = minX - margin;
+        const caMaxX = maxX + margin;
+        const caMinY = minY - margin;
+        const caMaxY = maxY + margin;
+
+        const cellSize = gridSettings.cellSize;
+        const cols = Math.ceil((caMaxX - caMinX) / cellSize);
+        const rows = Math.ceil((caMaxY - caMinY) / cellSize);
+
+        // Seed CA grid randomly
+        let grid = new Uint8Array(cols * rows);
+        for (let i = 0; i < grid.length; i++) {
+            if (Math.random() < 0.45) {
+                grid[i] = 1;
+            }
+        }
+
+        // Run 3 iterations of Cellular Automata cave rules
+        let nextGrid = new Uint8Array(cols * rows);
+        for (let iter = 0; iter < 3; iter++) {
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    let wallsCount = 0;
+                    for (let dr = -1; dr <= 1; dr++) {
+                        for (let dc = -1; dc <= 1; dc++) {
+                            const nr = r + dr;
+                            const nc = c + dc;
+                            if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+                                if (grid[nr * cols + nc] === 1) wallsCount++;
+                            } else {
+                                wallsCount++; // Borders are solid
+                            }
+                        }
+                    }
+                    nextGrid[r * cols + c] = wallsCount >= 5 ? 1 : 0;
+                }
+            }
+            let temp = grid;
+            grid = nextGrid;
+            nextGrid = temp;
+        }
+
+        // Convert CA grid to walls, carving out room zones (radius 480)
+        const caWalls = [];
+        state.walls = [];
+        state.wallSpatialHash.clear();
+
+        const nodeCoords = state.mapNodes.map(node => state.getNodeCombatCoords(node));
+
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                if (grid[r * cols + c] === 1) {
+                    const wx = caMinX + c * cellSize + cellSize / 2;
+                    const wy = caMinY + r * cellSize + cellSize / 2;
+
+                    let inRoomZone = false;
+                    for (let i = 0; i < nodeCoords.length; i++) {
+                        const distSq = (wx - nodeCoords[i].x) ** 2 + (wy - nodeCoords[i].y) ** 2;
+                        if (distSq < 480 * 480) {
+                            inRoomZone = true;
+                            break;
+                        }
+                    }
+
+                    if (!inRoomZone) {
+                        const segment = new Segment(wx, wy, 0, cellSize, 0);
+                        segment.theme = THEME_COLORS[0];
+                        caWalls.push(segment);
+                        state.walls.push(segment);
+                        state.wallSpatialHash.insert(segment);
+                    }
+                }
+            }
+        }
+
         MapGenerator.pregenerateAllCombatData(state);
 
+        // Clear and rebuild final walls combining Room walls and CA walls
         state.walls = [];
         state.wallSpatialHash.clear();
         for (const node of state.mapNodes) {
@@ -180,6 +266,11 @@ export class MapGenerator {
                     state.wallSpatialHash.insert(segment);
                 }
             }
+        }
+
+        for (const seg of caWalls) {
+            state.walls.push(seg);
+            state.wallSpatialHash.insert(seg);
         }
 
 
@@ -289,6 +380,18 @@ export class MapGenerator {
         tempFlowFieldGrid.centerY = my;
 
         tempObstacleGrid.rebuildFixed(mx, my, gridSettings.width, gridSettings.height);
+
+        // Mark existing local walls (Cellular Automata cave walls)
+        const localWalls = state.wallSpatialHash.collectInBounds(
+            mx - gridSettings.width / 2,
+            my - gridSettings.height / 2,
+            mx + gridSettings.width / 2,
+            my + gridSettings.height / 2
+        );
+        for (let i = 0; i < localWalls.length; i++) {
+            tempObstacleGrid.markWall(localWalls[i]);
+        }
+
         for (let i = 0; i < wallsA.length; i++) {
             tempObstacleGrid.markWall(wallsA[i]);
         }
