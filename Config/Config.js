@@ -1,6 +1,9 @@
 /** Shared collision + kinematics radius for all combat humanoids (for now). */
 export const combatActorRadius = 8;
 
+/** Internal kinematics render resolution (rig + offscreen canvas scale). */
+export const kinematicsPixelSize = 32;
+
 export const enemyTypes = [
     {
         type: "kamikaze",

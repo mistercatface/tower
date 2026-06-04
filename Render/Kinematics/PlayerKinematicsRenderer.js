@@ -1,16 +1,12 @@
+import { kinematicsPixelSize } from "../../Config/Config.js";
 import { CAMERA_HEIGHT } from "../3D/math/CombatProjection.js";
 import { createKinematicsBundle } from "./createKinematicsBundle.js";
-
-/** World radius → kinematics pixel size (tuned to match cw803 proportions). */
-export function kinematicsPixelSizeForRadius(radius) {
-    return Math.max(24, Math.round(radius * 4.25));
-}
 
 export class PlayerKinematicsRenderer {
     constructor(radius) {
         const displayDiameter = radius * 4;
         this.bundle = createKinematicsBundle({
-            pixelSize: kinematicsPixelSizeForRadius(radius),
+            pixelSize: kinematicsPixelSize,
             cameraHeight: CAMERA_HEIGHT,
             maxTiltDist: radius * 15,
             displayDiameter,
@@ -31,14 +27,13 @@ export class PlayerKinematicsRenderer {
     }
 }
 
-const renderersByPixelSize = new Map();
+const renderersByRadius = new Map();
 
 export function getKinematicsRenderer(radius) {
-    const pixelSize = kinematicsPixelSizeForRadius(radius);
-    let renderer = renderersByPixelSize.get(pixelSize);
+    let renderer = renderersByRadius.get(radius);
     if (!renderer) {
         renderer = new PlayerKinematicsRenderer(radius);
-        renderersByPixelSize.set(pixelSize, renderer);
+        renderersByRadius.set(radius, renderer);
     }
     return renderer;
 }
