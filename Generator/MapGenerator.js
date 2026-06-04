@@ -181,14 +181,13 @@ export class MapGenerator {
             maxY = Math.max(maxY, coords.y);
         }
         const margin = 800;
-        const caMinX = minX - margin;
-        const caMaxX = maxX + margin;
-        const caMinY = minY - margin;
-        const caMaxY = maxY + margin;
-
         const cellSize = gridSettings.cellSize;
-        const cols = Math.ceil((caMaxX - caMinX) / cellSize);
-        const rows = Math.ceil((caMaxY - caMinY) / cellSize);
+        const caMinX = Math.floor((minX - margin) / cellSize) * cellSize;
+        const caMinY = Math.floor((minY - margin) / cellSize) * cellSize;
+        const caMaxX = Math.ceil((maxX + margin) / cellSize) * cellSize;
+        const caMaxY = Math.ceil((maxY + margin) / cellSize) * cellSize;
+        const cols = (caMaxX - caMinX) / cellSize;
+        const rows = (caMaxY - caMinY) / cellSize;
 
         // Seed CA grid randomly
         let grid = new Uint8Array(cols * rows);
@@ -245,7 +244,7 @@ export class MapGenerator {
                     }
 
                     if (!inRoomZone) {
-                        const segment = new Segment(wx - cellSize / 2, wy - cellSize / 2, 0, cellSize, 0);
+                        const segment = new Segment(wx, wy, 0, cellSize, 0);
                         segment.theme = THEME_COLORS[0];
                         caWalls.push(segment);
                         state.walls.push(segment);
