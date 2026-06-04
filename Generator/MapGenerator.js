@@ -35,6 +35,7 @@ function serializeWalls(walls, px, py, maxRadius = 480) {
                 size: w.size,
                 padding: w.padding,
                 maxHealth: w.maxHealth || 30,
+                wallHeight: w.wallHeight,
             });
         }
     }
@@ -263,7 +264,7 @@ export class MapGenerator {
         for (const node of state.mapNodes) {
             if (node.wallsData) {
                 for (const w of node.wallsData) {
-                    const segment = new Segment(w.x, w.y, w.angle, w.size, w.padding ?? 0, w.maxHealth);
+                    const segment = new Segment(w.x, w.y, w.angle, w.size, w.padding ?? 0, w.maxHealth, w.maxHealth, false, w.wallHeight);
                     segment.theme = node.wallTheme || THEME_COLORS[0];
                     state.walls.push(segment);
                     state.wallSpatialHash.insert(segment);

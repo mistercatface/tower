@@ -2,11 +2,12 @@ import { DestructibleEntity } from "./Entity.js";
 import { getWallReach } from "../Spatial/Geometry/WallGeometry.js";
 
 export class Segment extends DestructibleEntity {
-    constructor(x, y, angle, size, padding = 10, maxHealth = 30, health = 30, isDead = false) {
+    constructor(x, y, angle, size, padding = 10, maxHealth = 30, health = 30, isDead = false, wallHeight = null) {
         super(x, y, angle, maxHealth, health, isDead);
         this.size = size;
         this.padding = padding;
         this.theme = null;
+        this.wallHeight = wallHeight;
     }
 
     draw3D(ctx, renderer, state, px, py, viewport, options) {

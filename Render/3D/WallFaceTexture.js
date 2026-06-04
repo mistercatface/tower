@@ -205,12 +205,12 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHei
     ctx.restore();
 }
 
-export function drawProjectedWallFace(ctx, p1, p2, px, py, fillStyle, floorTiles, state, { viewport = null, damageAlpha = 0, textureEnabled = true, cacheObj = null } = {}) {
-    const wallHeight = getWallVisualHeight();
-    const face = computeProjectedFace(p1, p2, px, py, wallHeight);
+export function drawProjectedWallFace(ctx, p1, p2, px, py, fillStyle, floorTiles, state, { viewport = null, damageAlpha = 0, textureEnabled = true, cacheObj = null, wallHeight = null } = {}) {
+    const finalWallHeight = wallHeight ?? getWallVisualHeight();
+    const face = computeProjectedFace(p1, p2, px, py, finalWallHeight);
     traceProjectedFace(ctx, p1, p2, face);
     if (floorTiles && textureEnabled) {
-        drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHeight, fillStyle, cacheObj);
+        drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, finalWallHeight, fillStyle, cacheObj);
     } else {
         ctx.fillStyle = fillStyle;
         ctx.fill();

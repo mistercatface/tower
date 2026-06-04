@@ -88,7 +88,9 @@ function generateMaze(state, px, py, config = {}) {
     for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
             if (grid[r * cols + c] === 1) {
-                state.walls.push(new Segment(offsetX + c * cellSize + cellSize / 2, offsetY + r * cellSize + cellSize / 2, 0, cellSize, 0));
+                const segment = new Segment(offsetX + c * cellSize + cellSize / 2, offsetY + r * cellSize + cellSize / 2, 0, cellSize, 0);
+                segment.wallHeight = 24;
+                state.walls.push(segment);
             }
         }
     }

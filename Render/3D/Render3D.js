@@ -85,6 +85,7 @@ export class Render3D {
             damageAlpha,
             textureEnabled,
             cacheObj,
+            wallHeight: seg.wallHeight,
         });
     }
 
