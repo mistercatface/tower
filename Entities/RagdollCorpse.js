@@ -15,6 +15,7 @@ export class RagdollCorpse extends Entity {
 
         for (const corpse of state.ragdollCorpses) {
             if (corpse.isDead) continue;
+            if (corpse.ageMs > 250) continue;
             const hit = checkRagdollHit(corpse, projectile.x, projectile.y, projectile.radius);
             if (!hit) continue;
 
