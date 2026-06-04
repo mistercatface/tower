@@ -139,6 +139,10 @@ export function emitMapContinueAfterSector() {
     events.emit(Events.MAP_CONTINUE_AFTER_SECTOR);
 }
 
+export function emitMapToggle() {
+    events.emit(Events.MAP_TOGGLE);
+}
+
 export function showNodeConfirmModal(node) {
     events.emit(Events.UI_SHOW_NODE_CONFIRM, { node });
 }

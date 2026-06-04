@@ -1,4 +1,4 @@
-import { adjustGameZoom, setGameZoomAbsolute } from "../Core/EventSystem.js";
+import { adjustGameZoom, setGameZoomAbsolute, emitMapToggle } from "../Core/EventSystem.js";
 import { controlSettings, COMBAT_HUD_MODE_COUNT, COMBAT_HUD_MODE_LABELS } from "../Config/Config.js";
 
 export class InputManager {
@@ -83,17 +83,7 @@ export class InputManager {
                 console.log("Combat HUD Mode: " + COMBAT_HUD_MODE_LABELS[state.combatHudMode]);
             }
             if (e.key === "m" || e.key === "M") {
-                const state = fsm.context.state;
-                if (fsm.currentStateName === "map") {
-                    const targetState = state.previousStateBeforeMap || "combat";
-                    if (targetState === "combat" || targetState === "inspector") {
-                        state.skipCombatEnterReset = true;
-                    }
-                    fsm.transition(targetState);
-                } else if (fsm.currentStateName === "combat" || fsm.currentStateName === "inspector") {
-                    state.previousStateBeforeMap = fsm.currentStateName;
-                    fsm.transition("map");
-                }
+                emitMapToggle();
             }
         });
     }

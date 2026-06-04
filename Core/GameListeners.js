@@ -144,6 +144,21 @@ export function registerGameListeners(eventBus, pauseManager) {
         requestUiUpdate();
     });
 
+    eventBus.on(Events.MAP_TOGGLE, ({ state, fsm }) => {
+        if (!fsm) return;
+        if (fsm.currentStateName === "map") {
+            const targetState = state.previousStateBeforeMap || "combat";
+            if (targetState === "combat" || targetState === "inspector") {
+                state.skipCombatEnterReset = true;
+            }
+            fsm.transition(targetState);
+        } else if (fsm.currentStateName === "combat" || fsm.currentStateName === "inspector") {
+            state.previousStateBeforeMap = fsm.currentStateName;
+            fsm.transition("map");
+        }
+        requestUiUpdate();
+    });
+
     eventBus.on(Events.MAP_REQUEST_TRAVEL, ({ state, fsm, nodeId }) => {
         state.mapTargetNodeId = nodeId;
         fsm.transition("combat");

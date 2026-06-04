@@ -20,6 +20,7 @@ export const Events = {
     GAME_SET_ZOOM_ABSOLUTE: "game:setZoomAbsolute",
     MAP_REQUEST_TRAVEL: "map:requestTravel",
     MAP_CONTINUE_AFTER_SECTOR: "map:continueAfterSector",
+    MAP_TOGGLE: "map:toggle",
     PROGRESS_PURCHASE_UPGRADE: "progress:purchaseUpgrade",
     PROGRESS_TOGGLE_ABILITY: "progress:toggleAbility",
     PROGRESS_EQUIP_WEAPON: "progress:equipWeapon",

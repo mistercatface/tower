@@ -1,7 +1,7 @@
 import { perkMilestones } from "../Config/Config.js";
 import { xpForLevel } from "../Config/configHelpers.js";
 import { buildAbilityTreeLayout } from "../Config/abilityTreeLayout.js";
-import { isCombat, isCombatOrReward, isInspector } from "../GameState/GamePhase.js";
+import { GamePhase, isCombat, isCombatOrReward, isInspector } from "../GameState/GamePhase.js";
 import { getStartNodeInspectionMissionLabel } from "../Combat/StartNodeInspection.js";
 import { getGunDefinition, playerEquipmentCatalog } from "../Config/gunDefinitions.js";
 import { getSlotFireIntervalMs, getSlotReloadTimeMs } from "../Combat/gunCombat.js";
@@ -28,6 +28,7 @@ import {
     emitGameRestart,
     emitMapRequestTravel,
     emitMapContinueAfterSector,
+    emitMapToggle,
 } from "../Core/EventSystem.js";
 
 const elements = {
@@ -76,6 +77,8 @@ const elements = {
     restartBtn: document.getElementById("restartBtn"),
     gameOverUI: document.getElementById("gameOverUI"),
     settingsBtn: document.getElementById("settingsBtn"),
+    mapBtn: document.getElementById("mapBtn"),
+    closeMapBtn: document.getElementById("closeMapBtn"),
     closeSettingsBtn: document.getElementById("closeSettingsBtn"),
     hardResetBtn: document.getElementById("hardResetBtn"),
     settingsModal: document.getElementById("settingsModal"),
@@ -236,6 +239,19 @@ export function updateToggleButton(btnId, isUnlocked, isActive, btnText, upgDef)
     }
 }
 
+function updateMapNavButtons(state) {
+    const onMap = state.phase === GamePhase.MAP;
+    const canOpenMap =
+        (state.phase === GamePhase.COMBAT || state.phase === GamePhase.INSPECTOR) && !state.isGameOver;
+
+    if (elements.mapBtn) {
+        elements.mapBtn.style.display = canOpenMap ? "block" : "none";
+    }
+    if (elements.closeMapBtn) {
+        elements.closeMapBtn.style.display = onMap ? "block" : "none";
+    }
+}
+
 function updateInspectMissionBanner(state) {
     const banner = elements.inspectMissionBanner;
     const textEl = elements.inspectMissionText;
@@ -255,6 +271,7 @@ function updateInspectMissionBanner(state) {
 }
 
 export function updateHud(state, upgrades) {
+    updateMapNavButtons(state);
     updateInspectMissionBanner(state);
 
     const currentNode = state.getCurrentMapNode();
@@ -474,6 +491,13 @@ export function initUI(state, upgrades) {
         }
         elements.settingsModal.style.display = "flex";
     });
+
+    if (elements.mapBtn) {
+        elements.mapBtn.addEventListener("click", () => emitMapToggle());
+    }
+    if (elements.closeMapBtn) {
+        elements.closeMapBtn.addEventListener("click", () => emitMapToggle());
+    }
 
     if (elements.combatHudModeSelect) {
         elements.combatHudModeSelect.addEventListener("change", (e) => {
