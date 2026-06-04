@@ -31,50 +31,21 @@ export const enemyTypes = [
     { type: "boss", radius: combatActorRadius, baseSpeed: 115, maxHealth: 6, color: "#B71C1C", attackType: "ranged", canDodge: true },
 ];
 
-/** Weighted spawn compositions — one pod spawns per spawn tick, all members together. */
 export const spawnPods = [
-    // --- Cranberry-focused (higher weight so they actually show up) ---
-    { id: "cranberry_squad", weight: 28, members: [{ type: "spastic", count: 5 }] },
-    { id: "cranberry_burst", weight: 26, members: [{ type: "spastic", count: 4 }] },
-    { id: "cranberry_swarm", weight: 24, members: [{ type: "spastic", count: 6 }] },
-    { id: "cranberry_trio", weight: 24, members: [{ type: "spastic", count: 3 }] },
-    { id: "cranberry_pair", weight: 22, members: [{ type: "spastic", count: 2 }] },
-    { id: "lone_cranberry", weight: 18, members: [{ type: "spastic", count: 1 }] },
-    {
-        id: "charge_brigade",
-        weight: 20,
-        members: [
-            { type: "kamikaze", count: 3 },
-            { type: "spastic", count: 3 },
-        ],
-    },
-    {
-        id: "charge_mix",
-        weight: 18,
-        members: [
-            { type: "kamikaze", count: 2 },
-            { type: "spastic", count: 3 },
-        ],
-    },
-
     // --- Mixed pods (most include cranberries) ---
     {
         id: "starter_mix",
         weight: 16,
         members: [
-            { type: "kamikaze", count: 2 },
             { type: "standard", count: 2 },
-            { type: "spastic", count: 1 },
         ],
     },
     {
         id: "pea_tomato_pumpkin_mix",
         weight: 14,
         members: [
-            { type: "kamikaze", count: 3 },
             { type: "standard", count: 4 },
             { type: "tank", count: 2 },
-            { type: "spastic", count: 1 },
         ],
     },
     {
@@ -82,37 +53,7 @@ export const spawnPods = [
         weight: 14,
         members: [
             { type: "dodger", count: 2 },
-            { type: "spastic", count: 3 },
             { type: "tank", count: 1 },
-        ],
-    },
-    {
-        id: "full_assault",
-        weight: 12,
-        members: [
-            { type: "kamikaze", count: 2 },
-            { type: "standard", count: 2 },
-            { type: "fast", count: 2 },
-            { type: "spastic", count: 1 },
-            { type: "dodger", count: 1 },
-        ],
-    },
-    {
-        id: "mixed_three",
-        weight: 12,
-        members: [
-            { type: "kamikaze", count: 1 },
-            { type: "standard", count: 1 },
-            { type: "spastic", count: 1 },
-        ],
-    },
-    {
-        id: "pea_tomato_cranberry",
-        weight: 14,
-        members: [
-            { type: "kamikaze", count: 2 },
-            { type: "standard", count: 2 },
-            { type: "spastic", count: 2 },
         ],
     },
     {
@@ -127,7 +68,6 @@ export const spawnPods = [
 
     // --- Other archetypes (lower weight) ---
     { id: "tomato_squad", weight: 8, members: [{ type: "standard", count: 5 }] },
-    { id: "pea_rush", weight: 8, members: [{ type: "kamikaze", count: 5 }] },
     { id: "pumpkin_heavy", weight: 8, members: [{ type: "tank", count: 5 }] },
     {
         id: "pumpkin_wall",
@@ -171,100 +111,19 @@ export const spawnPods = [
         ],
     },
     { id: "fast_lance", weight: 8, members: [{ type: "fast", count: 4 }] },
-    {
-        id: "pea_tomato_pair",
-        weight: 8,
-        members: [
-            { type: "kamikaze", count: 2 },
-            { type: "standard", count: 2 },
-        ],
-    },
-    { id: "triple_pea", weight: 6, members: [{ type: "kamikaze", count: 3 }] },
     { id: "dodger_trio", weight: 6, members: [{ type: "dodger", count: 3 }] },
     { id: "fast_pair", weight: 6, members: [{ type: "fast", count: 2 }] },
-    {
-        id: "pumpkin_pea",
-        weight: 6,
-        members: [
-            { type: "tank", count: 1 },
-            { type: "kamikaze", count: 1 },
-        ],
-    },
     { id: "lone_pumpkin", weight: 4, members: [{ type: "tank", count: 1 }] },
     { id: "lone_dodger", weight: 4, members: [{ type: "dodger", count: 1 }] },
 ];
 
-/** Wave 1 only — tomato, pumpkin, and sometimes pea (kamikaze). Pods are 3–5 enemies, ≤2 chargers. */
 export const firstWaveSpawnPods = [
-    { id: "fw_tomato_five", weight: 22, members: [{ type: "standard", count: 5 }] },
-    { id: "fw_tomato_four", weight: 20, members: [{ type: "standard", count: 4 }] },
-    { id: "fw_tomato_three", weight: 18, members: [{ type: "standard", count: 3 }] },
-    { id: "fw_pumpkin_four", weight: 18, members: [{ type: "tank", count: 4 }] },
-    { id: "fw_pumpkin_three", weight: 16, members: [{ type: "tank", count: 3 }] },
     {
         id: "fw_pumpkin_tomato_five",
         weight: 20,
         members: [
             { type: "tank", count: 2 },
             { type: "standard", count: 3 },
-        ],
-    },
-    {
-        id: "fw_pumpkin_tomato_four",
-        weight: 18,
-        members: [
-            { type: "tank", count: 2 },
-            { type: "standard", count: 2 },
-        ],
-    },
-    {
-        id: "fw_pumpkin_tomato_three",
-        weight: 16,
-        members: [
-            { type: "tank", count: 1 },
-            { type: "standard", count: 2 },
-        ],
-    },
-    {
-        id: "fw_pea_tomato_five",
-        weight: 10,
-        members: [
-            { type: "kamikaze", count: 2 },
-            { type: "standard", count: 3 },
-        ],
-    },
-    {
-        id: "fw_pea_tomato_four",
-        weight: 10,
-        members: [
-            { type: "kamikaze", count: 2 },
-            { type: "standard", count: 2 },
-        ],
-    },
-    {
-        id: "fw_pea_light_four",
-        weight: 8,
-        members: [
-            { type: "kamikaze", count: 1 },
-            { type: "standard", count: 3 },
-        ],
-    },
-    {
-        id: "fw_pea_pumpkin_tomato",
-        weight: 8,
-        members: [
-            { type: "kamikaze", count: 2 },
-            { type: "tank", count: 1 },
-            { type: "standard", count: 2 },
-        ],
-    },
-    {
-        id: "fw_pea_pumpkin_pair",
-        weight: 6,
-        members: [
-            { type: "kamikaze", count: 1 },
-            { type: "tank", count: 1 },
-            { type: "standard", count: 2 },
         ],
     },
 ];

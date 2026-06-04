@@ -77,8 +77,7 @@ export class EnemyNavigatingState {
         }
 
         const distToTarget = Math.hypot(enemy.x - target.x, enemy.y - target.y);
-        const hasLOS = enemy.hasLineOfSightTo(target, state);
-        if (distToTarget <= target.radius + enemy.weapon.range && hasLOS) {
+        if (distToTarget <= target.radius + enemy.weapon.range && enemy.hasLineOfSightTo(target, state)) {
             return enemy.changeStateAndUpdate("engaged", null, dt, target, flowFieldGrid, walls, missiles, spatialFrame, scheduler, state);
         }
 
