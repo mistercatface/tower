@@ -63,8 +63,6 @@ export class MapGenerator {
         const nodeJitter = mapSettings.nodeJitter ?? 20;
         const {
             startNodeWaves,
-            nodesPerLayerMin,
-            nodesPerLayerMax,
             wavesTotalMin,
             wavesTotalMax,
             extraConnectionChance,
@@ -73,31 +71,54 @@ export class MapGenerator {
         let nodeIdCounter = 0;
         let layers = [];
 
-        state.mapNodes.push({ id: nodeIdCounter++, x: 0, y: 0, connections: [], completed: false, wavesTotal: startNodeWaves, reward: null, type: "combat", layer: 0 });
-        layers.push([state.mapNodes[0]]);
+        // Center Node 0 at the origin
+        const startNode = {
+            id: nodeIdCounter++,
+            x: 0,
+            y: 0,
+            connections: [],
+            completed: false,
+            wavesTotal: startNodeWaves,
+            reward: null,
+            type: "combat",
+            layer: 0,
+            dir: -1,
+        };
+        state.mapNodes.push(startNode);
+        layers.push([startNode]);
 
+        // Direction vectors for 8 cardinal/ordinal directions
+        // 0: N, 1: NE, 2: E, 3: SE, 4: S, 5: SW, 6: W, 7: NW
+        const dirVectors = [
+            { dx: 0, dy: -1 },  // N
+            { dx: 1, dy: -1 },  // NE
+            { dx: 1, dy: 0 },   // E
+            { dx: 1, dy: 1 },   // SE
+            { dx: 0, dy: 1 },   // S
+            { dx: -1, dy: 1 },  // SW
+            { dx: -1, dy: 0 },  // W
+            { dx: -1, dy: -1 }, // NW
+        ];
+
+        // Generate concentric rings of nodes
         for (let l = 1; l < numLayers; l++) {
             let layerNodes = [];
-            let numNodesInLayer = Math.floor(Math.random() * (nodesPerLayerMax - nodesPerLayerMin + 1)) + nodesPerLayerMin;
-            let startX = -((numNodesInLayer - 1) * xSpacing) / 2;
-
-            for (let i = 0; i < numNodesInLayer; i++) {
+            for (let dir = 0; dir < 8; dir++) {
+                const vector = dirVectors[dir];
                 let jitterX = (Math.random() - 0.5) * nodeJitter * 2;
                 let jitterY = (Math.random() - 0.5) * nodeJitter * 2;
 
-                let type = "combat";
-                let reward = { type: "random_permanent_upgrade" };
-
                 let node = {
                     id: nodeIdCounter++,
-                    x: startX + i * xSpacing + jitterX,
-                    y: -l * layerSpacing + jitterY,
+                    x: vector.dx * l * xSpacing + jitterX,
+                    y: vector.dy * l * layerSpacing + jitterY,
                     connections: [],
                     completed: false,
                     wavesTotal: Math.floor(Math.random() * (wavesTotalMax - wavesTotalMin + 1)) + wavesTotalMin,
-                    reward: reward,
-                    type: type,
+                    reward: { type: "random_permanent_upgrade" },
+                    type: "combat",
                     layer: l,
+                    dir: dir,
                 };
                 layerNodes.push(node);
                 state.mapNodes.push(node);
@@ -105,36 +126,39 @@ export class MapGenerator {
             layers.push(layerNodes);
         }
 
-        for (let l = 0; l < numLayers - 1; l++) {
-            let currentLayer = layers[l];
-            let nextLayer = layers[l + 1];
+        // Establish connections
+        // Layer 0 (startNode) connects to all 8 nodes in Layer 1
+        if (numLayers > 1) {
+            for (const nextNode of layers[1]) {
+                startNode.connections.push(nextNode.id);
+            }
+        }
 
-            currentLayer.forEach((node, i) => {
-                let targetIndex = Math.floor((i / currentLayer.length) * nextLayer.length);
-                node.connections.push(nextLayer[targetIndex].id);
-            });
+        // Concentric layers connection outward
+        for (let l = 1; l < numLayers - 1; l++) {
+            const currentLayerNodes = layers[l];
+            const nextLayerNodes = layers[l + 1];
 
-            nextLayer.forEach((nextNode, j) => {
-                let hasIncoming = currentLayer.some((n) => n.connections.includes(nextNode.id));
-                if (!hasIncoming) {
-                    let closestNode = currentLayer[Math.floor((j / nextLayer.length) * currentLayer.length)];
-                    if (!closestNode.connections.includes(nextNode.id)) {
-                        closestNode.connections.push(nextNode.id);
-                    }
-                }
-            });
+            for (let dir = 0; dir < 8; dir++) {
+                const node = currentLayerNodes[dir];
 
-            currentLayer.forEach((node, i) => {
+                // 1. Always connect to the straight outward neighbor
+                const straightTarget = nextLayerNodes[dir];
+                node.connections.push(straightTarget.id);
+
+                // 2. Extra connections diagonally left and right
                 if (Math.random() < extraConnectionChance) {
-                    let targetIndex = Math.floor((i / currentLayer.length) * nextLayer.length);
-                    let altTarget = targetIndex + (Math.random() < 0.5 ? 1 : -1);
-                    if (altTarget >= 0 && altTarget < nextLayer.length) {
-                        if (!node.connections.includes(nextLayer[altTarget].id)) {
-                            node.connections.push(nextLayer[altTarget].id);
-                        }
-                    }
+                    const leftDir = (dir - 1 + 8) % 8;
+                    const leftTarget = nextLayerNodes[leftDir];
+                    node.connections.push(leftTarget.id);
                 }
-            });
+
+                if (Math.random() < extraConnectionChance) {
+                    const rightDir = (dir + 1) % 8;
+                    const rightTarget = nextLayerNodes[rightDir];
+                    node.connections.push(rightTarget.id);
+                }
+            }
         }
 
         state.currentNodeId = 0;

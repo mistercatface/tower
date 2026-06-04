@@ -123,7 +123,7 @@ export class MapState {
     }
     render(ctx) {
         ctx.viewport.updateZoomLimits(ctx.state);
-        ctx.viewport.follow(ctx.state.mapPlayerX, ctx.state.mapPlayerY - 200);
+        ctx.viewport.follow(ctx.state.mapPlayerX, ctx.state.mapPlayerY);
         ctx.renderer.renderMapScene(ctx.state, ctx.viewport);
     }
     handleInteraction(worldCoords, isDoubleTap, ctx) {

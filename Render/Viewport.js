@@ -101,7 +101,7 @@ export class Viewport {
                 this.zoomProgress = (clampedValue - minZoom) / (maxZoom - minZoom);
             }
         } else {
-            this.mapZoom = Math.min(Math.max(value, 0.5), 2.0);
+            this.mapZoom = Math.min(Math.max(value, 0.1), 2.0);
             this.zoom = this.mapZoom;
         }
     }

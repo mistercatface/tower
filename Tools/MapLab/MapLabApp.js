@@ -190,8 +190,6 @@ function buildSettingsPanel() {
     subh2.textContent = "Generation Settings";
     panel.appendChild(subh2);
     
-    addSlider("Min Nodes/Layer", 1, 10, 1, mapGenerationSettings, "nodesPerLayerMin");
-    addSlider("Max Nodes/Layer", 1, 10, 1, mapGenerationSettings, "nodesPerLayerMax");
     addSlider("Extra Conn Chance", 0, 1, 0.05, mapGenerationSettings, "extraConnectionChance");
     
     const subh3 = document.createElement("div");

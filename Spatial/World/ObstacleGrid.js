@@ -98,7 +98,7 @@ function computeBoundsFromWalls(walls, cellSize) {
     if (minX === Infinity) {
         minX = -2000;
         maxX = 2000;
-        minY = -12000;
+        minY = -2000;
         maxY = 2000;
     } else {
         const marginCells = Math.ceil(WORLD_MARGIN / cellSize);
