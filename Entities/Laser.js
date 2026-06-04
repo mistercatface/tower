@@ -27,19 +27,32 @@ export class Laser {
     }
 
     render(ctx) {
+        ctx.save();
         ctx.beginPath();
         ctx.moveTo(this.x1, this.y1);
         ctx.lineTo(this.x2, this.y2);
-        ctx.strokeStyle = this.color;
         if (this.isSight) {
-            ctx.lineWidth = 1.5;
+            const grad = ctx.createLinearGradient(this.x1, this.y1, this.x2, this.y2);
+            let rgb = "255, 0, 0";
+            if (this.color === "#00ff00") {
+                rgb = "0, 255, 0";
+            }
+            const peakAlpha = 0.15;
+            grad.addColorStop(0.0, `rgba(${rgb}, 0)`);
+            grad.addColorStop(0.15, `rgba(${rgb}, ${peakAlpha})`);
+            grad.addColorStop(1.0, `rgba(${rgb}, ${peakAlpha})`);
+            
+            ctx.strokeStyle = grad;
+            ctx.lineWidth = 1.0;
             ctx.stroke();
         } else {
+            ctx.strokeStyle = this.color;
             ctx.lineWidth = 3;
             ctx.stroke();
             ctx.strokeStyle = "#FFFFFF";
             ctx.lineWidth = 1;
             ctx.stroke();
         }
+        ctx.restore();
     }
 }

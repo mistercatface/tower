@@ -13,8 +13,8 @@ export const enemyTypes = [
         accelRate: 1.0,
         canDamageWalls: true,
     },
-    { type: "tank", radius: combatActorRadius, baseSpeed: 50, maxHealth: 6, color: "#FF9800", attackType: "ranged", canDodge: false },
-    { type: "standard", radius: combatActorRadius, baseSpeed: 75, maxHealth: 3, color: "#F44336", attackType: "ranged", canDodge: false },
+    { type: "tank", radius: combatActorRadius, baseSpeed: 50, maxHealth: 3, color: "#FF9800", attackType: "ranged", canDodge: false },
+    { type: "standard", radius: combatActorRadius, baseSpeed: 75, maxHealth: 2, color: "#F44336", attackType: "ranged", canDodge: false },
     { type: "fast", radius: combatActorRadius, baseSpeed: 102, maxHealth: 2, color: "#FFEB3B", attackType: "ranged", canDodge: false, canDamageWalls: true },
     {
         type: "spastic",
@@ -27,8 +27,8 @@ export const enemyTypes = [
         accelRate: 3,
         canDamageWalls: true,
     },
-    { type: "dodger", radius: combatActorRadius, baseSpeed: 75, maxHealth: 4, color: "#03A9F4", attackType: "ranged", canDodge: true },
-    { type: "boss", radius: combatActorRadius, baseSpeed: 115, maxHealth: 6, color: "#B71C1C", attackType: "ranged", canDodge: true },
+    { type: "dodger", radius: combatActorRadius, baseSpeed: 75, maxHealth: 2, color: "#03A9F4", attackType: "ranged", canDodge: true },
+    { type: "boss", radius: combatActorRadius, baseSpeed: 115, maxHealth: 3, color: "#B71C1C", attackType: "ranged", canDodge: true },
     {
         type: "zombie",
         radius: combatActorRadius,

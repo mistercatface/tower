@@ -120,6 +120,17 @@ export const gunDefinitions = {
             angleOffsets: [0],
         },
         projectile: projectilePresets.playerStandard,
+        attachments: {
+            laserSights: {
+                id: "laserSights",
+                name: "Laser Sights",
+                enabled: false,
+                isSight: true,
+                modifiers: {
+                    accuracyFlatBonus: 0.05,
+                }
+            }
+        },
     },
     beamLaser: {
         id: "beamLaser",
