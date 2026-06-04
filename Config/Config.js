@@ -269,7 +269,7 @@ export const firstWaveSpawnPods = [
     },
 ];
 
-export const spawnSettings = { baseSpawnDelay: 3000, minSpawnDelay: 150, delayReductionPerWave: 150 };
+export const spawnSettings = { baseSpawnDelay: 3000, minSpawnDelay: 800, delayReductionPerWave: 150, maxActiveEnemies: 20 };
 
 export const progressionSettings = { xpBase: 25, xpExponent: 1.5, upgradeCostMultiplier: 1.5 };
 
