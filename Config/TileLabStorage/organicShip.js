@@ -1,6 +1,6 @@
 export default {
     "warp": {
-        "frequency": 0.0125,
+        "frequency": 0.0025,
         "amplitude": 4,
         "octaves": 2,
         "sampleOffset": [
@@ -17,12 +17,12 @@ export default {
         "floorBase": [
             0,
             0,
-            0
+            18
         ],
         "wallBase": [
             0,
-            0,
-            0
+            64,
+            64
         ]
     },
     "motifs": [
@@ -69,34 +69,16 @@ export default {
                 1,
                 1
             ],
-            "blendMode": "replace",
-            "opacity": 1,
             "bevelFalloff": 0.1,
-            "surfaceMask": "all"
-        },
-        {
-            "type": "filterHSV",
-            "hueShift": 38,
-            "saturation": 2.3,
-            "value": 0,
-            "surfaceMask": "all",
-            "blendMode": "add",
-            "opacity": 1
-        },
-        {
-            "type": "filterLevels",
-            "blackPoint": 43,
-            "whitePoint": 193,
-            "gamma": 0.6,
             "surfaceMask": "all",
             "blendMode": "replace",
             "opacity": 1
         },
         {
             "type": "filterHSV",
-            "hueShift": 102,
+            "hueShift": -140,
             "saturation": 0.5,
-            "value": 1.4,
+            "value": 1,
             "surfaceMask": "all",
             "blendMode": "replace",
             "opacity": 1

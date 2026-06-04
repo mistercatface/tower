@@ -5,11 +5,14 @@ export function getWallReach(wall, padding = wall.padding) {
 export function toSegmentLocal(segment, x, y) {
     const dx = x - segment.x;
     const dy = y - segment.y;
-    const cos = Math.cos(-segment.angle);
-    const sin = Math.sin(-segment.angle);
+    if (segment._cos === undefined || segment._sin === undefined || segment._cachedAngle !== segment.angle) {
+        segment._cachedAngle = segment.angle;
+        segment._cos = Math.cos(-segment.angle);
+        segment._sin = Math.sin(-segment.angle);
+    }
     return {
-        localX: dx * cos - dy * sin,
-        localY: dx * sin + dy * cos,
+        localX: dx * segment._cos - dy * segment._sin,
+        localY: dx * segment._sin + dy * segment._cos,
         half: segment.size / 2,
     };
 }
@@ -19,8 +22,8 @@ export function closestPointOnSegment(wall, x, y) {
     localX = Math.max(-half, Math.min(half, localX));
     localY = Math.max(-half, Math.min(half, localY));
 
-    const worldCos = Math.cos(wall.angle);
-    const worldSin = Math.sin(wall.angle);
+    const worldCos = wall._cos;
+    const worldSin = -wall._sin;
     return {
         x: wall.x + localX * worldCos - localY * worldSin,
         y: wall.y + localX * worldSin + localY * worldCos,

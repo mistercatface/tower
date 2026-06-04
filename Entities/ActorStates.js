@@ -11,6 +11,17 @@ function analyzeStrafePath(enemy, tangentX, tangentY, dir, walls, target, state)
     let coverDist = -1;
     let openDist = -1;
 
+    let candidateWalls = walls;
+    if (state && state.wallSpatialHash) {
+        const maxReach = maxSteps * stepSize + enemy.radius + 20;
+        candidateWalls = state.wallSpatialHash.collectInBounds(
+            enemy.x - maxReach,
+            enemy.y - maxReach,
+            enemy.x + maxReach,
+            enemy.y + maxReach
+        );
+    }
+
     for (let step = 1; step <= maxSteps; step++) {
         const dist = step * stepSize;
         const tx = enemy.x + tangentX * dir * dist;
@@ -18,7 +29,7 @@ function analyzeStrafePath(enemy, tangentX, tangentY, dir, walls, target, state)
 
         let hitWall = false;
         const testCircle = { x: tx, y: ty, radius: enemy.radius };
-        for (const seg of walls) {
+        for (const seg of candidateWalls) {
             if (seg.isDead) continue;
             if (CollisionSystem.checkCircleRect(testCircle, seg)) {
                 hitWall = true;

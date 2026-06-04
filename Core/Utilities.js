@@ -9,16 +9,26 @@ export class Utilities {
         }
         if (!wallCtx) return true;
 
-        const candidateWalls = wallCtx.obstacleGrid
-            ? getWallsAlongLine(x1, y1, x2, y2, wallCtx)
-            : wallCtx.walls;
+        const corridorRadius = Math.max(sourceRadius, targetRadius);
+
+        let candidateWalls;
+        if (wallCtx.obstacleGrid) {
+            candidateWalls = getWallsAlongLine(x1, y1, x2, y2, wallCtx);
+        } else if (wallCtx.spatialHash) {
+            const minX = Math.min(x1, x2) - corridorRadius;
+            const minY = Math.min(y1, y2) - corridorRadius;
+            const maxX = Math.max(x1, x2) + corridorRadius;
+            const maxY = Math.max(y1, y2) + corridorRadius;
+            candidateWalls = wallCtx.spatialHash.collectInBounds(minX, minY, maxX, maxY);
+        } else {
+            candidateWalls = wallCtx.walls;
+        }
 
         const dx = x2 - x1;
         const dy = y2 - y1;
         const lineLen = Math.hypot(dx, dy);
         if (lineLen === 0) return true;
 
-        const corridorRadius = Math.max(sourceRadius, targetRadius);
         const steps = Math.max(2, Math.ceil(lineLen / 8));
 
         for (let step = 1; step < steps; step++) {
