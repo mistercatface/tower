@@ -22,7 +22,7 @@ export function renderMapLabView(ctx, width, height, world, camera, options, sel
         for (const node of world.mapNodes) {
             const coords = world.getNodeCombatCoords(node);
             ctx.beginPath();
-            ctx.arc(coords.x, coords.y, 480, 0, Math.PI * 2);
+            ctx.arc(coords.x, coords.y, 540, 0, Math.PI * 2);
             ctx.fillStyle = "rgba(255, 255, 255, 0.02)";
             ctx.fill();
             ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";

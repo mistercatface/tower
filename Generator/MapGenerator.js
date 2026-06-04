@@ -20,18 +20,22 @@ function getTempGrids() {
     return { tempObstacleGrid, tempFlowFieldGrid };
 }
 
-function serializeWalls(walls) {
-    const out = new Array(walls.length);
+function serializeWalls(walls, px, py, maxRadius = 480) {
+    const out = [];
     for (let i = 0; i < walls.length; i++) {
         const w = walls[i];
-        out[i] = {
-            x: w.x,
-            y: w.y,
-            angle: w.angle,
-            size: w.size,
-            padding: w.padding,
-            maxHealth: w.maxHealth || 30,
-        };
+        const half = w.size / 2;
+        const dist = Math.hypot(w.x - px, w.y - py);
+        if (dist + half <= maxRadius) {
+            out.push({
+                x: w.x,
+                y: w.y,
+                angle: w.angle,
+                size: w.size,
+                padding: w.padding,
+                maxHealth: w.maxHealth || 30,
+            });
+        }
     }
     return out;
 }
@@ -235,7 +239,9 @@ export class MapGenerator {
                     let inRoomZone = false;
                     for (let i = 0; i < nodeCoords.length; i++) {
                         const distSq = (wx - nodeCoords[i].x) ** 2 + (wy - nodeCoords[i].y) ** 2;
-                        if (distSq < 480 * 480) {
+                        // Avoid CA walls protruding inside the 540 safety radius
+                        // (wx, wy is center of 16-width cell, so distance must be >= 540 + 8 = 548)
+                        if (distSq < 548 * 548) {
                             inRoomZone = true;
                             break;
                         }
@@ -302,7 +308,7 @@ export class MapGenerator {
 
             StartBuildingStrategy.generate(mockState, coords.x, coords.y);
 
-            startNode.wallsData = serializeWalls(mockState.walls);
+            startNode.wallsData = serializeWalls(mockState.walls, coords.x, coords.y, 480);
             startNode.wallTheme = theme;
             startNode.strategy = "StartBuilding";
             startNode.floorTextureProfileId = resolveFloorTextureProfileId({ layer: 0, strategy: "StartBuildingStrategy" });
@@ -346,7 +352,7 @@ export class MapGenerator {
                     }
 
                     if (allPathable) {
-                        chosenWalls = serializeWalls(mockState.walls);
+                        chosenWalls = serializeWalls(mockState.walls, coordsB.x, coordsB.y, 480);
                         chosenTheme = theme;
                         chosenStrategy = strategy;
                         success = true;
