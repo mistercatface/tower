@@ -182,22 +182,7 @@ export class MapGenerator {
             }
         }
 
-        const connectionPairs = new Set();
-        for (const nodeA of state.mapNodes) {
-            for (const targetId of nodeA.connections) {
-                const nodeB = state.getMapNode(targetId);
-                if (!nodeB) continue;
-                
-                const key = nodeA.id < nodeB.id ? `${nodeA.id}-${nodeB.id}` : `${nodeB.id}-${nodeA.id}`;
-                if (connectionPairs.has(key)) continue;
-                connectionPairs.add(key);
-                
-                const coordsA = state.getNodeCombatCoords(nodeA);
-                const coordsB = state.getNodeCombatCoords(nodeB);
-                
-                MapGenerator.generateCorridor(state, coordsA.x, coordsA.y, coordsB.x, coordsB.y, nodeA.wallTheme || THEME_COLORS[0]);
-            }
-        }
+
 
         state.obstacleGrid.rebuild(state.walls);
         state.hierarchicalNavigator.initialize();
@@ -315,40 +300,5 @@ export class MapGenerator {
         return tempFlowFieldGrid.checkReachability(coordsA.x, coordsA.y, coordsB.x, coordsB.y);
     }
 
-    static generateCorridor(state, x1, y1, x2, y2, theme) {
-        const cellSize = gridSettings.cellSize;
-        const halfWidth = 80;
-        const angle = Math.atan2(y2 - y1, x2 - x1);
-        const dist = Math.hypot(x2 - x1, y2 - y1);
-        
-        const nx = -Math.sin(angle);
-        const ny = Math.cos(angle);
-        
-        const stepSize = cellSize;
-        const numSteps = Math.floor(dist / stepSize);
-        
-        for (let i = 0; i <= numSteps; i++) {
-            const t = i / numSteps;
-            const cx = x1 + (x2 - x1) * t;
-            const cy = y1 + (y2 - y1) * t;
-            
-            const distToA = Math.hypot(cx - x1, cy - y1);
-            const distToB = Math.hypot(cx - x2, cy - y2);
-            if (distToA > 480 && distToB > 480) {
-                const lx = cx + nx * halfWidth;
-                const ly = cy + ny * halfWidth;
-                const leftSeg = new Segment(lx, ly, angle, cellSize, 0);
-                leftSeg.theme = theme;
-                state.walls.push(leftSeg);
-                state.wallSpatialHash.insert(leftSeg);
-                
-                const rx = cx - nx * halfWidth;
-                const ry = cy - ny * halfWidth;
-                const rightSeg = new Segment(rx, ry, angle, cellSize, 0);
-                rightSeg.theme = theme;
-                state.walls.push(rightSeg);
-                state.wallSpatialHash.insert(rightSeg);
-            }
-        }
-    }
+
 }
