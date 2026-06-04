@@ -12,6 +12,9 @@ import chronoVortex from "./TileLabStorage/chronoVortex.js";
 import cyberPulse from "./TileLabStorage/cyberPulse.js";
 import decayedStation from "./TileLabStorage/decayedStation.js";
 import circuitLoop from "./TileLabStorage/circuitLoop.js";
+import tomatoGarden from "./TileLabStorage/tomatoGarden.js";
+import neonOrchard from "./TileLabStorage/neonOrchard.js";
+import pumpkinPatch from "./TileLabStorage/pumpkinPatch.js";
 
 export const floorProceduralProfiles = {
     cyberGrid,
@@ -28,9 +31,10 @@ export const floorProceduralProfiles = {
     cyberPulse,
     decayedStation,
     circuitLoop,
+    tomatoGarden,
 };
 
-export const START_STATION_ID = "organicShip";
+export const START_STATION_ID = "tomatoGarden";
 
 export const defaultFloorProceduralProfileId = START_STATION_ID;
 

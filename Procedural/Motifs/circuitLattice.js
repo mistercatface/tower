@@ -55,13 +55,15 @@ export const circuitLatticeMotif = {
         const ridgeThreshold = config.ridgeThreshold;
         if (lattice < ridgeThreshold) {
             const vein = (1.0 - lattice / ridgeThreshold) * config.peak;
-            applyTint(rgb, vein, config.tint);
+            if (config.tint) {
+                applyTint(rgb, vein, config.tint);
+            }
 
             const crossGate = config.intersectionThreshold ?? ridgeThreshold;
             const crossA = Math.max(0, 1.0 - r1 / crossGate);
             const crossB = Math.max(0, 1.0 - r2 / crossGate);
             const cross = crossA * crossB;
-            if (cross > 0 && config.intersectionPeak > 0) {
+            if (cross > 0 && config.intersectionPeak > 0 && config.intersectionTint) {
                 applyTint(rgb, cross * config.intersectionPeak, config.intersectionTint);
             }
             return;
@@ -75,7 +77,7 @@ export const circuitLatticeMotif = {
         }
 
         const interior = config.interiorVariation;
-        if (interior) {
+        if (interior && interior.tint) {
             const variation = noise2D(x * interior.frequency, y * interior.frequency, interior.octaves ?? 1);
             applyTint(rgb, variation * interior.amplitude, interior.tint);
         }
