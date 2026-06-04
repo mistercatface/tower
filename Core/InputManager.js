@@ -82,6 +82,19 @@ export class InputManager {
                 state.combatHudMode = (state.combatHudMode + 1) % COMBAT_HUD_MODE_COUNT;
                 console.log("Combat HUD Mode: " + COMBAT_HUD_MODE_LABELS[state.combatHudMode]);
             }
+            if (e.key === "m" || e.key === "M") {
+                const state = fsm.context.state;
+                if (fsm.currentStateName === "map") {
+                    const targetState = state.previousStateBeforeMap || "combat";
+                    if (targetState === "combat" || targetState === "inspector") {
+                        state.skipCombatEnterReset = true;
+                    }
+                    fsm.transition(targetState);
+                } else if (fsm.currentStateName === "combat" || fsm.currentStateName === "inspector") {
+                    state.previousStateBeforeMap = fsm.currentStateName;
+                    fsm.transition("map");
+                }
+            }
         });
     }
 }
