@@ -1,10 +1,11 @@
 import { SpriteCache } from "./SpriteCache.js";
 import { Render3D } from "./3D/Render3D.js";
-import { mapSettings, COMBAT_HUD_MODE, hudSettings, combatVisualSettings } from "../Config/Config.js";
+import { COMBAT_HUD_MODE, hudSettings, combatVisualSettings } from "../Config/Config.js";
 import { getWorldDrawCoords, isMapTraveling, isWorldScene } from "../GameState/GamePhase.js";
 import { getPlayerActors } from "../Combat/Targeting.js";
 import { drawHostileOffScreenIndicators } from "./OffScreenIndicators.js";
 import { CombatParticles } from "./CombatParticles.js";
+import { drawGameMapWallCache, getGameMapWallCache } from "./Map/MapWallCache.js";
 
 export class Renderer {
     constructor(canvas, ctx) {
@@ -302,10 +303,10 @@ export class Renderer {
     }
 
     drawMap(state) {
-        const { x: baseSpawnX, y: baseSpawnY } = state.getCombatSpawnOrigin();
-        const scale = mapSettings.combatCoordScale;
-
         const currentNode = state.getCurrentMapNode();
+
+        drawGameMapWallCache(this.ctx, getGameMapWallCache(state));
+
         for (const node of state.mapNodes) {
             for (const connId of node.connections) {
                 const targetNode = state.getMapNode(connId);
@@ -323,29 +324,6 @@ export class Renderer {
                 }
                 this.ctx.stroke();
             }
-        }
-
-        for (const seg of state.walls) {
-            if (seg.isDead) continue;
-
-            const mx = (seg.x - baseSpawnX) / scale;
-            const my = (seg.y - baseSpawnY) / scale;
-            const msize = seg.size / scale;
-            const mhalf = msize / 2;
-
-            this.ctx.save();
-            this.ctx.translate(mx, my);
-            this.ctx.rotate(seg.angle);
-
-            const theme = seg.theme || { r: 0, g: 188, b: 212 };
-            this.ctx.fillStyle = `rgba(${theme.r}, ${theme.g}, ${theme.b}, 0.75)`;
-            this.ctx.fillRect(-mhalf, -mhalf, msize, msize);
-
-            this.ctx.strokeStyle = `rgba(${theme.r}, ${theme.g}, ${theme.b}, 0.95)`;
-            this.ctx.lineWidth = 0.5;
-            this.ctx.strokeRect(-mhalf, -mhalf, msize, msize);
-
-            this.ctx.restore();
         }
 
         const waveColors = ["#03A9F4", "#7E57C2", "#AB47BC", "#EC407A", "#F44336"];

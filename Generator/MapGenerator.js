@@ -6,6 +6,7 @@ import { FlowFieldGrid } from "../Spatial/Navigation/FlowFieldGrid.js";
 import { mapSettings, gridSettings, THEME_COLORS, mapGenerationSettings } from "../Config/Config.js";
 import { resolveFloorTextureProfileId } from "../Config/floorProceduralConfig.js";
 import { syncFloorTextureProfile } from "../Render/Floor/floorTextureProfile.js";
+import { invalidateMapWallCache } from "../Render/Map/MapWallCache.js";
 
 const STRATEGIES = Object.keys(GeneratorStrategies);
 
@@ -280,6 +281,7 @@ export class MapGenerator {
         state.obstacleGrid.rebuild(state.walls);
         const startCoords = state.getNodeCombatCoords(state.getMapNode(0));
         state.hierarchicalNavigator.initialize(startCoords.x, startCoords.y);
+        invalidateMapWallCache(state);
         state.floorTileSeed = (Math.random() * 0x7fffffff) | 0;
         state.floorTiles.clear();
         syncFloorTextureProfile(state);
