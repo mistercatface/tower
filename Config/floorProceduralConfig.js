@@ -30,7 +30,7 @@ export const floorProceduralProfiles = {
     circuitLoop,
 };
 
-export const START_STATION_ID = "organicShip";
+export const START_STATION_ID = "emberLattice";
 
 export const defaultFloorProceduralProfileId = START_STATION_ID;
 
