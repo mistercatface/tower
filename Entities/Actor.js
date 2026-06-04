@@ -495,9 +495,19 @@ export class Actor extends DestructibleEntity {
     processAllTurrets(dt, state, blocksTargeting = false, combatEvents = []) {
         const isPlayerManualShoot = this.type === "player" && state.abilities["Shoot"];
         for (const turret of this.getTurrets()) {
-            const gun = getGunDefinition(turret.gunId);
+            const gun = turret.gun ?? getGunDefinition(turret.gunId);
 
-            if (gun.hasLaserSights && state) {
+            let activeSight = null;
+            if (gun.attachments) {
+                for (const attachment of Object.values(gun.attachments)) {
+                    if (attachment.enabled && attachment.isSight) {
+                        activeSight = attachment;
+                        break;
+                    }
+                }
+            }
+
+            if (activeSight && state) {
                 const target = this.resolveTurretTargetForProcessing(turret);
                 const { x: tx, y: ty } = turret.getMuzzlePosition(this, gun.bulletRadius ?? 2, target);
                 const range = this.weapon?.range ?? 200;
@@ -521,7 +531,7 @@ export class Actor extends DestructibleEntity {
     manualFire(state, targetX, targetY) {
         let firedAny = false;
         for (const turret of this.getTurrets()) {
-            const gun = getGunDefinition(turret.gunId);
+            const gun = turret.gun ?? getGunDefinition(turret.gunId);
             const fireIntervalMs = getSlotFireIntervalMs(gun, this);
 
             if (turret.manualFireCooldown === undefined) turret.manualFireCooldown = 0;
@@ -689,7 +699,7 @@ export class Actor extends DestructibleEntity {
     getReloadBarProgress() {
         for (const turret of this.turrets) {
             if (turret.reloading) {
-                const gun = getGunDefinition(turret.gunId);
+                const gun = turret.gun ?? getGunDefinition(turret.gunId);
                 const reloadTimeMs = getSlotReloadTimeMs(gun, this);
                 if (reloadTimeMs > 0) {
                     return Math.min(1, turret.reloadTimer / reloadTimeMs);

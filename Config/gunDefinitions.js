@@ -56,9 +56,16 @@ export const gunDefinitions = {
             angleOffsets: [0],
         },
         projectile: projectilePresets.playerStandard,
-        hasLaserSights: true,
-        equipModifiers: {
-            accuracyFlatBonus: 0.05,
+        attachments: {
+            laserSights: {
+                id: "laserSights",
+                name: "Laser Sights",
+                enabled: false,
+                isSight: true,
+                modifiers: {
+                    accuracyFlatBonus: 0.05,
+                }
+            }
         },
     },
     shotgun: {
@@ -154,4 +161,12 @@ export function getGunDefinition(gunId) {
         throw new Error(`Unknown gun: ${gunId}`);
     }
     return gun;
+}
+
+export function cloneGunDefinition(gun) {
+    return {
+        ...gun,
+        attachments: gun.attachments ? JSON.parse(JSON.stringify(gun.attachments)) : undefined,
+        equipModifiers: gun.equipModifiers ? { ...gun.equipModifiers } : undefined
+    };
 }

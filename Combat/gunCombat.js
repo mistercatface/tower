@@ -21,18 +21,37 @@ export function getGunImpactKnockback(gun) {
     return getGunProjectileConfig(gun).impactKnockback ?? null;
 }
 
+export function getActiveEquipModifiers(gun) {
+    const mods = { ...gun.equipModifiers };
+    if (gun.attachments) {
+        for (const attachment of Object.values(gun.attachments)) {
+            if (attachment.enabled && attachment.modifiers) {
+                for (const [key, val] of Object.entries(attachment.modifiers)) {
+                    if (key.endsWith("Multiplier")) {
+                        mods[key] = (mods[key] ?? 1) * val;
+                    } else if (key.endsWith("Bonus")) {
+                        mods[key] = (mods[key] ?? 0) + val;
+                    }
+                }
+            }
+        }
+    }
+    return mods;
+}
+
 export function applyActorGunModifiers(actor) {
     if (!actor.stats) return;
 
     let turnSpeedMult = 1;
     let accuracyFlatBonus = 0;
     for (const turret of actor.getTurrets()) {
-        const gun = gunDefinitions[turret.gunId] ?? gunDefinitions[defaultGunId];
-        if (gun.equipModifiers?.turnSpeedMultiplier) {
-            turnSpeedMult *= gun.equipModifiers.turnSpeedMultiplier;
+        const gun = turret.gun ?? getGunDefinition(turret.gunId);
+        const modifiers = getActiveEquipModifiers(gun);
+        if (modifiers.turnSpeedMultiplier) {
+            turnSpeedMult *= modifiers.turnSpeedMultiplier;
         }
-        if (gun.equipModifiers?.accuracyFlatBonus) {
-            accuracyFlatBonus += gun.equipModifiers.accuracyFlatBonus;
+        if (modifiers.accuracyFlatBonus) {
+            accuracyFlatBonus += modifiers.accuracyFlatBonus;
         }
     }
 

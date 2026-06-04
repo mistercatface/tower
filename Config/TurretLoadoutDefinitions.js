@@ -1,6 +1,6 @@
 import { applyActorGunModifiers } from "../Combat/gunCombat.js";
 import { normalizeWeaponLoadout } from "../Combat/equipmentLoadout.js";
-import { defaultGunId, getGunDefinition } from "./gunDefinitions.js";
+import { defaultGunId, getGunDefinition, cloneGunDefinition } from "./gunDefinitions.js";
 import { defaultTurretLoadout, resolveLoadoutFromConfig, resolveTurretScope } from "./turretLoadout.js";
 
 export { cloneTurretLoadout, defaultTurretLoadout, resolveFireAngleOffsets, resolveLoadoutFromConfig, resolveTurretScope } from "./turretLoadout.js";
@@ -22,6 +22,11 @@ export function applyGunTurretLoadouts(actor) {
         const gunId = weaponLoadout[i] ?? defaultGunId;
         const gun = getGunDefinition(gunId);
         turrets[i].gunId = gunId;
+        if (turrets[i].gun && turrets[i].gun.id === gunId) {
+            // Keep existing instance to preserve attachments state
+        } else {
+            turrets[i].gun = cloneGunDefinition(gun);
+        }
         turrets[i].loadout = resolveLoadoutFromConfig(gun.turretLoadout ?? defaultTurretLoadout);
     }
 }
@@ -37,7 +42,14 @@ export function applyUpgradeTurretLoadouts(actor, state, upgradeDefs = []) {
         const indices = resolveTurretScope(config.scope, turrets.length);
         for (const index of indices) {
             const turret = turrets[index];
-            if (config.gun) turret.gunId = config.gun;
+            if (config.gun) {
+                if (turret.gun && turret.gun.id === config.gun) {
+                    // Keep existing instance
+                } else {
+                    turret.gun = cloneGunDefinition(getGunDefinition(config.gun));
+                }
+                turret.gunId = config.gun;
+            }
             if (isInlineLoadoutConfig(config)) turret.loadout = resolveLoadoutFromConfig(config);
         }
     }

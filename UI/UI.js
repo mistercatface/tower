@@ -560,9 +560,36 @@ function initEquipmentUI() {
         const stats = document.createElement("div");
         stats.className = "equipment-slot-stats";
 
+        // Laser Sights Toggle
+        const laserLabel = document.createElement("label");
+        laserLabel.className = "equipment-laser-toggle";
+        laserLabel.style.cssText = "display: none; align-items: center; gap: 6px; font-size: 11px; margin-top: 6px; cursor: pointer; color: #00bcd4; user-select: none; font-weight: bold;";
+
+        const laserCheckbox = document.createElement("input");
+        laserCheckbox.type = "checkbox";
+        laserCheckbox.style.cssText = "cursor: pointer; margin: 0;";
+        laserCheckbox.addEventListener("change", (e) => {
+            const state = events.getContext()?.state;
+            if (state && state.player) {
+                const turret = state.player.getTurrets()[i];
+                if (turret && turret.gun?.attachments?.laserSights) {
+                    turret.gun.attachments.laserSights.enabled = e.target.checked;
+                    state.player.applyWeaponLoadout(state.player.weaponLoadout, { state });
+                    events.emit(Events.UI_UPDATE);
+                }
+            }
+        });
+
+        const laserSpan = document.createElement("span");
+        laserSpan.textContent = "Laser Sights";
+
+        laserLabel.appendChild(laserCheckbox);
+        laserLabel.appendChild(laserSpan);
+
         body.appendChild(label);
         body.appendChild(name);
         body.appendChild(stats);
+        body.appendChild(laserLabel);
 
         const unequipBtn = createButton("", "Unequip", () => emitUnequipWeaponSlot(i), `equipmentUnequip_${i}`);
         unequipBtn.className = "equipment-btn equipment-btn-unequip";
@@ -573,7 +600,7 @@ function initEquipmentUI() {
         elements.equipmentSlots.appendChild(slot);
 
         dynamicElements[`equipmentUnequip_${i}`] = unequipBtn;
-        dynamicElements.equipmentSlotEls.push({ slot, label, name, stats, unequipBtn });
+        dynamicElements.equipmentSlotEls.push({ slot, label, name, stats, unequipBtn, laserLabel, laserCheckbox });
     }
 
     elements.equipmentArmory.innerHTML = "";
@@ -620,7 +647,8 @@ function drawEquipmentPanel(state) {
 
         const gunId = loadout[index];
         if (gunId) {
-            const gun = getGunDefinition(gunId);
+            const turret = player.getTurrets()[index];
+            const gun = turret?.gun ?? getGunDefinition(gunId);
             el.slot.classList.remove("equipment-slot-empty");
             el.slot.classList.add("equipment-slot-filled");
             el.label.textContent = `Slot ${index + 1} · ${formatHandednessLabel(gunId)}`;
@@ -628,6 +656,14 @@ function drawEquipmentPanel(state) {
             el.stats.textContent = formatGunSummary(gun, player);
             el.unequipBtn.style.display = "block";
             el.unequipBtn.disabled = disabled;
+
+            if (gun.attachments?.laserSights) {
+                el.laserLabel.style.display = "flex";
+                el.laserCheckbox.checked = !!gun.attachments.laserSights.enabled;
+                el.laserCheckbox.disabled = disabled;
+            } else {
+                el.laserLabel.style.display = "none";
+            }
         } else {
             el.slot.classList.add("equipment-slot-empty");
             el.slot.classList.remove("equipment-slot-filled");
@@ -635,6 +671,7 @@ function drawEquipmentPanel(state) {
             el.name.textContent = "—";
             el.stats.textContent = "Select a weapon from the armory";
             el.unequipBtn.style.display = "none";
+            el.laserLabel.style.display = "none";
         }
     });
 

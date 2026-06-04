@@ -20,6 +20,7 @@ export class Turret {
             ...(loadout.spreadRadians != null ? { spreadRadians: loadout.spreadRadians } : {}),
         };
         this.gunId = defaultGunId;
+        this.gun = null;
         this.charge = 0;
         this.target = null;
         this.swayPhase = 0;
@@ -70,7 +71,7 @@ export class Turret {
     }
 
     getHudAnchorPosition(source) {
-        const gun = getGunDefinition(this.gunId);
+        const gun = this.gun ?? getGunDefinition(this.gunId);
         const projectileRadius = gun.bulletRadius * this.loadout.radiusMultiplier;
         const muzzle = this.getMuzzlePosition(source, projectileRadius, this.lastTarget ?? this.target);
         const scale = source.radius / 8;
@@ -97,7 +98,7 @@ export class Turret {
     }
 
     fire(state, source) {
-        const gun = getGunDefinition(this.gunId);
+        const gun = this.gun ?? getGunDefinition(this.gunId);
         if (gun.kind !== "projectile") return;
 
         const { radiusMultiplier } = this.loadout;

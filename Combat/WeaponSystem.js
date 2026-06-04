@@ -102,7 +102,7 @@ const DEFAULT_TURRET_WEAPON_MODE = new ChargedWeaponMode((state, turret, source)
 
 export function createLaserWeaponMode() {
     return new ContinuousWeaponMode((dt, state, tx, ty, turret, combatEvents, source) => {
-        const gun = getGunDefinition(turret.gunId ?? defaultGunId);
+        const gun = turret.gun ?? getGunDefinition(turret.gunId ?? defaultGunId);
         if (gun.kind !== "beam") return;
 
         if (turret.reloading) {
