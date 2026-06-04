@@ -110,9 +110,7 @@ export class CollisionSystem {
             const wallCandidates = spatialFrame.getWallCandidates(p, state);
             const segment = this.getMissileWallCollision(p, wallCandidates);
             if (segment) {
-                CombatParticles.spawnImpactSparks(state, p.x, p.y, { impactAngle: p.angle });
-                p.isDead = true;
-                events.push({ target: segment, damage: p.damage });
+                p.strategy.onWallCollision(p, state, segment, events);
                 continue;
             }
 
@@ -120,7 +118,7 @@ export class CollisionSystem {
             spatialFrame.forEachNeighbor(p, (pickup) => {
                 if (hitPickup || pickup instanceof Actor || pickup.isDead || !pickup.strategy?.onHit) return;
                 if (this.checkCircle(p, pickup)) {
-                    const handled = pickup.strategy.onHit(state, pickup, p, events);
+                    const handled = p.strategy.onPickupCollision(p, state, pickup, events);
                     if (handled) {
                         hitPickup = true;
                     }

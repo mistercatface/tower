@@ -88,6 +88,7 @@ const GUN_ID_TO_VISUAL = {
     tommyGun: "smg",
     beamLaser: "longGun",
     enemyRifle: "longGun",
+    grenadeLauncher: "longGun",
 };
 
 export function getWeaponVisualForGunId(gunId) {
@@ -163,6 +164,7 @@ const BARREL_RATIO = {
     tommyGun: 0.28,
     beamLaser: 0.32,
     enemyRifle: 0.32,
+    grenadeLauncher: 0.32,
 };
 
 export function getBarrelRatioForGunId(gunId) {

@@ -34,7 +34,11 @@ export function repelActorFromExplosion(actor, exp, spatialFrame, state) {
     const dx = actor.x - exp.x;
     const dy = actor.y - exp.y;
     const dist = Math.hypot(dx, dy);
+    if (isNaN(dist)) return;
+
     const minDist = exp.radius + actor.radius;
+    if (isNaN(minDist)) return;
+    
     if (dist >= minDist) return;
     if (!actor.hasLineOfSightFromPoint(exp.x, exp.y, state, { sourceRadius: 0 })) return;
 
@@ -52,6 +56,8 @@ export function repelActorFromExplosion(actor, exp, spatialFrame, state) {
     }
 
     const overlap = minDist - pushDist;
+    if (isNaN(pushX) || isNaN(pushY) || isNaN(overlap)) return;
+
     actor.x += pushX * overlap;
     actor.y += pushY * overlap;
 

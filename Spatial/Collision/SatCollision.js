@@ -135,9 +135,13 @@ export class SatCollision {
     }
 
     static _circlePolygon(posCircle, circleShape, posPoly, polyShape) {
+        const polyAngle = posPoly.facing ?? posPoly.angle ?? 0;
+        if (isNaN(posCircle.x) || isNaN(posCircle.y) || isNaN(posPoly.x) || isNaN(posPoly.y)) {
+            return null;
+        }
+
         let minOverlap = Infinity;
         let minNormal = null;
-        const polyAngle = posPoly.facing ?? posPoly.angle ?? 0;
         const cosP = Math.cos(polyAngle);
         const sinP = Math.sin(polyAngle);
 
@@ -178,6 +182,10 @@ export class SatCollision {
                 closestDistSq = distSq;
                 closestVertex = { x: vx, y: vy };
             }
+        }
+
+        if (!closestVertex) {
+            return null;
         }
 
         const dx = closestVertex.x - posCircle.x;

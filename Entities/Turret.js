@@ -143,7 +143,7 @@ export class Turret {
             PhysicsSystem.applyKnockback(
                 source,
                 baseAngle + Math.PI,
-                knockbackScale * projectileConfig.shooterKnockbackMultiplier
+                knockbackScale * (projectileConfig.shooterKnockbackMultiplier ?? 0)
             );
         }
     }
