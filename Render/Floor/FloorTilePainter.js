@@ -63,7 +63,7 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, see
     const numPixels = width * height;
     const pooled = memoryPool.getSamples(numPixels);
     const samples = { width, height, evalX: pooled.evalX, evalY: pooled.evalY, lookupX: pooled.lookupX, lookupY: pooled.lookupY, wallU: pooled.wallU, wallV: pooled.wallV, isWall, surfaceKind };
-    const mapCtx = buildMapContext({ startWorldX, startWorldY, cellSize, surfaceKind, height, width, pixelsPerUnit, zOffset, wallFace });
+    const mapCtx = buildMapContext({ startWorldX, startWorldY, cellSize, surfaceKind, height, width, pixelsPerUnit, zOffset, wallFace, wallHeight: options.wallHeight, wallWidth: options.wallWidth });
 
     let idx = 0;
     for (let y = 0; y < height; y++) {
@@ -92,16 +92,20 @@ function bakeResolvedProfile(ctx, width, height, startWorldX, startWorldY, seed,
     paintPixelArea(ctx, width, height, startWorldX, startWorldY, seed, options, profile);
 }
 
-export function bakeWallFaceCanvas(width, height, p1, p2, pixelsPerUnit, seed, profileOrId, payload = null) {
+export function bakeWallFaceCanvas(width, height, p1, p2, pixelsPerUnit, seed, profileOrId, payload = null, optionsPayload = null) {
     const canvas = new OffscreenCanvas(width, height);
     const ctx = canvas.getContext("2d");
     ctx.imageSmoothingEnabled = false;
+
+    const wallHeight = optionsPayload?.wallHeight;
+    const wallWidth = optionsPayload?.wallWidth;
+
     if (payload) {
         const profileKey = typeof profileOrId === "string" ? profileOrId : defaultFloorProceduralProfileId;
         const baseProfile = resolvePaintProfile(profileOrId);
-        bakeResolvedProfile(ctx, width, height, 0, 0, seed, { isWall: true, p1, p2, pixelsPerUnit }, baseProfile, profileKey, payload);
+        bakeResolvedProfile(ctx, width, height, 0, 0, seed, { isWall: true, p1, p2, pixelsPerUnit, wallHeight, wallWidth }, baseProfile, profileKey, payload);
     } else {
-        paintPixelArea(ctx, width, height, 0, 0, seed, { isWall: true, p1, p2, pixelsPerUnit }, profileOrId);
+        paintPixelArea(ctx, width, height, 0, 0, seed, { isWall: true, p1, p2, pixelsPerUnit, wallHeight, wallWidth }, profileOrId);
     }
 
     return canvas;
@@ -147,12 +151,12 @@ export function bakeFloorChunkCanvases(payload) {
 
 export function bakeWallFaceCanvases(width, height, p1, p2, pixelsPerUnit, seed, profileId, payload = {}) {
     const baseProfile = getFloorProceduralProfile(profileId ?? defaultFloorProceduralProfileId);
-    if (!baseProfile.animation) return [bakeWallFaceCanvas(width, height, p1, p2, pixelsPerUnit, seed, profileId)];
+    if (!baseProfile.animation) return [bakeWallFaceCanvas(width, height, p1, p2, pixelsPerUnit, seed, profileId, null, payload)];
     const { frameStart, frameCount } = payload;
     const canvases = [];
     for (let i = 0; i < frameCount; i++) {
         payload.frameIndex = frameStart + i;
-        canvases.push(bakeWallFaceCanvas(width, height, p1, p2, pixelsPerUnit, seed, profileId, payload));
+        canvases.push(bakeWallFaceCanvas(width, height, p1, p2, pixelsPerUnit, seed, profileId, payload, payload));
     }
     return canvases;
 }

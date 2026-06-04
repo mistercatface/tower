@@ -2,7 +2,7 @@ import { THEME_COLORS, floorTileSettings } from "../../Config/Config.js";
 import { drawBarrel, drawCrate, drawFireBarrel, drawCrateShard } from "./PropRecipes.js";
 import { SpatialQuery } from "../../Spatial/World/SpatialQuery.js";
 import { isFaceTowardViewer, CAMERA_HEIGHT } from "./math/CombatProjection.js";
-import { drawProjectedWallFace, preloadProjectedWallFace } from "./WallFaceTexture.js";
+import { drawProjectedWallFace, preloadProjectedWallFace, drawProjectedWallRoof } from "./WallFaceTexture.js";
 import { TileWorkerCoordinator, wallGeometryView, wallSharedEdgesView, MAX_WALLS, STRIDE } from "../Floor/TileWorkerCoordinator.js";
 
 const VIEW_QUERY_PAD = 48;
@@ -47,6 +47,7 @@ export class Render3D {
             edge.cy = (p1.y + p2.y) / 2;
             edge.outX = edge.cx - seg.x;
             edge.outY = edge.cy - seg.y;
+            edge.wallHeight = seg.wallHeight;
         }
         
         return seg._cachedEdges;
@@ -145,17 +146,9 @@ export class Render3D {
                 };
             });
 
-            ctx.fillStyle = this.getWallColor(seg, THEME_COLORS[0], 1.08); // Slightly brighter for overhead lighting
-            ctx.strokeStyle = this.getWallColor(seg, THEME_COLORS[0], 0.6); // Darker border
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(topCorners[0].x, topCorners[0].y);
-            ctx.lineTo(topCorners[1].x, topCorners[1].y);
-            ctx.lineTo(topCorners[2].x, topCorners[2].y);
-            ctx.lineTo(topCorners[3].x, topCorners[3].y);
-            ctx.closePath();
-            ctx.fill();
-            ctx.stroke();
+            const wallColor = this.getWallColor(seg, THEME_COLORS[0], 1.08);
+            const edgeObj = edges[0];
+            drawProjectedWallRoof(ctx, topCorners, seg, wallColor, state, viewport, edgeObj);
         }
     }
 

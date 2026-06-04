@@ -131,7 +131,7 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHei
     if (!flatCanvases) {
         const columns = wallFaceColumns(wrappedP1, wrappedP2, tileWorldSize);
         if (columns.length === 0) return;
-        flatCanvases = floorTiles.ensureWallFace(wallCacheKey, wrappedP1, wrappedP2, columns, storyCount, state, tileWorldSize);
+        flatCanvases = floorTiles.ensureWallFace(wallCacheKey, wrappedP1, wrappedP2, columns, storyCount, state, tileWorldSize, wallHeight);
         if (!flatCanvases || flatCanvases.length === 0) return;
     }
 
@@ -168,6 +168,8 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHei
     const SUBDIV_X = Math.max(1, Math.min(2, Math.ceil((edgeLen / tileWorldSize) * subdivScale)));
     const SUBDIV_Y = Math.max(1, Math.min(2, Math.ceil((storyCount / 2) * subdivScale)));
 
+    const H_px = clampedHeight * ppwu;
+
     for (let row = 0; row < SUBDIV_Y; row++) {
         const bottomZ = row * (wallHeight / SUBDIV_Y);
         let topZ = (row + 1) * (wallHeight / SUBDIV_Y);
@@ -181,8 +183,8 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHei
         const v0 = alphaBottom / alphaMax;
         const v1 = alphaTop / alphaMax;
 
-        const sy0 = (row / SUBDIV_Y) * flatCanvas.height;
-        const sy1 = ((row + 1) / SUBDIV_Y) * flatCanvas.height;
+        const sy0 = (row / SUBDIV_Y) * H_px;
+        const sy1 = ((row + 1) / SUBDIV_Y) * H_px;
 
         for (let col = 0; col < SUBDIV_X; col++) {
             const u0 = col / SUBDIV_X;
@@ -201,6 +203,67 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHei
             drawImageQuad(ctx, flatCanvas, sx0, sy0, sx1, sy1, sCorner0, sCorner1, sCorner2, sCorner3, { bleedPx });
         }
     }
+
+    ctx.restore();
+}
+
+export function drawProjectedWallRoof(ctx, topCorners, seg, wallColor, state, viewport, cacheObj = null) {
+    if (!state.floorTiles) return;
+
+    const wallHeight = seg.wallHeight ?? (floorTileSettings.wallVisualHeight ?? (CAMERA_HEIGHT - 10));
+    const wallCx = cacheObj && cacheObj.cx !== undefined ? cacheObj.cx : seg.x;
+    const wallCy = cacheObj && cacheObj.cy !== undefined ? cacheObj.cy : seg.y;
+
+    const profileId = getFloorTextureProfileIdForCoords(state, wallCx, wallCy);
+    const ppwu = getPixelsPerWorldUnit();
+    const storyCount = getWallTextureStoryCount();
+
+    const edges = seg._cachedEdges;
+    if (!edges) return;
+    const p1 = edges[0][0];
+    const p2 = edges[0][1];
+
+    const { key: wallCacheKey, wrappedP1, wrappedP2 } = getWallCacheInfo(p1, p2, state, profileId, ppwu, cacheObj);
+
+    let flatCanvases = state.floorTiles.surfaceCache.get(wallCacheKey);
+    if (!flatCanvases) {
+        const tileWorldSize = floorTileSettings.tileWorldSize ?? gridSettings.cellSize;
+        const columns = wallFaceColumns(wrappedP1, wrappedP2, tileWorldSize);
+        if (columns.length === 0) return;
+        flatCanvases = state.floorTiles.ensureWallFace(wallCacheKey, wrappedP1, wrappedP2, columns, storyCount, state, tileWorldSize, wallHeight);
+        if (!flatCanvases || flatCanvases.length === 0) return;
+    }
+
+    const profile = getFloorProceduralProfile(profileId);
+    let flatCanvas = flatCanvases[0];
+    if (!flatCanvas || flatCanvas.isPlaceholder) {
+        ctx.fillStyle = wallColor;
+        ctx.beginPath();
+        ctx.moveTo(topCorners[0].x, topCorners[0].y);
+        ctx.lineTo(topCorners[1].x, topCorners[1].y);
+        ctx.lineTo(topCorners[2].x, topCorners[2].y);
+        ctx.lineTo(topCorners[3].x, topCorners[3].y);
+        ctx.closePath();
+        ctx.fill();
+        return;
+    }
+
+    if (isWallFaceAnimationEnabled(profile) && flatCanvases.length > 1) {
+        const currentFrame = animationFrameIndex(profile.animation, { gameTime: state.gameTime ?? 0 });
+        flatCanvas = flatCanvases[Math.min(flatCanvases.length - 1, Math.max(0, currentFrame))];
+    }
+
+    const cellSize = state.obstacleGrid?.cellSize ?? 16;
+    const H_px = wallHeight * ppwu;
+    const W_px = cellSize * ppwu;
+
+    const sy0 = H_px;
+    const sy1 = H_px + W_px;
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = shouldSmoothTextureDownsample();
+
+    drawImageQuad(ctx, flatCanvas, 0, sy0, flatCanvas.width, sy1, topCorners[0], topCorners[1], topCorners[2], topCorners[3], { bleedPx: 1 });
 
     ctx.restore();
 }
