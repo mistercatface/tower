@@ -278,7 +278,8 @@ export class MapGenerator {
 
 
         state.obstacleGrid.rebuild(state.walls);
-        state.hierarchicalNavigator.initialize();
+        const startCoords = state.getNodeCombatCoords(state.getMapNode(0));
+        state.hierarchicalNavigator.initialize(startCoords.x, startCoords.y);
         state.floorTileSeed = (Math.random() * 0x7fffffff) | 0;
         state.floorTiles.clear();
         syncFloorTextureProfile(state);

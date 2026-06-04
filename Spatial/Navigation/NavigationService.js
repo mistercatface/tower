@@ -82,7 +82,7 @@ export class NavigationService {
     }
 
     rebuildNavigationGraph(playerX, playerY, playerTargetX = null, playerTargetY = null) {
-        if (this.hierarchicalNavigator) this.hierarchicalNavigator.rebuildRegions();
+        if (this.hierarchicalNavigator) this.hierarchicalNavigator.rebuildRegions(playerX, playerY);
         this.flowFieldGrid.refresh(playerX, playerY, playerTargetX, playerTargetY);
         this.obstacleGeneration += 1;
     }

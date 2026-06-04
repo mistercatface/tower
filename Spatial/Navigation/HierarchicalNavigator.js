@@ -60,19 +60,68 @@ export class HierarchicalNavigator {
         }
     }
 
-    initialize() {
+    initialize(seedWorldX = null, seedWorldY = null) {
         this.ensureBuffers();
         this.nodesMap = {};
         this.nodeIdCounter = 0;
-        this.rebuildRegions();
+        this.rebuildRegions(seedWorldX, seedWorldY);
     }
 
-    rebuildRegions() {
+    rebuildRegions(seedWorldX = null, seedWorldY = null) {
         this.ensureBuffers();
         if (this.cols === 0 || this.rows === 0) return;
         computeDistanceTransform(this.grid, this.cols, this.rows, this.distToWall);
         this.generateChunks();
         this.connectAllNodes();
+        if (seedWorldX != null && seedWorldY != null) {
+            this.pruneUnreachableRegions(seedWorldX, seedWorldY);
+        }
+    }
+
+    pruneUnreachableRegions(worldX, worldY) {
+        const { col, row } = this.worldToGrid(worldX, worldY);
+        const start = this.findNearestOpenCell(col, row);
+        const startIdx = colRowToIndex(start.col, start.row, this.cols);
+
+        const reachable = new Uint8Array(this.cols * this.rows);
+        const queue = [startIdx];
+        reachable[startIdx] = 1;
+
+        let head = 0;
+        while (head < queue.length) {
+            const idx = queue[head++];
+            const c = idx % this.cols;
+            const r = (idx / this.cols) | 0;
+            forEachCardinalNeighbor(c, r, this.cols, this.rows, (nc, nr, nIdx) => {
+                if (this.grid[nIdx] !== 0 || reachable[nIdx]) return;
+                reachable[nIdx] = 1;
+                queue.push(nIdx);
+            });
+        }
+
+        for (const id in this.nodesMap) {
+            const node = this.nodesMap[id];
+            let hasReachableCell = false;
+            for (let i = 0; i < node.cells.length; i++) {
+                if (reachable[node.cells[i]]) {
+                    hasReachableCell = true;
+                    break;
+                }
+            }
+            if (hasReachableCell) continue;
+
+            for (let i = 0; i < node.cells.length; i++) {
+                const cellIdx = node.cells[i];
+                if (this.cellToNode[cellIdx]?.id === id) {
+                    this.cellToNode[cellIdx] = null;
+                }
+            }
+            delete this.nodesMap[id];
+        }
+
+        for (const id in this.nodesMap) {
+            this.nodesMap[id].edges = this.nodesMap[id].edges.filter((e) => this.nodesMap[e.targetId]);
+        }
     }
 
     worldToGrid(x, y) {
@@ -132,7 +181,10 @@ export class HierarchicalNavigator {
         if (!nodeA || !nodeB || nodeA.id === nodeB.id) return;
         if (nodeA.edges.some(e => e.targetId === nodeB.id)) return;
 
-        const path = this.runLocalAStar(nodeA.col, nodeA.row, nodeB.col, nodeB.row, 96);
+        const path = this.runLocalAStar(
+            nodeA.col, nodeA.row, nodeB.col, nodeB.row,
+            this.maxCellsPerChunk * 2,
+        );
         if (path) {
             nodeA.edges.push({ targetId: nodeB.id, cost: path.length, path });
             nodeB.edges.push({ targetId: nodeA.id, cost: path.length, path: [...path].reverse() });
