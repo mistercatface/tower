@@ -1,4 +1,4 @@
-import { Utilities } from "../Core/Utilities.js";
+import { hasLineOfSight } from "../Libraries/Spatial/query/lineOfSight.js";
 import { wallContextFromState } from "../Libraries/Spatial/query/wallContext.js";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
 
@@ -70,7 +70,7 @@ export class Entity {
         const wallCtx = this.resolveWallContext(stateOrWalls);
         if (!wallCtx) return true;
 
-        return Utilities.hasLineOfSight(
+        return hasLineOfSight(
             x,
             y,
             this.x,

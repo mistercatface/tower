@@ -7,7 +7,7 @@ import { actorStates } from "./ActorStates.js";
 import { transitionEntity } from "../Libraries/FSM/transition.js";
 import { createCombatantStats, applyUpgrades, applyUpgradesToStats, syncActorCombatFromStats, initCombatantUpgradeSlots } from "./CombatantStats.js";
 import { Turret } from "./Turret.js";
-import { Utilities } from "../Core/Utilities.js";
+import { hasLineOfSight } from "../Libraries/Spatial/query/lineOfSight.js";
 import { spawnFloatingText } from "../Core/EventSystem.js";
 import { applyActorGunModifiers, getSlotReloadTimeMs } from "../Combat/gunCombat.js";
 import { getGunDefinition } from "../Config/content/guns.js";
@@ -161,13 +161,13 @@ export class Actor extends DestructibleEntity {
         if (!other) return false;
         const wallCtx = this.resolveWallContext(stateOrWalls);
         if (!wallCtx) return true;
-        return Utilities.hasLineOfSight(this.x, this.y, other.x, other.y, wallCtx, this.radius, other.radius ?? 0);
+        return hasLineOfSight(this.x, this.y, other.x, other.y, wallCtx, this.radius, other.radius ?? 0);
     }
 
     hasLineOfSightToPoint(x, y, stateOrWalls, { targetRadius = 0 } = {}) {
         const wallCtx = this.resolveWallContext(stateOrWalls);
         if (!wallCtx) return true;
-        return Utilities.hasLineOfSight(this.x, this.y, x, y, wallCtx, this.radius, targetRadius);
+        return hasLineOfSight(this.x, this.y, x, y, wallCtx, this.radius, targetRadius);
     }
 
     syncTurretCount(count, turnSpeed) {

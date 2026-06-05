@@ -1,5 +1,5 @@
 import { gridSettings } from "../../../Config/Config.js";
-import { withSeededRandom } from "../../../Core/SeededRandom.js";
+import { withSeededRandom } from "../../../Libraries/Random/index.js";
 import { mapGenCanvasBounds } from "../LabSettings.js";
 import { GamePhase } from "../../../GameState/GamePhase.js";
 import { GameState } from "../../../GameState/GameState.js";

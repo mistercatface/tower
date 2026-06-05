@@ -1,4 +1,4 @@
-import { CollisionSystem } from "../../Spatial/Collision/CollisionSystem.js";
+import { CollisionSystem } from "../../Systems/Collision/CollisionSystem.js";
 import { distanceToLineSegment } from "../../Libraries/Math/Segment2D.js";
 import { explosionSettings } from "../../Config/Config.js";
 

@@ -1,6 +1,6 @@
 /**
  * Libraries/Spatial — reusable spatial infrastructure (grids, geometry, collision, indexes, queries).
- * Game systems in Spatial/ orchestrate these with entity/state policy.
+ * Game presets and hooks live in Systems/.
  */
 
 // Grid
@@ -54,6 +54,7 @@ export { WallSpatialIndex } from "./indexes/WallSpatialIndex.js";
 export { SpatialQuery } from "./query/SpatialQuery.js";
 export { entityWorldAabb, collectWallSegmentsForEntity, collectWallSegmentsAlongLine, collectObstacleGridSegmentsNearPose } from "./query/wallSegmentQuery.js";
 export { wallContextFromState, getNearbyWalls, getWallsAlongLine } from "./query/wallContext.js";
+export { hasLineOfSight } from "./query/lineOfSight.js";
 
 // World frame
 export { SpatialFrameCore } from "./world/SpatialFrameCore.js";

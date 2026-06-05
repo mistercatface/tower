@@ -1,6 +1,10 @@
 /**
- * Deterministic RNG scope for map generation and other seeded workflows.
- * Patches Math.random only for the duration of `fn`.
+ * Deterministic RNG scope — patches Math.random only for the duration of `fn`.
+ *
+ * @template T
+ * @param {number} seed
+ * @param {() => T} fn
+ * @returns {T}
  */
 export function withSeededRandom(seed, fn) {
     let s = (seed >>> 0) || 1;

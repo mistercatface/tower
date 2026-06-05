@@ -1,4 +1,4 @@
-import { CollisionSystem } from "../Spatial/Collision/CollisionSystem.js";
+import { CollisionSystem } from "../Systems/Collision/CollisionSystem.js";
 import { normalizeAngle } from "../Libraries/Math/Angle.js";
 import { getWallsAlongLine } from "../Libraries/Spatial/query/wallContext.js";
 import { Laser } from "../Entities/Laser.js";
