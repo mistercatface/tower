@@ -1,5 +1,4 @@
-import { perkMilestones } from "../Config/Config.js";
-import { xpForLevel } from "../Config/balance/helpers.js";
+import { perkMilestones, xpForLevel } from "../Config/Config.js";
 import { buildAbilityTreeLayout } from "../Config/content/abilityTreeLayout.js";
 import { GamePhase, isCombat, isCombatOrReward, isInspector } from "../GameState/GamePhase.js";
 import { getStartNodeInspectionMissionLabel } from "../Combat/inspect/StartNodeInspection.js";

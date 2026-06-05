@@ -1,5 +1,4 @@
-import { perkSettings } from "../Config/Config.js";
-import { upgradeCostAtLevel } from "../Config/balance/helpers.js";
+import { perkSettings, upgradeCostAtLevel } from "../Config/Config.js";
 import {
     baseUpgradeDefinitions,
     metaUpgradeDefinitions,

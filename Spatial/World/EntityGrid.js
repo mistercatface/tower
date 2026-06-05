@@ -99,20 +99,6 @@ export class EntityGrid {
         }
     }
 
-    updateEntity(entity) {
-        const newIdx = this._getCellIndex(entity.x, entity.y);
-        if (newIdx !== entity._gridTileIdx) {
-            this.remove(entity);
-            entity._gridTileIdx = newIdx;
-            if (newIdx !== -1) {
-                this.entityNext[entity._physId] = this.cellHead[newIdx];
-                this.cellHead[newIdx] = entity._physId;
-            } else {
-                this.entityNext[entity._physId] = -1;
-            }
-        }
-    }
-
     remove(entity) {
         const idx = entity._gridTileIdx;
         if (idx === -1 || idx === undefined) return;

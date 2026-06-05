@@ -1,6 +1,6 @@
 /** @typedef {import("../adapters/WorldRenderAdapter.js").WorldRenderInput} WorldRenderInput */
 
-import { floorTileSettings, resolveWallVisualHeight } from "../../Config/balance/worldSurface.js";
+import { floorTileSettings, resolveWallVisualHeight } from "../../Config/Config.js";
 import { drawBarrel, drawCrate, drawFireBarrel, drawCrateShard } from "../../Combat/world3d/world3dContent.js";
 import { SpatialQuery } from "../../Spatial/World/SpatialQuery.js";
 import { CAMERA_HEIGHT } from "../../Libraries/Math/IsometricProjection.js";

@@ -14,8 +14,6 @@ import cyberPulse from "./storage/cyberPulse.js";
 import decayedStation from "./storage/decayedStation.js";
 import circuitLoop from "./storage/circuitLoop.js";
 import tomatoGarden from "./storage/tomatoGarden.js";
-import neonOrchard from "./storage/neonOrchard.js";
-import pumpkinPatch from "./storage/pumpkinPatch.js";
 
 export const floorProceduralProfiles = {
     cyberGrid,

@@ -1,5 +1,4 @@
-import { gridSettings } from "../../Config/balance/grid.js";
-import { floorTileSettings, resolveWallVisualHeight } from "../../Config/balance/worldSurface.js";
+import { floorTileSettings, gridSettings, resolveWallVisualHeight } from "../../Config/Config.js";
 import { drawImageQuad } from "../../Libraries/Canvas/AffineTexture.js";
 import { CAMERA_HEIGHT } from "../../Libraries/Math/IsometricProjection.js";
 /** @typedef {import("../adapters/WorldRenderAdapter.js").FloorBakeContext} FloorBakeContext */

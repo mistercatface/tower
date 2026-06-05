@@ -1,5 +1,4 @@
-import { combatVisualSettings } from "../../Config/balance/visuals.js";
-import { floorTileSettings, resolveWallVisualHeight } from "../../Config/balance/worldSurface.js";
+import { combatVisualSettings, floorTileSettings, resolveWallVisualHeight } from "../../Config/Config.js";
 import { CAMERA_HEIGHT } from "../../Libraries/Math/IsometricProjection.js";
 import { isWorldScene } from "../../GameState/GamePhase.js";
 import { getFloorProfileProvider } from "../../Libraries/Procedural/FloorProfileProvider.js";
