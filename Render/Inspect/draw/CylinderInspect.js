@@ -1,8 +1,8 @@
 /**
  * Inspect-view drawing for cylindrical props (body shell + label band).
  */
-import { createInspectCamera } from "../math/InspectCamera.js";
-import { drawImageQuad } from "./AffineTexture.js";
+import { createInspectCamera } from "../camera/InspectCamera.js";
+import { drawImageQuad } from "../../3D/draw/AffineTexture.js";
 import { tessellateCylinderQuads, drawSolidQuad } from "../geometry/CylinderSurface.js";
 import { labelBandYRange } from "../../../Math/Interpolate.js";
 

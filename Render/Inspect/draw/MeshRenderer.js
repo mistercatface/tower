@@ -1,5 +1,5 @@
-import { transformPoint, projectPoint, averageDepth } from "../math/InspectCamera.js";
-import { triangleNormal, faceVisible } from "../geometry/MeshBuilder.js";
+import { transformPoint, projectPoint, averageDepth } from "../camera/InspectCamera.js";
+import { triangleNormal, faceVisible } from "../../3D/geometry/MeshBuilder.js";
 import { dot, normalize } from "../../../Math/Vec3.js";
 
 function drawSolidTriangle(ctx, sa, sb, sc, color, stroke, lineWidth) {

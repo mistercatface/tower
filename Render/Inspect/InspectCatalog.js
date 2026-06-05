@@ -2,11 +2,11 @@
 
 import { JACKO_CAN } from "../../Config/props/JackoCan.js";
 import { WOOD_CRATE } from "../../Config/props/Crate.js";
-import { createLabeledCanInspect } from "../3D/inspect/LabeledCanInspect.js";
-import { createLabeledBoxInspect } from "../3D/inspect/LabeledBoxInspect.js";
-import { buildJackoInspectMesh } from "../3D/props/jacko/InspectMesh.js";
-import { buildCrateInspectMesh } from "../3D/props/crate/InspectMesh.js";
-import { getCrateFaceLabelSrc } from "../3D/props/crate/Label.js";
+import { createLabeledCanInspect } from "./factories/LabeledCanInspect.js";
+import { createLabeledBoxInspect } from "./factories/LabeledBoxInspect.js";
+import { buildJackoInspectMesh } from "./recipes/jacko/InspectMesh.js";
+import { buildCrateInspectMesh } from "./recipes/crate/InspectMesh.js";
+import { getCrateFaceLabelSrc } from "./recipes/crate/Label.js";
 
 /**
  * @typedef {Object} InspectEntry
