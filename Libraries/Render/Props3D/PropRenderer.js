@@ -15,7 +15,6 @@ export class PropRenderer {
         const renderKey = prop.getRender3DKey?.() ?? prop.strategy?.render3DKey;
         const draw = this.propRecipes[renderKey];
         if (!draw) return;
-
         ctx.save();
         draw(ctx, prop, px, py);
         ctx.restore();
