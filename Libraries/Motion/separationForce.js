@@ -64,4 +64,6 @@ export function clampSeparationAccum(acc, { steerCap = 1.0, pushCap = 3.0 } = {}
         acc.pushX = (acc.pushX / pushLen) * pushCap;
         acc.pushY = (acc.pushY / pushLen) * pushCap;
     }
+
+    return acc;
 }

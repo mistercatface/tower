@@ -26,3 +26,4 @@ export {
     accumulateSeparationFromPair,
     clampSeparationAccum,
 } from "./separationForce.js";
+export { SeparationEngine } from "./SeparationEngine.js";

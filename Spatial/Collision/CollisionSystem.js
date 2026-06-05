@@ -5,8 +5,11 @@ import { wakePushable } from "./PushableSleep.js";
 import { areHostile } from "../../Combat/Targeting.js";
 import { PhysicsSystem } from "../Motion/PhysicsSystem.js";
 import { enemyDefaults } from "../../Config/Config.js";
-import { Actor } from "../../Entities/Actor.js";
+import { PairFilter } from "../../Libraries/Interaction/PairFilter.js";
+import { PROJECTILE_HIT_PICKUP } from "../../Libraries/Interaction/presets/combat.js";
 import { CombatParticles } from "../../Render/CombatParticles.js";
+
+const projectilePickupFilter = new PairFilter(PROJECTILE_HIT_PICKUP);
 
 export class CollisionSystem {
     static checkCircle(a, b) {
@@ -73,7 +76,7 @@ export class CollisionSystem {
 
             let hitPickup = false;
             spatialFrame.forEachNeighbor(p, (pickup) => {
-                if (hitPickup || pickup instanceof Actor || pickup.isDead || !pickup.strategy?.onHit) return;
+                if (hitPickup || !projectilePickupFilter.allows(p, pickup)) return;
                 if (this.checkCircle(p, pickup)) {
                     const handled = p.strategy.onPickupCollision(p, state, pickup, events);
                     if (handled) {
