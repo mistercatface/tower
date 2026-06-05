@@ -235,7 +235,7 @@ export class Render3D {
     /**
      * @param {CanvasRenderingContext2D} ctx
      * @param {WorldRenderInput} input
-     * @param {import("../Viewport.js").Viewport | null} viewport
+     * @param {import("../../Libraries/Viewport/Viewport.js").Viewport | null} viewport
      * @param {{ fastNav?: boolean, textureEnabled?: boolean }} [options]
      *   fastNav — lighter pass for dev preview panning (no shared edges, pickups, or wall textures).
      */

@@ -8,7 +8,7 @@ import { events, requestUiUpdate, requestUiHudUpdate, showGameOver, hideGameOver
 import { registerAllListeners } from "./Core/GameListeners.js";
 import { PauseManager } from "./Core/PauseManager.js";
 import { Renderer } from "./Render/Render.js";
-import { Viewport } from "./Render/Viewport.js";
+import { CombatViewport } from "./Render/CombatViewport.js";
 import { InputManager } from "./Core/InputManager.js";
 import { ProgressionManager } from "./Progression/ProgressionManager.js";
 import { StatsManager } from "./Progression/StatsManager.js";
@@ -26,7 +26,7 @@ ctx.imageSmoothingEnabled = false;
 
 const renderer = new Renderer(canvas, ctx);
 const upgrades = [...createBaseUpgrades(), ...createUpgrades()];
-const viewport = new Viewport(0, 0);
+const viewport = new CombatViewport(0, 0);
 
 const uiSnapshot = {
     health: -1,

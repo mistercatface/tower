@@ -1,7 +1,7 @@
 import { GamePhase, isWorldScene } from "../../../GameState/GamePhase.js";
 import { Render3D } from "../../../Render/3D/Render3D.js";
 import { buildWorldRenderInput } from "../../../Render/adapters/WorldRenderAdapter.js";
-import { Viewport } from "../../../Render/Viewport.js";
+import { Viewport } from "../../../Libraries/Viewport/Viewport.js";
 import { playerBaseStats, combatVisualSettings } from "../../../Config/Config.js";
 import { TileWorkerCoordinator } from "../../../Render/Floor/TileWorkerCoordinator.js";
 import { invalidateWallSurfaceKeyMemos } from "../../../Render/Floor/FloorTileSystem.js";

@@ -1,6 +1,6 @@
 import { playerBaseStats } from "../../Config/Config.js";
 import { defaultFloorProceduralProfileId } from "../../Config/floorProceduralConfig.js";
-import { getDefaultCombatZoom } from "../../Render/Viewport.js";
+import { getDefaultCombatZoom } from "../../Render/CombatViewport.js";
 import { getLabWorld } from "./LabWorldSession.js";
 
 function getStageSize() {
