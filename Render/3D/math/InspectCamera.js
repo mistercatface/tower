@@ -25,30 +25,18 @@ export function transformNormal(v, yaw, pitch) {
     return normalize(transformPoint(v, yaw, pitch));
 }
 
-/**
- * Weak-perspective projection matching the original inspect viewer.
- * Camera sits on -Z; nearer points have more negative z and appear larger.
- */
 export function projectPoint(v, camera) {
     const denom = camera.referenceDepth + v.z;
     if (denom <= 0.05) return null;
     const f = camera.referenceDepth / denom;
     const s = camera.screenScale * f;
-    return {
-        x: camera.cx + v.x * s,
-        y: camera.cy - v.y * s,
-        z: v.z,
-        depth: v.z,
-    };
+    return { x: camera.cx + v.x * s, y: camera.cy - v.y * s, z: v.z, depth: v.z };
 }
 
 export function averageDepth(a, b, c) {
     return (a.z + b.z + c.z) / 3;
 }
 
-export function createInspectCamera(cx, cy, scale, yaw, pitch, {
-    referenceDepth = 420,
-    screenScale = scale * 88,
-} = {}) {
+export function createInspectCamera(cx, cy, scale, yaw, pitch, { referenceDepth = 420, screenScale = scale * 88 } = {}) {
     return { cx, cy, referenceDepth, screenScale, yaw, pitch };
 }
