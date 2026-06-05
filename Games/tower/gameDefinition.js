@@ -6,6 +6,14 @@ import { MapState, CombatState, InspectorState } from "../../GameState/GameState
 import { unlockStartGameGuardsDialog } from "./tutorial/StartGameIntro.js";
 import { ProgressionManager } from "../../Progression/ProgressionManager.js";
 import { wireTowerRadio } from "./wireRadio.js";
+import {
+    onCombatEnter,
+    onCombatTick,
+    onCombatEnemyKilled,
+    canRunHordeSpawning,
+    getInspectMissionBanner,
+    findInspectorInspectPickup,
+} from "./hooks.js";
 import "../../Entities/Zombie.js";
 
 /**
@@ -24,6 +32,12 @@ import "../../Entities/Zombie.js";
  * @property {(ctx: { state: object, upgrades: object[] }) => void} [onRunStart]
  * @property {string} [runStartRadioTrigger] — fireRadioTrigger id on new run
  * @property {(eventBus: object, pauseApi: { requestPause: (reason: string) => void, requestResume: (reason: string) => void }) => void} [wireRadio]
+ * @property {(ctx: object) => void} [onCombatEnter]
+ * @property {(state: object) => void} [onCombatTick]
+ * @property {(payload: { enemy: object, state: object, upgrades: object[], fsm: object }) => void} [onCombatEnemyKilled]
+ * @property {(state: object) => boolean} [canRunHordeSpawning]
+ * @property {(state: object) => { show: boolean, text: string }} [getInspectMissionBanner]
+ * @property {(state: object, worldX: number, worldY: number) => object | null} [findInspectorInspectPickup]
  */
 
 /** @type {GameDefinition} */
@@ -60,4 +74,11 @@ export const towerGame = {
     runStartRadioTrigger: "run_start",
 
     wireRadio: wireTowerRadio,
+
+    onCombatEnter,
+    onCombatTick,
+    onCombatEnemyKilled,
+    canRunHordeSpawning,
+    getInspectMissionBanner,
+    findInspectorInspectPickup,
 };

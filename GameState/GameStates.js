@@ -1,11 +1,7 @@
 import { FloatingText } from "../Render/FloatingText.js";
 import { requestUiUpdate } from "../Core/EventSystem.js";
-import { gridSettings, debugSkipToClueSearch } from "../Config/Config.js";
-import { getStartGameLayout } from "../Games/tower/tutorial/StartGameBuilding.js";
 import { Pools } from "../Core/Pools.js";
 import { inspectBridge } from "../Combat/inspect/InspectBridge.js";
-import { beginStartGameIntro, shouldRunStartGameIntro } from "../Games/tower/tutorial/StartGameIntro.js";
-import { findClueSearchPickup, beginClueSearch, shouldRunClueSearch } from "../Games/tower/tutorial/ClueSearch.js";
 import {
     runPersistentSectorEnterOnNode,
     runCombatTick,
@@ -48,23 +44,11 @@ export class CombatState {
         ctx.state.combatParticles = [];
         ctx.state.ragdollCorpses = [];
         ctx.state.floatingTexts = [];
-        const startNode = ctx.state.getStartMapNode();
-        const combatCoords = ctx.state.getNodeCombatCoords(startNode);
-        const layout = getStartGameLayout(combatCoords.x, combatCoords.y, gridSettings.cellSize);
-        ctx.state.player.setSpawnPosition(layout.spawnX, layout.spawnY);
-        ctx.state.player.resetToSpawn();
+        ctx.game?.onCombatEnter?.(ctx);
         ctx.viewport.snapTo(ctx.state.player.x, ctx.state.player.y);
-        if (startNode) ctx.state.spawnRunParty();
         ctx.state.hordeSpawner.beginHorde();
         ctx.state.player.resetTurretCombatState();
         runPersistentSectorEnterOnNode(ctx.state);
-        if (shouldRunStartGameIntro(ctx.state)) beginStartGameIntro(ctx.state);
-        if (startNode && debugSkipToClueSearch && shouldRunClueSearch(ctx.state)) {
-            beginClueSearch(ctx.state, null);
-            requestAnimationFrame(() => {
-                if (shouldRunClueSearch(ctx.state)) ctx.state.fsm.transition("inspector");
-            });
-        }
         requestUiUpdate();
     }
 
@@ -125,7 +109,7 @@ export class InspectorState {
 
         handlePlayerRepositionTap(ctx, worldCoords, isDoubleTap, {
             intercept: (coords) => {
-                const inspectTarget = findClueSearchPickup(ctx.state, coords.x, coords.y);
+                const inspectTarget = ctx.game?.findInspectorInspectPickup?.(ctx.state, coords.x, coords.y);
                 if (!inspectTarget) return false;
                 inspectBridge.open(inspectTarget, null, ctx.state);
                 return true;

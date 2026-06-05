@@ -2,16 +2,7 @@ import { state } from "../GameState/GameState.js";
 import { initializeSaveSystem, loadProgress } from "../Progression/Storage.js";
 import { loadPersistentTriggers } from "./PersistentTriggers.js";
 import { initUI, registerUiEventListeners } from "../UI/UI.js";
-import {
-    events,
-    requestUiUpdate,
-    requestUiHudUpdate,
-    showGameOver,
-    hideGameOver,
-    fireRadioTrigger,
-    requestGamePause,
-    requestGameResume,
-} from "./EventSystem.js";
+import { events, requestUiUpdate, requestUiHudUpdate, showGameOver, hideGameOver, fireRadioTrigger, requestGamePause, requestGameResume } from "./EventSystem.js";
 import { registerAllListeners } from "./GameListeners.js";
 import { PauseManager } from "./PauseManager.js";
 import { Renderer } from "../Render/Render.js";
@@ -21,6 +12,7 @@ import { StatsManager } from "../Progression/StatsManager.js";
 import { GameStateMachine } from "../GameState/GameStateMachine.js";
 import { inspectBridge } from "../Combat/inspect/InspectBridge.js";
 import { preloadAllInspectAssets } from "../Libraries/Inspect/InspectCatalog.js";
+import { setActiveGameDefinition } from "./ActiveGameDefinition.js";
 
 /** @typedef {import("../Games/tower/gameDefinition.js").GameDefinition} GameDefinition */
 
@@ -30,34 +22,23 @@ import { preloadAllInspectAssets } from "../Libraries/Inspect/InspectCatalog.js"
  * @param {GameDefinition} definition
  */
 export function createGame(definition) {
+    setActiveGameDefinition(definition);
     definition.prepare?.();
-
     const canvas = document.getElementById(definition.canvasId);
-    if (!canvas) {
-        throw new Error(`createGame: canvas #${definition.canvasId} not found`);
-    }
-
+    if (!canvas) throw new Error(`createGame: canvas #${definition.canvasId} not found`);
     const ctx = canvas.getContext("2d");
     ctx.imageSmoothingEnabled = false;
-
     const renderer = new Renderer(canvas, ctx);
     const upgrades = definition.createUpgrades();
     const viewport = new CombatViewport(0, 0);
-
-    const uiSnapshot = {
-        health: -1,
-        isMoving: false,
-    };
-
-    const stateMachineContext = { state, upgrades, viewport, renderer };
+    const uiSnapshot = { health: -1, isMoving: false };
+    const stateMachineContext = { state, upgrades, viewport, renderer, game: definition };
     const fsm = new GameStateMachine(stateMachineContext);
     stateMachineContext.fsm = fsm;
     state.fsm = fsm;
-
     for (const [name, StateClass] of Object.entries(definition.states)) {
         fsm.addState(name, new StateClass());
     }
-
     const pauseManager = new PauseManager(state);
 
     function didPlayerStateChange() {
@@ -100,15 +81,12 @@ export function createGame(definition) {
         hideGameOver();
         viewport.snapTo(0, 0);
         fsm.transition(definition.initialState);
-
         const onRunStart = () => definition.onRunStart?.({ state, upgrades });
-
         if (definition.runStartRadioTrigger) {
             fireRadioTrigger(definition.runStartRadioTrigger, onRunStart, state);
         } else {
             onRunStart();
         }
-
         requestUiUpdate();
         requestUiHudUpdate();
         requestAnimationFrame(loop);
@@ -127,10 +105,8 @@ export function createGame(definition) {
     registerAllListeners(events, pauseManager);
     definition.wireRadio?.(events, { requestPause: requestGamePause, requestResume: requestGameResume });
     registerUiEventListeners(events);
-
     window.addEventListener("resize", resizeCanvas);
     window.gameState = state;
-
     StatsManager.initUpgradesList(state, upgrades);
     loadProgress(state, upgrades);
     loadPersistentTriggers();

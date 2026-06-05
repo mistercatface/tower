@@ -1,7 +1,7 @@
 import { perkMilestones, xpForLevel } from "../Config/Config.js";
 import { buildAbilityTreeLayout } from "../Config/content/abilityTreeLayout.js";
 import { GamePhase, isCombat, isInspector } from "../GameState/GamePhase.js";
-import { getClueSearchMissionLabel } from "../Games/tower/tutorial/ClueSearch.js";
+import { getActiveGameDefinition } from "../Core/ActiveGameDefinition.js";
 import { getGunDefinition, playerEquipmentCatalog } from "../Config/content/guns.js";
 import { getSlotFireIntervalMs, getSlotReloadTimeMs } from "../Combat/gunCombat.js";
 import { countGunInLoadout, formatHandednessLabel, getEquipmentSlotCount, getGunEquipAction, normalizeWeaponLoadout } from "../Combat/equipmentLoadout.js";
@@ -154,16 +154,20 @@ function updateInspectMissionBanner(state) {
     const textEl = elements.inspectMissionText;
     if (!banner || !textEl) return;
 
-    const show = isInspector(state.phase) && state.clueSearchActive;
-    const display = show ? "block" : "none";
+    const bannerInfo = getActiveGameDefinition()?.getInspectMissionBanner?.(state);
+    if (!bannerInfo) {
+        if (banner.style.display !== "none") banner.style.display = "none";
+        return;
+    }
+
+    const display = bannerInfo.show ? "block" : "none";
     if (banner.style.display !== display) {
         banner.style.display = display;
     }
-    if (!show) return;
+    if (!bannerInfo.show) return;
 
-    const text = getClueSearchMissionLabel(state);
-    if (textEl.innerText !== text) {
-        textEl.innerText = text;
+    if (textEl.innerText !== bannerInfo.text) {
+        textEl.innerText = bannerInfo.text;
     }
 }
 

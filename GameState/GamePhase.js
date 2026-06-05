@@ -1,3 +1,5 @@
+import { getActiveGameDefinition } from "../Core/ActiveGameDefinition.js";
+
 export const GamePhase = {
     MAP: "map",
     COMBAT: "combat",
@@ -22,11 +24,9 @@ export function isInspector(phase) {
 }
 
 export function canRunHordeSpawning(state) {
-    return state.phase !== GamePhase.MAP
-        && state.phase !== GamePhase.INSPECTOR
-        && !state.startGameIntroActive
-        && !state.clueSearchActive
-        && state.clueSearchCompleted;
+    if (state.phase === GamePhase.MAP || state.phase === GamePhase.INSPECTOR) return false;
+    const gameCheck = getActiveGameDefinition()?.canRunHordeSpawning;
+    return gameCheck ? gameCheck(state) : true;
 }
 
 /** Range and center for drawing combat rings / masks in world vs map space. */
