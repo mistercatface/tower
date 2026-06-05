@@ -1,5 +1,5 @@
 import { WOOD_CRATE } from "../../../../Config/props/Crate.js";
-import { buildBoxMesh } from "../../../../Render/3D/geometry/BoxMesh.js";
+import { buildBoxMesh } from "../../../../Libraries/Inspect/geometry/BoxMesh.js";
 
 export function buildCrateInspectMesh() {
     const { halfExtents, colors } = WOOD_CRATE;

@@ -9,8 +9,8 @@ import {
 import {
     triangleNormal,
     faceVisible,
-} from "../../../Render/3D/geometry/MeshBuilder.js";
-import { bodyRadiusAtY, cylinderPoint } from "../../../Render/3D/geometry/CylinderPrimitives.js";
+} from "./MeshBuilder.js";
+import { bodyRadiusAtY, cylinderPoint } from "./CylinderPrimitives.js";
 import { inflateQuad } from "../../../../Math/Screen2D.js";
 
 export function drawSolidQuad(ctx, d0, d1, d2, d3, color, bleedPx = 0) {

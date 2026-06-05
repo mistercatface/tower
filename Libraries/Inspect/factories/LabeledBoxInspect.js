@@ -1,11 +1,11 @@
 import { renderInspectMesh } from "../draw/MeshRenderer.js";
 import { drawInspectBoxLabels } from "../draw/BoxInspectLabel.js";
-import { getTexture, loadTexture, onTextureReady } from "../../../Render/3D/core/TextureCache.js";
+import { getTexture, loadTexture, onTextureReady } from "../core/TextureCache.js";
 
 /**
  * Factory for labeled box inspect views.
  * @param {import("../../../Config/props/Crate.js").WOOD_CRATE} boxConfig
- * @param {() => import("../../../Render/3D/geometry/BoxMesh.js").buildBoxMesh} buildMesh
+ * @param {() => import("../geometry/BoxMesh.js").buildBoxMesh} buildMesh
  * @param {(subject: import("../InspectCatalog.js").InspectSubject | null | undefined, face: string) => string} resolveFaceLabelSrc
  */
 export function createLabeledBoxInspect(boxConfig, buildMesh, resolveFaceLabelSrc) {
