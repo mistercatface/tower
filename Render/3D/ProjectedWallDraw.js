@@ -6,11 +6,9 @@ import { getWallVisualHeight, getWorldSurfaceSettings, resolveWallVisualHeight }
 import { drawImageQuad } from "../../Libraries/Canvas/AffineTexture.js";
 /** @typedef {import("../adapters/WorldRenderAdapter.js").SurfaceBakeContext} SurfaceBakeContext */
 
-import { isWallAtlasAnimationEnabled } from "../../Libraries/WorldSurface/bake/SurfaceBakeHelpers.js";
-import { getSurfaceProfileProvider } from "../../Libraries/Procedural/SurfaceProfileProvider.js";
 import { getPixelsPerWorldUnit, shouldSmoothTextureDownsample } from "../WorldSurface/WorldSurfaceResolution.js";
-import { animationFrameIndex } from "../WorldSurface/ProfileBakeResolver.js";
-import { getWallAtlasCacheInfo } from "../WorldSurface/WallSurfaceCache.js";
+
+export { wallFaceColumns } from "../../Libraries/WorldSurface/WallFaceColumns.js";
 
 const WALL_ANGLE_SPREAD = 0.002;
 
@@ -76,35 +74,6 @@ function getWallTextureStoryCount() {
     return getWorldSurfaceSettings().wallTextureStories;
 }
 
-/** World-aligned slices along the wall base edge (stable when the camera moves). */
-export function wallFaceColumns(p1, p2, tileWorldSize) {
-    const edgeLen = Math.hypot(p2.x - p1.x, p2.y - p1.y);
-    if (edgeLen < 0.001) return [];
-
-    const edgeDirX = (p2.x - p1.x) / edgeLen;
-    const edgeDirY = (p2.y - p1.y) / edgeLen;
-    const uStart = p1.x * edgeDirX + p1.y * edgeDirY;
-    const uEnd = uStart + edgeLen;
-    const firstTile = Math.floor(uStart / tileWorldSize);
-    const lastTile = Math.ceil(uEnd / tileWorldSize);
-    const columns = [];
-
-    for (let tile = firstTile; tile < lastTile; tile++) {
-        const u0World = tile * tileWorldSize;
-        const u1World = (tile + 1) * tileWorldSize;
-        let u0 = (u0World - uStart) / edgeLen;
-        let u1 = (u1World - uStart) / edgeLen;
-        u0 = Math.max(0, Math.min(1, u0));
-        u1 = Math.max(0, Math.min(1, u1));
-        if (u1 - u0 < 1e-6) continue;
-
-        const midU = (u0 + u1) * 0.5;
-        columns.push({ u0, u1, worldX: p1.x + (p2.x - p1.x) * midU, worldY: p1.y + (p2.y - p1.y) * midU });
-    }
-
-    return columns;
-}
-
 function computeFaceCorner(out, p1, p2, proj1X, proj1Y, proj2X, proj2Y, u, v) {
     const bx = p1.x + (p2.x - p1.x) * u;
     const by = p1.y + (p2.y - p1.y) * u;
@@ -137,27 +106,22 @@ function drawFaceTexture(ctx, p1, p2, face, worldSurfaces, surfaceBake, viewer, 
     const ppwu = getPixelsPerWorldUnit(settings);
     const storyCount = getWallTextureStoryCount();
 
-    const { key: wallCacheKey, wrappedP1, wrappedP2 } = getWallAtlasCacheInfo(p1, p2, surfaceBake, profileId, ppwu, cacheObj, settings);
+    const atlas = worldSurfaces.getOrEnsureWallAtlas(p1, p2, {
+        profileId,
+        surfaceBake,
+        ppwu,
+        tileWorldSize,
+        storyCount,
+        wallHeight,
+        cacheObj,
+    });
+    if (!atlas) return;
 
-    let flatCanvases = worldSurfaces.surfaceCache.get(wallCacheKey);
-    if (!flatCanvases) {
-        const columns = wallFaceColumns(wrappedP1, wrappedP2, tileWorldSize);
-        if (columns.length === 0) return;
-        flatCanvases = worldSurfaces.ensureWallAtlas(wallCacheKey, wrappedP1, wrappedP2, columns, storyCount, surfaceBake, tileWorldSize, wallHeight);
-        if (!flatCanvases || flatCanvases.length === 0) return;
-    }
-
-    const profile = getSurfaceProfileProvider().getProfile(profileId);
-    let flatCanvas = flatCanvases[0];
+    const flatCanvas = worldSurfaces.resolveWallAtlasCanvas(atlas.canvases, profileId, surfaceBake.gameTime);
     if (!flatCanvas || flatCanvas.isPlaceholder) {
         ctx.fillStyle = fillStyle;
         ctx.fill();
         return;
-    }
-
-    if (isWallAtlasAnimationEnabled(profile) && flatCanvases.length > 1) {
-        const currentFrame = animationFrameIndex(profile.animation, { gameTime: surfaceBake.gameTime });
-        flatCanvas = flatCanvases[Math.min(flatCanvases.length - 1, Math.max(0, currentFrame))];
     }
 
     const worldBounds = getViewportWorldBounds(viewport);
@@ -242,19 +206,19 @@ export function drawProjectedWallRoof(ctx, topCorners, seg, wallColor, worldSurf
     const p1 = edges[0][0];
     const p2 = edges[0][1];
 
-    const { key: wallCacheKey, wrappedP1, wrappedP2 } = getWallAtlasCacheInfo(p1, p2, surfaceBake, profileId, ppwu, cacheObj, settings);
+    const tileWorldSize = settings.tileWorldSize ?? settings.cellSize;
+    const atlas = worldSurfaces.getOrEnsureWallAtlas(p1, p2, {
+        profileId,
+        surfaceBake,
+        ppwu,
+        tileWorldSize,
+        storyCount,
+        wallHeight,
+        cacheObj,
+    });
+    if (!atlas) return;
 
-    let flatCanvases = worldSurfaces.surfaceCache.get(wallCacheKey);
-    if (!flatCanvases) {
-        const tileWorldSize = settings.tileWorldSize ?? settings.cellSize;
-        const columns = wallFaceColumns(wrappedP1, wrappedP2, tileWorldSize);
-        if (columns.length === 0) return;
-        flatCanvases = worldSurfaces.ensureWallAtlas(wallCacheKey, wrappedP1, wrappedP2, columns, storyCount, surfaceBake, tileWorldSize, wallHeight);
-        if (!flatCanvases || flatCanvases.length === 0) return;
-    }
-
-    const profile = getSurfaceProfileProvider().getProfile(profileId);
-    let flatCanvas = flatCanvases[0];
+    const flatCanvas = worldSurfaces.resolveWallAtlasCanvas(atlas.canvases, profileId, surfaceBake.gameTime);
     if (!flatCanvas || flatCanvas.isPlaceholder) {
         ctx.fillStyle = wallColor;
         ctx.beginPath();
@@ -265,11 +229,6 @@ export function drawProjectedWallRoof(ctx, topCorners, seg, wallColor, worldSurf
         ctx.closePath();
         ctx.fill();
         return;
-    }
-
-    if (isWallAtlasAnimationEnabled(profile) && flatCanvases.length > 1) {
-        const currentFrame = animationFrameIndex(profile.animation, { gameTime: surfaceBake.gameTime });
-        flatCanvas = flatCanvases[Math.min(flatCanvases.length - 1, Math.max(0, currentFrame))];
     }
 
     const cellSize = surfaceBake.obstacleCellSize;
@@ -318,12 +277,13 @@ export function preloadProjectedWallFace(p1, p2, worldSurfaces, surfaceBake, cac
     const storyCount = getWallTextureStoryCount();
     const wallHeight = getWallVisualHeight(settings);
 
-    const { key: wallCacheKey, wrappedP1, wrappedP2 } = getWallAtlasCacheInfo(p1, p2, surfaceBake, profileId, ppwu, cacheObj, settings);
-
-    let flatCanvases = worldSurfaces.surfaceCache.get(wallCacheKey);
-    if (!flatCanvases) {
-        const columns = wallFaceColumns(wrappedP1, wrappedP2, tileWorldSize);
-        if (columns.length === 0) return;
-        worldSurfaces.ensureWallAtlas(wallCacheKey, wrappedP1, wrappedP2, columns, storyCount, surfaceBake, tileWorldSize, wallHeight);
-    }
+    worldSurfaces.getOrEnsureWallAtlas(p1, p2, {
+        profileId,
+        surfaceBake,
+        ppwu,
+        tileWorldSize,
+        storyCount,
+        wallHeight,
+        cacheObj,
+    });
 }

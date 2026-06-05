@@ -1,4 +1,8 @@
 import { getSurfaceProfileProvider } from "../../Libraries/Procedural/SurfaceProfileProvider.js";
+import {
+    bumpSurfaceProfileRevision,
+    getSurfaceProfileRevision,
+} from "../../Libraries/WorldSurface/SurfaceProfileRevision.js";
 import { clampBakeFrameRange, frameRangeDedupeSuffix, isFirstFrameRange } from "./AnimationFrameBake.js";
 import { getAnimationFrames } from "./ProfileBakeResolver.js";
 import { MinHeap } from "../../Libraries/DataStructures/MinHeap.js";
@@ -40,10 +44,8 @@ let sortFocusX = 0;
 let sortFocusY = 0;
 let queueNeedsSort = false;
 
-const runtimeProfileRevisions = new Map();
-
 export function getProfileRevision(profileId) {
-    return runtimeProfileRevisions.get(profileId) ?? 0;
+    return getSurfaceProfileRevision(profileId);
 }
 
 function whenWorkersReady(run) {
@@ -278,8 +280,7 @@ export const TileWorkerCoordinator = {
 
     registerRuntimeProfile(profileId, profile) {
         getSurfaceProfileProvider().registerRuntime(profileId, profile);
-        const rev = (runtimeProfileRevisions.get(profileId) ?? 0) + 1;
-        runtimeProfileRevisions.set(profileId, rev);
+        bumpSurfaceProfileRevision(profileId);
         getWorkerPool();
         registeredRuntimeProfileIds.add(profileId);
         workerReady = workerReady.then(() => broadcastRequest("registerRuntimeProfile", { profileId, profile }));

@@ -1,8 +1,20 @@
-import { getWorldSurfaceSettings, resolveWallVisualHeight } from "../../Libraries/WorldSurface/WorldSurfaceSettings.js";
-import { getProfileRevision } from "./TileWorkerCoordinator.js";
+import { getWorldSurfaceSettings, resolveWallVisualHeight } from "./WorldSurfaceSettings.js";
+import { getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
 
-/** @typedef {import("../adapters/WorldRenderAdapter.js").SurfaceBakeContext} SurfaceBakeContext */
+/**
+ * @typedef {Object} WallAtlasBakeContext
+ * @property {number} surfaceSeed
+ */
 
+/**
+ * @param {{ x: number, y: number }} p1
+ * @param {{ x: number, y: number }} p2
+ * @param {WallAtlasBakeContext} surfaceBake
+ * @param {string} profileId
+ * @param {number} ppwu
+ * @param {{ wallHeight?: number } | null} [cacheObj]
+ * @param {import("./WorldSurfaceSettings.js").WorldSurfaceSettings} [settings]
+ */
 export function buildWallAtlasCacheKey(p1, p2, surfaceBake, profileId, ppwu, cacheObj = null, settings = getWorldSurfaceSettings()) {
     const chunkWorldSize = settings.chunkWorldSize || 128 * settings.cellSize;
     const wx1 = ((p1.x % chunkWorldSize) + chunkWorldSize) % chunkWorldSize;
@@ -17,33 +29,25 @@ export function buildWallAtlasCacheKey(p1, p2, surfaceBake, profileId, ppwu, cac
     const kx2 = wx2.toFixed(1);
     const ky2 = wy2.toFixed(1);
     const seed = surfaceBake.surfaceSeed;
-    const rev = getProfileRevision(profileId);
+    const rev = getSurfaceProfileRevision(profileId);
     const wallHeight = cacheObj?.wallHeight ?? resolveWallVisualHeight(settings.cameraHeight, settings);
     const key = `wall:${rev}:${ppwu}:${profileId}:${seed}:${wallHeight}:${kx1},${ky1}-${kx2},${ky2}`;
 
     return { key, wrappedP1: { x: wx1, y: wy1 }, wrappedP2: { x: wx2, y: wy2 } };
 }
 
-/** Drop per-edge wall atlas key memo after profile revision / surface cache clear. */
-export function invalidateWallAtlasKeyMemos(state) {
-    if (!state?.walls) return;
-    for (const seg of state.walls) {
-        const edges = seg._cachedEdges;
-        if (!edges) continue;
-        for (const edge of edges) {
-            delete edge._wkInfo;
-            delete edge._wkProfileId;
-            delete edge._wkPpwu;
-            delete edge._wkRev;
-            delete edge._wkSeed;
-            delete edge._wkWallHeight;
-        }
-    }
-}
-
+/**
+ * @param {{ x: number, y: number }} p1
+ * @param {{ x: number, y: number }} p2
+ * @param {WallAtlasBakeContext} surfaceBake
+ * @param {string} profileId
+ * @param {number} ppwu
+ * @param {{ wallHeight?: number, _wkInfo?: object, _wkProfileId?: string, _wkPpwu?: number, _wkRev?: number, _wkSeed?: number, _wkWallHeight?: number } | null} cacheObj
+ * @param {import("./WorldSurfaceSettings.js").WorldSurfaceSettings} [settings]
+ */
 export function getWallAtlasCacheInfo(p1, p2, surfaceBake, profileId, ppwu, cacheObj, settings = getWorldSurfaceSettings()) {
     const seed = surfaceBake.surfaceSeed;
-    const rev = getProfileRevision(profileId);
+    const rev = getSurfaceProfileRevision(profileId);
     const wallHeightKey = cacheObj?.wallHeight ?? resolveWallVisualHeight(settings.cameraHeight, settings);
     if (
         cacheObj

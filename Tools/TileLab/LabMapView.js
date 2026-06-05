@@ -8,7 +8,7 @@ import {
 } from "./map/LabMapPreview.js";
 import { getLabPreviewProfile, RUNTIME_LAB_PROFILE_ID } from "./profile/ProfileEditor.js";
 import { ensureLabWorld, getLabWorld, getLabWorldMapSeed } from "./LabWorldSession.js";
-import { invalidateWallAtlasKeyMemos } from "../../Render/WorldSurface/WallSurfaceCache.js";
+import { invalidateWallAtlasKeyMemos } from "../../Render/game/wallSurfaceInvalidation.js";
 
 let registerEditorProfilesSerial = Promise.resolve();
 

@@ -11,8 +11,12 @@ import {
     groundChunkCachePrefix,
     getGroundChunkAnimationInfo,
     getWallAtlasAnimationInfo,
+    isWallAtlasAnimationEnabled,
 } from "../../Libraries/WorldSurface/bake/SurfaceBakeHelpers.js";
-import { TileWorkerCoordinator, getProfileRevision } from "./TileWorkerCoordinator.js";
+import { getSurfaceProfileRevision } from "../../Libraries/WorldSurface/SurfaceProfileRevision.js";
+import { getWallAtlasCacheInfo } from "../../Libraries/WorldSurface/WallSurfaceCache.js";
+import { wallFaceColumns } from "../../Libraries/WorldSurface/WallFaceColumns.js";
+import { TileWorkerCoordinator } from "./TileWorkerCoordinator.js";
 import { drawBakedTexture, getPixelsPerWorldUnit } from "./WorldSurfaceResolution.js";
 import { animationFrameIndex } from "./ProfileBakeResolver.js";
 import { bakeFrameRange } from "./AnimationFrameBake.js";
@@ -59,7 +63,7 @@ export class WorldSurfaceEngine {
                         chunkCol,
                         chunkRow,
                         profileId,
-                        getProfileRevision(profileId),
+                        getSurfaceProfileRevision(profileId),
                         getPixelsPerWorldUnit(this.settings),
                     ).substring(6),
                 );
@@ -132,7 +136,7 @@ export class WorldSurfaceEngine {
             chunkCol,
             chunkRow,
             payload.profileId,
-            getProfileRevision(payload.profileId),
+            getSurfaceProfileRevision(payload.profileId),
             getPixelsPerWorldUnit(this.settings),
         );
         let canvases = this.surfaceCache.get(key);
@@ -190,6 +194,65 @@ export class WorldSurfaceEngine {
         } : null;
 
         return this._scheduleAnimatedEntry(key, meta, bakeFirstFn, bakeBatchFn);
+    }
+
+    /**
+     * Resolve cache key and return baked wall atlas frames, scheduling a bake if needed.
+     * @param {{ x: number, y: number }} p1
+     * @param {{ x: number, y: number }} p2
+     * @param {{
+     *   profileId: string,
+     *   surfaceBake: import("../adapters/WorldRenderAdapter.js").SurfaceBakeContext,
+     *   ppwu: number,
+     *   tileWorldSize: number,
+     *   storyCount: number,
+     *   wallHeight?: number | null,
+     *   cacheObj?: object | null,
+     * }} options
+     * @returns {{ key: string, wrappedP1: { x: number, y: number }, wrappedP2: { x: number, y: number }, canvases: object[] } | null}
+     */
+    getOrEnsureWallAtlas(p1, p2, options) {
+        const {
+            profileId,
+            surfaceBake,
+            ppwu,
+            tileWorldSize,
+            storyCount,
+            wallHeight = null,
+            cacheObj = null,
+        } = options;
+
+        const { key, wrappedP1, wrappedP2 } = getWallAtlasCacheInfo(
+            p1,
+            p2,
+            surfaceBake,
+            profileId,
+            ppwu,
+            cacheObj,
+            this.settings,
+        );
+
+        let canvases = this.surfaceCache.get(key);
+        if (!canvases) {
+            const columns = wallFaceColumns(wrappedP1, wrappedP2, tileWorldSize);
+            if (columns.length === 0) return null;
+            canvases = this.ensureWallAtlas(key, wrappedP1, wrappedP2, columns, storyCount, surfaceBake, tileWorldSize, wallHeight);
+            if (!canvases || canvases.length === 0) return null;
+        }
+
+        return { key, wrappedP1, wrappedP2, canvases };
+    }
+
+    /** Pick the animation frame (or first frame) from a wall atlas bake. */
+    resolveWallAtlasCanvas(canvases, profileId, gameTime = 0) {
+        if (!canvases?.length) return null;
+        let canvas = canvases[0];
+        const profile = getSurfaceProfileProvider().getProfile(profileId);
+        if (isWallAtlasAnimationEnabled(profile) && canvases.length > 1) {
+            const currentFrame = animationFrameIndex(profile.animation, { gameTime });
+            canvas = canvases[Math.min(canvases.length - 1, Math.max(0, currentFrame))];
+        }
+        return canvas;
     }
 
     /**
