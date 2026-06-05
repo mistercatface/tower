@@ -1,5 +1,6 @@
 import { SpriteCache } from "./SpriteCache.js";
 import { Render3D } from "./3D/Render3D.js";
+import { buildWorldRenderInput } from "./adapters/WorldRenderAdapter.js";
 import { COMBAT_HUD_MODE, hudSettings, combatVisualSettings } from "../Config/Config.js";
 import { getWorldDrawCoords, isMapTraveling, isWorldScene } from "../GameState/GamePhase.js";
 import { getPlayerActors } from "../Combat/Targeting.js";
@@ -36,7 +37,7 @@ export class Renderer {
                 },
             },
             { zIndex: 60, fn: (state, viewport) => this.renderExplosions(state, viewport) },
-            { zIndex: 70, fn: (state, viewport) => this.render3D.draw3DBuildings(this.ctx, state, viewport) },
+            { zIndex: 70, fn: (state, viewport) => this.render3D.draw3DBuildings(this.ctx, buildWorldRenderInput(state), viewport) },
             {
                 zIndex: 74,
                 fn: (state, viewport) => {
@@ -261,7 +262,7 @@ export class Renderer {
             offCtx.fillStyle = "#000000";
             offCtx.save();
             offCtx.translate(cx - exp.x, cy - exp.y);
-            this.render3D.drawExplosion(exp.x, exp.y, exp.maxRadius, state, offCtx);
+            this.render3D.drawExplosion(exp.x, exp.y, exp.maxRadius, buildWorldRenderInput(state), offCtx);
             offCtx.restore();
 
             this.ctx.save();

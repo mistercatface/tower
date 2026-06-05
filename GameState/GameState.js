@@ -124,7 +124,7 @@ export class GameState {
         this.startNodeInspectionPending = null;
         this.startNodeInspectionCompleted = false;
         this.startNodeInspectionFinishing = false;
-        this.propInspectorPanelOpen = false;
+        this.inspectPanelOpen = false;
         this.skipCombatEnterReset = false;
         this.zombieEventTriggered = false;
 

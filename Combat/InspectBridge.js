@@ -4,7 +4,7 @@ import { InspectViewer } from "../Render/Inspect/InspectViewer.js";
 import { getPickupInspectEntry } from "../Render/Inspect/InspectCatalog.js";
 import { isRadioDialogActive } from "../Radio/RadioDialogController.js";
 import {
-    onPropInspectorPanelClosed,
+    onInspectPanelClosed,
     playGuidedInspectRadio,
     recordStartNodeInspection,
 } from "./StartNodeInspection.js";
@@ -53,7 +53,7 @@ class InspectBridge {
     handleOpen(subject) {
         const state = this.gameState;
         if (state) {
-            state.propInspectorPanelOpen = true;
+            state.inspectPanelOpen = true;
         }
 
         requestGamePause(INSPECTOR_PAUSE_REASON);
@@ -84,7 +84,7 @@ class InspectBridge {
         }
 
         if (state) {
-            onPropInspectorPanelClosed(state);
+            onInspectPanelClosed(state);
         }
     }
 }

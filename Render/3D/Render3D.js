@@ -1,8 +1,10 @@
+/** @typedef {import("../adapters/WorldRenderAdapter.js").WorldRenderInput} WorldRenderInput */
+
 import { floorTileSettings } from "../../Config/Config.js";
 import { drawBarrel, drawCrate, drawFireBarrel, drawCrateShard } from "./PropRecipes.js";
 import { SpatialQuery } from "../../Spatial/World/SpatialQuery.js";
-import { isFaceTowardViewer, CAMERA_HEIGHT } from "./math/CombatProjection.js";
-import { drawProjectedWallFace, preloadProjectedWallFace, drawProjectedWallRoof } from "./WallFaceTexture.js";
+import { CAMERA_HEIGHT } from "./math/CombatProjection.js";
+import { drawProjectedWallFace, drawProjectedWallRoof } from "./WallFaceTexture.js";
 import { TileWorkerCoordinator, wallGeometryView, wallSharedEdgesView, MAX_WALLS, STRIDE } from "../Floor/TileWorkerCoordinator.js";
 
 const VIEW_QUERY_PAD = 48;
@@ -53,14 +55,14 @@ export class Render3D {
         return seg._cachedEdges;
     }
 
-    updateSharedEdges(state) {
-        const walls = state.walls;
+    updateSharedEdges(input) {
+        const walls = input.walls;
         if (walls !== this.lastWalls || walls.length !== this.lastWallCount || this.sharedEdgesDirty) {
             this.lastWalls = walls;
             this.lastWallCount = walls.length;
             this.sharedEdgesDirty = false;
             this._lastQueryKey = null;
-            this.rebuildSharedEdgesAsync(state);
+            this.rebuildSharedEdgesAsync(input);
         }
     }
 
@@ -126,11 +128,13 @@ export class Render3D {
         }
     }
 
-    drawExplosion(px, py, maxDist, state, targetCtx) {
-        this.updateSharedEdges(state);
+    drawExplosion(px, py, maxDist, input, targetCtx) {
+        this.updateSharedEdges(input);
         const maxDistSq = maxDist * maxDist;
         const visibleWalls = [];
-        const candidateWalls = state.wallSpatialHash ? state.wallSpatialHash.collectInBounds(px - maxDist, py - maxDist, px + maxDist, py + maxDist) : state.walls;
+        const candidateWalls = input.wallSpatialHash
+            ? input.wallSpatialHash.collectInBounds(px - maxDist, py - maxDist, px + maxDist, py + maxDist)
+            : input.walls;
         for (let i = 0; i < candidateWalls.length; i++) {
             const seg = candidateWalls[i];
             if (seg.isDead) continue;
@@ -142,12 +146,12 @@ export class Render3D {
         }
         visibleWalls.sort((a, b) => b._distSq - a._distSq);
         for (const seg of visibleWalls) {
-            this.drawWallSegmentFaces(targetCtx, seg, px, py, state, null);
+            this.drawWallSegmentFaces(targetCtx, seg, px, py, input.scene, null);
         }
     }
 
-    rebuildSharedEdgesAsync(state) {
-        const walls = state.walls;
+    rebuildSharedEdgesAsync(input) {
+        const walls = input.walls;
         const numWalls = Math.min(walls.length, MAX_WALLS);
 
         for (let i = 0; i < numWalls; i++) {
@@ -170,7 +174,7 @@ export class Render3D {
 
         TileWorkerCoordinator.requestSharedEdges(numWalls).then(() => {
             if (this._sharedEdgeGen !== currentGen) return;
-            if (this.lastWalls !== state.walls) return;
+            if (this.lastWalls !== input.walls) return;
 
             for (let i = 0; i < numWalls; i++) {
                 const seg = walls[i];
@@ -199,11 +203,11 @@ export class Render3D {
         };
     }
 
-    collectVisibleWalls(state, viewport, px, py) {
-        const hash = state.wallSpatialHash;
+    collectVisibleWalls(input, viewport, px, py) {
+        const hash = input.wallSpatialHash;
         if (!viewport || !hash) {
             this._lastQueryKey = null;
-            return hash ? hash.collectInBounds(px - 1600, py - 1600, px + 1600, py + 1600, this._wallQuery) : state.walls;
+            return hash ? hash.collectInBounds(px - 1600, py - 1600, px + 1600, py + 1600, this._wallQuery) : input.walls;
         }
         const bounds = this.alignBoundsToHash(this.getViewQueryBounds(viewport, px, py), hash.cellSize);
         const cellSize = hash.cellSize;
@@ -211,7 +215,7 @@ export class Render3D {
         const maxCol = Math.floor((bounds.maxX - 1) / cellSize);
         const minRow = Math.floor(bounds.minY / cellSize);
         const maxRow = Math.floor((bounds.maxY - 1) / cellSize);
-        const queryKey = `${minCol}|${minRow}|${maxCol}|${maxRow}|${state.walls.length}`;
+        const queryKey = `${minCol}|${minRow}|${maxCol}|${maxRow}|${input.walls.length}`;
         if (queryKey !== this._lastQueryKey) {
             this._lastQueryKey = queryKey;
             this._cachedWalls = hash.collectInBounds(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY, this._wallQuery);
@@ -219,9 +223,9 @@ export class Render3D {
         return this._cachedWalls;
     }
 
-    clipToViewport(ctx, viewport, state) {
-        const screenW = state.canvasBounds?.width ?? viewport.cx * 2;
-        const screenH = state.canvasBounds?.height ?? viewport.cy * 2;
+    clipToViewport(ctx, viewport, input) {
+        const screenW = input.canvasBounds?.width ?? viewport.cx * 2;
+        const screenH = input.canvasBounds?.height ?? viewport.cy * 2;
         const { minX, minY, maxX, maxY } = viewport.getWorldBounds(screenW, screenH, 0);
         ctx.beginPath();
         ctx.rect(minX, minY, maxX - minX, maxY - minY);
@@ -230,33 +234,33 @@ export class Render3D {
 
     /**
      * @param {CanvasRenderingContext2D} ctx
-     * @param {object} state
+     * @param {WorldRenderInput} input
      * @param {import("../Viewport.js").Viewport | null} viewport
      * @param {{ fastNav?: boolean, textureEnabled?: boolean }} [options]
      *   fastNav — lighter pass for dev preview panning (no shared edges, pickups, or wall textures).
      */
-    draw3DBuildings(ctx, state, viewport, options = {}) {
-        const px = state.player.x;
-        const py = state.player.y;
+    draw3DBuildings(ctx, input, viewport, options = {}) {
+        const px = input.viewer.x;
+        const py = input.viewer.y;
         const fastNav = options.fastNav === true;
         const wallDrawOptions = { textureEnabled: options.textureEnabled !== false && !fastNav };
         if (!fastNav) {
-            this.updateSharedEdges(state);
+            this.updateSharedEdges(input);
         }
         ctx.save();
-        if (viewport) this.clipToViewport(ctx, viewport, state);
+        if (viewport) this.clipToViewport(ctx, viewport, input);
         const visibleObjects = this._visibleObjects;
         visibleObjects.length = 0;
-        const candidateWalls = this.collectVisibleWalls(state, viewport, px, py);
+        const candidateWalls = this.collectVisibleWalls(input, viewport, px, py);
         for (let i = 0; i < candidateWalls.length; i++) {
             const seg = candidateWalls[i];
             if (seg.isDead) continue;
             seg._distSq = (seg.x - px) ** 2 + (seg.y - py) ** 2;
             visibleObjects.push(seg);
         }
-        if (!fastNav && state.pickups) {
-            for (let i = 0; i < state.pickups.length; i++) {
-                const p = state.pickups[i];
+        if (!fastNav && input.pickups.length > 0) {
+            for (let i = 0; i < input.pickups.length; i++) {
+                const p = input.pickups[i];
                 if (p.isDead || p.strategy?.renderMode !== "3d") continue;
                 if (viewport && typeof p.isVisible === "function" && !p.isVisible(viewport)) continue;
                 p._distSq = (p.x - px) ** 2 + (p.y - py) ** 2;
@@ -265,7 +269,7 @@ export class Render3D {
         }
         visibleObjects.sort((a, b) => b._distSq - a._distSq);
         for (let i = 0; i < visibleObjects.length; i++) {
-            visibleObjects[i].draw3D(ctx, this, state, px, py, viewport, wallDrawOptions);
+            visibleObjects[i].draw3D(ctx, this, input.scene, px, py, viewport, wallDrawOptions);
         }
         ctx.restore();
     }

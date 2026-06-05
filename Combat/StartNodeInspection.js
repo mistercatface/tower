@@ -26,7 +26,7 @@ export function beginStartNodeInspection(state, onSectorComplete) {
     state.startNodeInspectionActive = true;
     state.startNodeInspectionSeen = new Set();
     state.startNodeInspectionPending = onSectorComplete ?? null;
-    state.propInspectorPanelOpen = false;
+    state.inspectPanelOpen = false;
 
     if (state.radioSeenThisRun) {
         for (const conversationId of GUIDED_INSPECT_CONVERSATION_IDS) {
@@ -61,7 +61,7 @@ function hasSeenAllInspectionTargets(state) {
 export function tryCompleteStartNodeInspection(state) {
     if (!state.startNodeInspectionSeen || state.startNodeInspectionCompleted) return;
     if (!hasSeenAllInspectionTargets(state)) return;
-    if (state.propInspectorPanelOpen) return;
+    if (state.inspectPanelOpen) return;
     finishStartNodeInspection(state);
 }
 
@@ -74,9 +74,9 @@ export function recordStartNodeInspection(state, inspectKey) {
     tryCompleteStartNodeInspection(state);
 }
 
-export function onPropInspectorPanelClosed(state) {
+export function onInspectPanelClosed(state) {
     if (!state?.startNodeInspectionSeen) return;
-    state.propInspectorPanelOpen = false;
+    state.inspectPanelOpen = false;
     tryCompleteStartNodeInspection(state);
 }
 
