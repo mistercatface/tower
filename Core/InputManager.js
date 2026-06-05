@@ -1,44 +1,51 @@
 import { adjustGameZoom, setGameZoomAbsolute, emitMapToggle } from "./EventSystem.js";
 import { controlSettings, COMBAT_HUD_MODE_COUNT, COMBAT_HUD_MODE_LABELS } from "../Config/Config.js";
-import { DoubleTapDetector, PinchZoomGesture, bindWheelZoom, bindCanvasPointerDown, bindCanvasPointerMove } from "../Libraries/Input/index.js";
+import { CanvasInputController } from "../Libraries/Input/CanvasInputController.js";
+
+/** @type {CanvasInputController | null} */
+let activeController = null;
 
 export class InputManager {
+    /**
+     * @param {HTMLCanvasElement} canvas
+     * @param {import("../GameState/GameStateMachine.js").GameStateMachine} fsm
+     * @returns {CanvasInputController}
+     */
     static setup(canvas, fsm) {
-        const doubleTap = new DoubleTapDetector(controlSettings.doubleTapTimeout);
-
-        bindWheelZoom(canvas, (delta) => adjustGameZoom(delta), { sensitivity: controlSettings.scrollZoomSensitivity });
-
-        new PinchZoomGesture(canvas, { getBaseZoom: () => fsm.context.viewport.zoom, onPinchZoom: setGameZoomAbsolute });
-
-        bindCanvasPointerDown(canvas, {
+        activeController?.destroy();
+        activeController = new CanvasInputController(canvas, {
+            doubleTapTimeoutMs: controlSettings.doubleTapTimeout,
+            wheelZoomSensitivity: controlSettings.scrollZoomSensitivity,
+            onWheelZoomDelta: adjustGameZoom,
+            getBaseZoom: () => fsm.context.viewport.zoom,
+            onPinchZoom: setGameZoomAbsolute,
             screenToWorld: (screenX, screenY) => fsm.context.viewport.screenToWorld(screenX, screenY),
-            onPointerDown: (worldCoords, _screen, _e) => {
-                fsm.handleInteraction(worldCoords, doubleTap.registerTap());
+            onPointerDown: (worldCoords, _screen, isDoubleTap) => {
+                fsm.handleInteraction(worldCoords, isDoubleTap);
             },
+            onPointerMove: (worldCoords, screen, isPrimaryDown) => {
+                fsm.currentState?.handlePointerMove?.(worldCoords, screen, isPrimaryDown, fsm.context);
+            },
+            keyBindings: [
+                {
+                    key: "d",
+                    onPress: () => {
+                        fsm.context.state.debugMode = !fsm.context.state.debugMode;
+                        console.log("Debug Mode: " + fsm.context.state.debugMode);
+                    },
+                },
+                {
+                    key: "h",
+                    onPress: () => {
+                        const state = fsm.context.state;
+                        state.combatHudMode = (state.combatHudMode + 1) % COMBAT_HUD_MODE_COUNT;
+                        console.log("Combat HUD Mode: " + COMBAT_HUD_MODE_LABELS[state.combatHudMode]);
+                    },
+                },
+                { key: "m", onPress: () => emitMapToggle() },
+            ],
         });
 
-        bindCanvasPointerMove(canvas, {
-            screenToWorld: (screenX, screenY) => fsm.context.viewport.screenToWorld(screenX, screenY),
-            onPointerMove: (worldCoords, screen, e) => {
-                if (fsm.currentState?.handlePointerMove) {
-                    fsm.currentState.handlePointerMove(worldCoords, screen, e.buttons === 1, fsm.context);
-                }
-            },
-        });
-
-        window.addEventListener("keydown", (e) => {
-            if (e.key === "d" || e.key === "D") {
-                fsm.context.state.debugMode = !fsm.context.state.debugMode;
-                console.log("Debug Mode: " + fsm.context.state.debugMode);
-            }
-            if (e.key === "h" || e.key === "H") {
-                const state = fsm.context.state;
-                state.combatHudMode = (state.combatHudMode + 1) % COMBAT_HUD_MODE_COUNT;
-                console.log("Combat HUD Mode: " + COMBAT_HUD_MODE_LABELS[state.combatHudMode]);
-            }
-            if (e.key === "m" || e.key === "M") {
-                emitMapToggle();
-            }
-        });
+        return activeController;
     }
 }

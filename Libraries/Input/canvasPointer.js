@@ -5,10 +5,7 @@
  */
 export function canvasClientCoords(canvas, clientX, clientY) {
     const rect = canvas.getBoundingClientRect();
-    return {
-        x: clientX - rect.left,
-        y: clientY - rect.top,
-    };
+    return { x: clientX - rect.left, y: clientY - rect.top };
 }
 
 /**
@@ -17,12 +14,15 @@ export function canvasClientCoords(canvas, clientX, clientY) {
  *   screenToWorld: (screenX: number, screenY: number) => { x: number, y: number },
  *   onPointerDown: (world: { x: number, y: number }, screen: { x: number, y: number }, event: PointerEvent) => void,
  * }} handlers
+ * @returns {() => void}
  */
 export function bindCanvasPointerDown(canvas, { screenToWorld, onPointerDown }) {
-    canvas.addEventListener("pointerdown", (e) => {
+    const handler = (e) => {
         const screen = canvasClientCoords(canvas, e.clientX, e.clientY);
         onPointerDown(screenToWorld(screen.x, screen.y), screen, e);
-    });
+    };
+    canvas.addEventListener("pointerdown", handler);
+    return () => canvas.removeEventListener("pointerdown", handler);
 }
 
 /**
@@ -31,10 +31,13 @@ export function bindCanvasPointerDown(canvas, { screenToWorld, onPointerDown }) 
  *   screenToWorld: (screenX: number, screenY: number) => { x: number, y: number },
  *   onPointerMove: (world: { x: number, y: number }, screen: { x: number, y: number }, event: PointerEvent) => void,
  * }} handlers
+ * @returns {() => void}
  */
 export function bindCanvasPointerMove(canvas, { screenToWorld, onPointerMove }) {
-    canvas.addEventListener("pointermove", (e) => {
+    const handler = (e) => {
         const screen = canvasClientCoords(canvas, e.clientX, e.clientY);
         onPointerMove(screenToWorld(screen.x, screen.y), screen, e);
-    });
+    };
+    canvas.addEventListener("pointermove", handler);
+    return () => canvas.removeEventListener("pointermove", handler);
 }
