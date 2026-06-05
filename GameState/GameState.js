@@ -2,7 +2,7 @@ import "../Render/WorldSurfaceBootstrap.js";
 import { FLOW_FIELD_WORKER_URL, getGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 import { Player } from "../Entities/Player.js";
 import { Sidekick } from "../Entities/Sidekick.js";
-import { FlowFieldGrid } from "../Spatial/Navigation/FlowFieldGrid.js";
+import { FlowFieldGrid } from "../Libraries/Math/pathfinding/FlowFieldGrid.js";
 import { HierarchicalNavigator } from "../Spatial/Navigation/HierarchicalNavigator.js";
 import { WorldObstacleGrid } from "../Spatial/World/ObstacleGrid.js";
 import { NavigationService } from "../Spatial/Navigation/NavigationService.js";

@@ -1,40 +1,12 @@
-import { normalizeAngle } from "../../Libraries/Math/Angle.js";
+import { integrateSteering } from "../../Libraries/Motion/integrateSteering.js";
+import { applyVelocityDamping } from "../../Libraries/Motion/applyDamping.js";
 import { getCircleSegmentPenetration } from "../../Libraries/Spatial/geometry/WallGeometry.js";
 import { SatCollision } from "../../Libraries/Spatial/collision/SatCollision.js";
 import { PolygonShape } from "../../Libraries/Spatial/collision/Shapes.js";
 
 export class PhysicsSystem {
     static applyMovement(entity, dt, ignoreSeparation = false, shouldMove = true, alignAngleWithMovement = true) {
-        let finalX = entity.desiredX + (ignoreSeparation || !entity.separation ? 0 : entity.separation.x);
-        let finalY = entity.desiredY + (ignoreSeparation || !entity.separation ? 0 : entity.separation.y);
-
-        const len = Math.hypot(finalX, finalY);
-        if (len > 0) {
-            finalX /= len;
-            finalY /= len;
-        }
-
-        if (alignAngleWithMovement && len > 0) {
-            const targetAngle = Math.atan2(finalY, finalX);
-            let angleDiff = targetAngle - entity.angle;
-            angleDiff = normalizeAngle(angleDiff);
-            entity.angle += angleDiff * Math.min(1, entity.turnSpeed * (dt / 1000));
-        }
-
-        if (shouldMove) {
-            const targetVx = len > 0 ? finalX * entity.speed : 0;
-            const targetVy = len > 0 ? finalY * entity.speed : 0;
-            const accelRate = entity.accelRate;
-            const t = 1 - Math.exp(-accelRate * (dt / 1000));
-            entity.vx += (targetVx - entity.vx) * t;
-            entity.vy += (targetVy - entity.vy) * t;
-            entity.x += entity.vx * (dt / 1000);
-            entity.y += entity.vy * (dt / 1000);
-            if (entity.separation) {
-                entity.x += entity.separation.pushX;
-                entity.y += entity.separation.pushY;
-            }
-        }
+        integrateSteering(entity, dt, { ignoreSeparation, shouldMove, alignAngleWithMovement });
     }
 
     static resolveWallCollisions(entity, spatialFrame, state) {
@@ -165,25 +137,7 @@ export class PhysicsSystem {
     }
 
     static applyFrictionAndDrag(entity, dt, friction = 8.0) {
-        if (entity.vx || entity.vy) {
-            entity.x += entity.vx * (dt / 1000);
-            entity.y += entity.vy * (dt / 1000);
-            const dragFactor = Math.exp(-friction * (dt / 1000));
-            entity.vx *= dragFactor;
-            entity.vy *= dragFactor;
-            if (Math.hypot(entity.vx, entity.vy) < 1) {
-                entity.vx = 0;
-                entity.vy = 0;
-            }
-        }
-        if (entity.angularVelocity) {
-            entity.facing = (entity.facing || 0) + entity.angularVelocity * (dt / 1000);
-            const angularDrag = Math.exp(-friction * 0.8 * (dt / 1000));
-            entity.angularVelocity *= angularDrag;
-            if (Math.abs(entity.angularVelocity) < 0.1) {
-                entity.angularVelocity = 0;
-            }
-        }
+        applyVelocityDamping(entity, dt, { friction });
     }
 
     static applyImpulse(entity, fx, fy) {
