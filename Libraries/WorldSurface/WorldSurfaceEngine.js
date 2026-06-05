@@ -7,12 +7,7 @@ import { getWorldSurfaceSettings, resolveWallVisualHeight } from "./WorldSurface
 import { getSurfaceProfileProvider } from "../Procedural/SurfaceProfileProvider.js";
 import { chunkToWorldOrigin, getChunkSizePx, gridBoundsToChunkRange, worldBoundsToChunkRange } from "../../Spatial/Grid/ChunkGrid.js";
 import { ProgressiveFrameCache } from "./ProgressiveFrameCache.js";
-import {
-    groundChunkCachePrefix,
-    getGroundChunkAnimationInfo,
-    getWallAtlasAnimationInfo,
-    isWallAtlasAnimationEnabled,
-} from "./bake/SurfaceBakeHelpers.js";
+import { groundChunkCachePrefix, getGroundChunkAnimationInfo, getWallAtlasAnimationInfo, isWallAtlasAnimationEnabled } from "./bake/SurfaceBakeHelpers.js";
 import { getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
 import { getWallAtlasCacheInfo } from "./WallSurfaceCache.js";
 import { wallFaceColumns } from "./WallFaceColumns.js";
@@ -59,13 +54,7 @@ export class WorldSurfaceEngine {
                 const chunkCenterY = obstacleGrid.minY + chunkRow * chunkSizePx + chunkSizePx / 2;
                 const profileId = resolveProfileAt(chunkCenterX, chunkCenterY);
                 this.surfaceCache.deleteByPrefix(
-                    "chunk:" + groundChunkCachePrefix(
-                        chunkCol,
-                        chunkRow,
-                        profileId,
-                        getSurfaceProfileRevision(profileId),
-                        getPixelsPerWorldUnit(this.settings),
-                    ).substring(6),
+                    "chunk:" + groundChunkCachePrefix(chunkCol, chunkRow, profileId, getSurfaceProfileRevision(profileId), getPixelsPerWorldUnit(this.settings)).substring(6),
                 );
             }
         }
@@ -74,20 +63,7 @@ export class WorldSurfaceEngine {
     requestWallAtlasBake(width, height, p1, p2, pixelsPerUnit, surfaceBake, frameRange, profileId, wallHeight = null, wallWidth = null) {
         const centerX = (p1.x + p2.x) / 2;
         const centerY = (p1.y + p2.y) / 2;
-        return TileWorkerCoordinator.requestWallAtlasBake({
-            width,
-            height,
-            p1,
-            p2,
-            pixelsPerUnit,
-            seed: surfaceBake.surfaceSeed,
-            profileId,
-            ...frameRange,
-            centerX,
-            centerY,
-            wallHeight,
-            wallWidth,
-        });
+        return TileWorkerCoordinator.requestWallAtlasBake({ width, height, p1, p2, pixelsPerUnit, seed: surfaceBake.surfaceSeed, profileId, ...frameRange, centerX, centerY, wallHeight, wallWidth });
     }
 
     _resolveChunkPayload(state, chunkCol, chunkRow) {
@@ -132,13 +108,7 @@ export class WorldSurfaceEngine {
     getGroundChunkCanvas(chunkCol, chunkRow, state, payload = null) {
         if (!payload) payload = this._resolveChunkPayload(state, chunkCol, chunkRow);
 
-        const key = groundChunkCachePrefix(
-            chunkCol,
-            chunkRow,
-            payload.profileId,
-            getSurfaceProfileRevision(payload.profileId),
-            getPixelsPerWorldUnit(this.settings),
-        );
+        const key = groundChunkCachePrefix(chunkCol, chunkRow, payload.profileId, getSurfaceProfileRevision(payload.profileId), getPixelsPerWorldUnit(this.settings));
         let canvases = this.surfaceCache.get(key);
         if (canvases) return canvases;
 
@@ -152,9 +122,11 @@ export class WorldSurfaceEngine {
             return TileWorkerCoordinator.requestGroundChunkBake(framePayload);
         };
 
-        const bakeBatchFn = isAnimated ? (batch) => {
-            return TileWorkerCoordinator.requestGroundChunkBake({ ...payload, ...batch });
-        } : null;
+        const bakeBatchFn = isAnimated
+            ? (batch) => {
+                  return TileWorkerCoordinator.requestGroundChunkBake({ ...payload, ...batch });
+              }
+            : null;
 
         return this._scheduleAnimatedEntry(key, meta, bakeFirstFn, bakeBatchFn);
     }
@@ -189,9 +161,11 @@ export class WorldSurfaceEngine {
             return this.requestWallAtlasBake(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, surfaceBake, frameRange, profileId, hVal, cellSize);
         };
 
-        const bakeBatchFn = isAnimated ? (batch) => {
-            return this.requestWallAtlasBake(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, surfaceBake, batch, profileId, hVal, cellSize);
-        } : null;
+        const bakeBatchFn = isAnimated
+            ? (batch) => {
+                  return this.requestWallAtlasBake(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, surfaceBake, batch, profileId, hVal, cellSize);
+              }
+            : null;
 
         return this._scheduleAnimatedEntry(key, meta, bakeFirstFn, bakeBatchFn);
     }
@@ -212,25 +186,9 @@ export class WorldSurfaceEngine {
      * @returns {{ key: string, wrappedP1: { x: number, y: number }, wrappedP2: { x: number, y: number }, canvases: object[] } | null}
      */
     getOrEnsureWallAtlas(p1, p2, options) {
-        const {
-            profileId,
-            surfaceBake,
-            ppwu,
-            tileWorldSize,
-            storyCount,
-            wallHeight = null,
-            cacheObj = null,
-        } = options;
+        const { profileId, surfaceBake, ppwu, tileWorldSize, storyCount, wallHeight = null, cacheObj = null } = options;
 
-        const { key, wrappedP1, wrappedP2 } = getWallAtlasCacheInfo(
-            p1,
-            p2,
-            surfaceBake,
-            profileId,
-            ppwu,
-            cacheObj,
-            this.settings,
-        );
+        const { key, wrappedP1, wrappedP2 } = getWallAtlasCacheInfo(p1, p2, surfaceBake, profileId, ppwu, cacheObj, this.settings);
 
         let canvases = this.surfaceCache.get(key);
         if (!canvases) {
