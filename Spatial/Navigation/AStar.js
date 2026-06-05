@@ -1,4 +1,4 @@
-import { MinHeap, IdxMinHeap } from "../../Core/MinHeap.js";
+import { MinHeap, IdxMinHeap } from "../../Libraries/DataStructures/MinHeap.js";
 import { OCTILE_OFFSETS, octileDistance } from "../Grid/GridUtils.js";
 
 const STALE_F_EPSILON = 1e-4;

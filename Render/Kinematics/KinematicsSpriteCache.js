@@ -1,7 +1,10 @@
+import { LruMap } from "../../Libraries/DataStructures/LruMap.js";
+
 export function createKinematicsSpriteCache() {
+    const maxItems = 2000;
     return {
-        cache: new Map(),
-        maxItems: 2000,
+        maxItems,
+        cache: new LruMap(maxItems),
         rotationSteps: 32,
         animFrames: 30,
         tiltSteps: 5,
@@ -28,25 +31,17 @@ export function createKinematicsSpriteCache() {
         },
 
         get(key) {
-            const item = this.cache.get(key);
-            if (item) {
-                item.lastUsed = Date.now();
-                return item.canvas;
-            }
-            return null;
+            const canvas = this.cache.get(key);
+            return canvas ?? null;
         },
 
         set(key, sourceCanvas) {
-            if (this.cache.size >= this.maxItems) {
-                const oldestKey = this.cache.keys().next().value;
-                this.cache.delete(oldestKey);
-            }
             const c = new OffscreenCanvas(sourceCanvas.width, sourceCanvas.height);
             c.drawRatio = sourceCanvas.drawRatio;
             c.verticalShift = sourceCanvas.verticalShift;
             const ctx = c.getContext("2d");
             ctx.drawImage(sourceCanvas, 0, 0);
-            this.cache.set(key, { canvas: c, lastUsed: Date.now() });
+            this.cache.set(key, c);
             return c;
         },
 

@@ -1,7 +1,7 @@
 import { listShippedFloorProfileIds, getFloorProceduralProfile } from "../../Config/floorProceduralConfig.js";
 import { clampBakeFrameRange, frameRangeDedupeSuffix, isFirstFrameRange } from "./AnimationFrameBake.js";
 import { getAnimationFrames } from "./ProfileBakeResolver.js";
-import { MinHeap } from "../../Core/MinHeap.js";
+import { MinHeap } from "../../Libraries/DataStructures/MinHeap.js";
 
 export const MAX_WALLS = 10000;
 export const STRIDE = 6;

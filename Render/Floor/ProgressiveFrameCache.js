@@ -1,9 +1,15 @@
+import { LruMap } from "../../Libraries/DataStructures/LruMap.js";
 import { nextAnimationBatchRange } from "./AnimationFrameBake.js";
 
 export class ProgressiveFrameCache {
     constructor(maxEntries = 512) {
         this.maxEntries = maxEntries;
-        this.cache = new Map();
+        this.cache = new LruMap(maxEntries, {
+            onEvict: (key, value) => {
+                this._closeOrphanedBitmaps(value, null);
+                this._dropEntry(key);
+            },
+        });
         /** Bake/load params keyed with cache entries; cleared on delete, eviction, and clear. */
         this._meta = new Map();
         this._generation = new Map();
@@ -29,14 +35,11 @@ export class ProgressiveFrameCache {
 
     get(key) {
         const value = this.cache.get(key);
-        if (value === undefined) return null;
-        this.cache.delete(key);
-        this.cache.set(key, value);
-        return value;
+        return value === undefined ? null : value;
     }
 
     peek(key) {
-        const value = this.cache.get(key);
+        const value = this.cache.peek(key);
         return value === undefined ? null : value;
     }
 
@@ -64,14 +67,6 @@ export class ProgressiveFrameCache {
         if (existing && existing !== value) {
             this._closeOrphanedBitmaps(existing, value);
         }
-        if (this.cache.size >= this.maxEntries && !this.cache.has(key)) {
-            const oldestKey = this.cache.keys().next().value;
-            const oldestValue = this.cache.get(oldestKey);
-            this._closeOrphanedBitmaps(oldestValue, null);
-            this.cache.delete(oldestKey);
-            this._dropEntry(oldestKey);
-        }
-        this.cache.delete(key);
         this.cache.set(key, value);
     }
 
@@ -86,7 +81,7 @@ export class ProgressiveFrameCache {
     }
 
     delete(key) {
-        const existing = this.cache.get(key);
+        const existing = this.cache.peek(key);
         if (existing !== undefined) {
             this._closeOrphanedBitmaps(existing, null);
             this.cache.delete(key);
