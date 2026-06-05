@@ -1,8 +1,9 @@
 import { circlesOverlap, findFirstCircleSegmentHit } from "../../Libraries/Spatial/collision/overlap.js";
 import { resolveSatPair } from "../../Libraries/Spatial/collision/satPair.js";
 import { shouldResolveActorPushable } from "../../Libraries/Spatial/collision/entityBroadphase.js";
+import { invalidateWallResolveCache } from "../../Libraries/Motion/WallCollisionResolver.js";
 import { wakePushableBody } from "../../Libraries/Motion/pushableSleep.js";
-import { PhysicsSystem } from "../Motion/PhysicsSystem.js";
+import { resolveCirclePair } from "../../Libraries/Spatial/collision/circlePair.js";
 import { enemyDefaults } from "../../Config/Config.js";
 import { PairFilter } from "../../Libraries/Interaction/PairFilter.js";
 import { CHARGE_IMPACT, PROJECTILE_HIT_PICKUP } from "../../Libraries/Interaction/presets/combat.js";
@@ -38,8 +39,7 @@ export class CollisionSystem {
         );
         if (!collisionInfo) return;
 
-        actor._wallResolvedFrame = null;
-        pickup._wallResolvedFrame = null;
+        invalidateWallResolveCache(actor, pickup);
         wakePushableBody(pickup);
     }
 
@@ -55,8 +55,7 @@ export class CollisionSystem {
         );
         if (!collisionInfo) return;
 
-        p1._wallResolvedFrame = null;
-        p2._wallResolvedFrame = null;
+        invalidateWallResolveCache(p1, p2);
         wakePushableBody(p1);
         wakePushableBody(p2);
     }
@@ -109,9 +108,9 @@ export class CollisionSystem {
             if (!this.checkCircle(a, b)) return;
 
             const chargeInvolved = a.attackType === "charge" || b.attackType === "charge";
-            PhysicsSystem.resolveCircleCollision(a, b, {
-                restitution: chargeInvolved ? 0.65 : 0.15,
-            });
+            if (resolveCirclePair(a, b, { restitution: chargeInvolved ? 0.65 : 0.15 })) {
+                invalidateWallResolveCache(a, b);
+            }
 
             if (a.attackType === "charge" && a.currentStateName !== "stunned") {
                 this.applyChargeImpact(a, b, events);

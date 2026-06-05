@@ -6,6 +6,13 @@ import { resolveBodyAgainstWallSegments } from "../Spatial/collision/wallResolut
  * @typedef {(entity: object, hit: object) => void} WallDamageCallback
  */
 
+/** Clear wall-resolve frame cache so entity-pair contacts can re-resolve against walls. */
+export function invalidateWallResolveCache(...entities) {
+    for (let i = 0; i < entities.length; i++) {
+        entities[i]._wallResolvedFrame = null;
+    }
+}
+
 export class WallCollisionResolver {
     /**
      * @param {{ onWallDamage?: WallDamageCallback | null }} [config]

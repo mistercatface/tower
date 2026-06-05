@@ -3,7 +3,7 @@
  *
  * Scope: steering integration, damping, impulses, separation forces.
  * Data contract: Libraries/Agent (AgentPose, MobileAgent, SteeringResult).
- * Out of scope: Render/Kinematics (ragdoll, IK, gore), rigid-body/circle response (Spatial/Motion/PhysicsSystem).
+ * Out of scope: Render/Kinematics (ragdoll, IK, gore).
  *
  * Expansion roadmap:
  * 1. integrateSteering, applyVelocityDamping (done)
@@ -13,7 +13,7 @@
  *
  * Steering / desired-direction writes: Libraries/Agent.
  *
- * Game layer wires WallCollisionResolver damage callbacks; PhysicsSystem keeps rigid-body + circle response.
+ * Game layer wires WallCollisionResolver damage callbacks.
  */
 export { integrateSteering } from "./integrateSteering.js";
 export { applyVelocityDamping } from "./applyDamping.js";
@@ -26,6 +26,6 @@ export { SeparationEngine } from "./SeparationEngine.js";
 export { createSeparationState, updateSeparation } from "./applySeparation.js";
 export { applyMobileLocomotion } from "./applyLocomotion.js";
 export { applyEntityLocomotion } from "./applyEntityLocomotion.js";
-export { WallCollisionResolver } from "./WallCollisionResolver.js";
+export { WallCollisionResolver, invalidateWallResolveCache } from "./WallCollisionResolver.js";
 export { runPushablePhysicsPass, tickPushableSleep, wakeAllPushables } from "./pushablePhysicsPass.js";
 export { SLEEP_FRAMES, SLEEP_ANGULAR_EPS, isPushable, canSleepPushable, wakePushableBody, advancePushableSleep, hasSleepBlockingOverlap, evaluatePushableSleepEligible } from "./pushableSleep.js";
