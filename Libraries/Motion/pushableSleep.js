@@ -1,5 +1,5 @@
 import { PairFilter } from "../Interaction/PairFilter.js";
-import { PUSHABLE_SLEEP_BLOCKER } from "../Interaction/presets/combat.js";
+import { PUSHABLE_SLEEP_BLOCKER } from "../../Games/tower/presets/combat.js";
 import { isMovingEntity, pairBroadphaseOverlap } from "../Spatial/collision/entityBroadphase.js";
 
 /** Consecutive still frames required before a pushable is treated as sleeping. */

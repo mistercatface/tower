@@ -1,7 +1,7 @@
 import { SpatialFrameCore } from "../../Libraries/Spatial/world/SpatialFrameCore.js";
 import { PairFilter } from "../../Libraries/Interaction/PairFilter.js";
 import { populateCombatFrame } from "./populateCombatFrame.js";
-import { ACTOR_PUSHABLE_PAIR, COMBATANT_PAIR, PUSHABLE_PAIR } from "../../Libraries/Interaction/presets/combat.js";
+import { ACTOR_PUSHABLE_PAIR, COMBATANT_PAIR, PUSHABLE_PAIR } from "../../Games/tower/presets/combat.js";
 
 const combatantPairFilter = new PairFilter(COMBATANT_PAIR);
 const actorPushablePairFilter = new PairFilter(ACTOR_PUSHABLE_PAIR);

@@ -2,7 +2,7 @@ import { circlesOverlap, findFirstCircleSegmentHit } from "../../Libraries/Spati
 import { runCollisionPipeline } from "../../Libraries/Spatial/collision/collisionPipeline.js";
 import { enemyDefaults } from "../../Config/Config.js";
 import { PairFilter } from "../../Libraries/Interaction/PairFilter.js";
-import { CHARGE_IMPACT, PROJECTILE_HIT_PICKUP } from "../../Libraries/Interaction/presets/combat.js";
+import { CHARGE_IMPACT, PROJECTILE_HIT_PICKUP } from "../../Games/tower/presets/combat.js";
 
 const projectilePickupFilter = new PairFilter(PROJECTILE_HIT_PICKUP);
 const chargeImpactFilter = new PairFilter(CHARGE_IMPACT);

@@ -1,7 +1,7 @@
 import { inferFaction } from "../../../Combat/Targeting.js";
-import { isPairActive, shouldResolveActorPushable } from "../../Spatial/collision/entityBroadphase.js";
+import { isPairActive, shouldResolveActorPushable } from "../../../Libraries/Spatial/collision/entityBroadphase.js";
 
-/** @typedef {import("../pairRules.js").PairFilterConfig} PairFilterConfig */
+/** @typedef {import("../../../Libraries/Interaction/pairRules.js").PairFilterConfig} PairFilterConfig */
 
 export const combatResolvers = { faction: inferFaction };
 

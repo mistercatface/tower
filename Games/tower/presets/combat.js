@@ -1,4 +1,4 @@
-import { mergePairFilter } from "../pairRules.js";
+import { mergePairFilter } from "../../../Libraries/Interaction/pairRules.js";
 import {
     withCombatResolvers,
     withSpatialPairResolvers,
@@ -22,7 +22,7 @@ import {
     sleepBlockerNeighborAny,
 } from "./combatRules.js";
 
-/** @typedef {import("../pairRules.js").PairFilterConfig} PairFilterConfig */
+/** @typedef {import("../../../Libraries/Interaction/pairRules.js").PairFilterConfig} PairFilterConfig */
 
 /** Hostile combatant pair (matches areHostile). */
 export const COMBAT_HOSTILE_PAIR = /** @type {PairFilterConfig} */ (
@@ -30,7 +30,9 @@ export const COMBAT_HOSTILE_PAIR = /** @type {PairFilterConfig} */ (
 );
 
 /** Locomotion separation between combatants (default SeparationEngine preset). */
-export const COMBAT_SEPARATION = /** @type {PairFilterConfig} */ (mergePairFilter(withCombatResolvers, excludeDeadOther, excludeUndefinedFactionOther, excludeSameTeam, excludeChargeVsPlayer, excludePushableOther));
+export const COMBAT_SEPARATION = /** @type {PairFilterConfig} */ (
+    mergePairFilter(withCombatResolvers, excludeDeadOther, excludeUndefinedFactionOther, excludeSameTeam, excludeChargeVsPlayer, excludePushableOther)
+);
 
 /** Charge impact applies damage on hostile contact. */
 export const CHARGE_IMPACT = COMBAT_HOSTILE_PAIR;
@@ -45,10 +47,14 @@ export const COMBATANT_PAIR = /** @type {PairFilterConfig} */ (mergePairFilter(e
 export const PUSHABLE_SLEEP_BLOCKER = /** @type {PairFilterConfig} */ (mergePairFilter(excludeDeadOther, sleepBlockerNeighborAny));
 
 /** Actor–pushable SAT/circle resolution pairs. */
-export const ACTOR_PUSHABLE_PAIR = /** @type {PairFilterConfig} */ (mergePairFilter(withSpatialPairResolvers, excludeDeadOther, requirePushableOther, requireActorPushableResolve));
+export const ACTOR_PUSHABLE_PAIR = /** @type {PairFilterConfig} */ (
+    mergePairFilter(withSpatialPairResolvers, excludeDeadOther, requirePushableOther, requireActorPushableResolve)
+);
 
 /** Pushable–pushable resolution pairs (deduped, at least one moving). */
-export const PUSHABLE_PAIR = /** @type {PairFilterConfig} */ (mergePairFilter(withSpatialPairResolvers, excludeSameEntity, excludeDeadOther, requirePushableOther, dedupPairById, requirePairActive));
+export const PUSHABLE_PAIR = /** @type {PairFilterConfig} */ (
+    mergePairFilter(withSpatialPairResolvers, excludeSameEntity, excludeDeadOther, requirePushableOther, dedupPairById, requirePairActive)
+);
 
 /** Projectile may hit damageable pickups (not actors). */
 export const PROJECTILE_HIT_PICKUP = /** @type {PairFilterConfig} */ (mergePairFilter(excludeDeadOther, excludeActorOther, requirePickupOnHit));

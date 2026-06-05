@@ -9,7 +9,7 @@ import { getGunDefinition } from "../Config/content/guns.js";
 import { Enemy } from "./Enemy.js";
 import { getPlayerActors } from "../Combat/Targeting.js";
 import { PairFilter } from "../Libraries/Interaction/PairFilter.js";
-import { PROJECTILE_HIT_ACTOR } from "../Libraries/Interaction/presets/combat.js";
+import { PROJECTILE_HIT_ACTOR } from "../Games/tower/presets/combat.js";
 import { RagdollCorpse } from "./RagdollCorpse.js";
 
 const projectileActorFilter = new PairFilter(PROJECTILE_HIT_ACTOR);

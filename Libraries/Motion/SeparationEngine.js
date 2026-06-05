@@ -1,6 +1,6 @@
 import { NEIGHBOR_QUERY_PAD } from "../Spatial/collision/entityBroadphase.js";
 import { PairFilter } from "../Interaction/PairFilter.js";
-import { COMBAT_SEPARATION } from "../Interaction/presets/combat.js";
+import { COMBAT_SEPARATION } from "../../Games/tower/presets/combat.js";
 import {
     accumulateSeparationFromPair,
     clampSeparationAccum,
