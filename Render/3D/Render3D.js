@@ -1,16 +1,17 @@
 /** @typedef {import("../adapters/WorldRenderAdapter.js").WorldRenderInput} WorldRenderInput */
 
-import { floorTileSettings, resolveWallVisualHeight } from "../../Config/Config.js";
+import { getWorldSurfaceSettings, resolveWallVisualHeight } from "../../Libraries/WorldSurface/WorldSurfaceSettings.js";
 import { drawBarrel, drawCrate, drawFireBarrel, drawCrateShard } from "../../Combat/world3d/world3dContent.js";
 import { SpatialQuery } from "../../Spatial/World/SpatialQuery.js";
-import { CAMERA_HEIGHT } from "../../Libraries/Math/IsometricProjection.js";
 import { drawProjectedWallFace, drawProjectedWallRoof } from "./WallFaceTexture.js";
 import { TileWorkerCoordinator, wallGeometryView, wallSharedEdgesView, MAX_WALLS, STRIDE } from "../Floor/TileWorkerCoordinator.js";
 
 const PROP_RECIPES = { barrel: drawBarrel, fire_barrel: drawFireBarrel, crate: drawCrate, crate_shard: drawCrateShard };
 
 export class Render3D {
-    constructor() {
+    /** @param {import("../../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} [settings] */
+    constructor(settings = getWorldSurfaceSettings()) {
+        this.settings = settings;
         this.lastWalls = null;
         this.lastWallCount = 0;
         this.sharedEdgesDirty = true;
@@ -47,7 +48,7 @@ export class Render3D {
             edge.cy = (p1.y + p2.y) / 2;
             edge.outX = edge.cx - seg.x;
             edge.outY = edge.cy - seg.y;
-            edge.wallHeight = seg.wallHeight;
+            edge.wallHeight = seg.wallHeight ?? resolveWallVisualHeight(this.settings.cameraHeight, this.settings);
         }
         
         return seg._cachedEdges;
@@ -85,7 +86,7 @@ export class Render3D {
             damageAlpha,
             textureEnabled,
             cacheObj,
-            wallHeight: seg.wallHeight,
+            wallHeight: seg.wallHeight ?? resolveWallVisualHeight(this.settings.cameraHeight, this.settings),
         });
     }
 
@@ -93,7 +94,7 @@ export class Render3D {
         const edges = this.getSegmentEdges(seg);
         if (!seg.sharedEdges) seg.sharedEdges = [false, false, false, false];
 
-        const wallHeight = seg.wallHeight ?? resolveWallVisualHeight(CAMERA_HEIGHT, floorTileSettings);
+        const wallHeight = seg.wallHeight ?? resolveWallVisualHeight(this.settings.cameraHeight, this.settings);
 
         // 1. Draw side faces
         for (let i = 0; i < 4; i++) {
@@ -108,8 +109,8 @@ export class Render3D {
         }
 
         // 2. Draw the roof (top cap) if the wall height is finite
-        if (wallHeight < CAMERA_HEIGHT) {
-            const alpha = wallHeight / (CAMERA_HEIGHT - wallHeight);
+        if (wallHeight < this.settings.cameraHeight) {
+            const alpha = wallHeight / (this.settings.cameraHeight - wallHeight);
             const baseCorners = [edges[0][0], edges[1][0], edges[2][0], edges[3][0]];
             const topCorners = baseCorners.map(c => {
                 const dx = c.x - px;
@@ -160,7 +161,7 @@ export class Render3D {
             wallGeometryView[offset + 2] = seg.angle;
             wallGeometryView[offset + 3] = seg.size;
             wallGeometryView[offset + 4] = seg.isDead ? 1 : 0;
-            const wallHeight = seg.wallHeight ?? resolveWallVisualHeight(CAMERA_HEIGHT, floorTileSettings);
+            const wallHeight = seg.wallHeight ?? resolveWallVisualHeight(this.settings.cameraHeight, this.settings);
             wallGeometryView[offset + 5] = wallHeight;
             if (!seg.sharedEdges) {
                 seg.sharedEdges = [false, false, false, false];
@@ -189,7 +190,7 @@ export class Render3D {
     getViewQueryBounds(viewport, px, py) {
         const halfW = viewport.cx / viewport.zoom;
         const halfH = viewport.cy / viewport.zoom;
-        const pad = floorTileSettings.viewQueryPadPx;
+        const pad = this.settings.viewQueryPadPx;
         return { minX: px - halfW - pad, minY: py - halfH - pad, maxX: px + halfW + pad, maxY: py + halfH + pad };
     }
 

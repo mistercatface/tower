@@ -1,6 +1,5 @@
-import { floorTileSettings, gridSettings, resolveWallVisualHeight } from "../../Config/Config.js";
+import { getWallVisualHeight, getWorldSurfaceSettings, resolveWallVisualHeight } from "../../Libraries/WorldSurface/WorldSurfaceSettings.js";
 import { drawImageQuad } from "../../Libraries/Canvas/AffineTexture.js";
-import { CAMERA_HEIGHT } from "../../Libraries/Math/IsometricProjection.js";
 /** @typedef {import("../adapters/WorldRenderAdapter.js").FloorBakeContext} FloorBakeContext */
 
 import { isWallFaceAnimationEnabled } from "../Floor/floorTextureProfile.js";
@@ -16,9 +15,7 @@ const sCorner1 = { x: 0, y: 0 };
 const sCorner2 = { x: 0, y: 0 };
 const sCorner3 = { x: 0, y: 0 };
 
-export function getWallVisualHeight() {
-    return resolveWallVisualHeight(CAMERA_HEIGHT, floorTileSettings);
-}
+export { getWallVisualHeight };
 
 export const sharedScratchFace = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
 
@@ -36,8 +33,9 @@ export function computeProjectedFace(p1, p2, px, py, wallHeight = getWallVisualH
 
     const dist1 = Math.hypot(p1.x - px, p1.y - py);
     const dist2 = Math.hypot(p2.x - px, p2.y - py);
-    const clampedHeight = Math.min(wallHeight, CAMERA_HEIGHT - 1);
-    const alpha = clampedHeight / (CAMERA_HEIGHT - clampedHeight);
+    const { cameraHeight } = getWorldSurfaceSettings();
+    const clampedHeight = Math.min(wallHeight, cameraHeight - 1);
+    const alpha = clampedHeight / (cameraHeight - clampedHeight);
 
     out.proj1X = p1.x + Math.cos(angle1) * dist1 * alpha;
     out.proj1Y = p1.y + Math.sin(angle1) * dist1 * alpha;
@@ -56,7 +54,7 @@ export function traceProjectedFace(ctx, p1, p2, face) {
     ctx.closePath();
 }
 
-function getViewportWorldBounds(viewport, padding = floorTileSettings.viewPaddingPx) {
+function getViewportWorldBounds(viewport, padding = getWorldSurfaceSettings().viewPaddingPx) {
     if (!viewport) return null;
     return viewport.getWorldBounds(viewport.cx * 2, viewport.cy * 2, padding);
 }
@@ -71,7 +69,7 @@ function rowBoundsIntersects(bl, br, tl, tr, bounds) {
 }
 
 function getWallTextureStoryCount() {
-    return floorTileSettings.wallTextureStories;
+    return getWorldSurfaceSettings().wallTextureStories;
 }
 
 /** World-aligned slices along the wall base edge (stable when the camera moves). */
@@ -124,17 +122,18 @@ function resolveWallProfileId(floorBake, wallCx, wallCy, cacheObj) {
 }
 
 function drawFaceTexture(ctx, p1, p2, face, floorTiles, floorBake, viewer, viewport, wallHeight, fillStyle, cacheObj = null) {
-    const tileWorldSize = floorTileSettings.tileWorldSize ?? gridSettings.cellSize;
+    const settings = floorTiles.settings ?? getWorldSurfaceSettings();
+    const tileWorldSize = settings.tileWorldSize ?? settings.cellSize;
     if (!floorTiles || !floorBake) return;
 
     const wallCx = cacheObj && cacheObj.cx !== undefined ? cacheObj.cx : (p1.x + p2.x) * 0.5;
     const wallCy = cacheObj && cacheObj.cy !== undefined ? cacheObj.cy : (p1.y + p2.y) * 0.5;
 
     const profileId = resolveWallProfileId(floorBake, wallCx, wallCy, cacheObj);
-    const ppwu = getPixelsPerWorldUnit();
+    const ppwu = getPixelsPerWorldUnit(settings);
     const storyCount = getWallTextureStoryCount();
 
-    const { key: wallCacheKey, wrappedP1, wrappedP2 } = getWallCacheInfo(p1, p2, floorBake, profileId, ppwu, cacheObj);
+    const { key: wallCacheKey, wrappedP1, wrappedP2 } = getWallCacheInfo(p1, p2, floorBake, profileId, ppwu, cacheObj, settings);
 
     // The cache always holds the latest (possibly merged) frame array for this
     // key, so a single lookup per frame keeps us current without local memos.
@@ -161,11 +160,15 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, floorBake, viewer, viewp
     }
 
     const worldBounds = getViewportWorldBounds(viewport);
-    const bleedPx = floorTileSettings.wallTextureBleedPx ?? 1;
+    const bleedPx = settings.wallTextureBleedPx ?? 1;
 
-    const clampedHeight = Math.min(wallHeight, CAMERA_HEIGHT - 1);
-    const alphaMax = clampedHeight / (CAMERA_HEIGHT - clampedHeight);
-    if (alphaMax <= 0) return;
+    const clampedHeight = Math.min(wallHeight, settings.cameraHeight - 1);
+    const alphaMax = clampedHeight / (settings.cameraHeight - clampedHeight);
+    if (alphaMax <= 0) {
+        ctx.fillStyle = fillStyle;
+        ctx.fill();
+        return;
+    }
 
     ctx.save();
     ctx.imageSmoothingEnabled = shouldSmoothTextureDownsample();
@@ -177,7 +180,7 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, floorBake, viewer, viewp
 
     const subdivScale = Math.max(
         0.05,
-        Math.min(1.0, 1.0 - (dist - floorTileSettings.wallSubdivNearPx) / floorTileSettings.wallSubdivFarPx)
+        Math.min(1.0, 1.0 - (dist - settings.wallSubdivNearPx) / settings.wallSubdivFarPx)
     );
     const SUBDIV_X = Math.max(1, Math.min(2, Math.ceil((edgeLen / tileWorldSize) * subdivScale)));
     const SUBDIV_Y = Math.max(1, Math.min(2, Math.ceil((storyCount / 2) * subdivScale)));
@@ -188,11 +191,11 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, floorBake, viewer, viewp
         const bottomZ = row * (wallHeight / SUBDIV_Y);
         let topZ = (row + 1) * (wallHeight / SUBDIV_Y);
 
-        if (bottomZ >= CAMERA_HEIGHT) break;
-        if (topZ >= CAMERA_HEIGHT) topZ = CAMERA_HEIGHT - 1;
+        if (bottomZ >= settings.cameraHeight) break;
+        if (topZ >= settings.cameraHeight) topZ = settings.cameraHeight - 1;
 
-        const alphaBottom = bottomZ / (CAMERA_HEIGHT - bottomZ);
-        const alphaTop = topZ / (CAMERA_HEIGHT - topZ);
+        const alphaBottom = bottomZ / (settings.cameraHeight - bottomZ);
+        const alphaTop = topZ / (settings.cameraHeight - topZ);
 
         const v0 = alphaBottom / alphaMax;
         const v1 = alphaTop / alphaMax;
@@ -224,12 +227,13 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, floorBake, viewer, viewp
 export function drawProjectedWallRoof(ctx, topCorners, seg, wallColor, floorTiles, floorBake, viewport, cacheObj = null) {
     if (!floorTiles) return;
 
-    const wallHeight = seg.wallHeight ?? resolveWallVisualHeight(CAMERA_HEIGHT, floorTileSettings);
+    const settings = floorTiles.settings ?? getWorldSurfaceSettings();
+    const wallHeight = seg.wallHeight ?? resolveWallVisualHeight(settings.cameraHeight, settings);
     const wallCx = cacheObj && cacheObj.cx !== undefined ? cacheObj.cx : seg.x;
     const wallCy = cacheObj && cacheObj.cy !== undefined ? cacheObj.cy : seg.y;
 
     const profileId = resolveWallProfileId(floorBake, wallCx, wallCy, cacheObj);
-    const ppwu = getPixelsPerWorldUnit();
+    const ppwu = getPixelsPerWorldUnit(settings);
     const storyCount = getWallTextureStoryCount();
 
     const edges = seg._cachedEdges;
@@ -237,11 +241,11 @@ export function drawProjectedWallRoof(ctx, topCorners, seg, wallColor, floorTile
     const p1 = edges[0][0];
     const p2 = edges[0][1];
 
-    const { key: wallCacheKey, wrappedP1, wrappedP2 } = getWallCacheInfo(p1, p2, floorBake, profileId, ppwu, cacheObj);
+    const { key: wallCacheKey, wrappedP1, wrappedP2 } = getWallCacheInfo(p1, p2, floorBake, profileId, ppwu, cacheObj, settings);
 
     let flatCanvases = floorTiles.surfaceCache.get(wallCacheKey);
     if (!flatCanvases) {
-        const tileWorldSize = floorTileSettings.tileWorldSize ?? gridSettings.cellSize;
+        const tileWorldSize = settings.tileWorldSize ?? settings.cellSize;
         const columns = wallFaceColumns(wrappedP1, wrappedP2, tileWorldSize);
         if (columns.length === 0) return;
         flatCanvases = floorTiles.ensureWallFace(wallCacheKey, wrappedP1, wrappedP2, columns, storyCount, floorBake, tileWorldSize, wallHeight);
@@ -303,22 +307,24 @@ export function drawProjectedWallFace(ctx, p1, p2, px, py, fillStyle, floorTiles
 }
 
 export function preloadProjectedWallFace(p1, p2, floorTiles, floorBake, cacheObj = null) {
-    const tileWorldSize = floorTileSettings.tileWorldSize ?? gridSettings.cellSize;
+    const settings = floorTiles?.settings ?? getWorldSurfaceSettings();
+    const tileWorldSize = settings.tileWorldSize ?? settings.cellSize;
     if (!floorTiles || !floorBake) return;
 
     const wallCx = cacheObj && cacheObj.cx !== undefined ? cacheObj.cx : (p1.x + p2.x) * 0.5;
     const wallCy = cacheObj && cacheObj.cy !== undefined ? cacheObj.cy : (p1.y + p2.y) * 0.5;
     const profileId = resolveWallProfileId(floorBake, wallCx, wallCy, cacheObj);
-    const ppwu = getPixelsPerWorldUnit();
+    const ppwu = getPixelsPerWorldUnit(settings);
     const storyCount = getWallTextureStoryCount();
+    const wallHeight = getWallVisualHeight(settings);
 
-    const { key: wallCacheKey, wrappedP1, wrappedP2 } = getWallCacheInfo(p1, p2, floorBake, profileId, ppwu, cacheObj);
+    const { key: wallCacheKey, wrappedP1, wrappedP2 } = getWallCacheInfo(p1, p2, floorBake, profileId, ppwu, cacheObj, settings);
 
     let flatCanvases = floorTiles.surfaceCache.get(wallCacheKey);
     if (!flatCanvases) {
         const columns = wallFaceColumns(wrappedP1, wrappedP2, tileWorldSize);
         if (columns.length === 0) return;
-        floorTiles.ensureWallFace(wallCacheKey, wrappedP1, wrappedP2, columns, storyCount, floorBake, tileWorldSize);
+        floorTiles.ensureWallFace(wallCacheKey, wrappedP1, wrappedP2, columns, storyCount, floorBake, tileWorldSize, wallHeight);
     }
 }
 

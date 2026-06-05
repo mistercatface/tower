@@ -1,4 +1,4 @@
-import { floorTileSettings, gridSettings } from "../../Config/Config.js";
+import { getWorldSurfaceSettings } from "../../Libraries/WorldSurface/WorldSurfaceSettings.js";
 import { composeFloorImage } from "../../Libraries/Procedural/FloorTextureComposer.js";
 import { getFloorProfileProvider } from "../../Libraries/Procedural/FloorProfileProvider.js";
 import { buildMapContext, createWallFaceAxes, writePixelToSamples } from "./SurfaceCoordinateMapper.js";
@@ -41,7 +41,7 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, see
     const profile = resolvePaintProfile(profileOrId);
 
     const isWall = options.isWall === true;
-    const cellSize = options.cellSize ?? gridSettings.cellSize;
+    const cellSize = options.cellSize ?? getWorldSurfaceSettings().cellSize;
 
     let surfaceKind = "floor";
     let wallFace = null;
@@ -112,8 +112,8 @@ export function bakeWallFaceCanvas(width, height, p1, p2, pixelsPerUnit, seed, p
     return canvas;
 }
 
-function chunkWorldOrigin(chunkCol, chunkRow, minX, minY, cellsPerChunk = floorTileSettings.cellsPerChunk) {
-    const cellSize = gridSettings.cellSize;
+function chunkWorldOrigin(chunkCol, chunkRow, minX, minY, cellsPerChunk = getWorldSurfaceSettings().cellsPerChunk) {
+    const cellSize = getWorldSurfaceSettings().cellSize;
     const startCol = chunkCol * cellsPerChunk;
     const startRow = chunkRow * cellsPerChunk;
     return { x: minX + startCol * cellSize, y: minY + startRow * cellSize, bakeSize: bakePixelsForWorldSpan(cellSize * cellsPerChunk) };
@@ -129,7 +129,7 @@ export function bakeFloorChunkCanvases(payload) {
     const profileId = payload.profileId ?? provider.defaultId;
     const baseProfile = provider.getProfile(profileId);
     const { frameStart, frameCount } = payload;
-    const { chunkCol, chunkRow, minX, minY, seed, cellsPerChunk = floorTileSettings.cellsPerChunk } = payload;
+    const { chunkCol, chunkRow, minX, minY, seed, cellsPerChunk = getWorldSurfaceSettings().cellsPerChunk } = payload;
     const { x: chunkWorldX, y: chunkWorldY, bakeSize } = chunkWorldOrigin(chunkCol, chunkRow, minX, minY, cellsPerChunk);
     const useResolver = chunkNeedsRuntimeResolve(baseProfile);
     const canvases = [];

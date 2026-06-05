@@ -18,7 +18,3 @@ export const floorTileSettings = {
     floorAnimationsOn: false,
     wallAnimationsOn: false,
 };
-
-export function resolveWallVisualHeight(cameraHeight, settings = floorTileSettings) {
-    return settings.wallVisualHeight ?? (cameraHeight - settings.wallHeightInset);
-}

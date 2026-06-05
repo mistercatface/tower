@@ -1,15 +1,15 @@
-import { floorTileSettings } from "../../Config/Config.js";
+import { getWorldSurfaceSettings } from "../../Libraries/WorldSurface/WorldSurfaceSettings.js";
 
-export function getPixelsPerWorldUnit() {
-    return floorTileSettings.tileResolution / floorTileSettings.tileWorldSize;
+export function getPixelsPerWorldUnit(settings = getWorldSurfaceSettings()) {
+    return settings.tileResolution / settings.tileWorldSize;
 }
 
-export function bakePixelsForWorldSpan(worldSpan) {
-    return Math.max(1, Math.round(worldSpan * getPixelsPerWorldUnit()));
+export function bakePixelsForWorldSpan(worldSpan, settings = getWorldSurfaceSettings()) {
+    return Math.max(1, Math.round(worldSpan * getPixelsPerWorldUnit(settings)));
 }
 
-export function shouldSmoothTextureDownsample() {
-    return getPixelsPerWorldUnit() > 1;
+export function shouldSmoothTextureDownsample(settings = getWorldSurfaceSettings()) {
+    return getPixelsPerWorldUnit(settings) > 1;
 }
 
 export function drawBakedTexture(ctx, canvas, destX, destY, destWorldW, destWorldH) {

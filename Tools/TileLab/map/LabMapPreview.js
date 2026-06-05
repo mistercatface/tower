@@ -1,3 +1,4 @@
+import "../../../Render/WorldSurfaceBootstrap.js";
 import { GamePhase, isWorldScene } from "../../../GameState/GamePhase.js";
 import { Render3D } from "../../../Render/3D/Render3D.js";
 import { buildWorldRenderInput } from "../../../Render/adapters/WorldRenderAdapter.js";

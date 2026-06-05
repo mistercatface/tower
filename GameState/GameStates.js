@@ -9,7 +9,7 @@ import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { Projectile } from "../Entities/Projectile.js";
 import { showNodeConfirmModal, requestUiUpdate } from "../Core/EventSystem.js";
 import { Explosion } from "../Entities/Explosion/Explosion.js";
-import { navigationSettings, NAV_PROFILES, gridSettings, debugStartNodeInspectionImmediate, floorTileSettings } from "../Config/Config.js";
+import { navigationSettings, NAV_PROFILES, gridSettings, debugStartNodeInspectionImmediate } from "../Config/Config.js";
 import { resolveMoveTarget, resolveRepositionTarget } from "../Spatial/Navigation/PathClearance.js";
 import { getStartNodeLayout } from "../Generator/StartNodeBuilding.js";
 import { Pools } from "../Core/Pools.js";

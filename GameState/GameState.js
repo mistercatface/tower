@@ -1,3 +1,4 @@
+import "../Render/WorldSurfaceBootstrap.js";
 import { Player } from "../Entities/Player.js";
 import { Sidekick } from "../Entities/Sidekick.js";
 import { FlowFieldGrid } from "../Spatial/Navigation/FlowFieldGrid.js";

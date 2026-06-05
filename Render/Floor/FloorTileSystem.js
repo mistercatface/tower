@@ -1,5 +1,4 @@
-import { combatVisualSettings, floorTileSettings, resolveWallVisualHeight } from "../../Config/Config.js";
-import { CAMERA_HEIGHT } from "../../Libraries/Math/IsometricProjection.js";
+import { getWorldSurfaceSettings, resolveWallVisualHeight } from "../../Libraries/WorldSurface/WorldSurfaceSettings.js";
 import { isWorldScene } from "../../GameState/GamePhase.js";
 import { getFloorProfileProvider } from "../../Libraries/Procedural/FloorProfileProvider.js";
 import { chunkToWorldOrigin, getChunkSizePx, gridBoundsToChunkRange, worldBoundsToChunkRange } from "../../Spatial/Grid/ChunkGrid.js";
@@ -11,8 +10,10 @@ import { animationFrameIndex } from "./ProfileBakeResolver.js";
 import { bakeFrameRange, nextAnimationBatchRange } from "./AnimationFrameBake.js";
 
 export class FloorTileSystem {
-    constructor() {
-        this.surfaceCache = new ProgressiveFrameCache(floorTileSettings.maxCachedSurfaces);
+    /** @param {import("../../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} [settings] */
+    constructor(settings = getWorldSurfaceSettings()) {
+        this.settings = settings;
+        this.surfaceCache = new ProgressiveFrameCache(settings.maxCachedSurfaces);
         this.proceduralProfileId = null;
         this._globalGeneration = 0;
     }
@@ -21,7 +22,7 @@ export class FloorTileSystem {
         this.surfaceCache.clear();
     }
 
-    invalidateGridBounds(bounds, state, cellsPerChunk = floorTileSettings.cellsPerChunk) {
+    invalidateGridBounds(bounds, state, cellsPerChunk = this.settings.cellsPerChunk) {
         if (!bounds) return;
         const obstacleGrid = state.obstacleGrid;
         const chunkSizePx = obstacleGrid.cellSize * cellsPerChunk;
@@ -58,7 +59,7 @@ export class FloorTileSystem {
     _buildChunkPayload(state, chunkCol, chunkRow) {
         const payload = buildFloorChunkBakePayload(state, chunkCol, chunkRow);
         const obstacleGrid = state.obstacleGrid;
-        const cellsPerChunk = floorTileSettings.cellsPerChunk;
+        const cellsPerChunk = this.settings.cellsPerChunk;
         if (obstacleGrid) {
             const chunkSizePx = obstacleGrid.cellSize * cellsPerChunk;
             payload.centerX = obstacleGrid.minX + chunkCol * chunkSizePx + chunkSizePx / 2;
@@ -123,13 +124,13 @@ export class FloorTileSystem {
         if (edgeLen < 0.001 || columns.length === 0) return null;
 
         const cellSize = floorBake.obstacleCellSize ?? 32;
-        const ppwu = getPixelsPerWorldUnit();
+        const ppwu = getPixelsPerWorldUnit(this.settings);
         const pixelsPerUnit = (cellSize / tileWorldSize) * ppwu;
 
         const canvasWidth = Math.max(1, Math.ceil(edgeLen * pixelsPerUnit));
         
         // Unrolled height = 2 * H + W
-        const hVal = wallHeight ?? resolveWallVisualHeight(CAMERA_HEIGHT, floorTileSettings);
+        const hVal = wallHeight ?? resolveWallVisualHeight(this.settings.cameraHeight, this.settings);
         const unrolledHeight = 2 * hVal + cellSize;
         const canvasHeight = Math.max(1, Math.ceil(unrolledHeight * pixelsPerUnit));
 
@@ -159,13 +160,13 @@ export class FloorTileSystem {
         }
 
         const obstacleGrid = state.obstacleGrid;
-        const cellsPerChunk = floorTileSettings.cellsPerChunk;
+        const cellsPerChunk = this.settings.cellsPerChunk;
         const chunkSizePx = getChunkSizePx(obstacleGrid.cellSize, cellsPerChunk);
-        const bounds = viewport.getWorldBounds(ctx.canvas?.width ?? viewport.cx * 2, ctx.canvas?.height ?? viewport.cy * 2, floorTileSettings.viewPaddingPx);
+        const bounds = viewport.getWorldBounds(ctx.canvas?.width ?? viewport.cx * 2, ctx.canvas?.height ?? viewport.cy * 2, this.settings.viewPaddingPx);
 
         TileWorkerCoordinator.updateFocus(viewport.x, viewport.y);
 
-        ctx.fillStyle = combatVisualSettings.floorShadow;
+        ctx.fillStyle = this.settings.floorShadow;
         ctx.fillRect(bounds.minX, bounds.minY, bounds.maxX - bounds.minX, bounds.maxY - bounds.minY);
 
         const range = worldBoundsToChunkRange(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY, obstacleGrid.minX, obstacleGrid.minY, chunkSizePx);
@@ -202,8 +203,8 @@ export class FloorTileSystem {
     }
 }
 
-export function buildWallCacheKey(p1, p2, floorBake, profileId, ppwu, cacheObj = null) {
-    const chunkWorldSize = floorTileSettings.chunkWorldSize || 128 * 16;
+export function buildWallCacheKey(p1, p2, floorBake, profileId, ppwu, cacheObj = null, settings = getWorldSurfaceSettings()) {
+    const chunkWorldSize = settings.chunkWorldSize || 128 * settings.cellSize;
     const wx1 = ((p1.x % chunkWorldSize) + chunkWorldSize) % chunkWorldSize;
     const wy1 = ((p1.y % chunkWorldSize) + chunkWorldSize) % chunkWorldSize;
     const dx = p2.x - p1.x;
@@ -217,7 +218,7 @@ export function buildWallCacheKey(p1, p2, floorBake, profileId, ppwu, cacheObj =
     const ky2 = wy2.toFixed(1);
     const seed = floorBake.floorTileSeed;
     const rev = TileWorkerCoordinator.getProfileRevision(profileId);
-    const wallHeight = cacheObj?.wallHeight ?? 0;
+    const wallHeight = cacheObj?.wallHeight ?? resolveWallVisualHeight(settings.cameraHeight, settings);
     const key = `wall:${rev}:${ppwu}:${profileId}:${seed}:${wallHeight}:${kx1},${ky1}-${kx2},${ky2}`;
 
     return { key, wrappedP1: { x: wx1, y: wy1 }, wrappedP2: { x: wx2, y: wy2 } };
@@ -235,23 +236,34 @@ export function invalidateWallSurfaceKeyMemos(state) {
             delete edge._wkPpwu;
             delete edge._wkRev;
             delete edge._wkSeed;
+            delete edge._wkWallHeight;
         }
     }
 }
 
-export function getWallCacheInfo(p1, p2, floorBake, profileId, ppwu, cacheObj) {
+export function getWallCacheInfo(p1, p2, floorBake, profileId, ppwu, cacheObj, settings = getWorldSurfaceSettings()) {
     const seed = floorBake.floorTileSeed;
     const rev = TileWorkerCoordinator.getProfileRevision(profileId);
-    if (cacheObj && cacheObj._wkInfo && cacheObj._wkProfileId === profileId && cacheObj._wkPpwu === ppwu && cacheObj._wkRev === rev && cacheObj._wkSeed === seed) {
+    const wallHeightKey = cacheObj?.wallHeight ?? resolveWallVisualHeight(settings.cameraHeight, settings);
+    if (
+        cacheObj
+        && cacheObj._wkInfo
+        && cacheObj._wkProfileId === profileId
+        && cacheObj._wkPpwu === ppwu
+        && cacheObj._wkRev === rev
+        && cacheObj._wkSeed === seed
+        && cacheObj._wkWallHeight === wallHeightKey
+    ) {
         return cacheObj._wkInfo;
     }
-    const info = buildWallCacheKey(p1, p2, floorBake, profileId, ppwu, cacheObj);
+    const info = buildWallCacheKey(p1, p2, floorBake, profileId, ppwu, cacheObj, settings);
     if (cacheObj) {
         cacheObj._wkInfo = info;
         cacheObj._wkProfileId = profileId;
         cacheObj._wkPpwu = ppwu;
         cacheObj._wkRev = rev;
         cacheObj._wkSeed = seed;
+        cacheObj._wkWallHeight = wallHeightKey;
     }
     return info;
 }

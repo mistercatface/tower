@@ -1,3 +1,4 @@
+import "./Render/WorldSurfaceBootstrap.js";
 import { installGameFloorProfileProvider } from "./Config/procedural/bootstrap.js";
 import { state } from "./GameState/GameState.js";
 import { createUpgrades, createBaseUpgrades } from "./Progression/Upgrades.js";

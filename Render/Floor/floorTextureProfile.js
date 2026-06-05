@@ -1,15 +1,15 @@
-import { floorTileSettings } from "../../Config/Config.js";
+import { getWorldSurfaceSettings } from "../../Libraries/WorldSurface/WorldSurfaceSettings.js";
 import { getFloorProfileProvider } from "../../Libraries/Procedural/FloorProfileProvider.js";
 import { getAnimationFrames } from "./ProfileBakeResolver.js";
 import { getPixelsPerWorldUnit } from "./floorTextureResolution.js";
 import { getProfileRevision } from "./TileWorkerCoordinator.js";
 
-export function isFloorChunkAnimationEnabled(profile) {
-    return Boolean(profile?.animation) && floorTileSettings.floorAnimationsOn !== false;
+export function isFloorChunkAnimationEnabled(profile, settings = getWorldSurfaceSettings()) {
+    return Boolean(profile?.animation) && settings.floorAnimationsOn !== false;
 }
 
-export function isWallFaceAnimationEnabled(profile) {
-    return Boolean(profile?.animation) && floorTileSettings.wallAnimationsOn !== false;
+export function isWallFaceAnimationEnabled(profile, settings = getWorldSurfaceSettings()) {
+    return Boolean(profile?.animation) && settings.wallAnimationsOn !== false;
 }
 
 export function getFloorChunkAnimationInfo(profile) {
@@ -70,7 +70,7 @@ export function floorChunkCachePrefix(chunkCol, chunkRow, profileId) {
 /** Worker-serializable chunk bake payload from live game state. */
 export function buildFloorChunkBakePayload(state, chunkCol, chunkRow) {
     const obstacleGrid = state.obstacleGrid;
-    const cellsPerChunk = floorTileSettings.cellsPerChunk;
+    const cellsPerChunk = getWorldSurfaceSettings().cellsPerChunk;
     const chunkSizePx = obstacleGrid.cellSize * cellsPerChunk;
     const chunkCenterX = obstacleGrid.minX + chunkCol * chunkSizePx + chunkSizePx / 2;
     const chunkCenterY = obstacleGrid.minY + chunkRow * chunkSizePx + chunkSizePx / 2;

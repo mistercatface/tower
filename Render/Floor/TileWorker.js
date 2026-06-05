@@ -1,3 +1,4 @@
+import "../WorldSurfaceBootstrap.js";
 import { installGameFloorProfileProvider } from "../../Config/procedural/bootstrap.js";
 import { getFloorProfileProvider } from "../../Libraries/Procedural/FloorProfileProvider.js";
 import { SharedEdgeSolver } from "../../Libraries/Math/SharedEdgeSolver.js";
