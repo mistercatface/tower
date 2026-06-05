@@ -1,13 +1,19 @@
 import { FloatingText } from "../Render/FloatingText.js";
 import { showNodeConfirmModal, requestUiUpdate } from "../Core/EventSystem.js";
 import { gridSettings, debugStartNodeInspectionImmediate } from "../Config/Config.js";
-import { resolveRepositionTarget } from "../Libraries/Pathfinding/PathClearance.js";
 import { getStartNodeLayout } from "../Generator/StartNodeBuilding.js";
 import { Pools } from "../Core/Pools.js";
 import { inspectBridge } from "../Combat/inspect/InspectBridge.js";
 import { beginStartNodeIntro, shouldRunStartNodeIntro } from "../Combat/StartNodeIntro.js";
 import { findStartNodeInspectionPickup, beginStartNodeInspection, shouldEnterStartNodeInspection } from "../Combat/inspect/StartNodeInspection.js";
-import { beginMapTravel, runPersistentSectorEnterOnNode, runCombatTick, runInspectorTick } from "../Systems/Combat/index.js";
+import {
+    beginMapTravel,
+    runPersistentSectorEnterOnNode,
+    runCombatTick,
+    runInspectorTick,
+    handlePlayerRepositionTap,
+    handlePlayerRepositionDrag,
+} from "../Systems/Combat/index.js";
 
 export class MapState {
     onEnter(ctx) {
@@ -96,54 +102,21 @@ export class CombatState {
     handleInteraction(worldCoords, isDoubleTap, ctx) {
         if (ctx.state.mapTargetNodeId != null) return;
         if (inspectBridge.isOpen()) return;
-        if (ctx.state.player.currentState && ctx.state.player.currentState.blocksInput) return;
+        if (ctx.state.player.currentState?.blocksInput) return;
         if (ctx.state.abilities["Shoot"]) {
             ctx.state.player.manualFire(ctx.state, worldCoords.x, worldCoords.y);
             return;
         }
-        if (!ctx.state.player.canReposition(ctx.state)) return;
-        const target = resolveRepositionTarget(ctx.state.obstacleGrid, worldCoords.x, worldCoords.y, ctx.state.player.radius);
-        if (!target) return;
-        const targetCell = target.col != null ? { col: target.col, row: target.row } : null;
-        let isDiving = false;
-        ctx.upgrades
-            .filter((u) => u.isAbility && u.triggerType === "double_tap_move" && ctx.state.abilities[u.id])
-            .forEach((upg) => {
-                if (ctx.state.scheduler.getTimeRemaining(ctx.state.abilityTimers[upg.id].activeId) > 0) {
-                    isDiving = true;
-                }
-            });
-        if (isDiving) {
-            ctx.state.player.queueTarget(target.x, target.y, targetCell);
-        } else {
-            ctx.state.player.setTarget(target.x, target.y, ctx.state, targetCell);
-            ctx.state.navigation.rebuildPlayerFlowField(target.x, target.y);
-            if (isDoubleTap) {
-                ctx.upgrades
-                    .filter((u) => u.isAbility && u.triggerType === "double_tap_move" && ctx.state.abilities[u.id])
-                    .forEach((upg) => {
-                        if (ctx.state.scheduler.getTimeRemaining(ctx.state.abilityTimers[upg.id].cooldownId) <= 0) {
-                            ctx.state.abilityTimers[upg.id].activeId = ctx.state.scheduler.schedule(upg.activeDuration);
-                            ctx.state.abilityTimers[upg.id].cooldownId = ctx.state.scheduler.schedule(upg.cooldown);
-                            if (upg.onTrigger) upg.onTrigger(ctx.state);
-                        }
-                    });
-            }
-        }
+        handlePlayerRepositionTap(ctx, worldCoords, isDoubleTap);
     }
 
     handlePointerMove(worldCoords, screenCoords, isPrimaryDown, ctx) {
         if (!isPrimaryDown) return;
         if (ctx.state.mapTargetNodeId != null) return;
         if (inspectBridge.isOpen()) return;
-        if (ctx.state.player.currentState && ctx.state.player.currentState.blocksInput) return;
+        if (ctx.state.player.currentState?.blocksInput) return;
         if (ctx.state.abilities["Shoot"]) return;
-        if (!ctx.state.player.canReposition(ctx.state)) return;
-        const target = resolveRepositionTarget(ctx.state.obstacleGrid, worldCoords.x, worldCoords.y, ctx.state.player.radius);
-        if (!target) return;
-        const targetCell = target.col != null ? { col: target.col, row: target.row } : null;
-        ctx.state.player.setTarget(target.x, target.y, ctx.state, targetCell);
-        ctx.state.navigation.rebuildPlayerFlowField(target.x, target.y);
+        handlePlayerRepositionDrag(ctx, worldCoords);
     }
 }
 
@@ -173,56 +146,21 @@ export class InspectorState {
         if (inspectBridge.isOpen()) return;
         if (ctx.state.player.currentState?.blocksInput) return;
 
-        const inspectTarget = findStartNodeInspectionPickup(ctx.state, worldCoords.x, worldCoords.y);
-        if (inspectTarget) {
-            inspectBridge.open(inspectTarget, null, ctx.state);
-            return;
-        }
-
-        if (!ctx.state.player.canReposition(ctx.state)) return;
-
-        const target = resolveRepositionTarget(ctx.state.obstacleGrid, worldCoords.x, worldCoords.y, ctx.state.player.radius);
-        if (!target) return;
-
-        const targetCell = target.col != null ? { col: target.col, row: target.row } : null;
-
-        let isDiving = false;
-        ctx.upgrades
-            .filter((u) => u.isAbility && u.triggerType === "double_tap_move" && ctx.state.abilities[u.id])
-            .forEach((upg) => {
-                if (ctx.state.scheduler.getTimeRemaining(ctx.state.abilityTimers[upg.id].activeId) > 0) {
-                    isDiving = true;
-                }
-            });
-        if (isDiving) {
-            ctx.state.player.queueTarget(target.x, target.y, targetCell);
-        } else {
-            ctx.state.player.setTarget(target.x, target.y, ctx.state, targetCell);
-            ctx.state.navigation.rebuildPlayerFlowField(target.x, target.y);
-            if (isDoubleTap) {
-                ctx.upgrades
-                    .filter((u) => u.isAbility && u.triggerType === "double_tap_move" && ctx.state.abilities[u.id])
-                    .forEach((upg) => {
-                        if (ctx.state.scheduler.getTimeRemaining(ctx.state.abilityTimers[upg.id].cooldownId) <= 0) {
-                            ctx.state.abilityTimers[upg.id].activeId = ctx.state.scheduler.schedule(upg.activeDuration);
-                            ctx.state.abilityTimers[upg.id].cooldownId = ctx.state.scheduler.schedule(upg.cooldown);
-                            if (upg.onTrigger) upg.onTrigger(ctx.state);
-                        }
-                    });
-            }
-        }
+        handlePlayerRepositionTap(ctx, worldCoords, isDoubleTap, {
+            intercept: (coords) => {
+                const inspectTarget = findStartNodeInspectionPickup(ctx.state, coords.x, coords.y);
+                if (!inspectTarget) return false;
+                inspectBridge.open(inspectTarget, null, ctx.state);
+                return true;
+            },
+        });
     }
 
     handlePointerMove(worldCoords, screenCoords, isPrimaryDown, ctx) {
         if (!isPrimaryDown) return;
         if (inspectBridge.isOpen()) return;
         if (ctx.state.player.currentState?.blocksInput) return;
-        if (!ctx.state.player.canReposition(ctx.state)) return;
-        const target = resolveRepositionTarget(ctx.state.obstacleGrid, worldCoords.x, worldCoords.y, ctx.state.player.radius);
-        if (!target) return;
-        const targetCell = target.col != null ? { col: target.col, row: target.row } : null;
-        ctx.state.player.setTarget(target.x, target.y, ctx.state, targetCell);
-        ctx.state.navigation.rebuildPlayerFlowField(target.x, target.y);
+        handlePlayerRepositionDrag(ctx, worldCoords);
     }
 }
 

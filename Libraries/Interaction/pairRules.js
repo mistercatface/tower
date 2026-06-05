@@ -197,6 +197,152 @@ export function pairFilterAllows(config, self, other) {
 }
 
 /**
+ * Compile a config into a hot-path predicate (resolvers/rules captured at build time).
+ *
+ * @param {PairFilterConfig} config
+ * @returns {(self: object, other: object) => boolean}
+ */
+export function compilePairFilter(config) {
+    const exclusions = config.exclusions ?? [];
+    const inclusions = config.inclusions ?? [];
+    const inclusionsAny = config.inclusionsAny ?? [];
+    const resolvers = config.resolvers ?? {};
+    const pairResolvers = config.pairResolvers ?? {};
+
+    const exclusionFns = exclusions.map((rule) => compilePairRule(rule, resolvers, pairResolvers));
+    const inclusionFns = inclusions.map((rule) => compilePairRule(rule, resolvers, pairResolvers));
+    const inclusionAnyFns = inclusionsAny.map((rule) => compilePairRule(rule, resolvers, pairResolvers));
+
+    return function compiledPairFilterAllows(self, other) {
+        for (let i = 0; i < exclusionFns.length; i++) {
+            if (exclusionFns[i](self, other)) return false;
+        }
+
+        for (let i = 0; i < inclusionFns.length; i++) {
+            if (!inclusionFns[i](self, other)) return false;
+        }
+
+        if (inclusionAnyFns.length > 0) {
+            let any = false;
+            for (let i = 0; i < inclusionAnyFns.length; i++) {
+                if (inclusionAnyFns[i](self, other)) {
+                    any = true;
+                    break;
+                }
+            }
+            if (!any) return false;
+        }
+
+        return true;
+    };
+}
+
+/**
+ * @param {PairRule} rule
+ * @param {Record<string, (entity: object) => *>} resolvers
+ * @param {Record<string, (self: object, other: object) => boolean>} pairResolvers
+ * @returns {(self: object, other: object) => boolean}
+ */
+function compilePairRule(rule, resolvers, pairResolvers) {
+    if (rule.target === "pair") {
+        if (rule.selfIdLessThanOther) {
+            return (self, other) => self.id < other.id;
+        }
+        if (rule.sameEntity) {
+            return (self, other) => self === other;
+        }
+        if (rule.pairResolve !== undefined) {
+            const fn = pairResolvers[rule.pairResolve];
+            return fn ? (self, other) => fn(self, other) : () => false;
+        }
+        if (rule.bothResolve !== undefined) {
+            const fn = resolvers[rule.bothResolve];
+            const equal = rule.equal ?? false;
+            return fn
+                ? (self, other) => {
+                      const a = fn(self);
+                      const b = fn(other);
+                      if (a == null || b == null) return false;
+                      return equal ? a === b : a !== b;
+                  }
+                : () => false;
+        }
+        if (rule.bothSet !== undefined) {
+            const key = rule.bothSet;
+            const equal = rule.equal ?? false;
+            return (self, other) => {
+                const a = self[key];
+                const b = other[key];
+                if (a == null || b == null) return false;
+                return equal ? a === b : a !== b;
+            };
+        }
+        if (rule.crossFaction) {
+            const [fa, fb] = rule.crossFaction;
+            const factionFn = resolvers.faction;
+            return (self, other) => {
+                const a = self.faction ?? factionFn?.(self);
+                const b = other.faction ?? factionFn?.(other);
+                return (a === fa && b === fb) || (a === fb && b === fa);
+            };
+        }
+    }
+
+    if (rule.target === "self" || rule.target === "other" || rule.target === "either") {
+        if (rule.prop !== undefined && rule.equals !== undefined) {
+            const prop = rule.prop;
+            const expected = rule.equals;
+            if (rule.target === "self") {
+                return (self) => self[prop] === expected;
+            }
+            if (rule.target === "other") {
+                return (_, other) => other[prop] === expected;
+            }
+            return (self, other) => self[prop] === expected || other[prop] === expected;
+        }
+        if (rule.prop !== undefined && rule.isUndefined) {
+            const prop = rule.prop;
+            if (rule.target === "self") {
+                return (self) => self[prop] === undefined;
+            }
+            if (rule.target === "other") {
+                return (_, other) => other[prop] === undefined;
+            }
+            return (self, other) => self[prop] === undefined || other[prop] === undefined;
+        }
+        if (rule.resolve !== undefined) {
+            const fn = resolvers[rule.resolve];
+            if (!fn) return () => false;
+            if (rule.isUndefined) {
+                if (rule.target === "self") return (self) => fn(self) === undefined;
+                if (rule.target === "other") return (_, other) => fn(other) === undefined;
+                return (self, other) => fn(self) === undefined || fn(other) === undefined;
+            }
+            if (rule.equals !== undefined) {
+                const expected = rule.equals;
+                if (rule.target === "self") return (self) => fn(self) === expected;
+                if (rule.target === "other") return (_, other) => fn(other) === expected;
+                return (self, other) => fn(self) === expected || fn(other) === expected;
+            }
+        }
+        if (rule.has !== undefined) {
+            const path = rule.has;
+            if (rule.target === "self") return (self) => Boolean(getPath(self, path));
+            if (rule.target === "other") return (_, other) => Boolean(getPath(other, path));
+            return (self, other) => Boolean(getPath(self, path)) || Boolean(getPath(other, path));
+        }
+        if (rule.hasFn !== undefined) {
+            const path = rule.hasFn;
+            if (rule.target === "self") return (self) => typeof getPath(self, path) === "function";
+            if (rule.target === "other") return (_, other) => typeof getPath(other, path) === "function";
+            return (self, other) => typeof getPath(self, path) === "function" || typeof getPath(other, path) === "function";
+        }
+    }
+
+    return (self, other) => pairRuleMatches(rule, self, other, resolvers, pairResolvers);
+}
+
+/**
  * Layer pair-filter configs (resolvers merge; rule arrays concatenate).
  *
  * @param {PairFilterConfig[]} configs

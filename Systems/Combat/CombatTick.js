@@ -50,7 +50,7 @@ export function runCombatTick(ctx, dt) {
     if (!isTraveling) Explosion.updateAll(ctx.state, stepDt, events, spatialFrame);
     dispatchCombatEvents(events, ctx);
     FloatingText.updateAll(ctx.state, stepDt);
-    CombatParticles.updateAll(ctx.state, stepDt);
+    if (isTraveling) CombatParticles.updateAll(ctx.state, stepDt);
     ctx.upgrades.forEach((upg) => upg.update(stepDt, ctx.state));
     ProgressionManager.processLevelUps(ctx.state, ctx.upgrades);
     if (isTraveling) completeMapTravel(ctx);
