@@ -1,30 +1,43 @@
 import { Actor } from "./Actor.js";
-import { NAV_PROFILES, navigationSettings, sidekickBaseStats } from "../Config/Config.js";
-import { barryStartGunId } from "../Config/content/guns.js";
+import { NAV_PROFILES, navigationSettings } from "../Config/Config.js";
 import { createEntityBars } from "./EntityBars.js";
 import { renderActorKinematicsBody } from "../Render/Kinematics/PlayerKinematicsRenderer.js";
 
 const sidekickBars = createEntityBars({ healthWidth: 40, healthHeight: 4, healthBorderRadius: 2 });
 
-const LEADER_EDGE_GAP = 16;
+/** @typedef {import("./EntityRegistryTypes.js").AllyEntityDefinition} AllyEntityDefinition */
 
 export class Sidekick extends Actor {
     static healthBar = sidekickBars.healthBar;
 
-    static create(x, y, radius) {
-        const sidekick = new Sidekick(x, y, radius);
-        sidekick.applyWeaponLoadout([barryStartGunId]);
+    /** @param {number} x @param {number} y @param {AllyEntityDefinition} definition */
+    static create(x, y, definition) {
+        const sidekick = new Sidekick(x, y, definition);
+        sidekick.applyWeaponLoadout([definition.startGunId]);
         sidekick.health = sidekick.maxHealth;
         return sidekick;
     }
 
-    constructor(x, y, radius) {
-        super(x, y, radius, sidekickBaseStats.speed, sidekickBaseStats.maxHealth, "#00BCD4", "companion", 3.0, false);
+    /** @param {number} x @param {number} y @param {AllyEntityDefinition} definition */
+    constructor(x, y, definition) {
+        const stats = definition.stats;
+        super(
+            x,
+            y,
+            definition.radius,
+            stats.speed,
+            stats.maxHealth,
+            definition.color,
+            definition.actorType ?? "companion",
+            3.0,
+            false,
+        );
         this.teamId = 0;
         this.alwaysRunsTurretCombat = true;
         this.usesKinematicsBody = true;
         this.healthBar = Sidekick.healthBar;
-        this.setupCombatant(sidekickBaseStats);
+        this.leaderEdgeGap = definition.leaderEdgeGap ?? 16;
+        this.setupCombatant(stats);
         this.initCombatWeapon();
         this.spawnX = x;
         this.spawnY = y;
@@ -55,7 +68,7 @@ export class Sidekick extends Actor {
     }
 
     getMinLeaderDistance(leader) {
-        return leader.radius + this.radius + LEADER_EDGE_GAP;
+        return leader.radius + this.radius + this.leaderEdgeGap;
     }
 
     holdPosition() {

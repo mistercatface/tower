@@ -1,35 +1,3 @@
-import { combatActorRadius } from "./actors.js";
-
-export const enemyTypes = [
-    {
-        type: "kamikaze",
-        radius: combatActorRadius,
-        baseSpeed: 115,
-        maxHealth: 2,
-        color: "#FF9800",
-        attackType: "charge",
-        canDodge: false,
-        accelRate: 1.0,
-        canDamageWalls: true,
-    },
-    { type: "tank", radius: combatActorRadius, baseSpeed: 50, maxHealth: 3, color: "#FF9800", attackType: "ranged", canDodge: false },
-    { type: "standard", radius: combatActorRadius, baseSpeed: 75, maxHealth: 2, color: "#F44336", attackType: "ranged", canDodge: false },
-    { type: "fast", radius: combatActorRadius, baseSpeed: 102, maxHealth: 2, color: "#FFEB3B", attackType: "ranged", canDodge: false, canDamageWalls: true },
-    {
-        type: "spastic",
-        radius: combatActorRadius,
-        baseSpeed: 95,
-        maxHealth: 2,
-        color: "#C62828",
-        attackType: "charge",
-        canDodge: false,
-        accelRate: 3,
-        canDamageWalls: true,
-    },
-    { type: "dodger", radius: combatActorRadius, baseSpeed: 75, maxHealth: 2, color: "#03A9F4", attackType: "ranged", canDodge: true },
-    { type: "zombie", radius: combatActorRadius, baseSpeed: 85, maxHealth: 2, color: "#8BC34A", attackType: "charge", canDodge: false, accelRate: 2.5 },
-];
-
 export const spawnPods = [
     { id: "standard_trio", weight: 14, members: [{ type: "standard", count: 3 }] },
     { id: "standard_quartet", weight: 10, members: [{ type: "standard", count: 4 }] },

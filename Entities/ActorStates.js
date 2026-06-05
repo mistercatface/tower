@@ -117,7 +117,7 @@ export class EnemyEngagedState {
             return enemy.changeStateAndUpdate("navigating", null, dt, target, flowFieldGrid, walls, missiles, spatialFrame, scheduler, state);
         }
 
-        const shouldStrafe = enemy.type === "fast" || enemy.type === "dodger";
+        const shouldStrafe = enemy.engagedStrafe === "circular";
         const hasLOS = enemy.hasLineOfSightTo(target, state);
 
         const radialX = dx / dist;
@@ -254,6 +254,17 @@ export class EnemyChargePrepareState {
 
         const distToTarget = Math.hypot(enemy.x - target.x, enemy.y - target.y);
         enemy.isEngaged = distToTarget <= target.radius + enemy.weapon.range;
+
+        if (enemy.chargePrepareMode === "direct") {
+            enemy.calculateSteering(target, state);
+            applyEnemyLocomotion(enemy, dt, spatialFrame, state);
+
+            const nextToTarget = distToTarget <= target.radius + enemy.radius + 10;
+            if (enemy.chargeCooldown <= 0 && nextToTarget) {
+                return enemy.changeStateAndUpdate("charging_windup", { timer: 1000 }, dt, target, flowFieldGrid, walls, missiles, spatialFrame, scheduler, state);
+            }
+            return false;
+        }
 
         const stagingDist = 125;
 

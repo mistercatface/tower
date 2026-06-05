@@ -14,7 +14,7 @@ import {
     getInspectMissionBanner,
     findInspectorInspectPickup,
 } from "./hooks.js";
-import "../../Entities/Zombie.js";
+import { registerTowerEntities } from "./config/entities.js";
 
 /**
  * Tower — reference game definition. Balance/content live under Config/;
@@ -59,6 +59,7 @@ export const towerGame = {
     initialState: "combat",
 
     prepare() {
+        registerTowerEntities();
         installGameSurfaceProfileProvider();
     },
 

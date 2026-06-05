@@ -4,31 +4,31 @@ import { Actor } from "./Actor.js";
 import { emitCombatEnemyKilled } from "../Core/EventSystem.js";
 import { NAV_PROFILES } from "../Config/Config.js";
 import { rollEnemyStartLoadout } from "../Combat/weaponLoadout.js";
+import { rollRandomLoadoutFromPool } from "../Combat/equipmentLoadout.js";
 import { createEntityBars } from "./EntityBars.js";
 import { buildEnemyCombatStats, computeEnemyUpgradeLevels, computeSpawnReward } from "../Combat/EnemySpawn.js";
 import { renderActorKinematicsBody } from "../Render/Kinematics/PlayerKinematicsRenderer.js";
 
 const enemyBars = createEntityBars({ healthWidth: 22, healthHeight: 3, healthBorderRadius: 1.5, stunHeight: 2, stunBorderRadius: 1 });
 
-const enemySubclasses = new Map();
+function rollEnemyWeaponLoadout(enemyType) {
+    if (enemyType.startWeapons?.length) return [...enemyType.startWeapons];
+    if (enemyType.weaponPool?.length) return rollRandomLoadoutFromPool(enemyType.weaponPool);
+    return rollEnemyStartLoadout();
+}
 
 export class Enemy extends Actor {
     static healthBar = enemyBars.healthBar;
     static stunBar = enemyBars.stunBar;
 
-    static registerSubclass(type, cls) {
-        enemySubclasses.set(type, cls);
-    }
-
     static spawn(x, y, enemyType, baseUpgradeDefs) {
         const combatStats = buildEnemyCombatStats(enemyType);
         const reward = computeSpawnReward(enemyType);
-        const Cls = enemySubclasses.get(enemyType.type) || Enemy;
-        const enemy = new Cls(x, y, enemyType, combatStats, baseUpgradeDefs, reward);
+        const enemy = new Enemy(x, y, enemyType, combatStats, baseUpgradeDefs, reward);
         const levels = computeEnemyUpgradeLevels();
 
         enemy.applySpawnUpgradeLevels(levels, baseUpgradeDefs);
-        enemy.applyWeaponLoadout(rollEnemyStartLoadout());
+        enemy.applyWeaponLoadout(rollEnemyWeaponLoadout(enemyType));
         enemy.health = enemy.maxHealth;
         return enemy;
     }
@@ -44,6 +44,9 @@ export class Enemy extends Actor {
         this.isEngaged = false;
         this.isPassive = false;
         this.isIntroGuard = false;
+        this.engagedStrafe = enemyType.engagedStrafe ?? "none";
+        this.chargePrepareMode = enemyType.chargePrepareMode ?? "staging";
+        this.excludeFromActiveCap = enemyType.excludeFromActiveCap ?? false;
         this.dodgeTimerId = null;
         this.dodgeTargetX = 0;
         this.dodgeTargetY = 0;

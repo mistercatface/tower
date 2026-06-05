@@ -3,6 +3,7 @@ import { canRunHordeSpawning } from "../GameState/GamePhase.js";
 import { Enemy } from "../Entities/Enemy.js";
 import { isBaseStatUpgrade } from "../Progression/Upgrades.js";
 import { getEnemyType, selectSpawnPod } from "./SpawnPods.js";
+import { getEntityCatalog } from "../Entities/EntityRegistry.js";
 
 export class HordeSpawner {
     constructor() {
@@ -28,7 +29,7 @@ export class HordeSpawner {
         if (this.spawnIntervalId) return;
 
         this.spawnIntervalId = state.scheduler.schedule(spawnSettings.spawnIntervalMs, () => {
-            const aliveEnemies = state.enemies.filter((e) => !e.isDead && e.enemyType.type !== "zombie").length;
+            const aliveEnemies = state.enemies.filter((e) => !e.isDead && !e.excludeFromActiveCap).length;
             if (aliveEnemies >= spawnSettings.maxActiveEnemies) return;
             this.spawnPodGroup(state, upgrades);
         }, true);
@@ -69,9 +70,12 @@ export class HordeSpawner {
         const targetNode = getZombieSpawnTargetNode(state);
         if (!targetNode) return;
 
-        const count = 25;
+        const hordeEvent = getEntityCatalog()?.events?.zombieHorde;
+        if (!hordeEvent) return;
+
+        const count = hordeEvent.count;
         const spots = findFreeSpotsInNode(state, targetNode, count);
-        const enemyType = getEnemyType("zombie");
+        const enemyType = getEnemyType(hordeEvent.type);
         if (!enemyType) return;
 
         const baseUpgradeDefs = upgrades.filter(isBaseStatUpgrade);

@@ -1,4 +1,5 @@
-import { enemyTypes, gridSettings } from "../../../Config/Config.js";
+import { gridSettings } from "../../../Config/Config.js";
+import { getEnemyDefinition } from "../../../Entities/EntityRegistry.js";
 import { getStartGameLayout } from "./StartGameBuilding.js";
 import { Enemy } from "../../../Entities/Enemy.js";
 import { fireRadioTrigger } from "../../../Core/EventSystem.js";
@@ -13,7 +14,7 @@ const GUARD_TYPES = [
 ];
 
 function getEnemyTypeConfig(typeName) {
-    return enemyTypes.find((t) => t.type === typeName);
+    return getEnemyDefinition(typeName);
 }
 
 export function shouldRunStartGameIntro(state) {

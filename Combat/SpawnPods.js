@@ -1,4 +1,5 @@
-import { enemyTypes, spawnPods } from "../Config/Config.js";
+import { spawnPods } from "../Config/Config.js";
+import { getEnemyDefinition } from "../Entities/EntityRegistry.js";
 
 const FALLBACK_POD = {
     id: "fallback_standard",
@@ -6,7 +7,7 @@ const FALLBACK_POD = {
 };
 
 export function getEnemyType(typeName) {
-    return enemyTypes.find((entry) => entry.type === typeName) ?? null;
+    return getEnemyDefinition(typeName);
 }
 
 function isPodEligible(pod) {

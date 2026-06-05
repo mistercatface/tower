@@ -2,6 +2,7 @@ import "../Render/WorldSurfaceBootstrap.js";
 import { FLOW_FIELD_WORKER_URL, getGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 import { Player } from "../Entities/Player.js";
 import { Sidekick } from "../Entities/Sidekick.js";
+import { getAllyDefinition, getRunParty } from "../Entities/EntityRegistry.js";
 import { FlowFieldGrid } from "../Libraries/Pathfinding/FlowFieldGrid.js";
 import { HierarchicalNavigator } from "../Libraries/Pathfinding/HierarchicalNavigator.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
@@ -206,15 +207,19 @@ export class GameState {
         return this.getParty();
     }
 
-    spawnRunParty(count = 1) {
+    spawnRunParty(partyIds) {
         const leader = this.getLeader();
+        const ids = partyIds ?? getRunParty();
         this.allies = [];
 
-        for (let i = 0; i < count; i++) {
-            const ally = Sidekick.create(leader.x, leader.y, leader.radius);
+        for (let i = 0; i < ids.length; i++) {
+            const definition = getAllyDefinition(ids[i]);
+            if (!definition) continue;
+
+            const ally = Sidekick.create(leader.x, leader.y, definition);
             ally.leader = leader;
             ally.teamId = leader.teamId ?? 0;
-            const angle = leader.angle + Math.PI + (i - (count - 1) / 2) * 0.5;
+            const angle = leader.angle + Math.PI + (i - (ids.length - 1) / 2) * 0.5;
             const dist = 48;
             const x = leader.x + Math.cos(angle) * dist;
             const y = leader.y + Math.sin(angle) * dist;
