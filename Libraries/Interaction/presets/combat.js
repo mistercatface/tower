@@ -9,6 +9,7 @@ import {
     excludeSameFaction,
     excludeUndefinedFactionOther,
     excludeChargeVsPlayer,
+    excludePushableOther,
     excludeActorOther,
     excludeSameEntity,
     includeCrossFactionHostile,
@@ -29,7 +30,7 @@ export const COMBAT_HOSTILE_PAIR = /** @type {PairFilterConfig} */ (
 );
 
 /** Locomotion separation between combatants (default SeparationEngine preset). */
-export const COMBAT_SEPARATION = /** @type {PairFilterConfig} */ (mergePairFilter(withCombatResolvers, excludeDeadOther, excludeUndefinedFactionOther, excludeSameTeam, excludeChargeVsPlayer));
+export const COMBAT_SEPARATION = /** @type {PairFilterConfig} */ (mergePairFilter(withCombatResolvers, excludeDeadOther, excludeUndefinedFactionOther, excludeSameTeam, excludeChargeVsPlayer, excludePushableOther));
 
 /** Charge impact applies damage on hostile contact. */
 export const CHARGE_IMPACT = COMBAT_HOSTILE_PAIR;

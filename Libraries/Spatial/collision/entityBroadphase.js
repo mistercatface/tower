@@ -45,5 +45,6 @@ export function isPairActive(a, b) {
 }
 
 export function shouldResolveActorPushable(actor, pickup) {
-    return isPairActive(actor, pickup) || pairBroadphaseOverlap(actor, pickup);
+    if (!pairBroadphaseOverlap(actor, pickup)) return false;
+    return isPairActive(actor, pickup);
 }

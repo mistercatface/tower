@@ -60,6 +60,11 @@ export const excludeActorOther = {
 };
 
 /** @type {PairFilterConfig} */
+export const excludePushableOther = {
+    exclusions: [{ target: "other", has: "strategy.isPushable" }],
+};
+
+/** @type {PairFilterConfig} */
 export const excludeSameEntity = {
     exclusions: [{ target: "pair", sameEntity: true }],
 };

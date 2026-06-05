@@ -2,6 +2,8 @@ import { getActorProfileForActor } from "../Config/content/actorProfiles.js";
 
 export function inferFaction(actor) {
     if (actor.faction) return actor.faction;
+    // Pickups/props lack locomotion separation — do not inherit the default enemy profile.
+    if (!actor.separation) return undefined;
     return getActorProfileForActor(actor).faction;
 }
 

@@ -7,7 +7,7 @@ import { resolveSatPair } from "./satPair.js";
 
 const DEFAULT_PUSHABLE_ITERATIONS = 4;
 
-function resolveActorPushable(actor, pickup) {
+function resolveActorPushable(actor, pickup, resolveWalls, spatialFrame) {
     if (!shouldResolveActorPushable(actor, pickup)) return;
     const collisionInfo = resolveSatPair(actor, actor.getShape(), pickup, pickup.getShape(), {
         massA: actor.mass !== undefined ? actor.mass : actor.radius,
@@ -17,6 +17,8 @@ function resolveActorPushable(actor, pickup) {
     if (!collisionInfo) return;
     invalidateWallResolveCache(actor, pickup);
     wakePushableBody(pickup);
+    resolveWalls(actor, spatialFrame);
+    resolveWalls(pickup, spatialFrame);
 }
 
 function resolvePushablePair(p1, p2) {
@@ -39,7 +41,7 @@ function resolvePushablePair(p1, p2) {
  *   onProjectileWallHit: (projectile: object, segment: object, events: object[]) => void,
  *   onProjectilePickupHit: (projectile: object, pickup: object, events: object[]) => boolean,
  *   onProjectileFactionCollisions: (projectile: object, events: object[]) => void,
- *   resolveWalls: (pickup: object, spatialFrame: object) => void,
+ *   resolveWalls: (entity: object, spatialFrame: object) => void,
  *   combatantRestitution?: (a: object, b: object) => number,
  *   onChargeImpact?: (charger: object, other: object, events: object[]) => void,
  *   pushableIterations?: number,
@@ -82,7 +84,7 @@ export function runCollisionPipeline(
     }
 
     for (let iter = 0; iter < pushableIterations; iter++) {
-        spatialFrame.forEachActorPushablePair((actor, pickup) => resolveActorPushable(actor, pickup));
+        spatialFrame.forEachActorPushablePair((actor, pickup) => resolveActorPushable(actor, pickup, resolveWalls, spatialFrame));
         spatialFrame.forEachPushablePair((p1, p2) => resolvePushablePair(p1, p2));
         const pushables = spatialFrame._pushables;
         if (pushables) {
