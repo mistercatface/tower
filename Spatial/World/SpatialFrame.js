@@ -1,4 +1,4 @@
-import { EntityGrid } from "./EntityGrid.js";
+import { EntityGrid } from "../../Libraries/Spatial/indexes/EntityGrid.js";
 import { SpatialQuery } from "../../Libraries/Spatial/query/SpatialQuery.js";
 import { wallContextFromState } from "./WallContext.js";
 import { Actor } from "../../Entities/Actor.js";

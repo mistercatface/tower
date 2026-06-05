@@ -1,5 +1,5 @@
-import { forEachDenseCellInRect } from "../../Libraries/DataStructures/CellRect.js";
-import { entityBroadphaseExtent, NEIGHBOR_QUERY_PAD } from "../Collision/PairBroadphase.js";
+import { forEachDenseCellInRect } from "../../DataStructures/CellRect.js";
+import { entityBroadphaseExtent, NEIGHBOR_QUERY_PAD } from "../collision/entityBroadphase.js";
 
 const MAX_ENTITIES = 4096;
 const GLOBAL_QUERY_RESULT = [];
@@ -11,10 +11,10 @@ export class EntityGrid {
         this.minY = 0;
         this.cols = 0;
         this.rows = 0;
-        
+
         this.cellHead = new Int32Array(0);
         this.entityNext = new Int32Array(MAX_ENTITIES).fill(-1);
-        
+
         this.entities = new Array(MAX_ENTITIES);
         this.activeEntities = [];
         this.queryGen = 0;
@@ -28,10 +28,10 @@ export class EntityGrid {
         const cols = Math.ceil(width / this.cellSize);
         const rows = Math.ceil(height / this.cellSize);
 
-        if (this.minX === obstacleGrid.minX && 
-            this.minY === obstacleGrid.minY && 
-            this.cols === cols && 
-            this.rows === rows) {
+        if (this.minX === obstacleGrid.minX
+            && this.minY === obstacleGrid.minY
+            && this.cols === cols
+            && this.rows === rows) {
             return;
         }
 
@@ -48,7 +48,6 @@ export class EntityGrid {
     }
 
     clear() {
-        // Only clear the cells that actually have entities
         for (let i = 0; i < this.activeEntities.length; i++) {
             const ent = this.activeEntities[i];
             if (ent._gridTileIdx !== undefined && ent._gridTileIdx !== -1) {
@@ -126,10 +125,9 @@ export class EntityGrid {
     collectNearby(entity) {
         GLOBAL_QUERY_RESULT.length = 0;
         this.queryGen++;
-        
-        // Center-point cells: expand by both bodies' extents plus separation pad.
+
         const searchRadius = entityBroadphaseExtent(entity) + this.maxInsertedExtent + NEIGHBOR_QUERY_PAD;
-        
+
         const minX = entity.x - searchRadius;
         const minY = entity.y - searchRadius;
         const maxX = entity.x + searchRadius;

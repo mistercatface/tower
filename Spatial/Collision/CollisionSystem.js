@@ -1,6 +1,5 @@
-import { circleIntersectsSegment } from "../../Libraries/Spatial/geometry/WallGeometry.js";
-import { SatCollision } from "../../Libraries/Spatial/collision/SatCollision.js";
-import { separateAlongNormal } from "../../Libraries/Spatial/collision/penetration.js";
+import { circlesOverlap, findFirstCircleSegmentHit } from "../../Libraries/Spatial/collision/overlap.js";
+import { resolveSatPair } from "../../Libraries/Spatial/collision/satPair.js";
 import { shouldResolveActorPushable } from "./PairBroadphase.js";
 import { wakePushable } from "./PushableSleep.js";
 import { areHostile } from "../../Combat/Targeting.js";
@@ -11,86 +10,57 @@ import { CombatParticles } from "../../Render/CombatParticles.js";
 
 export class CollisionSystem {
     static checkCircle(a, b) {
-        const dx = a.x - b.x;
-        const dy = a.y - b.y;
-        const dist = Math.hypot(dx, dy);
-        return dist < a.radius + b.radius;
+        return circlesOverlap(a, b);
     }
 
     static checkCircleRect(circle, rect) {
-        return circleIntersectsSegment(circle, rect);
+        return findFirstCircleSegmentHit(circle, [rect]) !== null;
     }
 
     static getMissileWallCollision(missile, candidateWalls) {
-        if (!candidateWalls || candidateWalls.length === 0) return null;
-
-        const missileRad = missile.radius;
-        for (const seg of candidateWalls) {
-            if (seg.isDead) continue;
-            const dx = missile.x - seg.x;
-            const dy = missile.y - seg.y;
-            const maxDist = missileRad + seg.size * 0.75;
-            if (Math.abs(dx) > maxDist || Math.abs(dy) > maxDist) continue;
-            if (this.checkCircleRect(missile, seg)) return seg;
-        }
-        return null;
+        return findFirstCircleSegmentHit(missile, candidateWalls);
     }
 
     static resolveActorPushable(actor, pickup) {
         if (!shouldResolveActorPushable(actor, pickup)) return;
 
-        const collisionInfo = SatCollision.checkCollision(
+        const collisionInfo = resolveSatPair(
             actor, actor.getShape(),
-            pickup, pickup.getShape()
+            pickup, pickup.getShape(),
+            {
+                massA: actor.mass !== undefined ? actor.mass : actor.radius,
+                massB: pickup.mass !== undefined ? pickup.mass : 1.0,
+                restitution: 0.15,
+            },
         );
-
         if (!collisionInfo) return;
-
-        const pushX = collisionInfo.nx;
-        const pushY = collisionInfo.ny;
-        const overlap = collisionInfo.overlap;
-
-        const actorMass = actor.mass !== undefined ? actor.mass : actor.radius;
-        const pickupMass = pickup.mass !== undefined ? pickup.mass : 1.0;
-
-        separateAlongNormal(actor, pickup, pushX, pushY, overlap, actorMass, pickupMass);
 
         actor._wallResolvedFrame = null;
         pickup._wallResolvedFrame = null;
-
         wakePushable(pickup);
-        PhysicsSystem.applyRigidBodyImpulse(actor, pickup, collisionInfo, 0.15);
     }
 
     static resolvePushablePair(p1, p2) {
-        const collisionInfo = SatCollision.checkCollision(
+        const collisionInfo = resolveSatPair(
             p1, p1.getShape(),
-            p2, p2.getShape()
+            p2, p2.getShape(),
+            {
+                massA: p1.mass !== undefined ? p1.mass : 15.0,
+                massB: p2.mass !== undefined ? p2.mass : 15.0,
+                restitution: 0.4,
+            },
         );
-
         if (!collisionInfo) return;
-
-        const pushX = collisionInfo.nx;
-        const pushY = collisionInfo.ny;
-        const overlap = collisionInfo.overlap;
-
-        const p1Mass = p1.mass !== undefined ? p1.mass : 15.0;
-        const p2Mass = p2.mass !== undefined ? p2.mass : 15.0;
-
-        separateAlongNormal(p1, p2, pushX, pushY, overlap, p1Mass, p2Mass);
 
         p1._wallResolvedFrame = null;
         p2._wallResolvedFrame = null;
-
         wakePushable(p1);
         wakePushable(p2);
-        PhysicsSystem.applyRigidBodyImpulse(p1, p2, collisionInfo, 0.4);
     }
 
     static run(state, spatialFrame) {
         const events = [];
 
-        // 1. Projectiles vs Walls, Pickups, and Enemies
         for (const p of state.projectiles) {
             if (p.isDead) continue;
 
@@ -115,7 +85,6 @@ export class CollisionSystem {
             p.resolveFactionCollisions(state, events, this, spatialFrame);
         }
 
-        // 2. Resolve pushables (Actor vs Pushable and Pushable vs Pushable) iteratively with wall constraints
         const iterations = 4;
         for (let iter = 0; iter < iterations; iter++) {
             spatialFrame.forEachActorPushablePair((actor, pickup) => {
@@ -133,7 +102,6 @@ export class CollisionSystem {
             }
         }
 
-        // 4. Actor vs Actor
         spatialFrame.forEachCombatantPair((a, b) => {
             if (!this.checkCircle(a, b)) return;
 
