@@ -1,5 +1,6 @@
 import { circleIntersectsSegment } from "../../Libraries/Spatial/geometry/WallGeometry.js";
 import { SatCollision } from "../../Libraries/Spatial/collision/SatCollision.js";
+import { separateAlongNormal } from "../../Libraries/Spatial/collision/penetration.js";
 import { shouldResolveActorPushable } from "./PairBroadphase.js";
 import { wakePushable } from "./PushableSleep.js";
 import { areHostile } from "../../Combat/Targeting.js";
@@ -51,15 +52,8 @@ export class CollisionSystem {
 
         const actorMass = actor.mass !== undefined ? actor.mass : actor.radius;
         const pickupMass = pickup.mass !== undefined ? pickup.mass : 1.0;
-        const totalMass = actorMass + pickupMass;
 
-        const actorShift = overlap * (pickupMass / totalMass);
-        const pickupShift = overlap * (actorMass / totalMass);
-
-        actor.x -= pushX * actorShift;
-        actor.y -= pushY * actorShift;
-        pickup.x += pushX * pickupShift;
-        pickup.y += pushY * pickupShift;
+        separateAlongNormal(actor, pickup, pushX, pushY, overlap, actorMass, pickupMass);
 
         actor._wallResolvedFrame = null;
         pickup._wallResolvedFrame = null;
@@ -82,15 +76,8 @@ export class CollisionSystem {
 
         const p1Mass = p1.mass !== undefined ? p1.mass : 15.0;
         const p2Mass = p2.mass !== undefined ? p2.mass : 15.0;
-        const totalMass = p1Mass + p2Mass;
 
-        const p1Shift = overlap * (p2Mass / totalMass);
-        const p2Shift = overlap * (p1Mass / totalMass);
-
-        p1.x -= pushX * p1Shift;
-        p1.y -= pushY * p1Shift;
-        p2.x += pushX * p2Shift;
-        p2.y += pushY * p2Shift;
+        separateAlongNormal(p1, p2, pushX, pushY, overlap, p1Mass, p2Mass);
 
         p1._wallResolvedFrame = null;
         p2._wallResolvedFrame = null;

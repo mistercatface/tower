@@ -9,22 +9,20 @@
  * 1. integrateSteering, applyVelocityDamping (done)
  * 2. applyImpulse / applyKnockback (done)
  * 3. separationForce (done)
- * 4. directSeek (done)
- * 5. applyRigidBodyImpulse scalar math (future)
+ * 4. rigidBodyImpulse, staticSurfaceImpulse (done)
+ *
+ * Steering / desired-direction writes: Libraries/Agent.
  *
  * Game layer (Spatial/Motion/PhysicsSystem) keeps: wall collision, SAT, rigid-body response, damage.
  */
 export { integrateSteering } from "./integrateSteering.js";
 export { applyVelocityDamping } from "./applyDamping.js";
 export { applyImpulse, applyKnockback } from "./applyImpulse.js";
+export { massFromBody, inverseMassFromBody } from "./bodyMass.js";
+export { applyRigidBodyImpulse } from "./rigidBodyImpulse.js";
+export { applyStaticSurfaceImpulse } from "./staticSurfaceImpulse.js";
 export {
     createSeparationAccum,
     accumulateSeparationFromPair,
     clampSeparationAccum,
 } from "./separationForce.js";
-export {
-    seekDirection,
-    seekDirectionToward,
-    applyDesiredDirection,
-    applyDesiredDirectionToward,
-} from "./directSeek.js";
