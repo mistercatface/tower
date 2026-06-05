@@ -13,7 +13,7 @@ import { navigationSettings, NAV_PROFILES, gridSettings, debugStartNodeInspectio
 import { resolveMoveTarget, resolveRepositionTarget } from "../Spatial/Navigation/PathClearance.js";
 import { getStartNodeLayout } from "../Generator/StartNodeBuilding.js";
 import { Pools } from "../Core/Pools.js";
-import { propInspector } from "../Render/Inspector/PropInspector.js";
+import { inspectBridge } from "../Combat/InspectBridge.js";
 import { beginStartNodeIntro, shouldRunStartNodeIntro, updateStartNodeIntro } from "../Combat/StartNodeIntro.js";
 import { findStartNodeInspectionPickup, beginStartNodeInspection, shouldEnterStartNodeInspection } from "../Combat/StartNodeInspection.js";
 import { syncFloorTextureProfile } from "../Render/Floor/floorTextureProfile.js";
@@ -270,7 +270,7 @@ export class CombatState {
 
     handleInteraction(worldCoords, isDoubleTap, ctx) {
         if (ctx.state.mapTargetNodeId != null) return;
-        if (propInspector.isOpen()) return;
+        if (inspectBridge.isOpen()) return;
         if (ctx.state.player.currentState && ctx.state.player.currentState.blocksInput) return;
 
         if (ctx.state.abilities["Shoot"]) {
@@ -315,7 +315,7 @@ export class CombatState {
     handlePointerMove(worldCoords, screenCoords, isPrimaryDown, ctx) {
         if (!isPrimaryDown) return;
         if (ctx.state.mapTargetNodeId != null) return;
-        if (propInspector.isOpen()) return;
+        if (inspectBridge.isOpen()) return;
         if (ctx.state.player.currentState && ctx.state.player.currentState.blocksInput) return;
         if (ctx.state.abilities["Shoot"]) return;
 
@@ -382,12 +382,12 @@ export class InspectorState {
     }
 
     handleInteraction(worldCoords, isDoubleTap, ctx) {
-        if (propInspector.isOpen()) return;
+        if (inspectBridge.isOpen()) return;
         if (ctx.state.player.currentState?.blocksInput) return;
 
         const inspectTarget = findStartNodeInspectionPickup(ctx.state, worldCoords.x, worldCoords.y);
         if (inspectTarget) {
-            propInspector.open(inspectTarget, null, ctx.state);
+            inspectBridge.open(inspectTarget, null, ctx.state);
             return;
         }
 
@@ -427,7 +427,7 @@ export class InspectorState {
 
     handlePointerMove(worldCoords, screenCoords, isPrimaryDown, ctx) {
         if (!isPrimaryDown) return;
-        if (propInspector.isOpen()) return;
+        if (inspectBridge.isOpen()) return;
         if (ctx.state.player.currentState?.blocksInput) return;
 
         if (!ctx.state.player.canReposition(ctx.state)) return;

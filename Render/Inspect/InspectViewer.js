@@ -1,22 +1,37 @@
-import { getPickupInspectEntry } from "../Inspect/InspectCatalog.js";
-import { isRadioDialogActive } from "../../Radio/RadioDialogController.js";
-import {
-    onPropInspectorPanelClosed,
-    playGuidedInspectRadio,
-    recordStartNodeInspection,
-} from "../../Combat/StartNodeInspection.js";
-import { requestGamePause, requestGameResume, requestUiUpdate } from "../../Core/EventSystem.js";
+/** @typedef {import("./InspectCatalog.js").InspectEntry} InspectEntry */
 
-const INSPECTOR_PAUSE_REASON = "inspector";
 const BASE_SCALE_DIVISOR = 235;
 const MIN_ZOOM = 0.45;
 const MAX_ZOOM = 2.75;
 const WHEEL_ZOOM_SENSITIVITY = 0.0012;
 
-export class PropInspector {
-    constructor() {
-        this.pickup = null;
-        this.descriptor = null;
+/**
+ * @typedef {Object} InspectViewerHooks
+ * @property {(ctx: { entry: InspectEntry, subject: unknown }) => void} [onOpen]
+ * @property {(ctx: { entry: InspectEntry, subject: unknown }) => void} [onClose]
+ * @property {(subject: unknown) => boolean} [isSubjectValid]
+ */
+
+/**
+ * @typedef {Object} InspectViewerOptions
+ * @property {string} [overlayId]
+ * @property {string} [canvasId]
+ * @property {string} [titleId]
+ * @property {string} [closeBtnId]
+ * @property {InspectViewerHooks} [hooks]
+ */
+
+export class InspectViewer {
+    /** @param {InspectViewerOptions} [options] */
+    constructor(options = {}) {
+        this.overlayId = options.overlayId ?? "propInspector";
+        this.canvasId = options.canvasId ?? "propInspectorCanvas";
+        this.titleId = options.titleId ?? "propInspectorTitle";
+        this.closeBtnId = options.closeBtnId ?? "propInspectorCloseBtn";
+        this.hooks = options.hooks ?? {};
+
+        this.entry = null;
+        this.subject = null;
         this.yaw = 0;
         this.pitch = 0.2;
         this.zoom = 1;
@@ -31,20 +46,19 @@ export class PropInspector {
         this.canvas = null;
         this.titleEl = null;
         this.ctx = null;
-        this.onClose = null;
-        this.gameState = null;
+        this.userOnClose = null;
     }
 
     mount() {
         if (this.overlay) return;
 
-        this.overlay = document.getElementById("propInspector");
-        this.canvas = document.getElementById("propInspectorCanvas");
-        this.titleEl = document.getElementById("propInspectorTitle");
+        this.overlay = document.getElementById(this.overlayId);
+        this.canvas = document.getElementById(this.canvasId);
+        this.titleEl = document.getElementById(this.titleId);
         this.ctx = this.canvas.getContext("2d");
         this.ctx.imageSmoothingEnabled = false;
 
-        const closeBtn = document.getElementById("propInspectorCloseBtn");
+        const closeBtn = document.getElementById(this.closeBtnId);
         this.canvas.addEventListener("pointerdown", (e) => this.onPointerDown(e));
         this.canvas.addEventListener("pointermove", (e) => this.onPointerMove(e));
         this.canvas.addEventListener("pointerup", (e) => this.onPointerUp(e));
@@ -57,83 +71,64 @@ export class PropInspector {
     }
 
     isOpen() {
-        return this.pickup != null;
+        return this.subject != null;
     }
 
-    open(pickup, onClose, state = null) {
-        const descriptor = getPickupInspectEntry(pickup);
-        if (!descriptor) return;
+    /**
+     * @param {InspectEntry} entry
+     * @param {unknown} subject
+     * @param {(() => void)|null} [onClose]
+     */
+    open(entry, subject, onClose = null) {
+        if (!entry || !subject) return;
 
         this.mount();
-        this.pickup = pickup;
-        this.descriptor = descriptor;
-        this.onClose = onClose;
-        this.gameState = state;
-        this.yaw = descriptor.getInitialYaw?.(pickup) ?? pickup.facing ?? 0;
-        this.pitch = descriptor.getInitialPitch?.(pickup) ?? 0.2;
+        this.entry = entry;
+        this.subject = subject;
+        this.userOnClose = onClose;
+        this.yaw = entry.getInitialYaw?.(subject) ?? subject.facing ?? 0;
+        this.pitch = entry.getInitialPitch?.(subject) ?? 0.2;
         this.zoom = 1;
         this.pointers.clear();
         this.dragging = false;
         this.pinching = false;
 
         if (this.titleEl) {
-            this.titleEl.textContent = descriptor.title;
+            this.titleEl.textContent = entry.title;
         }
 
-        if (descriptor.onReady) {
-            descriptor.onReady(() => {
-                if (this.isOpen() && this.pickup === pickup) this.render();
+        if (entry.onReady) {
+            entry.onReady(() => {
+                if (this.isOpen() && this.subject === subject) this.render();
             });
         }
 
-        if (state) {
-            state.propInspectorPanelOpen = true;
-        }
-
         this.overlay.style.display = "flex";
-        requestGamePause(INSPECTOR_PAUSE_REASON);
-        requestUiUpdate();
         this.resize();
         this.render();
-
-        const inspectKey = pickup.strategy?.inspectKey;
-        if (inspectKey && state?.startNodeInspectionSeen != null) {
-            playGuidedInspectRadio(state, inspectKey, () => recordStartNodeInspection(state, inspectKey));
-        }
+        this.hooks.onOpen?.({ entry, subject });
     }
 
     close() {
-        if (!this.overlay) return;
+        if (!this.overlay || !this.isOpen()) return;
 
-        const closedPickup = this.pickup;
-        const closedKey = closedPickup?.strategy?.inspectKey;
-        const gameState = this.gameState;
+        const closedEntry = this.entry;
+        const closedSubject = this.subject;
 
         this.overlay.style.display = "none";
-        requestGameResume(INSPECTOR_PAUSE_REASON);
-        requestUiUpdate();
-        this.pickup = null;
-        this.descriptor = null;
-        this.gameState = null;
+        this.entry = null;
+        this.subject = null;
         this.dragging = false;
         this.pinching = false;
         this.pointers.clear();
         this.zoom = 1;
-        if (this.onClose) this.onClose();
-        this.onClose = null;
 
-        if (
-            closedKey
-            && gameState?.startNodeInspectionSeen
-            && !gameState.startNodeInspectionSeen.has(closedKey)
-            && !isRadioDialogActive()
-        ) {
-            recordStartNodeInspection(gameState, closedKey);
-        }
+        this.hooks.onClose?.({ entry: closedEntry, subject: closedSubject });
 
-        if (gameState) {
-            onPropInspectorPanelClosed(gameState);
+        if (typeof this.userOnClose === "function") {
+            this.userOnClose();
         }
+        this.userOnClose = null;
     }
 
     resize() {
@@ -145,7 +140,7 @@ export class PropInspector {
     }
 
     onPointerDown(e) {
-        if (e.target.closest("#propInspectorCloseBtn")) return;
+        if (e.target.closest(`#${this.closeBtnId}`)) return;
 
         this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
@@ -185,7 +180,7 @@ export class PropInspector {
     }
 
     onPointerMove(e) {
-        if (!this.pickup || !this.pointers.has(e.pointerId)) return;
+        if (!this.subject || !this.pointers.has(e.pointerId)) return;
 
         this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
@@ -231,8 +226,10 @@ export class PropInspector {
     }
 
     render() {
-        if (!this.ctx || !this.pickup || !this.descriptor) return;
-        if (this.pickup.isDead) {
+        if (!this.ctx || !this.subject || !this.entry) return;
+
+        const isValid = this.hooks.isSubjectValid?.(this.subject) ?? true;
+        if (!isValid) {
             this.close();
             return;
         }
@@ -244,7 +241,7 @@ export class PropInspector {
         this.ctx.fillRect(0, 0, w, h);
 
         const scale = (h / BASE_SCALE_DIVISOR) * this.zoom;
-        this.descriptor.draw(this.ctx, w / 2, h * 0.46, scale, this.yaw, this.pitch, this.pickup);
+        this.entry.draw(this.ctx, w / 2, h * 0.46, scale, this.yaw, this.pitch, this.subject);
 
         this.ctx.fillStyle = "rgba(255,255,255,0.55)";
         this.ctx.font = "11px monospace";
@@ -252,5 +249,3 @@ export class PropInspector {
         this.ctx.fillText("Drag to rotate · Scroll or pinch to zoom", w / 2, h - 14);
     }
 }
-
-export const propInspector = new PropInspector();

@@ -15,7 +15,7 @@ import { StatsManager } from "./Progression/StatsManager.js";
 import { GameStateMachine } from "./GameState/GameStateMachine.js";
 import { MapState, CombatState, InspectorState, RewardState } from "./GameState/GameStates.js";
 import { unlockStartNodeGuardsDialog } from "./Combat/StartNodeIntro.js";
-import { propInspector } from "./Render/Inspector/PropInspector.js";
+import { inspectBridge } from "./Combat/InspectBridge.js";
 import { preloadAllInspectAssets } from "./Render/Inspect/InspectCatalog.js";
 import "./Entities/Zombie.js";
 
@@ -107,7 +107,7 @@ function resizeCanvas() {
     state.canvasBounds = { width: canvas.width, height: canvas.height };
     viewport.cx = Math.floor(canvas.width / 2);
     viewport.cy = Math.floor(canvas.height / 2);
-    propInspector.resize();
+    inspectBridge.resize();
 }
 
 window.addEventListener("resize", resizeCanvas);
@@ -117,7 +117,7 @@ loadProgress(state, upgrades);
 loadPersistentTriggers();
 initializeSaveSystem(state);
 initUI(state, upgrades);
-propInspector.mount();
+inspectBridge.mount();
 preloadAllInspectAssets();
 resizeCanvas();
 InputManager.setup(canvas, fsm);
