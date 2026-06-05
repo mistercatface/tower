@@ -2,7 +2,7 @@ import { perkMilestones } from "../Config/Config.js";
 import { xpForLevel } from "../Config/configHelpers.js";
 import { buildAbilityTreeLayout } from "../Config/abilityTreeLayout.js";
 import { GamePhase, isCombat, isCombatOrReward, isInspector } from "../GameState/GamePhase.js";
-import { getStartNodeInspectionMissionLabel } from "../Combat/StartNodeInspection.js";
+import { getStartNodeInspectionMissionLabel } from "../Combat/inspect/StartNodeInspection.js";
 import { getGunDefinition, playerEquipmentCatalog } from "../Config/gunDefinitions.js";
 import { getSlotFireIntervalMs, getSlotReloadTimeMs } from "../Combat/gunCombat.js";
 import { countGunInLoadout, formatHandednessLabel, getEquipmentSlotCount, getGunEquipAction, normalizeWeaponLoadout } from "../Combat/equipmentLoadout.js";

@@ -13,9 +13,9 @@ import { navigationSettings, NAV_PROFILES, gridSettings, debugStartNodeInspectio
 import { resolveMoveTarget, resolveRepositionTarget } from "../Spatial/Navigation/PathClearance.js";
 import { getStartNodeLayout } from "../Generator/StartNodeBuilding.js";
 import { Pools } from "../Core/Pools.js";
-import { inspectBridge } from "../Combat/InspectBridge.js";
+import { inspectBridge } from "../Combat/inspect/InspectBridge.js";
 import { beginStartNodeIntro, shouldRunStartNodeIntro, updateStartNodeIntro } from "../Combat/StartNodeIntro.js";
-import { findStartNodeInspectionPickup, beginStartNodeInspection, shouldEnterStartNodeInspection } from "../Combat/StartNodeInspection.js";
+import { findStartNodeInspectionPickup, beginStartNodeInspection, shouldEnterStartNodeInspection } from "../Combat/inspect/StartNodeInspection.js";
 import { syncFloorTextureProfile } from "../Render/Floor/floorTextureProfile.js";
 
 const MAP_TRAVEL_SPEED = 5.0;

@@ -25,10 +25,10 @@ const WHEEL_ZOOM_SENSITIVITY = 0.0012;
 export class InspectViewer {
     /** @param {InspectViewerOptions} [options] */
     constructor(options = {}) {
-        this.overlayId = options.overlayId ?? "propInspector";
-        this.canvasId = options.canvasId ?? "propInspectorCanvas";
-        this.titleId = options.titleId ?? "propInspectorTitle";
-        this.closeBtnId = options.closeBtnId ?? "propInspectorCloseBtn";
+        this.overlayId = options.overlayId ?? "inspectOverlay";
+        this.canvasId = options.canvasId ?? "inspectCanvas";
+        this.titleId = options.titleId ?? "inspectTitle";
+        this.closeBtnId = options.closeBtnId ?? "inspectCloseBtn";
         this.hooks = options.hooks ?? {};
 
         this.entry = null;

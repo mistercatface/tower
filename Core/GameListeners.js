@@ -3,7 +3,7 @@ import { Events, fireRadioTrigger, requestProgressDirty, requestUiUpdate } from 
 import { ProgressionManager } from "../Progression/ProgressionManager.js";
 import { hardResetProgress, registerProgressListeners } from "../Progression/Storage.js";
 import { StatsManager } from "../Progression/StatsManager.js";
-import { beginStartNodeInspection } from "../Combat/StartNodeInspection.js";
+import { beginStartNodeInspection } from "../Combat/inspect/StartNodeInspection.js";
 import { isCombatOrReward } from "../GameState/GamePhase.js";
 import { registerPauseListeners } from "./PauseManager.js";
 import { FloatingText } from "../Render/FloatingText.js";

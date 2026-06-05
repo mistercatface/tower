@@ -1,4 +1,4 @@
-import { fireRadioTrigger, requestUiHudUpdate, startRadioConversation } from "../Core/EventSystem.js";
+import { fireRadioTrigger, requestUiHudUpdate, startRadioConversation } from "../../Core/EventSystem.js";
 import { findInspectablePickup } from "./inspectTargeting.js";
 
 /** Inspect keys required on start node after wave 1 (barrel = energy drink, crate). */

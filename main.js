@@ -15,8 +15,8 @@ import { StatsManager } from "./Progression/StatsManager.js";
 import { GameStateMachine } from "./GameState/GameStateMachine.js";
 import { MapState, CombatState, InspectorState, RewardState } from "./GameState/GameStates.js";
 import { unlockStartNodeGuardsDialog } from "./Combat/StartNodeIntro.js";
-import { inspectBridge } from "./Combat/InspectBridge.js";
-import { registerGameInspectEntries } from "./Combat/inspectContent.js";
+import { inspectBridge } from "./Combat/inspect/InspectBridge.js";
+import { registerGameInspectEntries } from "./Combat/inspect/inspectContent.js";
 import { preloadAllInspectAssets } from "./Libraries/Inspect/InspectCatalog.js";
 import "./Entities/Zombie.js";
 

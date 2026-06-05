@@ -32,7 +32,6 @@ function ensureEntry(src) {
 function notify(entry) {
     for (const fn of entry.listeners) fn(entry.canvas);
     entry.listeners.clear();
-    window.dispatchEvent(new CustomEvent("texture-ready", { detail: { src: entry.src } }));
 }
 
 export function loadTexture(src, { keyWhite = true } = {}) {

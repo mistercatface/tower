@@ -393,7 +393,7 @@ canvas {
     box-sizing: border-box;
 }
 
-.prop-inspector {
+.inspect-overlay {
     display: none;
     position: absolute;
     inset: 0;
@@ -405,7 +405,7 @@ canvas {
     touch-action: none;
 }
 
-.prop-inspector-panel {
+.inspect-panel {
     position: relative;
     width: min(88vw, 340px);
     max-height: 90vh;
@@ -418,7 +418,7 @@ canvas {
     overflow: hidden;
 }
 
-.prop-inspector-title {
+.inspect-title {
     font-family: Impact, Haettenschweiler, "Arial Black", sans-serif;
     font-size: 17px;
     letter-spacing: 0.08em;
@@ -430,7 +430,7 @@ canvas {
     border-bottom: 1px solid rgba(245, 240, 230, 0.2);
 }
 
-.prop-inspector-close {
+.inspect-close {
     position: absolute;
     top: 6px;
     right: 8px;
@@ -446,7 +446,7 @@ canvas {
     font-family: monospace;
 }
 
-#propInspectorCanvas {
+#inspectCanvas {
     flex: 1;
     width: 100%;
     min-height: 0;
@@ -455,7 +455,7 @@ canvas {
     cursor: grab;
 }
 
-#propInspectorCanvas:active {
+#inspectCanvas:active {
     cursor: grabbing;
 }
 
