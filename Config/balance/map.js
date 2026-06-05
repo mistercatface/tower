@@ -7,10 +7,7 @@ export const mapSettings = {
 };
 
 export const mapGenerationSettings = {
-    startNodeWaves: 1,
     nodesPerLayerMin: 2,
     nodesPerLayerMax: 4,
-    wavesTotalMin: 1,
-    wavesTotalMax: 5,
     extraConnectionChance: 0.3,
 };

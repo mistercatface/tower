@@ -2,7 +2,7 @@ import "../../Render/WorldSurfaceBootstrap.js";
 import { installGameSurfaceProfileProvider } from "../../Config/procedural/bootstrap.js";
 import { createUpgrades, createBaseUpgrades } from "../../Progression/Upgrades.js";
 import { registerGameInspectEntries } from "../../Combat/inspect/inspectContent.js";
-import { MapState, CombatState, InspectorState, RewardState } from "../../GameState/GameStates.js";
+import { MapState, CombatState, InspectorState } from "../../GameState/GameStates.js";
 import { unlockStartNodeGuardsDialog } from "../../Combat/StartNodeIntro.js";
 import { ProgressionManager } from "../../Progression/ProgressionManager.js";
 import { wireTowerRadio } from "./wireRadio.js";
@@ -40,7 +40,6 @@ export const towerGame = {
         map: MapState,
         combat: CombatState,
         inspector: InspectorState,
-        reward: RewardState,
     },
 
     initialState: "combat",

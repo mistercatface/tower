@@ -1,7 +1,6 @@
-import { spawnSettings, timingSettings, waveSettings } from "../Config/Config.js";
+import { spawnSettings, waveSettings } from "../Config/Config.js";
 import { canRunWaveSpawning } from "../GameState/GamePhase.js";
 import { Enemy } from "../Entities/Enemy.js";
-import { requestUiUpdate, emitCombatWaveCleared } from "../Core/EventSystem.js";
 import { isBaseStatUpgrade } from "../Progression/Upgrades.js";
 import {
     getBossPod,
@@ -17,36 +16,15 @@ export class WaveManager {
 
     reset() {
         this.wave = 0;
-        this.sectorWave = 0;
-        this.wavesCompleted = 0;
         this.enemiesToSpawn = waveSettings.firstWaveEnemyCount;
         this.enemiesSpawned = 0;
         this.spawnIntervalId = null;
-        this.waveClearScheduled = false;
     }
 
     startCombat() {
         this.wave++;
-        this.sectorWave = 1;
         this.enemiesToSpawn = this.calculateEnemiesToSpawn();
         this.enemiesSpawned = 0;
-        this.waveClearScheduled = false;
-    }
-
-    advance() {
-        this.sectorWave++;
-        this.wave++;
-        this.enemiesToSpawn = this.calculateEnemiesToSpawn();
-        this.enemiesSpawned = 0;
-    }
-
-    completeWave(totalWavesInSector) {
-        this.wavesCompleted++;
-        if (this.sectorWave < totalWavesInSector) {
-            this.advance();
-            return false;
-        }
-        return true;
     }
 
     calculateEnemiesToSpawn() {
@@ -177,18 +155,6 @@ export class WaveManager {
                     this.spawnIntervalId = null;
                 }
             }, true);
-        }
-        const aliveEnemies = state.enemies.filter(e => !e.isDead).length;
-        if (this.enemiesSpawned >= this.enemiesToSpawn && aliveEnemies === 0) {
-            if (this.waveClearScheduled) return;
-            this.waveClearScheduled = true;
-            requestUiUpdate();
-            state.isTransitioning = true;
-            state.scheduler.schedule(timingSettings.sectorCompletedDelay, () => {
-                this.waveClearScheduled = false;
-                state.isTransitioning = false;
-                emitCombatWaveCleared();
-            });
         }
     }
 

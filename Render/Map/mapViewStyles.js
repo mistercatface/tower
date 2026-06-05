@@ -1,12 +1,9 @@
 import { combatNodeCoords, mapGraphNodeCoords } from "./mapViewCoords.js";
 
-const WAVE_COLORS = ["#03A9F4", "#7E57C2", "#AB47BC", "#EC407A", "#F44336"];
+const LAYER_COLORS = ["#03A9F4", "#7E57C2", "#AB47BC", "#EC407A", "#F44336"];
 
 export function gameConnectionStrokeStyle(node, targetNode, state) {
-    if (node.completed && (targetNode.completed || targetNode.id === state.currentNodeId)) {
-        return "rgba(76, 175, 80, 0.4)";
-    }
-    if (node.id === state.currentNodeId) {
+    if (node.id === state.currentNodeId || targetNode.id === state.currentNodeId) {
         return "rgba(255, 235, 59, 0.5)";
     }
     return "rgba(85, 85, 85, 0.3)";
@@ -18,11 +15,9 @@ export function gameNodeStyle(node, state) {
 
     if (node.id === state.currentNodeId) {
         fillStyle = "#FFEB3B";
-    } else if (node.completed) {
-        fillStyle = "#4CAF50";
     } else if (currentNode && currentNode.connections.includes(node.id)) {
-        const waveIndex = Math.min(4, Math.max(0, (node.wavesTotal || 1) - 1));
-        fillStyle = WAVE_COLORS[waveIndex];
+        const layerIndex = Math.min(4, Math.max(0, node.layer ?? 0));
+        fillStyle = LAYER_COLORS[layerIndex];
     }
 
     return {

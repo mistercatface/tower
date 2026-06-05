@@ -144,18 +144,3 @@ export class InspectorState {
     }
 }
 
-export class RewardState {
-    onEnter(ctx) {
-        requestUiUpdate();
-    }
-
-    update(dt, ctx) {
-        FloatingText.updateAll(ctx.state, dt);
-    }
-
-    render(ctx) {
-        ctx.viewport.updateZoomLimits(ctx.state);
-        ctx.viewport.follow(ctx.state.player.x, ctx.state.player.y);
-        ctx.renderer.renderCombatScene(ctx.state, ctx.viewport);
-    }
-}

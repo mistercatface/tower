@@ -141,9 +141,6 @@ export class GameState {
         this.skipCombatEnterReset = false;
         this.zombieEventTriggered = false;
 
-        this.wavesCompleted = 0;
-        this.isTransitioning = false;
-
         this.abilities = {};
         this.abilityTimers = {};
         this.pendingUnlocks = [];

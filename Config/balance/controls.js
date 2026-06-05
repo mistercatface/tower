@@ -3,8 +3,4 @@ export const controlSettings = {
     scrollZoomSensitivity: -0.001,
 };
 
-export const timingSettings = {
-    sectorCompletedDelay: 1500,
-};
-
 export const debugStartNodeInspectionImmediate = false;

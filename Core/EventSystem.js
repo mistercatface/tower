@@ -27,10 +27,6 @@ export function emitCombatEnemyKilled(enemy) {
     events.emit(Events.COMBAT_ENEMY_KILLED, { enemy });
 }
 
-export function emitCombatWaveCleared() {
-    events.emit(Events.COMBAT_WAVE_CLEARED);
-}
-
 export function requestGamePause(reason) {
     events.emit(Events.GAME_PAUSE, { reason });
 }
@@ -83,16 +79,8 @@ export function setGameZoomAbsolute(zoom) {
     events.emit(Events.GAME_SET_ZOOM_ABSOLUTE, { zoom });
 }
 
-export function emitMapContinueAfterSector() {
-    events.emit(Events.MAP_CONTINUE_AFTER_SECTOR);
-}
-
 export function emitMapToggle() {
     events.emit(Events.MAP_TOGGLE);
-}
-
-export function showSectorClearedModal(node, rewardText) {
-    events.emit(Events.UI_SHOW_SECTOR_CLEARED, { node, rewardText });
 }
 
 export function emitHardReset() {

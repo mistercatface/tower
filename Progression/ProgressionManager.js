@@ -1,4 +1,4 @@
-import { spawnFloatingText, events, Events, requestUiUpdate, requestProgressDirty, requestProgressSave, requestGamePause, requestGameResume, showSectorClearedModal } from "../Core/EventSystem.js";
+import { spawnFloatingText, events, Events, requestUiUpdate, requestProgressDirty, requestProgressSave, requestGamePause, requestGameResume } from "../Core/EventSystem.js";
 import { StatsManager } from "./StatsManager.js";
 
 export class ProgressionManager {
@@ -210,58 +210,4 @@ export class ProgressionManager {
         }
     }
 
-    static handleWaveCompletion(state, upgrades, viewport, options = {}) {
-        const currentNode = state.getCurrentMapNode();
-
-        const isFinished = state.waveManager.completeWave(currentNode.wavesTotal);
-        if (isFinished) {
-            if (currentNode && !currentNode.completed) {
-                currentNode.completed = true;
-                upgrades.forEach((upg) => {
-                    if (state.player.upgrades[upg.id] && state.player.upgrades[upg.id].level > 0 && upg.onSectorEnd) {
-                        upg.onSectorEnd(state);
-                    }
-                });
-                if (options.skipSectorComplete) {
-                    requestUiUpdate();
-                    return;
-                }
-                state.fsm.transition("reward");
-                if (currentNode.reward && currentNode.reward.type === "random_permanent_upgrade") {
-                    this.awardPermanentUpgrade(state, upgrades, currentNode, viewport);
-                } else {
-                    this.finalizeSectorClearance(state, upgrades, currentNode, viewport, "Reward: None");
-                }
-            } else {
-                state.fsm.transition("map");
-                viewport.snapTo(state.player.x - state.player.x - viewport.x, state.player.y - state.player.y - viewport.y);
-                requestUiUpdate();
-            }
-            return;
-        }
-        requestUiUpdate();
-    }
-
-    static awardPermanentUpgrade(state, upgrades, currentNode, viewport) {
-        let rewardText = "Reward: None";
-        const validUpgrades = upgrades.filter((u) => {
-            const uState = state.player.upgrades[u.id];
-            return uState && uState.baseLevel < u.maxLevel && u.category !== "abilities" && u.category !== "perk";
-        });
-        if (validUpgrades.length > 0) {
-            const pickedUpg = validUpgrades[Math.floor(Math.random() * validUpgrades.length)];
-            const uState = state.player.upgrades[pickedUpg.id];
-            uState.baseLevel++;
-            uState.level = Math.min(pickedUpg.maxLevel, uState.level + 1);
-            requestProgressSave();
-            StatsManager.recalculateStats(state, upgrades);
-            if (pickedUpg.onPurchase) pickedUpg.onPurchase(state);
-            rewardText = `Reward: Permanent ${pickedUpg.name} Upgrade!`;
-        }
-        this.finalizeSectorClearance(state, upgrades, currentNode, viewport, rewardText);
-    }
-
-    static finalizeSectorClearance(state, upgrades, currentNode, viewport, rewardText) {
-        showSectorClearedModal(currentNode, rewardText);
-    }
 }

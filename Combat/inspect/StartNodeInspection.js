@@ -55,10 +55,10 @@ export function tryEnterStartNodeInspectionAfterGarbanzoFight(state, fsm) {
     return true;
 }
 
-export function beginStartNodeInspection(state, onSectorComplete) {
+export function beginStartNodeInspection(state, onComplete) {
     state.startNodeInspectionActive = true;
     state.startNodeInspectionSeen = new Set();
-    state.startNodeInspectionPending = onSectorComplete ?? null;
+    state.startNodeInspectionPending = onComplete ?? null;
     state.inspectPanelOpen = false;
 
     if (state.radioSeenThisRun) {

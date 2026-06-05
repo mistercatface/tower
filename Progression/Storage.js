@@ -20,7 +20,6 @@ function asNonNegativeInt(value, fallback = 0) {
 }
 
 function resetProgress(state) {
-    state.wavesCompleted = 0;
     state.highestLevelReached = 0;
     state.claimedPerkMilestones = [];
     state.discoveredAbilities = new Set();

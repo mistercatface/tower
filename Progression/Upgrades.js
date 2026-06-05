@@ -32,7 +32,6 @@ export class Upgrade {
         this.onTrigger = config.onTrigger || null;
         this.onRunStart = config.onRunStart || null;
         this.onEnemyKilled = config.onEnemyKilled || null;
-        this.onSectorEnd = config.onSectorEnd || null;
         this.turretLoadout = config.turretLoadout || null;
         this.toggleName = config.toggleName || null;
         this.showInHud = config.showInHud || false;

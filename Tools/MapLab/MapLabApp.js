@@ -216,7 +216,7 @@ function renderSidebarDetails() {
     addRow("Layer", node.layer);
     addRow("Strategy", node.strategy ?? "None");
     addRow("Theme", `<span class="color-badge" style="background-color: ${themeColor}"></span>`);
-    addRow("Waves", node.wavesTotal ?? 0);
+    addRow("Layer", node.layer ?? 0);
     addRow("Connections", node.connections.join(", ") || "None");
     
     infoPanel.appendChild(grid);

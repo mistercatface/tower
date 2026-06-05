@@ -74,12 +74,7 @@ export class MapGenerator {
         const layerSpacing = mapSettings.layerSpacing;
         const xSpacing = mapSettings.xSpacing;
         const nodeJitter = mapSettings.nodeJitter ?? 20;
-        const {
-            startNodeWaves,
-            wavesTotalMin,
-            wavesTotalMax,
-            extraConnectionChance,
-        } = mapGenerationSettings;
+        const { extraConnectionChance } = mapGenerationSettings;
 
         let nodeIdCounter = 0;
         let layers = [];
@@ -90,9 +85,6 @@ export class MapGenerator {
             x: 0,
             y: 0,
             connections: [],
-            completed: false,
-            wavesTotal: startNodeWaves,
-            reward: null,
             type: "combat",
             layer: 0,
             dir: -1,
@@ -126,9 +118,6 @@ export class MapGenerator {
                     x: vector.dx * l * xSpacing + jitterX,
                     y: vector.dy * l * layerSpacing + jitterY,
                     connections: [],
-                    completed: false,
-                    wavesTotal: Math.floor(Math.random() * (wavesTotalMax - wavesTotalMin + 1)) + wavesTotalMin,
-                    reward: { type: "random_permanent_upgrade" },
                     type: "combat",
                     layer: l,
                     dir: dir,

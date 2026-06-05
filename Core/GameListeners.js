@@ -4,7 +4,7 @@ import { ProgressionManager } from "../Progression/ProgressionManager.js";
 import { hardResetProgress, registerProgressListeners } from "../Progression/Storage.js";
 import { StatsManager } from "../Progression/StatsManager.js";
 import { tryEnterStartNodeInspectionAfterGarbanzoFight } from "../Combat/inspect/StartNodeInspection.js";
-import { isCombatOrReward } from "../GameState/GamePhase.js";
+import { isCombat } from "../GameState/GamePhase.js";
 import { registerPauseListeners } from "./PauseManager.js";
 import { FloatingText } from "../Render/FloatingText.js";
 import { nextUpgradeCost } from "../Config/Config.js";
@@ -22,20 +22,9 @@ export function registerGameListeners(eventBus, pauseManager) {
 
     eventBus.on(Events.COMBAT_ENEMY_KILLED, ({ enemy, state, upgrades, fsm }) => {
         ProgressionManager.processEnemyKillRewards(enemy, state, upgrades);
-        if (enemy?.isIntroGuard) {
-            tryEnterStartNodeInspectionAfterGarbanzoFight(state, fsm);
-        }
+        if (enemy?.isIntroGuard) tryEnterStartNodeInspectionAfterGarbanzoFight(state, fsm);
         requestProgressDirty();
         requestUiUpdate();
-    });
-
-    eventBus.on(Events.COMBAT_WAVE_CLEARED, ({ state, upgrades, viewport, fsm }) => {
-        const node = state.getCurrentMapNode();
-        if (node?.id === 0 && state.waveManager.sectorWave === 1 && !state.startNodeInspectionCompleted) {
-            if (tryEnterStartNodeInspectionAfterGarbanzoFight(state, fsm)) return;
-        }
-
-        ProgressionManager.handleWaveCompletion(state, upgrades, viewport);
     });
 
     eventBus.on(Events.GAME_TOGGLE_PAUSE, () => {
@@ -110,7 +99,7 @@ export function registerGameListeners(eventBus, pauseManager) {
         if (!viewport) return;
 
         const sliderVal = sliderValue / 100;
-        if (isCombatOrReward(state.phase)) {
+        if (isCombat(state.phase)) {
             viewport.zoomProgress = sliderVal;
             viewport.updateZoomLimits(state);
         } else {
@@ -139,16 +128,10 @@ export function registerGameListeners(eventBus, pauseManager) {
                 state.skipCombatEnterReset = true;
             }
             fsm.transition(targetState);
-        } else if (fsm.currentStateName === "combat" || fsm.currentStateName === "inspector" || fsm.currentStateName === "reward") {
+        } else if (fsm.currentStateName === "combat" || fsm.currentStateName === "inspector") {
             state.previousStateBeforeMap = fsm.currentStateName;
             fsm.transition("map");
         }
-        requestUiUpdate();
-    });
-
-    eventBus.on(Events.MAP_CONTINUE_AFTER_SECTOR, ({ state, viewport }) => {
-        state.fsm.transition("map");
-        viewport.snapTo(state.mapPlayerX - state.player.x - viewport.x, state.mapPlayerY - state.player.y - viewport.y);
         requestUiUpdate();
     });
 

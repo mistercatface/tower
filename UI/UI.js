@@ -1,6 +1,6 @@
-import { perkMilestones, xpForLevel } from "../Config/Config.js";
+import { perkMilestones, xpForLevel, spawnSettings } from "../Config/Config.js";
 import { buildAbilityTreeLayout } from "../Config/content/abilityTreeLayout.js";
-import { GamePhase, isCombat, isCombatOrReward, isInspector } from "../GameState/GamePhase.js";
+import { GamePhase, isCombat, isInspector } from "../GameState/GamePhase.js";
 import { getStartNodeInspectionMissionLabel } from "../Combat/inspect/StartNodeInspection.js";
 import { getGunDefinition, playerEquipmentCatalog } from "../Config/content/guns.js";
 import { getSlotFireIntervalMs, getSlotReloadTimeMs } from "../Combat/gunCombat.js";
@@ -19,15 +19,10 @@ import {
     setGameZoomFromSlider,
     emitHardReset,
     emitGameRestart,
-    emitMapContinueAfterSector,
     emitMapToggle,
 } from "../Core/EventSystem.js";
 
 const elements = {
-    sectorClearedModal: document.getElementById("sectorClearedModal"),
-    clearedNodeDisplay: document.getElementById("clearedNodeDisplay"),
-    clearedRewardDisplay: document.getElementById("clearedRewardDisplay"),
-    continueSectorBtn: document.getElementById("continueSectorBtn"),
     upgradeChoiceModal: document.getElementById("upgradeChoiceModal"),
     upgradeChoicesContainer: document.getElementById("upgradeChoicesContainer"),
     upgradeChoiceTitle: document.getElementById("upgradeChoiceTitle"),
@@ -37,9 +32,6 @@ const elements = {
     catDefenseBtn: document.getElementById("catDefenseBtn"),
     categoryModalTitle: document.getElementById("categoryModalTitle"),
     categoryModalDesc: document.getElementById("categoryModalDesc"),
-    unlockModal: document.getElementById("unlockModal"),
-    unlockDisplay: document.getElementById("unlockDisplay"),
-    continueUnlockBtn: document.getElementById("continueUnlockBtn"),
     waveDisplay: document.getElementById("waveDisplay"),
     killsDisplay: document.getElementById("killsDisplay"),
     scoreDisplay: document.getElementById("scoreDisplay"),
@@ -109,16 +101,6 @@ function setHudLabel(id, text) {
     if (el) el.textContent = next;
 }
 
-export function showSectorCleared(node, rewardText) {
-    elements.clearedNodeDisplay.innerText = `Sector [${Math.round(node.x)}, ${Math.round(node.y)}]`;
-    elements.clearedRewardDisplay.innerText = rewardText;
-    elements.sectorClearedModal.style.display = "flex";
-    elements.continueSectorBtn.onclick = () => {
-        elements.sectorClearedModal.style.display = "none";
-        emitMapContinueAfterSector();
-    };
-}
-
 export function showUpgradeChoice(title, description, choices, upgrades, onPick) {
     if (elements.upgradeChoiceTitle) elements.upgradeChoiceTitle.innerText = title;
     if (elements.upgradeChoiceDesc) elements.upgradeChoiceDesc.innerText = description;
@@ -154,15 +136,6 @@ export function showCategoryChoice(title, description, attackText, defenseText, 
         onPick("defense");
     };
     elements.categoryModal.style.display = "flex";
-}
-
-export function showUnlockResult(upgradeName, onContinue) {
-    elements.unlockDisplay.innerText = upgradeName;
-    elements.continueUnlockBtn.onclick = () => {
-        elements.unlockModal.style.display = "none";
-        onContinue();
-    };
-    elements.unlockModal.style.display = "flex";
 }
 
 export function updateToggleButton(btnId, isUnlocked, isActive, btnText, upgDef) {
@@ -221,12 +194,9 @@ export function updateHud(state, upgrades) {
     updateMapNavButtons(state);
     updateInspectMissionBanner(state);
 
-    const currentNode = state.getCurrentMapNode();
     let waveTextVal = state.waveManager.wave;
     if (isInspector(state.phase)) {
         waveTextVal = "Inspect";
-    } else if (isCombat(state.phase) && currentNode) {
-        waveTextVal = `${state.waveManager.sectorWave}/${currentNode.wavesTotal}`;
     }
     setHudLabel("waveDisplay", waveTextVal);
     setHudLabel("killsDisplay", state.kills);
@@ -246,24 +216,13 @@ export function updateHud(state, upgrades) {
     );
 
     const aliveEnemies = state.enemies.filter((e) => !e.isDead).length;
-    let progress = Math.max(0, (state.waveManager.enemiesSpawned - aliveEnemies) / state.waveManager.enemiesToSpawn);
-
-    if (state.isTransitioning) {
-        progress = 1.0;
-    } else if (state.isGameOver) {
-        progress = 0.0;
-    }
+    const progress = state.isGameOver ? 0 : Math.min(1, aliveEnemies / spawnSettings.maxActiveEnemies);
 
     const topWaveBar = elements.topWaveBar;
     if (topWaveBar) {
         topWaveBar.style.width = `${progress * 100}%`;
-        if (state.isTransitioning) {
-            topWaveBar.style.background = "#4CAF50";
-            topWaveBar.style.boxShadow = "0 0 8px rgba(76, 175, 80, 0.6)";
-        } else {
-            topWaveBar.style.background = "#00bcd4";
-            topWaveBar.style.boxShadow = "0 0 8px rgba(0, 188, 212, 0.6)";
-        }
+        topWaveBar.style.background = "#00bcd4";
+        topWaveBar.style.boxShadow = "0 0 8px rgba(0, 188, 212, 0.6)";
     }
 
     if (upgrades) {
@@ -331,7 +290,6 @@ export function registerUiEventListeners(eventBus) {
     eventBus.on(Events.UI_UPDATE, (data) => updateUI(data.state, data.upgrades));
     eventBus.on(Events.UI_UPDATE_HUD, (data) => updateHud(data.state, data.upgrades));
     eventBus.on(Events.UI_SHOW_UPGRADE_CHOICE, (data) => showUpgradeChoice(data.title, data.description, data.choices, data.upgrades, data.onPick));
-    eventBus.on(Events.UI_SHOW_SECTOR_CLEARED, (data) => showSectorCleared(data.node, data.rewardText));
     eventBus.on(Events.UI_SHOW_GAME_OVER, () => showGameOverScreen());
     eventBus.on(Events.UI_HIDE_GAME_OVER, () => hideGameOverScreen());
 }
@@ -769,7 +727,7 @@ export function updateUI(state, upgrades) {
     }
     if (elements.zoomSlider && viewport) {
         let sliderVal = 0.5;
-        if (isCombatOrReward(state.phase)) {
+        if (isCombat(state.phase)) {
             sliderVal = viewport.zoomProgress;
         } else {
             sliderVal = (viewport.zoom - 0.5) / 1.5;
