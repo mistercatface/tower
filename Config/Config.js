@@ -278,4 +278,4 @@ export const controlSettings = { doubleTapTimeout: 300, scrollZoomSensitivity: -
 
 export const timingSettings = { sectorCompletedDelay: 1500 };
 
-export const debugStartNodeInspectionImmediate = true;
+export const debugStartNodeInspectionImmediate = false;

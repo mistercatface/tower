@@ -1,4 +1,14 @@
-import { extrudeBox, pointOnFrustum, radiusAtT, getHeightSlice, getRadialSilhouette, traceVisibleArc, isFaceTowardViewer, createSideGradient, projectVertical } from "../math/CombatProjection.js";
+import {
+    extrudeBox,
+    pointOnFrustum,
+    radiusAtT,
+    getHeightSlice,
+    getRadialSilhouette,
+    traceVisibleArc,
+    isFaceTowardViewer,
+    createSideGradient,
+    projectVertical,
+} from "../../../Libraries/Math/IsometricProjection.js";
 
 export const DEFAULT_PROP_HEIGHT = 14;
 export const RADIAL_SEGMENTS = 14;

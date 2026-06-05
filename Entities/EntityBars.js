@@ -1,4 +1,4 @@
-import { ProgressBar } from "../Render/ProgressBar.js";
+import { ProgressBar } from "../Libraries/Canvas/ProgressBar.js";
 
 export function createEntityBars({
     healthWidth,

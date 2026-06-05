@@ -1,7 +1,7 @@
 import { bakeFloorChunkCanvases, bakeWallFaceCanvases } from "./FloorTilePainter.js";
 import { registerRuntimeFloorProfile } from "../../Config/floorProceduralConfig.js";
 import { invalidateProfileScratch } from "./ProfileBakeResolver.js";
-import { SharedEdgeSolver } from "../3D/SharedEdgeSolver.js";
+import { SharedEdgeSolver } from "../../Libraries/Math/SharedEdgeSolver.js";
 
 let wallGeometrySab = null;
 let wallGeometryView = null;

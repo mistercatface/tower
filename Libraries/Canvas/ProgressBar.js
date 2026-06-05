@@ -1,3 +1,5 @@
+import { clamp } from "../Math/Interpolate.js";
+
 export class ProgressBar {
     constructor(config = {}) {
         this.width = config.width || 20;
@@ -6,7 +8,7 @@ export class ProgressBar {
         this.quantizationSteps = config.quantizationSteps || 20;
         this.bgColor = config.bgColor || "rgba(21, 21, 28, 0.75)";
         this.borderColor = config.borderColor || "rgba(255, 255, 255, 0.15)";
-        
+
         this.colorFn = config.colorFn || ((ratio) => {
             if (ratio > 0.5) return "#00E676";
             if (ratio > 0.2) return "#FFEB3B";
@@ -15,40 +17,40 @@ export class ProgressBar {
     }
 
     render(ctx, x, y, ratio, cache) {
-        const clampedRatio = Math.max(0, Math.min(1, ratio));
+        const clampedRatio = clamp(ratio, 0, 1);
         const quantizedRatio = Math.round(clampedRatio * this.quantizationSteps) / this.quantizationSteps;
-        
+
         const cacheKey = `pb_${this.width}_${this.height}_${quantizedRatio.toFixed(2)}`;
-        
+
         const cachedSprite = cache.get(cacheKey, () => {
             const canvasSizeW = this.width + 2;
             const canvasSizeH = this.height + 2;
             const offCanvas = new OffscreenCanvas(canvasSizeW, canvasSizeH);
             const offCtx = offCanvas.getContext("2d");
-            
+
             offCtx.fillStyle = this.bgColor;
             offCtx.strokeStyle = this.borderColor;
             offCtx.lineWidth = 1;
-            
+
             this._drawRoundRect(offCtx, 1, 1, this.width, this.height, this.borderRadius);
             offCtx.fill();
             offCtx.stroke();
-            
+
             if (quantizedRatio > 0) {
                 const fillW = Math.max(1, Math.round(this.width * quantizedRatio));
                 offCtx.fillStyle = this.colorFn(quantizedRatio);
-                
+
                 offCtx.save();
                 offCtx.beginPath();
                 this._drawRoundRect(offCtx, 1, 1, this.width, this.height, this.borderRadius);
                 offCtx.clip();
-                
+
                 offCtx.beginPath();
                 offCtx.rect(1, 1, fillW, this.height);
                 offCtx.fill();
                 offCtx.restore();
             }
-            
+
             return offCanvas;
         });
 

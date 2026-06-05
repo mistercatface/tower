@@ -1,4 +1,4 @@
-import { SpriteCache } from "./SpriteCache.js";
+import { SpriteCache } from "../Libraries/Canvas/SpriteCache.js";
 import { Render3D } from "./3D/Render3D.js";
 import { buildWorldRenderInput } from "./adapters/WorldRenderAdapter.js";
 import { COMBAT_HUD_MODE, hudSettings, combatVisualSettings } from "../Config/Config.js";

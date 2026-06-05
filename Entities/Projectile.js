@@ -13,7 +13,7 @@ import { RagdollCorpse } from "./RagdollCorpse.js";
 
 // Grenade-specific imports
 import { Explosion } from "./Explosion/Explosion.js";
-import { ProgressBar } from "../Render/ProgressBar.js";
+import { ProgressBar } from "../Libraries/Canvas/ProgressBar.js";
 import { CombatParticles } from "../Render/CombatParticles.js";
 
 const grenadeProgressBar = new ProgressBar({

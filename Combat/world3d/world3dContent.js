@@ -1,5 +1,5 @@
-import { drawJackoFuelBarrelCombat } from "./props/jacko/Combat.js";
-import { drawCrateCombat, drawCrateShardCombat } from "./props/crate/Combat.js";
+import { drawJackoFuelBarrelCombat } from "./recipes/jacko/Combat.js";
+import { drawCrateCombat, drawCrateShardCombat } from "./recipes/crate/Combat.js";
 
 export function drawBarrel(ctx, prop, px, py) {
     drawJackoFuelBarrelCombat(ctx, prop, px, py, { onFire: false });

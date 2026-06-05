@@ -11,7 +11,7 @@ export class SharedEdgeSolver {
         for (let i = 0; i < numWalls; i++) {
             const offset = i * STRIDE;
             const isDead = wallsData[offset + 4] !== 0;
-            sharedEdgesOut[i] = 0; // reset flags
+            sharedEdgesOut[i] = 0;
 
             if (isDead) continue;
 
@@ -49,7 +49,7 @@ export class SharedEdgeSolver {
                     edgeIndex: e,
                     cx: ex,
                     cy: ey,
-                    height: height
+                    height: height,
                 });
             }
         }
@@ -72,7 +72,7 @@ export class SharedEdgeSolver {
         const thresholdSq = 9.0;
         for (let i = 0; i < activeEdges.length; i++) {
             const e1 = activeEdges[i];
-            
+
             const currentFlags = sharedEdgesOut[e1.wallId];
             const isShared = (currentFlags & (1 << e1.edgeIndex)) !== 0;
             if (isShared) continue;

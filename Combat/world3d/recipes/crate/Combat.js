@@ -1,5 +1,5 @@
 import { WOOD_CRATE } from "../../../../Config/props/Crate.js";
-import { drawExtrudedBox } from "../../draw/SolidDraw.js";
+import { drawExtrudedBox } from "../../../../Render/3D/draw/SolidDraw.js";
 
 export function drawCrateCombat(ctx, prop, px, py) {
     const { colors, combat } = WOOD_CRATE;
@@ -22,7 +22,7 @@ export function drawCrateCombat(ctx, prop, px, py) {
 export function drawCrateShardCombat(ctx, prop, px, py) {
     const { colors, combat } = WOOD_CRATE;
     const opacity = prop.opacity ?? 1.0;
-    
+
     ctx.save();
     ctx.globalAlpha = opacity;
 

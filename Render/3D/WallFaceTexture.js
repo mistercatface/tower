@@ -1,6 +1,6 @@
 import { floorTileSettings, gridSettings } from "../../Config/Config.js";
-import { drawImageQuad } from "./draw/AffineTexture.js";
-import { CAMERA_HEIGHT } from "./math/CombatProjection.js";
+import { drawImageQuad } from "../../Libraries/Canvas/AffineTexture.js";
+import { CAMERA_HEIGHT } from "../../Libraries/Math/IsometricProjection.js";
 /** @typedef {import("../adapters/WorldRenderAdapter.js").FloorBakeContext} FloorBakeContext */
 
 import { isWallFaceAnimationEnabled } from "../Floor/floorTextureProfile.js";

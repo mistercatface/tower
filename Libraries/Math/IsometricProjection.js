@@ -1,12 +1,13 @@
 // World props: geometry is built in world space (prop.facing at spawn).
 // Symmetric cylinders use a viewer-facing silhouette (viewAngle for rim tangents only).
-import { angleDelta } from "../../../Libraries/Math/Angle.js";
-import { radiusAtT, scaleAtHeight } from "../../../Libraries/Math/Interpolate.js";
-import { rectCorners } from "../../../Libraries/Math/Poly2D.js";
+import { angleDelta } from "./Angle.js";
+import { radiusAtT, scaleAtHeight } from "./Interpolate.js";
+import { rectCorners } from "./Poly2D.js";
 
 export { radiusAtT, scaleAtHeight };
 
 export let CAMERA_HEIGHT = 160;
+
 export function setCameraHeight(val) {
     CAMERA_HEIGHT = val;
 }
@@ -33,17 +34,6 @@ export function pointOnFrustum(projection, baseRadius, topRadius, t, angle) {
     const centerX = cx + (topX - cx) * t;
     const centerY = cy + (topY - cy) * t;
     return { x: centerX + Math.cos(angle) * radius, y: centerY + Math.sin(angle) * radius };
-}
-
-/** Arc on a circle rim that bulges toward the viewer (symmetric cylinder silhouette). */
-export function traceVisibleArc(ctx, centerX, centerY, radius, fromAngle, toAngle, viewAngle) {
-    const towardViewer = viewAngle + Math.PI;
-    const delta = angleDelta(fromAngle, toAngle);
-    const midShort = fromAngle + delta / 2;
-    const midLong = midShort + (delta > 0 ? -Math.PI : Math.PI);
-    const useShort = Math.abs(angleDelta(midShort, towardViewer)) < Math.abs(angleDelta(midLong, towardViewer));
-    const counterClockwise = delta > 0 ? !useShort : useShort;
-    ctx.arc(centerX, centerY, radius, fromAngle, toAngle, counterClockwise);
 }
 
 export function getRadialSilhouette(projection, baseRadius, topRadius = null) {
@@ -106,6 +96,17 @@ export function getSideHighlightT(viewAngle, lightAngle = (-3 * Math.PI) / 4) {
     const ny = Math.sin(viewAngle + Math.PI / 2);
     const dot = lx * nx + ly * ny;
     return Math.max(0.1, Math.min(0.9, 0.5 + dot * 0.5));
+}
+
+/** Arc on a circle rim that bulges toward the viewer (symmetric cylinder silhouette). */
+export function traceVisibleArc(ctx, centerX, centerY, radius, fromAngle, toAngle, viewAngle) {
+    const towardViewer = viewAngle + Math.PI;
+    const delta = angleDelta(fromAngle, toAngle);
+    const midShort = fromAngle + delta / 2;
+    const midLong = midShort + (delta > 0 ? -Math.PI : Math.PI);
+    const useShort = Math.abs(angleDelta(midShort, towardViewer)) < Math.abs(angleDelta(midLong, towardViewer));
+    const counterClockwise = delta > 0 ? !useShort : useShort;
+    ctx.arc(centerX, centerY, radius, fromAngle, toAngle, counterClockwise);
 }
 
 export function createSideGradient(ctx, left, right, viewAngle, colors) {

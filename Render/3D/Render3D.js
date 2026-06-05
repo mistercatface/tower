@@ -1,9 +1,9 @@
 /** @typedef {import("../adapters/WorldRenderAdapter.js").WorldRenderInput} WorldRenderInput */
 
 import { floorTileSettings } from "../../Config/Config.js";
-import { drawBarrel, drawCrate, drawFireBarrel, drawCrateShard } from "./PropRecipes.js";
+import { drawBarrel, drawCrate, drawFireBarrel, drawCrateShard } from "../../Combat/world3d/world3dContent.js";
 import { SpatialQuery } from "../../Spatial/World/SpatialQuery.js";
-import { CAMERA_HEIGHT } from "./math/CombatProjection.js";
+import { CAMERA_HEIGHT } from "../../Libraries/Math/IsometricProjection.js";
 import { drawProjectedWallFace, drawProjectedWallRoof } from "./WallFaceTexture.js";
 import { TileWorkerCoordinator, wallGeometryView, wallSharedEdgesView, MAX_WALLS, STRIDE } from "../Floor/TileWorkerCoordinator.js";
 

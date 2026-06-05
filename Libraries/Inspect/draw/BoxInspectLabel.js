@@ -9,7 +9,7 @@ import {
     averageDepth,
 } from "../camera/InspectCamera.js";
 import { faceVisible } from "../geometry/MeshBuilder.js";
-import { drawImageQuad } from "./AffineTexture.js";
+import { drawImageQuad } from "../../Canvas/AffineTexture.js";
 import { labelBandYRange } from "../../Math/Interpolate.js";
 
 /** @typedef {"+x" | "-x" | "+z" | "-z"} BoxSideFace */
