@@ -1,4 +1,5 @@
 import { circleIntersectsAabb } from "../Aabb2D.js";
+import { gridReachabilityBfs } from "./gridReachabilityBfs.js";
 import { OCTILE_OFFSETS } from "../../Spatial/grid/GridUtils.js";
 import {
     worldToGridCentered,
@@ -33,7 +34,7 @@ export class FlowFieldGrid {
         this.grid = new Uint8Array(this.sabObstacle);
 
         this.sabNeighbors = new SharedArrayBuffer(size * 8 * 4);
-        const neighborGrid = new Int32Array(this.sabNeighbors).fill(-1);
+        this.neighborGrid = new Int32Array(this.sabNeighbors).fill(-1);
         for (let row = 0; row < this.rows; row++) {
             for (let col = 0; col < this.cols; col++) {
                 const base = (row * this.cols + col) * 8;
@@ -42,7 +43,7 @@ export class FlowFieldGrid {
                     const nc = col + dc;
                     const nr = row + dr;
                     if (nc >= 0 && nc < this.cols && nr >= 0 && nr < this.rows) {
-                        neighborGrid[base + i] = nr * this.cols + nc;
+                        this.neighborGrid[base + i] = nr * this.cols + nc;
                     }
                     i++;
                 }
@@ -152,43 +153,7 @@ export class FlowFieldGrid {
         const startIdx = start.row * this.cols + start.col;
         const targetIdx = target.row * this.cols + target.col;
 
-        if (this.grid[startIdx] === 1 || this.grid[targetIdx] === 1) return false;
-
-        const visited = new Uint8Array(this.cols * this.rows);
-        const queue = [startIdx];
-        visited[startIdx] = 1;
-
-        const neighbors = new Int32Array(this.sabNeighbors);
-        let head = 0;
-        while (head < queue.length) {
-            const currIdx = queue[head++];
-            if (currIdx === targetIdx) return true;
-
-            const currCol = currIdx % this.cols;
-            const currRow = (currIdx / this.cols) | 0;
-
-            for (let i = 0; i < 8; i++) {
-                const nIdx = neighbors[currIdx * 8 + i];
-                if (nIdx !== -1 && !visited[nIdx]) {
-                    if (this.grid[nIdx] === 1) continue;
-
-                    const nc = nIdx % this.cols;
-                    const nr = (nIdx / this.cols) | 0;
-                    const dx = currCol - nc;
-                    const dy = currRow - nr;
-
-                    if (dx !== 0 && dy !== 0) {
-                        const check1 = this.grid[currRow * this.cols + nc];
-                        const check2 = this.grid[nr * this.cols + currCol];
-                        if (check1 === 1 || check2 === 1) continue;
-                    }
-
-                    visited[nIdx] = 1;
-                    queue.push(nIdx);
-                }
-            }
-        }
-        return false;
+        return gridReachabilityBfs(startIdx, targetIdx, this.grid, this.neighborGrid, this.cols);
     }
 
     clear() {

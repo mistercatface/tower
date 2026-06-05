@@ -1,4 +1,4 @@
-import { Utilities } from "../../Core/Utilities.js";
+import { applyDesiredDirectionToward } from "../../Libraries/Motion/directSeek.js";
 import { sampleFlowDirectionOnGrid } from "../../Libraries/Math/pathfinding/sampleFlowDirection.js";
 
 export function steerViaFlowField(entity, targetX, targetY, flowFieldGrid, flowFieldKey) {
@@ -14,6 +14,6 @@ export function steerViaFlowField(entity, targetX, targetY, flowFieldGrid, flowF
         }
     }
 
-    Utilities.setDesiredDirection(entity, targetX - entity.x, targetY - entity.y);
+    applyDesiredDirectionToward(entity, targetX, targetY);
     return "direct";
 }

@@ -1,7 +1,6 @@
-import { integrateSteering, applyVelocityDamping } from "../Libraries/Motion/index.js";
+import { integrateSteering, applyVelocityDamping, applyDesiredDirection } from "../Libraries/Motion/index.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { normalizeAngle, turnAngleTowards } from "../Libraries/Math/Angle.js";
-import { Utilities } from "../Core/Utilities.js";
 import { CollisionSystem } from "../Spatial/Collision/CollisionSystem.js";
 import { enemyDefaults } from "../Config/Config.js";
 
@@ -269,7 +268,7 @@ export class EnemyChargePrepareState {
         } else if (distToTarget < stagingDist - 20) {
             const dx = enemy.x - target.x;
             const dy = enemy.y - target.y;
-            Utilities.setDesiredDirection(enemy, dx, dy);
+            applyDesiredDirection(enemy, dx, dy);
         } else {
             enemy.desiredX = 0;
             enemy.desiredY = 0;

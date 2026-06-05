@@ -1,4 +1,5 @@
-import { trimPathAhead, computePathSteering, steerTowardTarget } from "./PathFollow.js";
+import { applyDesiredDirectionToward } from "../../Libraries/Motion/directSeek.js";
+import { trimPathAhead, computePathSteering } from "../../Libraries/Math/pathfinding/pathFollow.js";
 import { prepareNavigationPath, orthogonalizePath } from "../../Libraries/Math/pathfinding/PathClearance.js";
 
 export function createNavState() {
@@ -98,9 +99,6 @@ export function steerViaHpa(entity, targetX, targetY, hierarchicalNavigator, nav
             replanReason = "interval";
         }
         const applyClearance = shouldApplyClearance(navState, targetX, targetY, false);
-        // Only actually replan if visible, or if the update interval has fully elapsed,
-        // or if we are stuck. This prevents off-screen enemies from pathfinding immediately
-        // after obstacles change (when navState.path gets cleared but they aren't ready to replan).
         if (isVisible || navState.stuckFrames > settings.stuckReplanFrames || (now - navState.lastUpdate > effectiveReplanMs)) {
             replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings, applyClearance, profile, state);
             navState.stuckFrames = 0;
@@ -108,13 +106,19 @@ export function steerViaHpa(entity, targetX, targetY, hierarchicalNavigator, nav
     }
 
     if (navState.path && navState.path.length >= 2) {
-        let steering = computePathSteering(entity, navState.path, targetX, targetY, settings, navState);
+        let steering = computePathSteering(
+            entity.x, entity.y, entity.radius,
+            navState.path, targetX, targetY, settings, navState,
+        );
         if (steering.offPath && now - navState.lastOffPathReplan >= effectiveReplanMs) {
             replanReason = "offPath";
             navState.lastOffPathReplan = now;
             replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings, false, profile, state);
             if (navState.path && navState.path.length >= 2) {
-                steering = computePathSteering(entity, navState.path, targetX, targetY, settings, navState);
+                steering = computePathSteering(
+                    entity.x, entity.y, entity.radius,
+                    navState.path, targetX, targetY, settings, navState,
+                );
             }
         }
         if (navState.path && navState.path.length >= 2) {
@@ -124,6 +128,6 @@ export function steerViaHpa(entity, targetX, targetY, hierarchicalNavigator, nav
         }
     }
 
-    steerTowardTarget(entity, targetX, targetY);
+    applyDesiredDirectionToward(entity, targetX, targetY);
     return { mode: "direct", replanReason, pathLen: 0 };
 }

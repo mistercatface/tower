@@ -1,4 +1,3 @@
-import { normalizeVector } from "../Libraries/Math/Vec2.js";
 import { distanceToSegment } from "../Libraries/Spatial/geometry/WallGeometry.js";
 import { getWallsAlongLine } from "../Spatial/World/WallContext.js";
 
@@ -47,10 +46,4 @@ export class Utilities {
         return true;
     }
 
-    static setDesiredDirection(entity, dx, dy) {
-        const vec = normalizeVector(dx, dy);
-        entity.desiredX = vec.x;
-        entity.desiredY = vec.y;
-        return vec;
-    }
 }
