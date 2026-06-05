@@ -1,4 +1,5 @@
 import { mapSettings, mapGenerationSettings } from "../../Config/Config.js";
+import { Viewport } from "../../Libraries/Viewport/Viewport.js";
 import { initResizer, setupLabViewportNavigation } from "../Lab/lab-shared.js";
 import { createLabMapWorld } from "../TileLab/map/LabMapWorld.js";
 import { renderMapLabView } from "./MapLabView.js";
@@ -6,7 +7,7 @@ import { SliderControl } from "../Lab/ui/controls/SliderControl.js";
 import { resolveRepositionTarget } from "../../Spatial/Navigation/PathClearance.js";
 
 let currentWorld = null;
-let currentCamera = { x: 0, y: 0, zoom: 0.1 }; // zoomed out by default to see the whole map
+const currentViewport = new Viewport(0, 0, 0.1);
 let selectedNodeId = null;
 
 let playerPos = null;
@@ -86,8 +87,7 @@ function generateMap() {
     // Focus camera roughly on the center of the generated bounds
     const bounds = currentWorld.obstacleGrid;
     if (bounds && bounds.minX !== undefined) {
-        currentCamera.x = (bounds.minX + bounds.maxX) / 2;
-        currentCamera.y = (bounds.minY + bounds.maxY) / 2;
+        currentViewport.snapTo((bounds.minX + bounds.maxX) / 2, (bounds.minY + bounds.maxY) / 2);
     }
 
     // Default player position to Node 0 combat center, target to Node 1 combat center
@@ -134,7 +134,7 @@ function redrawCanvas() {
         canvas.width,
         canvas.height,
         currentWorld,
-        currentCamera,
+        currentViewport,
         readControls(),
         selectedNodeId,
         playerPos,
@@ -145,7 +145,7 @@ function redrawCanvas() {
     
     const statusLine = document.getElementById("mapStatusLine");
     if (statusLine) {
-        statusLine.textContent = `Cam: ${Math.round(currentCamera.x)}, ${Math.round(currentCamera.y)} · Zoom: ${currentCamera.zoom.toFixed(2)}x · Nodes: ${currentWorld.mapNodes.length} · Walls: ${currentWorld.walls.length}`;
+        statusLine.textContent = `Cam: ${Math.round(currentViewport.x)}, ${Math.round(currentViewport.y)} · Zoom: ${currentViewport.zoom.toFixed(2)}x · Nodes: ${currentWorld.mapNodes.length} · Walls: ${currentWorld.walls.length}`;
     }
 }
 
@@ -226,9 +226,8 @@ function renderSidebarDetails() {
     focusBtn.textContent = "Focus Node";
     focusBtn.addEventListener("click", () => {
         const coords = currentWorld.getNodeCombatCoords(node);
-        currentCamera.x = coords.x;
-        currentCamera.y = coords.y;
-        currentCamera.zoom = 0.5; // Zoom in slightly
+        currentViewport.snapTo(coords.x, coords.y);
+        currentViewport.zoom = 0.5;
         redrawCanvas();
     });
     
@@ -302,26 +301,23 @@ function bootstrap() {
     }
     
     setupLabViewportNavigation("mapPreview", {
-        getCamera: () => currentCamera,
+        getCamera: () => currentViewport,
         setCamera: (x, y, zoom) => {
-            currentCamera.x = x;
-            currentCamera.y = y;
-            currentCamera.zoom = zoom;
+            currentViewport.snapTo(x, y);
+            currentViewport.zoom = zoom;
         },
-        onUpdate: () => redrawCanvas()
+        onUpdate: () => redrawCanvas(),
     });
 
     const canvas = document.getElementById("mapPreview");
     canvas.addEventListener("pointerdown", (e) => {
         if (!currentWorld) return;
         const rect = canvas.getBoundingClientRect();
-        
-        // Transform screen click to world coordinates
-        const cx = rect.width / 2;
-        const cy = rect.height / 2;
-        
-        const worldX = (e.clientX - rect.left - cx) / currentCamera.zoom + currentCamera.x;
-        const worldY = (e.clientY - rect.top - cy) / currentCamera.zoom + currentCamera.y;
+        currentViewport.setCanvasSize(canvas.width, canvas.height);
+        const { x: worldX, y: worldY } = currentViewport.screenToWorld(
+            e.clientX - rect.left,
+            e.clientY - rect.top,
+        );
         
         const showPathTest = document.getElementById("showPathTestInput").checked;
         const actionEl = document.querySelector('input[name="clickAction"]:checked');

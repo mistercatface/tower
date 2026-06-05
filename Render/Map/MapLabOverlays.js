@@ -100,18 +100,18 @@ export function drawMapLabPathTest(ctx, { playerPos, targetPos, currentPath, abs
 }
 
 export function drawMapLabOverlays(ctx, state, config) {
-    const { labOptions, camera, playerPos, targetPos, currentPath, abstractPath } = config;
-    if (!labOptions || !camera) return;
+    const { labOptions, viewport, playerPos, targetPos, currentPath, abstractPath } = config;
+    if (!labOptions || !viewport) return;
 
     if (labOptions.showGridBounds && state.obstacleGrid) {
-        drawMapLabGridBounds(ctx, state.obstacleGrid, camera.zoom);
+        drawMapLabGridBounds(ctx, state.obstacleGrid, viewport.zoom);
     }
 
     if (labOptions.showRoomZones) {
-        drawMapLabRoomZones(ctx, state, camera.zoom);
+        drawMapLabRoomZones(ctx, state, viewport.zoom);
     }
 
     if (labOptions.showPathTest) {
-        drawMapLabPathTest(ctx, { playerPos, targetPos, currentPath, abstractPath, zoom: camera.zoom });
+        drawMapLabPathTest(ctx, { playerPos, targetPos, currentPath, abstractPath, zoom: viewport.zoom });
     }
 }

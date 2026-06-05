@@ -86,8 +86,7 @@ function drawLabWorldFrame(ctx, canvas, viewW, viewH, worldState, profileId, gam
     const cameraY = worldState.player.y;
 
     const viewport = new Viewport(cameraX, cameraY, gameZoom);
-    viewport.cx = viewW / 2;
-    viewport.cy = viewH / 2;
+    viewport.setCanvasSize(viewW, viewH);
     viewport.zoom = gameZoom;
 
     const prevCanvasBounds = worldState.canvasBounds;

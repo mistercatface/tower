@@ -7,14 +7,14 @@ export function createGameMapViewConfig() {
     };
 }
 
-export function createLabMapViewConfig(options, { camera, selectedNodeId }) {
+export function createLabMapViewConfig(options, { viewport, selectedNodeId }) {
     return {
         mode: "lab",
         showWalls: options.showWalls,
         showGraph: options.showNodes,
         showPathDebug: options.showPathDebug,
         graphContext: {
-            zoom: camera.zoom,
+            zoom: viewport.zoom,
             selectedNodeId,
         },
     };

@@ -7,12 +7,6 @@ function resolveLineWidth(styles, context) {
     return typeof width === "function" ? width(context) : width;
 }
 
-export function applyLabCamera(ctx, width, height, camera) {
-    ctx.translate(width / 2, height / 2);
-    ctx.scale(camera.zoom, camera.zoom);
-    ctx.translate(-camera.x, -camera.y);
-}
-
 export function drawMapConnections(ctx, state, styles, context = {}) {
     const lineWidth = resolveLineWidth(styles, context);
 
@@ -86,7 +80,6 @@ export function renderMapView(ctx, state, config) {
         width,
         height,
         viewport,
-        camera,
         backgroundColor = "#080a0e",
         clearBackground = true,
         drawOverlays,
@@ -100,9 +93,10 @@ export function renderMapView(ctx, state, config) {
     }
 
     if (viewport) {
+        if (width > 0 && height > 0) {
+            viewport.setCanvasSize(width, height);
+        }
         viewport.apply(ctx);
-    } else if (camera && width > 0 && height > 0) {
-        applyLabCamera(ctx, width, height, camera);
     }
 
     renderMapViewContent(ctx, state, config);
