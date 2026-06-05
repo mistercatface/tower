@@ -2,6 +2,7 @@ import { Segment } from "../Entities/Wall.js";
 import { GeneratorStrategies } from "./GeneratorStrategies.js";
 import { StartBuildingStrategy } from "./StartNodeBuilding.js";
 import { WorldObstacleGrid } from "../Spatial/World/ObstacleGrid.js";
+import { FLOW_FIELD_WORKER_URL } from "../Render/WorldSurfaceBootstrap.js";
 import { FlowFieldGrid } from "../Spatial/Navigation/FlowFieldGrid.js";
 import { mapSettings, gridSettings, mapGenerationSettings } from "../Config/Config.js";
 import { resolveSurfaceProfileId } from "../Config/procedural/profiles.js";
@@ -16,7 +17,13 @@ let tempFlowFieldGrid = null;
 function getTempGrids() {
     if (!tempObstacleGrid) {
         tempObstacleGrid = new WorldObstacleGrid(gridSettings.cellSize);
-        tempFlowFieldGrid = new FlowFieldGrid(gridSettings.cellSize, gridSettings.width, gridSettings.height, tempObstacleGrid);
+        tempFlowFieldGrid = new FlowFieldGrid(
+            gridSettings.cellSize,
+            gridSettings.width,
+            gridSettings.height,
+            tempObstacleGrid,
+            FLOW_FIELD_WORKER_URL,
+        );
     }
     return { tempObstacleGrid, tempFlowFieldGrid };
 }

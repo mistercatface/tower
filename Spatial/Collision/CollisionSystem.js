@@ -1,5 +1,5 @@
 import { circleIntersectsSegment } from "../../Libraries/Spatial/geometry/WallGeometry.js";
-import { SatCollision } from "./SatCollision.js";
+import { SatCollision } from "../../Libraries/Spatial/collision/SatCollision.js";
 import { shouldResolveActorPushable } from "./PairBroadphase.js";
 import { wakePushable } from "./PushableSleep.js";
 import { areHostile } from "../../Combat/Targeting.js";

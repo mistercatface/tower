@@ -2,17 +2,16 @@
 /** @typedef {import("./WorldSceneTypes.js").WorldSceneDrawOptions} WorldSceneDrawOptions */
 /** @typedef {import("./Props3D/PropRenderer.js").PropDrawRecipe} PropDrawRecipe */
 
-import { getWorldSurfaceSettings } from "../WorldSurface/WorldSurfaceSettings.js";
 import { clipToViewport } from "./common/viewportUtils.js";
 import { PropRenderer } from "./Props3D/PropRenderer.js";
 import { StructureRenderer } from "./Structure3D/StructureRenderer.js";
 
 export class WorldSceneRenderer {
     /**
-     * @param {import("../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} [settings]
+     * @param {import("../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} settings
      * @param {Record<string, PropDrawRecipe>} [propRecipes]
      */
-    constructor(settings = getWorldSurfaceSettings(), propRecipes = {}) {
+    constructor(settings, propRecipes = {}) {
         this.settings = settings;
         this.structure = new StructureRenderer(settings);
         this.props = new PropRenderer(propRecipes);

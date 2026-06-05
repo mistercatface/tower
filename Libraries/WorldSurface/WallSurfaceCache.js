@@ -1,4 +1,4 @@
-import { getWorldSurfaceSettings, resolveWallVisualHeight } from "./WorldSurfaceSettings.js";
+import { resolveWallVisualHeight } from "./WorldSurfaceSettings.js";
 import { getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
 
 /**
@@ -15,7 +15,7 @@ import { getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
  * @param {{ wallHeight?: number } | null} [cacheObj]
  * @param {import("./WorldSurfaceSettings.js").WorldSurfaceSettings} [settings]
  */
-export function buildWallAtlasCacheKey(p1, p2, surfaceBake, profileId, ppwu, cacheObj = null, settings = getWorldSurfaceSettings()) {
+export function buildWallAtlasCacheKey(p1, p2, surfaceBake, profileId, ppwu, cacheObj = null, settings) {
     const chunkWorldSize = settings.chunkWorldSize || 128 * settings.cellSize;
     const wx1 = ((p1.x % chunkWorldSize) + chunkWorldSize) % chunkWorldSize;
     const wy1 = ((p1.y % chunkWorldSize) + chunkWorldSize) % chunkWorldSize;
@@ -45,7 +45,7 @@ export function buildWallAtlasCacheKey(p1, p2, surfaceBake, profileId, ppwu, cac
  * @param {{ wallHeight?: number, _wkInfo?: object, _wkProfileId?: string, _wkPpwu?: number, _wkRev?: number, _wkSeed?: number, _wkWallHeight?: number } | null} cacheObj
  * @param {import("./WorldSurfaceSettings.js").WorldSurfaceSettings} [settings]
  */
-export function getWallAtlasCacheInfo(p1, p2, surfaceBake, profileId, ppwu, cacheObj, settings = getWorldSurfaceSettings()) {
+export function getWallAtlasCacheInfo(p1, p2, surfaceBake, profileId, ppwu, cacheObj, settings) {
     const seed = surfaceBake.surfaceSeed;
     const rev = getSurfaceProfileRevision(profileId);
     const wallHeightKey = cacheObj?.wallHeight ?? resolveWallVisualHeight(settings.cameraHeight, settings);

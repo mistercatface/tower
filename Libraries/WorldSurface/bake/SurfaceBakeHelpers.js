@@ -1,4 +1,4 @@
-import { getWorldSurfaceSettings } from "../WorldSurfaceSettings.js";
+/** @typedef {import("../WorldSurfaceSettings.js").WorldSurfaceSettings} WorldSurfaceSettings */
 
 /**
  * @typedef {Object} GroundChunkBakePayload
@@ -9,6 +9,10 @@ import { getWorldSurfaceSettings } from "../WorldSurfaceSettings.js";
  * @property {number} seed
  * @property {string} profileId
  * @property {number} [gameTime]
+ * @property {number} [cellsPerChunk]
+ * @property {number} [cellSize]
+ * @property {number} [tileResolution]
+ * @property {number} [tileWorldSize]
  */
 
 function countAnimationFrames(animation) {
@@ -17,15 +21,18 @@ function countAnimationFrames(animation) {
     return stages.reduce((sum, stage) => sum + (stage.frames ?? 30), 0) || 1;
 }
 
-export function isGroundChunkAnimationEnabled(profile, settings = getWorldSurfaceSettings()) {
+/** @param {WorldSurfaceSettings} settings */
+export function isGroundChunkAnimationEnabled(profile, settings) {
     return Boolean(profile?.animation) && settings.groundChunkAnimationsOn !== false;
 }
 
-export function isWallAtlasAnimationEnabled(profile, settings = getWorldSurfaceSettings()) {
+/** @param {WorldSurfaceSettings} settings */
+export function isWallAtlasAnimationEnabled(profile, settings) {
     return Boolean(profile?.animation) && settings.wallAnimationsOn !== false;
 }
 
-export function getGroundChunkAnimationInfo(profile, settings = getWorldSurfaceSettings()) {
+/** @param {WorldSurfaceSettings} settings */
+export function getGroundChunkAnimationInfo(profile, settings) {
     const enabled = isGroundChunkAnimationEnabled(profile, settings);
     return {
         enabled,
@@ -33,7 +40,8 @@ export function getGroundChunkAnimationInfo(profile, settings = getWorldSurfaceS
     };
 }
 
-export function getWallAtlasAnimationInfo(profile, settings = getWorldSurfaceSettings()) {
+/** @param {WorldSurfaceSettings} settings */
+export function getWallAtlasAnimationInfo(profile, settings) {
     const enabled = isWallAtlasAnimationEnabled(profile, settings);
     return {
         enabled,
@@ -51,10 +59,12 @@ export function groundChunkCachePrefix(chunkCol, chunkRow, profileId, profileRev
  * @returns {GroundChunkBakePayload}
  */
 export function createGroundChunkBakePayload(payload) {
-    const { chunkCol, chunkRow, minX, minY, seed, profileId, gameTime } = payload;
+    const { chunkCol, chunkRow, minX, minY, seed, profileId, gameTime, cellsPerChunk, cellSize, tileResolution, tileWorldSize } = payload;
     const result = { chunkCol, chunkRow, minX, minY, seed, profileId };
-    if (gameTime != null) {
-        result.gameTime = gameTime;
-    }
+    if (gameTime != null) result.gameTime = gameTime;
+    if (cellsPerChunk != null) result.cellsPerChunk = cellsPerChunk;
+    if (cellSize != null) result.cellSize = cellSize;
+    if (tileResolution != null) result.tileResolution = tileResolution;
+    if (tileWorldSize != null) result.tileWorldSize = tileWorldSize;
     return result;
 }

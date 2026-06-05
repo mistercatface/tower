@@ -1,4 +1,5 @@
 import "../../../Render/WorldSurfaceBootstrap.js";
+import { getGameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.js";
 import { GamePhase, isWorldScene } from "../../../GameState/GamePhase.js";
 import { WorldSceneRenderer } from "../../../Libraries/Render/WorldSceneRenderer.js";
 import { buildWorldRenderInput } from "../../../Render/adapters/WorldRenderAdapter.js";
@@ -8,7 +9,7 @@ import { getSurfaceProfileRevision } from "../../../Libraries/WorldSurface/Surfa
 import { invalidateWallAtlasKeyMemos } from "../../../Render/game/wallSurfaceInvalidation.js";
 import { setupLabViewportNavigation } from "../../Lab/lab-shared.js";
 
-const render3D = new WorldSceneRenderer();
+const render3D = new WorldSceneRenderer(getGameWorldSurfaceSettings());
 let lastBakeKey = "";
 
 const MOVE_SPEED_SCALE = 1;

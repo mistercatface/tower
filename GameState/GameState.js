@@ -1,4 +1,5 @@
 import "../Render/WorldSurfaceBootstrap.js";
+import { FLOW_FIELD_WORKER_URL, getGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 import { Player } from "../Entities/Player.js";
 import { Sidekick } from "../Entities/Sidekick.js";
 import { FlowFieldGrid } from "../Spatial/Navigation/FlowFieldGrid.js";
@@ -35,7 +36,13 @@ export class GameState {
         this.allies = [];
 
         this.obstacleGrid = new WorldObstacleGrid(gridSettings.cellSize);
-        this.flowFieldGrid = new FlowFieldGrid(gridSettings.cellSize, gridSettings.width, gridSettings.height, this.obstacleGrid);
+        this.flowFieldGrid = new FlowFieldGrid(
+            gridSettings.cellSize,
+            gridSettings.width,
+            gridSettings.height,
+            this.obstacleGrid,
+            FLOW_FIELD_WORKER_URL,
+        );
         this.hierarchicalNavigator = new HierarchicalNavigator(
             gridSettings.cellSize,
             gridSettings.maxCellsPerChunk,
@@ -49,7 +56,7 @@ export class GameState {
         this.canvasBounds = { width: 0, height: 0 };
         this.upgradeDefs = [];
         this.wallSpatialIndex = new WallSpatialIndex(100);
-        this.worldSurfaces = new WorldSurfaceSystem();
+        this.worldSurfaces = new WorldSurfaceSystem(getGameWorldSurfaceSettings());
         this.worldSurfaceSeed = 0;
         /** @type {string | null} Dev/preview override — see resolveSurfaceProfileAtPlayer */
         this.surfaceProfileOverride = null;

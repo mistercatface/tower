@@ -2,14 +2,14 @@
  * Game-facing world-surface system: wraps WorldSurfaceEngine with phase checks,
  * combat shadow underpaint, and GameState profile / invalidation hooks.
  */
-import { getWorldSurfaceSettings } from "../../Libraries/WorldSurface/WorldSurfaceSettings.js";
 import { WorldSurfaceEngine } from "../../Libraries/WorldSurface/WorldSurfaceEngine.js";
 import { isWorldScene } from "../../GameState/GamePhase.js";
+import { getGameWorldSurfaceSettings } from "../WorldSurfaceBootstrap.js";
 import { buildGroundChunkBakePayload, resolveSurfaceProfileAtCoords } from "./surfaceProfileResolver.js";
 
 export class WorldSurfaceSystem extends WorldSurfaceEngine {
     /** @param {import("../../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} [settings] */
-    constructor(settings = getWorldSurfaceSettings()) {
+    constructor(settings = getGameWorldSurfaceSettings()) {
         super(settings, { buildChunkPayload: buildGroundChunkBakePayload });
     }
 

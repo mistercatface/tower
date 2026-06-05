@@ -3,7 +3,7 @@
  * Game-agnostic — no phase checks, shadow fill, or GameState profile resolution.
  * See Render/game/WorldSurfaceSystem.js for the game wrapper; Libraries/Render/Structure3D for wall projection.
  */
-import { getWorldSurfaceSettings, resolveWallVisualHeight } from "./WorldSurfaceSettings.js";
+import { resolveWallVisualHeight } from "./WorldSurfaceSettings.js";
 import { getSurfaceProfileProvider } from "../Procedural/SurfaceProfileProvider.js";
 import { chunkToWorldOrigin, getChunkSizePx, gridBoundsToChunkRange, worldBoundsToChunkRange } from "../Spatial/grid/ChunkGrid.js";
 import { ProgressiveFrameCache } from "./ProgressiveFrameCache.js";
@@ -23,10 +23,10 @@ import { bakeFrameRange } from "./AnimationFrameBake.js";
 
 export class WorldSurfaceEngine {
     /**
-     * @param {import("./WorldSurfaceSettings.js").WorldSurfaceSettings} [settings]
+     * @param {import("./WorldSurfaceSettings.js").WorldSurfaceSettings} settings
      * @param {WorldSurfaceEngineHooks} [hooks]
      */
-    constructor(settings = getWorldSurfaceSettings(), hooks = {}) {
+    constructor(settings, hooks = {}) {
         this.settings = settings;
         this.surfaceCache = new ProgressiveFrameCache(settings.maxCachedSurfaces);
         this.proceduralProfileId = null;
@@ -63,7 +63,11 @@ export class WorldSurfaceEngine {
     requestWallAtlasBake(width, height, p1, p2, pixelsPerUnit, surfaceBake, frameRange, profileId, wallHeight = null, wallWidth = null) {
         const centerX = (p1.x + p2.x) / 2;
         const centerY = (p1.y + p2.y) / 2;
-        return TileWorkerCoordinator.requestWallAtlasBake({ width, height, p1, p2, pixelsPerUnit, seed: surfaceBake.surfaceSeed, profileId, ...frameRange, centerX, centerY, wallHeight, wallWidth });
+        return TileWorkerCoordinator.requestWallAtlasBake({
+            width, height, p1, p2, pixelsPerUnit,
+            seed: surfaceBake.surfaceSeed, profileId, ...frameRange,
+            centerX, centerY, wallHeight, wallWidth, cellSize: wallWidth,
+        });
     }
 
     _resolveChunkPayload(state, chunkCol, chunkRow) {
@@ -113,7 +117,7 @@ export class WorldSurfaceEngine {
         if (canvases) return canvases;
 
         const profile = getSurfaceProfileProvider().getProfile(payload.profileId);
-        const { enabled: isAnimated, totalFrames } = getGroundChunkAnimationInfo(profile);
+        const { enabled: isAnimated, totalFrames } = getGroundChunkAnimationInfo(profile, this.settings);
 
         const meta = { kind: "chunk", payload, totalFrames };
 
@@ -152,7 +156,7 @@ export class WorldSurfaceEngine {
         const wallCenterY = (p1.y + p2.y) / 2;
         const profileId = surfaceBake.resolveProfileAt(wallCenterX, wallCenterY);
         const profile = getSurfaceProfileProvider().getProfile(profileId);
-        const { enabled: isAnimated, totalFrames } = getWallAtlasAnimationInfo(profile);
+        const { enabled: isAnimated, totalFrames } = getWallAtlasAnimationInfo(profile, this.settings);
 
         const meta = { kind: "wall", width: canvasWidth, height: canvasHeight, p1, p2, pixelsPerUnit, totalFrames };
 
@@ -206,7 +210,7 @@ export class WorldSurfaceEngine {
         if (!canvases?.length) return null;
         let canvas = canvases[0];
         const profile = getSurfaceProfileProvider().getProfile(profileId);
-        if (isWallAtlasAnimationEnabled(profile) && canvases.length > 1) {
+        if (isWallAtlasAnimationEnabled(profile, this.settings) && canvases.length > 1) {
             const currentFrame = animationFrameIndex(profile.animation, { gameTime });
             canvas = canvases[Math.min(canvases.length - 1, Math.max(0, currentFrame))];
         }
@@ -260,14 +264,14 @@ export class WorldSurfaceEngine {
             if (canvas.isPlaceholder) continue;
 
             const profile = getSurfaceProfileProvider().getProfile(payload.profileId);
-            const { enabled: chunkAnimationEnabled } = getGroundChunkAnimationInfo(profile);
+            const { enabled: chunkAnimationEnabled } = getGroundChunkAnimationInfo(profile, this.settings);
 
             if (chunkAnimationEnabled && canvases.length > 1) {
                 const currentFrame = animationFrameIndex(profile.animation, { gameTime });
                 canvas = canvases[Math.min(canvases.length - 1, Math.max(0, currentFrame))];
             }
 
-            drawBakedTexture(ctx, canvas, chunk.origin.x, chunk.origin.y, chunkSizePx, chunkSizePx);
+            drawBakedTexture(ctx, canvas, chunk.origin.x, chunk.origin.y, chunkSizePx, chunkSizePx, this.settings);
         }
     }
 }

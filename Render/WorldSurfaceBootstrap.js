@@ -1,6 +1,10 @@
 import { combatVisualSettings, worldSurfaceSettings, gridSettings } from "../Config/Config.js";
 import { CAMERA_HEIGHT } from "../Libraries/Spatial/iso/IsometricProjection.js";
-import { createWorldSurfaceSettings, installWorldSurfaceSettings } from "../Libraries/WorldSurface/WorldSurfaceSettings.js";
+import { createWorldSurfaceSettings } from "../Libraries/WorldSurface/WorldSurfaceSettings.js";
+import { configureTileWorkerCoordinator } from "../Libraries/WorldSurface/TileWorkerCoordinator.js";
+
+/** @type {import("../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings | null} */
+let gameWorldSurfaceSettings = null;
 
 /**
  * Build world-surface settings from game config.
@@ -30,9 +34,21 @@ export function createGameWorldSurfaceSettings(overrides = {}) {
     });
 }
 
-/** @param {Parameters<typeof createGameWorldSurfaceSettings>[0]} [overrides] */
-export function installGameWorldSurfaceSettings(overrides) {
-    installWorldSurfaceSettings(createGameWorldSurfaceSettings(overrides));
+/** @returns {import("../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} */
+export function getGameWorldSurfaceSettings() {
+    if (!gameWorldSurfaceSettings) {
+        throw new Error("World surface settings not installed — import Render/WorldSurfaceBootstrap.js at startup");
+    }
+    return gameWorldSurfaceSettings;
 }
 
+/** @param {Parameters<typeof createGameWorldSurfaceSettings>[0]} [overrides] */
+export function installGameWorldSurfaceSettings(overrides) {
+    gameWorldSurfaceSettings = createGameWorldSurfaceSettings(overrides);
+}
+
+export const TILE_WORKER_URL = new URL("./WorldSurface/TileWorkerEntry.js", import.meta.url);
+export const FLOW_FIELD_WORKER_URL = new URL("./Navigation/FlowFieldWorkerEntry.js", import.meta.url);
+
 installGameWorldSurfaceSettings();
+configureTileWorkerCoordinator({ workerUrl: TILE_WORKER_URL });

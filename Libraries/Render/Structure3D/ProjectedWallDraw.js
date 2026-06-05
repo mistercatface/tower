@@ -2,7 +2,7 @@
  * Projects wall faces and roof caps in isometric space and samples baked atlases
  * from WorldSurfaceEngine when provided. Does not bake textures.
  */
-import { getWallVisualHeight, getWorldSurfaceSettings, resolveWallVisualHeight } from "../../WorldSurface/WorldSurfaceSettings.js";
+import { getWallVisualHeight, resolveWallVisualHeight } from "../../WorldSurface/WorldSurfaceSettings.js";
 import { drawImageQuad } from "../../Canvas/AffineTexture.js";
 /** @typedef {import("../WorldSceneTypes.js").SurfaceBakeContext} SurfaceBakeContext */
 
@@ -21,7 +21,7 @@ export { getWallVisualHeight };
 
 export const sharedScratchFace = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
 
-export function computeProjectedFace(p1, p2, px, py, wallHeight = getWallVisualHeight(), out = sharedScratchFace) {
+export function computeProjectedFace(p1, p2, px, py, wallHeight, settings, out = sharedScratchFace) {
     let angle1 = Math.atan2(p1.y - py, p1.x - px);
     let angle2 = Math.atan2(p2.y - py, p2.x - px);
     const cross = (p1.x - px) * (p2.y - py) - (p1.y - py) * (p2.x - px);
@@ -35,7 +35,7 @@ export function computeProjectedFace(p1, p2, px, py, wallHeight = getWallVisualH
 
     const dist1 = Math.hypot(p1.x - px, p1.y - py);
     const dist2 = Math.hypot(p2.x - px, p2.y - py);
-    const { cameraHeight } = getWorldSurfaceSettings();
+    const { cameraHeight } = settings;
     const clampedHeight = Math.min(wallHeight, cameraHeight - 1);
     const alpha = clampedHeight / (cameraHeight - clampedHeight);
 
@@ -56,7 +56,7 @@ export function traceProjectedFace(ctx, p1, p2, face) {
     ctx.closePath();
 }
 
-function getViewportWorldBounds(viewport, padding = getWorldSurfaceSettings().viewPaddingPx) {
+function getViewportWorldBounds(viewport, padding) {
     if (!viewport) return null;
     return viewport.getWorldBounds(viewport.cx * 2, viewport.cy * 2, padding);
 }
@@ -70,8 +70,8 @@ function rowBoundsIntersects(bl, br, tl, tr, bounds) {
     return !(maxX < bounds.minX || minX > bounds.maxX || maxY < bounds.minY || minY > bounds.maxY);
 }
 
-function getWallTextureStoryCount() {
-    return getWorldSurfaceSettings().wallTextureStories;
+function getWallTextureStoryCount(settings) {
+    return settings.wallTextureStories;
 }
 
 function computeFaceCorner(out, p1, p2, proj1X, proj1Y, proj2X, proj2Y, u, v) {
@@ -95,7 +95,8 @@ function resolveWallProfileId(surfaceBake, wallCx, wallCy, cacheObj) {
 }
 
 function drawFaceTexture(ctx, p1, p2, face, worldSurfaces, surfaceBake, viewer, viewport, wallHeight, fillStyle, cacheObj = null) {
-    const settings = worldSurfaces.settings ?? getWorldSurfaceSettings();
+    const settings = worldSurfaces.settings;
+    if (!settings) return;
     const tileWorldSize = settings.tileWorldSize ?? settings.cellSize;
     if (!worldSurfaces || !surfaceBake) return;
 
@@ -104,7 +105,7 @@ function drawFaceTexture(ctx, p1, p2, face, worldSurfaces, surfaceBake, viewer, 
 
     const profileId = resolveWallProfileId(surfaceBake, wallCx, wallCy, cacheObj);
     const ppwu = getPixelsPerWorldUnit(settings);
-    const storyCount = getWallTextureStoryCount();
+    const storyCount = getWallTextureStoryCount(settings);
 
     const atlas = worldSurfaces.getOrEnsureWallAtlas(p1, p2, {
         profileId,
@@ -124,7 +125,7 @@ function drawFaceTexture(ctx, p1, p2, face, worldSurfaces, surfaceBake, viewer, 
         return;
     }
 
-    const worldBounds = getViewportWorldBounds(viewport);
+    const worldBounds = getViewportWorldBounds(viewport, settings.viewPaddingPx);
     const bleedPx = settings.wallTextureBleedPx ?? 1;
 
     const clampedHeight = Math.min(wallHeight, settings.cameraHeight - 1);
@@ -136,7 +137,7 @@ function drawFaceTexture(ctx, p1, p2, face, worldSurfaces, surfaceBake, viewer, 
     }
 
     ctx.save();
-    ctx.imageSmoothingEnabled = shouldSmoothTextureDownsample();
+    ctx.imageSmoothingEnabled = shouldSmoothTextureDownsample(settings);
 
     const edgeLen = cacheObj && cacheObj.edgeLen !== undefined ? cacheObj.edgeLen : Math.hypot(p2.x - p1.x, p2.y - p1.y);
     const px = viewer.x;
@@ -206,14 +207,18 @@ export function drawProjectedWallRoof(ctx, topCorners, seg, wallColor, worldSurf
         return;
     }
 
-    const settings = worldSurfaces.settings ?? getWorldSurfaceSettings();
+    const settings = worldSurfaces.settings;
+    if (!settings) {
+        fillProjectedRoof(ctx, topCorners, wallColor);
+        return;
+    }
     const wallHeight = seg.wallHeight ?? resolveWallVisualHeight(settings.cameraHeight, settings);
     const wallCx = cacheObj && cacheObj.cx !== undefined ? cacheObj.cx : seg.x;
     const wallCy = cacheObj && cacheObj.cy !== undefined ? cacheObj.cy : seg.y;
 
     const profileId = resolveWallProfileId(surfaceBake, wallCx, wallCy, cacheObj);
     const ppwu = getPixelsPerWorldUnit(settings);
-    const storyCount = getWallTextureStoryCount();
+    const storyCount = getWallTextureStoryCount(settings);
 
     const edges = seg._cachedEdges;
     if (!edges) return;
@@ -245,16 +250,26 @@ export function drawProjectedWallRoof(ctx, topCorners, seg, wallColor, worldSurf
     const sy1 = H_px + cellSize * ppwu;
 
     ctx.save();
-    ctx.imageSmoothingEnabled = shouldSmoothTextureDownsample();
+    ctx.imageSmoothingEnabled = shouldSmoothTextureDownsample(settings);
 
     drawImageQuad(ctx, flatCanvas, 0, sy0, flatCanvas.width, sy1, topCorners[0], topCorners[1], topCorners[2], topCorners[3], { bleedPx: 1 });
 
     ctx.restore();
 }
 
-export function drawProjectedWallFace(ctx, p1, p2, px, py, fillStyle, worldSurfaces, surfaceBake, { viewport = null, damageAlpha = 0, textureEnabled = true, cacheObj = null, wallHeight = null } = {}) {
-    const finalWallHeight = wallHeight ?? getWallVisualHeight();
-    const face = computeProjectedFace(p1, p2, px, py, finalWallHeight);
+export function drawProjectedWallFace(ctx, p1, p2, px, py, fillStyle, worldSurfaces, surfaceBake, { viewport = null, damageAlpha = 0, textureEnabled = true, cacheObj = null, wallHeight = null, settings = null } = {}) {
+    const resolvedSettings = settings ?? worldSurfaces?.settings;
+    if (!resolvedSettings) {
+        ctx.fillStyle = fillStyle;
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.closePath();
+        ctx.fill();
+        return;
+    }
+    const finalWallHeight = wallHeight ?? getWallVisualHeight(resolvedSettings);
+    const face = computeProjectedFace(p1, p2, px, py, finalWallHeight, resolvedSettings);
     traceProjectedFace(ctx, p1, p2, face);
     if (worldSurfaces && surfaceBake && textureEnabled) {
         drawFaceTexture(ctx, p1, p2, face, worldSurfaces, surfaceBake, { x: px, y: py }, viewport, finalWallHeight, fillStyle, cacheObj);
@@ -273,7 +288,8 @@ export function drawProjectedWallFace(ctx, p1, p2, px, py, fillStyle, worldSurfa
 }
 
 export function preloadProjectedWallFace(p1, p2, worldSurfaces, surfaceBake, cacheObj = null) {
-    const settings = worldSurfaces?.settings ?? getWorldSurfaceSettings();
+    const settings = worldSurfaces?.settings;
+    if (!settings) return;
     const tileWorldSize = settings.tileWorldSize ?? settings.cellSize;
     if (!worldSurfaces || !surfaceBake) return;
 
@@ -281,7 +297,7 @@ export function preloadProjectedWallFace(p1, p2, worldSurfaces, surfaceBake, cac
     const wallCy = cacheObj && cacheObj.cy !== undefined ? cacheObj.cy : (p1.y + p2.y) * 0.5;
     const profileId = resolveWallProfileId(surfaceBake, wallCx, wallCy, cacheObj);
     const ppwu = getPixelsPerWorldUnit(settings);
-    const storyCount = getWallTextureStoryCount();
+    const storyCount = getWallTextureStoryCount(settings);
     const wallHeight = getWallVisualHeight(settings);
 
     worldSurfaces.getOrEnsureWallAtlas(p1, p2, {

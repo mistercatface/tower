@@ -1,6 +1,6 @@
 /**
  * Runtime settings for ground/wall/roof world-surface rendering.
- * Installed once by game bootstrap; read via getWorldSurfaceSettings().
+ * Created by game bootstrap and passed into library constructors — no global singleton here.
  *
  * @typedef {Object} WorldSurfaceSettings
  * @property {number} cellsPerChunk
@@ -23,9 +23,6 @@
  * @property {string} floorShadow
  */
 
-/** @type {WorldSurfaceSettings | null} */
-let installedSettings = null;
-
 /**
  * @param {Partial<WorldSurfaceSettings> & Pick<WorldSurfaceSettings, "cellsPerChunk" | "tileResolution" | "tileWorldSize" | "chunkWorldSize" | "viewPaddingPx" | "viewQueryPadPx" | "maxCachedSurfaces" | "wallHeightInset" | "wallTextureStories" | "wallTextureBleedPx" | "wallSubdivNearPx" | "wallSubdivFarPx" | "cellSize" | "cameraHeight" | "floorShadow">} params
  * @returns {WorldSurfaceSettings}
@@ -39,19 +36,6 @@ export function createWorldSurfaceSettings(params) {
     };
 }
 
-/** @param {WorldSurfaceSettings} settings */
-export function installWorldSurfaceSettings(settings) {
-    installedSettings = settings;
-}
-
-/** @returns {WorldSurfaceSettings} */
-export function getWorldSurfaceSettings() {
-    if (!installedSettings) {
-        throw new Error("WorldSurfaceSettings not installed — import Render/WorldSurfaceBootstrap.js at startup");
-    }
-    return installedSettings;
-}
-
 /**
  * @param {number} cameraHeight
  * @param {Pick<WorldSurfaceSettings, "wallVisualHeight" | "wallHeightInset">} settings
@@ -60,7 +44,7 @@ export function resolveWallVisualHeight(cameraHeight, settings) {
     return settings.wallVisualHeight ?? (cameraHeight - settings.wallHeightInset);
 }
 
-/** @param {WorldSurfaceSettings} [settings] */
-export function getWallVisualHeight(settings = getWorldSurfaceSettings()) {
+/** @param {WorldSurfaceSettings} settings */
+export function getWallVisualHeight(settings) {
     return resolveWallVisualHeight(settings.cameraHeight, settings);
 }

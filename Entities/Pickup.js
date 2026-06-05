@@ -4,7 +4,7 @@ import { worldPropDefinitions } from "../Config/content/propDefinitions.js";
 import { CRATE_LABEL_VARIANTS, CRATE_LABEL_FACES } from "../Config/content/props/Crate.js";
 import { transitionEntity } from "./EntityFsm.js";
 import { pickupStates } from "./PickupStates.js";
-import { PolygonShape } from "../Spatial/Geometry/Shapes.js";
+import { PolygonShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { getProjectileDamage } from "../Combat/impactDamage.js";
 import { getStartNodeLayout } from "../Generator/StartNodeBuilding.js";
 import { placeAtWallClearance } from "../Libraries/Math/pathfinding/PathClearance.js";

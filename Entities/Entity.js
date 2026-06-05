@@ -1,6 +1,6 @@
 import { Utilities } from "../Core/Utilities.js";
 import { wallContextFromState } from "../Spatial/World/WallContext.js";
-import { CircleShape } from "../Spatial/Geometry/Shapes.js";
+import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
 
 let nextEntityId = 1;
 

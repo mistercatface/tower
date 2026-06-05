@@ -22,7 +22,6 @@ export class PolygonShape extends Shape {
     constructor(vertices) {
         super();
         this.type = 'Polygon';
-        // Array of {x, y} relative to entity center
         this.vertices = vertices;
         this.normals = this._computeNormals();
         this.boundingRadius = this._computeBoundingRadius();
@@ -49,12 +48,11 @@ export class PolygonShape extends Shape {
             const p2 = this.vertices[(i + 1) % this.vertices.length];
             const dx = p2.x - p1.x;
             const dy = p2.y - p1.y;
-            // Normal is perpendicular vector (-dy, dx), normalized
             const len = Math.sqrt(dx * dx + dy * dy);
             if (len > 0) {
                 normals.push({ x: -dy / len, y: dx / len });
             } else {
-                normals.push({ x: 0, y: 0 }); // Degenerate case fallback
+                normals.push({ x: 0, y: 0 });
             }
         }
         return normals;

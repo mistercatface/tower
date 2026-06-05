@@ -1,7 +1,7 @@
 import { normalizeAngle } from "../../Libraries/Math/Angle.js";
 import { getCircleSegmentPenetration } from "../../Libraries/Spatial/geometry/WallGeometry.js";
-import { SatCollision } from "../Collision/SatCollision.js";
-import { PolygonShape } from "../Geometry/Shapes.js";
+import { SatCollision } from "../../Libraries/Spatial/collision/SatCollision.js";
+import { PolygonShape } from "../../Libraries/Spatial/collision/Shapes.js";
 
 export class PhysicsSystem {
     static applyMovement(entity, dt, ignoreSeparation = false, shouldMove = true, alignAngleWithMovement = true) {

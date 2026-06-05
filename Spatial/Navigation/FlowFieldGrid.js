@@ -11,7 +11,14 @@ const FLOW_DECODE_X = new Float32Array([-0.707, 0, 0.707, -1, 0, 1, -0.707, 0, 0
 const FLOW_DECODE_Y = new Float32Array([-0.707, -1, -0.707, 0, 0, 0, 0.707, 1, 0.707]);
 
 export class FlowFieldGrid {
-    constructor(cellSize, width, height, navGraph) {
+    /**
+     * @param {number} cellSize
+     * @param {number} width
+     * @param {number} height
+     * @param {import("../World/ObstacleGrid.js").WorldObstacleGrid} navGraph
+     * @param {URL | string} workerUrl — game injects Render/Navigation/FlowFieldWorkerEntry.js
+     */
+    constructor(cellSize, width, height, navGraph, workerUrl) {
         this.cellSize = cellSize;
         this.width = width;
         this.height = height;
@@ -44,7 +51,10 @@ export class FlowFieldGrid {
         this.cacheLookup = new Int32Array(size).fill(-1);
         this.cacheCounter = 0;
 
-        this.worker = new Worker(new URL('./FlowFieldWorker.js', import.meta.url), { type: 'module' });
+        if (!workerUrl) {
+            throw new Error("FlowFieldGrid requires workerUrl from game bootstrap (Render/Navigation/FlowFieldWorkerEntry.js)");
+        }
+        this.worker = new Worker(workerUrl, { type: "module" });
         this.worker.postMessage({
             type: 'init',
             data: {

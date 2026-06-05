@@ -38,6 +38,16 @@ let workerReady = Promise.resolve();
 const registeredRuntimeProfileIds = new Set();
 const inFlightByKey = new Map();
 
+/** @type {URL | string | null} */
+let tileWorkerUrl = null;
+
+/**
+ * @param {{ workerUrl: URL | string }} config — game injects Render/WorldSurface/TileWorkerEntry.js
+ */
+export function configureTileWorkerCoordinator({ workerUrl }) {
+    tileWorkerUrl = workerUrl;
+}
+
 let focusX = 0;
 let focusY = 0;
 let sortFocusX = 0;
@@ -196,8 +206,11 @@ function getWorkerPool() {
             poolSize = Math.min(8, Math.max(2, Math.floor(navigator.hardwareConcurrency * 0.75)));
         }
 
+        if (!tileWorkerUrl) {
+            throw new Error("TileWorkerCoordinator requires configureTileWorkerCoordinator({ workerUrl }) from game bootstrap");
+        }
         for (let i = 0; i < poolSize; i++) {
-            const w = new Worker(new URL("../../Render/WorldSurface/TileWorkerEntry.js", import.meta.url), { type: "module" });
+            const w = new Worker(tileWorkerUrl, { type: "module" });
             w.postMessage({
                 id: -1,
                 type: "initSharedEdgesSAB",

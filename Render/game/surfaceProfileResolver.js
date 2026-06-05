@@ -1,4 +1,4 @@
-import { getWorldSurfaceSettings } from "../../Libraries/WorldSurface/WorldSurfaceSettings.js";
+import { getGameWorldSurfaceSettings } from "../WorldSurfaceBootstrap.js";
 import {
     createGroundChunkBakePayload,
     isGroundChunkAnimationEnabled,
@@ -44,7 +44,8 @@ export function syncSurfaceProfile(state) {
 /** Worker-serializable ground-chunk bake payload from live game state. */
 export function buildGroundChunkBakePayload(state, chunkCol, chunkRow) {
     const obstacleGrid = state.obstacleGrid;
-    const cellsPerChunk = getWorldSurfaceSettings().cellsPerChunk;
+    const settings = getGameWorldSurfaceSettings();
+    const cellsPerChunk = settings.cellsPerChunk;
     const chunkSizePx = obstacleGrid.cellSize * cellsPerChunk;
     const chunkCenterX = obstacleGrid.minX + chunkCol * chunkSizePx + chunkSizePx / 2;
     const chunkCenterY = obstacleGrid.minY + chunkRow * chunkSizePx + chunkSizePx / 2;
@@ -59,6 +60,10 @@ export function buildGroundChunkBakePayload(state, chunkCol, chunkRow) {
         minY: obstacleGrid.minY,
         seed: state.worldSurfaceSeed ?? 0,
         profileId,
-        gameTime: isGroundChunkAnimationEnabled(profile) ? (state.gameTime ?? 0) : undefined,
+        cellsPerChunk,
+        cellSize: settings.cellSize,
+        tileResolution: settings.tileResolution,
+        tileWorldSize: settings.tileWorldSize,
+        gameTime: isGroundChunkAnimationEnabled(profile, settings) ? (state.gameTime ?? 0) : undefined,
     });
 }

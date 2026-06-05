@@ -1,4 +1,3 @@
-import { getWorldSurfaceSettings } from "./WorldSurfaceSettings.js";
 import { composeSurfaceImage } from "../Procedural/SurfaceTextureComposer.js";
 import { getSurfaceProfileProvider } from "../Procedural/SurfaceProfileProvider.js";
 import { buildMapContext, createWallFaceAxes, writePixelToSamples } from "./SurfaceCoordinateMapper.js";
@@ -41,11 +40,17 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, see
     const profile = resolvePaintProfile(profileOrId);
 
     const isWall = options.isWall === true;
-    const cellSize = options.cellSize ?? getWorldSurfaceSettings().cellSize;
+    const cellSize = options.cellSize;
+    if (cellSize == null) {
+        throw new Error("paintPixelArea requires options.cellSize");
+    }
 
     let surfaceKind = "floor";
     let wallFace = null;
-    let pixelsPerUnit = options.pixelsPerUnit ?? getPixelsPerWorldUnit();
+    let pixelsPerUnit = options.pixelsPerUnit ?? (options.settings ? getPixelsPerWorldUnit(options.settings) : null);
+    if (pixelsPerUnit == null) {
+        throw new Error("paintPixelArea requires options.pixelsPerUnit or options.settings");
+    }
     let zOffset = 0;
 
     if (isWall && options.p1 && options.p2) {
@@ -88,6 +93,26 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, see
     memoryPool.release(pooled, numPixels);
 }
 
+function resolvePaintCellSize(optionsPayload) {
+    const cellSize = optionsPayload?.cellSize ?? optionsPayload?.wallWidth;
+    if (cellSize == null) {
+        throw new Error("wall bake payload requires cellSize or wallWidth");
+    }
+    return cellSize;
+}
+
+function wallPaintOptions(pixelsPerUnit, optionsPayload) {
+    return {
+        isWall: true,
+        p1: optionsPayload?.p1,
+        p2: optionsPayload?.p2,
+        pixelsPerUnit,
+        wallHeight: optionsPayload?.wallHeight,
+        wallWidth: optionsPayload?.wallWidth,
+        cellSize: resolvePaintCellSize(optionsPayload),
+    };
+}
+
 function bakeResolvedProfile(ctx, width, height, startWorldX, startWorldY, seed, options, baseProfile, profileKey, payload) {
     const profile = resolveBakeProfile(baseProfile, profileKey, payload);
     paintPixelArea(ctx, width, height, startWorldX, startWorldY, seed, options, profile);
@@ -98,25 +123,28 @@ export function bakeWallAtlasCanvas(width, height, p1, p2, pixelsPerUnit, seed, 
     const ctx = canvas.getContext("2d");
     ctx.imageSmoothingEnabled = false;
 
-    const wallHeight = optionsPayload?.wallHeight;
-    const wallWidth = optionsPayload?.wallWidth;
+    const paintOpts = wallPaintOptions(pixelsPerUnit, { p1, p2, ...optionsPayload });
 
     if (payload) {
         const profileKey = typeof profileOrId === "string" ? profileOrId : getSurfaceProfileProvider().defaultId;
         const baseProfile = resolvePaintProfile(profileOrId);
-        bakeResolvedProfile(ctx, width, height, 0, 0, seed, { isWall: true, p1, p2, pixelsPerUnit, wallHeight, wallWidth }, baseProfile, profileKey, payload);
+        bakeResolvedProfile(ctx, width, height, 0, 0, seed, paintOpts, baseProfile, profileKey, payload);
     } else {
-        paintPixelArea(ctx, width, height, 0, 0, seed, { isWall: true, p1, p2, pixelsPerUnit, wallHeight, wallWidth }, profileOrId);
+        paintPixelArea(ctx, width, height, 0, 0, seed, paintOpts, profileOrId);
     }
 
     return canvas;
 }
 
-function chunkWorldOrigin(chunkCol, chunkRow, minX, minY, cellsPerChunk = getWorldSurfaceSettings().cellsPerChunk) {
-    const cellSize = getWorldSurfaceSettings().cellSize;
+function chunkWorldOrigin(chunkCol, chunkRow, minX, minY, cellsPerChunk, cellSize, tileResolution, tileWorldSize) {
     const startCol = chunkCol * cellsPerChunk;
     const startRow = chunkRow * cellsPerChunk;
-    return { x: minX + startCol * cellSize, y: minY + startRow * cellSize, bakeSize: bakePixelsForWorldSpan(cellSize * cellsPerChunk) };
+    const bakeSettings = { tileResolution, tileWorldSize };
+    return {
+        x: minX + startCol * cellSize,
+        y: minY + startRow * cellSize,
+        bakeSize: bakePixelsForWorldSpan(cellSize * cellsPerChunk, bakeSettings),
+    };
 }
 
 function chunkNeedsRuntimeResolve(profile) {
@@ -129,9 +157,16 @@ export function bakeGroundChunkCanvases(payload) {
     const profileId = payload.profileId ?? provider.defaultId;
     const baseProfile = provider.getProfile(profileId);
     const { frameStart, frameCount } = payload;
-    const { chunkCol, chunkRow, minX, minY, seed, cellsPerChunk = getWorldSurfaceSettings().cellsPerChunk } = payload;
-    const { x: chunkWorldX, y: chunkWorldY, bakeSize } = chunkWorldOrigin(chunkCol, chunkRow, minX, minY, cellsPerChunk);
+    const { chunkCol, chunkRow, minX, minY, seed, cellsPerChunk, cellSize, tileResolution, tileWorldSize } = payload;
+    if (cellsPerChunk == null || cellSize == null || tileResolution == null || tileWorldSize == null) {
+        throw new Error("bakeGroundChunkCanvases payload requires cellsPerChunk, cellSize, tileResolution, tileWorldSize");
+    }
+    const { x: chunkWorldX, y: chunkWorldY, bakeSize } = chunkWorldOrigin(
+        chunkCol, chunkRow, minX, minY, cellsPerChunk, cellSize, tileResolution, tileWorldSize,
+    );
     const useResolver = chunkNeedsRuntimeResolve(baseProfile);
+    const pixelsPerUnit = tileResolution / tileWorldSize;
+    const paintOptions = { cellSize, pixelsPerUnit };
     const canvases = [];
 
     for (let i = 0; i < frameCount; i++) {
@@ -141,9 +176,9 @@ export function bakeGroundChunkCanvases(payload) {
         ctx.imageSmoothingEnabled = false;
 
         if (useResolver) {
-            bakeResolvedProfile(ctx, bakeSize, bakeSize, chunkWorldX, chunkWorldY, seed, {}, baseProfile, profileId, payload);
+            bakeResolvedProfile(ctx, bakeSize, bakeSize, chunkWorldX, chunkWorldY, seed, paintOptions, baseProfile, profileId, payload);
         } else {
-            paintPixelArea(ctx, bakeSize, bakeSize, chunkWorldX, chunkWorldY, seed, {}, profileId);
+            paintPixelArea(ctx, bakeSize, bakeSize, chunkWorldX, chunkWorldY, seed, paintOptions, profileId);
         }
         canvases.push(canvas);
     }

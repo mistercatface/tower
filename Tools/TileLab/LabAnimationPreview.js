@@ -1,5 +1,6 @@
 import { paintPixelArea } from "../../Libraries/WorldSurface/WorldSurfacePainter.js";
 import { resolveBakeProfile, getAnimationDuration } from "../../Libraries/WorldSurface/ProfileBakeResolver.js";
+import { getGameWorldSurfaceSettings } from "../../Render/WorldSurfaceBootstrap.js";
 import { RUNTIME_LAB_PROFILE_ID } from "./profile/ProfileEditor.js";
 
 let rafId = null;
@@ -59,15 +60,16 @@ export function initAnimationPreview(canvas, getProfileConfig) {
         // Draw the isolated 256x256 floor directly to our secondary canvas.
         // We set pixelsPerUnit to 2 so the preview focuses on a smaller patch of tiles
         // rather than rendering 1000+ world units of the map.
+        const { cellSize } = getGameWorldSurfaceSettings();
         paintPixelArea(
-            ctx, 
-            canvas.width, 
-            canvas.height, 
-            0, 
-            0, 
-            42, // seed
-            { pixelsPerUnit: 2 }, // options
-            resolvedProfile
+            ctx,
+            canvas.width,
+            canvas.height,
+            0,
+            0,
+            42,
+            { pixelsPerUnit: 2, cellSize },
+            resolvedProfile,
         );
     }
 

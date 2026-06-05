@@ -1,14 +1,14 @@
 /** @typedef {import("../WorldSceneTypes.js").WorldSceneDrawInput} WorldSceneDrawInput */
 
-import { getWorldSurfaceSettings, resolveWallVisualHeight } from "../../WorldSurface/WorldSurfaceSettings.js";
+import { resolveWallVisualHeight } from "../../WorldSurface/WorldSurfaceSettings.js";
 import { SpatialQuery } from "../../Spatial/query/SpatialQuery.js";
 import { alignBoundsToHash, getViewQueryBounds } from "../common/viewportUtils.js";
 import { drawProjectedWallFace, drawProjectedWallRoof } from "./ProjectedWallDraw.js";
 import { applySharedEdgeFlags, requestSharedEdgeSolve, writeWallGeometry } from "./SharedEdgeBridge.js";
 
 export class StructureRenderer {
-    /** @param {import("../../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} [settings] */
-    constructor(settings = getWorldSurfaceSettings()) {
+    /** @param {import("../../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} settings */
+    constructor(settings) {
         this.settings = settings;
         this.lastWalls = null;
         this.lastWallCount = 0;
@@ -83,6 +83,7 @@ export class StructureRenderer {
             damageAlpha,
             textureEnabled,
             cacheObj,
+            settings: this.settings,
             wallHeight: seg.wallHeight ?? resolveWallVisualHeight(this.settings.cameraHeight, this.settings),
         });
     }
