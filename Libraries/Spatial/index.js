@@ -54,6 +54,9 @@ export { SpatialQuery } from "./query/SpatialQuery.js";
 export { entityWorldAabb, collectWallSegmentsForEntity, collectWallSegmentsAlongLine, collectObstacleGridSegmentsNearPose } from "./query/wallSegmentQuery.js";
 export { wallContextFromState, getNearbyWalls, getWallsAlongLine } from "./query/wallContext.js";
 
+// World frame
+export { SpatialFrameCore } from "./world/SpatialFrameCore.js";
+
 // Iso / structure
 export { CAMERA_HEIGHT, projectVertical } from "./iso/IsometricProjection.js";
 export { SharedEdgeSolver } from "./structure/SharedEdgeSolver.js";

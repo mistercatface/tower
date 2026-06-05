@@ -9,7 +9,7 @@ export class PhysicsSystem {
         }
         entity._wallResolvedFrame = spatialFrame.frameId;
 
-        const candidateWalls = spatialFrame.getWallCandidates(entity, state);
+        const candidateWalls = spatialFrame.getWallCandidates(entity);
         if (candidateWalls.length === 0) {
             entity._wallResolvedCollided = false;
             return false;

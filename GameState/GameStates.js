@@ -4,7 +4,7 @@ import { RagdollCorpse } from "../Entities/RagdollCorpse.js";
 import { ProgressionManager } from "../Progression/ProgressionManager.js";
 import { CollisionSystem } from "../Spatial/Collision/CollisionSystem.js";
 import { tickAllPushableSleep, wakeAllPushables } from "../Spatial/Collision/PushableSleep.js";
-import { combatSpatial } from "../Spatial/World/SpatialFrame.js";
+import { combatSpatial } from "../Spatial/World/CombatSpatialFrame.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { Projectile } from "../Entities/Projectile.js";
 import { showNodeConfirmModal, requestUiUpdate } from "../Core/EventSystem.js";

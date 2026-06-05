@@ -64,7 +64,7 @@ export class CollisionSystem {
         for (const p of state.projectiles) {
             if (p.isDead) continue;
 
-            const wallCandidates = spatialFrame.getWallCandidates(p, state);
+            const wallCandidates = spatialFrame.getWallCandidates(p);
             const segment = this.getMissileWallCollision(p, wallCandidates);
             if (segment) {
                 p.strategy.onWallCollision(p, state, segment, events);
