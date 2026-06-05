@@ -24,4 +24,5 @@ export { applyStaticSurfaceImpulse } from "./staticSurfaceImpulse.js";
 export { createSeparationAccum, accumulateSeparationFromPair, clampSeparationAccum } from "./separationForce.js";
 export { SeparationEngine } from "./SeparationEngine.js";
 export { createSeparationState, updateSeparation } from "./applySeparation.js";
+export { applyMobileLocomotion } from "./applyLocomotion.js";
 export { SLEEP_FRAMES, SLEEP_ANGULAR_EPS, isPushable, canSleepPushable, wakePushableBody, advancePushableSleep, hasSleepBlockingOverlap, evaluatePushableSleepEligible } from "./pushableSleep.js";

@@ -1,5 +1,5 @@
 import { navigationSettings } from "../../Config/Config.js";
-import { applySteeringResult } from "../../Libraries/Agent/index.js";
+import { applySteeringResult, getMobileAgent } from "../../Libraries/Agent/index.js";
 import { createNavState } from "../../Libraries/Pathfinding/navSession.js";
 import { entityIntersectsCellBounds } from "../../Libraries/Spatial/grid/GridCoords.js";
 import { planFlowFieldSteering } from "./FlowFieldStrategy.js";
@@ -38,14 +38,15 @@ export class NavigationService {
     steerTo(entity, targetX, targetY, profile, flowFieldGrid = null, state = null) {
         const settings = navigationSettings;
         const grid = flowFieldGrid ?? this.flowFieldGrid;
+        const mobile = getMobileAgent(entity);
         if (entity.targetCellBounds && entityIntersectsCellBounds(entity.x, entity.y, entity.radius, entity.targetCellBounds)) {
-            applySteeringResult(entity, ARRIVED_STEERING);
+            applySteeringResult(mobile, ARRIVED_STEERING);
             this._setDebug(entity, { mode: "arrived", dist: 0, replanReason: null, pathLen: 0 });
             return;
         }
         const dist = Math.hypot(entity.x - targetX, entity.y - targetY);
         if (dist < settings.arrivalDistance) {
-            applySteeringResult(entity, ARRIVED_STEERING);
+            applySteeringResult(mobile, ARRIVED_STEERING);
             this._setDebug(entity, { mode: "arrived", dist, replanReason: null, pathLen: 0 });
             return;
         }
@@ -60,12 +61,12 @@ export class NavigationService {
                 this.hierarchicalNavigator, navState, profile, settings,
                 this.flowFieldGrid.navGraph, this.obstacleGeneration, state,
             );
-            applySteeringResult(entity, plan.steering);
+            applySteeringResult(mobile, plan.steering);
             debug = { mode: plan.mode, replanReason: plan.replanReason, pathLen: plan.pathLen };
         } else {
             navState.path = null;
             const plan = planFlowFieldSteering(entity, targetX, targetY, this.flowFieldGrid);
-            applySteeringResult(entity, plan.steering);
+            applySteeringResult(mobile, plan.steering);
             debug = { mode: plan.mode, replanReason: null, pathLen: 0 };
         }
 

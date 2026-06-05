@@ -1,7 +1,8 @@
 import { DestructibleEntity } from "./Entity.js";
 import { TurretController } from "../Combat/TurretController.js";
 import { ActorRenderer } from "../Render/ActorRenderer.js";
-import { createSeparationState, integrateSteering, updateSeparation } from "../Libraries/Motion/index.js";
+import { applyMobileLocomotion } from "../Libraries/Motion/index.js";
+import { initMobileAgent } from "../Libraries/Agent/index.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { actorStates } from "./ActorStates.js";
 import { transitionEntity } from "./EntityFsm.js";
@@ -35,11 +36,7 @@ export class Actor extends DestructibleEntity {
         this.accelRate = accelRate;
         this.canDamageWalls = canDamageWalls;
         this.turnSpeed = 10;
-        this.desiredX = 0;
-        this.desiredY = 0;
-        this.vx = 0;
-        this.vy = 0;
-        this.separation = createSeparationState();
+        initMobileAgent(this, { speed, accelRate, turnSpeed: 10, mass: this.mass, radius });
         this.healthBar = null;
         this.weapon = null;
         this.stats = null;
@@ -150,8 +147,6 @@ export class Actor extends DestructibleEntity {
         // Subclasses implement movement; turret combat runs in updateCombat.
     }
 
-
-
     getAITarget(state) {
         if (!state) return null;
         const aiOpts = { requireLos: false };
@@ -175,8 +170,6 @@ export class Actor extends DestructibleEntity {
         if (!wallCtx) return true;
         return Utilities.hasLineOfSight(this.x, this.y, x, y, wallCtx, this.radius, targetRadius);
     }
-
-
 
     syncTurretCount(count, turnSpeed) {
         const targetCount = Math.max(0, Math.floor(count));
@@ -299,21 +292,9 @@ export class Actor extends DestructibleEntity {
     }
 
     applyLocomotion(dt, spatialFrame, { state = null, externalSpeedMod = 1, ignoreSeparationInDesired = false, shouldMove = true, alignAngleWithMovement = true } = {}) {
-        updateSeparation(this, spatialFrame);
-        const baseSpeed = this.speed;
-        if (externalSpeedMod !== 1) {
-            this.speed = baseSpeed * externalSpeedMod;
-        }
         const armed = normalizeWeaponLoadout(this.weaponLoadout ?? []).length > 0;
         const alignAngle = alignAngleWithMovement && (!armed || this.hasLocomotionIntent());
-        integrateSteering(this, dt, {
-            ignoreSeparation: ignoreSeparationInDesired,
-            shouldMove,
-            alignAngleWithMovement: alignAngle,
-        });
-        if (externalSpeedMod !== 1) {
-            this.speed = baseSpeed;
-        }
+        applyMobileLocomotion(this.mobile, dt, spatialFrame, { externalSpeedMod, ignoreSeparationInDesired, shouldMove, alignAngleWithMovement: alignAngle });
         PhysicsSystem.resolveWallCollisions(this, spatialFrame, state);
     }
 
@@ -365,6 +346,4 @@ export class Actor extends DestructibleEntity {
         }
         return null;
     }
-
-
 }

@@ -5,12 +5,5 @@
  * MobileAgent: motion integration (velocity, desired direction, speed, angle, …).
  * SteeringResult: pure compute output → applySteeringResult at game boundary.
  */
-export { createMobileAgent, agentPose } from "./create.js";
-export {
-    seekDirection,
-    seekDirectionToward,
-    computeDirectSteering,
-    applySteeringResult,
-    applyDesiredDirection,
-    applyDesiredDirectionToward,
-} from "./steering.js";
+export { createMobileAgent, initMobileAgent, getMobileAgent, agentPose } from "./create.js";
+export { seekDirection, seekDirectionToward, computeDirectSteering, applySteeringResult, applyDesiredDirection, applyDesiredDirectionToward } from "./steering.js";
