@@ -9,7 +9,7 @@ import { NavigationService } from "../Systems/Navigation/NavigationService.js";
 import { createCombatWallResolver } from "../Systems/Motion/createCombatWallResolver.js";
 import { combatActorRadius, gridSettings, mapSettings, navigationSettings, runBaseStats } from "../Config/Config.js";
 import { Scheduler } from "../Libraries/Scheduler/Scheduler.js";
-import { WaveManager } from "../Combat/WaveManager.js";
+import { HordeSpawner } from "../Combat/HordeSpawner.js";
 import { WallSpatialIndex } from "../Libraries/Spatial/indexes/WallSpatialIndex.js";
 import { Pools } from "../Core/Pools.js";
 import { createRunStats } from "../Entities/CombatantStats.js";
@@ -19,7 +19,7 @@ export class GameState {
     constructor() {
         this.fsm = null;
         this.scheduler = new Scheduler();
-        this.waveManager = new WaveManager();
+        this.hordeSpawner = new HordeSpawner();
         this._phase = "combat";
         this.mapNodes = [];
         this.mapNodeById = new Map();
@@ -113,7 +113,7 @@ export class GameState {
 
     initializeDefaultState() {
         this.scheduler.clear();
-        this.waveManager.reset();
+        this.hordeSpawner.reset();
         this.lastTime = 0;
         this.gameTime = 0;
         this.score = 0;

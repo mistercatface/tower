@@ -1,4 +1,4 @@
-import { perkMilestones, xpForLevel, spawnSettings } from "../Config/Config.js";
+import { perkMilestones, xpForLevel } from "../Config/Config.js";
 import { buildAbilityTreeLayout } from "../Config/content/abilityTreeLayout.js";
 import { GamePhase, isCombat, isInspector } from "../GameState/GamePhase.js";
 import { getStartNodeInspectionMissionLabel } from "../Combat/inspect/StartNodeInspection.js";
@@ -32,7 +32,6 @@ const elements = {
     catDefenseBtn: document.getElementById("catDefenseBtn"),
     categoryModalTitle: document.getElementById("categoryModalTitle"),
     categoryModalDesc: document.getElementById("categoryModalDesc"),
-    waveDisplay: document.getElementById("waveDisplay"),
     killsDisplay: document.getElementById("killsDisplay"),
     scoreDisplay: document.getElementById("scoreDisplay"),
     levelDisplay: document.getElementById("levelDisplay"),
@@ -40,7 +39,6 @@ const elements = {
     xpDisplay: document.getElementById("xpDisplay"),
     healthSegments: document.getElementById("healthSegments"),
     healthText: document.getElementById("healthText"),
-    topWaveBar: document.getElementById("topWaveBar"),
     inspectMissionBanner: document.getElementById("inspectMissionBanner"),
     inspectMissionText: document.getElementById("inspectMissionText"),
     passivesContainer: document.getElementById("passivesContainer"),
@@ -194,11 +192,6 @@ export function updateHud(state, upgrades) {
     updateMapNavButtons(state);
     updateInspectMissionBanner(state);
 
-    let waveTextVal = state.waveManager.wave;
-    if (isInspector(state.phase)) {
-        waveTextVal = "Inspect";
-    }
-    setHudLabel("waveDisplay", waveTextVal);
     setHudLabel("killsDisplay", state.kills);
     setHudLabel("scoreDisplay", state.score);
     setHudLabel("levelDisplay", state.level);
@@ -214,16 +207,6 @@ export function updateHud(state, upgrades) {
     updateProgressBar("healthSegments", "healthText", `HP: ${Math.max(0, state.player.health).toFixed(0)} / ${state.player.maxHealth}`, healthRatio, 10, (r) =>
         r > 0.5 ? "#4CAF50" : r > 0.2 ? "#FFEB3B" : "#F44336",
     );
-
-    const aliveEnemies = state.enemies.filter((e) => !e.isDead).length;
-    const progress = state.isGameOver ? 0 : Math.min(1, aliveEnemies / spawnSettings.maxActiveEnemies);
-
-    const topWaveBar = elements.topWaveBar;
-    if (topWaveBar) {
-        topWaveBar.style.width = `${progress * 100}%`;
-        topWaveBar.style.background = "#00bcd4";
-        topWaveBar.style.boxShadow = "0 0 8px rgba(0, 188, 212, 0.6)";
-    }
 
     if (upgrades) {
         upgrades

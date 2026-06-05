@@ -48,8 +48,6 @@ export function spawnStartNodeGuards(state) {
     const coords = state.getNodeCombatCoords(node);
     const layout = getStartNodeLayout(coords.x, coords.y, gridSettings.cellSize);
     const baseUpgradeDefs = (state.upgradeDefs ?? []).filter(isBaseStatUpgrade);
-    const wave = Math.max(1, state.waveManager.wave);
-
     for (const { enemyType, spawnIndex } of GUARD_TYPES) {
         const typeConfig = getEnemyTypeConfig(enemyType);
         if (!typeConfig) continue;
@@ -57,7 +55,7 @@ export function spawnStartNodeGuards(state) {
         const pos = layout.guardSpawns[spawnIndex];
         if (!pos) continue;
 
-        const enemy = Enemy.spawn(pos.x, pos.y, typeConfig, wave, baseUpgradeDefs);
+        const enemy = Enemy.spawn(pos.x, pos.y, typeConfig, baseUpgradeDefs);
         enemy.isPassive = true;
         enemy.isIntroGuard = true;
         enemy.angle = Math.atan2(layout.guardFaceY - pos.y, layout.guardFaceX - pos.x);

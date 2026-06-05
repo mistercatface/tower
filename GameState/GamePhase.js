@@ -21,7 +21,7 @@ export function isInspector(phase) {
     return phase === GamePhase.INSPECTOR;
 }
 
-export function canRunWaveSpawning(state) {
+export function canRunHordeSpawning(state) {
     return state.phase !== GamePhase.MAP
         && state.phase !== GamePhase.INSPECTOR
         && !state.startNodeIntroActive

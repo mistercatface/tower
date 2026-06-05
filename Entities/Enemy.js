@@ -20,9 +20,9 @@ export class Enemy extends Actor {
         enemySubclasses.set(type, cls);
     }
 
-    static spawn(x, y, enemyType, wave, baseUpgradeDefs) {
+    static spawn(x, y, enemyType, baseUpgradeDefs) {
         const combatStats = buildEnemyCombatStats(enemyType);
-        const reward = computeSpawnReward(wave, enemyType);
+        const reward = computeSpawnReward(enemyType);
         const Cls = enemySubclasses.get(enemyType.type) || Enemy;
         const enemy = new Cls(x, y, enemyType, combatStats, baseUpgradeDefs, reward);
         const levels = computeEnemyUpgradeLevels();

@@ -58,7 +58,7 @@ export class CombatState {
         ctx.state.player.resetToSpawn();
         ctx.viewport.snapTo(ctx.state.player.x, ctx.state.player.y);
         if (currentNode?.id === 0) ctx.state.spawnRunParty();
-        ctx.state.waveManager.startCombat();
+        ctx.state.hordeSpawner.beginHorde();
         ctx.state.player.resetTurretCombatState();
         runPersistentSectorEnterOnNode(ctx.state);
         if (shouldRunStartNodeIntro(ctx.state)) beginStartNodeIntro(ctx.state);

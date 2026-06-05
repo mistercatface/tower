@@ -4,8 +4,6 @@ export const progressionSettings = {
     upgradeCostMultiplier: 1.5,
 };
 
-export const difficultyCurve = { rewardMultiplier: 1.04 };
-
 export const perkMilestones = [2, 4, 6, 8, 10, 12, 14, 16];
 
 export const defaultUpgradeCost = 50;

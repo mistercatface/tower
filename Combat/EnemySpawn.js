@@ -1,4 +1,4 @@
-import { difficultyCurve, enemyDefaults, enemyBaseStats } from "../Config/Config.js";
+import { enemyDefaults, enemyBaseStats } from "../Config/Config.js";
 
 export function buildEnemyCombatStats(enemyType) {
     const range = enemyDefaults.rangeMin + Math.floor(Math.random() * (enemyDefaults.rangeMax - enemyDefaults.rangeMin + 1));
@@ -10,9 +10,8 @@ export function buildEnemyCombatStats(enemyType) {
     };
 }
 
-export function computeSpawnReward(wave, enemyType) {
-    const waveFactor = Math.pow(difficultyCurve.rewardMultiplier, wave - 1);
-    return Math.max(1, Math.floor(enemyType.maxHealth * waveFactor));
+export function computeSpawnReward(enemyType) {
+    return Math.max(1, enemyType.maxHealth);
 }
 
 export function computeEnemyUpgradeLevels() {

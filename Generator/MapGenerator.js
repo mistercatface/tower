@@ -296,7 +296,6 @@ export class MapGenerator {
                 walls: [],
                 obstacleGrid: tempObstacleGrid,
                 flowFieldGrid: tempFlowFieldGrid,
-                waveManager: state.waveManager,
             };
 
             StartBuildingStrategy.generate(mockState, coords.x, coords.y);
@@ -328,7 +327,6 @@ export class MapGenerator {
                         walls: [],
                         obstacleGrid: tempObstacleGrid,
                         flowFieldGrid: tempFlowFieldGrid,
-                        waveManager: state.waveManager
                     };
 
                     GeneratorStrategies[strategy].generate(mockState, coordsB.x, coordsB.y);
