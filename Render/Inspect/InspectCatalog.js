@@ -1,10 +1,15 @@
 /** @typedef {import("../../Entities/Pickup.js").Pickup} Pickup */
 
-import { propInspectDefinitions } from "../../Config/PropInspectDefinitions.js";
-import { getPropInspectRecipe } from "../3D/PropInspectRecipes.js";
+import { JACKO_CAN } from "../../Config/props/JackoCan.js";
+import { WOOD_CRATE } from "../../Config/props/Crate.js";
+import { createLabeledCanInspect } from "../3D/inspect/LabeledCanInspect.js";
+import { createLabeledBoxInspect } from "../3D/inspect/LabeledBoxInspect.js";
+import { buildJackoInspectMesh } from "../3D/props/jacko/InspectMesh.js";
+import { buildCrateInspectMesh } from "../3D/props/crate/InspectMesh.js";
+import { getCrateFaceLabelSrc } from "../3D/props/crate/Label.js";
 
 /**
- * @typedef {Object} PropInspectDescriptor
+ * @typedef {Object} InspectEntry
  * @property {string} title - Panel header text
  * @property {(ctx: CanvasRenderingContext2D, cx: number, cy: number, scale: number, yaw: number, pitch: number, pickup: Pickup) => void} draw
  * @property {(fn: () => void) => void} [onReady] - Re-render when async assets finish loading
@@ -14,17 +19,22 @@ import { getPropInspectRecipe } from "../3D/PropInspectRecipes.js";
  * @property {number} [tapPadding] - Extra tap radius beyond pickup.radius (default 14)
  */
 
-/** @type {Map<string, PropInspectDescriptor|null>} */
-const descriptorCache = new Map();
+/** @type {Record<string, InspectEntry>} */
+const INSPECT_ENTRIES = {
+    jacko_can: {
+        title: "VOLATILE FLUID",
+        tapPadding: 14,
+        ...withInspectDefaults(createLabeledCanInspect(JACKO_CAN, buildJackoInspectMesh)),
+    },
+    wood_crate: {
+        title: "SHIPPING CRATE",
+        tapPadding: 14,
+        ...withInspectDefaults(createLabeledBoxInspect(WOOD_CRATE, buildCrateInspectMesh, getCrateFaceLabelSrc)),
+    },
+};
 
-function buildDescriptor(inspectKey) {
-    const meta = propInspectDefinitions[inspectKey];
-    const recipe = getPropInspectRecipe(inspectKey);
-    if (!meta || !recipe) return null;
-
+function withInspectDefaults(recipe) {
     return {
-        title: meta.title,
-        tapPadding: meta.tapPadding,
         preload: recipe.preload,
         onReady: recipe.onReady,
         getInitialYaw: recipe.getInitialYaw ?? ((pickup) => pickup.facing ?? 0),
@@ -33,21 +43,24 @@ function buildDescriptor(inspectKey) {
     };
 }
 
-function getDescriptorForInspectKey(inspectKey) {
+export function getInspectEntry(inspectKey) {
     if (!inspectKey) return null;
-    if (!descriptorCache.has(inspectKey)) {
-        descriptorCache.set(inspectKey, buildDescriptor(inspectKey));
-    }
-    return descriptorCache.get(inspectKey);
+    return INSPECT_ENTRIES[inspectKey] ?? null;
 }
 
-export function resolvePickupInspect(pickup) {
+export function getPickupInspectEntry(pickup) {
     if (!pickup || pickup.isDead) return null;
-    return getDescriptorForInspectKey(pickup.strategy?.inspectKey);
+    return getInspectEntry(pickup.strategy?.inspectKey);
+}
+
+export function preloadAllInspectAssets() {
+    for (const entry of Object.values(INSPECT_ENTRIES)) {
+        entry.preload?.();
+    }
 }
 
 /**
- * Find the nearest tap-hit pickup that has a registered inspect descriptor.
+ * Find the nearest tap-hit pickup that has a registered inspect entry.
  */
 export function findInspectablePickup(state, worldX, worldY, { allowedInspectKeys = null } = {}) {
     if (!state.pickups) return null;
@@ -59,10 +72,10 @@ export function findInspectablePickup(state, worldX, worldY, { allowedInspectKey
         const inspectKey = pickup.strategy?.inspectKey;
         if (allowedInspectKeys && !allowedInspectKeys.includes(inspectKey)) continue;
 
-        const descriptor = pickup.resolveInspect();
-        if (!descriptor) continue;
+        const entry = getPickupInspectEntry(pickup);
+        if (!entry) continue;
 
-        const tapRadius = pickup.radius + (descriptor.tapPadding ?? 14);
+        const tapRadius = pickup.radius + (entry.tapPadding ?? 14);
         const distSq = (pickup.x - worldX) ** 2 + (pickup.y - worldY) ** 2;
         if (distSq <= tapRadius * tapRadius && distSq < bestDistSq) {
             best = pickup;

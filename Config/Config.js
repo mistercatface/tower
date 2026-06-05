@@ -274,11 +274,8 @@ export const explosionSettings = { defaultDamage: 5, barrelDamage: 5, wallBlastD
 
 export const enemyBaseStats = { turnSpeed: 10, range: 112, accuracy: 0.9, penetration: 0, moveSpeedMultiplier: 1.0, fireIntervalMultiplier: 1.0, reloadSpeedMultiplier: 1.0, speed: 75 };
 
-
-
 export const controlSettings = { doubleTapTimeout: 300, scrollZoomSensitivity: -0.001 };
 
 export const timingSettings = { sectorCompletedDelay: 1500 };
 
-/** TEMP: skip wave 1 on start node and enter inspection mode immediately. */
 export const debugStartNodeInspectionImmediate = false;

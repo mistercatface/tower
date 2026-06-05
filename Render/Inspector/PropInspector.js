@@ -1,3 +1,4 @@
+import { getPickupInspectEntry } from "../Inspect/InspectCatalog.js";
 import { isRadioDialogActive } from "../../Radio/RadioDialogController.js";
 import {
     onPropInspectorPanelClosed,
@@ -60,7 +61,7 @@ export class PropInspector {
     }
 
     open(pickup, onClose, state = null) {
-        const descriptor = pickup.resolveInspect();
+        const descriptor = getPickupInspectEntry(pickup);
         if (!descriptor) return;
 
         this.mount();

@@ -6,7 +6,6 @@ import { transitionEntity } from "./EntityFsm.js";
 import { pickupStates } from "./PickupStates.js";
 import { PolygonShape } from "../Spatial/Geometry/Shapes.js";
 import { getProjectileDamage } from "../Combat/impactDamage.js";
-import { resolvePickupInspect } from "../Render/Inspector/InspectRegistry.js";
 import { getStartNodeLayout } from "../Generator/StartNodeBuilding.js";
 import { placeAtWallClearance } from "../Spatial/Navigation/PathClearance.js";
 import { distanceToSegment } from "../Spatial/Geometry/WallGeometry.js";
@@ -204,10 +203,6 @@ export class Pickup extends Entity {
             draw(ctx, this, px, py);
             ctx.restore();
         }
-    }
-
-    resolveInspect() {
-        return resolvePickupInspect(this);
     }
 
     takeDamage(amount, gameState) {
