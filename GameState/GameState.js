@@ -7,7 +7,7 @@ import { HierarchicalNavigator } from "../Libraries/Pathfinding/HierarchicalNavi
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { NavigationService } from "../Spatial/Navigation/NavigationService.js";
 import { combatActorRadius, gridSettings, mapSettings, navigationSettings, runBaseStats } from "../Config/Config.js";
-import { Scheduler } from "../Core/Scheduler.js";
+import { Scheduler } from "../Libraries/Scheduler/Scheduler.js";
 import { WaveManager } from "../Combat/WaveManager.js";
 import { WallSpatialIndex } from "../Libraries/Spatial/indexes/WallSpatialIndex.js";
 import { Pools } from "../Core/Pools.js";

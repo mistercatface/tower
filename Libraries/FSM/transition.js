@@ -1,5 +1,5 @@
 /**
- * Shared enter/exit transition for entity-level state machines (actors, pickups, etc.).
+ * Shared enter/exit transitions for entity-level state machines (actors, pickups, …).
  */
 export function transitionEntity(host, states, name, stateDataInit = null) {
     if (host.currentState?.onExit) {

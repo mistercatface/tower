@@ -2,7 +2,7 @@ import { Entity } from "../Entity.js";
 import { explosionSettings } from "../../Config/Config.js";
 import { ExplosionStrategies } from "./ExplosionStrategies.js";
 import { standardExplosionPhases } from "./ExplosionPhases.js";
-import { transitionPhase } from "../EntityFsm.js";
+import { transitionPhase } from "../../Libraries/FSM/transition.js";
 
 export class Explosion extends Entity {
     static updateAll(state, dt, allEvents, spatialFrame) {

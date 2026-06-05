@@ -5,7 +5,7 @@ import { applyMobileLocomotion } from "../Libraries/Motion/index.js";
 import { initMobileAgent } from "../Libraries/Agent/index.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { actorStates } from "./ActorStates.js";
-import { transitionEntity } from "./EntityFsm.js";
+import { transitionEntity } from "../Libraries/FSM/transition.js";
 import { createCombatantStats, applyUpgrades, applyUpgradesToStats, syncActorCombatFromStats, initCombatantUpgradeSlots } from "./CombatantStats.js";
 import { Turret } from "./Turret.js";
 import { Utilities } from "../Core/Utilities.js";
