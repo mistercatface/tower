@@ -1,7 +1,7 @@
 import "../WorldSurfaceBootstrap.js";
 import { installGameSurfaceProfileProvider } from "../../Config/procedural/bootstrap.js";
 import { getSurfaceProfileProvider } from "../../Libraries/Procedural/SurfaceProfileProvider.js";
-import { SharedEdgeSolver } from "../../Libraries/Math/SharedEdgeSolver.js";
+import { SharedEdgeSolver } from "../../Libraries/Spatial/structure/SharedEdgeSolver.js";
 import { bakeGroundChunkCanvases, bakeWallAtlasCanvases } from "../../Libraries/WorldSurface/WorldSurfacePainter.js";
 import { invalidateProfileScratch } from "../../Libraries/WorldSurface/ProfileBakeResolver.js";
 

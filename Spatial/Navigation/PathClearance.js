@@ -1,4 +1,4 @@
-import { closestPointOnSegment, distanceToSegment, findClosestPointOnPathToWall, minDistanceSegmentToWall, pushPointFromWalls } from "../Geometry/WallGeometry.js";
+import { closestPointOnSegment, distanceToSegment, findClosestPointOnPathToWall, minDistanceSegmentToWall, pushPointFromWalls } from "../../Libraries/Spatial/geometry/WallGeometry.js";
 
 const CLEARANCE_EPS = 0.01;
 const WALL_QUERY_PAD = 48;

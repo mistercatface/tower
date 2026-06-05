@@ -1,4 +1,4 @@
-import { SpatialQuery } from "./SpatialQuery.js";
+import { SpatialQuery } from "../../Libraries/Spatial/query/SpatialQuery.js";
 
 /** @typedef {{ walls: object[], wallSpatialIndex?: object|null, obstacleGrid?: object|null }} WallContext */
 

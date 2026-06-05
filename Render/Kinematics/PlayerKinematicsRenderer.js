@@ -1,5 +1,5 @@
 import { kinematicsPixelSize } from "../../Config/Config.js";
-import { CAMERA_HEIGHT } from "../../Libraries/Math/IsometricProjection.js";
+import { CAMERA_HEIGHT } from "../../Libraries/Spatial/iso/IsometricProjection.js";
 import { createKinematicsBundle } from "./createKinematicsBundle.js";
 
 export class PlayerKinematicsRenderer {

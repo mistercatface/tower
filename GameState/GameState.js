@@ -8,7 +8,7 @@ import { NavigationService } from "../Spatial/Navigation/NavigationService.js";
 import { combatActorRadius, gridSettings, mapSettings, runBaseStats } from "../Config/Config.js";
 import { Scheduler } from "../Core/Scheduler.js";
 import { WaveManager } from "../Combat/WaveManager.js";
-import { WallSpatialIndex } from "../Spatial/World/WallSpatialIndex.js";
+import { WallSpatialIndex } from "../Libraries/Spatial/indexes/WallSpatialIndex.js";
 import { Pools } from "../Core/Pools.js";
 import { createRunStats } from "../Entities/CombatantStats.js";
 import { WorldSurfaceSystem } from "../Render/game/WorldSurfaceSystem.js";

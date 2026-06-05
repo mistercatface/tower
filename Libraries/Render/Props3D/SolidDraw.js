@@ -8,7 +8,7 @@ import {
     isFaceTowardViewer,
     createSideGradient,
     projectVertical,
-} from "../../Math/IsometricProjection.js";
+} from "../../Spatial/iso/IsometricProjection.js";
 
 export const DEFAULT_PROP_HEIGHT = 14;
 export const RADIAL_SEGMENTS = 14;

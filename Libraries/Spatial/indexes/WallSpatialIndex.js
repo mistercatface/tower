@@ -1,7 +1,7 @@
-import { boundsToCellRect } from "../../Libraries/DataStructures/CellKey.js";
-import { forEachSparseCellInRect } from "../../Libraries/DataStructures/CellRect.js";
-import { SparseBucketGrid } from "../../Libraries/DataStructures/SparseBucketGrid.js";
-import { SpatialQuery } from "./SpatialQuery.js";
+import { boundsToCellRect } from "../../DataStructures/CellKey.js";
+import { forEachSparseCellInRect } from "../../DataStructures/CellRect.js";
+import { SparseBucketGrid } from "../../DataStructures/SparseBucketGrid.js";
+import { SpatialQuery } from "../query/SpatialQuery.js";
 
 const fallbackQuery = new SpatialQuery();
 
@@ -43,7 +43,7 @@ export class WallSpatialIndex {
                 minX: b.minX - this.cellSize,
                 minY: b.minY - this.cellSize,
                 maxX: b.maxX + this.cellSize,
-                maxY: b.maxY + this.cellSize
+                maxY: b.maxY + this.cellSize,
             };
         }
         const r = entity.radius || 0;
@@ -51,7 +51,7 @@ export class WallSpatialIndex {
             minX: entity.x - r - this.cellSize,
             minY: entity.y - r - this.cellSize,
             maxX: entity.x + r + this.cellSize,
-            maxY: entity.y + r + this.cellSize
+            maxY: entity.y + r + this.cellSize,
         };
     }
 

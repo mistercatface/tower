@@ -1,10 +1,10 @@
 import { circleIntersectsAabb } from "../../Libraries/Math/Aabb2D.js";
-import { OCTILE_OFFSETS } from "../Grid/GridUtils.js";
+import { OCTILE_OFFSETS } from "../../Libraries/Spatial/grid/GridUtils.js";
 import {
     worldToGridCentered,
     gridToWorldCentered,
     getCellBoundsCentered,
-} from "../Geometry/GridCoords.js";
+} from "../../Libraries/Spatial/grid/GridCoords.js";
 
 const MAX_CACHE = 100;
 const FLOW_DECODE_X = new Float32Array([-0.707, 0, 0.707, -1, 0, 1, -0.707, 0, 0.707]);

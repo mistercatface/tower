@@ -1,5 +1,5 @@
 import { combatVisualSettings, worldSurfaceSettings, gridSettings } from "../Config/Config.js";
-import { CAMERA_HEIGHT } from "../Libraries/Math/IsometricProjection.js";
+import { CAMERA_HEIGHT } from "../Libraries/Spatial/iso/IsometricProjection.js";
 import { createWorldSurfaceSettings, installWorldSurfaceSettings } from "../Libraries/WorldSurface/WorldSurfaceSettings.js";
 
 /**

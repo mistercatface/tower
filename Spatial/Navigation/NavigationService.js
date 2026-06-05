@@ -1,5 +1,5 @@
 import { navigationSettings, NAV_PROFILES } from "../../Config/Config.js";
-import { entityIntersectsCellBounds } from "../Geometry/GridCoords.js";
+import { entityIntersectsCellBounds } from "../../Libraries/Spatial/grid/GridCoords.js";
 import { steerViaFlowField } from "./FlowFieldStrategy.js";
 import { createNavState, steerViaHpa } from "./HpaStrategy.js";
 

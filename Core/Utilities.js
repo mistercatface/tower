@@ -1,5 +1,5 @@
 import { normalizeVector } from "../Libraries/Math/Vec2.js";
-import { distanceToSegment } from "../Spatial/Geometry/WallGeometry.js";
+import { distanceToSegment } from "../Libraries/Spatial/geometry/WallGeometry.js";
 import { getWallsAlongLine } from "../Spatial/World/WallContext.js";
 
 export class Utilities {

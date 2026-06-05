@@ -1,4 +1,4 @@
-import { distanceToAabb } from "../../Libraries/Math/Aabb2D.js";
+import { distanceToAabb } from "../../Math/Aabb2D.js";
 
 export function getWallReach(wall, padding = wall.padding) {
     return wall.size / 2 * Math.SQRT2 + padding;

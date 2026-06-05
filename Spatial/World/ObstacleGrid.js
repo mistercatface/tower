@@ -1,6 +1,6 @@
-import { colRowToIndex } from "../Grid/GridUtils.js";
-import { pointToSegmentPaddingDistanceSq, getWallReach } from "../Geometry/WallGeometry.js";
-import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsToWorldBounds } from "../Geometry/GridCoords.js";
+import { colRowToIndex } from "../../Libraries/Spatial/grid/GridUtils.js";
+import { pointToSegmentPaddingDistanceSq, getWallReach } from "../../Libraries/Spatial/geometry/WallGeometry.js";
+import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsToWorldBounds } from "../../Libraries/Spatial/grid/GridCoords.js";
 
 const WORLD_MARGIN = 1600;
 

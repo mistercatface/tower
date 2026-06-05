@@ -1,6 +1,6 @@
 import { drawExtrudedRadial, drawRadialBand } from "../../../../Libraries/Render/Props3D/SolidDraw.js";
 import { JACKO_CAN } from "../../../../Config/content/props/JackoCan.js";
-import { projectVertical } from "../../../../Libraries/Math/IsometricProjection.js";
+import { projectVertical } from "../../../../Libraries/Spatial/iso/IsometricProjection.js";
 
 function drawCanTopCombat(ctx, prop, px, py, radius, height, onFire) {
     const { colors } = JACKO_CAN;

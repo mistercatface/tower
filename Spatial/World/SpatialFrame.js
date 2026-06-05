@@ -1,5 +1,5 @@
 import { EntityGrid } from "./EntityGrid.js";
-import { SpatialQuery } from "./SpatialQuery.js";
+import { SpatialQuery } from "../../Libraries/Spatial/query/SpatialQuery.js";
 import { wallContextFromState } from "./WallContext.js";
 import { Actor } from "../../Entities/Actor.js";
 import { isMovingEntity, shouldResolveActorPushable } from "../Collision/PairBroadphase.js";

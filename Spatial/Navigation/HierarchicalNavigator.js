@@ -1,6 +1,6 @@
 import { navigationSettings } from "../../Config/Config.js";
-import { colRowToIndex, indexToColRow, forEachCardinalNeighbor } from "../Grid/GridUtils.js";
-import { worldToGridAtOrigin, gridToWorldAtOrigin } from "../Geometry/GridCoords.js";
+import { colRowToIndex, indexToColRow, forEachCardinalNeighbor } from "../../Libraries/Spatial/grid/GridUtils.js";
+import { worldToGridAtOrigin, gridToWorldAtOrigin } from "../../Libraries/Spatial/grid/GridCoords.js";
 import { runLocalAStarFlat, runAbstractAStar } from "./AStar.js";
 import {
     RegionNode,
