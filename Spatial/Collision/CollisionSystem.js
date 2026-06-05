@@ -1,15 +1,15 @@
 import { circlesOverlap, findFirstCircleSegmentHit } from "../../Libraries/Spatial/collision/overlap.js";
 import { resolveSatPair } from "../../Libraries/Spatial/collision/satPair.js";
 import { shouldResolveActorPushable } from "../../Libraries/Spatial/collision/entityBroadphase.js";
-import { wakePushable } from "./PushableSleep.js";
-import { areHostile } from "../../Combat/Targeting.js";
+import { wakePushableBody } from "../../Libraries/Motion/pushableSleep.js";
 import { PhysicsSystem } from "../Motion/PhysicsSystem.js";
 import { enemyDefaults } from "../../Config/Config.js";
 import { PairFilter } from "../../Libraries/Interaction/PairFilter.js";
-import { PROJECTILE_HIT_PICKUP } from "../../Libraries/Interaction/presets/combat.js";
+import { CHARGE_IMPACT, PROJECTILE_HIT_PICKUP } from "../../Libraries/Interaction/presets/combat.js";
 import { CombatParticles } from "../../Render/CombatParticles.js";
 
 const projectilePickupFilter = new PairFilter(PROJECTILE_HIT_PICKUP);
+const chargeImpactFilter = new PairFilter(CHARGE_IMPACT);
 
 export class CollisionSystem {
     static checkCircle(a, b) {
@@ -40,7 +40,7 @@ export class CollisionSystem {
 
         actor._wallResolvedFrame = null;
         pickup._wallResolvedFrame = null;
-        wakePushable(pickup);
+        wakePushableBody(pickup);
     }
 
     static resolvePushablePair(p1, p2) {
@@ -57,8 +57,8 @@ export class CollisionSystem {
 
         p1._wallResolvedFrame = null;
         p2._wallResolvedFrame = null;
-        wakePushable(p1);
-        wakePushable(p2);
+        wakePushableBody(p1);
+        wakePushableBody(p2);
     }
 
     static run(state, spatialFrame) {
@@ -125,7 +125,7 @@ export class CollisionSystem {
     }
 
     static applyChargeImpact(charger, other, events) {
-        if (areHostile(charger, other)) {
+        if (chargeImpactFilter.allows(charger, other)) {
             events.push({ target: other, damage: enemyDefaults.chargeImpactDamage });
         }
         charger.changeState("stunned", {

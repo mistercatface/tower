@@ -11,7 +11,7 @@ import { getStartNodeLayout } from "../Generator/StartNodeBuilding.js";
 import { placeAtWallClearance } from "../Libraries/Pathfinding/PathClearance.js";
 import { distanceToSegment } from "../Libraries/Spatial/geometry/WallGeometry.js";
 import { MOVING_SPEED_SQ } from "../Libraries/Spatial/collision/entityBroadphase.js";
-import { SLEEP_FRAMES, canSleepPushable, wakePushable as wakePushablePickup } from "../Spatial/Collision/PushableSleep.js";
+import { wakePushableBody } from "../Libraries/Motion/pushableSleep.js";
 
 const PICKUP_STRATEGY_DEFAULTS = {
     isPushable: false,
@@ -46,13 +46,13 @@ function damageOnHit(state, pickup, projectile, events) {
         const width = pickup.halfExtents ? pickup.halfExtents.x * 2 : pickup.radius * 2;
         const height = pickup.halfExtents ? pickup.halfExtents.y * 2 : pickup.radius * 2;
         const minSize = 3;
-        const canSplit = (width >= minSize * 2 && height >= minSize * 2);
+        const canSplit = width >= minSize * 2 && height >= minSize * 2;
 
         if (!canSplit) {
             if (pickup.ageMs > 250) return false;
             if (projectile) {
                 const pushForce = projectile.isExplosion ? 250 : 120;
-                
+
                 let forceAngle;
                 if (projectile.isExplosion) {
                     forceAngle = Math.atan2(pickup.y - projectile.y, pickup.x - projectile.x);
@@ -71,7 +71,7 @@ function damageOnHit(state, pickup, projectile, events) {
                     pickup.angularVelocity += torque / pickup.momentOfInertia;
                     pickup.angularVelocity = Math.max(-30, Math.min(30, pickup.angularVelocity));
                 }
-                wakePushablePickup(pickup);
+                wakePushableBody(pickup);
             }
             if (projectile && projectile.isDead !== undefined) projectile.isDead = true;
             return true;
@@ -93,7 +93,7 @@ function damageOnHit(state, pickup, projectile, events) {
         } else {
             forceAngle = projectile.angle !== undefined ? projectile.angle : Math.atan2(pickup.y - projectile.y, pickup.x - projectile.x);
         }
-        
+
         const fx = Math.cos(forceAngle) * pushForce;
         const fy = Math.sin(forceAngle) * pushForce;
         pickup.vx += fx;
@@ -104,7 +104,7 @@ function damageOnHit(state, pickup, projectile, events) {
             const torque = rx * fy - ry * fx;
             pickup.angularVelocity += torque / pickup.momentOfInertia;
         }
-        wakePushablePickup(pickup);
+        wakePushableBody(pickup);
     }
 
     if (projectile?.isDead !== undefined) projectile.isDead = true;
@@ -140,7 +140,7 @@ export class Pickup extends Entity {
                 { x: -r, y: -r },
                 { x: r, y: -r },
                 { x: r, y: r },
-                { x: -r, y: r }
+                { x: -r, y: r },
             ]);
         }
         if (this.strategy.maxHealth != null) {
@@ -155,39 +155,18 @@ export class Pickup extends Entity {
         this.changeState("normal");
     }
 
-    wakePushable() {
-        wakePushablePickup(this);
-    }
-
-    canSleep() {
-        return canSleepPushable(this);
-    }
-
-    tickSleep(eligible) {
-        if (!this.strategy?.isPushable) return;
-        if (!eligible) {
-            this._sleepFrames = 0;
-            this.isSleeping = false;
-            return;
-        }
-        this._sleepFrames++;
-        if (this._sleepFrames >= SLEEP_FRAMES) {
-            this.isSleeping = true;
-        }
-    }
-
     get momentOfInertia() {
         const m = this.mass || 1.0;
-        if (this.shape && this.shape.type === 'Polygon') {
+        if (this.shape && this.shape.type === "Polygon") {
             const w = this.halfExtents ? this.halfExtents.x * 2 : this.radius * 2;
             const h = this.halfExtents ? this.halfExtents.y * 2 : this.radius * 2;
-            return m * (w * w + h * h) / 12;
+            return (m * (w * w + h * h)) / 12;
         }
-        return m * this.radius * this.radius / 2;
+        return (m * this.radius * this.radius) / 2;
     }
 
     changeState(stateName, stateDataInit = null) {
-        if (this.strategy?.isPushable) wakePushablePickup(this);
+        if (this.strategy?.isPushable) wakePushableBody(this);
         transitionEntity(this, pickupStates, stateName, stateDataInit);
     }
 
@@ -256,7 +235,7 @@ export class Pickup extends Entity {
                 { x: -hx, y: -hy },
                 { x: hx, y: -hy },
                 { x: hx, y: hy },
-                { x: -hx, y: hy }
+                { x: -hx, y: hy },
             ]);
 
             let dx = worldX - this.x;
@@ -274,7 +253,7 @@ export class Pickup extends Entity {
             const speed = 40 + Math.random() * 60;
             shard.vx = this.vx + dx * speed + (Math.random() - 0.5) * 15;
             shard.vy = this.vy + dy * speed + (Math.random() - 0.5) * 15;
-            shard.wakePushable();
+            wakePushableBody(shard);
 
             shard.changeState("shard_flying");
             gameState.pickups.push(shard);
@@ -383,7 +362,12 @@ function isOneCellWideCorridor(grid, cols, rows, col, row) {
 }
 
 function touchesWallCell(grid, cols, rows, col, row) {
-    for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    for (const [dc, dr] of [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1],
+    ]) {
         const nc = col + dc;
         const nr = row + dr;
         if (nc < 0 || nc >= cols || nr < 0 || nr >= rows) continue;
@@ -431,13 +415,7 @@ function collectWallAdjacentCells(state, layout, propRadius) {
             const key = `${resolvedGrid.col},${resolvedGrid.row}`;
             if (seen.has(key)) continue;
             seen.add(key);
-            cells.push({
-                col: resolvedGrid.col,
-                row: resolvedGrid.row,
-                x: spot.x,
-                y: spot.y,
-                facing: spot.facing,
-            });
+            cells.push({ col: resolvedGrid.col, row: resolvedGrid.row, x: spot.x, y: spot.y, facing: spot.facing });
         }
     }
 

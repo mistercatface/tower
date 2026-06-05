@@ -1,7 +1,10 @@
 import { SpatialFrameCore } from "../../Libraries/Spatial/world/SpatialFrameCore.js";
 import { wallContextFromState } from "../../Libraries/Spatial/query/wallContext.js";
 import { isMovingEntity, shouldResolveActorPushable } from "../../Libraries/Spatial/collision/entityBroadphase.js";
-import { Actor } from "../../Entities/Actor.js";
+import { PairFilter } from "../../Libraries/Interaction/PairFilter.js";
+import { COMBATANT_PAIR } from "../../Libraries/Interaction/presets/combat.js";
+
+const combatantPairFilter = new PairFilter(COMBATANT_PAIR);
 
 /**
  * Combat/map-transition spatial frame — populates SpatialFrameCore from GameState.
@@ -43,11 +46,7 @@ export class CombatSpatialFrame extends SpatialFrameCore {
     }
 
     forEachCombatantPair(fn) {
-        this.forEachGroupNeighborPair(
-            this._combatants,
-            (a, b) => !(b instanceof Actor) || b.isDead || a.id >= b.id,
-            fn,
-        );
+        this.forEachGroupNeighborPair(this._combatants, (a, b) => combatantPairFilter.allows(a, b), fn);
     }
 
     forEachActorPushablePair(fn) {

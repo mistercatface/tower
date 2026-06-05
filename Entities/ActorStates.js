@@ -1,4 +1,4 @@
-import { integrateSteering, applyVelocityDamping } from "../Libraries/Motion/index.js";
+import { integrateSteering, applyVelocityDamping, updateSeparation } from "../Libraries/Motion/index.js";
 import { applyDesiredDirection } from "../Libraries/Agent/index.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { normalizeAngle, turnAngleTowards } from "../Libraries/Math/Angle.js";
@@ -168,7 +168,7 @@ export class EnemyEngagedState {
             enemy.desiredX = tangentX * stateData.strafeDir + radialX * radialFactor;
             enemy.desiredY = tangentY * stateData.strafeDir + radialY * radialFactor;
 
-            enemy.separation.update(enemy, spatialFrame);
+            updateSeparation(enemy, spatialFrame);
             integrateSteering(enemy, dt, { ignoreSeparation: true, shouldMove: true, alignAngleWithMovement: false });
             PhysicsSystem.resolveWallCollisions(enemy, spatialFrame, state);
         } else {
@@ -235,7 +235,7 @@ export class EnemyEngagedState {
                 enemy.desiredY = 0;
             }
 
-            enemy.separation.update(enemy, spatialFrame);
+            updateSeparation(enemy, spatialFrame);
             integrateSteering(enemy, dt, { ignoreSeparation: false, shouldMove: true, alignAngleWithMovement: false });
 
             const hitWall = PhysicsSystem.resolveWallCollisions(enemy, spatialFrame, state);
@@ -275,7 +275,7 @@ export class EnemyChargePrepareState {
             enemy.desiredY = 0;
         }
 
-        enemy.separation.update(enemy, spatialFrame);
+        updateSeparation(enemy, spatialFrame);
         integrateSteering(enemy, dt, { ignoreSeparation: false, shouldMove: true });
         PhysicsSystem.resolveWallCollisions(enemy, spatialFrame, state);
 
@@ -417,7 +417,7 @@ export class EnemyStunnedState {
         enemy.desiredX = 0;
         enemy.desiredY = 0;
 
-        enemy.separation.update(enemy, spatialFrame);
+        updateSeparation(enemy, spatialFrame);
         applyVelocityDamping(enemy, dt, { friction: 4.0 });
         enemy.x += enemy.separation.pushX;
         enemy.y += enemy.separation.pushY;
@@ -542,7 +542,7 @@ export class EnemyKnockedBackState {
 
         enemy.desiredX = 0;
         enemy.desiredY = 0;
-        enemy.separation.update(enemy, spatialFrame);
+        updateSeparation(enemy, spatialFrame);
         applyVelocityDamping(enemy, dt, { friction: 4.0 });
         enemy.x += enemy.separation.pushX;
         enemy.y += enemy.separation.pushY;

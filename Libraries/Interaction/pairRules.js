@@ -21,12 +21,14 @@
  * @property {boolean} [equal]
  * @property {string} [bothResolve] — both resolved values equal
  * @property {[string, string]} [crossFaction] — inclusion: one entity each faction (either order)
+ * @property {boolean} [selfIdLessThanOther] — pair: self.id < other.id (dedup ordering)
  * @property {FieldClause} [self]
  * @property {FieldClause} [other]
  *
  * @typedef {object} PairFilterConfig
  * @property {PairRule[]} [exclusions]
  * @property {PairRule[]} [inclusions]
+ * @property {PairRule[]} [inclusionsAny] — at least one must match (when non-empty)
  * @property {Record<string, (entity: object) => *>} [resolvers]
  */
 
@@ -131,9 +133,12 @@ export function pairRuleMatches(rule, self, other, resolvers) {
             return (a === fa && b === fb) || (a === fb && b === fa);
         }
 
+        if (rule.selfIdLessThanOther) {
+            return self.id < other.id;
+        }
+
         if (rule.self && rule.other) {
-            return matchFieldClause(self, rule.self, resolvers)
-                && matchFieldClause(other, rule.other, resolvers);
+            return matchFieldClause(self, rule.self, resolvers) && matchFieldClause(other, rule.other, resolvers);
         }
     }
 
@@ -148,6 +153,7 @@ export function pairRuleMatches(rule, self, other, resolvers) {
 export function pairFilterAllows(config, self, other) {
     const exclusions = config.exclusions ?? [];
     const inclusions = config.inclusions ?? [];
+    const inclusionsAny = config.inclusionsAny ?? [];
     const resolvers = config.resolvers ?? {};
 
     for (const rule of exclusions) {
@@ -160,6 +166,17 @@ export function pairFilterAllows(config, self, other) {
         if (!pairRuleMatches(rule, self, other, resolvers)) {
             return false;
         }
+    }
+
+    if (inclusionsAny.length > 0) {
+        let any = false;
+        for (const rule of inclusionsAny) {
+            if (pairRuleMatches(rule, self, other, resolvers)) {
+                any = true;
+                break;
+            }
+        }
+        if (!any) return false;
     }
 
     return true;

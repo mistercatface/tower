@@ -21,9 +21,7 @@ export { applyImpulse, applyKnockback } from "./applyImpulse.js";
 export { massFromBody, inverseMassFromBody } from "./bodyMass.js";
 export { applyRigidBodyImpulse } from "./rigidBodyImpulse.js";
 export { applyStaticSurfaceImpulse } from "./staticSurfaceImpulse.js";
-export {
-    createSeparationAccum,
-    accumulateSeparationFromPair,
-    clampSeparationAccum,
-} from "./separationForce.js";
+export { createSeparationAccum, accumulateSeparationFromPair, clampSeparationAccum } from "./separationForce.js";
 export { SeparationEngine } from "./SeparationEngine.js";
+export { createSeparationState, updateSeparation } from "./applySeparation.js";
+export { SLEEP_FRAMES, SLEEP_ANGULAR_EPS, isPushable, canSleepPushable, wakePushableBody, advancePushableSleep, hasSleepBlockingOverlap, evaluatePushableSleepEligible } from "./pushableSleep.js";

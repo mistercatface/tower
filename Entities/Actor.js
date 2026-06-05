@@ -1,8 +1,7 @@
 import { DestructibleEntity } from "./Entity.js";
 import { TurretController } from "../Combat/TurretController.js";
 import { ActorRenderer } from "../Render/ActorRenderer.js";
-import { Separation } from "../Spatial/Motion/Separation.js";
-import { integrateSteering } from "../Libraries/Motion/index.js";
+import { createSeparationState, integrateSteering, updateSeparation } from "../Libraries/Motion/index.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { actorStates } from "./ActorStates.js";
 import { transitionEntity } from "./EntityFsm.js";
@@ -40,7 +39,7 @@ export class Actor extends DestructibleEntity {
         this.desiredY = 0;
         this.vx = 0;
         this.vy = 0;
-        this.separation = new Separation();
+        this.separation = createSeparationState();
         this.healthBar = null;
         this.weapon = null;
         this.stats = null;
@@ -300,7 +299,7 @@ export class Actor extends DestructibleEntity {
     }
 
     applyLocomotion(dt, spatialFrame, { state = null, externalSpeedMod = 1, ignoreSeparationInDesired = false, shouldMove = true, alignAngleWithMovement = true } = {}) {
-        this.separation.update(this, spatialFrame);
+        updateSeparation(this, spatialFrame);
         const baseSpeed = this.speed;
         if (externalSpeedMod !== 1) {
             this.speed = baseSpeed * externalSpeedMod;

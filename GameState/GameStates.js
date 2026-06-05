@@ -3,7 +3,11 @@ import { CombatParticles } from "../Render/CombatParticles.js";
 import { RagdollCorpse } from "../Entities/RagdollCorpse.js";
 import { ProgressionManager } from "../Progression/ProgressionManager.js";
 import { CollisionSystem } from "../Spatial/Collision/CollisionSystem.js";
-import { tickAllPushableSleep, wakeAllPushables } from "../Spatial/Collision/PushableSleep.js";
+import {
+    advancePushableSleep,
+    evaluatePushableSleepEligible,
+    wakePushableBody,
+} from "../Libraries/Motion/pushableSleep.js";
 import { combatSpatial } from "../Spatial/World/CombatSpatialFrame.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { Projectile } from "../Entities/Projectile.js";
@@ -20,6 +24,31 @@ import { syncSurfaceProfile } from "../Render/game/surfaceProfileResolver.js";
 
 const MAP_TRAVEL_SPEED = 5.0;
 
+function blocksPushableSleep(pickup) {
+    return pickup.currentState?.blocksSleep?.() ?? false;
+}
+
+function tickAllPushableSleep(spatialFrame) {
+    const pushables = spatialFrame._pushables;
+    for (let i = 0; i < pushables.length; i++) {
+        const pickup = pushables[i];
+        if (pickup.isDead) continue;
+        const eligible = evaluatePushableSleepEligible(
+            pickup,
+            spatialFrame.getNeighbors(pickup),
+            { blocksSleep: blocksPushableSleep },
+        );
+        advancePushableSleep(pickup, eligible);
+    }
+}
+
+function wakeAllPushables(state) {
+    if (!state?.pickups) return;
+    for (let i = 0; i < state.pickups.length; i++) {
+        wakePushableBody(state.pickups[i]);
+    }
+}
+
 function runPushablePhysics(state, dt, spatialFrame) {
     ProgressionManager.updatePickups(state, dt, spatialFrame);
     const events = CollisionSystem.run(state, spatialFrame);
@@ -29,7 +58,7 @@ function runPushablePhysics(state, dt, spatialFrame) {
         if (pickup.isSleeping || !pickup.needsWallCollision()) continue;
         PhysicsSystem.resolveWallCollisions(pickup, spatialFrame, state);
     }
-    tickAllPushableSleep(state, spatialFrame);
+    tickAllPushableSleep(spatialFrame);
     return events;
 }
 

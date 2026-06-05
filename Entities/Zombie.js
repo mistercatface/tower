@@ -1,6 +1,6 @@
 import { Enemy } from "./Enemy.js";
 import { actorStates } from "./ActorStates.js";
-import { integrateSteering } from "../Libraries/Motion/index.js";
+import { integrateSteering, updateSeparation } from "../Libraries/Motion/index.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 
 export class ZombieChargePrepareState {
@@ -15,7 +15,7 @@ export class ZombieChargePrepareState {
         // Zombie: No backing away or repositioning: always steer directly towards target using navigation
         enemy.calculateSteering(target, state);
 
-        enemy.separation.update(enemy, spatialFrame);
+        updateSeparation(enemy, spatialFrame);
         integrateSteering(enemy, dt, { ignoreSeparation: false, shouldMove: true });
         PhysicsSystem.resolveWallCollisions(enemy, spatialFrame, state);
 
