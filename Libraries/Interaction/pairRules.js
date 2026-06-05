@@ -196,4 +196,34 @@ export function pairFilterAllows(config, self, other) {
     return true;
 }
 
+/**
+ * Layer pair-filter configs (resolvers merge; rule arrays concatenate).
+ *
+ * @param {PairFilterConfig[]} configs
+ * @returns {PairFilterConfig}
+ */
+export function mergePairFilter(...configs) {
+    /** @type {PairFilterConfig} */
+    const merged = {};
+
+    for (const config of configs) {
+        if (!config) continue;
+
+        if (config.resolvers) {
+            merged.resolvers = { ...merged.resolvers, ...config.resolvers };
+        }
+        if (config.pairResolvers) {
+            merged.pairResolvers = { ...merged.pairResolvers, ...config.pairResolvers };
+        }
+        for (const key of /** @type {const} */ (["exclusions", "inclusions", "inclusionsAny"])) {
+            const rules = config[key];
+            if (rules?.length) {
+                merged[key] = [...(merged[key] ?? []), ...rules];
+            }
+        }
+    }
+
+    return merged;
+}
+
 export {};
