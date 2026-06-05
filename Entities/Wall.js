@@ -30,7 +30,7 @@ export class Segment extends DestructibleEntity {
                 ctx.state.wallSpatialIndex.remove(this);
             }
             const damageBounds = ctx.state.obstacleGrid.patchAfterWallRemoved(this, ctx.state.wallSpatialIndex);
-            ctx.state.floorTiles.invalidateGridBounds(damageBounds, ctx.state);
+            ctx.state.worldSurfaces.invalidateGridBounds(damageBounds, ctx.state);
             ctx.state.navigation.onObstaclesChanged(
                 damageBounds,
                 ctx.state.player.x,

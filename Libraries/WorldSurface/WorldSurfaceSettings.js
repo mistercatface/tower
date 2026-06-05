@@ -1,5 +1,5 @@
 /**
- * Runtime settings for floor/wall/roof world-surface rendering.
+ * Runtime settings for ground/wall/roof world-surface rendering.
  * Installed once by game bootstrap; read via getWorldSurfaceSettings().
  *
  * @typedef {Object} WorldSurfaceSettings
@@ -16,7 +16,7 @@
  * @property {number} wallTextureBleedPx
  * @property {number} wallSubdivNearPx
  * @property {number} wallSubdivFarPx
- * @property {boolean} floorAnimationsOn
+ * @property {boolean} groundChunkAnimationsOn
  * @property {boolean} wallAnimationsOn
  * @property {number} cellSize
  * @property {number} cameraHeight
@@ -33,7 +33,7 @@ let installedSettings = null;
 export function createWorldSurfaceSettings(params) {
     return {
         wallVisualHeight: null,
-        floorAnimationsOn: false,
+        groundChunkAnimationsOn: false,
         wallAnimationsOn: false,
         ...params,
     };

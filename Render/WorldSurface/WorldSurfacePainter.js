@@ -1,8 +1,8 @@
 import { getWorldSurfaceSettings } from "../../Libraries/WorldSurface/WorldSurfaceSettings.js";
-import { composeFloorImage } from "../../Libraries/Procedural/FloorTextureComposer.js";
-import { getFloorProfileProvider } from "../../Libraries/Procedural/FloorProfileProvider.js";
+import { composeSurfaceImage } from "../../Libraries/Procedural/SurfaceTextureComposer.js";
+import { getSurfaceProfileProvider } from "../../Libraries/Procedural/SurfaceProfileProvider.js";
 import { buildMapContext, createWallFaceAxes, writePixelToSamples } from "./SurfaceCoordinateMapper.js";
-import { bakePixelsForWorldSpan, getPixelsPerWorldUnit } from "./floorTextureResolution.js";
+import { bakePixelsForWorldSpan, getPixelsPerWorldUnit } from "./WorldSurfaceResolution.js";
 import { getAnimationFrames, resolveBakeProfile } from "./ProfileBakeResolver.js";
 
 class TileMemoryPool {
@@ -33,7 +33,7 @@ function resolvePaintProfile(profileOrId) {
     if (profileOrId != null && typeof profileOrId === "object") {
         return profileOrId;
     }
-    const provider = getFloorProfileProvider();
+    const provider = getSurfaceProfileProvider();
     return provider.getProfile(profileOrId ?? provider.defaultId);
 }
 
@@ -74,7 +74,7 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, see
         }
     }
 
-    const rgbBuffer = composeFloorImage(samples, profile, seed);
+    const rgbBuffer = composeSurfaceImage(samples, profile, seed);
 
     let dataIdx = 0;
     for (let i = 0; i < numPixels; i++) {
@@ -93,7 +93,7 @@ function bakeResolvedProfile(ctx, width, height, startWorldX, startWorldY, seed,
     paintPixelArea(ctx, width, height, startWorldX, startWorldY, seed, options, profile);
 }
 
-export function bakeWallFaceCanvas(width, height, p1, p2, pixelsPerUnit, seed, profileOrId, payload = null, optionsPayload = null) {
+export function bakeWallAtlasCanvas(width, height, p1, p2, pixelsPerUnit, seed, profileOrId, payload = null, optionsPayload = null) {
     const canvas = new OffscreenCanvas(width, height);
     const ctx = canvas.getContext("2d");
     ctx.imageSmoothingEnabled = false;
@@ -102,7 +102,7 @@ export function bakeWallFaceCanvas(width, height, p1, p2, pixelsPerUnit, seed, p
     const wallWidth = optionsPayload?.wallWidth;
 
     if (payload) {
-        const profileKey = typeof profileOrId === "string" ? profileOrId : getFloorProfileProvider().defaultId;
+        const profileKey = typeof profileOrId === "string" ? profileOrId : getSurfaceProfileProvider().defaultId;
         const baseProfile = resolvePaintProfile(profileOrId);
         bakeResolvedProfile(ctx, width, height, 0, 0, seed, { isWall: true, p1, p2, pixelsPerUnit, wallHeight, wallWidth }, baseProfile, profileKey, payload);
     } else {
@@ -123,9 +123,9 @@ function chunkNeedsRuntimeResolve(profile) {
     return Boolean(profile.animation);
 }
 
-/** Bake one or more chunk canvases from a single worker payload. */
-export function bakeFloorChunkCanvases(payload) {
-    const provider = getFloorProfileProvider();
+/** Bake one or more ground-chunk canvases from a single worker payload. */
+export function bakeGroundChunkCanvases(payload) {
+    const provider = getSurfaceProfileProvider();
     const profileId = payload.profileId ?? provider.defaultId;
     const baseProfile = provider.getProfile(profileId);
     const { frameStart, frameCount } = payload;
@@ -151,15 +151,15 @@ export function bakeFloorChunkCanvases(payload) {
     return canvases;
 }
 
-export function bakeWallFaceCanvases(width, height, p1, p2, pixelsPerUnit, seed, profileId, payload = {}) {
-    const provider = getFloorProfileProvider();
+export function bakeWallAtlasCanvases(width, height, p1, p2, pixelsPerUnit, seed, profileId, payload = {}) {
+    const provider = getSurfaceProfileProvider();
     const baseProfile = provider.getProfile(profileId ?? provider.defaultId);
-    if (!baseProfile.animation) return [bakeWallFaceCanvas(width, height, p1, p2, pixelsPerUnit, seed, profileId, null, payload)];
+    if (!baseProfile.animation) return [bakeWallAtlasCanvas(width, height, p1, p2, pixelsPerUnit, seed, profileId, null, payload)];
     const { frameStart, frameCount } = payload;
     const canvases = [];
     for (let i = 0; i < frameCount; i++) {
         payload.frameIndex = frameStart + i;
-        canvases.push(bakeWallFaceCanvas(width, height, p1, p2, pixelsPerUnit, seed, profileId, payload, payload));
+        canvases.push(bakeWallAtlasCanvas(width, height, p1, p2, pixelsPerUnit, seed, profileId, payload, payload));
     }
     return canvases;
 }

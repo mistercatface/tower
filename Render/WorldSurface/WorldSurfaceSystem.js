@@ -1,20 +1,24 @@
+/**
+ * Procedural world-surface bake cache: ground chunks + wall atlases (shared by projected wall/roof draw).
+ * Does not project geometry — see ProjectedWallDraw.js for that.
+ */
 import { getWorldSurfaceSettings, resolveWallVisualHeight } from "../../Libraries/WorldSurface/WorldSurfaceSettings.js";
 import { isWorldScene } from "../../GameState/GamePhase.js";
-import { getFloorProfileProvider } from "../../Libraries/Procedural/FloorProfileProvider.js";
+import { getSurfaceProfileProvider } from "../../Libraries/Procedural/SurfaceProfileProvider.js";
 import { chunkToWorldOrigin, getChunkSizePx, gridBoundsToChunkRange, worldBoundsToChunkRange } from "../../Spatial/Grid/ChunkGrid.js";
 import { ProgressiveFrameCache } from "./ProgressiveFrameCache.js";
 import {
-    floorChunkCachePrefix,
-    getFloorChunkAnimationInfo,
-    getWallFaceAnimationInfo,
-} from "../../Libraries/WorldSurface/bake/FloorBakeHelpers.js";
-import { buildFloorChunkBakePayload, getFloorTextureProfileIdForCoords } from "../game/floorTextureProfile.js";
+    groundChunkCachePrefix,
+    getGroundChunkAnimationInfo,
+    getWallAtlasAnimationInfo,
+} from "../../Libraries/WorldSurface/bake/SurfaceBakeHelpers.js";
+import { buildGroundChunkBakePayload, resolveSurfaceProfileAtCoords } from "../game/surfaceProfileResolver.js";
 import { TileWorkerCoordinator, getProfileRevision } from "./TileWorkerCoordinator.js";
-import { drawBakedTexture, bakePixelsForWorldSpan, getPixelsPerWorldUnit } from "./floorTextureResolution.js";
+import { drawBakedTexture, getPixelsPerWorldUnit } from "./WorldSurfaceResolution.js";
 import { animationFrameIndex } from "./ProfileBakeResolver.js";
-import { bakeFrameRange, nextAnimationBatchRange } from "./AnimationFrameBake.js";
+import { bakeFrameRange } from "./AnimationFrameBake.js";
 
-export class FloorTileSystem {
+export class WorldSurfaceSystem {
     /** @param {import("../../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} [settings] */
     constructor(settings = getWorldSurfaceSettings()) {
         this.settings = settings;
@@ -36,9 +40,9 @@ export class FloorTileSystem {
             for (let chunkCol = range.minChunkCol; chunkCol <= range.maxChunkCol; chunkCol++) {
                 const chunkCenterX = obstacleGrid.minX + chunkCol * chunkSizePx + chunkSizePx / 2;
                 const chunkCenterY = obstacleGrid.minY + chunkRow * chunkSizePx + chunkSizePx / 2;
-                const profileId = getFloorTextureProfileIdForCoords(state, chunkCenterX, chunkCenterY);
+                const profileId = resolveSurfaceProfileAtCoords(state, chunkCenterX, chunkCenterY);
                 this.surfaceCache.deleteByPrefix(
-                    "chunk:" + floorChunkCachePrefix(
+                    "chunk:" + groundChunkCachePrefix(
                         chunkCol,
                         chunkRow,
                         profileId,
@@ -50,16 +54,16 @@ export class FloorTileSystem {
         }
     }
 
-    bakeWallFace(width, height, p1, p2, pixelsPerUnit, floorBake, frameRange, profileId, wallHeight = null, wallWidth = null) {
+    requestWallAtlasBake(width, height, p1, p2, pixelsPerUnit, surfaceBake, frameRange, profileId, wallHeight = null, wallWidth = null) {
         const centerX = (p1.x + p2.x) / 2;
         const centerY = (p1.y + p2.y) / 2;
-        return TileWorkerCoordinator.requestWallFaceBake({
+        return TileWorkerCoordinator.requestWallAtlasBake({
             width,
             height,
             p1,
             p2,
             pixelsPerUnit,
-            seed: floorBake.floorTileSeed,
+            seed: surfaceBake.surfaceSeed,
             profileId,
             ...frameRange,
             centerX,
@@ -70,7 +74,7 @@ export class FloorTileSystem {
     }
 
     _buildChunkPayload(state, chunkCol, chunkRow) {
-        const payload = buildFloorChunkBakePayload(state, chunkCol, chunkRow);
+        const payload = buildGroundChunkBakePayload(state, chunkCol, chunkRow);
         const obstacleGrid = state.obstacleGrid;
         const cellsPerChunk = this.settings.cellsPerChunk;
         if (obstacleGrid) {
@@ -105,10 +109,10 @@ export class FloorTileSystem {
         return placeholder;
     }
 
-    getChunkCanvas(chunkCol, chunkRow, state, payload = null) {
+    getGroundChunkCanvas(chunkCol, chunkRow, state, payload = null) {
         if (!payload) payload = this._buildChunkPayload(state, chunkCol, chunkRow);
 
-        const key = floorChunkCachePrefix(
+        const key = groundChunkCachePrefix(
             chunkCol,
             chunkRow,
             payload.profileId,
@@ -118,62 +122,62 @@ export class FloorTileSystem {
         let canvases = this.surfaceCache.get(key);
         if (canvases) return canvases;
 
-        const profile = getFloorProfileProvider().getProfile(payload.profileId);
-        const { enabled: isAnimated, totalFrames } = getFloorChunkAnimationInfo(profile);
+        const profile = getSurfaceProfileProvider().getProfile(payload.profileId);
+        const { enabled: isAnimated, totalFrames } = getGroundChunkAnimationInfo(profile);
 
-        const meta = { kind: 'chunk', payload, totalFrames };
+        const meta = { kind: "chunk", payload, totalFrames };
 
         const bakeFirstFn = () => {
             const framePayload = { ...payload, ...bakeFrameRange.first() };
-            return TileWorkerCoordinator.requestFloorChunkBake(framePayload);
+            return TileWorkerCoordinator.requestGroundChunkBake(framePayload);
         };
 
         const bakeBatchFn = isAnimated ? (batch) => {
-            return TileWorkerCoordinator.requestFloorChunkBake({ ...payload, ...batch });
+            return TileWorkerCoordinator.requestGroundChunkBake({ ...payload, ...batch });
         } : null;
 
         return this._scheduleAnimatedEntry(key, meta, bakeFirstFn, bakeBatchFn);
     }
 
-    ensureWallFace(key, p1, p2, columns, storyCount, floorBake, tileWorldSize, wallHeight = null) {
+    /** Ensure a baked wall atlas exists in the cache (faces + roof strip). */
+    ensureWallAtlas(key, p1, p2, columns, storyCount, surfaceBake, tileWorldSize, wallHeight = null) {
         let cached = this.surfaceCache.get(key);
         if (cached) return cached;
 
         const edgeLen = Math.hypot(p2.x - p1.x, p2.y - p1.y);
         if (edgeLen < 0.001 || columns.length === 0) return null;
 
-        const cellSize = floorBake.obstacleCellSize ?? 32;
+        const cellSize = surfaceBake.obstacleCellSize ?? 32;
         const ppwu = getPixelsPerWorldUnit(this.settings);
         const pixelsPerUnit = (cellSize / tileWorldSize) * ppwu;
 
         const canvasWidth = Math.max(1, Math.ceil(edgeLen * pixelsPerUnit));
-        
-        // Unrolled height = 2 * H + W
         const hVal = wallHeight ?? resolveWallVisualHeight(this.settings.cameraHeight, this.settings);
         const unrolledHeight = 2 * hVal + cellSize;
         const canvasHeight = Math.max(1, Math.ceil(unrolledHeight * pixelsPerUnit));
 
         const wallCenterX = (p1.x + p2.x) / 2;
         const wallCenterY = (p1.y + p2.y) / 2;
-        const profileId = floorBake.resolveProfileAt(wallCenterX, wallCenterY);
-        const profile = getFloorProfileProvider().getProfile(profileId);
-        const { enabled: isAnimated, totalFrames } = getWallFaceAnimationInfo(profile);
+        const profileId = surfaceBake.resolveProfileAt(wallCenterX, wallCenterY);
+        const profile = getSurfaceProfileProvider().getProfile(profileId);
+        const { enabled: isAnimated, totalFrames } = getWallAtlasAnimationInfo(profile);
 
-        const meta = { kind: 'wall', width: canvasWidth, height: canvasHeight, p1, p2, pixelsPerUnit, totalFrames };
+        const meta = { kind: "wall", width: canvasWidth, height: canvasHeight, p1, p2, pixelsPerUnit, totalFrames };
 
         const bakeFirstFn = () => {
             const frameRange = bakeFrameRange.first();
-            return this.bakeWallFace(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, floorBake, frameRange, profileId, hVal, cellSize);
+            return this.requestWallAtlasBake(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, surfaceBake, frameRange, profileId, hVal, cellSize);
         };
 
         const bakeBatchFn = isAnimated ? (batch) => {
-            return this.bakeWallFace(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, floorBake, batch, profileId, hVal, cellSize);
+            return this.requestWallAtlasBake(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, surfaceBake, batch, profileId, hVal, cellSize);
         } : null;
 
         return this._scheduleAnimatedEntry(key, meta, bakeFirstFn, bakeBatchFn);
     }
 
-    draw(ctx, state, viewport) {
+    /** Draw procedural ground chunks (shadow fill + baked textures). */
+    drawGround(ctx, state, viewport) {
         if (!viewport || !isWorldScene(state.phase) || !state.obstacleGrid?.cols) {
             return;
         }
@@ -205,12 +209,12 @@ export class FloorTileSystem {
 
         for (const chunk of chunksToDraw) {
             const payload = this._buildChunkPayload(state, chunk.chunkCol, chunk.chunkRow);
-            const canvases = this.getChunkCanvas(chunk.chunkCol, chunk.chunkRow, state, payload);
+            const canvases = this.getGroundChunkCanvas(chunk.chunkCol, chunk.chunkRow, state, payload);
             let canvas = canvases[0];
             if (canvas.isPlaceholder) continue;
 
-            const profile = getFloorProfileProvider().getProfile(payload.profileId);
-            const { enabled: chunkAnimationEnabled } = getFloorChunkAnimationInfo(profile);
+            const profile = getSurfaceProfileProvider().getProfile(payload.profileId);
+            const { enabled: chunkAnimationEnabled } = getGroundChunkAnimationInfo(profile);
 
             if (chunkAnimationEnabled && canvases.length > 1) {
                 const currentFrame = animationFrameIndex(profile.animation, { gameTime: state.gameTime ?? 0 });
@@ -220,69 +224,4 @@ export class FloorTileSystem {
             drawBakedTexture(ctx, canvas, chunk.origin.x, chunk.origin.y, chunkSizePx, chunkSizePx);
         }
     }
-}
-
-export function buildWallCacheKey(p1, p2, floorBake, profileId, ppwu, cacheObj = null, settings = getWorldSurfaceSettings()) {
-    const chunkWorldSize = settings.chunkWorldSize || 128 * settings.cellSize;
-    const wx1 = ((p1.x % chunkWorldSize) + chunkWorldSize) % chunkWorldSize;
-    const wy1 = ((p1.y % chunkWorldSize) + chunkWorldSize) % chunkWorldSize;
-    const dx = p2.x - p1.x;
-    const dy = p2.y - p1.y;
-    const wx2 = wx1 + dx;
-    const wy2 = wy1 + dy;
-
-    const kx1 = wx1.toFixed(1);
-    const ky1 = wy1.toFixed(1);
-    const kx2 = wx2.toFixed(1);
-    const ky2 = wy2.toFixed(1);
-    const seed = floorBake.floorTileSeed;
-    const rev = TileWorkerCoordinator.getProfileRevision(profileId);
-    const wallHeight = cacheObj?.wallHeight ?? resolveWallVisualHeight(settings.cameraHeight, settings);
-    const key = `wall:${rev}:${ppwu}:${profileId}:${seed}:${wallHeight}:${kx1},${ky1}-${kx2},${ky2}`;
-
-    return { key, wrappedP1: { x: wx1, y: wy1 }, wrappedP2: { x: wx2, y: wy2 } };
-}
-
-/** Drop per-edge wall cache key memo after profile revision / surface cache clear. */
-export function invalidateWallSurfaceKeyMemos(state) {
-    if (!state?.walls) return;
-    for (const seg of state.walls) {
-        const edges = seg._cachedEdges;
-        if (!edges) continue;
-        for (const edge of edges) {
-            delete edge._wkInfo;
-            delete edge._wkProfileId;
-            delete edge._wkPpwu;
-            delete edge._wkRev;
-            delete edge._wkSeed;
-            delete edge._wkWallHeight;
-        }
-    }
-}
-
-export function getWallCacheInfo(p1, p2, floorBake, profileId, ppwu, cacheObj, settings = getWorldSurfaceSettings()) {
-    const seed = floorBake.floorTileSeed;
-    const rev = TileWorkerCoordinator.getProfileRevision(profileId);
-    const wallHeightKey = cacheObj?.wallHeight ?? resolveWallVisualHeight(settings.cameraHeight, settings);
-    if (
-        cacheObj
-        && cacheObj._wkInfo
-        && cacheObj._wkProfileId === profileId
-        && cacheObj._wkPpwu === ppwu
-        && cacheObj._wkRev === rev
-        && cacheObj._wkSeed === seed
-        && cacheObj._wkWallHeight === wallHeightKey
-    ) {
-        return cacheObj._wkInfo;
-    }
-    const info = buildWallCacheKey(p1, p2, floorBake, profileId, ppwu, cacheObj, settings);
-    if (cacheObj) {
-        cacheObj._wkInfo = info;
-        cacheObj._wkProfileId = profileId;
-        cacheObj._wkPpwu = ppwu;
-        cacheObj._wkRev = rev;
-        cacheObj._wkSeed = seed;
-        cacheObj._wkWallHeight = wallHeightKey;
-    }
-    return info;
 }

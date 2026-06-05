@@ -1,4 +1,4 @@
-import { getFloorProfileProvider } from "../../Libraries/Procedural/FloorProfileProvider.js";
+import { getSurfaceProfileProvider } from "../../Libraries/Procedural/SurfaceProfileProvider.js";
 import cyberGrid from "./storage/cyberGrid.js";
 import toxicSludge from "./storage/toxicSludge.js";
 import neonWireframe from "./storage/neonWireframe.js";
@@ -15,7 +15,7 @@ import decayedStation from "./storage/decayedStation.js";
 import circuitLoop from "./storage/circuitLoop.js";
 import tomatoGarden from "./storage/tomatoGarden.js";
 
-export const floorProceduralProfiles = {
+export const surfaceProceduralProfiles = {
     cyberGrid,
     toxicSludge,
     neonWireframe,
@@ -35,11 +35,11 @@ export const floorProceduralProfiles = {
 
 export const START_STATION_ID = "tomatoGarden";
 
-export const defaultFloorProceduralProfileId = START_STATION_ID;
+export const defaultSurfaceProfileId = START_STATION_ID;
 
-export const startFloorProceduralProfileId = START_STATION_ID;
+export const startSurfaceProfileId = START_STATION_ID;
 
-export const floorProceduralProfileByStrategy = {
+export const surfaceProfileByStrategy = {
     StartBuildingStrategy: START_STATION_ID,
     MazeStrategy: START_STATION_ID,
     Maze2Strategy: START_STATION_ID,
@@ -52,25 +52,25 @@ export const floorProceduralProfileByStrategy = {
 };
 
 /** Tile Lab live editor profile (`__labA__`), not persisted to disk. */
-export function registerRuntimeFloorProfile(profileId, profile) {
-    getFloorProfileProvider().registerRuntime(profileId, profile);
+export function registerRuntimeSurfaceProfile(profileId, profile) {
+    getSurfaceProfileProvider().registerRuntime(profileId, profile);
 }
 
-export function getFloorProceduralProfile(profileId) {
-    return getFloorProfileProvider().getProfile(profileId);
+export function getSurfaceProceduralProfile(profileId) {
+    return getSurfaceProfileProvider().getProfile(profileId);
 }
 
-export function listShippedFloorProfileIds() {
-    return getFloorProfileProvider().listShippedIds();
+export function listShippedSurfaceProfileIds() {
+    return getSurfaceProfileProvider().listShippedIds();
 }
 
-export function resolveFloorTextureProfileId({ layer, strategy }) {
+export function resolveSurfaceProfileId({ layer, strategy }) {
     if (layer === 0) {
-        return startFloorProceduralProfileId;
+        return startSurfaceProfileId;
     }
-    const profileId = floorProceduralProfileByStrategy[strategy];
+    const profileId = surfaceProfileByStrategy[strategy];
     if (!profileId) {
-        throw new Error(`No floor procedural profile mapped for strategy: ${strategy}`);
+        throw new Error(`No surface procedural profile mapped for strategy: ${strategy}`);
     }
     return profileId;
 }

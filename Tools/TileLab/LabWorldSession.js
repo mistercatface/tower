@@ -42,13 +42,13 @@ export function ensureLabWorld(ctrl, forceRegen = false) {
     if (!labWorld || forceRegen || labWorldMapSeed !== mapSeed) {
         labWorld = createLabMapWorld({
             mapSeed,
-            floorTileSeed: ctrl.seed,
+            worldSurfaceSeed: ctrl.seed,
         });
         labWorldMapSeed = mapSeed;
         populateNodeSelect(labWorld);
-    } else if (labWorld.floorTileSeed !== ctrl.seed) {
-        labWorld.floorTileSeed = ctrl.seed;
-        labWorld.floorTiles.clear();
+    } else if (labWorld.worldSurfaceSeed !== ctrl.seed) {
+        labWorld.worldSurfaceSeed = ctrl.seed;
+        labWorld.worldSurfaces.clear();
         invalidateMapPreviewBakes();
     }
 

@@ -1,4 +1,4 @@
-import { getFloorProfileProvider } from "../../Libraries/Procedural/FloorProfileProvider.js";
+import { getSurfaceProfileProvider } from "../../Libraries/Procedural/SurfaceProfileProvider.js";
 import { clampBakeFrameRange, frameRangeDedupeSuffix, isFirstFrameRange } from "./AnimationFrameBake.js";
 import { getAnimationFrames } from "./ProfileBakeResolver.js";
 import { MinHeap } from "../../Libraries/DataStructures/MinHeap.js";
@@ -248,9 +248,9 @@ export const TileWorkerCoordinator = {
         return getProfileRevision(profileId);
     },
 
-    requestFloorChunkBake(payload) {
+    requestGroundChunkBake(payload) {
         const profileId = payload.profileId;
-        const provider = getFloorProfileProvider();
+        const provider = getSurfaceProfileProvider();
         if (profileId && !provider.listShippedIds().includes(profileId) && !registeredRuntimeProfileIds.has(profileId)) {
             try {
                 const profile = provider.getProfile(profileId);
@@ -264,20 +264,20 @@ export const TileWorkerCoordinator = {
         const isAnimated = Boolean(profile?.animation);
         const normalized = withBakeFrameRange(payload, profile);
 
-        return requestBake("bakeFloorChunk", normalized, isAnimated);
+        return requestBake("bakeGroundChunk", normalized, isAnimated);
     },
 
-    requestWallFaceBake(payload) {
+    requestWallAtlasBake(payload) {
         const profileId = payload.profileId;
-        const profile = getFloorProfileProvider().getProfile(profileId);
+        const profile = getSurfaceProfileProvider().getProfile(profileId);
         const isAnimated = Boolean(profile?.animation);
         const normalized = withBakeFrameRange(payload, profile);
 
-        return requestBake("bakeWallFace", normalized, isAnimated);
+        return requestBake("bakeWallAtlas", normalized, isAnimated);
     },
 
     registerRuntimeProfile(profileId, profile) {
-        getFloorProfileProvider().registerRuntime(profileId, profile);
+        getSurfaceProfileProvider().registerRuntime(profileId, profile);
         const rev = (runtimeProfileRevisions.get(profileId) ?? 0) + 1;
         runtimeProfileRevisions.set(profileId, rev);
         getWorkerPool();

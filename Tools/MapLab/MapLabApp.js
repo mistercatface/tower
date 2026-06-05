@@ -16,7 +16,7 @@ let currentPath = null;
 let currentAbstractPath = null;
 
 let mapSeed = Math.floor(Math.random() * 100000);
-let floorSeed = Math.floor(Math.random() * 100000);
+let worldSurfaceSeed = Math.floor(Math.random() * 100000);
 
 function updatePathStatus(msg, isError = false) {
     const el = document.getElementById("pathStatus");
@@ -67,7 +67,7 @@ function calculatePath() {
 function readControls() {
     return {
         mapSeed,
-        floorSeed,
+        worldSurfaceSeed,
         showNodes: document.getElementById("showNodesInput").checked,
         showRoomZones: document.getElementById("showRoomZonesInput").checked,
         showWalls: document.getElementById("showWallsInput").checked,
@@ -81,7 +81,7 @@ function generateMap() {
     const ctrl = readControls();
     currentWorld = createLabMapWorld({
         mapSeed: ctrl.mapSeed,
-        floorTileSeed: ctrl.floorSeed
+        worldSurfaceSeed: ctrl.worldSurfaceSeed
     });
     
     // Focus camera roughly on the center of the generated bounds

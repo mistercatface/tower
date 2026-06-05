@@ -1,7 +1,7 @@
 import { getWorldSurfaceSettings } from "../WorldSurfaceSettings.js";
 
 /**
- * @typedef {Object} FloorChunkBakePayload
+ * @typedef {Object} GroundChunkBakePayload
  * @property {number} chunkCol
  * @property {number} chunkRow
  * @property {number} minX
@@ -17,40 +17,40 @@ function countAnimationFrames(animation) {
     return stages.reduce((sum, stage) => sum + (stage.frames ?? 30), 0) || 1;
 }
 
-export function isFloorChunkAnimationEnabled(profile, settings = getWorldSurfaceSettings()) {
-    return Boolean(profile?.animation) && settings.floorAnimationsOn !== false;
+export function isGroundChunkAnimationEnabled(profile, settings = getWorldSurfaceSettings()) {
+    return Boolean(profile?.animation) && settings.groundChunkAnimationsOn !== false;
 }
 
-export function isWallFaceAnimationEnabled(profile, settings = getWorldSurfaceSettings()) {
+export function isWallAtlasAnimationEnabled(profile, settings = getWorldSurfaceSettings()) {
     return Boolean(profile?.animation) && settings.wallAnimationsOn !== false;
 }
 
-export function getFloorChunkAnimationInfo(profile, settings = getWorldSurfaceSettings()) {
-    const enabled = isFloorChunkAnimationEnabled(profile, settings);
+export function getGroundChunkAnimationInfo(profile, settings = getWorldSurfaceSettings()) {
+    const enabled = isGroundChunkAnimationEnabled(profile, settings);
     return {
         enabled,
         totalFrames: enabled ? countAnimationFrames(profile.animation) : 1,
     };
 }
 
-export function getWallFaceAnimationInfo(profile, settings = getWorldSurfaceSettings()) {
-    const enabled = isWallFaceAnimationEnabled(profile, settings);
+export function getWallAtlasAnimationInfo(profile, settings = getWorldSurfaceSettings()) {
+    const enabled = isWallAtlasAnimationEnabled(profile, settings);
     return {
         enabled,
         totalFrames: enabled ? countAnimationFrames(profile.animation) : 1,
     };
 }
 
-export function floorChunkCachePrefix(chunkCol, chunkRow, profileId, profileRevision, pixelsPerWorldUnit) {
+export function groundChunkCachePrefix(chunkCol, chunkRow, profileId, profileRevision, pixelsPerWorldUnit) {
     return `chunk:${profileRevision}:${pixelsPerWorldUnit}:${profileId}:${chunkCol},${chunkRow}`;
 }
 
 /**
- * Worker-serializable floor-chunk bake payload (profile already resolved by caller).
- * @param {FloorChunkBakePayload} payload
- * @returns {FloorChunkBakePayload}
+ * Worker-serializable ground-chunk bake payload (profile already resolved by caller).
+ * @param {GroundChunkBakePayload} payload
+ * @returns {GroundChunkBakePayload}
  */
-export function createFloorChunkBakePayload(payload) {
+export function createGroundChunkBakePayload(payload) {
     const { chunkCol, chunkRow, minX, minY, seed, profileId, gameTime } = payload;
     const result = { chunkCol, chunkRow, minX, minY, seed, profileId };
     if (gameTime != null) {

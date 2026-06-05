@@ -1,11 +1,11 @@
 import "../WorldSurfaceBootstrap.js";
-import { installGameFloorProfileProvider } from "../../Config/procedural/bootstrap.js";
-import { getFloorProfileProvider } from "../../Libraries/Procedural/FloorProfileProvider.js";
+import { installGameSurfaceProfileProvider } from "../../Config/procedural/bootstrap.js";
+import { getSurfaceProfileProvider } from "../../Libraries/Procedural/SurfaceProfileProvider.js";
 import { SharedEdgeSolver } from "../../Libraries/Math/SharedEdgeSolver.js";
-import { bakeFloorChunkCanvases, bakeWallFaceCanvases } from "./FloorTilePainter.js";
+import { bakeGroundChunkCanvases, bakeWallAtlasCanvases } from "./WorldSurfacePainter.js";
 import { invalidateProfileScratch } from "./ProfileBakeResolver.js";
 
-installGameFloorProfileProvider();
+installGameSurfaceProfileProvider();
 
 let wallGeometrySab = null;
 let wallGeometryView = null;
@@ -13,16 +13,16 @@ let wallSharedEdgesSab = null;
 let wallSharedEdgesView = null;
 
 const HANDLERS = {
-    bakeFloorChunk(payload) {
-        return bakeFloorChunkCanvases(payload);
+    bakeGroundChunk(payload) {
+        return bakeGroundChunkCanvases(payload);
     },
 
-    bakeWallFace(payload) {
-        return bakeWallFaceCanvases(payload.width, payload.height, payload.p1, payload.p2, payload.pixelsPerUnit, payload.seed, payload.profileId, payload);
+    bakeWallAtlas(payload) {
+        return bakeWallAtlasCanvases(payload.width, payload.height, payload.p1, payload.p2, payload.pixelsPerUnit, payload.seed, payload.profileId, payload);
     },
 
     registerRuntimeProfile(payload) {
-        getFloorProfileProvider().registerRuntime(payload.profileId, payload.profile);
+        getSurfaceProfileProvider().registerRuntime(payload.profileId, payload.profile);
         invalidateProfileScratch(payload.profileId);
         return [];
     },

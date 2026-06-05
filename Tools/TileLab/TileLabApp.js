@@ -1,6 +1,6 @@
 import "../../Render/WorldSurfaceBootstrap.js";
-import { installGameFloorProfileProvider } from "../../Config/procedural/bootstrap.js";
-import { listShippedFloorProfileIds } from "../../Config/procedural/profiles.js";
+import { installGameSurfaceProfileProvider } from "../../Config/procedural/bootstrap.js";
+import { listShippedSurfaceProfileIds } from "../../Config/procedural/profiles.js";
 import { initMapPreviewNavigation } from "./map/LabMapPreview.js";
 import {
     invalidateLabCaches,
@@ -38,7 +38,7 @@ function runBakeRepaintLoop() {
     const tick = () => {
         redrawMapPreview();
         const world = getLabWorld();
-        if (world?.floorTiles?.hasPendingSurfaceBakes?.()) {
+        if (world?.worldSurfaces?.hasPendingSurfaceBakes?.()) {
             bakeRepaintRaf = requestAnimationFrame(tick);
         } else {
             bakeRepaintRaf = null;
@@ -54,7 +54,7 @@ async function refreshLabPreview() {
         return;
     }
     invalidateLabCaches();
-    world.floorTiles.clear();
+    world.worldSurfaces.clear();
     await registerEditorProfiles();
     redrawMapPreview();
     runBakeRepaintLoop();
@@ -98,15 +98,15 @@ function renderAll() {
     });
 }
 
-installGameFloorProfileProvider();
-initPresetSelect(listShippedFloorProfileIds());
+installGameSurfaceProfileProvider();
+initPresetSelect(listShippedSurfaceProfileIds());
 initProfileEditor({ onChange: handleEditorChange });
 initMapPreviewNavigation(
     () => ({ ...readControls(), worldState: getLabWorld() }),
     {
         onViewChange: () => {
             redrawMapPreview();
-            if (getLabWorld()?.floorTiles?.hasPendingSurfaceBakes?.()) {
+            if (getLabWorld()?.worldSurfaces?.hasPendingSurfaceBakes?.()) {
                 runBakeRepaintLoop();
             }
         },

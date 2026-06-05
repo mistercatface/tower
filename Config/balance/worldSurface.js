@@ -1,7 +1,7 @@
 import { gridSettings } from "./grid.js";
 
-/** Floor/wall/roof procedural surface rendering. */
-export const floorTileSettings = {
+/** Ground/wall/roof procedural world-surface rendering. */
+export const worldSurfaceSettings = {
     cellsPerChunk: gridSettings.minCellsPerChunk,
     tileResolution: 6,
     tileWorldSize: gridSettings.cellSize,
@@ -15,6 +15,6 @@ export const floorTileSettings = {
     wallTextureBleedPx: 1,
     wallSubdivNearPx: 80,
     wallSubdivFarPx: 320,
-    floorAnimationsOn: false,
+    groundChunkAnimationsOn: false,
     wallAnimationsOn: false,
 };

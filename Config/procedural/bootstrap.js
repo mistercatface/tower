@@ -1,23 +1,23 @@
 import {
-    FloorProfileProvider,
-    getFloorProfileProvider,
-    installFloorProfileProvider,
-    isFloorProfileProviderInstalled,
-} from "../../Libraries/Procedural/FloorProfileProvider.js";
+    SurfaceProfileProvider,
+    getSurfaceProfileProvider,
+    installSurfaceProfileProvider,
+    isSurfaceProfileProviderInstalled,
+} from "../../Libraries/Procedural/SurfaceProfileProvider.js";
 import {
-    defaultFloorProceduralProfileId,
-    floorProceduralProfiles,
+    defaultSurfaceProfileId,
+    surfaceProceduralProfiles,
 } from "./profiles.js";
 
-/** Install shipped game profiles into the active FloorProfileProvider (idempotent). */
-export function installGameFloorProfileProvider() {
-    if (isFloorProfileProviderInstalled()) {
-        return getFloorProfileProvider();
+/** Install shipped game profiles into the active SurfaceProfileProvider (idempotent). */
+export function installGameSurfaceProfileProvider() {
+    if (isSurfaceProfileProviderInstalled()) {
+        return getSurfaceProfileProvider();
     }
-    return installFloorProfileProvider({
-        profiles: floorProceduralProfiles,
-        defaultProfileId: defaultFloorProceduralProfileId,
+    return installSurfaceProfileProvider({
+        profiles: surfaceProceduralProfiles,
+        defaultProfileId: defaultSurfaceProfileId,
     });
 }
 
-export { FloorProfileProvider };
+export { SurfaceProfileProvider };

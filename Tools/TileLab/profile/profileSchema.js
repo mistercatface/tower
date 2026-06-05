@@ -6,7 +6,7 @@ export { EASING_OPTIONS, BLEND_OPTIONS, MOTIF_TYPES };
 
 export const LAYER_OPTIONS = [
     { id: "all", label: "All" },
-    { id: "floor", label: "Floor only" },
+    { id: "floor", label: "Ground only" },
     { id: "wall", label: "Wall only" },
     { id: "wallFace", label: "Wall face" },
     { id: "wallCell", label: "Wall cell top" },

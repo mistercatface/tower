@@ -1,14 +1,14 @@
 /** @typedef {import("../../GameState/GameState.js").GameState} GameState */
 
-import { getFloorTextureProfileIdForCoords } from "../game/floorTextureProfile.js";
+import { resolveSurfaceProfileAtCoords } from "../game/surfaceProfileResolver.js";
 
 /**
  * Context for procedural wall-face baking and texture lookup.
  *
- * @typedef {Object} FloorBakeContext
- * @property {number} floorTileSeed
+ * @typedef {Object} SurfaceBakeContext
+ * @property {number} surfaceSeed
  * @property {number} gameTime
- * @property {string|null} floorTextureProfileOverride
+ * @property {string|null} surfaceProfileOverride
  * @property {(x: number, y: number) => string} resolveProfileAt
  * @property {number} obstacleCellSize
  */
@@ -22,8 +22,8 @@ import { getFloorTextureProfileIdForCoords } from "../game/floorTextureProfile.j
  * @property {object|null} wallSpatialIndex
  * @property {object[]} pickups
  * @property {{ width: number, height: number }|null} canvasBounds
- * @property {import("../Floor/FloorTileSystem.js").FloorTileSystem} floorTiles
- * @property {FloorBakeContext} floorBake
+ * @property {import("../WorldSurface/WorldSurfaceSystem.js").WorldSurfaceSystem} worldSurfaces
+ * @property {SurfaceBakeContext} surfaceBake
  */
 
 /**
@@ -37,12 +37,12 @@ export function buildWorldRenderInput(state) {
         wallSpatialIndex: state.wallSpatialIndex ?? null,
         pickups: state.pickups ?? [],
         canvasBounds: state.canvasBounds ?? null,
-        floorTiles: state.floorTiles,
-        floorBake: {
-            floorTileSeed: state.floorTileSeed ?? 0,
+        worldSurfaces: state.worldSurfaces,
+        surfaceBake: {
+            surfaceSeed: state.worldSurfaceSeed ?? 0,
             gameTime: state.gameTime ?? 0,
-            floorTextureProfileOverride: state.floorTextureProfileOverride ?? null,
-            resolveProfileAt: (x, y) => getFloorTextureProfileIdForCoords(state, x, y),
+            surfaceProfileOverride: state.surfaceProfileOverride ?? null,
+            resolveProfileAt: (x, y) => resolveSurfaceProfileAtCoords(state, x, y),
             obstacleCellSize: state.obstacleGrid?.cellSize ?? 16,
         },
     };

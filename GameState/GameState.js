@@ -11,7 +11,7 @@ import { WaveManager } from "../Combat/WaveManager.js";
 import { WallSpatialIndex } from "../Spatial/World/WallSpatialIndex.js";
 import { Pools } from "../Core/Pools.js";
 import { createRunStats } from "../Entities/CombatantStats.js";
-import { FloorTileSystem } from "../Render/Floor/FloorTileSystem.js";
+import { WorldSurfaceSystem } from "../Render/WorldSurface/WorldSurfaceSystem.js";
 
 export class GameState {
     constructor() {
@@ -43,10 +43,10 @@ export class GameState {
         this.canvasBounds = { width: 0, height: 0 };
         this.upgradeDefs = [];
         this.wallSpatialIndex = new WallSpatialIndex(100);
-        this.floorTiles = new FloorTileSystem();
-        this.floorTileSeed = 0;
-        /** @type {string | null} Dev/preview override — see getFloorTextureProfileId */
-        this.floorTextureProfileOverride = null;
+        this.worldSurfaces = new WorldSurfaceSystem();
+        this.worldSurfaceSeed = 0;
+        /** @type {string | null} Dev/preview override — see resolveSurfaceProfileAtPlayer */
+        this.surfaceProfileOverride = null;
         this.mapWallCache = null;
         this.mapLabWallCache = null;
         this.mapPathDebugCache = null;
@@ -165,7 +165,7 @@ export class GameState {
 
         this.selectedSpeed = 1.0;
         this.allies = [];
-        this.floorTiles.clear();
+        this.worldSurfaces.clear();
     }
 
     getLeader() {

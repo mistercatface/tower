@@ -1,6 +1,6 @@
-import { registerRuntimeFloorProfile } from "../../Config/procedural/profiles.js";
-import { invalidateProfileScratch } from "../../Render/Floor/ProfileBakeResolver.js";
-import { TileWorkerCoordinator } from "../../Render/Floor/TileWorkerCoordinator.js";
+import { registerRuntimeSurfaceProfile } from "../../Config/procedural/profiles.js";
+import { invalidateProfileScratch } from "../../Render/WorldSurface/ProfileBakeResolver.js";
+import { TileWorkerCoordinator } from "../../Render/WorldSurface/TileWorkerCoordinator.js";
 import {
     renderGamePreview,
     prepareGameCanvas,
@@ -8,19 +8,19 @@ import {
 } from "./map/LabMapPreview.js";
 import { getLabPreviewProfile, RUNTIME_LAB_PROFILE_ID } from "./profile/ProfileEditor.js";
 import { ensureLabWorld, getLabWorld, getLabWorldMapSeed } from "./LabWorldSession.js";
-import { invalidateWallSurfaceKeyMemos } from "../../Render/Floor/FloorTileSystem.js";
+import { invalidateWallAtlasKeyMemos } from "../../Render/WorldSurface/WallSurfaceCache.js";
 
 let registerEditorProfilesSerial = Promise.resolve();
 
 export function registerEditorProfiles() {
     registerEditorProfilesSerial = registerEditorProfilesSerial.then(async () => {
         const labProfile = getLabPreviewProfile();
-        registerRuntimeFloorProfile(RUNTIME_LAB_PROFILE_ID, labProfile);
+        registerRuntimeSurfaceProfile(RUNTIME_LAB_PROFILE_ID, labProfile);
         invalidateProfileScratch(RUNTIME_LAB_PROFILE_ID);
         const world = getLabWorld();
-        if (world?.floorTiles) {
-            invalidateWallSurfaceKeyMemos(world);
-            world.floorTiles.clear();
+        if (world?.worldSurfaces) {
+            invalidateWallAtlasKeyMemos(world);
+            world.worldSurfaces.clear();
         }
         invalidateMapPreviewBakes();
 

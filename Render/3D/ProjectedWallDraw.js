@@ -1,12 +1,16 @@
+/**
+ * Projects wall faces and roof caps in isometric space and samples baked atlases
+ * from WorldSurfaceSystem. Does not bake textures — see WorldSurfaceSystem.js.
+ */
 import { getWallVisualHeight, getWorldSurfaceSettings, resolveWallVisualHeight } from "../../Libraries/WorldSurface/WorldSurfaceSettings.js";
 import { drawImageQuad } from "../../Libraries/Canvas/AffineTexture.js";
-/** @typedef {import("../adapters/WorldRenderAdapter.js").FloorBakeContext} FloorBakeContext */
+/** @typedef {import("../adapters/WorldRenderAdapter.js").SurfaceBakeContext} SurfaceBakeContext */
 
-import { isWallFaceAnimationEnabled } from "../../Libraries/WorldSurface/bake/FloorBakeHelpers.js";
-import { getFloorProfileProvider } from "../../Libraries/Procedural/FloorProfileProvider.js";
-import { getPixelsPerWorldUnit, shouldSmoothTextureDownsample } from "../Floor/floorTextureResolution.js";
-import { animationFrameIndex } from "../Floor/ProfileBakeResolver.js";
-import { getWallCacheInfo } from "../Floor/FloorTileSystem.js";
+import { isWallAtlasAnimationEnabled } from "../../Libraries/WorldSurface/bake/SurfaceBakeHelpers.js";
+import { getSurfaceProfileProvider } from "../../Libraries/Procedural/SurfaceProfileProvider.js";
+import { getPixelsPerWorldUnit, shouldSmoothTextureDownsample } from "../WorldSurface/WorldSurfaceResolution.js";
+import { animationFrameIndex } from "../WorldSurface/ProfileBakeResolver.js";
+import { getWallAtlasCacheInfo } from "../WorldSurface/WallSurfaceCache.js";
 
 const WALL_ANGLE_SPREAD = 0.002;
 
@@ -110,42 +114,40 @@ function computeFaceCorner(out, p1, p2, proj1X, proj1Y, proj2X, proj2Y, u, v) {
     out.y = by + (ty - by) * v;
 }
 
-function resolveWallProfileId(floorBake, wallCx, wallCy, cacheObj) {
+function resolveWallProfileId(surfaceBake, wallCx, wallCy, cacheObj) {
     let profileId = cacheObj ? cacheObj._cachedProfileId : null;
-    if (!profileId || floorBake.floorTextureProfileOverride) {
-        profileId = floorBake.resolveProfileAt(wallCx, wallCy);
-        if (cacheObj && !floorBake.floorTextureProfileOverride) {
+    if (!profileId || surfaceBake.surfaceProfileOverride) {
+        profileId = surfaceBake.resolveProfileAt(wallCx, wallCy);
+        if (cacheObj && !surfaceBake.surfaceProfileOverride) {
             cacheObj._cachedProfileId = profileId;
         }
     }
     return profileId;
 }
 
-function drawFaceTexture(ctx, p1, p2, face, floorTiles, floorBake, viewer, viewport, wallHeight, fillStyle, cacheObj = null) {
-    const settings = floorTiles.settings ?? getWorldSurfaceSettings();
+function drawFaceTexture(ctx, p1, p2, face, worldSurfaces, surfaceBake, viewer, viewport, wallHeight, fillStyle, cacheObj = null) {
+    const settings = worldSurfaces.settings ?? getWorldSurfaceSettings();
     const tileWorldSize = settings.tileWorldSize ?? settings.cellSize;
-    if (!floorTiles || !floorBake) return;
+    if (!worldSurfaces || !surfaceBake) return;
 
     const wallCx = cacheObj && cacheObj.cx !== undefined ? cacheObj.cx : (p1.x + p2.x) * 0.5;
     const wallCy = cacheObj && cacheObj.cy !== undefined ? cacheObj.cy : (p1.y + p2.y) * 0.5;
 
-    const profileId = resolveWallProfileId(floorBake, wallCx, wallCy, cacheObj);
+    const profileId = resolveWallProfileId(surfaceBake, wallCx, wallCy, cacheObj);
     const ppwu = getPixelsPerWorldUnit(settings);
     const storyCount = getWallTextureStoryCount();
 
-    const { key: wallCacheKey, wrappedP1, wrappedP2 } = getWallCacheInfo(p1, p2, floorBake, profileId, ppwu, cacheObj, settings);
+    const { key: wallCacheKey, wrappedP1, wrappedP2 } = getWallAtlasCacheInfo(p1, p2, surfaceBake, profileId, ppwu, cacheObj, settings);
 
-    // The cache always holds the latest (possibly merged) frame array for this
-    // key, so a single lookup per frame keeps us current without local memos.
-    let flatCanvases = floorTiles.surfaceCache.get(wallCacheKey);
+    let flatCanvases = worldSurfaces.surfaceCache.get(wallCacheKey);
     if (!flatCanvases) {
         const columns = wallFaceColumns(wrappedP1, wrappedP2, tileWorldSize);
         if (columns.length === 0) return;
-        flatCanvases = floorTiles.ensureWallFace(wallCacheKey, wrappedP1, wrappedP2, columns, storyCount, floorBake, tileWorldSize, wallHeight);
+        flatCanvases = worldSurfaces.ensureWallAtlas(wallCacheKey, wrappedP1, wrappedP2, columns, storyCount, surfaceBake, tileWorldSize, wallHeight);
         if (!flatCanvases || flatCanvases.length === 0) return;
     }
 
-    const profile = getFloorProfileProvider().getProfile(profileId);
+    const profile = getSurfaceProfileProvider().getProfile(profileId);
     let flatCanvas = flatCanvases[0];
     if (!flatCanvas || flatCanvas.isPlaceholder) {
         ctx.fillStyle = fillStyle;
@@ -153,9 +155,8 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, floorBake, viewer, viewp
         return;
     }
 
-    // Use the nearest already-baked frame; the loop sharpens as frames stream in.
-    if (isWallFaceAnimationEnabled(profile) && flatCanvases.length > 1) {
-        const currentFrame = animationFrameIndex(profile.animation, { gameTime: floorBake.gameTime });
+    if (isWallAtlasAnimationEnabled(profile) && flatCanvases.length > 1) {
+        const currentFrame = animationFrameIndex(profile.animation, { gameTime: surfaceBake.gameTime });
         flatCanvas = flatCanvases[Math.min(flatCanvases.length - 1, Math.max(0, currentFrame))];
     }
 
@@ -224,15 +225,15 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, floorBake, viewer, viewp
     ctx.restore();
 }
 
-export function drawProjectedWallRoof(ctx, topCorners, seg, wallColor, floorTiles, floorBake, viewport, cacheObj = null) {
-    if (!floorTiles) return;
+export function drawProjectedWallRoof(ctx, topCorners, seg, wallColor, worldSurfaces, surfaceBake, viewport, cacheObj = null) {
+    if (!worldSurfaces) return;
 
-    const settings = floorTiles.settings ?? getWorldSurfaceSettings();
+    const settings = worldSurfaces.settings ?? getWorldSurfaceSettings();
     const wallHeight = seg.wallHeight ?? resolveWallVisualHeight(settings.cameraHeight, settings);
     const wallCx = cacheObj && cacheObj.cx !== undefined ? cacheObj.cx : seg.x;
     const wallCy = cacheObj && cacheObj.cy !== undefined ? cacheObj.cy : seg.y;
 
-    const profileId = resolveWallProfileId(floorBake, wallCx, wallCy, cacheObj);
+    const profileId = resolveWallProfileId(surfaceBake, wallCx, wallCy, cacheObj);
     const ppwu = getPixelsPerWorldUnit(settings);
     const storyCount = getWallTextureStoryCount();
 
@@ -241,18 +242,18 @@ export function drawProjectedWallRoof(ctx, topCorners, seg, wallColor, floorTile
     const p1 = edges[0][0];
     const p2 = edges[0][1];
 
-    const { key: wallCacheKey, wrappedP1, wrappedP2 } = getWallCacheInfo(p1, p2, floorBake, profileId, ppwu, cacheObj, settings);
+    const { key: wallCacheKey, wrappedP1, wrappedP2 } = getWallAtlasCacheInfo(p1, p2, surfaceBake, profileId, ppwu, cacheObj, settings);
 
-    let flatCanvases = floorTiles.surfaceCache.get(wallCacheKey);
+    let flatCanvases = worldSurfaces.surfaceCache.get(wallCacheKey);
     if (!flatCanvases) {
         const tileWorldSize = settings.tileWorldSize ?? settings.cellSize;
         const columns = wallFaceColumns(wrappedP1, wrappedP2, tileWorldSize);
         if (columns.length === 0) return;
-        flatCanvases = floorTiles.ensureWallFace(wallCacheKey, wrappedP1, wrappedP2, columns, storyCount, floorBake, tileWorldSize, wallHeight);
+        flatCanvases = worldSurfaces.ensureWallAtlas(wallCacheKey, wrappedP1, wrappedP2, columns, storyCount, surfaceBake, tileWorldSize, wallHeight);
         if (!flatCanvases || flatCanvases.length === 0) return;
     }
 
-    const profile = getFloorProfileProvider().getProfile(profileId);
+    const profile = getSurfaceProfileProvider().getProfile(profileId);
     let flatCanvas = flatCanvases[0];
     if (!flatCanvas || flatCanvas.isPlaceholder) {
         ctx.fillStyle = wallColor;
@@ -266,17 +267,16 @@ export function drawProjectedWallRoof(ctx, topCorners, seg, wallColor, floorTile
         return;
     }
 
-    if (isWallFaceAnimationEnabled(profile) && flatCanvases.length > 1) {
-        const currentFrame = animationFrameIndex(profile.animation, { gameTime: floorBake.gameTime });
+    if (isWallAtlasAnimationEnabled(profile) && flatCanvases.length > 1) {
+        const currentFrame = animationFrameIndex(profile.animation, { gameTime: surfaceBake.gameTime });
         flatCanvas = flatCanvases[Math.min(flatCanvases.length - 1, Math.max(0, currentFrame))];
     }
 
-    const cellSize = floorBake.obstacleCellSize;
+    const cellSize = surfaceBake.obstacleCellSize;
     const H_px = wallHeight * ppwu;
-    const W_px = cellSize * ppwu;
 
     const sy0 = H_px;
-    const sy1 = H_px + W_px;
+    const sy1 = H_px + cellSize * ppwu;
 
     ctx.save();
     ctx.imageSmoothingEnabled = shouldSmoothTextureDownsample();
@@ -286,12 +286,12 @@ export function drawProjectedWallRoof(ctx, topCorners, seg, wallColor, floorTile
     ctx.restore();
 }
 
-export function drawProjectedWallFace(ctx, p1, p2, px, py, fillStyle, floorTiles, floorBake, { viewport = null, damageAlpha = 0, textureEnabled = true, cacheObj = null, wallHeight = null } = {}) {
+export function drawProjectedWallFace(ctx, p1, p2, px, py, fillStyle, worldSurfaces, surfaceBake, { viewport = null, damageAlpha = 0, textureEnabled = true, cacheObj = null, wallHeight = null } = {}) {
     const finalWallHeight = wallHeight ?? getWallVisualHeight();
     const face = computeProjectedFace(p1, p2, px, py, finalWallHeight);
     traceProjectedFace(ctx, p1, p2, face);
-    if (floorTiles && textureEnabled) {
-        drawFaceTexture(ctx, p1, p2, face, floorTiles, floorBake, { x: px, y: py }, viewport, finalWallHeight, fillStyle, cacheObj);
+    if (worldSurfaces && textureEnabled) {
+        drawFaceTexture(ctx, p1, p2, face, worldSurfaces, surfaceBake, { x: px, y: py }, viewport, finalWallHeight, fillStyle, cacheObj);
     } else {
         ctx.fillStyle = fillStyle;
         ctx.fill();
@@ -306,25 +306,24 @@ export function drawProjectedWallFace(ctx, p1, p2, px, py, fillStyle, floorTiles
     }
 }
 
-export function preloadProjectedWallFace(p1, p2, floorTiles, floorBake, cacheObj = null) {
-    const settings = floorTiles?.settings ?? getWorldSurfaceSettings();
+export function preloadProjectedWallFace(p1, p2, worldSurfaces, surfaceBake, cacheObj = null) {
+    const settings = worldSurfaces?.settings ?? getWorldSurfaceSettings();
     const tileWorldSize = settings.tileWorldSize ?? settings.cellSize;
-    if (!floorTiles || !floorBake) return;
+    if (!worldSurfaces || !surfaceBake) return;
 
     const wallCx = cacheObj && cacheObj.cx !== undefined ? cacheObj.cx : (p1.x + p2.x) * 0.5;
     const wallCy = cacheObj && cacheObj.cy !== undefined ? cacheObj.cy : (p1.y + p2.y) * 0.5;
-    const profileId = resolveWallProfileId(floorBake, wallCx, wallCy, cacheObj);
+    const profileId = resolveWallProfileId(surfaceBake, wallCx, wallCy, cacheObj);
     const ppwu = getPixelsPerWorldUnit(settings);
     const storyCount = getWallTextureStoryCount();
     const wallHeight = getWallVisualHeight(settings);
 
-    const { key: wallCacheKey, wrappedP1, wrappedP2 } = getWallCacheInfo(p1, p2, floorBake, profileId, ppwu, cacheObj, settings);
+    const { key: wallCacheKey, wrappedP1, wrappedP2 } = getWallAtlasCacheInfo(p1, p2, surfaceBake, profileId, ppwu, cacheObj, settings);
 
-    let flatCanvases = floorTiles.surfaceCache.get(wallCacheKey);
+    let flatCanvases = worldSurfaces.surfaceCache.get(wallCacheKey);
     if (!flatCanvases) {
         const columns = wallFaceColumns(wrappedP1, wrappedP2, tileWorldSize);
         if (columns.length === 0) return;
-        floorTiles.ensureWallFace(wallCacheKey, wrappedP1, wrappedP2, columns, storyCount, floorBake, tileWorldSize, wallHeight);
+        worldSurfaces.ensureWallAtlas(wallCacheKey, wrappedP1, wrappedP2, columns, storyCount, surfaceBake, tileWorldSize, wallHeight);
     }
 }
-

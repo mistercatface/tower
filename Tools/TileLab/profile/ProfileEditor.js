@@ -1,4 +1,4 @@
-import { getFloorProceduralProfile } from "../../../Config/procedural/profiles.js";
+import { getSurfaceProceduralProfile } from "../../../Config/procedural/profiles.js";
 import { SliderControl } from "../../Lab/ui/controls/SliderControl.js";
 import { SelectControl } from "../../Lab/ui/controls/SelectControl.js";
 import { mirrorEasingForReversedStage } from "../../../Libraries/Math/Easing.js";
@@ -210,7 +210,7 @@ function motifsFromProfile(profile) {
 
 function loadEditorFromProfileId(profileId, { silent = false } = {}) {
     nextMotifId = 1;
-    const profile = deepClone(getFloorProceduralProfile(profileId));
+    const profile = deepClone(getSurfaceProceduralProfile(profileId));
     const motifs = motifsFromProfile(profile);
     editorState = {
         warp: profile.warp ?? defaultWarp(),

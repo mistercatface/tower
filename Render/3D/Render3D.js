@@ -3,8 +3,8 @@
 import { getWorldSurfaceSettings, resolveWallVisualHeight } from "../../Libraries/WorldSurface/WorldSurfaceSettings.js";
 import { drawBarrel, drawCrate, drawFireBarrel, drawCrateShard } from "../../Combat/world3d/world3dContent.js";
 import { SpatialQuery } from "../../Spatial/World/SpatialQuery.js";
-import { drawProjectedWallFace, drawProjectedWallRoof } from "./WallFaceTexture.js";
-import { TileWorkerCoordinator, wallGeometryView, wallSharedEdgesView, MAX_WALLS, STRIDE } from "../Floor/TileWorkerCoordinator.js";
+import { drawProjectedWallFace, drawProjectedWallRoof } from "./ProjectedWallDraw.js";
+import { TileWorkerCoordinator, wallGeometryView, wallSharedEdgesView, MAX_WALLS, STRIDE } from "../WorldSurface/TileWorkerCoordinator.js";
 
 const PROP_RECIPES = { barrel: drawBarrel, fire_barrel: drawFireBarrel, crate: drawCrate, crate_shard: drawCrateShard };
 
@@ -81,7 +81,7 @@ export class Render3D {
         const healthRatio = seg.health / seg.maxHealth;
         const damageAlpha = healthRatio < 1 ? (1 - healthRatio) * 0.45 : 0;
         const textureEnabled = options.textureEnabled !== false;
-        drawProjectedWallFace(ctx, p1, p2, px, py, wallColor, input.floorTiles, input.floorBake, {
+        drawProjectedWallFace(ctx, p1, p2, px, py, wallColor, input.worldSurfaces, input.surfaceBake, {
             viewport,
             damageAlpha,
             textureEnabled,
@@ -123,7 +123,7 @@ export class Render3D {
 
             const wallColor = this.getWallColor(seg, 1.08);
             const edgeObj = edges[0];
-            drawProjectedWallRoof(ctx, topCorners, seg, wallColor, input.floorTiles, input.floorBake, viewport, edgeObj);
+            drawProjectedWallRoof(ctx, topCorners, seg, wallColor, input.worldSurfaces, input.surfaceBake, viewport, edgeObj);
         }
     }
 

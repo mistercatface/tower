@@ -4,8 +4,8 @@ import { Render3D } from "../../../Render/3D/Render3D.js";
 import { buildWorldRenderInput } from "../../../Render/adapters/WorldRenderAdapter.js";
 import { Viewport } from "../../../Libraries/Viewport/Viewport.js";
 import { playerBaseStats, combatVisualSettings } from "../../../Config/Config.js";
-import { TileWorkerCoordinator } from "../../../Render/Floor/TileWorkerCoordinator.js";
-import { invalidateWallSurfaceKeyMemos } from "../../../Render/Floor/FloorTileSystem.js";
+import { TileWorkerCoordinator } from "../../../Render/WorldSurface/TileWorkerCoordinator.js";
+import { invalidateWallAtlasKeyMemos } from "../../../Render/WorldSurface/WallSurfaceCache.js";
 import { setupLabViewportNavigation } from "../../Lab/lab-shared.js";
 
 const render3D = new Render3D();
@@ -62,13 +62,13 @@ function drawPlayerMarker(ctx, x, y) {
 
 function maybeClearBakeCaches(worldState, profileId) {
     const rev = TileWorkerCoordinator.getProfileRevision(profileId);
-    const key = `${profileId}:${rev}:${worldState.floorTileSeed ?? 0}`;
+    const key = `${profileId}:${rev}:${worldState.worldSurfaceSeed ?? 0}`;
     if (lastBakeKey === key) {
         return;
     }
     lastBakeKey = key;
-    invalidateWallSurfaceKeyMemos(worldState);
-    worldState.floorTiles.clear();
+    invalidateWallAtlasKeyMemos(worldState);
+    worldState.worldSurfaces.clear();
 }
 
 function drawLabWorldFrame(ctx, canvas, viewW, viewH, worldState, profileId, gameZoom, weaponRange, drawOptions = {}) {
@@ -79,8 +79,8 @@ function drawLabWorldFrame(ctx, canvas, viewW, viewH, worldState, profileId, gam
     } = drawOptions;
 
     worldState.phase = GamePhase.COMBAT;
-    const prevProfileOverride = worldState.floorTextureProfileOverride;
-    worldState.floorTextureProfileOverride = profileId;
+    const prevProfileOverride = worldState.surfaceProfileOverride;
+    worldState.surfaceProfileOverride = profileId;
     maybeClearBakeCaches(worldState, profileId);
 
     const cameraX = worldState.player.x;
@@ -103,7 +103,7 @@ function drawLabWorldFrame(ctx, canvas, viewW, viewH, worldState, profileId, gam
     viewport.apply(ctx);
 
     if (isWorldScene(worldState.phase)) {
-        worldState.floorTiles.draw(ctx, worldState, viewport);
+        worldState.worldSurfaces.drawGround(ctx, worldState, viewport);
     }
 
     render3D.draw3DBuildings(ctx, buildWorldRenderInput(worldState), viewport);
@@ -118,7 +118,7 @@ function drawLabWorldFrame(ctx, canvas, viewW, viewH, worldState, profileId, gam
     }
 
     worldState.canvasBounds = prevCanvasBounds;
-    worldState.floorTextureProfileOverride = prevProfileOverride;
+    worldState.surfaceProfileOverride = prevProfileOverride;
 
     if (showRangeRing) {
         drawWeaponRangeRing(ctx, worldState.player.x, worldState.player.y, weaponRange);

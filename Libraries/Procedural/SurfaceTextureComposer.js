@@ -43,6 +43,7 @@ function resolveMotifStack(profile) {
     return stack;
 }
 
+/** Profile surfaceMask "floor" means ground (non-wall) pixels. */
 function motifMatchesSurface(config, surface) {
     const mask = config.surfaceMask ?? "all";
     if (mask === "all") {
@@ -100,7 +101,7 @@ function applyTranslateToSample(scratch, samples, pixelIndex, translateContext, 
     scratch.lookupY = warped.y;
 }
 
-export function composeFloorImage(samples, profile, seed) {
+export function composeSurfaceImage(samples, profile, seed) {
     ensureNoiseInitialized(seed);
     const numPixels = samples.width * samples.height;
 

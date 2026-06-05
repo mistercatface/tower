@@ -1,4 +1,4 @@
-/** Registry for shipped + runtime floor/wall procedural texture profiles. */
+/** Registry for shipped + runtime procedural surface profiles (ground + walls). */
 export class SurfaceProfileProvider {
     /**
      * @param {{ profiles?: Record<string, object>, defaultProfileId?: string|null }} [options]
@@ -22,7 +22,7 @@ export class SurfaceProfileProvider {
         const id = profileId ?? this.defaultProfileId;
         const profile = this.runtimeProfiles[id] ?? this.shippedProfiles[id];
         if (!profile) {
-            throw new Error(`Unknown floor procedural profile: ${id}`);
+            throw new Error(`Unknown surface procedural profile: ${id}`);
         }
         return profile;
     }

@@ -19,7 +19,7 @@ export class Renderer {
         this.floatingTextCache = new SpriteCache();
         this.render3D = new Render3D();
         this.effectPasses = [
-            { zIndex: -5, fn: (state, viewport) => state.floorTiles.draw(this.ctx, state, viewport) },
+            { zIndex: -5, fn: (state, viewport) => state.worldSurfaces.drawGround(this.ctx, state, viewport) },
             { zIndex: 19, fn: (state, viewport) => this.drawDebris(state, viewport) },
             {
                 zIndex: 30,

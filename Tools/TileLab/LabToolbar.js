@@ -1,5 +1,5 @@
 import { playerBaseStats } from "../../Config/Config.js";
-import { defaultFloorProceduralProfileId } from "../../Config/procedural/profiles.js";
+import { defaultSurfaceProfileId } from "../../Config/procedural/profiles.js";
 import { getDefaultCombatZoom } from "../../Render/CombatViewport.js";
 import { getLabWorld } from "./LabWorldSession.js";
 
@@ -49,7 +49,7 @@ export function initPresetSelect(profileIds) {
         opt.textContent = id;
         select.appendChild(opt);
     }
-    select.value = defaultFloorProceduralProfileId;
+    select.value = defaultSurfaceProfileId;
 }
 
 export function initToolbarDefaults() {

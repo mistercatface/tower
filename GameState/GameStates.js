@@ -16,7 +16,7 @@ import { Pools } from "../Core/Pools.js";
 import { inspectBridge } from "../Combat/inspect/InspectBridge.js";
 import { beginStartNodeIntro, shouldRunStartNodeIntro, updateStartNodeIntro } from "../Combat/StartNodeIntro.js";
 import { findStartNodeInspectionPickup, beginStartNodeInspection, shouldEnterStartNodeInspection } from "../Combat/inspect/StartNodeInspection.js";
-import { syncFloorTextureProfile } from "../Render/game/floorTextureProfile.js";
+import { syncSurfaceProfile } from "../Render/game/surfaceProfileResolver.js";
 
 const MAP_TRAVEL_SPEED = 5.0;
 
@@ -34,7 +34,7 @@ function runPushablePhysics(state, dt, spatialFrame) {
 }
 
 function runPersistentSectorEnter(state) {
-    syncFloorTextureProfile(state);
+    syncSurfaceProfile(state);
     wakeAllPushables(state);
     const persistentEntities = [...state.getAllies(), ...state.pickups];
 
@@ -259,7 +259,7 @@ export class CombatState {
             completeMapTravel(ctx);
         }
 
-        ctx.state.floorTiles.updateFills();
+        ctx.state.worldSurfaces.updateFills();
     }
 
     render(ctx) {

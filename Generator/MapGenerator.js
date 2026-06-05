@@ -4,8 +4,8 @@ import { StartBuildingStrategy } from "./StartNodeBuilding.js";
 import { WorldObstacleGrid } from "../Spatial/World/ObstacleGrid.js";
 import { FlowFieldGrid } from "../Spatial/Navigation/FlowFieldGrid.js";
 import { mapSettings, gridSettings, mapGenerationSettings } from "../Config/Config.js";
-import { resolveFloorTextureProfileId } from "../Config/procedural/profiles.js";
-import { syncFloorTextureProfile } from "../Render/game/floorTextureProfile.js";
+import { resolveSurfaceProfileId } from "../Config/procedural/profiles.js";
+import { syncSurfaceProfile } from "../Render/game/surfaceProfileResolver.js";
 import { buildMapRenderCaches } from "../Render/Map/MapRenderCache.js";
 
 const STRATEGIES = Object.keys(GeneratorStrategies);
@@ -281,9 +281,9 @@ export class MapGenerator {
         const startCoords = state.getNodeCombatCoords(state.getMapNode(0));
         state.hierarchicalNavigator.initialize(startCoords.x, startCoords.y);
         buildMapRenderCaches(state);
-        state.floorTileSeed = (Math.random() * 0x7fffffff) | 0;
-        state.floorTiles.clear();
-        syncFloorTextureProfile(state);
+        state.worldSurfaceSeed = (Math.random() * 0x7fffffff) | 0;
+        state.worldSurfaces.clear();
+        syncSurfaceProfile(state);
     }
 
     static pregenerateAllCombatData(state) {
@@ -307,7 +307,7 @@ export class MapGenerator {
 
             startNode.wallsData = serializeWalls(mockState.walls, coords.x, coords.y, 480);
             startNode.strategy = "StartBuilding";
-            startNode.floorTextureProfileId = resolveFloorTextureProfileId({ layer: 0, strategy: "StartBuildingStrategy" });
+            startNode.surfaceProfileId = resolveSurfaceProfileId({ layer: 0, strategy: "StartBuildingStrategy" });
         }
 
         const numLayers = mapSettings.numLayers;
@@ -359,10 +359,10 @@ export class MapGenerator {
 
                 nodeB.wallsData = chosenWalls;
                 nodeB.strategy = chosenStrategy;
-                nodeB.floorTextureProfileId =
+                nodeB.surfaceProfileId =
                     chosenStrategy === "None"
-                        ? resolveFloorTextureProfileId({ layer: 0 })
-                        : resolveFloorTextureProfileId({ layer: l, strategy: chosenStrategy });
+                        ? resolveSurfaceProfileId({ layer: 0 })
+                        : resolveSurfaceProfileId({ layer: l, strategy: chosenStrategy });
             }
         }
     }

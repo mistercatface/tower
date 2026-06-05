@@ -257,7 +257,7 @@ export function buildBakeBindings(baseProfile, ctx) {
  * @param {object} baseProfile — static authored profile (not mutated)
  * @param {string} profileKey — cache key, usually profileId
  * @param {BakeContext} ctx
- * @returns {object} scratch profile ready for paintPixelArea / composeFloorImage
+ * @returns {object} scratch profile ready for paintPixelArea / composeSurfaceImage
  */
 export function resolveBakeProfile(baseProfile, profileKey, ctx = {}) {
     const entry = getScratchEntry(profileKey, baseProfile);

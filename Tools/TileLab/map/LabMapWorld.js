@@ -8,12 +8,12 @@ import { getStartNodeLayout } from "../../../Generator/StartNodeBuilding.js";
 
 /**
  * Full run map — same pipeline as a new game (all nodes, walls, obstacle grid).
- * @param {{ mapSeed?: number, floorTileSeed?: number }} options
+ * @param {{ mapSeed?: number, worldSurfaceSeed?: number }} options
  */
 export function createLabMapWorld(options = {}) {
     const {
         mapSeed = Date.now() & 0x7fffffff,
-        floorTileSeed,
+        worldSurfaceSeed,
     } = options;
 
     const state = new GameState();
@@ -24,9 +24,9 @@ export function createLabMapWorld(options = {}) {
         MapGenerator.generateMap(state);
     });
 
-    if (floorTileSeed != null) {
-        state.floorTileSeed = floorTileSeed;
-        state.floorTiles.clear();
+    if (worldSurfaceSeed != null) {
+        state.worldSurfaceSeed = worldSurfaceSeed;
+        state.worldSurfaces.clear();
     }
 
     return state;
