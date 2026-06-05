@@ -3,7 +3,7 @@ import { spawnFloatingText } from "../Core/EventSystem.js";
 import { playerBaseStats, NAV_PROFILES, navigationSettings } from "../Config/Config.js";
 import { createEntityBars } from "./EntityBars.js";
 import { isMapTraveling } from "../GameState/GamePhase.js";
-import { entityIntersectsCellBounds } from "../Spatial/Geometry/GridCoords.js";
+import { entityIntersectsCellBounds } from "../Libraries/Spatial/grid/GridCoords.js";
 import { renderActorKinematicsBody } from "../Render/Kinematics/PlayerKinematicsRenderer.js";
 
 const playerBars = createEntityBars({ healthWidth: 48, healthHeight: 4, healthBorderRadius: 2 });

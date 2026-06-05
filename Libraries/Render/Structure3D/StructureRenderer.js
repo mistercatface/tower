@@ -1,7 +1,7 @@
 /** @typedef {import("../WorldSceneTypes.js").WorldSceneDrawInput} WorldSceneDrawInput */
 
 import { getWorldSurfaceSettings, resolveWallVisualHeight } from "../../WorldSurface/WorldSurfaceSettings.js";
-import { SpatialQuery } from "../../../Spatial/World/SpatialQuery.js";
+import { SpatialQuery } from "../../Spatial/query/SpatialQuery.js";
 import { alignBoundsToHash, getViewQueryBounds } from "../common/viewportUtils.js";
 import { drawProjectedWallFace, drawProjectedWallRoof } from "./ProjectedWallDraw.js";
 import { applySharedEdgeFlags, requestSharedEdgeSolve, writeWallGeometry } from "./SharedEdgeBridge.js";

@@ -5,7 +5,7 @@
  */
 import { getWorldSurfaceSettings, resolveWallVisualHeight } from "./WorldSurfaceSettings.js";
 import { getSurfaceProfileProvider } from "../Procedural/SurfaceProfileProvider.js";
-import { chunkToWorldOrigin, getChunkSizePx, gridBoundsToChunkRange, worldBoundsToChunkRange } from "../../Spatial/Grid/ChunkGrid.js";
+import { chunkToWorldOrigin, getChunkSizePx, gridBoundsToChunkRange, worldBoundsToChunkRange } from "../Spatial/grid/ChunkGrid.js";
 import { ProgressiveFrameCache } from "./ProgressiveFrameCache.js";
 import { groundChunkCachePrefix, getGroundChunkAnimationInfo, getWallAtlasAnimationInfo, isWallAtlasAnimationEnabled } from "./bake/SurfaceBakeHelpers.js";
 import { getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
