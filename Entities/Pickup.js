@@ -195,16 +195,6 @@ export class Pickup extends Entity {
         return this.strategy.render3DKey;
     }
 
-    draw3D(ctx, renderer, state, px, py, viewport, options) {
-        const renderKey = this.getRender3DKey();
-        const draw = renderer.getPropRecipe(renderKey);
-        if (draw) {
-            ctx.save();
-            draw(ctx, this, px, py);
-            ctx.restore();
-        }
-    }
-
     takeDamage(amount, gameState) {
         if (this.maxHealth == null || this.isDead) return false;
 

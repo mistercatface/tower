@@ -35,7 +35,7 @@ export class FloorTileSystem {
         }
     }
 
-    bakeWallFace(width, height, p1, p2, pixelsPerUnit, state, frameRange, profileId, wallHeight = null, wallWidth = null) {
+    bakeWallFace(width, height, p1, p2, pixelsPerUnit, floorBake, frameRange, profileId, wallHeight = null, wallWidth = null) {
         const centerX = (p1.x + p2.x) / 2;
         const centerY = (p1.y + p2.y) / 2;
         return TileWorkerCoordinator.requestWallFaceBake({
@@ -44,7 +44,7 @@ export class FloorTileSystem {
             p1,
             p2,
             pixelsPerUnit,
-            seed: state.floorTileSeed ?? 0,
+            seed: floorBake.floorTileSeed,
             profileId,
             ...frameRange,
             centerX,
@@ -114,14 +114,14 @@ export class FloorTileSystem {
         return this._scheduleAnimatedEntry(key, meta, bakeFirstFn, bakeBatchFn);
     }
 
-    ensureWallFace(key, p1, p2, columns, storyCount, state, tileWorldSize, wallHeight = null) {
+    ensureWallFace(key, p1, p2, columns, storyCount, floorBake, tileWorldSize, wallHeight = null) {
         let cached = this.surfaceCache.get(key);
         if (cached) return cached;
 
         const edgeLen = Math.hypot(p2.x - p1.x, p2.y - p1.y);
         if (edgeLen < 0.001 || columns.length === 0) return null;
 
-        const cellSize = state.obstacleGrid?.cellSize ?? 32;
+        const cellSize = floorBake.obstacleCellSize ?? 32;
         const ppwu = getPixelsPerWorldUnit();
         const pixelsPerUnit = (cellSize / tileWorldSize) * ppwu;
 
@@ -134,7 +134,7 @@ export class FloorTileSystem {
 
         const wallCenterX = (p1.x + p2.x) / 2;
         const wallCenterY = (p1.y + p2.y) / 2;
-        const profileId = getFloorTextureProfileIdForCoords(state, wallCenterX, wallCenterY);
+        const profileId = floorBake.resolveProfileAt(wallCenterX, wallCenterY);
         const profile = getFloorProceduralProfile(profileId);
         const { enabled: isAnimated, totalFrames } = getWallFaceAnimationInfo(profile);
 
@@ -142,11 +142,11 @@ export class FloorTileSystem {
 
         const bakeFirstFn = () => {
             const frameRange = bakeFrameRange.first();
-            return this.bakeWallFace(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, state, frameRange, profileId, hVal, cellSize);
+            return this.bakeWallFace(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, floorBake, frameRange, profileId, hVal, cellSize);
         };
 
         const bakeBatchFn = isAnimated ? (batch) => {
-            return this.bakeWallFace(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, state, batch, profileId, hVal, cellSize);
+            return this.bakeWallFace(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, floorBake, batch, profileId, hVal, cellSize);
         } : null;
 
         return this._scheduleAnimatedEntry(key, meta, bakeFirstFn, bakeBatchFn);
@@ -201,7 +201,7 @@ export class FloorTileSystem {
     }
 }
 
-export function buildWallCacheKey(p1, p2, state, profileId, ppwu, cacheObj = null) {
+export function buildWallCacheKey(p1, p2, floorBake, profileId, ppwu, cacheObj = null) {
     const chunkWorldSize = floorTileSettings.chunkWorldSize || 128 * 16;
     const wx1 = ((p1.x % chunkWorldSize) + chunkWorldSize) % chunkWorldSize;
     const wy1 = ((p1.y % chunkWorldSize) + chunkWorldSize) % chunkWorldSize;
@@ -214,7 +214,7 @@ export function buildWallCacheKey(p1, p2, state, profileId, ppwu, cacheObj = nul
     const ky1 = wy1.toFixed(1);
     const kx2 = wx2.toFixed(1);
     const ky2 = wy2.toFixed(1);
-    const seed = state.floorTileSeed ?? 0;
+    const seed = floorBake.floorTileSeed;
     const rev = TileWorkerCoordinator.getProfileRevision(profileId);
     const wallHeight = cacheObj?.wallHeight ?? 0;
     const key = `wall:${rev}:${ppwu}:${profileId}:${seed}:${wallHeight}:${kx1},${ky1}-${kx2},${ky2}`;
@@ -238,13 +238,13 @@ export function invalidateWallSurfaceKeyMemos(state) {
     }
 }
 
-export function getWallCacheInfo(p1, p2, state, profileId, ppwu, cacheObj) {
-    const seed = state.floorTileSeed ?? 0;
+export function getWallCacheInfo(p1, p2, floorBake, profileId, ppwu, cacheObj) {
+    const seed = floorBake.floorTileSeed;
     const rev = TileWorkerCoordinator.getProfileRevision(profileId);
     if (cacheObj && cacheObj._wkInfo && cacheObj._wkProfileId === profileId && cacheObj._wkPpwu === ppwu && cacheObj._wkRev === rev && cacheObj._wkSeed === seed) {
         return cacheObj._wkInfo;
     }
-    const info = buildWallCacheKey(p1, p2, state, profileId, ppwu, cacheObj);
+    const info = buildWallCacheKey(p1, p2, floorBake, profileId, ppwu, cacheObj);
     if (cacheObj) {
         cacheObj._wkInfo = info;
         cacheObj._wkProfileId = profileId;

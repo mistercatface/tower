@@ -77,12 +77,12 @@ export class Render3D {
         return `rgb(${r}, ${g}, ${b})`;
     }
 
-    drawWallFace(ctx, seg, p1, p2, px, py, state, viewport, options = {}, cacheObj = null) {
+    drawWallFace(ctx, seg, p1, p2, px, py, input, viewport, options = {}, cacheObj = null) {
         const wallColor = this.getWallColor(seg, 1.0);
         const healthRatio = seg.health / seg.maxHealth;
         const damageAlpha = healthRatio < 1 ? (1 - healthRatio) * 0.45 : 0;
         const textureEnabled = options.textureEnabled !== false;
-        drawProjectedWallFace(ctx, p1, p2, px, py, wallColor, state.floorTiles, state, {
+        drawProjectedWallFace(ctx, p1, p2, px, py, wallColor, input.floorTiles, input.floorBake, {
             viewport,
             damageAlpha,
             textureEnabled,
@@ -91,7 +91,7 @@ export class Render3D {
         });
     }
 
-    drawWallSegmentFaces(ctx, seg, px, py, state, viewport, options = {}) {
+    drawWallSegmentFaces(ctx, seg, px, py, input, viewport, options = {}) {
         const edges = this.getSegmentEdges(seg);
         if (!seg.sharedEdges) seg.sharedEdges = [false, false, false, false];
 
@@ -106,7 +106,7 @@ export class Render3D {
             const viewX = edge.cx - px;
             const viewY = edge.cy - py;
             if (edge.outX * viewX + edge.outY * viewY >= 0) continue;
-            this.drawWallFace(ctx, seg, edge[0], edge[1], px, py, state, viewport, options, edge);
+            this.drawWallFace(ctx, seg, edge[0], edge[1], px, py, input, viewport, options, edge);
         }
 
         // 2. Draw the roof (top cap) if the wall height is finite
@@ -124,7 +124,7 @@ export class Render3D {
 
             const wallColor = this.getWallColor(seg, 1.08);
             const edgeObj = edges[0];
-            drawProjectedWallRoof(ctx, topCorners, seg, wallColor, state, viewport, edgeObj);
+            drawProjectedWallRoof(ctx, topCorners, seg, wallColor, input.floorTiles, input.floorBake, viewport, edgeObj);
         }
     }
 
@@ -146,7 +146,7 @@ export class Render3D {
         }
         visibleWalls.sort((a, b) => b._distSq - a._distSq);
         for (const seg of visibleWalls) {
-            this.drawWallSegmentFaces(targetCtx, seg, px, py, input.scene, null);
+            this.drawWallSegmentFaces(targetCtx, seg, px, py, input, null);
         }
     }
 
@@ -269,13 +269,24 @@ export class Render3D {
         }
         visibleObjects.sort((a, b) => b._distSq - a._distSq);
         for (let i = 0; i < visibleObjects.length; i++) {
-            visibleObjects[i].draw3D(ctx, this, input.scene, px, py, viewport, wallDrawOptions);
+            const obj = visibleObjects[i];
+            if (obj.strategy) {
+                this.drawProp(ctx, obj, px, py);
+            } else {
+                this.drawWallSegmentFaces(ctx, obj, px, py, input, viewport, wallDrawOptions);
+            }
         }
         ctx.restore();
     }
 
-    getPropRecipe(key) {
-        return PROP_RECIPES[key];
+    drawProp(ctx, prop, px, py) {
+        const renderKey = prop.getRender3DKey?.() ?? prop.strategy?.render3DKey;
+        const draw = PROP_RECIPES[renderKey];
+        if (!draw) return;
+
+        ctx.save();
+        draw(ctx, prop, px, py);
+        ctx.restore();
     }
 }
 

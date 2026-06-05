@@ -9,10 +9,6 @@ export class Segment extends DestructibleEntity {
         this.wallHeight = wallHeight;
     }
 
-    draw3D(ctx, renderer, state, px, py, viewport, options) {
-        renderer.drawWallSegmentFaces(ctx, this, px, py, state, viewport, options);
-    }
-
     getBounds() {
         const reach = getWallReach(this);
         return {

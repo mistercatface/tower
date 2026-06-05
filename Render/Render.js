@@ -126,7 +126,7 @@ export class Renderer {
             const p = state.pickups[i];
             if (p.isDead || p.strategy?.renderMode !== "debris") continue;
             if (viewport && typeof p.isVisible === "function" && !p.isVisible(viewport)) continue;
-            p.draw3D(this.ctx, this.render3D, state, px, py, viewport);
+            this.render3D.drawProp(this.ctx, p, px, py);
         }
     }
 
