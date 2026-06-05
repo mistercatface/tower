@@ -15,14 +15,6 @@ export function isWorldScene(phase) {
     return WORLD_SCENES.has(phase);
 }
 
-export function isMapTraveling(state) {
-    return state.mapTargetNodeId != null;
-}
-
-export function isMapTransition(state) {
-    return isMapTraveling(state);
-}
-
 export function isCombatOrReward(phase) {
     return phase === GamePhase.COMBAT || phase === GamePhase.REWARD;
 }
@@ -41,7 +33,6 @@ export function canRunWaveSpawning(state) {
         && state.phase !== GamePhase.REWARD
         && state.phase !== GamePhase.INSPECTOR
         && !state.isTransitioning
-        && !isMapTraveling(state)
         && !state.startNodeIntroActive
         && !state.startNodeInspectionActive
         && !currentNode?.completed;

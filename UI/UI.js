@@ -19,7 +19,6 @@ import {
     setGameZoomFromSlider,
     emitHardReset,
     emitGameRestart,
-    emitMapRequestTravel,
     emitMapContinueAfterSector,
     emitMapToggle,
 } from "../Core/EventSystem.js";
@@ -41,13 +40,6 @@ const elements = {
     unlockModal: document.getElementById("unlockModal"),
     unlockDisplay: document.getElementById("unlockDisplay"),
     continueUnlockBtn: document.getElementById("continueUnlockBtn"),
-    nodeConfirmModal: document.getElementById("nodeConfirmModal"),
-    nodeNameDisplay: document.getElementById("nodeNameDisplay"),
-    nodeStatusDisplay: document.getElementById("nodeStatusDisplay"),
-    nodeWavesDisplay: document.getElementById("nodeWavesDisplay"),
-    nodeRewardDisplay: document.getElementById("nodeRewardDisplay"),
-    confirmNodeBtn: document.getElementById("confirmNodeBtn"),
-    cancelNodeBtn: document.getElementById("cancelNodeBtn"),
     waveDisplay: document.getElementById("waveDisplay"),
     killsDisplay: document.getElementById("killsDisplay"),
     scoreDisplay: document.getElementById("scoreDisplay"),
@@ -173,43 +165,6 @@ export function showUnlockResult(upgradeName, onContinue) {
     elements.unlockModal.style.display = "flex";
 }
 
-export function showNodeConfirm(node) {
-    elements.nodeNameDisplay.innerText = `Sector [${Math.round(node.x)}, ${Math.round(node.y)}]`;
-
-    if (node.completed) {
-        elements.nodeStatusDisplay.innerText = "STATUS: CLEARED";
-        elements.nodeStatusDisplay.style.color = "#4CAF50";
-    } else {
-        elements.nodeStatusDisplay.innerText = "STATUS: OCCUPIED";
-        elements.nodeStatusDisplay.style.color = "#F44336";
-    }
-
-    if (elements.nodeWavesDisplay) {
-        elements.nodeWavesDisplay.innerText = `Waves to clear: ${node.wavesTotal}`;
-    }
-
-    if (elements.nodeRewardDisplay) {
-        if (node.completed) {
-            elements.nodeRewardDisplay.innerText = "";
-        } else if (node.reward && node.reward.type === "random_permanent_upgrade") {
-            elements.nodeRewardDisplay.innerText = "Reward: Random Permanent Upgrade";
-        } else {
-            elements.nodeRewardDisplay.innerText = "Reward: None";
-        }
-    }
-
-    elements.nodeConfirmModal.style.display = "flex";
-
-    elements.confirmNodeBtn.onclick = () => {
-        elements.nodeConfirmModal.style.display = "none";
-        emitMapRequestTravel(node.id);
-    };
-
-    elements.cancelNodeBtn.onclick = () => {
-        elements.nodeConfirmModal.style.display = "none";
-    };
-}
-
 export function updateToggleButton(btnId, isUnlocked, isActive, btnText, upgDef) {
     const btn = dynamicElements[btnId];
     if (!btn) return;
@@ -234,10 +189,10 @@ export function updateToggleButton(btnId, isUnlocked, isActive, btnText, upgDef)
 
 function updateMapNavButtons(state) {
     const onMap = state.phase === GamePhase.MAP;
-    const canOpenMap = (state.phase === GamePhase.COMBAT || state.phase === GamePhase.INSPECTOR) && !state.isGameOver;
+    const showOpenMap = !onMap && !state.isGameOver;
 
     if (elements.mapBtn) {
-        elements.mapBtn.style.display = canOpenMap ? "block" : "none";
+        elements.mapBtn.style.display = showOpenMap ? "block" : "none";
     }
     if (elements.closeMapBtn) {
         elements.closeMapBtn.style.display = onMap ? "block" : "none";
@@ -377,7 +332,6 @@ export function registerUiEventListeners(eventBus) {
     eventBus.on(Events.UI_UPDATE_HUD, (data) => updateHud(data.state, data.upgrades));
     eventBus.on(Events.UI_SHOW_UPGRADE_CHOICE, (data) => showUpgradeChoice(data.title, data.description, data.choices, data.upgrades, data.onPick));
     eventBus.on(Events.UI_SHOW_SECTOR_CLEARED, (data) => showSectorCleared(data.node, data.rewardText));
-    eventBus.on(Events.UI_SHOW_NODE_CONFIRM, (data) => showNodeConfirm(data.node));
     eventBus.on(Events.UI_SHOW_GAME_OVER, () => showGameOverScreen());
     eventBus.on(Events.UI_HIDE_GAME_OVER, () => hideGameOverScreen());
 }

@@ -20,13 +20,12 @@ export class GameState {
         this.fsm = null;
         this.scheduler = new Scheduler();
         this.waveManager = new WaveManager();
-        this._phase = "map";
+        this._phase = "combat";
         this.mapNodes = [];
         this.mapNodeById = new Map();
         this.currentNodeId = 0;
         this.mapPlayerX = 0;
         this.mapPlayerY = 0;
-        this.mapTargetNodeId = null;
         this.highestLevelReached = 0;
         this.claimedPerkMilestones = [];
         this.discoveredAbilities = new Set();
@@ -102,10 +101,6 @@ export class GameState {
 
     getCurrentMapNode() {
         return this.getMapNode(this.currentNodeId);
-    }
-
-    getMapTargetNode() {
-        return this.getMapNode(this.mapTargetNodeId);
     }
 
     get phase() {

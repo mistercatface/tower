@@ -83,20 +83,12 @@ export function setGameZoomAbsolute(zoom) {
     events.emit(Events.GAME_SET_ZOOM_ABSOLUTE, { zoom });
 }
 
-export function emitMapRequestTravel(nodeId) {
-    events.emit(Events.MAP_REQUEST_TRAVEL, { nodeId });
-}
-
 export function emitMapContinueAfterSector() {
     events.emit(Events.MAP_CONTINUE_AFTER_SECTOR);
 }
 
 export function emitMapToggle() {
     events.emit(Events.MAP_TOGGLE);
-}
-
-export function showNodeConfirmModal(node) {
-    events.emit(Events.UI_SHOW_NODE_CONFIRM, { node });
 }
 
 export function showSectorClearedModal(node, rewardText) {

@@ -150,16 +150,11 @@ export function registerGameListeners(eventBus, pauseManager) {
                 state.skipCombatEnterReset = true;
             }
             fsm.transition(targetState);
-        } else if (fsm.currentStateName === "combat" || fsm.currentStateName === "inspector") {
+        } else if (fsm.currentStateName === "combat" || fsm.currentStateName === "inspector" || fsm.currentStateName === "reward") {
             state.previousStateBeforeMap = fsm.currentStateName;
             fsm.transition("map");
         }
         requestUiUpdate();
-    });
-
-    eventBus.on(Events.MAP_REQUEST_TRAVEL, ({ state, fsm, nodeId }) => {
-        state.mapTargetNodeId = nodeId;
-        fsm.transition("combat");
     });
 
     eventBus.on(Events.MAP_CONTINUE_AFTER_SECTOR, ({ state, viewport }) => {

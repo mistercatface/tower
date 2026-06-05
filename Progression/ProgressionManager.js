@@ -1,6 +1,5 @@
 import { spawnFloatingText, events, Events, requestUiUpdate, requestProgressDirty, requestProgressSave, requestGamePause, requestGameResume, showSectorClearedModal } from "../Core/EventSystem.js";
 import { StatsManager } from "./StatsManager.js";
-import { isMapTraveling } from "../GameState/GamePhase.js";
 
 export class ProgressionManager {
     static processEnemyKillRewards(enemy, state, upgrades) {
@@ -212,8 +211,6 @@ export class ProgressionManager {
     }
 
     static handleWaveCompletion(state, upgrades, viewport, options = {}) {
-        if (isMapTraveling(state)) return;
-
         const currentNode = state.getCurrentMapNode();
 
         const isFinished = state.waveManager.completeWave(currentNode.wavesTotal);

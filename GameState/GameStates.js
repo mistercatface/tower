@@ -1,5 +1,5 @@
 import { FloatingText } from "../Render/FloatingText.js";
-import { showNodeConfirmModal, requestUiUpdate } from "../Core/EventSystem.js";
+import { requestUiUpdate } from "../Core/EventSystem.js";
 import { gridSettings, debugStartNodeInspectionImmediate } from "../Config/Config.js";
 import { getStartNodeLayout } from "../Generator/StartNodeBuilding.js";
 import { Pools } from "../Core/Pools.js";
@@ -7,7 +7,6 @@ import { inspectBridge } from "../Combat/inspect/InspectBridge.js";
 import { beginStartNodeIntro, shouldRunStartNodeIntro } from "../Combat/StartNodeIntro.js";
 import { findStartNodeInspectionPickup, beginStartNodeInspection, shouldEnterStartNodeInspection } from "../Combat/inspect/StartNodeInspection.js";
 import {
-    beginMapTravel,
     runPersistentSectorEnterOnNode,
     runCombatTick,
     runInspectorTick,
@@ -27,27 +26,10 @@ export class MapState {
         ctx.viewport.follow(ctx.state.mapPlayerX, ctx.state.mapPlayerY);
         ctx.renderer.renderMapScene(ctx.state, ctx.viewport);
     }
-    handleInteraction(worldCoords, isDoubleTap, ctx) {
-        const currentNode = ctx.state.getCurrentMapNode();
-        if (!currentNode) return;
-        for (const neighborId of currentNode.connections) {
-            const neighbor = ctx.state.getMapNode(neighborId);
-            if (!neighbor) continue;
-            const dist = Math.hypot(neighbor.x - worldCoords.x, neighbor.y - worldCoords.y);
-            if (dist < 20) {
-                showNodeConfirmModal(neighbor);
-                break;
-            }
-        }
-    }
 }
 
 export class CombatState {
     onEnter(ctx) {
-        if (ctx.state.mapTargetNodeId != null) {
-            beginMapTravel(ctx);
-            return;
-        }
         if (ctx.state.skipCombatEnterReset) {
             ctx.state.skipCombatEnterReset = false;
             requestUiUpdate();
@@ -100,7 +82,6 @@ export class CombatState {
     }
 
     handleInteraction(worldCoords, isDoubleTap, ctx) {
-        if (ctx.state.mapTargetNodeId != null) return;
         if (inspectBridge.isOpen()) return;
         if (ctx.state.player.currentState?.blocksInput) return;
         if (ctx.state.abilities["Shoot"]) {
@@ -112,7 +93,6 @@ export class CombatState {
 
     handlePointerMove(worldCoords, screenCoords, isPrimaryDown, ctx) {
         if (!isPrimaryDown) return;
-        if (ctx.state.mapTargetNodeId != null) return;
         if (inspectBridge.isOpen()) return;
         if (ctx.state.player.currentState?.blocksInput) return;
         if (ctx.state.abilities["Shoot"]) return;

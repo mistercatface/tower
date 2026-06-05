@@ -2,7 +2,6 @@ import { Actor } from "./Actor.js";
 import { spawnFloatingText } from "../Core/EventSystem.js";
 import { playerBaseStats, NAV_PROFILES, navigationSettings } from "../Config/Config.js";
 import { createEntityBars } from "./EntityBars.js";
-import { isMapTraveling } from "../GameState/GamePhase.js";
 import { entityIntersectsCellBounds } from "../Libraries/Spatial/grid/GridCoords.js";
 import { renderActorKinematicsBody } from "../Render/Kinematics/PlayerKinematicsRenderer.js";
 
@@ -153,8 +152,7 @@ export class Player extends Actor {
             if (this.hasReachedTarget(state)) {
                 this.stopMovement(state);
             } else {
-                const navProfile = isMapTraveling(state) ? NAV_PROFILES.mapTravel : NAV_PROFILES.playerClick;
-                state.navigation.steerTo(this, this.targetX, this.targetY, navProfile, flowFieldGrid, state);
+                state.navigation.steerTo(this, this.targetX, this.targetY, NAV_PROFILES.playerClick, flowFieldGrid, state);
             }
         } else {
             this.desiredX = 0;

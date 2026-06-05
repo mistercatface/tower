@@ -52,7 +52,6 @@ export class StatsManager {
 
     static resetRun(state, upgradesList) {
         state.initializeDefaultState();
-        state.mapTargetNodeId = null;
 
         const player = state.player;
 

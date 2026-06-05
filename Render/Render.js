@@ -5,7 +5,7 @@ import { WorldSceneRenderer } from "../Libraries/Render/WorldSceneRenderer.js";
 import { world3dPropRecipes } from "../Combat/world3d/world3dContent.js";
 import { buildWorldRenderInput } from "./adapters/WorldRenderAdapter.js";
 import { COMBAT_HUD_MODE, hudSettings, combatVisualSettings } from "../Config/Config.js";
-import { getWorldDrawCoords, isMapTraveling, isWorldScene } from "../GameState/GamePhase.js";
+import { getWorldDrawCoords, isWorldScene } from "../GameState/GamePhase.js";
 import { getPlayerActors } from "../Combat/Targeting.js";
 import { drawHostileOffScreenIndicators } from "./OffScreenIndicators.js";
 import { CombatParticles } from "./CombatParticles.js";
@@ -103,10 +103,6 @@ export class Renderer {
             this._combatPipeline[i](state, viewport);
         }
 
-        if (isMapTraveling(state)) {
-            this.drawTransitionGuides(state);
-        }
-
         if (state.debugMode) {
             this.drawDebugHPA(state, viewport);
         }
@@ -130,45 +126,6 @@ export class Renderer {
             if (p.isDead || p.strategy?.renderMode !== "debris") continue;
             if (viewport && typeof p.isVisible === "function" && !p.isVisible(viewport)) continue;
             this.render3D.drawProp(this.ctx, p, px, py);
-        }
-    }
-
-    drawTransitionGuides(state) {
-        const prevNode = state.getCurrentMapNode();
-        const targetNode = state.getMapTargetNode();
-        if (!prevNode || !targetNode) return;
-
-        const coordsA = state.getNodeCombatCoords(prevNode);
-        const coordsB = state.getNodeCombatCoords(targetNode);
-
-        const dx = coordsB.x - state.player.x;
-        const dy = coordsB.y - state.player.y;
-        const dist = Math.hypot(dx, dy);
-        if (dist > 200) {
-            this.ctx.save();
-            const angle = Math.atan2(dy, dx);
-            const arrowRadius = 80;
-            const ax = state.player.x + Math.cos(angle) * arrowRadius;
-            const ay = state.player.y + Math.sin(angle) * arrowRadius;
-
-            this.ctx.translate(ax, ay);
-            this.ctx.rotate(angle);
-
-            this.ctx.beginPath();
-            this.ctx.moveTo(-10, -6);
-            this.ctx.lineTo(2, 0);
-            this.ctx.lineTo(-10, 6);
-            this.ctx.lineWidth = 3;
-            this.ctx.strokeStyle = "#00bcd4";
-            this.ctx.lineJoin = "round";
-            this.ctx.stroke();
-
-            this.ctx.rotate(-angle);
-            this.ctx.fillStyle = "rgba(0, 188, 212, 0.8)";
-            this.ctx.font = "8px monospace";
-            this.ctx.textAlign = "center";
-            this.ctx.fillText(`${Math.round(dist)}m`, 0, -12);
-            this.ctx.restore();
         }
     }
 

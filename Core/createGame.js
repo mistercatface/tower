@@ -110,6 +110,7 @@ export function createGame(definition) {
         }
 
         requestUiUpdate();
+        requestUiHudUpdate();
         requestAnimationFrame(loop);
     }
 
