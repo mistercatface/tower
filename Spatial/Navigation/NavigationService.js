@@ -1,7 +1,11 @@
 import { navigationSettings } from "../../Config/Config.js";
+import { applySteeringResult } from "../../Libraries/Agent/index.js";
+import { createNavState } from "../../Libraries/Pathfinding/navSession.js";
 import { entityIntersectsCellBounds } from "../../Libraries/Spatial/grid/GridCoords.js";
-import { steerViaFlowField } from "./FlowFieldStrategy.js";
-import { createNavState, steerViaHpa } from "./HpaStrategy.js";
+import { planFlowFieldSteering } from "./FlowFieldStrategy.js";
+import { planHpaSteering } from "./HpaStrategy.js";
+
+const ARRIVED_STEERING = { desiredX: 0, desiredY: 0 };
 
 export class NavigationService {
     constructor(flowFieldGrid, hierarchicalNavigator) {
@@ -35,28 +39,36 @@ export class NavigationService {
         const settings = navigationSettings;
         const grid = flowFieldGrid ?? this.flowFieldGrid;
         if (entity.targetCellBounds && entityIntersectsCellBounds(entity.x, entity.y, entity.radius, entity.targetCellBounds)) {
-            entity.desiredX = 0;
-            entity.desiredY = 0;
+            applySteeringResult(entity, ARRIVED_STEERING);
             this._setDebug(entity, { mode: "arrived", dist: 0, replanReason: null, pathLen: 0 });
             return;
         }
         const dist = Math.hypot(entity.x - targetX, entity.y - targetY);
         if (dist < settings.arrivalDistance) {
-            entity.desiredX = 0;
-            entity.desiredY = 0;
+            applySteeringResult(entity, ARRIVED_STEERING);
             this._setDebug(entity, { mode: "arrived", dist, replanReason: null, pathLen: 0 });
             return;
         }
+
         const useHpa = this.hierarchicalNavigator && dist > profile.hpaThreshold;
         const navState = this.getNavState(entity);
         let debug;
+
         if (useHpa) {
-            debug = steerViaHpa(entity, targetX, targetY, this.hierarchicalNavigator, navState, profile, settings, this.flowFieldGrid.navGraph, this.obstacleGeneration, state);
+            const plan = planHpaSteering(
+                entity, targetX, targetY,
+                this.hierarchicalNavigator, navState, profile, settings,
+                this.flowFieldGrid.navGraph, this.obstacleGeneration, state,
+            );
+            applySteeringResult(entity, plan.steering);
+            debug = { mode: plan.mode, replanReason: plan.replanReason, pathLen: plan.pathLen };
         } else {
             navState.path = null;
-            const mode = steerViaFlowField(entity, targetX, targetY, this.flowFieldGrid, profile.flowField);
-            debug = { mode, replanReason: null, pathLen: 0 };
+            const plan = planFlowFieldSteering(entity, targetX, targetY, this.flowFieldGrid);
+            applySteeringResult(entity, plan.steering);
+            debug = { mode: plan.mode, replanReason: null, pathLen: 0 };
         }
+
         entity.hpaPath = navState.path;
         this._setDebug(entity, { ...debug, dist });
         if (entity.isMoving) {

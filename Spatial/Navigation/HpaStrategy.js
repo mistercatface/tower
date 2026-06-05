@@ -1,21 +1,7 @@
-import { agentPose, applySteeringResult, applyDesiredDirectionToward } from "../../Libraries/Agent/index.js";
-import { trimPathAhead, computePathSteering } from "../../Libraries/Pathfinding/pathFollow.js";
+import { agentPose } from "../../Libraries/Agent/index.js";
+import { computeHpaSteering } from "../../Libraries/Pathfinding/hpaSteering.js";
+import { trimPathAhead } from "../../Libraries/Pathfinding/pathFollow.js";
 import { prepareNavigationPath, orthogonalizePath } from "../../Libraries/Pathfinding/PathClearance.js";
-
-export function createNavState() {
-    return {
-        path: null,
-        lastUpdate: 0,
-        lastX: null,
-        lastY: null,
-        stuckFrames: 0,
-        pathProgressIdx: 0,
-        obstacleGeneration: -1,
-        lastTargetX: null,
-        lastTargetY: null,
-        lastOffPathReplan: 0,
-    };
-}
 
 function shouldApplyClearance(navState, targetX, targetY, obstaclesChanged) {
     if (obstaclesChanged) return true;
@@ -50,7 +36,11 @@ function replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, o
     navState.lastTargetY = targetY;
 }
 
-export function steerViaHpa(entity, targetX, targetY, hierarchicalNavigator, navState, profile, settings, obstacleGrid, obstacleGeneration, state = null) {
+/**
+ * HPA replan policy + pure steering compute. Does not mutate desiredX/Y.
+ * @returns {{ steering: import("../../Libraries/Agent/types.js").SteeringResult, mode: string, replanReason: string | null, pathLen: number }}
+ */
+export function planHpaSteering(entity, targetX, targetY, hierarchicalNavigator, navState, profile, settings, obstacleGrid, obstacleGeneration, state = null) {
     const replanMs = profile.replanMs;
     const viewport = state?.fsm?.context?.viewport;
     const isVisible = viewport ? viewport.isVisible(entity.x, entity.y, entity.radius, 128) : true;
@@ -105,23 +95,21 @@ export function steerViaHpa(entity, targetX, targetY, hierarchicalNavigator, nav
         }
     }
 
-    if (navState.path && navState.path.length >= 2) {
-        const pose = agentPose(entity);
-        let steering = computePathSteering(pose, navState.path, targetX, targetY, settings, navState);
-        if (steering.offPath && now - navState.lastOffPathReplan >= effectiveReplanMs) {
-            replanReason = "offPath";
-            navState.lastOffPathReplan = now;
-            replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings, false, profile, state);
-            if (navState.path && navState.path.length >= 2) {
-                steering = computePathSteering(pose, navState.path, targetX, targetY, settings, navState);
-            }
-        }
-        if (navState.path && navState.path.length >= 2) {
-            applySteeringResult(entity, steering);
-            return { mode: "hpa", replanReason, pathLen: navState.path.length };
-        }
+    const pose = agentPose(entity);
+    let steering = computeHpaSteering(pose, navState.path, targetX, targetY, settings, navState);
+
+    if (navState.path && navState.path.length >= 2 && steering.offPath && now - navState.lastOffPathReplan >= effectiveReplanMs) {
+        replanReason = "offPath";
+        navState.lastOffPathReplan = now;
+        replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings, false, profile, state);
+        steering = computeHpaSteering(pose, navState.path, targetX, targetY, settings, navState);
     }
 
-    applyDesiredDirectionToward(entity, targetX, targetY);
-    return { mode: "direct", replanReason, pathLen: 0 };
+    const hasPath = navState.path && navState.path.length >= 2;
+    return {
+        steering,
+        mode: hasPath ? "hpa" : "direct",
+        replanReason,
+        pathLen: hasPath ? navState.path.length : 0,
+    };
 }

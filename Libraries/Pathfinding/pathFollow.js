@@ -128,6 +128,7 @@ function constrainToSegmentAxis(x, y, from, to) {
 
 /** @typedef {import("../Agent/types.js").AgentPose} AgentPose */
 /** @typedef {import("../Agent/types.js").SteeringResult} SteeringResult */
+/** @typedef {import("./navSession.js").NavSessionState} NavSessionState */
 
 /**
  * @param {AgentPose} pose
@@ -135,7 +136,7 @@ function constrainToSegmentAxis(x, y, from, to) {
  * @param {number} targetX
  * @param {number} targetY
  * @param {object} [settings]
- * @param {object | null} [navState]
+ * @param {NavSessionState | null} [navState]
  * @returns {SteeringResult & { offPath: boolean }}
  */
 export function computePathSteering(pose, path, targetX, targetY, settings = {}, navState = null) {

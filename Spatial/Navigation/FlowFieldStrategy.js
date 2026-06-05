@@ -1,18 +1,10 @@
-import { agentPose, applySteeringResult, applyDesiredDirectionToward } from "../../Libraries/Agent/index.js";
-import { computeFlowSteering } from "../../Libraries/Pathfinding/flowSteering.js";
+import { agentPose } from "../../Libraries/Agent/index.js";
+import { computeFlowFieldSteering } from "../../Libraries/Pathfinding/flowFieldPlan.js";
 
-export function steerViaFlowField(entity, targetX, targetY, flowFieldGrid, flowFieldKey) {
-    if (flowFieldGrid) {
-        const flowField = flowFieldGrid.getFlowField(targetX, targetY);
-        if (flowField) {
-            const steering = computeFlowSteering(agentPose(entity), flowField, flowFieldGrid);
-            if (steering) {
-                applySteeringResult(entity, steering);
-                return "flow";
-            }
-        }
-    }
-
-    applyDesiredDirectionToward(entity, targetX, targetY);
-    return "direct";
+/**
+ * Flow-field steering plan. Does not mutate desiredX/Y.
+ * @returns {{ steering: import("../../Libraries/Agent/types.js").SteeringResult, mode: "flow" | "direct" }}
+ */
+export function planFlowFieldSteering(entity, targetX, targetY, flowFieldGrid) {
+    return computeFlowFieldSteering(agentPose(entity), targetX, targetY, flowFieldGrid);
 }
