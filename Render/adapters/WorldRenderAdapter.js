@@ -22,7 +22,7 @@ import { resolveSurfaceProfileAtCoords } from "../game/surfaceProfileResolver.js
  * @property {object|null} wallSpatialIndex
  * @property {object[]} pickups
  * @property {{ width: number, height: number }|null} canvasBounds
- * @property {import("../WorldSurface/WorldSurfaceSystem.js").WorldSurfaceSystem} worldSurfaces
+ * @property {import("../game/WorldSurfaceSystem.js").WorldSurfaceSystem} worldSurfaces
  * @property {SurfaceBakeContext} surfaceBake
  */
 

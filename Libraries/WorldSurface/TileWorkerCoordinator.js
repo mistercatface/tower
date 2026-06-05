@@ -1,11 +1,11 @@
-import { getSurfaceProfileProvider } from "../../Libraries/Procedural/SurfaceProfileProvider.js";
+import { getSurfaceProfileProvider } from "../Procedural/SurfaceProfileProvider.js";
 import {
     bumpSurfaceProfileRevision,
     getSurfaceProfileRevision,
-} from "../../Libraries/WorldSurface/SurfaceProfileRevision.js";
+} from "./SurfaceProfileRevision.js";
 import { clampBakeFrameRange, frameRangeDedupeSuffix, isFirstFrameRange } from "./AnimationFrameBake.js";
 import { getAnimationFrames } from "./ProfileBakeResolver.js";
-import { MinHeap } from "../../Libraries/DataStructures/MinHeap.js";
+import { MinHeap } from "../DataStructures/MinHeap.js";
 
 export const MAX_WALLS = 10000;
 export const STRIDE = 6;
@@ -197,7 +197,7 @@ function getWorkerPool() {
         }
 
         for (let i = 0; i < poolSize; i++) {
-            const w = new Worker(new URL("./TileWorker.js", import.meta.url), { type: "module" });
+            const w = new Worker(new URL("../../Render/WorldSurface/TileWorkerEntry.js", import.meta.url), { type: "module" });
             w.postMessage({
                 id: -1,
                 type: "initSharedEdgesSAB",

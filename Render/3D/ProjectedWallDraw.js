@@ -6,7 +6,7 @@ import { getWallVisualHeight, getWorldSurfaceSettings, resolveWallVisualHeight }
 import { drawImageQuad } from "../../Libraries/Canvas/AffineTexture.js";
 /** @typedef {import("../adapters/WorldRenderAdapter.js").SurfaceBakeContext} SurfaceBakeContext */
 
-import { getPixelsPerWorldUnit, shouldSmoothTextureDownsample } from "../WorldSurface/WorldSurfaceResolution.js";
+import { getPixelsPerWorldUnit, shouldSmoothTextureDownsample } from "../../Libraries/WorldSurface/WorldSurfaceResolution.js";
 
 export { wallFaceColumns } from "../../Libraries/WorldSurface/WallFaceColumns.js";
 

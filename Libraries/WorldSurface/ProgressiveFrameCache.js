@@ -1,4 +1,4 @@
-import { LruMap } from "../../Libraries/DataStructures/LruMap.js";
+import { LruMap } from "../DataStructures/LruMap.js";
 import { nextAnimationBatchRange } from "./AnimationFrameBake.js";
 
 export class ProgressiveFrameCache {

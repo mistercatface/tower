@@ -3,9 +3,9 @@
  * combat shadow underpaint, and GameState profile / invalidation hooks.
  */
 import { getWorldSurfaceSettings } from "../../Libraries/WorldSurface/WorldSurfaceSettings.js";
+import { WorldSurfaceEngine } from "../../Libraries/WorldSurface/WorldSurfaceEngine.js";
 import { isWorldScene } from "../../GameState/GamePhase.js";
-import { buildGroundChunkBakePayload, resolveSurfaceProfileAtCoords } from "../game/surfaceProfileResolver.js";
-import { WorldSurfaceEngine } from "./WorldSurfaceEngine.js";
+import { buildGroundChunkBakePayload, resolveSurfaceProfileAtCoords } from "./surfaceProfileResolver.js";
 
 export class WorldSurfaceSystem extends WorldSurfaceEngine {
     /** @param {import("../../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} [settings] */

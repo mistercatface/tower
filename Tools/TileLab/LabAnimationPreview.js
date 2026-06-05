@@ -1,5 +1,5 @@
-import { paintPixelArea } from "../../Render/WorldSurface/WorldSurfacePainter.js";
-import { resolveBakeProfile, getAnimationDuration } from "../../Render/WorldSurface/ProfileBakeResolver.js";
+import { paintPixelArea } from "../../Libraries/WorldSurface/WorldSurfacePainter.js";
+import { resolveBakeProfile, getAnimationDuration } from "../../Libraries/WorldSurface/ProfileBakeResolver.js";
 import { RUNTIME_LAB_PROFILE_ID } from "./profile/ProfileEditor.js";
 
 let rafId = null;

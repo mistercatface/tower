@@ -3,7 +3,7 @@
 import { getWorldSurfaceSettings, resolveWallVisualHeight } from "../../Libraries/WorldSurface/WorldSurfaceSettings.js";
 import { SpatialQuery } from "../../Spatial/World/SpatialQuery.js";
 import { drawProjectedWallFace, drawProjectedWallRoof } from "./ProjectedWallDraw.js";
-import { TileWorkerCoordinator, wallGeometryView, wallSharedEdgesView, MAX_WALLS, STRIDE } from "../WorldSurface/TileWorkerCoordinator.js";
+import { TileWorkerCoordinator, wallGeometryView, wallSharedEdgesView, MAX_WALLS, STRIDE } from "../../Libraries/WorldSurface/TileWorkerCoordinator.js";
 
 /** @typedef {(ctx: CanvasRenderingContext2D, prop: object, px: number, py: number) => void} PropDrawRecipe */
 

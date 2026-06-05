@@ -11,7 +11,7 @@ import { WaveManager } from "../Combat/WaveManager.js";
 import { WallSpatialIndex } from "../Spatial/World/WallSpatialIndex.js";
 import { Pools } from "../Core/Pools.js";
 import { createRunStats } from "../Entities/CombatantStats.js";
-import { WorldSurfaceSystem } from "../Render/WorldSurface/WorldSurfaceSystem.js";
+import { WorldSurfaceSystem } from "../Render/game/WorldSurfaceSystem.js";
 
 export class GameState {
     constructor() {

@@ -1,10 +1,10 @@
 /**
  * Procedural world-surface bake cache: ground chunks + wall atlases.
  * Game-agnostic — no phase checks, shadow fill, or GameState profile resolution.
- * See WorldSurfaceSystem.js for the game wrapper; ProjectedWallDraw.js for wall projection.
+ * See Render/game/WorldSurfaceSystem.js for the game wrapper; ProjectedWallDraw.js for wall projection.
  */
-import { getWorldSurfaceSettings, resolveWallVisualHeight } from "../../Libraries/WorldSurface/WorldSurfaceSettings.js";
-import { getSurfaceProfileProvider } from "../../Libraries/Procedural/SurfaceProfileProvider.js";
+import { getWorldSurfaceSettings, resolveWallVisualHeight } from "./WorldSurfaceSettings.js";
+import { getSurfaceProfileProvider } from "../Procedural/SurfaceProfileProvider.js";
 import { chunkToWorldOrigin, getChunkSizePx, gridBoundsToChunkRange, worldBoundsToChunkRange } from "../../Spatial/Grid/ChunkGrid.js";
 import { ProgressiveFrameCache } from "./ProgressiveFrameCache.js";
 import {
@@ -12,10 +12,10 @@ import {
     getGroundChunkAnimationInfo,
     getWallAtlasAnimationInfo,
     isWallAtlasAnimationEnabled,
-} from "../../Libraries/WorldSurface/bake/SurfaceBakeHelpers.js";
-import { getSurfaceProfileRevision } from "../../Libraries/WorldSurface/SurfaceProfileRevision.js";
-import { getWallAtlasCacheInfo } from "../../Libraries/WorldSurface/WallSurfaceCache.js";
-import { wallFaceColumns } from "../../Libraries/WorldSurface/WallFaceColumns.js";
+} from "./bake/SurfaceBakeHelpers.js";
+import { getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
+import { getWallAtlasCacheInfo } from "./WallSurfaceCache.js";
+import { wallFaceColumns } from "./WallFaceColumns.js";
 import { TileWorkerCoordinator } from "./TileWorkerCoordinator.js";
 import { drawBakedTexture, getPixelsPerWorldUnit } from "./WorldSurfaceResolution.js";
 import { animationFrameIndex } from "./ProfileBakeResolver.js";
@@ -28,7 +28,7 @@ import { bakeFrameRange } from "./AnimationFrameBake.js";
 
 export class WorldSurfaceEngine {
     /**
-     * @param {import("../../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} [settings]
+     * @param {import("./WorldSurfaceSettings.js").WorldSurfaceSettings} [settings]
      * @param {WorldSurfaceEngineHooks} [hooks]
      */
     constructor(settings = getWorldSurfaceSettings(), hooks = {}) {
@@ -202,7 +202,7 @@ export class WorldSurfaceEngine {
      * @param {{ x: number, y: number }} p2
      * @param {{
      *   profileId: string,
-     *   surfaceBake: import("../adapters/WorldRenderAdapter.js").SurfaceBakeContext,
+     *   surfaceBake: import("../../Render/adapters/WorldRenderAdapter.js").SurfaceBakeContext,
      *   ppwu: number,
      *   tileWorldSize: number,
      *   storyCount: number,

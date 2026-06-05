@@ -1,4 +1,4 @@
-import { getWorldSurfaceSettings } from "../../Libraries/WorldSurface/WorldSurfaceSettings.js";
+import { getWorldSurfaceSettings } from "./WorldSurfaceSettings.js";
 
 export function getPixelsPerWorldUnit(settings = getWorldSurfaceSettings()) {
     return settings.tileResolution / settings.tileWorldSize;

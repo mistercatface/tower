@@ -1,6 +1,6 @@
 import { registerRuntimeSurfaceProfile } from "../../Config/procedural/profiles.js";
-import { invalidateProfileScratch } from "../../Render/WorldSurface/ProfileBakeResolver.js";
-import { TileWorkerCoordinator } from "../../Render/WorldSurface/TileWorkerCoordinator.js";
+import { invalidateProfileScratch } from "../../Libraries/WorldSurface/ProfileBakeResolver.js";
+import { TileWorkerCoordinator } from "../../Libraries/WorldSurface/TileWorkerCoordinator.js";
 import {
     renderGamePreview,
     prepareGameCanvas,

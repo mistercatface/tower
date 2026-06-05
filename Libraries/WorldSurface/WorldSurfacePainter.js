@@ -1,6 +1,6 @@
-import { getWorldSurfaceSettings } from "../../Libraries/WorldSurface/WorldSurfaceSettings.js";
-import { composeSurfaceImage } from "../../Libraries/Procedural/SurfaceTextureComposer.js";
-import { getSurfaceProfileProvider } from "../../Libraries/Procedural/SurfaceProfileProvider.js";
+import { getWorldSurfaceSettings } from "./WorldSurfaceSettings.js";
+import { composeSurfaceImage } from "../Procedural/SurfaceTextureComposer.js";
+import { getSurfaceProfileProvider } from "../Procedural/SurfaceProfileProvider.js";
 import { buildMapContext, createWallFaceAxes, writePixelToSamples } from "./SurfaceCoordinateMapper.js";
 import { bakePixelsForWorldSpan, getPixelsPerWorldUnit } from "./WorldSurfaceResolution.js";
 import { getAnimationFrames, resolveBakeProfile } from "./ProfileBakeResolver.js";

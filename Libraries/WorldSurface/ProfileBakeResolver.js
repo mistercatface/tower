@@ -11,7 +11,7 @@
 
 /** @typedef {{ path: string, get: (root: object) => unknown, set: (root: object, value: unknown) => void }} ParamRef */
 
-import { applyEasing } from "../../Libraries/Math/Easing.js";
+import { applyEasing } from "../Math/Easing.js";
 
 const scratchEntries = new Map();
 
