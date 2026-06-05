@@ -12,9 +12,7 @@ import { runPushablePhysics } from "./combatPhysics.js";
 /** @param {object[]} events @param {object} ctx */
 function dispatchCombatEvents(events, ctx) {
     for (const event of events) {
-        if (event.target?.handleHit) {
-            event.target.handleHit(event.damage, ctx, event.type, event);
-        }
+        if (event.target?.handleHit) event.target.handleHit(event.damage, ctx, event.type, event);
     }
 }
 
