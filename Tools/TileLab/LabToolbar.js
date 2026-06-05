@@ -1,5 +1,5 @@
 import { playerBaseStats } from "../../Config/Config.js";
-import { defaultFloorProceduralProfileId } from "../../Config/floorProceduralConfig.js";
+import { defaultFloorProceduralProfileId } from "../../Config/procedural/profiles.js";
 import { getDefaultCombatZoom } from "../../Render/CombatViewport.js";
 import { getLabWorld } from "./LabWorldSession.js";
 

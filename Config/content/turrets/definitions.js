@@ -1,9 +1,9 @@
-import { applyActorGunModifiers } from "../Combat/gunCombat.js";
-import { normalizeWeaponLoadout } from "../Combat/equipmentLoadout.js";
-import { defaultGunId, getGunDefinition, cloneGunDefinition } from "./gunDefinitions.js";
-import { defaultTurretLoadout, resolveLoadoutFromConfig, resolveTurretScope } from "./turretLoadout.js";
+import { applyActorGunModifiers } from "../../../Combat/gunCombat.js";
+import { normalizeWeaponLoadout } from "../../../Combat/equipmentLoadout.js";
+import { defaultGunId, getGunDefinition, cloneGunDefinition } from "../guns.js";
+import { defaultTurretLoadout, resolveLoadoutFromConfig, resolveTurretScope } from "./loadout.js";
 
-export { cloneTurretLoadout, defaultTurretLoadout, resolveFireAngleOffsets, resolveLoadoutFromConfig, resolveTurretScope } from "./turretLoadout.js";
+export { cloneTurretLoadout, defaultTurretLoadout, resolveFireAngleOffsets, resolveLoadoutFromConfig, resolveTurretScope } from "./loadout.js";
 
 function isTurretLoadoutUpgradeActive(upgrade, state, actor) {
     if (upgrade.isAbility) return !!state.abilities?.[upgrade.id];

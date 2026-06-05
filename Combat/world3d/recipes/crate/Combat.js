@@ -1,4 +1,4 @@
-import { WOOD_CRATE } from "../../../../Config/props/Crate.js";
+import { WOOD_CRATE } from "../../../../Config/content/props/Crate.js";
 import { drawExtrudedBox } from "../../../../Render/3D/draw/SolidDraw.js";
 
 export function drawCrateCombat(ctx, prop, px, py) {

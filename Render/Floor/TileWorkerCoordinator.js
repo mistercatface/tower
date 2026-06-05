@@ -1,4 +1,4 @@
-import { listShippedFloorProfileIds, getFloorProceduralProfile } from "../../Config/floorProceduralConfig.js";
+import { getFloorProfileProvider } from "../../Libraries/Procedural/FloorProfileProvider.js";
 import { clampBakeFrameRange, frameRangeDedupeSuffix, isFirstFrameRange } from "./AnimationFrameBake.js";
 import { getAnimationFrames } from "./ProfileBakeResolver.js";
 import { MinHeap } from "../../Libraries/DataStructures/MinHeap.js";
@@ -250,16 +250,17 @@ export const TileWorkerCoordinator = {
 
     requestFloorChunkBake(payload) {
         const profileId = payload.profileId;
-        if (profileId && !listShippedFloorProfileIds().includes(profileId) && !registeredRuntimeProfileIds.has(profileId)) {
+        const provider = getFloorProfileProvider();
+        if (profileId && !provider.listShippedIds().includes(profileId) && !registeredRuntimeProfileIds.has(profileId)) {
             try {
-                const profile = getFloorProceduralProfile(profileId);
+                const profile = provider.getProfile(profileId);
                 this.registerRuntimeProfile(profileId, profile);
             } catch (err) {
                 console.warn(`TileWorkerCoordinator: custom profile not found/registered for ${profileId}`, err);
             }
         }
 
-        const profile = getFloorProceduralProfile(profileId);
+        const profile = provider.getProfile(profileId);
         const isAnimated = Boolean(profile?.animation);
         const normalized = withBakeFrameRange(payload, profile);
 
@@ -268,7 +269,7 @@ export const TileWorkerCoordinator = {
 
     requestWallFaceBake(payload) {
         const profileId = payload.profileId;
-        const profile = getFloorProceduralProfile(profileId);
+        const profile = getFloorProfileProvider().getProfile(profileId);
         const isAnimated = Boolean(profile?.animation);
         const normalized = withBakeFrameRange(payload, profile);
 
@@ -276,6 +277,7 @@ export const TileWorkerCoordinator = {
     },
 
     registerRuntimeProfile(profileId, profile) {
+        getFloorProfileProvider().registerRuntime(profileId, profile);
         const rev = (runtimeProfileRevisions.get(profileId) ?? 0) + 1;
         runtimeProfileRevisions.set(profileId, rev);
         getWorkerPool();

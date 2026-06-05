@@ -1,7 +1,10 @@
-import { bakeFloorChunkCanvases, bakeWallFaceCanvases } from "./FloorTilePainter.js";
-import { registerRuntimeFloorProfile } from "../../Config/floorProceduralConfig.js";
-import { invalidateProfileScratch } from "./ProfileBakeResolver.js";
+import { installGameFloorProfileProvider } from "../../Config/procedural/bootstrap.js";
+import { getFloorProfileProvider } from "../../Libraries/Procedural/FloorProfileProvider.js";
 import { SharedEdgeSolver } from "../../Libraries/Math/SharedEdgeSolver.js";
+import { bakeFloorChunkCanvases, bakeWallFaceCanvases } from "./FloorTilePainter.js";
+import { invalidateProfileScratch } from "./ProfileBakeResolver.js";
+
+installGameFloorProfileProvider();
 
 let wallGeometrySab = null;
 let wallGeometryView = null;
@@ -18,7 +21,7 @@ const HANDLERS = {
     },
 
     registerRuntimeProfile(payload) {
-        registerRuntimeFloorProfile(payload.profileId, payload.profile);
+        getFloorProfileProvider().registerRuntime(payload.profileId, payload.profile);
         invalidateProfileScratch(payload.profileId);
         return [];
     },

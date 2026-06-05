@@ -1,10 +1,10 @@
 import { perkSettings } from "../Config/Config.js";
-import { upgradeCostAtLevel } from "../Config/configHelpers.js";
+import { upgradeCostAtLevel } from "../Config/balance/helpers.js";
 import {
     baseUpgradeDefinitions,
     metaUpgradeDefinitions,
     upgradeFromDefinition,
-} from "../Config/UpgradeDefinitions.js";
+} from "../Config/content/upgradeDefinitions.js";
 
 export class Upgrade {
     constructor(config) {

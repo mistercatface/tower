@@ -1,3 +1,4 @@
+import { installGameFloorProfileProvider } from "./Config/procedural/bootstrap.js";
 import { state } from "./GameState/GameState.js";
 import { createUpgrades, createBaseUpgrades } from "./Progression/Upgrades.js";
 import { initializeSaveSystem, loadProgress } from "./Progression/Storage.js";
@@ -19,6 +20,8 @@ import { inspectBridge } from "./Combat/inspect/InspectBridge.js";
 import { registerGameInspectEntries } from "./Combat/inspect/inspectContent.js";
 import { preloadAllInspectAssets } from "./Libraries/Inspect/InspectCatalog.js";
 import "./Entities/Zombie.js";
+
+installGameFloorProfileProvider();
 
 const canvas = document.getElementById("towerCanvas");
 const ctx = canvas.getContext("2d");

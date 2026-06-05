@@ -1,5 +1,5 @@
-import { radioSpeakers } from "../Config/radio/RadioSpeakers.js";
-import { radioConversations } from "../Config/radio/RadioConversations.js";
+import { radioSpeakers } from "../Config/content/radio/RadioSpeakers.js";
+import { radioConversations } from "../Config/content/radio/RadioConversations.js";
 
 /** @type {Map<string, string[]>} */
 const conversationsByTrigger = new Map();

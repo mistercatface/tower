@@ -1,6 +1,6 @@
 import { Actor } from "./Actor.js";
 import { NAV_PROFILES, navigationSettings, sidekickBaseStats } from "../Config/Config.js";
-import { barryStartGunId } from "../Config/gunDefinitions.js";
+import { barryStartGunId } from "../Config/content/guns.js";
 import { createEntityBars } from "./EntityBars.js";
 import { renderActorKinematicsBody } from "../Render/Kinematics/PlayerKinematicsRenderer.js";
 

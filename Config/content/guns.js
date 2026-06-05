@@ -1,5 +1,5 @@
-import { enemyProjectileSettings, playerProjectileSettings } from "./Config.js";
-import { Handedness } from "./equipmentConfig.js";
+import { enemyProjectileSettings, playerProjectileSettings } from "../balance/combat.js";
+import { Handedness } from "./equipment.js";
 
 export const defaultGunId = "servicePistol";
 export const defaultEnemyGunId = "enemyRifle";

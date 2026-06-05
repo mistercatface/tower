@@ -5,7 +5,7 @@ import { drawProjectileTracer } from "../Render/ProjectileDraw.js";
 import { getProjectileDamage } from "../Combat/impactDamage.js";
 import { applyActorImpactKnockback } from "../Combat/impactKnockback.js";
 import { getGunImpactKnockback } from "../Combat/gunCombat.js";
-import { getGunDefinition } from "../Config/gunDefinitions.js";
+import { getGunDefinition } from "../Config/content/guns.js";
 import { Enemy } from "./Enemy.js";
 import { getPlayerActors, areHostile } from "../Combat/Targeting.js";
 import { Actor } from "./Actor.js";

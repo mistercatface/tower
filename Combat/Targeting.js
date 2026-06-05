@@ -1,4 +1,4 @@
-import { getActorProfileForActor } from "../Config/actorProfiles.js";
+import { getActorProfileForActor } from "../Config/content/actorProfiles.js";
 
 export function inferFaction(actor) {
     if (actor.faction) return actor.faction;

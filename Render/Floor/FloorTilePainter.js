@@ -1,6 +1,6 @@
 import { floorTileSettings, gridSettings } from "../../Config/Config.js";
-import { defaultFloorProceduralProfileId, getFloorProceduralProfile } from "../../Config/floorProceduralConfig.js";
 import { composeFloorImage } from "../../Libraries/Procedural/FloorTextureComposer.js";
+import { getFloorProfileProvider } from "../../Libraries/Procedural/FloorProfileProvider.js";
 import { buildMapContext, createWallFaceAxes, writePixelToSamples } from "./SurfaceCoordinateMapper.js";
 import { bakePixelsForWorldSpan, getPixelsPerWorldUnit } from "./floorTextureResolution.js";
 import { getAnimationFrames, resolveBakeProfile } from "./ProfileBakeResolver.js";
@@ -33,7 +33,8 @@ function resolvePaintProfile(profileOrId) {
     if (profileOrId != null && typeof profileOrId === "object") {
         return profileOrId;
     }
-    return getFloorProceduralProfile(profileOrId ?? defaultFloorProceduralProfileId);
+    const provider = getFloorProfileProvider();
+    return provider.getProfile(profileOrId ?? provider.defaultId);
 }
 
 export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, seed, options = {}, profileOrId) {
@@ -101,7 +102,7 @@ export function bakeWallFaceCanvas(width, height, p1, p2, pixelsPerUnit, seed, p
     const wallWidth = optionsPayload?.wallWidth;
 
     if (payload) {
-        const profileKey = typeof profileOrId === "string" ? profileOrId : defaultFloorProceduralProfileId;
+        const profileKey = typeof profileOrId === "string" ? profileOrId : getFloorProfileProvider().defaultId;
         const baseProfile = resolvePaintProfile(profileOrId);
         bakeResolvedProfile(ctx, width, height, 0, 0, seed, { isWall: true, p1, p2, pixelsPerUnit, wallHeight, wallWidth }, baseProfile, profileKey, payload);
     } else {
@@ -124,8 +125,9 @@ function chunkNeedsRuntimeResolve(profile) {
 
 /** Bake one or more chunk canvases from a single worker payload. */
 export function bakeFloorChunkCanvases(payload) {
-    const profileId = payload.profileId ?? defaultFloorProceduralProfileId;
-    const baseProfile = getFloorProceduralProfile(profileId);
+    const provider = getFloorProfileProvider();
+    const profileId = payload.profileId ?? provider.defaultId;
+    const baseProfile = provider.getProfile(profileId);
     const { frameStart, frameCount } = payload;
     const { chunkCol, chunkRow, minX, minY, seed, cellsPerChunk = floorTileSettings.cellsPerChunk } = payload;
     const { x: chunkWorldX, y: chunkWorldY, bakeSize } = chunkWorldOrigin(chunkCol, chunkRow, minX, minY, cellsPerChunk);
@@ -150,7 +152,8 @@ export function bakeFloorChunkCanvases(payload) {
 }
 
 export function bakeWallFaceCanvases(width, height, p1, p2, pixelsPerUnit, seed, profileId, payload = {}) {
-    const baseProfile = getFloorProceduralProfile(profileId ?? defaultFloorProceduralProfileId);
+    const provider = getFloorProfileProvider();
+    const baseProfile = provider.getProfile(profileId ?? provider.defaultId);
     if (!baseProfile.animation) return [bakeWallFaceCanvas(width, height, p1, p2, pixelsPerUnit, seed, profileId, null, payload)];
     const { frameStart, frameCount } = payload;
     const canvases = [];

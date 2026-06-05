@@ -1,4 +1,4 @@
-import { getFloorProceduralProfile } from "../../../Config/floorProceduralConfig.js";
+import { getFloorProceduralProfile } from "../../../Config/procedural/profiles.js";
 import { SliderControl } from "../../Lab/ui/controls/SliderControl.js";
 import { SelectControl } from "../../Lab/ui/controls/SelectControl.js";
 import { mirrorEasingForReversedStage } from "../../../Libraries/Math/Easing.js";

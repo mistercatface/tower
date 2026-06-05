@@ -1,4 +1,5 @@
-import { listShippedFloorProfileIds } from "../../Config/floorProceduralConfig.js";
+import { installGameFloorProfileProvider } from "../../Config/procedural/bootstrap.js";
+import { listShippedFloorProfileIds } from "../../Config/procedural/profiles.js";
 import { initMapPreviewNavigation } from "./map/LabMapPreview.js";
 import {
     invalidateLabCaches,
@@ -96,6 +97,7 @@ function renderAll() {
     });
 }
 
+installGameFloorProfileProvider();
 initPresetSelect(listShippedFloorProfileIds());
 initProfileEditor({ onChange: handleEditorChange });
 initMapPreviewNavigation(

@@ -1,10 +1,11 @@
-import { floorTileSettings, gridSettings } from "../../Config/Config.js";
+import { gridSettings } from "../../Config/balance/grid.js";
+import { floorTileSettings, resolveWallVisualHeight } from "../../Config/balance/worldSurface.js";
 import { drawImageQuad } from "../../Libraries/Canvas/AffineTexture.js";
 import { CAMERA_HEIGHT } from "../../Libraries/Math/IsometricProjection.js";
 /** @typedef {import("../adapters/WorldRenderAdapter.js").FloorBakeContext} FloorBakeContext */
 
 import { isWallFaceAnimationEnabled } from "../Floor/floorTextureProfile.js";
-import { getFloorProceduralProfile } from "../../Config/floorProceduralConfig.js";
+import { getFloorProfileProvider } from "../../Libraries/Procedural/FloorProfileProvider.js";
 import { getPixelsPerWorldUnit, shouldSmoothTextureDownsample } from "../Floor/floorTextureResolution.js";
 import { animationFrameIndex } from "../Floor/ProfileBakeResolver.js";
 import { getWallCacheInfo } from "../Floor/FloorTileSystem.js";
@@ -17,9 +18,7 @@ const sCorner2 = { x: 0, y: 0 };
 const sCorner3 = { x: 0, y: 0 };
 
 export function getWallVisualHeight() {
-    const configured = floorTileSettings.wallVisualHeight;
-    if (configured != null) return configured;
-    return CAMERA_HEIGHT - 10;
+    return resolveWallVisualHeight(CAMERA_HEIGHT, floorTileSettings);
 }
 
 export const sharedScratchFace = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
@@ -58,7 +57,7 @@ export function traceProjectedFace(ctx, p1, p2, face) {
     ctx.closePath();
 }
 
-function getViewportWorldBounds(viewport, padding = floorTileSettings.viewPaddingPx ?? 128) {
+function getViewportWorldBounds(viewport, padding = floorTileSettings.viewPaddingPx) {
     if (!viewport) return null;
     return viewport.getWorldBounds(viewport.cx * 2, viewport.cy * 2, padding);
 }
@@ -73,7 +72,7 @@ function rowBoundsIntersects(bl, br, tl, tr, bounds) {
 }
 
 function getWallTextureStoryCount() {
-    return floorTileSettings.wallTextureStories ?? 16;
+    return floorTileSettings.wallTextureStories;
 }
 
 /** World-aligned slices along the wall base edge (stable when the camera moves). */
@@ -148,7 +147,7 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, floorBake, viewer, viewp
         if (!flatCanvases || flatCanvases.length === 0) return;
     }
 
-    const profile = getFloorProceduralProfile(profileId);
+    const profile = getFloorProfileProvider().getProfile(profileId);
     let flatCanvas = flatCanvases[0];
     if (!flatCanvas || flatCanvas.isPlaceholder) {
         ctx.fillStyle = fillStyle;
@@ -177,7 +176,10 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, floorBake, viewer, viewp
     const py = viewer.y;
     const dist = Math.hypot(wallCx - px, wallCy - py);
 
-    const subdivScale = Math.max(0.05, Math.min(1.0, 1.0 - (dist - 80) / 320));
+    const subdivScale = Math.max(
+        0.05,
+        Math.min(1.0, 1.0 - (dist - floorTileSettings.wallSubdivNearPx) / floorTileSettings.wallSubdivFarPx)
+    );
     const SUBDIV_X = Math.max(1, Math.min(2, Math.ceil((edgeLen / tileWorldSize) * subdivScale)));
     const SUBDIV_Y = Math.max(1, Math.min(2, Math.ceil((storyCount / 2) * subdivScale)));
 
@@ -223,7 +225,7 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, floorBake, viewer, viewp
 export function drawProjectedWallRoof(ctx, topCorners, seg, wallColor, floorTiles, floorBake, viewport, cacheObj = null) {
     if (!floorTiles) return;
 
-    const wallHeight = seg.wallHeight ?? (floorTileSettings.wallVisualHeight ?? (CAMERA_HEIGHT - 10));
+    const wallHeight = seg.wallHeight ?? resolveWallVisualHeight(CAMERA_HEIGHT, floorTileSettings);
     const wallCx = cacheObj && cacheObj.cx !== undefined ? cacheObj.cx : seg.x;
     const wallCy = cacheObj && cacheObj.cy !== undefined ? cacheObj.cy : seg.y;
 
@@ -247,7 +249,7 @@ export function drawProjectedWallRoof(ctx, topCorners, seg, wallColor, floorTile
         if (!flatCanvases || flatCanvases.length === 0) return;
     }
 
-    const profile = getFloorProceduralProfile(profileId);
+    const profile = getFloorProfileProvider().getProfile(profileId);
     let flatCanvas = flatCanvases[0];
     if (!flatCanvas || flatCanvas.isPlaceholder) {
         ctx.fillStyle = wallColor;

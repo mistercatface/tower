@@ -4,7 +4,7 @@ import { getTexture, loadTexture, onTextureReady } from "../core/TextureCache.js
 
 /**
  * Factory for labeled box inspect views.
- * @param {import("../../../Config/props/Crate.js").WOOD_CRATE} boxConfig
+ * @param {import("../../../Config/content/props/Crate.js").WOOD_CRATE} boxConfig
  * @param {() => import("../geometry/BoxMesh.js").buildBoxMesh} buildMesh
  * @param {(subject: import("../InspectCatalog.js").InspectSubject | null | undefined, face: string) => string} resolveFaceLabelSrc
  */

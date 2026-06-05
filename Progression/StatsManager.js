@@ -1,5 +1,5 @@
 import { perkMilestones, gridSettings } from "../Config/Config.js";
-import { xpForLevel } from "../Config/configHelpers.js";
+import { xpForLevel } from "../Config/balance/helpers.js";
 import { createUpgradeLevels, resetUpgradeLevels } from "../Entities/CombatantStats.js";
 import { spawnFloatingText } from "../Core/EventSystem.js";
 import { MapGenerator } from "../Generator/MapGenerator.js";

@@ -1,4 +1,4 @@
-import { registerRuntimeFloorProfile } from "../../Config/floorProceduralConfig.js";
+import { registerRuntimeFloorProfile } from "../../Config/procedural/profiles.js";
 import { invalidateProfileScratch } from "../../Render/Floor/ProfileBakeResolver.js";
 import { TileWorkerCoordinator } from "../../Render/Floor/TileWorkerCoordinator.js";
 import {

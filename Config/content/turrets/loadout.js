@@ -1,4 +1,4 @@
-import { playerProjectileSettings } from "./Config.js";
+import { playerProjectileSettings } from "../../balance/combat.js";
 
 export const defaultTurretLoadout = {
     radiusMultiplier: playerProjectileSettings.radiusMultiplier,

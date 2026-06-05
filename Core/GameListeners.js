@@ -7,7 +7,7 @@ import { beginStartNodeInspection } from "../Combat/inspect/StartNodeInspection.
 import { isCombatOrReward } from "../GameState/GamePhase.js";
 import { registerPauseListeners } from "./PauseManager.js";
 import { FloatingText } from "../Render/FloatingText.js";
-import { nextUpgradeCost } from "../Config/configHelpers.js";
+import { nextUpgradeCost } from "../Config/balance/helpers.js";
 import { registerRadioListeners } from "../Radio/RadioDialogController.js";
 import { registerPersistentTriggers } from "./PersistentTriggerSetup.js";
 

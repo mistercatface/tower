@@ -1,20 +1,21 @@
-import cyberGrid from "./TileLabStorage/cyberGrid.js";
-import toxicSludge from "./TileLabStorage/toxicSludge.js";
-import neonWireframe from "./TileLabStorage/neonWireframe.js";
-import shatteredDimension from "./TileLabStorage/shatteredDimension.js";
-import pulseRings from "./TileLabStorage/pulseRings.js";
-import emberLattice from "./TileLabStorage/emberLattice.js";
-import synthWeave from "./TileLabStorage/synthWeave.js";
-import auroraBurst from "./TileLabStorage/auroraBurst.js";
-import shatteredCircuitry from "./TileLabStorage/shatteredCircuitry.js";
-import organicShip from "./TileLabStorage/organicShip.js";
-import chronoVortex from "./TileLabStorage/chronoVortex.js";
-import cyberPulse from "./TileLabStorage/cyberPulse.js";
-import decayedStation from "./TileLabStorage/decayedStation.js";
-import circuitLoop from "./TileLabStorage/circuitLoop.js";
-import tomatoGarden from "./TileLabStorage/tomatoGarden.js";
-import neonOrchard from "./TileLabStorage/neonOrchard.js";
-import pumpkinPatch from "./TileLabStorage/pumpkinPatch.js";
+import { getFloorProfileProvider } from "../../Libraries/Procedural/FloorProfileProvider.js";
+import cyberGrid from "./storage/cyberGrid.js";
+import toxicSludge from "./storage/toxicSludge.js";
+import neonWireframe from "./storage/neonWireframe.js";
+import shatteredDimension from "./storage/shatteredDimension.js";
+import pulseRings from "./storage/pulseRings.js";
+import emberLattice from "./storage/emberLattice.js";
+import synthWeave from "./storage/synthWeave.js";
+import auroraBurst from "./storage/auroraBurst.js";
+import shatteredCircuitry from "./storage/shatteredCircuitry.js";
+import organicShip from "./storage/organicShip.js";
+import chronoVortex from "./storage/chronoVortex.js";
+import cyberPulse from "./storage/cyberPulse.js";
+import decayedStation from "./storage/decayedStation.js";
+import circuitLoop from "./storage/circuitLoop.js";
+import tomatoGarden from "./storage/tomatoGarden.js";
+import neonOrchard from "./storage/neonOrchard.js";
+import pumpkinPatch from "./storage/pumpkinPatch.js";
 
 export const floorProceduralProfiles = {
     cyberGrid,
@@ -52,23 +53,17 @@ export const floorProceduralProfileByStrategy = {
     DiamondStrategy: START_STATION_ID,
 };
 
-const runtimeFloorProfiles = {};
-
 /** Tile Lab live editor profile (`__labA__`), not persisted to disk. */
 export function registerRuntimeFloorProfile(profileId, profile) {
-    runtimeFloorProfiles[profileId] = profile;
+    getFloorProfileProvider().registerRuntime(profileId, profile);
 }
 
 export function getFloorProceduralProfile(profileId) {
-    const profile = runtimeFloorProfiles[profileId] ?? floorProceduralProfiles[profileId];
-    if (!profile) {
-        throw new Error(`Unknown floor procedural profile: ${profileId}`);
-    }
-    return profile;
+    return getFloorProfileProvider().getProfile(profileId);
 }
 
 export function listShippedFloorProfileIds() {
-    return Object.keys(floorProceduralProfiles);
+    return getFloorProfileProvider().listShippedIds();
 }
 
 export function resolveFloorTextureProfileId({ layer, strategy }) {

@@ -4,7 +4,7 @@ import { StartBuildingStrategy } from "./StartNodeBuilding.js";
 import { WorldObstacleGrid } from "../Spatial/World/ObstacleGrid.js";
 import { FlowFieldGrid } from "../Spatial/Navigation/FlowFieldGrid.js";
 import { mapSettings, gridSettings, mapGenerationSettings } from "../Config/Config.js";
-import { resolveFloorTextureProfileId } from "../Config/floorProceduralConfig.js";
+import { resolveFloorTextureProfileId } from "../Config/procedural/profiles.js";
 import { syncFloorTextureProfile } from "../Render/Floor/floorTextureProfile.js";
 import { buildMapRenderCaches } from "../Render/Map/MapRenderCache.js";
 

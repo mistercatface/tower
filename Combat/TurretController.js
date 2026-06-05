@@ -3,7 +3,7 @@ import { resolveWeaponModeForGun, WeaponSystem, advanceTurretAmmo } from "./Weap
 import { getSlotFireIntervalMs } from "./gunCombat.js";
 import { Laser } from "../Entities/Laser.js";
 import { getBeamTickDamage, createBeamHitSource } from "./impactDamage.js";
-import { getGunDefinition } from "../Config/gunDefinitions.js";
+import { getGunDefinition } from "../Config/content/guns.js";
 import { areHostile, getNearestHostile, getPlayerActors, isValidTurretTarget } from "./Targeting.js";
 import { normalizeWeaponLoadout } from "./equipmentLoadout.js";
 

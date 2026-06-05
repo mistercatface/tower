@@ -1,5 +1,5 @@
 import { drawExtrudedRadial, drawRadialBand } from "../../../../Render/3D/draw/SolidDraw.js";
-import { JACKO_CAN } from "../../../../Config/props/JackoCan.js";
+import { JACKO_CAN } from "../../../../Config/content/props/JackoCan.js";
 import { projectVertical } from "../../../../Libraries/Math/IsometricProjection.js";
 
 function drawCanTopCombat(ctx, prop, px, py, radius, height, onFire) {

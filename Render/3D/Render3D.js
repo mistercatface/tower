@@ -1,13 +1,11 @@
 /** @typedef {import("../adapters/WorldRenderAdapter.js").WorldRenderInput} WorldRenderInput */
 
-import { floorTileSettings } from "../../Config/Config.js";
+import { floorTileSettings, resolveWallVisualHeight } from "../../Config/balance/worldSurface.js";
 import { drawBarrel, drawCrate, drawFireBarrel, drawCrateShard } from "../../Combat/world3d/world3dContent.js";
 import { SpatialQuery } from "../../Spatial/World/SpatialQuery.js";
 import { CAMERA_HEIGHT } from "../../Libraries/Math/IsometricProjection.js";
 import { drawProjectedWallFace, drawProjectedWallRoof } from "./WallFaceTexture.js";
 import { TileWorkerCoordinator, wallGeometryView, wallSharedEdgesView, MAX_WALLS, STRIDE } from "../Floor/TileWorkerCoordinator.js";
-
-const VIEW_QUERY_PAD = 48;
 
 const PROP_RECIPES = { barrel: drawBarrel, fire_barrel: drawFireBarrel, crate: drawCrate, crate_shard: drawCrateShard };
 
@@ -95,7 +93,7 @@ export class Render3D {
         const edges = this.getSegmentEdges(seg);
         if (!seg.sharedEdges) seg.sharedEdges = [false, false, false, false];
 
-        const wallHeight = seg.wallHeight ?? (floorTileSettings.wallVisualHeight ?? (CAMERA_HEIGHT - 10));
+        const wallHeight = seg.wallHeight ?? resolveWallVisualHeight(CAMERA_HEIGHT, floorTileSettings);
 
         // 1. Draw side faces
         for (let i = 0; i < 4; i++) {
@@ -162,7 +160,7 @@ export class Render3D {
             wallGeometryView[offset + 2] = seg.angle;
             wallGeometryView[offset + 3] = seg.size;
             wallGeometryView[offset + 4] = seg.isDead ? 1 : 0;
-            const wallHeight = seg.wallHeight ?? (floorTileSettings.wallVisualHeight ?? (CAMERA_HEIGHT - 10));
+            const wallHeight = seg.wallHeight ?? resolveWallVisualHeight(CAMERA_HEIGHT, floorTileSettings);
             wallGeometryView[offset + 5] = wallHeight;
             if (!seg.sharedEdges) {
                 seg.sharedEdges = [false, false, false, false];
@@ -191,7 +189,8 @@ export class Render3D {
     getViewQueryBounds(viewport, px, py) {
         const halfW = viewport.cx / viewport.zoom;
         const halfH = viewport.cy / viewport.zoom;
-        return { minX: px - halfW - VIEW_QUERY_PAD, minY: py - halfH - VIEW_QUERY_PAD, maxX: px + halfW + VIEW_QUERY_PAD, maxY: py + halfH + VIEW_QUERY_PAD };
+        const pad = floorTileSettings.viewQueryPadPx;
+        return { minX: px - halfW - pad, minY: py - halfH - pad, maxX: px + halfW + pad, maxY: py + halfH + pad };
     }
 
     alignBoundsToHash(bounds, cellSize) {

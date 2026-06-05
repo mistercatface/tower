@@ -1,4 +1,4 @@
-import { projectilePresets } from "./gunDefinitions.js";
+import { projectilePresets } from "./guns.js";
 
 const allyStatusBarOffset = (radius) => radius + 14;
 const enemyStatusBarOffset = () => 14;

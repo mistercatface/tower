@@ -1,5 +1,5 @@
 import { floorTileSettings } from "../../Config/Config.js";
-import { defaultFloorProceduralProfileId, getFloorProceduralProfile } from "../../Config/floorProceduralConfig.js";
+import { getFloorProfileProvider } from "../../Libraries/Procedural/FloorProfileProvider.js";
 import { getAnimationFrames } from "./ProfileBakeResolver.js";
 import { getPixelsPerWorldUnit } from "./floorTextureResolution.js";
 import { getProfileRevision } from "./TileWorkerCoordinator.js";
@@ -45,7 +45,7 @@ export function getFloorTextureProfileIdForCoords(state, x, y) {
     if (closestNode?.floorTextureProfileId) {
         return closestNode.floorTextureProfileId;
     }
-    return defaultFloorProceduralProfileId;
+    return getFloorProfileProvider().defaultId;
 }
 
 export function getFloorTextureProfileId(state) {
@@ -76,7 +76,7 @@ export function buildFloorChunkBakePayload(state, chunkCol, chunkRow) {
     const chunkCenterY = obstacleGrid.minY + chunkRow * chunkSizePx + chunkSizePx / 2;
 
     const profileId = getFloorTextureProfileIdForCoords(state, chunkCenterX, chunkCenterY);
-    const profile = getFloorProceduralProfile(profileId);
+    const profile = getFloorProfileProvider().getProfile(profileId);
 
     const payload = { chunkCol, chunkRow, minX: state.obstacleGrid.minX, minY: state.obstacleGrid.minY, seed: state.floorTileSeed ?? 0, profileId };
 

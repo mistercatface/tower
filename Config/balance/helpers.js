@@ -1,4 +1,4 @@
-import { progressionSettings } from "./Config.js";
+import { progressionSettings } from "./progression.js";
 
 export function xpForLevel(level, settings = progressionSettings) {
     return Math.floor(settings.xpBase * Math.pow(settings.xpExponent, level));

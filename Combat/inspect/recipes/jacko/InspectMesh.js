@@ -1,4 +1,4 @@
-import { JACKO_CAN } from "../../../../Config/props/JackoCan.js";
+import { JACKO_CAN } from "../../../../Config/content/props/JackoCan.js";
 import { buildSodaCanMesh } from "../../../../Libraries/Inspect/geometry/CylinderMesh.js";
 
 export function buildJackoInspectMesh() {

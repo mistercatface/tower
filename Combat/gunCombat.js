@@ -1,4 +1,4 @@
-import { defaultGunId, getGunDefinition, gunDefinitions } from "../Config/gunDefinitions.js";
+import { defaultGunId, getGunDefinition, gunDefinitions } from "../Config/content/guns.js";
 
 export function getSlotFireIntervalMs(gun, actor) {
     const multiplier = actor.stats?.fireIntervalMultiplier?.value ?? 1;

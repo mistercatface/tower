@@ -1,4 +1,4 @@
-import { explosionSettings } from "./Config.js";
+import { explosionSettings } from "../balance/combat.js";
 
 const DEFAULT_SPAWN_RADIUS = { minRadius: 150, maxRadius: 1000 };
 

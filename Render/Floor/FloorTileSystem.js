@@ -1,6 +1,8 @@
-import { floorTileSettings, combatVisualSettings } from "../../Config/Config.js";
+import { combatVisualSettings } from "../../Config/balance/visuals.js";
+import { floorTileSettings, resolveWallVisualHeight } from "../../Config/balance/worldSurface.js";
+import { CAMERA_HEIGHT } from "../../Libraries/Math/IsometricProjection.js";
 import { isWorldScene } from "../../GameState/GamePhase.js";
-import { getFloorProceduralProfile } from "../../Config/floorProceduralConfig.js";
+import { getFloorProfileProvider } from "../../Libraries/Procedural/FloorProfileProvider.js";
 import { chunkToWorldOrigin, getChunkSizePx, gridBoundsToChunkRange, worldBoundsToChunkRange } from "../../Spatial/Grid/ChunkGrid.js";
 import { ProgressiveFrameCache } from "./ProgressiveFrameCache.js";
 import { TileWorkerCoordinator } from "./TileWorkerCoordinator.js";
@@ -11,7 +13,7 @@ import { bakeFrameRange, nextAnimationBatchRange } from "./AnimationFrameBake.js
 
 export class FloorTileSystem {
     constructor() {
-        this.surfaceCache = new ProgressiveFrameCache(floorTileSettings.maxCachedSurfaces ?? 5000);
+        this.surfaceCache = new ProgressiveFrameCache(floorTileSettings.maxCachedSurfaces);
         this.proceduralProfileId = null;
         this._globalGeneration = 0;
     }
@@ -97,7 +99,7 @@ export class FloorTileSystem {
         let canvases = this.surfaceCache.get(key);
         if (canvases) return canvases;
 
-        const profile = getFloorProceduralProfile(payload.profileId);
+        const profile = getFloorProfileProvider().getProfile(payload.profileId);
         const { enabled: isAnimated, totalFrames } = getFloorChunkAnimationInfo(profile);
 
         const meta = { kind: 'chunk', payload, totalFrames };
@@ -128,14 +130,14 @@ export class FloorTileSystem {
         const canvasWidth = Math.max(1, Math.ceil(edgeLen * pixelsPerUnit));
         
         // Unrolled height = 2 * H + W
-        const hVal = wallHeight ?? (floorTileSettings.wallVisualHeight ?? (160 - 10));
+        const hVal = wallHeight ?? resolveWallVisualHeight(CAMERA_HEIGHT, floorTileSettings);
         const unrolledHeight = 2 * hVal + cellSize;
         const canvasHeight = Math.max(1, Math.ceil(unrolledHeight * pixelsPerUnit));
 
         const wallCenterX = (p1.x + p2.x) / 2;
         const wallCenterY = (p1.y + p2.y) / 2;
         const profileId = floorBake.resolveProfileAt(wallCenterX, wallCenterY);
-        const profile = getFloorProceduralProfile(profileId);
+        const profile = getFloorProfileProvider().getProfile(profileId);
         const { enabled: isAnimated, totalFrames } = getWallFaceAnimationInfo(profile);
 
         const meta = { kind: 'wall', width: canvasWidth, height: canvasHeight, p1, p2, pixelsPerUnit, totalFrames };
@@ -188,7 +190,7 @@ export class FloorTileSystem {
             let canvas = canvases[0];
             if (canvas.isPlaceholder) continue;
 
-            const profile = getFloorProceduralProfile(payload.profileId);
+            const profile = getFloorProfileProvider().getProfile(payload.profileId);
             const { enabled: chunkAnimationEnabled } = getFloorChunkAnimationInfo(profile);
 
             if (chunkAnimationEnabled && canvases.length > 1) {

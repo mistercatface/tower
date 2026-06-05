@@ -1,4 +1,4 @@
-import { runBaseStats } from "./Config.js";
+import { runBaseStats } from "../balance/progression.js";
 
 export const REGEN_HP_PER_LEVEL = 0.25;
 export const REGEN_MAX_LEVEL = 8;
