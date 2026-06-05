@@ -20,12 +20,8 @@ export class InputManager {
             getBaseZoom: () => fsm.context.viewport.zoom,
             onPinchZoom: setGameZoomAbsolute,
             screenToWorld: (screenX, screenY) => fsm.context.viewport.screenToWorld(screenX, screenY),
-            onPointerDown: (worldCoords, _screen, isDoubleTap) => {
-                fsm.handleInteraction(worldCoords, isDoubleTap);
-            },
-            onPointerMove: (worldCoords, screen, isPrimaryDown) => {
-                fsm.currentState?.handlePointerMove?.(worldCoords, screen, isPrimaryDown, fsm.context);
-            },
+            onPointerDown: (worldCoords, _screen, isDoubleTap) => fsm.handleInteraction(worldCoords, isDoubleTap),
+            onPointerMove: (worldCoords, screen, isPrimaryDown) => fsm.currentState?.handlePointerMove?.(worldCoords, screen, isPrimaryDown, fsm.context),
             keyBindings: [
                 {
                     key: "d",
@@ -45,7 +41,6 @@ export class InputManager {
                 { key: "m", onPress: () => emitMapToggle() },
             ],
         });
-
         return activeController;
     }
 }
