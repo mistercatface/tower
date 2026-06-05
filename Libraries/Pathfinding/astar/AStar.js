@@ -1,5 +1,5 @@
-import { MinHeap, IdxMinHeap } from "../../Libraries/DataStructures/MinHeap.js";
-import { OCTILE_OFFSETS, octileDistance } from "../../Libraries/Spatial/grid/GridUtils.js";
+import { MinHeap, IdxMinHeap } from "../../DataStructures/MinHeap.js";
+import { OCTILE_OFFSETS, octileDistance } from "../../Spatial/grid/GridUtils.js";
 
 const STALE_F_EPSILON = 1e-4;
 

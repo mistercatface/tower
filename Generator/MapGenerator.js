@@ -2,7 +2,7 @@ import { Segment } from "../Entities/Wall.js";
 import { GeneratorStrategies } from "./GeneratorStrategies.js";
 import { StartBuildingStrategy } from "./StartNodeBuilding.js";
 import { WorldObstacleGrid } from "../Spatial/World/ObstacleGrid.js";
-import { FlowFieldGrid } from "../Spatial/Navigation/FlowFieldGrid.js";
+import { FlowFieldGrid } from "../Libraries/Pathfinding/flow/FlowFieldGrid.js";
 import { mapSettings, gridSettings, mapGenerationSettings } from "../Config/Config.js";
 import { resolveSurfaceProfileId } from "../Config/procedural/profiles.js";
 import { syncSurfaceProfile } from "../Render/game/surfaceProfileResolver.js";

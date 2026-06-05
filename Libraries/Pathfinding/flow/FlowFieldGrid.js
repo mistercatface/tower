@@ -1,21 +1,21 @@
-import { circleIntersectsAabb } from "../../Libraries/Math/Aabb2D.js";
-import { OCTILE_OFFSETS } from "../../Libraries/Spatial/grid/GridUtils.js";
+import { circleIntersectsAabb } from "../../Math/Aabb2D.js";
+import { OCTILE_OFFSETS } from "../../Spatial/grid/GridUtils.js";
 import {
     worldToGridCentered,
     gridToWorldCentered,
     getCellBoundsCentered,
-} from "../../Libraries/Spatial/grid/GridCoords.js";
+} from "../../Spatial/grid/GridCoords.js";
 
 const MAX_CACHE = 100;
 const FLOW_DECODE_X = new Float32Array([-0.707, 0, 0.707, -1, 0, 1, -0.707, 0, 0.707]);
 const FLOW_DECODE_Y = new Float32Array([-0.707, -1, -0.707, 0, 0, 0, 0.707, 1, 0.707]);
 
 export class FlowFieldGrid {
-    constructor(cellSize, width, height, obstacleGrid) {
+    constructor(cellSize, width, height, navGraph) {
         this.cellSize = cellSize;
         this.width = width;
         this.height = height;
-        this.obstacleGrid = obstacleGrid;
+        this.navGraph = navGraph;
         this.cols = Math.ceil(width / cellSize);
         this.rows = Math.ceil(height / cellSize);
         const size = this.cols * this.rows;
@@ -77,15 +77,15 @@ export class FlowFieldGrid {
             for (let col = 0; col < this.cols; col++) {
                 const wx = col * this.cellSize + this.centerX - this.offsetX + this.cellSize / 2;
                 const wy = row * this.cellSize + this.centerY - this.offsetY + this.cellSize / 2;
-                const worldCell = this.obstacleGrid.worldToGrid(wx, wy);
+                const worldCell = this.navGraph.worldToGrid(wx, wy);
                 const idx = row * this.cols + col;
 
                 if (
-                    worldCell.col >= 0 && worldCell.col < this.obstacleGrid.cols &&
-                    worldCell.row >= 0 && worldCell.row < this.obstacleGrid.rows
+                    worldCell.col >= 0 && worldCell.col < this.navGraph.cols &&
+                    worldCell.row >= 0 && worldCell.row < this.navGraph.rows
                 ) {
-                    const worldIdx = worldCell.row * this.obstacleGrid.cols + worldCell.col;
-                    this.grid[idx] = this.obstacleGrid.grid[worldIdx];
+                    const worldIdx = worldCell.row * this.navGraph.cols + worldCell.col;
+                    this.grid[idx] = this.navGraph.grid[worldIdx];
                 } else {
                     this.grid[idx] = 1;
                 }

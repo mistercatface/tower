@@ -1,11 +1,11 @@
 import "../Render/WorldSurfaceBootstrap.js";
 import { Player } from "../Entities/Player.js";
 import { Sidekick } from "../Entities/Sidekick.js";
-import { FlowFieldGrid } from "../Spatial/Navigation/FlowFieldGrid.js";
+import { FlowFieldGrid } from "../Libraries/Pathfinding/flow/FlowFieldGrid.js";
+import { HierarchicalNavigator } from "../Libraries/Pathfinding/hpa/HierarchicalNavigator.js";
 import { WorldObstacleGrid } from "../Spatial/World/ObstacleGrid.js";
-import { HierarchicalNavigator } from "../Spatial/Navigation/HierarchicalNavigator.js";
 import { NavigationService } from "../Spatial/Navigation/NavigationService.js";
-import { combatActorRadius, gridSettings, mapSettings, runBaseStats } from "../Config/Config.js";
+import { combatActorRadius, gridSettings, mapSettings, navigationSettings, runBaseStats } from "../Config/Config.js";
 import { Scheduler } from "../Core/Scheduler.js";
 import { WaveManager } from "../Combat/WaveManager.js";
 import { WallSpatialIndex } from "../Libraries/Spatial/indexes/WallSpatialIndex.js";
@@ -36,7 +36,13 @@ export class GameState {
 
         this.obstacleGrid = new WorldObstacleGrid(gridSettings.cellSize);
         this.flowFieldGrid = new FlowFieldGrid(gridSettings.cellSize, gridSettings.width, gridSettings.height, this.obstacleGrid);
-        this.hierarchicalNavigator = new HierarchicalNavigator(gridSettings.cellSize, gridSettings.maxCellsPerChunk, gridSettings.minCellsPerChunk, this.obstacleGrid);
+        this.hierarchicalNavigator = new HierarchicalNavigator(
+            gridSettings.cellSize,
+            gridSettings.maxCellsPerChunk,
+            gridSettings.minCellsPerChunk,
+            this.obstacleGrid,
+            { damagePadding: navigationSettings.hpaDamagePadding },
+        );
         this.navigation = new NavigationService(this.flowFieldGrid, this.hierarchicalNavigator);
         this.currentUpgradeTab = "stats";
         this.statsSubTab = "attack";

@@ -1,7 +1,6 @@
-import { navigationSettings } from "../../Config/Config.js";
-import { colRowToIndex, indexToColRow, forEachCardinalNeighbor } from "../../Libraries/Spatial/grid/GridUtils.js";
-import { worldToGridAtOrigin, gridToWorldAtOrigin } from "../../Libraries/Spatial/grid/GridCoords.js";
-import { runLocalAStarFlat, runAbstractAStar } from "./AStar.js";
+import { colRowToIndex, indexToColRow, forEachCardinalNeighbor } from "../../Spatial/grid/GridUtils.js";
+import { worldToGridAtOrigin, gridToWorldAtOrigin } from "../../Spatial/grid/GridCoords.js";
+import { runLocalAStarFlat, runAbstractAStar } from "../astar/AStar.js";
 import {
     RegionNode,
     computeDistanceTransform,
@@ -11,11 +10,12 @@ import {
 } from "./VoronoiRegions.js";
 
 export class HierarchicalNavigator {
-    constructor(cellSize, maxCellsPerChunk, minCellsPerChunk, obstacleGrid) {
+    constructor(cellSize, maxCellsPerChunk, minCellsPerChunk, navGraph, { damagePadding = 12 } = {}) {
         this.cellSize = cellSize;
         this.maxCellsPerChunk = maxCellsPerChunk;
         this.minCellsPerChunk = minCellsPerChunk;
-        this.obstacleGrid = obstacleGrid;
+        this.navGraph = navGraph;
+        this.damagePadding = damagePadding;
         this.distToWall = null;
         this.cellToNode = null;
         this.nodesMap = {};
@@ -27,23 +27,23 @@ export class HierarchicalNavigator {
     }
 
     get grid() {
-        return this.obstacleGrid.grid;
+        return this.navGraph.grid;
     }
 
     get cols() {
-        return this.obstacleGrid.cols;
+        return this.navGraph.cols;
     }
 
     get rows() {
-        return this.obstacleGrid.rows;
+        return this.navGraph.rows;
     }
 
     get minX() {
-        return this.obstacleGrid.minX;
+        return this.navGraph.minX;
     }
 
     get minY() {
-        return this.obstacleGrid.minY;
+        return this.navGraph.minY;
     }
 
     ensureBuffers() {
@@ -127,18 +127,18 @@ export class HierarchicalNavigator {
     worldToGrid(x, y) {
         return worldToGridAtOrigin(
             x, y,
-            this.obstacleGrid.minX,
-            this.obstacleGrid.minY,
-            this.obstacleGrid.cellSize,
+            this.navGraph.minX,
+            this.navGraph.minY,
+            this.navGraph.cellSize,
         );
     }
 
     gridToWorld(col, row) {
         return gridToWorldAtOrigin(
             col, row,
-            this.obstacleGrid.minX,
-            this.obstacleGrid.minY,
-            this.obstacleGrid.cellSize,
+            this.navGraph.minX,
+            this.navGraph.minY,
+            this.navGraph.cellSize,
         );
     }
 
@@ -191,7 +191,7 @@ export class HierarchicalNavigator {
         }
     }
 
-    _expandDamageBounds(bounds, padding = navigationSettings.hpaDamagePadding) {
+    _expandDamageBounds(bounds, padding = this.damagePadding) {
         return {
             startCol: Math.max(0, bounds.startCol - padding),
             endCol: Math.min(this.cols - 1, bounds.endCol + padding),

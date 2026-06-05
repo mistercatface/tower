@@ -1,5 +1,5 @@
-import { trimPathAhead, computePathSteering, steerTowardTarget } from "./PathFollow.js";
-import { prepareNavigationPath, orthogonalizePath } from "./PathClearance.js";
+import { trimPathAhead, computePathSteering, steerTowardTarget } from "../../Libraries/Pathfinding/path/PathFollow.js";
+import { prepareNavigationPath, orthogonalizePath } from "../../Libraries/Pathfinding/path/PathClearance.js";
 
 export function createNavState() {
     return {

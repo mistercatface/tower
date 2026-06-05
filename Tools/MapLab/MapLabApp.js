@@ -4,7 +4,7 @@ import { initResizer, setupLabViewportNavigation } from "../Lab/lab-shared.js";
 import { createLabMapWorld } from "../TileLab/map/LabMapWorld.js";
 import { renderMapLabView } from "./MapLabView.js";
 import { SliderControl } from "../Lab/ui/controls/SliderControl.js";
-import { resolveRepositionTarget } from "../../Spatial/Navigation/PathClearance.js";
+import { resolveRepositionTarget } from "../../Libraries/Pathfinding/path/PathClearance.js";
 
 let currentWorld = null;
 const currentViewport = new Viewport(0, 0, 0.1);
