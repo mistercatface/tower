@@ -1,4 +1,5 @@
 import { inferFaction } from "../../Combat/Targeting.js";
+import { NEIGHBOR_QUERY_PAD } from "../Collision/PairBroadphase.js";
 
 export class Separation {
     constructor() {
@@ -33,7 +34,7 @@ export class Separation {
                 dy += (Math.random() - 0.5) * 0.5;
             }
 
-            const avoidRadius = entity.radius + other.radius + 15;
+            const avoidRadius = entity.radius + other.radius + NEIGHBOR_QUERY_PAD;
             if (dist < avoidRadius) {
                 const weight = 1 - dist / avoidRadius;
                 this.x += (dx / dist) * weight;

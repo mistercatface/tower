@@ -2,6 +2,16 @@
 
 export const MOVING_SPEED_SQ = 0.25;
 
+/** Margin beyond combined entity extents for neighbor queries (separation, etc.). */
+export const NEIGHBOR_QUERY_PAD = 15;
+
+/** Furthest collision edge from entity center (circle radius or OBB corner distance). */
+export function entityBroadphaseExtent(entity) {
+    const bounds = getBroadphaseBounds(entity);
+    if (bounds.kind === "circle") return bounds.r;
+    return Math.hypot(bounds.hx, bounds.hy);
+}
+
 export function isMovingEntity(entity) {
     const vx = entity.vx || 0;
     const vy = entity.vy || 0;

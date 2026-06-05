@@ -1,4 +1,5 @@
 import { forEachDenseCellInRect } from "../../Libraries/DataStructures/CellRect.js";
+import { entityBroadphaseExtent, NEIGHBOR_QUERY_PAD } from "../Collision/PairBroadphase.js";
 
 const MAX_ENTITIES = 4096;
 const GLOBAL_QUERY_RESULT = [];
@@ -17,6 +18,7 @@ export class EntityGrid {
         this.entities = new Array(MAX_ENTITIES);
         this.activeEntities = [];
         this.queryGen = 0;
+        this.maxInsertedExtent = 0;
     }
 
     syncBounds(obstacleGrid) {
@@ -57,6 +59,7 @@ export class EntityGrid {
             this.entities[ent._physId] = null;
         }
         this.activeEntities.length = 0;
+        this.maxInsertedExtent = 0;
     }
 
     _getCellIndex(x, y) {
@@ -83,6 +86,10 @@ export class EntityGrid {
         entity._gridTileIdx = idx;
         this.entities[entity._physId] = entity;
         this.activeEntities.push(entity);
+        const extent = entityBroadphaseExtent(entity);
+        if (extent > this.maxInsertedExtent) {
+            this.maxInsertedExtent = extent;
+        }
 
         if (idx !== -1) {
             this.entityNext[entity._physId] = this.cellHead[idx];
@@ -134,11 +141,8 @@ export class EntityGrid {
         GLOBAL_QUERY_RESULT.length = 0;
         this.queryGen++;
         
-        // We only inserted by center point, so we must expand the search area
-        // by the maximum possible radius of any entity to guarantee we find it.
-        // Assuming max entity radius is around 24.
-        const maxRadius = 24; 
-        const searchRadius = (entity.radius || 0) + maxRadius;
+        // Center-point cells: expand by both bodies' extents plus separation pad.
+        const searchRadius = entityBroadphaseExtent(entity) + this.maxInsertedExtent + NEIGHBOR_QUERY_PAD;
         
         const minX = entity.x - searchRadius;
         const minY = entity.y - searchRadius;
