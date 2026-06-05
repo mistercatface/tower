@@ -26,28 +26,23 @@ export function tickPushableSleep(spatialFrame, { blocksSleep = () => false } = 
 }
 
 /**
- * Pickup update → collision → wall resolve → sleep tick.
+ * Pickup update → collision pass → sleep tick.
+ * Pushable wall resolve runs inside the collision pipeline iterations.
  *
  * @param {object} state
  * @param {number} dt
  * @param {object} spatialFrame
  * @param {{
  *   updatePickups: (state: object, dt: number, spatialFrame: object) => void,
- *   runCollisions: (state: object, spatialFrame: object) => object[],
- *   resolveWalls: (pickup: object, spatialFrame: object) => void,
+ *   runCollisions: (state: object, spatialFrame: object, events: object[]) => void,
  *   blocksSleep?: (pickup: object) => boolean,
  * }} hooks
+ * @param {object[]} events — reusable buffer; collision results are appended
  * @returns {object[]}
  */
-export function runPushablePhysicsPass(state, dt, spatialFrame, { updatePickups, runCollisions, resolveWalls, blocksSleep = () => false }) {
+export function runPushablePhysicsPass(state, dt, spatialFrame, { updatePickups, runCollisions, blocksSleep = () => false }, events) {
     updatePickups(state, dt, spatialFrame);
-    const events = runCollisions(state, spatialFrame);
-    for (let i = 0; i < state.pickups.length; i++) {
-        const pickup = state.pickups[i];
-        if (pickup.isDead || !pickup.strategy?.isPushable) continue;
-        if (pickup.isSleeping || !pickup.needsWallCollision()) continue;
-        resolveWalls(pickup, spatialFrame);
-    }
+    runCollisions(state, spatialFrame, events);
     tickPushableSleep(spatialFrame, { blocksSleep });
     return events;
 }

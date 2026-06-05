@@ -20,8 +20,9 @@ export class CollisionSystem {
         return findFirstCircleSegmentHit(missile, candidateWalls);
     }
 
-    static run(state, spatialFrame) {
+    static run(state, spatialFrame, events = null) {
         return runCollisionPipeline(state, spatialFrame, {
+            events,
             projectiles: state.projectiles,
             projectilePickupFilter,
             onProjectileWallHit: (p, segment, events) => {
@@ -33,7 +34,7 @@ export class CollisionSystem {
             onProjectileFactionCollisions: (p, events) => {
                 p.resolveFactionCollisions(state, events, spatialFrame);
             },
-            resolveWalls: (pickup, frame) => state.wallResolver.resolve(pickup, frame),
+            resolveWalls: (entity, frame) => state.wallResolver.resolve(entity, frame),
             combatantRestitution: (a, b) => {
                 const chargeInvolved = a.attackType === "charge" || b.attackType === "charge";
                 return chargeInvolved ? 0.65 : 0.15;
@@ -48,9 +49,6 @@ export class CollisionSystem {
         if (chargeImpactFilter.allows(charger, other)) {
             events.push({ target: other, damage: enemyDefaults.chargeImpactDamage });
         }
-        charger.changeState("stunned", {
-            timer: 1000,
-            returnState: "charging_prepare",
-        });
+        charger.changeState("stunned", { timer: 1000, returnState: "charging_prepare" });
     }
 }

@@ -19,13 +19,18 @@ import { syncSurfaceProfile } from "../Render/game/surfaceProfileResolver.js";
 
 const MAP_TRAVEL_SPEED = 5.0;
 
-function runPushablePhysics(state, dt, spatialFrame) {
-    return runPushablePhysicsPass(state, dt, spatialFrame, {
-        updatePickups: ProgressionManager.updatePickups,
-        runCollisions: (state, frame) => CollisionSystem.run(state, frame),
-        resolveWalls: (pickup, frame) => state.wallResolver.resolve(pickup, frame),
-        blocksSleep: (pickup) => pickup.currentState?.blocksSleep?.() ?? false,
-    });
+function runPushablePhysics(state, dt, spatialFrame, events) {
+    return runPushablePhysicsPass(
+        state,
+        dt,
+        spatialFrame,
+        {
+            updatePickups: ProgressionManager.updatePickups,
+            runCollisions: (s, frame, buffer) => CollisionSystem.run(s, frame, buffer),
+            blocksSleep: (pickup) => pickup.currentState?.blocksSleep?.() ?? false,
+        },
+        events,
+    );
 }
 
 function runPersistentSectorEnter(state) {
@@ -210,7 +215,8 @@ export class CombatState {
         const spatialFrame = combatSpatial.begin(ctx.state);
 
         const oldGridPos = ctx.state.flowFieldGrid.worldToGrid(ctx.state.player.x, ctx.state.player.y);
-        const combatEvents = ctx.state.updateAllCombatants(stepDt, spatialFrame, { externalSpeedMod: abilityState.externalSpeedMod, upgrades: ctx.upgrades });
+        const events = ctx.state.beginCombatEvents();
+        ctx.state.updateAllCombatants(stepDt, spatialFrame, { externalSpeedMod: abilityState.externalSpeedMod, upgrades: ctx.upgrades, combatEvents: events });
         ctx.state.navigation.updateFlowField({
             playerX: ctx.state.player.x,
             playerY: ctx.state.player.y,
@@ -224,22 +230,20 @@ export class CombatState {
         }
 
         ctx.state.waveManager.manageSpawning(stepDt, ctx.state, ctx.upgrades, ctx.viewport);
-        let spawnHitEvents = [];
         if (!isTraveling) {
-            Projectile.checkSpawnCollisions(ctx.state, spatialFrame, spawnHitEvents);
+            Projectile.checkSpawnCollisions(ctx.state, spatialFrame, events);
             Projectile.updateAll(ctx.state, stepDt);
             CombatParticles.updateAll(ctx.state, stepDt);
             RagdollCorpse.updateAll(ctx.state, stepDt, spatialFrame);
         }
 
-        const collisionEvents = runPushablePhysics(ctx.state, stepDt, spatialFrame);
-        const allEvents = [...combatEvents, ...spawnHitEvents, ...collisionEvents];
+        runPushablePhysics(ctx.state, stepDt, spatialFrame, events);
 
         if (!isTraveling) {
-            Explosion.updateAll(ctx.state, stepDt, allEvents, spatialFrame);
+            Explosion.updateAll(ctx.state, stepDt, events, spatialFrame);
         }
 
-        for (const event of allEvents) {
+        for (const event of events) {
             if (event.target && event.target.handleHit) {
                 event.target.handleHit(event.damage, ctx, event.type, event);
             }
@@ -360,8 +364,9 @@ export class InspectorState {
             previousGridPos: oldGridPos,
         });
 
-        const collisionEvents = runPushablePhysics(ctx.state, dt, spatialFrame);
-        for (const event of collisionEvents) {
+        const events = ctx.state.beginCombatEvents();
+        runPushablePhysics(ctx.state, dt, spatialFrame, events);
+        for (const event of events) {
             if (event.target?.handleHit) {
                 event.target.handleHit(event.damage, ctx, event.type, event);
             }

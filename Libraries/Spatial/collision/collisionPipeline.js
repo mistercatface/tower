@@ -45,6 +45,7 @@ function resolvePushablePair(p1, p2) {
  *   combatantRestitution?: (a: object, b: object) => number,
  *   onChargeImpact?: (charger: object, other: object, events: object[]) => void,
  *   pushableIterations?: number,
+ *   events?: object[],
  * }} hooks
  * @returns {object[]}
  */
@@ -61,26 +62,28 @@ export function runCollisionPipeline(
         combatantRestitution = () => 0.15,
         onChargeImpact = null,
         pushableIterations = DEFAULT_PUSHABLE_ITERATIONS,
+        events = null,
     },
 ) {
-    const events = [];
+    const out = events ?? [];
+    if (!events) out.length = 0;
     for (let i = 0; i < projectiles.length; i++) {
         const p = projectiles[i];
         if (p.isDead) continue;
         const wallCandidates = spatialFrame.getWallCandidates(p);
         const segment = findFirstCircleSegmentHit(p, wallCandidates);
         if (segment) {
-            onProjectileWallHit(p, segment, events);
+            onProjectileWallHit(p, segment, out);
             continue;
         }
         let hitPickup = false;
         spatialFrame.forEachNeighbor(p, (pickup) => {
             if (hitPickup || !projectilePickupFilter.allows(p, pickup)) return;
             if (!circlesOverlap(p, pickup)) return;
-            if (onProjectilePickupHit(p, pickup, events)) hitPickup = true;
+            if (onProjectilePickupHit(p, pickup, out)) hitPickup = true;
         });
         if (hitPickup) continue;
-        onProjectileFactionCollisions(p, events);
+        onProjectileFactionCollisions(p, out);
     }
 
     for (let iter = 0; iter < pushableIterations; iter++) {
@@ -102,13 +105,13 @@ export function runCollisionPipeline(
         if (resolveCirclePair(a, b, { restitution })) invalidateWallResolveCache(a, b);
         if (onChargeImpact) {
             if (a.attackType === "charge" && a.currentStateName !== "stunned") {
-                onChargeImpact(a, b, events);
+                onChargeImpact(a, b, out);
             }
             if (b.attackType === "charge" && b.currentStateName !== "stunned") {
-                onChargeImpact(b, a, events);
+                onChargeImpact(b, a, out);
             }
         }
     });
 
-    return events;
+    return out;
 }

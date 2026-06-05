@@ -65,6 +65,8 @@ export class GameState {
         this.mapWallCache = null;
         this.mapLabWallCache = null;
         this.mapPathDebugCache = null;
+        this._combatantsCache = [];
+        this._combatEventBuffer = [];
 
         this.initializeDefaultState();
     }
@@ -232,12 +234,28 @@ export class GameState {
     }
 
     getCombatants() {
-        return [...this.getPlayerActors(), ...this.getHostileActors()];
+        const cache = this._combatantsCache;
+        cache.length = 0;
+        if (this.player && !this.player.isDead) cache.push(this.player);
+        for (let i = 0; i < this.allies.length; i++) {
+            const ally = this.allies[i];
+            if (!ally.isDead) cache.push(ally);
+        }
+        for (let i = 0; i < this.enemies.length; i++) {
+            const enemy = this.enemies[i];
+            if (!enemy.isDead) cache.push(enemy);
+        }
+        return cache;
+    }
+
+    beginCombatEvents() {
+        this._combatEventBuffer.length = 0;
+        return this._combatEventBuffer;
     }
 
     updateAllCombatants(dt, spatialFrame, options = {}) {
         this.activeLasers = [];
-        const combatEvents = [];
+        const combatEvents = options.combatEvents ?? this.beginCombatEvents();
 
         for (const actor of this.getCombatants()) {
             actor.updateCombat(dt, this, spatialFrame, {
