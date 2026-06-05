@@ -16,8 +16,8 @@ export const radioConversations = {
             { speakerId: "garbanzo", text: "Nope." },
         ],
     },
-    first_wave_clear_barry_brock: {
-        trigger: "first_wave_clear",
+    intro_guards_cleared_barry_brock: {
+        trigger: "intro_guards_cleared",
         oncePerRun: true,
         lines: [
             { speakerId: "brock", text: "You said this place was deserted." },
@@ -33,8 +33,8 @@ export const radioConversations = {
             { speakerId: "barry", text: "Maybe we can find a dolly somewhere." },
         ],
     },
-    start_node_inspection_complete_barry_brock: {
-        trigger: "start_node_inspection_complete",
+    clue_search_complete_barry_brock: {
+        trigger: "clue_search_complete",
         oncePerRun: true,
         lines: [
             { speakerId: "brock", text: "Well, we've made it this far. I'm not about to come back empty handed now." },

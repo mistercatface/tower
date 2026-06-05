@@ -1,7 +1,7 @@
 import { perkMilestones, xpForLevel } from "../Config/Config.js";
 import { buildAbilityTreeLayout } from "../Config/content/abilityTreeLayout.js";
 import { GamePhase, isCombat, isInspector } from "../GameState/GamePhase.js";
-import { getStartNodeInspectionMissionLabel } from "../Combat/inspect/StartNodeInspection.js";
+import { getClueSearchMissionLabel } from "../Combat/inspect/ClueSearch.js";
 import { getGunDefinition, playerEquipmentCatalog } from "../Config/content/guns.js";
 import { getSlotFireIntervalMs, getSlotReloadTimeMs } from "../Combat/gunCombat.js";
 import { countGunInLoadout, formatHandednessLabel, getEquipmentSlotCount, getGunEquipAction, normalizeWeaponLoadout } from "../Combat/equipmentLoadout.js";
@@ -154,14 +154,14 @@ function updateInspectMissionBanner(state) {
     const textEl = elements.inspectMissionText;
     if (!banner || !textEl) return;
 
-    const show = isInspector(state.phase) && state.startNodeInspectionActive;
+    const show = isInspector(state.phase) && state.clueSearchActive;
     const display = show ? "block" : "none";
     if (banner.style.display !== display) {
         banner.style.display = display;
     }
     if (!show) return;
 
-    const text = getStartNodeInspectionMissionLabel(state);
+    const text = getClueSearchMissionLabel(state);
     if (textEl.innerText !== text) {
         textEl.innerText = text;
     }

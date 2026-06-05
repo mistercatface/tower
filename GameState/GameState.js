@@ -141,11 +141,11 @@ export class GameState {
         this.startNodeIntroTriggered = false;
         this.startNodeIntroCompleted = false;
         this.startNodeGuardsDialogUnlocked = false;
-        this.startNodeInspectionActive = false;
-        this.startNodeInspectionSeen = null;
-        this.startNodeInspectionPending = null;
-        this.startNodeInspectionCompleted = false;
-        this.startNodeInspectionFinishing = false;
+        this.clueSearchActive = false;
+        this.clueSearchSeen = null;
+        this.clueSearchOnComplete = null;
+        this.clueSearchCompleted = false;
+        this.clueSearchFinishing = false;
         this.inspectPanelOpen = false;
         this.skipCombatEnterReset = false;
         this.zombieEventTriggered = false;

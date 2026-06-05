@@ -21,7 +21,7 @@ function registerTriggerDefinitions() {
 
 /**
  * Wire persistent triggers to the main event bus.
- * Per-run tutorials (e.g. start-node first wave) stay in GameListeners or radio oncePerRun.
+ * Per-run tutorials (e.g. intro guards → clue search) stay in GameListeners or radio oncePerRun.
  */
 export function registerPersistentTriggers(eventBus) {
     registerTriggerDefinitions();

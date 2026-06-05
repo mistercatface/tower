@@ -125,7 +125,7 @@ export class TurretController {
     }
 
     getExternalBlocksTargeting(state, upgrades = []) {
-        if (state?.startNodeInspectionActive) return true;
+        if (state?.clueSearchActive) return true;
         if (!this.actor.isAbilityOwner(state) || !state?.abilities || !state?.scheduler) return false;
         for (const upg of upgrades) {
             if (!upg.isAbility || !state.abilities[upg.id] || !upg.blocksTargeting) continue;

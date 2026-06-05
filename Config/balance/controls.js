@@ -3,4 +3,4 @@ export const controlSettings = {
     scrollZoomSensitivity: -0.001,
 };
 
-export const debugStartNodeInspectionImmediate = false;
+export const debugSkipToClueSearch = false;

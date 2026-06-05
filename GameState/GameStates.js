@@ -1,11 +1,11 @@
 import { FloatingText } from "../Render/FloatingText.js";
 import { requestUiUpdate } from "../Core/EventSystem.js";
-import { gridSettings, debugStartNodeInspectionImmediate } from "../Config/Config.js";
+import { gridSettings, debugSkipToClueSearch } from "../Config/Config.js";
 import { getStartNodeLayout } from "../Generator/StartNodeBuilding.js";
 import { Pools } from "../Core/Pools.js";
 import { inspectBridge } from "../Combat/inspect/InspectBridge.js";
 import { beginStartNodeIntro, shouldRunStartNodeIntro } from "../Combat/StartNodeIntro.js";
-import { findStartNodeInspectionPickup, beginStartNodeInspection, shouldEnterStartNodeInspection } from "../Combat/inspect/StartNodeInspection.js";
+import { findClueSearchPickup, beginClueSearch, shouldRunClueSearch } from "../Combat/inspect/ClueSearch.js";
 import {
     runPersistentSectorEnterOnNode,
     runCombatTick,
@@ -59,10 +59,10 @@ export class CombatState {
         ctx.state.player.resetTurretCombatState();
         runPersistentSectorEnterOnNode(ctx.state);
         if (shouldRunStartNodeIntro(ctx.state)) beginStartNodeIntro(ctx.state);
-        if (startNode && debugStartNodeInspectionImmediate && shouldEnterStartNodeInspection(ctx.state)) {
-            beginStartNodeInspection(ctx.state, null);
+        if (startNode && debugSkipToClueSearch && shouldRunClueSearch(ctx.state)) {
+            beginClueSearch(ctx.state, null);
             requestAnimationFrame(() => {
-                if (shouldEnterStartNodeInspection(ctx.state)) ctx.state.fsm.transition("inspector");
+                if (shouldRunClueSearch(ctx.state)) ctx.state.fsm.transition("inspector");
             });
         }
         requestUiUpdate();
@@ -125,7 +125,7 @@ export class InspectorState {
 
         handlePlayerRepositionTap(ctx, worldCoords, isDoubleTap, {
             intercept: (coords) => {
-                const inspectTarget = findStartNodeInspectionPickup(ctx.state, coords.x, coords.y);
+                const inspectTarget = findClueSearchPickup(ctx.state, coords.x, coords.y);
                 if (!inspectTarget) return false;
                 inspectBridge.open(inspectTarget, null, ctx.state);
                 return true;

@@ -3,7 +3,7 @@ import { Events, requestProgressDirty, requestUiUpdate } from "./EventSystem.js"
 import { ProgressionManager } from "../Progression/ProgressionManager.js";
 import { hardResetProgress, registerProgressListeners } from "../Progression/Storage.js";
 import { StatsManager } from "../Progression/StatsManager.js";
-import { tryEnterStartNodeInspectionAfterGarbanzoFight } from "../Combat/inspect/StartNodeInspection.js";
+import { tryBeginClueSearchAfterIntroGuards } from "../Combat/inspect/ClueSearch.js";
 import { isCombat } from "../GameState/GamePhase.js";
 import { registerPauseListeners } from "./PauseManager.js";
 import { FloatingText } from "../Render/FloatingText.js";
@@ -22,7 +22,7 @@ export function registerGameListeners(eventBus, pauseManager) {
 
     eventBus.on(Events.COMBAT_ENEMY_KILLED, ({ enemy, state, upgrades, fsm }) => {
         ProgressionManager.processEnemyKillRewards(enemy, state, upgrades);
-        if (enemy?.isIntroGuard) tryEnterStartNodeInspectionAfterGarbanzoFight(state, fsm);
+        if (enemy?.isIntroGuard) tryBeginClueSearchAfterIntroGuards(state, fsm);
         requestProgressDirty();
         requestUiUpdate();
     });

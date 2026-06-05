@@ -7,8 +7,8 @@ import { isRadioDialogActive } from "../../Games/tower/wireRadio.js";
 import {
     onInspectPanelClosed,
     playGuidedInspectRadio,
-    recordStartNodeInspection,
-} from "./StartNodeInspection.js";
+    recordClueFound,
+} from "./ClueSearch.js";
 import { requestGamePause, requestGameResume, requestUiUpdate } from "../../Core/EventSystem.js";
 
 const INSPECTOR_PAUSE_REASON = "inspector";
@@ -62,8 +62,8 @@ class InspectBridge {
         requestUiUpdate();
 
         const inspectKey = subject.inspectKey;
-        if (inspectKey && state?.startNodeInspectionSeen != null) {
-            playGuidedInspectRadio(state, inspectKey, () => recordStartNodeInspection(state, inspectKey));
+        if (inspectKey && state?.clueSearchSeen != null) {
+            playGuidedInspectRadio(state, inspectKey, () => recordClueFound(state, inspectKey));
         }
     }
 
@@ -78,11 +78,11 @@ class InspectBridge {
 
         if (
             closedKey
-            && state?.startNodeInspectionSeen
-            && !state.startNodeInspectionSeen.has(closedKey)
+            && state?.clueSearchSeen
+            && !state.clueSearchSeen.has(closedKey)
             && !isRadioDialogActive()
         ) {
-            recordStartNodeInspection(state, closedKey);
+            recordClueFound(state, closedKey);
         }
 
         if (state) {
