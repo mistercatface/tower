@@ -1,4 +1,4 @@
-import { THEME_COLORS, floorTileSettings } from "../../Config/Config.js";
+import { floorTileSettings } from "../../Config/Config.js";
 import { drawBarrel, drawCrate, drawFireBarrel, drawCrateShard } from "./PropRecipes.js";
 import { SpatialQuery } from "../../Spatial/World/SpatialQuery.js";
 import { isFaceTowardViewer, CAMERA_HEIGHT } from "./math/CombatProjection.js";
@@ -64,11 +64,10 @@ export class Render3D {
         }
     }
 
-    getWallColor(seg, theme, darkenRatio = 1.0) {
-        const activeTheme = seg.theme || theme;
-        const baseR = activeTheme ? activeTheme.r : 0;
-        const baseG = activeTheme ? activeTheme.g : 188;
-        const baseB = activeTheme ? activeTheme.b : 212;
+    getWallColor(seg, darkenRatio = 1.0) {
+        const baseR = 245;
+        const baseG = 245;
+        const baseB = 247;
         const healthRatio = Math.max(0, Math.round((seg.health / seg.maxHealth) * 10) / 10);
         const r = Math.floor((baseR + (244 - baseR) * (1 - healthRatio)) * darkenRatio);
         const g = Math.floor((baseG + (67 - baseG) * (1 - healthRatio)) * darkenRatio);
@@ -77,7 +76,7 @@ export class Render3D {
     }
 
     drawWallFace(ctx, seg, p1, p2, px, py, state, viewport, options = {}, cacheObj = null) {
-        const wallColor = this.getWallColor(seg, THEME_COLORS[0], 1.0);
+        const wallColor = this.getWallColor(seg, 1.0);
         const healthRatio = seg.health / seg.maxHealth;
         const damageAlpha = healthRatio < 1 ? (1 - healthRatio) * 0.45 : 0;
         const textureEnabled = options.textureEnabled !== false;
@@ -121,7 +120,7 @@ export class Render3D {
                 };
             });
 
-            const wallColor = this.getWallColor(seg, THEME_COLORS[0], 1.08);
+            const wallColor = this.getWallColor(seg, 1.08);
             const edgeObj = edges[0];
             drawProjectedWallRoof(ctx, topCorners, seg, wallColor, state, viewport, edgeObj);
         }

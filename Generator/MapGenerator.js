@@ -3,7 +3,7 @@ import { GeneratorStrategies } from "./GeneratorStrategies.js";
 import { StartBuildingStrategy } from "./StartNodeBuilding.js";
 import { WorldObstacleGrid } from "../Spatial/World/ObstacleGrid.js";
 import { FlowFieldGrid } from "../Spatial/Navigation/FlowFieldGrid.js";
-import { mapSettings, gridSettings, THEME_COLORS, mapGenerationSettings } from "../Config/Config.js";
+import { mapSettings, gridSettings, mapGenerationSettings } from "../Config/Config.js";
 import { resolveFloorTextureProfileId } from "../Config/floorProceduralConfig.js";
 import { syncFloorTextureProfile } from "../Render/Floor/floorTextureProfile.js";
 import { buildMapRenderCaches } from "../Render/Map/MapRenderCache.js";
@@ -247,7 +247,6 @@ export class MapGenerator {
 
                     if (!inRoomZone) {
                         const segment = new Segment(wx, wy, 0, cellSize, 0);
-                        segment.theme = THEME_COLORS[0];
                         caWalls.push(segment);
                         state.walls.push(segment);
                         state.wallSpatialHash.insert(segment);
@@ -265,7 +264,6 @@ export class MapGenerator {
             if (node.wallsData) {
                 for (const w of node.wallsData) {
                     const segment = new Segment(w.x, w.y, w.angle, w.size, w.padding ?? 0, w.maxHealth, w.maxHealth, false, w.wallHeight);
-                    segment.theme = node.wallTheme || THEME_COLORS[0];
                     state.walls.push(segment);
                     state.wallSpatialHash.insert(segment);
                 }
@@ -294,7 +292,6 @@ export class MapGenerator {
 
         const startNode = state.getMapNode(0);
         if (startNode) {
-            const theme = THEME_COLORS[0];
             const coords = state.getNodeCombatCoords(startNode);
 
             tempFlowFieldGrid.centerX = coords.x;
@@ -309,7 +306,6 @@ export class MapGenerator {
             StartBuildingStrategy.generate(mockState, coords.x, coords.y);
 
             startNode.wallsData = serializeWalls(mockState.walls, coords.x, coords.y, 480);
-            startNode.wallTheme = theme;
             startNode.strategy = "StartBuilding";
             startNode.floorTextureProfileId = resolveFloorTextureProfileId({ layer: 0, strategy: "StartBuildingStrategy" });
         }
@@ -323,13 +319,11 @@ export class MapGenerator {
                 let attempts = 0;
                 let success = false;
                 let chosenWalls = [];
-                let chosenTheme = null;
                 let chosenStrategy = null;
 
                 while (!success && attempts < 50) {
                     attempts++;
                     const strategy = STRATEGIES[Math.floor(Math.random() * STRATEGIES.length)];
-                    const theme = THEME_COLORS[Math.floor(Math.random() * THEME_COLORS.length)];
                     const coordsB = state.getNodeCombatCoords(nodeB);
 
                     tempFlowFieldGrid.centerX = coordsB.x;
@@ -353,7 +347,6 @@ export class MapGenerator {
 
                     if (allPathable) {
                         chosenWalls = serializeWalls(mockState.walls, coordsB.x, coordsB.y, 480);
-                        chosenTheme = theme;
                         chosenStrategy = strategy;
                         success = true;
                     }
@@ -361,12 +354,10 @@ export class MapGenerator {
 
                 if (!success) {
                     chosenWalls = [];
-                    chosenTheme = THEME_COLORS[0];
                     chosenStrategy = "None";
                 }
 
                 nodeB.wallsData = chosenWalls;
-                nodeB.wallTheme = chosenTheme;
                 nodeB.strategy = chosenStrategy;
                 nodeB.floorTextureProfileId =
                     chosenStrategy === "None"

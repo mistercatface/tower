@@ -274,18 +274,7 @@ export const explosionSettings = { defaultDamage: 5, barrelDamage: 5, wallBlastD
 
 export const enemyBaseStats = { turnSpeed: 10, range: 112, accuracy: 0.9, penetration: 0, moveSpeedMultiplier: 1.0, fireIntervalMultiplier: 1.0, reloadSpeedMultiplier: 1.0, speed: 75 };
 
-export const THEME_COLORS = [
-    { r: 245, g: 245, b: 247 }, // 1. Near-White / Light Silver (High Brightness)
-    { r: 40, g: 45, b: 50 },    // 2. Dark Charcoal (High Contrast / Dark)
-    { r: 110, g: 130, b: 155 }, // 3. Cool Bluish Slate (Cool Tint)
-    { r: 185, g: 180, b: 170 }, // 4. Warm Concrete / Putty (Warm Tint)
-    { r: 120, g: 135, b: 120 }, // 5. Mossy Stone Gray (Greenish Tint)
-    { r: 210, g: 215, b: 220 }, // 6. Reflective Silver Steel (Light Gray)
-    { r: 95, g: 85, b: 80 },    // 7. Reddish Dark Iron (Warm Dark Gray)
-    { r: 130, g: 150, b: 170 }, // 8. Steel Blue (Bluish Light Gray)
-    { r: 160, g: 150, b: 140 }, // 9. Sandstone / Earthy Gray (Muted Brown-Gray)
-    { r: 140, g: 140, b: 140 }, // 10. Neutral Medium Gray (Standard Gray)
-];
+
 
 export const controlSettings = { doubleTapTimeout: 300, scrollZoomSensitivity: -0.001 };
 
