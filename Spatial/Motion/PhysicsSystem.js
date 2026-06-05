@@ -1,5 +1,6 @@
 import { integrateSteering } from "../../Libraries/Motion/integrateSteering.js";
 import { applyVelocityDamping } from "../../Libraries/Motion/applyDamping.js";
+import { applyImpulse, applyKnockback } from "../../Libraries/Motion/applyImpulse.js";
 import { getCircleSegmentPenetration } from "../../Libraries/Spatial/geometry/WallGeometry.js";
 import { SatCollision } from "../../Libraries/Spatial/collision/SatCollision.js";
 import { PolygonShape } from "../../Libraries/Spatial/collision/Shapes.js";
@@ -141,16 +142,11 @@ export class PhysicsSystem {
     }
 
     static applyImpulse(entity, fx, fy) {
-        if (entity.vx === undefined || entity.vy === undefined) return;
-        const mass = entity.mass || 1.0;
-        entity.vx += fx / mass;
-        entity.vy += fy / mass;
+        applyImpulse(entity, fx, fy);
     }
 
     static applyKnockback(entity, angle, magnitude) {
-        const fx = Math.cos(angle) * magnitude;
-        const fy = Math.sin(angle) * magnitude;
-        this.applyImpulse(entity, fx, fy);
+        applyKnockback(entity, angle, magnitude);
     }
 
     static applyRigidBodyImpulse(p1, p2, collisionInfo, restitution = 0.15) {

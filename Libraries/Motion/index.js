@@ -6,7 +6,7 @@
  *
  * Expansion roadmap:
  * 1. integrateSteering, applyVelocityDamping (done)
- * 2. applyImpulse / applyKnockback (scalar, no game collision)
+ * 2. applyImpulse / applyKnockback (done)
  * 3. separationForce — overlap weights from neighbor positions (no faction rules)
  * 4. seek / arrive / direct — normalized direction helpers
  *
@@ -14,3 +14,4 @@
  */
 export { integrateSteering } from "./integrateSteering.js";
 export { applyVelocityDamping } from "./applyDamping.js";
+export { applyImpulse, applyKnockback } from "./applyImpulse.js";
