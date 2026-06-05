@@ -17,7 +17,7 @@ import { MapState, CombatState, InspectorState, RewardState } from "./GameState/
 import { unlockStartNodeGuardsDialog } from "./Combat/StartNodeIntro.js";
 import { inspectBridge } from "./Combat/InspectBridge.js";
 import { registerGameInspectEntries } from "./Combat/inspectContent.js";
-import { preloadAllInspectAssets } from "./Render/Inspect/InspectCatalog.js";
+import { preloadAllInspectAssets } from "./Libraries/Inspect/InspectCatalog.js";
 import "./Entities/Zombie.js";
 
 const canvas = document.getElementById("towerCanvas");

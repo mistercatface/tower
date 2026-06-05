@@ -8,9 +8,9 @@ import {
     projectPoint,
     averageDepth,
 } from "../camera/InspectCamera.js";
-import { faceVisible } from "../../3D/geometry/MeshBuilder.js";
-import { drawImageQuad } from "../../3D/draw/AffineTexture.js";
-import { labelBandYRange } from "../../../Math/Interpolate.js";
+import { faceVisible } from "../../../Render/3D/geometry/MeshBuilder.js";
+import { drawImageQuad } from "../../../Render/3D/draw/AffineTexture.js";
+import { labelBandYRange } from "../../../../Math/Interpolate.js";
 
 /** @typedef {"+x" | "-x" | "+z" | "-z"} BoxSideFace */
 

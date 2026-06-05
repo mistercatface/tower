@@ -1,7 +1,7 @@
 /** @typedef {import("../Entities/Pickup.js").Pickup} Pickup */
 
-import { InspectViewer } from "../Render/Inspect/InspectViewer.js";
-import { getInspectEntry } from "../Render/Inspect/InspectCatalog.js";
+import { InspectViewer } from "../Libraries/Inspect/InspectViewer.js";
+import { getInspectEntry } from "../Libraries/Inspect/InspectCatalog.js";
 import { toInspectSubject } from "./inspectTargeting.js";
 import { isRadioDialogActive } from "../Radio/RadioDialogController.js";
 import {
@@ -51,7 +51,7 @@ class InspectBridge {
         this.viewer.open(entry, subject, onClose);
     }
 
-    /** @param {import("../Render/Inspect/InspectCatalog.js").InspectSubject} subject */
+    /** @param {import("../Libraries/Inspect/InspectCatalog.js").InspectSubject} subject */
     handleOpen(subject) {
         const state = this.gameState;
         if (state) {
@@ -67,7 +67,7 @@ class InspectBridge {
         }
     }
 
-    /** @param {import("../Render/Inspect/InspectCatalog.js").InspectSubject} subject */
+    /** @param {import("../Libraries/Inspect/InspectCatalog.js").InspectSubject} subject */
     handleClose(subject) {
         const closedKey = subject.inspectKey;
         const state = this.gameState;

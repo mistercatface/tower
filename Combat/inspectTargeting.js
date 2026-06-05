@@ -1,7 +1,7 @@
 /** @typedef {import("../Entities/Pickup.js").Pickup} Pickup */
-/** @typedef {import("../Render/Inspect/InspectCatalog.js").InspectSubject} InspectSubject */
+/** @typedef {import("../Libraries/Inspect/InspectCatalog.js").InspectSubject} InspectSubject */
 
-import { getInspectEntry } from "../Render/Inspect/InspectCatalog.js";
+import { getInspectEntry } from "../Libraries/Inspect/InspectCatalog.js";
 
 /**
  * @param {Pickup} pickup
