@@ -5,7 +5,6 @@ import { ProgressionManager } from "../Progression/ProgressionManager.js";
 import { CollisionSystem } from "../Spatial/Collision/CollisionSystem.js";
 import { runPushablePhysicsPass, wakeAllPushables } from "../Libraries/Motion/pushablePhysicsPass.js";
 import { combatSpatial } from "../Spatial/World/CombatSpatialFrame.js";
-import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { Projectile } from "../Entities/Projectile.js";
 import { showNodeConfirmModal, requestUiUpdate } from "../Core/EventSystem.js";
 import { Explosion } from "../Entities/Explosion/Explosion.js";
@@ -24,7 +23,7 @@ function runPushablePhysics(state, dt, spatialFrame) {
     return runPushablePhysicsPass(state, dt, spatialFrame, {
         updatePickups: ProgressionManager.updatePickups,
         runCollisions: (state, frame) => CollisionSystem.run(state, frame),
-        resolveWalls: (pickup, frame) => PhysicsSystem.resolveWallCollisions(pickup, frame, state),
+        resolveWalls: (pickup, frame) => state.wallResolver.resolve(pickup, frame),
         blocksSleep: (pickup) => pickup.currentState?.blocksSleep?.() ?? false,
     });
 }

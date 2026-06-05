@@ -3,7 +3,6 @@ import { TurretController } from "../Combat/TurretController.js";
 import { ActorRenderer } from "../Render/ActorRenderer.js";
 import { applyEntityLocomotion } from "../Libraries/Motion/index.js";
 import { initMobileAgent } from "../Libraries/Agent/index.js";
-import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { actorStates } from "./ActorStates.js";
 import { transitionEntity } from "../Libraries/FSM/transition.js";
 import { createCombatantStats, applyUpgrades, applyUpgradesToStats, syncActorCombatFromStats, initCombatantUpgradeSlots } from "./CombatantStats.js";
@@ -302,7 +301,7 @@ export class Actor extends DestructibleEntity {
                 const armed = normalizeWeaponLoadout(actor.weaponLoadout ?? []).length > 0;
                 return !armed || actor.hasLocomotionIntent();
             },
-            resolveWalls: state ? (entity, frame) => PhysicsSystem.resolveWallCollisions(entity, frame, state) : null,
+            resolveWalls: state?.wallResolver ? (entity, frame) => state.wallResolver.resolve(entity, frame) : null,
         });
     }
 

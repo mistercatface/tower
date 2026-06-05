@@ -101,7 +101,7 @@ export class CollisionSystem {
             for (let i = 0; i < spatialFrame._pushables.length; i++) {
                 const pickup = spatialFrame._pushables[i];
                 if (pickup.isDead || !pickup.needsWallCollision()) continue;
-                PhysicsSystem.resolveWallCollisions(pickup, spatialFrame, state);
+                state.wallResolver.resolve(pickup, spatialFrame);
             }
         }
 

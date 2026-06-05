@@ -1,12 +1,11 @@
 import { applyEntityLocomotion, integrateSteering, applyVelocityDamping, updateSeparation } from "../Libraries/Motion/index.js";
 import { applyDesiredDirection } from "../Libraries/Agent/index.js";
-import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { normalizeAngle, turnAngleTowards } from "../Libraries/Math/Angle.js";
 import { CollisionSystem } from "../Spatial/Collision/CollisionSystem.js";
 import { enemyDefaults } from "../Config/Config.js";
 
 function applyEnemyLocomotion(enemy, dt, spatialFrame, state, options = {}) {
-    return applyEntityLocomotion(enemy, dt, spatialFrame, { ...options, resolveWalls: (entity, frame) => PhysicsSystem.resolveWallCollisions(entity, frame, state) });
+    return applyEntityLocomotion(enemy, dt, spatialFrame, { ...options, resolveWalls: (entity, frame) => state.wallResolver.resolve(entity, frame) });
 }
 
 function analyzeStrafePath(enemy, tangentX, tangentY, dir, walls, target, state) {
@@ -296,7 +295,7 @@ export class EnemyChargeWindupState {
         enemy.desiredX = 0;
         enemy.desiredY = 0;
         integrateSteering(enemy, dt, { ignoreSeparation: true, shouldMove: true });
-        PhysicsSystem.resolveWallCollisions(enemy, spatialFrame, state);
+        state.wallResolver.resolve(enemy, spatialFrame);
 
         const dx = target.x - enemy.x;
         const dy = target.y - enemy.y;
@@ -336,7 +335,7 @@ export class EnemyChargeDashState {
         enemy.speed = originalSpeed;
         enemy.accelRate = originalAccel;
 
-        PhysicsSystem.resolveWallCollisions(enemy, spatialFrame, state);
+        state.wallResolver.resolve(enemy, spatialFrame);
 
         const distToTarget = Math.hypot(enemy.x - target.x, enemy.y - target.y);
         stateData.timer -= dt;
@@ -405,7 +404,7 @@ export class EnemyStunnedState {
         applyVelocityDamping(enemy, dt, { friction: 4.0 });
         enemy.x += enemy.separation.pushX;
         enemy.y += enemy.separation.pushY;
-        PhysicsSystem.resolveWallCollisions(enemy, spatialFrame, state);
+        state.wallResolver.resolve(enemy, spatialFrame);
 
         const velLen = Math.hypot(enemy.vx, enemy.vy);
         if (velLen > 1) {
@@ -507,7 +506,7 @@ export class EnemyKnockedBackState {
             enemy.x += enemy.vx * (dt / 1000);
             enemy.y += enemy.vy * (dt / 1000);
             enemy.angle = turnAngleTowards(enemy.angle, data.angle, enemy.turnSpeed, dt);
-            PhysicsSystem.resolveWallCollisions(enemy, spatialFrame, state);
+            state.wallResolver.resolve(enemy, spatialFrame);
 
             if (data.timer <= 0) {
                 const recoveryMs = data.stunMs - data.pushMs;
@@ -527,7 +526,7 @@ export class EnemyKnockedBackState {
         applyVelocityDamping(enemy, dt, { friction: 4.0 });
         enemy.x += enemy.separation.pushX;
         enemy.y += enemy.separation.pushY;
-        PhysicsSystem.resolveWallCollisions(enemy, spatialFrame, state);
+        state.wallResolver.resolve(enemy, spatialFrame);
 
         const velLen = Math.hypot(enemy.vx, enemy.vy);
         if (velLen > 1) {

@@ -1,6 +1,5 @@
 import { Entity } from "./Entity.js";
 import { applyVelocityDamping } from "../Libraries/Motion/index.js";
-import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { worldPropDefinitions } from "../Config/content/propDefinitions.js";
 import { CRATE_LABEL_VARIANTS, CRATE_LABEL_FACES } from "../Config/content/props/Crate.js";
 import { transitionEntity } from "../Libraries/FSM/transition.js";
@@ -204,7 +203,7 @@ export class Pickup extends Entity {
         this.ageMs += dt;
         if (this.isSleeping) return;
         applyVelocityDamping(this, dt, { friction: this.strategy.friction });
-        if (resolveWalls && this.strategy.isPushable && this.needsWallCollision()) PhysicsSystem.resolveWallCollisions(this, spatialFrame, state);
+        if (resolveWalls && this.strategy.isPushable && this.needsWallCollision()) state.wallResolver.resolve(this, spatialFrame);
         if (this.currentState?.update) this.currentState.update(this, dt, state.walls, state);
     }
 

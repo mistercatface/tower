@@ -6,6 +6,7 @@ import { FlowFieldGrid } from "../Libraries/Pathfinding/FlowFieldGrid.js";
 import { HierarchicalNavigator } from "../Libraries/Pathfinding/HierarchicalNavigator.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { NavigationService } from "../Spatial/Navigation/NavigationService.js";
+import { createCombatWallResolver } from "../Spatial/Motion/createCombatWallResolver.js";
 import { combatActorRadius, gridSettings, mapSettings, navigationSettings, runBaseStats } from "../Config/Config.js";
 import { Scheduler } from "../Libraries/Scheduler/Scheduler.js";
 import { WaveManager } from "../Combat/WaveManager.js";
@@ -51,6 +52,7 @@ export class GameState {
             { damagePadding: navigationSettings.hpaDamagePadding },
         );
         this.navigation = new NavigationService(this.flowFieldGrid, this.hierarchicalNavigator);
+        this.wallResolver = createCombatWallResolver(() => this);
         this.currentUpgradeTab = "stats";
         this.statsSubTab = "attack";
         this.canvasBounds = { width: 0, height: 0 };
