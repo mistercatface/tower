@@ -10,7 +10,8 @@
  * 3. separationForce — overlap weights from neighbor positions (no faction rules)
  * 4. seek / arrive / direct — normalized direction helpers
  *
- * Game layer (Spatial/Motion/PhysicsSystem) keeps: walls, SAT, rigid-body response, damage.
+ * Game layer (Spatial/Motion/PhysicsSystem) keeps: wall collision, SAT, rigid-body response, damage.
+ * Import this module directly — no PhysicsSystem pass-through for pure motion.
  */
 export { integrateSteering } from "./integrateSteering.js";
 export { applyVelocityDamping } from "./applyDamping.js";

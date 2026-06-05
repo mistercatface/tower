@@ -2,6 +2,7 @@ import { DestructibleEntity } from "./Entity.js";
 import { TurretController } from "../Combat/TurretController.js";
 import { ActorRenderer } from "../Render/ActorRenderer.js";
 import { Separation } from "../Spatial/Motion/Separation.js";
+import { integrateSteering } from "../Libraries/Motion/index.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { actorStates } from "./ActorStates.js";
 import { transitionEntity } from "./EntityFsm.js";
@@ -306,7 +307,11 @@ export class Actor extends DestructibleEntity {
         }
         const armed = normalizeWeaponLoadout(this.weaponLoadout ?? []).length > 0;
         const alignAngle = alignAngleWithMovement && (!armed || this.hasLocomotionIntent());
-        PhysicsSystem.applyMovement(this, dt, ignoreSeparationInDesired, shouldMove, alignAngle);
+        integrateSteering(this, dt, {
+            ignoreSeparation: ignoreSeparationInDesired,
+            shouldMove,
+            alignAngleWithMovement: alignAngle,
+        });
         if (externalSpeedMod !== 1) {
             this.speed = baseSpeed;
         }

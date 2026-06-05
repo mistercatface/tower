@@ -3,7 +3,7 @@ import { RenderSprites } from "../Render/RenderSprites.js";
 import { defaultGunId, getGunDefinition } from "../Config/content/guns.js";
 import { defaultTurretLoadout, resolveFireAngleOffsets } from "../Config/content/turrets/loadout.js";
 import { Pools } from "../Core/Pools.js";
-import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
+import { applyKnockback } from "../Libraries/Motion/index.js";
 import { getGunProjectileConfig } from "../Combat/gunCombat.js";
 import { inferFaction, areHostile } from "../Combat/Targeting.js";
 import { CombatParticles } from "../Render/CombatParticles.js";
@@ -140,10 +140,10 @@ export class Turret {
 
         if (projectiles.length > 0) {
             const knockbackScale = projectiles.reduce((sum, p) => sum + p.radius, 0);
-            PhysicsSystem.applyKnockback(
+            applyKnockback(
                 source,
                 baseAngle + Math.PI,
-                knockbackScale * (projectileConfig.shooterKnockbackMultiplier ?? 0)
+                knockbackScale * (projectileConfig.shooterKnockbackMultiplier ?? 0),
             );
         }
     }

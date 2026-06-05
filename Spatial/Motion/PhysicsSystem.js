@@ -1,15 +1,8 @@
-import { integrateSteering } from "../../Libraries/Motion/integrateSteering.js";
-import { applyVelocityDamping } from "../../Libraries/Motion/applyDamping.js";
-import { applyImpulse, applyKnockback } from "../../Libraries/Motion/applyImpulse.js";
 import { getCircleSegmentPenetration } from "../../Libraries/Spatial/geometry/WallGeometry.js";
 import { SatCollision } from "../../Libraries/Spatial/collision/SatCollision.js";
 import { PolygonShape } from "../../Libraries/Spatial/collision/Shapes.js";
 
 export class PhysicsSystem {
-    static applyMovement(entity, dt, ignoreSeparation = false, shouldMove = true, alignAngleWithMovement = true) {
-        integrateSteering(entity, dt, { ignoreSeparation, shouldMove, alignAngleWithMovement });
-    }
-
     static resolveWallCollisions(entity, spatialFrame, state) {
         if (entity._wallResolvedFrame === spatialFrame.frameId) {
             return entity._wallResolvedCollided;
@@ -135,18 +128,6 @@ export class PhysicsSystem {
         }
         entity._wallResolvedCollided = collided;
         return collided;
-    }
-
-    static applyFrictionAndDrag(entity, dt, friction = 8.0) {
-        applyVelocityDamping(entity, dt, { friction });
-    }
-
-    static applyImpulse(entity, fx, fy) {
-        applyImpulse(entity, fx, fy);
-    }
-
-    static applyKnockback(entity, angle, magnitude) {
-        applyKnockback(entity, angle, magnitude);
     }
 
     static applyRigidBodyImpulse(p1, p2, collisionInfo, restitution = 0.15) {

@@ -1,5 +1,6 @@
 import { Enemy } from "./Enemy.js";
 import { actorStates } from "./ActorStates.js";
+import { integrateSteering } from "../Libraries/Motion/index.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 
 export class ZombieChargePrepareState {
@@ -15,7 +16,7 @@ export class ZombieChargePrepareState {
         enemy.calculateSteering(target, state);
 
         enemy.separation.update(enemy, spatialFrame);
-        PhysicsSystem.applyMovement(enemy, dt, false, true);
+        integrateSteering(enemy, dt, { ignoreSeparation: false, shouldMove: true });
         PhysicsSystem.resolveWallCollisions(enemy, spatialFrame, state);
 
         const nextToTarget = distToTarget <= target.radius + enemy.radius + 10;

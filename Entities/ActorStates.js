@@ -1,3 +1,4 @@
+import { integrateSteering, applyVelocityDamping } from "../Libraries/Motion/index.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { normalizeAngle, turnAngleTowards } from "../Libraries/Math/Angle.js";
 import { Utilities } from "../Core/Utilities.js";
@@ -168,7 +169,7 @@ export class EnemyEngagedState {
             enemy.desiredY = tangentY * stateData.strafeDir + radialY * radialFactor;
 
             enemy.separation.update(enemy, spatialFrame);
-            PhysicsSystem.applyMovement(enemy, dt, true, true, false);
+            integrateSteering(enemy, dt, { ignoreSeparation: true, shouldMove: true, alignAngleWithMovement: false });
             PhysicsSystem.resolveWallCollisions(enemy, spatialFrame, state);
         } else {
             if (stateData.linearStrafeState === undefined) {
@@ -235,7 +236,7 @@ export class EnemyEngagedState {
             }
 
             enemy.separation.update(enemy, spatialFrame);
-            PhysicsSystem.applyMovement(enemy, dt, false, true, false);
+            integrateSteering(enemy, dt, { ignoreSeparation: false, shouldMove: true, alignAngleWithMovement: false });
 
             const hitWall = PhysicsSystem.resolveWallCollisions(enemy, spatialFrame, state);
             if (hitWall) {
@@ -275,7 +276,7 @@ export class EnemyChargePrepareState {
         }
 
         enemy.separation.update(enemy, spatialFrame);
-        PhysicsSystem.applyMovement(enemy, dt, false, true);
+        integrateSteering(enemy, dt, { ignoreSeparation: false, shouldMove: true });
         PhysicsSystem.resolveWallCollisions(enemy, spatialFrame, state);
 
         const isStable = Math.hypot(enemy.vx, enemy.vy) < enemy.speed * 0.6;
@@ -307,7 +308,7 @@ export class EnemyChargeWindupState {
     update(enemy, dt, target, flowFieldGrid, walls, missiles, spatialFrame, scheduler, state) {
         enemy.desiredX = 0;
         enemy.desiredY = 0;
-        PhysicsSystem.applyMovement(enemy, dt, true, true);
+        integrateSteering(enemy, dt, { ignoreSeparation: true, shouldMove: true });
         PhysicsSystem.resolveWallCollisions(enemy, spatialFrame, state);
 
         const dx = target.x - enemy.x;
@@ -346,7 +347,7 @@ export class EnemyChargeDashState {
         const originalAccel = enemy.accelRate;
         enemy.accelRate = originalAccel * enemyDefaults.chargeDashAccelMultiplier;
 
-        PhysicsSystem.applyMovement(enemy, dt, true, true);
+        integrateSteering(enemy, dt, { ignoreSeparation: true, shouldMove: true });
 
         enemy.speed = originalSpeed;
         enemy.accelRate = originalAccel;
@@ -417,7 +418,7 @@ export class EnemyStunnedState {
         enemy.desiredY = 0;
 
         enemy.separation.update(enemy, spatialFrame);
-        PhysicsSystem.applyFrictionAndDrag(enemy, dt, 4.0);
+        applyVelocityDamping(enemy, dt, { friction: 4.0 });
         enemy.x += enemy.separation.pushX;
         enemy.y += enemy.separation.pushY;
         PhysicsSystem.resolveWallCollisions(enemy, spatialFrame, state);
@@ -542,7 +543,7 @@ export class EnemyKnockedBackState {
         enemy.desiredX = 0;
         enemy.desiredY = 0;
         enemy.separation.update(enemy, spatialFrame);
-        PhysicsSystem.applyFrictionAndDrag(enemy, dt, 4.0);
+        applyVelocityDamping(enemy, dt, { friction: 4.0 });
         enemy.x += enemy.separation.pushX;
         enemy.y += enemy.separation.pushY;
         PhysicsSystem.resolveWallCollisions(enemy, spatialFrame, state);
