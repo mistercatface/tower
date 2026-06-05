@@ -1,4 +1,4 @@
-import { CollisionSystem } from "../Spatial/Collision/CollisionSystem.js";
+import { circlesOverlap } from "../Libraries/Spatial/collision/overlap.js";
 import { Entity } from "./Entity.js";
 import { Pools } from "../Core/Pools.js";
 import { drawProjectileTracer } from "../Render/ProjectileDraw.js";
@@ -19,13 +19,7 @@ import { Explosion } from "./Explosion/Explosion.js";
 import { ProgressBar } from "../Libraries/Canvas/ProgressBar.js";
 import { CombatParticles } from "../Render/CombatParticles.js";
 
-const grenadeProgressBar = new ProgressBar({
-    width: 24,
-    height: 4,
-    borderRadius: 2,
-    quantizationSteps: 30,
-    colorFn: () => "#FF1744"
-});
+const grenadeProgressBar = new ProgressBar({ width: 24, height: 4, borderRadius: 2, quantizationSteps: 30, colorFn: () => "#FF1744" });
 
 export const ProjectileStrategies = {
     bullet: {
@@ -62,7 +56,7 @@ export const ProjectileStrategies = {
         },
         render(p, ctx) {
             drawProjectileTracer(ctx, p);
-        }
+        },
     },
     grenade: {
         move(p, dt) {
@@ -114,8 +108,8 @@ export const ProjectileStrategies = {
 
             const ratio = Math.max(0, p.fuseTimer / p.fuseTime);
             grenadeProgressBar.render(ctx, p.x, p.y - p.radius - 8, ratio, renderer.actorCache);
-        }
-    }
+        },
+    },
 };
 
 export class Projectile extends Entity {
@@ -123,7 +117,7 @@ export class Projectile extends Entity {
         for (const p of state.projectiles) {
             if (!p._spawnFrameCheck || p.isDead) continue;
             p._spawnFrameCheck = false;
-            p.resolveFactionCollisions(state, events, CollisionSystem, spatialFrame);
+            p.resolveFactionCollisions(state, events, spatialFrame);
         }
     }
 
@@ -194,7 +188,7 @@ export class Projectile extends Entity {
     move(dt) {
         this.strategy.move(this, dt);
     }
-
+    
     checkOutOfBounds(state) {
         const anchors = getPlayerActors(state);
         if (anchors.length === 0) return false;
@@ -221,15 +215,7 @@ export class Projectile extends Entity {
         if (this.isDead) return;
         this.isDead = true;
 
-        const config = this.explosionConfig || {
-            type: "standard",
-            radius: 0,
-            maxRadius: 60,
-            speed: 250,
-            damage: 3,
-            lingerTimer: 500,
-            fadeTimer: 150,
-        };
+        const config = this.explosionConfig || { type: "standard", radius: 0, maxRadius: 60, speed: 250, damage: 3, lingerTimer: 500, fadeTimer: 150 };
 
         if (!state.explosions) state.explosions = [];
         state.explosions.push(new Explosion(this.x, this.y, config.type || "standard", config));
@@ -237,11 +223,10 @@ export class Projectile extends Entity {
         CombatParticles.spawnImpactSparks(state, this.x, this.y, { impactAngle: this.angle });
     }
 
-    resolveFactionCollisions(state, events, system, spatialFrame) {
+    resolveFactionCollisions(state, events, spatialFrame) {
         spatialFrame.forEachNeighbor(this, (target) => {
             if (this.isDead || !projectileActorFilter.allows(this, target)) return;
-            if (!system.checkCircle(this, target)) return;
-
+            if (!circlesOverlap(this, target)) return;
             this.strategy.onFactionCollision(this, state, target, events, spatialFrame);
         });
     }

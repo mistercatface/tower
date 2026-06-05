@@ -33,6 +33,7 @@ export { applyPositionCorrection, separateAlongNormal, computeCircleWallContact,
 export { resolveCirclePair } from "./collision/circlePair.js";
 export { circlesOverlap, findFirstCircleSegmentHit } from "./collision/overlap.js";
 export { resolveSatPair } from "./collision/satPair.js";
+export { runCollisionPipeline } from "./collision/collisionPipeline.js";
 export { ensureWallSegmentPolygonShape, resolveBodyAgainstWallSegments } from "./collision/wallResolution.js";
 export {
     MOVING_SPEED_SQ,
