@@ -1,7 +1,7 @@
 import { fireRadioTrigger, requestUiHudUpdate, startRadioConversation } from "../../Core/EventSystem.js";
 import { findInspectablePickup } from "./inspectTargeting.js";
 
-/** Inspect keys required on start node after wave 1 (barrel = energy drink, crate). */
+/** Inspect keys required on start node after the Garbanzo intro fight. */
 export const START_NODE_INSPECTION_KEYS = ["jacko_can", "wood_crate"];
 
 const GUIDED_INSPECT_CONVERSATIONS = {
@@ -20,6 +20,39 @@ export function getStartNodeInspectionMissionLabel(state) {
     const found = state.startNodeInspectionSeen?.size ?? 0;
     const total = START_NODE_INSPECTION_KEYS.length;
     return `Tap nearby objects to search for clues (${found}/${total})`;
+}
+
+function hasLivingIntroGuards(state) {
+    return state.enemies.some((enemy) => enemy.isIntroGuard && !enemy.isDead);
+}
+
+/**
+ * After the start-node guard dialog fight, play first-wave radio and enter inspector.
+ * @returns {boolean} true when the inspection sequence was started
+ */
+export function tryEnterStartNodeInspectionAfterGarbanzoFight(state, fsm) {
+    if (state.startNodeInspectionCompleted || state.startNodeInspectionActive || state.startNodeInspectionPending || state.startNodeInspectionFinishing) {
+        return false;
+    }
+    if (fsm?.currentStateName === "inspector") return false;
+
+    const node = state.getCurrentMapNode();
+    if (!node || node.id !== 0) return false;
+    if (!state.startNodeIntroCompleted) return false;
+    if (hasLivingIntroGuards(state)) return false;
+
+    fireRadioTrigger(
+        "first_wave_clear",
+        () => {
+            beginStartNodeInspection(state, () => {
+                state.skipCombatEnterReset = true;
+                fsm?.transition("combat");
+            });
+            fsm?.transition("inspector");
+        },
+        state,
+    );
+    return true;
 }
 
 export function beginStartNodeInspection(state, onSectorComplete) {

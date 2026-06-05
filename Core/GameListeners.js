@@ -1,9 +1,9 @@
 import { toggleGunInLoadout, unequipSlot } from "../Combat/equipmentLoadout.js";
-import { Events, fireRadioTrigger, requestProgressDirty, requestUiUpdate } from "./EventSystem.js";
+import { Events, requestProgressDirty, requestUiUpdate } from "./EventSystem.js";
 import { ProgressionManager } from "../Progression/ProgressionManager.js";
 import { hardResetProgress, registerProgressListeners } from "../Progression/Storage.js";
 import { StatsManager } from "../Progression/StatsManager.js";
-import { beginStartNodeInspection } from "../Combat/inspect/StartNodeInspection.js";
+import { tryEnterStartNodeInspectionAfterGarbanzoFight } from "../Combat/inspect/StartNodeInspection.js";
 import { isCombatOrReward } from "../GameState/GamePhase.js";
 import { registerPauseListeners } from "./PauseManager.js";
 import { FloatingText } from "../Render/FloatingText.js";
@@ -20,30 +20,19 @@ export function registerGameListeners(eventBus, pauseManager) {
     registerProgressListeners(eventBus);
     registerPauseListeners(eventBus, pauseManager);
 
-    eventBus.on(Events.COMBAT_ENEMY_KILLED, ({ enemy, state, upgrades }) => {
+    eventBus.on(Events.COMBAT_ENEMY_KILLED, ({ enemy, state, upgrades, fsm }) => {
         ProgressionManager.processEnemyKillRewards(enemy, state, upgrades);
+        if (enemy?.isIntroGuard) {
+            tryEnterStartNodeInspectionAfterGarbanzoFight(state, fsm);
+        }
         requestProgressDirty();
         requestUiUpdate();
     });
 
     eventBus.on(Events.COMBAT_WAVE_CLEARED, ({ state, upgrades, viewport, fsm }) => {
         const node = state.getCurrentMapNode();
-        const clearedFirstWave = state.waveManager.sectorWave === 1;
-
-        if (node?.id === 0 && clearedFirstWave) {
-            fireRadioTrigger(
-                "first_wave_clear",
-                () => {
-                    beginStartNodeInspection(state, () => {
-                        state.skipCombatEnterReset = true;
-                        ProgressionManager.handleWaveCompletion(state, upgrades, viewport, { skipSectorComplete: true });
-                        fsm?.transition("combat");
-                    });
-                    fsm?.transition("inspector");
-                },
-                state,
-            );
-            return;
+        if (node?.id === 0 && state.waveManager.sectorWave === 1 && !state.startNodeInspectionCompleted) {
+            if (tryEnterStartNodeInspectionAfterGarbanzoFight(state, fsm)) return;
         }
 
         ProgressionManager.handleWaveCompletion(state, upgrades, viewport);

@@ -29,12 +29,14 @@ export function isInspector(phase) {
 
 export function canRunWaveSpawning(state) {
     const currentNode = state.getCurrentMapNode();
+    const holdStartNodeSpawns = currentNode?.id === 0 && !state.startNodeInspectionCompleted;
     return state.phase !== GamePhase.MAP
         && state.phase !== GamePhase.REWARD
         && state.phase !== GamePhase.INSPECTOR
         && !state.isTransitioning
         && !state.startNodeIntroActive
         && !state.startNodeInspectionActive
+        && !holdStartNodeSpawns
         && !currentNode?.completed;
 }
 
