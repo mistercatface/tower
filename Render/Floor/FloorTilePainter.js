@@ -1,6 +1,6 @@
 import { floorTileSettings, gridSettings } from "../../Config/Config.js";
 import { defaultFloorProceduralProfileId, getFloorProceduralProfile } from "../../Config/floorProceduralConfig.js";
-import { composeFloorImage } from "../../Procedural/FloorTextureComposer.js";
+import { composeFloorImage } from "../../Libraries/Procedural/FloorTextureComposer.js";
 import { buildMapContext, createWallFaceAxes, writePixelToSamples } from "./SurfaceCoordinateMapper.js";
 import { bakePixelsForWorldSpan, getPixelsPerWorldUnit } from "./floorTextureResolution.js";
 import { getAnimationFrames, resolveBakeProfile } from "./ProfileBakeResolver.js";
