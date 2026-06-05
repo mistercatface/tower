@@ -67,49 +67,50 @@ export function runCollisionPipeline(
 ) {
     const out = events ?? [];
     if (!events) out.length = 0;
-    for (let i = 0; i < projectiles.length; i++) {
-        const p = projectiles[i];
-        if (p.isDead) continue;
-        const wallCandidates = spatialFrame.getWallCandidates(p);
-        const segment = findFirstCircleSegmentHit(p, wallCandidates);
-        if (segment) {
-            onProjectileWallHit(p, segment, out);
-            continue;
+    if (projectiles.length > 0) {
+        for (let i = 0; i < projectiles.length; i++) {
+            const p = projectiles[i];
+            if (p.isDead) continue;
+            const wallCandidates = spatialFrame.getWallCandidates(p);
+            const segment = findFirstCircleSegmentHit(p, wallCandidates);
+            if (segment) {
+                onProjectileWallHit(p, segment, out);
+                continue;
+            }
+            let hitPickup = false;
+            spatialFrame.forEachNeighbor(p, (pickup) => {
+                if (hitPickup || !projectilePickupFilter.allows(p, pickup)) return;
+                if (!circlesOverlap(p, pickup)) return;
+                if (onProjectilePickupHit(p, pickup, out)) hitPickup = true;
+            });
+            if (hitPickup) continue;
+            onProjectileFactionCollisions(p, out);
         }
-        let hitPickup = false;
-        spatialFrame.forEachNeighbor(p, (pickup) => {
-            if (hitPickup || !projectilePickupFilter.allows(p, pickup)) return;
-            if (!circlesOverlap(p, pickup)) return;
-            if (onProjectilePickupHit(p, pickup, out)) hitPickup = true;
-        });
-        if (hitPickup) continue;
-        onProjectileFactionCollisions(p, out);
     }
-
-    for (let iter = 0; iter < pushableIterations; iter++) {
-        spatialFrame.forEachActorPushablePair((actor, pickup) => resolveActorPushable(actor, pickup, resolveWalls, spatialFrame));
-        spatialFrame.forEachPushablePair((p1, p2) => resolvePushablePair(p1, p2));
-        const pushables = spatialFrame._pushables;
-        if (pushables) {
-            for (let i = 0; i < pushables.length; i++) {
-                const pickup = pushables[i];
-                if (pickup.isDead || !pickup.needsWallCollision()) continue;
-                resolveWalls(pickup, spatialFrame);
+    const pushables = spatialFrame._pushables;
+    const combatants = spatialFrame._combatants;
+    const hasPushables = pushables && pushables.length > 0;
+    const hasCombatants = combatants && combatants.length > 0;
+    if (hasPushables || hasCombatants) {
+        for (let iter = 0; iter < pushableIterations; iter++) {
+            if (hasCombatants) spatialFrame.forEachActorPushablePair((actor, pickup) => resolveActorPushable(actor, pickup, resolveWalls, spatialFrame));
+            if (hasPushables) {
+                spatialFrame.forEachPushablePair((p1, p2) => resolvePushablePair(p1, p2));
+                for (let i = 0; i < pushables.length; i++) {
+                    const pickup = pushables[i];
+                    if (pickup.isDead || !pickup.needsWallCollision()) continue;
+                    resolveWalls(pickup, spatialFrame);
+                }
             }
         }
     }
-
     spatialFrame.forEachCombatantPair((a, b) => {
         if (!circlesOverlap(a, b)) return;
         const restitution = combatantRestitution(a, b);
         if (resolveCirclePair(a, b, { restitution })) invalidateWallResolveCache(a, b);
         if (onChargeImpact) {
-            if (a.attackType === "charge" && a.currentStateName !== "stunned") {
-                onChargeImpact(a, b, out);
-            }
-            if (b.attackType === "charge" && b.currentStateName !== "stunned") {
-                onChargeImpact(b, a, out);
-            }
+            if (a.attackType === "charge" && a.currentStateName !== "stunned") onChargeImpact(a, b, out);
+            if (b.attackType === "charge" && b.currentStateName !== "stunned") onChargeImpact(b, a, out);
         }
     });
 
