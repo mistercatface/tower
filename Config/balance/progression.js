@@ -10,7 +10,6 @@ export const defaultUpgradeCost = 50;
 
 export const perkSettings = {
     baseCostReduction: 10,
-    recoverySectorHealRatio: 0.5,
     regenerateLevelBonus: 5,
     fireRateChargeTimeDivisor: 1.1,
     xpGainMultiplier: 2,

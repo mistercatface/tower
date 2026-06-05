@@ -125,7 +125,6 @@ export class GameState {
         this.isPaused = false;
         this.debugMode = false;
         this.combatHudMode = 0;
-        this.spawnRadius = 950;
         this.pendingPerkPicks = [];
         this.radioSeenThisRun = {};
         this.startNodeIntroActive = false;
@@ -143,7 +142,6 @@ export class GameState {
 
         this.abilities = {};
         this.abilityTimers = {};
-        this.pendingUnlocks = [];
 
         this.player.fullHeal();
         this.player.clearHealAccumulator();

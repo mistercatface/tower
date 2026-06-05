@@ -27,11 +27,6 @@ const elements = {
     upgradeChoicesContainer: document.getElementById("upgradeChoicesContainer"),
     upgradeChoiceTitle: document.getElementById("upgradeChoiceTitle"),
     upgradeChoiceDesc: document.getElementById("upgradeChoiceDesc"),
-    categoryModal: document.getElementById("categoryModal"),
-    catAttackBtn: document.getElementById("catAttackBtn"),
-    catDefenseBtn: document.getElementById("catDefenseBtn"),
-    categoryModalTitle: document.getElementById("categoryModalTitle"),
-    categoryModalDesc: document.getElementById("categoryModalDesc"),
     killsDisplay: document.getElementById("killsDisplay"),
     scoreDisplay: document.getElementById("scoreDisplay"),
     levelDisplay: document.getElementById("levelDisplay"),
@@ -118,22 +113,6 @@ export function showUpgradeChoice(title, description, choices, upgrades, onPick)
     });
 
     elements.upgradeChoiceModal.style.display = "flex";
-}
-
-export function showCategoryChoice(title, description, attackText, defenseText, onPick) {
-    if (elements.categoryModalTitle) elements.categoryModalTitle.innerText = title;
-    if (elements.categoryModalDesc) elements.categoryModalDesc.innerText = description;
-    elements.catAttackBtn.innerText = attackText;
-    elements.catDefenseBtn.innerText = defenseText;
-    elements.catAttackBtn.onclick = () => {
-        elements.categoryModal.style.display = "none";
-        onPick("attack");
-    };
-    elements.catDefenseBtn.onclick = () => {
-        elements.categoryModal.style.display = "none";
-        onPick("defense");
-    };
-    elements.categoryModal.style.display = "flex";
 }
 
 export function updateToggleButton(btnId, isUnlocked, isActive, btnText, upgDef) {

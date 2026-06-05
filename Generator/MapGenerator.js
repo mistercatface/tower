@@ -85,9 +85,7 @@ export class MapGenerator {
             x: 0,
             y: 0,
             connections: [],
-            type: "combat",
             layer: 0,
-            dir: -1,
         };
         state.mapNodes.push(startNode);
         layers.push([startNode]);
@@ -118,9 +116,7 @@ export class MapGenerator {
                     x: vector.dx * l * xSpacing + jitterX,
                     y: vector.dy * l * layerSpacing + jitterY,
                     connections: [],
-                    type: "combat",
                     layer: l,
-                    dir: dir,
                 };
                 layerNodes.push(node);
                 state.mapNodes.push(node);

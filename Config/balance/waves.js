@@ -27,7 +27,6 @@ export const enemyTypes = [
         canDamageWalls: true,
     },
     { type: "dodger", radius: combatActorRadius, baseSpeed: 75, maxHealth: 2, color: "#03A9F4", attackType: "ranged", canDodge: true },
-    { type: "boss", radius: combatActorRadius, baseSpeed: 115, maxHealth: 3, color: "#B71C1C", attackType: "ranged", canDodge: true },
     { type: "zombie", radius: combatActorRadius, baseSpeed: 85, maxHealth: 2, color: "#8BC34A", attackType: "charge", canDodge: false, accelRate: 2.5 },
 ];
 

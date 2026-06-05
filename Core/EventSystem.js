@@ -116,12 +116,4 @@ export function fireRadioTrigger(trigger, onComplete, state) {
     });
 }
 
-export function advanceRadioLine() {
-    events.emit(Events.RADIO_ADVANCE);
-}
-
-export function endRadioConversation() {
-    events.emit(Events.RADIO_END);
-}
-
 export { Events } from "./EventNames.js";

@@ -25,7 +25,7 @@ export class Actor extends DestructibleEntity {
     constructor(x, y, radius, speed, health, color, type, accelRate = 3.0, canDamageWalls = false) {
         super(x, y, 0, health, health, false);
         this.radius = radius;
-        this.mass = type === "boss" ? 200.0 : radius;
+        this.mass = radius;
         this.speed = speed;
         this.color = color;
         this.type = type;
