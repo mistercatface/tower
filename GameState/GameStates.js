@@ -3,11 +3,7 @@ import { CombatParticles } from "../Render/CombatParticles.js";
 import { RagdollCorpse } from "../Entities/RagdollCorpse.js";
 import { ProgressionManager } from "../Progression/ProgressionManager.js";
 import { CollisionSystem } from "../Spatial/Collision/CollisionSystem.js";
-import {
-    advancePushableSleep,
-    evaluatePushableSleepEligible,
-    wakePushableBody,
-} from "../Libraries/Motion/pushableSleep.js";
+import { runPushablePhysicsPass, wakeAllPushables } from "../Libraries/Motion/pushablePhysicsPass.js";
 import { combatSpatial } from "../Spatial/World/CombatSpatialFrame.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { Projectile } from "../Entities/Projectile.js";
@@ -24,42 +20,13 @@ import { syncSurfaceProfile } from "../Render/game/surfaceProfileResolver.js";
 
 const MAP_TRAVEL_SPEED = 5.0;
 
-function blocksPushableSleep(pickup) {
-    return pickup.currentState?.blocksSleep?.() ?? false;
-}
-
-function tickAllPushableSleep(spatialFrame) {
-    const pushables = spatialFrame._pushables;
-    for (let i = 0; i < pushables.length; i++) {
-        const pickup = pushables[i];
-        if (pickup.isDead) continue;
-        const eligible = evaluatePushableSleepEligible(
-            pickup,
-            spatialFrame.getNeighbors(pickup),
-            { blocksSleep: blocksPushableSleep },
-        );
-        advancePushableSleep(pickup, eligible);
-    }
-}
-
-function wakeAllPushables(state) {
-    if (!state?.pickups) return;
-    for (let i = 0; i < state.pickups.length; i++) {
-        wakePushableBody(state.pickups[i]);
-    }
-}
-
 function runPushablePhysics(state, dt, spatialFrame) {
-    ProgressionManager.updatePickups(state, dt, spatialFrame);
-    const events = CollisionSystem.run(state, spatialFrame);
-    for (let i = 0; i < state.pickups.length; i++) {
-        const pickup = state.pickups[i];
-        if (pickup.isDead || !pickup.strategy?.isPushable) continue;
-        if (pickup.isSleeping || !pickup.needsWallCollision()) continue;
-        PhysicsSystem.resolveWallCollisions(pickup, spatialFrame, state);
-    }
-    tickAllPushableSleep(spatialFrame);
-    return events;
+    return runPushablePhysicsPass(state, dt, spatialFrame, {
+        updatePickups: ProgressionManager.updatePickups,
+        runCollisions: (state, frame) => CollisionSystem.run(state, frame),
+        resolveWalls: (pickup, frame) => PhysicsSystem.resolveWallCollisions(pickup, frame, state),
+        blocksSleep: (pickup) => pickup.currentState?.blocksSleep?.() ?? false,
+    });
 }
 
 function runPersistentSectorEnter(state) {

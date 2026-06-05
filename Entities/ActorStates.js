@@ -1,9 +1,13 @@
-import { applyMobileLocomotion, integrateSteering, applyVelocityDamping, updateSeparation } from "../Libraries/Motion/index.js";
+import { applyEntityLocomotion, integrateSteering, applyVelocityDamping, updateSeparation } from "../Libraries/Motion/index.js";
 import { applyDesiredDirection } from "../Libraries/Agent/index.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { normalizeAngle, turnAngleTowards } from "../Libraries/Math/Angle.js";
 import { CollisionSystem } from "../Spatial/Collision/CollisionSystem.js";
 import { enemyDefaults } from "../Config/Config.js";
+
+function applyEnemyLocomotion(enemy, dt, spatialFrame, state, options = {}) {
+    return applyEntityLocomotion(enemy, dt, spatialFrame, { ...options, resolveWalls: (entity, frame) => PhysicsSystem.resolveWallCollisions(entity, frame, state) });
+}
 
 function analyzeStrafePath(enemy, tangentX, tangentY, dir, walls, target, state) {
     const stepSize = 10;
@@ -163,8 +167,7 @@ export class EnemyEngagedState {
             enemy.desiredX = tangentX * stateData.strafeDir + radialX * radialFactor;
             enemy.desiredY = tangentY * stateData.strafeDir + radialY * radialFactor;
 
-            applyMobileLocomotion(enemy.mobile, dt, spatialFrame, { ignoreSeparationInDesired: true, alignAngleWithMovement: false });
-            PhysicsSystem.resolveWallCollisions(enemy, spatialFrame, state);
+            applyEnemyLocomotion(enemy, dt, spatialFrame, state, { ignoreSeparationInDesired: true, alignAngleWithMovement: false });
         } else {
             if (stateData.linearStrafeState === undefined) {
                 stateData.linearStrafeState = "idle";
@@ -229,9 +232,7 @@ export class EnemyEngagedState {
                 enemy.desiredY = 0;
             }
 
-            applyMobileLocomotion(enemy.mobile, dt, spatialFrame, { alignAngleWithMovement: false });
-
-            const hitWall = PhysicsSystem.resolveWallCollisions(enemy, spatialFrame, state);
+            const hitWall = applyEnemyLocomotion(enemy, dt, spatialFrame, state, { alignAngleWithMovement: false });
             if (hitWall) {
                 stateData.strafeDir *= -1;
                 stateData.linearStrafeState = "idle";
@@ -268,8 +269,7 @@ export class EnemyChargePrepareState {
             enemy.desiredY = 0;
         }
 
-        applyMobileLocomotion(enemy.mobile, dt, spatialFrame);
-        PhysicsSystem.resolveWallCollisions(enemy, spatialFrame, state);
+        applyEnemyLocomotion(enemy, dt, spatialFrame, state);
 
         const isStable = Math.hypot(enemy.vx, enemy.vy) < enemy.speed * 0.6;
 

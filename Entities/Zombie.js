@@ -1,6 +1,6 @@
 import { Enemy } from "./Enemy.js";
 import { actorStates } from "./ActorStates.js";
-import { applyMobileLocomotion } from "../Libraries/Motion/index.js";
+import { applyEntityLocomotion } from "../Libraries/Motion/index.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 
 export class ZombieChargePrepareState {
@@ -15,8 +15,7 @@ export class ZombieChargePrepareState {
         // Zombie: No backing away or repositioning: always steer directly towards target using navigation
         enemy.calculateSteering(target, state);
 
-        applyMobileLocomotion(enemy.mobile, dt, spatialFrame);
-        PhysicsSystem.resolveWallCollisions(enemy, spatialFrame, state);
+        applyEntityLocomotion(enemy, dt, spatialFrame, { resolveWalls: (entity, frame) => PhysicsSystem.resolveWallCollisions(entity, frame, state) });
 
         const nextToTarget = distToTarget <= target.radius + enemy.radius + 10;
 

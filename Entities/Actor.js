@@ -1,7 +1,7 @@
 import { DestructibleEntity } from "./Entity.js";
 import { TurretController } from "../Combat/TurretController.js";
 import { ActorRenderer } from "../Render/ActorRenderer.js";
-import { applyMobileLocomotion } from "../Libraries/Motion/index.js";
+import { applyEntityLocomotion } from "../Libraries/Motion/index.js";
 import { initMobileAgent } from "../Libraries/Agent/index.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { actorStates } from "./ActorStates.js";
@@ -292,10 +292,18 @@ export class Actor extends DestructibleEntity {
     }
 
     applyLocomotion(dt, spatialFrame, { state = null, externalSpeedMod = 1, ignoreSeparationInDesired = false, shouldMove = true, alignAngleWithMovement = true } = {}) {
-        const armed = normalizeWeaponLoadout(this.weaponLoadout ?? []).length > 0;
-        const alignAngle = alignAngleWithMovement && (!armed || this.hasLocomotionIntent());
-        applyMobileLocomotion(this.mobile, dt, spatialFrame, { externalSpeedMod, ignoreSeparationInDesired, shouldMove, alignAngleWithMovement: alignAngle });
-        PhysicsSystem.resolveWallCollisions(this, spatialFrame, state);
+        applyEntityLocomotion(this, dt, spatialFrame, {
+            externalSpeedMod,
+            ignoreSeparationInDesired,
+            shouldMove,
+            alignAngleWithMovement,
+            resolveAlignAngle: (actor, requested) => {
+                if (!requested) return false;
+                const armed = normalizeWeaponLoadout(actor.weaponLoadout ?? []).length > 0;
+                return !armed || actor.hasLocomotionIntent();
+            },
+            resolveWalls: state ? (entity, frame) => PhysicsSystem.resolveWallCollisions(entity, frame, state) : null,
+        });
     }
 
     changeStateAndUpdate(stateName, stateDataInit, dt, target, flowFieldGrid, walls, missiles, spatialFrame, scheduler, gameState) {
