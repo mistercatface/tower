@@ -1,4 +1,4 @@
-import { projectOntoPath, projectOntoPathFrom } from "../../Spatial/geometry/PathGeometry.js";
+import { projectOntoPath, projectOntoPathFrom } from "../../Libraries/Spatial/geometry/PathGeometry.js";
 
 const WAYPOINT_SLACK = 2;
 const CORNER_DOT_THRESHOLD = 0.15;

@@ -1,9 +1,7 @@
-import { navigationSettings, NAV_PROFILES } from "../../Config/Config.js";
+import { navigationSettings } from "../../Config/Config.js";
 import { entityIntersectsCellBounds } from "../../Libraries/Spatial/grid/GridCoords.js";
 import { steerViaFlowField } from "./FlowFieldStrategy.js";
 import { createNavState, steerViaHpa } from "./HpaStrategy.js";
-
-export { NAV_PROFILES };
 
 export class NavigationService {
     constructor(flowFieldGrid, hierarchicalNavigator) {
@@ -53,7 +51,7 @@ export class NavigationService {
         const navState = this.getNavState(entity);
         let debug;
         if (useHpa) {
-            debug = steerViaHpa(entity, targetX, targetY, this.hierarchicalNavigator, navState, profile, settings, this.flowFieldGrid.obstacleGrid, this.obstacleGeneration, state);
+            debug = steerViaHpa(entity, targetX, targetY, this.hierarchicalNavigator, navState, profile, settings, this.flowFieldGrid.navGraph, this.obstacleGeneration, state);
         } else {
             navState.path = null;
             const mode = steerViaFlowField(entity, targetX, targetY, this.flowFieldGrid, profile.flowField);

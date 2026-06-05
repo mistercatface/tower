@@ -1,8 +1,8 @@
 import "../Render/WorldSurfaceBootstrap.js";
 import { Player } from "../Entities/Player.js";
 import { Sidekick } from "../Entities/Sidekick.js";
-import { FlowFieldGrid } from "../Libraries/Pathfinding/flow/FlowFieldGrid.js";
-import { HierarchicalNavigator } from "../Libraries/Pathfinding/hpa/HierarchicalNavigator.js";
+import { FlowFieldGrid } from "../Spatial/Navigation/FlowFieldGrid.js";
+import { HierarchicalNavigator } from "../Spatial/Navigation/HierarchicalNavigator.js";
 import { WorldObstacleGrid } from "../Spatial/World/ObstacleGrid.js";
 import { NavigationService } from "../Spatial/Navigation/NavigationService.js";
 import { combatActorRadius, gridSettings, mapSettings, navigationSettings, runBaseStats } from "../Config/Config.js";

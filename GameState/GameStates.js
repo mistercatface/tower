@@ -10,7 +10,7 @@ import { Projectile } from "../Entities/Projectile.js";
 import { showNodeConfirmModal, requestUiUpdate } from "../Core/EventSystem.js";
 import { Explosion } from "../Entities/Explosion/Explosion.js";
 import { navigationSettings, NAV_PROFILES, gridSettings, debugStartNodeInspectionImmediate } from "../Config/Config.js";
-import { resolveMoveTarget, resolveRepositionTarget } from "../Libraries/Pathfinding/path/PathClearance.js";
+import { resolveMoveTarget, resolveRepositionTarget } from "../Libraries/Math/pathfinding/PathClearance.js";
 import { getStartNodeLayout } from "../Generator/StartNodeBuilding.js";
 import { Pools } from "../Core/Pools.js";
 import { inspectBridge } from "../Combat/inspect/InspectBridge.js";
