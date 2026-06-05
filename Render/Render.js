@@ -72,8 +72,9 @@ export class Renderer {
 
         const oldX = state.player.x;
         const oldY = state.player.y;
-        state.player.x = state.mapPlayerX;
-        state.player.y = state.mapPlayerY;
+        const { x: mapX, y: mapY } = state.getMapPlayerGraphCoords();
+        state.player.x = mapX;
+        state.player.y = mapY;
         this.drawActorAndTurrets(state.player, state, null);
 
         state.player.x = oldX;

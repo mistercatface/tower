@@ -17,8 +17,7 @@ function getEnemyTypeConfig(typeName) {
 }
 
 export function shouldRunStartNodeIntro(state) {
-    const node = state.getCurrentMapNode();
-    return node?.id === 0 && !state.startNodeIntroCompleted;
+    return !state.startNodeIntroCompleted;
 }
 
 export function beginStartNodeIntro(state) {
@@ -42,8 +41,8 @@ function distanceToNearestIntroGuard(state) {
 }
 
 export function spawnStartNodeGuards(state) {
-    const node = state.getCurrentMapNode();
-    if (!node || node.id !== 0) return;
+    const node = state.getStartMapNode();
+    if (!node) return;
 
     const coords = state.getNodeCombatCoords(node);
     const layout = getStartNodeLayout(coords.x, coords.y, gridSettings.cellSize);
@@ -66,9 +65,6 @@ export function spawnStartNodeGuards(state) {
 export function updateStartNodeIntro(state) {
     if (!state.startNodeIntroActive || state.startNodeIntroTriggered) return;
     if (!state.startNodeGuardsDialogUnlocked) return;
-
-    const node = state.getCurrentMapNode();
-    if (!node || node.id !== 0) return;
 
     const dist = distanceToNearestIntroGuard(state);
     if (dist > GUARD_DIALOG_RADIUS) return;

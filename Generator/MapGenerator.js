@@ -159,10 +159,6 @@ export class MapGenerator {
             }
         }
 
-        state.currentNodeId = 0;
-        state.mapPlayerX = 0;
-        state.mapPlayerY = 0;
-
         state.rebuildMapNodeIndex();
 
         // 1. Calculate CA bounds from node coordinates

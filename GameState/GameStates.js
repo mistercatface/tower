@@ -23,7 +23,8 @@ export class MapState {
     }
     render(ctx) {
         ctx.viewport.updateZoomLimits(ctx.state);
-        ctx.viewport.follow(ctx.state.mapPlayerX, ctx.state.mapPlayerY);
+        const { x, y } = ctx.state.getMapPlayerGraphCoords();
+        ctx.viewport.follow(x, y);
         ctx.renderer.renderMapScene(ctx.state, ctx.viewport);
     }
 }
@@ -47,22 +48,18 @@ export class CombatState {
         ctx.state.combatParticles = [];
         ctx.state.ragdollCorpses = [];
         ctx.state.floatingTexts = [];
-        const currentNode = ctx.state.getCurrentMapNode();
-        const combatCoords = ctx.state.getNodeCombatCoords(currentNode);
-        if (currentNode?.id === 0) {
-            const layout = getStartNodeLayout(combatCoords.x, combatCoords.y, gridSettings.cellSize);
-            ctx.state.player.setSpawnPosition(layout.spawnX, layout.spawnY);
-        } else {
-            ctx.state.player.setSpawnPosition(combatCoords.x, combatCoords.y);
-        }
+        const startNode = ctx.state.getStartMapNode();
+        const combatCoords = ctx.state.getNodeCombatCoords(startNode);
+        const layout = getStartNodeLayout(combatCoords.x, combatCoords.y, gridSettings.cellSize);
+        ctx.state.player.setSpawnPosition(layout.spawnX, layout.spawnY);
         ctx.state.player.resetToSpawn();
         ctx.viewport.snapTo(ctx.state.player.x, ctx.state.player.y);
-        if (currentNode?.id === 0) ctx.state.spawnRunParty();
+        if (startNode) ctx.state.spawnRunParty();
         ctx.state.hordeSpawner.beginHorde();
         ctx.state.player.resetTurretCombatState();
         runPersistentSectorEnterOnNode(ctx.state);
         if (shouldRunStartNodeIntro(ctx.state)) beginStartNodeIntro(ctx.state);
-        if (currentNode?.id === 0 && debugStartNodeInspectionImmediate && shouldEnterStartNodeInspection(ctx.state)) {
+        if (startNode && debugStartNodeInspectionImmediate && shouldEnterStartNodeInspection(ctx.state)) {
             beginStartNodeInspection(ctx.state, null);
             requestAnimationFrame(() => {
                 if (shouldEnterStartNodeInspection(ctx.state)) ctx.state.fsm.transition("inspector");

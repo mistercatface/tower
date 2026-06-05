@@ -12,8 +12,7 @@ const GUIDED_INSPECT_CONVERSATIONS = {
 const GUIDED_INSPECT_CONVERSATION_IDS = Object.values(GUIDED_INSPECT_CONVERSATIONS);
 
 export function shouldEnterStartNodeInspection(state) {
-    const node = state.getCurrentMapNode();
-    return node?.id === 0 && !state.startNodeInspectionCompleted;
+    return !state.startNodeInspectionCompleted;
 }
 
 export function getStartNodeInspectionMissionLabel(state) {
@@ -36,8 +35,6 @@ export function tryEnterStartNodeInspectionAfterGarbanzoFight(state, fsm) {
     }
     if (fsm?.currentStateName === "inspector") return false;
 
-    const node = state.getCurrentMapNode();
-    if (!node || node.id !== 0) return false;
     if (!state.startNodeIntroCompleted) return false;
     if (hasLivingIntroGuards(state)) return false;
 

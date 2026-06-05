@@ -2,20 +2,22 @@ import { combatNodeCoords, mapGraphNodeCoords } from "./mapViewCoords.js";
 
 const LAYER_COLORS = ["#03A9F4", "#7E57C2", "#AB47BC", "#EC407A", "#F44336"];
 
-export function gameConnectionStrokeStyle(node, targetNode, state) {
-    if (node.id === state.currentNodeId || targetNode.id === state.currentNodeId) {
+const START_NODE_ID = 0;
+
+export function gameConnectionStrokeStyle(node, targetNode, _state) {
+    if (node.id === START_NODE_ID || targetNode.id === START_NODE_ID) {
         return "rgba(255, 235, 59, 0.5)";
     }
     return "rgba(85, 85, 85, 0.3)";
 }
 
 export function gameNodeStyle(node, state) {
-    const currentNode = state.getCurrentMapNode();
+    const startNode = state.getStartMapNode();
     let fillStyle = "#333";
 
-    if (node.id === state.currentNodeId) {
+    if (node.id === START_NODE_ID) {
         fillStyle = "#FFEB3B";
-    } else if (currentNode && currentNode.connections.includes(node.id)) {
+    } else if (startNode && startNode.connections.includes(node.id)) {
         const layerIndex = Math.min(4, Math.max(0, node.layer ?? 0));
         fillStyle = LAYER_COLORS[layerIndex];
     }

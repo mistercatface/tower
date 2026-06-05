@@ -24,8 +24,6 @@ export class GameState {
         this.mapNodes = [];
         this.mapNodeById = new Map();
         this.currentNodeId = 0;
-        this.mapPlayerX = 0;
-        this.mapPlayerY = 0;
         this.highestLevelReached = 0;
         this.claimedPerkMilestones = [];
         this.discoveredAbilities = new Set();
@@ -99,6 +97,18 @@ export class GameState {
         return this.mapNodeById.get(id) ?? null;
     }
 
+    /** Start node — combat always runs here in the main game. */
+    getStartMapNode() {
+        return this.getMapNode(0);
+    }
+
+    /** Map graph position for the player dot (start node is always at the origin). */
+    getMapPlayerGraphCoords() {
+        const node = this.getStartMapNode();
+        return { x: node?.x ?? 0, y: node?.y ?? 0 };
+    }
+
+    /** Active map node — only changes in TileLab; always start node in the main game. */
     getCurrentMapNode() {
         return this.getMapNode(this.currentNodeId);
     }

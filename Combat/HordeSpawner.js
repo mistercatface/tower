@@ -40,7 +40,7 @@ export class HordeSpawner {
         const candidates = getSpawnCandidateNodes(state);
         const targetNode = candidates.length > 0
             ? candidates[Math.floor(Math.random() * candidates.length)]
-            : state.getCurrentMapNode();
+            : state.getStartMapNode();
         if (!targetNode) return 0;
 
         let totalCount = 0;
@@ -83,7 +83,7 @@ export class HordeSpawner {
 }
 
 function getZombieSpawnTargetNode(state) {
-    const currentNodeId = state.currentNodeId;
+    const currentNodeId = 0;
     const mapNodes = state.mapNodes;
 
     const adjacencyList = new Map();
@@ -132,7 +132,7 @@ function getZombieSpawnTargetNode(state) {
 }
 
 function getSpawnCandidateNodes(state) {
-    const currentNodeId = state.currentNodeId;
+    const currentNodeId = 0;
     const mapNodes = state.mapNodes;
 
     const adjacencyList = new Map();
