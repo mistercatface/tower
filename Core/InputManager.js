@@ -1,75 +1,40 @@
-import { adjustGameZoom, setGameZoomAbsolute, emitMapToggle } from "../Core/EventSystem.js";
+import { adjustGameZoom, setGameZoomAbsolute, emitMapToggle } from "./EventSystem.js";
 import { controlSettings, COMBAT_HUD_MODE_COUNT, COMBAT_HUD_MODE_LABELS } from "../Config/Config.js";
+import {
+    DoubleTapDetector,
+    PinchZoomGesture,
+    bindWheelZoom,
+    bindCanvasPointerDown,
+    bindCanvasPointerMove,
+} from "../Libraries/Input/index.js";
 
 export class InputManager {
     static setup(canvas, fsm) {
-        let lastTapTime = 0;
-        let initialPinchDistance = null;
-        let initialZoom = 1;
+        const doubleTap = new DoubleTapDetector(controlSettings.doubleTapTimeout);
 
-        canvas.addEventListener(
-            "wheel",
-            (e) => {
-                e.preventDefault();
-                const zoomAmount = e.deltaY * controlSettings.scrollZoomSensitivity;
-                adjustGameZoom(zoomAmount);
-            },
-            { passive: false },
-        );
-
-        canvas.addEventListener(
-            "touchstart",
-            (e) => {
-                if (e.touches.length === 2) {
-                    const dx = e.touches[0].clientX - e.touches[1].clientX;
-                    const dy = e.touches[0].clientY - e.touches[1].clientY;
-                    initialPinchDistance = Math.hypot(dx, dy);
-                    initialZoom = fsm.context.viewport.zoom;
-                }
-            },
-            { passive: false },
-        );
-
-        canvas.addEventListener(
-            "touchmove",
-            (e) => {
-                if (e.touches.length === 2 && initialPinchDistance) {
-                    e.preventDefault();
-                    const dx = e.touches[0].clientX - e.touches[1].clientX;
-                    const dy = e.touches[0].clientY - e.touches[1].clientY;
-                    const currentDistance = Math.hypot(dx, dy);
-                    const ratio = currentDistance / initialPinchDistance;
-                    setGameZoomAbsolute(initialZoom * ratio);
-                }
-            },
-            { passive: false },
-        );
-
-        canvas.addEventListener("touchend", (e) => {
-            if (e.touches.length < 2) {
-                initialPinchDistance = null;
-            }
+        bindWheelZoom(canvas, (delta) => adjustGameZoom(delta), {
+            sensitivity: controlSettings.scrollZoomSensitivity,
         });
 
-        canvas.addEventListener("pointerdown", (e) => {
-            const currentTime = Date.now();
-            const isDoubleTap = currentTime - lastTapTime < controlSettings.doubleTapTimeout;
-            lastTapTime = currentTime;
-            const rect = canvas.getBoundingClientRect();
-            const screenX = e.clientX - rect.left;
-            const screenY = e.clientY - rect.top;
-            const worldCoords = fsm.context.viewport.screenToWorld(screenX, screenY);
-            fsm.handleInteraction(worldCoords, isDoubleTap);
+        new PinchZoomGesture(canvas, {
+            getBaseZoom: () => fsm.context.viewport.zoom,
+            onPinchZoom: setGameZoomAbsolute,
         });
 
-        canvas.addEventListener("pointermove", (e) => {
-            const rect = canvas.getBoundingClientRect();
-            const screenX = e.clientX - rect.left;
-            const screenY = e.clientY - rect.top;
-            const worldCoords = fsm.context.viewport.screenToWorld(screenX, screenY);
-            if (fsm.currentState && fsm.currentState.handlePointerMove) {
-                fsm.currentState.handlePointerMove(worldCoords, { x: screenX, y: screenY }, e.buttons === 1, fsm.context);
-            }
+        bindCanvasPointerDown(canvas, {
+            screenToWorld: (screenX, screenY) => fsm.context.viewport.screenToWorld(screenX, screenY),
+            onPointerDown: (worldCoords, _screen, _e) => {
+                fsm.handleInteraction(worldCoords, doubleTap.registerTap());
+            },
+        });
+
+        bindCanvasPointerMove(canvas, {
+            screenToWorld: (screenX, screenY) => fsm.context.viewport.screenToWorld(screenX, screenY),
+            onPointerMove: (worldCoords, screen, e) => {
+                if (fsm.currentState?.handlePointerMove) {
+                    fsm.currentState.handlePointerMove(worldCoords, screen, e.buttons === 1, fsm.context);
+                }
+            },
         });
 
         window.addEventListener("keydown", (e) => {
