@@ -1,7 +1,7 @@
 import "../../Render/WorldSurfaceBootstrap.js";
 import { installGameSurfaceProfileProvider } from "../../Config/procedural/bootstrap.js";
 import { createUpgrades, createBaseUpgrades } from "../../Progression/Upgrades.js";
-import { registerGameInspectEntries } from "../../Combat/inspect/inspectContent.js";
+import { registerGameInspectEntries } from "./content/inspect/inspectContent.js";
 import { MapState, CombatState, InspectorState } from "../../GameState/GameStates.js";
 import { unlockStartGameGuardsDialog } from "./tutorial/StartGameIntro.js";
 import { ProgressionManager } from "../../Progression/ProgressionManager.js";

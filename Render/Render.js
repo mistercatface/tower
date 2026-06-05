@@ -2,7 +2,7 @@ import "./WorldSurfaceBootstrap.js";
 import { getGameWorldSurfaceSettings } from "./WorldSurfaceBootstrap.js";
 import { SpriteCache } from "../Libraries/Canvas/SpriteCache.js";
 import { WorldSceneRenderer } from "../Libraries/Render/WorldSceneRenderer.js";
-import { world3dPropRecipes } from "../Combat/world3d/world3dContent.js";
+import { world3dPropRecipes } from "../Games/tower/content/world3d/world3dContent.js";
 import { buildWorldRenderInput } from "./adapters/WorldRenderAdapter.js";
 import { COMBAT_HUD_MODE, hudSettings, combatVisualSettings } from "../Config/Config.js";
 import { getWorldDrawCoords, isWorldScene } from "../GameState/GamePhase.js";
