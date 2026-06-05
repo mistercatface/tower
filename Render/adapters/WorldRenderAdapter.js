@@ -1,6 +1,6 @@
 /** @typedef {import("../../GameState/GameState.js").GameState} GameState */
 
-import { getFloorTextureProfileIdForCoords } from "../Floor/floorTextureProfile.js";
+import { getFloorTextureProfileIdForCoords } from "../game/floorTextureProfile.js";
 
 /**
  * Context for procedural wall-face baking and texture lookup.

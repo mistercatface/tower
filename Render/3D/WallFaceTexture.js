@@ -2,7 +2,7 @@ import { getWallVisualHeight, getWorldSurfaceSettings, resolveWallVisualHeight }
 import { drawImageQuad } from "../../Libraries/Canvas/AffineTexture.js";
 /** @typedef {import("../adapters/WorldRenderAdapter.js").FloorBakeContext} FloorBakeContext */
 
-import { isWallFaceAnimationEnabled } from "../Floor/floorTextureProfile.js";
+import { isWallFaceAnimationEnabled } from "../../Libraries/WorldSurface/bake/FloorBakeHelpers.js";
 import { getFloorProfileProvider } from "../../Libraries/Procedural/FloorProfileProvider.js";
 import { getPixelsPerWorldUnit, shouldSmoothTextureDownsample } from "../Floor/floorTextureResolution.js";
 import { animationFrameIndex } from "../Floor/ProfileBakeResolver.js";

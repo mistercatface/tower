@@ -16,7 +16,7 @@ import { Pools } from "../Core/Pools.js";
 import { inspectBridge } from "../Combat/inspect/InspectBridge.js";
 import { beginStartNodeIntro, shouldRunStartNodeIntro, updateStartNodeIntro } from "../Combat/StartNodeIntro.js";
 import { findStartNodeInspectionPickup, beginStartNodeInspection, shouldEnterStartNodeInspection } from "../Combat/inspect/StartNodeInspection.js";
-import { syncFloorTextureProfile } from "../Render/Floor/floorTextureProfile.js";
+import { syncFloorTextureProfile } from "../Render/game/floorTextureProfile.js";
 
 const MAP_TRAVEL_SPEED = 5.0;
 

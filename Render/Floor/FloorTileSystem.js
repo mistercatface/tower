@@ -3,8 +3,13 @@ import { isWorldScene } from "../../GameState/GamePhase.js";
 import { getFloorProfileProvider } from "../../Libraries/Procedural/FloorProfileProvider.js";
 import { chunkToWorldOrigin, getChunkSizePx, gridBoundsToChunkRange, worldBoundsToChunkRange } from "../../Spatial/Grid/ChunkGrid.js";
 import { ProgressiveFrameCache } from "./ProgressiveFrameCache.js";
-import { TileWorkerCoordinator } from "./TileWorkerCoordinator.js";
-import { buildFloorChunkBakePayload, floorChunkCachePrefix, getFloorTextureProfileIdForCoords, getFloorChunkAnimationInfo, getWallFaceAnimationInfo } from "./floorTextureProfile.js";
+import {
+    floorChunkCachePrefix,
+    getFloorChunkAnimationInfo,
+    getWallFaceAnimationInfo,
+} from "../../Libraries/WorldSurface/bake/FloorBakeHelpers.js";
+import { buildFloorChunkBakePayload, getFloorTextureProfileIdForCoords } from "../game/floorTextureProfile.js";
+import { TileWorkerCoordinator, getProfileRevision } from "./TileWorkerCoordinator.js";
 import { drawBakedTexture, bakePixelsForWorldSpan, getPixelsPerWorldUnit } from "./floorTextureResolution.js";
 import { animationFrameIndex } from "./ProfileBakeResolver.js";
 import { bakeFrameRange, nextAnimationBatchRange } from "./AnimationFrameBake.js";
@@ -32,7 +37,15 @@ export class FloorTileSystem {
                 const chunkCenterX = obstacleGrid.minX + chunkCol * chunkSizePx + chunkSizePx / 2;
                 const chunkCenterY = obstacleGrid.minY + chunkRow * chunkSizePx + chunkSizePx / 2;
                 const profileId = getFloorTextureProfileIdForCoords(state, chunkCenterX, chunkCenterY);
-                this.surfaceCache.deleteByPrefix("chunk:" + floorChunkCachePrefix(chunkCol, chunkRow, profileId).substring(6));
+                this.surfaceCache.deleteByPrefix(
+                    "chunk:" + floorChunkCachePrefix(
+                        chunkCol,
+                        chunkRow,
+                        profileId,
+                        getProfileRevision(profileId),
+                        getPixelsPerWorldUnit(this.settings),
+                    ).substring(6),
+                );
             }
         }
     }
@@ -95,7 +108,13 @@ export class FloorTileSystem {
     getChunkCanvas(chunkCol, chunkRow, state, payload = null) {
         if (!payload) payload = this._buildChunkPayload(state, chunkCol, chunkRow);
 
-        const key = floorChunkCachePrefix(chunkCol, chunkRow, payload.profileId);
+        const key = floorChunkCachePrefix(
+            chunkCol,
+            chunkRow,
+            payload.profileId,
+            getProfileRevision(payload.profileId),
+            getPixelsPerWorldUnit(this.settings),
+        );
         let canvases = this.surfaceCache.get(key);
         if (canvases) return canvases;
 

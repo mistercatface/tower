@@ -1,32 +1,11 @@
 import { getWorldSurfaceSettings } from "../../Libraries/WorldSurface/WorldSurfaceSettings.js";
+import {
+    createFloorChunkBakePayload,
+    isFloorChunkAnimationEnabled,
+} from "../../Libraries/WorldSurface/bake/FloorBakeHelpers.js";
 import { getFloorProfileProvider } from "../../Libraries/Procedural/FloorProfileProvider.js";
-import { getAnimationFrames } from "./ProfileBakeResolver.js";
-import { getPixelsPerWorldUnit } from "./floorTextureResolution.js";
-import { getProfileRevision } from "./TileWorkerCoordinator.js";
 
-export function isFloorChunkAnimationEnabled(profile, settings = getWorldSurfaceSettings()) {
-    return Boolean(profile?.animation) && settings.floorAnimationsOn !== false;
-}
-
-export function isWallFaceAnimationEnabled(profile, settings = getWorldSurfaceSettings()) {
-    return Boolean(profile?.animation) && settings.wallAnimationsOn !== false;
-}
-
-export function getFloorChunkAnimationInfo(profile) {
-    const enabled = isFloorChunkAnimationEnabled(profile);
-    return {
-        enabled,
-        totalFrames: enabled ? getAnimationFrames(profile.animation) : 1,
-    };
-}
-
-export function getWallFaceAnimationInfo(profile) {
-    const enabled = isWallFaceAnimationEnabled(profile);
-    return {
-        enabled,
-        totalFrames: enabled ? getAnimationFrames(profile.animation) : 1,
-    };
-}
+/** @typedef {import("../../GameState/GameState.js").GameState} GameState */
 
 export function getFloorTextureProfileIdForCoords(state, x, y) {
     if (state.floorTextureProfileOverride) {
@@ -62,11 +41,6 @@ export function syncFloorTextureProfile(state) {
     // state.floorTiles.clear(); // Disabled for mega-map chunk rendering
 }
 
-export function floorChunkCachePrefix(chunkCol, chunkRow, profileId) {
-    const rev = getProfileRevision(profileId);
-    return `chunk:${rev}:${getPixelsPerWorldUnit()}:${profileId}:${chunkCol},${chunkRow}`;
-}
-
 /** Worker-serializable chunk bake payload from live game state. */
 export function buildFloorChunkBakePayload(state, chunkCol, chunkRow) {
     const obstacleGrid = state.obstacleGrid;
@@ -78,11 +52,13 @@ export function buildFloorChunkBakePayload(state, chunkCol, chunkRow) {
     const profileId = getFloorTextureProfileIdForCoords(state, chunkCenterX, chunkCenterY);
     const profile = getFloorProfileProvider().getProfile(profileId);
 
-    const payload = { chunkCol, chunkRow, minX: state.obstacleGrid.minX, minY: state.obstacleGrid.minY, seed: state.floorTileSeed ?? 0, profileId };
-
-    if (isFloorChunkAnimationEnabled(profile)) {
-        payload.gameTime = state.gameTime ?? 0;
-    }
-
-    return payload;
+    return createFloorChunkBakePayload({
+        chunkCol,
+        chunkRow,
+        minX: obstacleGrid.minX,
+        minY: obstacleGrid.minY,
+        seed: state.floorTileSeed ?? 0,
+        profileId,
+        gameTime: isFloorChunkAnimationEnabled(profile) ? (state.gameTime ?? 0) : undefined,
+    });
 }
