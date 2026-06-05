@@ -1,6 +1,6 @@
 /**
  * Projects wall faces and roof caps in isometric space and samples baked atlases
- * from WorldSurfaceSystem. Does not bake textures — see WorldSurfaceSystem.js.
+ * from WorldSurfaceEngine. Does not bake textures — see WorldSurfaceEngine.js.
  */
 import { getWallVisualHeight, getWorldSurfaceSettings, resolveWallVisualHeight } from "../../Libraries/WorldSurface/WorldSurfaceSettings.js";
 import { drawImageQuad } from "../../Libraries/Canvas/AffineTexture.js";
