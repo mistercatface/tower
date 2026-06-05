@@ -22,6 +22,8 @@
  * @property {string} [bothResolve] — both resolved values equal
  * @property {[string, string]} [crossFaction] — inclusion: one entity each faction (either order)
  * @property {boolean} [selfIdLessThanOther] — pair: self.id < other.id (dedup ordering)
+ * @property {boolean} [sameEntity] — pair: self === other
+ * @property {string} [pairResolve] — pair: pairResolvers[key](self, other)
  * @property {FieldClause} [self]
  * @property {FieldClause} [other]
  *
@@ -30,6 +32,7 @@
  * @property {PairRule[]} [inclusions]
  * @property {PairRule[]} [inclusionsAny] — at least one must match (when non-empty)
  * @property {Record<string, (entity: object) => *>} [resolvers]
+ * @property {Record<string, (self: object, other: object) => boolean>} [pairResolvers]
  */
 
 function getPath(obj, path) {
@@ -97,8 +100,9 @@ function matchEntityRule(entity, rule, resolvers) {
  * @param {object} self
  * @param {object} other
  * @param {Record<string, (entity: object) => *>} resolvers
+ * @param {Record<string, (self: object, other: object) => boolean>} [pairResolvers]
  */
-export function pairRuleMatches(rule, self, other, resolvers) {
+export function pairRuleMatches(rule, self, other, resolvers, pairResolvers = {}) {
     if (rule.target === "self") {
         return matchEntityRule(self, rule, resolvers);
     }
@@ -137,6 +141,15 @@ export function pairRuleMatches(rule, self, other, resolvers) {
             return self.id < other.id;
         }
 
+        if (rule.sameEntity) {
+            return self === other;
+        }
+
+        if (rule.pairResolve !== undefined) {
+            const fn = pairResolvers[rule.pairResolve];
+            return fn ? fn(self, other) : false;
+        }
+
         if (rule.self && rule.other) {
             return matchFieldClause(self, rule.self, resolvers) && matchFieldClause(other, rule.other, resolvers);
         }
@@ -155,15 +168,16 @@ export function pairFilterAllows(config, self, other) {
     const inclusions = config.inclusions ?? [];
     const inclusionsAny = config.inclusionsAny ?? [];
     const resolvers = config.resolvers ?? {};
+    const pairResolvers = config.pairResolvers ?? {};
 
     for (const rule of exclusions) {
-        if (pairRuleMatches(rule, self, other, resolvers)) {
+        if (pairRuleMatches(rule, self, other, resolvers, pairResolvers)) {
             return false;
         }
     }
 
     for (const rule of inclusions) {
-        if (!pairRuleMatches(rule, self, other, resolvers)) {
+        if (!pairRuleMatches(rule, self, other, resolvers, pairResolvers)) {
             return false;
         }
     }
@@ -171,7 +185,7 @@ export function pairFilterAllows(config, self, other) {
     if (inclusionsAny.length > 0) {
         let any = false;
         for (const rule of inclusionsAny) {
-            if (pairRuleMatches(rule, self, other, resolvers)) {
+            if (pairRuleMatches(rule, self, other, resolvers, pairResolvers)) {
                 any = true;
                 break;
             }

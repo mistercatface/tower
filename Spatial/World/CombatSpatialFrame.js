@@ -1,10 +1,11 @@
 import { SpatialFrameCore } from "../../Libraries/Spatial/world/SpatialFrameCore.js";
 import { wallContextFromState } from "../../Libraries/Spatial/query/wallContext.js";
-import { isMovingEntity, shouldResolveActorPushable } from "../../Libraries/Spatial/collision/entityBroadphase.js";
 import { PairFilter } from "../../Libraries/Interaction/PairFilter.js";
-import { COMBATANT_PAIR } from "../../Libraries/Interaction/presets/combat.js";
+import { ACTOR_PUSHABLE_PAIR, COMBATANT_PAIR, PUSHABLE_PAIR } from "../../Libraries/Interaction/presets/combat.js";
 
 const combatantPairFilter = new PairFilter(COMBATANT_PAIR);
+const actorPushablePairFilter = new PairFilter(ACTOR_PUSHABLE_PAIR);
+const pushablePairFilter = new PairFilter(PUSHABLE_PAIR);
 
 /**
  * Combat/map-transition spatial frame — populates SpatialFrameCore from GameState.
@@ -50,25 +51,11 @@ export class CombatSpatialFrame extends SpatialFrameCore {
     }
 
     forEachActorPushablePair(fn) {
-        this.forEachGroupNeighborPair(
-            this._combatants,
-            (actor, pickup) => {
-                if (pickup.isDead || !pickup.strategy?.isPushable) return false;
-                return shouldResolveActorPushable(actor, pickup);
-            },
-            fn,
-        );
+        this.forEachGroupNeighborPair(this._combatants, (actor, pickup) => actorPushablePairFilter.allows(actor, pickup), fn);
     }
 
     forEachPushablePair(fn) {
-        this.forEachGroupNeighborPair(
-            this._pushables,
-            (p1, p2) => {
-                if (p2 === p1 || p2.isDead || !p2.strategy?.isPushable || p1.id >= p2.id) return false;
-                return isMovingEntity(p1) || isMovingEntity(p2);
-            },
-            fn,
-        );
+        this.forEachGroupNeighborPair(this._pushables, (p1, p2) => pushablePairFilter.allows(p1, p2), fn);
     }
 }
 

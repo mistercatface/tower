@@ -1,8 +1,11 @@
 import { inferFaction } from "../../../Combat/Targeting.js";
+import { isPairActive, shouldResolveActorPushable } from "../../Spatial/collision/entityBroadphase.js";
 
 /** @typedef {import("../pairRules.js").PairFilterConfig} PairFilterConfig */
 
 const combatResolvers = { faction: inferFaction };
+
+const spatialPairResolvers = { actorPushable: shouldResolveActorPushable, pairActive: isPairActive };
 
 /** Locomotion separation between combatants (default SeparationEngine preset). */
 export const COMBAT_SEPARATION = /** @type {PairFilterConfig} */ ({
@@ -61,6 +64,30 @@ export const PUSHABLE_SLEEP_BLOCKER = /** @type {PairFilterConfig} */ ({
     inclusionsAny: [
         { target: "other", has: "separation" },
         { target: "other", has: "strategy.isPushable" },
+    ],
+});
+
+/** Actor–pushable SAT/circle resolution pairs. */
+export const ACTOR_PUSHABLE_PAIR = /** @type {PairFilterConfig} */ ({
+    pairResolvers: spatialPairResolvers,
+    exclusions: [{ target: "other", prop: "isDead", equals: true }],
+    inclusions: [
+        { target: "other", has: "strategy.isPushable" },
+        { target: "pair", pairResolve: "actorPushable" },
+    ],
+});
+
+/** Pushable–pushable resolution pairs (deduped, at least one moving or overlapping). */
+export const PUSHABLE_PAIR = /** @type {PairFilterConfig} */ ({
+    pairResolvers: spatialPairResolvers,
+    exclusions: [
+        { target: "pair", sameEntity: true },
+        { target: "other", prop: "isDead", equals: true },
+    ],
+    inclusions: [
+        { target: "other", has: "strategy.isPushable" },
+        { target: "pair", selfIdLessThanOther: true },
+        { target: "pair", pairResolve: "pairActive" },
     ],
 });
 
