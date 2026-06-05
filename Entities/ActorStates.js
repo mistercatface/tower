@@ -1,4 +1,5 @@
-import { integrateSteering, applyVelocityDamping, applyDesiredDirection } from "../Libraries/Motion/index.js";
+import { integrateSteering, applyVelocityDamping } from "../Libraries/Motion/index.js";
+import { applyDesiredDirection } from "../Libraries/Agent/index.js";
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
 import { normalizeAngle, turnAngleTowards } from "../Libraries/Math/Angle.js";
 import { CollisionSystem } from "../Spatial/Collision/CollisionSystem.js";

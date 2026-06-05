@@ -1,4 +1,4 @@
-import { projectOntoPath, projectOntoPathFrom } from "../../Spatial/geometry/PathGeometry.js";
+import { projectOntoPath, projectOntoPathFrom } from "../Spatial/geometry/PathGeometry.js";
 
 const WAYPOINT_SLACK = 2;
 const CORNER_DOT_THRESHOLD = 0.15;
@@ -126,21 +126,25 @@ function constrainToSegmentAxis(x, y, from, to) {
     return null;
 }
 
+/** @typedef {import("../Agent/types.js").AgentPose} AgentPose */
+/** @typedef {import("../Agent/types.js").SteeringResult} SteeringResult */
+
 /**
- * @param {number} x
- * @param {number} y
- * @param {number} radius
+ * @param {AgentPose} pose
  * @param {{ x: number, y: number }[]} path
  * @param {number} targetX
  * @param {number} targetY
  * @param {object} [settings]
  * @param {object | null} [navState]
- * @returns {{ desiredX: number, desiredY: number, offPath: boolean }}
+ * @returns {SteeringResult & { offPath: boolean }}
  */
-export function computePathSteering(x, y, radius, path, targetX, targetY, settings = {}, navState = null) {
+export function computePathSteering(pose, path, targetX, targetY, settings = {}, navState = null) {
+    const x = pose.x;
+    const y = pose.y;
+    const radius = pose.radius ?? 6;
     const waypointArrival = Math.max(
         settings.pathWaypointArrival ?? 10,
-        (radius || 6) * 1.2,
+        radius * 1.2,
     );
     const offPathDistance = settings.pathOffPathDistance ?? 80;
     const arrivalDistance = settings.arrivalDistance ?? 2;

@@ -4,24 +4,11 @@
  */
 import { normalizeAngle } from "../Math/Angle.js";
 
-/**
- * @typedef {object} SteerableBody
- * @property {number} x
- * @property {number} y
- * @property {number} [vx]
- * @property {number} [vy]
- * @property {number} desiredX
- * @property {number} desiredY
- * @property {number} speed
- * @property {number} accelRate
- * @property {number} angle
- * @property {number} [turnSpeed]
- * @property {{ x: number, y: number, pushX: number, pushY: number } | null} [separation]
- */
+/** @typedef {import("../Agent/types.js").MobileAgent} MobileAgent */
 
 /**
  * Blend desired direction + optional separation into velocity and position.
- * @param {SteerableBody} body — mutated in place
+ * @param {MobileAgent} body — mutated in place
  * @param {number} dtMs
  * @param {{
  *   ignoreSeparation?: boolean,

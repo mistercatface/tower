@@ -1,6 +1,6 @@
-import { applyDesiredDirectionToward } from "../../Libraries/Motion/directSeek.js";
-import { trimPathAhead, computePathSteering } from "../../Libraries/Math/pathfinding/pathFollow.js";
-import { prepareNavigationPath, orthogonalizePath } from "../../Libraries/Math/pathfinding/PathClearance.js";
+import { agentPose, applySteeringResult, applyDesiredDirectionToward } from "../../Libraries/Agent/index.js";
+import { trimPathAhead, computePathSteering } from "../../Libraries/Pathfinding/pathFollow.js";
+import { prepareNavigationPath, orthogonalizePath } from "../../Libraries/Pathfinding/PathClearance.js";
 
 export function createNavState() {
     return {
@@ -106,24 +106,18 @@ export function steerViaHpa(entity, targetX, targetY, hierarchicalNavigator, nav
     }
 
     if (navState.path && navState.path.length >= 2) {
-        let steering = computePathSteering(
-            entity.x, entity.y, entity.radius,
-            navState.path, targetX, targetY, settings, navState,
-        );
+        const pose = agentPose(entity);
+        let steering = computePathSteering(pose, navState.path, targetX, targetY, settings, navState);
         if (steering.offPath && now - navState.lastOffPathReplan >= effectiveReplanMs) {
             replanReason = "offPath";
             navState.lastOffPathReplan = now;
             replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings, false, profile, state);
             if (navState.path && navState.path.length >= 2) {
-                steering = computePathSteering(
-                    entity.x, entity.y, entity.radius,
-                    navState.path, targetX, targetY, settings, navState,
-                );
+                steering = computePathSteering(pose, navState.path, targetX, targetY, settings, navState);
             }
         }
         if (navState.path && navState.path.length >= 2) {
-            entity.desiredX = steering.desiredX;
-            entity.desiredY = steering.desiredY;
+            applySteeringResult(entity, steering);
             return { mode: "hpa", replanReason, pathLen: navState.path.length };
         }
     }

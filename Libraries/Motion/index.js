@@ -1,7 +1,8 @@
 /**
  * Libraries/Motion — pure top-down locomotion math.
  *
- * Scope: steering integration, damping, impulses, separation forces, direct seek.
+ * Scope: steering integration, damping, impulses, separation forces.
+ * Data contract: Libraries/Agent (AgentPose, MobileAgent, SteeringResult).
  * Out of scope: Render/Kinematics (ragdoll, IK, gore), wall/pickup collision (Spatial/Motion/PhysicsSystem).
  *
  * Expansion roadmap:

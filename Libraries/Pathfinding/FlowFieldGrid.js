@@ -1,11 +1,11 @@
-import { circleIntersectsAabb } from "../Aabb2D.js";
+import { circleIntersectsAabb } from "../Math/Aabb2D.js";
 import { gridReachabilityBfs } from "./gridReachabilityBfs.js";
-import { OCTILE_OFFSETS } from "../../Spatial/grid/GridUtils.js";
+import { OCTILE_OFFSETS } from "../Spatial/grid/GridUtils.js";
 import {
     worldToGridCentered,
     gridToWorldCentered,
     getCellBoundsCentered,
-} from "../../Spatial/grid/GridCoords.js";
+} from "../Spatial/grid/GridCoords.js";
 
 const MAX_CACHE = 100;
 

@@ -1,14 +1,13 @@
-import { applyDesiredDirectionToward } from "../../Libraries/Motion/directSeek.js";
-import { sampleFlowDirectionOnGrid } from "../../Libraries/Math/pathfinding/sampleFlowDirection.js";
+import { agentPose, applySteeringResult, applyDesiredDirectionToward } from "../../Libraries/Agent/index.js";
+import { computeFlowSteering } from "../../Libraries/Pathfinding/flowSteering.js";
 
 export function steerViaFlowField(entity, targetX, targetY, flowFieldGrid, flowFieldKey) {
     if (flowFieldGrid) {
         const flowField = flowFieldGrid.getFlowField(targetX, targetY);
         if (flowField) {
-            const dir = sampleFlowDirectionOnGrid(entity.x, entity.y, flowField, flowFieldGrid);
-            if (dir) {
-                entity.desiredX = dir.x;
-                entity.desiredY = dir.y;
+            const steering = computeFlowSteering(agentPose(entity), flowField, flowFieldGrid);
+            if (steering) {
+                applySteeringResult(entity, steering);
                 return "flow";
             }
         }

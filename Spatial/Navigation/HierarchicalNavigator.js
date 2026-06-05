@@ -1,13 +1,13 @@
 import { colRowToIndex, indexToColRow, forEachCardinalNeighbor } from "../../Libraries/Spatial/grid/GridUtils.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin } from "../../Libraries/Spatial/grid/GridCoords.js";
-import { runLocalAStarFlat, runAbstractAStar } from "../../Libraries/Math/pathfinding/AStar.js";
+import { runLocalAStarFlat, runAbstractAStar } from "../../Libraries/Pathfinding/AStar.js";
 import {
     RegionNode,
     computeDistanceTransform,
     generateVoronoiRegions,
     findRegionAdjacencies,
     repositionNodeCentroid,
-} from "../../Libraries/Math/pathfinding/VoronoiRegions.js";
+} from "../../Libraries/Pathfinding/VoronoiRegions.js";
 
 export class HierarchicalNavigator {
     constructor(cellSize, maxCellsPerChunk, minCellsPerChunk, navGraph, { damagePadding = 12 } = {}) {

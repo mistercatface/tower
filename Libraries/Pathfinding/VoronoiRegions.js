@@ -5,7 +5,7 @@ import {
     indexToColRow,
     makeAdjacencyKey,
     forEachCardinalNeighbor,
-} from "../../Spatial/grid/GridUtils.js";
+} from "../Spatial/grid/GridUtils.js";
 
 export class RegionNode {
     constructor(id, col, row, sectorCol, sectorRow, minX, minY, cellSize) {

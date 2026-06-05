@@ -8,7 +8,7 @@ import { pickupStates } from "./PickupStates.js";
 import { PolygonShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { getProjectileDamage } from "../Combat/impactDamage.js";
 import { getStartNodeLayout } from "../Generator/StartNodeBuilding.js";
-import { placeAtWallClearance } from "../Libraries/Math/pathfinding/PathClearance.js";
+import { placeAtWallClearance } from "../Libraries/Pathfinding/PathClearance.js";
 import { distanceToSegment } from "../Libraries/Spatial/geometry/WallGeometry.js";
 import { MOVING_SPEED_SQ } from "../Spatial/Collision/PairBroadphase.js";
 import { SLEEP_FRAMES, canSleepPushable, wakePushable as wakePushablePickup } from "../Spatial/Collision/PushableSleep.js";

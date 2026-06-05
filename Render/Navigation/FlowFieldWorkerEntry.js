@@ -1,4 +1,4 @@
-import { computeFlowField } from "../../Libraries/Math/pathfinding/flowFieldBfs.js";
+import { computeFlowField } from "../../Libraries/Pathfinding/flowFieldBfs.js";
 
 let GRID_WIDTH;
 let GRID_SIZE;

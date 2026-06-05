@@ -3,7 +3,7 @@ import { GeneratorStrategies } from "./GeneratorStrategies.js";
 import { StartBuildingStrategy } from "./StartNodeBuilding.js";
 import { WorldObstacleGrid } from "../Spatial/World/ObstacleGrid.js";
 import { FLOW_FIELD_WORKER_URL } from "../Render/WorldSurfaceBootstrap.js";
-import { FlowFieldGrid } from "../Libraries/Math/pathfinding/FlowFieldGrid.js";
+import { FlowFieldGrid } from "../Libraries/Pathfinding/FlowFieldGrid.js";
 import { mapSettings, gridSettings, mapGenerationSettings } from "../Config/Config.js";
 import { resolveSurfaceProfileId } from "../Config/procedural/profiles.js";
 import { syncSurfaceProfile } from "../Render/game/surfaceProfileResolver.js";
