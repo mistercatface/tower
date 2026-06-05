@@ -10,6 +10,7 @@ This folder is the **game definition** for the shipped tower roguelike. The engi
 | `presets/combat.js` | Pair-filter presets (separation, collision, projectiles) |
 | `presets/combatRules.js` | Rule fragments + `inferFaction` resolver |
 | `wireRadio.js` | Tower radio content + `brock` main character + pause wiring |
+| `targeting.js` | Faction resolver + hostility queries (`Config/content/factions.js`) |
 
 Balance and content remain in `Config/balance/` and `Config/content/` (radio scripts under `Config/content/radio/`).
 

@@ -1,4 +1,5 @@
-import { inferFaction } from "../../../Combat/Targeting.js";
+import { inferFaction } from "../targeting.js";
+import { hostileFactionPairs } from "../../../Config/content/factions.js";
 import { isPairActive, shouldResolveActorPushable } from "../../../Libraries/Spatial/collision/entityBroadphase.js";
 
 /** @typedef {import("../../../Libraries/Interaction/pairRules.js").PairFilterConfig} PairFilterConfig */
@@ -71,7 +72,7 @@ export const excludeSameEntity = {
 
 /** @type {PairFilterConfig} */
 export const includeCrossFactionHostile = {
-    inclusions: [{ target: "pair", crossFaction: ["player", "enemy"] }],
+    inclusions: hostileFactionPairs.map((pair) => ({ target: "pair", crossFaction: pair })),
 };
 
 /** @type {PairFilterConfig} */
