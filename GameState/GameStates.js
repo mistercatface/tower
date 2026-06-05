@@ -1,11 +1,11 @@
 import { FloatingText } from "../Render/FloatingText.js";
 import { requestUiUpdate } from "../Core/EventSystem.js";
 import { gridSettings, debugSkipToClueSearch } from "../Config/Config.js";
-import { getStartNodeLayout } from "../Generator/StartNodeBuilding.js";
+import { getStartGameLayout } from "../Games/tower/tutorial/StartGameBuilding.js";
 import { Pools } from "../Core/Pools.js";
 import { inspectBridge } from "../Combat/inspect/InspectBridge.js";
-import { beginStartNodeIntro, shouldRunStartNodeIntro } from "../Combat/StartNodeIntro.js";
-import { findClueSearchPickup, beginClueSearch, shouldRunClueSearch } from "../Combat/inspect/ClueSearch.js";
+import { beginStartGameIntro, shouldRunStartGameIntro } from "../Games/tower/tutorial/StartGameIntro.js";
+import { findClueSearchPickup, beginClueSearch, shouldRunClueSearch } from "../Games/tower/tutorial/ClueSearch.js";
 import {
     runPersistentSectorEnterOnNode,
     runCombatTick,
@@ -50,7 +50,7 @@ export class CombatState {
         ctx.state.floatingTexts = [];
         const startNode = ctx.state.getStartMapNode();
         const combatCoords = ctx.state.getNodeCombatCoords(startNode);
-        const layout = getStartNodeLayout(combatCoords.x, combatCoords.y, gridSettings.cellSize);
+        const layout = getStartGameLayout(combatCoords.x, combatCoords.y, gridSettings.cellSize);
         ctx.state.player.setSpawnPosition(layout.spawnX, layout.spawnY);
         ctx.state.player.resetToSpawn();
         ctx.viewport.snapTo(ctx.state.player.x, ctx.state.player.y);
@@ -58,7 +58,7 @@ export class CombatState {
         ctx.state.hordeSpawner.beginHorde();
         ctx.state.player.resetTurretCombatState();
         runPersistentSectorEnterOnNode(ctx.state);
-        if (shouldRunStartNodeIntro(ctx.state)) beginStartNodeIntro(ctx.state);
+        if (shouldRunStartGameIntro(ctx.state)) beginStartGameIntro(ctx.state);
         if (startNode && debugSkipToClueSearch && shouldRunClueSearch(ctx.state)) {
             beginClueSearch(ctx.state, null);
             requestAnimationFrame(() => {

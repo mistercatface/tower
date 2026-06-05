@@ -1,6 +1,6 @@
 import { Segment } from "../Entities/Wall.js";
 import { GeneratorStrategies } from "./GeneratorStrategies.js";
-import { StartBuildingStrategy } from "./StartNodeBuilding.js";
+import { StartGameBuildingStrategy } from "../Games/tower/tutorial/StartGameBuilding.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { FLOW_FIELD_WORKER_URL } from "../Render/WorldSurfaceBootstrap.js";
 import { FlowFieldGrid } from "../Libraries/Pathfinding/FlowFieldGrid.js";
@@ -290,11 +290,11 @@ export class MapGenerator {
                 flowFieldGrid: tempFlowFieldGrid,
             };
 
-            StartBuildingStrategy.generate(mockState, coords.x, coords.y);
+            StartGameBuildingStrategy.generate(mockState, coords.x, coords.y);
 
             startNode.wallsData = serializeWalls(mockState.walls, coords.x, coords.y, 480);
-            startNode.strategy = "StartBuilding";
-            startNode.surfaceProfileId = resolveSurfaceProfileId({ layer: 0, strategy: "StartBuildingStrategy" });
+            startNode.strategy = "StartGameBuilding";
+            startNode.surfaceProfileId = resolveSurfaceProfileId({ layer: 0, strategy: "StartGameBuildingStrategy" });
         }
 
         const numLayers = mapSettings.numLayers;

@@ -137,10 +137,10 @@ export class GameState {
         this.combatHudMode = 0;
         this.pendingPerkPicks = [];
         this.radioSeenThisRun = {};
-        this.startNodeIntroActive = false;
-        this.startNodeIntroTriggered = false;
-        this.startNodeIntroCompleted = false;
-        this.startNodeGuardsDialogUnlocked = false;
+        this.startGameIntroActive = false;
+        this.startGameIntroTriggered = false;
+        this.startGameIntroCompleted = false;
+        this.startGameGuardsDialogUnlocked = false;
         this.clueSearchActive = false;
         this.clueSearchSeen = null;
         this.clueSearchOnComplete = null;

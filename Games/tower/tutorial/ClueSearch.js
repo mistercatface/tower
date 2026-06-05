@@ -1,8 +1,8 @@
-import { fireRadioTrigger, requestUiHudUpdate, startRadioConversation } from "../../Core/EventSystem.js";
-import { findInspectablePickup } from "./inspectTargeting.js";
+import { fireRadioTrigger, requestUiHudUpdate, startRadioConversation } from "../../../Core/EventSystem.js";
+import { findInspectablePickup } from "../../../Combat/inspect/inspectTargeting.js";
 
 /**
- * Post-Garbanzo-fight clue search (inspector tutorial at game start).
+ * Opening-tutorial clue search after the Garbanzo guard fight.
  *
  * 1. Intro guards dead → intro_guards_cleared radio → inspector mode
  * 2. Tap clue objects → guided inspect radios
@@ -43,7 +43,7 @@ function isClueSearchInProgress(state) {
 export function tryBeginClueSearchAfterIntroGuards(state, fsm) {
     if (state.clueSearchCompleted || isClueSearchInProgress(state)) return false;
     if (fsm?.currentStateName === "inspector") return false;
-    if (!state.startNodeIntroCompleted) return false;
+    if (!state.startGameIntroCompleted) return false;
     if (hasLivingIntroGuards(state)) return false;
 
     fireRadioTrigger(

@@ -1,7 +1,7 @@
 import { perkMilestones, xpForLevel } from "../Config/Config.js";
 import { buildAbilityTreeLayout } from "../Config/content/abilityTreeLayout.js";
 import { GamePhase, isCombat, isInspector } from "../GameState/GamePhase.js";
-import { getClueSearchMissionLabel } from "../Combat/inspect/ClueSearch.js";
+import { getClueSearchMissionLabel } from "../Games/tower/tutorial/ClueSearch.js";
 import { getGunDefinition, playerEquipmentCatalog } from "../Config/content/guns.js";
 import { getSlotFireIntervalMs, getSlotReloadTimeMs } from "../Combat/gunCombat.js";
 import { countGunInLoadout, formatHandednessLabel, getEquipmentSlotCount, getGunEquipAction, normalizeWeaponLoadout } from "../Combat/equipmentLoadout.js";

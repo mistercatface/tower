@@ -3,7 +3,7 @@ import { installGameSurfaceProfileProvider } from "../../Config/procedural/boots
 import { createUpgrades, createBaseUpgrades } from "../../Progression/Upgrades.js";
 import { registerGameInspectEntries } from "../../Combat/inspect/inspectContent.js";
 import { MapState, CombatState, InspectorState } from "../../GameState/GameStates.js";
-import { unlockStartNodeGuardsDialog } from "../../Combat/StartNodeIntro.js";
+import { unlockStartGameGuardsDialog } from "./tutorial/StartGameIntro.js";
 import { ProgressionManager } from "../../Progression/ProgressionManager.js";
 import { wireTowerRadio } from "./wireRadio.js";
 import "../../Entities/Zombie.js";
@@ -54,7 +54,7 @@ export const towerGame = {
 
     onRunStart({ state, upgrades }) {
         ProgressionManager.setupNewRunAbilities(state, upgrades);
-        unlockStartNodeGuardsDialog(state);
+        unlockStartGameGuardsDialog(state);
     },
 
     runStartRadioTrigger: "run_start",

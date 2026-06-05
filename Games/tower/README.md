@@ -7,6 +7,9 @@ This folder is the **game definition** for the shipped tower roguelike. The engi
 | Path | Role |
 |------|------|
 | `gameDefinition.js` | Manifest: FSM states, upgrades factory, bootstrap hooks |
+| `tutorial/StartGameIntro.js` | Garbanzo guard intro at run start |
+| `tutorial/ClueSearch.js` | Post-fight clue search → horde unlock |
+| `tutorial/StartGameBuilding.js` | Opening building layout + spawn slots |
 | `presets/combat.js` | Pair-filter presets (separation, collision, projectiles) |
 | `presets/combatRules.js` | Rule fragments + `inferFaction` resolver |
 | `wireRadio.js` | Tower radio content + `brock` main character + pause wiring |

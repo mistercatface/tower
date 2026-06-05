@@ -8,8 +8,8 @@ export const radioConversations = {
             { speakerId: "brock", text: "Okay, let's move." },
         ],
     },
-    start_node_guards_chickpea_garbanzo: {
-        trigger: "start_node_guards",
+    start_game_guards_chickpea_garbanzo: {
+        trigger: "start_game_guards",
         oncePerRun: true,
         lines: [
             { speakerId: "brock", text: "Are you going to let us pass?" },

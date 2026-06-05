@@ -6,7 +6,7 @@ import { transitionEntity } from "../Libraries/FSM/transition.js";
 import { pickupStates } from "./PickupStates.js";
 import { PolygonShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { getProjectileDamage } from "../Combat/impactDamage.js";
-import { getStartNodeLayout } from "../Generator/StartNodeBuilding.js";
+import { getStartGameLayout } from "../Games/tower/tutorial/StartGameBuilding.js";
 import { placeAtWallClearance } from "../Libraries/Pathfinding/PathClearance.js";
 import { distanceToSegment } from "../Libraries/Spatial/geometry/WallGeometry.js";
 import { MOVING_SPEED_SQ } from "../Libraries/Spatial/collision/entityBroadphase.js";
@@ -421,8 +421,8 @@ function collectWallAdjacentCells(state, layout, propRadius) {
     return cells;
 }
 
-export function spawnStartNodePickups(state, playerX, playerY) {
-    const layout = getStartNodeLayout(playerX, playerY, state.obstacleGrid.cellSize);
+export function spawnStartGamePickups(state, playerX, playerY) {
+    const layout = getStartGameLayout(playerX, playerY, state.obstacleGrid.cellSize);
     const propRadius = worldPropDefinitions.crate.radius;
     const wallCells = collectWallAdjacentCells(state, layout, propRadius);
     shuffleInPlace(wallCells);

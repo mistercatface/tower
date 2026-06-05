@@ -40,7 +40,7 @@ export const defaultSurfaceProfileId = START_STATION_ID;
 export const startSurfaceProfileId = START_STATION_ID;
 
 export const surfaceProfileByStrategy = {
-    StartBuildingStrategy: START_STATION_ID,
+    StartGameBuildingStrategy: START_STATION_ID,
     MazeStrategy: START_STATION_ID,
     Maze2Strategy: START_STATION_ID,
     DenseMazeStrategy: START_STATION_ID,

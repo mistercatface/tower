@@ -4,7 +4,7 @@ import { mapGenCanvasBounds } from "../LabSettings.js";
 import { GamePhase } from "../../../GameState/GamePhase.js";
 import { GameState } from "../../../GameState/GameState.js";
 import { MapGenerator } from "../../../Generator/MapGenerator.js";
-import { getStartNodeLayout } from "../../../Generator/StartNodeBuilding.js";
+import { getStartGameLayout } from "../../../Games/tower/tutorial/StartGameBuilding.js";
 
 /**
  * Full run map — same pipeline as a new game (all nodes, walls, obstacle grid).
@@ -41,7 +41,7 @@ export function focusLabNode(state, nodeId) {
     }
     const combatCoords = state.getNodeCombatCoords(node);
     if (nodeId === 0) {
-        const layout = getStartNodeLayout(combatCoords.x, combatCoords.y, gridSettings.cellSize);
+        const layout = getStartGameLayout(combatCoords.x, combatCoords.y, gridSettings.cellSize);
         state.player.x = layout.spawnX;
         state.player.y = layout.spawnY;
         return { x: layout.spawnX, y: layout.spawnY };

@@ -1,7 +1,7 @@
-import { Segment } from "../Entities/Wall.js";
-import { snapLayoutOrigin, gridCellCenter } from "./GridLayout.js";
+import { Segment } from "../../../Entities/Wall.js";
+import { snapLayoutOrigin, gridCellCenter } from "../../../Generator/GridLayout.js";
 
-/** Fixed layout for map node 0 — player starts just south of the entrance. */
+/** Fixed opening layout — player starts just south of the entrance. */
 const GRID_COLS = 49;
 const BUILDING_ROWS = 34;
 const ENTRANCE_ROW = BUILDING_ROWS - 1;
@@ -226,7 +226,7 @@ function carveYard(grid, cols) {
     }
 }
 
-export function generateStartNodeBuilding(state, px, py) {
+export function generateStartGameBuilding(state, px, py) {
     const cellSize = state.flowFieldGrid.cellSize;
     const random = createRng(BSP_SEED);
     const grid = new Uint8Array(GRID_COLS * GRID_ROWS).fill(1);
@@ -253,13 +253,13 @@ export function generateStartNodeBuilding(state, px, py) {
     }
 }
 
-export const StartBuildingStrategy = {
+export const StartGameBuildingStrategy = {
     generate(state, px, py) {
-        generateStartNodeBuilding(state, px, py);
+        generateStartGameBuilding(state, px, py);
     },
 };
 
-export function getStartNodeLayout(px, py, cellSize) {
+export function getStartGameLayout(px, py, cellSize) {
     const { offsetX, offsetY } = snapLayoutOrigin(px, py, GRID_COLS, GRID_ROWS, cellSize);
     const spawn = gridCellCenter(offsetX, offsetY, SPAWN_COL, SPAWN_ROW, cellSize);
     const guardRow = GUARD_ROOM.row + Math.floor(GUARD_ROOM.rows / 2);

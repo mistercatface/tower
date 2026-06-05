@@ -5,7 +5,7 @@ import { ProgressionManager } from "../../Progression/ProgressionManager.js";
 import { combatSpatial } from "../World/CombatSpatialFrame.js";
 import { Projectile } from "../../Entities/Projectile.js";
 import { Explosion } from "../../Entities/Explosion/Explosion.js";
-import { updateStartNodeIntro } from "../../Combat/StartNodeIntro.js";
+import { updateStartGameIntro } from "../../Games/tower/tutorial/StartGameIntro.js";
 import { runPushablePhysics } from "./combatPhysics.js";
 
 /** @param {object[]} events @param {object} ctx */
@@ -35,7 +35,7 @@ export function runCombatTick(ctx, dt) {
         playerTargetY: ctx.state.player.isMoving ? ctx.state.player.targetY : null,
         previousGridPos: oldGridPos,
     });
-    updateStartNodeIntro(ctx.state);
+    updateStartGameIntro(ctx.state);
     ctx.state.hordeSpawner.manageSpawning(dt, ctx.state, ctx.upgrades);
     Projectile.checkSpawnCollisions(ctx.state, spatialFrame, events);
     Projectile.updateAll(ctx.state, dt);

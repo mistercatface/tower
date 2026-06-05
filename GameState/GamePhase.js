@@ -24,7 +24,7 @@ export function isInspector(phase) {
 export function canRunHordeSpawning(state) {
     return state.phase !== GamePhase.MAP
         && state.phase !== GamePhase.INSPECTOR
-        && !state.startNodeIntroActive
+        && !state.startGameIntroActive
         && !state.clueSearchActive
         && state.clueSearchCompleted;
 }

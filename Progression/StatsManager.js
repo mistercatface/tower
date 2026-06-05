@@ -2,9 +2,9 @@ import { gridSettings, perkMilestones, xpForLevel } from "../Config/Config.js";
 import { createUpgradeLevels, resetUpgradeLevels } from "../Entities/CombatantStats.js";
 import { spawnFloatingText } from "../Core/EventSystem.js";
 import { MapGenerator } from "../Generator/MapGenerator.js";
-import { getStartNodeLayout } from "../Generator/StartNodeBuilding.js";
+import { getStartGameLayout } from "../Games/tower/tutorial/StartGameBuilding.js";
 import { rollPlayerStartLoadout } from "../Combat/weaponLoadout.js";
-import { spawnInitialPickups, spawnStartNodePickups } from "../Entities/Pickup.js";
+import { spawnInitialPickups, spawnStartGamePickups } from "../Entities/Pickup.js";
 
 export class StatsManager {
     static initUpgradesList(state, upgradeList) {
@@ -101,7 +101,7 @@ export class StatsManager {
         const startNode = state.getMapNode(0);
         if (startNode) {
             const coords = state.getNodeCombatCoords(startNode);
-            const layout = getStartNodeLayout(coords.x, coords.y, gridSettings.cellSize);
+            const layout = getStartGameLayout(coords.x, coords.y, gridSettings.cellSize);
             state.player.setSpawnPosition(layout.spawnX, layout.spawnY);
             state.player.resetToSpawn();
 
@@ -111,7 +111,7 @@ export class StatsManager {
         for (const node of state.mapNodes) {
             const coords = state.getNodeCombatCoords(node);
             if (node.id === 0) {
-                spawnStartNodePickups(state, coords.x, coords.y);
+                spawnStartGamePickups(state, coords.x, coords.y);
             } else {
                 spawnInitialPickups(state, coords.x, coords.y);
             }

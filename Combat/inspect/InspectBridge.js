@@ -8,7 +8,7 @@ import {
     onInspectPanelClosed,
     playGuidedInspectRadio,
     recordClueFound,
-} from "./ClueSearch.js";
+} from "../../Games/tower/tutorial/ClueSearch.js";
 import { requestGamePause, requestGameResume, requestUiUpdate } from "../../Core/EventSystem.js";
 
 const INSPECTOR_PAUSE_REASON = "inspector";
