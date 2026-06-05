@@ -6,6 +6,12 @@ import {
     clearWallCells,
     computeBoundsFromWalls,
 } from "../../Libraries/Spatial/grid/wallGridBake.js";
+import {
+    collectSegmentsAlongLine,
+    collectSegmentsInWorldBounds,
+    collectSegmentsNearPose,
+    segmentGridLayoutFromObstacleGrid,
+} from "../../Libraries/Spatial/grid/segmentGridWalk.js";
 
 export { getWallCellBounds, markWallOnGrid, clearWallCells, computeBoundsFromWalls };
 
@@ -121,103 +127,19 @@ export class WorldObstacleGrid {
         };
     }
 
+    _segmentLayout() {
+        return segmentGridLayoutFromObstacleGrid(this);
+    }
+
     getNearbySegments(entity) {
-        const reach = entity.radius;
-        const minGrid = this.worldToGrid(entity.x - reach, entity.y - reach);
-        const maxGrid = this.worldToGrid(entity.x + reach, entity.y + reach);
-        const startCol = Math.max(0, minGrid.col);
-        const endCol = Math.min(this.cols - 1, maxGrid.col);
-        const startRow = Math.max(0, minGrid.row);
-        const endRow = Math.min(this.rows - 1, maxGrid.row);
-        const nearby = [];
-
-        for (let col = startCol; col <= endCol; col++) {
-            for (let row = startRow; row <= endRow; row++) {
-                const cellSegs = this.segmentGrid[colRowToIndex(col, row, this.cols)];
-                if (!cellSegs) continue;
-                for (const segment of cellSegs) {
-                    if (!nearby.includes(segment)) {
-                        nearby.push(segment);
-                    }
-                }
-            }
-        }
-
-        return nearby;
+        return collectSegmentsNearPose(this._segmentLayout(), entity);
     }
 
     getSegmentsAlongLine(x1, y1, x2, y2) {
-        const p1 = this.worldToGrid(x1, y1);
-        const p2 = this.worldToGrid(x2, y2);
-
-        const col0 = Math.max(0, Math.min(this.cols - 1, p1.col));
-        const row0 = Math.max(0, Math.min(this.rows - 1, p1.row));
-        const col1 = Math.max(0, Math.min(this.cols - 1, p2.col));
-        const row1 = Math.max(0, Math.min(this.rows - 1, p2.row));
-
-        const dcol = Math.abs(col1 - col0);
-        const drow = Math.abs(row1 - row0);
-        const scol = col0 < col1 ? 1 : -1;
-        const srow = row0 < row1 ? 1 : -1;
-        let err = dcol - drow;
-
-        let c = col0;
-        let r = row0;
-        const result = [];
-        const checked = new Set();
-
-        while (true) {
-            const idx = colRowToIndex(c, r, this.cols);
-            const cellSegs = this.segmentGrid[idx];
-            if (cellSegs) {
-                for (const segment of cellSegs) {
-                    if (!checked.has(segment)) {
-                        checked.add(segment);
-                        result.push(segment);
-                    }
-                }
-            }
-
-            if (c === col1 && r === row1) break;
-            const e2 = 2 * err;
-            if (e2 > -drow) {
-                err -= drow;
-                c += scol;
-            }
-            if (e2 < dcol) {
-                err += dcol;
-                r += srow;
-            }
-        }
-
-        return result;
+        return collectSegmentsAlongLine(this._segmentLayout(), x1, y1, x2, y2);
     }
 
     getSegmentsInBounds(minX, minY, maxX, maxY) {
-        if (!this.segmentGrid) return [];
-
-        const minGrid = this.worldToGrid(minX, minY);
-        const maxGrid = this.worldToGrid(maxX, maxY);
-        const startCol = Math.max(0, minGrid.col);
-        const endCol = Math.min(this.cols - 1, maxGrid.col);
-        const startRow = Math.max(0, minGrid.row);
-        const endRow = Math.min(this.rows - 1, maxGrid.row);
-        const result = [];
-        const checked = new Set();
-
-        for (let row = startRow; row <= endRow; row++) {
-            for (let col = startCol; col <= endCol; col++) {
-                const cellSegs = this.segmentGrid[colRowToIndex(col, row, this.cols)];
-                if (!cellSegs) continue;
-                for (const segment of cellSegs) {
-                    if (!checked.has(segment)) {
-                        checked.add(segment);
-                        result.push(segment);
-                    }
-                }
-            }
-        }
-
-        return result;
+        return collectSegmentsInWorldBounds(this._segmentLayout(), minX, minY, maxX, maxY);
     }
 }

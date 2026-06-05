@@ -1,4 +1,5 @@
 import { EntityGrid } from "../../Libraries/Spatial/indexes/EntityGrid.js";
+import { collectWallSegmentsForEntity } from "../../Libraries/Spatial/query/wallSegmentQuery.js";
 import { SpatialQuery } from "../../Libraries/Spatial/query/SpatialQuery.js";
 import { wallContextFromState } from "./WallContext.js";
 import { Actor } from "../../Entities/Actor.js";
@@ -87,37 +88,11 @@ export class SpatialFrame {
             return cached;
         }
 
-        const wallCtx = wallContextFromState(state);
-        let segments;
-        if (!wallCtx) {
-            segments = [];
-        } else if (wallCtx.wallSpatialIndex) {
-            let minX, minY, maxX, maxY;
-            if (entity.getBounds) {
-                const b = entity.getBounds();
-                minX = b.minX; minY = b.minY; maxX = b.maxX; maxY = b.maxY;
-            } else {
-                const r = entity.radius || 0;
-                minX = entity.x - r;
-                minY = entity.y - r;
-                maxX = entity.x + r;
-                maxY = entity.y + r;
-            }
-            const padding = wallCtx.wallSpatialIndex.cellSize;
-            const collected = this.wallQuery.collectInIndexCoords(
-                wallCtx.wallSpatialIndex,
-                minX - padding,
-                minY - padding,
-                maxX + padding,
-                maxY + padding,
-                entity
-            );
-            segments = [...collected];
-        } else if (wallCtx.obstacleGrid) {
-            segments = wallCtx.obstacleGrid.getNearbySegments(entity);
-        } else {
-            segments = wallCtx.walls;
-        }
+        const segments = collectWallSegmentsForEntity(
+            this.wallQuery,
+            wallContextFromState(state),
+            entity,
+        );
 
         this._wallCache.set(entity.id, segments);
         return segments;
