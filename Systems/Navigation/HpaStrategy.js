@@ -10,7 +10,7 @@ function shouldApplyClearance(navState, targetX, targetY, obstaclesChanged) {
     return false;
 }
 
-function replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings, applyClearance, profile, hooks) {
+function replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings, applyClearance, profile, hooks, nowMs) {
     const rawPath = hierarchicalNavigator.findPath(entity.x, entity.y, targetX, targetY);
     let path = rawPath ? trimPathAhead(entity.x, entity.y, rawPath) : null;
     if (path && obstacleGrid && applyClearance) {
@@ -30,7 +30,7 @@ function replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, o
     }
     navState.path = path;
     navState.pathProgressIdx = 0;
-    navState.lastUpdate = Date.now();
+    navState.lastUpdate = nowMs;
     navState.lastTargetX = targetX;
     navState.lastTargetY = targetY;
 }
@@ -43,7 +43,7 @@ function replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, o
  * }} hooks
  * @returns {{ steering: import("../../Libraries/Agent/types.js").SteeringResult, mode: string, replanReason: string | null, pathLen: number }}
  */
-export function planHpaSteering(entity, targetX, targetY, hierarchicalNavigator, navState, profile, settings, obstacleGrid, obstacleGeneration, hooks = {}) {
+export function planHpaSteering(entity, targetX, targetY, hierarchicalNavigator, navState, profile, settings, obstacleGrid, obstacleGeneration, hooks = {}, nowMs = Date.now()) {
     const isVisible = hooks.isVisible ? hooks.isVisible(entity) : true;
     const replanScale = hooks.getReplanScale ? hooks.getReplanScale(entity) : 1;
     const replanMs = profile.replanMs * replanScale;
@@ -61,7 +61,7 @@ export function planHpaSteering(entity, targetX, targetY, hierarchicalNavigator,
         navState.stuckFrames = 0;
     }
 
-    const now = Date.now();
+    const now = nowMs;
     let replanReason = null;
 
     let didReplanForObstacles = false;
@@ -69,7 +69,7 @@ export function planHpaSteering(entity, targetX, targetY, hierarchicalNavigator,
         navState.obstacleGeneration = obstacleGeneration;
         navState.path = null;
         if (isVisible || navState.stuckFrames > settings.stuckReplanFrames) {
-            replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings, true, profile, hooks);
+            replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings, true, profile, hooks, now);
             replanReason = "obstacles";
             navState.stuckFrames = 0;
             didReplanForObstacles = true;
@@ -88,7 +88,7 @@ export function planHpaSteering(entity, targetX, targetY, hierarchicalNavigator,
         }
         const applyClearance = shouldApplyClearance(navState, targetX, targetY, false);
         if (isVisible || navState.stuckFrames > settings.stuckReplanFrames || now - navState.lastUpdate > effectiveReplanMs) {
-            replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings, applyClearance, profile, hooks);
+            replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings, applyClearance, profile, hooks, now);
             navState.stuckFrames = 0;
         }
     }
@@ -99,7 +99,7 @@ export function planHpaSteering(entity, targetX, targetY, hierarchicalNavigator,
     if (navState.path && navState.path.length >= 2 && steering.offPath && now - navState.lastOffPathReplan >= effectiveReplanMs) {
         replanReason = "offPath";
         navState.lastOffPathReplan = now;
-        replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings, false, profile, hooks);
+        replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings, false, profile, hooks, now);
         steering = computeHpaSteering(pose, navState.path, targetX, targetY, settings, navState);
     }
 

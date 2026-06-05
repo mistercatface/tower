@@ -25,6 +25,7 @@ export class NavigationService {
                     controller.flowFieldGrid.navGraph,
                     controller.obstacleGeneration,
                     createHpaHooks(state),
+                    state?.gameTime ?? Date.now(),
                 ),
             onSteerComplete: (entity, { navState, settings }) => {
                 entity.hpaPath = navState.path;
