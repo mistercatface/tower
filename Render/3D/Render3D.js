@@ -1,17 +1,20 @@
 /** @typedef {import("../adapters/WorldRenderAdapter.js").WorldRenderInput} WorldRenderInput */
 
 import { getWorldSurfaceSettings, resolveWallVisualHeight } from "../../Libraries/WorldSurface/WorldSurfaceSettings.js";
-import { drawBarrel, drawCrate, drawFireBarrel, drawCrateShard } from "../../Combat/world3d/world3dContent.js";
 import { SpatialQuery } from "../../Spatial/World/SpatialQuery.js";
 import { drawProjectedWallFace, drawProjectedWallRoof } from "./ProjectedWallDraw.js";
 import { TileWorkerCoordinator, wallGeometryView, wallSharedEdgesView, MAX_WALLS, STRIDE } from "../WorldSurface/TileWorkerCoordinator.js";
 
-const PROP_RECIPES = { barrel: drawBarrel, fire_barrel: drawFireBarrel, crate: drawCrate, crate_shard: drawCrateShard };
+/** @typedef {(ctx: CanvasRenderingContext2D, prop: object, px: number, py: number) => void} PropDrawRecipe */
 
 export class Render3D {
-    /** @param {import("../../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} [settings] */
-    constructor(settings = getWorldSurfaceSettings()) {
+    /**
+     * @param {import("../../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} [settings]
+     * @param {Record<string, PropDrawRecipe>} [propRecipes]
+     */
+    constructor(settings = getWorldSurfaceSettings(), propRecipes = {}) {
         this.settings = settings;
+        this.propRecipes = propRecipes;
         this.lastWalls = null;
         this.lastWallCount = 0;
         this.sharedEdgesDirty = true;
@@ -281,7 +284,7 @@ export class Render3D {
 
     drawProp(ctx, prop, px, py) {
         const renderKey = prop.getRender3DKey?.() ?? prop.strategy?.render3DKey;
-        const draw = PROP_RECIPES[renderKey];
+        const draw = this.propRecipes[renderKey];
         if (!draw) return;
 
         ctx.save();
