@@ -3,7 +3,7 @@
 import { InspectViewer } from "../../Libraries/Inspect/InspectViewer.js";
 import { getInspectEntry } from "../../Libraries/Inspect/InspectCatalog.js";
 import { toInspectSubject } from "./inspectTargeting.js";
-import { isRadioDialogActive } from "../../Radio/RadioDialogController.js";
+import { isRadioDialogActive } from "../../Games/tower/wireRadio.js";
 import {
     onInspectPanelClosed,
     playGuidedInspectRadio,

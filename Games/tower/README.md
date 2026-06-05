@@ -9,8 +9,11 @@ This folder is the **game definition** for the shipped tower roguelike. The engi
 | `gameDefinition.js` | Manifest: FSM states, upgrades factory, bootstrap hooks |
 | `presets/combat.js` | Pair-filter presets (separation, collision, projectiles) |
 | `presets/combatRules.js` | Rule fragments + `inferFaction` resolver |
+| `wireRadio.js` | Tower radio content + `brock` main character + pause wiring |
 
-Balance and content remain in `Config/balance/` and `Config/content/`.
+Balance and content remain in `Config/balance/` and `Config/content/` (radio scripts under `Config/content/radio/`).
+
+Radio engine lives in `Libraries/Radio/`; tower wires it via `gameDefinition.wireRadio`.
 
 ## New game
 

@@ -5,6 +5,7 @@ import { registerGameInspectEntries } from "../../Combat/inspect/inspectContent.
 import { MapState, CombatState, InspectorState, RewardState } from "../../GameState/GameStates.js";
 import { unlockStartNodeGuardsDialog } from "../../Combat/StartNodeIntro.js";
 import { ProgressionManager } from "../../Progression/ProgressionManager.js";
+import { wireTowerRadio } from "./wireRadio.js";
 import "../../Entities/Zombie.js";
 
 /**
@@ -22,6 +23,7 @@ import "../../Entities/Zombie.js";
  * @property {() => void} [registerInspect]
  * @property {(ctx: { state: object, upgrades: object[] }) => void} [onRunStart]
  * @property {string} [runStartRadioTrigger] — fireRadioTrigger id on new run
+ * @property {(eventBus: object, pauseApi: { requestPause: (reason: string) => void, requestResume: (reason: string) => void }) => void} [wireRadio]
  */
 
 /** @type {GameDefinition} */
@@ -57,4 +59,6 @@ export const towerGame = {
     },
 
     runStartRadioTrigger: "run_start",
+
+    wireRadio: wireTowerRadio,
 };

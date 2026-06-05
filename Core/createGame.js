@@ -2,7 +2,6 @@ import { state } from "../GameState/GameState.js";
 import { initializeSaveSystem, loadProgress } from "../Progression/Storage.js";
 import { loadPersistentTriggers } from "./PersistentTriggers.js";
 import { initUI, registerUiEventListeners } from "../UI/UI.js";
-import { registerRadioUiListeners } from "../UI/RadioDialogUI.js";
 import {
     events,
     requestUiUpdate,
@@ -10,6 +9,8 @@ import {
     showGameOver,
     hideGameOver,
     fireRadioTrigger,
+    requestGamePause,
+    requestGameResume,
 } from "./EventSystem.js";
 import { registerAllListeners } from "./GameListeners.js";
 import { PauseManager } from "./PauseManager.js";
@@ -123,8 +124,8 @@ export function createGame(definition) {
     events.setContext({ state, upgrades, viewport, fsm, resetGame });
     events.warnOnMissingListeners = true;
     registerAllListeners(events, pauseManager);
+    definition.wireRadio?.(events, { requestPause: requestGamePause, requestResume: requestGameResume });
     registerUiEventListeners(events);
-    registerRadioUiListeners(events);
 
     window.addEventListener("resize", resizeCanvas);
     window.gameState = state;

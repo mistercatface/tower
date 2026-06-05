@@ -8,12 +8,10 @@ import { isCombatOrReward } from "../GameState/GamePhase.js";
 import { registerPauseListeners } from "./PauseManager.js";
 import { FloatingText } from "../Render/FloatingText.js";
 import { nextUpgradeCost } from "../Config/Config.js";
-import { registerRadioListeners } from "../Radio/RadioDialogController.js";
 import { registerPersistentTriggers } from "./PersistentTriggerSetup.js";
 
 export function registerAllListeners(eventBus, pauseManager) {
     FloatingText.registerEventListener(eventBus);
-    registerRadioListeners(eventBus);
     registerPersistentTriggers(eventBus);
     registerGameListeners(eventBus, pauseManager);
 }
