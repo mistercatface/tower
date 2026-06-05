@@ -1,5 +1,5 @@
 import { fireRadioTrigger, requestUiHudUpdate, startRadioConversation } from "../Core/EventSystem.js";
-import { findInspectablePickup } from "../Render/Inspect/InspectCatalog.js";
+import { findInspectablePickup } from "./inspectTargeting.js";
 
 /** Inspect keys required on start node after wave 1 (barrel = energy drink, crate). */
 export const START_NODE_INSPECTION_KEYS = ["jacko_can", "wood_crate"];

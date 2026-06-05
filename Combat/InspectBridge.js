@@ -1,7 +1,8 @@
 /** @typedef {import("../Entities/Pickup.js").Pickup} Pickup */
 
 import { InspectViewer } from "../Render/Inspect/InspectViewer.js";
-import { getPickupInspectEntry } from "../Render/Inspect/InspectCatalog.js";
+import { getInspectEntry } from "../Render/Inspect/InspectCatalog.js";
+import { toInspectSubject } from "./inspectTargeting.js";
 import { isRadioDialogActive } from "../Radio/RadioDialogController.js";
 import {
     onInspectPanelClosed,
@@ -42,14 +43,15 @@ class InspectBridge {
      * @param {import("../GameState/GameState.js").GameState|null} [state]
      */
     open(pickup, onClose = null, state = null) {
-        const entry = getPickupInspectEntry(pickup);
+        const subject = toInspectSubject(pickup);
+        const entry = getInspectEntry(subject.inspectKey);
         if (!entry) return;
 
         this.gameState = state;
-        this.viewer.open(entry, pickup, onClose);
+        this.viewer.open(entry, subject, onClose);
     }
 
-    /** @param {Pickup} subject */
+    /** @param {import("../Render/Inspect/InspectCatalog.js").InspectSubject} subject */
     handleOpen(subject) {
         const state = this.gameState;
         if (state) {
@@ -59,15 +61,15 @@ class InspectBridge {
         requestGamePause(INSPECTOR_PAUSE_REASON);
         requestUiUpdate();
 
-        const inspectKey = subject.strategy?.inspectKey;
+        const inspectKey = subject.inspectKey;
         if (inspectKey && state?.startNodeInspectionSeen != null) {
             playGuidedInspectRadio(state, inspectKey, () => recordStartNodeInspection(state, inspectKey));
         }
     }
 
-    /** @param {Pickup} subject */
+    /** @param {import("../Render/Inspect/InspectCatalog.js").InspectSubject} subject */
     handleClose(subject) {
-        const closedKey = subject?.strategy?.inspectKey;
+        const closedKey = subject.inspectKey;
         const state = this.gameState;
         this.gameState = null;
 

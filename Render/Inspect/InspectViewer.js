@@ -1,4 +1,5 @@
 /** @typedef {import("./InspectCatalog.js").InspectEntry} InspectEntry */
+/** @typedef {import("./InspectCatalog.js").InspectSubject} InspectSubject */
 
 const BASE_SCALE_DIVISOR = 235;
 const MIN_ZOOM = 0.45;
@@ -7,9 +8,9 @@ const WHEEL_ZOOM_SENSITIVITY = 0.0012;
 
 /**
  * @typedef {Object} InspectViewerHooks
- * @property {(ctx: { entry: InspectEntry, subject: unknown }) => void} [onOpen]
- * @property {(ctx: { entry: InspectEntry, subject: unknown }) => void} [onClose]
- * @property {(subject: unknown) => boolean} [isSubjectValid]
+ * @property {(ctx: { entry: InspectEntry, subject: InspectSubject }) => void} [onOpen]
+ * @property {(ctx: { entry: InspectEntry, subject: InspectSubject }) => void} [onClose]
+ * @property {(subject: InspectSubject) => boolean} [isSubjectValid]
  */
 
 /**
@@ -76,7 +77,7 @@ export class InspectViewer {
 
     /**
      * @param {InspectEntry} entry
-     * @param {unknown} subject
+     * @param {InspectSubject} subject
      * @param {(() => void)|null} [onClose]
      */
     open(entry, subject, onClose = null) {

@@ -6,7 +6,7 @@ import { getTexture, loadTexture, onTextureReady } from "../../3D/core/TextureCa
  * Factory for labeled box inspect views.
  * @param {import("../../../Config/props/Crate.js").WOOD_CRATE} boxConfig
  * @param {() => import("../../3D/geometry/BoxMesh.js").buildBoxMesh} buildMesh
- * @param {(pickup: import("../../../Entities/Pickup.js").Pickup | null | undefined, face: string) => string} resolveFaceLabelSrc
+ * @param {(subject: import("../InspectCatalog.js").InspectSubject | null | undefined, face: string) => string} resolveFaceLabelSrc
  */
 export function createLabeledBoxInspect(boxConfig, buildMesh, resolveFaceLabelSrc) {
     const { labelVariants, labelSrc, halfExtents, label, colors, keyWhite = true } = boxConfig;
@@ -25,7 +25,7 @@ export function createLabeledBoxInspect(boxConfig, buildMesh, resolveFaceLabelSr
                 onTextureReady(src, fn);
             }
         },
-        draw(ctx, cx, cy, scale, yaw, pitch, pickup) {
+        draw(ctx, cx, cy, scale, yaw, pitch, subject) {
             const mesh = buildMesh();
 
             renderInspectMesh(ctx, mesh, cx, cy, scale, yaw, pitch, {
@@ -35,7 +35,7 @@ export function createLabeledBoxInspect(boxConfig, buildMesh, resolveFaceLabelSr
 
             drawInspectBoxLabels(ctx, cx, cy, scale, yaw, pitch, {
                 resolveImg: (face) => {
-                    const src = resolveFaceLabelSrc?.(pickup, face);
+                    const src = resolveFaceLabelSrc?.(subject, face);
                     return src ? getTexture(src) : null;
                 },
                 halfExtents,
