@@ -1,3 +1,5 @@
+import { circleIntersectsAabb } from "../../Libraries/Math/Aabb2D.js";
+
 /** Grid anchored at a world-space min corner (ObstacleGrid). */
 export function worldToGridAtOrigin(x, y, minX, minY, cellSize) {
     return {
@@ -48,12 +50,8 @@ export function cellBoundsToWorldBounds(bounds, originX, originY, cellSize) {
     };
 }
 
-export function entityIntersectsCellBounds(x, y, radius, { minX, minY, maxX, maxY }) {
-    const closestX = Math.max(minX, Math.min(x, maxX));
-    const closestY = Math.max(minY, Math.min(y, maxY));
-    const dx = x - closestX;
-    const dy = y - closestY;
-    return dx * dx + dy * dy <= radius * radius;
+export function entityIntersectsCellBounds(x, y, radius, bounds) {
+    return circleIntersectsAabb(x, y, radius, bounds);
 }
 
 /** Snap a world point to the min corner of its obstacle-grid cell. */

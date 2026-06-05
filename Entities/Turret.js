@@ -1,4 +1,4 @@
-import { normalizeAngle } from "../Math/Angle.js";
+import { normalizeAngle } from "../Libraries/Math/Angle.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
 import { defaultGunId, getGunDefinition } from "../Config/gunDefinitions.js";
 import { defaultTurretLoadout, resolveFireAngleOffsets } from "../Config/turretLoadout.js";

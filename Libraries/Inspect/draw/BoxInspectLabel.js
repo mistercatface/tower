@@ -10,7 +10,7 @@ import {
 } from "../camera/InspectCamera.js";
 import { faceVisible } from "../geometry/MeshBuilder.js";
 import { drawImageQuad } from "./AffineTexture.js";
-import { labelBandYRange } from "../../../../Math/Interpolate.js";
+import { labelBandYRange } from "../../Math/Interpolate.js";
 
 /** @typedef {"+x" | "-x" | "+z" | "-z"} BoxSideFace */
 

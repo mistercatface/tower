@@ -1,22 +1,15 @@
 /** Bone hit tests for ragdoll corpses (2D gameplay, rig-local space). */
 
+import { closestPointOnLineSegment } from "../../../Libraries/Math/Segment2D.js";
 import { getCorpseKinematics } from "../PlayerKinematicsRenderer.js";
 import { getRagdollCollisionPoints, absRagdollPoint } from "./RagdollPhysics.js";
 
 function distToSegmentXZ(p, v, w) {
-    const dx = w.x - v.x;
-    const dz = w.z - v.z;
-    const l2 = dx * dx + dz * dz;
-    if (l2 === 0) {
-        return { dist: Math.hypot(p.x - v.x, p.z - v.z), t: 0 };
-    }
-    let t = ((p.x - v.x) * dx + (p.z - v.z) * dz) / l2;
-    t = Math.max(0, Math.min(1, t));
-    const dist = Math.hypot(
-        p.x - (v.x + t * dx),
-        p.z - (v.z + t * dz),
-    );
-    return { dist, t };
+    const closest = closestPointOnLineSegment(p.x, p.z, v.x, v.z, w.x, w.z);
+    return {
+        dist: Math.hypot(p.x - closest.x, p.z - closest.y),
+        t: closest.t,
+    };
 }
 
 function buildRagdollBones(points, constraints, rig) {

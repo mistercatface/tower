@@ -1,3 +1,5 @@
+import { distanceToAabb } from "../../Libraries/Math/Aabb2D.js";
+
 export function getWallReach(wall, padding = wall.padding) {
     return wall.size / 2 * Math.SQRT2 + padding;
 }
@@ -46,12 +48,6 @@ export function distanceToSegment(wall, x, y) {
     return distSq === Infinity ? Infinity : Math.sqrt(distSq);
 }
 
-function distancePointToAabb(px, py, minX, minY, maxX, maxY) {
-    const dx = px < minX ? minX - px : px > maxX ? px - maxX : 0;
-    const dy = py < minY ? minY - py : py > maxY ? py - maxY : 0;
-    return Math.hypot(dx, dy);
-}
-
 function segmentsIntersect(ax, ay, bx, by, cx, cy, dx, dy) {
     const d1x = bx - ax;
     const d1y = by - ay;
@@ -69,8 +65,8 @@ function segmentsIntersect(ax, ay, bx, by, cx, cy, dx, dy) {
 }
 
 function segmentIntersectsAabb(ax, ay, bx, by, minX, minY, maxX, maxY) {
-    if (distancePointToAabb(ax, ay, minX, minY, maxX, maxY) === 0) return true;
-    if (distancePointToAabb(bx, by, minX, minY, maxX, maxY) === 0) return true;
+    if (distanceToAabb(ax, ay, minX, minY, maxX, maxY) === 0) return true;
+    if (distanceToAabb(bx, by, minX, minY, maxX, maxY) === 0) return true;
     const edges = [
         [minX, minY, maxX, minY],
         [maxX, minY, maxX, maxY],
@@ -163,8 +159,8 @@ function minDistanceSegmentToAabb(ax, ay, bx, by, minX, minY, maxX, maxY) {
     for (const [ex0, ey0, ex1, ey1] of edges) {
         minDist = Math.min(minDist, distanceSegmentToSegment(ax, ay, bx, by, ex0, ey0, ex1, ey1));
     }
-    minDist = Math.min(minDist, distancePointToAabb(ax, ay, minX, minY, maxX, maxY));
-    minDist = Math.min(minDist, distancePointToAabb(bx, by, minX, minY, maxX, maxY));
+    minDist = Math.min(minDist, distanceToAabb(ax, ay, minX, minY, maxX, maxY));
+    minDist = Math.min(minDist, distanceToAabb(bx, by, minX, minY, maxX, maxY));
     return minDist;
 }
 

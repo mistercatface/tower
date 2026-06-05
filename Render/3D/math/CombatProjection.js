@@ -1,8 +1,8 @@
 // World props: geometry is built in world space (prop.facing at spawn).
 // Symmetric cylinders use a viewer-facing silhouette (viewAngle for rim tangents only).
-import { angleDelta } from "../../../Math/Angle.js";
-import { radiusAtT, scaleAtHeight } from "../../../Math/Interpolate.js";
-import { rectCorners } from "../../../Math/Poly2D.js";
+import { angleDelta } from "../../../Libraries/Math/Angle.js";
+import { radiusAtT, scaleAtHeight } from "../../../Libraries/Math/Interpolate.js";
+import { rectCorners } from "../../../Libraries/Math/Poly2D.js";
 
 export { radiusAtT, scaleAtHeight };
 

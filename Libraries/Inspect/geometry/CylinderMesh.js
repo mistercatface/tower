@@ -1,4 +1,4 @@
-import { vec3 } from "../../../Math/Vec3.js";
+import { vec3 } from "../../Math/Vec3.js";
 import { pushQuad, pushTriangle } from "./MeshBuilder.js";
 import { bodyRadiusAtY, cylinderPoint } from "./CylinderPrimitives.js";
 

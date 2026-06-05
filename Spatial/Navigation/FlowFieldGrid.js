@@ -1,3 +1,4 @@
+import { circleIntersectsAabb } from "../../Libraries/Math/Aabb2D.js";
 import { OCTILE_OFFSETS } from "../Grid/GridUtils.js";
 import {
     worldToGridCentered,
@@ -212,12 +213,7 @@ export class FlowFieldGrid {
     }
 
     entityIntersectsCell(x, y, radius, col, row) {
-        const { minX, minY, maxX, maxY } = this.getCellBounds(col, row);
-        const closestX = Math.max(minX, Math.min(x, maxX));
-        const closestY = Math.max(minY, Math.min(y, maxY));
-        const dx = x - closestX;
-        const dy = y - closestY;
-        return dx * dx + dy * dy <= radius * radius;
+        return circleIntersectsAabb(x, y, radius, this.getCellBounds(col, row));
     }
 
     sampleDirection(x, y, flowField, outEntity) {

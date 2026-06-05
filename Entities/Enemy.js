@@ -1,4 +1,4 @@
-import { normalizeAngle } from "../Math/Angle.js";
+import { normalizeAngle } from "../Libraries/Math/Angle.js";
 import { areHostile } from "../Combat/Targeting.js";
 import { Actor } from "./Actor.js";
 import { emitCombatEnemyKilled } from "../Core/EventSystem.js";

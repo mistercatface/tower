@@ -1,4 +1,4 @@
-import { normalizeAngle } from "../Math/Angle.js";
+import { normalizeAngle } from "../Libraries/Math/Angle.js";
 import { resolveWeaponModeForGun, WeaponSystem, advanceTurretAmmo } from "./WeaponSystem.js";
 import { getSlotFireIntervalMs } from "./gunCombat.js";
 import { Laser } from "../Entities/Laser.js";

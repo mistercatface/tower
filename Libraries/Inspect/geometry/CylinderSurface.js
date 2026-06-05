@@ -11,7 +11,7 @@ import {
     faceVisible,
 } from "./MeshBuilder.js";
 import { bodyRadiusAtY, cylinderPoint } from "./CylinderPrimitives.js";
-import { inflateQuad } from "../../../../Math/Screen2D.js";
+import { inflateQuad } from "../../Math/Screen2D.js";
 
 export function drawSolidQuad(ctx, d0, d1, d2, d3, color, bleedPx = 0) {
     const [p0, p1, p2, p3] = bleedPx > 0

@@ -15,3 +15,8 @@ export function turnAngleTowards(currentAngle, targetAngle, turnSpeed, dt) {
     const t = Math.min(1, turnSpeed * (dt / 1000));
     return normalizeAngle(currentAngle + diff * t);
 }
+
+/** Blend two angles along the shortest arc (radians). */
+export function blendAngle(from, to, t) {
+    return from + angleDelta(from, to) * t;
+}

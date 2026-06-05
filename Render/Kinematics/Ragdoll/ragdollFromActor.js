@@ -1,4 +1,4 @@
-import { normalizeAngle } from "../../../Math/Angle.js";
+import { normalizeAngle } from "../../../Libraries/Math/Angle.js";
 import { createImpactProfile } from "./RagdollConfig.js";
 import { initializeRagdoll } from "./RagdollPhysics.js";
 import { applyDeathSevers } from "./RagdollGore.js";

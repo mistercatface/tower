@@ -5,8 +5,9 @@
  * - rigAimFacing: reference for arm IK relative to turret world angles
  * - gunCanvasAim: rotation for weapon draw at projected hand (canvas space)
  */
-import { angleDelta, normalizeAngle } from "../../Math/Angle.js";
-import { blend, ease } from "./KinematicsMath.js";
+import { angleDelta, normalizeAngle } from "../../Libraries/Math/Angle.js";
+import { smootherstep } from "../../Libraries/Math/Easing.js";
+import { lerp } from "../../Libraries/Math/Interpolate.js";
 import { normalizeWeaponLoadout } from "../../Combat/equipmentLoadout.js";
 
 /** First turret with a live hostile target (auto-aim lock). */
@@ -47,9 +48,9 @@ export function computeFinalRenderRotation(animState, quantizedBodyRotation) {
     const lastBodyOffset = animState.lastStaticPose.rotation?.bodyOffset ?? 0;
     const currentBodyOffset = animState.currentStaticPose.rotation?.bodyOffset ?? 0;
     const sEased = animState.staticBlendFactor * animState.staticBlendFactor;
-    const blendedBodyOffset = blend(lastBodyOffset, currentBodyOffset, sEased);
-    const t = ease(animState.poseFactor);
-    const finalBodyOffset = blend(blendedBodyOffset, 0, t);
+    const blendedBodyOffset = lerp(lastBodyOffset, currentBodyOffset, sEased);
+    const t = smootherstep(animState.poseFactor);
+    const finalBodyOffset = lerp(blendedBodyOffset, 0, t);
     return normalizeAngle(quantizedBodyRotation + finalBodyOffset);
 }
 

@@ -1,5 +1,5 @@
 import { CollisionSystem } from "../Spatial/Collision/CollisionSystem.js";
-import { normalizeAngle } from "../Math/Angle.js";
+import { normalizeAngle } from "../Libraries/Math/Angle.js";
 import { getWallsAlongLine } from "../Spatial/World/WallContext.js";
 import { Laser } from "../Entities/Laser.js";
 import { defaultGunId, getGunDefinition } from "../Config/gunDefinitions.js";

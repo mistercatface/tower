@@ -1,13 +1,12 @@
 import {
-    blend,
-    blendAngle,
-    ease,
     getSeg,
     solveIK,
     applyLocalTilt,
     getAimingArmAngles,
 } from "./KinematicsMath.js";
-import { normalizeAngle } from "../../Math/Angle.js";
+import { blendAngle, normalizeAngle } from "../../Libraries/Math/Angle.js";
+import { smootherstep } from "../../Libraries/Math/Easing.js";
+import { lerp } from "../../Libraries/Math/Interpolate.js";
 import { resolveWeaponDrawSlots } from "./KinematicsWeaponVisuals.js";
 
 function applyWeaponAimToVals(vals, actor, aimStrength, facing) {
@@ -29,13 +28,13 @@ function applyWeaponAimToVals(vals, actor, aimStrength, facing) {
         const aim = facing?.turretWorldAngle(slot.turretIndex) ?? turrets[slot.turretIndex]?.angle ?? bodyFacing;
         const arms = getAimingArmAngles(aim, slot.aimArms, -1.5, bodyFacing);
         if (slot.aimArms === "right") {
-            merged.rArm = blend(vals.rArm, arms.rArm, aimStrength);
-            merged.rElbow = blend(vals.rElbow, arms.rElbow, aimStrength);
-            merged.rArmZ = blend(vals.rArmZ, arms.rArmZ, aimStrength);
+            merged.rArm = lerp(vals.rArm, arms.rArm, aimStrength);
+            merged.rElbow = lerp(vals.rElbow, arms.rElbow, aimStrength);
+            merged.rArmZ = lerp(vals.rArmZ, arms.rArmZ, aimStrength);
         } else {
-            merged.lArm = blend(vals.lArm, arms.lArm, aimStrength);
-            merged.lElbow = blend(vals.lElbow, arms.lElbow, aimStrength);
-            merged.lArmZ = blend(vals.lArmZ, arms.lArmZ, aimStrength);
+            merged.lArm = lerp(vals.lArm, arms.lArm, aimStrength);
+            merged.lElbow = lerp(vals.lElbow, arms.lElbow, aimStrength);
+            merged.lArmZ = lerp(vals.lArmZ, arms.lArmZ, aimStrength);
         }
     }
     return merged;
@@ -65,29 +64,29 @@ export function calculateCharacterRig(state, cycle, config, rig, poses, actor = 
     const sneakArms = poses.SNEAK.getArmAngles(cycle);
 
     const activeWalkMods = {
-        lift: blend(walkMods.lift, sneakMods.lift, cf),
-        lean: blend(walkMods.lean, sneakMods.lean, cf),
-        bob: blend(walkMods.bob, sneakMods.bob, cf),
+        lift: lerp(walkMods.lift, sneakMods.lift, cf),
+        lean: lerp(walkMods.lean, sneakMods.lean, cf),
+        bob: lerp(walkMods.bob, sneakMods.bob, cf),
     };
     const activeWalkTargets = {
         rightFoot: {
-            x: blend(walkTargets.rightFoot.x, sneakTargets.rightFoot.x, cf),
-            y: blend(walkTargets.rightFoot.y, sneakTargets.rightFoot.y, cf),
+            x: lerp(walkTargets.rightFoot.x, sneakTargets.rightFoot.x, cf),
+            y: lerp(walkTargets.rightFoot.y, sneakTargets.rightFoot.y, cf),
         },
         leftFoot: {
-            x: blend(walkTargets.leftFoot.x, sneakTargets.leftFoot.x, cf),
-            y: blend(walkTargets.leftFoot.y, sneakTargets.leftFoot.y, cf),
+            x: lerp(walkTargets.leftFoot.x, sneakTargets.leftFoot.x, cf),
+            y: lerp(walkTargets.leftFoot.y, sneakTargets.leftFoot.y, cf),
         },
     };
     const activeWalkArms = {
-        rArm: blend(walkArms.rArm, sneakArms.rArm, cf),
-        lArm: blend(walkArms.lArm, sneakArms.lArm, cf),
-        rElbow: blend(walkArms.rElbow, sneakArms.rElbow, cf),
-        lElbow: blend(walkArms.lElbow, sneakArms.lElbow, cf),
-        rArmZ: blend(walkArms.rArmZ || 0, sneakArms.rArmZ || 0, cf),
-        lArmZ: blend(walkArms.lArmZ || 0, sneakArms.lArmZ || 0, cf),
-        rElbowZ: blend(walkArms.rElbowZ || 0, sneakArms.rElbowZ || 0, cf),
-        lElbowZ: blend(walkArms.lElbowZ || 0, sneakArms.lElbowZ || 0, cf),
+        rArm: lerp(walkArms.rArm, sneakArms.rArm, cf),
+        lArm: lerp(walkArms.lArm, sneakArms.lArm, cf),
+        rElbow: lerp(walkArms.rElbow, sneakArms.rElbow, cf),
+        lElbow: lerp(walkArms.lElbow, sneakArms.lElbow, cf),
+        rArmZ: lerp(walkArms.rArmZ || 0, sneakArms.rArmZ || 0, cf),
+        lArmZ: lerp(walkArms.lArmZ || 0, sneakArms.lArmZ || 0, cf),
+        rElbowZ: lerp(walkArms.rElbowZ || 0, sneakArms.rElbowZ || 0, cf),
+        lElbowZ: lerp(walkArms.lElbowZ || 0, sneakArms.lElbowZ || 0, cf),
     };
 
     const s = Math.min(1, state.staticBlendFactor);
@@ -97,52 +96,52 @@ export function calculateCharacterRig(state, cycle, config, rig, poses, actor = 
     const lastM = state.lastStaticPose.getModifiers(cycle);
     const nextM = state.currentStaticPose.getModifiers(cycle);
 
-    let staticLift = blend(lastM.lift, nextM.lift, sEased);
-    let staticLean = blend(lastM.lean, nextM.lean, sEased);
-    let staticBob = blend(lastM.bob, nextM.bob, sEased);
+    let staticLift = lerp(lastM.lift, nextM.lift, sEased);
+    let staticLean = lerp(lastM.lean, nextM.lean, sEased);
+    let staticBob = lerp(lastM.bob, nextM.bob, sEased);
     let staticRF = {
-        x: blend(lastT.rightFoot.x, nextT.rightFoot.x, sEased),
-        y: blend(lastT.rightFoot.y, nextT.rightFoot.y, sEased),
+        x: lerp(lastT.rightFoot.x, nextT.rightFoot.x, sEased),
+        y: lerp(lastT.rightFoot.y, nextT.rightFoot.y, sEased),
     };
     let staticLF = {
-        x: blend(lastT.leftFoot.x, nextT.leftFoot.x, sEased),
-        y: blend(lastT.leftFoot.y, nextT.leftFoot.y, sEased),
+        x: lerp(lastT.leftFoot.x, nextT.leftFoot.x, sEased),
+        y: lerp(lastT.leftFoot.y, nextT.leftFoot.y, sEased),
     };
 
     const lastA = state.lastStaticPose.getArmAngles(cycle);
     const nextA = state.currentStaticPose.getArmAngles(cycle);
-    const sRA = blend(lastA.rArm, nextA.rArm, sEased);
-    const sLA = blend(lastA.lArm, nextA.lArm, sEased);
-    const sRE = blend(lastA.rElbow, nextA.rElbow, sEased);
-    const sLE = blend(lastA.lElbow, nextA.lElbow, sEased);
-    const sRAZ = blend(lastA.rArmZ || 0, nextA.rArmZ || 0, sEased);
-    const sLAZ = blend(lastA.lArmZ || 0, nextA.lArmZ || 0, sEased);
-    const sREZ = blend(lastA.rElbowZ || 0, nextA.rElbowZ || 0, sEased);
-    const sLEZ = blend(lastA.lElbowZ || 0, nextA.lElbowZ || 0, sEased);
+    const sRA = lerp(lastA.rArm, nextA.rArm, sEased);
+    const sLA = lerp(lastA.lArm, nextA.lArm, sEased);
+    const sRE = lerp(lastA.rElbow, nextA.rElbow, sEased);
+    const sLE = lerp(lastA.lElbow, nextA.lElbow, sEased);
+    const sRAZ = lerp(lastA.rArmZ || 0, nextA.rArmZ || 0, sEased);
+    const sLAZ = lerp(lastA.lArmZ || 0, nextA.lArmZ || 0, sEased);
+    const sREZ = lerp(lastA.rElbowZ || 0, nextA.rElbowZ || 0, sEased);
+    const sLEZ = lerp(lastA.lElbowZ || 0, nextA.lElbowZ || 0, sEased);
 
     const armed = actor && resolveWeaponDrawSlots(actor).length > 0;
-    const legT = ease(armed ? (state.legPoseFactor ?? 0) : state.poseFactor);
+    const legT = smootherstep(armed ? (state.legPoseFactor ?? 0) : state.poseFactor);
     const armT = armed ? 0 : legT;
     const vals = {
-        lift: blend(staticLift, activeWalkMods.lift, legT),
-        lean: blend(staticLean, activeWalkMods.lean, legT),
-        bob: blend(staticBob, activeWalkMods.bob, legT),
+        lift: lerp(staticLift, activeWalkMods.lift, legT),
+        lean: lerp(staticLean, activeWalkMods.lean, legT),
+        bob: lerp(staticBob, activeWalkMods.bob, legT),
         rightFootTarget: {
-            x: blend(staticRF.x, activeWalkTargets.rightFoot.x, legT),
-            y: blend(staticRF.y, activeWalkTargets.rightFoot.y, legT),
+            x: lerp(staticRF.x, activeWalkTargets.rightFoot.x, legT),
+            y: lerp(staticRF.y, activeWalkTargets.rightFoot.y, legT),
         },
         leftFootTarget: {
-            x: blend(staticLF.x, activeWalkTargets.leftFoot.x, legT),
-            y: blend(staticLF.y, activeWalkTargets.leftFoot.y, legT),
+            x: lerp(staticLF.x, activeWalkTargets.leftFoot.x, legT),
+            y: lerp(staticLF.y, activeWalkTargets.leftFoot.y, legT),
         },
-        rArm: blend(sRA, activeWalkArms.rArm, armT),
-        lArm: blend(sLA, activeWalkArms.lArm, armT),
-        rElbow: blend(sRE, activeWalkArms.rElbow, armT),
-        lElbow: blend(sLE, activeWalkArms.lElbow, armT),
-        rArmZ: blend(sRAZ, activeWalkArms.rArmZ, armT),
-        lArmZ: blend(sLAZ, activeWalkArms.lArmZ, armT),
-        rElbowZ: blend(sREZ, activeWalkArms.rElbowZ, armT),
-        lElbowZ: blend(sLEZ, activeWalkArms.lElbowZ, armT),
+        rArm: lerp(sRA, activeWalkArms.rArm, armT),
+        lArm: lerp(sLA, activeWalkArms.lArm, armT),
+        rElbow: lerp(sRE, activeWalkArms.rElbow, armT),
+        lElbow: lerp(sLE, activeWalkArms.lElbow, armT),
+        rArmZ: lerp(sRAZ, activeWalkArms.rArmZ, armT),
+        lArmZ: lerp(sLAZ, activeWalkArms.lArmZ, armT),
+        rElbowZ: lerp(sREZ, activeWalkArms.rElbowZ, armT),
+        lElbowZ: lerp(sLEZ, activeWalkArms.lElbowZ, armT),
     };
 
     if (actor) {

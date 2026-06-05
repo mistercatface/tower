@@ -1,11 +1,5 @@
-import { angleDelta } from "../../Math/Angle.js";
-
-export const blend = (a, b, t) => a + (b - a) * t;
-
-/** Blend two angles along the shortest arc (radians). */
-export const blendAngle = (a, b, t) => a + angleDelta(a, b) * t;
-
-export const ease = (t) => t * t * t * (t * (t * 6 - 15) + 10);
+import { angleDelta } from "../../Libraries/Math/Angle.js";
+import { clamp } from "../../Libraries/Math/Interpolate.js";
 
 export function getSeg(sx, sy, sz, angle, angleZ, len, flare) {
     const rawSin = Math.sin(angle);
@@ -23,12 +17,12 @@ export function solveIK(startX, startY, targetX, targetY, len1, len2) {
     const dist = Math.sqrt(dx * dx + dy * dy);
     const maxReach = len1 + len2;
     const minReach = Math.abs(len1 - len2);
-    const clampedDist = Math.max(minReach, Math.min(maxReach, dist));
+    const clampedDist = clamp(dist, minReach, maxReach);
     const angleToTarget = Math.atan2(dx, dy);
     const cosHip = (len1 * len1 + clampedDist * clampedDist - len2 * len2) / (2 * len1 * clampedDist);
-    const hipBend = Math.acos(Math.max(-1, Math.min(1, cosHip)));
+    const hipBend = Math.acos(clamp(cosHip, -1, 1));
     const cosKnee = (len1 * len1 + len2 * len2 - clampedDist * clampedDist) / (2 * len1 * len2);
-    const kneeBend = Math.acos(Math.max(-1, Math.min(1, cosKnee)));
+    const kneeBend = Math.acos(clamp(cosKnee, -1, 1));
     return {
         hipAngle: angleToTarget - hipBend,
         kneeAngle: Math.PI - kneeBend,

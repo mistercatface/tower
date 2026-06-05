@@ -1,7 +1,7 @@
 /** @typedef {{ cx: number; cy: number; referenceDepth: number; screenScale: number; yaw: number; pitch: number }} InspectCamera */
 
-import { vec3, scale, normalize, length } from "../../../Math/Vec3.js";
-import { add, sub, cross, dot } from "../../../Math/Vec3.js";
+import { vec3, scale, normalize, length } from "../../Math/Vec3.js";
+import { add, sub, cross, dot } from "../../Math/Vec3.js";
 
 export { vec3, add, sub, scale, dot, cross, normalize, length };
 

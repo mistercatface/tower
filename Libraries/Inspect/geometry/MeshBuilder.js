@@ -1,4 +1,4 @@
-import { vec3, cross, sub, normalize } from "../../../Math/Vec3.js";
+import { vec3, cross, sub, normalize } from "../../Math/Vec3.js";
 
 export function triangleNormal(a, b, c) {
     return cross(sub(b, a), sub(c, a));

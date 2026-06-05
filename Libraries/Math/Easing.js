@@ -59,6 +59,11 @@ export const EASING_FUNCTIONS = {
 
 export const EASING_OPTIONS = Object.keys(EASING_FUNCTIONS);
 
+/** Perlin smootherstep — C² continuous ease on [0, 1]. */
+export function smootherstep(t) {
+    return t * t * t * (t * (t * 6 - 15) + 10);
+}
+
 /**
  * Applies a selected easing function by name to a normalized time t.
  * Falls back to linear if the function is not found.

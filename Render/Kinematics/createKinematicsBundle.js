@@ -5,7 +5,6 @@ import { createKinematicsSpriteCache } from "./KinematicsSpriteCache.js";
 import { calculateCharacterRig } from "./KinematicsRigCalculator.js";
 import { createProjector } from "./KinematicsProjector.js";
 import { drawKinematicsFrameToCanvas } from "./KinematicsDraw.js";
-import { blend, ease } from "./KinematicsMath.js";
 import { resolveCombatFacing, resolveSpriteBodyRotation } from "./KinematicsFacing.js";
 import { normalizeWeaponLoadout } from "../../Combat/equipmentLoadout.js";
 import { resolveWeaponStaticPoseName } from "./KinematicsWeaponVisuals.js";

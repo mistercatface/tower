@@ -1,4 +1,4 @@
-import { vec3 } from "../../../Math/Vec3.js";
+import { vec3 } from "../../Math/Vec3.js";
 import { pushQuad } from "./MeshBuilder.js";
 
 /**

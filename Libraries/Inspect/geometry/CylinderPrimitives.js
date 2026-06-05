@@ -1,5 +1,5 @@
-import { vec3 } from "../../../Math/Vec3.js";
-import { lerp } from "../../../Math/Interpolate.js";
+import { vec3 } from "../../Math/Vec3.js";
+import { lerp } from "../../Math/Interpolate.js";
 
 export function cylinderPoint(y, angle, radius) {
     return vec3(Math.cos(angle) * radius, y, Math.sin(angle) * radius);

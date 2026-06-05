@@ -1,4 +1,4 @@
-import { normalizeAngle } from "../../Math/Angle.js";
+import { normalizeAngle } from "../../Libraries/Math/Angle.js";
 import { getCircleSegmentPenetration } from "../Geometry/WallGeometry.js";
 import { SatCollision } from "../Collision/SatCollision.js";
 import { PolygonShape } from "../Geometry/Shapes.js";

@@ -1,5 +1,5 @@
 import { PhysicsSystem } from "../Spatial/Motion/PhysicsSystem.js";
-import { normalizeAngle, turnAngleTowards } from "../Math/Angle.js";
+import { normalizeAngle, turnAngleTowards } from "../Libraries/Math/Angle.js";
 import { Utilities } from "../Core/Utilities.js";
 import { CollisionSystem } from "../Spatial/Collision/CollisionSystem.js";
 import { enemyDefaults } from "../Config/Config.js";
