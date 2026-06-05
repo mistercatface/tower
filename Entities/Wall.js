@@ -26,10 +26,10 @@ export class Segment extends DestructibleEntity {
             if (idx !== -1) {
                 ctx.state.walls.splice(idx, 1);
             }
-            if (ctx.state.wallSpatialHash) {
-                ctx.state.wallSpatialHash.remove(this);
+            if (ctx.state.wallSpatialIndex) {
+                ctx.state.wallSpatialIndex.remove(this);
             }
-            const damageBounds = ctx.state.obstacleGrid.patchAfterWallRemoved(this, ctx.state.wallSpatialHash);
+            const damageBounds = ctx.state.obstacleGrid.patchAfterWallRemoved(this, ctx.state.wallSpatialIndex);
             ctx.state.floorTiles.invalidateGridBounds(damageBounds, ctx.state);
             ctx.state.navigation.onObstaclesChanged(
                 damageBounds,

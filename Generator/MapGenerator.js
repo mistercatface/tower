@@ -226,7 +226,7 @@ export class MapGenerator {
 
         const caWalls = [];
         state.walls = [];
-        state.wallSpatialHash.clear();
+        state.wallSpatialIndex.clear();
 
         const nodeCoords = state.mapNodes.map(node => state.getNodeCombatCoords(node));
 
@@ -249,7 +249,7 @@ export class MapGenerator {
                         const segment = new Segment(wx, wy, 0, cellSize, 0);
                         caWalls.push(segment);
                         state.walls.push(segment);
-                        state.wallSpatialHash.insert(segment);
+                        state.wallSpatialIndex.insert(segment);
                     }
                 }
             }
@@ -259,20 +259,20 @@ export class MapGenerator {
 
         // Clear and rebuild final walls combining Room walls and CA walls
         state.walls = [];
-        state.wallSpatialHash.clear();
+        state.wallSpatialIndex.clear();
         for (const node of state.mapNodes) {
             if (node.wallsData) {
                 for (const w of node.wallsData) {
                     const segment = new Segment(w.x, w.y, w.angle, w.size, w.padding ?? 0, w.maxHealth, w.maxHealth, false, w.wallHeight);
                     state.walls.push(segment);
-                    state.wallSpatialHash.insert(segment);
+                    state.wallSpatialIndex.insert(segment);
                 }
             }
         }
 
         for (const seg of caWalls) {
             state.walls.push(seg);
-            state.wallSpatialHash.insert(seg);
+            state.wallSpatialIndex.insert(seg);
         }
 
 
@@ -379,7 +379,7 @@ export class MapGenerator {
         tempObstacleGrid.rebuildFixed(mx, my, gridSettings.width, gridSettings.height);
 
         // Mark existing local walls (Cellular Automata cave walls)
-        const localWalls = state.wallSpatialHash.collectInBounds(
+        const localWalls = state.wallSpatialIndex.collectInBounds(
             mx - gridSettings.width / 2,
             my - gridSettings.height / 2,
             mx + gridSettings.width / 2,

@@ -63,7 +63,7 @@ export class Entity {
     resolveWallContext(stateOrWalls) {
         if (!stateOrWalls) return null;
         if (stateOrWalls.walls) return wallContextFromState(stateOrWalls);
-        return { walls: stateOrWalls, spatialHash: null, obstacleGrid: null };
+        return { walls: stateOrWalls, wallSpatialIndex: null, obstacleGrid: null };
     }
 
     hasLineOfSightFromPoint(x, y, stateOrWalls, { sourceRadius = 0 } = {}) {

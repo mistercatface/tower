@@ -1,3 +1,7 @@
+import { packCellKey, worldToCell } from "../DataStructures/CellKey.js";
+import { forEachSparseCellInRect } from "../DataStructures/CellRect.js";
+import { SparseBucketGrid } from "../DataStructures/SparseBucketGrid.js";
+
 export class SharedEdgeSolver {
     /**
      * @param {Float32Array} wallsData - Buffer with layout [x, y, angle, size, isDead, wallHeight]
@@ -54,19 +58,13 @@ export class SharedEdgeSolver {
             }
         }
 
-        const grid = new Map();
+        const grid = new SparseBucketGrid();
         const cellSize = 5;
-        const getBucketKey = (x, y) => `${Math.floor(x / cellSize)},${Math.floor(y / cellSize)}`;
 
         for (let i = 0; i < activeEdges.length; i++) {
             const edge = activeEdges[i];
-            const key = getBucketKey(edge.cx, edge.cy);
-            let bucket = grid.get(key);
-            if (!bucket) {
-                bucket = [];
-                grid.set(key, bucket);
-            }
-            bucket.push(edge);
+            const { col, row } = worldToCell(edge.cx, edge.cy, cellSize);
+            grid.push(packCellKey(col, row), edge);
         }
 
         const thresholdSq = 9.0;
@@ -77,31 +75,28 @@ export class SharedEdgeSolver {
             const isShared = (currentFlags & (1 << e1.edgeIndex)) !== 0;
             if (isShared) continue;
 
-            const col = Math.floor(e1.cx / cellSize);
-            const row = Math.floor(e1.cy / cellSize);
+            const { col, row } = worldToCell(e1.cx, e1.cy, cellSize);
             let found = false;
 
-            for (let r = -1; r <= 1 && !found; r++) {
-                for (let c = -1; c <= 1 && !found; c++) {
-                    const key = `${col + c},${row + r}`;
-                    const bucket = grid.get(key);
-                    if (!bucket) continue;
+            forEachSparseCellInRect(col - 1, col + 1, row - 1, row + 1, (_c, _r, key) => {
+                if (found) return;
+                const bucket = grid.peek(key);
+                if (!bucket) return;
 
-                    for (let j = 0; j < bucket.length; j++) {
-                        const e2 = bucket[j];
-                        if (e1.wallId === e2.wallId && e1.edgeIndex === e2.edgeIndex) continue;
-                        if (e1.height !== e2.height) continue;
+                for (let j = 0; j < bucket.length; j++) {
+                    const e2 = bucket[j];
+                    if (e1.wallId === e2.wallId && e1.edgeIndex === e2.edgeIndex) continue;
+                    if (e1.height !== e2.height) continue;
 
-                        const distSq = (e1.cx - e2.cx) ** 2 + (e1.cy - e2.cy) ** 2;
-                        if (distSq < thresholdSq) {
-                            sharedEdgesOut[e1.wallId] |= (1 << e1.edgeIndex);
-                            sharedEdgesOut[e2.wallId] |= (1 << e2.edgeIndex);
-                            found = true;
-                            break;
-                        }
+                    const distSq = (e1.cx - e2.cx) ** 2 + (e1.cy - e2.cy) ** 2;
+                    if (distSq < thresholdSq) {
+                        sharedEdgesOut[e1.wallId] |= (1 << e1.edgeIndex);
+                        sharedEdgesOut[e2.wallId] |= (1 << e2.edgeIndex);
+                        found = true;
+                        break;
                     }
                 }
-            }
+            });
         }
     }
 }

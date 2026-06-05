@@ -132,8 +132,8 @@ export class Render3D {
         this.updateSharedEdges(input);
         const maxDistSq = maxDist * maxDist;
         const visibleWalls = [];
-        const candidateWalls = input.wallSpatialHash
-            ? input.wallSpatialHash.collectInBounds(px - maxDist, py - maxDist, px + maxDist, py + maxDist)
+        const candidateWalls = input.wallSpatialIndex
+            ? input.wallSpatialIndex.collectInBounds(px - maxDist, py - maxDist, px + maxDist, py + maxDist)
             : input.walls;
         for (let i = 0; i < candidateWalls.length; i++) {
             const seg = candidateWalls[i];
@@ -204,13 +204,13 @@ export class Render3D {
     }
 
     collectVisibleWalls(input, viewport, px, py) {
-        const hash = input.wallSpatialHash;
-        if (!viewport || !hash) {
+        const wallIndex = input.wallSpatialIndex;
+        if (!viewport || !wallIndex) {
             this._lastQueryKey = null;
-            return hash ? hash.collectInBounds(px - 1600, py - 1600, px + 1600, py + 1600, this._wallQuery) : input.walls;
+            return wallIndex ? wallIndex.collectInBounds(px - 1600, py - 1600, px + 1600, py + 1600, this._wallQuery) : input.walls;
         }
-        const bounds = this.alignBoundsToHash(this.getViewQueryBounds(viewport, px, py), hash.cellSize);
-        const cellSize = hash.cellSize;
+        const bounds = this.alignBoundsToHash(this.getViewQueryBounds(viewport, px, py), wallIndex.cellSize);
+        const cellSize = wallIndex.cellSize;
         const minCol = Math.floor(bounds.minX / cellSize);
         const maxCol = Math.floor((bounds.maxX - 1) / cellSize);
         const minRow = Math.floor(bounds.minY / cellSize);
@@ -218,7 +218,7 @@ export class Render3D {
         const queryKey = `${minCol}|${minRow}|${maxCol}|${maxRow}|${input.walls.length}`;
         if (queryKey !== this._lastQueryKey) {
             this._lastQueryKey = queryKey;
-            this._cachedWalls = hash.collectInBounds(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY, this._wallQuery);
+            this._cachedWalls = wallIndex.collectInBounds(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY, this._wallQuery);
         }
         return this._cachedWalls;
     }

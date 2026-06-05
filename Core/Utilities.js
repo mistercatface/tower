@@ -14,12 +14,12 @@ export class Utilities {
         let candidateWalls;
         if (wallCtx.obstacleGrid) {
             candidateWalls = getWallsAlongLine(x1, y1, x2, y2, wallCtx);
-        } else if (wallCtx.spatialHash) {
+        } else if (wallCtx.wallSpatialIndex) {
             const minX = Math.min(x1, x2) - corridorRadius;
             const minY = Math.min(y1, y2) - corridorRadius;
             const maxX = Math.max(x1, x2) + corridorRadius;
             const maxY = Math.max(y1, y2) + corridorRadius;
-            candidateWalls = wallCtx.spatialHash.collectInBounds(minX, minY, maxX, maxY);
+            candidateWalls = wallCtx.wallSpatialIndex.collectInBounds(minX, minY, maxX, maxY);
         } else {
             candidateWalls = wallCtx.walls;
         }

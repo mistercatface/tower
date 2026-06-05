@@ -1,9 +1,9 @@
-import { gridSettings } from "../../Config/Config.js";
+import { forEachDenseCellInRect } from "../../Libraries/DataStructures/CellRect.js";
 
 const MAX_ENTITIES = 4096;
 const GLOBAL_QUERY_RESULT = [];
 
-export class EntitySpatialGrid {
+export class EntityGrid {
     constructor(cellSize) {
         this.cellSize = cellSize;
         this.minX = 0;
@@ -150,20 +150,17 @@ export class EntitySpatialGrid {
         const minRow = Math.max(0, Math.floor((minY - this.minY) / this.cellSize));
         const maxRow = Math.min(this.rows - 1, Math.floor((maxY - this.minY) / this.cellSize));
 
-        for (let r = minRow; r <= maxRow; r++) {
-            const rowOffset = r * this.cols;
-            for (let c = minCol; c <= maxCol; c++) {
-                let curr = this.cellHead[rowOffset + c];
-                while (curr !== -1) {
-                    const other = this.entities[curr];
-                    if (other && other !== entity && other._spatialGen !== this.queryGen) {
-                        other._spatialGen = this.queryGen;
-                        GLOBAL_QUERY_RESULT.push(other);
-                    }
-                    curr = this.entityNext[curr];
+        forEachDenseCellInRect(minCol, maxCol, minRow, maxRow, this.cols, (_c, _r, cellIdx) => {
+            let curr = this.cellHead[cellIdx];
+            while (curr !== -1) {
+                const other = this.entities[curr];
+                if (other && other !== entity && other._spatialGen !== this.queryGen) {
+                    other._spatialGen = this.queryGen;
+                    GLOBAL_QUERY_RESULT.push(other);
                 }
+                curr = this.entityNext[curr];
             }
-        }
+        });
 
         return GLOBAL_QUERY_RESULT;
     }

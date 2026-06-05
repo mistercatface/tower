@@ -14,22 +14,22 @@ export class SpatialQuery {
         }
     }
 
-    forEachInHashCoords(hash, minX, minY, maxX, maxY, fn, exclude = null) {
+    forEachInIndexCoords(index, minX, minY, maxX, maxY, fn, exclude = null) {
         this.nextQuery();
-        hash.forEachInBoundsCoords(minX, minY, maxX, maxY, exclude, this.generation, fn);
+        index.forEachInBoundsCoords(minX, minY, maxX, maxY, exclude, this.generation, fn);
     }
 
-    collectInHashCoords(hash, minX, minY, maxX, maxY, exclude = null) {
+    collectInIndexCoords(index, minX, minY, maxX, maxY, exclude = null) {
         this._scratch.length = 0;
-        this.forEachInHashCoords(hash, minX, minY, maxX, maxY, this._collectFn, exclude);
+        this.forEachInIndexCoords(index, minX, minY, maxX, maxY, this._collectFn, exclude);
         return this._scratch;
     }
 
-    forEachInHash(hash, bounds, fn, exclude = null) {
-        this.forEachInHashCoords(hash, bounds.minX, bounds.minY, bounds.maxX, bounds.maxY, fn, exclude);
+    forEachInIndex(index, bounds, fn, exclude = null) {
+        this.forEachInIndexCoords(index, bounds.minX, bounds.minY, bounds.maxX, bounds.maxY, fn, exclude);
     }
 
-    collectInHash(hash, bounds, exclude = null) {
-        return this.collectInHashCoords(hash, bounds.minX, bounds.minY, bounds.maxX, bounds.maxY, exclude);
+    collectInIndex(index, bounds, exclude = null) {
+        return this.collectInIndexCoords(index, bounds.minX, bounds.minY, bounds.maxX, bounds.maxY, exclude);
     }
 }

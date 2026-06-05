@@ -12,9 +12,9 @@ function analyzeStrafePath(enemy, tangentX, tangentY, dir, walls, target, state)
     let openDist = -1;
 
     let candidateWalls = walls;
-    if (state && state.wallSpatialHash) {
+    if (state && state.wallSpatialIndex) {
         const maxReach = maxSteps * stepSize + enemy.radius + 20;
-        candidateWalls = state.wallSpatialHash.collectInBounds(
+        candidateWalls = state.wallSpatialIndex.collectInBounds(
             enemy.x - maxReach,
             enemy.y - maxReach,
             enemy.x + maxReach,

@@ -19,7 +19,7 @@ import { getFloorTextureProfileIdForCoords } from "../Floor/floorTextureProfile.
  * @typedef {Object} WorldRenderInput
  * @property {{ x: number, y: number }} viewer
  * @property {object[]} walls
- * @property {object|null} wallSpatialHash
+ * @property {object|null} wallSpatialIndex
  * @property {object[]} pickups
  * @property {{ width: number, height: number }|null} canvasBounds
  * @property {import("../Floor/FloorTileSystem.js").FloorTileSystem} floorTiles
@@ -34,7 +34,7 @@ export function buildWorldRenderInput(state) {
     return {
         viewer: { x: state.player.x, y: state.player.y },
         walls: state.walls,
-        wallSpatialHash: state.wallSpatialHash ?? null,
+        wallSpatialIndex: state.wallSpatialIndex ?? null,
         pickups: state.pickups ?? [],
         canvasBounds: state.canvasBounds ?? null,
         floorTiles: state.floorTiles,

@@ -1,6 +1,6 @@
 import { SpatialQuery } from "./SpatialQuery.js";
 
-/** @typedef {{ walls: object[], spatialHash?: object|null, obstacleGrid?: object|null }} WallContext */
+/** @typedef {{ walls: object[], wallSpatialIndex?: object|null, obstacleGrid?: object|null }} WallContext */
 
 const fallbackWallQuery = new SpatialQuery();
 
@@ -8,15 +8,15 @@ export function wallContextFromState(state) {
     if (!state) return null;
     return {
         walls: state.walls ?? [],
-        spatialHash: state.wallSpatialHash ?? null,
+        wallSpatialIndex: state.wallSpatialIndex ?? null,
         obstacleGrid: state.obstacleGrid ?? null,
     };
 }
 
 export function getNearbyWalls(entity, wallCtx) {
     if (!wallCtx) return [];
-    if (wallCtx.spatialHash) {
-        return wallCtx.spatialHash.collectNearby(entity, fallbackWallQuery);
+    if (wallCtx.wallSpatialIndex) {
+        return wallCtx.wallSpatialIndex.collectNearby(entity, fallbackWallQuery);
     }
     if (wallCtx.obstacleGrid) {
         return wallCtx.obstacleGrid.getNearbySegments(entity);

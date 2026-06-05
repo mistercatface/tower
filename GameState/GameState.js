@@ -7,7 +7,7 @@ import { NavigationService } from "../Spatial/Navigation/NavigationService.js";
 import { combatActorRadius, gridSettings, mapSettings, runBaseStats } from "../Config/Config.js";
 import { Scheduler } from "../Core/Scheduler.js";
 import { WaveManager } from "../Combat/WaveManager.js";
-import { SpatialHash } from "../Spatial/World/SpatialHash.js";
+import { WallSpatialIndex } from "../Spatial/World/WallSpatialIndex.js";
 import { Pools } from "../Core/Pools.js";
 import { createRunStats } from "../Entities/CombatantStats.js";
 import { FloorTileSystem } from "../Render/Floor/FloorTileSystem.js";
@@ -41,7 +41,7 @@ export class GameState {
         this.statsSubTab = "attack";
         this.canvasBounds = { width: 0, height: 0 };
         this.upgradeDefs = [];
-        this.wallSpatialHash = new SpatialHash(100);
+        this.wallSpatialIndex = new WallSpatialIndex(100);
         this.floorTiles = new FloorTileSystem();
         this.floorTileSeed = 0;
         /** @type {string | null} Dev/preview override — see getFloorTextureProfileId */

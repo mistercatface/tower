@@ -203,13 +203,13 @@ export class WorldObstacleGrid {
         });
     }
 
-    patchAfterWallRemoved(wall, wallSpatialHash) {
+    patchAfterWallRemoved(wall, wallSpatialIndex) {
         const bounds = getWallCellBounds(wall, (x, y) => this.worldToGrid(x, y), this.cols, this.rows);
         clearWallCells(this.grid, this.cols, bounds, this.segmentGrid);
 
         const worldBounds = cellBoundsToWorldBounds(bounds, this.minX, this.minY, this.cellSize);
-        const localWalls = wallSpatialHash
-            ? wallSpatialHash.collectInBounds(worldBounds.minX, worldBounds.minY, worldBounds.maxX, worldBounds.maxY)
+        const localWalls = wallSpatialIndex
+            ? wallSpatialIndex.collectInBounds(worldBounds.minX, worldBounds.minY, worldBounds.maxX, worldBounds.maxY)
             : [];
         for (const localWall of localWalls) {
             this.addWall(localWall);

@@ -1,4 +1,4 @@
-import { EntitySpatialGrid } from "./EntitySpatialGrid.js";
+import { EntityGrid } from "./EntityGrid.js";
 import { SpatialQuery } from "./SpatialQuery.js";
 import { wallContextFromState } from "./WallContext.js";
 import { Actor } from "../../Entities/Actor.js";
@@ -16,7 +16,7 @@ import { isMovingEntity, shouldResolveActorPushable } from "../Collision/PairBro
  */
 export class SpatialFrame {
     constructor(cellSize = 50) {
-        this.entityHash = new EntitySpatialGrid(cellSize);
+        this.entityGrid = new EntityGrid(cellSize);
         this.wallQuery = new SpatialQuery();
         this.frameId = 0;
         this._wallCache = new Map();
@@ -30,22 +30,22 @@ export class SpatialFrame {
         this._combatants.length = 0;
         this._pushables.length = 0;
 
-        this.entityHash.syncBounds(state.obstacleGrid);
-        this.entityHash.clear();
+        this.entityGrid.syncBounds(state.obstacleGrid);
+        this.entityGrid.clear();
         
         let physIdCounter = 0;
         
         for (const actor of state.getCombatants()) {
             if (!actor?.isDead) {
                 actor._physId = physIdCounter++;
-                this.entityHash.insert(actor);
+                this.entityGrid.insert(actor);
                 this._combatants.push(actor);
             }
         }
         for (const pickup of state.pickups) {
             if (pickup.isDead) continue;
             pickup._physId = physIdCounter++;
-            this.entityHash.insert(pickup);
+            this.entityGrid.insert(pickup);
             if (pickup.strategy?.isPushable && !pickup.isSleeping) {
                 this._pushables.push(pickup);
             }
@@ -64,7 +64,7 @@ export class SpatialFrame {
             entity._neighbors.length = 0;
         }
 
-        const res = this.entityHash.collectNearby(entity);
+        const res = this.entityGrid.collectNearby(entity);
 
         for (let i = 0; i < res.length; i++) {
             entity._neighbors.push(res[i]);
@@ -91,7 +91,7 @@ export class SpatialFrame {
         let segments;
         if (!wallCtx) {
             segments = [];
-        } else if (wallCtx.spatialHash) {
+        } else if (wallCtx.wallSpatialIndex) {
             let minX, minY, maxX, maxY;
             if (entity.getBounds) {
                 const b = entity.getBounds();
@@ -103,9 +103,9 @@ export class SpatialFrame {
                 maxX = entity.x + r;
                 maxY = entity.y + r;
             }
-            const padding = wallCtx.spatialHash.cellSize;
-            const collected = this.wallQuery.collectInHashCoords(
-                wallCtx.spatialHash,
+            const padding = wallCtx.wallSpatialIndex.cellSize;
+            const collected = this.wallQuery.collectInIndexCoords(
+                wallCtx.wallSpatialIndex,
                 minX - padding,
                 minY - padding,
                 maxX + padding,
