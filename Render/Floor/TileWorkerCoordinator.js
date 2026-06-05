@@ -4,7 +4,7 @@ import { getAnimationFrames } from "./ProfileBakeResolver.js";
 import { MinHeap } from "../../Core/MinHeap.js";
 
 export const MAX_WALLS = 10000;
-export const STRIDE = 5;
+export const STRIDE = 6;
 export const wallGeometrySab = new SharedArrayBuffer(MAX_WALLS * STRIDE * 4);
 export const wallGeometryView = new Float32Array(wallGeometrySab);
 export const wallSharedEdgesSab = new SharedArrayBuffer(MAX_WALLS);

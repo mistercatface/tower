@@ -98,32 +98,7 @@ export class Render3D {
 
         // 1. Draw side faces
         for (let i = 0; i < 4; i++) {
-            let isShared = seg.sharedEdges[i];
-
-            // If the edge is marked as shared, check if we need to draw it anyway
-            // because the adjacent wall has a different height.
-            if (isShared && state.wallSpatialHash) {
-                const edge = edges[i];
-                const neighbors = state.wallSpatialHash.collectInBounds(edge.cx - 2, edge.cy - 2, edge.cx + 2, edge.cy + 2);
-                let sameHeightNeighborFound = false;
-                for (let n = 0; n < neighbors.length; n++) {
-                    const neighbor = neighbors[n];
-                    if (neighbor === seg || neighbor.isDead) continue;
-
-                    const distToNeighbor = Math.hypot(neighbor.x - edge.cx, neighbor.y - edge.cy);
-                    if (distToNeighbor < 9) { // 8 units is exactly from edge midpoint to segment center
-                        const neighborHeight = neighbor.wallHeight ?? (floorTileSettings.wallVisualHeight ?? (CAMERA_HEIGHT - 10));
-                        if (neighborHeight === wallHeight) {
-                            sameHeightNeighborFound = true;
-                            break;
-                        }
-                    }
-                }
-                if (!sameHeightNeighborFound) {
-                    isShared = false;
-                }
-            }
-
+            const isShared = seg.sharedEdges[i];
             if (isShared) continue;
 
             const edge = edges[i];
@@ -184,6 +159,8 @@ export class Render3D {
             wallGeometryView[offset + 2] = seg.angle;
             wallGeometryView[offset + 3] = seg.size;
             wallGeometryView[offset + 4] = seg.isDead ? 1 : 0;
+            const wallHeight = seg.wallHeight ?? (floorTileSettings.wallVisualHeight ?? (CAMERA_HEIGHT - 10));
+            wallGeometryView[offset + 5] = wallHeight;
             if (!seg.sharedEdges) {
                 seg.sharedEdges = [false, false, false, false];
             }

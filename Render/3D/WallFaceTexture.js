@@ -119,7 +119,13 @@ function drawFaceTexture(ctx, p1, p2, face, floorTiles, state, viewport, wallHei
     const wallCx = cacheObj && cacheObj.cx !== undefined ? cacheObj.cx : (p1.x + p2.x) * 0.5;
     const wallCy = cacheObj && cacheObj.cy !== undefined ? cacheObj.cy : (p1.y + p2.y) * 0.5;
 
-    const profileId = getFloorTextureProfileIdForCoords(state, wallCx, wallCy);
+    let profileId = cacheObj ? cacheObj._cachedProfileId : null;
+    if (!profileId || state.floorTextureProfileOverride) {
+        profileId = getFloorTextureProfileIdForCoords(state, wallCx, wallCy);
+        if (cacheObj && !state.floorTextureProfileOverride) {
+            cacheObj._cachedProfileId = profileId;
+        }
+    }
     const ppwu = getPixelsPerWorldUnit();
     const storyCount = getWallTextureStoryCount();
 
@@ -214,7 +220,13 @@ export function drawProjectedWallRoof(ctx, topCorners, seg, wallColor, state, vi
     const wallCx = cacheObj && cacheObj.cx !== undefined ? cacheObj.cx : seg.x;
     const wallCy = cacheObj && cacheObj.cy !== undefined ? cacheObj.cy : seg.y;
 
-    const profileId = getFloorTextureProfileIdForCoords(state, wallCx, wallCy);
+    let profileId = cacheObj ? cacheObj._cachedProfileId : null;
+    if (!profileId || state.floorTextureProfileOverride) {
+        profileId = getFloorTextureProfileIdForCoords(state, wallCx, wallCy);
+        if (cacheObj && !state.floorTextureProfileOverride) {
+            cacheObj._cachedProfileId = profileId;
+        }
+    }
     const ppwu = getPixelsPerWorldUnit();
     const storyCount = getWallTextureStoryCount();
 
@@ -294,7 +306,13 @@ export function preloadProjectedWallFace(p1, p2, floorTiles, state, cacheObj = n
 
     const wallCx = cacheObj && cacheObj.cx !== undefined ? cacheObj.cx : (p1.x + p2.x) * 0.5;
     const wallCy = cacheObj && cacheObj.cy !== undefined ? cacheObj.cy : (p1.y + p2.y) * 0.5;
-    const profileId = getFloorTextureProfileIdForCoords(state, wallCx, wallCy);
+    let profileId = cacheObj ? cacheObj._cachedProfileId : null;
+    if (!profileId || state.floorTextureProfileOverride) {
+        profileId = getFloorTextureProfileIdForCoords(state, wallCx, wallCy);
+        if (cacheObj && !state.floorTextureProfileOverride) {
+            cacheObj._cachedProfileId = profileId;
+        }
+    }
     const ppwu = getPixelsPerWorldUnit();
     const storyCount = getWallTextureStoryCount();
 

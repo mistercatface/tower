@@ -1,12 +1,12 @@
 export class SharedEdgeSolver {
     /**
-     * @param {Float32Array} wallsData - Buffer with layout [x, y, angle, size, isDead]
+     * @param {Float32Array} wallsData - Buffer with layout [x, y, angle, size, isDead, wallHeight]
      * @param {Uint8Array} sharedEdgesOut - Output buffer, 1 byte per wall (4 bits for 4 edges)
      * @param {number} numWalls - Number of walls currently active in the buffers
      */
     static solve(wallsData, sharedEdgesOut, numWalls) {
         const activeEdges = [];
-        const STRIDE = 5;
+        const STRIDE = 6;
 
         for (let i = 0; i < numWalls; i++) {
             const offset = i * STRIDE;
@@ -19,6 +19,7 @@ export class SharedEdgeSolver {
             const y = wallsData[offset + 1];
             const angle = wallsData[offset + 2];
             const size = wallsData[offset + 3];
+            const height = wallsData[offset + 5];
 
             const cos = Math.cos(angle);
             const sin = Math.sin(angle);
@@ -47,7 +48,8 @@ export class SharedEdgeSolver {
                     wallId: i,
                     edgeIndex: e,
                     cx: ex,
-                    cy: ey
+                    cy: ey,
+                    height: height
                 });
             }
         }
@@ -88,6 +90,7 @@ export class SharedEdgeSolver {
                     for (let j = 0; j < bucket.length; j++) {
                         const e2 = bucket[j];
                         if (e1.wallId === e2.wallId && e1.edgeIndex === e2.edgeIndex) continue;
+                        if (e1.height !== e2.height) continue;
 
                         const distSq = (e1.cx - e2.cx) ** 2 + (e1.cy - e2.cy) ** 2;
                         if (distSq < thresholdSq) {
