@@ -1,25 +1,14 @@
 import { adjustGameZoom, setGameZoomAbsolute, emitMapToggle } from "./EventSystem.js";
 import { controlSettings, COMBAT_HUD_MODE_COUNT, COMBAT_HUD_MODE_LABELS } from "../Config/Config.js";
-import {
-    DoubleTapDetector,
-    PinchZoomGesture,
-    bindWheelZoom,
-    bindCanvasPointerDown,
-    bindCanvasPointerMove,
-} from "../Libraries/Input/index.js";
+import { DoubleTapDetector, PinchZoomGesture, bindWheelZoom, bindCanvasPointerDown, bindCanvasPointerMove } from "../Libraries/Input/index.js";
 
 export class InputManager {
     static setup(canvas, fsm) {
         const doubleTap = new DoubleTapDetector(controlSettings.doubleTapTimeout);
 
-        bindWheelZoom(canvas, (delta) => adjustGameZoom(delta), {
-            sensitivity: controlSettings.scrollZoomSensitivity,
-        });
+        bindWheelZoom(canvas, (delta) => adjustGameZoom(delta), { sensitivity: controlSettings.scrollZoomSensitivity });
 
-        new PinchZoomGesture(canvas, {
-            getBaseZoom: () => fsm.context.viewport.zoom,
-            onPinchZoom: setGameZoomAbsolute,
-        });
+        new PinchZoomGesture(canvas, { getBaseZoom: () => fsm.context.viewport.zoom, onPinchZoom: setGameZoomAbsolute });
 
         bindCanvasPointerDown(canvas, {
             screenToWorld: (screenX, screenY) => fsm.context.viewport.screenToWorld(screenX, screenY),
