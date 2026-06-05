@@ -1,4 +1,4 @@
-import { drawExtrudedRadial, drawRadialBand } from "../../../../Render/3D/draw/SolidDraw.js";
+import { drawExtrudedRadial, drawRadialBand } from "../../../../Libraries/Render/Props3D/SolidDraw.js";
 import { JACKO_CAN } from "../../../../Config/content/props/JackoCan.js";
 import { projectVertical } from "../../../../Libraries/Math/IsometricProjection.js";
 

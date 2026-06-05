@@ -1,14 +1,14 @@
 /**
  * Projects wall faces and roof caps in isometric space and samples baked atlases
- * from WorldSurfaceEngine. Does not bake textures — see WorldSurfaceEngine.js.
+ * from WorldSurfaceEngine when provided. Does not bake textures.
  */
-import { getWallVisualHeight, getWorldSurfaceSettings, resolveWallVisualHeight } from "../../Libraries/WorldSurface/WorldSurfaceSettings.js";
-import { drawImageQuad } from "../../Libraries/Canvas/AffineTexture.js";
-/** @typedef {import("../adapters/WorldRenderAdapter.js").SurfaceBakeContext} SurfaceBakeContext */
+import { getWallVisualHeight, getWorldSurfaceSettings, resolveWallVisualHeight } from "../../WorldSurface/WorldSurfaceSettings.js";
+import { drawImageQuad } from "../../Canvas/AffineTexture.js";
+/** @typedef {import("../WorldSceneTypes.js").SurfaceBakeContext} SurfaceBakeContext */
 
-import { getPixelsPerWorldUnit, shouldSmoothTextureDownsample } from "../../Libraries/WorldSurface/WorldSurfaceResolution.js";
+import { getPixelsPerWorldUnit, shouldSmoothTextureDownsample } from "../../WorldSurface/WorldSurfaceResolution.js";
 
-export { wallFaceColumns } from "../../Libraries/WorldSurface/WallFaceColumns.js";
+export { wallFaceColumns } from "../../WorldSurface/WallFaceColumns.js";
 
 const WALL_ANGLE_SPREAD = 0.002;
 
@@ -189,8 +189,22 @@ function drawFaceTexture(ctx, p1, p2, face, worldSurfaces, surfaceBake, viewer, 
     ctx.restore();
 }
 
+function fillProjectedRoof(ctx, topCorners, wallColor) {
+    ctx.fillStyle = wallColor;
+    ctx.beginPath();
+    ctx.moveTo(topCorners[0].x, topCorners[0].y);
+    ctx.lineTo(topCorners[1].x, topCorners[1].y);
+    ctx.lineTo(topCorners[2].x, topCorners[2].y);
+    ctx.lineTo(topCorners[3].x, topCorners[3].y);
+    ctx.closePath();
+    ctx.fill();
+}
+
 export function drawProjectedWallRoof(ctx, topCorners, seg, wallColor, worldSurfaces, surfaceBake, viewport, cacheObj = null) {
-    if (!worldSurfaces) return;
+    if (!worldSurfaces || !surfaceBake) {
+        fillProjectedRoof(ctx, topCorners, wallColor);
+        return;
+    }
 
     const settings = worldSurfaces.settings ?? getWorldSurfaceSettings();
     const wallHeight = seg.wallHeight ?? resolveWallVisualHeight(settings.cameraHeight, settings);
@@ -220,14 +234,7 @@ export function drawProjectedWallRoof(ctx, topCorners, seg, wallColor, worldSurf
 
     const flatCanvas = worldSurfaces.resolveWallAtlasCanvas(atlas.canvases, profileId, surfaceBake.gameTime);
     if (!flatCanvas || flatCanvas.isPlaceholder) {
-        ctx.fillStyle = wallColor;
-        ctx.beginPath();
-        ctx.moveTo(topCorners[0].x, topCorners[0].y);
-        ctx.lineTo(topCorners[1].x, topCorners[1].y);
-        ctx.lineTo(topCorners[2].x, topCorners[2].y);
-        ctx.lineTo(topCorners[3].x, topCorners[3].y);
-        ctx.closePath();
-        ctx.fill();
+        fillProjectedRoof(ctx, topCorners, wallColor);
         return;
     }
 
@@ -249,7 +256,7 @@ export function drawProjectedWallFace(ctx, p1, p2, px, py, fillStyle, worldSurfa
     const finalWallHeight = wallHeight ?? getWallVisualHeight();
     const face = computeProjectedFace(p1, p2, px, py, finalWallHeight);
     traceProjectedFace(ctx, p1, p2, face);
-    if (worldSurfaces && textureEnabled) {
+    if (worldSurfaces && surfaceBake && textureEnabled) {
         drawFaceTexture(ctx, p1, p2, face, worldSurfaces, surfaceBake, { x: px, y: py }, viewport, finalWallHeight, fillStyle, cacheObj);
     } else {
         ctx.fillStyle = fillStyle;

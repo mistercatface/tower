@@ -1,6 +1,6 @@
 import "./WorldSurfaceBootstrap.js";
 import { SpriteCache } from "../Libraries/Canvas/SpriteCache.js";
-import { Render3D } from "./3D/Render3D.js";
+import { WorldSceneRenderer } from "../Libraries/Render/WorldSceneRenderer.js";
 import { world3dPropRecipes } from "../Combat/world3d/world3dContent.js";
 import { buildWorldRenderInput } from "./adapters/WorldRenderAdapter.js";
 import { COMBAT_HUD_MODE, hudSettings, combatVisualSettings } from "../Config/Config.js";
@@ -18,7 +18,7 @@ export class Renderer {
         this.actorCache = new SpriteCache();
         this.turretCache = new SpriteCache();
         this.floatingTextCache = new SpriteCache();
-        this.render3D = new Render3D(undefined, world3dPropRecipes);
+        this.render3D = new WorldSceneRenderer(undefined, world3dPropRecipes);
         this.effectPasses = [
             { zIndex: -5, fn: (state, viewport) => state.worldSurfaces.drawGround(this.ctx, state, viewport) },
             { zIndex: 19, fn: (state, viewport) => this.drawDebris(state, viewport) },

@@ -1,5 +1,5 @@
 import { WOOD_CRATE } from "../../../../Config/content/props/Crate.js";
-import { drawExtrudedBox } from "../../../../Render/3D/draw/SolidDraw.js";
+import { drawExtrudedBox } from "../../../../Libraries/Render/Props3D/SolidDraw.js";
 
 export function drawCrateCombat(ctx, prop, px, py) {
     const { colors, combat } = WOOD_CRATE;

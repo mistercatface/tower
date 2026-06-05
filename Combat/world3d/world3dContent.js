@@ -17,7 +17,7 @@ export function drawCrateShard(ctx, prop, px, py) {
     drawCrateShardCombat(ctx, prop, px, py);
 }
 
-/** Game prop draw registry — injected into Render3D by the game bootstrap. */
+/** Game prop draw registry — injected into WorldSceneRenderer by the game bootstrap. */
 export const world3dPropRecipes = {
     barrel: drawBarrel,
     fire_barrel: drawFireBarrel,

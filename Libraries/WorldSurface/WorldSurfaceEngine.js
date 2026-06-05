@@ -1,7 +1,7 @@
 /**
  * Procedural world-surface bake cache: ground chunks + wall atlases.
  * Game-agnostic — no phase checks, shadow fill, or GameState profile resolution.
- * See Render/game/WorldSurfaceSystem.js for the game wrapper; ProjectedWallDraw.js for wall projection.
+ * See Render/game/WorldSurfaceSystem.js for the game wrapper; Libraries/Render/Structure3D for wall projection.
  */
 import { getWorldSurfaceSettings, resolveWallVisualHeight } from "./WorldSurfaceSettings.js";
 import { getSurfaceProfileProvider } from "../Procedural/SurfaceProfileProvider.js";
