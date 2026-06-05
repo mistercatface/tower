@@ -26,7 +26,7 @@ export function canRunHordeSpawning(state) {
         && state.phase !== GamePhase.INSPECTOR
         && !state.startNodeIntroActive
         && !state.clueSearchActive
-        && !state.clueSearchCompleted;
+        && state.clueSearchCompleted;
 }
 
 /** Range and center for drawing combat rings / masks in world vs map space. */
