@@ -9,9 +9,9 @@ let bfsDistances;
 let bfsQueue;
 let localVectorMap;
 
-self.onmessage = function(e) {
+self.onmessage = function (e) {
     const { type, data, slot, tx, ty, range } = e.data;
-    if (type === 'init') {
+    if (type === "init") {
         GRID_WIDTH = data.GRID_WIDTH;
         GRID_SIZE = data.GRID_SIZE;
         ObstacleGrid = new Uint8Array(data.sabObstacle);
@@ -22,20 +22,9 @@ self.onmessage = function(e) {
         bfsQueue = new Int32Array(GRID_SIZE);
         return;
     }
-    if (type === 'updateFlow') {
+    if (type === "updateFlow") {
         const offset = slot * GRID_SIZE;
         const vectorMap = FlowPool.subarray(offset, offset + GRID_SIZE);
-        computeFlowField(vectorMap, {
-            gridWidth: GRID_WIDTH,
-            gridSize: GRID_SIZE,
-            obstacleGrid: ObstacleGrid,
-            neighborGrid: NeighborGrid,
-            tx,
-            ty,
-            range,
-            bfsDistances,
-            bfsQueue,
-            localVectorMap,
-        });
+        computeFlowField(vectorMap, { gridWidth: GRID_WIDTH, gridSize: GRID_SIZE, obstacleGrid: ObstacleGrid, neighborGrid: NeighborGrid, tx, ty, range, bfsDistances, bfsQueue, localVectorMap });
     }
 };
