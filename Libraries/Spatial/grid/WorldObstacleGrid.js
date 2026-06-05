@@ -1,20 +1,28 @@
-import { colRowToIndex } from "../../Libraries/Spatial/grid/GridUtils.js";
-import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsToWorldBounds } from "../../Libraries/Spatial/grid/GridCoords.js";
+import { colRowToIndex } from "./GridUtils.js";
+import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsToWorldBounds } from "./GridCoords.js";
 import {
     getWallCellBounds,
     markWallOnGrid,
     clearWallCells,
     computeBoundsFromWalls,
-} from "../../Libraries/Spatial/grid/wallGridBake.js";
+} from "./wallGridBake.js";
 import {
     collectSegmentsAlongLine,
     collectSegmentsInWorldBounds,
     collectSegmentsNearPose,
     segmentGridLayoutFromObstacleGrid,
-} from "../../Libraries/Spatial/grid/segmentGridWalk.js";
+} from "./segmentGridWalk.js";
 
-export { getWallCellBounds, markWallOnGrid, clearWallCells, computeBoundsFromWalls };
+export {
+    getWallCellBounds,
+    markWallOnGrid,
+    clearWallCells,
+    computeBoundsFromWalls,
+} from "./wallGridBake.js";
 
+/**
+ * Occupancy + per-cell wall segment index. Implements NavGraph for pathfinding.
+ */
 export class WorldObstacleGrid {
     constructor(cellSize) {
         this.cellSize = cellSize;

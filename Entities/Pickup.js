@@ -10,7 +10,7 @@ import { getProjectileDamage } from "../Combat/impactDamage.js";
 import { getStartNodeLayout } from "../Generator/StartNodeBuilding.js";
 import { placeAtWallClearance } from "../Libraries/Pathfinding/PathClearance.js";
 import { distanceToSegment } from "../Libraries/Spatial/geometry/WallGeometry.js";
-import { MOVING_SPEED_SQ } from "../Spatial/Collision/PairBroadphase.js";
+import { MOVING_SPEED_SQ } from "../Libraries/Spatial/collision/entityBroadphase.js";
 import { SLEEP_FRAMES, canSleepPushable, wakePushable as wakePushablePickup } from "../Spatial/Collision/PushableSleep.js";
 
 const PICKUP_STRATEGY_DEFAULTS = {

@@ -1,5 +1,5 @@
 import { inferFaction } from "../../Combat/Targeting.js";
-import { NEIGHBOR_QUERY_PAD } from "../Collision/PairBroadphase.js";
+import { NEIGHBOR_QUERY_PAD } from "../../Libraries/Spatial/collision/entityBroadphase.js";
 import { accumulateSeparationFromPair, clampSeparationAccum, createSeparationAccum } from "../../Libraries/Motion/separationForce.js";
 
 export class Separation {

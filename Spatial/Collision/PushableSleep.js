@@ -1,5 +1,5 @@
 import { Actor } from "../../Entities/Actor.js";
-import { isMovingEntity, pairBroadphaseOverlap } from "./PairBroadphase.js";
+import { isMovingEntity, pairBroadphaseOverlap } from "../../Libraries/Spatial/collision/entityBroadphase.js";
 
 /** Consecutive still frames required before a pushable is treated as sleeping. */
 export const SLEEP_FRAMES = 30;

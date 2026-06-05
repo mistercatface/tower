@@ -1,6 +1,6 @@
 import { CollisionSystem } from "../Spatial/Collision/CollisionSystem.js";
 import { normalizeAngle } from "../Libraries/Math/Angle.js";
-import { getWallsAlongLine } from "../Spatial/World/WallContext.js";
+import { getWallsAlongLine } from "../Libraries/Spatial/query/wallContext.js";
 import { Laser } from "../Entities/Laser.js";
 import { defaultGunId, getGunDefinition } from "../Config/content/guns.js";
 import { getSlotFireIntervalMs, getSlotReloadTimeMs } from "./gunCombat.js";

@@ -4,10 +4,7 @@ import {
     segmentGridLayoutFromObstacleGrid,
 } from "../grid/segmentGridWalk.js";
 
-/**
- * @typedef {import("../indexes/WallSpatialIndex.js").WallSpatialIndex} WallSpatialIndex
- * @typedef {{ walls: object[], wallSpatialIndex?: WallSpatialIndex | null, obstacleGrid?: object | null }} WallContext
- */
+/** @typedef {import("./wallContext.js").WallContext} WallContext */
 
 /**
  * @param {{ x: number, y: number, radius?: number, getBounds?: () => { minX: number, minY: number, maxX: number, maxY: number } }} entity

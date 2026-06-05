@@ -1,6 +1,6 @@
 /**
  * Read-only occupancy grid + coordinate mapping consumed by pathfinding algorithms.
- * Game `WorldObstacleGrid` implements this shape.
+ * `Libraries/Spatial/grid/WorldObstacleGrid` implements this shape.
  *
  * @typedef {object} NavGraph
  * @property {number} cols
@@ -15,7 +15,7 @@
  */
 
 /**
- * Segment lookup for path clearance. `WorldObstacleGrid` also satisfies this.
+ * Segment lookup for path clearance. WorldObstacleGrid also satisfies this.
  *
  * @typedef {NavGraph & object} NavSegmentGraph
  * @property {(entity: { x: number, y: number, radius?: number }) => object[]} getNearbySegments

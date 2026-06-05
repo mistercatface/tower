@@ -1,13 +1,22 @@
-import { SpatialQuery } from "../../Libraries/Spatial/query/SpatialQuery.js";
+import { SpatialQuery } from "./SpatialQuery.js";
 import {
     collectWallSegmentsAlongLine,
     collectWallSegmentsForEntity,
-} from "../../Libraries/Spatial/query/wallSegmentQuery.js";
+} from "./wallSegmentQuery.js";
 
-/** @typedef {import("../../Libraries/Spatial/query/wallSegmentQuery.js").WallContext} WallContext */
+/** @typedef {import("../indexes/WallSpatialIndex.js").WallSpatialIndex} WallSpatialIndex */
+/** @typedef {import("../grid/WorldObstacleGrid.js").WorldObstacleGrid} WorldObstacleGrid */
+
+/**
+ * @typedef {object} WallContext
+ * @property {object[]} walls
+ * @property {WallSpatialIndex | null} [wallSpatialIndex]
+ * @property {WorldObstacleGrid | null} [obstacleGrid]
+ */
 
 const fallbackWallQuery = new SpatialQuery();
 
+/** @param {{ walls?: object[], wallSpatialIndex?: WallSpatialIndex | null, obstacleGrid?: WorldObstacleGrid | null } | null} state */
 export function wallContextFromState(state) {
     if (!state) return null;
     return {
@@ -24,3 +33,5 @@ export function getNearbyWalls(entity, wallCtx) {
 export function getWallsAlongLine(x1, y1, x2, y2, wallCtx) {
     return collectWallSegmentsAlongLine(wallCtx, x1, y1, x2, y2);
 }
+
+export {};

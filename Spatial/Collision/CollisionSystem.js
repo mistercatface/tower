@@ -1,6 +1,6 @@
 import { circlesOverlap, findFirstCircleSegmentHit } from "../../Libraries/Spatial/collision/overlap.js";
 import { resolveSatPair } from "../../Libraries/Spatial/collision/satPair.js";
-import { shouldResolveActorPushable } from "./PairBroadphase.js";
+import { shouldResolveActorPushable } from "../../Libraries/Spatial/collision/entityBroadphase.js";
 import { wakePushable } from "./PushableSleep.js";
 import { areHostile } from "../../Combat/Targeting.js";
 import { PhysicsSystem } from "../Motion/PhysicsSystem.js";

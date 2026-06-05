@@ -1,9 +1,9 @@
 import { EntityGrid } from "../../Libraries/Spatial/indexes/EntityGrid.js";
 import { collectWallSegmentsForEntity } from "../../Libraries/Spatial/query/wallSegmentQuery.js";
 import { SpatialQuery } from "../../Libraries/Spatial/query/SpatialQuery.js";
-import { wallContextFromState } from "./WallContext.js";
+import { wallContextFromState } from "../../Libraries/Spatial/query/wallContext.js";
 import { Actor } from "../../Entities/Actor.js";
-import { isMovingEntity, shouldResolveActorPushable } from "../Collision/PairBroadphase.js";
+import { isMovingEntity, shouldResolveActorPushable } from "../../Libraries/Spatial/collision/entityBroadphase.js";
 
 /**
  * Per-tick spatial context for combat.

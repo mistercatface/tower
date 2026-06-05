@@ -1,5 +1,5 @@
 import { distanceToSegment } from "../Libraries/Spatial/geometry/WallGeometry.js";
-import { getWallsAlongLine } from "../Spatial/World/WallContext.js";
+import { getWallsAlongLine } from "../Libraries/Spatial/query/wallContext.js";
 
 export class Utilities {
     static hasLineOfSight(x1, y1, x2, y2, wallCtx, sourceRadius = 0, targetRadius) {

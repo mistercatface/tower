@@ -3,8 +3,8 @@ import { FLOW_FIELD_WORKER_URL, getGameWorldSurfaceSettings } from "../Render/Wo
 import { Player } from "../Entities/Player.js";
 import { Sidekick } from "../Entities/Sidekick.js";
 import { FlowFieldGrid } from "../Libraries/Pathfinding/FlowFieldGrid.js";
-import { HierarchicalNavigator } from "../Spatial/Navigation/HierarchicalNavigator.js";
-import { WorldObstacleGrid } from "../Spatial/World/ObstacleGrid.js";
+import { HierarchicalNavigator } from "../Libraries/Pathfinding/HierarchicalNavigator.js";
+import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { NavigationService } from "../Spatial/Navigation/NavigationService.js";
 import { combatActorRadius, gridSettings, mapSettings, navigationSettings, runBaseStats } from "../Config/Config.js";
 import { Scheduler } from "../Core/Scheduler.js";

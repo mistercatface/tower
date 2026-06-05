@@ -31,3 +31,4 @@ export {
     repositionNodeCentroid,
 } from "./VoronoiRegions.js";
 export { readNavGrid } from "./NavGraph.js";
+export { HierarchicalNavigator } from "./HierarchicalNavigator.js";
