@@ -133,29 +133,29 @@ export function createKinematicsSpriteCache() {
 
 // ─── Iso prop preset ─────────────────────────────────────────────────────────
 
-const propSpriteCache = createQuantizedSpriteCache({ maxItems: 1536 });
+const propSpriteCache = createQuantizedSpriteCache({ maxItems: 2560 });
 const PROP_ROTATION_STEPS = 16;
-/** Spin (facing) + tumble (rollAngle) buckets for long-axis logs. */
-const LOG_PROP_ROTATION_STEPS = 32;
+/** In-plane spin (facing) buckets for long-axis logs. */
+const LOG_SPIN_STEPS = 64;
+/** End-over-end tumble (rollAngle) buckets for long-axis logs. */
+const LOG_ROLL_STEPS = 32;
 const PROP_STAGE_PADDING = 40;
 
 /**
  * @param {object} prop
- * @param {number} [steps]
  */
-export function quantizeLongAxisLogAngles(prop, steps = LOG_PROP_ROTATION_STEPS) {
+export function quantizeLongAxisLogAngles(prop) {
     return {
-        facing: quantizeAngle(prop.facing ?? 0, steps),
-        rollAngle: quantizeAngle(prop.rollAngle ?? 0, steps),
+        facing: quantizeAngle(prop.facing ?? 0, LOG_SPIN_STEPS),
+        rollAngle: quantizeAngle(prop.rollAngle ?? 0, LOG_ROLL_STEPS),
     };
 }
 
 /**
  * @param {object} prop
- * @param {number} [steps]
  */
-export function buildLongAxisLogOrientKey(prop, steps = LOG_PROP_ROTATION_STEPS) {
-    return `f${quantizeAngleIndex(prop.facing ?? 0, steps)}_a${quantizeAngleIndex(prop.rollAngle ?? 0, steps)}`;
+export function buildLongAxisLogOrientKey(prop) {
+    return `f${quantizeAngleIndex(prop.facing ?? 0, LOG_SPIN_STEPS)}_a${quantizeAngleIndex(prop.rollAngle ?? 0, LOG_ROLL_STEPS)}`;
 }
 
 /**
