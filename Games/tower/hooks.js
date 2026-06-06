@@ -1,7 +1,6 @@
 import { isInspector } from "../../GameState/GamePhase.js";
 import { getClueSearchMissionLabel, findClueSearchPickup } from "./tutorial/ClueSearch.js";
 import { runSceneController } from "./config/runScenes.js";
-import { markRadiosForSkippedScenes } from "./runSceneRadios.js";
 
 /** @param {import("../../GameState/GameStateMachine.js").GameStateMachineContext} ctx */
 export function onCombatEnter(ctx) {
@@ -10,8 +9,6 @@ export function onCombatEnter(ctx) {
     if (!state.runSceneInitialized) {
         runSceneController.reset();
         const startSceneId = ctx.game?.startRunAtScene ?? null;
-        const sceneIds = runSceneController.scenes.map((scene) => scene.id);
-        markRadiosForSkippedScenes(state, startSceneId, sceneIds);
         runSceneController.startAt(startSceneId, state, ctx);
         state.runSceneInitialized = true;
     }

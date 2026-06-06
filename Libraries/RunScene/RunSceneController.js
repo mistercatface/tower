@@ -15,8 +15,17 @@ export class RunSceneController {
      *   onComplete?: (state: object, ctx: object) => void,
      * }> }} config
      */
-    constructor({ scenes }) {
+    /**
+     * @param {{
+     *   scenes: object[],
+     *   markRadiosSeen?: (state: object, triggers: string[]) => void,
+     *   runStartRadios?: string[],
+     * }} config
+     */
+    constructor({ scenes, markRadiosSeen = null, runStartRadios = ["run_start"] }) {
         this.scenes = scenes;
+        this.markRadiosSeen = markRadiosSeen;
+        this.runStartRadios = runStartRadios;
         this.sceneIndex = 0;
         this.entered = false;
     }
@@ -46,9 +55,19 @@ export class RunSceneController {
      */
     startAt(sceneId, state, ctx) {
         const targetIndex = this.resolveIndex(sceneId);
-        for (let i = 0; i < targetIndex; i++) {
-            this.scenes[i].onSkip?.(state, ctx);
+
+        if (targetIndex > 0 && this.markRadiosSeen && this.runStartRadios.length > 0) {
+            this.markRadiosSeen(state, this.runStartRadios);
         }
+
+        for (let i = 0; i < targetIndex; i++) {
+            const scene = this.scenes[i];
+            if (scene.radios?.length && this.markRadiosSeen) {
+                this.markRadiosSeen(state, scene.radios);
+            }
+            scene.onSkip?.(state, ctx);
+        }
+
         this.sceneIndex = targetIndex;
         this.entered = false;
     }

@@ -13,14 +13,14 @@ export function getRunSceneLayout(state) {
 }
 
 /**
- * Move the leader and sidekicks to a scene's spawn slot.
+ * Move the leader and sidekicks to a named layout spawn slot.
  * @param {object} state
- * @param {string} sceneId
+ * @param {string} spawnSlot
  * @param {object} [ctx]
  */
-export function applyRunScenePartyPosition(state, sceneId, ctx = null) {
+export function applyRunSceneSpawn(state, spawnSlot, ctx = null) {
     const layout = getRunSceneLayout(state);
-    const spawn = layout?.sceneSpawns?.[sceneId];
+    const spawn = layout?.spawnSlots?.[spawnSlot];
     if (!spawn) return;
 
     state.player.setSpawnPosition(spawn.x, spawn.y);

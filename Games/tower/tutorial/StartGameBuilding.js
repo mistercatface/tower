@@ -288,10 +288,10 @@ export function getStartGameLayout(px, py, cellSize) {
         guardFaceX: guardFace.x,
         guardFaceY: guardFace.y,
         guardSpawns: [guardLeft, guardRight],
-        sceneSpawns: {
-            intro_guards: spawn,
-            clue_search: clueSearchSpawn,
-            main_combat: mainCombatSpawn,
+        spawnSlots: {
+            yard: spawn,
+            foyer: clueSearchSpawn,
+            corridor: mainCombatSpawn,
         },
     };
 }
