@@ -1,9 +1,11 @@
 import { PairFilter } from "../Libraries/Interaction/PairFilter.js";
+import { BaseGeneratorStrategies } from "../Generator/GeneratorStrategies.js";
 import { getActiveGameDefinition } from "./ActiveGameDefinition.js";
 
 /** @typedef {import("./GameDefinitionTypes.js").CombatPairsPort} CombatPairsPort */
 /** @typedef {import("./GameDefinitionTypes.js").TargetingPort} TargetingPort */
 /** @typedef {import("./GameDefinitionTypes.js").RenderPorts} RenderPorts */
+/** @typedef {import("./GameDefinitionTypes.js").WorldGenPort} WorldGenPort */
 
 function requireGameDefinition() {
     const def = getActiveGameDefinition();
@@ -32,6 +34,23 @@ export function getRenderPorts() {
     const render = requireGameDefinition().render;
     if (!render) throw new Error("Active game definition missing render port.");
     return render;
+}
+
+/** @returns {WorldGenPort} */
+export function getWorldGen() {
+    const worldGen = requireGameDefinition().worldGen;
+    if (!worldGen) throw new Error("Active game definition missing worldGen port.");
+    return worldGen;
+}
+
+/** Game-specific strategies merged over engine defaults. */
+export function getGeneratorStrategies() {
+    return { ...BaseGeneratorStrategies, ...getWorldGen().strategies };
+}
+
+/** Strategy keys used for random generation on non-start map nodes. */
+export function getRandomGeneratorStrategyKeys() {
+    return Object.keys(BaseGeneratorStrategies);
 }
 
 /** @type {Map<keyof CombatPairsPort, PairFilter>} */

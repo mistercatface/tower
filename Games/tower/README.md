@@ -11,6 +11,7 @@ This folder is the **game definition** for the shipped tower roguelike. The engi
 | `config/startLayout.js` | Opening building grid + named spawn slots |
 | `config/entities.js` | Enemy + ally definitions, run party, spawn events |
 | `runScenePorts.js` | Injected ports: layout, radio registry, spawn apply |
+| `worldGen.js` | World-gen port: start strategy, layout provider |
 | `tutorial/StartGameBuilding.js` | Opening building generator (interprets `startLayout.js`) |
 | `hooks.js` | Gameplay hooks wired into engine (combat enter, run scene tick) |
 | `content/inspect/` | Jacko + crate inspect meshes and catalog registration |
@@ -29,9 +30,12 @@ Radio engine lives in `Libraries/Radio/`; tower wires it via `gameDefinition.wir
 ## New game
 
 1. Copy `Games/tower/` → `Games/my-game/`
-2. Edit `gameDefinition.js` (states, hooks, canvas id)
-3. Point `main.js` at your manifest: `createGame(myGame)`
-4. Add or fork `Config/` content for your game
+2. Implement `gameDefinition.js` with required ports: `combatPairs`, `targeting`, `render`, `worldGen`
+3. Add `config/runScenes.js`, `config/entities.js`, layout + `worldGen.strategies`
+4. Point `main.js` at your manifest: `createGame(myGame)`
+5. Fork `Config/` content as needed (factions, guns, radio, balance)
+
+Engine code must not import `Games/my-game/` — only `getActiveGameDefinition()` / `Core/GamePorts.js`.
 
 ## Do not
 

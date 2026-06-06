@@ -1,6 +1,5 @@
 import { Segment } from "../Entities/Wall.js";
-import { GeneratorStrategies } from "./GeneratorStrategies.js";
-import { StartGameBuildingStrategy } from "../Games/tower/tutorial/StartGameBuilding.js";
+import { getGeneratorStrategies, getRandomGeneratorStrategyKeys, getWorldGen } from "../Core/GamePorts.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { FLOW_FIELD_WORKER_URL } from "../Render/WorldSurfaceBootstrap.js";
 import { FlowFieldGrid } from "../Libraries/Pathfinding/FlowFieldGrid.js";
@@ -9,7 +8,7 @@ import { resolveSurfaceProfileId } from "../Config/procedural/profiles.js";
 import { syncSurfaceProfile } from "../Render/game/surfaceProfileResolver.js";
 import { buildMapRenderCaches } from "../Render/Map/MapRenderCache.js";
 
-const STRATEGIES = Object.keys(GeneratorStrategies);
+const STRATEGIES = getRandomGeneratorStrategyKeys();
 
 let tempObstacleGrid = null;
 let tempFlowFieldGrid = null;
@@ -278,9 +277,15 @@ export class MapGenerator {
         const { tempObstacleGrid, tempFlowFieldGrid } = getTempGrids();
         const incomingByNodeId = buildIncomingNodesMap(state.mapNodes);
 
-        const startNode = state.getMapNode(0);
+        const worldGen = getWorldGen();
+        const strategies = getGeneratorStrategies();
+        const startNode = state.getMapNode(worldGen.startMapNodeId ?? 0);
         if (startNode) {
             const coords = state.getNodeCombatCoords(startNode);
+            const startStrategy = strategies[worldGen.startNodeStrategyKey];
+            if (!startStrategy) {
+                throw new Error(`worldGen.startNodeStrategyKey not found: ${worldGen.startNodeStrategyKey}`);
+            }
 
             tempFlowFieldGrid.centerX = coords.x;
             tempFlowFieldGrid.centerY = coords.y;
@@ -290,11 +295,11 @@ export class MapGenerator {
                 flowFieldGrid: tempFlowFieldGrid,
             };
 
-            StartGameBuildingStrategy.generate(mockState, coords.x, coords.y);
+            startStrategy.generate(mockState, coords.x, coords.y);
 
             startNode.wallsData = serializeWalls(mockState.walls, coords.x, coords.y, 480);
-            startNode.strategy = "StartGameBuilding";
-            startNode.surfaceProfileId = resolveSurfaceProfileId({ layer: 0, strategy: "StartGameBuildingStrategy" });
+            startNode.strategy = worldGen.startNodeStrategyLabel ?? worldGen.startNodeStrategyKey;
+            startNode.surfaceProfileId = resolveSurfaceProfileId({ layer: 0, strategy: worldGen.startNodeStrategyKey });
         }
 
         const numLayers = mapSettings.numLayers;
@@ -321,7 +326,7 @@ export class MapGenerator {
                         flowFieldGrid: tempFlowFieldGrid,
                     };
 
-                    GeneratorStrategies[strategy].generate(mockState, coordsB.x, coordsB.y);
+                    getGeneratorStrategies()[strategy].generate(mockState, coordsB.x, coordsB.y);
 
                     let allPathable = true;
                     for (const nodeA of incomingNodes) {

@@ -31,6 +31,30 @@
  */
 
 /**
+ * @typedef {object} WorldGenStrategy
+ * @property {(state: object, px: number, py: number) => void} generate
+ */
+
+/**
+ * @typedef {object} StartLayout
+ * @property {number} spawnX
+ * @property {number} spawnY
+ * @property {number} [spawnClearRadius]
+ * @property {number} [guardFaceX]
+ * @property {number} [guardFaceY]
+ * @property {Record<string, { x: number, y: number }>} [spawnSlots]
+ */
+
+/**
+ * @typedef {object} WorldGenPort
+ * @property {number} [startMapNodeId] — map graph node used for opening layout (default 0)
+ * @property {string} startNodeStrategyKey — key in strategies for node-0 wall generation
+ * @property {string} [startNodeStrategyLabel] — display label stored on the map node
+ * @property {Record<string, WorldGenStrategy>} strategies — merged into the generator lookup table
+ * @property {(px: number, py: number, cellSize: number) => StartLayout} getStartLayout
+ */
+
+/**
  * @typedef {object} GameDefinition
  * @property {string} id
  * @property {string} canvasId
@@ -41,6 +65,7 @@
  * @property {CombatPairsPort} combatPairs
  * @property {TargetingPort} targeting
  * @property {RenderPorts} render
+ * @property {WorldGenPort} worldGen
  * @property {() => void | Promise<void>} [prepare]
  * @property {() => void} [registerInspect]
  * @property {(ctx: { state: object, upgrades: object[] }) => void} [onRunOpeningComplete]

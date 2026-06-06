@@ -22,6 +22,7 @@ import { registerTowerEntities } from "./config/entities.js";
 import { applyInspectManifestToProps } from "./config/inspectManifest.js";
 import { worldPropDefinitions } from "../../Config/content/propDefinitions.js";
 import { towerCombatPairs, towerRenderPorts, towerTargeting } from "./ports.js";
+import { towerWorldGen } from "./worldGen.js";
 
 /** @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition */
 
@@ -34,6 +35,7 @@ export const towerGame = {
     combatPairs: towerCombatPairs,
     targeting: towerTargeting,
     render: towerRenderPorts,
+    worldGen: towerWorldGen,
 
     createUpgrades() {
         return [...createBaseUpgrades(), ...createUpgrades()];

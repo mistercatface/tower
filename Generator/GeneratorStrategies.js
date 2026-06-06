@@ -1,5 +1,4 @@
 import { Segment, buildArcWall } from "../Entities/Wall.js";
-import { StartGameBuildingStrategy } from "../Games/tower/tutorial/StartGameBuilding.js";
 import { snapLayoutOrigin } from "./GridLayout.js";
 
 function generateMaze(state, px, py, config = {}) {
@@ -364,8 +363,8 @@ const DiamondStrategy = {
     }
 }
 
-export const GeneratorStrategies = {
-    StartGameBuildingStrategy,
+/** Engine-owned procedural strategies (non-start nodes). Games add start layouts via worldGen.strategies. */
+export const BaseGeneratorStrategies = {
     MazeStrategy,
     Maze2Strategy,
     DenseMazeStrategy,
@@ -374,4 +373,7 @@ export const GeneratorStrategies = {
     HoneycombStrategy,
     SquareStrategy,
     DiamondStrategy,
-}
+};
+
+/** @deprecated Use getGeneratorStrategies() from Core/GamePorts.js */
+export const GeneratorStrategies = BaseGeneratorStrategies;
