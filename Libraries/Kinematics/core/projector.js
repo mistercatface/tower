@@ -1,4 +1,4 @@
-import { clamp } from "../../Libraries/Math/Interpolate.js";
+import { clamp } from "../../Math/Interpolate.js";
 
 function rotateXZ(p, bCos, bSin) {
     return { rx: p.x * bCos - p.z * bSin, rz: p.x * bSin + p.z * bCos };

@@ -2,7 +2,7 @@ import { clamp } from "../../../Libraries/Math/Interpolate.js";
 import { distance, length } from "../../../Libraries/Math/Vec3.js";
 import { RAGDOLL_CONFIG, SEVER_MAP } from "./RagdollConfig.js";
 import { absRagdollPoint, ensureSimBone, getRagdollPointZ } from "./RagdollPhysics.js";
-import { PHYSICS_BONE_ALIASES, SEVER_LIMB_DEF, SEVER_TORSO_PEER } from "../KinematicsBones.js";
+import { PHYSICS_BONE_ALIASES, SEVER_LIMB_DEF, SEVER_TORSO_PEER } from "../../../Libraries/Kinematics/core/bones.js";
 
 /** Map hit bone (incl. torso capsules) to a severable limb id. */
 export function resolveSeverTarget(hitPart, ragdoll) {

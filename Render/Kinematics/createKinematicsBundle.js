@@ -1,15 +1,15 @@
-import { createKinematicsConfig, createKinematicsRig } from "./KinematicsConfig.js";
+import { createKinematicsConfig, createKinematicsRig } from "../../Libraries/Kinematics/core/config.js";
 import { createKinematicsPoses } from "./KinematicsPoses.js";
 import { createSceneRenderer } from "./KinematicsSceneRenderer.js";
 import { createKinematicsSpriteCache } from "../../Libraries/Canvas/QuantizedSpriteCache.js";
 import { calculateCharacterRig } from "./KinematicsRigCalculator.js";
-import { createProjector } from "./KinematicsProjector.js";
+import { createProjector } from "../../Libraries/Kinematics/core/projector.js";
 import { drawKinematicsFrameToCanvas } from "./KinematicsDraw.js";
 import { resolveCombatFacing, resolveSpriteBodyRotation } from "./KinematicsFacing.js";
 import { normalizeWeaponLoadout } from "../../Combat/equipmentLoadout.js";
 import { resolveWeaponStaticPoseName } from "./KinematicsWeaponVisuals.js";
 import { resolveMuzzleFromRig } from "./KinematicsMuzzle.js";
-import { applyRigDeltas } from "./KinematicsBones.js";
+import { applyRigDeltas } from "../../Libraries/Kinematics/core/bones.js";
 import { quantizeAngleIndex } from "../../Libraries/Math/Angle.js";
 import { clamp } from "../../Libraries/Math/Interpolate.js";
 

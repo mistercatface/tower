@@ -3,7 +3,7 @@ import {
     solveIK,
     applyLocalTilt,
     getAimingArmAngles,
-} from "./KinematicsMath.js";
+} from "../../Libraries/Kinematics/core/ik.js";
 import { blendAngle, normalizeAngle } from "../../Libraries/Math/Angle.js";
 import { smootherstep } from "../../Libraries/Math/Easing.js";
 import { clamp, lerp } from "../../Libraries/Math/Interpolate.js";

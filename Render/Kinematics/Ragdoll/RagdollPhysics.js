@@ -5,7 +5,7 @@ import {
     RAGDOLL_CONSTRAINT_EDGES,
     boneMapFromCharacterRig,
     resolvePhysicsBoneId,
-} from "../KinematicsBones.js";
+} from "../../../Libraries/Kinematics/core/bones.js";
 import { clamp } from "../../../Libraries/Math/Interpolate.js";
 import { distance, length } from "../../../Libraries/Math/Vec3.js";
 

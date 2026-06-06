@@ -1,5 +1,5 @@
-import { angleDelta } from "../../Libraries/Math/Angle.js";
-import { clamp } from "../../Libraries/Math/Interpolate.js";
+import { angleDelta } from "../../Math/Angle.js";
+import { clamp } from "../../Math/Interpolate.js";
 
 export function getSeg(sx, sy, sz, angle, angleZ, len, flare) {
     const rawSin = Math.sin(angle);

@@ -1,4 +1,4 @@
-import { createProjector } from "./KinematicsProjector.js";
+import { createProjector } from "../../Libraries/Kinematics/core/projector.js";
 
 function drawPixelCircle(ctx, cx, cy, r, color) {
     ctx.fillStyle = color;
