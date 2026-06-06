@@ -96,6 +96,7 @@
  * @typedef {object} WorldGenPort
  * @property {(state: object) => void} generateWorld — build walls, bounds, and surface caches for a new run
  * @property {(state: object) => WorldPlayBounds | null} getPlayBounds — clip rendering/surfaces to playable area
+ * @property {(state: object) => { centerX: number, centerY: number, width: number, height: number } | null} [getObstacleGridBounds] — exact nav/surface grid (skips spatialWorldMargin)
  * @property {number} [nodeWorldCoordScale] — roguelike map: graph node units → world units
  * @property {number} [startMapNodeId] — map graph node used for opening layout (default 0)
  * @property {string} [startNodeStrategyKey] — roguelike-map: key in strategies for node-0 room bake

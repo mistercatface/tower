@@ -3,6 +3,15 @@ import { createSingleArenaWorldGenPort } from "../../Libraries/WorldGen/presets/
 import { buildPoolStartLayout } from "./config/tableLayout.js";
 import { poolSurfaceProfileId } from "./config/proceduralDesign.js";
 import { generatePoolTable, PoolTableStrategy } from "./PoolTableStrategy.js";
+/**
+ * Table layout anchored to the same spawn origin used when baking walls.
+ *
+ * @param {object} state
+ */
+function resolvePoolLayout(state) {
+    const { x, y } = state.getMapSpawnOrigin();
+    return buildPoolStartLayout(x, y, gridSettings.cellSize);
+}
 /** @type {import("../../Core/GameDefinitionTypes.js").WorldGenPort} */
 export const poolWorldGen = createSingleArenaWorldGenPort({
     generateArena: generatePoolTable,
@@ -17,13 +26,13 @@ export const poolWorldGen = createSingleArenaWorldGenPort({
         const layout = buildPoolStartLayout(origin.x, origin.y, gridSettings.cellSize);
         return { centerX: layout.tableCenterX, centerY: layout.tableCenterY };
     },
+    getObstacleGridBounds(state) {
+        const layout = resolvePoolLayout(state);
+        return { centerX: layout.tableCenterX, centerY: layout.tableCenterY, width: layout.tableWidth, height: layout.tableHeight };
+    },
     getPlayBounds(state) {
-        const mapNode = state.getStartMapNode?.();
-        if (!mapNode) return null;
-        const coords = state.getNodeWorldCoords(mapNode);
-        const layout = buildPoolStartLayout(coords.x, coords.y, gridSettings.cellSize);
-        const pad = 8;
-        return { minX: layout.minX - pad, minY: layout.minY - pad, maxX: layout.maxX + pad, maxY: layout.maxY + pad };
+        const layout = resolvePoolLayout(state);
+        return { minX: layout.minX, minY: layout.minY, maxX: layout.maxX, maxY: layout.maxY };
     },
     getStartLayout(px, py, cellSize) {
         return buildPoolStartLayout(px, py, cellSize);

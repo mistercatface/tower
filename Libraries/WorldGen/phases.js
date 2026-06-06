@@ -288,7 +288,8 @@ export const finalizeWorldPhase = {
     run(ctx) {
         const { state, runtime } = ctx;
         const focus = runtime.worldFocus ?? defaultWorldFocus(state);
-        finalizeGeneratedWorld(state, { centerX: focus.centerX, centerY: focus.centerY });
+        const gridBounds = getWorldGen().getObstacleGridBounds?.(state) ?? null;
+        finalizeGeneratedWorld(state, { centerX: focus.centerX, centerY: focus.centerY, gridBounds });
     },
 };
 /** @param {object} state @returns {WorldGenContext} */

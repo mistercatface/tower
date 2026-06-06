@@ -238,6 +238,12 @@ export class WorldSurfaceEngine {
                 chunksToDraw.push({ chunkCol, chunkRow, origin, distSq });
             }
         chunksToDraw.sort((a, b) => a.distSq - b.distSq);
+        ctx.save();
+        if (playBounds) {
+            ctx.beginPath();
+            ctx.rect(bounds.minX, bounds.minY, bounds.maxX - bounds.minX, bounds.maxY - bounds.minY);
+            ctx.clip();
+        }
         for (const chunk of chunksToDraw) {
             if (zLevel > 0 && !chunkHasWallSegments(wallSpatialIndex, chunk.origin.x, chunk.origin.y, chunkSizePx)) continue;
             const payload = this._resolveChunkPayload(state, chunk.chunkCol, chunk.chunkRow, zLevel);
@@ -265,6 +271,7 @@ export class WorldSurfaceEngine {
                 ctx.restore();
             } else drawBakedTexture(ctx, canvas, chunk.origin.x, chunk.origin.y, chunkSizePx, chunkSizePx, this.settings);
         }
+        ctx.restore();
     }
     /** Elevated horizontal layers (z > 0) — draw after walls. Masked to projected wall footprints. */
     drawRoofLayers(ctx, baseOptions) {
