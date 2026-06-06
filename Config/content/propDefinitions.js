@@ -1,5 +1,7 @@
 import { explosionSettings } from "../balance/combat.js";
 
+// inspectKey for tutorial clues (barrel, crate) is set at boot from Games/tower/config/inspectManifest.js.
+
 const DEFAULT_SPAWN_RADIUS = { minRadius: 150, maxRadius: 1000 };
 
 function prop(key, { spawn, ...rest }) {
@@ -13,7 +15,7 @@ function prop(key, { spawn, ...rest }) {
 
 export const worldPropDefinitions = {
     barrel: prop("barrel", {
-        inspectKey: "jacko_can",
+        inspectKey: null,
         hitBehavior: "explosive",
         radius: 8,
         isPushable: true,
@@ -36,7 +38,7 @@ export const worldPropDefinitions = {
         },
     }),
     crate: prop("crate", {
-        inspectKey: "wood_crate",
+        inspectKey: null,
         hitBehavior: "damage",
         radius: 8,
         isPushable: true,

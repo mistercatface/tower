@@ -1,5 +1,6 @@
 import { fireRadioTrigger } from "../../../Core/EventSystem.js";
 import { RunSceneController, compileRunScenes, createRunSceneBehaviors } from "../../../Libraries/RunScene/index.js";
+import { clueSearchInspectKeys, clueSearchInspectRadioTriggers } from "./inspectManifest.js";
 import { towerRunScenePorts } from "../runScenePorts.js";
 
 /**
@@ -49,18 +50,14 @@ export const runScenes = [
         type: "inspect_collect",
         phase: "inspector",
         spawn: "foyer",
-        radios: ["inspect:jacko_can", "inspect:wood_crate", "clue_search_complete"],
+        radios: [...clueSearchInspectRadioTriggers, "clue_search_complete"],
         skipPreset: "through_clue_search",
         capabilities: { blockTurret: true },
         config: {
-            keys: ["jacko_can", "wood_crate"],
+            keys: clueSearchInspectKeys,
             missionLabel: "Tap nearby objects to search for clues ({found}/{total})",
             completeRadio: "clue_search_complete",
             returnPhase: "combat",
-            guidedRadios: {
-                jacko_can: "inspect_jacko_can_garbanzo",
-                wood_crate: "inspect_wood_crate_barry_brock",
-            },
         },
         completeWhen: "mission_completed",
     },

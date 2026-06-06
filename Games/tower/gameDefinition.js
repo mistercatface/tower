@@ -19,6 +19,8 @@ import {
     isRadioDialogActive,
 } from "./hooks.js";
 import { registerTowerEntities } from "./config/entities.js";
+import { applyInspectManifestToProps } from "./config/inspectManifest.js";
+import { worldPropDefinitions } from "../../Config/content/propDefinitions.js";
 
 /**
  * Tower — reference game definition. Balance/content live under Config/;
@@ -64,6 +66,7 @@ export const towerGame = {
 
     prepare() {
         registerTowerEntities();
+        applyInspectManifestToProps(worldPropDefinitions);
         installGameSurfaceProfileProvider();
     },
 
