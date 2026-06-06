@@ -1,5 +1,6 @@
 import { Pickup } from "../../Entities/Pickup.js";
 import { wakePushableBody } from "../../Libraries/Motion/pushableSleep.js";
+import { poolBallFromNumber } from "../../Libraries/Render/Props3D/poolBallArt.js";
 import { BALL_STOPPED_SPEED_SQ } from "./config/tableLayout.js";
 
 export const POOL_CUE_TAG = "_poolCue";
@@ -71,14 +72,15 @@ export function spawnPoolBalls(state, layout) {
     if (!state.pickups || !layout?.ballSpawns) return;
 
     const specs = [
-        { type: "pool_cue_ball", pos: layout.ballSpawns.cue, tag: POOL_CUE_TAG },
-        { type: "pool_object_ball", pos: layout.ballSpawns.object1, tag: POOL_OBJECT_TAG },
-        { type: "pool_object_ball", pos: layout.ballSpawns.object2, tag: POOL_OBJECT_TAG },
+        { type: "pool_cue_ball", pos: layout.ballSpawns.cue, tag: POOL_CUE_TAG, number: 0 },
+        { type: "pool_ball", pos: layout.ballSpawns.object1, tag: POOL_OBJECT_TAG, number: 3 },
+        { type: "pool_ball", pos: layout.ballSpawns.object2, tag: POOL_OBJECT_TAG, number: 9 },
     ];
 
     for (const spec of specs) {
         const ball = new Pickup(spec.pos.x, spec.pos.y, spec.type, 0);
         ball[spec.tag] = true;
+        ball.poolBall = poolBallFromNumber(spec.number ?? 0);
         wakePushableBody(ball);
         state.pickups.push(ball);
     }

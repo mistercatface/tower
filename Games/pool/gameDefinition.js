@@ -37,19 +37,19 @@ const POOL_BALL_PHYSICS = {
     wallPhysics: { restitution: 0.94, friction: 0.06 },
 };
 
-/** @param {Record<string, string>} panels */
-function registerPoolBallType(propDefs, recipes, id, panels) {
+/** @param {object} [defaultPoolBall] */
+function registerPoolBallType(propDefs, recipes, id, defaultPoolBall) {
     propDefs[id] = {
         render3DKey: id,
         renderMode: "3d",
         ...POOL_BALL_PHYSICS,
     };
-    recipes[id] = PROP_RECIPE_BUILDERS.lofiSphere({
+    recipes[id] = PROP_RECIPE_BUILDERS.poolBall({
         defaultRadius: 6,
-        panelCount: 6,
-        latBands: 5,
-        panels,
+        panelCount: 8,
+        latBands: 6,
         stroke: null,
+        defaultPoolBall,
     });
 }
 
@@ -123,8 +123,8 @@ export const poolGame = {
 
         const propDefs = getWorldPropDefinitions();
         const recipes = getWorldPropRecipes();
-        registerPoolBallType(propDefs, recipes, "pool_cue_ball", ["#FAFAFA", "#F0F0F0", "#E8E8E8", "#F5F5F5", "#EEEEEE", "#FFFFFF"]);
-        registerPoolBallType(propDefs, recipes, "pool_object_ball", ["#E53935", "#C62828", "#FFEB3B", "#F9A825", "#E53935", "#FFEB3B"]);
+        registerPoolBallType(propDefs, recipes, "pool_cue_ball", { kind: "cue" });
+        registerPoolBallType(propDefs, recipes, "pool_ball", { kind: "solid", number: 1, color: "#FFD600" });
 
         installGameSurfaceProfileProvider();
     },

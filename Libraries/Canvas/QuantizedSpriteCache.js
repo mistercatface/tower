@@ -194,7 +194,10 @@ export function buildPropSpriteKey(prop, px, py, renderKey, animFrame = 0) {
     const halfX = Math.round(stratHx);
     const halfY = Math.round(stratHy);
     const opacityBucket = (prop.opacity ?? 1) < 0.99 ? "fade" : "solid";
-    return `${renderKey}_${orientKey}_${keyDx}_${keyDy}_${radius}_${halfX}x${halfY}_${opacityBucket}_${animFrame}`;
+    const poolBallKey = prop.poolBall
+        ? `pb${prop.poolBall.kind}_${prop.poolBall.number ?? 0}`
+        : "";
+    return `${renderKey}_${poolBallKey}_${orientKey}_${keyDx}_${keyDy}_${radius}_${halfX}x${halfY}_${opacityBucket}_${animFrame}`;
 }
 
 /**
