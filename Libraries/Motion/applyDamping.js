@@ -15,9 +15,9 @@
 /**
  * @param {DampedBody} body — mutated in place
  * @param {number} dtMs
- * @param {{ friction?: number }} [options]
+ * @param {{ friction?: number, integrateFacing?: boolean }} [options]
  */
-export function applyVelocityDamping(body, dtMs, { friction = 8.0 } = {}) {
+export function applyVelocityDamping(body, dtMs, { friction = 8.0, integrateFacing = true } = {}) {
     if (body.vx || body.vy) {
         body.x += (body.vx ?? 0) * (dtMs / 1000);
         body.y += (body.vy ?? 0) * (dtMs / 1000);
@@ -29,7 +29,7 @@ export function applyVelocityDamping(body, dtMs, { friction = 8.0 } = {}) {
             body.vy = 0;
         }
     }
-    if (body.angularVelocity) {
+    if (integrateFacing && body.angularVelocity) {
         body.facing = (body.facing ?? 0) + body.angularVelocity * (dtMs / 1000);
         const angularDrag = Math.exp(-friction * 0.8 * (dtMs / 1000));
         body.angularVelocity *= angularDrag;

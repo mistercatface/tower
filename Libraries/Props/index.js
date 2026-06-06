@@ -1,5 +1,11 @@
 export { PROP_STRATEGY_DEFAULTS, withPropStrategyDefaults } from "./propStrategy.js";
-export { applyRollingCoupling, computeRollingAngularVelocity } from "./rollingMotion.js";
+export {
+    IDENTITY_ROLL_QUAT,
+    integrateRollOrientation,
+    quantizeRollQuat,
+    buildRollOrientKey,
+    transformRollVertex,
+} from "./rollingMotion.js";
 export { spawnStartProps } from "./spawnStartProps.js";
 export { defaultWorldPropDefinitions } from "./defaultPropDefinitions.js";
 export { defaultWorldPropRecipes } from "./defaultWorldPropRecipes.js";

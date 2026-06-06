@@ -1,6 +1,7 @@
 import { createBakedSpriteCache } from "./BakedSpriteCache.js";
 import { quantizeAngle, quantizeAngleIndex, quantizeViewOffset } from "./viewQuantize.js";
 import { clamp } from "../Math/Interpolate.js";
+import { buildRollOrientKey, quantizeRollQuat } from "../Props/rollingMotion.js";
 
 /**
  * @typedef {ReturnType<createBakedSpriteCache>} BakedSpriteCache
@@ -147,12 +148,14 @@ export function buildPropSpriteKey(prop, px, py, renderKey, animFrame = 0) {
     const dx = prop.x - px;
     const dy = prop.y - py;
     const { keyDx, keyDy } = propSpriteCache.quantizeView(dx, dy);
-    const qFacing = quantizeAngleIndex(prop.facing ?? 0, PROP_ROTATION_STEPS);
+    const orientKey = prop.strategy?.rolls
+        ? buildRollOrientKey(prop.rollQuat, PROP_ROTATION_STEPS)
+        : `f${quantizeAngleIndex(prop.facing ?? 0, PROP_ROTATION_STEPS)}`;
     const radius = Math.round(prop.radius ?? 8);
     const halfX = Math.round(prop.halfExtents?.x ?? radius);
     const halfY = Math.round(prop.halfExtents?.y ?? radius);
     const opacityBucket = (prop.opacity ?? 1) < 0.99 ? "fade" : "solid";
-    return `${renderKey}_${qFacing}_${keyDx}_${keyDy}_${radius}_${halfX}x${halfY}_${opacityBucket}_${animFrame}`;
+    return `${renderKey}_${orientKey}_${keyDx}_${keyDy}_${radius}_${halfX}x${halfY}_${opacityBucket}_${animFrame}`;
 }
 
 /**
@@ -183,6 +186,9 @@ export function getOrBakePropSprite({ prop, px, py, renderKey, draw, animFrame =
             x: anchorX,
             y: anchorY,
             facing: quantizeAngle(prop.facing ?? 0, PROP_ROTATION_STEPS),
+            rollQuat: prop.strategy?.rolls
+                ? quantizeRollQuat(prop.rollQuat, PROP_ROTATION_STEPS)
+                : prop.rollQuat,
             opacity: 1,
         };
 

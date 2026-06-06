@@ -1,6 +1,6 @@
 import { Entity } from "./Entity.js";
 import { applyVelocityDamping } from "../Libraries/Motion/index.js";
-import { applyRollingCoupling } from "../Libraries/Props/rollingMotion.js";
+import { IDENTITY_ROLL_QUAT, integrateRollOrientation } from "../Libraries/Props/rollingMotion.js";
 import { withPropStrategyDefaults } from "../Libraries/Props/propStrategy.js";
 import { defaultWorldPropDefinitions as worldPropDefinitions } from "../Libraries/Props/defaultPropDefinitions.js";
 import { CRATE_LABEL_FACES, CRATE_LABEL_VARIANTS } from "../Libraries/Props/definitions/crate.js";
@@ -120,6 +120,9 @@ export class Pickup extends Entity {
         this.mass = this.strategy.mass;
         this.zIndex = 10;
         this.facing = facing ?? Math.random() * Math.PI * 2;
+        if (this.strategy.rolls) {
+            this.rollQuat = { ...IDENTITY_ROLL_QUAT };
+        }
 
         if (this.strategy.randomFaceLabels) {
             this.faceLabelVariants = Object.fromEntries(CRATE_LABEL_FACES.map((face) => [face, Math.floor(Math.random() * CRATE_LABEL_VARIANTS.length)]));
@@ -194,9 +197,12 @@ export class Pickup extends Entity {
         this.ageMs += dt;
         if (this.isSleeping) return;
         if (this.strategy.rolls) {
-            applyRollingCoupling(this, { radius: this.radius });
+            integrateRollOrientation(this, dt);
+            this.angularVelocity = 0;
+            applyVelocityDamping(this, dt, { friction: this.strategy.friction, integrateFacing: false });
+        } else {
+            applyVelocityDamping(this, dt, { friction: this.strategy.friction });
         }
-        applyVelocityDamping(this, dt, { friction: this.strategy.friction });
         if (resolveWalls && this.strategy.isPushable && this.needsWallCollision()) state.wallResolver.resolve(this, spatialFrame);
         if (this.currentState?.update) this.currentState.update(this, dt, state.walls, state);
     }
