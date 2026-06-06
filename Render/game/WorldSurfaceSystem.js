@@ -4,7 +4,6 @@
  */
 import { WorldSurfaceEngine } from "../../Libraries/WorldSurface/WorldSurfaceEngine.js";
 import { isWorldScene } from "../../GameState/GamePhase.js";
-import { getActiveGameDefinition } from "../../Core/ActiveGameDefinition.js";
 import { getGameWorldSurfaceSettings } from "../WorldSurfaceBootstrap.js";
 import { buildGroundChunkBakePayload, resolveSurfaceProfileAtCoords } from "./surfaceProfileResolver.js";
 
@@ -47,22 +46,18 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
         });
     }
 
-    /** Chunk-cached roof layers at configured z-levels (after walls). */
+    /** Chunk-cached roof layers at wall height (after walls). */
     drawRoofs(ctx, state, viewport) {
         if (!viewport || !isWorldScene(state.phase) || !state.obstacleGrid?.cols) return;
-        if (!(this.settings.roofZLevels?.length > 0)) return;
-
-        const definition = getActiveGameDefinition();
-        const clipRegions = definition?.getHorizontalSurfaceClipRegions?.(state) ?? null;
 
         this.drawRoofLayers(ctx, {
             obstacleGrid: state.obstacleGrid,
+            wallSpatialIndex: state.wallSpatialIndex,
             viewport,
             canvasWidth: ctx.canvas?.width ?? viewport.cx * 2,
             canvasHeight: ctx.canvas?.height ?? viewport.cy * 2,
             state,
             gameTime: state.gameTime ?? 0,
-            clipRegions,
         });
     }
 }

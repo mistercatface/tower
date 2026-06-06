@@ -4,6 +4,19 @@ export function getWallReach(wall, padding = wall.padding) {
     return wall.size / 2 * Math.SQRT2 + padding;
 }
 
+/** Ground-plane corners of a wall segment prism (rotated square). */
+export function getSegmentFootprintCorners(segment) {
+    const cos = Math.cos(segment.angle);
+    const sin = Math.sin(segment.angle);
+    const hs = segment.size / 2;
+    return [
+        { x: segment.x + -hs * cos - -hs * sin, y: segment.y + -hs * sin + -hs * cos },
+        { x: segment.x + hs * cos - -hs * sin, y: segment.y + hs * sin + -hs * cos },
+        { x: segment.x + hs * cos - hs * sin, y: segment.y + hs * sin + hs * cos },
+        { x: segment.x + -hs * cos - hs * sin, y: segment.y + -hs * sin + hs * cos },
+    ];
+}
+
 export function toSegmentLocal(segment, x, y) {
     const dx = x - segment.x;
     const dy = y - segment.y;

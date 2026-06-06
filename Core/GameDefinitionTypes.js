@@ -95,7 +95,6 @@
  * @property {number} [propPixelSize] — iso prop bake diameter in px (like kinematicsPixelSize for actors)
  * @property {Partial<import("./GameProceduralDesign.js").ProceduralDesignConfig>} [proceduralDesign]
  * @property {{ roofZLevels?: number[] }} [worldSurface]
- * @property {(state: object) => { minX: number, minY: number, maxX: number, maxY: number }[]} [getHorizontalSurfaceClipRegions]
  * @property {(state: object) => "won" | "lost" | null} [getRunOutcome]
  */
 

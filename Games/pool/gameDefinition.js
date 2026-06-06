@@ -30,8 +30,6 @@ import {
     POOL_BALL_SNAP_SPEED,
 } from "./config/tableLayout.js";
 import { poolProceduralDesign, poolSurfaceProfileId } from "./config/proceduralDesign.js";
-import { buildPoolRailRoofClipRegions } from "./config/roofClip.js";
-import { poolRunScenePorts } from "./runScenePorts.js";
 
 /** @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition */
 
@@ -124,11 +122,6 @@ export const poolGame = {
 
     worldSurface: {
         roofZLevels: [POOL_RAIL_HEIGHT],
-    },
-
-    getHorizontalSurfaceClipRegions(state) {
-        const layout = poolRunScenePorts.getLayout(state);
-        return buildPoolRailRoofClipRegions(layout);
     },
 
     combatPairs: poolCombatPairs,

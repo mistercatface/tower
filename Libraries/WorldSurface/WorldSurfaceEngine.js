@@ -15,8 +15,8 @@ import {
     isWallAtlasAnimationEnabled,
 } from "./bake/SurfaceBakeHelpers.js";
 import {
-    clipToHorizontalSurfaceRegions,
-    horizontalChunkIntersectsAnyRegion,
+    chunkHasRoofContent,
+    clipChunkToRoofFootprints,
     projectHorizontalSurfaceCorners,
 } from "./HorizontalSurfaceDraw.js";
 import { drawImageQuad } from "../Canvas/AffineTexture.js";
@@ -170,7 +170,7 @@ export class WorldSurfaceEngine {
         return this._scheduleAnimatedEntry(key, meta, bakeFirstFn, bakeBatchFn);
     }
 
-    /** Ensure a baked wall atlas exists in the cache (faces + roof strip). */
+    /** Ensure a baked wall atlas exists in the cache (wall faces). */
     ensureWallAtlas(key, p1, p2, columns, storyCount, surfaceBake, tileWorldSize, wallHeight = null) {
         let cached = this.surfaceCache.get(key);
         if (cached) return cached;
@@ -280,7 +280,7 @@ export class WorldSurfaceEngine {
      *   state: object,
      *   gameTime?: number,
      *   zLevel?: number,
-     *   clipRegions?: { minX: number, minY: number, maxX: number, maxY: number }[] | null,
+     *   wallSpatialIndex?: import("../Spatial/indexes/WallSpatialIndex.js").WallSpatialIndex | null,
      *   beforeDraw?: (ctx: CanvasRenderingContext2D, bounds: { minX: number, minY: number, maxX: number, maxY: number }) => void,
      * }} options
      */
@@ -293,7 +293,7 @@ export class WorldSurfaceEngine {
             state,
             gameTime = 0,
             zLevel = 0,
-            clipRegions = null,
+            wallSpatialIndex = null,
             beforeDraw,
         } = options;
         const viewerX = viewport.x;
@@ -324,7 +324,7 @@ export class WorldSurfaceEngine {
         chunksToDraw.sort((a, b) => a.distSq - b.distSq);
 
         for (const chunk of chunksToDraw) {
-            if (!horizontalChunkIntersectsAnyRegion(clipRegions, chunk.origin.x, chunk.origin.y, chunkSizePx)) {
+            if (zLevel > 0 && !chunkHasRoofContent(obstacleGrid, wallSpatialIndex, chunk.origin.x, chunk.origin.y, chunkSizePx)) {
                 continue;
             }
 
@@ -344,6 +344,23 @@ export class WorldSurfaceEngine {
             }
 
             if (zLevel > 0) {
+                ctx.save();
+                if (!clipChunkToRoofFootprints(
+                    ctx,
+                    obstacleGrid,
+                    wallSpatialIndex,
+                    chunk.origin.x,
+                    chunk.origin.y,
+                    chunkSizePx,
+                    zLevel,
+                    viewerX,
+                    viewerY,
+                    this.settings.cameraHeight,
+                )) {
+                    ctx.restore();
+                    continue;
+                }
+
                 const corners = projectHorizontalSurfaceCorners(
                     chunk.origin.x,
                     chunk.origin.y,
@@ -369,31 +386,20 @@ export class WorldSurfaceEngine {
                     { bleedPx: this.settings.wallTextureBleedPx ?? 1 },
                 );
                 ctx.imageSmoothingEnabled = prevSmoothing;
+                ctx.restore();
             } else {
                 drawBakedTexture(ctx, canvas, chunk.origin.x, chunk.origin.y, chunkSizePx, chunkSizePx, this.settings);
             }
         }
     }
 
-    /** Elevated horizontal layers (z > 0) — draw after walls. Wall atlas unchanged. */
+    /** Elevated horizontal layers (z > 0) — draw after walls. Masked to projected wall footprints. */
     drawRoofLayers(ctx, baseOptions) {
         const levels = this.settings.roofZLevels ?? [];
-        const clipRegions = baseOptions.clipRegions;
-        const useClip = clipRegions?.length > 0;
-
-        if (useClip) {
-            ctx.save();
-            clipToHorizontalSurfaceRegions(ctx, clipRegions);
-        }
-
         for (let i = 0; i < levels.length; i++) {
             const z = levels[i];
             if (z <= 0) continue;
             this.drawGroundChunks(ctx, { ...baseOptions, zLevel: z, beforeDraw: undefined });
-        }
-
-        if (useClip) {
-            ctx.restore();
         }
     }
 }

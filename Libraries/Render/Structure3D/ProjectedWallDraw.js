@@ -1,6 +1,6 @@
 /**
- * Projects wall faces and roof caps in isometric space and samples baked atlases
- * from WorldSurfaceEngine when provided. Does not bake textures.
+ * Projects wall faces in isometric space and samples baked atlases from WorldSurfaceEngine.
+ * Roof caps are chunk-cached horizontal surfaces (WorldSurfaceEngine.drawRoofLayers).
  */
 import { getWallVisualHeight, resolveWallVisualHeight } from "../../WorldSurface/WorldSurfaceSettings.js";
 import { drawImageQuad } from "../../Canvas/AffineTexture.js";
@@ -187,73 +187,6 @@ function drawFaceTexture(ctx, p1, p2, face, worldSurfaces, surfaceBake, viewer, 
             drawImageQuad(ctx, flatCanvas, sx0, sy0, sx1, sy1, sCorner0, sCorner1, sCorner2, sCorner3, { bleedPx });
         }
     }
-
-    ctx.restore();
-}
-
-function fillProjectedRoof(ctx, topCorners, wallColor) {
-    ctx.fillStyle = wallColor;
-    ctx.beginPath();
-    ctx.moveTo(topCorners[0].x, topCorners[0].y);
-    ctx.lineTo(topCorners[1].x, topCorners[1].y);
-    ctx.lineTo(topCorners[2].x, topCorners[2].y);
-    ctx.lineTo(topCorners[3].x, topCorners[3].y);
-    ctx.closePath();
-    ctx.fill();
-}
-
-export function drawProjectedWallRoof(ctx, topCorners, seg, wallColor, worldSurfaces, surfaceBake, viewport, cacheObj = null) {
-    if (!worldSurfaces || !surfaceBake) {
-        fillProjectedRoof(ctx, topCorners, wallColor);
-        return;
-    }
-
-    const settings = worldSurfaces.settings;
-    if (!settings) {
-        fillProjectedRoof(ctx, topCorners, wallColor);
-        return;
-    }
-    const wallHeight = seg.wallHeight ?? resolveWallVisualHeight(settings.cameraHeight, settings);
-    const wallCx = cacheObj && cacheObj.cx !== undefined ? cacheObj.cx : seg.x;
-    const wallCy = cacheObj && cacheObj.cy !== undefined ? cacheObj.cy : seg.y;
-
-    const profileId = resolveWallProfileId(surfaceBake, wallCx, wallCy, cacheObj);
-    const ppwu = getPixelsPerWorldUnit(settings);
-    const storyCount = getWallTextureStoryCount(settings);
-
-    const edges = seg._cachedEdges;
-    if (!edges) return;
-    const p1 = edges[0][0];
-    const p2 = edges[0][1];
-
-    const tileWorldSize = settings.tileWorldSize ?? settings.cellSize;
-    const atlas = worldSurfaces.getOrEnsureWallAtlas(p1, p2, {
-        profileId,
-        surfaceBake,
-        ppwu,
-        tileWorldSize,
-        storyCount,
-        wallHeight,
-        cacheObj,
-    });
-    if (!atlas) return;
-
-    const flatCanvas = worldSurfaces.resolveWallAtlasCanvas(atlas.canvases, profileId, surfaceBake.gameTime);
-    if (!flatCanvas || flatCanvas.isPlaceholder) {
-        fillProjectedRoof(ctx, topCorners, wallColor);
-        return;
-    }
-
-    const cellSize = surfaceBake.obstacleCellSize;
-    const H_px = wallHeight * ppwu;
-
-    const sy0 = H_px;
-    const sy1 = H_px + cellSize * ppwu;
-
-    ctx.save();
-    ctx.imageSmoothingEnabled = shouldSmoothTextureDownsample(settings);
-
-    drawImageQuad(ctx, flatCanvas, 0, sy0, flatCanvas.width, sy1, topCorners[0], topCorners[1], topCorners[2], topCorners[3], { bleedPx: 1 });
 
     ctx.restore();
 }

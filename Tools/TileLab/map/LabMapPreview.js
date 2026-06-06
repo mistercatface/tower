@@ -108,6 +108,7 @@ function drawLabWorldFrame(ctx, canvas, viewW, viewH, worldState, profileId, gam
     }
 
     render3D.draw3DBuildings(ctx, buildWorldRenderInput(worldState, viewport), viewport);
+    worldState.worldSurfaces.drawRoofs(ctx, worldState, viewport);
 
     if (combatVisualSettings.bloom?.enabled) {
         ctx.save();

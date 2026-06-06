@@ -19,5 +19,6 @@ export const worldSurfaceSettings = {
     wallAnimationsOn: false,
     animationBakeMaxFrames: null,
     animationFrameBatchSize: 8,
+    /** Empty = auto from camera height − wallHeightInset at bootstrap. */
     roofZLevels: [],
 };

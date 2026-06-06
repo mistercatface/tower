@@ -1,10 +1,10 @@
 /** @typedef {import("../WorldSceneTypes.js").WorldSceneDrawInput} WorldSceneDrawInput */
 
 import { resolveWallVisualHeight } from "../../WorldSurface/WorldSurfaceSettings.js";
+import { getSegmentFootprintCorners } from "../../Spatial/geometry/WallGeometry.js";
 import { SpatialQuery } from "../../Spatial/query/SpatialQuery.js";
-import { projectWorldPointAtHeight } from "../../Spatial/iso/IsometricProjection.js";
 import { alignBoundsToHash, getViewQueryBounds } from "../common/viewportUtils.js";
-import { drawProjectedWallFace, drawProjectedWallRoof } from "./ProjectedWallDraw.js";
+import { drawProjectedWallFace } from "./ProjectedWallDraw.js";
 import { applySharedEdgeFlags, requestSharedEdgeSolve, writeWallGeometry } from "./SharedEdgeBridge.js";
 
 export class StructureRenderer {
@@ -21,15 +21,7 @@ export class StructureRenderer {
 
     getSegmentEdges(seg) {
         if (seg._cachedEdges) return seg._cachedEdges;
-        const cos = Math.cos(seg.angle);
-        const sin = Math.sin(seg.angle);
-        const hs = seg.size / 2;
-        const corners = [
-            { x: seg.x + -hs * cos - -hs * sin, y: seg.y + -hs * sin + -hs * cos },
-            { x: seg.x + hs * cos - -hs * sin, y: seg.y + hs * sin + -hs * cos },
-            { x: seg.x + hs * cos - hs * sin, y: seg.y + hs * sin + hs * cos },
-            { x: seg.x + -hs * cos - hs * sin, y: seg.y + -hs * sin + hs * cos },
-        ];
+        const corners = getSegmentFootprintCorners(seg);
         seg._cachedEdges = [
             [corners[0], corners[1]],
             [corners[1], corners[2]],
@@ -93,8 +85,6 @@ export class StructureRenderer {
         const edges = this.getSegmentEdges(seg);
         if (!seg.sharedEdges) seg.sharedEdges = [false, false, false, false];
 
-        const wallHeight = seg.wallHeight ?? resolveWallVisualHeight(this.settings.cameraHeight, this.settings);
-
         for (let i = 0; i < 4; i++) {
             if (seg.sharedEdges[i]) continue;
 
@@ -103,17 +93,6 @@ export class StructureRenderer {
             const viewY = edge.cy - py;
             if (edge.outX * viewX + edge.outY * viewY >= 0) continue;
             this.drawWallFace(ctx, seg, edge[0], edge[1], px, py, input, viewport, options, edge);
-        }
-
-        const chunkRoofsEnabled = (input.worldSurfaces?.settings?.roofZLevels?.length ?? 0) > 0;
-        if (!chunkRoofsEnabled && wallHeight < this.settings.cameraHeight) {
-            const baseCorners = [edges[0][0], edges[1][0], edges[2][0], edges[3][0]];
-            const topCorners = baseCorners.map((c) =>
-                projectWorldPointAtHeight(c.x, c.y, px, py, wallHeight, this.settings.cameraHeight),
-            );
-
-            const wallColor = this.getWallColor(seg, 1.08);
-            drawProjectedWallRoof(ctx, topCorners, seg, wallColor, input.worldSurfaces, input.surfaceBake, viewport, edges[0]);
         }
     }
 
