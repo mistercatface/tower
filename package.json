@@ -1,0 +1,12 @@
+{
+  "name": "tower",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "devDependencies": {
+    "eslint": "^9.28.0"
+  }
+}
