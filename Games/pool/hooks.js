@@ -31,6 +31,7 @@ export function onCombatEnter(ctx) {
     state.allies = [];
 
     if (!state.runSceneInitialized) {
+        state.pool = null;
         runSceneController.reset();
         runSceneController.startAt(getStartRunAtScene(), state, ctx);
         state.runSceneInitialized = true;

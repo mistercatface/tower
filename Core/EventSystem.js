@@ -91,6 +91,13 @@ export function showGameOver() {
     events.emit(Events.UI_SHOW_GAME_OVER);
 }
 
+/**
+ * @param {{ outcome: "won" | "lost", title?: string, buttonLabel?: string, titleColor?: string }} payload
+ */
+export function showRunResult(payload) {
+    events.emit(Events.UI_SHOW_RUN_RESULT, payload);
+}
+
 export function hideGameOver() {
     events.emit(Events.UI_HIDE_GAME_OVER);
 }

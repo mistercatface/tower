@@ -1,6 +1,6 @@
 import "../../Render/WorldSurfaceBootstrap.js";
 import { installGameSurfaceProfileProvider } from "../../Config/procedural/bootstrap.js";
-import { MapState, InspectorState } from "../../GameState/GameStates.js";
+import { ensurePoolState } from "./balls.js";
 import { PoolCombatState } from "./PoolCombatState.js";
 import { registerPoolEntities } from "./config/entities.js";
 import {
@@ -46,8 +46,8 @@ function registerPoolBallType(propDefs, recipes, id, panels) {
     };
     recipes[id] = PROP_RECIPE_BUILDERS.lofiSphere({
         defaultRadius: 6,
-        panelCount: 2,
-        latBands: 3,
+        panelCount: 6,
+        latBands: 5,
         panels,
         stroke: null,
     });
@@ -61,6 +61,41 @@ export const poolGame = {
     canvasId: "towerCanvas",
     saveKey: "pool_save_v1",
 
+    ui: {
+        shell: "landscape-minimal",
+        chrome: {
+            score: false,
+            perks: false,
+            map: false,
+            settings: true,
+            bottomPanel: false,
+            controls: "pause-only",
+            zoomSlider: false,
+        },
+        combat: {
+            entityBars: false,
+            targetMarkers: false,
+            combatHudModes: false,
+            visibilityMask: false,
+            hostileActors: false,
+            playerActors: false,
+            offScreenIndicators: false,
+            globeOverlay: false,
+        },
+        lifecycle: "custom",
+        runResult: {
+            won: {
+                title: "TABLE CLEAR!",
+                buttonLabel: "PLAY AGAIN",
+                titleColor: "#4CAF50",
+            },
+        },
+    },
+
+    getRunOutcome(state) {
+        return ensurePoolState(state).won ? "won" : null;
+    },
+
     combatPairs: poolCombatPairs,
     targeting: poolTargeting,
     render: poolRenderPorts,
@@ -71,9 +106,7 @@ export const poolGame = {
     },
 
     states: {
-        map: MapState,
         combat: PoolCombatState,
-        inspector: InspectorState,
     },
 
     initialState: "combat",
@@ -84,8 +117,8 @@ export const poolGame = {
 
         const propDefs = getWorldPropDefinitions();
         const recipes = getWorldPropRecipes();
-        registerPoolBallType(propDefs, recipes, "pool_cue_ball", ["#F5F5F5", "#E0E0E0"]);
-        registerPoolBallType(propDefs, recipes, "pool_object_ball", ["#E53935", "#FFEB3B"]);
+        registerPoolBallType(propDefs, recipes, "pool_cue_ball", ["#FAFAFA", "#F0F0F0", "#E8E8E8", "#F5F5F5", "#EEEEEE", "#FFFFFF"]);
+        registerPoolBallType(propDefs, recipes, "pool_object_ball", ["#E53935", "#C62828", "#FFEB3B", "#F9A825", "#E53935", "#FFEB3B"]);
 
         installGameSurfaceProfileProvider();
     },

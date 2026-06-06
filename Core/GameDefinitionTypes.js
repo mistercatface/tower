@@ -56,6 +56,10 @@
  */
 
 /**
+ * @typedef {import("./GameUiProfile.js").GameUiProfile} GameUiProfile
+ */
+
+/**
  * @typedef {object} GameDefinition
  * @property {string} id
  * @property {string} canvasId
@@ -82,6 +86,8 @@
  * @property {(state: object, inspectKey: string) => void} [onInspectMissionOpen]
  * @property {(state: object, inspectKey: string) => void} [onInspectMissionClose]
  * @property {(state: object) => boolean} [isInspectMissionActive]
+ * @property {Partial<import("./GameUiProfile.js").GameUiProfile>} [ui]
+ * @property {(state: object) => "won" | "lost" | null} [getRunOutcome]
  */
 
 export {};

@@ -34,6 +34,42 @@ canvas {
     background: #000;
 }
 
+/* Landscape spinoffs (pool, etc.) — table fills width, minimal chrome */
+body.shell-landscape-minimal {
+    align-items: stretch;
+}
+
+body.shell-landscape-minimal #gameWrapper {
+    max-width: none;
+    width: 100vw;
+    height: 100dvh;
+    box-shadow: none;
+}
+
+body.shell-landscape-minimal canvas {
+    aspect-ratio: auto;
+    flex: 1;
+    min-height: 0;
+    height: auto;
+}
+
+body.shell-landscape-minimal #bottomArea.shell-controls-only {
+    flex: 0 0 auto;
+    padding: 6px 12px;
+}
+
+body.shell-landscape-minimal #bottomArea.shell-controls-only #controlsBar {
+    margin: 0;
+}
+
+body.shell-landscape-minimal #topUI {
+    justify-content: flex-end;
+}
+
+body.shell-landscape-minimal #gameOverUI {
+    padding-bottom: 0;
+}
+
 #bottomArea {
     flex: 1;
     display: flex;

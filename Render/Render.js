@@ -10,6 +10,7 @@ import { drawHostileOffScreenIndicators } from "./OffScreenIndicators.js";
 import { CombatParticles } from "./CombatParticles.js";
 import { renderMapView } from "./Map/MapViewRenderer.js";
 import { createGameMapViewConfig } from "./Map/mapViewPresets.js";
+import { getCombatFeatures } from "../Core/GameUiProfile.js";
 
 export class Renderer {
     constructor(canvas, ctx) {
@@ -24,6 +25,7 @@ export class Renderer {
             { zIndex: 19, fn: (state, viewport) => this.drawDebris(state, viewport) },
             {
                 zIndex: 30,
+                feature: "hostileActors",
                 fn: (state, viewport) => {
                     for (const actor of state.getHostileActors()) {
                         this.drawActorAndTurrets(actor, state, viewport);
@@ -32,6 +34,7 @@ export class Renderer {
             },
             {
                 zIndex: 50,
+                feature: "playerActors",
                 fn: (state, viewport) => {
                     for (const actor of getPlayerActors(state)) {
                         this.drawActorAndTurrets(actor, state, viewport);
@@ -53,10 +56,10 @@ export class Renderer {
                     }
                 },
             },
-            { zIndex: 75, fn: (state, viewport) => this.drawEntityBars(state, viewport) },
-            { zIndex: 80, fn: (state, viewport) => this.drawVisibilityMask(this.ctx, state, viewport) },
-            { zIndex: 85, fn: (state, viewport) => this.drawTargetMarkers(state, viewport) },
-            { zIndex: 86, fn: (state, viewport) => this.drawCombatHudOverlay(state, viewport) },
+            { zIndex: 75, feature: "entityBars", fn: (state, viewport) => this.drawEntityBars(state, viewport) },
+            { zIndex: 80, feature: "visibilityMask", fn: (state, viewport) => this.drawVisibilityMask(this.ctx, state, viewport) },
+            { zIndex: 85, feature: "targetMarkers", fn: (state, viewport) => this.drawTargetMarkers(state, viewport) },
+            { zIndex: 86, feature: "combatHudModes", fn: (state, viewport) => this.drawCombatHudOverlay(state, viewport) },
         ];
     }
 
@@ -84,9 +87,11 @@ export class Renderer {
     }
 
     buildCombatPipeline(state, viewport) {
+        const features = getCombatFeatures();
         const entityPasses = state.entityLayers.map((layer) => ({ zIndex: layer.zIndex, fn: (state, viewport) => this.renderEntityCollection(state[layer.key], state, viewport) }));
 
-        const pipeline = [...this.effectPasses, ...entityPasses];
+        const enabledEffects = this.effectPasses.filter((pass) => !pass.feature || features[pass.feature] !== false);
+        const pipeline = [...enabledEffects, ...entityPasses];
         pipeline.sort((a, b) => a.zIndex - b.zIndex);
         this._combatPipeline = pipeline.map((p) => p.fn);
     }
@@ -112,8 +117,13 @@ export class Renderer {
         CombatParticles.renderAll(this.ctx, state, viewport);
 
         if (viewport && isWorldScene(state.phase)) {
-            this.drawGlobeOverlay(state, viewport);
-            drawHostileOffScreenIndicators(this.ctx, state, viewport);
+            const features = getCombatFeatures();
+            if (features.globeOverlay !== false) {
+                this.drawGlobeOverlay(state, viewport);
+            }
+            if (features.offScreenIndicators !== false) {
+                drawHostileOffScreenIndicators(this.ctx, state, viewport);
+            }
         }
     }
 
@@ -144,7 +154,7 @@ export class Renderer {
         if (viewport && typeof actor.isVisible === "function" && !actor.isVisible(viewport)) {
             return;
         }
-        if (state.combatHudMode === COMBAT_HUD_MODE.CLASSIC) {
+        if (getCombatFeatures().combatHudModes !== false && state.combatHudMode === COMBAT_HUD_MODE.CLASSIC) {
             actor.renderCombatHudClassic(this.ctx, this);
             return;
         }

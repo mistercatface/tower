@@ -2,6 +2,7 @@ import { perkMilestones, xpForLevel } from "../Config/Config.js";
 import { buildAbilityTreeLayout } from "../Config/content/abilityTreeLayout.js";
 import { GamePhase, isCombat, isInspector } from "../GameState/GamePhase.js";
 import { getActiveGameDefinition } from "../Core/ActiveGameDefinition.js";
+import { getUiProfile } from "../Core/GameUiProfile.js";
 import { getGunDefinition, playerEquipmentCatalog } from "../Config/content/guns.js";
 import { getSlotFireIntervalMs, getSlotReloadTimeMs } from "../Combat/gunCombat.js";
 import { countGunInLoadout, formatHandednessLabel, getEquipmentSlotCount, getGunEquipAction, normalizeWeaponLoadout } from "../Combat/equipmentLoadout.js";
@@ -46,6 +47,7 @@ const elements = {
     speedUpBtn: document.getElementById("speedUpBtn"),
     restartBtn: document.getElementById("restartBtn"),
     gameOverUI: document.getElementById("gameOverUI"),
+    gameOverTitle: document.getElementById("gameOverTitle"),
     settingsBtn: document.getElementById("settingsBtn"),
     mapBtn: document.getElementById("mapBtn"),
     closeMapBtn: document.getElementById("closeMapBtn"),
@@ -138,6 +140,8 @@ export function updateToggleButton(btnId, isUnlocked, isActive, btnText, upgDef)
 }
 
 function updateMapNavButtons(state) {
+    if (!getUiProfile().chrome.map) return;
+
     const onMap = state.phase === GamePhase.MAP;
     const showOpenMap = !onMap && !state.isGameOver;
 
@@ -175,23 +179,36 @@ export function updateHud(state, upgrades) {
     updateMapNavButtons(state);
     updateInspectMissionBanner(state);
 
-    setHudLabel("killsDisplay", state.kills);
-    setHudLabel("scoreDisplay", state.score);
-    setHudLabel("levelDisplay", state.level);
+    const chrome = getUiProfile().chrome;
+    if (!chrome.bottomPanel && !chrome.score && !chrome.perks) {
+        return;
+    }
 
-    const nextPerk = perkMilestones.find((m) => m > state.highestLevelReached);
-    if (elements.nextPerkDisplay) elements.nextPerkDisplay.innerText = nextPerk ? `Next Perk: Level ${nextPerk}` : "All Perks Claimed";
+    if (chrome.bottomPanel) {
+        setHudLabel("killsDisplay", state.kills);
+        setHudLabel("levelDisplay", state.level);
 
-    const xpNeeded = xpForLevel(state.level);
-    setHudLabel("xpDisplay", `${state.xp}/${xpNeeded}`);
+        const xpNeeded = xpForLevel(state.level);
+        setHudLabel("xpDisplay", `${state.xp}/${xpNeeded}`);
 
-    const healthRatio = state.player.health / state.player.maxHealth;
+        const healthRatio = state.player.health / state.player.maxHealth;
+        updateProgressBar("healthSegments", "healthText", `HP: ${Math.max(0, state.player.health).toFixed(0)} / ${state.player.maxHealth}`, healthRatio, 10, (r) =>
+            r > 0.5 ? "#4CAF50" : r > 0.2 ? "#FFEB3B" : "#F44336",
+        );
+    }
 
-    updateProgressBar("healthSegments", "healthText", `HP: ${Math.max(0, state.player.health).toFixed(0)} / ${state.player.maxHealth}`, healthRatio, 10, (r) =>
-        r > 0.5 ? "#4CAF50" : r > 0.2 ? "#FFEB3B" : "#F44336",
-    );
+    if (chrome.score) {
+        setHudLabel("scoreDisplay", state.score);
+    }
 
-    if (upgrades) {
+    if (chrome.perks) {
+        const nextPerk = perkMilestones.find((m) => m > state.highestLevelReached);
+        if (elements.nextPerkDisplay) {
+            elements.nextPerkDisplay.innerText = nextPerk ? `Next Perk: Level ${nextPerk}` : "All Perks Claimed";
+        }
+    }
+
+    if (upgrades && chrome.bottomPanel) {
         upgrades
             .filter((u) => u.isAbility && u.cooldown > 0)
             .forEach((upg) => {
@@ -244,12 +261,39 @@ export function updateProgressBar(containerId, textId, textString, ratio, totalS
     }
 }
 
+const DEFAULT_GAME_OVER_COPY = {
+    title: "GAME OVER",
+    buttonLabel: "NEW RUN",
+    titleColor: "#F44336",
+};
+
 export function showGameOverScreen() {
+    showRunResultScreen(DEFAULT_GAME_OVER_COPY);
+}
+
+/**
+ * @param {{ title?: string, buttonLabel?: string, titleColor?: string }} copy
+ */
+export function showRunResultScreen(copy) {
+    if (elements.gameOverTitle) {
+        elements.gameOverTitle.innerText = copy.title ?? DEFAULT_GAME_OVER_COPY.title;
+        elements.gameOverTitle.style.color = copy.titleColor ?? DEFAULT_GAME_OVER_COPY.titleColor;
+    }
+    if (elements.restartBtn && copy.buttonLabel) {
+        elements.restartBtn.innerText = copy.buttonLabel;
+    }
     if (elements.gameOverUI) elements.gameOverUI.style.display = "flex";
 }
 
 export function hideGameOverScreen() {
     if (elements.gameOverUI) elements.gameOverUI.style.display = "none";
+    if (elements.gameOverTitle) {
+        elements.gameOverTitle.innerText = DEFAULT_GAME_OVER_COPY.title;
+        elements.gameOverTitle.style.color = DEFAULT_GAME_OVER_COPY.titleColor;
+    }
+    if (elements.restartBtn) {
+        elements.restartBtn.innerText = DEFAULT_GAME_OVER_COPY.buttonLabel;
+    }
 }
 
 export function registerUiEventListeners(eventBus) {
@@ -257,6 +301,7 @@ export function registerUiEventListeners(eventBus) {
     eventBus.on(Events.UI_UPDATE_HUD, (data) => updateHud(data.state, data.upgrades));
     eventBus.on(Events.UI_SHOW_UPGRADE_CHOICE, (data) => showUpgradeChoice(data.title, data.description, data.choices, data.upgrades, data.onPick));
     eventBus.on(Events.UI_SHOW_GAME_OVER, () => showGameOverScreen());
+    eventBus.on(Events.UI_SHOW_RUN_RESULT, (copy) => showRunResultScreen(copy));
     eventBus.on(Events.UI_HIDE_GAME_OVER, () => hideGameOverScreen());
 }
 
@@ -687,11 +732,27 @@ function drawStat(state, upg, abilityLayoutById) {
 export function updateUI(state, upgrades) {
     updateInspectMissionBanner(state);
 
+    const chrome = getUiProfile().chrome;
+
+    if (chrome.controls !== "none" && elements.pauseText) {
+        elements.pauseText.innerText = state.isPaused ? "PLAY" : "PAUSE";
+    }
+
+    if (!chrome.bottomPanel) {
+        if (chrome.controls === "full" && elements.speedDisplay) {
+            state.selectedSpeed = Math.min(state.selectedSpeed, state.runStats.gameSpeed.value);
+            elements.speedDisplay.innerText = state.selectedSpeed.toFixed(2) + "x";
+            elements.speedDownBtn.style.opacity = state.selectedSpeed <= 0.5 ? "0.5" : "1";
+            elements.speedUpBtn.style.opacity = state.selectedSpeed >= state.runStats.gameSpeed.value ? "0.5" : "1";
+        }
+        return;
+    }
+
     const viewport = state.fsm?.context?.viewport;
-    if (elements.zoomDisplay && viewport) {
+    if (chrome.zoomSlider && elements.zoomDisplay && viewport) {
         elements.zoomDisplay.innerText = Math.round(viewport.zoom * 100) + "%";
     }
-    if (elements.zoomSlider && viewport) {
+    if (chrome.zoomSlider && elements.zoomSlider && viewport) {
         let sliderVal = 0.5;
         if (isCombat(state.phase)) {
             sliderVal = viewport.zoomProgress;

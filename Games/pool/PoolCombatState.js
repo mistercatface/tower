@@ -59,18 +59,24 @@ export class PoolCombatState {
         ctx.viewport.updateZoomLimits(ctx.state);
 
         if (layout?.tableWidth && layout?.tableHeight) {
-            const vr = ctx.viewport.getVisualRadius();
-            const zoomX = vr / (layout.tableWidth / 2);
-            const zoomY = vr / (layout.tableHeight / 2);
-            ctx.viewport.zoom = Math.min(zoomX, zoomY) * 0.92;
+            const bounds = ctx.state.canvasBounds;
+            const pad = 8;
+            const halfW = layout.tableWidth / 2;
+            const halfH = layout.tableHeight / 2;
+            let zoomX;
+            let zoomY;
+            if (bounds?.width && bounds?.height) {
+                zoomX = (bounds.width / 2 - pad) / halfW;
+                zoomY = (bounds.height / 2 - pad) / halfH;
+            } else {
+                const vr = ctx.viewport.getVisualRadius();
+                zoomX = vr / halfW;
+                zoomY = vr / halfH;
+            }
+            ctx.viewport.zoom = Math.min(zoomX, zoomY) * 0.94;
         }
 
-        const cue = getCueBall(ctx.state);
-        if (ensurePoolState(ctx.state).phase === "rolling" && cue) {
-            ctx.viewport.follow(cue.x, cue.y);
-        } else {
-            ctx.viewport.follow(cx, cy);
-        }
+        ctx.viewport.follow(cx, cy);
     }
 
     /** @param {object} ctx */
