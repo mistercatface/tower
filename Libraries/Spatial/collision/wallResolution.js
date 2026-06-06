@@ -38,7 +38,8 @@ export function resolveBodyAgainstWallSegments(body, shape, segments, { restitut
     let collided = false;
     const hits = [];
     const radius = shape.getBoundingRadius();
-    for (let pass = 0; pass < passes; pass++)
+    for (let pass = 0; pass < passes; pass++) {
+        let best = null;
         for (const seg of segments) {
             if (seg.isDead) continue;
             const maxDist = radius + seg.size * 0.75;
@@ -48,7 +49,7 @@ export function resolveBodyAgainstWallSegments(body, shape, segments, { restitut
             let overlap;
             let satResult = null;
             if (shape.type === "Circle") {
-                const penetration = getCircleSegmentPenetration(body, seg);
+                const penetration = getCircleSegmentPenetration(body, seg, { approachX: body.vx ?? 0, approachY: body.vy ?? 0 });
                 if (!penetration) continue;
                 normalX = penetration.normalX;
                 normalY = penetration.normalY;
@@ -61,11 +62,17 @@ export function resolveBodyAgainstWallSegments(body, shape, segments, { restitut
                 normalY = -satResult.ny;
                 overlap = satResult.overlap;
             } else continue;
-            collided = true;
-            applyPositionCorrection(body, normalX, normalY, overlap);
-            const contact = shape.type === "Circle" ? computeCircleWallContact(body, normalX, normalY, body.radius) : computePolygonWallContact(body, normalX, normalY, overlap, satResult);
-            const { approachDot } = applyStaticSurfaceImpulse(body, normalX, normalY, contact.cx, contact.cy, { restitution, friction });
-            hits.push({ approachDot, normalX, normalY, segment: seg });
+            if (!best || overlap > best.overlap) best = { normalX, normalY, overlap, satResult, segment: seg };
         }
+        if (!best) break;
+        collided = true;
+        applyPositionCorrection(body, best.normalX, best.normalY, best.overlap);
+        const contact =
+            shape.type === "Circle"
+                ? computeCircleWallContact(body, best.normalX, best.normalY, body.radius)
+                : computePolygonWallContact(body, best.normalX, best.normalY, best.overlap, best.satResult);
+        const { approachDot } = applyStaticSurfaceImpulse(body, best.normalX, best.normalY, contact.cx, contact.cy, { restitution, friction });
+        hits.push({ approachDot, normalX: best.normalX, normalY: best.normalY, segment: best.segment });
+    }
     return { collided, hits };
 }
