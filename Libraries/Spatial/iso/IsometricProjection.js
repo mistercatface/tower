@@ -7,16 +7,21 @@ import { rectCorners } from "../../Math/Poly2D.js";
 export { radiusAtT, scaleAtHeight };
 
 export let CAMERA_HEIGHT = 160;
+export let PERSPECTIVE_STRENGTH = 1;
 
 export function setCameraHeight(val) {
     CAMERA_HEIGHT = val;
+}
+
+export function setPerspectiveStrength(val) {
+    PERSPECTIVE_STRENGTH = Math.max(0, val);
 }
 
 export function projectVertical(objX, objY, viewerX, viewerY, height) {
     const dx = objX - viewerX;
     const dy = objY - viewerY;
     const dist = Math.hypot(dx, dy);
-    const alpha = height / (CAMERA_HEIGHT - height);
+    const alpha = (height / (CAMERA_HEIGHT - height)) * PERSPECTIVE_STRENGTH;
     const topX = dist === 0 ? objX : objX + dx * alpha;
     const topY = dist === 0 ? objY : objY + dy * alpha;
     const viewAngle = Math.atan2(dy, dx);

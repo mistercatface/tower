@@ -3,7 +3,7 @@ import { getGameWorldSurfaceSettings } from "./WorldSurfaceBootstrap.js";
 import { SpriteCache } from "../Libraries/Canvas/SpriteCache.js";
 import { WorldSceneRenderer } from "../Libraries/Render/WorldSceneRenderer.js";
 import { getPlayerActors, getRenderPorts } from "../Core/GamePorts.js";
-import { buildWorldRenderInput } from "./adapters/WorldRenderAdapter.js";
+import { buildWorldRenderInput, resolveRenderViewer } from "./adapters/WorldRenderAdapter.js";
 import { COMBAT_HUD_MODE, hudSettings, combatVisualSettings } from "../Config/Config.js";
 import { getWorldDrawCoords, isWorldScene } from "../GameState/GamePhase.js";
 import { drawHostileOffScreenIndicators } from "./OffScreenIndicators.js";
@@ -42,7 +42,7 @@ export class Renderer {
                 },
             },
             { zIndex: 60, fn: (state, viewport) => this.renderExplosions(state, viewport) },
-            { zIndex: 70, fn: (state, viewport) => this.render3D.draw3DBuildings(this.ctx, buildWorldRenderInput(state), viewport) },
+            { zIndex: 70, fn: (state, viewport) => this.render3D.draw3DBuildings(this.ctx, buildWorldRenderInput(state, viewport), viewport) },
             {
                 zIndex: 74,
                 fn: (state, viewport) => {
@@ -129,8 +129,7 @@ export class Renderer {
 
     drawDebris(state, viewport) {
         if (!state.pickups) return;
-        const px = state.player.x;
-        const py = state.player.y;
+        const { x: px, y: py } = resolveRenderViewer(state, viewport);
         for (let i = 0; i < state.pickups.length; i++) {
             const p = state.pickups[i];
             if (p.isDead || p.strategy?.renderMode !== "debris") continue;
@@ -232,7 +231,7 @@ export class Renderer {
             offCtx.fillStyle = "#000000";
             offCtx.save();
             offCtx.translate(cx - exp.x, cy - exp.y);
-            this.render3D.drawExplosion(exp.x, exp.y, exp.maxRadius, buildWorldRenderInput(state), offCtx);
+            this.render3D.drawExplosion(exp.x, exp.y, exp.maxRadius, buildWorldRenderInput(state, viewport), offCtx);
             offCtx.restore();
 
             this.ctx.save();

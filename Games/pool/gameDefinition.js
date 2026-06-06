@@ -96,6 +96,12 @@ export const poolGame = {
         return ensurePoolState(state).won ? "won" : null;
     },
 
+    perspective: {
+        cameraHeight: 520,
+        strength: 0.28,
+        viewerSource: "viewport",
+    },
+
     combatPairs: poolCombatPairs,
     targeting: poolTargeting,
     render: poolRenderPorts,

@@ -60,6 +60,10 @@
  */
 
 /**
+ * @typedef {import("./GamePerspective.js").PerspectiveConfig} PerspectiveConfig
+ */
+
+/**
  * @typedef {object} GameDefinition
  * @property {string} id
  * @property {string} canvasId
@@ -87,6 +91,7 @@
  * @property {(state: object, inspectKey: string) => void} [onInspectMissionClose]
  * @property {(state: object) => boolean} [isInspectMissionActive]
  * @property {Partial<import("./GameUiProfile.js").GameUiProfile>} [ui]
+ * @property {Partial<import("./GamePerspective.js").PerspectiveConfig>} [perspective]
  * @property {(state: object) => "won" | "lost" | null} [getRunOutcome]
  */
 
