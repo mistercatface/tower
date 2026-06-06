@@ -1,6 +1,6 @@
 import { inferFaction } from "../targeting.js";
 import { hostileFactionPairs } from "../../../Config/content/factions.js";
-import { isPairActive, shouldResolveActorPushable } from "../../../Libraries/Spatial/collision/entityBroadphase.js";
+import { isPairActive, shouldResolveActorPushable, shouldResolvePushablePair } from "../../../Libraries/Spatial/collision/entityBroadphase.js";
 
 /** @typedef {import("../../../Libraries/Interaction/pairRules.js").PairFilterConfig} PairFilterConfig */
 
@@ -9,6 +9,7 @@ export const combatResolvers = { faction: inferFaction };
 export const spatialPairResolvers = {
     actorPushable: shouldResolveActorPushable,
     pairActive: isPairActive,
+    pushablePair: shouldResolvePushablePair,
 };
 
 /** @type {PairFilterConfig} */
@@ -103,6 +104,11 @@ export const requireActorPushableResolve = {
 /** @type {PairFilterConfig} */
 export const requirePairActive = {
     inclusions: [{ target: "pair", pairResolve: "pairActive" }],
+};
+
+/** @type {PairFilterConfig} */
+export const requirePushablePairResolve = {
+    inclusions: [{ target: "pair", pairResolve: "pushablePair" }],
 };
 
 /** @type {PairFilterConfig} */

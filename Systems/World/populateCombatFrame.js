@@ -24,7 +24,7 @@ export function populateCombatFrame(frame, state, combatants, pushables) {
     for (const pickup of state.pickups) {
         if (pickup.isDead) continue;
         frame.insertEntity(pickup, physIdCounter++);
-        if (pickup.strategy?.isPushable && !pickup.isSleeping) {
+        if (pickup.strategy?.isPushable) {
             pushables.push(pickup);
         }
     }

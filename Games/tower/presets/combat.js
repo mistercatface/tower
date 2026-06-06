@@ -18,7 +18,7 @@ import {
     requirePickupOnHit,
     dedupPairById,
     requireActorPushableResolve,
-    requirePairActive,
+    requirePushablePairResolve,
     sleepBlockerNeighborAny,
 } from "./combatRules.js";
 
@@ -51,9 +51,9 @@ export const ACTOR_PUSHABLE_PAIR = /** @type {PairFilterConfig} */ (
     mergePairFilter(withSpatialPairResolvers, excludeDeadOther, requirePushableOther, requireActorPushableResolve)
 );
 
-/** Pushable–pushable resolution pairs (deduped, at least one moving). */
+/** Pushable–pushable resolution pairs (deduped; moving, rotating, or penetrating). */
 export const PUSHABLE_PAIR = /** @type {PairFilterConfig} */ (
-    mergePairFilter(withSpatialPairResolvers, excludeSameEntity, excludeDeadOther, requirePushableOther, dedupPairById, requirePairActive)
+    mergePairFilter(withSpatialPairResolvers, excludeSameEntity, excludeDeadOther, requirePushableOther, dedupPairById, requirePushablePairResolve)
 );
 
 /** Projectile may hit damageable pickups (not actors). */

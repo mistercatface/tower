@@ -37,12 +37,17 @@ export { runCollisionPipeline } from "./collision/collisionPipeline.js";
 export { ensureWallSegmentPolygonShape, resolveBodyAgainstWallSegments } from "./collision/wallResolution.js";
 export {
     MOVING_SPEED_SQ,
+    ROTATING_ANGULAR_SQ,
     NEIGHBOR_QUERY_PAD,
     entityBroadphaseExtent,
     isMovingEntity,
+    isRotatingEntity,
+    isKinematicallyActive,
     getBroadphaseBounds,
     pairBroadphaseOverlap,
+    pairShapeOverlap,
     isPairActive,
+    shouldResolvePushablePair,
     shouldResolveActorPushable,
 } from "./collision/entityBroadphase.js";
 
