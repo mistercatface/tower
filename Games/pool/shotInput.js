@@ -117,6 +117,7 @@ export function updateAim(state, worldX, worldY) {
 export function releaseAimShot(state, worldX, worldY) {
     const pool = ensurePoolState(state);
     if (!pool.aim?.active) return false;
+    updateAim(state, worldX, worldY);
     const cue = getCueBall(state);
     if (!cue) {
         cancelAim(state);
