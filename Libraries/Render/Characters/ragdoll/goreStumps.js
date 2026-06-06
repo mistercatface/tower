@@ -1,6 +1,6 @@
 import { RAGDOLL_CONFIG } from "../../../Kinematics/ragdoll/config.js";
 import { absRagdollPoint } from "../../../Kinematics/ragdoll/physics.js";
-import { SEVER_STUMP_BONES } from "../../../Kinematics/core/bones.js";
+import { SEVER_STUMP_BONES } from "../../../Kinematics/skeleton/severing.js";
 
 /** Blood stumps at severed joints — rig-local, same projection as live characters. */
 export function drawRagdollGoreStumps(ragdoll, sceneRenderer, rig) {

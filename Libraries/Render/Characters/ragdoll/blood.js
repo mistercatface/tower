@@ -1,7 +1,8 @@
 import { clamp } from "../../../Math/Interpolate.js";
 import { RAGDOLL_CONFIG } from "../../../Kinematics/ragdoll/config.js";
 import { absRagdollPoint } from "../../../Kinematics/ragdoll/physics.js";
-import { PHYSICS_BONES, resolvePhysicsBoneId } from "../../../Kinematics/core/bones.js";
+import { PHYSICS_BONES } from "../../../Kinematics/skeleton/joints.js";
+import { resolvePhysicsBoneId } from "../../../Kinematics/skeleton/adapters.js";
 
 function createBloodParticle(point, bCfg, scale = 1) {
     const life = bCfg.LIFESPAN_MIN + Math.random() * (bCfg.LIFESPAN_MAX - bCfg.LIFESPAN_MIN);

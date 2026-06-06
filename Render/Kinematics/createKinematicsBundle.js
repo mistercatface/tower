@@ -5,7 +5,7 @@ import { createKinematicsSpriteCache } from "../../Libraries/Canvas/QuantizedSpr
 import { createCharacterRigCalculator } from "../../Libraries/Kinematics/core/rigCalculator.js";
 import { createProjector } from "../../Libraries/Kinematics/core/projector.js";
 import { normalizeWeaponLoadout } from "../../Combat/equipmentLoadout.js";
-import { applyRigDeltas } from "../../Libraries/Kinematics/core/bones.js";
+import { applyRigDeltas } from "../../Libraries/Kinematics/skeleton/adapters.js";
 import { quantizeAngleIndex } from "../../Libraries/Math/Angle.js";
 import { clamp } from "../../Libraries/Math/Interpolate.js";
 
