@@ -112,18 +112,22 @@ function damageOnHit(state, pickup, projectile, events) {
 
 const HIT_BEHAVIORS = { none: () => false, explosive: explosiveOnHit, damage: damageOnHit };
 
-const worldPropStrategies = Object.fromEntries(
-    Object.entries(worldPropDefinitions).map(([type, def]) => {
-        const { hitBehavior, spawn, ...strategyFields } = def;
-        return [type, withPickupDefaults({ ...strategyFields, isExplosive: hitBehavior === "explosive", onHit: HIT_BEHAVIORS[hitBehavior] ?? HIT_BEHAVIORS.none })];
-    }),
-);
+function buildWorldPropStrategy(type) {
+    const def = worldPropDefinitions[type];
+    if (!def) return withPickupDefaults({});
+    const { hitBehavior, spawn, ...strategyFields } = def;
+    return withPickupDefaults({
+        ...strategyFields,
+        isExplosive: hitBehavior === "explosive",
+        onHit: HIT_BEHAVIORS[hitBehavior] ?? HIT_BEHAVIORS.none,
+    });
+}
 
 export class Pickup extends Entity {
     constructor(x, y, type, facing = null) {
         super(x, y, 0, false);
         this.type = type;
-        this.strategy = worldPropStrategies[type];
+        this.strategy = buildWorldPropStrategy(type);
         this.radius = this.strategy.radius;
         this.vx = 0;
         this.vy = 0;
