@@ -1,4 +1,4 @@
-import { weightedPick } from "../../../Libraries/Random/weightedPick.js";
+import { weightedPick } from "../../Random/weightedPick.js";
 
 export const RAGDOLL_CONFIG = {
     PHYSICS: {

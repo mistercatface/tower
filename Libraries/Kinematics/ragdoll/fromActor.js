@@ -1,8 +1,8 @@
-import { normalizeAngle } from "../../../Libraries/Math/Angle.js";
-import { normalizeVector } from "../../../Libraries/Math/Vec2.js";
-import { createImpactProfile } from "./RagdollConfig.js";
-import { initializeRagdoll } from "./RagdollPhysics.js";
-import { applyDeathSevers } from "./RagdollGore.js";
+import { normalizeAngle } from "../../Math/Angle.js";
+import { normalizeVector } from "../../Math/Vec2.js";
+import { createImpactProfile } from "./config.js";
+import { initializeRagdoll } from "./physics.js";
+import { applyDeathSevers } from "./gore.js";
 
 export function createObstacleWallChecker(state) {
     const grid = state?.flowFieldGrid;

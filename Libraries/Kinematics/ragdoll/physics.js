@@ -1,13 +1,13 @@
-import { RAGDOLL_CONFIG, getScaledPhysics } from "./RagdollConfig.js";
-import { processRagdollGoreHit } from "./RagdollGore.js";
+import { RAGDOLL_CONFIG, getScaledPhysics } from "./config.js";
+import { processRagdollGoreHit } from "./gore.js";
 import {
     PHYSICS_BONES,
     RAGDOLL_CONSTRAINT_EDGES,
     boneMapFromCharacterRig,
     resolvePhysicsBoneId,
-} from "../../../Libraries/Kinematics/core/bones.js";
-import { clamp } from "../../../Libraries/Math/Interpolate.js";
-import { distance, length } from "../../../Libraries/Math/Vec3.js";
+} from "../core/bones.js";
+import { clamp } from "../../Math/Interpolate.js";
+import { distance, length } from "../../Math/Vec3.js";
 
 function getBind(ragdoll, key) {
     return ragdoll.bindBones?.[key];

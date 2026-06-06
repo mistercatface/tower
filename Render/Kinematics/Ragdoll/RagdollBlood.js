@@ -1,6 +1,6 @@
 import { clamp } from "../../../Libraries/Math/Interpolate.js";
-import { RAGDOLL_CONFIG } from "./RagdollConfig.js";
-import { absRagdollPoint } from "./RagdollPhysics.js";
+import { RAGDOLL_CONFIG } from "../../../Libraries/Kinematics/ragdoll/config.js";
+import { absRagdollPoint } from "../../../Libraries/Kinematics/ragdoll/physics.js";
 import { PHYSICS_BONES, resolvePhysicsBoneId } from "../../../Libraries/Kinematics/core/bones.js";
 
 function createBloodParticle(point, bCfg, scale = 1) {

@@ -1,5 +1,5 @@
-import { RAGDOLL_CONFIG } from "./RagdollConfig.js";
-import { absRagdollPoint } from "./RagdollPhysics.js";
+import { RAGDOLL_CONFIG } from "../../../Libraries/Kinematics/ragdoll/config.js";
+import { absRagdollPoint } from "../../../Libraries/Kinematics/ragdoll/physics.js";
 import { SEVER_STUMP_BONES } from "../../../Libraries/Kinematics/core/bones.js";
 
 /** Blood stumps at severed joints — rig-local, same projection as live characters. */

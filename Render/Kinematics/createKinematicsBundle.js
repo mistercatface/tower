@@ -1,5 +1,5 @@
 import { createKinematicsConfig, createKinematicsRig } from "../../Libraries/Kinematics/core/config.js";
-import { createKinematicsPoses } from "./KinematicsPoses.js";
+import { createKinematicsPoses } from "../../Libraries/Kinematics/core/poses.js";
 import { createSceneRenderer } from "./KinematicsSceneRenderer.js";
 import { createKinematicsSpriteCache } from "../../Libraries/Canvas/QuantizedSpriteCache.js";
 import { calculateCharacterRig } from "./KinematicsRigCalculator.js";

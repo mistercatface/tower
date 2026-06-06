@@ -1,8 +1,8 @@
 /** Bone hit tests for ragdoll corpses (2D gameplay, rig-local space). */
 
-import { closestPointOnLineSegment } from "../../../Libraries/Math/Segment2D.js";
-import { distance } from "../../../Libraries/Math/Vec3.js";
-import { getRagdollCollisionPoints, absRagdollPoint } from "./RagdollPhysics.js";
+import { closestPointOnLineSegment } from "../../Math/Segment2D.js";
+import { distance } from "../../Math/Vec3.js";
+import { getRagdollCollisionPoints, absRagdollPoint } from "./physics.js";
 
 function distToSegmentXZ(p, v, w) {
     const closest = closestPointOnLineSegment(p.x, p.z, v.x, v.z, w.x, w.z);
