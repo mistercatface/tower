@@ -5,9 +5,7 @@ function syncPersistentEntitiesOnSimulationEnter(state) {
     syncSurfaceProfile(state);
     wakeAllPushables(state);
     const persistentEntities = [...state.getAllies(), ...state.pickups];
-    for (const entity of persistentEntities) {
-        if (typeof entity.onCombatReenter === "function") entity.onCombatReenter(state);
-    }
+    for (const entity of persistentEntities) if (typeof entity.onCombatReenter === "function") entity.onCombatReenter(state);
 }
 
 export function runSimulationEnterPersistence(state) {

@@ -26,9 +26,9 @@ export function getInteractionPairs() {
 
 /** @returns {SimulationPort} */
 export function getSimulationPort() {
-    const simulation = requireGameDefinition().simulation;
-    if (!simulation) throw new Error("Active game definition missing simulation port.");
-    return simulation;
+    const port = requireGameDefinition().simulationPort;
+    if (!port) throw new Error("Active game definition missing simulationPort.");
+    return port;
 }
 
 /** @returns {TargetingPort} */

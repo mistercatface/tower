@@ -31,7 +31,7 @@ export const towerGame = {
     canvasId: "gameCanvas",
     saveKey: "tower_save_v4",
     interactionPairs: towerInteractionPairs,
-    simulation: towerSimulation,
+    simulationPort: towerSimulation,
     targeting: towerTargeting,
     render: towerRenderPorts,
     worldGen: towerWorldGen,

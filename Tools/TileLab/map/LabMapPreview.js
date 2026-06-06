@@ -18,15 +18,13 @@ const MOVE_SPEED_SCALE = 1;
  * @returns {{ width: number, height: number, changed: boolean } | null}
  */
 export function prepareGameCanvas(canvas, stage) {
-    if (!canvas || !stage) {
-        return null;
-    }
+    if (!canvas || !stage) return null;
+
     const rect = stage.getBoundingClientRect();
     const width = Math.floor(rect.width);
     const height = Math.floor(rect.height);
-    if (width < 32 || height < 32) {
-        return null;
-    }
+    if (width < 32 || height < 32) return null;
+
     let changed = false;
     if (canvas.width !== width || canvas.height !== height) {
         canvas.width = width;
@@ -63,9 +61,8 @@ function drawPlayerMarker(ctx, x, y) {
 function maybeClearBakeCaches(worldState, profileId) {
     const rev = getSurfaceProfileRevision(profileId);
     const key = `${profileId}:${rev}:${worldState.worldSurfaceSeed ?? 0}`;
-    if (lastBakeKey === key) {
-        return;
-    }
+    if (lastBakeKey === key) return;
+
     lastBakeKey = key;
     invalidateWallAtlasKeyMemos(worldState);
     worldState.worldSurfaces.clear();
@@ -91,7 +88,12 @@ function drawLabWorldFrame(ctx, canvas, viewW, viewH, worldState, profileId, gam
     ctx.restore();
     ctx.save();
     viewport.apply(ctx);
-    drawWorldScene(ctx, { state: worldState, viewport, worldSceneRenderer: render3D, canvas });
+    drawWorldScene(ctx, {
+        state: worldState,
+        viewport,
+        worldSceneRenderer: render3D,
+        canvas,
+    });
     worldState.canvasBounds = prevCanvasBounds;
     worldState.surfaceProfileOverride = prevProfileOverride;
     if (showRangeRing) drawWeaponRangeRing(ctx, worldState.player.x, worldState.player.y, weaponRange);
@@ -113,7 +115,12 @@ function drawLabWorldFrame(ctx, canvas, viewW, viewH, worldState, profileId, gam
         ctx.restore();
     }
 
-    return { zoom: gameZoom, cameraX, cameraY, visualRadius: viewport.getVisualRadius() };
+    return {
+        zoom: gameZoom,
+        cameraX,
+        cameraY,
+        visualRadius: viewport.getVisualRadius(),
+    };
 }
 
 /**
@@ -122,10 +129,23 @@ function drawLabWorldFrame(ctx, canvas, viewW, viewH, worldState, profileId, gam
  * @param {{ worldState: object, profileId: string, gameZoom: number, showRangeRing: boolean, weaponRange: number, viewWidth: number, viewHeight: number, showVignette?: boolean }} options
  */
 export function renderGamePreview(canvas, options) {
-    const { worldState, profileId, gameZoom, showRangeRing, weaponRange, viewWidth, viewHeight, showVignette = false } = options;
+    const {
+        worldState,
+        profileId,
+        gameZoom,
+        showRangeRing,
+        weaponRange,
+        viewWidth,
+        viewHeight,
+        showVignette = false,
+    } = options;
     if (!worldState || !profileId || !viewWidth || !viewHeight) return { zoom: gameZoom };
     const ctx = canvas.getContext("2d");
-    const result = drawLabWorldFrame(ctx, canvas, viewWidth, viewHeight, worldState, profileId, gameZoom, weaponRange, { showVignette, showRangeRing, showPlayerMarker: true });
+    const result = drawLabWorldFrame(ctx, canvas, viewWidth, viewHeight, worldState, profileId, gameZoom, weaponRange, {
+        showVignette,
+        showRangeRing,
+        showPlayerMarker: true,
+    });
     return result;
 }
 
@@ -138,7 +158,11 @@ export function initMapPreviewNavigation(getOptions, handlers = {}) {
     setupLabViewportNavigation("gamePreview", {
         getCamera: () => {
             const world = getOptions().worldState;
-            return { x: world?.player?.x ?? 0, y: world?.player?.y ?? 0, zoom: getOptions().gameZoom ?? 1 };
+            return {
+                x: world?.player?.x ?? 0,
+                y: world?.player?.y ?? 0,
+                zoom: getOptions().gameZoom ?? 1,
+            };
         },
         setCamera: (x, y, zoom) => {
             const world = getOptions().worldState;

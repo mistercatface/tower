@@ -80,7 +80,7 @@
  * @property {Record<string, new () => object>} states
  * @property {string} initialState
  * @property {Partial<InteractionPairsPort>} [interactionPairs] — combat/physics overrides; physics defaults from engine
- * @property {SimulationPort} simulation
+ * @property {SimulationPort} simulationPort — phase pipeline (`runTick`, `onEnter`, …)
  * @property {TargetingPort} targeting
  * @property {RenderPorts} render
  * @property {WorldGenPort} worldGen

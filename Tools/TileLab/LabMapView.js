@@ -1,11 +1,7 @@
 import { registerRuntimeSurfaceProfile } from "../../Config/procedural/profiles.js";
 import { invalidateProfileScratch } from "../../Libraries/WorldSurface/ProfileBakeResolver.js";
 import { TileWorkerCoordinator } from "../../Libraries/WorldSurface/TileWorkerCoordinator.js";
-import {
-    renderGamePreview,
-    prepareGameCanvas,
-    invalidateMapPreviewBakes,
-} from "./map/LabMapPreview.js";
+import { renderGamePreview, prepareGameCanvas, invalidateMapPreviewBakes } from "./map/LabMapPreview.js";
 import { getLabPreviewProfile, RUNTIME_LAB_PROFILE_ID } from "./profile/ProfileEditor.js";
 import { ensureLabWorld, getLabWorld, getLabWorldMapSeed } from "./LabWorldSession.js";
 import { invalidateWallAtlasKeyMemos } from "../../Render/game/wallSurfaceInvalidation.js";
@@ -37,20 +33,17 @@ function syncGameCanvasSize() {
     const stage = document.getElementById("mapStage");
     const canvas = document.getElementById("gamePreview");
     const size = prepareGameCanvas(canvas, stage);
-    if (!size) {
-        return null;
-    }
-    if (size.changed) {
-        invalidateMapPreviewBakes();
-    }
+    if (!size) return null;
+    
+    if (size.changed) invalidateMapPreviewBakes();
+    
     return size;
 }
 
 export function renderMapPreview(ctrl, world) {
     const size = syncGameCanvasSize();
-    if (!size) {
-        return;
-    }
+    if (!size) return;
+    
     renderGamePreview(document.getElementById("gamePreview"), {
         worldState: world,
         profileId: RUNTIME_LAB_PROFILE_ID,
@@ -75,7 +68,5 @@ export async function runMapPreviewPass(readControls) {
     await registerEditorProfiles();
     const ctrl = readControls();
     const world = ensureLabWorld(ctrl);
-    if (world) {
-        renderMapPreview(ctrl, world);
-    }
+    if (world) renderMapPreview(ctrl, world);
 }

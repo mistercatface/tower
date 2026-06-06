@@ -28,4 +28,4 @@ Skip intro: `?scene=play`
 | `pockets.js` | Pocket sensors |
 | `balls.js` | Cue/object balls, stop detection |
 | `PoolSimulationState.js` | Camera, overlays, input |
-| `simulation.js` | Physics phase pipeline (`SimulationPort`) |
+| `simulation.js` | Physics phase pipeline (`gameDefinition.simulationPort`) |

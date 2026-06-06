@@ -88,7 +88,7 @@ export const poolGame = {
         wallHeight: 20,
     },
 
-    simulation: poolSimulation,
+    simulationPort: poolSimulation,
     targeting: poolTargeting,
     render: poolRenderPorts,
     worldGen: poolWorldGen,
