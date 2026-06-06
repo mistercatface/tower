@@ -1,4 +1,4 @@
-export { PROP_STRATEGY_DEFAULTS, withPropStrategyDefaults } from "./propStrategy.js";
+export { PROP_STRATEGY_DEFAULTS, withPropStrategyDefaults, resolvePropQuantizeSteps } from "./propStrategy.js";
 export { integratePropMotion } from "./propMotion.js";
 export { integrateStandTipMotion, integrateStandTip, integrateStandTipsAfterCollisions, initStandTipState, isStandTipActive } from "./standTipMotion.js";
 export { applyActorPushTipImpulse } from "./actorPushTip.js";

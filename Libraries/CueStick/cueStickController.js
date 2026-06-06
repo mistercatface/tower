@@ -102,7 +102,7 @@ export function hideCueStick(host) {
 export function getCueStickDrawProp(host) {
     const stick = host.cueStick;
     if (!stick || stick.phase === "hidden" || !stick.pose) return null;
-    return cueStickPoseToProp(stick.pose);
+    return cueStickPoseToProp(stick.pose, stick.dims);
 }
 /**
  * Apply impulse to the cue ball when the stick tip reaches contact.

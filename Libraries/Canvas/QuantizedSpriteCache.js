@@ -4,6 +4,7 @@ import { clamp } from "../Math/Interpolate.js";
 import { buildRollOrientKey, quantizeRollQuat } from "../Props/rollingMotion.js";
 import { isStandTipFallen, standTipStageRadius } from "../Spatial/transforms/longAxisBox3d.js";
 import { getActivePropPixelSize, resolvePropBakeScale } from "../../Core/GamePropPixelSize.js";
+import { resolvePropQuantizeSteps } from "../Props/propStrategy.js";
 /**
  * @typedef {ReturnType<createBakedSpriteCache>} BakedSpriteCache
  * @typedef {ReturnType<createQuantizedSpriteCache>} QuantizedSpriteCache
@@ -112,14 +113,6 @@ export function createKinematicsSpriteCache() {
 }
 // ─── Iso prop preset ─────────────────────────────────────────────────────────
 const propSpriteCache = createQuantizedSpriteCache({ maxItems: 2560 });
-const PROP_ROTATION_STEPS = 16;
-/** In-plane spin (facing) buckets for long-axis logs. */
-const LOG_SPIN_STEPS = 64;
-/** End-over-end tumble (rollAngle) buckets for long-axis logs. */
-const LOG_ROLL_STEPS = 32;
-/** Finer facing buckets for the aim cue (smooth rotation while aiming). */
-const CUE_STICK_SPIN_STEPS = 128;
-const CUE_STICK_ROLL_STEPS = 64;
 const PROP_STAGE_PADDING = 40;
 /**
  * @param {object} prop
@@ -139,17 +132,15 @@ function propFootprintHalfExtents(prop) {
  * @param {object} prop
  */
 export function buildLongAxisLogOrientKey(prop) {
-    const spinSteps = prop.render3DKey === "cue_stick" ? CUE_STICK_SPIN_STEPS : LOG_SPIN_STEPS;
-    const rollSteps = prop.render3DKey === "cue_stick" ? CUE_STICK_ROLL_STEPS : LOG_ROLL_STEPS;
-    return `f${quantizeAngleIndex(prop.facing ?? 0, spinSteps)}_a${quantizeAngleIndex(prop.rollAngle ?? 0, rollSteps)}`;
+    const { facing, roll } = resolvePropQuantizeSteps(prop);
+    return `f${quantizeAngleIndex(prop.facing ?? 0, facing)}_a${quantizeAngleIndex(prop.rollAngle ?? 0, roll)}`;
 }
 /**
  * @param {object} prop
  */
 export function quantizeLongAxisAngles(prop) {
-    const spinSteps = prop.render3DKey === "cue_stick" ? CUE_STICK_SPIN_STEPS : LOG_SPIN_STEPS;
-    const rollSteps = prop.render3DKey === "cue_stick" ? CUE_STICK_ROLL_STEPS : LOG_ROLL_STEPS;
-    return { facing: quantizeAngle(prop.facing ?? 0, spinSteps), rollAngle: quantizeAngle(prop.rollAngle ?? 0, rollSteps) };
+    const { facing, roll } = resolvePropQuantizeSteps(prop);
+    return { facing: quantizeAngle(prop.facing ?? 0, facing), rollAngle: quantizeAngle(prop.rollAngle ?? 0, roll) };
 }
 /**
  * @param {object} prop
@@ -166,8 +157,8 @@ export function buildPropSpriteKey(prop, px, py, renderKey, animFrame = 0) {
         prop.strategy?.rollAxis === "long"
             ? buildLongAxisLogOrientKey(prop)
             : prop.strategy?.rolls
-              ? buildRollOrientKey(prop.rollQuat, PROP_ROTATION_STEPS)
-              : `f${quantizeAngleIndex(prop.facing ?? 0, PROP_ROTATION_STEPS)}`;
+              ? buildRollOrientKey(prop.rollQuat, resolvePropQuantizeSteps(prop).facing)
+              : `f${quantizeAngleIndex(prop.facing ?? 0, resolvePropQuantizeSteps(prop).facing)}`;
     const radius = Math.round(prop._baseRadius ?? prop.radius ?? 8);
     const { x: stratHx, y: stratHy } = propFootprintHalfExtents(prop);
     const halfX = Math.round(stratHx);
@@ -207,9 +198,9 @@ export function getOrBakePropSprite({ prop, px, py, renderKey, draw, animFrame =
             y: anchorY,
             radius: prop._baseRadius ?? prop.radius ?? 8,
             halfExtents: footprint,
-            facing: logAngles?.facing ?? quantizeAngle(prop.facing ?? 0, PROP_ROTATION_STEPS),
+            facing: logAngles?.facing ?? quantizeAngle(prop.facing ?? 0, resolvePropQuantizeSteps(prop).facing),
             rollAngle: logAngles?.rollAngle ?? prop.rollAngle,
-            rollQuat: prop.strategy?.rolls && prop.strategy?.rollAxis !== "long" ? quantizeRollQuat(prop.rollQuat, PROP_ROTATION_STEPS) : prop.rollQuat,
+            rollQuat: prop.strategy?.rolls && prop.strategy?.rollAxis !== "long" ? quantizeRollQuat(prop.rollQuat, resolvePropQuantizeSteps(prop).facing) : prop.rollQuat,
             opacity: 1,
         };
         ctx.save();
