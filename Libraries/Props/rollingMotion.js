@@ -88,8 +88,7 @@ export function transformRollVertex(lx, ly, lz, radius, rollQuat = IDENTITY_ROLL
 export function getRollRadius(body) {
     const strategy = body.strategy ?? {};
     if (strategy.standTip && body.isFallen) {
-        const h = strategy.rollHeight ?? strategy.uprightHeight ?? (body._baseRadius ?? body.radius ?? 8) * 2.5;
-        return Math.max(1, Math.min(body.halfExtents?.x ?? h * 0.5, body.halfExtents?.y ?? h * 0.5));
+        return Math.max(1, strategy.fallenRollHeight ?? strategy.rollHeight ?? 3);
     }
     if (strategy.rollAxis === "long") {
         return Math.max(1, strategy.rollHeight ?? 3);

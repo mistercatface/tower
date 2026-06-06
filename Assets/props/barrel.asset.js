@@ -11,6 +11,8 @@ export default {
         rollAxis: "long",
         standTip: true,
         halfExtents: { x: 8, y: 8 },
+        fallenHalfExtents: { x: 11, y: 8 },
+        fallenRollHeight: 16,
         rollHeight: 22,
         tipPushSpeed: 6,
         tipFallAngle: 1.25,

@@ -1,6 +1,5 @@
 import { applyVelocityDamping } from "../Motion/index.js";
 import { absorbCollisionRollImpulse, integrateRollOrientation } from "./rollingMotion.js";
-import { integrateStandTipMotion } from "./standTipMotion.js";
 import { isStandTipFallen, isStandTipProp } from "../Spatial/transforms/longAxisBox3d.js";
 
 /**
@@ -16,7 +15,14 @@ export function integratePropMotion(body, dtMs) {
 
     if (isStandTipProp(body)) {
         if (isStandTipFallen(body)) {
-            integrateStandTipMotion(body, dtMs);
+            integrateRollOrientation(body, dtMs);
+            if (body.angularVelocity) {
+                const angularDrag = Math.exp(-friction * 0.8 * (dtMs / 1000));
+                body.angularVelocity *= angularDrag;
+                if (Math.abs(body.angularVelocity) < 0.1) {
+                    body.angularVelocity = 0;
+                }
+            }
         }
         applyVelocityDamping(body, dtMs, { friction, integrateFacing: false });
         return;

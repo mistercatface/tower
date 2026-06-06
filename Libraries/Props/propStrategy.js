@@ -27,6 +27,10 @@ export const PROP_STRATEGY_DEFAULTS = {
     tipDamping: 2.8,
     tipImpulseGain: 0.035,
     actorTipGain: 0.2,
+    /** Ground pose after stand-tip fall — long-axis half extents (same layout as log). */
+    fallenHalfExtents: null,
+    /** Cross-section height when fallen (same role as log rollHeight). */
+    fallenRollHeight: null,
     splittable: false,
     randomFaceLabels: false,
     onFire: null,

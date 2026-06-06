@@ -1,7 +1,8 @@
 import { drawExtrudedRadial, drawRadialBand } from "../../Render/Props3D/SolidDraw.js";
+import { drawLoFiRollingBox } from "../../Render/Props3D/lofiRollingBox.js";
 import { drawLoFiTippedCylinder } from "../../Render/Props3D/lofiTippedCylinder.js";
 import { projectVertical } from "../../Spatial/iso/IsometricProjection.js";
-import { isStandTipTilted } from "../../Spatial/transforms/longAxisBox3d.js";
+import { isStandTipFallen, isStandTipTilted, longAxisBoxDimsFromProp } from "../../Spatial/transforms/longAxisBox3d.js";
 
 const TIP_MESH_THRESHOLD = 0.06;
 
@@ -64,9 +65,28 @@ export function createFuelBarrelDraw(visuals, { onFire = false } = {}) {
         const radius = prop._baseRadius ?? prop.radius ?? 8;
         const height = world.height;
         const bodyColors = onFire ? colors.bodyFire : colors.body;
-        const useMesh = prop.isFallen || isStandTipTilted(prop) || (prop.rollAngle ?? 0) >= TIP_MESH_THRESHOLD;
+        if (isStandTipFallen(prop)) {
+            const { hx, hy, height: fallenHeight } = longAxisBoxDimsFromProp(prop);
+            drawLoFiRollingBox(ctx, prop, px, py, {
+                halfExtents: { x: hx, y: hy },
+                height: fallenHeight,
+                colors: {
+                    side: bodyColors.mid,
+                    sideAlt: bodyColors.shadow,
+                    end: bodyColors.shadow,
+                    endAlt: bodyColors.highlight,
+                    top: colors.top,
+                    bottom: colors.lip,
+                },
+                stroke: colors.stroke,
+                lineWidth: 0.85,
+            });
+            return;
+        }
 
-        if (!useMesh) {
+        const useTipMesh = isStandTipTilted(prop) || (prop.rollAngle ?? 0) >= TIP_MESH_THRESHOLD;
+
+        if (!useTipMesh) {
             drawUprightBarrel(ctx, prop, px, py, radius, height, bodyColors, { ...colors, bandT0: world.bandT0, bandT1: world.bandT1 }, onFire);
             return;
         }

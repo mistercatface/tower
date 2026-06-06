@@ -146,19 +146,61 @@ export function buildLongAxisFootprintObb(hx, hy, height, facing, rollAngle) {
 }
 
 /**
+ * Fallen stand-tip dimensions — long axis on the ground, same convention as log.
+ *
+ * @param {object} strategy
+ * @param {number} baseR
+ */
+export function fallenLongAxisDimsFromStrategy(strategy, baseR) {
+    const uprightH = strategy.rollHeight ?? strategy.uprightHeight ?? 22;
+    return {
+        hx: strategy.fallenHalfExtents?.x ?? uprightH * 0.5,
+        hy: strategy.fallenHalfExtents?.y ?? baseR,
+        height: strategy.fallenRollHeight ?? baseR * 2,
+    };
+}
+
+/**
  * @param {object} prop
  */
 export function longAxisBoxDimsFromProp(prop) {
     const strategy = prop.strategy ?? {};
     const baseR = prop._baseRadius ?? prop.radius ?? 8;
+
+    if (isStandTipFallen(prop)) {
+        return fallenLongAxisDimsFromStrategy(strategy, baseR);
+    }
+
     const hx = strategy.halfExtents?.x ?? baseR;
     const hy = strategy.halfExtents?.y ?? baseR;
     const height = strategy.rollHeight ?? strategy.uprightHeight ?? 22;
     return { hx, hy, height };
 }
 
-/** Max iso stage radius for stand-tip props (upright + tipped). */
+/**
+ * Re-map a stand-tip prop to log-equivalent state once it has hit the ground.
+ * Tip rollAngle (0 → π/2 about local X) and log tumble rollAngle (about long axis) must not share semantics.
+ *
+ * @param {object} body
+ */
+export function convertStandTipToFallenLog(body) {
+    const strategy = body.strategy ?? {};
+    const baseR = body._baseRadius ?? body.radius ?? 8;
+    const { hx, hy } = fallenLongAxisDimsFromStrategy(strategy, baseR);
+
+    body.facing = (body.facing ?? 0) + Math.PI / 2;
+    body.rollAngle = 0;
+    body.rollOmega = 0;
+    body.isFallen = true;
+    body.halfExtents = { x: hx, y: hy };
+}
+
+/** Max iso stage radius for stand-tip props (upright, tipping, or fallen). */
 export function standTipStageRadius(prop) {
+    if (isStandTipFallen(prop)) {
+        const { hx, hy } = longAxisBoxDimsFromProp(prop);
+        return Math.hypot(hx, hy) + 12;
+    }
     const r = prop._baseRadius ?? prop.radius ?? 8;
     const h = prop.strategy?.rollHeight ?? prop.strategy?.uprightHeight ?? 22;
     return r + h * 0.42;
@@ -182,6 +224,5 @@ export function isStandTipTilted(prop) {
  * @param {object} prop
  */
 export function isStandTipFallen(prop) {
-    const fall = prop.strategy?.tipFallAngle ?? (Math.PI / 2 - 0.08);
-    return isStandTipProp(prop) && ((prop.rollAngle ?? 0) >= fall || prop.isFallen);
+    return isStandTipProp(prop) && prop.isFallen === true;
 }

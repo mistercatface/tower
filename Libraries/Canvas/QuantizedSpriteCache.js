@@ -2,7 +2,7 @@ import { createBakedSpriteCache } from "./BakedSpriteCache.js";
 import { quantizeAngle, quantizeAngleIndex, quantizeViewOffset } from "./viewQuantize.js";
 import { clamp } from "../Math/Interpolate.js";
 import { buildRollOrientKey, quantizeRollQuat } from "../Props/rollingMotion.js";
-import { standTipStageRadius } from "../Spatial/transforms/longAxisBox3d.js";
+import { isStandTipFallen, standTipStageRadius } from "../Spatial/transforms/longAxisBox3d.js";
 
 /**
  * @typedef {ReturnType<createBakedSpriteCache>} BakedSpriteCache
@@ -155,6 +155,20 @@ export function quantizeLongAxisLogAngles(prop) {
 /**
  * @param {object} prop
  */
+function propFootprintHalfExtents(prop) {
+    const radius = prop._baseRadius ?? prop.radius ?? 8;
+    if (isStandTipFallen(prop) && prop.halfExtents) {
+        return { x: prop.halfExtents.x, y: prop.halfExtents.y };
+    }
+    return {
+        x: prop.strategy?.halfExtents?.x ?? radius,
+        y: prop.strategy?.halfExtents?.y ?? radius,
+    };
+}
+
+/**
+ * @param {object} prop
+ */
 export function buildLongAxisLogOrientKey(prop) {
     return `f${quantizeAngleIndex(prop.facing ?? 0, LOG_SPIN_STEPS)}_a${quantizeAngleIndex(prop.rollAngle ?? 0, LOG_ROLL_STEPS)}`;
 }
@@ -176,8 +190,7 @@ export function buildPropSpriteKey(prop, px, py, renderKey, animFrame = 0) {
                 ? buildRollOrientKey(prop.rollQuat, PROP_ROTATION_STEPS)
                 : `f${quantizeAngleIndex(prop.facing ?? 0, PROP_ROTATION_STEPS)}`;
     const radius = Math.round(prop._baseRadius ?? prop.radius ?? 8);
-    const stratHx = prop.strategy?.halfExtents?.x ?? radius;
-    const stratHy = prop.strategy?.halfExtents?.y ?? radius;
+    const { x: stratHx, y: stratHy } = propFootprintHalfExtents(prop);
     const halfX = Math.round(stratHx);
     const halfY = Math.round(stratHy);
     const opacityBucket = (prop.opacity ?? 1) < 0.99 ? "fade" : "solid";
@@ -210,14 +223,13 @@ export function getOrBakePropSprite({ prop, px, py, renderKey, draw, animFrame =
         const logAngles = prop.strategy?.rollAxis === "long"
             ? quantizeLongAxisLogAngles(prop)
             : null;
-        const stratHx = prop.strategy?.halfExtents?.x ?? prop._baseRadius ?? prop.radius ?? 8;
-        const stratHy = prop.strategy?.halfExtents?.y ?? stratHx;
+        const footprint = propFootprintHalfExtents(prop);
         const stageProp = {
             ...prop,
             x: anchorX,
             y: anchorY,
             radius: prop._baseRadius ?? prop.radius ?? 8,
-            halfExtents: prop.strategy?.halfExtents ? { x: stratHx, y: stratHy } : prop.halfExtents,
+            halfExtents: footprint,
             facing: logAngles?.facing ?? quantizeAngle(prop.facing ?? 0, PROP_ROTATION_STEPS),
             rollAngle: logAngles?.rollAngle ?? prop.rollAngle,
             rollQuat: prop.strategy?.rolls && prop.strategy?.rollAxis !== "long"

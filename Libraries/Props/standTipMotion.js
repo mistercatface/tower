@@ -1,6 +1,6 @@
 import { integrateLongAxisRoll } from "./rollingMotion.js";
 import { syncLongAxisCollisionShape } from "./longAxisCollision.js";
-import { isStandTipFallen, isStandTipProp } from "../Spatial/transforms/longAxisBox3d.js";
+import { convertStandTipToFallenLog, isStandTipFallen, isStandTipProp } from "../Spatial/transforms/longAxisBox3d.js";
 import { measureTipFallWallBlock } from "./tipWallSupport.js";
 import { wallContextFromState } from "../Spatial/query/wallContext.js";
 
@@ -102,9 +102,7 @@ export function integrateStandTip(body, dtMs, { wallCtx = null } = {}) {
     body.rollOmega = rollOmega;
 
     if (rollAngle >= fallAngle && wallBlock < 0.75) {
-        body.isFallen = true;
-        body.rollAngle = Math.PI / 2;
-        body.rollOmega = 0;
+        convertStandTipToFallenLog(body);
     }
 }
 
@@ -117,5 +115,4 @@ export function integrateStandTip(body, dtMs, { wallCtx = null } = {}) {
 export function integrateStandTipMotion(body, dtMs) {
     if (!isStandTipFallen(body)) return;
     integrateLongAxisRoll(body, dtMs);
-    body.angularVelocity = 0;
 }

@@ -73,6 +73,8 @@ export {
     buildLongAxisBoxMesh,
     buildLongAxisFootprintObb,
     longAxisBoxDimsFromProp,
+    fallenLongAxisDimsFromStrategy,
+    convertStandTipToFallenLog,
     isStandTipProp,
     isStandTipTilted,
     isStandTipFallen,
