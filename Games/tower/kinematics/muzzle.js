@@ -4,7 +4,7 @@ import {
     getBarrelRatioForGunId,
     resolveProjectedHandsForSlot,
     resolveWeaponDrawSlots,
-} from "./KinematicsWeaponVisuals.js";
+} from "./weaponVisuals.js";
 
 /** Canvas-space offset from hand to barrel tip (matches drawPistol / drawLongGun transforms). */
 export function calculateMuzzleCanvasOffset(aimAngle, handScale, config, barrelRatio) {

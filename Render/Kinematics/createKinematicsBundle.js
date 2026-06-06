@@ -1,14 +1,11 @@
 import { createKinematicsConfig, createKinematicsRig } from "../../Libraries/Kinematics/core/config.js";
 import { createKinematicsPoses } from "../../Libraries/Kinematics/core/poses.js";
-import { createSceneRenderer } from "./KinematicsSceneRenderer.js";
+import { createSceneRenderer } from "../../Libraries/Render/Characters/sceneRenderer.js";
 import { createKinematicsSpriteCache } from "../../Libraries/Canvas/QuantizedSpriteCache.js";
-import { calculateCharacterRig } from "./KinematicsRigCalculator.js";
+import { createCharacterRigCalculator } from "../../Libraries/Kinematics/core/rigCalculator.js";
 import { createProjector } from "../../Libraries/Kinematics/core/projector.js";
 import { drawKinematicsFrameToCanvas } from "./KinematicsDraw.js";
-import { resolveCombatFacing, resolveSpriteBodyRotation } from "./KinematicsFacing.js";
 import { normalizeWeaponLoadout } from "../../Combat/equipmentLoadout.js";
-import { resolveWeaponStaticPoseName } from "./KinematicsWeaponVisuals.js";
-import { resolveMuzzleFromRig } from "./KinematicsMuzzle.js";
 import { applyRigDeltas } from "../../Libraries/Kinematics/core/bones.js";
 import { quantizeAngleIndex } from "../../Libraries/Math/Angle.js";
 import { clamp } from "../../Libraries/Math/Interpolate.js";
@@ -43,29 +40,31 @@ function getQuantizedAimKey(actor, rotationSteps = 32) {
     return `${quantizeAngleIndex(turrets[0]?.angle, rotationSteps)}_${quantizeAngleIndex(turrets[1]?.angle, rotationSteps)}`;
 }
 
-function syncWeaponPose(state, actor, poses) {
-    const weaponKey = getWeaponLoadoutKey(actor);
-    if (weaponKey === state.weaponLoadoutKey) return;
-    state.weaponLoadoutKey = weaponKey;
-    const poseName = resolveWeaponStaticPoseName(actor);
-    const nextPose = poses[poseName] ?? poses.IDLE;
-    state.lastStaticPose = state.currentStaticPose;
-    state.currentStaticPose = nextPose;
-    state.staticBlendFactor = 0;
-    state.lastStaticChange = 0;
-}
+export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 120, displayDiameter = null, ports }) {
+    const { resolveCombatFacing, resolveSpriteBodyRotation, resolveWeaponStaticPoseName, resolveWeaponDrawSlots, resolveMuzzleFromRig } = ports;
+    const { calculateCharacterRig } = createCharacterRigCalculator({ resolveWeaponDrawSlots });
 
-export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 120, displayDiameter = null }) {
+    function syncWeaponPose(state, actor, poses) {
+        const weaponKey = getWeaponLoadoutKey(actor);
+        if (weaponKey === state.weaponLoadoutKey) return;
+        state.weaponLoadoutKey = weaponKey;
+        const poseName = resolveWeaponStaticPoseName(actor);
+        const nextPose = poses[poseName] ?? poses.IDLE;
+        state.lastStaticPose = state.currentStaticPose;
+        state.currentStaticPose = nextPose;
+        state.staticBlendFactor = 0;
+        state.lastStaticChange = 0;
+    }
+
     const config = createKinematicsConfig(pixelSize);
     const rig = createKinematicsRig(config);
     const poses = createKinematicsPoses(config, rig);
     const sceneRenderer = createSceneRenderer(config);
     const spriteCache = createKinematicsSpriteCache();
     const entityStates = new Map();
-
     const perspectiveWarpMultiplier = 0.6; // Tune this to scale down perspective warp/lean at screen edges
     const perspectiveHeight = config.SIZE * config.PERSPECTIVE_HEIGHT;
-    const actorWorldHeight = (displayDiameter ?? (config.SIZE * 0.94)) * config.PERSPECTIVE_HEIGHT;
+    const actorWorldHeight = (displayDiameter ?? config.SIZE * 0.94) * config.PERSPECTIVE_HEIGHT;
     const globalRatio = (perspectiveHeight / Math.max(1.0, cameraHeight - actorWorldHeight)) * perspectiveWarpMultiplier;
 
     function getOrCreateState(actor) {
@@ -147,7 +146,6 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
         return state;
     }
 
-
     function buildViewContextAt(x, y, camera) {
         const dx = x - camera.x;
         const dy = y - camera.y;
@@ -164,32 +162,9 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
     }
 
     function renderKinematicsFrame(frame) {
-        const {
-            x,
-            y,
-            camera,
-            rigData,
-            bodyRotation = 0,
-            animCycle = 0,
-            actor,
-            facing,
-            drawOptions = {},
-            padding = spriteCache.cachePadding,
-        } = frame;
+        const { x, y, camera, rigData, bodyRotation = 0, animCycle = 0, actor, facing, drawOptions = {}, padding = spriteCache.cachePadding } = frame;
         const viewContext = buildQuantizedViewContext(x, y, camera, bodyRotation, animCycle);
-        return drawKinematicsFrameToCanvas(
-            sharedCanvas,
-            sharedCtx,
-            rigData,
-            actor,
-            viewContext,
-            facing,
-            config,
-            rig,
-            sceneRenderer,
-            padding,
-            drawOptions,
-        );
+        return drawKinematicsFrameToCanvas(sharedCanvas, sharedCtx, rigData, actor, viewContext, facing, config, rig, sceneRenderer, padding, drawOptions);
     }
 
     function resolveLiveFrameSpec(actor, camera, options = {}) {
@@ -201,15 +176,7 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
         const { rawTiltFactor, dx, dy } = buildViewContextAt(actor.x, actor.y, camera);
         const q = spriteCache.getQuantizedValues(bodyRotation, animCycle, rawTiltFactor, dx, dy);
         const facing = resolveCombatFacing(actor, state, q.rotation, config);
-        const rigData = calculateCharacterRig(
-            { ...state, staticBlendFactor: freezePose ? 1 : state.staticBlendFactor },
-            q.cycle,
-            config,
-            rig,
-            poses,
-            actor,
-            facing,
-        );
+        const rigData = calculateCharacterRig({ ...state, staticBlendFactor: freezePose ? 1 : state.staticBlendFactor }, q.cycle, config, rig, poses, actor, facing);
         return {
             x: actor.x,
             y: actor.y,
@@ -221,17 +188,7 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
             actor,
             facing,
             drawOptions: { drawWeapons: true },
-            cacheMeta: freezePose
-                ? null
-                : {
-                    state,
-                    q,
-                    rawTiltFactor,
-                    dx,
-                    dy,
-                    weaponKey: getWeaponLoadoutKey(actor),
-                    aimKey: getQuantizedAimKey(actor, spriteCache.rotationSteps),
-                },
+            cacheMeta: freezePose ? null : { state, q, rawTiltFactor, dx, dy, weaponKey: getWeaponLoadoutKey(actor), aimKey: getQuantizedAimKey(actor, spriteCache.rotationSteps) },
         };
     }
 
@@ -241,11 +198,7 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
     }
 
     function cloneRigData(rigData) {
-        const limb = (l) => ({
-            p1: cloneRigPoint(l.p1),
-            p2: cloneRigPoint(l.p2),
-            p3: cloneRigPoint(l.p3),
-        });
+        const limb = (l) => ({ p1: cloneRigPoint(l.p1), p2: cloneRigPoint(l.p2), p3: cloneRigPoint(l.p3) });
         return {
             head: cloneRigPoint(rigData.head),
             spineTop: cloneRigPoint(rigData.spineTop),
@@ -282,10 +235,7 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
         const cached = spriteCache.get(cacheKey);
         if (cached) return cached;
 
-        const canvas = renderKinematicsFrame({
-            ...frame,
-            padding: spriteCache.cachePadding,
-        });
+        const canvas = renderKinematicsFrame({ ...frame, padding: spriteCache.cachePadding });
 
         return spriteCache.set(cacheKey, canvas);
     }
@@ -298,29 +248,14 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
     function captureActorRigForRagdoll(actor, camera) {
         const frame = resolveLiveFrameSpec(actor, camera, { freezePose: true });
         const rigData = cloneRigData(frame.rigData);
-        return {
-            bindFrame: {
-                rigData,
-                bodyRotation: frame.bodyRotation,
-                animCycle: frame.animCycle,
-                facing: frame.facing,
-            },
-        };
+        return { bindFrame: { rigData, bodyRotation: frame.bodyRotation, animCycle: frame.animCycle, facing: frame.facing } };
     }
 
     function resolveMuzzleWorldPosition(actor, camera, turretIndex, displayDiameter) {
         const frame = resolveLiveFrameSpec(actor, camera);
         const viewContext = buildQuantizedViewContext(frame.x, frame.y, frame.camera, frame.bodyRotation, frame.animCycle);
         const project = createProjector(viewContext, frame.renderRotation, config, rig);
-        return resolveMuzzleFromRig(
-            actor,
-            frame.rigData,
-            project,
-            config,
-            frame.facing,
-            turretIndex,
-            displayDiameter,
-        );
+        return resolveMuzzleFromRig(actor, frame.rigData, project, config, frame.facing, turretIndex, displayDiameter);
     }
 
     return {

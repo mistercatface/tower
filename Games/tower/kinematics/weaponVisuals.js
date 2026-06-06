@@ -1,5 +1,5 @@
-import { getGunDefinition } from "../../Config/content/guns.js";
-import { isTwoHandedGun, normalizeWeaponLoadout } from "../../Combat/equipmentLoadout.js";
+import { getGunDefinition } from "../../../Config/content/guns.js";
+import { isTwoHandedGun, normalizeWeaponLoadout } from "../../../Combat/equipmentLoadout.js";
 
 const GUN_COLORS = {
     dark: "#111111",

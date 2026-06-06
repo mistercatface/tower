@@ -5,10 +5,10 @@
  * - rigAimFacing: reference for arm IK relative to turret world angles
  * - gunCanvasAim: rotation for weapon draw at projected hand (canvas space)
  */
-import { angleDelta, normalizeAngle } from "../../Libraries/Math/Angle.js";
-import { smootherstep } from "../../Libraries/Math/Easing.js";
-import { lerp } from "../../Libraries/Math/Interpolate.js";
-import { normalizeWeaponLoadout } from "../../Combat/equipmentLoadout.js";
+import { angleDelta, normalizeAngle } from "../../../Libraries/Math/Angle.js";
+import { smootherstep } from "../../../Libraries/Math/Easing.js";
+import { lerp } from "../../../Libraries/Math/Interpolate.js";
+import { normalizeWeaponLoadout } from "../../../Combat/equipmentLoadout.js";
 
 /** First turret with a live hostile target (auto-aim lock). */
 export function getPrimaryCombatTurret(actor) {

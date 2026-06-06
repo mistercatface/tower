@@ -3,6 +3,7 @@ export * from "./core/config.js";
 export * from "./core/ik.js";
 export * from "./core/poses.js";
 export * from "./core/projector.js";
+export * from "./core/rigCalculator.js";
 export * from "./ragdoll/config.js";
 export * from "./ragdoll/physics.js";
 export * from "./ragdoll/gore.js";

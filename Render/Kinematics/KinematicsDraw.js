@@ -1,5 +1,5 @@
 import { getCharacterForActor } from "./CharacterAppearance.js";
-import { resolveWeaponDrawSlots, resolveProjectedHandsForSlot } from "./KinematicsWeaponVisuals.js";
+import { resolveWeaponDrawSlots, resolveProjectedHandsForSlot } from "../../Games/tower/kinematics/weaponVisuals.js";
 import { drawHeadNeckAndHair } from "./KinematicsHead.js";
 import { queueRagdollBloodDraw } from "./Ragdoll/RagdollBlood.js";
 import { drawRagdollGoreStumps } from "./Ragdoll/RagdollDrawBody.js";
@@ -17,20 +17,13 @@ export function drawStandardCharacter(rigLocal, actor, sceneRenderer, config, ri
     };
     const armPalette = char.sleeveStyle === "long" ? palettes.shirt : palettes.skin;
     const Renderer = sceneRenderer;
-
     const spineTop = rigLocal.spineTop;
     const spineBot = rigLocal.spineBot;
-    const spineMid = {
-        x: (spineTop.x + spineBot.x) * 0.5,
-        y: (spineTop.y + spineBot.y) * 0.5,
-        z: (spineTop.z + spineBot.z) * 0.5,
-    };
-
+    const spineMid = { x: (spineTop.x + spineBot.x) * 0.5, y: (spineTop.y + spineBot.y) * 0.5, z: (spineTop.z + spineBot.z) * 0.5 };
     Renderer.addSphere(spineTop, rig.torsoHalfWidth * 0.9, palettes.shirt);
     Renderer.addCylinder(spineTop, spineMid, rig.torsoHalfWidth * 0.95, palettes.shirt);
     Renderer.addCylinder(spineMid, spineBot, rig.torsoHalfWidth * 0.9, palettes.shirt);
     Renderer.addSphere(spineBot, rig.hipHalfWidth * 1.1, palettes.pants);
-
     const legRad = rig.legL1 * 0.35;
     if (!severed.rLeg && !severed.rShin) {
         Renderer.addSphere(rigLocal.rLeg.p1, legRad, palettes.pants);
@@ -46,7 +39,6 @@ export function drawStandardCharacter(rigLocal, actor, sceneRenderer, config, ri
         Renderer.addCylinder(rigLocal.lLeg.p2, rigLocal.lLeg.p3, legRad * 0.8, palettes.pants);
         Renderer.addSphere(rigLocal.lLeg.p3, legRad * 1.2, palettes.shoe);
     }
-
     const armRad = rig.armL1 * 0.3;
     if (!severed.rArm) {
         if (!severed.rForearm) {
@@ -74,7 +66,6 @@ export function drawStandardCharacter(rigLocal, actor, sceneRenderer, config, ri
             Renderer.addSphere(rigLocal.lArm.p2, armRad * 0.9, armPalette);
         }
     }
-
     drawHeadNeckAndHair(Renderer, null, rig, char, {
         headLocal: rigLocal.head,
         spineTopLocal: rigLocal.spineTop,
@@ -87,48 +78,31 @@ export function drawStandardCharacter(rigLocal, actor, sceneRenderer, config, ri
 function drawHeldWeapons(rigLocal, actor, sceneRenderer, config, facing) {
     const slots = resolveWeaponDrawSlots(actor);
     if (slots.length === 0) return;
-
     const project = sceneRenderer.project;
     const turrets = actor.turrets ?? [];
     const defaultHand = project(rigLocal.rArm.p3);
     const handScale = defaultHand.scale ?? 1;
-
     for (const slot of slots) {
         const turret = turrets[slot.turretIndex];
         const aimAngle = facing.gunCanvasAim(turret?.angle ?? actor.angle ?? 0);
         const hand = resolveProjectedHandsForSlot(rigLocal, slot, project);
         const z = (hand.sortZ ?? 0) + 0.15;
-
         sceneRenderer.addCustom(z, (ctx) => {
             slot.visual.draw(ctx, hand, hand.scale ?? handScale, aimAngle, config);
         });
     }
 }
 
-export function drawKinematicsFrameToCanvas(
-    sharedCanvas,
-    sharedCtx,
-    rigLocal,
-    actor,
-    viewContext,
-    facing,
-    config,
-    rig,
-    sceneRenderer,
-    overridePadding = null,
-    options = {},
-) {
+export function drawKinematicsFrameToCanvas(sharedCanvas, sharedCtx, rigLocal, actor, viewContext, facing, config, rig, sceneRenderer, overridePadding = null, options = {}) {
     const { drawWeapons = false, severed = {}, ragdoll = null } = options;
     const padding = overridePadding !== null ? overridePadding : config.PADDING;
     const canvasSize = Math.ceil(config.SIZE + padding * 2);
-
     if (sharedCanvas.width !== canvasSize || sharedCanvas.height !== canvasSize) {
         sharedCanvas.width = canvasSize;
         sharedCanvas.height = canvasSize;
     } else {
         sharedCtx.clearRect(0, 0, canvasSize, canvasSize);
     }
-
     sharedCtx.save();
     sharedCtx.translate(padding, padding);
     sceneRenderer.begin(sharedCtx, viewContext, facing.renderRotation, rig);
@@ -142,11 +116,9 @@ export function drawKinematicsFrameToCanvas(
     }
     sceneRenderer.flush();
     sharedCtx.restore();
-
     sharedCanvas.drawRatio = canvasSize / config.SIZE;
     const feetYInCanvas = padding + config.ANCHOR_Y * config.SIZE;
     const canvasCenterY = canvasSize / 2;
     sharedCanvas.verticalShift = feetYInCanvas - canvasCenterY;
-
     return sharedCanvas;
 }
