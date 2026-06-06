@@ -7,21 +7,12 @@ import { resolveWallVisualHeight } from "./WorldSurfaceSettings.js";
 import { getSurfaceProfileProvider } from "../Procedural/SurfaceProfileProvider.js";
 import { chunkToWorldOrigin, getChunkSizePx, gridBoundsToChunkRange, worldBoundsToChunkRange } from "../Spatial/grid/ChunkGrid.js";
 import { ProgressiveFrameCache } from "./ProgressiveFrameCache.js";
-import {
-    getHorizontalSurfaceZLevels,
-    groundChunkCachePrefix,
-    getGroundChunkAnimationInfo,
-    getWallAtlasAnimationInfo,
-    isWallAtlasAnimationEnabled,
-} from "./bake/SurfaceBakeHelpers.js";
-import {
-    chunkHasWallSegments,
-    clipChunkToRoofFootprints,
-    projectHorizontalSurfaceCorners,
-} from "./HorizontalSurfaceDraw.js";
+import { getHorizontalSurfaceZLevels, groundChunkCachePrefix, getGroundChunkAnimationInfo, getWallAtlasAnimationInfo, isWallAtlasAnimationEnabled } from "./bake/SurfaceBakeHelpers.js";
+import { chunkHasWallSegments, clipChunkToRoofFootprints, projectHorizontalSurfaceCorners } from "./HorizontalSurfaceDraw.js";
 import { drawImageQuad } from "../Canvas/AffineTexture.js";
 import { getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
 import { getWallAtlasCacheInfo } from "./WallSurfaceCache.js";
+import { wallFaceAtlasUnrolledHeight } from "./SurfaceCoordinateMapper.js";
 import { wallFaceColumns } from "./WallFaceColumns.js";
 import { TileWorkerCoordinator } from "./TileWorkerCoordinator.js";
 import { drawBakedTexture, getPixelsPerWorldUnit, shouldSmoothTextureDownsample } from "./WorldSurfaceResolution.js";
@@ -69,9 +60,7 @@ export class WorldSurfaceEngine {
                 const ppwu = getPixelsPerWorldUnit(this.settings);
                 const rev = getSurfaceProfileRevision(profileId);
                 for (const zLevel of getHorizontalSurfaceZLevels(this.settings)) {
-                    this.surfaceCache.deleteByPrefix(
-                        groundChunkCachePrefix(chunkCol, chunkRow, profileId, rev, ppwu, zLevel).substring(6),
-                    );
+                    this.surfaceCache.deleteByPrefix(groundChunkCachePrefix(chunkCol, chunkRow, profileId, rev, ppwu, zLevel).substring(6));
                 }
             }
         }
@@ -81,11 +70,19 @@ export class WorldSurfaceEngine {
         const centerX = (p1.x + p2.x) / 2;
         const centerY = (p1.y + p2.y) / 2;
         return TileWorkerCoordinator.requestWallAtlasBake({
-            width, height, p1, p2, pixelsPerUnit,
+            width,
+            height,
+            p1,
+            p2,
+            pixelsPerUnit,
             seed: surfaceBake.surfaceSeed,
             profileId,
             ...frameRange,
-            centerX, centerY, wallHeight, wallWidth, cellSize: wallWidth,
+            centerX,
+            centerY,
+            wallHeight,
+            wallWidth,
+            cellSize: wallWidth,
             animationBakeFrames: surfaceBake.animationBakeFrames,
             animationSourceFrames: surfaceBake.animationSourceFrames,
         });
@@ -134,25 +131,14 @@ export class WorldSurfaceEngine {
         if (!payload) payload = this._resolveChunkPayload(state, chunkCol, chunkRow, zLevel);
         const resolvedZ = payload.zLevel ?? zLevel;
 
-        const key = groundChunkCachePrefix(
-            chunkCol,
-            chunkRow,
-            payload.profileId,
-            getSurfaceProfileRevision(payload.profileId),
-            getPixelsPerWorldUnit(this.settings),
-            resolvedZ,
-        );
+        const key = groundChunkCachePrefix(chunkCol, chunkRow, payload.profileId, getSurfaceProfileRevision(payload.profileId), getPixelsPerWorldUnit(this.settings), resolvedZ);
         let canvases = this.surfaceCache.get(key);
         if (canvases) return canvases;
 
         const profile = getSurfaceProfileProvider().getProfile(payload.profileId);
         const { enabled: isAnimated, totalFrames, sourceTotal } = getGroundChunkAnimationInfo(profile, this.settings);
         const animationFrameBatchSize = this.settings.animationFrameBatchSize ?? 8;
-        const bakePayload = {
-            ...payload,
-            animationBakeFrames: totalFrames,
-            animationSourceFrames: sourceTotal,
-        };
+        const bakePayload = { ...payload, animationBakeFrames: totalFrames, animationSourceFrames: sourceTotal };
 
         const meta = { kind: "chunk", payload: bakePayload, totalFrames, animationFrameBatchSize };
 
@@ -184,7 +170,7 @@ export class WorldSurfaceEngine {
 
         const canvasWidth = Math.max(1, Math.ceil(edgeLen * pixelsPerUnit));
         const hVal = wallHeight ?? resolveWallVisualHeight(this.settings.cameraHeight, this.settings);
-        const unrolledHeight = 2 * hVal + cellSize;
+        const unrolledHeight = wallFaceAtlasUnrolledHeight(hVal, cellSize);
         const canvasHeight = Math.max(1, Math.ceil(unrolledHeight * pixelsPerUnit));
 
         const wallCenterX = (p1.x + p2.x) / 2;
@@ -193,22 +179,9 @@ export class WorldSurfaceEngine {
         const profile = getSurfaceProfileProvider().getProfile(profileId);
         const { enabled: isAnimated, totalFrames, sourceTotal } = getWallAtlasAnimationInfo(profile, this.settings);
         const animationFrameBatchSize = this.settings.animationFrameBatchSize ?? 8;
-        const bakeSurfaceBake = {
-            ...surfaceBake,
-            animationBakeFrames: totalFrames,
-            animationSourceFrames: sourceTotal,
-        };
+        const bakeSurfaceBake = { ...surfaceBake, animationBakeFrames: totalFrames, animationSourceFrames: sourceTotal };
 
-        const meta = {
-            kind: "wall",
-            width: canvasWidth,
-            height: canvasHeight,
-            p1,
-            p2,
-            pixelsPerUnit,
-            totalFrames,
-            animationFrameBatchSize,
-        };
+        const meta = { kind: "wall", width: canvasWidth, height: canvasHeight, p1, p2, pixelsPerUnit, totalFrames, animationFrameBatchSize };
 
         const bakeFirstFn = () => {
             const frameRange = bakeFrameRange.first();
@@ -285,17 +258,7 @@ export class WorldSurfaceEngine {
      * }} options
      */
     drawGroundChunks(ctx, options) {
-        const {
-            obstacleGrid,
-            viewport,
-            canvasWidth,
-            canvasHeight,
-            state,
-            gameTime = 0,
-            zLevel = 0,
-            wallSpatialIndex = null,
-            beforeDraw,
-        } = options;
+        const { obstacleGrid, viewport, canvasWidth, canvasHeight, state, gameTime = 0, zLevel = 0, wallSpatialIndex = null, beforeDraw } = options;
         const viewerX = viewport.x;
         const viewerY = viewport.y;
         const cellsPerChunk = this.settings.cellsPerChunk;
@@ -334,8 +297,7 @@ export class WorldSurfaceEngine {
             if (canvas.isPlaceholder) continue;
 
             const profile = getSurfaceProfileProvider().getProfile(payload.profileId);
-            const { enabled: chunkAnimationEnabled, totalFrames: bakeTotal, sourceTotal } =
-                getGroundChunkAnimationInfo(profile, this.settings);
+            const { enabled: chunkAnimationEnabled, totalFrames: bakeTotal, sourceTotal } = getGroundChunkAnimationInfo(profile, this.settings);
 
             if (zLevel === 0 && chunkAnimationEnabled && canvases.length > 1) {
                 const sourceFrame = animationFrameIndex(profile.animation, { gameTime });
@@ -345,45 +307,15 @@ export class WorldSurfaceEngine {
 
             if (zLevel > 0) {
                 ctx.save();
-                if (!clipChunkToRoofFootprints(
-                    ctx,
-                    wallSpatialIndex,
-                    chunk.origin.x,
-                    chunk.origin.y,
-                    chunkSizePx,
-                    zLevel,
-                    viewerX,
-                    viewerY,
-                    this.settings.cameraHeight,
-                )) {
+                if (!clipChunkToRoofFootprints(ctx, wallSpatialIndex, chunk.origin.x, chunk.origin.y, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight)) {
                     ctx.restore();
                     continue;
                 }
 
-                const corners = projectHorizontalSurfaceCorners(
-                    chunk.origin.x,
-                    chunk.origin.y,
-                    chunkSizePx,
-                    zLevel,
-                    viewerX,
-                    viewerY,
-                    this.settings.cameraHeight,
-                );
+                const corners = projectHorizontalSurfaceCorners(chunk.origin.x, chunk.origin.y, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight);
                 const prevSmoothing = ctx.imageSmoothingEnabled;
                 ctx.imageSmoothingEnabled = shouldSmoothTextureDownsample(this.settings);
-                drawImageQuad(
-                    ctx,
-                    canvas,
-                    0,
-                    0,
-                    canvas.width,
-                    canvas.height,
-                    corners[0],
-                    corners[1],
-                    corners[2],
-                    corners[3],
-                    { bleedPx: this.settings.wallTextureBleedPx ?? 1 },
-                );
+                drawImageQuad(ctx, canvas, 0, 0, canvas.width, canvas.height, corners[0], corners[1], corners[2], corners[3], { bleedPx: this.settings.wallTextureBleedPx ?? 1 });
                 ctx.imageSmoothingEnabled = prevSmoothing;
                 ctx.restore();
             } else {

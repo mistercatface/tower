@@ -1,3 +1,8 @@
+/** Baked wall-face atlas height in world units (front face + top-edge strip). */
+export function wallFaceAtlasUnrolledHeight(wallHeight, wallWidth) {
+    return wallHeight + wallWidth;
+}
+
 export function createWallFaceAxes(p1, p2) {
     const edgeLen = Math.hypot(p2.x - p1.x, p2.y - p1.y);
     const dirX = (p2.x - p1.x) / edgeLen;
@@ -54,19 +59,13 @@ export function writePixelToSamples(samples, idx, x, y, mapCtx) {
         let foldOffset = 0;
         let wallV = 0;
 
-        if (v < H) {
-            // 1. Back Face
-            const z = v;
-            foldOffset = H + W + (H - z);
-            wallV = z / H;
-        } else if (v < H + W) {
-            // 2. Roof
-            const u = v - H;
-            foldOffset = H + u;
+        if (v < W) {
+            // Top-edge strip (wallV = 1 at the cap)
+            foldOffset = H + v;
             wallV = 1.0;
         } else {
-            // 3. Front Face
-            const z = 2 * H + W - v;
+            // Front face
+            const z = H + W - v;
             foldOffset = z;
             wallV = z / H;
         }
