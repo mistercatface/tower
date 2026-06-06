@@ -7,6 +7,15 @@ import { wallContextFromState } from "../Spatial/query/wallContext.js";
 const DEFAULT_FALL_ANGLE = Math.PI / 2 - 0.08;
 
 /**
+ * Upright tip rolls about local X; yaw must be ⊥ push so the cylinder falls forward.
+ *
+ * @param {number} pushAngle — world direction of the push (velocity, impulse, or shove normal)
+ */
+export function standTipFacingFromPush(pushAngle) {
+    return pushAngle - Math.PI / 2;
+}
+
+/**
  * @param {object} body
  */
 export function initStandTipState(body) {
@@ -73,7 +82,7 @@ export function integrateStandTip(body, dtMs, { wallCtx = null } = {}) {
     const speed = Math.hypot(vx, vy);
     const pushThreshold = strategy.tipPushSpeed ?? 9;
     if (speed > pushThreshold && mobility > 0.05) {
-        body.facing = Math.atan2(vy, vx);
+        body.facing = standTipFacingFromPush(Math.atan2(vy, vx));
         rollOmega += (speed - pushThreshold) * 0.02 * dt * mobility;
         if (rollAngle < 0.1) {
             rollOmega += 0.65 * dt * mobility;

@@ -1,4 +1,5 @@
 import { wakePushableBody } from "../Motion/pushableSleep.js";
+import { standTipFacingFromPush } from "./standTipMotion.js";
 
 /**
  * @param {object} pickup
@@ -9,7 +10,7 @@ export function applyTipImpulseFromForce(pickup, fx, fy) {
     if (!pickup.strategy?.standTip || pickup.isFallen) return;
     const force = Math.hypot(fx, fy);
     if (force < 1) return;
-    pickup.facing = Math.atan2(fy, fx);
+    pickup.facing = standTipFacingFromPush(Math.atan2(fy, fx));
     const gain = pickup.strategy.tipImpulseGain ?? 0.035;
     pickup.rollOmega = (pickup.rollOmega ?? 0) + (force * gain) / Math.max(pickup.mass ?? 1, 0.4);
 }

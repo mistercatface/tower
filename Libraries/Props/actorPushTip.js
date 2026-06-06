@@ -1,4 +1,5 @@
 import { wakePushableBody } from "../Motion/pushableSleep.js";
+import { standTipFacingFromPush } from "./standTipMotion.js";
 import { measureTipFallWallBlock } from "./tipWallSupport.js";
 import { wallContextFromState } from "../Spatial/query/wallContext.js";
 
@@ -21,7 +22,7 @@ export function applyActorPushTipImpulse(actor, pickup, collisionInfo, state = n
 
     const nx = collisionInfo.nx;
     const ny = collisionInfo.ny;
-    pickup.facing = Math.atan2(ny, nx);
+    pickup.facing = standTipFacingFromPush(Math.atan2(ny, nx));
 
     const wallBlock = measureTipFallWallBlock(pickup, state ? wallContextFromState(state) : null);
     if (wallBlock >= 0.85) return;
