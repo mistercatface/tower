@@ -5,13 +5,11 @@ import { createLabeledBoxInspect } from "../../../../Libraries/Inspect/factories
 import { inspectManifest } from "../../config/inspectManifest.js";
 import { buildFuelBarrelInspectMesh } from "./recipes/fuelBarrel/InspectMesh.js";
 import { buildCrateInspectMesh } from "./recipes/crate/InspectMesh.js";
-
 function resolveCrateFaceLabelSrc(subject, face) {
     const variants = getPropAsset("crate")?.visuals?.labelVariants ?? [];
     const idx = subject?.faceLabelVariants?.[face] ?? 0;
     return variants[idx % Math.max(1, variants.length)];
 }
-
 /** @type {Record<string, () => object>} */
 const inspectEntryBuilders = {
     fuel_barrel: () => {
@@ -23,15 +21,10 @@ const inspectEntryBuilders = {
         return withInspectDefaults(createLabeledBoxInspect(visuals, buildCrateInspectMesh, resolveCrateFaceLabelSrc));
     },
 };
-
 export function registerGameInspectEntries() {
     for (const entry of inspectManifest) {
         const build = inspectEntryBuilders[entry.id];
         if (!build) continue;
-        registerInspectEntry(entry.id, {
-            title: entry.title,
-            tapPadding: entry.tapPadding ?? 14,
-            ...build(),
-        });
+        registerInspectEntry(entry.id, { title: entry.title, tapPadding: entry.tapPadding ?? 14, ...build() });
     }
 }

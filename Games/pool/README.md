@@ -1,4 +1,4 @@
-# Pool (Phase 1)
+# Pool
 
 Three-ball pool on a rectangular table. Not tower. Not yard ball.
 

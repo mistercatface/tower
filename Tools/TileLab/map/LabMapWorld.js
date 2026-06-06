@@ -3,8 +3,7 @@ import { withSeededRandom } from "../../../Libraries/Random/index.js";
 import { mapGenCanvasBounds } from "../LabSettings.js";
 import { GamePhase } from "../../../GameState/GamePhase.js";
 import { GameState } from "../../../GameState/GameState.js";
-import { getWorldGen } from "../../../Core/GamePorts.js";
-import { MapGenerator } from "../../../Generator/MapGenerator.js";
+import { generateWorld, getWorldGen } from "../../../Core/GamePorts.js";
 import { ensureLabGameDefinition } from "../../Lab/ensureLabGameDefinition.js";
 /**
  * Full run map — same pipeline as a new game (all nodes, walls, obstacle grid).
@@ -17,7 +16,7 @@ export function createLabMapWorld(options = {}) {
     state.canvasBounds = { ...mapGenCanvasBounds };
     state.phase = GamePhase.SIMULATION;
     withSeededRandom(mapSeed, () => {
-        MapGenerator.generateMap(state);
+        generateWorld(state);
     });
     if (worldSurfaceSeed != null) {
         state.worldSurfaceSeed = worldSurfaceSeed;

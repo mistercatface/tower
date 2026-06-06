@@ -1,14 +1,8 @@
-import { MapGenerator } from "../../Generator/MapGenerator.js";
-import { playBoundsFromObstacleGrid } from "../../Libraries/WorldGen/playBounds.js";
+import { createRoguelikeMapWorldGenPort } from "../../Libraries/WorldGen/presets/roguelikeMap.js";
 import { StartGameBuildingStrategy, getStartGameLayout } from "./tutorial/StartGameBuilding.js";
+import { TOWER_MAP_TOPOLOGY } from "./mapTopology.js";
 /** @type {import("../../Core/GameDefinitionTypes.js").WorldGenPort} */
-export const towerWorldGen = {
-    generateWorld(state) {
-        MapGenerator.generateMap(state);
-    },
-    getPlayBounds(state) {
-        return playBoundsFromObstacleGrid(state.obstacleGrid);
-    },
+export const towerWorldGen = createRoguelikeMapWorldGenPort(TOWER_MAP_TOPOLOGY, {
     startMapNodeId: 0,
     startNodeStrategyKey: "StartGameBuildingStrategy",
     startNodeStrategyLabel: "StartGameBuilding",
@@ -16,4 +10,4 @@ export const towerWorldGen = {
     getStartLayout(px, py, cellSize) {
         return getStartGameLayout(px, py, cellSize);
     },
-};
+});

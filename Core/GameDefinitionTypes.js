@@ -61,6 +61,9 @@
  * @typedef {{ minX: number, minY: number, maxX: number, maxY: number }} WorldPlayBounds
  */
 /**
+ * World bootstrap port — compose via `createWorldGenPort(phases, …)` or presets
+ * (`createSingleArenaWorldGenPort`, `createRoguelikeMapWorldGenPort`) in `Libraries/WorldGen/`.
+ *
  * @typedef {object} WorldGenPort
  * @property {(state: object) => void} generateWorld — build walls, bounds, and surface caches for a new run
  * @property {(state: object) => WorldPlayBounds | null} getPlayBounds — clip rendering/surfaces to playable area

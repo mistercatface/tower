@@ -1,7 +1,4 @@
-/**
- * Game shell layout — shared DOM chrome (Phase 1 UI refactor).
- * Game-specific panels stay in #ui-root until UiPort (Phase 2).
- */
+/** Shared game shell layout — engine chrome; per-game DOM mounts in #ui-root via uiPort. */
 
 #gameWrapper {
     position: relative;

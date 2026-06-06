@@ -1,4 +1,5 @@
-import { mapSettings, mapGenerationSettings } from "../../Config/Config.js";
+import { mapSettings } from "../../Config/Config.js";
+import { TOWER_MAP_TOPOLOGY } from "../../Games/tower/mapTopology.js";
 import { Viewport } from "../../Libraries/Viewport/Viewport.js";
 import { initResizer, setupLabViewportNavigation } from "../Lab/lab-shared.js";
 import { createLabMapWorld } from "../TileLab/map/LabMapWorld.js";
@@ -184,15 +185,15 @@ function buildSettingsPanel() {
     subh1.className = "editor-subhead";
     subh1.textContent = "Topology";
     panel.appendChild(subh1);
-    addSlider("Layers", 1, 20, 1, mapSettings, "numLayers");
-    addSlider("Layer Spacing", 50, 500, 10, mapSettings, "layerSpacing");
-    addSlider("Node Spacing (X)", 50, 500, 10, mapSettings, "xSpacing");
-    addSlider("Node Jitter", 0, 100, 1, mapSettings, "nodeJitter");
+    addSlider("Layers", 1, 20, 1, TOWER_MAP_TOPOLOGY, "numLayers");
+    addSlider("Layer Spacing", 50, 500, 10, TOWER_MAP_TOPOLOGY, "layerSpacing");
+    addSlider("Node Spacing (X)", 50, 500, 10, TOWER_MAP_TOPOLOGY, "xSpacing");
+    addSlider("Node Jitter", 0, 100, 1, TOWER_MAP_TOPOLOGY, "nodeJitter");
     const subh2 = document.createElement("div");
     subh2.className = "editor-subhead";
     subh2.textContent = "Generation Settings";
     panel.appendChild(subh2);
-    addSlider("Extra Conn Chance", 0, 1, 0.05, mapGenerationSettings, "extraConnectionChance");
+    addSlider("Extra Conn Chance", 0, 1, 0.05, TOWER_MAP_TOPOLOGY, "extraConnectionChance");
     const subh3 = document.createElement("div");
     subh3.className = "editor-subhead";
     subh3.textContent = "Scale";

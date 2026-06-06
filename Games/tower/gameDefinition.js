@@ -23,9 +23,7 @@ import { towerInteractionPairs, towerRenderPorts, towerTargeting } from "./ports
 import { towerSimulation } from "./simulation.js";
 import { towerUiPort } from "./ui/towerUiPort.js";
 import { towerWorldGen } from "./worldGen.js";
-
 /** @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition */
-
 /** Tower — reference game definition. Engine ports injected via interactionPairs, targeting, render. */
 export const towerGame = {
     id: "tower",
@@ -37,20 +35,15 @@ export const towerGame = {
     targeting: towerTargeting,
     render: towerRenderPorts,
     worldGen: towerWorldGen,
-
     createUpgrades() {
         return [...createBaseUpgrades(), ...createUpgrades()];
     },
-
     states: { map: MapState, simulation: SimulationState, inspector: InspectorState },
-
     initialState: "simulation",
-
     prepare() {
         registerTowerEntities();
         applyInspectManifestToProps(getWorldPropDefinitions());
     },
-
     registerInspect() {
         registerGameInspectEntries();
     },
