@@ -7,7 +7,9 @@ import { poolRenderPorts, poolTargeting } from "./ports.js";
 import { poolSimulation } from "./simulation.js";
 import { poolUiPort } from "./ui/poolUiPort.js";
 import { poolWorldGen } from "./worldGen.js";
-import { isRadioDialogActive, wirePoolRadio } from "./wireRadio.js";
+import { NOOP_COMBAT_PORT, NOOP_INSPECT_PORT } from "../../Libraries/Ports/noopPorts.js";
+import { wirePoolRadio } from "./wireRadio.js";
+import { poolRadioPort } from "./radioPort.js";
 import { getWorldPropDefinitions, getWorldPropRecipes } from "../../Libraries/Content/PropCatalog.js";
 import { PROP_RECIPE_BUILDERS } from "../../Libraries/Props/recipes/index.js";
 import { POOL_BALL_RADIUS, POOL_BALL_LOW_SPEED_THRESHOLD, POOL_BALL_LOW_SPEED_FRICTION, POOL_BALL_SNAP_SPEED } from "./config/tableLayout.js";
@@ -57,6 +59,9 @@ export const poolGame = {
     runBootstrapPort: createSingleArenaRunBootstrapPort(hideArenaPlayer),
     bootstrapPort: MINIMAL_ARENA_BOOTSTRAP,
     runScenePort: poolRunScenePort,
+    inspectPort: NOOP_INSPECT_PORT,
+    combatPort: NOOP_COMBAT_PORT,
+    radioPort: poolRadioPort,
     createUpgrades() {
         return [];
     },
@@ -71,5 +76,4 @@ export const poolGame = {
         registerPoolBallType(propDefs, recipes, "pool_ball", { kind: "solid", number: 1, color: "#FFD600" });
     },
     wireRadio: wirePoolRadio,
-    isRadioDialogActive,
 };

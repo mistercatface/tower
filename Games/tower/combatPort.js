@@ -1,0 +1,10 @@
+import { ProgressionManager } from "../../Progression/ProgressionManager.js";
+import { unlockProximityFightDialog } from "../../Libraries/RunScene/behaviors/proximityRadioFight.js";
+/** @typedef {import("../../Core/GameDefinitionTypes.js").CombatPort} CombatPort */
+/** @type {CombatPort} */
+export const towerCombatPort = {
+    onRunOpeningComplete({ state, upgrades }) {
+        ProgressionManager.setupNewRunAbilities(state, upgrades);
+        unlockProximityFightDialog(state);
+    },
+};

@@ -1,4 +1,5 @@
 import { fireRadioTrigger } from "../../../Core/EventSystem.js";
+import { getCombatPort } from "../../../Core/GamePorts.js";
 import { ensureRunScene } from "../runSceneState.js";
 /**
  * Opening beat — plays a run-start radio, runs game opening setup, then advances via completeWhen.
@@ -13,7 +14,7 @@ export function runOpeningBehavior(def) {
             fireRadioTrigger(
                 radio,
                 () => {
-                    ctx?.game?.onRunOpeningComplete?.({ state, upgrades: ctx.upgrades });
+                    getCombatPort().onRunOpeningComplete?.({ state, upgrades: ctx.upgrades });
                     if (!runScene.opening) runScene.opening = { completed: false };
                     runScene.opening.completed = true;
                 },

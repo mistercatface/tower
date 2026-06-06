@@ -1,3 +1,4 @@
+import { getCombatPort } from "../../Core/GamePorts.js";
 import { ensureRunScene, getRunSceneIntro, setRunSceneMission } from "./runSceneState.js";
 /**
  * @typedef {import("./compileRunScenes.js").RunSceneConfig} RunSceneConfig
@@ -6,7 +7,7 @@ import { ensureRunScene, getRunSceneIntro, setRunSceneMission } from "./runScene
 export const skipPresets = {
     through_run_start(state, _def, ctx) {
         ensureRunScene(state).opening.completed = true;
-        ctx?.game?.onRunOpeningComplete?.({ state, upgrades: ctx.upgrades });
+        getCombatPort().onRunOpeningComplete?.({ state, upgrades: ctx.upgrades });
     },
     through_intro(state) {
         const intro = getRunSceneIntro(state);

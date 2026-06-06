@@ -1,7 +1,7 @@
 import { perkMilestones, xpForLevel } from "../../../Config/Config.js";
 import { buildAbilityTreeLayout } from "../../../Config/content/abilityTreeLayout.js";
 import { GamePhase, isSimulation } from "../../../GameState/GamePhase.js";
-import { getActiveGameDefinition } from "../../../Core/ActiveGameDefinition.js";
+import { getInspectPort } from "../../../Core/GamePorts.js";
 import { getUiProfile } from "../../../Core/GameUiProfile.js";
 import { getGunDefinition, playerEquipmentCatalog } from "../../../Config/content/guns.js";
 import { getSlotFireIntervalMs, getSlotReloadTimeMs } from "../../../Combat/gunCombat.js";
@@ -91,7 +91,7 @@ function updateInspectMissionBanner(state) {
     const banner = elements.inspectMissionBanner;
     const textEl = elements.inspectMissionText;
     if (!banner || !textEl) return;
-    const bannerInfo = getActiveGameDefinition()?.getInspectMissionBanner?.(state);
+    const bannerInfo = getInspectPort().getMissionBanner(state);
     if (!bannerInfo) {
         if (banner.style.display !== "none") banner.style.display = "none";
         return;

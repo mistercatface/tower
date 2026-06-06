@@ -1,7 +1,7 @@
 import { FloatingText } from "../Render/FloatingText.js";
 import { requestUiUpdate } from "../Core/EventSystem.js";
 import { inspectBridge } from "../Combat/inspect/InspectBridge.js";
-import { getRunScenePort, getSimulationPort } from "../Core/GamePorts.js";
+import { getInspectPort, getRunScenePort, getSimulationPort } from "../Core/GamePorts.js";
 import { resetSimulationWorld, handlePlayerRepositionTap, handlePlayerRepositionDrag } from "../Systems/Simulation/index.js";
 export class MapState {
     onEnter(ctx) {
@@ -77,7 +77,7 @@ export class InspectorState {
         if (ctx.state.player.currentState?.blocksInput) return;
         handlePlayerRepositionTap(ctx, worldCoords, isDoubleTap, {
             intercept: (coords) => {
-                const inspectTarget = ctx.game?.findInspectorInspectPickup?.(ctx.state, coords.x, coords.y);
+                const inspectTarget = getInspectPort().findPickup(ctx.state, coords.x, coords.y);
                 if (!inspectTarget) return false;
                 inspectBridge.open(inspectTarget, null, ctx.state);
                 return true;

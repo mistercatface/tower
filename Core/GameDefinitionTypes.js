@@ -104,6 +104,23 @@
  * @property {boolean} [skipStartPickups] — omit crate/barrel scatter on map reset
  */
 /**
+ * @typedef {object} InspectPort
+ * @property {() => void} [registerEntries]
+ * @property {(state: object) => { show: boolean, text: string }} getMissionBanner
+ * @property {(state: object, worldX: number, worldY: number) => object | null} findPickup
+ * @property {(state: object, inspectKey: string) => void} onMissionOpen
+ * @property {(state: object, inspectKey: string) => void} onMissionClose
+ * @property {(state: object) => boolean} isMissionActive
+ */
+/**
+ * @typedef {object} CombatPort
+ * @property {(ctx: { state: object, upgrades: object[] }) => void} [onRunOpeningComplete]
+ */
+/**
+ * @typedef {object} RadioPort
+ * @property {() => boolean} isDialogActive
+ */
+/**
  * @typedef {import("./GameUiProfile.js").GameUiProfile} GameUiProfile
  */
 /**
@@ -126,16 +143,11 @@
  * @property {RunBootstrapPort} runBootstrapPort — new-run entity/world setup after `generateWorld`
  * @property {BootstrapPort} bootstrapPort — feature-gated `createGame` boot
  * @property {RunScenePort} runScenePort — run scene enter/tick/capabilities
+ * @property {InspectPort} inspectPort — inspect mission hooks + catalog registration
+ * @property {CombatPort} combatPort — run-opening combat setup
+ * @property {RadioPort} radioPort — dialog input guards
  * @property {() => void | Promise<void>} [prepare]
- * @property {() => void} [registerInspect]
- * @property {(ctx: { state: object, upgrades: object[] }) => void} [onRunOpeningComplete]
- * @property {() => boolean} [isRadioDialogActive]
  * @property {(eventBus: object, pauseApi: { requestPause: (reason: string) => void, requestResume: (reason: string) => void }) => void} [wireRadio]
- * @property {(state: object) => { show: boolean, text: string }} [getInspectMissionBanner]
- * @property {(state: object, worldX: number, worldY: number) => object | null} [findInspectorInspectPickup]
- * @property {(state: object, inspectKey: string) => void} [onInspectMissionOpen]
- * @property {(state: object, inspectKey: string) => void} [onInspectMissionClose]
- * @property {(state: object) => boolean} [isInspectMissionActive]
  * @property {Partial<import("./GameUiProfile.js").GameUiProfile>} [ui]
  * @property {Partial<import("./GamePerspective.js").PerspectiveConfig>} [perspective]
  * @property {number} [propPixelSize] — target bake diameter for small props; large props auto-match world size

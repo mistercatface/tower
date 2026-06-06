@@ -1,5 +1,5 @@
 import { inspectBridge } from "../../Combat/inspect/InspectBridge.js";
-import { getBootstrapPort } from "../../Core/GamePorts.js";
+import { getBootstrapPort, getInspectPort } from "../../Core/GamePorts.js";
 import { requestGamePause, requestGameResume } from "../../Core/EventSystem.js";
 import { InputManager } from "../../Core/InputManager.js";
 import { loadPersistentTriggers } from "../../Core/PersistentTriggers.js";
@@ -43,7 +43,7 @@ export function applyGameBootstrap(ctx) {
     mountUiPort({ state, upgrades });
     if (features.inspect) {
         inspectBridge.mount();
-        definition.registerInspect?.();
+        getInspectPort().registerEntries?.();
         preloadAllInspectAssets();
     }
     resizeCanvas();

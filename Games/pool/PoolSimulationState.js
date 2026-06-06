@@ -1,6 +1,6 @@
 import { inspectBridge } from "../../Combat/inspect/InspectBridge.js";
 import { requestUiUpdate } from "../../Core/EventSystem.js";
-import { getRunScenePort, getSimulationPort } from "../../Core/GamePorts.js";
+import { getRadioPort, getRunScenePort, getSimulationPort } from "../../Core/GamePorts.js";
 import { resetSimulationWorld } from "../../Systems/Simulation/index.js";
 import { getCueBall, ensurePoolState } from "./balls.js";
 import { tryBeginAim, updateAim, releaseAimShot, getAimPreview } from "./shotInput.js";
@@ -94,7 +94,7 @@ export class PoolSimulationState {
         canvasCtx.restore();
     }
     _inputBlocked(ctx) {
-        return inspectBridge.isOpen() || ctx.state.isPaused || ctx.game?.isRadioDialogActive?.();
+        return inspectBridge.isOpen() || ctx.state.isPaused || getRadioPort().isDialogActive();
     }
     handlePointerDown(worldCoords, _isDoubleTap, event, ctx) {
         if (this._inputBlocked(ctx)) return;
