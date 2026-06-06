@@ -65,7 +65,13 @@ export { hasLineOfSight } from "./query/lineOfSight.js";
 export { SpatialFrameCore } from "./world/SpatialFrameCore.js";
 
 // Iso / structure
-export { CAMERA_HEIGHT, projectVertical } from "./iso/IsometricProjection.js";
+export {
+    CAMERA_HEIGHT,
+    projectVertical,
+    resolveElevationAlpha,
+    projectWorldPointAtHeight,
+    projectWorldRectCorners,
+} from "./iso/IsometricProjection.js";
 export {
     rotateLocalX,
     transformLongAxisVertex,

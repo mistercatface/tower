@@ -1,45 +1,16 @@
 /**
  * World-aligned horizontal surface chunks (ground z=0, elevated roofs z>0).
  */
+import { projectWorldPointAtHeight, projectWorldRectCorners } from "../Spatial/iso/IsometricProjection.js";
 
-/**
- * @param {number} worldX
- * @param {number} worldY
- * @param {number} zLevel
- * @param {number} viewerX
- * @param {number} viewerY
- * @param {number} cameraHeight
- */
+/** @returns {{ x: number, y: number }} */
 export function projectHorizontalSurfaceOrigin(worldX, worldY, zLevel, viewerX, viewerY, cameraHeight) {
-    if (zLevel <= 0 || cameraHeight <= zLevel) {
-        return { x: worldX, y: worldY };
-    }
-    const alpha = zLevel / (cameraHeight - zLevel);
-    return {
-        x: worldX + (worldX - viewerX) * alpha,
-        y: worldY + (worldY - viewerY) * alpha,
-    };
+    return projectWorldPointAtHeight(worldX, worldY, viewerX, viewerY, zLevel, cameraHeight);
 }
 
-/**
- * Project the four corners of a world-axis-aligned horizontal chunk at zLevel.
- *
- * @param {number} originX
- * @param {number} originY
- * @param {number} sizePx
- * @param {number} zLevel
- * @param {number} viewerX
- * @param {number} viewerY
- * @param {number} cameraHeight
- * @returns {[{ x: number, y: number }, { x: number, y: number }, { x: number, y: number }, { x: number, y: number }]}
- */
+/** @returns {[{ x: number, y: number }, { x: number, y: number }, { x: number, y: number }, { x: number, y: number }]} */
 export function projectHorizontalSurfaceCorners(originX, originY, sizePx, zLevel, viewerX, viewerY, cameraHeight) {
-    return [
-        projectHorizontalSurfaceOrigin(originX, originY, zLevel, viewerX, viewerY, cameraHeight),
-        projectHorizontalSurfaceOrigin(originX + sizePx, originY, zLevel, viewerX, viewerY, cameraHeight),
-        projectHorizontalSurfaceOrigin(originX + sizePx, originY + sizePx, zLevel, viewerX, viewerY, cameraHeight),
-        projectHorizontalSurfaceOrigin(originX, originY + sizePx, zLevel, viewerX, viewerY, cameraHeight),
-    ];
+    return projectWorldRectCorners(originX, originY, sizePx, zLevel, viewerX, viewerY, cameraHeight);
 }
 
 /**

@@ -17,15 +17,72 @@ export function setPerspectiveStrength(val) {
     PERSPECTIVE_STRENGTH = Math.max(0, val);
 }
 
+/**
+ * Radial extrusion factor for a world point at elevation height.
+ *
+ * @param {number} height
+ * @param {number} cameraHeight
+ * @param {number} [strength]
+ */
+export function resolveElevationAlpha(height, cameraHeight, strength = 1) {
+    if (height <= 0 || cameraHeight <= height) return 0;
+    return (height / (cameraHeight - height)) * strength;
+}
+
+/**
+ * Project a world point to its screen position at elevation height.
+ * Shared by horizontal surfaces, wall roof caps, and iso props.
+ *
+ * @param {number} worldX
+ * @param {number} worldY
+ * @param {number} viewerX
+ * @param {number} viewerY
+ * @param {number} height
+ * @param {number} cameraHeight
+ * @param {number} [strength]
+ * @returns {{ x: number, y: number }}
+ */
+export function projectWorldPointAtHeight(worldX, worldY, viewerX, viewerY, height, cameraHeight, strength = 1) {
+    const alpha = resolveElevationAlpha(height, cameraHeight, strength);
+    if (alpha <= 0) {
+        return { x: worldX, y: worldY };
+    }
+    return {
+        x: worldX + (worldX - viewerX) * alpha,
+        y: worldY + (worldY - viewerY) * alpha,
+    };
+}
+
+/**
+ * Project the four corners of a world-axis-aligned rectangle at elevation height.
+ *
+ * @param {number} originX
+ * @param {number} originY
+ * @param {number} sizePx
+ * @param {number} height
+ * @param {number} viewerX
+ * @param {number} viewerY
+ * @param {number} cameraHeight
+ * @param {number} [strength]
+ * @returns {[{ x: number, y: number }, { x: number, y: number }, { x: number, y: number }, { x: number, y: number }]}
+ */
+export function projectWorldRectCorners(originX, originY, sizePx, height, viewerX, viewerY, cameraHeight, strength = 1) {
+    return [
+        projectWorldPointAtHeight(originX, originY, viewerX, viewerY, height, cameraHeight, strength),
+        projectWorldPointAtHeight(originX + sizePx, originY, viewerX, viewerY, height, cameraHeight, strength),
+        projectWorldPointAtHeight(originX + sizePx, originY + sizePx, viewerX, viewerY, height, cameraHeight, strength),
+        projectWorldPointAtHeight(originX, originY + sizePx, viewerX, viewerY, height, cameraHeight, strength),
+    ];
+}
+
 export function projectVertical(objX, objY, viewerX, viewerY, height) {
     const dx = objX - viewerX;
     const dy = objY - viewerY;
     const dist = Math.hypot(dx, dy);
-    const alpha = (height / (CAMERA_HEIGHT - height)) * PERSPECTIVE_STRENGTH;
-    const topX = dist === 0 ? objX : objX + dx * alpha;
-    const topY = dist === 0 ? objY : objY + dy * alpha;
+    const alpha = resolveElevationAlpha(height, CAMERA_HEIGHT, PERSPECTIVE_STRENGTH);
+    const top = projectWorldPointAtHeight(objX, objY, viewerX, viewerY, height, CAMERA_HEIGHT, PERSPECTIVE_STRENGTH);
     const viewAngle = Math.atan2(dy, dx);
-    return { cx: objX, cy: objY, dx, dy, dist, alpha, topX, topY, viewAngle, height };
+    return { cx: objX, cy: objY, dx, dy, dist, alpha, topX: top.x, topY: top.y, viewAngle, height };
 }
 
 export function getHeightSlice(projection, baseSize, t) {

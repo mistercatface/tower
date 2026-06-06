@@ -42,7 +42,7 @@ export class Renderer {
                 },
             },
             { zIndex: 60, fn: (state, viewport) => this.renderExplosions(state, viewport) },
-            { zIndex: 70, fn: (state, viewport) => this.render3D.draw3DBuildings(this.ctx, buildWorldRenderInput(state, viewport), viewport) },
+            { zIndex: 70, fn: (state, viewport) => this.render3D.draw3DBuildings(this.ctx, this.getWorldRenderInput(state, viewport), viewport) },
             { zIndex: 71, fn: (state, viewport) => state.worldSurfaces.drawRoofs(this.ctx, state, viewport) },
             {
                 zIndex: 74,
@@ -97,7 +97,17 @@ export class Renderer {
         this._combatPipeline = pipeline.map((p) => p.fn);
     }
 
+    /** Cached once per simulation frame — walls + explosions share the same draw input. */
+    getWorldRenderInput(state, viewport) {
+        if (!this._frameWorldRenderInput) {
+            this._frameWorldRenderInput = buildWorldRenderInput(state, viewport);
+        }
+        return this._frameWorldRenderInput;
+    }
+
     renderSimulationScene(state, viewport) {
+        this._frameWorldRenderInput = null;
+
         this.ctx.save();
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
@@ -232,7 +242,7 @@ export class Renderer {
             offCtx.fillStyle = "#000000";
             offCtx.save();
             offCtx.translate(cx - exp.x, cy - exp.y);
-            this.render3D.drawExplosion(exp.x, exp.y, exp.maxRadius, buildWorldRenderInput(state, viewport), offCtx);
+            this.render3D.drawExplosion(exp.x, exp.y, exp.maxRadius, this.getWorldRenderInput(state, viewport), offCtx);
             offCtx.restore();
 
             this.ctx.save();

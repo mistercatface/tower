@@ -7,6 +7,7 @@ import { drawImageQuad } from "../../Canvas/AffineTexture.js";
 /** @typedef {import("../WorldSceneTypes.js").SurfaceBakeContext} SurfaceBakeContext */
 
 import { getPixelsPerWorldUnit, shouldSmoothTextureDownsample } from "../../WorldSurface/WorldSurfaceResolution.js";
+import { resolveElevationAlpha } from "../../Spatial/iso/IsometricProjection.js";
 
 export { wallFaceColumns } from "../../WorldSurface/WallFaceColumns.js";
 
@@ -37,7 +38,7 @@ export function computeProjectedFace(p1, p2, px, py, wallHeight, settings, out =
     const dist2 = Math.hypot(p2.x - px, p2.y - py);
     const { cameraHeight } = settings;
     const clampedHeight = Math.min(wallHeight, cameraHeight - 1);
-    const alpha = clampedHeight / (cameraHeight - clampedHeight);
+    const alpha = resolveElevationAlpha(clampedHeight, cameraHeight);
 
     out.proj1X = p1.x + Math.cos(angle1) * dist1 * alpha;
     out.proj1Y = p1.y + Math.sin(angle1) * dist1 * alpha;
@@ -129,7 +130,7 @@ function drawFaceTexture(ctx, p1, p2, face, worldSurfaces, surfaceBake, viewer, 
     const bleedPx = settings.wallTextureBleedPx ?? 1;
 
     const clampedHeight = Math.min(wallHeight, settings.cameraHeight - 1);
-    const alphaMax = clampedHeight / (settings.cameraHeight - clampedHeight);
+    const alphaMax = resolveElevationAlpha(clampedHeight, settings.cameraHeight);
     if (alphaMax <= 0) {
         ctx.fillStyle = fillStyle;
         ctx.fill();
@@ -160,8 +161,8 @@ function drawFaceTexture(ctx, p1, p2, face, worldSurfaces, surfaceBake, viewer, 
         if (bottomZ >= settings.cameraHeight) break;
         if (topZ >= settings.cameraHeight) topZ = settings.cameraHeight - 1;
 
-        const alphaBottom = bottomZ / (settings.cameraHeight - bottomZ);
-        const alphaTop = topZ / (settings.cameraHeight - topZ);
+        const alphaBottom = resolveElevationAlpha(bottomZ, settings.cameraHeight);
+        const alphaTop = resolveElevationAlpha(topZ, settings.cameraHeight);
 
         const v0 = alphaBottom / alphaMax;
         const v1 = alphaTop / alphaMax;

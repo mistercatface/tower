@@ -2,6 +2,7 @@
 
 import { resolveWallVisualHeight } from "../../WorldSurface/WorldSurfaceSettings.js";
 import { SpatialQuery } from "../../Spatial/query/SpatialQuery.js";
+import { projectWorldPointAtHeight } from "../../Spatial/iso/IsometricProjection.js";
 import { alignBoundsToHash, getViewQueryBounds } from "../common/viewportUtils.js";
 import { drawProjectedWallFace, drawProjectedWallRoof } from "./ProjectedWallDraw.js";
 import { applySharedEdgeFlags, requestSharedEdgeSolve, writeWallGeometry } from "./SharedEdgeBridge.js";
@@ -106,13 +107,10 @@ export class StructureRenderer {
 
         const chunkRoofsEnabled = (input.worldSurfaces?.settings?.roofZLevels?.length ?? 0) > 0;
         if (!chunkRoofsEnabled && wallHeight < this.settings.cameraHeight) {
-            const alpha = wallHeight / (this.settings.cameraHeight - wallHeight);
             const baseCorners = [edges[0][0], edges[1][0], edges[2][0], edges[3][0]];
-            const topCorners = baseCorners.map((c) => {
-                const dx = c.x - px;
-                const dy = c.y - py;
-                return { x: c.x + dx * alpha, y: c.y + dy * alpha };
-            });
+            const topCorners = baseCorners.map((c) =>
+                projectWorldPointAtHeight(c.x, c.y, px, py, wallHeight, this.settings.cameraHeight),
+            );
 
             const wallColor = this.getWallColor(seg, 1.08);
             drawProjectedWallRoof(ctx, topCorners, seg, wallColor, input.worldSurfaces, input.surfaceBake, viewport, edges[0]);
