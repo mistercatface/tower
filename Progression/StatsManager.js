@@ -1,9 +1,7 @@
-import { gridSettings, perkMilestones, xpForLevel } from "../Config/Config.js";
+import { perkMilestones, xpForLevel } from "../Config/Config.js";
 import { createUpgradeLevels, resetUpgradeLevels } from "../Entities/CombatantStats.js";
 import { spawnFloatingText } from "../Core/EventSystem.js";
-import { generateWorld, getWorldGen } from "../Core/GamePorts.js";
-import { rollPlayerStartLoadout } from "../Combat/weaponLoadout.js";
-import { spawnInitialPickups, spawnStartGamePickups } from "../Entities/Pickup.js";
+import { resetRun } from "../Core/GamePorts.js";
 export class StatsManager {
     static initUpgradesList(state, upgradeList) {
         state.upgradeDefs = upgradeList;
@@ -41,51 +39,6 @@ export class StatsManager {
         });
     }
     static resetRun(state, upgradesList) {
-        state.initializeDefaultState();
-        const player = state.player;
-        if (upgradesList)
-            upgradesList.forEach((upg) => {
-                if (upg.isAbility) state.abilityTimers[upg.id] = { readyTime: 0, activeUntil: 0, activeId: null, cooldownId: null };
-            });
-        StatsManager.recalculateStats(state, upgradesList);
-        for (const key in player.upgrades) {
-            if (upgradesList) {
-                const upgDef = upgradesList.find((u) => u.id === key);
-                if (upgDef) {
-                    if (upgDef.isAbility)
-                        if (player.startingAbilities && player.startingAbilities.includes(key)) player.upgrades[key].baseLevel = 1;
-                        else player.upgrades[key].baseLevel = 0;
-                    player.upgrades[key].baseLevel = Math.min(player.upgrades[key].baseLevel, upgDef.maxLevel);
-                }
-            }
-            player.upgrades[key].level = player.upgrades[key].baseLevel;
-            player.upgrades[key].ptsCost = state.runStats.baseUpgradeCost.value;
-        }
-        if (player.startingAbilities)
-            player.startingAbilities.forEach((abilityId) => {
-                state.abilities[abilityId] = true;
-            });
-        if (upgradesList)
-            upgradesList.forEach((upg) => {
-                if (upg.onRunStart && player.upgrades[upg.id] && player.upgrades[upg.id].baseLevel > 0) upg.onRunStart(state);
-            });
-        StatsManager.recalculateStats(state, upgradesList);
-        player.applyWeaponLoadout(rollPlayerStartLoadout(), { state, upgradeDefs: upgradesList });
-        generateWorld(state);
-        const worldGen = getWorldGen();
-        const startNode = state.getMapNode(worldGen.startMapNodeId ?? 0);
-        if (startNode) {
-            const coords = state.getNodeWorldCoords(startNode);
-            const layout = worldGen.getStartLayout(coords.x, coords.y, gridSettings.cellSize);
-            state.player.setSpawnPosition(layout.spawnX, layout.spawnY);
-            state.player.resetToSpawn();
-            state.spawnRunParty();
-        }
-        if (!worldGen.skipStartPickups)
-            for (const node of state.mapNodes) {
-                const coords = state.getNodeWorldCoords(node);
-                if (node.id === (worldGen.startMapNodeId ?? 0)) spawnStartGamePickups(state, coords.x, coords.y);
-                else spawnInitialPickups(state, coords.x, coords.y);
-            }
+        resetRun(state, upgradesList);
     }
 }

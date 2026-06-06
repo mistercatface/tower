@@ -58,6 +58,10 @@
  * @property {(ctx: UiContext) => void} updateUI
  */
 /**
+ * @typedef {object} RunBootstrapPort
+ * @property {(state: object, upgrades: object[]) => void} resetRun
+ */
+/**
  * @typedef {{ minX: number, minY: number, maxX: number, maxY: number }} WorldPlayBounds
  */
 /**
@@ -94,6 +98,7 @@
  * @property {TargetingPort} targeting
  * @property {RenderPorts} render
  * @property {WorldGenPort} worldGen
+ * @property {RunBootstrapPort} runBootstrapPort — new-run entity/world setup after `generateWorld`
  * @property {() => void | Promise<void>} [prepare]
  * @property {() => void} [registerInspect]
  * @property {(ctx: { state: object, upgrades: object[] }) => void} [onRunOpeningComplete]

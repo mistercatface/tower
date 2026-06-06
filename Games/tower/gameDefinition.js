@@ -22,19 +22,23 @@ import { getWorldPropDefinitions } from "../../Libraries/Content/PropCatalog.js"
 import { towerInteractionPairs, towerRenderPorts, towerTargeting } from "./ports.js";
 import { towerSimulation } from "./simulation.js";
 import { towerUiPort } from "./ui/towerUiPort.js";
+import { createRoguelikeRunBootstrapPort } from "../../Libraries/RunBootstrap/presets/roguelikeMap.js";
 import { towerWorldGen } from "./worldGen.js";
+import { TOWER_UI_PROFILE } from "./uiProfile.js";
 /** @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition */
 /** Tower — reference game definition. Engine ports injected via interactionPairs, targeting, render. */
 export const towerGame = {
     id: "tower",
     canvasId: "gameCanvas",
     saveKey: "tower_save_v4",
+    ui: TOWER_UI_PROFILE,
     interactionPairs: towerInteractionPairs,
     simulationPort: towerSimulation,
     uiPort: towerUiPort,
     targeting: towerTargeting,
     render: towerRenderPorts,
     worldGen: towerWorldGen,
+    runBootstrapPort: createRoguelikeRunBootstrapPort(),
     createUpgrades() {
         return [...createBaseUpgrades(), ...createUpgrades()];
     },

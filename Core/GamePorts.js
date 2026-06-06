@@ -8,6 +8,7 @@ import { getActiveGameDefinition } from "./ActiveGameDefinition.js";
 /** @typedef {import("./GameDefinitionTypes.js").TargetingPort} TargetingPort */
 /** @typedef {import("./GameDefinitionTypes.js").RenderPorts} RenderPorts */
 /** @typedef {import("./GameDefinitionTypes.js").WorldGenPort} WorldGenPort */
+/** @typedef {import("./GameDefinitionTypes.js").RunBootstrapPort} RunBootstrapPort */
 function requireGameDefinition() {
     const def = getActiveGameDefinition();
     if (!def) throw new Error("No active game definition — call setActiveGameDefinition before using game ports.");
@@ -48,6 +49,16 @@ export function getWorldGen() {
     const worldGen = requireGameDefinition().worldGen;
     if (!worldGen) throw new Error("Active game definition missing worldGen port.");
     return worldGen;
+}
+/** @returns {RunBootstrapPort} */
+export function getRunBootstrapPort() {
+    const port = requireGameDefinition().runBootstrapPort;
+    if (!port) throw new Error("Active game definition missing runBootstrapPort.");
+    return port;
+}
+/** @param {object} state @param {object[]} upgrades */
+export function resetRun(state, upgrades) {
+    getRunBootstrapPort().resetRun(state, upgrades);
 }
 /** @param {object} state */
 export function generateWorld(state) {

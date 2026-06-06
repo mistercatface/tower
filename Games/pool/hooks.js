@@ -1,19 +1,9 @@
 import { ensureRunScene } from "../../Libraries/RunScene/runSceneState.js";
 import { getStartRunAtScene, runSceneController } from "./config/runScenes.js";
 import { poolRunScenePorts } from "./runScenePorts.js";
+import { hideArenaPlayer } from "./arenaPlayer.js";
 import { spawnPoolBalls, ensurePoolState } from "./balls.js";
 import { processPockets } from "./pockets.js";
-function hidePlayerForPool(player) {
-    player.render = () => {};
-    player.renderCombatHudClassic = () => {};
-    player.desiredX = 0;
-    player.desiredY = 0;
-    player.vx = 0;
-    player.vy = 0;
-    player.isMoving = false;
-    player.turrets = [];
-    player.weaponLoadout = [];
-}
 function clearNonPoolPickups(state) {
     if (!state.pickups) return;
     state.pickups.length = 0;
@@ -21,7 +11,7 @@ function clearNonPoolPickups(state) {
 /** @param {import("../../GameState/GameStateMachine.js").GameStateMachineContext} ctx */
 export function onSimulationEnter(ctx) {
     const { state } = ctx;
-    hidePlayerForPool(state.player);
+    hideArenaPlayer(state.player);
     state.abilities = {};
     state.allies = [];
     if (!state.runSceneInitialized) {
