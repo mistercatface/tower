@@ -2,12 +2,12 @@ import { kinematicsPixelSize } from "../../Config/Config.js";
 import { blitCenteredSprite } from "../../Libraries/Canvas/QuantizedSpriteCache.js";
 import { CAMERA_HEIGHT } from "../../Libraries/Spatial/iso/IsometricProjection.js";
 import { createKinematicsBundle } from "./createKinematicsBundle.js";
-import { towerKinematicsPorts } from "../../Games/tower/kinematics/ports.js";
+import { getRenderPorts } from "../../Core/GamePorts.js";
 
 export class ActorKinematicsRenderer {
     constructor(radius) {
         const displayDiameter = radius * 4;
-        this.bundle = createKinematicsBundle({ pixelSize: kinematicsPixelSize, cameraHeight: CAMERA_HEIGHT, maxTiltDist: radius * 15, displayDiameter, ports: towerKinematicsPorts });
+        this.bundle = createKinematicsBundle({ pixelSize: kinematicsPixelSize, cameraHeight: CAMERA_HEIGHT, maxTiltDist: radius * 15, displayDiameter, ports: getRenderPorts().kinematicsPorts });
         this.displayDiameter = displayDiameter;
     }
 

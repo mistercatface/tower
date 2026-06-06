@@ -2,11 +2,10 @@ import "./WorldSurfaceBootstrap.js";
 import { getGameWorldSurfaceSettings } from "./WorldSurfaceBootstrap.js";
 import { SpriteCache } from "../Libraries/Canvas/SpriteCache.js";
 import { WorldSceneRenderer } from "../Libraries/Render/WorldSceneRenderer.js";
-import { world3dPropRecipes } from "../Games/tower/content/world3d/world3dContent.js";
+import { getPlayerActors, getRenderPorts } from "../Core/GamePorts.js";
 import { buildWorldRenderInput } from "./adapters/WorldRenderAdapter.js";
 import { COMBAT_HUD_MODE, hudSettings, combatVisualSettings } from "../Config/Config.js";
 import { getWorldDrawCoords, isWorldScene } from "../GameState/GamePhase.js";
-import { getPlayerActors } from "../Games/tower/targeting.js";
 import { drawHostileOffScreenIndicators } from "./OffScreenIndicators.js";
 import { CombatParticles } from "./CombatParticles.js";
 import { renderMapView } from "./Map/MapViewRenderer.js";
@@ -19,7 +18,7 @@ export class Renderer {
         this.actorCache = new SpriteCache();
         this.turretCache = new SpriteCache();
         this.floatingTextCache = new SpriteCache();
-        this.render3D = new WorldSceneRenderer(getGameWorldSurfaceSettings(), world3dPropRecipes);
+        this.render3D = new WorldSceneRenderer(getGameWorldSurfaceSettings(), getRenderPorts().world3dPropRecipes);
         this.effectPasses = [
             { zIndex: -5, fn: (state, viewport) => state.worldSurfaces.drawGround(this.ctx, state, viewport) },
             { zIndex: 19, fn: (state, viewport) => this.drawDebris(state, viewport) },

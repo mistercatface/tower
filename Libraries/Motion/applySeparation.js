@@ -1,6 +1,11 @@
 import { SeparationEngine } from "./SeparationEngine.js";
 
-const defaultEngine = new SeparationEngine();
+let defaultEngine = null;
+
+function getDefaultSeparationEngine() {
+    if (!defaultEngine) defaultEngine = new SeparationEngine();
+    return defaultEngine;
+}
 
 /** @returns {{ x: number, y: number, pushX: number, pushY: number }} */
 export function createSeparationState() {
@@ -14,7 +19,8 @@ export function createSeparationState() {
  * @param {{ getNeighbors: (entity: object) => object[] }} spatialFrame
  * @param {SeparationEngine} [engine]
  */
-export function updateSeparation(body, spatialFrame, engine = defaultEngine) {
+export function updateSeparation(body, spatialFrame, engine) {
+    engine ??= getDefaultSeparationEngine();
     if (!body.separation) body.separation = createSeparationState();
     const acc = engine.compute(body, spatialFrame.getNeighbors(body));
     body.separation.x = acc.x;

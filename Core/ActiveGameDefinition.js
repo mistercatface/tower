@@ -1,7 +1,7 @@
-/** @type {import("../Games/tower/gameDefinition.js").GameDefinition | null} */
+/** @type {import("./GameDefinitionTypes.js").GameDefinition | null} */
 let activeGameDefinition = null;
 
-/** @param {import("../Games/tower/gameDefinition.js").GameDefinition} definition */
+/** @param {import("./GameDefinitionTypes.js").GameDefinition} definition */
 export function setActiveGameDefinition(definition) {
     activeGameDefinition = definition;
 }

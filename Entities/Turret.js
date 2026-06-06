@@ -5,7 +5,7 @@ import { defaultTurretLoadout, resolveFireAngleOffsets } from "../Config/content
 import { Pools } from "../Core/Pools.js";
 import { applyKnockback } from "../Libraries/Motion/index.js";
 import { getGunProjectileConfig } from "../Combat/gunCombat.js";
-import { inferFaction, areHostile } from "../Games/tower/targeting.js";
+import { inferFaction, areHostile } from "../Core/GamePorts.js";
 import { CombatParticles } from "../Render/CombatParticles.js";
 import { resolveKinematicsMuzzlePosition, resolveActorKinematicsCamera } from "../Render/Kinematics/ActorKinematicsRenderer.js";
 

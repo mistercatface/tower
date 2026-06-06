@@ -15,7 +15,7 @@ import { explosionSettings } from "../Config/Config.js";
 import { resolveActorTurretLoadouts, applyGunTurretLoadouts, applyUpgradeTurretLoadouts } from "../Config/content/turrets/definitions.js";
 import { getTurretCountForLoadout, normalizeWeaponLoadout } from "../Combat/equipmentLoadout.js";
 import { ProgressBar } from "../Libraries/Canvas/ProgressBar.js";
-import { getNearestHostile } from "../Games/tower/targeting.js";
+import { getNearestHostile } from "../Core/GamePorts.js";
 import { getActorProfileForActor, getActorProfileForType } from "../Config/content/actorProfiles.js";
 import { advanceActorKinematics, clearActorKinematics } from "../Render/Kinematics/ActorKinematicsRenderer.js";
 import { CombatParticles } from "../Render/CombatParticles.js";

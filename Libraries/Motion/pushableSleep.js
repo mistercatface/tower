@@ -1,5 +1,4 @@
-import { PairFilter } from "../Interaction/PairFilter.js";
-import { PUSHABLE_SLEEP_BLOCKER } from "../../Games/tower/presets/combat.js";
+import { getCombatPairFilter } from "../../Core/GamePorts.js";
 import { isMovingEntity, pairBroadphaseOverlap } from "../Spatial/collision/entityBroadphase.js";
 
 /** Consecutive still frames required before a pushable is treated as sleeping. */
@@ -7,8 +6,6 @@ export const SLEEP_FRAMES = 30;
 
 /** Max |angularVelocity| (rad/s) while counting toward sleep. */
 export const SLEEP_ANGULAR_EPS = 0.1;
-
-const defaultSleepBlockerFilter = new PairFilter(PUSHABLE_SLEEP_BLOCKER);
 
 /** @param {object} entity */
 export function isPushable(entity) {
@@ -62,7 +59,7 @@ export function advancePushableSleep(entity, eligible, requiredFrames = SLEEP_FR
  * @param {{ filter?: PairFilter, pairOverlaps?: (a: object, b: object) => boolean }} [opts]
  */
 export function hasSleepBlockingOverlap(pickup, neighbors, {
-    filter = defaultSleepBlockerFilter,
+    filter = getCombatPairFilter("pushableSleepBlocker"),
     pairOverlaps = pairBroadphaseOverlap,
 } = {}) {
     for (let i = 0; i < neighbors.length; i++) {

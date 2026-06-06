@@ -14,7 +14,7 @@ import { inspectBridge } from "../Combat/inspect/InspectBridge.js";
 import { preloadAllInspectAssets } from "../Libraries/Inspect/InspectCatalog.js";
 import { setActiveGameDefinition } from "./ActiveGameDefinition.js";
 
-/** @typedef {import("../Games/tower/gameDefinition.js").GameDefinition} GameDefinition */
+/** @typedef {import("./GameDefinitionTypes.js").GameDefinition} GameDefinition */
 
 /**
  * Bootstrap a game from a definition manifest (FSM, loop, listeners, UI).

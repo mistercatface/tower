@@ -4,7 +4,7 @@ import { getSlotFireIntervalMs } from "./gunCombat.js";
 import { Laser } from "../Entities/Laser.js";
 import { getBeamTickDamage, createBeamHitSource } from "./impactDamage.js";
 import { getGunDefinition } from "../Config/content/guns.js";
-import { areHostile, getNearestHostile, getPlayerActors, isValidTurretTarget } from "../Games/tower/targeting.js";
+import { areHostile, getNearestHostile, getPlayerActors, isValidTurretTarget } from "../Core/GamePorts.js";
 import { normalizeWeaponLoadout } from "./equipmentLoadout.js";
 import { getActiveGameDefinition } from "../Core/ActiveGameDefinition.js";
 

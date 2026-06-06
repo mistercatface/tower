@@ -1,5 +1,5 @@
 import { normalizeAngle } from "../Libraries/Math/Angle.js";
-import { areHostile } from "../Games/tower/targeting.js";
+import { areHostile } from "../Core/GamePorts.js";
 import { Actor } from "./Actor.js";
 import { emitCombatEnemyKilled } from "../Core/EventSystem.js";
 import { NAV_PROFILES } from "../Config/Config.js";

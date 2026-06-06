@@ -21,40 +21,19 @@ import {
 import { registerTowerEntities } from "./config/entities.js";
 import { applyInspectManifestToProps } from "./config/inspectManifest.js";
 import { worldPropDefinitions } from "../../Config/content/propDefinitions.js";
+import { towerCombatPairs, towerRenderPorts, towerTargeting } from "./ports.js";
 
-/**
- * Tower — reference game definition. Balance/content live under Config/;
- * game-specific pair presets under Games/tower/presets/.
- *
- * @typedef {object} GameDefinition
- * @property {string} id
- * @property {string} canvasId — DOM canvas element id
- * @property {string} [saveKey] — localStorage key (documentation; Storage.js owns persistence today)
- * @property {() => object[]} createUpgrades
- * @property {Record<string, new () => object>} states — FSM state constructors
- * @property {string} initialState — FSM state name used on reset
- * @property {() => void | Promise<void>} [prepare] — run before canvas/render setup
- * @property {() => void} [registerInspect]
- * @property {(ctx: { state: object, upgrades: object[] }) => void} [onRunOpeningComplete]
- * @property {() => boolean} [isRadioDialogActive]
- * @property {(eventBus: object, pauseApi: { requestPause: (reason: string) => void, requestResume: (reason: string) => void }) => void} [wireRadio]
- * @property {(ctx: object) => void} [onCombatEnter]
- * @property {(ctx: object, dt: number) => void} [onRunSceneTick]
- * @property {(payload: { enemy: object, state: object, upgrades: object[], fsm: object }) => void} [onCombatEnemyKilled]
- * @property {(state: object) => boolean} [canRunHordeSpawning]
- * @property {(state: object) => boolean} [blocksTurretTargeting]
- * @property {(state: object) => { show: boolean, text: string }} [getInspectMissionBanner]
- * @property {(state: object, worldX: number, worldY: number) => object | null} [findInspectorInspectPickup]
- * @property {(state: object, inspectKey: string) => void} [onInspectMissionOpen]
- * @property {(state: object, inspectKey: string) => void} [onInspectMissionClose]
- * @property {(state: object) => boolean} [isInspectMissionActive]
- */
+/** @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition */
 
-/** @type {GameDefinition} */
+/** Tower — reference game definition. Engine ports injected via combatPairs, targeting, render. */
 export const towerGame = {
     id: "tower",
     canvasId: "towerCanvas",
     saveKey: "tower_save_v4",
+
+    combatPairs: towerCombatPairs,
+    targeting: towerTargeting,
+    render: towerRenderPorts,
 
     createUpgrades() {
         return [...createBaseUpgrades(), ...createUpgrades()];

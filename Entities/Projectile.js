@@ -7,12 +7,8 @@ import { applyActorImpactKnockback } from "../Combat/impactKnockback.js";
 import { getGunImpactKnockback } from "../Combat/gunCombat.js";
 import { getGunDefinition } from "../Config/content/guns.js";
 import { Enemy } from "./Enemy.js";
-import { getPlayerActors } from "../Games/tower/targeting.js";
-import { PairFilter } from "../Libraries/Interaction/PairFilter.js";
-import { PROJECTILE_HIT_ACTOR } from "../Games/tower/presets/combat.js";
+import { getCombatPairFilter, getPlayerActors } from "../Core/GamePorts.js";
 import { RagdollCorpse } from "./RagdollCorpse.js";
-
-const projectileActorFilter = new PairFilter(PROJECTILE_HIT_ACTOR);
 
 // Grenade-specific imports
 import { Explosion } from "./Explosion/Explosion.js";
@@ -225,7 +221,7 @@ export class Projectile extends Entity {
 
     resolveFactionCollisions(state, events, spatialFrame) {
         spatialFrame.forEachNeighbor(this, (target) => {
-            if (this.isDead || !projectileActorFilter.allows(this, target)) return;
+            if (this.isDead || !getCombatPairFilter("projectileHitActor").allows(this, target)) return;
             if (!circlesOverlap(this, target)) return;
             this.strategy.onFactionCollision(this, state, target, events, spatialFrame);
         });

@@ -1,11 +1,6 @@
 import { SpatialFrameCore } from "../../Libraries/Spatial/world/SpatialFrameCore.js";
-import { PairFilter } from "../../Libraries/Interaction/PairFilter.js";
 import { populateCombatFrame } from "./populateCombatFrame.js";
-import { ACTOR_PUSHABLE_PAIR, COMBATANT_PAIR, PUSHABLE_PAIR } from "../../Games/tower/presets/combat.js";
-
-const combatantPairFilter = new PairFilter(COMBATANT_PAIR);
-const actorPushablePairFilter = new PairFilter(ACTOR_PUSHABLE_PAIR);
-const pushablePairFilter = new PairFilter(PUSHABLE_PAIR);
+import { getCombatPairFilter } from "../../Core/GamePorts.js";
 
 /**
  * Combat/map-transition spatial frame — populates SpatialFrameCore from GameState.
@@ -28,15 +23,15 @@ export class CombatSpatialFrame extends SpatialFrameCore {
     }
 
     forEachCombatantPair(fn) {
-        this.forEachGroupNeighborPair(this._combatants, (a, b) => combatantPairFilter.allows(a, b), fn);
+        this.forEachGroupNeighborPair(this._combatants, (a, b) => getCombatPairFilter("combatant").allows(a, b), fn);
     }
 
     forEachActorPushablePair(fn) {
-        this.forEachGroupNeighborPair(this._combatants, (actor, pickup) => actorPushablePairFilter.allows(actor, pickup), fn);
+        this.forEachGroupNeighborPair(this._combatants, (actor, pickup) => getCombatPairFilter("actorPushable").allows(actor, pickup), fn);
     }
 
     forEachPushablePair(fn) {
-        this.forEachGroupNeighborPair(this._pushables, (p1, p2) => pushablePairFilter.allows(p1, p2), fn);
+        this.forEachGroupNeighborPair(this._pushables, (p1, p2) => getCombatPairFilter("pushable").allows(p1, p2), fn);
     }
 }
 

@@ -1,6 +1,6 @@
 import { NEIGHBOR_QUERY_PAD } from "../Spatial/collision/entityBroadphase.js";
 import { PairFilter } from "../Interaction/PairFilter.js";
-import { COMBAT_SEPARATION } from "../../Games/tower/presets/combat.js";
+import { getCombatPairs } from "../../Core/GamePorts.js";
 import {
     accumulateSeparationFromPair,
     clampSeparationAccum,
@@ -13,11 +13,12 @@ export class SeparationEngine {
     /**
      * @param {PairFilterConfig | PairFilter} [config]
      */
-    constructor(config = COMBAT_SEPARATION) {
-        this.filter = config instanceof PairFilter ? config : new PairFilter(config);
-        this.neighborPad = config instanceof PairFilter
-            ? (config.config.neighborPad ?? NEIGHBOR_QUERY_PAD)
-            : (config.neighborPad ?? NEIGHBOR_QUERY_PAD);
+    constructor(config) {
+        const resolved = config ?? getCombatPairs().separation;
+        this.filter = resolved instanceof PairFilter ? resolved : new PairFilter(resolved);
+        this.neighborPad = resolved instanceof PairFilter
+            ? (resolved.config.neighborPad ?? NEIGHBOR_QUERY_PAD)
+            : (resolved.neighborPad ?? NEIGHBOR_QUERY_PAD);
     }
 
     /**
