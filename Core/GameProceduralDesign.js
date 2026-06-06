@@ -1,5 +1,4 @@
 import { getSurfaceProfileProvider } from "../Libraries/Procedural/SurfaceProfileProvider.js";
-import { defaultSurfaceProfileId, startSurfaceProfileId, surfaceProfileByStrategy as globalSurfaceProfileByStrategy } from "../Config/procedural/profileDefaults.js";
 /**
  * @typedef {object} ProceduralDesignConfig
  * @property {string} [surfaceProfileId] — shorthand: start node + default + start strategy
@@ -36,19 +35,19 @@ export function resolveProceduralDesignConfig(definition) {
  */
 export function resolveActiveSurfaceProfileId({ layer = 0, strategy } = {}) {
     const game = activeProceduralDesign;
-    if (strategy && game?.surfaceProfileByStrategy?.[strategy]) return game.surfaceProfileByStrategy[strategy];
+    if (!game) throw new Error("No active proceduralDesign — set gameDefinition.proceduralDesign");
+    if (strategy && game.surfaceProfileByStrategy?.[strategy]) return game.surfaceProfileByStrategy[strategy];
     if (layer === 0) {
-        if (game?.startSurfaceProfileId) return game.startSurfaceProfileId;
-        if (strategy && globalSurfaceProfileByStrategy[strategy]) return globalSurfaceProfileByStrategy[strategy];
-        return startSurfaceProfileId;
+        if (game.startSurfaceProfileId) return game.startSurfaceProfileId;
+        throw new Error(
+            strategy ? `No surface profile for strategy: ${strategy} — add to proceduralDesign.surfaceProfileByStrategy` : "proceduralDesign.surfaceProfileId or startSurfaceProfileId required",
+        );
     }
-    if (strategy && globalSurfaceProfileByStrategy[strategy]) return globalSurfaceProfileByStrategy[strategy];
     if (strategy) throw new Error(`No surface procedural profile mapped for strategy: ${strategy}`);
-    return game?.defaultSurfaceProfileId ?? defaultSurfaceProfileId;
+    if (game.defaultSurfaceProfileId) return game.defaultSurfaceProfileId;
+    throw new Error("proceduralDesign.surfaceProfileId or defaultSurfaceProfileId required");
 }
 /**
- * World-surface animation overrides from game config (profile must define `animation`).
- *
  * @param {import("./GameDefinitionTypes.js").GameDefinition | null | undefined} definition
  * @returns {Pick<import("../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings, "groundChunkAnimationsOn" | "wallAnimationsOn">}
  */
@@ -74,8 +73,8 @@ export function resolveProceduralBakeSettings(definition) {
 export function applyGameProceduralDesign(definition) {
     activeProceduralDesign = resolveProceduralDesignConfig(definition);
     if (!isSurfaceProfileProviderInstalled()) return;
-    const nextDefault = activeProceduralDesign?.defaultSurfaceProfileId ?? defaultSurfaceProfileId;
-    getSurfaceProfileProvider().setDefaultProfileId(nextDefault);
+    const nextDefault = activeProceduralDesign?.defaultSurfaceProfileId;
+    if (nextDefault) getSurfaceProfileProvider().setDefaultProfileId(nextDefault);
 }
 function isSurfaceProfileProviderInstalled() {
     try {

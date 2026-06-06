@@ -5,11 +5,8 @@ import { clearInteractionPairFilterCache } from "./GamePorts.js";
 import { state } from "../GameState/GameState.js";
 import { resolvePerspectiveConfig, setCameraHeight, setPerspectiveStrength } from "./GamePerspective.js";
 import { applyGameProceduralDesign, resolveProceduralAnimationSettings, resolveProceduralBakeSettings } from "./GameProceduralDesign.js";
-
 /** @typedef {import("./GameDefinitionTypes.js").GameDefinition} GameDefinition */
-
 let workersConfigured = false;
-
 /**
  * Single engine bootstrap: surface profiles, workers, procedural defaults, perspective, world-surface settings.
  * Called from createGame (and dev tools that skip createGame).
@@ -18,7 +15,7 @@ let workersConfigured = false;
  */
 export function bootstrapEngine(definition) {
     clearInteractionPairFilterCache();
-    installGameSurfaceProfileProvider();
+    installGameSurfaceProfileProvider(definition);
     if (!workersConfigured) {
         configureTileWorkerCoordinator({ workerUrl: TILE_WORKER_URL });
         workersConfigured = true;
@@ -36,7 +33,6 @@ export function bootstrapEngine(definition) {
     });
     syncWorldSurfaceEngineSettings();
 }
-
 function syncWorldSurfaceEngineSettings() {
     const engine = state.worldSurfaces;
     if (!engine) return;

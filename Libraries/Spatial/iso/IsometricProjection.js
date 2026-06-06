@@ -3,9 +3,10 @@
 import { angleDelta } from "../../Math/Angle.js";
 import { radiusAtT, scaleAtHeight } from "../../Math/Interpolate.js";
 import { rectCorners } from "../../Math/Poly2D.js";
+import { LIBRARY_DEFAULT_CAMERA_HEIGHT, LIBRARY_DEFAULT_PERSPECTIVE_STRENGTH } from "./perspectiveDefaults.js";
 export { radiusAtT, scaleAtHeight };
-export let CAMERA_HEIGHT = 160;
-export let PERSPECTIVE_STRENGTH = 1;
+export let CAMERA_HEIGHT = LIBRARY_DEFAULT_CAMERA_HEIGHT;
+export let PERSPECTIVE_STRENGTH = LIBRARY_DEFAULT_PERSPECTIVE_STRENGTH;
 export function setCameraHeight(val) {
     CAMERA_HEIGHT = val;
 }

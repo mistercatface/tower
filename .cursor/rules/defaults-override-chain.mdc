@@ -23,20 +23,24 @@ Engine tuning uses **three layers**. Do not add empty Config re-exports or passt
 
 ## Runtime getters (after `createGame`)
 
-| Setting | Library | Game field | Entity |
-|---------|---------|------------|--------|
-| Collision | `LIBRARY_COLLISION_DEFAULTS` | `collisionSettings` | `strategy.pairRestitution` |
-| Prop facing/roll steps | `LIBRARY_PROP_QUANTIZE_STEPS` | `propQuantizeSteps` | `strategy.quantizeSteps` |
-| World surface | `LIBRARY_WORLD_SURFACE_DEFAULTS` | `worldSurface` | — |
-| Body radius fallback | `LIBRARY_DEFAULT_BODY_RADIUS` | — | `radius` on asset/type |
-| Interaction pairs | `createDefaultInteractionPairs()` | `interactionPairs` | — |
-| Prop strategy | `PROP_STRATEGY_DEFAULTS` | — | asset `strategy` |
-| UI chrome | `ENGINE_MINIMAL_UI` | `ui` | — |
-| Perspective | `DEFAULT_PERSPECTIVE` | `perspective` | — |
+| Setting                | Library                                          | Game field                              | Entity                     |
+| ---------------------- | ------------------------------------------------ | --------------------------------------- | -------------------------- |
+| Collision              | `LIBRARY_COLLISION_DEFAULTS`                     | `collisionSettings`                     | `strategy.pairRestitution` |
+| Prop facing/roll steps | `LIBRARY_PROP_QUANTIZE_STEPS`                    | `propQuantizeSteps`                     | `strategy.quantizeSteps`   |
+| World surface          | `LIBRARY_WORLD_SURFACE_DEFAULTS`                 | `worldSurface`                          | —                          |
+| Body radius fallback   | `LIBRARY_DEFAULT_BODY_RADIUS`                    | —                                       | `radius` on asset/type     |
+| Interaction pairs      | `createDefaultInteractionPairs()`                | `interactionPairs`                      | —                          |
+| Prop strategy          | `PROP_STRATEGY_DEFAULTS`                         | —                                       | asset `strategy`           |
+| UI chrome              | `ENGINE_MINIMAL_UI`                              | `ui`                                    | —                          |
+| Perspective            | `perspectiveDefaults.js` → `DEFAULT_PERSPECTIVE` | `perspective`                           | —                          |
+| Surface profiles       | `Config/procedural/profiles.js` (catalog only)   | `proceduralDesign` in `Games/*/config/` | —                          |
 
 Use `resolveBodyRadius(body)` instead of `radius ?? 8`.
+
+`Config/procedural/` ships profile **recipes** only — strategy→profile maps live on each game's `proceduralDesign`.
 
 ## New game checklist
 
 - Spread library defaults; override only deltas (pool: `worldSurface.wallHeight`, `pairRestitution` on balls, cue tuning).
+- Set `proceduralDesign.surfaceProfileId` (and strategy map if using world gen strategies).
 - Do not copy full Config blobs into the game definition.

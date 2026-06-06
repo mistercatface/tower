@@ -1,9 +1,10 @@
 import { installGameSurfaceProfileProvider } from "../../Config/procedural/bootstrap.js";
+import { towerProceduralDesign } from "../../Games/tower/config/surfaceProfiles.js";
 import { getSurfaceProfileProvider } from "../../Libraries/Procedural/SurfaceProfileProvider.js";
 import { SharedEdgeSolver } from "../../Libraries/Spatial/structure/SharedEdgeSolver.js";
 import { bakeGroundChunkCanvases, bakeWallAtlasCanvases } from "../../Libraries/WorldSurface/WorldSurfacePainter.js";
 import { invalidateProfileScratch } from "../../Libraries/WorldSurface/ProfileBakeResolver.js";
-installGameSurfaceProfileProvider();
+installGameSurfaceProfileProvider({ proceduralDesign: towerProceduralDesign });
 let wallGeometrySab = null;
 let wallGeometryView = null;
 let wallSharedEdgesSab = null;

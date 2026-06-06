@@ -1,5 +1,5 @@
 import { playerBaseStats } from "../../Config/Config.js";
-import { defaultSurfaceProfileId } from "../../Config/procedural/profiles.js";
+import { towerSurfaceProfileId } from "../../Games/tower/config/surfaceProfiles.js";
 import { getDefaultSimulationZoom } from "../../Render/SimulationViewport.js";
 import { getLabWorld } from "./LabWorldSession.js";
 function getStageSize() {
@@ -41,7 +41,7 @@ export function initPresetSelect(profileIds) {
         opt.textContent = id;
         select.appendChild(opt);
     }
-    select.value = defaultSurfaceProfileId;
+    select.value = towerSurfaceProfileId;
 }
 export function initToolbarDefaults() {
     document.getElementById("mapSeedInput").value = "42";
