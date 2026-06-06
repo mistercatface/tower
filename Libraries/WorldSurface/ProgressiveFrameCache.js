@@ -201,7 +201,8 @@ export class ProgressiveFrameCache {
             const generation = this.getCurrentGeneration(key);
             if (generation == null) continue;
 
-            const batch = nextAnimationBatchRange(canvases.length, totalFrames);
+            const batchSize = this._meta.get(key)?.animationFrameBatchSize;
+            const batch = nextAnimationBatchRange(canvases.length, totalFrames, batchSize);
             if (!batch) continue;
 
             fetchBatch(batch).then((bitmaps) => {

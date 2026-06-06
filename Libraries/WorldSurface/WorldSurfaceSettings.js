@@ -18,6 +18,8 @@
  * @property {number} wallSubdivFarPx
  * @property {boolean} groundChunkAnimationsOn
  * @property {boolean} wallAnimationsOn
+ * @property {number|null} [animationBakeMaxFrames] — cap flipbook length (subsamples authored timeline)
+ * @property {number} [animationFrameBatchSize] — frames per incremental worker bake after frame 0
  * @property {number} cellSize
  * @property {number} cameraHeight
  * @property {string} floorShadow

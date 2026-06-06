@@ -240,12 +240,13 @@ function broadcastRequest(type, payload) {
 }
 
 function withBakeFrameRange(payload, profile) {
-    const totalFrames = getAnimationFrames(profile?.animation);
+    const sourceTotal = getAnimationFrames(profile?.animation);
+    const bakeTotal = payload.animationBakeFrames ?? sourceTotal;
     const range = clampBakeFrameRange(
         { frameStart: payload.frameStart, frameCount: payload.frameCount },
-        totalFrames
+        bakeTotal
     );
-    return { ...payload, ...range };
+    return { ...payload, ...range, animationSourceFrames: payload.animationSourceFrames ?? sourceTotal };
 }
 
 function requestBake(type, payload, isAnimated) {

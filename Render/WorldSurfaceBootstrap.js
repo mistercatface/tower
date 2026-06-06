@@ -8,7 +8,7 @@ let gameWorldSurfaceSettings = null;
 
 /**
  * Build world-surface settings from game config.
- * @param {{ cameraHeight?: number, floorShadow?: string, cellSize?: number }} [overrides]
+ * @param {{ cameraHeight?: number, floorShadow?: string, cellSize?: number, groundChunkAnimationsOn?: boolean, wallAnimationsOn?: boolean, animationBakeMaxFrames?: number|null, animationFrameBatchSize?: number }} [overrides]
  * @returns {import("../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings}
  */
 export function createGameWorldSurfaceSettings(overrides = {}) {
@@ -26,8 +26,10 @@ export function createGameWorldSurfaceSettings(overrides = {}) {
         wallTextureBleedPx: worldSurfaceSettings.wallTextureBleedPx,
         wallSubdivNearPx: worldSurfaceSettings.wallSubdivNearPx,
         wallSubdivFarPx: worldSurfaceSettings.wallSubdivFarPx,
-        groundChunkAnimationsOn: worldSurfaceSettings.groundChunkAnimationsOn,
-        wallAnimationsOn: worldSurfaceSettings.wallAnimationsOn,
+        groundChunkAnimationsOn: overrides.groundChunkAnimationsOn ?? worldSurfaceSettings.groundChunkAnimationsOn,
+        wallAnimationsOn: overrides.wallAnimationsOn ?? worldSurfaceSettings.wallAnimationsOn,
+        animationBakeMaxFrames: overrides.animationBakeMaxFrames ?? worldSurfaceSettings.animationBakeMaxFrames,
+        animationFrameBatchSize: overrides.animationFrameBatchSize ?? worldSurfaceSettings.animationFrameBatchSize,
         cellSize: overrides.cellSize ?? gridSettings.cellSize,
         cameraHeight: overrides.cameraHeight ?? CAMERA_HEIGHT,
         floorShadow: overrides.floorShadow ?? combatVisualSettings.floorShadow,

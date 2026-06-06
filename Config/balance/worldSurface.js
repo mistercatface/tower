@@ -17,4 +17,6 @@ export const worldSurfaceSettings = {
     wallSubdivFarPx: 320,
     groundChunkAnimationsOn: false,
     wallAnimationsOn: false,
+    animationBakeMaxFrames: null,
+    animationFrameBatchSize: 8,
 };

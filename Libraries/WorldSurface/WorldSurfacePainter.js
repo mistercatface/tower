@@ -3,6 +3,7 @@ import { getSurfaceProfileProvider } from "../Procedural/SurfaceProfileProvider.
 import { buildMapContext, createWallFaceAxes, writePixelToSamples } from "./SurfaceCoordinateMapper.js";
 import { bakePixelsForWorldSpan, getPixelsPerWorldUnit } from "./WorldSurfaceResolution.js";
 import { getAnimationFrames, resolveBakeProfile } from "./ProfileBakeResolver.js";
+import { sourceFrameIndexForBakeSlot } from "./AnimationFrameBake.js";
 
 class TileMemoryPool {
     constructor() {
@@ -169,8 +170,11 @@ export function bakeGroundChunkCanvases(payload) {
     const paintOptions = { cellSize, pixelsPerUnit };
     const canvases = [];
 
+    const sourceTotal = getAnimationFrames(baseProfile.animation);
+    const bakeTotal = payload.animationBakeFrames ?? sourceTotal;
+
     for (let i = 0; i < frameCount; i++) {
-        payload.frameIndex = frameStart + i;
+        payload.frameIndex = sourceFrameIndexForBakeSlot(frameStart + i, bakeTotal, sourceTotal);
         const canvas = new OffscreenCanvas(bakeSize, bakeSize);
         const ctx = canvas.getContext("2d");
         ctx.imageSmoothingEnabled = false;
@@ -191,9 +195,11 @@ export function bakeWallAtlasCanvases(width, height, p1, p2, pixelsPerUnit, seed
     const baseProfile = provider.getProfile(profileId ?? provider.defaultId);
     if (!baseProfile.animation) return [bakeWallAtlasCanvas(width, height, p1, p2, pixelsPerUnit, seed, profileId, null, payload)];
     const { frameStart, frameCount } = payload;
+    const sourceTotal = getAnimationFrames(baseProfile.animation);
+    const bakeTotal = payload.animationBakeFrames ?? sourceTotal;
     const canvases = [];
     for (let i = 0; i < frameCount; i++) {
-        payload.frameIndex = frameStart + i;
+        payload.frameIndex = sourceFrameIndexForBakeSlot(frameStart + i, bakeTotal, sourceTotal);
         canvases.push(bakeWallAtlasCanvas(width, height, p1, p2, pixelsPerUnit, seed, profileId, payload, payload));
     }
     return canvases;

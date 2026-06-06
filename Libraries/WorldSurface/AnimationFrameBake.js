@@ -29,6 +29,27 @@ export const bakeFrameRange = {
     },
 };
 
+/** Map a baked flipbook slot to the authored profile frame index. */
+export function sourceFrameIndexForBakeSlot(bakeIndex, bakeTotal, sourceTotal) {
+    if (sourceTotal <= 1) return 0;
+    if (bakeTotal <= 1) return 0;
+    if (bakeTotal >= sourceTotal) return Math.min(sourceTotal - 1, bakeIndex);
+    return Math.min(
+        sourceTotal - 1,
+        Math.round(bakeIndex * (sourceTotal - 1) / (bakeTotal - 1)),
+    );
+}
+
+/** Pick the nearest baked slot for a timeline frame resolved from gameTime. */
+export function bakeSlotForSourceFrame(sourceIndex, bakeTotal, sourceTotal) {
+    if (bakeTotal <= 1 || sourceTotal <= 1) return 0;
+    if (bakeTotal >= sourceTotal) return Math.min(bakeTotal - 1, sourceIndex);
+    return Math.min(
+        bakeTotal - 1,
+        Math.round(sourceIndex * (bakeTotal - 1) / (sourceTotal - 1)),
+    );
+}
+
 export function nextAnimationBatchRange(currentLength, totalFrames, batchSize = ANIMATION_FRAME_BATCH_SIZE) {
     if (currentLength >= totalFrames) return null;
     const frameStart = currentLength;

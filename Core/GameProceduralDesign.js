@@ -11,6 +11,11 @@ import {
  * @property {string} [startSurfaceProfileId]
  * @property {string} [defaultSurfaceProfileId]
  * @property {Record<string, string>} [surfaceProfileByStrategy]
+ * @property {boolean} [proceduralAnimation] — enable ground + wall profile animation bakes
+ * @property {boolean} [groundChunkAnimationsOn]
+ * @property {boolean} [wallAnimationsOn]
+ * @property {number|null} [animationBakeMaxFrames]
+ * @property {number} [animationFrameBatchSize]
  */
 
 /** @type {ProceduralDesignConfig | null} */
@@ -71,6 +76,46 @@ export function resolveActiveSurfaceProfileId({ layer = 0, strategy } = {}) {
     }
 
     return game?.defaultSurfaceProfileId ?? defaultSurfaceProfileId;
+}
+
+/**
+ * World-surface animation overrides from game config (profile must define `animation`).
+ *
+ * @param {import("./GameDefinitionTypes.js").GameDefinition | null | undefined} definition
+ * @returns {Pick<import("../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings, "groundChunkAnimationsOn" | "wallAnimationsOn">}
+ */
+export function resolveProceduralAnimationSettings(definition) {
+    const raw = definition?.proceduralDesign;
+    if (!raw) {
+        return { groundChunkAnimationsOn: false, wallAnimationsOn: false };
+    }
+
+    if (raw.proceduralAnimation) {
+        return { groundChunkAnimationsOn: true, wallAnimationsOn: true };
+    }
+
+    return {
+        groundChunkAnimationsOn: raw.groundChunkAnimationsOn ?? false,
+        wallAnimationsOn: raw.wallAnimationsOn ?? false,
+    };
+}
+
+/**
+ * @param {import("./GameDefinitionTypes.js").GameDefinition | null | undefined} definition
+ * @returns {Pick<import("../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings, "animationBakeMaxFrames" | "animationFrameBatchSize">}
+ */
+export function resolveProceduralBakeSettings(definition) {
+    const raw = definition?.proceduralDesign;
+    if (!raw) return {};
+
+    const out = {};
+    if (raw.animationBakeMaxFrames !== undefined) {
+        out.animationBakeMaxFrames = raw.animationBakeMaxFrames;
+    }
+    if (raw.animationFrameBatchSize != null) {
+        out.animationFrameBatchSize = raw.animationFrameBatchSize;
+    }
+    return out;
 }
 
 /** @param {import("./GameDefinitionTypes.js").GameDefinition} definition */

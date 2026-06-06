@@ -14,6 +14,7 @@ import { wallFaceColumns } from "./WallFaceColumns.js";
 import { TileWorkerCoordinator } from "./TileWorkerCoordinator.js";
 import { drawBakedTexture, getPixelsPerWorldUnit } from "./WorldSurfaceResolution.js";
 import { animationFrameIndex } from "./ProfileBakeResolver.js";
+import { bakeSlotForSourceFrame } from "./AnimationFrameBake.js";
 import { bakeFrameRange } from "./AnimationFrameBake.js";
 
 /**
@@ -65,8 +66,12 @@ export class WorldSurfaceEngine {
         const centerY = (p1.y + p2.y) / 2;
         return TileWorkerCoordinator.requestWallAtlasBake({
             width, height, p1, p2, pixelsPerUnit,
-            seed: surfaceBake.surfaceSeed, profileId, ...frameRange,
+            seed: surfaceBake.surfaceSeed,
+            profileId,
+            ...frameRange,
             centerX, centerY, wallHeight, wallWidth, cellSize: wallWidth,
+            animationBakeFrames: surfaceBake.animationBakeFrames,
+            animationSourceFrames: surfaceBake.animationSourceFrames,
         });
     }
 
@@ -117,18 +122,24 @@ export class WorldSurfaceEngine {
         if (canvases) return canvases;
 
         const profile = getSurfaceProfileProvider().getProfile(payload.profileId);
-        const { enabled: isAnimated, totalFrames } = getGroundChunkAnimationInfo(profile, this.settings);
+        const { enabled: isAnimated, totalFrames, sourceTotal } = getGroundChunkAnimationInfo(profile, this.settings);
+        const animationFrameBatchSize = this.settings.animationFrameBatchSize ?? 8;
+        const bakePayload = {
+            ...payload,
+            animationBakeFrames: totalFrames,
+            animationSourceFrames: sourceTotal,
+        };
 
-        const meta = { kind: "chunk", payload, totalFrames };
+        const meta = { kind: "chunk", payload: bakePayload, totalFrames, animationFrameBatchSize };
 
         const bakeFirstFn = () => {
-            const framePayload = { ...payload, ...bakeFrameRange.first() };
+            const framePayload = { ...bakePayload, ...bakeFrameRange.first() };
             return TileWorkerCoordinator.requestGroundChunkBake(framePayload);
         };
 
         const bakeBatchFn = isAnimated
             ? (batch) => {
-                  return TileWorkerCoordinator.requestGroundChunkBake({ ...payload, ...batch });
+                  return TileWorkerCoordinator.requestGroundChunkBake({ ...bakePayload, ...batch });
               }
             : null;
 
@@ -156,18 +167,33 @@ export class WorldSurfaceEngine {
         const wallCenterY = (p1.y + p2.y) / 2;
         const profileId = surfaceBake.resolveProfileAt(wallCenterX, wallCenterY);
         const profile = getSurfaceProfileProvider().getProfile(profileId);
-        const { enabled: isAnimated, totalFrames } = getWallAtlasAnimationInfo(profile, this.settings);
+        const { enabled: isAnimated, totalFrames, sourceTotal } = getWallAtlasAnimationInfo(profile, this.settings);
+        const animationFrameBatchSize = this.settings.animationFrameBatchSize ?? 8;
+        const bakeSurfaceBake = {
+            ...surfaceBake,
+            animationBakeFrames: totalFrames,
+            animationSourceFrames: sourceTotal,
+        };
 
-        const meta = { kind: "wall", width: canvasWidth, height: canvasHeight, p1, p2, pixelsPerUnit, totalFrames };
+        const meta = {
+            kind: "wall",
+            width: canvasWidth,
+            height: canvasHeight,
+            p1,
+            p2,
+            pixelsPerUnit,
+            totalFrames,
+            animationFrameBatchSize,
+        };
 
         const bakeFirstFn = () => {
             const frameRange = bakeFrameRange.first();
-            return this.requestWallAtlasBake(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, surfaceBake, frameRange, profileId, hVal, cellSize);
+            return this.requestWallAtlasBake(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, bakeSurfaceBake, frameRange, profileId, hVal, cellSize);
         };
 
         const bakeBatchFn = isAnimated
             ? (batch) => {
-                  return this.requestWallAtlasBake(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, surfaceBake, batch, profileId, hVal, cellSize);
+                  return this.requestWallAtlasBake(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, bakeSurfaceBake, batch, profileId, hVal, cellSize);
               }
             : null;
 
@@ -211,8 +237,10 @@ export class WorldSurfaceEngine {
         let canvas = canvases[0];
         const profile = getSurfaceProfileProvider().getProfile(profileId);
         if (isWallAtlasAnimationEnabled(profile, this.settings) && canvases.length > 1) {
-            const currentFrame = animationFrameIndex(profile.animation, { gameTime });
-            canvas = canvases[Math.min(canvases.length - 1, Math.max(0, currentFrame))];
+            const { totalFrames: bakeTotal, sourceTotal } = getWallAtlasAnimationInfo(profile, this.settings);
+            const sourceFrame = animationFrameIndex(profile.animation, { gameTime });
+            const bakedSlot = bakeSlotForSourceFrame(sourceFrame, bakeTotal, sourceTotal);
+            canvas = canvases[Math.min(canvases.length - 1, Math.max(0, bakedSlot))];
         }
         return canvas;
     }
@@ -264,11 +292,13 @@ export class WorldSurfaceEngine {
             if (canvas.isPlaceholder) continue;
 
             const profile = getSurfaceProfileProvider().getProfile(payload.profileId);
-            const { enabled: chunkAnimationEnabled } = getGroundChunkAnimationInfo(profile, this.settings);
+            const { enabled: chunkAnimationEnabled, totalFrames: bakeTotal, sourceTotal } =
+                getGroundChunkAnimationInfo(profile, this.settings);
 
             if (chunkAnimationEnabled && canvases.length > 1) {
-                const currentFrame = animationFrameIndex(profile.animation, { gameTime });
-                canvas = canvases[Math.min(canvases.length - 1, Math.max(0, currentFrame))];
+                const sourceFrame = animationFrameIndex(profile.animation, { gameTime });
+                const bakedSlot = bakeSlotForSourceFrame(sourceFrame, bakeTotal, sourceTotal);
+                canvas = canvases[Math.min(canvases.length - 1, Math.max(0, bakedSlot))];
             }
 
             drawBakedTexture(ctx, canvas, chunk.origin.x, chunk.origin.y, chunkSizePx, chunkSizePx, this.settings);

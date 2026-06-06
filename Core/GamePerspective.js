@@ -1,5 +1,7 @@
-import { installGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
+import { getGameWorldSurfaceSettings, installGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 import { setCameraHeight, setPerspectiveStrength } from "../Libraries/Spatial/iso/IsometricProjection.js";
+import { state } from "../GameState/GameState.js";
+import { resolveProceduralAnimationSettings, resolveProceduralBakeSettings } from "./GameProceduralDesign.js";
 
 /** @typedef {"player" | "viewport"} PerspectiveViewerSource */
 
@@ -26,5 +28,29 @@ export function applyGamePerspective(definition) {
     const config = resolvePerspectiveConfig(definition);
     setCameraHeight(config.cameraHeight);
     setPerspectiveStrength(config.strength);
-    installGameWorldSurfaceSettings({ cameraHeight: config.cameraHeight });
+    installGameWorldSurfaceSettings({
+        cameraHeight: config.cameraHeight,
+        ...resolveProceduralAnimationSettings(definition),
+        ...resolveProceduralBakeSettings(definition),
+    });
+    syncWorldSurfaceEngineSettings();
+}
+
+/** Push installed world-surface settings onto the live bake cache (constructed before game bootstrap). */
+export function syncWorldSurfaceEngineSettings() {
+    const engine = state.worldSurfaces;
+    if (!engine) return;
+
+    const settings = getGameWorldSurfaceSettings();
+    const prev = engine.settings;
+    const bakeSettingsChanged =
+        prev.groundChunkAnimationsOn !== settings.groundChunkAnimationsOn
+        || prev.wallAnimationsOn !== settings.wallAnimationsOn
+        || prev.animationBakeMaxFrames !== settings.animationBakeMaxFrames
+        || prev.animationFrameBatchSize !== settings.animationFrameBatchSize;
+
+    engine.settings = settings;
+    if (bakeSettingsChanged) {
+        engine.clear();
+    }
 }
