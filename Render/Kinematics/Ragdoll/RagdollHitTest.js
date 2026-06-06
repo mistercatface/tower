@@ -2,7 +2,6 @@
 
 import { closestPointOnLineSegment } from "../../../Libraries/Math/Segment2D.js";
 import { distance } from "../../../Libraries/Math/Vec3.js";
-import { getCorpseKinematics } from "../ActorKinematicsRenderer.js";
 import { getRagdollCollisionPoints, absRagdollPoint } from "./RagdollPhysics.js";
 
 function distToSegmentXZ(p, v, w) {
@@ -35,9 +34,7 @@ function buildRagdollBones(points, constraints, rig) {
 }
 
 function worldToRigLocal(corpse, worldX, worldY) {
-    const kinematics = getCorpseKinematics(corpse);
-    const { config, rig } = kinematics.bundle;
-    const displayDiameter = kinematics.displayDiameter;
+    const { config, rig, displayDiameter } = corpse.kinematicsCtx;
     const bodyOffset = config.BODY_OFFSET ?? Math.PI;
     const rotation = -(corpse.ragdoll.rotation + bodyOffset);
     const cos = Math.cos(rotation);
@@ -58,7 +55,7 @@ export function checkRagdollHit(corpse, worldX, worldY, projectileRadius = 2) {
     const broad = corpse.radius + projectileRadius + 6;
     if (Math.hypot(worldX - corpse.x, worldY - corpse.y) > broad) return null;
 
-    const { rig } = getCorpseKinematics(corpse).bundle;
+    const { rig } = corpse.kinematicsCtx;
     const local = worldToRigLocal(corpse, worldX, worldY);
     const hitRadiusScale = projectileRadius * (rig.size / corpse.radius) * 0.35;
     const bones = buildRagdollBones(getRagdollCollisionPoints(corpse.ragdoll), corpse.ragdoll.constraints, rig);
@@ -85,9 +82,7 @@ export function checkRagdollHit(corpse, worldX, worldY, projectileRadius = 2) {
 export function ragdollPartToWorld(corpse, partName) {
     const p = absRagdollPoint(corpse.ragdoll, partName);
     if (!p) return { x: corpse.x, y: corpse.y };
-    const kinematics = getCorpseKinematics(corpse);
-    const { config, rig } = kinematics.bundle;
-    const displayDiameter = kinematics.displayDiameter;
+    const { config, rig, displayDiameter } = corpse.kinematicsCtx;
     const rot = corpse.ragdoll.rotation + (config.BODY_OFFSET ?? Math.PI);
     const cos = Math.cos(rot);
     const sin = Math.sin(rot);

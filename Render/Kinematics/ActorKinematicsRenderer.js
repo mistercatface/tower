@@ -42,10 +42,6 @@ export function clearActorKinematics(actor, radius = actor.radius) {
     getKinematicsRenderer(radius).bundle.clearActorState(actor.id);
 }
 
-export function getCorpseKinematics(corpse) {
-    return getKinematicsRenderer(corpse.radius);
-}
-
 /** Camera for kinematics tilt — same rules as updateCombat / body render. */
 export function resolveKinematicsCamera(actor, state) {
     if (actor && typeof actor.getKinematicsCamera === "function") {
@@ -83,7 +79,7 @@ export function renderActorKinematicsBody(ctx, actor, camera, radius = actor.rad
 }
 
 export function renderCorpseKinematicsBody(ctx, corpse, state) {
-    const kinematics = getCorpseKinematics(corpse);
+    const kinematics = getKinematicsRenderer(corpse.radius);
     const player = state?.player;
     const camera = player ? { x: player.x, y: player.y } : resolveKinematicsCamera(corpse.actor, state);
     const frame = kinematics.bundle.resolveCorpseFrame(corpse, camera);
