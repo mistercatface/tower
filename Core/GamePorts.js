@@ -5,6 +5,7 @@ import { getActiveGameDefinition } from "./ActiveGameDefinition.js";
 
 /** @typedef {import("./GameDefinitionTypes.js").InteractionPairsPort} InteractionPairsPort */
 /** @typedef {import("./GameDefinitionTypes.js").SimulationPort} SimulationPort */
+/** @typedef {import("./GameDefinitionTypes.js").UiPort} UiPort */
 /** @typedef {import("./GameDefinitionTypes.js").TargetingPort} TargetingPort */
 /** @typedef {import("./GameDefinitionTypes.js").RenderPorts} RenderPorts */
 /** @typedef {import("./GameDefinitionTypes.js").WorldGenPort} WorldGenPort */
@@ -28,6 +29,13 @@ export function getInteractionPairs() {
 export function getSimulationPort() {
     const port = requireGameDefinition().simulationPort;
     if (!port) throw new Error("Active game definition missing simulationPort.");
+    return port;
+}
+
+/** @returns {UiPort} */
+export function getUiPort() {
+    const port = requireGameDefinition().uiPort;
+    if (!port) throw new Error("Active game definition missing uiPort.");
     return port;
 }
 

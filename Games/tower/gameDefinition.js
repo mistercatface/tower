@@ -21,6 +21,7 @@ import { applyInspectManifestToProps } from "./config/inspectManifest.js";
 import { getWorldPropDefinitions } from "../../Libraries/Content/PropCatalog.js";
 import { towerInteractionPairs, towerRenderPorts, towerTargeting } from "./ports.js";
 import { towerSimulation } from "./simulation.js";
+import { towerUiPort } from "./ui/towerUiPort.js";
 import { towerWorldGen } from "./worldGen.js";
 
 /** @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition */
@@ -32,6 +33,7 @@ export const towerGame = {
     saveKey: "tower_save_v4",
     interactionPairs: towerInteractionPairs,
     simulationPort: towerSimulation,
+    uiPort: towerUiPort,
     targeting: towerTargeting,
     render: towerRenderPorts,
     worldGen: towerWorldGen,

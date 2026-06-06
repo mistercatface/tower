@@ -1,7 +1,7 @@
 import { state } from "../GameState/GameState.js";
 import { initializeSaveSystem, loadProgress } from "../Progression/Storage.js";
 import { loadPersistentTriggers } from "./PersistentTriggers.js";
-import { initUI, registerUiEventListeners } from "../UI/UI.js";
+import { mountUiPort, registerUiEventListeners } from "../UI/Core/mountUiPort.js";
 import { events, requestUiUpdate, requestUiHudUpdate, showGameOver, showRunResult, hideGameOver, requestGamePause, requestGameResume } from "./EventSystem.js";
 import { registerAllListeners } from "./GameListeners.js";
 import { PauseManager } from "./PauseManager.js";
@@ -14,7 +14,6 @@ import { inspectBridge } from "../Combat/inspect/InspectBridge.js";
 import { preloadAllInspectAssets } from "../Libraries/Inspect/InspectCatalog.js";
 import { setActiveGameDefinition } from "./ActiveGameDefinition.js";
 import { applyGameShell, resolveUiProfile } from "./GameUiProfile.js";
-import { applyChromeVisibility } from "./GameShell.js";
 import { bootstrapEngine } from "./bootstrapEngine.js";
 import { applyGamePropPixelSize } from "./GamePropPixelSize.js";
 
@@ -130,8 +129,7 @@ export function createGame(definition) {
     loadProgress(state, upgrades);
     loadPersistentTriggers();
     initializeSaveSystem(state);
-    initUI(state, upgrades);
-    applyChromeVisibility();
+    mountUiPort({ state, upgrades });
     inspectBridge.mount();
     definition.registerInspect?.();
     preloadAllInspectAssets();

@@ -54,6 +54,19 @@
  */
 
 /**
+ * @typedef {object} UiContext
+ * @property {object} state
+ * @property {object[]} upgrades
+ */
+
+/**
+ * @typedef {object} UiPort
+ * @property {(ctx: UiContext) => void} mount
+ * @property {(ctx: UiContext) => void} updateHud
+ * @property {(ctx: UiContext) => void} updateUI
+ */
+
+/**
  * @typedef {object} WorldGenPort
  * @property {number} [startMapNodeId] — map graph node used for opening layout (default 0)
  * @property {string} startNodeStrategyKey — key in strategies for node-0 wall generation
@@ -81,6 +94,7 @@
  * @property {string} initialState
  * @property {Partial<InteractionPairsPort>} [interactionPairs] — combat/physics overrides; physics defaults from engine
  * @property {SimulationPort} simulationPort — phase pipeline (`runTick`, `onEnter`, …)
+ * @property {UiPort} uiPort — DOM chrome mount + HUD/panel updates
  * @property {TargetingPort} targeting
  * @property {RenderPorts} render
  * @property {WorldGenPort} worldGen

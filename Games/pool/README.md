@@ -29,3 +29,4 @@ Skip intro: `?scene=play`
 | `balls.js` | Cue/object balls, stop detection |
 | `PoolSimulationState.js` | Camera, overlays, input |
 | `simulation.js` | Physics phase pipeline (`gameDefinition.simulationPort`) |
+| `ui/poolUiPort.js` | Minimal shell controls (`gameDefinition.uiPort`) |

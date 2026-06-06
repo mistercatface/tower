@@ -4,6 +4,7 @@ import { registerPoolEntities } from "./config/entities.js";
 import { onSimulationEnter, onRunSceneTick } from "./hooks.js";
 import { poolRenderPorts, poolTargeting } from "./ports.js";
 import { poolSimulation } from "./simulation.js";
+import { poolUiPort } from "./ui/poolUiPort.js";
 import { poolWorldGen } from "./worldGen.js";
 import { isRadioDialogActive, wirePoolRadio } from "./wireRadio.js";
 import { getWorldPropDefinitions, getWorldPropRecipes } from "../../Libraries/Content/PropCatalog.js";
@@ -89,6 +90,7 @@ export const poolGame = {
     },
 
     simulationPort: poolSimulation,
+    uiPort: poolUiPort,
     targeting: poolTargeting,
     render: poolRenderPorts,
     worldGen: poolWorldGen,

@@ -1,27 +1,22 @@
-import { perkMilestones, xpForLevel } from "../Config/Config.js";
-import { buildAbilityTreeLayout } from "../Config/content/abilityTreeLayout.js";
-import { GamePhase, isSimulation, isInspector } from "../GameState/GamePhase.js";
-import { getActiveGameDefinition } from "../Core/ActiveGameDefinition.js";
-import { getUiProfile } from "../Core/GameUiProfile.js";
-import { getGunDefinition, playerEquipmentCatalog } from "../Config/content/guns.js";
-import { getSlotFireIntervalMs, getSlotReloadTimeMs } from "../Combat/gunCombat.js";
-import { countGunInLoadout, formatHandednessLabel, getEquipmentSlotCount, getGunEquipAction, normalizeWeaponLoadout } from "../Combat/equipmentLoadout.js";
+import { perkMilestones, xpForLevel } from "../../../Config/Config.js";
+import { buildAbilityTreeLayout } from "../../../Config/content/abilityTreeLayout.js";
+import { GamePhase, isSimulation } from "../../../GameState/GamePhase.js";
+import { getActiveGameDefinition } from "../../../Core/ActiveGameDefinition.js";
+import { getUiProfile } from "../../../Core/GameUiProfile.js";
+import { getGunDefinition, playerEquipmentCatalog } from "../../../Config/content/guns.js";
+import { getSlotFireIntervalMs, getSlotReloadTimeMs } from "../../../Combat/gunCombat.js";
+import { countGunInLoadout, formatHandednessLabel, getEquipmentSlotCount, getGunEquipAction, normalizeWeaponLoadout } from "../../../Combat/equipmentLoadout.js";
 import {
     events,
     Events,
-    toggleGamePause,
     emitPurchaseUpgrade,
     emitToggleAbility,
     emitSetUpgradeTab,
     emitSetStatsSubTab,
     emitToggleEquipWeapon,
     emitUnequipWeaponSlot,
-    adjustGameSpeed,
-    setGameZoomFromSlider,
-    emitHardReset,
-    emitGameRestart,
-    emitMapToggle,
-} from "../Core/EventSystem.js";
+} from "../../../Core/EventSystem.js";
+import { wireShellControls } from "../../../UI/Core/wireShellControls.js";
 const elements = {
     upgradeChoiceModal: document.getElementById("upgradeChoiceModal"),
     upgradeChoicesContainer: document.getElementById("upgradeChoicesContainer"),
@@ -89,25 +84,7 @@ function setHudLabel(id, text) {
     const el = elements[id];
     if (el) el.textContent = next;
 }
-export function showUpgradeChoice(title, description, choices, upgrades, onPick) {
-    if (elements.upgradeChoiceTitle) elements.upgradeChoiceTitle.innerText = title;
-    if (elements.upgradeChoiceDesc) elements.upgradeChoiceDesc.innerText = description;
-    elements.upgradeChoicesContainer.innerHTML = "";
-    choices.forEach((choiceId) => {
-        const upg = upgrades.find((u) => u.id === choiceId);
-        if (!upg) return;
-        const styles =
-            "padding: 10px; background: #333; color: white; border: 1px solid #FFEB3B; cursor: pointer; font-family: monospace; font-size: 14px; display: flex; flex-direction: column; align-items: center; gap: 4px;";
-        const html = `<span style="font-weight: bold; color: #FFEB3B;">${upg.name}</span><span style="font-size: 12px; color: #CCC; line-height: 1.2;">${upg.description}</span>`;
-        const btn = createButton(styles, html, () => {
-            elements.upgradeChoiceModal.style.display = "none";
-            onPick(choiceId);
-        });
-        elements.upgradeChoicesContainer.appendChild(btn);
-    });
-    elements.upgradeChoiceModal.style.display = "flex";
-}
-export function updateToggleButton(btnId, isUnlocked, isActive, btnText, upgDef) {
+function updateToggleButton(btnId, isUnlocked, isActive, btnText, upgDef) {
     const btn = dynamicElements[btnId];
     if (!btn) return;
     if (isUnlocked) {
@@ -144,7 +121,7 @@ function updateInspectMissionBanner(state) {
     if (!bannerInfo.show) return;
     if (textEl.innerText !== bannerInfo.text) textEl.innerText = bannerInfo.text;
 }
-export function updateHud(state, upgrades) {
+function updateHud(state, upgrades) {
     updateMapNavButtons(state);
     updateInspectMissionBanner(state);
     const chrome = getUiProfile().chrome;
@@ -185,7 +162,7 @@ export function updateHud(state, upgrades) {
                 }
             });
 }
-export function updateProgressBar(containerId, textId, textString, ratio, totalSegments, getColorFn) {
+function updateProgressBar(containerId, textId, textString, ratio, totalSegments, getColorFn) {
     const container = elements[containerId];
     const textEl = elements[textId];
     if (!container || !textEl) return;
@@ -206,38 +183,7 @@ export function updateProgressBar(containerId, textId, textString, ratio, totalS
         if (seg.style.background !== targetColor) seg.style.background = targetColor;
     }
 }
-const DEFAULT_GAME_OVER_COPY = { title: "GAME OVER", buttonLabel: "NEW RUN", titleColor: "#F44336" };
-export function showGameOverScreen() {
-    showRunResultScreen(DEFAULT_GAME_OVER_COPY);
-}
-/**
- * @param {{ title?: string, buttonLabel?: string, titleColor?: string }} copy
- */
-export function showRunResultScreen(copy) {
-    if (elements.gameOverTitle) {
-        elements.gameOverTitle.innerText = copy.title ?? DEFAULT_GAME_OVER_COPY.title;
-        elements.gameOverTitle.style.color = copy.titleColor ?? DEFAULT_GAME_OVER_COPY.titleColor;
-    }
-    if (elements.restartBtn && copy.buttonLabel) elements.restartBtn.innerText = copy.buttonLabel;
-    if (elements.gameOverUI) elements.gameOverUI.style.display = "flex";
-}
-export function hideGameOverScreen() {
-    if (elements.gameOverUI) elements.gameOverUI.style.display = "none";
-    if (elements.gameOverTitle) {
-        elements.gameOverTitle.innerText = DEFAULT_GAME_OVER_COPY.title;
-        elements.gameOverTitle.style.color = DEFAULT_GAME_OVER_COPY.titleColor;
-    }
-    if (elements.restartBtn) elements.restartBtn.innerText = DEFAULT_GAME_OVER_COPY.buttonLabel;
-}
-export function registerUiEventListeners(eventBus) {
-    eventBus.on(Events.UI_UPDATE, (data) => updateUI(data.state, data.upgrades));
-    eventBus.on(Events.UI_UPDATE_HUD, (data) => updateHud(data.state, data.upgrades));
-    eventBus.on(Events.UI_SHOW_UPGRADE_CHOICE, (data) => showUpgradeChoice(data.title, data.description, data.choices, data.upgrades, data.onPick));
-    eventBus.on(Events.UI_SHOW_GAME_OVER, () => showGameOverScreen());
-    eventBus.on(Events.UI_SHOW_RUN_RESULT, (copy) => showRunResultScreen(copy));
-    eventBus.on(Events.UI_HIDE_GAME_OVER, () => hideGameOverScreen());
-}
-export function initUI(state, upgrades) {
+function mountTowerUi(state, upgrades) {
     elements.passivesContainer.innerHTML = "";
     upgrades
         .filter((u) => u.isAbility && !u.showInHud)
@@ -289,43 +235,9 @@ export function initUI(state, upgrades) {
         dynamicElements[btn.id] = btn;
         elements.upgradesContainer.appendChild(btn);
     });
-    elements.pauseBtn.addEventListener("click", () => {
-        toggleGamePause();
-    });
-    elements.speedDownBtn.addEventListener("click", () => {
-        adjustGameSpeed(-0.25);
-    });
-    elements.speedUpBtn.addEventListener("click", () => {
-        adjustGameSpeed(0.25);
-    });
-    if (elements.zoomSlider)
-        elements.zoomSlider.addEventListener("input", (e) => {
-            setGameZoomFromSlider(parseFloat(e.target.value));
-        });
-    elements.restartBtn.addEventListener("click", () => {
-        emitGameRestart();
-    });
-    elements.settingsBtn.addEventListener("click", () => {
-        if (elements.combatHudModeSelect) elements.combatHudModeSelect.value = String(state.combatHudMode ?? 0);
-        elements.settingsModal.style.display = "flex";
-    });
-    if (elements.mapBtn) elements.mapBtn.addEventListener("click", () => emitMapToggle());
-    if (elements.closeMapBtn) elements.closeMapBtn.addEventListener("click", () => emitMapToggle());
-    if (elements.combatHudModeSelect)
-        elements.combatHudModeSelect.addEventListener("change", (e) => {
-            state.combatHudMode = parseInt(e.target.value, 10) || 0;
-        });
-    elements.closeSettingsBtn.addEventListener("click", () => {
-        elements.settingsModal.style.display = "none";
-    });
-    elements.hardResetBtn.addEventListener("click", () => {
-        if (confirm("Are you sure you want to completely reset the game? This cannot be undone.")) {
-            emitHardReset();
-            elements.settingsModal.style.display = "none";
-        }
-    });
+    wireShellControls(state);
     updateUI(state, upgrades);
-    updateHud(state);
+    updateHud(state, upgrades);
 }
 function isUpgradeVisibleInTab(state, upg, currentLevelToCheck) {
     if (state.currentUpgradeTab === "stats" && upg.category === state.statsSubTab) return true;
@@ -563,7 +475,7 @@ function drawStat(state, upg, abilityLayoutById) {
         }
     }
 }
-export function updateUI(state, upgrades) {
+function updateUI(state, upgrades) {
     updateInspectMissionBanner(state);
     const chrome = getUiProfile().chrome;
     if (chrome.controls !== "none" && elements.pauseText) elements.pauseText.innerText = state.isPaused ? "PLAY" : "PAUSE";
@@ -635,3 +547,16 @@ export function updateUI(state, upgrades) {
     }
     upgrades.forEach((upg) => drawStat(state, upg, abilityLayoutById));
 }
+
+/** @type {import("../../../Core/GameDefinitionTypes.js").UiPort} */
+export const towerUiPort = {
+    mount(ctx) {
+        mountTowerUi(ctx.state, ctx.upgrades);
+    },
+    updateUI(ctx) {
+        updateUI(ctx.state, ctx.upgrades);
+    },
+    updateHud(ctx) {
+        updateHud(ctx.state, ctx.upgrades);
+    },
+};
