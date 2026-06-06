@@ -5,6 +5,7 @@
  */
 import { getWallHeight } from "./WorldSurfaceSettings.js";
 import { getSurfaceProfileProvider } from "../Procedural/SurfaceProfileProvider.js";
+import { intersectWorldBounds } from "../WorldGen/playBounds.js";
 import { chunkToWorldOrigin, getChunkSizePx, gridBoundsToChunkRange, worldBoundsToChunkRange } from "../Spatial/grid/ChunkGrid.js";
 import { ProgressiveFrameCache } from "./ProgressiveFrameCache.js";
 import { getHorizontalSurfaceZLevels, groundChunkCachePrefix, getGroundChunkAnimationInfo, getWallAtlasAnimationInfo, isWallAtlasAnimationEnabled } from "./bake/SurfaceBakeHelpers.js";
@@ -211,16 +212,19 @@ export class WorldSurfaceEngine {
      *   gameTime?: number,
      *   zLevel?: number,
      *   wallSpatialIndex?: import("../Spatial/indexes/WallSpatialIndex.js").WallSpatialIndex | null,
+     *   playBounds?: { minX: number, minY: number, maxX: number, maxY: number } | null,
      *   beforeDraw?: (ctx: CanvasRenderingContext2D, bounds: { minX: number, minY: number, maxX: number, maxY: number }) => void,
      * }} options
      */
     drawGroundChunks(ctx, options) {
-        const { obstacleGrid, viewport, canvasWidth, canvasHeight, state, gameTime = 0, zLevel = 0, wallSpatialIndex = null, beforeDraw } = options;
+        const { obstacleGrid, viewport, canvasWidth, canvasHeight, state, gameTime = 0, zLevel = 0, wallSpatialIndex = null, playBounds = null, beforeDraw } = options;
         const viewerX = viewport.x;
         const viewerY = viewport.y;
         const cellsPerChunk = this.settings.cellsPerChunk;
         const chunkSizePx = getChunkSizePx(obstacleGrid.cellSize, cellsPerChunk);
-        const bounds = viewport.getWorldBounds(canvasWidth, canvasHeight, this.settings.viewPaddingPx);
+        const viewportBounds = viewport.getWorldBounds(canvasWidth, canvasHeight, this.settings.viewPaddingPx);
+        const bounds = intersectWorldBounds(viewportBounds, playBounds);
+        if (!bounds) return;
         TileWorkerCoordinator.updateFocus(viewport.x, viewport.y);
         if (beforeDraw) beforeDraw(ctx, bounds);
         const range = worldBoundsToChunkRange(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY, obstacleGrid.minX, obstacleGrid.minY, chunkSizePx);

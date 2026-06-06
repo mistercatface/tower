@@ -2,6 +2,7 @@
  * Game-facing world-surface system: wraps WorldSurfaceEngine with phase checks,
  * simulation shadow underpaint, and GameState profile / invalidation hooks.
  */
+import { getWorldPlayBounds } from "../../Core/GamePorts.js";
 import { WorldSurfaceEngine } from "../../Libraries/WorldSurface/WorldSurfaceEngine.js";
 import { isWorldScene } from "../../GameState/GamePhase.js";
 import { getGameWorldSurfaceSettings } from "../WorldSurfaceBootstrap.js";
@@ -25,6 +26,7 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
             state,
             gameTime: state.gameTime ?? 0,
             zLevel: 0,
+            playBounds: getWorldPlayBounds(state),
             beforeDraw: (drawCtx, bounds) => {
                 drawCtx.fillStyle = this.settings.floorShadow;
                 drawCtx.fillRect(bounds.minX, bounds.minY, bounds.maxX - bounds.minX, bounds.maxY - bounds.minY);
@@ -42,6 +44,7 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
             canvasHeight: ctx.canvas?.height ?? viewport.cy * 2,
             state,
             gameTime: state.gameTime ?? 0,
+            playBounds: getWorldPlayBounds(state),
         });
     }
 }

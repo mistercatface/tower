@@ -1,8 +1,7 @@
 import { gridSettings, perkMilestones, xpForLevel } from "../Config/Config.js";
 import { createUpgradeLevels, resetUpgradeLevels } from "../Entities/CombatantStats.js";
 import { spawnFloatingText } from "../Core/EventSystem.js";
-import { MapGenerator } from "../Generator/MapGenerator.js";
-import { getWorldGen } from "../Core/GamePorts.js";
+import { generateWorld, getWorldGen } from "../Core/GamePorts.js";
 import { rollPlayerStartLoadout } from "../Combat/weaponLoadout.js";
 import { spawnInitialPickups, spawnStartGamePickups } from "../Entities/Pickup.js";
 export class StatsManager {
@@ -72,7 +71,7 @@ export class StatsManager {
             });
         StatsManager.recalculateStats(state, upgradesList);
         player.applyWeaponLoadout(rollPlayerStartLoadout(), { state, upgradeDefs: upgradesList });
-        MapGenerator.generateMap(state);
+        generateWorld(state);
         const worldGen = getWorldGen();
         const startNode = state.getMapNode(worldGen.startMapNodeId ?? 0);
         if (startNode) {

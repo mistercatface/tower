@@ -1,7 +1,6 @@
 /**
  * @typedef {import("../Libraries/Interaction/pairRules.js").PairFilterConfig} PairFilterConfig
  */
-
 /**
  * @typedef {object} InteractionPairsPort
  * @property {PairFilterConfig} separation
@@ -13,7 +12,6 @@
  * @property {PairFilterConfig} projectileHitActor
  * @property {PairFilterConfig} projectileHitPickup
  */
-
 /**
  * @typedef {object} TargetingPort
  * @property {(actor: object) => string | undefined} inferFaction
@@ -23,18 +21,15 @@
  * @property {(state: object, source: object, range: number, excludedTargets?: Set<object> | null, opts?: { requireLos?: boolean }) => object | null} getNearestHostile
  * @property {(actor: object, target: object, state: object, range: number, blocksTargeting: boolean, opts?: { requireLos?: boolean }) => boolean} isValidTurretTarget
  */
-
 /**
  * @typedef {object} RenderPorts
  * @property {Record<string, Function>} world3dPropRecipes
  * @property {object} kinematicsPorts
  */
-
 /**
  * @typedef {object} WorldGenStrategy
  * @property {(state: object, px: number, py: number) => void} generate
  */
-
 /**
  * @typedef {object} StartLayout
  * @property {number} spawnX
@@ -44,7 +39,6 @@
  * @property {number} [guardFaceY]
  * @property {Record<string, { x: number, y: number }>} [spawnSlots]
  */
-
 /**
  * @typedef {object} SimulationPort
  * @property {(ctx: object, dt: number) => void} runTick
@@ -52,38 +46,37 @@
  * @property {(ctx: object) => void} [onEnter]
  * @property {(ctx: object) => void} [onInspectorEnter]
  */
-
 /**
  * @typedef {object} UiContext
  * @property {object} state
  * @property {object[]} upgrades
  */
-
 /**
  * @typedef {object} UiPort
  * @property {(ctx: UiContext) => void} mount
  * @property {(ctx: UiContext) => void} updateHud
  * @property {(ctx: UiContext) => void} updateUI
  */
-
+/**
+ * @typedef {{ minX: number, minY: number, maxX: number, maxY: number }} WorldPlayBounds
+ */
 /**
  * @typedef {object} WorldGenPort
+ * @property {(state: object) => void} generateWorld — build walls, bounds, and surface caches for a new run
+ * @property {(state: object) => WorldPlayBounds | null} getPlayBounds — clip rendering/surfaces to playable area
  * @property {number} [startMapNodeId] — map graph node used for opening layout (default 0)
- * @property {string} startNodeStrategyKey — key in strategies for node-0 wall generation
+ * @property {string} [startNodeStrategyKey] — roguelike-map: key in strategies for node-0 room bake
  * @property {string} [startNodeStrategyLabel] — display label stored on the map node
- * @property {Record<string, WorldGenStrategy>} strategies — merged into the generator lookup table
+ * @property {Record<string, WorldGenStrategy>} [strategies] — merged into the generator lookup table
  * @property {(px: number, py: number, cellSize: number) => StartLayout} getStartLayout
  * @property {boolean} [skipStartPickups] — omit crate/barrel scatter on map reset
  */
-
 /**
  * @typedef {import("./GameUiProfile.js").GameUiProfile} GameUiProfile
  */
-
 /**
  * @typedef {import("./GamePerspective.js").PerspectiveConfig} PerspectiveConfig
  */
-
 /**
  * @typedef {object} GameDefinition
  * @property {string} id
@@ -120,5 +113,4 @@
  * @property {{ wallHeight?: number, pixelsPerCell?: number }} [worldSurface]
  * @property {(state: object) => "won" | "lost" | null} [getRunOutcome]
  */
-
 export {};
