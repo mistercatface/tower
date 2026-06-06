@@ -1,9 +1,8 @@
 import { inspectBridge } from "../../Combat/inspect/InspectBridge.js";
 import { requestUiUpdate } from "../../Core/EventSystem.js";
-import { getSimulationPort } from "../../Core/GamePorts.js";
+import { getRunScenePort, getSimulationPort } from "../../Core/GamePorts.js";
 import { resetSimulationWorld } from "../../Systems/Simulation/index.js";
 import { getCueBall, ensurePoolState } from "./balls.js";
-import { poolRunScenePorts } from "./runScenePorts.js";
 import { tryBeginAim, updateAim, releaseAimShot, getAimPreview } from "./shotInput.js";
 export class PoolSimulationState {
     onEnter(ctx) {
@@ -13,7 +12,7 @@ export class PoolSimulationState {
             return;
         }
         resetSimulationWorld(ctx.state);
-        ctx.game?.onSimulationEnter?.(ctx);
+        getRunScenePort().onSimulationEnter(ctx);
         this._snapCameraToTable(ctx);
         getSimulationPort().onEnter?.(ctx);
         requestUiUpdate();
@@ -28,7 +27,7 @@ export class PoolSimulationState {
     }
     /** @param {object} ctx */
     _snapCameraToTable(ctx) {
-        const layout = poolRunScenePorts.getLayout(ctx.state);
+        const layout = getRunScenePort().getLayout(ctx.state);
         const cx = layout?.tableCenterX ?? ctx.state.player.x;
         const cy = layout?.tableCenterY ?? ctx.state.player.y;
         ctx.viewport.updateZoomLimits(ctx.state);
@@ -56,7 +55,7 @@ export class PoolSimulationState {
     _drawWorldOverlay(ctx) {
         const canvasCtx = ctx.renderer.ctx;
         const { viewport } = ctx;
-        const layout = poolRunScenePorts.getLayout(ctx.state);
+        const layout = getRunScenePort().getLayout(ctx.state);
         if (!layout) return;
         const pool = ensurePoolState(ctx.state);
         canvasCtx.save();

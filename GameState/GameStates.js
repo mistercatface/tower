@@ -1,7 +1,7 @@
 import { FloatingText } from "../Render/FloatingText.js";
 import { requestUiUpdate } from "../Core/EventSystem.js";
 import { inspectBridge } from "../Combat/inspect/InspectBridge.js";
-import { getSimulationPort } from "../Core/GamePorts.js";
+import { getRunScenePort, getSimulationPort } from "../Core/GamePorts.js";
 import { resetSimulationWorld, handlePlayerRepositionTap, handlePlayerRepositionDrag } from "../Systems/Simulation/index.js";
 export class MapState {
     onEnter(ctx) {
@@ -25,7 +25,7 @@ export class SimulationState {
             return;
         }
         resetSimulationWorld(ctx.state);
-        ctx.game?.onSimulationEnter?.(ctx);
+        getRunScenePort().onSimulationEnter(ctx);
         getSimulationPort().onEnter?.(ctx);
         ctx.viewport.snapTo(ctx.state.player.x, ctx.state.player.y);
         requestUiUpdate();

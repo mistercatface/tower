@@ -4,7 +4,7 @@ import { RagdollCorpse } from "../../Entities/RagdollCorpse.js";
 import { ProgressionManager } from "../../Progression/ProgressionManager.js";
 import { Projectile } from "../../Entities/Projectile.js";
 import { Explosion } from "../../Entities/Explosion/Explosion.js";
-import { getActiveGameDefinition } from "../../Core/ActiveGameDefinition.js";
+import { getRunScenePort } from "../../Core/GamePorts.js";
 import { runPushablePhysics } from "./pushablePhysics.js";
 import { dispatchSimulationEvents } from "./dispatchSimulationEvents.js";
 /** @typedef {import("./SimulationRuntime.js").SimulationRuntime} SimulationRuntime */
@@ -41,7 +41,7 @@ export const flowFieldPhase = {
 /** @type {SimulationPhase} */
 export const gameSceneTickPhase = {
     run(ctx, dt) {
-        getActiveGameDefinition()?.onRunSceneTick?.(ctx, dt);
+        getRunScenePort().onTick(ctx, dt);
     },
 };
 /** @type {SimulationPhase} */

@@ -2,20 +2,9 @@ import { createUpgrades, createBaseUpgrades } from "../../Progression/Upgrades.j
 import { registerGameInspectEntries } from "./content/inspect/inspectContent.js";
 import { MapState, SimulationState, InspectorState } from "../../GameState/GameStates.js";
 import { wireTowerRadio } from "./wireRadio.js";
-import {
-    onSimulationEnter,
-    onRunSceneTick,
-    onCombatEnemyKilled,
-    canRunHordeSpawning,
-    blocksTurretTargeting,
-    getInspectMissionBanner,
-    findInspectorInspectPickup,
-    onInspectMissionOpen,
-    onInspectMissionClose,
-    isInspectMissionActive,
-    onRunOpeningComplete,
-    isRadioDialogActive,
-} from "./hooks.js";
+import { COMBAT_ROGUELIKE_BOOTSTRAP } from "../../Libraries/Bootstrap/presets.js";
+import { getInspectMissionBanner, findInspectorInspectPickup, onInspectMissionOpen, onInspectMissionClose, isInspectMissionActive, onRunOpeningComplete, isRadioDialogActive } from "./hooks.js";
+import { towerRunScenePort } from "./runScenePort.js";
 import { registerTowerEntities } from "./config/entities.js";
 import { applyInspectManifestToProps } from "./config/inspectManifest.js";
 import { getWorldPropDefinitions } from "../../Libraries/Content/PropCatalog.js";
@@ -39,6 +28,8 @@ export const towerGame = {
     render: towerRenderPorts,
     worldGen: towerWorldGen,
     runBootstrapPort: createRoguelikeRunBootstrapPort(),
+    bootstrapPort: COMBAT_ROGUELIKE_BOOTSTRAP,
+    runScenePort: towerRunScenePort,
     createUpgrades() {
         return [...createBaseUpgrades(), ...createUpgrades()];
     },
@@ -54,11 +45,6 @@ export const towerGame = {
     wireRadio: wireTowerRadio,
     onRunOpeningComplete,
     isRadioDialogActive,
-    onSimulationEnter,
-    onRunSceneTick,
-    onCombatEnemyKilled,
-    canRunHordeSpawning,
-    blocksTurretTargeting,
     getInspectMissionBanner,
     findInspectorInspectPickup,
     onInspectMissionOpen,

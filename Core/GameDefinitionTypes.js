@@ -62,6 +62,31 @@
  * @property {(state: object, upgrades: object[]) => void} resetRun
  */
 /**
+ * @typedef {object} BootstrapFeatures
+ * @property {boolean} upgrades
+ * @property {boolean} inspect
+ * @property {boolean} save
+ * @property {boolean} persistentTriggers
+ */
+/**
+ * @typedef {object} BootstrapPort
+ * @property {BootstrapFeatures} features
+ */
+/**
+ * @typedef {object} RunSceneCapabilities
+ * @property {boolean} horde
+ * @property {boolean} blockTurret
+ */
+/**
+ * @typedef {object} RunScenePort
+ * @property {import("../Libraries/RunScene/runScenePorts.js").RunScenePorts} ports
+ * @property {(state: object) => object | null} getLayout
+ * @property {(ctx: object) => void} onSimulationEnter
+ * @property {(ctx: object, dt: number) => void} onTick
+ * @property {(state: object) => RunSceneCapabilities} getCapabilities
+ * @property {(payload: { enemy: object, state: object, upgrades: object[], fsm: object }) => void} [onEnemyKilled]
+ */
+/**
  * @typedef {{ minX: number, minY: number, maxX: number, maxY: number }} WorldPlayBounds
  */
 /**
@@ -99,16 +124,13 @@
  * @property {RenderPorts} render
  * @property {WorldGenPort} worldGen
  * @property {RunBootstrapPort} runBootstrapPort — new-run entity/world setup after `generateWorld`
+ * @property {BootstrapPort} bootstrapPort — feature-gated `createGame` boot
+ * @property {RunScenePort} runScenePort — run scene enter/tick/capabilities
  * @property {() => void | Promise<void>} [prepare]
  * @property {() => void} [registerInspect]
  * @property {(ctx: { state: object, upgrades: object[] }) => void} [onRunOpeningComplete]
  * @property {() => boolean} [isRadioDialogActive]
  * @property {(eventBus: object, pauseApi: { requestPause: (reason: string) => void, requestResume: (reason: string) => void }) => void} [wireRadio]
- * @property {(ctx: object) => void} [onSimulationEnter]
- * @property {(ctx: object, dt: number) => void} [onRunSceneTick]
- * @property {(payload: { enemy: object, state: object, upgrades: object[], fsm: object }) => void} [onCombatEnemyKilled]
- * @property {(state: object) => boolean} [canRunHordeSpawning]
- * @property {(state: object) => boolean} [blocksTurretTargeting]
  * @property {(state: object) => { show: boolean, text: string }} [getInspectMissionBanner]
  * @property {(state: object, worldX: number, worldY: number) => object | null} [findInspectorInspectPickup]
  * @property {(state: object, inspectKey: string) => void} [onInspectMissionOpen]

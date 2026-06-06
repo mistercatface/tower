@@ -9,6 +9,8 @@ import { getActiveGameDefinition } from "./ActiveGameDefinition.js";
 /** @typedef {import("./GameDefinitionTypes.js").RenderPorts} RenderPorts */
 /** @typedef {import("./GameDefinitionTypes.js").WorldGenPort} WorldGenPort */
 /** @typedef {import("./GameDefinitionTypes.js").RunBootstrapPort} RunBootstrapPort */
+/** @typedef {import("./GameDefinitionTypes.js").BootstrapPort} BootstrapPort */
+/** @typedef {import("./GameDefinitionTypes.js").RunScenePort} RunScenePort */
 function requireGameDefinition() {
     const def = getActiveGameDefinition();
     if (!def) throw new Error("No active game definition — call setActiveGameDefinition before using game ports.");
@@ -49,6 +51,27 @@ export function getWorldGen() {
     const worldGen = requireGameDefinition().worldGen;
     if (!worldGen) throw new Error("Active game definition missing worldGen port.");
     return worldGen;
+}
+/** @returns {BootstrapPort} */
+export function getBootstrapPort() {
+    const port = requireGameDefinition().bootstrapPort;
+    if (!port) throw new Error("Active game definition missing bootstrapPort.");
+    return port;
+}
+/** @returns {RunScenePort} */
+export function getRunScenePort() {
+    const port = requireGameDefinition().runScenePort;
+    if (!port) throw new Error("Active game definition missing runScenePort.");
+    return port;
+}
+/** @param {object} state @returns {boolean} */
+export function canRunHordeSpawning(state) {
+    if (state.phase === "map" || state.phase === "inspector") return false;
+    return getRunScenePort().getCapabilities(state).horde;
+}
+/** @param {object} state @returns {boolean} */
+export function blocksTurretTargeting(state) {
+    return getRunScenePort().getCapabilities(state).blockTurret;
 }
 /** @returns {RunBootstrapPort} */
 export function getRunBootstrapPort() {

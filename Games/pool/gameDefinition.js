@@ -1,7 +1,8 @@
 import { ensurePoolState } from "./balls.js";
 import { PoolSimulationState } from "./PoolSimulationState.js";
 import { registerPoolEntities } from "./config/entities.js";
-import { onSimulationEnter, onRunSceneTick } from "./hooks.js";
+import { MINIMAL_ARENA_BOOTSTRAP } from "../../Libraries/Bootstrap/presets.js";
+import { poolRunScenePort } from "./runScenePort.js";
 import { poolRenderPorts, poolTargeting } from "./ports.js";
 import { poolSimulation } from "./simulation.js";
 import { poolUiPort } from "./ui/poolUiPort.js";
@@ -54,6 +55,8 @@ export const poolGame = {
     render: poolRenderPorts,
     worldGen: poolWorldGen,
     runBootstrapPort: createSingleArenaRunBootstrapPort(hideArenaPlayer),
+    bootstrapPort: MINIMAL_ARENA_BOOTSTRAP,
+    runScenePort: poolRunScenePort,
     createUpgrades() {
         return [];
     },
@@ -69,6 +72,4 @@ export const poolGame = {
     },
     wireRadio: wirePoolRadio,
     isRadioDialogActive,
-    onSimulationEnter,
-    onRunSceneTick,
 };

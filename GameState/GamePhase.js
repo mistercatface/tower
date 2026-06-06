@@ -1,4 +1,4 @@
-import { getActiveGameDefinition } from "../Core/ActiveGameDefinition.js";
+export { canRunHordeSpawning } from "../Core/GamePorts.js";
 export const GamePhase = { MAP: "map", SIMULATION: "simulation", INSPECTOR: "inspector" };
 const WORLD_SCENES = new Set([GamePhase.SIMULATION, GamePhase.INSPECTOR]);
 export function isWorldScene(phase) {
@@ -9,11 +9,6 @@ export function isSimulation(phase) {
 }
 export function isInspector(phase) {
     return phase === GamePhase.INSPECTOR;
-}
-export function canRunHordeSpawning(state) {
-    if (state.phase === GamePhase.MAP || state.phase === GamePhase.INSPECTOR) return false;
-    const gameCheck = getActiveGameDefinition()?.canRunHordeSpawning;
-    return gameCheck ? gameCheck(state) : false;
 }
 /** Range and center for drawing world rings / masks in simulation vs map space. */
 export function getWorldDrawCoords(state, viewport, fallbackRange) {

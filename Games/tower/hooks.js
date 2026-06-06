@@ -9,38 +9,6 @@ import {
     handleInspectCollectOpen,
     isInspectCollectActive,
 } from "../../Libraries/RunScene/behaviors/inspectCollect.js";
-import { spawnStartProps } from "../../Libraries/Props/spawnStartProps.js";
-import { getStartRunAtScene, runSceneController } from "./config/runScenes.js";
-import { getTowerStartProps } from "./config/startProps.js";
-import { towerRunScenePorts } from "./runScenePorts.js";
-/** @param {import("../../GameState/GameStateMachine.js").GameStateMachineContext} ctx */
-export function onSimulationEnter(ctx) {
-    const { state } = ctx;
-    if (!state.runSceneInitialized) {
-        runSceneController.reset();
-        const startSceneId = getStartRunAtScene();
-        runSceneController.startAt(startSceneId, state, ctx);
-        state.runSceneInitialized = true;
-    }
-    runSceneController.enterCurrentScene(state, ctx, { applySpawn: true });
-    if (!state.startPropsSpawned) {
-        spawnStartProps(state, getTowerStartProps(towerRunScenePorts.getLayout(state)));
-        state.startPropsSpawned = true;
-    }
-}
-/** @param {import("../../GameState/GameStateMachine.js").GameStateMachineContext} ctx */
-export function onRunSceneTick(ctx, _dt) {
-    runSceneController.tick(ctx.state, ctx);
-}
-export function onCombatEnemyKilled(payload) {
-    runSceneController.onEnemyKilled(payload);
-}
-export function canRunHordeSpawning(_state) {
-    return runSceneController.getCurrentCapabilities().horde === true;
-}
-export function blocksTurretTargeting(_state) {
-    return runSceneController.getCurrentCapabilities().blockTurret === true;
-}
 export function getInspectMissionBanner(state) {
     if (!isInspector(state.phase)) return { show: false, text: "" };
     return getInspectCollectMissionBanner(state);
