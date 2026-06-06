@@ -6,8 +6,9 @@ import { ensureRunScene, getRunSceneIntro, setRunSceneMission } from "./runScene
 
 /** @type {Record<string, (state: object, def: RunSceneConfig) => void>} */
 export const skipPresets = {
-    through_run_start(state) {
+    through_run_start(state, _def, ctx) {
         ensureRunScene(state).opening.completed = true;
+        ctx?.game?.onRunOpeningComplete?.({ state, upgrades: ctx.upgrades });
     },
 
     through_intro(state) {
@@ -32,7 +33,7 @@ export const skipPresets = {
     },
 };
 
-/** @param {string} preset @param {object} state @param {RunSceneConfig} def */
-export function applySkipPreset(preset, state, def) {
-    skipPresets[preset]?.(state, def);
+/** @param {string} preset @param {object} state @param {RunSceneConfig} def @param {object} [ctx] */
+export function applySkipPreset(preset, state, def, ctx) {
+    skipPresets[preset]?.(state, def, ctx);
 }

@@ -40,7 +40,7 @@ export function compileRunScenes(defs, { applySpawn, behaviors }) {
             radios: def.radios ?? [],
             transition: def.transition,
             onSkip(state, ctx) {
-                if (def.skipPreset) applySkipPreset(def.skipPreset, state, def);
+                if (def.skipPreset) applySkipPreset(def.skipPreset, state, def, ctx);
             },
             onEnter(state, ctx, enterOpts = {}) {
                 if (def.spawn && enterOpts.applySpawn) {

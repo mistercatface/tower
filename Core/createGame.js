@@ -81,7 +81,6 @@ export function createGame(definition) {
         hideGameOver();
         viewport.snapTo(0, 0);
         fsm.transition(definition.initialState);
-        definition.onRunStart?.({ state, upgrades });
         requestUiUpdate();
         requestUiHudUpdate();
         requestAnimationFrame(loop);

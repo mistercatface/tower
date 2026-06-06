@@ -4,7 +4,6 @@ import { InspectViewer } from "../../Libraries/Inspect/InspectViewer.js";
 import { getInspectEntry } from "../../Libraries/Inspect/InspectCatalog.js";
 import { toInspectSubject } from "./inspectTargeting.js";
 import { getActiveGameDefinition } from "../../Core/ActiveGameDefinition.js";
-import { isRadioDialogActive } from "../../Games/tower/wireRadio.js";
 import { requestGamePause, requestGameResume, requestUiUpdate } from "../../Core/EventSystem.js";
 
 const INSPECTOR_PAUSE_REASON = "inspector";
@@ -69,7 +68,7 @@ class InspectBridge {
         requestUiUpdate();
 
         const game = getActiveGameDefinition();
-        if (closedKey && state && game?.isInspectMissionActive?.(state) && !isRadioDialogActive()) {
+        if (closedKey && state && game?.isInspectMissionActive?.(state) && !game.isRadioDialogActive?.()) {
             game.onInspectMissionClose?.(state, closedKey);
         } else if (state) {
             state.inspectPanelOpen = false;

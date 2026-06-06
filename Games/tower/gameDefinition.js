@@ -3,8 +3,6 @@ import { installGameSurfaceProfileProvider } from "../../Config/procedural/boots
 import { createUpgrades, createBaseUpgrades } from "../../Progression/Upgrades.js";
 import { registerGameInspectEntries } from "./content/inspect/inspectContent.js";
 import { MapState, CombatState, InspectorState } from "../../GameState/GameStates.js";
-import { unlockProximityFightDialog } from "../../Libraries/RunScene/behaviors/proximityRadioFight.js";
-import { ProgressionManager } from "../../Progression/ProgressionManager.js";
 import { wireTowerRadio } from "./wireRadio.js";
 import {
     onCombatEnter,
@@ -17,6 +15,8 @@ import {
     onInspectMissionOpen,
     onInspectMissionClose,
     isInspectMissionActive,
+    onRunOpeningComplete,
+    isRadioDialogActive,
 } from "./hooks.js";
 import { registerTowerEntities } from "./config/entities.js";
 
@@ -33,7 +33,8 @@ import { registerTowerEntities } from "./config/entities.js";
  * @property {string} initialState — FSM state name used on reset
  * @property {() => void | Promise<void>} [prepare] — run before canvas/render setup
  * @property {() => void} [registerInspect]
- * @property {(ctx: { state: object, upgrades: object[] }) => void} [onRunStart]
+ * @property {(ctx: { state: object, upgrades: object[] }) => void} [onRunOpeningComplete]
+ * @property {() => boolean} [isRadioDialogActive]
  * @property {(eventBus: object, pauseApi: { requestPause: (reason: string) => void, requestResume: (reason: string) => void }) => void} [wireRadio]
  * @property {(ctx: object) => void} [onCombatEnter]
  * @property {(ctx: object, dt: number) => void} [onRunSceneTick]
@@ -70,12 +71,10 @@ export const towerGame = {
         registerGameInspectEntries();
     },
 
-    onRunStart({ state, upgrades }) {
-        ProgressionManager.setupNewRunAbilities(state, upgrades);
-        unlockProximityFightDialog(state);
-    },
-
     wireRadio: wireTowerRadio,
+
+    onRunOpeningComplete,
+    isRadioDialogActive,
 
     onCombatEnter,
     onRunSceneTick,
