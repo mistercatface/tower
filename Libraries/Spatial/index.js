@@ -32,6 +32,7 @@ export { SatCollision } from "./collision/SatCollision.js";
 export { broadphaseBoundsFromShape, pairBroadphaseBoundsOverlap } from "./collision/Broadphase.js";
 export { applyPositionCorrection, separateAlongNormal, computeCircleWallContact, computePolygonWallContact } from "./collision/penetration.js";
 export { resolveCirclePair } from "./collision/circlePair.js";
+export { estimateCirclePairStrikeFromRest } from "./collision/circlePairPreview.js";
 export { circlesOverlap, findFirstCircleSegmentHit } from "./collision/overlap.js";
 export { resolveSatPair } from "./collision/satPair.js";
 export { runCollisionPipeline } from "./collision/collisionPipeline.js";

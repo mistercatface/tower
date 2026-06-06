@@ -1,11 +1,5 @@
 import { inspectBridge } from "../../Combat/inspect/InspectBridge.js";
-import {
-    advanceCueStickStrike,
-    applyCueStickImpulse,
-    getCueStickDrawProp,
-    hideCueStick,
-    syncCueStickFromAim,
-} from "../../Libraries/CueStick/cueStickController.js";
+import { advanceCueStickStrike, applyCueStickImpulse, getCueStickDrawProp, hideCueStick, syncCueStickFromAim } from "../../Libraries/CueStick/cueStickController.js";
 import { requestUiUpdate } from "../../Core/EventSystem.js";
 import { getRadioPort, getRunScenePort, getSimulationPort } from "../../Core/GamePorts.js";
 import { resolveRenderViewer } from "../../Render/adapters/WorldRenderAdapter.js";
@@ -49,12 +43,11 @@ export class PoolSimulationState {
             if (preview) syncCueStickFromAim(pool, cue, preview);
             return;
         }
-        if (pool.phase === "striking") {
+        if (pool.phase === "striking")
             advanceCueStickStrike(pool, cue, dt, (strike) => {
                 applyCueStickImpulse(cue, strike);
                 pool.phase = "rolling";
             });
-        }
     }
     /** @param {object} ctx */
     _syncCueStickFromAim(ctx) {
@@ -129,7 +122,6 @@ export class PoolSimulationState {
                 canvasCtx.stroke();
             }
         canvasCtx.restore();
-
         if (pool.phase === "aiming" && pool.aim?.active) {
             const cue = getCueBall(ctx.state);
             const preview = getAimPreview(ctx.state);
@@ -140,16 +132,14 @@ export class PoolSimulationState {
                     body: cue,
                     nx,
                     ny,
+                    speed: power,
+                    pairRestitution: 0.92,
                     obstacles: getActiveBalls(ctx.state).filter((ball) => ball !== cue),
                     wallCtx: wallContextFromState(ctx.state),
                 });
                 canvasCtx.save();
                 viewport.apply(canvasCtx);
-                drawBodyContactPreview(canvasCtx, contactPreview, {
-                    primaryColor: `hsl(${180 - ratio * 180}, 100%, 50%)`,
-                    secondaryLength: 20 + ratio * 100,
-                    primaryGlowHue: 180 - ratio * 180,
-                });
+                drawBodyContactPreview(canvasCtx, contactPreview, { primaryColor: `hsl(${180 - ratio * 180}, 100%, 50%)`, secondaryLength: 20 + ratio * 100, primaryGlowHue: 180 - ratio * 180 });
                 canvasCtx.restore();
             }
         }
