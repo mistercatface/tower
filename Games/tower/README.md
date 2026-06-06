@@ -20,6 +20,8 @@ This folder is the **game definition** for the shipped tower roguelike. The engi
 | `wireRadio.js` | Tower radio content + `brock` main character + pause wiring |
 | `targeting.js` | Faction resolver + hostility queries (`Config/content/factions.js`) |
 
+Shared character/gun visuals live in `Assets/characters/` and `Assets/guns/`; kinematics defaults in `Libraries/Kinematics/` + `Libraries/Render/Characters/`. Tower wires appearance + gun visual map via `ports.js` → `createDefaultKinematicsPorts()`.
+
 Balance and content remain in `Config/balance/` and `Config/content/` (radio scripts under `Config/content/radio/`).
 
 Run scene engine lives in `Libraries/RunScene/`; tower wires it via `config/runScenes.js` + `runScenePorts.js`.

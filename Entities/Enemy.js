@@ -7,7 +7,7 @@ import { rollEnemyStartLoadout } from "../Combat/weaponLoadout.js";
 import { rollRandomLoadoutFromPool } from "../Combat/equipmentLoadout.js";
 import { createEntityBars } from "./EntityBars.js";
 import { buildEnemyCombatStats, computeEnemyUpgradeLevels, computeSpawnReward } from "../Combat/EnemySpawn.js";
-import { renderActorKinematicsBody } from "../Render/Kinematics/ActorKinematicsRenderer.js";
+import { renderActorKinematicsBody } from "../Libraries/Render/Characters/actorKinematicsRenderer.js";
 
 const enemyBars = createEntityBars({ healthWidth: 22, healthHeight: 3, healthBorderRadius: 1.5, stunHeight: 2, stunBorderRadius: 1 });
 

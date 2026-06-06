@@ -12,3 +12,5 @@ export * from "./ragdoll/physics.js";
 export * from "./ragdoll/gore.js";
 export * from "./ragdoll/hitTest.js";
 export * from "./ragdoll/fromActor.js";
+export { createKinematicsBundle } from "./createKinematicsBundle.js";
+export { createDefaultKinematicsPorts } from "./kinematicsPorts.js";

@@ -1,6 +1,6 @@
 /**
  * Top-down steering integration (desired direction → velocity → position).
- * NOT Render/Kinematics (ragdoll/gore) — see Libraries/Motion/index.js for roadmap.
+ * NOT Libraries/Kinematics (ragdoll/gore) — see Libraries/Motion/index.js for roadmap.
  */
 import { normalizeAngle } from "../Math/Angle.js";
 

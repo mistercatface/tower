@@ -3,7 +3,7 @@
  *
  * Scope: steering integration, damping, impulses, separation forces.
  * Data contract: Libraries/Agent (AgentPose, MobileAgent, SteeringResult).
- * Out of scope: Render/Kinematics (ragdoll, IK, gore).
+ * Out of scope: Libraries/Kinematics + Libraries/Render/Characters (ragdoll, IK, gore).
  *
  * Expansion roadmap:
  * 1. integrateSteering, applyVelocityDamping (done)

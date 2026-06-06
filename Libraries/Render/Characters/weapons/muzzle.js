@@ -1,12 +1,5 @@
 /** Muzzle position in world space — mirrors weapon draw + sprite placement. */
 
-import {
-    getBarrelRatioForGunId,
-    resolveProjectedHandsForSlot,
-    resolveWeaponDrawSlots,
-} from "./weaponVisuals.js";
-
-/** Canvas-space offset from hand to barrel tip (matches drawPistol / drawLongGun transforms). */
 export function calculateMuzzleCanvasOffset(aimAngle, handScale, config, barrelRatio) {
     const size = config.SIZE;
     const offsetX = 0.01;
@@ -35,7 +28,6 @@ export function spriteMetricsFromConfig(config) {
     };
 }
 
-/** Inverse of renderActorKinematicsBody drawImage placement. */
 export function kinematicsInnerPointToWorld(actor, innerX, innerY, metrics, displayDiameter) {
     const canvasX = innerX + metrics.padding;
     const canvasY = innerY + metrics.padding;
@@ -49,26 +41,31 @@ export function kinematicsInnerPointToWorld(actor, innerX, innerY, metrics, disp
     };
 }
 
-export function resolveMuzzleFromRig(actor, rigData, project, config, facing, turretIndex, displayDiameter) {
-    const slots = resolveWeaponDrawSlots(actor);
-    const slot = slots.find((s) => s.turretIndex === turretIndex) ?? slots[0];
-    if (!slot) return null;
+/**
+ * @param {ReturnType<import("./createWeaponVisuals.js").createWeaponVisuals>} weaponVisuals
+ */
+export function createMuzzleResolver(weaponVisuals) {
+    return function resolveMuzzleFromRig(actor, rigData, project, config, facing, turretIndex, displayDiameter) {
+        const slots = weaponVisuals.resolveWeaponDrawSlots(actor);
+        const slot = slots.find((s) => s.turretIndex === turretIndex) ?? slots[0];
+        if (!slot) return null;
 
-    const turrets = actor.turrets ?? [];
-    const turret = turrets[turretIndex] ?? turrets[0];
-    if (!turret) return null;
+        const turrets = actor.turrets ?? [];
+        const turret = turrets[turretIndex] ?? turrets[0];
+        if (!turret) return null;
 
-    const hand = resolveProjectedHandsForSlot(rigData, slot, project);
-    const aimAngle = facing.gunCanvasAim(turret.angle);
-    const barrelRatio = getBarrelRatioForGunId(slot.gunId);
-    const offset = calculateMuzzleCanvasOffset(aimAngle, hand.scale ?? 1, config, barrelRatio);
-    const metrics = spriteMetricsFromConfig(config);
+        const hand = weaponVisuals.resolveProjectedHandsForSlot(rigData, slot, project);
+        const aimAngle = facing.gunCanvasAim(turret.angle);
+        const barrelRatio = weaponVisuals.getBarrelRatioForGunId(slot.gunId);
+        const offset = calculateMuzzleCanvasOffset(aimAngle, hand.scale ?? 1, config, barrelRatio);
+        const metrics = spriteMetricsFromConfig(config);
 
-    return kinematicsInnerPointToWorld(
-        actor,
-        hand.x + offset.x,
-        hand.y + offset.y,
-        metrics,
-        displayDiameter,
-    );
+        return kinematicsInnerPointToWorld(
+            actor,
+            hand.x + offset.x,
+            hand.y + offset.y,
+            metrics,
+            displayDiameter,
+        );
+    };
 }

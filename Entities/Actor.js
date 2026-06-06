@@ -17,7 +17,7 @@ import { getTurretCountForLoadout, normalizeWeaponLoadout } from "../Combat/equi
 import { ProgressBar } from "../Libraries/Canvas/ProgressBar.js";
 import { getNearestHostile } from "../Core/GamePorts.js";
 import { getActorProfileForActor, getActorProfileForType } from "../Config/content/actorProfiles.js";
-import { advanceActorKinematics, clearActorKinematics } from "../Render/Kinematics/ActorKinematicsRenderer.js";
+import { advanceActorKinematics, clearActorKinematics } from "../Libraries/Render/Characters/actorKinematicsRenderer.js";
 import { CombatParticles } from "../Render/CombatParticles.js";
 import { RagdollCorpse } from "./RagdollCorpse.js";
 

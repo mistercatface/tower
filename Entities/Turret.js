@@ -7,7 +7,7 @@ import { applyKnockback } from "../Libraries/Motion/index.js";
 import { getGunProjectileConfig } from "../Combat/gunCombat.js";
 import { inferFaction, areHostile } from "../Core/GamePorts.js";
 import { CombatParticles } from "../Render/CombatParticles.js";
-import { resolveKinematicsMuzzlePosition, resolveActorKinematicsCamera } from "../Render/Kinematics/ActorKinematicsRenderer.js";
+import { resolveKinematicsMuzzlePosition, resolveActorKinematicsCamera } from "../Libraries/Render/Characters/actorKinematicsRenderer.js";
 
 export class Turret {
     constructor(angle, turnSpeed, loadout = defaultTurretLoadout) {

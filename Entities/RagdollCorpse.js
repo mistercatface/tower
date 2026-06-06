@@ -3,7 +3,7 @@ import { applyRagdollImpulse, updateRagdoll } from "../Libraries/Kinematics/ragd
 import { checkRagdollHit, ragdollPartToWorld } from "../Libraries/Kinematics/ragdoll/hitTest.js";
 import { seedRagdollBloodOnDeath, updateBloodEffects, addRagdollBleedEmitter } from "../Libraries/Render/Characters/ragdoll/blood.js";
 import { createObstacleWallChecker, createRagdollState, resolveDeathImpact } from "../Libraries/Kinematics/ragdoll/fromActor.js";
-import { captureActorRigForRagdoll, renderCorpseKinematicsBody } from "../Render/Kinematics/ActorKinematicsRenderer.js";
+import { captureActorRigForRagdoll, renderCorpseKinematicsBody } from "../Libraries/Render/Characters/actorKinematicsRenderer.js";
 import { CombatParticles } from "../Render/CombatParticles.js";
 
 const CORPSE_MAX_MS = 12000;

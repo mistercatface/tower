@@ -1,12 +1,12 @@
-import { createKinematicsConfig, createKinematicsRig } from "../../Libraries/Kinematics/core/config.js";
-import { createKinematicsPoses } from "../../Libraries/Kinematics/core/poses.js";
-import { createEntityAnimState, createLocomotionTicker, getQuantizedAimKey, getWeaponLoadoutKey, syncWeaponPose } from "../../Libraries/Kinematics/anim/index.js";
-import { createCharacterFrameDrawer, createSceneRenderer } from "../../Libraries/Render/Characters/index.js";
-import { createKinematicsSpriteCache } from "../../Libraries/Canvas/QuantizedSpriteCache.js";
-import { createCharacterRigCalculator } from "../../Libraries/Kinematics/core/rigCalculator.js";
-import { createProjector } from "../../Libraries/Kinematics/core/projector.js";
-import { applyRigDeltas } from "../../Libraries/Kinematics/skeleton/adapters.js";
-import { clamp } from "../../Libraries/Math/Interpolate.js";
+import { createKinematicsConfig, createKinematicsRig } from "./core/config.js";
+import { createKinematicsPoses } from "./core/poses.js";
+import { createEntityAnimState, createLocomotionTicker, getQuantizedAimKey, getWeaponLoadoutKey, syncWeaponPose } from "./anim/index.js";
+import { createCharacterFrameDrawer, createSceneRenderer } from "../Render/Characters/index.js";
+import { createKinematicsSpriteCache } from "../Canvas/QuantizedSpriteCache.js";
+import { createCharacterRigCalculator } from "./core/rigCalculator.js";
+import { createProjector } from "./core/projector.js";
+import { applyRigDeltas } from "./skeleton/adapters.js";
+import { clamp } from "../Math/Interpolate.js";
 
 const sharedCanvas = new OffscreenCanvas(300, 150);
 const sharedCtx = sharedCanvas.getContext("2d", { alpha: true });
@@ -63,8 +63,7 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
     function buildQuantizedViewContext(x, y, camera, bodyRotation, animCycle) {
         const { rawTiltFactor, dx, dy } = buildViewContextAt(x, y, camera);
         const q = spriteCache.getQuantizedValues(bodyRotation, animCycle, rawTiltFactor, dx, dy);
-        const yFactor = 0;
-        return { yFactor, shiftX: q.dx * globalRatio, shiftY: q.dy * globalRatio, ratio: globalRatio };
+        return { yFactor: 0, shiftX: q.dx * globalRatio, shiftY: q.dy * globalRatio, ratio: globalRatio };
     }
 
     function renderKinematicsFrame(frame) {

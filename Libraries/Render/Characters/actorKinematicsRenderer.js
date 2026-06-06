@@ -1,8 +1,8 @@
-import { kinematicsPixelSize } from "../../Config/Config.js";
-import { blitCenteredSprite } from "../../Libraries/Canvas/QuantizedSpriteCache.js";
-import { CAMERA_HEIGHT } from "../../Libraries/Spatial/iso/IsometricProjection.js";
-import { createKinematicsBundle } from "./createKinematicsBundle.js";
-import { getRenderPorts } from "../../Core/GamePorts.js";
+import { kinematicsPixelSize } from "../../../Config/Config.js";
+import { blitCenteredSprite } from "../../Canvas/QuantizedSpriteCache.js";
+import { CAMERA_HEIGHT } from "../../Spatial/iso/IsometricProjection.js";
+import { createKinematicsBundle } from "../../Kinematics/createKinematicsBundle.js";
+import { getRenderPorts } from "../../../Core/GamePorts.js";
 
 export class ActorKinematicsRenderer {
     constructor(radius) {
@@ -43,7 +43,6 @@ export function clearActorKinematics(actor, radius = actor.radius) {
     getKinematicsRenderer(radius).bundle.clearActorState(actor.id);
 }
 
-/** Camera for kinematics tilt — same rules as updateCombat / body render. */
 export function resolveKinematicsCamera(actor, state) {
     if (actor && typeof actor.getKinematicsCamera === "function") {
         return actor.getKinematicsCamera(state);
@@ -62,12 +61,10 @@ export function resolveKinematicsMuzzlePosition(actor, turretIndex, camera) {
     return kinematics.bundle.resolveMuzzleWorldPosition(actor, camera, turretIndex, kinematics.displayDiameter);
 }
 
-/** Camera reference used for kinematics tilt/perspective — must match body render. */
 export function resolveActorKinematicsCamera(actor) {
     return actor._kinematicsCamera ?? { x: actor.x, y: actor.y };
 }
 
-/** Live: cached sprite. Corpse: pass rigData for direct render. Same blit either way. */
 export function renderKinematicsBody(ctx, spec) {
     const kinematics = getKinematicsRenderer(spec.radius);
     const camera = spec.camera ?? resolveKinematicsCamera(spec.actor, spec.state);

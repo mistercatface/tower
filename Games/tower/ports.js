@@ -10,7 +10,9 @@ import {
 } from "./presets/combat.js";
 import * as targeting from "./targeting.js";
 import { getWorldPropRecipes } from "../../Libraries/Content/PropCatalog.js";
-import { towerKinematicsPorts } from "./kinematics/ports.js";
+import { GUN_ID_TO_VISUAL } from "../../Assets/guns/visualMap.js";
+import { towerAppearanceOverrides } from "../../Assets/characters/index.js";
+import { createDefaultKinematicsPorts } from "../../Libraries/Kinematics/kinematicsPorts.js";
 
 /** @type {import("../../Core/GameDefinitionTypes.js").CombatPairsPort} */
 export const towerCombatPairs = {
@@ -39,5 +41,8 @@ export const towerRenderPorts = {
     get world3dPropRecipes() {
         return getWorldPropRecipes();
     },
-    kinematicsPorts: towerKinematicsPorts,
+    kinematicsPorts: createDefaultKinematicsPorts({
+        appearanceOverrides: towerAppearanceOverrides,
+        gunIdToVisual: GUN_ID_TO_VISUAL,
+    }),
 };
