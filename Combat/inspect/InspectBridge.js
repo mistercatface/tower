@@ -4,11 +4,7 @@ import { InspectViewer } from "../../Libraries/Inspect/InspectViewer.js";
 import { getInspectEntry } from "../../Libraries/Inspect/InspectCatalog.js";
 import { toInspectSubject } from "./inspectTargeting.js";
 import { isRadioDialogActive } from "../../Games/tower/wireRadio.js";
-import {
-    onInspectPanelClosed,
-    playGuidedInspectRadio,
-    recordClueFound,
-} from "../../Games/tower/tutorial/ClueSearch.js";
+import { handleInspectCollectClose, handleInspectCollectOpen, isInspectCollectActive } from "../../Libraries/RunScene/behaviors/inspectCollect.js";
 import { requestGamePause, requestGameResume, requestUiUpdate } from "../../Core/EventSystem.js";
 
 const INSPECTOR_PAUSE_REASON = "inspector";
@@ -17,11 +13,7 @@ class InspectBridge {
     constructor() {
         this.gameState = null;
         this.viewer = new InspectViewer({
-            hooks: {
-                onOpen: ({ subject }) => this.handleOpen(subject),
-                onClose: ({ subject }) => this.handleClose(subject),
-                isSubjectValid: (subject) => !subject?.isDead,
-            },
+            hooks: { onOpen: ({ subject }) => this.handleOpen(subject), onClose: ({ subject }) => this.handleClose(subject), isSubjectValid: (subject) => !subject?.isDead },
         });
     }
 
@@ -62,8 +54,8 @@ class InspectBridge {
         requestUiUpdate();
 
         const inspectKey = subject.inspectKey;
-        if (inspectKey && state?.clueSearchSeen != null) {
-            playGuidedInspectRadio(state, inspectKey, () => recordClueFound(state, inspectKey));
+        if (inspectKey && isInspectCollectActive(state)) {
+            handleInspectCollectOpen(state, inspectKey);
         }
     }
 
@@ -76,17 +68,10 @@ class InspectBridge {
         requestGameResume(INSPECTOR_PAUSE_REASON);
         requestUiUpdate();
 
-        if (
-            closedKey
-            && state?.clueSearchSeen
-            && !state.clueSearchSeen.has(closedKey)
-            && !isRadioDialogActive()
-        ) {
-            recordClueFound(state, closedKey);
-        }
-
-        if (state) {
-            onInspectPanelClosed(state);
+        if (closedKey && state && isInspectCollectActive(state) && !isRadioDialogActive()) {
+            handleInspectCollectClose(state, closedKey);
+        } else if (state) {
+            state.inspectPanelOpen = false;
         }
     }
 }

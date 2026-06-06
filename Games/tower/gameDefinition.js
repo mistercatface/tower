@@ -3,17 +3,10 @@ import { installGameSurfaceProfileProvider } from "../../Config/procedural/boots
 import { createUpgrades, createBaseUpgrades } from "../../Progression/Upgrades.js";
 import { registerGameInspectEntries } from "./content/inspect/inspectContent.js";
 import { MapState, CombatState, InspectorState } from "../../GameState/GameStates.js";
-import { unlockStartGameGuardsDialog } from "./tutorial/StartGameIntro.js";
+import { unlockProximityFightDialog } from "../../Libraries/RunScene/behaviors/proximityRadioFight.js";
 import { ProgressionManager } from "../../Progression/ProgressionManager.js";
 import { wireTowerRadio } from "./wireRadio.js";
-import {
-    onCombatEnter,
-    onRunSceneTick,
-    onCombatEnemyKilled,
-    canRunHordeSpawning,
-    getInspectMissionBanner,
-    findInspectorInspectPickup,
-} from "./hooks.js";
+import { onCombatEnter, onRunSceneTick, onCombatEnemyKilled, canRunHordeSpawning, getInspectMissionBanner, findInspectorInspectPickup } from "./hooks.js";
 import { startRunAtScene } from "./config/runScenes.js";
 import { registerTowerEntities } from "./config/entities.js";
 
@@ -52,11 +45,7 @@ export const towerGame = {
         return [...createBaseUpgrades(), ...createUpgrades()];
     },
 
-    states: {
-        map: MapState,
-        combat: CombatState,
-        inspector: InspectorState,
-    },
+    states: { map: MapState, combat: CombatState, inspector: InspectorState },
 
     initialState: "combat",
 
@@ -71,7 +60,7 @@ export const towerGame = {
 
     onRunStart({ state, upgrades }) {
         ProgressionManager.setupNewRunAbilities(state, upgrades);
-        unlockStartGameGuardsDialog(state);
+        unlockProximityFightDialog(state);
     },
 
     runStartRadioTrigger: "run_start",

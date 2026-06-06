@@ -292,6 +292,8 @@ export function getStartGameLayout(px, py, cellSize) {
             yard: spawn,
             foyer: clueSearchSpawn,
             corridor: mainCombatSpawn,
+            guard_left: guardLeft,
+            guard_right: guardRight,
         },
     };
 }

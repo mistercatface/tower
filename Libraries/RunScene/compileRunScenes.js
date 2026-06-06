@@ -1,50 +1,62 @@
+import { applySkipPreset } from "./skipPresets.js";
+import { evaluateCompleteWhen } from "./completeWhen.js";
+
 /**
- * @typedef {object} RunSceneDefinition
+ * @typedef {object} RunSceneTransition
+ * @property {string} [radio] — fired before advancing to the next scene
+ */
+
+/**
+ * @typedef {object} RunSceneConfig
  * @property {string} id
- * @property {string} [phase] — FSM phase while this scene is active
- * @property {string} [spawn] — named layout slot; applied automatically on enter/advance
- * @property {string[]} [radios] — radio triggers to mark seen when this scene is skipped via startAt
- * @property {Record<string, unknown> | ((state: object) => void)} [skipState] — plain fields to assign, or a custom skip hook
- * @property {(state: object, ctx: object) => void} [enter]
- * @property {(state: object, ctx: object) => void} [tick]
- * @property {(payload: object) => void} [onEnemyKilled]
- * @property {(state: object, ctx: object) => boolean} [completeWhen]
- * @property {(state: object, ctx: object) => void} [onComplete]
+ * @property {string} type
+ * @property {string} [phase]
+ * @property {string} [spawn]
+ * @property {string[]} [radios]
+ * @property {string} [skipPreset]
+ * @property {Record<string, unknown>} [config]
+ * @property {import("./completeWhen.js").CompleteWhenRule} [completeWhen]
+ * @property {RunSceneTransition} [transition]
  */
 
 /**
  * @typedef {object} CompileRunScenesOptions
  * @property {(state: object, spawnSlot: string, ctx: object) => void} applySpawn
+ * @property {Record<string, (def: RunSceneConfig) => object>} behaviors
  */
 
 /**
- * @param {RunSceneDefinition[]} defs
+ * @param {RunSceneConfig[]} defs
  * @param {CompileRunScenesOptions} options
  */
-export function compileRunScenes(defs, { applySpawn }) {
-    return defs.map((def) => ({
-        id: def.id,
-        phase: def.phase,
-        radios: def.radios ?? [],
+export function compileRunScenes(defs, { applySpawn, behaviors }) {
+    return defs.map((def) => {
+        const behavior = behaviors[def.type]?.(def) ?? {};
 
-        onSkip(state, ctx) {
-            if (typeof def.skipState === "function") {
-                def.skipState(state, ctx);
-                return;
-            }
-            if (def.skipState) {
-                Object.assign(state, def.skipState);
-            }
-        },
+        return {
+            id: def.id,
+            phase: def.phase,
+            radios: def.radios ?? [],
+            transition: def.transition,
 
-        onEnter(state, ctx) {
-            if (def.spawn) applySpawn(state, def.spawn, ctx);
-            def.enter?.(state, ctx);
-        },
+            onSkip(state, ctx) {
+                if (def.skipPreset) applySkipPreset(def.skipPreset, state, def);
+            },
 
-        onTick: def.tick,
-        onEnemyKilled: def.onEnemyKilled,
-        isComplete: def.completeWhen,
-        onComplete: def.onComplete,
-    }));
+            onEnter(state, ctx, enterOpts = {}) {
+                if (def.spawn && enterOpts.applySpawn) {
+                    applySpawn(state, def.spawn, ctx);
+                }
+                behavior.enter?.(state, ctx);
+            },
+
+            onTick: behavior.tick,
+            onEnemyKilled: behavior.onEnemyKilled,
+            onComplete: behavior.onComplete,
+
+            isComplete(state, ctx) {
+                return evaluateCompleteWhen(def.completeWhen, state, ctx);
+            },
+        };
+    });
 }

@@ -22,10 +22,16 @@ export class RunSceneController {
      *   runStartRadios?: string[],
      * }} config
      */
-    constructor({ scenes, markRadiosSeen = null, runStartRadios = ["run_start"] }) {
+    constructor({
+        scenes,
+        markRadiosSeen = null,
+        runStartRadios = ["run_start"],
+        fireRadioTrigger = null,
+    }) {
         this.scenes = scenes;
         this.markRadiosSeen = markRadiosSeen;
         this.runStartRadios = runStartRadios;
+        this.fireRadioTrigger = fireRadioTrigger;
         this.sceneIndex = 0;
         this.entered = false;
     }
@@ -72,13 +78,18 @@ export class RunSceneController {
         this.entered = false;
     }
 
-    enterCurrentScene(state, ctx) {
+    /**
+     * @param {object} state
+     * @param {object} ctx
+     * @param {{ applySpawn?: boolean }} [enterOpts] — spawn only on load/skip, not natural advance
+     */
+    enterCurrentScene(state, ctx, enterOpts = {}) {
         if (this.entered) return;
 
         const scene = this.getCurrentScene();
         if (!scene) return;
 
-        scene.onEnter?.(state, ctx);
+        scene.onEnter?.(state, ctx, enterOpts);
         this.entered = true;
         this.syncPhase(scene, ctx);
     }
@@ -123,12 +134,20 @@ export class RunSceneController {
         const scene = this.getCurrentScene();
         if (!scene) return;
 
-        scene.onComplete?.(state, ctx);
+        const transitionRadio = scene.transition?.radio;
+        const doAdvance = () => {
+            scene.onComplete?.(state, ctx);
+            if (this.sceneIndex >= this.scenes.length - 1) return;
+            this.sceneIndex++;
+            this.entered = false;
+            this.enterCurrentScene(state, ctx, { applySpawn: false });
+        };
 
-        if (this.sceneIndex >= this.scenes.length - 1) return;
+        if (transitionRadio && this.fireRadioTrigger) {
+            this.fireRadioTrigger(transitionRadio, doAdvance, state);
+            return;
+        }
 
-        this.sceneIndex++;
-        this.entered = false;
-        this.enterCurrentScene(state, ctx);
+        doAdvance();
     }
 }

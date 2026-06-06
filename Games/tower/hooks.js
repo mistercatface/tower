@@ -1,5 +1,5 @@
 import { isInspector } from "../../GameState/GamePhase.js";
-import { getClueSearchMissionLabel, findClueSearchPickup } from "./tutorial/ClueSearch.js";
+import { findInspectCollectPickup, getInspectCollectMissionBanner } from "../../Libraries/RunScene/behaviors/inspectCollect.js";
 import { runSceneController } from "./config/runScenes.js";
 
 /** @param {import("../../GameState/GameStateMachine.js").GameStateMachineContext} ctx */
@@ -13,7 +13,7 @@ export function onCombatEnter(ctx) {
         state.runSceneInitialized = true;
     }
 
-    runSceneController.enterCurrentScene(state, ctx);
+    runSceneController.enterCurrentScene(state, ctx, { applySpawn: true });
 }
 
 /** @param {import("../../GameState/GameStateMachine.js").GameStateMachineContext} ctx */
@@ -30,10 +30,10 @@ export function canRunHordeSpawning(_state) {
 }
 
 export function getInspectMissionBanner(state) {
-    const show = isInspector(state.phase) && state.clueSearchActive;
-    return { show, text: show ? getClueSearchMissionLabel(state) : "" };
+    if (!isInspector(state.phase)) return { show: false, text: "" };
+    return getInspectCollectMissionBanner(state);
 }
 
 export function findInspectorInspectPickup(state, worldX, worldY) {
-    return findClueSearchPickup(state, worldX, worldY);
+    return findInspectCollectPickup(state, worldX, worldY);
 }

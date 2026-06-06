@@ -147,6 +147,7 @@ export class GameState {
         this.clueSearchOnComplete = null;
         this.clueSearchCompleted = false;
         this.clueSearchFinishing = false;
+        this.runMission = null;
         this.inspectPanelOpen = false;
         this.skipCombatEnterReset = false;
         this.runSceneInitialized = false;

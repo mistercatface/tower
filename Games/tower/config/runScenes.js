@@ -1,9 +1,7 @@
-import { RunSceneController, compileRunScenes } from "../../../Libraries/RunScene/index.js";
+import { fireRadioTrigger } from "../../../Core/EventSystem.js";
+import { RunSceneController, compileRunScenes, runSceneBehaviors } from "../../../Libraries/RunScene/index.js";
 import { applyRunSceneSpawn } from "../runSceneSpawns.js";
 import { markTowerRadioTriggersSeen } from "../towerRadioSeen.js";
-import { introGuardsScene } from "../scenes/introGuards.js";
-import { clueSearchScene } from "../scenes/clueSearch.js";
-import { mainCombatScene } from "../scenes/mainCombat.js";
 
 /**
  * Dev override: jump to a run scene on new run (skips prior scenes via onSkip).
@@ -12,9 +10,48 @@ import { mainCombatScene } from "../scenes/mainCombat.js";
  */
 export const startRunAtScene = null;
 
-export const runScenes = [introGuardsScene, clueSearchScene, mainCombatScene];
+/** @type {import("../../../Libraries/RunScene/compileRunScenes.js").RunSceneConfig[]} */
+export const runScenes = [
+    {
+        id: "intro_guards",
+        type: "proximity_radio_fight",
+        phase: "combat",
+        spawn: "yard",
+        radios: ["start_game_guards", "intro_guards_cleared"],
+        skipPreset: "through_intro",
+        config: {
+            dialogRadio: "start_game_guards",
+            dialogRadius: 52,
+            enemyTag: "isIntroGuard",
+            guards: [
+                { enemyType: "fast", spawn: "guard_left" },
+                { enemyType: "dodger", spawn: "guard_right" },
+            ],
+        },
+        completeWhen: { and: [{ flag: "startGameIntroCompleted" }, { noLivingEnemiesWithTag: "isIntroGuard" }] },
+        transition: { radio: "intro_guards_cleared" },
+    },
+    {
+        id: "clue_search",
+        type: "inspect_collect",
+        phase: "inspector",
+        spawn: "foyer",
+        radios: ["inspect:jacko_can", "inspect:wood_crate", "clue_search_complete"],
+        skipPreset: "through_clue_search",
+        config: {
+            keys: ["jacko_can", "wood_crate"],
+            missionLabel: "Tap nearby objects to search for clues ({found}/{total})",
+            completeRadio: "clue_search_complete",
+            returnPhase: "combat",
+            guidedRadios: { jacko_can: "inspect_jacko_can_garbanzo", wood_crate: "inspect_wood_crate_barry_brock" },
+        },
+        completeWhen: "mission_completed",
+    },
+    { id: "main_combat", type: "open_combat", phase: "combat", spawn: "corridor", skipPreset: "through_clue_search", config: { horde: true }, completeWhen: "never" },
+];
 
 export const runSceneController = new RunSceneController({
-    scenes: compileRunScenes(runScenes, { applySpawn: applyRunSceneSpawn }),
+    scenes: compileRunScenes(runScenes, { applySpawn: applyRunSceneSpawn, behaviors: runSceneBehaviors }),
     markRadiosSeen: markTowerRadioTriggersSeen,
+    fireRadioTrigger,
 });
