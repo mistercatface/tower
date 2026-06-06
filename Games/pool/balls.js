@@ -2,6 +2,7 @@ import { Pickup } from "../../Entities/Pickup.js";
 import { wakePushableBody } from "../../Libraries/Motion/pushableSleep.js";
 import { poolBallFromNumber } from "../../Libraries/Render/Props3D/poolBallArt.js";
 import { BALL_STOPPED_SPEED_SQ } from "./config/tableLayout.js";
+import { POOL_OBJECT_BALL_COUNT } from "./config/rackLayout.js";
 
 export const POOL_CUE_TAG = "_poolCue";
 export const POOL_OBJECT_TAG = "_poolObject";
@@ -13,7 +14,7 @@ export function ensurePoolState(state) {
     if (!state.pool) {
         state.pool = {
             phase: "aiming",
-            objectRemaining: 2,
+            objectRemaining: POOL_OBJECT_BALL_COUNT,
             won: false,
             aim: null,
         };
@@ -71,10 +72,15 @@ export function allBallsStopped(state) {
 export function spawnPoolBalls(state, layout) {
     if (!state.pickups || !layout?.ballSpawns) return;
 
+    const rack = layout.ballSpawns.rack ?? [];
     const specs = [
         { type: "pool_cue_ball", pos: layout.ballSpawns.cue, tag: POOL_CUE_TAG, number: 0 },
-        { type: "pool_ball", pos: layout.ballSpawns.object1, tag: POOL_OBJECT_TAG, number: 3 },
-        { type: "pool_ball", pos: layout.ballSpawns.object2, tag: POOL_OBJECT_TAG, number: 9 },
+        ...rack.map((slot) => ({
+            type: "pool_ball",
+            pos: slot,
+            tag: POOL_OBJECT_TAG,
+            number: slot.number,
+        })),
     ];
 
     for (const spec of specs) {
@@ -86,7 +92,7 @@ export function spawnPoolBalls(state, layout) {
     }
 
     const pool = ensurePoolState(state);
-    pool.objectRemaining = 2;
+    pool.objectRemaining = POOL_OBJECT_BALL_COUNT;
     pool.phase = "aiming";
     pool.won = false;
 }

@@ -1,3 +1,5 @@
+import { buildRackPositions } from "./rackLayout.js";
+
 /** Grid size for the pool table wall bake (cells). */
 export const TABLE_COLS = 44;
 export const TABLE_ROWS = 24;
@@ -75,7 +77,7 @@ export function buildPoolStartLayout(px, py, cellSize) {
     const bounds = getTableWorldBounds(offsetX, offsetY, cellSize, cols, rows);
 
     const headSpot = { x: bounds.minX + bounds.width * 0.28, y: bounds.centerY };
-    const footSpot = { x: bounds.minX + bounds.width * 0.72, y: bounds.centerY };
+    const footSpot = { x: bounds.minX + bounds.width * 0.77, y: bounds.centerY };
 
     return {
         minX: bounds.minX,
@@ -96,8 +98,7 @@ export function buildPoolStartLayout(px, py, cellSize) {
         },
         ballSpawns: {
             cue: headSpot,
-            object1: { x: footSpot.x + 20, y: footSpot.y - 12 },
-            object2: { x: footSpot.x + 36, y: footSpot.y + 10 },
+            rack: buildRackPositions(footSpot, POOL_BALL_RADIUS),
         },
     };
 }

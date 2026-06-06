@@ -55,7 +55,7 @@ function registerPoolBallType(propDefs, recipes, id, defaultPoolBall) {
 }
 
 /**
- * Phase 1 pool — rectangular table, drag-to-shoot cue, 2 object balls, 6 pockets.
+ * Pool — rectangular table, drag-to-shoot cue, full 15-ball rack, 6 pockets.
  */
 export const poolGame = {
     id: "pool",
