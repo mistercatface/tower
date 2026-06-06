@@ -103,7 +103,7 @@ export const poolGame = {
         viewerSource: "viewport",
     },
 
-    propPixelSize: 16,
+    propPixelSize: 32,
 
     combatPairs: poolCombatPairs,
     targeting: poolTargeting,

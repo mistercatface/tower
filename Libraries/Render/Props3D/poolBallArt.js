@@ -52,7 +52,7 @@ export function resolvePoolBallFaceColor(face, poolBall) {
     return vMid < 0.18 || vMid > 0.82 ? shadeHex(base, 0.12) : base;
 }
 
-const LABEL_SIZE = 256;
+const LABEL_SIZE = 384;
 const labelCache = new Map();
 
 /**
@@ -64,14 +64,14 @@ const labelCache = new Map();
 export function getPoolBallLabelImage(poolBall) {
     if (poolBall.kind === "cue" || !poolBall.number) return null;
 
-    const key = `${poolBall.kind}_${poolBall.number}`;
+    const key = `${poolBall.kind}_${poolBall.number}_${LABEL_SIZE}`;
     if (labelCache.has(key)) return labelCache.get(key);
 
     const canvas = new OffscreenCanvas(LABEL_SIZE, LABEL_SIZE);
     const ctx = canvas.getContext("2d");
     const cx = LABEL_SIZE * 0.5;
     const cy = LABEL_SIZE * 0.5;
-    const discR = LABEL_SIZE * 0.38;
+    const discR = LABEL_SIZE * 0.46;
     const onDark = poolBall.kind === "solid" && poolBall.number === 8;
 
     if (!onDark) {
@@ -81,7 +81,7 @@ export function getPoolBallLabelImage(poolBall) {
         ctx.fill();
     }
 
-    const fontSize = poolBall.number >= 10 ? discR * 1.1 : discR * 1.35;
+    const fontSize = poolBall.number >= 10 ? discR * 1.25 : discR * 1.55;
     ctx.fillStyle = onDark ? "#FFFFFF" : "#111111";
     ctx.font = `900 ${fontSize}px system-ui, sans-serif`;
     ctx.textAlign = "center";
