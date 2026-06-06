@@ -1,4 +1,4 @@
-import { explosionSettings } from "../../Config/balance/combat.js";
+import { explosionSettings } from "../../../Config/balance/combat.js";
 export default {
     id: "barrel",
     recipe: "fuelBarrel",
@@ -26,7 +26,7 @@ export default {
         spawn: { minRadius: 150, maxRadius: 1000, minCount: 4, randomRange: 8 },
     },
     visuals: {
-        labelSrc: "Assets/images/fuel_barrel_label.png",
+        labelSrc: "Assets/props/barrel/fuel_barrel_label.png",
         halfHeight: 1.05,
         bodyRadius: 0.5,
         label: { y0: 0.21, y1: 0.79, angleCenter: -Math.PI / 2, angleSpan: 1.36, radialSegments: 10, verticalSegments: 18 },
