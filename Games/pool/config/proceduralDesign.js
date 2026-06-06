@@ -8,8 +8,10 @@ export const poolSurfaceProfileId = SURFACE_PROFILE_ID.poolTableFelt;
  * Capped flipbook length + larger batches keep first paint fast while the pulse still plays.
  */
 export const poolProceduralDesign = {
-    groundChunkAnimationsOn: true,
+    /*
+    groundChunkAnimationsOn: false,
     wallAnimationsOn: false,
     animationBakeMaxFrames: 24,
     animationFrameBatchSize: 24,
+    */
 };
