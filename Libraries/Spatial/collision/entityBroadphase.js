@@ -1,3 +1,4 @@
+import { isStandTipActive } from "../../Props/standTipMotion.js";
 import { broadphaseBoundsFromShape, pairBroadphaseBoundsOverlap } from "./Broadphase.js";
 import { SatCollision } from "./SatCollision.js";
 
@@ -9,6 +10,7 @@ export const ROTATING_ANGULAR_SQ = 0.08 * 0.08;
 export const NEIGHBOR_QUERY_PAD = 15;
 
 function entityAngle(entity) {
+    if (entity._collisionFacing != null) return entity._collisionFacing;
     return entity.facing ?? entity.angle ?? 0;
 }
 
@@ -32,7 +34,7 @@ export function isRotatingEntity(entity) {
 
 /** Linear or angular motion — rotating OBBs sweep volume without translation. */
 export function isKinematicallyActive(entity) {
-    return isMovingEntity(entity) || isRotatingEntity(entity);
+    return isMovingEntity(entity) || isRotatingEntity(entity) || isStandTipActive(entity);
 }
 
 export function pairShapeOverlap(a, b) {
@@ -52,7 +54,7 @@ export function getBroadphaseBounds(entity) {
         entity.x,
         entity.y,
         entityAngle(entity),
-        entity.halfExtents ?? null,
+        entity._collisionFacing != null ? null : (entity._collisionHalfExtents ?? entity.halfExtents ?? null),
     );
 }
 

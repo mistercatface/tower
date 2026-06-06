@@ -1,4 +1,5 @@
 import { invalidateWallResolveCache } from "../../Motion/WallCollisionResolver.js";
+import { applyActorPushTipImpulse } from "../../Props/actorPushTip.js";
 import { wakePushableBody } from "../../Motion/pushableSleep.js";
 import { shouldResolveActorPushable } from "./entityBroadphase.js";
 import { resolveCirclePair } from "./circlePair.js";
@@ -7,7 +8,7 @@ import { resolveSatPair } from "./satPair.js";
 
 const DEFAULT_PUSHABLE_ITERATIONS = 4;
 
-function resolveActorPushable(actor, pickup, resolveWalls, spatialFrame) {
+function resolveActorPushable(actor, pickup, resolveWalls, spatialFrame, state) {
     if (!shouldResolveActorPushable(actor, pickup)) return;
     const collisionInfo = resolveSatPair(actor, actor.getShape(), pickup, pickup.getShape(), {
         massA: actor.mass !== undefined ? actor.mass : actor.radius,
@@ -15,6 +16,7 @@ function resolveActorPushable(actor, pickup, resolveWalls, spatialFrame) {
         restitution: 0.15,
     });
     if (!collisionInfo) return;
+    applyActorPushTipImpulse(actor, pickup, collisionInfo, state);
     invalidateWallResolveCache(actor, pickup);
     wakePushableBody(pickup);
     resolveWalls(actor, spatialFrame);
@@ -93,7 +95,7 @@ export function runCollisionPipeline(
     const hasCombatants = combatants && combatants.length > 0;
     if (hasPushables || hasCombatants) {
         for (let iter = 0; iter < pushableIterations; iter++) {
-            if (hasCombatants) spatialFrame.forEachActorPushablePair((actor, pickup) => resolveActorPushable(actor, pickup, resolveWalls, spatialFrame));
+            if (hasCombatants) spatialFrame.forEachActorPushablePair((actor, pickup) => resolveActorPushable(actor, pickup, resolveWalls, spatialFrame, state));
             if (hasPushables) {
                 spatialFrame.forEachPushablePair((p1, p2) => resolvePushablePair(p1, p2));
                 for (let i = 0; i < pushables.length; i++) {

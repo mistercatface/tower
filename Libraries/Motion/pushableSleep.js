@@ -1,4 +1,5 @@
 import { getCombatPairFilter } from "../../Core/GamePorts.js";
+import { isStandTipActive } from "../Props/standTipMotion.js";
 import { isMovingEntity, pairBroadphaseOverlap } from "../Spatial/collision/entityBroadphase.js";
 
 /** Consecutive still frames required before a pushable is treated as sleeping. */
@@ -22,6 +23,7 @@ export function canSleepPushable(entity, { blocksSleep = () => false } = {}) {
     if (!isPushable(entity) || entity.isDead) return false;
     if (blocksSleep(entity)) return false;
     if (isMovingEntity(entity)) return false;
+    if (isStandTipActive(entity)) return false;
     const w = entity.angularVelocity || 0;
     return Math.abs(w) <= SLEEP_ANGULAR_EPS;
 }

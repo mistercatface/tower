@@ -1,5 +1,10 @@
 import { CircleShape, PolygonShape } from "./Shapes.js";
 
+function entityFacing(entity) {
+    if (entity._collisionFacing != null) return entity._collisionFacing;
+    return entity.facing ?? entity.angle ?? 0;
+}
+
 export class SatCollision {
     /**
      * @returns {Object|null} Collision info { overlap, nx, ny } pointing from A to B, or null if no collision.
@@ -43,7 +48,7 @@ export class SatCollision {
         let minNormal = null;
 
         const checkAxes = (polyA, pA, polyB, pB) => {
-            const angleA = pA.facing ?? pA.angle ?? 0;
+            const angleA = entityFacing(pA);
             const cosA = Math.cos(angleA);
             const sinA = Math.sin(angleA);
             for (let i = 0; i < polyA.normals.length; i++) {
@@ -53,7 +58,7 @@ export class SatCollision {
                 const rotatedNormal = { x: rx, y: ry };
 
                 const projA = this._projectPolygon(rotatedNormal, polyA, pA, angleA);
-                const projB = this._projectPolygon(rotatedNormal, polyB, pB, pB.facing ?? pB.angle ?? 0);
+                const projB = this._projectPolygon(rotatedNormal, polyB, pB, entityFacing(pB));
 
                 if (projA.min >= projB.max || projB.min >= projA.max) {
                     return false;
@@ -79,8 +84,9 @@ export class SatCollision {
 
         let minProjB = Infinity;
         let contactB = posB;
-        const cosB = Math.cos(posB.facing ?? posB.angle ?? 0);
-        const sinB = Math.sin(posB.facing ?? posB.angle ?? 0);
+        const facingB = entityFacing(posB);
+        const cosB = Math.cos(facingB);
+        const sinB = Math.sin(facingB);
         for (let i = 0; i < shapeB.vertices.length; i++) {
             const v = shapeB.vertices[i];
             const vx = posB.x + (v.x * cosB - v.y * sinB);
@@ -94,8 +100,9 @@ export class SatCollision {
 
         let maxProjA = -Infinity;
         let contactA = posA;
-        const cosA = Math.cos(posA.facing ?? posA.angle ?? 0);
-        const sinA = Math.sin(posA.facing ?? posA.angle ?? 0);
+        const facingA = entityFacing(posA);
+        const cosA = Math.cos(facingA);
+        const sinA = Math.sin(facingA);
         for (let i = 0; i < shapeA.vertices.length; i++) {
             const v = shapeA.vertices[i];
             const vx = posA.x + (v.x * cosA - v.y * sinA);
@@ -111,7 +118,7 @@ export class SatCollision {
     }
 
     static _circlePolygon(posCircle, circleShape, posPoly, polyShape) {
-        const polyAngle = posPoly.facing ?? posPoly.angle ?? 0;
+        const polyAngle = entityFacing(posPoly);
         if (isNaN(posCircle.x) || isNaN(posCircle.y) || isNaN(posPoly.x) || isNaN(posPoly.y)) {
             return null;
         }

@@ -1,5 +1,9 @@
 import { drawExtrudedRadial, drawRadialBand } from "../../Render/Props3D/SolidDraw.js";
+import { drawLoFiTippedCylinder } from "../../Render/Props3D/lofiTippedCylinder.js";
 import { projectVertical } from "../../Spatial/iso/IsometricProjection.js";
+import { isStandTipTilted } from "../../Spatial/transforms/longAxisBox3d.js";
+
+const TIP_MESH_THRESHOLD = 0.06;
 
 function drawBarrelTop(ctx, prop, px, py, radius, height, colors, onFire) {
     const projection = projectVertical(prop.x, prop.y, px, py, height);
@@ -31,31 +35,53 @@ function drawBarrelTop(ctx, prop, px, py, radius, height, colors, onFire) {
     ctx.fill();
 }
 
+function drawUprightBarrel(ctx, prop, px, py, radius, height, bodyColors, colors, onFire) {
+    drawExtrudedRadial(ctx, prop, px, py, {
+        baseRadius: radius,
+        height,
+        colors: bodyColors,
+        stroke: colors.stroke,
+    });
+
+    if (onFire) {
+        drawRadialBand(ctx, prop, px, py, {
+            baseRadius: radius,
+            height,
+            t0: colors.bandT0 ?? 0.28,
+            t1: colors.bandT1 ?? 0.72,
+            fill: "rgba(60, 20, 12, 0.35)",
+            stroke: colors.stroke,
+        });
+    }
+
+    drawBarrelTop(ctx, prop, px, py, radius, height, colors, onFire);
+}
+
 /** @param {object} visuals */
 export function createFuelBarrelDraw(visuals, { onFire = false } = {}) {
     const { world, colors } = visuals;
     return (ctx, prop, px, py) => {
-        const radius = prop.radius || 8;
+        const radius = prop._baseRadius ?? prop.radius ?? 8;
+        const height = world.height;
         const bodyColors = onFire ? colors.bodyFire : colors.body;
+        const useMesh = prop.isFallen || isStandTipTilted(prop) || (prop.rollAngle ?? 0) >= TIP_MESH_THRESHOLD;
 
-        drawExtrudedRadial(ctx, prop, px, py, {
-            baseRadius: radius,
-            height: world.height,
-            colors: bodyColors,
-            stroke: colors.stroke,
-        });
-
-        if (onFire) {
-            drawRadialBand(ctx, prop, px, py, {
-                baseRadius: radius,
-                height: world.height,
-                t0: world.bandT0,
-                t1: world.bandT1,
-                fill: "rgba(60, 20, 12, 0.35)",
-                stroke: colors.stroke,
-            });
+        if (!useMesh) {
+            drawUprightBarrel(ctx, prop, px, py, radius, height, bodyColors, { ...colors, bandT0: world.bandT0, bandT1: world.bandT1 }, onFire);
+            return;
         }
 
-        drawBarrelTop(ctx, prop, px, py, radius, world.height, colors, onFire);
+        drawLoFiTippedCylinder(ctx, prop, px, py, {
+            radius,
+            height,
+            colors: {
+                side: bodyColors.mid,
+                sideAlt: bodyColors.shadow,
+                top: colors.top,
+                bottom: colors.lip,
+            },
+            stroke: colors.stroke,
+            lineWidth: 0.85,
+        });
     };
 }

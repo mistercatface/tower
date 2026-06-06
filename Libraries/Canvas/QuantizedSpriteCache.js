@@ -2,6 +2,7 @@ import { createBakedSpriteCache } from "./BakedSpriteCache.js";
 import { quantizeAngle, quantizeAngleIndex, quantizeViewOffset } from "./viewQuantize.js";
 import { clamp } from "../Math/Interpolate.js";
 import { buildRollOrientKey, quantizeRollQuat } from "../Props/rollingMotion.js";
+import { standTipStageRadius } from "../Spatial/transforms/longAxisBox3d.js";
 
 /**
  * @typedef {ReturnType<createBakedSpriteCache>} BakedSpriteCache
@@ -172,11 +173,13 @@ export function buildPropSpriteKey(prop, px, py, renderKey, animFrame = 0) {
     const orientKey = prop.strategy?.rollAxis === "long"
         ? buildLongAxisLogOrientKey(prop)
         : prop.strategy?.rolls
-            ? buildRollOrientKey(prop.rollQuat, PROP_ROTATION_STEPS)
-            : `f${quantizeAngleIndex(prop.facing ?? 0, PROP_ROTATION_STEPS)}`;
-    const radius = Math.round(prop.radius ?? 8);
-    const halfX = Math.round(prop.halfExtents?.x ?? radius);
-    const halfY = Math.round(prop.halfExtents?.y ?? radius);
+                ? buildRollOrientKey(prop.rollQuat, PROP_ROTATION_STEPS)
+                : `f${quantizeAngleIndex(prop.facing ?? 0, PROP_ROTATION_STEPS)}`;
+    const radius = Math.round(prop._baseRadius ?? prop.radius ?? 8);
+    const stratHx = prop.strategy?.halfExtents?.x ?? radius;
+    const stratHy = prop.strategy?.halfExtents?.y ?? radius;
+    const halfX = Math.round(stratHx);
+    const halfY = Math.round(stratHy);
     const opacityBucket = (prop.opacity ?? 1) < 0.99 ? "fade" : "solid";
     return `${renderKey}_${orientKey}_${keyDx}_${keyDy}_${radius}_${halfX}x${halfY}_${opacityBucket}_${animFrame}`;
 }
@@ -197,20 +200,24 @@ export function getOrBakePropSprite({ prop, px, py, renderKey, draw, animFrame =
         const dx = prop.x - px;
         const dy = prop.y - py;
         const { dx: qDx, dy: qDy } = propSpriteCache.quantizeView(dx, dy);
-        const radius = prop.radius ?? 8;
-        const stageSpan = Math.ceil(radius * 4 + PROP_STAGE_PADDING * 2);
-        const anchorX = PROP_STAGE_PADDING + radius * 2;
-        const anchorY = PROP_STAGE_PADDING + radius * 2;
+        const stageR = prop.strategy?.standTip ? standTipStageRadius(prop) : (prop._baseRadius ?? prop.radius ?? 8);
+        const stageSpan = Math.ceil(stageR * 2.6 + PROP_STAGE_PADDING * 2);
+        const anchorX = PROP_STAGE_PADDING + stageR * 1.3;
+        const anchorY = PROP_STAGE_PADDING + stageR * 1.3;
 
         const canvas = new OffscreenCanvas(stageSpan, stageSpan);
         const ctx = canvas.getContext("2d", { alpha: true });
         const logAngles = prop.strategy?.rollAxis === "long"
             ? quantizeLongAxisLogAngles(prop)
             : null;
+        const stratHx = prop.strategy?.halfExtents?.x ?? prop._baseRadius ?? prop.radius ?? 8;
+        const stratHy = prop.strategy?.halfExtents?.y ?? stratHx;
         const stageProp = {
             ...prop,
             x: anchorX,
             y: anchorY,
+            radius: prop._baseRadius ?? prop.radius ?? 8,
+            halfExtents: prop.strategy?.halfExtents ? { x: stratHx, y: stratHy } : prop.halfExtents,
             facing: logAngles?.facing ?? quantizeAngle(prop.facing ?? 0, PROP_ROTATION_STEPS),
             rollAngle: logAngles?.rollAngle ?? prop.rollAngle,
             rollQuat: prop.strategy?.rolls && prop.strategy?.rollAxis !== "long"

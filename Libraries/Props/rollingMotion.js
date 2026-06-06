@@ -87,6 +87,10 @@ export function transformRollVertex(lx, ly, lz, radius, rollQuat = IDENTITY_ROLL
  */
 export function getRollRadius(body) {
     const strategy = body.strategy ?? {};
+    if (strategy.standTip && body.isFallen) {
+        const h = strategy.rollHeight ?? strategy.uprightHeight ?? (body._baseRadius ?? body.radius ?? 8) * 2.5;
+        return Math.max(1, Math.min(body.halfExtents?.x ?? h * 0.5, body.halfExtents?.y ?? h * 0.5));
+    }
     if (strategy.rollAxis === "long") {
         return Math.max(1, strategy.rollHeight ?? 3);
     }
@@ -116,7 +120,7 @@ function integrateGroundRoll(body, dtMs) {
  * Log 3D tumble (rollAngle): end-over-end about local long axis (X).
  * Only sideways slide drives roll — in-plane spin (facing / ω_z) is separate.
  */
-function integrateLongAxisRoll(body, dtMs) {
+export function integrateLongAxisRoll(body, dtMs) {
     const vx = body.vx ?? 0;
     const vy = body.vy ?? 0;
     const speed = Math.hypot(vx, vy);
@@ -150,7 +154,7 @@ export function absorbCollisionRollImpulse(body, dtMs) {
     if (Math.abs(w) < 0.02) return;
 
     const angle = -w * (dtMs / 1000);
-    if (body.strategy?.rollAxis === "long") {
+    if (body.strategy?.rollAxis === "long" || body.strategy?.standTip) {
         return;
     }
 
@@ -166,7 +170,8 @@ export function absorbCollisionRollImpulse(body, dtMs) {
  * @param {number} dtMs
  */
 export function integrateRollOrientation(body, dtMs) {
-    if (body.strategy?.rollAxis === "long") {
+    const axis = body.strategy?.rollAxis;
+    if (axis === "long") {
         integrateLongAxisRoll(body, dtMs);
         return;
     }

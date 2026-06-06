@@ -1,100 +1,21 @@
 import { Entity } from "./Entity.js";
 import { applyVelocityDamping } from "../Libraries/Motion/index.js";
-import { absorbCollisionRollImpulse, IDENTITY_ROLL_QUAT, integrateRollOrientation } from "../Libraries/Props/rollingMotion.js";
+import { IDENTITY_ROLL_QUAT } from "../Libraries/Props/rollingMotion.js";
+import { integratePropMotion } from "../Libraries/Props/propMotion.js";
+import { HIT_BEHAVIOR_HANDLERS } from "../Libraries/Props/hitBehaviors.js";
+import { initStandTipState } from "../Libraries/Props/standTipMotion.js";
 import { withPropStrategyDefaults } from "../Libraries/Props/propStrategy.js";
 import { getPropAsset, getWorldPropDefinitions } from "../Libraries/Content/PropCatalog.js";
 import { transitionEntity } from "../Libraries/FSM/transition.js";
 import { pickupStates } from "./PickupStates.js";
-import { PolygonShape } from "../Libraries/Spatial/collision/Shapes.js";
-import { getProjectileDamage } from "../Combat/impactDamage.js";
+import { CircleShape, PolygonShape } from "../Libraries/Spatial/collision/Shapes.js";
+import { syncLongAxisCollisionShape } from "../Libraries/Props/longAxisCollision.js";
+import { isStandTipProp } from "../Libraries/Spatial/transforms/longAxisBox3d.js";
 import { getWorldGen } from "../Core/GamePorts.js";
 import { placeAtWallClearance } from "../Libraries/Pathfinding/PathClearance.js";
 import { distanceToSegment } from "../Libraries/Spatial/geometry/WallGeometry.js";
 import { MOVING_SPEED_SQ } from "../Libraries/Spatial/collision/entityBroadphase.js";
 import { wakePushableBody } from "../Libraries/Motion/pushableSleep.js";
-
-function explosiveOnHit(state, pickup, projectile, events) {
-    if (projectile?.isExplosion) {
-        pickup.explode(state);
-        return true;
-    }
-    const dmg = projectile ? getProjectileDamage(projectile) : 0;
-    pickup.takeDamage(dmg, state);
-    if (projectile?.isDead !== undefined) projectile.isDead = true;
-    return true;
-}
-
-function damageOnHit(state, pickup, projectile, events) {
-    if (pickup.strategy.splittable) {
-        const width = pickup.halfExtents ? pickup.halfExtents.x * 2 : pickup.radius * 2;
-        const height = pickup.halfExtents ? pickup.halfExtents.y * 2 : pickup.radius * 2;
-        const minSize = 3;
-        const canSplit = width >= minSize * 2 && height >= minSize * 2;
-
-        if (!canSplit) {
-            if (pickup.ageMs > 250) return false;
-            if (projectile) {
-                const pushForce = projectile.isExplosion ? 250 : 120;
-
-                let forceAngle;
-                if (projectile.isExplosion) {
-                    forceAngle = Math.atan2(pickup.y - projectile.y, pickup.x - projectile.x);
-                } else {
-                    forceAngle = projectile.angle !== undefined ? projectile.angle : Math.atan2(pickup.y - projectile.y, pickup.x - projectile.x);
-                }
-
-                const fx = Math.cos(forceAngle) * pushForce;
-                const fy = Math.sin(forceAngle) * pushForce;
-                pickup.vx += fx;
-                pickup.vy += fy;
-                if (projectile.x !== undefined && projectile.y !== undefined && !projectile.isExplosion) {
-                    const rx = projectile.x - pickup.x;
-                    const ry = projectile.y - pickup.y;
-                    const torque = rx * fy - ry * fx;
-                    pickup.angularVelocity += torque / pickup.momentOfInertia;
-                    pickup.angularVelocity = Math.max(-30, Math.min(30, pickup.angularVelocity));
-                }
-                wakePushableBody(pickup);
-            }
-            if (projectile && projectile.isDead !== undefined) projectile.isDead = true;
-            return true;
-        }
-    }
-
-    if (projectile?.isExplosion) {
-        pickup.explode(state);
-        return true;
-    }
-    const dmg = projectile?.damage ?? 0;
-    pickup.takeDamage(dmg, state);
-
-    if (pickup.health > 0 && projectile) {
-        const pushForce = 80;
-        let forceAngle;
-        if (projectile.isExplosion) {
-            forceAngle = Math.atan2(pickup.y - projectile.y, pickup.x - projectile.x);
-        } else {
-            forceAngle = projectile.angle !== undefined ? projectile.angle : Math.atan2(pickup.y - projectile.y, pickup.x - projectile.x);
-        }
-
-        const fx = Math.cos(forceAngle) * pushForce;
-        const fy = Math.sin(forceAngle) * pushForce;
-        pickup.vx += fx;
-        pickup.vy += fy;
-        if (projectile.x !== undefined && projectile.y !== undefined && !projectile.isExplosion) {
-            const rx = projectile.x - pickup.x;
-            const ry = projectile.y - pickup.y;
-            const torque = rx * fy - ry * fx;
-            pickup.angularVelocity += torque / pickup.momentOfInertia;
-        }
-        wakePushableBody(pickup);
-    }
-
-    if (projectile?.isDead !== undefined) projectile.isDead = true;
-    return true;
-}
-
-const HIT_BEHAVIORS = { none: () => false, explosive: explosiveOnHit, damage: damageOnHit };
 
 function buildWorldPropStrategy(type) {
     const def = getWorldPropDefinitions()[type];
@@ -103,7 +24,7 @@ function buildWorldPropStrategy(type) {
     return withPropStrategyDefaults({
         ...strategyFields,
         isExplosive: hitBehavior === "explosive",
-        onHit: HIT_BEHAVIORS[hitBehavior] ?? HIT_BEHAVIORS.none,
+        onHit: HIT_BEHAVIOR_HANDLERS[hitBehavior] ?? HIT_BEHAVIOR_HANDLERS.none,
     });
 }
 
@@ -114,7 +35,11 @@ export class Pickup extends Entity {
         this.strategy = buildWorldPropStrategy(type);
         if (this.strategy.halfExtents) {
             this.halfExtents = { ...this.strategy.halfExtents };
-            this.radius = Math.max(this.halfExtents.x, this.halfExtents.y);
+            if (!this.strategy.standTip) {
+                this.radius = Math.max(this.halfExtents.x, this.halfExtents.y);
+            } else {
+                this.radius = this.strategy.radius ?? this.halfExtents.x;
+            }
         } else {
             this.radius = this.strategy.radius;
         }
@@ -124,7 +49,10 @@ export class Pickup extends Entity {
         this.mass = this.strategy.mass;
         this.zIndex = 10;
         this.facing = facing ?? Math.random() * Math.PI * 2;
-        if (this.strategy.rolls) {
+        if (this.strategy.standTip) {
+            this._baseRadius = this.radius;
+            initStandTipState(this);
+        } else if (this.strategy.rolls) {
             this.rollQuat = { ...IDENTITY_ROLL_QUAT };
             if (this.strategy.rollAxis === "long") {
                 this.rollAngle = 0;
@@ -163,6 +91,16 @@ export class Pickup extends Entity {
 
     get momentOfInertia() {
         const m = this.mass || 1.0;
+        if (isStandTipProp(this) && !this.isFallen) {
+            const r = this._baseRadius ?? this.radius ?? 8;
+            const h = this.strategy.rollHeight ?? this.strategy.uprightHeight ?? r * 2.5;
+            return m * (r * r * 0.25 + h * h / 3);
+        }
+        if (isStandTipProp(this) && this.isFallen && this.halfExtents) {
+            const w = this.halfExtents.x * 2;
+            const h = this.halfExtents.y * 2;
+            return (m * (w * w + h * h)) / 12;
+        }
         if (this.shape && this.shape.type === "Polygon") {
             if (this.strategy.rollAxis === "long" && this.halfExtents) {
                 const crossW = this.halfExtents.y * 2;
@@ -179,6 +117,28 @@ export class Pickup extends Entity {
     changeState(stateName, stateDataInit = null) {
         if (this.strategy?.isPushable) wakePushableBody(this);
         transitionEntity(this, pickupStates, stateName, stateDataInit);
+    }
+
+    getShape() {
+        if (isStandTipProp(this)) {
+            return syncLongAxisCollisionShape(this);
+        }
+        if (this.shape) {
+            return this.shape;
+        }
+        if (this.strategy.collisionShape === "box" && this.halfExtents) {
+            const hx = this.halfExtents.x;
+            const hy = this.halfExtents.y;
+            this.shape = new PolygonShape([
+                { x: -hx, y: -hy },
+                { x: hx, y: -hy },
+                { x: hx, y: hy },
+                { x: -hx, y: hy },
+            ]);
+            return this.shape;
+        }
+        this.shape = new CircleShape(this.radius || 0);
+        return this.shape;
     }
 
     getRender3DKey() {
@@ -213,25 +173,9 @@ export class Pickup extends Entity {
 
     update(dt, state, spatialFrame, { resolveWalls = false } = {}) {
         this.ageMs += dt;
-        if (this.isSleeping) return;
-        if (this.strategy.rolls) {
-            if (this.strategy.rollAxis === "long") {
-                // Spin: facing + ω_z (post-collision). Roll: rollAngle from sideways slide only.
-                integrateRollOrientation(this, dt);
-                applyVelocityDamping(this, dt, { friction: this.strategy.friction, integrateFacing: false });
-                if (this.angularVelocity) {
-                    const angularDrag = Math.exp(-this.strategy.friction * 0.8 * (dt / 1000));
-                    this.angularVelocity *= angularDrag;
-                    if (Math.abs(this.angularVelocity) < 0.1) {
-                        this.angularVelocity = 0;
-                    }
-                }
-            } else {
-                absorbCollisionRollImpulse(this, dt);
-                integrateRollOrientation(this, dt);
-                this.angularVelocity = 0;
-                applyVelocityDamping(this, dt, { friction: this.strategy.friction, integrateFacing: false });
-            }
+        if (this.isSleeping && !this.strategy?.standTip) return;
+        if (this.strategy.rolls || this.strategy.standTip) {
+            integratePropMotion(this, dt);
         } else {
             applyVelocityDamping(this, dt, { friction: this.strategy.friction });
         }

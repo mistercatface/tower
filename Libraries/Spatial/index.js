@@ -66,4 +66,16 @@ export { SpatialFrameCore } from "./world/SpatialFrameCore.js";
 
 // Iso / structure
 export { CAMERA_HEIGHT, projectVertical } from "./iso/IsometricProjection.js";
+export {
+    rotateLocalX,
+    transformLongAxisVertex,
+    buildLongAxisBoxCorners,
+    buildLongAxisBoxMesh,
+    buildLongAxisFootprintObb,
+    longAxisBoxDimsFromProp,
+    isStandTipProp,
+    isStandTipTilted,
+    isStandTipFallen,
+    standTipStageRadius,
+} from "./transforms/longAxisBox3d.js";
 export { SharedEdgeSolver } from "./structure/SharedEdgeSolver.js";

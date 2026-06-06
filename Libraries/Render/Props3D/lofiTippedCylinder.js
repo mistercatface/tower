@@ -1,0 +1,97 @@
+import { transformLongAxisVertex } from "../../Spatial/transforms/longAxisBox3d.js";
+import { drawPropMeshFace, isPropMeshFaceVisible } from "./propMesh.js";
+
+const SEGMENTS = 12;
+
+/**
+ * @param {number} radius
+ * @param {number} height
+ * @param {number} facing
+ * @param {number} rollAngle
+ */
+function buildTippedCylinderMesh(radius, height, facing, rollAngle) {
+    const ring = (z) => {
+        const pts = [];
+        for (let i = 0; i < SEGMENTS; i++) {
+            const a = (i / SEGMENTS) * Math.PI * 2;
+            pts.push(transformLongAxisVertex(
+                Math.cos(a) * radius,
+                Math.sin(a) * radius,
+                z,
+                facing,
+                height,
+                rollAngle,
+            ));
+        }
+        return pts;
+    };
+
+    const bottom = ring(0);
+    const top = ring(height);
+    const mesh = [];
+
+    const tri = (v0, v1, v2, panel) => {
+        const verts = [v0, v1, v2];
+        return {
+            verts,
+            panel,
+            depth: (verts[0].z + verts[1].z + verts[2].z) / 3,
+        };
+    };
+
+    for (let i = 0; i < SEGMENTS; i++) {
+        const j = (i + 1) % SEGMENTS;
+        const shade = i % 2 === 0 ? "sideA" : "sideB";
+        mesh.push(tri(bottom[i], bottom[j], top[j], shade));
+        mesh.push(tri(bottom[i], top[j], top[i], shade));
+    }
+
+    for (let i = 1; i < SEGMENTS - 1; i++) {
+        mesh.push(tri(bottom[0], bottom[i], bottom[i + 1], "bottom"));
+        mesh.push(tri(top[0], top[i + 1], top[i], "top"));
+    }
+
+    return mesh;
+}
+
+/**
+ * Cylinder tipped via shared long-axis transform (rollAngle + facing).
+ */
+export function drawLoFiTippedCylinder(ctx, prop, px, py, options) {
+    const radius = options.radius;
+    const height = options.height;
+    const colors = options.colors;
+    const stroke = options.stroke ?? "#505860";
+    const lineWidth = options.lineWidth ?? 0.85;
+    const facing = prop.facing ?? 0;
+    const rollAngle = prop.rollAngle ?? 0;
+
+    const panelFill = {
+        sideA: colors.side,
+        sideB: colors.sideAlt ?? colors.side,
+        top: colors.top,
+        bottom: colors.bottom ?? colors.lip,
+    };
+
+    const mesh = buildTippedCylinderMesh(radius, height, facing, rollAngle);
+    const backFaces = [];
+    const frontFaces = [];
+    for (const face of mesh) {
+        if (isPropMeshFaceVisible(prop, px, py, face.verts)) {
+            frontFaces.push(face);
+        } else {
+            backFaces.push(face);
+        }
+    }
+
+    const drawPass = (faces) => {
+        const sorted = [...faces].sort((a, b) => a.depth - b.depth);
+        for (const face of sorted) {
+            const fill = panelFill[face.panel] ?? colors.side;
+            drawPropMeshFace(ctx, prop, px, py, face.verts, fill, stroke, lineWidth);
+        }
+    };
+
+    drawPass(backFaces);
+    drawPass(frontFaces);
+}

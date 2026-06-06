@@ -15,9 +15,18 @@ export const PROP_STRATEGY_DEFAULTS = {
     /** @type {PropCollisionShape} */
     collisionShape: "circle",
     rolls: false,
-    /** @type {"ground" | "long"} ground = sphere-style; long = cylinder/log tumble about local long axis */
+    /** @type {"ground" | "long"} ground = sphere; long = log or stand-tip box (barrel) */
     rollAxis: "ground",
+    /** Standing props that tip via rollAngle (0 upright → π/2 flat), then tumble like logs. */
+    standTip: false,
     rollHeight: null,
+    uprightHeight: null,
+    tipPushSpeed: 9,
+    tipFallAngle: null,
+    tipGravity: 16,
+    tipDamping: 2.8,
+    tipImpulseGain: 0.035,
+    actorTipGain: 0.2,
     splittable: false,
     randomFaceLabels: false,
     onFire: null,

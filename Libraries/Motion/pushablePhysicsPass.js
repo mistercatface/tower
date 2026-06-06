@@ -1,4 +1,5 @@
 import { advancePushableSleep, evaluatePushableSleepEligible, wakePushableBody } from "./pushableSleep.js";
+import { integrateStandTipsAfterCollisions } from "../Props/standTipMotion.js";
 
 /**
  * @param {object} state
@@ -44,6 +45,7 @@ export function tickPushableSleep(spatialFrame, { blocksSleep = () => false } = 
 export function runPushablePhysicsPass(state, dt, spatialFrame, { updatePickups, runCollisions, afterCollisions, blocksSleep = () => false }, events) {
     updatePickups(state, dt, spatialFrame);
     runCollisions(state, spatialFrame, events);
+    integrateStandTipsAfterCollisions(state, dt);
     if (afterCollisions) afterCollisions(state, dt);
     tickPushableSleep(spatialFrame, { blocksSleep });
     return events;
@@ -55,7 +57,7 @@ export function integrateLongAxisLogFacing(state, dt) {
     for (let i = 0; i < state.pickups.length; i++) {
         const pickup = state.pickups[i];
         if (pickup.isDead || pickup.isSleeping) continue;
-        if (pickup.strategy?.rollAxis !== "long") continue;
+        if (pickup.strategy?.rollAxis !== "long" && !pickup.strategy?.standTip) continue;
         const w = pickup.angularVelocity ?? 0;
         if (Math.abs(w) < 0.02) continue;
         pickup.facing = (pickup.facing ?? 0) + w * (dt / 1000);
