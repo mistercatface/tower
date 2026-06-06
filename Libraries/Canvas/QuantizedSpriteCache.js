@@ -133,9 +133,30 @@ export function createKinematicsSpriteCache() {
 
 // ─── Iso prop preset ─────────────────────────────────────────────────────────
 
-const propSpriteCache = createQuantizedSpriteCache({ maxItems: 768 });
+const propSpriteCache = createQuantizedSpriteCache({ maxItems: 1536 });
 const PROP_ROTATION_STEPS = 16;
+/** Spin (facing) + tumble (rollAngle) buckets for long-axis logs. */
+const LOG_PROP_ROTATION_STEPS = 32;
 const PROP_STAGE_PADDING = 40;
+
+/**
+ * @param {object} prop
+ * @param {number} [steps]
+ */
+export function quantizeLongAxisLogAngles(prop, steps = LOG_PROP_ROTATION_STEPS) {
+    return {
+        facing: quantizeAngle(prop.facing ?? 0, steps),
+        rollAngle: quantizeAngle(prop.rollAngle ?? 0, steps),
+    };
+}
+
+/**
+ * @param {object} prop
+ * @param {number} [steps]
+ */
+export function buildLongAxisLogOrientKey(prop, steps = LOG_PROP_ROTATION_STEPS) {
+    return `f${quantizeAngleIndex(prop.facing ?? 0, steps)}_a${quantizeAngleIndex(prop.rollAngle ?? 0, steps)}`;
+}
 
 /**
  * @param {object} prop
@@ -148,9 +169,11 @@ export function buildPropSpriteKey(prop, px, py, renderKey, animFrame = 0) {
     const dx = prop.x - px;
     const dy = prop.y - py;
     const { keyDx, keyDy } = propSpriteCache.quantizeView(dx, dy);
-    const orientKey = prop.strategy?.rolls
-        ? buildRollOrientKey(prop.rollQuat, PROP_ROTATION_STEPS)
-        : `f${quantizeAngleIndex(prop.facing ?? 0, PROP_ROTATION_STEPS)}`;
+    const orientKey = prop.strategy?.rollAxis === "long"
+        ? buildLongAxisLogOrientKey(prop)
+        : prop.strategy?.rolls
+            ? buildRollOrientKey(prop.rollQuat, PROP_ROTATION_STEPS)
+            : `f${quantizeAngleIndex(prop.facing ?? 0, PROP_ROTATION_STEPS)}`;
     const radius = Math.round(prop.radius ?? 8);
     const halfX = Math.round(prop.halfExtents?.x ?? radius);
     const halfY = Math.round(prop.halfExtents?.y ?? radius);
@@ -181,12 +204,16 @@ export function getOrBakePropSprite({ prop, px, py, renderKey, draw, animFrame =
 
         const canvas = new OffscreenCanvas(stageSpan, stageSpan);
         const ctx = canvas.getContext("2d", { alpha: true });
+        const logAngles = prop.strategy?.rollAxis === "long"
+            ? quantizeLongAxisLogAngles(prop)
+            : null;
         const stageProp = {
             ...prop,
             x: anchorX,
             y: anchorY,
-            facing: quantizeAngle(prop.facing ?? 0, PROP_ROTATION_STEPS),
-            rollQuat: prop.strategy?.rolls
+            facing: logAngles?.facing ?? quantizeAngle(prop.facing ?? 0, PROP_ROTATION_STEPS),
+            rollAngle: logAngles?.rollAngle ?? prop.rollAngle,
+            rollQuat: prop.strategy?.rolls && prop.strategy?.rollAxis !== "long"
                 ? quantizeRollQuat(prop.rollQuat, PROP_ROTATION_STEPS)
                 : prop.rollQuat,
             opacity: 1,

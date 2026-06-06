@@ -1,23 +1,25 @@
-import { IDENTITY_ROLL_QUAT, rotateVecByQuat } from "../../Props/rollingMotion.js";
 import { drawPropMeshFace, isPropMeshFaceVisible } from "./propMesh.js";
 
 /**
- * @param {number} lx
- * @param {number} ly
- * @param {number} lz
- * @param {number} centerZ
- * @param {{ w: number, x: number, y: number, z: number }} rollQuat
+ * End-over-end tumble about local long axis (X), pivot at cross-section center.
  */
-function applyLocalRoll(lx, ly, lz, centerZ, rollQuat) {
-    const rotated = rotateVecByQuat(lx, ly, lz - centerZ, rollQuat);
-    return { lx: rotated.x, ly: rotated.y, z: rotated.z + centerZ };
+function rotateLocalX(lx, ly, lz, angle, centerZ) {
+    const y = ly;
+    const z = lz - centerZ;
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    return {
+        lx,
+        ly: y * cos - z * sin,
+        z: y * sin + z * cos + centerZ,
+    };
 }
 
 /**
- * Long-axis log: roll in local space (X = length), then yaw to world facing.
+ * Tumble in local space first, then yaw to world facing (spin).
  */
-function transformLogVertex(lx, ly, lz, facing, height, rollQuat) {
-    const rolled = applyLocalRoll(lx, ly, lz, height * 0.5, rollQuat);
+function transformLogVertex(lx, ly, lz, facing, height, rollAngle) {
+    const rolled = rotateLocalX(lx, ly, lz, rollAngle, height * 0.5);
     const cos = Math.cos(facing);
     const sin = Math.sin(facing);
     return {
@@ -32,7 +34,7 @@ function transformLogVertex(lx, ly, lz, facing, height, rollQuat) {
  * @param {number} hy half-width along local Y
  * @param {number} height vertical extent (2″ face when 2×4 lies flat)
  */
-function buildLogMesh(hx, hy, height, facing, rollQuat) {
+function buildLogMesh(hx, hy, height, facing, rollAngle) {
     const local = [
         { lx: -hx, ly: -hy, z: 0 },
         { lx: hx, ly: -hy, z: 0 },
@@ -44,7 +46,7 @@ function buildLogMesh(hx, hy, height, facing, rollQuat) {
         { lx: -hx, ly: hy, z: height },
     ];
 
-    const corners = local.map((v) => transformLogVertex(v.lx, v.ly, v.z, facing, height, rollQuat));
+    const corners = local.map((v) => transformLogVertex(v.lx, v.ly, v.z, facing, height, rollAngle));
 
     const tri = (i0, i1, i2, panel) => {
         const verts = [corners[i0], corners[i1], corners[i2]];
@@ -71,7 +73,7 @@ function buildLogMesh(hx, hy, height, facing, rollQuat) {
 }
 
 /**
- * Low-poly rolling 2×4 log: vertex mesh, tumble about long axis, iso projected.
+ * Low-poly 2×4 log: tumble (rollAngle, local X) + spin (facing), iso projected.
  */
 export function drawLoFiRollingBox(ctx, prop, px, py, options) {
     const hx = options.halfExtents.x;
@@ -81,7 +83,7 @@ export function drawLoFiRollingBox(ctx, prop, px, py, options) {
     const stroke = "stroke" in options ? options.stroke : "#3E2723";
     const lineWidth = options.lineWidth ?? 1.0;
     const facing = prop.facing ?? 0;
-    const rollQuat = prop.rollQuat ?? IDENTITY_ROLL_QUAT;
+    const rollAngle = prop.rollAngle ?? 0;
 
     const panelFill = {
         bottom: colors.bottom,
@@ -92,7 +94,7 @@ export function drawLoFiRollingBox(ctx, prop, px, py, options) {
         endB: colors.endAlt ?? colors.end,
     };
 
-    const mesh = buildLogMesh(hx, hy, height, facing, rollQuat);
+    const mesh = buildLogMesh(hx, hy, height, facing, rollAngle);
 
     const backFaces = [];
     const frontFaces = [];

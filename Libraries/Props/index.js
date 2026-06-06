@@ -2,6 +2,7 @@ export { PROP_STRATEGY_DEFAULTS, withPropStrategyDefaults } from "./propStrategy
 export {
     IDENTITY_ROLL_QUAT,
     integrateRollOrientation,
+    absorbCollisionRollImpulse,
     getRollRadius,
     quantizeRollQuat,
     buildRollOrientKey,

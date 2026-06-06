@@ -1,6 +1,6 @@
 import { Entity } from "./Entity.js";
 import { applyVelocityDamping } from "../Libraries/Motion/index.js";
-import { IDENTITY_ROLL_QUAT, integrateRollOrientation } from "../Libraries/Props/rollingMotion.js";
+import { absorbCollisionRollImpulse, IDENTITY_ROLL_QUAT, integrateRollOrientation } from "../Libraries/Props/rollingMotion.js";
 import { withPropStrategyDefaults } from "../Libraries/Props/propStrategy.js";
 import { getPropAsset, getWorldPropDefinitions } from "../Libraries/Content/PropCatalog.js";
 import { transitionEntity } from "../Libraries/FSM/transition.js";
@@ -126,6 +126,9 @@ export class Pickup extends Entity {
         this.facing = facing ?? Math.random() * Math.PI * 2;
         if (this.strategy.rolls) {
             this.rollQuat = { ...IDENTITY_ROLL_QUAT };
+            if (this.strategy.rollAxis === "long") {
+                this.rollAngle = 0;
+            }
         }
 
         if (this.strategy.randomFaceLabels) {
@@ -161,6 +164,11 @@ export class Pickup extends Entity {
     get momentOfInertia() {
         const m = this.mass || 1.0;
         if (this.shape && this.shape.type === "Polygon") {
+            if (this.strategy.rollAxis === "long" && this.halfExtents) {
+                const crossW = this.halfExtents.y * 2;
+                const crossH = this.strategy.rollHeight ?? 3;
+                return (m * (crossW * crossW + crossH * crossH)) / 12;
+            }
             const w = this.halfExtents ? this.halfExtents.x * 2 : this.radius * 2;
             const h = this.halfExtents ? this.halfExtents.y * 2 : this.radius * 2;
             return (m * (w * w + h * h)) / 12;
@@ -207,9 +215,23 @@ export class Pickup extends Entity {
         this.ageMs += dt;
         if (this.isSleeping) return;
         if (this.strategy.rolls) {
-            integrateRollOrientation(this, dt);
-            this.angularVelocity = 0;
-            applyVelocityDamping(this, dt, { friction: this.strategy.friction, integrateFacing: false });
+            if (this.strategy.rollAxis === "long") {
+                // Spin: facing + ω_z (post-collision). Roll: rollAngle from sideways slide only.
+                integrateRollOrientation(this, dt);
+                applyVelocityDamping(this, dt, { friction: this.strategy.friction, integrateFacing: false });
+                if (this.angularVelocity) {
+                    const angularDrag = Math.exp(-this.strategy.friction * 0.8 * (dt / 1000));
+                    this.angularVelocity *= angularDrag;
+                    if (Math.abs(this.angularVelocity) < 0.1) {
+                        this.angularVelocity = 0;
+                    }
+                }
+            } else {
+                absorbCollisionRollImpulse(this, dt);
+                integrateRollOrientation(this, dt);
+                this.angularVelocity = 0;
+                applyVelocityDamping(this, dt, { friction: this.strategy.friction, integrateFacing: false });
+            }
         } else {
             applyVelocityDamping(this, dt, { friction: this.strategy.friction });
         }

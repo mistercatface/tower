@@ -19,7 +19,7 @@ export function getTowerStartProps(layout) {
             type: "log",
             x: layout.spawnX + 52,
             y: layout.spawnY - 2,
-            facing: 0,
+            facing: Math.PI / 2,
         },
     ];
 }

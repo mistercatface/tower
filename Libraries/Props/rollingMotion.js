@@ -113,24 +113,52 @@ function integrateGroundRoll(body, dtMs) {
 }
 
 /**
- * Log / cylinder: tumble about local long axis (X). Only the velocity component
- * perpendicular to the log length drives roll.
+ * Log 3D tumble (rollAngle): end-over-end about local long axis (X).
+ * Only sideways slide drives roll — in-plane spin (facing / ω_z) is separate.
  */
 function integrateLongAxisRoll(body, dtMs) {
     const vx = body.vx ?? 0;
     const vy = body.vy ?? 0;
-    const facing = body.facing ?? 0;
-    const cos = Math.cos(facing);
-    const sin = Math.sin(facing);
+    const speed = Math.hypot(vx, vy);
+    const spinRate = Math.abs(body.angularVelocity ?? 0);
 
-    const perpVel = -vx * sin + vy * cos;
+    const facing = body.facing ?? 0;
+    const longX = Math.cos(facing);
+    const longY = Math.sin(facing);
+    const perpVel = longX * vy - longY * vx;
     const perpSpeed = Math.abs(perpVel);
-    if (perpSpeed < 0.5) return;
+
+    if (perpSpeed < 0.2) return;
+    if (perpSpeed < 0.4 && spinRate > 0.12) return;
+
+    const perpRatio = perpSpeed / Math.max(speed, 0.01);
+    if (perpRatio < 0.22) return;
 
     const r = getRollRadius(body);
-    const angle = -(perpVel / r) * (dtMs / 1000);
-    const delta = axisAngleQuat(1, 0, 0, angle);
-    body.rollQuat = normalizeQuat(multiplyQuat(body.rollQuat ?? IDENTITY_ROLL_QUAT, delta));
+    const tumble = (perpSpeed / r) * (dtMs / 1000) * Math.min(1, perpRatio * 1.4);
+    body.rollAngle = (body.rollAngle ?? 0) - Math.sign(perpVel) * tumble;
+}
+
+/**
+ * Collision pairs write angularVelocity about Z; rolling props absorb it into rollQuat.
+ *
+ * @param {{ angularVelocity?: number, strategy?: { rollAxis?: string } }} body
+ * @param {number} dtMs
+ */
+export function absorbCollisionRollImpulse(body, dtMs) {
+    const w = body.angularVelocity ?? 0;
+    if (Math.abs(w) < 0.02) return;
+
+    const angle = -w * (dtMs / 1000);
+    if (body.strategy?.rollAxis === "long") {
+        return;
+    }
+
+    const vx = body.vx ?? 0;
+    const vy = body.vy ?? 0;
+    const speed = Math.hypot(vx, vy) || 1;
+    const delta = axisAngleQuat(-vy / speed, vx / speed, 0, angle);
+    body.rollQuat = normalizeQuat(multiplyQuat(delta, body.rollQuat ?? IDENTITY_ROLL_QUAT));
 }
 
 /**
