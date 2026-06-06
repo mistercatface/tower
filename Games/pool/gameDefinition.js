@@ -10,6 +10,7 @@ import { NOOP_COMBAT_PORT, NOOP_INSPECT_PORT } from "../../Libraries/Ports/noopP
 import { poolOutcomePort } from "./outcomePort.js";
 import { poolRadioPort } from "./radioPort.js";
 import { getWorldPropDefinitions, getWorldPropRecipes } from "../../Libraries/Content/PropCatalog.js";
+import { registerCueStickRecipe } from "../../Libraries/CueStick/registerCueStick.js";
 import { PROP_RECIPE_BUILDERS } from "../../Libraries/Props/recipes/index.js";
 import { POOL_BALL_RADIUS, POOL_BALL_LOW_SPEED_THRESHOLD, POOL_BALL_LOW_SPEED_FRICTION, POOL_BALL_SNAP_SPEED } from "./config/tableLayout.js";
 import { poolProceduralDesign, poolSurfaceProfileId } from "./config/proceduralDesign.js";
@@ -25,6 +26,7 @@ const POOL_BALL_PHYSICS = {
     collisionShape: "circle",
     laserTargetable: false,
     mass: 1.0,
+    pairRestitution: 0.92,
     friction: 0.5,
     lowSpeedFrictionThreshold: POOL_BALL_LOW_SPEED_THRESHOLD,
     lowSpeedFriction: POOL_BALL_LOW_SPEED_FRICTION,
@@ -69,6 +71,7 @@ export const poolGame = {
         registerPoolEntities();
         const propDefs = getWorldPropDefinitions();
         const recipes = getWorldPropRecipes();
+        registerCueStickRecipe(recipes);
         registerPoolBallType(propDefs, recipes, "pool_cue_ball", { kind: "cue" });
         registerPoolBallType(propDefs, recipes, "pool_ball", { kind: "solid", number: 1, color: "#FFD600" });
     },

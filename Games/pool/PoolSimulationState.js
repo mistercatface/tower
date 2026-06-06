@@ -1,9 +1,17 @@
 import { inspectBridge } from "../../Combat/inspect/InspectBridge.js";
+import {
+    advanceCueStickStrike,
+    applyCueStickImpulse,
+    getCueStickDrawProp,
+    hideCueStick,
+    syncCueStickFromAim,
+} from "../../Libraries/CueStick/cueStickController.js";
 import { requestUiUpdate } from "../../Core/EventSystem.js";
 import { getRadioPort, getRunScenePort, getSimulationPort } from "../../Core/GamePorts.js";
+import { resolveRenderViewer } from "../../Render/adapters/WorldRenderAdapter.js";
 import { resetSimulationWorld } from "../../Systems/Simulation/index.js";
 import { getCueBall, ensurePoolState } from "./balls.js";
-import { tryBeginAim, updateAim, releaseAimShot, getAimPreview } from "./shotInput.js";
+import { tryBeginAim, updateAim, releaseAimShot, cancelAim, getAimPreview } from "./shotInput.js";
 export class PoolSimulationState {
     onEnter(ctx) {
         if (ctx.state.skipSimulationEnterReset) {
@@ -19,11 +27,54 @@ export class PoolSimulationState {
     }
     update(dt, ctx) {
         getSimulationPort().runTick(ctx, dt);
+        this._updateCueStick(ctx, dt);
     }
     render(ctx) {
         this._snapCameraToTable(ctx);
         ctx.renderer.renderSimulationScene(ctx.state, ctx.viewport);
+        this._drawCueStick(ctx);
         this._drawWorldOverlay(ctx);
+    }
+    /** @param {object} ctx @param {number} dt */
+    _updateCueStick(ctx, dt) {
+        const pool = ensurePoolState(ctx.state);
+        const cue = getCueBall(ctx.state);
+        if (!cue) return;
+        if (pool.phase === "aiming" && pool.aim?.active) {
+            const preview = getAimPreview(ctx.state);
+            if (preview) syncCueStickFromAim(pool, cue, preview);
+            return;
+        }
+        if (pool.phase === "striking") {
+            advanceCueStickStrike(pool, cue, dt, (strike) => {
+                applyCueStickImpulse(cue, strike);
+                pool.phase = "rolling";
+            });
+        }
+    }
+    /** @param {object} ctx */
+    _syncCueStickFromAim(ctx) {
+        const pool = ensurePoolState(ctx.state);
+        const cue = getCueBall(ctx.state);
+        const preview = getAimPreview(ctx.state);
+        if (!cue || !preview) {
+            hideCueStick(pool);
+            return;
+        }
+        syncCueStickFromAim(pool, cue, preview);
+    }
+    /** Draw the 3D cue stick in world space (after balls, before screen overlays). */
+    /** @param {object} ctx */
+    _drawCueStick(ctx) {
+        const prop = getCueStickDrawProp(ensurePoolState(ctx.state));
+        if (!prop) return;
+        const canvasCtx = ctx.renderer.ctx;
+        const { viewport } = ctx;
+        canvasCtx.save();
+        viewport.apply(canvasCtx);
+        const { x: px, y: py } = resolveRenderViewer(ctx.state, viewport);
+        ctx.renderer.render3D.drawProp(canvasCtx, prop, px, py);
+        canvasCtx.restore();
     }
     /** @param {object} ctx */
     _snapCameraToTable(ctx) {
@@ -73,24 +124,6 @@ export class PoolSimulationState {
                 canvasCtx.lineWidth = 2;
                 canvasCtx.stroke();
             }
-        const preview = getAimPreview(ctx.state);
-        const cue = getCueBall(ctx.state);
-        if (preview && cue) {
-            const start = viewport.worldToScreen(cue.x, cue.y);
-            const shotLen = Math.min(160, preview.drag * viewport.zoom * 0.6);
-            const shotX = start.x + preview.nx * shotLen;
-            const shotY = start.y + preview.ny * shotLen;
-            canvasCtx.strokeStyle = "rgba(255, 255, 255, 0.95)";
-            canvasCtx.lineWidth = 3;
-            canvasCtx.beginPath();
-            canvasCtx.moveTo(start.x, start.y);
-            canvasCtx.lineTo(shotX, shotY);
-            canvasCtx.stroke();
-            canvasCtx.fillStyle = "rgba(255, 255, 255, 0.9)";
-            canvasCtx.beginPath();
-            canvasCtx.arc(shotX, shotY, 4, 0, Math.PI * 2);
-            canvasCtx.fill();
-        }
         canvasCtx.restore();
     }
     _inputBlocked(ctx) {
@@ -99,6 +132,7 @@ export class PoolSimulationState {
     handlePointerDown(worldCoords, _isDoubleTap, event, ctx) {
         if (this._inputBlocked(ctx)) return;
         if (!tryBeginAim(ctx.state, worldCoords.x, worldCoords.y)) return;
+        this._syncCueStickFromAim(ctx);
         const target = event.currentTarget;
         if (target?.setPointerCapture)
             try {
@@ -110,16 +144,15 @@ export class PoolSimulationState {
     handlePointerMove(worldCoords, _screenCoords, _isPrimaryDown, ctx) {
         if (this._inputBlocked(ctx)) return;
         const pool = ensurePoolState(ctx.state);
-        if (pool.aim?.active) updateAim(ctx.state, worldCoords.x, worldCoords.y);
+        if (pool.aim?.active) {
+            updateAim(ctx.state, worldCoords.x, worldCoords.y);
+            this._syncCueStickFromAim(ctx);
+        }
     }
     handlePointerUp(worldCoords, event, ctx) {
         if (this._inputBlocked(ctx)) return;
         const pool = ensurePoolState(ctx.state);
-        if (pool.aim?.active) {
-            updateAim(ctx.state, worldCoords.x, worldCoords.y);
-            releaseAimShot(ctx.state);
-            pool.aim = null;
-        }
+        if (pool.aim?.active) releaseAimShot(ctx.state, worldCoords.x, worldCoords.y);
         const target = event.currentTarget;
         if (target?.releasePointerCapture && target.hasPointerCapture?.(event.pointerId))
             try {
@@ -132,7 +165,6 @@ export class PoolSimulationState {
     handleInteraction(worldCoords, _isDoubleTap, ctx) {
         if (this._inputBlocked(ctx)) return;
         if (!tryBeginAim(ctx.state, worldCoords.x, worldCoords.y)) return;
-        releaseAimShot(ctx.state);
-        ensurePoolState(ctx.state).aim = null;
+        cancelAim(ctx.state);
     }
 }

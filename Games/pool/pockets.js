@@ -1,3 +1,4 @@
+import { hideCueStick } from "../../Libraries/CueStick/cueStickController.js";
 import { getCueBall, ensurePoolState, allBallsStopped, POOL_CUE_TAG, POOL_OBJECT_TAG, respotCueBall } from "./balls.js";
 /**
  * @param {object} ball
@@ -34,5 +35,6 @@ export function processPockets(state, layout) {
     if (pool.objectRemaining <= 0) {
         pool.won = true;
         pool.phase = "won";
+        hideCueStick(pool);
     } else if (pool.phase === "rolling" && allBallsStopped(state)) pool.phase = "aiming";
 }

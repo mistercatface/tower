@@ -16,7 +16,7 @@ export const POOL_BALL_LOW_SPEED_FRICTION = 2.8;
 export const POOL_BALL_SNAP_SPEED = 1.8;
 /** Shot tuning — table is ~700×384 world units; full-length shot needs high v0 + low felt drag */
 export const MAX_SHOT_POWER = 580;
-export const SHOT_POWER_SCALE = 3.2;
+export const MIN_SHOT_POWER = 16;
 export const MIN_AIM_DRAG = 10;
 export const CUE_GRAB_RADIUS_PAD = 10;
 /**

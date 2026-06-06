@@ -1,4 +1,5 @@
 import { invalidateWallResolveCache } from "../../Motion/WallCollisionResolver.js";
+import { massFromBody } from "../../Motion/bodyMass.js";
 import { applyActorPushTipImpulse } from "../../Props/actorPushTip.js";
 import { wakePushableBody } from "../../Motion/pushableSleep.js";
 import { shouldResolveActorPushable } from "./entityBroadphase.js";
@@ -20,8 +21,29 @@ function resolveActorPushable(actor, pickup, resolveWalls, spatialFrame, state) 
     resolveWalls(actor, spatialFrame);
     resolveWalls(pickup, spatialFrame);
 }
+function pushablePairRestitution(p1, p2) {
+    const r1 = p1.strategy?.pairRestitution;
+    const r2 = p2.strategy?.pairRestitution;
+    if (r1 != null && r2 != null) return (r1 + r2) * 0.5;
+    return r1 ?? r2 ?? 0.4;
+}
 function resolvePushablePair(p1, p2) {
-    const collisionInfo = resolveSatPair(p1, p1.getShape(), p2, p2.getShape(), { massA: p1.mass !== undefined ? p1.mass : 15.0, massB: p2.mass !== undefined ? p2.mass : 15.0, restitution: 0.4 });
+    const shapeA = p1.getShape();
+    const shapeB = p2.getShape();
+    const restitution = pushablePairRestitution(p1, p2);
+    if (shapeA.type === "Circle" && shapeB.type === "Circle") {
+        if (resolveCirclePair(p1, p2, { restitution })) {
+            invalidateWallResolveCache(p1, p2);
+            wakePushableBody(p1);
+            wakePushableBody(p2);
+        }
+        return;
+    }
+    const collisionInfo = resolveSatPair(p1, shapeA, p2, shapeB, {
+        massA: massFromBody(p1, 15),
+        massB: massFromBody(p2, 15),
+        restitution,
+    });
     if (!collisionInfo) return;
     invalidateWallResolveCache(p1, p2);
     wakePushableBody(p1);

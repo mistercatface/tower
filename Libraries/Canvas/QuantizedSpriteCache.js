@@ -117,12 +117,15 @@ const PROP_ROTATION_STEPS = 16;
 const LOG_SPIN_STEPS = 64;
 /** End-over-end tumble (rollAngle) buckets for long-axis logs. */
 const LOG_ROLL_STEPS = 32;
+/** Finer facing buckets for the aim cue (smooth rotation while aiming). */
+const CUE_STICK_SPIN_STEPS = 128;
+const CUE_STICK_ROLL_STEPS = 64;
 const PROP_STAGE_PADDING = 40;
 /**
  * @param {object} prop
  */
 export function quantizeLongAxisLogAngles(prop) {
-    return { facing: quantizeAngle(prop.facing ?? 0, LOG_SPIN_STEPS), rollAngle: quantizeAngle(prop.rollAngle ?? 0, LOG_ROLL_STEPS) };
+    return quantizeLongAxisAngles(prop);
 }
 /**
  * @param {object} prop
@@ -136,7 +139,17 @@ function propFootprintHalfExtents(prop) {
  * @param {object} prop
  */
 export function buildLongAxisLogOrientKey(prop) {
-    return `f${quantizeAngleIndex(prop.facing ?? 0, LOG_SPIN_STEPS)}_a${quantizeAngleIndex(prop.rollAngle ?? 0, LOG_ROLL_STEPS)}`;
+    const spinSteps = prop.render3DKey === "cue_stick" ? CUE_STICK_SPIN_STEPS : LOG_SPIN_STEPS;
+    const rollSteps = prop.render3DKey === "cue_stick" ? CUE_STICK_ROLL_STEPS : LOG_ROLL_STEPS;
+    return `f${quantizeAngleIndex(prop.facing ?? 0, spinSteps)}_a${quantizeAngleIndex(prop.rollAngle ?? 0, rollSteps)}`;
+}
+/**
+ * @param {object} prop
+ */
+export function quantizeLongAxisAngles(prop) {
+    const spinSteps = prop.render3DKey === "cue_stick" ? CUE_STICK_SPIN_STEPS : LOG_SPIN_STEPS;
+    const rollSteps = prop.render3DKey === "cue_stick" ? CUE_STICK_ROLL_STEPS : LOG_ROLL_STEPS;
+    return { facing: quantizeAngle(prop.facing ?? 0, spinSteps), rollAngle: quantizeAngle(prop.rollAngle ?? 0, rollSteps) };
 }
 /**
  * @param {object} prop

@@ -1,6 +1,59 @@
-import { wakePushableBody } from "../../Libraries/Motion/pushableSleep.js";
-import { MAX_SHOT_POWER, SHOT_POWER_SCALE, MIN_AIM_DRAG, CUE_GRAB_RADIUS_PAD } from "./config/tableLayout.js";
+import { beginCueStickStrike, hideCueStick } from "../../Libraries/CueStick/cueStickController.js";
+import { resolveCueStickFromAnchorDrag } from "../../Libraries/CueStick/cueStickPhysics.js";
+import { MAX_SHOT_POWER, MIN_SHOT_POWER, CUE_GRAB_RADIUS_PAD } from "./config/tableLayout.js";
+import { POOL_CUE_STICK_TUNING } from "./config/cueStick.js";
 import { getCueBall, ensurePoolState, allBallsStopped } from "./balls.js";
+
+const { hx, hy, height, rollAngle, pullScale, maxPull, minPullDrag } = POOL_CUE_STICK_TUNING;
+
+/** Finger drag at full cue pull-back. */
+const MAX_FINGER_DRAG = maxPull / pullScale;
+
+/**
+ * @param {object} aim
+ */
+function computeShotPower(aim) {
+    const pullRatio = Math.min(1, (aim.maxDrag ?? 0) / MAX_FINGER_DRAG);
+    return Math.min(MAX_SHOT_POWER, Math.max(MIN_SHOT_POWER, pullRatio * MAX_SHOT_POWER));
+}
+
+/**
+ * @param {object} aim
+ * @param {ReturnType<typeof resolveCueStickFromAnchorDrag>} physics
+ */
+function trackAimDrag(aim, physics) {
+    if (physics.drag > aim.maxDrag) aim.maxDrag = physics.drag;
+    if (physics.pullBack > (aim.maxPullBack ?? 0)) aim.maxPullBack = physics.pullBack;
+}
+
+/**
+ * @param {object} cueBall
+ * @param {object} aim
+ */
+function resolveAimPhysics(cueBall, aim) {
+    const resolved = resolveCueStickFromAnchorDrag({
+        ballX: cueBall.x,
+        ballY: cueBall.y,
+        ballRadius: cueBall.radius,
+        anchorX: aim.anchorX,
+        anchorY: aim.anchorY,
+        gripX: aim.pullX,
+        gripY: aim.pullY,
+        pullScale,
+        maxPull,
+        hx,
+        hy,
+        height,
+        rollAngle,
+        lastShotNx: aim.shotNx,
+        lastShotNy: aim.shotNy,
+    });
+    if (!resolved) return null;
+    aim.shotNx = resolved.shotNx;
+    aim.shotNy = resolved.shotNy;
+    return resolved;
+}
+
 /**
  * @param {object} cue
  * @param {number} worldX
@@ -12,6 +65,7 @@ export function pointerNearCueBall(cue, worldX, worldY) {
     const grab = cue.radius + CUE_GRAB_RADIUS_PAD;
     return dx * dx + dy * dy <= grab * grab;
 }
+
 /**
  * @param {object} state
  */
@@ -20,8 +74,9 @@ export function canBeginAim(state) {
     if (pool.phase !== "aiming" || pool.won) return false;
     return allBallsStopped(state);
 }
+
 /**
- * Begin aim at the pointer-down position. Pull vector is finger delta from that anchor.
+ * Press = anchor (0,0). Drag sets angle and pull-back from that offset.
  *
  * @param {object} state
  * @param {number} worldX
@@ -32,9 +87,29 @@ export function tryBeginAim(state, worldX, worldY) {
     if (!canBeginAim(state)) return false;
     if (!getCueBall(state)) return false;
     const pool = ensurePoolState(state);
-    pool.aim = { active: true, anchorX: worldX, anchorY: worldY, pullX: worldX, pullY: worldY };
+    pool.aim = {
+        active: true,
+        anchorX: worldX,
+        anchorY: worldY,
+        pullX: worldX,
+        pullY: worldY,
+        shotNx: null,
+        shotNy: null,
+        maxDrag: 0,
+        maxPullBack: 0,
+    };
     return true;
 }
+
+/**
+ * @param {object} state
+ */
+export function cancelAim(state) {
+    const pool = ensurePoolState(state);
+    pool.aim = null;
+    hideCueStick(pool);
+}
+
 /**
  * @param {object} state
  * @param {number} worldX
@@ -45,43 +120,67 @@ export function updateAim(state, worldX, worldY) {
     if (!pool.aim?.active) return;
     pool.aim.pullX = worldX;
     pool.aim.pullY = worldY;
-}
-/**
- * @param {object} state
- * @returns {boolean} true if a shot was fired
- */
-export function releaseAimShot(state) {
-    const pool = ensurePoolState(state);
-    const aim = pool.aim;
-    pool.aim = null;
-    if (!aim?.active) return false;
     const cue = getCueBall(state);
-    if (!cue) return false;
-    const dx = aim.pullX - aim.anchorX;
-    const dy = aim.pullY - aim.anchorY;
-    const drag = Math.hypot(dx, dy);
-    if (drag < MIN_AIM_DRAG) return false;
-    const power = Math.min(MAX_SHOT_POWER, drag * SHOT_POWER_SCALE);
-    const nx = -dx / drag;
-    const ny = -dy / drag;
-    cue.vx = nx * power;
-    cue.vy = ny * power;
-    wakePushableBody(cue);
-    pool.phase = "rolling";
+    if (!cue) return;
+    const physics = resolveAimPhysics(cue, pool.aim);
+    if (!physics) return;
+    trackAimDrag(pool.aim, physics);
+}
+
+/**
+ * Release finger to shoot. Power from peak pull distance; angle from drag offset.
+ *
+ * @param {object} state
+ * @param {number} worldX
+ * @param {number} worldY
+ * @returns {boolean}
+ */
+export function releaseAimShot(state, worldX, worldY) {
+    const pool = ensurePoolState(state);
+    if (!pool.aim?.active) return false;
+    pool.aim.pullX = worldX;
+    pool.aim.pullY = worldY;
+    const cue = getCueBall(state);
+    if (!cue) {
+        cancelAim(state);
+        return false;
+    }
+    const physics = resolveAimPhysics(cue, pool.aim);
+    if (physics) trackAimDrag(pool.aim, physics);
+    const aim = pool.aim;
+    if (aim.maxDrag < minPullDrag || aim.shotNx == null || aim.shotNy == null) {
+        cancelAim(state);
+        return false;
+    }
+    const nx = physics?.shotNx ?? aim.shotNx;
+    const ny = physics?.shotNy ?? aim.shotNy;
+    const power = computeShotPower(aim);
+    const pullBack = aim.maxPullBack ?? 0;
+    if (!beginCueStickStrike(pool, cue, { nx, ny, power, pullBack, maxPower: MAX_SHOT_POWER })) {
+        cancelAim(state);
+        return false;
+    }
+    pool.aim = null;
+    pool.phase = "striking";
     return true;
 }
+
 /**
  * @param {object} state
- * @returns {{ nx: number, ny: number, power: number, drag: number } | null}
  */
 export function getAimPreview(state) {
     const pool = ensurePoolState(state);
     if (!pool.aim?.active) return null;
     const cue = getCueBall(state);
     if (!cue) return null;
-    const dx = pool.aim.pullX - pool.aim.anchorX;
-    const dy = pool.aim.pullY - pool.aim.anchorY;
-    const drag = Math.hypot(dx, dy);
-    if (drag < 1) return null;
-    return { nx: -dx / drag, ny: -dy / drag, power: Math.min(MAX_SHOT_POWER, drag * SHOT_POWER_SCALE), drag };
+    const physics = resolveAimPhysics(cue, pool.aim);
+    if (!physics) return null;
+    return {
+        nx: physics.shotNx,
+        ny: physics.shotNy,
+        power: computeShotPower(pool.aim),
+        drag: physics.drag,
+        pullBack: physics.pullBack,
+        maxDrag: pool.aim.maxDrag,
+    };
 }

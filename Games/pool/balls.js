@@ -1,6 +1,8 @@
 import { Pickup } from "../../Entities/Pickup.js";
+import { ensureCueStick } from "../../Libraries/CueStick/cueStickController.js";
 import { wakePushableBody } from "../../Libraries/Motion/pushableSleep.js";
 import { poolBallFromNumber } from "../../Libraries/Render/Props3D/poolBallArt.js";
+import { POOL_CUE_STICK_TUNING } from "./config/cueStick.js";
 import { BALL_STOPPED_SPEED_SQ } from "./config/tableLayout.js";
 import { POOL_OBJECT_BALL_COUNT } from "./config/rackLayout.js";
 
@@ -18,6 +20,7 @@ export function ensurePoolState(state) {
             won: false,
             aim: null,
         };
+        ensureCueStick(state.pool, POOL_CUE_STICK_TUNING);
     }
     return state.pool;
 }

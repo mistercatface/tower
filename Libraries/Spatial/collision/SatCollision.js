@@ -28,7 +28,13 @@ export class SatCollision {
         const dy = posB.y - posA.y;
         const distSq = dx * dx + dy * dy;
         const radii = shapeA.radius + shapeB.radius;
-        if (distSq >= radii * radii || distSq === 0) return null;
+        if (distSq >= radii * radii) return null;
+        if (distSq === 0) {
+            const angle = Math.random() * Math.PI * 2;
+            const nx = Math.cos(angle);
+            const ny = Math.sin(angle);
+            return { overlap: radii, nx, ny, cx: posA.x, cy: posA.y };
+        }
         const dist = Math.sqrt(distSq);
         const overlap = radii - dist;
         return { overlap: overlap, nx: dx / dist, ny: dy / dist, cx: posA.x + (dx / dist) * (shapeA.radius - overlap / 2), cy: posA.y + (dy / dist) * (shapeA.radius - overlap / 2) };
