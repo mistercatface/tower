@@ -1,0 +1,26 @@
+export default {
+    id: "pool_ball",
+    recipe: "poolBall",
+    physics: {
+        hitBehavior: "none",
+        radius: 8,
+        isPushable: true,
+        rolls: true,
+        collisionShape: "circle",
+        laserTargetable: false,
+        mass: 1.0,
+        pairRestitution: 0.92,
+        friction: 0.5,
+        lowSpeedFrictionThreshold: 10,
+        lowSpeedFriction: 2.8,
+        snapSpeed: 1.8,
+        wallPhysics: { restitution: 0.94, friction: 0.06 },
+    },
+    visuals: {
+        defaultPoolBall: { kind: "solid", number: 1, color: "#FFD600" },
+        defaultRadius: 8,
+        panelCount: 12,
+        latBands: 8,
+        stroke: null,
+    },
+};
