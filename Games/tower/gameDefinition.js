@@ -20,7 +20,7 @@ import {
 } from "./hooks.js";
 import { registerTowerEntities } from "./config/entities.js";
 import { applyInspectManifestToProps } from "./config/inspectManifest.js";
-import { defaultWorldPropDefinitions as worldPropDefinitions } from "../../Libraries/Props/defaultPropDefinitions.js";
+import { getWorldPropDefinitions } from "../../Libraries/Content/PropCatalog.js";
 import { towerCombatPairs, towerRenderPorts, towerTargeting } from "./ports.js";
 import { towerWorldGen } from "./worldGen.js";
 
@@ -47,7 +47,7 @@ export const towerGame = {
 
     prepare() {
         registerTowerEntities();
-        applyInspectManifestToProps(worldPropDefinitions);
+        applyInspectManifestToProps(getWorldPropDefinitions());
         installGameSurfaceProfileProvider();
     },
 

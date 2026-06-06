@@ -1,8 +1,8 @@
-import { WOOD_CRATE } from "../../../../../../Libraries/Props/definitions/crate.js";
+import { getPropAsset } from "../../../../../../Libraries/Content/PropCatalog.js";
 import { buildBoxMesh } from "../../../../../../Libraries/Inspect/geometry/BoxMesh.js";
 
 export function buildCrateInspectMesh() {
-    const { halfExtents, colors } = WOOD_CRATE;
+    const { halfExtents, colors } = getPropAsset("crate")?.visuals ?? {};
 
     return buildBoxMesh({
         halfExtents,

@@ -1,7 +1,7 @@
-import { FUEL_BARREL } from "../../../../../../Libraries/Props/definitions/fuelBarrel.js";
+import { getPropAsset } from "../../../../../../Libraries/Content/PropCatalog.js";
 import { buildSodaCanMesh } from "../../../../../../Libraries/Inspect/geometry/CylinderMesh.js";
 
 export function buildFuelBarrelInspectMesh() {
-    const { halfHeight, bodyRadius } = FUEL_BARREL;
+    const { halfHeight, bodyRadius } = getPropAsset("barrel")?.visuals ?? {};
     return buildSodaCanMesh({ halfHeight, bodyRadius, onFire: false, sides: false });
 }

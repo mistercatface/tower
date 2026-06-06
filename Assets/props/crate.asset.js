@@ -1,0 +1,36 @@
+export default {
+    id: "crate",
+    recipe: "extrudedBox",
+    physics: {
+        hitBehavior: "damage",
+        radius: 8,
+        isPushable: true,
+        collisionShape: "box",
+        splittable: true,
+        randomFaceLabels: true,
+        laserTargetable: true,
+        maxHealth: 2,
+        mass: 1.5,
+        wallPhysics: { restitution: 0.15, friction: 0.8 },
+        spawn: { minRadius: 150, maxRadius: 1000, minCount: 8, randomRange: 17 },
+    },
+    visuals: {
+        labelVariants: [
+            "Assets/images/crate_label_1.png",
+            "Assets/images/crate_label_2.png",
+            "Assets/images/crate_label_3.png",
+        ],
+        labelFaces: ["+x", "-x", "+z", "-z"],
+        halfExtents: { x: 0.55, y: 0.5, z: 0.55 },
+        label: { faces: ["+x", "-x", "+z", "-z"], y0: 0.18, y1: 0.82, u0: 0, v0: 0, u1: 1, v1: 1 },
+        colors: {
+            side: "#8D6E63",
+            sideShadow: "#6D4C41",
+            top: "#A1887F",
+            bottom: "#5D4037",
+            bodyInspect: "#8D6E63",
+            stroke: "#3E2723",
+        },
+        world: { height: 10 },
+    },
+};

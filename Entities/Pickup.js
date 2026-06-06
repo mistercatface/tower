@@ -2,8 +2,7 @@ import { Entity } from "./Entity.js";
 import { applyVelocityDamping } from "../Libraries/Motion/index.js";
 import { IDENTITY_ROLL_QUAT, integrateRollOrientation } from "../Libraries/Props/rollingMotion.js";
 import { withPropStrategyDefaults } from "../Libraries/Props/propStrategy.js";
-import { defaultWorldPropDefinitions as worldPropDefinitions } from "../Libraries/Props/defaultPropDefinitions.js";
-import { CRATE_LABEL_FACES, CRATE_LABEL_VARIANTS } from "../Libraries/Props/definitions/crate.js";
+import { getPropAsset, getWorldPropDefinitions } from "../Libraries/Content/PropCatalog.js";
 import { transitionEntity } from "../Libraries/FSM/transition.js";
 import { pickupStates } from "./PickupStates.js";
 import { PolygonShape } from "../Libraries/Spatial/collision/Shapes.js";
@@ -98,7 +97,7 @@ function damageOnHit(state, pickup, projectile, events) {
 const HIT_BEHAVIORS = { none: () => false, explosive: explosiveOnHit, damage: damageOnHit };
 
 function buildWorldPropStrategy(type) {
-    const def = worldPropDefinitions[type];
+    const def = getWorldPropDefinitions()[type];
     if (!def) return withPropStrategyDefaults({});
     const { hitBehavior, spawn, ...strategyFields } = def;
     return withPropStrategyDefaults({
@@ -125,7 +124,12 @@ export class Pickup extends Entity {
         }
 
         if (this.strategy.randomFaceLabels) {
-            this.faceLabelVariants = Object.fromEntries(CRATE_LABEL_FACES.map((face) => [face, Math.floor(Math.random() * CRATE_LABEL_VARIANTS.length)]));
+            const crateVisuals = getPropAsset("crate")?.visuals;
+            const faces = crateVisuals?.labelFaces ?? [];
+            const variants = crateVisuals?.labelVariants ?? [];
+            this.faceLabelVariants = Object.fromEntries(
+                faces.map((face) => [face, Math.floor(Math.random() * Math.max(1, variants.length))]),
+            );
         }
         if (this.strategy.collisionShape === "box") {
             const r = this.radius;
@@ -423,7 +427,7 @@ function collectWallAdjacentCells(state, layout, propRadius) {
 
 export function spawnStartGamePickups(state, playerX, playerY) {
     const layout = getWorldGen().getStartLayout(playerX, playerY, state.obstacleGrid.cellSize);
-    const propRadius = worldPropDefinitions.crate.radius;
+    const propRadius = getWorldPropDefinitions().crate.radius;
     const wallCells = collectWallAdjacentCells(state, layout, propRadius);
     shuffleInPlace(wallCells);
 
@@ -444,7 +448,7 @@ export function spawnStartGamePickups(state, playerX, playerY) {
 }
 
 export function spawnInitialPickups(state, playerX, playerY) {
-    for (const [type, def] of Object.entries(worldPropDefinitions)) {
+    for (const [type, def] of Object.entries(getWorldPropDefinitions())) {
         const spawn = def.spawn;
         if (!spawn) continue;
         const count = spawn.minCount + Math.floor(Math.random() * spawn.randomRange);

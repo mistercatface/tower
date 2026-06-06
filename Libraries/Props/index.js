@@ -7,8 +7,6 @@ export {
     transformRollVertex,
 } from "./rollingMotion.js";
 export { spawnStartProps } from "./spawnStartProps.js";
-export { defaultWorldPropDefinitions } from "./defaultPropDefinitions.js";
-export { defaultWorldPropRecipes } from "./defaultWorldPropRecipes.js";
-export * from "./definitions/crate.js";
-export * from "./definitions/fuelBarrel.js";
-export * from "./definitions/beachBall.js";
+export { getWorldPropDefinitions, getWorldPropRecipes, getPropAsset } from "../Content/PropCatalog.js";
+export { loadPropAssets } from "../Content/loadPropAssets.js";
+export { PROP_RECIPE_BUILDERS } from "./recipes/index.js";

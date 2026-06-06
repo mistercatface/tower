@@ -9,7 +9,7 @@ import {
     PUSHABLE_SLEEP_BLOCKER,
 } from "./presets/combat.js";
 import * as targeting from "./targeting.js";
-import { defaultWorldPropRecipes } from "../../Libraries/Props/defaultWorldPropRecipes.js";
+import { getWorldPropRecipes } from "../../Libraries/Content/PropCatalog.js";
 import { towerKinematicsPorts } from "./kinematics/ports.js";
 
 /** @type {import("../../Core/GameDefinitionTypes.js").CombatPairsPort} */
@@ -36,6 +36,8 @@ export const towerTargeting = {
 
 /** @type {import("../../Core/GameDefinitionTypes.js").RenderPorts} */
 export const towerRenderPorts = {
-    world3dPropRecipes: defaultWorldPropRecipes,
+    get world3dPropRecipes() {
+        return getWorldPropRecipes();
+    },
     kinematicsPorts: towerKinematicsPorts,
 };

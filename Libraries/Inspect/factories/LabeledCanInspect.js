@@ -5,7 +5,7 @@ import { getTexture, loadTexture, onTextureReady } from "../core/TextureCache.js
 
 /**
  * Factory for cylindrical labeled-can inspect views.
- * @param {import("../../Props/definitions/fuelBarrel.js").FUEL_BARREL} canConfig — optional `inspect.initialPitch`
+ * @param {object} canConfig — barrel asset visuals; optional `inspect.initialPitch`
  * @param {() => import("../geometry/CylinderMesh.js").buildSodaCanMesh} buildMesh
  */
 export function createLabeledCanInspect(canConfig, buildMesh) {

@@ -1,9 +1,7 @@
-import { FUEL_BARREL } from "../definitions/fuelBarrel.js";
 import { drawExtrudedRadial, drawRadialBand } from "../../Render/Props3D/SolidDraw.js";
 import { projectVertical } from "../../Spatial/iso/IsometricProjection.js";
 
-function drawBarrelTop(ctx, prop, px, py, radius, height, onFire) {
-    const { colors } = FUEL_BARREL;
+function drawBarrelTop(ctx, prop, px, py, radius, height, colors, onFire) {
     const projection = projectVertical(prop.x, prop.y, px, py, height);
     const { topX, topY, alpha } = projection;
     const lipRadius = radius * 1.07;
@@ -33,32 +31,31 @@ function drawBarrelTop(ctx, prop, px, py, radius, height, onFire) {
     ctx.fill();
 }
 
-export function drawFuelBarrel(ctx, prop, px, py, { onFire = false } = {}) {
-    const { world, colors } = FUEL_BARREL;
-    const radius = prop.radius || 8;
-    const bodyColors = onFire ? colors.bodyFire : colors.body;
+/** @param {object} visuals */
+export function createFuelBarrelDraw(visuals, { onFire = false } = {}) {
+    const { world, colors } = visuals;
+    return (ctx, prop, px, py) => {
+        const radius = prop.radius || 8;
+        const bodyColors = onFire ? colors.bodyFire : colors.body;
 
-    drawExtrudedRadial(ctx, prop, px, py, {
-        baseRadius: radius,
-        height: world.height,
-        colors: bodyColors,
-        stroke: colors.stroke,
-    });
-
-    if (onFire) {
-        drawRadialBand(ctx, prop, px, py, {
+        drawExtrudedRadial(ctx, prop, px, py, {
             baseRadius: radius,
             height: world.height,
-            t0: world.bandT0,
-            t1: world.bandT1,
-            fill: "rgba(60, 20, 12, 0.35)",
+            colors: bodyColors,
             stroke: colors.stroke,
         });
-    }
 
-    drawBarrelTop(ctx, prop, px, py, radius, world.height, onFire);
-}
+        if (onFire) {
+            drawRadialBand(ctx, prop, px, py, {
+                baseRadius: radius,
+                height: world.height,
+                t0: world.bandT0,
+                t1: world.bandT1,
+                fill: "rgba(60, 20, 12, 0.35)",
+                stroke: colors.stroke,
+            });
+        }
 
-export function drawFireFuelBarrel(ctx, prop, px, py) {
-    drawFuelBarrel(ctx, prop, px, py, { onFire: true });
+        drawBarrelTop(ctx, prop, px, py, radius, world.height, colors, onFire);
+    };
 }
