@@ -69,7 +69,7 @@ export function createRadioDialogView({ mainCharacterId, elementIds = {}, getSpe
         frame.className = "radio-dialog-portrait-frame";
         slot.appendChild(frame);
 
-        if (!empty && participant) {
+        if (!empty && participant?.portrait) {
             const img = document.createElement("img");
             img.className = "radio-dialog-portrait-img";
             img.src = participant.portrait;
