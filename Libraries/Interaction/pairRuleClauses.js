@@ -1,19 +1,6 @@
-import { inferFaction } from "../targeting.js";
-import { hostileFactionPairs } from "../../../Config/content/factions.js";
-import { isPairActive, shouldResolveActorPushable, shouldResolvePushablePair } from "../../../Libraries/Spatial/collision/entityBroadphase.js";
+import { spatialPairResolvers } from "./spatialPairResolvers.js";
 
-/** @typedef {import("../../../Libraries/Interaction/pairRules.js").PairFilterConfig} PairFilterConfig */
-
-export const combatResolvers = { faction: inferFaction };
-
-export const spatialPairResolvers = {
-    actorPushable: shouldResolveActorPushable,
-    pairActive: isPairActive,
-    pushablePair: shouldResolvePushablePair,
-};
-
-/** @type {PairFilterConfig} */
-export const withCombatResolvers = { resolvers: combatResolvers };
+/** @typedef {import("./pairRules.js").PairFilterConfig} PairFilterConfig */
 
 /** @type {PairFilterConfig} */
 export const withSpatialPairResolvers = { pairResolvers: spatialPairResolvers };
@@ -44,16 +31,8 @@ export const excludeSameFaction = {
 };
 
 /** @type {PairFilterConfig} */
-export const excludeUndefinedFactionOther = {
-    exclusions: [{ target: "other", resolve: "faction", isUndefined: true }],
-};
-
-/** @type {PairFilterConfig} */
-export const excludeChargeVsPlayer = {
-    exclusions: [
-        { target: "pair", other: { resolve: "faction", equals: "player" }, self: { prop: "attackType", equals: "charge" } },
-        { target: "pair", self: { resolve: "faction", equals: "player" }, other: { prop: "attackType", equals: "charge" } },
-    ],
+export const excludeSameEntity = {
+    exclusions: [{ target: "pair", sameEntity: true }],
 };
 
 /** @type {PairFilterConfig} */
@@ -64,16 +43,6 @@ export const excludeActorOther = {
 /** @type {PairFilterConfig} */
 export const excludePushableOther = {
     exclusions: [{ target: "other", has: "strategy.isPushable" }],
-};
-
-/** @type {PairFilterConfig} */
-export const excludeSameEntity = {
-    exclusions: [{ target: "pair", sameEntity: true }],
-};
-
-/** @type {PairFilterConfig} */
-export const includeCrossFactionHostile = {
-    inclusions: hostileFactionPairs.map((pair) => ({ target: "pair", crossFaction: pair })),
 };
 
 /** @type {PairFilterConfig} */
@@ -99,11 +68,6 @@ export const dedupPairById = {
 /** @type {PairFilterConfig} */
 export const requireActorPushableResolve = {
     inclusions: [{ target: "pair", pairResolve: "actorPushable" }],
-};
-
-/** @type {PairFilterConfig} */
-export const requirePairActive = {
-    inclusions: [{ target: "pair", pairResolve: "pairActive" }],
 };
 
 /** @type {PairFilterConfig} */

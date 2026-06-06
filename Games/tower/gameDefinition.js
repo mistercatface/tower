@@ -19,17 +19,17 @@ import {
 import { registerTowerEntities } from "./config/entities.js";
 import { applyInspectManifestToProps } from "./config/inspectManifest.js";
 import { getWorldPropDefinitions } from "../../Libraries/Content/PropCatalog.js";
-import { towerCombatPairs, towerRenderPorts, towerTargeting } from "./ports.js";
+import { towerInteractionPairs, towerRenderPorts, towerTargeting } from "./ports.js";
 import { towerWorldGen } from "./worldGen.js";
 
 /** @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition */
 
-/** Tower — reference game definition. Engine ports injected via combatPairs, targeting, render. */
+/** Tower — reference game definition. Engine ports injected via interactionPairs, targeting, render. */
 export const towerGame = {
     id: "tower",
     canvasId: "towerCanvas",
     saveKey: "tower_save_v4",
-    combatPairs: towerCombatPairs,
+    interactionPairs: towerInteractionPairs,
     targeting: towerTargeting,
     render: towerRenderPorts,
     worldGen: towerWorldGen,

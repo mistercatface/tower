@@ -1,5 +1,4 @@
 import { ensureRunScene } from "../../Libraries/RunScene/runSceneState.js";
-import { isRadioDialogActive as isPoolRadioDialogActive } from "./wireRadio.js";
 import { getStartRunAtScene, runSceneController } from "./config/runScenes.js";
 import { poolRunScenePorts } from "./runScenePorts.js";
 import { spawnPoolBalls, ensurePoolState } from "./balls.js";
@@ -62,36 +61,4 @@ export function onRunSceneTick(ctx, _dt) {
     }
 
     runSceneController.tick(state, ctx);
-}
-
-export function onCombatEnemyKilled() {}
-
-export function canRunHordeSpawning() {
-    return false;
-}
-
-export function blocksTurretTargeting() {
-    return true;
-}
-
-export function getInspectMissionBanner() {
-    return { show: false, text: "" };
-}
-
-export function findInspectorInspectPickup() {
-    return null;
-}
-
-export function onInspectMissionOpen() {}
-
-export function onInspectMissionClose() {}
-
-export function isInspectMissionActive() {
-    return false;
-}
-
-export function onRunOpeningComplete() {}
-
-export function isRadioDialogActive() {
-    return isPoolRadioDialogActive();
 }

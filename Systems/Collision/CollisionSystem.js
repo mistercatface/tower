@@ -1,7 +1,7 @@
 import { circlesOverlap, findFirstCircleSegmentHit } from "../../Libraries/Spatial/collision/overlap.js";
 import { runCollisionPipeline } from "../../Libraries/Spatial/collision/collisionPipeline.js";
 import { enemyDefaults } from "../../Config/Config.js";
-import { getCombatPairFilter } from "../../Core/GamePorts.js";
+import { getInteractionPairFilter } from "../../Core/GamePorts.js";
 
 export class CollisionSystem {
     static checkCircle(a, b) {
@@ -20,7 +20,7 @@ export class CollisionSystem {
         return runCollisionPipeline(state, spatialFrame, {
             events,
             projectiles: state.projectiles,
-            projectilePickupFilter: getCombatPairFilter("projectileHitPickup"),
+            projectilePickupFilter: getInteractionPairFilter("projectileHitPickup"),
             onProjectileWallHit: (p, segment, events) => {
                 p.strategy.onWallCollision(p, state, segment, events);
             },
@@ -42,7 +42,7 @@ export class CollisionSystem {
     }
 
     static applyChargeImpact(charger, other, events) {
-        if (getCombatPairFilter("chargeImpact").allows(charger, other)) {
+        if (getInteractionPairFilter("chargeImpact").allows(charger, other)) {
             events.push({ target: other, damage: enemyDefaults.chargeImpactDamage });
         }
         charger.changeState("stunned", { timer: 1000, returnState: "charging_prepare" });

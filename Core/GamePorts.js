@@ -1,8 +1,9 @@
 import { PairFilter } from "../Libraries/Interaction/PairFilter.js";
+import { createDefaultInteractionPairs } from "../Libraries/Interaction/defaultPhysicsPairs.js";
 import { BaseGeneratorStrategies } from "../Generator/GeneratorStrategies.js";
 import { getActiveGameDefinition } from "./ActiveGameDefinition.js";
 
-/** @typedef {import("./GameDefinitionTypes.js").CombatPairsPort} CombatPairsPort */
+/** @typedef {import("./GameDefinitionTypes.js").InteractionPairsPort} InteractionPairsPort */
 /** @typedef {import("./GameDefinitionTypes.js").TargetingPort} TargetingPort */
 /** @typedef {import("./GameDefinitionTypes.js").RenderPorts} RenderPorts */
 /** @typedef {import("./GameDefinitionTypes.js").WorldGenPort} WorldGenPort */
@@ -15,11 +16,11 @@ function requireGameDefinition() {
     return def;
 }
 
-/** @returns {CombatPairsPort} */
-export function getCombatPairs() {
-    const pairs = requireGameDefinition().combatPairs;
-    if (!pairs) throw new Error("Active game definition missing combatPairs port.");
-    return pairs;
+/** @returns {InteractionPairsPort} */
+export function getInteractionPairs() {
+    const overrides = requireGameDefinition().interactionPairs;
+    const base = createDefaultInteractionPairs();
+    return overrides ? { ...base, ...overrides } : base;
 }
 
 /** @returns {TargetingPort} */
@@ -53,14 +54,18 @@ export function getRandomGeneratorStrategyKeys() {
     return Object.keys(BaseGeneratorStrategies);
 }
 
-/** @type {Map<keyof CombatPairsPort, PairFilter>} */
+/** @type {Map<keyof InteractionPairsPort, PairFilter>} */
 const pairFilterCache = new Map();
 
-/** @param {keyof CombatPairsPort} name */
-export function getCombatPairFilter(name) {
+export function clearInteractionPairFilterCache() {
+    pairFilterCache.clear();
+}
+
+/** @param {keyof InteractionPairsPort} name */
+export function getInteractionPairFilter(name) {
     let filter = pairFilterCache.get(name);
     if (!filter) {
-        filter = new PairFilter(getCombatPairs()[name]);
+        filter = new PairFilter(getInteractionPairs()[name]);
         pairFilterCache.set(name, filter);
     }
     return filter;

@@ -1,4 +1,4 @@
-import { getCombatPairFilter } from "../../Core/GamePorts.js";
+import { getInteractionPairFilter } from "../../Core/GamePorts.js";
 import { isStandTipActive } from "../Props/standTipMotion.js";
 import { isMovingEntity, pairBroadphaseOverlap } from "../Spatial/collision/entityBroadphase.js";
 
@@ -61,7 +61,7 @@ export function advancePushableSleep(entity, eligible, requiredFrames = SLEEP_FR
  * @param {{ filter?: PairFilter, pairOverlaps?: (a: object, b: object) => boolean }} [opts]
  */
 export function hasSleepBlockingOverlap(pickup, neighbors, {
-    filter = getCombatPairFilter("pushableSleepBlocker"),
+    filter = getInteractionPairFilter("pushableSleepBlocker"),
     pairOverlaps = pairBroadphaseOverlap,
 } = {}) {
     for (let i = 0; i < neighbors.length; i++) {

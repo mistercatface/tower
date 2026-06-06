@@ -15,8 +15,8 @@ This folder is the **game definition** for the shipped tower roguelike. The engi
 | `tutorial/StartGameBuilding.js` | Opening building generator (interprets `startLayout.js`) |
 | `hooks.js` | Gameplay hooks wired into engine (combat enter, run scene tick) |
 | `content/inspect/` | Fuel barrel + crate inspect meshes and catalog registration |
-| `presets/combat.js` | Pair-filter presets (separation, collision, projectiles) |
-| `presets/combatRules.js` | Rule fragments + `inferFaction` resolver |
+| `presets/combatInteraction.js` | Combat interaction overrides (faction, projectiles, separation) |
+| `presets/combatInteractionRules.js` | Tower faction rule fragments |
 | `wireRadio.js` | Tower radio content + `brock` main character + pause wiring |
 | `targeting.js` | Faction resolver + hostility queries (`Config/content/factions.js`) |
 
@@ -31,7 +31,7 @@ Radio engine lives in `Libraries/Radio/`; tower wires it via `gameDefinition.wir
 ## New game
 
 1. Copy `Games/tower/` → `Games/my-game/`
-2. Implement `gameDefinition.js` with required ports: `combatPairs`, `targeting`, `render`, `worldGen`
+2. Implement `gameDefinition.js` with required ports: `targeting`, `render`, `worldGen`; optional `interactionPairs` for combat overrides
 3. Add `config/runScenes.js`, `config/entities.js`, layout + `worldGen.strategies`
 4. Point `main.js` at your manifest: `createGame(myGame)`
 5. Fork `Config/` content as needed (factions, guns, radio, balance)

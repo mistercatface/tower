@@ -26,7 +26,7 @@ export function isInspector(phase) {
 export function canRunHordeSpawning(state) {
     if (state.phase === GamePhase.MAP || state.phase === GamePhase.INSPECTOR) return false;
     const gameCheck = getActiveGameDefinition()?.canRunHordeSpawning;
-    return gameCheck ? gameCheck(state) : true;
+    return gameCheck ? gameCheck(state) : false;
 }
 
 /** Range and center for drawing world rings / masks in simulation vs map space. */

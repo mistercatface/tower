@@ -3,15 +3,15 @@
  */
 
 /**
- * @typedef {object} CombatPairsPort
+ * @typedef {object} InteractionPairsPort
  * @property {PairFilterConfig} separation
- * @property {PairFilterConfig} chargeImpact
- * @property {PairFilterConfig} projectileHitActor
- * @property {PairFilterConfig} projectileHitPickup
- * @property {PairFilterConfig} combatant
  * @property {PairFilterConfig} actorPushable
  * @property {PairFilterConfig} pushable
  * @property {PairFilterConfig} pushableSleepBlocker
+ * @property {PairFilterConfig} combatant
+ * @property {PairFilterConfig} chargeImpact
+ * @property {PairFilterConfig} projectileHitActor
+ * @property {PairFilterConfig} projectileHitPickup
  */
 
 /**
@@ -71,7 +71,7 @@
  * @property {() => object[]} createUpgrades
  * @property {Record<string, new () => object>} states
  * @property {string} initialState
- * @property {CombatPairsPort} combatPairs
+ * @property {Partial<InteractionPairsPort>} [interactionPairs] — combat/physics overrides; physics defaults from engine
  * @property {TargetingPort} targeting
  * @property {RenderPorts} render
  * @property {WorldGenPort} worldGen

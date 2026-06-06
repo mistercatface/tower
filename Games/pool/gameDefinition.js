@@ -1,23 +1,10 @@
 import { ensurePoolState } from "./balls.js";
 import { PoolSimulationState } from "./PoolSimulationState.js";
 import { registerPoolEntities } from "./config/entities.js";
-import {
-    onSimulationEnter,
-    onRunSceneTick,
-    onCombatEnemyKilled,
-    canRunHordeSpawning,
-    blocksTurretTargeting,
-    getInspectMissionBanner,
-    findInspectorInspectPickup,
-    onInspectMissionOpen,
-    onInspectMissionClose,
-    isInspectMissionActive,
-    onRunOpeningComplete,
-    isRadioDialogActive,
-} from "./hooks.js";
-import { poolCombatPairs, poolRenderPorts, poolTargeting } from "./ports.js";
+import { onSimulationEnter, onRunSceneTick } from "./hooks.js";
+import { poolRenderPorts, poolTargeting } from "./ports.js";
 import { poolWorldGen } from "./worldGen.js";
-import { wirePoolRadio } from "./wireRadio.js";
+import { isRadioDialogActive, wirePoolRadio } from "./wireRadio.js";
 import { getWorldPropDefinitions, getWorldPropRecipes } from "../../Libraries/Content/PropCatalog.js";
 import { PROP_RECIPE_BUILDERS } from "../../Libraries/Props/recipes/index.js";
 import {
@@ -121,7 +108,6 @@ export const poolGame = {
         wallHeight: 20,
     },
 
-    combatPairs: poolCombatPairs,
     targeting: poolTargeting,
     render: poolRenderPorts,
     worldGen: poolWorldGen,
@@ -147,18 +133,7 @@ export const poolGame = {
     },
 
     wireRadio: wirePoolRadio,
-
-    onRunOpeningComplete,
     isRadioDialogActive,
-
     onSimulationEnter,
     onRunSceneTick,
-    onCombatEnemyKilled,
-    canRunHordeSpawning,
-    blocksTurretTargeting,
-    getInspectMissionBanner,
-    findInspectorInspectPickup,
-    onInspectMissionOpen,
-    onInspectMissionClose,
-    isInspectMissionActive,
 };
