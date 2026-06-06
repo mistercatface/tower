@@ -8,7 +8,7 @@ export const worldSurfaceSettings = {
     viewQueryPadPx: 48,
     maxCachedSurfaces: 5000,
     pixelsPerCell: 16,
-    wallHeight: 160,
+    wallHeight: 150,
     wallTextureBleedPx: 1,
     wallSubdivNearPx: 80,
     wallSubdivFarPx: 320,
