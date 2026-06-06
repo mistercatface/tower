@@ -47,9 +47,11 @@ export function cueStickPoseToProp(pose, dims = {}) {
         y: pose.y,
         facing: pose.facing,
         rollAngle: pose.rollAngle,
+        radius: pose.hx,
+        halfExtents: { x: pose.hx, y: pose.hy },
         render3DKey: "cue_stick",
         cueStick: { hx: pose.hx, hy: pose.hy, height: pose.height, pullBack: pose.pullBack },
-        strategy: { render3DKey: "cue_stick", renderMode: "3d", rollAxis: "long", quantizeSteps: dims.quantizeSteps },
+        strategy: { render3DKey: "cue_stick", renderMode: "3d", rollAxis: "long", quantizeSteps: dims.quantizeSteps, halfExtents: { x: pose.hx, y: pose.hy } },
         getRender3DKey() {
             return "cue_stick";
         },
