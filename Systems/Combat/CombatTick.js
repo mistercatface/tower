@@ -35,7 +35,7 @@ export function runCombatTick(ctx, dt) {
         playerTargetY: ctx.state.player.isMoving ? ctx.state.player.targetY : null,
         previousGridPos: oldGridPos,
     });
-    getActiveGameDefinition()?.onCombatTick?.(ctx.state, dt);
+    getActiveGameDefinition()?.onRunSceneTick?.(ctx, dt);
     ctx.state.hordeSpawner.manageSpawning(dt, ctx.state, ctx.upgrades);
     Projectile.checkSpawnCollisions(ctx.state, spatialFrame, events);
     Projectile.updateAll(ctx.state, dt);
@@ -74,4 +74,5 @@ export function runInspectorTick(ctx, dt) {
     runPushablePhysics(ctx.state, dt, spatialFrame, events);
     dispatchCombatEvents(events, ctx);
     FloatingText.updateAll(ctx.state, dt);
+    getActiveGameDefinition()?.onRunSceneTick?.(ctx, dt);
 }

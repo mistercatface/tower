@@ -149,6 +149,7 @@ export class GameState {
         this.clueSearchFinishing = false;
         this.inspectPanelOpen = false;
         this.skipCombatEnterReset = false;
+        this.runSceneInitialized = false;
         this.zombieEventTriggered = false;
 
         this.abilities = {};

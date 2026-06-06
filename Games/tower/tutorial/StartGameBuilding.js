@@ -10,6 +10,8 @@ const YARD_ROWS = SPAWN_SOUTH_OF_ENTRANCE + 2;
 const GRID_ROWS = BUILDING_ROWS + YARD_ROWS;
 const SPAWN_ROW = ENTRANCE_ROW + SPAWN_SOUTH_OF_ENTRANCE;
 const SPAWN_COL = Math.floor(GRID_COLS / 2);
+/** Just inside the south entrance — post-guard fight clue search. */
+const CLUE_SEARCH_ROW = BUILDING_ROWS - 5;
 const ENTRANCE_WIDTH = 5;
 const BSP_SEED = 0x7e400001;
 
@@ -20,6 +22,9 @@ const GUARD_ROOM = {
     cols: 9,
     rows: 7,
 };
+
+/** Central corridor north of the guard room — main horde combat. */
+const MAIN_COMBAT_ROW = GUARD_ROOM.row + GUARD_ROOM.rows + 3;
 
 function createRng(seed) {
     let s = seed >>> 0;
@@ -269,6 +274,9 @@ export function getStartGameLayout(px, py, cellSize) {
     const guardRight = gridCellCenter(offsetX, offsetY, guardRightCol, guardRow, cellSize);
     const guardFace = gridCellCenter(offsetX, offsetY, SPAWN_COL, BUILDING_ROWS - 1, cellSize);
 
+    const clueSearchSpawn = gridCellCenter(offsetX, offsetY, SPAWN_COL, CLUE_SEARCH_ROW, cellSize);
+    const mainCombatSpawn = gridCellCenter(offsetX, offsetY, SPAWN_COL, MAIN_COMBAT_ROW, cellSize);
+
     return {
         minX: offsetX,
         minY: offsetY,
@@ -280,5 +288,10 @@ export function getStartGameLayout(px, py, cellSize) {
         guardFaceX: guardFace.x,
         guardFaceY: guardFace.y,
         guardSpawns: [guardLeft, guardRight],
+        sceneSpawns: {
+            intro_guards: spawn,
+            clue_search: clueSearchSpawn,
+            main_combat: mainCombatSpawn,
+        },
     };
 }

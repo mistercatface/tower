@@ -1,41 +1,35 @@
-import { gridSettings, debugSkipToClueSearch } from "../../Config/Config.js";
 import { isInspector } from "../../GameState/GamePhase.js";
-import { getStartGameLayout } from "./tutorial/StartGameBuilding.js";
-import { beginStartGameIntro, shouldRunStartGameIntro, updateStartGameIntro } from "./tutorial/StartGameIntro.js";
-import { beginClueSearch, findClueSearchPickup, getClueSearchMissionLabel, shouldRunClueSearch, tryBeginClueSearchAfterIntroGuards } from "./tutorial/ClueSearch.js";
+import { getClueSearchMissionLabel, findClueSearchPickup } from "./tutorial/ClueSearch.js";
+import { runSceneController } from "./config/runScenes.js";
+import { markRadiosForSkippedScenes } from "./runSceneRadios.js";
 
 /** @param {import("../../GameState/GameStateMachine.js").GameStateMachineContext} ctx */
 export function onCombatEnter(ctx) {
     const { state } = ctx;
-    const mapNode = state.getStartMapNode();
-    if (!mapNode) return;
 
-    const combatCoords = state.getNodeCombatCoords(mapNode);
-    const layout = getStartGameLayout(combatCoords.x, combatCoords.y, gridSettings.cellSize);
-    state.player.setSpawnPosition(layout.spawnX, layout.spawnY);
-    state.player.resetToSpawn();
-    state.spawnRunParty();
-
-    if (shouldRunStartGameIntro(state)) beginStartGameIntro(state);
-
-    if (debugSkipToClueSearch && shouldRunClueSearch(state)) {
-        beginClueSearch(state, null);
-        requestAnimationFrame(() => {
-            if (shouldRunClueSearch(state)) ctx.fsm?.transition("inspector");
-        });
+    if (!state.runSceneInitialized) {
+        runSceneController.reset();
+        const startSceneId = ctx.game?.startRunAtScene ?? null;
+        const sceneIds = runSceneController.scenes.map((scene) => scene.id);
+        markRadiosForSkippedScenes(state, startSceneId, sceneIds);
+        runSceneController.startAt(startSceneId, state, ctx);
+        state.runSceneInitialized = true;
     }
+
+    runSceneController.enterCurrentScene(state, ctx);
 }
 
-export function onCombatTick(state) {
-    updateStartGameIntro(state);
+/** @param {import("../../GameState/GameStateMachine.js").GameStateMachineContext} ctx */
+export function onRunSceneTick(ctx, _dt) {
+    runSceneController.tick(ctx.state, ctx);
 }
 
-export function onCombatEnemyKilled({ enemy, state, fsm }) {
-    if (enemy?.isIntroGuard) tryBeginClueSearchAfterIntroGuards(state, fsm);
+export function onCombatEnemyKilled(payload) {
+    runSceneController.onEnemyKilled(payload);
 }
 
-export function canRunHordeSpawning(state) {
-    return !state.startGameIntroActive && !state.clueSearchActive && state.clueSearchCompleted;
+export function canRunHordeSpawning(_state) {
+    return runSceneController.getCurrentSceneId() === "main_combat";
 }
 
 export function getInspectMissionBanner(state) {
