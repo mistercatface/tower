@@ -1,5 +1,8 @@
 export function normalizeAngle(angle) {
-    return Math.atan2(Math.sin(angle), Math.cos(angle));
+    let a = angle % (Math.PI * 2);
+    if (a > Math.PI) a -= Math.PI * 2;
+    else if (a <= -Math.PI) a += Math.PI * 2;
+    return a;
 }
 
 /** Shortest signed delta from `from` to `to`. */

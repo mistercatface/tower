@@ -22,18 +22,27 @@ export function accumulateSeparationFromPair(
 ) {
     let dx = selfX - otherX;
     let dy = selfY - otherY;
-    let dist = Math.hypot(dx, dy);
+    let distSq = dx * dx + dy * dy;
+
+    const avoidRadius = selfRadius + otherRadius + neighborPad;
+    if (distSq >= avoidRadius * avoidRadius) {
+        return;
+    }
+
+    let dist = Math.sqrt(distSq);
 
     if (dist === 0) {
         dx = Math.random() - 0.5;
         dy = Math.random() - 0.5;
-        dist = Math.hypot(dx, dy);
+        distSq = dx * dx + dy * dy;
+        dist = Math.sqrt(distSq);
     } else if (dist < selfRadius + otherRadius + 5) {
         dx += (Math.random() - 0.5) * 0.5;
         dy += (Math.random() - 0.5) * 0.5;
+        distSq = dx * dx + dy * dy;
+        dist = Math.sqrt(distSq);
     }
 
-    const avoidRadius = selfRadius + otherRadius + neighborPad;
     if (dist < avoidRadius) {
         const weight = 1 - dist / avoidRadius;
         acc.x += (dx / dist) * weight;
