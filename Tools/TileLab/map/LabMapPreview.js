@@ -1,10 +1,10 @@
 import "../../../Render/WorldSurfaceBootstrap.js";
 import { getGameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.js";
-import { GamePhase, isWorldScene } from "../../../GameState/GamePhase.js";
+import { GamePhase } from "../../../GameState/GamePhase.js";
 import { WorldSceneRenderer } from "../../../Libraries/Render/WorldSceneRenderer.js";
-import { buildWorldRenderInput } from "../../../Render/adapters/WorldRenderAdapter.js";
+import { drawWorldScene } from "../../../Render/worldSceneDraw.js";
 import { Viewport } from "../../../Libraries/Viewport/Viewport.js";
-import { playerBaseStats, combatVisualSettings } from "../../../Config/Config.js";
+import { playerBaseStats } from "../../../Config/Config.js";
 import { getSurfaceProfileRevision } from "../../../Libraries/WorldSurface/SurfaceProfileRevision.js";
 import { invalidateWallAtlasKeyMemos } from "../../../Render/game/wallSurfaceInvalidation.js";
 import { setupLabViewportNavigation } from "../../Lab/lab-shared.js";
@@ -103,21 +103,12 @@ function drawLabWorldFrame(ctx, canvas, viewW, viewH, worldState, profileId, gam
     ctx.save();
     viewport.apply(ctx);
 
-    if (isWorldScene(worldState.phase)) {
-        worldState.worldSurfaces.drawGround(ctx, worldState, viewport);
-    }
-
-    render3D.draw3DBuildings(ctx, buildWorldRenderInput(worldState, viewport), viewport);
-    worldState.worldSurfaces.drawRoofs(ctx, worldState, viewport);
-
-    if (combatVisualSettings.bloom?.enabled) {
-        ctx.save();
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.globalCompositeOperation = "screen";
-        ctx.filter = `blur(${combatVisualSettings.bloom.blur}px)`;
-        ctx.drawImage(canvas, 0, 0);
-        ctx.restore();
-    }
+    drawWorldScene(ctx, {
+        state: worldState,
+        viewport,
+        worldSceneRenderer: render3D,
+        canvas,
+    });
 
     worldState.canvasBounds = prevCanvasBounds;
     worldState.surfaceProfileOverride = prevProfileOverride;

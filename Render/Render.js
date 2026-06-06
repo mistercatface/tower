@@ -4,13 +4,14 @@ import { SpriteCache } from "../Libraries/Canvas/SpriteCache.js";
 import { WorldSceneRenderer } from "../Libraries/Render/WorldSceneRenderer.js";
 import { getPlayerActors, getRenderPorts } from "../Core/GamePorts.js";
 import { buildWorldRenderInput, resolveRenderViewer } from "./adapters/WorldRenderAdapter.js";
-import { COMBAT_HUD_MODE, hudSettings, combatVisualSettings } from "../Config/Config.js";
+import { COMBAT_HUD_MODE, hudSettings } from "../Config/Config.js";
 import { getWorldDrawCoords, isWorldScene } from "../GameState/GamePhase.js";
 import { drawHostileOffScreenIndicators } from "./OffScreenIndicators.js";
 import { CombatParticles } from "./CombatParticles.js";
 import { renderMapView } from "./Map/MapViewRenderer.js";
 import { createGameMapViewConfig } from "./Map/mapViewPresets.js";
 import { getCombatFeatures } from "../Core/GameUiProfile.js";
+import { drawWorldScene } from "./worldSceneDraw.js";
 
 export class Renderer {
     constructor(canvas, ctx) {
@@ -21,7 +22,15 @@ export class Renderer {
         this.floatingTextCache = new SpriteCache();
         this.render3D = new WorldSceneRenderer(getGameWorldSurfaceSettings(), getRenderPorts().world3dPropRecipes);
         this.effectPasses = [
-            { zIndex: -5, fn: (state, viewport) => state.worldSurfaces.drawGround(this.ctx, state, viewport) },
+            {
+                zIndex: -5,
+                fn: (state, viewport) => drawWorldScene(this.ctx, {
+                    state,
+                    viewport,
+                    worldSceneRenderer: this.render3D,
+                    phases: ["ground"],
+                }),
+            },
             { zIndex: 19, fn: (state, viewport) => this.drawDebris(state, viewport) },
             {
                 zIndex: 30,
@@ -42,20 +51,16 @@ export class Renderer {
                 },
             },
             { zIndex: 60, fn: (state, viewport) => this.renderExplosions(state, viewport) },
-            { zIndex: 70, fn: (state, viewport) => this.render3D.draw3DBuildings(this.ctx, this.getWorldRenderInput(state, viewport), viewport) },
-            { zIndex: 71, fn: (state, viewport) => state.worldSurfaces.drawRoofs(this.ctx, state, viewport) },
             {
-                zIndex: 74,
-                fn: (state, viewport) => {
-                    if (combatVisualSettings.bloom?.enabled) {
-                        this.ctx.save();
-                        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
-                        this.ctx.globalCompositeOperation = "screen";
-                        this.ctx.filter = `blur(${combatVisualSettings.bloom.blur}px)`;
-                        this.ctx.drawImage(this.canvas, 0, 0);
-                        this.ctx.restore();
-                    }
-                },
+                zIndex: 70,
+                fn: (state, viewport) => drawWorldScene(this.ctx, {
+                    state,
+                    viewport,
+                    worldSceneRenderer: this.render3D,
+                    canvas: this.canvas,
+                    worldRenderInput: this.getWorldRenderInput(state, viewport),
+                    phases: ["buildings", "roofs", "bloom"],
+                }),
             },
             { zIndex: 75, feature: "entityBars", fn: (state, viewport) => this.drawEntityBars(state, viewport) },
             { zIndex: 80, feature: "visibilityMask", fn: (state, viewport) => this.drawVisibilityMask(this.ctx, state, viewport) },
@@ -87,14 +92,14 @@ export class Renderer {
         this.ctx.restore();
     }
 
-    buildCombatPipeline(state, viewport) {
+    buildSimulationPipeline(state, viewport) {
         const features = getCombatFeatures();
         const entityPasses = state.entityLayers.map((layer) => ({ zIndex: layer.zIndex, fn: (state, viewport) => this.renderEntityCollection(state[layer.key], state, viewport) }));
 
         const enabledEffects = this.effectPasses.filter((pass) => !pass.feature || features[pass.feature] !== false);
         const pipeline = [...enabledEffects, ...entityPasses];
         pipeline.sort((a, b) => a.zIndex - b.zIndex);
-        this._combatPipeline = pipeline.map((p) => p.fn);
+        this._simulationPipeline = pipeline.map((p) => p.fn);
     }
 
     /** Cached once per simulation frame — walls + explosions share the same draw input. */
@@ -113,10 +118,10 @@ export class Renderer {
 
         if (viewport) viewport.apply(this.ctx);
 
-        this.buildCombatPipeline(state, viewport);
+        this.buildSimulationPipeline(state, viewport);
 
-        for (let i = 0; i < this._combatPipeline.length; i++) {
-            this._combatPipeline[i](state, viewport);
+        for (let i = 0; i < this._simulationPipeline.length; i++) {
+            this._simulationPipeline[i](state, viewport);
         }
 
         if (state.debugMode) {

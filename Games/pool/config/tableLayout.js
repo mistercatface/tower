@@ -8,7 +8,7 @@ export const TABLE_RAIL_CELLS = 2;
 /** Pool ball radius in world units (physics + render). */
 export const POOL_BALL_RADIUS = 8;
 
-/** Rail cushion height in world units (Segment.wallHeight + roof z-level). */
+/** Rail cushion height in world units — set on gameDefinition.worldSurface.wallVisualHeight. */
 export const POOL_RAIL_HEIGHT = 20;
 
 /** Pocket sensor radius in world units. */

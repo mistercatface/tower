@@ -8,22 +8,21 @@ let gameWorldSurfaceSettings = null;
 
 /**
  * Build world-surface settings from game config.
- * @param {{ cameraHeight?: number, floorShadow?: string, cellSize?: number, groundChunkAnimationsOn?: boolean, wallAnimationsOn?: boolean, animationBakeMaxFrames?: number|null, animationFrameBatchSize?: number, roofZLevels?: number[] }} [overrides]
+ * @param {{ cameraHeight?: number, wallVisualHeight?: number|null, floorShadow?: string, cellSize?: number, groundChunkAnimationsOn?: boolean, wallAnimationsOn?: boolean, animationBakeMaxFrames?: number|null, animationFrameBatchSize?: number }} [overrides]
  * @returns {import("../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings}
  */
 function resolveRoofZLevels(overrides) {
-    if (overrides.roofZLevels != null) return overrides.roofZLevels;
-    if (worldSurfaceSettings.roofZLevels?.length > 0) return worldSurfaceSettings.roofZLevels;
-
     const cameraHeight = overrides.cameraHeight ?? CAMERA_HEIGHT;
+    const wallVisualHeight = overrides.wallVisualHeight ?? worldSurfaceSettings.wallVisualHeight;
     return [resolveWallVisualHeight(cameraHeight, {
-        wallVisualHeight: overrides.wallVisualHeight ?? worldSurfaceSettings.wallVisualHeight,
+        wallVisualHeight,
         wallHeightInset: worldSurfaceSettings.wallHeightInset,
     })];
 }
 
 export function createGameWorldSurfaceSettings(overrides = {}) {
     const cameraHeight = overrides.cameraHeight ?? CAMERA_HEIGHT;
+    const wallVisualHeight = overrides.wallVisualHeight ?? worldSurfaceSettings.wallVisualHeight;
 
     return createWorldSurfaceSettings({
         cellsPerChunk: worldSurfaceSettings.cellsPerChunk,
@@ -33,7 +32,7 @@ export function createGameWorldSurfaceSettings(overrides = {}) {
         viewPaddingPx: worldSurfaceSettings.viewPaddingPx,
         viewQueryPadPx: worldSurfaceSettings.viewQueryPadPx,
         maxCachedSurfaces: worldSurfaceSettings.maxCachedSurfaces,
-        wallVisualHeight: worldSurfaceSettings.wallVisualHeight,
+        wallVisualHeight,
         wallHeightInset: worldSurfaceSettings.wallHeightInset,
         wallTextureStories: worldSurfaceSettings.wallTextureStories,
         wallTextureBleedPx: worldSurfaceSettings.wallTextureBleedPx,

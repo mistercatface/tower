@@ -1,6 +1,6 @@
 /**
  * Game-facing world-surface system: wraps WorldSurfaceEngine with phase checks,
- * combat shadow underpaint, and GameState profile / invalidation hooks.
+ * simulation shadow underpaint, and GameState profile / invalidation hooks.
  */
 import { WorldSurfaceEngine } from "../../Libraries/WorldSurface/WorldSurfaceEngine.js";
 import { isWorldScene } from "../../GameState/GamePhase.js";
@@ -25,7 +25,7 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
         );
     }
 
-    /** Draw procedural ground: shadow underpaint + baked chunk textures (combat/world scenes only). */
+    /** Draw procedural ground: shadow underpaint + baked chunk textures (simulation/inspector scenes only). */
     drawGround(ctx, state, viewport) {
         if (!viewport || !isWorldScene(state.phase) || !state.obstacleGrid?.cols) {
             return;

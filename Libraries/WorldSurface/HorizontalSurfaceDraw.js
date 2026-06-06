@@ -15,58 +15,6 @@ export function projectHorizontalSurfaceCorners(originX, originY, sizePx, zLevel
 }
 
 /**
- * @param {{ minX: number, minY: number, maxX: number, maxY: number }} bounds
- * @param {number} chunkOriginX
- * @param {number} chunkOriginY
- * @param {number} chunkSizePx
- */
-function horizontalChunkIntersectsBounds(bounds, chunkOriginX, chunkOriginY, chunkSizePx) {
-    return !(
-        chunkOriginX + chunkSizePx < bounds.minX
-        || chunkOriginX > bounds.maxX
-        || chunkOriginY + chunkSizePx < bounds.minY
-        || chunkOriginY > bounds.maxY
-    );
-}
-
-/**
- * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid
- * @param {number} chunkOriginX
- * @param {number} chunkOriginY
- * @param {number} chunkSizePx
- */
-function blockedCellsInChunk(obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx) {
-    const cellSize = obstacleGrid.cellSize;
-    const minCol = Math.max(0, Math.floor((chunkOriginX - obstacleGrid.minX) / cellSize));
-    const minRow = Math.max(0, Math.floor((chunkOriginY - obstacleGrid.minY) / cellSize));
-    const maxCol = Math.min(obstacleGrid.cols - 1, Math.ceil((chunkOriginX + chunkSizePx - obstacleGrid.minX) / cellSize) - 1);
-    const maxRow = Math.min(obstacleGrid.rows - 1, Math.ceil((chunkOriginY + chunkSizePx - obstacleGrid.minY) / cellSize) - 1);
-    return { minCol, minRow, maxCol, maxRow };
-}
-
-/**
- * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid
- * @param {number} chunkOriginX
- * @param {number} chunkOriginY
- * @param {number} chunkSizePx
- */
-export function chunkHasBlockedCells(obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx) {
-    if (!obstacleGrid?.cols) return false;
-
-    const { minCol, minRow, maxCol, maxRow } = blockedCellsInChunk(obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx);
-    for (let row = minRow; row <= maxRow; row++) {
-        for (let col = minCol; col <= maxCol; col++) {
-            if (!obstacleGrid.isBlocked(col, row)) continue;
-            const bounds = obstacleGrid.getCellBounds(col, row);
-            if (horizontalChunkIntersectsBounds(bounds, chunkOriginX, chunkOriginY, chunkSizePx)) {
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
-/**
  * @param {import("../Spatial/indexes/WallSpatialIndex.js").WallSpatialIndex | null | undefined} wallSpatialIndex
  * @param {number} chunkOriginX
  * @param {number} chunkOriginY
@@ -80,16 +28,12 @@ function collectWallSegmentsInChunk(wallSpatialIndex, chunkOriginX, chunkOriginY
 }
 
 /**
- * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid
  * @param {import("../Spatial/indexes/WallSpatialIndex.js").WallSpatialIndex | null | undefined} wallSpatialIndex
  * @param {number} chunkOriginX
  * @param {number} chunkOriginY
  * @param {number} chunkSizePx
  */
-export function chunkHasRoofContent(obstacleGrid, wallSpatialIndex, chunkOriginX, chunkOriginY, chunkSizePx) {
-    if (chunkHasBlockedCells(obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx)) {
-        return true;
-    }
+export function chunkHasWallSegments(wallSpatialIndex, chunkOriginX, chunkOriginY, chunkSizePx) {
     return collectWallSegmentsInChunk(wallSpatialIndex, chunkOriginX, chunkOriginY, chunkSizePx).length > 0;
 }
 
@@ -113,36 +57,9 @@ function clipProjectedQuad(ctx, corners, zLevel, viewerX, viewerY, cameraHeight)
 }
 
 /**
- * @param {CanvasRenderingContext2D} ctx
- * @param {number} minX
- * @param {number} minY
- * @param {number} sizePx
- * @param {number} zLevel
- * @param {number} viewerX
- * @param {number} viewerY
- * @param {number} cameraHeight
- */
-function clipProjectedRect(ctx, minX, minY, sizePx, zLevel, viewerX, viewerY, cameraHeight) {
-    clipProjectedQuad(
-        ctx,
-        [
-            { x: minX, y: minY },
-            { x: minX + sizePx, y: minY },
-            { x: minX + sizePx, y: minY + sizePx },
-            { x: minX, y: minY + sizePx },
-        ],
-        zLevel,
-        viewerX,
-        viewerY,
-        cameraHeight,
-    );
-}
-
-/**
- * Clip draw to wall footprints at roof elevation (must match projected quad draw).
+ * Clip draw to projected wall-segment footprints at roof elevation.
  *
  * @param {CanvasRenderingContext2D} ctx
- * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid
  * @param {import("../Spatial/indexes/WallSpatialIndex.js").WallSpatialIndex | null | undefined} wallSpatialIndex
  * @param {number} chunkOriginX
  * @param {number} chunkOriginY
@@ -155,7 +72,6 @@ function clipProjectedRect(ctx, minX, minY, sizePx, zLevel, viewerX, viewerY, ca
  */
 export function clipChunkToRoofFootprints(
     ctx,
-    obstacleGrid,
     wallSpatialIndex,
     chunkOriginX,
     chunkOriginY,
@@ -165,29 +81,13 @@ export function clipChunkToRoofFootprints(
     viewerY,
     cameraHeight,
 ) {
-    ctx.beginPath();
-    let any = false;
-
     const segments = collectWallSegmentsInChunk(wallSpatialIndex, chunkOriginX, chunkOriginY, chunkSizePx);
-    if (segments.length > 0) {
-        for (const segment of segments) {
-            clipProjectedQuad(ctx, getSegmentFootprintCorners(segment), zLevel, viewerX, viewerY, cameraHeight);
-            any = true;
-        }
-    } else if (obstacleGrid?.cols) {
-        const { minCol, minRow, maxCol, maxRow } = blockedCellsInChunk(obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx);
-        for (let row = minRow; row <= maxRow; row++) {
-            for (let col = minCol; col <= maxCol; col++) {
-                if (!obstacleGrid.isBlocked(col, row)) continue;
-                const bounds = obstacleGrid.getCellBounds(col, row);
-                if (!horizontalChunkIntersectsBounds(bounds, chunkOriginX, chunkOriginY, chunkSizePx)) continue;
-                const sizePx = bounds.maxX - bounds.minX;
-                clipProjectedRect(ctx, bounds.minX, bounds.minY, sizePx, zLevel, viewerX, viewerY, cameraHeight);
-                any = true;
-            }
-        }
-    }
+    if (!segments.length) return false;
 
-    if (any) ctx.clip();
-    return any;
+    ctx.beginPath();
+    for (const segment of segments) {
+        clipProjectedQuad(ctx, getSegmentFootprintCorners(segment), zLevel, viewerX, viewerY, cameraHeight);
+    }
+    ctx.clip();
+    return true;
 }

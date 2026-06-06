@@ -9,6 +9,7 @@ export const worldSurfaceSettings = {
     viewPaddingPx: 128,
     viewQueryPadPx: 48,
     maxCachedSurfaces: 5000,
+    /** null = cameraHeight − wallHeightInset (tower default). */
     wallVisualHeight: null,
     wallHeightInset: 10,
     wallTextureStories: 5,
@@ -19,6 +20,4 @@ export const worldSurfaceSettings = {
     wallAnimationsOn: false,
     animationBakeMaxFrames: null,
     animationFrameBatchSize: 8,
-    /** Empty = auto from camera height − wallHeightInset at bootstrap. */
-    roofZLevels: [],
 };

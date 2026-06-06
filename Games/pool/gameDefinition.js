@@ -121,7 +121,7 @@ export const poolGame = {
     },
 
     worldSurface: {
-        roofZLevels: [POOL_RAIL_HEIGHT],
+        wallVisualHeight: POOL_RAIL_HEIGHT,
     },
 
     combatPairs: poolCombatPairs,

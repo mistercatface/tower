@@ -15,7 +15,7 @@ import {
     isWallAtlasAnimationEnabled,
 } from "./bake/SurfaceBakeHelpers.js";
 import {
-    chunkHasRoofContent,
+    chunkHasWallSegments,
     clipChunkToRoofFootprints,
     projectHorizontalSurfaceCorners,
 } from "./HorizontalSurfaceDraw.js";
@@ -324,7 +324,7 @@ export class WorldSurfaceEngine {
         chunksToDraw.sort((a, b) => a.distSq - b.distSq);
 
         for (const chunk of chunksToDraw) {
-            if (zLevel > 0 && !chunkHasRoofContent(obstacleGrid, wallSpatialIndex, chunk.origin.x, chunk.origin.y, chunkSizePx)) {
+            if (zLevel > 0 && !chunkHasWallSegments(wallSpatialIndex, chunk.origin.x, chunk.origin.y, chunkSizePx)) {
                 continue;
             }
 
@@ -347,7 +347,6 @@ export class WorldSurfaceEngine {
                 ctx.save();
                 if (!clipChunkToRoofFootprints(
                     ctx,
-                    obstacleGrid,
                     wallSpatialIndex,
                     chunk.origin.x,
                     chunk.origin.y,
