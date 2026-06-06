@@ -1,4 +1,4 @@
-import { resolveWallVisualHeight } from "../../WorldSurface/WorldSurfaceSettings.js";
+import { getWallVisualHeight } from "../../WorldSurface/WorldSurfaceSettings.js";
 import {
     TileWorkerCoordinator,
     wallGeometryView,
@@ -23,7 +23,7 @@ export function writeWallGeometry(walls, settings) {
         wallGeometryView[offset + 2] = seg.angle;
         wallGeometryView[offset + 3] = seg.size;
         wallGeometryView[offset + 4] = seg.isDead ? 1 : 0;
-        const wallHeight = seg.wallHeight ?? resolveWallVisualHeight(settings.cameraHeight, settings);
+        const wallHeight = seg.wallHeight ?? getWallVisualHeight(settings);
         wallGeometryView[offset + 5] = wallHeight;
         if (!seg.sharedEdges) {
             seg.sharedEdges = [false, false, false, false];

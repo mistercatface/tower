@@ -10,8 +10,7 @@
  * @property {number} viewPaddingPx
  * @property {number} viewQueryPadPx
  * @property {number} maxCachedSurfaces
- * @property {number|null} wallVisualHeight
- * @property {number} wallHeightInset
+ * @property {number} wallVisualHeight — wall face + roof z (set per game in gameDefinition.worldSurface)
  * @property {number} wallTextureStories
  * @property {number} wallTextureBleedPx
  * @property {number} wallSubdivNearPx
@@ -27,27 +26,22 @@
  */
 
 /**
- * @param {Partial<WorldSurfaceSettings> & Pick<WorldSurfaceSettings, "cellsPerChunk" | "tileResolution" | "tileWorldSize" | "chunkWorldSize" | "viewPaddingPx" | "viewQueryPadPx" | "maxCachedSurfaces" | "wallHeightInset" | "wallTextureStories" | "wallTextureBleedPx" | "wallSubdivNearPx" | "wallSubdivFarPx" | "cellSize" | "cameraHeight" | "floorShadow">} params
+ * @param {Partial<WorldSurfaceSettings> & Pick<WorldSurfaceSettings, "cellsPerChunk" | "tileResolution" | "tileWorldSize" | "chunkWorldSize" | "viewPaddingPx" | "viewQueryPadPx" | "maxCachedSurfaces" | "wallVisualHeight" | "wallTextureStories" | "wallTextureBleedPx" | "wallSubdivNearPx" | "wallSubdivFarPx" | "cellSize" | "cameraHeight" | "floorShadow">} params
  * @returns {WorldSurfaceSettings}
  */
 export function createWorldSurfaceSettings(params) {
     return {
-        wallVisualHeight: null,
         groundChunkAnimationsOn: false,
         wallAnimationsOn: false,
         ...params,
     };
 }
 
-/**
- * @param {number} cameraHeight
- * @param {Pick<WorldSurfaceSettings, "wallVisualHeight" | "wallHeightInset">} settings
- */
-export function resolveWallVisualHeight(cameraHeight, settings) {
-    return settings.wallVisualHeight ?? (cameraHeight - settings.wallHeightInset);
-}
-
 /** @param {WorldSurfaceSettings} settings */
 export function getWallVisualHeight(settings) {
-    return resolveWallVisualHeight(settings.cameraHeight, settings);
+    const height = settings.wallVisualHeight;
+    if (height == null) {
+        throw new Error("worldSurface.wallVisualHeight must be set on the active game definition");
+    }
+    return height;
 }

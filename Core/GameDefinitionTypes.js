@@ -94,7 +94,7 @@
  * @property {Partial<import("./GamePerspective.js").PerspectiveConfig>} [perspective]
  * @property {number} [propPixelSize] — iso prop bake diameter in px (like kinematicsPixelSize for actors)
  * @property {Partial<import("./GameProceduralDesign.js").ProceduralDesignConfig>} [proceduralDesign]
- * @property {{ wallVisualHeight?: number|null }} [worldSurface] — wall face + roof z; omit for camera-derived default
+ * @property {{ wallVisualHeight: number }} [worldSurface] — wall face height + roof z-level
  * @property {(state: object) => "won" | "lost" | null} [getRunOutcome]
  */
 

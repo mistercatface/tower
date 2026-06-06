@@ -1,6 +1,6 @@
 import { combatVisualSettings, worldSurfaceSettings, gridSettings } from "../Config/Config.js";
 import { CAMERA_HEIGHT } from "../Libraries/Spatial/iso/IsometricProjection.js";
-import { createWorldSurfaceSettings, resolveWallVisualHeight } from "../Libraries/WorldSurface/WorldSurfaceSettings.js";
+import { createWorldSurfaceSettings } from "../Libraries/WorldSurface/WorldSurfaceSettings.js";
 import { configureTileWorkerCoordinator } from "../Libraries/WorldSurface/TileWorkerCoordinator.js";
 
 /** @type {import("../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings | null} */
@@ -12,12 +12,11 @@ let gameWorldSurfaceSettings = null;
  * @returns {import("../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings}
  */
 function resolveRoofZLevels(overrides) {
-    const cameraHeight = overrides.cameraHeight ?? CAMERA_HEIGHT;
     const wallVisualHeight = overrides.wallVisualHeight ?? worldSurfaceSettings.wallVisualHeight;
-    return [resolveWallVisualHeight(cameraHeight, {
-        wallVisualHeight,
-        wallHeightInset: worldSurfaceSettings.wallHeightInset,
-    })];
+    if (wallVisualHeight == null) {
+        throw new Error("worldSurface.wallVisualHeight must be set in game config or worldSurfaceSettings");
+    }
+    return [wallVisualHeight];
 }
 
 export function createGameWorldSurfaceSettings(overrides = {}) {
@@ -33,7 +32,6 @@ export function createGameWorldSurfaceSettings(overrides = {}) {
         viewQueryPadPx: worldSurfaceSettings.viewQueryPadPx,
         maxCachedSurfaces: worldSurfaceSettings.maxCachedSurfaces,
         wallVisualHeight,
-        wallHeightInset: worldSurfaceSettings.wallHeightInset,
         wallTextureStories: worldSurfaceSettings.wallTextureStories,
         wallTextureBleedPx: worldSurfaceSettings.wallTextureBleedPx,
         wallSubdivNearPx: worldSurfaceSettings.wallSubdivNearPx,

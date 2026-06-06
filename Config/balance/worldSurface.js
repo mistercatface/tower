@@ -9,9 +9,7 @@ export const worldSurfaceSettings = {
     viewPaddingPx: 128,
     viewQueryPadPx: 48,
     maxCachedSurfaces: 5000,
-    /** null = cameraHeight − wallHeightInset (tower default). */
-    wallVisualHeight: null,
-    wallHeightInset: 10,
+    wallVisualHeight: 150,
     wallTextureStories: 5,
     wallTextureBleedPx: 1,
     wallSubdivNearPx: 80,

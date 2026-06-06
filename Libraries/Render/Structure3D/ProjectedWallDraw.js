@@ -2,7 +2,7 @@
  * Projects wall faces in isometric space and samples baked atlases from WorldSurfaceEngine.
  * Roof caps are chunk-cached horizontal surfaces (WorldSurfaceEngine.drawRoofLayers).
  */
-import { getWallVisualHeight, resolveWallVisualHeight } from "../../WorldSurface/WorldSurfaceSettings.js";
+import { getWallVisualHeight } from "../../WorldSurface/WorldSurfaceSettings.js";
 import { drawImageQuad } from "../../Canvas/AffineTexture.js";
 /** @typedef {import("../WorldSceneTypes.js").SurfaceBakeContext} SurfaceBakeContext */
 

@@ -3,7 +3,7 @@
  * Game-agnostic — no phase checks, shadow fill, or GameState profile resolution.
  * See Render/game/WorldSurfaceSystem.js for the game wrapper; Libraries/Render/Structure3D for wall projection.
  */
-import { resolveWallVisualHeight } from "./WorldSurfaceSettings.js";
+import { getWallVisualHeight } from "./WorldSurfaceSettings.js";
 import { getSurfaceProfileProvider } from "../Procedural/SurfaceProfileProvider.js";
 import { chunkToWorldOrigin, getChunkSizePx, gridBoundsToChunkRange, worldBoundsToChunkRange } from "../Spatial/grid/ChunkGrid.js";
 import { ProgressiveFrameCache } from "./ProgressiveFrameCache.js";
@@ -169,7 +169,7 @@ export class WorldSurfaceEngine {
         const pixelsPerUnit = (cellSize / tileWorldSize) * ppwu;
 
         const canvasWidth = Math.max(1, Math.ceil(edgeLen * pixelsPerUnit));
-        const hVal = wallHeight ?? resolveWallVisualHeight(this.settings.cameraHeight, this.settings);
+        const hVal = wallHeight ?? getWallVisualHeight(this.settings);
         const unrolledHeight = wallFaceAtlasUnrolledHeight(hVal, cellSize);
         const canvasHeight = Math.max(1, Math.ceil(unrolledHeight * pixelsPerUnit));
 
