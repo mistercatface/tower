@@ -22,7 +22,13 @@ import { poolWorldGen } from "./worldGen.js";
 import { wirePoolRadio } from "./wireRadio.js";
 import { getWorldPropDefinitions, getWorldPropRecipes } from "../../Libraries/Content/PropCatalog.js";
 import { PROP_RECIPE_BUILDERS } from "../../Libraries/Props/recipes/index.js";
-import { POOL_BALL_RADIUS, POOL_RAIL_HEIGHT } from "./config/tableLayout.js";
+import {
+    POOL_BALL_RADIUS,
+    POOL_RAIL_HEIGHT,
+    POOL_BALL_LOW_SPEED_THRESHOLD,
+    POOL_BALL_LOW_SPEED_FRICTION,
+    POOL_BALL_SNAP_SPEED,
+} from "./config/tableLayout.js";
 import { poolProceduralDesign, poolSurfaceProfileId } from "./config/proceduralDesign.js";
 import { buildPoolRailRoofClipRegions } from "./config/roofClip.js";
 import { poolRunScenePorts } from "./runScenePorts.js";
@@ -38,6 +44,9 @@ const POOL_BALL_PHYSICS = {
     laserTargetable: false,
     mass: 1.0,
     friction: 0.5,
+    lowSpeedFrictionThreshold: POOL_BALL_LOW_SPEED_THRESHOLD,
+    lowSpeedFriction: POOL_BALL_LOW_SPEED_FRICTION,
+    snapSpeed: POOL_BALL_SNAP_SPEED,
     wallPhysics: { restitution: 0.94, friction: 0.06 },
 };
 

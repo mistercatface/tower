@@ -3,6 +3,23 @@ import { absorbCollisionRollImpulse, integrateRollOrientation } from "./rollingM
 import { isStandTipFallen, isStandTipProp } from "../Spatial/transforms/longAxisBox3d.js";
 
 /**
+ * @param {object} strategy
+ * @param {object} body
+ */
+function resolveRollingFriction(strategy, body) {
+    const base = strategy.friction ?? 8;
+    const threshold = strategy.lowSpeedFrictionThreshold;
+    const boosted = strategy.lowSpeedFriction;
+    if (threshold == null || boosted == null) return base;
+
+    const speed = Math.hypot(body.vx ?? 0, body.vy ?? 0);
+    if (speed >= threshold) return base;
+
+    const t = 1 - speed / threshold;
+    return base + (boosted - base) * t * t;
+}
+
+/**
  * Single motion entry for pushable props — lifecycle states (on_fire, etc.) do not branch here.
  *
  * @param {object} body
@@ -10,7 +27,8 @@ import { isStandTipFallen, isStandTipProp } from "../Spatial/transforms/longAxis
  */
 export function integratePropMotion(body, dtMs) {
     const strategy = body.strategy ?? {};
-    const friction = strategy.friction ?? 8;
+    const friction = resolveRollingFriction(strategy, body);
+    const snapSpeed = strategy.snapSpeed ?? 1;
     const axis = strategy.rollAxis ?? "ground";
 
     if (isStandTipProp(body)) {
@@ -24,18 +42,18 @@ export function integratePropMotion(body, dtMs) {
                 }
             }
         }
-        applyVelocityDamping(body, dtMs, { friction, integrateFacing: false });
+        applyVelocityDamping(body, dtMs, { friction, integrateFacing: false, snapSpeed });
         return;
     }
 
     if (!strategy.rolls) {
-        applyVelocityDamping(body, dtMs, { friction });
+        applyVelocityDamping(body, dtMs, { friction, snapSpeed });
         return;
     }
 
     if (axis === "long") {
         integrateRollOrientation(body, dtMs);
-        applyVelocityDamping(body, dtMs, { friction, integrateFacing: false });
+        applyVelocityDamping(body, dtMs, { friction, integrateFacing: false, snapSpeed });
         if (body.angularVelocity) {
             const angularDrag = Math.exp(-friction * 0.8 * (dtMs / 1000));
             body.angularVelocity *= angularDrag;
@@ -49,5 +67,5 @@ export function integratePropMotion(body, dtMs) {
     absorbCollisionRollImpulse(body, dtMs);
     integrateRollOrientation(body, dtMs);
     body.angularVelocity = 0;
-    applyVelocityDamping(body, dtMs, { friction, integrateFacing: false });
+    applyVelocityDamping(body, dtMs, { friction, integrateFacing: false, snapSpeed });
 }

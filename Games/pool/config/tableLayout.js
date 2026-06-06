@@ -17,6 +17,12 @@ export const POCKET_RADIUS = 14;
 /** Ball stop threshold — max speed² to allow aiming. */
 export const BALL_STOPPED_SPEED_SQ = 4;
 
+/** Below this speed (world units/s), felt drag ramps up so balls don't creep at the end. */
+export const POOL_BALL_LOW_SPEED_THRESHOLD = 10;
+export const POOL_BALL_LOW_SPEED_FRICTION = 2.8;
+/** Zero linear velocity once speed drops below this (after the ramp). */
+export const POOL_BALL_SNAP_SPEED = 1.8;
+
 /** Shot tuning — table is ~700×384 world units; full-length shot needs high v0 + low felt drag */
 export const MAX_SHOT_POWER = 580;
 export const SHOT_POWER_SCALE = 3.2;
