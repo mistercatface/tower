@@ -1,7 +1,4 @@
-/** Shared collision + kinematics radius for all combat humanoids (for now). */
-export const combatActorRadius = 8;
-/** Internal kinematics render resolution (rig + offscreen canvas scale). */
-export const kinematicsPixelSize = 32;
+export { LIBRARY_COMBAT_ACTOR_RADIUS as combatActorRadius, LIBRARY_KINEMATICS_PIXEL_SIZE as kinematicsPixelSize } from "../../Libraries/Motion/bodyDefaults.js";
 export const sidekickBaseStats = { turnSpeed: Math.PI * 2.5, range: 150, maxHealth: 10, accuracy: 0.7, penetration: 0, speed: 55 };
 export const playerBaseStats = {
     turnSpeed: Math.PI * 3,

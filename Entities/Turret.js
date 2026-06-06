@@ -7,6 +7,7 @@ import { applyKnockback } from "../Libraries/Motion/index.js";
 import { getGunProjectileConfig } from "../Combat/gunCombat.js";
 import { inferFaction, areHostile } from "../Core/GamePorts.js";
 import { CombatParticles } from "../Render/CombatParticles.js";
+import { resolveBodyRadius } from "../Libraries/Motion/bodyDefaults.js";
 import { resolveKinematicsMuzzlePosition, resolveActorKinematicsCamera } from "../Libraries/Render/Characters/actorKinematicsRenderer.js";
 export class Turret {
     constructor(angle, turnSpeed, loadout = defaultTurretLoadout) {
@@ -36,7 +37,7 @@ export class Turret {
         const aimY = Math.sin(this.angle);
         const dot = (dx / dist) * aimX + (dy / dist) * aimY;
         if (dot < 0.5) return defaultDist;
-        const targetRadius = target.radius ?? 8;
+        const targetRadius = resolveBodyRadius(target);
         const maxDist = dist - targetRadius + projectileRadius;
         return Math.max(minDist, Math.min(defaultDist, maxDist));
     }

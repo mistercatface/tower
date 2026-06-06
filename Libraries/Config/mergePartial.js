@@ -1,5 +1,6 @@
 /**
  * Deep-merge partial overrides onto a defaults object (known nested keys only).
+ * See `.cursor/rules/defaults-override-chain.mdc` for library → game → entity layering.
  *
  * @template {Record<string, unknown>} T
  * @param {T} base
@@ -14,13 +15,11 @@ export function mergePartial(base, overrides = {}, ...more) {
         const o = layers[i];
         if (!o) continue;
         result = { ...result, ...o };
-        if (o.restitution && typeof o.restitution === "object")
-            result.restitution = { ...(result.restitution ?? {}), ...o.restitution };
+        if (o.restitution && typeof o.restitution === "object") result.restitution = { ...(result.restitution ?? {}), ...o.restitution };
         if (o.mass && typeof o.mass === "object") result.mass = { ...(result.mass ?? {}), ...o.mass };
     }
     return result;
 }
-
 /**
  * @param {{ facing?: number, roll?: number }} base
  * @param {...{ facing?: number, roll?: number } | null | undefined} overrides

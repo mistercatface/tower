@@ -1,5 +1,5 @@
 import { isWorldScene } from "../GameState/GamePhase.js";
-import { worldSurfaceSettings } from "../Config/Config.js";
+import { LIBRARY_WORLD_SURFACE_DEFAULTS } from "../Libraries/WorldSurface/worldSurfaceDefaults.js";
 import { buildWorldRenderInput } from "./adapters/WorldRenderAdapter.js";
 /** @typedef {'ground' | 'buildings' | 'roofs' | 'bloom'} WorldSceneDrawPhase */
 /**
@@ -21,11 +21,11 @@ export function drawWorldScene(ctx, options) {
     if (phases.includes("ground") && state.obstacleGrid?.cols) state.worldSurfaces.drawGround(ctx, state, viewport);
     if (phases.includes("buildings")) worldSceneRenderer.draw3DBuildings(ctx, worldRenderInput, viewport);
     if (phases.includes("roofs") && state.obstacleGrid?.cols) state.worldSurfaces.drawRoofs(ctx, state, viewport);
-    if (phases.includes("bloom") && canvas && worldSurfaceSettings.bloom?.enabled) {
+    if (phases.includes("bloom") && canvas && LIBRARY_WORLD_SURFACE_DEFAULTS.bloom?.enabled) {
         ctx.save();
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.globalCompositeOperation = "screen";
-        ctx.filter = `blur(${worldSurfaceSettings.bloom.blur}px)`;
+        ctx.filter = `blur(${LIBRARY_WORLD_SURFACE_DEFAULTS.bloom.blur}px)`;
         ctx.drawImage(canvas, 0, 0);
         ctx.restore();
     }

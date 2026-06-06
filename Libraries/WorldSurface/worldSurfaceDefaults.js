@@ -1,6 +1,7 @@
-import { gridSettings } from "./grid.js";
-/** Engine defaults (tower reference). Override wallHeight / pixelsPerCell in gameDefinition.worldSurface when needed. */
-export const worldSurfaceSettings = {
+import { gridSettings } from "../../Config/balance/grid.js";
+/** @typedef {typeof LIBRARY_WORLD_SURFACE_DEFAULTS} LibraryWorldSurfaceDefaults */
+/** Library baseline — games override via `gameDefinition.worldSurface` (+ proceduralDesign for animation bakes). */
+export const LIBRARY_WORLD_SURFACE_DEFAULTS = {
     cellsPerChunk: gridSettings.minCellsPerChunk,
     chunkWorldSize: 128 * gridSettings.cellSize,
     viewPaddingPx: 128,

@@ -1,0 +1,42 @@
+---
+description: Library → game → entity defaults override chain
+alwaysApply: true
+---
+
+# Defaults override chain
+
+Engine tuning uses **three layers**. Do not add empty Config re-exports or passthrough merge files.
+
+1. **Library** (`Libraries/**/**Defaults.js`) — baseline constants the engine owns.
+2. **Game** (`gameDefinition.*` partial fields, applied in `Core/createGame.js`) — only keys that differ from library.
+3. **Entity** (per-asset `strategy`, per-type config) — only keys that differ from game/library.
+
+`Config/balance/` is for **project-wide values that differ from library** (tower reference tuning). If a new game does not need a key, it should not appear in Config.
+
+`Config/content/` is **data catalogs** (guns, factions, upgrades) — not part of this chain.
+
+## Merge helpers
+
+- `mergePartial(base, overrides = {}, …)` — nested `restitution` / `mass` for collision-shaped objects.
+- `mergeQuantizeSteps(base, overrides = {}, …)` — `{ facing, roll }` only.
+- Plain spread `{ ...LIBRARY_DEFAULTS, ...definition?.field }` when the shape is flat.
+
+## Runtime getters (after `createGame`)
+
+| Setting | Library | Game field | Entity |
+|---------|---------|------------|--------|
+| Collision | `LIBRARY_COLLISION_DEFAULTS` | `collisionSettings` | `strategy.pairRestitution` |
+| Prop facing/roll steps | `LIBRARY_PROP_QUANTIZE_STEPS` | `propQuantizeSteps` | `strategy.quantizeSteps` |
+| World surface | `LIBRARY_WORLD_SURFACE_DEFAULTS` | `worldSurface` | — |
+| Body radius fallback | `LIBRARY_DEFAULT_BODY_RADIUS` | — | `radius` on asset/type |
+| Interaction pairs | `createDefaultInteractionPairs()` | `interactionPairs` | — |
+| Prop strategy | `PROP_STRATEGY_DEFAULTS` | — | asset `strategy` |
+| UI chrome | `ENGINE_MINIMAL_UI` | `ui` | — |
+| Perspective | `DEFAULT_PERSPECTIVE` | `perspective` | — |
+
+Use `resolveBodyRadius(body)` instead of `radius ?? 8`.
+
+## New game checklist
+
+- Spread library defaults; override only deltas (pool: `worldSurface.wallHeight`, `pairRestitution` on balls, cue tuning).
+- Do not copy full Config blobs into the game definition.

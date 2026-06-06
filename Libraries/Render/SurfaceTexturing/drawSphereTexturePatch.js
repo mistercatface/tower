@@ -1,3 +1,4 @@
+import { resolveBodyRadius } from "../../Motion/bodyDefaults.js";
 import { IDENTITY_ROLL_QUAT } from "../../Props/rollingMotion.js";
 import { isPropMeshFaceVisible, projectPropVertex } from "../Props3D/propMesh.js";
 import { tessellateSphereCapQuads, tessellateSphereQuads } from "./sphereSurface.js";
@@ -64,7 +65,7 @@ function projectSphereCell(cell, prop, px, py) {
  * }} [options]
  */
 export function drawSphereTexturePatch(ctx, prop, px, py, img, options = {}) {
-    const radius = options.baseRadius ?? prop.radius ?? 8;
+    const radius = options.baseRadius ?? resolveBodyRadius(prop);
     const rollQuat = prop.rollQuat ?? IDENTITY_ROLL_QUAT;
     const phiCenter = options.phiCenter ?? Math.PI * 0.5;
     const thetaCenter = options.thetaCenter ?? 0;

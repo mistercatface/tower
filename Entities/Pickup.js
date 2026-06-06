@@ -15,6 +15,7 @@ import { getWorldGen } from "../Core/GamePorts.js";
 import { placeAtWallClearance } from "../Libraries/Pathfinding/PathClearance.js";
 import { distanceToSegment } from "../Libraries/Spatial/geometry/WallGeometry.js";
 import { MOVING_SPEED_SQ } from "../Libraries/Spatial/collision/entityBroadphase.js";
+import { resolveBodyRadius } from "../Libraries/Motion/bodyDefaults.js";
 import { wakePushableBody } from "../Libraries/Motion/pushableSleep.js";
 function buildWorldPropStrategy(type) {
     const def = getWorldPropDefinitions()[type];
@@ -75,7 +76,7 @@ export class Pickup extends Entity {
     get momentOfInertia() {
         const m = this.mass || 1.0;
         if (isStandTipProp(this) && !this.isFallen) {
-            const r = this._baseRadius ?? this.radius ?? 8;
+            const r = resolveBodyRadius(this);
             const h = this.strategy.rollHeight ?? this.strategy.uprightHeight ?? r * 2.5;
             return m * (r * r * 0.25 + (h * h) / 3);
         }

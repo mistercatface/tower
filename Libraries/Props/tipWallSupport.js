@@ -1,3 +1,4 @@
+import { resolveBodyRadius } from "../Motion/bodyDefaults.js";
 import { wallContextFromState } from "../Spatial/query/wallContext.js";
 import { collectWallSegmentsForEntity } from "../Spatial/query/wallSegmentQuery.js";
 import { SpatialQuery } from "../Spatial/query/SpatialQuery.js";
@@ -12,8 +13,8 @@ const wallProbeQuery = new SpatialQuery();
 export function measureTipFallWallBlock(prop, wallCtx = null) {
     if (prop.isFallen || !prop.strategy?.standTip) return 0;
     const tipDir = prop.facing ?? 0;
-    const height = prop.strategy?.rollHeight ?? prop.strategy?.uprightHeight ?? (prop._baseRadius ?? prop.radius ?? 8) * 2.5;
-    const radius = prop._baseRadius ?? prop.radius ?? 8;
+    const height = prop.strategy?.rollHeight ?? prop.strategy?.uprightHeight ?? resolveBodyRadius(prop) * 2.5;
+    const radius = resolveBodyRadius(prop);
     const probeLen = height + radius * 0.35;
     const dx = Math.cos(tipDir);
     const dy = Math.sin(tipDir);

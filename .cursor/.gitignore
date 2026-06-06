@@ -1,0 +1,5 @@
+# Ignore local Cursor workspace state; shared rules are committed under .cursor/rules/.
+*
+!.gitignore
+!rules/
+!rules/**

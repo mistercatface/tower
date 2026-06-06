@@ -4,6 +4,7 @@ import { clamp } from "../Math/Interpolate.js";
 import { buildRollOrientKey, quantizeRollQuat } from "../Props/rollingMotion.js";
 import { isStandTipFallen, standTipStageRadius } from "../Spatial/transforms/longAxisBox3d.js";
 import { getActivePropPixelSize, resolvePropBakeScale } from "../../Core/GamePropPixelSize.js";
+import { resolveBodyRadius } from "../Motion/bodyDefaults.js";
 import { resolvePropQuantizeSteps } from "../Props/propStrategy.js";
 /**
  * @typedef {ReturnType<createBakedSpriteCache>} BakedSpriteCache
@@ -124,7 +125,7 @@ export function quantizeLongAxisLogAngles(prop) {
  * @param {object} prop
  */
 function propFootprintHalfExtents(prop) {
-    const radius = prop._baseRadius ?? prop.radius ?? 8;
+    const radius = resolveBodyRadius(prop);
     if (isStandTipFallen(prop) && prop.halfExtents) return { x: prop.halfExtents.x, y: prop.halfExtents.y };
     return { x: prop.strategy?.halfExtents?.x ?? radius, y: prop.strategy?.halfExtents?.y ?? radius };
 }
@@ -159,7 +160,7 @@ export function buildPropSpriteKey(prop, px, py, renderKey, animFrame = 0) {
             : prop.strategy?.rolls
               ? buildRollOrientKey(prop.rollQuat, resolvePropQuantizeSteps(prop).facing)
               : `f${quantizeAngleIndex(prop.facing ?? 0, resolvePropQuantizeSteps(prop).facing)}`;
-    const radius = Math.round(prop._baseRadius ?? prop.radius ?? 8);
+    const radius = Math.round(resolveBodyRadius(prop));
     const { x: stratHx, y: stratHy } = propFootprintHalfExtents(prop);
     const halfX = Math.round(stratHx);
     const halfY = Math.round(stratHy);
@@ -182,7 +183,7 @@ export function getOrBakePropSprite({ prop, px, py, renderKey, draw, animFrame =
         const dx = prop.x - px;
         const dy = prop.y - py;
         const { dx: qDx, dy: qDy } = propSpriteCache.quantizeView(dx, dy);
-        const stageR = prop.strategy?.standTip ? standTipStageRadius(prop) : (prop._baseRadius ?? prop.radius ?? 8);
+        const stageR = prop.strategy?.standTip ? standTipStageRadius(prop) : resolveBodyRadius(prop);
         const footprint = propFootprintHalfExtents(prop);
         const worldDiameter = Math.max(stageR * 2, footprint.x * 2, footprint.y * 2);
         const bakeScale = resolvePropBakeScale(worldDiameter, getActivePropPixelSize());
@@ -196,7 +197,7 @@ export function getOrBakePropSprite({ prop, px, py, renderKey, draw, animFrame =
             ...prop,
             x: anchorX,
             y: anchorY,
-            radius: prop._baseRadius ?? prop.radius ?? 8,
+            radius: resolveBodyRadius(prop),
             halfExtents: footprint,
             facing: logAngles?.facing ?? quantizeAngle(prop.facing ?? 0, resolvePropQuantizeSteps(prop).facing),
             rollAngle: logAngles?.rollAngle ?? prop.rollAngle,

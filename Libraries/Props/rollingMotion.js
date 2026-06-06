@@ -1,3 +1,4 @@
+import { resolveBodyRadius } from "../Motion/bodyDefaults.js";
 import { quantizeAngle } from "../Canvas/viewQuantize.js";
 import { clamp } from "../Math/Interpolate.js";
 /** @type {{ w: number, x: number, y: number, z: number }} */
@@ -79,7 +80,7 @@ export function getRollRadius(body) {
     if (strategy.standTip && body.isFallen) return Math.max(1, strategy.fallenRollHeight ?? strategy.rollHeight ?? 3);
     if (strategy.rollAxis === "long") return Math.max(1, strategy.rollHeight ?? 3);
     if (body.halfExtents) return Math.max(1, Math.min(body.halfExtents.x, body.halfExtents.y));
-    return Math.max(1, body.radius ?? 8);
+    return Math.max(1, resolveBodyRadius(body));
 }
 /** Sphere / ball: ω axis in the ground plane. */
 function integrateGroundRoll(body, dtMs) {

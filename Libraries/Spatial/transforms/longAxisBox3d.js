@@ -4,6 +4,7 @@
  * rollAngle: rotation about local X through center (0 = local +Z up).
  * facing: world yaw after tumble.
  */
+import { resolveBodyRadius } from "../../Motion/bodyDefaults.js";
 /** @typedef {{ lx: number, ly: number, z: number }} Vec3 */
 /**
  * @param {number} lx
@@ -123,7 +124,7 @@ export function fallenLongAxisDimsFromStrategy(strategy, baseR) {
  */
 export function longAxisBoxDimsFromProp(prop) {
     const strategy = prop.strategy ?? {};
-    const baseR = prop._baseRadius ?? prop.radius ?? 8;
+    const baseR = resolveBodyRadius(prop);
     if (isStandTipFallen(prop)) return fallenLongAxisDimsFromStrategy(strategy, baseR);
     const hx = strategy.halfExtents?.x ?? baseR;
     const hy = strategy.halfExtents?.y ?? baseR;
@@ -138,7 +139,7 @@ export function longAxisBoxDimsFromProp(prop) {
  */
 export function convertStandTipToFallenLog(body) {
     const strategy = body.strategy ?? {};
-    const baseR = body._baseRadius ?? body.radius ?? 8;
+    const baseR = resolveBodyRadius(body);
     const { hx, hy } = fallenLongAxisDimsFromStrategy(strategy, baseR);
     body.facing = (body.facing ?? 0) + Math.PI / 2;
     body.rollAngle = 0;
@@ -152,7 +153,7 @@ export function standTipStageRadius(prop) {
         const { hx, hy } = longAxisBoxDimsFromProp(prop);
         return Math.hypot(hx, hy) + 12;
     }
-    const r = prop._baseRadius ?? prop.radius ?? 8;
+    const r = resolveBodyRadius(prop);
     const h = prop.strategy?.rollHeight ?? prop.strategy?.uprightHeight ?? 22;
     return r + h * 0.42;
 }

@@ -1,3 +1,4 @@
+import { resolveBodyRadius } from "../Motion/bodyDefaults.js";
 import { integrateLongAxisRoll } from "./rollingMotion.js";
 import { syncLongAxisCollisionShape } from "./longAxisCollision.js";
 import { convertStandTipToFallenLog, isStandTipFallen, isStandTipProp } from "../Spatial/transforms/longAxisBox3d.js";
@@ -19,7 +20,7 @@ export function initStandTipState(body) {
     body.rollAngle = body.rollAngle ?? 0;
     body.rollOmega = body.rollOmega ?? 0;
     body.isFallen = body.isFallen ?? false;
-    body._baseRadius = body._baseRadius ?? body.radius ?? 8;
+    body._baseRadius = resolveBodyRadius(body);
 }
 /**
  * @param {object} body
@@ -76,7 +77,7 @@ export function integrateStandTip(body, dtMs, { wallCtx = null } = {}) {
         if (rollAngle < 0.1) rollOmega += 0.65 * dt * mobility;
     }
     if (rollAngle > 0.02 && mobility > 0.05) {
-        const h = strategy.rollHeight ?? strategy.uprightHeight ?? (body._baseRadius ?? body.radius ?? 8) * 2.5;
+        const h = strategy.rollHeight ?? strategy.uprightHeight ?? resolveBodyRadius(body) * 2.5;
         const grav = strategy.tipGravity ?? 16;
         rollOmega += (grav / Math.max(h * 0.01, 0.5)) * Math.sin(rollAngle) * dt * mobility;
     }

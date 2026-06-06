@@ -1,3 +1,4 @@
+import { resolveBodyRadius } from "../../Motion/bodyDefaults.js";
 import { drawExtrudedRadial, drawRadialBand } from "../../Render/Props3D/SolidDraw.js";
 import { drawLoFiLongAxisCylinder, drawLoFiTippedCylinder } from "../../Render/Props3D/lofiTippedCylinder.js";
 import { projectVertical } from "../../Spatial/iso/IsometricProjection.js";
@@ -38,7 +39,7 @@ function drawUprightBarrel(ctx, prop, px, py, radius, height, bodyColors, colors
 export function createFuelBarrelDraw(visuals, { onFire = false } = {}) {
     const { world, colors } = visuals;
     return (ctx, prop, px, py) => {
-        const radius = prop._baseRadius ?? prop.radius ?? 8;
+        const radius = resolveBodyRadius(prop);
         const height = world.height;
         const bodyColors = onFire ? colors.bodyFire : colors.body;
         if (isStandTipFallen(prop)) {
