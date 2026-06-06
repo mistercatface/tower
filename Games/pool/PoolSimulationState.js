@@ -10,8 +10,12 @@ import { requestUiUpdate } from "../../Core/EventSystem.js";
 import { getRadioPort, getRunScenePort, getSimulationPort } from "../../Core/GamePorts.js";
 import { resolveRenderViewer } from "../../Render/adapters/WorldRenderAdapter.js";
 import { resetSimulationWorld } from "../../Systems/Simulation/index.js";
-import { getCueBall, ensurePoolState } from "./balls.js";
+import { computeBodyContactPreview } from "../../Libraries/Spatial/query/contactPreview.js";
+import { wallContextFromState } from "../../Libraries/Spatial/query/wallContext.js";
+import { drawBodyContactPreview } from "../../Libraries/Render/contactPreviewDraw.js";
+import { getCueBall, ensurePoolState, getActiveBalls } from "./balls.js";
 import { tryBeginAim, updateAim, releaseAimShot, cancelAim, getAimPreview } from "./shotInput.js";
+import { MAX_SHOT_POWER, MIN_SHOT_POWER } from "./config/tableLayout.js";
 export class PoolSimulationState {
     onEnter(ctx) {
         if (ctx.state.skipSimulationEnterReset) {
@@ -126,76 +130,26 @@ export class PoolSimulationState {
             }
         canvasCtx.restore();
 
-        // Draw debug vector arrow from cue ball representing current charge/angle
         if (pool.phase === "aiming" && pool.aim?.active) {
             const cue = getCueBall(ctx.state);
             const preview = getAimPreview(ctx.state);
             if (cue && preview) {
                 const { nx, ny, power } = preview;
+                const ratio = Math.max(0, Math.min(1, (power - MIN_SHOT_POWER) / (MAX_SHOT_POWER - MIN_SHOT_POWER)));
+                const contactPreview = computeBodyContactPreview({
+                    body: cue,
+                    nx,
+                    ny,
+                    obstacles: getActiveBalls(ctx.state).filter((ball) => ball !== cue),
+                    wallCtx: wallContextFromState(ctx.state),
+                });
                 canvasCtx.save();
                 viewport.apply(canvasCtx);
-
-                // Start from cue ball surface
-                const startX = cue.x + nx * cue.radius;
-                const startY = cue.y + ny * cue.radius;
-
-                // Shot tuning variables
-                const minPower = 16;
-                const maxPower = 850;
-                const maxArrowLength = 100; // world units
-                const ratio = Math.max(0, Math.min(1, (power - minPower) / (maxPower - minPower)));
-                const arrowLength = 20 + ratio * maxArrowLength;
-
-                const endX = startX + nx * arrowLength;
-                const endY = startY + ny * arrowLength;
-
-                // Color interpolation: 180 (cyan) -> 0 (red)
-                const hue = 180 - ratio * 180;
-                const color = `hsl(${hue}, 100%, 50%)`;
-
-                // Glow style settings
-                canvasCtx.shadowColor = `hsla(${hue}, 100%, 50%, 0.6)`;
-                canvasCtx.shadowBlur = 8;
-
-                // Draw dashed line extending beyond arrow
-                canvasCtx.beginPath();
-                canvasCtx.setLineDash([4, 4]);
-                canvasCtx.moveTo(endX, endY);
-                canvasCtx.lineTo(endX + nx * 200, endY + ny * 200);
-                canvasCtx.strokeStyle = "rgba(255, 255, 255, 0.35)";
-                canvasCtx.lineWidth = 1.5;
-                canvasCtx.stroke();
-                canvasCtx.setLineDash([]);
-
-                // Draw arrow shaft
-                canvasCtx.beginPath();
-                canvasCtx.moveTo(startX, startY);
-                canvasCtx.lineTo(endX, endY);
-                canvasCtx.strokeStyle = color;
-                canvasCtx.lineWidth = 3;
-                canvasCtx.lineCap = "round";
-                canvasCtx.stroke();
-
-                // Draw filled arrowhead
-                const headSize = 8;
-                const headWidth = 5;
-                const tx = -ny;
-                const ty = nx;
-                const baseCenterX = endX - nx * headSize;
-                const baseCenterY = endY - ny * headSize;
-                const leftX = baseCenterX + tx * headWidth;
-                const leftY = baseCenterY + ty * headWidth;
-                const rightX = baseCenterX - tx * headWidth;
-                const rightY = baseCenterY - ty * headWidth;
-
-                canvasCtx.beginPath();
-                canvasCtx.moveTo(endX, endY);
-                canvasCtx.lineTo(leftX, leftY);
-                canvasCtx.lineTo(rightX, rightY);
-                canvasCtx.closePath();
-                canvasCtx.fillStyle = color;
-                canvasCtx.fill();
-
+                drawBodyContactPreview(canvasCtx, contactPreview, {
+                    primaryColor: `hsl(${180 - ratio * 180}, 100%, 50%)`,
+                    secondaryLength: 20 + ratio * 100,
+                    primaryGlowHue: 180 - ratio * 180,
+                });
                 canvasCtx.restore();
             }
         }

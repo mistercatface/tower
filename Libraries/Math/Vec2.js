@@ -25,3 +25,8 @@ export function normalize2(v) {
 export function normalizeVector(dx, dy) {
     return normalize2({ x: dx, y: dy });
 }
+/** Reflect direction `(dx, dy)` off a surface normal `(nx, ny)`. */
+export function reflect2(dx, dy, nx, ny) {
+    const dot = dx * nx + dy * ny;
+    return { dx: dx - 2 * dot * nx, dy: dy - 2 * dot * ny };
+}
