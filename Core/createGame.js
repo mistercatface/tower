@@ -13,7 +13,9 @@ import { inspectBridge } from "../Combat/inspect/InspectBridge.js";
 import { setActiveGameDefinition } from "./ActiveGameDefinition.js";
 import { applyGameShell, resolveUiProfile } from "./GameUiProfile.js";
 import { bootstrapEngine } from "./bootstrapEngine.js";
+import { applyGameCollisionSettings } from "./GameCollisionSettings.js";
 import { applyGamePropPixelSize } from "./GamePropPixelSize.js";
+import { applyGamePropQuantizeSettings } from "./GamePropQuantizeSettings.js";
 /** @typedef {import("./GameDefinitionTypes.js").GameDefinition} GameDefinition */
 /**
  * Bootstrap a game from a definition manifest (FSM, loop, listeners, UI).
@@ -24,6 +26,8 @@ export function createGame(definition) {
     setActiveGameDefinition(definition);
     definition.prepare?.();
     bootstrapEngine(definition);
+    applyGameCollisionSettings(definition);
+    applyGamePropQuantizeSettings(definition);
     applyGamePropPixelSize(definition);
     applyGameShell(definition);
     const canvas = document.getElementById(definition.canvasId);

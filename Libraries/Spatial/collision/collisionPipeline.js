@@ -1,3 +1,4 @@
+import { getCollisionSettings } from "../../../Core/GameCollisionSettings.js";
 import { invalidateWallResolveCache } from "../../Motion/WallCollisionResolver.js";
 import { massFromBody } from "../../Motion/bodyMass.js";
 import { applyActorPushTipImpulse } from "../../Props/actorPushTip.js";
@@ -6,13 +7,13 @@ import { shouldResolveActorPushable } from "./entityBroadphase.js";
 import { resolveCirclePair } from "./circlePair.js";
 import { circlesOverlap, findFirstCircleSegmentHit } from "./overlap.js";
 import { resolveSatPair } from "./satPair.js";
-const DEFAULT_PUSHABLE_ITERATIONS = 4;
 function resolveActorPushable(actor, pickup, resolveWalls, spatialFrame, state) {
     if (!shouldResolveActorPushable(actor, pickup)) return;
+    const { mass, restitution } = getCollisionSettings();
     const collisionInfo = resolveSatPair(actor, actor.getShape(), pickup, pickup.getShape(), {
         massA: actor.mass !== undefined ? actor.mass : actor.radius,
-        massB: pickup.mass !== undefined ? pickup.mass : 1.0,
-        restitution: 0.15,
+        massB: pickup.mass !== undefined ? pickup.mass : mass.pickupFallback,
+        restitution: restitution.actorPushable,
     });
     if (!collisionInfo) return;
     applyActorPushTipImpulse(actor, pickup, collisionInfo, state);
@@ -25,7 +26,7 @@ function pushablePairRestitution(p1, p2) {
     const r1 = p1.strategy?.pairRestitution;
     const r2 = p2.strategy?.pairRestitution;
     if (r1 != null && r2 != null) return (r1 + r2) * 0.5;
-    return r1 ?? r2 ?? 0.4;
+    return r1 ?? r2 ?? getCollisionSettings().restitution.pushablePair;
 }
 function resolvePushablePair(p1, p2) {
     const shapeA = p1.getShape();
@@ -40,8 +41,8 @@ function resolvePushablePair(p1, p2) {
         return;
     }
     const collisionInfo = resolveSatPair(p1, shapeA, p2, shapeB, {
-        massA: massFromBody(p1, 15),
-        massB: massFromBody(p2, 15),
+        massA: massFromBody(p1),
+        massB: massFromBody(p2),
         restitution,
     });
     if (!collisionInfo) return;
@@ -79,9 +80,9 @@ export function runCollisionPipeline(
         onProjectilePickupHit,
         onProjectileFactionCollisions,
         resolveWalls,
-        combatantRestitution = () => 0.15,
+        combatantRestitution = () => getCollisionSettings().restitution.combatant,
         onChargeImpact = null,
-        pushableIterations = DEFAULT_PUSHABLE_ITERATIONS,
+        pushableIterations = getCollisionSettings().pushableIterations,
         events = null,
     },
 ) {

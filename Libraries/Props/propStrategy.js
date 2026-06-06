@@ -1,4 +1,4 @@
-import { defaultPropQuantizeSteps } from "../../Config/balance/visuals.js";
+import { getDefaultPropQuantizeSteps } from "../../Core/GamePropQuantizeSettings.js";
 /** @typedef {"circle" | "box"} PropCollisionShape */
 /** Shared defaults for world prop strategies (Pickup reads these via buildWorldPropStrategy). */
 export const PROP_STRATEGY_DEFAULTS = {
@@ -40,13 +40,11 @@ export const PROP_STRATEGY_DEFAULTS = {
  * @param {object} prop
  */
 export function resolvePropQuantizeSteps(prop) {
+    const defaults = getDefaultPropQuantizeSteps();
     const override = prop.strategy?.quantizeSteps;
-    if (!override) {
-        const roll = defaultPropQuantizeSteps.roll ?? defaultPropQuantizeSteps.facing;
-        return { facing: defaultPropQuantizeSteps.facing, roll };
-    }
-    const facing = override.facing ?? defaultPropQuantizeSteps.facing;
-    const roll = override.roll ?? override.facing ?? defaultPropQuantizeSteps.roll ?? facing;
+    if (!override) return defaults;
+    const facing = override.facing ?? defaults.facing;
+    const roll = override.roll ?? override.facing ?? defaults.roll ?? facing;
     return { facing, roll };
 } /**
  * @param {object} strategy

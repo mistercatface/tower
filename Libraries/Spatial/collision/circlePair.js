@@ -1,13 +1,11 @@
+import { getCollisionSettings } from "../../../Core/GameCollisionSettings.js";
 import { massFromBody } from "../../Motion/bodyMass.js";
-
-/** Match pool BALL_STOPPED_SPEED_SQ — skip position correction on resting contacts. */
-const RESTING_SPEED_SQ = 4;
 
 /**
  * Circle-circle overlap resolution + velocity impulse.
  * @returns {boolean} true if bodies were overlapping and handled
  */
-export function resolveCirclePair(a, b, { restitution = 0.5 } = {}) {
+export function resolveCirclePair(a, b, { restitution = getCollisionSettings().restitution.circlePair } = {}) {
     const dx = b.x - a.x;
     const dy = b.y - a.y;
     const dist = Math.hypot(dx, dy);
@@ -33,10 +31,11 @@ export function resolveCirclePair(a, b, { restitution = 0.5 } = {}) {
     const velAlongNormal = rvx * normalX + rvy * normalY;
     const speedSqA = avx * avx + avy * avy;
     const speedSqB = bvx * bvx + bvy * bvy;
-    const isResting = speedSqA <= RESTING_SPEED_SQ && speedSqB <= RESTING_SPEED_SQ;
+    const isResting = speedSqA <= getCollisionSettings().restingSpeedSq && speedSqB <= getCollisionSettings().restingSpeedSq;
     if (isResting && velAlongNormal >= 0) return false;
-    const massA = massFromBody(a, 1);
-    const massB = massFromBody(b, 1);
+    const pickupMass = getCollisionSettings().mass.pickupFallback;
+    const massA = massFromBody(a, pickupMass);
+    const massB = massFromBody(b, pickupMass);
     const totalMass = massA + massB;
     a.x -= normalX * overlap * (massB / totalMass);
     a.y -= normalY * overlap * (massB / totalMass);

@@ -159,5 +159,7 @@
  * @property {number} [propPixelSize] — target bake diameter for small props; large props auto-match world size
  * @property {Partial<import("./GameProceduralDesign.js").ProceduralDesignConfig>} [proceduralDesign]
  * @property {{ wallHeight?: number, pixelsPerCell?: number }} [worldSurface]
+ * @property {Partial<import("../Libraries/Collision/collisionDefaults.js").LibraryCollisionSettings>} [collisionSettings] — partial overrides on library collision defaults
+ * @property {Partial<import("../Libraries/Props/propRenderDefaults.js").LibraryPropQuantizeSteps>} [propQuantizeSteps] — partial overrides on library prop facing/roll steps
  */
 export {};

@@ -7,8 +7,6 @@ export const TABLE_RAIL_CELLS = 2;
 export const POOL_BALL_RADIUS = 8;
 /** Pocket sensor radius in world units. */
 export const POCKET_RADIUS = 14;
-/** Ball stop threshold — max speed² to allow aiming. */
-export const BALL_STOPPED_SPEED_SQ = 4;
 /** Below this speed (world units/s), felt drag ramps up so balls don't creep at the end. */
 export const POOL_BALL_LOW_SPEED_THRESHOLD = 10;
 export const POOL_BALL_LOW_SPEED_FRICTION = 2.8;

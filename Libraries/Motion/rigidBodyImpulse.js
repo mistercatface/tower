@@ -1,3 +1,5 @@
+import { getCollisionSettings } from "../../Core/GameCollisionSettings.js";
+
 /**
  * Two-body impulse exchange at a SAT contact (pickup / pushable pairs).
  */
@@ -13,7 +15,7 @@
  * @param {{ nx: number, ny: number, overlap: number, cx?: number, cy?: number }} collisionInfo
  * @param {number} [restitution]
  */
-export function applyRigidBodyImpulse(p1, p2, collisionInfo, restitution = 0.15) {
+export function applyRigidBodyImpulse(p1, p2, collisionInfo, restitution = getCollisionSettings().restitution.rigidBody) {
     const nx = collisionInfo.nx;
     const ny = collisionInfo.ny;
     const cx = collisionInfo.cx !== undefined ? collisionInfo.cx : p1.x + nx * (collisionInfo.overlap / 2);

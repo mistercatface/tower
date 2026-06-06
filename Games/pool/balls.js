@@ -3,7 +3,7 @@ import { ensureCueStick } from "../../Libraries/CueStick/cueStickController.js";
 import { wakePushableBody } from "../../Libraries/Motion/pushableSleep.js";
 import { poolBallFromNumber } from "../../Libraries/Render/Props3D/poolBallArt.js";
 import { POOL_CUE_STICK_TUNING } from "./config/cueStick.js";
-import { BALL_STOPPED_SPEED_SQ } from "./config/tableLayout.js";
+import { getCollisionSettings } from "../../Core/GameCollisionSettings.js";
 import { POOL_OBJECT_BALL_COUNT } from "./config/rackLayout.js";
 
 export const POOL_CUE_TAG = "_poolCue";
@@ -63,7 +63,7 @@ export function allBallsStopped(state) {
         const b = balls[i];
         const vx = b.vx ?? 0;
         const vy = b.vy ?? 0;
-        if (vx * vx + vy * vy > BALL_STOPPED_SPEED_SQ) return false;
+        if (vx * vx + vy * vy > getCollisionSettings().restingSpeedSq) return false;
     }
     return balls.length > 0;
 }

@@ -1,3 +1,4 @@
+import { getCollisionSettings } from "../../Core/GameCollisionSettings.js";
 import { applyRigidBodyImpulse } from "../Motion/rigidBodyImpulse.js";
 import { massFromBody } from "../Motion/bodyMass.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
@@ -16,7 +17,7 @@ export function applyCueStrikeCollision(cueBall, strike) {
     const nx = strike.nx;
     const ny = strike.ny;
     const speed = strike.power;
-    const ballMass = massFromBody(cueBall, 1);
+    const ballMass = massFromBody(cueBall, getCollisionSettings().mass.pickupFallback);
     const radius = cueBall.radius ?? 8;
     const striker = {
         x: cueBall.x - nx * (radius + 0.5),
