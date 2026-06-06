@@ -1,4 +1,3 @@
-import { ensurePoolState } from "./balls.js";
 import { PoolSimulationState } from "./PoolSimulationState.js";
 import { registerPoolEntities } from "./config/entities.js";
 import { MINIMAL_ARENA_BOOTSTRAP } from "../../Libraries/Bootstrap/presets.js";
@@ -8,7 +7,7 @@ import { poolSimulation } from "./simulation.js";
 import { poolUiPort } from "./ui/poolUiPort.js";
 import { poolWorldGen } from "./worldGen.js";
 import { NOOP_COMBAT_PORT, NOOP_INSPECT_PORT } from "../../Libraries/Ports/noopPorts.js";
-import { wirePoolRadio } from "./wireRadio.js";
+import { poolOutcomePort } from "./outcomePort.js";
 import { poolRadioPort } from "./radioPort.js";
 import { getWorldPropDefinitions, getWorldPropRecipes } from "../../Libraries/Content/PropCatalog.js";
 import { PROP_RECIPE_BUILDERS } from "../../Libraries/Props/recipes/index.js";
@@ -45,9 +44,6 @@ export const poolGame = {
     canvasId: "gameCanvas",
     saveKey: "pool_save_v1",
     ui: { ...LANDSCAPE_MINIMAL_UI, runResult: { won: { title: "TABLE CLEAR!", buttonLabel: "PLAY AGAIN", titleColor: "#4CAF50" } } },
-    getRunOutcome(state) {
-        return ensurePoolState(state).won ? "won" : null;
-    },
     perspective: { cameraHeight: 520, strength: 0.28, viewerSource: "viewport" },
     proceduralDesign: { surfaceProfileId: poolSurfaceProfileId, ...poolProceduralDesign },
     worldSurface: { wallHeight: 20 },
@@ -62,6 +58,7 @@ export const poolGame = {
     inspectPort: NOOP_INSPECT_PORT,
     combatPort: NOOP_COMBAT_PORT,
     radioPort: poolRadioPort,
+    outcomePort: poolOutcomePort,
     createUpgrades() {
         return [];
     },
@@ -75,5 +72,4 @@ export const poolGame = {
         registerPoolBallType(propDefs, recipes, "pool_cue_ball", { kind: "cue" });
         registerPoolBallType(propDefs, recipes, "pool_ball", { kind: "solid", number: 1, color: "#FFD600" });
     },
-    wireRadio: wirePoolRadio,
 };

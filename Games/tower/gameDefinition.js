@@ -1,7 +1,7 @@
 import { createUpgrades, createBaseUpgrades } from "../../Progression/Upgrades.js";
 import { MapState, SimulationState, InspectorState } from "../../GameState/GameStates.js";
-import { wireTowerRadio } from "./wireRadio.js";
 import { COMBAT_ROGUELIKE_BOOTSTRAP } from "../../Libraries/Bootstrap/presets.js";
+import { NOOP_OUTCOME_PORT } from "../../Libraries/Ports/noopPorts.js";
 import { towerInspectPort } from "./inspectPort.js";
 import { towerCombatPort } from "./combatPort.js";
 import { towerRadioPort } from "./radioPort.js";
@@ -34,6 +34,7 @@ export const towerGame = {
     inspectPort: towerInspectPort,
     combatPort: towerCombatPort,
     radioPort: towerRadioPort,
+    outcomePort: NOOP_OUTCOME_PORT,
     createUpgrades() {
         return [...createBaseUpgrades(), ...createUpgrades()];
     },
@@ -43,5 +44,4 @@ export const towerGame = {
         registerTowerEntities();
         applyInspectManifestToProps(getWorldPropDefinitions());
     },
-    wireRadio: wireTowerRadio,
 };

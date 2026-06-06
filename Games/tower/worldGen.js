@@ -3,6 +3,7 @@ import { StartGameBuildingStrategy, getStartGameLayout } from "./tutorial/StartG
 import { TOWER_MAP_TOPOLOGY } from "./mapTopology.js";
 /** @type {import("../../Core/GameDefinitionTypes.js").WorldGenPort} */
 export const towerWorldGen = createRoguelikeMapWorldGenPort(TOWER_MAP_TOPOLOGY, {
+    nodeWorldCoordScale: 7.0,
     startMapNodeId: 0,
     startNodeStrategyKey: "StartGameBuildingStrategy",
     startNodeStrategyLabel: "StartGameBuilding",

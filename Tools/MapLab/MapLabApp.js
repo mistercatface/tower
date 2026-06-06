@@ -1,5 +1,5 @@
-import { mapSettings } from "../../Config/Config.js";
 import { TOWER_MAP_TOPOLOGY } from "../../Games/tower/mapTopology.js";
+import { towerWorldGen } from "../../Games/tower/worldGen.js";
 import { Viewport } from "../../Libraries/Viewport/Viewport.js";
 import { initResizer, setupLabViewportNavigation } from "../Lab/lab-shared.js";
 import { createLabMapWorld } from "../TileLab/map/LabMapWorld.js";
@@ -198,7 +198,7 @@ function buildSettingsPanel() {
     subh3.className = "editor-subhead";
     subh3.textContent = "Scale";
     panel.appendChild(subh3);
-    addSlider("Node World Scale", 1, 20, 0.5, mapSettings, "nodeWorldCoordScale");
+    addSlider("Node World Scale", 1, 20, 0.5, towerWorldGen, "nodeWorldCoordScale");
     const hint = document.createElement("div");
     hint.className = "editor-hint";
     hint.style.marginTop = "8px";

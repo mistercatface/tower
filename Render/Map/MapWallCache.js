@@ -1,9 +1,11 @@
-import { mapSettings } from "../../Config/Config.js";
 const LAB_WALL_THICKNESS = 20;
 function createBakeCanvas(width, height) {
-    const canvas = typeof OffscreenCanvas !== "undefined" ? new OffscreenCanvas(width, height) : document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
+    const w = Math.ceil(width);
+    const h = Math.ceil(height);
+    if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return null;
+    const canvas = typeof OffscreenCanvas !== "undefined" ? new OffscreenCanvas(w, h) : document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
     return canvas;
 }
 function drawGameMapWall(ctx, seg, baseSpawnX, baseSpawnY, scale) {
@@ -58,12 +60,14 @@ function computeGameMapWallBounds(walls, baseSpawnX, baseSpawnY, scale) {
     return { minX, minY, maxX, maxY };
 }
 export function bakeGameMapWallCache(walls, baseSpawnX, baseSpawnY, scale) {
+    if (!(scale > 0)) return null;
     const bounds = computeGameMapWallBounds(walls, baseSpawnX, baseSpawnY, scale);
     if (!bounds) return null;
     const width = Math.ceil(bounds.maxX - bounds.minX);
     const height = Math.ceil(bounds.maxY - bounds.minY);
-    if (width <= 0 || height <= 0) return null;
+    if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return null;
     const canvas = createBakeCanvas(width, height);
+    if (!canvas) return null;
     const ctx = canvas.getContext("2d");
     ctx.translate(-bounds.minX, -bounds.minY);
     for (const seg of walls) {
@@ -75,8 +79,9 @@ export function bakeGameMapWallCache(walls, baseSpawnX, baseSpawnY, scale) {
 export function bakeLabMapWallCache(walls, minX, minY, maxX, maxY) {
     const width = Math.ceil(maxX - minX);
     const height = Math.ceil(maxY - minY);
-    if (width <= 0 || height <= 0) return null;
+    if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return null;
     const canvas = createBakeCanvas(width, height);
+    if (!canvas) return null;
     const ctx = canvas.getContext("2d");
     ctx.translate(-minX, -minY);
     for (const seg of walls) {

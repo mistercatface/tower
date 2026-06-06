@@ -14,6 +14,7 @@ import { getActiveGameDefinition } from "./ActiveGameDefinition.js";
 /** @typedef {import("./GameDefinitionTypes.js").InspectPort} InspectPort */
 /** @typedef {import("./GameDefinitionTypes.js").CombatPort} CombatPort */
 /** @typedef {import("./GameDefinitionTypes.js").RadioPort} RadioPort */
+/** @typedef {import("./GameDefinitionTypes.js").OutcomePort} OutcomePort */
 function requireGameDefinition() {
     const def = getActiveGameDefinition();
     if (!def) throw new Error("No active game definition — call setActiveGameDefinition before using game ports.");
@@ -93,6 +94,16 @@ export function getRadioPort() {
     const port = requireGameDefinition().radioPort;
     if (!port) throw new Error("Active game definition missing radioPort.");
     return port;
+}
+/** @returns {OutcomePort} */
+export function getOutcomePort() {
+    const port = requireGameDefinition().outcomePort;
+    if (!port) throw new Error("Active game definition missing outcomePort.");
+    return port;
+}
+/** Roguelike map node → world scale; arena games default to 0. */
+export function getNodeWorldCoordScale() {
+    return getWorldGen().nodeWorldCoordScale ?? 0;
 }
 /** @returns {RunBootstrapPort} */
 export function getRunBootstrapPort() {

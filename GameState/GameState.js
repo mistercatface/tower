@@ -7,7 +7,8 @@ import { HierarchicalNavigator } from "../Libraries/Pathfinding/HierarchicalNavi
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { NavigationService } from "../Systems/Navigation/NavigationService.js";
 import { createCombatWallResolver } from "../Systems/Motion/createCombatWallResolver.js";
-import { combatActorRadius, gridSettings, mapSettings, navigationSettings, runBaseStats } from "../Config/Config.js";
+import { getNodeWorldCoordScale } from "../Core/GamePorts.js";
+import { combatActorRadius, gridSettings, navigationSettings, runBaseStats } from "../Config/Config.js";
 import { Scheduler } from "../Libraries/Scheduler/Scheduler.js";
 import { HordeSpawner } from "../Combat/HordeSpawner.js";
 import { WallSpatialIndex } from "../Libraries/Spatial/indexes/WallSpatialIndex.js";
@@ -18,7 +19,8 @@ export class GameState {
     constructor() {
         this.fsm = null;
         this.scheduler = new Scheduler();
-        this.hordeSpawner = new HordeSpawner();
+        /** @type {HordeSpawner | null} */
+        this._hordeSpawner = null;
         this._phase = "simulation";
         this.mapNodes = [];
         this.mapNodeById = new Map();
@@ -62,7 +64,7 @@ export class GameState {
     getNodeWorldCoords(node) {
         if (!node) return { x: 0, y: 0 };
         const { x: baseSpawnX, y: baseSpawnY } = this.getMapSpawnOrigin();
-        const scale = mapSettings.nodeWorldCoordScale;
+        const scale = getNodeWorldCoordScale();
         return { x: baseSpawnX + node.x * scale, y: baseSpawnY + node.y * scale };
     }
     rebuildMapNodeIndex() {
@@ -86,6 +88,10 @@ export class GameState {
     getCurrentMapNode() {
         return this.getMapNode(this.currentNodeId);
     }
+    get hordeSpawner() {
+        if (!this._hordeSpawner) this._hordeSpawner = new HordeSpawner();
+        return this._hordeSpawner;
+    }
     get phase() {
         return this.fsm?.currentStateName ?? this._phase;
     }
@@ -94,7 +100,7 @@ export class GameState {
     }
     initializeDefaultState() {
         this.scheduler.clear();
-        this.hordeSpawner.reset();
+        this._hordeSpawner?.reset();
         this.lastTime = 0;
         this.gameTime = 0;
         this.score = 0;

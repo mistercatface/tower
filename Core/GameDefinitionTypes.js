@@ -96,6 +96,7 @@
  * @typedef {object} WorldGenPort
  * @property {(state: object) => void} generateWorld — build walls, bounds, and surface caches for a new run
  * @property {(state: object) => WorldPlayBounds | null} getPlayBounds — clip rendering/surfaces to playable area
+ * @property {number} [nodeWorldCoordScale] — roguelike map: graph node units → world units
  * @property {number} [startMapNodeId] — map graph node used for opening layout (default 0)
  * @property {string} [startNodeStrategyKey] — roguelike-map: key in strategies for node-0 room bake
  * @property {string} [startNodeStrategyLabel] — display label stored on the map node
@@ -118,7 +119,12 @@
  */
 /**
  * @typedef {object} RadioPort
+ * @property {(eventBus: object, pauseApi: { requestPause: (reason: string) => void, requestResume: (reason: string) => void }) => void} [wire]
  * @property {() => boolean} isDialogActive
+ */
+/**
+ * @typedef {object} OutcomePort
+ * @property {(state: object) => "won" | "lost" | null} getRunOutcome
  */
 /**
  * @typedef {import("./GameUiProfile.js").GameUiProfile} GameUiProfile
@@ -145,14 +151,13 @@
  * @property {RunScenePort} runScenePort — run scene enter/tick/capabilities
  * @property {InspectPort} inspectPort — inspect mission hooks + catalog registration
  * @property {CombatPort} combatPort — run-opening combat setup
- * @property {RadioPort} radioPort — dialog input guards
+ * @property {RadioPort} radioPort — boot wiring + dialog input guards
+ * @property {OutcomePort} outcomePort — custom win/loss detection (health-based games use noop)
  * @property {() => void | Promise<void>} [prepare]
- * @property {(eventBus: object, pauseApi: { requestPause: (reason: string) => void, requestResume: (reason: string) => void }) => void} [wireRadio]
  * @property {Partial<import("./GameUiProfile.js").GameUiProfile>} [ui]
  * @property {Partial<import("./GamePerspective.js").PerspectiveConfig>} [perspective]
  * @property {number} [propPixelSize] — target bake diameter for small props; large props auto-match world size
  * @property {Partial<import("./GameProceduralDesign.js").ProceduralDesignConfig>} [proceduralDesign]
  * @property {{ wallHeight?: number, pixelsPerCell?: number }} [worldSurface]
- * @property {(state: object) => "won" | "lost" | null} [getRunOutcome]
  */
 export {};

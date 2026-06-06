@@ -1,7 +1,7 @@
 import { state } from "../GameState/GameState.js";
 import { initializeSaveSystem } from "../Progression/Storage.js";
 import { applyGameBootstrap } from "../Libraries/Bootstrap/applyGameBootstrap.js";
-import { getBootstrapPort } from "./GamePorts.js";
+import { getBootstrapPort, getOutcomePort } from "./GamePorts.js";
 import { events, requestUiUpdate, requestUiHudUpdate, showGameOver, showRunResult, hideGameOver } from "./EventSystem.js";
 import { registerAllListeners } from "./GameListeners.js";
 import { PauseManager } from "./PauseManager.js";
@@ -34,7 +34,7 @@ export function createGame(definition) {
     const upgrades = definition.createUpgrades();
     const viewport = new SimulationViewport(0, 0);
     const uiSnapshot = { health: -1, isMoving: false };
-    const stateMachineContext = { state, upgrades, viewport, renderer, game: definition };
+    const stateMachineContext = { state, upgrades, viewport, renderer };
     const fsm = new GameStateMachine(stateMachineContext);
     stateMachineContext.fsm = fsm;
     state.fsm = fsm;
@@ -62,7 +62,7 @@ export function createGame(definition) {
                 state.gameTime += dt * state.selectedSpeed;
                 fsm.update(dt * state.selectedSpeed);
             }
-            const outcome = definition.getRunOutcome?.(state);
+            const outcome = getOutcomePort().getRunOutcome(state);
             if (outcome) {
                 state.isGameOver = true;
                 const copy = uiProfile.runResult?.[outcome];
