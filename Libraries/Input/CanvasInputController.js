@@ -1,7 +1,7 @@
 import { DoubleTapDetector } from "./DoubleTapDetector.js";
 import { PinchZoomGesture } from "./PinchZoomGesture.js";
 import { bindWheelZoom } from "./WheelZoomHandler.js";
-import { bindCanvasPointerDown, bindCanvasPointerMove } from "./canvasPointer.js";
+import { bindCanvasPointerDown, bindCanvasPointerMove, bindCanvasPointerUp } from "./canvasPointer.js";
 import { bindKeyDown } from "./keyboardBindings.js";
 
 /** @typedef {import("./keyboardBindings.js").KeyBinding} KeyBinding */
@@ -16,6 +16,7 @@ import { bindKeyDown } from "./keyboardBindings.js";
  * @property {(zoom: number) => void} [onPinchZoom]
  * @property {(world: { x: number, y: number }, screen: { x: number, y: number }, isDoubleTap: boolean, event: PointerEvent) => void} [onPointerDown]
  * @property {(world: { x: number, y: number }, screen: { x: number, y: number }, isPrimaryDown: boolean, event: PointerEvent) => void} [onPointerMove]
+ * @property {(world: { x: number, y: number }, screen: { x: number, y: number }, event: PointerEvent) => void} [onPointerUp]
  * @property {KeyBinding[]} [keyBindings]
  * @property {Window | Document | HTMLElement} [keyboardTarget]
  */
@@ -60,7 +61,18 @@ export class CanvasInputController {
                 bindCanvasPointerMove(canvas, {
                     screenToWorld: config.screenToWorld,
                     onPointerMove: (world, screen, e) => {
-                        config.onPointerMove(world, screen, e.buttons === 1, e);
+                        config.onPointerMove(world, screen, (e.buttons & 1) !== 0, e);
+                    },
+                }),
+            );
+        }
+
+        if (config.onPointerUp) {
+            this._cleanups.push(
+                bindCanvasPointerUp(canvas, {
+                    screenToWorld: config.screenToWorld,
+                    onPointerUp: (world, screen, e) => {
+                        config.onPointerUp(world, screen, e);
                     },
                 }),
             );

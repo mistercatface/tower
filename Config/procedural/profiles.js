@@ -49,6 +49,7 @@ export const surfaceProfileByStrategy = {
     FortressStrategy: START_STATION_ID,
     HoneycombStrategy: START_STATION_ID,
     DiamondStrategy: START_STATION_ID,
+    PoolTableStrategy: START_STATION_ID,
 };
 
 /** Tile Lab live editor profile (`__labA__`), not persisted to disk. */

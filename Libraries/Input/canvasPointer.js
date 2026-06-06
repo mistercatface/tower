@@ -41,3 +41,24 @@ export function bindCanvasPointerMove(canvas, { screenToWorld, onPointerMove }) 
     canvas.addEventListener("pointermove", handler);
     return () => canvas.removeEventListener("pointermove", handler);
 }
+
+/**
+ * @param {HTMLCanvasElement} canvas
+ * @param {{
+ *   screenToWorld: (screenX: number, screenY: number) => { x: number, y: number },
+ *   onPointerUp: (world: { x: number, y: number }, screen: { x: number, y: number }, event: PointerEvent) => void,
+ * }} handlers
+ * @returns {() => void}
+ */
+export function bindCanvasPointerUp(canvas, { screenToWorld, onPointerUp }) {
+    const handler = (e) => {
+        const screen = canvasClientCoords(canvas, e.clientX, e.clientY);
+        onPointerUp(screenToWorld(screen.x, screen.y), screen, e);
+    };
+    canvas.addEventListener("pointerup", handler);
+    canvas.addEventListener("pointercancel", handler);
+    return () => {
+        canvas.removeEventListener("pointerup", handler);
+        canvas.removeEventListener("pointercancel", handler);
+    };
+}

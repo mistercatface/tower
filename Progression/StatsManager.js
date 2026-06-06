@@ -109,12 +109,14 @@ export class StatsManager {
             state.spawnRunParty();
         }
 
-        for (const node of state.mapNodes) {
-            const coords = state.getNodeCombatCoords(node);
-            if (node.id === (worldGen.startMapNodeId ?? 0)) {
-                spawnStartGamePickups(state, coords.x, coords.y);
-            } else {
-                spawnInitialPickups(state, coords.x, coords.y);
+        if (!worldGen.skipStartPickups) {
+            for (const node of state.mapNodes) {
+                const coords = state.getNodeCombatCoords(node);
+                if (node.id === (worldGen.startMapNodeId ?? 0)) {
+                    spawnStartGamePickups(state, coords.x, coords.y);
+                } else {
+                    spawnInitialPickups(state, coords.x, coords.y);
+                }
             }
         }
     }

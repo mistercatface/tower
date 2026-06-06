@@ -52,6 +52,7 @@
  * @property {string} [startNodeStrategyLabel] — display label stored on the map node
  * @property {Record<string, WorldGenStrategy>} strategies — merged into the generator lookup table
  * @property {(px: number, py: number, cellSize: number) => StartLayout} getStartLayout
+ * @property {boolean} [skipStartPickups] — omit crate/barrel scatter on map reset
  */
 
 /**

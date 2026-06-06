@@ -20,8 +20,21 @@ export class InputManager {
             getBaseZoom: () => fsm.context.viewport.zoom,
             onPinchZoom: setGameZoomAbsolute,
             screenToWorld: (screenX, screenY) => fsm.context.viewport.screenToWorld(screenX, screenY),
-            onPointerDown: (worldCoords, _screen, isDoubleTap) => fsm.handleInteraction(worldCoords, isDoubleTap),
-            onPointerMove: (worldCoords, screen, isPrimaryDown) => fsm.currentState?.handlePointerMove?.(worldCoords, screen, isPrimaryDown, fsm.context),
+            onPointerDown: (worldCoords, _screen, isDoubleTap, event) => {
+                const state = fsm.currentState;
+                const ctx = fsm.context;
+                if (state?.handlePointerDown) {
+                    state.handlePointerDown(worldCoords, isDoubleTap, event, ctx);
+                } else {
+                    fsm.handleInteraction(worldCoords, isDoubleTap);
+                }
+            },
+            onPointerMove: (worldCoords, screen, isPrimaryDown) => {
+                fsm.currentState?.handlePointerMove?.(worldCoords, screen, isPrimaryDown, fsm.context);
+            },
+            onPointerUp: (worldCoords, _screen, event) => {
+                fsm.currentState?.handlePointerUp?.(worldCoords, event, fsm.context);
+            },
             keyBindings: [
                 {
                     key: "d",
