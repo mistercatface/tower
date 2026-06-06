@@ -2,7 +2,6 @@ import { resolveCombatFacing, resolveSpriteBodyRotation } from "./anim/combatFac
 import { createCharacterResolver } from "../Render/Characters/appearance.js";
 import { createWeaponVisuals } from "../Render/Characters/weapons/createWeaponVisuals.js";
 import { createMuzzleResolver } from "../Render/Characters/weapons/muzzle.js";
-
 /**
  * Default kinematics port bundle for humanoid actors.
  *
@@ -14,7 +13,6 @@ import { createMuzzleResolver } from "../Render/Characters/weapons/muzzle.js";
 export function createDefaultKinematicsPorts({ appearanceOverrides, gunIdToVisual }) {
     const weaponVisuals = createWeaponVisuals(gunIdToVisual);
     const getCharacterForActor = createCharacterResolver(appearanceOverrides);
-
     return {
         resolveCombatFacing,
         resolveSpriteBodyRotation,

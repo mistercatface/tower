@@ -1,23 +1,5 @@
 /** Physics / ragdoll joint ids (canonical sim bone names). */
-
-export const PHYSICS_BONES = [
-    "head",
-    "spineTop",
-    "spineBot",
-    "rShoulder",
-    "rElbow",
-    "rHand",
-    "lShoulder",
-    "lElbow",
-    "lHand",
-    "rHip",
-    "rKnee",
-    "rFoot",
-    "lHip",
-    "lKnee",
-    "lFoot",
-];
-
+export const PHYSICS_BONES = ["head", "spineTop", "spineBot", "rShoulder", "rElbow", "rHand", "lShoulder", "lElbow", "lHand", "rHip", "rKnee", "rFoot", "lHip", "lKnee", "lFoot"];
 /** Display rig limb point paths keyed by physics joint id. */
 export const JOINT_TO_RIG_PATH = {
     head: ["head"],

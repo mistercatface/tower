@@ -1,5 +1,4 @@
 import { drawLoFiSphere } from "../../Render/Props3D/lofiSphere.js";
-
 /** @param {object} visuals */
 export function createLofiSphereDraw(visuals) {
     return (ctx, prop, px, py) => {

@@ -7,24 +7,19 @@ import { playerBaseStats } from "../../../Config/Config.js";
 import { getSurfaceProfileRevision } from "../../../Libraries/WorldSurface/SurfaceProfileRevision.js";
 import { invalidateWallAtlasKeyMemos } from "../../../Render/game/wallSurfaceInvalidation.js";
 import { setupLabViewportNavigation } from "../../Lab/lab-shared.js";
-
 const render3D = new WorldSceneRenderer(getGameWorldSurfaceSettings());
 let lastBakeKey = "";
-
 const MOVE_SPEED_SCALE = 1;
-
 /**
  * Match backing store to the stage box (no CSS stretch). Returns null if not laid out yet.
  * @returns {{ width: number, height: number, changed: boolean } | null}
  */
 export function prepareGameCanvas(canvas, stage) {
     if (!canvas || !stage) return null;
-
     const rect = stage.getBoundingClientRect();
     const width = Math.floor(rect.width);
     const height = Math.floor(rect.height);
     if (width < 32 || height < 32) return null;
-
     let changed = false;
     if (canvas.width !== width || canvas.height !== height) {
         canvas.width = width;
@@ -33,9 +28,7 @@ export function prepareGameCanvas(canvas, stage) {
     }
     return { width, height, changed };
 }
-
 let dragState = null;
-
 function drawWeaponRangeRing(ctx, x, y, range) {
     ctx.save();
     ctx.beginPath();
@@ -45,7 +38,6 @@ function drawWeaponRangeRing(ctx, x, y, range) {
     ctx.stroke();
     ctx.restore();
 }
-
 function drawPlayerMarker(ctx, x, y) {
     ctx.save();
     ctx.fillStyle = "#00bcd4";
@@ -57,17 +49,14 @@ function drawPlayerMarker(ctx, x, y) {
     ctx.stroke();
     ctx.restore();
 }
-
 function maybeClearBakeCaches(worldState, profileId) {
     const rev = getSurfaceProfileRevision(profileId);
     const key = `${profileId}:${rev}:${worldState.worldSurfaceSeed ?? 0}`;
     if (lastBakeKey === key) return;
-
     lastBakeKey = key;
     invalidateWallAtlasKeyMemos(worldState);
     worldState.worldSurfaces.clear();
 }
-
 function drawLabWorldFrame(ctx, canvas, viewW, viewH, worldState, profileId, gameZoom, weaponRange, drawOptions = {}) {
     const { showVignette = false, showRangeRing = false, showPlayerMarker = true } = drawOptions;
     worldState.phase = GamePhase.SIMULATION;
@@ -88,19 +77,12 @@ function drawLabWorldFrame(ctx, canvas, viewW, viewH, worldState, profileId, gam
     ctx.restore();
     ctx.save();
     viewport.apply(ctx);
-    drawWorldScene(ctx, {
-        state: worldState,
-        viewport,
-        worldSceneRenderer: render3D,
-        canvas,
-    });
+    drawWorldScene(ctx, { state: worldState, viewport, worldSceneRenderer: render3D, canvas });
     worldState.canvasBounds = prevCanvasBounds;
     worldState.surfaceProfileOverride = prevProfileOverride;
     if (showRangeRing) drawWeaponRangeRing(ctx, worldState.player.x, worldState.player.y, weaponRange);
     if (showPlayerMarker) drawPlayerMarker(ctx, worldState.player.x, worldState.player.y);
-
     ctx.restore();
-
     if (showVignette) {
         const R = viewport.getVisualRadius();
         const cx = viewport.cx;
@@ -114,55 +96,29 @@ function drawLabWorldFrame(ctx, canvas, viewW, viewH, worldState, profileId, gam
         ctx.fill("evenodd");
         ctx.restore();
     }
-
-    return {
-        zoom: gameZoom,
-        cameraX,
-        cameraY,
-        visualRadius: viewport.getVisualRadius(),
-    };
+    return { zoom: gameZoom, cameraX, cameraY, visualRadius: viewport.getVisualRadius() };
 }
-
 /**
  * Full generated map preview — camera locked to player (combat-style).
  * @param {HTMLCanvasElement} canvas
  * @param {{ worldState: object, profileId: string, gameZoom: number, showRangeRing: boolean, weaponRange: number, viewWidth: number, viewHeight: number, showVignette?: boolean }} options
  */
 export function renderGamePreview(canvas, options) {
-    const {
-        worldState,
-        profileId,
-        gameZoom,
-        showRangeRing,
-        weaponRange,
-        viewWidth,
-        viewHeight,
-        showVignette = false,
-    } = options;
+    const { worldState, profileId, gameZoom, showRangeRing, weaponRange, viewWidth, viewHeight, showVignette = false } = options;
     if (!worldState || !profileId || !viewWidth || !viewHeight) return { zoom: gameZoom };
     const ctx = canvas.getContext("2d");
-    const result = drawLabWorldFrame(ctx, canvas, viewWidth, viewHeight, worldState, profileId, gameZoom, weaponRange, {
-        showVignette,
-        showRangeRing,
-        showPlayerMarker: true,
-    });
+    const result = drawLabWorldFrame(ctx, canvas, viewWidth, viewHeight, worldState, profileId, gameZoom, weaponRange, { showVignette, showRangeRing, showPlayerMarker: true });
     return result;
 }
-
 /** Invalidate baked floor/wall caches after profile or floor seed change. */
 export function invalidateMapPreviewBakes() {
     lastBakeKey = "";
 }
-
 export function initMapPreviewNavigation(getOptions, handlers = {}) {
     setupLabViewportNavigation("gamePreview", {
         getCamera: () => {
             const world = getOptions().worldState;
-            return {
-                x: world?.player?.x ?? 0,
-                y: world?.player?.y ?? 0,
-                zoom: getOptions().gameZoom ?? 1,
-            };
+            return { x: world?.player?.x ?? 0, y: world?.player?.y ?? 0, zoom: getOptions().gameZoom ?? 1 };
         },
         setCamera: (x, y, zoom) => {
             const world = getOptions().worldState;

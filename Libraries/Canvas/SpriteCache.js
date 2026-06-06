@@ -2,7 +2,6 @@ export class SpriteCache {
     constructor() {
         this.cache = new Map();
     }
-
     get(key, generateFn, ...args) {
         let sprite = this.cache.get(key);
         if (!sprite) {
@@ -11,7 +10,6 @@ export class SpriteCache {
         }
         return sprite;
     }
-
     clear() {
         this.cache.clear();
     }

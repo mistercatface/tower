@@ -1,5 +1,4 @@
 import { drawSphereTexturePatch } from "../SurfaceTexturing/drawSphereTexturePatch.js";
-
 /**
  * Map an image onto a latitudinal band of a rolled sphere (full wrap).
  * Prefer {@link drawSphereTexturePatch} for localized decals such as ball numbers.
@@ -24,7 +23,6 @@ export function drawSphereTextureBand(ctx, prop, px, py, img, options = {}) {
     const vMax = options.vMax ?? 0.65;
     const phiMid = Math.PI * (vMin + vMax) * 0.5;
     const phiHalf = Math.PI * (vMax - vMin) * 0.5;
-
     drawSphereTexturePatch(ctx, prop, px, py, img, {
         baseRadius: options.baseRadius,
         phiCenter: phiMid,

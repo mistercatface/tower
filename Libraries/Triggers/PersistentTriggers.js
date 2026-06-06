@@ -12,24 +12,21 @@ export class PersistentTriggers {
         /** @type {Map<string, Array<{ id: string, condition: (data: object) => boolean, action: (data: object) => void }>>} */
         this.listeners = new Map();
     }
-
     load() {
         this.fired.clear();
         try {
             const raw = localStorage.getItem(this.storageKey);
             if (!raw) return;
             const ids = JSON.parse(raw);
-            if (Array.isArray(ids)) {
+            if (Array.isArray(ids))
                 for (let i = 0; i < ids.length; i++) {
                     const id = ids[i];
                     if (typeof id === "string") this.fired.add(id);
                 }
-            }
         } catch (error) {
             console.warn("[PersistentTriggers] Failed to load:", error);
         }
     }
-
     save() {
         try {
             localStorage.setItem(this.storageKey, JSON.stringify([...this.fired]));
@@ -37,7 +34,6 @@ export class PersistentTriggers {
             console.warn("[PersistentTriggers] Failed to save:", error);
         }
     }
-
     clear() {
         this.fired.clear();
         this.listeners.clear();
@@ -47,11 +43,9 @@ export class PersistentTriggers {
             // Ignore quota / private mode.
         }
     }
-
     hasFired(id) {
         return this.fired.has(id);
     }
-
     /**
      * @param {string} event
      * @param {string} id Stable id — never fires again once saved.
@@ -60,12 +54,9 @@ export class PersistentTriggers {
      */
     on(event, id, condition = () => true, action) {
         if (this.fired.has(id)) return;
-        if (!this.listeners.has(event)) {
-            this.listeners.set(event, []);
-        }
+        if (!this.listeners.has(event)) this.listeners.set(event, []);
         this.listeners.get(event).push({ id, condition, action });
     }
-
     /**
      * @param {string} event
      * @param {object} [data]
@@ -73,7 +64,6 @@ export class PersistentTriggers {
     emit(event, data = {}) {
         const list = this.listeners.get(event);
         if (!list || list.length === 0) return;
-
         let changed = false;
         for (let i = list.length - 1; i >= 0; i--) {
             const entry = list[i];
@@ -83,7 +73,6 @@ export class PersistentTriggers {
             list.splice(i, 1);
             changed = true;
         }
-
         if (changed) this.save();
     }
 }

@@ -1,18 +1,14 @@
 import { clamp } from "../../Math/Interpolate.js";
-
 function rotateXZ(p, bCos, bSin) {
     return { rx: p.x * bCos - p.z * bSin, rz: p.x * bSin + p.z * bCos };
 }
-
 function clampRzVis(rz, config) {
     const boundsZ = Math.max(8, config.SIZE * config.PERSPECTIVE_Z_CLAMP);
     return clamp(rz, -boundsZ, boundsZ);
 }
-
 function partScaleFromRzVis(rzVis, config) {
     return config.PERSPECTIVE_SCALE_BASE + (rzVis / config.SIZE) * config.PERSPECTIVE_SCALE_RANGE;
 }
-
 /** Project rig-local {x,y,z} to canvas space (live + corpse). */
 export function projectLocalPoint(p, bCos, bSin, viewContext, config) {
     const { yFactor = 0.8, shiftX = 0, shiftY = 0, ratio = 0 } = viewContext || {};
@@ -28,7 +24,6 @@ export function projectLocalPoint(p, bCos, bSin, viewContext, config) {
     const dShiftY = shiftY + pos.rz * ratio;
     return { x: cx + pos.rx + dShiftX * heightNorm, y: groundY + pos.rz - worldHeight * yFactor + dShiftY * heightNorm, z: pos.rz, sortZ: rzVis - p.y * depthWeight, scale };
 }
-
 export function createProjector(viewContext, rotation, config, rig) {
     const bRot = rotation + config.BODY_OFFSET;
     const bCos = Math.cos(bRot);

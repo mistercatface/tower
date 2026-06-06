@@ -9,37 +9,22 @@ export class StateMachine {
         this.currentStateName = null;
         this.context = context;
     }
-
     addState(name, stateInstance) {
         this.states.set(name, stateInstance);
     }
-
     transition(name) {
-        if (this.currentState?.onExit) {
-            this.currentState.onExit(this.context);
-        }
+        if (this.currentState?.onExit) this.currentState.onExit(this.context);
         this.currentState = this.states.get(name);
         this.currentStateName = name;
-        if (this.currentState?.onEnter) {
-            this.currentState.onEnter(this.context);
-        }
+        if (this.currentState?.onEnter) this.currentState.onEnter(this.context);
     }
-
     update(dt) {
-        if (this.currentState?.update) {
-            this.currentState.update(dt, this.context);
-        }
+        if (this.currentState?.update) this.currentState.update(dt, this.context);
     }
-
     render() {
-        if (this.currentState?.render) {
-            this.currentState.render(this.context);
-        }
+        if (this.currentState?.render) this.currentState.render(this.context);
     }
-
     handleInteraction(worldCoords, isDoubleTap) {
-        if (this.currentState?.handleInteraction) {
-            this.currentState.handleInteraction(worldCoords, isDoubleTap, this.context);
-        }
+        if (this.currentState?.handleInteraction) this.currentState.handleInteraction(worldCoords, isDoubleTap, this.context);
     }
 }

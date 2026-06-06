@@ -1,14 +1,12 @@
 import { fireRadioTrigger, requestUiHudUpdate, startRadioConversation } from "../../../Core/EventSystem.js";
 import { findInspectablePickup } from "../../../Combat/inspect/inspectTargeting.js";
 import { getRunSceneMission, setRunSceneMission } from "../runSceneState.js";
-
 /**
  * @param {import("../compileRunScenes.js").RunSceneConfig} def
  * @param {import("../runScenePorts.js").RunScenePorts} ports
  */
 export function inspectCollectBehavior(def, ports) {
     const config = def.config ?? {};
-
     return {
         enter(state, ctx) {
             const mission = getRunSceneMission(state);
@@ -17,7 +15,6 @@ export function inspectCollectBehavior(def, ports) {
         },
     };
 }
-
 function resolveGuidedRadios(config, ports) {
     if (config.guidedRadios) return config.guidedRadios;
     const map = {};
@@ -27,7 +24,6 @@ function resolveGuidedRadios(config, ports) {
     }
     return map;
 }
-
 function beginMission(state, config, ctx, ports) {
     setRunSceneMission(state, {
         type: "inspect_collect",
@@ -49,41 +45,31 @@ function beginMission(state, config, ctx, ports) {
     clearGuidedRadioSeen(state, config, ports);
     requestUiHudUpdate();
 }
-
 function clearGuidedRadioSeen(state, config, ports) {
     if (!state.radioSeenThisRun) return;
-    for (const conversationId of Object.values(resolveGuidedRadios(config, ports))) {
-        delete state.radioSeenThisRun[conversationId];
-    }
+    for (const conversationId of Object.values(resolveGuidedRadios(config, ports))) delete state.radioSeenThisRun[conversationId];
 }
-
 export function isInspectCollectActive(state) {
     const mission = getRunSceneMission(state);
     return mission?.type === "inspect_collect" && mission.active;
 }
-
 export function getInspectCollectMissionBanner(state) {
     const mission = getRunSceneMission(state);
-    if (!isInspectCollectActive(state) && !mission?.finishing) {
-        return { show: false, text: "" };
-    }
+    if (!isInspectCollectActive(state) && !mission?.finishing) return { show: false, text: "" };
     const found = mission.seen?.size ?? 0;
     const total = mission.keys?.length ?? 0;
     const text = (mission.missionLabel ?? "").replace("{found}", String(found)).replace("{total}", String(total));
     return { show: true, text };
 }
-
 export function findInspectCollectPickup(state, worldX, worldY) {
     const mission = getRunSceneMission(state);
     if (!isInspectCollectActive(state)) return null;
     return findInspectablePickup(state, worldX, worldY, { allowedInspectKeys: mission.keys });
 }
-
 export function handleInspectCollectOpen(state, inspectKey) {
     if (!isInspectCollectActive(state) || !inspectKey) return;
     const mission = getRunSceneMission(state);
     state.inspectPanelOpen = true;
-
     const conversationId = mission.guidedRadios?.[inspectKey] ?? null;
     if (!conversationId) {
         recordInspectCollectFound(state, inspectKey);
@@ -91,18 +77,13 @@ export function handleInspectCollectOpen(state, inspectKey) {
     }
     startRadioConversation(conversationId, () => recordInspectCollectFound(state, inspectKey), state, { force: true });
 }
-
 export function handleInspectCollectClose(state, inspectKey) {
     const mission = getRunSceneMission(state);
     if (!mission?.seen || !inspectKey) return;
     state.inspectPanelOpen = false;
-    if (!mission.seen.has(inspectKey)) {
-        recordInspectCollectFound(state, inspectKey);
-    } else {
-        tryFinishMission(state);
-    }
+    if (!mission.seen.has(inspectKey)) recordInspectCollectFound(state, inspectKey);
+    else tryFinishMission(state);
 }
-
 export function recordInspectCollectFound(state, inspectKey) {
     const mission = getRunSceneMission(state);
     if (!mission?.seen || mission.completed || !inspectKey) return;
@@ -111,7 +92,6 @@ export function recordInspectCollectFound(state, inspectKey) {
     requestUiHudUpdate();
     tryFinishMission(state);
 }
-
 function tryFinishMission(state) {
     const mission = getRunSceneMission(state);
     if (!mission?.seen || mission.completed) return;
@@ -119,7 +99,6 @@ function tryFinishMission(state) {
     if (state.inspectPanelOpen) return;
     finishMission(state);
 }
-
 function finishMission(state) {
     const mission = getRunSceneMission(state);
     if (!mission || mission.finishing) return;
@@ -133,9 +112,6 @@ function finishMission(state) {
         mission.onAdvance = null;
         if (onAdvance) onAdvance();
     };
-    if (mission.completeRadio) {
-        fireRadioTrigger(mission.completeRadio, onDone, state);
-    } else {
-        onDone();
-    }
+    if (mission.completeRadio) fireRadioTrigger(mission.completeRadio, onDone, state);
+    else onDone();
 }

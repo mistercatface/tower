@@ -1,8 +1,6 @@
 import { integrateSteering } from "./integrateSteering.js";
 import { updateSeparation } from "./applySeparation.js";
-
 /** @typedef {import("../Agent/types.js").MobileAgent} MobileAgent */
-
 /**
  * Separation + steering integration for one mobile agent (no wall collision).
  *

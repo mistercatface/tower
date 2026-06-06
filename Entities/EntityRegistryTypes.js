@@ -10,7 +10,6 @@
  * @property {number} [fireIntervalMultiplier]
  * @property {number} [reloadSpeedMultiplier]
  */
-
 /**
  * @typedef {object} EnemyEntityDefinition
  * @property {string} type — actor/render type key
@@ -28,7 +27,6 @@
  * @property {string[]} [startWeapons]
  * @property {string[]} [weaponPool]
  */
-
 /**
  * @typedef {object} AllyEntityDefinition
  * @property {string} id
@@ -39,13 +37,11 @@
  * @property {string} startGunId
  * @property {number} [leaderEdgeGap]
  */
-
 /**
  * @typedef {object} EntitySpawnEvent
  * @property {string} type — enemy type id
  * @property {number} count
  */
-
 /**
  * @typedef {object} EntityCatalog
  * @property {Record<string, EnemyEntityDefinition>} enemies
@@ -53,5 +49,4 @@
  * @property {string[]} runParty — ally ids spawned at run start
  * @property {{ zombieHorde?: EntitySpawnEvent }} [events]
  */
-
 export {};

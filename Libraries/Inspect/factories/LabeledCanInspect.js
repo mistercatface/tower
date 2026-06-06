@@ -2,7 +2,6 @@ import { renderInspectMesh } from "../draw/MeshRenderer.js";
 import { drawInspectCylindricalBody, drawInspectCylindricalLabel } from "../draw/CylinderInspect.js";
 import { getSodaCanRings } from "../geometry/CylinderMesh.js";
 import { getTexture, loadTexture, onTextureReady } from "../core/TextureCache.js";
-
 /**
  * Factory for cylindrical labeled-can inspect views.
  * @param {object} canConfig — barrel asset visuals; optional `inspect.initialPitch`
@@ -14,7 +13,6 @@ export function createLabeledCanInspect(canConfig, buildMesh) {
     /** Face the label toward the inspect camera (-Z); ignore pickup spawn facing. */
     const initialYaw = -Math.PI / 2 - angleCenter;
     const initialPitch = canConfig.inspect?.initialPitch ?? 0.2;
-
     return {
         getInitialYaw: () => initialYaw,
         getInitialPitch: () => initialPitch,
@@ -28,19 +26,8 @@ export function createLabeledCanInspect(canConfig, buildMesh) {
         draw(ctx, cx, cy, scale, yaw, pitch) {
             const surface = { halfHeight, bodyRadius, rings: getSodaCanRings(halfHeight, bodyRadius) };
             const { radialSegments, verticalSegments, y0, y1, angleCenter, angleSpan } = label;
-
-            drawInspectCylindricalBody(ctx, cx, cy, scale, yaw, pitch, {
-                ...surface,
-                color: colors.bodyInspect,
-                radialSegments: radialSegments * 2,
-                verticalSegments: verticalSegments * 2,
-            });
-
-            renderInspectMesh(ctx, buildMesh(), cx, cy, scale, yaw, pitch, {
-                imageSmoothing: false,
-                flatShading: true,
-            });
-
+            drawInspectCylindricalBody(ctx, cx, cy, scale, yaw, pitch, { ...surface, color: colors.bodyInspect, radialSegments: radialSegments * 2, verticalSegments: verticalSegments * 2 });
+            renderInspectMesh(ctx, buildMesh(), cx, cy, scale, yaw, pitch, { imageSmoothing: false, flatShading: true });
             drawInspectCylindricalLabel(ctx, cx, cy, scale, yaw, pitch, {
                 ...surface,
                 img: getTexture(labelSrc),

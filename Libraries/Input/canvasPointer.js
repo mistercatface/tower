@@ -7,7 +7,6 @@ export function canvasClientCoords(canvas, clientX, clientY) {
     const rect = canvas.getBoundingClientRect();
     return { x: clientX - rect.left, y: clientY - rect.top };
 }
-
 /**
  * @param {HTMLCanvasElement} canvas
  * @param {{
@@ -24,7 +23,6 @@ export function bindCanvasPointerDown(canvas, { screenToWorld, onPointerDown }) 
     canvas.addEventListener("pointerdown", handler);
     return () => canvas.removeEventListener("pointerdown", handler);
 }
-
 /**
  * @param {HTMLCanvasElement} canvas
  * @param {{
@@ -41,7 +39,6 @@ export function bindCanvasPointerMove(canvas, { screenToWorld, onPointerMove }) 
     canvas.addEventListener("pointermove", handler);
     return () => canvas.removeEventListener("pointermove", handler);
 }
-
 /**
  * @param {HTMLCanvasElement} canvas
  * @param {{

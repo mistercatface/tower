@@ -1,20 +1,9 @@
 import { noise2D } from "../Noise/Perlin2D.js";
 import { applyTint } from "../util/motifUtilities.js";
-
 export const panelGridMotif = {
     metadata: {
         label: "Panel grid (legacy)",
-        defaults: {
-            type: "panelGrid",
-            cellWorldSize: 16,
-            groutWidth: 0.06,
-            peak: 8,
-            tint: [-4, -4, -3],
-            variationFrequency: 0.1,
-            variationAmplitude: 1,
-            opacity: 0.7,
-            blendMode: "multiply",
-        },
+        defaults: { type: "panelGrid", cellWorldSize: 16, groutWidth: 0.06, peak: 8, tint: [-4, -4, -3], variationFrequency: 0.1, variationAmplitude: 1, opacity: 0.7, blendMode: "multiply" },
         fields: [
             { path: "cellWorldSize", label: "Cell world px", min: 8, max: 64, step: 1 },
             { path: "groutWidth", label: "Grout width", min: 0.01, max: 0.2, step: 0.005 },
@@ -29,14 +18,8 @@ export const panelGridMotif = {
         const u = localX / cellSize;
         const v = localY / cellSize;
         const edgeDist = Math.min(u, 1 - u, v, 1 - v);
-
-        if (edgeDist >= config.groutWidth) {
-            return;
-        }
-
-        const variation =
-            noise2D(sample.evalX * config.variationFrequency, sample.evalY * config.variationFrequency, 1) *
-            config.variationAmplitude;
+        if (edgeDist >= config.groutWidth) return;
+        const variation = noise2D(sample.evalX * config.variationFrequency, sample.evalY * config.variationFrequency, 1) * config.variationAmplitude;
         const t = (1.0 - edgeDist / config.groutWidth) * (config.peak + variation);
         applyTint(rgb, t, config.tint);
     },

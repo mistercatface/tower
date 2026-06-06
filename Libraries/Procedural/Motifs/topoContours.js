@@ -1,24 +1,12 @@
 import { noise2D } from "../Noise/Perlin2D.js";
 import { sampleCoords, applyTint } from "../util/motifUtilities.js";
-
 /**
  * Topographical contour lines based on noise. When warped, looks like terraced armor plating or holographic fingerprint ridges.
  */
 export const topoContoursMotif = {
     metadata: {
         label: "Topo contours",
-        defaults: {
-            type: "topoContours",
-            coordinateSpace: "warped",
-            frequency: 0.015,
-            octaves: 2,
-            bands: 10,
-            thickness: 0.15,
-            peak: 8,
-            tint: [0.2, 0.7, 1.2],
-            opacity: 0.6,
-            blendMode: "add",
-        },
+        defaults: { type: "topoContours", coordinateSpace: "warped", frequency: 0.015, octaves: 2, bands: 10, thickness: 0.15, peak: 8, tint: [0.2, 0.7, 1.2], opacity: 0.6, blendMode: "add" },
         fields: [
             { path: "frequency", label: "Frequency", min: 0.005, max: 0.05, step: 0.001 },
             { path: "bands", label: "Bands", min: 1, max: 30, step: 1 },
@@ -32,19 +20,11 @@ export const topoContoursMotif = {
     },
     apply(sample, rgb, config) {
         const { x, y } = sampleCoords(sample, config.coordinateSpace);
-        
-        const noiseVal = noise2D(
-            x * config.frequency + (config.offset?.[0] ?? 0),
-            y * config.frequency + (config.offset?.[1] ?? 0),
-            config.octaves ?? 2
-        );
-        
+        const noiseVal = noise2D(x * config.frequency + (config.offset?.[0] ?? 0), y * config.frequency + (config.offset?.[1] ?? 0), config.octaves ?? 2);
         const normalizedNoise = (noiseVal + 1) / 2; // ~0 to 1
-        
         const bandPhase = normalizedNoise * config.bands;
         const distToBand = Math.abs(bandPhase - Math.round(bandPhase));
         const thickness = config.thickness ?? 0.1;
-        
         if (distToBand < thickness) {
             const intensity = (1.0 - distToBand / thickness) * config.peak;
             applyTint(rgb, intensity, config.tint ?? [1, 1, 1]);

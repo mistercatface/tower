@@ -3,7 +3,6 @@
  * @property {string} key — matched case-insensitively (KeyboardEvent.key)
  * @property {(event: KeyboardEvent) => void} onPress
  */
-
 /**
  * @param {Window | Document | HTMLElement} target
  * @param {KeyBinding[]} bindings

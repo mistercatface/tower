@@ -23,7 +23,6 @@ import { filterLevelsMotif } from "./Motifs/Filters/filterLevels.js";
 import { filterPosterizeMotif } from "./Motifs/Filters/filterPosterize.js";
 import { filterRGBAdjustMotif } from "./Motifs/Filters/filterRGBAdjust.js";
 import { translateMotif } from "./Motifs/translate.js";
-
 const MOTIF_BY_TYPE = {
     translate: translateMotif,
     baseMetal: baseMetalMotif,
@@ -51,24 +50,10 @@ const MOTIF_BY_TYPE = {
     filterPosterize: filterPosterizeMotif,
     filterRGBAdjust: filterRGBAdjustMotif,
 };
-
 export function getMotif(type) {
     const motif = MOTIF_BY_TYPE[type];
-    if (!motif) {
-        throw new Error(`Unknown procedural motif type: ${type}`);
-    }
+    if (!motif) throw new Error(`Unknown procedural motif type: ${type}`);
     return motif;
 }
-
 export const MOTIF_TYPES = {};
-for (const [type, motif] of Object.entries(MOTIF_BY_TYPE)) {
-    if (motif.metadata) {
-        MOTIF_TYPES[type] = {
-            ...motif.metadata,
-            type,
-        };
-    }
-}
-
-
-
+for (const [type, motif] of Object.entries(MOTIF_BY_TYPE)) if (motif.metadata) MOTIF_TYPES[type] = { ...motif.metadata, type };

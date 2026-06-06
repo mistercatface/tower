@@ -23,23 +23,15 @@
  * @property {number} cameraHeight
  * @property {string} floorShadow
  */
-
 /**
  * @param {Partial<WorldSurfaceSettings> & Pick<WorldSurfaceSettings, "cellsPerChunk" | "chunkWorldSize" | "viewPaddingPx" | "viewQueryPadPx" | "maxCachedSurfaces" | "pixelsPerCell" | "texelResolution" | "wallHeight" | "wallHeightCells" | "wallTextureBleedPx" | "wallSubdivNearPx" | "wallSubdivFarPx" | "cellSize" | "cameraHeight" | "floorShadow" | "roofZLevels">} params
  * @returns {WorldSurfaceSettings}
  */
 export function createWorldSurfaceSettings(params) {
-    return {
-        groundChunkAnimationsOn: false,
-        wallAnimationsOn: false,
-        ...params,
-    };
+    return { groundChunkAnimationsOn: false, wallAnimationsOn: false, ...params };
 }
-
 /** @param {WorldSurfaceSettings} settings */
 export function getWallHeight(settings) {
-    if (settings.wallHeight == null) {
-        throw new Error("worldSurface.wallHeight must be set on the active game definition");
-    }
+    if (settings.wallHeight == null) throw new Error("worldSurface.wallHeight must be set on the active game definition");
     return settings.wallHeight;
 }

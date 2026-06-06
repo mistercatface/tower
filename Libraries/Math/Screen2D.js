@@ -10,7 +10,6 @@ export function inflateTri(d0, d1, d2, px) {
     };
     return [puff(d0), puff(d1), puff(d2)];
 }
-
 /** Expand a screen quad away from its centroid to hide sub-pixel gaps. */
 export function inflateQuad(d0, d1, d2, d3, px) {
     const cx = (d0.x + d1.x + d2.x + d3.x) / 4;

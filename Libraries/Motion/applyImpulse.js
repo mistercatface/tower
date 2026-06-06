@@ -1,14 +1,12 @@
 /**
  * Instant velocity change from force or knockback direction (no collision response).
  */
-
 /**
  * @typedef {object} ImpulseBody
  * @property {number} [vx]
  * @property {number} [vy]
  * @property {number} [mass]
  */
-
 /**
  * @param {ImpulseBody} body — mutated in place; no-op if vx/vy missing
  * @param {number} fx
@@ -21,7 +19,6 @@ export function applyImpulse(body, fx, fy, { mass } = {}) {
     body.vx += fx / m;
     body.vy += fy / m;
 }
-
 /**
  * @param {ImpulseBody} body
  * @param {number} angle — radians

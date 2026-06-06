@@ -2,14 +2,12 @@
 export function wallFaceAtlasUnrolledHeight(wallHeight, wallWidth) {
     return wallHeight + wallWidth;
 }
-
 export function createWallFaceAxes(p1, p2) {
     const edgeLen = Math.hypot(p2.x - p1.x, p2.y - p1.y);
     const dirX = (p2.x - p1.x) / edgeLen;
     const dirY = (p2.y - p1.y) / edgeLen;
     return { dirX, dirY, foldX: -dirY, foldY: dirX };
 }
-
 /**
  * Per-bake constants for filling sample buffers. Built once per paintPixelArea call.
  * @param {{ startWorldX: number, startWorldY: number, cellSize: number, surfaceKind: string, height: number, width: number, pixelsPerUnit: number, zOffset: number, wallFace: object | null }} params
@@ -27,9 +25,7 @@ export function buildMapContext({ startWorldX, startWorldY, cellSize, surfaceKin
         ctx.foldX = wf.foldX;
         ctx.foldY = wf.foldY;
         ctx.invEdgeLen = wf.edgeLen > 0 ? 1 / wf.edgeLen : 1;
-        if (wallHeight == null) {
-            throw new Error("buildMapContext wallFace requires wallHeight");
-        }
+        if (wallHeight == null) throw new Error("buildMapContext wallFace requires wallHeight");
         ctx.wallHeight = wallHeight;
         ctx.wallWidth = wallWidth ?? cellSize;
     } else if (surfaceKind === "wallCell") {
@@ -49,7 +45,6 @@ export function buildMapContext({ startWorldX, startWorldY, cellSize, surfaceKin
     }
     return ctx;
 }
-
 /** Write eval/wall UV samples for one pixel into pooled Float32Arrays. */
 export function writePixelToSamples(samples, idx, x, y, mapCtx) {
     const invPpwu = mapCtx.invPpwu;
@@ -58,10 +53,8 @@ export function writePixelToSamples(samples, idx, x, y, mapCtx) {
         const dist = x * invPpwu;
         const H = mapCtx.wallHeight;
         const W = mapCtx.wallWidth;
-
         let foldOffset = 0;
         let wallV = 0;
-
         if (v < W) {
             // Top-edge strip (wallV = 1 at the cap)
             foldOffset = H + v;
@@ -72,7 +65,6 @@ export function writePixelToSamples(samples, idx, x, y, mapCtx) {
             foldOffset = z;
             wallV = z / H;
         }
-
         samples.evalX[idx] = mapCtx.p1x + dist * mapCtx.dirX + mapCtx.foldX * foldOffset;
         samples.evalY[idx] = mapCtx.p1y + dist * mapCtx.dirY + mapCtx.foldY * foldOffset;
         samples.wallU[idx] = dist * mapCtx.invEdgeLen;

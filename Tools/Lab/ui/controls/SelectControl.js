@@ -1,15 +1,11 @@
 import { Component } from "../Component.js";
-
 export class SelectControl extends Component {
     constructor(label, options, initialValue, onChange) {
         super("label", "param-field");
-
         const labelSpan = document.createElement("span");
         labelSpan.textContent = label;
         this.element.appendChild(labelSpan);
-
         this.select = document.createElement("select");
-        
         for (const opt of options) {
             const o = document.createElement("option");
             // If option is a string, use it for both. If it's an object, expect value and label.
@@ -20,19 +16,14 @@ export class SelectControl extends Component {
                 o.value = opt.id ?? opt.value;
                 o.textContent = opt.label ?? opt.name;
             }
-            if (o.value === String(initialValue)) {
-                o.selected = true;
-            }
+            if (o.value === String(initialValue)) o.selected = true;
             this.select.appendChild(o);
         }
-
         this.element.appendChild(this.select);
-
         this.select.addEventListener("change", () => {
             onChange(this.select.value);
         });
     }
-
     setValue(val) {
         this.select.value = String(val);
     }

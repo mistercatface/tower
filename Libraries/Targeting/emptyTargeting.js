@@ -1,5 +1,4 @@
 import { createFactionResolver } from "../Interaction/createFactionResolver.js";
-
 const { resolveFaction: inferFaction, areHostile } = createFactionResolver({
     resolveFaction(actor) {
         if (actor.faction) return actor.faction;
@@ -8,7 +7,6 @@ const { resolveFaction: inferFaction, areHostile } = createFactionResolver({
     },
     hostilePairs: [],
 });
-
 export const emptyTargeting = {
     inferFaction,
     areHostile,

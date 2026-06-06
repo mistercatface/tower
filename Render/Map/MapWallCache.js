@@ -1,14 +1,11 @@
 import { mapSettings } from "../../Config/Config.js";
-
 const LAB_WALL_THICKNESS = 20;
-
 function createBakeCanvas(width, height) {
     const canvas = typeof OffscreenCanvas !== "undefined" ? new OffscreenCanvas(width, height) : document.createElement("canvas");
     canvas.width = width;
     canvas.height = height;
     return canvas;
 }
-
 function drawGameMapWall(ctx, seg, baseSpawnX, baseSpawnY, scale) {
     const mx = (seg.x - baseSpawnX) / scale;
     const my = (seg.y - baseSpawnY) / scale;
@@ -27,7 +24,6 @@ function drawGameMapWall(ctx, seg, baseSpawnX, baseSpawnY, scale) {
     ctx.strokeRect(-mhalf, -mhalf, msize, msize);
     ctx.restore();
 }
-
 function drawLabMapWall(ctx, seg) {
     ctx.save();
     ctx.translate(seg.x, seg.y);
@@ -43,7 +39,6 @@ function drawLabMapWall(ctx, seg) {
     ctx.strokeRect(-halfSize, -LAB_WALL_THICKNESS / 2, seg.size, LAB_WALL_THICKNESS);
     ctx.restore();
 }
-
 function computeGameMapWallBounds(walls, baseSpawnX, baseSpawnY, scale) {
     let minX = Infinity;
     let minY = Infinity;
@@ -59,10 +54,9 @@ function computeGameMapWallBounds(walls, baseSpawnX, baseSpawnY, scale) {
         minY = Math.min(minY, my - mhalf);
         maxY = Math.max(maxY, my + mhalf);
     }
-    if (minX === Infinity)  return null;
+    if (minX === Infinity) return null;
     return { minX, minY, maxX, maxY };
 }
-
 export function bakeGameMapWallCache(walls, baseSpawnX, baseSpawnY, scale) {
     const bounds = computeGameMapWallBounds(walls, baseSpawnX, baseSpawnY, scale);
     if (!bounds) return null;
@@ -78,7 +72,6 @@ export function bakeGameMapWallCache(walls, baseSpawnX, baseSpawnY, scale) {
     }
     return { canvas, minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: bounds.maxY };
 }
-
 export function bakeLabMapWallCache(walls, minX, minY, maxX, maxY) {
     const width = Math.ceil(maxX - minX);
     const height = Math.ceil(maxY - minY);
@@ -92,7 +85,6 @@ export function bakeLabMapWallCache(walls, minX, minY, maxX, maxY) {
     }
     return { canvas, minX, minY, maxX, maxY };
 }
-
 export function drawMapWallCache(ctx, cache) {
     if (!cache?.canvas) return;
     ctx.drawImage(cache.canvas, cache.minX, cache.minY);

@@ -1,7 +1,6 @@
 import { renderInspectMesh } from "../draw/MeshRenderer.js";
 import { drawInspectBoxLabels } from "../draw/BoxInspectLabel.js";
 import { getTexture, loadTexture, onTextureReady } from "../core/TextureCache.js";
-
 /**
  * Factory for labeled box inspect views.
  * @param {object} boxConfig — crate asset visuals
@@ -12,12 +11,9 @@ export function createLabeledBoxInspect(boxConfig, buildMesh, resolveFaceLabelSr
     const { labelVariants, labelSrc, halfExtents, label, colors, keyWhite = true } = boxConfig;
     const sources = labelVariants ?? (labelSrc ? [labelSrc] : []);
     const textureOpts = { keyWhite };
-
     return {
         preload() {
-            for (const src of sources) {
-                loadTexture(src, textureOpts);
-            }
+            for (const src of sources) loadTexture(src, textureOpts);
         },
         onReady(fn) {
             for (const src of sources) {
@@ -27,12 +23,7 @@ export function createLabeledBoxInspect(boxConfig, buildMesh, resolveFaceLabelSr
         },
         draw(ctx, cx, cy, scale, yaw, pitch, subject) {
             const mesh = buildMesh();
-
-            renderInspectMesh(ctx, mesh, cx, cy, scale, yaw, pitch, {
-                imageSmoothing: false,
-                flatShading: true,
-            });
-
+            renderInspectMesh(ctx, mesh, cx, cy, scale, yaw, pitch, { imageSmoothing: false, flatShading: true });
             drawInspectBoxLabels(ctx, cx, cy, scale, yaw, pitch, {
                 resolveImg: (face) => {
                     const src = resolveFaceLabelSrc?.(subject, face);

@@ -2,16 +2,11 @@ import { playerBaseStats } from "../../Config/Config.js";
 import { defaultSurfaceProfileId } from "../../Config/procedural/profiles.js";
 import { getDefaultSimulationZoom } from "../../Render/SimulationViewport.js";
 import { getLabWorld } from "./LabWorldSession.js";
-
 function getStageSize() {
     const stage = document.getElementById("mapStage");
     const rect = stage?.getBoundingClientRect();
-    return {
-        viewW: Math.max(320, Math.floor(rect?.width ?? 800)),
-        viewH: Math.max(240, Math.floor(rect?.height ?? 600)),
-    };
+    return { viewW: Math.max(320, Math.floor(rect?.width ?? 800)), viewH: Math.max(240, Math.floor(rect?.height ?? 600)) };
 }
-
 export function readControls() {
     const world = getLabWorld();
     return {
@@ -22,7 +17,6 @@ export function readControls() {
         showVignette: document.getElementById("showVignetteInput").checked,
     };
 }
-
 export function syncCombatZoomToStage(world) {
     const { viewW, viewH } = getStageSize();
     const zoom = getDefaultSimulationZoom(viewW, viewH, world?.player?.weapon?.range ?? playerBaseStats.range);
@@ -32,7 +26,6 @@ export function syncCombatZoomToStage(world) {
         document.getElementById("gameZoomValue").textContent = zoomEl.value;
     }
 }
-
 export function applyGameDefaultsToForm(world) {
     const rangeMeta = document.getElementById("rangeMeta");
     if (rangeMeta) {
@@ -40,7 +33,6 @@ export function applyGameDefaultsToForm(world) {
         rangeMeta.textContent = `range ${weaponRange}`;
     }
 }
-
 export function initPresetSelect(profileIds) {
     const select = document.getElementById("presetSelect");
     for (const id of profileIds) {
@@ -51,7 +43,6 @@ export function initPresetSelect(profileIds) {
     }
     select.value = defaultSurfaceProfileId;
 }
-
 export function initToolbarDefaults() {
     document.getElementById("mapSeedInput").value = "42";
     document.getElementById("seedInput").value = "42";
@@ -62,20 +53,12 @@ export function initToolbarDefaults() {
         document.getElementById("gameZoomValue").textContent = gameZoomEl.value;
     }
 }
-
 /**
  * @param {{ onRender: () => void, onStageResize: () => void }} handlers
  */
 export function bindToolbarControls(handlers) {
     const { onRender, onStageResize } = handlers;
-    const ids = [
-        "seedInput",
-        "gameZoomInput",
-        "mapSeedInput",
-        "mapNodeSelect",
-        "showRangeRingInput",
-        "showVignetteInput",
-    ];
+    const ids = ["seedInput", "gameZoomInput", "mapSeedInput", "mapNodeSelect", "showRangeRingInput", "showVignetteInput"];
     for (const id of ids) {
         document.getElementById(id)?.addEventListener("input", onRender);
         document.getElementById(id)?.addEventListener("change", onRender);
@@ -94,7 +77,6 @@ export function bindToolbarControls(handlers) {
         handlers.onResetMap?.();
         onRender();
     });
-
     const stage = document.getElementById("mapStage");
     if (stage && typeof ResizeObserver !== "undefined") {
         const ro = new ResizeObserver(onStageResize);

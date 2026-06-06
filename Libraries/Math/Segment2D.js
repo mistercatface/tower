@@ -8,14 +8,12 @@ export function closestPointOnLineSegment(px, py, vx, vy, wx, wy) {
     t = Math.max(0, Math.min(1, t));
     return { x: vx + t * dx, y: vy + t * dy, t };
 }
-
 export function distanceSqToLineSegment(px, py, vx, vy, wx, wy) {
     const closest = closestPointOnLineSegment(px, py, vx, vy, wx, wy);
     const dx = px - closest.x;
     const dy = py - closest.y;
     return dx * dx + dy * dy;
 }
-
 export function distanceToLineSegment(px, py, vx, vy, wx, wy) {
     return Math.sqrt(distanceSqToLineSegment(px, py, vx, vy, wx, wy));
 }

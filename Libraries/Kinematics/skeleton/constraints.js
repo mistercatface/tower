@@ -1,5 +1,4 @@
 /** Distance constraints between physics joints during ragdoll simulation. */
-
 export const RAGDOLL_CONSTRAINT_EDGES = [
     ["head", "spineTop"],
     ["spineTop", "spineBot"],

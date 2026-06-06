@@ -4,7 +4,6 @@ export class SparseBucketGrid {
         this.cells = new Map();
         this.activeKeys = [];
     }
-
     clear() {
         for (let i = 0; i < this.activeKeys.length; i++) {
             const list = this.cells.get(this.activeKeys[i]);
@@ -12,11 +11,9 @@ export class SparseBucketGrid {
         }
         this.activeKeys.length = 0;
     }
-
     peek(key) {
         return this.cells.get(key);
     }
-
     getOrCreate(key) {
         let list = this.cells.get(key);
         if (!list) {
@@ -26,11 +23,9 @@ export class SparseBucketGrid {
         }
         return list;
     }
-
     push(key, item) {
         this.getOrCreate(key).push(item);
     }
-
     removeFrom(key, item) {
         const list = this.cells.get(key);
         if (!list) return false;

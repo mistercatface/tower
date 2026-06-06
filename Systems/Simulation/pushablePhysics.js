@@ -1,7 +1,6 @@
 import { ProgressionManager } from "../../Progression/ProgressionManager.js";
 import { CollisionSystem } from "../Collision/CollisionSystem.js";
 import { integrateLongAxisLogFacing, runPushablePhysicsPass } from "../../Libraries/Motion/pushablePhysicsPass.js";
-
 export function runPushablePhysics(state, dt, spatialFrame, events) {
     return runPushablePhysicsPass(
         state,

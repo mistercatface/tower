@@ -1,24 +1,11 @@
-const RACES = {
-    human: {
-        name: "human",
-        headScale: 0.6,
-        bodyScale: 1.0,
-        legScale: 1.0,
-        armScale: 1.0,
-        heightMult: 1.0,
-        widthMult: 1.0,
-    },
-};
-
+const RACES = { human: { name: "human", headScale: 0.6, bodyScale: 1.0, legScale: 1.0, armScale: 1.0, heightMult: 1.0, widthMult: 1.0 } };
 const WORLD_SEED = 42069;
-
 const FABRIC_PALETTES = [
     { base: "#7e8c96", light: "#9daab4", dark: "#5f6d77" },
     { base: "#6b7c9e", light: "#8b9cbe", dark: "#4c5d7e" },
     { base: "#7da37d", light: "#9cc49c", dark: "#5f845f" },
     { base: "#6b969e", light: "#8bb6be", dark: "#4c777e" },
 ];
-
 const HUMAN_SKINS_BY_LIGHTNESS = [
     { base: "#ffdbac", light: "#fff0e0", dark: "#d4a574", type: "human" },
     { base: "#e8c090", light: "#fff0d0", dark: "#a07050", type: "human" },
@@ -26,37 +13,22 @@ const HUMAN_SKINS_BY_LIGHTNESS = [
     { base: "#c68642", light: "#daa06d", dark: "#8b5a2b", type: "human" },
     { base: "#8d5524", light: "#b07040", dark: "#5c3a1a", type: "human" },
 ];
-
 function createSeededRandom(seed) {
     let s = seed;
     const next = () => {
         s = (s * 1103515245 + 12345) & 0x7fffffff;
         return s / 0x7fffffff;
     };
-    return {
-        next,
-        pick: (arr) => arr[Math.floor(next() * arr.length)],
-        range: (min, max) => min + next() * (max - min),
-    };
+    return { next, pick: (arr) => arr[Math.floor(next() * arr.length)], range: (min, max) => min + next() * (max - min) };
 }
-
 function hashEnemyType(type) {
     let h = 0;
-    for (let i = 0; i < type.length; i++) {
-        h = (Math.imul(31, h) + type.charCodeAt(i)) | 0;
-    }
+    for (let i = 0; i < type.length; i++) h = (Math.imul(31, h) + type.charCodeAt(i)) | 0;
     return h;
 }
-
 function applyFabricPalette(char, palette) {
-    return {
-        ...char,
-        topColor: palette.base,
-        topLight: palette.light,
-        topDark: palette.dark,
-    };
+    return { ...char, topColor: palette.base, topLight: palette.light, topDark: palette.dark };
 }
-
 export function generateCharacter(seed) {
     const rng = createSeededRandom(seed);
     const race = RACES.human;
@@ -74,7 +46,6 @@ export function generateCharacter(seed) {
     ];
     const hairColors = [null, "#402010", "#1a1a1a", "#8b4513", "#d4a460"];
     const hairStyles = ["none", "short", "buzzcut", "mohawk"];
-
     const skin = { ...rng.pick(HUMAN_SKINS_BY_LIGHTNESS) };
     const eyes = rng.pick(eyeColors);
     const bodyType = rng.pick(bodyTypes);
@@ -83,7 +54,6 @@ export function generateCharacter(seed) {
     const bottomColor = rng.pick(FABRIC_PALETTES);
     const hairColor = rng.pick(hairColors);
     const hairStyle = hairColor ? rng.pick(hairStyles.slice(1)) : "none";
-
     return {
         race: "human",
         raceData: race,
@@ -112,7 +82,6 @@ export function generateCharacter(seed) {
         shoeColor: rng.pick(["#201008", "#111", "#2a2a2a"]),
     };
 }
-
 /**
  * @param {{
  *   heroSkinSlot?: Record<string, number>,
@@ -123,63 +92,39 @@ export function generateCharacter(seed) {
  */
 export function createCharacterResolver(overrides = {}) {
     const characterCache = new Map();
-    const {
-        heroSkinSlot = {},
-        heroHair = {},
-        enemyTypeOutfit = {},
-        enemyTypeTints = {},
-    } = overrides;
-
+    const { heroSkinSlot = {}, heroHair = {}, enemyTypeOutfit = {}, enemyTypeTints = {} } = overrides;
     function applyEnemyTypeAppearance(char, enemyType) {
         const outfit = enemyTypeOutfit[enemyType.type] ?? { top: 0, bottom: 1 };
         const top = FABRIC_PALETTES[outfit.top % FABRIC_PALETTES.length];
         const bottom = FABRIC_PALETTES[outfit.bottom % FABRIC_PALETTES.length];
         let next = applyFabricPalette(char, top);
-        next = {
-            ...next,
-            bottomColor: bottom.base,
-            bottomLight: bottom.light,
-            bottomDark: bottom.dark,
-        };
+        next = { ...next, bottomColor: bottom.base, bottomLight: bottom.light, bottomDark: bottom.dark };
         const tint = enemyTypeTints[enemyType.type];
-        if (tint) {
-            next = { ...next, ...tint };
-        }
+        if (tint) next = { ...next, ...tint };
         if (!next.hairColor) {
             next.hairColor = "#402010";
             next.hairStyle = next.hairStyle === "none" ? "short" : next.hairStyle;
         }
         return next;
     }
-
     function applyHeroSkin(char, actor) {
         const slot = heroSkinSlot[actor?.type];
         if (slot === undefined) return char;
         const skin = HUMAN_SKINS_BY_LIGHTNESS[slot];
-        return {
-            ...char,
-            skinColor: skin.base,
-            skinLight: skin.light,
-            skinDark: skin.dark,
-            skinType: skin.type,
-        };
+        return { ...char, skinColor: skin.base, skinLight: skin.light, skinDark: skin.dark, skinType: skin.type };
     }
-
     function applyHeroHair(char, actor) {
         const hair = heroHair[actor?.type];
         if (!hair) return char;
         return { ...char, ...hair };
     }
-
     return function getCharacterForActor(actor, seedOverride = null) {
         if (!actor || actor.id === undefined) return generateCharacter(0);
         if (!characterCache.has(actor.id)) {
             const typeSalt = actor.enemyType ? hashEnemyType(actor.enemyType.type) : 0;
-            const seed = seedOverride ?? ((actor.id ^ WORLD_SEED) ^ typeSalt);
+            const seed = seedOverride ?? actor.id ^ WORLD_SEED ^ typeSalt;
             let char = generateCharacter(seed);
-            if (actor.enemyType) {
-                char = applyEnemyTypeAppearance(char, actor.enemyType);
-            }
+            if (actor.enemyType) char = applyEnemyTypeAppearance(char, actor.enemyType);
             char = applyHeroSkin(char, actor);
             char = applyHeroHair(char, actor);
             characterCache.set(actor.id, char);

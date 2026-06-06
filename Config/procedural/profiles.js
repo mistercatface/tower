@@ -16,14 +16,7 @@ import decayedStation from "./storage/decayedStation.js";
 import circuitLoop from "./storage/circuitLoop.js";
 import tomatoGarden from "./storage/tomatoGarden.js";
 import poolTableFelt from "./storage/poolTableFelt.js";
-
-export {
-    START_STATION_ID,
-    defaultSurfaceProfileId,
-    startSurfaceProfileId,
-    surfaceProfileByStrategy,
-} from "./profileDefaults.js";
-
+export { START_STATION_ID, defaultSurfaceProfileId, startSurfaceProfileId, surfaceProfileByStrategy } from "./profileDefaults.js";
 export const surfaceProceduralProfiles = {
     cyberGrid,
     toxicSludge,
@@ -42,20 +35,16 @@ export const surfaceProceduralProfiles = {
     tomatoGarden,
     poolTableFelt,
 };
-
 /** Tile Lab live editor profile (`__labA__`), not persisted to disk. */
 export function registerRuntimeSurfaceProfile(profileId, profile) {
     getSurfaceProfileProvider().registerRuntime(profileId, profile);
 }
-
 export function getSurfaceProceduralProfile(profileId) {
     return getSurfaceProfileProvider().getProfile(profileId);
 }
-
 export function listShippedSurfaceProfileIds() {
     return getSurfaceProfileProvider().listShippedIds();
 }
-
 export function resolveSurfaceProfileId(args) {
     return resolveActiveSurfaceProfileId(args);
 }

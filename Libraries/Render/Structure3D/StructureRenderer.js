@@ -1,5 +1,4 @@
 /** @typedef {import("../WorldSceneTypes.js").WorldSceneDrawInput} WorldSceneDrawInput */
-
 import { spatialWorldMargin } from "../../../Config/Config.js";
 import { getWallHeight } from "../../WorldSurface/WorldSurfaceSettings.js";
 import { getSegmentFootprintCorners } from "../../Spatial/geometry/WallGeometry.js";
@@ -7,7 +6,6 @@ import { SpatialQuery } from "../../Spatial/query/SpatialQuery.js";
 import { alignBoundsToHash, getViewQueryBounds } from "../common/viewportUtils.js";
 import { drawProjectedWallFace } from "./ProjectedWallDraw.js";
 import { applySharedEdgeFlags, requestSharedEdgeSolve, writeWallGeometry } from "./SharedEdgeBridge.js";
-
 export class StructureRenderer {
     /** @param {import("../../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} settings */
     constructor(settings) {
@@ -19,7 +17,6 @@ export class StructureRenderer {
         this._cachedWalls = [];
         this._lastQueryKey = null;
     }
-
     getSegmentEdges(seg) {
         if (seg._cachedEdges) return seg._cachedEdges;
         const corners = getSegmentFootprintCorners(seg);
@@ -29,7 +26,6 @@ export class StructureRenderer {
             [corners[2], corners[3]],
             [corners[3], corners[0]],
         ];
-
         for (let i = 0; i < 4; i++) {
             const edge = seg._cachedEdges[i];
             const p1 = edge[0];
@@ -41,10 +37,8 @@ export class StructureRenderer {
             edge.outY = edge.cy - seg.y;
             edge.wallHeight = seg.wallHeight ?? getWallHeight(this.settings);
         }
-
         return seg._cachedEdges;
     }
-
     updateSharedEdges(input) {
         const walls = input.walls;
         if (walls !== this.lastWalls || walls.length !== this.lastWallCount || this.sharedEdgesDirty) {
@@ -55,7 +49,6 @@ export class StructureRenderer {
             this.rebuildSharedEdgesAsync(input);
         }
     }
-
     getWallColor(seg, darkenRatio = 1.0) {
         const baseR = 245;
         const baseG = 245;
@@ -66,7 +59,6 @@ export class StructureRenderer {
         const b = Math.floor((baseB + (54 - baseB) * (1 - healthRatio)) * darkenRatio);
         return `rgb(${r}, ${g}, ${b})`;
     }
-
     drawWallFace(ctx, seg, p1, p2, px, py, input, viewport, options = {}, cacheObj = null) {
         const wallColor = this.getWallColor(seg, 1.0);
         const healthRatio = seg.health / seg.maxHealth;
@@ -81,14 +73,11 @@ export class StructureRenderer {
             wallHeight: seg.wallHeight ?? getWallHeight(this.settings),
         });
     }
-
     drawWallSegmentFaces(ctx, seg, px, py, input, viewport, options = {}) {
         const edges = this.getSegmentEdges(seg);
         if (!seg.sharedEdges) seg.sharedEdges = [false, false, false, false];
-
         for (let i = 0; i < 4; i++) {
             if (seg.sharedEdges[i]) continue;
-
             const edge = edges[i];
             const viewX = edge.cx - px;
             const viewY = edge.cy - py;
@@ -96,14 +85,11 @@ export class StructureRenderer {
             this.drawWallFace(ctx, seg, edge[0], edge[1], px, py, input, viewport, options, edge);
         }
     }
-
     drawExplosion(px, py, maxDist, input, targetCtx) {
         this.updateSharedEdges(input);
         const maxDistSq = maxDist * maxDist;
         const visibleWalls = [];
-        const candidateWalls = input.wallSpatialIndex
-            ? input.wallSpatialIndex.collectInBounds(px - maxDist, py - maxDist, px + maxDist, py + maxDist)
-            : input.walls;
+        const candidateWalls = input.wallSpatialIndex ? input.wallSpatialIndex.collectInBounds(px - maxDist, py - maxDist, px + maxDist, py + maxDist) : input.walls;
         for (let i = 0; i < candidateWalls.length; i++) {
             const seg = candidateWalls[i];
             if (seg.isDead) continue;
@@ -114,25 +100,19 @@ export class StructureRenderer {
             }
         }
         visibleWalls.sort((a, b) => b._distSq - a._distSq);
-        for (const seg of visibleWalls) {
-            this.drawWallSegmentFaces(targetCtx, seg, px, py, input, null);
-        }
+        for (const seg of visibleWalls) this.drawWallSegmentFaces(targetCtx, seg, px, py, input, null);
     }
-
     rebuildSharedEdgesAsync(input) {
         const walls = input.walls;
         const numWalls = writeWallGeometry(walls, this.settings);
-
         this._sharedEdgeGen = (this._sharedEdgeGen || 0) + 1;
         const currentGen = this._sharedEdgeGen;
-
         requestSharedEdgeSolve(numWalls).then(() => {
             if (this._sharedEdgeGen !== currentGen) return;
             if (this.lastWalls !== input.walls) return;
             applySharedEdgeFlags(walls, numWalls);
         });
     }
-
     collectVisibleWalls(input, viewport, px, py) {
         const wallIndex = input.wallSpatialIndex;
         if (!viewport || !wallIndex) {
@@ -140,10 +120,7 @@ export class StructureRenderer {
             const margin = spatialWorldMargin;
             return wallIndex ? wallIndex.collectInBounds(px - margin, py - margin, px + margin, py + margin, this._wallQuery) : input.walls;
         }
-        const bounds = alignBoundsToHash(
-            getViewQueryBounds(viewport, px, py, this.settings.viewQueryPadPx),
-            wallIndex.cellSize,
-        );
+        const bounds = alignBoundsToHash(getViewQueryBounds(viewport, px, py, this.settings.viewQueryPadPx), wallIndex.cellSize);
         const cellSize = wallIndex.cellSize;
         const minCol = Math.floor(bounds.minX / cellSize);
         const maxCol = Math.floor((bounds.maxX - 1) / cellSize);

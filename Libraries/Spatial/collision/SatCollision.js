@@ -1,24 +1,18 @@
 import { CircleShape, PolygonShape } from "./Shapes.js";
-
 function entityFacing(entity) {
     if (entity._collisionFacing != null) return entity._collisionFacing;
     return entity.facing ?? entity.angle ?? 0;
 }
-
 export class SatCollision {
     /**
      * @returns {Object|null} Collision info { overlap, nx, ny } pointing from A to B, or null if no collision.
      */
     static checkCollision(posA, shapeA, posB, shapeB) {
         if (!shapeA || !shapeB) return null;
-
-        if (shapeA.type === "Circle" && shapeB.type === "Circle") {
-            return this._circleCircle(posA, shapeA, posB, shapeB);
-        } else if (shapeA.type === "Polygon" && shapeB.type === "Polygon") {
-            return this._polygonPolygon(posA, shapeA, posB, shapeB);
-        } else if (shapeA.type === "Circle" && shapeB.type === "Polygon") {
-            return this._circlePolygon(posA, shapeA, posB, shapeB);
-        } else if (shapeA.type === "Polygon" && shapeB.type === "Circle") {
+        if (shapeA.type === "Circle" && shapeB.type === "Circle") return this._circleCircle(posA, shapeA, posB, shapeB);
+        else if (shapeA.type === "Polygon" && shapeB.type === "Polygon") return this._polygonPolygon(posA, shapeA, posB, shapeB);
+        else if (shapeA.type === "Circle" && shapeB.type === "Polygon") return this._circlePolygon(posA, shapeA, posB, shapeB);
+        else if (shapeA.type === "Polygon" && shapeB.type === "Circle") {
             const res = this._circlePolygon(posB, shapeB, posA, shapeA);
             if (res) {
                 res.nx = -res.nx;
@@ -29,24 +23,19 @@ export class SatCollision {
         }
         return null;
     }
-
     static _circleCircle(posA, shapeA, posB, shapeB) {
         const dx = posB.x - posA.x;
         const dy = posB.y - posA.y;
         const distSq = dx * dx + dy * dy;
         const radii = shapeA.radius + shapeB.radius;
-        if (distSq >= radii * radii || distSq === 0) {
-            return null;
-        }
+        if (distSq >= radii * radii || distSq === 0) return null;
         const dist = Math.sqrt(distSq);
         const overlap = radii - dist;
         return { overlap: overlap, nx: dx / dist, ny: dy / dist, cx: posA.x + (dx / dist) * (shapeA.radius - overlap / 2), cy: posA.y + (dy / dist) * (shapeA.radius - overlap / 2) };
     }
-
     static _polygonPolygon(posA, shapeA, posB, shapeB) {
         let minOverlap = Infinity;
         let minNormal = null;
-
         const checkAxes = (polyA, pA, polyB, pB) => {
             const angleA = entityFacing(pA);
             const cosA = Math.cos(angleA);
@@ -56,14 +45,9 @@ export class SatCollision {
                 const rx = n.x * cosA - n.y * sinA;
                 const ry = n.x * sinA + n.y * cosA;
                 const rotatedNormal = { x: rx, y: ry };
-
                 const projA = this._projectPolygon(rotatedNormal, polyA, pA, angleA);
                 const projB = this._projectPolygon(rotatedNormal, polyB, pB, entityFacing(pB));
-
-                if (projA.min >= projB.max || projB.min >= projA.max) {
-                    return false;
-                }
-
+                if (projA.min >= projB.max || projB.min >= projA.max) return false;
                 const overlap = Math.min(projA.max - projB.min, projB.max - projA.min);
                 if (overlap < minOverlap) {
                     minOverlap = overlap;
@@ -72,16 +56,11 @@ export class SatCollision {
             }
             return true;
         };
-
         if (!checkAxes(shapeA, posA, shapeB, posB)) return null;
         if (!checkAxes(shapeB, posB, shapeA, posA)) return null;
-
         const dx = posB.x - posA.x;
         const dy = posB.y - posA.y;
-        if (dx * minNormal.x + dy * minNormal.y < 0) {
-            minNormal = { x: -minNormal.x, y: -minNormal.y };
-        }
-
+        if (dx * minNormal.x + dy * minNormal.y < 0) minNormal = { x: -minNormal.x, y: -minNormal.y };
         let minProjB = Infinity;
         let contactB = posB;
         const facingB = entityFacing(posB);
@@ -97,7 +76,6 @@ export class SatCollision {
                 contactB = { x: vx, y: vy };
             }
         }
-
         let maxProjA = -Infinity;
         let contactA = posA;
         const facingA = entityFacing(posA);
@@ -113,41 +91,29 @@ export class SatCollision {
                 contactA = { x: vx, y: vy };
             }
         }
-
         return { overlap: minOverlap, nx: minNormal.x, ny: minNormal.y, cx: (contactA.x + contactB.x) / 2, cy: (contactA.y + contactB.y) / 2 };
     }
-
     static _circlePolygon(posCircle, circleShape, posPoly, polyShape) {
         const polyAngle = entityFacing(posPoly);
-        if (isNaN(posCircle.x) || isNaN(posCircle.y) || isNaN(posPoly.x) || isNaN(posPoly.y)) {
-            return null;
-        }
-
+        if (isNaN(posCircle.x) || isNaN(posCircle.y) || isNaN(posPoly.x) || isNaN(posPoly.y)) return null;
         let minOverlap = Infinity;
         let minNormal = null;
         const cosP = Math.cos(polyAngle);
         const sinP = Math.sin(polyAngle);
-
         for (let i = 0; i < polyShape.normals.length; i++) {
             const n = polyShape.normals[i];
             const rx = n.x * cosP - n.y * sinP;
             const ry = n.x * sinP + n.y * cosP;
             const rotatedNormal = { x: rx, y: ry };
-
             const projCircle = this._projectCircle(rotatedNormal, posCircle, circleShape);
             const projPoly = this._projectPolygon(rotatedNormal, polyShape, posPoly, polyAngle);
-
-            if (projCircle.min >= projPoly.max || projPoly.min >= projCircle.max) {
-                return null;
-            }
-
+            if (projCircle.min >= projPoly.max || projPoly.min >= projCircle.max) return null;
             const overlap = Math.min(projCircle.max - projPoly.min, projPoly.max - projCircle.min);
             if (overlap < minOverlap) {
                 minOverlap = overlap;
                 minNormal = rotatedNormal;
             }
         }
-
         let closestDistSq = Infinity;
         let closestVertex = null;
         for (let i = 0; i < polyShape.vertices.length; i++) {
@@ -164,11 +130,7 @@ export class SatCollision {
                 closestVertex = { x: vx, y: vy };
             }
         }
-
-        if (!closestVertex) {
-            return null;
-        }
-
+        if (!closestVertex) return null;
         const dx = closestVertex.x - posCircle.x;
         const dy = closestVertex.y - posCircle.y;
         if (dx !== 0 || dy !== 0) {
@@ -176,24 +138,16 @@ export class SatCollision {
             const n = { x: dx / len, y: dy / len };
             const projCircle = this._projectCircle(n, posCircle, circleShape);
             const projPoly = this._projectPolygon(n, polyShape, posPoly, polyAngle);
-
-            if (projCircle.min >= projPoly.max || projPoly.min >= projCircle.max) {
-                return null;
-            }
-
+            if (projCircle.min >= projPoly.max || projPoly.min >= projCircle.max) return null;
             const overlap = Math.min(projCircle.max - projPoly.min, projPoly.max - projCircle.min);
             if (overlap < minOverlap) {
                 minOverlap = overlap;
                 minNormal = n;
             }
         }
-
         const cx = posPoly.x - posCircle.x;
         const cy = posPoly.y - posCircle.y;
-        if (cx * minNormal.x + cy * minNormal.y < 0) {
-            minNormal = { x: -minNormal.x, y: -minNormal.y };
-        }
-
+        if (cx * minNormal.x + cy * minNormal.y < 0) minNormal = { x: -minNormal.x, y: -minNormal.y };
         return {
             overlap: minOverlap,
             nx: minNormal.x,
@@ -202,7 +156,6 @@ export class SatCollision {
             cy: posCircle.y + minNormal.y * (circleShape.radius - minOverlap / 2),
         };
     }
-
     static _projectPolygon(axis, shape, pos, angle = 0) {
         let min = Infinity;
         let max = -Infinity;
@@ -220,7 +173,6 @@ export class SatCollision {
         }
         return { min, max };
     }
-
     static _projectCircle(axis, pos, shape) {
         const projection = pos.x * axis.x + pos.y * axis.y;
         return { min: projection - shape.radius, max: projection + shape.radius };

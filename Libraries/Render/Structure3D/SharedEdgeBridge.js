@@ -1,14 +1,6 @@
 import { getWallHeight } from "../../WorldSurface/WorldSurfaceSettings.js";
-import {
-    TileWorkerCoordinator,
-    wallGeometryView,
-    wallSharedEdgesView,
-    MAX_WALLS,
-    STRIDE,
-} from "../../WorldSurface/TileWorkerCoordinator.js";
-
+import { TileWorkerCoordinator, wallGeometryView, wallSharedEdgesView, MAX_WALLS, STRIDE } from "../../WorldSurface/TileWorkerCoordinator.js";
 export { MAX_WALLS, STRIDE, wallGeometryView, wallSharedEdgesView };
-
 /**
  * @param {object[]} walls
  * @param {import("../../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} settings
@@ -25,13 +17,10 @@ export function writeWallGeometry(walls, settings) {
         wallGeometryView[offset + 4] = seg.isDead ? 1 : 0;
         const wallHeight = seg.wallHeight ?? getWallHeight(settings);
         wallGeometryView[offset + 5] = wallHeight;
-        if (!seg.sharedEdges) {
-            seg.sharedEdges = [false, false, false, false];
-        }
+        if (!seg.sharedEdges) seg.sharedEdges = [false, false, false, false];
     }
     return numWalls;
 }
-
 /**
  * @param {object[]} walls
  * @param {number} numWalls
@@ -47,7 +36,6 @@ export function applySharedEdgeFlags(walls, numWalls) {
         seg.sharedEdges[3] = (flags & 8) !== 0;
     }
 }
-
 export function requestSharedEdgeSolve(numWalls) {
     return TileWorkerCoordinator.requestSharedEdges(numWalls);
 }

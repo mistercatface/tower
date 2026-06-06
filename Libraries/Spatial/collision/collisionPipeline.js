@@ -5,9 +5,7 @@ import { shouldResolveActorPushable } from "./entityBroadphase.js";
 import { resolveCirclePair } from "./circlePair.js";
 import { circlesOverlap, findFirstCircleSegmentHit } from "./overlap.js";
 import { resolveSatPair } from "./satPair.js";
-
 const DEFAULT_PUSHABLE_ITERATIONS = 4;
-
 function resolveActorPushable(actor, pickup, resolveWalls, spatialFrame, state) {
     if (!shouldResolveActorPushable(actor, pickup)) return;
     const collisionInfo = resolveSatPair(actor, actor.getShape(), pickup, pickup.getShape(), {
@@ -22,7 +20,6 @@ function resolveActorPushable(actor, pickup, resolveWalls, spatialFrame, state) 
     resolveWalls(actor, spatialFrame);
     resolveWalls(pickup, spatialFrame);
 }
-
 function resolvePushablePair(p1, p2) {
     const collisionInfo = resolveSatPair(p1, p1.getShape(), p2, p2.getShape(), { massA: p1.mass !== undefined ? p1.mass : 15.0, massB: p2.mass !== undefined ? p2.mass : 15.0, restitution: 0.4 });
     if (!collisionInfo) return;
@@ -30,7 +27,6 @@ function resolvePushablePair(p1, p2) {
     wakePushableBody(p1);
     wakePushableBody(p2);
 }
-
 /**
  * Staged collision pass: projectiles → pushable iterations → entity pairs.
  * Game layer supplies filters and entity callbacks.
@@ -69,7 +65,7 @@ export function runCollisionPipeline(
 ) {
     const out = events ?? [];
     if (!events) out.length = 0;
-    if (projectiles.length > 0) {
+    if (projectiles.length > 0)
         for (let i = 0; i < projectiles.length; i++) {
             const p = projectiles[i];
             if (p.isDead) continue;
@@ -88,12 +84,11 @@ export function runCollisionPipeline(
             if (hitPickup) continue;
             onProjectileFactionCollisions(p, out);
         }
-    }
     const pushables = spatialFrame._pushables;
     const combatants = spatialFrame._combatants;
     const hasPushables = pushables && pushables.length > 0;
     const hasCombatants = combatants && combatants.length > 0;
-    if (hasPushables || hasCombatants) {
+    if (hasPushables || hasCombatants)
         for (let iter = 0; iter < pushableIterations; iter++) {
             if (hasCombatants) spatialFrame.forEachActorPushablePair((actor, pickup) => resolveActorPushable(actor, pickup, resolveWalls, spatialFrame, state));
             if (hasPushables) {
@@ -105,7 +100,6 @@ export function runCollisionPipeline(
                 }
             }
         }
-    }
     spatialFrame.forEachCombatantPair((a, b) => {
         if (!circlesOverlap(a, b)) return;
         const restitution = combatantRestitution(a, b);
@@ -115,6 +109,5 @@ export function runCollisionPipeline(
             if (b.attackType === "charge" && b.currentStateName !== "stunned") onChargeImpact(b, a, out);
         }
     });
-
     return out;
 }

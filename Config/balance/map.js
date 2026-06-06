@@ -1,13 +1,2 @@
-export const mapSettings = {
-    numLayers: 5,
-    layerSpacing: 170,
-    xSpacing: 170,
-    nodeJitter: 0,
-    nodeWorldCoordScale: 7.0,
-};
-
-export const mapGenerationSettings = {
-    nodesPerLayerMin: 2,
-    nodesPerLayerMax: 4,
-    extraConnectionChance: 0.3,
-};
+export const mapSettings = { numLayers: 5, layerSpacing: 170, xSpacing: 170, nodeJitter: 0, nodeWorldCoordScale: 7.0 };
+export const mapGenerationSettings = { nodesPerLayerMin: 2, nodesPerLayerMax: 4, extraConnectionChance: 0.3 };

@@ -3,7 +3,6 @@ import { normalizeVector } from "../../Math/Vec2.js";
 import { createImpactProfile } from "./config.js";
 import { initializeRagdoll } from "./physics.js";
 import { applyDeathSevers } from "./gore.js";
-
 export function createObstacleWallChecker(state) {
     const grid = state?.flowFieldGrid;
     if (!grid) return null;
@@ -13,12 +12,10 @@ export function createObstacleWallChecker(state) {
         return grid.grid[row * grid.cols + col] !== 0;
     };
 }
-
 export function resolveDeathImpact(actor, event) {
     let dirX = Math.cos(actor.angle ?? 0);
     let dirY = Math.sin(actor.angle ?? 0);
     let power = 10;
-
     if (event?.projectile) {
         dirX = Math.cos(event.projectile.angle);
         dirY = Math.sin(event.projectile.angle);
@@ -33,10 +30,8 @@ export function resolveDeathImpact(actor, event) {
         }
         power = 14;
     }
-
     return createImpactProfile(dirX, dirY, power);
 }
-
 /**
  * @param {object} rigData - from captureActorRigForRagdoll
  * @param {number} rotation

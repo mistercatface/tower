@@ -2,20 +2,16 @@ import { circlesOverlap, findFirstCircleSegmentHit } from "../../Libraries/Spati
 import { runCollisionPipeline } from "../../Libraries/Spatial/collision/collisionPipeline.js";
 import { enemyDefaults } from "../../Config/Config.js";
 import { getInteractionPairFilter } from "../../Core/GamePorts.js";
-
 export class CollisionSystem {
     static checkCircle(a, b) {
         return circlesOverlap(a, b);
     }
-
     static checkCircleRect(circle, rect) {
         return findFirstCircleSegmentHit(circle, [rect]) !== null;
     }
-
     static getMissileWallCollision(missile, candidateWalls) {
         return findFirstCircleSegmentHit(missile, candidateWalls);
     }
-
     static run(state, spatialFrame, events = null) {
         return runCollisionPipeline(state, spatialFrame, {
             events,
@@ -40,11 +36,8 @@ export class CollisionSystem {
             },
         });
     }
-
     static applyChargeImpact(charger, other, events) {
-        if (getInteractionPairFilter("chargeImpact").allows(charger, other)) {
-            events.push({ target: other, damage: enemyDefaults.chargeImpactDamage });
-        }
+        if (getInteractionPairFilter("chargeImpact").allows(charger, other)) events.push({ target: other, damage: enemyDefaults.chargeImpactDamage });
         charger.changeState("stunned", { timer: 1000, returnState: "charging_prepare" });
     }
 }

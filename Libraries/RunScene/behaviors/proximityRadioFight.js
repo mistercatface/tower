@@ -3,7 +3,6 @@ import { Enemy } from "../../../Entities/Enemy.js";
 import { fireRadioTrigger } from "../../../Core/EventSystem.js";
 import { isBaseStatUpgrade } from "../../../Progression/Upgrades.js";
 import { ensureRunScene, getRunSceneIntro } from "../runSceneState.js";
-
 /**
  * @param {import("../compileRunScenes.js").RunSceneConfig} def
  * @param {import("../runScenePorts.js").RunScenePorts} ports
@@ -12,17 +11,13 @@ export function proximityRadioFightBehavior(def, ports) {
     const config = def.config ?? {};
     const enemyTag = config.enemyTag ?? "isIntroGuard";
     const dialogRadius = config.dialogRadius ?? 52;
-
     return {
         enter(state) {
             const intro = getRunSceneIntro(state);
             intro.active = true;
-            if (ensureRunScene(state).opening?.completed) {
-                intro.dialogUnlocked = true;
-            }
+            if (ensureRunScene(state).opening?.completed) intro.dialogUnlocked = true;
             spawnGuards(state, config, enemyTag, ports);
         },
-
         tick(state) {
             const intro = getRunSceneIntro(state);
             if (!intro.active || intro.triggered) return;
@@ -34,11 +29,9 @@ export function proximityRadioFightBehavior(def, ports) {
         },
     };
 }
-
 export function unlockProximityFightDialog(state) {
     getRunSceneIntro(state).dialogUnlocked = true;
 }
-
 function spawnGuards(state, config, enemyTag, ports) {
     const layout = ports.getLayout(state);
     if (!layout) return;
@@ -55,16 +48,12 @@ function spawnGuards(state, config, enemyTag, ports) {
         state.enemies.push(enemy);
     }
 }
-
 function activateGuards(state, enemyTag) {
     const intro = getRunSceneIntro(state);
-    for (const enemy of state.enemies) {
-        if (enemy[enemyTag]) enemy.isPassive = false;
-    }
+    for (const enemy of state.enemies) if (enemy[enemyTag]) enemy.isPassive = false;
     intro.active = false;
     intro.completed = true;
 }
-
 function distanceToNearestTaggedGuard(state, enemyTag) {
     let nearest = Infinity;
     for (const enemy of state.enemies) {

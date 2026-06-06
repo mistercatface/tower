@@ -11,7 +11,6 @@ import { renderMapView } from "./Map/MapViewRenderer.js";
 import { createGameMapViewConfig } from "./Map/mapViewPresets.js";
 import { getCombatFeatures } from "../Core/GameUiProfile.js";
 import { drawWorldScene } from "./worldSceneDraw.js";
-
 export class Renderer {
     constructor(canvas, ctx) {
         this.canvas = canvas;
@@ -21,45 +20,34 @@ export class Renderer {
         this.floatingTextCache = new SpriteCache();
         this.render3D = new WorldSceneRenderer(getGameWorldSurfaceSettings(), getRenderPorts().world3dPropRecipes);
         this.effectPasses = [
-            {
-                zIndex: -5,
-                fn: (state, viewport) => drawWorldScene(this.ctx, {
-                    state,
-                    viewport,
-                    worldSceneRenderer: this.render3D,
-                    phases: ["ground"],
-                }),
-            },
+            { zIndex: -5, fn: (state, viewport) => drawWorldScene(this.ctx, { state, viewport, worldSceneRenderer: this.render3D, phases: ["ground"] }) },
             { zIndex: 19, fn: (state, viewport) => this.drawDebris(state, viewport) },
             {
                 zIndex: 30,
                 feature: "hostileActors",
                 fn: (state, viewport) => {
-                    for (const actor of state.getHostileActors()) {
-                        this.drawActorAndTurrets(actor, state, viewport);
-                    }
+                    for (const actor of state.getHostileActors()) this.drawActorAndTurrets(actor, state, viewport);
                 },
             },
             {
                 zIndex: 50,
                 feature: "playerActors",
                 fn: (state, viewport) => {
-                    for (const actor of getPlayerActors(state)) {
-                        this.drawActorAndTurrets(actor, state, viewport);
-                    }
+                    for (const actor of getPlayerActors(state)) this.drawActorAndTurrets(actor, state, viewport);
                 },
             },
             { zIndex: 60, fn: (state, viewport) => this.renderExplosions(state, viewport) },
             {
                 zIndex: 70,
-                fn: (state, viewport) => drawWorldScene(this.ctx, {
-                    state,
-                    viewport,
-                    worldSceneRenderer: this.render3D,
-                    canvas: this.canvas,
-                    worldRenderInput: this.getWorldRenderInput(state, viewport),
-                    phases: ["buildings", "roofs", "bloom"],
-                }),
+                fn: (state, viewport) =>
+                    drawWorldScene(this.ctx, {
+                        state,
+                        viewport,
+                        worldSceneRenderer: this.render3D,
+                        canvas: this.canvas,
+                        worldRenderInput: this.getWorldRenderInput(state, viewport),
+                        phases: ["buildings", "roofs", "bloom"],
+                    }),
             },
             { zIndex: 75, feature: "entityBars", fn: (state, viewport) => this.drawEntityBars(state, viewport) },
             { zIndex: 80, feature: "visibilityMask", fn: (state, viewport) => this.drawVisibilityMask(this.ctx, state, viewport) },
@@ -67,81 +55,50 @@ export class Renderer {
             { zIndex: 86, feature: "combatHudModes", fn: (state, viewport) => this.drawCombatHudOverlay(state, viewport) },
         ];
     }
-
     renderMapScene(state, viewport) {
         this.ctx.save();
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        renderMapView(this.ctx, state, {
-            ...createGameMapViewConfig(),
-            viewport,
-            clearBackground: false,
-        });
-
+        renderMapView(this.ctx, state, { ...createGameMapViewConfig(), viewport, clearBackground: false });
         const oldX = state.player.x;
         const oldY = state.player.y;
         const { x: mapX, y: mapY } = state.getMapPlayerGraphCoords();
         state.player.x = mapX;
         state.player.y = mapY;
         this.drawActorAndTurrets(state.player, state, null);
-
         state.player.x = oldX;
         state.player.y = oldY;
-
         this.renderEntityCollection(state.floatingTexts, state);
         this.ctx.restore();
     }
-
     buildSimulationPipeline(state, viewport) {
         const features = getCombatFeatures();
         const entityPasses = state.entityLayers.map((layer) => ({ zIndex: layer.zIndex, fn: (state, viewport) => this.renderEntityCollection(state[layer.key], state, viewport) }));
-
         const enabledEffects = this.effectPasses.filter((pass) => !pass.feature || features[pass.feature] !== false);
         const pipeline = [...enabledEffects, ...entityPasses];
         pipeline.sort((a, b) => a.zIndex - b.zIndex);
         this._simulationPipeline = pipeline.map((p) => p.fn);
     }
-
     /** Cached once per simulation frame — walls + explosions share the same draw input. */
     getWorldRenderInput(state, viewport) {
-        if (!this._frameWorldRenderInput) {
-            this._frameWorldRenderInput = buildWorldRenderInput(state, viewport);
-        }
+        if (!this._frameWorldRenderInput) this._frameWorldRenderInput = buildWorldRenderInput(state, viewport);
         return this._frameWorldRenderInput;
     }
-
     renderSimulationScene(state, viewport) {
         this._frameWorldRenderInput = null;
-
         this.ctx.save();
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
         if (viewport) viewport.apply(this.ctx);
-
         this.buildSimulationPipeline(state, viewport);
-
-        for (let i = 0; i < this._simulationPipeline.length; i++) {
-            this._simulationPipeline[i](state, viewport);
-        }
-
-        if (state.debugMode) {
-            this.drawDebugHPA(state, viewport);
-        }
-
+        for (let i = 0; i < this._simulationPipeline.length; i++) this._simulationPipeline[i](state, viewport);
+        if (state.debugMode) this.drawDebugHPA(state, viewport);
         this.ctx.restore();
-
         CombatParticles.renderAll(this.ctx, state, viewport);
-
         if (viewport && isWorldScene(state.phase)) {
             const features = getCombatFeatures();
-            if (features.globeOverlay !== false) {
-                this.drawGlobeOverlay(state, viewport);
-            }
-            if (features.offScreenIndicators !== false) {
-                drawHostileOffScreenIndicators(this.ctx, state, viewport);
-            }
+            if (features.globeOverlay !== false) this.drawGlobeOverlay(state, viewport);
+            if (features.offScreenIndicators !== false) drawHostileOffScreenIndicators(this.ctx, state, viewport);
         }
     }
-
     drawDebris(state, viewport) {
         if (!state.pickups) return;
         const { x: px, y: py } = resolveRenderViewer(state, viewport);
@@ -152,86 +109,61 @@ export class Renderer {
             this.render3D.drawProp(this.ctx, p, px, py);
         }
     }
-
     renderEntityCollection(collection, state, viewport) {
         if (!collection) return;
         for (const entity of collection) {
-            if (viewport && typeof entity.isVisible === "function" && !entity.isVisible(viewport)) {
-                continue;
-            }
+            if (viewport && typeof entity.isVisible === "function" && !entity.isVisible(viewport)) continue;
             entity.render(this.ctx, this, state);
         }
     }
-
     drawActorAndTurrets(actor, state, viewport) {
         if (!actor || actor.isDead) return;
-        if (viewport && typeof actor.isVisible === "function" && !actor.isVisible(viewport)) {
-            return;
-        }
+        if (viewport && typeof actor.isVisible === "function" && !actor.isVisible(viewport)) return;
         if (getCombatFeatures().combatHudModes !== false && state.combatHudMode === COMBAT_HUD_MODE.CLASSIC) {
             actor.renderCombatHudClassic(this.ctx, this);
             return;
         }
         actor.render(this.ctx, this, state);
     }
-
     drawCombatHudOverlay(state, viewport) {
         if (state.combatHudMode !== COMBAT_HUD_MODE.OVERLAY) return;
         for (const actor of state.getCombatants()) {
             if (actor.isDead) continue;
-            if (viewport && typeof actor.isVisible === "function" && !actor.isVisible(viewport)) {
-                continue;
-            }
+            if (viewport && typeof actor.isVisible === "function" && !actor.isVisible(viewport)) continue;
             this.ctx.save();
             this.ctx.globalAlpha = hudSettings.combatOverlayAlpha;
             actor.renderCombatHudClassic(this.ctx, this);
             this.ctx.restore();
         }
     }
-
     drawEntityBars(state, viewport) {
         for (const actor of state.getCombatants()) {
-            if (viewport && typeof actor.isVisible === "function" && !actor.isVisible(viewport)) {
-                continue;
-            }
+            if (viewport && typeof actor.isVisible === "function" && !actor.isVisible(viewport)) continue;
             actor.renderStatusBars(this.ctx, this, state);
         }
     }
-
     drawTargetMarkers(state, viewport) {
         if (state.player.queuedTargetX != null && state.player.queuedTargetY != null) {
-            if (!viewport || viewport.isVisible(state.player.queuedTargetX, state.player.queuedTargetY, 6)) {
-                this._drawTargetMarker(this.ctx, state.player.queuedTargetX, state.player.queuedTargetY);
-            }
-        } else if (state.player.isMoving && state.player.targetX !== null && state.player.targetY !== null) {
-            if (!viewport || viewport.isVisible(state.player.targetX, state.player.targetY, 6)) {
-                this._drawTargetMarker(this.ctx, state.player.targetX, state.player.targetY);
-            }
-        }
+            if (!viewport || viewport.isVisible(state.player.queuedTargetX, state.player.queuedTargetY, 6)) this._drawTargetMarker(this.ctx, state.player.queuedTargetX, state.player.queuedTargetY);
+        } else if (state.player.isMoving && state.player.targetX !== null && state.player.targetY !== null)
+            if (!viewport || viewport.isVisible(state.player.targetX, state.player.targetY, 6)) this._drawTargetMarker(this.ctx, state.player.targetX, state.player.targetY);
     }
-
     renderExplosions(state, viewport) {
         if (!state.explosions) return;
         for (const exp of state.explosions) {
-            if (viewport && !viewport.isVisible(exp.x, exp.y, exp.maxRadius)) {
-                continue;
-            }
+            if (viewport && !viewport.isVisible(exp.x, exp.y, exp.maxRadius)) continue;
             const canvasSize = exp.maxRadius * 2;
             if (canvasSize <= 0) continue;
-
             if (!exp.offCanvas) {
                 exp.offCanvas = new OffscreenCanvas(canvasSize, canvasSize);
                 exp.offCtx = exp.offCanvas.getContext("2d");
             }
-
             const offCanvas = exp.offCanvas;
             const offCtx = exp.offCtx;
             const cx = exp.maxRadius;
             const cy = exp.maxRadius;
-
             offCtx.globalCompositeOperation = "source-over";
             offCtx.clearRect(0, 0, canvasSize, canvasSize);
-
             offCtx.beginPath();
             offCtx.arc(cx, cy, exp.radius, 0, Math.PI * 2);
             if (exp.currentPhase?.brightFill) {
@@ -241,14 +173,12 @@ export class Renderer {
                 offCtx.fillStyle = "rgba(139, 0, 0, 0.9)";
                 offCtx.fill();
             }
-
             offCtx.globalCompositeOperation = "destination-out";
             offCtx.fillStyle = "#000000";
             offCtx.save();
             offCtx.translate(cx - exp.x, cy - exp.y);
             this.render3D.drawExplosion(exp.x, exp.y, exp.maxRadius, this.getWorldRenderInput(state, viewport), offCtx);
             offCtx.restore();
-
             this.ctx.save();
             if (exp.currentPhase?.screenBlend) {
                 this.ctx.globalCompositeOperation = "screen";
@@ -261,7 +191,6 @@ export class Renderer {
             this.ctx.restore();
         }
     }
-
     drawVisibilityMask(ctx, state, viewport) {
         const weaponRange = state.player.weapon.range;
         if (weaponRange > 0) {
@@ -275,7 +204,6 @@ export class Renderer {
             ctx.restore();
         }
     }
-
     _drawTargetMarker(ctx, x, y) {
         ctx.save();
         ctx.translate(x, y);
@@ -290,31 +218,24 @@ export class Renderer {
         ctx.stroke();
         ctx.restore();
     }
-
     drawGlobeOverlay(state, viewport) {
         if (!viewport) return;
         const R = viewport.getVisualRadius();
         const cx = viewport.cx;
         const cy = viewport.cy;
-
         this.ctx.save();
-
         this.ctx.fillStyle = "#000000";
         this.ctx.beginPath();
         this.ctx.rect(0, 0, this.canvas.width, this.canvas.height);
         this.ctx.arc(cx, cy, R, 0, Math.PI * 2, true);
         this.ctx.fill("evenodd");
-
         this.ctx.restore();
     }
-
     drawNavigationDebugLabel(entity, navigation, color = "#ffffff") {
         const info = navigation.getDebugInfo(entity);
         if (!info) return;
-
         const replanText = info.replanReason ? ` ${info.replanReason}` : "";
         const label = `${info.mode} d=${Math.round(info.dist)} p=${info.pathLen}${replanText}`;
-
         this.ctx.save();
         this.ctx.font = "9px monospace";
         this.ctx.textAlign = "center";
@@ -322,19 +243,14 @@ export class Renderer {
         this.ctx.fillText(label, entity.x, entity.y - entity.radius - 8);
         this.ctx.restore();
     }
-
     drawEntityNavigationPath(entity, path, strokeStyle, fillStyle) {
         if (!path || path.length === 0) return;
-
         this.ctx.beginPath();
         this.ctx.moveTo(entity.x, entity.y);
-        for (const wp of path) {
-            this.ctx.lineTo(wp.x, wp.y);
-        }
+        for (const wp of path) this.ctx.lineTo(wp.x, wp.y);
         this.ctx.strokeStyle = strokeStyle;
         this.ctx.lineWidth = 2.5;
         this.ctx.stroke();
-
         for (const wp of path) {
             this.ctx.beginPath();
             this.ctx.arc(wp.x, wp.y, 4, 0, Math.PI * 2);
@@ -342,14 +258,11 @@ export class Renderer {
             this.ctx.fill();
         }
     }
-
     drawDebugHPA(state, viewport) {
         const hnav = state.hierarchicalNavigator;
         if (!hnav || !hnav.grid) return;
         if (!viewport) return;
-
         this.ctx.save();
-
         // Get visible world bounds
         const pad = hnav.cellSize * 2;
         const screenW = state.canvasBounds.width || this.canvas.width;
@@ -360,23 +273,19 @@ export class Renderer {
         const vxMax = Math.max(wMin.x, wMax.x) + pad;
         const vyMin = Math.min(wMin.y, wMax.y) - pad;
         const vyMax = Math.max(wMin.y, wMax.y) + pad;
-
         // Map visible bounds to grid cell ranges
         const startGrid = hnav.worldToGrid(vxMin, vyMin);
         const endGrid = hnav.worldToGrid(vxMax, vyMax);
-
         const startCol = Math.max(0, Math.min(hnav.cols - 1, startGrid.col));
         const endCol = Math.max(0, Math.min(hnav.cols - 1, endGrid.col));
         const startRow = Math.max(0, Math.min(hnav.rows - 1, startGrid.row));
         const endRow = Math.max(0, Math.min(hnav.rows - 1, endGrid.row));
-
         // 1. Draw Grid Cells & Voronoi Regions
-        for (let row = startRow; row <= endRow; row++) {
+        for (let row = startRow; row <= endRow; row++)
             for (let col = startCol; col <= endCol; col++) {
                 const isBlocked = hnav.grid[row * hnav.cols + col] === 1;
                 const wx = hnav.minX + col * hnav.cellSize;
                 const wy = hnav.minY + row * hnav.cellSize;
-
                 if (isBlocked) {
                     this.ctx.fillStyle = "rgba(244, 67, 54, 0.25)"; // Translucent Red for blocked
                     this.ctx.fillRect(wx, wy, hnav.cellSize, hnav.cellSize);
@@ -385,26 +294,20 @@ export class Renderer {
                     this.ctx.fillRect(wx, wy, hnav.cellSize, hnav.cellSize);
                 }
             }
-        }
-
         // Draw Region Perimeters
         if (hnav.cellToNode) {
             this.ctx.beginPath();
             this.ctx.strokeStyle = "rgba(0, 229, 255, 0.5)"; // Translucent Cyan for borders
             this.ctx.lineWidth = 1.5;
-
-            for (let row = startRow; row <= endRow; row++) {
+            for (let row = startRow; row <= endRow; row++)
                 for (let col = startCol; col <= endCol; col++) {
                     const idx = row * hnav.cols + col;
                     if (hnav.grid[idx] === 1) continue;
-
                     const node = hnav.cellToNode[idx];
                     if (!node) continue;
-
                     const wx = hnav.minX + col * hnav.cellSize;
                     const wy = hnav.minY + row * hnav.cellSize;
                     const cellSize = hnav.cellSize;
-
                     // Check Right Neighbor
                     if (col + 1 < hnav.cols) {
                         const rIdx = idx + 1;
@@ -416,7 +319,6 @@ export class Renderer {
                             }
                         }
                     }
-
                     // Check Bottom Neighbor
                     if (row + 1 < hnav.rows) {
                         const bIdx = idx + hnav.cols;
@@ -429,17 +331,15 @@ export class Renderer {
                         }
                     }
                 }
-            }
             this.ctx.stroke();
         }
-
         // 2. Draw HPA* Abstract Nodes & Edges
         for (const id in hnav.nodesMap) {
             const node = hnav.nodesMap[id];
             // Draw edges
             for (const edge of node.edges) {
                 const targetNode = hnav.nodesMap[edge.targetId];
-                if (targetNode) {
+                if (targetNode)
                     if (edge.path && edge.path.length > 0) {
                         this.ctx.beginPath();
                         const p0 = hnav.gridToWorld(edge.path[0].col, edge.path[0].row);
@@ -459,27 +359,22 @@ export class Renderer {
                         this.ctx.lineWidth = 2.5;
                         this.ctx.stroke();
                     }
-                }
             }
-
             // Draw node
             this.ctx.beginPath();
             this.ctx.arc(node.x, node.y, 4, 0, Math.PI * 2);
             this.ctx.fillStyle = "#00e5ff";
             this.ctx.fill();
         }
-
         // 4. Draw Waypoint Paths and navigation debug for entities
         const navigation = state.navigation;
-        if (navigation) {
+        if (navigation)
             for (const actor of state.getCombatants()) {
                 const color = actor.faction === "player" ? "#00e5ff" : "#ff007f";
                 const path = navigation.getPath(actor);
                 this.drawEntityNavigationPath(actor, path, color, color);
                 this.drawNavigationDebugLabel(actor, navigation, color);
             }
-        }
-
         this.ctx.restore();
     }
 }

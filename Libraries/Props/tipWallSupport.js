@@ -2,9 +2,7 @@ import { wallContextFromState } from "../Spatial/query/wallContext.js";
 import { collectWallSegmentsForEntity } from "../Spatial/query/wallSegmentQuery.js";
 import { SpatialQuery } from "../Spatial/query/SpatialQuery.js";
 import { distanceToSegment } from "../Spatial/geometry/WallGeometry.js";
-
 const wallProbeQuery = new SpatialQuery();
-
 /**
  * 0 = clear to fall, 1 = fully blocked in tipDir.
  *
@@ -13,34 +11,25 @@ const wallProbeQuery = new SpatialQuery();
  */
 export function measureTipFallWallBlock(prop, wallCtx = null) {
     if (prop.isFallen || !prop.strategy?.standTip) return 0;
-
     const tipDir = prop.facing ?? 0;
     const height = prop.strategy?.rollHeight ?? prop.strategy?.uprightHeight ?? (prop._baseRadius ?? prop.radius ?? 8) * 2.5;
     const radius = prop._baseRadius ?? prop.radius ?? 8;
     const probeLen = height + radius * 0.35;
     const dx = Math.cos(tipDir);
     const dy = Math.sin(tipDir);
-
     const steps = 7;
     let firstBlock = steps + 1;
-
     for (let i = 1; i <= steps; i++) {
         const t = (i / steps) * probeLen;
         const px = prop.x + dx * t;
         const py = prop.y + dy * t;
-
         if (wallCtx?.obstacleGrid?.isBlockedWorld?.(px, py)) {
             firstBlock = Math.min(firstBlock, i);
             break;
         }
-
         let segments = [];
-        if (wallCtx?.obstacleGrid?.getNearbySegments) {
-            segments = collectWallSegmentsForEntity(wallProbeQuery, wallCtx, { x: px, y: py, radius: radius * 0.85 });
-        } else if (wallCtx?.walls?.length) {
-            segments = wallCtx.walls;
-        }
-
+        if (wallCtx?.obstacleGrid?.getNearbySegments) segments = collectWallSegmentsForEntity(wallProbeQuery, wallCtx, { x: px, y: py, radius: radius * 0.85 });
+        else if (wallCtx?.walls?.length) segments = wallCtx.walls;
         for (let s = 0; s < segments.length; s++) {
             const wall = segments[s];
             if (wall.isDead) continue;
@@ -51,11 +40,9 @@ export function measureTipFallWallBlock(prop, wallCtx = null) {
         }
         if (firstBlock <= i) break;
     }
-
     if (firstBlock > steps) return 0;
     return 1 - (firstBlock - 1) / steps;
 }
-
 /**
  * @param {object} state
  * @param {object} prop

@@ -2,7 +2,6 @@ import { getSeg, solveIK, applyLocalTilt, getAimingArmAngles } from "./ik.js";
 import { blendAngle, normalizeAngle } from "../../Math/Angle.js";
 import { smootherstep } from "../../Math/Easing.js";
 import { clamp, lerp } from "../../Math/Interpolate.js";
-
 function blendArmVals(base, target, t) {
     return {
         ...base,
@@ -16,13 +15,11 @@ function blendArmVals(base, target, t) {
         lElbowZ: blendAngle(base.lElbowZ ?? 0, target.lElbowZ ?? 0, t),
     };
 }
-
 /**
  * @param {{ resolveWeaponDrawSlots: (actor: object) => object[] }} ports
  */
 export function createCharacterRigCalculator(ports) {
     const { resolveWeaponDrawSlots } = ports;
-
     function applyWeaponAimToVals(vals, actor, aimStrength, facing) {
         const slots = resolveWeaponDrawSlots(actor);
         if (slots.length === 0 || aimStrength <= 0.001) return vals;
@@ -50,7 +47,6 @@ export function createCharacterRigCalculator(ports) {
         }
         return merged;
     }
-
     function calculateCharacterRig(state, cycle, config, rig, poses, actor = null, facing = null) {
         const cf = state.crouchFactor || 0;
         const walkTargets = poses.WALK.getTargets(cycle);
@@ -163,6 +159,5 @@ export function createCharacterRigCalculator(ports) {
             lLeg: { p1: lL_p1, p2: lL_p2, p3: lL_p3 },
         };
     }
-
     return { calculateCharacterRig };
 }

@@ -5,5 +5,4 @@
  * @property {(state: object, triggers: string[]) => void} [markRadiosSeen]
  * @property {(state: object, spawnSlot: string, ctx: object | null) => void} [applySpawn]
  */
-
 export {};

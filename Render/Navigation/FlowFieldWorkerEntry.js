@@ -1,5 +1,4 @@
 import { computeFlowField } from "../../Libraries/Pathfinding/flowFieldBfs.js";
-
 let GRID_WIDTH;
 let GRID_SIZE;
 let ObstacleGrid;
@@ -8,7 +7,6 @@ let FlowPool;
 let bfsDistances;
 let bfsQueue;
 let localVectorMap;
-
 self.onmessage = function (e) {
     const { type, data, slot, tx, ty, range } = e.data;
     if (type === "init") {

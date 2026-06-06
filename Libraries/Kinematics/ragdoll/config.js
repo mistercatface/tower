@@ -1,5 +1,4 @@
 import { weightedPick } from "../../Random/weightedPick.js";
-
 export const RAGDOLL_CONFIG = {
     PHYSICS: {
         GRAVITY: 0.5,
@@ -13,33 +12,15 @@ export const RAGDOLL_CONFIG = {
         CHAOS: 0.2,
         VELOCITY_SCALER: 0.35,
     },
-    CONSTRAINTS: {
-        STIFFNESS: 0.75,
-        ITERATIONS: 4,
-        JOINT_ANGLES: {
-            ELBOW: { min: -2.5, max: 0.1 },
-            KNEE: { min: -0.1, max: 2.5 },
-            NECK: { min: -0.7, max: 0.7 },
-        },
-    },
+    CONSTRAINTS: { STIFFNESS: 0.75, ITERATIONS: 4, JOINT_ANGLES: { ELBOW: { min: -2.5, max: 0.1 }, KNEE: { min: -0.1, max: 2.5 }, NECK: { min: -0.7, max: 0.7 } } },
     GORE: {
         FORCE_MULTIPLIER: 0.43,
         SEVER_THRESHOLD: 6,
         MAX_SEVER_COUNT: 3,
         CASCADE_CHANCE: 0.65,
         CASCADE_DECAY: 0.6,
-        FRAGILITY: {
-            head: 0.75,
-            rArm: 1.0,
-            lArm: 1.0,
-            rLeg: 0.9,
-            lLeg: 0.9,
-        },
-        MAX_SPLITS: {
-            head: 2,
-            torso: 2,
-            limb: 3,
-        },
+        FRAGILITY: { head: 0.75, rArm: 1.0, lArm: 1.0, rLeg: 0.9, lLeg: 0.9 },
+        MAX_SPLITS: { head: 2, torso: 2, limb: 3 },
     },
     BLOOD: {
         BURST_COUNT: 12,
@@ -53,22 +34,10 @@ export const RAGDOLL_CONFIG = {
         MAX_PARTICLES: 500,
         MAX_STAINS: 56,
         GROUND_FADE: 0.1,
-        PALETTE: {
-            ARTERIAL: "#ad0000",
-            VENOUS: "#8a0000",
-            DRIED: "#4a0000",
-            BONE: "#e8e6d1",
-            MARROW: "#5c1818",
-        },
+        PALETTE: { ARTERIAL: "#ad0000", VENOUS: "#8a0000", DRIED: "#4a0000", BONE: "#e8e6d1", MARROW: "#5c1818" },
     },
-    HEALTH: {
-        head: 35,
-        torso: 45,
-        limb: 12,
-        default: 12,
-    },
+    HEALTH: { head: 35, torso: 45, limb: 12, default: 12 },
 };
-
 export const DAMAGE_NEIGHBORS = {
     head: ["spineTop"],
     spineTop: ["head", "rArm", "lArm", "spineBot"],
@@ -82,7 +51,6 @@ export const DAMAGE_NEIGHBORS = {
     rLeg: ["rHip"],
     lLeg: ["lHip"],
 };
-
 export const SEVER_MAP = {
     head: "head",
     rShoulder: "rArm",
@@ -106,7 +74,6 @@ export const SEVER_MAP = {
     lShin: "lShin",
     lFoot: "lShin",
 };
-
 const HIT_ZONES = [
     { id: "head", weight: 15 },
     { id: "spineTop", weight: 20 },
@@ -116,7 +83,6 @@ const HIT_ZONES = [
     { id: "rHip", weight: 15 },
     { id: "lHip", weight: 15 },
 ];
-
 export function getScaledPhysics(pixelSize) {
     const scale = pixelSize / 32;
     const base = RAGDOLL_CONFIG.PHYSICS;
@@ -133,7 +99,6 @@ export function getScaledPhysics(pixelSize) {
         VELOCITY_SCALER: base.VELOCITY_SCALER,
     };
 }
-
 export function createImpactProfile(dirX, dirY, power = 1) {
     const gCfg = RAGDOLL_CONFIG.GORE;
     const forceMag = power * gCfg.FORCE_MULTIPLIER;
@@ -141,11 +106,7 @@ export function createImpactProfile(dirX, dirY, power = 1) {
     const severedLimbs = new Set();
     const processingQueue = [{ id: hitZone.id, force: power, depth: 0 }];
     let safetyBreaker = 0;
-    while (
-        processingQueue.length > 0
-        && severedLimbs.size < gCfg.MAX_SEVER_COUNT
-        && safetyBreaker < 20
-    ) {
+    while (processingQueue.length > 0 && severedLimbs.size < gCfg.MAX_SEVER_COUNT && safetyBreaker < 20) {
         safetyBreaker++;
         const current = processingQueue.shift();
         const limbId = SEVER_MAP[current.id];
@@ -153,28 +114,13 @@ export function createImpactProfile(dirX, dirY, power = 1) {
             if (limbId === "head" && current.id !== "head") continue;
             const fragility = gCfg.FRAGILITY[limbId] ?? 1.0;
             const threshold = gCfg.SEVER_THRESHOLD * fragility;
-            if (current.force > threshold) {
-                severedLimbs.add(limbId);
-            }
+            if (current.force > threshold) severedLimbs.add(limbId);
         }
         if (current.force > 4 && current.depth < 2) {
             const neighbors = DAMAGE_NEIGHBORS[current.id] || [];
-            for (const neighborId of neighbors) {
-                if (Math.random() < gCfg.CASCADE_CHANCE) {
-                    processingQueue.push({
-                        id: neighborId,
-                        force: current.force * gCfg.CASCADE_DECAY,
-                        depth: current.depth + 1,
-                    });
-                }
-            }
+            for (const neighborId of neighbors) if (Math.random() < gCfg.CASCADE_CHANCE) processingQueue.push({ id: neighborId, force: current.force * gCfg.CASCADE_DECAY, depth: current.depth + 1 });
         }
     }
-
     const yForce = -1.0 - forceMag * 0.15;
-    return {
-        force: { x: dirX * forceMag, y: yForce, z: dirY * forceMag },
-        hitBone: hitZone.id,
-        sever: Array.from(severedLimbs),
-    };
+    return { force: { x: dirX * forceMag, y: yForce, z: dirY * forceMag }, hitBone: hitZone.id, sever: Array.from(severedLimbs) };
 }

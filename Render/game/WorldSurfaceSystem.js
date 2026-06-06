@@ -6,31 +6,17 @@ import { WorldSurfaceEngine } from "../../Libraries/WorldSurface/WorldSurfaceEng
 import { isWorldScene } from "../../GameState/GamePhase.js";
 import { getGameWorldSurfaceSettings } from "../WorldSurfaceBootstrap.js";
 import { buildGroundChunkBakePayload, resolveSurfaceProfileAtCoords } from "./surfaceProfileResolver.js";
-
 export class WorldSurfaceSystem extends WorldSurfaceEngine {
     /** @param {import("../../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} [settings] */
     constructor(settings = getGameWorldSurfaceSettings()) {
-        super(settings, {
-            buildChunkPayload: (state, chunkCol, chunkRow, zLevel) =>
-                buildGroundChunkBakePayload(state, chunkCol, chunkRow, zLevel),
-        });
+        super(settings, { buildChunkPayload: (state, chunkCol, chunkRow, zLevel) => buildGroundChunkBakePayload(state, chunkCol, chunkRow, zLevel) });
     }
-
     invalidateGridBounds(bounds, state, cellsPerChunk = this.settings.cellsPerChunk) {
-        super.invalidateGridBounds(
-            bounds,
-            state.obstacleGrid,
-            (x, y) => resolveSurfaceProfileAtCoords(state, x, y),
-            cellsPerChunk,
-        );
+        super.invalidateGridBounds(bounds, state.obstacleGrid, (x, y) => resolveSurfaceProfileAtCoords(state, x, y), cellsPerChunk);
     }
-
     /** Draw procedural ground: shadow underpaint + baked chunk textures (simulation/inspector scenes only). */
     drawGround(ctx, state, viewport) {
-        if (!viewport || !isWorldScene(state.phase) || !state.obstacleGrid?.cols) {
-            return;
-        }
-
+        if (!viewport || !isWorldScene(state.phase) || !state.obstacleGrid?.cols) return;
         this.drawGroundChunks(ctx, {
             obstacleGrid: state.obstacleGrid,
             viewport,
@@ -45,11 +31,9 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
             },
         });
     }
-
     /** Chunk-cached roof layers at wall height (after walls). */
     drawRoofs(ctx, state, viewport) {
         if (!viewport || !isWorldScene(state.phase) || !state.obstacleGrid?.cols) return;
-
         this.drawRoofLayers(ctx, {
             obstacleGrid: state.obstacleGrid,
             wallSpatialIndex: state.wallSpatialIndex,

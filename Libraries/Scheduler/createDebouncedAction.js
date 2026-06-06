@@ -7,18 +7,14 @@
  */
 export function createDebouncedAction(scheduler, delayMs, action) {
     let eventId = null;
-
     return {
         queue() {
-            if (eventId !== null) {
-                scheduler.cancel(eventId);
-            }
+            if (eventId !== null) scheduler.cancel(eventId);
             eventId = scheduler.schedule(delayMs, () => {
                 eventId = null;
                 action();
             });
         },
-
         cancel() {
             if (eventId !== null) {
                 scheduler.cancel(eventId);

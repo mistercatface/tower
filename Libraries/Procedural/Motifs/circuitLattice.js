@@ -1,10 +1,8 @@
 import { noise2D } from "../Noise/Perlin2D.js";
 import { sampleCoords, applyTint } from "../util/motifUtilities.js";
-
 function ridgedNoise(x, y, octaves) {
     return Math.abs(noise2D(x, y, octaves));
 }
-
 /**
  * Intersecting ridged veins form panel seams; glow concentrates on veins and brighter at crossings.
  */
@@ -44,38 +42,28 @@ export const circuitLatticeMotif = {
         const angle = config.angle ?? 0;
         const cos = Math.cos(angle);
         const sin = Math.sin(angle);
-
         const ax = x * cos - y * sin;
         const ay = x * sin + y * cos;
-
         const r1 = ridgedNoise((ax + offsetX) * freq, (ay + offsetY) * freq, octaves);
         const r2 = ridgedNoise((ay + offsetX) * freq, (ax + offsetY) * freq, octaves);
         const lattice = Math.min(r1, r2);
-
         const ridgeThreshold = config.ridgeThreshold;
         if (lattice < ridgeThreshold) {
             const vein = (1.0 - lattice / ridgeThreshold) * config.peak;
-            if (config.tint) {
-                applyTint(rgb, vein, config.tint);
-            }
-
+            if (config.tint) applyTint(rgb, vein, config.tint);
             const crossGate = config.intersectionThreshold ?? ridgeThreshold;
             const crossA = Math.max(0, 1.0 - r1 / crossGate);
             const crossB = Math.max(0, 1.0 - r2 / crossGate);
             const cross = crossA * crossB;
-            if (cross > 0 && config.intersectionPeak > 0 && config.intersectionTint) {
-                applyTint(rgb, cross * config.intersectionPeak, config.intersectionTint);
-            }
+            if (cross > 0 && config.intersectionPeak > 0 && config.intersectionTint) applyTint(rgb, cross * config.intersectionPeak, config.intersectionTint);
             return;
         }
-
         const grooveThreshold = config.grooveThreshold;
         if (grooveThreshold != null && lattice < grooveThreshold && config.grooveTint) {
             const groove = (1.0 - (lattice - ridgeThreshold) / (grooveThreshold - ridgeThreshold)) * (config.groovePeak ?? 4);
             applyTint(rgb, groove, config.grooveTint);
             return;
         }
-
         const interior = config.interiorVariation;
         if (interior && interior.tint) {
             const variation = noise2D(x * interior.frequency, y * interior.frequency, interior.octaves ?? 1);

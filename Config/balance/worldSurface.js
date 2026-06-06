@@ -1,5 +1,4 @@
 import { gridSettings } from "./grid.js";
-
 /** Engine defaults (tower reference). Override wallHeight / pixelsPerCell in gameDefinition.worldSurface when needed. */
 export const worldSurfaceSettings = {
     cellsPerChunk: gridSettings.minCellsPerChunk,

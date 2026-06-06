@@ -1,10 +1,5 @@
 import { perkSettings, upgradeCostAtLevel } from "../Config/Config.js";
-import {
-    baseUpgradeDefinitions,
-    metaUpgradeDefinitions,
-    upgradeFromDefinition,
-} from "../Config/content/upgradeDefinitions.js";
-
+import { baseUpgradeDefinitions, metaUpgradeDefinitions, upgradeFromDefinition } from "../Config/content/upgradeDefinitions.js";
 export class Upgrade {
     constructor(config) {
         this.id = config.id;
@@ -13,7 +8,11 @@ export class Upgrade {
         this.name = config.name;
         this.description = config.description;
         this.applyFn = config.applyFn;
-        this.currentStrFn = config.currentStrFn || function() { return this.description; };
+        this.currentStrFn =
+            config.currentStrFn ||
+            function () {
+                return this.description;
+            };
         this.nextStrFn = config.nextStrFn || null;
         this.updateFn = config.updateFn || null;
         this.maxLevel = config.maxLevel !== undefined ? config.maxLevel : Infinity;
@@ -38,11 +37,9 @@ export class Upgrade {
         this.hasToggle = config.hasToggle || false;
         this.usesRunStatsDisplay = config.usesRunStatsDisplay || false;
     }
-
     getUpgradeLevel(actor) {
         return actor.upgrades[this.id]?.level ?? 0;
     }
-
     getCurrentStr(state, actor = state.player) {
         const lvl = this.getUpgradeLevel(actor);
         const runStats = this.usesRunStatsDisplay ? state.runStats : undefined;
@@ -50,42 +47,33 @@ export class Upgrade {
         if (this.dynamicStrFn) {
             const currentVal = String(this.dynamicStrFn(actor));
             const baseStr = String(baseLvlVal);
-            if (currentVal !== baseStr) {
-                return `${baseStr} (${currentVal})`;
-            }
+            if (currentVal !== baseStr) return `${baseStr} (${currentVal})`;
         }
         return baseLvlVal;
     }
-
     getNextStr(state, actor = state.player) {
         const lvl = this.getUpgradeLevel(actor);
         const runStats = this.usesRunStatsDisplay ? state.runStats : undefined;
         return this.nextStrFn && this.nextStrFn(lvl, actor, runStats);
     }
-
     update(dt, state, actor = state.player) {
         const level = this.getUpgradeLevel(actor);
         if (this.updateFn && level > 0) this.updateFn(dt, actor, level);
     }
 }
-
 export function isBaseStatUpgrade(upgrade) {
     return (upgrade.category === "attack" || upgrade.category === "defense") && !upgrade.isAbility && !upgrade.isPerk;
 }
-
 const healthUpgradeDef = baseUpgradeDefinitions.find((def) => def.id === "Health");
-
 export const createBaseUpgrades = () =>
     baseUpgradeDefinitions.map((def) => {
         const upgrade = upgradeFromDefinition(def, Upgrade);
-        if (def.id === "Health") {
+        if (def.id === "Health")
             upgrade.onPurchase = (state) => {
                 state.player.heal(healthUpgradeDef.stat.perLevel);
             };
-        }
         return upgrade;
     });
-
 export const createUpgrades = () => [
     new Upgrade({
         id: "BaseCost1",
@@ -100,13 +88,10 @@ export const createUpgrades = () => [
         },
         onPurchase: (state) => {
             for (const key in state.player.upgrades) {
-                const cost = upgradeCostAtLevel(
-                    state.runStats.baseUpgradeCost.value,
-                    state.player.upgrades[key].level
-                );
+                const cost = upgradeCostAtLevel(state.runStats.baseUpgradeCost.value, state.player.upgrades[key].level);
                 state.player.upgrades[key].ptsCost = cost;
             }
-        }
+        },
     }),
     new Upgrade({
         id: "Regenerate1",
@@ -118,7 +103,7 @@ export const createUpgrades = () => [
         onPurchase: (state) => {
             state.player.upgrades["Regen"].baseLevel += perkSettings.regenerateLevelBonus;
             state.player.upgrades["Regen"].level += perkSettings.regenerateLevelBonus;
-        }
+        },
     }),
     new Upgrade({
         id: "FireRate1",
@@ -129,7 +114,7 @@ export const createUpgrades = () => [
         isPerk: true,
         applyFn: (combat, _run, level) => {
             combat.fireIntervalMultiplier.multiplierModifiers /= perkSettings.fireRateChargeTimeDivisor;
-        }
+        },
     }),
     new Upgrade({
         id: "XPGain",
@@ -140,7 +125,7 @@ export const createUpgrades = () => [
         isPerk: true,
         onEnemyKilled: (state, enemy, xp) => {
             return xp * perkSettings.xpGainMultiplier;
-        }
+        },
     }),
     new Upgrade({
         id: "StartingWealth",
@@ -154,17 +139,10 @@ export const createUpgrades = () => [
         },
         onPurchase: (state) => {
             state.score += perkSettings.startingWealthPoints;
-        }
+        },
     }),
     // Ability order in this list defines shop branch order (see buildAbilityTreeLayout).
-    new Upgrade({
-        id: "Reposition",
-        category: "abilities",
-        name: "Reposition",
-        isAbility: true,
-        description: "Passive: Tap to move.",
-        maxLevel: 1,
-    }),
+    new Upgrade({ id: "Reposition", category: "abilities", name: "Reposition", isAbility: true, description: "Passive: Tap to move.", maxLevel: 1 }),
     new Upgrade({
         id: "Dive",
         category: "abilities",
@@ -180,7 +158,7 @@ export const createUpgrades = () => [
         blocksTargeting: true,
         speedModFn: (activeTimer, duration) => {
             const diveRatio = activeTimer / duration;
-            return 1.0 + (12.0 * Math.pow(diveRatio, 0.5));
+            return 1.0 + 12.0 * Math.pow(diveRatio, 0.5);
         },
         showInHud: true,
     }),

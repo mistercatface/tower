@@ -1,28 +1,19 @@
 import { clampByte } from "../util/color.js";
 import { noise2D } from "../Noise/Perlin2D.js";
-
 function structureCoords(sample, structure) {
     const freqX = structure.frequencyX ?? structure.frequency;
     const freqY = structure.frequencyY ?? structure.frequency;
     return { x: sample.evalX * freqX, y: sample.evalY * freqY };
 }
-
 function grainCoords(sample, grain) {
     const freqX = grain.frequencyX ?? grain.frequency;
     const freqY = grain.frequencyY ?? grain.frequency;
     return { x: sample.evalX * freqX, y: sample.evalY * freqY };
 }
-
 export const baseMetalMotif = {
     metadata: {
         label: "Base metal",
-        defaults: {
-            type: "baseMetal",
-            structure: { frequency: 0.0025, octaves: 1, rgbDelta: [3, 3, 4] },
-            grain: { frequency: 0.18, octaves: 1, amplitude: 1 },
-            opacity: 1,
-            blendMode: "add",
-        },
+        defaults: { type: "baseMetal", structure: { frequency: 0.0025, octaves: 1, rgbDelta: [3, 3, 4] }, grain: { frequency: 0.18, octaves: 1, amplitude: 1 }, opacity: 1, blendMode: "add" },
         fields: [
             { path: "structure.frequency", label: "Structure freq", min: 0.0005, max: 0.02, step: 0.0005 },
             { path: "structure.octaves", label: "Structure octaves", min: 1, max: 4, step: 1 },
@@ -41,7 +32,6 @@ export const baseMetalMotif = {
         rgb.r = clampByte(rgb.r + structureNoise * structure.rgbDelta[0]);
         rgb.g = clampByte(rgb.g + structureNoise * structure.rgbDelta[1]);
         rgb.b = clampByte(rgb.b + structureNoise * structure.rgbDelta[2]);
-
         const { x: gx, y: gy } = grainCoords(sample, grain);
         const fineNoise = noise2D(gx, gy, grain.octaves) * grain.amplitude;
         rgb.r = clampByte(rgb.r + fineNoise);

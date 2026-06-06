@@ -1,68 +1,41 @@
 import { listShippedSurfaceProfileIds } from "../../Config/procedural/profiles.js";
 import { ensureLabGameDefinition } from "../Lab/ensureLabGameDefinition.js";
 import { initMapPreviewNavigation } from "./map/LabMapPreview.js";
-import {
-    invalidateLabCaches,
-    registerEditorProfiles,
-    renderMapPreview,
-} from "./LabMapView.js";
-import {
-    readControls,
-    applyGameDefaultsToForm,
-    syncCombatZoomToStage,
-    initPresetSelect,
-    initToolbarDefaults,
-    bindToolbarControls,
-} from "./LabToolbar.js";
+import { invalidateLabCaches, registerEditorProfiles, renderMapPreview } from "./LabMapView.js";
+import { readControls, applyGameDefaultsToForm, syncCombatZoomToStage, initPresetSelect, initToolbarDefaults, bindToolbarControls } from "./LabToolbar.js";
 import { ensureLabWorld, getLabWorld, resetLabWorld } from "./LabWorldSession.js";
 import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEditor.js";
 import { initAnimationPreview } from "./LabAnimationPreview.js";
 import { initResizer } from "../Lab/lab-shared.js";
-
 let previewRefreshTimer = null;
 let bakeRepaintRaf = null;
-
 function redrawMapPreview() {
     const ctrl = readControls();
     const world = getLabWorld() ?? ensureLabWorld(ctrl);
-    if (world) {
-        renderMapPreview(ctrl, world);
-    }
+    if (world) renderMapPreview(ctrl, world);
 }
-
 function runBakeRepaintLoop() {
-    if (bakeRepaintRaf != null) {
-        cancelAnimationFrame(bakeRepaintRaf);
-    }
+    if (bakeRepaintRaf != null) cancelAnimationFrame(bakeRepaintRaf);
     const tick = () => {
         redrawMapPreview();
         const world = getLabWorld();
-        if (world?.worldSurfaces?.hasPendingSurfaceBakes?.()) {
-            bakeRepaintRaf = requestAnimationFrame(tick);
-        } else {
-            bakeRepaintRaf = null;
-        }
+        if (world?.worldSurfaces?.hasPendingSurfaceBakes?.()) bakeRepaintRaf = requestAnimationFrame(tick);
+        else bakeRepaintRaf = null;
     };
     bakeRepaintRaf = requestAnimationFrame(tick);
 }
-
 async function refreshLabPreview() {
     const ctrl = readControls();
     const world = getLabWorld() ?? ensureLabWorld(ctrl);
-    if (!world) {
-        return;
-    }
+    if (!world) return;
     invalidateLabCaches();
     world.worldSurfaces.clear();
     await registerEditorProfiles();
     redrawMapPreview();
     runBakeRepaintLoop();
 }
-
 function schedulePreviewRefresh(debounceMs) {
-    if (previewRefreshTimer != null) {
-        clearTimeout(previewRefreshTimer);
-    }
+    if (previewRefreshTimer != null) clearTimeout(previewRefreshTimer);
     if (debounceMs <= 0) {
         refreshLabPreview();
         return;
@@ -72,7 +45,6 @@ function schedulePreviewRefresh(debounceMs) {
         refreshLabPreview();
     }, debounceMs);
 }
-
 function handleEditorChange(options = {}) {
     if (options.reloadProfile) {
         schedulePreviewRefresh(0);
@@ -84,52 +56,32 @@ function handleEditorChange(options = {}) {
     }
     schedulePreviewRefresh(300);
 }
-
 function onStageResize() {
     applyGameDefaultsToForm(getLabWorld());
     syncCombatZoomToStage(getLabWorld());
     redrawMapPreview();
 }
-
 function renderAll() {
     refreshLabPreview().then(() => {
         applyGameDefaultsToForm(getLabWorld());
     });
 }
-
 ensureLabGameDefinition();
 initPresetSelect(listShippedSurfaceProfileIds());
 initProfileEditor({ onChange: handleEditorChange });
-initMapPreviewNavigation(
-    () => ({ ...readControls(), worldState: getLabWorld() }),
-    {
-        onViewChange: () => {
-            redrawMapPreview();
-            if (getLabWorld()?.worldSurfaces?.hasPendingSurfaceBakes?.()) {
-                runBakeRepaintLoop();
-            }
-        },
+initMapPreviewNavigation(() => ({ ...readControls(), worldState: getLabWorld() }), {
+    onViewChange: () => {
+        redrawMapPreview();
+        if (getLabWorld()?.worldSurfaces?.hasPendingSurfaceBakes?.()) runBakeRepaintLoop();
     },
-);
-bindToolbarControls({
-    onRender: () => renderAll(),
-    onResetMap: resetLabWorld,
-    onStageResize,
 });
-
+bindToolbarControls({ onRender: () => renderAll(), onResetMap: resetLabWorld, onStageResize });
 initToolbarDefaults();
-
-
 function bootstrap() {
     registerEditorProfiles().then(() => {
         initResizer("resizer", onStageResize);
-
-        
         const animCanvas = document.getElementById("animationPreviewCanvas");
-        if (animCanvas) {
-            initAnimationPreview(animCanvas, buildProfileFromEditor);
-        }
-
+        if (animCanvas) initAnimationPreview(animCanvas, buildProfileFromEditor);
         const ctrl = readControls();
         const world = ensureLabWorld(ctrl);
         applyGameDefaultsToForm(world);
@@ -138,5 +90,4 @@ function bootstrap() {
         runBakeRepaintLoop();
     });
 }
-
 bootstrap();

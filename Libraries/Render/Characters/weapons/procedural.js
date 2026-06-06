@@ -1,9 +1,4 @@
-const GUN_COLORS = {
-    dark: "#111111",
-    mid: "#970000",
-    highlight: "#fbff00",
-};
-
+const GUN_COLORS = { dark: "#111111", mid: "#970000", highlight: "#fbff00" };
 function drawPistol(ctx, hand, scale, aimAngle, config, barrelRatio) {
     const S = (r) => config.SIZE * r;
     ctx.save();
@@ -15,7 +10,6 @@ function drawPistol(ctx, hand, scale, aimAngle, config, barrelRatio) {
     const barrelLen = S(barrelRatio);
     const barrelHeight = S(0.04);
     const gripHeight = S(0.08);
-
     const grad = ctx.createLinearGradient(0, -S(0.04), 0, 0);
     grad.addColorStop(0, GUN_COLORS.highlight);
     grad.addColorStop(0.5, GUN_COLORS.mid);
@@ -29,7 +23,6 @@ function drawPistol(ctx, hand, scale, aimAngle, config, barrelRatio) {
     ctx.fillRect(barrelLen - S(0.005), -S(0.02), S(0.015), barrelHeight);
     ctx.restore();
 }
-
 function drawLongGun(ctx, hand, scale, aimAngle, config, style, barrelRatio) {
     const S = (r) => config.SIZE * r;
     ctx.save();
@@ -42,7 +35,6 @@ function drawLongGun(ctx, hand, scale, aimAngle, config, style, barrelRatio) {
     const barrelLen = S(barrelRatio);
     const barrelHeight = S(isSmg ? 0.035 : 0.045);
     const stockLen = S(0.1);
-
     ctx.fillStyle = isSmg ? "#222222" : "#5c3a21";
     ctx.fillRect(-stockLen, -S(0.012), stockLen, S(0.024));
     ctx.fillStyle = "#1a1a1a";
@@ -62,25 +54,11 @@ function drawLongGun(ctx, hand, scale, aimAngle, config, style, barrelRatio) {
     ctx.fillRect(barrelLen - S(0.005), -barrelHeight / 2, S(0.015), barrelHeight);
     ctx.restore();
 }
-
 function createWeaponVisual({ poseName, barrelRatio, draw }) {
     return { poseName, barrelRatio, draw };
 }
-
 export const WEAPON_VISUALS = {
-    pistol: createWeaponVisual({
-        poseName: "PISTOL",
-        barrelRatio: 0.2,
-        draw: (ctx, hand, scale, aim, config, visual) => drawPistol(ctx, hand, scale, aim, config, visual.barrelRatio),
-    }),
-    longGun: createWeaponVisual({
-        poseName: "SHOTGUN",
-        barrelRatio: 0.32,
-        draw: (ctx, hand, scale, aim, config, visual) => drawLongGun(ctx, hand, scale, aim, config, "shotgun", visual.barrelRatio),
-    }),
-    smg: createWeaponVisual({
-        poseName: "SHOTGUN",
-        barrelRatio: 0.28,
-        draw: (ctx, hand, scale, aim, config, visual) => drawLongGun(ctx, hand, scale, aim, config, "smg", visual.barrelRatio),
-    }),
+    pistol: createWeaponVisual({ poseName: "PISTOL", barrelRatio: 0.2, draw: (ctx, hand, scale, aim, config, visual) => drawPistol(ctx, hand, scale, aim, config, visual.barrelRatio) }),
+    longGun: createWeaponVisual({ poseName: "SHOTGUN", barrelRatio: 0.32, draw: (ctx, hand, scale, aim, config, visual) => drawLongGun(ctx, hand, scale, aim, config, "shotgun", visual.barrelRatio) }),
+    smg: createWeaponVisual({ poseName: "SHOTGUN", barrelRatio: 0.28, draw: (ctx, hand, scale, aim, config, visual) => drawLongGun(ctx, hand, scale, aim, config, "smg", visual.barrelRatio) }),
 };

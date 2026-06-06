@@ -4,7 +4,6 @@ export class DoubleTapDetector {
         this.timeoutMs = timeoutMs;
         this._lastTapTime = 0;
     }
-
     /**
      * @param {number} [now]
      * @returns {boolean}

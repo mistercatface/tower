@@ -5,9 +5,7 @@ import { renderGamePreview, prepareGameCanvas, invalidateMapPreviewBakes } from 
 import { getLabPreviewProfile, RUNTIME_LAB_PROFILE_ID } from "./profile/ProfileEditor.js";
 import { ensureLabWorld, getLabWorld, getLabWorldMapSeed } from "./LabWorldSession.js";
 import { invalidateWallAtlasKeyMemos } from "../../Render/game/wallSurfaceInvalidation.js";
-
 let registerEditorProfilesSerial = Promise.resolve();
-
 export function registerEditorProfiles() {
     registerEditorProfilesSerial = registerEditorProfilesSerial.then(async () => {
         const labProfile = getLabPreviewProfile();
@@ -19,31 +17,24 @@ export function registerEditorProfiles() {
             world.worldSurfaces.clear();
         }
         invalidateMapPreviewBakes();
-
         await TileWorkerCoordinator.registerRuntimeProfile(RUNTIME_LAB_PROFILE_ID, labProfile);
     });
     return registerEditorProfilesSerial;
 }
-
 export function invalidateLabCaches() {
     invalidateMapPreviewBakes();
 }
-
 function syncGameCanvasSize() {
     const stage = document.getElementById("mapStage");
     const canvas = document.getElementById("gamePreview");
     const size = prepareGameCanvas(canvas, stage);
     if (!size) return null;
-    
     if (size.changed) invalidateMapPreviewBakes();
-    
     return size;
 }
-
 export function renderMapPreview(ctrl, world) {
     const size = syncGameCanvasSize();
     if (!size) return;
-    
     renderGamePreview(document.getElementById("gamePreview"), {
         worldState: world,
         profileId: RUNTIME_LAB_PROFILE_ID,
@@ -63,7 +54,6 @@ export function renderMapPreview(ctrl, world) {
             `zoom ${ctrl.gameZoom.toFixed(2)} · range ${ctrl.weaponRange} · WASD`;
     }
 }
-
 export async function runMapPreviewPass(readControls) {
     await registerEditorProfiles();
     const ctrl = readControls();

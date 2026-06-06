@@ -9,14 +9,11 @@ import { getGunDefinition } from "../Config/content/guns.js";
 import { Enemy } from "./Enemy.js";
 import { getInteractionPairFilter, getPlayerActors } from "../Core/GamePorts.js";
 import { RagdollCorpse } from "./RagdollCorpse.js";
-
 // Grenade-specific imports
 import { Explosion } from "./Explosion/Explosion.js";
 import { ProgressBar } from "../Libraries/Canvas/ProgressBar.js";
 import { CombatParticles } from "../Render/CombatParticles.js";
-
 const grenadeProgressBar = new ProgressBar({ width: 24, height: 4, borderRadius: 2, quantizationSteps: 30, colorFn: () => "#FF1744" });
-
 export const ProjectileStrategies = {
     bullet: {
         move(p, dt) {
@@ -36,15 +33,10 @@ export const ProjectileStrategies = {
             events.push({ target, damage, projectile: p });
             if (p.gunId && target instanceof Enemy) {
                 const impactKnockback = getGunImpactKnockback(getGunDefinition(p.gunId));
-                if (impactKnockback) {
-                    applyActorImpactKnockback(target, p.angle, impactKnockback, spatialFrame, state);
-                }
+                if (impactKnockback) applyActorImpactKnockback(target, p.angle, impactKnockback, spatialFrame, state);
             }
-            if (target.health <= damage && p.penetration > 0) {
-                p.penetration--;
-            } else {
-                p.isDead = true;
-            }
+            if (target.health <= damage && p.penetration > 0) p.penetration--;
+            else p.isDead = true;
         },
         onPickupCollision(p, state, pickup, events) {
             return pickup.strategy.onHit(state, pickup, p, events);
@@ -61,17 +53,12 @@ export const ProjectileStrategies = {
             p.x += p.vx * (dt / 1000);
             p.y += p.vy * (dt / 1000);
             const speed = Math.hypot(p.vx, p.vy);
-            if (speed > 5) {
-                p.angle = Math.atan2(p.vy, p.vx);
-            }
+            if (speed > 5) p.angle = Math.atan2(p.vy, p.vx);
         },
         update(p, dt, state) {
             p.fuseTimer -= dt;
-            if (p.fuseTimer <= 0) {
-                p.explode(state);
-            } else {
-                p.checkOutOfBounds(state);
-            }
+            if (p.fuseTimer <= 0) p.explode(state);
+            else p.checkOutOfBounds(state);
         },
         onWallCollision(p, state, segment, events) {
             p.explode(state);
@@ -92,7 +79,6 @@ export const ProjectileStrategies = {
             ctx.lineWidth = 1.5;
             ctx.strokeStyle = "#1B5E20"; // dark green border
             ctx.stroke();
-
             const age = performance.now() - p.spawnTime;
             if (Math.floor(age / 150) % 2 === 0) {
                 ctx.beginPath();
@@ -100,13 +86,11 @@ export const ProjectileStrategies = {
                 ctx.fillStyle = "#FF1744"; // flashing red center
                 ctx.fill();
             }
-
             const ratio = Math.max(0, p.fuseTimer / p.fuseTime);
             grenadeProgressBar.render(ctx, p.x, p.y - p.radius - 8, ratio, renderer.actorCache);
         },
     },
 };
-
 export class Projectile extends Entity {
     static checkSpawnCollisions(state, spatialFrame, events) {
         for (const p of state.projectiles) {
@@ -115,36 +99,25 @@ export class Projectile extends Entity {
             p.resolveFactionCollisions(state, events, spatialFrame);
         }
     }
-
     static updateAll(state, dt) {
         for (let i = state.projectiles.length - 1; i >= 0; i--) {
             const p = state.projectiles[i];
             p.update(dt, state);
-            if (!p.isDead) {
-                RagdollCorpse.tryProjectileHit(state, p);
-            }
+            if (!p.isDead) RagdollCorpse.tryProjectileHit(state, p);
             if (p.isDead) {
                 state.projectiles.splice(i, 1);
                 Pools.projectiles.release(p);
             }
         }
     }
-
     constructor(x = 0, y = 0, radius = 0, speed = 0, target = null, angle = null, damage = 0, faction = "player") {
         super(x, y, 0, false);
-        if (arguments.length > 0) {
-            this.reset(x, y, radius, speed, target, angle, damage, faction);
-        }
+        if (arguments.length > 0) this.reset(x, y, radius, speed, target, angle, damage, faction);
     }
-
     reset(x, y, radius, speed, target, angle = null, damage = 0, faction = "player") {
         let initialAngle = 0;
-        if (angle !== null && angle !== undefined) {
-            initialAngle = angle;
-        } else if (target) {
-            initialAngle = Math.atan2(target.y - y, target.x - x);
-        }
-
+        if (angle !== null && angle !== undefined) initialAngle = angle;
+        else if (target) initialAngle = Math.atan2(target.y - y, target.x - x);
         super.reset(x, y, initialAngle, false);
         this.radius = radius;
         this.speed = speed;
@@ -158,7 +131,6 @@ export class Projectile extends Entity {
         this.spawnTime = performance.now();
         this._spawnFrameCheck = true;
     }
-
     set gunId(val) {
         this._gunId = val;
         if (val) {
@@ -175,49 +147,36 @@ export class Projectile extends Entity {
             }
         }
     }
-
     get gunId() {
         return this._gunId;
     }
-
     move(dt) {
         this.strategy.move(this, dt);
     }
-
     checkOutOfBounds(state) {
         const anchors = getPlayerActors(state);
         if (anchors.length === 0) return false;
-
         let minDist = Infinity;
-        for (const anchor of anchors) {
-            minDist = Math.min(minDist, Math.hypot(this.x - anchor.x, this.y - anchor.y));
-        }
-
+        for (const anchor of anchors) minDist = Math.min(minDist, Math.hypot(this.x - anchor.x, this.y - anchor.y));
         if (minDist > 1500) {
             this.isDead = true;
             return true;
         }
         return false;
     }
-
     update(dt, state) {
         if (this.isDead) return;
         this.move(dt);
         this.strategy.update(this, dt, state);
     }
-
     explode(state) {
         if (this.isDead) return;
         this.isDead = true;
-
         const config = this.explosionConfig || { type: "standard", radius: 0, maxRadius: 60, speed: 250, damage: 3, lingerTimer: 500, fadeTimer: 150 };
-
         if (!state.explosions) state.explosions = [];
         state.explosions.push(new Explosion(this.x, this.y, config.type || "standard", config));
-
         CombatParticles.spawnImpactSparks(state, this.x, this.y, { impactAngle: this.angle });
     }
-
     resolveFactionCollisions(state, events, spatialFrame) {
         spatialFrame.forEachNeighbor(this, (target) => {
             if (this.isDead || !getInteractionPairFilter("projectileHitActor").allows(this, target)) return;
@@ -225,10 +184,8 @@ export class Projectile extends Entity {
             this.strategy.onFactionCollision(this, state, target, events, spatialFrame);
         });
     }
-
     render(ctx, renderer, state) {
         this.strategy.render(this, ctx, renderer, state);
     }
 }
-
 Pools.projectiles.createFn = () => new Projectile();

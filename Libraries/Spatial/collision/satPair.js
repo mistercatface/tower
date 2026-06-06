@@ -2,7 +2,6 @@ import { applyRigidBodyImpulse } from "../../Motion/rigidBodyImpulse.js";
 import { massFromBody } from "../../Motion/bodyMass.js";
 import { SatCollision } from "./SatCollision.js";
 import { separateAlongNormal } from "./penetration.js";
-
 /**
  * SAT detect → mass-weighted separation → rigid-body impulse.
  * @returns {{ nx: number, ny: number, overlap: number, cx?: number, cy?: number } | null}

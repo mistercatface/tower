@@ -1,6 +1,5 @@
 import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { standTipFacingFromPush } from "./standTipMotion.js";
-
 /**
  * @param {object} pickup
  * @param {number} fx
@@ -14,7 +13,6 @@ export function applyTipImpulseFromForce(pickup, fx, fy) {
     const gain = pickup.strategy.tipImpulseGain ?? 0.035;
     pickup.rollOmega = (pickup.rollOmega ?? 0) + (force * gain) / Math.max(pickup.mass ?? 1, 0.4);
 }
-
 /**
  * Shared knockback for projectile / beam hits on pushable props.
  *
@@ -28,36 +26,21 @@ export function applyTipImpulseFromForce(pickup, fx, fy) {
  *   wake?: boolean,
  * }} [options]
  */
-export function applyProjectileImpulseToPickup(pickup, projectile, {
-    pushForce = 80,
-    explosionPushForce = 250,
-    shardPushForce = 120,
-    applyTorque = true,
-    wake = true,
-} = {}) {
+export function applyProjectileImpulseToPickup(pickup, projectile, { pushForce = 80, explosionPushForce = 250, shardPushForce = 120, applyTorque = true, wake = true } = {}) {
     if (!projectile) return;
-
     const isExplosion = Boolean(projectile.isExplosion);
     let force = pushForce;
     if (isExplosion) force = explosionPushForce;
     else if (pickup.strategy?.splittable) force = shardPushForce;
-
     let forceAngle;
-    if (isExplosion && projectile.x != null && projectile.y != null) {
-        forceAngle = Math.atan2(pickup.y - projectile.y, pickup.x - projectile.x);
-    } else if (projectile.angle != null) {
-        forceAngle = projectile.angle;
-    } else if (projectile.x != null && projectile.y != null) {
-        forceAngle = Math.atan2(pickup.y - projectile.y, pickup.x - projectile.x);
-    } else {
-        return;
-    }
-
+    if (isExplosion && projectile.x != null && projectile.y != null) forceAngle = Math.atan2(pickup.y - projectile.y, pickup.x - projectile.x);
+    else if (projectile.angle != null) forceAngle = projectile.angle;
+    else if (projectile.x != null && projectile.y != null) forceAngle = Math.atan2(pickup.y - projectile.y, pickup.x - projectile.x);
+    else return;
     const fx = Math.cos(forceAngle) * force;
     const fy = Math.sin(forceAngle) * force;
     pickup.vx = (pickup.vx ?? 0) + fx;
     pickup.vy = (pickup.vy ?? 0) + fy;
-
     if (applyTorque && projectile.x != null && projectile.y != null && !isExplosion) {
         const rx = projectile.x - pickup.x;
         const ry = projectile.y - pickup.y;
@@ -68,9 +51,6 @@ export function applyProjectileImpulseToPickup(pickup, projectile, {
             applyTipImpulseFromForce(pickup, fx, fy);
             pickup.angularVelocity = 0;
         }
-    } else if (pickup.strategy?.standTip) {
-        applyTipImpulseFromForce(pickup, fx, fy);
-    }
-
+    } else if (pickup.strategy?.standTip) applyTipImpulseFromForce(pickup, fx, fy);
     if (wake) wakePushableBody(pickup);
 }

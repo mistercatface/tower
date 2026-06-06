@@ -1,6 +1,5 @@
 import { noise2D } from "../Noise/Perlin2D.js";
 import { sampleCoords, applyTint } from "../util/motifUtilities.js";
-
 function fbmRidged(x, y, octaves) {
     let sum = 0;
     let amp = 1;
@@ -17,22 +16,10 @@ function fbmRidged(x, y, octaves) {
     }
     return sum;
 }
-
 export const fractalCracksMotif = {
     metadata: {
         label: "Fractal cracks",
-        defaults: {
-            type: "fractalCracks",
-            coordinateSpace: "eval",
-            frequency: 0.01,
-            octaves: 3,
-            threshold: 0.7,
-            peak: 10,
-            offset: [0, 0],
-            tint: [1, 1, 1],
-            opacity: 0.8,
-            blendMode: "add",
-        },
+        defaults: { type: "fractalCracks", coordinateSpace: "eval", frequency: 0.01, octaves: 3, threshold: 0.7, peak: 10, offset: [0, 0], tint: [1, 1, 1], opacity: 0.8, blendMode: "add" },
         fields: [
             { path: "frequency", label: "Frequency", min: 0.005, max: 0.05, step: 0.001 },
             { path: "octaves", label: "Octaves", min: 1, max: 6, step: 1 },
@@ -46,24 +33,16 @@ export const fractalCracksMotif = {
     },
     apply(sample, rgb, config) {
         const { x, y } = sampleCoords(sample, config.coordinateSpace);
-        
         const freq = config.frequency ?? 0.01;
         const octaves = config.octaves ?? 3;
         const [ox, oy] = config.offset ?? [0, 0];
-        
         const v = fbmRidged((x + ox) * freq, (y + oy) * freq, octaves);
-        
         const threshold = config.threshold ?? 0.8;
-        if (v < threshold) {
-            return;
-        }
-        
+        if (v < threshold) return;
         // Normalize 0 to 1 over the ridge peak
         let t = (v - threshold) / (1 - threshold);
-        
         // Apply edge smoothstep
         t = t * t * (3 - 2 * t);
-
         applyTint(rgb, -t * (config.peak ?? 10), config.tint ?? [1, 1, 1]);
-    }
+    },
 };

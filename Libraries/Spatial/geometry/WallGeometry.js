@@ -1,9 +1,7 @@
 import { distanceToAabb } from "../../Math/Aabb2D.js";
-
 export function getWallReach(wall, padding = wall.padding) {
-    return wall.size / 2 * Math.SQRT2 + padding;
+    return (wall.size / 2) * Math.SQRT2 + padding;
 }
-
 /** Ground-plane corners of a wall segment prism (rotated square). */
 export function getSegmentFootprintCorners(segment) {
     const cos = Math.cos(segment.angle);
@@ -16,7 +14,6 @@ export function getSegmentFootprintCorners(segment) {
         { x: segment.x + -hs * cos - hs * sin, y: segment.y + -hs * sin + hs * cos },
     ];
 }
-
 export function toSegmentLocal(segment, x, y) {
     const dx = x - segment.x;
     const dy = y - segment.y;
@@ -25,29 +22,18 @@ export function toSegmentLocal(segment, x, y) {
         segment._cos = Math.cos(-segment.angle);
         segment._sin = Math.sin(-segment.angle);
     }
-    return {
-        localX: dx * segment._cos - dy * segment._sin,
-        localY: dx * segment._sin + dy * segment._cos,
-        half: segment.size / 2,
-    };
+    return { localX: dx * segment._cos - dy * segment._sin, localY: dx * segment._sin + dy * segment._cos, half: segment.size / 2 };
 }
-
 export function closestPointOnSegment(wall, x, y) {
     let { localX, localY, half } = toSegmentLocal(wall, x, y);
     localX = Math.max(-half, Math.min(half, localX));
     localY = Math.max(-half, Math.min(half, localY));
-
     const worldCos = wall._cos;
     const worldSin = -wall._sin;
-    return {
-        x: wall.x + localX * worldCos - localY * worldSin,
-        y: wall.y + localX * worldSin + localY * worldCos,
-    };
+    return { x: wall.x + localX * worldCos - localY * worldSin, y: wall.y + localX * worldSin + localY * worldCos };
 }
-
 export function distanceSqToSegment(segment, x, y) {
     if (segment.isDead) return Infinity;
-
     const { localX, localY, half } = toSegmentLocal(segment, x, y);
     const closestX = Math.max(-half, Math.min(localX, half));
     const closestY = Math.max(-half, Math.min(localY, half));
@@ -55,12 +41,10 @@ export function distanceSqToSegment(segment, x, y) {
     const distDY = localY - closestY;
     return distDX * distDX + distDY * distDY;
 }
-
 export function distanceToSegment(wall, x, y) {
     const distSq = distanceSqToSegment(wall, x, y);
     return distSq === Infinity ? Infinity : Math.sqrt(distSq);
 }
-
 function segmentsIntersect(ax, ay, bx, by, cx, cy, dx, dy) {
     const d1x = bx - ax;
     const d1y = by - ay;
@@ -70,13 +54,9 @@ function segmentsIntersect(ax, ay, bx, by, cx, cy, dx, dy) {
     const cross2 = d1x * (dy - ay) - d1y * (dx - ax);
     const cross3 = d2x * (ay - cy) - d2y * (ax - cx);
     const cross4 = d2x * (by - cy) - d2y * (bx - cx);
-    if (((cross >= 0 && cross2 <= 0) || (cross <= 0 && cross2 >= 0))
-        && ((cross3 >= 0 && cross4 <= 0) || (cross3 <= 0 && cross4 >= 0))) {
-        return true;
-    }
+    if (((cross >= 0 && cross2 <= 0) || (cross <= 0 && cross2 >= 0)) && ((cross3 >= 0 && cross4 <= 0) || (cross3 <= 0 && cross4 >= 0))) return true;
     return false;
 }
-
 function segmentIntersectsAabb(ax, ay, bx, by, minX, minY, maxX, maxY) {
     if (distanceToAabb(ax, ay, minX, minY, maxX, maxY) === 0) return true;
     if (distanceToAabb(bx, by, minX, minY, maxX, maxY) === 0) return true;
@@ -86,12 +66,9 @@ function segmentIntersectsAabb(ax, ay, bx, by, minX, minY, maxX, maxY) {
         [maxX, maxY, minX, maxY],
         [minX, maxY, minX, minY],
     ];
-    for (const [ex0, ey0, ex1, ey1] of edges) {
-        if (segmentsIntersect(ax, ay, bx, by, ex0, ey0, ex1, ey1)) return true;
-    }
+    for (const [ex0, ey0, ex1, ey1] of edges) if (segmentsIntersect(ax, ay, bx, by, ex0, ey0, ex1, ey1)) return true;
     return false;
 }
-
 export function distanceSegmentToSegment(ax, ay, bx, by, cx, cy, dx, dy) {
     const ux = bx - ax;
     const uy = by - ay;
@@ -111,7 +88,6 @@ export function distanceSegmentToSegment(ax, ay, bx, by, cx, cy, dx, dy) {
     let tc;
     let tN;
     let tD = D;
-
     if (D < 1e-10) {
         sN = 0;
         sD = 1;
@@ -130,7 +106,6 @@ export function distanceSegmentToSegment(ax, ay, bx, by, cx, cy, dx, dy) {
             tD = c;
         }
     }
-
     if (tN < 0) {
         tN = 0;
         if (-d < 0) sN = 0;
@@ -148,20 +123,16 @@ export function distanceSegmentToSegment(ax, ay, bx, by, cx, cy, dx, dy) {
             sD = a;
         }
     }
-
     sc = Math.abs(sN) < 1e-10 ? 0 : sN / sD;
     tc = Math.abs(tN) < 1e-10 ? 0 : tN / tD;
-
     const px = ax + sc * ux;
     const py = ay + sc * uy;
     const qx = cx + tc * vx;
     const qy = cy + tc * vy;
     return Math.hypot(px - qx, py - qy);
 }
-
 function minDistanceSegmentToAabb(ax, ay, bx, by, minX, minY, maxX, maxY) {
     if (segmentIntersectsAabb(ax, ay, bx, by, minX, minY, maxX, maxY)) return 0;
-
     let minDist = Infinity;
     const edges = [
         [minX, minY, maxX, minY],
@@ -169,18 +140,14 @@ function minDistanceSegmentToAabb(ax, ay, bx, by, minX, minY, maxX, maxY) {
         [maxX, maxY, minX, maxY],
         [minX, maxY, minX, minY],
     ];
-    for (const [ex0, ey0, ex1, ey1] of edges) {
-        minDist = Math.min(minDist, distanceSegmentToSegment(ax, ay, bx, by, ex0, ey0, ex1, ey1));
-    }
+    for (const [ex0, ey0, ex1, ey1] of edges) minDist = Math.min(minDist, distanceSegmentToSegment(ax, ay, bx, by, ex0, ey0, ex1, ey1));
     minDist = Math.min(minDist, distanceToAabb(ax, ay, minX, minY, maxX, maxY));
     minDist = Math.min(minDist, distanceToAabb(bx, by, minX, minY, maxX, maxY));
     return minDist;
 }
-
 /** Minimum distance between a path segment and a wall's collision box. */
 export function minDistanceSegmentToWall(ax, ay, bx, by, wall) {
     if (wall.isDead) return Infinity;
-
     const half = wall.size / 2;
     const cos = Math.cos(-wall.angle);
     const sin = Math.sin(-wall.angle);
@@ -188,21 +155,15 @@ export function minDistanceSegmentToWall(ax, ay, bx, by, wall) {
     const ayL = (ax - wall.x) * sin + (ay - wall.y) * cos;
     const bxL = (bx - wall.x) * cos - (by - wall.y) * sin;
     const byL = (bx - wall.x) * sin + (by - wall.y) * cos;
-
     return minDistanceSegmentToAabb(axL, ayL, bxL, byL, -half, -half, half, half);
 }
-
 /** Closest point on path segment AB to wall box — used for push direction. */
 export function findClosestPointOnPathToWall(ax, ay, bx, by, wall) {
     const segLen = Math.hypot(bx - ax, by - ay);
-    if (segLen < 0.01) {
-        return { x: ax, y: ay, t: 0, dist: distanceToSegment(wall, ax, ay) };
-    }
-
+    if (segLen < 0.01) return { x: ax, y: ay, t: 0, dist: distanceToSegment(wall, ax, ay) };
     const samples = Math.max(16, Math.ceil(segLen));
     let bestT = 0;
     let bestDist = Infinity;
-
     for (let i = 0; i <= samples; i++) {
         const t = i / samples;
         const px = ax + (bx - ax) * t;
@@ -213,7 +174,6 @@ export function findClosestPointOnPathToWall(ax, ay, bx, by, wall) {
             bestT = t;
         }
     }
-
     let lo = Math.max(0, bestT - 1 / samples);
     let hi = Math.min(1, bestT + 1 / samples);
     for (let i = 0; i < 10; i++) {
@@ -224,30 +184,24 @@ export function findClosestPointOnPathToWall(ax, ay, bx, by, wall) {
         if (d1 < d2) hi = m2;
         else lo = m1;
     }
-
     const t = (lo + hi) / 2;
     const x = ax + (bx - ax) * t;
     const y = ay + (by - ay) * t;
     return { x, y, t, dist: distanceToSegment(wall, x, y) };
 }
-
 export function circleIntersectsSegment(circle, segment) {
     const radiusSq = circle.radius * circle.radius;
     return distanceSqToSegment(segment, circle.x, circle.y) < radiusSq;
 }
-
 export function pointToSegmentPaddingDistanceSq(segment, x, y) {
     if (segment.isDead) return Infinity;
-
     const { localX, localY, half } = toSegmentLocal(segment, x, y);
     const distX = Math.max(0, Math.abs(localX) - half);
     const distY = Math.max(0, Math.abs(localY) - half);
     return distX * distX + distY * distY;
 }
-
 export function getCircleSegmentPenetration(circle, segment) {
     if (segment.isDead) return null;
-
     const { localX, localY, half } = toSegmentLocal(segment, circle.x, circle.y);
     const closestX = Math.max(-half, Math.min(localX, half));
     const closestY = Math.max(-half, Math.min(localY, half));
@@ -256,7 +210,6 @@ export function getCircleSegmentPenetration(circle, segment) {
     const distanceSq = distDX * distDX + distDY * distDY;
     const radiusSq = circle.radius * circle.radius;
     if (distanceSq >= radiusSq) return null;
-
     let normalX;
     let normalY;
     let overlap;
@@ -287,23 +240,18 @@ export function getCircleSegmentPenetration(circle, segment) {
         normalX = localNormX * invCos - localNormY * invSin;
         normalY = localNormX * invSin + localNormY * invCos;
     }
-
     return { normalX, normalY, overlap, distanceSq };
 }
-
 export function pushPointFromWalls(x, y, walls, clearance) {
     let px = x;
     let py = y;
-
-    for (let iter = 0; iter < 6; iter++) {
+    for (let iter = 0; iter < 6; iter++)
         for (const wall of walls) {
             if (wall.isDead) continue;
-
             const closest = closestPointOnSegment(wall, px, py);
             let pushX = px - closest.x;
             let pushY = py - closest.y;
             let dist = Math.hypot(pushX, pushY);
-
             if (dist < 0.01) {
                 pushX = px - wall.x;
                 pushY = py - wall.y;
@@ -314,14 +262,11 @@ export function pushPointFromWalls(x, y, walls, clearance) {
                     dist = 1;
                 }
             }
-
             if (dist < clearance) {
                 const scale = (clearance - dist) / dist;
                 px += pushX * scale;
                 py += pushY * scale;
             }
         }
-    }
-
     return { x: px, y: py };
 }

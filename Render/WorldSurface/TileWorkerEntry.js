@@ -3,29 +3,23 @@ import { getSurfaceProfileProvider } from "../../Libraries/Procedural/SurfacePro
 import { SharedEdgeSolver } from "../../Libraries/Spatial/structure/SharedEdgeSolver.js";
 import { bakeGroundChunkCanvases, bakeWallAtlasCanvases } from "../../Libraries/WorldSurface/WorldSurfacePainter.js";
 import { invalidateProfileScratch } from "../../Libraries/WorldSurface/ProfileBakeResolver.js";
-
 installGameSurfaceProfileProvider();
-
 let wallGeometrySab = null;
 let wallGeometryView = null;
 let wallSharedEdgesSab = null;
 let wallSharedEdgesView = null;
-
 const HANDLERS = {
     bakeGroundChunk(payload) {
         return bakeGroundChunkCanvases(payload);
     },
-
     bakeWallAtlas(payload) {
         return bakeWallAtlasCanvases(payload.width, payload.height, payload.p1, payload.p2, payload.pixelsPerUnit, payload.seed, payload.profileId, payload);
     },
-
     registerRuntimeProfile(payload) {
         getSurfaceProfileProvider().registerRuntime(payload.profileId, payload.profile);
         invalidateProfileScratch(payload.profileId);
         return [];
     },
-
     initSharedEdgesSAB(payload) {
         wallGeometrySab = payload.wallGeometrySab;
         wallGeometryView = new Float32Array(wallGeometrySab);
@@ -33,14 +27,12 @@ const HANDLERS = {
         wallSharedEdgesView = new Uint8Array(wallSharedEdgesSab);
         return [];
     },
-
     rebuildSharedEdges(payload) {
         if (!wallGeometryView) return [];
         SharedEdgeSolver.solve(wallGeometryView, wallSharedEdgesView, payload.numWalls);
         return [];
     },
 };
-
 self.onmessage = function (e) {
     const { id, type, payload } = e.data;
     if (!id || !type) return;

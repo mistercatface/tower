@@ -1,5 +1,4 @@
 /** @typedef {"circle" | "box"} PropCollisionShape */
-
 /** Shared defaults for world prop strategies (Pickup reads these via buildWorldPropStrategy). */
 export const PROP_STRATEGY_DEFAULTS = {
     isPushable: false,
@@ -36,7 +35,6 @@ export const PROP_STRATEGY_DEFAULTS = {
     onFire: null,
     onFireRender3DKey: null,
 };
-
 /**
  * @param {object} strategy
  */

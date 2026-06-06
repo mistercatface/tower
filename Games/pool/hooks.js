@@ -3,7 +3,6 @@ import { getStartRunAtScene, runSceneController } from "./config/runScenes.js";
 import { poolRunScenePorts } from "./runScenePorts.js";
 import { spawnPoolBalls, ensurePoolState } from "./balls.js";
 import { processPockets } from "./pockets.js";
-
 function hidePlayerForPool(player) {
     player.render = () => {};
     player.renderCombatHudClassic = () => {};
@@ -15,20 +14,16 @@ function hidePlayerForPool(player) {
     player.turrets = [];
     player.weaponLoadout = [];
 }
-
 function clearNonPoolPickups(state) {
     if (!state.pickups) return;
     state.pickups.length = 0;
 }
-
 /** @param {import("../../GameState/GameStateMachine.js").GameStateMachineContext} ctx */
 export function onSimulationEnter(ctx) {
     const { state } = ctx;
-
     hidePlayerForPool(state.player);
     state.abilities = {};
     state.allies = [];
-
     if (!state.runSceneInitialized) {
         state.pool = null;
         runSceneController.reset();
@@ -36,9 +31,7 @@ export function onSimulationEnter(ctx) {
         state.runSceneInitialized = true;
         state.poolBallsSpawned = false;
     }
-
     runSceneController.enterCurrentScene(state, ctx, { applySpawn: true });
-
     if (!state.poolBallsSpawned) {
         clearNonPoolPickups(state);
         const layout = poolRunScenePorts.getLayout(state);
@@ -46,19 +39,13 @@ export function onSimulationEnter(ctx) {
         state.poolBallsSpawned = true;
     }
 }
-
 /** @param {import("../../GameState/GameStateMachine.js").GameStateMachineContext} ctx */
 export function onRunSceneTick(ctx, _dt) {
     const { state } = ctx;
     const layout = poolRunScenePorts.getLayout(state);
     const runScene = ensureRunScene(state);
-
     processPockets(state, layout);
-
     const pool = ensurePoolState(state);
-    if (pool.won && !runScene.match?.won) {
-        runScene.match = { won: true };
-    }
-
+    if (pool.won && !runScene.match?.won) runScene.match = { won: true };
     runSceneController.tick(state, ctx);
 }

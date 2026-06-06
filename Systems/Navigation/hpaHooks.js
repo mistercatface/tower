@@ -6,7 +6,6 @@
  */
 export function createHpaHooks(state) {
     const viewport = state?.fsm?.context?.viewport ?? null;
-
     return {
         isVisible: (entity) => {
             if (!viewport) return true;

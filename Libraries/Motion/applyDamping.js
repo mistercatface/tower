@@ -1,7 +1,6 @@
 /**
  * Velocity and angular drag for coasting / knockback decay (top-down locomotion).
  */
-
 /**
  * @typedef {object} DampedBody
  * @property {number} x
@@ -11,7 +10,6 @@
  * @property {number} [facing]
  * @property {number} [angularVelocity]
  */
-
 /**
  * @param {DampedBody} body — mutated in place
  * @param {number} dtMs
@@ -33,8 +31,6 @@ export function applyVelocityDamping(body, dtMs, { friction = 8.0, integrateFaci
         body.facing = (body.facing ?? 0) + body.angularVelocity * (dtMs / 1000);
         const angularDrag = Math.exp(-friction * 0.8 * (dtMs / 1000));
         body.angularVelocity *= angularDrag;
-        if (Math.abs(body.angularVelocity) < 0.1) {
-            body.angularVelocity = 0;
-        }
+        if (Math.abs(body.angularVelocity) < 0.1) body.angularVelocity = 0;
     }
 }

@@ -1,7 +1,6 @@
 import { combatActorRadius, sidekickBaseStats } from "../../../Config/Config.js";
 import { enemyStartGunPool } from "../../../Config/content/guns.js";
 import { registerEntityCatalog } from "../../../Entities/EntityRegistry.js";
-
 /** @type {import("../../../Entities/EntityRegistryTypes.js").EntityCatalog} */
 export const towerEntityCatalog = {
     enemies: {
@@ -17,26 +16,8 @@ export const towerEntityCatalog = {
             canDamageWalls: true,
             weaponPool: enemyStartGunPool,
         },
-        tank: {
-            type: "tank",
-            radius: combatActorRadius,
-            baseSpeed: 50,
-            maxHealth: 3,
-            color: "#FF9800",
-            attackType: "ranged",
-            canDodge: false,
-            weaponPool: enemyStartGunPool,
-        },
-        standard: {
-            type: "standard",
-            radius: combatActorRadius,
-            baseSpeed: 75,
-            maxHealth: 2,
-            color: "#F44336",
-            attackType: "ranged",
-            canDodge: false,
-            weaponPool: enemyStartGunPool,
-        },
+        tank: { type: "tank", radius: combatActorRadius, baseSpeed: 50, maxHealth: 3, color: "#FF9800", attackType: "ranged", canDodge: false, weaponPool: enemyStartGunPool },
+        standard: { type: "standard", radius: combatActorRadius, baseSpeed: 75, maxHealth: 2, color: "#F44336", attackType: "ranged", canDodge: false, weaponPool: enemyStartGunPool },
         fast: {
             type: "fast",
             radius: combatActorRadius,
@@ -86,26 +67,10 @@ export const towerEntityCatalog = {
             startWeapons: [],
         },
     },
-
-    allies: {
-        barry: {
-            id: "barry",
-            actorType: "companion",
-            radius: combatActorRadius,
-            color: "#00BCD4",
-            stats: sidekickBaseStats,
-            startGunId: "tommyGun",
-            leaderEdgeGap: 16,
-        },
-    },
-
+    allies: { barry: { id: "barry", actorType: "companion", radius: combatActorRadius, color: "#00BCD4", stats: sidekickBaseStats, startGunId: "tommyGun", leaderEdgeGap: 16 } },
     runParty: ["barry"],
-
-    events: {
-        zombieHorde: { type: "zombie", count: 25 },
-    },
+    events: { zombieHorde: { type: "zombie", count: 25 } },
 };
-
 export function registerTowerEntities() {
     registerEntityCatalog(towerEntityCatalog);
 }

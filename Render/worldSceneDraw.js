@@ -1,9 +1,7 @@
 import { isWorldScene } from "../GameState/GamePhase.js";
 import { worldSurfaceSettings } from "../Config/Config.js";
 import { buildWorldRenderInput } from "./adapters/WorldRenderAdapter.js";
-
 /** @typedef {'ground' | 'buildings' | 'roofs' | 'bloom'} WorldSceneDrawPhase */
-
 /**
  * Shared simulation/lab world draw: ground → wall faces → roof caps → optional bloom.
  *

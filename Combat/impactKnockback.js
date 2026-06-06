@@ -1,14 +1,10 @@
 import { Enemy } from "../Entities/Enemy.js";
-
 /** Default for gun-configured impact knockback when pushSpeedMultiplier is omitted. */
 export const defaultGunPushSpeedMultiplier = 3;
-
 export const explosionImpactKnockback = { stunMs: 500, pushMs: 500, pushSpeedMultiplier: 6 };
-
 export function resolveKnockbackReturnState(actor) {
     return actor.attackType === "charge" ? "charging_prepare" : "navigating";
 }
-
 export function applyActorImpactKnockback(actor, pushAngle, config, spatialFrame, state) {
     if (actor.isDead || !(actor instanceof Enemy)) return;
     if (actor.currentStateName === "knockedBack") return;
@@ -21,7 +17,6 @@ export function applyActorImpactKnockback(actor, pushAngle, config, spatialFrame
     });
     state.wallResolver.resolve(actor, spatialFrame);
 }
-
 export function repelActorFromExplosion(actor, exp, spatialFrame, state) {
     if (actor.isDead) return;
     const dx = actor.x - exp.x;

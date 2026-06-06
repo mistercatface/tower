@@ -1,9 +1,7 @@
 import { IDENTITY_ROLL_QUAT } from "../../Props/rollingMotion.js";
 import { buildSphereMesh } from "./sphereMesh.js";
 import { drawPropMeshFace, isPropMeshFaceVisible } from "./propMesh.js";
-
 const DEFAULT_PANEL_COLORS = ["#F44336", "#FFEB3B", "#2196F3", "#4CAF50", "#FF9800", "#FFFFFF"];
-
 /**
  * Low-poly beach-ball sphere: explicit 3D vertices projected to iso quads/tris.
  * Roll orientation (prop.rollQuat) rotates the mesh; quantized into sprite cache buckets.
@@ -32,29 +30,19 @@ export function drawLoFiSphere(ctx, prop, px, py, options = {}) {
     const stroke = "stroke" in options ? options.stroke : "#2a2a2a";
     const lineWidth = options.lineWidth ?? 1.2;
     const rollQuat = prop.rollQuat ?? IDENTITY_ROLL_QUAT;
-
     const mesh = buildSphereMesh(radius, latBands, lonBands, rollQuat);
-
     const backFaces = [];
     const frontFaces = [];
-    for (const face of mesh) {
-        if (isPropMeshFaceVisible(prop, px, py, face.verts)) {
-            frontFaces.push(face);
-        } else {
-            backFaces.push(face);
-        }
-    }
-
+    for (const face of mesh)
+        if (isPropMeshFaceVisible(prop, px, py, face.verts)) frontFaces.push(face);
+        else backFaces.push(face);
     const drawPass = (faces) => {
         const sorted = [...faces].sort((a, b) => a.depth - b.depth);
         for (const face of sorted) {
-            const fill = getFaceColor
-                ? getFaceColor(face)
-                : panelColors[face.panel % panelColors.length];
+            const fill = getFaceColor ? getFaceColor(face) : panelColors[face.panel % panelColors.length];
             drawPropMeshFace(ctx, prop, px, py, face.verts, fill, stroke, lineWidth);
         }
     };
-
     drawPass(backFaces);
     drawPass(frontFaces);
 }

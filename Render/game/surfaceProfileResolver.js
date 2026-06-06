@@ -1,16 +1,9 @@
 import { getGameWorldSurfaceSettings } from "../WorldSurfaceBootstrap.js";
-import {
-    createGroundChunkBakePayload,
-    isGroundChunkAnimationEnabled,
-} from "../../Libraries/WorldSurface/bake/SurfaceBakeHelpers.js";
+import { createGroundChunkBakePayload, isGroundChunkAnimationEnabled } from "../../Libraries/WorldSurface/bake/SurfaceBakeHelpers.js";
 import { getSurfaceProfileProvider } from "../../Libraries/Procedural/SurfaceProfileProvider.js";
-
 /** @typedef {import("../../GameState/GameState.js").GameState} GameState */
-
 export function resolveSurfaceProfileAtCoords(state, x, y) {
-    if (state.surfaceProfileOverride) {
-        return state.surfaceProfileOverride;
-    }
+    if (state.surfaceProfileOverride) return state.surfaceProfileOverride;
     let closestNode = null;
     let minDist = Infinity;
     for (const node of state.mapNodes) {
@@ -21,26 +14,19 @@ export function resolveSurfaceProfileAtCoords(state, x, y) {
             closestNode = node;
         }
     }
-    if (closestNode?.surfaceProfileId) {
-        return closestNode.surfaceProfileId;
-    }
+    if (closestNode?.surfaceProfileId) return closestNode.surfaceProfileId;
     return getSurfaceProfileProvider().defaultId;
 }
-
 export function resolveSurfaceProfileAtPlayer(state) {
     return resolveSurfaceProfileAtCoords(state, state.player.x, state.player.y);
 }
-
 /** Apply active node profile to the surface cache. */
 export function syncSurfaceProfile(state) {
     const profileId = resolveSurfaceProfileAtPlayer(state);
-    if (state.worldSurfaces.proceduralProfileId === profileId) {
-        return;
-    }
+    if (state.worldSurfaces.proceduralProfileId === profileId) return;
     state.worldSurfaces.proceduralProfileId = profileId;
     // state.worldSurfaces.clear(); // Disabled for mega-map chunk rendering
 }
-
 /** Worker-serializable ground-chunk bake payload from live game state. */
 export function buildGroundChunkBakePayload(state, chunkCol, chunkRow, zLevel = 0) {
     const obstacleGrid = state.obstacleGrid;
@@ -49,10 +35,8 @@ export function buildGroundChunkBakePayload(state, chunkCol, chunkRow, zLevel = 
     const chunkSizePx = obstacleGrid.cellSize * cellsPerChunk;
     const chunkCenterX = obstacleGrid.minX + chunkCol * chunkSizePx + chunkSizePx / 2;
     const chunkCenterY = obstacleGrid.minY + chunkRow * chunkSizePx + chunkSizePx / 2;
-
     const profileId = resolveSurfaceProfileAtCoords(state, chunkCenterX, chunkCenterY);
     const profile = getSurfaceProfileProvider().getProfile(profileId);
-
     return createGroundChunkBakePayload({
         chunkCol,
         chunkRow,

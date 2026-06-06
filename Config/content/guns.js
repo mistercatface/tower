@@ -1,42 +1,22 @@
 import { enemyProjectileSettings, playerProjectileSettings } from "../balance/combat.js";
 import { Handedness } from "./equipment.js";
-
 export const defaultGunId = "servicePistol";
 export const defaultEnemyGunId = "enemyRifle";
 /** Player always starts with this weapon. */
 export const playerStartGunId = "sawedOffShotgun";
-
 /** Random equipment pools (1 slot). Enemies never roll beamLaser. */
 export const playerStartGunPool = ["servicePistol", "shotgun", "sawedOffShotgun", "tommyGun"];
 export const enemyStartGunPool = ["enemyRifle", "servicePistol"];
-
 /** Guns the player can equip from the Equipment tab. */
 export const playerEquipmentCatalog = ["servicePistol", "shotgun", "sawedOffShotgun", "tommyGun", "grenadeLauncher"];
-
 /** All projectile hits and beam ticks deal flat damage (matches integer HP). */
 const FLAT_DAMAGE = 1;
-
 /** Fixed ballistics and damage per gun. */
 export const projectilePresets = {
-    playerStandard: {
-        color: "#FFEB3B",
-        shooterKnockbackMultiplier: playerProjectileSettings.knockbackMultiplier,
-    },
-    playerKnockback: {
-        color: "#FFEB3B",
-        shooterKnockbackMultiplier: playerProjectileSettings.knockbackMultiplier,
-        impactKnockback: {
-            stunMs: 700,
-            pushMs: 280,
-            pushSpeedMultiplier: 3,
-        },
-    },
-    enemyStandard: {
-        color: "#F44336",
-        shooterKnockbackMultiplier: enemyProjectileSettings.knockbackMultiplier,
-    },
+    playerStandard: { color: "#FFEB3B", shooterKnockbackMultiplier: playerProjectileSettings.knockbackMultiplier },
+    playerKnockback: { color: "#FFEB3B", shooterKnockbackMultiplier: playerProjectileSettings.knockbackMultiplier, impactKnockback: { stunMs: 700, pushMs: 280, pushSpeedMultiplier: 3 } },
+    enemyStandard: { color: "#F44336", shooterKnockbackMultiplier: enemyProjectileSettings.knockbackMultiplier },
 };
-
 export const gunDefinitions = {
     servicePistol: {
         id: "servicePistol",
@@ -49,22 +29,9 @@ export const gunDefinitions = {
         damage: FLAT_DAMAGE,
         maxAmmo: 12,
         reloadTimeMs: 1200,
-        turretLoadout: {
-            radiusMultiplier: playerProjectileSettings.radiusMultiplier,
-            angleOffsets: [0],
-        },
+        turretLoadout: { radiusMultiplier: playerProjectileSettings.radiusMultiplier, angleOffsets: [0] },
         projectile: projectilePresets.playerStandard,
-        attachments: {
-            laserSights: {
-                id: "laserSights",
-                name: "Laser Sights",
-                enabled: false,
-                isSight: true,
-                modifiers: {
-                    accuracyFlatBonus: 0.05,
-                }
-            }
-        },
+        attachments: { laserSights: { id: "laserSights", name: "Laser Sights", enabled: false, isSight: true, modifiers: { accuracyFlatBonus: 0.05 } } },
     },
     shotgun: {
         id: "shotgun",
@@ -77,11 +44,7 @@ export const gunDefinitions = {
         damage: FLAT_DAMAGE,
         maxAmmo: 6,
         reloadTimeMs: 1800,
-        turretLoadout: {
-            radiusMultiplier: playerProjectileSettings.splitRadiusMultiplier,
-            pelletCount: 3,
-            spreadRadians: 0.1,
-        },
+        turretLoadout: { radiusMultiplier: playerProjectileSettings.splitRadiusMultiplier, pelletCount: 3, spreadRadians: 0.1 },
         projectile: projectilePresets.playerStandard,
     },
     sawedOffShotgun: {
@@ -95,11 +58,7 @@ export const gunDefinitions = {
         damage: FLAT_DAMAGE,
         maxAmmo: 2,
         reloadTimeMs: 2800,
-        turretLoadout: {
-            radiusMultiplier: playerProjectileSettings.splitRadiusMultiplier,
-            pelletCount: 8,
-            spreadRadians: 0.1,
-        },
+        turretLoadout: { radiusMultiplier: playerProjectileSettings.splitRadiusMultiplier, pelletCount: 8, spreadRadians: 0.1 },
         projectile: projectilePresets.playerKnockback,
     },
     tommyGun: {
@@ -113,22 +72,9 @@ export const gunDefinitions = {
         damage: FLAT_DAMAGE,
         maxAmmo: 6,
         reloadTimeMs: 1500,
-        turretLoadout: {
-            radiusMultiplier: playerProjectileSettings.radiusMultiplier,
-            angleOffsets: [0],
-        },
+        turretLoadout: { radiusMultiplier: playerProjectileSettings.radiusMultiplier, angleOffsets: [0] },
         projectile: projectilePresets.playerStandard,
-        attachments: {
-            laserSights: {
-                id: "laserSights",
-                name: "Laser Sights",
-                enabled: false,
-                isSight: true,
-                modifiers: {
-                    accuracyFlatBonus: 0.05,
-                }
-            }
-        },
+        attachments: { laserSights: { id: "laserSights", name: "Laser Sights", enabled: false, isSight: true, modifiers: { accuracyFlatBonus: 0.05 } } },
     },
     beamLaser: {
         id: "beamLaser",
@@ -141,9 +87,7 @@ export const gunDefinitions = {
         tickDamage: FLAT_DAMAGE,
         maxAmmo: 25,
         reloadTimeMs: 2000,
-        equipModifiers: {
-            turnSpeedMultiplier: 0.5,
-        },
+        equipModifiers: { turnSpeedMultiplier: 0.5 },
     },
     enemyRifle: {
         id: "enemyRifle",
@@ -156,10 +100,7 @@ export const gunDefinitions = {
         damage: FLAT_DAMAGE,
         maxAmmo: 10,
         reloadTimeMs: 1500,
-        turretLoadout: {
-            radiusMultiplier: playerProjectileSettings.radiusMultiplier,
-            angleOffsets: [0],
-        },
+        turretLoadout: { radiusMultiplier: playerProjectileSettings.radiusMultiplier, angleOffsets: [0] },
         projectile: projectilePresets.enemyStandard,
     },
     grenadeLauncher: {
@@ -173,41 +114,22 @@ export const gunDefinitions = {
         damage: FLAT_DAMAGE,
         maxAmmo: 3,
         reloadTimeMs: 2200,
-        turretLoadout: {
-            radiusMultiplier: 1.0,
-            angleOffsets: [0],
-        },
+        turretLoadout: { radiusMultiplier: 1.0, angleOffsets: [0] },
         projectile: {
             color: "#4CAF50",
             strategy: "grenade",
             drag: 4.0,
             fuseTimeMs: 1500,
             shooterKnockbackMultiplier: playerProjectileSettings.knockbackMultiplier,
-            explosion: {
-                type: "standard",
-                radius: 0,
-                maxRadius: 60,
-                speed: 250,
-                damage: 3,
-                lingerTimer: 500,
-                fadeTimer: 150,
-            }
+            explosion: { type: "standard", radius: 0, maxRadius: 60, speed: 250, damage: 3, lingerTimer: 500, fadeTimer: 150 },
         },
     },
 };
-
 export function getGunDefinition(gunId) {
     const gun = gunDefinitions[gunId];
-    if (!gun) {
-        throw new Error(`Unknown gun: ${gunId}`);
-    }
+    if (!gun) throw new Error(`Unknown gun: ${gunId}`);
     return gun;
 }
-
 export function cloneGunDefinition(gun) {
-    return {
-        ...gun,
-        attachments: gun.attachments ? JSON.parse(JSON.stringify(gun.attachments)) : undefined,
-        equipModifiers: gun.equipModifiers ? { ...gun.equipModifiers } : undefined
-    };
+    return { ...gun, attachments: gun.attachments ? JSON.parse(JSON.stringify(gun.attachments)) : undefined, equipModifiers: gun.equipModifiers ? { ...gun.equipModifiers } : undefined };
 }

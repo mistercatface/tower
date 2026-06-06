@@ -14,7 +14,6 @@ import { WallSpatialIndex } from "../Libraries/Spatial/indexes/WallSpatialIndex.
 import { Pools } from "../Core/Pools.js";
 import { createRunStats } from "../Entities/CombatantStats.js";
 import { WorldSurfaceSystem } from "../Render/game/WorldSurfaceSystem.js";
-
 export class GameState {
     constructor() {
         this.fsm = null;
@@ -27,27 +26,15 @@ export class GameState {
         this.highestLevelReached = 0;
         this.claimedPerkMilestones = [];
         this.discoveredAbilities = new Set();
-
         this.runStats = createRunStats(runBaseStats);
         this.player = new Player(0, 0, combatActorRadius);
         this.player.teamId = 0;
         this.allies = [];
-
         this.obstacleGrid = new WorldObstacleGrid(gridSettings.cellSize);
-        this.flowFieldGrid = new FlowFieldGrid(
-            gridSettings.cellSize,
-            gridSettings.width,
-            gridSettings.height,
-            this.obstacleGrid,
-            FLOW_FIELD_WORKER_URL,
-        );
-        this.hierarchicalNavigator = new HierarchicalNavigator(
-            gridSettings.cellSize,
-            gridSettings.maxCellsPerChunk,
-            gridSettings.minCellsPerChunk,
-            this.obstacleGrid,
-            { damagePadding: navigationSettings.hpaDamagePadding },
-        );
+        this.flowFieldGrid = new FlowFieldGrid(gridSettings.cellSize, gridSettings.width, gridSettings.height, this.obstacleGrid, FLOW_FIELD_WORKER_URL);
+        this.hierarchicalNavigator = new HierarchicalNavigator(gridSettings.cellSize, gridSettings.maxCellsPerChunk, gridSettings.minCellsPerChunk, this.obstacleGrid, {
+            damagePadding: navigationSettings.hpaDamagePadding,
+        });
         this.navigation = new NavigationService(this.flowFieldGrid, this.hierarchicalNavigator);
         this.wallResolver = createCombatWallResolver(() => this);
         this.currentUpgradeTab = "stats";
@@ -64,63 +51,47 @@ export class GameState {
         this.mapPathDebugCache = null;
         this._combatantsCache = [];
         this._combatEventBuffer = [];
-
         this.initializeDefaultState();
     }
-
     getMapSpawnOrigin() {
         return {
-            x: this.mapBaseSpawnX !== undefined ? this.mapBaseSpawnX : (this.canvasBounds.width > 0 ? this.canvasBounds.width / 2 : 225),
-            y: this.mapBaseSpawnY !== undefined ? this.mapBaseSpawnY : (this.canvasBounds.height > 0 ? this.canvasBounds.height / 2 : 225),
+            x: this.mapBaseSpawnX !== undefined ? this.mapBaseSpawnX : this.canvasBounds.width > 0 ? this.canvasBounds.width / 2 : 225,
+            y: this.mapBaseSpawnY !== undefined ? this.mapBaseSpawnY : this.canvasBounds.height > 0 ? this.canvasBounds.height / 2 : 225,
         };
     }
-
     getNodeWorldCoords(node) {
         if (!node) return { x: 0, y: 0 };
         const { x: baseSpawnX, y: baseSpawnY } = this.getMapSpawnOrigin();
         const scale = mapSettings.nodeWorldCoordScale;
-        return {
-            x: baseSpawnX + node.x * scale,
-            y: baseSpawnY + node.y * scale,
-        };
+        return { x: baseSpawnX + node.x * scale, y: baseSpawnY + node.y * scale };
     }
-
     rebuildMapNodeIndex() {
         this.mapNodeById.clear();
-        for (const node of this.mapNodes) {
-            this.mapNodeById.set(node.id, node);
-        }
+        for (const node of this.mapNodes) this.mapNodeById.set(node.id, node);
     }
-
     getMapNode(id) {
         if (id == null) return null;
         return this.mapNodeById.get(id) ?? null;
     }
-
     /** Start node — run scenes anchor here in the main game. */
     getStartMapNode() {
         return this.getMapNode(0);
     }
-
     /** Map graph position for the player dot (start node is always at the origin). */
     getMapPlayerGraphCoords() {
         const node = this.getStartMapNode();
         return { x: node?.x ?? 0, y: node?.y ?? 0 };
     }
-
     /** Active map node — only changes in TileLab; always start node in the main game. */
     getCurrentMapNode() {
         return this.getMapNode(this.currentNodeId);
     }
-
     get phase() {
         return this.fsm?.currentStateName ?? this._phase;
     }
-
     set phase(value) {
         this._phase = value;
     }
-
     initializeDefaultState() {
         this.scheduler.clear();
         this.hordeSpawner.reset();
@@ -143,21 +114,14 @@ export class GameState {
         this.runSceneInitialized = false;
         this.startPropsSpawned = false;
         this.zombieEventTriggered = false;
-
         this.abilities = {};
         this.abilityTimers = {};
-
         this.player.fullHeal();
         this.player.clearHealAccumulator();
         this.player.isDead = false;
         this.player.changeState("navigating");
-
         this.enemies = [];
-        if (this.projectiles) {
-            for (let i = 0; i < this.projectiles.length; i++) {
-                Pools.projectiles.release(this.projectiles[i]);
-            }
-        }
+        if (this.projectiles) for (let i = 0; i < this.projectiles.length; i++) Pools.projectiles.release(this.projectiles[i]);
         this.projectiles = [];
         this.floatingTexts = [];
         this.walls = [];
@@ -166,49 +130,38 @@ export class GameState {
         this.combatParticles = [];
         this.ragdollCorpses = [];
         this.flowFieldGrid.clear();
-
         this.entityLayers = [
             { key: "projectiles", zIndex: 20 },
             { key: "ragdollCorpses", zIndex: 24 },
             { key: "activeLasers", zIndex: 35 },
             { key: "floatingTexts", zIndex: 90 },
         ];
-
         this.selectedSpeed = 1.0;
         this.allies = [];
         this.worldSurfaces.clear();
     }
-
     getLeader() {
         return this.player;
     }
-
     getAllies() {
         return this.allies.filter((ally) => ally && !ally.isDead);
     }
-
     getParty() {
         const party = [];
-        if (this.player && !this.player.isDead) {
-            party.push(this.player);
-        }
+        if (this.player && !this.player.isDead) party.push(this.player);
         party.push(...this.getAllies());
         return party;
     }
-
     getPlayerActors() {
         return this.getParty();
     }
-
     spawnRunParty(partyIds) {
         const leader = this.getLeader();
         const ids = partyIds ?? getRunParty();
         this.allies = [];
-
         for (let i = 0; i < ids.length; i++) {
             const definition = getAllyDefinition(ids[i]);
             if (!definition) continue;
-
             const ally = Sidekick.create(leader.x, leader.y, definition);
             ally.leader = leader;
             ally.teamId = leader.teamId ?? 0;
@@ -217,20 +170,14 @@ export class GameState {
             const x = leader.x + Math.cos(angle) * dist;
             const y = leader.y + Math.sin(angle) * dist;
             ally.spawnAt(x, y, leader);
-            ally.applyWeaponLoadout(ally.weaponLoadout, {
-                state: this,
-                upgradeDefs: this.upgradeDefs,
-            });
+            ally.applyWeaponLoadout(ally.weaponLoadout, { state: this, upgradeDefs: this.upgradeDefs });
             this.allies.push(ally);
         }
-
         return this.allies;
     }
-
     getHostileActors() {
         return this.enemies.filter((actor) => !actor.isDead);
     }
-
     getCombatants() {
         const cache = this._combatantsCache;
         cache.length = 0;
@@ -245,32 +192,16 @@ export class GameState {
         }
         return cache;
     }
-
     beginCombatEvents() {
         this._combatEventBuffer.length = 0;
         return this._combatEventBuffer;
     }
-
     updateAllCombatants(dt, spatialFrame, options = {}) {
         this.activeLasers = [];
         const combatEvents = options.combatEvents ?? this.beginCombatEvents();
-
-        for (const actor of this.getCombatants()) {
-            actor.updateCombat(dt, this, spatialFrame, {
-                ...options,
-                externalSpeedMod: actor.getExternalSpeedMod(this, options),
-                combatEvents,
-            });
-        }
-
-        for (let i = this.enemies.length - 1; i >= 0; i--) {
-            if (this.enemies[i].isDead) {
-                this.enemies.splice(i, 1);
-            }
-        }
-
+        for (const actor of this.getCombatants()) actor.updateCombat(dt, this, spatialFrame, { ...options, externalSpeedMod: actor.getExternalSpeedMod(this, options), combatEvents });
+        for (let i = this.enemies.length - 1; i >= 0; i--) if (this.enemies[i].isDead) this.enemies.splice(i, 1);
         return combatEvents;
     }
 }
-
 export const state = new GameState();

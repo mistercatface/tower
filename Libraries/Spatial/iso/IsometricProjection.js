@@ -3,20 +3,15 @@
 import { angleDelta } from "../../Math/Angle.js";
 import { radiusAtT, scaleAtHeight } from "../../Math/Interpolate.js";
 import { rectCorners } from "../../Math/Poly2D.js";
-
 export { radiusAtT, scaleAtHeight };
-
 export let CAMERA_HEIGHT = 160;
 export let PERSPECTIVE_STRENGTH = 1;
-
 export function setCameraHeight(val) {
     CAMERA_HEIGHT = val;
 }
-
 export function setPerspectiveStrength(val) {
     PERSPECTIVE_STRENGTH = Math.max(0, val);
 }
-
 /**
  * Radial extrusion factor for a world point at elevation height.
  *
@@ -28,7 +23,6 @@ export function resolveElevationAlpha(height, cameraHeight, strength = 1) {
     if (height <= 0 || cameraHeight <= height) return 0;
     return (height / (cameraHeight - height)) * strength;
 }
-
 /**
  * Project a world point to its screen position at elevation height.
  * Shared by horizontal surfaces, wall roof caps, and iso props.
@@ -44,15 +38,9 @@ export function resolveElevationAlpha(height, cameraHeight, strength = 1) {
  */
 export function projectWorldPointAtHeight(worldX, worldY, viewerX, viewerY, height, cameraHeight, strength = 1) {
     const alpha = resolveElevationAlpha(height, cameraHeight, strength);
-    if (alpha <= 0) {
-        return { x: worldX, y: worldY };
-    }
-    return {
-        x: worldX + (worldX - viewerX) * alpha,
-        y: worldY + (worldY - viewerY) * alpha,
-    };
+    if (alpha <= 0) return { x: worldX, y: worldY };
+    return { x: worldX + (worldX - viewerX) * alpha, y: worldY + (worldY - viewerY) * alpha };
 }
-
 /**
  * Project the four corners of a world-axis-aligned rectangle at elevation height.
  *
@@ -74,7 +62,6 @@ export function projectWorldRectCorners(originX, originY, sizePx, height, viewer
         projectWorldPointAtHeight(originX, originY + sizePx, viewerX, viewerY, height, cameraHeight, strength),
     ];
 }
-
 export function projectVertical(objX, objY, viewerX, viewerY, height) {
     const dx = objX - viewerX;
     const dy = objY - viewerY;
@@ -84,12 +71,10 @@ export function projectVertical(objX, objY, viewerX, viewerY, height) {
     const viewAngle = Math.atan2(dy, dx);
     return { cx: objX, cy: objY, dx, dy, dist, alpha, topX: top.x, topY: top.y, viewAngle, height };
 }
-
 export function getHeightSlice(projection, baseSize, t) {
     const { cx, cy, topX, topY, alpha } = projection;
     return { centerX: cx + (topX - cx) * t, centerY: cy + (topY - cy) * t, size: scaleAtHeight(baseSize, alpha, t) };
 }
-
 export function pointOnFrustum(projection, baseRadius, topRadius, t, angle) {
     const { cx, cy, topX, topY } = projection;
     const radius = radiusAtT(baseRadius, topRadius, t);
@@ -97,19 +82,16 @@ export function pointOnFrustum(projection, baseRadius, topRadius, t, angle) {
     const centerY = cy + (topY - cy) * t;
     return { x: centerX + Math.cos(angle) * radius, y: centerY + Math.sin(angle) * radius };
 }
-
 export function getRadialSilhouette(projection, baseRadius, topRadius = null) {
     const { cx, cy, topX, topY, alpha, viewAngle } = projection;
     const resolvedTop = topRadius === null ? baseRadius * (1 + alpha) : topRadius;
     const perpA = viewAngle + Math.PI / 2;
     const perpB = viewAngle - Math.PI / 2;
     const rimPoint = (centerX, centerY, radius, angle) => ({ x: centerX + Math.cos(angle) * radius, y: centerY + Math.sin(angle) * radius });
-
     if (resolvedTop === 0) {
         const apex = { x: topX, y: topY };
         return { viewAngle, perpA, perpB, baseRadius, topRadius: 0, baseLeft: rimPoint(cx, cy, baseRadius, perpA), baseRight: rimPoint(cx, cy, baseRadius, perpB), topLeft: apex, topRight: apex };
     }
-
     return {
         viewAngle,
         perpA,
@@ -122,7 +104,6 @@ export function getRadialSilhouette(projection, baseRadius, topRadius = null) {
         topRight: rimPoint(topX, topY, resolvedTop, perpB),
     };
 }
-
 export function extrudeBox(projection, halfSize, angle = 0) {
     const { cx, cy, topX, topY, alpha } = projection;
     const hx = typeof halfSize === "number" ? halfSize : (halfSize.x ?? halfSize.hx);
@@ -142,7 +123,6 @@ export function extrudeBox(projection, halfSize, angle = 0) {
         }),
     };
 }
-
 export function isFaceTowardViewer(edgeMidX, edgeMidY, originX, originY, viewerX, viewerY) {
     const outX = edgeMidX - originX;
     const outY = edgeMidY - originY;
@@ -150,7 +130,6 @@ export function isFaceTowardViewer(edgeMidX, edgeMidY, originX, originY, viewerX
     const viewY = edgeMidY - viewerY;
     return outX * viewX + outY * viewY < 0;
 }
-
 export function getSideHighlightT(viewAngle, lightAngle = (-3 * Math.PI) / 4) {
     const lx = Math.cos(lightAngle);
     const ly = Math.sin(lightAngle);
@@ -159,7 +138,6 @@ export function getSideHighlightT(viewAngle, lightAngle = (-3 * Math.PI) / 4) {
     const dot = lx * nx + ly * ny;
     return Math.max(0.1, Math.min(0.9, 0.5 + dot * 0.5));
 }
-
 /** Arc on a circle rim that bulges toward the viewer (symmetric cylinder silhouette). */
 export function traceVisibleArc(ctx, centerX, centerY, radius, fromAngle, toAngle, viewAngle) {
     const towardViewer = viewAngle + Math.PI;
@@ -170,7 +148,6 @@ export function traceVisibleArc(ctx, centerX, centerY, radius, fromAngle, toAngl
     const counterClockwise = delta > 0 ? !useShort : useShort;
     ctx.arc(centerX, centerY, radius, fromAngle, toAngle, counterClockwise);
 }
-
 export function createSideGradient(ctx, left, right, viewAngle, colors) {
     const t = getSideHighlightT(viewAngle);
     const grad = ctx.createLinearGradient(left.x, left.y, right.x, right.y);

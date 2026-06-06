@@ -1,16 +1,12 @@
 import { advancePushableSleep, evaluatePushableSleepEligible, wakePushableBody } from "./pushableSleep.js";
 import { integrateStandTipsAfterCollisions } from "../Props/standTipMotion.js";
-
 /**
  * @param {object} state
  */
 export function wakeAllPushables(state) {
     if (!state?.pickups) return;
-    for (let i = 0; i < state.pickups.length; i++) {
-        wakePushableBody(state.pickups[i]);
-    }
+    for (let i = 0; i < state.pickups.length; i++) wakePushableBody(state.pickups[i]);
 }
-
 /**
  * @param {object} spatialFrame
  * @param {{ blocksSleep?: (pickup: object) => boolean }} [options]
@@ -25,7 +21,6 @@ export function tickPushableSleep(spatialFrame, { blocksSleep = () => false } = 
         advancePushableSleep(pickup, eligible);
     }
 }
-
 /**
  * Pickup update → collision pass → sleep tick.
  * Pushable wall resolve runs inside the collision pipeline iterations.
@@ -50,7 +45,6 @@ export function runPushablePhysicsPass(state, dt, spatialFrame, { updatePickups,
     tickPushableSleep(spatialFrame, { blocksSleep });
     return events;
 }
-
 /** In-plane spin about center: collision ω_z → facing (same frame, separate from 3D tumble). */
 export function integrateLongAxisLogFacing(state, dt) {
     if (!state?.pickups) return;

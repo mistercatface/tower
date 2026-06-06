@@ -5,7 +5,6 @@
  * @property {number} [facing]
  * @property {Record<string, number>} [faceLabelVariants]
  */
-
 /**
  * @typedef {Object} InspectEntry
  * @property {string} title - Panel header text
@@ -16,10 +15,8 @@
  * @property {(subject: InspectSubject) => number} [getInitialPitch]
  * @property {number} [tapPadding] - Extra tap radius beyond pickup.radius (default 14)
  */
-
 /** @type {Map<string, InspectEntry>} */
 const inspectEntries = new Map();
-
 /**
  * @param {string} inspectKey
  * @param {InspectEntry} entry
@@ -28,18 +25,13 @@ export function registerInspectEntry(inspectKey, entry) {
     if (!inspectKey || !entry?.draw) return;
     inspectEntries.set(inspectKey, entry);
 }
-
 export function getInspectEntry(inspectKey) {
     if (!inspectKey) return null;
     return inspectEntries.get(inspectKey) ?? null;
 }
-
 export function preloadAllInspectAssets() {
-    for (const entry of inspectEntries.values()) {
-        entry.preload?.();
-    }
+    for (const entry of inspectEntries.values()) entry.preload?.();
 }
-
 /**
  * @param {object} recipe
  * @returns {Pick<InspectEntry, "preload" | "onReady" | "getInitialYaw" | "getInitialPitch" | "draw">}

@@ -1,17 +1,13 @@
 import { sampleCoords, applyTint, hash2 } from "../util/motifUtilities.js";
-
 function distToSegment(px, py, x1, y1, x2, y2) {
     const dx = x2 - x1;
     const dy = y2 - y1;
     const lenSq = dx * dx + dy * dy;
-    if (lenSq === 0) {
-        return Math.hypot(px - x1, py - y1);
-    }
+    if (lenSq === 0) return Math.hypot(px - x1, py - y1);
     let t = ((px - x1) * dx + (py - y1) * dy) / lenSq;
     t = Math.max(0, Math.min(1, t));
     return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
 }
-
 /**
  * Grid-aligned continuous circuit traces. When warped, they snake organically.
  */
@@ -48,41 +44,34 @@ export const circuitTracesMotif = {
         const coords = sampleCoords(sample, config.coordinateSpace);
         let x = coords.x;
         let y = coords.y;
-
         const angle = config.angle ?? 0;
         if (angle !== 0) {
-            const rad = angle * Math.PI / 180;
+            const rad = (angle * Math.PI) / 180;
             const cosA = Math.cos(rad);
             const sinA = Math.sin(rad);
             x = coords.x * cosA - coords.y * sinA;
             y = coords.x * sinA + coords.y * cosA;
         }
-
         const gridSize = config.gridSize ?? 24;
         const col = Math.floor(x / gridSize);
         const row = Math.floor(y / gridSize);
         const lx = x - col * gridSize;
         const ly = y - row * gridSize;
         const half = gridSize / 2;
-        
         const density = config.density ?? 0.5;
         const diagDensity = config.diagDensity ?? 0.15;
-        
         // Cardinal connections
         const hasNorth = hash2(col + 0.5, row) < density;
         const hasSouth = hash2(col + 0.5, row + 1) < density;
         const hasEast = hash2(col + 1, row + 0.5) < density;
         const hasWest = hash2(col, row + 0.5) < density;
-        
         // Diagonal connections
         const hasNorthEast = hash2(col + 1, row) < diagDensity;
         const hasSouthWest = hash2(col, row + 1) < diagDensity;
         const hasSouthEast = hash2(col + 1, row + 1) < diagDensity;
         const hasNorthWest = hash2(col, row) < diagDensity;
-        
         let minDist = Infinity;
         let activeCount = 0;
-        
         // Add segments to check
         if (hasNorth) {
             minDist = Math.min(minDist, distToSegment(lx, ly, half, half, half, 0));
@@ -100,7 +89,6 @@ export const circuitTracesMotif = {
             minDist = Math.min(minDist, distToSegment(lx, ly, half, half, 0, half));
             activeCount++;
         }
-        
         if (hasNorthEast) {
             minDist = Math.min(minDist, distToSegment(lx, ly, half, half, gridSize, 0));
             activeCount++;
@@ -117,26 +105,19 @@ export const circuitTracesMotif = {
             minDist = Math.min(minDist, distToSegment(lx, ly, half, half, 0, 0));
             activeCount++;
         }
-        
         const lineWidth = config.lineWidth ?? 2;
         const halfWidth = lineWidth / 2;
-        
         // Check junction pad (only if we have connections and want pads)
         const padEnabled = config.padEnabled ?? true;
         let padIntensity = 0;
         if (padEnabled && activeCount > 0) {
             const distToCenter = Math.hypot(lx - half, ly - half);
             const padRadius = lineWidth * 1.5;
-            if (distToCenter < padRadius) {
-                padIntensity = (1.0 - distToCenter / padRadius) * config.peak;
-            }
+            if (distToCenter < padRadius) padIntensity = (1.0 - distToCenter / padRadius) * config.peak;
         }
-        
         if (minDist < halfWidth || padIntensity > 0) {
             let lineIntensity = 0;
-            if (minDist < halfWidth) {
-                lineIntensity = (1.0 - minDist / halfWidth) * config.peak;
-            }
+            if (minDist < halfWidth) lineIntensity = (1.0 - minDist / halfWidth) * config.peak;
             const intensity = Math.max(lineIntensity, padIntensity);
             applyTint(rgb, intensity, config.tint ?? [1, 1, 1]);
         }

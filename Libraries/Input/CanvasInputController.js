@@ -3,9 +3,7 @@ import { PinchZoomGesture } from "./PinchZoomGesture.js";
 import { bindWheelZoom } from "./WheelZoomHandler.js";
 import { bindCanvasPointerDown, bindCanvasPointerMove, bindCanvasPointerUp } from "./canvasPointer.js";
 import { bindKeyDown } from "./keyboardBindings.js";
-
 /** @typedef {import("./keyboardBindings.js").KeyBinding} KeyBinding */
-
 /**
  * @typedef {object} CanvasInputConfig
  * @property {(screenX: number, screenY: number) => { x: number, y: number }} screenToWorld
@@ -20,7 +18,6 @@ import { bindKeyDown } from "./keyboardBindings.js";
  * @property {KeyBinding[]} [keyBindings]
  * @property {Window | Document | HTMLElement} [keyboardTarget]
  */
-
 /**
  * Owns canvas pointer, wheel, pinch, and optional keyboard bindings.
  * Game code passes callbacks only — no raw addEventListener in glue.
@@ -36,16 +33,9 @@ export class CanvasInputController {
         this._cleanups = [];
         this._doubleTap = new DoubleTapDetector(config.doubleTapTimeoutMs ?? 300);
         this._pinch = null;
-
-        if (config.onWheelZoomDelta) {
-            this._cleanups.push(bindWheelZoom(canvas, config.onWheelZoomDelta, { sensitivity: config.wheelZoomSensitivity ?? 1 }));
-        }
-
-        if (config.onPinchZoom && config.getBaseZoom) {
-            this._pinch = new PinchZoomGesture(canvas, { getBaseZoom: config.getBaseZoom, onPinchZoom: config.onPinchZoom });
-        }
-
-        if (config.onPointerDown) {
+        if (config.onWheelZoomDelta) this._cleanups.push(bindWheelZoom(canvas, config.onWheelZoomDelta, { sensitivity: config.wheelZoomSensitivity ?? 1 }));
+        if (config.onPinchZoom && config.getBaseZoom) this._pinch = new PinchZoomGesture(canvas, { getBaseZoom: config.getBaseZoom, onPinchZoom: config.onPinchZoom });
+        if (config.onPointerDown)
             this._cleanups.push(
                 bindCanvasPointerDown(canvas, {
                     screenToWorld: config.screenToWorld,
@@ -54,9 +44,7 @@ export class CanvasInputController {
                     },
                 }),
             );
-        }
-
-        if (config.onPointerMove) {
+        if (config.onPointerMove)
             this._cleanups.push(
                 bindCanvasPointerMove(canvas, {
                     screenToWorld: config.screenToWorld,
@@ -65,9 +53,7 @@ export class CanvasInputController {
                     },
                 }),
             );
-        }
-
-        if (config.onPointerUp) {
+        if (config.onPointerUp)
             this._cleanups.push(
                 bindCanvasPointerUp(canvas, {
                     screenToWorld: config.screenToWorld,
@@ -76,18 +62,13 @@ export class CanvasInputController {
                     },
                 }),
             );
-        }
-
         if (config.keyBindings?.length) {
             const target = config.keyboardTarget ?? window;
             this._cleanups.push(bindKeyDown(target, config.keyBindings));
         }
     }
-
     destroy() {
-        for (let i = 0; i < this._cleanups.length; i++) {
-            this._cleanups[i]();
-        }
+        for (let i = 0; i < this._cleanups.length; i++) this._cleanups[i]();
         this._cleanups.length = 0;
         this._pinch?.destroy();
         this._pinch = null;

@@ -9,7 +9,6 @@ export function getViewQueryBounds(viewport, px, py, padPx) {
     const halfH = viewport.cy / viewport.zoom;
     return { minX: px - halfW - padPx, minY: py - halfH - padPx, maxX: px + halfW + padPx, maxY: py + halfH + padPx };
 }
-
 export function alignBoundsToHash(bounds, cellSize) {
     return {
         minX: Math.floor(bounds.minX / cellSize) * cellSize,
@@ -18,7 +17,6 @@ export function alignBoundsToHash(bounds, cellSize) {
         maxY: Math.ceil(bounds.maxY / cellSize) * cellSize,
     };
 }
-
 /**
  * @param {CanvasRenderingContext2D} ctx
  * @param {import("../../Viewport/Viewport.js").Viewport} viewport

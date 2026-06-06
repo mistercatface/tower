@@ -1,10 +1,8 @@
 import { vec3 } from "../../Math/Vec3.js";
 import { lerp } from "../../Math/Interpolate.js";
-
 export function cylinderPoint(y, angle, radius) {
     return vec3(Math.cos(angle) * radius, y, Math.sin(angle) * radius);
 }
-
 export function bodyRadiusAtY(y, halfHeight, bodyRadius, rings) {
     if (!rings?.length) return bodyRadius;
     const sorted = [...rings].sort((a, b) => a.y - b.y);

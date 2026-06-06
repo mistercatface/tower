@@ -7,7 +7,7 @@
  * @returns {T}
  */
 export function withSeededRandom(seed, fn) {
-    let s = (seed >>> 0) || 1;
+    let s = seed >>> 0 || 1;
     const savedRandom = Math.random;
     Math.random = () => {
         s = (Math.imul(s, 1664525) + 1013904223) >>> 0;

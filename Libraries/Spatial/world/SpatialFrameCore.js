@@ -1,9 +1,7 @@
 import { EntityGrid } from "../indexes/EntityGrid.js";
 import { collectWallSegmentsForEntity } from "../query/wallSegmentQuery.js";
 import { SpatialQuery } from "../query/SpatialQuery.js";
-
 /** @typedef {import("../query/wallContext.js").WallContext} WallContext */
-
 /**
  * Duck-typed per-tick spatial frame: entity grid, neighbor cache, wall segment cache.
  * Game adapters call resetFrame / insertEntity / setWallContext then run pair policies.
@@ -17,7 +15,6 @@ export class SpatialFrameCore {
         /** @type {WallContext | null} */
         this._wallContext = null;
     }
-
     /** @param {{ minX: number, minY: number, maxX: number, maxY: number } | null} obstacleGrid */
     resetFrame(obstacleGrid) {
         this.frameId = (this.frameId + 1) | 0;
@@ -25,12 +22,10 @@ export class SpatialFrameCore {
         this.entityGrid.syncBounds(obstacleGrid);
         this.entityGrid.clear();
     }
-
     /** @param {WallContext | null} wallContext */
     setWallContext(wallContext) {
         this._wallContext = wallContext;
     }
-
     /**
      * @param {{ x: number, y: number, _physId?: number, _gridTileIdx?: number }} entity — mutated
      * @param {number} physId
@@ -39,46 +34,26 @@ export class SpatialFrameCore {
         entity._physId = physId;
         this.entityGrid.insert(entity);
     }
-
     getNeighbors(entity) {
-        if (entity._neighborsFrameId === this.frameId) {
-            return entity._neighbors;
-        }
-
-        if (!entity._neighbors) {
-            entity._neighbors = [];
-        } else {
-            entity._neighbors.length = 0;
-        }
-
+        if (entity._neighborsFrameId === this.frameId) return entity._neighbors;
+        if (!entity._neighbors) entity._neighbors = [];
+        else entity._neighbors.length = 0;
         const res = this.entityGrid.collectNearby(entity);
-        for (let i = 0; i < res.length; i++) {
-            entity._neighbors.push(res[i]);
-        }
-
+        for (let i = 0; i < res.length; i++) entity._neighbors.push(res[i]);
         entity._neighborsFrameId = this.frameId;
         return entity._neighbors;
     }
-
     forEachNeighbor(entity, fn) {
         const neighbors = this.getNeighbors(entity);
-        for (let i = 0; i < neighbors.length; i++) {
-            fn(neighbors[i]);
-        }
+        for (let i = 0; i < neighbors.length; i++) fn(neighbors[i]);
     }
-
     getWallCandidates(entity) {
         const cached = this._wallCache.get(entity.id);
-        if (cached) {
-            return cached;
-        }
-
+        if (cached) return cached;
         const segments = collectWallSegmentsForEntity(this.wallQuery, this._wallContext, entity);
-
         this._wallCache.set(entity.id, segments);
         return segments;
     }
-
     /**
      * @param {object[]} group
      * @param {(primary: object, neighbor: object) => boolean} shouldPair

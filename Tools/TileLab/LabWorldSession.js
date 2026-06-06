@@ -1,27 +1,20 @@
 import { createLabMapWorld, focusLabNode, listLabMapNodes } from "./map/LabMapWorld.js";
 import { invalidateMapPreviewBakes } from "./map/LabMapPreview.js";
-
 /** @type {import("../../GameState/GameState.js").GameState | null} */
 let labWorld = null;
 let labWorldMapSeed = null;
-
 export function getLabWorld() {
     return labWorld;
 }
-
 export function resetLabWorld() {
     labWorld = null;
 }
-
 export function getLabWorldMapSeed() {
     return labWorldMapSeed;
 }
-
 function populateNodeSelect(state) {
     const select = document.getElementById("mapNodeSelect");
-    if (!select || !state) {
-        return;
-    }
+    if (!select || !state) return;
     const prev = Number(select.value) || 0;
     select.innerHTML = "";
     for (const node of listLabMapNodes(state)) {
@@ -32,7 +25,6 @@ function populateNodeSelect(state) {
     }
     select.value = state.getMapNode(prev) ? String(prev) : "0";
 }
-
 /**
  * @param {{ seed: number }} ctrl
  * @param {boolean} [forceRegen]
@@ -40,10 +32,7 @@ function populateNodeSelect(state) {
 export function ensureLabWorld(ctrl, forceRegen = false) {
     const mapSeed = Number(document.getElementById("mapSeedInput")?.value) || 1;
     if (!labWorld || forceRegen || labWorldMapSeed !== mapSeed) {
-        labWorld = createLabMapWorld({
-            mapSeed,
-            worldSurfaceSeed: ctrl.seed,
-        });
+        labWorld = createLabMapWorld({ mapSeed, worldSurfaceSeed: ctrl.seed });
         labWorldMapSeed = mapSeed;
         populateNodeSelect(labWorld);
     } else if (labWorld.worldSurfaceSeed !== ctrl.seed) {
@@ -51,12 +40,8 @@ export function ensureLabWorld(ctrl, forceRegen = false) {
         labWorld.worldSurfaces.clear();
         invalidateMapPreviewBakes();
     }
-
     const nodeId = Number(document.getElementById("mapNodeSelect")?.value) || 0;
-    if (labWorld.currentNodeId !== nodeId || forceRegen) {
-        focusLabNode(labWorld, nodeId);
-    }
-
+    if (labWorld.currentNodeId !== nodeId || forceRegen) focusLabNode(labWorld, nodeId);
     labWorld.gameTime = 0;
     return labWorld;
 }

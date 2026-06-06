@@ -1,9 +1,6 @@
 export const START_STATION_ID = "tomatoGarden";
-
 export const defaultSurfaceProfileId = START_STATION_ID;
-
 export const startSurfaceProfileId = START_STATION_ID;
-
 /** Global strategy → profile map (tower / shared generator strategies). */
 export const surfaceProfileByStrategy = {
     StartGameBuildingStrategy: START_STATION_ID,

@@ -1,6 +1,5 @@
 import { angleDelta } from "../../Math/Angle.js";
 import { clamp } from "../../Math/Interpolate.js";
-
 export function getSeg(sx, sy, sz, angle, angleZ, len, flare) {
     const rawSin = Math.sin(angle);
     const rawCos = Math.cos(angle);
@@ -10,7 +9,6 @@ export function getSeg(sx, sy, sz, angle, angleZ, len, flare) {
     const z = sz + Math.sin(angleZ) * hMag + flare;
     return { x, y, z };
 }
-
 export function solveIK(startX, startY, targetX, targetY, len1, len2) {
     const dx = targetX - startX;
     const dy = targetY - startY;
@@ -23,16 +21,11 @@ export function solveIK(startX, startY, targetX, targetY, len1, len2) {
     const hipBend = Math.acos(clamp(cosHip, -1, 1));
     const cosKnee = (len1 * len1 + len2 * len2 - clampedDist * clampedDist) / (2 * len1 * len2);
     const kneeBend = Math.acos(clamp(cosKnee, -1, 1));
-    return {
-        hipAngle: angleToTarget - hipBend,
-        kneeAngle: Math.PI - kneeBend,
-    };
+    return { hipAngle: angleToTarget - hipBend, kneeAngle: Math.PI - kneeBend };
 }
-
 export function getRelativeAimAngle(diveDir, aimAngle) {
     return angleDelta(diveDir, aimAngle);
 }
-
 /** Aim rig arms toward world angle; whichArms: 'left' | 'right' | 'both'. */
 export function getAimingArmAngles(aimAngle, whichArms = "right", extension = -1.5, diveDir = 0) {
     const relAim = getRelativeAimAngle(diveDir, aimAngle);
@@ -42,7 +35,6 @@ export function getAimingArmAngles(aimAngle, whichArms = "right", extension = -1
     let lElbow;
     let rArmZ = 0;
     let lArmZ = 0;
-
     if (whichArms === "both") {
         rArm = -Math.PI / 2;
         lArm = -Math.PI / 2;
@@ -66,26 +58,11 @@ export function getAimingArmAngles(aimAngle, whichArms = "right", extension = -1
         lElbow = -0.2;
         lArmZ = 0;
     }
-
-    return {
-        rArm,
-        lArm,
-        rElbow,
-        lElbow,
-        rArmZ,
-        lArmZ,
-        rElbowZ: 0,
-        lElbowZ: 0,
-    };
+    return { rArm, lArm, rElbow, lElbow, rArmZ, lArmZ, rElbowZ: 0, lElbowZ: 0 };
 }
-
 export function applyLocalTilt(p, angle, anchorY) {
     const pyShifted = p.y - anchorY;
     const tCos = Math.cos(angle);
     const tSin = Math.sin(angle);
-    return {
-        x: p.x * tCos + pyShifted * tSin,
-        y: -p.x * tSin + pyShifted * tCos + anchorY,
-        z: p.z,
-    };
+    return { x: p.x * tCos + pyShifted * tSin, y: -p.x * tSin + pyShifted * tCos + anchorY, z: p.z };
 }

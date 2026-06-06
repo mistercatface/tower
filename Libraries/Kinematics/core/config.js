@@ -32,7 +32,6 @@ export function createKinematicsConfig(pixelSize) {
         PERSPECTIVE_SCALE_RANGE: 0.5,
     });
 }
-
 export function createKinematicsRig(config) {
     const legLength = config.SIZE * (config.LEG_L1 + config.LEG_L2);
     const baseShoulderY = config.SIZE * (0.25 + 0.09 + 0.05);

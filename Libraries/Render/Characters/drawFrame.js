@@ -1,7 +1,6 @@
 import { drawHeadNeckAndHair } from "./head.js";
 import { queueRagdollBloodDraw } from "./ragdoll/blood.js";
 import { drawRagdollGoreStumps } from "./ragdoll/goreStumps.js";
-
 /** Draw mesh from rig-local coords — every part projects through sceneRenderer (same as head). */
 function drawStandardCharacter(rigLocal, actor, sceneRenderer, config, rig, getCharacterForActor, options = {}) {
     const severed = options.severed ?? {};
@@ -38,7 +37,7 @@ function drawStandardCharacter(rigLocal, actor, sceneRenderer, config, rig, getC
         Renderer.addSphere(rigLocal.lLeg.p3, legRad * 1.2, palettes.shoe);
     }
     const armRad = rig.armL1 * 0.3;
-    if (!severed.rArm) {
+    if (!severed.rArm)
         if (!severed.rForearm) {
             Renderer.addSphere(rigLocal.rArm.p1, armRad, palettes.shirt);
             Renderer.addCylinder(rigLocal.rArm.p1, rigLocal.rArm.p2, armRad, palettes.shirt);
@@ -50,8 +49,7 @@ function drawStandardCharacter(rigLocal, actor, sceneRenderer, config, rig, getC
             Renderer.addCylinder(rigLocal.rArm.p1, rigLocal.rArm.p2, armRad, palettes.shirt);
             Renderer.addSphere(rigLocal.rArm.p2, armRad * 0.9, armPalette);
         }
-    }
-    if (!severed.lArm) {
+    if (!severed.lArm)
         if (!severed.lForearm) {
             Renderer.addSphere(rigLocal.lArm.p1, armRad, palettes.shirt);
             Renderer.addCylinder(rigLocal.lArm.p1, rigLocal.lArm.p2, armRad, palettes.shirt);
@@ -63,7 +61,6 @@ function drawStandardCharacter(rigLocal, actor, sceneRenderer, config, rig, getC
             Renderer.addCylinder(rigLocal.lArm.p1, rigLocal.lArm.p2, armRad, palettes.shirt);
             Renderer.addSphere(rigLocal.lArm.p2, armRad * 0.9, armPalette);
         }
-    }
     drawHeadNeckAndHair(Renderer, null, rig, char, {
         headLocal: rigLocal.head,
         spineTopLocal: rigLocal.spineTop,
@@ -72,13 +69,11 @@ function drawStandardCharacter(rigLocal, actor, sceneRenderer, config, rig, getC
         severedHead: !!severed.head,
     });
 }
-
 /**
  * @param {{ getCharacterForActor: (actor: object) => object, drawHeldWeapons: (rigLocal: object, actor: object, sceneRenderer: object, config: object, facing: object) => void }} ports
  */
 export function createCharacterFrameDrawer(ports) {
     const { getCharacterForActor, drawHeldWeapons } = ports;
-
     function drawKinematicsFrameToCanvas(sharedCanvas, sharedCtx, rigLocal, actor, viewContext, facing, config, rig, sceneRenderer, overridePadding = null, options = {}) {
         const { drawWeapons = false, severed = {}, ragdoll = null } = options;
         const padding = overridePadding !== null ? overridePadding : config.PADDING;
@@ -86,16 +81,12 @@ export function createCharacterFrameDrawer(ports) {
         if (sharedCanvas.width !== canvasSize || sharedCanvas.height !== canvasSize) {
             sharedCanvas.width = canvasSize;
             sharedCanvas.height = canvasSize;
-        } else {
-            sharedCtx.clearRect(0, 0, canvasSize, canvasSize);
-        }
+        } else sharedCtx.clearRect(0, 0, canvasSize, canvasSize);
         sharedCtx.save();
         sharedCtx.translate(padding, padding);
         sceneRenderer.begin(sharedCtx, viewContext, facing.renderRotation, rig);
         drawStandardCharacter(rigLocal, actor, sceneRenderer, config, rig, getCharacterForActor, { severed: ragdoll?.severed ?? severed });
-        if (drawWeapons) {
-            drawHeldWeapons(rigLocal, actor, sceneRenderer, config, facing);
-        }
+        if (drawWeapons) drawHeldWeapons(rigLocal, actor, sceneRenderer, config, facing);
         if (ragdoll) {
             drawRagdollGoreStumps(ragdoll, sceneRenderer, rig);
             queueRagdollBloodDraw(sceneRenderer, ragdoll, config, rig, viewContext, facing.renderRotation);
@@ -108,6 +99,5 @@ export function createCharacterFrameDrawer(ports) {
         sharedCanvas.verticalShift = feetYInCanvas - canvasCenterY;
         return sharedCanvas;
     }
-
     return { drawKinematicsFrameToCanvas };
 }

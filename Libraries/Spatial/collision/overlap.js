@@ -1,12 +1,10 @@
 import { circleIntersectsSegment } from "../geometry/WallGeometry.js";
-
 /** @param {{ x: number, y: number, radius: number }} a @param {typeof a} b */
 export function circlesOverlap(a, b) {
     const dx = a.x - b.x;
     const dy = a.y - b.y;
     return Math.hypot(dx, dy) < a.radius + b.radius;
 }
-
 /**
  * First wall segment intersecting a circle (broadphase + precise test).
  * @param {{ x: number, y: number, radius: number }} circle
@@ -15,7 +13,6 @@ export function circlesOverlap(a, b) {
  */
 export function findFirstCircleSegmentHit(circle, segments) {
     if (!segments || segments.length === 0) return null;
-
     const radius = circle.radius;
     for (const seg of segments) {
         if (seg.isDead) continue;

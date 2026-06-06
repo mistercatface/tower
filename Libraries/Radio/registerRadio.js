@@ -17,21 +17,16 @@ export function registerRadio(eventBus, controller, view, radioEvents) {
     eventBus.on(radioEvents.RADIO_START, ({ conversationId, onComplete, state, force }) => {
         controller.startSession(conversationId, onComplete, state, { force });
     });
-
     eventBus.on(radioEvents.RADIO_TRIGGER, ({ trigger, onComplete, state }) => {
         controller.fireTrigger(trigger, onComplete, state);
     });
-
     eventBus.on(radioEvents.RADIO_ADVANCE, () => {
         controller.advance();
     });
-
     eventBus.on(radioEvents.RADIO_END, () => {
         controller.end();
     });
-
     eventBus.on(radioEvents.UI_SHOW_RADIO, (data) => view.show(data));
     eventBus.on(radioEvents.UI_HIDE_RADIO, () => view.hide());
-
     view.bindAdvanceInput(() => eventBus.emit(radioEvents.RADIO_ADVANCE));
 }

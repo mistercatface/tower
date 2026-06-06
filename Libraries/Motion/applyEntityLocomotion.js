@@ -1,5 +1,4 @@
 import { applyMobileLocomotion } from "./applyLocomotion.js";
-
 /**
  * Separation + steering + optional wall resolve for one entity.
  *

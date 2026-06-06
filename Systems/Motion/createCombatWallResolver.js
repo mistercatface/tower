@@ -1,5 +1,4 @@
 import { WallCollisionResolver } from "../../Libraries/Motion/WallCollisionResolver.js";
-
 /**
  * @param {object} entity
  * @param {object} hit
@@ -16,7 +15,6 @@ function applyWallDamageHit(entity, hit, state) {
     entity.vx += 0.25 * impactSpeed * hit.normalX;
     entity.vy += 0.25 * impactSpeed * hit.normalY;
 }
-
 /**
  * Game-side wall resolver — injects wall-damage policy into the library resolver.
  *

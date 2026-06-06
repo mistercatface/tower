@@ -1,18 +1,15 @@
 /** @typedef {import("./InspectCatalog.js").InspectEntry} InspectEntry */
 /** @typedef {import("./InspectCatalog.js").InspectSubject} InspectSubject */
-
 const BASE_SCALE_DIVISOR = 235;
 const MIN_ZOOM = 0.45;
 const MAX_ZOOM = 2.75;
 const WHEEL_ZOOM_SENSITIVITY = 0.0012;
-
 /**
  * @typedef {Object} InspectViewerHooks
  * @property {(ctx: { entry: InspectEntry, subject: InspectSubject }) => void} [onOpen]
  * @property {(ctx: { entry: InspectEntry, subject: InspectSubject }) => void} [onClose]
  * @property {(subject: InspectSubject) => boolean} [isSubjectValid]
  */
-
 /**
  * @typedef {Object} InspectViewerOptions
  * @property {string} [overlayId]
@@ -21,7 +18,6 @@ const WHEEL_ZOOM_SENSITIVITY = 0.0012;
  * @property {string} [closeBtnId]
  * @property {InspectViewerHooks} [hooks]
  */
-
 export class InspectViewer {
     /** @param {InspectViewerOptions} [options] */
     constructor(options = {}) {
@@ -30,7 +26,6 @@ export class InspectViewer {
         this.titleId = options.titleId ?? "inspectTitle";
         this.closeBtnId = options.closeBtnId ?? "inspectCloseBtn";
         this.hooks = options.hooks ?? {};
-
         this.entry = null;
         this.subject = null;
         this.yaw = 0;
@@ -49,16 +44,13 @@ export class InspectViewer {
         this.ctx = null;
         this.userOnClose = null;
     }
-
     mount() {
         if (this.overlay) return;
-
         this.overlay = document.getElementById(this.overlayId);
         this.canvas = document.getElementById(this.canvasId);
         this.titleEl = document.getElementById(this.titleId);
         this.ctx = this.canvas.getContext("2d");
         this.ctx.imageSmoothingEnabled = false;
-
         const closeBtn = document.getElementById(this.closeBtnId);
         this.canvas.addEventListener("pointerdown", (e) => this.onPointerDown(e));
         this.canvas.addEventListener("pointermove", (e) => this.onPointerMove(e));
@@ -70,11 +62,9 @@ export class InspectViewer {
         this.overlay.addEventListener("pointercancel", (e) => this.onPointerUp(e));
         closeBtn.addEventListener("click", () => this.close());
     }
-
     isOpen() {
         return this.subject != null;
     }
-
     /**
      * @param {InspectEntry} entry
      * @param {InspectSubject} subject
@@ -82,7 +72,6 @@ export class InspectViewer {
      */
     open(entry, subject, onClose = null) {
         if (!entry || !subject) return;
-
         this.mount();
         this.entry = entry;
         this.subject = subject;
@@ -93,29 +82,20 @@ export class InspectViewer {
         this.pointers.clear();
         this.dragging = false;
         this.pinching = false;
-
-        if (this.titleEl) {
-            this.titleEl.textContent = entry.title;
-        }
-
-        if (entry.onReady) {
+        if (this.titleEl) this.titleEl.textContent = entry.title;
+        if (entry.onReady)
             entry.onReady(() => {
                 if (this.isOpen() && this.subject === subject) this.render();
             });
-        }
-
         this.overlay.style.display = "flex";
         this.resize();
         this.render();
         this.hooks.onOpen?.({ entry, subject });
     }
-
     close() {
         if (!this.overlay || !this.isOpen()) return;
-
         const closedEntry = this.entry;
         const closedSubject = this.subject;
-
         this.overlay.style.display = "none";
         this.entry = null;
         this.subject = null;
@@ -123,15 +103,10 @@ export class InspectViewer {
         this.pinching = false;
         this.pointers.clear();
         this.zoom = 1;
-
         this.hooks.onClose?.({ entry: closedEntry, subject: closedSubject });
-
-        if (typeof this.userOnClose === "function") {
-            this.userOnClose();
-        }
+        if (typeof this.userOnClose === "function") this.userOnClose();
         this.userOnClose = null;
     }
-
     resize() {
         if (!this.canvas) return;
         const rect = this.canvas.getBoundingClientRect();
@@ -139,12 +114,9 @@ export class InspectViewer {
         this.canvas.height = Math.floor(rect.height);
         if (this.isOpen()) this.render();
     }
-
     onPointerDown(e) {
         if (e.target.closest(`#${this.closeBtnId}`)) return;
-
         this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-
         if (this.pointers.size === 2) {
             this.pinching = true;
             this.dragging = false;
@@ -155,23 +127,18 @@ export class InspectViewer {
             this.lastX = e.clientX;
             this.lastY = e.clientY;
         }
-
         this.canvas.setPointerCapture(e.pointerId);
     }
-
     onPointerUp(e) {
         this.pointers.delete(e.pointerId);
-
         if (this.pointers.size < 2) {
             this.pinching = false;
             this.pinchStartDistance = 0;
         }
-
         if (this.pointers.size === 0) {
             this.dragging = false;
             return;
         }
-
         if (this.pointers.size === 1 && !this.pinching) {
             const remaining = [...this.pointers.values()][0];
             this.dragging = true;
@@ -179,12 +146,9 @@ export class InspectViewer {
             this.lastY = remaining.y;
         }
     }
-
     onPointerMove(e) {
         if (!this.subject || !this.pointers.has(e.pointerId)) return;
-
         this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-
         if (this.pinching && this.pointers.size >= 2) {
             const distance = this.getPinchDistance();
             if (this.pinchStartDistance > 0) {
@@ -194,9 +158,7 @@ export class InspectViewer {
             }
             return;
         }
-
         if (!this.dragging || this.pointers.size !== 1) return;
-
         const dx = e.clientX - this.lastX;
         const dy = e.clientY - this.lastY;
         this.lastX = e.clientX;
@@ -206,44 +168,35 @@ export class InspectViewer {
         this.pitch = Math.max(-1.1, Math.min(1.1, this.pitch));
         this.render();
     }
-
     onWheel(e) {
         if (!this.isOpen()) return;
         e.preventDefault();
-
         const factor = 1 - e.deltaY * WHEEL_ZOOM_SENSITIVITY;
         this.zoom = this.clampZoom(this.zoom * factor);
         this.render();
     }
-
     getPinchDistance() {
         const points = [...this.pointers.values()];
         if (points.length < 2) return 0;
         return Math.hypot(points[1].x - points[0].x, points[1].y - points[0].y);
     }
-
     clampZoom(value) {
         return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, value));
     }
-
     render() {
         if (!this.ctx || !this.subject || !this.entry) return;
-
         const isValid = this.hooks.isSubjectValid?.(this.subject) ?? true;
         if (!isValid) {
             this.close();
             return;
         }
-
         const w = this.canvas.width;
         const h = this.canvas.height;
         this.ctx.clearRect(0, 0, w, h);
         this.ctx.fillStyle = "#0a0c10";
         this.ctx.fillRect(0, 0, w, h);
-
         const scale = (h / BASE_SCALE_DIVISOR) * this.zoom;
         this.entry.draw(this.ctx, w / 2, h * 0.46, scale, this.yaw, this.pitch, this.subject);
-
         this.ctx.fillStyle = "rgba(255,255,255,0.55)";
         this.ctx.font = "11px monospace";
         this.ctx.textAlign = "center";

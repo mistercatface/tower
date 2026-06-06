@@ -4,14 +4,7 @@ import { getSimulationPort } from "../../Core/GamePorts.js";
 import { resetSimulationWorld } from "../../Systems/Simulation/index.js";
 import { getCueBall, ensurePoolState } from "./balls.js";
 import { poolRunScenePorts } from "./runScenePorts.js";
-import {
-    tryBeginAim,
-    updateAim,
-    releaseAimShot,
-    getAimPreview,
-    canBeginAim,
-} from "./shotInput.js";
-
+import { tryBeginAim, updateAim, releaseAimShot, getAimPreview, canBeginAim } from "./shotInput.js";
 export class PoolSimulationState {
     onEnter(ctx) {
         if (ctx.state.skipSimulationEnterReset) {
@@ -25,25 +18,20 @@ export class PoolSimulationState {
         getSimulationPort().onEnter?.(ctx);
         requestUiUpdate();
     }
-
     update(dt, ctx) {
         getSimulationPort().runTick(ctx, dt);
     }
-
     render(ctx) {
         this._snapCameraToTable(ctx);
         ctx.renderer.renderSimulationScene(ctx.state, ctx.viewport);
         this._drawTableOverlay(ctx);
     }
-
     /** @param {object} ctx */
     _snapCameraToTable(ctx) {
         const layout = poolRunScenePorts.getLayout(ctx.state);
         const cx = layout?.tableCenterX ?? ctx.state.player.x;
         const cy = layout?.tableCenterY ?? ctx.state.player.y;
-
         ctx.viewport.updateZoomLimits(ctx.state);
-
         if (layout?.tableWidth && layout?.tableHeight) {
             const bounds = ctx.state.canvasBounds;
             const pad = 8;
@@ -61,45 +49,38 @@ export class PoolSimulationState {
             }
             ctx.viewport.zoom = Math.min(zoomX, zoomY) * 0.94;
         }
-
         ctx.viewport.follow(cx, cy);
     }
-
     /** @param {object} ctx */
     _drawTableOverlay(ctx) {
         const canvasCtx = ctx.renderer.ctx;
         const { viewport } = ctx;
         const layout = poolRunScenePorts.getLayout(ctx.state);
         if (!layout) return;
-
         canvasCtx.save();
         canvasCtx.setTransform(1, 0, 0, 1, 0, 0);
-
         const pool = ensurePoolState(ctx.state);
         const status = pool.won
             ? "You cleared the table!"
             : pool.phase === "rolling"
-                ? "Rolling..."
-                : pool.aim?.active
-                    ? "Release to shoot"
-                    : canBeginAim(ctx.state)
-                        ? "Pull back opposite your target"
-                        : "Wait for balls to stop";
-
+              ? "Rolling..."
+              : pool.aim?.active
+                ? "Release to shoot"
+                : canBeginAim(ctx.state)
+                  ? "Pull back opposite your target"
+                  : "Wait for balls to stop";
         canvasCtx.fillStyle = "rgba(0, 0, 0, 0.55)";
         canvasCtx.fillRect(12, 12, 280, 28);
         canvasCtx.fillStyle = "#00FFCC";
         canvasCtx.font = "14px monospace";
         canvasCtx.fillText(status, 20, 32);
-
         if (!pool.won && pool.objectRemaining > 0) {
             canvasCtx.fillStyle = "rgba(0, 0, 0, 0.55)";
             canvasCtx.fillRect(12, 46, 180, 24);
             canvasCtx.fillStyle = "#FFFFFF";
             canvasCtx.fillText(`Object balls left: ${pool.objectRemaining}`, 20, 63);
         }
-
-        if (layout.pockets && !pool.won) {
+        if (layout.pockets && !pool.won)
             for (let i = 0; i < layout.pockets.length; i++) {
                 const pocket = layout.pockets[i];
                 const screen = viewport.worldToScreen(pocket.x, pocket.y);
@@ -112,8 +93,6 @@ export class PoolSimulationState {
                 canvasCtx.lineWidth = 2;
                 canvasCtx.stroke();
             }
-        }
-
         const preview = getAimPreview(ctx.state);
         const cue = getCueBall(ctx.state);
         if (preview && cue) {
@@ -121,72 +100,55 @@ export class PoolSimulationState {
             const shotLen = Math.min(160, preview.drag * viewport.zoom * 0.6);
             const shotX = start.x + preview.nx * shotLen;
             const shotY = start.y + preview.ny * shotLen;
-
             canvasCtx.strokeStyle = "rgba(255, 255, 255, 0.95)";
             canvasCtx.lineWidth = 3;
             canvasCtx.beginPath();
             canvasCtx.moveTo(start.x, start.y);
             canvasCtx.lineTo(shotX, shotY);
             canvasCtx.stroke();
-
             canvasCtx.fillStyle = "rgba(255, 255, 255, 0.9)";
             canvasCtx.beginPath();
             canvasCtx.arc(shotX, shotY, 4, 0, Math.PI * 2);
             canvasCtx.fill();
         }
-
         canvasCtx.restore();
     }
-
     _inputBlocked(ctx) {
         return inspectBridge.isOpen() || ctx.state.isPaused || ctx.game?.isRadioDialogActive?.();
     }
-
     handlePointerDown(worldCoords, _isDoubleTap, event, ctx) {
         if (this._inputBlocked(ctx)) return;
         if (!tryBeginAim(ctx.state)) return;
-
         updateAim(ctx.state, worldCoords.x, worldCoords.y);
-
         const target = event.currentTarget;
-        if (target?.setPointerCapture) {
+        if (target?.setPointerCapture)
             try {
                 target.setPointerCapture(event.pointerId);
             } catch {
                 // ignore capture failures
             }
-        }
     }
-
     handlePointerMove(worldCoords, _screenCoords, _isPrimaryDown, ctx) {
         if (this._inputBlocked(ctx)) return;
-
         const pool = ensurePoolState(ctx.state);
-        if (pool.aim?.active) {
-            updateAim(ctx.state, worldCoords.x, worldCoords.y);
-        }
+        if (pool.aim?.active) updateAim(ctx.state, worldCoords.x, worldCoords.y);
     }
-
     handlePointerUp(worldCoords, event, ctx) {
         if (this._inputBlocked(ctx)) return;
-
         const pool = ensurePoolState(ctx.state);
         if (pool.aim?.active) {
             updateAim(ctx.state, worldCoords.x, worldCoords.y);
             releaseAimShot(ctx.state);
             pool.aim = null;
         }
-
         const target = event.currentTarget;
-        if (target?.releasePointerCapture && target.hasPointerCapture?.(event.pointerId)) {
+        if (target?.releasePointerCapture && target.hasPointerCapture?.(event.pointerId))
             try {
                 target.releasePointerCapture(event.pointerId);
             } catch {
                 // ignore
             }
-        }
     }
-
     /** Legacy FSM tap entry — pool uses pointer down/up. */
     handleInteraction(worldCoords, _isDoubleTap, ctx) {
         if (this._inputBlocked(ctx)) return;

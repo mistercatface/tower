@@ -2,12 +2,8 @@
 export function rotatePoint(centerX, centerY, lx, ly, angle) {
     const cos = Math.cos(angle);
     const sin = Math.sin(angle);
-    return {
-        x: centerX + lx * cos - ly * sin,
-        y: centerY + lx * sin + ly * cos,
-    };
+    return { x: centerX + lx * cos - ly * sin, y: centerY + lx * sin + ly * cos };
 }
-
 export function rectCorners(centerX, centerY, halfSize, angle = 0) {
     const hx = typeof halfSize === "number" ? halfSize : (halfSize.x ?? halfSize.hx);
     const hy = typeof halfSize === "number" ? halfSize : (halfSize.y ?? halfSize.hy);

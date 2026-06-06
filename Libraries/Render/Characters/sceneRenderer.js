@@ -1,19 +1,11 @@
 import { createProjector } from "../../Kinematics/core/projector.js";
-
 function drawPixelCircle(ctx, cx, cy, r, color) {
     ctx.fillStyle = color;
     const rInt = Math.ceil(r);
     const cxR = Math.round(cx);
     const cyR = Math.round(cy);
-    for (let y = -rInt; y <= rInt; y++) {
-        for (let x = -rInt; x <= rInt; x++) {
-            if (x * x + y * y <= r * r) {
-                ctx.fillRect(cxR + x, cyR + y, 1, 1);
-            }
-        }
-    }
+    for (let y = -rInt; y <= rInt; y++) for (let x = -rInt; x <= rInt; x++) if (x * x + y * y <= r * r) ctx.fillRect(cxR + x, cyR + y, 1, 1);
 }
-
 function drawPixelLine(ctx, x0, y0, x1, y1, thickness, color) {
     ctx.fillStyle = color;
     const dx = x1 - x0;
@@ -24,33 +16,23 @@ function drawPixelLine(ctx, x0, y0, x1, y1, thickness, color) {
         const t = i / steps;
         const px = Math.round(x0 + dx * t);
         const py = Math.round(y0 + dy * t);
-        for (let oy = -half; oy <= half; oy++) {
-            for (let ox = -half; ox <= half; ox++) {
-                ctx.fillRect(px + ox, py + oy, 1, 1);
-            }
-        }
+        for (let oy = -half; oy <= half; oy++) for (let ox = -half; ox <= half; ox++) ctx.fillRect(px + ox, py + oy, 1, 1);
     }
 }
-
 export function createSceneRenderer(config) {
     const TYPE_SPHERE = 0;
     const TYPE_CYLINDER = 1;
     const TYPE_CUSTOM = 2;
-
     return {
         queue: [],
         pool: [],
         poolIndex: 0,
         ctx: null,
         project: null,
-
         getItem() {
-            if (this.poolIndex >= this.pool.length) {
-                this.pool.push({});
-            }
+            if (this.poolIndex >= this.pool.length) this.pool.push({});
             return this.pool[this.poolIndex++];
         },
-
         begin(ctx, viewContext, rotation, rig) {
             this.ctx = ctx;
             this.queue.length = 0;
@@ -58,7 +40,6 @@ export function createSceneRenderer(config) {
             this.project = createProjector(viewContext, rotation, config, rig);
             ctx.imageSmoothingEnabled = false;
         },
-
         addSphere(pos, radius, palette) {
             const p = this.project(pos);
             const r = radius * p.scale;
@@ -72,7 +53,6 @@ export function createSceneRenderer(config) {
             item.palette = palette;
             this.queue.push(item);
         },
-
         addCustom(z, callback) {
             const item = this.getItem();
             item.type = TYPE_CUSTOM;
@@ -80,7 +60,6 @@ export function createSceneRenderer(config) {
             item.callback = callback;
             this.queue.push(item);
         },
-
         addCylinder(start, end, radius, palette, scaleWidth = 1.0) {
             const s = this.project(start);
             const e = this.project(end);
@@ -96,7 +75,6 @@ export function createSceneRenderer(config) {
             item.palette = palette;
             this.queue.push(item);
         },
-
         flush() {
             this.queue.sort((a, b) => a.z - b.z);
             const ctx = this.ctx;
@@ -108,11 +86,8 @@ export function createSceneRenderer(config) {
                         ctx.fillStyle = item.palette.light;
                         ctx.fillRect(item.x - 1, item.y - 1, 1, 1);
                     }
-                } else if (item.type === TYPE_CYLINDER) {
-                    drawPixelLine(ctx, item.sx, item.sy, item.ex, item.ey, item.thickness, item.palette.base);
-                } else if (item.type === TYPE_CUSTOM) {
-                    item.callback(ctx);
-                }
+                } else if (item.type === TYPE_CYLINDER) drawPixelLine(ctx, item.sx, item.sy, item.ex, item.ey, item.thickness, item.palette.base);
+                else if (item.type === TYPE_CUSTOM) item.callback(ctx);
             }
             this.queue.length = 0;
         },

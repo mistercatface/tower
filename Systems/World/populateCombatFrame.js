@@ -1,5 +1,4 @@
 import { wallContextFromState } from "../../Libraries/Spatial/query/wallContext.js";
-
 /**
  * Insert combatants and pickups into a spatial frame for the current tick.
  * Mutates `combatants` and `pushables` arrays (reused each frame).
@@ -15,17 +14,14 @@ export function populateCombatFrame(frame, state, combatants, pushables) {
     combatants.length = 0;
     pushables.length = 0;
     let physIdCounter = 0;
-    for (const actor of state.getCombatants()) {
+    for (const actor of state.getCombatants())
         if (!actor?.isDead) {
             frame.insertEntity(actor, physIdCounter++);
             combatants.push(actor);
         }
-    }
     for (const pickup of state.pickups) {
         if (pickup.isDead) continue;
         frame.insertEntity(pickup, physIdCounter++);
-        if (pickup.strategy?.isPushable) {
-            pushables.push(pickup);
-        }
+        if (pickup.strategy?.isPushable) pushables.push(pickup);
     }
 }

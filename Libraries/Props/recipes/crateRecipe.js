@@ -1,5 +1,4 @@
 import { drawExtrudedBox } from "../../Render/Props3D/SolidDraw.js";
-
 /** @param {object} visuals */
 export function createCrateDraw(visuals) {
     const { colors, world } = visuals;
@@ -19,14 +18,12 @@ export function createCrateDraw(visuals) {
         });
     };
 }
-
 /** @param {object} visuals */
 export function createCrateShardDraw(visuals) {
     const { colors, world } = visuals;
     return (ctx, prop, px, py) => {
         const opacity = prop.opacity ?? 1.0;
         const halfExtents = prop.halfExtents ?? { x: 4, y: 4 };
-
         ctx.save();
         ctx.globalAlpha = opacity;
         drawExtrudedBox(ctx, prop, px, py, {

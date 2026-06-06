@@ -5,9 +5,5 @@
  */
 export function markRadioTriggersSeen(state, triggers, registry) {
     if (!state.radioSeenThisRun) state.radioSeenThisRun = {};
-    for (const trigger of triggers) {
-        for (const conversationId of registry.getConversationIdsForTrigger(trigger)) {
-            state.radioSeenThisRun[conversationId] = true;
-        }
-    }
+    for (const trigger of triggers) for (const conversationId of registry.getConversationIdsForTrigger(trigger)) state.radioSeenThisRun[conversationId] = true;
 }
