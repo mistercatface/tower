@@ -7,13 +7,13 @@ export class SatCollision {
     static checkCollision(posA, shapeA, posB, shapeB) {
         if (!shapeA || !shapeB) return null;
 
-        if (shapeA.type === 'Circle' && shapeB.type === 'Circle') {
+        if (shapeA.type === "Circle" && shapeB.type === "Circle") {
             return this._circleCircle(posA, shapeA, posB, shapeB);
-        } else if (shapeA.type === 'Polygon' && shapeB.type === 'Polygon') {
+        } else if (shapeA.type === "Polygon" && shapeB.type === "Polygon") {
             return this._polygonPolygon(posA, shapeA, posB, shapeB);
-        } else if (shapeA.type === 'Circle' && shapeB.type === 'Polygon') {
+        } else if (shapeA.type === "Circle" && shapeB.type === "Polygon") {
             return this._circlePolygon(posA, shapeA, posB, shapeB);
-        } else if (shapeA.type === 'Polygon' && shapeB.type === 'Circle') {
+        } else if (shapeA.type === "Polygon" && shapeB.type === "Circle") {
             const res = this._circlePolygon(posB, shapeB, posA, shapeA);
             if (res) {
                 res.nx = -res.nx;
@@ -35,13 +35,7 @@ export class SatCollision {
         }
         const dist = Math.sqrt(distSq);
         const overlap = radii - dist;
-        return {
-            overlap: overlap,
-            nx: dx / dist,
-            ny: dy / dist,
-            cx: posA.x + (dx / dist) * (shapeA.radius - overlap / 2),
-            cy: posA.y + (dy / dist) * (shapeA.radius - overlap / 2)
-        };
+        return { overlap: overlap, nx: dx / dist, ny: dy / dist, cx: posA.x + (dx / dist) * (shapeA.radius - overlap / 2), cy: posA.y + (dy / dist) * (shapeA.radius - overlap / 2) };
     }
 
     static _polygonPolygon(posA, shapeA, posB, shapeB) {
@@ -113,13 +107,7 @@ export class SatCollision {
             }
         }
 
-        return {
-            overlap: minOverlap,
-            nx: minNormal.x,
-            ny: minNormal.y,
-            cx: (contactA.x + contactB.x) / 2,
-            cy: (contactA.y + contactB.y) / 2
-        };
+        return { overlap: minOverlap, nx: minNormal.x, ny: minNormal.y, cx: (contactA.x + contactB.x) / 2, cy: (contactA.y + contactB.y) / 2 };
     }
 
     static _circlePolygon(posCircle, circleShape, posPoly, polyShape) {
@@ -204,7 +192,7 @@ export class SatCollision {
             nx: minNormal.x,
             ny: minNormal.y,
             cx: posCircle.x + minNormal.x * (circleShape.radius - minOverlap / 2),
-            cy: posCircle.y + minNormal.y * (circleShape.radius - minOverlap / 2)
+            cy: posCircle.y + minNormal.y * (circleShape.radius - minOverlap / 2),
         };
     }
 
@@ -228,9 +216,6 @@ export class SatCollision {
 
     static _projectCircle(axis, pos, shape) {
         const projection = pos.x * axis.x + pos.y * axis.y;
-        return {
-            min: projection - shape.radius,
-            max: projection + shape.radius
-        };
+        return { min: projection - shape.radius, max: projection + shape.radius };
     }
 }
