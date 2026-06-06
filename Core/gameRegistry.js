@@ -1,29 +1,22 @@
-import { poolGame } from "../Games/pool/gameDefinition.js";
-import { towerGame } from "../Games/tower/gameDefinition.js";
-
 /** @typedef {import("./GameDefinitionTypes.js").GameDefinition} GameDefinition */
-
-/** @type {Record<string, GameDefinition>} */
-export const GAME_REGISTRY = {
-    pool: poolGame,
-    tower: towerGame,
-};
-
-/** @type {keyof typeof GAME_REGISTRY} */
+/** @type {Record<string, () => Promise<GameDefinition>>} */
+const GAME_LOADERS = { pool: () => import("../Games/pool/gameDefinition.js").then((m) => m.poolGame), tower: () => import("../Games/tower/gameDefinition.js").then((m) => m.towerGame) };
+/** @type {keyof typeof GAME_LOADERS} */
 export const DEFAULT_GAME_ID = "pool";
-
+export const GAME_IDS = Object.keys(GAME_LOADERS);
 /**
- * Resolve which game to boot from `?game=<id>` (e.g. `?game=tower`, `?game=pool`).
+ * Load and return the game definition for `?game=<id>` (e.g. `?game=tower`, `?game=pool`).
+ * Only the selected game's modules are imported.
  *
  * @param {string} [search] — defaults to `window.location.search`
- * @returns {GameDefinition}
+ * @returns {Promise<GameDefinition>}
  */
-export function resolveGameFromUrl(search = typeof window !== "undefined" ? window.location.search : "") {
+export async function loadGameFromUrl(search = typeof window !== "undefined" ? window.location.search : "") {
     const id = new URLSearchParams(search).get("game") ?? DEFAULT_GAME_ID;
-    const game = GAME_REGISTRY[id];
-    if (!game) {
-        console.warn(`Unknown game "${id}" — falling back to ${DEFAULT_GAME_ID}. Available: ${Object.keys(GAME_REGISTRY).join(", ")}`);
-        return GAME_REGISTRY[DEFAULT_GAME_ID];
+    const loader = GAME_LOADERS[id];
+    if (!loader) {
+        console.warn(`Unknown game "${id}" — falling back to ${DEFAULT_GAME_ID}. Available: ${GAME_IDS.join(", ")}`);
+        return GAME_LOADERS[DEFAULT_GAME_ID]();
     }
-    return game;
+    return loader();
 }

@@ -4,7 +4,7 @@ import { getSimulationPort } from "../../Core/GamePorts.js";
 import { resetSimulationWorld } from "../../Systems/Simulation/index.js";
 import { getCueBall, ensurePoolState } from "./balls.js";
 import { poolRunScenePorts } from "./runScenePorts.js";
-import { tryBeginAim, updateAim, releaseAimShot, getAimPreview, canBeginAim } from "./shotInput.js";
+import { tryBeginAim, updateAim, releaseAimShot, getAimPreview } from "./shotInput.js";
 export class PoolSimulationState {
     onEnter(ctx) {
         if (ctx.state.skipSimulationEnterReset) {
@@ -24,7 +24,7 @@ export class PoolSimulationState {
     render(ctx) {
         this._snapCameraToTable(ctx);
         ctx.renderer.renderSimulationScene(ctx.state, ctx.viewport);
-        this._drawTableOverlay(ctx);
+        this._drawWorldOverlay(ctx);
     }
     /** @param {object} ctx */
     _snapCameraToTable(ctx) {
@@ -51,35 +51,16 @@ export class PoolSimulationState {
         }
         ctx.viewport.follow(cx, cy);
     }
+    /** World-anchored canvas overlay — aim line + pocket rings (status text is DOM via poolUiPort). */
     /** @param {object} ctx */
-    _drawTableOverlay(ctx) {
+    _drawWorldOverlay(ctx) {
         const canvasCtx = ctx.renderer.ctx;
         const { viewport } = ctx;
         const layout = poolRunScenePorts.getLayout(ctx.state);
         if (!layout) return;
+        const pool = ensurePoolState(ctx.state);
         canvasCtx.save();
         canvasCtx.setTransform(1, 0, 0, 1, 0, 0);
-        const pool = ensurePoolState(ctx.state);
-        const status = pool.won
-            ? "You cleared the table!"
-            : pool.phase === "rolling"
-              ? "Rolling..."
-              : pool.aim?.active
-                ? "Release to shoot"
-                : canBeginAim(ctx.state)
-                  ? "Pull back opposite your target"
-                  : "Wait for balls to stop";
-        canvasCtx.fillStyle = "rgba(0, 0, 0, 0.55)";
-        canvasCtx.fillRect(12, 12, 280, 28);
-        canvasCtx.fillStyle = "#00FFCC";
-        canvasCtx.font = "14px monospace";
-        canvasCtx.fillText(status, 20, 32);
-        if (!pool.won && pool.objectRemaining > 0) {
-            canvasCtx.fillStyle = "rgba(0, 0, 0, 0.55)";
-            canvasCtx.fillRect(12, 46, 180, 24);
-            canvasCtx.fillStyle = "#FFFFFF";
-            canvasCtx.fillText(`Object balls left: ${pool.objectRemaining}`, 20, 63);
-        }
         if (layout.pockets && !pool.won)
             for (let i = 0; i < layout.pockets.length; i++) {
                 const pocket = layout.pockets[i];

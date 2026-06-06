@@ -6,58 +6,38 @@ import { getUiProfile } from "../../../Core/GameUiProfile.js";
 import { getGunDefinition, playerEquipmentCatalog } from "../../../Config/content/guns.js";
 import { getSlotFireIntervalMs, getSlotReloadTimeMs } from "../../../Combat/gunCombat.js";
 import { countGunInLoadout, formatHandednessLabel, getEquipmentSlotCount, getGunEquipAction, normalizeWeaponLoadout } from "../../../Combat/equipmentLoadout.js";
-import {
-    events,
-    Events,
-    emitPurchaseUpgrade,
-    emitToggleAbility,
-    emitSetUpgradeTab,
-    emitSetStatsSubTab,
-    emitToggleEquipWeapon,
-    emitUnequipWeaponSlot,
-} from "../../../Core/EventSystem.js";
+import { events, Events, emitPurchaseUpgrade, emitToggleAbility, emitSetUpgradeTab, emitSetStatsSubTab, emitToggleEquipWeapon, emitUnequipWeaponSlot } from "../../../Core/EventSystem.js";
+import { applyChromeProfile } from "../../../UI/Core/shellChrome.js";
 import { wireShellControls } from "../../../UI/Core/wireShellControls.js";
-const elements = {
-    upgradeChoiceModal: document.getElementById("upgradeChoiceModal"),
-    upgradeChoicesContainer: document.getElementById("upgradeChoicesContainer"),
-    upgradeChoiceTitle: document.getElementById("upgradeChoiceTitle"),
-    upgradeChoiceDesc: document.getElementById("upgradeChoiceDesc"),
-    killsDisplay: document.getElementById("killsDisplay"),
-    scoreDisplay: document.getElementById("scoreDisplay"),
-    levelDisplay: document.getElementById("levelDisplay"),
-    nextPerkDisplay: document.getElementById("nextPerkDisplay"),
-    xpDisplay: document.getElementById("xpDisplay"),
-    healthSegments: document.getElementById("healthSegments"),
-    healthText: document.getElementById("healthText"),
-    inspectMissionBanner: document.getElementById("inspectMissionBanner"),
-    inspectMissionText: document.getElementById("inspectMissionText"),
-    passivesContainer: document.getElementById("passivesContainer"),
-    abilitiesContainer: document.getElementById("abilitiesContainer"),
-    upgradesContainer: document.getElementById("upgradesContainer"),
-    pauseBtn: document.getElementById("pauseBtn"),
-    pauseText: document.getElementById("pauseText"),
-    speedDisplay: document.getElementById("speedDisplay"),
-    speedDownBtn: document.getElementById("speedDownBtn"),
-    speedUpBtn: document.getElementById("speedUpBtn"),
-    restartBtn: document.getElementById("restartBtn"),
-    gameOverUI: document.getElementById("gameOverUI"),
-    gameOverTitle: document.getElementById("gameOverTitle"),
-    settingsBtn: document.getElementById("settingsBtn"),
-    mapBtn: document.getElementById("mapBtn"),
-    closeMapBtn: document.getElementById("closeMapBtn"),
-    closeSettingsBtn: document.getElementById("closeSettingsBtn"),
-    hardResetBtn: document.getElementById("hardResetBtn"),
-    settingsModal: document.getElementById("settingsModal"),
-    combatHudModeSelect: document.getElementById("combatHudModeSelect"),
-    mainTabButtons: document.querySelectorAll(".mainTabBtn"),
-    statsSubTabButtons: document.querySelectorAll(".statsSubTabBtn"),
-    statsSubTabs: document.getElementById("statsSubTabs"),
-    equipmentPanel: document.getElementById("equipmentPanel"),
-    equipmentSlots: document.getElementById("equipmentSlots"),
-    equipmentArmory: document.getElementById("equipmentArmory"),
-    zoomSlider: document.getElementById("zoomSlider"),
-    zoomDisplay: document.getElementById("zoomDisplay"),
-};
+import { mountTowerChrome } from "./mountTowerChrome.js";
+/** @type {Record<string, HTMLElement | NodeListOf<Element> | null>} */
+const elements = {};
+function bindTowerElements() {
+    elements.killsDisplay = document.getElementById("killsDisplay");
+    elements.scoreDisplay = document.getElementById("scoreDisplay");
+    elements.levelDisplay = document.getElementById("levelDisplay");
+    elements.nextPerkDisplay = document.getElementById("nextPerkDisplay");
+    elements.xpDisplay = document.getElementById("xpDisplay");
+    elements.healthSegments = document.getElementById("healthSegments");
+    elements.healthText = document.getElementById("healthText");
+    elements.inspectMissionBanner = document.getElementById("inspectMissionBanner");
+    elements.inspectMissionText = document.getElementById("inspectMissionText");
+    elements.passivesContainer = document.getElementById("passivesContainer");
+    elements.abilitiesContainer = document.getElementById("abilitiesContainer");
+    elements.upgradesContainer = document.getElementById("upgradesContainer");
+    elements.pauseText = document.getElementById("pauseText");
+    elements.speedDisplay = document.getElementById("speedDisplay");
+    elements.speedDownBtn = document.getElementById("speedDownBtn");
+    elements.speedUpBtn = document.getElementById("speedUpBtn");
+    elements.mainTabButtons = document.querySelectorAll(".mainTabBtn");
+    elements.statsSubTabButtons = document.querySelectorAll(".statsSubTabBtn");
+    elements.statsSubTabs = document.getElementById("statsSubTabs");
+    elements.equipmentPanel = document.getElementById("equipmentPanel");
+    elements.equipmentSlots = document.getElementById("equipmentSlots");
+    elements.equipmentArmory = document.getElementById("equipmentArmory");
+    elements.zoomSlider = document.getElementById("zoomSlider");
+    elements.zoomDisplay = document.getElementById("zoomDisplay");
+}
 const dynamicElements = {};
 function createButton(styles, innerHTML, onClick, id = "") {
     const btn = document.createElement("button");
@@ -184,6 +164,9 @@ function updateProgressBar(containerId, textId, textString, ratio, totalSegments
     }
 }
 function mountTowerUi(state, upgrades) {
+    mountTowerChrome();
+    bindTowerElements();
+    applyChromeProfile(getUiProfile());
     elements.passivesContainer.innerHTML = "";
     upgrades
         .filter((u) => u.isAbility && !u.showInHud)
@@ -547,7 +530,6 @@ function updateUI(state, upgrades) {
     }
     upgrades.forEach((upg) => drawStat(state, upg, abilityLayoutById));
 }
-
 /** @type {import("../../../Core/GameDefinitionTypes.js").UiPort} */
 export const towerUiPort = {
     mount(ctx) {

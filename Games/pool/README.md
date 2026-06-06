@@ -20,13 +20,14 @@ Skip intro: `?scene=play`
 
 ## Architecture
 
-| Module | Role |
-|--------|------|
-| `PoolTableStrategy.js` | Rectangular rail walls |
-| `config/tableLayout.js` | Table size, pockets, ball spawns |
-| `shotInput.js` | Drag aim + strike |
-| `pockets.js` | Pocket sensors |
-| `balls.js` | Cue/object balls, stop detection |
-| `PoolSimulationState.js` | Camera, overlays, input |
-| `simulation.js` | Physics phase pipeline (`gameDefinition.simulationPort`) |
-| `ui/poolUiPort.js` | Minimal shell controls (`gameDefinition.uiPort`) |
+| Module                   | Role                                                        |
+| ------------------------ | ----------------------------------------------------------- |
+| `PoolTableStrategy.js`   | Rectangular rail walls                                      |
+| `config/tableLayout.js`  | Table size, pockets, ball spawns                            |
+| `shotInput.js`           | Drag aim + strike                                           |
+| `pockets.js`             | Pocket sensors                                              |
+| `balls.js`               | Cue/object balls, stop detection                            |
+| `PoolSimulationState.js` | Camera, overlays, input                                     |
+| `simulation.js`          | Physics phase pipeline (`gameDefinition.simulationPort`)    |
+| `ui/poolUiPort.js`       | Table status HUD + shell controls (`gameDefinition.uiPort`) |
+| `poolHud.js`             | Status message helper for DOM HUD                           |

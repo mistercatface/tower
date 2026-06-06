@@ -1,7 +1,7 @@
 import { Events } from "../../Core/EventSystem.js";
 import { getUiPort } from "../../Core/GamePorts.js";
-import { applyChromeVisibility } from "../../Core/GameShell.js";
 import { registerSharedOverlayListeners } from "./sharedOverlays.js";
+import { clearGameChrome } from "./uiRoot.js";
 
 /** @typedef {import("../../Core/GameDefinitionTypes.js").UiContext} UiContext */
 
@@ -11,7 +11,7 @@ import { registerSharedOverlayListeners } from "./sharedOverlays.js";
  * @param {UiContext} ctx
  */
 export function mountUiPort(ctx) {
-    applyChromeVisibility();
+    clearGameChrome();
     getUiPort().mount(ctx);
 }
 

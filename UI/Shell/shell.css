@@ -7,6 +7,40 @@
     position: relative;
 }
 
+/* Pool table HUD — text in DOM; aim/pockets stay on canvas */
+.pool-hud {
+    display: none;
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 41;
+    flex-direction: column;
+    gap: 6px;
+    pointer-events: none;
+    font-family: monospace;
+}
+
+.pool-hud-status,
+.pool-hud-balls-left {
+    padding: 6px 10px;
+    background: rgba(0, 0, 0, 0.55);
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px #000;
+}
+
+.pool-hud-status {
+    color: #00ffcc;
+    min-width: 200px;
+}
+
+.pool-hud-balls-left {
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: normal;
+}
+
 #ui-root {
     flex: 1;
     display: flex;
@@ -17,6 +51,14 @@
 
 body.shell-landscape-minimal #ui-root {
     flex: 0 0 auto;
+}
+
+body.shell-landscape-minimal #topUI {
+    justify-content: flex-end;
+}
+
+body.shell-landscape-minimal .pool-top-controls {
+    width: 100%;
 }
 
 /* ─── Top HUD ─────────────────────────────────────────────────────────────── */
