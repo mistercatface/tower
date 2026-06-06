@@ -21,17 +21,18 @@ export function canBeginAim(state) {
     return allBallsStopped(state);
 }
 /**
- * Begin aim anchored on the cue ball. Any table tap works — pull vector updates on drag.
+ * Begin aim at the pointer-down position. Pull vector is finger delta from that anchor.
  *
  * @param {object} state
+ * @param {number} worldX
+ * @param {number} worldY
  * @returns {boolean}
  */
-export function tryBeginAim(state) {
+export function tryBeginAim(state, worldX, worldY) {
     if (!canBeginAim(state)) return false;
-    const cue = getCueBall(state);
-    if (!cue) return false;
+    if (!getCueBall(state)) return false;
     const pool = ensurePoolState(state);
-    pool.aim = { active: true, pullX: cue.x, pullY: cue.y };
+    pool.aim = { active: true, anchorX: worldX, anchorY: worldY, pullX: worldX, pullY: worldY };
     return true;
 }
 /**
@@ -56,8 +57,8 @@ export function releaseAimShot(state) {
     if (!aim?.active) return false;
     const cue = getCueBall(state);
     if (!cue) return false;
-    const dx = aim.pullX - cue.x;
-    const dy = aim.pullY - cue.y;
+    const dx = aim.pullX - aim.anchorX;
+    const dy = aim.pullY - aim.anchorY;
     const drag = Math.hypot(dx, dy);
     if (drag < MIN_AIM_DRAG) return false;
     const power = Math.min(MAX_SHOT_POWER, drag * SHOT_POWER_SCALE);
@@ -78,8 +79,8 @@ export function getAimPreview(state) {
     if (!pool.aim?.active) return null;
     const cue = getCueBall(state);
     if (!cue) return null;
-    const dx = pool.aim.pullX - cue.x;
-    const dy = pool.aim.pullY - cue.y;
+    const dx = pool.aim.pullX - pool.aim.anchorX;
+    const dy = pool.aim.pullY - pool.aim.anchorY;
     const drag = Math.hypot(dx, dy);
     if (drag < 1) return null;
     return { nx: -dx / drag, ny: -dy / drag, power: Math.min(MAX_SHOT_POWER, drag * SHOT_POWER_SCALE), drag };

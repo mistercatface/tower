@@ -98,8 +98,7 @@ export class PoolSimulationState {
     }
     handlePointerDown(worldCoords, _isDoubleTap, event, ctx) {
         if (this._inputBlocked(ctx)) return;
-        if (!tryBeginAim(ctx.state)) return;
-        updateAim(ctx.state, worldCoords.x, worldCoords.y);
+        if (!tryBeginAim(ctx.state, worldCoords.x, worldCoords.y)) return;
         const target = event.currentTarget;
         if (target?.setPointerCapture)
             try {
@@ -132,8 +131,7 @@ export class PoolSimulationState {
     /** Legacy FSM tap entry — pool uses pointer down/up. */
     handleInteraction(worldCoords, _isDoubleTap, ctx) {
         if (this._inputBlocked(ctx)) return;
-        if (!tryBeginAim(ctx.state)) return;
-        updateAim(ctx.state, worldCoords.x, worldCoords.y);
+        if (!tryBeginAim(ctx.state, worldCoords.x, worldCoords.y)) return;
         releaseAimShot(ctx.state);
         ensurePoolState(ctx.state).aim = null;
     }
