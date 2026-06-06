@@ -1,4 +1,5 @@
 import { getSurfaceProfileProvider } from "../../Libraries/Procedural/SurfaceProfileProvider.js";
+import { resolveActiveSurfaceProfileId } from "../../Core/GameProceduralDesign.js";
 import cyberGrid from "./storage/cyberGrid.js";
 import toxicSludge from "./storage/toxicSludge.js";
 import neonWireframe from "./storage/neonWireframe.js";
@@ -14,6 +15,14 @@ import cyberPulse from "./storage/cyberPulse.js";
 import decayedStation from "./storage/decayedStation.js";
 import circuitLoop from "./storage/circuitLoop.js";
 import tomatoGarden from "./storage/tomatoGarden.js";
+import poolTableFelt from "./storage/poolTableFelt.js";
+
+export {
+    START_STATION_ID,
+    defaultSurfaceProfileId,
+    startSurfaceProfileId,
+    surfaceProfileByStrategy,
+} from "./profileDefaults.js";
 
 export const surfaceProceduralProfiles = {
     cyberGrid,
@@ -31,25 +40,7 @@ export const surfaceProceduralProfiles = {
     decayedStation,
     circuitLoop,
     tomatoGarden,
-};
-
-export const START_STATION_ID = "tomatoGarden";
-
-export const defaultSurfaceProfileId = START_STATION_ID;
-
-export const startSurfaceProfileId = START_STATION_ID;
-
-export const surfaceProfileByStrategy = {
-    StartGameBuildingStrategy: START_STATION_ID,
-    MazeStrategy: START_STATION_ID,
-    Maze2Strategy: START_STATION_ID,
-    DenseMazeStrategy: START_STATION_ID,
-    SquareStrategy: START_STATION_ID,
-    GeometricStrategy: START_STATION_ID,
-    FortressStrategy: START_STATION_ID,
-    HoneycombStrategy: START_STATION_ID,
-    DiamondStrategy: START_STATION_ID,
-    PoolTableStrategy: START_STATION_ID,
+    poolTableFelt,
 };
 
 /** Tile Lab live editor profile (`__labA__`), not persisted to disk. */
@@ -65,13 +56,6 @@ export function listShippedSurfaceProfileIds() {
     return getSurfaceProfileProvider().listShippedIds();
 }
 
-export function resolveSurfaceProfileId({ layer, strategy }) {
-    if (layer === 0) {
-        return startSurfaceProfileId;
-    }
-    const profileId = surfaceProfileByStrategy[strategy];
-    if (!profileId) {
-        throw new Error(`No surface procedural profile mapped for strategy: ${strategy}`);
-    }
-    return profileId;
+export function resolveSurfaceProfileId(args) {
+    return resolveActiveSurfaceProfileId(args);
 }

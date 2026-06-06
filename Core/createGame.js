@@ -17,6 +17,7 @@ import { applyGameShell, resolveUiProfile } from "./GameUiProfile.js";
 import { applyChromeVisibility } from "./GameShell.js";
 import { applyGamePerspective } from "./GamePerspective.js";
 import { applyGamePropPixelSize } from "./GamePropPixelSize.js";
+import { applyGameProceduralDesign } from "./GameProceduralDesign.js";
 
 /** @typedef {import("./GameDefinitionTypes.js").GameDefinition} GameDefinition */
 
@@ -28,6 +29,7 @@ import { applyGamePropPixelSize } from "./GamePropPixelSize.js";
 export function createGame(definition) {
     setActiveGameDefinition(definition);
     definition.prepare?.();
+    applyGameProceduralDesign(definition);
     applyGamePerspective(definition);
     applyGamePropPixelSize(definition);
     applyGameShell(definition);

@@ -14,6 +14,11 @@ export class SurfaceProfileProvider {
         return this.defaultProfileId;
     }
 
+    /** @param {string|null} profileId */
+    setDefaultProfileId(profileId) {
+        this.defaultProfileId = profileId;
+    }
+
     registerRuntime(profileId, profile) {
         this.runtimeProfiles[profileId] = profile;
     }

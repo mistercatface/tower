@@ -23,6 +23,7 @@ import { wirePoolRadio } from "./wireRadio.js";
 import { getWorldPropDefinitions, getWorldPropRecipes } from "../../Libraries/Content/PropCatalog.js";
 import { PROP_RECIPE_BUILDERS } from "../../Libraries/Props/recipes/index.js";
 import { POOL_BALL_RADIUS } from "./config/tableLayout.js";
+import { poolSurfaceProfileId } from "./config/proceduralDesign.js";
 
 /** @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition */
 
@@ -104,6 +105,10 @@ export const poolGame = {
     },
 
     propPixelSize: 32,
+
+    proceduralDesign: {
+        surfaceProfileId: poolSurfaceProfileId,
+    },
 
     combatPairs: poolCombatPairs,
     targeting: poolTargeting,

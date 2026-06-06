@@ -93,6 +93,7 @@
  * @property {Partial<import("./GameUiProfile.js").GameUiProfile>} [ui]
  * @property {Partial<import("./GamePerspective.js").PerspectiveConfig>} [perspective]
  * @property {number} [propPixelSize] — iso prop bake diameter in px (like kinematicsPixelSize for actors)
+ * @property {Partial<import("./GameProceduralDesign.js").ProceduralDesignConfig>} [proceduralDesign]
  * @property {(state: object) => "won" | "lost" | null} [getRunOutcome]
  */
 
