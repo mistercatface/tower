@@ -15,7 +15,7 @@
 /** @type {InspectManifestEntry[]} */
 export const inspectManifest = [
     {
-        id: "jacko_can",
+        id: "fuel_barrel",
         propType: "barrel",
         title: "VOLATILE FLUID",
         tapPadding: 14,
@@ -31,7 +31,7 @@ export const inspectManifest = [
 /** @type {string[]} */
 export const clueSearchInspectKeys = inspectManifest.map((entry) => entry.id);
 
-/** Radio trigger ids for skip/mark-seen (e.g. inspect:jacko_can). */
+/** Radio trigger ids for skip/mark-seen (e.g. inspect:fuel_barrel). */
 export const clueSearchInspectRadioTriggers = inspectManifest.map((entry) => `inspect:${entry.id}`);
 
 /** @type {Record<string, string>} propType → inspectKey */

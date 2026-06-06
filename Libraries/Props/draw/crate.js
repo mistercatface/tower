@@ -1,13 +1,13 @@
-import { WOOD_CRATE } from "../../../../../../Config/content/props/Crate.js";
-import { drawExtrudedBox } from "../../../../../../Libraries/Render/Props3D/SolidDraw.js";
+import { WOOD_CRATE } from "../definitions/crate.js";
+import { drawExtrudedBox } from "../../Render/Props3D/SolidDraw.js";
 
-export function drawCrateCombat(ctx, prop, px, py) {
-    const { colors, combat } = WOOD_CRATE;
+export function drawCrate(ctx, prop, px, py) {
+    const { colors, world } = WOOD_CRATE;
     const halfSize = prop.radius || 8;
 
     drawExtrudedBox(ctx, prop, px, py, {
         halfSize,
-        height: combat.height,
+        height: world.height,
         facing: prop.facing,
         faceColors: { shadow: colors.sideShadow, mid: colors.side, highlight: colors.top },
         backFaceColors: { shadow: colors.sideShadow, mid: colors.sideShadow, highlight: colors.side },
@@ -19,8 +19,8 @@ export function drawCrateCombat(ctx, prop, px, py) {
     });
 }
 
-export function drawCrateShardCombat(ctx, prop, px, py) {
-    const { colors, combat } = WOOD_CRATE;
+export function drawCrateShard(ctx, prop, px, py) {
+    const { colors, world } = WOOD_CRATE;
     const opacity = prop.opacity ?? 1.0;
 
     ctx.save();
@@ -30,7 +30,7 @@ export function drawCrateShardCombat(ctx, prop, px, py) {
 
     drawExtrudedBox(ctx, prop, px, py, {
         halfSize: halfExtents,
-        height: combat.height * 0.6,
+        height: world.height * 0.6,
         facing: prop.facing,
         faceColors: { shadow: colors.sideShadow, mid: colors.side, highlight: colors.top },
         backFaceColors: { shadow: colors.sideShadow, mid: colors.sideShadow, highlight: colors.side },

@@ -1,6 +1,4 @@
-import { explosionSettings } from "../balance/combat.js";
-
-// inspectKey for tutorial clues (barrel, crate) is set at boot from Games/tower/config/inspectManifest.js.
+import { explosionSettings } from "../../Config/balance/combat.js";
 
 const DEFAULT_SPAWN_RADIUS = { minRadius: 150, maxRadius: 1000 };
 
@@ -13,7 +11,8 @@ function prop(key, { spawn, ...rest }) {
     };
 }
 
-export const worldPropDefinitions = {
+/** Default world prop gameplay + render keys shipped with the engine. */
+export const defaultWorldPropDefinitions = {
     barrel: prop("barrel", {
         inspectKey: null,
         hitBehavior: "explosive",
@@ -22,6 +21,7 @@ export const worldPropDefinitions = {
         laserTargetable: true,
         maxHealth: 3,
         onFire: { burnDurationMs: 2000 },
+        onFireRender3DKey: "fire_barrel",
         wallPhysics: { restitution: 0.25, friction: 0.75 },
         explosion: {
             type: "standard",
@@ -42,6 +42,9 @@ export const worldPropDefinitions = {
         hitBehavior: "damage",
         radius: 8,
         isPushable: true,
+        collisionShape: "box",
+        splittable: true,
+        randomFaceLabels: true,
         laserTargetable: true,
         maxHealth: 2,
         mass: 1.5,
@@ -57,9 +60,22 @@ export const worldPropDefinitions = {
         hitBehavior: "damage",
         radius: 3,
         isPushable: true,
+        collisionShape: "box",
+        splittable: true,
         laserTargetable: false,
         maxHealth: 1,
         mass: 0.05,
         wallPhysics: { restitution: 0.45, friction: 0.5 },
+    }),
+    beach_ball: prop("beach_ball", {
+        hitBehavior: "none",
+        radius: 7,
+        isPushable: true,
+        rolls: true,
+        collisionShape: "circle",
+        laserTargetable: false,
+        mass: 0.6,
+        friction: 4,
+        wallPhysics: { restitution: 0.35, friction: 0.4 },
     }),
 };

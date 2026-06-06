@@ -1,22 +1,20 @@
-export const JACKO_LABEL_SRC = "Images/jacko_fuel_barrel.png";
+export const FUEL_BARREL_LABEL_SRC = "Images/fuel_barrel_label.png";
 
-/** Jacko Fuel soda can — dimensions, label band, colors. Data only; no Render imports. */
-export const JACKO_CAN = {
-    labelSrc: JACKO_LABEL_SRC,
+/** Cylindrical fuel barrel — dimensions, label band, colors. */
+export const FUEL_BARREL = {
+    labelSrc: FUEL_BARREL_LABEL_SRC,
     halfHeight: 1.05,
     bodyRadius: 0.5,
     label: {
         y0: 0.21,
         y1: 0.79,
         angleCenter: -Math.PI / 2,
-        /** Arc width tuned to jacko_fuel_barrel.png aspect (~558×1000) vs label band height. */
         angleSpan: 1.36,
         radialSegments: 10,
         verticalSegments: 18,
     },
-    combat: {
+    world: {
         height: 22,
-        /** Frustum-normalized band; combat isometric projection uses a different scale than inspect y0/y1. */
         bandT0: 0.28,
         bandT1: 0.72,
         arcHalf: 0.92,

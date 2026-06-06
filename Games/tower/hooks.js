@@ -9,7 +9,10 @@ import {
     handleInspectCollectOpen,
     isInspectCollectActive,
 } from "../../Libraries/RunScene/behaviors/inspectCollect.js";
+import { spawnStartProps } from "../../Libraries/Props/spawnStartProps.js";
 import { getStartRunAtScene, runSceneController } from "./config/runScenes.js";
+import { getTowerStartProps } from "./config/startProps.js";
+import { towerRunScenePorts } from "./runScenePorts.js";
 
 /** @param {import("../../GameState/GameStateMachine.js").GameStateMachineContext} ctx */
 export function onCombatEnter(ctx) {
@@ -23,6 +26,11 @@ export function onCombatEnter(ctx) {
     }
 
     runSceneController.enterCurrentScene(state, ctx, { applySpawn: true });
+
+    if (!state.startPropsSpawned) {
+        spawnStartProps(state, getTowerStartProps(towerRunScenePorts.getLayout(state)));
+        state.startPropsSpawned = true;
+    }
 }
 
 /** @param {import("../../GameState/GameStateMachine.js").GameStateMachineContext} ctx */

@@ -1,4 +1,4 @@
-import { WOOD_CRATE } from "../../../../../../Config/content/props/Crate.js";
+import { WOOD_CRATE } from "../../../../../../Libraries/Props/definitions/crate.js";
 import { buildBoxMesh } from "../../../../../../Libraries/Inspect/geometry/BoxMesh.js";
 
 export function buildCrateInspectMesh() {

@@ -20,7 +20,7 @@ import {
 } from "./hooks.js";
 import { registerTowerEntities } from "./config/entities.js";
 import { applyInspectManifestToProps } from "./config/inspectManifest.js";
-import { worldPropDefinitions } from "../../Config/content/propDefinitions.js";
+import { defaultWorldPropDefinitions as worldPropDefinitions } from "../../Libraries/Props/defaultPropDefinitions.js";
 import { towerCombatPairs, towerRenderPorts, towerTargeting } from "./ports.js";
 import { towerWorldGen } from "./worldGen.js";
 

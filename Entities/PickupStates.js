@@ -31,8 +31,8 @@ export class PickupOnFireState {
         pickup.stateTimer = burnDurationMs;
     }
 
-    getRender3DKey() {
-        return "fire_barrel";
+    getRender3DKey(pickup) {
+        return pickup.strategy.onFireRender3DKey ?? `fire_${pickup.strategy.render3DKey}`;
     }
 
     update(pickup, dt, walls, state) {
@@ -73,7 +73,7 @@ export class PickupExplodedState {
     onEnter(pickup) {
         pickup.isDead = true;
         const gameState = pickup.stateData.gameState;
-        if ((pickup.type === "crate" || pickup.type === "crate_shard") && typeof pickup.spawnShards === "function") {
+        if (pickup.strategy.splittable && typeof pickup.spawnShards === "function") {
             pickup.spawnShards(gameState);
         } else {
             spawnExplosion(gameState, pickup.x, pickup.y, pickup.strategy?.explosion);

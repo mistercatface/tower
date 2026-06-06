@@ -25,8 +25,8 @@ export const radioConversations = {
             { speakerId: "brock", text: "Let's look around." },
         ],
     },
-    inspect_jacko_can_garbanzo: {
-        trigger: "inspect:jacko_can",
+    inspect_fuel_barrel_garbanzo: {
+        trigger: "inspect:fuel_barrel",
         oncePerRun: true,
         lines: [
             { speakerId: "brock", text: "How would you feel about helping me drag one of these back to the ship?" },

@@ -1,9 +1,9 @@
-import { drawExtrudedRadial, drawRadialBand } from "../../../../../../Libraries/Render/Props3D/SolidDraw.js";
-import { JACKO_CAN } from "../../../../../../Config/content/props/JackoCan.js";
-import { projectVertical } from "../../../../../../Libraries/Spatial/iso/IsometricProjection.js";
+import { FUEL_BARREL } from "../definitions/fuelBarrel.js";
+import { drawExtrudedRadial, drawRadialBand } from "../../Render/Props3D/SolidDraw.js";
+import { projectVertical } from "../../Spatial/iso/IsometricProjection.js";
 
-function drawCanTopCombat(ctx, prop, px, py, radius, height, onFire) {
-    const { colors } = JACKO_CAN;
+function drawBarrelTop(ctx, prop, px, py, radius, height, onFire) {
+    const { colors } = FUEL_BARREL;
     const projection = projectVertical(prop.x, prop.y, px, py, height);
     const { topX, topY, alpha } = projection;
     const lipRadius = radius * 1.07;
@@ -33,14 +33,14 @@ function drawCanTopCombat(ctx, prop, px, py, radius, height, onFire) {
     ctx.fill();
 }
 
-export function drawJackoFuelBarrelCombat(ctx, prop, px, py, { onFire = false } = {}) {
-    const { combat, colors } = JACKO_CAN;
+export function drawFuelBarrel(ctx, prop, px, py, { onFire = false } = {}) {
+    const { world, colors } = FUEL_BARREL;
     const radius = prop.radius || 8;
     const bodyColors = onFire ? colors.bodyFire : colors.body;
 
     drawExtrudedRadial(ctx, prop, px, py, {
         baseRadius: radius,
-        height: combat.height,
+        height: world.height,
         colors: bodyColors,
         stroke: colors.stroke,
     });
@@ -48,13 +48,17 @@ export function drawJackoFuelBarrelCombat(ctx, prop, px, py, { onFire = false } 
     if (onFire) {
         drawRadialBand(ctx, prop, px, py, {
             baseRadius: radius,
-            height: combat.height,
-            t0: combat.bandT0,
-            t1: combat.bandT1,
+            height: world.height,
+            t0: world.bandT0,
+            t1: world.bandT1,
             fill: "rgba(60, 20, 12, 0.35)",
             stroke: colors.stroke,
         });
     }
 
-    drawCanTopCombat(ctx, prop, px, py, radius, combat.height, onFire);
+    drawBarrelTop(ctx, prop, px, py, radius, world.height, onFire);
+}
+
+export function drawFireFuelBarrel(ctx, prop, px, py) {
+    drawFuelBarrel(ctx, prop, px, py, { onFire: true });
 }

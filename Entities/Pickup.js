@@ -1,7 +1,9 @@
 import { Entity } from "./Entity.js";
 import { applyVelocityDamping } from "../Libraries/Motion/index.js";
-import { worldPropDefinitions } from "../Config/content/propDefinitions.js";
-import { CRATE_LABEL_VARIANTS, CRATE_LABEL_FACES } from "../Config/content/props/Crate.js";
+import { applyRollingCoupling } from "../Libraries/Props/rollingMotion.js";
+import { withPropStrategyDefaults } from "../Libraries/Props/propStrategy.js";
+import { defaultWorldPropDefinitions as worldPropDefinitions } from "../Libraries/Props/defaultPropDefinitions.js";
+import { CRATE_LABEL_FACES, CRATE_LABEL_VARIANTS } from "../Libraries/Props/definitions/crate.js";
 import { transitionEntity } from "../Libraries/FSM/transition.js";
 import { pickupStates } from "./PickupStates.js";
 import { PolygonShape } from "../Libraries/Spatial/collision/Shapes.js";
@@ -11,23 +13,6 @@ import { placeAtWallClearance } from "../Libraries/Pathfinding/PathClearance.js"
 import { distanceToSegment } from "../Libraries/Spatial/geometry/WallGeometry.js";
 import { MOVING_SPEED_SQ } from "../Libraries/Spatial/collision/entityBroadphase.js";
 import { wakePushableBody } from "../Libraries/Motion/pushableSleep.js";
-
-const PICKUP_STRATEGY_DEFAULTS = {
-    isPushable: false,
-    renderMode: "3d",
-    render3DKey: null,
-    inspectKey: null,
-    isExplosive: false,
-    laserTargetable: false,
-    mass: 1,
-    friction: 8,
-    wallPhysics: null,
-    maxHealth: null,
-};
-
-function withPickupDefaults(strategy) {
-    return { ...PICKUP_STRATEGY_DEFAULTS, ...strategy };
-}
 
 function explosiveOnHit(state, pickup, projectile, events) {
     if (projectile?.isExplosion) {
@@ -41,7 +26,7 @@ function explosiveOnHit(state, pickup, projectile, events) {
 }
 
 function damageOnHit(state, pickup, projectile, events) {
-    if (pickup.type === "crate" || pickup.type === "crate_shard") {
+    if (pickup.strategy.splittable) {
         const width = pickup.halfExtents ? pickup.halfExtents.x * 2 : pickup.radius * 2;
         const height = pickup.halfExtents ? pickup.halfExtents.y * 2 : pickup.radius * 2;
         const minSize = 3;
@@ -114,9 +99,9 @@ const HIT_BEHAVIORS = { none: () => false, explosive: explosiveOnHit, damage: da
 
 function buildWorldPropStrategy(type) {
     const def = worldPropDefinitions[type];
-    if (!def) return withPickupDefaults({});
+    if (!def) return withPropStrategyDefaults({});
     const { hitBehavior, spawn, ...strategyFields } = def;
-    return withPickupDefaults({
+    return withPropStrategyDefaults({
         ...strategyFields,
         isExplosive: hitBehavior === "explosive",
         onHit: HIT_BEHAVIORS[hitBehavior] ?? HIT_BEHAVIORS.none,
@@ -136,8 +121,10 @@ export class Pickup extends Entity {
         this.zIndex = 10;
         this.facing = facing ?? Math.random() * Math.PI * 2;
 
-        if (type === "crate") {
+        if (this.strategy.randomFaceLabels) {
             this.faceLabelVariants = Object.fromEntries(CRATE_LABEL_FACES.map((face) => [face, Math.floor(Math.random() * CRATE_LABEL_VARIANTS.length)]));
+        }
+        if (this.strategy.collisionShape === "box") {
             const r = this.radius;
             this.shape = new PolygonShape([
                 { x: -r, y: -r },
@@ -184,7 +171,7 @@ export class Pickup extends Entity {
         this.health -= amount;
         if (this.health <= 0) {
             this.health = 0;
-            if (this.currentStateName === "normal" && this.type === "barrel") {
+            if (this.currentStateName === "normal" && this.strategy.onFire) {
                 this.changeState("on_fire");
             } else {
                 this.changeState("exploded", { gameState });
@@ -206,6 +193,9 @@ export class Pickup extends Entity {
     update(dt, state, spatialFrame, { resolveWalls = false } = {}) {
         this.ageMs += dt;
         if (this.isSleeping) return;
+        if (this.strategy.rolls) {
+            applyRollingCoupling(this, { radius: this.radius });
+        }
         applyVelocityDamping(this, dt, { friction: this.strategy.friction });
         if (resolveWalls && this.strategy.isPushable && this.needsWallCollision()) state.wallResolver.resolve(this, spatialFrame);
         if (this.currentState?.update) this.currentState.update(this, dt, state.walls, state);

@@ -1,10 +1,10 @@
-import { JACKO_CAN } from "../../../../Config/content/props/JackoCan.js";
-import { WOOD_CRATE, CRATE_LABEL_VARIANTS } from "../../../../Config/content/props/Crate.js";
+import { CRATE_LABEL_VARIANTS, WOOD_CRATE } from "../../../../Libraries/Props/definitions/crate.js";
+import { FUEL_BARREL } from "../../../../Libraries/Props/definitions/fuelBarrel.js";
 import { registerInspectEntry, withInspectDefaults } from "../../../../Libraries/Inspect/InspectCatalog.js";
 import { createLabeledCanInspect } from "../../../../Libraries/Inspect/factories/LabeledCanInspect.js";
 import { createLabeledBoxInspect } from "../../../../Libraries/Inspect/factories/LabeledBoxInspect.js";
 import { inspectManifest } from "../../config/inspectManifest.js";
-import { buildJackoInspectMesh } from "./recipes/jacko/InspectMesh.js";
+import { buildFuelBarrelInspectMesh } from "./recipes/fuelBarrel/InspectMesh.js";
 import { buildCrateInspectMesh } from "./recipes/crate/InspectMesh.js";
 
 function resolveCrateFaceLabelSrc(subject, face) {
@@ -14,7 +14,7 @@ function resolveCrateFaceLabelSrc(subject, face) {
 
 /** @type {Record<string, () => object>} */
 const inspectEntryBuilders = {
-    jacko_can: () => withInspectDefaults(createLabeledCanInspect(JACKO_CAN, buildJackoInspectMesh)),
+    fuel_barrel: () => withInspectDefaults(createLabeledCanInspect(FUEL_BARREL, buildFuelBarrelInspectMesh)),
     wood_crate: () =>
         withInspectDefaults(createLabeledBoxInspect(WOOD_CRATE, buildCrateInspectMesh, resolveCrateFaceLabelSrc)),
 };

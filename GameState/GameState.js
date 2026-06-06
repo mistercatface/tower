@@ -142,6 +142,7 @@ export class GameState {
         this.inspectPanelOpen = false;
         this.skipCombatEnterReset = false;
         this.runSceneInitialized = false;
+        this.startPropsSpawned = false;
         this.zombieEventTriggered = false;
 
         this.abilities = {};

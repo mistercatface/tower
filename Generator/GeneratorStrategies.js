@@ -374,6 +374,3 @@ export const BaseGeneratorStrategies = {
     SquareStrategy,
     DiamondStrategy,
 };
-
-/** @deprecated Use getGeneratorStrategies() from Core/GamePorts.js */
-export const GeneratorStrategies = BaseGeneratorStrategies;

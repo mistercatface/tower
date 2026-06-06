@@ -15,6 +15,10 @@ export const PROP_STRATEGY_DEFAULTS = {
     /** @type {PropCollisionShape} */
     collisionShape: "circle",
     rolls: false,
+    splittable: false,
+    randomFaceLabels: false,
+    onFire: null,
+    onFireRender3DKey: null,
 };
 
 /**
