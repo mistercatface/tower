@@ -1,4 +1,3 @@
-import "./WorldSurfaceBootstrap.js";
 import { getGameWorldSurfaceSettings } from "./WorldSurfaceBootstrap.js";
 import { SpriteCache } from "../Libraries/Canvas/SpriteCache.js";
 import { WorldSceneRenderer } from "../Libraries/Render/WorldSceneRenderer.js";

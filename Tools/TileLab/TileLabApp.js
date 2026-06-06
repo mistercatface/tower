@@ -1,6 +1,5 @@
-import "../../Render/WorldSurfaceBootstrap.js";
-import { installGameSurfaceProfileProvider } from "../../Config/procedural/bootstrap.js";
 import { listShippedSurfaceProfileIds } from "../../Config/procedural/profiles.js";
+import { ensureLabGameDefinition } from "../Lab/ensureLabGameDefinition.js";
 import { initMapPreviewNavigation } from "./map/LabMapPreview.js";
 import {
     invalidateLabCaches,
@@ -98,7 +97,7 @@ function renderAll() {
     });
 }
 
-installGameSurfaceProfileProvider();
+ensureLabGameDefinition();
 initPresetSelect(listShippedSurfaceProfileIds());
 initProfileEditor({ onChange: handleEditorChange });
 initMapPreviewNavigation(

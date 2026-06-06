@@ -1,4 +1,3 @@
-import "../Render/WorldSurfaceBootstrap.js";
 import { FLOW_FIELD_WORKER_URL, getGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 import { Player } from "../Entities/Player.js";
 import { Sidekick } from "../Entities/Sidekick.js";

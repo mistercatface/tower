@@ -1,4 +1,3 @@
-import "../../../Render/WorldSurfaceBootstrap.js";
 import { getGameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.js";
 import { GamePhase } from "../../../GameState/GamePhase.js";
 import { WorldSceneRenderer } from "../../../Libraries/Render/WorldSceneRenderer.js";
@@ -73,53 +72,30 @@ function maybeClearBakeCaches(worldState, profileId) {
 }
 
 function drawLabWorldFrame(ctx, canvas, viewW, viewH, worldState, profileId, gameZoom, weaponRange, drawOptions = {}) {
-    const {
-        showVignette = false,
-        showRangeRing = false,
-        showPlayerMarker = true,
-    } = drawOptions;
-
+    const { showVignette = false, showRangeRing = false, showPlayerMarker = true } = drawOptions;
     worldState.phase = GamePhase.SIMULATION;
     const prevProfileOverride = worldState.surfaceProfileOverride;
     worldState.surfaceProfileOverride = profileId;
     maybeClearBakeCaches(worldState, profileId);
-
     const cameraX = worldState.player.x;
     const cameraY = worldState.player.y;
-
     const viewport = new Viewport(cameraX, cameraY, gameZoom);
     viewport.setCanvasSize(viewW, viewH);
     viewport.zoom = gameZoom;
-
     const prevCanvasBounds = worldState.canvasBounds;
     worldState.canvasBounds = { width: viewW, height: viewH };
-
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = "#080a0e";
     ctx.fillRect(0, 0, viewW, viewH);
     ctx.restore();
-
     ctx.save();
     viewport.apply(ctx);
-
-    drawWorldScene(ctx, {
-        state: worldState,
-        viewport,
-        worldSceneRenderer: render3D,
-        canvas,
-    });
-
+    drawWorldScene(ctx, { state: worldState, viewport, worldSceneRenderer: render3D, canvas });
     worldState.canvasBounds = prevCanvasBounds;
     worldState.surfaceProfileOverride = prevProfileOverride;
-
-    if (showRangeRing) {
-        drawWeaponRangeRing(ctx, worldState.player.x, worldState.player.y, weaponRange);
-    }
-
-    if (showPlayerMarker) {
-        drawPlayerMarker(ctx, worldState.player.x, worldState.player.y);
-    }
+    if (showRangeRing) drawWeaponRangeRing(ctx, worldState.player.x, worldState.player.y, weaponRange);
+    if (showPlayerMarker) drawPlayerMarker(ctx, worldState.player.x, worldState.player.y);
 
     ctx.restore();
 
@@ -127,7 +103,6 @@ function drawLabWorldFrame(ctx, canvas, viewW, viewH, worldState, profileId, gam
         const R = viewport.getVisualRadius();
         const cx = viewport.cx;
         const cy = viewport.cy;
-
         ctx.save();
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.fillStyle = "#000000";
@@ -148,27 +123,9 @@ function drawLabWorldFrame(ctx, canvas, viewW, viewH, worldState, profileId, gam
  */
 export function renderGamePreview(canvas, options) {
     const { worldState, profileId, gameZoom, showRangeRing, weaponRange, viewWidth, viewHeight, showVignette = false } = options;
-
-    if (!worldState || !profileId || !viewWidth || !viewHeight) {
-        return { zoom: gameZoom };
-    }
-
+    if (!worldState || !profileId || !viewWidth || !viewHeight) return { zoom: gameZoom };
     const ctx = canvas.getContext("2d");
-    const result = drawLabWorldFrame(
-        ctx,
-        canvas,
-        viewWidth,
-        viewHeight,
-        worldState,
-        profileId,
-        gameZoom,
-        weaponRange,
-        {
-            showVignette,
-            showRangeRing,
-            showPlayerMarker: true,
-        }
-    );
+    const result = drawLabWorldFrame(ctx, canvas, viewWidth, viewHeight, worldState, profileId, gameZoom, weaponRange, { showVignette, showRangeRing, showPlayerMarker: true });
     return result;
 }
 
@@ -181,11 +138,7 @@ export function initMapPreviewNavigation(getOptions, handlers = {}) {
     setupLabViewportNavigation("gamePreview", {
         getCamera: () => {
             const world = getOptions().worldState;
-            return {
-                x: world?.player?.x ?? 0,
-                y: world?.player?.y ?? 0,
-                zoom: getOptions().gameZoom ?? 1,
-            };
+            return { x: world?.player?.x ?? 0, y: world?.player?.y ?? 0, zoom: getOptions().gameZoom ?? 1 };
         },
         setCamera: (x, y, zoom) => {
             const world = getOptions().worldState;

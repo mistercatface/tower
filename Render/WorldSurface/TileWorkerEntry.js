@@ -1,4 +1,3 @@
-import "../WorldSurfaceBootstrap.js";
 import { installGameSurfaceProfileProvider } from "../../Config/procedural/bootstrap.js";
 import { getSurfaceProfileProvider } from "../../Libraries/Procedural/SurfaceProfileProvider.js";
 import { SharedEdgeSolver } from "../../Libraries/Spatial/structure/SharedEdgeSolver.js";
@@ -45,15 +44,10 @@ const HANDLERS = {
 self.onmessage = function (e) {
     const { id, type, payload } = e.data;
     if (!id || !type) return;
-
     try {
         const handler = HANDLERS[type];
-        if (!handler) {
-            throw new Error(`Unknown TileWorker request type: ${type}`);
-        }
-
+        if (!handler) throw new Error(`Unknown TileWorker request type: ${type}`);
         const canvases = handler(payload);
-
         const bitmaps = canvases.map((c) => c.transferToImageBitmap());
         self.postMessage({ id, bitmaps }, bitmaps);
     } catch (err) {

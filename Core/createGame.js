@@ -15,9 +15,8 @@ import { preloadAllInspectAssets } from "../Libraries/Inspect/InspectCatalog.js"
 import { setActiveGameDefinition } from "./ActiveGameDefinition.js";
 import { applyGameShell, resolveUiProfile } from "./GameUiProfile.js";
 import { applyChromeVisibility } from "./GameShell.js";
-import { applyGamePerspective } from "./GamePerspective.js";
+import { bootstrapEngine } from "./bootstrapEngine.js";
 import { applyGamePropPixelSize } from "./GamePropPixelSize.js";
-import { applyGameProceduralDesign } from "./GameProceduralDesign.js";
 
 /** @typedef {import("./GameDefinitionTypes.js").GameDefinition} GameDefinition */
 
@@ -29,8 +28,7 @@ import { applyGameProceduralDesign } from "./GameProceduralDesign.js";
 export function createGame(definition) {
     setActiveGameDefinition(definition);
     definition.prepare?.();
-    applyGameProceduralDesign(definition);
-    applyGamePerspective(definition);
+    bootstrapEngine(definition);
     applyGamePropPixelSize(definition);
     applyGameShell(definition);
     const canvas = document.getElementById(definition.canvasId);

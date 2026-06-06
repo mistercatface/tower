@@ -12,6 +12,8 @@ export const worldSurfaceSettings = {
     wallTextureBleedPx: 1,
     wallSubdivNearPx: 80,
     wallSubdivFarPx: 320,
+    floorShadow: "#12161c",
+    bloom: { enabled: true, blur: 2 },
     groundChunkAnimationsOn: false,
     wallAnimationsOn: false,
     animationBakeMaxFrames: null,

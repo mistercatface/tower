@@ -1,5 +1,3 @@
-import "../../Render/WorldSurfaceBootstrap.js";
-import { installGameSurfaceProfileProvider } from "../../Config/procedural/bootstrap.js";
 import { createUpgrades, createBaseUpgrades } from "../../Progression/Upgrades.js";
 import { registerGameInspectEntries } from "./content/inspect/inspectContent.js";
 import { MapState, SimulationState, InspectorState } from "../../GameState/GameStates.js";
@@ -31,7 +29,6 @@ export const towerGame = {
     id: "tower",
     canvasId: "towerCanvas",
     saveKey: "tower_save_v4",
-
     combatPairs: towerCombatPairs,
     targeting: towerTargeting,
     render: towerRenderPorts,
@@ -48,18 +45,14 @@ export const towerGame = {
     prepare() {
         registerTowerEntities();
         applyInspectManifestToProps(getWorldPropDefinitions());
-        installGameSurfaceProfileProvider();
     },
 
     registerInspect() {
         registerGameInspectEntries();
     },
-
     wireRadio: wireTowerRadio,
-
     onRunOpeningComplete,
     isRadioDialogActive,
-
     onSimulationEnter,
     onRunSceneTick,
     onCombatEnemyKilled,

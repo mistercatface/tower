@@ -1,26 +1,9 @@
-import { combatVisualSettings, worldSurfaceSettings, gridSettings } from "../Config/Config.js";
+import { worldSurfaceSettings, gridSettings } from "../Config/Config.js";
 import { CAMERA_HEIGHT } from "../Libraries/Spatial/iso/IsometricProjection.js";
 import { createWorldSurfaceSettings } from "../Libraries/WorldSurface/WorldSurfaceSettings.js";
-import { configureTileWorkerCoordinator } from "../Libraries/WorldSurface/TileWorkerCoordinator.js";
 
 /** @type {import("../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings | null} */
-
 let gameWorldSurfaceSettings = null;
-
-/**
- * @param {{
- *   cameraHeight?: number,
- *   pixelsPerCell?: number,
- *   wallHeight?: number,
- *   floorShadow?: string,
- *   cellSize?: number,
- *   groundChunkAnimationsOn?: boolean,
- *   wallAnimationsOn?: boolean,
- *   animationBakeMaxFrames?: number|null,
- *   animationFrameBatchSize?: number,
- * }} overrides
- * @param {number} cellSize
- */
 
 function resolveWallSurface(overrides, cellSize) {
     const wallHeight = overrides.wallHeight ?? worldSurfaceSettings.wallHeight;
@@ -56,16 +39,13 @@ export function createGameWorldSurfaceSettings(overrides = {}) {
         roofZLevels: wallSurface.roofZLevels,
         cellSize,
         cameraHeight,
-        floorShadow: overrides.floorShadow ?? combatVisualSettings.floorShadow,
+        floorShadow: overrides.floorShadow ?? worldSurfaceSettings.floorShadow,
     });
 }
 
 /** @returns {import("../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} */
 export function getGameWorldSurfaceSettings() {
-    if (!gameWorldSurfaceSettings) {
-        throw new Error("World surface settings not installed — import Render/WorldSurfaceBootstrap.js at startup");
-    }
-
+    if (!gameWorldSurfaceSettings) gameWorldSurfaceSettings = createGameWorldSurfaceSettings();
     return gameWorldSurfaceSettings;
 }
 
@@ -76,6 +56,3 @@ export function installGameWorldSurfaceSettings(overrides) {
 
 export const TILE_WORKER_URL = new URL("./WorldSurface/TileWorkerEntry.js", import.meta.url);
 export const FLOW_FIELD_WORKER_URL = new URL("./Navigation/FlowFieldWorkerEntry.js", import.meta.url);
-
-installGameWorldSurfaceSettings();
-configureTileWorkerCoordinator({ workerUrl: TILE_WORKER_URL });

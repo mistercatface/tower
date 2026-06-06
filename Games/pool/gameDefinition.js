@@ -1,5 +1,3 @@
-import "../../Render/WorldSurfaceBootstrap.js";
-import { installGameSurfaceProfileProvider } from "../../Config/procedural/bootstrap.js";
 import { ensurePoolState } from "./balls.js";
 import { PoolSimulationState } from "./PoolSimulationState.js";
 import { registerPoolEntities } from "./config/entities.js";
@@ -146,8 +144,6 @@ export const poolGame = {
         const recipes = getWorldPropRecipes();
         registerPoolBallType(propDefs, recipes, "pool_cue_ball", { kind: "cue" });
         registerPoolBallType(propDefs, recipes, "pool_ball", { kind: "solid", number: 1, color: "#FFD600" });
-
-        installGameSurfaceProfileProvider();
     },
 
     wireRadio: wirePoolRadio,

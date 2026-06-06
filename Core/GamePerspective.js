@@ -1,7 +1,4 @@
-import { getGameWorldSurfaceSettings, installGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
-import { setCameraHeight, setPerspectiveStrength } from "../Libraries/Spatial/iso/IsometricProjection.js";
-import { state } from "../GameState/GameState.js";
-import { resolveProceduralAnimationSettings, resolveProceduralBakeSettings } from "./GameProceduralDesign.js";
+import { setCameraHeight as setIsoCameraHeight, setPerspectiveStrength as setIsoPerspectiveStrength } from "../Libraries/Spatial/iso/IsometricProjection.js";
 
 /** @typedef {"player" | "viewport"} PerspectiveViewerSource */
 
@@ -23,40 +20,12 @@ export function resolvePerspectiveConfig(definition) {
     return { ...DEFAULT_PERSPECTIVE, ...definition?.perspective };
 }
 
-/** @param {import("./GameDefinitionTypes.js").GameDefinition} definition */
-export function applyGamePerspective(definition) {
-    const config = resolvePerspectiveConfig(definition);
-    setCameraHeight(config.cameraHeight);
-    setPerspectiveStrength(config.strength);
-    installGameWorldSurfaceSettings({
-        cameraHeight: config.cameraHeight,
-        pixelsPerCell: definition?.worldSurface?.pixelsPerCell,
-        wallHeight: definition?.worldSurface?.wallHeight,
-        ...resolveProceduralAnimationSettings(definition),
-        ...resolveProceduralBakeSettings(definition),
-    });
-    syncWorldSurfaceEngineSettings();
+/** @param {number} cameraHeight */
+export function setCameraHeight(cameraHeight) {
+    setIsoCameraHeight(cameraHeight);
 }
 
-/** Push installed world-surface settings onto the live bake cache (constructed before game bootstrap). */
-export function syncWorldSurfaceEngineSettings() {
-    const engine = state.worldSurfaces;
-    if (!engine) return;
-
-    const settings = getGameWorldSurfaceSettings();
-    const prev = engine.settings;
-    const bakeSettingsChanged =
-        prev.groundChunkAnimationsOn !== settings.groundChunkAnimationsOn
-        || prev.wallAnimationsOn !== settings.wallAnimationsOn
-        || prev.animationBakeMaxFrames !== settings.animationBakeMaxFrames
-        || prev.animationFrameBatchSize !== settings.animationFrameBatchSize
-        || prev.pixelsPerCell !== settings.pixelsPerCell
-        || prev.wallHeight !== settings.wallHeight
-        || prev.cameraHeight !== settings.cameraHeight
-        || JSON.stringify(prev.roofZLevels ?? []) !== JSON.stringify(settings.roofZLevels ?? []);
-
-    engine.settings = settings;
-    if (bakeSettingsChanged) {
-        engine.clear();
-    }
+/** @param {number} strength */
+export function setPerspectiveStrength(strength) {
+    setIsoPerspectiveStrength(strength);
 }
