@@ -12,7 +12,7 @@ import { renderActorKinematicsBody } from "../Render/Kinematics/ActorKinematicsR
 const enemyBars = createEntityBars({ healthWidth: 22, healthHeight: 3, healthBorderRadius: 1.5, stunHeight: 2, stunBorderRadius: 1 });
 
 function rollEnemyWeaponLoadout(enemyType) {
-    if (enemyType.startWeapons?.length) return [...enemyType.startWeapons];
+    if (Array.isArray(enemyType.startWeapons)) return [...enemyType.startWeapons];
     if (enemyType.weaponPool?.length) return rollRandomLoadoutFromPool(enemyType.weaponPool);
     return rollEnemyStartLoadout();
 }
@@ -26,7 +26,6 @@ export class Enemy extends Actor {
         const reward = computeSpawnReward(enemyType);
         const enemy = new Enemy(x, y, enemyType, combatStats, baseUpgradeDefs, reward);
         const levels = computeEnemyUpgradeLevels();
-
         enemy.applySpawnUpgradeLevels(levels, baseUpgradeDefs);
         enemy.applyWeaponLoadout(rollEnemyWeaponLoadout(enemyType));
         enemy.health = enemy.maxHealth;
@@ -80,14 +79,12 @@ export class Enemy extends Actor {
 
     updateLocomotion(dt, state, spatialFrame, options = {}) {
         const target = this.getAITarget(state);
-
         if (!target) {
             this.desiredX = 0;
             this.desiredY = 0;
             this.applyLocomotion(dt, spatialFrame, { state, ignoreSeparationInDesired: true });
             return;
         }
-
         this.currentState.update(this, dt, target, state.flowFieldGrid, state.walls, state.projectiles, spatialFrame, state.scheduler, state);
     }
 
@@ -98,24 +95,20 @@ export class Enemy extends Actor {
     shouldTriggerDodge(projectiles, flowFieldGrid, scheduler) {
         for (const m of projectiles) {
             if (!areHostile(this, m)) continue;
-
             const dist = Math.hypot(m.x - this.x, m.y - this.y);
             if (dist < 100 && !m.isDead) {
                 const angleToEnemy = Math.atan2(this.y - m.y, this.x - m.x);
                 let angleDiff = angleToEnemy - m.angle;
                 angleDiff = normalizeAngle(angleDiff);
-
                 if (Math.abs(angleDiff) < 0.5) {
                     if (Math.random() < 0.5) {
                         const perpAngle1 = m.angle + Math.PI / 2;
                         const perpAngle2 = m.angle - Math.PI / 2;
                         const dodgeDist = 25;
                         const angles = Math.random() < 0.5 ? [perpAngle1, perpAngle2] : [perpAngle2, perpAngle1];
-
                         for (const dodgeAngle of angles) {
                             const destX = this.x + Math.cos(dodgeAngle) * dodgeDist;
                             const destY = this.y + Math.sin(dodgeAngle) * dodgeDist;
-
                             if (this.isValidDodgeTarget(destX, destY, flowFieldGrid)) {
                                 this.dodgeTargetX = destX;
                                 this.dodgeTargetY = destY;

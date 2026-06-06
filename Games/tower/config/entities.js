@@ -83,7 +83,7 @@ export const towerEntityCatalog = {
             accelRate: 2.5,
             chargePrepareMode: "direct",
             excludeFromActiveCap: true,
-            weaponPool: enemyStartGunPool,
+            startWeapons: [],
         },
     },
 
