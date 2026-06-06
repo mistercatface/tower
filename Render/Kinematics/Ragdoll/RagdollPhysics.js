@@ -6,6 +6,8 @@ import {
     boneMapFromCharacterRig,
     resolvePhysicsBoneId,
 } from "../KinematicsBones.js";
+import { clamp } from "../../../Libraries/Math/Interpolate.js";
+import { distance, length } from "../../../Libraries/Math/Vec3.js";
 
 function getBind(ragdoll, key) {
     return ragdoll.bindBones?.[key];
@@ -72,11 +74,7 @@ export function initializeRagdoll(rigData, rotation, impactProfile, config, rig)
         prevPoints[key] = { x: 0, y: 0, z: 0 };
     }
 
-    const dist3 = (a, b) => {
-        const pa = bindBones[a];
-        const pb = bindBones[b];
-        return Math.hypot(pa.x - pb.x, pa.y - pb.y, pa.z - pb.z);
-    };
+    const dist3 = (a, b) => distance(bindBones[a], bindBones[b]);
 
     const constraints = RAGDOLL_CONSTRAINT_EDGES.map(([a, b]) => ({
         a,
@@ -98,7 +96,7 @@ export function initializeRagdoll(rigData, rotation, impactProfile, config, rig)
             vz = force.z * velocityScaler;
         } else {
             const b = bindBones[key];
-            const d = Math.hypot(b.x - hitBind.x, b.y - hitBind.y, b.z - hitBind.z);
+            const d = distance(b, hitBind);
             const distFactor = Math.max(0, 1 - d / (rig.size * 1.5));
             const transfer = phys.IMPACT_DISTRIBUTION * distFactor;
             vx = force.x * transfer * velocityScaler;
@@ -148,7 +146,7 @@ function applyJointLimits(ragdoll) {
         const v2y = h.y - e.y;
         const angle = Math.atan2(v1x * v2y - v1y * v2x, v1x * v2x + v1y * v2y);
         if (angle < minAngle || angle > maxAngle) {
-            const clamped = Math.max(minAngle, Math.min(maxAngle, angle));
+            const clamped = clamp(angle, minAngle, maxAngle);
             const len = Math.hypot(v2x, v2y);
             const baseAngle = Math.atan2(v1y, v1x);
             setAbsXYZ(
@@ -240,7 +238,7 @@ export function applyRagdollImpulse(
             prev.z -= forceVec.z * velocityScaler;
             continue;
         }
-        const d = Math.hypot(abs.x - centerAbs.x, abs.y - centerAbs.y, abs.z - centerAbs.z);
+        const d = distance(abs, centerAbs);
         if (d > maxInfluence) continue;
         const distFactor = Math.max(0, 1 - d / maxInfluence);
         const transfer = phys.IMPACT_DISTRIBUTION * distFactor * distFactor;
@@ -278,7 +276,7 @@ export function updateRagdoll(ragdoll, dtSec, worldX, worldY, rotation, wallChec
     const { points, prevPoints, constraints, groundY } = ragdoll;
     const cfg = RAGDOLL_CONFIG;
     const phys = getScaledPhysics(rig.size);
-    const dt = Math.min(dtSec, 0.033);
+    const dt = clamp(dtSec, 0, 0.033);
     const dt2 = dt * dt;
     ragdoll.time += dt;
 
@@ -288,7 +286,7 @@ export function updateRagdoll(ragdoll, dtSec, worldX, worldY, rotation, wallChec
         let vx = (delta.x - prev.x) * phys.AIR_DRAG;
         let vy = (delta.y - prev.y) * phys.AIR_DRAG;
         let vz = ((delta.z ?? 0) - (prev.z ?? 0)) * phys.AIR_DRAG;
-        const speed = Math.hypot(vx, vy, vz);
+        const speed = length({ x: vx, y: vy, z: vz });
         if (speed > phys.SPEED_CAP) {
             const cap = phys.SPEED_CAP / speed;
             vx *= cap;
@@ -355,7 +353,7 @@ export function updateRagdoll(ragdoll, dtSec, worldX, worldY, rotation, wallChec
                 const dx = absB.x - absA.x;
                 const dy = absB.y - absA.y;
                 const dz = absB.z - absA.z;
-                const dist = Math.hypot(dx, dy, dz);
+                const dist = length({ x: dx, y: dy, z: dz });
                 if (dist < 0.0001) continue;
                 const diff = (dist - c.len) / dist;
                 const m = 0.5 * cfg.CONSTRAINTS.STIFFNESS;

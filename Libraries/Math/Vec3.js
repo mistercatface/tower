@@ -32,6 +32,10 @@ export function length(v) {
     return Math.hypot(v.x, v.y, v.z);
 }
 
+export function distance(a, b) {
+    return length(sub(a, b));
+}
+
 export function normalize(v) {
     const len = length(v) || 1;
     return scale(v, 1 / len);

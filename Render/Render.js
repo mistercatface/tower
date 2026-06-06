@@ -6,7 +6,7 @@ import { world3dPropRecipes } from "../Games/tower/content/world3d/world3dConten
 import { buildWorldRenderInput } from "./adapters/WorldRenderAdapter.js";
 import { COMBAT_HUD_MODE, hudSettings, combatVisualSettings } from "../Config/Config.js";
 import { getWorldDrawCoords, isWorldScene } from "../GameState/GamePhase.js";
-import { getPlayerActors } from "../Combat/Targeting.js";
+import { getPlayerActors } from "../Games/tower/targeting.js";
 import { drawHostileOffScreenIndicators } from "./OffScreenIndicators.js";
 import { CombatParticles } from "./CombatParticles.js";
 import { renderMapView } from "./Map/MapViewRenderer.js";

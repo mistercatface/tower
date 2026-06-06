@@ -1,10 +1,8 @@
+import { clamp } from "../../../Libraries/Math/Interpolate.js";
+import { distance, length } from "../../../Libraries/Math/Vec3.js";
 import { RAGDOLL_CONFIG, SEVER_MAP } from "./RagdollConfig.js";
 import { absRagdollPoint, ensureSimBone, getRagdollPointZ } from "./RagdollPhysics.js";
-import {
-    PHYSICS_BONE_ALIASES,
-    SEVER_LIMB_DEF,
-    SEVER_TORSO_PEER,
-} from "../KinematicsBones.js";
+import { PHYSICS_BONE_ALIASES, SEVER_LIMB_DEF, SEVER_TORSO_PEER } from "../KinematicsBones.js";
 
 /** Map hit bone (incl. torso capsules) to a severable limb id. */
 export function resolveSeverTarget(hitPart, ragdoll) {
@@ -44,12 +42,7 @@ export function resolveSeverTarget(hitPart, ragdoll) {
 function disconnectLimbFromTorso(constraints, limbId, root) {
     const peer = SEVER_TORSO_PEER[limbId];
     if (!peer) return constraints;
-    return constraints.filter(
-        (c) => !(
-            (c.a === peer && c.b === root)
-            || (c.a === root && c.b === peer)
-        ),
-    );
+    return constraints.filter((c) => !((c.a === peer && c.b === root) || (c.a === root && c.b === peer)));
 }
 
 function getPartCategory(partName) {
@@ -101,11 +94,7 @@ export function severLimb(ragdoll, limbId, rig) {
     if (data.type === "simple") {
         ragdoll.constraints = constraints.filter((c) => c.a !== data.root && c.b !== data.root);
         const headChunkId = `${data.root}_chunk`;
-        ensureSimBone(ragdoll, headChunkId, {
-            x: rootAbs.x,
-            y: rootAbs.y + rig.headR * 0.5,
-            z: rootAbs.z,
-        });
+        ensureSimBone(ragdoll, headChunkId, { x: rootAbs.x, y: rootAbs.y + rig.headR * 0.5, z: rootAbs.z });
         ragdoll.constraints.push({ a: data.root, b: headChunkId, len: rig.headR * 0.5 });
     } else if (data.type === "joint") {
         const newPointId = `${data.root}_severed_${Date.now()}`;
@@ -138,12 +127,7 @@ export function severLimb(ragdoll, limbId, rig) {
             onGround: false,
         });
     }
-    ragdoll.emitters.push({
-        bone: data.root,
-        dir: { x: Math.random() - 0.5, y: -1, z: Math.random() - 0.5 },
-        life: bCfg.SPRAY_LIFE,
-        scale,
-    });
+    ragdoll.emitters.push({ bone: data.root, dir: { x: Math.random() - 0.5, y: -1, z: Math.random() - 0.5 }, life: bCfg.SPRAY_LIFE, scale });
 }
 
 /** Split a limb constraint at parameter t (no torso/head mega-fragmentation). */
@@ -199,15 +183,11 @@ export function splitBone(ragdoll, boneStartName, t, rig) {
     if (!abs1 || !abs2) return null;
 
     const newPointId = `${basePart}_fr_${Math.floor(Math.random() * 9999)}`;
-    ensureSimBone(ragdoll, newPointId, {
-        x: abs1.x + (abs2.x - abs1.x) * t,
-        y: abs1.y + (abs2.y - abs1.y) * t,
-        z: abs1.z + (abs2.z - abs1.z) * t,
-    });
+    ensureSimBone(ragdoll, newPointId, { x: abs1.x + (abs2.x - abs1.x) * t, y: abs1.y + (abs2.y - abs1.y) * t, z: abs1.z + (abs2.z - abs1.z) * t });
     constraints.splice(constraintIndex, 1);
     const newP = absRagdollPoint(ragdoll, newPointId);
-    const dist1 = Math.hypot(abs1.x - newP.x, abs1.y - newP.y, abs1.z - newP.z);
-    const dist2 = Math.hypot(abs2.x - newP.x, abs2.y - newP.y, abs2.z - newP.z);
+    const dist1 = distance(abs1, newP);
+    const dist2 = distance(abs2, newP);
     constraints.push({ a: p1Name, b: newPointId, len: dist1 });
     constraints.push({ a: newPointId, b: p2Name, len: dist2 });
     incrementSplitCount(ragdoll, boneStartName);
@@ -224,16 +204,7 @@ export function applyDeathSevers(ragdoll, severList, rig, hitBone = null) {
 /**
  * Damage, fracture, or sever bones after a projectile impulse.
  */
-export function processRagdollGoreHit(
-    ragdoll,
-    forceX,
-    forceY,
-    forceZ,
-    hitPart,
-    damageVal,
-    offsetT,
-    rig,
-) {
+export function processRagdollGoreHit(ragdoll, forceX, forceY, forceZ, hitPart, damageVal, offsetT, rig) {
     if (!ragdoll?.points) return;
 
     const gCfg = RAGDOLL_CONFIG.GORE;
@@ -246,10 +217,7 @@ export function processRagdollGoreHit(
     let healthCategory = "limb";
     if (cleanType === "head" || severTarget === "head") {
         healthCategory = "head";
-    } else if (
-        !severTarget
-        && (cleanType.includes("spine") || cleanType === "torso")
-    ) {
+    } else if (!severTarget && (cleanType.includes("spine") || cleanType === "torso")) {
         healthCategory = "torso";
     }
 
@@ -260,8 +228,8 @@ export function processRagdollGoreHit(
         ragdoll.partHealth[healthKey] = maxHP;
     }
 
-    const totalForce = Math.hypot(forceX, forceY, forceZ);
-    const forceMultiplier = Math.min(2.0, totalForce / 5.0);
+    const totalForce = length({ x: forceX, y: forceY, z: forceZ });
+    const forceMultiplier = clamp(totalForce / 5.0, 0, 2.0);
     const damageInflicted = damageVal * (0.5 + forceMultiplier);
     ragdoll.partHealth[healthKey] -= damageInflicted;
 
@@ -279,9 +247,9 @@ export function processRagdollGoreHit(
                 x: impulseCenter.x,
                 y: impulseCenter.y,
                 z: impulseCenter.z,
-                vx: (Math.random() - 0.5),
+                vx: Math.random() - 0.5,
                 vy: -0.5,
-                vz: (Math.random() - 0.5),
+                vz: Math.random() - 0.5,
                 life: 0.4,
                 startLife: 0.4,
                 size: 0.4,
@@ -306,35 +274,35 @@ export function processRagdollGoreHit(
             ragdoll.partHealth[brokenBoneId] = maxHP * 0.5;
             const bP = absRagdollPoint(ragdoll, brokenBoneId);
             if (bP) {
-            const boneColor = bCfg.PALETTE.BONE ?? "#e8e6d1";
-            for (let i = 0; i < 3; i++) {
+                const boneColor = bCfg.PALETTE.BONE ?? "#e8e6d1";
+                for (let i = 0; i < 3; i++) {
+                    ragdoll.particles.push({
+                        x: bP.x,
+                        y: bP.y,
+                        z: bP.z,
+                        vx: (Math.random() - 0.5) * 4,
+                        vy: -Math.random() * 4,
+                        vz: (Math.random() - 0.5) * 4,
+                        life: 0.7,
+                        startLife: 0.7,
+                        size: 0.5,
+                        color: boneColor,
+                        onGround: false,
+                    });
+                }
                 ragdoll.particles.push({
                     x: bP.x,
                     y: bP.y,
                     z: bP.z,
-                    vx: (Math.random() - 0.5) * 4,
-                    vy: -Math.random() * 4,
-                    vz: (Math.random() - 0.5) * 4,
-                    life: 0.7,
-                    startLife: 0.7,
-                    size: 0.5,
-                    color: boneColor,
+                    vx: (Math.random() - 0.5) * 2,
+                    vy: -1,
+                    vz: (Math.random() - 0.5) * 2,
+                    life: 1.0,
+                    startLife: 1.0,
+                    size: 0.6,
+                    color: bCfg.PALETTE.ARTERIAL,
                     onGround: false,
                 });
-            }
-            ragdoll.particles.push({
-                x: bP.x,
-                y: bP.y,
-                z: bP.z,
-                vx: (Math.random() - 0.5) * 2,
-                vy: -1,
-                vz: (Math.random() - 0.5) * 2,
-                life: 1.0,
-                startLife: 1.0,
-                size: 0.6,
-                color: bCfg.PALETTE.ARTERIAL,
-                onGround: false,
-            });
             }
         }
     } else if (action === "SEVER") {

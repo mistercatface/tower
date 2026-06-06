@@ -6,7 +6,7 @@ import {
 } from "./KinematicsMath.js";
 import { blendAngle, normalizeAngle } from "../../Libraries/Math/Angle.js";
 import { smootherstep } from "../../Libraries/Math/Easing.js";
-import { lerp } from "../../Libraries/Math/Interpolate.js";
+import { clamp, lerp } from "../../Libraries/Math/Interpolate.js";
 import { resolveWeaponDrawSlots } from "./KinematicsWeaponVisuals.js";
 
 function applyWeaponAimToVals(vals, actor, aimStrength, facing) {
@@ -89,7 +89,7 @@ export function calculateCharacterRig(state, cycle, config, rig, poses, actor = 
         lElbowZ: lerp(walkArms.lElbowZ || 0, sneakArms.lElbowZ || 0, cf),
     };
 
-    const s = Math.min(1, state.staticBlendFactor);
+    const s = clamp(state.staticBlendFactor, 0, 1);
     const sEased = s * s;
     const lastT = state.lastStaticPose.getTargets(cycle);
     const nextT = state.currentStaticPose.getTargets(cycle);

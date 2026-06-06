@@ -1,7 +1,7 @@
 import { Actor } from "./Actor.js";
 import { NAV_PROFILES, navigationSettings } from "../Config/Config.js";
 import { createEntityBars } from "./EntityBars.js";
-import { renderActorKinematicsBody } from "../Render/Kinematics/PlayerKinematicsRenderer.js";
+import { renderActorKinematicsBody } from "../Render/Kinematics/ActorKinematicsRenderer.js";
 
 const sidekickBars = createEntityBars({ healthWidth: 40, healthHeight: 4, healthBorderRadius: 2 });
 
@@ -61,7 +61,7 @@ export class Sidekick extends Actor {
         }
     }
 
-    onSectorEnter(state) {
+    onCombatReenter(state) {
         if (this.isDead) return;
         this.changeState("navigating");
         this.resetTurretCombatState();

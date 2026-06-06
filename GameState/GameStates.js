@@ -3,7 +3,7 @@ import { requestUiUpdate } from "../Core/EventSystem.js";
 import { Pools } from "../Core/Pools.js";
 import { inspectBridge } from "../Combat/inspect/InspectBridge.js";
 import {
-    runPersistentSectorEnterOnNode,
+    runCombatEnterPersistence,
     runCombatTick,
     runInspectorTick,
     handlePlayerRepositionTap,
@@ -48,7 +48,7 @@ export class CombatState {
         ctx.viewport.snapTo(ctx.state.player.x, ctx.state.player.y);
         ctx.state.hordeSpawner.beginHorde();
         ctx.state.player.resetTurretCombatState();
-        runPersistentSectorEnterOnNode(ctx.state);
+        runCombatEnterPersistence(ctx.state);
         requestUiUpdate();
     }
 

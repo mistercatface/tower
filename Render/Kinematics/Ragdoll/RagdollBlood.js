@@ -1,3 +1,4 @@
+import { clamp } from "../../../Libraries/Math/Interpolate.js";
 import { RAGDOLL_CONFIG } from "./RagdollConfig.js";
 import { absRagdollPoint } from "./RagdollPhysics.js";
 import { PHYSICS_BONES, resolvePhysicsBoneId } from "../KinematicsBones.js";
@@ -25,18 +26,10 @@ export function seedRagdollBloodOnDeath(ragdoll, hitBone, rig) {
     const scale = rig.size / 32;
     const anchor = resolvePhysicsBoneId(hitBone, ragdoll.points) ?? "spineTop";
 
-    const bleedBones = [
-        anchor,
-        ...PHYSICS_BONES.filter((id) => id !== anchor),
-    ];
+    const bleedBones = [anchor, ...PHYSICS_BONES.filter((id) => id !== anchor)];
     for (const bone of bleedBones) {
         if (!ragdoll.points[bone]) continue;
-        ragdoll.emitters.push({
-            bone,
-            dir: { x: (Math.random() - 0.5) * 0.5, y: -1, z: (Math.random() - 0.5) * 0.5 },
-            life: bCfg.SPRAY_LIFE * (1.2 + Math.random() * 0.6),
-            scale,
-        });
+        ragdoll.emitters.push({ bone, dir: { x: (Math.random() - 0.5) * 0.5, y: -1, z: (Math.random() - 0.5) * 0.5 }, life: bCfg.SPRAY_LIFE * (1.2 + Math.random() * 0.6), scale });
     }
 
     const burstBones = [anchor, "spineTop", "head"];
@@ -55,30 +48,20 @@ export function addRagdollBleedEmitter(ragdoll, boneId, rig, durationScale = 1) 
     boneId = resolved;
     if (!ragdoll?.points?.[boneId]) return;
     const bCfg = RAGDOLL_CONFIG.BLOOD;
-    ragdoll.emitters.push({
-        bone: boneId,
-        dir: { x: (Math.random() - 0.5) * 0.8, y: -1, z: (Math.random() - 0.5) * 0.8 },
-        life: bCfg.SPRAY_LIFE * 0.9 * durationScale,
-        scale: rig.size / 32,
-    });
+    ragdoll.emitters.push({ bone: boneId, dir: { x: (Math.random() - 0.5) * 0.8, y: -1, z: (Math.random() - 0.5) * 0.8 }, life: bCfg.SPRAY_LIFE * 0.9 * durationScale, scale: rig.size / 32 });
 }
 
 export function updateBloodEffects(ragdoll, deltaSec, rig) {
     if (!ragdoll) return;
     const { particles, emitters, points, prevPoints, groundY } = ragdoll;
-    const dt = Math.min(deltaSec, 0.033);
+    const dt = clamp(deltaSec, 0, 0.033);
     const bCfg = RAGDOLL_CONFIG.BLOOD;
     const scale = rig.size / 32;
-
     if (!ragdoll.floorStains) ragdoll.floorStains = [];
-
-    if (particles.length > bCfg.MAX_PARTICLES) {
-        particles.splice(0, particles.length - bCfg.MAX_PARTICLES);
-    }
+    if (particles.length > bCfg.MAX_PARTICLES) particles.splice(0, particles.length - bCfg.MAX_PARTICLES);
     while (ragdoll.floorStains.length > bCfg.MAX_STAINS) {
         ragdoll.floorStains.shift();
     }
-
     for (let i = emitters.length - 1; i >= 0; i--) {
         const e = emitters[i];
         e.life -= dt;
@@ -90,14 +73,12 @@ export function updateBloodEffects(ragdoll, deltaSec, rig) {
         if (!bone) continue;
         const merged = absRagdollPoint(ragdoll, e.bone);
         if (!merged) continue;
-        const flowStrength = Math.min(1, e.life / bCfg.SPRAY_LIFE);
+        const flowStrength = clamp(e.life / bCfg.SPRAY_LIFE, 0, 1);
         const prev = prevPoints[e.bone];
         const moveX = prev ? (bone.x - prev.x) * 0.15 : 0;
         const emitterScale = e.scale || scale;
         const speed = 1.2 * flowStrength * emitterScale;
-
         if (Math.random() > 0.25) continue;
-
         const dropLife = bCfg.LIFESPAN_MIN + Math.random() * (bCfg.LIFESPAN_MAX - bCfg.LIFESPAN_MIN);
         particles.push({
             x: merged.x + (Math.random() - 0.5) * 0.06 * emitterScale,
@@ -135,13 +116,7 @@ export function updateBloodEffects(ragdoll, deltaSec, rig) {
                 p.vy = 0;
                 p.onGround = true;
                 if (Math.random() < 0.65) {
-                    ragdoll.floorStains.push({
-                        x: p.x,
-                        y: groundY,
-                        z: p.z,
-                        size: p.size * (2 + Math.random() * 1.5),
-                        color: bCfg.PALETTE.DRIED,
-                    });
+                    ragdoll.floorStains.push({ x: p.x, y: groundY, z: p.z, size: p.size * (2 + Math.random() * 1.5), color: bCfg.PALETTE.DRIED });
                 }
                 p.size = (0.25 + 0.75 * (p.life / p.startLife)) * bCfg.SPLAT_SIZE;
             } else {
@@ -162,7 +137,7 @@ function drawPixelStain(ctx, px, py, radius, color) {
     const cy = Math.round(py);
     for (let y = -rInt; y <= rInt; y++) {
         for (let x = -rInt; x <= rInt; x++) {
-            if (x * x + (y * 2) * (y * 2) <= radius * radius && Math.random() > 0.25) {
+            if (x * x + y * 2 * (y * 2) <= radius * radius && Math.random() > 0.25) {
                 ctx.fillRect(cx + x, cy + y, 1, 1);
             }
         }
@@ -178,7 +153,7 @@ function drawBloodDrop(ctx, proj, particle, config, bCfg) {
         return;
     }
     if (particle.onGround) {
-        ctx.globalAlpha = 0.85 * Math.min(1, particle.life / particle.startLife);
+        ctx.globalAlpha = 0.85 * clamp(particle.life / particle.startLife, 0, 1);
         const w = Math.max(2, Math.ceil(pixelRadius * 2));
         ctx.fillRect(Math.round(proj.x - w / 2), Math.round(proj.y), w, 1);
         ctx.globalAlpha = 1;

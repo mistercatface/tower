@@ -1,7 +1,7 @@
 import { createKinematicsConfig, createKinematicsRig } from "./KinematicsConfig.js";
 import { createKinematicsPoses } from "./KinematicsPoses.js";
 import { createSceneRenderer } from "./KinematicsSceneRenderer.js";
-import { createKinematicsSpriteCache } from "./KinematicsSpriteCache.js";
+import { createKinematicsSpriteCache } from "../../Libraries/Canvas/QuantizedSpriteCache.js";
 import { calculateCharacterRig } from "./KinematicsRigCalculator.js";
 import { createProjector } from "./KinematicsProjector.js";
 import { drawKinematicsFrameToCanvas } from "./KinematicsDraw.js";
@@ -10,6 +10,8 @@ import { normalizeWeaponLoadout } from "../../Combat/equipmentLoadout.js";
 import { resolveWeaponStaticPoseName } from "./KinematicsWeaponVisuals.js";
 import { resolveMuzzleFromRig } from "./KinematicsMuzzle.js";
 import { applyRigDeltas } from "./KinematicsBones.js";
+import { quantizeAngleIndex } from "../../Libraries/Math/Angle.js";
+import { clamp } from "../../Libraries/Math/Interpolate.js";
 
 const sharedCanvas = new OffscreenCanvas(300, 150);
 const sharedCtx = sharedCanvas.getContext("2d", { alpha: true });
@@ -37,14 +39,8 @@ function getWeaponLoadoutKey(actor) {
 }
 
 function getQuantizedAimKey(actor, rotationSteps = 32) {
-    const step = (Math.PI * 2) / rotationSteps;
-    const quantize = (angle) => {
-        let r = (angle ?? 0) % (Math.PI * 2);
-        if (r < 0) r += Math.PI * 2;
-        return Math.floor(r / step);
-    };
     const turrets = actor.turrets ?? [];
-    return `${quantize(turrets[0]?.angle)}_${quantize(turrets[1]?.angle)}`;
+    return `${quantizeAngleIndex(turrets[0]?.angle, rotationSteps)}_${quantizeAngleIndex(turrets[1]?.angle, rotationSteps)}`;
 }
 
 function syncWeaponPose(state, actor, poses) {
@@ -97,7 +93,7 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
 
         const speed = Math.max(0, state.smoothedSpeed);
         const refSpeed = Math.max(1, actor.baseMoveSpeed ?? actor.speed ?? 50);
-        const walkPlayback = Math.min(1.15, speed / refSpeed);
+        const walkPlayback = clamp(speed / refSpeed, 0, 1.15);
         state.lastX = actor.x;
         state.lastY = actor.y;
 
@@ -113,7 +109,7 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
         if (hasWeapons) {
             state.poseFactor = 0;
             state.legPoseFactor += (targetPoseFactor - state.legPoseFactor) * dtSec * transitionSpeed;
-            state.legPoseFactor = Math.max(0, Math.min(1, state.legPoseFactor));
+            state.legPoseFactor = clamp(state.legPoseFactor, 0, 1);
 
             const weaponPose = poses[resolveWeaponStaticPoseName(actor)] ?? poses.IDLE;
             state.currentStaticPose = weaponPose;
@@ -123,7 +119,7 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
         } else {
             state.legPoseFactor = 0;
             state.poseFactor += (targetPoseFactor - state.poseFactor) * dtSec * transitionSpeed;
-            state.poseFactor = Math.max(0, Math.min(1, state.poseFactor));
+            state.poseFactor = clamp(state.poseFactor, 0, 1);
 
             if (!isWalking) {
                 const idlePose = poses.IDLE;
@@ -132,7 +128,7 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
                     state.currentStaticPose = idlePose;
                     state.staticBlendFactor = 0;
                 } else {
-                    state.staticBlendFactor = Math.min(1, state.staticBlendFactor + dtSec / 0.75);
+                    state.staticBlendFactor = clamp(state.staticBlendFactor + dtSec / 0.75, 0, 1);
                 }
                 state.pose = idlePose.name;
             } else {
@@ -156,7 +152,7 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
         const dx = x - camera.x;
         const dy = y - camera.y;
         const horizontalDist = Math.hypot(dx, dy);
-        const rawTiltFactor = Math.min(1.0, horizontalDist / maxTiltDist);
+        const rawTiltFactor = clamp(horizontalDist / maxTiltDist, 0, 1);
         return { rawTiltFactor, dx, dy };
     }
 

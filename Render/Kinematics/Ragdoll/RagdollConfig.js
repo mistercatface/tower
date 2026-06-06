@@ -1,3 +1,5 @@
+import { weightedPick } from "../../../Libraries/Random/weightedPick.js";
+
 export const RAGDOLL_CONFIG = {
     PHYSICS: {
         GRAVITY: 0.5,
@@ -135,16 +137,7 @@ export function getScaledPhysics(pixelSize) {
 export function createImpactProfile(dirX, dirY, power = 1) {
     const gCfg = RAGDOLL_CONFIG.GORE;
     const forceMag = power * gCfg.FORCE_MULTIPLIER;
-    const totalWeight = HIT_ZONES.reduce((sum, z) => sum + z.weight, 0);
-    let r = Math.random() * totalWeight;
-    let hitZone = HIT_ZONES[0];
-    for (const zone of HIT_ZONES) {
-        if (r < zone.weight) {
-            hitZone = zone;
-            break;
-        }
-        r -= zone.weight;
-    }
+    const hitZone = weightedPick(HIT_ZONES, (zone) => zone.weight) ?? HIT_ZONES[0];
     const severedLimbs = new Set();
     const processingQueue = [{ id: hitZone.id, force: power, depth: 0 }];
     let safetyBreaker = 0;

@@ -7,7 +7,7 @@ import { applyActorImpactKnockback } from "../Combat/impactKnockback.js";
 import { getGunImpactKnockback } from "../Combat/gunCombat.js";
 import { getGunDefinition } from "../Config/content/guns.js";
 import { Enemy } from "./Enemy.js";
-import { getPlayerActors } from "../Combat/Targeting.js";
+import { getPlayerActors } from "../Games/tower/targeting.js";
 import { PairFilter } from "../Libraries/Interaction/PairFilter.js";
 import { PROJECTILE_HIT_ACTOR } from "../Games/tower/presets/combat.js";
 import { RagdollCorpse } from "./RagdollCorpse.js";

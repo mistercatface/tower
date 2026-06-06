@@ -5,7 +5,7 @@ import { Laser } from "../Entities/Laser.js";
 import { defaultGunId, getGunDefinition } from "../Config/content/guns.js";
 import { getSlotFireIntervalMs, getSlotReloadTimeMs } from "./gunCombat.js";
 import { getBeamTickDamage, createBeamHitSource } from "./impactDamage.js";
-import { areHostile, getHostiles } from "./Targeting.js";
+import { areHostile, getHostiles } from "../Games/tower/targeting.js";
 
 export function advanceTurretAmmo(dt, turret, gun, source) {
     if (turret.currentGunId !== turret.gunId || turret.ammo === undefined) {

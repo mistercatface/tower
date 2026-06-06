@@ -1,4 +1,5 @@
 import { normalizeAngle } from "../../../Libraries/Math/Angle.js";
+import { normalizeVector } from "../../../Libraries/Math/Vec2.js";
 import { createImpactProfile } from "./RagdollConfig.js";
 import { initializeRagdoll } from "./RagdollPhysics.js";
 import { applyDeathSevers } from "./RagdollGore.js";
@@ -25,9 +26,11 @@ export function resolveDeathImpact(actor, event) {
     } else if (event?.type === "blast" && event.explosion) {
         const dx = actor.x - event.explosion.x;
         const dy = actor.y - event.explosion.y;
-        const len = Math.hypot(dx, dy) || 1;
-        dirX = dx / len;
-        dirY = dy / len;
+        const blastDir = normalizeVector(dx, dy);
+        if (blastDir.len > 0) {
+            dirX = blastDir.x;
+            dirY = blastDir.y;
+        }
         power = 14;
     }
 
@@ -48,10 +51,7 @@ export function createRagdollState(rigData, rotation, impactProfile, config, rig
     const sin = Math.sin(-bRot);
     const localForceX = impactProfile.force.x * cos - impactProfile.force.z * sin;
     const localForceZ = impactProfile.force.x * sin + impactProfile.force.z * cos;
-    const localImpact = {
-        ...impactProfile,
-        force: { x: localForceX, y: impactProfile.force.y, z: localForceZ },
-    };
+    const localImpact = { ...impactProfile, force: { x: localForceX, y: impactProfile.force.y, z: localForceZ } };
     const ragdoll = initializeRagdoll(rigData, normalizeAngle(rotation), localImpact, config, rig);
     ragdoll.rotation = normalizeAngle(rotation);
     applyDeathSevers(ragdoll, impactProfile.sever, rig, impactProfile.hitBone);

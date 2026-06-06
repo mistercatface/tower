@@ -1,15 +1,13 @@
 /** Bone hit tests for ragdoll corpses (2D gameplay, rig-local space). */
 
 import { closestPointOnLineSegment } from "../../../Libraries/Math/Segment2D.js";
-import { getCorpseKinematics } from "../PlayerKinematicsRenderer.js";
+import { distance } from "../../../Libraries/Math/Vec3.js";
+import { getCorpseKinematics } from "../ActorKinematicsRenderer.js";
 import { getRagdollCollisionPoints, absRagdollPoint } from "./RagdollPhysics.js";
 
 function distToSegmentXZ(p, v, w) {
     const closest = closestPointOnLineSegment(p.x, p.z, v.x, v.z, w.x, w.z);
-    return {
-        dist: Math.hypot(p.x - closest.x, p.z - closest.y),
-        t: closest.t,
-    };
+    return { dist: Math.hypot(p.x - closest.x, p.z - closest.y), t: closest.t };
 }
 
 function buildRagdollBones(points, constraints, rig) {
@@ -31,15 +29,7 @@ function buildRagdollBones(points, constraints, rig) {
             r = rig.armL1 * 0.3;
         }
         r *= 2.2;
-        bones.push({
-            id: `${c.a}_${c.b}`,
-            type: "capsule",
-            aName: c.a,
-            bName: c.b,
-            p1,
-            p2,
-            radius: r,
-        });
+        bones.push({ id: `${c.a}_${c.b}`, type: "capsule", aName: c.a, bName: c.b, p1, p2, radius: r });
     }
     return bones;
 }
@@ -56,12 +46,7 @@ function worldToRigLocal(corpse, worldX, worldY) {
     const dy = worldY - corpse.y;
     const rigToWorld = (displayDiameter * 0.5) / rig.size;
     const scale = 1 / rigToWorld;
-    return {
-        x: (dx * cos - dy * sin) * scale,
-        z: (dx * sin + dy * cos) * scale,
-        y: rig.groundY * 0.55,
-        rigToWorld,
-    };
+    return { x: (dx * cos - dy * sin) * scale, z: (dx * sin + dy * cos) * scale, y: rig.groundY * 0.55, rigToWorld };
 }
 
 /**
@@ -76,20 +61,12 @@ export function checkRagdollHit(corpse, worldX, worldY, projectileRadius = 2) {
     const { rig } = getCorpseKinematics(corpse).bundle;
     const local = worldToRigLocal(corpse, worldX, worldY);
     const hitRadiusScale = projectileRadius * (rig.size / corpse.radius) * 0.35;
-    const bones = buildRagdollBones(
-        getRagdollCollisionPoints(corpse.ragdoll),
-        corpse.ragdoll.constraints,
-        rig,
-    );
+    const bones = buildRagdollBones(getRagdollCollisionPoints(corpse.ragdoll), corpse.ragdoll.constraints, rig);
 
     for (const bone of bones) {
         const effectiveRadius = bone.radius + hitRadiusScale;
         if (bone.type === "sphere") {
-            const dist = Math.hypot(
-                local.x - bone.p1.x,
-                local.y - bone.p1.y,
-                local.z - bone.p1.z,
-            );
+            const dist = distance(local, bone.p1);
             if (dist < effectiveRadius) {
                 return { part: bone.id, offsetT: 0 };
             }
@@ -115,8 +92,5 @@ export function ragdollPartToWorld(corpse, partName) {
     const cos = Math.cos(rot);
     const sin = Math.sin(rot);
     const rigToWorld = (displayDiameter * 0.5) / rig.size;
-    return {
-        x: corpse.x + (p.x * cos - p.z * sin) * rigToWorld,
-        y: corpse.y + (p.x * sin + p.z * cos) * rigToWorld,
-    };
+    return { x: corpse.x + (p.x * cos - p.z * sin) * rigToWorld, y: corpse.y + (p.x * sin + p.z * cos) * rigToWorld };
 }

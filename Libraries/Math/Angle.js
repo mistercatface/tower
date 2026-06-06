@@ -20,3 +20,24 @@ export function turnAngleTowards(currentAngle, targetAngle, turnSpeed, dt) {
 export function blendAngle(from, to, t) {
     return from + angleDelta(from, to) * t;
 }
+
+/** Map angle to [0, 2π). */
+export function positiveAngle(angle) {
+    let r = (angle ?? 0) % (Math.PI * 2);
+    if (r < 0) r += Math.PI * 2;
+    return r;
+}
+
+/** Bucket index in [0, steps) for angle quantization. */
+export function quantizeAngleIndex(angle, steps) {
+    if (steps <= 0) return 0;
+    const step = (Math.PI * 2) / steps;
+    return Math.floor(positiveAngle(angle) / step);
+}
+
+/** Snap angle to bucket start in [0, 2π). */
+export function quantizeAngle(angle, steps) {
+    if (steps <= 0) return positiveAngle(angle);
+    const step = (Math.PI * 2) / steps;
+    return quantizeAngleIndex(angle, steps) * step;
+}

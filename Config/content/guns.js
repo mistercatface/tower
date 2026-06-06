@@ -5,8 +5,6 @@ export const defaultGunId = "servicePistol";
 export const defaultEnemyGunId = "enemyRifle";
 /** Player always starts with this weapon. */
 export const playerStartGunId = "sawedOffShotgun";
-/** Barry (run sidekick) always starts with this weapon. */
-export const barryStartGunId = "tommyGun";
 
 /** Random equipment pools (1 slot). Enemies never roll beamLaser. */
 export const playerStartGunPool = ["servicePistol", "shotgun", "sawedOffShotgun", "tommyGun"];

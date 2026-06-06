@@ -1,15 +1,15 @@
 import { wakeAllPushables } from "../../Libraries/Motion/pushablePhysicsPass.js";
 import { syncSurfaceProfile } from "../../Render/game/surfaceProfileResolver.js";
 
-function runPersistentSectorEnter(state) {
+function syncPersistentEntitiesOnCombatEnter(state) {
     syncSurfaceProfile(state);
     wakeAllPushables(state);
     const persistentEntities = [...state.getAllies(), ...state.pickups];
     for (const entity of persistentEntities) {
-        if (typeof entity.onSectorEnter === "function") entity.onSectorEnter(state);
+        if (typeof entity.onCombatReenter === "function") entity.onCombatReenter(state);
     }
 }
 
-export function runPersistentSectorEnterOnNode(state) {
-    runPersistentSectorEnter(state);
+export function runCombatEnterPersistence(state) {
+    syncPersistentEntitiesOnCombatEnter(state);
 }

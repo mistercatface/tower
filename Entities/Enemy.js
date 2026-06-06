@@ -1,5 +1,5 @@
 import { normalizeAngle } from "../Libraries/Math/Angle.js";
-import { areHostile } from "../Combat/Targeting.js";
+import { areHostile } from "../Games/tower/targeting.js";
 import { Actor } from "./Actor.js";
 import { emitCombatEnemyKilled } from "../Core/EventSystem.js";
 import { NAV_PROFILES } from "../Config/Config.js";
@@ -7,7 +7,7 @@ import { rollEnemyStartLoadout } from "../Combat/weaponLoadout.js";
 import { rollRandomLoadoutFromPool } from "../Combat/equipmentLoadout.js";
 import { createEntityBars } from "./EntityBars.js";
 import { buildEnemyCombatStats, computeEnemyUpgradeLevels, computeSpawnReward } from "../Combat/EnemySpawn.js";
-import { renderActorKinematicsBody } from "../Render/Kinematics/PlayerKinematicsRenderer.js";
+import { renderActorKinematicsBody } from "../Render/Kinematics/ActorKinematicsRenderer.js";
 
 const enemyBars = createEntityBars({ healthWidth: 22, healthHeight: 3, healthBorderRadius: 1.5, stunHeight: 2, stunBorderRadius: 1 });
 

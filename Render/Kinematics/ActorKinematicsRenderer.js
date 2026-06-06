@@ -1,16 +1,12 @@
 import { kinematicsPixelSize } from "../../Config/Config.js";
+import { blitCenteredSprite } from "../../Libraries/Canvas/QuantizedSpriteCache.js";
 import { CAMERA_HEIGHT } from "../../Libraries/Spatial/iso/IsometricProjection.js";
 import { createKinematicsBundle } from "./createKinematicsBundle.js";
 
-export class PlayerKinematicsRenderer {
+export class ActorKinematicsRenderer {
     constructor(radius) {
         const displayDiameter = radius * 4;
-        this.bundle = createKinematicsBundle({
-            pixelSize: kinematicsPixelSize,
-            cameraHeight: CAMERA_HEIGHT,
-            maxTiltDist: radius * 15,
-            displayDiameter,
-        });
+        this.bundle = createKinematicsBundle({ pixelSize: kinematicsPixelSize, cameraHeight: CAMERA_HEIGHT, maxTiltDist: radius * 15, displayDiameter });
         this.displayDiameter = displayDiameter;
     }
 
@@ -23,7 +19,7 @@ export class PlayerKinematicsRenderer {
     }
 
     getCacheKey(actor) {
-        return `kinematics_player_${actor.id}_${actor.radius}`;
+        return `kinematics_actor_${actor.id}_${actor.radius}`;
     }
 }
 
@@ -32,7 +28,7 @@ const renderersByRadius = new Map();
 export function getKinematicsRenderer(radius) {
     let renderer = renderersByRadius.get(radius);
     if (!renderer) {
-        renderer = new PlayerKinematicsRenderer(radius);
+        renderer = new ActorKinematicsRenderer(radius);
         renderersByRadius.set(radius, renderer);
     }
     return renderer;
@@ -61,20 +57,12 @@ export function resolveKinematicsCamera(actor, state) {
 
 export function captureActorRigForRagdoll(actor, camera, radius = actor.radius) {
     const kinematics = getKinematicsRenderer(radius);
-    return {
-        ...kinematics.bundle.captureActorRigForRagdoll(actor, camera),
-        kinematics,
-    };
+    return { ...kinematics.bundle.captureActorRigForRagdoll(actor, camera), kinematics };
 }
 
 export function resolveKinematicsMuzzlePosition(actor, turretIndex, camera) {
     const kinematics = getKinematicsRenderer(actor.radius);
-    return kinematics.bundle.resolveMuzzleWorldPosition(
-        actor,
-        camera,
-        turretIndex,
-        kinematics.displayDiameter,
-    );
+    return kinematics.bundle.resolveMuzzleWorldPosition(actor, camera, turretIndex, kinematics.displayDiameter);
 }
 
 /** Camera reference used for kinematics tilt/perspective — must match body render. */
@@ -82,29 +70,12 @@ export function resolveActorKinematicsCamera(actor) {
     return actor._kinematicsCamera ?? { x: actor.x, y: actor.y };
 }
 
-export function blitKinematicsCanvas(ctx, sprite, x, y, displayDiameter, opacity = 1) {
-    const drawRatio = sprite.drawRatio ?? 1;
-    const drawW = displayDiameter * drawRatio;
-    const drawH = drawW * (sprite.height / sprite.width);
-    const vShift = (sprite.verticalShift ?? 0) * (drawW / sprite.width);
-
-    ctx.save();
-    if (opacity < 1) ctx.globalAlpha = Math.max(0, opacity);
-    ctx.translate(x, y);
-    ctx.drawImage(sprite, -drawW / 2, -drawH / 2 - vShift, drawW, drawH);
-    ctx.restore();
-}
-
 /** Live: cached sprite. Corpse: pass rigData for direct render. Same blit either way. */
 export function renderKinematicsBody(ctx, spec) {
     const kinematics = getKinematicsRenderer(spec.radius);
     const camera = spec.camera ?? resolveKinematicsCamera(spec.actor, spec.state);
-
-    const sprite = spec.rigData
-        ? kinematics.bundle.renderKinematicsFrame({ ...spec, camera })
-        : kinematics.getSprite(spec.actor, camera);
-
-    blitKinematicsCanvas(ctx, sprite, spec.x, spec.y, kinematics.displayDiameter, spec.opacity ?? 1);
+    const sprite = spec.rigData ? kinematics.bundle.renderKinematicsFrame({ ...spec, camera }) : kinematics.getSprite(spec.actor, camera);
+    blitCenteredSprite(ctx, sprite, spec.x, spec.y, kinematics.displayDiameter, { opacity: spec.opacity ?? 1 });
 }
 
 export function renderActorKinematicsBody(ctx, actor, camera, radius = actor.radius) {

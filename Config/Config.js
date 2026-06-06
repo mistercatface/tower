@@ -1,6 +1,6 @@
 export * from "./balance/actors.js";
 export * from "./balance/combat.js";
-export * from "./balance/waves.js";
+export * from "./balance/hordeSpawn.js";
 export * from "./balance/progression.js";
 export * from "./balance/map.js";
 export * from "./balance/grid.js";
