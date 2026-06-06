@@ -2,9 +2,12 @@
  * Inspect-view drawing for cylindrical props (body shell + label band).
  */
 import { createInspectCamera } from "../camera/InspectCamera.js";
-import { drawImageQuad } from "../../Canvas/AffineTexture.js";
 import { tessellateCylinderQuads, drawSolidQuad } from "../geometry/CylinderSurface.js";
 import { labelBandYRange } from "../../Math/Interpolate.js";
+import {
+    drawTexturedQuadCells,
+    gatherTexturedQuadCells,
+} from "../../Render/SurfaceTexturing/texturedCells.js";
 
 const DEFAULT_SUBDIV = { subRadial: 2, subVertical: 2 };
 const DEFAULT_BLEED = { uvBleed: 2, screenBleed: 2.5 };
@@ -34,35 +37,6 @@ function drawBackingHull(ctx, points, color) {
     ctx.closePath();
     ctx.fill();
     ctx.restore();
-}
-
-function gatherLabelCells(rawCells, img, uvBleed) {
-    const iw = img.width;
-    const ih = img.height;
-    const cells = [];
-    const hullTop = [];
-    const hullBot = [];
-
-    for (const cell of rawCells) {
-        const { u0, u1, v0, v1, d0, d1, d2, d3, depth } = cell;
-        const sx0 = u0 * iw - (u0 > 0 ? uvBleed : 0);
-        const sx1 = u1 * iw + (u1 < 1 ? uvBleed : 0);
-        const sy0 = v0 * ih - (v0 > 0 ? uvBleed : 0);
-        const sy1 = v1 * ih + (v1 < 1 ? uvBleed : 0);
-
-        cells.push({ depth, sx0, sy0, sx1, sy1, d0, d1, d2, d3 });
-
-        if (v0 === 0) {
-            if (u0 === 0) hullTop.push(d0);
-            hullTop.push(d1);
-        }
-        if (v1 === 1) {
-            if (u0 === 0) hullBot.push(d3);
-            hullBot.push(d2);
-        }
-    }
-
-    return { cells, hull: [...hullTop, ...hullBot.slice().reverse()] };
 }
 
 /** Draw a soda-can body shell using cylindrical quad tessellation. */
@@ -138,18 +112,9 @@ export function drawInspectCylindricalLabel(ctx, cx, cy, scale, yaw, pitch, {
         ...subdiv,
     });
 
-    const { cells, hull } = gatherLabelCells(rawCells, img, uvBleed);
+    const { cells, hull } = gatherTexturedQuadCells(rawCells, img, uvBleed, { collectHull: true });
     if (!cells.length) return;
 
     drawBackingHull(ctx, hull, underlay);
-
-    const textureOpts = { underlay: null, bleedPx: screenBleed };
-    sortAndDrawCells(ctx, cells, (ctx, cell) => {
-        drawImageQuad(
-            ctx, img,
-            cell.sx0, cell.sy0, cell.sx1, cell.sy1,
-            cell.d0, cell.d1, cell.d2, cell.d3,
-            textureOpts,
-        );
-    }, { imageSmoothing: true });
+    drawTexturedQuadCells(ctx, cells, img, { screenBleed, imageSmoothing: true });
 }

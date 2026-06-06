@@ -1,5 +1,5 @@
 import { drawLoFiSphere } from "../../Render/Props3D/lofiSphere.js";
-import { drawSphereTextureBand } from "../../Render/Props3D/drawSphereTextureBand.js";
+import { drawSphereTexturePatch } from "../../Render/SurfaceTexturing/drawSphereTexturePatch.js";
 import {
     getPoolBallLabelImage,
     resolvePoolBallFaceColor,
@@ -13,8 +13,8 @@ export function createPoolBallDraw(visuals) {
 
         drawLoFiSphere(ctx, prop, px, py, {
             baseRadius: radius,
-            panelCount: visuals.panelCount ?? 8,
-            latBands: visuals.latBands ?? 6,
+            panelCount: visuals.panelCount ?? 12,
+            latBands: visuals.latBands ?? 8,
             stroke: visuals.stroke ?? null,
             getFaceColor: poolBall
                 ? (face) => resolvePoolBallFaceColor(face, poolBall)
@@ -29,12 +29,16 @@ export function createPoolBallDraw(visuals) {
         const label = getPoolBallLabelImage(poolBall);
         if (!label) return;
 
-        drawSphereTextureBand(ctx, prop, px, py, label, {
+        drawSphereTexturePatch(ctx, prop, px, py, label, {
             baseRadius: radius,
-            latBands: 8,
-            lonBands: 16,
-            vMin: 0.36,
-            vMax: 0.64,
+            phiCenter: Math.PI * 0.5,
+            thetaCenter: 0,
+            capAngle: 0.36,
+            gridSegments: 20,
+            subSegments: 2,
+            radiusInflate: 1,
+            uvBleed: 1,
+            screenBleed: 0,
             imageSmoothing: true,
         });
     };

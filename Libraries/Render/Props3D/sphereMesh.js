@@ -1,3 +1,4 @@
+import { sphereLocalVertex } from "../SurfaceTexturing/sphereSurface.js";
 import { transformRollVertex } from "../../Props/rollingMotion.js";
 
 /**
@@ -14,20 +15,17 @@ export function buildSphereMesh(radius, latBands, lonBands, rollQuat) {
 
     for (let lat = 0; lat <= latBands; lat++) {
         const phi = (lat / latBands) * Math.PI;
-        const sinPhi = Math.sin(phi);
-        const cosPhi = Math.cos(phi);
-        const z = radius * (1 + cosPhi);
         const row = [];
 
-        if (sinPhi < 1e-6) {
-            const pole = transformRollVertex(0, 0, z, radius, rollQuat);
-            row.push({ ...pole, lon: 0 });
+        if (Math.sin(phi) < 1e-6) {
+            const pole = sphereLocalVertex(radius, phi, 0);
+            const rotated = transformRollVertex(pole.lx, pole.ly, pole.z, radius, rollQuat);
+            row.push({ ...rotated, lon: 0 });
         } else {
             for (let lon = 0; lon < lonBands; lon++) {
                 const theta = (lon / lonBands) * Math.PI * 2;
-                const lx = radius * sinPhi * Math.cos(theta);
-                const ly = radius * sinPhi * Math.sin(theta);
-                const rotated = transformRollVertex(lx, ly, z, radius, rollQuat);
+                const local = sphereLocalVertex(radius, phi, theta);
+                const rotated = transformRollVertex(local.lx, local.ly, local.z, radius, rollQuat);
                 row.push({ ...rotated, lon });
             }
         }

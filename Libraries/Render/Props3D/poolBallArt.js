@@ -10,10 +10,6 @@ export const POOL_BALL_COLORS = {
     8: "#1A1A1A",
 };
 
-const LABEL_W = 192;
-const LABEL_H = 64;
-const labelCache = new Map();
-
 /**
  * @param {string} hex
  * @param {number} amount 0–1 darken factor
@@ -56,8 +52,11 @@ export function resolvePoolBallFaceColor(face, poolBall) {
     return vMid < 0.18 || vMid > 0.82 ? shadeHex(base, 0.12) : base;
 }
 
+const LABEL_SIZE = 256;
+const labelCache = new Map();
+
 /**
- * Procedural equatorial label: white circle + number for solids, number on stripe band.
+ * Square decal atlas for spherical cap UV (transparent outside the white disc).
  *
  * @param {{ kind: 'cue' | 'solid' | 'stripe', number?: number }} poolBall
  * @returns {OffscreenCanvas | null}
@@ -68,25 +67,26 @@ export function getPoolBallLabelImage(poolBall) {
     const key = `${poolBall.kind}_${poolBall.number}`;
     if (labelCache.has(key)) return labelCache.get(key);
 
-    const canvas = new OffscreenCanvas(LABEL_W, LABEL_H);
+    const canvas = new OffscreenCanvas(LABEL_SIZE, LABEL_SIZE);
     const ctx = canvas.getContext("2d");
-    const cx = LABEL_W * 0.5;
-    const cy = LABEL_H * 0.5;
+    const cx = LABEL_SIZE * 0.5;
+    const cy = LABEL_SIZE * 0.5;
+    const discR = LABEL_SIZE * 0.38;
+    const onDark = poolBall.kind === "solid" && poolBall.number === 8;
 
-    if (poolBall.kind === "solid" && poolBall.number !== 8) {
+    if (!onDark) {
         ctx.fillStyle = "#FFFFFF";
         ctx.beginPath();
-        ctx.ellipse(cx, cy, LABEL_W * 0.22, LABEL_H * 0.42, 0, 0, Math.PI * 2);
+        ctx.arc(cx, cy, discR, 0, Math.PI * 2);
         ctx.fill();
     }
 
-    const fontSize = poolBall.number >= 10 ? 28 : 34;
-    const onDark = poolBall.kind === "solid" && poolBall.number === 8;
+    const fontSize = poolBall.number >= 10 ? discR * 1.1 : discR * 1.35;
     ctx.fillStyle = onDark ? "#FFFFFF" : "#111111";
-    ctx.font = `bold ${fontSize}px system-ui, sans-serif`;
+    ctx.font = `900 ${fontSize}px system-ui, sans-serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(String(poolBall.number), cx, cy + 1);
+    ctx.fillText(String(poolBall.number), cx, cy + fontSize * 0.03);
 
     labelCache.set(key, canvas);
     return canvas;

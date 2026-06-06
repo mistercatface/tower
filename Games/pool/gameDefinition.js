@@ -47,8 +47,8 @@ function registerPoolBallType(propDefs, recipes, id, defaultPoolBall) {
     };
     recipes[id] = PROP_RECIPE_BUILDERS.poolBall({
         defaultRadius: POOL_BALL_RADIUS,
-        panelCount: 8,
-        latBands: 6,
+        panelCount: 12,
+        latBands: 8,
         stroke: null,
         defaultPoolBall,
     });
