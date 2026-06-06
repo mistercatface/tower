@@ -1,43 +1,15 @@
 import { createKinematicsConfig, createKinematicsRig } from "../../Libraries/Kinematics/core/config.js";
 import { createKinematicsPoses } from "../../Libraries/Kinematics/core/poses.js";
+import { createEntityAnimState, createLocomotionTicker, getQuantizedAimKey, getWeaponLoadoutKey, syncWeaponPose } from "../../Libraries/Kinematics/anim/index.js";
 import { createCharacterFrameDrawer, createSceneRenderer } from "../../Libraries/Render/Characters/index.js";
 import { createKinematicsSpriteCache } from "../../Libraries/Canvas/QuantizedSpriteCache.js";
 import { createCharacterRigCalculator } from "../../Libraries/Kinematics/core/rigCalculator.js";
 import { createProjector } from "../../Libraries/Kinematics/core/projector.js";
-import { normalizeWeaponLoadout } from "../../Combat/equipmentLoadout.js";
 import { applyRigDeltas } from "../../Libraries/Kinematics/skeleton/adapters.js";
-import { quantizeAngleIndex } from "../../Libraries/Math/Angle.js";
 import { clamp } from "../../Libraries/Math/Interpolate.js";
 
 const sharedCanvas = new OffscreenCanvas(300, 150);
 const sharedCtx = sharedCanvas.getContext("2d", { alpha: true });
-
-function createEntityAnimState(poses) {
-    return {
-        pose: "IDLE",
-        currentStaticPose: poses.IDLE,
-        lastStaticPose: poses.IDLE,
-        staticBlendFactor: 1,
-        animCycle: 0,
-        lastX: 0,
-        lastY: 0,
-        smoothedSpeed: 0,
-        poseFactor: 0,
-        legPoseFactor: 0,
-        crouchFactor: 0,
-        weaponLoadoutKey: "",
-        lastStaticChange: 0,
-    };
-}
-
-function getWeaponLoadoutKey(actor) {
-    return normalizeWeaponLoadout(actor.weaponLoadout ?? []).join("+") || "none";
-}
-
-function getQuantizedAimKey(actor, rotationSteps = 32) {
-    const turrets = actor.turrets ?? [];
-    return `${quantizeAngleIndex(turrets[0]?.angle, rotationSteps)}_${quantizeAngleIndex(turrets[1]?.angle, rotationSteps)}`;
-}
 
 export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 120, displayDiameter = null, ports }) {
     const {
@@ -52,25 +24,14 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
     const { calculateCharacterRig } = createCharacterRigCalculator({ resolveWeaponDrawSlots });
     const { drawKinematicsFrameToCanvas } = createCharacterFrameDrawer({ getCharacterForActor, drawHeldWeapons });
 
-    function syncWeaponPose(state, actor, poses) {
-        const weaponKey = getWeaponLoadoutKey(actor);
-        if (weaponKey === state.weaponLoadoutKey) return;
-        state.weaponLoadoutKey = weaponKey;
-        const poseName = resolveWeaponStaticPoseName(actor);
-        const nextPose = poses[poseName] ?? poses.IDLE;
-        state.lastStaticPose = state.currentStaticPose;
-        state.currentStaticPose = nextPose;
-        state.staticBlendFactor = 0;
-        state.lastStaticChange = 0;
-    }
-
     const config = createKinematicsConfig(pixelSize);
     const rig = createKinematicsRig(config);
     const poses = createKinematicsPoses(config, rig);
     const sceneRenderer = createSceneRenderer(config);
     const spriteCache = createKinematicsSpriteCache();
+    const { tickLocomotion } = createLocomotionTicker({ poses, config, resolveWeaponStaticPoseName });
     const entityStates = new Map();
-    const perspectiveWarpMultiplier = 0.6; // Tune this to scale down perspective warp/lean at screen edges
+    const perspectiveWarpMultiplier = 0.6;
     const perspectiveHeight = config.SIZE * config.PERSPECTIVE_HEIGHT;
     const actorWorldHeight = (displayDiameter ?? config.SIZE * 0.94) * config.PERSPECTIVE_HEIGHT;
     const globalRatio = (perspectiveHeight / Math.max(1.0, cameraHeight - actorWorldHeight)) * perspectiveWarpMultiplier;
@@ -87,70 +48,7 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
 
     function advanceAnimation(actor, dt, camera) {
         const state = getOrCreateState(actor);
-        const dtSec = dt / 1000;
-
-        const moveDx = actor.x - state.lastX;
-        const moveDy = actor.y - state.lastY;
-        const dist = Math.hypot(moveDx, moveDy);
-        const safeDelta = Math.max(dtSec, 0.001);
-        let measuredSpeed = dist / safeDelta;
-        if (dist > 80) measuredSpeed = 0;
-
-        state.smoothedSpeed = measuredSpeed < state.smoothedSpeed ? state.smoothedSpeed * 0.2 + measuredSpeed * 0.8 : state.smoothedSpeed * 0.5 + measuredSpeed * 0.5;
-
-        const speed = Math.max(0, state.smoothedSpeed);
-        const refSpeed = Math.max(1, actor.baseMoveSpeed ?? actor.speed ?? 50);
-        const walkPlayback = clamp(speed / refSpeed, 0, 1.15);
-        state.lastX = actor.x;
-        state.lastY = actor.y;
-
-        const hasMoveIntent = actor.isMoving || Math.hypot(actor.desiredX ?? 0, actor.desiredY ?? 0) > 0.05 || Math.hypot(actor.vx ?? 0, actor.vy ?? 0) > 2;
-        syncWeaponPose(state, actor, poses);
-
-        const hasWeapons = getWeaponLoadoutKey(actor) !== "none";
-        const isWalking = walkPlayback > 0.12 || hasMoveIntent;
-        const targetPoseFactor = isWalking ? 1 : 0;
-        const locomotionBlend = hasWeapons ? state.legPoseFactor : state.poseFactor;
-        const transitionSpeed = locomotionBlend > 0.5 ? 3 : 1.5;
-
-        if (hasWeapons) {
-            state.poseFactor = 0;
-            state.legPoseFactor += (targetPoseFactor - state.legPoseFactor) * dtSec * transitionSpeed;
-            state.legPoseFactor = clamp(state.legPoseFactor, 0, 1);
-
-            const weaponPose = poses[resolveWeaponStaticPoseName(actor)] ?? poses.IDLE;
-            state.currentStaticPose = weaponPose;
-            state.lastStaticPose = weaponPose;
-            state.staticBlendFactor = 1;
-            state.pose = weaponPose.name;
-        } else {
-            state.legPoseFactor = 0;
-            state.poseFactor += (targetPoseFactor - state.poseFactor) * dtSec * transitionSpeed;
-            state.poseFactor = clamp(state.poseFactor, 0, 1);
-
-            if (!isWalking) {
-                const idlePose = poses.IDLE;
-                if (state.currentStaticPose !== idlePose) {
-                    state.lastStaticPose = state.currentStaticPose;
-                    state.currentStaticPose = idlePose;
-                    state.staticBlendFactor = 0;
-                } else {
-                    state.staticBlendFactor = clamp(state.staticBlendFactor + dtSec / 0.75, 0, 1);
-                }
-                state.pose = idlePose.name;
-            } else {
-                state.staticBlendFactor = 1;
-                state.currentStaticPose = poses.IDLE;
-                state.lastStaticPose = poses.IDLE;
-                state.pose = "WALK";
-            }
-        }
-
-        const locomoting = hasWeapons ? state.legPoseFactor > 0.1 : state.poseFactor > 0.1;
-        const cycleSpeed = locomoting ? config.STRIDE_SPEED : config.IDLE_SPEED;
-        const playbackSpeed = locomoting ? walkPlayback * (config.WALK_PLAYBACK_SCALE ?? 1) : 1;
-        state.animCycle += playbackSpeed * dtSec * cycleSpeed;
-
+        tickLocomotion(state, actor, dt / 1000);
         return state;
     }
 
@@ -178,7 +76,7 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
     function resolveLiveFrameSpec(actor, camera, options = {}) {
         const { freezePose = false } = options;
         const state = getOrCreateState(actor);
-        syncWeaponPose(state, actor, poses);
+        syncWeaponPose(state, actor, poses, resolveWeaponStaticPoseName, getWeaponLoadoutKey);
         const bodyRotation = resolveSpriteBodyRotation(actor);
         const animCycle = state.animCycle % (Math.PI * 2);
         const { rawTiltFactor, dx, dy } = buildViewContextAt(actor.x, actor.y, camera);
@@ -252,7 +150,6 @@ export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 
         entityStates.delete(actorId);
     }
 
-    /** Snapshot live frame at death. */
     function captureActorRigForRagdoll(actor, camera) {
         const frame = resolveLiveFrameSpec(actor, camera, { freezePose: true });
         const rigData = cloneRigData(frame.rigData);

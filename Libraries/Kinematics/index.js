@@ -1,4 +1,5 @@
 export * from "./skeleton/index.js";
+export * from "./anim/index.js";
 export * from "./core/bones.js";
 export * from "./core/config.js";
 export * from "./core/ik.js";
