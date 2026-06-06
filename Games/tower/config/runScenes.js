@@ -1,7 +1,6 @@
 import { fireRadioTrigger } from "../../../Core/EventSystem.js";
-import { RunSceneController, compileRunScenes, runSceneBehaviors } from "../../../Libraries/RunScene/index.js";
-import { applyRunSceneSpawn } from "../runSceneSpawns.js";
-import { markTowerRadioTriggersSeen } from "../towerRadioSeen.js";
+import { RunSceneController, compileRunScenes, createRunSceneBehaviors } from "../../../Libraries/RunScene/index.js";
+import { towerRunScenePorts } from "../runScenePorts.js";
 
 /**
  * Dev override: jump to a run scene on new run (skips prior scenes via onSkip).
@@ -28,7 +27,12 @@ export const runScenes = [
                 { enemyType: "dodger", spawn: "guard_right" },
             ],
         },
-        completeWhen: { and: [{ flag: "startGameIntroCompleted" }, { noLivingEnemiesWithTag: "isIntroGuard" }] },
+        completeWhen: {
+            and: [
+                { runSceneFlag: "intro.completed" },
+                { noLivingEnemiesWithTag: "isIntroGuard" },
+            ],
+        },
         transition: { radio: "intro_guards_cleared" },
     },
     {
@@ -38,20 +42,35 @@ export const runScenes = [
         spawn: "foyer",
         radios: ["inspect:jacko_can", "inspect:wood_crate", "clue_search_complete"],
         skipPreset: "through_clue_search",
+        capabilities: { blockTurret: true },
         config: {
             keys: ["jacko_can", "wood_crate"],
             missionLabel: "Tap nearby objects to search for clues ({found}/{total})",
             completeRadio: "clue_search_complete",
             returnPhase: "combat",
-            guidedRadios: { jacko_can: "inspect_jacko_can_garbanzo", wood_crate: "inspect_wood_crate_barry_brock" },
+            guidedRadios: {
+                jacko_can: "inspect_jacko_can_garbanzo",
+                wood_crate: "inspect_wood_crate_barry_brock",
+            },
         },
         completeWhen: "mission_completed",
     },
-    { id: "main_combat", type: "open_combat", phase: "combat", spawn: "corridor", skipPreset: "through_clue_search", config: { horde: true }, completeWhen: "never" },
+    {
+        id: "main_combat",
+        phase: "combat",
+        spawn: "corridor",
+        capabilities: { horde: true },
+        completeWhen: "never",
+    },
 ];
 
+const behaviors = createRunSceneBehaviors(towerRunScenePorts);
+
 export const runSceneController = new RunSceneController({
-    scenes: compileRunScenes(runScenes, { applySpawn: applyRunSceneSpawn, behaviors: runSceneBehaviors }),
-    markRadiosSeen: markTowerRadioTriggersSeen,
+    scenes: compileRunScenes(runScenes, {
+        applySpawn: towerRunScenePorts.applySpawn,
+        behaviors,
+    }),
+    markRadiosSeen: towerRunScenePorts.markRadiosSeen,
     fireRadioTrigger,
 });

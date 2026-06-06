@@ -1,5 +1,11 @@
 import { isInspector } from "../../GameState/GamePhase.js";
-import { findInspectCollectPickup, getInspectCollectMissionBanner } from "../../Libraries/RunScene/behaviors/inspectCollect.js";
+import {
+    findInspectCollectPickup,
+    getInspectCollectMissionBanner,
+    handleInspectCollectClose,
+    handleInspectCollectOpen,
+    isInspectCollectActive,
+} from "../../Libraries/RunScene/behaviors/inspectCollect.js";
 import { runSceneController } from "./config/runScenes.js";
 
 /** @param {import("../../GameState/GameStateMachine.js").GameStateMachineContext} ctx */
@@ -26,7 +32,11 @@ export function onCombatEnemyKilled(payload) {
 }
 
 export function canRunHordeSpawning(_state) {
-    return runSceneController.getCurrentSceneId() === "main_combat";
+    return runSceneController.getCurrentCapabilities().horde === true;
+}
+
+export function blocksTurretTargeting(_state) {
+    return runSceneController.getCurrentCapabilities().blockTurret === true;
 }
 
 export function getInspectMissionBanner(state) {
@@ -36,4 +46,16 @@ export function getInspectMissionBanner(state) {
 
 export function findInspectorInspectPickup(state, worldX, worldY) {
     return findInspectCollectPickup(state, worldX, worldY);
+}
+
+export function onInspectMissionOpen(state, inspectKey) {
+    handleInspectCollectOpen(state, inspectKey);
+}
+
+export function onInspectMissionClose(state, inspectKey) {
+    handleInspectCollectClose(state, inspectKey);
+}
+
+export function isInspectMissionActive(state) {
+    return isInspectCollectActive(state);
 }

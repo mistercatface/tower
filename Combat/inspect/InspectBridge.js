@@ -3,8 +3,8 @@
 import { InspectViewer } from "../../Libraries/Inspect/InspectViewer.js";
 import { getInspectEntry } from "../../Libraries/Inspect/InspectCatalog.js";
 import { toInspectSubject } from "./inspectTargeting.js";
+import { getActiveGameDefinition } from "../../Core/ActiveGameDefinition.js";
 import { isRadioDialogActive } from "../../Games/tower/wireRadio.js";
-import { handleInspectCollectClose, handleInspectCollectOpen, isInspectCollectActive } from "../../Libraries/RunScene/behaviors/inspectCollect.js";
 import { requestGamePause, requestGameResume, requestUiUpdate } from "../../Core/EventSystem.js";
 
 const INSPECTOR_PAUSE_REASON = "inspector";
@@ -54,8 +54,8 @@ class InspectBridge {
         requestUiUpdate();
 
         const inspectKey = subject.inspectKey;
-        if (inspectKey && isInspectCollectActive(state)) {
-            handleInspectCollectOpen(state, inspectKey);
+        if (inspectKey && getActiveGameDefinition()?.isInspectMissionActive?.(state)) {
+            getActiveGameDefinition()?.onInspectMissionOpen?.(state, inspectKey);
         }
     }
 
@@ -68,8 +68,9 @@ class InspectBridge {
         requestGameResume(INSPECTOR_PAUSE_REASON);
         requestUiUpdate();
 
-        if (closedKey && state && isInspectCollectActive(state) && !isRadioDialogActive()) {
-            handleInspectCollectClose(state, closedKey);
+        const game = getActiveGameDefinition();
+        if (closedKey && state && game?.isInspectMissionActive?.(state) && !isRadioDialogActive()) {
+            game.onInspectMissionClose?.(state, closedKey);
         } else if (state) {
             state.inspectPanelOpen = false;
         }

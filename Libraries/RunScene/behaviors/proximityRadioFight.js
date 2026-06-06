@@ -2,60 +2,50 @@ import { getEnemyDefinition } from "../../../Entities/EntityRegistry.js";
 import { Enemy } from "../../../Entities/Enemy.js";
 import { fireRadioTrigger } from "../../../Core/EventSystem.js";
 import { isBaseStatUpgrade } from "../../../Progression/Upgrades.js";
-import { gridSettings } from "../../../Config/Config.js";
-import { getStartGameLayout } from "../../../Games/tower/tutorial/StartGameBuilding.js";
+import { getRunSceneIntro } from "../runSceneState.js";
 
 /**
  * @param {import("../compileRunScenes.js").RunSceneConfig} def
+ * @param {import("../runScenePorts.js").RunScenePorts} ports
  */
-export function proximityRadioFightBehavior(def) {
+export function proximityRadioFightBehavior(def, ports) {
     const config = def.config ?? {};
     const enemyTag = config.enemyTag ?? "isIntroGuard";
     const dialogRadius = config.dialogRadius ?? 52;
 
     return {
         enter(state) {
-            state.startGameIntroActive = true;
-            state.startGameGuardsDialogUnlocked = false;
-            spawnGuards(state, config, enemyTag);
+            const intro = getRunSceneIntro(state);
+            intro.active = true;
+            intro.dialogUnlocked = false;
+            spawnGuards(state, config, enemyTag, ports);
         },
 
         tick(state) {
-            if (!state.startGameIntroActive || state.startGameIntroTriggered) return;
-            if (!state.startGameGuardsDialogUnlocked) return;
-
+            const intro = getRunSceneIntro(state);
+            if (!intro.active || intro.triggered) return;
+            if (!intro.dialogUnlocked) return;
             const dist = distanceToNearestTaggedGuard(state, enemyTag);
             if (dist > dialogRadius) return;
-
-            state.startGameIntroTriggered = true;
+            intro.triggered = true;
             fireRadioTrigger(config.dialogRadio, () => activateGuards(state, enemyTag), state);
         },
     };
 }
 
 export function unlockProximityFightDialog(state) {
-    state.startGameGuardsDialogUnlocked = true;
+    getRunSceneIntro(state).dialogUnlocked = true;
 }
 
-function getLayout(state) {
-    const mapNode = state.getStartMapNode();
-    if (!mapNode) return null;
-    const coords = state.getNodeCombatCoords(mapNode);
-    return getStartGameLayout(coords.x, coords.y, gridSettings.cellSize);
-}
-
-function spawnGuards(state, config, enemyTag) {
-    const layout = getLayout(state);
+function spawnGuards(state, config, enemyTag, ports) {
+    const layout = ports.getLayout(state);
     if (!layout) return;
-
     const baseUpgradeDefs = (state.upgradeDefs ?? []).filter(isBaseStatUpgrade);
     for (const guard of config.guards ?? []) {
         const typeConfig = getEnemyDefinition(guard.enemyType);
         if (!typeConfig) continue;
-
         const pos = layout.spawnSlots?.[guard.spawn];
         if (!pos) continue;
-
         const enemy = Enemy.spawn(pos.x, pos.y, typeConfig, baseUpgradeDefs);
         enemy.isPassive = true;
         enemy[enemyTag] = true;
@@ -65,11 +55,12 @@ function spawnGuards(state, config, enemyTag) {
 }
 
 function activateGuards(state, enemyTag) {
+    const intro = getRunSceneIntro(state);
     for (const enemy of state.enemies) {
         if (enemy[enemyTag]) enemy.isPassive = false;
     }
-    state.startGameIntroActive = false;
-    state.startGameIntroCompleted = true;
+    intro.active = false;
+    intro.completed = true;
 }
 
 function distanceToNearestTaggedGuard(state, enemyTag) {

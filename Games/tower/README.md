@@ -7,11 +7,12 @@ This folder is the **game definition** for the shipped tower roguelike. The engi
 | Path | Role |
 |------|------|
 | `gameDefinition.js` | Manifest: FSM states, upgrades factory, bootstrap hooks |
+| `config/runScenes.js` | Ordered run scene config (intro, clue search, main combat) |
+| `config/startLayout.js` | Opening building grid + named spawn slots |
 | `config/entities.js` | Enemy + ally definitions, run party, spawn events |
-| `tutorial/StartGameIntro.js` | Garbanzo guard intro at run start |
-| `tutorial/ClueSearch.js` | Post-fight clue search → horde unlock |
-| `tutorial/StartGameBuilding.js` | Opening building layout + spawn slots |
-| `hooks.js` | Gameplay hooks wired into engine (combat enter, horde gate, clue search) |
+| `runScenePorts.js` | Injected ports: layout, radio registry, spawn apply |
+| `tutorial/StartGameBuilding.js` | Opening building generator (interprets `startLayout.js`) |
+| `hooks.js` | Gameplay hooks wired into engine (combat enter, run scene tick) |
 | `content/inspect/` | Jacko + crate inspect meshes and catalog registration |
 | `content/world3d/` | Barrel/crate combat prop draw recipes |
 | `presets/combat.js` | Pair-filter presets (separation, collision, projectiles) |
@@ -20,6 +21,8 @@ This folder is the **game definition** for the shipped tower roguelike. The engi
 | `targeting.js` | Faction resolver + hostility queries (`Config/content/factions.js`) |
 
 Balance and content remain in `Config/balance/` and `Config/content/` (radio scripts under `Config/content/radio/`).
+
+Run scene engine lives in `Libraries/RunScene/`; tower wires it via `config/runScenes.js` + `runScenePorts.js`.
 
 Radio engine lives in `Libraries/Radio/`; tower wires it via `gameDefinition.wireRadio`.
 

@@ -138,16 +138,7 @@ export class GameState {
         this.combatHudMode = 0;
         this.pendingPerkPicks = [];
         this.radioSeenThisRun = {};
-        this.startGameIntroActive = false;
-        this.startGameIntroTriggered = false;
-        this.startGameIntroCompleted = false;
-        this.startGameGuardsDialogUnlocked = false;
-        this.clueSearchActive = false;
-        this.clueSearchSeen = null;
-        this.clueSearchOnComplete = null;
-        this.clueSearchCompleted = false;
-        this.clueSearchFinishing = false;
-        this.runMission = null;
+        this.runScene = null;
         this.inspectPanelOpen = false;
         this.skipCombatEnterReset = false;
         this.runSceneInitialized = false;

@@ -1,10 +1,12 @@
 import { proximityRadioFightBehavior } from "./proximityRadioFight.js";
 import { inspectCollectBehavior } from "./inspectCollect.js";
-import { openCombatBehavior } from "./openCombat.js";
 
-/** @type {Record<string, (def: import("../compileRunScenes.js").RunSceneConfig) => object>} */
-export const runSceneBehaviors = {
-    proximity_radio_fight: proximityRadioFightBehavior,
-    inspect_collect: inspectCollectBehavior,
-    open_combat: openCombatBehavior,
-};
+/**
+ * @param {import("../runScenePorts.js").RunScenePorts} ports
+ */
+export function createRunSceneBehaviors(ports) {
+    return {
+        proximity_radio_fight: (def) => proximityRadioFightBehavior(def, ports),
+        inspect_collect: (def) => inspectCollectBehavior(def, ports),
+    };
+}

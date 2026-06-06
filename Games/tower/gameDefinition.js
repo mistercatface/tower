@@ -6,7 +6,18 @@ import { MapState, CombatState, InspectorState } from "../../GameState/GameState
 import { unlockProximityFightDialog } from "../../Libraries/RunScene/behaviors/proximityRadioFight.js";
 import { ProgressionManager } from "../../Progression/ProgressionManager.js";
 import { wireTowerRadio } from "./wireRadio.js";
-import { onCombatEnter, onRunSceneTick, onCombatEnemyKilled, canRunHordeSpawning, getInspectMissionBanner, findInspectorInspectPickup } from "./hooks.js";
+import {
+    onCombatEnter,
+    onRunSceneTick,
+    onCombatEnemyKilled,
+    canRunHordeSpawning,
+    blocksTurretTargeting,
+    getInspectMissionBanner,
+    findInspectorInspectPickup,
+    onInspectMissionOpen,
+    onInspectMissionClose,
+    isInspectMissionActive,
+} from "./hooks.js";
 import { startRunAtScene } from "./config/runScenes.js";
 import { registerTowerEntities } from "./config/entities.js";
 
@@ -31,8 +42,12 @@ import { registerTowerEntities } from "./config/entities.js";
  * @property {null | string} [startRunAtScene] — dev override; skip prior run scenes
  * @property {(payload: { enemy: object, state: object, upgrades: object[], fsm: object }) => void} [onCombatEnemyKilled]
  * @property {(state: object) => boolean} [canRunHordeSpawning]
+ * @property {(state: object) => boolean} [blocksTurretTargeting]
  * @property {(state: object) => { show: boolean, text: string }} [getInspectMissionBanner]
  * @property {(state: object, worldX: number, worldY: number) => object | null} [findInspectorInspectPickup]
+ * @property {(state: object, inspectKey: string) => void} [onInspectMissionOpen]
+ * @property {(state: object, inspectKey: string) => void} [onInspectMissionClose]
+ * @property {(state: object) => boolean} [isInspectMissionActive]
  */
 
 /** @type {GameDefinition} */
@@ -73,6 +88,10 @@ export const towerGame = {
     onRunSceneTick,
     onCombatEnemyKilled,
     canRunHordeSpawning,
+    blocksTurretTargeting,
     getInspectMissionBanner,
     findInspectorInspectPickup,
+    onInspectMissionOpen,
+    onInspectMissionClose,
+    isInspectMissionActive,
 };

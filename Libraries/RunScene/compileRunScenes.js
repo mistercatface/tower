@@ -9,12 +9,13 @@ import { evaluateCompleteWhen } from "./completeWhen.js";
 /**
  * @typedef {object} RunSceneConfig
  * @property {string} id
- * @property {string} type
+ * @property {string} [type]
  * @property {string} [phase]
  * @property {string} [spawn]
  * @property {string[]} [radios]
  * @property {string} [skipPreset]
  * @property {Record<string, unknown>} [config]
+ * @property {{ horde?: boolean, blockTurret?: boolean }} [capabilities]
  * @property {import("./completeWhen.js").CompleteWhenRule} [completeWhen]
  * @property {RunSceneTransition} [transition]
  */
@@ -32,28 +33,24 @@ import { evaluateCompleteWhen } from "./completeWhen.js";
 export function compileRunScenes(defs, { applySpawn, behaviors }) {
     return defs.map((def) => {
         const behavior = behaviors[def.type]?.(def) ?? {};
-
         return {
             id: def.id,
             phase: def.phase,
+            capabilities: def.capabilities ?? {},
             radios: def.radios ?? [],
             transition: def.transition,
-
             onSkip(state, ctx) {
                 if (def.skipPreset) applySkipPreset(def.skipPreset, state, def);
             },
-
             onEnter(state, ctx, enterOpts = {}) {
                 if (def.spawn && enterOpts.applySpawn) {
                     applySpawn(state, def.spawn, ctx);
                 }
                 behavior.enter?.(state, ctx);
             },
-
             onTick: behavior.tick,
             onEnemyKilled: behavior.onEnemyKilled,
             onComplete: behavior.onComplete,
-
             isComplete(state, ctx) {
                 return evaluateCompleteWhen(def.completeWhen, state, ctx);
             },

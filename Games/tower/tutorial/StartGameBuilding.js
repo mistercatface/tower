@@ -1,30 +1,17 @@
 import { Segment } from "../../../Entities/Wall.js";
 import { snapLayoutOrigin, gridCellCenter } from "../../../Generator/GridLayout.js";
+import { startLayoutConfig } from "../config/startLayout.js";
 
-/** Fixed opening layout — player starts just south of the entrance. */
-const GRID_COLS = 49;
-const BUILDING_ROWS = 34;
+const { grid, guardRoom, centerCol, spawnSlots, guardFace, spawnClearRadius } = startLayoutConfig;
+const GRID_COLS = grid.cols;
+const BUILDING_ROWS = grid.buildingRows;
 const ENTRANCE_ROW = BUILDING_ROWS - 1;
-const SPAWN_SOUTH_OF_ENTRANCE = 8;
-const YARD_ROWS = SPAWN_SOUTH_OF_ENTRANCE + 2;
+const YARD_ROWS = grid.spawnSouthOfEntrance + grid.yardRowsPadding;
 const GRID_ROWS = BUILDING_ROWS + YARD_ROWS;
-const SPAWN_ROW = ENTRANCE_ROW + SPAWN_SOUTH_OF_ENTRANCE;
-const SPAWN_COL = Math.floor(GRID_COLS / 2);
-/** Just inside the south entrance — post-guard fight clue search. */
-const CLUE_SEARCH_ROW = BUILDING_ROWS - 5;
-const ENTRANCE_WIDTH = 5;
-const BSP_SEED = 0x7e400001;
-
-/** Interior room for Chickpea / Garbanzo (grid cells). Connected to the entrance foyer. */
-const GUARD_ROOM = {
-    col: SPAWN_COL - 4,
-    row: 14,
-    cols: 9,
-    rows: 7,
-};
-
-/** Central corridor north of the guard room — main horde combat. */
-const MAIN_COMBAT_ROW = GUARD_ROOM.row + GUARD_ROOM.rows + 3;
+const ENTRANCE_WIDTH = grid.entranceWidth;
+const BSP_SEED = grid.bspSeed;
+const GUARD_ROOM = guardRoom;
+const SPAWN_COL = centerCol;
 
 function createRng(seed) {
     let s = seed >>> 0;
@@ -34,11 +21,11 @@ function createRng(seed) {
     };
 }
 
-function carveRect(grid, cols, x, y, w, h) {
+function carveRect(gridBuf, cols, x, y, w, h) {
     for (let r = y; r < y + h; r++) {
         for (let c = x; c < x + w; c++) {
             if (r >= 0 && r < GRID_ROWS && c >= 0 && c < GRID_COLS) {
-                grid[r * cols + c] = 0;
+                gridBuf[r * cols + c] = 0;
             }
         }
     }
@@ -158,18 +145,18 @@ function createBspLeaf(random, minLeafSize) {
             }
         }
 
-        carveInto(grid, cols) {
-            if (this.room) carveRect(grid, cols, this.room.x, this.room.y, this.room.w, this.room.h);
+        carveInto(gridBuf, cols) {
+            if (this.room) carveRect(gridBuf, cols, this.room.x, this.room.y, this.room.w, this.room.h);
             for (const hall of this.halls) {
-                carveRect(grid, cols, hall.x, hall.y, hall.w, hall.h);
+                carveRect(gridBuf, cols, hall.x, hall.y, hall.w, hall.h);
             }
-            if (this.leftChild) this.leftChild.carveInto(grid, cols);
-            if (this.rightChild) this.rightChild.carveInto(grid, cols);
+            if (this.leftChild) this.leftChild.carveInto(gridBuf, cols);
+            if (this.rightChild) this.rightChild.carveInto(gridBuf, cols);
         }
     };
 }
 
-function runBsp(grid, cols, x, y, w, h, random) {
+function runBsp(gridBuf, cols, x, y, w, h, random) {
     const Leaf = createBspLeaf(random, 10);
     const root = new Leaf(x, y, w, h);
     const leaves = [root];
@@ -188,65 +175,74 @@ function runBsp(grid, cols, x, y, w, h, random) {
         }
     }
     root.createRooms();
-    root.carveInto(grid, cols);
+    root.carveInto(gridBuf, cols);
 }
 
-function carveEntranceAndFoyer(grid, cols) {
+function carveEntranceAndFoyer(gridBuf, cols) {
     const half = Math.floor(ENTRANCE_WIDTH / 2);
     const southWallRow = BUILDING_ROWS - 1;
     for (let c = SPAWN_COL - half; c <= SPAWN_COL + half; c++) {
         for (let r = southWallRow; r >= Math.max(1, southWallRow - 10); r--) {
-            grid[r * cols + c] = 0;
+            gridBuf[r * cols + c] = 0;
         }
     }
 }
 
-function carveNorthExit(grid, cols) {
+function carveNorthExit(gridBuf, cols) {
     const half = Math.floor(ENTRANCE_WIDTH / 2);
     for (let c = SPAWN_COL - half; c <= SPAWN_COL + half; c++) {
         for (let r = 0; r <= 10; r++) {
-            grid[r * cols + c] = 0;
+            gridBuf[r * cols + c] = 0;
         }
     }
 }
 
-function carveGuardRoom(grid, cols) {
-    carveRect(grid, cols, GUARD_ROOM.col, GUARD_ROOM.row, GUARD_ROOM.cols, GUARD_ROOM.rows);
+function carveGuardRoom(gridBuf, cols) {
+    carveRect(gridBuf, cols, GUARD_ROOM.col, GUARD_ROOM.row, GUARD_ROOM.cols, GUARD_ROOM.rows);
 
     const roomSouthRow = GUARD_ROOM.row + GUARD_ROOM.rows;
     const foyerRow = BUILDING_ROWS - 1;
     for (let r = roomSouthRow; r <= foyerRow; r++) {
         for (let c = SPAWN_COL - 1; c <= SPAWN_COL + 1; c++) {
-            grid[r * cols + c] = 0;
+            gridBuf[r * cols + c] = 0;
         }
     }
 }
 
-function carveYard(grid, cols) {
+function carveYard(gridBuf, cols) {
     if (YARD_ROWS > 0) {
-        carveRect(grid, cols, 1, BUILDING_ROWS, GRID_COLS - 2, YARD_ROWS);
+        carveRect(gridBuf, cols, 1, BUILDING_ROWS, GRID_COLS - 2, YARD_ROWS);
     }
     for (let c = 0; c < GRID_COLS; c++) {
-        grid[(GRID_ROWS - 1) * cols + c] = 0;
+        gridBuf[(GRID_ROWS - 1) * cols + c] = 0;
     }
+}
+
+function resolveWorldSpawnSlots(offsetX, offsetY, cellSize) {
+    /** @type {Record<string, { x: number, y: number }>} */
+    const worldSlots = {};
+    for (const [name, cell] of Object.entries(spawnSlots)) {
+        worldSlots[name] = gridCellCenter(offsetX, offsetY, cell.col, cell.row, cellSize);
+    }
+    return worldSlots;
 }
 
 export function generateStartGameBuilding(state, px, py) {
     const cellSize = state.flowFieldGrid.cellSize;
     const random = createRng(BSP_SEED);
-    const grid = new Uint8Array(GRID_COLS * GRID_ROWS).fill(1);
+    const gridBuf = new Uint8Array(GRID_COLS * GRID_ROWS).fill(1);
 
-    runBsp(grid, GRID_COLS, 1, 1, GRID_COLS - 2, BUILDING_ROWS - 2, random);
-    carveEntranceAndFoyer(grid, GRID_COLS);
-    carveNorthExit(grid, GRID_COLS);
-    carveGuardRoom(grid, GRID_COLS);
-    carveYard(grid, GRID_COLS);
+    runBsp(gridBuf, GRID_COLS, 1, 1, GRID_COLS - 2, BUILDING_ROWS - 2, random);
+    carveEntranceAndFoyer(gridBuf, GRID_COLS);
+    carveNorthExit(gridBuf, GRID_COLS);
+    carveGuardRoom(gridBuf, GRID_COLS);
+    carveYard(gridBuf, GRID_COLS);
 
     const { offsetX, offsetY } = snapLayoutOrigin(px, py, GRID_COLS, GRID_ROWS, cellSize);
 
     for (let r = 0; r < GRID_ROWS; r++) {
         for (let c = 0; c < GRID_COLS; c++) {
-            if (grid[r * GRID_COLS + c] !== 1) continue;
+            if (gridBuf[r * GRID_COLS + c] !== 1) continue;
             state.walls.push(new Segment(
                 offsetX + c * cellSize + cellSize / 2,
                 offsetY + r * cellSize + cellSize / 2,
@@ -266,34 +262,20 @@ export const StartGameBuildingStrategy = {
 
 export function getStartGameLayout(px, py, cellSize) {
     const { offsetX, offsetY } = snapLayoutOrigin(px, py, GRID_COLS, GRID_ROWS, cellSize);
-    const spawn = gridCellCenter(offsetX, offsetY, SPAWN_COL, SPAWN_ROW, cellSize);
-    const guardRow = GUARD_ROOM.row + Math.floor(GUARD_ROOM.rows / 2);
-    const guardLeftCol = GUARD_ROOM.col + 2;
-    const guardRightCol = GUARD_ROOM.col + GUARD_ROOM.cols - 3;
-    const guardLeft = gridCellCenter(offsetX, offsetY, guardLeftCol, guardRow, cellSize);
-    const guardRight = gridCellCenter(offsetX, offsetY, guardRightCol, guardRow, cellSize);
-    const guardFace = gridCellCenter(offsetX, offsetY, SPAWN_COL, BUILDING_ROWS - 1, cellSize);
-
-    const clueSearchSpawn = gridCellCenter(offsetX, offsetY, SPAWN_COL, CLUE_SEARCH_ROW, cellSize);
-    const mainCombatSpawn = gridCellCenter(offsetX, offsetY, SPAWN_COL, MAIN_COMBAT_ROW, cellSize);
+    const worldSpawnSlots = resolveWorldSpawnSlots(offsetX, offsetY, cellSize);
+    const yardSpawn = worldSpawnSlots.yard;
+    const guardFaceWorld = gridCellCenter(offsetX, offsetY, guardFace.col, guardFace.row, cellSize);
 
     return {
         minX: offsetX,
         minY: offsetY,
         maxX: offsetX + GRID_COLS * cellSize,
         maxY: offsetY + GRID_ROWS * cellSize,
-        spawnX: spawn.x,
-        spawnY: spawn.y,
-        spawnClearRadius: 48,
-        guardFaceX: guardFace.x,
-        guardFaceY: guardFace.y,
-        guardSpawns: [guardLeft, guardRight],
-        spawnSlots: {
-            yard: spawn,
-            foyer: clueSearchSpawn,
-            corridor: mainCombatSpawn,
-            guard_left: guardLeft,
-            guard_right: guardRight,
-        },
+        spawnX: yardSpawn.x,
+        spawnY: yardSpawn.y,
+        spawnClearRadius,
+        guardFaceX: guardFaceWorld.x,
+        guardFaceY: guardFaceWorld.y,
+        spawnSlots: worldSpawnSlots,
     };
 }

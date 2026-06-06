@@ -1,3 +1,5 @@
+import { getRunSceneMission, resolveRunSceneFlag } from "./runSceneState.js";
+
 /**
  * @typedef {string | Record<string, unknown> | { and: unknown[] }} CompleteWhenRule
  */
@@ -16,10 +18,10 @@ export function evaluateCompleteWhen(rule, state, ctx) {
     return evaluateCompleteWhenObject(rule, state, ctx);
 }
 
-function evaluateCompleteWhenNamed(rule, state, ctx) {
+function evaluateCompleteWhenNamed(rule, state, _ctx) {
     switch (rule) {
         case "mission_completed":
-            return state.runMission?.completed === true;
+            return getRunSceneMission(state)?.completed === true;
         case "never":
             return false;
         default:
@@ -28,15 +30,10 @@ function evaluateCompleteWhenNamed(rule, state, ctx) {
 }
 
 function evaluateCompleteWhenObject(rule, state, _ctx) {
-    if (rule.flag) return Boolean(state[rule.flag]);
+    if (rule.runSceneFlag) return resolveRunSceneFlag(state, rule.runSceneFlag);
     if (rule.noLivingEnemiesWithTag) {
         const tag = rule.noLivingEnemiesWithTag;
         return !state.enemies.some((enemy) => !enemy.isDead && enemy[tag]);
-    }
-    if (rule.allMissionKeysSeen) {
-        const mission = state.runMission;
-        if (!mission?.seen || !mission.keys) return false;
-        return mission.keys.every((key) => mission.seen.has(key));
     }
     return false;
 }

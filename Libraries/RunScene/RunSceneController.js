@@ -4,30 +4,14 @@
  */
 export class RunSceneController {
     /**
-     * @param {{ scenes: Array<{
-     *   id: string,
-     *   phase?: string,
-     *   onSkip?: (state: object, ctx: object) => void,
-     *   onEnter?: (state: object, ctx: object) => void,
-     *   onTick?: (state: object, ctx: object) => void,
-     *   onEnemyKilled?: (payload: object) => void,
-     *   isComplete?: (state: object, ctx: object) => boolean,
-     *   onComplete?: (state: object, ctx: object) => void,
-     * }> }} config
-     */
-    /**
      * @param {{
      *   scenes: object[],
      *   markRadiosSeen?: (state: object, triggers: string[]) => void,
      *   runStartRadios?: string[],
+     *   fireRadioTrigger?: (trigger: string, onComplete: (() => void) | null, state: object) => void,
      * }} config
      */
-    constructor({
-        scenes,
-        markRadiosSeen = null,
-        runStartRadios = ["run_start"],
-        fireRadioTrigger = null,
-    }) {
+    constructor({ scenes, markRadiosSeen = null, runStartRadios = ["run_start"], fireRadioTrigger = null }) {
         this.scenes = scenes;
         this.markRadiosSeen = markRadiosSeen;
         this.runStartRadios = runStartRadios;
@@ -49,6 +33,10 @@ export class RunSceneController {
         return this.getCurrentScene()?.id ?? null;
     }
 
+    getCurrentCapabilities() {
+        return this.getCurrentScene()?.capabilities ?? {};
+    }
+
     resolveIndex(sceneId) {
         if (!sceneId) return 0;
         const idx = this.scenes.findIndex((scene) => scene.id === sceneId);
@@ -61,19 +49,12 @@ export class RunSceneController {
      */
     startAt(sceneId, state, ctx) {
         const targetIndex = this.resolveIndex(sceneId);
-
-        if (targetIndex > 0 && this.markRadiosSeen && this.runStartRadios.length > 0) {
-            this.markRadiosSeen(state, this.runStartRadios);
-        }
-
+        if (targetIndex > 0 && this.markRadiosSeen && this.runStartRadios.length > 0) this.markRadiosSeen(state, this.runStartRadios);
         for (let i = 0; i < targetIndex; i++) {
             const scene = this.scenes[i];
-            if (scene.radios?.length && this.markRadiosSeen) {
-                this.markRadiosSeen(state, scene.radios);
-            }
+            if (scene.radios?.length && this.markRadiosSeen) this.markRadiosSeen(state, scene.radios);
             scene.onSkip?.(state, ctx);
         }
-
         this.sceneIndex = targetIndex;
         this.entered = false;
     }
@@ -85,10 +66,8 @@ export class RunSceneController {
      */
     enterCurrentScene(state, ctx, enterOpts = {}) {
         if (this.entered) return;
-
         const scene = this.getCurrentScene();
         if (!scene) return;
-
         scene.onEnter?.(state, ctx, enterOpts);
         this.entered = true;
         this.syncPhase(scene, ctx);
@@ -96,7 +75,6 @@ export class RunSceneController {
 
     syncPhase(scene, ctx) {
         if (!scene.phase || !ctx.fsm || ctx.fsm.currentStateName === scene.phase) return;
-
         if (scene.phase === "inspector") {
             requestAnimationFrame(() => {
                 if (ctx.fsm?.currentStateName !== "inspector") {
@@ -105,35 +83,26 @@ export class RunSceneController {
             });
             return;
         }
-
         ctx.fsm.transition(scene.phase);
     }
 
     tick(state, ctx) {
         const scene = this.getCurrentScene();
         if (!scene) return;
-
         scene.onTick?.(state, ctx);
-
-        if (scene.isComplete?.(state, ctx)) {
-            this.advance(state, ctx);
-        }
+        if (scene.isComplete?.(state, ctx)) this.advance(state, ctx);
     }
 
     onEnemyKilled(payload) {
         const scene = this.getCurrentScene();
         scene?.onEnemyKilled?.(payload);
-
         const ctx = { state: payload.state, fsm: payload.fsm };
-        if (scene?.isComplete?.(payload.state, ctx)) {
-            this.advance(payload.state, ctx);
-        }
+        if (scene?.isComplete?.(payload.state, ctx)) this.advance(payload.state, ctx);
     }
 
     advance(state, ctx) {
         const scene = this.getCurrentScene();
         if (!scene) return;
-
         const transitionRadio = scene.transition?.radio;
         const doAdvance = () => {
             scene.onComplete?.(state, ctx);
@@ -142,12 +111,10 @@ export class RunSceneController {
             this.entered = false;
             this.enterCurrentScene(state, ctx, { applySpawn: false });
         };
-
         if (transitionRadio && this.fireRadioTrigger) {
             this.fireRadioTrigger(transitionRadio, doAdvance, state);
             return;
         }
-
         doAdvance();
     }
 }
