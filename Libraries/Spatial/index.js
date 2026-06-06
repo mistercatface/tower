@@ -2,7 +2,6 @@
  * Libraries/Spatial — reusable spatial infrastructure (grids, geometry, collision, indexes, queries).
  * Game presets and hooks live in Systems/.
  */
-
 // Grid
 export { worldToGridAtOrigin, gridToWorldAtOrigin, worldToGridCentered, gridToWorldCentered, getCellBoundsCentered, entityIntersectsCellBounds, cellBoundsToWorldBounds } from "./grid/GridCoords.js";
 export { colRowToIndex, indexToColRow, OCTILE_OFFSETS, CARDINAL_OFFSETS, octileDistance, forEachCardinalNeighbor } from "./grid/GridUtils.js";
@@ -10,7 +9,6 @@ export { chunkToWorldOrigin, getChunkSizePx, gridBoundsToChunkRange, worldBounds
 export { getWallCellBounds, markWallOnGrid, clearWallCells, computeBoundsFromWalls } from "./grid/wallGridBake.js";
 export { collectSegmentsInCellRect, collectSegmentsNearPose, collectSegmentsAlongLine, collectSegmentsInWorldBounds, segmentGridLayoutFromObstacleGrid } from "./grid/segmentGridWalk.js";
 export { WorldObstacleGrid } from "./grid/WorldObstacleGrid.js";
-
 // Geometry
 export {
     getWallReach,
@@ -19,12 +17,15 @@ export {
     distanceSqToSegment,
     circleIntersectsSegment,
     getCircleSegmentPenetration,
+    isStrictlyInsideSegmentBox,
+    toSegmentLocal,
     pushPointFromWalls,
     findClosestPointOnPathToWall,
     minDistanceSegmentToWall,
 } from "./geometry/WallGeometry.js";
+export { circleLeadingPoint, circleWallContactPoint, circlePairContactPoint, circlePairStruckUnitDirection } from "./geometry/circleContact.js";
+export { rayExpandedLocalAabbHit, sweepCircleAgainstSegment, sweepCircleAgainstSegments } from "./geometry/circleSweep.js";
 export { projectOntoPath, projectOntoPathFrom } from "./geometry/PathGeometry.js";
-
 // Collision
 export { CircleShape, PolygonShape } from "./collision/Shapes.js";
 export { SatCollision } from "./collision/SatCollision.js";
@@ -50,11 +51,9 @@ export {
     shouldResolvePushablePair,
     shouldResolveActorPushable,
 } from "./collision/entityBroadphase.js";
-
 // Indexes
 export { EntityGrid } from "./indexes/EntityGrid.js";
 export { WallSpatialIndex } from "./indexes/WallSpatialIndex.js";
-
 // Query
 export { SpatialQuery } from "./query/SpatialQuery.js";
 export { entityWorldAabb, collectWallSegmentsForEntity, collectWallSegmentsAlongLine, collectObstacleGridSegmentsNearPose } from "./query/wallSegmentQuery.js";
@@ -62,18 +61,10 @@ export { wallContextFromState, getNearbyWalls, getWallsAlongLine } from "./query
 export { hasLineOfSight } from "./query/lineOfSight.js";
 export { castCircleRay, rayCircleHitDistance } from "./query/circleCast.js";
 export { computeBodyContactPreview } from "./query/contactPreview.js";
-
 // World frame
 export { SpatialFrameCore } from "./world/SpatialFrameCore.js";
-
 // Iso / structure
-export {
-    CAMERA_HEIGHT,
-    projectVertical,
-    resolveElevationAlpha,
-    projectWorldPointAtHeight,
-    projectWorldRectCorners,
-} from "./iso/IsometricProjection.js";
+export { CAMERA_HEIGHT, projectVertical, resolveElevationAlpha, projectWorldPointAtHeight, projectWorldRectCorners } from "./iso/IsometricProjection.js";
 export {
     rotateLocalX,
     transformLongAxisVertex,

@@ -1,27 +1,29 @@
-import { circleIntersectsSegment, getCircleSegmentPenetration, isStrictlyInsideSegmentBox } from "../geometry/WallGeometry.js";
+import { sweepCircleAgainstSegments } from "../geometry/circleSweep.js";
+import { circlePairContactPoint, circleWallContactPoint } from "../geometry/circleContact.js";
 import { getWallsAlongLine } from "./wallContext.js";
 /**
  * @typedef {import("./wallContext.js").WallContext} WallContext
  * @typedef {"wall" | "circle"} CircleCastHitKind
  * @typedef {object} CircleCastHit
  * @property {CircleCastHitKind} kind
- * @property {number} t — distance along ray to body center at contact
- * @property {number} x — body center at contact
+ * @property {number} t — distance along ray to moving circle center at first contact
+ * @property {number} x — circle center at contact
  * @property {number} y
+ * @property {number} surfaceX — contact point on the moving circle boundary
+ * @property {number} surfaceY
  * @property {number} [nx] — wall push-out normal (wall hits only)
  * @property {number} [ny]
  * @property {object} [entity] — struck circle body (circle hits only)
  * @property {object} [segment] — wall segment (wall hits only)
  */
 /**
- * @param {number} ox
- * @param {number} oy
- * @param {number} dx
- * @param {number} dy
- * @param {number} cx
- * @param {number} cy
- * @param {number} hitRadius — combined clearance radius at contact
- * @returns {number | null} distance along ray, or null if no forward hit
+ * Analytic ray vs stationary circle: earliest center distance equal to combined radii.
+ *
+ * @param {number} ox @param {number} oy
+ * @param {number} dx @param {number} dy — unit direction
+ * @param {number} cx @param {number} cy
+ * @param {number} hitRadius — sum of both circle radii at contact
+ * @returns {number | null}
  */
 export function rayCircleHitDistance(ox, oy, dx, dy, cx, cy, hitRadius) {
     const fx = ox - cx;
@@ -42,10 +44,8 @@ export function rayCircleHitDistance(ox, oy, dx, dy, cx, cy, hitRadius) {
     return null;
 }
 /**
- * @param {number} ox
- * @param {number} oy
- * @param {number} dx
- * @param {number} dy
+ * @param {number} ox @param {number} oy
+ * @param {number} dx @param {number} dy
  * @param {number} radius
  * @param {number} maxDist
  * @param {WallContext | null | undefined} wallCtx
@@ -57,65 +57,17 @@ function castCircleRayWallHit(ox, oy, dx, dy, radius, maxDist, wallCtx) {
     const endY = oy + dy * maxDist;
     const candidates = getWallsAlongLine(ox, oy, endX, endY, wallCtx);
     if (candidates.length === 0) return null;
-    const step = 4;
-    let hitDist = null;
-    for (let dist = step; dist <= maxDist; dist += step) {
-        const cx = ox + dx * dist;
-        const cy = oy + dy * dist;
-        const probe = { x: cx, y: cy, radius };
-        for (let i = 0; i < candidates.length; i++) {
-            const seg = candidates[i];
-            if (seg.isDead) continue;
-            if (circleIntersectsSegment(probe, seg)) {
-                hitDist = dist;
-                break;
-            }
-        }
-        if (hitDist != null) break;
-    }
-    if (hitDist == null) return null;
-    while (hitDist > 0) {
-        const cx = ox + dx * hitDist;
-        const cy = oy + dy * hitDist;
-        const probe = { x: cx, y: cy, radius };
-        let inside = false;
-        for (let i = 0; i < candidates.length; i++) {
-            const seg = candidates[i];
-            if (seg.isDead) continue;
-            if (circleIntersectsSegment(probe, seg)) {
-                inside = true;
-                break;
-            }
-        }
-        if (!inside) break;
-        hitDist -= 1;
-    }
-    let contactDist = hitDist + 1;
-    let fallback = null;
-    while (contactDist <= maxDist) {
-        const cx = ox + dx * contactDist;
-        const cy = oy + dy * contactDist;
-        const probe = { x: cx, y: cy, radius };
-        for (let i = 0; i < candidates.length; i++) {
-            const seg = candidates[i];
-            if (seg.isDead) continue;
-            if (!circleIntersectsSegment(probe, seg)) continue;
-            const pen = getCircleSegmentPenetration(probe, seg, { approachX: dx, approachY: dy });
-            if (!pen) continue;
-            const hit = { kind: "wall", t: contactDist, x: cx, y: cy, nx: pen.normalX, ny: pen.normalY, segment: seg };
-            if (!isStrictlyInsideSegmentBox(seg, cx, cy)) return hit;
-            if (!fallback) fallback = hit;
-        }
-        contactDist += 1;
-    }
-    return fallback;
+    const hit = sweepCircleAgainstSegments(ox, oy, dx, dy, radius, candidates, maxDist);
+    if (!hit) return null;
+    const surface = circleWallContactPoint(hit.x, hit.y, radius, hit.nx, hit.ny);
+    return { kind: "wall", t: hit.t, x: hit.x, y: hit.y, surfaceX: surface.x, surfaceY: surface.y, nx: hit.nx, ny: hit.ny, segment: hit.segment };
 }
 /**
  * First contact along a ray for a circle body swept through the scene.
- * Uses the same wall broadphase and segment tests as combat line casts
- * ({@link circleIntersectsSegment}, {@link getCircleSegmentPenetration}, {@link getWallsAlongLine}).
+ * Walls use expanded-AABB analytic sweep + shared penetration normals;
+ * circle pairs use quadratic ray–circle with combined radius.
  *
- * @param {number} ox — ray origin (body center)
+ * @param {number} ox — circle center (ray origin)
  * @param {number} oy
  * @param {number} dx — unit direction
  * @param {number} dy
@@ -135,7 +87,11 @@ export function castCircleRay(ox, oy, dx, dy, radius, maxDist, { wallCtx = null,
         const combined = radius + otherRadius;
         const t = rayCircleHitDistance(ox, oy, dx, dy, circle.x, circle.y, combined);
         if (t == null || t > maxDist) continue;
-        if (!best || t < best.t) best = { kind: "circle", t, x: ox + dx * t, y: oy + dy * t, entity: circle };
+        const cx = ox + dx * t;
+        const cy = oy + dy * t;
+        const surface = circlePairContactPoint(cx, cy, radius, circle.x, circle.y);
+        const candidate = { kind: "circle", t, x: cx, y: cy, surfaceX: surface.x, surfaceY: surface.y, entity: circle };
+        if (!best || t < best.t) best = candidate;
     }
     const wallHit = castCircleRayWallHit(ox, oy, dx, dy, radius, maxDist, wallCtx);
     if (wallHit && (!best || wallHit.t < best.t)) best = wallHit;

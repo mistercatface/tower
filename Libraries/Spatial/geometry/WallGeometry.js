@@ -299,7 +299,7 @@ export function getCircleSegmentPenetration(circle, segment, { approachX = 0, ap
     const toCenterY = localY - surface.y;
     const distanceSq = toCenterX * toCenterX + toCenterY * toCenterY;
     const radiusSq = circle.radius * circle.radius;
-    if (distanceSq >= radiusSq) return null;
+    if (distanceSq > radiusSq + 1e-4) return null;
     let localNormX;
     let localNormY;
     let overlap;
@@ -315,7 +315,7 @@ export function getCircleSegmentPenetration(circle, segment, { approachX = 0, ap
         overlap = circle.radius;
     } else {
         const distance = Math.sqrt(distanceSq);
-        overlap = circle.radius - distance;
+        overlap = Math.max(0, circle.radius - distance);
         localNormX = toCenterX / distance;
         localNormY = toCenterY / distance;
     }

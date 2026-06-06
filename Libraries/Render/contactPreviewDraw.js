@@ -67,14 +67,21 @@ export function drawBodyContactPreview(ctx, preview, { primaryColor = "#00e5ff",
     if (!preview.secondary) return;
 
     const { x1, y1, x2, y2, kind } = preview.secondary;
+    const color = kind === "circle" ? circleHitColor : (secondaryColor ?? primaryColor);
     const dx = x2 - x1;
     const dy = y2 - y1;
-    const dirLen = Math.hypot(dx, dy) || 1;
-    const color = kind === "circle" ? circleHitColor : (secondaryColor ?? primaryColor);
-    drawContactSegment(
-        ctx,
-        { x1, y1, x2: x1 + (dx / dirLen) * secondaryLength, y2: y1 + (dy / dirLen) * secondaryLength },
-        color,
-        { lineWidth: 2.5, dashed: kind === "wall", arrowhead: true, glow: kind === "wall", glowHue: primaryGlowHue },
-    );
+    let segX2 = x2;
+    let segY2 = y2;
+    const len = Math.hypot(dx, dy);
+    if (len < 0.5 && secondaryLength > 0) {
+        segX2 = x1 + (dx / (len || 1)) * secondaryLength;
+        segY2 = y1 + (dy / (len || 1)) * secondaryLength;
+    }
+    drawContactSegment(ctx, { x1, y1, x2: segX2, y2: segY2 }, color, {
+        lineWidth: 2.5,
+        dashed: kind === "wall",
+        arrowhead: true,
+        glow: true,
+        glowHue: primaryGlowHue,
+    });
 }
