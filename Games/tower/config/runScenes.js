@@ -3,19 +3,28 @@ import { RunSceneController, compileRunScenes, createRunSceneBehaviors } from ".
 import { towerRunScenePorts } from "../runScenePorts.js";
 
 /**
- * Dev override: jump to a run scene on new run (skips prior scenes via onSkip).
+ * Dev override in code. Overridden by URL `?scene=<id>` when the id is valid.
  * null = play from the beginning.
- * @type {null | "intro_guards" | "clue_search" | "main_combat"}
+ * @type {null | "run_start" | "intro_guards" | "clue_search" | "main_combat"}
  */
 export const startRunAtScene = null;
 
 /** @type {import("../../../Libraries/RunScene/compileRunScenes.js").RunSceneConfig[]} */
 export const runScenes = [
     {
+        id: "run_start",
+        type: "run_opening",
+        phase: "combat",
+        spawn: "yard",
+        radios: ["run_start"],
+        skipPreset: "through_run_start",
+        config: { radio: "run_start" },
+        completeWhen: { runSceneFlag: "opening.completed" },
+    },
+    {
         id: "intro_guards",
         type: "proximity_radio_fight",
         phase: "combat",
-        spawn: "yard",
         radios: ["start_game_guards", "intro_guards_cleared"],
         skipPreset: "through_intro",
         config: {
@@ -73,4 +82,19 @@ export const runSceneController = new RunSceneController({
     }),
     markRadiosSeen: towerRunScenePorts.markRadiosSeen,
     fireRadioTrigger,
+    runStartRadios: [],
 });
+
+/**
+ * Resolve dev start scene: URL `?scene=clue_search` wins over `startRunAtScene` constant.
+ * @returns {string | null}
+ */
+export function getStartRunAtScene() {
+    if (typeof window !== "undefined") {
+        const fromUrl = new URLSearchParams(window.location.search).get("scene");
+        if (fromUrl && runScenes.some((scene) => scene.id === fromUrl)) {
+            return fromUrl;
+        }
+    }
+    return startRunAtScene;
+}

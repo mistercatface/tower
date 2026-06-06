@@ -1,4 +1,4 @@
-import { getRunSceneIntro, setRunSceneMission } from "./runSceneState.js";
+import { ensureRunScene, getRunSceneIntro, setRunSceneMission } from "./runSceneState.js";
 
 /**
  * @typedef {import("./compileRunScenes.js").RunSceneConfig} RunSceneConfig
@@ -6,6 +6,10 @@ import { getRunSceneIntro, setRunSceneMission } from "./runSceneState.js";
 
 /** @type {Record<string, (state: object, def: RunSceneConfig) => void>} */
 export const skipPresets = {
+    through_run_start(state) {
+        ensureRunScene(state).opening.completed = true;
+    },
+
     through_intro(state) {
         const intro = getRunSceneIntro(state);
         intro.completed = true;

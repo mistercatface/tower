@@ -6,7 +6,7 @@ import {
     handleInspectCollectOpen,
     isInspectCollectActive,
 } from "../../Libraries/RunScene/behaviors/inspectCollect.js";
-import { runSceneController } from "./config/runScenes.js";
+import { getStartRunAtScene, runSceneController } from "./config/runScenes.js";
 
 /** @param {import("../../GameState/GameStateMachine.js").GameStateMachineContext} ctx */
 export function onCombatEnter(ctx) {
@@ -14,7 +14,7 @@ export function onCombatEnter(ctx) {
 
     if (!state.runSceneInitialized) {
         runSceneController.reset();
-        const startSceneId = ctx.game?.startRunAtScene ?? null;
+        const startSceneId = getStartRunAtScene();
         runSceneController.startAt(startSceneId, state, ctx);
         state.runSceneInitialized = true;
     }

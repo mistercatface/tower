@@ -18,7 +18,6 @@ import {
     onInspectMissionClose,
     isInspectMissionActive,
 } from "./hooks.js";
-import { startRunAtScene } from "./config/runScenes.js";
 import { registerTowerEntities } from "./config/entities.js";
 
 /**
@@ -35,11 +34,9 @@ import { registerTowerEntities } from "./config/entities.js";
  * @property {() => void | Promise<void>} [prepare] — run before canvas/render setup
  * @property {() => void} [registerInspect]
  * @property {(ctx: { state: object, upgrades: object[] }) => void} [onRunStart]
- * @property {string} [runStartRadioTrigger] — fireRadioTrigger id on new run
  * @property {(eventBus: object, pauseApi: { requestPause: (reason: string) => void, requestResume: (reason: string) => void }) => void} [wireRadio]
  * @property {(ctx: object) => void} [onCombatEnter]
  * @property {(ctx: object, dt: number) => void} [onRunSceneTick]
- * @property {null | string} [startRunAtScene] — dev override; skip prior run scenes
  * @property {(payload: { enemy: object, state: object, upgrades: object[], fsm: object }) => void} [onCombatEnemyKilled]
  * @property {(state: object) => boolean} [canRunHordeSpawning]
  * @property {(state: object) => boolean} [blocksTurretTargeting]
@@ -78,11 +75,7 @@ export const towerGame = {
         unlockProximityFightDialog(state);
     },
 
-    runStartRadioTrigger: "run_start",
-
     wireRadio: wireTowerRadio,
-
-    startRunAtScene,
 
     onCombatEnter,
     onRunSceneTick,

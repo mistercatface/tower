@@ -2,7 +2,7 @@ import { state } from "../GameState/GameState.js";
 import { initializeSaveSystem, loadProgress } from "../Progression/Storage.js";
 import { loadPersistentTriggers } from "./PersistentTriggers.js";
 import { initUI, registerUiEventListeners } from "../UI/UI.js";
-import { events, requestUiUpdate, requestUiHudUpdate, showGameOver, hideGameOver, fireRadioTrigger, requestGamePause, requestGameResume } from "./EventSystem.js";
+import { events, requestUiUpdate, requestUiHudUpdate, showGameOver, hideGameOver, requestGamePause, requestGameResume } from "./EventSystem.js";
 import { registerAllListeners } from "./GameListeners.js";
 import { PauseManager } from "./PauseManager.js";
 import { Renderer } from "../Render/Render.js";
@@ -81,12 +81,7 @@ export function createGame(definition) {
         hideGameOver();
         viewport.snapTo(0, 0);
         fsm.transition(definition.initialState);
-        const onRunStart = () => definition.onRunStart?.({ state, upgrades });
-        if (definition.runStartRadioTrigger) {
-            fireRadioTrigger(definition.runStartRadioTrigger, onRunStart, state);
-        } else {
-            onRunStart();
-        }
+        definition.onRunStart?.({ state, upgrades });
         requestUiUpdate();
         requestUiHudUpdate();
         requestAnimationFrame(loop);

@@ -1,5 +1,6 @@
 export function createDefaultRunScene() {
     return {
+        opening: { completed: false },
         intro: {
             active: false,
             triggered: false,
