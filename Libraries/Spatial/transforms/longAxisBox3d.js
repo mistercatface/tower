@@ -226,3 +226,4 @@ export function isStandTipTilted(prop) {
 export function isStandTipFallen(prop) {
     return isStandTipProp(prop) && prop.isFallen === true;
 }
+
