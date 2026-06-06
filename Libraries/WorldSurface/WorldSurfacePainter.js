@@ -40,7 +40,7 @@ function resolvePaintProfile(profileOrId) {
 export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, seed, options = {}, profileOrId) {
     const profile = resolvePaintProfile(profileOrId);
 
-    const isWall = options.isWall === true;
+    const isWall = options.isWall === true || options.roofSurface === true;
     const cellSize = options.cellSize;
     if (cellSize == null) {
         throw new Error("paintPixelArea requires options.cellSize");
@@ -59,6 +59,8 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, see
         const edgeLen = Math.hypot(options.p2.x - options.p1.x, options.p2.y - options.p1.y);
         const axes = createWallFaceAxes(options.p1, options.p2);
         wallFace = { p1: options.p1, edgeLen, ...axes };
+    } else if (options.roofSurface) {
+        surfaceKind = "roof";
     } else if (isWall) {
         surfaceKind = "wallCell";
         zOffset = options.zOffset ?? 0;
@@ -167,7 +169,10 @@ export function bakeGroundChunkCanvases(payload) {
     );
     const useResolver = chunkNeedsRuntimeResolve(baseProfile);
     const pixelsPerUnit = tileResolution / tileWorldSize;
-    const paintOptions = { cellSize, pixelsPerUnit };
+    const zLevel = payload.zLevel ?? 0;
+    const paintOptions = zLevel > 0
+        ? { cellSize, pixelsPerUnit, isWall: true, roofSurface: true }
+        : { cellSize, pixelsPerUnit };
     const canvases = [];
 
     const sourceTotal = getAnimationFrames(baseProfile.animation);

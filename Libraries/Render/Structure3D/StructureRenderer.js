@@ -104,7 +104,8 @@ export class StructureRenderer {
             this.drawWallFace(ctx, seg, edge[0], edge[1], px, py, input, viewport, options, edge);
         }
 
-        if (wallHeight < this.settings.cameraHeight) {
+        const chunkRoofsEnabled = (input.worldSurfaces?.settings?.roofZLevels?.length ?? 0) > 0;
+        if (!chunkRoofsEnabled && wallHeight < this.settings.cameraHeight) {
             const alpha = wallHeight / (this.settings.cameraHeight - wallHeight);
             const baseCorners = [edges[0][0], edges[1][0], edges[2][0], edges[3][0]];
             const topCorners = baseCorners.map((c) => {

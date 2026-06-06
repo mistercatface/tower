@@ -7,19 +7,31 @@ import { resolveWallVisualHeight } from "./WorldSurfaceSettings.js";
 import { getSurfaceProfileProvider } from "../Procedural/SurfaceProfileProvider.js";
 import { chunkToWorldOrigin, getChunkSizePx, gridBoundsToChunkRange, worldBoundsToChunkRange } from "../Spatial/grid/ChunkGrid.js";
 import { ProgressiveFrameCache } from "./ProgressiveFrameCache.js";
-import { groundChunkCachePrefix, getGroundChunkAnimationInfo, getWallAtlasAnimationInfo, isWallAtlasAnimationEnabled } from "./bake/SurfaceBakeHelpers.js";
+import {
+    getHorizontalSurfaceZLevels,
+    groundChunkCachePrefix,
+    getGroundChunkAnimationInfo,
+    getWallAtlasAnimationInfo,
+    isWallAtlasAnimationEnabled,
+} from "./bake/SurfaceBakeHelpers.js";
+import {
+    clipToHorizontalSurfaceRegions,
+    horizontalChunkIntersectsAnyRegion,
+    projectHorizontalSurfaceCorners,
+} from "./HorizontalSurfaceDraw.js";
+import { drawImageQuad } from "../Canvas/AffineTexture.js";
 import { getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
 import { getWallAtlasCacheInfo } from "./WallSurfaceCache.js";
 import { wallFaceColumns } from "./WallFaceColumns.js";
 import { TileWorkerCoordinator } from "./TileWorkerCoordinator.js";
-import { drawBakedTexture, getPixelsPerWorldUnit } from "./WorldSurfaceResolution.js";
+import { drawBakedTexture, getPixelsPerWorldUnit, shouldSmoothTextureDownsample } from "./WorldSurfaceResolution.js";
 import { animationFrameIndex } from "./ProfileBakeResolver.js";
 import { bakeSlotForSourceFrame } from "./AnimationFrameBake.js";
 import { bakeFrameRange } from "./AnimationFrameBake.js";
 
 /**
  * @typedef {Object} WorldSurfaceEngineHooks
- * @property {(state: object, chunkCol: number, chunkRow: number) => object} buildChunkPayload
+ * @property {(state: object, chunkCol: number, chunkRow: number, zLevel?: number) => object} buildChunkPayload
  */
 
 export class WorldSurfaceEngine {
@@ -54,9 +66,13 @@ export class WorldSurfaceEngine {
                 const chunkCenterX = obstacleGrid.minX + chunkCol * chunkSizePx + chunkSizePx / 2;
                 const chunkCenterY = obstacleGrid.minY + chunkRow * chunkSizePx + chunkSizePx / 2;
                 const profileId = resolveProfileAt(chunkCenterX, chunkCenterY);
-                this.surfaceCache.deleteByPrefix(
-                    "chunk:" + groundChunkCachePrefix(chunkCol, chunkRow, profileId, getSurfaceProfileRevision(profileId), getPixelsPerWorldUnit(this.settings)).substring(6),
-                );
+                const ppwu = getPixelsPerWorldUnit(this.settings);
+                const rev = getSurfaceProfileRevision(profileId);
+                for (const zLevel of getHorizontalSurfaceZLevels(this.settings)) {
+                    this.surfaceCache.deleteByPrefix(
+                        groundChunkCachePrefix(chunkCol, chunkRow, profileId, rev, ppwu, zLevel).substring(6),
+                    );
+                }
             }
         }
     }
@@ -75,11 +91,11 @@ export class WorldSurfaceEngine {
         });
     }
 
-    _resolveChunkPayload(state, chunkCol, chunkRow) {
+    _resolveChunkPayload(state, chunkCol, chunkRow, zLevel = 0) {
         if (!this._buildChunkPayload) {
             throw new Error("WorldSurfaceEngine requires buildChunkPayload hook");
         }
-        const payload = this._buildChunkPayload(state, chunkCol, chunkRow);
+        const payload = this._buildChunkPayload(state, chunkCol, chunkRow, zLevel);
         const obstacleGrid = state.obstacleGrid;
         const cellsPerChunk = this.settings.cellsPerChunk;
         if (obstacleGrid && payload.centerX == null) {
@@ -114,10 +130,18 @@ export class WorldSurfaceEngine {
         return placeholder;
     }
 
-    getGroundChunkCanvas(chunkCol, chunkRow, state, payload = null) {
-        if (!payload) payload = this._resolveChunkPayload(state, chunkCol, chunkRow);
+    getGroundChunkCanvas(chunkCol, chunkRow, state, payload = null, zLevel = 0) {
+        if (!payload) payload = this._resolveChunkPayload(state, chunkCol, chunkRow, zLevel);
+        const resolvedZ = payload.zLevel ?? zLevel;
 
-        const key = groundChunkCachePrefix(chunkCol, chunkRow, payload.profileId, getSurfaceProfileRevision(payload.profileId), getPixelsPerWorldUnit(this.settings));
+        const key = groundChunkCachePrefix(
+            chunkCol,
+            chunkRow,
+            payload.profileId,
+            getSurfaceProfileRevision(payload.profileId),
+            getPixelsPerWorldUnit(this.settings),
+            resolvedZ,
+        );
         let canvases = this.surfaceCache.get(key);
         if (canvases) return canvases;
 
@@ -255,11 +279,25 @@ export class WorldSurfaceEngine {
      *   canvasHeight: number,
      *   state: object,
      *   gameTime?: number,
+     *   zLevel?: number,
+     *   clipRegions?: { minX: number, minY: number, maxX: number, maxY: number }[] | null,
      *   beforeDraw?: (ctx: CanvasRenderingContext2D, bounds: { minX: number, minY: number, maxX: number, maxY: number }) => void,
      * }} options
      */
     drawGroundChunks(ctx, options) {
-        const { obstacleGrid, viewport, canvasWidth, canvasHeight, state, gameTime = 0, beforeDraw } = options;
+        const {
+            obstacleGrid,
+            viewport,
+            canvasWidth,
+            canvasHeight,
+            state,
+            gameTime = 0,
+            zLevel = 0,
+            clipRegions = null,
+            beforeDraw,
+        } = options;
+        const viewerX = viewport.x;
+        const viewerY = viewport.y;
         const cellsPerChunk = this.settings.cellsPerChunk;
         const chunkSizePx = getChunkSizePx(obstacleGrid.cellSize, cellsPerChunk);
         const bounds = viewport.getWorldBounds(canvasWidth, canvasHeight, this.settings.viewPaddingPx);
@@ -286,8 +324,12 @@ export class WorldSurfaceEngine {
         chunksToDraw.sort((a, b) => a.distSq - b.distSq);
 
         for (const chunk of chunksToDraw) {
-            const payload = this._resolveChunkPayload(state, chunk.chunkCol, chunk.chunkRow);
-            const canvases = this.getGroundChunkCanvas(chunk.chunkCol, chunk.chunkRow, state, payload);
+            if (!horizontalChunkIntersectsAnyRegion(clipRegions, chunk.origin.x, chunk.origin.y, chunkSizePx)) {
+                continue;
+            }
+
+            const payload = this._resolveChunkPayload(state, chunk.chunkCol, chunk.chunkRow, zLevel);
+            const canvases = this.getGroundChunkCanvas(chunk.chunkCol, chunk.chunkRow, state, payload, zLevel);
             let canvas = canvases[0];
             if (canvas.isPlaceholder) continue;
 
@@ -295,13 +337,63 @@ export class WorldSurfaceEngine {
             const { enabled: chunkAnimationEnabled, totalFrames: bakeTotal, sourceTotal } =
                 getGroundChunkAnimationInfo(profile, this.settings);
 
-            if (chunkAnimationEnabled && canvases.length > 1) {
+            if (zLevel === 0 && chunkAnimationEnabled && canvases.length > 1) {
                 const sourceFrame = animationFrameIndex(profile.animation, { gameTime });
                 const bakedSlot = bakeSlotForSourceFrame(sourceFrame, bakeTotal, sourceTotal);
                 canvas = canvases[Math.min(canvases.length - 1, Math.max(0, bakedSlot))];
             }
 
-            drawBakedTexture(ctx, canvas, chunk.origin.x, chunk.origin.y, chunkSizePx, chunkSizePx, this.settings);
+            if (zLevel > 0) {
+                const corners = projectHorizontalSurfaceCorners(
+                    chunk.origin.x,
+                    chunk.origin.y,
+                    chunkSizePx,
+                    zLevel,
+                    viewerX,
+                    viewerY,
+                    this.settings.cameraHeight,
+                );
+                const prevSmoothing = ctx.imageSmoothingEnabled;
+                ctx.imageSmoothingEnabled = shouldSmoothTextureDownsample(this.settings);
+                drawImageQuad(
+                    ctx,
+                    canvas,
+                    0,
+                    0,
+                    canvas.width,
+                    canvas.height,
+                    corners[0],
+                    corners[1],
+                    corners[2],
+                    corners[3],
+                    { bleedPx: this.settings.wallTextureBleedPx ?? 1 },
+                );
+                ctx.imageSmoothingEnabled = prevSmoothing;
+            } else {
+                drawBakedTexture(ctx, canvas, chunk.origin.x, chunk.origin.y, chunkSizePx, chunkSizePx, this.settings);
+            }
+        }
+    }
+
+    /** Elevated horizontal layers (z > 0) — draw after walls. Wall atlas unchanged. */
+    drawRoofLayers(ctx, baseOptions) {
+        const levels = this.settings.roofZLevels ?? [];
+        const clipRegions = baseOptions.clipRegions;
+        const useClip = clipRegions?.length > 0;
+
+        if (useClip) {
+            ctx.save();
+            clipToHorizontalSurfaceRegions(ctx, clipRegions);
+        }
+
+        for (let i = 0; i < levels.length; i++) {
+            const z = levels[i];
+            if (z <= 0) continue;
+            this.drawGroundChunks(ctx, { ...baseOptions, zLevel: z, beforeDraw: undefined });
+        }
+
+        if (useClip) {
+            ctx.restore();
         }
     }
 }

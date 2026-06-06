@@ -9,6 +9,7 @@
  * @property {number} seed
  * @property {string} profileId
  * @property {number} [gameTime]
+ * @property {number} [zLevel] — world height for horizontal surfaces (0 = ground)
  * @property {number} [cellsPerChunk]
  * @property {number} [cellSize]
  * @property {number} [tileResolution]
@@ -63,8 +64,18 @@ export function getWallAtlasAnimationInfo(profile, settings) {
     return { enabled, totalFrames: bakeTotal, sourceTotal };
 }
 
-export function groundChunkCachePrefix(chunkCol, chunkRow, profileId, profileRevision, pixelsPerWorldUnit) {
-    return `chunk:${profileRevision}:${pixelsPerWorldUnit}:${profileId}:${chunkCol},${chunkRow}`;
+export function horizontalZCacheTag(zLevel = 0) {
+    return zLevel > 0 ? `z${zLevel}roof` : `z${zLevel}`;
+}
+
+export function groundChunkCachePrefix(chunkCol, chunkRow, profileId, profileRevision, pixelsPerWorldUnit, zLevel = 0) {
+    return `chunk:${profileRevision}:${pixelsPerWorldUnit}:${profileId}:${horizontalZCacheTag(zLevel)}:${chunkCol},${chunkRow}`;
+}
+
+/** @param {WorldSurfaceSettings} settings @returns {number[]} */
+export function getHorizontalSurfaceZLevels(settings) {
+    const roof = settings.roofZLevels ?? [];
+    return [0, ...roof.filter((z) => z > 0)];
 }
 
 /**
@@ -73,8 +84,8 @@ export function groundChunkCachePrefix(chunkCol, chunkRow, profileId, profileRev
  * @returns {GroundChunkBakePayload}
  */
 export function createGroundChunkBakePayload(payload) {
-    const { chunkCol, chunkRow, minX, minY, seed, profileId, gameTime, cellsPerChunk, cellSize, tileResolution, tileWorldSize } = payload;
-    const result = { chunkCol, chunkRow, minX, minY, seed, profileId };
+    const { chunkCol, chunkRow, minX, minY, seed, profileId, gameTime, zLevel, cellsPerChunk, cellSize, tileResolution, tileWorldSize } = payload;
+    const result = { chunkCol, chunkRow, minX, minY, seed, profileId, zLevel: zLevel ?? 0 };
     if (gameTime != null) result.gameTime = gameTime;
     if (cellsPerChunk != null) result.cellsPerChunk = cellsPerChunk;
     if (cellSize != null) result.cellSize = cellSize;

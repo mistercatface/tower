@@ -8,7 +8,7 @@ let gameWorldSurfaceSettings = null;
 
 /**
  * Build world-surface settings from game config.
- * @param {{ cameraHeight?: number, floorShadow?: string, cellSize?: number, groundChunkAnimationsOn?: boolean, wallAnimationsOn?: boolean, animationBakeMaxFrames?: number|null, animationFrameBatchSize?: number }} [overrides]
+ * @param {{ cameraHeight?: number, floorShadow?: string, cellSize?: number, groundChunkAnimationsOn?: boolean, wallAnimationsOn?: boolean, animationBakeMaxFrames?: number|null, animationFrameBatchSize?: number, roofZLevels?: number[] }} [overrides]
  * @returns {import("../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings}
  */
 export function createGameWorldSurfaceSettings(overrides = {}) {
@@ -30,6 +30,7 @@ export function createGameWorldSurfaceSettings(overrides = {}) {
         wallAnimationsOn: overrides.wallAnimationsOn ?? worldSurfaceSettings.wallAnimationsOn,
         animationBakeMaxFrames: overrides.animationBakeMaxFrames ?? worldSurfaceSettings.animationBakeMaxFrames,
         animationFrameBatchSize: overrides.animationFrameBatchSize ?? worldSurfaceSettings.animationFrameBatchSize,
+        roofZLevels: overrides.roofZLevels ?? worldSurfaceSettings.roofZLevels,
         cellSize: overrides.cellSize ?? gridSettings.cellSize,
         cameraHeight: overrides.cameraHeight ?? CAMERA_HEIGHT,
         floorShadow: overrides.floorShadow ?? combatVisualSettings.floorShadow,

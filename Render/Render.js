@@ -43,6 +43,7 @@ export class Renderer {
             },
             { zIndex: 60, fn: (state, viewport) => this.renderExplosions(state, viewport) },
             { zIndex: 70, fn: (state, viewport) => this.render3D.draw3DBuildings(this.ctx, buildWorldRenderInput(state, viewport), viewport) },
+            { zIndex: 71, fn: (state, viewport) => state.worldSurfaces.drawRoofs(this.ctx, state, viewport) },
             {
                 zIndex: 74,
                 fn: (state, viewport) => {

@@ -1,6 +1,6 @@
 import { Segment } from "../../Entities/Wall.js";
 import { snapLayoutOrigin } from "../../Generator/GridLayout.js";
-import { TABLE_COLS, TABLE_ROWS, TABLE_RAIL_CELLS } from "./config/tableLayout.js";
+import { POOL_RAIL_HEIGHT, TABLE_COLS, TABLE_ROWS, TABLE_RAIL_CELLS } from "./config/tableLayout.js";
 
 function carveRect(grid, cols, rows, x, y, w, h) {
     for (let r = y; r < y + h && r < rows; r++) {
@@ -38,7 +38,7 @@ export function generatePoolTable(state, px, py) {
                 30,
                 30,
                 false,
-                20,
+                POOL_RAIL_HEIGHT,
             ));
         }
     }

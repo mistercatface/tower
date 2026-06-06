@@ -19,4 +19,5 @@ export const worldSurfaceSettings = {
     wallAnimationsOn: false,
     animationBakeMaxFrames: null,
     animationFrameBatchSize: 8,
+    roofZLevels: [],
 };

@@ -64,7 +64,8 @@ function whenWorkersReady(run) {
 
 function chunkDedupeKey(payload) {
     const rev = getProfileRevision(payload.profileId);
-    return `chunk:${payload.profileId}:${rev}:${payload.chunkCol},${payload.chunkRow}:${payload.seed ?? 0}${frameRangeDedupeSuffix(payload)}`;
+    const zTag = (payload.zLevel ?? 0) > 0 ? `z${payload.zLevel}roof` : `z${payload.zLevel ?? 0}`;
+    return `chunk:${payload.profileId}:${rev}:${zTag}:${payload.chunkCol},${payload.chunkRow}:${payload.seed ?? 0}${frameRangeDedupeSuffix(payload)}`;
 }
 
 function wallDedupeKey(payload) {

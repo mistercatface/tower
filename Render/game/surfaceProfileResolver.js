@@ -42,7 +42,7 @@ export function syncSurfaceProfile(state) {
 }
 
 /** Worker-serializable ground-chunk bake payload from live game state. */
-export function buildGroundChunkBakePayload(state, chunkCol, chunkRow) {
+export function buildGroundChunkBakePayload(state, chunkCol, chunkRow, zLevel = 0) {
     const obstacleGrid = state.obstacleGrid;
     const settings = getGameWorldSurfaceSettings();
     const cellsPerChunk = settings.cellsPerChunk;
@@ -60,10 +60,11 @@ export function buildGroundChunkBakePayload(state, chunkCol, chunkRow) {
         minY: obstacleGrid.minY,
         seed: state.worldSurfaceSeed ?? 0,
         profileId,
+        zLevel,
         cellsPerChunk,
         cellSize: settings.cellSize,
         tileResolution: settings.tileResolution,
         tileWorldSize: settings.tileWorldSize,
-        gameTime: isGroundChunkAnimationEnabled(profile, settings) ? (state.gameTime ?? 0) : undefined,
+        gameTime: zLevel === 0 && isGroundChunkAnimationEnabled(profile, settings) ? (state.gameTime ?? 0) : undefined,
     });
 }

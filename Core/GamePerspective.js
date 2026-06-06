@@ -32,6 +32,7 @@ export function applyGamePerspective(definition) {
         cameraHeight: config.cameraHeight,
         ...resolveProceduralAnimationSettings(definition),
         ...resolveProceduralBakeSettings(definition),
+        roofZLevels: definition?.worldSurface?.roofZLevels,
     });
     syncWorldSurfaceEngineSettings();
 }
@@ -47,7 +48,8 @@ export function syncWorldSurfaceEngineSettings() {
         prev.groundChunkAnimationsOn !== settings.groundChunkAnimationsOn
         || prev.wallAnimationsOn !== settings.wallAnimationsOn
         || prev.animationBakeMaxFrames !== settings.animationBakeMaxFrames
-        || prev.animationFrameBatchSize !== settings.animationFrameBatchSize;
+        || prev.animationFrameBatchSize !== settings.animationFrameBatchSize
+        || JSON.stringify(prev.roofZLevels ?? []) !== JSON.stringify(settings.roofZLevels ?? []);
 
     engine.settings = settings;
     if (bakeSettingsChanged) {

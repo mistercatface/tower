@@ -22,8 +22,10 @@ import { poolWorldGen } from "./worldGen.js";
 import { wirePoolRadio } from "./wireRadio.js";
 import { getWorldPropDefinitions, getWorldPropRecipes } from "../../Libraries/Content/PropCatalog.js";
 import { PROP_RECIPE_BUILDERS } from "../../Libraries/Props/recipes/index.js";
-import { POOL_BALL_RADIUS } from "./config/tableLayout.js";
+import { POOL_BALL_RADIUS, POOL_RAIL_HEIGHT } from "./config/tableLayout.js";
 import { poolProceduralDesign, poolSurfaceProfileId } from "./config/proceduralDesign.js";
+import { buildPoolRailRoofClipRegions } from "./config/roofClip.js";
+import { poolRunScenePorts } from "./runScenePorts.js";
 
 /** @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition */
 
@@ -109,6 +111,15 @@ export const poolGame = {
     proceduralDesign: {
         surfaceProfileId: poolSurfaceProfileId,
         ...poolProceduralDesign,
+    },
+
+    worldSurface: {
+        roofZLevels: [POOL_RAIL_HEIGHT],
+    },
+
+    getHorizontalSurfaceClipRegions(state) {
+        const layout = poolRunScenePorts.getLayout(state);
+        return buildPoolRailRoofClipRegions(layout);
     },
 
     combatPairs: poolCombatPairs,

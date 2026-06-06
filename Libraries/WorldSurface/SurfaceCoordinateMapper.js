@@ -31,6 +31,10 @@ export function buildMapContext({ startWorldX, startWorldY, cellSize, surfaceKin
         ctx.zOffset = zOffset;
         ctx.height = height;
         ctx.spanU = width > 1 ? width - 1 : 1;
+    } else if (surfaceKind === "roof") {
+        ctx.startWorldX = startWorldX;
+        ctx.startWorldY = startWorldY;
+        ctx.spanU = width > 1 ? width - 1 : 1;
     } else {
         ctx.startWorldX = startWorldX;
         ctx.startWorldY = startWorldY;
@@ -78,6 +82,13 @@ export function writePixelToSamples(samples, idx, x, y, mapCtx) {
         samples.evalY[idx] = mapCtx.startWorldY + (mapCtx.cellSize - y * invPpwu) + mapCtx.zOffset;
         samples.wallU[idx] = x / mapCtx.spanU;
         samples.wallV[idx] = mapCtx.height > 1 ? (mapCtx.height - 1 - y) / (mapCtx.height - 1) : 0;
+        return;
+    }
+    if (mapCtx.surfaceKind === "roof") {
+        samples.evalX[idx] = mapCtx.startWorldX + x * invPpwu;
+        samples.evalY[idx] = mapCtx.startWorldY + y * invPpwu;
+        samples.wallU[idx] = x / mapCtx.spanU;
+        samples.wallV[idx] = 1;
         return;
     }
     samples.evalX[idx] = mapCtx.startWorldX + x * invPpwu;
