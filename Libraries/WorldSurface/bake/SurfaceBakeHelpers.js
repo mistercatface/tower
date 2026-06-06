@@ -12,8 +12,7 @@
  * @property {number} [zLevel] — world height for horizontal surfaces (0 = ground)
  * @property {number} [cellsPerChunk]
  * @property {number} [cellSize]
- * @property {number} [tileResolution]
- * @property {number} [tileWorldSize]
+ * @property {number} [texelResolution]
  */
 
 function countAnimationFrames(animation) {
@@ -84,12 +83,11 @@ export function getHorizontalSurfaceZLevels(settings) {
  * @returns {GroundChunkBakePayload}
  */
 export function createGroundChunkBakePayload(payload) {
-    const { chunkCol, chunkRow, minX, minY, seed, profileId, gameTime, zLevel, cellsPerChunk, cellSize, tileResolution, tileWorldSize } = payload;
+    const { chunkCol, chunkRow, minX, minY, seed, profileId, gameTime, zLevel, cellsPerChunk, cellSize, texelResolution } = payload;
     const result = { chunkCol, chunkRow, minX, minY, seed, profileId, zLevel: zLevel ?? 0 };
     if (gameTime != null) result.gameTime = gameTime;
     if (cellsPerChunk != null) result.cellsPerChunk = cellsPerChunk;
     if (cellSize != null) result.cellSize = cellSize;
-    if (tileResolution != null) result.tileResolution = tileResolution;
-    if (tileWorldSize != null) result.tileWorldSize = tileWorldSize;
+    if (texelResolution != null) result.texelResolution = texelResolution;
     return result;
 }

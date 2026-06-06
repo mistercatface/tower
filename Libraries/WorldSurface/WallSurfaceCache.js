@@ -1,4 +1,4 @@
-import { getWallVisualHeight } from "./WorldSurfaceSettings.js";
+import { getWallHeight } from "./WorldSurfaceSettings.js";
 import { getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
 
 /**
@@ -30,7 +30,7 @@ export function buildWallAtlasCacheKey(p1, p2, surfaceBake, profileId, ppwu, cac
     const ky2 = wy2.toFixed(1);
     const seed = surfaceBake.surfaceSeed;
     const rev = getSurfaceProfileRevision(profileId);
-    const wallHeight = cacheObj?.wallHeight ?? getWallVisualHeight(settings);
+    const wallHeight = cacheObj?.wallHeight ?? getWallHeight(settings);
     const key = `wall:${rev}:${ppwu}:${profileId}:${seed}:${wallHeight}:${kx1},${ky1}-${kx2},${ky2}`;
 
     return { key, wrappedP1: { x: wx1, y: wy1 }, wrappedP2: { x: wx2, y: wy2 } };
@@ -48,7 +48,7 @@ export function buildWallAtlasCacheKey(p1, p2, surfaceBake, profileId, ppwu, cac
 export function getWallAtlasCacheInfo(p1, p2, surfaceBake, profileId, ppwu, cacheObj, settings) {
     const seed = surfaceBake.surfaceSeed;
     const rev = getSurfaceProfileRevision(profileId);
-    const wallHeightKey = cacheObj?.wallHeight ?? getWallVisualHeight(settings);
+    const wallHeightKey = cacheObj?.wallHeight ?? getWallHeight(settings);
     if (
         cacheObj
         && cacheObj._wkInfo

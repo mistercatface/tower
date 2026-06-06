@@ -63,8 +63,7 @@ export function buildGroundChunkBakePayload(state, chunkCol, chunkRow, zLevel = 
         zLevel,
         cellsPerChunk,
         cellSize: settings.cellSize,
-        tileResolution: settings.tileResolution,
-        tileWorldSize: settings.tileWorldSize,
+        texelResolution: settings.texelResolution,
         gameTime: zLevel === 0 && isGroundChunkAnimationEnabled(profile, settings) ? (state.gameTime ?? 0) : undefined,
     });
 }

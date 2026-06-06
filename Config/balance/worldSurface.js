@@ -1,16 +1,14 @@
 import { gridSettings } from "./grid.js";
 
-/** Ground/wall/roof procedural world-surface rendering. */
+/** Engine defaults (tower reference). Override wallHeight / pixelsPerCell in gameDefinition.worldSurface when needed. */
 export const worldSurfaceSettings = {
     cellsPerChunk: gridSettings.minCellsPerChunk,
-    tileResolution: 6,
-    tileWorldSize: gridSettings.cellSize,
     chunkWorldSize: 128 * gridSettings.cellSize,
     viewPaddingPx: 128,
     viewQueryPadPx: 48,
     maxCachedSurfaces: 5000,
-    wallVisualHeight: 150,
-    wallTextureStories: 5,
+    pixelsPerCell: 16,
+    wallHeight: 160,
     wallTextureBleedPx: 1,
     wallSubdivNearPx: 80,
     wallSubdivFarPx: 320,

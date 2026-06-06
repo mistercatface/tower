@@ -1,18 +1,18 @@
 /** @typedef {import("./WorldSurfaceSettings.js").WorldSurfaceSettings} WorldSurfaceSettings */
 
 /** @param {WorldSurfaceSettings} settings */
-export function getPixelsPerWorldUnit(settings) {
-    return settings.tileResolution / settings.tileWorldSize;
+export function getTexelResolution(settings) {
+    return settings.texelResolution;
 }
 
 /** @param {number} worldSpan @param {WorldSurfaceSettings} settings */
 export function bakePixelsForWorldSpan(worldSpan, settings) {
-    return Math.max(1, Math.round(worldSpan * getPixelsPerWorldUnit(settings)));
+    return Math.max(1, Math.round(worldSpan * getTexelResolution(settings)));
 }
 
 /** @param {WorldSurfaceSettings} settings */
 export function shouldSmoothTextureDownsample(settings) {
-    return getPixelsPerWorldUnit(settings) > 1;
+    return getTexelResolution(settings) > 1;
 }
 
 /** @param {WorldSurfaceSettings} [settings] */

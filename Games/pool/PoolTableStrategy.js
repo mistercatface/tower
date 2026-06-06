@@ -1,7 +1,7 @@
 import { Segment } from "../../Entities/Wall.js";
 import { snapLayoutOrigin } from "../../Generator/GridLayout.js";
 import { getGameWorldSurfaceSettings } from "../../Render/WorldSurfaceBootstrap.js";
-import { getWallVisualHeight } from "../../Libraries/WorldSurface/WorldSurfaceSettings.js";
+import { getWallHeight } from "../../Libraries/WorldSurface/WorldSurfaceSettings.js";
 import { TABLE_COLS, TABLE_ROWS, TABLE_RAIL_CELLS } from "./config/tableLayout.js";
 
 function carveRect(grid, cols, rows, x, y, w, h) {
@@ -28,7 +28,7 @@ export function generatePoolTable(state, px, py) {
     carveRect(grid, cols, rows, rail, rail, cols - rail * 2, rows - rail * 2);
 
     const { offsetX, offsetY } = snapLayoutOrigin(px, py, cols, rows, cellSize);
-    const railHeight = getWallVisualHeight(getGameWorldSurfaceSettings());
+    const railHeight = getWallHeight(getGameWorldSurfaceSettings());
     for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
             if (grid[r * cols + c] !== 1) continue;

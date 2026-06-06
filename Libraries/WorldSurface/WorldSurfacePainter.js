@@ -1,7 +1,7 @@
 import { composeSurfaceImage } from "../Procedural/SurfaceTextureComposer.js";
 import { getSurfaceProfileProvider } from "../Procedural/SurfaceProfileProvider.js";
 import { buildMapContext, createWallFaceAxes, writePixelToSamples } from "./SurfaceCoordinateMapper.js";
-import { bakePixelsForWorldSpan, getPixelsPerWorldUnit } from "./WorldSurfaceResolution.js";
+import { bakePixelsForWorldSpan, getTexelResolution } from "./WorldSurfaceResolution.js";
 import { getAnimationFrames, resolveBakeProfile } from "./ProfileBakeResolver.js";
 import { sourceFrameIndexForBakeSlot } from "./AnimationFrameBake.js";
 
@@ -48,7 +48,7 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, see
 
     let surfaceKind = "floor";
     let wallFace = null;
-    let pixelsPerUnit = options.pixelsPerUnit ?? (options.settings ? getPixelsPerWorldUnit(options.settings) : null);
+    let pixelsPerUnit = options.pixelsPerUnit ?? (options.settings ? getTexelResolution(options.settings) : null);
     if (pixelsPerUnit == null) {
         throw new Error("paintPixelArea requires options.pixelsPerUnit or options.settings");
     }
@@ -139,14 +139,13 @@ export function bakeWallAtlasCanvas(width, height, p1, p2, pixelsPerUnit, seed, 
     return canvas;
 }
 
-function chunkWorldOrigin(chunkCol, chunkRow, minX, minY, cellsPerChunk, cellSize, tileResolution, tileWorldSize) {
+function chunkWorldOrigin(chunkCol, chunkRow, minX, minY, cellsPerChunk, cellSize, texelResolution) {
     const startCol = chunkCol * cellsPerChunk;
     const startRow = chunkRow * cellsPerChunk;
-    const bakeSettings = { tileResolution, tileWorldSize };
     return {
         x: minX + startCol * cellSize,
         y: minY + startRow * cellSize,
-        bakeSize: bakePixelsForWorldSpan(cellSize * cellsPerChunk, bakeSettings),
+        bakeSize: bakePixelsForWorldSpan(cellSize * cellsPerChunk, { texelResolution }),
     };
 }
 
@@ -160,15 +159,15 @@ export function bakeGroundChunkCanvases(payload) {
     const profileId = payload.profileId ?? provider.defaultId;
     const baseProfile = provider.getProfile(profileId);
     const { frameStart, frameCount } = payload;
-    const { chunkCol, chunkRow, minX, minY, seed, cellsPerChunk, cellSize, tileResolution, tileWorldSize } = payload;
-    if (cellsPerChunk == null || cellSize == null || tileResolution == null || tileWorldSize == null) {
-        throw new Error("bakeGroundChunkCanvases payload requires cellsPerChunk, cellSize, tileResolution, tileWorldSize");
+    const { chunkCol, chunkRow, minX, minY, seed, cellsPerChunk, cellSize, texelResolution } = payload;
+    if (cellsPerChunk == null || cellSize == null || texelResolution == null) {
+        throw new Error("bakeGroundChunkCanvases payload requires cellsPerChunk, cellSize, texelResolution");
     }
     const { x: chunkWorldX, y: chunkWorldY, bakeSize } = chunkWorldOrigin(
-        chunkCol, chunkRow, minX, minY, cellsPerChunk, cellSize, tileResolution, tileWorldSize,
+        chunkCol, chunkRow, minX, minY, cellsPerChunk, cellSize, texelResolution,
     );
     const useResolver = chunkNeedsRuntimeResolve(baseProfile);
-    const pixelsPerUnit = tileResolution / tileWorldSize;
+    const pixelsPerUnit = texelResolution;
     const zLevel = payload.zLevel ?? 0;
     const paintOptions = zLevel > 0
         ? { cellSize, pixelsPerUnit, isWall: true, roofSurface: true }

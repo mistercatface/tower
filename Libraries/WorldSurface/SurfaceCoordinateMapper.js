@@ -27,7 +27,10 @@ export function buildMapContext({ startWorldX, startWorldY, cellSize, surfaceKin
         ctx.foldX = wf.foldX;
         ctx.foldY = wf.foldY;
         ctx.invEdgeLen = wf.edgeLen > 0 ? 1 / wf.edgeLen : 1;
-        ctx.wallHeight = wallHeight ?? 150;
+        if (wallHeight == null) {
+            throw new Error("buildMapContext wallFace requires wallHeight");
+        }
+        ctx.wallHeight = wallHeight;
         ctx.wallWidth = wallWidth ?? cellSize;
     } else if (surfaceKind === "wallCell") {
         ctx.startWorldX = startWorldX;

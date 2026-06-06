@@ -24,7 +24,6 @@ import { getWorldPropDefinitions, getWorldPropRecipes } from "../../Libraries/Co
 import { PROP_RECIPE_BUILDERS } from "../../Libraries/Props/recipes/index.js";
 import {
     POOL_BALL_RADIUS,
-    POOL_RAIL_HEIGHT,
     POOL_BALL_LOW_SPEED_THRESHOLD,
     POOL_BALL_LOW_SPEED_FRICTION,
     POOL_BALL_SNAP_SPEED,
@@ -121,7 +120,7 @@ export const poolGame = {
     },
 
     worldSurface: {
-        wallVisualHeight: POOL_RAIL_HEIGHT,
+        wallHeight: 20,
     },
 
     combatPairs: poolCombatPairs,

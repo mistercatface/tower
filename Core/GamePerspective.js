@@ -30,7 +30,8 @@ export function applyGamePerspective(definition) {
     setPerspectiveStrength(config.strength);
     installGameWorldSurfaceSettings({
         cameraHeight: config.cameraHeight,
-        wallVisualHeight: definition?.worldSurface?.wallVisualHeight,
+        pixelsPerCell: definition?.worldSurface?.pixelsPerCell,
+        wallHeight: definition?.worldSurface?.wallHeight,
         ...resolveProceduralAnimationSettings(definition),
         ...resolveProceduralBakeSettings(definition),
     });
@@ -49,7 +50,8 @@ export function syncWorldSurfaceEngineSettings() {
         || prev.wallAnimationsOn !== settings.wallAnimationsOn
         || prev.animationBakeMaxFrames !== settings.animationBakeMaxFrames
         || prev.animationFrameBatchSize !== settings.animationFrameBatchSize
-        || prev.wallVisualHeight !== settings.wallVisualHeight
+        || prev.pixelsPerCell !== settings.pixelsPerCell
+        || prev.wallHeight !== settings.wallHeight
         || prev.cameraHeight !== settings.cameraHeight
         || JSON.stringify(prev.roofZLevels ?? []) !== JSON.stringify(settings.roofZLevels ?? []);
 

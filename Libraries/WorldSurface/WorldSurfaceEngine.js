@@ -3,7 +3,7 @@
  * Game-agnostic — no phase checks, shadow fill, or GameState profile resolution.
  * See Render/game/WorldSurfaceSystem.js for the game wrapper; Libraries/Render/Structure3D for wall projection.
  */
-import { getWallVisualHeight } from "./WorldSurfaceSettings.js";
+import { getWallHeight } from "./WorldSurfaceSettings.js";
 import { getSurfaceProfileProvider } from "../Procedural/SurfaceProfileProvider.js";
 import { chunkToWorldOrigin, getChunkSizePx, gridBoundsToChunkRange, worldBoundsToChunkRange } from "../Spatial/grid/ChunkGrid.js";
 import { ProgressiveFrameCache } from "./ProgressiveFrameCache.js";
@@ -15,7 +15,7 @@ import { getWallAtlasCacheInfo } from "./WallSurfaceCache.js";
 import { wallFaceAtlasUnrolledHeight } from "./SurfaceCoordinateMapper.js";
 import { wallFaceColumns } from "./WallFaceColumns.js";
 import { TileWorkerCoordinator } from "./TileWorkerCoordinator.js";
-import { drawBakedTexture, getPixelsPerWorldUnit, shouldSmoothTextureDownsample } from "./WorldSurfaceResolution.js";
+import { drawBakedTexture, getTexelResolution, shouldSmoothTextureDownsample } from "./WorldSurfaceResolution.js";
 import { animationFrameIndex } from "./ProfileBakeResolver.js";
 import { bakeSlotForSourceFrame } from "./AnimationFrameBake.js";
 import { bakeFrameRange } from "./AnimationFrameBake.js";
@@ -57,7 +57,7 @@ export class WorldSurfaceEngine {
                 const chunkCenterX = obstacleGrid.minX + chunkCol * chunkSizePx + chunkSizePx / 2;
                 const chunkCenterY = obstacleGrid.minY + chunkRow * chunkSizePx + chunkSizePx / 2;
                 const profileId = resolveProfileAt(chunkCenterX, chunkCenterY);
-                const ppwu = getPixelsPerWorldUnit(this.settings);
+                const ppwu = getTexelResolution(this.settings);
                 const rev = getSurfaceProfileRevision(profileId);
                 for (const zLevel of getHorizontalSurfaceZLevels(this.settings)) {
                     this.surfaceCache.deleteByPrefix(groundChunkCachePrefix(chunkCol, chunkRow, profileId, rev, ppwu, zLevel).substring(6));
@@ -131,7 +131,7 @@ export class WorldSurfaceEngine {
         if (!payload) payload = this._resolveChunkPayload(state, chunkCol, chunkRow, zLevel);
         const resolvedZ = payload.zLevel ?? zLevel;
 
-        const key = groundChunkCachePrefix(chunkCol, chunkRow, payload.profileId, getSurfaceProfileRevision(payload.profileId), getPixelsPerWorldUnit(this.settings), resolvedZ);
+        const key = groundChunkCachePrefix(chunkCol, chunkRow, payload.profileId, getSurfaceProfileRevision(payload.profileId), getTexelResolution(this.settings), resolvedZ);
         let canvases = this.surfaceCache.get(key);
         if (canvases) return canvases;
 
@@ -157,19 +157,18 @@ export class WorldSurfaceEngine {
     }
 
     /** Ensure a baked wall atlas exists in the cache (wall faces). */
-    ensureWallAtlas(key, p1, p2, columns, storyCount, surfaceBake, tileWorldSize, wallHeight = null) {
+    ensureWallAtlas(key, p1, p2, columns, surfaceBake, wallHeight = null) {
         let cached = this.surfaceCache.get(key);
         if (cached) return cached;
 
         const edgeLen = Math.hypot(p2.x - p1.x, p2.y - p1.y);
         if (edgeLen < 0.001 || columns.length === 0) return null;
 
-        const cellSize = surfaceBake.obstacleCellSize ?? 32;
-        const ppwu = getPixelsPerWorldUnit(this.settings);
-        const pixelsPerUnit = (cellSize / tileWorldSize) * ppwu;
+        const cellSize = surfaceBake.obstacleCellSize ?? this.settings.cellSize;
+        const pixelsPerUnit = getTexelResolution(this.settings);
 
         const canvasWidth = Math.max(1, Math.ceil(edgeLen * pixelsPerUnit));
-        const hVal = wallHeight ?? getWallVisualHeight(this.settings);
+        const hVal = wallHeight ?? getWallHeight(this.settings);
         const unrolledHeight = wallFaceAtlasUnrolledHeight(hVal, cellSize);
         const canvasHeight = Math.max(1, Math.ceil(unrolledHeight * pixelsPerUnit));
 
@@ -204,24 +203,22 @@ export class WorldSurfaceEngine {
      * @param {{
      *   profileId: string,
      *   surfaceBake: import("../../Render/adapters/WorldRenderAdapter.js").SurfaceBakeContext,
-     *   ppwu: number,
-     *   tileWorldSize: number,
-     *   storyCount: number,
      *   wallHeight?: number | null,
      *   cacheObj?: object | null,
      * }} options
      * @returns {{ key: string, wrappedP1: { x: number, y: number }, wrappedP2: { x: number, y: number }, canvases: object[] } | null}
      */
     getOrEnsureWallAtlas(p1, p2, options) {
-        const { profileId, surfaceBake, ppwu, tileWorldSize, storyCount, wallHeight = null, cacheObj = null } = options;
+        const { profileId, surfaceBake, wallHeight = null, cacheObj = null } = options;
+        const ppwu = getTexelResolution(this.settings);
 
         const { key, wrappedP1, wrappedP2 } = getWallAtlasCacheInfo(p1, p2, surfaceBake, profileId, ppwu, cacheObj, this.settings);
 
         let canvases = this.surfaceCache.get(key);
         if (!canvases) {
-            const columns = wallFaceColumns(wrappedP1, wrappedP2, tileWorldSize);
+            const columns = wallFaceColumns(wrappedP1, wrappedP2, this.settings.cellSize);
             if (columns.length === 0) return null;
-            canvases = this.ensureWallAtlas(key, wrappedP1, wrappedP2, columns, storyCount, surfaceBake, tileWorldSize, wallHeight);
+            canvases = this.ensureWallAtlas(key, wrappedP1, wrappedP2, columns, surfaceBake, wallHeight);
             if (!canvases || canvases.length === 0) return null;
         }
 

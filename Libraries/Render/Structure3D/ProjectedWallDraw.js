@@ -2,12 +2,14 @@
  * Projects wall faces in isometric space and samples baked atlases from WorldSurfaceEngine.
  * Roof caps are chunk-cached horizontal surfaces (WorldSurfaceEngine.drawRoofLayers).
  */
-import { getWallVisualHeight } from "../../WorldSurface/WorldSurfaceSettings.js";
+import { getWallHeight } from "../../WorldSurface/WorldSurfaceSettings.js";
 import { drawImageQuad } from "../../Canvas/AffineTexture.js";
 /** @typedef {import("../WorldSceneTypes.js").SurfaceBakeContext} SurfaceBakeContext */
 
-import { getPixelsPerWorldUnit, shouldSmoothTextureDownsample } from "../../WorldSurface/WorldSurfaceResolution.js";
+import { getTexelResolution, shouldSmoothTextureDownsample } from "../../WorldSurface/WorldSurfaceResolution.js";
 import { resolveElevationAlpha } from "../../Spatial/iso/IsometricProjection.js";
+
+export { getWallHeight };
 
 export { wallFaceColumns } from "../../WorldSurface/WallFaceColumns.js";
 
@@ -17,8 +19,6 @@ const sCorner0 = { x: 0, y: 0 };
 const sCorner1 = { x: 0, y: 0 };
 const sCorner2 = { x: 0, y: 0 };
 const sCorner3 = { x: 0, y: 0 };
-
-export { getWallVisualHeight };
 
 export const sharedScratchFace = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
 
@@ -71,10 +71,6 @@ function rowBoundsIntersects(bl, br, tl, tr, bounds) {
     return !(maxX < bounds.minX || minX > bounds.maxX || maxY < bounds.minY || minY > bounds.maxY);
 }
 
-function getWallTextureStoryCount(settings) {
-    return settings.wallTextureStories;
-}
-
 function computeFaceCorner(out, p1, p2, proj1X, proj1Y, proj2X, proj2Y, u, v) {
     const bx = p1.x + (p2.x - p1.x) * u;
     const by = p1.y + (p2.y - p1.y) * u;
@@ -98,22 +94,18 @@ function resolveWallProfileId(surfaceBake, wallCx, wallCy, cacheObj) {
 function drawFaceTexture(ctx, p1, p2, face, worldSurfaces, surfaceBake, viewer, viewport, wallHeight, fillStyle, cacheObj = null) {
     const settings = worldSurfaces.settings;
     if (!settings) return;
-    const tileWorldSize = settings.tileWorldSize ?? settings.cellSize;
+    const cellSize = settings.cellSize;
     if (!worldSurfaces || !surfaceBake) return;
 
     const wallCx = cacheObj && cacheObj.cx !== undefined ? cacheObj.cx : (p1.x + p2.x) * 0.5;
     const wallCy = cacheObj && cacheObj.cy !== undefined ? cacheObj.cy : (p1.y + p2.y) * 0.5;
 
     const profileId = resolveWallProfileId(surfaceBake, wallCx, wallCy, cacheObj);
-    const ppwu = getPixelsPerWorldUnit(settings);
-    const storyCount = getWallTextureStoryCount(settings);
+    const ppwu = getTexelResolution(settings);
 
     const atlas = worldSurfaces.getOrEnsureWallAtlas(p1, p2, {
         profileId,
         surfaceBake,
-        ppwu,
-        tileWorldSize,
-        storyCount,
         wallHeight,
         cacheObj,
     });
@@ -147,10 +139,11 @@ function drawFaceTexture(ctx, p1, p2, face, worldSurfaces, surfaceBake, viewer, 
 
     const subdivScale = Math.max(
         0.05,
-        Math.min(1.0, 1.0 - (dist - settings.wallSubdivNearPx) / settings.wallSubdivFarPx)
+        Math.min(1.0, 1.0 - (dist - settings.wallSubdivNearPx) / settings.wallSubdivFarPx),
     );
-    const SUBDIV_X = Math.max(1, Math.min(2, Math.ceil((edgeLen / tileWorldSize) * subdivScale)));
-    const SUBDIV_Y = Math.max(1, Math.min(2, Math.ceil((storyCount / 2) * subdivScale)));
+    const heightCells = settings.wallHeightCells;
+    const SUBDIV_X = Math.max(1, Math.min(2, Math.ceil((edgeLen / cellSize) * subdivScale)));
+    const SUBDIV_Y = Math.max(1, Math.ceil(heightCells * subdivScale));
 
     const H_px = clampedHeight * ppwu;
 
@@ -202,7 +195,7 @@ export function drawProjectedWallFace(ctx, p1, p2, px, py, fillStyle, worldSurfa
         ctx.fill();
         return;
     }
-    const finalWallHeight = wallHeight ?? getWallVisualHeight(resolvedSettings);
+    const finalWallHeight = wallHeight ?? getWallHeight(resolvedSettings);
     const face = computeProjectedFace(p1, p2, px, py, finalWallHeight, resolvedSettings);
     traceProjectedFace(ctx, p1, p2, face);
     if (worldSurfaces && surfaceBake && textureEnabled) {
@@ -224,22 +217,16 @@ export function drawProjectedWallFace(ctx, p1, p2, px, py, fillStyle, worldSurfa
 export function preloadProjectedWallFace(p1, p2, worldSurfaces, surfaceBake, cacheObj = null) {
     const settings = worldSurfaces?.settings;
     if (!settings) return;
-    const tileWorldSize = settings.tileWorldSize ?? settings.cellSize;
     if (!worldSurfaces || !surfaceBake) return;
 
     const wallCx = cacheObj && cacheObj.cx !== undefined ? cacheObj.cx : (p1.x + p2.x) * 0.5;
     const wallCy = cacheObj && cacheObj.cy !== undefined ? cacheObj.cy : (p1.y + p2.y) * 0.5;
     const profileId = resolveWallProfileId(surfaceBake, wallCx, wallCy, cacheObj);
-    const ppwu = getPixelsPerWorldUnit(settings);
-    const storyCount = getWallTextureStoryCount(settings);
-    const wallHeight = getWallVisualHeight(settings);
+    const wallHeight = getWallHeight(settings);
 
     worldSurfaces.getOrEnsureWallAtlas(p1, p2, {
         profileId,
         surfaceBake,
-        ppwu,
-        tileWorldSize,
-        storyCount,
         wallHeight,
         cacheObj,
     });

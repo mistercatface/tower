@@ -23,7 +23,6 @@ import { applyInspectManifestToProps } from "./config/inspectManifest.js";
 import { getWorldPropDefinitions } from "../../Libraries/Content/PropCatalog.js";
 import { towerCombatPairs, towerRenderPorts, towerTargeting } from "./ports.js";
 import { towerWorldGen } from "./worldGen.js";
-import { TOWER_WALL_HEIGHT } from "./config/worldLayout.js";
 
 /** @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition */
 
@@ -37,10 +36,6 @@ export const towerGame = {
     targeting: towerTargeting,
     render: towerRenderPorts,
     worldGen: towerWorldGen,
-
-    worldSurface: {
-        wallVisualHeight: TOWER_WALL_HEIGHT,
-    },
 
     createUpgrades() {
         return [...createBaseUpgrades(), ...createUpgrades()];

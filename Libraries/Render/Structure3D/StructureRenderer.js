@@ -1,6 +1,6 @@
 /** @typedef {import("../WorldSceneTypes.js").WorldSceneDrawInput} WorldSceneDrawInput */
 
-import { getWallVisualHeight } from "../../WorldSurface/WorldSurfaceSettings.js";
+import { getWallHeight } from "../../WorldSurface/WorldSurfaceSettings.js";
 import { getSegmentFootprintCorners } from "../../Spatial/geometry/WallGeometry.js";
 import { SpatialQuery } from "../../Spatial/query/SpatialQuery.js";
 import { alignBoundsToHash, getViewQueryBounds } from "../common/viewportUtils.js";
@@ -38,7 +38,7 @@ export class StructureRenderer {
             edge.cy = (p1.y + p2.y) / 2;
             edge.outX = edge.cx - seg.x;
             edge.outY = edge.cy - seg.y;
-            edge.wallHeight = seg.wallHeight ?? getWallVisualHeight(this.settings);
+            edge.wallHeight = seg.wallHeight ?? getWallHeight(this.settings);
         }
 
         return seg._cachedEdges;
@@ -77,7 +77,7 @@ export class StructureRenderer {
             textureEnabled,
             cacheObj,
             settings: this.settings,
-            wallHeight: seg.wallHeight ?? getWallVisualHeight(this.settings),
+            wallHeight: seg.wallHeight ?? getWallHeight(this.settings),
         });
     }
 
