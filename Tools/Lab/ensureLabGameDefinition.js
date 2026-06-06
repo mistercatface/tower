@@ -6,7 +6,5 @@ import { towerGame } from "../../Games/tower/gameDefinition.js";
  * Install the Tower game definition so GamePorts (worldGen, etc.) resolve.
  */
 export function ensureLabGameDefinition() {
-    if (!getActiveGameDefinition()) {
-        setActiveGameDefinition(towerGame);
-    }
+    if (!getActiveGameDefinition()) setActiveGameDefinition(towerGame);
 }

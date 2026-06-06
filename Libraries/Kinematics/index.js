@@ -4,6 +4,8 @@ export * from "./core/bones.js";
 export * from "./core/config.js";
 export * from "./core/ik.js";
 export * from "./core/poses.js";
+export * from "./core/defaultStaticPoses.js";
+export * from "./core/staticPoseBuilder.js";
 export * from "./core/projector.js";
 export * from "./core/rigCalculator.js";
 export * from "./ragdoll/config.js";

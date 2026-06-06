@@ -14,16 +14,13 @@ export function populateCombatFrame(frame, state, combatants, pushables) {
     frame.setWallContext(wallContextFromState(state));
     combatants.length = 0;
     pushables.length = 0;
-
     let physIdCounter = 0;
-
     for (const actor of state.getCombatants()) {
         if (!actor?.isDead) {
             frame.insertEntity(actor, physIdCounter++);
             combatants.push(actor);
         }
     }
-
     for (const pickup of state.pickups) {
         if (pickup.isDead) continue;
         frame.insertEntity(pickup, physIdCounter++);

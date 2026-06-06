@@ -7,7 +7,7 @@ const GUN_COLORS = {
     highlight: "#fbff00",
 };
 
-function drawPistol(ctx, hand, scale, aimAngle, config) {
+function drawPistol(ctx, hand, scale, aimAngle, config, barrelRatio) {
     const S = (r) => config.SIZE * r;
     ctx.save();
     ctx.translate(hand.x, hand.y);
@@ -15,7 +15,7 @@ function drawPistol(ctx, hand, scale, aimAngle, config) {
     ctx.scale(scale, scale);
     if (Math.cos(aimAngle) < 0) ctx.scale(1, -1);
     ctx.translate(S(0.01), -S(0.03));
-    const barrelLen = S(0.2);
+    const barrelLen = S(barrelRatio);
     const barrelHeight = S(0.04);
     const gripHeight = S(0.08);
 
@@ -33,7 +33,7 @@ function drawPistol(ctx, hand, scale, aimAngle, config) {
     ctx.restore();
 }
 
-function drawLongGun(ctx, hand, scale, aimAngle, config, style) {
+function drawLongGun(ctx, hand, scale, aimAngle, config, style, barrelRatio) {
     const S = (r) => config.SIZE * r;
     ctx.save();
     ctx.translate(hand.x, hand.y);
@@ -42,7 +42,7 @@ function drawLongGun(ctx, hand, scale, aimAngle, config, style) {
     if (Math.cos(aimAngle) < 0) ctx.scale(1, -1);
     ctx.translate(S(0.01), -S(0.03));
     const isSmg = style === "smg";
-    const barrelLen = S(isSmg ? 0.28 : 0.32);
+    const barrelLen = S(barrelRatio);
     const barrelHeight = S(isSmg ? 0.035 : 0.045);
     const stockLen = S(0.1);
 
@@ -66,19 +66,26 @@ function drawLongGun(ctx, hand, scale, aimAngle, config, style) {
     ctx.restore();
 }
 
+function createWeaponVisual({ poseName, barrelRatio, draw }) {
+    return { poseName, barrelRatio, draw };
+}
+
 export const WEAPON_VISUALS = {
-    pistol: {
+    pistol: createWeaponVisual({
         poseName: "PISTOL",
-        draw: (ctx, hand, scale, aim, config) => drawPistol(ctx, hand, scale, aim, config),
-    },
-    longGun: {
+        barrelRatio: 0.2,
+        draw: (ctx, hand, scale, aim, config, visual) => drawPistol(ctx, hand, scale, aim, config, visual.barrelRatio),
+    }),
+    longGun: createWeaponVisual({
         poseName: "SHOTGUN",
-        draw: (ctx, hand, scale, aim, config) => drawLongGun(ctx, hand, scale, aim, config, "shotgun"),
-    },
-    smg: {
+        barrelRatio: 0.32,
+        draw: (ctx, hand, scale, aim, config, visual) => drawLongGun(ctx, hand, scale, aim, config, "shotgun", visual.barrelRatio),
+    }),
+    smg: createWeaponVisual({
         poseName: "SHOTGUN",
-        draw: (ctx, hand, scale, aim, config) => drawLongGun(ctx, hand, scale, aim, config, "smg"),
-    },
+        barrelRatio: 0.28,
+        draw: (ctx, hand, scale, aim, config, visual) => drawLongGun(ctx, hand, scale, aim, config, "smg", visual.barrelRatio),
+    }),
 };
 
 const GUN_ID_TO_VISUAL = {
@@ -156,19 +163,9 @@ export function resolveProjectedHandsForSlot(rigLocal, slot, project) {
     return resolveProjectedHand(rigLocal, slot.drawHand, project);
 }
 
-/** Barrel length as a fraction of character display width (matches draw* gun meshes). */
-const BARREL_RATIO = {
-    servicePistol: 0.2,
-    shotgun: 0.32,
-    sawedOffShotgun: 0.32,
-    tommyGun: 0.28,
-    beamLaser: 0.32,
-    enemyRifle: 0.32,
-    grenadeLauncher: 0.32,
-};
-
+/** Barrel length as a fraction of character display width — follows the weapon visual mesh. */
 export function getBarrelRatioForGunId(gunId) {
-    return BARREL_RATIO[gunId] ?? 0.2;
+    return getWeaponVisualForGunId(gunId).barrelRatio;
 }
 
 export function drawHeldWeapons(rigLocal, actor, sceneRenderer, config, facing) {
@@ -184,7 +181,7 @@ export function drawHeldWeapons(rigLocal, actor, sceneRenderer, config, facing) 
         const hand = resolveProjectedHandsForSlot(rigLocal, slot, project);
         const z = (hand.sortZ ?? 0) + 0.15;
         sceneRenderer.addCustom(z, (ctx) => {
-            slot.visual.draw(ctx, hand, hand.scale ?? handScale, aimAngle, config);
+            slot.visual.draw(ctx, hand, hand.scale ?? handScale, aimAngle, config, slot.visual);
         });
     }
 }
