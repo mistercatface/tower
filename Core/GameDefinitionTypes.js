@@ -92,6 +92,7 @@
  * @property {(state: object) => boolean} [isInspectMissionActive]
  * @property {Partial<import("./GameUiProfile.js").GameUiProfile>} [ui]
  * @property {Partial<import("./GamePerspective.js").PerspectiveConfig>} [perspective]
+ * @property {number} [propPixelSize] — iso prop bake diameter in px (like kinematicsPixelSize for actors)
  * @property {(state: object) => "won" | "lost" | null} [getRunOutcome]
  */
 

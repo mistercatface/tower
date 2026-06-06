@@ -16,6 +16,7 @@ import { setActiveGameDefinition } from "./ActiveGameDefinition.js";
 import { applyGameShell, resolveUiProfile } from "./GameUiProfile.js";
 import { applyChromeVisibility } from "./GameShell.js";
 import { applyGamePerspective } from "./GamePerspective.js";
+import { applyGamePropPixelSize } from "./GamePropPixelSize.js";
 
 /** @typedef {import("./GameDefinitionTypes.js").GameDefinition} GameDefinition */
 
@@ -28,6 +29,7 @@ export function createGame(definition) {
     setActiveGameDefinition(definition);
     definition.prepare?.();
     applyGamePerspective(definition);
+    applyGamePropPixelSize(definition);
     applyGameShell(definition);
     const canvas = document.getElementById(definition.canvasId);
     if (!canvas) throw new Error(`createGame: canvas #${definition.canvasId} not found`);

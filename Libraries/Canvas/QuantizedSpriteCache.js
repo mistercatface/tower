@@ -3,6 +3,7 @@ import { quantizeAngle, quantizeAngleIndex, quantizeViewOffset } from "./viewQua
 import { clamp } from "../Math/Interpolate.js";
 import { buildRollOrientKey, quantizeRollQuat } from "../Props/rollingMotion.js";
 import { isStandTipFallen, standTipStageRadius } from "../Spatial/transforms/longAxisBox3d.js";
+import { getActivePropPixelSize, resolvePropBakeScale } from "../../Core/GamePropPixelSize.js";
 
 /**
  * @typedef {ReturnType<createBakedSpriteCache>} BakedSpriteCache
@@ -64,12 +65,19 @@ export function createQuantizedSpriteCache({ maxItems = 2000, viewStep = 30, vie
 
 /** World-anchored blit (iso props). Opacity applied at blit time, not bake time. */
 export function blitAnchoredSprite(ctx, sprite, worldX, worldY, { opacity = 1 } = {}) {
+    const bakeScale = sprite.bakeScale ?? 1;
     const anchorX = sprite.anchorX ?? 0;
     const anchorY = sprite.anchorY ?? 0;
+    const drawW = sprite.width / bakeScale;
+    const drawH = sprite.height / bakeScale;
 
     ctx.save();
     if (opacity < 1) ctx.globalAlpha = clamp(opacity, 0, 1);
-    ctx.drawImage(sprite, worldX - anchorX, worldY - anchorY);
+    const smoothDownscale = bakeScale > 1;
+    const prevSmooth = ctx.imageSmoothingEnabled;
+    if (smoothDownscale) ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(sprite, worldX - anchorX, worldY - anchorY, drawW, drawH);
+    if (smoothDownscale) ctx.imageSmoothingEnabled = prevSmooth;
     ctx.restore();
 }
 
@@ -217,7 +225,8 @@ export function getOrBakePropSprite({ prop, px, py, renderKey, draw, animFrame =
         const dy = prop.y - py;
         const { dx: qDx, dy: qDy } = propSpriteCache.quantizeView(dx, dy);
         const stageR = prop.strategy?.standTip ? standTipStageRadius(prop) : (prop._baseRadius ?? prop.radius ?? 8);
-        const stageSpan = Math.ceil(stageR * 2.6 + PROP_STAGE_PADDING * 2);
+        const bakeScale = resolvePropBakeScale(stageR, getActivePropPixelSize());
+        const stageSpan = Math.ceil((stageR * 2.6 + PROP_STAGE_PADDING * 2) * bakeScale);
         const anchorX = PROP_STAGE_PADDING + stageR * 1.3;
         const anchorY = PROP_STAGE_PADDING + stageR * 1.3;
 
@@ -242,10 +251,14 @@ export function getOrBakePropSprite({ prop, px, py, renderKey, draw, animFrame =
         };
 
         ctx.save();
+        if (bakeScale !== 1) ctx.scale(bakeScale, bakeScale);
+        const prevSmooth = ctx.imageSmoothingEnabled;
+        if (bakeScale > 1) ctx.imageSmoothingEnabled = true;
         draw(ctx, stageProp, anchorX - qDx, anchorY - qDy);
+        if (bakeScale > 1) ctx.imageSmoothingEnabled = prevSmooth;
         ctx.restore();
 
-        return { canvas, meta: { anchorX, anchorY } };
+        return { canvas, meta: { anchorX, anchorY, bakeScale } };
     });
 }
 

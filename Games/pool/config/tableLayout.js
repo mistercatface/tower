@@ -3,6 +3,9 @@ export const TABLE_COLS = 44;
 export const TABLE_ROWS = 24;
 export const TABLE_RAIL_CELLS = 2;
 
+/** Pool ball radius in world units (physics + render). */
+export const POOL_BALL_RADIUS = 8;
+
 /** Pocket sensor radius in world units. */
 export const POCKET_RADIUS = 14;
 
@@ -93,8 +96,8 @@ export function buildPoolStartLayout(px, py, cellSize) {
         },
         ballSpawns: {
             cue: headSpot,
-            object1: { x: footSpot.x + 18, y: footSpot.y - 12 },
-            object2: { x: footSpot.x + 32, y: footSpot.y + 10 },
+            object1: { x: footSpot.x + 20, y: footSpot.y - 12 },
+            object2: { x: footSpot.x + 36, y: footSpot.y + 10 },
         },
     };
 }

@@ -22,12 +22,13 @@ import { poolWorldGen } from "./worldGen.js";
 import { wirePoolRadio } from "./wireRadio.js";
 import { getWorldPropDefinitions, getWorldPropRecipes } from "../../Libraries/Content/PropCatalog.js";
 import { PROP_RECIPE_BUILDERS } from "../../Libraries/Props/recipes/index.js";
+import { POOL_BALL_RADIUS } from "./config/tableLayout.js";
 
 /** @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition */
 
 const POOL_BALL_PHYSICS = {
     hitBehavior: "none",
-    radius: 6,
+    radius: POOL_BALL_RADIUS,
     isPushable: true,
     rolls: true,
     collisionShape: "circle",
@@ -45,7 +46,7 @@ function registerPoolBallType(propDefs, recipes, id, defaultPoolBall) {
         ...POOL_BALL_PHYSICS,
     };
     recipes[id] = PROP_RECIPE_BUILDERS.poolBall({
-        defaultRadius: 6,
+        defaultRadius: POOL_BALL_RADIUS,
         panelCount: 8,
         latBands: 6,
         stroke: null,
@@ -101,6 +102,8 @@ export const poolGame = {
         strength: 0.28,
         viewerSource: "viewport",
     },
+
+    propPixelSize: 16,
 
     combatPairs: poolCombatPairs,
     targeting: poolTargeting,
