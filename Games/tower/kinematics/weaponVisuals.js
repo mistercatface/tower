@@ -170,3 +170,21 @@ const BARREL_RATIO = {
 export function getBarrelRatioForGunId(gunId) {
     return BARREL_RATIO[gunId] ?? 0.2;
 }
+
+export function drawHeldWeapons(rigLocal, actor, sceneRenderer, config, facing) {
+    const slots = resolveWeaponDrawSlots(actor);
+    if (slots.length === 0) return;
+    const project = sceneRenderer.project;
+    const turrets = actor.turrets ?? [];
+    const defaultHand = project(rigLocal.rArm.p3);
+    const handScale = defaultHand.scale ?? 1;
+    for (const slot of slots) {
+        const turret = turrets[slot.turretIndex];
+        const aimAngle = facing.gunCanvasAim(turret?.angle ?? actor.angle ?? 0);
+        const hand = resolveProjectedHandsForSlot(rigLocal, slot, project);
+        const z = (hand.sortZ ?? 0) + 0.15;
+        sceneRenderer.addCustom(z, (ctx) => {
+            slot.visual.draw(ctx, hand, hand.scale ?? handScale, aimAngle, config);
+        });
+    }
+}

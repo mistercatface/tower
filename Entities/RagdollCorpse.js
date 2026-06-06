@@ -1,7 +1,7 @@
 import { Entity } from "./Entity.js";
 import { applyRagdollImpulse, updateRagdoll } from "../Libraries/Kinematics/ragdoll/physics.js";
 import { checkRagdollHit, ragdollPartToWorld } from "../Libraries/Kinematics/ragdoll/hitTest.js";
-import { seedRagdollBloodOnDeath, updateBloodEffects, addRagdollBleedEmitter } from "../Render/Kinematics/Ragdoll/RagdollBlood.js";
+import { seedRagdollBloodOnDeath, updateBloodEffects, addRagdollBleedEmitter } from "../Libraries/Render/Characters/ragdoll/blood.js";
 import { createObstacleWallChecker, createRagdollState, resolveDeathImpact } from "../Libraries/Kinematics/ragdoll/fromActor.js";
 import { captureActorRigForRagdoll, renderCorpseKinematicsBody } from "../Render/Kinematics/ActorKinematicsRenderer.js";
 import { CombatParticles } from "../Render/CombatParticles.js";

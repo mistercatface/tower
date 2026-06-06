@@ -1,11 +1,9 @@
-import { getCharacterForActor } from "./CharacterAppearance.js";
-import { resolveWeaponDrawSlots, resolveProjectedHandsForSlot } from "../../Games/tower/kinematics/weaponVisuals.js";
-import { drawHeadNeckAndHair } from "./KinematicsHead.js";
-import { queueRagdollBloodDraw } from "./Ragdoll/RagdollBlood.js";
-import { drawRagdollGoreStumps } from "./Ragdoll/RagdollDrawBody.js";
+import { drawHeadNeckAndHair } from "./head.js";
+import { queueRagdollBloodDraw } from "./ragdoll/blood.js";
+import { drawRagdollGoreStumps } from "./ragdoll/goreStumps.js";
 
 /** Draw mesh from rig-local coords — every part projects through sceneRenderer (same as head). */
-export function drawStandardCharacter(rigLocal, actor, sceneRenderer, config, rig, options = {}) {
+function drawStandardCharacter(rigLocal, actor, sceneRenderer, config, rig, getCharacterForActor, options = {}) {
     const severed = options.severed ?? {};
     const char = getCharacterForActor(actor);
     const getPalette = (base, light, dark) => ({ base: base || "#888", light: light || "#fff", dark: dark || "#000" });
@@ -75,50 +73,41 @@ export function drawStandardCharacter(rigLocal, actor, sceneRenderer, config, ri
     });
 }
 
-function drawHeldWeapons(rigLocal, actor, sceneRenderer, config, facing) {
-    const slots = resolveWeaponDrawSlots(actor);
-    if (slots.length === 0) return;
-    const project = sceneRenderer.project;
-    const turrets = actor.turrets ?? [];
-    const defaultHand = project(rigLocal.rArm.p3);
-    const handScale = defaultHand.scale ?? 1;
-    for (const slot of slots) {
-        const turret = turrets[slot.turretIndex];
-        const aimAngle = facing.gunCanvasAim(turret?.angle ?? actor.angle ?? 0);
-        const hand = resolveProjectedHandsForSlot(rigLocal, slot, project);
-        const z = (hand.sortZ ?? 0) + 0.15;
-        sceneRenderer.addCustom(z, (ctx) => {
-            slot.visual.draw(ctx, hand, hand.scale ?? handScale, aimAngle, config);
-        });
-    }
-}
+/**
+ * @param {{ getCharacterForActor: (actor: object) => object, drawHeldWeapons: (rigLocal: object, actor: object, sceneRenderer: object, config: object, facing: object) => void }} ports
+ */
+export function createCharacterFrameDrawer(ports) {
+    const { getCharacterForActor, drawHeldWeapons } = ports;
 
-export function drawKinematicsFrameToCanvas(sharedCanvas, sharedCtx, rigLocal, actor, viewContext, facing, config, rig, sceneRenderer, overridePadding = null, options = {}) {
-    const { drawWeapons = false, severed = {}, ragdoll = null } = options;
-    const padding = overridePadding !== null ? overridePadding : config.PADDING;
-    const canvasSize = Math.ceil(config.SIZE + padding * 2);
-    if (sharedCanvas.width !== canvasSize || sharedCanvas.height !== canvasSize) {
-        sharedCanvas.width = canvasSize;
-        sharedCanvas.height = canvasSize;
-    } else {
-        sharedCtx.clearRect(0, 0, canvasSize, canvasSize);
+    function drawKinematicsFrameToCanvas(sharedCanvas, sharedCtx, rigLocal, actor, viewContext, facing, config, rig, sceneRenderer, overridePadding = null, options = {}) {
+        const { drawWeapons = false, severed = {}, ragdoll = null } = options;
+        const padding = overridePadding !== null ? overridePadding : config.PADDING;
+        const canvasSize = Math.ceil(config.SIZE + padding * 2);
+        if (sharedCanvas.width !== canvasSize || sharedCanvas.height !== canvasSize) {
+            sharedCanvas.width = canvasSize;
+            sharedCanvas.height = canvasSize;
+        } else {
+            sharedCtx.clearRect(0, 0, canvasSize, canvasSize);
+        }
+        sharedCtx.save();
+        sharedCtx.translate(padding, padding);
+        sceneRenderer.begin(sharedCtx, viewContext, facing.renderRotation, rig);
+        drawStandardCharacter(rigLocal, actor, sceneRenderer, config, rig, getCharacterForActor, { severed: ragdoll?.severed ?? severed });
+        if (drawWeapons) {
+            drawHeldWeapons(rigLocal, actor, sceneRenderer, config, facing);
+        }
+        if (ragdoll) {
+            drawRagdollGoreStumps(ragdoll, sceneRenderer, rig);
+            queueRagdollBloodDraw(sceneRenderer, ragdoll, config, rig, viewContext, facing.renderRotation);
+        }
+        sceneRenderer.flush();
+        sharedCtx.restore();
+        sharedCanvas.drawRatio = canvasSize / config.SIZE;
+        const feetYInCanvas = padding + config.ANCHOR_Y * config.SIZE;
+        const canvasCenterY = canvasSize / 2;
+        sharedCanvas.verticalShift = feetYInCanvas - canvasCenterY;
+        return sharedCanvas;
     }
-    sharedCtx.save();
-    sharedCtx.translate(padding, padding);
-    sceneRenderer.begin(sharedCtx, viewContext, facing.renderRotation, rig);
-    drawStandardCharacter(rigLocal, actor, sceneRenderer, config, rig, { severed: ragdoll?.severed ?? severed });
-    if (drawWeapons) {
-        drawHeldWeapons(rigLocal, actor, sceneRenderer, config, facing);
-    }
-    if (ragdoll) {
-        drawRagdollGoreStumps(ragdoll, sceneRenderer, rig);
-        queueRagdollBloodDraw(sceneRenderer, ragdoll, config, rig, viewContext, facing.renderRotation);
-    }
-    sceneRenderer.flush();
-    sharedCtx.restore();
-    sharedCanvas.drawRatio = canvasSize / config.SIZE;
-    const feetYInCanvas = padding + config.ANCHOR_Y * config.SIZE;
-    const canvasCenterY = canvasSize / 2;
-    sharedCanvas.verticalShift = feetYInCanvas - canvasCenterY;
-    return sharedCanvas;
+
+    return { drawKinematicsFrameToCanvas };
 }

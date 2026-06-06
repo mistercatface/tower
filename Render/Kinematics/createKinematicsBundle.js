@@ -1,10 +1,9 @@
 import { createKinematicsConfig, createKinematicsRig } from "../../Libraries/Kinematics/core/config.js";
 import { createKinematicsPoses } from "../../Libraries/Kinematics/core/poses.js";
-import { createSceneRenderer } from "../../Libraries/Render/Characters/sceneRenderer.js";
+import { createCharacterFrameDrawer, createSceneRenderer } from "../../Libraries/Render/Characters/index.js";
 import { createKinematicsSpriteCache } from "../../Libraries/Canvas/QuantizedSpriteCache.js";
 import { createCharacterRigCalculator } from "../../Libraries/Kinematics/core/rigCalculator.js";
 import { createProjector } from "../../Libraries/Kinematics/core/projector.js";
-import { drawKinematicsFrameToCanvas } from "./KinematicsDraw.js";
 import { normalizeWeaponLoadout } from "../../Combat/equipmentLoadout.js";
 import { applyRigDeltas } from "../../Libraries/Kinematics/core/bones.js";
 import { quantizeAngleIndex } from "../../Libraries/Math/Angle.js";
@@ -41,8 +40,17 @@ function getQuantizedAimKey(actor, rotationSteps = 32) {
 }
 
 export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 120, displayDiameter = null, ports }) {
-    const { resolveCombatFacing, resolveSpriteBodyRotation, resolveWeaponStaticPoseName, resolveWeaponDrawSlots, resolveMuzzleFromRig } = ports;
+    const {
+        resolveCombatFacing,
+        resolveSpriteBodyRotation,
+        resolveWeaponStaticPoseName,
+        resolveWeaponDrawSlots,
+        resolveMuzzleFromRig,
+        getCharacterForActor,
+        drawHeldWeapons,
+    } = ports;
     const { calculateCharacterRig } = createCharacterRigCalculator({ resolveWeaponDrawSlots });
+    const { drawKinematicsFrameToCanvas } = createCharacterFrameDrawer({ getCharacterForActor, drawHeldWeapons });
 
     function syncWeaponPose(state, actor, poses) {
         const weaponKey = getWeaponLoadoutKey(actor);

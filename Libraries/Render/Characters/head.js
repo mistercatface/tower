@@ -1,4 +1,4 @@
-import { queueCharacterHair } from "./KinematicsHair.js";
+import { queueCharacterHair } from "./hair.js";
 
 function cloneLocal(p) {
     if (!p) return null;
