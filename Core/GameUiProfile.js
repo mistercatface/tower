@@ -43,6 +43,31 @@ import { getActiveGameDefinition } from "./ActiveGameDefinition.js";
  * @property {Partial<Record<"won" | "lost", RunResultCopy>>} [runResult]
  */
 
+/** Minimal landscape shell — pool and other non-map arcade games. */
+export const LANDSCAPE_MINIMAL_UI = {
+    shell: "landscape-minimal",
+    chrome: {
+        score: false,
+        perks: false,
+        map: false,
+        settings: true,
+        bottomPanel: false,
+        controls: "pause-only",
+        zoomSlider: false,
+    },
+    combat: {
+        entityBars: false,
+        targetMarkers: false,
+        combatHudModes: false,
+        visibilityMask: false,
+        hostileActors: false,
+        playerActors: false,
+        offScreenIndicators: false,
+        globeOverlay: false,
+    },
+    lifecycle: "custom",
+};
+
 /** @type {GameUiProfile} */
 export const TOWER_UI_PROFILE = {
     shell: "tower",

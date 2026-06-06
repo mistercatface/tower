@@ -163,7 +163,7 @@ export class MapGenerator {
         // 1. Calculate CA bounds from node coordinates
         let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
         for (const node of state.mapNodes) {
-            const coords = state.getNodeCombatCoords(node);
+            const coords = state.getNodeWorldCoords(node);
             minX = Math.min(minX, coords.x);
             maxX = Math.max(maxX, coords.x);
             minY = Math.min(minY, coords.y);
@@ -215,7 +215,7 @@ export class MapGenerator {
         state.walls = [];
         state.wallSpatialIndex.clear();
 
-        const nodeCoords = state.mapNodes.map(node => state.getNodeCombatCoords(node));
+        const nodeCoords = state.mapNodes.map(node => state.getNodeWorldCoords(node));
 
         for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
@@ -265,7 +265,7 @@ export class MapGenerator {
 
 
         state.obstacleGrid.rebuild(state.walls);
-        const startCoords = state.getNodeCombatCoords(state.getMapNode(0));
+        const startCoords = state.getNodeWorldCoords(state.getMapNode(0));
         state.hierarchicalNavigator.initialize(startCoords.x, startCoords.y);
         buildMapRenderCaches(state);
         state.worldSurfaceSeed = (Math.random() * 0x7fffffff) | 0;
@@ -281,7 +281,7 @@ export class MapGenerator {
         const strategies = getGeneratorStrategies();
         const startNode = state.getMapNode(worldGen.startMapNodeId ?? 0);
         if (startNode) {
-            const coords = state.getNodeCombatCoords(startNode);
+            const coords = state.getNodeWorldCoords(startNode);
             const startStrategy = strategies[worldGen.startNodeStrategyKey];
             if (!startStrategy) {
                 throw new Error(`worldGen.startNodeStrategyKey not found: ${worldGen.startNodeStrategyKey}`);
@@ -316,7 +316,7 @@ export class MapGenerator {
                 while (!success && attempts < 50) {
                     attempts++;
                     const strategy = STRATEGIES[Math.floor(Math.random() * STRATEGIES.length)];
-                    const coordsB = state.getNodeCombatCoords(nodeB);
+                    const coordsB = state.getNodeWorldCoords(nodeB);
 
                     tempFlowFieldGrid.centerX = coordsB.x;
                     tempFlowFieldGrid.centerY = coordsB.y;
@@ -359,8 +359,8 @@ export class MapGenerator {
     }
 
     static checkPathability(state, nodeA, nodeB, wallsA, wallsB, tempObstacleGrid, tempFlowFieldGrid) {
-        const coordsA = state.getNodeCombatCoords(nodeA);
-        const coordsB = state.getNodeCombatCoords(nodeB);
+        const coordsA = state.getNodeWorldCoords(nodeA);
+        const coordsB = state.getNodeWorldCoords(nodeB);
         const mx = (coordsA.x + coordsB.x) / 2;
         const my = (coordsA.y + coordsB.y) / 2;
 

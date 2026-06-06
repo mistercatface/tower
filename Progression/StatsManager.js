@@ -101,7 +101,7 @@ export class StatsManager {
         const worldGen = getWorldGen();
         const startNode = state.getMapNode(worldGen.startMapNodeId ?? 0);
         if (startNode) {
-            const coords = state.getNodeCombatCoords(startNode);
+            const coords = state.getNodeWorldCoords(startNode);
             const layout = worldGen.getStartLayout(coords.x, coords.y, gridSettings.cellSize);
             state.player.setSpawnPosition(layout.spawnX, layout.spawnY);
             state.player.resetToSpawn();
@@ -111,7 +111,7 @@ export class StatsManager {
 
         if (!worldGen.skipStartPickups) {
             for (const node of state.mapNodes) {
-                const coords = state.getNodeCombatCoords(node);
+                const coords = state.getNodeWorldCoords(node);
                 if (node.id === (worldGen.startMapNodeId ?? 0)) {
                     spawnStartGamePickups(state, coords.x, coords.y);
                 } else {

@@ -28,7 +28,7 @@ import { towerWorldGen } from "./worldGen.js";
 /** Tower — reference game definition. Engine ports injected via interactionPairs, targeting, render. */
 export const towerGame = {
     id: "tower",
-    canvasId: "towerCanvas",
+    canvasId: "gameCanvas",
     saveKey: "tower_save_v4",
     interactionPairs: towerInteractionPairs,
     simulation: towerSimulation,

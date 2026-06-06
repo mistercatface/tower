@@ -1,8 +1,9 @@
 import { Viewport } from "../Libraries/Viewport/Viewport.js";
 import { isWorldScene } from "../GameState/GamePhase.js";
+import { playerBaseStats } from "../Config/Config.js";
 
-/** Weapon range at max zoom-out in simulation scenes (matches Config player baseline). */
-export const SIMULATION_BASE_RANGE = 150;
+/** Weapon range at max zoom-out in simulation scenes (matches player baseline range). */
+export const SIMULATION_BASE_RANGE = playerBaseStats.range;
 
 /**
  * Simulation-scene zoom bounds from viewport half-size and weapon range.

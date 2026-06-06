@@ -15,6 +15,7 @@ import {
     POOL_BALL_SNAP_SPEED,
 } from "./config/tableLayout.js";
 import { poolProceduralDesign, poolSurfaceProfileId } from "./config/proceduralDesign.js";
+import { LANDSCAPE_MINIMAL_UI } from "../../Core/GameUiProfile.js";
 
 /** @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition */
 
@@ -54,31 +55,11 @@ function registerPoolBallType(propDefs, recipes, id, defaultPoolBall) {
  */
 export const poolGame = {
     id: "pool",
-    canvasId: "towerCanvas",
+    canvasId: "gameCanvas",
     saveKey: "pool_save_v1",
 
     ui: {
-        shell: "landscape-minimal",
-        chrome: {
-            score: false,
-            perks: false,
-            map: false,
-            settings: true,
-            bottomPanel: false,
-            controls: "pause-only",
-            zoomSlider: false,
-        },
-        combat: {
-            entityBars: false,
-            targetMarkers: false,
-            combatHudModes: false,
-            visibilityMask: false,
-            hostileActors: false,
-            playerActors: false,
-            offScreenIndicators: false,
-            globeOverlay: false,
-        },
-        lifecycle: "custom",
+        ...LANDSCAPE_MINIMAL_UI,
         runResult: {
             won: {
                 title: "TABLE CLEAR!",
@@ -97,8 +78,6 @@ export const poolGame = {
         strength: 0.28,
         viewerSource: "viewport",
     },
-
-    propPixelSize: 32,
 
     proceduralDesign: {
         surfaceProfileId: poolSurfaceProfileId,

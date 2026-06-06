@@ -1,5 +1,6 @@
 /** @typedef {import("../WorldSceneTypes.js").WorldSceneDrawInput} WorldSceneDrawInput */
 
+import { spatialWorldMargin } from "../../../Config/Config.js";
 import { getWallHeight } from "../../WorldSurface/WorldSurfaceSettings.js";
 import { getSegmentFootprintCorners } from "../../Spatial/geometry/WallGeometry.js";
 import { SpatialQuery } from "../../Spatial/query/SpatialQuery.js";
@@ -136,7 +137,8 @@ export class StructureRenderer {
         const wallIndex = input.wallSpatialIndex;
         if (!viewport || !wallIndex) {
             this._lastQueryKey = null;
-            return wallIndex ? wallIndex.collectInBounds(px - 1600, py - 1600, px + 1600, py + 1600, this._wallQuery) : input.walls;
+            const margin = spatialWorldMargin;
+            return wallIndex ? wallIndex.collectInBounds(px - margin, py - margin, px + margin, py + margin, this._wallQuery) : input.walls;
         }
         const bounds = alignBoundsToHash(
             getViewQueryBounds(viewport, px, py, this.settings.viewQueryPadPx),

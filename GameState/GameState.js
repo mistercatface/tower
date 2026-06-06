@@ -68,17 +68,17 @@ export class GameState {
         this.initializeDefaultState();
     }
 
-    getCombatSpawnOrigin() {
+    getMapSpawnOrigin() {
         return {
             x: this.mapBaseSpawnX !== undefined ? this.mapBaseSpawnX : (this.canvasBounds.width > 0 ? this.canvasBounds.width / 2 : 225),
             y: this.mapBaseSpawnY !== undefined ? this.mapBaseSpawnY : (this.canvasBounds.height > 0 ? this.canvasBounds.height / 2 : 225),
         };
     }
 
-    getNodeCombatCoords(node) {
+    getNodeWorldCoords(node) {
         if (!node) return { x: 0, y: 0 };
-        const { x: baseSpawnX, y: baseSpawnY } = this.getCombatSpawnOrigin();
-        const scale = mapSettings.combatCoordScale;
+        const { x: baseSpawnX, y: baseSpawnY } = this.getMapSpawnOrigin();
+        const scale = mapSettings.nodeWorldCoordScale;
         return {
             x: baseSpawnX + node.x * scale,
             y: baseSpawnY + node.y * scale,
@@ -97,7 +97,7 @@ export class GameState {
         return this.mapNodeById.get(id) ?? null;
     }
 
-    /** Start node — combat always runs here in the main game. */
+    /** Start node — run scenes anchor here in the main game. */
     getStartMapNode() {
         return this.getMapNode(0);
     }

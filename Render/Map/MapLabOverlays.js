@@ -10,7 +10,7 @@ export function drawMapLabGridBounds(ctx, grid, zoom) {
 
 export function drawMapLabRoomZones(ctx, state, zoom) {
     for (const node of state.mapNodes) {
-        const coords = state.getNodeCombatCoords(node);
+        const coords = state.getNodeWorldCoords(node);
         ctx.beginPath();
         ctx.arc(coords.x, coords.y, 540, 0, Math.PI * 2);
         ctx.fillStyle = "rgba(255, 255, 255, 0.02)";

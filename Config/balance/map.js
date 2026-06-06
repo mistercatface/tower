@@ -3,7 +3,7 @@ export const mapSettings = {
     layerSpacing: 170,
     xSpacing: 170,
     nodeJitter: 0,
-    combatCoordScale: 7.0,
+    nodeWorldCoordScale: 7.0,
 };
 
 export const mapGenerationSettings = {

@@ -1,12 +1,17 @@
 import { clearPropSpriteCache } from "../Libraries/Canvas/QuantizedSpriteCache.js";
+import { kinematicsPixelSize } from "../Config/Config.js";
 
 /**
  * Internal bake diameter for iso props (same role as `kinematicsPixelSize` for actors).
- * When set, props render to an offscreen canvas at this pixel diameter, then blit at world size.
+ * Target `propPixelSize` applies to small props; larger props automatically bake at full
+ * world diameter so nothing is ever upscaled (blurry) on blit.
  *
  * @typedef {object} PropPixelSizeConfig
- * @property {number | null} [propPixelSize] — target bake diameter in px; null = 1 world unit per px (legacy)
+ * @property {number | null} [propPixelSize] — target bake diameter for small props; null = 1:1 world bake
  */
+
+/** Default target bake diameter — same convention as actor kinematics. */
+export const defaultPropPixelSize = kinematicsPixelSize;
 
 /** @type {number | null} */
 let activePropPixelSize = null;
@@ -19,7 +24,8 @@ export function getActivePropPixelSize() {
 /** @param {import("./GameDefinitionTypes.js").GameDefinition | null | undefined} definition */
 export function resolvePropPixelSize(definition) {
     const value = definition?.propPixelSize;
-    return typeof value === "number" && value > 0 ? value : null;
+    if (typeof value === "number" && value > 0) return value;
+    return defaultPropPixelSize;
 }
 
 /** @param {import("./GameDefinitionTypes.js").GameDefinition} definition */
@@ -29,10 +35,14 @@ export function applyGamePropPixelSize(definition) {
 }
 
 /**
- * @param {number} worldRadius
+ * Bake scale for a prop given its world-space extent.
+ * bakeScale is always >= 1 when pixelSize is set — downscale or 1:1 only, never upscale.
+ *
+ * @param {number} worldDiameter — full prop extent in world units (max of width/height)
  * @param {number | null} [pixelSize]
  */
-export function resolvePropBakeScale(worldRadius, pixelSize = activePropPixelSize) {
-    if (!pixelSize || worldRadius <= 0) return 1;
-    return pixelSize / (worldRadius * 2);
+export function resolvePropBakeScale(worldDiameter, pixelSize = activePropPixelSize) {
+    if (!pixelSize || worldDiameter <= 0) return 1;
+    const bakeDiameter = Math.max(pixelSize, worldDiameter);
+    return bakeDiameter / worldDiameter;
 }

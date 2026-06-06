@@ -3,7 +3,7 @@ import { getUiProfile } from "./GameUiProfile.js";
 export { applyGameShell, getUiProfile, resolveUiProfile, getCombatFeatures } from "./GameUiProfile.js";
 
 /**
- * Show or hide tower DOM chrome according to the active game UI profile.
+ * Show or hide game DOM chrome according to the active UI profile.
  */
 export function applyChromeVisibility() {
     const profile = getUiProfile();

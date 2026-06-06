@@ -10,8 +10,8 @@ export const towerRunScenePorts = {
     getLayout(state) {
         const mapNode = state.getStartMapNode?.();
         if (!mapNode) return null;
-        const combatCoords = state.getNodeCombatCoords(mapNode);
-        return towerWorldGen.getStartLayout(combatCoords.x, combatCoords.y, gridSettings.cellSize);
+        const worldCoords = state.getNodeWorldCoords(mapNode);
+        return towerWorldGen.getStartLayout(worldCoords.x, worldCoords.y, gridSettings.cellSize);
     },
 
     radioRegistry: towerRadioRegistry,

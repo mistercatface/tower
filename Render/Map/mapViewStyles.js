@@ -1,4 +1,4 @@
-import { combatNodeCoords, mapGraphNodeCoords } from "./mapViewCoords.js";
+import { worldNodeCoords, mapGraphNodeCoords } from "./mapViewCoords.js";
 
 const LAYER_COLORS = ["#03A9F4", "#7E57C2", "#AB47BC", "#EC407A", "#F44336"];
 
@@ -67,7 +67,7 @@ export const GAME_MAP_GRAPH_STYLES = {
 };
 
 export const LAB_MAP_GRAPH_STYLES = {
-    getNodeCoords: combatNodeCoords,
+    getNodeCoords: worldNodeCoords,
     connectionLineWidth: (context) => 4 / (context.zoom ?? 1),
     getConnectionStrokeStyle: labConnectionStrokeStyle,
     getNodeStyle: labNodeStyle,

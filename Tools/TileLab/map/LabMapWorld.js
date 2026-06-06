@@ -43,17 +43,17 @@ export function focusLabNode(state, nodeId) {
     if (!node) {
         return { x: state.player.x, y: state.player.y };
     }
-    const combatCoords = state.getNodeCombatCoords(node);
+    const worldCoords = state.getNodeWorldCoords(node);
     const startNodeId = getWorldGen().startMapNodeId ?? 0;
     if (nodeId === startNodeId) {
-        const layout = getWorldGen().getStartLayout(combatCoords.x, combatCoords.y, gridSettings.cellSize);
+        const layout = getWorldGen().getStartLayout(worldCoords.x, worldCoords.y, gridSettings.cellSize);
         state.player.x = layout.spawnX;
         state.player.y = layout.spawnY;
         return { x: layout.spawnX, y: layout.spawnY };
     }
-    state.player.x = combatCoords.x;
-    state.player.y = combatCoords.y;
-    return { x: combatCoords.x, y: combatCoords.y };
+    state.player.x = worldCoords.x;
+    state.player.y = worldCoords.y;
+    return { x: worldCoords.x, y: worldCoords.y };
 }
 
 export function listLabMapNodes(state) {

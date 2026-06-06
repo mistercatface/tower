@@ -225,7 +225,9 @@ export function getOrBakePropSprite({ prop, px, py, renderKey, draw, animFrame =
         const dy = prop.y - py;
         const { dx: qDx, dy: qDy } = propSpriteCache.quantizeView(dx, dy);
         const stageR = prop.strategy?.standTip ? standTipStageRadius(prop) : (prop._baseRadius ?? prop.radius ?? 8);
-        const bakeScale = resolvePropBakeScale(stageR, getActivePropPixelSize());
+        const footprint = propFootprintHalfExtents(prop);
+        const worldDiameter = Math.max(stageR * 2, footprint.x * 2, footprint.y * 2);
+        const bakeScale = resolvePropBakeScale(worldDiameter, getActivePropPixelSize());
         const stageSpan = Math.ceil((stageR * 2.6 + PROP_STAGE_PADDING * 2) * bakeScale);
         const anchorX = PROP_STAGE_PADDING + stageR * 1.3;
         const anchorY = PROP_STAGE_PADDING + stageR * 1.3;
@@ -235,7 +237,6 @@ export function getOrBakePropSprite({ prop, px, py, renderKey, draw, animFrame =
         const logAngles = prop.strategy?.rollAxis === "long"
             ? quantizeLongAxisLogAngles(prop)
             : null;
-        const footprint = propFootprintHalfExtents(prop);
         const stageProp = {
             ...prop,
             x: anchorX,

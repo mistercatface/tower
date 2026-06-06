@@ -189,7 +189,7 @@ function getSpawnCandidateNodes(state) {
 }
 
 function findFreeSpotsInNode(state, targetNode, count) {
-    const coords = state.getNodeCombatCoords(targetNode);
+    const coords = state.getNodeWorldCoords(targetNode);
     const grid = state.obstacleGrid;
     const centerCell = grid.worldToGrid(coords.x, coords.y);
     const spots = [];

@@ -93,11 +93,11 @@ function generateMap() {
     // Default player position to Node 0 combat center, target to Node 1 combat center
     const startNode = currentWorld.getMapNode(0);
     if (startNode) {
-        playerPos = currentWorld.getNodeCombatCoords(startNode);
+        playerPos = currentWorld.getNodeWorldCoords(startNode);
         const nextId = startNode.connections[0];
         const nextNode = currentWorld.getMapNode(nextId);
         if (nextNode) {
-            targetPos = currentWorld.getNodeCombatCoords(nextNode);
+            targetPos = currentWorld.getNodeWorldCoords(nextNode);
         } else {
             targetPos = { x: playerPos.x + 300, y: playerPos.y };
         }
@@ -225,7 +225,7 @@ function renderSidebarDetails() {
     focusBtn.className = "focus-btn";
     focusBtn.textContent = "Focus Node";
     focusBtn.addEventListener("click", () => {
-        const coords = currentWorld.getNodeCombatCoords(node);
+        const coords = currentWorld.getNodeWorldCoords(node);
         currentViewport.snapTo(coords.x, coords.y);
         currentViewport.zoom = 0.5;
         redrawCanvas();
@@ -268,7 +268,7 @@ function buildSettingsPanel() {
     subh3.textContent = "Scale";
     panel.appendChild(subh3);
     
-    addSlider("Combat Scale", 1, 20, 0.5, mapSettings, "combatCoordScale");
+    addSlider("Node World Scale", 1, 20, 0.5, mapSettings, "nodeWorldCoordScale");
     
     const hint = document.createElement("div");
     hint.className = "editor-hint";
@@ -329,7 +329,7 @@ function bootstrap() {
             let nearestDist = Infinity;
             
             for (const node of currentWorld.mapNodes) {
-                const coords = currentWorld.getNodeCombatCoords(node);
+                const coords = currentWorld.getNodeWorldCoords(node);
                 const dist = Math.hypot(coords.x - worldX, coords.y - worldY);
                 if (dist < 200 && dist < nearestDist) { // 200 radius click target
                     nearestDist = dist;

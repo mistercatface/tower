@@ -1,7 +1,6 @@
 import { colRowToIndex } from "./GridUtils.js";
 import { pointToSegmentPaddingDistanceSq, getWallReach } from "../geometry/WallGeometry.js";
-
-const WORLD_MARGIN = 1600;
+import { spatialWorldMargin } from "../../../Config/Config.js";
 
 function isGridTileWall(wall, cellSize) {
     return Math.abs(wall.angle) < 1e-6 && (wall.padding ?? 0) === 0 && wall.size === cellSize;
@@ -100,7 +99,7 @@ export function computeBoundsFromWalls(walls, cellSize) {
         minY = -2000;
         maxY = 2000;
     } else {
-        const marginCells = Math.ceil(WORLD_MARGIN / cellSize);
+        const marginCells = Math.ceil(spatialWorldMargin / cellSize);
         const margin = marginCells * cellSize;
 
         if (latticeMinX !== Infinity) {

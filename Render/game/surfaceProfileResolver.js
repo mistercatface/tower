@@ -14,7 +14,7 @@ export function resolveSurfaceProfileAtCoords(state, x, y) {
     let closestNode = null;
     let minDist = Infinity;
     for (const node of state.mapNodes) {
-        const coords = state.getNodeCombatCoords(node);
+        const coords = state.getNodeWorldCoords(node);
         const dist = Math.hypot(x - coords.x, y - coords.y);
         if (dist < minDist) {
             minDist = dist;

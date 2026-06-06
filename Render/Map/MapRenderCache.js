@@ -3,8 +3,8 @@ import { bakeGameMapWallCache, bakeLabMapWallCache } from "./MapWallCache.js";
 import { bakeMapPathDebugCache } from "./MapPathDebugCache.js";
 
 export function buildMapRenderCaches(state) {
-    const { x: baseSpawnX, y: baseSpawnY } = state.getCombatSpawnOrigin();
-    const scale = mapSettings.combatCoordScale;
+    const { x: baseSpawnX, y: baseSpawnY } = state.getMapSpawnOrigin();
+    const scale = mapSettings.nodeWorldCoordScale;
 
     state.mapWallCache = bakeGameMapWallCache(state.walls, baseSpawnX, baseSpawnY, scale);
 
