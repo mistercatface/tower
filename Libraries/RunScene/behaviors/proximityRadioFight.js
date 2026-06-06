@@ -2,7 +2,7 @@ import { getEnemyDefinition } from "../../../Entities/EntityRegistry.js";
 import { Enemy } from "../../../Entities/Enemy.js";
 import { fireRadioTrigger } from "../../../Core/EventSystem.js";
 import { isBaseStatUpgrade } from "../../../Progression/Upgrades.js";
-import { getRunSceneIntro } from "../runSceneState.js";
+import { ensureRunScene, getRunSceneIntro } from "../runSceneState.js";
 
 /**
  * @param {import("../compileRunScenes.js").RunSceneConfig} def
@@ -17,7 +17,9 @@ export function proximityRadioFightBehavior(def, ports) {
         enter(state) {
             const intro = getRunSceneIntro(state);
             intro.active = true;
-            intro.dialogUnlocked = false;
+            if (ensureRunScene(state).opening?.completed) {
+                intro.dialogUnlocked = true;
+            }
             spawnGuards(state, config, enemyTag, ports);
         },
 
