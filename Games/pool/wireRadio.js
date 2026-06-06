@@ -20,7 +20,6 @@ const poolConversations = {
         oncePerRun: true,
         lines: [
             { speakerId: "coach", text: "Pull back opposite where you want to shoot — the white line shows the ball path, not your finger." },
-            { speakerId: "coach", text: "Sink both object balls. Scratch and the cue respots — no foul drama yet." },
         ],
     },
     table_clear: {

@@ -37,12 +37,12 @@ function beginMission(state, config, ctx, ports) {
         finishing: false,
         completed: false,
         completeRadio: config.completeRadio ?? null,
-        returnPhase: config.returnPhase ?? "combat",
+        returnPhase: config.returnPhase ?? "simulation",
         missionLabel: config.missionLabel ?? "Search for clues ({found}/{total})",
         guidedRadios: resolveGuidedRadios(config, ports),
         onAdvance: () => {
-            state.skipCombatEnterReset = true;
-            ctx.fsm?.transition(config.returnPhase ?? "combat");
+            state.skipSimulationEnterReset = true;
+            ctx.fsm?.transition(config.returnPhase ?? "simulation");
         },
     });
     state.inspectPanelOpen = false;

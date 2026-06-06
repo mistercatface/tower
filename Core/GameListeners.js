@@ -4,7 +4,7 @@ import { ProgressionManager } from "../Progression/ProgressionManager.js";
 import { hardResetProgress, registerProgressListeners } from "../Progression/Storage.js";
 import { StatsManager } from "../Progression/StatsManager.js";
 import { getActiveGameDefinition } from "./ActiveGameDefinition.js";
-import { isCombat } from "../GameState/GamePhase.js";
+import { isSimulation } from "../GameState/GamePhase.js";
 import { registerPauseListeners } from "./PauseManager.js";
 import { FloatingText } from "../Render/FloatingText.js";
 import { nextUpgradeCost } from "../Config/Config.js";
@@ -99,7 +99,7 @@ export function registerGameListeners(eventBus, pauseManager) {
         if (!viewport) return;
 
         const sliderVal = sliderValue / 100;
-        if (isCombat(state.phase)) {
+        if (isSimulation(state.phase)) {
             viewport.zoomProgress = sliderVal;
             viewport.updateZoomLimits(state);
         } else {
@@ -123,12 +123,12 @@ export function registerGameListeners(eventBus, pauseManager) {
     eventBus.on(Events.MAP_TOGGLE, ({ state, fsm }) => {
         if (!fsm) return;
         if (fsm.currentStateName === "map") {
-            const targetState = state.previousStateBeforeMap || "combat";
-            if (targetState === "combat" || targetState === "inspector") {
-                state.skipCombatEnterReset = true;
+            const targetState = state.previousStateBeforeMap || "simulation";
+            if (targetState === "simulation" || targetState === "inspector") {
+                state.skipSimulationEnterReset = true;
             }
             fsm.transition(targetState);
-        } else if (fsm.currentStateName === "combat" || fsm.currentStateName === "inspector") {
+        } else if (fsm.currentStateName === "simulation" || fsm.currentStateName === "inspector") {
             state.previousStateBeforeMap = fsm.currentStateName;
             fsm.transition("map");
         }

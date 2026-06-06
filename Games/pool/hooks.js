@@ -23,7 +23,7 @@ function clearNonPoolPickups(state) {
 }
 
 /** @param {import("../../GameState/GameStateMachine.js").GameStateMachineContext} ctx */
-export function onCombatEnter(ctx) {
+export function onSimulationEnter(ctx) {
     const { state } = ctx;
 
     hidePlayerForPool(state.player);

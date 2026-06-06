@@ -21,7 +21,7 @@ export class GameState {
         this.fsm = null;
         this.scheduler = new Scheduler();
         this.hordeSpawner = new HordeSpawner();
-        this._phase = "combat";
+        this._phase = "simulation";
         this.mapNodes = [];
         this.mapNodeById = new Map();
         this.currentNodeId = 0;
@@ -140,7 +140,7 @@ export class GameState {
         this.radioSeenThisRun = {};
         this.runScene = null;
         this.inspectPanelOpen = false;
-        this.skipCombatEnterReset = false;
+        this.skipSimulationEnterReset = false;
         this.runSceneInitialized = false;
         this.startPropsSpawned = false;
         this.zombieEventTriggered = false;

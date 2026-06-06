@@ -1,10 +1,10 @@
 import "../../Render/WorldSurfaceBootstrap.js";
 import { installGameSurfaceProfileProvider } from "../../Config/procedural/bootstrap.js";
 import { ensurePoolState } from "./balls.js";
-import { PoolCombatState } from "./PoolCombatState.js";
+import { PoolSimulationState } from "./PoolSimulationState.js";
 import { registerPoolEntities } from "./config/entities.js";
 import {
-    onCombatEnter,
+    onSimulationEnter,
     onRunSceneTick,
     onCombatEnemyKilled,
     canRunHordeSpawning,
@@ -106,10 +106,10 @@ export const poolGame = {
     },
 
     states: {
-        combat: PoolCombatState,
+        simulation: PoolSimulationState,
     },
 
-    initialState: "combat",
+    initialState: "simulation",
 
     prepare() {
         document.title = "Pool";
@@ -128,7 +128,7 @@ export const poolGame = {
     onRunOpeningComplete,
     isRadioDialogActive,
 
-    onCombatEnter,
+    onSimulationEnter,
     onRunSceneTick,
     onCombatEnemyKilled,
     canRunHordeSpawning,

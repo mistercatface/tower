@@ -15,7 +15,7 @@ export const runScenes = [
     {
         id: "run_start",
         type: "run_opening",
-        phase: "combat",
+        phase: "simulation",
         spawn: "yard",
         radios: ["run_start"],
         skipPreset: "through_run_start",
@@ -25,7 +25,7 @@ export const runScenes = [
     {
         id: "intro_guards",
         type: "proximity_radio_fight",
-        phase: "combat",
+        phase: "simulation",
         radios: ["start_game_guards", "intro_guards_cleared"],
         skipPreset: "through_intro",
         config: {
@@ -57,13 +57,13 @@ export const runScenes = [
             keys: clueSearchInspectKeys,
             missionLabel: "Tap nearby objects to search for clues ({found}/{total})",
             completeRadio: "clue_search_complete",
-            returnPhase: "combat",
+            returnPhase: "simulation",
         },
         completeWhen: "mission_completed",
     },
     {
         id: "main_combat",
-        phase: "combat",
+        phase: "simulation",
         spawn: "corridor",
         capabilities: { horde: true },
         completeWhen: "never",

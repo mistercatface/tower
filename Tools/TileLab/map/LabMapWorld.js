@@ -21,7 +21,7 @@ export function createLabMapWorld(options = {}) {
 
     const state = new GameState();
     state.canvasBounds = { ...mapGenCanvasBounds };
-    state.phase = GamePhase.COMBAT;
+    state.phase = GamePhase.SIMULATION;
 
     withSeededRandom(mapSeed, () => {
         MapGenerator.generateMap(state);

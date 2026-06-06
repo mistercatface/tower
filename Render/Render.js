@@ -96,7 +96,7 @@ export class Renderer {
         this._combatPipeline = pipeline.map((p) => p.fn);
     }
 
-    renderCombatScene(state, viewport) {
+    renderSimulationScene(state, viewport) {
         this.ctx.save();
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 

@@ -2,10 +2,10 @@ import "../../Render/WorldSurfaceBootstrap.js";
 import { installGameSurfaceProfileProvider } from "../../Config/procedural/bootstrap.js";
 import { createUpgrades, createBaseUpgrades } from "../../Progression/Upgrades.js";
 import { registerGameInspectEntries } from "./content/inspect/inspectContent.js";
-import { MapState, CombatState, InspectorState } from "../../GameState/GameStates.js";
+import { MapState, SimulationState, InspectorState } from "../../GameState/GameStates.js";
 import { wireTowerRadio } from "./wireRadio.js";
 import {
-    onCombatEnter,
+    onSimulationEnter,
     onRunSceneTick,
     onCombatEnemyKilled,
     canRunHordeSpawning,
@@ -41,9 +41,9 @@ export const towerGame = {
         return [...createBaseUpgrades(), ...createUpgrades()];
     },
 
-    states: { map: MapState, combat: CombatState, inspector: InspectorState },
+    states: { map: MapState, simulation: SimulationState, inspector: InspectorState },
 
-    initialState: "combat",
+    initialState: "simulation",
 
     prepare() {
         registerTowerEntities();
@@ -60,7 +60,7 @@ export const towerGame = {
     onRunOpeningComplete,
     isRadioDialogActive,
 
-    onCombatEnter,
+    onSimulationEnter,
     onRunSceneTick,
     onCombatEnemyKilled,
     canRunHordeSpawning,

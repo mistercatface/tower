@@ -6,7 +6,7 @@ import { combatSpatial } from "../World/CombatSpatialFrame.js";
 import { Projectile } from "../../Entities/Projectile.js";
 import { Explosion } from "../../Entities/Explosion/Explosion.js";
 import { getActiveGameDefinition } from "../../Core/ActiveGameDefinition.js";
-import { runPushablePhysics } from "./combatPhysics.js";
+import { runPushablePhysics } from "./pushablePhysics.js";
 
 /** @param {object[]} events @param {object} ctx */
 function dispatchCombatEvents(events, ctx) {
@@ -16,12 +16,12 @@ function dispatchCombatEvents(events, ctx) {
 }
 
 /**
- * Ordered combat simulation pass for CombatState.
+ * Ordered world simulation pass for SimulationState.
  *
  * @param {object} ctx — FSM context `{ state, upgrades, viewport, ... }`
  * @param {number} dt
  */
-export function runCombatTick(ctx, dt) {
+export function runSimulationTick(ctx, dt) {
     const abilityState = ProgressionManager.updateAbilities(ctx.state, dt, ctx.upgrades);
     if (!abilityState.isDiving && ctx.state.player.applyQueuedTarget(ctx.state)) ctx.state.navigation.rebuildPlayerFlowField(ctx.state.player.targetX, ctx.state.player.targetY);
     const spatialFrame = combatSpatial.begin(ctx.state);
@@ -58,7 +58,7 @@ export function runCombatTick(ctx, dt) {
  */
 export function runInspectorTick(ctx, dt) {
     const abilityState = ProgressionManager.updateAbilities(ctx.state, dt, ctx.upgrades);
-    if (!abilityState.isDiving && ctx.state.player.applyQueuedTarget(ctx.state))  ctx.state.navigation.rebuildPlayerFlowField(ctx.state.player.targetX, ctx.state.player.targetY);
+    if (!abilityState.isDiving && ctx.state.player.applyQueuedTarget(ctx.state)) ctx.state.navigation.rebuildPlayerFlowField(ctx.state.player.targetX, ctx.state.player.targetY);
     const spatialFrame = combatSpatial.begin(ctx.state);
     const oldGridPos = ctx.state.flowFieldGrid.worldToGrid(ctx.state.player.x, ctx.state.player.y);
     const partyOpts = { externalSpeedMod: abilityState.externalSpeedMod, upgrades: ctx.upgrades, blocksTargeting: true };

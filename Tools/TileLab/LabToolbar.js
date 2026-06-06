@@ -1,6 +1,6 @@
 import { playerBaseStats } from "../../Config/Config.js";
 import { defaultSurfaceProfileId } from "../../Config/procedural/profiles.js";
-import { getDefaultCombatZoom } from "../../Render/CombatViewport.js";
+import { getDefaultSimulationZoom } from "../../Render/SimulationViewport.js";
 import { getLabWorld } from "./LabWorldSession.js";
 
 function getStageSize() {
@@ -25,7 +25,7 @@ export function readControls() {
 
 export function syncCombatZoomToStage(world) {
     const { viewW, viewH } = getStageSize();
-    const zoom = getDefaultCombatZoom(viewW, viewH, world?.player?.weapon?.range ?? playerBaseStats.range);
+    const zoom = getDefaultSimulationZoom(viewW, viewH, world?.player?.weapon?.range ?? playerBaseStats.range);
     const zoomEl = document.getElementById("gameZoomInput");
     if (zoomEl) {
         zoomEl.value = String(zoom.toFixed(2));
@@ -57,7 +57,7 @@ export function initToolbarDefaults() {
     document.getElementById("seedInput").value = "42";
     const gameZoomEl = document.getElementById("gameZoomInput");
     if (gameZoomEl) {
-        const z = getDefaultCombatZoom(800, 600, playerBaseStats.range);
+        const z = getDefaultSimulationZoom(800, 600, playerBaseStats.range);
         gameZoomEl.value = String(z.toFixed(2));
         document.getElementById("gameZoomValue").textContent = gameZoomEl.value;
     }

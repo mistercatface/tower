@@ -2,7 +2,7 @@ import { fireRadioTrigger } from "../../../Core/EventSystem.js";
 import { RunSceneController, compileRunScenes, createRunSceneBehaviors } from "../../../Libraries/RunScene/index.js";
 import { poolRunScenePorts } from "../runScenePorts.js";
 
-/** @type {null | "break_shot" | "play" | "cleared"} */
+/** @type {null | "break_shot" | "match" | "cleared"} */
 export const startRunAtScene = null;
 
 /** @type {import("../../../Libraries/RunScene/compileRunScenes.js").RunSceneConfig[]} */
@@ -10,7 +10,7 @@ export const runScenes = [
     {
         id: "break_shot",
         type: "run_opening",
-        phase: "combat",
+        phase: "simulation",
         spawn: "head",
         radios: ["break_shot"],
         skipPreset: "through_run_start",
@@ -18,15 +18,15 @@ export const runScenes = [
         completeWhen: { runSceneFlag: "opening.completed" },
     },
     {
-        id: "play",
-        phase: "combat",
+        id: "match",
+        phase: "simulation",
         spawn: "head",
         completeWhen: { runSceneFlag: "match.won" },
         transition: { radio: "table_clear" },
     },
     {
         id: "cleared",
-        phase: "combat",
+        phase: "simulation",
         spawn: "head",
         completeWhen: "never",
     },

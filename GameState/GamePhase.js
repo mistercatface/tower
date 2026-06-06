@@ -2,12 +2,12 @@ import { getActiveGameDefinition } from "../Core/ActiveGameDefinition.js";
 
 export const GamePhase = {
     MAP: "map",
-    COMBAT: "combat",
+    SIMULATION: "simulation",
     INSPECTOR: "inspector",
 };
 
 const WORLD_SCENES = new Set([
-    GamePhase.COMBAT,
+    GamePhase.SIMULATION,
     GamePhase.INSPECTOR,
 ]);
 
@@ -15,8 +15,8 @@ export function isWorldScene(phase) {
     return WORLD_SCENES.has(phase);
 }
 
-export function isCombat(phase) {
-    return phase === GamePhase.COMBAT;
+export function isSimulation(phase) {
+    return phase === GamePhase.SIMULATION;
 }
 
 export function isInspector(phase) {
@@ -29,7 +29,7 @@ export function canRunHordeSpawning(state) {
     return gameCheck ? gameCheck(state) : true;
 }
 
-/** Range and center for drawing combat rings / masks in world vs map space. */
+/** Range and center for drawing world rings / masks in simulation vs map space. */
 export function getWorldDrawCoords(state, viewport, fallbackRange) {
     if (viewport && isWorldScene(state.phase)) {
         return {

@@ -1,6 +1,6 @@
 import { perkMilestones, xpForLevel } from "../Config/Config.js";
 import { buildAbilityTreeLayout } from "../Config/content/abilityTreeLayout.js";
-import { GamePhase, isCombat, isInspector } from "../GameState/GamePhase.js";
+import { GamePhase, isSimulation, isInspector } from "../GameState/GamePhase.js";
 import { getActiveGameDefinition } from "../Core/ActiveGameDefinition.js";
 import { getUiProfile } from "../Core/GameUiProfile.js";
 import { getGunDefinition, playerEquipmentCatalog } from "../Config/content/guns.js";
@@ -754,7 +754,7 @@ export function updateUI(state, upgrades) {
     }
     if (chrome.zoomSlider && elements.zoomSlider && viewport) {
         let sliderVal = 0.5;
-        if (isCombat(state.phase)) {
+        if (isSimulation(state.phase)) {
             sliderVal = viewport.zoomProgress;
         } else {
             sliderVal = (viewport.zoom - 0.5) / 1.5;

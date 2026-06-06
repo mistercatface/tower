@@ -6,7 +6,7 @@ import { events, requestUiUpdate, requestUiHudUpdate, showGameOver, showRunResul
 import { registerAllListeners } from "./GameListeners.js";
 import { PauseManager } from "./PauseManager.js";
 import { Renderer } from "../Render/Render.js";
-import { CombatViewport } from "../Render/CombatViewport.js";
+import { SimulationViewport } from "../Render/SimulationViewport.js";
 import { InputManager } from "./InputManager.js";
 import { StatsManager } from "../Progression/StatsManager.js";
 import { GameStateMachine } from "../GameState/GameStateMachine.js";
@@ -33,7 +33,7 @@ export function createGame(definition) {
     ctx.imageSmoothingEnabled = false;
     const renderer = new Renderer(canvas, ctx);
     const upgrades = definition.createUpgrades();
-    const viewport = new CombatViewport(0, 0);
+    const viewport = new SimulationViewport(0, 0);
     const uiSnapshot = { health: -1, isMoving: false };
     const stateMachineContext = { state, upgrades, viewport, renderer, game: definition };
     const fsm = new GameStateMachine(stateMachineContext);

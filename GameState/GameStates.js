@@ -3,12 +3,12 @@ import { requestUiUpdate } from "../Core/EventSystem.js";
 import { Pools } from "../Core/Pools.js";
 import { inspectBridge } from "../Combat/inspect/InspectBridge.js";
 import {
-    runCombatEnterPersistence,
-    runCombatTick,
+    runSimulationEnterPersistence,
+    runSimulationTick,
     runInspectorTick,
     handlePlayerRepositionTap,
     handlePlayerRepositionDrag,
-} from "../Systems/Combat/index.js";
+} from "../Systems/Simulation/index.js";
 
 export class MapState {
     onEnter(ctx) {
@@ -25,10 +25,10 @@ export class MapState {
     }
 }
 
-export class CombatState {
+export class SimulationState {
     onEnter(ctx) {
-        if (ctx.state.skipCombatEnterReset) {
-            ctx.state.skipCombatEnterReset = false;
+        if (ctx.state.skipSimulationEnterReset) {
+            ctx.state.skipSimulationEnterReset = false;
             requestUiUpdate();
             return;
         }
@@ -44,22 +44,22 @@ export class CombatState {
         ctx.state.combatParticles = [];
         ctx.state.ragdollCorpses = [];
         ctx.state.floatingTexts = [];
-        ctx.game?.onCombatEnter?.(ctx);
+        ctx.game?.onSimulationEnter?.(ctx);
         ctx.viewport.snapTo(ctx.state.player.x, ctx.state.player.y);
         ctx.state.hordeSpawner.beginHorde();
         ctx.state.player.resetTurretCombatState();
-        runCombatEnterPersistence(ctx.state);
+        runSimulationEnterPersistence(ctx.state);
         requestUiUpdate();
     }
 
     update(dt, ctx) {
-        runCombatTick(ctx, dt);
+        runSimulationTick(ctx, dt);
     }
 
     render(ctx) {
         ctx.viewport.updateZoomLimits(ctx.state);
         ctx.viewport.follow(ctx.state.player.x, ctx.state.player.y);
-        ctx.renderer.renderCombatScene(ctx.state, ctx.viewport);
+        ctx.renderer.renderSimulationScene(ctx.state, ctx.viewport);
     }
 
     handleInteraction(worldCoords, isDoubleTap, ctx) {
@@ -100,7 +100,7 @@ export class InspectorState {
     render(ctx) {
         ctx.viewport.updateZoomLimits(ctx.state);
         ctx.viewport.follow(ctx.state.player.x, ctx.state.player.y);
-        ctx.renderer.renderCombatScene(ctx.state, ctx.viewport);
+        ctx.renderer.renderSimulationScene(ctx.state, ctx.viewport);
     }
 
     handleInteraction(worldCoords, isDoubleTap, ctx) {
@@ -124,4 +124,3 @@ export class InspectorState {
         handlePlayerRepositionDrag(ctx, worldCoords);
     }
 }
-

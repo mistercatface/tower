@@ -76,7 +76,7 @@
  * @property {(ctx: { state: object, upgrades: object[] }) => void} [onRunOpeningComplete]
  * @property {() => boolean} [isRadioDialogActive]
  * @property {(eventBus: object, pauseApi: { requestPause: (reason: string) => void, requestResume: (reason: string) => void }) => void} [wireRadio]
- * @property {(ctx: object) => void} [onCombatEnter]
+ * @property {(ctx: object) => void} [onSimulationEnter]
  * @property {(ctx: object, dt: number) => void} [onRunSceneTick]
  * @property {(payload: { enemy: object, state: object, upgrades: object[], fsm: object }) => void} [onCombatEnemyKilled]
  * @property {(state: object) => boolean} [canRunHordeSpawning]

@@ -1,7 +1,7 @@
 import { wakeAllPushables } from "../../Libraries/Motion/pushablePhysicsPass.js";
 import { syncSurfaceProfile } from "../../Render/game/surfaceProfileResolver.js";
 
-function syncPersistentEntitiesOnCombatEnter(state) {
+function syncPersistentEntitiesOnSimulationEnter(state) {
     syncSurfaceProfile(state);
     wakeAllPushables(state);
     const persistentEntities = [...state.getAllies(), ...state.pickups];
@@ -10,6 +10,6 @@ function syncPersistentEntitiesOnCombatEnter(state) {
     }
 }
 
-export function runCombatEnterPersistence(state) {
-    syncPersistentEntitiesOnCombatEnter(state);
+export function runSimulationEnterPersistence(state) {
+    syncPersistentEntitiesOnSimulationEnter(state);
 }

@@ -79,7 +79,7 @@ function drawLabWorldFrame(ctx, canvas, viewW, viewH, worldState, profileId, gam
         showPlayerMarker = true,
     } = drawOptions;
 
-    worldState.phase = GamePhase.COMBAT;
+    worldState.phase = GamePhase.SIMULATION;
     const prevProfileOverride = worldState.surfaceProfileOverride;
     worldState.surfaceProfileOverride = profileId;
     maybeClearBakeCaches(worldState, profileId);

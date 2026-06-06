@@ -1,7 +1,7 @@
 import { Pools } from "../../Core/Pools.js";
 import { inspectBridge } from "../../Combat/inspect/InspectBridge.js";
 import { requestUiUpdate } from "../../Core/EventSystem.js";
-import { runCombatEnterPersistence, runCombatTick } from "../../Systems/Combat/index.js";
+import { runSimulationEnterPersistence, runSimulationTick } from "../../Systems/Simulation/index.js";
 import { getCueBall, ensurePoolState } from "./balls.js";
 import { poolRunScenePorts } from "./runScenePorts.js";
 import {
@@ -12,10 +12,10 @@ import {
     canBeginAim,
 } from "./shotInput.js";
 
-export class PoolCombatState {
+export class PoolSimulationState {
     onEnter(ctx) {
-        if (ctx.state.skipCombatEnterReset) {
-            ctx.state.skipCombatEnterReset = false;
+        if (ctx.state.skipSimulationEnterReset) {
+            ctx.state.skipSimulationEnterReset = false;
             requestUiUpdate();
             return;
         }
@@ -31,22 +31,22 @@ export class PoolCombatState {
         ctx.state.combatParticles = [];
         ctx.state.ragdollCorpses = [];
         ctx.state.floatingTexts = [];
-        ctx.game?.onCombatEnter?.(ctx);
+        ctx.game?.onSimulationEnter?.(ctx);
 
         this._snapCameraToTable(ctx);
         ctx.state.hordeSpawner.beginHorde();
         ctx.state.player.resetTurretCombatState();
-        runCombatEnterPersistence(ctx.state);
+        runSimulationEnterPersistence(ctx.state);
         requestUiUpdate();
     }
 
     update(dt, ctx) {
-        runCombatTick(ctx, dt);
+        runSimulationTick(ctx, dt);
     }
 
     render(ctx) {
         this._snapCameraToTable(ctx);
-        ctx.renderer.renderCombatScene(ctx.state, ctx.viewport);
+        ctx.renderer.renderSimulationScene(ctx.state, ctx.viewport);
         this._drawTableOverlay(ctx);
     }
 

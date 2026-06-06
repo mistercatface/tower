@@ -15,7 +15,7 @@ import { getTowerStartProps } from "./config/startProps.js";
 import { towerRunScenePorts } from "./runScenePorts.js";
 
 /** @param {import("../../GameState/GameStateMachine.js").GameStateMachineContext} ctx */
-export function onCombatEnter(ctx) {
+export function onSimulationEnter(ctx) {
     const { state } = ctx;
 
     if (!state.runSceneInitialized) {
