@@ -46,6 +46,14 @@
  */
 
 /**
+ * @typedef {object} SimulationPort
+ * @property {(ctx: object, dt: number) => void} runTick
+ * @property {(ctx: object, dt: number) => void} [runInspectorTick]
+ * @property {(ctx: object) => void} [onEnter]
+ * @property {(ctx: object) => void} [onInspectorEnter]
+ */
+
+/**
  * @typedef {object} WorldGenPort
  * @property {number} [startMapNodeId] — map graph node used for opening layout (default 0)
  * @property {string} startNodeStrategyKey — key in strategies for node-0 wall generation
@@ -72,6 +80,7 @@
  * @property {Record<string, new () => object>} states
  * @property {string} initialState
  * @property {Partial<InteractionPairsPort>} [interactionPairs] — combat/physics overrides; physics defaults from engine
+ * @property {SimulationPort} simulation
  * @property {TargetingPort} targeting
  * @property {RenderPorts} render
  * @property {WorldGenPort} worldGen

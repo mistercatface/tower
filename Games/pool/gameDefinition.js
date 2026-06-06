@@ -3,6 +3,7 @@ import { PoolSimulationState } from "./PoolSimulationState.js";
 import { registerPoolEntities } from "./config/entities.js";
 import { onSimulationEnter, onRunSceneTick } from "./hooks.js";
 import { poolRenderPorts, poolTargeting } from "./ports.js";
+import { poolSimulation } from "./simulation.js";
 import { poolWorldGen } from "./worldGen.js";
 import { isRadioDialogActive, wirePoolRadio } from "./wireRadio.js";
 import { getWorldPropDefinitions, getWorldPropRecipes } from "../../Libraries/Content/PropCatalog.js";
@@ -108,6 +109,7 @@ export const poolGame = {
         wallHeight: 20,
     },
 
+    simulation: poolSimulation,
     targeting: poolTargeting,
     render: poolRenderPorts,
     worldGen: poolWorldGen,

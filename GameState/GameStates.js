@@ -1,11 +1,9 @@
 import { FloatingText } from "../Render/FloatingText.js";
 import { requestUiUpdate } from "../Core/EventSystem.js";
-import { Pools } from "../Core/Pools.js";
 import { inspectBridge } from "../Combat/inspect/InspectBridge.js";
+import { getSimulationPort } from "../Core/GamePorts.js";
 import {
-    runSimulationEnterPersistence,
-    runSimulationTick,
-    runInspectorTick,
+    resetSimulationWorld,
     handlePlayerRepositionTap,
     handlePlayerRepositionDrag,
 } from "../Systems/Simulation/index.js";
@@ -32,28 +30,15 @@ export class SimulationState {
             requestUiUpdate();
             return;
         }
-        if (ctx.state.projectiles) {
-            for (let i = 0; i < ctx.state.projectiles.length; i++) {
-                Pools.projectiles.release(ctx.state.projectiles[i]);
-            }
-        }
-        ctx.state.projectiles = [];
-        ctx.state.explosions = [];
-        ctx.state.enemies = [];
-        ctx.state.activeLasers = [];
-        ctx.state.combatParticles = [];
-        ctx.state.ragdollCorpses = [];
-        ctx.state.floatingTexts = [];
+        resetSimulationWorld(ctx.state);
         ctx.game?.onSimulationEnter?.(ctx);
+        getSimulationPort().onEnter?.(ctx);
         ctx.viewport.snapTo(ctx.state.player.x, ctx.state.player.y);
-        ctx.state.hordeSpawner.beginHorde();
-        ctx.state.player.resetTurretCombatState();
-        runSimulationEnterPersistence(ctx.state);
         requestUiUpdate();
     }
 
     update(dt, ctx) {
-        runSimulationTick(ctx, dt);
+        getSimulationPort().runTick(ctx, dt);
     }
 
     render(ctx) {
@@ -83,18 +68,18 @@ export class SimulationState {
 
 export class InspectorState {
     onEnter(ctx) {
-        if (ctx.state.projectiles) {
-            for (let i = 0; i < ctx.state.projectiles.length; i++) {
-                Pools.projectiles.release(ctx.state.projectiles[i]);
-            }
-        }
-        ctx.state.projectiles = [];
+        resetSimulationWorld(ctx.state);
         ctx.state.activeLasers = [];
+        getSimulationPort().onInspectorEnter?.(ctx);
         requestUiUpdate();
     }
 
     update(dt, ctx) {
-        runInspectorTick(ctx, dt);
+        const port = getSimulationPort();
+        if (!port.runInspectorTick) {
+            throw new Error("Active game definition simulation port missing runInspectorTick");
+        }
+        port.runInspectorTick(ctx, dt);
     }
 
     render(ctx) {

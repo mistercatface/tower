@@ -4,6 +4,7 @@ import { BaseGeneratorStrategies } from "../Generator/GeneratorStrategies.js";
 import { getActiveGameDefinition } from "./ActiveGameDefinition.js";
 
 /** @typedef {import("./GameDefinitionTypes.js").InteractionPairsPort} InteractionPairsPort */
+/** @typedef {import("./GameDefinitionTypes.js").SimulationPort} SimulationPort */
 /** @typedef {import("./GameDefinitionTypes.js").TargetingPort} TargetingPort */
 /** @typedef {import("./GameDefinitionTypes.js").RenderPorts} RenderPorts */
 /** @typedef {import("./GameDefinitionTypes.js").WorldGenPort} WorldGenPort */
@@ -21,6 +22,13 @@ export function getInteractionPairs() {
     const overrides = requireGameDefinition().interactionPairs;
     const base = createDefaultInteractionPairs();
     return overrides ? { ...base, ...overrides } : base;
+}
+
+/** @returns {SimulationPort} */
+export function getSimulationPort() {
+    const simulation = requireGameDefinition().simulation;
+    if (!simulation) throw new Error("Active game definition missing simulation port.");
+    return simulation;
 }
 
 /** @returns {TargetingPort} */

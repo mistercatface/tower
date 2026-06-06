@@ -27,4 +27,4 @@ Skip intro: `?scene=play`
 | `shotInput.js` | Drag aim + strike |
 | `pockets.js` | Pocket sensors |
 | `balls.js` | Cue/object balls, stop detection |
-| `PoolCombatState.js` | Camera, overlays, input |
+| `PoolSimulationState.js` | Camera, overlays, input |

@@ -1,7 +1,7 @@
-import { Pools } from "../../Core/Pools.js";
 import { inspectBridge } from "../../Combat/inspect/InspectBridge.js";
 import { requestUiUpdate } from "../../Core/EventSystem.js";
-import { runSimulationEnterPersistence, runSimulationTick } from "../../Systems/Simulation/index.js";
+import { getSimulationPort } from "../../Core/GamePorts.js";
+import { resetSimulationWorld } from "../../Systems/Simulation/index.js";
 import { getCueBall, ensurePoolState } from "./balls.js";
 import { poolRunScenePorts } from "./runScenePorts.js";
 import {
@@ -19,29 +19,15 @@ export class PoolSimulationState {
             requestUiUpdate();
             return;
         }
-        if (ctx.state.projectiles) {
-            for (let i = 0; i < ctx.state.projectiles.length; i++) {
-                Pools.projectiles.release(ctx.state.projectiles[i]);
-            }
-        }
-        ctx.state.projectiles = [];
-        ctx.state.explosions = [];
-        ctx.state.enemies = [];
-        ctx.state.activeLasers = [];
-        ctx.state.combatParticles = [];
-        ctx.state.ragdollCorpses = [];
-        ctx.state.floatingTexts = [];
+        resetSimulationWorld(ctx.state);
         ctx.game?.onSimulationEnter?.(ctx);
-
         this._snapCameraToTable(ctx);
-        ctx.state.hordeSpawner.beginHorde();
-        ctx.state.player.resetTurretCombatState();
-        runSimulationEnterPersistence(ctx.state);
+        getSimulationPort().onEnter?.(ctx);
         requestUiUpdate();
     }
 
     update(dt, ctx) {
-        runSimulationTick(ctx, dt);
+        getSimulationPort().runTick(ctx, dt);
     }
 
     render(ctx) {
