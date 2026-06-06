@@ -16,6 +16,11 @@ export function getTowerStartProps(layout) {
             facing: 0,
         },
         {
+            type: "barrel",
+            x: layout.spawnX + 44,
+            y: layout.spawnY - 4,
+        },
+        {
             type: "log",
             x: layout.spawnX + 52,
             y: layout.spawnY - 2,
