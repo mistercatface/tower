@@ -8,10 +8,18 @@
 export function getTowerStartProps(layout) {
     if (!layout) return [];
 
-    return [{
-        type: "beach_ball",
-        x: layout.spawnX + 28,
-        y: layout.spawnY - 4,
-        facing: 0,
-    }];
+    return [
+        {
+            type: "beach_ball",
+            x: layout.spawnX + 28,
+            y: layout.spawnY - 4,
+            facing: 0,
+        },
+        {
+            type: "log",
+            x: layout.spawnX + 52,
+            y: layout.spawnY - 2,
+            facing: 0,
+        },
+    ];
 }

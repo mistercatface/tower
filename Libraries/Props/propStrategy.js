@@ -15,6 +15,9 @@ export const PROP_STRATEGY_DEFAULTS = {
     /** @type {PropCollisionShape} */
     collisionShape: "circle",
     rolls: false,
+    /** @type {"ground" | "long"} ground = sphere-style; long = cylinder/log tumble about local long axis */
+    rollAxis: "ground",
+    rollHeight: null,
     splittable: false,
     randomFaceLabels: false,
     onFire: null,

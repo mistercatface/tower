@@ -112,7 +112,12 @@ export class Pickup extends Entity {
         super(x, y, 0, false);
         this.type = type;
         this.strategy = buildWorldPropStrategy(type);
-        this.radius = this.strategy.radius;
+        if (this.strategy.halfExtents) {
+            this.halfExtents = { ...this.strategy.halfExtents };
+            this.radius = Math.max(this.halfExtents.x, this.halfExtents.y);
+        } else {
+            this.radius = this.strategy.radius;
+        }
         this.vx = 0;
         this.vy = 0;
         this.angularVelocity = 0;
@@ -132,12 +137,13 @@ export class Pickup extends Entity {
             );
         }
         if (this.strategy.collisionShape === "box") {
-            const r = this.radius;
+            const hx = this.halfExtents?.x ?? this.radius;
+            const hy = this.halfExtents?.y ?? this.radius;
             this.shape = new PolygonShape([
-                { x: -r, y: -r },
-                { x: r, y: -r },
-                { x: r, y: r },
-                { x: -r, y: r },
+                { x: -hx, y: -hy },
+                { x: hx, y: -hy },
+                { x: hx, y: hy },
+                { x: -hx, y: hy },
             ]);
         }
         if (this.strategy.maxHealth != null) {

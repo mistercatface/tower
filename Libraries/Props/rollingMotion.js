@@ -81,25 +81,68 @@ export function transformRollVertex(lx, ly, lz, radius, rollQuat = IDENTITY_ROLL
 }
 
 /**
- * Integrate rolling without slip: ω = (-vy/r, vx/r, 0) for top-down (z-up).
+ * Effective rolling radius: sphere uses radius; boxes/logs use smaller ground half-extent.
  *
- * @param {{ vx?: number, vy?: number, radius?: number, rollQuat?: { w: number, x: number, y: number, z: number } }} body
- * @param {number} dtMs
+ * @param {{ radius?: number, halfExtents?: { x: number, y: number } }} body
  */
-export function integrateRollOrientation(body, dtMs) {
+export function getRollRadius(body) {
+    const strategy = body.strategy ?? {};
+    if (strategy.rollAxis === "long") {
+        return Math.max(1, strategy.rollHeight ?? 3);
+    }
+    if (body.halfExtents) {
+        return Math.max(1, Math.min(body.halfExtents.x, body.halfExtents.y));
+    }
+    return Math.max(1, body.radius ?? 8);
+}
+
+/** Sphere / ball: ω axis in the ground plane. */
+function integrateGroundRoll(body, dtMs) {
     const vx = body.vx ?? 0;
     const vy = body.vy ?? 0;
     const speed = Math.hypot(vx, vy);
     if (speed < 0.5) return;
 
-    const r = Math.max(1, body.radius ?? 8);
-    // Negated: positive ω was spinning the texture toward the velocity source (into the pusher).
+    const r = getRollRadius(body);
     const angle = -(speed / r) * (dtMs / 1000);
     const ax = -vy / speed;
     const ay = vx / speed;
 
     const delta = axisAngleQuat(ax, ay, 0, angle);
     body.rollQuat = normalizeQuat(multiplyQuat(delta, body.rollQuat ?? IDENTITY_ROLL_QUAT));
+}
+
+/**
+ * Log / cylinder: tumble about local long axis (X). Only the velocity component
+ * perpendicular to the log length drives roll.
+ */
+function integrateLongAxisRoll(body, dtMs) {
+    const vx = body.vx ?? 0;
+    const vy = body.vy ?? 0;
+    const facing = body.facing ?? 0;
+    const cos = Math.cos(facing);
+    const sin = Math.sin(facing);
+
+    const perpVel = -vx * sin + vy * cos;
+    const perpSpeed = Math.abs(perpVel);
+    if (perpSpeed < 0.5) return;
+
+    const r = getRollRadius(body);
+    const angle = -(perpVel / r) * (dtMs / 1000);
+    const delta = axisAngleQuat(1, 0, 0, angle);
+    body.rollQuat = normalizeQuat(multiplyQuat(body.rollQuat ?? IDENTITY_ROLL_QUAT, delta));
+}
+
+/**
+ * @param {{ vx?: number, vy?: number, radius?: number, facing?: number, halfExtents?: { x: number, y: number }, strategy?: { rollAxis?: string, rollHeight?: number }, rollQuat?: { w: number, x: number, y: number, z: number } }} body
+ * @param {number} dtMs
+ */
+export function integrateRollOrientation(body, dtMs) {
+    if (body.strategy?.rollAxis === "long") {
+        integrateLongAxisRoll(body, dtMs);
+        return;
+    }
+    integrateGroundRoll(body, dtMs);
 }
 
 /**
