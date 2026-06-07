@@ -1,9 +1,7 @@
 import { worldNodeCoords } from "../../../Libraries/Render/map/mapViewCoords.js";
-
 export function topologyConnectionStrokeStyle() {
     return "rgba(85, 85, 85, 0.4)";
 }
-
 export function topologyNodeStyle(node, _state, context) {
     const zoom = context.zoom ?? 1;
     const selectedNodeId = context.selectedNodeId ?? null;
@@ -15,7 +13,6 @@ export function topologyNodeStyle(node, _state, context) {
         lineWidth: node.id === selectedNodeId ? 8 / zoom : 3 / zoom,
     };
 }
-
 export function topologyNodeLabel(ctx, node, coords, _state, context) {
     const zoom = context.zoom ?? 1;
     if (zoom <= 0.05) return;
@@ -25,7 +22,6 @@ export function topologyNodeLabel(ctx, node, coords, _state, context) {
     ctx.textBaseline = "middle";
     ctx.fillText(String(node.id), coords.x, coords.y);
 }
-
 export const TOPOLOGY_MAP_GRAPH_STYLES = {
     getNodeCoords: worldNodeCoords,
     connectionLineWidth: (context) => 4 / (context.zoom ?? 1),

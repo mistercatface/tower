@@ -61,7 +61,7 @@ function animationFromProfile(profile, motifs) {
         }
         tracks.push({ editorMotifIndex: Math.max(0, editorMotifIndex), paramPath, stages: trackStages });
     }
-    return { enabled: true, selectedStageIndex: 0, selectedTrackIndex: 0, stages, tracks };
+    return { enabled: false, selectedStageIndex: 0, selectedTrackIndex: 0, stages, tracks };
 }
 function deepClone(value) {
     return JSON.parse(JSON.stringify(value));
