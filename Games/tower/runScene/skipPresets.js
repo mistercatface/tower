@@ -1,4 +1,4 @@
-import { getCombatPort } from "../../Core/GamePorts.js";
+import { getCombatPort } from "../../../Core/GamePorts.js";
 import { ensureRunScene, getRunSceneIntro, setRunSceneMission } from "./runSceneState.js";
 /**
  * @typedef {import("./compileRunScenes.js").RunSceneConfig} RunSceneConfig

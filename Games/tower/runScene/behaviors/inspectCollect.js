@@ -1,5 +1,5 @@
-import { fireRadioTrigger, requestUiHudUpdate, startRadioConversation } from "../../../Core/EventSystem.js";
-import { findInspectablePickup } from "../../../Games/tower/inspect/inspectTargeting.js";
+import { fireRadioTrigger, requestUiHudUpdate, startRadioConversation } from "../../../../Core/EventSystem.js";
+import { findInspectablePickup } from "../../inspect/inspectTargeting.js";
 import { getRunSceneMission, setRunSceneMission } from "../runSceneState.js";
 /**
  * @param {import("../compileRunScenes.js").RunSceneConfig} def

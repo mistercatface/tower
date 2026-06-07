@@ -1,8 +1,8 @@
 import { gridSettings } from "../../Config/Config.js";
-import { markRadioTriggersSeen } from "../../Libraries/RunScene/index.js";
+import { markRadioTriggersSeen } from "./runScene/index.js";
 import { towerWorldGen } from "./worldGen.js";
 import { towerRadio } from "./radio.js";
-/** @typedef {import("../../Libraries/RunScene/runScenePorts.js").RunScenePorts} RunScenePorts */
+/** @typedef {import("./runScene/runScenePorts.js").RunScenePorts} RunScenePorts */
 /** @type {RunScenePorts} */
 export const towerRunScenePorts = {
     getLayout(state) {

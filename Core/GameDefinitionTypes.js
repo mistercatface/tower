@@ -82,7 +82,6 @@
  */
 /**
  * @typedef {object} RunScenePort
- * @property {import("../Libraries/RunScene/runScenePorts.js").RunScenePorts} [ports] — tower injects layout/radio helpers for FSM behaviors
  * @property {(state: object) => object | null} getLayout
  * @property {(ctx: object) => void} onSimulationEnter
  * @property {(ctx: object, dt: number) => void} onTick
@@ -148,7 +147,7 @@
  * @property {WorldGenPort} worldGen
  * @property {RunBootstrapPort} runBootstrapPort — new-run entity/world setup after `generateWorld`
  * @property {BootstrapPort} bootstrapPort — feature-gated `createGame` boot
- * @property {RunScenePort} runScenePort — run scene enter/tick/capabilities
+ * @property {RunScenePort} runScenePort — simulation enter/tick/layout hooks
  * @property {CombatPort} [combatPort] — defaults to noop when omitted
  * @property {(fsm: import("../Libraries/FSM/StateMachine.js").StateMachine) => import("../Libraries/Input/keyboardBindings.js").KeyBinding[]} [keyBindings]
  * @property {(eventBus: import("../Libraries/Events/EventBus.js").EventBus) => void} [registerListeners]

@@ -1,5 +1,5 @@
 import { fireRadioTrigger } from "../../../Core/EventSystem.js";
-import { RunSceneController, compileRunScenes, createRunSceneBehaviors } from "../../../Libraries/RunScene/index.js";
+import { RunSceneController, compileRunScenes, createRunSceneBehaviors } from "../runScene/index.js";
 import { clueSearchInspectKeys, clueSearchInspectRadioTriggers } from "./inspectManifest.js";
 import { towerRunScenePorts } from "../runScenePorts.js";
 /**
@@ -8,7 +8,7 @@ import { towerRunScenePorts } from "../runScenePorts.js";
  * @type {null | "run_start" | "intro_guards" | "clue_search" | "main_combat"}
  */
 export const startRunAtScene = null;
-/** @type {import("../../../Libraries/RunScene/compileRunScenes.js").RunSceneConfig[]} */
+/** @type {import("../runScene/compileRunScenes.js").RunSceneConfig[]} */
 export const runScenes = [
     {
         id: "run_start",

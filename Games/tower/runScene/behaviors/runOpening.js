@@ -1,5 +1,5 @@
-import { fireRadioTrigger } from "../../../Core/EventSystem.js";
-import { getCombatPort } from "../../../Core/GamePorts.js";
+import { fireRadioTrigger } from "../../../../Core/EventSystem.js";
+import { getCombatPort } from "../../../../Core/GamePorts.js";
 import { ensureRunScene } from "../runSceneState.js";
 /**
  * Opening beat — plays a run-start radio, runs game opening setup, then advances via completeWhen.

@@ -1,5 +1,4 @@
 import { fireRadioTrigger } from "../../Core/EventSystem.js";
-import { markRadioTriggersSeen } from "../../Libraries/RunScene/markRadioTriggersSeen.js";
 import { spawnPoolBalls, createInitialPoolState, ensurePoolState } from "./balls.js";
 import { getPoolLayout } from "./config/tableLayout.js";
 import { processPockets } from "./pockets.js";

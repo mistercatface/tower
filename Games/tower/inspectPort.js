@@ -5,7 +5,7 @@ import {
     handleInspectCollectClose,
     handleInspectCollectOpen,
     isInspectCollectActive,
-} from "../../Libraries/RunScene/behaviors/inspectCollect.js";
+} from "./runScene/behaviors/inspectCollect.js";
 import { registerGameInspectEntries } from "./content/inspect/inspectContent.js";
 export const towerInspectPort = {
     registerEntries() {
