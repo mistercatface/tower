@@ -1,5 +1,6 @@
 @import url('../../Tools/Lab/lab-shared.css');
 @import url('./tilelab-shell.css');
+@import url('./tilelab-map.css');
 
 #motifList {
     max-height: 140px;

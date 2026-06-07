@@ -26,7 +26,8 @@ body.shell-tilelab .app {
     height: 100%;
 }
 
-body.shell-tilelab #gameCanvas {
+body.shell-tilelab #gameCanvas,
+body.shell-tilelab #mapPreview {
     position: absolute;
     inset: 0;
     width: 100%;

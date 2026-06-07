@@ -1,10 +1,10 @@
 import { gridSettings } from "../../../Config/Config.js";
 import { generateWorld, getWorldGen } from "../../../Core/GamePorts.js";
+import { buildMapRenderCaches } from "../../../Games/tower/render/map/MapRenderCache.js";
 import { withSeededRandom } from "../../../Libraries/Random/index.js";
 import { focusLabNode as applyNodeFocus } from "./mapFocus.js";
-
+import { calculatePathTest, resetPathTestPositions } from "./mapPathTest.js";
 export const mapGenCanvasBounds = { width: gridSettings.width, height: gridSettings.height };
-
 export function populateNodeSelect(state) {
     const select = document.getElementById("mapNodeSelect");
     if (!select || !state) return;
@@ -18,11 +18,9 @@ export function populateNodeSelect(state) {
     }
     select.value = state.getMapNode(prev) ? String(prev) : "0";
 }
-
 export function listLabMapNodes(state) {
     return state.mapNodes.map((n) => ({ id: n.id, layer: n.layer, strategy: n.strategy ?? "?" })).sort((a, b) => a.layer - b.layer || a.id - b.id);
 }
-
 /**
  * @param {import("../TileLabGameState.js").TileLabGameState} state
  * @param {{ mapSeed: number, floorSeed: number }} seeds
@@ -32,12 +30,17 @@ export function generateTilelabMap(state, { mapSeed, floorSeed }) {
     withSeededRandom(mapSeed, () => {
         generateWorld(state);
     });
+    buildMapRenderCaches(state);
     state.worldSurfaceSeed = floorSeed;
     state.worldSurfaces.clear();
     state.mapSeed = mapSeed;
     state.floorSeed = floorSeed;
+    state.mapLab.selectedNodeId = null;
+    const bounds = state.obstacleGrid;
+    if (bounds?.minX !== undefined) state.mapViewport.snapTo((bounds.minX + bounds.maxX) / 2, (bounds.minY + bounds.maxY) / 2);
+    resetPathTestPositions(state);
+    calculatePathTest(state);
     applyNodeFocus(state, Number(document.getElementById("mapNodeSelect")?.value) || 0);
     populateNodeSelect(state);
 }
-
 export { applyNodeFocus as focusLabNode };

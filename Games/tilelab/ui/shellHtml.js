@@ -3,27 +3,34 @@ export const TILELAB_UI_HTML = `
     <div class="toolbar">
         <h1>Tile Lab</h1>
         <span class="sep"></span>
-        <label>Floor seed <input id="seedInput" type="number" value="42" step="1"></label>
-        <button type="button" id="randomSeedBtn" class="secondary">Rand</button>
+        <span class="view-mode-group">
+            <label class="check-inline"><input type="radio" name="labViewMode" value="surface" checked> Surface</label>
+            <label class="check-inline"><input type="radio" name="labViewMode" value="topology"> Topology</label>
+        </span>
         <span class="sep"></span>
         <label>Map seed <input id="mapSeedInput" type="number" value="42"></label>
         <button type="button" id="regenMapBtn" class="secondary">New map</button>
         <label>Node <select id="mapNodeSelect"></select></label>
-        <span class="sep"></span>
-        <label title="Preview zoom">Cam <span id="gameZoomValue">1</span>×
-            <input id="gameZoomInput" type="range" min="0.25" max="2.5" value="1" step="0.05">
-        </label>
-        <span id="rangeMeta" class="range-meta"></span>
-        <span class="sep"></span>
-        <label class="check-inline"><input id="showRangeRingInput" type="checkbox" checked> Range ring</label>
-        <label class="check-inline"><input id="showVignetteInput" type="checkbox"> Circular Overlay</label>
-        <span class="sep"></span>
-        <button type="button" id="regenerateBtn">Redraw</button>
+        <span id="surfaceToolbarGroup">
+            <span class="sep"></span>
+            <label>Floor seed <input id="seedInput" type="number" value="42" step="1"></label>
+            <button type="button" id="randomSeedBtn" class="secondary">Rand</button>
+            <span class="sep"></span>
+            <label title="Preview zoom">Cam <span id="gameZoomValue">1</span>×
+                <input id="gameZoomInput" type="range" min="0.25" max="2.5" value="1" step="0.05">
+            </label>
+            <span id="rangeMeta" class="range-meta"></span>
+            <span class="sep"></span>
+            <label class="check-inline"><input id="showRangeRingInput" type="checkbox" checked> Range ring</label>
+            <label class="check-inline"><input id="showVignetteInput" type="checkbox"> Circular Overlay</label>
+            <span class="sep"></span>
+            <button type="button" id="regenerateBtn">Redraw</button>
+        </span>
     </div>
     <div class="workspace">
         <aside class="col col-editor">
-            <div class="col-head">Profile editor</div>
-            <div class="col-body">
+            <div id="surfaceEditorPanel" class="col-body">
+                <div class="col-head">Profile editor</div>
                 <div class="editor-tools">
                     <select id="presetSelect"></select>
                     <button type="button" id="loadPresetBtn">Load</button>
@@ -54,12 +61,55 @@ export const TILELAB_UI_HTML = `
                     </details>
                 </div>
             </div>
+            <div id="topologyEditorPanel" class="col-body" style="display:none">
+                <div class="col-head">Map inspector</div>
+                <div class="editor-scroll">
+                    <details class="editor-block" open>
+                        <summary>Display Overlays</summary>
+                        <div>
+                            <label class="check-inline block-check"><input id="showNodesInput" type="checkbox" checked> Show Nodes &amp; Connections</label>
+                            <label class="check-inline block-check"><input id="showRoomZonesInput" type="checkbox" checked> Show Room Exclusion Zones</label>
+                            <label class="check-inline block-check"><input id="showWallsInput" type="checkbox" checked> Show Physics Walls</label>
+                            <label class="check-inline block-check"><input id="showGridBoundsInput" type="checkbox" checked> Show Entity Grid Bounds</label>
+                        </div>
+                    </details>
+                    <details class="editor-block" open>
+                        <summary>Pathfinding Test</summary>
+                        <div>
+                            <label class="check-inline block-check"><input id="showPathDebugInput" type="checkbox" checked> Show HPA* Grid &amp; Regions</label>
+                            <label class="check-inline block-check"><input id="showPathTestInput" type="checkbox" checked> Enable Pathing Test</label>
+                            <div id="pathTestControls" style="display:none;margin-top:8px;border-top:1px solid var(--border);padding-top:8px">
+                                <div style="margin-bottom:8px"><strong>Click Action:</strong></div>
+                                <label class="block-check"><input type="radio" name="clickAction" value="selectNode" checked> Select Node</label>
+                                <label class="block-check"><input type="radio" name="clickAction" value="repositionPlayer"> Reposition Player</label>
+                                <label class="block-check"><input type="radio" name="clickAction" value="setTarget"> Set Path Target</label>
+                                <div id="pathStatus" class="path-status">No path calculated</div>
+                            </div>
+                        </div>
+                    </details>
+                    <details class="editor-block" open>
+                        <summary>Generation Config</summary>
+                        <div id="mapSettingsPanel"></div>
+                    </details>
+                    <details class="editor-block" open>
+                        <summary>Node Info</summary>
+                        <div id="nodeInfoPanel">Select a node from the map or list.</div>
+                    </details>
+                    <details class="editor-block" open>
+                        <summary>Node List</summary>
+                        <div id="nodeListPanel"></div>
+                    </details>
+                </div>
+            </div>
         </aside>
         <div class="resizer" id="resizer"></div>
         <section class="col col-map">
             <div class="map-status" id="gameMetaLine">WASD move · drag · wheel zoom</div>
+            <div class="map-status" id="mapStatusLine" style="display:none">WASD move · drag · wheel zoom</div>
             <div class="map-container">
-                <div class="map-stage" id="mapStage"></div>
+                <div class="map-stage" id="mapStage">
+                    <canvas id="mapPreview"></canvas>
+                </div>
                 <div class="animation-stage" id="animationStage">
                     <div class="animation-stage-header">Animation Preview</div>
                     <canvas id="animationPreviewCanvas" width="256" height="256"></canvas>

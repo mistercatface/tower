@@ -5,23 +5,16 @@ import { initAnimationPreview } from "./LabAnimationPreview.js";
 import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEditor.js";
 import { initMapPreviewNavigation } from "../world/surfacePreview.js";
 import { registerEditorProfiles, renderTilelabPreview, syncRuntimeLabProfile } from "./preview.js";
-import {
-    readControls,
-    applyToolbarDefaults,
-    initPresetSelect,
-    initToolbarDefaults,
-    bindToolbarControls,
-    syncTilelabWorld,
-    syncPreviewZoomToStage,
-} from "./toolbar.js";
+import { readControls, applyToolbarDefaults, initPresetSelect, initToolbarDefaults, bindToolbarControls, syncTilelabWorld, syncPreviewZoomToStage } from "./toolbar.js";
 import { TILELAB_UI_HTML } from "./shellHtml.js";
-
+import { bindMapInspectorControls, syncMapInspectorAfterRegen } from "./mapInspector.js";
+import { initMapTopologyNavigation } from "./mapInteractions.js";
+import { bindViewModeControls } from "./viewMode.js";
+import { renderActiveLabView } from "./renderLabView.js";
 /** @typedef {import("../../../Core/GameDefinitionTypes.js").UiPort} UiPort */
-
 let previewRefreshTimer = null;
 let bakeRepaintRaf = null;
 let bootstrapped = false;
-
 function schedulePreviewRefresh(state, debounceMs) {
     if (previewRefreshTimer != null) clearTimeout(previewRefreshTimer);
     const run = () => refreshPreview(state);
@@ -34,8 +27,8 @@ function schedulePreviewRefresh(state, debounceMs) {
         run();
     }, debounceMs);
 }
-
 function runBakeRepaintLoop(state) {
+    if (state.labViewMode !== "surface") return;
     if (bakeRepaintRaf != null) cancelAnimationFrame(bakeRepaintRaf);
     const tick = () => {
         renderTilelabPreview(state, readControls(state));
@@ -44,16 +37,17 @@ function runBakeRepaintLoop(state) {
     };
     bakeRepaintRaf = requestAnimationFrame(tick);
 }
-
 async function refreshPreview(state) {
     const ctrl = readControls(state);
     syncTilelabWorld(state, ctrl);
-    state.worldSurfaces.clear();
-    await registerEditorProfiles(state);
-    renderTilelabPreview(state, ctrl);
-    runBakeRepaintLoop(state);
+    syncMapInspectorAfterRegen(state, () => renderActiveLabView(state));
+    if (state.labViewMode === "surface") {
+        state.worldSurfaces.clear();
+        await registerEditorProfiles(state);
+        renderTilelabPreview(state, ctrl);
+        runBakeRepaintLoop(state);
+    } else renderActiveLabView(state);
 }
-
 function attachGameCanvas() {
     const mapStage = document.getElementById("mapStage");
     const canvas = document.getElementById("gameCanvas");
@@ -62,7 +56,6 @@ function attachGameCanvas() {
         canvas.id = "gameCanvas";
     }
 }
-
 function bootstrapTilelabUi(state) {
     if (bootstrapped) return;
     bootstrapped = true;
@@ -75,36 +68,44 @@ function bootstrapTilelabUi(state) {
         },
     });
     syncRuntimeLabProfile();
+    bindViewModeControls(state, () => renderActiveLabView(state));
+    bindMapInspectorControls(state, () => renderActiveLabView(state));
+    initMapTopologyNavigation(state, () => renderActiveLabView(state));
     initMapPreviewNavigation(() => ({ ...readControls(state), worldState: state }), {
         onViewChange: () => {
+            if (state.labViewMode !== "surface") return;
             renderTilelabPreview(state, readControls(state));
             if (state.worldSurfaces?.hasPendingSurfaceBakes?.()) runBakeRepaintLoop(state);
         },
     });
     bindToolbarControls({
         onRefresh: () => schedulePreviewRefresh(state, 0),
-        onRegenMap: () => syncTilelabWorld(state, readControls(state), true),
+        onRegenMap: () => {
+            syncTilelabWorld(state, readControls(state), true);
+            syncMapInspectorAfterRegen(state, () => renderActiveLabView(state));
+            renderActiveLabView(state);
+        },
         onStageResize: () => {
             applyToolbarDefaults();
             syncPreviewZoomToStage();
-            renderTilelabPreview(state, readControls(state));
+            renderActiveLabView(state);
         },
     });
     initToolbarDefaults();
     initResizer("resizer", () => {
         applyToolbarDefaults();
         syncPreviewZoomToStage();
-        renderTilelabPreview(state, readControls(state));
+        renderActiveLabView(state);
     });
     const animCanvas = document.getElementById("animationPreviewCanvas");
     if (animCanvas) initAnimationPreview(animCanvas, buildProfileFromEditor);
     registerEditorProfiles(state).then(() => {
         applyToolbarDefaults();
         syncPreviewZoomToStage();
+        syncMapInspectorAfterRegen(state, () => renderActiveLabView(state));
         refreshPreview(state);
     });
 }
-
 /** @type {UiPort} */
 export const tilelabUiPort = {
     mount({ state }) {
@@ -121,7 +122,9 @@ export const tilelabUiPort = {
     updateHud() {},
     updateUI({ state }) {
         if (!bootstrapped) return;
-        renderTilelabPreview(state, readControls(state));
-        if (state.worldSurfaces?.hasPendingSurfaceBakes?.()) runBakeRepaintLoop(state);
+        if (state.labViewMode === "surface") {
+            renderTilelabPreview(state, readControls(state));
+            if (state.worldSurfaces?.hasPendingSurfaceBakes?.()) runBakeRepaintLoop(state);
+        } else renderActiveLabView(state);
     },
 };
