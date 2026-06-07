@@ -1,5 +1,5 @@
 import { normalizeAngle } from "../Libraries/Math/Angle.js";
-import { resolveWeaponModeForGun, WeaponSystem, advanceTurretAmmo } from "./WeaponSystem.js";
+import { resolveWeaponModeForGun, WeaponSystem, advanceTurretAmmo } from "../Games/tower/WeaponSystem.js";
 import { getSlotFireIntervalMs } from "./gunCombat.js";
 import { Laser } from "../Entities/Laser.js";
 import { getBeamTickDamage, createBeamHitSource } from "./impactDamage.js";

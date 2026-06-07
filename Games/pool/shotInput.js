@@ -1,10 +1,11 @@
 import { requestUiUpdate } from "../../Core/EventSystem.js";
-import { WeaponSystem } from "../../Combat/WeaponSystem.js";
 import { getRunScenePort } from "../../Core/GamePorts.js";
 import { applyCueStrikeCollision, CUE_BALL_RESTITUTION } from "../../Libraries/CueStick/cueStrikeCollision.js";
 import { normalizeXY } from "../../Libraries/Math/Vec2.js";
 import { circleLeadingPoint } from "../../Libraries/Spatial/geometry/circleContact.js";
 import { rayCircleHitDistance } from "../../Libraries/Spatial/query/circleCast.js";
+import { castSteppedCircleRay } from "../../Libraries/Spatial/query/steppedCircleRayCast.js";
+import { wallContextFromState } from "../../Libraries/Spatial/query/wallContext.js";
 import { MAX_SHOT_POWER, MIN_SHOT_POWER, CUE_GRAB_RADIUS_PAD, POOL_BALL_RADIUS, POOL_CUE_MAX_PULL, POOL_CUE_PULL_SCALE, POOL_CUE_MIN_PULL_DRAG } from "./config/tableLayout.js";
 import { getCueBall, ensurePoolState, allBallsStopped, getActiveBalls } from "./balls.js";
 const maxPull = POOL_CUE_MAX_PULL;
@@ -181,7 +182,7 @@ export function estimateCueBallTravelDistance(v0, strategy) {
     }
 }
 /**
- * Cue-ball aim line — walls via {@link WeaponSystem.castLaser}, balls via analytic ray.
+ * Cue-ball aim line — walls via {@link castSteppedCircleRay}, balls via analytic ray.
  *
  * @param {object} state
  * @returns {{ x1: number, y1: number, x2: number, y2: number } | null}
@@ -211,7 +212,7 @@ export function getCueAimLinePreview(state) {
         const t = rayCircleHitDistance(cue.x, cue.y, dx, dy, ball.x, ball.y, radius + otherR);
         if (t != null && t < stopDist) stopDist = t;
     }
-    const wallHit = WeaponSystem.castLaser(cue.x, cue.y, angle, maxDist, state, radius);
+    const wallHit = castSteppedCircleRay(cue.x, cue.y, angle, maxDist, radius, { wallCtx: wallContextFromState(state) });
     if (wallHit.dist < stopDist) stopDist = wallHit.dist;
     const lead = circleLeadingPoint(cue.x, cue.y, radius, dx, dy);
     // stopDist is center-path distance at contact; leading cap is one radius further along the shot axis

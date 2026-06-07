@@ -154,6 +154,9 @@ export function getPlayerActors(state) {
 export function getHostiles(state, actor) {
     return getTargeting().getHostiles(state, actor);
 }
+export function getBroadphaseActors(state) {
+    return getTargeting().getBroadphaseActors(state);
+}
 export function getNearestHostile(state, source, range, excludedTargets = null, opts = {}) {
     return getTargeting().getNearestHostile(state, source, range, excludedTargets, opts);
 }
