@@ -31,6 +31,7 @@
  * @typedef {object} RenderPorts
  * @property {Record<string, Function>} world3dPropRecipes
  * @property {object} kinematicsPorts
+ * @property {import("../Libraries/Render/worldStructure/LiveWorldStructure.js").WorldStructurePort} worldStructure
  * @property {SimulationEffectPass[]} [simulationEffectPasses]
  */
 /**

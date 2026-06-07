@@ -1,7 +1,7 @@
 import { state } from "../GameState/GameState.js";
 import { initializeSaveSystem } from "../Progression/Storage.js";
 import { applyGameBootstrap } from "../Libraries/Bootstrap/applyGameBootstrap.js";
-import { getBootstrapPort } from "./GamePorts.js";
+import { getBootstrapPort, getRenderPorts } from "./GamePorts.js";
 import { events, requestUiUpdate, requestUiHudUpdate, showGameOver, hideGameOver } from "./EventSystem.js";
 import { registerAllListeners } from "./GameListeners.js";
 import { PauseManager } from "./PauseManager.js";
@@ -92,6 +92,7 @@ export function createGame(definition) {
         canvas.height = canvas.clientHeight;
         state.canvasBounds = { width: canvas.width, height: canvas.height };
         viewport.setCanvasSize(canvas.width, canvas.height);
+        getRenderPorts().worldStructure.invalidate("viewport");
         if (getBootstrapPort().features.inspect) inspectBridge.resize();
     }
     registerAllListeners(events, pauseManager);
