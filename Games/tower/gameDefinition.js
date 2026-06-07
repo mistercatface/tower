@@ -1,4 +1,5 @@
-import { createUpgrades, createBaseUpgrades } from "../../Progression/Upgrades.js";
+import { createUpgrades, createBaseUpgrades } from "./progression/Upgrades.js";
+import { createTowerRunBootstrapPort } from "./runBootstrap.js";
 import { MapState, SimulationState, InspectorState } from "./states.js";
 import { inspectBridge } from "./inspect/InspectBridge.js";
 import { COMBAT_ROGUELIKE_BOOTSTRAP } from "../../Libraries/Bootstrap/presets.js";
@@ -11,7 +12,6 @@ import { getWorldPropDefinitions } from "../../Libraries/Content/PropCatalog.js"
 import { towerInteractionPairs, towerRenderPorts } from "./ports.js";
 import { towerSimulation } from "./simulation.js";
 import { towerUiPort } from "./ui/towerUiPort.js";
-import { createRoguelikeRunBootstrapPort } from "../../Libraries/RunBootstrap/presets/roguelikeMap.js";
 import { towerWorldGen } from "./worldGen.js";
 import { towerProceduralDesign } from "./config/surfaceProfiles.js";
 import { towerKeyBindings } from "./keyBindings.js";
@@ -33,7 +33,7 @@ export const towerGame = {
     targeting: towerTargeting,
     render: towerRenderPorts,
     worldGen: towerWorldGen,
-    runBootstrapPort: createRoguelikeRunBootstrapPort(),
+    runBootstrapPort: createTowerRunBootstrapPort(),
     bootstrapPort: COMBAT_ROGUELIKE_BOOTSTRAP,
     runScenePort: towerRunScenePort,
     combatPort: towerCombatPort,

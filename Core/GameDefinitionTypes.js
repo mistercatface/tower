@@ -137,6 +137,7 @@
  * @property {string} [saveKey]
  * @property {() => import("../GameState/SharedGameState.js").SharedGameState} createGameState
  * @property {() => object[]} [createUpgrades] — defaults to `[]` when omitted
+ * @property {(eventBus: import("../Libraries/Events/EventBus.js").EventBus, boot?: { state: object, upgrades: object[], fsm: import("../Libraries/FSM/StateMachine.js").StateMachine, resetGame: () => void }) => void} [registerListeners]
  * @property {Record<string, new () => object>} states
  * @property {string} initialState
  * @property {Partial<InteractionPairsPort>} [interactionPairs] — combat/physics overrides; physics defaults from engine
@@ -150,7 +151,6 @@
  * @property {RunScenePort} runScenePort — simulation enter/tick/layout hooks
  * @property {CombatPort} [combatPort] — defaults to noop when omitted
  * @property {(fsm: import("../Libraries/FSM/StateMachine.js").StateMachine) => import("../Libraries/Input/keyboardBindings.js").KeyBinding[]} [keyBindings]
- * @property {(eventBus: import("../Libraries/Events/EventBus.js").EventBus) => void} [registerListeners]
  * @property {() => void} [onCanvasResize]
  * @property {() => void | Promise<void>} [prepare]
  * @property {Partial<CombatFeatures>} [combat] — render combat layers; omitted = all off

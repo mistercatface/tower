@@ -1,4 +1,4 @@
-import { ProgressionManager } from "../../Progression/ProgressionManager.js";
+import { ProgressionManager } from "./progression/ProgressionManager.js";
 import { unlockProximityFightDialog } from "./runScene/behaviors/proximityRadioFight.js";
 /** @typedef {import("../../Core/GameDefinitionTypes.js").CombatPort} CombatPort */
 /** @type {CombatPort} */

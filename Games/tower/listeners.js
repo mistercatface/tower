@@ -4,14 +4,16 @@ import { Events, requestProgressDirty, requestUiUpdate, requestUiHudUpdate, requ
 import { getRunScenePort } from "../../Core/GamePorts.js";
 import { registerPersistentTriggers } from "../../Core/PersistentTriggerSetup.js";
 import { isSimulation } from "../../GameState/GamePhase.js";
-import { ProgressionManager } from "../../Progression/ProgressionManager.js";
-import { StatsManager } from "../../Progression/StatsManager.js";
+import { ProgressionManager } from "./progression/ProgressionManager.js";
+import { StatsManager } from "./progression/StatsManager.js";
 import { towerRadio } from "./radio.js";
 import { inspectBridge } from "./inspect/InspectBridge.js";
 import { towerInspectPort } from "./inspectPort.js";
 import { preloadAllInspectAssets } from "../../Libraries/Inspect/InspectCatalog.js";
-/** @param {import("../../Libraries/Events/EventBus.js").EventBus} eventBus */
-export function registerTowerListeners(eventBus) {
+import { progressionBootstrap } from "./progression/bootstrap.js";
+/** @param {import("../../Libraries/Events/EventBus.js").EventBus} eventBus @param {{ state: object, upgrades: object[], fsm: object, resetGame: () => void } | undefined} boot */
+export function registerTowerListeners(eventBus, boot) {
+    if (boot) progressionBootstrap({ state: boot.state, upgrades: boot.upgrades, events: eventBus });
     towerRadio.wire(eventBus, { requestPause: requestGamePause, requestResume: requestGameResume });
     inspectBridge.mount();
     towerInspectPort.registerEntries();

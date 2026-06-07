@@ -1,7 +1,7 @@
 import { createSimulationPort } from "../../Systems/Simulation/SimulationPipeline.js";
 import { runSimulationEnterPersistence } from "../../Systems/Simulation/simulationEnterPersistence.js";
+import { hordePhase, abilitiesPhase, upgradesPhase, levelUpsPhase } from "./phases.js";
 import {
-    abilitiesPhase,
     playerLocomotionPhase,
     flowFieldPhase,
     gameSceneTickPhase,
@@ -11,12 +11,9 @@ import {
     explosionsPhase,
     dispatchEventsPhase,
     floatingTextPhase,
-    upgradesPhase,
-    levelUpsPhase,
     worldSurfacePhase,
     inspectorPartyPhase,
 } from "../../Systems/Simulation/phases.js";
-import { hordePhase } from "./phases.js";
 /** @type {import("../../Core/GameDefinitionTypes.js").SimulationPort} */
 export const towerSimulation = createSimulationPort(
     [

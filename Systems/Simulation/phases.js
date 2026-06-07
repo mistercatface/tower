@@ -1,7 +1,6 @@
 import { FloatingText } from "../../Render/FloatingText.js";
 import { CombatParticles } from "../../Render/CombatParticles.js";
 import { RagdollCorpse } from "../../Entities/RagdollCorpse.js";
-import { ProgressionManager } from "../../Progression/ProgressionManager.js";
 import { Projectile } from "../../Entities/Projectile.js";
 import { Explosion } from "../../Entities/Explosion/Explosion.js";
 import { getRunScenePort } from "../../Core/GamePorts.js";
@@ -9,12 +8,6 @@ import { runPushablePhysics } from "./pushablePhysics.js";
 import { dispatchSimulationEvents } from "./dispatchSimulationEvents.js";
 /** @typedef {import("./SimulationRuntime.js").SimulationRuntime} SimulationRuntime */
 /** @typedef {{ run: (ctx: object, dt: number, runtime: SimulationRuntime) => void }} SimulationPhase */
-/** @type {SimulationPhase} */
-export const abilitiesPhase = {
-    run(ctx, dt, runtime) {
-        runtime.abilityState = ProgressionManager.updateAbilities(ctx.state, dt, ctx.upgrades);
-    },
-};
 /** @type {SimulationPhase} */
 export const playerLocomotionPhase = {
     run(ctx, dt, runtime) {
@@ -80,18 +73,6 @@ export const dispatchEventsPhase = {
 export const floatingTextPhase = {
     run(ctx, dt) {
         FloatingText.updateAll(ctx.state, dt);
-    },
-};
-/** @type {SimulationPhase} */
-export const upgradesPhase = {
-    run(ctx, dt) {
-        ctx.upgrades.forEach((upg) => upg.update(dt, ctx.state));
-    },
-};
-/** @type {SimulationPhase} */
-export const levelUpsPhase = {
-    run(ctx) {
-        ProgressionManager.processLevelUps(ctx.state, ctx.upgrades);
     },
 };
 /** @type {SimulationPhase} */

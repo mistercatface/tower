@@ -1,16 +1,15 @@
-import { createRunBootstrapPort } from "../RunBootstrapPipeline.js";
+import { createRunBootstrapPort } from "../../Libraries/RunBootstrap/RunBootstrapPipeline.js";
+import { generateWorldPhase } from "../../Libraries/RunBootstrap/phases.js";
 import {
     applyWeaponLoadoutPhase,
-    generateWorldPhase,
     initRunStatePhase,
     placePlayerFromLayoutPhase,
     resetAbilityTimersPhase,
     spawnMapPickupsPhase,
     spawnRunPartyPhase,
     syncUpgradeLevelsPhase,
-} from "../phases.js";
-/** Tower — full map reset: upgrades, loadout, world gen, party, per-node pickups. */
-export function createRoguelikeRunBootstrapPort() {
+} from "./runBootstrapPhases.js";
+export function createTowerRunBootstrapPort() {
     return createRunBootstrapPort([
         initRunStatePhase,
         resetAbilityTimersPhase,

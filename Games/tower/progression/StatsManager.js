@@ -1,7 +1,7 @@
-import { perkMilestones, xpForLevel } from "../Config/Config.js";
-import { createUpgradeLevels, resetUpgradeLevels } from "../Entities/CombatantStats.js";
-import { spawnFloatingText } from "../Core/EventSystem.js";
-import { resetRun } from "../Core/GamePorts.js";
+import { perkMilestones, xpForLevel } from "../../../Config/Config.js";
+import { createUpgradeLevels, resetUpgradeLevels } from "../../../Entities/CombatantStats.js";
+import { spawnFloatingText } from "../../../Core/EventSystem.js";
+import { resetRun } from "../../../Core/GamePorts.js";
 export class StatsManager {
     static initUpgradesList(state, upgradeList) {
         state.upgradeDefs = upgradeList;

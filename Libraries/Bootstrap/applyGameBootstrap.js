@@ -4,8 +4,6 @@ import { InputManager } from "../../Core/InputManager.js";
 import { loadPersistentTriggers } from "../../Core/PersistentTriggers.js";
 import { registerSharedOverlayListeners } from "../../UI/Core/sharedOverlays.js";
 import { clearGameChrome } from "../../UI/Core/uiRoot.js";
-import { hardResetProgress, initializeSaveSystem, loadProgress, registerProgressListeners } from "../../Progression/Storage.js";
-import { StatsManager } from "../../Progression/StatsManager.js";
 /**
  * @typedef {object} GameBootstrapContext
  * @property {import("../../Core/GameDefinitionTypes.js").GameDefinition} definition
@@ -42,15 +40,6 @@ export function applyGameBootstrap(ctx) {
     registerUiEventListeners(events);
     window.addEventListener("resize", resizeCanvas);
     window.gameState = state;
-    if (features.upgrades) StatsManager.initUpgradesList(state, upgrades);
-    if (features.save) {
-        registerProgressListeners(events);
-        loadProgress(state, upgrades);
-        initializeSaveSystem(state);
-        events.on(Events.PROGRESS_HARD_RESET, ({ state: s, resetGame: restart }) => {
-            hardResetProgress(s, restart);
-        });
-    }
     if (features.persistentTriggers) loadPersistentTriggers();
     clearGameChrome();
     getUiPort().mount({ state, upgrades });

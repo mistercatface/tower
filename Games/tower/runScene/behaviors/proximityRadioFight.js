@@ -1,7 +1,7 @@
 import { getEnemyDefinition } from "../../../../Entities/EntityRegistry.js";
 import { Enemy } from "../../../../Entities/Enemy.js";
 import { fireRadioTrigger } from "../../../../Core/EventSystem.js";
-import { isBaseStatUpgrade } from "../../../../Progression/Upgrades.js";
+import { isBaseStatUpgrade } from "../../progression/Upgrades.js";
 import { ensureRunScene, getRunSceneIntro } from "../runSceneState.js";
 /**
  * @param {import("../compileRunScenes.js").RunSceneConfig} def

@@ -1,13 +1,11 @@
 import { installGameState } from "../GameState/GameState.js";
-import { initializeSaveSystem } from "../Progression/Storage.js";
 import { applyGameBootstrap } from "../Libraries/Bootstrap/applyGameBootstrap.js";
-import { getBootstrapPort, getRenderPorts } from "./GamePorts.js";
+import { getRenderPorts, resetRun } from "./GamePorts.js";
 import { events, requestUiUpdate, hideGameOver } from "./EventSystem.js";
 import { registerCoreListeners } from "./GameListeners.js";
 import { PauseManager } from "./PauseManager.js";
 import { Renderer } from "../Render/Render.js";
 import { SimulationViewport } from "../Render/SimulationViewport.js";
-import { StatsManager } from "../Progression/StatsManager.js";
 import { StateMachine } from "../Libraries/FSM/StateMachine.js";
 import { setActiveGameDefinition } from "./ActiveGameDefinition.js";
 import { bootstrapEngine } from "./bootstrapEngine.js";
@@ -60,8 +58,7 @@ export function createGame(definition) {
     function resetGame() {
         state.scheduler.clear();
         state.isGameOver = false;
-        StatsManager.resetRun(state, upgrades);
-        if (getBootstrapPort().features.save) initializeSaveSystem(state);
+        resetRun(state, upgrades);
         pauseManager.reset();
         hideGameOver();
         viewport.snapTo(0, 0);
@@ -78,6 +75,6 @@ export function createGame(definition) {
         definition.onCanvasResize?.();
     }
     registerCoreListeners(events, pauseManager);
-    definition.registerListeners?.(events);
+    definition.registerListeners?.(events, { state, upgrades, fsm, resetGame });
     applyGameBootstrap({ definition, state, upgrades, events, pauseManager, canvas, fsm, viewport, resetGame, resizeCanvas });
 }
