@@ -12,8 +12,7 @@ import { getWorldPropDefinitions } from "../../Libraries/Content/PropCatalog.js"
 import { towerInteractionPairs, towerRenderPorts } from "./ports.js";
 import { towerSimulation } from "./simulation.js";
 import { towerUiPort } from "./ui/towerUiPort.js";
-import { createRoguelikeWorldGenPort } from "../../Libraries/WorldGen/presets/roguelikeMap.js";
-import { roguelikeProceduralDesign } from "../../Libraries/Procedural/roguelikeProceduralDesign.js";
+import { createRoguelikeWorldGenPort, roguelikeProceduralDesign } from "../../Libraries/WorldGen/presets/roguelikeMap.js";
 import { towerKeyBindings } from "./keyBindings.js";
 import { registerTowerListeners } from "./listeners.js";
 import { TowerGameState } from "./TowerGameState.js";

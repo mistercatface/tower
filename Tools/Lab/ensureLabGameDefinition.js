@@ -1,18 +1,35 @@
 import { getActiveGameDefinition, setActiveGameDefinition } from "../../Core/ActiveGameDefinition.js";
 import { bootstrapEngine } from "../../Core/bootstrapEngine.js";
-import { towerGame } from "../../Games/tower/gameDefinition.js";
+import { SharedGameState } from "../../GameState/SharedGameState.js";
 import { getWorldPropDefinitions } from "../../Libraries/Content/PropCatalog.js";
 import { loadPropAssets } from "../../Libraries/Content/loadPropAssets.js";
+import { createDefaultRenderPorts } from "../../Libraries/Render/defaultRenderPorts.js";
+import { layoutOnlyRunBootstrap } from "../../Libraries/RunBootstrap/phases.js";
+import { createRoguelikeWorldGenPort, roguelikeProceduralDesign } from "../../Libraries/WorldGen/presets/roguelikeMap.js";
 let labEngineBootstrapped = false;
-/**
- * MapLab / TileLab call engine map generation without createGame().
- * Installs the Tower game definition and runs engine bootstrap once.
- */
+const labDefinition = {
+    id: "lab",
+    canvasId: "gameCanvas",
+    createGameState() {
+        return new SharedGameState();
+    },
+    states: { simulation: class {} },
+    initialState: "simulation",
+    simulationPort: { runTick() {} },
+    uiPort: { mount() {}, updateHud() {}, updateUI() {} },
+    render: createDefaultRenderPorts(),
+    worldGen: createRoguelikeWorldGenPort(),
+    runBootstrapPort: layoutOnlyRunBootstrap,
+    runScenePort: { getLayout: () => null, onSimulationEnter() {}, onTick() {} },
+    proceduralDesign: roguelikeProceduralDesign,
+    worldSurface: { wallHeight: 20, pixelsPerCell: 6 },
+    perspective: { cameraHeight: 520, strength: 0.28 },
+};
 export function ensureLabGameDefinition() {
     if (Object.keys(getWorldPropDefinitions()).length === 0) loadPropAssets();
-    if (!getActiveGameDefinition()) setActiveGameDefinition(towerGame);
+    if (!getActiveGameDefinition()) setActiveGameDefinition(labDefinition);
     if (!labEngineBootstrapped) {
-        bootstrapEngine(towerGame);
+        bootstrapEngine(labDefinition);
         labEngineBootstrapped = true;
     }
 }

@@ -6,6 +6,7 @@ import { playerBaseStats } from "../../../Games/tower/config/towerConfig.js";
 import { getSurfaceProfileRevision } from "../../../Libraries/WorldSurface/SurfaceProfileRevision.js";
 import { invalidateWallAtlasKeyMemos } from "../../../Render/game/wallSurfaceInvalidation.js";
 import { setupLabViewportNavigation } from "../../Lab/lab-shared.js";
+import { getLabFocus, setLabFocus } from "./LabMapWorld.js";
 const render3D = new WorldSceneRenderer(getGameWorldSurfaceSettings());
 let lastBakeKey = "";
 const MOVE_SPEED_SCALE = 1;
@@ -62,8 +63,7 @@ function drawLabWorldFrame(ctx, canvas, viewW, viewH, worldState, profileId, gam
     const prevProfileOverride = worldState.surfaceProfileOverride;
     worldState.surfaceProfileOverride = profileId;
     maybeClearBakeCaches(worldState, profileId);
-    const cameraX = worldState.player.x;
-    const cameraY = worldState.player.y;
+    const { x: cameraX, y: cameraY } = getLabFocus(worldState);
     const viewport = new Viewport(cameraX, cameraY, gameZoom);
     viewport.setCanvasSize(viewW, viewH);
     viewport.zoom = gameZoom;
@@ -79,8 +79,8 @@ function drawLabWorldFrame(ctx, canvas, viewW, viewH, worldState, profileId, gam
     drawWorldScene(ctx, { state: worldState, viewport, worldSceneRenderer: render3D, canvas });
     worldState.canvasBounds = prevCanvasBounds;
     worldState.surfaceProfileOverride = prevProfileOverride;
-    if (showRangeRing) drawWeaponRangeRing(ctx, worldState.player.x, worldState.player.y, weaponRange);
-    if (showPlayerMarker) drawPlayerMarker(ctx, worldState.player.x, worldState.player.y);
+    if (showRangeRing) drawWeaponRangeRing(ctx, cameraX, cameraY, weaponRange);
+    if (showPlayerMarker) drawPlayerMarker(ctx, cameraX, cameraY);
     ctx.restore();
     if (showVignette) {
         const R = viewport.getVisualRadius();
@@ -117,14 +117,12 @@ export function initMapPreviewNavigation(getOptions, handlers = {}) {
     setupLabViewportNavigation("gamePreview", {
         getCamera: () => {
             const world = getOptions().worldState;
-            return { x: world?.player?.x ?? 0, y: world?.player?.y ?? 0, zoom: getOptions().gameZoom ?? 1 };
+            const focus = world ? getLabFocus(world) : { x: 0, y: 0 };
+            return { x: focus.x, y: focus.y, zoom: getOptions().gameZoom ?? 1 };
         },
         setCamera: (x, y, zoom) => {
             const world = getOptions().worldState;
-            if (world?.player) {
-                world.player.x = x;
-                world.player.y = y;
-            }
+            if (world) setLabFocus(world, x, y);
             const zoomInput = document.getElementById("gameZoomInput");
             if (zoomInput) {
                 zoomInput.value = String(zoom);

@@ -11,5 +11,5 @@ export {
     createArenaPhase,
     finalizeWorldPhase,
 } from "./phases.js";
-export { createRoguelikeWorldGenPort, buildRoguelikeMapPhases, ROGUELIKE_MAP_TOPOLOGY } from "./presets/roguelikeMap.js";
+export { createRoguelikeWorldGenPort, buildRoguelikeMapPhases, ROGUELIKE_MAP_TOPOLOGY, roguelikeProceduralDesign } from "./presets/roguelikeMap.js";
 export { createSingleArenaWorldGenPort } from "./presets/singleArena.js";

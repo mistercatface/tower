@@ -1,5 +1,5 @@
 import { playerBaseStats } from "../../Games/tower/config/towerConfig.js";
-import { roguelikeProceduralDesign } from "../../Libraries/Procedural/roguelikeProceduralDesign.js";
+import { roguelikeProceduralDesign } from "../../Libraries/WorldGen/presets/roguelikeMap.js";
 import { getDefaultSimulationZoom } from "../../Render/SimulationViewport.js";
 import { getLabWorld } from "./LabWorldSession.js";
 function getStageSize() {

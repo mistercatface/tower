@@ -3,6 +3,7 @@ import { invalidateProfileScratch } from "../../Libraries/WorldSurface/ProfileBa
 import { TileWorkerCoordinator } from "../../Libraries/WorldSurface/TileWorkerCoordinator.js";
 import { renderGamePreview, prepareGameCanvas, invalidateMapPreviewBakes } from "./map/LabMapPreview.js";
 import { getLabPreviewProfile, RUNTIME_LAB_PROFILE_ID } from "./profile/ProfileEditor.js";
+import { getLabFocus } from "./map/LabMapWorld.js";
 import { ensureLabWorld, getLabWorld, getLabWorldMapSeed } from "./LabWorldSession.js";
 import { invalidateWallAtlasKeyMemos } from "../../Render/game/wallSurfaceInvalidation.js";
 let registerEditorProfilesSerial = Promise.resolve();
@@ -50,7 +51,7 @@ export function renderMapPreview(ctrl, world) {
         const node = world.getCurrentMapNode();
         gameMeta.textContent =
             `node ${world.currentNodeId} ${node?.strategy ?? ""} · map ${getLabWorldMapSeed()} · ` +
-            `player ${Math.round(world.player.x)},${Math.round(world.player.y)} · ` +
+            `focus ${Math.round(getLabFocus(world).x)},${Math.round(getLabFocus(world).y)} · ` +
             `zoom ${ctrl.gameZoom.toFixed(2)} · range ${ctrl.weaponRange} · WASD`;
     }
 }

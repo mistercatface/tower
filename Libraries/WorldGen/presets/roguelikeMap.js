@@ -1,3 +1,5 @@
+import { SURFACE_PROFILE_ID } from "../../../Config/procedural/profileIds.js";
+import { BaseGeneratorStrategies } from "../../../Generator/GeneratorStrategies.js";
 import { playBoundsFromObstacleGrid } from "../playBounds.js";
 import { assembleRoguelikeWallsPhase, buildCellularBackdropPhase, buildRoguelikeMapGraphPhase, finalizeWorldPhase, initMapSpawnPhase, pregenerateRoguelikeNodeRoomsPhase } from "../phases.js";
 import { createWorldGenPort } from "../WorldGenPipeline.js";
@@ -48,12 +50,7 @@ function createRoguelikeMapWorldGenPort(topology, portOptions) {
  * @param {number} _cellSize
  */
 function nodeCenterStartLayout(px, py, _cellSize) {
-    return {
-        spawnX: px,
-        spawnY: py,
-        spawnClearRadius: 48,
-        spawnSlots: { center: { x: px, y: py } },
-    };
+    return { spawnX: px, spawnY: py, spawnClearRadius: 48, spawnSlots: { center: { x: px, y: py } } };
 }
 /**
  * Roguelike map — graph, rooms, backdrop, obstacle grid, HPA init. All games use this.
@@ -63,9 +60,10 @@ function nodeCenterStartLayout(px, py, _cellSize) {
  */
 export function createRoguelikeWorldGenPort(options = {}) {
     const { topology = ROGUELIKE_MAP_TOPOLOGY } = options;
-    return createRoguelikeMapWorldGenPort(topology, {
-        nodeWorldCoordScale: 7.0,
-        startMapNodeId: 0,
-        getStartLayout: nodeCenterStartLayout,
-    });
+    return createRoguelikeMapWorldGenPort(topology, { nodeWorldCoordScale: 7.0, startMapNodeId: 0, getStartLayout: nodeCenterStartLayout });
 }
+const roguelikeSurfaceProfileId = SURFACE_PROFILE_ID.tomatoGarden;
+const roguelikeSurfaceProfileByStrategy = Object.fromEntries(Object.keys(BaseGeneratorStrategies).map((key) => [key, roguelikeSurfaceProfileId]));
+roguelikeSurfaceProfileByStrategy.StartGameBuildingStrategy = roguelikeSurfaceProfileId;
+/** Default floors/walls for roguelike map games — pair with `createRoguelikeWorldGenPort()`. */
+export const roguelikeProceduralDesign = { surfaceProfileId: roguelikeSurfaceProfileId, surfaceProfileByStrategy: roguelikeSurfaceProfileByStrategy };
