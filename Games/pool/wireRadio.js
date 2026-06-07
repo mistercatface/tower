@@ -24,6 +24,3 @@ export function wirePoolRadio(eventBus, { requestPause, requestResume }) {
 export function isRadioDialogActive() {
     return poolRadioController?.isActive() ?? false;
 }
-/** @typedef {import("../../Core/GameDefinitionTypes.js").RadioPort} RadioPort */
-/** @type {RadioPort} */
-export const poolRadioPort = { wire: wirePoolRadio, isDialogActive: isRadioDialogActive };

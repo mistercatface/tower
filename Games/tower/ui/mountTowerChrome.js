@@ -11,7 +11,7 @@ const INSPECT_BANNER_HTML = `
     <span id="inspectMissionText"></span>
 </div>`;
 const COMBAT_HUD_SETTING_HTML = `
-<label id="combatHudModeRow" data-ui-region="combat-hud-setting">
+<label id="combatHudModeRow">
     <span>Combat HUD mode (H to cycle)</span>
     <select id="combatHudModeSelect">
         <option value="0">Off</option>
@@ -30,17 +30,17 @@ const UPGRADE_MODAL_HTML = `
 const TOWER_UI_HTML = `
 <div id="topUI">
     <div class="top-hud-stats">
-        <div class="top-hud-label top-hud-label--score" data-ui-region="score">
+        <div class="top-hud-label top-hud-label--score">
             Points: <span id="scoreDisplay">0</span>
         </div>
-        <div id="nextPerkDisplay" class="top-hud-label top-hud-label--perk" data-ui-region="perks">
+        <div id="nextPerkDisplay" class="top-hud-label top-hud-label--perk">
             Next Perk: Level 1
         </div>
     </div>
     <div id="topRightControls" class="top-right-controls">
-        <button id="mapBtn" class="map-nav-btn" type="button" title="Open map" data-ui-region="map">Map</button>
+        <button id="mapBtn" class="map-nav-btn" type="button" title="Open map">Map</button>
         <button id="closeMapBtn" class="map-nav-btn" type="button" title="Close map">Close</button>
-        <button id="settingsBtn" class="settings-gear-btn" type="button" title="Settings" data-ui-region="settings">⚙️</button>
+        <button id="settingsBtn" class="settings-gear-btn" type="button" title="Settings">⚙️</button>
     </div>
 </div>
 <div id="bottomArea">
@@ -63,7 +63,7 @@ const TOWER_UI_HTML = `
             <div id="healthText"></div>
         </div>
     </div>
-    <div id="uiContainer" data-ui-region="bottom-panel">
+    <div id="uiContainer">
         <div class="ui-panel-summary">
             <span>Level: <span id="levelDisplay">0</span></span>
             <span>XP: <span id="xpDisplay">0/25</span></span>

@@ -138,7 +138,18 @@
  * @property {number} [step]
  */
 /**
- * @typedef {import("./GameUiProfile.js").GameUiProfile} GameUiProfile
+ * @typedef {object} CombatFeatures
+ * @property {boolean} [entityBars]
+ * @property {boolean} [targetMarkers]
+ * @property {boolean} [combatHudModes]
+ * @property {boolean} [visibilityMask]
+ * @property {boolean} [hostileActors]
+ * @property {boolean} [playerActors]
+ * @property {boolean} [offScreenIndicators]
+ * @property {boolean} [globeOverlay]
+ */
+/**
+ * @typedef {"player-health" | "custom"} GameLifecycle
  */
 /**
  * @typedef {import("./GamePerspective.js").PerspectiveConfig} PerspectiveConfig
@@ -148,13 +159,13 @@
  * @property {string} id
  * @property {string} canvasId
  * @property {string} [saveKey]
- * @property {() => object[]} createUpgrades
+ * @property {() => object[]} [createUpgrades] — defaults to `[]` when omitted
  * @property {Record<string, new () => object>} states
  * @property {string} initialState
  * @property {Partial<InteractionPairsPort>} [interactionPairs] — combat/physics overrides; physics defaults from engine
  * @property {SimulationPort} simulationPort — phase pipeline (`runTick`, `onEnter`, …)
  * @property {UiPort} uiPort — DOM chrome mount + HUD/panel updates
- * @property {TargetingPort} targeting
+ * @property {TargetingPort} [targeting] — defaults to noop when omitted
  * @property {RenderPorts} render
  * @property {WorldGenPort} worldGen
  * @property {RunBootstrapPort} runBootstrapPort — new-run entity/world setup after `generateWorld`
@@ -163,8 +174,10 @@
  * @property {InspectPort} [inspectPort] — defaults to noop when omitted
  * @property {CombatPort} [combatPort] — defaults to noop when omitted
  * @property {RadioPort} [radioPort] — defaults to noop when omitted
+ * @property {(fsm: import("../GameState/GameStateMachine.js").GameStateMachine) => import("../Libraries/Input/keyboardBindings.js").KeyBinding[]} [keyBindings]
  * @property {() => void | Promise<void>} [prepare]
- * @property {Partial<import("./GameUiProfile.js").GameUiProfile>} [ui]
+ * @property {GameLifecycle} [lifecycle] — `"player-health"` ends run at 0 HP; default `"custom"` uses `isGameOver`
+ * @property {Partial<CombatFeatures>} [combat] — render combat layers; omitted = all off
  * @property {Partial<import("./GamePerspective.js").PerspectiveConfig>} [perspective]
  * @property {number} [propPixelSize] — target bake diameter for small props; large props auto-match world size
  * @property {Partial<import("./GameProceduralDesign.js").ProceduralDesignConfig>} [proceduralDesign]

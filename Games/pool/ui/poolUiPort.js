@@ -3,7 +3,6 @@ import { bindSpeedControl, speedControlHtml, syncSpeedControlDisplay, wireSpeedC
 import { ensurePoolState } from "../balls.js";
 import { getPoolStatusMessage } from "../poolHud.js";
 import { bindShellElements } from "../../../UI/Core/shellElements.js";
-import { setUiRegionVisible } from "../../../UI/Core/shellChrome.js";
 import { getUiRoot } from "../../../UI/Core/uiRoot.js";
 import { wireSettingsModal } from "../../../UI/Core/wireSettingsModal.js";
 /** @typedef {import("../../../Core/GameDefinitionTypes.js").UiPort} UiPort */
@@ -16,7 +15,7 @@ const POOL_UI_HTML = `
 </div>
 <div id="topUI">
     <div class="top-right-controls pool-top-controls">
-        <button id="settingsBtn" class="settings-gear-btn" type="button" title="Settings" data-ui-region="settings">⚙️</button>
+        <button id="settingsBtn" class="settings-gear-btn" type="button" title="Settings">⚙️</button>
     </div>
 </div>
 <div id="poolSpeedOverlay" class="pool-speed-overlay">${POOL_SPEED_CONTROL_HTML}</div>`;
@@ -59,7 +58,6 @@ export const poolUiPort = {
         bindPoolElements();
         if (poolSpeedControl) wireSpeedControl(poolSpeedControl, getActiveGameDefinition());
         wireSettingsModal(ctx.state);
-        setUiRegionVisible("settings", true);
         updatePoolHud(ctx.state);
     },
     updateUI(ctx) {

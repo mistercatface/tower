@@ -3,32 +3,27 @@ import { MapState, SimulationState, InspectorState } from "../../GameState/GameS
 import { COMBAT_ROGUELIKE_BOOTSTRAP } from "../../Libraries/Bootstrap/presets.js";
 import { towerInspectPort } from "./inspectPort.js";
 import { towerCombatPort } from "./combatPort.js";
-import { towerRadioPort } from "./wireRadio.js";
+import { isRadioDialogActive, wireTowerRadio } from "./wireRadio.js";
+import * as towerTargeting from "./targeting.js";
 import { towerRunScenePort } from "./runScenePort.js";
 import { registerTowerEntities } from "./config/entities.js";
 import { applyInspectManifestToProps } from "./config/inspectManifest.js";
 import { getWorldPropDefinitions } from "../../Libraries/Content/PropCatalog.js";
-import { towerInteractionPairs, towerRenderPorts, towerTargeting } from "./ports.js";
+import { towerInteractionPairs, towerRenderPorts } from "./ports.js";
 import { towerSimulation } from "./simulation.js";
 import { towerUiPort } from "./ui/towerUiPort.js";
 import { createRoguelikeRunBootstrapPort } from "../../Libraries/RunBootstrap/presets/roguelikeMap.js";
 import { towerWorldGen } from "./worldGen.js";
 import { towerProceduralDesign } from "./config/surfaceProfiles.js";
+import { towerKeyBindings } from "./keyBindings.js";
 /** @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition */
-/** @typedef {import("../../Core/GameUiProfile.js").GameUiProfile} GameUiProfile */
-/** @type {GameUiProfile} */
-const TOWER_UI_PROFILE = {
-    shell: "tower",
-    chrome: { score: true, perks: true, map: true, settings: true, bottomPanel: true, controls: "full", zoomSlider: true },
-    combat: { entityBars: true, targetMarkers: true, combatHudModes: true, visibilityMask: true, hostileActors: true, playerActors: true, offScreenIndicators: true, globeOverlay: true },
-    lifecycle: "player-health",
-};
 /** Tower — reference game definition. Engine ports injected via interactionPairs, targeting, render. */
 export const towerGame = {
     id: "tower",
     canvasId: "gameCanvas",
     saveKey: "tower_save_v4",
-    ui: TOWER_UI_PROFILE,
+    lifecycle: "player-health",
+    combat: { entityBars: true, targetMarkers: true, combatHudModes: true, visibilityMask: true, hostileActors: true, playerActors: true, offScreenIndicators: true, globeOverlay: true },
     proceduralDesign: towerProceduralDesign,
     interactionPairs: towerInteractionPairs,
     simulationPort: towerSimulation,
@@ -41,13 +36,15 @@ export const towerGame = {
     runScenePort: towerRunScenePort,
     inspectPort: towerInspectPort,
     combatPort: towerCombatPort,
-    radioPort: towerRadioPort,
+    radioPort: { wire: wireTowerRadio, isDialogActive: isRadioDialogActive },
+    keyBindings: towerKeyBindings,
     createUpgrades() {
         return [...createBaseUpgrades(), ...createUpgrades()];
     },
     states: { map: MapState, simulation: SimulationState, inspector: InspectorState },
     initialState: "simulation",
     prepare() {
+        document.body.classList.remove("shell-landscape-minimal");
         registerTowerEntities();
         applyInspectManifestToProps(getWorldPropDefinitions());
     },

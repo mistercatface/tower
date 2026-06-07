@@ -1,7 +1,7 @@
 import { PairFilter } from "../Libraries/Interaction/PairFilter.js";
 import { createDefaultInteractionPairs } from "../Libraries/Interaction/defaultPhysicsPairs.js";
 import { BaseGeneratorStrategies } from "../Generator/GeneratorStrategies.js";
-import { NOOP_COMBAT_PORT, NOOP_INSPECT_PORT, NOOP_RADIO_PORT } from "../Libraries/Ports/noopPorts.js";
+import { NOOP_COMBAT_PORT, NOOP_INSPECT_PORT, NOOP_RADIO_PORT, NOOP_TARGETING_PORT } from "../Libraries/Ports/noopPorts.js";
 import { getActiveGameDefinition } from "./ActiveGameDefinition.js";
 /** @typedef {import("./GameDefinitionTypes.js").InteractionPairsPort} InteractionPairsPort */
 /** @typedef {import("./GameDefinitionTypes.js").SimulationPort} SimulationPort */
@@ -40,9 +40,7 @@ export function getUiPort() {
 }
 /** @returns {TargetingPort} */
 export function getTargeting() {
-    const targeting = requireGameDefinition().targeting;
-    if (!targeting) throw new Error("Active game definition missing targeting port.");
-    return targeting;
+    return requireGameDefinition().targeting ?? NOOP_TARGETING_PORT;
 }
 /** @returns {RenderPorts} */
 export function getRenderPorts() {

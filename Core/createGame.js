@@ -11,7 +11,6 @@ import { StatsManager } from "../Progression/StatsManager.js";
 import { GameStateMachine } from "../GameState/GameStateMachine.js";
 import { inspectBridge } from "../Combat/inspect/InspectBridge.js";
 import { setActiveGameDefinition } from "./ActiveGameDefinition.js";
-import { applyGameShell, resolveUiProfile } from "./GameUiProfile.js";
 import { bootstrapEngine } from "./bootstrapEngine.js";
 import { applyGameCollisionSettings } from "./GameCollisionSettings.js";
 import { applyGamePropPixelSize } from "./GamePropPixelSize.js";
@@ -29,13 +28,12 @@ export function createGame(definition) {
     applyGameCollisionSettings(definition);
     applyGamePropQuantizeSettings(definition);
     applyGamePropPixelSize(definition);
-    applyGameShell(definition);
     const canvas = document.getElementById(definition.canvasId);
     if (!canvas) throw new Error(`createGame: canvas #${definition.canvasId} not found`);
     const ctx = canvas.getContext("2d");
     ctx.imageSmoothingEnabled = false;
     const renderer = new Renderer(canvas, ctx);
-    const upgrades = definition.createUpgrades();
+    const upgrades = definition.createUpgrades?.() ?? [];
     const viewport = new SimulationViewport(0, 0);
     const uiSnapshot = { health: -1, isMoving: false };
     const stateMachineContext = { state, upgrades, viewport, renderer };
@@ -52,8 +50,7 @@ export function createGame(definition) {
         }
         return false;
     }
-    const uiProfile = resolveUiProfile(definition);
-    const customLifecycle = uiProfile.lifecycle === "custom";
+    const customLifecycle = definition.lifecycle !== "player-health";
     function loop(timestamp) {
         if (state.lastTime === 0) state.lastTime = timestamp;
         let dt = timestamp - state.lastTime;

@@ -2,14 +2,24 @@ import { perkMilestones, xpForLevel } from "../../../Config/Config.js";
 import { buildAbilityTreeLayout } from "../../../Config/content/abilityTreeLayout.js";
 import { GamePhase, isSimulation } from "../../../GameState/GamePhase.js";
 import { getInspectPort } from "../../../Core/GamePorts.js";
-import { getUiProfile } from "../../../Core/GameUiProfile.js";
 import { getGunDefinition, playerEquipmentCatalog } from "../../../Config/content/guns.js";
 import { getSlotFireIntervalMs, getSlotReloadTimeMs } from "../../../Combat/gunCombat.js";
 import { countGunInLoadout, formatHandednessLabel, getEquipmentSlotCount, getGunEquipAction, normalizeWeaponLoadout } from "../../../Combat/equipmentLoadout.js";
-import { events, Events, emitPurchaseUpgrade, emitToggleAbility, emitSetUpgradeTab, emitSetStatsSubTab, emitToggleEquipWeapon, emitUnequipWeaponSlot } from "../../../Core/EventSystem.js";
-import { applyChromeProfile } from "../../../UI/Core/shellChrome.js";
+import {
+    events,
+    Events,
+    emitPurchaseUpgrade,
+    emitToggleAbility,
+    emitSetUpgradeTab,
+    emitSetStatsSubTab,
+    emitToggleEquipWeapon,
+    emitUnequipWeaponSlot,
+    setGameZoomFromSlider,
+    emitGameRestart,
+    emitMapToggle,
+} from "../../../Core/EventSystem.js";
 import { bindShellElements } from "../../../UI/Core/shellElements.js";
-import { wireShellControls } from "../../../UI/Core/wireShellControls.js";
+import { wireSettingsModal } from "../../../UI/Core/wireSettingsModal.js";
 import { bindSpeedControl, syncSpeedControlDisplay, wireSpeedControl } from "../../../Libraries/Playback/index.js";
 import { getActiveGameDefinition } from "../../../Core/ActiveGameDefinition.js";
 import { mountTowerChrome } from "./mountTowerChrome.js";
@@ -60,7 +70,6 @@ function updateToggleButton(btnId, isUnlocked, isActive, btnText, upgDef) {
     } else btn.style.display = "none";
 }
 function updateMapNavButtons(state) {
-    if (!getUiProfile().chrome.map) return;
     const onMap = state.phase === GamePhase.MAP;
     const showOpenMap = !onMap && !state.isGameOver;
     if (elements.mapBtn) elements.mapBtn.style.display = showOpenMap ? "block" : "none";
@@ -83,24 +92,18 @@ function updateInspectMissionBanner(state) {
 function updateHud(state, upgrades) {
     updateMapNavButtons(state);
     updateInspectMissionBanner(state);
-    const chrome = getUiProfile().chrome;
-    if (!chrome.bottomPanel && !chrome.score && !chrome.perks) return;
-    if (chrome.bottomPanel) {
-        setHudLabel("killsDisplay", state.kills);
-        setHudLabel("levelDisplay", state.level);
-        const xpNeeded = xpForLevel(state.level);
-        setHudLabel("xpDisplay", `${state.xp}/${xpNeeded}`);
-        const healthRatio = state.player.health / state.player.maxHealth;
-        updateProgressBar("healthSegments", "healthText", `HP: ${Math.max(0, state.player.health).toFixed(0)} / ${state.player.maxHealth}`, healthRatio, 10, (r) =>
-            r > 0.5 ? "#4CAF50" : r > 0.2 ? "#FFEB3B" : "#F44336",
-        );
-    }
-    if (chrome.score) setHudLabel("scoreDisplay", state.score);
-    if (chrome.perks) {
-        const nextPerk = perkMilestones.find((m) => m > state.highestLevelReached);
-        if (elements.nextPerkDisplay) elements.nextPerkDisplay.innerText = nextPerk ? `Next Perk: Level ${nextPerk}` : "All Perks Claimed";
-    }
-    if (upgrades && chrome.bottomPanel)
+    setHudLabel("killsDisplay", state.kills);
+    setHudLabel("levelDisplay", state.level);
+    const xpNeeded = xpForLevel(state.level);
+    setHudLabel("xpDisplay", `${state.xp}/${xpNeeded}`);
+    const healthRatio = state.player.health / state.player.maxHealth;
+    updateProgressBar("healthSegments", "healthText", `HP: ${Math.max(0, state.player.health).toFixed(0)} / ${state.player.maxHealth}`, healthRatio, 10, (r) =>
+        r > 0.5 ? "#4CAF50" : r > 0.2 ? "#FFEB3B" : "#F44336",
+    );
+    setHudLabel("scoreDisplay", state.score);
+    const nextPerk = perkMilestones.find((m) => m > state.highestLevelReached);
+    if (elements.nextPerkDisplay) elements.nextPerkDisplay.innerText = nextPerk ? `Next Perk: Level ${nextPerk}` : "All Perks Claimed";
+    if (upgrades)
         upgrades
             .filter((u) => u.isAbility && u.cooldown > 0)
             .forEach((upg) => {
@@ -142,11 +145,21 @@ function updateProgressBar(containerId, textId, textString, ratio, totalSegments
         if (seg.style.background !== targetColor) seg.style.background = targetColor;
     }
 }
+function wireTowerControls(state) {
+    elements.zoomSlider?.addEventListener("input", (e) => setGameZoomFromSlider(parseFloat(e.target.value)));
+    elements.restartBtn?.addEventListener("click", () => emitGameRestart());
+    wireSettingsModal(state);
+    elements.mapBtn?.addEventListener("click", () => emitMapToggle());
+    elements.closeMapBtn?.addEventListener("click", () => emitMapToggle());
+    elements.combatHudModeSelect?.addEventListener("change", (e) => {
+        state.combatHudMode = parseInt(e.target.value, 10) || 0;
+    });
+    if (elements.closeMapBtn) elements.closeMapBtn.style.display = "none";
+}
 function mountTowerUi(state, upgrades) {
     mountTowerChrome();
     elements = bindShellElements();
     towerSpeedControl = bindSpeedControl(elements.speedControls);
-    applyChromeProfile(getUiProfile());
     elements.passivesContainer.innerHTML = "";
     upgrades
         .filter((u) => u.isAbility && !u.showInHud)
@@ -198,7 +211,7 @@ function mountTowerUi(state, upgrades) {
         dynamicElements[btn.id] = btn;
         elements.upgradesContainer.appendChild(btn);
     });
-    wireShellControls(state);
+    wireTowerControls(state);
     if (towerSpeedControl) wireSpeedControl(towerSpeedControl, getActiveGameDefinition());
     updateUI(state, upgrades);
     updateHud(state, upgrades);
@@ -440,21 +453,13 @@ function drawStat(state, upg, abilityLayoutById) {
     }
 }
 function syncTowerSpeedControl(state) {
-    const chrome = getUiProfile().chrome;
-    if (chrome.controls === "none" || !towerSpeedControl) return;
-    if (chrome.controls === "full" || chrome.bottomPanel) syncSpeedControlDisplay(towerSpeedControl, state, getActiveGameDefinition());
-    else if (towerSpeedControl.pauseLabel) towerSpeedControl.pauseLabel.textContent = state.isPaused ? "PLAY" : "PAUSE";
+    if (towerSpeedControl) syncSpeedControlDisplay(towerSpeedControl, state, getActiveGameDefinition());
 }
 function updateUI(state, upgrades) {
     updateInspectMissionBanner(state);
-    const chrome = getUiProfile().chrome;
-    if (!chrome.bottomPanel) {
-        syncTowerSpeedControl(state);
-        return;
-    }
     const viewport = state.fsm?.context?.viewport;
-    if (chrome.zoomSlider && elements.zoomDisplay && viewport) elements.zoomDisplay.innerText = Math.round(viewport.zoom * 100) + "%";
-    if (chrome.zoomSlider && elements.zoomSlider && viewport) {
+    if (elements.zoomDisplay && viewport) elements.zoomDisplay.innerText = Math.round(viewport.zoom * 100) + "%";
+    if (elements.zoomSlider && viewport) {
         let sliderVal = 0.5;
         if (isSimulation(state.phase)) sliderVal = viewport.zoomProgress;
         else sliderVal = (viewport.zoom - 0.5) / 1.5;

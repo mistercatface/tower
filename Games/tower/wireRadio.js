@@ -25,6 +25,3 @@ export function wireTowerRadio(eventBus, { requestPause, requestResume }) {
 export function isRadioDialogActive() {
     return towerRadioController?.isActive() ?? false;
 }
-/** @typedef {import("../../Core/GameDefinitionTypes.js").RadioPort} RadioPort */
-/** @type {RadioPort} */
-export const towerRadioPort = { wire: wireTowerRadio, isDialogActive: isRadioDialogActive };

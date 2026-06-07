@@ -1,6 +1,7 @@
 import { getGameWorldSurfaceSettings } from "./WorldSurfaceBootstrap.js";
 import { SpriteCache } from "../Libraries/Canvas/SpriteCache.js";
 import { WorldSceneRenderer } from "../Libraries/Render/WorldSceneRenderer.js";
+import { getActiveGameDefinition } from "../Core/ActiveGameDefinition.js";
 import { getPlayerActors, getRenderPorts } from "../Core/GamePorts.js";
 import { buildWorldRenderInput, resolveRenderViewer } from "./adapters/WorldRenderAdapter.js";
 import { COMBAT_HUD_MODE, hudSettings } from "../Config/Config.js";
@@ -9,7 +10,6 @@ import { drawHostileOffScreenIndicators } from "./OffScreenIndicators.js";
 import { CombatParticles } from "./CombatParticles.js";
 import { renderMapView } from "./Map/MapViewRenderer.js";
 import { createGameMapViewConfig } from "./Map/mapViewPresets.js";
-import { getCombatFeatures } from "../Core/GameUiProfile.js";
 import { drawWorldScene } from "./worldSceneDraw.js";
 export class Renderer {
     constructor(canvas, ctx) {
@@ -71,9 +71,9 @@ export class Renderer {
         this.ctx.restore();
     }
     buildSimulationPipeline(state, viewport) {
-        const features = getCombatFeatures();
+        const combat = getActiveGameDefinition().combat;
         const entityPasses = state.entityLayers.map((layer) => ({ zIndex: layer.zIndex, fn: (state, viewport) => this.renderEntityCollection(state[layer.key], state, viewport) }));
-        const enabledEffects = this.effectPasses.filter((pass) => !pass.feature || features[pass.feature] !== false);
+        const enabledEffects = this.effectPasses.filter((pass) => !pass.feature || combat?.[pass.feature] === true);
         const portPasses = (getRenderPorts().simulationEffectPasses ?? []).map((pass) => ({ zIndex: pass.zIndex, fn: (state, viewport) => pass.draw(state, viewport, this.ctx) }));
         const pipeline = [...enabledEffects, ...portPasses, ...entityPasses];
         pipeline.sort((a, b) => a.zIndex - b.zIndex);
@@ -95,9 +95,9 @@ export class Renderer {
         this.ctx.restore();
         CombatParticles.renderAll(this.ctx, state, viewport);
         if (viewport && isWorldScene(state.phase)) {
-            const features = getCombatFeatures();
-            if (features.globeOverlay !== false) this.drawGlobeOverlay(state, viewport);
-            if (features.offScreenIndicators !== false) drawHostileOffScreenIndicators(this.ctx, state, viewport);
+            const combat = getActiveGameDefinition().combat;
+            if (combat?.globeOverlay) this.drawGlobeOverlay(state, viewport);
+            if (combat?.offScreenIndicators) drawHostileOffScreenIndicators(this.ctx, state, viewport);
         }
     }
     drawDebris(state, viewport) {
@@ -120,7 +120,7 @@ export class Renderer {
     drawActorAndTurrets(actor, state, viewport) {
         if (!actor || actor.isDead) return;
         if (viewport && typeof actor.isVisible === "function" && !actor.isVisible(viewport)) return;
-        if (getCombatFeatures().combatHudModes !== false && state.combatHudMode === COMBAT_HUD_MODE.CLASSIC) {
+        if (getActiveGameDefinition().combat?.combatHudModes && state.combatHudMode === COMBAT_HUD_MODE.CLASSIC) {
             actor.renderCombatHudClassic(this.ctx, this);
             return;
         }
