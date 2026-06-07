@@ -4,16 +4,14 @@ import { invalidateProfileScratch } from "../../../Libraries/WorldSurface/Profil
 import { TileWorkerCoordinator } from "../../../Libraries/WorldSurface/TileWorkerCoordinator.js";
 import { invalidateWallAtlasKeyMemos } from "../../../Render/game/wallSurfaceInvalidation.js";
 import { getLabFocus } from "../world/mapFocus.js";
+import { readMapControls } from "./mapInspector.js";
 import { drawTilelabSurfaceFrame, invalidateMapPreviewBakes, prepareGameCanvas } from "../world/surfacePreview.js";
 import { getLabPreviewProfile, RUNTIME_LAB_PROFILE_ID } from "./profile/ProfileEditor.js";
-
 let registerEditorProfilesSerial = Promise.resolve();
-
 /** Sync path — must run before the game loop can draw `__labA__`. */
 export function syncRuntimeLabProfile() {
     registerRuntimeSurfaceProfile(RUNTIME_LAB_PROFILE_ID, getLabPreviewProfile());
 }
-
 export function registerEditorProfiles(state) {
     registerEditorProfilesSerial = registerEditorProfilesSerial.then(async () => {
         const labProfile = getLabPreviewProfile();
@@ -28,7 +26,6 @@ export function registerEditorProfiles(state) {
     });
     return registerEditorProfilesSerial;
 }
-
 /**
  * @param {import("../TileLabGameState.js").TileLabGameState} state
  * @param {ReturnType<import("./toolbar.js").readControls>} ctrl
@@ -44,6 +41,8 @@ export function renderTilelabPreview(state, ctrl) {
         showRangeRing: ctrl.showRangeRing,
         viewW: size.width,
         viewH: size.height,
+        mapLab: state.labViewMode === "both" ? state.mapLab : null,
+        topologyOptions: state.labViewMode === "both" ? readMapControls() : null,
     });
     const gameMeta = document.getElementById("gameMetaLine");
     if (gameMeta) {

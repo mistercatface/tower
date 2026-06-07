@@ -6,12 +6,11 @@ import { getSurfaceProfileRevision } from "../../../Libraries/WorldSurface/Surfa
 import { invalidateWallAtlasKeyMemos } from "../../../Render/game/wallSurfaceInvalidation.js";
 import { setupLabViewportNavigation } from "../../../Tools/Lab/lab-shared.js";
 import { getLabFocus, setLabFocus } from "./mapFocus.js";
-
+import { drawMapLabInWorld } from "./drawMapLabInWorld.js";
 /** @type {WorldSceneRenderer | null} */
 let render3D = null;
 /** @type {import("../../../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings | null} */
 let render3DSettings = null;
-
 function getLabRender3D() {
     const settings = getGameWorldSurfaceSettings();
     if (!render3D || render3DSettings !== settings) {
@@ -20,9 +19,7 @@ function getLabRender3D() {
     }
     return render3D;
 }
-
 let lastBakeKey = "";
-
 export function prepareGameCanvas(canvas, stage) {
     if (!canvas || !stage) return null;
     const rect = stage.getBoundingClientRect();
@@ -37,7 +34,6 @@ export function prepareGameCanvas(canvas, stage) {
     }
     return { width, height, changed };
 }
-
 function drawWeaponRangeRing(ctx, x, y, range) {
     ctx.save();
     ctx.beginPath();
@@ -47,7 +43,6 @@ function drawWeaponRangeRing(ctx, x, y, range) {
     ctx.stroke();
     ctx.restore();
 }
-
 function drawFocusMarker(ctx, x, y) {
     ctx.save();
     ctx.fillStyle = "#00bcd4";
@@ -59,7 +54,6 @@ function drawFocusMarker(ctx, x, y) {
     ctx.stroke();
     ctx.restore();
 }
-
 function maybeClearBakeCaches(worldState, profileId) {
     const rev = getSurfaceProfileRevision(profileId);
     const key = `${profileId}:${rev}:${worldState.worldSurfaceSeed ?? 0}`;
@@ -68,13 +62,12 @@ function maybeClearBakeCaches(worldState, profileId) {
     invalidateWallAtlasKeyMemos(worldState);
     worldState.worldSurfaces.clear();
 }
-
 /**
  * @param {CanvasRenderingContext2D} ctx
  * @param {HTMLCanvasElement} canvas
  */
 export function drawTilelabSurfaceFrame(ctx, canvas, worldState, profileId, gameZoom, weaponRange, drawOptions = {}) {
-    const { showVignette = false, showRangeRing = false, showFocusMarker = true, viewW, viewH } = drawOptions;
+    const { showVignette = false, showRangeRing = false, showFocusMarker = true, viewW, viewH, mapLab = null, topologyOptions = null } = drawOptions;
     worldState.phase = "simulation";
     const prevProfileOverride = worldState.surfaceProfileOverride;
     worldState.surfaceProfileOverride = profileId;
@@ -93,6 +86,7 @@ export function drawTilelabSurfaceFrame(ctx, canvas, worldState, profileId, game
     ctx.save();
     viewport.apply(ctx);
     drawWorldScene(ctx, { state: worldState, viewport, worldSceneRenderer: getLabRender3D(), canvas });
+    if (mapLab && topologyOptions) drawMapLabInWorld(ctx, worldState, viewport, topologyOptions, mapLab);
     worldState.canvasBounds = prevCanvasBounds;
     worldState.surfaceProfileOverride = prevProfileOverride;
     if (showRangeRing) drawWeaponRangeRing(ctx, cameraX, cameraY, weaponRange);
@@ -112,13 +106,11 @@ export function drawTilelabSurfaceFrame(ctx, canvas, worldState, profileId, game
         ctx.restore();
     }
 }
-
 export function invalidateMapPreviewBakes() {
     lastBakeKey = "";
     render3D = null;
     render3DSettings = null;
 }
-
 export function initMapPreviewNavigation(getOptions, handlers = {}) {
     setupLabViewportNavigation("gameCanvas", {
         getCamera: () => {

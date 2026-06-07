@@ -2,12 +2,14 @@ import { renderMapTopologyView } from "../world/mapTopologyView.js";
 import { renderTilelabPreview } from "./preview.js";
 import { readMapControls } from "./mapInspector.js";
 import { readControls } from "./toolbar.js";
+import { showsSurfaceView } from "./viewMode.js";
 /** @param {import("../TileLabGameState.js").TileLabGameState} state */
 export function renderActiveLabView(state) {
-    if (state.labViewMode === "topology") {
+    const mode = state.labViewMode;
+    if (mode === "topology") {
         const { mapLab, mapViewport } = state;
         renderMapTopologyView(state, mapViewport, readMapControls(), mapLab.selectedNodeId, mapLab.playerPos, mapLab.targetPos, mapLab.currentPath, mapLab.currentAbstractPath);
         return;
     }
-    renderTilelabPreview(state, readControls(state));
+    if (showsSurfaceView(mode)) renderTilelabPreview(state, readControls(state));
 }

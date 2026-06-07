@@ -46,6 +46,11 @@ function renderMapViewContent(ctx, state, config) {
     if (showWalls && wallCache) drawMapWallCache(ctx, wallCache);
     if (showGraph) drawMapGraph(ctx, state, graphStyles, graphContext);
 }
+/** Map graph + debug layers in an already world-transformed context (no clear, no viewport.apply). */
+export function drawMapViewInWorld(ctx, state, config) {
+    renderMapViewContent(ctx, state, config);
+    if (config.drawOverlays) config.drawOverlays(ctx, state, config);
+}
 export function renderMapView(ctx, state, config) {
     const { width, height, viewport, backgroundColor = "#080a0e", clearBackground = true, drawOverlays } = config;
     ctx.save();

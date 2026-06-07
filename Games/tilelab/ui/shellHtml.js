@@ -6,6 +6,7 @@ export const TILELAB_UI_HTML = `
         <span class="view-mode-group">
             <label class="check-inline"><input type="radio" name="labViewMode" value="surface" checked> Surface</label>
             <label class="check-inline"><input type="radio" name="labViewMode" value="topology"> Topology</label>
+            <label class="check-inline"><input type="radio" name="labViewMode" value="both"> Both</label>
         </span>
         <span class="sep"></span>
         <label>Map seed <input id="mapSeedInput" type="number" value="42"></label>

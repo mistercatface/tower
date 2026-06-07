@@ -9,7 +9,7 @@ import { readControls, applyToolbarDefaults, initPresetSelect, initToolbarDefaul
 import { TILELAB_UI_HTML } from "./shellHtml.js";
 import { bindMapInspectorControls, syncMapInspectorAfterRegen } from "./mapInspector.js";
 import { initMapTopologyNavigation } from "./mapInteractions.js";
-import { bindViewModeControls } from "./viewMode.js";
+import { bindViewModeControls, showsSurfaceView } from "./viewMode.js";
 import { renderActiveLabView } from "./renderLabView.js";
 /** @typedef {import("../../../Core/GameDefinitionTypes.js").UiPort} UiPort */
 let previewRefreshTimer = null;
@@ -28,7 +28,7 @@ function schedulePreviewRefresh(state, debounceMs) {
     }, debounceMs);
 }
 function runBakeRepaintLoop(state) {
-    if (state.labViewMode !== "surface") return;
+    if (!showsSurfaceView(state.labViewMode)) return;
     if (bakeRepaintRaf != null) cancelAnimationFrame(bakeRepaintRaf);
     const tick = () => {
         renderTilelabPreview(state, readControls(state));
@@ -41,12 +41,12 @@ async function refreshPreview(state) {
     const ctrl = readControls(state);
     syncTilelabWorld(state, ctrl);
     syncMapInspectorAfterRegen(state, () => renderActiveLabView(state));
-    if (state.labViewMode === "surface") {
+    if (showsSurfaceView(state.labViewMode)) {
         state.worldSurfaces.clear();
         await registerEditorProfiles(state);
-        renderTilelabPreview(state, ctrl);
-        runBakeRepaintLoop(state);
-    } else renderActiveLabView(state);
+    }
+    renderActiveLabView(state);
+    if (showsSurfaceView(state.labViewMode)) runBakeRepaintLoop(state);
 }
 function attachGameCanvas() {
     const mapStage = document.getElementById("mapStage");
@@ -73,7 +73,7 @@ function bootstrapTilelabUi(state) {
     initMapTopologyNavigation(state, () => renderActiveLabView(state));
     initMapPreviewNavigation(() => ({ ...readControls(state), worldState: state }), {
         onViewChange: () => {
-            if (state.labViewMode !== "surface") return;
+            if (!showsSurfaceView(state.labViewMode)) return;
             renderTilelabPreview(state, readControls(state));
             if (state.worldSurfaces?.hasPendingSurfaceBakes?.()) runBakeRepaintLoop(state);
         },
@@ -122,9 +122,7 @@ export const tilelabUiPort = {
     updateHud() {},
     updateUI({ state }) {
         if (!bootstrapped) return;
-        if (state.labViewMode === "surface") {
-            renderTilelabPreview(state, readControls(state));
-            if (state.worldSurfaces?.hasPendingSurfaceBakes?.()) runBakeRepaintLoop(state);
-        } else renderActiveLabView(state);
+        renderActiveLabView(state);
+        if (showsSurfaceView(state.labViewMode) && state.worldSurfaces?.hasPendingSurfaceBakes?.()) runBakeRepaintLoop(state);
     },
 };
