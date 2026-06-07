@@ -1,6 +1,6 @@
 import { gridSettings } from "../../Config/Config.js";
 import { markRadioTriggersSeen } from "./runScene/index.js";
-import { towerWorldGen } from "./worldGen.js";
+import { getStartGameLayout } from "./tutorial/StartGameBuilding.js";
 import { towerRadio } from "./radio.js";
 /** @typedef {import("./runScene/runScenePorts.js").RunScenePorts} RunScenePorts */
 /** @type {RunScenePorts} */
@@ -9,7 +9,7 @@ export const towerRunScenePorts = {
         const mapNode = state.getStartMapNode?.();
         if (!mapNode) return null;
         const worldCoords = state.getNodeWorldCoords(mapNode);
-        return towerWorldGen.getStartLayout(worldCoords.x, worldCoords.y, gridSettings.cellSize);
+        return getStartGameLayout(worldCoords.x, worldCoords.y, gridSettings.cellSize);
     },
     radioRegistry: towerRadio.registry,
     markRadiosSeen(state, triggers) {

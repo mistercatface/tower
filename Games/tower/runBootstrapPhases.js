@@ -1,9 +1,14 @@
 import { gridSettings } from "../../Config/Config.js";
+import { resolveSurfaceProfileId } from "../../Config/procedural/profiles.js";
 import { rollPlayerStartLoadout } from "./combat/weaponLoadout.js";
-import { generateWorld, getWorldGen } from "../../Core/GamePorts.js";
+import { getWorldGen } from "../../Core/GamePorts.js";
 import { spawnInitialPickups, spawnStartGamePickups } from "../../Entities/Pickup.js";
+import { finalizeGeneratedWorld } from "../../Libraries/WorldGen/finalizeGeneratedWorld.js";
+import { ROGUELIKE_MAP_TOPOLOGY } from "../../Libraries/WorldGen/presets/roguelikeMap.js";
+import { serializeWalls } from "../../Libraries/WorldGen/worldGenUtils.js";
 import { buildMapRenderCaches } from "./render/map/MapRenderCache.js";
 import { StatsManager } from "./progression/StatsManager.js";
+import { generateStartGameBuilding, getStartGameLayout } from "./tutorial/StartGameBuilding.js";
 /** @typedef {import("../../Libraries/RunBootstrap/RunBootstrapPipeline.js").RunBootstrapContext} RunBootstrapContext */
 /** @typedef {import("../../Libraries/RunBootstrap/RunBootstrapPipeline.js").RunBootstrapPhase} RunBootstrapPhase */
 /** @type {RunBootstrapPhase} */
@@ -53,14 +58,36 @@ export const applyWeaponLoadoutPhase = {
     },
 };
 /** @type {RunBootstrapPhase} */
+export const applyTowerStartBuildingPhase = {
+    run(ctx) {
+        const { state } = ctx;
+        const startNode = state.getStartMapNode();
+        if (!startNode) return;
+        const coords = state.getNodeWorldCoords(startNode);
+        const radius = ROGUELIKE_MAP_TOPOLOGY.nodeRoomSerializeRadius;
+        state.walls = state.walls.filter((wall) => Math.hypot(wall.x - coords.x, wall.y - coords.y) > radius + wall.size / 2);
+        state.wallSpatialIndex.clear();
+        for (const wall of state.walls) state.wallSpatialIndex.insert(wall);
+        const newWalls = [];
+        generateStartGameBuilding({ walls: newWalls, flowFieldGrid: state.flowFieldGrid }, coords.x, coords.y);
+        for (const wall of newWalls) {
+            state.walls.push(wall);
+            state.wallSpatialIndex.insert(wall);
+        }
+        startNode.wallsData = serializeWalls(newWalls, coords.x, coords.y, radius);
+        startNode.strategy = "StartGameBuilding";
+        startNode.surfaceProfileId = resolveSurfaceProfileId({ layer: 0, strategy: "StartGameBuildingStrategy" });
+        finalizeGeneratedWorld(state, { centerX: coords.x, centerY: coords.y });
+    },
+};
+/** @type {RunBootstrapPhase} */
 export const placePlayerFromLayoutPhase = {
     run(ctx) {
         const { state } = ctx;
-        const worldGen = getWorldGen();
-        const startNode = state.getMapNode(worldGen.startMapNodeId ?? 0);
+        const startNode = state.getStartMapNode();
         if (!startNode) return;
         const coords = state.getNodeWorldCoords(startNode);
-        const layout = worldGen.getStartLayout(coords.x, coords.y, gridSettings.cellSize);
+        const layout = getStartGameLayout(coords.x, coords.y, gridSettings.cellSize);
         state.player.setSpawnPosition(layout.spawnX, layout.spawnY);
         state.player.resetToSpawn();
     },
@@ -86,7 +113,7 @@ export const spawnMapPickupsPhase = {
         const startId = worldGen.startMapNodeId ?? 0;
         for (const node of state.mapNodes) {
             const coords = state.getNodeWorldCoords(node);
-            if (node.id === startId) spawnStartGamePickups(state, coords.x, coords.y);
+            if (node.id === startId) spawnStartGamePickups(state, coords.x, coords.y, getStartGameLayout(coords.x, coords.y, gridSettings.cellSize));
             else spawnInitialPickups(state, coords.x, coords.y);
         }
     },

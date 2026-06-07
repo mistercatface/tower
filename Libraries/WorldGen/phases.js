@@ -183,25 +183,11 @@ export function pregenerateRoguelikeNodeRoomsPhase(topology) {
             const { state } = ctx;
             const { tempObstacleGrid, tempFlowFieldGrid } = getWorldGenTempGrids();
             const incomingByNodeId = buildIncomingNodesMap(state.mapNodes);
-            const worldGen = getWorldGen();
             const strategies = getMergedGeneratorStrategies();
             const strategyKeys = pickRandomGeneratorStrategyKeys();
             const serializeRadius = topology.nodeRoomSerializeRadius;
-            const startNode = state.getMapNode(worldGen.startMapNodeId ?? 0);
-            if (startNode) {
-                const coords = state.getNodeWorldCoords(startNode);
-                const startStrategy = strategies[worldGen.startNodeStrategyKey];
-                if (!startStrategy) throw new Error(`worldGen.startNodeStrategyKey not found: ${worldGen.startNodeStrategyKey}`);
-                tempFlowFieldGrid.centerX = coords.x;
-                tempFlowFieldGrid.centerY = coords.y;
-                const mockState = { walls: [], obstacleGrid: tempObstacleGrid, flowFieldGrid: tempFlowFieldGrid };
-                startStrategy.generate(mockState, coords.x, coords.y);
-                startNode.wallsData = serializeWalls(mockState.walls, coords.x, coords.y, serializeRadius);
-                startNode.strategy = worldGen.startNodeStrategyLabel ?? worldGen.startNodeStrategyKey;
-                startNode.surfaceProfileId = resolveSurfaceProfileId({ layer: 0, strategy: worldGen.startNodeStrategyKey });
-            }
             const { numLayers } = topology;
-            for (let l = 1; l < numLayers; l++) {
+            for (let l = 0; l < numLayers; l++) {
                 const layerNodes = state.mapNodes.filter((n) => n.layer === l);
                 for (const nodeB of layerNodes) {
                     const incomingNodes = incomingByNodeId.get(nodeB.id) || [];

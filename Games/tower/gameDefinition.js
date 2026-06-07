@@ -12,7 +12,7 @@ import { getWorldPropDefinitions } from "../../Libraries/Content/PropCatalog.js"
 import { towerInteractionPairs, towerRenderPorts } from "./ports.js";
 import { towerSimulation } from "./simulation.js";
 import { towerUiPort } from "./ui/towerUiPort.js";
-import { towerWorldGen } from "./worldGen.js";
+import { createRoguelikeWorldGenPort } from "../../Libraries/WorldGen/presets/roguelikeMap.js";
 import { towerProceduralDesign } from "./config/surfaceProfiles.js";
 import { towerKeyBindings } from "./keyBindings.js";
 import { registerTowerListeners } from "./listeners.js";
@@ -34,7 +34,7 @@ export const towerGame = {
     uiPort: towerUiPort,
     targeting: towerTargeting,
     render: towerRenderPorts,
-    worldGen: towerWorldGen,
+    worldGen: createRoguelikeWorldGenPort(),
     runBootstrapPort: createTowerRunBootstrapPort(),
     isWorldScene: isTowerWorldScene,
     input: towerInput,

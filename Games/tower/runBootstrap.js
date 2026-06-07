@@ -1,6 +1,7 @@
 import { createRunBootstrapPort } from "../../Libraries/RunBootstrap/RunBootstrapPipeline.js";
 import { generateWorldPhase } from "../../Libraries/RunBootstrap/phases.js";
 import {
+    applyTowerStartBuildingPhase,
     applyWeaponLoadoutPhase,
     buildMapRenderCachesPhase,
     initRunStatePhase,
@@ -17,6 +18,7 @@ export function createTowerRunBootstrapPort() {
         syncUpgradeLevelsPhase,
         applyWeaponLoadoutPhase,
         generateWorldPhase,
+        applyTowerStartBuildingPhase,
         buildMapRenderCachesPhase,
         placePlayerFromLayoutPhase,
         spawnRunPartyPhase,

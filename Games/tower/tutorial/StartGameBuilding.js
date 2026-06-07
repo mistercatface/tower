@@ -189,11 +189,6 @@ export function generateStartGameBuilding(state, px, py) {
             state.walls.push(new Segment(offsetX + c * cellSize + cellSize / 2, offsetY + r * cellSize + cellSize / 2, 0, cellSize, 0));
         }
 }
-export const StartGameBuildingStrategy = {
-    generate(state, px, py) {
-        generateStartGameBuilding(state, px, py);
-    },
-};
 export function getStartGameLayout(px, py, cellSize) {
     const { offsetX, offsetY } = snapLayoutOrigin(px, py, GRID_COLS, GRID_ROWS, cellSize);
     const worldSpawnSlots = resolveWorldSpawnSlots(offsetX, offsetY, cellSize);

@@ -85,17 +85,14 @@
  */
 /**
  * World bootstrap port — compose via `createWorldGenPort(phases, …)` or presets
- * (`createSingleArenaWorldGenPort`, `createRoguelikeMapWorldGenPort`) in `Libraries/WorldGen/`.
+ * (`createSingleArenaWorldGenPort`, `createRoguelikeWorldGenPort`) in `Libraries/WorldGen/`.
  *
  * @typedef {object} WorldGenPort
  * @property {(state: object) => void} generateWorld — build walls, bounds, and surface caches for a new run
  * @property {(state: object) => WorldPlayBounds | null} getPlayBounds — clip rendering/surfaces to playable area
  * @property {(state: object) => { centerX: number, centerY: number, width: number, height: number } | null} [getObstacleGridBounds] — exact nav/surface grid (skips spatialWorldMargin)
  * @property {number} [nodeWorldCoordScale] — roguelike map: graph node units → world units
- * @property {number} [startMapNodeId] — map graph node used for opening layout (default 0)
- * @property {string} [startNodeStrategyKey] — roguelike-map: key in strategies for node-0 room bake
- * @property {string} [startNodeStrategyLabel] — display label stored on the map node
- * @property {Record<string, WorldGenStrategy>} [strategies] — merged into the generator lookup table
+ * @property {number} [startMapNodeId] — map graph node used for default spawn layout (default 0)
  * @property {(px: number, py: number, cellSize: number) => StartLayout} getStartLayout
  * @property {boolean} [skipStartPickups] — omit crate/barrel scatter on map reset
  */

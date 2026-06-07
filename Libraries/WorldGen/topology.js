@@ -1,5 +1,5 @@
 /**
- * Roguelike map graph + backdrop tuning — define per game in `Games/<id>/mapTopology.js`.
+ * Roguelike map graph + backdrop tuning — see `presets/roguelikeMap.js` (`ROGUELIKE_MAP_TOPOLOGY`).
  *
  * @typedef {object} RoguelikeMapTopology
  * @property {number} numLayers

@@ -324,10 +324,10 @@ function collectWallAdjacentCells(state, layout, propRadius) {
         }
     return cells;
 }
-export function spawnStartGamePickups(state, playerX, playerY) {
-    const layout = getWorldGen().getStartLayout(playerX, playerY, state.obstacleGrid.cellSize);
+export function spawnStartGamePickups(state, playerX, playerY, layout = null) {
+    const resolvedLayout = layout ?? getWorldGen().getStartLayout(playerX, playerY, state.obstacleGrid.cellSize);
     const propRadius = getWorldPropDefinitions().crate.radius;
-    const wallCells = collectWallAdjacentCells(state, layout, propRadius);
+    const wallCells = collectWallAdjacentCells(state, resolvedLayout, propRadius);
     shuffleInPlace(wallCells);
     const crateCount = Math.min(50 + Math.floor(Math.random() * 26), wallCells.length);
     for (let i = 0; i < crateCount; i++) {
