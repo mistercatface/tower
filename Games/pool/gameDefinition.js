@@ -8,7 +8,8 @@ import { isRadioDialogActive, wirePoolRadio } from "./wireRadio.js";
 import { drawPoolPockets } from "./drawPockets.js";
 import { SURFACE_PROFILE_ID } from "../../Config/procedural/profileIds.js";
 import { createRunBootstrapPort } from "../../Libraries/RunBootstrap/RunBootstrapPipeline.js";
-import { generateWorldPhase, initRunStatePhase } from "../../Libraries/RunBootstrap/phases.js";
+import { generateWorldPhase } from "../../Libraries/RunBootstrap/phases.js";
+import { initPoolRunStatePhase } from "./runBootstrapPhases.js";
 import { createDefaultRenderPorts } from "../../Libraries/Render/defaultRenderPorts.js";
 import { createCachedWorldStructure } from "../../Libraries/Render/worldStructure/CachedWorldStructure.js";
 /** @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition */
@@ -26,7 +27,7 @@ export const poolGame = {
     uiPort: poolUiPort,
     render: { ...createDefaultRenderPorts(), worldStructure: createCachedWorldStructure(), simulationEffectPasses: [{ zIndex: 10, draw: drawPoolPockets }] },
     worldGen: poolWorldGen,
-    runBootstrapPort: createRunBootstrapPort([initRunStatePhase, generateWorldPhase]),
+    runBootstrapPort: createRunBootstrapPort([initPoolRunStatePhase, generateWorldPhase]),
     bootstrapPort: MINIMAL_ARENA_BOOTSTRAP,
     runScenePort: poolRunScenePort,
     radioPort: { wire: wirePoolRadio, isDialogActive: isRadioDialogActive },

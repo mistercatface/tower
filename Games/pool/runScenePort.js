@@ -26,8 +26,6 @@ export const poolRunScenePort = {
     },
     onSimulationEnter(ctx) {
         const { state } = ctx;
-        state.abilities = {};
-        state.allies = [];
         if (!state.runSceneInitialized) {
             state.pool = null;
             if (shouldSkipOpeningRadio()) markRadioTriggersSeen(state, ["break_shot"], poolRadioRegistry);
