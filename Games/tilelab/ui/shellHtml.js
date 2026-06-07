@@ -1,0 +1,70 @@
+export const TILELAB_UI_HTML = `
+<div class="app">
+    <div class="toolbar">
+        <h1>Tile Lab</h1>
+        <span class="sep"></span>
+        <label>Floor seed <input id="seedInput" type="number" value="42" step="1"></label>
+        <button type="button" id="randomSeedBtn" class="secondary">Rand</button>
+        <span class="sep"></span>
+        <label>Map seed <input id="mapSeedInput" type="number" value="42"></label>
+        <button type="button" id="regenMapBtn" class="secondary">New map</button>
+        <label>Node <select id="mapNodeSelect"></select></label>
+        <span class="sep"></span>
+        <label title="Preview zoom">Cam <span id="gameZoomValue">1</span>×
+            <input id="gameZoomInput" type="range" min="0.25" max="2.5" value="1" step="0.05">
+        </label>
+        <span id="rangeMeta" class="range-meta"></span>
+        <span class="sep"></span>
+        <label class="check-inline"><input id="showRangeRingInput" type="checkbox" checked> Range ring</label>
+        <label class="check-inline"><input id="showVignetteInput" type="checkbox"> Circular Overlay</label>
+        <span class="sep"></span>
+        <button type="button" id="regenerateBtn">Redraw</button>
+    </div>
+    <div class="workspace">
+        <aside class="col col-editor">
+            <div class="col-head">Profile editor</div>
+            <div class="col-body">
+                <div class="editor-tools">
+                    <select id="presetSelect"></select>
+                    <button type="button" id="loadPresetBtn">Load</button>
+                    <select id="addMotifType"></select>
+                    <button type="button" id="addMotifBtn" class="secondary">+ Motif</button>
+                    <button type="button" id="copyExportBtn">Copy export</button>
+                </div>
+                <div class="editor-scroll">
+                    <details class="editor-block" open>
+                        <summary>Motifs</summary>
+                        <div id="motifList"></div>
+                    </details>
+                    <details class="editor-block" open>
+                        <summary>Selected</summary>
+                        <div id="motifParamsPanel"></div>
+                    </details>
+                    <details class="editor-block" open>
+                        <summary>Animation</summary>
+                        <div id="animationParamsPanel"></div>
+                    </details>
+                    <details class="editor-block" open>
+                        <summary>Global</summary>
+                        <div id="globalParamsPanel"></div>
+                    </details>
+                    <details class="editor-block" open>
+                        <summary>Export</summary>
+                        <textarea id="profileExport" readonly></textarea>
+                    </details>
+                </div>
+            </div>
+        </aside>
+        <div class="resizer" id="resizer"></div>
+        <section class="col col-map">
+            <div class="map-status" id="gameMetaLine">WASD move · drag · wheel zoom</div>
+            <div class="map-container">
+                <div class="map-stage" id="mapStage"></div>
+                <div class="animation-stage" id="animationStage">
+                    <div class="animation-stage-header">Animation Preview</div>
+                    <canvas id="animationPreviewCanvas" width="256" height="256"></canvas>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>`;

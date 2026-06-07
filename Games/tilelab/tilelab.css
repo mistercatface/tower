@@ -1,0 +1,173 @@
+@import url('../../Tools/Lab/lab-shared.css');
+@import url('./tilelab-shell.css');
+
+#motifList {
+    max-height: 140px;
+    overflow-y: auto;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 2px;
+}
+
+.motif-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    font-size: 12px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background var(--transition);
+}
+
+.motif-row:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.motif-row.selected {
+    background: rgba(0, 188, 212, 0.15);
+    border: 1px solid rgba(0, 188, 212, 0.3);
+}
+
+.motif-row .motif-label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.motif-row .motif-layer {
+    color: var(--muted);
+    font-size: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 2px 6px;
+    border-radius: 10px;
+}
+
+.motif-row .motif-actions button {
+    padding: 2px 6px;
+    font-size: 11px;
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    border-radius: 3px;
+}
+
+.motif-row .motif-actions button:hover {
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.1);
+    transform: none;
+    box-shadow: none;
+}
+
+.motif-row .motif-blend-slot {
+    flex-shrink: 0;
+}
+
+.motif-row-blend {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    color: var(--accent);
+    font-size: 10px;
+    padding: 2px 4px;
+    cursor: pointer;
+    max-width: 80px;
+}
+
+.motif-row-blend:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+#profileExport {
+    width: 100%;
+    height: 72px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font: inherit;
+    font-size: 10px;
+    padding: 6px;
+    border-radius: 4px;
+    resize: none;
+}
+
+.animation-stage {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--panel-solid);
+    padding: 16px;
+    border-left: 1px solid var(--border);
+    box-shadow: inset 1px 0 0 rgba(255,255,255,0.05);
+}
+
+.animation-stage-header {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    letter-spacing: 0.05em;
+}
+
+#animationPreviewCanvas {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    background: #000;
+}
+
+.track-list {
+    margin-bottom: 8px;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px;
+}
+
+.track-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    font-size: 11px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background var(--transition);
+}
+
+.track-row:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.track-row.selected {
+    background: rgba(56, 189, 248, 0.15);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.track-row .track-label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.track-row .track-actions button {
+    padding: 2px 6px;
+    font-size: 11px;
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    border-radius: 3px;
+}
+
+.track-row .track-actions button:hover {
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.1);
+}

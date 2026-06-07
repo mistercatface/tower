@@ -1,0 +1,44 @@
+/* Tile Lab — full-workspace shell on main Index.html */
+
+body.shell-tilelab {
+    align-items: stretch;
+    justify-content: stretch;
+}
+
+body.shell-tilelab #gameWrapper {
+    width: 100vw;
+    height: 100dvh;
+    max-width: none;
+    box-shadow: none;
+    flex-direction: column;
+}
+
+body.shell-tilelab #ui-root {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+body.shell-tilelab .app {
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+}
+
+body.shell-tilelab #gameCanvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    aspect-ratio: unset;
+    flex: none;
+}
+
+body.shell-tilelab .map-stage {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
+}
