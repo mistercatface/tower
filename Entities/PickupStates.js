@@ -78,6 +78,7 @@ export class PickupSinkingState {
     onExit(pickup) {
         pickup.mass = pickup.savedMass ?? 1.0;
         pickup.elevation = 0;
+        pickup.opacity = 1.0;
     }
 }
 export const pickupStates = { normal: new PickupNormalState(), on_fire: new PickupOnFireState(), exploded: new PickupExplodedState(), shard_flying: new PickupShardFlyingState(), sinking: new PickupSinkingState() };

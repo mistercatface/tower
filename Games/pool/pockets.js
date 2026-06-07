@@ -33,6 +33,8 @@ export function processPockets(state, layout, dt) {
 
                 // Elevation sinks down to the bottom of the projected pocket (-24)
                 ball.elevation = -24 * progress;
+                // Fade out the ball as it goes deeper into the pocket
+                ball.opacity = Math.max(0, 1.0 - progress);
 
                 const targetX = ball.pocketX;
                 const targetY = ball.pocketY;
