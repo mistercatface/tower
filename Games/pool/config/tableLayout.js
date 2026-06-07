@@ -5,7 +5,7 @@ export const TABLE_COLS = 24;
 export const TABLE_ROWS = 44;
 export const TABLE_RAIL_CELLS = 2;
 /** Pool ball radius in world units (physics + render). */
-export const POOL_BALL_RADIUS = 14;
+export const POOL_BALL_RADIUS = 16;
 /** Pocket sensor radius for corner pockets in world units. */
 export const CORNER_POCKET_RADIUS = POOL_BALL_RADIUS * 2.375;
 /** Pocket sensor radius for side pockets in world units. */
