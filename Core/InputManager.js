@@ -1,4 +1,5 @@
-import { adjustGameZoom, setGameZoomAbsolute } from "./EventSystem.js";
+import { events } from "./EventSystem.js";
+import { Events } from "./EventNames.js";
 import { controlSettings } from "../Config/Config.js";
 import { getActiveGameDefinition } from "./ActiveGameDefinition.js";
 import { CanvasInputController } from "../Libraries/Input/CanvasInputController.js";
@@ -19,9 +20,9 @@ export class InputManager {
         activeController = new CanvasInputController(canvas, {
             doubleTapTimeoutMs: controlSettings.doubleTapTimeout,
             wheelZoomSensitivity: controlSettings.scrollZoomSensitivity,
-            onWheelZoomDelta: adjustGameZoom,
+            onWheelZoomDelta: (delta) => events.emit(Events.GAME_ADJUST_ZOOM, { delta }),
             getBaseZoom: () => fsm.context.viewport.zoom,
-            onPinchZoom: setGameZoomAbsolute,
+            onPinchZoom: (zoom) => events.emit(Events.GAME_SET_ZOOM_ABSOLUTE, { zoom }),
             screenToWorld: (screenX, screenY) => fsm.context.viewport.screenToWorld(screenX, screenY),
             onPointerDown: (worldCoords, _screen, isDoubleTap, event) => {
                 const state = fsm.currentState;

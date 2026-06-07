@@ -1,6 +1,7 @@
 import { toggleGunInLoadout, unequipSlot } from "../../Combat/equipmentLoadout.js";
 import { nextUpgradeCost, playerBaseStats } from "../../Config/Config.js";
-import { Events, requestProgressDirty, requestUiUpdate, requestUiHudUpdate, requestGamePause, requestGameResume } from "../../Core/EventSystem.js";
+import { Events, requestUiUpdate, requestUiHudUpdate, requestGamePause, requestGameResume } from "../../Core/EventSystem.js";
+import { requestProgressDirty } from "./progression/events.js";
 import { getRunScenePort } from "../../Core/GamePorts.js";
 import { registerPersistentTriggers } from "../../Core/PersistentTriggerSetup.js";
 import { isSimulation } from "../../GameState/GamePhase.js";

@@ -1,4 +1,5 @@
-import { spawnFloatingText, events, Events, requestUiUpdate, requestProgressDirty, requestProgressSave, requestGamePause, requestGameResume } from "../../../Core/EventSystem.js";
+import { spawnFloatingText, events, Events, requestUiUpdate, requestGamePause, requestGameResume } from "../../../Core/EventSystem.js";
+import { requestProgressDirty, requestProgressSave } from "./events.js";
 import { StatsManager } from "./StatsManager.js";
 export class ProgressionManager {
     static processEnemyKillRewards(enemy, state, upgrades) {

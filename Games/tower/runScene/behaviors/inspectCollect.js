@@ -1,4 +1,5 @@
-import { fireRadioTrigger, requestUiHudUpdate, startRadioConversation } from "../../../../Core/EventSystem.js";
+import { fireRadioTrigger, startRadioConversation } from "../../../../Libraries/Radio/radioEvents.js";
+import { requestUiHudUpdate } from "../../../../Core/EventSystem.js";
 import { findInspectablePickup } from "../../inspect/inspectTargeting.js";
 import { getRunSceneMission, setRunSceneMission } from "../runSceneState.js";
 /**

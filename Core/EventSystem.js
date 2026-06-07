@@ -10,12 +10,6 @@ export function requestUiHudUpdate() {
 export function spawnFloatingText(data) {
     events.emit(Events.FX_FLOATING_TEXT, data);
 }
-export function requestProgressDirty() {
-    events.emit(Events.PROGRESS_DIRTY);
-}
-export function requestProgressSave() {
-    events.emit(Events.PROGRESS_SAVE);
-}
 export function emitCombatEnemyKilled(enemy) {
     events.emit(Events.COMBAT_ENEMY_KILLED, { enemy });
 }
@@ -28,41 +22,8 @@ export function requestGameResume(reason) {
 export function toggleGamePause() {
     events.emit(Events.GAME_TOGGLE_PAUSE);
 }
-export function emitPurchaseUpgrade(upgradeId) {
-    events.emit(Events.PROGRESS_PURCHASE_UPGRADE, { upgradeId });
-}
-export function emitToggleAbility(abilityId) {
-    events.emit(Events.PROGRESS_TOGGLE_ABILITY, { abilityId });
-}
-export function emitToggleEquipWeapon(gunId) {
-    events.emit(Events.PROGRESS_EQUIP_WEAPON, { gunId });
-}
-export function emitUnequipWeaponSlot(slotIndex) {
-    events.emit(Events.PROGRESS_UNEQUIP_WEAPON_SLOT, { slotIndex });
-}
-export function emitSetUpgradeTab(tab) {
-    events.emit(Events.UI_SET_UPGRADE_TAB, { tab });
-}
-export function emitSetStatsSubTab(subTab) {
-    events.emit(Events.UI_SET_STATS_SUB_TAB, { subTab });
-}
 export function adjustGameSpeed(delta) {
     events.emit(Events.GAME_SET_SPEED, { delta });
-}
-export function setGameZoomFromSlider(sliderValue) {
-    events.emit(Events.GAME_SET_ZOOM, { sliderValue });
-}
-export function adjustGameZoom(delta) {
-    events.emit(Events.GAME_ADJUST_ZOOM, { delta });
-}
-export function setGameZoomAbsolute(zoom) {
-    events.emit(Events.GAME_SET_ZOOM_ABSOLUTE, { zoom });
-}
-export function emitMapToggle() {
-    events.emit(Events.MAP_TOGGLE);
-}
-export function emitHardReset() {
-    events.emit(Events.PROGRESS_HARD_RESET);
 }
 /** End the run once — call from game code when win/lose happens, not from the main loop. */
 export function endRun(state) {
@@ -79,11 +40,5 @@ export function hideGameOver() {
 }
 export function emitGameRestart() {
     events.emit(Events.GAME_RESTART);
-}
-export function startRadioConversation(conversationId, onComplete, state, { force = false } = {}) {
-    events.emit(Events.RADIO_START, { conversationId, onComplete, state: state ?? events.getContext()?.state, force });
-}
-export function fireRadioTrigger(trigger, onComplete, state) {
-    events.emit(Events.RADIO_TRIGGER, { trigger, onComplete, state: state ?? events.getContext()?.state });
 }
 export { Events } from "./EventNames.js";

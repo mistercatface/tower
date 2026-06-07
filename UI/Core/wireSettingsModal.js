@@ -1,4 +1,5 @@
-import { emitHardReset } from "../../Core/EventSystem.js";
+import { events } from "../../Core/EventSystem.js";
+import { Events } from "../../Core/EventNames.js";
 import { getShellElements } from "./shellElements.js";
 /**
  * Settings gear + modal — shared by games that expose `#settingsBtn` in chrome.
@@ -16,7 +17,7 @@ export function wireSettingsModal(state) {
     });
     elements.hardResetBtn?.addEventListener("click", () => {
         if (confirm("Are you sure you want to completely reset the game? This cannot be undone.")) {
-            emitHardReset();
+            events.emit(Events.PROGRESS_HARD_RESET);
             if (elements.settingsModal) elements.settingsModal.style.display = "none";
         }
     });

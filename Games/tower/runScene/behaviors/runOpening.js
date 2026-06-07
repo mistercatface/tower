@@ -1,4 +1,4 @@
-import { fireRadioTrigger } from "../../../../Core/EventSystem.js";
+import { fireRadioTrigger } from "../../../../Libraries/Radio/radioEvents.js";
 import { getCombatPort } from "../../../../Core/GamePorts.js";
 import { ensureRunScene } from "../runSceneState.js";
 /**

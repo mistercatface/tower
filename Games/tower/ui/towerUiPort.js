@@ -6,19 +6,9 @@ import { towerInspectPort } from "../inspectPort.js";
 import { getGunDefinition, playerEquipmentCatalog } from "../../../Config/content/guns.js";
 import { getSlotFireIntervalMs, getSlotReloadTimeMs } from "../../../Combat/gunCombat.js";
 import { countGunInLoadout, formatHandednessLabel, getEquipmentSlotCount, getGunEquipAction, normalizeWeaponLoadout } from "../../../Combat/equipmentLoadout.js";
-import {
-    events,
-    Events,
-    emitPurchaseUpgrade,
-    emitToggleAbility,
-    emitSetUpgradeTab,
-    emitSetStatsSubTab,
-    emitToggleEquipWeapon,
-    emitUnequipWeaponSlot,
-    setGameZoomFromSlider,
-    emitGameRestart,
-    emitMapToggle,
-} from "../../../Core/EventSystem.js";
+import { events, Events, emitGameRestart } from "../../../Core/EventSystem.js";
+import { emitPurchaseUpgrade, emitToggleAbility, emitSetUpgradeTab, emitSetStatsSubTab, emitToggleEquipWeapon, emitUnequipWeaponSlot } from "../progression/events.js";
+import { setGameZoomFromSlider, emitMapToggle } from "../events.js";
 import { bindShellElements } from "../../../UI/Core/shellElements.js";
 import { wireSettingsModal } from "../../../UI/Core/wireSettingsModal.js";
 import { bindSpeedControl, syncSpeedControlDisplay, wireSpeedControl } from "../../../Libraries/Playback/index.js";

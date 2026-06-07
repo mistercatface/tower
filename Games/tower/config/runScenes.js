@@ -1,4 +1,4 @@
-import { fireRadioTrigger } from "../../../Core/EventSystem.js";
+import { fireRadioTrigger } from "../../../Libraries/Radio/radioEvents.js";
 import { RunSceneController, compileRunScenes, createRunSceneBehaviors } from "../runScene/index.js";
 import { clueSearchInspectKeys, clueSearchInspectRadioTriggers } from "./inspectManifest.js";
 import { towerRunScenePorts } from "../runScenePorts.js";
