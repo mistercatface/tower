@@ -1,7 +1,7 @@
 import { getUiPort } from "../../Core/GamePorts.js";
 import { Events } from "../../Core/EventSystem.js";
 import { InputManager } from "../../Core/InputManager.js";
-import { clearGameChrome } from "../../UI/Core/uiRoot.js";
+import { mountGameUi } from "../../UI/Core/uiRoot.js";
 /**
  * @typedef {object} GameBootstrapContext
  * @property {import("../../Core/GameDefinitionTypes.js").GameDefinition} definition
@@ -36,8 +36,7 @@ export function applyGameBootstrap(ctx) {
     registerUiEventListeners(events);
     window.addEventListener("resize", resizeCanvas);
     window.gameState = state;
-    clearGameChrome();
-    getUiPort().mount({ state, upgrades });
+    mountGameUi(getUiPort(), { state, upgrades });
     resizeCanvas();
     InputManager.setup(canvas, fsm);
     resetGame();

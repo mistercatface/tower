@@ -13,7 +13,7 @@ import { setGameZoomFromSlider, emitMapToggle } from "../events.js";
 import { bindTowerShellElements } from "./towerShellElements.js";
 import { wireSettingsModal } from "./wireSettingsModal.js";
 import { bindSpeedControl, syncSpeedControlDisplay, wireSpeedControl } from "../../../Libraries/Playback/index.js";
-import { mountTowerChrome } from "./mountTowerChrome.js";
+import { mountTowerChrome, unmountTowerChrome } from "./mountTowerChrome.js";
 import { inspectBridge } from "../inspect/InspectBridge.js";
 /** @type {Record<string, HTMLElement | NodeListOf<Element> | null>} */
 let elements = {};
@@ -509,6 +509,9 @@ function updateUI(state, upgrades) {
 export const towerUiPort = {
     mount(ctx) {
         mountTowerUi(ctx.state, ctx.upgrades);
+    },
+    unmount() {
+        unmountTowerChrome();
     },
     updateUI(ctx) {
         updateUI(ctx.state, ctx.upgrades);

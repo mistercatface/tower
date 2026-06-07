@@ -1,5 +1,7 @@
 import { speedControlHtml } from "../../../Libraries/Playback/index.js";
 import { getUiRoot } from "../../../UI/Core/uiRoot.js";
+import { clearTowerShellElements } from "./towerShellElements.js";
+const TOWER_CHROME_ROOT_ID = "tower-chrome";
 const TOWER_SPEED_CONTROL_HTML = speedControlHtml({
     rootId: "speedControls",
     buttonClass: "control-btn",
@@ -27,6 +29,13 @@ const COMBAT_HUD_SETTING_HTML = `
         <option value="2">Classic only</option>
     </select>
 </label>`;
+const SETTINGS_MODAL_HTML = `
+<div id="settingsModal" class="ui-overlay ui-overlay--settings">
+    <h2 class="settings-title">Settings</h2>
+    ${COMBAT_HUD_SETTING_HTML}
+    <button id="hardResetBtn" class="settings-btn settings-btn--danger" type="button">Reset Game</button>
+    <button id="closeSettingsBtn" class="settings-btn settings-btn--neutral" type="button">Close</button>
+</div>`;
 const UPGRADE_MODAL_HTML = `
 <div id="upgradeChoiceModal" class="ui-overlay ui-overlay--dim">
     <div class="upgrade-choice-card">
@@ -106,21 +115,19 @@ const TOWER_UI_HTML = `
         <div id="upgradesContainer"></div>
     </div>
 </div>`;
+const TOWER_CHROME_HTML = `${INSPECT_BANNER_HTML}${INSPECT_OVERLAY_HTML}${UPGRADE_MODAL_HTML}${GAME_OVER_HTML}${SETTINGS_MODAL_HTML}`;
+/** Remove all tower-injected DOM. */
+export function unmountTowerChrome() {
+    document.getElementById(TOWER_CHROME_ROOT_ID)?.remove();
+    getUiRoot()?.replaceChildren();
+    clearTowerShellElements();
+}
 /** Inject tower-only DOM into the shell (not loaded for pool). */
 export function mountTowerChrome() {
-    const wrapper = document.getElementById("gameWrapper");
-    const uiRoot = getUiRoot();
-    if (!wrapper || !uiRoot) throw new Error("mountTowerChrome: game shell missing");
-    document.getElementById("inspectOverlay")?.remove();
-    document.getElementById("inspectMissionBanner")?.remove();
-    document.getElementById("gameOverUI")?.remove();
-    wrapper.insertAdjacentHTML("beforeend", INSPECT_OVERLAY_HTML);
     const canvas = document.getElementById("gameCanvas");
-    if (canvas) canvas.insertAdjacentHTML("afterend", INSPECT_BANNER_HTML);
-    else wrapper.insertAdjacentHTML("afterbegin", INSPECT_BANNER_HTML);
+    const uiRoot = getUiRoot();
+    if (!canvas || !uiRoot) throw new Error("mountTowerChrome: game shell missing");
+    unmountTowerChrome();
+    canvas.insertAdjacentHTML("afterend", `<div id="${TOWER_CHROME_ROOT_ID}">${TOWER_CHROME_HTML}</div>`);
     uiRoot.innerHTML = TOWER_UI_HTML;
-    wrapper.insertAdjacentHTML("beforeend", UPGRADE_MODAL_HTML);
-    wrapper.insertAdjacentHTML("beforeend", GAME_OVER_HTML);
-    const settingsTitle = document.querySelector("#settingsModal .settings-title");
-    settingsTitle?.insertAdjacentHTML("afterend", COMBAT_HUD_SETTING_HTML);
 }

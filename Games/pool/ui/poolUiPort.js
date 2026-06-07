@@ -43,6 +43,12 @@ function updatePoolHud(state) {
     }
     if (poolSpeedControl) syncSpeedControlDisplay(poolSpeedControl, state, getActiveGameDefinition());
 }
+function unmountPoolChrome() {
+    getUiRoot()?.replaceChildren();
+    poolHud.status = null;
+    poolHud.ballsLeft = null;
+    poolSpeedControl = null;
+}
 /** @type {UiPort} */
 export const poolUiPort = {
     mount(ctx) {
@@ -50,6 +56,9 @@ export const poolUiPort = {
         bindPoolElements();
         if (poolSpeedControl) wireSpeedControl(poolSpeedControl, getActiveGameDefinition());
         updatePoolHud(ctx.state);
+    },
+    unmount() {
+        unmountPoolChrome();
     },
     updateUI(ctx) {
         updatePoolHud(ctx.state);
