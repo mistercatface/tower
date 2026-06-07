@@ -4,7 +4,6 @@ import { poolRunScenePort } from "./runScenePort.js";
 import { poolSimulation } from "./simulation.js";
 import { poolUiPort } from "./ui/poolUiPort.js";
 import { poolWorldGen } from "./worldGen.js";
-import { poolOutcomePort } from "./outcomePort.js";
 import { poolRadioPort } from "./radioPort.js";
 import { getWorldPropRecipes } from "../../Libraries/Content/PropCatalog.js";
 import { registerCueStickRecipe } from "../../Libraries/CueStick/registerCueStick.js";
@@ -23,7 +22,7 @@ export const poolGame = {
     propPixelSize: 16,
     canvasId: "gameCanvas",
     saveKey: "pool_save_v1",
-    ui: { ...LANDSCAPE_MINIMAL_UI, chrome: { controls: "none" }, runResult: { won: { title: "TABLE CLEAR!", buttonLabel: "PLAY AGAIN", titleColor: "#4CAF50" } } },
+    ui: { ...LANDSCAPE_MINIMAL_UI, chrome: { controls: "none" } },
     perspective: { cameraHeight: 520, strength: 0.28, viewerSource: "viewport" },
     proceduralDesign: { surfaceProfileId: SURFACE_PROFILE_ID.poolTableFelt },
     worldSurface: { wallHeight: 20, pixelsPerCell: 8 },
@@ -36,7 +35,6 @@ export const poolGame = {
     bootstrapPort: MINIMAL_ARENA_BOOTSTRAP,
     runScenePort: poolRunScenePort,
     radioPort: poolRadioPort,
-    outcomePort: poolOutcomePort,
     createUpgrades() {
         return [];
     },
