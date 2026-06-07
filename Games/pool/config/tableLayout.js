@@ -25,7 +25,7 @@ export const MIN_AIM_DRAG = 10;
 export const CUE_GRAB_RADIUS_PAD = 10;
 /** Aim pull-back tuning — ~700×384 world table. */
 export const POOL_CUE_MAX_PULL = 75;
-export const POOL_CUE_PULL_SCALE = 0.55;
+export const POOL_CUE_PULL_SCALE = 0.5;
 export const POOL_CUE_MIN_PULL_DRAG = 3;
 export const POOL_OBJECT_BALL_COUNT = 15;
 /** Standard 8-ball triangle: 1 on the foot-spot apex, 8 in the center, solid (6) and stripe (9) on the back corners. */

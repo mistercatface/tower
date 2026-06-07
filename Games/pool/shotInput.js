@@ -1,7 +1,7 @@
 import { WeaponSystem } from "../../Combat/WeaponSystem.js";
 import { getRunScenePort } from "../../Core/GamePorts.js";
-import { resolveCueStickFromAnchorDrag } from "../../Libraries/CueStick/cueStickPhysics.js";
 import { applyCueStrikeCollision, CUE_BALL_RESTITUTION } from "../../Libraries/CueStick/cueStrikeCollision.js";
+import { normalizeXY } from "../../Libraries/Math/Vec2.js";
 import { circleLeadingPoint } from "../../Libraries/Spatial/geometry/circleContact.js";
 import { rayCircleHitDistance } from "../../Libraries/Spatial/query/circleCast.js";
 import { MAX_SHOT_POWER, MIN_SHOT_POWER, CUE_GRAB_RADIUS_PAD, POOL_BALL_RADIUS, POOL_CUE_MAX_PULL, POOL_CUE_PULL_SCALE, POOL_CUE_MIN_PULL_DRAG } from "./config/tableLayout.js";
@@ -20,31 +20,29 @@ function computeShotPower(aim) {
 }
 /**
  * @param {object} aim
- * @param {ReturnType<typeof resolveCueStickFromAnchorDrag>} physics
+ * @param {{ drag: number, pullBack: number }} physics
  */
 function trackAimDrag(aim, physics) {
     aim.currentDrag = physics.drag;
     aim.currentPullBack = physics.pullBack;
 }
 /**
- * @param {object} cueBall
+ * Press = anchor. Drag offset sets shot angle (opposite drag) and pull-back for power.
+ *
  * @param {object} aim
  */
-function resolveAimPhysics(cueBall, aim) {
-    const resolved = resolveCueStickFromAnchorDrag({
-        anchorX: aim.anchorX,
-        anchorY: aim.anchorY,
-        gripX: aim.pullX,
-        gripY: aim.pullY,
-        pullScale,
-        maxPull,
-        lastShotNx: aim.shotNx,
-        lastShotNy: aim.shotNy,
-    });
-    if (!resolved) return null;
-    aim.shotNx = resolved.shotNx;
-    aim.shotNy = resolved.shotNy;
-    return resolved;
+function resolveAimPhysics(aim) {
+    const dx = aim.pullX - aim.anchorX;
+    const dy = aim.pullY - aim.anchorY;
+    const { nx, ny, len: drag } = normalizeXY(dx, dy);
+    if (drag < 0.5) {
+        if (aim.shotNx == null || aim.shotNy == null) return null;
+        return { shotNx: aim.shotNx, shotNy: aim.shotNy, drag: 0, pullBack: 0 };
+    }
+    aim.shotNx = -nx;
+    aim.shotNy = -ny;
+    const pullBack = Math.min(maxPull, drag * pullScale);
+    return { shotNx: aim.shotNx, shotNy: aim.shotNy, drag, pullBack };
 }
 /**
  * @param {object} cue
@@ -99,7 +97,7 @@ export function updateAim(state, worldX, worldY) {
     pool.aim.pullY = worldY;
     const cue = getCueBall(state);
     if (!cue) return;
-    const physics = resolveAimPhysics(cue, pool.aim);
+    const physics = resolveAimPhysics(pool.aim);
     if (!physics) return;
     trackAimDrag(pool.aim, physics);
 }
@@ -141,7 +139,7 @@ export function getAimPreview(state) {
     if (!pool.aim?.active) return null;
     const cue = getCueBall(state);
     if (!cue) return null;
-    const physics = resolveAimPhysics(cue, pool.aim);
+    const physics = resolveAimPhysics(pool.aim);
     if (!physics) return null;
     return { nx: physics.shotNx, ny: physics.shotNy, power: computeShotPower(pool.aim), drag: physics.drag, pullBack: physics.pullBack, currentDrag: pool.aim.currentDrag };
 }
