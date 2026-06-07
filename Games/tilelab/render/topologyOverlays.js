@@ -1,4 +1,4 @@
-export function drawMapLabGridBounds(ctx, grid, zoom) {
+export function drawTopologyGridBounds(ctx, grid, zoom) {
     if (grid.minX === undefined || grid.maxX === undefined) return;
     ctx.strokeStyle = "rgba(255, 0, 0, 0.3)";
     ctx.lineWidth = 10 / zoom;
@@ -6,7 +6,8 @@ export function drawMapLabGridBounds(ctx, grid, zoom) {
     ctx.strokeRect(grid.minX, grid.minY, grid.maxX - grid.minX, grid.maxY - grid.minY);
     ctx.setLineDash([]);
 }
-export function drawMapLabRoomZones(ctx, state, zoom) {
+
+export function drawTopologyRoomZones(ctx, state, zoom) {
     for (const node of state.mapNodes) {
         const coords = state.getNodeWorldCoords(node);
         ctx.beginPath();
@@ -18,6 +19,7 @@ export function drawMapLabRoomZones(ctx, state, zoom) {
         ctx.stroke();
     }
 }
+
 function drawPathTestMarker(ctx, x, y, radius, fillStyle, label, zoom) {
     ctx.beginPath();
     ctx.arc(x, y, radius, 0, Math.PI * 2);
@@ -32,7 +34,8 @@ function drawPathTestMarker(ctx, x, y, radius, fillStyle, label, zoom) {
     ctx.textBaseline = "middle";
     ctx.fillText(label, x, y);
 }
-export function drawMapLabAbstractPath(ctx, abstractPath, zoom) {
+
+export function drawTopologyAbstractPath(ctx, abstractPath, zoom) {
     if (!abstractPath || abstractPath.length < 2) return;
     ctx.beginPath();
     ctx.moveTo(abstractPath[0].x, abstractPath[0].y);
@@ -54,9 +57,10 @@ export function drawMapLabAbstractPath(ctx, abstractPath, zoom) {
         ctx.stroke();
     }
 }
-export function drawMapLabPathTest(ctx, { playerPos, targetPos, currentPath, abstractPath, zoom }) {
-    if (abstractPath) drawMapLabAbstractPath(ctx, abstractPath, zoom);
-    if (currentPath && currentPath.length > 0) {
+
+export function drawTopologyPathTest(ctx, { playerPos, targetPos, currentPath, abstractPath, zoom }) {
+    if (abstractPath) drawTopologyAbstractPath(ctx, abstractPath, zoom);
+    if (currentPath?.length > 0) {
         ctx.beginPath();
         ctx.moveTo(playerPos.x, playerPos.y);
         for (const wp of currentPath) ctx.lineTo(wp.x, wp.y);
@@ -76,10 +80,11 @@ export function drawMapLabPathTest(ctx, { playerPos, targetPos, currentPath, abs
     if (playerPos) drawPathTestMarker(ctx, playerPos.x, playerPos.y, 16 / zoom, "#00bcd4", "P", zoom);
     if (targetPos) drawPathTestMarker(ctx, targetPos.x, targetPos.y, 16 / zoom, "#e91e63", "T", zoom);
 }
-export function drawMapLabOverlays(ctx, state, config) {
-    const { labOptions, viewport, playerPos, targetPos, currentPath, abstractPath } = config;
-    if (!labOptions || !viewport) return;
-    if (labOptions.showGridBounds && state.obstacleGrid) drawMapLabGridBounds(ctx, state.obstacleGrid, viewport.zoom);
-    if (labOptions.showRoomZones) drawMapLabRoomZones(ctx, state, viewport.zoom);
-    if (labOptions.showPathTest) drawMapLabPathTest(ctx, { playerPos, targetPos, currentPath, abstractPath, zoom: viewport.zoom });
+
+export function drawTopologyOverlays(ctx, state, config) {
+    const { topologyOptions, viewport, playerPos, targetPos, currentPath, abstractPath } = config;
+    if (!topologyOptions || !viewport) return;
+    if (topologyOptions.showGridBounds && state.obstacleGrid) drawTopologyGridBounds(ctx, state.obstacleGrid, viewport.zoom);
+    if (topologyOptions.showRoomZones) drawTopologyRoomZones(ctx, state, viewport.zoom);
+    if (topologyOptions.showPathTest) drawTopologyPathTest(ctx, { playerPos, targetPos, currentPath, abstractPath, zoom: viewport.zoom });
 }

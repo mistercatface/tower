@@ -1,6 +1,6 @@
 import { drawMapWallCache } from "./MapWallCache.js";
 import { drawMapPathDebugCache } from "./MapPathDebugCache.js";
-import { GAME_MAP_GRAPH_STYLES, LAB_MAP_GRAPH_STYLES } from "./mapViewStyles.js";
+import { GAME_MAP_GRAPH_STYLES } from "./mapViewStyles.js";
 function resolveLineWidth(styles, context) {
     const width = styles.connectionLineWidth;
     return typeof width === "function" ? width(context) : width;
@@ -41,16 +41,10 @@ function drawMapGraph(ctx, state, styles, context = {}) {
     drawMapNodes(ctx, state, styles, context);
 }
 function renderMapViewContent(ctx, state, config) {
-    const { mode = "game", showWalls = true, showGraph = true, showPathDebug = false, graphContext = {} } = config;
-    if (mode === "lab" && showPathDebug) drawMapPathDebugCache(ctx, state.mapPathDebugCache);
-    if (showWalls) {
-        const wallCache = mode === "lab" ? state.mapLabWallCache : state.mapWallCache;
-        drawMapWallCache(ctx, wallCache);
-    }
-    if (showGraph) {
-        const styles = mode === "lab" ? LAB_MAP_GRAPH_STYLES : GAME_MAP_GRAPH_STYLES;
-        drawMapGraph(ctx, state, styles, graphContext);
-    }
+    const { showWalls = true, showGraph = true, showPathDebug = false, graphContext = {}, graphStyles = GAME_MAP_GRAPH_STYLES, wallCache = null } = config;
+    if (showPathDebug) drawMapPathDebugCache(ctx, state.mapPathDebugCache);
+    if (showWalls && wallCache) drawMapWallCache(ctx, wallCache);
+    if (showGraph) drawMapGraph(ctx, state, graphStyles, graphContext);
 }
 export function renderMapView(ctx, state, config) {
     const { width, height, viewport, backgroundColor = "#080a0e", clearBackground = true, drawOverlays } = config;

@@ -6,7 +6,7 @@ import { spawnInitialPickups, spawnStartGamePickups } from "../../Entities/Picku
 import { finalizeGeneratedWorld } from "../../Libraries/WorldGen/finalizeGeneratedWorld.js";
 import { ROGUELIKE_MAP_TOPOLOGY } from "../../Libraries/WorldGen/presets/roguelikeMap.js";
 import { serializeWalls } from "../../Libraries/WorldGen/worldGenUtils.js";
-import { buildMapRenderCaches } from "./render/map/MapRenderCache.js";
+import { buildGameMapRenderCaches } from "../../Libraries/Render/map/MapRenderCache.js";
 import { StatsManager } from "./progression/StatsManager.js";
 import { generateStartGameBuilding, getStartGameLayout } from "./tutorial/StartGameBuilding.js";
 /** @typedef {import("../../Libraries/RunBootstrap/RunBootstrapPipeline.js").RunBootstrapContext} RunBootstrapContext */
@@ -101,7 +101,7 @@ export const spawnRunPartyPhase = {
 /** @type {RunBootstrapPhase} */
 export const buildMapRenderCachesPhase = {
     run(ctx) {
-        buildMapRenderCaches(ctx.state);
+        buildGameMapRenderCaches(ctx.state);
     },
 };
 /** @type {RunBootstrapPhase} */

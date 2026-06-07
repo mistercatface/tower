@@ -1,6 +1,6 @@
 import { gridSettings } from "../../../Config/Config.js";
 import { generateWorld, getWorldGen } from "../../../Core/GamePorts.js";
-import { buildMapRenderCaches } from "../../../Games/tower/render/map/MapRenderCache.js";
+import { buildGameMapRenderCaches, buildTopologyMapRenderCaches } from "../../../Libraries/Render/map/MapRenderCache.js";
 import { withSeededRandom } from "../../../Libraries/Random/index.js";
 import { focusLabNode as applyNodeFocus } from "./mapFocus.js";
 import { calculatePathTest, resetPathTestPositions } from "./mapPathTest.js";
@@ -30,7 +30,8 @@ export function generateTilelabMap(state, { mapSeed, floorSeed }) {
     withSeededRandom(mapSeed, () => {
         generateWorld(state);
     });
-    buildMapRenderCaches(state);
+    buildGameMapRenderCaches(state);
+    buildTopologyMapRenderCaches(state);
     state.worldSurfaceSeed = floorSeed;
     state.worldSurfaces.clear();
     state.mapSeed = mapSeed;

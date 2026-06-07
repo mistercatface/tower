@@ -1,27 +1,27 @@
-import { renderMapView } from "../../../Games/tower/render/map/MapViewRenderer.js";
-import { createLabMapViewConfig } from "../../../Games/tower/render/map/mapViewPresets.js";
-import { drawMapLabOverlays } from "../../../Games/tower/render/map/MapLabOverlays.js";
+import { renderMapView } from "../../../Libraries/Render/map/MapViewRenderer.js";
+import { createTopologyMapViewConfig } from "../render/topologyMapPresets.js";
+import { TOPOLOGY_MAP_GRAPH_STYLES } from "../render/topologyMapStyles.js";
+import { drawTopologyOverlays } from "../render/topologyOverlays.js";
 import { prepareGameCanvas } from "./surfacePreview.js";
-/**
- * @param {import("../TileLabGameState.js").TileLabGameState} state
- * @param {import("../../../Libraries/Viewport/Viewport.js").Viewport} viewport
- */
+/** @param {import("../TileLabGameState.js").TileLabGameState} state */
 export function renderMapTopologyView(state, viewport, options, selectedNodeId, playerPos, targetPos, currentPath, abstractPath) {
     const stage = document.getElementById("mapStage");
     const canvas = document.getElementById("mapPreview");
     const size = prepareGameCanvas(canvas, stage);
     if (!size || !canvas) return;
     renderMapView(canvas.getContext("2d"), state, {
-        ...createLabMapViewConfig(options, { viewport, selectedNodeId }),
+        ...createTopologyMapViewConfig(options, { viewport, selectedNodeId }),
         width: size.width,
         height: size.height,
         viewport,
-        labOptions: options,
+        wallCache: state.mapTopologyWallCache,
+        graphStyles: TOPOLOGY_MAP_GRAPH_STYLES,
+        topologyOptions: options,
         playerPos,
         targetPos,
         currentPath,
         abstractPath,
-        drawOverlays: drawMapLabOverlays,
+        drawOverlays: drawTopologyOverlays,
     });
     const statusLine = document.getElementById("mapStatusLine");
     if (statusLine)

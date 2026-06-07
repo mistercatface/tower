@@ -35,7 +35,6 @@ export class TowerGameState extends SharedGameState {
         this.upgradeDefs = [];
         this.projectilePool = towerPools.projectiles;
         this.mapWallCache = null;
-        this.mapLabWallCache = null;
         this.mapPathDebugCache = null;
         this._combatantsCache = [];
         this.inspectPanelOpen = false;
