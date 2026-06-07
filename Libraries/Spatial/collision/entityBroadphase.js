@@ -1,4 +1,5 @@
 import { isStandTipActive } from "../../Props/standTipMotion.js";
+import { lengthXY, speedSqXY } from "../../Math/Vec2.js";
 import { broadphaseBoundsFromShape, pairBroadphaseBoundsOverlap } from "./Broadphase.js";
 import { SatCollision } from "./SatCollision.js";
 export const MOVING_SPEED_SQ = 0.25;
@@ -14,12 +15,12 @@ function entityAngle(entity) {
 export function entityBroadphaseExtent(entity) {
     const bounds = getBroadphaseBounds(entity);
     if (bounds.kind === "circle") return bounds.r;
-    return Math.hypot(bounds.hx, bounds.hy);
+    return lengthXY(bounds.hx, bounds.hy);
 }
 export function isMovingEntity(entity) {
     const vx = entity.vx || 0;
     const vy = entity.vy || 0;
-    return vx * vx + vy * vy > MOVING_SPEED_SQ;
+    return speedSqXY(vx, vy) > MOVING_SPEED_SQ;
 }
 export function isRotatingEntity(entity) {
     const w = entity.angularVelocity ?? 0;

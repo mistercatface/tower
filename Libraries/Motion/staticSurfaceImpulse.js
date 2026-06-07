@@ -1,4 +1,5 @@
 import { inverseMassFromBody } from "./bodyMass.js";
+import { dotXY } from "../Math/Vec2.js";
 /**
  * Impulse + friction against a static surface (wall). Mutates velocity in place.
  *
@@ -23,7 +24,7 @@ export function applyStaticSurfaceImpulse(body, normalX, normalY, cx, cy, { rest
     const w = body.angularVelocity || 0;
     const vpx = body.vx - w * ry;
     const vpy = body.vy + w * rx;
-    const approachDot = vpx * normalX + vpy * normalY;
+    const approachDot = dotXY(vpx, vpy, normalX, normalY);
     if (approachDot >= 0) return { approachDot, applied: false };
     const invMassVal = inverseMassFromBody(body);
     const invI = body.momentOfInertia ? 1 / body.momentOfInertia : 0;
@@ -38,7 +39,7 @@ export function applyStaticSurfaceImpulse(body, normalX, normalY, cx, cy, { rest
     const wNew = body.angularVelocity || 0;
     const vpxNew = body.vx - wNew * ry;
     const vpyNew = body.vy + wNew * rx;
-    const tangentDot = vpxNew * tx + vpyNew * ty;
+    const tangentDot = dotXY(vpxNew, vpyNew, tx, ty);
     const crossT = rx * ty - ry * tx;
     const denomT = invMassVal + crossT * crossT * invI;
     const jt = (-tangentDot * (1 - friction)) / denomT;

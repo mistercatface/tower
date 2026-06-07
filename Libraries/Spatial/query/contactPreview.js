@@ -1,4 +1,4 @@
-import { reflect2 } from "../../Math/Vec2.js";
+import { lengthXY, normalizeXY, reflect2 } from "../../Math/Vec2.js";
 import { circleLeadingPoint, circleWallContactPoint } from "../geometry/circleContact.js";
 import { applyCirclePairContact } from "../collision/circlePair.js";
 import { massFromBody } from "../../Motion/bodyMass.js";
@@ -35,10 +35,8 @@ import { castCircleRay } from "./circleCast.js";
  */
 export function computeBodyContactPreview({ body, nx, ny, speed = 1, pairRestitution = 0.5, obstacles = [], wallCtx = null, maxDist = 2400 }) {
     const radius = body.radius ?? 8;
-    const dirLen = Math.hypot(nx, ny);
+    const { nx: dx, ny: dy, len: dirLen } = normalizeXY(nx, ny);
     if (dirLen < 1e-6) return { primary: { x1: body.x, y1: body.y, x2: body.x, y2: body.y }, secondary: null, hit: null };
-    const dx = nx / dirLen;
-    const dy = ny / dirLen;
     const lead = circleLeadingPoint(body.x, body.y, radius, dx, dy);
     const hit = castCircleRay(body.x, body.y, dx, dy, radius, maxDist, { wallCtx, circles: obstacles });
     if (!hit) {
@@ -51,7 +49,7 @@ export function computeBodyContactPreview({ body, nx, ny, speed = 1, pairRestitu
     const primary = { x1: lead.x, y1: lead.y, x2: contact.x, y2: contact.y };
     if (hit.kind === "wall" && hit.nx != null && hit.ny != null) {
         const reflected = reflect2(dx, dy, hit.nx, hit.ny);
-        const rLen = Math.hypot(reflected.dx, reflected.dy) || 1;
+        const rLen = lengthXY(reflected.dx, reflected.dy) || 1;
         const ux = reflected.dx / rLen;
         const uy = reflected.dy / rLen;
         return { primary, secondary: { kind: "wall", x1: contact.x, y1: contact.y, x2: contact.x + ux, y2: contact.y + uy }, hit };
@@ -65,12 +63,10 @@ export function computeBodyContactPreview({ body, nx, ny, speed = 1, pairRestitu
         const struck = { x: other.x, y: other.y, radius: struckRadius, vx: 0, vy: 0, mass: massFromBody(other) };
         let strike = applyCirclePairContact(striker, struck, { restitution: pairRestitution, separate: false, touchSlop: 1e-4 });
         if (!strike) {
-            const ndx = other.x - hit.x;
-            const ndy = other.y - hit.y;
-            const nd = Math.hypot(ndx, ndy);
-            strike = { normalX: nd > 1e-10 ? ndx / nd : 1, normalY: nd > 1e-10 ? ndy / nd : 0, bvx: 0, bvy: 0, cutFactor: 0, struckSpeed: 0 };
+            const { nx: normalX, ny: normalY, len: nd } = normalizeXY(other.x - hit.x, other.y - hit.y);
+            strike = { normalX: nd > 1e-10 ? normalX : 1, normalY: nd > 1e-10 ? normalY : 0, bvx: 0, bvy: 0, cutFactor: 0, struckSpeed: 0 };
         }
-        const cueSpeed = Math.hypot(cueVx, cueVy);
+        const cueSpeed = lengthXY(cueVx, cueVy);
         const speedRatio = cueSpeed > 1e-6 ? strike.struckSpeed / cueSpeed : 0;
         let objUx = strike.normalX;
         let objUy = strike.normalY;

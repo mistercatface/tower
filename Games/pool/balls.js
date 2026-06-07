@@ -4,27 +4,20 @@ import { wakePushableBody } from "../../Libraries/Motion/pushableSleep.js";
 import { poolBallFromNumber } from "../../Libraries/Render/Props3D/poolBallArt.js";
 import { POOL_CUE_STICK_TUNING } from "./config/cueStick.js";
 import { getCollisionSettings } from "../../Core/GameCollisionSettings.js";
+import { speedSqXY } from "../../Libraries/Math/Vec2.js";
 import { POOL_OBJECT_BALL_COUNT } from "./config/rackLayout.js";
-
 export const POOL_CUE_TAG = "_poolCue";
 export const POOL_OBJECT_TAG = "_poolObject";
-
 /**
  * @param {object} state
  */
 export function ensurePoolState(state) {
     if (!state.pool) {
-        state.pool = {
-            phase: "aiming",
-            objectRemaining: POOL_OBJECT_BALL_COUNT,
-            won: false,
-            aim: null,
-        };
+        state.pool = { phase: "aiming", objectRemaining: POOL_OBJECT_BALL_COUNT, won: false, aim: null };
         ensureCueStick(state.pool, POOL_CUE_STICK_TUNING);
     }
     return state.pool;
 }
-
 /**
  * @param {object} state
  * @returns {object | null}
@@ -37,7 +30,6 @@ export function getCueBall(state) {
     }
     return null;
 }
-
 /**
  * @param {object} state
  * @returns {object[]}
@@ -47,13 +39,10 @@ export function getActiveBalls(state) {
     const out = [];
     for (let i = 0; i < state.pickups.length; i++) {
         const ball = state.pickups[i];
-        if (!ball.isDead && (ball[POOL_CUE_TAG] || ball[POOL_OBJECT_TAG])) {
-            out.push(ball);
-        }
+        if (!ball.isDead && (ball[POOL_CUE_TAG] || ball[POOL_OBJECT_TAG])) out.push(ball);
     }
     return out;
 }
-
 /**
  * @param {object} state
  */
@@ -63,29 +52,21 @@ export function allBallsStopped(state) {
         const b = balls[i];
         const vx = b.vx ?? 0;
         const vy = b.vy ?? 0;
-        if (vx * vx + vy * vy > getCollisionSettings().restingSpeedSq) return false;
+        if (speedSqXY(vx, vy) > getCollisionSettings().restingSpeedSq) return false;
     }
     return balls.length > 0;
 }
-
 /**
  * @param {object} state
  * @param {object} layout
  */
 export function spawnPoolBalls(state, layout) {
     if (!state.pickups || !layout?.ballSpawns) return;
-
     const rack = layout.ballSpawns.rack ?? [];
     const specs = [
         { type: "pool_cue_ball", pos: layout.ballSpawns.cue, tag: POOL_CUE_TAG, number: 0 },
-        ...rack.map((slot) => ({
-            type: "pool_ball",
-            pos: slot,
-            tag: POOL_OBJECT_TAG,
-            number: slot.number,
-        })),
+        ...rack.map((slot) => ({ type: "pool_ball", pos: slot, tag: POOL_OBJECT_TAG, number: slot.number })),
     ];
-
     for (const spec of specs) {
         const ball = new Pickup(spec.pos.x, spec.pos.y, spec.type, 0);
         ball[spec.tag] = true;
@@ -93,13 +74,11 @@ export function spawnPoolBalls(state, layout) {
         wakePushableBody(ball);
         state.pickups.push(ball);
     }
-
     const pool = ensurePoolState(state);
     pool.objectRemaining = POOL_OBJECT_BALL_COUNT;
     pool.phase = "aiming";
     pool.won = false;
 }
-
 /**
  * @param {object} state
  * @param {object} layout

@@ -1,4 +1,5 @@
 import { getCollisionSettings } from "../../../Core/GameCollisionSettings.js";
+import { dotXY, lengthXY, normalizeXY, speedSqXY } from "../../Math/Vec2.js";
 import { massFromBody } from "../../Motion/bodyMass.js";
 import { COINCIDENT_CIRCLE_EPS, separateAlongNormal, separateCoincidentCirclePair } from "./penetration.js";
 /**
@@ -21,9 +22,7 @@ import { COINCIDENT_CIRCLE_EPS, separateAlongNormal, separateCoincidentCirclePai
  * @returns {CirclePairContactResult | null}
  */
 export function applyCirclePairContact(a, b, { restitution = getCollisionSettings().restitution.circlePair, separate = true, touchSlop = 0 } = {}) {
-    const dx = b.x - a.x;
-    const dy = b.y - a.y;
-    const dist = Math.hypot(dx, dy);
+    const { nx: normalX, ny: normalY, len: dist } = normalizeXY(b.x - a.x, b.y - a.y);
     const minDist = a.radius + b.radius;
     if (dist > minDist + touchSlop) return null;
     const overlap = Math.max(0, minDist - dist);
@@ -38,16 +37,10 @@ export function applyCirclePairContact(a, b, { restitution = getCollisionSetting
         if (separate) separateCoincidentCirclePair(a, b, overlap || minDist, massA, massB);
         return { normalX: 0, normalY: 0, avx: avx0, avy: avy0, bvx: bvx0, bvy: bvy0, cutFactor: 0, struckSpeed: 0 };
     }
-    const normalX = dx / dist;
-    const normalY = dy / dist;
-    const sourceSpeed = Math.hypot(avx0, avy0);
-    const cutFactor = sourceSpeed > 1e-6 ? Math.max(0, (avx0 * normalX + avy0 * normalY) / sourceSpeed) : 0;
-    const rvx = bvx0 - avx0;
-    const rvy = bvy0 - avy0;
-    const velAlongNormal = rvx * normalX + rvy * normalY;
-    const speedSqA = avx0 * avx0 + avy0 * avy0;
-    const speedSqB = bvx0 * bvx0 + bvy0 * bvy0;
-    const isResting = speedSqA <= getCollisionSettings().restingSpeedSq && speedSqB <= getCollisionSettings().restingSpeedSq;
+    const sourceSpeed = lengthXY(avx0, avy0);
+    const cutFactor = sourceSpeed > 1e-6 ? Math.max(0, dotXY(avx0, avy0, normalX, normalY) / sourceSpeed) : 0;
+    const velAlongNormal = dotXY(bvx0 - avx0, bvy0 - avy0, normalX, normalY);
+    const isResting = speedSqXY(avx0, avy0) <= getCollisionSettings().restingSpeedSq && speedSqXY(bvx0, bvy0) <= getCollisionSettings().restingSpeedSq;
     if (isResting && velAlongNormal >= 0) return null;
     if (separate && overlap > 0) separateAlongNormal(a, b, normalX, normalY, overlap, massA, massB);
     let avx = avx0;
@@ -69,7 +62,7 @@ export function applyCirclePairContact(a, b, { restitution = getCollisionSetting
         b.vx = bvx;
         b.vy = bvy;
     }
-    return { normalX, normalY, avx, avy, bvx, bvy, cutFactor, struckSpeed: Math.hypot(bvx, bvy) };
+    return { normalX, normalY, avx, avy, bvx, bvy, cutFactor, struckSpeed: lengthXY(bvx, bvy) };
 }
 /**
  * Circle-circle overlap resolution + velocity impulse.

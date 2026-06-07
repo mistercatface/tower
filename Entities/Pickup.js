@@ -15,6 +15,7 @@ import { getWorldGen } from "../Core/GamePorts.js";
 import { placeAtWallClearance } from "../Libraries/Pathfinding/PathClearance.js";
 import { distanceToSegment } from "../Libraries/Spatial/geometry/WallGeometry.js";
 import { MOVING_SPEED_SQ } from "../Libraries/Spatial/collision/entityBroadphase.js";
+import { speedSqXY } from "../Libraries/Math/Vec2.js";
 import { resolveBodyRadius } from "../Libraries/Motion/bodyDefaults.js";
 import { wakePushableBody } from "../Libraries/Motion/pushableSleep.js";
 function buildWorldPropStrategy(type) {
@@ -140,7 +141,7 @@ export class Pickup extends Entity {
         this.changeState("exploded", { gameState });
     }
     needsWallCollision() {
-        return this.vx * this.vx + this.vy * this.vy > MOVING_SPEED_SQ;
+        return speedSqXY(this.vx, this.vy) > MOVING_SPEED_SQ;
     }
     update(dt, state, spatialFrame, { resolveWalls = false } = {}) {
         this.ageMs += dt;

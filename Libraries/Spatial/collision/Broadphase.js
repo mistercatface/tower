@@ -1,3 +1,4 @@
+import { normalizeXY } from "../../Math/Vec2.js";
 function projectCircle(axisX, axisY, circle) {
     const c = circle.cx * axisX + circle.cy * axisY;
     return { min: c - circle.r, max: c + circle.r };
@@ -33,10 +34,8 @@ function circleObbOverlap(circle, obb) {
         [obb.cos, obb.sin],
         [-obb.sin, obb.cos],
     ];
-    const dx = circle.cx - obb.cx;
-    const dy = circle.cy - obb.cy;
-    const len = Math.hypot(dx, dy);
-    if (len > 1e-6) axes.push([dx / len, dy / len]);
+    const { nx, ny, len } = normalizeXY(circle.cx - obb.cx, circle.cy - obb.cy);
+    if (len > 1e-6) axes.push([nx, ny]);
     for (let i = 0; i < axes.length; i++) {
         const ax = axes[i][0];
         const ay = axes[i][1];

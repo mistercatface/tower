@@ -1,4 +1,5 @@
 import { applyVelocityDamping } from "../Motion/index.js";
+import { lengthXY } from "../Math/Vec2.js";
 import { absorbCollisionRollImpulse, integrateRollOrientation } from "./rollingMotion.js";
 import { isStandTipFallen, isStandTipProp } from "../Spatial/transforms/longAxisBox3d.js";
 /**
@@ -10,7 +11,7 @@ function resolveRollingFriction(strategy, body) {
     const threshold = strategy.lowSpeedFrictionThreshold;
     const boosted = strategy.lowSpeedFriction;
     if (threshold == null || boosted == null) return base;
-    const speed = Math.hypot(body.vx ?? 0, body.vy ?? 0);
+    const speed = lengthXY(body.vx ?? 0, body.vy ?? 0);
     if (speed >= threshold) return base;
     const t = 1 - speed / threshold;
     return base + (boosted - base) * t * t;

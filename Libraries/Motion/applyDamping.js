@@ -1,6 +1,7 @@
 /**
  * Velocity and angular drag for coasting / knockback decay (top-down locomotion).
  */
+import { addXY, lengthXY } from "../Math/Vec2.js";
 /**
  * @typedef {object} DampedBody
  * @property {number} x
@@ -17,12 +18,11 @@
  */
 export function applyVelocityDamping(body, dtMs, { friction = 8.0, integrateFacing = true, snapSpeed = 1 } = {}) {
     if (body.vx || body.vy) {
-        body.x += (body.vx ?? 0) * (dtMs / 1000);
-        body.y += (body.vy ?? 0) * (dtMs / 1000);
+        addXY(body, (body.vx ?? 0) * (dtMs / 1000), (body.vy ?? 0) * (dtMs / 1000));
         const dragFactor = Math.exp(-friction * (dtMs / 1000));
         body.vx = (body.vx ?? 0) * dragFactor;
         body.vy = (body.vy ?? 0) * dragFactor;
-        if (Math.hypot(body.vx, body.vy) < snapSpeed) {
+        if (lengthXY(body.vx, body.vy) < snapSpeed) {
             body.vx = 0;
             body.vy = 0;
         }

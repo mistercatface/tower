@@ -1,4 +1,5 @@
 import { CircleShape, PolygonShape } from "./Shapes.js";
+import { dotXY } from "../../Math/Vec2.js";
 import { COINCIDENT_CIRCLE_EPS } from "./penetration.js";
 function entityFacing(entity) {
     if (entity._collisionFacing != null) return entity._collisionFacing;
@@ -72,7 +73,7 @@ export class SatCollision {
             const v = shapeB.vertices[i];
             const vx = posB.x + (v.x * cosB - v.y * sinB);
             const vy = posB.y + (v.x * sinB + v.y * cosB);
-            const proj = vx * minNormal.x + vy * minNormal.y;
+            const proj = dotXY(vx, vy, minNormal.x, minNormal.y);
             if (proj < minProjB) {
                 minProjB = proj;
                 contactB = { x: vx, y: vy };
@@ -87,7 +88,7 @@ export class SatCollision {
             const v = shapeA.vertices[i];
             const vx = posA.x + (v.x * cosA - v.y * sinA);
             const vy = posA.y + (v.x * sinA + v.y * cosA);
-            const proj = vx * minNormal.x + vy * minNormal.y;
+            const proj = dotXY(vx, vy, minNormal.x, minNormal.y);
             if (proj > maxProjA) {
                 maxProjA = proj;
                 contactA = { x: vx, y: vy };
@@ -169,7 +170,7 @@ export class SatCollision {
             const ry = v.x * sin + v.y * cos;
             const vx = pos.x + rx;
             const vy = pos.y + ry;
-            const projection = vx * axis.x + vy * axis.y;
+            const projection = dotXY(vx, vy, axis.x, axis.y);
             if (projection < min) min = projection;
             if (projection > max) max = projection;
         }

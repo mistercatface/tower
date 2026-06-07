@@ -1,5 +1,5 @@
 import { getCollisionSettings } from "../../Core/GameCollisionSettings.js";
-
+import { dotXY } from "../Math/Vec2.js";
 /**
  * Two-body impulse exchange at a SAT contact (pickup / pushable pairs).
  */
@@ -32,7 +32,7 @@ export function applyRigidBodyImpulse(p1, p2, collisionInfo, restitution = getCo
     const v2y = (p2.vy || 0) + w2 * rx2;
     const rvx = v2x - v1x;
     const rvy = v2y - v1y;
-    const velAlongNormal = rvx * nx + rvy * ny;
+    const velAlongNormal = dotXY(rvx, rvy, nx, ny);
     if (velAlongNormal >= 0) return;
     const m1 = p1.mass !== undefined ? p1.mass : p1.radius || 15;
     const m2 = p2.mass !== undefined ? p2.mass : p2.radius || 15;

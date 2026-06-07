@@ -1,4 +1,5 @@
 import { Enemy } from "../Entities/Enemy.js";
+import { addXY, lengthXY, normalizeXY } from "../Libraries/Math/Vec2.js";
 /** Default for gun-configured impact knockback when pushSpeedMultiplier is omitted. */
 export const defaultGunPushSpeedMultiplier = 3;
 export const explosionImpactKnockback = { stunMs: 500, pushMs: 500, pushSpeedMultiplier: 6 };
@@ -21,7 +22,7 @@ export function repelActorFromExplosion(actor, exp, spatialFrame, state) {
     if (actor.isDead) return;
     const dx = actor.x - exp.x;
     const dy = actor.y - exp.y;
-    const dist = Math.hypot(dx, dy);
+    const dist = lengthXY(dx, dy);
     if (isNaN(dist)) return;
     const minDist = exp.radius + actor.radius;
     if (isNaN(minDist)) return;
@@ -35,13 +36,9 @@ export function repelActorFromExplosion(actor, exp, spatialFrame, state) {
         pushX = Math.cos(angle);
         pushY = Math.sin(angle);
         pushDist = 0.1;
-    } else {
-        pushX = dx / pushDist;
-        pushY = dy / pushDist;
-    }
+    } else ({ nx: pushX, ny: pushY } = normalizeXY(dx, dy));
     const overlap = minDist - pushDist;
     if (isNaN(pushX) || isNaN(pushY) || isNaN(overlap)) return;
-    actor.x += pushX * overlap;
-    actor.y += pushY * overlap;
+    addXY(actor, pushX * overlap, pushY * overlap);
     applyActorImpactKnockback(actor, Math.atan2(pushY, pushX), explosionImpactKnockback, spatialFrame, state);
 }

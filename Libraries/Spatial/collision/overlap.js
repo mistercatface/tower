@@ -1,9 +1,8 @@
+import { lengthXY } from "../../Math/Vec2.js";
 import { circleIntersectsSegment } from "../geometry/WallGeometry.js";
 /** @param {{ x: number, y: number, radius: number }} a @param {typeof a} b */
 export function circlesOverlap(a, b) {
-    const dx = a.x - b.x;
-    const dy = a.y - b.y;
-    return Math.hypot(dx, dy) < a.radius + b.radius;
+    return lengthXY(a.x - b.x, a.y - b.y) < a.radius + b.radius;
 }
 /**
  * First wall segment intersecting a circle (broadphase + precise test).
