@@ -2,9 +2,7 @@ import { getActiveGameDefinition } from "../../../Core/ActiveGameDefinition.js";
 import { bindSpeedControl, speedControlHtml, syncSpeedControlDisplay, wireSpeedControl } from "../../../Libraries/Playback/index.js";
 import { ensurePoolState } from "../balls.js";
 import { getPoolStatusMessage } from "../poolHud.js";
-import { bindShellElements } from "../../../UI/Core/shellElements.js";
 import { getUiRoot } from "../../../UI/Core/uiRoot.js";
-import { wireSettingsModal } from "../../../UI/Core/wireSettingsModal.js";
 /** @typedef {import("../../../Core/GameDefinitionTypes.js").UiPort} UiPort */
 /** @typedef {import("../../../Libraries/Playback/speedControlUi.js").SpeedControlElements} SpeedControlElements */
 const POOL_SPEED_CONTROL_HTML = speedControlHtml({ rootClass: "speed-control chrome-control-panel", buttonClass: "control-btn", pauseButtonClass: "control-btn control-btn-large" });
@@ -12,11 +10,6 @@ const POOL_UI_HTML = `
 <div id="poolHud" class="pool-hud">
     <div id="poolHudStatus" class="pool-hud-status"></div>
     <div id="poolHudBallsLeft" class="pool-hud-balls-left"></div>
-</div>
-<div id="topUI">
-    <div class="top-right-controls pool-top-controls">
-        <button id="settingsBtn" class="settings-gear-btn" type="button" title="Settings">⚙️</button>
-    </div>
 </div>
 <div id="poolSpeedOverlay" class="pool-speed-overlay">${POOL_SPEED_CONTROL_HTML}</div>`;
 /** @type {{ status: HTMLElement | null, ballsLeft: HTMLElement | null }} */
@@ -54,10 +47,8 @@ function updatePoolHud(state) {
 export const poolUiPort = {
     mount(ctx) {
         mountPoolChrome();
-        bindShellElements();
         bindPoolElements();
         if (poolSpeedControl) wireSpeedControl(poolSpeedControl, getActiveGameDefinition());
-        wireSettingsModal(ctx.state);
         updatePoolHud(ctx.state);
     },
     updateUI(ctx) {

@@ -1,8 +1,9 @@
 import { PoolSimulationState } from "./PoolSimulationState.js";
-import { MINIMAL_ARENA_BOOTSTRAP } from "../../Libraries/Bootstrap/presets.js";
+import { createBootstrapPort } from "../../Libraries/Bootstrap/presets.js";
 import { poolRunScenePort } from "./runScenePort.js";
-import { poolSimulation } from "./simulation.js";
 import { poolUiPort } from "./ui/poolUiPort.js";
+import { createSimulationPort } from "../../Systems/Simulation/SimulationPipeline.js";
+import { pushablePhysicsPhase, gameSceneTickPhase, worldSurfacePhase } from "../../Systems/Simulation/phases.js";
 import { poolWorldGen } from "./worldGen.js";
 import { isRadioDialogActive, wirePoolRadio } from "./wireRadio.js";
 import { drawPoolPockets } from "./drawPockets.js";
@@ -18,16 +19,16 @@ import { createCachedWorldStructure } from "../../Libraries/Render/worldStructur
 export const poolGame = {
     id: "pool",
     canvasId: "gameCanvas",
-    saveKey: "pool_save_v1",
     perspective: { cameraHeight: 520, strength: 0.28, viewerSource: "viewport" },
+    playback: { minSpeed: 0.25, maxSpeed: 2, step: 0.25 },
     proceduralDesign: { surfaceProfileId: SURFACE_PROFILE_ID.poolTableFelt },
     worldSurface: { wallHeight: 20, pixelsPerCell: 6 },
-    simulationPort: poolSimulation,
+    simulationPort: createSimulationPort([pushablePhysicsPhase, gameSceneTickPhase, worldSurfacePhase]),
     uiPort: poolUiPort,
     render: { ...createDefaultRenderPorts(), worldStructure: createCachedWorldStructure(), simulationEffectPasses: [{ zIndex: 10, draw: drawPoolPockets }] },
     worldGen: poolWorldGen,
     runBootstrapPort: createRunBootstrapPort([generateWorldPhase]),
-    bootstrapPort: MINIMAL_ARENA_BOOTSTRAP,
+    bootstrapPort: createBootstrapPort({ upgrades: false, inspect: false, save: false, persistentTriggers: false }),
     runScenePort: poolRunScenePort,
     radioPort: { wire: wirePoolRadio, isDialogActive: isRadioDialogActive },
     states: { simulation: PoolSimulationState },

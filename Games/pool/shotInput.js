@@ -181,7 +181,7 @@ export function estimateCueBallTravelDistance(v0, strategy) {
     }
 }
 /**
- * Cue-ball aim line — walls via {@link WeaponSystem.castLaser} (same as tower sights), balls via analytic ray.
+ * Cue-ball aim line — walls via {@link WeaponSystem.castLaser}, balls via analytic ray.
  *
  * @param {object} state
  * @returns {{ x1: number, y1: number, x2: number, y2: number } | null}
