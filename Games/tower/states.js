@@ -1,8 +1,9 @@
 import { playerBaseStats } from "../../Config/Config.js";
 import { FloatingText } from "../../Render/FloatingText.js";
 import { requestUiUpdate, requestUiHudUpdate } from "../../Core/EventSystem.js";
-import { inspectBridge } from "../../Combat/inspect/InspectBridge.js";
-import { getInspectPort, getRunScenePort, getSimulationPort } from "../../Core/GamePorts.js";
+import { inspectBridge } from "./inspect/InspectBridge.js";
+import { towerInspectPort } from "./inspectPort.js";
+import { getRunScenePort, getSimulationPort } from "../../Core/GamePorts.js";
 import { resetSimulationWorld, handlePlayerRepositionTap, handlePlayerRepositionDrag } from "../../Systems/Simulation/index.js";
 export class MapState {
     onEnter(ctx) {
@@ -81,7 +82,7 @@ export class InspectorState {
         if (ctx.state.player.currentState?.blocksInput) return;
         handlePlayerRepositionTap(ctx, worldCoords, isDoubleTap, {
             intercept: (coords) => {
-                const inspectTarget = getInspectPort().findPickup(ctx.state, coords.x, coords.y);
+                const inspectTarget = towerInspectPort.findPickup(ctx.state, coords.x, coords.y);
                 if (!inspectTarget) return false;
                 inspectBridge.open(inspectTarget, null, ctx.state);
                 return true;

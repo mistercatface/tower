@@ -1,7 +1,7 @@
 import { PairFilter } from "../Libraries/Interaction/PairFilter.js";
 import { createDefaultInteractionPairs } from "../Libraries/Interaction/defaultPhysicsPairs.js";
 import { BaseGeneratorStrategies } from "../Generator/GeneratorStrategies.js";
-import { NOOP_COMBAT_PORT, NOOP_INSPECT_PORT, NOOP_TARGETING_PORT } from "../Libraries/Ports/noopPorts.js";
+import { NOOP_COMBAT_PORT, NOOP_TARGETING_PORT } from "../Libraries/Ports/noopPorts.js";
 import { getActiveGameDefinition } from "./ActiveGameDefinition.js";
 /** @typedef {import("./GameDefinitionTypes.js").InteractionPairsPort} InteractionPairsPort */
 /** @typedef {import("./GameDefinitionTypes.js").SimulationPort} SimulationPort */
@@ -12,7 +12,6 @@ import { getActiveGameDefinition } from "./ActiveGameDefinition.js";
 /** @typedef {import("./GameDefinitionTypes.js").RunBootstrapPort} RunBootstrapPort */
 /** @typedef {import("./GameDefinitionTypes.js").BootstrapPort} BootstrapPort */
 /** @typedef {import("./GameDefinitionTypes.js").RunScenePort} RunScenePort */
-/** @typedef {import("./GameDefinitionTypes.js").InspectPort} InspectPort */
 /** @typedef {import("./GameDefinitionTypes.js").CombatPort} CombatPort */
 function requireGameDefinition() {
     const def = getActiveGameDefinition();
@@ -73,10 +72,6 @@ export function canRunHordeSpawning(state) {
 /** @param {object} state @returns {boolean} */
 export function blocksTurretTargeting(state) {
     return getRunScenePort().getCapabilities(state).blockTurret;
-}
-/** @returns {InspectPort} */
-export function getInspectPort() {
-    return requireGameDefinition().inspectPort ?? NOOP_INSPECT_PORT;
 }
 /** @returns {CombatPort} */
 export function getCombatPort() {

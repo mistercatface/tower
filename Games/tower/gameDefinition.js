@@ -1,7 +1,7 @@
 import { createUpgrades, createBaseUpgrades } from "../../Progression/Upgrades.js";
 import { MapState, SimulationState, InspectorState } from "./states.js";
+import { inspectBridge } from "./inspect/InspectBridge.js";
 import { COMBAT_ROGUELIKE_BOOTSTRAP } from "../../Libraries/Bootstrap/presets.js";
-import { towerInspectPort } from "./inspectPort.js";
 import { towerCombatPort } from "./combatPort.js";
 import * as towerTargeting from "./targeting.js";
 import { towerRunScenePort } from "./runScenePort.js";
@@ -36,10 +36,12 @@ export const towerGame = {
     runBootstrapPort: createRoguelikeRunBootstrapPort(),
     bootstrapPort: COMBAT_ROGUELIKE_BOOTSTRAP,
     runScenePort: towerRunScenePort,
-    inspectPort: towerInspectPort,
     combatPort: towerCombatPort,
     keyBindings: towerKeyBindings,
     registerListeners: registerTowerListeners,
+    onCanvasResize() {
+        inspectBridge.resize();
+    },
     createUpgrades() {
         return [...createBaseUpgrades(), ...createUpgrades()];
     },

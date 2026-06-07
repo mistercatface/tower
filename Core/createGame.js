@@ -9,7 +9,6 @@ import { Renderer } from "../Render/Render.js";
 import { SimulationViewport } from "../Render/SimulationViewport.js";
 import { StatsManager } from "../Progression/StatsManager.js";
 import { StateMachine } from "../Libraries/FSM/StateMachine.js";
-import { inspectBridge } from "../Combat/inspect/InspectBridge.js";
 import { setActiveGameDefinition } from "./ActiveGameDefinition.js";
 import { bootstrapEngine } from "./bootstrapEngine.js";
 import { applyGameCollisionSettings } from "./GameCollisionSettings.js";
@@ -76,7 +75,7 @@ export function createGame(definition) {
         state.canvasBounds = { width: canvas.width, height: canvas.height };
         viewport.setCanvasSize(canvas.width, canvas.height);
         getRenderPorts().worldStructure.invalidate("viewport");
-        if (getBootstrapPort().features.inspect) inspectBridge.resize();
+        definition.onCanvasResize?.();
     }
     registerCoreListeners(events, pauseManager);
     definition.registerListeners?.(events);

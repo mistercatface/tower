@@ -1,7 +1,8 @@
 import { perkMilestones, xpForLevel } from "../../../Config/Config.js";
 import { buildAbilityTreeLayout } from "../../../Config/content/abilityTreeLayout.js";
 import { GamePhase, isSimulation } from "../../../GameState/GamePhase.js";
-import { getInspectPort } from "../../../Core/GamePorts.js";
+import { getActiveGameDefinition } from "../../../Core/ActiveGameDefinition.js";
+import { towerInspectPort } from "../inspectPort.js";
 import { getGunDefinition, playerEquipmentCatalog } from "../../../Config/content/guns.js";
 import { getSlotFireIntervalMs, getSlotReloadTimeMs } from "../../../Combat/gunCombat.js";
 import { countGunInLoadout, formatHandednessLabel, getEquipmentSlotCount, getGunEquipAction, normalizeWeaponLoadout } from "../../../Combat/equipmentLoadout.js";
@@ -21,7 +22,6 @@ import {
 import { bindShellElements } from "../../../UI/Core/shellElements.js";
 import { wireSettingsModal } from "../../../UI/Core/wireSettingsModal.js";
 import { bindSpeedControl, syncSpeedControlDisplay, wireSpeedControl } from "../../../Libraries/Playback/index.js";
-import { getActiveGameDefinition } from "../../../Core/ActiveGameDefinition.js";
 import { mountTowerChrome } from "./mountTowerChrome.js";
 /** @type {Record<string, HTMLElement | NodeListOf<Element> | null>} */
 let elements = {};
@@ -79,7 +79,7 @@ function updateInspectMissionBanner(state) {
     const banner = elements.inspectMissionBanner;
     const textEl = elements.inspectMissionText;
     if (!banner || !textEl) return;
-    const bannerInfo = getInspectPort().getMissionBanner(state);
+    const bannerInfo = towerInspectPort.getMissionBanner(state);
     if (!bannerInfo) {
         if (banner.style.display !== "none") banner.style.display = "none";
         return;

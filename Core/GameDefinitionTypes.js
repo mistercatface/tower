@@ -114,15 +114,6 @@
  * @property {boolean} [skipStartPickups] — omit crate/barrel scatter on map reset
  */
 /**
- * @typedef {object} InspectPort
- * @property {() => void} [registerEntries]
- * @property {(state: object) => { show: boolean, text: string }} getMissionBanner
- * @property {(state: object, worldX: number, worldY: number) => object | null} findPickup
- * @property {(state: object, inspectKey: string) => void} onMissionOpen
- * @property {(state: object, inspectKey: string) => void} onMissionClose
- * @property {(state: object) => boolean} isMissionActive
- */
-/**
  * @typedef {object} CombatPort
  * @property {(ctx: { state: object, upgrades: object[] }) => void} [onRunOpeningComplete]
  */
@@ -164,10 +155,10 @@
  * @property {RunBootstrapPort} runBootstrapPort — new-run entity/world setup after `generateWorld`
  * @property {BootstrapPort} bootstrapPort — feature-gated `createGame` boot
  * @property {RunScenePort} runScenePort — run scene enter/tick/capabilities
- * @property {InspectPort} [inspectPort] — defaults to noop when omitted
  * @property {CombatPort} [combatPort] — defaults to noop when omitted
  * @property {(fsm: import("../Libraries/FSM/StateMachine.js").StateMachine) => import("../Libraries/Input/keyboardBindings.js").KeyBinding[]} [keyBindings]
  * @property {(eventBus: import("../Libraries/Events/EventBus.js").EventBus) => void} [registerListeners]
+ * @property {() => void} [onCanvasResize]
  * @property {() => void | Promise<void>} [prepare]
  * @property {Partial<CombatFeatures>} [combat] — render combat layers; omitted = all off
  * @property {Partial<import("./GamePerspective.js").PerspectiveConfig>} [perspective]

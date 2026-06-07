@@ -1,11 +1,9 @@
-import { inspectBridge } from "../../Combat/inspect/InspectBridge.js";
-import { getBootstrapPort, getInspectPort, getUiPort } from "../../Core/GamePorts.js";
+import { getBootstrapPort, getUiPort } from "../../Core/GamePorts.js";
 import { Events } from "../../Core/EventSystem.js";
 import { InputManager } from "../../Core/InputManager.js";
 import { loadPersistentTriggers } from "../../Core/PersistentTriggers.js";
 import { registerSharedOverlayListeners } from "../../UI/Core/sharedOverlays.js";
 import { clearGameChrome } from "../../UI/Core/uiRoot.js";
-import { preloadAllInspectAssets } from "../../Libraries/Inspect/InspectCatalog.js";
 import { hardResetProgress, initializeSaveSystem, loadProgress, registerProgressListeners } from "../../Progression/Storage.js";
 import { StatsManager } from "../../Progression/StatsManager.js";
 /**
@@ -56,11 +54,6 @@ export function applyGameBootstrap(ctx) {
     if (features.persistentTriggers) loadPersistentTriggers();
     clearGameChrome();
     getUiPort().mount({ state, upgrades });
-    if (features.inspect) {
-        inspectBridge.mount();
-        getInspectPort().registerEntries?.();
-        preloadAllInspectAssets();
-    }
     resizeCanvas();
     InputManager.setup(canvas, fsm);
     resetGame();

@@ -7,8 +7,6 @@ import {
     isInspectCollectActive,
 } from "../../Libraries/RunScene/behaviors/inspectCollect.js";
 import { registerGameInspectEntries } from "./content/inspect/inspectContent.js";
-/** @typedef {import("../../Core/GameDefinitionTypes.js").InspectPort} InspectPort */
-/** @type {InspectPort} */
 export const towerInspectPort = {
     registerEntries() {
         registerGameInspectEntries();
