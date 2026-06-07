@@ -6,8 +6,11 @@ export const TABLE_ROWS = 24;
 export const TABLE_RAIL_CELLS = 2;
 /** Pool ball radius in world units (physics + render). */
 export const POOL_BALL_RADIUS = 8;
-/** Pocket sensor radius in world units. */
-export const POCKET_RADIUS = 14;
+/** Pocket sensor radius for corner pockets in world units. */
+export const CORNER_POCKET_RADIUS = 19;
+/** Pocket sensor radius for side pockets in world units. */
+export const SIDE_POCKET_RADIUS = 16;
+export const POCKET_RADIUS = SIDE_POCKET_RADIUS;
 /** Below this speed (world units/s), felt drag ramps up so balls don't creep at the end. */
 export const POOL_BALL_LOW_SPEED_THRESHOLD = 10;
 export const POOL_BALL_LOW_SPEED_FRICTION = 2.8;
@@ -82,14 +85,15 @@ export function getPlayfieldBounds(offsetX, offsetY, cellSize, cols = TABLE_COLS
  */
 export function getPocketPositions(offsetX, offsetY, cellSize) {
     const play = getPlayfieldBounds(offsetX, offsetY, cellSize);
-    const r = POCKET_RADIUS;
+    const cr = CORNER_POCKET_RADIUS;
+    const sr = SIDE_POCKET_RADIUS;
     return [
-        { x: play.minX, y: play.minY, radius: r, kind: "corner-tl" },
-        { x: play.centerX, y: play.minY, radius: r, kind: "side-top" },
-        { x: play.maxX, y: play.minY, radius: r, kind: "corner-tr" },
-        { x: play.minX, y: play.maxY, radius: r, kind: "corner-bl" },
-        { x: play.centerX, y: play.maxY, radius: r, kind: "side-bottom" },
-        { x: play.maxX, y: play.maxY, radius: r, kind: "corner-br" },
+        { x: play.minX, y: play.minY, radius: cr, kind: "corner-tl" },
+        { x: play.centerX, y: play.minY, radius: sr, kind: "side-top" },
+        { x: play.maxX, y: play.minY, radius: cr, kind: "corner-tr" },
+        { x: play.minX, y: play.maxY, radius: cr, kind: "corner-bl" },
+        { x: play.centerX, y: play.maxY, radius: sr, kind: "side-bottom" },
+        { x: play.maxX, y: play.maxY, radius: cr, kind: "corner-br" },
     ];
 }
 /** Canvas arc sweep for a pocket mouth opening into the table (clockwise radians). */

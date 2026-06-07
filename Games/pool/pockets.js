@@ -18,6 +18,27 @@ export function processPockets(state, layout, dt) {
 
         if (ball.currentStateName === "sinking") {
             ball.sinkingTimer -= dt;
+
+            // Check if the ball has bounced out of the pocket mouth back onto the felt
+            const dx = ball.x - ball.pocketX;
+            const dy = ball.y - ball.pocketY;
+            const dist = Math.hypot(dx, dy);
+
+            const pocketRadius = ball.pocketRadius ?? 16;
+            const captureThreshold = pocketRadius * 0.65;
+
+            // Mark the ball as captured once it rolls deep enough into the pocket cup (dist <= captureThreshold)
+            if (dist <= captureThreshold) {
+                ball.sinkingCaptured = true;
+            }
+
+            // If the ball has rolled outside the pocket radius and is still shallow (elevation > -6),
+            // and was NOT captured, it "rims out" and returns to normal table play.
+            if (!ball.sinkingCaptured && ball.elevation > -6 && dist > pocketRadius) {
+                ball.changeState("normal");
+                continue;
+            }
+
             if (ball.elevation <= -24 || ball.sinkingTimer <= 0) {
                 ball.changeState("normal"); // resets mass, elevation, and opacity
                 if (ball[POOL_OBJECT_TAG]) {
@@ -43,6 +64,10 @@ export function processPockets(state, layout, dt) {
             ball.sinkingTimer = 1500; // ms (allow up to 1.5 seconds for complete fall)
             ball.pocketX = pocketEntered.x;
             ball.pocketY = pocketEntered.y;
+            ball.pocketRadius = pocketEntered.radius;
+            ball.tableCenterX = layout.tableCenterX;
+            ball.tableCenterY = layout.tableCenterY;
+            ball.sinkingCaptured = false;
         }
     }
 
