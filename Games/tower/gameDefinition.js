@@ -1,4 +1,3 @@
-import { createUpgrades, createBaseUpgrades } from "./progression/Upgrades.js";
 import { createTowerRunBootstrapPort } from "./runBootstrap.js";
 import { MapState, SimulationState, InspectorState } from "./states.js";
 import { inspectBridge } from "./inspect/InspectBridge.js";
@@ -43,9 +42,6 @@ export const towerGame = {
     registerListeners: registerTowerListeners,
     onCanvasResize() {
         inspectBridge.resize();
-    },
-    createUpgrades() {
-        return [...createBaseUpgrades(), ...createUpgrades()];
     },
     states: { map: MapState, simulation: SimulationState, inspector: InspectorState },
     initialState: "simulation",

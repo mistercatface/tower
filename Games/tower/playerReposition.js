@@ -1,13 +1,13 @@
 import { resolveRepositionTarget } from "../../Libraries/Pathfinding/PathClearance.js";
 function isDiveActive(ctx) {
-    for (const upg of ctx.upgrades) {
+    for (const upg of ctx.state.upgradeDefs ?? []) {
         if (!upg.isAbility || upg.triggerType !== "double_tap_move" || !ctx.state.abilities[upg.id]) continue;
         if (ctx.state.scheduler.getTimeRemaining(ctx.state.abilityTimers[upg.id].activeId) > 0) return true;
     }
     return false;
 }
 function triggerDoubleTapAbilities(ctx) {
-    for (const upg of ctx.upgrades) {
+    for (const upg of ctx.state.upgradeDefs ?? []) {
         if (!upg.isAbility || upg.triggerType !== "double_tap_move" || !ctx.state.abilities[upg.id]) continue;
         if (ctx.state.scheduler.getTimeRemaining(ctx.state.abilityTimers[upg.id].cooldownId) > 0) continue;
         ctx.state.abilityTimers[upg.id].activeId = ctx.state.scheduler.schedule(upg.activeDuration);

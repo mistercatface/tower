@@ -81,7 +81,11 @@ function updateInspectMissionBanner(state) {
     if (!bannerInfo.show) return;
     if (textEl.innerText !== bannerInfo.text) textEl.innerText = bannerInfo.text;
 }
-function updateHud(state, upgrades) {
+function getUpgradeDefs(state) {
+    return state.upgradeDefs ?? [];
+}
+function updateHud(state) {
+    const upgrades = getUpgradeDefs(state);
     updateMapNavButtons(state);
     updateInspectMissionBanner(state);
     setHudLabel("killsDisplay", state.kills);
@@ -148,7 +152,8 @@ function wireTowerControls(state) {
     });
     if (elements.closeMapBtn) elements.closeMapBtn.style.display = "none";
 }
-function mountTowerUi(state, upgrades) {
+function mountTowerUi(state) {
+    const upgrades = getUpgradeDefs(state);
     mountTowerChrome();
     elements = bindTowerShellElements();
     elements.inspectMissionBanner = document.getElementById("inspectMissionBanner");
@@ -208,8 +213,8 @@ function mountTowerUi(state, upgrades) {
     });
     wireTowerControls(state);
     if (towerSpeedControl) wireSpeedControl(towerSpeedControl, getActiveGameDefinition());
-    updateUI(state, upgrades);
-    updateHud(state, upgrades);
+    updateUI(state);
+    updateHud(state);
 }
 function isUpgradeVisibleInTab(state, upg, currentLevelToCheck) {
     if (state.currentUpgradeTab === "stats" && upg.category === state.statsSubTab) return true;
@@ -450,7 +455,8 @@ function drawStat(state, upg, abilityLayoutById) {
 function syncTowerSpeedControl(state) {
     if (towerSpeedControl) syncSpeedControlDisplay(towerSpeedControl, state, getActiveGameDefinition());
 }
-function updateUI(state, upgrades) {
+function updateUI(state) {
+    const upgrades = getUpgradeDefs(state);
     updateInspectMissionBanner(state);
     const viewport = state.fsm?.context?.viewport;
     if (elements.zoomDisplay && viewport) elements.zoomDisplay.innerText = Math.round(viewport.zoom * 100) + "%";
@@ -508,15 +514,15 @@ function updateUI(state, upgrades) {
 /** @type {import("../../../Core/GameDefinitionTypes.js").UiPort} */
 export const towerUiPort = {
     mount(ctx) {
-        mountTowerUi(ctx.state, ctx.upgrades);
+        mountTowerUi(ctx.state);
     },
     unmount() {
         unmountTowerChrome();
     },
     updateUI(ctx) {
-        updateUI(ctx.state, ctx.upgrades);
+        updateUI(ctx.state);
     },
     updateHud(ctx) {
-        updateHud(ctx.state, ctx.upgrades);
+        updateHud(ctx.state);
     },
 };

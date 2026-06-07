@@ -14,20 +14,22 @@ export const initRunStatePhase = {
 /** @type {RunBootstrapPhase} */
 export const resetAbilityTimersPhase = {
     run(ctx) {
-        const { state, upgrades } = ctx;
-        if (!upgrades?.length) return;
-        for (const upg of upgrades) if (upg.isAbility) state.abilityTimers[upg.id] = { readyTime: 0, activeUntil: 0, activeId: null, cooldownId: null };
+        const { state } = ctx;
+        const upgradeDefs = state.upgradeDefs ?? [];
+        if (!upgradeDefs.length) return;
+        for (const upg of upgradeDefs) if (upg.isAbility) state.abilityTimers[upg.id] = { readyTime: 0, activeUntil: 0, activeId: null, cooldownId: null };
     },
 };
 /** @type {RunBootstrapPhase} */
 export const syncUpgradeLevelsPhase = {
     run(ctx) {
-        const { state, upgrades } = ctx;
-        if (!upgrades?.length) return;
+        const { state } = ctx;
+        const upgradeDefs = state.upgradeDefs ?? [];
+        if (!upgradeDefs.length) return;
         const player = state.player;
-        StatsManager.recalculateStats(state, upgrades);
+        StatsManager.recalculateStats(state);
         for (const key in player.upgrades) {
-            const upgDef = upgrades.find((u) => u.id === key);
+            const upgDef = upgradeDefs.find((u) => u.id === key);
             if (upgDef) {
                 if (upgDef.isAbility)
                     if (player.startingAbilities?.includes(key)) player.upgrades[key].baseLevel = 1;
@@ -38,15 +40,15 @@ export const syncUpgradeLevelsPhase = {
             player.upgrades[key].ptsCost = state.runStats.baseUpgradeCost.value;
         }
         if (player.startingAbilities) for (const abilityId of player.startingAbilities) state.abilities[abilityId] = true;
-        for (const upg of upgrades) if (upg.onRunStart && player.upgrades[upg.id]?.baseLevel > 0) upg.onRunStart(state);
-        StatsManager.recalculateStats(state, upgrades);
+        for (const upg of upgradeDefs) if (upg.onRunStart && player.upgrades[upg.id]?.baseLevel > 0) upg.onRunStart(state);
+        StatsManager.recalculateStats(state);
     },
 };
 /** @type {RunBootstrapPhase} */
 export const applyWeaponLoadoutPhase = {
     run(ctx) {
-        const { state, upgrades } = ctx;
-        state.player.applyWeaponLoadout(rollPlayerStartLoadout(), { state, upgradeDefs: upgrades });
+        const { state } = ctx;
+        state.player.applyWeaponLoadout(rollPlayerStartLoadout(), { state, upgradeDefs: state.upgradeDefs });
     },
 };
 /** @type {RunBootstrapPhase} */

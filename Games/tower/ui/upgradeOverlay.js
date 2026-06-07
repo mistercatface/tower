@@ -7,14 +7,14 @@ function createButton(styles, innerHTML, onClick) {
     if (onClick) btn.addEventListener("click", onClick);
     return btn;
 }
-export function showUpgradeChoice(title, description, choices, upgrades, onPick) {
+export function showUpgradeChoice(title, description, choices, choiceDefs, onPick) {
     const elements = getTowerShellElements();
     if (elements.upgradeChoiceTitle) elements.upgradeChoiceTitle.innerText = title;
     if (elements.upgradeChoiceDesc) elements.upgradeChoiceDesc.innerText = description;
     if (!elements.upgradeChoicesContainer || !elements.upgradeChoiceModal) return;
     elements.upgradeChoicesContainer.innerHTML = "";
     choices.forEach((choiceId) => {
-        const upg = upgrades.find((u) => u.id === choiceId);
+        const upg = choiceDefs.find((u) => u.id === choiceId);
         if (!upg) return;
         const styles =
             "padding: 10px; background: #333; color: white; border: 1px solid #FFEB3B; cursor: pointer; font-family: monospace; font-size: 14px; display: flex; flex-direction: column; align-items: center; gap: 4px;";
@@ -29,5 +29,5 @@ export function showUpgradeChoice(title, description, choices, upgrades, onPick)
 }
 /** @param {import("../../../Libraries/Events/EventBus.js").EventBus} eventBus */
 export function registerUpgradeOverlayListener(eventBus) {
-    eventBus.on(Events.UI_SHOW_UPGRADE_CHOICE, (data) => showUpgradeChoice(data.title, data.description, data.choices, data.upgrades, data.onPick));
+    eventBus.on(Events.UI_SHOW_UPGRADE_CHOICE, (data) => showUpgradeChoice(data.title, data.description, data.choices, data.choiceDefs, data.onPick));
 }

@@ -8,34 +8,34 @@ export const hordePhase = {
     run(ctx, dt) {
         if (!isSimulation(ctx.state.phase)) return;
         if (runSceneController.getCurrentCapabilities().horde !== true) return;
-        ctx.state.hordeSpawner.manageSpawning(dt, ctx.state, ctx.upgrades);
+        ctx.state.hordeSpawner.manageSpawning(dt, ctx.state);
     },
 };
 /** @type {SimulationPhase} */
 export const abilitiesPhase = {
     run(ctx, dt, runtime) {
-        runtime.abilityState = ProgressionManager.updateAbilities(ctx.state, dt, ctx.upgrades);
+        runtime.abilityState = ProgressionManager.updateAbilities(ctx.state, dt);
     },
 };
 /** @type {SimulationPhase} */
 export const upgradesPhase = {
     run(ctx, dt) {
-        ctx.upgrades.forEach((upg) => upg.update(dt, ctx.state));
+        for (const upg of ctx.state.upgradeDefs ?? []) upg.update(dt, ctx.state);
     },
 };
 /** @type {SimulationPhase} */
 export const levelUpsPhase = {
     run(ctx) {
-        ProgressionManager.processLevelUps(ctx.state, ctx.upgrades);
+        ProgressionManager.processLevelUps(ctx.state);
     },
 };
 /** @type {SimulationPhase} */
 export const playerLocomotionPhase = {
     run(ctx, dt, runtime) {
-        const { state, upgrades } = ctx;
+        const { state } = ctx;
         const abilityState = runtime.abilityState ?? { isDiving: false, externalSpeedMod: 1 };
         if (!abilityState.isDiving && state.player.applyQueuedTarget(state)) state.navigation.rebuildPlayerFlowField(state.player.targetX, state.player.targetY);
-        state.updateAllCombatants(dt, runtime.spatialFrame, { externalSpeedMod: abilityState.externalSpeedMod, upgrades, combatEvents: runtime.events });
+        state.updateAllCombatants(dt, runtime.spatialFrame, { externalSpeedMod: abilityState.externalSpeedMod, combatEvents: runtime.events });
     },
 };
 /** @type {SimulationPhase} */
@@ -55,10 +55,10 @@ export const flowFieldPhase = {
 /** @type {SimulationPhase} */
 export const inspectorPartyPhase = {
     run(ctx, dt, runtime) {
-        const { state, upgrades } = ctx;
+        const { state } = ctx;
         const abilityState = runtime.abilityState ?? { isDiving: false, externalSpeedMod: 1 };
         if (!abilityState.isDiving && state.player.applyQueuedTarget(state)) state.navigation.rebuildPlayerFlowField(state.player.targetX, state.player.targetY);
-        const partyOpts = { externalSpeedMod: abilityState.externalSpeedMod, upgrades, blocksTargeting: true };
+        const partyOpts = { externalSpeedMod: abilityState.externalSpeedMod, blocksTargeting: true };
         for (const actor of state.getPlayerActors()) actor.updateCombat(dt, state, runtime.spatialFrame, partyOpts);
     },
 };

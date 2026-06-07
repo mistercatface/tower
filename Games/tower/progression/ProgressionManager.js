@@ -1,11 +1,15 @@
 import { spawnFloatingText, events, Events, requestUiUpdate, requestGamePause, requestGameResume } from "../../../Core/EventSystem.js";
 import { requestProgressDirty, requestProgressSave } from "./events.js";
 import { StatsManager } from "./StatsManager.js";
+/** @param {object} state */
+function upgradeDefs(state) {
+    return state.upgradeDefs ?? [];
+}
 export class ProgressionManager {
-    static processEnemyKillRewards(enemy, state, upgrades) {
+    static processEnemyKillRewards(enemy, state) {
         const pointsReward = enemy.reward * 10 + state.runStats.pointBonus.value;
         let xpGain = 5;
-        upgrades.forEach((upg) => {
+        upgradeDefs(state).forEach((upg) => {
             if (state.player.upgrades[upg.id] && state.player.upgrades[upg.id].level > 0 && upg.onEnemyKilled) xpGain = upg.onEnemyKilled(state, enemy, xpGain);
         });
         state.kills++;
@@ -21,10 +25,10 @@ export class ProgressionManager {
             if (p.isDead) state.pickups.splice(i, 1);
         }
     }
-    static updateAbilities(state, dt, upgrades) {
+    static updateAbilities(state, dt) {
         let externalSpeedMod = 1.0;
         let isDiving = false;
-        upgrades
+        upgradeDefs(state)
             .filter((u) => u.isAbility && state.abilities[u.id])
             .forEach((upg) => {
                 const timers = state.abilityTimers[upg.id];
@@ -36,12 +40,13 @@ export class ProgressionManager {
             });
         return { externalSpeedMod, isDiving };
     }
-    static applyUpgradeChoice(state, upgrades, choice, pointsAmount, setBaseLevel) {
+    static applyUpgradeChoice(state, choice, pointsAmount, setBaseLevel) {
+        const defs = upgradeDefs(state);
         if (choice === "take_points") {
             state.score += pointsAmount;
             spawnFloatingText({ x: state.player.x, y: state.player.y - 60, text: `+${pointsAmount} Pts`, color: "#FFEB3B" });
         } else {
-            const upg = upgrades.find((u) => u.id === choice);
+            const upg = defs.find((u) => u.id === choice);
             if (upg.replaces && upg.replaces.length > 0)
                 upg.replaces.forEach((repId) => {
                     if (state.player.upgrades[repId]) {
@@ -57,23 +62,24 @@ export class ProgressionManager {
             if (upg.onPurchase) upg.onPurchase(state);
         }
     }
-    static getValidAbilities(state, upgrades) {
-        return upgrades.filter((u) => {
+    static getValidAbilities(state) {
+        const defs = upgradeDefs(state);
+        return defs.filter((u) => {
             const uState = state.player.upgrades[u.id];
             if (u.category !== "abilities" || uState.level > 0) return false;
             if (u.requires && u.requires.some((req) => !state.player.upgrades[req] || state.player.upgrades[req].level === 0)) return false;
             if (u.minPlayerLevel && state.level < u.minPlayerLevel) return false;
-            if (upgrades.some((activeUpg) => state.player.upgrades[activeUpg.id].level > 0 && activeUpg.replaces && activeUpg.replaces.includes(u.id))) return false;
+            if (defs.some((activeUpg) => state.player.upgrades[activeUpg.id].level > 0 && activeUpg.replaces && activeUpg.replaces.includes(u.id))) return false;
             return true;
         });
     }
-    static promptChoice(title, description, choices, customUpgrades, onPick) {
+    static promptChoice(title, description, choices, choiceDefs, onPick) {
         requestGamePause("modal");
         events.emit(Events.UI_SHOW_UPGRADE_CHOICE, {
             title,
             description,
             choices,
-            upgrades: customUpgrades,
+            choiceDefs,
             onPick: (pickedId) => {
                 onPick(pickedId);
                 requestGameResume("modal");
@@ -81,7 +87,8 @@ export class ProgressionManager {
             },
         });
     }
-    static promptAbilitySelection(state, upgrades, title, description, choices, isNewRun) {
+    static promptAbilitySelection(state, title, description, choices, isNewRun) {
+        const defs = upgradeDefs(state);
         const pointsAmount = 100 + 100 * state.level;
         if (state.discoveredAbilities) {
             choices.forEach((choiceId) => {
@@ -90,15 +97,15 @@ export class ProgressionManager {
             requestProgressDirty();
         }
         choices.push("take_points");
-        const customUpgrades = [...upgrades, { id: "take_points", name: "Take Points", description: `Gain ${pointsAmount} Points` }];
-        this.promptChoice(title, description, choices, customUpgrades, (pickedId) => {
-            this.applyUpgradeChoice(state, upgrades, pickedId, pointsAmount, !isNewRun);
+        const choiceDefs = [...defs, { id: "take_points", name: "Take Points", description: `Gain ${pointsAmount} Points` }];
+        this.promptChoice(title, description, choices, choiceDefs, (pickedId) => {
+            this.applyUpgradeChoice(state, pickedId, pointsAmount, !isNewRun);
             if (isNewRun) requestProgressSave();
-            StatsManager.recalculateStats(state, upgrades);
+            StatsManager.recalculateStats(state);
         });
     }
-    static getValidPerks(state, upgrades) {
-        return upgrades.filter((u) => {
+    static getValidPerks(state) {
+        return upgradeDefs(state).filter((u) => {
             if (!u.isPerk) return false;
             if (u.minPlayerLevel && state.level < u.minPlayerLevel) return false;
             const uState = state.player.upgrades[u.id];
@@ -106,18 +113,19 @@ export class ProgressionManager {
             return true;
         });
     }
-    static promptPerkSelection(state, upgrades, title, description, choices) {
-        this.promptChoice(title, description, choices, [...upgrades], (pickedId) => {
-            const upg = upgrades.find((u) => u.id === pickedId);
+    static promptPerkSelection(state, title, description, choices) {
+        const defs = upgradeDefs(state);
+        this.promptChoice(title, description, choices, [...defs], (pickedId) => {
+            const upg = defs.find((u) => u.id === pickedId);
             state.player.upgrades[pickedId].baseLevel = 1;
             state.player.upgrades[pickedId].level = 1;
             requestProgressSave();
-            StatsManager.recalculateStats(state, upgrades);
+            StatsManager.recalculateStats(state);
             if (upg.onPurchase) upg.onPurchase(state);
         });
     }
-    static setupNewRunAbilities(state, upgrades) {
-        const validAbilities = this.getValidAbilities(state, upgrades);
+    static setupNewRunAbilities(state) {
+        const validAbilities = this.getValidAbilities(state);
         const choices = [];
         const availablePool = [...validAbilities];
         const steadyWeaponIdx = availablePool.findIndex((u) => u.id === "SteadyWeapon");
@@ -131,13 +139,13 @@ export class ProgressionManager {
             choices.push(availablePool[randIdx].id);
             availablePool.splice(randIdx, 1);
         }
-        this.promptAbilitySelection(state, upgrades, "New Run", "Choose a starting Ability.", choices, true);
+        this.promptAbilitySelection(state, "New Run", "Choose a starting Ability.", choices, true);
     }
-    static processLevelUps(state, upgrades) {
+    static processLevelUps(state) {
         if (state.isPaused) return;
         if (state.pendingPerkPicks && state.pendingPerkPicks.length > 0) {
             const milestone = state.pendingPerkPicks.shift();
-            const validPerks = this.getValidPerks(state, upgrades);
+            const validPerks = this.getValidPerks(state);
             const choices = [];
             const numChoices = Math.min(3, validPerks.length);
             const availablePool = [...validPerks];
@@ -146,12 +154,12 @@ export class ProgressionManager {
                 choices.push(availablePool[randIdx].id);
                 availablePool.splice(randIdx, 1);
             }
-            if (choices.length > 0) this.promptPerkSelection(state, upgrades, "MILESTONE REACHED", `Choose a Perk`, choices);
+            if (choices.length > 0) this.promptPerkSelection(state, "MILESTONE REACHED", `Choose a Perk`, choices);
             return;
         }
         if (state.pendingLevelUps > 0) {
             state.pendingLevelUps--;
-            const validUpgrades = this.getValidAbilities(state, upgrades);
+            const validUpgrades = this.getValidAbilities(state);
             const choices = [];
             const numChoices = Math.min(3, validUpgrades.length);
             const availablePool = [...validUpgrades];
@@ -160,7 +168,7 @@ export class ProgressionManager {
                 choices.push(availablePool[randIdx].id);
                 availablePool.splice(randIdx, 1);
             }
-            this.promptAbilitySelection(state, upgrades, "LEVEL UP", "Choose a new ability.", choices, false);
+            this.promptAbilitySelection(state, "LEVEL UP", "Choose a new ability.", choices, false);
         }
     }
 }

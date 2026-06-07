@@ -15,9 +15,9 @@ import { preloadAllInspectAssets } from "../../Libraries/Inspect/InspectCatalog.
 import { progressionBootstrap } from "./progression/bootstrap.js";
 import { registerUpgradeOverlayListener } from "./ui/upgradeOverlay.js";
 import { registerGameOverOverlayListener } from "./ui/gameOverOverlay.js";
-/** @param {import("../../Libraries/Events/EventBus.js").EventBus} eventBus @param {{ state: object, upgrades: object[], fsm: object, resetGame: () => void } | undefined} boot */
+/** @param {import("../../Libraries/Events/EventBus.js").EventBus} eventBus @param {{ state: object, fsm: object, resetGame: () => void } | undefined} boot */
 export function registerTowerListeners(eventBus, boot) {
-    if (boot) progressionBootstrap({ state: boot.state, upgrades: boot.upgrades, events: eventBus });
+    if (boot) progressionBootstrap({ state: boot.state, events: eventBus });
     registerUpgradeOverlayListener(eventBus);
     registerGameOverOverlayListener(eventBus);
     towerRadio.wire(eventBus, { requestPause: requestGamePause, requestResume: requestGameResume });
@@ -25,15 +25,15 @@ export function registerTowerListeners(eventBus, boot) {
     preloadAllInspectAssets();
     loadPersistentTriggers();
     registerPersistentTriggers(eventBus);
-    eventBus.on(Events.COMBAT_ENEMY_KILLED, ({ enemy, state, upgrades, fsm }) => {
-        ProgressionManager.processEnemyKillRewards(enemy, state, upgrades);
-        getRunScenePort().onEnemyKilled?.({ enemy, state, upgrades, fsm });
+    eventBus.on(Events.COMBAT_ENEMY_KILLED, ({ enemy, state, fsm }) => {
+        ProgressionManager.processEnemyKillRewards(enemy, state);
+        getRunScenePort().onEnemyKilled?.({ enemy, state, fsm });
         requestProgressDirty();
         requestUiUpdate();
     });
-    eventBus.on(Events.PROGRESS_PURCHASE_UPGRADE, ({ state, upgrades, upgradeId }) => {
+    eventBus.on(Events.PROGRESS_PURCHASE_UPGRADE, ({ state, upgradeId }) => {
         if (state.isGameOver) return;
-        const upg = upgrades.find((u) => u.id === upgradeId);
+        const upg = (state.upgradeDefs ?? []).find((u) => u.id === upgradeId);
         if (!upg || upg.category === "abilities" || upg.category === "perk") return;
         const uState = state.player.upgrades[upgradeId];
         if (!uState) return;
@@ -42,15 +42,15 @@ export function registerTowerListeners(eventBus, boot) {
         state.score -= cost;
         uState.ptsCost = nextUpgradeCost(uState.ptsCost);
         uState.level++;
-        StatsManager.recalculateStats(state, upgrades);
+        StatsManager.recalculateStats(state);
         if (upg.onPurchase) upg.onPurchase(state);
         requestUiUpdate();
     });
-    eventBus.on(Events.PROGRESS_TOGGLE_ABILITY, ({ state, upgrades, abilityId }) => {
-        const upg = upgrades.find((u) => u.id === abilityId);
+    eventBus.on(Events.PROGRESS_TOGGLE_ABILITY, ({ state, abilityId }) => {
+        const upg = (state.upgradeDefs ?? []).find((u) => u.id === abilityId);
         if (!upg?.hasToggle) return;
         state.abilities[abilityId] = !state.abilities[abilityId];
-        StatsManager.recalculateStats(state, upgrades);
+        StatsManager.recalculateStats(state);
         requestUiUpdate();
     });
     eventBus.on(Events.PROGRESS_EQUIP_WEAPON, ({ state, gunId }) => {

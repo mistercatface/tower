@@ -32,9 +32,8 @@ export function createGame(definition) {
     const ctx = canvas.getContext("2d");
     ctx.imageSmoothingEnabled = false;
     const renderer = new Renderer(canvas, ctx);
-    const upgrades = definition.createUpgrades?.() ?? [];
     const viewport = new SimulationViewport(0, 0);
-    const stateMachineContext = { state, upgrades, viewport, renderer };
+    const stateMachineContext = { state, viewport, renderer };
     const fsm = new StateMachine(stateMachineContext);
     stateMachineContext.fsm = fsm;
     state.fsm = fsm;
@@ -58,7 +57,7 @@ export function createGame(definition) {
     function resetGame() {
         state.scheduler.clear();
         state.isGameOver = false;
-        resetRun(state, upgrades);
+        resetRun(state);
         pauseManager.reset();
         hideGameOver();
         viewport.snapTo(0, 0);
@@ -75,6 +74,6 @@ export function createGame(definition) {
         definition.onCanvasResize?.();
     }
     registerCoreListeners(events, pauseManager);
-    definition.registerListeners?.(events, { state, upgrades, fsm, resetGame });
-    applyGameBootstrap({ definition, state, upgrades, events, pauseManager, canvas, fsm, viewport, resetGame, resizeCanvas });
+    definition.registerListeners?.(events, { state, fsm, resetGame });
+    applyGameBootstrap({ definition, state, events, pauseManager, canvas, fsm, viewport, resetGame, resizeCanvas });
 }

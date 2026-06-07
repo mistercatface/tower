@@ -13,10 +13,11 @@ export class HordeSpawner {
     beginHorde() {
         this.spawnIntervalId = null;
     }
-    manageSpawning(_dt, state, upgrades) {
+    manageSpawning(_dt, state) {
+        const upgradeDefs = state.upgradeDefs ?? [];
         if (!state.zombieEventTriggered) {
             state.zombieEventTriggered = true;
-            this.spawnZombieEvent(state, upgrades);
+            this.spawnZombieEvent(state, upgradeDefs);
         }
         if (this.spawnIntervalId) return;
         this.spawnIntervalId = state.scheduler.schedule(
@@ -24,13 +25,13 @@ export class HordeSpawner {
             () => {
                 const aliveEnemies = state.enemies.filter((e) => !e.isDead && !e.excludeFromActiveCap).length;
                 if (aliveEnemies >= spawnSettings.maxActiveEnemies) return;
-                this.spawnPodGroup(state, upgrades);
+                this.spawnPodGroup(state, upgradeDefs);
             },
             true,
         );
     }
-    spawnPodGroup(state, upgrades) {
-        const baseUpgradeDefs = upgrades.filter(isBaseStatUpgrade);
+    spawnPodGroup(state, upgradeDefs) {
+        const baseUpgradeDefs = upgradeDefs.filter(isBaseStatUpgrade);
         const pod = selectSpawnPod();
         const candidates = getSpawnCandidateNodes(state);
         const targetNode = candidates.length > 0 ? candidates[Math.floor(Math.random() * candidates.length)] : state.getStartMapNode();
@@ -50,7 +51,7 @@ export class HordeSpawner {
         }
         return totalCount;
     }
-    spawnZombieEvent(state, upgrades) {
+    spawnZombieEvent(state, upgradeDefs) {
         const targetNode = getZombieSpawnTargetNode(state);
         if (!targetNode) return;
         const hordeEvent = getEntityCatalog()?.events?.zombieHorde;
@@ -59,7 +60,7 @@ export class HordeSpawner {
         const spots = findFreeSpotsInNode(state, targetNode, count);
         const enemyType = getEnemyType(hordeEvent.type);
         if (!enemyType) return;
-        const baseUpgradeDefs = upgrades.filter(isBaseStatUpgrade);
+        const baseUpgradeDefs = upgradeDefs.filter(isBaseStatUpgrade);
         for (let i = 0; i < count; i++) {
             const spot = spots[i] || spots[0];
             state.enemies.push(Enemy.spawn(spot.x, spot.y, enemyType, baseUpgradeDefs));

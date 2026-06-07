@@ -14,7 +14,7 @@ export function runOpeningBehavior(def) {
             fireRadioTrigger(
                 radio,
                 () => {
-                    getCombatPort().onRunOpeningComplete?.({ state, upgrades: ctx.upgrades });
+                    getCombatPort().onRunOpeningComplete?.({ state });
                     if (!runScene.opening) runScene.opening = { completed: false };
                     runScene.opening.completed = true;
                 },

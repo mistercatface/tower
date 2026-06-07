@@ -203,3 +203,6 @@ export const createUpgrades = () => [
     */
     ...metaUpgradeDefinitions.map((def) => upgradeFromDefinition(def, Upgrade)),
 ];
+export function createTowerUpgradeDefs() {
+    return [...createBaseUpgrades(), ...createUpgrades()];
+}

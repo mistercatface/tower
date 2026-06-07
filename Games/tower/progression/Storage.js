@@ -35,13 +35,14 @@ function serializeProgress(state) {
         discoveredAbilities: Array.from(state.discoveredAbilities || []),
     };
 }
-function applyProgress(state, upgrades, payload) {
+function applyProgress(state, payload) {
     resetProgress(state);
     if (!payload || typeof payload !== "object" || payload.version !== SAVE_VERSION) return;
+    const upgradeDefs = state.upgradeDefs ?? [];
     if (payload.upgrades && typeof payload.upgrades === "object")
         Object.keys(payload.upgrades).forEach((id) => {
             if (!state.player.upgrades[id]) return;
-            const upgDef = upgrades.find((u) => u.id === id);
+            const upgDef = upgradeDefs.find((u) => u.id === id);
             const maxLevel = upgDef ? upgDef.maxLevel : Infinity;
             const baseLevel = asNonNegativeInt(payload.upgrades[id]?.baseLevel, 0);
             state.player.upgrades[id].baseLevel = Math.min(baseLevel, maxLevel);
@@ -67,7 +68,7 @@ export function initializeSaveSystem(state) {
     const store = ensureProgressStore();
     store?.init();
 }
-export function loadProgress(state, upgrades) {
+export function loadProgress(state) {
     saveStateRef = state;
     const store = ensureProgressStore();
     const payload = store?.read() ?? null;
@@ -75,7 +76,7 @@ export function loadProgress(state, upgrades) {
         resetProgress(state);
         return;
     }
-    applyProgress(state, upgrades, payload);
+    applyProgress(state, payload);
 }
 export function markProgressDirty(state) {
     saveStateRef = state;

@@ -7,7 +7,7 @@ import { ensureRunScene, getRunSceneIntro, setRunSceneMission } from "./runScene
 export const skipPresets = {
     through_run_start(state, _def, ctx) {
         ensureRunScene(state).opening.completed = true;
-        getCombatPort().onRunOpeningComplete?.({ state, upgrades: ctx.upgrades });
+        getCombatPort().onRunOpeningComplete?.({ state });
     },
     through_intro(state) {
         const intro = getRunSceneIntro(state);

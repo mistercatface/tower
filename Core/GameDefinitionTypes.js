@@ -55,7 +55,6 @@
 /**
  * @typedef {object} UiContext
  * @property {object} state
- * @property {object[]} upgrades
  */
 /**
  * @typedef {object} UiPort
@@ -66,7 +65,7 @@
  */
 /**
  * @typedef {object} RunBootstrapPort
- * @property {(state: object, upgrades: object[]) => void} resetRun
+ * @property {(state: object) => void} resetRun
  */
 /**
  * @typedef {object} InputPort
@@ -78,7 +77,7 @@
  * @property {(state: object) => object | null} getLayout
  * @property {(ctx: object) => void} onSimulationEnter
  * @property {(ctx: object, dt: number) => void} onTick
- * @property {(payload: { enemy: object, state: object, upgrades: object[], fsm: object }) => void} [onEnemyKilled]
+ * @property {(payload: { enemy: object, state: object, fsm: object }) => void} [onEnemyKilled]
  */
 /**
  * @typedef {{ minX: number, minY: number, maxX: number, maxY: number }} WorldPlayBounds
@@ -101,7 +100,7 @@
  */
 /**
  * @typedef {object} CombatPort
- * @property {(ctx: { state: object, upgrades: object[] }) => void} [onRunOpeningComplete]
+ * @property {(ctx: { state: object }) => void} [onRunOpeningComplete]
  */
 /**
  * @typedef {object} PlaybackConfig
@@ -129,8 +128,7 @@
  * @property {string} canvasId
  * @property {string} [saveKey]
  * @property {() => import("../GameState/SharedGameState.js").SharedGameState} createGameState
- * @property {() => object[]} [createUpgrades] — defaults to `[]` when omitted
- * @property {(eventBus: import("../Libraries/Events/EventBus.js").EventBus, boot?: { state: object, upgrades: object[], fsm: import("../Libraries/FSM/StateMachine.js").StateMachine, resetGame: () => void }) => void} [registerListeners]
+ * @property {(eventBus: import("../Libraries/Events/EventBus.js").EventBus, boot?: { state: object, fsm: import("../Libraries/FSM/StateMachine.js").StateMachine, resetGame: () => void }) => void} [registerListeners]
  * @property {Record<string, new () => object>} states
  * @property {string} initialState
  * @property {Partial<InteractionPairsPort>} [interactionPairs] — combat/physics overrides; physics defaults from engine

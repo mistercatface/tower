@@ -6,7 +6,6 @@ import { mountGameUi } from "../../UI/Core/uiRoot.js";
  * @typedef {object} GameBootstrapContext
  * @property {import("../../Core/GameDefinitionTypes.js").GameDefinition} definition
  * @property {object} state
- * @property {object[]} upgrades
  * @property {import("../../Libraries/Events/EventBus.js").EventBus} events
  * @property {import("../../Core/PauseManager.js").PauseManager} pauseManager
  * @property {HTMLCanvasElement} canvas
@@ -17,11 +16,11 @@ import { mountGameUi } from "../../UI/Core/uiRoot.js";
  */
 /** @param {import("../../Libraries/Events/EventBus.js").EventBus} eventBus */
 function registerUiEventListeners(eventBus) {
-    eventBus.on(Events.UI_UPDATE, (data) => {
-        getUiPort().updateUI({ state: data.state, upgrades: data.upgrades });
+    eventBus.on(Events.UI_UPDATE, ({ state }) => {
+        getUiPort().updateUI({ state });
     });
-    eventBus.on(Events.UI_UPDATE_HUD, (data) => {
-        getUiPort().updateHud({ state: data.state, upgrades: data.upgrades });
+    eventBus.on(Events.UI_UPDATE_HUD, ({ state }) => {
+        getUiPort().updateHud({ state });
     });
 }
 /**
@@ -30,13 +29,13 @@ function registerUiEventListeners(eventBus) {
  * @param {GameBootstrapContext} ctx
  */
 export function applyGameBootstrap(ctx) {
-    const { state, upgrades, events, canvas, fsm, resetGame, resizeCanvas } = ctx;
-    events.setContext({ state, upgrades, viewport: ctx.viewport, fsm, resetGame });
+    const { state, events, canvas, fsm, resetGame, resizeCanvas } = ctx;
+    events.setContext({ state, viewport: ctx.viewport, fsm, resetGame });
     events.warnOnMissingListeners = true;
     registerUiEventListeners(events);
     window.addEventListener("resize", resizeCanvas);
     window.gameState = state;
-    mountGameUi(getUiPort(), { state, upgrades });
+    mountGameUi(getUiPort(), state);
     resizeCanvas();
     InputManager.setup(canvas, fsm);
     resetGame();

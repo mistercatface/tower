@@ -77,9 +77,9 @@ export function getRunBootstrapPort() {
     if (!port) throw new Error("Active game definition missing runBootstrapPort.");
     return port;
 }
-/** @param {object} state @param {object[]} upgrades */
-export function resetRun(state, upgrades) {
-    getRunBootstrapPort().resetRun(state, upgrades);
+/** @param {object} state */
+export function resetRun(state) {
+    getRunBootstrapPort().resetRun(state);
 }
 /** @param {object} state */
 export function generateWorld(state) {

@@ -12,7 +12,7 @@ export class TurretController {
     }
     updateTurretCombat(dt, state, options = {}) {
         if (!this.actor.weapon || this.actor.turrets.length === 0) return options.combatEvents ?? [];
-        const blocksTargeting = options.blocksTargeting || this.getExternalBlocksTargeting(state, options.upgrades ?? []);
+        const blocksTargeting = options.blocksTargeting || this.getExternalBlocksTargeting(state);
         const combatEvents = options.combatEvents ?? [];
         if (this.actor.canRunTurretCombat()) {
             this.acquireTurretTargets(state, blocksTargeting);
@@ -105,9 +105,9 @@ export class TurretController {
         }
         return getNearestHostile(state, this.actor, this.actor.weapon.range);
     }
-    getExternalBlocksTargeting(state, upgrades = []) {
+    getExternalBlocksTargeting(state) {
         if (!this.actor.isAbilityOwner(state) || !state?.abilities || !state?.scheduler) return false;
-        for (const upg of upgrades) {
+        for (const upg of state.upgradeDefs ?? []) {
             if (!upg.isAbility || !state.abilities[upg.id] || !upg.blocksTargeting) continue;
             const timers = state.abilityTimers[upg.id];
             if (!timers) continue;

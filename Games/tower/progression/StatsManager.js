@@ -1,10 +1,9 @@
 import { perkMilestones, xpForLevel } from "../../../Config/Config.js";
 import { createUpgradeLevels, resetUpgradeLevels } from "../../../Entities/CombatantStats.js";
 import { spawnFloatingText } from "../../../Core/EventSystem.js";
-import { resetRun } from "../../../Core/GamePorts.js";
 export class StatsManager {
-    static initUpgradesList(state, upgradeList) {
-        state.upgradeDefs = upgradeList;
+    static initUpgradesList(state) {
+        const upgradeList = state.upgradeDefs ?? [];
         const player = state.player;
         if (Object.keys(player.upgrades).length === 0) {
             player.upgrades = createUpgradeLevels(upgradeList, state.runStats.baseUpgradeCost.value);
@@ -31,14 +30,11 @@ export class StatsManager {
             spawnFloatingText({ x: state.player.x, y: state.player.y - 40, text: "LEVEL UP", color: "#FFEB3B" });
         }
     }
-    static recalculateStats(state, upgradesList) {
-        const upgradeDefs = upgradesList ?? state.upgradeDefs;
+    static recalculateStats(state) {
+        const upgradeDefs = state.upgradeDefs ?? [];
         state.player.recalculate(state, upgradeDefs, (upg) => {
             if (upg.isAbility && !state.abilities[upg.id]) return false;
             return true;
         });
-    }
-    static resetRun(state, upgradesList) {
-        resetRun(state, upgradesList);
     }
 }
