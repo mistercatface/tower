@@ -12,9 +12,11 @@ import { inspectBridge } from "./inspect/InspectBridge.js";
 import { towerInspectPort } from "./inspectPort.js";
 import { preloadAllInspectAssets } from "../../Libraries/Inspect/InspectCatalog.js";
 import { progressionBootstrap } from "./progression/bootstrap.js";
+import { registerUpgradeOverlayListener } from "./ui/upgradeOverlay.js";
 /** @param {import("../../Libraries/Events/EventBus.js").EventBus} eventBus @param {{ state: object, upgrades: object[], fsm: object, resetGame: () => void } | undefined} boot */
 export function registerTowerListeners(eventBus, boot) {
     if (boot) progressionBootstrap({ state: boot.state, upgrades: boot.upgrades, events: eventBus });
+    registerUpgradeOverlayListener(eventBus);
     towerRadio.wire(eventBus, { requestPause: requestGamePause, requestResume: requestGameResume });
     inspectBridge.mount();
     towerInspectPort.registerEntries();

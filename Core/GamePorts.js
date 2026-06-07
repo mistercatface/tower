@@ -54,9 +54,7 @@ export function getWorldGen() {
 }
 /** @returns {BootstrapPort} */
 export function getBootstrapPort() {
-    const port = requireGameDefinition().bootstrapPort;
-    if (!port) throw new Error("Active game definition missing bootstrapPort.");
-    return port;
+    return requireGameDefinition().bootstrapPort ?? { features: {} };
 }
 /** @returns {RunScenePort} */
 export function getRunScenePort() {

@@ -40,7 +40,7 @@ export function applyGameBootstrap(ctx) {
     registerUiEventListeners(events);
     window.addEventListener("resize", resizeCanvas);
     window.gameState = state;
-    if (features.persistentTriggers) loadPersistentTriggers();
+    if (features.persistentTriggers === true) loadPersistentTriggers();
     clearGameChrome();
     getUiPort().mount({ state, upgrades });
     resizeCanvas();

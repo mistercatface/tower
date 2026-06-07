@@ -71,10 +71,8 @@
  */
 /**
  * @typedef {object} BootstrapFeatures
- * @property {boolean} upgrades
- * @property {boolean} inspect
- * @property {boolean} save
- * @property {boolean} persistentTriggers
+ * @property {boolean} [persistentTriggers]
+ * @property {boolean} [zoom]
  */
 /**
  * @typedef {object} BootstrapPort
@@ -147,7 +145,7 @@
  * @property {RenderPorts} render
  * @property {WorldGenPort} worldGen
  * @property {RunBootstrapPort} runBootstrapPort — new-run entity/world setup after `generateWorld`
- * @property {BootstrapPort} bootstrapPort — feature-gated `createGame` boot
+ * @property {BootstrapPort} [bootstrapPort] — optional engine boot flags; games opt in only what they need
  * @property {RunScenePort} runScenePort — simulation enter/tick/layout hooks
  * @property {CombatPort} [combatPort] — defaults to noop when omitted
  * @property {(fsm: import("../Libraries/FSM/StateMachine.js").StateMachine) => import("../Libraries/Input/keyboardBindings.js").KeyBinding[]} [keyBindings]

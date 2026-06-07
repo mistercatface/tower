@@ -1,5 +1,4 @@
 import { PoolSimulationState } from "./PoolSimulationState.js";
-import { createBootstrapPort } from "../../Libraries/Bootstrap/presets.js";
 import { poolRunScenePort } from "./runScenePort.js";
 import { poolUiPort } from "./ui/poolUiPort.js";
 import { createSimulationPort } from "../../Systems/Simulation/SimulationPipeline.js";
@@ -32,7 +31,6 @@ export const poolGame = {
     render: { ...createDefaultRenderPorts(), worldStructure: createCachedWorldStructure(), simulationEffectPasses: [{ zIndex: 10, draw: drawPoolPockets }] },
     worldGen: poolWorldGen,
     runBootstrapPort: createRunBootstrapPort([generateWorldPhase]),
-    bootstrapPort: createBootstrapPort({ upgrades: false, inspect: false, save: false, persistentTriggers: false }),
     runScenePort: poolRunScenePort,
     registerListeners: registerPoolListeners,
     states: { simulation: PoolSimulationState },
