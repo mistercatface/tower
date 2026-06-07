@@ -9,6 +9,8 @@ import { registerPauseListeners } from "./PauseManager.js";
 import { FloatingText } from "../Render/FloatingText.js";
 import { nextUpgradeCost } from "../Config/Config.js";
 import { registerPersistentTriggers } from "./PersistentTriggerSetup.js";
+import { adjustSelectedSpeed } from "../Libraries/Playback/index.js";
+import { getActiveGameDefinition } from "./ActiveGameDefinition.js";
 export function registerAllListeners(eventBus, pauseManager) {
     FloatingText.registerEventListener(eventBus);
     registerPersistentTriggers(eventBus);
@@ -69,8 +71,7 @@ export function registerGameListeners(eventBus, pauseManager) {
         requestUiUpdate();
     });
     eventBus.on(Events.GAME_SET_SPEED, ({ state, delta }) => {
-        if (delta < 0) state.selectedSpeed = Math.max(0.5, state.selectedSpeed + delta);
-        else state.selectedSpeed = Math.min(state.runStats.gameSpeed.value, state.selectedSpeed + delta);
+        adjustSelectedSpeed(state, delta, getActiveGameDefinition());
         requestUiUpdate();
     });
     eventBus.on(Events.GAME_SET_ZOOM, ({ state, viewport, sliderValue }) => {

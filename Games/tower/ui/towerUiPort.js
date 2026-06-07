@@ -9,6 +9,8 @@ import { countGunInLoadout, formatHandednessLabel, getEquipmentSlotCount, getGun
 import { events, Events, emitPurchaseUpgrade, emitToggleAbility, emitSetUpgradeTab, emitSetStatsSubTab, emitToggleEquipWeapon, emitUnequipWeaponSlot } from "../../../Core/EventSystem.js";
 import { applyChromeProfile } from "../../../UI/Core/shellChrome.js";
 import { wireShellControls } from "../../../UI/Core/wireShellControls.js";
+import { syncSpeedControlDisplay } from "../../../Libraries/Playback/index.js";
+import { getActiveGameDefinition } from "../../../Core/ActiveGameDefinition.js";
 import { mountTowerChrome } from "./mountTowerChrome.js";
 /** @type {Record<string, HTMLElement | NodeListOf<Element> | null>} */
 const elements = {};
@@ -461,14 +463,14 @@ function drawStat(state, upg, abilityLayoutById) {
 function updateUI(state, upgrades) {
     updateInspectMissionBanner(state);
     const chrome = getUiProfile().chrome;
-    if (chrome.controls !== "none" && elements.pauseText) elements.pauseText.innerText = state.isPaused ? "PLAY" : "PAUSE";
     if (!chrome.bottomPanel) {
-        if (chrome.controls === "full" && elements.speedDisplay) {
-            state.selectedSpeed = Math.min(state.selectedSpeed, state.runStats.gameSpeed.value);
-            elements.speedDisplay.innerText = state.selectedSpeed.toFixed(2) + "x";
-            elements.speedDownBtn.style.opacity = state.selectedSpeed <= 0.5 ? "0.5" : "1";
-            elements.speedUpBtn.style.opacity = state.selectedSpeed >= state.runStats.gameSpeed.value ? "0.5" : "1";
-        }
+        if (chrome.controls === "full")
+            syncSpeedControlDisplay(
+                { pauseLabel: elements.pauseText, speedLabel: elements.speedDisplay, speedDownBtn: elements.speedDownBtn, speedUpBtn: elements.speedUpBtn },
+                state,
+                getActiveGameDefinition(),
+            );
+        else if (chrome.controls !== "none" && elements.pauseText) elements.pauseText.innerText = state.isPaused ? "PLAY" : "PAUSE";
         return;
     }
     const viewport = state.fsm?.context?.viewport;
@@ -498,13 +500,11 @@ function updateUI(state, upgrades) {
         });
     const dock = document.getElementById("abilitiesDock");
     if (dock) dock.style.display = hasAnyAbilities ? "flex" : "none";
-    if (elements.pauseText) elements.pauseText.innerText = state.isPaused ? "PLAY" : "PAUSE";
-    if (elements.speedDisplay) {
-        state.selectedSpeed = Math.min(state.selectedSpeed, state.runStats.gameSpeed.value);
-        elements.speedDisplay.innerText = state.selectedSpeed.toFixed(2) + "x";
-        elements.speedDownBtn.style.opacity = state.selectedSpeed <= 0.5 ? "0.5" : "1";
-        elements.speedUpBtn.style.opacity = state.selectedSpeed >= state.runStats.gameSpeed.value ? "0.5" : "1";
-    }
+    syncSpeedControlDisplay(
+        { pauseLabel: elements.pauseText, speedLabel: elements.speedDisplay, speedDownBtn: elements.speedDownBtn, speedUpBtn: elements.speedUpBtn },
+        state,
+        getActiveGameDefinition(),
+    );
     const abilityLayout = buildAbilityTreeLayout(upgrades);
     const abilityLayoutById = new Map(abilityLayout.map((entry) => [entry.id, entry]));
     const onStatsTab = state.currentUpgradeTab === "stats";

@@ -9,6 +9,10 @@ const POOL_UI_HTML = `
         <button id="settingsBtn" class="settings-gear-btn" type="button" title="Settings" data-ui-region="settings">⚙️</button>
     </div>
 </div>`;
+/** @returns {HTMLElement | null} Bottom-right overlay host for speed controls. */
+export function getPoolSpeedOverlayHost() {
+    return document.getElementById("poolSpeedOverlay");
+}
 /** Inject pool-only DOM into the shell (not loaded for tower). */
 export function mountPoolChrome() {
     const uiRoot = getUiRoot();
@@ -16,4 +20,11 @@ export function mountPoolChrome() {
     uiRoot.innerHTML = POOL_UI_HTML;
     const poolHud = document.getElementById("poolHud");
     if (poolHud) poolHud.style.display = "flex";
+    const wrapper = document.getElementById("gameWrapper");
+    if (wrapper && !getPoolSpeedOverlayHost()) {
+        const overlay = document.createElement("div");
+        overlay.id = "poolSpeedOverlay";
+        overlay.className = "pool-speed-overlay";
+        wrapper.appendChild(overlay);
+    }
 }

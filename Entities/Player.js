@@ -4,6 +4,8 @@ import { playerBaseStats, NAV_PROFILES, navigationSettings } from "../Config/Con
 import { createEntityBars } from "./EntityBars.js";
 import { entityIntersectsCellBounds } from "../Libraries/Spatial/grid/GridCoords.js";
 import { renderActorKinematicsBody } from "../Libraries/Render/Characters/actorKinematicsRenderer.js";
+import { clampSelectedSpeed } from "../Libraries/Playback/index.js";
+import { getActiveGameDefinition } from "../Core/ActiveGameDefinition.js";
 const playerBars = createEntityBars({ healthWidth: 48, healthHeight: 4, healthBorderRadius: 2 });
 export class Player extends Actor {
     static healthBar = playerBars.healthBar;
@@ -36,7 +38,7 @@ export class Player extends Actor {
     }
     recalculate(state, upgradeDefs, shouldApply = () => true) {
         this.recalculateFromRun(state, upgradeDefs, shouldApply);
-        state.selectedSpeed = Math.min(state.selectedSpeed, state.runStats.gameSpeed.value);
+        clampSelectedSpeed(state, getActiveGameDefinition());
     }
     onDamageFloatingText(damage, hitType) {
         super.onDamageFloatingText(damage, hitType);

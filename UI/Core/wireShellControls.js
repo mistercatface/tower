@@ -1,13 +1,7 @@
-import {
-    toggleGamePause,
-    adjustGameSpeed,
-    setGameZoomFromSlider,
-    emitHardReset,
-    emitGameRestart,
-    emitMapToggle,
-} from "../../Core/EventSystem.js";
+import { toggleGamePause, adjustGameSpeed, setGameZoomFromSlider, emitHardReset, emitGameRestart, emitMapToggle } from "../../Core/EventSystem.js";
 import { getShellElements } from "./shellElements.js";
-
+import { resolveStep } from "../../Libraries/Playback/index.js";
+import { getActiveGameDefinition } from "../../Core/ActiveGameDefinition.js";
 /**
  * Wire pause, settings, restart, and map controls shared across game shells.
  *
@@ -15,10 +9,10 @@ import { getShellElements } from "./shellElements.js";
  */
 export function wireShellControls(state) {
     const elements = getShellElements();
-
     elements.pauseBtn?.addEventListener("click", () => toggleGamePause());
-    elements.speedDownBtn?.addEventListener("click", () => adjustGameSpeed(-0.25));
-    elements.speedUpBtn?.addEventListener("click", () => adjustGameSpeed(0.25));
+    const step = resolveStep(getActiveGameDefinition());
+    elements.speedDownBtn?.addEventListener("click", () => adjustGameSpeed(-step));
+    elements.speedUpBtn?.addEventListener("click", () => adjustGameSpeed(step));
     elements.zoomSlider?.addEventListener("input", (e) => setGameZoomFromSlider(parseFloat(e.target.value)));
     elements.restartBtn?.addEventListener("click", () => emitGameRestart());
     elements.settingsBtn?.addEventListener("click", () => {

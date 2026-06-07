@@ -132,6 +132,13 @@
  * @property {() => boolean} isDialogActive
  */
 /**
+ * @typedef {object} PlaybackConfig
+ * @property {number} [minSpeed]
+ * @property {number} [maxSpeed]
+ * @property {number} [step]
+ * @property {(state: object) => number} [resolveMaxSpeed]
+ */
+/**
  * @typedef {import("./GameUiProfile.js").GameUiProfile} GameUiProfile
  */
 /**
@@ -165,5 +172,6 @@
  * @property {Partial<import("../Libraries/WorldSurface/worldSurfaceDefaults.js").LibraryWorldSurfaceDefaults> & { cameraHeight?: number, cellSize?: number, floorShadow?: string }} [worldSurface] — partial overrides on library world-surface defaults
  * @property {Partial<import("../Libraries/Collision/collisionDefaults.js").LibraryCollisionSettings>} [collisionSettings] — partial overrides on library collision defaults
  * @property {Partial<import("../Libraries/Props/propRenderDefaults.js").LibraryPropQuantizeSteps>} [propQuantizeSteps] — partial overrides on library prop facing/roll steps
+ * @property {PlaybackConfig} [playback] — simulation speed cap/step; tower uses upgrade stat when omitted
  */
 export {};
