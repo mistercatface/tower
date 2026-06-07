@@ -3,6 +3,7 @@ import { createTowerRunBootstrapPort } from "./runBootstrap.js";
 import { MapState, SimulationState, InspectorState } from "./states.js";
 import { inspectBridge } from "./inspect/InspectBridge.js";
 import { towerInput } from "./input.js";
+import { isTowerWorldScene } from "./towerPhase.js";
 import { towerCombatPort } from "./combatPort.js";
 import * as towerTargeting from "./targeting.js";
 import { towerRunScenePort } from "./runScenePort.js";
@@ -34,6 +35,7 @@ export const towerGame = {
     render: towerRenderPorts,
     worldGen: towerWorldGen,
     runBootstrapPort: createTowerRunBootstrapPort(),
+    isWorldScene: isTowerWorldScene,
     input: towerInput,
     runScenePort: towerRunScenePort,
     combatPort: towerCombatPort,

@@ -1,6 +1,7 @@
 import { perkMilestones, xpForLevel } from "../../../Config/Config.js";
 import { buildAbilityTreeLayout } from "../../../Config/content/abilityTreeLayout.js";
-import { GamePhase, isSimulation } from "../../../GameState/GamePhase.js";
+import { TowerPhase } from "../towerPhase.js";
+import { isSimulation } from "../../../GameState/GamePhase.js";
 import { getActiveGameDefinition } from "../../../Core/ActiveGameDefinition.js";
 import { towerInspectPort } from "../inspectPort.js";
 import { getGunDefinition, playerEquipmentCatalog } from "../../../Config/content/guns.js";
@@ -13,6 +14,7 @@ import { bindShellElements } from "../../../UI/Core/shellElements.js";
 import { wireSettingsModal } from "../../../UI/Core/wireSettingsModal.js";
 import { bindSpeedControl, syncSpeedControlDisplay, wireSpeedControl } from "../../../Libraries/Playback/index.js";
 import { mountTowerChrome } from "./mountTowerChrome.js";
+import { inspectBridge } from "../inspect/InspectBridge.js";
 /** @type {Record<string, HTMLElement | NodeListOf<Element> | null>} */
 let elements = {};
 /** @type {import("../../../Libraries/Playback/speedControlUi.js").SpeedControlElements | null} */
@@ -60,7 +62,7 @@ function updateToggleButton(btnId, isUnlocked, isActive, btnText, upgDef) {
     } else btn.style.display = "none";
 }
 function updateMapNavButtons(state) {
-    const onMap = state.phase === GamePhase.MAP;
+    const onMap = state.phase === TowerPhase.MAP;
     const showOpenMap = !onMap && !state.isGameOver;
     if (elements.mapBtn) elements.mapBtn.style.display = showOpenMap ? "block" : "none";
     if (elements.closeMapBtn) elements.closeMapBtn.style.display = onMap ? "block" : "none";
@@ -149,6 +151,9 @@ function wireTowerControls(state) {
 function mountTowerUi(state, upgrades) {
     mountTowerChrome();
     elements = bindShellElements();
+    elements.inspectMissionBanner = document.getElementById("inspectMissionBanner");
+    elements.inspectMissionText = document.getElementById("inspectMissionText");
+    inspectBridge.mount();
     towerSpeedControl = bindSpeedControl(elements.speedControls);
     elements.passivesContainer.innerHTML = "";
     upgrades

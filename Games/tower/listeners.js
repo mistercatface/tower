@@ -19,7 +19,6 @@ export function registerTowerListeners(eventBus, boot) {
     if (boot) progressionBootstrap({ state: boot.state, upgrades: boot.upgrades, events: eventBus });
     registerUpgradeOverlayListener(eventBus);
     towerRadio.wire(eventBus, { requestPause: requestGamePause, requestResume: requestGameResume });
-    inspectBridge.mount();
     towerInspectPort.registerEntries();
     preloadAllInspectAssets();
     loadPersistentTriggers();

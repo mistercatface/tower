@@ -4,7 +4,6 @@ export function clearGameChrome() {
     clearShellElements();
     const uiRoot = document.getElementById("ui-root");
     if (uiRoot) uiRoot.innerHTML = "";
-    document.getElementById("inspectMissionBanner")?.remove();
     document.getElementById("upgradeChoiceModal")?.remove();
     document.getElementById("combatHudModeRow")?.remove();
 }

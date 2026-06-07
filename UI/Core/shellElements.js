@@ -20,8 +20,6 @@ function queryShellElements() {
         upgradeChoicesContainer: document.getElementById("upgradeChoicesContainer"),
         upgradeChoiceTitle: document.getElementById("upgradeChoiceTitle"),
         upgradeChoiceDesc: document.getElementById("upgradeChoiceDesc"),
-        inspectMissionBanner: document.getElementById("inspectMissionBanner"),
-        inspectMissionText: document.getElementById("inspectMissionText"),
         killsDisplay: document.getElementById("killsDisplay"),
         scoreDisplay: document.getElementById("scoreDisplay"),
         levelDisplay: document.getElementById("levelDisplay"),

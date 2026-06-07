@@ -4,6 +4,7 @@ import { requestUiUpdate, requestUiHudUpdate } from "../../Core/EventSystem.js";
 import { inspectBridge } from "./inspect/InspectBridge.js";
 import { towerInspectPort } from "./inspectPort.js";
 import { getRunScenePort, getSimulationPort } from "../../Core/GamePorts.js";
+import { towerSimulation } from "./simulation.js";
 import { resetSimulationWorld } from "./resetSimulationWorld.js";
 import { handlePlayerRepositionTap, handlePlayerRepositionDrag } from "./playerReposition.js";
 export class MapState {
@@ -64,13 +65,10 @@ export class InspectorState {
     onEnter(ctx) {
         resetSimulationWorld(ctx.state);
         ctx.state.activeLasers = [];
-        getSimulationPort().onInspectorEnter?.(ctx);
         requestUiUpdate();
     }
     update(dt, ctx) {
-        const port = getSimulationPort();
-        if (!port.runInspectorTick) throw new Error("Active game definition simulation port missing runInspectorTick");
-        port.runInspectorTick(ctx, dt);
+        towerSimulation.runInspectorTick(ctx, dt);
         requestUiHudUpdate();
     }
     render(ctx) {

@@ -5,7 +5,7 @@ import { getActiveGameDefinition } from "../Core/ActiveGameDefinition.js";
 import { getPlayerActors, getRenderPorts } from "../Core/GamePorts.js";
 import { buildWorldRenderInput, resolveRenderViewer } from "./adapters/WorldRenderAdapter.js";
 import { COMBAT_HUD_MODE, hudSettings } from "../Config/Config.js";
-import { isWorldScene } from "../GameState/GamePhase.js";
+import { isWorldScene } from "../Core/GamePorts.js";
 import { drawHostileOffScreenIndicators } from "./OffScreenIndicators.js";
 import { CombatParticles } from "./CombatParticles.js";
 import { renderMapView } from "./Map/MapViewRenderer.js";

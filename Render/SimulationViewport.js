@@ -1,5 +1,5 @@
 import { Viewport } from "../Libraries/Viewport/Viewport.js";
-import { isWorldScene } from "../GameState/GamePhase.js";
+import { isWorldScene } from "../Core/GamePorts.js";
 export function getSimulationZoomRangeFromVisualRadius(visualRadius, outerFit, innerFit) {
     const radius = Math.max(1, visualRadius);
     const minZoom = radius / Math.max(1, outerFit);

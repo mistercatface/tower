@@ -1,4 +1,4 @@
-import { isWorldScene } from "../GameState/GamePhase.js";
+import { isWorldScene } from "../Core/GamePorts.js";
 const EDGE_INSET = 14;
 function isOnGlobe(viewport, actor) {
     const screen = viewport.worldToScreen(actor.x, actor.y);

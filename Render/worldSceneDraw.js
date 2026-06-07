@@ -1,5 +1,5 @@
 import { getActiveGameDefinition } from "../Core/ActiveGameDefinition.js";
-import { isWorldScene } from "../GameState/GamePhase.js";
+import { isWorldScene } from "../Core/GamePorts.js";
 import { createLiveWorldStructure } from "../Libraries/Render/worldStructure/LiveWorldStructure.js";
 import { LIBRARY_WORLD_SURFACE_DEFAULTS } from "../Libraries/WorldSurface/worldSurfaceDefaults.js";
 import { buildWorldRenderInput } from "./adapters/WorldRenderAdapter.js";

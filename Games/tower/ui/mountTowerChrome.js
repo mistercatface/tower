@@ -6,6 +6,14 @@ const TOWER_SPEED_CONTROL_HTML = speedControlHtml({
     pauseButtonClass: "control-btn control-btn-large",
     ids: { down: "speedDownBtn", pause: "pauseBtn", pauseLabel: "pauseText", speedLabel: "speedDisplay", up: "speedUpBtn" },
 });
+const INSPECT_OVERLAY_HTML = `
+<div id="inspectOverlay" class="inspect-overlay">
+    <div class="inspect-panel">
+        <button id="inspectCloseBtn" class="inspect-close" type="button" aria-label="Close">✕</button>
+        <div id="inspectTitle" class="inspect-title">INSPECT</div>
+        <canvas id="inspectCanvas"></canvas>
+    </div>
+</div>`;
 const INSPECT_BANNER_HTML = `
 <div id="inspectMissionBanner" class="inspect-mission-banner" style="display: none;">
     <span id="inspectMissionText"></span>
@@ -98,6 +106,9 @@ export function mountTowerChrome() {
     const wrapper = document.getElementById("gameWrapper");
     const uiRoot = getUiRoot();
     if (!wrapper || !uiRoot) throw new Error("mountTowerChrome: game shell missing");
+    document.getElementById("inspectOverlay")?.remove();
+    document.getElementById("inspectMissionBanner")?.remove();
+    wrapper.insertAdjacentHTML("beforeend", INSPECT_OVERLAY_HTML);
     const canvas = document.getElementById("gameCanvas");
     if (canvas) canvas.insertAdjacentHTML("afterend", INSPECT_BANNER_HTML);
     else wrapper.insertAdjacentHTML("afterbegin", INSPECT_BANNER_HTML);

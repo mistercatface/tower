@@ -4,7 +4,7 @@
  */
 import { getWorldPlayBounds } from "../../Core/GamePorts.js";
 import { WorldSurfaceEngine } from "../../Libraries/WorldSurface/WorldSurfaceEngine.js";
-import { isWorldScene } from "../../GameState/GamePhase.js";
+import { isWorldScene } from "../../Core/GamePorts.js";
 import { getGameWorldSurfaceSettings } from "../WorldSurfaceBootstrap.js";
 import { buildGroundChunkBakePayload, resolveSurfaceProfileAtCoords } from "./surfaceProfileResolver.js";
 export class WorldSurfaceSystem extends WorldSurfaceEngine {

@@ -1,4 +1,4 @@
-import { isInspector } from "../../GameState/GamePhase.js";
+import { isInspector } from "./towerPhase.js";
 import {
     findInspectCollectPickup,
     getInspectCollectMissionBanner,

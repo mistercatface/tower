@@ -50,9 +50,7 @@
 /**
  * @typedef {object} SimulationPort
  * @property {(ctx: object, dt: number) => void} runTick
- * @property {(ctx: object, dt: number) => void} [runInspectorTick]
  * @property {(ctx: object) => void} [onEnter]
- * @property {(ctx: object) => void} [onInspectorEnter]
  */
 /**
  * @typedef {object} UiContext
@@ -142,6 +140,7 @@
  * @property {WorldGenPort} worldGen
  * @property {RunBootstrapPort} runBootstrapPort — new-run entity/world setup after `generateWorld`
  * @property {InputPort} [input] — optional canvas zoom/pinch hooks
+ * @property {(phase: string) => boolean} [isWorldScene] — 3D world draw eligibility; defaults to simulation phase only
  * @property {RunScenePort} runScenePort — simulation enter/tick/layout hooks
  * @property {CombatPort} [combatPort] — defaults to noop when omitted
  * @property {(fsm: import("../Libraries/FSM/StateMachine.js").StateMachine) => import("../Libraries/Input/keyboardBindings.js").KeyBinding[]} [keyBindings]

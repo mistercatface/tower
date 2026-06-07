@@ -15,17 +15,11 @@ export class SimulationPipeline {
 }
 /**
  * @param {SimulationPhase[]} phases
- * @param {Omit<SimulationPort, "runTick" | "runInspectorTick"> & { inspectorPhases?: SimulationPhase[], beginRuntime?: (ctx: object) => import("./SimulationRuntime.js").SimulationRuntime }} [options]
+ * @param {Omit<SimulationPort, "runTick"> & { beginRuntime?: (ctx: object) => import("./SimulationRuntime.js").SimulationRuntime }} [options]
  * @returns {SimulationPort}
  */
 export function createSimulationPort(phases, options = {}) {
     const beginRuntime = options.beginRuntime ?? beginSimulationRuntime;
     const tickPipeline = new SimulationPipeline(phases, beginRuntime);
-    const inspectorPipeline = options.inspectorPhases ? new SimulationPipeline(options.inspectorPhases, beginRuntime) : null;
-    return {
-        runTick: (ctx, dt) => tickPipeline.runTick(ctx, dt),
-        runInspectorTick: inspectorPipeline ? (ctx, dt) => inspectorPipeline.runTick(ctx, dt) : undefined,
-        onEnter: options.onEnter,
-        onInspectorEnter: options.onInspectorEnter,
-    };
+    return { runTick: (ctx, dt) => tickPipeline.runTick(ctx, dt), onEnter: options.onEnter };
 }

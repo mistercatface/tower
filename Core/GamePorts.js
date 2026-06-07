@@ -65,6 +65,12 @@ export function getCombatPort() {
 export function getNodeWorldCoordScale() {
     return getWorldGen().nodeWorldCoordScale ?? 0;
 }
+/** @param {string} phase */
+export function isWorldScene(phase) {
+    const check = requireGameDefinition().isWorldScene;
+    if (check) return check(phase);
+    return phase === "simulation";
+}
 /** @returns {RunBootstrapPort} */
 export function getRunBootstrapPort() {
     const port = requireGameDefinition().runBootstrapPort;
