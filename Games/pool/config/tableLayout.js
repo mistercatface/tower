@@ -7,10 +7,12 @@ export const TABLE_RAIL_CELLS = 2;
 /** Pool ball radius in world units (physics + render). */
 export const POOL_BALL_RADIUS = 12;
 /** Pocket sensor radius for corner pockets in world units. */
-export const CORNER_POCKET_RADIUS = 19;
+export const CORNER_POCKET_RADIUS = POOL_BALL_RADIUS * 2.375;
 /** Pocket sensor radius for side pockets in world units. */
-export const SIDE_POCKET_RADIUS = 16;
+export const SIDE_POCKET_RADIUS = POOL_BALL_RADIUS * 2.0;
 export const POCKET_RADIUS = SIDE_POCKET_RADIUS;
+/** Pocket drop depth below ground level in world units. */
+export const POOL_POCKET_DEPTH = POOL_BALL_RADIUS * 3.0;
 /** Below this speed (world units/s), felt drag ramps up so balls don't creep at the end. */
 export const POOL_BALL_LOW_SPEED_THRESHOLD = 10;
 export const POOL_BALL_LOW_SPEED_FRICTION = 2.8;
@@ -131,8 +133,15 @@ export function buildPoolStartLayout(px, py, cellSize) {
     const rows = TABLE_ROWS;
     const { offsetX, offsetY } = snapLayoutOrigin(px, py, cols, rows, cellSize);
     const bounds = getTableWorldBounds(offsetX, offsetY, cellSize, cols, rows);
-    const headSpot = { x: bounds.minX + bounds.width * 0.28, y: bounds.centerY };
-    const footSpot = { x: bounds.minX + bounds.width * 0.77, y: bounds.centerY };
+    const rail = TABLE_RAIL_CELLS * cellSize;
+    const playfieldWidth = bounds.width - 2 * rail;
+    const headSpot = { x: bounds.minX + rail + playfieldWidth * 0.25, y: bounds.centerY };
+    
+    // Position the foot spot at regulation 75% of playfield, but cap it to keep the rack safe from the right rail
+    const regulationFootSpotX = bounds.minX + rail + playfieldWidth * 0.75;
+    const maxFootSpotX = bounds.minX + rail + playfieldWidth - (4 * Math.sqrt(3) + 2.5) * POOL_BALL_RADIUS;
+    const footSpotX = Math.min(regulationFootSpotX, maxFootSpotX);
+    const footSpot = { x: footSpotX, y: bounds.centerY };
     return {
         minX: bounds.minX,
         minY: bounds.minY,
@@ -140,7 +149,7 @@ export function buildPoolStartLayout(px, py, cellSize) {
         maxY: bounds.maxY,
         spawnX: headSpot.x,
         spawnY: headSpot.y,
-        spawnClearRadius: 24,
+        spawnClearRadius: POOL_BALL_RADIUS * 3,
         tableCenterX: bounds.centerX,
         tableCenterY: bounds.centerY,
         tableWidth: bounds.width,
@@ -148,6 +157,9 @@ export function buildPoolStartLayout(px, py, cellSize) {
         pockets: getPocketPositions(offsetX, offsetY, cellSize),
         spawnSlots: { head: headSpot, foot: footSpot },
         ballSpawns: { cue: headSpot, rack: buildRackPositions(footSpot, POOL_BALL_RADIUS) },
+        sidePocketRadius: SIDE_POCKET_RADIUS,
+        cornerPocketRadius: CORNER_POCKET_RADIUS,
+        pocketDepth: POOL_POCKET_DEPTH,
     };
 }
 /** Layout for the current run, anchored to map spawn origin. */

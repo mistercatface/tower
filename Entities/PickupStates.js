@@ -85,15 +85,13 @@ export class PickupSinkingState {
     }
     update(pickup, dt, walls, state) {
         const captured = pickup.sinkingCaptured ?? false;
-
         // Apply vertical gravity (downward: -600 units/s^2 if captured, -350 if not)
         const gravity = captured ? -600 : -350;
         pickup.elevationVelocity = (pickup.elevationVelocity ?? 0) + gravity * (dt / 1000);
         pickup.elevation = (pickup.elevation ?? 0) + pickup.elevationVelocity * (dt / 1000);
-
-        // Fade out based on elevation (fully transparent at elevation -24)
-        pickup.opacity = Math.max(0, Math.min(1.0, 1.0 - (pickup.elevation / -24)));
-
+        // Fade out based on elevation (fully transparent at elevation -pocketDepth)
+        const pocketDepth = pickup.pocketDepth ?? 24;
+        pickup.opacity = Math.max(0, Math.min(1.0, 1.0 - pickup.elevation / -pocketDepth));
         // Apply horizontal funnel gravity pulling towards the pocket center
         if (pickup.pocketX != null && pickup.pocketY != null) {
             const dx = pickup.pocketX - pickup.x;
@@ -105,32 +103,25 @@ export class PickupSinkingState {
                 pickup.vy += (dy / dist) * pullForce * (dt / 1000);
             }
         }
-
         // Prevent overshoot/bounce back onto the table once captured
         if (captured && pickup.pocketX != null && pickup.pocketY != null && pickup.tableCenterX != null && pickup.tableCenterY != null) {
             const dx = pickup.pocketX - pickup.x;
             const dy = pickup.pocketY - pickup.y;
             const dist = Math.hypot(dx, dy);
-
             if (dist > 0.001) {
                 // Vector from pocket center to ball
                 const pbx = pickup.x - pickup.pocketX;
                 const pby = pickup.y - pickup.pocketY;
-
                 // Vector from pocket center to table center
                 const tcX = pickup.tableCenterX - pickup.pocketX;
                 const tcY = pickup.tableCenterY - pickup.pocketY;
-
                 // Dot product to check if ball is on the table side of the pocket center
-                const isTableSide = (pbx * tcX + pby * tcY) > 0;
-
+                const isTableSide = pbx * tcX + pby * tcY > 0;
                 // Vector pointing towards pocket center
                 const toCenterX = dx / dist;
                 const toCenterY = dy / dist;
-
                 // Project velocity onto to-center vector (negative means moving away from pocket center)
-                const isMovingAway = (pickup.vx * toCenterX + pickup.vy * toCenterY) < 0;
-
+                const isMovingAway = pickup.vx * toCenterX + pickup.vy * toCenterY < 0;
                 if (isTableSide && isMovingAway) {
                     // Damp velocity heavily to trap the ball inside the pocket cup
                     pickup.vx *= 0.05;
@@ -138,7 +129,6 @@ export class PickupSinkingState {
                 }
             }
         }
-
         // Apply pocket lining damping (friction coefficient: 8.0 if captured, 3.5 if not)
         const friction = captured ? 8.0 : 3.5;
         const dampingFactor = Math.exp(-friction * (dt / 1000));

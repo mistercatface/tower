@@ -26,6 +26,7 @@ export function processPockets(state, layout, dt) {
 
             const pocketRadius = ball.pocketRadius ?? 16;
             const captureThreshold = pocketRadius * 0.65;
+            const pocketDepth = ball.pocketDepth ?? 24;
 
             // Mark the ball as captured once it rolls deep enough into the pocket cup (dist <= captureThreshold)
             if (dist <= captureThreshold) {
@@ -39,7 +40,7 @@ export function processPockets(state, layout, dt) {
                 continue;
             }
 
-            if (ball.elevation <= -24 || ball.sinkingTimer <= 0) {
+            if (ball.elevation <= -pocketDepth || ball.sinkingTimer <= 0) {
                 ball.changeState("normal"); // resets mass, elevation, and opacity
                 if (ball[POOL_OBJECT_TAG]) {
                     ball.isDead = true;
@@ -65,6 +66,7 @@ export function processPockets(state, layout, dt) {
             ball.pocketX = pocketEntered.x;
             ball.pocketY = pocketEntered.y;
             ball.pocketRadius = pocketEntered.radius;
+            ball.pocketDepth = layout.pocketDepth ?? 24;
             ball.tableCenterX = layout.tableCenterX;
             ball.tableCenterY = layout.tableCenterY;
             ball.sinkingCaptured = false;

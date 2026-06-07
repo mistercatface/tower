@@ -2,7 +2,7 @@ import { Segment } from "../../Entities/Wall.js";
 import { snapLayoutOrigin } from "../../Generator/GridLayout.js";
 import { getGameWorldSurfaceSettings } from "../../Render/WorldSurfaceBootstrap.js";
 import { getWallHeight } from "../../Libraries/WorldSurface/WorldSurfaceSettings.js";
-import { TABLE_COLS, TABLE_ROWS, TABLE_RAIL_CELLS, getPocketPositions, getPocketArcAngles } from "./config/tableLayout.js";
+import { TABLE_COLS, TABLE_ROWS, TABLE_RAIL_CELLS, getPocketPositions, getPocketArcAngles, POOL_BALL_RADIUS } from "./config/tableLayout.js";
 
 function carveRect(grid, cols, rows, x, y, w, h) {
     for (let r = y; r < y + h && r < rows; r++) {
@@ -30,8 +30,8 @@ export function generatePoolTable(state, px, py) {
     const railHeight = getWallHeight(getGameWorldSurfaceSettings());
     const pockets = getPocketPositions(offsetX, offsetY, cellSize);
 
-    // Carve out cells within pocket.radius + 6 (20 units) of any pocket center
-    const carveRadius = 20;
+    // Carve out cells within pocket radius + dynamic clearance of any pocket center
+    const carveRadius = Math.max(...pockets.map(p => p.radius)) + (POOL_BALL_RADIUS / 8);
     for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
             if (grid[r * cols + c] !== 1) continue;
