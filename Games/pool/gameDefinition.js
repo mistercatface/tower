@@ -4,7 +4,7 @@ import { poolRunScenePort } from "./runScenePort.js";
 import { poolSimulation } from "./simulation.js";
 import { poolUiPort } from "./ui/poolUiPort.js";
 import { poolWorldGen } from "./worldGen.js";
-import { poolRadioPort } from "./radioPort.js";
+import { poolRadioPort } from "./wireRadio.js";
 import { SURFACE_PROFILE_ID } from "../../Config/procedural/profileIds.js";
 import { ENGINE_MINIMAL_UI } from "../../Core/GameUiProfile.js";
 import { createRunBootstrapPort } from "../../Libraries/RunBootstrap/RunBootstrapPipeline.js";
@@ -19,7 +19,7 @@ export const poolGame = {
     id: "pool",
     canvasId: "gameCanvas",
     saveKey: "pool_save_v1",
-    ui: { ...ENGINE_MINIMAL_UI, chrome: { controls: "none" } },
+    ui: ENGINE_MINIMAL_UI,
     perspective: { cameraHeight: 520, strength: 0.28, viewerSource: "viewport" },
     proceduralDesign: { surfaceProfileId: SURFACE_PROFILE_ID.poolTableFelt },
     worldSurface: { wallHeight: 20, pixelsPerCell: 6 },

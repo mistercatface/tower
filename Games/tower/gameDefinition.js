@@ -3,7 +3,7 @@ import { MapState, SimulationState, InspectorState } from "../../GameState/GameS
 import { COMBAT_ROGUELIKE_BOOTSTRAP } from "../../Libraries/Bootstrap/presets.js";
 import { towerInspectPort } from "./inspectPort.js";
 import { towerCombatPort } from "./combatPort.js";
-import { towerRadioPort } from "./radioPort.js";
+import { towerRadioPort } from "./wireRadio.js";
 import { towerRunScenePort } from "./runScenePort.js";
 import { registerTowerEntities } from "./config/entities.js";
 import { applyInspectManifestToProps } from "./config/inspectManifest.js";
