@@ -7,6 +7,7 @@ import { circleLeadingPoint } from "../../Libraries/Spatial/geometry/circleConta
 import { rayCircleHitDistance } from "../../Libraries/Spatial/query/circleCast.js";
 import { MAX_SHOT_POWER, MIN_SHOT_POWER, CUE_GRAB_RADIUS_PAD, POOL_BALL_RADIUS, POOL_CUE_HX, POOL_CUE_MAX_PULL, POOL_CUE_MIN_PULL_DRAG } from "./config/tableLayout.js";
 import { getCueBall, ensurePoolState, allBallsStopped, getActiveBalls } from "./balls.js";
+import { CUE_BALL_RESTITUTION } from "../../Libraries/CueStick/cueStrikeCollision.js";
 const { hy, height, rollAngle, pullScale } = CUE_STICK_DEFAULTS;
 const hx = POOL_CUE_HX;
 const maxPull = POOL_CUE_MAX_PULL;
@@ -160,6 +161,37 @@ export function getAimPreview(state) {
     return { nx: physics.shotNx, ny: physics.shotNy, power: computeShotPower(pool.aim), drag: physics.drag, pullBack: physics.pullBack, currentDrag: pool.aim.currentDrag };
 }
 /**
+ * Estimate the travel distance of a ball with initial velocity v0 under rolling friction.
+ *
+ * @param {number} v0
+ * @param {object} strategy
+ * @returns {number}
+ */
+export function estimateCueBallTravelDistance(v0, strategy) {
+    const fBase = strategy.friction ?? 0.5;
+    const fLow = strategy.lowSpeedFriction ?? 2.8;
+    const vTh = strategy.lowSpeedFrictionThreshold ?? 10;
+    const sC = strategy.snapSpeed ?? 1.8;
+    if (v0 <= sC) return 0;
+    const b = fLow - fBase;
+    if (Math.abs(b) < 1e-5) return (v0 - sC) / fBase;
+    if (v0 >= vTh) {
+        const d1 = (v0 - vTh) / fBase;
+        const a = fBase;
+        const uMax = 1 - sC / vTh;
+        const d2 = (vTh / Math.sqrt(a * b)) * Math.atan(uMax * Math.sqrt(b / a));
+        return d1 + d2;
+    } else {
+        const a = fBase;
+        const b = fLow - fBase;
+        const uMax = 1 - sC / vTh;
+        const uMin = 1 - v0 / vTh;
+        const factor = vTh / Math.sqrt(a * b);
+        const k = Math.sqrt(b / a);
+        return factor * (Math.atan(uMax * k) - Math.atan(uMin * k));
+    }
+}
+/**
  * Cue-ball aim line — walls via {@link WeaponSystem.castLaser} (same as tower sights), balls via analytic ray.
  *
  * @param {object} state
@@ -176,9 +208,14 @@ export function getCueAimLinePreview(state) {
     const dy = ny / len;
     const angle = Math.atan2(dy, dx);
     const radius = cue.radius ?? POOL_BALL_RADIUS;
+    // Estimate travel distance based on strike impulse physics and table friction
+    const speed = preview.power;
+    const v0 = (speed * (1 + CUE_BALL_RESTITUTION)) / 2;
+    const travelDist = estimateCueBallTravelDistance(v0, cue.strategy ?? {});
     const layout = getRunScenePort().getLayout(state);
     const maxDist = layout?.tableWidth && layout?.tableHeight ? Math.hypot(layout.tableWidth, layout.tableHeight) : 2400;
-    let stopDist = maxDist;
+    // Capped by how far the cue ball can actually travel
+    let stopDist = Math.min(maxDist, travelDist);
     for (const ball of getActiveBalls(state)) {
         if (ball === cue) continue;
         const otherR = ball.radius ?? radius;

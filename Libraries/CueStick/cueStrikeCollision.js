@@ -4,8 +4,8 @@ import { applyRigidBodyImpulse } from "../Motion/rigidBodyImpulse.js";
 import { massFromBody } from "../Motion/bodyMass.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
 /** Cue tip effective mass vs cue ball — near equal mass gives realistic transfer (~cue speed, not 2×). */
-const CUE_STRIKER_MASS_RATIO = 1.0;
-const CUE_BALL_RESTITUTION = 0.93;
+export const CUE_STRIKER_MASS_RATIO = 1.0;
+export const CUE_BALL_RESTITUTION = 0.93;
 /**
  * Strike the cue ball through rigid-body impulse (kinematic cue tip), not scripted velocity.
  *
