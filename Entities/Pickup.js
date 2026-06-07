@@ -45,7 +45,7 @@ export class Pickup extends Entity {
             initStandTipState(this);
         } else if (this.strategy.rolls) {
             this.rollQuat = { ...IDENTITY_ROLL_QUAT };
-            if (this.strategy.rollAxis === "long") this.rollAngle = 0;
+            this.rollAngle = 0;
         }
         if (this.strategy.randomFaceLabels) {
             const crateVisuals = getPropAsset("crate")?.visuals;

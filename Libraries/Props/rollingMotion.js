@@ -84,16 +84,23 @@ export function getRollRadius(body) {
     return Math.max(1, resolveBodyRadius(body));
 }
 /** Sphere / ball: ω axis in the ground plane. */
+/** Sphere / ball: ω axis in the ground plane. */
 function integrateGroundRoll(body, dtMs) {
     const vx = body.vx ?? 0;
     const vy = body.vy ?? 0;
     const speed = lengthXY(vx, vy);
-    if (speed < 0.5) return;
+    if (speed < 0.5) {
+        if (body.rollQuat) {
+            body.rollQuat = dampQuatTwist(body.rollQuat, dtMs, 3.0);
+        }
+        return;
+    }
     const r = getRollRadius(body);
-    const angle = -(speed / r) * (dtMs / 1000);
+    const angle = -(speed / r) * (dtMs / 1000); // negative for forward rolling in left-handed coordinates
     const { nx: ax, ny: ay } = normalizeXY(-vy, vx);
     const delta = axisAngleQuat(ax, ay, 0, angle);
-    body.rollQuat = normalizeQuat(multiplyQuat(delta, body.rollQuat ?? IDENTITY_ROLL_QUAT));
+    const q = multiplyQuat(delta, body.rollQuat ?? IDENTITY_ROLL_QUAT);
+    body.rollQuat = dampQuatTwist(normalizeQuat(q), dtMs, 1.8);
 }
 /**
  * Log 3D tumble (rollAngle): end-over-end about local long axis (X).
@@ -118,6 +125,35 @@ export function integrateLongAxisRoll(body, dtMs) {
     body.rollAngle = (body.rollAngle ?? 0) - Math.sign(perpVel) * tumble;
 }
 /**
+ * Extract and damp twist (Z-axis spin / sidespin) from swing-twist decomposition.
+ *
+ * @param {{ w: number, x: number, y: number, z: number }} q
+ * @param {number} dtMs
+ * @param {number} dampingRate
+ */
+export function dampQuatTwist(q, dtMs, dampingRate = 1.8) {
+    const w = q.w ?? 1;
+    const x = q.x ?? 0;
+    const y = q.y ?? 0;
+    const z = q.z ?? 0;
+    let w_t = w;
+    let z_t = z;
+    const len = Math.hypot(w_t, z_t);
+    if (len < 1e-6) return q;
+    w_t /= len;
+    z_t /= len;
+    const q_swing = multiplyQuat(q, { w: w_t, x: 0, y: 0, z: -z_t });
+    const decay = Math.exp(-dampingRate * (dtMs / 1000));
+    let z_t_new = z_t * decay;
+    let w_t_new = w_t;
+    const len_new = Math.hypot(w_t_new, z_t_new);
+    if (len_new > 1e-6) {
+        w_t_new /= len_new;
+        z_t_new /= len_new;
+    }
+    return normalizeQuat(multiplyQuat(q_swing, { w: w_t_new, x: 0, y: 0, z: z_t_new }));
+}
+/**
  * Collision pairs write angularVelocity about Z; rolling props absorb it into rollQuat.
  *
  * @param {{ angularVelocity?: number, strategy?: { rollAxis?: string } }} body
@@ -128,10 +164,7 @@ export function absorbCollisionRollImpulse(body, dtMs) {
     if (Math.abs(w) < 0.02) return;
     const angle = -w * (dtMs / 1000);
     if (body.strategy?.rollAxis === "long" || body.strategy?.standTip) return;
-    const vx = body.vx ?? 0;
-    const vy = body.vy ?? 0;
-    const { nx, ny } = normalizeXY(-vy, vx);
-    const delta = axisAngleQuat(nx, ny, 0, angle);
+    const delta = axisAngleQuat(0, 0, 1, angle);
     body.rollQuat = normalizeQuat(multiplyQuat(delta, body.rollQuat ?? IDENTITY_ROLL_QUAT));
 }
 /**
