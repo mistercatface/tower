@@ -1,6 +1,7 @@
 import { resolveBodyRadius } from "../Motion/bodyDefaults.js";
 import { quantizeAngle } from "../Canvas/viewQuantize.js";
 import { clamp } from "../Math/Interpolate.js";
+import { lengthXY, normalizeXY } from "../Math/Vec2.js";
 /** @type {{ w: number, x: number, y: number, z: number }} */
 export const IDENTITY_ROLL_QUAT = { w: 1, x: 0, y: 0, z: 0 };
 /**
@@ -86,12 +87,11 @@ export function getRollRadius(body) {
 function integrateGroundRoll(body, dtMs) {
     const vx = body.vx ?? 0;
     const vy = body.vy ?? 0;
-    const speed = Math.hypot(vx, vy);
+    const speed = lengthXY(vx, vy);
     if (speed < 0.5) return;
     const r = getRollRadius(body);
     const angle = -(speed / r) * (dtMs / 1000);
-    const ax = -vy / speed;
-    const ay = vx / speed;
+    const { nx: ax, ny: ay } = normalizeXY(-vy, vx);
     const delta = axisAngleQuat(ax, ay, 0, angle);
     body.rollQuat = normalizeQuat(multiplyQuat(delta, body.rollQuat ?? IDENTITY_ROLL_QUAT));
 }
@@ -102,7 +102,7 @@ function integrateGroundRoll(body, dtMs) {
 export function integrateLongAxisRoll(body, dtMs) {
     const vx = body.vx ?? 0;
     const vy = body.vy ?? 0;
-    const speed = Math.hypot(vx, vy);
+    const speed = lengthXY(vx, vy);
     const spinRate = Math.abs(body.angularVelocity ?? 0);
     const facing = body.facing ?? 0;
     const longX = Math.cos(facing);
@@ -130,8 +130,8 @@ export function absorbCollisionRollImpulse(body, dtMs) {
     if (body.strategy?.rollAxis === "long" || body.strategy?.standTip) return;
     const vx = body.vx ?? 0;
     const vy = body.vy ?? 0;
-    const speed = Math.hypot(vx, vy) || 1;
-    const delta = axisAngleQuat(-vy / speed, vx / speed, 0, angle);
+    const { nx, ny } = normalizeXY(-vy, vx);
+    const delta = axisAngleQuat(nx, ny, 0, angle);
     body.rollQuat = normalizeQuat(multiplyQuat(delta, body.rollQuat ?? IDENTITY_ROLL_QUAT));
 }
 /**

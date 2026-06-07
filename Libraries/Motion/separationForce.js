@@ -1,3 +1,4 @@
+import { normalizeXY, speedSqXY } from "../Math/Vec2.js";
 /** Pure circle separation: steer bias + positional push from one neighbor pair. */
 /**
  * @returns {{ x: number, y: number, pushX: number, pushY: number }}
@@ -18,31 +19,28 @@ export function createSeparationAccum() {
 export function accumulateSeparationFromPair(acc, selfX, selfY, selfRadius, otherX, otherY, otherRadius, neighborPad) {
     let dx = selfX - otherX;
     let dy = selfY - otherY;
-    let distSq = dx * dx + dy * dy;
     const avoidRadius = selfRadius + otherRadius + neighborPad;
-    if (distSq >= avoidRadius * avoidRadius) return;
-    let dist = Math.sqrt(distSq);
+    if (speedSqXY(dx, dy) >= avoidRadius * avoidRadius) return;
+    let { nx, ny, len: dist } = normalizeXY(dx, dy);
     if (dist === 0) {
         dx = Math.random() - 0.5;
         dy = Math.random() - 0.5;
-        distSq = dx * dx + dy * dy;
-        dist = Math.sqrt(distSq);
+        ({ nx, ny, len: dist } = normalizeXY(dx, dy));
     } else if (dist < selfRadius + otherRadius + 5) {
         dx += (Math.random() - 0.5) * 0.5;
         dy += (Math.random() - 0.5) * 0.5;
-        distSq = dx * dx + dy * dy;
-        dist = Math.sqrt(distSq);
+        ({ nx, ny, len: dist } = normalizeXY(dx, dy));
     }
     if (dist < avoidRadius) {
         const weight = 1 - dist / avoidRadius;
-        acc.x += (dx / dist) * weight;
-        acc.y += (dy / dist) * weight;
+        acc.x += nx * weight;
+        acc.y += ny * weight;
     }
     const minSep = selfRadius + otherRadius + 0.1;
     if (dist < minSep) {
         const overlap = minSep - dist;
-        acc.pushX += (dx / dist) * overlap * 0.5;
-        acc.pushY += (dy / dist) * overlap * 0.5;
+        acc.pushX += nx * overlap * 0.5;
+        acc.pushY += ny * overlap * 0.5;
     }
 }
 /**
@@ -50,15 +48,15 @@ export function accumulateSeparationFromPair(acc, selfX, selfY, selfRadius, othe
  * @param {{ steerCap?: number, pushCap?: number }} [limits]
  */
 export function clampSeparationAccum(acc, { steerCap = 1.0, pushCap = 3.0 } = {}) {
-    let sepLen = Math.hypot(acc.x, acc.y);
+    let { nx, ny, len: sepLen } = normalizeXY(acc.x, acc.y);
     if (sepLen > steerCap) {
-        acc.x = (acc.x / sepLen) * steerCap;
-        acc.y = (acc.y / sepLen) * steerCap;
+        acc.x = nx * steerCap;
+        acc.y = ny * steerCap;
     }
-    let pushLen = Math.hypot(acc.pushX, acc.pushY);
+    let { nx: pnx, ny: pny, len: pushLen } = normalizeXY(acc.pushX, acc.pushY);
     if (pushLen > pushCap) {
-        acc.pushX = (acc.pushX / pushLen) * pushCap;
-        acc.pushY = (acc.pushY / pushLen) * pushCap;
+        acc.pushX = pnx * pushCap;
+        acc.pushY = pny * pushCap;
     }
     return acc;
 }

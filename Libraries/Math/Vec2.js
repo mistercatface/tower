@@ -12,6 +12,16 @@ export function lengthXY(vx, vy) {
 export function speedSqXY(vx, vy) {
     return vx * vx + vy * vy;
 }
+/** Squared distance between two points. */
+export function distSqXY(ax, ay, bx, by) {
+    const dx = ax - bx;
+    const dy = ay - by;
+    return dx * dx + dy * dy;
+}
+/** True when `(px, py)` is within `radius` of `(cx, cy)`. */
+export function withinRadiusSq(px, py, cx, cy, radius) {
+    return distSqXY(px, py, cx, cy) <= radius * radius;
+}
 /** @returns {{ nx: number, ny: number, len: number }} */
 export function normalizeXY(dx, dy) {
     const len = Math.hypot(dx, dy);

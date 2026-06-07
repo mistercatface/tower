@@ -1,5 +1,5 @@
+import { normalizeXY } from "../Math/Vec2.js";
 import { computeCueStickPose } from "./cueStickPose.js";
-
 /**
  * Finger press = anchor (0,0). Every frame: offset = grip − anchor.
  * Angle and pull-back come only from that offset — no phases, no axis lock.
@@ -43,8 +43,7 @@ export function resolveCueStickFromAnchorDrag({
 }) {
     const dx = gripX - anchorX;
     const dy = gripY - anchorY;
-    const drag = Math.hypot(dx, dy);
-
+    const { nx, ny, len: drag } = normalizeXY(dx, dy);
     if (drag < contactEpsilon) {
         if (lastShotNx == null || lastShotNy == null) return null;
         return {
@@ -55,15 +54,8 @@ export function resolveCueStickFromAnchorDrag({
             pullBack: 0,
         };
     }
-
-    const shotNx = -dx / drag;
-    const shotNy = -dy / drag;
+    const shotNx = -nx;
+    const shotNy = -ny;
     const pullBack = Math.min(maxPull, drag * pullScale);
-    return {
-        pose: computeCueStickPose({ ballX, ballY, ballRadius, shotNx, shotNy, pullBack, hx, hy, height, rollAngle }),
-        shotNx,
-        shotNy,
-        drag,
-        pullBack,
-    };
+    return { pose: computeCueStickPose({ ballX, ballY, ballRadius, shotNx, shotNy, pullBack, hx, hy, height, rollAngle }), shotNx, shotNy, drag, pullBack };
 }

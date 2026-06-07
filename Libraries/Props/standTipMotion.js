@@ -77,7 +77,7 @@ export function integrateStandTip(body, dtMs, { wallCtx = null } = {}) {
     }
     const vx = body.vx ?? 0;
     const vy = body.vy ?? 0;
-    const speed = Math.hypot(vx, vy);
+    const speed = lengthXY(vx, vy);
     const pushThreshold = strategy.tipPushSpeed ?? 9;
     if (speed > pushThreshold && mobility > 0.05) {
         body.facing = standTipFacingFromPush(Math.atan2(vy, vx));

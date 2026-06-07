@@ -20,12 +20,13 @@ import { createDefaultRenderPorts } from "../../Libraries/Render/defaultRenderPo
  */
 export const poolGame = {
     id: "pool",
+    propPixelSize: 16,
     canvasId: "gameCanvas",
     saveKey: "pool_save_v1",
     ui: { ...LANDSCAPE_MINIMAL_UI, runResult: { won: { title: "TABLE CLEAR!", buttonLabel: "PLAY AGAIN", titleColor: "#4CAF50" } } },
     perspective: { cameraHeight: 520, strength: 0.28, viewerSource: "viewport" },
     proceduralDesign: { surfaceProfileId: SURFACE_PROFILE_ID.poolTableFelt },
-    worldSurface: { wallHeight: 20 },
+    worldSurface: { wallHeight: 20, pixelsPerCell: 8 },
     simulationPort: poolSimulation,
     uiPort: poolUiPort,
     targeting: emptyTargeting,
