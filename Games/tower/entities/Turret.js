@@ -57,11 +57,11 @@ export class Turret {
         const tipOffset = combatSprites.turretTipOffset * scale;
         return { x: muzzle.x - Math.cos(this.angle) * tipOffset, y: muzzle.y - Math.sin(this.angle) * tipOffset, angle: this.angle, scale };
     }
-    renderHudTriangle(ctx, renderer, source, color = null) {
+    renderHudTriangle(ctx, caches, source, color = null) {
         const { x, y, angle, scale } = this.getHudAnchorPosition(source);
         const fillColor = color ?? source.color;
         const cacheKey = `hud_${scale}_${fillColor}`;
-        const cachedSprite = renderer.turretCache.get(cacheKey, combatSprites.turret, scale, fillColor);
+        const cachedSprite = caches.turretCache.get(cacheKey, combatSprites.turret, scale, fillColor);
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(angle);

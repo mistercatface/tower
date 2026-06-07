@@ -31,7 +31,7 @@ export function createGame(definition) {
     if (!canvas) throw new Error(`createGame: canvas #${definition.canvasId} not found`);
     const ctx = canvas.getContext("2d");
     ctx.imageSmoothingEnabled = false;
-    const renderer = new Renderer(canvas, ctx);
+    const renderer = new Renderer(canvas, ctx, definition.caches);
     const viewport = new SimulationViewport(0, 0);
     const stateMachineContext = { state, viewport, renderer };
     const fsm = new StateMachine(stateMachineContext);

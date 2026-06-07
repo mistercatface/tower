@@ -17,9 +17,14 @@ import { towerProceduralDesign } from "./config/surfaceProfiles.js";
 import { towerKeyBindings } from "./keyBindings.js";
 import { registerTowerListeners } from "./listeners.js";
 import { TowerGameState } from "./TowerGameState.js";
+import { SpriteCache } from "../../Libraries/Canvas/SpriteCache.js";
 /** @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition */
 export const towerGame = {
     id: "tower",
+    caches: {
+        actorCache: new SpriteCache(),
+        turretCache: new SpriteCache(),
+    },
     createGameState() {
         return new TowerGameState();
     },

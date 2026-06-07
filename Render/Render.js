@@ -5,11 +5,11 @@ import { getRenderPorts } from "../Core/GamePorts.js";
 import { buildWorldRenderInput } from "./adapters/WorldRenderAdapter.js";
 import { drawWorldScene } from "./worldSceneDraw.js";
 export class Renderer {
-    constructor(canvas, ctx) {
+    /** @param {{ actorCache?: SpriteCache, turretCache?: SpriteCache } | undefined} caches */
+    constructor(canvas, ctx, caches) {
         this.canvas = canvas;
         this.ctx = ctx;
-        this.actorCache = new SpriteCache();
-        this.turretCache = new SpriteCache();
+        this.caches = caches;
         this.floatingTextCache = new SpriteCache();
         this.render3D = new WorldSceneRenderer(getGameWorldSurfaceSettings(), getRenderPorts().world3dPropRecipes);
         this.effectPasses = [

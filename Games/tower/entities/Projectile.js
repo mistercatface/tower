@@ -69,7 +69,7 @@ export const ProjectileStrategies = {
             p.explode(state);
             return true;
         },
-        render(p, ctx, renderer) {
+        render(p, ctx, caches) {
             // Draw a green circular grenade with a flashing red core
             ctx.beginPath();
             ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
@@ -86,7 +86,7 @@ export const ProjectileStrategies = {
                 ctx.fill();
             }
             const ratio = Math.max(0, p.fuseTimer / p.fuseTime);
-            grenadeProgressBar.render(ctx, p.x, p.y - p.radius - 8, ratio, renderer.actorCache);
+            grenadeProgressBar.render(ctx, p.x, p.y - p.radius - 8, ratio, caches.actorCache);
         },
     },
 };
@@ -184,6 +184,6 @@ export class Projectile extends Entity {
         });
     }
     render(ctx, renderer, state) {
-        this.strategy.render(this, ctx, renderer, state);
+        this.strategy.render(this, ctx, renderer.caches, state);
     }
 }

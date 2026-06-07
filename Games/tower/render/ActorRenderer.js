@@ -4,18 +4,19 @@ export class ActorRenderer {
         this.actor = actor;
     }
     renderCombatHudClassic(ctx, renderer) {
+        const caches = renderer.caches;
         this.actor.renderCachedSprite(
             ctx,
-            this.actor.getSpriteCache(renderer),
+            this.actor.getSpriteCache(caches),
             `hud_${this.actor.type}_${this.actor.radius}_${this.actor.color}`,
             combatSprites.enemy,
             this.actor.radius,
             this.actor.color,
         );
-        for (const turret of this.actor.getTurrets()) turret.renderHudTriangle(ctx, renderer, this.actor);
+        for (const turret of this.actor.getTurrets()) turret.renderHudTriangle(ctx, caches, this.actor);
     }
     renderStatusBars(ctx, renderer, state) {
-        this.renderBars(ctx, this.actor.getSpriteCache(renderer), this.actor.getStatusBarYOffset());
+        this.renderBars(ctx, this.actor.getSpriteCache(renderer.caches), this.actor.getStatusBarYOffset());
     }
     renderBars(ctx, cache, yOffset) {
         if (this.actor.health < this.actor.maxHealth && this.actor.healthBar) {

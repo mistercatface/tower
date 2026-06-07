@@ -135,6 +135,7 @@
  * @property {(fsm: import("../Libraries/FSM/StateMachine.js").StateMachine) => import("../Libraries/Input/keyboardBindings.js").KeyBinding[]} [keyBindings]
  * @property {() => void} [onCanvasResize]
  * @property {() => void | Promise<void>} [prepare]
+ * @property {{ actorCache?: import("../Libraries/Canvas/SpriteCache.js").SpriteCache, turretCache?: import("../Libraries/Canvas/SpriteCache.js").SpriteCache }} [caches]
  * @property {Partial<import("./GamePerspective.js").PerspectiveConfig>} [perspective]
  * @property {number} [propPixelSize] — target bake diameter for small props; large props auto-match world size
  * @property {Partial<import("./GameProceduralDesign.js").ProceduralDesignConfig>} [proceduralDesign]

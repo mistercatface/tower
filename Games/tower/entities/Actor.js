@@ -213,8 +213,8 @@ export class Actor extends DestructibleEntity {
     render(ctx, renderer, _state) {
         this.renderBody(ctx, renderer);
     }
-    getSpriteCache(renderer) {
-        return renderer.actorCache;
+    getSpriteCache(caches) {
+        return caches.actorCache;
     }
     getStatusBarYOffset() {
         return getActorProfileForActor(this).statusBarOffset(this.radius);
