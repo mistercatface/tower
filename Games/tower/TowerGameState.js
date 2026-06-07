@@ -1,11 +1,8 @@
-import { FLOW_FIELD_WORKER_URL } from "../../Render/WorldSurfaceBootstrap.js";
+import { createRoguelikeNavRuntime } from "../../Libraries/Navigation/createRoguelikeNavRuntime.js";
 import { Player } from "./entities/Player.js";
 import { Sidekick } from "./entities/Sidekick.js";
 import { getAllyDefinition, getRunParty } from "./entities/EntityRegistry.js";
-import { FlowFieldGrid } from "../../Libraries/Pathfinding/FlowFieldGrid.js";
-import { NavigationService } from "../../Systems/Navigation/NavigationService.js";
-import { gridSettings } from "../../Config/Config.js";
-import { combatActorRadius, runBaseStats, navigationSettings } from "./config/towerConfig.js";
+import { combatActorRadius, runBaseStats } from "./config/towerConfig.js";
 import { HordeSpawner } from "./HordeSpawner.js";
 import { TurretController } from "./TurretController.js";
 import { towerPools } from "./pools.js";
@@ -32,8 +29,7 @@ export class TowerGameState extends SharedGameState {
         this.player.turretController = new TurretController(this.player);
         this.player.teamId = 0;
         this.allies = [];
-        this.flowFieldGrid = new FlowFieldGrid(gridSettings.cellSize, gridSettings.width, gridSettings.height, this.obstacleGrid, FLOW_FIELD_WORKER_URL);
-        this.navigation = new NavigationService(this.flowFieldGrid, this.hierarchicalNavigator, navigationSettings);
+        createRoguelikeNavRuntime(this);
         this.currentUpgradeTab = "stats";
         this.statsSubTab = "attack";
         this.upgradeDefs = [];
