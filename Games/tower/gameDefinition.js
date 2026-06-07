@@ -25,7 +25,6 @@ export const towerGame = {
     },
     canvasId: "gameCanvas",
     saveKey: "tower_save_v4",
-    combat: { entityBars: true, targetMarkers: true, combatHudModes: true, visibilityMask: true, hostileActors: true, playerActors: true, offScreenIndicators: true, globeOverlay: true },
     proceduralDesign: towerProceduralDesign,
     interactionPairs: towerInteractionPairs,
     simulationPort: towerSimulation,

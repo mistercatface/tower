@@ -25,7 +25,7 @@
 /**
  * @typedef {object} SimulationEffectPass
  * @property {number} zIndex
- * @property {(state: object, viewport: object, ctx: CanvasRenderingContext2D) => void} draw
+ * @property {(state: object, viewport: object, ctx: CanvasRenderingContext2D, renderer?: import("../Render/Render.js").Renderer) => void} draw
  */
 /**
  * @typedef {object} RenderPorts
@@ -33,6 +33,7 @@
  * @property {object} kinematicsPorts
  * @property {import("../Libraries/Render/worldStructure/LiveWorldStructure.js").WorldStructurePort} worldStructure
  * @property {SimulationEffectPass[]} [simulationEffectPasses]
+ * @property {(state: object, viewport: object, ctx: CanvasRenderingContext2D, renderer: import("../Render/Render.js").Renderer) => void} [drawPostSimulation]
  */
 /**
  * @typedef {object} WorldGenStrategy
@@ -109,17 +110,6 @@
  * @property {number} [step]
  */
 /**
- * @typedef {object} CombatFeatures
- * @property {boolean} [entityBars]
- * @property {boolean} [targetMarkers]
- * @property {boolean} [combatHudModes]
- * @property {boolean} [visibilityMask]
- * @property {boolean} [hostileActors]
- * @property {boolean} [playerActors]
- * @property {boolean} [offScreenIndicators]
- * @property {boolean} [globeOverlay]
- */
-/**
  * @typedef {import("./GamePerspective.js").PerspectiveConfig} PerspectiveConfig
  */
 /**
@@ -145,7 +135,6 @@
  * @property {(fsm: import("../Libraries/FSM/StateMachine.js").StateMachine) => import("../Libraries/Input/keyboardBindings.js").KeyBinding[]} [keyBindings]
  * @property {() => void} [onCanvasResize]
  * @property {() => void | Promise<void>} [prepare]
- * @property {Partial<CombatFeatures>} [combat] — render combat layers; omitted = all off
  * @property {Partial<import("./GamePerspective.js").PerspectiveConfig>} [perspective]
  * @property {number} [propPixelSize] — target bake diameter for small props; large props auto-match world size
  * @property {Partial<import("./GameProceduralDesign.js").ProceduralDesignConfig>} [proceduralDesign]
