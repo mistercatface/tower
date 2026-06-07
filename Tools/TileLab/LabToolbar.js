@@ -19,7 +19,8 @@ export function readControls() {
 }
 export function syncCombatZoomToStage(world) {
     const { viewW, viewH } = getStageSize();
-    const zoom = getDefaultSimulationZoom(viewW, viewH, world?.player?.weapon?.range ?? playerBaseStats.range);
+    const outerFit = world?.player?.weapon?.range ?? playerBaseStats.range;
+    const zoom = getDefaultSimulationZoom(viewW, viewH, outerFit, playerBaseStats.range);
     const zoomEl = document.getElementById("gameZoomInput");
     if (zoomEl) {
         zoomEl.value = String(zoom.toFixed(2));
@@ -48,7 +49,7 @@ export function initToolbarDefaults() {
     document.getElementById("seedInput").value = "42";
     const gameZoomEl = document.getElementById("gameZoomInput");
     if (gameZoomEl) {
-        const z = getDefaultSimulationZoom(800, 600, playerBaseStats.range);
+        const z = getDefaultSimulationZoom(800, 600, playerBaseStats.range, playerBaseStats.range);
         gameZoomEl.value = String(z.toFixed(2));
         document.getElementById("gameZoomValue").textContent = gameZoomEl.value;
     }

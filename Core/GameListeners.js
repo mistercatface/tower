@@ -14,16 +14,6 @@ export function registerCoreListeners(eventBus, pauseManager) {
         adjustSelectedSpeed(state, delta, getActiveGameDefinition());
         requestUiUpdate();
     });
-    eventBus.on(Events.GAME_ADJUST_ZOOM, ({ state, viewport, delta }) => {
-        if (!viewport) return;
-        viewport.setZoom(viewport.zoom + delta, state);
-        requestUiUpdate();
-    });
-    eventBus.on(Events.GAME_SET_ZOOM_ABSOLUTE, ({ state, viewport, zoom }) => {
-        if (!viewport) return;
-        viewport.setZoom(zoom, state);
-        requestUiUpdate();
-    });
     eventBus.on(Events.GAME_RESTART, ({ resetGame }) => {
         resetGame();
     });

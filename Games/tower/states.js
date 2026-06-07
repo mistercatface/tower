@@ -1,3 +1,4 @@
+import { playerBaseStats } from "../../Config/Config.js";
 import { FloatingText } from "../../Render/FloatingText.js";
 import { requestUiUpdate, requestUiHudUpdate } from "../../Core/EventSystem.js";
 import { inspectBridge } from "../../Combat/inspect/InspectBridge.js";
@@ -12,7 +13,7 @@ export class MapState {
         FloatingText.updateAll(ctx.state, dt);
     }
     render(ctx) {
-        ctx.viewport.updateZoomLimits(ctx.state, ctx.state.player.weapon.range);
+        ctx.viewport.updateZoomLimits(ctx.state, ctx.state.player.weapon.range, playerBaseStats.range);
         const { x, y } = ctx.state.getMapPlayerGraphCoords();
         ctx.viewport.follow(x, y);
         ctx.renderer.renderMapScene(ctx.state, ctx.viewport);
@@ -36,7 +37,7 @@ export class SimulationState {
         requestUiHudUpdate();
     }
     render(ctx) {
-        ctx.viewport.updateZoomLimits(ctx.state, ctx.state.player.weapon.range);
+        ctx.viewport.updateZoomLimits(ctx.state, ctx.state.player.weapon.range, playerBaseStats.range);
         ctx.viewport.follow(ctx.state.player.x, ctx.state.player.y);
         ctx.renderer.renderSimulationScene(ctx.state, ctx.viewport);
     }
@@ -71,7 +72,7 @@ export class InspectorState {
         requestUiHudUpdate();
     }
     render(ctx) {
-        ctx.viewport.updateZoomLimits(ctx.state, ctx.state.player.weapon.range);
+        ctx.viewport.updateZoomLimits(ctx.state, ctx.state.player.weapon.range, playerBaseStats.range);
         ctx.viewport.follow(ctx.state.player.x, ctx.state.player.y);
         ctx.renderer.renderSimulationScene(ctx.state, ctx.viewport);
     }

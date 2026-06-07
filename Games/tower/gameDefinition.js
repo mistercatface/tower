@@ -19,7 +19,6 @@ import { towerKeyBindings } from "./keyBindings.js";
 import { registerTowerListeners } from "./listeners.js";
 import { TowerGameState } from "./TowerGameState.js";
 /** @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition */
-/** Tower — reference game definition. Engine ports injected via interactionPairs, targeting, render. */
 export const towerGame = {
     id: "tower",
     createGameState() {

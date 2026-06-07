@@ -1,5 +1,5 @@
 import { toggleGunInLoadout, unequipSlot } from "../../Combat/equipmentLoadout.js";
-import { nextUpgradeCost } from "../../Config/Config.js";
+import { nextUpgradeCost, playerBaseStats } from "../../Config/Config.js";
 import { Events, requestProgressDirty, requestUiUpdate, requestUiHudUpdate } from "../../Core/EventSystem.js";
 import { getRunScenePort } from "../../Core/GamePorts.js";
 import { registerPersistentTriggers } from "../../Core/PersistentTriggerSetup.js";
@@ -58,12 +58,24 @@ export function registerTowerListeners(eventBus) {
         requestUiUpdate();
     });
     eventBus.on(Events.GAME_SET_ZOOM, ({ state, viewport, sliderValue }) => {
-        if (!viewport) return;
+        if (!viewport || !state.player) return;
         const sliderVal = sliderValue / 100;
         if (isSimulation(state.phase)) {
             viewport.zoomProgress = sliderVal;
-            viewport.updateZoomLimits(state, state.player.weapon.range);
+            viewport.updateZoomLimits(state, state.player.weapon.range, playerBaseStats.range);
         } else viewport.setZoom(0.5 + sliderVal * 1.5, state);
+        requestUiUpdate();
+    });
+    eventBus.on(Events.GAME_ADJUST_ZOOM, ({ state, viewport, delta }) => {
+        if (!viewport || !state.player) return;
+        if (isSimulation(state.phase)) viewport.setZoom(viewport.zoom + delta, state, state.player.weapon.range, playerBaseStats.range);
+        else viewport.setZoom(viewport.zoom + delta, state);
+        requestUiUpdate();
+    });
+    eventBus.on(Events.GAME_SET_ZOOM_ABSOLUTE, ({ state, viewport, zoom }) => {
+        if (!viewport || !state.player) return;
+        if (isSimulation(state.phase)) viewport.setZoom(zoom, state, state.player.weapon.range, playerBaseStats.range);
+        else viewport.setZoom(zoom, state);
         requestUiUpdate();
     });
     eventBus.on(Events.MAP_TOGGLE, ({ state, fsm }) => {
