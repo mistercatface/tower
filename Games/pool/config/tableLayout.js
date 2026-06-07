@@ -7,9 +7,9 @@ export const TABLE_RAIL_CELLS = 2;
 /** Pool ball radius in world units (physics + render). */
 export const POOL_BALL_RADIUS = 16;
 /** Pocket sensor radius for corner pockets in world units. */
-export const CORNER_POCKET_RADIUS = POOL_BALL_RADIUS * 2.375;
+export const CORNER_POCKET_RADIUS = POOL_BALL_RADIUS * 2.0;
 /** Pocket sensor radius for side pockets in world units. */
-export const SIDE_POCKET_RADIUS = POOL_BALL_RADIUS * 2.0;
+export const SIDE_POCKET_RADIUS = POOL_BALL_RADIUS * 1.75;
 export const POCKET_RADIUS = SIDE_POCKET_RADIUS;
 /** Pocket drop depth below ground level in world units. */
 export const POOL_POCKET_DEPTH = POOL_BALL_RADIUS * 3.0;

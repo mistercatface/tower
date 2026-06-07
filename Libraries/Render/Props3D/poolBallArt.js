@@ -43,7 +43,6 @@ const labelCache = new Map();
 export function getPoolBallLabelImage(poolBall) {
     const key = `${poolBall.kind}_${poolBall.number ?? 0}_${LABEL_SIZE}`;
     if (labelCache.has(key)) return labelCache.get(key);
-
     if (poolBall.kind === "cue") {
         const canvas = new OffscreenCanvas(LABEL_SIZE, LABEL_SIZE);
         const ctx = canvas.getContext("2d");
@@ -57,22 +56,18 @@ export function getPoolBallLabelImage(poolBall) {
         labelCache.set(key, canvas);
         return canvas;
     }
-
     if (!poolBall.number) return null;
     const canvas = new OffscreenCanvas(LABEL_SIZE, LABEL_SIZE);
     const ctx = canvas.getContext("2d");
     const cx = LABEL_SIZE * 0.5;
     const cy = LABEL_SIZE * 0.5;
     const discR = LABEL_SIZE * 0.46;
-    const onDark = poolBall.kind === "solid" && poolBall.number === 8;
-    if (!onDark) {
-        ctx.fillStyle = "#FFFFFF";
-        ctx.beginPath();
-        ctx.arc(cx, cy, discR, 0, Math.PI * 2);
-        ctx.fill();
-    }
+    ctx.fillStyle = "#FFFFFF";
+    ctx.beginPath();
+    ctx.arc(cx, cy, discR, 0, Math.PI * 2);
+    ctx.fill();
     const fontSize = poolBall.number >= 10 ? discR * 1.25 : discR * 1.55;
-    ctx.fillStyle = onDark ? "#FFFFFF" : "#111111";
+    ctx.fillStyle = "#111111";
     ctx.font = `900 ${fontSize}px system-ui, sans-serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
