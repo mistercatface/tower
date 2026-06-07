@@ -64,6 +64,13 @@ export function emitMapToggle() {
 export function emitHardReset() {
     events.emit(Events.PROGRESS_HARD_RESET);
 }
+/** End the run once — call from game code when win/lose happens, not from the main loop. */
+export function endRun(state) {
+    if (!state || state.isGameOver) return;
+    state.isGameOver = true;
+    events.emit(Events.UI_SHOW_GAME_OVER);
+    requestUiUpdate();
+}
 export function showGameOver() {
     events.emit(Events.UI_SHOW_GAME_OVER);
 }

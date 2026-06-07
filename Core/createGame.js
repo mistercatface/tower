@@ -2,7 +2,7 @@ import { state } from "../GameState/GameState.js";
 import { initializeSaveSystem } from "../Progression/Storage.js";
 import { applyGameBootstrap } from "../Libraries/Bootstrap/applyGameBootstrap.js";
 import { getBootstrapPort, getRenderPorts } from "./GamePorts.js";
-import { events, requestUiUpdate, requestUiHudUpdate, showGameOver, hideGameOver } from "./EventSystem.js";
+import { events, requestUiUpdate, requestUiHudUpdate, hideGameOver } from "./EventSystem.js";
 import { registerAllListeners } from "./GameListeners.js";
 import { PauseManager } from "./PauseManager.js";
 import { Renderer } from "../Render/Render.js";
@@ -50,23 +50,17 @@ export function createGame(definition) {
         }
         return false;
     }
-    const customLifecycle = definition.lifecycle !== "player-health";
     function loop(timestamp) {
         if (state.lastTime === 0) state.lastTime = timestamp;
         let dt = timestamp - state.lastTime;
         state.lastTime = timestamp;
         dt = Math.min(dt, 50);
-        const runActive = customLifecycle ? !state.isGameOver : state.player.health > 0;
-        if (runActive) {
+        if (!state.isGameOver) {
             state.scheduler.update(dt);
             if (!state.isPaused) {
                 state.gameTime += dt * state.selectedSpeed;
                 fsm.update(dt * state.selectedSpeed);
             }
-        } else if (!state.isGameOver) {
-            state.isGameOver = true;
-            showGameOver();
-            requestUiUpdate();
         }
         fsm.render();
         requestUiHudUpdate();

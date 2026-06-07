@@ -149,9 +149,6 @@
  * @property {boolean} [globeOverlay]
  */
 /**
- * @typedef {"player-health" | "custom"} GameLifecycle
- */
-/**
  * @typedef {import("./GamePerspective.js").PerspectiveConfig} PerspectiveConfig
  */
 /**
@@ -176,7 +173,6 @@
  * @property {RadioPort} [radioPort] — defaults to noop when omitted
  * @property {(fsm: import("../GameState/GameStateMachine.js").GameStateMachine) => import("../Libraries/Input/keyboardBindings.js").KeyBinding[]} [keyBindings]
  * @property {() => void | Promise<void>} [prepare]
- * @property {GameLifecycle} [lifecycle] — `"player-health"` ends run at 0 HP; default `"custom"` uses `isGameOver`
  * @property {Partial<CombatFeatures>} [combat] — render combat layers; omitted = all off
  * @property {Partial<import("./GamePerspective.js").PerspectiveConfig>} [perspective]
  * @property {number} [propPixelSize] — target bake diameter for small props; large props auto-match world size

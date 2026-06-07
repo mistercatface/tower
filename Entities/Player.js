@@ -1,5 +1,5 @@
 import { Actor } from "./Actor.js";
-import { spawnFloatingText } from "../Core/EventSystem.js";
+import { endRun, spawnFloatingText } from "../Core/EventSystem.js";
 import { playerBaseStats, NAV_PROFILES, navigationSettings } from "../Config/Config.js";
 import { createEntityBars } from "./EntityBars.js";
 import { entityIntersectsCellBounds } from "../Libraries/Spatial/grid/GridCoords.js";
@@ -43,6 +43,10 @@ export class Player extends Actor {
     onDamageFloatingText(damage, hitType) {
         super.onDamageFloatingText(damage, hitType);
         if (hitType !== "blast") spawnFloatingText({ variant: "standardDamage", x: this.x, y: this.y, damage });
+    }
+    onHitAfterDamage(damage, ctx, hitType, died, event) {
+        super.onHitAfterDamage(damage, ctx, hitType, died, event);
+        if (died) endRun(ctx?.state);
     }
     setSpawnPosition(x, y) {
         this.x = x;
