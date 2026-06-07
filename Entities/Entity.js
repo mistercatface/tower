@@ -21,7 +21,7 @@ export class Entity {
         this.isDead = isDead;
         this.zIndex = 0;
         this._distSq = 0;
-        this.shape = null; // reset shape
+        this.shape = null;
     }
     render(ctx, ...caches) {}
     getShape() {
