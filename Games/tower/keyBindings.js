@@ -1,6 +1,6 @@
 import { COMBAT_HUD_MODE_COUNT, COMBAT_HUD_MODE_LABELS } from "../../Config/Config.js";
 import { emitMapToggle } from "../../Core/EventSystem.js";
-/** @param {import("../../GameState/GameStateMachine.js").GameStateMachine} fsm */
+/** @param {import("../../Libraries/FSM/StateMachine.js").StateMachine} fsm */
 export function towerKeyBindings(fsm) {
     return [
         {

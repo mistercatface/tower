@@ -4,14 +4,14 @@ import { getActiveGameDefinition } from "./ActiveGameDefinition.js";
 import { CanvasInputController } from "../Libraries/Input/CanvasInputController.js";
 /** @type {CanvasInputController | null} */
 let activeController = null;
-/** @param {import("../GameState/GameStateMachine.js").GameStateMachine} fsm */
+/** @param {import("../Libraries/FSM/StateMachine.js").StateMachine} fsm */
 function buildKeyBindings(fsm) {
     return getActiveGameDefinition().keyBindings?.(fsm) ?? [];
 }
 export class InputManager {
     /**
      * @param {HTMLCanvasElement} canvas
-     * @param {import("../GameState/GameStateMachine.js").GameStateMachine} fsm
+     * @param {import("../Libraries/FSM/StateMachine.js").StateMachine} fsm
      * @returns {CanvasInputController}
      */
     static setup(canvas, fsm) {

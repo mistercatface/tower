@@ -8,7 +8,7 @@ import { PauseManager } from "./PauseManager.js";
 import { Renderer } from "../Render/Render.js";
 import { SimulationViewport } from "../Render/SimulationViewport.js";
 import { StatsManager } from "../Progression/StatsManager.js";
-import { GameStateMachine } from "../GameState/GameStateMachine.js";
+import { StateMachine } from "../Libraries/FSM/StateMachine.js";
 import { inspectBridge } from "../Combat/inspect/InspectBridge.js";
 import { setActiveGameDefinition } from "./ActiveGameDefinition.js";
 import { bootstrapEngine } from "./bootstrapEngine.js";
@@ -38,7 +38,7 @@ export function createGame(definition) {
     const upgrades = definition.createUpgrades?.() ?? [];
     const viewport = new SimulationViewport(0, 0);
     const stateMachineContext = { state, upgrades, viewport, renderer };
-    const fsm = new GameStateMachine(stateMachineContext);
+    const fsm = new StateMachine(stateMachineContext);
     stateMachineContext.fsm = fsm;
     state.fsm = fsm;
     for (const [name, StateClass] of Object.entries(definition.states)) fsm.addState(name, new StateClass());

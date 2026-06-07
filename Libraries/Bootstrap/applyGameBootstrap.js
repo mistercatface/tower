@@ -16,7 +16,7 @@ import { StatsManager } from "../../Progression/StatsManager.js";
  * @property {import("../../Libraries/Events/EventBus.js").EventBus} events
  * @property {import("../../Core/PauseManager.js").PauseManager} pauseManager
  * @property {HTMLCanvasElement} canvas
- * @property {import("../../GameState/GameStateMachine.js").GameStateMachine} fsm
+ * @property {import("../Libraries/FSM/StateMachine.js").StateMachine} fsm
  * @property {import("../../Render/SimulationViewport.js").SimulationViewport} viewport
  * @property {() => void} resetGame
  * @property {() => void} resizeCanvas
