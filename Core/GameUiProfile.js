@@ -24,18 +24,11 @@ import { getActiveGameDefinition } from "./ActiveGameDefinition.js";
  * @property {boolean} [globeOverlay]
  */
 /**
- * @typedef {object} RunResultCopy
- * @property {string} title
- * @property {string} [buttonLabel]
- * @property {string} [titleColor]
- */
-/**
  * @typedef {object} GameUiProfile
  * @property {GameShellId} shell
  * @property {GameUiChrome} chrome
  * @property {GameCombatFeatures} combat
  * @property {GameLifecycle} lifecycle
- * @property {Partial<Record<"won" | "lost", RunResultCopy>>} [runResult]
  */
 /** Engine default — games opt in to tower/combat chrome via `definition.ui`. */
 export const ENGINE_MINIMAL_UI = {
@@ -54,7 +47,6 @@ function mergeProfile(overrides) {
         chrome: { ...base.chrome, ...overrides?.chrome },
         combat: { ...base.combat, ...overrides?.combat },
         lifecycle: overrides?.lifecycle ?? base.lifecycle,
-        runResult: overrides?.runResult,
     };
 }
 /** @param {import("./GameDefinitionTypes.js").GameDefinition | null | undefined} definition */

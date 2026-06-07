@@ -1,8 +1,6 @@
 import { Events } from "../../Core/EventSystem.js";
 import { getShellElements } from "./shellElements.js";
-
 const DEFAULT_GAME_OVER_COPY = { title: "GAME OVER", buttonLabel: "NEW RUN", titleColor: "#F44336" };
-
 function createButton(styles, innerHTML, onClick, id = "") {
     const btn = document.createElement("button");
     if (id) btn.id = id;
@@ -11,22 +9,15 @@ function createButton(styles, innerHTML, onClick, id = "") {
     if (onClick) btn.addEventListener("click", onClick);
     return btn;
 }
-
-/** @param {{ title?: string, buttonLabel?: string, titleColor?: string }} copy */
-export function showRunResultScreen(copy) {
+export function showGameOverScreen() {
     const elements = getShellElements();
     if (elements.gameOverTitle) {
-        elements.gameOverTitle.innerText = copy.title ?? DEFAULT_GAME_OVER_COPY.title;
-        elements.gameOverTitle.style.color = copy.titleColor ?? DEFAULT_GAME_OVER_COPY.titleColor;
+        elements.gameOverTitle.innerText = DEFAULT_GAME_OVER_COPY.title;
+        elements.gameOverTitle.style.color = DEFAULT_GAME_OVER_COPY.titleColor;
     }
-    if (elements.restartBtn && copy.buttonLabel) elements.restartBtn.innerText = copy.buttonLabel;
+    if (elements.restartBtn) elements.restartBtn.innerText = DEFAULT_GAME_OVER_COPY.buttonLabel;
     if (elements.gameOverUI) elements.gameOverUI.style.display = "flex";
 }
-
-export function showGameOverScreen() {
-    showRunResultScreen(DEFAULT_GAME_OVER_COPY);
-}
-
 export function hideGameOverScreen() {
     const elements = getShellElements();
     if (elements.gameOverUI) elements.gameOverUI.style.display = "none";
@@ -36,13 +27,11 @@ export function hideGameOverScreen() {
     }
     if (elements.restartBtn) elements.restartBtn.innerText = DEFAULT_GAME_OVER_COPY.buttonLabel;
 }
-
 export function showUpgradeChoice(title, description, choices, upgrades, onPick) {
     const elements = getShellElements();
     if (elements.upgradeChoiceTitle) elements.upgradeChoiceTitle.innerText = title;
     if (elements.upgradeChoiceDesc) elements.upgradeChoiceDesc.innerText = description;
     if (!elements.upgradeChoicesContainer || !elements.upgradeChoiceModal) return;
-
     elements.upgradeChoicesContainer.innerHTML = "";
     choices.forEach((choiceId) => {
         const upg = upgrades.find((u) => u.id === choiceId);
@@ -58,13 +47,9 @@ export function showUpgradeChoice(title, description, choices, upgrades, onPick)
     });
     elements.upgradeChoiceModal.style.display = "flex";
 }
-
 /** @param {import("../../Libraries/Events/EventBus.js").EventBus} eventBus */
 export function registerSharedOverlayListeners(eventBus) {
-    eventBus.on(Events.UI_SHOW_UPGRADE_CHOICE, (data) =>
-        showUpgradeChoice(data.title, data.description, data.choices, data.upgrades, data.onPick),
-    );
+    eventBus.on(Events.UI_SHOW_UPGRADE_CHOICE, (data) => showUpgradeChoice(data.title, data.description, data.choices, data.upgrades, data.onPick));
     eventBus.on(Events.UI_SHOW_GAME_OVER, () => showGameOverScreen());
-    eventBus.on(Events.UI_SHOW_RUN_RESULT, (copy) => showRunResultScreen(copy));
     eventBus.on(Events.UI_HIDE_GAME_OVER, () => hideGameOverScreen());
 }

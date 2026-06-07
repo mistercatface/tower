@@ -125,10 +125,6 @@
  * @property {() => boolean} isDialogActive
  */
 /**
- * @typedef {object} OutcomePort
- * @property {(state: object) => "won" | "lost" | null} getRunOutcome
- */
-/**
  * @typedef {import("./GameUiProfile.js").GameUiProfile} GameUiProfile
  */
 /**
@@ -154,7 +150,6 @@
  * @property {InspectPort} [inspectPort] — defaults to noop when omitted
  * @property {CombatPort} [combatPort] — defaults to noop when omitted
  * @property {RadioPort} [radioPort] — defaults to noop when omitted
- * @property {OutcomePort} [outcomePort] — defaults to noop when omitted
  * @property {() => void | Promise<void>} [prepare]
  * @property {Partial<import("./GameUiProfile.js").GameUiProfile>} [ui]
  * @property {Partial<import("./GamePerspective.js").PerspectiveConfig>} [perspective]

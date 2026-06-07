@@ -40,7 +40,7 @@ UI shell lives in `UI/Shell/` + `UI/Core/`; tower wires panels via `ui/towerUiPo
 ## New game
 
 1. Copy `Games/tower/` → `Games/my-game/`
-2. Implement `gameDefinition.js` with required ports: `simulationPort`, `uiPort`, `targeting`, `render`, `worldGen`, `runBootstrapPort`, `bootstrapPort`, `runScenePort`, `inspectPort`, `combatPort`, `radioPort`, `outcomePort`; optional `interactionPairs` for combat overrides
+2. Implement `gameDefinition.js` with required ports: `simulationPort`, `uiPort`, `targeting`, `render`, `worldGen`, `runBootstrapPort`, `bootstrapPort`, `runScenePort`, `inspectPort`, `combatPort`, `radioPort`; optional `interactionPairs` for combat overrides
 3. Add `simulation.js`, `ui/` port, `config/runScenes.js`, `config/entities.js`, layout + `worldGen.strategies`
 4. Point `main.js` at your manifest: `createGame(myGame)`
 5. Fork `Config/` content as needed (factions, guns, radio, balance)

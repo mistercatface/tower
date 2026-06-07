@@ -1,8 +1,8 @@
 import { state } from "../GameState/GameState.js";
 import { initializeSaveSystem } from "../Progression/Storage.js";
 import { applyGameBootstrap } from "../Libraries/Bootstrap/applyGameBootstrap.js";
-import { getBootstrapPort, getOutcomePort } from "./GamePorts.js";
-import { events, requestUiUpdate, requestUiHudUpdate, showGameOver, showRunResult, hideGameOver } from "./EventSystem.js";
+import { getBootstrapPort } from "./GamePorts.js";
+import { events, requestUiUpdate, requestUiHudUpdate, showGameOver, hideGameOver } from "./EventSystem.js";
 import { registerAllListeners } from "./GameListeners.js";
 import { PauseManager } from "./PauseManager.js";
 import { Renderer } from "../Render/Render.js";
@@ -65,18 +65,6 @@ export function createGame(definition) {
             if (!state.isPaused) {
                 state.gameTime += dt * state.selectedSpeed;
                 fsm.update(dt * state.selectedSpeed);
-            }
-            const outcome = getOutcomePort().getRunOutcome(state);
-            if (outcome) {
-                state.isGameOver = true;
-                const copy = uiProfile.runResult?.[outcome];
-                showRunResult({
-                    outcome,
-                    title: copy?.title ?? (outcome === "won" ? "YOU WIN" : "GAME OVER"),
-                    buttonLabel: copy?.buttonLabel ?? "NEW RUN",
-                    titleColor: copy?.titleColor ?? (outcome === "won" ? "#4CAF50" : "#F44336"),
-                });
-                requestUiUpdate();
             }
         } else if (!state.isGameOver) {
             state.isGameOver = true;

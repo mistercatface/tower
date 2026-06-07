@@ -3,7 +3,6 @@ export const Events = {
     UI_UPDATE_HUD: "ui:updateHud",
     UI_SHOW_UPGRADE_CHOICE: "ui:showUpgradeChoice",
     UI_SHOW_GAME_OVER: "ui:showGameOver",
-    UI_SHOW_RUN_RESULT: "ui:showRunResult",
     UI_HIDE_GAME_OVER: "ui:hideGameOver",
     FX_FLOATING_TEXT: "fx:floatingText",
     COMBAT_ENEMY_KILLED: "combat:enemyKilled",

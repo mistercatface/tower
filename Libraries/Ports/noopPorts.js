@@ -1,7 +1,6 @@
 /** @typedef {import("../../Core/GameDefinitionTypes.js").InspectPort} InspectPort */
 /** @typedef {import("../../Core/GameDefinitionTypes.js").CombatPort} CombatPort */
 /** @typedef {import("../../Core/GameDefinitionTypes.js").RadioPort} RadioPort */
-/** @typedef {import("../../Core/GameDefinitionTypes.js").OutcomePort} OutcomePort */
 /** @type {InspectPort} */
 export const NOOP_INSPECT_PORT = {
     getMissionBanner() {
@@ -22,11 +21,5 @@ export const NOOP_COMBAT_PORT = {};
 export const NOOP_RADIO_PORT = {
     isDialogActive() {
         return false;
-    },
-};
-/** @type {OutcomePort} */
-export const NOOP_OUTCOME_PORT = {
-    getRunOutcome() {
-        return null;
     },
 };
