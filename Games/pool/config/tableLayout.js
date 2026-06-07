@@ -1,8 +1,8 @@
 import { gridSettings } from "../../../Config/Config.js";
 import { snapLayoutOrigin } from "../../../Generator/GridLayout.js";
 /** Grid size for the pool table wall bake (cells). */
-export const TABLE_COLS = 44;
-export const TABLE_ROWS = 24;
+export const TABLE_COLS = 24;
+export const TABLE_ROWS = 44;
 export const TABLE_RAIL_CELLS = 2;
 /** Pool ball radius in world units (physics + render). */
 export const POOL_BALL_RADIUS = 12;
@@ -46,7 +46,7 @@ function buildRackPositions(footSpot, ballRadius = POOL_BALL_RADIUS) {
     const positions = [];
     for (let row = 0; row < RACK_BALL_NUMBERS.length; row++) {
         const rowBalls = RACK_BALL_NUMBERS[row];
-        for (let col = 0; col < rowBalls.length; col++) positions.push({ number: rowBalls[col], x: footSpot.x + row * rowStep, y: footSpot.y + (col - row * 0.5) * colStep });
+        for (let col = 0; col < rowBalls.length; col++) positions.push({ number: rowBalls[col], x: footSpot.x + (col - row * 0.5) * colStep, y: footSpot.y - row * rowStep });
     }
     return positions;
 }
@@ -75,7 +75,7 @@ export function getPlayfieldBounds(offsetX, offsetY, cellSize, cols = TABLE_COLS
     const table = getTableWorldBounds(offsetX, offsetY, cellSize, cols, rows);
     return { minX: table.minX + rail, minY: table.minY + rail, maxX: table.maxX - rail, maxY: table.maxY - rail, centerX: table.centerX, centerY: table.centerY };
 }
-/** @typedef {'corner-tl' | 'corner-tr' | 'corner-bl' | 'corner-br' | 'side-top' | 'side-bottom'} PoolPocketKind */
+/** @typedef {'corner-tl' | 'corner-tr' | 'corner-bl' | 'corner-br' | 'side-left' | 'side-right'} PoolPocketKind */
 /** @typedef {{ x: number, y: number, radius: number, kind: PoolPocketKind }} PoolPocket */
 /**
  * Six pockets — center on inner felt corners (quarter circle) or inner long-rail midpoints (half circle).
@@ -91,10 +91,10 @@ export function getPocketPositions(offsetX, offsetY, cellSize) {
     const sr = SIDE_POCKET_RADIUS;
     return [
         { x: play.minX, y: play.minY, radius: cr, kind: "corner-tl" },
-        { x: play.centerX, y: play.minY, radius: sr, kind: "side-top" },
+        { x: play.minX, y: play.centerY, radius: sr, kind: "side-left" },
         { x: play.maxX, y: play.minY, radius: cr, kind: "corner-tr" },
         { x: play.minX, y: play.maxY, radius: cr, kind: "corner-bl" },
-        { x: play.centerX, y: play.maxY, radius: sr, kind: "side-bottom" },
+        { x: play.maxX, y: play.centerY, radius: sr, kind: "side-right" },
         { x: play.maxX, y: play.maxY, radius: cr, kind: "corner-br" },
     ];
 }
@@ -109,10 +109,10 @@ export function getPocketArcAngles(kind) {
             return { start: (3 * Math.PI) / 2, end: Math.PI * 2 };
         case "corner-br":
             return { start: Math.PI, end: (3 * Math.PI) / 2 };
-        case "side-top":
-            return { start: 0, end: Math.PI };
-        case "side-bottom":
-            return { start: Math.PI, end: Math.PI * 2 };
+        case "side-left":
+            return { start: -Math.PI / 2, end: Math.PI / 2 };
+        case "side-right":
+            return { start: Math.PI / 2, end: (3 * Math.PI) / 2 };
         default:
             return { start: 0, end: Math.PI * 2 };
     }
@@ -134,13 +134,13 @@ export function buildPoolStartLayout(px, py, cellSize) {
     const { offsetX, offsetY } = snapLayoutOrigin(px, py, cols, rows, cellSize);
     const bounds = getTableWorldBounds(offsetX, offsetY, cellSize, cols, rows);
     const rail = TABLE_RAIL_CELLS * cellSize;
-    const playfieldWidth = bounds.width - 2 * rail;
-    const headSpot = { x: bounds.minX + rail + playfieldWidth * 0.25, y: bounds.centerY };
-    // Position the foot spot at regulation 75% of playfield, but cap it to keep the rack safe from the right rail
-    const regulationFootSpotX = bounds.minX + rail + playfieldWidth * 0.75;
-    const maxFootSpotX = bounds.minX + rail + playfieldWidth - (4 * Math.sqrt(3) + 2.5) * POOL_BALL_RADIUS;
-    const footSpotX = Math.min(regulationFootSpotX, maxFootSpotX);
-    const footSpot = { x: footSpotX, y: bounds.centerY };
+    const playfieldHeight = bounds.height - 2 * rail;
+    const headSpot = { x: bounds.centerX, y: bounds.minY + rail + playfieldHeight * 0.75 };
+    // Position the foot spot at regulation 25% of playfield (vertical top), but cap it to keep the rack safe from the top rail
+    const regulationFootSpotY = bounds.minY + rail + playfieldHeight * 0.25;
+    const minFootSpotY = bounds.minY + rail + (4 * Math.sqrt(3) + 2.5) * POOL_BALL_RADIUS;
+    const footSpotY = Math.max(regulationFootSpotY, minFootSpotY);
+    const footSpot = { x: bounds.centerX, y: footSpotY };
     return {
         minX: bounds.minX,
         minY: bounds.minY,

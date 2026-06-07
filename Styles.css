@@ -16,7 +16,7 @@ body {
 #gameWrapper {
     position: relative;
     width: 100%;
-    max-width: 450px;
+    max-width: min(450px, calc(100dvh * 9 / 16));
     height: 100vh;
     height: 100dvh;
     display: flex;
@@ -36,11 +36,10 @@ canvas {
 
 /* Landscape spinoffs (pool, etc.) — table fills width, minimal chrome */
 body.shell-landscape-minimal {
-    align-items: stretch;
+    align-items: center;
 }
 
 body.shell-landscape-minimal #gameWrapper {
-    max-width: none;
     width: 100vw;
     height: 100dvh;
     box-shadow: none;

@@ -81,19 +81,16 @@ export class PoolSimulationState {
             const halfW = layout.tableWidth / 2;
             const halfH = layout.tableHeight / 2;
             let zoomX;
-            let zoomY;
             if (bounds?.width && bounds?.height) {
-                const landscape = bounds.width > bounds.height;
-                const pad = landscape ? 0 : 8;
-                zoomX = (bounds.width / 2 - pad) / halfW;
-                zoomY = (bounds.height / 2 - pad) / halfH;
-                const fitZoom = landscape ? zoomY : Math.min(zoomX, zoomY);
-                ctx.viewport.zoom = landscape ? fitZoom : fitZoom * 0.94;
+                // Always fit zoom to the width with 1 cell of padding on each side
+                const cellSize = layout.tableWidth / 24;
+                zoomX = bounds.width / 2 / (halfW + cellSize);
+                ctx.viewport.zoom = zoomX;
             } else {
                 const vr = ctx.viewport.getVisualRadius();
-                zoomX = vr / halfW;
-                zoomY = vr / halfH;
-                ctx.viewport.zoom = Math.min(zoomX, zoomY) * 0.94;
+                const cellSize = layout.tableWidth / 24;
+                zoomX = vr / (halfW + cellSize);
+                ctx.viewport.zoom = zoomX;
             }
         } else ctx.viewport.updateZoomLimits(ctx.state);
         ctx.viewport.snapTo(cx, cy);
