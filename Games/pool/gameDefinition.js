@@ -5,7 +5,7 @@ import { poolUiPort } from "./ui/poolUiPort.js";
 import { createSimulationPort } from "../../Systems/Simulation/SimulationPipeline.js";
 import { pushablePhysicsPhase, gameSceneTickPhase, worldSurfacePhase } from "../../Systems/Simulation/phases.js";
 import { poolWorldGen } from "./worldGen.js";
-import { isRadioDialogActive, wirePoolRadio } from "./wireRadio.js";
+import { registerPoolListeners } from "./listeners.js";
 import { drawPoolPockets } from "./drawPockets.js";
 import { SURFACE_PROFILE_ID } from "../../Config/procedural/profileIds.js";
 import { createRunBootstrapPort } from "../../Libraries/RunBootstrap/RunBootstrapPipeline.js";
@@ -34,7 +34,7 @@ export const poolGame = {
     runBootstrapPort: createRunBootstrapPort([generateWorldPhase]),
     bootstrapPort: createBootstrapPort({ upgrades: false, inspect: false, save: false, persistentTriggers: false }),
     runScenePort: poolRunScenePort,
-    radioPort: { wire: wirePoolRadio, isDialogActive: isRadioDialogActive },
+    registerListeners: registerPoolListeners,
     states: { simulation: PoolSimulationState },
     initialState: "simulation",
     prepare() {

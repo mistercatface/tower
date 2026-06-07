@@ -1,13 +1,15 @@
 import { toggleGunInLoadout, unequipSlot } from "../../Combat/equipmentLoadout.js";
 import { nextUpgradeCost, playerBaseStats } from "../../Config/Config.js";
-import { Events, requestProgressDirty, requestUiUpdate, requestUiHudUpdate } from "../../Core/EventSystem.js";
+import { Events, requestProgressDirty, requestUiUpdate, requestUiHudUpdate, requestGamePause, requestGameResume } from "../../Core/EventSystem.js";
 import { getRunScenePort } from "../../Core/GamePorts.js";
 import { registerPersistentTriggers } from "../../Core/PersistentTriggerSetup.js";
 import { isSimulation } from "../../GameState/GamePhase.js";
 import { ProgressionManager } from "../../Progression/ProgressionManager.js";
 import { StatsManager } from "../../Progression/StatsManager.js";
+import { towerRadio } from "./radio.js";
 /** @param {import("../../Libraries/Events/EventBus.js").EventBus} eventBus */
 export function registerTowerListeners(eventBus) {
+    towerRadio.wire(eventBus, { requestPause: requestGamePause, requestResume: requestGameResume });
     registerPersistentTriggers(eventBus);
     eventBus.on(Events.COMBAT_ENEMY_KILLED, ({ enemy, state, upgrades, fsm }) => {
         ProgressionManager.processEnemyKillRewards(enemy, state, upgrades);

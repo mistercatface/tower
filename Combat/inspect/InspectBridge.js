@@ -2,8 +2,9 @@
 import { InspectViewer } from "../../Libraries/Inspect/InspectViewer.js";
 import { getInspectEntry } from "../../Libraries/Inspect/InspectCatalog.js";
 import { toInspectSubject } from "./inspectTargeting.js";
-import { getInspectPort, getRadioPort } from "../../Core/GamePorts.js";
+import { getInspectPort } from "../../Core/GamePorts.js";
 import { requestGamePause, requestGameResume, requestUiUpdate } from "../../Core/EventSystem.js";
+import { towerRadio } from "../../Games/tower/radio.js";
 const INSPECTOR_PAUSE_REASON = "inspector";
 class InspectBridge {
     constructor() {
@@ -49,7 +50,7 @@ class InspectBridge {
         this.gameState = null;
         requestGameResume(INSPECTOR_PAUSE_REASON);
         requestUiUpdate();
-        if (closedKey && state && getInspectPort().isMissionActive(state) && !getRadioPort().isDialogActive()) getInspectPort().onMissionClose(state, closedKey);
+        if (closedKey && state && getInspectPort().isMissionActive(state) && !towerRadio.isDialogActive()) getInspectPort().onMissionClose(state, closedKey);
         else if (state) state.inspectPanelOpen = false;
     }
 }

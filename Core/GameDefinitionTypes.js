@@ -127,11 +127,6 @@
  * @property {(ctx: { state: object, upgrades: object[] }) => void} [onRunOpeningComplete]
  */
 /**
- * @typedef {object} RadioPort
- * @property {(eventBus: object, pauseApi: { requestPause: (reason: string) => void, requestResume: (reason: string) => void }) => void} [wire]
- * @property {() => boolean} isDialogActive
- */
-/**
  * @typedef {object} PlaybackConfig
  * @property {number} [minSpeed]
  * @property {number} [maxSpeed]
@@ -171,7 +166,6 @@
  * @property {RunScenePort} runScenePort — run scene enter/tick/capabilities
  * @property {InspectPort} [inspectPort] — defaults to noop when omitted
  * @property {CombatPort} [combatPort] — defaults to noop when omitted
- * @property {RadioPort} [radioPort] — defaults to noop when omitted
  * @property {(fsm: import("../Libraries/FSM/StateMachine.js").StateMachine) => import("../Libraries/Input/keyboardBindings.js").KeyBinding[]} [keyBindings]
  * @property {(eventBus: import("../Libraries/Events/EventBus.js").EventBus) => void} [registerListeners]
  * @property {() => void | Promise<void>} [prepare]

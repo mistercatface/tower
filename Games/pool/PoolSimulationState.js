@@ -1,6 +1,7 @@
 import { requestUiUpdate } from "../../Core/EventSystem.js";
-import { getRadioPort, getRunScenePort, getSimulationPort } from "../../Core/GamePorts.js";
+import { getRunScenePort, getSimulationPort } from "../../Core/GamePorts.js";
 import { drawAimSegment } from "../../Libraries/Render/contactPreviewDraw.js";
+import { poolRadio } from "./radio.js";
 import { ensurePoolState } from "./balls.js";
 import { tryBeginAim, updateAim, releaseAimShot, cancelAim, getAimPreview, getCueAimLinePreview } from "./shotInput.js";
 import { MAX_SHOT_POWER, MIN_SHOT_POWER } from "./config/tableLayout.js";
@@ -58,7 +59,7 @@ export class PoolSimulationState {
         }
     }
     _inputBlocked(ctx) {
-        return ctx.state.isPaused || getRadioPort().isDialogActive();
+        return ctx.state.isPaused || poolRadio.isDialogActive();
     }
     handlePointerDown(worldCoords, _isDoubleTap, event, ctx) {
         if (this._inputBlocked(ctx)) return;

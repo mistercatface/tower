@@ -1,6 +1,6 @@
 import { inspectBridge } from "../../Combat/inspect/InspectBridge.js";
-import { getBootstrapPort, getInspectPort, getRadioPort, getUiPort } from "../../Core/GamePorts.js";
-import { Events, requestGamePause, requestGameResume } from "../../Core/EventSystem.js";
+import { getBootstrapPort, getInspectPort, getUiPort } from "../../Core/GamePorts.js";
+import { Events } from "../../Core/EventSystem.js";
 import { InputManager } from "../../Core/InputManager.js";
 import { loadPersistentTriggers } from "../../Core/PersistentTriggers.js";
 import { registerSharedOverlayListeners } from "../../UI/Core/sharedOverlays.js";
@@ -42,7 +42,6 @@ export function applyGameBootstrap(ctx) {
     events.setContext({ state, upgrades, viewport: ctx.viewport, fsm, resetGame });
     events.warnOnMissingListeners = true;
     registerUiEventListeners(events);
-    getRadioPort().wire?.(events, { requestPause: requestGamePause, requestResume: requestGameResume });
     window.addEventListener("resize", resizeCanvas);
     window.gameState = state;
     if (features.upgrades) StatsManager.initUpgradesList(state, upgrades);

@@ -3,14 +3,7 @@ import { markRadioTriggersSeen } from "../../Libraries/RunScene/markRadioTrigger
 import { spawnPoolBalls, createInitialPoolState, ensurePoolState } from "./balls.js";
 import { getPoolLayout } from "./config/tableLayout.js";
 import { processPockets } from "./pockets.js";
-import { poolRadioRegistry } from "./wireRadio.js";
-/** @typedef {import("../../Core/GameDefinitionTypes.js").RunScenePort} RunScenePort */
-/** Dev shortcut: `?scene=play` skips the opening coach radio. */
-function shouldSkipOpeningRadio() {
-    if (typeof window === "undefined") return false;
-    const scene = new URLSearchParams(window.location.search).get("scene");
-    return scene === "play" || scene === "match";
-}
+import { poolRadio } from "./radio.js";
 function snapCameraToTable(state, ctx) {
     const layout = getPoolLayout(state);
     if (layout?.tableCenterX != null && ctx?.viewport) ctx.viewport.snapTo(layout.tableCenterX, layout.tableCenterY);
@@ -27,8 +20,7 @@ export const poolRunScenePort = {
         if (state.pickups) state.pickups.length = 0;
         spawnPoolBalls(state, getPoolLayout(state));
         snapCameraToTable(state, ctx);
-        if (shouldSkipOpeningRadio()) markRadioTriggersSeen(state, ["break_shot"], poolRadioRegistry);
-        else fireRadioTrigger("break_shot", null, state);
+        fireRadioTrigger("break_shot", null, state);
     },
     onTick(ctx, _dt) {
         const { state } = ctx;

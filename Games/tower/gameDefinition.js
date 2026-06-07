@@ -3,7 +3,6 @@ import { MapState, SimulationState, InspectorState } from "./states.js";
 import { COMBAT_ROGUELIKE_BOOTSTRAP } from "../../Libraries/Bootstrap/presets.js";
 import { towerInspectPort } from "./inspectPort.js";
 import { towerCombatPort } from "./combatPort.js";
-import { isRadioDialogActive, wireTowerRadio } from "./wireRadio.js";
 import * as towerTargeting from "./targeting.js";
 import { towerRunScenePort } from "./runScenePort.js";
 import { registerTowerEntities } from "./config/entities.js";
@@ -39,7 +38,6 @@ export const towerGame = {
     runScenePort: towerRunScenePort,
     inspectPort: towerInspectPort,
     combatPort: towerCombatPort,
-    radioPort: { wire: wireTowerRadio, isDialogActive: isRadioDialogActive },
     keyBindings: towerKeyBindings,
     registerListeners: registerTowerListeners,
     createUpgrades() {

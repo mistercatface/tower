@@ -1,7 +1,7 @@
 import { PairFilter } from "../Libraries/Interaction/PairFilter.js";
 import { createDefaultInteractionPairs } from "../Libraries/Interaction/defaultPhysicsPairs.js";
 import { BaseGeneratorStrategies } from "../Generator/GeneratorStrategies.js";
-import { NOOP_COMBAT_PORT, NOOP_INSPECT_PORT, NOOP_RADIO_PORT, NOOP_TARGETING_PORT } from "../Libraries/Ports/noopPorts.js";
+import { NOOP_COMBAT_PORT, NOOP_INSPECT_PORT, NOOP_TARGETING_PORT } from "../Libraries/Ports/noopPorts.js";
 import { getActiveGameDefinition } from "./ActiveGameDefinition.js";
 /** @typedef {import("./GameDefinitionTypes.js").InteractionPairsPort} InteractionPairsPort */
 /** @typedef {import("./GameDefinitionTypes.js").SimulationPort} SimulationPort */
@@ -14,7 +14,6 @@ import { getActiveGameDefinition } from "./ActiveGameDefinition.js";
 /** @typedef {import("./GameDefinitionTypes.js").RunScenePort} RunScenePort */
 /** @typedef {import("./GameDefinitionTypes.js").InspectPort} InspectPort */
 /** @typedef {import("./GameDefinitionTypes.js").CombatPort} CombatPort */
-/** @typedef {import("./GameDefinitionTypes.js").RadioPort} RadioPort */
 function requireGameDefinition() {
     const def = getActiveGameDefinition();
     if (!def) throw new Error("No active game definition — call setActiveGameDefinition before using game ports.");
@@ -82,10 +81,6 @@ export function getInspectPort() {
 /** @returns {CombatPort} */
 export function getCombatPort() {
     return requireGameDefinition().combatPort ?? NOOP_COMBAT_PORT;
-}
-/** @returns {RadioPort} */
-export function getRadioPort() {
-    return requireGameDefinition().radioPort ?? NOOP_RADIO_PORT;
 }
 /** Roguelike map node → world scale; arena games default to 0. */
 export function getNodeWorldCoordScale() {
