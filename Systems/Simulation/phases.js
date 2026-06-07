@@ -9,29 +9,6 @@ import { dispatchSimulationEvents } from "./dispatchSimulationEvents.js";
 /** @typedef {import("./SimulationRuntime.js").SimulationRuntime} SimulationRuntime */
 /** @typedef {{ run: (ctx: object, dt: number, runtime: SimulationRuntime) => void }} SimulationPhase */
 /** @type {SimulationPhase} */
-export const playerLocomotionPhase = {
-    run(ctx, dt, runtime) {
-        const { state, upgrades } = ctx;
-        const abilityState = runtime.abilityState ?? { isDiving: false, externalSpeedMod: 1 };
-        if (!abilityState.isDiving && state.player.applyQueuedTarget(state)) state.navigation.rebuildPlayerFlowField(state.player.targetX, state.player.targetY);
-        state.updateAllCombatants(dt, runtime.spatialFrame, { externalSpeedMod: abilityState.externalSpeedMod, upgrades, combatEvents: runtime.events });
-    },
-};
-/** @type {SimulationPhase} */
-export const flowFieldPhase = {
-    run(ctx, _dt, runtime) {
-        const { state } = ctx;
-        const oldGridPos = state.flowFieldGrid.worldToGrid(state.player.x, state.player.y);
-        state.navigation.updateFlowField({
-            playerX: state.player.x,
-            playerY: state.player.y,
-            playerTargetX: state.player.isMoving ? state.player.targetX : null,
-            playerTargetY: state.player.isMoving ? state.player.targetY : null,
-            previousGridPos: oldGridPos,
-        });
-    },
-};
-/** @type {SimulationPhase} */
 export const gameSceneTickPhase = {
     run(ctx, dt) {
         getRunScenePort().onTick(ctx, dt);
@@ -79,15 +56,5 @@ export const floatingTextPhase = {
 export const worldSurfacePhase = {
     run(ctx) {
         ctx.state.worldSurfaces.updateFills();
-    },
-};
-/** @type {SimulationPhase} */
-export const inspectorPartyPhase = {
-    run(ctx, dt, runtime) {
-        const { state, upgrades } = ctx;
-        const abilityState = runtime.abilityState ?? { isDiving: false, externalSpeedMod: 1 };
-        if (!abilityState.isDiving && state.player.applyQueuedTarget(state)) state.navigation.rebuildPlayerFlowField(state.player.targetX, state.player.targetY);
-        const partyOpts = { externalSpeedMod: abilityState.externalSpeedMod, upgrades, blocksTargeting: true };
-        for (const actor of state.getPlayerActors()) actor.updateCombat(dt, state, runtime.spatialFrame, partyOpts);
     },
 };

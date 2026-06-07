@@ -4,7 +4,8 @@ import { requestUiUpdate, requestUiHudUpdate } from "../../Core/EventSystem.js";
 import { inspectBridge } from "./inspect/InspectBridge.js";
 import { towerInspectPort } from "./inspectPort.js";
 import { getRunScenePort, getSimulationPort } from "../../Core/GamePorts.js";
-import { resetSimulationWorld, handlePlayerRepositionTap, handlePlayerRepositionDrag } from "../../Systems/Simulation/index.js";
+import { resetSimulationWorld } from "../../Systems/Simulation/index.js";
+import { handlePlayerRepositionTap, handlePlayerRepositionDrag } from "./playerReposition.js";
 export class MapState {
     onEnter(ctx) {
         requestUiUpdate();
