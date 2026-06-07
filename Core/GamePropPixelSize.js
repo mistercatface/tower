@@ -16,6 +16,16 @@ let activePropPixelSize = null;
 export function getActivePropPixelSize() {
     return activePropPixelSize;
 }
+/** @param {object} [prop] */
+export function hasEntityPropPixelSize(prop) {
+    const value = prop?.strategy?.propPixelSize;
+    return typeof value === "number" && value > 0;
+}
+/** Entity `strategy.propPixelSize` is the bake diameter; game default floors at world size. */
+export function resolvePropPixelSizeForProp(prop) {
+    if (hasEntityPropPixelSize(prop)) return prop.strategy.propPixelSize;
+    return activePropPixelSize;
+}
 /** @param {import("./GameDefinitionTypes.js").GameDefinition | null | undefined} definition */
 export function resolvePropPixelSize(definition) {
     const value = definition?.propPixelSize;
@@ -28,14 +38,17 @@ export function applyGamePropPixelSize(definition) {
     clearPropSpriteCache();
 }
 /**
- * Bake scale for a prop given its world-space extent.
- * bakeScale is always >= 1 when pixelSize is set — downscale or 1:1 only, never upscale.
- *
  * @param {number} worldDiameter — full prop extent in world units (max of width/height)
  * @param {number | null} [pixelSize]
+ * @param {boolean} [entityOverride] — per-prop bake diameter (no world-size floor)
  */
-export function resolvePropBakeScale(worldDiameter, pixelSize = activePropPixelSize) {
+export function resolvePropBakeScale(worldDiameter, pixelSize = activePropPixelSize, entityOverride = false) {
     if (!pixelSize || worldDiameter <= 0) return 1;
-    const bakeDiameter = Math.max(pixelSize, worldDiameter);
+    const bakeDiameter = entityOverride ? pixelSize : Math.max(pixelSize, worldDiameter);
     return bakeDiameter / worldDiameter;
+}
+/** @param {object} prop */
+export function resolvePropBakeScaleForProp(prop, worldDiameter) {
+    const pixelSize = resolvePropPixelSizeForProp(prop);
+    return resolvePropBakeScale(worldDiameter, pixelSize, hasEntityPropPixelSize(prop));
 }

@@ -3,7 +3,7 @@ import { quantizeAngle, quantizeAngleIndex, quantizeViewOffset } from "./viewQua
 import { clamp } from "../Math/Interpolate.js";
 import { buildRollOrientKey, quantizeRollQuat } from "../Props/rollingMotion.js";
 import { isStandTipFallen, standTipStageRadius } from "../Spatial/transforms/longAxisBox3d.js";
-import { getActivePropPixelSize, resolvePropBakeScale } from "../../Core/GamePropPixelSize.js";
+import { resolvePropBakeScaleForProp, resolvePropPixelSizeForProp } from "../../Core/GamePropPixelSize.js";
 import { resolveBodyRadius } from "../Motion/bodyDefaults.js";
 import { resolvePropQuantizeSteps } from "../Props/propStrategy.js";
 /**
@@ -168,7 +168,9 @@ export function buildPropSpriteKey(prop, px, py, renderKey, animFrame = 0) {
     const poolBallKey = prop.poolBall ? `pb${prop.poolBall.kind}_${prop.poolBall.number ?? 0}` : "";
     const qElev = prop.elevation != null ? Math.round(prop.elevation * 2) / 2 : 0;
     const elevKey = qElev !== 0 ? `_el${qElev}` : "";
-    return `${renderKey}_${poolBallKey}_${orientKey}_${keyDx}_${keyDy}_${radius}_${halfX}x${halfY}_${opacityBucket}_${animFrame}${elevKey}`;
+    const pixelSize = resolvePropPixelSizeForProp(prop);
+    const pixelKey = pixelSize ? `_px${pixelSize}` : "";
+    return `${renderKey}_${poolBallKey}_${orientKey}_${keyDx}_${keyDy}_${radius}_${halfX}x${halfY}_${opacityBucket}_${animFrame}${elevKey}${pixelKey}`;
 }
 /**
  * @param {object} spec
@@ -188,7 +190,7 @@ export function getOrBakePropSprite({ prop, px, py, renderKey, draw, animFrame =
         const stageR = prop.strategy?.standTip ? standTipStageRadius(prop) : resolveBodyRadius(prop);
         const footprint = propFootprintHalfExtents(prop);
         const worldDiameter = Math.max(stageR * 2, footprint.x * 2, footprint.y * 2);
-        const bakeScale = resolvePropBakeScale(worldDiameter, getActivePropPixelSize());
+        const bakeScale = resolvePropBakeScaleForProp(prop, worldDiameter);
         const stageSpan = Math.ceil((stageR * 2.6 + PROP_STAGE_PADDING * 2) * bakeScale);
         const anchorX = PROP_STAGE_PADDING + stageR * 1.3;
         const anchorY = PROP_STAGE_PADDING + stageR * 1.3;

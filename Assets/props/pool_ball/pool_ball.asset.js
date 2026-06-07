@@ -5,6 +5,7 @@ export default {
     physics: {
         hitBehavior: "none",
         radius: POOL_BALL_RADIUS,
+        propPixelSize: 16,
         isPushable: true,
         rolls: true,
         collisionShape: "circle",
