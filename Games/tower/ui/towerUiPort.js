@@ -10,8 +10,8 @@ import { countGunInLoadout, formatHandednessLabel, getEquipmentSlotCount, getGun
 import { events, Events, emitGameRestart } from "../../../Core/EventSystem.js";
 import { emitPurchaseUpgrade, emitToggleAbility, emitSetUpgradeTab, emitSetStatsSubTab, emitToggleEquipWeapon, emitUnequipWeaponSlot } from "../progression/events.js";
 import { setGameZoomFromSlider, emitMapToggle } from "../events.js";
-import { bindShellElements } from "../../../UI/Core/shellElements.js";
-import { wireSettingsModal } from "../../../UI/Core/wireSettingsModal.js";
+import { bindTowerShellElements } from "./towerShellElements.js";
+import { wireSettingsModal } from "./wireSettingsModal.js";
 import { bindSpeedControl, syncSpeedControlDisplay, wireSpeedControl } from "../../../Libraries/Playback/index.js";
 import { mountTowerChrome } from "./mountTowerChrome.js";
 import { inspectBridge } from "../inspect/InspectBridge.js";
@@ -150,7 +150,7 @@ function wireTowerControls(state) {
 }
 function mountTowerUi(state, upgrades) {
     mountTowerChrome();
-    elements = bindShellElements();
+    elements = bindTowerShellElements();
     elements.inspectMissionBanner = document.getElementById("inspectMissionBanner");
     elements.inspectMissionText = document.getElementById("inspectMissionText");
     inspectBridge.mount();

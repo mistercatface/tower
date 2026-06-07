@@ -1,13 +1,9 @@
-import { events } from "../../Core/EventSystem.js";
-import { Events } from "../../Core/EventNames.js";
-import { getShellElements } from "./shellElements.js";
-/**
- * Settings gear + modal — shared by games that expose `#settingsBtn` in chrome.
- *
- * @param {object} state
- */
+import { events } from "../../../Core/EventSystem.js";
+import { Events } from "../../../Core/EventNames.js";
+import { getTowerShellElements } from "./towerShellElements.js";
+/** @param {object} state */
 export function wireSettingsModal(state) {
-    const elements = getShellElements();
+    const elements = getTowerShellElements();
     elements.settingsBtn?.addEventListener("click", () => {
         if (elements.combatHudModeSelect) elements.combatHudModeSelect.value = String(state.combatHudMode ?? 0);
         if (elements.settingsModal) elements.settingsModal.style.display = "flex";

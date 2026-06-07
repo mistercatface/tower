@@ -35,6 +35,11 @@ const UPGRADE_MODAL_HTML = `
         <div id="upgradeChoicesContainer"></div>
     </div>
 </div>`;
+const GAME_OVER_HTML = `
+<div id="gameOverUI" class="ui-overlay ui-overlay--run-result">
+    <h1 id="gameOverTitle">GAME OVER</h1>
+    <button id="restartBtn" type="button">NEW RUN</button>
+</div>`;
 const TOWER_UI_HTML = `
 <div id="topUI">
     <div class="top-hud-stats">
@@ -108,12 +113,14 @@ export function mountTowerChrome() {
     if (!wrapper || !uiRoot) throw new Error("mountTowerChrome: game shell missing");
     document.getElementById("inspectOverlay")?.remove();
     document.getElementById("inspectMissionBanner")?.remove();
+    document.getElementById("gameOverUI")?.remove();
     wrapper.insertAdjacentHTML("beforeend", INSPECT_OVERLAY_HTML);
     const canvas = document.getElementById("gameCanvas");
     if (canvas) canvas.insertAdjacentHTML("afterend", INSPECT_BANNER_HTML);
     else wrapper.insertAdjacentHTML("afterbegin", INSPECT_BANNER_HTML);
     uiRoot.innerHTML = TOWER_UI_HTML;
     wrapper.insertAdjacentHTML("beforeend", UPGRADE_MODAL_HTML);
+    wrapper.insertAdjacentHTML("beforeend", GAME_OVER_HTML);
     const settingsTitle = document.querySelector("#settingsModal .settings-title");
     settingsTitle?.insertAdjacentHTML("afterend", COMBAT_HUD_SETTING_HTML);
 }

@@ -1,8 +1,7 @@
-/** Shared DOM refs for engine shell overlays, control bar, and tower HUD chrome. */
 /** @type {Record<string, HTMLElement | NodeListOf<Element> | null> | null} */
 let cache = null;
 /** @returns {Record<string, HTMLElement | NodeListOf<Element> | null>} */
-function queryShellElements() {
+function queryTowerShellElements() {
     return {
         zoomSlider: document.getElementById("zoomSlider"),
         zoomDisplay: document.getElementById("zoomDisplay"),
@@ -39,15 +38,14 @@ function queryShellElements() {
         equipmentArmory: document.getElementById("equipmentArmory"),
     };
 }
-/** Query shell DOM once after chrome mount; reused by tower UI and shared shell wiring. */
-export function bindShellElements() {
-    cache = queryShellElements();
+export function bindTowerShellElements() {
+    cache = queryTowerShellElements();
     return cache;
 }
 /** @returns {Record<string, HTMLElement | NodeListOf<Element> | null>} */
-export function getShellElements() {
-    return cache ?? queryShellElements();
+export function getTowerShellElements() {
+    return cache ?? queryTowerShellElements();
 }
-export function clearShellElements() {
+export function clearTowerShellElements() {
     cache = null;
 }

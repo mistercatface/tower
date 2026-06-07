@@ -1,5 +1,5 @@
 import { Events } from "../../../Core/EventSystem.js";
-import { getShellElements } from "../../../UI/Core/shellElements.js";
+import { getTowerShellElements } from "./towerShellElements.js";
 function createButton(styles, innerHTML, onClick) {
     const btn = document.createElement("button");
     btn.style.cssText = styles;
@@ -8,7 +8,7 @@ function createButton(styles, innerHTML, onClick) {
     return btn;
 }
 export function showUpgradeChoice(title, description, choices, upgrades, onPick) {
-    const elements = getShellElements();
+    const elements = getTowerShellElements();
     if (elements.upgradeChoiceTitle) elements.upgradeChoiceTitle.innerText = title;
     if (elements.upgradeChoiceDesc) elements.upgradeChoiceDesc.innerText = description;
     if (!elements.upgradeChoicesContainer || !elements.upgradeChoiceModal) return;

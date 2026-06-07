@@ -1,7 +1,6 @@
 import { getUiPort } from "../../Core/GamePorts.js";
 import { Events } from "../../Core/EventSystem.js";
 import { InputManager } from "../../Core/InputManager.js";
-import { registerSharedOverlayListeners } from "../../UI/Core/sharedOverlays.js";
 import { clearGameChrome } from "../../UI/Core/uiRoot.js";
 /**
  * @typedef {object} GameBootstrapContext
@@ -24,7 +23,6 @@ function registerUiEventListeners(eventBus) {
     eventBus.on(Events.UI_UPDATE_HUD, (data) => {
         getUiPort().updateHud({ state: data.state, upgrades: data.upgrades });
     });
-    registerSharedOverlayListeners(eventBus);
 }
 /**
  * Feature-gated createGame tail — no tower assumptions.

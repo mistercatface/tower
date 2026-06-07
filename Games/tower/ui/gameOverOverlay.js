@@ -1,8 +1,8 @@
-import { Events } from "../../Core/EventSystem.js";
-import { getShellElements } from "./shellElements.js";
+import { Events } from "../../../Core/EventSystem.js";
+import { getTowerShellElements } from "./towerShellElements.js";
 const DEFAULT_GAME_OVER_COPY = { title: "GAME OVER", buttonLabel: "NEW RUN", titleColor: "#F44336" };
 export function showGameOverScreen() {
-    const elements = getShellElements();
+    const elements = getTowerShellElements();
     if (elements.gameOverTitle) {
         elements.gameOverTitle.innerText = DEFAULT_GAME_OVER_COPY.title;
         elements.gameOverTitle.style.color = DEFAULT_GAME_OVER_COPY.titleColor;
@@ -11,7 +11,7 @@ export function showGameOverScreen() {
     if (elements.gameOverUI) elements.gameOverUI.style.display = "flex";
 }
 export function hideGameOverScreen() {
-    const elements = getShellElements();
+    const elements = getTowerShellElements();
     if (elements.gameOverUI) elements.gameOverUI.style.display = "none";
     if (elements.gameOverTitle) {
         elements.gameOverTitle.innerText = DEFAULT_GAME_OVER_COPY.title;
@@ -19,8 +19,8 @@ export function hideGameOverScreen() {
     }
     if (elements.restartBtn) elements.restartBtn.innerText = DEFAULT_GAME_OVER_COPY.buttonLabel;
 }
-/** @param {import("../../Libraries/Events/EventBus.js").EventBus} eventBus */
-export function registerSharedOverlayListeners(eventBus) {
+/** @param {import("../../../Libraries/Events/EventBus.js").EventBus} eventBus */
+export function registerGameOverOverlayListener(eventBus) {
     eventBus.on(Events.UI_SHOW_GAME_OVER, () => showGameOverScreen());
     eventBus.on(Events.UI_HIDE_GAME_OVER, () => hideGameOverScreen());
 }
