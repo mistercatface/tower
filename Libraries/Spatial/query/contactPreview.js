@@ -1,6 +1,7 @@
 import { reflect2 } from "../../Math/Vec2.js";
 import { circleLeadingPoint, circleWallContactPoint } from "../geometry/circleContact.js";
-import { estimateCirclePairStrikeFromRest } from "../collision/circlePairPreview.js";
+import { applyCirclePairContact } from "../collision/circlePair.js";
+import { massFromBody } from "../../Motion/bodyMass.js";
 import { castCircleRay } from "./circleCast.js";
 /**
  * @typedef {object} ContactSegment
@@ -60,24 +61,32 @@ export function computeBodyContactPreview({ body, nx, ny, speed = 1, pairRestitu
         const struckRadius = other.radius ?? radius;
         const cueVx = dx * speed;
         const cueVy = dy * speed;
-        const strike = estimateCirclePairStrikeFromRest(cueVx, cueVy, hit.x, hit.y, other.x, other.y, { restitution: pairRestitution });
+        const striker = { x: hit.x, y: hit.y, radius, vx: cueVx, vy: cueVy, mass: massFromBody(body) };
+        const struck = { x: other.x, y: other.y, radius: struckRadius, vx: 0, vy: 0, mass: massFromBody(other) };
+        let strike = applyCirclePairContact(striker, struck, { restitution: pairRestitution, separate: false, touchSlop: 1e-4 });
+        if (!strike) {
+            const ndx = other.x - hit.x;
+            const ndy = other.y - hit.y;
+            const nd = Math.hypot(ndx, ndy);
+            strike = { normalX: nd > 1e-10 ? ndx / nd : 1, normalY: nd > 1e-10 ? ndy / nd : 0, bvx: 0, bvy: 0, cutFactor: 0, struckSpeed: 0 };
+        }
         const cueSpeed = Math.hypot(cueVx, cueVy);
-        const speedRatio = cueSpeed > 1e-6 ? strike.speed / cueSpeed : 0;
+        const speedRatio = cueSpeed > 1e-6 ? strike.struckSpeed / cueSpeed : 0;
         let objUx = strike.normalX;
         let objUy = strike.normalY;
-        if (strike.speed > 1e-4) {
-            objUx = strike.vx / strike.speed;
-            objUy = strike.vy / strike.speed;
+        if (strike.struckSpeed > 1e-4) {
+            objUx = strike.bvx / strike.struckSpeed;
+            objUy = strike.bvy / strike.struckSpeed;
         }
         const castMaxDist = Math.max(struckRadius * 2, maxDist * speedRatio);
         const struckObstacles = obstacles.filter((o) => o !== other && o !== body);
-        const nextHit = strike.speed > 0.5 ? castCircleRay(other.x, other.y, objUx, objUy, struckRadius, castMaxDist, { wallCtx, circles: struckObstacles }) : null;
+        const nextHit = strike.struckSpeed > 0.5 ? castCircleRay(other.x, other.y, objUx, objUy, struckRadius, castMaxDist, { wallCtx, circles: struckObstacles }) : null;
         let endX;
         let endY;
         if (nextHit) {
             endX = nextHit.x;
             endY = nextHit.y;
-        } else if (strike.speed > 0.5) {
+        } else if (strike.struckSpeed > 0.5) {
             endX = other.x + objUx * castMaxDist;
             endY = other.y + objUy * castMaxDist;
         } else {
@@ -85,7 +94,7 @@ export function computeBodyContactPreview({ body, nx, ny, speed = 1, pairRestitu
             endX = other.x + strike.normalX * tick;
             endY = other.y + strike.normalY * tick;
         }
-        return { primary, secondary: { kind: "circle", x1: other.x, y1: other.y, x2: endX, y2: endY, cutFactor: strike.cutFactor, struckSpeed: strike.speed }, hit };
+        return { primary, secondary: { kind: "circle", x1: other.x, y1: other.y, x2: endX, y2: endY, cutFactor: strike.cutFactor, struckSpeed: strike.struckSpeed }, hit };
     }
     return { primary, secondary: null, hit };
 }
