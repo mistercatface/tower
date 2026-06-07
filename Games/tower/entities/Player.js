@@ -1,11 +1,11 @@
 import { Actor } from "./Actor.js";
-import { endRun, spawnFloatingText } from "../Core/EventSystem.js";
-import { playerBaseStats, NAV_PROFILES, navigationSettings } from "../Config/Config.js";
+import { endRun, spawnFloatingText } from "../../../Core/EventSystem.js";
+import { playerBaseStats, NAV_PROFILES, navigationSettings } from "../../../Config/Config.js";
 import { createEntityBars } from "./EntityBars.js";
-import { entityIntersectsCellBounds } from "../Libraries/Spatial/grid/GridCoords.js";
-import { renderActorKinematicsBody } from "../Libraries/Render/Characters/actorKinematicsRenderer.js";
-import { clampSelectedSpeed } from "../Libraries/Playback/index.js";
-import { getActiveGameDefinition } from "../Core/ActiveGameDefinition.js";
+import { entityIntersectsCellBounds } from "../../../Libraries/Spatial/grid/GridCoords.js";
+import { renderActorKinematicsBody } from "../../../Libraries/Render/Characters/actorKinematicsRenderer.js";
+import { clampSelectedSpeed } from "../../../Libraries/Playback/index.js";
+import { getActiveGameDefinition } from "../../../Core/ActiveGameDefinition.js";
 const playerBars = createEntityBars({ healthWidth: 48, healthHeight: 4, healthBorderRadius: 2 });
 export class Player extends Actor {
     static healthBar = playerBars.healthBar;

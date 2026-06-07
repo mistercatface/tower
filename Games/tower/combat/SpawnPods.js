@@ -1,5 +1,5 @@
 import { spawnPods } from "../../../Config/Config.js";
-import { getEnemyDefinition } from "../../../Entities/EntityRegistry.js";
+import { getEnemyDefinition } from "../entities/EntityRegistry.js";
 import { weightedPick } from "../../../Libraries/Random/weightedPick.js";
 
 const FALLBACK_POD = {

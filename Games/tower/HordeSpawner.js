@@ -1,8 +1,8 @@
 import { spawnSettings } from "../../Config/Config.js";
-import { Enemy } from "../../Entities/Enemy.js";
+import { Enemy } from "./entities/Enemy.js";
 import { isBaseStatUpgrade } from "./progression/Upgrades.js";
 import { getEnemyType, selectSpawnPod } from "./combat/SpawnPods.js";
-import { getEntityCatalog } from "../../Entities/EntityRegistry.js";
+import { getEntityCatalog } from "./entities/EntityRegistry.js";
 export class HordeSpawner {
     constructor() {
         this.reset();

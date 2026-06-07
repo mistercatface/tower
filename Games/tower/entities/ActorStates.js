@@ -1,8 +1,8 @@
-import { applyEntityLocomotion, integrateSteering, applyVelocityDamping, updateSeparation } from "../Libraries/Motion/index.js";
-import { applyDesiredDirection } from "../Libraries/Agent/index.js";
-import { normalizeAngle, turnAngleTowards } from "../Libraries/Math/Angle.js";
-import { CollisionSystem } from "../Systems/Collision/CollisionSystem.js";
-import { enemyDefaults } from "../Config/Config.js";
+import { applyEntityLocomotion, integrateSteering, applyVelocityDamping, updateSeparation } from "../../../Libraries/Motion/index.js";
+import { applyDesiredDirection } from "../../../Libraries/Agent/index.js";
+import { normalizeAngle, turnAngleTowards } from "../../../Libraries/Math/Angle.js";
+import { CollisionSystem } from "../../../Systems/Collision/CollisionSystem.js";
+import { enemyDefaults } from "../../../Config/Config.js";
 function applyEnemyLocomotion(enemy, dt, spatialFrame, state, options = {}) {
     return applyEntityLocomotion(enemy, dt, spatialFrame, { ...options, resolveWalls: (entity, frame) => state.wallResolver.resolve(entity, frame) });
 }

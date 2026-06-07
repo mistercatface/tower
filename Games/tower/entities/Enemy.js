@@ -1,13 +1,13 @@
-import { normalizeAngle } from "../Libraries/Math/Angle.js";
-import { areHostile } from "../Core/GamePorts.js";
+import { normalizeAngle } from "../../../Libraries/Math/Angle.js";
+import { areHostile } from "../../../Core/GamePorts.js";
 import { Actor } from "./Actor.js";
-import { emitCombatEnemyKilled } from "../Core/EventSystem.js";
-import { NAV_PROFILES } from "../Config/Config.js";
-import { rollEnemyStartLoadout } from "../Games/tower/combat/weaponLoadout.js";
-import { rollRandomLoadoutFromPool } from "../Games/tower/combat/equipmentLoadout.js";
+import { emitCombatEnemyKilled } from "../../../Core/EventSystem.js";
+import { NAV_PROFILES } from "../../../Config/Config.js";
+import { rollEnemyStartLoadout } from "../combat/weaponLoadout.js";
+import { rollRandomLoadoutFromPool } from "../combat/equipmentLoadout.js";
 import { createEntityBars } from "./EntityBars.js";
-import { buildEnemyCombatStats, computeEnemyUpgradeLevels, computeSpawnReward } from "../Games/tower/combat/EnemySpawn.js";
-import { renderActorKinematicsBody } from "../Libraries/Render/Characters/actorKinematicsRenderer.js";
+import { buildEnemyCombatStats, computeEnemyUpgradeLevels, computeSpawnReward } from "../combat/EnemySpawn.js";
+import { renderActorKinematicsBody } from "../../../Libraries/Render/Characters/actorKinematicsRenderer.js";
 
 const enemyBars = createEntityBars({ healthWidth: 22, healthHeight: 3, healthBorderRadius: 1.5, stunHeight: 2, stunBorderRadius: 1 });
 

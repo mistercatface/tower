@@ -1,14 +1,14 @@
 import { FLOW_FIELD_WORKER_URL } from "../../Render/WorldSurfaceBootstrap.js";
-import { Player } from "../../Entities/Player.js";
-import { Sidekick } from "../../Entities/Sidekick.js";
-import { getAllyDefinition, getRunParty } from "../../Entities/EntityRegistry.js";
+import { Player } from "./entities/Player.js";
+import { Sidekick } from "./entities/Sidekick.js";
+import { getAllyDefinition, getRunParty } from "./entities/EntityRegistry.js";
 import { FlowFieldGrid } from "../../Libraries/Pathfinding/FlowFieldGrid.js";
 import { NavigationService } from "../../Systems/Navigation/NavigationService.js";
 import { combatActorRadius, gridSettings, runBaseStats } from "../../Config/Config.js";
 import { HordeSpawner } from "./HordeSpawner.js";
 import { TurretController } from "./TurretController.js";
 import { towerPools } from "./pools.js";
-import { createRunStats } from "../../Entities/CombatantStats.js";
+import { createRunStats } from "./entities/CombatantStats.js";
 import { SharedGameState } from "../../GameState/SharedGameState.js";
 import { createCombatWallResolver } from "../../Systems/Motion/createCombatWallResolver.js";
 export class TowerGameState extends SharedGameState {

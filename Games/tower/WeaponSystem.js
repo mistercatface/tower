@@ -1,7 +1,7 @@
 import { normalizeAngle } from "../../Libraries/Math/Angle.js";
 import { wallContextFromState } from "../../Libraries/Spatial/query/wallContext.js";
 import { castSteppedCircleRay } from "../../Libraries/Spatial/query/steppedCircleRayCast.js";
-import { Laser } from "../../Entities/Laser.js";
+import { Laser } from "./entities/Laser.js";
 import { defaultGunId, getGunDefinition } from "../../Config/content/guns.js";
 import { getSlotFireIntervalMs, getSlotReloadTimeMs } from "./combat/gunCombat.js";
 import { getBeamTickDamage, createBeamHitSource } from "./combat/impactDamage.js";

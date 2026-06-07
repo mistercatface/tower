@@ -1,5 +1,5 @@
-import { getEnemyDefinition } from "../../../../Entities/EntityRegistry.js";
-import { Enemy } from "../../../../Entities/Enemy.js";
+import { getEnemyDefinition } from "../../entities/EntityRegistry.js";
+import { Enemy } from "../../entities/Enemy.js";
 import { fireRadioTrigger } from "../../../../Libraries/Radio/radioEvents.js";
 import { isBaseStatUpgrade } from "../../progression/Upgrades.js";
 import { ensureRunScene, getRunSceneIntro } from "../runSceneState.js";

@@ -1,4 +1,4 @@
-import { Explosion } from "./Explosion/Explosion.js";
+import { Explosion } from "../Games/tower/entities/Explosion/Explosion.js";
 function spawnExplosion(gameState, x, y, config) {
     if (!gameState || !config?.type) return;
     if (!gameState.explosions) gameState.explosions = [];
@@ -94,11 +94,8 @@ export class PickupSinkingState {
         const pocketDepth = pickup.pocketDepth ?? 24;
         const fadeStart = -radius;
         const fadeEnd = -pocketDepth;
-        if (pickup.elevation > fadeStart) {
-            pickup.opacity = 1.0;
-        } else {
-            pickup.opacity = Math.max(0, Math.min(1.0, 1.0 - (pickup.elevation - fadeStart) / (fadeEnd - fadeStart)));
-        }
+        if (pickup.elevation > fadeStart) pickup.opacity = 1.0;
+        else pickup.opacity = Math.max(0, Math.min(1.0, 1.0 - (pickup.elevation - fadeStart) / (fadeEnd - fadeStart)));
         // Apply horizontal funnel gravity pulling towards the pocket center
         if (pickup.pocketX != null && pickup.pocketY != null) {
             const dx = pickup.pocketX - pickup.x;

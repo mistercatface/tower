@@ -1,10 +1,10 @@
 import { combatActorRadius, sidekickBaseStats } from "../../../Config/Config.js";
 import { enemyStartGunPool } from "../../../Config/content/guns.js";
-import { Enemy } from "../../../Entities/Enemy.js";
-import { Sidekick } from "../../../Entities/Sidekick.js";
-import { registerEntityCatalog } from "../../../Entities/EntityRegistry.js";
+import { Enemy } from "../entities/Enemy.js";
+import { Sidekick } from "../entities/Sidekick.js";
+import { registerEntityCatalog } from "../entities/EntityRegistry.js";
 import { TurretController } from "../TurretController.js";
-/** @type {import("../../../Entities/EntityRegistryTypes.js").EntityCatalog} */
+/** @type {import("../entities/EntityRegistryTypes.js").EntityCatalog} */
 export const towerEntityCatalog = {
     enemies: {
         kamikaze: {

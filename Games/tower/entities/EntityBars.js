@@ -1,4 +1,4 @@
-import { ProgressBar } from "../Libraries/Canvas/ProgressBar.js";
+import { ProgressBar } from "../../../Libraries/Canvas/ProgressBar.js";
 export function createEntityBars({ healthWidth, healthHeight, healthBorderRadius, stunWidth, stunHeight, stunBorderRadius }) {
     return {
         healthBar: new ProgressBar({ width: healthWidth, height: healthHeight, borderRadius: healthBorderRadius, quantizationSteps: 20 }),
