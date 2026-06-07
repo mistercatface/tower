@@ -44,7 +44,7 @@ export const poolRunScenePort = {
     },
     onTick(ctx, _dt) {
         const { state } = ctx;
-        processPockets(state, getPoolLayout(state));
+        processPockets(state, getPoolLayout(state), _dt);
         const pool = ensurePoolState(state);
         if (pool.won && !pool.clearRadioFired) {
             pool.clearRadioFired = true;

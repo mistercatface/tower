@@ -166,7 +166,9 @@ export function buildPropSpriteKey(prop, px, py, renderKey, animFrame = 0) {
     const halfY = Math.round(stratHy);
     const opacityBucket = (prop.opacity ?? 1) < 0.99 ? "fade" : "solid";
     const poolBallKey = prop.poolBall ? `pb${prop.poolBall.kind}_${prop.poolBall.number ?? 0}` : "";
-    return `${renderKey}_${poolBallKey}_${orientKey}_${keyDx}_${keyDy}_${radius}_${halfX}x${halfY}_${opacityBucket}_${animFrame}`;
+    const qElev = prop.elevation != null ? Math.round(prop.elevation * 2) / 2 : 0;
+    const elevKey = qElev !== 0 ? `_el${qElev}` : "";
+    return `${renderKey}_${poolBallKey}_${orientKey}_${keyDx}_${keyDy}_${radius}_${halfX}x${halfY}_${opacityBucket}_${animFrame}${elevKey}`;
 }
 /**
  * @param {object} spec
@@ -193,6 +195,7 @@ export function getOrBakePropSprite({ prop, px, py, renderKey, draw, animFrame =
         const canvas = new OffscreenCanvas(stageSpan, stageSpan);
         const ctx = canvas.getContext("2d", { alpha: true });
         const logAngles = prop.strategy?.rollAxis === "long" ? quantizeLongAxisLogAngles(prop) : null;
+        const qElev = prop.elevation != null ? Math.round(prop.elevation * 2) / 2 : 0;
         const stageProp = {
             ...prop,
             x: anchorX,
@@ -203,6 +206,7 @@ export function getOrBakePropSprite({ prop, px, py, renderKey, draw, animFrame =
             rollAngle: logAngles?.rollAngle ?? prop.rollAngle,
             rollQuat: prop.strategy?.rolls && prop.strategy?.rollAxis !== "long" ? quantizeRollQuat(prop.rollQuat, resolvePropQuantizeSteps(prop).facing) : prop.rollQuat,
             opacity: 1,
+            elevation: qElev,
         };
         ctx.save();
         if (bakeScale !== 1) ctx.scale(bakeScale, bakeScale);

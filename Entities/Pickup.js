@@ -141,10 +141,15 @@ export class Pickup extends Entity {
         this.changeState("exploded", { gameState });
     }
     needsWallCollision() {
+        if (this.currentState?.disableWallCollision) return false;
         return speedSqXY(this.vx, this.vy) > MOVING_SPEED_SQ;
     }
     update(dt, state, spatialFrame, { resolveWalls = false } = {}) {
         this.ageMs += dt;
+        if (this.currentState?.disablePhysics) {
+            if (this.currentState?.update) this.currentState.update(this, dt, state.walls, state);
+            return;
+        }
         if (this.isSleeping && (!this.strategy?.standTip || !isStandTipActive(this))) return;
         if (this.strategy.rolls || this.strategy.standTip) integratePropMotion(this, dt);
         else applyVelocityDamping(this, dt, { friction: this.strategy.friction });

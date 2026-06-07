@@ -38,7 +38,7 @@ export function getActiveBalls(state) {
     const out = [];
     for (let i = 0; i < state.pickups.length; i++) {
         const ball = state.pickups[i];
-        if (!ball.isDead && (ball[POOL_CUE_TAG] || ball[POOL_OBJECT_TAG])) out.push(ball);
+        if (!ball.isDead && ball.currentStateName !== "sinking" && (ball[POOL_CUE_TAG] || ball[POOL_OBJECT_TAG])) out.push(ball);
     }
     return out;
 }

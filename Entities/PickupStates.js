@@ -61,4 +61,25 @@ export class PickupExplodedState {
         else spawnExplosion(gameState, pickup.x, pickup.y, pickup.strategy?.explosion);
     }
 }
-export const pickupStates = { normal: new PickupNormalState(), on_fire: new PickupOnFireState(), exploded: new PickupExplodedState(), shard_flying: new PickupShardFlyingState() };
+export class PickupSinkingState {
+    blocksSleep() {
+        return true;
+    }
+    get disablePhysics() {
+        return true;
+    }
+    get disableWallCollision() {
+        return true;
+    }
+    onEnter(pickup) {
+        pickup.savedMass = pickup.mass;
+        pickup.mass = 1000000;
+    }
+    onExit(pickup) {
+        pickup.mass = pickup.savedMass ?? 1.0;
+        pickup.elevation = 0;
+    }
+}
+export const pickupStates = { normal: new PickupNormalState(), on_fire: new PickupOnFireState(), exploded: new PickupExplodedState(), shard_flying: new PickupShardFlyingState(), sinking: new PickupSinkingState() };
+
+

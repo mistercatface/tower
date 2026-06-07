@@ -3,16 +3,17 @@ import { CAMERA_HEIGHT, PERSPECTIVE_STRENGTH } from "../../Spatial/iso/Isometric
  * Iso-project a local prop vertex (ground origin at prop base, z = height above ground).
  */
 export function projectPropVertex(prop, px, py, lx, ly, lz) {
+    const H = lz + (prop.elevation ?? 0);
     const wx = prop.x + lx;
     const wy = prop.y + ly;
-    if (lz <= 0.001) return { x: wx, y: wy, depth: lz };
+    if (Math.abs(H) <= 0.001) return { x: wx, y: wy, depth: H };
     const dx = wx - px;
     const dy = wy - py;
     const dist = Math.hypot(dx, dy);
-    const alpha = (lz / (CAMERA_HEIGHT - lz)) * PERSPECTIVE_STRENGTH;
+    const alpha = (H / (CAMERA_HEIGHT - H)) * PERSPECTIVE_STRENGTH;
     const sx = dist === 0 ? wx : wx + dx * alpha;
     const sy = dist === 0 ? wy : wy + dy * alpha;
-    return { x: sx, y: sy, depth: lz + dist * 0.001 };
+    return { x: sx, y: sy, depth: H + dist * 0.001 };
 }
 /** Cull back-facing mesh triangles using 3D face normal vs camera position. */
 export function isPropMeshFaceVisible(prop, px, py, verts3d) {
