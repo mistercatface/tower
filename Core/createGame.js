@@ -1,4 +1,4 @@
-import { createGameStateForDefinition, installGameState } from "../GameState/GameState.js";
+import { installGameState } from "../GameState/GameState.js";
 import { initializeSaveSystem } from "../Progression/Storage.js";
 import { applyGameBootstrap } from "../Libraries/Bootstrap/applyGameBootstrap.js";
 import { getBootstrapPort, getRenderPorts } from "./GamePorts.js";
@@ -23,7 +23,7 @@ import { applyGamePropQuantizeSettings } from "./GamePropQuantizeSettings.js";
  */
 export function createGame(definition) {
     setActiveGameDefinition(definition);
-    const state = createGameStateForDefinition(definition);
+    const state = definition.createGameState();
     installGameState(state);
     definition.prepare?.();
     bootstrapEngine(definition);

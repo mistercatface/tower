@@ -156,6 +156,7 @@
  * @property {string} id
  * @property {string} canvasId
  * @property {string} [saveKey]
+ * @property {() => import("../GameState/SharedGameState.js").SharedGameState} createGameState
  * @property {() => object[]} [createUpgrades] — defaults to `[]` when omitted
  * @property {Record<string, new () => object>} states
  * @property {string} initialState

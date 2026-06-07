@@ -17,10 +17,14 @@ import { towerWorldGen } from "./worldGen.js";
 import { towerProceduralDesign } from "./config/surfaceProfiles.js";
 import { towerKeyBindings } from "./keyBindings.js";
 import { registerTowerListeners } from "./listeners.js";
+import { TowerGameState } from "./TowerGameState.js";
 /** @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition */
 /** Tower — reference game definition. Engine ports injected via interactionPairs, targeting, render. */
 export const towerGame = {
     id: "tower",
+    createGameState() {
+        return new TowerGameState();
+    },
     canvasId: "gameCanvas",
     saveKey: "tower_save_v4",
     combat: { entityBars: true, targetMarkers: true, combatHudModes: true, visibilityMask: true, hostileActors: true, playerActors: true, offScreenIndicators: true, globeOverlay: true },

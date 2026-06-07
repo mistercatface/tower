@@ -12,12 +12,16 @@ import { createRunBootstrapPort } from "../../Libraries/RunBootstrap/RunBootstra
 import { generateWorldPhase } from "../../Libraries/RunBootstrap/phases.js";
 import { createDefaultRenderPorts } from "../../Libraries/Render/defaultRenderPorts.js";
 import { createCachedWorldStructure } from "../../Libraries/Render/worldStructure/CachedWorldStructure.js";
+import { PoolGameState } from "./PoolGameState.js";
 /** @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition */
 /**
  * Pool — rectangular table, drag-to-shoot cue, full 15-ball rack, 6 pockets.
  */
 export const poolGame = {
     id: "pool",
+    createGameState() {
+        return new PoolGameState();
+    },
     canvasId: "gameCanvas",
     perspective: { cameraHeight: 520, strength: 0.28 },
     playback: { minSpeed: 0.25, maxSpeed: 2, step: 0.25 },

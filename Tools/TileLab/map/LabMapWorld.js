@@ -2,7 +2,7 @@ import { gridSettings } from "../../../Config/Config.js";
 import { withSeededRandom } from "../../../Libraries/Random/index.js";
 import { mapGenCanvasBounds } from "../LabSettings.js";
 import { GamePhase } from "../../../GameState/GamePhase.js";
-import { GameState } from "../../../GameState/GameState.js";
+import { TowerGameState } from "../../../Games/tower/TowerGameState.js";
 import { generateWorld, getWorldGen } from "../../../Core/GamePorts.js";
 import { ensureLabGameDefinition } from "../../Lab/ensureLabGameDefinition.js";
 /**
@@ -12,7 +12,7 @@ import { ensureLabGameDefinition } from "../../Lab/ensureLabGameDefinition.js";
 export function createLabMapWorld(options = {}) {
     const { mapSeed = Date.now() & 0x7fffffff, worldSurfaceSeed } = options;
     ensureLabGameDefinition();
-    const state = new GameState();
+    const state = new TowerGameState();
     state.canvasBounds = { ...mapGenCanvasBounds };
     state.phase = GamePhase.SIMULATION;
     withSeededRandom(mapSeed, () => {
