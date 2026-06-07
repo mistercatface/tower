@@ -128,6 +128,7 @@ export class PoolSimulationState {
             if (cue && preview) {
                 const { nx, ny, power } = preview;
                 const ratio = Math.max(0, Math.min(1, (power - MIN_SHOT_POWER) / (MAX_SHOT_POWER - MIN_SHOT_POWER)));
+                const maxDist = layout.tableWidth && layout.tableHeight ? Math.hypot(layout.tableWidth, layout.tableHeight) : 2400;
                 const contactPreview = computeBodyContactPreview({
                     body: cue,
                     nx,
@@ -136,6 +137,7 @@ export class PoolSimulationState {
                     pairRestitution: 0.92,
                     obstacles: getActiveBalls(ctx.state).filter((ball) => ball !== cue),
                     wallCtx: wallContextFromState(ctx.state),
+                    maxDist,
                 });
                 contactPreview.secondary = null;
                 canvasCtx.save();

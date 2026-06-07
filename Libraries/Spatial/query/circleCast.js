@@ -55,7 +55,8 @@ function castCircleRayWallHit(ox, oy, dx, dy, radius, maxDist, wallCtx) {
     if (!wallCtx?.walls?.length) return null;
     const endX = ox + dx * maxDist;
     const endY = oy + dy * maxDist;
-    const candidates = getWallsAlongLine(ox, oy, endX, endY, wallCtx);
+    let candidates = getWallsAlongLine(ox, oy, endX, endY, wallCtx);
+    if (candidates.length === 0 && wallCtx.walls?.length) candidates = wallCtx.walls;
     if (candidates.length === 0) return null;
     const hit = sweepCircleAgainstSegments(ox, oy, dx, dy, radius, candidates, maxDist);
     if (!hit) return null;

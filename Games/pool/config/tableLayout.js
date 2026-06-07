@@ -1,4 +1,5 @@
 import { gridSettings } from "../../../Config/Config.js";
+import { snapLayoutOrigin } from "../../../Generator/GridLayout.js";
 /** Grid size for the pool table wall bake (cells). */
 export const TABLE_COLS = 44;
 export const TABLE_ROWS = 24;
@@ -93,8 +94,7 @@ export function getPocketPositions(offsetX, offsetY, cellSize) {
 export function buildPoolStartLayout(px, py, cellSize) {
     const cols = TABLE_COLS;
     const rows = TABLE_ROWS;
-    const offsetX = px - (cols * cellSize) / 2;
-    const offsetY = py - (rows * cellSize) / 2;
+    const { offsetX, offsetY } = snapLayoutOrigin(px, py, cols, rows, cellSize);
     const bounds = getTableWorldBounds(offsetX, offsetY, cellSize, cols, rows);
     const headSpot = { x: bounds.minX + bounds.width * 0.28, y: bounds.centerY };
     const footSpot = { x: bounds.minX + bounds.width * 0.77, y: bounds.centerY };

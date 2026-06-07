@@ -8,10 +8,6 @@ export const poolWorldGen = createSingleArenaWorldGenPort({
         const layout = getPoolLayout(state);
         return { centerX: layout.tableCenterX, centerY: layout.tableCenterY };
     },
-    getObstacleGridBounds(state) {
-        const layout = getPoolLayout(state);
-        return { centerX: layout.tableCenterX, centerY: layout.tableCenterY, width: layout.tableWidth, height: layout.tableHeight };
-    },
     getPlayBounds(state) {
         const { minX, minY, maxX, maxY } = getPoolLayout(state);
         return { minX, minY, maxX, maxY };

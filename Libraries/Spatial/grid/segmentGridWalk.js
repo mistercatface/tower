@@ -4,8 +4,31 @@ import { colRowToIndex } from "./GridUtils.js";
  * @property {object[][] | null} segmentGrid — per-cell segment lists (sparse)
  * @property {number} cols
  * @property {number} rows
+ * @property {number} [cellSize] — world units per grid cell (for ray walk)
+ * @property {number} [minX] — grid origin (world)
+ * @property {number} [minY]
  * @property {(x: number, y: number) => { col: number, row: number }} worldToGrid
  */
+/**
+ * @param {object[][] | null} segmentGrid
+ * @param {number} cols
+ * @param {number} rows
+ * @param {number} col
+ * @param {number} row
+ * @param {object[]} result
+ * @param {Set<object>} checked
+ */
+function pushCellSegments(segmentGrid, cols, rows, col, row, result, checked) {
+    if (col < 0 || col >= cols || row < 0 || row >= rows) return;
+    const cellSegs = segmentGrid[colRowToIndex(col, row, cols)];
+    if (!cellSegs) return;
+    for (const segment of cellSegs) {
+        if (!checked.has(segment)) {
+            checked.add(segment);
+            result.push(segment);
+        }
+    }
+}
 /**
  * @param {object[][] | null} segmentGrid
  * @param {number} cols
@@ -47,12 +70,10 @@ export function collectSegmentsNearPose(layout, pose) {
     return collectSegmentsInCellRect(layout.segmentGrid, layout.cols, startCol, endCol, startRow, endRow);
 }
 /**
- * Bresenham walk along a world line through the segment grid.
+ * Bresenham walk — fallback when grid world metadata is unavailable.
  * @param {SegmentGridLayout} layout
- * @returns {object[]}
  */
-export function collectSegmentsAlongLine(layout, x1, y1, x2, y2) {
-    if (!layout.segmentGrid) return [];
+function collectSegmentsAlongLineBresenham(layout, x1, y1, x2, y2) {
     const p1 = layout.worldToGrid(x1, y1);
     const p2 = layout.worldToGrid(x2, y2);
     const col0 = Math.max(0, Math.min(layout.cols - 1, p1.col));
@@ -69,13 +90,7 @@ export function collectSegmentsAlongLine(layout, x1, y1, x2, y2) {
     const result = [];
     const checked = new Set();
     while (true) {
-        const cellSegs = layout.segmentGrid[colRowToIndex(c, r, layout.cols)];
-        if (cellSegs)
-            for (const segment of cellSegs)
-                if (!checked.has(segment)) {
-                    checked.add(segment);
-                    result.push(segment);
-                }
+        pushCellSegments(layout.segmentGrid, layout.cols, layout.rows, c, r, result, checked);
         if (c === col1 && r === row1) break;
         const e2 = 2 * err;
         if (e2 > -drow) {
@@ -86,6 +101,59 @@ export function collectSegmentsAlongLine(layout, x1, y1, x2, y2) {
             err += dcol;
             r += srow;
         }
+    }
+    return result;
+}
+/**
+ * Visit every grid cell a world-space ray crosses (Amanatides & Woo).
+ * Bresenham skips cells at shallow angles, which misses wall segments on pool rails.
+ *
+ * @param {SegmentGridLayout} layout
+ * @returns {object[]}
+ */
+export function collectSegmentsAlongLine(layout, x1, y1, x2, y2) {
+    if (!layout.segmentGrid) return [];
+    const { cellSize, minX, minY, cols, rows, segmentGrid } = layout;
+    if (cellSize == null || minX == null || minY == null) return collectSegmentsAlongLineBresenham(layout, x1, y1, x2, y2);
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const dist = Math.hypot(dx, dy);
+    const result = [];
+    const checked = new Set();
+    if (dist < 1e-8) {
+        const { col, row } = layout.worldToGrid(x1, y1);
+        pushCellSegments(segmentGrid, cols, rows, col, row, result, checked);
+        return result;
+    }
+    const dirX = dx / dist;
+    const dirY = dy / dist;
+    let col = Math.floor((x1 - minX) / cellSize);
+    let row = Math.floor((y1 - minY) / cellSize);
+    const endCol = Math.floor((x2 - minX) / cellSize);
+    const endRow = Math.floor((y2 - minY) / cellSize);
+    const stepX = dirX < 0 ? -1 : dirX > 0 ? 1 : 0;
+    const stepY = dirY < 0 ? -1 : dirY > 0 ? 1 : 0;
+    const tDeltaX = stepX === 0 ? Infinity : cellSize / Math.abs(dirX);
+    const tDeltaY = stepY === 0 ? Infinity : cellSize / Math.abs(dirY);
+    let tMaxX = stepX > 0 ? (minX + (col + 1) * cellSize - x1) / dirX : stepX < 0 ? (minX + col * cellSize - x1) / dirX : Infinity;
+    let tMaxY = stepY > 0 ? (minY + (row + 1) * cellSize - y1) / dirY : stepY < 0 ? (minY + row * cellSize - y1) / dirY : Infinity;
+    pushCellSegments(segmentGrid, cols, rows, col, row, result, checked);
+    const guard = cols * rows + 4;
+    let steps = 0;
+    while ((col !== endCol || row !== endRow) && steps++ < guard) {
+        if (tMaxX < tMaxY) {
+            col += stepX;
+            tMaxX += tDeltaX;
+        } else if (tMaxY < tMaxX) {
+            row += stepY;
+            tMaxY += tDeltaY;
+        } else {
+            col += stepX;
+            row += stepY;
+            tMaxX += tDeltaX;
+            tMaxY += tDeltaY;
+        }
+        pushCellSegments(segmentGrid, cols, rows, col, row, result, checked);
     }
     return result;
 }
@@ -103,7 +171,7 @@ export function collectSegmentsInWorldBounds(layout, minX, minY, maxX, maxY) {
     const endRow = Math.min(layout.rows - 1, maxGrid.row);
     return collectSegmentsInCellRect(layout.segmentGrid, layout.cols, startCol, endCol, startRow, endRow);
 }
-/** @param {{ segmentGrid: object[][] | null, cols: number, rows: number, worldToGrid: (x: number, y: number) => { col: number, row: number } }} grid */
+/** @param {{ segmentGrid: object[][] | null, cols: number, rows: number, cellSize: number, minX: number, minY: number, worldToGrid: (x: number, y: number) => { col: number, row: number } }} grid */
 export function segmentGridLayoutFromObstacleGrid(grid) {
-    return { segmentGrid: grid.segmentGrid, cols: grid.cols, rows: grid.rows, worldToGrid: (x, y) => grid.worldToGrid(x, y) };
+    return { segmentGrid: grid.segmentGrid, cols: grid.cols, rows: grid.rows, cellSize: grid.cellSize, minX: grid.minX, minY: grid.minY, worldToGrid: (x, y) => grid.worldToGrid(x, y) };
 }
