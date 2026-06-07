@@ -1,4 +1,5 @@
 import { getTargeting } from "../../Core/GamePorts.js";
+import { insertPushables } from "./populatePushableFrame.js";
 import { wallContextFromState } from "../../Libraries/Spatial/query/wallContext.js";
 /**
  * Insert combatants and pickups into a spatial frame for the current tick.
@@ -19,10 +20,5 @@ export function populateCombatFrame(frame, state, combatants, pushables) {
         frame.insertEntity(actor, physIdCounter++);
         combatants.push(actor);
     }
-    for (const pickup of state.pickups) {
-        if (pickup.isDead) continue;
-        if (pickup.elevation != null && pickup.elevation < -6) continue;
-        frame.insertEntity(pickup, physIdCounter++);
-        if (pickup.strategy?.isPushable) pushables.push(pickup);
-    }
+    insertPushables(frame, state, pushables, physIdCounter);
 }

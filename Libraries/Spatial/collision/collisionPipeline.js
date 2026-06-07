@@ -40,11 +40,7 @@ function resolvePushablePair(p1, p2) {
         }
         return;
     }
-    const collisionInfo = resolveSatPair(p1, shapeA, p2, shapeB, {
-        massA: massFromBody(p1),
-        massB: massFromBody(p2),
-        restitution,
-    });
+    const collisionInfo = resolveSatPair(p1, shapeA, p2, shapeB, { massA: massFromBody(p1), massB: massFromBody(p2), restitution });
     if (!collisionInfo) return;
     invalidateWallResolveCache(p1, p2);
     wakePushableBody(p1);
@@ -113,7 +109,8 @@ export function runCollisionPipeline(
     const hasCombatants = combatants && combatants.length > 0;
     if (hasPushables || hasCombatants)
         for (let iter = 0; iter < pushableIterations; iter++) {
-            if (hasCombatants) spatialFrame.forEachActorPushablePair((actor, pickup) => resolveActorPushable(actor, pickup, resolveWalls, spatialFrame, state));
+            if (hasCombatants && spatialFrame.forEachActorPushablePair)
+                spatialFrame.forEachActorPushablePair((actor, pickup) => resolveActorPushable(actor, pickup, resolveWalls, spatialFrame, state));
             if (hasPushables) {
                 spatialFrame.forEachPushablePair((p1, p2) => resolvePushablePair(p1, p2));
                 for (let i = 0; i < pushables.length; i++) {
@@ -123,14 +120,15 @@ export function runCollisionPipeline(
                 }
             }
         }
-    spatialFrame.forEachCombatantPair((a, b) => {
-        if (!circlesOverlap(a, b)) return;
-        const restitution = combatantRestitution(a, b);
-        if (resolveCirclePair(a, b, { restitution })) invalidateWallResolveCache(a, b);
-        if (onChargeImpact) {
-            if (a.attackType === "charge" && a.currentStateName !== "stunned") onChargeImpact(a, b, out);
-            if (b.attackType === "charge" && b.currentStateName !== "stunned") onChargeImpact(b, a, out);
-        }
-    });
+    if (hasCombatants && spatialFrame.forEachCombatantPair)
+        spatialFrame.forEachCombatantPair((a, b) => {
+            if (!circlesOverlap(a, b)) return;
+            const restitution = combatantRestitution(a, b);
+            if (resolveCirclePair(a, b, { restitution })) invalidateWallResolveCache(a, b);
+            if (onChargeImpact) {
+                if (a.attackType === "charge" && a.currentStateName !== "stunned") onChargeImpact(a, b, out);
+                if (b.attackType === "charge" && b.currentStateName !== "stunned") onChargeImpact(b, a, out);
+            }
+        });
     return out;
 }

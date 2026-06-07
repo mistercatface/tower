@@ -1,16 +1,9 @@
 import { createSimulationPort } from "../../Systems/Simulation/SimulationPipeline.js";
-import { runSimulationEnterPersistence } from "../../Systems/Simulation/simulationEnterPersistence.js";
+import { pushablePhysicsPhase, gameSceneTickPhase, worldSurfacePhase } from "../../Systems/Simulation/phases.js";
 import { hordePhase, abilitiesPhase, upgradesPhase, levelUpsPhase, playerLocomotionPhase, flowFieldPhase, inspectorPartyPhase } from "./phases.js";
-import {
-    gameSceneTickPhase,
-    projectilesPhase,
-    particlesPhase,
-    pushablePhysicsPhase,
-    explosionsPhase,
-    dispatchEventsPhase,
-    floatingTextPhase,
-    worldSurfacePhase,
-} from "../../Systems/Simulation/phases.js";
+import { projectilesPhase, particlesPhase, explosionsPhase, dispatchEventsPhase, floatingTextPhase } from "./combatPhases.js";
+import { beginTowerSimulationRuntime } from "./simRuntime.js";
+import { runSimulationEnterPersistence } from "./simulationEnterPersistence.js";
 /** @type {import("../../Core/GameDefinitionTypes.js").SimulationPort} */
 export const towerSimulation = createSimulationPort(
     [
@@ -30,6 +23,7 @@ export const towerSimulation = createSimulationPort(
         worldSurfacePhase,
     ],
     {
+        beginRuntime: beginTowerSimulationRuntime,
         inspectorPhases: [abilitiesPhase, inspectorPartyPhase, flowFieldPhase, pushablePhysicsPhase, dispatchEventsPhase, floatingTextPhase, gameSceneTickPhase],
         onEnter(ctx) {
             ctx.state.hordeSpawner.beginHorde();

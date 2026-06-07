@@ -1,12 +1,11 @@
-import { combatSpatial } from "../World/CombatSpatialFrame.js";
+import { pushableSpatial } from "../World/PushableSpatialFrame.js";
 /**
  * @typedef {object} SimulationRuntime
- * @property {import("../World/CombatSpatialFrame.js").CombatSpatialFrame} spatialFrame
+ * @property {import("../World/PushableSpatialFrame.js").PushableSpatialFrame | import("../World/CombatSpatialFrame.js").CombatSpatialFrame} spatialFrame
  * @property {object[]} events
  * @property {{ isDiving: boolean, externalSpeedMod: number } | null} abilityState
  */
 /** @param {object} ctx */
 export function beginSimulationRuntime(ctx) {
-    const events = typeof ctx.state.beginCombatEvents === "function" ? ctx.state.beginCombatEvents() : [];
-    return { spatialFrame: combatSpatial.begin(ctx.state), events, abilityState: null };
+    return { spatialFrame: pushableSpatial.begin(ctx.state), events: [], abilityState: null };
 }
