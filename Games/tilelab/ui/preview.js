@@ -10,19 +10,19 @@ import { getLabPreviewProfile, RUNTIME_LAB_PROFILE_ID } from "./profile/ProfileE
 let registerEditorProfilesSerial = Promise.resolve();
 /** Sync path — must run before the game loop can draw `__labA__`. */
 export function syncRuntimeLabProfile() {
-    registerRuntimeSurfaceProfile(RUNTIME_LAB_PROFILE_ID, getLabPreviewProfile());
+    const profile = getLabPreviewProfile();
+    registerRuntimeSurfaceProfile(RUNTIME_LAB_PROFILE_ID, profile);
+    return TileWorkerCoordinator.registerRuntimeProfile(RUNTIME_LAB_PROFILE_ID, profile);
 }
 export function registerEditorProfiles(state) {
     registerEditorProfilesSerial = registerEditorProfilesSerial.then(async () => {
-        const labProfile = getLabPreviewProfile();
-        syncRuntimeLabProfile();
         invalidateProfileScratch(RUNTIME_LAB_PROFILE_ID);
         if (state?.worldSurfaces) {
             invalidateWallAtlasKeyMemos(state);
             state.worldSurfaces.clear();
         }
         invalidateMapPreviewBakes();
-        await TileWorkerCoordinator.registerRuntimeProfile(RUNTIME_LAB_PROFILE_ID, labProfile);
+        await syncRuntimeLabProfile();
     });
     return registerEditorProfilesSerial;
 }

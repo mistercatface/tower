@@ -1,3 +1,52 @@
+/**
+ * Drag corner handle — keeps width and height equal (1:1).
+ *
+ * @param {HTMLElement | null} element
+ * @param {{ initialSize: number, minSize?: number, maxSize?: number | (() => number), onResize?: (size: number) => void }} options
+ */
+export function initSquareResize(element, options) {
+    if (!element) return;
+    const { initialSize, minSize = 64, maxSize, onResize } = options;
+    element.classList.add("square-resize-host");
+    const resolveMax = () => {
+        const cap = typeof maxSize === "function" ? maxSize() : maxSize;
+        return cap ?? 4096;
+    };
+    const applySize = (size) => {
+        const clamped = Math.max(minSize, Math.min(resolveMax(), Math.round(size)));
+        element.style.width = `${clamped}px`;
+        element.style.height = `${clamped}px`;
+        onResize?.(clamped);
+        return clamped;
+    };
+    applySize(initialSize);
+    const handle = document.createElement("div");
+    handle.className = "square-resize-handle";
+    handle.title = "Drag to resize";
+    element.appendChild(handle);
+    handle.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const startX = e.clientX;
+        const startY = e.clientY;
+        const startSize = element.offsetWidth;
+        handle.setPointerCapture(e.pointerId);
+        const onMove = (ev) => {
+            const dx = ev.clientX - startX;
+            const dy = ev.clientY - startY;
+            const delta = Math.abs(dx) > Math.abs(dy) ? dx : dy;
+            applySize(startSize + delta);
+        };
+        const onUp = () => {
+            handle.removeEventListener("pointermove", onMove);
+            handle.removeEventListener("pointerup", onUp);
+            handle.removeEventListener("pointercancel", onUp);
+        };
+        handle.addEventListener("pointermove", onMove);
+        handle.addEventListener("pointerup", onUp);
+        handle.addEventListener("pointercancel", onUp);
+    });
+}
 export function initResizer(resizerId = "resizer", onResizeCallback) {
     const resizer = document.getElementById(resizerId);
     if (!resizer) return;

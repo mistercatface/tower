@@ -115,11 +115,35 @@
     letter-spacing: 0.05em;
 }
 
-#animationPreviewCanvas {
+.square-resize-host {
+    position: relative;
+    flex: none;
+    overflow: hidden;
+}
+
+.square-resize-host > canvas {
     display: block;
     width: 100%;
-    height: auto;
-    aspect-ratio: 1;
+    height: 100%;
+}
+
+.square-resize-handle {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 14px;
+    height: 14px;
+    cursor: nwse-resize;
+    z-index: 4;
+    touch-action: none;
+    background: linear-gradient(135deg, transparent 45%, rgba(0, 188, 212, 0.55) 45%);
+}
+
+.square-resize-handle:hover {
+    background: linear-gradient(135deg, transparent 45%, rgba(0, 188, 212, 0.85) 45%);
+}
+
+#animationPreviewCanvas {
     border: 1px solid var(--border);
     border-radius: 4px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);

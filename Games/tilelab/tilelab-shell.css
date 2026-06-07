@@ -36,9 +36,14 @@ body.shell-tilelab #mapPreview {
     flex: none;
 }
 
+body.shell-tilelab .map-container {
+    align-items: center;
+    justify-content: center;
+}
+
 body.shell-tilelab .map-stage {
     position: relative;
-    flex: 1;
+    flex: none;
     min-height: 0;
     min-width: 0;
     overflow: hidden;

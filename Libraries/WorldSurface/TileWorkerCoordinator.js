@@ -183,6 +183,15 @@ function requestBake(type, payload, isAnimated) {
     const tier = isAnimated && !isFirstFrameRange(payload) ? TIER_ANIMATION : TIER_STATIC;
     return sendRequest(type, payload, tier);
 }
+/** Runtime profiles exist on the main thread before workers receive registerRuntimeProfile — gate bakes until synced. */
+function ensureRuntimeProfileOnWorkers(profileId) {
+    if (!profileId) return whenWorkersReady(() => {});
+    const provider = getSurfaceProfileProvider();
+    if (provider.listShippedIds().includes(profileId)) return whenWorkersReady(() => {});
+    if (!provider.hasProfile(profileId)) return Promise.reject(new Error(`Unknown surface procedural profile: ${profileId}`));
+    if (registeredRuntimeProfileIds.has(profileId)) return workerReady;
+    return TileWorkerCoordinator.registerRuntimeProfile(profileId, provider.getProfile(profileId));
+}
 export const TileWorkerCoordinator = {
     updateFocus(x, y) {
         focusX = x;
@@ -193,25 +202,21 @@ export const TileWorkerCoordinator = {
     },
     requestGroundChunkBake(payload) {
         const profileId = payload.profileId;
-        const provider = getSurfaceProfileProvider();
-        if (profileId && !provider.listShippedIds().includes(profileId) && !registeredRuntimeProfileIds.has(profileId))
-            try {
-                const profile = provider.getProfile(profileId);
-                this.registerRuntimeProfile(profileId, profile);
-            } catch (err) {
-                console.warn(`TileWorkerCoordinator: custom profile not found/registered for ${profileId}`, err);
-            }
-        const profile = provider.getProfile(profileId);
-        const isAnimated = Boolean(profile?.animation);
-        const normalized = withBakeFrameRange(payload, profile);
-        return requestBake("bakeGroundChunk", normalized, isAnimated);
+        return ensureRuntimeProfileOnWorkers(profileId).then(() => {
+            const profile = getSurfaceProfileProvider().getProfile(profileId);
+            const isAnimated = Boolean(profile?.animation);
+            const normalized = withBakeFrameRange(payload, profile);
+            return requestBake("bakeGroundChunk", normalized, isAnimated);
+        });
     },
     requestWallAtlasBake(payload) {
         const profileId = payload.profileId;
-        const profile = getSurfaceProfileProvider().getProfile(profileId);
-        const isAnimated = Boolean(profile?.animation);
-        const normalized = withBakeFrameRange(payload, profile);
-        return requestBake("bakeWallAtlas", normalized, isAnimated);
+        return ensureRuntimeProfileOnWorkers(profileId).then(() => {
+            const profile = getSurfaceProfileProvider().getProfile(profileId);
+            const isAnimated = Boolean(profile?.animation);
+            const normalized = withBakeFrameRange(payload, profile);
+            return requestBake("bakeWallAtlas", normalized, isAnimated);
+        });
     },
     registerRuntimeProfile(profileId, profile) {
         getSurfaceProfileProvider().registerRuntime(profileId, profile);

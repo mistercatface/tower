@@ -1,6 +1,6 @@
 import { listShippedSurfaceProfileIds } from "../../../Config/procedural/profiles.js";
 import { getUiRoot } from "../../../UI/Core/uiRoot.js";
-import { initResizer } from "../../../Tools/Lab/lab-shared.js";
+import { initResizer, initSquareResize } from "../../../Tools/Lab/lab-shared.js";
 import { initAnimationPreview } from "./LabAnimationPreview.js";
 import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEditor.js";
 import { initMapPreviewNavigation } from "../world/surfacePreview.js";
@@ -67,7 +67,7 @@ function bootstrapTilelabUi(state) {
             else schedulePreviewRefresh(state, 300);
         },
     });
-    syncRuntimeLabProfile();
+    void syncRuntimeLabProfile();
     bindViewModeControls(state, () => renderActiveLabView(state));
     bindMapInspectorControls(state, () => renderActiveLabView(state));
     initMapTopologyNavigation(state, () => renderActiveLabView(state));
@@ -92,13 +92,43 @@ function bootstrapTilelabUi(state) {
         },
     });
     initToolbarDefaults();
+    const animHost = document.getElementById("animationPreviewHost");
+    const animCanvas = document.getElementById("animationPreviewCanvas");
+    initSquareResize(animHost, {
+        initialSize: 256,
+        minSize: 128,
+        maxSize: () => {
+            const panel = document.getElementById("surfaceEditorPanel");
+            return panel ? Math.max(128, panel.clientWidth - 40) : 512;
+        },
+        onResize: (size) => {
+            if (animCanvas) {
+                animCanvas.width = size;
+                animCanvas.height = size;
+            }
+        },
+    });
+    if (animCanvas) initAnimationPreview(animCanvas, buildProfileFromEditor);
+    initSquareResize(document.getElementById("mapStage"), {
+        initialSize: 320,
+        minSize: 160,
+        maxSize: () => {
+            const container = document.querySelector(".map-container");
+            if (!container) return 1200;
+            const rect = container.getBoundingClientRect();
+            return Math.max(160, Math.floor(Math.min(rect.width, rect.height)));
+        },
+        onResize: () => {
+            applyToolbarDefaults();
+            syncPreviewZoomToStage();
+            renderActiveLabView(state);
+        },
+    });
     initResizer("resizer", () => {
         applyToolbarDefaults();
         syncPreviewZoomToStage();
         renderActiveLabView(state);
     });
-    const animCanvas = document.getElementById("animationPreviewCanvas");
-    if (animCanvas) initAnimationPreview(animCanvas, buildProfileFromEditor);
     registerEditorProfiles(state).then(() => {
         applyToolbarDefaults();
         syncPreviewZoomToStage();
