@@ -6,11 +6,14 @@ import { speedSqXY } from "../../Libraries/Math/Vec2.js";
 import { POOL_OBJECT_BALL_COUNT } from "./config/tableLayout.js";
 export const POOL_CUE_TAG = "_poolCue";
 export const POOL_OBJECT_TAG = "_poolObject";
+export function createInitialPoolState() {
+    return { phase: "aiming", objectRemaining: POOL_OBJECT_BALL_COUNT, won: false, aim: null };
+}
 /**
  * @param {object} state
  */
 export function ensurePoolState(state) {
-    if (!state.pool) state.pool = { phase: "aiming", objectRemaining: POOL_OBJECT_BALL_COUNT, won: false, aim: null };
+    if (!state.pool) state.pool = createInitialPoolState();
     return state.pool;
 }
 /**

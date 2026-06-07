@@ -1,6 +1,6 @@
 import { fireRadioTrigger } from "../../Core/EventSystem.js";
 import { markRadioTriggersSeen } from "../../Libraries/RunScene/markRadioTriggersSeen.js";
-import { spawnPoolBalls, ensurePoolState } from "./balls.js";
+import { spawnPoolBalls, createInitialPoolState, ensurePoolState } from "./balls.js";
 import { getPoolLayout } from "./config/tableLayout.js";
 import { processPockets } from "./pockets.js";
 import { poolRadioRegistry } from "./wireRadio.js";
@@ -10,10 +10,6 @@ function shouldSkipOpeningRadio() {
     if (typeof window === "undefined") return false;
     const scene = new URLSearchParams(window.location.search).get("scene");
     return scene === "play" || scene === "match";
-}
-function clearNonPoolPickups(state) {
-    if (!state.pickups) return;
-    state.pickups.length = 0;
 }
 function snapCameraToTable(state, ctx) {
     const layout = getPoolLayout(state);
@@ -26,19 +22,13 @@ export const poolRunScenePort = {
     },
     onSimulationEnter(ctx) {
         const { state } = ctx;
-        if (!state.runSceneInitialized) {
-            state.pool = null;
-            if (shouldSkipOpeningRadio()) markRadioTriggersSeen(state, ["break_shot"], poolRadioRegistry);
-            state.runSceneInitialized = true;
-            state.poolBallsSpawned = false;
-        }
+        state.pool = createInitialPoolState();
+        state.radioSeenThisRun = {};
+        if (state.pickups) state.pickups.length = 0;
+        spawnPoolBalls(state, getPoolLayout(state));
         snapCameraToTable(state, ctx);
-        if (!state.poolBallsSpawned) {
-            clearNonPoolPickups(state);
-            spawnPoolBalls(state, getPoolLayout(state));
-            state.poolBallsSpawned = true;
-            if (!shouldSkipOpeningRadio()) fireRadioTrigger("break_shot", null, state);
-        }
+        if (shouldSkipOpeningRadio()) markRadioTriggersSeen(state, ["break_shot"], poolRadioRegistry);
+        else fireRadioTrigger("break_shot", null, state);
     },
     onTick(ctx, _dt) {
         const { state } = ctx;

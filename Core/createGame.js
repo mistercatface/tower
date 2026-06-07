@@ -57,6 +57,8 @@ export function createGame(definition) {
         requestAnimationFrame(loop);
     }
     function resetGame() {
+        state.scheduler.clear();
+        state.isGameOver = false;
         StatsManager.resetRun(state, upgrades);
         if (getBootstrapPort().features.save) initializeSaveSystem(state);
         pauseManager.reset();
