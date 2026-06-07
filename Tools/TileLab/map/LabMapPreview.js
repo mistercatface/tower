@@ -7,7 +7,18 @@ import { getSurfaceProfileRevision } from "../../../Libraries/WorldSurface/Surfa
 import { invalidateWallAtlasKeyMemos } from "../../../Render/game/wallSurfaceInvalidation.js";
 import { setupLabViewportNavigation } from "../../Lab/lab-shared.js";
 import { getLabFocus, setLabFocus } from "./LabMapWorld.js";
-const render3D = new WorldSceneRenderer(getGameWorldSurfaceSettings());
+/** @type {WorldSceneRenderer | null} */
+let render3D = null;
+/** @type {import("../../../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings | null} */
+let render3DSettings = null;
+function getLabRender3D() {
+    const settings = getGameWorldSurfaceSettings();
+    if (!render3D || render3DSettings !== settings) {
+        render3D = new WorldSceneRenderer(settings);
+        render3DSettings = settings;
+    }
+    return render3D;
+}
 let lastBakeKey = "";
 const MOVE_SPEED_SCALE = 1;
 /**
@@ -76,7 +87,7 @@ function drawLabWorldFrame(ctx, canvas, viewW, viewH, worldState, profileId, gam
     ctx.restore();
     ctx.save();
     viewport.apply(ctx);
-    drawWorldScene(ctx, { state: worldState, viewport, worldSceneRenderer: render3D, canvas });
+    drawWorldScene(ctx, { state: worldState, viewport, worldSceneRenderer: getLabRender3D(), canvas });
     worldState.canvasBounds = prevCanvasBounds;
     worldState.surfaceProfileOverride = prevProfileOverride;
     if (showRangeRing) drawWeaponRangeRing(ctx, cameraX, cameraY, weaponRange);
@@ -112,6 +123,8 @@ export function renderGamePreview(canvas, options) {
 /** Invalidate baked floor/wall caches after profile or floor seed change. */
 export function invalidateMapPreviewBakes() {
     lastBakeKey = "";
+    render3D = null;
+    render3DSettings = null;
 }
 export function initMapPreviewNavigation(getOptions, handlers = {}) {
     setupLabViewportNavigation("gamePreview", {

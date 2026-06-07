@@ -22,8 +22,6 @@ const labDefinition = {
     runBootstrapPort: layoutOnlyRunBootstrap,
     runScenePort: { getLayout: () => null, onSimulationEnter() {}, onTick() {} },
     proceduralDesign: roguelikeProceduralDesign,
-    worldSurface: { wallHeight: 20, pixelsPerCell: 6 },
-    perspective: { cameraHeight: 520, strength: 0.28 },
 };
 export function ensureLabGameDefinition() {
     if (Object.keys(getWorldPropDefinitions()).length === 0) loadPropAssets();
