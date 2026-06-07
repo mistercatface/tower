@@ -1,8 +1,5 @@
-import { events } from "./EventSystem.js";
-import { Events } from "./EventNames.js";
 import { controlSettings } from "../Config/Config.js";
 import { getActiveGameDefinition } from "./ActiveGameDefinition.js";
-import { getBootstrapPort } from "./GamePorts.js";
 import { CanvasInputController } from "../Libraries/Input/CanvasInputController.js";
 /** @type {CanvasInputController | null} */
 let activeController = null;
@@ -18,13 +15,13 @@ export class InputManager {
      */
     static setup(canvas, fsm) {
         activeController?.destroy();
-        const zoomEnabled = getBootstrapPort().features.zoom === true;
+        const input = getActiveGameDefinition().input;
         activeController = new CanvasInputController(canvas, {
             doubleTapTimeoutMs: controlSettings.doubleTapTimeout,
             wheelZoomSensitivity: controlSettings.scrollZoomSensitivity,
-            onWheelZoomDelta: zoomEnabled ? (delta) => events.emit(Events.GAME_ADJUST_ZOOM, { delta }) : undefined,
-            getBaseZoom: () => fsm.context.viewport.zoom,
-            onPinchZoom: zoomEnabled ? (zoom) => events.emit(Events.GAME_SET_ZOOM_ABSOLUTE, { zoom }) : undefined,
+            onWheelZoomDelta: input?.onWheelZoomDelta,
+            getBaseZoom: input?.onPinchZoom ? () => fsm.context.viewport.zoom : undefined,
+            onPinchZoom: input?.onPinchZoom,
             screenToWorld: (screenX, screenY) => fsm.context.viewport.screenToWorld(screenX, screenY),
             onPointerDown: (worldCoords, _screen, isDoubleTap, event) => {
                 const state = fsm.currentState;

@@ -10,7 +10,6 @@ import { getActiveGameDefinition } from "./ActiveGameDefinition.js";
 /** @typedef {import("./GameDefinitionTypes.js").RenderPorts} RenderPorts */
 /** @typedef {import("./GameDefinitionTypes.js").WorldGenPort} WorldGenPort */
 /** @typedef {import("./GameDefinitionTypes.js").RunBootstrapPort} RunBootstrapPort */
-/** @typedef {import("./GameDefinitionTypes.js").BootstrapPort} BootstrapPort */
 /** @typedef {import("./GameDefinitionTypes.js").RunScenePort} RunScenePort */
 /** @typedef {import("./GameDefinitionTypes.js").CombatPort} CombatPort */
 function requireGameDefinition() {
@@ -51,10 +50,6 @@ export function getWorldGen() {
     const worldGen = requireGameDefinition().worldGen;
     if (!worldGen) throw new Error("Active game definition missing worldGen port.");
     return worldGen;
-}
-/** @returns {BootstrapPort} */
-export function getBootstrapPort() {
-    return requireGameDefinition().bootstrapPort ?? { features: {} };
 }
 /** @returns {RunScenePort} */
 export function getRunScenePort() {

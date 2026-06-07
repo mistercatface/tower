@@ -4,6 +4,7 @@ import { Events, requestUiUpdate, requestUiHudUpdate, requestGamePause, requestG
 import { requestProgressDirty } from "./progression/events.js";
 import { getRunScenePort } from "../../Core/GamePorts.js";
 import { registerPersistentTriggers } from "../../Core/PersistentTriggerSetup.js";
+import { loadPersistentTriggers } from "../../Core/PersistentTriggers.js";
 import { isSimulation } from "../../GameState/GamePhase.js";
 import { ProgressionManager } from "./progression/ProgressionManager.js";
 import { StatsManager } from "./progression/StatsManager.js";
@@ -21,6 +22,7 @@ export function registerTowerListeners(eventBus, boot) {
     inspectBridge.mount();
     towerInspectPort.registerEntries();
     preloadAllInspectAssets();
+    loadPersistentTriggers();
     registerPersistentTriggers(eventBus);
     eventBus.on(Events.COMBAT_ENEMY_KILLED, ({ enemy, state, upgrades, fsm }) => {
         ProgressionManager.processEnemyKillRewards(enemy, state, upgrades);

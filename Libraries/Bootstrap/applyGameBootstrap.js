@@ -1,7 +1,6 @@
-import { getBootstrapPort, getUiPort } from "../../Core/GamePorts.js";
+import { getUiPort } from "../../Core/GamePorts.js";
 import { Events } from "../../Core/EventSystem.js";
 import { InputManager } from "../../Core/InputManager.js";
-import { loadPersistentTriggers } from "../../Core/PersistentTriggers.js";
 import { registerSharedOverlayListeners } from "../../UI/Core/sharedOverlays.js";
 import { clearGameChrome } from "../../UI/Core/uiRoot.js";
 /**
@@ -33,14 +32,12 @@ function registerUiEventListeners(eventBus) {
  * @param {GameBootstrapContext} ctx
  */
 export function applyGameBootstrap(ctx) {
-    const { definition, state, upgrades, events, pauseManager, canvas, fsm, resetGame, resizeCanvas } = ctx;
-    const { features } = getBootstrapPort();
+    const { state, upgrades, events, canvas, fsm, resetGame, resizeCanvas } = ctx;
     events.setContext({ state, upgrades, viewport: ctx.viewport, fsm, resetGame });
     events.warnOnMissingListeners = true;
     registerUiEventListeners(events);
     window.addEventListener("resize", resizeCanvas);
     window.gameState = state;
-    if (features.persistentTriggers === true) loadPersistentTriggers();
     clearGameChrome();
     getUiPort().mount({ state, upgrades });
     resizeCanvas();

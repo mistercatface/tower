@@ -70,13 +70,9 @@
  * @property {(state: object, upgrades: object[]) => void} resetRun
  */
 /**
- * @typedef {object} BootstrapFeatures
- * @property {boolean} [persistentTriggers]
- * @property {boolean} [zoom]
- */
-/**
- * @typedef {object} BootstrapPort
- * @property {BootstrapFeatures} features
+ * @typedef {object} InputPort
+ * @property {(delta: number) => void} [onWheelZoomDelta]
+ * @property {(zoom: number) => void} [onPinchZoom]
  */
 /**
  * @typedef {object} RunScenePort
@@ -145,7 +141,7 @@
  * @property {RenderPorts} render
  * @property {WorldGenPort} worldGen
  * @property {RunBootstrapPort} runBootstrapPort — new-run entity/world setup after `generateWorld`
- * @property {BootstrapPort} [bootstrapPort] — optional engine boot flags; games opt in only what they need
+ * @property {InputPort} [input] — optional canvas zoom/pinch hooks
  * @property {RunScenePort} runScenePort — simulation enter/tick/layout hooks
  * @property {CombatPort} [combatPort] — defaults to noop when omitted
  * @property {(fsm: import("../Libraries/FSM/StateMachine.js").StateMachine) => import("../Libraries/Input/keyboardBindings.js").KeyBinding[]} [keyBindings]
