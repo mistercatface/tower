@@ -19,13 +19,12 @@ import { poolRenderPorts } from "./renderPorts.js";
  */
 export const poolGame = {
     id: "pool",
-    propPixelSize: 16,
     canvasId: "gameCanvas",
     saveKey: "pool_save_v1",
     ui: { ...LANDSCAPE_MINIMAL_UI, chrome: { controls: "none" } },
     perspective: { cameraHeight: 520, strength: 0.28, viewerSource: "viewport" },
     proceduralDesign: { surfaceProfileId: SURFACE_PROFILE_ID.poolTableFelt },
-    worldSurface: { wallHeight: 20, pixelsPerCell: 8 },
+    worldSurface: { wallHeight: 20, pixelsPerCell: 6 },
     simulationPort: poolSimulation,
     uiPort: poolUiPort,
     targeting: emptyTargeting,
