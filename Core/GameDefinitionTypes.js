@@ -172,6 +172,7 @@
  * @property {CombatPort} [combatPort] — defaults to noop when omitted
  * @property {RadioPort} [radioPort] — defaults to noop when omitted
  * @property {(fsm: import("../GameState/GameStateMachine.js").GameStateMachine) => import("../Libraries/Input/keyboardBindings.js").KeyBinding[]} [keyBindings]
+ * @property {(eventBus: import("../Libraries/Events/EventBus.js").EventBus) => void} [registerListeners]
  * @property {() => void | Promise<void>} [prepare]
  * @property {Partial<CombatFeatures>} [combat] — render combat layers; omitted = all off
  * @property {Partial<import("./GamePerspective.js").PerspectiveConfig>} [perspective]

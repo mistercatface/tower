@@ -16,6 +16,7 @@ import { createRoguelikeRunBootstrapPort } from "../../Libraries/RunBootstrap/pr
 import { towerWorldGen } from "./worldGen.js";
 import { towerProceduralDesign } from "./config/surfaceProfiles.js";
 import { towerKeyBindings } from "./keyBindings.js";
+import { registerTowerListeners } from "./listeners.js";
 /** @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition */
 /** Tower — reference game definition. Engine ports injected via interactionPairs, targeting, render. */
 export const towerGame = {
@@ -37,6 +38,7 @@ export const towerGame = {
     combatPort: towerCombatPort,
     radioPort: { wire: wireTowerRadio, isDialogActive: isRadioDialogActive },
     keyBindings: towerKeyBindings,
+    registerListeners: registerTowerListeners,
     createUpgrades() {
         return [...createBaseUpgrades(), ...createUpgrades()];
     },

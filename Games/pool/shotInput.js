@@ -1,3 +1,4 @@
+import { requestUiUpdate } from "../../Core/EventSystem.js";
 import { WeaponSystem } from "../../Combat/WeaponSystem.js";
 import { getRunScenePort } from "../../Core/GamePorts.js";
 import { applyCueStrikeCollision, CUE_BALL_RESTITUTION } from "../../Libraries/CueStick/cueStrikeCollision.js";
@@ -76,6 +77,7 @@ export function tryBeginAim(state, worldX, worldY) {
     if (!getCueBall(state)) return false;
     const pool = ensurePoolState(state);
     pool.aim = { active: true, anchorX: worldX, anchorY: worldY, pullX: worldX, pullY: worldY, shotNx: null, shotNy: null, currentDrag: 0, currentPullBack: 0 };
+    requestUiUpdate();
     return true;
 }
 /**
@@ -83,7 +85,9 @@ export function tryBeginAim(state, worldX, worldY) {
  */
 export function cancelAim(state) {
     const pool = ensurePoolState(state);
+    if (!pool.aim) return;
     pool.aim = null;
+    requestUiUpdate();
 }
 /**
  * @param {object} state
@@ -100,6 +104,7 @@ export function updateAim(state, worldX, worldY) {
     const physics = resolveAimPhysics(pool.aim);
     if (!physics) return;
     trackAimDrag(pool.aim, physics);
+    requestUiUpdate();
 }
 /**
  * Release finger to shoot. Power from peak pull distance; angle from drag offset.
@@ -129,6 +134,7 @@ export function releaseAimShot(state, worldX, worldY) {
     applyCueStrikeCollision(cue, { nx, ny, power });
     pool.aim = null;
     pool.phase = "rolling";
+    requestUiUpdate();
     return true;
 }
 /**

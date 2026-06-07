@@ -2,8 +2,8 @@ import { state } from "../GameState/GameState.js";
 import { initializeSaveSystem } from "../Progression/Storage.js";
 import { applyGameBootstrap } from "../Libraries/Bootstrap/applyGameBootstrap.js";
 import { getBootstrapPort, getRenderPorts } from "./GamePorts.js";
-import { events, requestUiUpdate, requestUiHudUpdate, hideGameOver } from "./EventSystem.js";
-import { registerAllListeners } from "./GameListeners.js";
+import { events, requestUiUpdate, hideGameOver } from "./EventSystem.js";
+import { registerCoreListeners } from "./GameListeners.js";
 import { PauseManager } from "./PauseManager.js";
 import { Renderer } from "../Render/Render.js";
 import { SimulationViewport } from "../Render/SimulationViewport.js";
@@ -35,21 +35,12 @@ export function createGame(definition) {
     const renderer = new Renderer(canvas, ctx);
     const upgrades = definition.createUpgrades?.() ?? [];
     const viewport = new SimulationViewport(0, 0);
-    const uiSnapshot = { health: -1, isMoving: false };
     const stateMachineContext = { state, upgrades, viewport, renderer };
     const fsm = new GameStateMachine(stateMachineContext);
     stateMachineContext.fsm = fsm;
     state.fsm = fsm;
     for (const [name, StateClass] of Object.entries(definition.states)) fsm.addState(name, new StateClass());
     const pauseManager = new PauseManager(state);
-    function didPlayerStateChange() {
-        if (state.player.health !== uiSnapshot.health || state.player.isMoving !== uiSnapshot.isMoving) {
-            uiSnapshot.health = state.player.health;
-            uiSnapshot.isMoving = state.player.isMoving;
-            return true;
-        }
-        return false;
-    }
     function loop(timestamp) {
         if (state.lastTime === 0) state.lastTime = timestamp;
         let dt = timestamp - state.lastTime;
@@ -63,8 +54,6 @@ export function createGame(definition) {
             }
         }
         fsm.render();
-        requestUiHudUpdate();
-        if (didPlayerStateChange()) requestUiUpdate();
         requestAnimationFrame(loop);
     }
     function resetGame() {
@@ -75,7 +64,6 @@ export function createGame(definition) {
         viewport.snapTo(0, 0);
         fsm.transition(definition.initialState);
         requestUiUpdate();
-        requestUiHudUpdate();
         requestAnimationFrame(loop);
     }
     function resizeCanvas() {
@@ -86,6 +74,7 @@ export function createGame(definition) {
         getRenderPorts().worldStructure.invalidate("viewport");
         if (getBootstrapPort().features.inspect) inspectBridge.resize();
     }
-    registerAllListeners(events, pauseManager);
+    registerCoreListeners(events, pauseManager);
+    definition.registerListeners?.(events);
     applyGameBootstrap({ definition, state, upgrades, events, pauseManager, canvas, fsm, viewport, resetGame, resizeCanvas });
 }

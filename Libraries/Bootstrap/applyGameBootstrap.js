@@ -6,7 +6,7 @@ import { loadPersistentTriggers } from "../../Core/PersistentTriggers.js";
 import { registerSharedOverlayListeners } from "../../UI/Core/sharedOverlays.js";
 import { clearGameChrome } from "../../UI/Core/uiRoot.js";
 import { preloadAllInspectAssets } from "../../Libraries/Inspect/InspectCatalog.js";
-import { initializeSaveSystem, loadProgress } from "../../Progression/Storage.js";
+import { hardResetProgress, initializeSaveSystem, loadProgress, registerProgressListeners } from "../../Progression/Storage.js";
 import { StatsManager } from "../../Progression/StatsManager.js";
 /**
  * @typedef {object} GameBootstrapContext
@@ -47,8 +47,12 @@ export function applyGameBootstrap(ctx) {
     window.gameState = state;
     if (features.upgrades) StatsManager.initUpgradesList(state, upgrades);
     if (features.save) {
+        registerProgressListeners(events);
         loadProgress(state, upgrades);
         initializeSaveSystem(state);
+        events.on(Events.PROGRESS_HARD_RESET, ({ state: s, resetGame: restart }) => {
+            hardResetProgress(s, restart);
+        });
     }
     if (features.persistentTriggers) loadPersistentTriggers();
     clearGameChrome();

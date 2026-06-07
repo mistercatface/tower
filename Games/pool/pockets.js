@@ -1,3 +1,4 @@
+import { requestUiUpdate } from "../../Core/EventSystem.js";
 import { getCueBall, ensurePoolState, allBallsStopped, POOL_CUE_TAG, POOL_OBJECT_TAG, respotCueBall } from "./balls.js";
 import { isBallInPocket } from "./config/tableLayout.js";
 /**
@@ -34,6 +35,7 @@ export function processPockets(state, layout, dt) {
                 if (ball[POOL_OBJECT_TAG]) {
                     ball.isDead = true;
                     pool.objectRemaining = Math.max(0, pool.objectRemaining - 1);
+                    requestUiUpdate();
                 } else if (ball[POOL_CUE_TAG]) respotCueBall(state, layout);
             }
             continue;
@@ -65,7 +67,13 @@ export function processPockets(state, layout, dt) {
         }
     if (!anySinking)
         if (pool.objectRemaining <= 0) {
-            pool.won = true;
-            pool.phase = "won";
-        } else if (pool.phase === "rolling" && allBallsStopped(state)) pool.phase = "aiming";
+            if (!pool.won) {
+                pool.won = true;
+                pool.phase = "won";
+                requestUiUpdate();
+            }
+        } else if (pool.phase === "rolling" && allBallsStopped(state)) {
+            pool.phase = "aiming";
+            requestUiUpdate();
+        }
 }

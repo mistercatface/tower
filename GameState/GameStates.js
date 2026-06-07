@@ -1,11 +1,12 @@
 import { FloatingText } from "../Render/FloatingText.js";
-import { requestUiUpdate } from "../Core/EventSystem.js";
+import { requestUiUpdate, requestUiHudUpdate } from "../Core/EventSystem.js";
 import { inspectBridge } from "../Combat/inspect/InspectBridge.js";
 import { getInspectPort, getRunScenePort, getSimulationPort } from "../Core/GamePorts.js";
 import { resetSimulationWorld, handlePlayerRepositionTap, handlePlayerRepositionDrag } from "../Systems/Simulation/index.js";
 export class MapState {
     onEnter(ctx) {
         requestUiUpdate();
+        requestUiHudUpdate();
     }
     update(dt, ctx) {
         FloatingText.updateAll(ctx.state, dt);
@@ -32,6 +33,7 @@ export class SimulationState {
     }
     update(dt, ctx) {
         getSimulationPort().runTick(ctx, dt);
+        requestUiHudUpdate();
     }
     render(ctx) {
         ctx.viewport.updateZoomLimits(ctx.state);
@@ -66,6 +68,7 @@ export class InspectorState {
         const port = getSimulationPort();
         if (!port.runInspectorTick) throw new Error("Active game definition simulation port missing runInspectorTick");
         port.runInspectorTick(ctx, dt);
+        requestUiHudUpdate();
     }
     render(ctx) {
         ctx.viewport.updateZoomLimits(ctx.state);
