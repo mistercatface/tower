@@ -1,6 +1,6 @@
-import { spawnPods } from "../Config/Config.js";
-import { getEnemyDefinition } from "../Entities/EntityRegistry.js";
-import { weightedPick } from "../Libraries/Random/weightedPick.js";
+import { spawnPods } from "../../../Config/Config.js";
+import { getEnemyDefinition } from "../../../Entities/EntityRegistry.js";
+import { weightedPick } from "../../../Libraries/Random/weightedPick.js";
 
 const FALLBACK_POD = {
     id: "fallback_standard",

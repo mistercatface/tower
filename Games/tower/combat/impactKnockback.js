@@ -1,5 +1,5 @@
-import { Enemy } from "../Entities/Enemy.js";
-import { addXY, lengthXY, normalizeXY } from "../Libraries/Math/Vec2.js";
+import { Enemy } from "../../../Entities/Enemy.js";
+import { addXY, lengthXY, normalizeXY } from "../../../Libraries/Math/Vec2.js";
 /** Default for gun-configured impact knockback when pushSpeedMultiplier is omitted. */
 export const defaultGunPushSpeedMultiplier = 3;
 export const explosionImpactKnockback = { stunMs: 500, pushMs: 500, pushSpeedMultiplier: 6 };

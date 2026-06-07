@@ -3,7 +3,7 @@ import { RenderSprites } from "../Render/RenderSprites.js";
 import { defaultGunId, getGunDefinition } from "../Config/content/guns.js";
 import { defaultTurretLoadout, resolveFireAngleOffsets } from "../Config/content/turrets/loadout.js";
 import { applyKnockback } from "../Libraries/Motion/index.js";
-import { getGunProjectileConfig } from "../Combat/gunCombat.js";
+import { getGunProjectileConfig } from "../Games/tower/combat/gunCombat.js";
 import { inferFaction, areHostile } from "../Core/GamePorts.js";
 import { CombatParticles } from "../Render/CombatParticles.js";
 import { resolveBodyRadius } from "../Libraries/Motion/bodyDefaults.js";

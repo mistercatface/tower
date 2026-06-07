@@ -4,8 +4,8 @@ import {
     dualServiceWeaponStart,
     equipmentLimits,
     randomLoadoutSettings,
-} from "../Config/content/equipment.js";
-import { getGunDefinition } from "../Config/content/guns.js";
+} from "../../../Config/content/equipment.js";
+import { getGunDefinition } from "../../../Config/content/guns.js";
 
 export function getGunHandedness(gunId) {
     const gun = getGunDefinition(gunId);

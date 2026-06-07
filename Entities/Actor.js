@@ -8,11 +8,11 @@ import { createCombatantStats, applyUpgrades, applyUpgradesToStats, syncActorCom
 import { Turret } from "./Turret.js";
 import { hasLineOfSight } from "../Libraries/Spatial/query/lineOfSight.js";
 import { spawnFloatingText } from "../Core/EventSystem.js";
-import { applyActorGunModifiers, getSlotReloadTimeMs } from "../Combat/gunCombat.js";
+import { applyActorGunModifiers, getSlotReloadTimeMs } from "../Games/tower/combat/gunCombat.js";
 import { getGunDefinition } from "../Config/content/guns.js";
 import { explosionSettings } from "../Config/Config.js";
-import { resolveActorTurretLoadouts, applyGunTurretLoadouts, applyUpgradeTurretLoadouts } from "../Config/content/turrets/definitions.js";
-import { getTurretCountForLoadout, normalizeWeaponLoadout } from "../Combat/equipmentLoadout.js";
+import { resolveActorTurretLoadouts, applyGunTurretLoadouts, applyUpgradeTurretLoadouts } from "../Games/tower/combat/turretLoadouts.js";
+import { getTurretCountForLoadout, normalizeWeaponLoadout } from "../Games/tower/combat/equipmentLoadout.js";
 import { ProgressBar } from "../Libraries/Canvas/ProgressBar.js";
 import { getNearestHostile } from "../Core/GamePorts.js";
 import { getActorProfileForActor, getActorProfileForType } from "../Config/content/actorProfiles.js";

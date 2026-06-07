@@ -1,4 +1,4 @@
-import { toggleGunInLoadout, unequipSlot } from "../../Combat/equipmentLoadout.js";
+import { toggleGunInLoadout, unequipSlot } from "./combat/equipmentLoadout.js";
 import { nextUpgradeCost, playerBaseStats } from "../../Config/Config.js";
 import { Events, requestUiUpdate, requestUiHudUpdate, requestGamePause, requestGameResume } from "../../Core/EventSystem.js";
 import { requestProgressDirty } from "./progression/events.js";

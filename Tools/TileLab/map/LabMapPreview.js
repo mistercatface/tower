@@ -1,5 +1,4 @@
 import { getGameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.js";
-import { GamePhase } from "../../../GameState/GamePhase.js";
 import { WorldSceneRenderer } from "../../../Libraries/Render/WorldSceneRenderer.js";
 import { drawWorldScene } from "../../../Render/worldSceneDraw.js";
 import { Viewport } from "../../../Libraries/Viewport/Viewport.js";
@@ -59,7 +58,7 @@ function maybeClearBakeCaches(worldState, profileId) {
 }
 function drawLabWorldFrame(ctx, canvas, viewW, viewH, worldState, profileId, gameZoom, weaponRange, drawOptions = {}) {
     const { showVignette = false, showRangeRing = false, showPlayerMarker = true } = drawOptions;
-    worldState.phase = GamePhase.SIMULATION;
+    worldState.phase = "simulation";
     const prevProfileOverride = worldState.surfaceProfileOverride;
     worldState.surfaceProfileOverride = profileId;
     maybeClearBakeCaches(worldState, profileId);

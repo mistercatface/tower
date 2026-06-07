@@ -1,5 +1,5 @@
 import { gridSettings } from "../../Config/Config.js";
-import { rollPlayerStartLoadout } from "../../Combat/weaponLoadout.js";
+import { rollPlayerStartLoadout } from "./combat/weaponLoadout.js";
 import { generateWorld, getWorldGen } from "../../Core/GamePorts.js";
 import { spawnInitialPickups, spawnStartGamePickups } from "../../Entities/Pickup.js";
 import { StatsManager } from "./progression/StatsManager.js";

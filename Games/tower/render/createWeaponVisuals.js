@@ -1,6 +1,6 @@
-import { getGunDefinition } from "../../../../Config/content/guns.js";
-import { isTwoHandedGun, normalizeWeaponLoadout } from "../../../../Combat/equipmentLoadout.js";
-import { WEAPON_VISUALS } from "./procedural.js";
+import { getGunDefinition } from "../../../Config/content/guns.js";
+import { isTwoHandedGun, normalizeWeaponLoadout } from "../combat/equipmentLoadout.js";
+import { WEAPON_VISUALS } from "../../../Libraries/Render/Characters/weapons/procedural.js";
 /**
  * @param {Record<string, string>} gunIdToVisual — gun id → WEAPON_VISUALS key
  */

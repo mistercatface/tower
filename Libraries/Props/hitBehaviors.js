@@ -1,4 +1,3 @@
-import { getProjectileDamage } from "../../Combat/impactDamage.js";
 import { applyProjectileImpulseToPickup } from "./projectileImpulse.js";
 /**
  * @param {object} state
@@ -10,7 +9,7 @@ export function explosiveOnHit(state, pickup, projectile) {
         pickup.explode(state);
         return true;
     }
-    const dmg = projectile ? getProjectileDamage(projectile) : 0;
+    const dmg = projectile ? Math.round(projectile.damage ?? 0) : 0;
     pickup.takeDamage(dmg, state);
     if (pickup.health > 0) applyProjectileImpulseToPickup(pickup, projectile, { pushForce: 95 });
     if (projectile?.isDead !== undefined) projectile.isDead = true;

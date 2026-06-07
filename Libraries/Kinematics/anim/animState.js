@@ -1,4 +1,3 @@
-import { normalizeWeaponLoadout } from "../../../Combat/equipmentLoadout.js";
 import { quantizeAngleIndex } from "../../Math/Angle.js";
 /** @param {Record<string, object>} poses */
 export function createEntityAnimState(poses) {
@@ -20,7 +19,8 @@ export function createEntityAnimState(poses) {
     };
 }
 export function getWeaponLoadoutKey(actor) {
-    return normalizeWeaponLoadout(actor.weaponLoadout ?? []).join("+") || "none";
+    const ids = actor.weaponLoadout ?? [];
+    return ids.length ? ids.join("+") : "none";
 }
 export function getQuantizedAimKey(actor, rotationSteps = 32) {
     const turrets = actor.turrets ?? [];

@@ -1,4 +1,4 @@
-import { enemyStartGunPool, getGunDefinition, playerStartGunId } from "../Config/content/guns.js";
+import { enemyStartGunPool, getGunDefinition, playerStartGunId } from "../../../Config/content/guns.js";
 import { rollRandomLoadoutFromPool } from "./equipmentLoadout.js";
 
 export function formatWeaponLoadoutLabel(actor) {

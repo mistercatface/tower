@@ -1,9 +1,9 @@
 import { circlesOverlap } from "../Libraries/Spatial/collision/overlap.js";
 import { Entity } from "./Entity.js";
 import { drawProjectileTracer } from "../Render/ProjectileDraw.js";
-import { getProjectileDamage } from "../Combat/impactDamage.js";
-import { applyActorImpactKnockback } from "../Combat/impactKnockback.js";
-import { getGunImpactKnockback } from "../Combat/gunCombat.js";
+import { getProjectileDamage } from "../Games/tower/combat/impactDamage.js";
+import { applyActorImpactKnockback } from "../Games/tower/combat/impactKnockback.js";
+import { getGunImpactKnockback } from "../Games/tower/combat/gunCombat.js";
 import { getGunDefinition } from "../Config/content/guns.js";
 import { Enemy } from "./Enemy.js";
 import { getInteractionPairFilter, getPlayerActors } from "../Core/GamePorts.js";

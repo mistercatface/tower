@@ -1,11 +1,11 @@
 import { normalizeAngle } from "../../Libraries/Math/Angle.js";
 import { resolveWeaponModeForGun, WeaponSystem, advanceTurretAmmo } from "./WeaponSystem.js";
-import { getSlotFireIntervalMs } from "../../Combat/gunCombat.js";
+import { getSlotFireIntervalMs } from "./combat/gunCombat.js";
 import { Laser } from "../../Entities/Laser.js";
-import { getBeamTickDamage, createBeamHitSource } from "../../Combat/impactDamage.js";
+import { getBeamTickDamage, createBeamHitSource } from "./combat/impactDamage.js";
 import { getGunDefinition } from "../../Config/content/guns.js";
 import { areHostile, getNearestHostile, getPlayerActors, isValidTurretTarget } from "../../Core/GamePorts.js";
-import { normalizeWeaponLoadout } from "../../Combat/equipmentLoadout.js";
+import { normalizeWeaponLoadout } from "./combat/equipmentLoadout.js";
 export class TurretController {
     constructor(actor) {
         this.actor = actor;

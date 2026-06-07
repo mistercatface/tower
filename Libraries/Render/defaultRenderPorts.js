@@ -9,7 +9,7 @@ export function createDefaultRenderPorts(kinematicsOptions = {}) {
         get world3dPropRecipes() {
             return getWorldPropRecipes();
         },
-        kinematicsPorts: createDefaultKinematicsPorts({ gunIdToVisual: {}, ...kinematicsOptions }),
+        kinematicsPorts: createDefaultKinematicsPorts(kinematicsOptions),
         worldStructure: createLiveWorldStructure(),
     };
 }

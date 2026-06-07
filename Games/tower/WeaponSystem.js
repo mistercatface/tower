@@ -3,8 +3,8 @@ import { wallContextFromState } from "../../Libraries/Spatial/query/wallContext.
 import { castSteppedCircleRay } from "../../Libraries/Spatial/query/steppedCircleRayCast.js";
 import { Laser } from "../../Entities/Laser.js";
 import { defaultGunId, getGunDefinition } from "../../Config/content/guns.js";
-import { getSlotFireIntervalMs, getSlotReloadTimeMs } from "../../Combat/gunCombat.js";
-import { getBeamTickDamage, createBeamHitSource } from "../../Combat/impactDamage.js";
+import { getSlotFireIntervalMs, getSlotReloadTimeMs } from "./combat/gunCombat.js";
+import { getBeamTickDamage, createBeamHitSource } from "./combat/impactDamage.js";
 import { areHostile, getBroadphaseActors, getHostiles } from "./targeting.js";
 export function advanceTurretAmmo(dt, turret, gun, source) {
     if (turret.currentGunId !== turret.gunId || turret.ammo === undefined) {
