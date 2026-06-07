@@ -7,7 +7,9 @@
 export function getViewQueryBounds(viewport, px, py, padPx) {
     const halfW = viewport.cx / viewport.zoom;
     const halfH = viewport.cy / viewport.zoom;
-    return { minX: px - halfW - padPx, minY: py - halfH - padPx, maxX: px + halfW + padPx, maxY: py + halfH + padPx };
+    const centerX = viewport.x ?? px;
+    const centerY = viewport.y ?? py;
+    return { minX: centerX - halfW - padPx, minY: centerY - halfH - padPx, maxX: centerX + halfW + padPx, maxY: centerY + halfH + padPx };
 }
 export function alignBoundsToHash(bounds, cellSize) {
     return {

@@ -120,13 +120,9 @@ export class StructureRenderer {
             const margin = spatialWorldMargin;
             return wallIndex ? wallIndex.collectInBounds(px - margin, py - margin, px + margin, py + margin, this._wallQuery) : input.walls;
         }
-        const bounds = alignBoundsToHash(getViewQueryBounds(viewport, px, py, this.settings.viewQueryPadPx), wallIndex.cellSize);
-        const cellSize = wallIndex.cellSize;
-        const minCol = Math.floor(bounds.minX / cellSize);
-        const maxCol = Math.floor((bounds.maxX - 1) / cellSize);
-        const minRow = Math.floor(bounds.minY / cellSize);
-        const maxRow = Math.floor((bounds.maxY - 1) / cellSize);
-        const queryKey = `${minCol}|${minRow}|${maxCol}|${maxRow}|${input.walls.length}`;
+        const rawBounds = getViewQueryBounds(viewport, px, py, this.settings.viewQueryPadPx);
+        const bounds = alignBoundsToHash(rawBounds, wallIndex.cellSize);
+        const queryKey = `${rawBounds.minX}|${rawBounds.minY}|${rawBounds.maxX}|${rawBounds.maxY}|${input.walls.length}`;
         if (queryKey !== this._lastQueryKey) {
             this._lastQueryKey = queryKey;
             this._cachedWalls = wallIndex.collectInBounds(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY, this._wallQuery);
