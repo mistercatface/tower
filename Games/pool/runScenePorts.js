@@ -1,15 +1,11 @@
-import { gridSettings } from "../../Config/Config.js";
 import { markRadioTriggersSeen } from "../../Libraries/RunScene/index.js";
-import { poolWorldGen } from "./worldGen.js";
+import { getPoolLayout } from "./config/tableLayout.js";
 import { poolRadioRegistry } from "./wireRadio.js";
 /** @typedef {import("../../Libraries/RunScene/runScenePorts.js").RunScenePorts} RunScenePorts */
 /** @type {RunScenePorts} */
 export const poolRunScenePorts = {
     getLayout(state) {
-        const mapNode = state.getStartMapNode?.();
-        if (!mapNode) return null;
-        const worldCoords = state.getNodeWorldCoords(mapNode);
-        return poolWorldGen.getStartLayout(worldCoords.x, worldCoords.y, gridSettings.cellSize);
+        return getPoolLayout(state);
     },
     radioRegistry: poolRadioRegistry,
     markRadiosSeen(state, triggers) {

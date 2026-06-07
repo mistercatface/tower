@@ -1,3 +1,4 @@
+import { gridSettings } from "../../../Config/Config.js";
 import { buildRackPositions } from "./rackLayout.js";
 /** Grid size for the pool table wall bake (cells). */
 export const TABLE_COLS = 44;
@@ -87,4 +88,9 @@ export function buildPoolStartLayout(px, py, cellSize) {
         spawnSlots: { head: headSpot, foot: footSpot },
         ballSpawns: { cue: headSpot, rack: buildRackPositions(footSpot, POOL_BALL_RADIUS) },
     };
+}
+/** Layout for the current run, anchored to map spawn origin. */
+export function getPoolLayout(state) {
+    const { x, y } = state.getMapSpawnOrigin();
+    return buildPoolStartLayout(x, y, gridSettings.cellSize);
 }

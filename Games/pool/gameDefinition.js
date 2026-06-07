@@ -1,8 +1,6 @@
 import { PoolSimulationState } from "./PoolSimulationState.js";
-import { registerPoolEntities } from "./config/entities.js";
 import { MINIMAL_ARENA_BOOTSTRAP } from "../../Libraries/Bootstrap/presets.js";
 import { poolRunScenePort } from "./runScenePort.js";
-import { poolRenderPorts, poolTargeting } from "./ports.js";
 import { poolSimulation } from "./simulation.js";
 import { poolUiPort } from "./ui/poolUiPort.js";
 import { poolWorldGen } from "./worldGen.js";
@@ -12,7 +10,10 @@ import { getWorldPropRecipes } from "../../Libraries/Content/PropCatalog.js";
 import { registerCueStickRecipe } from "../../Libraries/CueStick/registerCueStick.js";
 import { poolProceduralDesign, poolSurfaceProfileId } from "./config/proceduralDesign.js";
 import { LANDSCAPE_MINIMAL_UI } from "../../Core/GameUiProfile.js";
-import { createSingleArenaRunBootstrapPort } from "../../Libraries/RunBootstrap/presets/singleArena.js";
+import { createRunBootstrapPort } from "../../Libraries/RunBootstrap/RunBootstrapPipeline.js";
+import { generateWorldPhase, initRunStatePhase } from "../../Libraries/RunBootstrap/phases.js";
+import { emptyTargeting } from "../../Libraries/Targeting/emptyTargeting.js";
+import { createDefaultRenderPorts } from "../../Libraries/Render/defaultRenderPorts.js";
 /** @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition */
 /**
  * Pool — rectangular table, drag-to-shoot cue, full 15-ball rack, 6 pockets.
@@ -27,10 +28,10 @@ export const poolGame = {
     worldSurface: { wallHeight: 20 },
     simulationPort: poolSimulation,
     uiPort: poolUiPort,
-    targeting: poolTargeting,
-    render: poolRenderPorts,
+    targeting: emptyTargeting,
+    render: createDefaultRenderPorts(),
     worldGen: poolWorldGen,
-    runBootstrapPort: createSingleArenaRunBootstrapPort(),
+    runBootstrapPort: createRunBootstrapPort([initRunStatePhase, generateWorldPhase]),
     bootstrapPort: MINIMAL_ARENA_BOOTSTRAP,
     runScenePort: poolRunScenePort,
     radioPort: poolRadioPort,
@@ -42,7 +43,6 @@ export const poolGame = {
     initialState: "simulation",
     prepare() {
         document.title = "Pool";
-        registerPoolEntities();
         registerCueStickRecipe(getWorldPropRecipes());
     },
 };
