@@ -20,6 +20,18 @@ export function separateAlongNormal(a, b, normalX, normalY, overlap, massA, mass
     b.x += normalX * overlap * (massA / totalMass);
     b.y += normalY * overlap * (massA / totalMass);
 }
+/** Circle centers closer than this share no valid contact normal — unstack only, no impulse. */
+export const COINCIDENT_CIRCLE_EPS = 1e-10;
+/**
+ * Positional unstack when circle centers coincide (invalid state; breaks symmetry for next pass).
+ * @param {{ x: number, y: number }} a — mutated in place
+ * @param {{ x: number, y: number }} b — mutated in place
+ */
+export function separateCoincidentCirclePair(a, b, overlap, massA, massB) {
+    const totalMass = massA + massB;
+    a.x -= overlap * (massB / totalMass);
+    b.x += overlap * (massA / totalMass);
+}
 /**
  * @param {{ x: number, y: number }} entity
  * @returns {{ cx: number, cy: number }}
