@@ -1,14 +1,6 @@
 import { hideCueStick } from "../../Libraries/CueStick/cueStickController.js";
 import { getCueBall, ensurePoolState, allBallsStopped, POOL_CUE_TAG, POOL_OBJECT_TAG, respotCueBall } from "./balls.js";
-/**
- * @param {object} ball
- * @param {{ x: number, y: number, radius: number }} pocket
- */
-function ballInPocket(ball, pocket) {
-    const dx = ball.x - pocket.x;
-    const dy = ball.y - pocket.y;
-    return dx * dx + dy * dy <= pocket.radius * pocket.radius;
-}
+import { isBallInPocket } from "./config/tableLayout.js";
 /**
  * @param {object} state
  * @param {object} layout
@@ -22,7 +14,7 @@ export function processPockets(state, layout) {
         if (ball.isDead || (!ball[POOL_CUE_TAG] && !ball[POOL_OBJECT_TAG])) continue;
         let sunk = false;
         for (let p = 0; p < layout.pockets.length; p++)
-            if (ballInPocket(ball, layout.pockets[p])) {
+            if (isBallInPocket(ball, layout.pockets[p])) {
                 sunk = true;
                 break;
             }

@@ -74,7 +74,8 @@ export class Renderer {
         const features = getCombatFeatures();
         const entityPasses = state.entityLayers.map((layer) => ({ zIndex: layer.zIndex, fn: (state, viewport) => this.renderEntityCollection(state[layer.key], state, viewport) }));
         const enabledEffects = this.effectPasses.filter((pass) => !pass.feature || features[pass.feature] !== false);
-        const pipeline = [...enabledEffects, ...entityPasses];
+        const portPasses = (getRenderPorts().simulationEffectPasses ?? []).map((pass) => ({ zIndex: pass.zIndex, fn: (state, viewport) => pass.draw(state, viewport, this.ctx) }));
+        const pipeline = [...enabledEffects, ...portPasses, ...entityPasses];
         pipeline.sort((a, b) => a.zIndex - b.zIndex);
         this._simulationPipeline = pipeline.map((p) => p.fn);
     }

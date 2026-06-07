@@ -98,30 +98,12 @@ export class PoolSimulationState {
         } else ctx.viewport.updateZoomLimits(ctx.state);
         ctx.viewport.snapTo(cx, cy);
     }
-    /** World-anchored canvas overlay — cue aim line + pocket rings (status text is DOM via poolUiPort). */
+    /** World-anchored canvas overlay — cue aim line (pockets + status text are elsewhere). */
     /** @param {object} ctx */
     _drawWorldOverlay(ctx) {
         const canvasCtx = ctx.renderer.ctx;
         const { viewport } = ctx;
-        const layout = getRunScenePort().getLayout(ctx.state);
-        if (!layout) return;
         const pool = ensurePoolState(ctx.state);
-        canvasCtx.save();
-        canvasCtx.setTransform(1, 0, 0, 1, 0, 0);
-        if (layout.pockets && !pool.won)
-            for (let i = 0; i < layout.pockets.length; i++) {
-                const pocket = layout.pockets[i];
-                const screen = viewport.worldToScreen(pocket.x, pocket.y);
-                const r = pocket.radius * viewport.zoom;
-                canvasCtx.beginPath();
-                canvasCtx.fillStyle = "rgba(0, 0, 0, 0.45)";
-                canvasCtx.arc(screen.x, screen.y, r, 0, Math.PI * 2);
-                canvasCtx.fill();
-                canvasCtx.strokeStyle = "rgba(0, 255, 204, 0.35)";
-                canvasCtx.lineWidth = 2;
-                canvasCtx.stroke();
-            }
-        canvasCtx.restore();
         if (pool.phase === "aiming" && pool.aim?.active) {
             const aimLine = getCueAimLinePreview(ctx.state);
             const preview = getAimPreview(ctx.state);

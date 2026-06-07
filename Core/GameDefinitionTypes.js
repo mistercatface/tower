@@ -23,9 +23,15 @@
  * @property {(actor: object, target: object, state: object, range: number, blocksTargeting: boolean, opts?: { requireLos?: boolean }) => boolean} isValidTurretTarget
  */
 /**
+ * @typedef {object} SimulationEffectPass
+ * @property {number} zIndex
+ * @property {(state: object, viewport: object, ctx: CanvasRenderingContext2D) => void} draw
+ */
+/**
  * @typedef {object} RenderPorts
  * @property {Record<string, Function>} world3dPropRecipes
  * @property {object} kinematicsPorts
+ * @property {SimulationEffectPass[]} [simulationEffectPasses]
  */
 /**
  * @typedef {object} WorldGenStrategy

@@ -64,27 +64,74 @@ export function getTableWorldBounds(offsetX, offsetY, cellSize, cols = TABLE_COL
         height: rows * cellSize,
     };
 }
+/** Felt playfield inside the rail ring (same carve as `PoolTableStrategy`). */
+export function getPlayfieldBounds(offsetX, offsetY, cellSize, cols = TABLE_COLS, rows = TABLE_ROWS) {
+    const rail = TABLE_RAIL_CELLS * cellSize;
+    const table = getTableWorldBounds(offsetX, offsetY, cellSize, cols, rows);
+    return { minX: table.minX + rail, minY: table.minY + rail, maxX: table.maxX - rail, maxY: table.maxY - rail, centerX: table.centerX, centerY: table.centerY };
+}
+/** @typedef {'corner-tl' | 'corner-tr' | 'corner-bl' | 'corner-br' | 'side-top' | 'side-bottom'} PoolPocketKind */
+/** @typedef {{ x: number, y: number, radius: number, kind: PoolPocketKind }} PoolPocket */
 /**
- * Six pocket sensor positions (world coords) inset from playfield corners and side middles.
+ * Six pockets — center on inner felt corners (quarter circle) or inner long-rail midpoints (half circle).
  *
  * @param {number} offsetX
  * @param {number} offsetY
  * @param {number} cellSize
- * @returns {{ x: number, y: number, radius: number }[]}
+ * @returns {PoolPocket[]}
  */
 export function getPocketPositions(offsetX, offsetY, cellSize) {
-    const rail = TABLE_RAIL_CELLS * cellSize;
-    const w = TABLE_COLS * cellSize;
-    const h = TABLE_ROWS * cellSize;
-    const inset = rail + POCKET_RADIUS * 0.55;
+    const play = getPlayfieldBounds(offsetX, offsetY, cellSize);
+    const r = POCKET_RADIUS;
     return [
-        { x: offsetX + inset, y: offsetY + inset, radius: POCKET_RADIUS },
-        { x: offsetX + w / 2, y: offsetY + inset, radius: POCKET_RADIUS },
-        { x: offsetX + w - inset, y: offsetY + inset, radius: POCKET_RADIUS },
-        { x: offsetX + inset, y: offsetY + h - inset, radius: POCKET_RADIUS },
-        { x: offsetX + w / 2, y: offsetY + h - inset, radius: POCKET_RADIUS },
-        { x: offsetX + w - inset, y: offsetY + h - inset, radius: POCKET_RADIUS },
+        { x: play.minX, y: play.minY, radius: r, kind: "corner-tl" },
+        { x: play.centerX, y: play.minY, radius: r, kind: "side-top" },
+        { x: play.maxX, y: play.minY, radius: r, kind: "corner-tr" },
+        { x: play.minX, y: play.maxY, radius: r, kind: "corner-bl" },
+        { x: play.centerX, y: play.maxY, radius: r, kind: "side-bottom" },
+        { x: play.maxX, y: play.maxY, radius: r, kind: "corner-br" },
     ];
+}
+/** Canvas arc sweep for a pocket mouth opening into the table (clockwise radians). */
+export function getPocketArcAngles(kind) {
+    switch (kind) {
+        case "corner-tl":
+            return { start: 0, end: Math.PI / 2 };
+        case "corner-tr":
+            return { start: Math.PI / 2, end: Math.PI };
+        case "corner-bl":
+            return { start: (3 * Math.PI) / 2, end: Math.PI * 2 };
+        case "corner-br":
+            return { start: Math.PI, end: (3 * Math.PI) / 2 };
+        case "side-top":
+            return { start: 0, end: Math.PI };
+        case "side-bottom":
+            return { start: Math.PI, end: Math.PI * 2 };
+        default:
+            return { start: 0, end: Math.PI * 2 };
+    }
+}
+/** @param {object} ball @param {PoolPocket} pocket */
+export function isBallInPocket(ball, pocket) {
+    const dx = ball.x - pocket.x;
+    const dy = ball.y - pocket.y;
+    if (dx * dx + dy * dy > pocket.radius * pocket.radius) return false;
+    switch (pocket.kind) {
+        case "corner-tl":
+            return ball.x >= pocket.x && ball.y >= pocket.y;
+        case "corner-tr":
+            return ball.x <= pocket.x && ball.y >= pocket.y;
+        case "corner-bl":
+            return ball.x >= pocket.x && ball.y <= pocket.y;
+        case "corner-br":
+            return ball.x <= pocket.x && ball.y <= pocket.y;
+        case "side-top":
+            return ball.y >= pocket.y;
+        case "side-bottom":
+            return ball.y <= pocket.y;
+        default:
+            return true;
+    }
 }
 /**
  * @param {number} px

@@ -12,7 +12,7 @@ import { LANDSCAPE_MINIMAL_UI } from "../../Core/GameUiProfile.js";
 import { createRunBootstrapPort } from "../../Libraries/RunBootstrap/RunBootstrapPipeline.js";
 import { generateWorldPhase, initRunStatePhase } from "../../Libraries/RunBootstrap/phases.js";
 import { emptyTargeting } from "../../Libraries/Targeting/emptyTargeting.js";
-import { createDefaultRenderPorts } from "../../Libraries/Render/defaultRenderPorts.js";
+import { poolRenderPorts } from "./renderPorts.js";
 /** @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition */
 /**
  * Pool — rectangular table, drag-to-shoot cue, full 15-ball rack, 6 pockets.
@@ -29,7 +29,7 @@ export const poolGame = {
     simulationPort: poolSimulation,
     uiPort: poolUiPort,
     targeting: emptyTargeting,
-    render: createDefaultRenderPorts(),
+    render: poolRenderPorts,
     worldGen: poolWorldGen,
     runBootstrapPort: createRunBootstrapPort([initRunStatePhase, generateWorldPhase]),
     bootstrapPort: MINIMAL_ARENA_BOOTSTRAP,
