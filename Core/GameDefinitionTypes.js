@@ -80,7 +80,7 @@
  */
 /**
  * @typedef {object} RunScenePort
- * @property {import("../Libraries/RunScene/runScenePorts.js").RunScenePorts} ports
+ * @property {import("../Libraries/RunScene/runScenePorts.js").RunScenePorts} [ports] — tower injects layout/radio helpers for FSM behaviors
  * @property {(state: object) => object | null} getLayout
  * @property {(ctx: object) => void} onSimulationEnter
  * @property {(ctx: object, dt: number) => void} onTick

@@ -3,7 +3,7 @@ import { applyVelocityDamping } from "../Libraries/Motion/index.js";
 import { IDENTITY_ROLL_QUAT } from "../Libraries/Props/rollingMotion.js";
 import { integratePropMotion } from "../Libraries/Props/propMotion.js";
 import { HIT_BEHAVIOR_HANDLERS } from "../Libraries/Props/hitBehaviors.js";
-import { initStandTipState } from "../Libraries/Props/standTipMotion.js";
+import { initStandTipState, isStandTipActive } from "../Libraries/Props/standTipMotion.js";
 import { withPropStrategyDefaults } from "../Libraries/Props/propStrategy.js";
 import { getPropAsset, getWorldPropDefinitions } from "../Libraries/Content/PropCatalog.js";
 import { transitionEntity } from "../Libraries/FSM/transition.js";
@@ -145,7 +145,7 @@ export class Pickup extends Entity {
     }
     update(dt, state, spatialFrame, { resolveWalls = false } = {}) {
         this.ageMs += dt;
-        if (this.isSleeping && !this.strategy?.standTip) return;
+        if (this.isSleeping && (!this.strategy?.standTip || !isStandTipActive(this))) return;
         if (this.strategy.rolls || this.strategy.standTip) integratePropMotion(this, dt);
         else applyVelocityDamping(this, dt, { friction: this.strategy.friction });
         if (resolveWalls && this.strategy.isPushable && this.needsWallCollision()) state.wallResolver.resolve(this, spatialFrame);

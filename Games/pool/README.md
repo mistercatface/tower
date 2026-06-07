@@ -16,12 +16,13 @@ import { poolGame } from "./Games/pool/gameDefinition.js";
 createGame(poolGame);
 ```
 
-Skip intro: `?scene=play`
+Skip opening coach line: `?scene=play`
 
 ## Architecture
 
 | Module                   | Role                                                        |
 | ------------------------ | ----------------------------------------------------------- |
+| `runScenePort.js`        | Run enter/tick: spawn balls, pockets, opening/clear radios  |
 | `PoolTableStrategy.js`   | Rectangular rail walls                                      |
 | `config/tableLayout.js`  | Table size, pockets, ball spawns                            |
 | `shotInput.js`           | Drag aim + strike                                           |

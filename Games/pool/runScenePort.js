@@ -1,18 +1,28 @@
-import { ensureRunScene } from "../../Libraries/RunScene/runSceneState.js";
+import { fireRadioTrigger } from "../../Core/EventSystem.js";
+import { markRadioTriggersSeen } from "../../Libraries/RunScene/markRadioTriggersSeen.js";
 import { spawnPoolBalls, ensurePoolState } from "./balls.js";
-import { getStartRunAtScene, runSceneController } from "./config/runScenes.js";
+import { getPoolLayout } from "./config/tableLayout.js";
 import { processPockets } from "./pockets.js";
-import { poolRunScenePorts } from "./runScenePorts.js";
+import { poolRadioRegistry } from "./wireRadio.js";
 /** @typedef {import("../../Core/GameDefinitionTypes.js").RunScenePort} RunScenePort */
+/** Dev shortcut: `?scene=play` skips the opening coach radio. */
+function shouldSkipOpeningRadio() {
+    if (typeof window === "undefined") return false;
+    const scene = new URLSearchParams(window.location.search).get("scene");
+    return scene === "play" || scene === "match";
+}
 function clearNonPoolPickups(state) {
     if (!state.pickups) return;
     state.pickups.length = 0;
 }
+function snapCameraToTable(state, ctx) {
+    const layout = getPoolLayout(state);
+    if (layout?.tableCenterX != null && ctx?.viewport) ctx.viewport.snapTo(layout.tableCenterX, layout.tableCenterY);
+}
 /** @type {RunScenePort} */
 export const poolRunScenePort = {
-    ports: poolRunScenePorts,
     getLayout(state) {
-        return poolRunScenePorts.getLayout(state);
+        return getPoolLayout(state);
     },
     onSimulationEnter(ctx) {
         const { state } = ctx;
@@ -20,26 +30,26 @@ export const poolRunScenePort = {
         state.allies = [];
         if (!state.runSceneInitialized) {
             state.pool = null;
-            runSceneController.reset();
-            runSceneController.startAt(getStartRunAtScene(), state, ctx);
+            if (shouldSkipOpeningRadio()) markRadioTriggersSeen(state, ["break_shot"], poolRadioRegistry);
             state.runSceneInitialized = true;
             state.poolBallsSpawned = false;
         }
-        runSceneController.enterCurrentScene(state, ctx, { applySpawn: true });
+        snapCameraToTable(state, ctx);
         if (!state.poolBallsSpawned) {
             clearNonPoolPickups(state);
-            spawnPoolBalls(state, poolRunScenePorts.getLayout(state));
+            spawnPoolBalls(state, getPoolLayout(state));
             state.poolBallsSpawned = true;
+            if (!shouldSkipOpeningRadio()) fireRadioTrigger("break_shot", null, state);
         }
     },
     onTick(ctx, _dt) {
         const { state } = ctx;
-        const layout = poolRunScenePorts.getLayout(state);
-        const runScene = ensureRunScene(state);
-        processPockets(state, layout);
+        processPockets(state, getPoolLayout(state));
         const pool = ensurePoolState(state);
-        if (pool.won && !runScene.match?.won) runScene.match = { won: true };
-        runSceneController.tick(state, ctx);
+        if (pool.won && !pool.clearRadioFired) {
+            pool.clearRadioFired = true;
+            fireRadioTrigger("table_clear", null, state);
+        }
     },
     getCapabilities(_state) {
         return { horde: false, blockTurret: false };

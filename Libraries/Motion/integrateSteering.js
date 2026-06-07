@@ -2,6 +2,7 @@
  * Top-down steering integration (desired direction → velocity → position).
  * NOT Libraries/Kinematics (ragdoll/gore) — see Libraries/Motion/index.js for roadmap.
  */
+import { normalizeAngle } from "../Math/Angle.js";
 import { addXY, lengthXY, normalizeXY } from "../Math/Vec2.js";
 /** @typedef {import("../Agent/types.js").MobileAgent} MobileAgent */
 /**

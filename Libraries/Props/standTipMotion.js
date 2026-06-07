@@ -1,4 +1,5 @@
 import { resolveBodyRadius } from "../Motion/bodyDefaults.js";
+import { lengthXY } from "../Math/Vec2.js";
 import { integrateLongAxisRoll } from "./rollingMotion.js";
 import { syncLongAxisCollisionShape } from "./longAxisCollision.js";
 import { convertStandTipToFallenLog, isStandTipFallen, isStandTipProp } from "../Spatial/transforms/longAxisBox3d.js";
@@ -33,7 +34,14 @@ export function isStandTipActive(body) {
     const fallAngle = body.strategy?.tipFallAngle ?? DEFAULT_FALL_ANGLE;
     return Math.abs(rollOmega) > 0.04 || (rollAngle > 0.03 && rollAngle < fallAngle - 0.03);
 }
-/**
+/** True when tip physics or wall probes are needed this frame (idle upright barrels → false). */
+export function needsStandTipIntegration(body) {
+    if (!isStandTipProp(body) || body.isFallen) return false;
+    if (isStandTipActive(body)) return true;
+    if (Math.abs(body.angularVelocity ?? 0) > 0.04) return true;
+    const pushThreshold = body.strategy?.tipPushSpeed ?? 9;
+    return lengthXY(body.vx ?? 0, body.vy ?? 0) > pushThreshold;
+} /**
  * Tip integration after collisions — same frame as actor shoves.
  *
  * @param {object} state
@@ -45,7 +53,7 @@ export function integrateStandTipsAfterCollisions(state, dtMs) {
     for (let i = 0; i < state.pickups.length; i++) {
         const pickup = state.pickups[i];
         if (pickup.isDead || !isStandTipProp(pickup)) continue;
-        if (!pickup.isFallen) integrateStandTip(pickup, dtMs, { wallCtx });
+        if (!pickup.isFallen && needsStandTipIntegration(pickup)) integrateStandTip(pickup, dtMs, { wallCtx });
         syncLongAxisCollisionShape(pickup);
     }
 }

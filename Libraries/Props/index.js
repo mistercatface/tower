@@ -1,6 +1,6 @@
 export { PROP_STRATEGY_DEFAULTS, withPropStrategyDefaults, resolvePropQuantizeSteps } from "./propStrategy.js";
 export { integratePropMotion } from "./propMotion.js";
-export { integrateStandTipMotion, integrateStandTip, integrateStandTipsAfterCollisions, initStandTipState, isStandTipActive } from "./standTipMotion.js";
+export { integrateStandTipMotion, integrateStandTip, integrateStandTipsAfterCollisions, initStandTipState, isStandTipActive, needsStandTipIntegration } from "./standTipMotion.js";
 export { applyActorPushTipImpulse } from "./actorPushTip.js";
 export { syncLongAxisCollisionShape, usesLongAxisCollisionShape } from "./longAxisCollision.js";
 export { measureTipFallWallBlock, measureTipFallWallBlockFromState } from "./tipWallSupport.js";
