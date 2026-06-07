@@ -12,6 +12,8 @@ import { LIBRARY_KINEMATICS_PIXEL_SIZE } from "../Libraries/Motion/bodyDefaults.
 export const defaultPropPixelSize = LIBRARY_KINEMATICS_PIXEL_SIZE;
 /** @type {number | null} */
 let activePropPixelSize = null;
+/** @type {boolean} */
+let activeForcePropPixelSize = false;
 /** @returns {number | null} */
 export function getActivePropPixelSize() {
     return activePropPixelSize;
@@ -25,6 +27,7 @@ export function resolvePropPixelSize(definition) {
 /** @param {import("./GameDefinitionTypes.js").GameDefinition} definition */
 export function applyGamePropPixelSize(definition) {
     activePropPixelSize = resolvePropPixelSize(definition);
+    activeForcePropPixelSize = !!definition?.forcePropPixelSize;
     clearPropSpriteCache();
 }
 /**
@@ -36,6 +39,6 @@ export function applyGamePropPixelSize(definition) {
  */
 export function resolvePropBakeScale(worldDiameter, pixelSize = activePropPixelSize) {
     if (!pixelSize || worldDiameter <= 0) return 1;
-    const bakeDiameter = Math.max(pixelSize, worldDiameter);
+    const bakeDiameter = activeForcePropPixelSize ? pixelSize : Math.max(pixelSize, worldDiameter);
     return bakeDiameter / worldDiameter;
 }

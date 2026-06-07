@@ -43,13 +43,15 @@ const labelCache = new Map();
 export function getPoolBallLabelImage(poolBall) {
     const key = `${poolBall.kind}_${poolBall.number ?? 0}_${LABEL_SIZE}`;
     if (labelCache.has(key)) return labelCache.get(key);
-
     if (poolBall.kind === "cue") {
         const canvas = new OffscreenCanvas(LABEL_SIZE, LABEL_SIZE);
         const ctx = canvas.getContext("2d");
         const cx = LABEL_SIZE * 0.5;
         const cy = LABEL_SIZE * 0.5;
         const dotR = LABEL_SIZE * 0.28; // visible red dot
+        // Fill the canvas with the cue ball's solid base color to avoid transparency bleeding artifacts
+        ctx.fillStyle = "#F5F5F0";
+        ctx.fillRect(0, 0, LABEL_SIZE, LABEL_SIZE);
         ctx.fillStyle = "#D32F2F";
         ctx.beginPath();
         ctx.arc(cx, cy, dotR, 0, Math.PI * 2);
@@ -57,7 +59,6 @@ export function getPoolBallLabelImage(poolBall) {
         labelCache.set(key, canvas);
         return canvas;
     }
-
     if (!poolBall.number) return null;
     const canvas = new OffscreenCanvas(LABEL_SIZE, LABEL_SIZE);
     const ctx = canvas.getContext("2d");

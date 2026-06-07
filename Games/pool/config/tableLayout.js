@@ -5,14 +5,25 @@ export const TABLE_COLS = 24;
 export const TABLE_ROWS = 44;
 export const TABLE_RAIL_CELLS = 2;
 /** Pool ball radius in world units (physics + render). */
-export const POOL_BALL_RADIUS = 12;
+export let POOL_BALL_RADIUS = 12;
 /** Pocket sensor radius for corner pockets in world units. */
-export const CORNER_POCKET_RADIUS = POOL_BALL_RADIUS * 2.375;
+export let CORNER_POCKET_RADIUS = POOL_BALL_RADIUS * 2.375;
 /** Pocket sensor radius for side pockets in world units. */
-export const SIDE_POCKET_RADIUS = POOL_BALL_RADIUS * 2.0;
-export const POCKET_RADIUS = SIDE_POCKET_RADIUS;
+export let SIDE_POCKET_RADIUS = POOL_BALL_RADIUS * 2.0;
+export let POCKET_RADIUS = SIDE_POCKET_RADIUS;
 /** Pocket drop depth below ground level in world units. */
-export const POOL_POCKET_DEPTH = POOL_BALL_RADIUS * 3.0;
+export let POOL_POCKET_DEPTH = POOL_BALL_RADIUS * 3.0;
+/**
+ * Dynamically override the pool ball radius and update all dependent values.
+ * @param {number} r
+ */
+export function setPoolBallRadius(r) {
+    POOL_BALL_RADIUS = r;
+    CORNER_POCKET_RADIUS = r * 2.375;
+    SIDE_POCKET_RADIUS = r * 2.0;
+    POCKET_RADIUS = SIDE_POCKET_RADIUS;
+    POOL_POCKET_DEPTH = r * 3.0;
+}
 /** Below this speed (world units/s), felt drag ramps up so balls don't creep at the end. */
 export const POOL_BALL_LOW_SPEED_THRESHOLD = 10;
 export const POOL_BALL_LOW_SPEED_FRICTION = 2.8;
