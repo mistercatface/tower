@@ -1,9 +1,10 @@
 import { inspectBridge } from "../../Combat/inspect/InspectBridge.js";
-import { getBootstrapPort, getInspectPort, getRadioPort } from "../../Core/GamePorts.js";
-import { requestGamePause, requestGameResume } from "../../Core/EventSystem.js";
+import { getBootstrapPort, getInspectPort, getRadioPort, getUiPort } from "../../Core/GamePorts.js";
+import { Events, requestGamePause, requestGameResume } from "../../Core/EventSystem.js";
 import { InputManager } from "../../Core/InputManager.js";
 import { loadPersistentTriggers } from "../../Core/PersistentTriggers.js";
-import { mountUiPort, registerUiEventListeners } from "../../UI/Core/mountUiPort.js";
+import { registerSharedOverlayListeners } from "../../UI/Core/sharedOverlays.js";
+import { clearGameChrome } from "../../UI/Core/uiRoot.js";
 import { preloadAllInspectAssets } from "../../Libraries/Inspect/InspectCatalog.js";
 import { initializeSaveSystem, loadProgress } from "../../Progression/Storage.js";
 import { StatsManager } from "../../Progression/StatsManager.js";
@@ -20,6 +21,16 @@ import { StatsManager } from "../../Progression/StatsManager.js";
  * @property {() => void} resetGame
  * @property {() => void} resizeCanvas
  */
+/** @param {import("../../Libraries/Events/EventBus.js").EventBus} eventBus */
+function registerUiEventListeners(eventBus) {
+    eventBus.on(Events.UI_UPDATE, (data) => {
+        getUiPort().updateUI({ state: data.state, upgrades: data.upgrades });
+    });
+    eventBus.on(Events.UI_UPDATE_HUD, (data) => {
+        getUiPort().updateHud({ state: data.state, upgrades: data.upgrades });
+    });
+    registerSharedOverlayListeners(eventBus);
+}
 /**
  * Feature-gated createGame tail — no tower assumptions.
  *
@@ -40,7 +51,8 @@ export function applyGameBootstrap(ctx) {
         initializeSaveSystem(state);
     }
     if (features.persistentTriggers) loadPersistentTriggers();
-    mountUiPort({ state, upgrades });
+    clearGameChrome();
+    getUiPort().mount({ state, upgrades });
     if (features.inspect) {
         inspectBridge.mount();
         getInspectPort().registerEntries?.();

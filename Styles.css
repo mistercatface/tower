@@ -61,10 +61,6 @@ body.shell-landscape-minimal #bottomArea.shell-controls-only #controlsBar {
     margin: 0;
 }
 
-body.shell-landscape-minimal #topUI {
-    justify-content: flex-end;
-}
-
 body.shell-landscape-minimal #gameOverUI {
     padding-bottom: 0;
 }

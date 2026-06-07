@@ -14,8 +14,15 @@ import { towerUiPort } from "./ui/towerUiPort.js";
 import { createRoguelikeRunBootstrapPort } from "../../Libraries/RunBootstrap/presets/roguelikeMap.js";
 import { towerWorldGen } from "./worldGen.js";
 import { towerProceduralDesign } from "./config/surfaceProfiles.js";
-import { TOWER_UI_PROFILE } from "./uiProfile.js";
 /** @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition */
+/** @typedef {import("../../Core/GameUiProfile.js").GameUiProfile} GameUiProfile */
+/** @type {GameUiProfile} */
+const TOWER_UI_PROFILE = {
+    shell: "tower",
+    chrome: { score: true, perks: true, map: true, settings: true, bottomPanel: true, controls: "full", zoomSlider: true },
+    combat: { entityBars: true, targetMarkers: true, combatHudModes: true, visibilityMask: true, hostileActors: true, playerActors: true, offScreenIndicators: true, globeOverlay: true },
+    lifecycle: "player-health",
+};
 /** Tower — reference game definition. Engine ports injected via interactionPairs, targeting, render. */
 export const towerGame = {
     id: "tower",
