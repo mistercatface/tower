@@ -1,5 +1,5 @@
 import { createUpgrades, createBaseUpgrades } from "../../Progression/Upgrades.js";
-import { MapState, SimulationState, InspectorState } from "../../GameState/GameStates.js";
+import { MapState, SimulationState, InspectorState } from "./states.js";
 import { COMBAT_ROGUELIKE_BOOTSTRAP } from "../../Libraries/Bootstrap/presets.js";
 import { towerInspectPort } from "./inspectPort.js";
 import { towerCombatPort } from "./combatPort.js";

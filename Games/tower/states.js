@@ -1,8 +1,8 @@
-import { FloatingText } from "../Render/FloatingText.js";
-import { requestUiUpdate, requestUiHudUpdate } from "../Core/EventSystem.js";
-import { inspectBridge } from "../Combat/inspect/InspectBridge.js";
-import { getInspectPort, getRunScenePort, getSimulationPort } from "../Core/GamePorts.js";
-import { resetSimulationWorld, handlePlayerRepositionTap, handlePlayerRepositionDrag } from "../Systems/Simulation/index.js";
+import { FloatingText } from "../../Render/FloatingText.js";
+import { requestUiUpdate, requestUiHudUpdate } from "../../Core/EventSystem.js";
+import { inspectBridge } from "../../Combat/inspect/InspectBridge.js";
+import { getInspectPort, getRunScenePort, getSimulationPort } from "../../Core/GamePorts.js";
+import { resetSimulationWorld, handlePlayerRepositionTap, handlePlayerRepositionDrag } from "../../Systems/Simulation/index.js";
 export class MapState {
     onEnter(ctx) {
         requestUiUpdate();
