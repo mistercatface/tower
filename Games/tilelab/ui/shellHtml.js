@@ -56,6 +56,10 @@ export const TILELAB_UI_HTML = `
                         <summary>Global</summary>
                         <div id="globalParamsPanel"></div>
                     </details>
+                    <div class="animation-stage" id="animationStage">
+                        <div class="animation-stage-header">Animation Preview</div>
+                        <canvas id="animationPreviewCanvas" width="256" height="256"></canvas>
+                    </div>
                     <details class="editor-block" open>
                         <summary>Export</summary>
                         <textarea id="profileExport" readonly></textarea>
@@ -110,10 +114,6 @@ export const TILELAB_UI_HTML = `
             <div class="map-container">
                 <div class="map-stage" id="mapStage">
                     <canvas id="mapPreview"></canvas>
-                </div>
-                <div class="animation-stage" id="animationStage">
-                    <div class="animation-stage-header">Animation Preview</div>
-                    <canvas id="animationPreviewCanvas" width="256" height="256"></canvas>
                 </div>
             </div>
         </section>

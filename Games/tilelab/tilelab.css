@@ -97,29 +97,32 @@
 }
 
 .animation-stage {
-    flex: 0 0 auto;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: var(--panel-solid);
-    padding: 16px;
-    border-left: 1px solid var(--border);
-    box-shadow: inset 1px 0 0 rgba(255,255,255,0.05);
+    align-items: stretch;
+    margin: 8px 0 12px;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
 }
 
 .animation-stage-header {
     font-size: 11px;
     color: var(--muted);
     text-transform: uppercase;
-    margin-bottom: 16px;
+    margin-bottom: 8px;
     letter-spacing: 0.05em;
 }
 
 #animationPreviewCanvas {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1;
     border: 1px solid var(--border);
     border-radius: 4px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     background: #000;
 }
 
