@@ -9,7 +9,6 @@ export function getPoolStatusMessage(state) {
     const pool = ensurePoolState(state);
     if (pool.won) return "You cleared the table!";
     if (pool.phase === "rolling") return "Rolling...";
-    if (pool.phase === "striking") return "";
     if (pool.aim?.active) {
         const preview = getAimPreview(state);
         if (preview && preview.currentDrag >= POOL_CUE_MIN_PULL_DRAG) return "Release to shoot";

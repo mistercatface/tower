@@ -1,20 +1,16 @@
 import { Pickup } from "../../Entities/Pickup.js";
-import { ensureCueStick } from "../../Libraries/CueStick/cueStickController.js";
 import { wakePushableBody } from "../../Libraries/Motion/pushableSleep.js";
 import { poolBallFromNumber } from "../../Libraries/Render/Props3D/poolBallArt.js";
 import { getCollisionSettings } from "../../Core/GameCollisionSettings.js";
 import { speedSqXY } from "../../Libraries/Math/Vec2.js";
-import { POOL_CUE_HX, POOL_CUE_MAX_PULL, POOL_CUE_MIN_PULL_DRAG, POOL_CUE_QUANTIZE_STEPS, POOL_OBJECT_BALL_COUNT } from "./config/tableLayout.js";
+import { POOL_OBJECT_BALL_COUNT } from "./config/tableLayout.js";
 export const POOL_CUE_TAG = "_poolCue";
 export const POOL_OBJECT_TAG = "_poolObject";
 /**
  * @param {object} state
  */
 export function ensurePoolState(state) {
-    if (!state.pool) {
-        state.pool = { phase: "aiming", objectRemaining: POOL_OBJECT_BALL_COUNT, won: false, aim: null };
-        ensureCueStick(state.pool, { hx: POOL_CUE_HX, maxPull: POOL_CUE_MAX_PULL, minPullDrag: POOL_CUE_MIN_PULL_DRAG, quantizeSteps: POOL_CUE_QUANTIZE_STEPS });
-    }
+    if (!state.pool) state.pool = { phase: "aiming", objectRemaining: POOL_OBJECT_BALL_COUNT, won: false, aim: null };
     return state.pool;
 }
 /**

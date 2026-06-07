@@ -1,16 +1,13 @@
 import { WeaponSystem } from "../../Combat/WeaponSystem.js";
 import { getRunScenePort } from "../../Core/GamePorts.js";
-import { beginCueStickStrike, hideCueStick } from "../../Libraries/CueStick/cueStickController.js";
-import { CUE_STICK_DEFAULTS } from "../../Libraries/CueStick/cueStickDefaults.js";
 import { resolveCueStickFromAnchorDrag } from "../../Libraries/CueStick/cueStickPhysics.js";
+import { applyCueStrikeCollision, CUE_BALL_RESTITUTION } from "../../Libraries/CueStick/cueStrikeCollision.js";
 import { circleLeadingPoint } from "../../Libraries/Spatial/geometry/circleContact.js";
 import { rayCircleHitDistance } from "../../Libraries/Spatial/query/circleCast.js";
-import { MAX_SHOT_POWER, MIN_SHOT_POWER, CUE_GRAB_RADIUS_PAD, POOL_BALL_RADIUS, POOL_CUE_HX, POOL_CUE_MAX_PULL, POOL_CUE_MIN_PULL_DRAG } from "./config/tableLayout.js";
+import { MAX_SHOT_POWER, MIN_SHOT_POWER, CUE_GRAB_RADIUS_PAD, POOL_BALL_RADIUS, POOL_CUE_MAX_PULL, POOL_CUE_PULL_SCALE, POOL_CUE_MIN_PULL_DRAG } from "./config/tableLayout.js";
 import { getCueBall, ensurePoolState, allBallsStopped, getActiveBalls } from "./balls.js";
-import { CUE_BALL_RESTITUTION } from "../../Libraries/CueStick/cueStrikeCollision.js";
-const { hy, height, rollAngle, pullScale } = CUE_STICK_DEFAULTS;
-const hx = POOL_CUE_HX;
 const maxPull = POOL_CUE_MAX_PULL;
+const pullScale = POOL_CUE_PULL_SCALE;
 const minPullDrag = POOL_CUE_MIN_PULL_DRAG;
 /** Finger drag at full cue pull-back. */
 const MAX_FINGER_DRAG = maxPull / pullScale;
@@ -35,19 +32,12 @@ function trackAimDrag(aim, physics) {
  */
 function resolveAimPhysics(cueBall, aim) {
     const resolved = resolveCueStickFromAnchorDrag({
-        ballX: cueBall.x,
-        ballY: cueBall.y,
-        ballRadius: cueBall.radius,
         anchorX: aim.anchorX,
         anchorY: aim.anchorY,
         gripX: aim.pullX,
         gripY: aim.pullY,
         pullScale,
         maxPull,
-        hx,
-        hy,
-        height,
-        rollAngle,
         lastShotNx: aim.shotNx,
         lastShotNy: aim.shotNy,
     });
@@ -96,7 +86,6 @@ export function tryBeginAim(state, worldX, worldY) {
 export function cancelAim(state) {
     const pool = ensurePoolState(state);
     pool.aim = null;
-    hideCueStick(pool);
 }
 /**
  * @param {object} state
@@ -139,13 +128,9 @@ export function releaseAimShot(state, worldX, worldY) {
     const nx = aim.shotNx;
     const ny = aim.shotNy;
     const power = computeShotPower(aim);
-    const pullBack = aim.currentPullBack ?? 0;
-    if (!beginCueStickStrike(pool, cue, { nx, ny, power, pullBack, maxPower: MAX_SHOT_POWER })) {
-        cancelAim(state);
-        return false;
-    }
+    applyCueStrikeCollision(cue, { nx, ny, power });
     pool.aim = null;
-    pool.phase = "striking";
+    pool.phase = "rolling";
     return true;
 }
 /**

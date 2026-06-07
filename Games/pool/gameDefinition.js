@@ -5,8 +5,6 @@ import { poolSimulation } from "./simulation.js";
 import { poolUiPort } from "./ui/poolUiPort.js";
 import { poolWorldGen } from "./worldGen.js";
 import { poolRadioPort } from "./radioPort.js";
-import { getWorldPropRecipes } from "../../Libraries/Content/PropCatalog.js";
-import { registerCueStickRecipe } from "../../Libraries/CueStick/registerCueStick.js";
 import { SURFACE_PROFILE_ID } from "../../Config/procedural/profileIds.js";
 import { LANDSCAPE_MINIMAL_UI } from "../../Core/GameUiProfile.js";
 import { createRunBootstrapPort } from "../../Libraries/RunBootstrap/RunBootstrapPipeline.js";
@@ -41,6 +39,5 @@ export const poolGame = {
     initialState: "simulation",
     prepare() {
         document.title = "Pool";
-        registerCueStickRecipe(getWorldPropRecipes());
     },
 };

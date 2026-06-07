@@ -23,12 +23,10 @@ export const MAX_SHOT_POWER = 1200;
 export const MIN_SHOT_POWER = 16;
 export const MIN_AIM_DRAG = 10;
 export const CUE_GRAB_RADIUS_PAD = 10;
-/** Cue stick deltas on `CUE_STICK_DEFAULTS` — ~700×384 world table. */
-export const POOL_CUE_HX = 78;
+/** Aim pull-back tuning — ~700×384 world table. */
 export const POOL_CUE_MAX_PULL = 75;
+export const POOL_CUE_PULL_SCALE = 0.55;
 export const POOL_CUE_MIN_PULL_DRAG = 3;
-/** Smooth 3D bake rotation while aiming (library default is 16). */
-export const POOL_CUE_QUANTIZE_STEPS = { facing: 256, roll: 256 };
 export const POOL_OBJECT_BALL_COUNT = 15;
 /** Standard 8-ball triangle: 1 on the foot-spot apex, 8 in the center, solid (6) and stripe (9) on the back corners. */
 const RACK_BALL_NUMBERS = [[1], [10, 2], [11, 8, 3], [12, 4, 13, 5], [6, 14, 7, 15, 9]];
