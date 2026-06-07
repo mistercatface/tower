@@ -1,5 +1,5 @@
 import { Stat } from "../../../GameState/Stat.js";
-import { defaultUpgradeCost } from "../../../Config/Config.js";
+import { defaultUpgradeCost } from "../config/towerConfig.js";
 export function createCombatantStats(baseStats) {
     return {
         turnSpeed: new Stat(baseStats.turnSpeed),

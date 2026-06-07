@@ -1,9 +1,8 @@
 import { Entity } from "../../../../Entities/Entity.js";
-import { explosionSettings } from "../../../../Config/Config.js";
+import { explosionSettings } from "../../config/towerConfig.js";
 import { ExplosionStrategies } from "./ExplosionStrategies.js";
 import { standardExplosionPhases } from "./ExplosionPhases.js";
 import { transitionPhase } from "../../../../Libraries/FSM/transition.js";
-
 export class Explosion extends Entity {
     static updateAll(state, dt, allEvents, spatialFrame) {
         if (!state.explosions) return;
@@ -17,7 +16,6 @@ export class Explosion extends Entity {
             if (exp.isDead) state.explosions.splice(i, 1);
         }
     }
-
     constructor(x, y, type, config) {
         super(x, y, 0, false);
         this.type = type;
@@ -34,7 +32,6 @@ export class Explosion extends Entity {
         this.phases = standardExplosionPhases;
         this.changePhase("expanding");
     }
-
     changePhase(name, phaseDataInit = null) {
         transitionPhase(this, this.phases, name, phaseDataInit);
     }

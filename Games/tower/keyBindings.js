@@ -1,4 +1,4 @@
-import { COMBAT_HUD_MODE_COUNT, COMBAT_HUD_MODE_LABELS } from "../../Config/Config.js";
+import { COMBAT_HUD_MODE_COUNT, COMBAT_HUD_MODE_LABELS } from "./config/towerConfig.js";
 import { emitMapToggle } from "./events.js";
 /** @param {import("../../Libraries/FSM/StateMachine.js").StateMachine} fsm */
 export function towerKeyBindings(fsm) {

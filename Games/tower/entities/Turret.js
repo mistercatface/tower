@@ -1,7 +1,7 @@
 import { normalizeAngle } from "../../../Libraries/Math/Angle.js";
 import { combatSprites } from "../render/combatSprites.js";
-import { defaultGunId, getGunDefinition } from "../../../Config/content/guns.js";
-import { defaultTurretLoadout, resolveFireAngleOffsets } from "../../../Config/content/turrets/loadout.js";
+import { defaultGunId, getGunDefinition } from "../config/content/guns.js";
+import { defaultTurretLoadout, resolveFireAngleOffsets } from "../config/content/turrets/loadout.js";
 import { applyKnockback } from "../../../Libraries/Motion/index.js";
 import { getGunProjectileConfig } from "../combat/gunCombat.js";
 import { inferFaction, areHostile } from "../../../Core/GamePorts.js";

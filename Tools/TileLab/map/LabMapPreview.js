@@ -2,7 +2,7 @@ import { getGameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstr
 import { WorldSceneRenderer } from "../../../Libraries/Render/WorldSceneRenderer.js";
 import { drawWorldScene } from "../../../Render/worldSceneDraw.js";
 import { Viewport } from "../../../Libraries/Viewport/Viewport.js";
-import { playerBaseStats } from "../../../Config/Config.js";
+import { playerBaseStats } from "../../../Games/tower/config/towerConfig.js";
 import { getSurfaceProfileRevision } from "../../../Libraries/WorldSurface/SurfaceProfileRevision.js";
 import { invalidateWallAtlasKeyMemos } from "../../../Render/game/wallSurfaceInvalidation.js";
 import { setupLabViewportNavigation } from "../../Lab/lab-shared.js";

@@ -1,5 +1,5 @@
-import { perkSettings, upgradeCostAtLevel } from "../../../Config/Config.js";
-import { baseUpgradeDefinitions, metaUpgradeDefinitions, upgradeFromDefinition } from "../../../Config/content/upgradeDefinitions.js";
+import { perkSettings, upgradeCostAtLevel } from "../config/towerConfig.js";
+import { baseUpgradeDefinitions, metaUpgradeDefinitions, upgradeFromDefinition } from "../config/content/upgradeDefinitions.js";
 export class Upgrade {
     constructor(config) {
         this.id = config.id;

@@ -1,4 +1,4 @@
-import { getGunDefinition } from "../../../Config/content/guns.js";
+import { getGunDefinition } from "../config/content/guns.js";
 import { isTwoHandedGun, normalizeWeaponLoadout } from "../combat/equipmentLoadout.js";
 import { WEAPON_VISUALS } from "../../../Libraries/Render/Characters/weapons/procedural.js";
 /**

@@ -1,4 +1,4 @@
-import { enemyDefaults, enemyBaseStats } from "../../../Config/Config.js";
+import { enemyDefaults, enemyBaseStats } from "../config/towerConfig.js";
 
 export function buildEnemyCombatStats(enemyType) {
     const range = enemyDefaults.rangeMin + Math.floor(Math.random() * (enemyDefaults.rangeMax - enemyDefaults.rangeMin + 1));

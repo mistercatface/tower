@@ -1,6 +1,6 @@
 import { createFactionResolver } from "../../Libraries/Interaction/createFactionResolver.js";
-import { hostileFactionPairs } from "../../Config/content/factions.js";
-import { getActorProfileForActor } from "../../Config/content/actorProfiles.js";
+import { hostileFactionPairs } from "./config/content/factions.js";
+import { getActorProfileForActor } from "./config/content/actorProfiles.js";
 function resolveFaction(actor) {
     if (actor.faction) return actor.faction;
     // Pickups/props lack locomotion separation — do not inherit the default enemy profile.

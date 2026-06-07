@@ -1,4 +1,4 @@
-import { playerBaseStats } from "../../Config/Config.js";
+import { playerBaseStats } from "../../Games/tower/config/towerConfig.js";
 import { towerSurfaceProfileId } from "../../Games/tower/config/surfaceProfiles.js";
 import { getDefaultSimulationZoom } from "../../Render/SimulationViewport.js";
 import { getLabWorld } from "./LabWorldSession.js";

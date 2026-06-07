@@ -1,4 +1,4 @@
-import { COMBAT_HUD_MODE, hudSettings } from "../../../Config/Config.js";
+import { COMBAT_HUD_MODE, hudSettings } from "../config/towerConfig.js";
 import { getPlayerActors, isWorldScene } from "../../../Core/GamePorts.js";
 import { resolveRenderViewer } from "../../../Render/adapters/WorldRenderAdapter.js";
 import { drawHostileOffScreenIndicators } from "./OffScreenIndicators.js";

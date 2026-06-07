@@ -21,15 +21,13 @@ import { SpriteCache } from "../../Libraries/Canvas/SpriteCache.js";
 /** @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition */
 export const towerGame = {
     id: "tower",
-    caches: {
-        actorCache: new SpriteCache(),
-        turretCache: new SpriteCache(),
-    },
+    caches: { actorCache: new SpriteCache(), turretCache: new SpriteCache() },
     createGameState() {
         return new TowerGameState();
     },
     canvasId: "gameCanvas",
     saveKey: "tower_save_v4",
+    collisionSettings: { chargeImpactDamage: 2 },
     proceduralDesign: towerProceduralDesign,
     interactionPairs: towerInteractionPairs,
     simulationPort: towerSimulation,

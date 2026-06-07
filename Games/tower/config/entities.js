@@ -1,5 +1,5 @@
-import { combatActorRadius, sidekickBaseStats } from "../../../Config/Config.js";
-import { enemyStartGunPool } from "../../../Config/content/guns.js";
+import { combatActorRadius, sidekickBaseStats } from "./towerConfig.js";
+import { enemyStartGunPool } from "./content/guns.js";
 import { Enemy } from "../entities/Enemy.js";
 import { Sidekick } from "../entities/Sidekick.js";
 import { registerEntityCatalog } from "../entities/EntityRegistry.js";

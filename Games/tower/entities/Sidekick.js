@@ -1,5 +1,5 @@
 import { Actor } from "./Actor.js";
-import { NAV_PROFILES, navigationSettings } from "../../../Config/Config.js";
+import { NAV_PROFILES, navigationSettings } from "../config/towerConfig.js";
 import { createEntityBars } from "./EntityBars.js";
 import { renderActorKinematicsBody } from "../../../Libraries/Render/Characters/actorKinematicsRenderer.js";
 const sidekickBars = createEntityBars({ healthWidth: 40, healthHeight: 4, healthBorderRadius: 2 });

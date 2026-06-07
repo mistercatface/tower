@@ -1,5 +1,5 @@
 import { inferFaction } from "../targeting.js";
-import { hostileFactionPairs } from "../../../Config/content/factions.js";
+import { hostileFactionPairs } from "../config/content/factions.js";
 /** @typedef {import("../../../Libraries/Interaction/pairRules.js").PairFilterConfig} PairFilterConfig */
 export const combatResolvers = { faction: inferFaction };
 /** @type {PairFilterConfig} */

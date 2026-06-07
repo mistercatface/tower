@@ -1,18 +1,16 @@
-import { navigationSettings } from "../../Config/Config.js";
 import { NavigationController } from "../../Libraries/Navigation/index.js";
 import { createHpaHooks } from "./hpaHooks.js";
 import { planHpaSteering } from "./HpaStrategy.js";
-
 /**
  * Game glue for navigation — wires HPA replan policy and entity post-steer hooks
  * into Libraries/Navigation/NavigationController.
  */
 export class NavigationService {
-    constructor(flowFieldGrid, hierarchicalNavigator) {
+    constructor(flowFieldGrid, hierarchicalNavigator, settings) {
         this._controller = new NavigationController({
             flowFieldGrid,
             hierarchicalNavigator,
-            settings: navigationSettings,
+            settings,
             planHpa: (entity, targetX, targetY, navState, profile, controller, state) =>
                 planHpaSteering(
                     entity,
@@ -36,39 +34,30 @@ export class NavigationService {
             },
         });
     }
-
     getNavState(entity) {
         return this._controller.getNavState(entity);
     }
-
     getPath(entity) {
         return this._controller.getPath(entity);
     }
-
     getDebugInfo(entity) {
         return this._controller.getDebugInfo(entity);
     }
-
     clear(entity) {
         this._controller.clear(entity);
     }
-
     steerTo(entity, targetX, targetY, profile, flowFieldGrid = null, state = null) {
         this._controller.steerTo(entity, targetX, targetY, profile, flowFieldGrid, state);
     }
-
     updateFlowField(opts) {
         return this._controller.updateFlowField(opts);
     }
-
     onObstaclesChanged(damageBounds, playerX, playerY, playerTargetX = null, playerTargetY = null) {
         this._controller.onObstaclesChanged(damageBounds, playerX, playerY, playerTargetX, playerTargetY);
     }
-
     rebuildNavigationGraph(playerX, playerY, playerTargetX = null, playerTargetY = null) {
         this._controller.rebuildNavigationGraph(playerX, playerY, playerTargetX, playerTargetY);
     }
-
     rebuildPlayerFlowField(targetX, targetY) {
         this._controller.rebuildPlayerFlowField(targetX, targetY);
     }

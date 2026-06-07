@@ -1,4 +1,4 @@
-import { playerBaseStats } from "../../Config/Config.js";
+import { playerBaseStats } from "./config/towerConfig.js";
 import { FloatingText } from "../../Render/FloatingText.js";
 import { requestUiUpdate, requestUiHudUpdate } from "../../Core/EventSystem.js";
 import { renderTowerMapScene } from "./render/mapScene.js";

@@ -1,4 +1,4 @@
-import { perkMilestones, xpForLevel } from "../../../Config/Config.js";
+import { perkMilestones, xpForLevel } from "../config/towerConfig.js";
 import { createUpgradeLevels, resetUpgradeLevels } from "../entities/CombatantStats.js";
 import { spawnFloatingText } from "../../../Core/EventSystem.js";
 export class StatsManager {

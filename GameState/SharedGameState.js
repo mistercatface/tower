@@ -1,4 +1,4 @@
-import { gridSettings, navigationSettings } from "../Config/Config.js";
+import { gridSettings } from "../Config/Config.js";
 import { getNodeWorldCoordScale } from "../Core/GamePorts.js";
 import { getGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 import { HierarchicalNavigator } from "../Libraries/Pathfinding/HierarchicalNavigator.js";
@@ -18,7 +18,7 @@ export class SharedGameState {
         this.currentNodeId = 0;
         this.obstacleGrid = new WorldObstacleGrid(gridSettings.cellSize);
         this.hierarchicalNavigator = new HierarchicalNavigator(gridSettings.cellSize, gridSettings.maxCellsPerChunk, gridSettings.minCellsPerChunk, this.obstacleGrid, {
-            damagePadding: navigationSettings.hpaDamagePadding,
+            damagePadding: 12,
         });
         this.wallSpatialIndex = new WallSpatialIndex(100);
         this.worldSurfaces = new WorldSurfaceSystem(getGameWorldSurfaceSettings());

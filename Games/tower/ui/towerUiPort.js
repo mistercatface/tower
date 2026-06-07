@@ -1,10 +1,10 @@
-import { perkMilestones, xpForLevel } from "../../../Config/Config.js";
-import { buildAbilityTreeLayout } from "../../../Config/content/abilityTreeLayout.js";
+import { perkMilestones, xpForLevel } from "../config/towerConfig.js";
+import { buildAbilityTreeLayout } from "../config/content/abilityTreeLayout.js";
 import { TowerPhase } from "../towerPhase.js";
 import { isSimulation } from "../../../GameState/GamePhase.js";
 import { getActiveGameDefinition } from "../../../Core/ActiveGameDefinition.js";
 import { towerInspectPort } from "../inspectPort.js";
-import { getGunDefinition, playerEquipmentCatalog } from "../../../Config/content/guns.js";
+import { getGunDefinition, playerEquipmentCatalog } from "../config/content/guns.js";
 import { getSlotFireIntervalMs, getSlotReloadTimeMs } from "../combat/gunCombat.js";
 import { countGunInLoadout, formatHandednessLabel, getEquipmentSlotCount, getGunEquipAction, normalizeWeaponLoadout } from "../combat/equipmentLoadout.js";
 import { events, Events, emitGameRestart } from "../../../Core/EventSystem.js";

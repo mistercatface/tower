@@ -1,4 +1,4 @@
-import { kinematicsPixelSize } from "../../../Config/Config.js";
+import { LIBRARY_KINEMATICS_PIXEL_SIZE as kinematicsPixelSize } from "../../../Libraries/Motion/bodyDefaults.js";
 import { blitCenteredSprite } from "../../Canvas/QuantizedSpriteCache.js";
 import { CAMERA_HEIGHT } from "../../Spatial/iso/IsometricProjection.js";
 import { createKinematicsBundle } from "../../Kinematics/createKinematicsBundle.js";

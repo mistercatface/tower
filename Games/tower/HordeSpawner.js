@@ -1,4 +1,4 @@
-import { spawnSettings } from "../../Config/Config.js";
+import { spawnSettings } from "./config/towerConfig.js";
 import { Enemy } from "./entities/Enemy.js";
 import { isBaseStatUpgrade } from "./progression/Upgrades.js";
 import { getEnemyType, selectSpawnPod } from "./combat/SpawnPods.js";

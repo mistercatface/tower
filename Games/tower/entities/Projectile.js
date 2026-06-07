@@ -4,7 +4,7 @@ import { drawProjectileTracer } from "../render/ProjectileDraw.js";
 import { getProjectileDamage } from "../combat/impactDamage.js";
 import { applyActorImpactKnockback } from "../combat/impactKnockback.js";
 import { getGunImpactKnockback } from "../combat/gunCombat.js";
-import { getGunDefinition } from "../../../Config/content/guns.js";
+import { getGunDefinition } from "../config/content/guns.js";
 import { Enemy } from "./Enemy.js";
 import { getInteractionPairFilter, getPlayerActors } from "../../../Core/GamePorts.js";
 import { RagdollCorpse } from "./RagdollCorpse.js";

@@ -1,4 +1,3 @@
-import { explosionSettings } from "../../../Config/balance/combat.js";
 export default {
     id: "barrel",
     recipe: "fuelBarrel",
@@ -22,7 +21,7 @@ export default {
         onFireRender3DKey: "fire_barrel",
         wallPhysics: { restitution: 0.25, friction: 0.75 },
         quantizeSteps: { facing: 64, roll: 32 },
-        explosion: { type: "standard", radius: 0, maxRadius: 100, speed: 300, damage: explosionSettings.barrelDamage, lingerTimer: 750, fadeTimer: 250 },
+        explosion: { type: "standard", radius: 0, maxRadius: 100, speed: 300, damage: 5, lingerTimer: 750, fadeTimer: 250 },
         spawn: { minRadius: 150, maxRadius: 1000, minCount: 4, randomRange: 8 },
     },
     visuals: {

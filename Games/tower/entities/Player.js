@@ -1,6 +1,6 @@
 import { Actor } from "./Actor.js";
 import { endRun, spawnFloatingText } from "../../../Core/EventSystem.js";
-import { playerBaseStats, NAV_PROFILES, navigationSettings } from "../../../Config/Config.js";
+import { playerBaseStats, NAV_PROFILES, navigationSettings } from "../config/towerConfig.js";
 import { createEntityBars } from "./EntityBars.js";
 import { entityIntersectsCellBounds } from "../../../Libraries/Spatial/grid/GridCoords.js";
 import { renderActorKinematicsBody } from "../../../Libraries/Render/Characters/actorKinematicsRenderer.js";
