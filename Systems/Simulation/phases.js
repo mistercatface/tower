@@ -45,12 +45,6 @@ export const gameSceneTickPhase = {
     },
 };
 /** @type {SimulationPhase} */
-export const hordePhase = {
-    run(ctx, dt) {
-        ctx.state.hordeSpawner.manageSpawning(dt, ctx.state, ctx.upgrades);
-    },
-};
-/** @type {SimulationPhase} */
 export const projectilesPhase = {
     run(ctx, dt, runtime) {
         Projectile.checkSpawnCollisions(ctx.state, runtime.spatialFrame, runtime.events);

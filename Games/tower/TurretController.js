@@ -1,11 +1,11 @@
-import { normalizeAngle } from "../Libraries/Math/Angle.js";
-import { resolveWeaponModeForGun, WeaponSystem, advanceTurretAmmo } from "../Games/tower/WeaponSystem.js";
-import { getSlotFireIntervalMs } from "./gunCombat.js";
-import { Laser } from "../Entities/Laser.js";
-import { getBeamTickDamage, createBeamHitSource } from "./impactDamage.js";
-import { getGunDefinition } from "../Config/content/guns.js";
-import { areHostile, blocksTurretTargeting, getNearestHostile, getPlayerActors, isValidTurretTarget } from "../Core/GamePorts.js";
-import { normalizeWeaponLoadout } from "./equipmentLoadout.js";
+import { normalizeAngle } from "../../Libraries/Math/Angle.js";
+import { resolveWeaponModeForGun, WeaponSystem, advanceTurretAmmo } from "./WeaponSystem.js";
+import { getSlotFireIntervalMs } from "../../Combat/gunCombat.js";
+import { Laser } from "../../Entities/Laser.js";
+import { getBeamTickDamage, createBeamHitSource } from "../../Combat/impactDamage.js";
+import { getGunDefinition } from "../../Config/content/guns.js";
+import { areHostile, getNearestHostile, getPlayerActors, isValidTurretTarget } from "../../Core/GamePorts.js";
+import { normalizeWeaponLoadout } from "../../Combat/equipmentLoadout.js";
 export class TurretController {
     constructor(actor) {
         this.actor = actor;
@@ -106,7 +106,6 @@ export class TurretController {
         return getNearestHostile(state, this.actor, this.actor.weapon.range);
     }
     getExternalBlocksTargeting(state, upgrades = []) {
-        if (blocksTurretTargeting(state)) return true;
         if (!this.actor.isAbilityOwner(state) || !state?.abilities || !state?.scheduler) return false;
         for (const upg of upgrades) {
             if (!upg.isAbility || !state.abilities[upg.id] || !upg.blocksTargeting) continue;

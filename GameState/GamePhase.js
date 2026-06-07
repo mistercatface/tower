@@ -1,4 +1,3 @@
-export { canRunHordeSpawning } from "../Core/GamePorts.js";
 export const GamePhase = { MAP: "map", SIMULATION: "simulation", INSPECTOR: "inspector" };
 const WORLD_SCENES = new Set([GamePhase.SIMULATION, GamePhase.INSPECTOR]);
 export function isWorldScene(phase) {

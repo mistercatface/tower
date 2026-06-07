@@ -5,7 +5,6 @@ import {
     playerLocomotionPhase,
     flowFieldPhase,
     gameSceneTickPhase,
-    hordePhase,
     projectilesPhase,
     particlesPhase,
     pushablePhysicsPhase,
@@ -17,7 +16,7 @@ import {
     worldSurfacePhase,
     inspectorPartyPhase,
 } from "../../Systems/Simulation/phases.js";
-
+import { hordePhase } from "./phases.js";
 /** @type {import("../../Core/GameDefinitionTypes.js").SimulationPort} */
 export const towerSimulation = createSimulationPort(
     [
@@ -37,15 +36,7 @@ export const towerSimulation = createSimulationPort(
         worldSurfacePhase,
     ],
     {
-        inspectorPhases: [
-            abilitiesPhase,
-            inspectorPartyPhase,
-            flowFieldPhase,
-            pushablePhysicsPhase,
-            dispatchEventsPhase,
-            floatingTextPhase,
-            gameSceneTickPhase,
-        ],
+        inspectorPhases: [abilitiesPhase, inspectorPartyPhase, flowFieldPhase, pushablePhysicsPhase, dispatchEventsPhase, floatingTextPhase, gameSceneTickPhase],
         onEnter(ctx) {
             ctx.state.hordeSpawner.beginHorde();
             ctx.state.player.resetTurretCombatState();

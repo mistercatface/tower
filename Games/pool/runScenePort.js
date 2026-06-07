@@ -31,7 +31,4 @@ export const poolRunScenePort = {
             fireRadioTrigger("table_clear", null, state);
         }
     },
-    getCapabilities(_state) {
-        return { horde: false, blockTurret: false };
-    },
 };

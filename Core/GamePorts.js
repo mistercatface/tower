@@ -64,15 +64,6 @@ export function getRunScenePort() {
     if (!port) throw new Error("Active game definition missing runScenePort.");
     return port;
 }
-/** @param {object} state @returns {boolean} */
-export function canRunHordeSpawning(state) {
-    if (state.phase === "map" || state.phase === "inspector") return false;
-    return getRunScenePort().getCapabilities(state).horde;
-}
-/** @param {object} state @returns {boolean} */
-export function blocksTurretTargeting(state) {
-    return getRunScenePort().getCapabilities(state).blockTurret;
-}
 /** @returns {CombatPort} */
 export function getCombatPort() {
     return requireGameDefinition().combatPort ?? NOOP_COMBAT_PORT;

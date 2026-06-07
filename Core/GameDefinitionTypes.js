@@ -81,17 +81,11 @@
  * @property {BootstrapFeatures} features
  */
 /**
- * @typedef {object} RunSceneCapabilities
- * @property {boolean} horde
- * @property {boolean} blockTurret
- */
-/**
  * @typedef {object} RunScenePort
  * @property {import("../Libraries/RunScene/runScenePorts.js").RunScenePorts} [ports] — tower injects layout/radio helpers for FSM behaviors
  * @property {(state: object) => object | null} getLayout
  * @property {(ctx: object) => void} onSimulationEnter
  * @property {(ctx: object, dt: number) => void} onTick
- * @property {(state: object) => RunSceneCapabilities} getCapabilities
  * @property {(payload: { enemy: object, state: object, upgrades: object[], fsm: object }) => void} [onEnemyKilled]
  */
 /**

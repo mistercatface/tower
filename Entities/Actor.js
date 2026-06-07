@@ -1,5 +1,4 @@
 import { DestructibleEntity } from "./Entity.js";
-import { TurretController } from "../Combat/TurretController.js";
 import { ActorRenderer } from "../Render/ActorRenderer.js";
 import { applyEntityLocomotion } from "../Libraries/Motion/index.js";
 import { initMobileAgent } from "../Libraries/Agent/index.js";
@@ -46,7 +45,7 @@ export class Actor extends DestructibleEntity {
         this.currentState = this.states.navigating;
         this.currentStateName = "navigating";
         this.stateData = {};
-        this.turretController = new TurretController(this);
+        this.turretController = null;
         this.renderer = new ActorRenderer(this);
     }
     setupCombatant(combatStats, upgradeDefs = null) {
@@ -110,7 +109,7 @@ export class Actor extends DestructibleEntity {
                 if (turret.manualFireCooldown > 0) turret.manualFireCooldown -= dt;
             }
         const combatEvents = options.combatEvents ?? [];
-        const events = this.turretController.updateTurretCombat(dt, state, { ...options, combatEvents }) ?? combatEvents;
+        const events = this.turretController?.updateTurretCombat(dt, state, { ...options, combatEvents }) ?? combatEvents;
         if (this.usesKinematicsBody) {
             this._kinematicsCamera = this.getKinematicsCamera(state);
             advanceActorKinematics(this, dt, this._kinematicsCamera);
@@ -176,7 +175,7 @@ export class Actor extends DestructibleEntity {
         applyActorGunModifiers(this);
     }
     manualFire(state, targetX, targetY) {
-        this.turretController.manualFire(state, targetX, targetY);
+        this.turretController?.manualFire(state, targetX, targetY);
     }
     recalculateFromRun(state, upgradeDefs, shouldApply = () => true) {
         this.recalculateStats(upgradeDefs, {

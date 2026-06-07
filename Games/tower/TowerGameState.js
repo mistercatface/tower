@@ -5,7 +5,8 @@ import { getAllyDefinition, getRunParty } from "../../Entities/EntityRegistry.js
 import { FlowFieldGrid } from "../../Libraries/Pathfinding/FlowFieldGrid.js";
 import { NavigationService } from "../../Systems/Navigation/NavigationService.js";
 import { combatActorRadius, gridSettings, runBaseStats } from "../../Config/Config.js";
-import { HordeSpawner } from "../../Combat/HordeSpawner.js";
+import { HordeSpawner } from "./HordeSpawner.js";
+import { TurretController } from "./TurretController.js";
 import { Pools } from "../../Core/Pools.js";
 import { createRunStats } from "../../Entities/CombatantStats.js";
 import { SharedGameState } from "../../GameState/SharedGameState.js";
@@ -27,6 +28,7 @@ export class TowerGameState extends SharedGameState {
         this.discoveredAbilities = new Set();
         this.runStats = createRunStats(runBaseStats);
         this.player = new Player(0, 0, combatActorRadius);
+        this.player.turretController = new TurretController(this.player);
         this.player.teamId = 0;
         this.allies = [];
         this.flowFieldGrid = new FlowFieldGrid(gridSettings.cellSize, gridSettings.width, gridSettings.height, this.obstacleGrid, FLOW_FIELD_WORKER_URL);

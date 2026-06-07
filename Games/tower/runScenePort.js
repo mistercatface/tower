@@ -25,10 +25,6 @@ export const towerRunScenePort = {
     onTick(ctx, _dt) {
         runSceneController.tick(ctx.state, ctx);
     },
-    getCapabilities(_state) {
-        const cap = runSceneController.getCurrentCapabilities();
-        return { horde: cap.horde === true, blockTurret: cap.blockTurret === true };
-    },
     onEnemyKilled(payload) {
         runSceneController.onEnemyKilled(payload);
     },

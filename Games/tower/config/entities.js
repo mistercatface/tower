@@ -1,6 +1,9 @@
 import { combatActorRadius, sidekickBaseStats } from "../../../Config/Config.js";
 import { enemyStartGunPool } from "../../../Config/content/guns.js";
+import { Enemy } from "../../../Entities/Enemy.js";
+import { Sidekick } from "../../../Entities/Sidekick.js";
 import { registerEntityCatalog } from "../../../Entities/EntityRegistry.js";
+import { TurretController } from "../TurretController.js";
 /** @type {import("../../../Entities/EntityRegistryTypes.js").EntityCatalog} */
 export const towerEntityCatalog = {
     enemies: {
@@ -73,4 +76,16 @@ export const towerEntityCatalog = {
 };
 export function registerTowerEntities() {
     registerEntityCatalog(towerEntityCatalog);
+    const enemySpawn = Enemy.spawn.bind(Enemy);
+    Enemy.spawn = (...args) => {
+        const enemy = enemySpawn(...args);
+        enemy.turretController = new TurretController(enemy);
+        return enemy;
+    };
+    const sidekickCreate = Sidekick.create.bind(Sidekick);
+    Sidekick.create = (...args) => {
+        const ally = sidekickCreate(...args);
+        ally.turretController = new TurretController(ally);
+        return ally;
+    };
 }
