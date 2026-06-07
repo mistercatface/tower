@@ -2,13 +2,13 @@ import { normalizeAngle } from "../Libraries/Math/Angle.js";
 import { RenderSprites } from "../Render/RenderSprites.js";
 import { defaultGunId, getGunDefinition } from "../Config/content/guns.js";
 import { defaultTurretLoadout, resolveFireAngleOffsets } from "../Config/content/turrets/loadout.js";
-import { Pools } from "../Core/Pools.js";
 import { applyKnockback } from "../Libraries/Motion/index.js";
 import { getGunProjectileConfig } from "../Combat/gunCombat.js";
 import { inferFaction, areHostile } from "../Core/GamePorts.js";
 import { CombatParticles } from "../Render/CombatParticles.js";
 import { resolveBodyRadius } from "../Libraries/Motion/bodyDefaults.js";
 import { resolveKinematicsMuzzlePosition, resolveActorKinematicsCamera } from "../Libraries/Render/Characters/actorKinematicsRenderer.js";
+import { Projectile } from "./Projectile.js";
 export class Turret {
     constructor(angle, turnSpeed, loadout = defaultTurretLoadout) {
         this.angle = normalizeAngle(angle);
@@ -85,7 +85,14 @@ export class Turret {
         const projectiles = [];
         const radius = gun.bulletRadius * radiusMultiplier;
         for (const offset of angleOffsets) {
-            const projectile = Pools.projectiles.acquire(tx, ty, radius, gun.muzzleSpeed, null, baseAngle + offset, gun.damage, faction);
+            const pool = state.projectilePool;
+            const projectile = pool
+                ? pool.acquire(tx, ty, radius, gun.muzzleSpeed, null, baseAngle + offset, gun.damage, faction)
+                : (() => {
+                      const p = new Projectile();
+                      p.reset(tx, ty, radius, gun.muzzleSpeed, null, baseAngle + offset, gun.damage, faction);
+                      return p;
+                  })();
             projectile.gunId = gun.id;
             projectile.penetration = source.weapon.penetration;
             projectile.isPellet = this.loadout.pelletCount != null;

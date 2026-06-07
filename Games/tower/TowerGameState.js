@@ -7,7 +7,7 @@ import { NavigationService } from "../../Systems/Navigation/NavigationService.js
 import { combatActorRadius, gridSettings, runBaseStats } from "../../Config/Config.js";
 import { HordeSpawner } from "./HordeSpawner.js";
 import { TurretController } from "./TurretController.js";
-import { Pools } from "../../Core/Pools.js";
+import { towerPools } from "./pools.js";
 import { createRunStats } from "../../Entities/CombatantStats.js";
 import { SharedGameState } from "../../GameState/SharedGameState.js";
 import { createCombatWallResolver } from "../../Systems/Motion/createCombatWallResolver.js";
@@ -36,6 +36,7 @@ export class TowerGameState extends SharedGameState {
         this.currentUpgradeTab = "stats";
         this.statsSubTab = "attack";
         this.upgradeDefs = [];
+        this.projectilePool = towerPools.projectiles;
         this.mapWallCache = null;
         this.mapLabWallCache = null;
         this.mapPathDebugCache = null;
@@ -84,7 +85,7 @@ export class TowerGameState extends SharedGameState {
         this.player.isDead = false;
         this.player.changeState("navigating");
         this.enemies = [];
-        if (this.projectiles) for (let i = 0; i < this.projectiles.length; i++) Pools.projectiles.release(this.projectiles[i]);
+        if (this.projectiles) for (let i = 0; i < this.projectiles.length; i++) this.projectilePool.release(this.projectiles[i]);
         this.projectiles = [];
         this.floatingTexts = [];
         this.walls = [];

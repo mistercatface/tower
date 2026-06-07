@@ -1,6 +1,5 @@
 import { circlesOverlap } from "../Libraries/Spatial/collision/overlap.js";
 import { Entity } from "./Entity.js";
-import { Pools } from "../Core/Pools.js";
 import { drawProjectileTracer } from "../Render/ProjectileDraw.js";
 import { getProjectileDamage } from "../Combat/impactDamage.js";
 import { applyActorImpactKnockback } from "../Combat/impactKnockback.js";
@@ -106,7 +105,7 @@ export class Projectile extends Entity {
             if (!p.isDead) RagdollCorpse.tryProjectileHit(state, p);
             if (p.isDead) {
                 state.projectiles.splice(i, 1);
-                Pools.projectiles.release(p);
+                state.projectilePool?.release(p);
             }
         }
     }
@@ -188,4 +187,3 @@ export class Projectile extends Entity {
         this.strategy.render(this, ctx, renderer, state);
     }
 }
-Pools.projectiles.createFn = () => new Projectile();
