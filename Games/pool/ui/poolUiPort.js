@@ -1,6 +1,5 @@
 import { getUiProfile } from "../../../Core/GameUiProfile.js";
 import { applyChromeProfile } from "../../../UI/Core/shellChrome.js";
-import { getShellElements } from "../../../UI/Core/shellElements.js";
 import { wireShellControls } from "../../../UI/Core/wireShellControls.js";
 import { ensurePoolState } from "../balls.js";
 import { getPoolStatusMessage } from "../poolHud.js";
@@ -11,10 +10,6 @@ const poolHud = { status: null, ballsLeft: null };
 function bindPoolHudElements() {
     poolHud.status = document.getElementById("poolHudStatus");
     poolHud.ballsLeft = document.getElementById("poolHudBallsLeft");
-}
-function updateControls(state) {
-    const elements = getShellElements();
-    if (elements.pauseText) elements.pauseText.innerText = state.isPaused ? "PLAY" : "PAUSE";
 }
 /** @param {object} state */
 function updatePoolHud(state) {
@@ -38,11 +33,9 @@ export const poolUiPort = {
         bindPoolHudElements();
         applyChromeProfile(getUiProfile());
         wireShellControls(ctx.state);
-        updateControls(ctx.state);
         updatePoolHud(ctx.state);
     },
     updateUI(ctx) {
-        updateControls(ctx.state);
         updatePoolHud(ctx.state);
     },
     updateHud(ctx) {

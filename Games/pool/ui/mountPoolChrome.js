@@ -8,13 +8,6 @@ const POOL_UI_HTML = `
     <div class="top-right-controls pool-top-controls">
         <button id="settingsBtn" class="settings-gear-btn" type="button" title="Settings" data-ui-region="settings">⚙️</button>
     </div>
-</div>
-<div id="bottomArea">
-    <div id="controlsBar">
-        <button id="pauseBtn" class="control-btn control-btn-large" type="button">
-            <span id="pauseText">PAUSE</span>
-        </button>
-    </div>
 </div>`;
 /** Inject pool-only DOM into the shell (not loaded for tower). */
 export function mountPoolChrome() {
