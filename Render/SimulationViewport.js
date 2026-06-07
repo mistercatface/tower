@@ -31,17 +31,18 @@ export class SimulationViewport extends Viewport {
         this.zoomProgress = 0.0;
         this.mapZoom = 1.0;
     }
-    updateZoomLimits(state) {
+    /** @param {object | null} state @param {number} [viewRange] — world radius used for zoom bounds (tower passes weapon range). */
+    updateZoomLimits(state, viewRange = SIMULATION_BASE_RANGE) {
         if (state && isWorldScene(state.phase)) {
-            const currentRange = state.player.weapon.range;
-            const { minZoom, maxZoom } = getSimulationZoomRangeFromVisualRadius(this.getVisualRadius(), currentRange);
+            const { minZoom, maxZoom } = getSimulationZoomRangeFromVisualRadius(this.getVisualRadius(), viewRange);
             if (maxZoom <= minZoom) this.zoom = minZoom;
             else this.zoom = minZoom + this.zoomProgress * (maxZoom - minZoom);
         } else this.zoom = this.mapZoom;
     }
-    setZoom(value, state) {
+    /** @param {number} value @param {object | null} state @param {number} [viewRange] */
+    setZoom(value, state, viewRange = SIMULATION_BASE_RANGE) {
         if (state && isWorldScene(state.phase)) {
-            const currentRange = state.player.weapon.range;
+            const currentRange = viewRange;
             const { minZoom, maxZoom } = getSimulationZoomRangeFromVisualRadius(this.getVisualRadius(), currentRange);
             if (maxZoom <= minZoom) {
                 this.zoom = minZoom;

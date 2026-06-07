@@ -88,7 +88,7 @@ export function runCollisionPipeline(
 ) {
     const out = events ?? [];
     if (!events) out.length = 0;
-    if (projectiles.length > 0)
+    if (projectiles?.length > 0)
         for (let i = 0; i < projectiles.length; i++) {
             const p = projectiles[i];
             if (p.isDead) continue;

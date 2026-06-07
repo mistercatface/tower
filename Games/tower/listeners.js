@@ -62,7 +62,7 @@ export function registerTowerListeners(eventBus) {
         const sliderVal = sliderValue / 100;
         if (isSimulation(state.phase)) {
             viewport.zoomProgress = sliderVal;
-            viewport.updateZoomLimits(state);
+            viewport.updateZoomLimits(state, state.player.weapon.range);
         } else viewport.setZoom(0.5 + sliderVal * 1.5, state);
         requestUiUpdate();
     });

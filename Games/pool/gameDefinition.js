@@ -19,7 +19,7 @@ import { createCachedWorldStructure } from "../../Libraries/Render/worldStructur
 export const poolGame = {
     id: "pool",
     canvasId: "gameCanvas",
-    perspective: { cameraHeight: 520, strength: 0.28, viewerSource: "viewport" },
+    perspective: { cameraHeight: 520, strength: 0.28 },
     playback: { minSpeed: 0.25, maxSpeed: 2, step: 0.25 },
     proceduralDesign: { surfaceProfileId: SURFACE_PROFILE_ID.poolTableFelt },
     worldSurface: { wallHeight: 20, pixelsPerCell: 6 },

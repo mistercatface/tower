@@ -12,7 +12,7 @@ export class MapState {
         FloatingText.updateAll(ctx.state, dt);
     }
     render(ctx) {
-        ctx.viewport.updateZoomLimits(ctx.state);
+        ctx.viewport.updateZoomLimits(ctx.state, ctx.state.player.weapon.range);
         const { x, y } = ctx.state.getMapPlayerGraphCoords();
         ctx.viewport.follow(x, y);
         ctx.renderer.renderMapScene(ctx.state, ctx.viewport);
@@ -36,7 +36,7 @@ export class SimulationState {
         requestUiHudUpdate();
     }
     render(ctx) {
-        ctx.viewport.updateZoomLimits(ctx.state);
+        ctx.viewport.updateZoomLimits(ctx.state, ctx.state.player.weapon.range);
         ctx.viewport.follow(ctx.state.player.x, ctx.state.player.y);
         ctx.renderer.renderSimulationScene(ctx.state, ctx.viewport);
     }
@@ -71,7 +71,7 @@ export class InspectorState {
         requestUiHudUpdate();
     }
     render(ctx) {
-        ctx.viewport.updateZoomLimits(ctx.state);
+        ctx.viewport.updateZoomLimits(ctx.state, ctx.state.player.weapon.range);
         ctx.viewport.follow(ctx.state.player.x, ctx.state.player.y);
         ctx.renderer.renderSimulationScene(ctx.state, ctx.viewport);
     }

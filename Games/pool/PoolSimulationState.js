@@ -37,7 +37,7 @@ export class PoolSimulationState {
                 zoomX = vr / (halfW + cellSize);
                 ctx.viewport.zoom = zoomX;
             }
-        } else ctx.viewport.updateZoomLimits(ctx.state);
+        }
         ctx.viewport.snapTo(cx, cy);
     }
     /** @param {object} ctx */

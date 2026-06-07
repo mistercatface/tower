@@ -5,7 +5,7 @@ import { getActiveGameDefinition } from "../Core/ActiveGameDefinition.js";
 import { getPlayerActors, getRenderPorts } from "../Core/GamePorts.js";
 import { buildWorldRenderInput, resolveRenderViewer } from "./adapters/WorldRenderAdapter.js";
 import { COMBAT_HUD_MODE, hudSettings } from "../Config/Config.js";
-import { getWorldDrawCoords, isWorldScene } from "../GameState/GamePhase.js";
+import { isWorldScene } from "../GameState/GamePhase.js";
 import { drawHostileOffScreenIndicators } from "./OffScreenIndicators.js";
 import { CombatParticles } from "./CombatParticles.js";
 import { renderMapView } from "./Map/MapViewRenderer.js";
@@ -72,7 +72,7 @@ export class Renderer {
     }
     buildSimulationPipeline(state, viewport) {
         const combat = getActiveGameDefinition().combat;
-        const entityPasses = state.entityLayers.map((layer) => ({ zIndex: layer.zIndex, fn: (state, viewport) => this.renderEntityCollection(state[layer.key], state, viewport) }));
+        const entityPasses = (state.entityLayers ?? []).map((layer) => ({ zIndex: layer.zIndex, fn: (state, viewport) => this.renderEntityCollection(state[layer.key], state, viewport) }));
         const enabledEffects = this.effectPasses.filter((pass) => !pass.feature || combat?.[pass.feature] === true);
         const portPasses = (getRenderPorts().simulationEffectPasses ?? []).map((pass) => ({ zIndex: pass.zIndex, fn: (state, viewport) => pass.draw(state, viewport, this.ctx) }));
         const pipeline = [...enabledEffects, ...portPasses, ...entityPasses];
@@ -193,17 +193,18 @@ export class Renderer {
         }
     }
     drawVisibilityMask(ctx, state, viewport) {
-        const weaponRange = state.player.weapon.range;
-        if (weaponRange > 0) {
-            const { range: maskRadius, x: cx, y: cy } = getWorldDrawCoords(state, viewport, weaponRange);
-            ctx.save();
-            ctx.fillStyle = "#000000";
-            ctx.beginPath();
-            ctx.rect(cx - 10000, cy - 10000, 20000, 20000);
-            ctx.arc(cx, cy, maskRadius, 0, Math.PI * 2);
-            ctx.fill("evenodd");
-            ctx.restore();
-        }
+        const weaponRange = state.player?.weapon?.range ?? 0;
+        if (weaponRange <= 0 || !viewport) return;
+        const maskRadius = viewport.getVisualRadius() / viewport.zoom;
+        const cx = viewport.x;
+        const cy = viewport.y;
+        ctx.save();
+        ctx.fillStyle = "#000000";
+        ctx.beginPath();
+        ctx.rect(cx - 10000, cy - 10000, 20000, 20000);
+        ctx.arc(cx, cy, maskRadius, 0, Math.PI * 2);
+        ctx.fill("evenodd");
+        ctx.restore();
     }
     _drawTargetMarker(ctx, x, y) {
         ctx.save();

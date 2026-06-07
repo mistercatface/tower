@@ -10,9 +10,3 @@ export function isSimulation(phase) {
 export function isInspector(phase) {
     return phase === GamePhase.INSPECTOR;
 }
-/** Range and center for drawing world rings / masks in simulation vs map space. */
-export function getWorldDrawCoords(state, viewport, fallbackRange) {
-    if (viewport && isWorldScene(state.phase)) return { useViewport: true, range: viewport.getVisualRadius() / viewport.zoom, x: viewport.x, y: viewport.y };
-    const range = fallbackRange ?? state.player.weapon.range;
-    return { useViewport: false, range, x: state.player.x, y: state.player.y };
-}

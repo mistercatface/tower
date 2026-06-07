@@ -2,7 +2,7 @@ import { installGameSurfaceProfileProvider } from "../Config/procedural/bootstra
 import { getGameWorldSurfaceSettings, installGameWorldSurfaceSettings, TILE_WORKER_URL } from "../Render/WorldSurfaceBootstrap.js";
 import { configureTileWorkerCoordinator } from "../Libraries/WorldSurface/TileWorkerCoordinator.js";
 import { clearInteractionPairFilterCache } from "./GamePorts.js";
-import { state } from "../GameState/GameState.js";
+import { peekGameState } from "../GameState/GameState.js";
 import { resolvePerspectiveConfig, setCameraHeight, setPerspectiveStrength } from "./GamePerspective.js";
 import { applyGameProceduralDesign, resolveProceduralAnimationSettings, resolveProceduralBakeSettings } from "./GameProceduralDesign.js";
 /** @typedef {import("./GameDefinitionTypes.js").GameDefinition} GameDefinition */
@@ -31,9 +31,11 @@ export function bootstrapEngine(definition) {
         ...resolveProceduralAnimationSettings(definition),
         ...resolveProceduralBakeSettings(definition),
     });
-    syncWorldSurfaceEngineSettings();
+    const state = peekGameState();
+    if (state) syncWorldSurfaceEngineSettings(state);
 }
-function syncWorldSurfaceEngineSettings() {
+/** @param {import("../GameState/GameState.js").GameState} state */
+function syncWorldSurfaceEngineSettings(state) {
     const engine = state.worldSurfaces;
     if (!engine) return;
     const settings = getGameWorldSurfaceSettings();

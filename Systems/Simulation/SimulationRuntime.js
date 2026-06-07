@@ -7,5 +7,6 @@ import { combatSpatial } from "../World/CombatSpatialFrame.js";
  */
 /** @param {object} ctx */
 export function beginSimulationRuntime(ctx) {
-    return { spatialFrame: combatSpatial.begin(ctx.state), events: ctx.state.beginCombatEvents(), abilityState: null };
+    const events = typeof ctx.state.beginCombatEvents === "function" ? ctx.state.beginCombatEvents() : [];
+    return { spatialFrame: combatSpatial.begin(ctx.state), events, abilityState: null };
 }
