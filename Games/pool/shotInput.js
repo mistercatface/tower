@@ -163,7 +163,7 @@ export function getAimPreview(state) {
  * Cue-ball aim line — walls via {@link WeaponSystem.castLaser} (same as tower sights), balls via analytic ray.
  *
  * @param {object} state
- * @returns {import("../../Libraries/Spatial/query/contactPreview.js").BodyContactPreview | null}
+ * @returns {{ x1: number, y1: number, x2: number, y2: number } | null}
  */
 export function getCueAimLinePreview(state) {
     const preview = getAimPreview(state);
@@ -189,6 +189,5 @@ export function getCueAimLinePreview(state) {
     if (wallHit.dist < stopDist) stopDist = wallHit.dist;
     const lead = circleLeadingPoint(cue.x, cue.y, radius, dx, dy);
     // stopDist is center-path distance at contact; leading cap is one radius further along the shot axis
-    const tail = { x: cue.x + dx * (stopDist + radius), y: cue.y + dy * (stopDist + radius) };
-    return { primary: { x1: lead.x, y1: lead.y, x2: tail.x, y2: tail.y }, secondary: null, hit: null };
+    return { x1: lead.x, y1: lead.y, x2: cue.x + dx * (stopDist + radius), y2: cue.y + dy * (stopDist + radius) };
 }

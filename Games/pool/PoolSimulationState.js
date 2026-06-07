@@ -4,7 +4,7 @@ import { requestUiUpdate } from "../../Core/EventSystem.js";
 import { getRadioPort, getRunScenePort, getSimulationPort } from "../../Core/GamePorts.js";
 import { resolveRenderViewer } from "../../Render/adapters/WorldRenderAdapter.js";
 import { resetSimulationWorld } from "../../Systems/Simulation/index.js";
-import { drawBodyContactPreview } from "../../Libraries/Render/contactPreviewDraw.js";
+import { drawAimSegment } from "../../Libraries/Render/contactPreviewDraw.js";
 import { getCueBall, ensurePoolState } from "./balls.js";
 import { tryBeginAim, updateAim, releaseAimShot, cancelAim, getAimPreview, getCueAimLinePreview } from "./shotInput.js";
 import { MAX_SHOT_POWER, MIN_SHOT_POWER } from "./config/tableLayout.js";
@@ -121,13 +121,13 @@ export class PoolSimulationState {
             }
         canvasCtx.restore();
         if (pool.phase === "aiming" && pool.aim?.active) {
+            const aimLine = getCueAimLinePreview(ctx.state);
             const preview = getAimPreview(ctx.state);
-            const contactPreview = getCueAimLinePreview(ctx.state);
-            if (preview && contactPreview) {
+            if (aimLine && preview) {
                 const ratio = Math.max(0, Math.min(1, (preview.power - MIN_SHOT_POWER) / (MAX_SHOT_POWER - MIN_SHOT_POWER)));
                 canvasCtx.save();
                 viewport.apply(canvasCtx);
-                drawBodyContactPreview(canvasCtx, contactPreview, { primaryColor: `hsl(${180 - ratio * 180}, 100%, 50%)`, primaryGlowHue: 180 - ratio * 180 });
+                drawAimSegment(canvasCtx, aimLine, { color: `hsl(${180 - ratio * 180}, 100%, 50%)`, glowHue: 180 - ratio * 180 });
                 canvasCtx.restore();
             }
         }

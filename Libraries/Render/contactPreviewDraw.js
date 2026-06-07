@@ -1,33 +1,25 @@
 import { lengthXY, normalizeXY } from "../Math/Vec2.js";
 /**
- * @typedef {import("../Spatial/query/contactPreview.js").BodyContactPreview} BodyContactPreview
- */
-/**
  * @param {CanvasRenderingContext2D} ctx
  * @param {{ x1: number, y1: number, x2: number, y2: number }} segment
- * @param {string} color
- * @param {{ lineWidth?: number, dashed?: boolean, arrowhead?: boolean, glow?: boolean, glowHue?: number }} [style]
+ * @param {{ color?: string, lineWidth?: number, arrowhead?: boolean, glow?: boolean, glowHue?: number }} [style]
  */
-function drawContactSegment(ctx, segment, color, { lineWidth = 3, dashed = false, arrowhead = false, glow = false, glowHue = 0 } = {}) {
-    const { x1, y1, x2, y2 } = segment;
+export function drawAimSegment(ctx, { x1, y1, x2, y2 }, { color = "#00e5ff", lineWidth = 3, arrowhead = true, glow = true, glowHue = 180 } = {}) {
     const dx = x2 - x1;
     const dy = y2 - y1;
-    const len = lengthXY(dx, dy);
-    if (len < 0.5) return;
+    if (lengthXY(dx, dy) < 0.5) return;
     ctx.save();
     if (glow) {
         ctx.shadowColor = `hsla(${glowHue}, 100%, 50%, 0.6)`;
         ctx.shadowBlur = 8;
     }
     ctx.beginPath();
-    if (dashed) ctx.setLineDash([4, 4]);
     ctx.moveTo(x1, y1);
     ctx.lineTo(x2, y2);
     ctx.strokeStyle = color;
     ctx.lineWidth = lineWidth;
     ctx.lineCap = "round";
     ctx.stroke();
-    ctx.setLineDash([]);
     if (arrowhead) {
         const { nx, ny } = normalizeXY(dx, dy);
         const tx = -ny;
@@ -45,32 +37,4 @@ function drawContactSegment(ctx, segment, color, { lineWidth = 3, dashed = false
         ctx.fill();
     }
     ctx.restore();
-}
-/**
- * @param {CanvasRenderingContext2D} ctx
- * @param {BodyContactPreview} preview
- * @param {{
- *   primaryColor?: string,
- *   secondaryColor?: string,
- *   circleHitColor?: string,
- *   secondaryLength?: number,
- *   primaryGlowHue?: number,
- * }} [style]
- */
-export function drawBodyContactPreview(ctx, preview, { primaryColor = "#00e5ff", secondaryColor = null, circleHitColor = "rgba(255, 220, 80, 0.9)", secondaryLength = 80, primaryGlowHue = 180 } = {}) {
-    drawContactSegment(ctx, preview.primary, primaryColor, { lineWidth: 3, arrowhead: true, glow: true, glowHue: primaryGlowHue });
-    if (!preview.secondary) return;
-    const { x1, y1, x2, y2, kind } = preview.secondary;
-    const color = kind === "circle" ? circleHitColor : (secondaryColor ?? primaryColor);
-    const dx = x2 - x1;
-    const dy = y2 - y1;
-    let segX2 = x2;
-    let segY2 = y2;
-    const len = lengthXY(dx, dy);
-    if (len < 0.5 && secondaryLength > 0) {
-        const { nx, ny } = normalizeXY(dx, dy);
-        segX2 = x1 + nx * secondaryLength;
-        segY2 = y1 + ny * secondaryLength;
-    }
-    drawContactSegment(ctx, { x1, y1, x2: segX2, y2: segY2 }, color, { lineWidth: 2.5, dashed: kind === "wall", arrowhead: true, glow: true, glowHue: primaryGlowHue });
 }
