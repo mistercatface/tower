@@ -6,7 +6,6 @@ import { poolRenderPorts, poolTargeting } from "./ports.js";
 import { poolSimulation } from "./simulation.js";
 import { poolUiPort } from "./ui/poolUiPort.js";
 import { poolWorldGen } from "./worldGen.js";
-import { NOOP_COMBAT_PORT, NOOP_INSPECT_PORT } from "../../Libraries/Ports/noopPorts.js";
 import { poolOutcomePort } from "./outcomePort.js";
 import { poolRadioPort } from "./radioPort.js";
 import { getWorldPropRecipes } from "../../Libraries/Content/PropCatalog.js";
@@ -34,8 +33,6 @@ export const poolGame = {
     runBootstrapPort: createSingleArenaRunBootstrapPort(),
     bootstrapPort: MINIMAL_ARENA_BOOTSTRAP,
     runScenePort: poolRunScenePort,
-    inspectPort: NOOP_INSPECT_PORT,
-    combatPort: NOOP_COMBAT_PORT,
     radioPort: poolRadioPort,
     outcomePort: poolOutcomePort,
     createUpgrades() {

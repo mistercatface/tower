@@ -17,7 +17,7 @@
  * @property {(actor: object) => string | undefined} inferFaction
  * @property {(a: object, b: object) => boolean} areHostile
  * @property {(state: object) => object[]} getPlayerActors
- * @property {(state: object) => object[]} getSpatialCombatants — actors inserted into collision broadphase (empty for prop-only games)
+ * @property {(state: object) => object[]} getBroadphaseActors — actors in collision broadphase; `[]` for prop-only games
  * @property {(state: object, actor: object) => object[]} getHostiles
  * @property {(state: object, source: object, range: number, excludedTargets?: Set<object> | null, opts?: { requireLos?: boolean }) => object | null} getNearestHostile
  * @property {(actor: object, target: object, state: object, range: number, blocksTargeting: boolean, opts?: { requireLos?: boolean }) => boolean} isValidTurretTarget
@@ -151,10 +151,10 @@
  * @property {RunBootstrapPort} runBootstrapPort — new-run entity/world setup after `generateWorld`
  * @property {BootstrapPort} bootstrapPort — feature-gated `createGame` boot
  * @property {RunScenePort} runScenePort — run scene enter/tick/capabilities
- * @property {InspectPort} inspectPort — inspect mission hooks + catalog registration
- * @property {CombatPort} combatPort — run-opening combat setup
- * @property {RadioPort} radioPort — boot wiring + dialog input guards
- * @property {OutcomePort} outcomePort — custom win/loss detection (health-based games use noop)
+ * @property {InspectPort} [inspectPort] — defaults to noop when omitted
+ * @property {CombatPort} [combatPort] — defaults to noop when omitted
+ * @property {RadioPort} [radioPort] — defaults to noop when omitted
+ * @property {OutcomePort} [outcomePort] — defaults to noop when omitted
  * @property {() => void | Promise<void>} [prepare]
  * @property {Partial<import("./GameUiProfile.js").GameUiProfile>} [ui]
  * @property {Partial<import("./GamePerspective.js").PerspectiveConfig>} [perspective]

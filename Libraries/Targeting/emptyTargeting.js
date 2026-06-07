@@ -13,7 +13,7 @@ export const emptyTargeting = {
     getPlayerActors() {
         return [];
     },
-    getSpatialCombatants() {
+    getBroadphaseActors() {
         return [];
     },
     getHostiles() {

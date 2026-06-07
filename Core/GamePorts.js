@@ -1,6 +1,7 @@
 import { PairFilter } from "../Libraries/Interaction/PairFilter.js";
 import { createDefaultInteractionPairs } from "../Libraries/Interaction/defaultPhysicsPairs.js";
 import { BaseGeneratorStrategies } from "../Generator/GeneratorStrategies.js";
+import { NOOP_COMBAT_PORT, NOOP_INSPECT_PORT, NOOP_OUTCOME_PORT, NOOP_RADIO_PORT } from "../Libraries/Ports/noopPorts.js";
 import { getActiveGameDefinition } from "./ActiveGameDefinition.js";
 /** @typedef {import("./GameDefinitionTypes.js").InteractionPairsPort} InteractionPairsPort */
 /** @typedef {import("./GameDefinitionTypes.js").SimulationPort} SimulationPort */
@@ -79,27 +80,19 @@ export function blocksTurretTargeting(state) {
 }
 /** @returns {InspectPort} */
 export function getInspectPort() {
-    const port = requireGameDefinition().inspectPort;
-    if (!port) throw new Error("Active game definition missing inspectPort.");
-    return port;
+    return requireGameDefinition().inspectPort ?? NOOP_INSPECT_PORT;
 }
 /** @returns {CombatPort} */
 export function getCombatPort() {
-    const port = requireGameDefinition().combatPort;
-    if (!port) throw new Error("Active game definition missing combatPort.");
-    return port;
+    return requireGameDefinition().combatPort ?? NOOP_COMBAT_PORT;
 }
 /** @returns {RadioPort} */
 export function getRadioPort() {
-    const port = requireGameDefinition().radioPort;
-    if (!port) throw new Error("Active game definition missing radioPort.");
-    return port;
+    return requireGameDefinition().radioPort ?? NOOP_RADIO_PORT;
 }
 /** @returns {OutcomePort} */
 export function getOutcomePort() {
-    const port = requireGameDefinition().outcomePort;
-    if (!port) throw new Error("Active game definition missing outcomePort.");
-    return port;
+    return requireGameDefinition().outcomePort ?? NOOP_OUTCOME_PORT;
 }
 /** Roguelike map node → world scale; arena games default to 0. */
 export function getNodeWorldCoordScale() {
