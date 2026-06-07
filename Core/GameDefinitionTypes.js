@@ -17,6 +17,7 @@
  * @property {(actor: object) => string | undefined} inferFaction
  * @property {(a: object, b: object) => boolean} areHostile
  * @property {(state: object) => object[]} getPlayerActors
+ * @property {(state: object) => object[]} getSpatialCombatants — actors inserted into collision broadphase (empty for prop-only games)
  * @property {(state: object, actor: object) => object[]} getHostiles
  * @property {(state: object, source: object, range: number, excludedTargets?: Set<object> | null, opts?: { requireLos?: boolean }) => object | null} getNearestHostile
  * @property {(actor: object, target: object, state: object, range: number, blocksTargeting: boolean, opts?: { requireLos?: boolean }) => boolean} isValidTurretTarget

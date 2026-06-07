@@ -30,11 +30,15 @@ export function getHostileActors(state) {
     return (state.enemies ?? []).filter((actor) => actor && !actor.isDead);
 }
 
-function getAllCombatants(state) {
+export function getAllCombatants(state) {
     if (typeof state.getCombatants === "function") {
         return state.getCombatants();
     }
     return [...getPlayerActors(state), ...getHostileActors(state)];
+}
+
+export function getSpatialCombatants(state) {
+    return getAllCombatants(state);
 }
 
 export function getHostiles(state, actor) {

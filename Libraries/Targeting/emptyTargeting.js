@@ -10,8 +10,11 @@ const { resolveFaction: inferFaction, areHostile } = createFactionResolver({
 export const emptyTargeting = {
     inferFaction,
     areHostile,
-    getPlayerActors(state) {
-        return state.player && !state.player.isDead ? [state.player] : [];
+    getPlayerActors() {
+        return [];
+    },
+    getSpatialCombatants() {
+        return [];
     },
     getHostiles() {
         return [];

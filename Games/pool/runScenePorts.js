@@ -15,11 +15,8 @@ export const poolRunScenePorts = {
     markRadiosSeen(state, triggers) {
         markRadioTriggersSeen(state, triggers, poolRadioRegistry);
     },
-    applySpawn(state, spawnSlot, ctx = null) {
-        const spawn = poolRunScenePorts.getLayout(state)?.spawnSlots?.[spawnSlot];
-        if (!spawn) return;
-        state.player.setSpawnPosition(spawn.x, spawn.y);
-        state.player.resetToSpawn();
-        ctx?.viewport?.snapTo(spawn.x, spawn.y);
+    applySpawn(state, _spawnSlot, ctx = null) {
+        const layout = poolRunScenePorts.getLayout(state);
+        if (layout?.tableCenterX != null && ctx?.viewport) ctx.viewport.snapTo(layout.tableCenterX, layout.tableCenterY);
     },
 };

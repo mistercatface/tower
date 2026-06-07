@@ -1,3 +1,4 @@
+import { getTargeting } from "../../Core/GamePorts.js";
 import { wallContextFromState } from "../../Libraries/Spatial/query/wallContext.js";
 /**
  * Insert combatants and pickups into a spatial frame for the current tick.
@@ -14,11 +15,10 @@ export function populateCombatFrame(frame, state, combatants, pushables) {
     combatants.length = 0;
     pushables.length = 0;
     let physIdCounter = 0;
-    for (const actor of state.getCombatants())
-        if (!actor?.isDead) {
-            frame.insertEntity(actor, physIdCounter++);
-            combatants.push(actor);
-        }
+    for (const actor of getTargeting().getSpatialCombatants(state)) {
+        frame.insertEntity(actor, physIdCounter++);
+        combatants.push(actor);
+    }
     for (const pickup of state.pickups) {
         if (pickup.isDead) continue;
         frame.insertEntity(pickup, physIdCounter++);

@@ -1,5 +1,4 @@
 import { ensureRunScene } from "../../Libraries/RunScene/runSceneState.js";
-import { hideArenaPlayer } from "./arenaPlayer.js";
 import { spawnPoolBalls, ensurePoolState } from "./balls.js";
 import { getStartRunAtScene, runSceneController } from "./config/runScenes.js";
 import { processPockets } from "./pockets.js";
@@ -17,7 +16,6 @@ export const poolRunScenePort = {
     },
     onSimulationEnter(ctx) {
         const { state } = ctx;
-        hideArenaPlayer(state.player);
         state.abilities = {};
         state.allies = [];
         if (!state.runSceneInitialized) {

@@ -88,14 +88,3 @@ export const spawnMapPickupsPhase = {
         }
     },
 };
-/**
- * @param {(player: object) => void} hidePlayer
- * @returns {RunBootstrapPhase}
- */
-export function createHideArenaPlayerPhase(hidePlayer) {
-    return {
-        run(ctx) {
-            hidePlayer(ctx.state.player);
-        },
-    };
-}

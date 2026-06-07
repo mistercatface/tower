@@ -10,6 +10,7 @@ export const towerTargeting = {
     inferFaction: targeting.inferFaction,
     areHostile: targeting.areHostile,
     getPlayerActors: targeting.getPlayerActors,
+    getSpatialCombatants: targeting.getSpatialCombatants,
     getHostiles: targeting.getHostiles,
     getNearestHostile: targeting.getNearestHostile,
     isValidTurretTarget: targeting.isValidTurretTarget,

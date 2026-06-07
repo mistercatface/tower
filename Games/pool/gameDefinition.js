@@ -14,7 +14,6 @@ import { registerCueStickRecipe } from "../../Libraries/CueStick/registerCueStic
 import { poolProceduralDesign, poolSurfaceProfileId } from "./config/proceduralDesign.js";
 import { LANDSCAPE_MINIMAL_UI } from "../../Core/GameUiProfile.js";
 import { createSingleArenaRunBootstrapPort } from "../../Libraries/RunBootstrap/presets/singleArena.js";
-import { hideArenaPlayer } from "./arenaPlayer.js";
 /** @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition */
 /**
  * Pool — rectangular table, drag-to-shoot cue, full 15-ball rack, 6 pockets.
@@ -32,7 +31,7 @@ export const poolGame = {
     targeting: poolTargeting,
     render: poolRenderPorts,
     worldGen: poolWorldGen,
-    runBootstrapPort: createSingleArenaRunBootstrapPort(hideArenaPlayer),
+    runBootstrapPort: createSingleArenaRunBootstrapPort(),
     bootstrapPort: MINIMAL_ARENA_BOOTSTRAP,
     runScenePort: poolRunScenePort,
     inspectPort: NOOP_INSPECT_PORT,
