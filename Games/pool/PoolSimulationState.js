@@ -4,11 +4,9 @@ import { requestUiUpdate } from "../../Core/EventSystem.js";
 import { getRadioPort, getRunScenePort, getSimulationPort } from "../../Core/GamePorts.js";
 import { resolveRenderViewer } from "../../Render/adapters/WorldRenderAdapter.js";
 import { resetSimulationWorld } from "../../Systems/Simulation/index.js";
-import { computeBodyContactPreview } from "../../Libraries/Spatial/query/contactPreview.js";
-import { wallContextFromState } from "../../Libraries/Spatial/query/wallContext.js";
 import { drawBodyContactPreview } from "../../Libraries/Render/contactPreviewDraw.js";
-import { getCueBall, ensurePoolState, getActiveBalls } from "./balls.js";
-import { tryBeginAim, updateAim, releaseAimShot, cancelAim, getAimPreview } from "./shotInput.js";
+import { getCueBall, ensurePoolState } from "./balls.js";
+import { tryBeginAim, updateAim, releaseAimShot, cancelAim, getAimPreview, getCueAimLinePreview } from "./shotInput.js";
 import { MAX_SHOT_POWER, MIN_SHOT_POWER } from "./config/tableLayout.js";
 export class PoolSimulationState {
     onEnter(ctx) {
@@ -123,26 +121,13 @@ export class PoolSimulationState {
             }
         canvasCtx.restore();
         if (pool.phase === "aiming" && pool.aim?.active) {
-            const cue = getCueBall(ctx.state);
             const preview = getAimPreview(ctx.state);
-            if (cue && preview) {
-                const { nx, ny, power } = preview;
-                const ratio = Math.max(0, Math.min(1, (power - MIN_SHOT_POWER) / (MAX_SHOT_POWER - MIN_SHOT_POWER)));
-                const maxDist = layout.tableWidth && layout.tableHeight ? Math.hypot(layout.tableWidth, layout.tableHeight) : 2400;
-                const contactPreview = computeBodyContactPreview({
-                    body: cue,
-                    nx,
-                    ny,
-                    speed: power,
-                    pairRestitution: 0.92,
-                    obstacles: getActiveBalls(ctx.state).filter((ball) => ball !== cue),
-                    wallCtx: wallContextFromState(ctx.state),
-                    maxDist,
-                });
-                contactPreview.secondary = null;
+            const contactPreview = getCueAimLinePreview(ctx.state);
+            if (preview && contactPreview) {
+                const ratio = Math.max(0, Math.min(1, (preview.power - MIN_SHOT_POWER) / (MAX_SHOT_POWER - MIN_SHOT_POWER)));
                 canvasCtx.save();
                 viewport.apply(canvasCtx);
-                drawBodyContactPreview(canvasCtx, contactPreview, { primaryColor: `hsl(${180 - ratio * 180}, 100%, 50%)`, secondaryLength: 20 + ratio * 100, primaryGlowHue: 180 - ratio * 180 });
+                drawBodyContactPreview(canvasCtx, contactPreview, { primaryColor: `hsl(${180 - ratio * 180}, 100%, 50%)`, primaryGlowHue: 180 - ratio * 180 });
                 canvasCtx.restore();
             }
         }

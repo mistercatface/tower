@@ -1,8 +1,12 @@
+import { WeaponSystem } from "../../Combat/WeaponSystem.js";
+import { getRunScenePort } from "../../Core/GamePorts.js";
 import { beginCueStickStrike, hideCueStick } from "../../Libraries/CueStick/cueStickController.js";
 import { CUE_STICK_DEFAULTS } from "../../Libraries/CueStick/cueStickDefaults.js";
 import { resolveCueStickFromAnchorDrag } from "../../Libraries/CueStick/cueStickPhysics.js";
-import { MAX_SHOT_POWER, MIN_SHOT_POWER, CUE_GRAB_RADIUS_PAD, POOL_CUE_HX, POOL_CUE_MAX_PULL, POOL_CUE_MIN_PULL_DRAG } from "./config/tableLayout.js";
-import { getCueBall, ensurePoolState, allBallsStopped } from "./balls.js";
+import { circleLeadingPoint } from "../../Libraries/Spatial/geometry/circleContact.js";
+import { rayCircleHitDistance } from "../../Libraries/Spatial/query/circleCast.js";
+import { MAX_SHOT_POWER, MIN_SHOT_POWER, CUE_GRAB_RADIUS_PAD, POOL_BALL_RADIUS, POOL_CUE_HX, POOL_CUE_MAX_PULL, POOL_CUE_MIN_PULL_DRAG } from "./config/tableLayout.js";
+import { getCueBall, ensurePoolState, allBallsStopped, getActiveBalls } from "./balls.js";
 const { hy, height, rollAngle, pullScale } = CUE_STICK_DEFAULTS;
 const hx = POOL_CUE_HX;
 const maxPull = POOL_CUE_MAX_PULL;
@@ -154,4 +158,37 @@ export function getAimPreview(state) {
     const physics = resolveAimPhysics(cue, pool.aim);
     if (!physics) return null;
     return { nx: physics.shotNx, ny: physics.shotNy, power: computeShotPower(pool.aim), drag: physics.drag, pullBack: physics.pullBack, currentDrag: pool.aim.currentDrag };
+}
+/**
+ * Cue-ball aim line — walls via {@link WeaponSystem.castLaser} (same as tower sights), balls via analytic ray.
+ *
+ * @param {object} state
+ * @returns {import("../../Libraries/Spatial/query/contactPreview.js").BodyContactPreview | null}
+ */
+export function getCueAimLinePreview(state) {
+    const preview = getAimPreview(state);
+    const cue = getCueBall(state);
+    if (!preview || !cue) return null;
+    const { nx, ny } = preview;
+    const len = Math.hypot(nx, ny);
+    if (len < 1e-6) return null;
+    const dx = nx / len;
+    const dy = ny / len;
+    const angle = Math.atan2(dy, dx);
+    const radius = cue.radius ?? POOL_BALL_RADIUS;
+    const layout = getRunScenePort().getLayout(state);
+    const maxDist = layout?.tableWidth && layout?.tableHeight ? Math.hypot(layout.tableWidth, layout.tableHeight) : 2400;
+    let stopDist = maxDist;
+    for (const ball of getActiveBalls(state)) {
+        if (ball === cue) continue;
+        const otherR = ball.radius ?? radius;
+        const t = rayCircleHitDistance(cue.x, cue.y, dx, dy, ball.x, ball.y, radius + otherR);
+        if (t != null && t < stopDist) stopDist = t;
+    }
+    const wallHit = WeaponSystem.castLaser(cue.x, cue.y, angle, maxDist, state, radius);
+    if (wallHit.dist < stopDist) stopDist = wallHit.dist;
+    const lead = circleLeadingPoint(cue.x, cue.y, radius, dx, dy);
+    // stopDist is center-path distance at contact; leading cap is one radius further along the shot axis
+    const tail = { x: cue.x + dx * (stopDist + radius), y: cue.y + dy * (stopDist + radius) };
+    return { primary: { x1: lead.x, y1: lead.y, x2: tail.x, y2: tail.y }, secondary: null, hit: null };
 }
