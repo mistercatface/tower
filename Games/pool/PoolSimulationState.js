@@ -76,25 +76,27 @@ export class PoolSimulationState {
         const layout = getRunScenePort().getLayout(ctx.state);
         const cx = layout?.tableCenterX ?? ctx.state.player.x;
         const cy = layout?.tableCenterY ?? ctx.state.player.y;
-        ctx.viewport.updateZoomLimits(ctx.state);
         if (layout?.tableWidth && layout?.tableHeight) {
             const bounds = ctx.state.canvasBounds;
-            const pad = 8;
             const halfW = layout.tableWidth / 2;
             const halfH = layout.tableHeight / 2;
             let zoomX;
             let zoomY;
             if (bounds?.width && bounds?.height) {
+                const landscape = bounds.width > bounds.height;
+                const pad = landscape ? 0 : 8;
                 zoomX = (bounds.width / 2 - pad) / halfW;
                 zoomY = (bounds.height / 2 - pad) / halfH;
+                const fitZoom = landscape ? zoomY : Math.min(zoomX, zoomY);
+                ctx.viewport.zoom = landscape ? fitZoom : fitZoom * 0.94;
             } else {
                 const vr = ctx.viewport.getVisualRadius();
                 zoomX = vr / halfW;
                 zoomY = vr / halfH;
+                ctx.viewport.zoom = Math.min(zoomX, zoomY) * 0.94;
             }
-            ctx.viewport.zoom = Math.min(zoomX, zoomY) * 0.94;
-        }
-        ctx.viewport.follow(cx, cy);
+        } else ctx.viewport.updateZoomLimits(ctx.state);
+        ctx.viewport.snapTo(cx, cy);
     }
     /** World-anchored canvas overlay — cue aim line + pocket rings (status text is DOM via poolUiPort). */
     /** @param {object} ctx */
