@@ -8,7 +8,7 @@ import { poolOutcomePort } from "./outcomePort.js";
 import { poolRadioPort } from "./radioPort.js";
 import { getWorldPropRecipes } from "../../Libraries/Content/PropCatalog.js";
 import { registerCueStickRecipe } from "../../Libraries/CueStick/registerCueStick.js";
-import { poolProceduralDesign, poolSurfaceProfileId } from "./config/proceduralDesign.js";
+import { SURFACE_PROFILE_ID } from "../../Config/procedural/profileIds.js";
 import { LANDSCAPE_MINIMAL_UI } from "../../Core/GameUiProfile.js";
 import { createRunBootstrapPort } from "../../Libraries/RunBootstrap/RunBootstrapPipeline.js";
 import { generateWorldPhase, initRunStatePhase } from "../../Libraries/RunBootstrap/phases.js";
@@ -24,7 +24,7 @@ export const poolGame = {
     saveKey: "pool_save_v1",
     ui: { ...LANDSCAPE_MINIMAL_UI, runResult: { won: { title: "TABLE CLEAR!", buttonLabel: "PLAY AGAIN", titleColor: "#4CAF50" } } },
     perspective: { cameraHeight: 520, strength: 0.28, viewerSource: "viewport" },
-    proceduralDesign: { surfaceProfileId: poolSurfaceProfileId, ...poolProceduralDesign },
+    proceduralDesign: { surfaceProfileId: SURFACE_PROFILE_ID.poolTableFelt },
     worldSurface: { wallHeight: 20 },
     simulationPort: poolSimulation,
     uiPort: poolUiPort,

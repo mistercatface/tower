@@ -1,9 +1,12 @@
 import { beginCueStickStrike, hideCueStick } from "../../Libraries/CueStick/cueStickController.js";
+import { CUE_STICK_DEFAULTS } from "../../Libraries/CueStick/cueStickDefaults.js";
 import { resolveCueStickFromAnchorDrag } from "../../Libraries/CueStick/cueStickPhysics.js";
-import { MAX_SHOT_POWER, MIN_SHOT_POWER, CUE_GRAB_RADIUS_PAD } from "./config/tableLayout.js";
-import { POOL_CUE_STICK_TUNING } from "./config/cueStick.js";
+import { MAX_SHOT_POWER, MIN_SHOT_POWER, CUE_GRAB_RADIUS_PAD, POOL_CUE_HX, POOL_CUE_MAX_PULL, POOL_CUE_MIN_PULL_DRAG } from "./config/tableLayout.js";
 import { getCueBall, ensurePoolState, allBallsStopped } from "./balls.js";
-const { hx, hy, height, rollAngle, pullScale, maxPull, minPullDrag } = POOL_CUE_STICK_TUNING;
+const { hy, height, rollAngle, pullScale } = CUE_STICK_DEFAULTS;
+const hx = POOL_CUE_HX;
+const maxPull = POOL_CUE_MAX_PULL;
+const minPullDrag = POOL_CUE_MIN_PULL_DRAG;
 /** Finger drag at full cue pull-back. */
 const MAX_FINGER_DRAG = maxPull / pullScale;
 /**

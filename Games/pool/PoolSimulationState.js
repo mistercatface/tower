@@ -98,7 +98,7 @@ export class PoolSimulationState {
         }
         ctx.viewport.follow(cx, cy);
     }
-    /** World-anchored canvas overlay — aim line + pocket rings (status text is DOM via poolUiPort). */
+    /** World-anchored canvas overlay — cue aim line + pocket rings (status text is DOM via poolUiPort). */
     /** @param {object} ctx */
     _drawWorldOverlay(ctx) {
         const canvasCtx = ctx.renderer.ctx;
@@ -137,6 +137,7 @@ export class PoolSimulationState {
                     obstacles: getActiveBalls(ctx.state).filter((ball) => ball !== cue),
                     wallCtx: wallContextFromState(ctx.state),
                 });
+                contactPreview.secondary = null;
                 canvasCtx.save();
                 viewport.apply(canvasCtx);
                 drawBodyContactPreview(canvasCtx, contactPreview, { primaryColor: `hsl(${180 - ratio * 180}, 100%, 50%)`, secondaryLength: 20 + ratio * 100, primaryGlowHue: 180 - ratio * 180 });
