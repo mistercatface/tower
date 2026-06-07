@@ -12,6 +12,8 @@ import { generateWorldPhase } from "../../Libraries/RunBootstrap/phases.js";
 import { createDefaultRenderPorts } from "../../Libraries/Render/defaultRenderPorts.js";
 import { createCachedWorldStructure } from "../../Libraries/Render/worldStructure/CachedWorldStructure.js";
 import { PoolGameState } from "./PoolGameState.js";
+import { registerPickupStates } from "../../Entities/PickupStates.js";
+import { poolPickupStates } from "./pickupPoolStates.js";
 /** @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition */
 /**
  * Pool — rectangular table, drag-to-shoot cue, full 15-ball rack, 6 pockets.
@@ -36,6 +38,7 @@ export const poolGame = {
     states: { simulation: PoolSimulationState },
     initialState: "simulation",
     prepare() {
+        registerPickupStates(poolPickupStates);
         document.title = "Pool";
         document.body.classList.add("shell-landscape-minimal");
     },
