@@ -1,4 +1,6 @@
+import { getCollisionSettings } from "../../Core/GameCollisionSettings.js";
 import { advancePushableSleep, evaluatePushableSleepEligible, wakePushableBody } from "./pushableSleep.js";
+import { countMotionSubsteps } from "./motionSubsteps.js";
 import { integrateStandTipsAfterCollisions } from "../Props/standTipMotion.js";
 /**
  * @param {object} state
@@ -22,8 +24,9 @@ export function tickPushableSleep(spatialFrame, { blocksSleep = () => false } = 
     }
 }
 /**
- * Pickup update → collision pass → sleep tick.
+ * Pickup update → collision pass (adaptive substeps) → sleep tick.
  * Pushable wall resolve runs inside the collision pipeline iterations.
+ * Substep count: {@link countMotionSubsteps} + {@link SpatialFrameCore.reindexPushables}.
  *
  * @param {object} state
  * @param {number} dt
@@ -38,8 +41,15 @@ export function tickPushableSleep(spatialFrame, { blocksSleep = () => false } = 
  * @returns {object[]}
  */
 export function runPushablePhysicsPass(state, dt, spatialFrame, { updatePickups, runCollisions, afterCollisions, blocksSleep = () => false }, events) {
-    updatePickups(state, dt, spatialFrame);
-    runCollisions(state, spatialFrame, events);
+    const pushables = spatialFrame._pushables;
+    const { maxStepPx, maxSubsteps } = getCollisionSettings().motionSubsteps;
+    const steps = countMotionSubsteps(dt, pushables, { maxStepPx, maxSubsteps });
+    const subDt = dt / steps;
+    for (let s = 0; s < steps; s++) {
+        updatePickups(state, subDt, spatialFrame);
+        spatialFrame.reindexPushables(pushables);
+        runCollisions(state, spatialFrame, events);
+    }
     integrateStandTipsAfterCollisions(state, dt);
     if (afterCollisions) afterCollisions(state, dt);
     tickPushableSleep(spatialFrame, { blocksSleep });

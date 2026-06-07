@@ -34,6 +34,24 @@ export class SpatialFrameCore {
         entity._physId = physId;
         this.entityGrid.insert(entity);
     }
+    /**
+     * Re-insert bodies after mid-tick motion (physics substep).
+     * Bumps frameId and clears wall cache so broadphase + wall resolve see new poses.
+     *
+     * @param {object[]} bodies
+     */
+    reindexPushables(bodies) {
+        if (!bodies?.length) return;
+        for (let i = 0; i < bodies.length; i++) {
+            const entity = bodies[i];
+            if (entity.isDead) continue;
+            this.entityGrid.remove(entity);
+            this.entityGrid.insert(entity);
+            entity._neighborsFrameId = -1;
+        }
+        this.frameId = (this.frameId + 1) | 0;
+        this._wallCache.clear();
+    }
     getNeighbors(entity) {
         if (entity._neighborsFrameId === this.frameId) return entity._neighbors;
         if (!entity._neighbors) entity._neighbors = [];
