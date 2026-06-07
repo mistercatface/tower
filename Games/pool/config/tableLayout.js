@@ -18,12 +18,10 @@ export const POOL_BALL_LOW_SPEED_THRESHOLD = 10;
 export const POOL_BALL_LOW_SPEED_FRICTION = 2.8;
 /** Zero linear velocity once speed drops below this (after the ramp). */
 export const POOL_BALL_SNAP_SPEED = 1.8;
-/** Shot tuning — table is ~700×384 world units; full-length shot needs high v0 + low felt drag */
 export const MAX_SHOT_POWER = 1200;
 export const MIN_SHOT_POWER = 16;
 export const MIN_AIM_DRAG = 10;
 export const CUE_GRAB_RADIUS_PAD = 10;
-/** Aim pull-back tuning — ~700×384 world table. */
 export const POOL_CUE_MAX_PULL = 75;
 export const POOL_CUE_PULL_SCALE = 0.5;
 export const POOL_CUE_MIN_PULL_DRAG = 3;
