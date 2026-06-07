@@ -8,37 +8,15 @@ import { getSlotFireIntervalMs, getSlotReloadTimeMs } from "../../../Combat/gunC
 import { countGunInLoadout, formatHandednessLabel, getEquipmentSlotCount, getGunEquipAction, normalizeWeaponLoadout } from "../../../Combat/equipmentLoadout.js";
 import { events, Events, emitPurchaseUpgrade, emitToggleAbility, emitSetUpgradeTab, emitSetStatsSubTab, emitToggleEquipWeapon, emitUnequipWeaponSlot } from "../../../Core/EventSystem.js";
 import { applyChromeProfile } from "../../../UI/Core/shellChrome.js";
+import { bindShellElements } from "../../../UI/Core/shellElements.js";
 import { wireShellControls } from "../../../UI/Core/wireShellControls.js";
 import { bindSpeedControl, syncSpeedControlDisplay, wireSpeedControl } from "../../../Libraries/Playback/index.js";
 import { getActiveGameDefinition } from "../../../Core/ActiveGameDefinition.js";
 import { mountTowerChrome } from "./mountTowerChrome.js";
 /** @type {Record<string, HTMLElement | NodeListOf<Element> | null>} */
-const elements = {};
+let elements = {};
 /** @type {import("../../../Libraries/Playback/speedControlUi.js").SpeedControlElements | null} */
 let towerSpeedControl = null;
-function bindTowerElements() {
-    elements.killsDisplay = document.getElementById("killsDisplay");
-    elements.scoreDisplay = document.getElementById("scoreDisplay");
-    elements.levelDisplay = document.getElementById("levelDisplay");
-    elements.nextPerkDisplay = document.getElementById("nextPerkDisplay");
-    elements.xpDisplay = document.getElementById("xpDisplay");
-    elements.healthSegments = document.getElementById("healthSegments");
-    elements.healthText = document.getElementById("healthText");
-    elements.inspectMissionBanner = document.getElementById("inspectMissionBanner");
-    elements.inspectMissionText = document.getElementById("inspectMissionText");
-    elements.passivesContainer = document.getElementById("passivesContainer");
-    elements.abilitiesContainer = document.getElementById("abilitiesContainer");
-    elements.upgradesContainer = document.getElementById("upgradesContainer");
-    towerSpeedControl = bindSpeedControl(document.getElementById("speedControls"));
-    elements.mainTabButtons = document.querySelectorAll(".mainTabBtn");
-    elements.statsSubTabButtons = document.querySelectorAll(".statsSubTabBtn");
-    elements.statsSubTabs = document.getElementById("statsSubTabs");
-    elements.equipmentPanel = document.getElementById("equipmentPanel");
-    elements.equipmentSlots = document.getElementById("equipmentSlots");
-    elements.equipmentArmory = document.getElementById("equipmentArmory");
-    elements.zoomSlider = document.getElementById("zoomSlider");
-    elements.zoomDisplay = document.getElementById("zoomDisplay");
-}
 const dynamicElements = {};
 function createButton(styles, innerHTML, onClick, id = "") {
     const btn = document.createElement("button");
@@ -166,7 +144,8 @@ function updateProgressBar(containerId, textId, textString, ratio, totalSegments
 }
 function mountTowerUi(state, upgrades) {
     mountTowerChrome();
-    bindTowerElements();
+    elements = bindShellElements();
+    towerSpeedControl = bindSpeedControl(elements.speedControls);
     applyChromeProfile(getUiProfile());
     elements.passivesContainer.innerHTML = "";
     upgrades

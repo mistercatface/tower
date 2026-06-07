@@ -2,6 +2,7 @@ import { getActiveGameDefinition } from "../../../Core/ActiveGameDefinition.js";
 import { bindSpeedControl, speedControlHtml, syncSpeedControlDisplay, wireSpeedControl } from "../../../Libraries/Playback/index.js";
 import { ensurePoolState } from "../balls.js";
 import { getPoolStatusMessage } from "../poolHud.js";
+import { bindShellElements } from "../../../UI/Core/shellElements.js";
 import { setUiRegionVisible } from "../../../UI/Core/shellChrome.js";
 import { getUiRoot } from "../../../UI/Core/uiRoot.js";
 import { wireSettingsModal } from "../../../UI/Core/wireSettingsModal.js";
@@ -54,6 +55,7 @@ function updatePoolHud(state) {
 export const poolUiPort = {
     mount(ctx) {
         mountPoolChrome();
+        bindShellElements();
         bindPoolElements();
         if (poolSpeedControl) wireSpeedControl(poolSpeedControl, getActiveGameDefinition());
         wireSettingsModal(ctx.state);
