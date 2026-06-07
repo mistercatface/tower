@@ -1,5 +1,5 @@
 import { playerBaseStats } from "../../Games/tower/config/towerConfig.js";
-import { towerSurfaceProfileId } from "../../Games/tower/config/surfaceProfiles.js";
+import { roguelikeProceduralDesign } from "../../Libraries/Procedural/roguelikeProceduralDesign.js";
 import { getDefaultSimulationZoom } from "../../Render/SimulationViewport.js";
 import { getLabWorld } from "./LabWorldSession.js";
 function getStageSize() {
@@ -42,7 +42,7 @@ export function initPresetSelect(profileIds) {
         opt.textContent = id;
         select.appendChild(opt);
     }
-    select.value = towerSurfaceProfileId;
+    select.value = roguelikeProceduralDesign.surfaceProfileId;
 }
 export function initToolbarDefaults() {
     document.getElementById("mapSeedInput").value = "42";

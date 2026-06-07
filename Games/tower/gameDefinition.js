@@ -13,7 +13,7 @@ import { towerInteractionPairs, towerRenderPorts } from "./ports.js";
 import { towerSimulation } from "./simulation.js";
 import { towerUiPort } from "./ui/towerUiPort.js";
 import { createRoguelikeWorldGenPort } from "../../Libraries/WorldGen/presets/roguelikeMap.js";
-import { towerProceduralDesign } from "./config/surfaceProfiles.js";
+import { roguelikeProceduralDesign } from "../../Libraries/Procedural/roguelikeProceduralDesign.js";
 import { towerKeyBindings } from "./keyBindings.js";
 import { registerTowerListeners } from "./listeners.js";
 import { TowerGameState } from "./TowerGameState.js";
@@ -28,7 +28,7 @@ export const towerGame = {
     canvasId: "gameCanvas",
     saveKey: "tower_save_v4",
     collisionSettings: { chargeImpactDamage: 2 },
-    proceduralDesign: towerProceduralDesign,
+    proceduralDesign: roguelikeProceduralDesign,
     interactionPairs: towerInteractionPairs,
     simulationPort: towerSimulation,
     uiPort: towerUiPort,
