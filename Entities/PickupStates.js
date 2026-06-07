@@ -89,9 +89,16 @@ export class PickupSinkingState {
         const gravity = captured ? -600 : -350;
         pickup.elevationVelocity = (pickup.elevationVelocity ?? 0) + gravity * (dt / 1000);
         pickup.elevation = (pickup.elevation ?? 0) + pickup.elevationVelocity * (dt / 1000);
-        // Fade out based on elevation (fully transparent at elevation -pocketDepth)
+        // Fade out once the ball drops below the table surface (elevation <= -radius)
+        const radius = pickup.radius ?? 8;
         const pocketDepth = pickup.pocketDepth ?? 24;
-        pickup.opacity = Math.max(0, Math.min(1.0, 1.0 - pickup.elevation / -pocketDepth));
+        const fadeStart = -radius;
+        const fadeEnd = -pocketDepth;
+        if (pickup.elevation > fadeStart) {
+            pickup.opacity = 1.0;
+        } else {
+            pickup.opacity = Math.max(0, Math.min(1.0, 1.0 - (pickup.elevation - fadeStart) / (fadeEnd - fadeStart)));
+        }
         // Apply horizontal funnel gravity pulling towards the pocket center
         if (pickup.pocketX != null && pickup.pocketY != null) {
             const dx = pickup.pocketX - pickup.x;

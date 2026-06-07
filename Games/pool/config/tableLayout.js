@@ -136,7 +136,6 @@ export function buildPoolStartLayout(px, py, cellSize) {
     const rail = TABLE_RAIL_CELLS * cellSize;
     const playfieldWidth = bounds.width - 2 * rail;
     const headSpot = { x: bounds.minX + rail + playfieldWidth * 0.25, y: bounds.centerY };
-    
     // Position the foot spot at regulation 75% of playfield, but cap it to keep the rack safe from the right rail
     const regulationFootSpotX = bounds.minX + rail + playfieldWidth * 0.75;
     const maxFootSpotX = bounds.minX + rail + playfieldWidth - (4 * Math.sqrt(3) + 2.5) * POOL_BALL_RADIUS;
