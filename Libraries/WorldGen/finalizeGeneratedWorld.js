@@ -1,4 +1,3 @@
-import { buildMapRenderCaches } from "../../Render/Map/MapRenderCache.js";
 import { syncSurfaceProfile } from "../../Render/game/surfaceProfileResolver.js";
 /**
  * Shared post-generation steps after walls are in `state.walls` / spatial index.
@@ -13,7 +12,6 @@ export function finalizeGeneratedWorld(state, { centerX, centerY, gridBounds = n
         for (const wall of state.walls) state.obstacleGrid.addWall(wall);
     } else state.obstacleGrid.rebuild(state.walls);
     state.hierarchicalNavigator.initialize(centerX, centerY);
-    buildMapRenderCaches(state);
     state.worldSurfaceSeed = (Math.random() * 0x7fffffff) | 0;
     state.worldSurfaces.clear();
     syncSurfaceProfile(state, centerX, centerY);

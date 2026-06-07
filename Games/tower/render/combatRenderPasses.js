@@ -1,7 +1,9 @@
 import { COMBAT_HUD_MODE, hudSettings } from "../../../Config/Config.js";
 import { getPlayerActors, isWorldScene } from "../../../Core/GamePorts.js";
-import { drawHostileOffScreenIndicators } from "../../../Render/OffScreenIndicators.js";
 import { resolveRenderViewer } from "../../../Render/adapters/WorldRenderAdapter.js";
+import { drawHostileOffScreenIndicators } from "./OffScreenIndicators.js";
+import { CombatParticles } from "./CombatParticles.js";
+import { drawTowerDebugOverlay } from "./debugOverlay.js";
 /** @param {import("../../../Render/Render.js").Renderer} renderer @param {object} state @param {object | null} viewport */
 function drawDebris(renderer, state, viewport) {
     if (!state.pickups) return;
@@ -158,10 +160,18 @@ export function createTowerCombatRenderPasses() {
                 }
             },
         },
+        {
+            zIndex: 200,
+            draw(state, viewport, _ctx, renderer) {
+                if (!state.debugMode) return;
+                drawTowerDebugOverlay(renderer, state, viewport);
+            },
+        },
     ];
 }
 /** @param {object} state @param {object} viewport @param {CanvasRenderingContext2D} ctx @param {import("../../../Render/Render.js").Renderer} renderer */
 export function drawTowerPostSimulationOverlay(state, viewport, ctx, renderer) {
+    CombatParticles.renderAll(ctx, state, viewport);
     if (!viewport || !isWorldScene(state.phase)) return;
     const R = viewport.getVisualRadius();
     const cx = viewport.cx;

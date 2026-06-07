@@ -1,6 +1,6 @@
 import { circlesOverlap } from "../../../Libraries/Spatial/collision/overlap.js";
 import { Entity } from "../../../Entities/Entity.js";
-import { drawProjectileTracer } from "../../../Render/ProjectileDraw.js";
+import { drawProjectileTracer } from "../render/ProjectileDraw.js";
 import { getProjectileDamage } from "../combat/impactDamage.js";
 import { applyActorImpactKnockback } from "../combat/impactKnockback.js";
 import { getGunImpactKnockback } from "../combat/gunCombat.js";
@@ -11,7 +11,7 @@ import { RagdollCorpse } from "./RagdollCorpse.js";
 // Grenade-specific imports
 import { Explosion } from "./Explosion/Explosion.js";
 import { ProgressBar } from "../../../Libraries/Canvas/ProgressBar.js";
-import { CombatParticles } from "../../../Render/CombatParticles.js";
+import { CombatParticles } from "../render/CombatParticles.js";
 const grenadeProgressBar = new ProgressBar({ width: 24, height: 4, borderRadius: 2, quantizationSteps: 30, colorFn: () => "#FF1744" });
 export const ProjectileStrategies = {
     bullet: {

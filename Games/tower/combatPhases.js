@@ -1,5 +1,5 @@
 import { FloatingText } from "../../Render/FloatingText.js";
-import { CombatParticles } from "../../Render/CombatParticles.js";
+import { CombatParticles } from "./render/CombatParticles.js";
 import { RagdollCorpse } from "./entities/RagdollCorpse.js";
 import { Projectile } from "./entities/Projectile.js";
 import { Explosion } from "./entities/Explosion/Explosion.js";

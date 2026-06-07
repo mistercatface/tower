@@ -1,6 +1,7 @@
 import { playerBaseStats } from "../../Config/Config.js";
 import { FloatingText } from "../../Render/FloatingText.js";
 import { requestUiUpdate, requestUiHudUpdate } from "../../Core/EventSystem.js";
+import { renderTowerMapScene } from "./render/mapScene.js";
 import { inspectBridge } from "./inspect/InspectBridge.js";
 import { towerInspectPort } from "./inspectPort.js";
 import { getRunScenePort, getSimulationPort } from "../../Core/GamePorts.js";
@@ -19,7 +20,7 @@ export class MapState {
         ctx.viewport.updateZoomLimits(ctx.state, ctx.state.player.weapon.range, playerBaseStats.range);
         const { x, y } = ctx.state.getMapPlayerGraphCoords();
         ctx.viewport.follow(x, y);
-        ctx.renderer.renderMapScene(ctx.state, ctx.viewport);
+        renderTowerMapScene(ctx.renderer, ctx.state, ctx.viewport);
     }
 }
 export class SimulationState {

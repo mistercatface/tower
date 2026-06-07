@@ -1,4 +1,4 @@
-import { getNodeWorldCoordScale } from "../../Core/GamePorts.js";
+import { getNodeWorldCoordScale } from "../../../../Core/GamePorts.js";
 import { bakeGameMapWallCache, bakeLabMapWallCache } from "./MapWallCache.js";
 import { bakeMapPathDebugCache } from "./MapPathDebugCache.js";
 export function buildMapRenderCaches(state) {

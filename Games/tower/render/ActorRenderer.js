@@ -1,4 +1,4 @@
-import { RenderSprites } from "./RenderSprites.js";
+import { combatSprites } from "./combatSprites.js";
 export class ActorRenderer {
     constructor(actor) {
         this.actor = actor;
@@ -8,7 +8,7 @@ export class ActorRenderer {
             ctx,
             this.actor.getSpriteCache(renderer),
             `hud_${this.actor.type}_${this.actor.radius}_${this.actor.color}`,
-            RenderSprites.enemy,
+            combatSprites.enemy,
             this.actor.radius,
             this.actor.color,
         );

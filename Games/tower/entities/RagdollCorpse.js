@@ -4,7 +4,7 @@ import { checkRagdollHit, ragdollPartToWorld } from "../../../Libraries/Kinemati
 import { seedRagdollBloodOnDeath, updateBloodEffects, addRagdollBleedEmitter } from "../../../Libraries/Render/Characters/ragdoll/blood.js";
 import { createObstacleWallChecker, createRagdollState, resolveDeathImpact } from "../../../Libraries/Kinematics/ragdoll/fromActor.js";
 import { captureActorRigForRagdoll, renderCorpseKinematicsBody } from "../../../Libraries/Render/Characters/actorKinematicsRenderer.js";
-import { CombatParticles } from "../../../Render/CombatParticles.js";
+import { CombatParticles } from "../render/CombatParticles.js";
 const CORPSE_MAX_MS = 12000;
 const CORPSE_FADE_MS = 2500;
 export class RagdollCorpse extends Entity {

@@ -2,6 +2,7 @@ import { gridSettings } from "../../Config/Config.js";
 import { rollPlayerStartLoadout } from "./combat/weaponLoadout.js";
 import { generateWorld, getWorldGen } from "../../Core/GamePorts.js";
 import { spawnInitialPickups, spawnStartGamePickups } from "../../Entities/Pickup.js";
+import { buildMapRenderCaches } from "./render/map/MapRenderCache.js";
 import { StatsManager } from "./progression/StatsManager.js";
 /** @typedef {import("../../Libraries/RunBootstrap/RunBootstrapPipeline.js").RunBootstrapContext} RunBootstrapContext */
 /** @typedef {import("../../Libraries/RunBootstrap/RunBootstrapPipeline.js").RunBootstrapPhase} RunBootstrapPhase */
@@ -68,6 +69,12 @@ export const placePlayerFromLayoutPhase = {
 export const spawnRunPartyPhase = {
     run(ctx) {
         ctx.state.spawnRunParty();
+    },
+};
+/** @type {RunBootstrapPhase} */
+export const buildMapRenderCachesPhase = {
+    run(ctx) {
+        buildMapRenderCaches(ctx.state);
     },
 };
 /** @type {RunBootstrapPhase} */

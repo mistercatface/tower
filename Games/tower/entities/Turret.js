@@ -1,11 +1,11 @@
 import { normalizeAngle } from "../../../Libraries/Math/Angle.js";
-import { RenderSprites } from "../../../Render/RenderSprites.js";
+import { combatSprites } from "../render/combatSprites.js";
 import { defaultGunId, getGunDefinition } from "../../../Config/content/guns.js";
 import { defaultTurretLoadout, resolveFireAngleOffsets } from "../../../Config/content/turrets/loadout.js";
 import { applyKnockback } from "../../../Libraries/Motion/index.js";
 import { getGunProjectileConfig } from "../combat/gunCombat.js";
 import { inferFaction, areHostile } from "../../../Core/GamePorts.js";
-import { CombatParticles } from "../../../Render/CombatParticles.js";
+import { CombatParticles } from "../render/CombatParticles.js";
 import { resolveBodyRadius } from "../../../Libraries/Motion/bodyDefaults.js";
 import { resolveKinematicsMuzzlePosition, resolveActorKinematicsCamera } from "../../../Libraries/Render/Characters/actorKinematicsRenderer.js";
 import { Projectile } from "./Projectile.js";
@@ -54,14 +54,14 @@ export class Turret {
         const projectileRadius = gun.bulletRadius * this.loadout.radiusMultiplier;
         const muzzle = this.getMuzzlePosition(source, projectileRadius, this.lastTarget ?? this.target);
         const scale = source.radius / 8;
-        const tipOffset = RenderSprites.turretTipOffset * scale;
+        const tipOffset = combatSprites.turretTipOffset * scale;
         return { x: muzzle.x - Math.cos(this.angle) * tipOffset, y: muzzle.y - Math.sin(this.angle) * tipOffset, angle: this.angle, scale };
     }
     renderHudTriangle(ctx, renderer, source, color = null) {
         const { x, y, angle, scale } = this.getHudAnchorPosition(source);
         const fillColor = color ?? source.color;
         const cacheKey = `hud_${scale}_${fillColor}`;
-        const cachedSprite = renderer.turretCache.get(cacheKey, RenderSprites.turret, scale, fillColor);
+        const cachedSprite = renderer.turretCache.get(cacheKey, combatSprites.turret, scale, fillColor);
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(angle);
