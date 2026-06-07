@@ -115,23 +115,7 @@ export function getPocketArcAngles(kind) {
 export function isBallInPocket(ball, pocket) {
     const dx = ball.x - pocket.x;
     const dy = ball.y - pocket.y;
-    if (dx * dx + dy * dy > pocket.radius * pocket.radius) return false;
-    switch (pocket.kind) {
-        case "corner-tl":
-            return ball.x >= pocket.x && ball.y >= pocket.y;
-        case "corner-tr":
-            return ball.x <= pocket.x && ball.y >= pocket.y;
-        case "corner-bl":
-            return ball.x >= pocket.x && ball.y <= pocket.y;
-        case "corner-br":
-            return ball.x <= pocket.x && ball.y <= pocket.y;
-        case "side-top":
-            return ball.y >= pocket.y;
-        case "side-bottom":
-            return ball.y <= pocket.y;
-        default:
-            return true;
-    }
+    return dx * dx + dy * dy <= pocket.radius * pocket.radius;
 }
 /**
  * @param {number} px
