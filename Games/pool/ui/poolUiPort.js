@@ -1,26 +1,20 @@
 import { getActiveGameDefinition } from "../../../Core/ActiveGameDefinition.js";
-import { getUiProfile } from "../../../Core/GameUiProfile.js";
-import { applyChromeProfile } from "../../../UI/Core/shellChrome.js";
-import { wireShellControls } from "../../../UI/Core/wireShellControls.js";
-import { mountSpeedControl, syncSpeedControlDisplay, wireSpeedControl } from "../../../Libraries/Playback/index.js";
+import { bindSpeedControl, syncSpeedControlDisplay, wireSpeedControl } from "../../../Libraries/Playback/index.js";
 import { ensurePoolState } from "../balls.js";
 import { getPoolStatusMessage } from "../poolHud.js";
 import { mountPoolChrome } from "./mountPoolChrome.js";
+import { setUiRegionVisible } from "../../../UI/Core/shellChrome.js";
+import { wireSettingsModal } from "../../../UI/Core/wireSettingsModal.js";
 /** @typedef {import("../../../Core/GameDefinitionTypes.js").UiPort} UiPort */
 /** @typedef {import("../../../Libraries/Playback/speedControlUi.js").SpeedControlElements} SpeedControlElements */
 /** @type {{ status: HTMLElement | null, ballsLeft: HTMLElement | null }} */
 const poolHud = { status: null, ballsLeft: null };
 /** @type {SpeedControlElements | null} */
 let poolSpeedControl = null;
-function bindPoolHudElements() {
+function bindPoolElements() {
     poolHud.status = document.getElementById("poolHudStatus");
     poolHud.ballsLeft = document.getElementById("poolHudBallsLeft");
-}
-function mountPoolSpeedControl() {
-    const host = document.getElementById("poolSpeedOverlay");
-    if (!host || poolSpeedControl) return;
-    poolSpeedControl = mountSpeedControl(host, { buttonClass: "control-btn", pauseButtonClass: "control-btn control-btn-large" });
-    wireSpeedControl(poolSpeedControl, getActiveGameDefinition());
+    poolSpeedControl = bindSpeedControl(document.getElementById("poolSpeedOverlay"));
 }
 /** @param {object} state */
 function updatePoolHud(state) {
@@ -43,10 +37,10 @@ function updatePoolHud(state) {
 export const poolUiPort = {
     mount(ctx) {
         mountPoolChrome();
-        bindPoolHudElements();
-        mountPoolSpeedControl();
-        applyChromeProfile(getUiProfile());
-        wireShellControls(ctx.state);
+        bindPoolElements();
+        if (poolSpeedControl) wireSpeedControl(poolSpeedControl, getActiveGameDefinition());
+        wireSettingsModal(ctx.state);
+        setUiRegionVisible("settings", true);
         updatePoolHud(ctx.state);
     },
     updateUI(ctx) {

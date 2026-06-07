@@ -1,13 +1,7 @@
 /** Shared DOM refs for engine shell overlays and control bar. */
-
 /** @returns {Record<string, HTMLElement | NodeListOf<Element> | null>} */
 export function getShellElements() {
     return {
-        pauseBtn: document.getElementById("pauseBtn"),
-        pauseText: document.getElementById("pauseText"),
-        speedDisplay: document.getElementById("speedDisplay"),
-        speedDownBtn: document.getElementById("speedDownBtn"),
-        speedUpBtn: document.getElementById("speedUpBtn"),
         zoomSlider: document.getElementById("zoomSlider"),
         zoomDisplay: document.getElementById("zoomDisplay"),
         restartBtn: document.getElementById("restartBtn"),

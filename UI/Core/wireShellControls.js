@@ -1,36 +1,19 @@
-import { toggleGamePause, adjustGameSpeed, setGameZoomFromSlider, emitHardReset, emitGameRestart, emitMapToggle } from "../../Core/EventSystem.js";
+import { setGameZoomFromSlider, emitGameRestart, emitMapToggle } from "../../Core/EventSystem.js";
 import { getShellElements } from "./shellElements.js";
-import { resolveStep } from "../../Libraries/Playback/index.js";
-import { getActiveGameDefinition } from "../../Core/ActiveGameDefinition.js";
+import { wireSettingsModal } from "./wireSettingsModal.js";
 /**
- * Wire pause, settings, restart, and map controls shared across game shells.
+ * Wire tower shell chrome (zoom, map, restart, settings). Speed/pause use `Libraries/Playback`.
  *
  * @param {object} state
  */
 export function wireShellControls(state) {
     const elements = getShellElements();
-    elements.pauseBtn?.addEventListener("click", () => toggleGamePause());
-    const step = resolveStep(getActiveGameDefinition());
-    elements.speedDownBtn?.addEventListener("click", () => adjustGameSpeed(-step));
-    elements.speedUpBtn?.addEventListener("click", () => adjustGameSpeed(step));
     elements.zoomSlider?.addEventListener("input", (e) => setGameZoomFromSlider(parseFloat(e.target.value)));
     elements.restartBtn?.addEventListener("click", () => emitGameRestart());
-    elements.settingsBtn?.addEventListener("click", () => {
-        if (elements.combatHudModeSelect) elements.combatHudModeSelect.value = String(state.combatHudMode ?? 0);
-        if (elements.settingsModal) elements.settingsModal.style.display = "flex";
-    });
+    wireSettingsModal(state);
     elements.mapBtn?.addEventListener("click", () => emitMapToggle());
     elements.closeMapBtn?.addEventListener("click", () => emitMapToggle());
     elements.combatHudModeSelect?.addEventListener("change", (e) => {
         state.combatHudMode = parseInt(e.target.value, 10) || 0;
-    });
-    elements.closeSettingsBtn?.addEventListener("click", () => {
-        if (elements.settingsModal) elements.settingsModal.style.display = "none";
-    });
-    elements.hardResetBtn?.addEventListener("click", () => {
-        if (confirm("Are you sure you want to completely reset the game? This cannot be undone.")) {
-            emitHardReset();
-            if (elements.settingsModal) elements.settingsModal.style.display = "none";
-        }
     });
 }

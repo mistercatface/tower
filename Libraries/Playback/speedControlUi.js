@@ -1,9 +1,9 @@
 import { adjustGameSpeed, toggleGamePause } from "../../Core/EventSystem.js";
 import { getActiveGameDefinition } from "../../Core/ActiveGameDefinition.js";
-import { getSpeedControlView, resolveStep } from "./playbackController.js";
+import { clampSelectedSpeed, getSpeedControlView, resolveStep } from "./playbackController.js";
 /**
  * @typedef {object} SpeedControlElements
- * @property {HTMLElement} [root]
+ * @property {HTMLElement | null} [root]
  * @property {HTMLButtonElement | null} [speedDownBtn]
  * @property {HTMLButtonElement | null} [pauseBtn]
  * @property {HTMLElement | null} [pauseLabel]
@@ -11,59 +11,45 @@ import { getSpeedControlView, resolveStep } from "./playbackController.js";
  * @property {HTMLButtonElement | null} [speedUpBtn]
  */
 /**
- * @typedef {object} MountSpeedControlOptions
- * @property {string} [className]
+ * @typedef {object} SpeedControlHtmlOptions
+ * @property {string} [rootId]
+ * @property {string} [rootClass]
  * @property {string} [buttonClass]
  * @property {string} [pauseButtonClass]
+ * @property {{ down?: string, pause?: string, pauseLabel?: string, speedLabel?: string, up?: string }} [ids]
  */
 /**
- * @param {ParentNode} parent
- * @param {MountSpeedControlOptions} [options]
- * @returns {SpeedControlElements}
+ * @param {SpeedControlHtmlOptions} [options]
  */
-export function mountSpeedControl(parent, options = {}) {
-    const { className = "speed-control", buttonClass = "", pauseButtonClass = "" } = options;
-    const root = document.createElement("div");
-    root.className = className;
-    root.dataset.speedControl = "";
-    const speedDownBtn = document.createElement("button");
-    speedDownBtn.type = "button";
-    speedDownBtn.dataset.speedDown = "";
-    speedDownBtn.className = ["speed-control-down", buttonClass].filter(Boolean).join(" ");
-    speedDownBtn.textContent = "–";
-    const pauseBtn = document.createElement("button");
-    pauseBtn.type = "button";
-    pauseBtn.dataset.speedPause = "";
-    pauseBtn.className = ["speed-control-pause", pauseButtonClass || buttonClass].filter(Boolean).join(" ");
-    const pauseLabel = document.createElement("span");
-    pauseLabel.dataset.pauseLabel = "";
-    pauseLabel.textContent = "PAUSE";
-    const speedLabel = document.createElement("span");
-    speedLabel.dataset.speedLabel = "";
-    speedLabel.className = "speed-control-speed-label";
-    speedLabel.textContent = "1.00x";
-    pauseBtn.append(pauseLabel, speedLabel);
-    const speedUpBtn = document.createElement("button");
-    speedUpBtn.type = "button";
-    speedUpBtn.dataset.speedUp = "";
-    speedUpBtn.className = ["speed-control-up", buttonClass].filter(Boolean).join(" ");
-    speedUpBtn.textContent = "+";
-    root.append(speedDownBtn, pauseBtn, speedUpBtn);
-    parent.appendChild(root);
-    return bindSpeedControlElements(root);
+export function speedControlHtml(options = {}) {
+    const { rootId, rootClass = "speed-control", buttonClass = "", pauseButtonClass = "", ids = {} } = options;
+    const attrId = (key) => (ids[key] ? ` id="${ids[key]}"` : "");
+    const cls = (...parts) => parts.filter(Boolean).join(" ");
+    const rootAttr = rootId ? ` id="${rootId}"` : "";
+    return `<div class="${rootClass}"${rootAttr}>
+<button type="button" data-speed-down class="${cls("speed-control-down", buttonClass)}"${attrId("down")}>–</button>
+<button type="button" data-speed-pause class="${cls("speed-control-pause", pauseButtonClass || buttonClass)}"${attrId("pause")}>
+<span data-pause-label${attrId("pauseLabel")}>PAUSE</span>
+<span data-speed-label class="speed-control-speed-label"${attrId("speedLabel")}>1.00x</span>
+</button>
+<button type="button" data-speed-up class="${cls("speed-control-up", buttonClass)}"${attrId("up")}>+</button>
+</div>`;
 }
 /**
- * @param {ParentNode} root
+ * @param {ParentNode | null} host
  * @returns {SpeedControlElements}
  */
-export function bindSpeedControlElements(root) {
+export function bindSpeedControl(host) {
+    if (!host) return { root: null, speedDownBtn: null, pauseBtn: null, pauseLabel: null, speedLabel: null, speedUpBtn: null };
+    const root = host.querySelector(".speed-control") ?? (host instanceof HTMLElement && host.classList.contains("speed-control") ? host : null);
+    const scope = root ?? host;
     return {
-        root: /** @type {HTMLElement} */ (root instanceof HTMLElement ? root : root.firstElementChild),
-        speedDownBtn: /** @type {HTMLButtonElement | null} */ (root.querySelector("[data-speed-down]")),
-        pauseBtn: /** @type {HTMLButtonElement | null} */ (root.querySelector("[data-speed-pause]")),
-        pauseLabel: root.querySelector("[data-pause-label]"),
-        speedLabel: root.querySelector("[data-speed-label]"),
-        speedUpBtn: /** @type {HTMLButtonElement | null} */ (root.querySelector("[data-speed-up]")),
+        root: root instanceof HTMLElement ? root : null,
+        speedDownBtn: /** @type {HTMLButtonElement | null} */ (scope.querySelector("[data-speed-down]")),
+        pauseBtn: /** @type {HTMLButtonElement | null} */ (scope.querySelector("[data-speed-pause]")),
+        pauseLabel: scope.querySelector("[data-pause-label]"),
+        speedLabel: scope.querySelector("[data-speed-label]"),
+        speedUpBtn: /** @type {HTMLButtonElement | null} */ (scope.querySelector("[data-speed-up]")),
     };
 }
 /**
@@ -71,8 +57,7 @@ export function bindSpeedControlElements(root) {
  * @param {import("../../Core/GameDefinitionTypes.js").GameDefinition | null | undefined} [definition]
  */
 export function wireSpeedControl(elements, definition) {
-    const def = definition ?? getActiveGameDefinition();
-    const step = resolveStep(def);
+    const step = resolveStep(definition ?? getActiveGameDefinition());
     elements.speedDownBtn?.addEventListener("click", () => adjustGameSpeed(-step));
     elements.speedUpBtn?.addEventListener("click", () => adjustGameSpeed(step));
     elements.pauseBtn?.addEventListener("click", () => toggleGamePause());
@@ -83,7 +68,9 @@ export function wireSpeedControl(elements, definition) {
  * @param {import("../../Core/GameDefinitionTypes.js").GameDefinition | null | undefined} [definition]
  */
 export function syncSpeedControlDisplay(elements, state, definition) {
-    const view = getSpeedControlView(state, definition ?? getActiveGameDefinition());
+    const def = definition ?? getActiveGameDefinition();
+    clampSelectedSpeed(state, def);
+    const view = getSpeedControlView(state, def);
     if (elements.pauseLabel) elements.pauseLabel.textContent = view.pauseLabel;
     if (elements.speedLabel) elements.speedLabel.textContent = view.speedLabel;
     if (elements.speedDownBtn) elements.speedDownBtn.style.opacity = view.canDecrease ? "1" : "0.5";

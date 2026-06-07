@@ -136,7 +136,6 @@
  * @property {number} [minSpeed]
  * @property {number} [maxSpeed]
  * @property {number} [step]
- * @property {(state: object) => number} [resolveMaxSpeed]
  */
 /**
  * @typedef {import("./GameUiProfile.js").GameUiProfile} GameUiProfile

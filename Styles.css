@@ -82,11 +82,7 @@ body.shell-landscape-minimal #gameOverUI {
     box-sizing: border-box;
 }
 
-#controlsBar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin: 0;
+.chrome-control-panel {
     padding: 6px 12px;
     background: rgba(15, 15, 15, 0.8);
     backdrop-filter: blur(12px);
@@ -95,6 +91,13 @@ body.shell-landscape-minimal #gameOverUI {
     border-radius: 10px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
     pointer-events: auto;
+}
+
+#controlsBar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 0;
 }
 
 #uiContainer {

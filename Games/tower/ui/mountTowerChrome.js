@@ -1,4 +1,11 @@
+import { speedControlHtml } from "../../../Libraries/Playback/index.js";
 import { getUiRoot } from "../../../UI/Core/uiRoot.js";
+const TOWER_SPEED_CONTROL_HTML = speedControlHtml({
+    rootId: "speedControls",
+    buttonClass: "control-btn",
+    pauseButtonClass: "control-btn control-btn-large",
+    ids: { down: "speedDownBtn", pause: "pauseBtn", pauseLabel: "pauseText", speedLabel: "speedDisplay", up: "speedUpBtn" },
+});
 const INSPECT_BANNER_HTML = `
 <div id="inspectMissionBanner" class="inspect-mission-banner" style="display: none;">
     <span id="inspectMissionText"></span>
@@ -41,15 +48,8 @@ const TOWER_UI_HTML = `
         <div id="passivesContainer"></div>
         <div id="abilitiesContainer"></div>
     </div>
-    <div id="controlsBar">
-        <div id="speedControls">
-            <button id="speedDownBtn" class="control-btn">–</button>
-            <button id="pauseBtn" class="control-btn control-btn-large">
-                <span id="pauseText">PAUSE</span>
-                <span id="speedDisplay">1.00x</span>
-            </button>
-            <button id="speedUpBtn" class="control-btn">+</button>
-        </div>
+    <div id="controlsBar" class="chrome-control-panel">
+        ${TOWER_SPEED_CONTROL_HTML}
         <div id="controlsDivider"></div>
         <div id="zoomControls">
             <span class="zoom-controls-label">ZOOM</span>

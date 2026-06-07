@@ -6,7 +6,7 @@
 
 /* Pool table HUD — text in DOM; aim/pockets stay on canvas */
 .pool-hud {
-    display: none;
+    display: flex;
     position: absolute;
     top: 12px;
     left: 12px;
@@ -46,20 +46,13 @@
     pointer-events: auto;
 }
 
-.pool-speed-overlay .speed-control {
+.speed-control {
     display: flex;
     align-items: center;
     gap: 4px;
-    padding: 6px 10px;
-    background: rgba(15, 15, 15, 0.8);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 10px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
 }
 
-.pool-speed-overlay .speed-control-speed-label {
+.speed-control-speed-label {
     font-size: 9px;
     font-weight: normal;
     opacity: 0.8;
@@ -154,19 +147,6 @@ body.shell-landscape-minimal .pool-top-controls {
     display: flex;
     gap: 8px;
     justify-content: center;
-}
-
-#speedControls {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-
-#speedDisplay {
-    font-size: 9px;
-    font-weight: normal;
-    opacity: 0.8;
-    margin-top: 1px;
 }
 
 #controlsDivider {

@@ -9,11 +9,13 @@ import { countGunInLoadout, formatHandednessLabel, getEquipmentSlotCount, getGun
 import { events, Events, emitPurchaseUpgrade, emitToggleAbility, emitSetUpgradeTab, emitSetStatsSubTab, emitToggleEquipWeapon, emitUnequipWeaponSlot } from "../../../Core/EventSystem.js";
 import { applyChromeProfile } from "../../../UI/Core/shellChrome.js";
 import { wireShellControls } from "../../../UI/Core/wireShellControls.js";
-import { syncSpeedControlDisplay } from "../../../Libraries/Playback/index.js";
+import { bindSpeedControl, syncSpeedControlDisplay, wireSpeedControl } from "../../../Libraries/Playback/index.js";
 import { getActiveGameDefinition } from "../../../Core/ActiveGameDefinition.js";
 import { mountTowerChrome } from "./mountTowerChrome.js";
 /** @type {Record<string, HTMLElement | NodeListOf<Element> | null>} */
 const elements = {};
+/** @type {import("../../../Libraries/Playback/speedControlUi.js").SpeedControlElements | null} */
+let towerSpeedControl = null;
 function bindTowerElements() {
     elements.killsDisplay = document.getElementById("killsDisplay");
     elements.scoreDisplay = document.getElementById("scoreDisplay");
@@ -27,10 +29,7 @@ function bindTowerElements() {
     elements.passivesContainer = document.getElementById("passivesContainer");
     elements.abilitiesContainer = document.getElementById("abilitiesContainer");
     elements.upgradesContainer = document.getElementById("upgradesContainer");
-    elements.pauseText = document.getElementById("pauseText");
-    elements.speedDisplay = document.getElementById("speedDisplay");
-    elements.speedDownBtn = document.getElementById("speedDownBtn");
-    elements.speedUpBtn = document.getElementById("speedUpBtn");
+    towerSpeedControl = bindSpeedControl(document.getElementById("speedControls"));
     elements.mainTabButtons = document.querySelectorAll(".mainTabBtn");
     elements.statsSubTabButtons = document.querySelectorAll(".statsSubTabBtn");
     elements.statsSubTabs = document.getElementById("statsSubTabs");
@@ -221,6 +220,7 @@ function mountTowerUi(state, upgrades) {
         elements.upgradesContainer.appendChild(btn);
     });
     wireShellControls(state);
+    if (towerSpeedControl) wireSpeedControl(towerSpeedControl, getActiveGameDefinition());
     updateUI(state, upgrades);
     updateHud(state, upgrades);
 }
@@ -460,17 +460,17 @@ function drawStat(state, upg, abilityLayoutById) {
         }
     }
 }
+function syncTowerSpeedControl(state) {
+    const chrome = getUiProfile().chrome;
+    if (chrome.controls === "none" || !towerSpeedControl) return;
+    if (chrome.controls === "full" || chrome.bottomPanel) syncSpeedControlDisplay(towerSpeedControl, state, getActiveGameDefinition());
+    else if (towerSpeedControl.pauseLabel) towerSpeedControl.pauseLabel.textContent = state.isPaused ? "PLAY" : "PAUSE";
+}
 function updateUI(state, upgrades) {
     updateInspectMissionBanner(state);
     const chrome = getUiProfile().chrome;
     if (!chrome.bottomPanel) {
-        if (chrome.controls === "full")
-            syncSpeedControlDisplay(
-                { pauseLabel: elements.pauseText, speedLabel: elements.speedDisplay, speedDownBtn: elements.speedDownBtn, speedUpBtn: elements.speedUpBtn },
-                state,
-                getActiveGameDefinition(),
-            );
-        else if (chrome.controls !== "none" && elements.pauseText) elements.pauseText.innerText = state.isPaused ? "PLAY" : "PAUSE";
+        syncTowerSpeedControl(state);
         return;
     }
     const viewport = state.fsm?.context?.viewport;
@@ -500,11 +500,7 @@ function updateUI(state, upgrades) {
         });
     const dock = document.getElementById("abilitiesDock");
     if (dock) dock.style.display = hasAnyAbilities ? "flex" : "none";
-    syncSpeedControlDisplay(
-        { pauseLabel: elements.pauseText, speedLabel: elements.speedDisplay, speedDownBtn: elements.speedDownBtn, speedUpBtn: elements.speedUpBtn },
-        state,
-        getActiveGameDefinition(),
-    );
+    syncTowerSpeedControl(state);
     const abilityLayout = buildAbilityTreeLayout(upgrades);
     const abilityLayoutById = new Map(abilityLayout.map((entry) => [entry.id, entry]));
     const onStatsTab = state.currentUpgradeTab === "stats";

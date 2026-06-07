@@ -37,8 +37,6 @@ export const ENGINE_MINIMAL_UI = {
     combat: { entityBars: false, targetMarkers: false, combatHudModes: false, visibilityMask: false, hostileActors: false, playerActors: false, offScreenIndicators: false, globeOverlay: false },
     lifecycle: "custom",
 };
-/** Minimal landscape shell — pool and other single-arena games. */
-export const LANDSCAPE_MINIMAL_UI = ENGINE_MINIMAL_UI;
 /** @param {Partial<GameUiProfile>} [overrides] */
 function mergeProfile(overrides) {
     const base = ENGINE_MINIMAL_UI;
