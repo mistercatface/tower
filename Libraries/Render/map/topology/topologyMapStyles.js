@@ -1,4 +1,4 @@
-import { worldNodeCoords } from "../../../Libraries/Render/map/mapViewCoords.js";
+import { worldNodeCoords } from "../mapViewCoords.js";
 export function topologyConnectionStrokeStyle() {
     return "rgba(85, 85, 85, 0.4)";
 }

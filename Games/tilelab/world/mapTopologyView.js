@@ -1,7 +1,9 @@
 import { renderMapView } from "../../../Libraries/Render/map/MapViewRenderer.js";
-import { createTopologyMapViewConfig } from "../render/topologyMapPresets.js";
-import { TOPOLOGY_MAP_GRAPH_STYLES } from "../render/topologyMapStyles.js";
-import { drawTopologyOverlays } from "../render/topologyOverlays.js";
+import {
+    createTopologyMapViewConfig,
+    TOPOLOGY_MAP_GRAPH_STYLES,
+    drawTopologyOverlays,
+} from "../../../Libraries/Render/map/topology/index.js";
 import { prepareGameCanvas } from "./surfacePreview.js";
 /** @param {import("../TileLabGameState.js").TileLabGameState} state */
 export function renderMapTopologyView(state, viewport, options, selectedNodeId, playerPos, targetPos, currentPath, abstractPath) {

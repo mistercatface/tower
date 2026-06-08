@@ -4,7 +4,7 @@ import { buildWorldRenderInput } from "../../../Render/adapters/WorldRenderAdapt
 import { drawWorldScene } from "../../../Render/worldSceneDraw.js";
 import { getSurfaceProfileRevision } from "../../../Libraries/WorldSurface/SurfaceProfileRevision.js";
 import { invalidateWallAtlasKeyMemos } from "../../../Render/game/wallSurfaceInvalidation.js";
-import { drawMapLabInWorld } from "./drawMapLabInWorld.js";
+import { drawTopologyLayer } from "../../../Libraries/Render/map/topology/index.js";
 /** @type {WorldSceneRenderer | null} */
 let render3D = null;
 /** @type {import("../../../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings | null} */
@@ -101,7 +101,7 @@ export function drawTilelabSurfaceFrame(ctx, canvas, worldState, profileId, weap
         worldRenderInput,
         phases: ["ground", "buildings", "roofs", "bloom"],
     });
-    if (mapLab && topologyOptions) drawMapLabInWorld(ctx, worldState, viewport, topologyOptions, mapLab, { overlay: true });
+    if (mapLab && topologyOptions) drawTopologyLayer(ctx, worldState, viewport, topologyOptions, mapLab, { overlay: true });
     worldState.surfaceProfileOverride = prevProfileOverride;
     if (showRangeRing) drawWeaponRangeRing(ctx, cameraX, cameraY, weaponRange);
     if (showFocusMarker) drawFocusMarker(ctx, cameraX, cameraY);
