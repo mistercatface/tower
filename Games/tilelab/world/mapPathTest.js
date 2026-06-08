@@ -1,5 +1,5 @@
 import { computePathTestSession, placePathTestAgentSession } from "../../../Libraries/WorldGen/session/index.js";
-import { LAB_PATH_AGENT_RADIUS } from "../config.js";
+import { LAB_PATH_AGENT_RADIUS } from "../index.js";
 export function updatePathStatus(msg, isError = false) {
     const el = document.getElementById("pathStatus");
     if (el) {
@@ -14,11 +14,11 @@ export function applyPathTestStatus(status) {
 function isPathTestEnabled() {
     return document.getElementById("showPathTestInput")?.checked ?? false;
 }
-/** @param {import("../TileLabGameState.js").TileLabGameState} state */
+/** @param {import("../index.js").TileLabGameState} state */
 export function calculatePathTest(state) {
     applyPathTestStatus(computePathTestSession(state, { enabled: isPathTestEnabled() }));
 }
-/** @param {import("../TileLabGameState.js").TileLabGameState} state */
+/** @param {import("../index.js").TileLabGameState} state */
 export function placePathTestAgent(state, worldX, worldY, role) {
     const result = placePathTestAgentSession(state, worldX, worldY, role, LAB_PATH_AGENT_RADIUS);
     if (!result.ok) {

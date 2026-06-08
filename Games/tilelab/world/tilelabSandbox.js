@@ -1,4 +1,4 @@
-import { TILELAB_SANDBOX_SPAWN_PROP } from "../config.js";
+import { TILELAB_SANDBOX_SPAWN_PROP } from "../index.js";
 import {
     createDragLaunchBehavior,
     createRollToCursorDirectBehavior,
@@ -13,7 +13,7 @@ import { createTilelabSandboxHost } from "./tilelabSandboxHost.js";
 let sandboxController = null;
 let unmountToyUi = null;
 /**
- * @param {import("../TileLabGameState.js").TileLabGameState} state
+ * @param {import("../index.js").TileLabGameState} state
  * @param {() => void} requestRedraw
  */
 export function mountTilelabSandbox(state, requestRedraw) {

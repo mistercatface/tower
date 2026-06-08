@@ -2,12 +2,12 @@ import { placePathTestAgent } from "../world/mapPathTest.js";
 import { selectLabNode } from "../world/mapWorld.js";
 import { canvasClientToWorld } from "./labCanvas.js";
 import { populateNodeList, renderNodeInspector } from "./mapInspector.js";
-/** @param {import("../TileLabGameState.js").TileLabGameState} state @param {HTMLCanvasElement} canvas */
+/** @param {import("../index.js").TileLabGameState} state @param {HTMLCanvasElement} canvas */
 function resolveTopologyClickViewport(state, canvas) {
     state.mapViewport.setCanvasSize(canvas.width, canvas.height);
     return state.mapViewport;
 }
-/** @param {import("../TileLabGameState.js").TileLabGameState} state @param {() => void} onRedraw */
+/** @param {import("../index.js").TileLabGameState} state @param {() => void} onRedraw */
 export function initMapTopologyInteractions(state, onRedraw) {
     const canvas = document.getElementById("gameCanvas");
     canvas?.addEventListener("pointerdown", (e) => {

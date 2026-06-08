@@ -1,5 +1,5 @@
 import { roguelikeProceduralDesign } from "../../../Libraries/WorldGen/presets/roguelikeMap.js";
-import { LAB_PREVIEW_RANGE } from "../config.js";
+import { LAB_PREVIEW_RANGE } from "../index.js";
 import { generateTilelabMap } from "../world/mapWorld.js";
 import { fitLabStageToView } from "./labViewport.js";
 import { invalidateMapPreviewBakes } from "../world/surfacePreview.js";
@@ -13,7 +13,7 @@ export function readControls(state) {
         state,
     };
 }
-/** @param {import("../TileLabGameState.js").TileLabGameState} state */
+/** @param {import("../index.js").TileLabGameState} state */
 export function syncPreviewZoomToStage(state) {
     fitLabStageToView(state);
 }
@@ -32,14 +32,14 @@ export function initPresetSelect(profileIds) {
     }
     select.value = roguelikeProceduralDesign.surfaceProfileId;
 }
-/** @param {import("../TileLabGameState.js").TileLabGameState} state */
+/** @param {import("../index.js").TileLabGameState} state */
 export function initToolbarDefaults(state) {
     document.getElementById("mapSeedInput").value = "";
     document.getElementById("seedInput").value = "";
     syncPreviewZoomToStage(state);
 }
 /**
- * @param {import("../TileLabGameState.js").TileLabGameState} state
+ * @param {import("../index.js").TileLabGameState} state
  * @param {{ mapSeed: number, floorSeed: number }} ctrl
  * @param {boolean} [forceRegen]
  */

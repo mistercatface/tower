@@ -1,0 +1,115 @@
+import { createRoguelikeWorldGenPort, roguelikeProceduralDesign, ROGUELIKE_MAP_TOPOLOGY } from "../../Libraries/WorldGen/presets/roguelikeMap.js";
+import { layoutOnlyRunBootstrap } from "../../Libraries/RunBootstrap/phases.js";
+import { GUN_ID_TO_VISUAL } from "../../Assets/guns/visualMap.js";
+import { createDefaultRenderPorts } from "../../Libraries/Render/defaultRenderPorts.js";
+import { createWeaponVisuals } from "../../Libraries/Render/Characters/weapons/createWeaponVisuals.js";
+import { getGameState } from "../../GameState/GameState.js";
+import { syncLabScreenCanvasBounds } from "./ui/labCanvas.js";
+import { createSandboxCombatFeature } from "../../Libraries/Combat/createSandboxCombatFeature.js";
+import { SharedGameState } from "../../GameState/SharedGameState.js";
+import { createRoguelikeNavRuntime } from "../../Libraries/Navigation/createRoguelikeNavRuntime.js";
+import { createRoguelikeMapSession } from "../../Libraries/WorldGen/session/index.js";
+import { Viewport } from "../../Libraries/Viewport/Viewport.js";
+import { createSimulationPort } from "../../Systems/Simulation/SimulationPipeline.js";
+import { gameSceneTickPhase, pushablePhysicsPhase } from "../../Systems/Simulation/phases.js";
+import { getTilelabSandboxController } from "./world/tilelabSandbox.js";
+import { requestUiUpdate } from "../../Core/EventSystem.js";
+import { getRunScenePort, getSimulationPort } from "../../Core/GamePorts.js";
+import { renderActiveLabView } from "./ui/renderLabView.js";
+import { registerEditorProfiles } from "./ui/preview.js";
+import { syncTilelabWorld, readControls, applyToolbarDefaults, syncPreviewZoomToStage } from "./ui/toolbar.js";
+import { mergePairFilter } from "../../Libraries/Interaction/pairRules.js";
+import { excludeDeadOther, excludeActorOther, requirePickupOnHit } from "../../Libraries/Interaction/pairRuleClauses.js";
+import { tilelabUiPort } from "./ui/tilelabUiPort.js";
+export const LAB_PREVIEW_RANGE = 160;
+export const LAB_PATH_AGENT_RADIUS = 8;
+export const TILELAB_SANDBOX_SPAWN_PROP = "beach_ball";
+export const tilelabMapTopology = { ...ROGUELIKE_MAP_TOPOLOGY };
+const SANDBOX_PROJECTILE_HIT_PICKUP = mergePairFilter(excludeDeadOther, excludeActorOther, requirePickupOnHit);
+export const tilelabInteractionPairs = { projectileHitPickup: SANDBOX_PROJECTILE_HIT_PICKUP };
+const sandboxTickPhase = {
+    id: "sandboxTick",
+    run(ctx, dt) {
+        getTilelabSandboxController()?.tick(dt);
+    },
+};
+export const tilelabSimulation = createSimulationPort([sandboxTickPhase, pushablePhysicsPhase, gameSceneTickPhase]);
+/** @type {import("../../Core/GameDefinitionTypes.js").RunScenePort} */
+export const tilelabRunScenePort = {
+    getLayout: () => null,
+    onSimulationEnter(ctx) {
+        const { state } = ctx;
+        const ctrl = readControls(state);
+        syncTilelabWorld(state, ctrl, true);
+        registerEditorProfiles(state).then(() => {
+            applyToolbarDefaults();
+            syncPreviewZoomToStage(state);
+        });
+    },
+    onTick() {},
+};
+export class TileLabGameState extends SharedGameState {
+    constructor() {
+        super();
+        createRoguelikeNavRuntime(this);
+        const rand = Math.floor(1 + Math.random() * 1000000000);
+        this.mapSeed = rand;
+        this.floorSeed = rand;
+        this._pendingProfileRefresh = false;
+        this.labShowTopologyOverlay = false;
+        this.mapViewport = new Viewport(0, 0, 1);
+        this.roguelikeMapSession = createRoguelikeMapSession();
+    }
+}
+export class TileLabSimulationState {
+    onEnter(ctx) {
+        getRunScenePort().onSimulationEnter(ctx);
+        requestUiUpdate();
+    }
+    update(dt, ctx) {
+        if (ctx.state.isPaused) return;
+        getSimulationPort().runTick(ctx, dt);
+    }
+    render(ctx) {
+        renderActiveLabView(ctx.state);
+    }
+}
+/** @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition */
+export const tilelabGame = {
+    id: "tilelab",
+    canvasId: "gameCanvas",
+    features: createSandboxCombatFeature(),
+    createGameState() {
+        return new TileLabGameState();
+    },
+    states: { simulation: TileLabSimulationState },
+    initialState: "simulation",
+    simulationPort: tilelabSimulation,
+    uiPort: tilelabUiPort,
+    render: createDefaultRenderPorts({ weaponVisuals: createWeaponVisuals(GUN_ID_TO_VISUAL) }),
+    worldGen: createRoguelikeWorldGenPort({ topology: tilelabMapTopology }),
+    proceduralDesign: roguelikeProceduralDesign,
+    runBootstrapPort: layoutOnlyRunBootstrap,
+    runScenePort: tilelabRunScenePort,
+    viewPort: {
+        getViewCenter(state) {
+            const viewport = state.mapViewport;
+            return viewport ? { x: viewport.x, y: viewport.y } : null;
+        },
+    },
+    onCanvasResize() {
+        const state = getGameState();
+        if (state) syncLabScreenCanvasBounds(state);
+    },
+    prepare() {
+        document.title = "Tile Lab";
+        document.body.classList.add("shell-tilelab");
+        if (!document.getElementById("tilelab-css")) {
+            const link = document.createElement("link");
+            link.id = "tilelab-css";
+            link.rel = "stylesheet";
+            link.href = new URL("./tilelab.css", import.meta.url).href;
+            document.head.appendChild(link);
+        }
+    },
+};

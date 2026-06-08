@@ -1,7 +1,7 @@
 import { applyZoomControl, clampZoom, directZoomMapping } from "../../../Libraries/Viewport/index.js";
 import { getDefaultSimulationZoom } from "../../../Render/SimulationViewport.js";
 import { setupLabViewportNavigation } from "./lab-shared.js";
-import { LAB_PREVIEW_RANGE } from "../config.js";
+import { LAB_PREVIEW_RANGE } from "../index.js";
 import { syncLabScreenCanvasBounds } from "./labCanvas.js";
 export const LAB_ZOOM_MIN = 0.25;
 export const LAB_ZOOM_MAX = 2.5;
@@ -12,19 +12,19 @@ let notifyViewChange = null;
 function clampLabZoom(zoom) {
     return clampZoom(LAB_ZOOM_MIN, LAB_ZOOM_MAX, zoom);
 }
-/** @param {import("../TileLabGameState.js").TileLabGameState} state @param {number} x @param {number} y @param {number} zoom */
+/** @param {import("../index.js").TileLabGameState} state @param {number} x @param {number} y @param {number} zoom */
 function applyCamera(state, x, y, zoom) {
     syncLabScreenCanvasBounds(state);
     state.mapViewport.snapTo(x, y);
     state.mapViewport.zoom = clampLabZoom(zoom);
     zoomControl?.setZoom(state.mapViewport.zoom);
 }
-/** @param {import("../TileLabGameState.js").TileLabGameState} state @param {number} x @param {number} y @param {number} zoom */
+/** @param {import("../index.js").TileLabGameState} state @param {number} x @param {number} y @param {number} zoom */
 export function setLabCamera(state, x, y, zoom) {
     applyCamera(state, x, y, zoom);
     notifyViewChange?.();
 }
-/** @param {import("../TileLabGameState.js").TileLabGameState} state */
+/** @param {import("../index.js").TileLabGameState} state */
 export function fitLabStageToView(state) {
     syncLabScreenCanvasBounds(state);
     const stage = document.getElementById("mapStage");
@@ -36,7 +36,7 @@ export function fitLabStageToView(state) {
     zoomControl?.setZoom(state.mapViewport.zoom);
 }
 /**
- * @param {import("../TileLabGameState.js").TileLabGameState} state
+ * @param {import("../index.js").TileLabGameState} state
  * @param {() => void} onViewChange
  */
 export function mountLabViewport(state, onViewChange) {

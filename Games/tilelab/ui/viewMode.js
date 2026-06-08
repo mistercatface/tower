@@ -1,4 +1,4 @@
-/** @param {import("../TileLabGameState.js").TileLabGameState} state */
+/** @param {import("../index.js").TileLabGameState} state */
 export function applyLabViewChrome(state) {
     const showOverlay = state.labShowTopologyOverlay;
     const app = document.querySelector(".app");
@@ -10,8 +10,7 @@ export function applyLabViewChrome(state) {
     const checkbox = document.getElementById("showTopologyOverlayInput");
     if (checkbox) checkbox.checked = showOverlay;
 }
-
-/** @param {import("../TileLabGameState.js").TileLabGameState} state @param {() => void} onChange */
+/** @param {import("../index.js").TileLabGameState} state @param {() => void} onChange */
 export function bindViewModeControls(state, onChange) {
     document.getElementById("showTopologyOverlayInput")?.addEventListener("change", (e) => {
         state.labShowTopologyOverlay = /** @type {HTMLInputElement} */ (e.target).checked;

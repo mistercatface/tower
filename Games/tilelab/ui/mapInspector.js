@@ -1,4 +1,4 @@
-import { tilelabMapTopology } from "../mapTopology.js";
+import { tilelabMapTopology } from "../index.js";
 import { getWorldGen } from "../../../Core/GamePorts.js";
 import { SliderControl } from "./controls/SliderControl.js";
 import { calculatePathTest } from "../world/mapPathTest.js";
@@ -15,7 +15,7 @@ export function readMapControls() {
         showPathTest: document.getElementById("showPathTestInput")?.checked ?? true,
     };
 }
-/** @param {import("../TileLabGameState.js").TileLabGameState} state @param {(() => void) | null} [onRedraw] */
+/** @param {import("../index.js").TileLabGameState} state @param {(() => void) | null} [onRedraw] */
 export function populateNodeList(state, onRedraw) {
     const listPanel = document.getElementById("nodeListPanel");
     if (!listPanel) return;
@@ -38,7 +38,7 @@ export function populateNodeList(state, onRedraw) {
         listPanel.appendChild(item);
     }
 }
-/** @param {import("../TileLabGameState.js").TileLabGameState} state @param {(() => void) | null} [onRedraw] */
+/** @param {import("../index.js").TileLabGameState} state @param {(() => void) | null} [onRedraw] */
 export function renderNodeInspector(state, onRedraw) {
     const infoPanel = document.getElementById("nodeInfoPanel");
     if (!infoPanel) return;
@@ -77,7 +77,7 @@ export function renderNodeInspector(state, onRedraw) {
     });
     infoPanel.appendChild(focusBtn);
 }
-/** @param {import("../TileLabGameState.js").TileLabGameState} state */
+/** @param {import("../index.js").TileLabGameState} state */
 export function buildTopologySettingsPanel(state) {
     const panel = document.getElementById("mapSettingsPanel");
     if (!panel) return;
@@ -111,14 +111,14 @@ export function buildTopologySettingsPanel(state) {
     panel.appendChild(subh3);
     addSlider("Node World Scale", 1, 20, 0.5, worldGen, "nodeWorldCoordScale");
 }
-/** @param {import("../TileLabGameState.js").TileLabGameState} state @param {(() => void) | null} [onRedraw] */
+/** @param {import("../index.js").TileLabGameState} state @param {(() => void) | null} [onRedraw] */
 export function syncMapInspectorAfterRegen(state, onRedraw) {
     const { selectedNodeId } = state.roguelikeMapSession;
     if (selectedNodeId != null && !state.getMapNode(selectedNodeId)) selectLabNode(state, null);
     populateNodeList(state, onRedraw);
     renderNodeInspector(state, onRedraw);
 }
-/** @param {import("../TileLabGameState.js").TileLabGameState} state @param {() => void} onRedraw */
+/** @param {import("../index.js").TileLabGameState} state @param {() => void} onRedraw */
 export function bindMapInspectorControls(state, onRedraw) {
     buildTopologySettingsPanel(state);
     for (const id of ["showNodesInput", "showRoomZonesInput", "showWallsInput", "showGridBoundsInput", "showPathDebugInput", "showPathTestInput"])
