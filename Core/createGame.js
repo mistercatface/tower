@@ -1,7 +1,7 @@
 import { installGameState } from "../GameState/GameState.js";
 import { applyGameBootstrap } from "../Libraries/Bootstrap/applyGameBootstrap.js";
 import { getRenderPorts, resetRun } from "./GamePorts.js";
-import { events, requestUiUpdate, hideGameOver } from "./EventSystem.js";
+import { events, requestUiUpdate } from "./EventSystem.js";
 import { registerCoreListeners } from "./GameListeners.js";
 import { PauseManager } from "./PauseManager.js";
 import { Renderer } from "../Render/Render.js";
@@ -59,7 +59,6 @@ export function createGame(definition) {
         state.isGameOver = false;
         resetRun(state);
         pauseManager.reset();
-        hideGameOver();
         viewport.snapTo(0, 0);
         fsm.transition(definition.initialState);
         requestUiUpdate();

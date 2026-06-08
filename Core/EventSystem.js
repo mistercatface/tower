@@ -10,9 +10,6 @@ export function requestUiHudUpdate() {
 export function spawnFloatingText(data) {
     events.emit(Events.FX_FLOATING_TEXT, data);
 }
-export function emitCombatEnemyKilled(enemy) {
-    events.emit(Events.COMBAT_ENEMY_KILLED, { enemy });
-}
 export function requestGamePause(reason) {
     events.emit(Events.GAME_PAUSE, { reason });
 }
@@ -29,14 +26,7 @@ export function adjustGameSpeed(delta) {
 export function endRun(state) {
     if (!state || state.isGameOver) return;
     state.isGameOver = true;
-    events.emit(Events.UI_SHOW_GAME_OVER);
     requestUiUpdate();
-}
-export function showGameOver() {
-    events.emit(Events.UI_SHOW_GAME_OVER);
-}
-export function hideGameOver() {
-    events.emit(Events.UI_HIDE_GAME_OVER);
 }
 export function emitGameRestart() {
     events.emit(Events.GAME_RESTART);
