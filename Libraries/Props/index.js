@@ -20,3 +20,4 @@ export { spawnStartProps } from "./spawnStartProps.js";
 export { getWorldPropDefinitions, getWorldPropRecipes, getPropAsset } from "./PropCatalog.js";
 export { loadPropAssets } from "./loadPropAssets.js";
 export { PROP_RECIPE_BUILDERS } from "./recipes/index.js";
+export { PROP_PRIMITIVE_BUILDERS } from "./primitives/index.js";

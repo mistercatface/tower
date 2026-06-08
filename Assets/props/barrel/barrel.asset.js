@@ -1,6 +1,6 @@
 export default {
     id: "barrel",
-    recipe: "fuelBarrel",
+    primitive: "cylinder",
     physics: {
         hitBehavior: "explosive",
         radius: 8,

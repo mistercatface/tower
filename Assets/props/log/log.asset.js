@@ -1,6 +1,6 @@
 export default {
     id: "log",
-    recipe: "rollingBox",
+    primitive: "rollingBox",
     physics: {
         hitBehavior: "none",
         radius: 32,

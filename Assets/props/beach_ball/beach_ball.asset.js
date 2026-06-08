@@ -1,6 +1,6 @@
 export default {
     id: "beach_ball",
-    recipe: "lofiSphere",
+    primitive: "sphere",
     /** Opt in to drag-launch sandbox; tuning defaults live in Libraries/Sandbox/dragLaunch.js */
     sandbox: { dragLaunch: true },
     physics: {
