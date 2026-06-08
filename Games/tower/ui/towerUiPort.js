@@ -12,12 +12,12 @@ import { emitPurchaseUpgrade, emitToggleAbility, emitSetUpgradeTab, emitSetStats
 import { setGameZoomFromSlider, emitMapToggle } from "../events.js";
 import { bindTowerShellElements } from "./towerShellElements.js";
 import { wireSettingsModal } from "./wireSettingsModal.js";
-import { bindSpeedControl, syncSpeedControlDisplay, wireSpeedControl } from "../../../Libraries/Playback/index.js";
+import { applySpeedControl } from "../../../Libraries/Playback/index.js";
 import { mountTowerChrome, unmountTowerChrome } from "./mountTowerChrome.js";
 import { inspectBridge } from "../inspect/InspectBridge.js";
 /** @type {Record<string, HTMLElement | NodeListOf<Element> | null>} */
 let elements = {};
-/** @type {import("../../../Libraries/Playback/speedControlUi.js").SpeedControlElements | null} */
+/** @type {import("../../../Libraries/Playback/speedControl.js").SpeedControlHandle | null} */
 let towerSpeedControl = null;
 const dynamicElements = {};
 function createButton(styles, innerHTML, onClick, id = "") {
@@ -159,7 +159,7 @@ function mountTowerUi(state) {
     elements.inspectMissionBanner = document.getElementById("inspectMissionBanner");
     elements.inspectMissionText = document.getElementById("inspectMissionText");
     inspectBridge.mount();
-    towerSpeedControl = bindSpeedControl(elements.speedControls);
+    towerSpeedControl = applySpeedControl(elements.speedControls, { definition: getActiveGameDefinition() });
     elements.passivesContainer.innerHTML = "";
     upgrades
         .filter((u) => u.isAbility && !u.showInHud)
@@ -212,7 +212,6 @@ function mountTowerUi(state) {
         elements.upgradesContainer.appendChild(btn);
     });
     wireTowerControls(state);
-    if (towerSpeedControl) wireSpeedControl(towerSpeedControl, getActiveGameDefinition());
     updateUI(state);
     updateHud(state);
 }
@@ -452,9 +451,6 @@ function drawStat(state, upg, abilityLayoutById) {
         }
     }
 }
-function syncTowerSpeedControl(state) {
-    if (towerSpeedControl) syncSpeedControlDisplay(towerSpeedControl, state, getActiveGameDefinition());
-}
 function updateUI(state) {
     const upgrades = getUpgradeDefs(state);
     updateInspectMissionBanner(state);
@@ -485,7 +481,7 @@ function updateUI(state) {
         });
     const dock = document.getElementById("abilitiesDock");
     if (dock) dock.style.display = hasAnyAbilities ? "flex" : "none";
-    syncTowerSpeedControl(state);
+    towerSpeedControl?.refresh(state);
     const abilityLayout = buildAbilityTreeLayout(upgrades);
     const abilityLayoutById = new Map(abilityLayout.map((entry) => [entry.id, entry]));
     const onStatsTab = state.currentUpgradeTab === "stats";

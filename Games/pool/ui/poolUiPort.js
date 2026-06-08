@@ -1,20 +1,18 @@
 import { getActiveGameDefinition } from "../../../Core/ActiveGameDefinition.js";
-import { bindSpeedControl, speedControlHtml, syncSpeedControlDisplay, wireSpeedControl } from "../../../Libraries/Playback/index.js";
+import { applySpeedControl } from "../../../Libraries/Playback/index.js";
 import { ensurePoolState } from "../balls.js";
 import { getPoolStatusMessage } from "../poolHud.js";
 import { getUiRoot } from "../../../UI/Core/uiRoot.js";
 /** @typedef {import("../../../Core/GameDefinitionTypes.js").UiPort} UiPort */
-/** @typedef {import("../../../Libraries/Playback/speedControlUi.js").SpeedControlElements} SpeedControlElements */
-const POOL_SPEED_CONTROL_HTML = speedControlHtml({ rootClass: "speed-control chrome-control-panel", buttonClass: "control-btn", pauseButtonClass: "control-btn control-btn-large" });
 const POOL_UI_HTML = `
 <div id="poolHud" class="pool-hud">
     <div id="poolHudStatus" class="pool-hud-status"></div>
     <div id="poolHudBallsLeft" class="pool-hud-balls-left"></div>
 </div>
-<div id="poolSpeedOverlay" class="pool-speed-overlay">${POOL_SPEED_CONTROL_HTML}</div>`;
+<div id="poolSpeedOverlay" class="pool-speed-overlay"></div>`;
 /** @type {{ status: HTMLElement | null, ballsLeft: HTMLElement | null }} */
 const poolHud = { status: null, ballsLeft: null };
-/** @type {SpeedControlElements | null} */
+/** @type {import("../../../Libraries/Playback/speedControl.js").SpeedControlHandle | null} */
 let poolSpeedControl = null;
 function mountPoolChrome() {
     const uiRoot = getUiRoot();
@@ -24,7 +22,11 @@ function mountPoolChrome() {
 function bindPoolElements() {
     poolHud.status = document.getElementById("poolHudStatus");
     poolHud.ballsLeft = document.getElementById("poolHudBallsLeft");
-    poolSpeedControl = bindSpeedControl(document.getElementById("poolSpeedOverlay"));
+    poolSpeedControl = applySpeedControl(document.getElementById("poolSpeedOverlay"), {
+        inject: true,
+        definition: getActiveGameDefinition(),
+        classNames: { root: "speed-control chrome-control-panel", button: "control-btn", pause: "control-btn control-btn-large" },
+    });
 }
 /** @param {object} state */
 function updatePoolHud(state) {
@@ -41,7 +43,7 @@ function updatePoolHud(state) {
             } else if (poolHud.ballsLeft.style.display !== "none") poolHud.ballsLeft.style.display = "none";
         }
     }
-    if (poolSpeedControl) syncSpeedControlDisplay(poolSpeedControl, state, getActiveGameDefinition());
+    poolSpeedControl?.refresh(state);
 }
 function unmountPoolChrome() {
     getUiRoot()?.replaceChildren();
@@ -54,7 +56,6 @@ export const poolUiPort = {
     mount(ctx) {
         mountPoolChrome();
         bindPoolElements();
-        if (poolSpeedControl) wireSpeedControl(poolSpeedControl, getActiveGameDefinition());
         updatePoolHud(ctx.state);
     },
     unmount() {

@@ -1,6 +1,7 @@
 import { listShippedSurfaceProfileIds } from "../../../Config/procedural/profiles.js";
 import { getUiRoot } from "../../../UI/Core/uiRoot.js";
-import { initResizer, initSquareResize } from "../../../Tools/Lab/lab-shared.js";
+import { applySquareCanvasResize } from "../../../Libraries/Canvas/index.js";
+import { initResizer } from "../../../Tools/Lab/lab-shared.js";
 import { initAnimationPreview } from "./LabAnimationPreview.js";
 import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEditor.js";
 import { initMapPreviewNavigation } from "../world/surfacePreview.js";
@@ -92,24 +93,19 @@ function bootstrapTilelabUi(state) {
         },
     });
     initToolbarDefaults();
-    const animHost = document.getElementById("animationPreviewHost");
     const animCanvas = document.getElementById("animationPreviewCanvas");
-    initSquareResize(animHost, {
+    applySquareCanvasResize(animCanvas, {
+        host: document.getElementById("animationPreviewHost"),
         initialSize: 256,
         minSize: 128,
         maxSize: () => {
             const panel = document.getElementById("surfaceEditorPanel");
             return panel ? Math.max(128, panel.clientWidth - 40) : 512;
         },
-        onResize: (size) => {
-            if (animCanvas) {
-                animCanvas.width = size;
-                animCanvas.height = size;
-            }
-        },
     });
     if (animCanvas) initAnimationPreview(animCanvas, buildProfileFromEditor);
-    initSquareResize(document.getElementById("mapStage"), {
+    applySquareCanvasResize(document.getElementById("gameCanvas"), {
+        host: document.getElementById("mapStage"),
         initialSize: 320,
         minSize: 160,
         maxSize: () => {

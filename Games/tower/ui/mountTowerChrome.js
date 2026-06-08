@@ -1,13 +1,14 @@
-import { speedControlHtml } from "../../../Libraries/Playback/index.js";
 import { getUiRoot } from "../../../UI/Core/uiRoot.js";
 import { clearTowerShellElements } from "./towerShellElements.js";
 const TOWER_CHROME_ROOT_ID = "tower-chrome";
-const TOWER_SPEED_CONTROL_HTML = speedControlHtml({
-    rootId: "speedControls",
-    buttonClass: "control-btn",
-    pauseButtonClass: "control-btn control-btn-large",
-    ids: { down: "speedDownBtn", pause: "pauseBtn", pauseLabel: "pauseText", speedLabel: "speedDisplay", up: "speedUpBtn" },
-});
+const TOWER_SPEED_CONTROL_HTML = `<div id="speedControls" class="speed-control">
+<button type="button" data-speed-down class="speed-control-down control-btn" id="speedDownBtn">–</button>
+<button type="button" data-speed-pause class="speed-control-pause control-btn control-btn-large" id="pauseBtn">
+<span data-pause-label id="pauseText">PAUSE</span>
+<span data-speed-label class="speed-control-speed-label" id="speedDisplay">1.00x</span>
+</button>
+<button type="button" data-speed-up class="speed-control-up control-btn" id="speedUpBtn">+</button>
+</div>`;
 const INSPECT_OVERLAY_HTML = `
 <div id="inspectOverlay" class="inspect-overlay">
     <div class="inspect-panel">
