@@ -24,6 +24,7 @@ export {
     drawDragLaunchPreview,
     getDragLaunchConfig,
     getDragLaunchPreview,
+    isDragLaunchProp,
     releaseDragLaunch,
     updateDragLaunchAim,
 } from "./dragLaunchToy.js";

@@ -3,10 +3,17 @@ import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { drawAimSegment } from "../Render/contactPreviewDraw.js";
 /** @typedef {{ minDrag: number, maxPull: number, pullScale: number, minPower: number, maxPower: number }} DragLaunchConfig */
 /** @typedef {{ active: boolean, anchorX: number, anchorY: number, pullX: number, pullY: number, shotNx: number | null, shotNy: number | null }} DragLaunchAim */
-export const DRAG_LAUNCH_DEFAULTS = { minDrag: 8, maxPull: 120, pullScale: 1.2, minPower: 50, maxPower: 380 };
+export const DRAG_LAUNCH_DEFAULTS = { minDrag: 10, maxPull: 110, pullScale: 1.25, minPower: 55, maxPower: 340 };
+/** @param {object | null | undefined} asset */
+export function isDragLaunchProp(asset) {
+    const entry = asset?.sandbox?.dragLaunch;
+    return entry === true || (entry != null && typeof entry === "object");
+}
 /** @param {object | null | undefined} asset */
 export function getDragLaunchConfig(asset) {
-    return { ...DRAG_LAUNCH_DEFAULTS, ...asset?.spawn?.dragLaunch };
+    const entry = asset?.sandbox?.dragLaunch;
+    const overrides = entry === true ? {} : entry && typeof entry === "object" ? entry : {};
+    return { ...DRAG_LAUNCH_DEFAULTS, ...overrides };
 }
 /** @param {number} anchorX @param {number} anchorY @returns {DragLaunchAim} */
 export function createDragLaunchAim(anchorX, anchorY) {

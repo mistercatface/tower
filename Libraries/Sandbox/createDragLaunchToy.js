@@ -4,7 +4,7 @@ import { applyDragLaunchVelocity, createDragLaunchAim, drawDragLaunchPreview, ge
 /** @typedef {import("./SandboxHostPort.js").SandboxHostPort} SandboxHostPort */
 /**
  * Drag-launch sandbox toy — owns pointer input, aim state, spawn, and overlay draw.
- * Launch tuning comes from the focused prop asset (`spawn.dragLaunch`).
+ * Launch tuning defaults live in dragLaunchToy.js; props opt in via `sandbox.dragLaunch`.
  *
  * @param {SandboxHostPort} host
  */

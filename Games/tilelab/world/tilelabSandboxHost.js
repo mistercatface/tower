@@ -1,6 +1,6 @@
 import { canvasClientToWorld } from "../ui/labCanvas.js";
 /** @typedef {import("../../../Libraries/Sandbox/SandboxHostPort.js").SandboxHostPort} SandboxHostPort */
-/** Default until a focus selector UI is wired — must match a prop with `spawn.dragLaunch`. */
+/** Default until focus selector UI — must be a prop with `sandbox.dragLaunch`. */
 const DEFAULT_FOCUS_PROP_ID = "beach_ball";
 /**
  * @param {import("../TileLabGameState.js").TileLabGameState} state
