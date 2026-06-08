@@ -9,7 +9,7 @@ export function createDragLaunchBehavior() {
     return {
         id: DRAG_LAUNCH_BEHAVIOR_ID,
         onPointerDown(pickup, world) {
-            aim = createDragLaunchAim(pickup.x, pickup.y);
+            aim = createDragLaunchAim(pickup.x, pickup.y, world.x, world.y);
             updateDragLaunchAim(aim, world.x, world.y, configFor(pickup));
             return true;
         },
