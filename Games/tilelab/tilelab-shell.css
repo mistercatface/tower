@@ -26,8 +26,7 @@ body.shell-tilelab .app {
     height: 100%;
 }
 
-body.shell-tilelab #gameCanvas,
-body.shell-tilelab #mapPreview {
+body.shell-tilelab #gameCanvas {
     position: absolute;
     inset: 0;
     width: 100%;
@@ -47,4 +46,21 @@ body.shell-tilelab .map-stage {
     min-height: 0;
     min-width: 0;
     overflow: hidden;
+}
+
+body.shell-tilelab .map-zoom-bar {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(0, 0, 0, 0.12);
+}
+
+body.shell-tilelab .map-zoom-bar #labZoomControl {
+    flex: 1;
+    min-width: 0;
+    max-width: 360px;
+    font-size: 11px;
+    color: var(--muted);
 }

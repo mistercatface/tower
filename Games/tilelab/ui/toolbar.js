@@ -1,8 +1,7 @@
 import { roguelikeProceduralDesign } from "../../../Libraries/WorldGen/presets/roguelikeMap.js";
-import { getDefaultSimulationZoom } from "../../../Render/SimulationViewport.js";
 import { LAB_PREVIEW_RANGE } from "../config.js";
 import { focusLabNode, generateTilelabMap } from "../world/mapWorld.js";
-import { pushLabZoomToControl } from "./labZoomUi.js";
+import { fitLabStageToView } from "./labViewport.js";
 import { invalidateMapPreviewBakes } from "../world/surfacePreview.js";
 export function readControls(state) {
     return {
@@ -16,12 +15,7 @@ export function readControls(state) {
 }
 /** @param {import("../TileLabGameState.js").TileLabGameState} state */
 export function syncPreviewZoomToStage(state) {
-    const stage = document.getElementById("mapStage");
-    const rect = stage?.getBoundingClientRect();
-    const viewW = Math.max(320, Math.floor(rect?.width ?? 800));
-    const viewH = Math.max(240, Math.floor(rect?.height ?? 600));
-    const zoom = getDefaultSimulationZoom(viewW, viewH, LAB_PREVIEW_RANGE, LAB_PREVIEW_RANGE);
-    pushLabZoomToControl(state, zoom);
+    fitLabStageToView(state);
 }
 export function applyToolbarDefaults() {
     const rangeMeta = document.getElementById("rangeMeta");

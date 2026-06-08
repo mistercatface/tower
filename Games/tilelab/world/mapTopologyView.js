@@ -6,7 +6,7 @@ import { prepareGameCanvas } from "./surfacePreview.js";
 /** @param {import("../TileLabGameState.js").TileLabGameState} state */
 export function renderMapTopologyView(state, viewport, options, selectedNodeId, playerPos, targetPos, currentPath, abstractPath) {
     const stage = document.getElementById("mapStage");
-    const canvas = document.getElementById("mapPreview");
+    const canvas = document.getElementById("gameCanvas");
     const size = prepareGameCanvas(canvas, stage);
     if (!size || !canvas) return;
     viewport.setCanvasSize(size.width, size.height);

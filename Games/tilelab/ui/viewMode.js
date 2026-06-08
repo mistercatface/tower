@@ -14,10 +14,6 @@ export function applyLabViewMode(state) {
     const showTopology = showsTopologyView(mode);
     const app = document.querySelector(".app");
     if (app) app.dataset.labView = mode;
-    const gameCanvas = document.getElementById("gameCanvas");
-    const mapPreview = document.getElementById("mapPreview");
-    if (gameCanvas) gameCanvas.style.display = mode !== "topology" ? "block" : "none";
-    if (mapPreview) mapPreview.style.display = mode === "topology" ? "block" : "none";
     const animationStage = document.getElementById("animationStage");
     const surfacePanel = document.getElementById("surfaceEditorPanel");
     const topologyPanel = document.getElementById("topologyEditorPanel");

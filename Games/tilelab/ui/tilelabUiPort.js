@@ -4,13 +4,12 @@ import { applySquareCanvasResize } from "../../../Libraries/Canvas/index.js";
 import { initResizer } from "../../../Tools/Lab/lab-shared.js";
 import { initAnimationPreview } from "./LabAnimationPreview.js";
 import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEditor.js";
-import { initMapPreviewNavigation } from "../world/surfacePreview.js";
 import { registerEditorProfiles, renderTilelabPreview, syncRuntimeLabProfile } from "./preview.js";
 import { readControls, applyToolbarDefaults, initPresetSelect, initToolbarDefaults, bindToolbarControls, syncTilelabWorld, syncPreviewZoomToStage } from "./toolbar.js";
-import { mountLabZoomControl } from "./labZoomUi.js";
+import { mountLabViewport } from "./labViewport.js";
 import { TILELAB_UI_HTML } from "./shellHtml.js";
 import { bindMapInspectorControls, syncMapInspectorAfterRegen } from "./mapInspector.js";
-import { initMapTopologyNavigation } from "./mapInteractions.js";
+import { initMapTopologyInteractions } from "./mapInteractions.js";
 import { bindViewModeControls, showsSurfaceView } from "./viewMode.js";
 import { renderActiveLabView } from "./renderLabView.js";
 /** @typedef {import("../../../Core/GameDefinitionTypes.js").UiPort} UiPort */
@@ -70,17 +69,14 @@ function bootstrapTilelabUi(state) {
         },
     });
     void syncRuntimeLabProfile();
-    mountLabZoomControl(state, () => schedulePreviewRefresh(state, 0));
+    const onLabViewChange = () => {
+        renderActiveLabView(state);
+        if (showsSurfaceView(state.labViewMode) && state.worldSurfaces?.hasPendingSurfaceBakes?.()) runBakeRepaintLoop(state);
+    };
+    mountLabViewport(state, onLabViewChange);
     bindViewModeControls(state, () => renderActiveLabView(state));
     bindMapInspectorControls(state, () => renderActiveLabView(state));
-    initMapTopologyNavigation(state, () => renderActiveLabView(state));
-    initMapPreviewNavigation(() => state, {
-        onViewChange: () => {
-            if (!showsSurfaceView(state.labViewMode)) return;
-            renderTilelabPreview(state, readControls(state));
-            if (state.worldSurfaces?.hasPendingSurfaceBakes?.()) runBakeRepaintLoop(state);
-        },
-    });
+    initMapTopologyInteractions(state, () => renderActiveLabView(state));
     bindToolbarControls({
         onRefresh: () => schedulePreviewRefresh(state, 0),
         onRegenMap: () => {

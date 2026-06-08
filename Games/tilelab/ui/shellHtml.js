@@ -17,7 +17,6 @@ export const TILELAB_UI_HTML = `
             <label>Floor seed <input id="seedInput" type="number" value="42" step="1"></label>
             <button type="button" id="randomSeedBtn" class="secondary">Rand</button>
             <span class="sep"></span>
-            <div id="labZoomControl"></div>
             <span id="rangeMeta" class="range-meta"></span>
             <span class="sep"></span>
             <label class="check-inline"><input id="showRangeRingInput" type="checkbox" checked> Range ring</label>
@@ -111,10 +110,11 @@ export const TILELAB_UI_HTML = `
         <section class="col col-map">
             <div class="map-status" id="gameMetaLine">WASD move · drag · wheel zoom</div>
             <div class="map-status" id="mapStatusLine" style="display:none">WASD move · drag · wheel zoom</div>
+            <div class="map-zoom-bar">
+                <div id="labZoomControl"></div>
+            </div>
             <div class="map-container">
-                <div class="map-stage" id="mapStage">
-                    <canvas id="mapPreview"></canvas>
-                </div>
+                <div class="map-stage" id="mapStage"></div>
             </div>
         </section>
     </div>

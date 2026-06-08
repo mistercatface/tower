@@ -3,7 +3,7 @@ import { getWorldGen } from "../../../Core/GamePorts.js";
 import { SliderControl } from "../../../Tools/Lab/ui/controls/SliderControl.js";
 import { calculatePathTest } from "../world/mapPathTest.js";
 import { focusLabNode, generateTilelabMap } from "../world/mapWorld.js";
-import { pushLabZoomToControl } from "./labZoomUi.js";
+import { setLabCamera } from "./labViewport.js";
 import { readControls } from "./toolbar.js";
 export function readMapControls() {
     return {
@@ -73,8 +73,7 @@ export function renderNodeInspector(state, onRedraw) {
     focusBtn.textContent = "Focus Node";
     focusBtn.addEventListener("click", () => {
         focusLabNode(state, node.id);
-        pushLabZoomToControl(state, 0.5);
-        onRedraw?.();
+        setLabCamera(state, state.mapViewport.x, state.mapViewport.y, 0.5);
     });
     infoPanel.appendChild(focusBtn);
 }

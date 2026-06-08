@@ -3,8 +3,6 @@ import { WorldSceneRenderer } from "../../../Libraries/Render/WorldSceneRenderer
 import { drawWorldScene } from "../../../Render/worldSceneDraw.js";
 import { getSurfaceProfileRevision } from "../../../Libraries/WorldSurface/SurfaceProfileRevision.js";
 import { invalidateWallAtlasKeyMemos } from "../../../Render/game/wallSurfaceInvalidation.js";
-import { setupLabViewportNavigation } from "../../../Tools/Lab/lab-shared.js";
-import { pushLabZoomToControl } from "../ui/labZoomUi.js";
 import { drawMapLabInWorld } from "./drawMapLabInWorld.js";
 /** @type {WorldSceneRenderer | null} */
 let render3D = null;
@@ -109,19 +107,4 @@ export function invalidateMapPreviewBakes() {
     lastBakeKey = "";
     render3D = null;
     render3DSettings = null;
-}
-export function initMapPreviewNavigation(getWorldState, handlers = {}) {
-    setupLabViewportNavigation("gameCanvas", {
-        getCamera: () => {
-            const vp = getWorldState()?.mapViewport;
-            return vp ? { x: vp.x, y: vp.y, zoom: vp.zoom || 1 } : { x: 0, y: 0, zoom: 1 };
-        },
-        setCamera: (x, y, zoom) => {
-            const world = getWorldState();
-            if (!world) return;
-            world.mapViewport.snapTo(x, y);
-            pushLabZoomToControl(world, zoom);
-        },
-        onUpdate: handlers.onViewChange,
-    });
 }
