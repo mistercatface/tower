@@ -1,8 +1,8 @@
-import { defaultGunId, getGunDefinition, gunDefinitions } from "../config/content/guns.js";
+import { getGunDefinition } from "../config/content/guns.js";
 export { getSlotFireIntervalMs, getSlotReloadTimeMs, getGunProjectileConfig } from "../../../Libraries/Combat/gunCombat.js";
+import { getGunProjectileConfig } from "../../../Libraries/Combat/gunCombat.js";
 import { getActiveEquipModifiers } from "../../../Libraries/Combat/gunModifiers.js";
 export { getActiveEquipModifiers };
-import { getGunProjectileConfig } from "../../../Libraries/Combat/gunCombat.js";
 export function getGunImpactKnockback(gun) {
     return getGunProjectileConfig(gun).impactKnockback ?? null;
 }

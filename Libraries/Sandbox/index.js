@@ -1,3 +1,10 @@
+/**
+ * Sandbox toy orchestration: host port, input session, behavior plugins, equip UI.
+ *
+ * Weapon semantics (ammo, charge cadence, projectile spawn, gun state) live in
+ * `Libraries/Combat/` (`pickupManualFire`, `pickupWeaponState`, `spawnProjectiles`).
+ * Behaviors here only wire pointer input and tick hooks to those modules.
+ */
 export { findPickupAt } from "./findPickupAt.js";
 export { bindCanvasPointers, releasePointerCapture } from "./bindCanvasPointers.js";
 export { createSandboxSession } from "./sandboxSession.js";

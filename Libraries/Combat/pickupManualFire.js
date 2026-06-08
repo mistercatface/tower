@@ -4,7 +4,8 @@ import { resolveFireAngleOffsets } from "./turretLoadout.js";
 import { resolveKinematicsMuzzlePosition } from "../Render/Characters/actorKinematicsRenderer.js";
 import { CombatParticles } from "../Render/CombatParticles.js";
 import { inferFaction } from "../../Core/GamePorts.js";
-import { getSlotFireIntervalMs, getSlotReloadTimeMs } from "./gunCombat.js";
+import { getSlotFireIntervalMs } from "./gunCombat.js";
+import { advanceTurretAmmo } from "./turretAmmo.js";
 import { normalizeAngle } from "../Math/Angle.js";
 function resolvePickupTurretTurnSpeed(pickup) {
     return pickup.stats?.turnSpeed?.value ?? pickup.turnSpeed ?? 10;
@@ -21,28 +22,6 @@ function aimPickupTurret(turret, sourceX, sourceY, targetX, targetY, dt) {
     turret.angle += Math.sign(diff) * Math.min(Math.abs(diff), turnSpeed * (dt / 1000));
     turret.angle = normalizeAngle(turret.angle);
     return false;
-}
-export function advanceTurretAmmo(dt, turret, gun, source) {
-    if (turret.currentGunId !== turret.gunId || turret.ammo === undefined) {
-        turret.currentGunId = turret.gunId;
-        turret.ammo = gun.maxAmmo;
-        turret.reloading = false;
-        turret.reloadTimer = 0;
-    }
-    if (turret.reloading) {
-        turret.reloadTimer += dt;
-        const reloadTimeMs = getSlotReloadTimeMs(gun, source);
-        if (turret.reloadTimer >= reloadTimeMs) {
-            turret.reloading = false;
-            turret.reloadTimer = 0;
-            turret.ammo = gun.maxAmmo;
-        }
-    }
-    if (!turret.reloading && turret.ammo <= 0) {
-        turret.reloading = true;
-        turret.reloadTimer = 0;
-    }
-    return turret.reloading;
 }
 function firePickupProjectileTurret(state, pickup, turret, turretIndex, gun) {
     const loadout = gun.turretLoadout;

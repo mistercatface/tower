@@ -2,31 +2,11 @@ import { normalizeAngle } from "../../Libraries/Math/Angle.js";
 import { buildLaserTargetCircles, castLaserRay } from "../../Libraries/Combat/laserCast.js";
 import { Laser } from "./entities/Laser.js";
 import { defaultGunId, getGunDefinition } from "./config/content/guns.js";
-import { getSlotFireIntervalMs, getSlotReloadTimeMs } from "./combat/gunCombat.js";
+import { getSlotFireIntervalMs } from "./combat/gunCombat.js";
 import { getBeamTickDamage, createBeamHitSource } from "./combat/impactDamage.js";
 import { areHostile, getBroadphaseActors, getHostiles } from "./targeting.js";
-export function advanceTurretAmmo(dt, turret, gun, source) {
-    if (turret.currentGunId !== turret.gunId || turret.ammo === undefined) {
-        turret.currentGunId = turret.gunId;
-        turret.ammo = gun.maxAmmo;
-        turret.reloading = false;
-        turret.reloadTimer = 0;
-    }
-    if (turret.reloading) {
-        turret.reloadTimer += dt;
-        const reloadTimeMs = getSlotReloadTimeMs(gun, source);
-        if (turret.reloadTimer >= reloadTimeMs) {
-            turret.reloading = false;
-            turret.reloadTimer = 0;
-            turret.ammo = gun.maxAmmo;
-        }
-    }
-    if (!turret.reloading && turret.ammo <= 0) {
-        turret.reloading = true;
-        turret.reloadTimer = 0;
-    }
-    return turret.reloading;
-}
+import { advanceTurretAmmo } from "../../Libraries/Combat/turretAmmo.js";
+export { advanceTurretAmmo };
 export class ChargedWeaponMode {
     constructor(onFireFn) {
         this.onFire = onFireFn;

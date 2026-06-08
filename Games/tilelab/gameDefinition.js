@@ -14,10 +14,12 @@ import { getGameState } from "../../GameState/GameState.js";
 import { syncLabScreenCanvasBounds } from "./ui/labCanvas.js";
 import { registerPickupStates } from "../../Entities/PickupStates.js";
 import { combatPickupStates } from "../../Entities/pickupCombatStates.js";
+import { tilelabInteractionPairs } from "./tilelabInteraction.js";
 /** @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition */
 export const tilelabGame = {
     id: "tilelab",
     canvasId: "gameCanvas",
+    interactionPairs: tilelabInteractionPairs,
     createGameState() {
         return new TileLabGameState();
     },
