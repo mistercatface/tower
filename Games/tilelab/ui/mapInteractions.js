@@ -9,7 +9,7 @@ function resolveTopologyClickViewport(state, canvas) {
 export function initMapTopologyInteractions(state, onRedraw) {
     const canvas = document.getElementById("gameCanvas");
     canvas?.addEventListener("pointerdown", (e) => {
-        if (state.labViewMode !== "topology" && state.labViewMode !== "both") return;
+        if (!state.labShowTopologyOverlay) return;
         const rect = canvas.getBoundingClientRect();
         const viewport = resolveTopologyClickViewport(state, canvas);
         const { x: worldX, y: worldY } = viewport.screenToWorld(e.clientX - rect.left, e.clientY - rect.top);

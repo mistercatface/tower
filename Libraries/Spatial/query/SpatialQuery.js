@@ -1,3 +1,5 @@
+let globalGeneration = 0;
+
 export class SpatialQuery {
     constructor() {
         this.generation = 0;
@@ -7,8 +9,9 @@ export class SpatialQuery {
         };
     }
     nextQuery() {
-        this.generation = (this.generation + 1) | 0;
-        if (this.generation === 0) this.generation = 1;
+        globalGeneration = (globalGeneration + 1) | 0;
+        if (globalGeneration === 0) globalGeneration = 1;
+        this.generation = globalGeneration;
     }
     forEachInIndexCoords(index, minX, minY, maxX, maxY, fn, exclude = null) {
         this.nextQuery();

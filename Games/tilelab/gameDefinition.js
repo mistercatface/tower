@@ -7,6 +7,8 @@ import { tilelabSimulation } from "./simulation.js";
 import { tilelabUiPort } from "./ui/tilelabUiPort.js";
 import { tilelabRunScenePort } from "./runScenePort.js";
 import { registerTilelabListeners } from "./listeners.js";
+import { getGameState } from "../../GameState/GameState.js";
+import { syncLabScreenCanvasBounds } from "./world/surfacePreview.js";
 
 /** @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition */
 
@@ -26,6 +28,10 @@ export const tilelabGame = {
     runBootstrapPort: layoutOnlyRunBootstrap,
     runScenePort: tilelabRunScenePort,
     registerListeners: registerTilelabListeners,
+    onCanvasResize() {
+        const state = getGameState();
+        if (state) syncLabScreenCanvasBounds(state);
+    },
     prepare() {
         document.title = "Tile Lab";
         document.body.classList.add("shell-tilelab");

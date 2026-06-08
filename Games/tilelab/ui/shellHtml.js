@@ -3,11 +3,7 @@ export const TILELAB_UI_HTML = `
     <div class="toolbar">
         <h1>Tile Lab</h1>
         <span class="sep"></span>
-        <span class="view-mode-group">
-            <label class="check-inline"><input type="radio" name="labViewMode" value="surface" checked> Surface</label>
-            <label class="check-inline"><input type="radio" name="labViewMode" value="topology"> Topology</label>
-            <label class="check-inline"><input type="radio" name="labViewMode" value="both"> Both</label>
-        </span>
+        <label class="check-inline"><input type="checkbox" id="showTopologyOverlayInput"> Topology overlay</label>
         <span class="sep"></span>
         <label>Map seed <input id="mapSeedInput" type="number" value="42"></label>
         <button type="button" id="regenMapBtn" class="secondary">New map</button>

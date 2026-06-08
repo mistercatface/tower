@@ -8,7 +8,7 @@ export class TileLabGameState extends SharedGameState {
         this.mapSeed = 42;
         this.floorSeed = 42;
         this._pendingProfileRefresh = false;
-        this.labViewMode = "surface";
+        this.labShowTopologyOverlay = false;
         this.mapViewport = new Viewport(0, 0, 1);
         this.mapLab = { selectedNodeId: null, playerPos: null, targetPos: null, currentPath: null, currentAbstractPath: null };
     }

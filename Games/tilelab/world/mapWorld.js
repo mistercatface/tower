@@ -3,6 +3,7 @@ import { generateWorld, getWorldGen } from "../../../Core/GamePorts.js";
 import { buildGameMapRenderCaches, buildTopologyMapRenderCaches } from "../../../Libraries/Render/map/MapRenderCache.js";
 import { withSeededRandom } from "../../../Libraries/Random/index.js";
 import { calculatePathTest, resetPathTestPositions } from "./mapPathTest.js";
+import { syncLabScreenCanvasBounds } from "./surfacePreview.js";
 export const mapGenCanvasBounds = { width: gridSettings.width, height: gridSettings.height };
 export function populateNodeSelect(state) {
     const select = document.getElementById("mapNodeSelect");
@@ -29,6 +30,7 @@ export function generateTilelabMap(state, { mapSeed, floorSeed }) {
     withSeededRandom(mapSeed, () => {
         generateWorld(state);
     });
+    syncLabScreenCanvasBounds(state);
     buildGameMapRenderCaches(state);
     buildTopologyMapRenderCaches(state);
     state.worldSurfaceSeed = floorSeed;
@@ -43,7 +45,6 @@ export function generateTilelabMap(state, { mapSeed, floorSeed }) {
     focusLabNode(state, Number(document.getElementById("mapNodeSelect")?.value) || 0);
     populateNodeSelect(state);
 }
-
 /** @param {import("../TileLabGameState.js").TileLabGameState} state */
 export function focusLabNode(state, nodeId) {
     state.currentNodeId = nodeId;

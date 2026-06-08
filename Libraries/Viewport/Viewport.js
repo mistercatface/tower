@@ -28,8 +28,8 @@ export class Viewport {
     }
     /** Set screen-space center from canvas dimensions (call on resize). */
     setCanvasSize(width, height) {
-        this.cx = Math.floor(width / 2);
-        this.cy = Math.floor(height / 2);
+        this.cx = width / 2;
+        this.cy = height / 2;
     }
     getVisualRadius() {
         return Math.max(1, Math.min(this.cx, this.cy) - 4);
