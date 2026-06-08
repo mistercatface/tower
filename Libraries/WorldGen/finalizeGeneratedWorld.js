@@ -14,5 +14,6 @@ export function finalizeGeneratedWorld(state, { centerX, centerY, gridBounds = n
     state.hierarchicalNavigator.initialize(centerX, centerY);
     state.worldSurfaceSeed = (Math.random() * 0x7fffffff) | 0;
     state.worldSurfaces.clear();
+    state.roofZLevels = null;
     syncSurfaceProfile(state, centerX, centerY);
 }

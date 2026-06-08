@@ -45,10 +45,11 @@ export class WorldSurfaceEngine {
      * @param {(x: number, y: number) => string} resolveProfileAt
      * @param {number} [cellsPerChunk]
      */
-    invalidateGridBounds(bounds, obstacleGrid, resolveProfileAt, cellsPerChunk = this.settings.cellsPerChunk) {
+    invalidateGridBounds(bounds, obstacleGrid, resolveProfileAt, cellsPerChunk = this.settings.cellsPerChunk, roofZLevels = null) {
         if (!bounds || !obstacleGrid) return;
         const chunkSizePx = obstacleGrid.cellSize * cellsPerChunk;
         const range = gridBoundsToChunkRange(bounds.startCol, bounds.endCol, bounds.startRow, bounds.endRow, cellsPerChunk);
+        const zLevels = [0, ...(roofZLevels ?? this.settings.roofZLevels ?? []).filter((z) => z > 0)];
         for (let chunkRow = range.minChunkRow; chunkRow <= range.maxChunkRow; chunkRow++)
             for (let chunkCol = range.minChunkCol; chunkCol <= range.maxChunkCol; chunkCol++) {
                 const chunkCenterX = obstacleGrid.minX + chunkCol * chunkSizePx + chunkSizePx / 2;
@@ -56,8 +57,7 @@ export class WorldSurfaceEngine {
                 const profileId = resolveProfileAt(chunkCenterX, chunkCenterY);
                 const ppwu = getTexelResolution(this.settings);
                 const rev = getSurfaceProfileRevision(profileId);
-                for (const zLevel of getHorizontalSurfaceZLevels(this.settings))
-                    this.surfaceCache.deleteByPrefix(groundChunkCachePrefix(chunkCol, chunkRow, profileId, rev, ppwu, zLevel).substring(6));
+                for (const zLevel of zLevels) this.surfaceCache.deleteByPrefix(groundChunkCachePrefix(chunkCol, chunkRow, profileId, rev, ppwu, zLevel).substring(6));
             }
     }
     requestWallAtlasBake(width, height, p1, p2, pixelsPerUnit, surfaceBake, frameRange, profileId, wallHeight = null, wallWidth = null) {
@@ -259,7 +259,7 @@ export class WorldSurfaceEngine {
             }
             if (zLevel > 0) {
                 ctx.save();
-                if (!clipChunkToRoofFootprints(ctx, wallSpatialIndex, chunk.origin.x, chunk.origin.y, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight)) {
+                if (!clipChunkToRoofFootprints(ctx, wallSpatialIndex, chunk.origin.x, chunk.origin.y, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight, this.settings.wallHeight)) {
                     ctx.restore();
                     continue;
                 }
@@ -275,7 +275,7 @@ export class WorldSurfaceEngine {
     }
     /** Elevated horizontal layers (z > 0) — draw after walls. Masked to projected wall footprints. */
     drawRoofLayers(ctx, baseOptions) {
-        const levels = this.settings.roofZLevels ?? [];
+        const levels = baseOptions.roofZLevels ?? this.settings.roofZLevels ?? [];
         for (let i = 0; i < levels.length; i++) {
             const z = levels[i];
             if (z <= 0) continue;

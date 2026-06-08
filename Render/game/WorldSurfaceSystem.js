@@ -13,7 +13,7 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
         super(settings, { buildChunkPayload: (state, chunkCol, chunkRow, zLevel) => buildGroundChunkBakePayload(state, chunkCol, chunkRow, zLevel) });
     }
     invalidateGridBounds(bounds, state, cellsPerChunk = this.settings.cellsPerChunk) {
-        super.invalidateGridBounds(bounds, state.obstacleGrid, (x, y) => resolveSurfaceProfileAtCoords(state, x, y), cellsPerChunk);
+        super.invalidateGridBounds(bounds, state.obstacleGrid, (x, y) => resolveSurfaceProfileAtCoords(state, x, y), cellsPerChunk, state.roofZLevels);
     }
     /** Draw procedural ground: shadow underpaint + baked chunk textures (simulation/inspector scenes only). */
     drawGround(ctx, state, viewport) {
@@ -36,6 +36,11 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
     /** Chunk-cached roof layers at wall height (after walls). */
     drawRoofs(ctx, state, viewport) {
         if (!viewport || !isWorldScene(state.phase) || !state.obstacleGrid?.cols) return;
+        if (!state.roofZLevels) {
+            const zSet = new Set();
+            for (const w of state.walls) if (!w.isDead) zSet.add(w.wallHeight ?? this.settings.wallHeight);
+            state.roofZLevels = Array.from(zSet).sort((a, b) => a - b);
+        }
         this.drawRoofLayers(ctx, {
             obstacleGrid: state.obstacleGrid,
             wallSpatialIndex: state.wallSpatialIndex,
@@ -45,6 +50,7 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
             state,
             gameTime: state.gameTime ?? 0,
             playBounds: getWorldPlayBounds(state),
+            roofZLevels: state.roofZLevels,
         });
     }
 }

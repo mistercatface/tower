@@ -1,15 +1,15 @@
-/** Sparse Map-backed cell buckets with O(active cells) clear. */
+/** Sparse Map-backed cell buckets with array pooling to avoid GC. */
 export class SparseBucketGrid {
     constructor() {
         this.cells = new Map();
-        this.activeKeys = [];
+        this.pool = [];
     }
     clear() {
-        for (let i = 0; i < this.activeKeys.length; i++) {
-            const list = this.cells.get(this.activeKeys[i]);
-            if (list) list.length = 0;
+        for (const list of this.cells.values()) {
+            list.length = 0;
+            this.pool.push(list);
         }
-        this.activeKeys.length = 0;
+        this.cells.clear();
     }
     peek(key) {
         return this.cells.get(key);
@@ -17,9 +17,8 @@ export class SparseBucketGrid {
     getOrCreate(key) {
         let list = this.cells.get(key);
         if (!list) {
-            list = [];
+            list = this.pool.length > 0 ? this.pool.pop() : [];
             this.cells.set(key, list);
-            this.activeKeys.push(key);
         }
         return list;
     }
@@ -32,6 +31,10 @@ export class SparseBucketGrid {
         const idx = list.indexOf(item);
         if (idx === -1) return false;
         list.splice(idx, 1);
+        if (list.length === 0) {
+            this.cells.delete(key);
+            this.pool.push(list);
+        }
         return true;
     }
 }

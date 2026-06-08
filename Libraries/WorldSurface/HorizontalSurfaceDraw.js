@@ -60,11 +60,17 @@ function clipProjectedQuad(ctx, corners, zLevel, viewerX, viewerY, cameraHeight)
  * @param {number} cameraHeight
  * @returns {boolean}
  */
-export function clipChunkToRoofFootprints(ctx, wallSpatialIndex, chunkOriginX, chunkOriginY, chunkSizePx, zLevel, viewerX, viewerY, cameraHeight) {
+export function clipChunkToRoofFootprints(ctx, wallSpatialIndex, chunkOriginX, chunkOriginY, chunkSizePx, zLevel, viewerX, viewerY, cameraHeight, defaultWallHeight) {
     const segments = collectWallSegmentsInChunk(wallSpatialIndex, chunkOriginX, chunkOriginY, chunkSizePx);
-    if (!segments.length) return false;
+    let clippedAny = false;
     ctx.beginPath();
-    for (const segment of segments) clipProjectedQuad(ctx, getSegmentFootprintCorners(segment), zLevel, viewerX, viewerY, cameraHeight);
+    for (const segment of segments) {
+        const segZ = segment.wallHeight ?? defaultWallHeight;
+        if (Math.abs(segZ - zLevel) > 0.01) continue;
+        clipProjectedQuad(ctx, getSegmentFootprintCorners(segment), zLevel, viewerX, viewerY, cameraHeight);
+        clippedAny = true;
+    }
+    if (!clippedAny) return false;
     ctx.clip();
     return true;
 }
