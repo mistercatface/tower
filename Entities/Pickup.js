@@ -150,11 +150,6 @@ export class Pickup extends Entity {
     }
     update(dt, state, spatialFrame, { resolveWalls = false } = {}) {
         this.ageMs += dt;
-        if (this.isSleeping && (!this.strategy?.standTip || !isStandTipActive(this))) return;
-        if (this.strategy.rolls || this.strategy.standTip) integratePropMotion(this, dt);
-        else applyVelocityDamping(this, dt, { friction: this.strategy.friction });
-        if (resolveWalls && this.strategy.isPushable && this.needsWallCollision()) state.wallResolver.resolve(this, spatialFrame);
-        if (this.currentState?.update) this.currentState.update(this, dt, state.walls, state);
         if (this.usesKinematicsBody) {
             const speed = Math.hypot(this.vx, this.vy);
             if (speed > 2) {
@@ -165,6 +160,11 @@ export class Pickup extends Entity {
             }
             advanceActorKinematics(this, dt, { x: this.x, y: this.y });
         }
+        if (this.isSleeping && (!this.strategy?.standTip || !isStandTipActive(this))) return;
+        if (this.strategy.rolls || this.strategy.standTip) integratePropMotion(this, dt);
+        else applyVelocityDamping(this, dt, { friction: this.strategy.friction });
+        if (resolveWalls && this.strategy.isPushable && this.needsWallCollision()) state.wallResolver.resolve(this, spatialFrame);
+        if (this.currentState?.update) this.currentState.update(this, dt, state.walls, state);
     }
     spawnShards(gameState) {
         if (!gameState || !gameState.pickups) return;
