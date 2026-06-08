@@ -69,6 +69,12 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
             return;
         }
         if (e.button !== 0) return;
+        session.pruneSelection();
+        const hit = findPickupAt(host.getPickups(), world.x, world.y);
+        if (hit) {
+            const allowed = resolveSandboxBehaviors(getPropAsset(hit.type), behaviors, hit);
+            if (allowed.length > 0) session.setSelectedPickupId(hit.id);
+        }
         const pickup = session.getSelectedPickup();
         const behavior = resolveBehavior();
         if (!pickup || !behavior) return;
@@ -143,6 +149,7 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
             resetBehaviors();
         },
         tick(dt) {
+            session.pruneSelection();
             const pickup = session.getSelectedPickup();
             const behavior = resolveBehavior();
             if (!pickup || !behavior?.tick) return;

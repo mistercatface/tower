@@ -75,7 +75,7 @@ export function drawTilelabSurfaceFrame(ctx, canvas, worldState, profileId, weap
     ctx.restore();
     ctx.save();
     viewport.apply(ctx);
-    drawWorldScene(ctx, { state: worldState, viewport, worldSceneRenderer: getLabRender3D(), canvas, worldRenderInput, phases: ["ground", "buildings", "roofs", "bloom"] });
+    drawWorldScene(ctx, { state: worldState, viewport, worldSceneRenderer: getLabRender3D(), canvas, worldRenderInput, phases: ["ground", "debris", "buildings", "roofs", "bloom"] });
     if (topologySession && topologyOptions) drawTopologyLayer(ctx, worldState, viewport, topologyOptions, topologySession, { overlay: true });
     worldState.surfaceProfileOverride = prevProfileOverride;
     if (showRangeRing) drawWeaponRangeRing(ctx, cameraX, cameraY, weaponRange);

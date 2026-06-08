@@ -1,20 +1,8 @@
 import { COMBAT_HUD_MODE, hudSettings } from "../config/towerConfig.js";
 import { getPlayerActors, isWorldScene } from "../../../Core/GamePorts.js";
-import { resolveRenderViewer } from "../../../Render/adapters/WorldRenderAdapter.js";
 import { drawHostileOffScreenIndicators } from "./OffScreenIndicators.js";
 import { CombatParticles } from "./CombatParticles.js";
 import { drawTowerDebugOverlay } from "./debugOverlay.js";
-/** @param {import("../../../Render/Render.js").Renderer} renderer @param {object} state @param {object | null} viewport */
-function drawDebris(renderer, state, viewport) {
-    if (!state.pickups) return;
-    const { x: px, y: py } = resolveRenderViewer(state, viewport);
-    for (let i = 0; i < state.pickups.length; i++) {
-        const p = state.pickups[i];
-        if (p.isDead || p.strategy?.renderMode !== "debris") continue;
-        if (viewport && typeof p.isVisible === "function" && !p.isVisible(viewport)) continue;
-        renderer.render3D.drawProp(renderer.ctx, p, px, py);
-    }
-}
 /** @param {import("../../../Render/Render.js").Renderer} renderer @param {object} state @param {object | null} viewport */
 function renderExplosions(renderer, state, viewport) {
     if (!state.explosions) return;
@@ -87,12 +75,6 @@ function drawTargetMarker(ctx, x, y) {
 /** @returns {import("../../../Core/GameDefinitionTypes.js").SimulationEffectPass[]} */
 export function createTowerCombatRenderPasses() {
     return [
-        {
-            zIndex: 19,
-            draw(state, viewport, _ctx, renderer) {
-                drawDebris(renderer, state, viewport);
-            },
-        },
         {
             zIndex: 30,
             draw(state, viewport, _ctx, renderer) {

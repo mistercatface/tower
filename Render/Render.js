@@ -13,7 +13,7 @@ export class Renderer {
         this.floatingTextCache = new SpriteCache();
         this.render3D = new WorldSceneRenderer(getGameWorldSurfaceSettings(), getRenderPorts().world3dPropRecipes);
         this.effectPasses = [
-            { zIndex: -5, fn: (state, viewport) => drawWorldScene(this.ctx, { state, viewport, worldSceneRenderer: this.render3D, phases: ["ground"] }) },
+            { zIndex: -5, fn: (state, viewport) => drawWorldScene(this.ctx, { state, viewport, worldSceneRenderer: this.render3D, phases: ["ground", "debris"] }) },
             {
                 zIndex: 70,
                 fn: (state, viewport) =>

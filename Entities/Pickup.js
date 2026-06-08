@@ -15,6 +15,7 @@ import { isStandTipProp } from "../Libraries/Spatial/transforms/longAxisBox3d.js
 import { MOVING_SPEED_SQ } from "../Libraries/Spatial/collision/entityBroadphase.js";
 import { speedSqXY } from "../Libraries/Math/Vec2.js";
 import { resolveBodyRadius } from "../Libraries/Motion/bodyDefaults.js";
+import { SPLITTABLE_MIN_PIECE_SIZE } from "../Libraries/Props/splittable.js";
 import { wakePushableBody } from "../Libraries/Motion/pushableSleep.js";
 function buildWorldPropStrategy(type) {
     const def = getWorldPropDefinitions()[type];
@@ -170,7 +171,7 @@ export class Pickup extends Entity {
         if (!gameState || !gameState.pickups) return;
         const width = this.halfExtents ? this.halfExtents.x * 2 : this.radius * 2;
         const height = this.halfExtents ? this.halfExtents.y * 2 : this.radius * 2;
-        const minSize = 3;
+        const minSize = SPLITTABLE_MIN_PIECE_SIZE;
         const localRects = partitionCrateLocal(width, height, minSize, 1);
         const cos = Math.cos(this.facing);
         const sin = Math.sin(this.facing);
@@ -205,7 +206,6 @@ export class Pickup extends Entity {
             shard.vx = this.vx + dx * speed + (Math.random() - 0.5) * 15;
             shard.vy = this.vy + dy * speed + (Math.random() - 0.5) * 15;
             wakePushableBody(shard);
-            shard.changeState("shard_flying");
             gameState.pickups.push(shard);
         }
     }

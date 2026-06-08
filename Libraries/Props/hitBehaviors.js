@@ -1,4 +1,5 @@
 import { applyProjectileImpulseToPickup } from "./projectileImpulse.js";
+import { canSplittablePickupSplit } from "./splittable.js";
 /**
  * @param {object} state
  * @param {object} pickup
@@ -21,18 +22,13 @@ export function explosiveOnHit(state, pickup, projectile) {
  * @param {object | null | undefined} projectile
  */
 export function damageOnHit(state, pickup, projectile) {
-    if (pickup.strategy.splittable) {
-        const width = pickup.halfExtents ? pickup.halfExtents.x * 2 : pickup.radius * 2;
-        const height = pickup.halfExtents ? pickup.halfExtents.y * 2 : pickup.radius * 2;
-        const minSize = 3;
-        const canSplit = width >= minSize * 2 && height >= minSize * 2;
-        if (!canSplit) {
+    if (pickup.strategy.splittable)
+        if (!canSplittablePickupSplit(pickup)) {
             if (pickup.ageMs > 250) return false;
             applyProjectileImpulseToPickup(pickup, projectile);
             if (projectile?.isDead !== undefined) projectile.isDead = true;
             return true;
         }
-    }
     if (projectile?.isExplosion) {
         pickup.explode(state);
         return true;

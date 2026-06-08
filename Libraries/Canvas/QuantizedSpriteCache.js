@@ -2,7 +2,7 @@ import { createBakedSpriteCache } from "./BakedSpriteCache.js";
 import { quantizeAngle, quantizeAngleIndex, quantizeViewOffset } from "./viewQuantize.js";
 import { clamp } from "../Math/Interpolate.js";
 import { buildRollOrientKey, quantizeRollQuat } from "../Props/rollingMotion.js";
-import { isStandTipFallen, standTipStageRadius } from "../Spatial/transforms/longAxisBox3d.js";
+import { standTipStageRadius } from "../Spatial/transforms/longAxisBox3d.js";
 import { resolvePropBakeScaleForProp, resolvePropPixelSizeForProp } from "../../Core/GamePropPixelSize.js";
 import { resolveBodyRadius } from "../Motion/bodyDefaults.js";
 import { resolvePropQuantizeSteps } from "../Props/propStrategy.js";
@@ -126,7 +126,7 @@ export function quantizeLongAxisLogAngles(prop) {
  */
 function propFootprintHalfExtents(prop) {
     const radius = resolveBodyRadius(prop);
-    if (isStandTipFallen(prop) && prop.halfExtents) return { x: prop.halfExtents.x, y: prop.halfExtents.y };
+    if (prop.halfExtents) return { x: prop.halfExtents.x, y: prop.halfExtents.y };
     return { x: prop.strategy?.halfExtents?.x ?? radius, y: prop.strategy?.halfExtents?.y ?? radius };
 }
 /**

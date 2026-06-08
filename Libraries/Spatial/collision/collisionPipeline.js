@@ -1,4 +1,5 @@
 import { getCollisionSettings } from "../../../Core/GameCollisionSettings.js";
+import { canSplittablePickupSplit } from "../../Props/splittable.js";
 import { invalidateWallResolveCache } from "../../Motion/WallCollisionResolver.js";
 import { massFromBody } from "../../Motion/bodyMass.js";
 import { applyActorPushTipImpulse } from "../../Props/actorPushTip.js";
@@ -28,6 +29,11 @@ function pushablePairRestitution(p1, p2) {
     if (r1 != null && r2 != null) return (r1 + r2) * 0.5;
     return r1 ?? r2 ?? getCollisionSettings().restitution.pushablePair;
 }
+function applyPushableCollisionDamage(body, dmg, state) {
+    if (dmg <= 0 || !body.takeDamage) return;
+    if (body.strategy?.splittable && !canSplittablePickupSplit(body)) return;
+    body.takeDamage(dmg, state);
+}
 function resolvePushablePair(p1, p2, state) {
     const shapeA = p1.getShape();
     const shapeB = p2.getShape();
@@ -40,10 +46,8 @@ function resolvePushablePair(p1, p2, state) {
         if (resolveCirclePair(p1, p2, { restitution })) {
             if (preSpeedSq > 8000) {
                 const dmg = Math.floor(Math.sqrt(preSpeedSq) / 60);
-                if (dmg > 0) {
-                    if (p1.takeDamage) p1.takeDamage(dmg, state);
-                    if (p2.takeDamage) p2.takeDamage(dmg, state);
-                }
+                applyPushableCollisionDamage(p1, dmg, state);
+                applyPushableCollisionDamage(p2, dmg, state);
             }
             invalidateWallResolveCache(p1, p2);
             wakePushableBody(p1);
@@ -56,10 +60,8 @@ function resolvePushablePair(p1, p2, state) {
     // Apply damage on high-speed impacts using pre-collision speed
     if (preSpeedSq > 8000) {
         const dmg = Math.floor(Math.sqrt(preSpeedSq) / 60);
-        if (dmg > 0) {
-            if (p1.takeDamage) p1.takeDamage(dmg, state);
-            if (p2.takeDamage) p2.takeDamage(dmg, state);
-        }
+        applyPushableCollisionDamage(p1, dmg, state);
+        applyPushableCollisionDamage(p2, dmg, state);
     }
     invalidateWallResolveCache(p1, p2);
     wakePushableBody(p1);

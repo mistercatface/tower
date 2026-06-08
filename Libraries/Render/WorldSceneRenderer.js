@@ -23,6 +23,26 @@ export class WorldSceneRenderer {
     drawProp(ctx, prop, px, py) {
         this.props.drawProp(ctx, prop, px, py);
     }
+    /**
+     * @param {CanvasRenderingContext2D} ctx
+     * @param {WorldSceneDrawInput} input
+     * @param {import("../Viewport/Viewport.js").Viewport | null} viewport
+     * @param {WorldSceneDrawOptions} [options]
+     */
+    drawDebrisProps(ctx, input, viewport, options = {}) {
+        const px = input.viewer.x;
+        const py = input.viewer.y;
+        if (options.fastNav === true) return;
+        ctx.save();
+        if (viewport) clipToViewport(ctx, viewport, input.canvasBounds);
+        for (let i = 0; i < input.pickups.length; i++) {
+            const p = input.pickups[i];
+            if (p.isDead || p.strategy?.renderMode !== "debris") continue;
+            if (viewport && typeof p.isVisible === "function" && !p.isVisible(viewport)) continue;
+            this.drawProp(ctx, p, px, py);
+        }
+        ctx.restore();
+    }
     drawExplosion(px, py, maxDist, input, targetCtx) {
         this.structure.drawExplosion(px, py, maxDist, input, targetCtx);
     }
@@ -53,8 +73,7 @@ export class WorldSceneRenderer {
     _appendVisible3dProps(input, viewport, px, py, fastNav) {
         if (fastNav) return;
         const visibleObjects = this._visibleObjects;
-        
-        if (input.pickups.length > 0) {
+        if (input.pickups.length > 0)
             for (let i = 0; i < input.pickups.length; i++) {
                 const p = input.pickups[i];
                 if (p.isDead) continue;
@@ -63,9 +82,7 @@ export class WorldSceneRenderer {
                 p._distSq = (p.x - px) ** 2 + (p.y - py) ** 2;
                 visibleObjects.push(p);
             }
-        }
-        
-        if (input.ragdollCorpses && input.ragdollCorpses.length > 0) {
+        if (input.ragdollCorpses && input.ragdollCorpses.length > 0)
             for (let i = 0; i < input.ragdollCorpses.length; i++) {
                 const corpse = input.ragdollCorpses[i];
                 if (corpse.isDead || corpse.opacity <= 0) continue;
@@ -74,7 +91,6 @@ export class WorldSceneRenderer {
                 corpse.isRagdollCorpse = true; // Flag for drawing
                 visibleObjects.push(corpse);
             }
-        }
     }
     /**
      * @param {CanvasRenderingContext2D} ctx

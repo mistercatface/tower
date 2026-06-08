@@ -1,9 +1,9 @@
 export default {
     id: "crate_shard",
     primitive: "box",
+    sandbox: { behaviors: ["dragLaunch"], spawnable: false, dragLaunch: { minPower: 15, maxPower: 200 } },
     physics: {
         hitBehavior: "damage",
-        renderMode: "debris",
         radius: 3,
         isPushable: true,
         collisionShape: "box",

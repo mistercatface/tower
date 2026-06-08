@@ -1,7 +1,7 @@
 import { Explosion } from "./Explosion/Explosion.js";
 import { RagdollCorpse } from "./RagdollCorpse.js";
 import { clearActorKinematics } from "../../../Libraries/Render/Characters/actorKinematicsRenderer.js";
-
+import { canSplittablePickupSplit } from "../../../Libraries/Props/splittable.js";
 function spawnExplosion(gameState, x, y, config) {
     if (!gameState || !config?.type) return;
     if (!gameState.explosions) gameState.explosions = [];
@@ -36,34 +36,17 @@ export class PickupOnFireState {
         }
     }
 }
-export class PickupShardFlyingState {
-    blocksSleep() {
-        return true;
-    }
-    onEnter(pickup) {
-        pickup.stateTimer = 15000;
-        pickup.opacity = 1.0;
-        pickup.angularVelocity = (Math.random() - 0.5) * 8;
-    }
-    update(pickup, dt, walls, state) {
-        pickup.stateTimer -= dt;
-        if (pickup.stateTimer <= 0) pickup.isDead = true;
-        else if (pickup.stateTimer < 500) pickup.opacity = pickup.stateTimer / 500;
-    }
-}
 export class PickupExplodedState {
     onEnter(pickup) {
         pickup.isDead = true;
         const gameState = pickup.stateData.gameState;
-        
         if (pickup.usesKinematicsBody && gameState) {
             const camera = pickup._kinematicsCamera ?? { x: pickup.x, y: pickup.y };
             RagdollCorpse.spawnFromActor(gameState, pickup, null, camera);
             clearActorKinematics(pickup);
         }
-
-        if (pickup.strategy.splittable && typeof pickup.spawnShards === "function") pickup.spawnShards(gameState);
+        if (canSplittablePickupSplit(pickup) && typeof pickup.spawnShards === "function") pickup.spawnShards(gameState);
         else spawnExplosion(gameState, pickup.x, pickup.y, pickup.strategy?.explosion);
     }
 }
-export const towerPickupStates = { on_fire: new PickupOnFireState(), exploded: new PickupExplodedState(), shard_flying: new PickupShardFlyingState() };
+export const towerPickupStates = { on_fire: new PickupOnFireState(), exploded: new PickupExplodedState() };

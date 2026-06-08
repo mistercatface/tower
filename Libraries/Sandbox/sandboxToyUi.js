@@ -1,6 +1,5 @@
 import { getPropAsset, getWorldPropDefinitions } from "../Props/PropCatalog.js";
-import { getSandboxBehaviorLabel } from "./sandboxCapabilities.js";
-import { isSandboxProp } from "./dragLaunch.js";
+import { getSandboxBehaviorLabel, isSandboxSpawnable } from "./sandboxCapabilities.js";
 /**
  * @param {HTMLElement} container
  * @param {ReturnType<import("./createSandboxController.js").createSandboxController>} controller
@@ -8,7 +7,7 @@ import { isSandboxProp } from "./dragLaunch.js";
  */
 export function mountSandboxToyUi(container, controller, onChange) {
     const ids = Object.keys(getWorldPropDefinitions())
-        .filter((id) => isSandboxProp(getPropAsset(id)))
+        .filter((id) => isSandboxSpawnable(getPropAsset(id)))
         .sort();
     const render = () => {
         container.innerHTML = "";
@@ -44,27 +43,29 @@ export function mountSandboxToyUi(container, controller, onChange) {
         });
         addRow.append(typeField, addBtn);
         container.appendChild(addRow);
-        // Mode selection dropdown
-        const modeField = document.createElement("div");
-        modeField.className = "param-field";
-        modeField.style.marginTop = "8px";
-        modeField.style.marginBottom = "8px";
-        const modeLabel = document.createElement("span");
-        modeLabel.textContent = "Mode";
-        const modeSelect = document.createElement("select");
-        for (const behaviorId of controller.listBehaviors()) {
-            const option = document.createElement("option");
-            option.value = behaviorId;
-            option.textContent = getSandboxBehaviorLabel(behaviorId);
-            modeSelect.appendChild(option);
+        const behaviorIds = controller.listBehaviors();
+        if (behaviorIds.length > 0) {
+            const modeField = document.createElement("div");
+            modeField.className = "param-field";
+            modeField.style.marginTop = "8px";
+            modeField.style.marginBottom = "8px";
+            const modeLabel = document.createElement("span");
+            modeLabel.textContent = "Mode";
+            const modeSelect = document.createElement("select");
+            for (const behaviorId of behaviorIds) {
+                const option = document.createElement("option");
+                option.value = behaviorId;
+                option.textContent = getSandboxBehaviorLabel(behaviorId);
+                modeSelect.appendChild(option);
+            }
+            modeSelect.value = controller.getActiveBehaviorId();
+            modeSelect.addEventListener("change", () => {
+                controller.setActiveBehaviorId(modeSelect.value);
+                onChange();
+            });
+            modeField.append(modeLabel, modeSelect);
+            container.appendChild(modeField);
         }
-        modeSelect.value = controller.getActiveBehaviorId();
-        modeSelect.addEventListener("change", () => {
-            controller.setActiveBehaviorId(modeSelect.value);
-            onChange();
-        });
-        modeField.append(modeLabel, modeSelect);
-        container.appendChild(modeField);
         const listHead = document.createElement("div");
         listHead.className = "editor-subhead";
         listHead.textContent = "Placed toys";

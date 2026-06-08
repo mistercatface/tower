@@ -15,6 +15,13 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
         host.requestRedraw();
         uiSync?.();
     };
+    const pruneSelection = () => {
+        if (selectedPickupId == null) return;
+        if (!host.getPickups().some((p) => p.id === selectedPickupId && !p.isDead)) {
+            selectedPickupId = null;
+            uiSync?.();
+        }
+    };
     const spawnAt = (worldX, worldY) => {
         if (!getPropAsset(spawnPropId)) return null;
         const prop = new Pickup(worldX, worldY, spawnPropId, 0);
@@ -33,7 +40,11 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
             selectedPickupId = id;
             sync();
         },
-        getSelectedPickup: () => host.getPickups().find((p) => p.id === selectedPickupId) ?? null,
+        getSelectedPickup: () => {
+            pruneSelection();
+            return host.getPickups().find((p) => p.id === selectedPickupId) ?? null;
+        },
+        pruneSelection,
         spawnAt,
         spawnAtCameraOrigin() {
             const origin = host.getCameraOrigin?.();
