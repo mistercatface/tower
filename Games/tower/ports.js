@@ -10,5 +10,9 @@ export const towerInteractionPairs = towerCombatInteraction;
 export const towerRenderPorts = {
     ...createDefaultRenderPorts({ appearanceOverrides: towerAppearanceOverrides, weaponVisuals: createWeaponVisuals(GUN_ID_TO_VISUAL) }),
     simulationEffectPasses: createTowerCombatRenderPasses(),
-    drawPostSimulation: drawTowerPostSimulationOverlay,
+    drawPostSimulation: (state, viewport, ctx, renderer) => {
+        const base = createDefaultRenderPorts();
+        base.drawPostSimulation?.(state, viewport, ctx, renderer);
+        drawTowerPostSimulationOverlay(state, viewport, ctx, renderer);
+    },
 };

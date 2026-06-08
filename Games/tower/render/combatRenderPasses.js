@@ -110,7 +110,6 @@ export function createTowerCombatRenderPasses() {
 }
 /** @param {object} state @param {object} viewport @param {CanvasRenderingContext2D} ctx @param {import("../../../Render/Render.js").Renderer} renderer */
 export function drawTowerPostSimulationOverlay(state, viewport, ctx, renderer) {
-    CombatParticles.renderAll(ctx, state, viewport);
     if (!viewport || !isWorldScene(state.phase)) return;
     const R = viewport.getVisualRadius();
     const cx = viewport.cx;

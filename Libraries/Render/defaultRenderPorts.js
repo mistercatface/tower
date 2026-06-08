@@ -5,6 +5,7 @@ import { createLiveWorldStructure } from "./worldStructure/LiveWorldStructure.js
 /**
  * @param {Parameters<typeof createDefaultKinematicsPorts>[0]} [kinematicsOptions]
  */
+import { CombatParticles } from "./CombatParticles.js";
 export function createDefaultRenderPorts(kinematicsOptions = {}) {
     return {
         get world3dPropRecipes() {
@@ -13,5 +14,8 @@ export function createDefaultRenderPorts(kinematicsOptions = {}) {
         kinematicsPorts: createDefaultKinematicsPorts(kinematicsOptions),
         worldStructure: createLiveWorldStructure(),
         simulationEffectPasses: [createExplosionSimulationEffectPass()],
+        drawPostSimulation(state, viewport, ctx, renderer) {
+            CombatParticles.renderAll(ctx, state, viewport);
+        },
     };
 }

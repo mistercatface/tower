@@ -1,27 +1,22 @@
 import { getRenderPorts } from "../../../Core/GamePorts.js";
 import { getGameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.js";
-import { WorldSceneRenderer } from "../../../Libraries/Render/WorldSceneRenderer.js";
-import { buildWorldRenderInput } from "../../../Render/adapters/WorldRenderAdapter.js";
-import { drawWorldScene } from "../../../Render/worldSceneDraw.js";
+import { Renderer } from "../../../Render/Render.js";
 import { getSurfaceProfileRevision } from "../../../Libraries/WorldSurface/SurfaceProfileRevision.js";
 import { invalidateWallAtlasKeyMemos } from "../../../Render/game/wallSurfaceInvalidation.js";
 import { drawTopologyLayer } from "../../../Libraries/Render/map/topology/index.js";
 import { syncLabScreenCanvasBounds } from "../ui/labCanvas.js";
 import { getTilelabSandboxController } from "./tilelabSandbox.js";
-import { renderActorKinematicsBody } from "../../../Libraries/Render/Characters/actorKinematicsRenderer.js";
-import { CombatParticles } from "../../../Libraries/Render/CombatParticles.js";
-import { renderExplosions } from "../../../Libraries/Render/explosionDraw.js";
-/** @type {WorldSceneRenderer | null} */
-let render3D = null;
+/** @type {Renderer | null} */
+let labRenderer = null;
 /** @type {import("../../../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings | null} */
-let render3DSettings = null;
-function getLabRender3D() {
+let labRendererSettings = null;
+function getLabRenderer(canvas, ctx) {
     const settings = getGameWorldSurfaceSettings();
-    if (!render3D || render3DSettings !== settings) {
-        render3D = new WorldSceneRenderer(settings, getRenderPorts().world3dPropRecipes);
-        render3DSettings = settings;
+    if (!labRenderer || labRenderer.canvas !== canvas || labRendererSettings !== settings) {
+        labRenderer = new Renderer(canvas, ctx);
+        labRendererSettings = settings;
     }
-    return render3D;
+    return labRenderer;
 }
 let lastBakeKey = "";
 function drawWeaponRangeRing(ctx, x, y, range) {
@@ -69,18 +64,15 @@ export function drawTilelabSurfaceFrame(ctx, canvas, worldState, profileId, weap
     const viewport = worldState.mapViewport;
     const cameraX = viewport.x;
     const cameraY = viewport.y;
-    const worldRenderInput = buildWorldRenderInput(worldState, viewport);
+    getLabRenderer(canvas, ctx).renderSimulationScene(worldState, viewport);
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalCompositeOperation = "destination-over";
     ctx.fillStyle = "#080a0e";
     ctx.fillRect(0, 0, viewW, viewH);
     ctx.restore();
     ctx.save();
     viewport.apply(ctx);
-    drawWorldScene(ctx, { state: worldState, viewport, worldSceneRenderer: getLabRender3D(), canvas, worldRenderInput, phases: ["ground", "debris", "buildings", "roofs", "bloom"] });
-    if (worldState.projectiles) for (const p of worldState.projectiles) p.render(ctx, { caches: {} }, worldState);
-    renderExplosions(ctx, worldState, viewport, getLabRender3D(), worldRenderInput);
-    CombatParticles.renderAll(ctx, worldState, viewport);
     if (topologySession && topologyOptions) drawTopologyLayer(ctx, worldState, viewport, topologyOptions, topologySession, { overlay: true });
     worldState.surfaceProfileOverride = prevProfileOverride;
     if (showRangeRing) drawWeaponRangeRing(ctx, cameraX, cameraY, weaponRange);
@@ -103,6 +95,6 @@ export function drawTilelabSurfaceFrame(ctx, canvas, worldState, profileId, weap
 }
 export function invalidateMapPreviewBakes() {
     lastBakeKey = "";
-    render3D = null;
-    render3DSettings = null;
+    labRenderer = null;
+    labRendererSettings = null;
 }
