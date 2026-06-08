@@ -26,7 +26,7 @@ export const TILELAB_UI_HTML = `
                 <div class="col-head">Sandbox</div>
                 <div class="sandbox-panel-body">
                     <div id="sandboxToyPanel"></div>
-                    <p class="editor-hint">Drag on map to launch · right-click prop to delete</p>
+                    <p class="editor-hint">Add at camera · select a toy to interact · drag to launch · delete from list or right-click</p>
                 </div>
             </div>
             <div id="surfaceEditorPanel" class="col-body">

@@ -1,6 +1,6 @@
 export { findPickupAt } from "./findPickupAt.js";
 export { createDragLaunchToy } from "./createDragLaunchToy.js";
-export { mountDragLaunchFocusUi } from "./dragLaunchFocusUi.js";
+export { mountSandboxToyUi } from "./sandboxToyUi.js";
 export { listDragLaunchPropIds, getDefaultDragLaunchPropId } from "./dragLaunchCatalog.js";
 export {
     DRAG_LAUNCH_DEFAULTS,

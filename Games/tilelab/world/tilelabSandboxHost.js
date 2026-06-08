@@ -15,6 +15,7 @@ export function createTilelabSandboxHost(state, requestRedraw) {
             return canvasClientToWorld(canvas, state.mapViewport, clientX, clientY);
         },
         isInputBlocked: () => state.labShowTopologyOverlay,
+        getCameraOrigin: () => ({ x: state.mapViewport.x, y: state.mapViewport.y }),
         requestRedraw,
         getPickups: () => state.pickups,
         addPickup: (prop) => state.pickups.push(prop),

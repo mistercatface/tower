@@ -2,26 +2,45 @@ import { Pickup } from "../../Entities/Pickup.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { getDefaultDragLaunchPropId } from "./dragLaunchCatalog.js";
 import { findPickupAt } from "./findPickupAt.js";
-import { applyDragLaunchVelocity, createDragLaunchAim, drawDragLaunchPreview, getDragLaunchConfig, releaseDragLaunch, updateDragLaunchAim } from "./dragLaunch.js";
+import { applyDragLaunchVelocity, createDragLaunchAim, drawDragLaunchPreview, getDragLaunchConfig, isDragLaunchProp, releaseDragLaunch, updateDragLaunchAim } from "./dragLaunch.js";
 /** @typedef {import("./SandboxHostPort.js").SandboxHostPort} SandboxHostPort */
 /**
- * Drag-launch sandbox toy — input, aim, spawn, overlay.
- * Props opt in via `sandbox.dragLaunch` on their asset file.
+ * Drag-launch sandbox toy — spawn via UI, interact with selected instance on canvas.
  *
  * @param {SandboxHostPort} host
  */
 export function createDragLaunchToy(host) {
     /** @type {import("./dragLaunch.js").DragLaunchAim | null} */
     let aim = null;
-    let focusedPropId = getDefaultDragLaunchPropId();
+    let spawnPropId = getDefaultDragLaunchPropId();
+    /** @type {number | null} */
+    let selectedPickupId = null;
+    /** @type {(() => void) | null} */
+    let uiSync = null;
     /** @type {(() => void)[]} */
     const unbind = [];
-    const launchConfig = () => getDragLaunchConfig(getPropAsset(focusedPropId));
-    const spawnFocusedProp = (worldX, worldY) => {
-        if (!getPropAsset(focusedPropId)) return null;
-        const prop = new Pickup(worldX, worldY, focusedPropId, 0);
+    const sync = () => {
+        host.requestRedraw();
+        uiSync?.();
+    };
+    const getSelectedPickup = () => host.getPickups().find((p) => p.id === selectedPickupId) ?? null;
+    const launchConfig = () => {
+        const pickup = getSelectedPickup();
+        return getDragLaunchConfig(pickup ? getPropAsset(pickup.type) : null);
+    };
+    const spawnProp = (worldX, worldY) => {
+        if (!getPropAsset(spawnPropId)) return null;
+        const prop = new Pickup(worldX, worldY, spawnPropId, 0);
         host.addPickup(prop);
+        selectedPickupId = prop.id;
+        sync();
         return prop;
+    };
+    const deletePickup = (pickup) => {
+        if (!pickup) return;
+        host.removePickup(pickup);
+        if (selectedPickupId === pickup.id) selectedPickupId = host.getPickups()[0]?.id ?? null;
+        sync();
     };
     /** @param {PointerEvent} e */
     const onPointerDown = (e) => {
@@ -35,16 +54,18 @@ export function createDragLaunchToy(host) {
             if (!hit) return;
             e.preventDefault();
             e.stopPropagation();
-            host.removePickup(hit);
-            host.requestRedraw();
+            deletePickup(hit);
             return;
         }
         if (e.button !== 0) return;
+        const pickup = getSelectedPickup();
+        if (!pickup || !isDragLaunchProp(getPropAsset(pickup.type))) return;
         e.preventDefault();
         e.stopPropagation();
-        aim = createDragLaunchAim(world.x, world.y);
+        aim = createDragLaunchAim(pickup.x, pickup.y);
+        updateDragLaunchAim(aim, world.x, world.y, launchConfig());
         canvas.setPointerCapture(e.pointerId);
-        host.requestRedraw();
+        sync();
     };
     /** @param {PointerEvent} e */
     const onPointerMove = (e) => {
@@ -64,8 +85,8 @@ export function createDragLaunchToy(host) {
         const shot = releaseDragLaunch(aim, launchConfig());
         aim = null;
         if (shot) {
-            const prop = spawnFocusedProp(shot.anchorX, shot.anchorY);
-            if (prop) applyDragLaunchVelocity(prop, shot.nx, shot.ny, shot.power);
+            const pickup = getSelectedPickup();
+            if (pickup) applyDragLaunchVelocity(pickup, shot.nx, shot.ny, shot.power);
         }
         if (canvas?.hasPointerCapture?.(e.pointerId))
             try {
@@ -74,7 +95,7 @@ export function createDragLaunchToy(host) {
                 // ignore
             }
         e.stopPropagation();
-        host.requestRedraw();
+        sync();
     };
     const bind = (type, handler) => {
         const canvas = host.getCanvas();
@@ -83,9 +104,35 @@ export function createDragLaunchToy(host) {
         unbind.push(() => canvas.removeEventListener(type, handler, true));
     };
     return {
-        getFocusedPropId: () => focusedPropId,
-        setFocusedPropId: (id) => {
-            focusedPropId = id;
+        getSpawnPropId: () => spawnPropId,
+        setSpawnPropId: (id) => {
+            spawnPropId = id;
+        },
+        getSelectedPickupId: () => selectedPickupId,
+        setSelectedPickupId: (id) => {
+            selectedPickupId = id;
+            sync();
+        },
+        spawnAtCameraOrigin() {
+            const origin = host.getCameraOrigin?.();
+            if (!origin) return null;
+            return spawnProp(origin.x, origin.y);
+        },
+        deletePickupById(id) {
+            const pickup = host.getPickups().find((p) => p.id === id);
+            deletePickup(pickup);
+        },
+        listPlacedPickups() {
+            const counts = new Map();
+            return host.getPickups().map((pickup) => {
+                const typeLabel = (pickup.type ?? "prop").replace(/_/g, " ");
+                const index = (counts.get(pickup.type) ?? 0) + 1;
+                counts.set(pickup.type, index);
+                return { id: pickup.id, type: pickup.type, label: `${typeLabel} #${index}` };
+            });
+        },
+        setUiSync(fn) {
+            uiSync = fn;
         },
         register() {
             bind("pointerdown", onPointerDown);
@@ -96,10 +143,13 @@ export function createDragLaunchToy(host) {
         destroy() {
             while (unbind.length) unbind.pop()?.();
             aim = null;
+            uiSync = null;
         },
         clearBodies() {
             host.clearPickups();
+            selectedPickupId = null;
             aim = null;
+            sync();
         },
         /** @param {CanvasRenderingContext2D} ctx */
         drawOverlay(ctx) {

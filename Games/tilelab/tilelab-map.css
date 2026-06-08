@@ -115,3 +115,63 @@
 .sandbox-panel-body {
     padding: 8px;
 }
+
+.sandbox-add-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.sandbox-add-row .param-field {
+    margin-bottom: 0;
+}
+
+.sandbox-add-row > button {
+    align-self: flex-start;
+}
+
+.toy-instance-list {
+    max-height: 160px;
+    overflow-y: auto;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 2px;
+}
+
+.toy-instance-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px;
+}
+
+.toy-instance-row.selected .toy-select-btn {
+    background: rgba(0, 188, 212, 0.15);
+    border-color: rgba(0, 188, 212, 0.3);
+}
+
+.toy-select-btn {
+    flex: 1;
+    min-width: 0;
+    text-align: left;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid transparent;
+    color: var(--text);
+    padding: 6px 8px;
+    border-radius: 4px;
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.toy-select-btn:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.toy-delete-btn {
+    flex: 0 0 auto;
+    padding: 4px 8px;
+    font-size: 11px;
+}
