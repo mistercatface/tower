@@ -6,8 +6,9 @@ export class TileLabGameState extends SharedGameState {
     constructor() {
         super();
         createRoguelikeNavRuntime(this);
-        this.mapSeed = 42;
-        this.floorSeed = 42;
+        const rand = Math.floor(1 + Math.random() * 1000000000);
+        this.mapSeed = rand;
+        this.floorSeed = rand;
         this._pendingProfileRefresh = false;
         this.labShowTopologyOverlay = false;
         this.mapViewport = new Viewport(0, 0, 1);

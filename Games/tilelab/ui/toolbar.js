@@ -34,8 +34,8 @@ export function initPresetSelect(profileIds) {
 }
 /** @param {import("../TileLabGameState.js").TileLabGameState} state */
 export function initToolbarDefaults(state) {
-    document.getElementById("mapSeedInput").value = "42";
-    document.getElementById("seedInput").value = "42";
+    document.getElementById("mapSeedInput").value = "";
+    document.getElementById("seedInput").value = "";
     syncPreviewZoomToStage(state);
 }
 /**

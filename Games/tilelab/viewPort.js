@@ -1,5 +1,4 @@
 /** @typedef {import("../../Core/GameDefinitionTypes.js").ViewPort} ViewPort */
-
 /** @type {ViewPort} */
 export const tilelabViewPort = {
     getViewCenter(state) {
