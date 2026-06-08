@@ -121,6 +121,12 @@ export class Pickup extends Entity {
         this.shape = new CircleShape(this.radius || 0);
         return this.shape;
     }
+    get angle() {
+        return this.facing;
+    }
+    set angle(val) {
+        this.facing = val;
+    }
     getRender3DKey() {
         if (this.currentState?.getRender3DKey) return this.currentState.getRender3DKey(this);
         return this.strategy.render3DKey;
@@ -152,7 +158,16 @@ export class Pickup extends Entity {
         else applyVelocityDamping(this, dt, { friction: this.strategy.friction });
         if (resolveWalls && this.strategy.isPushable && this.needsWallCollision()) state.wallResolver.resolve(this, spatialFrame);
         if (this.currentState?.update) this.currentState.update(this, dt, state.walls, state);
-        if (this.usesKinematicsBody) advanceActorKinematics(this, dt, { x: this.x, y: this.y });
+        if (this.usesKinematicsBody) {
+            const speed = Math.hypot(this.vx, this.vy);
+            if (speed > 2) {
+                const targetAngle = Math.atan2(this.vy, this.vx);
+                let angleDiff = Math.atan2(Math.sin(targetAngle - this.facing), Math.cos(targetAngle - this.facing));
+                const turnSpeed = 10;
+                this.facing += angleDiff * Math.min(1, turnSpeed * (dt / 1000));
+            }
+            advanceActorKinematics(this, dt, { x: this.x, y: this.y });
+        }
     }
     spawnShards(gameState) {
         if (!gameState || !gameState.pickups) return;
