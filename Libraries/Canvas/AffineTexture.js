@@ -64,6 +64,19 @@ export function drawImageTriangle(ctx, img, s0, s1, s2, d0, d1, d2, opts = {}) {
     const m22 = (r0_y * (ts2_x - ts1_x) + r1_y * (ts0_x - ts2_x) + r2_y * (ts1_x - ts0_x)) / denom;
     const dx = r0_x - m11 * ts0_x - m21 * ts0_y;
     const dy = r0_y - m12 * ts0_x - m22 * ts0_y;
+    let srcMinX = Math.floor(Math.min(ts0_x, ts1_x, ts2_x));
+    let srcMinY = Math.floor(Math.min(ts0_y, ts1_y, ts2_y));
+    let srcMaxX = Math.ceil(Math.max(ts0_x, ts1_x, ts2_x));
+    let srcMaxY = Math.ceil(Math.max(ts0_y, ts1_y, ts2_y));
+    if (img.width !== undefined && img.height !== undefined) {
+        srcMinX = Math.max(0, srcMinX);
+        srcMinY = Math.max(0, srcMinY);
+        srcMaxX = Math.min(img.width, srcMaxX);
+        srcMaxY = Math.min(img.height, srcMaxY);
+    }
+    let srcW = srcMaxX - srcMinX;
+    let srcH = srcMaxY - srcMinY;
+    if (srcW <= 0 || srcH <= 0) return;
     if (skipClip) {
         ctx.save();
         if (underlay) {
@@ -76,7 +89,7 @@ export function drawImageTriangle(ctx, img, s0, s1, s2, d0, d1, d2, opts = {}) {
             ctx.fill();
         }
         ctx.transform(m11, m12, m21, m22, dx, dy);
-        ctx.drawImage(img, 0, 0);
+        ctx.drawImage(img, srcMinX, srcMinY, srcW, srcH, srcMinX, srcMinY, srcW, srcH);
         ctx.restore();
         return;
     }
@@ -92,7 +105,7 @@ export function drawImageTriangle(ctx, img, s0, s1, s2, d0, d1, d2, opts = {}) {
         ctx.fill();
     }
     ctx.transform(m11, m12, m21, m22, dx, dy);
-    ctx.drawImage(img, 0, 0);
+    ctx.drawImage(img, srcMinX, srcMinY, srcW, srcH, srcMinX, srcMinY, srcW, srcH);
     ctx.restore();
 }
 /** Affine-map an image quad onto a screen quad (two triangles). */

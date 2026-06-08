@@ -159,6 +159,20 @@ export function drawProjectedWallFace(
     }
     const finalWallHeight = wallHeight ?? getWallHeight(resolvedSettings);
     const face = computeProjectedFace(p1, p2, px, py, finalWallHeight, resolvedSettings);
+    if (viewport) {
+        const worldBounds = getViewportWorldBounds(viewport, resolvedSettings.viewPaddingPx);
+        if (worldBounds) {
+            sCorner0.x = p1.x;
+            sCorner0.y = p1.y;
+            sCorner1.x = p2.x;
+            sCorner1.y = p2.y;
+            sCorner2.x = face.proj2X;
+            sCorner2.y = face.proj2Y;
+            sCorner3.x = face.proj1X;
+            sCorner3.y = face.proj1Y;
+            if (!rowBoundsIntersects(sCorner0, sCorner1, sCorner2, sCorner3, worldBounds)) return;
+        }
+    }
     traceProjectedFace(ctx, p1, p2, face);
     if (worldSurfaces && surfaceBake && textureEnabled) drawFaceTexture(ctx, p1, p2, face, worldSurfaces, surfaceBake, { x: px, y: py }, viewport, finalWallHeight, fillStyle, cacheObj);
     else {
