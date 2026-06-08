@@ -11,7 +11,7 @@ function resolveTopologyClickViewport(state, canvas) {
 export function initMapTopologyInteractions(state, onRedraw) {
     const canvas = document.getElementById("gameCanvas");
     canvas?.addEventListener("pointerdown", (e) => {
-        if (!state.labShowTopologyOverlay || e.shiftKey) return;
+        if (!state.labShowTopologyOverlay) return;
         const viewport = resolveTopologyClickViewport(state, canvas);
         const world = canvasClientToWorld(canvas, viewport, e.clientX, e.clientY);
         if (!world) return;

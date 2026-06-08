@@ -1,30 +1,34 @@
-import { createDragLaunchToy, mountSandboxToyUi } from "../../../Libraries/Sandbox/index.js";
+import { TILELAB_SANDBOX_SPAWN_PROP } from "../config.js";
+import { createDragLaunchBehavior, createSandboxController, DRAG_LAUNCH_BEHAVIOR_ID, mountSandboxToyUi } from "../../../Libraries/Sandbox/index.js";
 import { createTilelabSandboxHost } from "./tilelabSandboxHost.js";
-/** @type {ReturnType<typeof createDragLaunchToy> | null} */
-let dragLaunchToy = null;
+/** @type {ReturnType<typeof createSandboxController> | null} */
+let sandboxController = null;
 let unmountToyUi = null;
 /**
  * @param {import("../TileLabGameState.js").TileLabGameState} state
  * @param {() => void} requestRedraw
  */
-export function mountTilelabDragLaunchToy(state, requestRedraw) {
-    destroyTilelabDragLaunchToy();
-    dragLaunchToy = createDragLaunchToy(createTilelabSandboxHost(state, requestRedraw));
-    dragLaunchToy.register();
+export function mountTilelabSandbox(state, requestRedraw) {
+    destroyTilelabSandbox();
+    sandboxController = createSandboxController(createTilelabSandboxHost(state, requestRedraw), {
+        defaultSpawnPropId: TILELAB_SANDBOX_SPAWN_PROP,
+        behaviors: [createDragLaunchBehavior()],
+        defaultBehaviorId: DRAG_LAUNCH_BEHAVIOR_ID,
+    });
+    sandboxController.register();
     const container = document.getElementById("sandboxToyPanel");
-    if (container) unmountToyUi = mountSandboxToyUi(container, dragLaunchToy, requestRedraw);
+    if (container) unmountToyUi = mountSandboxToyUi(container, sandboxController, requestRedraw);
 }
-export function destroyTilelabDragLaunchToy() {
+export function destroyTilelabSandbox() {
     unmountToyUi?.();
     unmountToyUi = null;
-    dragLaunchToy?.destroy();
-    dragLaunchToy = null;
+    sandboxController?.destroy();
+    sandboxController = null;
 }
-export function clearTilelabSandboxBodies(state) {
-    state.pickups = [];
-    dragLaunchToy?.clearBodies();
+export function clearTilelabSandbox() {
+    sandboxController?.clearBodies();
 }
-/** @returns {ReturnType<typeof createDragLaunchToy> | null} */
-export function getTilelabDragLaunchToy() {
-    return dragLaunchToy;
+/** @returns {ReturnType<typeof createSandboxController> | null} */
+export function getTilelabSandboxController() {
+    return sandboxController;
 }

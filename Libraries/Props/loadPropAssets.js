@@ -14,17 +14,21 @@ function assetToDefinition(asset) {
  * @param {object} asset
  * @param {Record<string, Function>} recipes
  */
-function registerAssetRecipes(asset, recipes) {
+function registerPropDraw(asset, recipes) {
     if (asset.primitive) {
         const builder = PROP_PRIMITIVE_BUILDERS[asset.primitive];
         if (!builder) throw new Error(`Unknown primitive "${asset.primitive}" for asset "${asset.id}"`);
         recipes[asset.id] = builder(asset.visuals);
         if (asset.id === "barrel") recipes.fire_barrel = PROP_PRIMITIVE_BUILDERS.cylinder(asset.visuals, { onFire: true });
-    } else if (asset.recipe) {
+        return;
+    }
+    if (asset.recipe) {
         const builder = PROP_RECIPE_BUILDERS[asset.recipe];
         if (!builder) throw new Error(`Unknown recipe "${asset.recipe}" for asset "${asset.id}"`);
         recipes[asset.id] = builder(asset.visuals);
+        return;
     }
+    throw new Error(`Asset "${asset.id}" must define primitive or recipe`);
 }
 /** Load shared Assets/props into the runtime prop catalog. Call once before createGame(). */
 export function loadPropAssets() {
@@ -34,7 +38,7 @@ export function loadPropAssets() {
     for (const asset of Object.values(propAssets)) {
         definitions[asset.id] = assetToDefinition(asset);
         assets[asset.id] = asset;
-        registerAssetRecipes(asset, recipes);
+        registerPropDraw(asset, recipes);
     }
     setPropCatalog({ definitions, recipes, assets });
 }

@@ -1,7 +1,9 @@
 export { findPickupAt } from "./findPickupAt.js";
-export { createDragLaunchToy } from "./createDragLaunchToy.js";
+export { bindCanvasPointers, releasePointerCapture } from "./bindCanvasPointers.js";
+export { createSandboxSession } from "./sandboxSession.js";
+export { createSandboxController } from "./createSandboxController.js";
+export { createDragLaunchBehavior, DRAG_LAUNCH_BEHAVIOR_ID } from "./behaviors/dragLaunchBehavior.js";
 export { mountSandboxToyUi } from "./sandboxToyUi.js";
-export { listDragLaunchPropIds, getDefaultDragLaunchPropId } from "./dragLaunchCatalog.js";
 export {
     DRAG_LAUNCH_DEFAULTS,
     applyDragLaunchVelocity,

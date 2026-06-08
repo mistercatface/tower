@@ -10,7 +10,7 @@ import { mountLabViewport } from "./labViewport.js";
 import { TILELAB_UI_HTML } from "./shellHtml.js";
 import { bindMapInspectorControls, syncMapInspectorAfterRegen } from "./mapInspector.js";
 import { initMapTopologyInteractions } from "./mapInteractions.js";
-import { mountTilelabDragLaunchToy, destroyTilelabDragLaunchToy } from "../world/tilelabSandbox.js";
+import { destroyTilelabSandbox, mountTilelabSandbox } from "../world/tilelabSandbox.js";
 import { bindViewModeControls } from "./viewMode.js";
 import { renderActiveLabView } from "./renderLabView.js";
 /** @typedef {import("../../../Core/GameDefinitionTypes.js").UiPort} UiPort */
@@ -75,7 +75,7 @@ function bootstrapTilelabUi(state) {
     bindViewModeControls(state, () => renderActiveLabView(state));
     bindMapInspectorControls(state, () => renderActiveLabView(state));
     initMapTopologyInteractions(state, () => renderActiveLabView(state));
-    mountTilelabDragLaunchToy(state, () => renderActiveLabView(state));
+    mountTilelabSandbox(state, () => renderActiveLabView(state));
     bindToolbarControls({
         onRefresh: () => schedulePreviewRefresh(state, 0),
         onRegenMap: () => {
@@ -140,7 +140,7 @@ export const tilelabUiPort = {
     },
     unmount() {
         if (bakeRepaintRaf != null) cancelAnimationFrame(bakeRepaintRaf);
-        destroyTilelabDragLaunchToy();
+        destroyTilelabSandbox();
         bootstrapped = false;
     },
     updateHud() {},

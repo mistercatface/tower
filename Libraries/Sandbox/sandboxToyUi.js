@@ -1,15 +1,18 @@
-import { listDragLaunchPropIds } from "./dragLaunchCatalog.js";
+import { getPropAsset, getWorldPropDefinitions } from "../Props/PropCatalog.js";
+import { isDragLaunchProp } from "./dragLaunch.js";
 /**
  * @param {HTMLElement} container
- * @param {ReturnType<import("./createDragLaunchToy.js").createDragLaunchToy>} toy
+ * @param {ReturnType<import("./createSandboxController.js").createSandboxController>} controller
  * @param {() => void} onChange
  */
-export function mountSandboxToyUi(container, toy, onChange) {
-    const ids = listDragLaunchPropIds();
+export function mountSandboxToyUi(container, controller, onChange) {
+    const ids = Object.keys(getWorldPropDefinitions())
+        .filter((id) => isDragLaunchProp(getPropAsset(id)))
+        .sort();
     const render = () => {
         container.innerHTML = "";
         if (ids.length === 0) {
-            container.innerHTML = `<p class="editor-hint">No launchable props loaded</p>`;
+            container.innerHTML = `<p class="editor-hint">No sandbox props loaded</p>`;
             return;
         }
         const addRow = document.createElement("div");
@@ -25,9 +28,9 @@ export function mountSandboxToyUi(container, toy, onChange) {
             option.textContent = id.replace(/_/g, " ");
             typeSelect.appendChild(option);
         }
-        typeSelect.value = toy.getSpawnPropId();
+        typeSelect.value = controller.getSpawnPropId();
         typeSelect.addEventListener("change", () => {
-            toy.setSpawnPropId(typeSelect.value);
+            controller.setSpawnPropId(typeSelect.value);
             onChange();
         });
         typeField.append(typeLabel, typeSelect);
@@ -36,7 +39,7 @@ export function mountSandboxToyUi(container, toy, onChange) {
         addBtn.className = "secondary";
         addBtn.textContent = "Add at camera";
         addBtn.addEventListener("click", () => {
-            toy.spawnAtCameraOrigin();
+            controller.spawnAtCameraOrigin();
         });
         addRow.append(typeField, addBtn);
         container.appendChild(addRow);
@@ -46,8 +49,8 @@ export function mountSandboxToyUi(container, toy, onChange) {
         container.appendChild(listHead);
         const list = document.createElement("div");
         list.className = "toy-instance-list";
-        const placed = toy.listPlacedPickups();
-        const selectedId = toy.getSelectedPickupId();
+        const placed = controller.listPlacedPickups();
+        const selectedId = controller.getSelectedPickupId();
         if (placed.length === 0) {
             const empty = document.createElement("p");
             empty.className = "editor-hint";
@@ -62,7 +65,7 @@ export function mountSandboxToyUi(container, toy, onChange) {
                 selectBtn.className = "toy-select-btn";
                 selectBtn.textContent = entry.label;
                 selectBtn.addEventListener("click", () => {
-                    toy.setSelectedPickupId(entry.id);
+                    controller.setSelectedPickupId(entry.id);
                 });
                 const deleteBtn = document.createElement("button");
                 deleteBtn.type = "button";
@@ -70,17 +73,17 @@ export function mountSandboxToyUi(container, toy, onChange) {
                 deleteBtn.textContent = "Delete";
                 deleteBtn.addEventListener("click", (e) => {
                     e.stopPropagation();
-                    toy.deletePickupById(entry.id);
+                    controller.deletePickupById(entry.id);
                 });
                 row.append(selectBtn, deleteBtn);
                 list.appendChild(row);
             }
         container.appendChild(list);
     };
-    toy.setUiSync(render);
+    controller.setUiSync(render);
     render();
     return () => {
-        toy.setUiSync(null);
+        controller.setUiSync(null);
         container.innerHTML = "";
     };
 }
