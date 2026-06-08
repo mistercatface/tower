@@ -80,7 +80,6 @@ export function drawTilelabSurfaceFrame(ctx, canvas, worldState, profileId, weap
     worldState.surfaceProfileOverride = prevProfileOverride;
     if (showRangeRing) drawWeaponRangeRing(ctx, cameraX, cameraY, weaponRange);
     if (showFocusMarker) drawFocusMarker(ctx, cameraX, cameraY);
-    for (const p of worldState.pickups) if (p.usesKinematicsBody) renderActorKinematicsBody(ctx, p, viewport);
     getTilelabSandboxController()?.drawOverlay(ctx);
     ctx.restore();
     if (showVignette) {

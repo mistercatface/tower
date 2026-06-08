@@ -4,6 +4,7 @@
 import { clipToViewport } from "./common/viewportUtils.js";
 import { PropRenderer } from "./Props3D/PropRenderer.js";
 import { StructureRenderer } from "./Structure3D/StructureRenderer.js";
+import { renderActorKinematicsBody } from "./Characters/actorKinematicsRenderer.js";
 export class WorldSceneRenderer {
     /**
      * @param {import("../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} settings
@@ -54,7 +55,8 @@ export class WorldSceneRenderer {
         const visibleObjects = this._visibleObjects;
         for (let i = 0; i < input.pickups.length; i++) {
             const p = input.pickups[i];
-            if (p.isDead || p.strategy?.renderMode !== "3d") continue;
+            if (p.isDead) continue;
+            if (p.strategy?.renderMode !== "3d" && !p.usesKinematicsBody) continue;
             if (viewport && typeof p.isVisible === "function" && !p.isVisible(viewport)) continue;
             p._distSq = (p.x - px) ** 2 + (p.y - py) ** 2;
             visibleObjects.push(p);
@@ -98,7 +100,11 @@ export class WorldSceneRenderer {
         visibleProps.length = 0;
         this._appendVisible3dProps(input, viewport, px, py, fastNav);
         visibleProps.sort((a, b) => b._distSq - a._distSq);
-        for (let i = 0; i < visibleProps.length; i++) this.drawProp(ctx, visibleProps[i], px, py);
+        for (let i = 0; i < visibleProps.length; i++) {
+            const obj = visibleProps[i];
+            if (obj.usesKinematicsBody) renderActorKinematicsBody(ctx, obj, viewport);
+            else this.drawProp(ctx, obj, px, py);
+        }
         ctx.restore();
     }
     /**
@@ -122,7 +128,8 @@ export class WorldSceneRenderer {
         visibleObjects.sort((a, b) => b._distSq - a._distSq);
         for (let i = 0; i < visibleObjects.length; i++) {
             const obj = visibleObjects[i];
-            if (obj.strategy) this.drawProp(ctx, obj, px, py);
+            if (obj.usesKinematicsBody) renderActorKinematicsBody(ctx, obj, viewport);
+            else if (obj.strategy) this.drawProp(ctx, obj, px, py);
             else this.structure.drawWallSegmentFaces(ctx, obj, px, py, input, viewport, wallDrawOptions);
         }
         ctx.restore();
