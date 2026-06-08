@@ -1,4 +1,3 @@
-import { Events } from "../../Core/EventNames.js";
 import { RenderSprites } from "../../Render/RenderSprites.js";
 import { SpriteCache } from "../Canvas/SpriteCache.js";
 const floatingTextCache = new SpriteCache();
@@ -105,9 +104,6 @@ export class FloatingText {
                 FloatingText.spawn(state, x, y, text, color, style ?? "standard", options ?? {});
                 break;
         }
-    }
-    static registerEventListener(eventBus) {
-        eventBus.on(Events.FX_FLOATING_TEXT, FloatingText.handleSpawnEvent);
     }
     render(ctx, renderer, state) {
         const cacheKey = this.getCacheKey();

@@ -116,9 +116,16 @@
  * @typedef {import("./GamePerspective.js").PerspectiveConfig} PerspectiveConfig
  */
 /**
+ * @typedef {object} GameFeature
+ * @property {(state: object) => void} [initState]
+ * @property {(eventBus: import("../Libraries/Events/EventBus.js").EventBus, boot?: { state: object, fsm: import("../Libraries/FSM/StateMachine.js").StateMachine, resetGame: () => void }) => void} [registerListeners]
+ * @property {import("../../Systems/Simulation/SimulationPipeline.js").SimulationPhase[]} [simulationPhases]
+ */
+/**
  * @typedef {object} GameDefinition
  * @property {string} id
  * @property {string} canvasId
+ * @property {GameFeature[]} [features]
  * @property {string} [saveKey]
  * @property {() => import("../GameState/SharedGameState.js").SharedGameState} createGameState
  * @property {(eventBus: import("../Libraries/Events/EventBus.js").EventBus, boot?: { state: object, fsm: import("../Libraries/FSM/StateMachine.js").StateMachine, resetGame: () => void }) => void} [registerListeners]

@@ -7,9 +7,6 @@ export function requestUiUpdate() {
 export function requestUiHudUpdate() {
     events.emit(Events.UI_UPDATE_HUD);
 }
-export function spawnFloatingText(data) {
-    events.emit(Events.FX_FLOATING_TEXT, data);
-}
 export function requestGamePause(reason) {
     events.emit(Events.GAME_PAUSE, { reason });
 }

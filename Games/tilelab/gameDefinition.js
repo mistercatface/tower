@@ -9,7 +9,6 @@ import { TileLabSimulationState } from "./TileLabSimulationState.js";
 import { tilelabSimulation } from "./simulation.js";
 import { tilelabUiPort } from "./ui/tilelabUiPort.js";
 import { tilelabRunScenePort } from "./runScenePort.js";
-import { registerTilelabListeners } from "./listeners.js";
 import { getGameState } from "../../GameState/GameState.js";
 import { syncLabScreenCanvasBounds } from "./ui/labCanvas.js";
 import { registerPickupStates } from "../../Entities/PickupStates.js";
@@ -17,10 +16,12 @@ import { combatPickupStates } from "../../Entities/pickupCombatStates.js";
 import { sandboxInteractionPairs } from "../../Libraries/Combat/sandboxInteraction.js";
 import { sandboxTargeting } from "../../Libraries/Combat/sandboxTargeting.js";
 import { tilelabViewPort } from "./viewPort.js";
+import { createFloatingTextFeature } from "../../Libraries/Render/createFloatingTextFeature.js";
 /** @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition */
 export const tilelabGame = {
     id: "tilelab",
     canvasId: "gameCanvas",
+    features: [createFloatingTextFeature({ zIndex: 100 })],
     interactionPairs: sandboxInteractionPairs,
     targeting: sandboxTargeting,
     createGameState() {
@@ -36,7 +37,6 @@ export const tilelabGame = {
     runBootstrapPort: layoutOnlyRunBootstrap,
     runScenePort: tilelabRunScenePort,
     viewPort: tilelabViewPort,
-    registerListeners: registerTilelabListeners,
     onCanvasResize() {
         const state = getGameState();
         if (state) syncLabScreenCanvasBounds(state);
