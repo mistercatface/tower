@@ -16,6 +16,7 @@ const WHEEL_ZOOM_SENSITIVITY = 0.0012;
  * @property {string} [canvasId]
  * @property {string} [titleId]
  * @property {string} [closeBtnId]
+ * @property {HTMLElement | Document} [rootElement]
  * @property {InspectViewerHooks} [hooks]
  */
 export class InspectViewer {
@@ -25,6 +26,7 @@ export class InspectViewer {
         this.canvasId = options.canvasId ?? "inspectCanvas";
         this.titleId = options.titleId ?? "inspectTitle";
         this.closeBtnId = options.closeBtnId ?? "inspectCloseBtn";
+        this.rootElement = options.rootElement ?? document;
         this.hooks = options.hooks ?? {};
         this.entry = null;
         this.subject = null;
@@ -44,14 +46,17 @@ export class InspectViewer {
         this.ctx = null;
         this.userOnClose = null;
     }
+    getEl(id) {
+        return this.rootElement.getElementById ? this.rootElement.getElementById(id) : this.rootElement.querySelector(`#${id}`);
+    }
     mount() {
         if (this.overlay) return;
-        this.overlay = document.getElementById(this.overlayId);
-        this.canvas = document.getElementById(this.canvasId);
-        this.titleEl = document.getElementById(this.titleId);
+        this.overlay = this.getEl(this.overlayId);
+        this.canvas = this.getEl(this.canvasId);
+        this.titleEl = this.getEl(this.titleId);
         this.ctx = this.canvas.getContext("2d");
         this.ctx.imageSmoothingEnabled = false;
-        const closeBtn = document.getElementById(this.closeBtnId);
+        const closeBtn = this.getEl(this.closeBtnId);
         this.canvas.addEventListener("pointerdown", (e) => this.onPointerDown(e));
         this.canvas.addEventListener("pointermove", (e) => this.onPointerMove(e));
         this.canvas.addEventListener("pointerup", (e) => this.onPointerUp(e));

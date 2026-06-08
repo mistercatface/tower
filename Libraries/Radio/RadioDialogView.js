@@ -6,9 +6,10 @@ const DEFAULT_ELEMENT_IDS = { overlay: "radioDialog", portraitRow: "radioPortrai
  *   mainCharacterId: string,
  *   elementIds?: Partial<typeof DEFAULT_ELEMENT_IDS>,
  *   getSpeaker?: (speakerId: string) => object | null,
+ *   rootElement?: HTMLElement | Document
  * }} config
  */
-export function createRadioDialogView({ mainCharacterId, elementIds = {}, getSpeaker = null }) {
+export function createRadioDialogView({ mainCharacterId, elementIds = {}, getSpeaker = null, rootElement = document }) {
     const ids = { ...DEFAULT_ELEMENT_IDS, ...elementIds };
     const elements = { overlay: null, portraitRow: null, speakerName: null, lineText: null, hint: null };
     let keyListenerBound = false;
@@ -16,11 +17,14 @@ export function createRadioDialogView({ mainCharacterId, elementIds = {}, getSpe
     let advancePointerId = null;
     /** Last non-main speaker — stays on the right through main character's reply. */
     let lastRemoteSpeaker = null;
+    function getEl(id) {
+        return rootElement.getElementById ? rootElement.getElementById(id) : rootElement.querySelector(`#${id}`);
+    }
     function bindElements() {
-        elements.overlay = document.getElementById(ids.overlay);
-        elements.portraitRow = document.getElementById(ids.portraitRow);
-        elements.speakerName = document.getElementById(ids.speakerName);
-        elements.lineText = document.getElementById(ids.lineText);
+        elements.overlay = getEl(ids.overlay);
+        elements.portraitRow = getEl(ids.portraitRow);
+        elements.speakerName = getEl(ids.speakerName);
+        elements.lineText = getEl(ids.lineText);
         elements.hint = elements.overlay?.querySelector(".radio-dialog-hint") ?? null;
     }
     function findParticipant(participants, id) {
@@ -77,7 +81,7 @@ export function createRadioDialogView({ mainCharacterId, elementIds = {}, getSpe
     function hide() {
         bindElements();
         if (!elements.overlay) return;
-        const advanceBtn = document.getElementById(ids.advanceBtn);
+        const advanceBtn = getEl(ids.advanceBtn);
         if (advanceBtn && document.activeElement === advanceBtn) advanceBtn.blur();
         elements.overlay.style.display = "none";
         elements.portraitRow.innerHTML = "";
@@ -94,7 +98,7 @@ export function createRadioDialogView({ mainCharacterId, elementIds = {}, getSpe
             }
             onAdvance();
         }
-        const advanceBtn = document.getElementById(ids.advanceBtn);
+        const advanceBtn = getEl(ids.advanceBtn);
         if (advanceBtn && !advanceBtn.dataset.bound) {
             advanceBtn.dataset.bound = "1";
             advanceBtn.addEventListener("pointerdown", (e) => {
