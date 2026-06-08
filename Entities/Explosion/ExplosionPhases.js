@@ -1,6 +1,6 @@
-import { CollisionSystem } from "../../../../Systems/Collision/CollisionSystem.js";
-import { distanceToLineSegment } from "../../../../Libraries/Math/Segment2D.js";
-import { explosionSettings } from "../../config/towerConfig.js";
+import { CollisionSystem } from "../../Systems/Collision/CollisionSystem.js";
+import { distanceToLineSegment } from "../../Libraries/Math/Segment2D.js";
+import { LIBRARY_EXPLOSION_DEFAULTS as explosionSettings } from "../../Libraries/Combat/explosionDefaults.js";
 function blastDamage(exp, dist, maxMultiplier, minMultiplier) {
     const maxDmg = exp.damage * maxMultiplier;
     const minDmg = exp.damage * minMultiplier;

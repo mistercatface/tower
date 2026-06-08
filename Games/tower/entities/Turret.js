@@ -5,7 +5,7 @@ import { defaultTurretLoadout, resolveFireAngleOffsets } from "../config/content
 import { applyKnockback } from "../../../Libraries/Motion/index.js";
 import { getGunProjectileConfig } from "../combat/gunCombat.js";
 import { inferFaction, areHostile } from "../../../Core/GamePorts.js";
-import { CombatParticles } from "../render/CombatParticles.js";
+import { CombatParticles } from "../../../Libraries/Render/CombatParticles.js";
 import { resolveBodyRadius } from "../../../Libraries/Motion/bodyDefaults.js";
 import { resolveKinematicsMuzzlePosition, resolveActorKinematicsCamera } from "../../../Libraries/Render/Characters/actorKinematicsRenderer.js";
 import { Projectile } from "./Projectile.js";

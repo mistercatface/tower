@@ -1,7 +1,7 @@
 import { COMBAT_HUD_MODE, hudSettings } from "../config/towerConfig.js";
 import { getPlayerActors, isWorldScene } from "../../../Core/GamePorts.js";
 import { drawHostileOffScreenIndicators } from "./OffScreenIndicators.js";
-import { CombatParticles } from "./CombatParticles.js";
+import { CombatParticles } from "../../../Libraries/Render/CombatParticles.js";
 import { drawTowerDebugOverlay } from "./debugOverlay.js";
 /** @param {import("../../../Render/Render.js").Renderer} renderer @param {object} state @param {object | null} viewport */
 function renderExplosions(renderer, state, viewport) {

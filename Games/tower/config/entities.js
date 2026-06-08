@@ -4,7 +4,7 @@ import { Enemy } from "../entities/Enemy.js";
 import { Sidekick } from "../entities/Sidekick.js";
 import { registerEntityCatalog } from "../entities/EntityRegistry.js";
 import { registerPickupStates } from "../../../Entities/PickupStates.js";
-import { towerPickupStates } from "../entities/pickupCombatStates.js";
+import { combatPickupStates } from "../../../Entities/pickupCombatStates.js";
 import { TurretController } from "../TurretController.js";
 /** @type {import("../entities/EntityRegistryTypes.js").EntityCatalog} */
 export const towerEntityCatalog = {
@@ -78,7 +78,7 @@ export const towerEntityCatalog = {
 };
 export function registerTowerEntities() {
     registerEntityCatalog(towerEntityCatalog);
-    registerPickupStates(towerPickupStates);
+    registerPickupStates(combatPickupStates);
     const enemySpawn = Enemy.spawn.bind(Enemy);
     Enemy.spawn = (...args) => {
         const enemy = enemySpawn(...args);

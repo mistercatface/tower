@@ -1,4 +1,4 @@
-import { repelActorFromExplosion } from "../../combat/impactKnockback.js";
+import { repelActorFromExplosion } from "../../Libraries/Combat/explosionKnockback.js";
 function repelEntities(state, exp, _dt, spatialFrame) {
     for (const actor of state.getCombatants()) repelActorFromExplosion(actor, exp, spatialFrame, state);
 }

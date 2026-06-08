@@ -1,7 +1,7 @@
 import { Explosion } from "./Explosion/Explosion.js";
 import { RagdollCorpse } from "./RagdollCorpse.js";
-import { clearActorKinematics } from "../../../Libraries/Render/Characters/actorKinematicsRenderer.js";
-import { canSplittablePickupSplit } from "../../../Libraries/Props/splittable.js";
+import { clearActorKinematics } from "../Libraries/Render/Characters/actorKinematicsRenderer.js";
+import { canSplittablePickupSplit } from "../Libraries/Props/splittable.js";
 function spawnExplosion(gameState, x, y, config) {
     if (!gameState || !config?.type) return;
     if (!gameState.explosions) gameState.explosions = [];
@@ -49,4 +49,4 @@ export class PickupExplodedState {
         else spawnExplosion(gameState, pickup.x, pickup.y, pickup.strategy?.explosion);
     }
 }
-export const towerPickupStates = { on_fire: new PickupOnFireState(), exploded: new PickupExplodedState() };
+export const combatPickupStates = { on_fire: new PickupOnFireState(), exploded: new PickupExplodedState() };

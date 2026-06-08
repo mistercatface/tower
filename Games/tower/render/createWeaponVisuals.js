@@ -3,6 +3,7 @@ import { isTwoHandedGun, normalizeWeaponLoadout } from "../combat/equipmentLoado
 import { WEAPON_VISUALS } from "../../../Libraries/Render/Characters/weapons/procedural.js";
 /**
  * @param {Record<string, string>} gunIdToVisual — gun id → WEAPON_VISUALS key
+ * @returns {import("../../../Libraries/Render/Characters/weapons/weaponVisualsPort.js").WeaponVisualsPort}
  */
 export function createWeaponVisuals(gunIdToVisual) {
     function getWeaponVisualForGunId(gunId) {

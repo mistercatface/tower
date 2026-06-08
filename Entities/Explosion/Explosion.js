@@ -1,12 +1,12 @@
-import { Entity } from "../../../../Entities/Entity.js";
-import { explosionSettings } from "../../config/towerConfig.js";
+import { Entity } from "../Entity.js";
+import { LIBRARY_EXPLOSION_DEFAULTS } from "../../Libraries/Combat/explosionDefaults.js";
 import { ExplosionStrategies } from "./ExplosionStrategies.js";
 import { standardExplosionPhases } from "./ExplosionPhases.js";
-import { transitionPhase } from "../../../../Libraries/FSM/transition.js";
+import { transitionPhase } from "../../Libraries/FSM/transition.js";
 export class Explosion extends Entity {
     static updateAll(state, dt, allEvents, spatialFrame) {
         if (!state.explosions) return;
-        for (let i = state.explosions.length - 1; i >= 0; i--) {
+        for (let i = 0; i < state.explosions.length; i++) {
             const exp = state.explosions[i];
             if (exp.strategy?.update) exp.strategy.update(state, exp, dt, allEvents);
         }
@@ -23,7 +23,7 @@ export class Explosion extends Entity {
         this.radius = config.radius || 0;
         this.maxRadius = config.maxRadius || 100;
         this.speed = config.speed || 300;
-        this.damage = config.damage ?? explosionSettings.defaultDamage;
+        this.damage = config.damage ?? LIBRARY_EXPLOSION_DEFAULTS.defaultDamage;
         this.hitTargets = new Set();
         this.lingerTimer = config.lingerTimer || 750;
         this.fadeTimer = config.fadeTimer || 250;

@@ -17,8 +17,8 @@ import { ProgressBar } from "../../../Libraries/Canvas/ProgressBar.js";
 import { getNearestHostile } from "../../../Core/GamePorts.js";
 import { getActorProfileForActor, getActorProfileForType } from "../config/content/actorProfiles.js";
 import { advanceActorKinematics, clearActorKinematics } from "../../../Libraries/Render/Characters/actorKinematicsRenderer.js";
-import { CombatParticles } from "../render/CombatParticles.js";
-import { RagdollCorpse } from "./RagdollCorpse.js";
+import { CombatParticles } from "../../../Libraries/Render/CombatParticles.js";
+import { RagdollCorpse } from "../../../Entities/RagdollCorpse.js";
 export class Actor extends DestructibleEntity {
     constructor(x, y, radius, speed, health, color, type, accelRate = 3.0, canDamageWalls = false) {
         super(x, y, 0, health, health, false);

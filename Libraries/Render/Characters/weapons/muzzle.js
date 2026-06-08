@@ -25,7 +25,7 @@ export function kinematicsInnerPointToWorld(actor, innerX, innerY, metrics, disp
     return { x: actor.x - drawW / 2 + (canvasX / metrics.width) * drawW, y: actor.y - drawH / 2 - vShift + (canvasY / metrics.height) * drawH };
 }
 /**
- * @param {ReturnType<import("../../../../Games/tower/render/createWeaponVisuals.js").createWeaponVisuals>} weaponVisuals
+ * @param {import("./weaponVisualsPort.js").WeaponVisualsPort} weaponVisuals
  */
 export function createMuzzleResolver(weaponVisuals) {
     return function resolveMuzzleFromRig(actor, rigData, project, config, facing, turretIndex, displayDiameter) {

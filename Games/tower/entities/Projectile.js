@@ -7,11 +7,11 @@ import { getGunImpactKnockback } from "../combat/gunCombat.js";
 import { getGunDefinition } from "../config/content/guns.js";
 import { Enemy } from "./Enemy.js";
 import { getInteractionPairFilter, getPlayerActors } from "../../../Core/GamePorts.js";
-import { RagdollCorpse } from "./RagdollCorpse.js";
+import { RagdollCorpse } from "../../../Entities/RagdollCorpse.js";
 // Grenade-specific imports
-import { Explosion } from "./Explosion/Explosion.js";
+import { Explosion } from "../../../Entities/Explosion/Explosion.js";
 import { ProgressBar } from "../../../Libraries/Canvas/ProgressBar.js";
-import { CombatParticles } from "../render/CombatParticles.js";
+import { CombatParticles } from "../../../Libraries/Render/CombatParticles.js";
 const grenadeProgressBar = new ProgressBar({ width: 24, height: 4, borderRadius: 2, quantizationSteps: 30, colorFn: () => "#FF1744" });
 export const ProjectileStrategies = {
     bullet: {

@@ -1,22 +1,13 @@
 import { resolveCombatFacing, resolveSpriteBodyRotation } from "./anim/combatFacing.js";
 import { createCharacterResolver } from "../Render/Characters/appearance.js";
 import { createMuzzleResolver } from "../Render/Characters/weapons/muzzle.js";
-
-function createEmptyWeaponVisuals() {
-    return {
-        resolveWeaponStaticPoseName: () => "IDLE",
-        resolveWeaponDrawSlots: () => [],
-        drawHeldWeapons: () => {},
-    };
-}
-
+import { createEmptyWeaponVisuals } from "../Render/Characters/weapons/weaponVisualsPort.js";
 /**
  * Default kinematics port bundle for humanoid actors.
  *
  * @param {{
  *   appearanceOverrides?: object,
- *   gunIdToVisual?: Record<string, string>,
- *   weaponVisuals?: ReturnType<import("../../Games/tower/render/createWeaponVisuals.js").createWeaponVisuals>,
+ *   weaponVisuals?: import("../Render/Characters/weapons/weaponVisualsPort.js").WeaponVisualsPort,
  * }} options
  */
 export function createDefaultKinematicsPorts({ appearanceOverrides, weaponVisuals }) {

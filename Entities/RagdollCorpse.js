@@ -1,10 +1,10 @@
-import { Entity } from "../../../Entities/Entity.js";
-import { applyRagdollImpulse, updateRagdoll } from "../../../Libraries/Kinematics/ragdoll/physics.js";
-import { checkRagdollHit, ragdollPartToWorld } from "../../../Libraries/Kinematics/ragdoll/hitTest.js";
-import { seedRagdollBloodOnDeath, updateBloodEffects, addRagdollBleedEmitter } from "../../../Libraries/Render/Characters/ragdoll/blood.js";
-import { createObstacleWallChecker, createRagdollState, resolveDeathImpact } from "../../../Libraries/Kinematics/ragdoll/fromActor.js";
-import { captureActorRigForRagdoll, renderCorpseKinematicsBody } from "../../../Libraries/Render/Characters/actorKinematicsRenderer.js";
-import { CombatParticles } from "../render/CombatParticles.js";
+import { Entity } from "./Entity.js";
+import { applyRagdollImpulse, updateRagdoll } from "../Libraries/Kinematics/ragdoll/physics.js";
+import { checkRagdollHit, ragdollPartToWorld } from "../Libraries/Kinematics/ragdoll/hitTest.js";
+import { seedRagdollBloodOnDeath, updateBloodEffects, addRagdollBleedEmitter } from "../Libraries/Render/Characters/ragdoll/blood.js";
+import { createObstacleWallChecker, createRagdollState, resolveDeathImpact } from "../Libraries/Kinematics/ragdoll/fromActor.js";
+import { captureActorRigForRagdoll, renderCorpseKinematicsBody } from "../Libraries/Render/Characters/actorKinematicsRenderer.js";
+import { CombatParticles } from "../Libraries/Render/CombatParticles.js";
 const CORPSE_MAX_MS = 12000;
 const CORPSE_FADE_MS = 2500;
 export class RagdollCorpse extends Entity {

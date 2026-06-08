@@ -11,7 +11,7 @@ import { registerTilelabListeners } from "./listeners.js";
 import { getGameState } from "../../GameState/GameState.js";
 import { syncLabScreenCanvasBounds } from "./ui/labCanvas.js";
 import { registerPickupStates } from "../../Entities/PickupStates.js";
-import { towerPickupStates } from "../tower/entities/pickupCombatStates.js";
+import { combatPickupStates } from "../../Entities/pickupCombatStates.js";
 /** @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition */
 export const tilelabGame = {
     id: "tilelab",
@@ -34,7 +34,7 @@ export const tilelabGame = {
         if (state) syncLabScreenCanvasBounds(state);
     },
     prepare() {
-        registerPickupStates(towerPickupStates);
+        registerPickupStates(combatPickupStates);
         document.title = "Tile Lab";
         document.body.classList.add("shell-tilelab");
         if (!document.getElementById("tilelab-css")) {
