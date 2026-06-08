@@ -1,7 +1,6 @@
 import { isSandboxEquippable } from "../sandboxCapabilities.js";
 import { normalizeWeaponLoadout } from "../../Combat/equipmentLoadout.js";
 import { manualFirePickup } from "../../Combat/pickupManualFire.js";
-import { drawPickupWeaponBars } from "../drawPickupWeaponBars.js";
 import { getPropAsset } from "../../Props/PropCatalog.js";
 export const SHOOT_BEHAVIOR_ID = "shoot";
 /** @returns {import("../createSandboxController.js").SandboxBehavior} */
@@ -32,9 +31,7 @@ export function createShootBehavior() {
             if (!state) return;
             manualFirePickup(state, pickup, aimX, aimY, dt, isShooting);
         },
-        drawOverlay(ctx, pickup, host) {
-            drawPickupWeaponBars(ctx, pickup, null); // No sprite cache provided since this runs in Sandbox drawOverlay
-        },
+        drawOverlay() {},
         reset() {
             isShooting = false;
         },

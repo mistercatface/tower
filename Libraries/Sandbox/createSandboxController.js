@@ -4,6 +4,7 @@ import { findPickupAt } from "./findPickupAt.js";
 import { createSandboxSession } from "./sandboxSession.js";
 import { resolveSandboxBehaviors } from "./sandboxCapabilities.js";
 import { drawSandboxLaserSights } from "./drawLaserSights.js";
+import { drawSandboxWeaponBars } from "./drawPickupWeaponBars.js";
 /** @typedef {import("./SandboxHostPort.js").SandboxHostPort} SandboxHostPort */
 /**
  * @typedef {object} SandboxBehavior
@@ -165,6 +166,7 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
             const pickup = session.getSelectedPickup();
             const behavior = resolveBehavior();
             behavior?.drawOverlay?.(ctx, pickup, host);
+            drawSandboxWeaponBars(ctx, host);
             drawSandboxLaserSights(ctx, host);
         },
     };

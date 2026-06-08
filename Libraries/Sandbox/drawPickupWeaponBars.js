@@ -1,5 +1,8 @@
 import { ProgressBar } from "../../Libraries/Canvas/ProgressBar.js";
 import { getSlotFireIntervalMs, getSlotReloadTimeMs } from "../../Libraries/Combat/gunCombat.js";
+import { syncPickupWeaponState } from "../Combat/pickupWeaponState.js";
+import { isSandboxEquippable } from "./sandboxCapabilities.js";
+import { getPropAsset } from "../Props/PropCatalog.js";
 let reloadBar = null;
 let cooldownBar = null;
 export function drawPickupWeaponBars(ctx, pickup, caches) {
@@ -27,5 +30,19 @@ export function drawPickupWeaponBars(ctx, pickup, caches) {
             const ratio = Math.min(1, turret.charge / fireIntervalMs);
             cooldownBar.render(ctx, pickup.x, pickup.y + yOffset, ratio, caches);
         }
+    }
+}
+/**
+ * Charge/reload bars for every armed sandbox pickup (auto-combat + manual fire).
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {import("./SandboxHostPort.js").SandboxHostPort} host
+ * @param {import("../../Libraries/Canvas/SpriteCache.js").SpriteCache | null} [caches]
+ */
+export function drawSandboxWeaponBars(ctx, host, caches = null) {
+    for (const pickup of host.getPickups()) {
+        if (pickup.isDead || !pickup.weaponLoadout?.length) continue;
+        if (!isSandboxEquippable(getPropAsset(pickup.type))) continue;
+        syncPickupWeaponState(pickup);
+        drawPickupWeaponBars(ctx, pickup, caches);
     }
 }
