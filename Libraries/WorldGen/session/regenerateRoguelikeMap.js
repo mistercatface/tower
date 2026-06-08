@@ -7,10 +7,10 @@ import { getRoguelikeMapSession } from "./roguelikeMapSession.js";
  * Does not touch DOM, viewport, or path-test UI.
  *
  * @param {object} state
- * @param {{ mapSeed: number, floorSeed: number, canvasBounds: { width: number, height: number }, generateWorld: (state: object) => void }} options
+ * @param {{ mapSeed: number, floorSeed: number, generateWorld: (state: object) => void, canvasBounds?: { width: number, height: number } | null }} options
  */
-export function regenerateRoguelikeMap(state, { mapSeed, floorSeed, canvasBounds, generateWorld }) {
-    state.canvasBounds = { ...canvasBounds };
+export function regenerateRoguelikeMap(state, { mapSeed, floorSeed, generateWorld, canvasBounds = null }) {
+    if (canvasBounds) state.canvasBounds = { ...canvasBounds };
     withSeededRandom(mapSeed, () => {
         generateWorld(state);
     });

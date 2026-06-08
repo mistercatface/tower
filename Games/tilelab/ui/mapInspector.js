@@ -1,8 +1,8 @@
-import { ROGUELIKE_MAP_TOPOLOGY } from "../../../Libraries/WorldGen/presets/roguelikeMap.js";
+import { tilelabMapTopology } from "../mapTopology.js";
 import { getWorldGen } from "../../../Core/GamePorts.js";
 import { SliderControl } from "../../../Tools/Lab/ui/controls/SliderControl.js";
 import { calculatePathTest } from "../world/mapPathTest.js";
-import { focusLabNode, generateTilelabMap } from "../world/mapWorld.js";
+import { focusLabNode, generateTilelabMap, listLabMapNodes, selectLabNode } from "../world/mapWorld.js";
 import { setLabCamera } from "./labViewport.js";
 import { readControls } from "./toolbar.js";
 export function readMapControls() {
@@ -20,7 +20,7 @@ export function populateNodeList(state, onRedraw) {
     const listPanel = document.getElementById("nodeListPanel");
     if (!listPanel) return;
     listPanel.innerHTML = "";
-    for (const node of [...state.mapNodes].sort((a, b) => a.layer - b.layer || a.id - b.id)) {
+    for (const node of listLabMapNodes(state)) {
         const item = document.createElement("div");
         item.className = `node-row${node.id === state.roguelikeMapSession.selectedNodeId ? " selected" : ""}`;
         const themeColor = node.wallTheme ? `rgb(${node.wallTheme.r}, ${node.wallTheme.g}, ${node.wallTheme.b})` : "#fff";
@@ -30,7 +30,7 @@ export function populateNodeList(state, onRedraw) {
             <span class="node-strategy">${node.strategy ?? "Unknown"}</span>
             <span class="color-badge" style="background-color: ${themeColor}"></span>`;
         item.addEventListener("click", () => {
-            state.roguelikeMapSession.selectedNodeId = node.id;
+            selectLabNode(state, node.id);
             populateNodeList(state, onRedraw);
             renderNodeInspector(state, onRedraw);
             onRedraw?.();
@@ -96,15 +96,15 @@ export function buildTopologySettingsPanel(state) {
     subh1.className = "editor-subhead";
     subh1.textContent = "Topology";
     panel.appendChild(subh1);
-    addSlider("Layers", 1, 20, 1, ROGUELIKE_MAP_TOPOLOGY, "numLayers");
-    addSlider("Layer Spacing", 50, 500, 10, ROGUELIKE_MAP_TOPOLOGY, "layerSpacing");
-    addSlider("Node Spacing (X)", 50, 500, 10, ROGUELIKE_MAP_TOPOLOGY, "xSpacing");
-    addSlider("Node Jitter", 0, 100, 1, ROGUELIKE_MAP_TOPOLOGY, "nodeJitter");
+    addSlider("Layers", 1, 20, 1, tilelabMapTopology, "numLayers");
+    addSlider("Layer Spacing", 50, 500, 10, tilelabMapTopology, "layerSpacing");
+    addSlider("Node Spacing (X)", 50, 500, 10, tilelabMapTopology, "xSpacing");
+    addSlider("Node Jitter", 0, 100, 1, tilelabMapTopology, "nodeJitter");
     const subh2 = document.createElement("div");
     subh2.className = "editor-subhead";
     subh2.textContent = "Generation Settings";
     panel.appendChild(subh2);
-    addSlider("Extra Conn Chance", 0, 1, 0.05, ROGUELIKE_MAP_TOPOLOGY, "extraConnectionChance");
+    addSlider("Extra Conn Chance", 0, 1, 0.05, tilelabMapTopology, "extraConnectionChance");
     const subh3 = document.createElement("div");
     subh3.className = "editor-subhead";
     subh3.textContent = "Scale";
@@ -113,6 +113,8 @@ export function buildTopologySettingsPanel(state) {
 }
 /** @param {import("../TileLabGameState.js").TileLabGameState} state @param {(() => void) | null} [onRedraw] */
 export function syncMapInspectorAfterRegen(state, onRedraw) {
+    const { selectedNodeId } = state.roguelikeMapSession;
+    if (selectedNodeId != null && !state.getMapNode(selectedNodeId)) selectLabNode(state, null);
     populateNodeList(state, onRedraw);
     renderNodeInspector(state, onRedraw);
 }

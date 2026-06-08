@@ -1,4 +1,5 @@
 import { placePathTestAgent } from "../world/mapPathTest.js";
+import { selectLabNode } from "../world/mapWorld.js";
 import { populateNodeList, renderNodeInspector } from "./mapInspector.js";
 /** @param {import("../TileLabGameState.js").TileLabGameState} state @param {HTMLCanvasElement} canvas */
 function resolveTopologyClickViewport(state, canvas) {
@@ -28,7 +29,7 @@ export function initMapTopologyInteractions(state, onRedraw) {
                 }
             }
             if (nearestNode) {
-                state.roguelikeMapSession.selectedNodeId = nearestNode.id;
+                selectLabNode(state, nearestNode.id);
                 populateNodeList(state, onRedraw);
                 renderNodeInspector(state, onRedraw);
                 onRedraw();

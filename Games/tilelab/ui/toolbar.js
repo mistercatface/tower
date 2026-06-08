@@ -1,6 +1,6 @@
 import { roguelikeProceduralDesign } from "../../../Libraries/WorldGen/presets/roguelikeMap.js";
 import { LAB_PREVIEW_RANGE } from "../config.js";
-import { focusLabNode, generateTilelabMap } from "../world/mapWorld.js";
+import { generateTilelabMap } from "../world/mapWorld.js";
 import { fitLabStageToView } from "./labViewport.js";
 import { invalidateMapPreviewBakes } from "../world/surfacePreview.js";
 export function readControls(state) {
@@ -55,15 +55,13 @@ export function syncTilelabWorld(state, ctrl, forceRegen = false) {
         state.worldSurfaces.clear();
         invalidateMapPreviewBakes();
     }
-    const nodeId = Number(document.getElementById("mapNodeSelect")?.value) || 0;
-    if (state.currentNodeId !== nodeId) focusLabNode(state, nodeId);
 }
 /**
  * @param {{ onRefresh: () => void, onStageResize: () => void }} handlers
  */
 export function bindToolbarControls(handlers) {
     const { onRefresh, onStageResize } = handlers;
-    const ids = ["seedInput", "mapSeedInput", "mapNodeSelect", "showRangeRingInput", "showVignetteInput"];
+    const ids = ["seedInput", "mapSeedInput", "showRangeRingInput", "showVignetteInput"];
     for (const id of ids) {
         document.getElementById(id)?.addEventListener("input", onRefresh);
         document.getElementById(id)?.addEventListener("change", onRefresh);

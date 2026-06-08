@@ -1,4 +1,5 @@
 import { createRoguelikeWorldGenPort, roguelikeProceduralDesign } from "../../Libraries/WorldGen/presets/roguelikeMap.js";
+import { tilelabMapTopology } from "./mapTopology.js";
 import { layoutOnlyRunBootstrap } from "../../Libraries/RunBootstrap/phases.js";
 import { createDefaultRenderPorts } from "../../Libraries/Render/defaultRenderPorts.js";
 import { TileLabGameState } from "./TileLabGameState.js";
@@ -21,7 +22,7 @@ export const tilelabGame = {
     simulationPort: tilelabSimulation,
     uiPort: tilelabUiPort,
     render: createDefaultRenderPorts(),
-    worldGen: createRoguelikeWorldGenPort(),
+    worldGen: createRoguelikeWorldGenPort({ topology: tilelabMapTopology }),
     proceduralDesign: roguelikeProceduralDesign,
     runBootstrapPort: layoutOnlyRunBootstrap,
     runScenePort: tilelabRunScenePort,

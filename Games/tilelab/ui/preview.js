@@ -44,11 +44,11 @@ export function renderTilelabPreview(state, ctrl) {
     });
     const gameMeta = document.getElementById("gameMetaLine");
     if (gameMeta) {
-        const node = state.getCurrentMapNode();
+        const selectedId = state.roguelikeMapSession.selectedNodeId;
+        const node = selectedId != null ? state.getMapNode(selectedId) : null;
         const { mapViewport } = state;
+        const nodeLabel = selectedId != null ? `node ${selectedId}${node?.strategy ? ` ${node.strategy}` : ""}` : "no node selected";
         gameMeta.textContent =
-            `node ${state.currentNodeId} ${node?.strategy ?? ""} · map ${state.mapSeed} · ` +
-            `focus ${Math.round(mapViewport.x)},${Math.round(mapViewport.y)} · ` +
-            `zoom ${mapViewport.zoom.toFixed(2)} · range ${ctrl.weaponRange} · WASD`;
+            `${nodeLabel} · map ${state.mapSeed} · ` + `focus ${Math.round(mapViewport.x)},${Math.round(mapViewport.y)} · ` + `zoom ${mapViewport.zoom.toFixed(2)} · range ${ctrl.weaponRange} · WASD`;
     }
 }

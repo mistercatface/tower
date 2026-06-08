@@ -7,7 +7,6 @@ export const TILELAB_UI_HTML = `
         <span class="sep"></span>
         <label>Map seed <input id="mapSeedInput" type="number" value="42"></label>
         <button type="button" id="regenMapBtn" class="secondary">New map</button>
-        <label>Node <select id="mapNodeSelect"></select></label>
         <span id="surfaceToolbarGroup">
             <span class="sep"></span>
             <label>Floor seed <input id="seedInput" type="number" value="42" step="1"></label>
