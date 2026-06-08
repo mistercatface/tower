@@ -1,5 +1,5 @@
 import { getPropAsset, getWorldPropDefinitions } from "../Props/PropCatalog.js";
-import { isDragLaunchProp } from "./dragLaunch.js";
+import { isSandboxProp } from "./dragLaunch.js";
 const BEHAVIOR_LABELS = { dragLaunch: "Drag launch", rollToCursorDirect: "Roll to cursor (direct)", rollToCursorHpa: "Roll to cursor (HPA)" };
 /**
  * @param {HTMLElement} container
@@ -8,7 +8,7 @@ const BEHAVIOR_LABELS = { dragLaunch: "Drag launch", rollToCursorDirect: "Roll t
  */
 export function mountSandboxToyUi(container, controller, onChange) {
     const ids = Object.keys(getWorldPropDefinitions())
-        .filter((id) => isDragLaunchProp(getPropAsset(id)))
+        .filter((id) => isSandboxProp(getPropAsset(id)))
         .sort();
     const render = () => {
         container.innerHTML = "";

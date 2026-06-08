@@ -13,7 +13,7 @@ export {
     drawDragLaunchPreview,
     getDragLaunchConfig,
     getDragLaunchPreview,
-    isDragLaunchProp,
+    isSandboxProp,
     releaseDragLaunch,
     updateDragLaunchAim,
 } from "./dragLaunch.js";

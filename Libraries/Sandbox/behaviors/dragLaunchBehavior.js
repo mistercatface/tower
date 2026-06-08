@@ -1,5 +1,5 @@
 import { getPropAsset } from "../../Props/PropCatalog.js";
-import { applyDragLaunchVelocity, createDragLaunchAim, drawDragLaunchPreview, getDragLaunchConfig, isDragLaunchProp, releaseDragLaunch, updateDragLaunchAim } from "../dragLaunch.js";
+import { applyDragLaunchVelocity, createDragLaunchAim, drawDragLaunchPreview, getDragLaunchConfig, releaseDragLaunch, updateDragLaunchAim } from "../dragLaunch.js";
 export const DRAG_LAUNCH_BEHAVIOR_ID = "dragLaunch";
 /** @returns {import("../createSandboxController.js").SandboxBehavior} */
 export function createDragLaunchBehavior() {
@@ -8,9 +8,6 @@ export function createDragLaunchBehavior() {
     const configFor = (pickup) => getDragLaunchConfig(getPropAsset(pickup?.type));
     return {
         id: DRAG_LAUNCH_BEHAVIOR_ID,
-        isEligible(asset) {
-            return isDragLaunchProp(asset);
-        },
         onPointerDown(pickup, world) {
             aim = createDragLaunchAim(pickup.x, pickup.y);
             updateDragLaunchAim(aim, world.x, world.y, configFor(pickup));

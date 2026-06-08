@@ -8,9 +8,6 @@ export function createRollToCursorHpaBehavior() {
     const hpaNav = createRollToCursorHpaNav();
     return {
         id: ROLL_TO_CURSOR_HPA_BEHAVIOR_ID,
-        isEligible(asset) {
-            return true;
-        },
         onPointerDown(pickup, world) {
             active = true;
             targetWorld = { x: world.x, y: world.y };

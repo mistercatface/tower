@@ -5,9 +5,9 @@ import { drawAimSegment } from "../Render/contactPreviewDraw.js";
 /** @typedef {{ active: boolean, anchorX: number, anchorY: number, pullX: number, pullY: number, shotNx: number | null, shotNy: number | null }} DragLaunchAim */
 export const DRAG_LAUNCH_DEFAULTS = { minDrag: 10, maxPull: 110, pullScale: 1.25, minPower: 55, maxPower: 340 };
 /** @param {object | null | undefined} asset */
-export function isDragLaunchProp(asset) {
-    const entry = asset?.sandbox?.dragLaunch;
-    return entry === true || (entry != null && typeof entry === "object");
+export function isSandboxProp(asset) {
+    const sandbox = asset?.sandbox;
+    return sandbox === true || (sandbox != null && typeof sandbox === "object");
 }
 /** @param {object | null | undefined} asset */
 export function getDragLaunchConfig(asset) {

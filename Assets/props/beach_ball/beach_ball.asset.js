@@ -1,7 +1,7 @@
 export default {
     id: "beach_ball",
     primitive: "sphere",
-    sandbox: { dragLaunch: true },
+    sandbox: true,
     physics: {
         hitBehavior: "none",
         radius: 7,

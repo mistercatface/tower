@@ -1,4 +1,3 @@
-import { getPropAsset } from "../Props/PropCatalog.js";
 import { bindCanvasPointers, releasePointerCapture } from "./bindCanvasPointers.js";
 import { findPickupAt } from "./findPickupAt.js";
 import { createSandboxSession } from "./sandboxSession.js";
@@ -6,7 +5,6 @@ import { createSandboxSession } from "./sandboxSession.js";
 /**
  * @typedef {object} SandboxBehavior
  * @property {string} id
- * @property {(asset: object | null | undefined) => boolean} isEligible
  * @property {(pickup: object, world: { x: number, y: number }, e: PointerEvent) => boolean} onPointerDown
  * @property {(pickup: object, world: { x: number, y: number }, e: PointerEvent) => void} onPointerMove
  * @property {(pickup: object, e: PointerEvent) => void} onPointerUp
@@ -30,13 +28,7 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
     let interactionBehavior = null;
     /** @type {(() => void) | null} */
     let unbindPointers = null;
-    const resolveBehavior = (pickup) => {
-        if (!pickup) return null;
-        const asset = getPropAsset(pickup.type);
-        const preferred = behaviorById.get(activeBehaviorId);
-        if (preferred?.isEligible(asset)) return preferred;
-        return behaviors.find((behavior) => behavior.isEligible(asset)) ?? null;
-    };
+    const resolveBehavior = () => behaviorById.get(activeBehaviorId) ?? null;
     const resetBehaviors = () => {
         for (const behavior of behaviors) behavior.reset?.();
         interactionBehavior = null;
@@ -58,7 +50,7 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
         }
         if (e.button !== 0) return;
         const pickup = session.getSelectedPickup();
-        const behavior = resolveBehavior(pickup);
+        const behavior = resolveBehavior();
         if (!pickup || !behavior) return;
         if (!behavior.onPointerDown(pickup, world, e)) return;
         e.preventDefault();
@@ -125,14 +117,14 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
         },
         tick(dt) {
             const pickup = session.getSelectedPickup();
-            const behavior = resolveBehavior(pickup);
+            const behavior = resolveBehavior();
             if (!pickup || !behavior?.tick) return;
             behavior.tick(pickup, dt, host);
         },
         /** @param {CanvasRenderingContext2D} ctx */
         drawOverlay(ctx) {
             const pickup = session.getSelectedPickup();
-            const behavior = resolveBehavior(pickup);
+            const behavior = resolveBehavior();
             behavior?.drawOverlay?.(ctx, pickup, host);
         },
     };

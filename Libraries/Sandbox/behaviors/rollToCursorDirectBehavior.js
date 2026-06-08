@@ -6,9 +6,6 @@ export function createRollToCursorDirectBehavior() {
     let active = false;
     return {
         id: ROLL_TO_CURSOR_DIRECT_BEHAVIOR_ID,
-        isEligible(asset) {
-            return true;
-        },
         onPointerDown(pickup, world) {
             active = true;
             targetWorld = { x: world.x, y: world.y };
