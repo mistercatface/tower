@@ -107,3 +107,11 @@
     min-height: 0;
     flex: 1;
 }
+
+#sandboxPanel {
+    flex: 0 0 auto;
+}
+
+.sandbox-panel-body {
+    padding: 8px;
+}

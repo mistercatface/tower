@@ -1,6 +1,7 @@
 import { Pickup } from "../../Entities/Pickup.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { getDefaultDragLaunchPropId } from "./dragLaunchCatalog.js";
+import { findPickupAt } from "./findPickupAt.js";
 import { applyDragLaunchVelocity, createDragLaunchAim, drawDragLaunchPreview, getDragLaunchConfig, releaseDragLaunch, updateDragLaunchAim } from "./dragLaunch.js";
 /** @typedef {import("./SandboxHostPort.js").SandboxHostPort} SandboxHostPort */
 /**
@@ -24,11 +25,21 @@ export function createDragLaunchToy(host) {
     };
     /** @param {PointerEvent} e */
     const onPointerDown = (e) => {
-        if (e.button !== 0 || host.isInputBlocked()) return;
+        if (host.isInputBlocked()) return;
         const canvas = host.getCanvas();
         if (!canvas) return;
         const world = host.clientToWorld(e.clientX, e.clientY);
         if (!world) return;
+        if (e.button === 2) {
+            const hit = findPickupAt(host.getPickups(), world.x, world.y);
+            if (!hit) return;
+            e.preventDefault();
+            e.stopPropagation();
+            host.removePickup(hit);
+            host.requestRedraw();
+            return;
+        }
+        if (e.button !== 0) return;
         e.preventDefault();
         e.stopPropagation();
         aim = createDragLaunchAim(world.x, world.y);

@@ -9,10 +9,17 @@ import { listDragLaunchPropIds } from "./dragLaunchCatalog.js";
  */
 export function mountDragLaunchFocusUi(container, toy) {
     const ids = listDragLaunchPropIds();
+    container.innerHTML = "";
     if (ids.length === 0) {
-        container.innerHTML = `<span class="hint-inline">No launchable props loaded</span>`;
-        return () => {};
+        container.innerHTML = `<p class="editor-hint">No launchable props loaded</p>`;
+        return () => {
+            container.innerHTML = "";
+        };
     }
+    const field = document.createElement("div");
+    field.className = "param-field";
+    const label = document.createElement("span");
+    label.textContent = "Launch";
     const select = document.createElement("select");
     select.className = "toy-focus-select";
     for (const id of ids) {
@@ -27,12 +34,8 @@ export function mountDragLaunchFocusUi(container, toy) {
         toy.onChange();
     };
     select.addEventListener("change", handleChange);
-    container.innerHTML = "";
-    const label = document.createElement("label");
-    label.className = "toy-focus-label";
-    label.textContent = "Toy: ";
-    label.appendChild(select);
-    container.appendChild(label);
+    field.append(label, select);
+    container.appendChild(field);
     return () => {
         select.removeEventListener("change", handleChange);
         container.innerHTML = "";

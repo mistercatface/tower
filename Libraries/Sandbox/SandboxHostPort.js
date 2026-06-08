@@ -8,6 +8,7 @@
  * @property {() => void} requestRedraw
  * @property {() => object[]} getPickups
  * @property {(prop: object) => void} addPickup
+ * @property {(prop: object) => void} removePickup
  * @property {() => void} clearPickups
  */
 export {};

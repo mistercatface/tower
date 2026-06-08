@@ -4,8 +4,6 @@ export const TILELAB_UI_HTML = `
         <h1>Tile Lab</h1>
         <span class="sep"></span>
         <label class="check-inline"><input type="checkbox" id="showTopologyOverlayInput"> Topology overlay</label>
-        <span class="hint-inline">Drag to launch beach ball</span>
-        <span id="toyFocusBar" style="display: inline-flex; align-items: center; margin-left: 8px;"></span>
         <span class="sep"></span>
         <label>Map seed <input id="mapSeedInput" type="number" value="42"></label>
         <button type="button" id="regenMapBtn" class="secondary">New map</button>
@@ -24,6 +22,13 @@ export const TILELAB_UI_HTML = `
     </div>
     <div class="workspace">
         <aside class="col col-editor">
+            <div id="sandboxPanel" class="col-body sandbox-panel">
+                <div class="col-head">Sandbox</div>
+                <div class="sandbox-panel-body">
+                    <div id="sandboxToyPanel"></div>
+                    <p class="editor-hint">Drag on map to launch · right-click prop to delete</p>
+                </div>
+            </div>
             <div id="surfaceEditorPanel" class="col-body">
                 <div class="col-head">Profile editor</div>
                 <div class="editor-tools">

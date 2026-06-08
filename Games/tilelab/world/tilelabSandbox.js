@@ -11,7 +11,7 @@ export function mountTilelabDragLaunchToy(state, requestRedraw) {
     destroyTilelabDragLaunchToy();
     dragLaunchToy = createDragLaunchToy(createTilelabSandboxHost(state, requestRedraw));
     dragLaunchToy.register();
-    const container = document.getElementById("toyFocusBar");
+    const container = document.getElementById("sandboxToyPanel");
     if (container)
         unmountFocusUi = mountDragLaunchFocusUi(container, { getFocus: () => dragLaunchToy.getFocusedPropId(), setFocus: (id) => dragLaunchToy.setFocusedPropId(id), onChange: requestRedraw });
 }

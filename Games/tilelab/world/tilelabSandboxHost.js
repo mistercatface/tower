@@ -18,6 +18,10 @@ export function createTilelabSandboxHost(state, requestRedraw) {
         requestRedraw,
         getPickups: () => state.pickups,
         addPickup: (prop) => state.pickups.push(prop),
+        removePickup: (prop) => {
+            const index = state.pickups.indexOf(prop);
+            if (index >= 0) state.pickups.splice(index, 1);
+        },
         clearPickups: () => {
             state.pickups = [];
         },
