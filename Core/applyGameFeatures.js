@@ -9,8 +9,16 @@ import { createSimulationPort } from "../Systems/Simulation/SimulationPipeline.j
 export function applyGameFeatures(definition) {
     const { features } = definition;
     if (!features?.length) return;
+    mergeFeatureDefinitionPorts(definition);
     mergeFeatureRenderHooks(definition);
     mergeFeatureSimulationPhases(definition);
+}
+/** @param {GameDefinition} definition */
+function mergeFeatureDefinitionPorts(definition) {
+    for (const feature of definition.features) {
+        if (feature.interactionPairs) definition.interactionPairs = { ...(definition.interactionPairs ?? {}), ...feature.interactionPairs };
+        if (feature.targeting) definition.targeting = feature.targeting;
+    }
 }
 /** @param {GameDefinition} definition */
 function mergeFeatureRenderHooks(definition) {
@@ -35,8 +43,10 @@ function mergeFeatureSimulationPhases(definition) {
     const port = definition.simulationPort;
     if (!port?.phases) return;
     let phases = [...port.phases];
-    let changed = false;
+    let phasesChanged = false;
+    let beginRuntime = port.beginRuntime;
     for (const feature of definition.features) {
+        if (feature.beginRuntime) beginRuntime = feature.beginRuntime;
         if (!feature.simulationPhases?.length) continue;
         const anchor = feature.simulationPhaseInsertAfter;
         if (anchor) {
@@ -44,8 +54,8 @@ function mergeFeatureSimulationPhases(definition) {
             if (index >= 0) phases.splice(index + 1, 0, ...feature.simulationPhases);
             else phases.push(...feature.simulationPhases);
         } else phases.push(...feature.simulationPhases);
-        changed = true;
+        phasesChanged = true;
     }
-    if (!changed) return;
-    definition.simulationPort = createSimulationPort(phases, { beginRuntime: port.beginRuntime, onEnter: port.onEnter });
+    if (!phasesChanged && beginRuntime === port.beginRuntime) return;
+    definition.simulationPort = createSimulationPort(phases, { beginRuntime, onEnter: port.onEnter });
 }

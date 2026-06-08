@@ -25,6 +25,7 @@ export function createGame(definition) {
     const state = definition.createGameState();
     if (definition.features) for (const feature of definition.features) feature.initState?.(state);
     installGameState(state);
+    if (definition.features) for (const feature of definition.features) feature.prepare?.();
     definition.prepare?.();
     bootstrapEngine(definition);
     applyGameCollisionSettings(definition);

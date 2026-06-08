@@ -120,7 +120,11 @@
 /**
  * @typedef {object} GameFeature
  * @property {(state: object) => void} [initState]
+ * @property {() => void} [prepare]
  * @property {(eventBus: import("../Libraries/Events/EventBus.js").EventBus, boot?: { state: object, fsm: import("../Libraries/FSM/StateMachine.js").StateMachine, resetGame: () => void }) => void} [registerListeners]
+ * @property {Partial<InteractionPairsPort>} [interactionPairs]
+ * @property {TargetingPort} [targeting]
+ * @property {(ctx: object) => import("../../Systems/Simulation/SimulationRuntime.js").SimulationRuntime} [beginRuntime]
  * @property {import("../../Systems/Simulation/SimulationPipeline.js").SimulationPhase[]} [simulationPhases]
  * @property {string} [simulationPhaseInsertAfter] — splice after a base phase `id`; append when omitted
  * @property {SimulationEffectPass[]} [simulationEffectPasses]

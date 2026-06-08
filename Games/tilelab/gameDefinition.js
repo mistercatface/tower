@@ -11,22 +11,13 @@ import { tilelabUiPort } from "./ui/tilelabUiPort.js";
 import { tilelabRunScenePort } from "./runScenePort.js";
 import { getGameState } from "../../GameState/GameState.js";
 import { syncLabScreenCanvasBounds } from "./ui/labCanvas.js";
-import { registerPickupStates } from "../../Entities/PickupStates.js";
-import { combatPickupStates } from "../../Entities/pickupCombatStates.js";
-import { sandboxInteractionPairs } from "../../Libraries/Combat/sandboxInteraction.js";
-import { sandboxTargeting } from "../../Libraries/Combat/sandboxTargeting.js";
 import { tilelabViewPort } from "./viewPort.js";
-import { createFloatingTextFeature } from "../../Libraries/Render/createFloatingTextFeature.js";
-import { createCombatVfxFeature } from "../../Libraries/Render/createCombatVfxFeature.js";
-import { createProjectileCombatFeature } from "../../Libraries/Combat/createProjectileCombatFeature.js";
-import { createCombatResolutionFeature } from "../../Libraries/Combat/createCombatResolutionFeature.js";
+import { createSandboxCombatFeature } from "../../Libraries/Combat/createSandboxCombatFeature.js";
 /** @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition */
 export const tilelabGame = {
     id: "tilelab",
     canvasId: "gameCanvas",
-    features: [createProjectileCombatFeature(), createCombatVfxFeature(), createCombatResolutionFeature(), createFloatingTextFeature({ zIndex: 100 })],
-    interactionPairs: sandboxInteractionPairs,
-    targeting: sandboxTargeting,
+    features: createSandboxCombatFeature(),
     createGameState() {
         return new TileLabGameState();
     },
@@ -45,7 +36,6 @@ export const tilelabGame = {
         if (state) syncLabScreenCanvasBounds(state);
     },
     prepare() {
-        registerPickupStates(combatPickupStates);
         document.title = "Tile Lab";
         document.body.classList.add("shell-tilelab");
         if (!document.getElementById("tilelab-css")) {
