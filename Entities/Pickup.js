@@ -17,6 +17,7 @@ import { speedSqXY } from "../Libraries/Math/Vec2.js";
 import { resolveBodyRadius } from "../Libraries/Motion/bodyDefaults.js";
 import { SPLITTABLE_MIN_PIECE_SIZE } from "../Libraries/Props/splittable.js";
 import { wakePushableBody } from "../Libraries/Motion/pushableSleep.js";
+import { resolveKinematicsCamera } from "../Libraries/Render/Characters/actorKinematicsRenderer.js";
 function buildWorldPropStrategy(type) {
     const def = getWorldPropDefinitions()[type];
     if (!def) return withPropStrategyDefaults({});
@@ -163,7 +164,8 @@ export class Pickup extends Entity {
                 const turnSpeed = 10;
                 this.facing += angleDiff * Math.min(1, turnSpeed * (dt / 1000));
             }
-            advanceActorKinematics(this, dt, { x: this.x, y: this.y });
+            this._kinematicsCamera = resolveKinematicsCamera(this, state);
+            advanceActorKinematics(this, dt, this._kinematicsCamera);
             if (this.turrets?.length)
                 if (this.weaponLoadout?.length > 0) {
                     const aimAngle = this.turrets[0]?.angle;
