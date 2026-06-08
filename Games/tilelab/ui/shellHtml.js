@@ -12,9 +12,6 @@ export const TILELAB_UI_HTML = `
             <label>Floor seed <input id="seedInput" type="number" value="42" step="1"></label>
             <button type="button" id="randomSeedBtn" class="secondary">Rand</button>
             <span class="sep"></span>
-            <span id="rangeMeta" class="range-meta"></span>
-            <span class="sep"></span>
-            <label class="check-inline"><input id="showRangeRingInput" type="checkbox" checked> Range ring</label>
             <label class="check-inline"><input id="showVignetteInput" type="checkbox"> Circular Overlay</label>
             <span class="sep"></span>
             <button type="button" id="regenerateBtn">Redraw</button>

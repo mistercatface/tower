@@ -19,15 +19,6 @@ function getLabRenderer(canvas, ctx) {
     return labRenderer;
 }
 let lastBakeKey = "";
-function drawWeaponRangeRing(ctx, x, y, range) {
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(x, y, range, 0, Math.PI * 2);
-    ctx.strokeStyle = "rgba(0, 188, 212, 0.35)";
-    ctx.lineWidth = 1 / Math.max(0.001, ctx.getTransform().a);
-    ctx.stroke();
-    ctx.restore();
-}
 function drawFocusMarker(ctx, x, y) {
     ctx.save();
     ctx.fillStyle = "#00bcd4";
@@ -51,8 +42,8 @@ function maybeClearBakeCaches(worldState, profileId) {
  * @param {CanvasRenderingContext2D} ctx
  * @param {HTMLCanvasElement} canvas
  */
-export function drawTilelabSurfaceFrame(ctx, canvas, worldState, profileId, weaponRange, drawOptions = {}) {
-    const { showVignette = false, showRangeRing = false, showFocusMarker = true, topologySession = null, topologyOptions = null } = drawOptions;
+export function drawTilelabSurfaceFrame(ctx, canvas, worldState, profileId, drawOptions = {}) {
+    const { showVignette = false, showFocusMarker = true, topologySession = null, topologyOptions = null } = drawOptions;
     const size = syncLabScreenCanvasBounds(worldState);
     if (!size) return;
     const viewW = size.width;
@@ -75,7 +66,6 @@ export function drawTilelabSurfaceFrame(ctx, canvas, worldState, profileId, weap
     viewport.apply(ctx);
     if (topologySession && topologyOptions) drawTopologyLayer(ctx, worldState, viewport, topologyOptions, topologySession, { overlay: true });
     worldState.surfaceProfileOverride = prevProfileOverride;
-    if (showRangeRing) drawWeaponRangeRing(ctx, cameraX, cameraY, weaponRange);
     if (showFocusMarker) drawFocusMarker(ctx, cameraX, cameraY);
     getTilelabSandboxController()?.drawOverlay(ctx);
     ctx.restore();

@@ -17,7 +17,7 @@ import { requestUiUpdate } from "../../Core/EventSystem.js";
 import { getRunScenePort, getSimulationPort } from "../../Core/GamePorts.js";
 import { renderActiveLabView } from "./ui/renderLabView.js";
 import { registerEditorProfiles } from "./ui/preview.js";
-import { syncTilelabWorld, readControls, applyToolbarDefaults, syncPreviewZoomToStage } from "./ui/toolbar.js";
+import { syncTilelabWorld, readControls, syncPreviewZoomToStage } from "./ui/toolbar.js";
 import { mergePairFilter } from "../../Libraries/Interaction/pairRules.js";
 import { excludeDeadOther, excludeActorOther, requirePickupOnHit } from "../../Libraries/Interaction/pairRuleClauses.js";
 import { tilelabUiPort } from "./ui/tilelabUiPort.js";
@@ -42,7 +42,6 @@ export const tilelabRunScenePort = {
         const ctrl = readControls(state);
         syncTilelabWorld(state, ctrl, true);
         registerEditorProfiles(state).then(() => {
-            applyToolbarDefaults();
             syncPreviewZoomToStage(state);
         });
     },

@@ -36,9 +36,8 @@ export function renderTilelabPreview(state, ctrl) {
     const canvas = document.getElementById("gameCanvas");
     const size = prepareGameCanvas(canvas, stage);
     if (!size || !canvas) return;
-    drawTilelabSurfaceFrame(canvas.getContext("2d"), canvas, state, RUNTIME_LAB_PROFILE_ID, ctrl.weaponRange, {
+    drawTilelabSurfaceFrame(canvas.getContext("2d"), canvas, state, RUNTIME_LAB_PROFILE_ID, {
         showVignette: ctrl.showVignette,
-        showRangeRing: ctrl.showRangeRing,
         topologySession: state.labShowTopologyOverlay ? state.roguelikeMapSession : null,
         topologyOptions: state.labShowTopologyOverlay ? readMapControls() : null,
     });
@@ -52,6 +51,6 @@ export function renderTilelabPreview(state, ctrl) {
         gameMeta.textContent =
             `${nodeLabel} · map ${state.mapSeed} · ` +
             `focus ${Math.round(mapViewport.x)},${Math.round(mapViewport.y)} · ` +
-            `zoom ${mapViewport.zoom.toFixed(2)} · props ${propCount} · range ${ctrl.weaponRange} · WASD · right-drag pan`;
+            `zoom ${mapViewport.zoom.toFixed(2)} · props ${propCount} · WASD · right-drag pan`;
     }
 }

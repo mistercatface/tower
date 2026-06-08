@@ -1,5 +1,4 @@
 import { roguelikeProceduralDesign } from "../../../Libraries/WorldGen/presets/roguelikeMap.js";
-import { LAB_PREVIEW_RANGE } from "../index.js";
 import { generateTilelabMap } from "../world/mapWorld.js";
 import { fitLabStageToView } from "./labViewport.js";
 import { invalidateMapPreviewBakes } from "../world/surfacePreview.js";
@@ -7,8 +6,6 @@ export function readControls(state) {
     return {
         seed: Number(document.getElementById("seedInput")?.value) || 0,
         mapSeed: Number(document.getElementById("mapSeedInput")?.value) || 0,
-        weaponRange: LAB_PREVIEW_RANGE,
-        showRangeRing: document.getElementById("showRangeRingInput")?.checked ?? true,
         showVignette: document.getElementById("showVignetteInput")?.checked ?? false,
         state,
     };
@@ -16,10 +13,6 @@ export function readControls(state) {
 /** @param {import("../index.js").TileLabGameState} state */
 export function syncPreviewZoomToStage(state) {
     fitLabStageToView(state);
-}
-export function applyToolbarDefaults() {
-    const rangeMeta = document.getElementById("rangeMeta");
-    if (rangeMeta) rangeMeta.textContent = `range ${LAB_PREVIEW_RANGE}`;
 }
 export function initPresetSelect(profileIds) {
     const select = document.getElementById("presetSelect");
@@ -61,7 +54,7 @@ export function syncTilelabWorld(state, ctrl, forceRegen = false) {
  */
 export function bindToolbarControls(handlers) {
     const { onRefresh, onStageResize } = handlers;
-    const ids = ["seedInput", "mapSeedInput", "showRangeRingInput", "showVignetteInput"];
+    const ids = ["seedInput", "mapSeedInput", "showVignetteInput"];
     for (const id of ids) {
         document.getElementById(id)?.addEventListener("input", onRefresh);
         document.getElementById(id)?.addEventListener("change", onRefresh);

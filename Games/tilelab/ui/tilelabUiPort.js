@@ -5,7 +5,7 @@ import { initResizer } from "./lab-shared.js";
 import { initAnimationPreview } from "./LabAnimationPreview.js";
 import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEditor.js";
 import { registerEditorProfiles, renderTilelabPreview, syncRuntimeLabProfile } from "./preview.js";
-import { readControls, applyToolbarDefaults, initPresetSelect, initToolbarDefaults, bindToolbarControls, syncTilelabWorld, syncPreviewZoomToStage } from "./toolbar.js";
+import { readControls, initPresetSelect, initToolbarDefaults, bindToolbarControls, syncTilelabWorld, syncPreviewZoomToStage } from "./toolbar.js";
 import { mountLabViewport } from "./labViewport.js";
 import { TILELAB_UI_HTML } from "./shellHtml.js";
 import { bindMapInspectorControls, syncMapInspectorAfterRegen } from "./mapInspector.js";
@@ -84,7 +84,6 @@ function bootstrapTilelabUi(state) {
             renderActiveLabView(state);
         },
         onStageResize: () => {
-            applyToolbarDefaults();
             syncPreviewZoomToStage(state);
             renderActiveLabView(state);
         },
@@ -112,18 +111,15 @@ function bootstrapTilelabUi(state) {
             return Math.max(160, Math.floor(Math.min(rect.width, rect.height)));
         },
         onResize: () => {
-            applyToolbarDefaults();
             syncPreviewZoomToStage(state);
             renderActiveLabView(state);
         },
     });
     initResizer("resizer", () => {
-        applyToolbarDefaults();
         syncPreviewZoomToStage(state);
         renderActiveLabView(state);
     });
     registerEditorProfiles(state).then(() => {
-        applyToolbarDefaults();
         syncPreviewZoomToStage(state);
         syncMapInspectorAfterRegen(state, () => renderActiveLabView(state));
         refreshPreview(state);
