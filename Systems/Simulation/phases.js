@@ -10,6 +10,7 @@ export const gameSceneTickPhase = {
 };
 /** @type {SimulationPhase} */
 export const pushablePhysicsPhase = {
+    id: "pushablePhysics",
     run(ctx, dt, runtime) {
         runPushablePhysics(ctx.state, dt, runtime.spatialFrame, runtime.events);
     },
