@@ -1,16 +1,11 @@
 import { applyZoomControl, clampZoom, directZoomMapping } from "../../../Libraries/Viewport/index.js";
 export const LAB_ZOOM_MIN = 0.25;
 export const LAB_ZOOM_MAX = 2.5;
-/** @param {number} zoom */
-export function clampLabZoom(zoom) {
+function clampLabZoom(zoom) {
     return clampZoom(LAB_ZOOM_MIN, LAB_ZOOM_MAX, zoom);
 }
 /** @type {import("../../../Libraries/Viewport/zoomControl.js").ZoomControlHandle | null} */
 let labZoomControl = null;
-/** @returns {import("../../../Libraries/Viewport/zoomControl.js").ZoomControlHandle | null} */
-export function getLabZoomControl() {
-    return labZoomControl;
-}
 /**
  * @param {import("../TileLabGameState.js").TileLabGameState} state
  * @param {() => void} onZoomChange

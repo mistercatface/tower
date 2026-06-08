@@ -38,7 +38,7 @@ const wiredHosts = new WeakSet();
 function buildZoomControlMarkup(options) {
     const { classNames = {}, ids = {}, prefix = "Cam", min = 0, max = 100, step = 1 } = options;
     const rootClass = classNames.root ?? "viewport-zoom-control";
-    const sliderClass = classNames.slider ?? "viewport-zoom-control-slider premium-slider";
+    const sliderClass = classNames.slider ?? "viewport-zoom-control-slider";
     const labelClass = classNames.label ?? "viewport-zoom-control-value";
     const prefixClass = classNames.prefix ?? "viewport-zoom-control-prefix";
     const sliderId = ids.slider ? ` id="${ids.slider}"` : "";

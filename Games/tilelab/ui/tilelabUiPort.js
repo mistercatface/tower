@@ -74,7 +74,7 @@ function bootstrapTilelabUi(state) {
     bindViewModeControls(state, () => renderActiveLabView(state));
     bindMapInspectorControls(state, () => renderActiveLabView(state));
     initMapTopologyNavigation(state, () => renderActiveLabView(state));
-    initMapPreviewNavigation(() => ({ ...readControls(state), worldState: state }), {
+    initMapPreviewNavigation(() => state, {
         onViewChange: () => {
             if (!showsSurfaceView(state.labViewMode)) return;
             renderTilelabPreview(state, readControls(state));

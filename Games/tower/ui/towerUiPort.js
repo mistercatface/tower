@@ -158,7 +158,6 @@ function mountTowerUi(state) {
     const upgrades = getUpgradeDefs(state);
     mountTowerChrome();
     elements = bindTowerShellElements();
-    elements.zoomControls = document.getElementById("zoomControls");
     elements.inspectMissionBanner = document.getElementById("inspectMissionBanner");
     elements.inspectMissionText = document.getElementById("inspectMissionText");
     inspectBridge.mount();

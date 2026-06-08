@@ -3,8 +3,6 @@ let cache = null;
 /** @returns {Record<string, HTMLElement | NodeListOf<Element> | null>} */
 function queryTowerShellElements() {
     return {
-        zoomSlider: document.getElementById("zoomSlider"),
-        zoomDisplay: document.getElementById("zoomDisplay"),
         restartBtn: document.getElementById("restartBtn"),
         gameOverUI: document.getElementById("gameOverUI"),
         gameOverTitle: document.getElementById("gameOverTitle"),
@@ -30,6 +28,7 @@ function queryTowerShellElements() {
         abilitiesContainer: document.getElementById("abilitiesContainer"),
         upgradesContainer: document.getElementById("upgradesContainer"),
         speedControls: document.getElementById("speedControls"),
+        zoomControls: document.getElementById("zoomControls"),
         mainTabButtons: document.querySelectorAll(".mainTabBtn"),
         statsSubTabButtons: document.querySelectorAll(".statsSubTabBtn"),
         statsSubTabs: document.getElementById("statsSubTabs"),

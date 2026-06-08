@@ -4,7 +4,7 @@ import { drawWorldScene } from "../../../Render/worldSceneDraw.js";
 import { getSurfaceProfileRevision } from "../../../Libraries/WorldSurface/SurfaceProfileRevision.js";
 import { invalidateWallAtlasKeyMemos } from "../../../Render/game/wallSurfaceInvalidation.js";
 import { setupLabViewportNavigation } from "../../../Tools/Lab/lab-shared.js";
-import { clampLabZoom, getLabZoomControl } from "../ui/labZoomUi.js";
+import { pushLabZoomToControl } from "../ui/labZoomUi.js";
 import { drawMapLabInWorld } from "./drawMapLabInWorld.js";
 /** @type {WorldSceneRenderer | null} */
 let render3D = null;
@@ -110,19 +110,17 @@ export function invalidateMapPreviewBakes() {
     render3D = null;
     render3DSettings = null;
 }
-export function initMapPreviewNavigation(getOptions, handlers = {}) {
+export function initMapPreviewNavigation(getWorldState, handlers = {}) {
     setupLabViewportNavigation("gameCanvas", {
         getCamera: () => {
-            const vp = getOptions().worldState?.mapViewport;
+            const vp = getWorldState()?.mapViewport;
             return vp ? { x: vp.x, y: vp.y, zoom: vp.zoom || 1 } : { x: 0, y: 0, zoom: 1 };
         },
         setCamera: (x, y, zoom) => {
-            const world = getOptions().worldState;
-            if (world?.mapViewport) {
-                world.mapViewport.snapTo(x, y);
-                world.mapViewport.zoom = clampLabZoom(zoom);
-                getLabZoomControl()?.setZoom(world.mapViewport.zoom);
-            }
+            const world = getWorldState();
+            if (!world) return;
+            world.mapViewport.snapTo(x, y);
+            pushLabZoomToControl(world, zoom);
         },
         onUpdate: handlers.onViewChange,
     });

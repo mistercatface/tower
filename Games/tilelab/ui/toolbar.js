@@ -8,7 +8,6 @@ export function readControls(state) {
     return {
         seed: Number(document.getElementById("seedInput")?.value) || 0,
         mapSeed: Number(document.getElementById("mapSeedInput")?.value) || 0,
-        gameZoom: state.mapViewport.zoom,
         weaponRange: LAB_PREVIEW_RANGE,
         showRangeRing: document.getElementById("showRangeRingInput")?.checked ?? true,
         showVignette: document.getElementById("showVignetteInput")?.checked ?? false,

@@ -76,7 +76,7 @@ const TOWER_UI_HTML = `
         <div id="controlsDivider"></div>
         <div id="zoomControls" class="viewport-zoom-control">
             <span class="zoom-controls-label">ZOOM</span>
-            <input type="range" id="zoomSlider" min="0" max="100" value="0" class="viewport-zoom-control-slider premium-slider">
+            <input type="range" id="zoomSlider" min="0" max="100" value="0" class="viewport-zoom-control-slider">
             <span id="zoomDisplay" class="viewport-zoom-control-display">100%</span>
         </div>
     </div>

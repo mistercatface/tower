@@ -344,66 +344,6 @@ body.shell-landscape-minimal #gameOverUI {
     user-select: none;
 }
 
-/* Premium Range Slider styling */
-.premium-slider {
-    -webkit-appearance: none;
-    appearance: none;
-    height: 6px;
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 3px;
-    outline: none;
-    transition: background 0.15s ease;
-}
-
-.premium-slider:hover {
-    background: rgba(255, 255, 255, 0.25);
-}
-
-/* Webkit (Chrome, Safari, Edge, Opera) Thumb */
-.premium-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: #00bcd4;
-    cursor: pointer;
-    box-shadow: 0 0 6px rgba(0, 188, 212, 0.5);
-    transition: transform 0.1s ease, background-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.premium-slider::-webkit-slider-thumb:hover {
-    transform: scale(1.2);
-    background: #00e5ff;
-    box-shadow: 0 0 10px rgba(0, 229, 255, 0.8);
-}
-
-.premium-slider::-webkit-slider-thumb:active {
-    transform: scale(0.9);
-}
-
-/* Firefox Thumb */
-.premium-slider::-moz-range-thumb {
-    width: 14px;
-    height: 14px;
-    border: none;
-    border-radius: 50%;
-    background: #00bcd4;
-    cursor: pointer;
-    box-shadow: 0 0 6px rgba(0, 188, 212, 0.5);
-    transition: transform 0.1s ease, background-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.premium-slider::-moz-range-thumb:hover {
-    transform: scale(1.2);
-    background: #00e5ff;
-    box-shadow: 0 0 10px rgba(0, 229, 255, 0.8);
-}
-
-.premium-slider::-moz-range-thumb:active {
-    transform: scale(0.9);
-}
-
 .inspect-mission-banner {
     position: absolute;
     top: 10px;
