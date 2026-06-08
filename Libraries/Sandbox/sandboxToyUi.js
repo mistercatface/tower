@@ -1,6 +1,6 @@
 import { getPropAsset, getWorldPropDefinitions } from "../Props/PropCatalog.js";
 import { isDragLaunchProp } from "./dragLaunch.js";
-const BEHAVIOR_LABELS = { dragLaunch: "Drag launch", rollToCursor: "Roll to cursor" };
+const BEHAVIOR_LABELS = { dragLaunch: "Drag launch", rollToCursorDirect: "Roll to cursor (direct)", rollToCursorHpa: "Roll to cursor (HPA)" };
 /**
  * @param {HTMLElement} container
  * @param {ReturnType<import("./createSandboxController.js").createSandboxController>} controller

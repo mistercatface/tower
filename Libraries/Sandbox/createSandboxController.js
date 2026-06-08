@@ -127,13 +127,13 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
             const pickup = session.getSelectedPickup();
             const behavior = resolveBehavior(pickup);
             if (!pickup || !behavior?.tick) return;
-            behavior.tick(pickup, dt);
+            behavior.tick(pickup, dt, host);
         },
         /** @param {CanvasRenderingContext2D} ctx */
         drawOverlay(ctx) {
             const pickup = session.getSelectedPickup();
             const behavior = resolveBehavior(pickup);
-            behavior?.drawOverlay?.(ctx, pickup);
+            behavior?.drawOverlay?.(ctx, pickup, host);
         },
     };
     return controller;

@@ -3,7 +3,8 @@ export { bindCanvasPointers, releasePointerCapture } from "./bindCanvasPointers.
 export { createSandboxSession } from "./sandboxSession.js";
 export { createSandboxController } from "./createSandboxController.js";
 export { createDragLaunchBehavior, DRAG_LAUNCH_BEHAVIOR_ID } from "./behaviors/dragLaunchBehavior.js";
-export { createRollToCursorBehavior, ROLL_TO_CURSOR_BEHAVIOR_ID } from "./behaviors/rollToCursorBehavior.js";
+export { createRollToCursorDirectBehavior, ROLL_TO_CURSOR_DIRECT_BEHAVIOR_ID } from "./behaviors/rollToCursorDirectBehavior.js";
+export { createRollToCursorHpaBehavior, ROLL_TO_CURSOR_HPA_BEHAVIOR_ID } from "./behaviors/rollToCursorHpaBehavior.js";
 export { mountSandboxToyUi } from "./sandboxToyUi.js";
 export {
     DRAG_LAUNCH_DEFAULTS,

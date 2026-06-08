@@ -1,12 +1,12 @@
 import { getPropAsset } from "../../Props/PropCatalog.js";
 import { wakePushableBody } from "../../Motion/pushableSleep.js";
-export const ROLL_TO_CURSOR_BEHAVIOR_ID = "rollToCursor";
+export const ROLL_TO_CURSOR_DIRECT_BEHAVIOR_ID = "rollToCursorDirect";
 /** @returns {import("../createSandboxController.js").SandboxBehavior} */
-export function createRollToCursorBehavior() {
+export function createRollToCursorDirectBehavior() {
     let targetWorld = null;
     let active = false;
     return {
-        id: ROLL_TO_CURSOR_BEHAVIOR_ID,
+        id: ROLL_TO_CURSOR_DIRECT_BEHAVIOR_ID,
         isEligible(asset) {
             return true; // Eligible for all sandbox props
         },

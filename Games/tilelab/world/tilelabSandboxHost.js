@@ -17,6 +17,9 @@ export function createTilelabSandboxHost(state, requestRedraw) {
         isInputBlocked: () => state.labShowTopologyOverlay,
         getCameraOrigin: () => ({ x: state.mapViewport.x, y: state.mapViewport.y }),
         requestRedraw,
+        computePath: (startX, startY, targetX, targetY) => {
+            return state.hierarchicalNavigator?.computePath(startX, startY, targetX, targetY) ?? null;
+        },
         getPickups: () => state.pickups,
         addPickup: (prop) => state.pickups.push(prop),
         removePickup: (prop) => {

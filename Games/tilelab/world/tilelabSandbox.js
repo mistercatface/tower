@@ -1,10 +1,12 @@
 import { TILELAB_SANDBOX_SPAWN_PROP } from "../config.js";
 import {
     createDragLaunchBehavior,
-    createRollToCursorBehavior,
+    createRollToCursorDirectBehavior,
+    createRollToCursorHpaBehavior,
     createSandboxController,
     DRAG_LAUNCH_BEHAVIOR_ID,
-    ROLL_TO_CURSOR_BEHAVIOR_ID,
+    ROLL_TO_CURSOR_DIRECT_BEHAVIOR_ID,
+    ROLL_TO_CURSOR_HPA_BEHAVIOR_ID,
     mountSandboxToyUi,
 } from "../../../Libraries/Sandbox/index.js";
 import { createTilelabSandboxHost } from "./tilelabSandboxHost.js";
@@ -19,7 +21,7 @@ export function mountTilelabSandbox(state, requestRedraw) {
     destroyTilelabSandbox();
     sandboxController = createSandboxController(createTilelabSandboxHost(state, requestRedraw), {
         defaultSpawnPropId: TILELAB_SANDBOX_SPAWN_PROP,
-        behaviors: [createDragLaunchBehavior(), createRollToCursorBehavior()],
+        behaviors: [createDragLaunchBehavior(), createRollToCursorDirectBehavior(), createRollToCursorHpaBehavior()],
         defaultBehaviorId: DRAG_LAUNCH_BEHAVIOR_ID,
     });
     sandboxController.register();
