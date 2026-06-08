@@ -15,6 +15,10 @@ function assetToDefinition(asset) {
  * @param {Record<string, Function>} recipes
  */
 function registerPropDraw(asset, recipes) {
+    if (asset.physics?.renderMode === "none") {
+        recipes[asset.id] = () => {};
+        return;
+    }
     if (asset.primitive) {
         const builder = PROP_PRIMITIVE_BUILDERS[asset.primitive];
         if (!builder) throw new Error(`Unknown primitive "${asset.primitive}" for asset "${asset.id}"`);

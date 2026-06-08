@@ -8,6 +8,7 @@ import { invalidateWallAtlasKeyMemos } from "../../../Render/game/wallSurfaceInv
 import { drawTopologyLayer } from "../../../Libraries/Render/map/topology/index.js";
 import { syncLabScreenCanvasBounds } from "../ui/labCanvas.js";
 import { getTilelabSandboxController } from "./tilelabSandbox.js";
+import { renderActorKinematicsBody } from "../../../Libraries/Render/Characters/actorKinematicsRenderer.js";
 /** @type {WorldSceneRenderer | null} */
 let render3D = null;
 /** @type {import("../../../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings | null} */
@@ -79,6 +80,7 @@ export function drawTilelabSurfaceFrame(ctx, canvas, worldState, profileId, weap
     worldState.surfaceProfileOverride = prevProfileOverride;
     if (showRangeRing) drawWeaponRangeRing(ctx, cameraX, cameraY, weaponRange);
     if (showFocusMarker) drawFocusMarker(ctx, cameraX, cameraY);
+    for (const p of worldState.pickups) if (p.usesKinematicsBody) renderActorKinematicsBody(ctx, p, { x: p.x, y: p.y });
     getTilelabSandboxController()?.drawOverlay(ctx);
     ctx.restore();
     if (showVignette) {

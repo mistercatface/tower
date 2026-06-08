@@ -1,4 +1,5 @@
 import { Entity } from "./Entity.js";
+import { advanceActorKinematics } from "../Libraries/Render/Characters/actorKinematicsRenderer.js";
 import { applyVelocityDamping } from "../Libraries/Motion/index.js";
 import { IDENTITY_ROLL_QUAT } from "../Libraries/Props/rollingMotion.js";
 import { integratePropMotion } from "../Libraries/Props/propMotion.js";
@@ -67,6 +68,7 @@ export class Pickup extends Entity {
             this.maxHealth = this.strategy.maxHealth;
             this.health = this.strategy.maxHealth;
         }
+        this.usesKinematicsBody = !!this.strategy.kinematics;
         this.ageMs = 0;
         this._sleepFrames = 0;
         this.isSleeping = false;
@@ -150,6 +152,7 @@ export class Pickup extends Entity {
         else applyVelocityDamping(this, dt, { friction: this.strategy.friction });
         if (resolveWalls && this.strategy.isPushable && this.needsWallCollision()) state.wallResolver.resolve(this, spatialFrame);
         if (this.currentState?.update) this.currentState.update(this, dt, state.walls, state);
+        if (this.usesKinematicsBody) advanceActorKinematics(this, dt, { x: this.x, y: this.y });
     }
     spawnShards(gameState) {
         if (!gameState || !gameState.pickups) return;
