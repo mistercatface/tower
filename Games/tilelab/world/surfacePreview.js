@@ -6,10 +6,8 @@ import { drawWorldScene } from "../../../Render/worldSceneDraw.js";
 import { getSurfaceProfileRevision } from "../../../Libraries/WorldSurface/SurfaceProfileRevision.js";
 import { invalidateWallAtlasKeyMemos } from "../../../Render/game/wallSurfaceInvalidation.js";
 import { drawTopologyLayer } from "../../../Libraries/Render/map/topology/index.js";
-import { getDragLaunchConfig, drawDragLaunchPreview } from "../../../Libraries/Props/dragLaunchToy.js";
-import { getPropAsset } from "../../../Libraries/Content/PropCatalog.js";
-import { LAB_PHYSICS_PROP_TYPE } from "../config.js";
 import { syncLabScreenCanvasBounds } from "../ui/labCanvas.js";
+import { getTilelabDragLaunchToy } from "./tilelabSandbox.js";
 /** @type {WorldSceneRenderer | null} */
 let render3D = null;
 /** @type {import("../../../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings | null} */
@@ -81,7 +79,7 @@ export function drawTilelabSurfaceFrame(ctx, canvas, worldState, profileId, weap
     worldState.surfaceProfileOverride = prevProfileOverride;
     if (showRangeRing) drawWeaponRangeRing(ctx, cameraX, cameraY, weaponRange);
     if (showFocusMarker) drawFocusMarker(ctx, cameraX, cameraY);
-    if (worldState.labDragLaunch?.active) drawDragLaunchPreview(ctx, worldState.labDragLaunch, getDragLaunchConfig(getPropAsset(LAB_PHYSICS_PROP_TYPE)));
+    getTilelabDragLaunchToy()?.drawOverlay(ctx);
     ctx.restore();
     if (showVignette) {
         const R = viewport.getVisualRadius();

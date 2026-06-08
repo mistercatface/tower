@@ -3,7 +3,7 @@ import { generateWorld, getWorldGen } from "../../../Core/GamePorts.js";
 import { regenerateRoguelikeMap } from "../../../Libraries/WorldGen/session/index.js";
 import { syncLabScreenCanvasBounds } from "../ui/labCanvas.js";
 import { calculatePathTest } from "./mapPathTest.js";
-import { clearLabPhysics } from "./physicsSandbox.js";
+import { clearTilelabSandboxBodies } from "./tilelabSandbox.js";
 export function listLabMapNodes(state) {
     return state.mapNodes.map((n) => ({ id: n.id, layer: n.layer, strategy: n.strategy ?? "?" })).sort((a, b) => a.layer - b.layer || a.id - b.id);
 }
@@ -17,7 +17,7 @@ export function selectLabNode(state, nodeId) {
  */
 export function generateTilelabMap(state, { mapSeed, floorSeed }) {
     regenerateRoguelikeMap(state, { mapSeed, floorSeed, generateWorld });
-    clearLabPhysics(state);
+    clearTilelabSandboxBodies(state);
     syncLabScreenCanvasBounds(state);
     const bounds = state.obstacleGrid;
     if (bounds?.minX !== undefined) state.mapViewport.snapTo((bounds.minX + bounds.maxX) / 2, (bounds.minY + bounds.maxY) / 2);

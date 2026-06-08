@@ -2,7 +2,7 @@ import { normalizeXY } from "../Math/Vec2.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { drawAimSegment } from "../Render/contactPreviewDraw.js";
 /** @typedef {{ minDrag: number, maxPull: number, pullScale: number, minPower: number, maxPower: number }} DragLaunchConfig */
-/** @typedef {{ active: boolean, anchorX: number, anchorY: number, pullX: number, pullY: number, shotNx: number | null, shotNy: number | null, peakDrag: number }} DragLaunchAim */
+/** @typedef {{ active: boolean, anchorX: number, anchorY: number, pullX: number, pullY: number, shotNx: number | null, shotNy: number | null }} DragLaunchAim */
 export const DRAG_LAUNCH_DEFAULTS = { minDrag: 8, maxPull: 120, pullScale: 1.2, minPower: 50, maxPower: 380 };
 /** @param {object | null | undefined} asset */
 export function getDragLaunchConfig(asset) {
@@ -10,7 +10,7 @@ export function getDragLaunchConfig(asset) {
 }
 /** @param {number} anchorX @param {number} anchorY @returns {DragLaunchAim} */
 export function createDragLaunchAim(anchorX, anchorY) {
-    return { active: true, anchorX, anchorY, pullX: anchorX, pullY: anchorY, shotNx: null, shotNy: null, peakDrag: 0 };
+    return { active: true, anchorX, anchorY, pullX: anchorX, pullY: anchorY, shotNx: null, shotNy: null };
 }
 /** @param {DragLaunchAim} aim @param {DragLaunchConfig} config */
 function resolveDragAimPhysics(aim, config) {
@@ -26,10 +26,11 @@ function resolveDragAimPhysics(aim, config) {
     const pullBack = Math.min(config.maxPull, drag * config.pullScale);
     return { shotNx: aim.shotNx, shotNy: aim.shotNy, drag, pullBack };
 }
-/** @param {DragLaunchAim} aim @param {DragLaunchConfig} config */
-function computeLaunchPower(aim, config) {
+/** @param {number} drag @param {DragLaunchConfig} config */
+function computeLaunchPower(drag, config) {
+    if (drag < config.minDrag) return 0;
     const maxFingerDrag = config.maxPull / config.pullScale;
-    const pullRatio = Math.min(1, aim.peakDrag / Math.max(1, maxFingerDrag));
+    const pullRatio = Math.min(1, drag / Math.max(1, maxFingerDrag));
     return Math.min(config.maxPower, Math.max(config.minPower, pullRatio * config.maxPower));
 }
 /** @param {DragLaunchAim | null | undefined} aim @param {number} pullX @param {number} pullY @param {DragLaunchConfig} config */
@@ -37,16 +38,23 @@ export function updateDragLaunchAim(aim, pullX, pullY, config) {
     if (!aim?.active) return null;
     aim.pullX = pullX;
     aim.pullY = pullY;
-    const physics = resolveDragAimPhysics(aim, config);
-    if (physics) aim.peakDrag = Math.max(aim.peakDrag, physics.drag);
-    return physics;
+    return resolveDragAimPhysics(aim, config);
 }
 /** @param {DragLaunchAim | null | undefined} aim @param {DragLaunchConfig} config */
 export function getDragLaunchPreview(aim, config) {
     if (!aim?.active) return null;
     const physics = resolveDragAimPhysics(aim, config);
     if (!physics || aim.shotNx == null || aim.shotNy == null) return null;
-    return { anchorX: aim.anchorX, anchorY: aim.anchorY, pullX: aim.pullX, pullY: aim.pullY, nx: physics.shotNx, ny: physics.shotNy, power: computeLaunchPower(aim, config), drag: physics.drag };
+    return {
+        anchorX: aim.anchorX,
+        anchorY: aim.anchorY,
+        pullX: aim.pullX,
+        pullY: aim.pullY,
+        nx: physics.shotNx,
+        ny: physics.shotNy,
+        power: computeLaunchPower(physics.drag, config),
+        drag: physics.drag,
+    };
 }
 /**
  * @param {DragLaunchAim | null | undefined} aim
@@ -55,9 +63,11 @@ export function getDragLaunchPreview(aim, config) {
  */
 export function releaseDragLaunch(aim, config) {
     if (!aim?.active) return null;
-    resolveDragAimPhysics(aim, config);
-    if (aim.peakDrag < config.minDrag || aim.shotNx == null || aim.shotNy == null) return null;
-    return { anchorX: aim.anchorX, anchorY: aim.anchorY, nx: aim.shotNx, ny: aim.shotNy, power: computeLaunchPower(aim, config) };
+    const physics = resolveDragAimPhysics(aim, config);
+    if (!physics || physics.drag < config.minDrag || aim.shotNx == null || aim.shotNy == null) return null;
+    const power = computeLaunchPower(physics.drag, config);
+    if (power <= 0) return null;
+    return { anchorX: aim.anchorX, anchorY: aim.anchorY, nx: aim.shotNx, ny: aim.shotNy, power };
 }
 /** @param {object} body @param {number} nx @param {number} ny @param {number} power */
 export function applyDragLaunchVelocity(body, nx, ny, power) {
@@ -73,7 +83,7 @@ export function applyDragLaunchVelocity(body, nx, ny, power) {
 export function drawDragLaunchPreview(ctx, aim, config) {
     const preview = getDragLaunchPreview(aim, config);
     if (!preview) return;
-    const ratio = Math.max(0, Math.min(1, (preview.power - config.minPower) / (config.maxPower - config.minPower)));
+    const ratio = config.maxPower > config.minPower ? Math.max(0, Math.min(1, (preview.power - config.minPower) / (config.maxPower - config.minPower))) : 0;
     const hue = 180 - ratio * 180;
     const lineScale = 1 / Math.max(0.001, ctx.getTransform().a);
     ctx.save();
@@ -91,6 +101,7 @@ export function drawDragLaunchPreview(ctx, aim, config) {
     ctx.lineWidth = 2 * lineScale;
     ctx.stroke();
     ctx.restore();
+    if (preview.power <= 0) return;
     const len = 20 + ratio * 80;
     drawAimSegment(
         ctx,

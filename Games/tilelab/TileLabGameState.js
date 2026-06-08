@@ -10,8 +10,6 @@ export class TileLabGameState extends SharedGameState {
         this.floorSeed = 42;
         this._pendingProfileRefresh = false;
         this.labShowTopologyOverlay = false;
-        /** @type {import("../../Libraries/Props/dragLaunchToy.js").DragLaunchAim | null} */
-        this.labDragLaunch = null;
         this.mapViewport = new Viewport(0, 0, 1);
         this.roguelikeMapSession = createRoguelikeMapSession();
     }
