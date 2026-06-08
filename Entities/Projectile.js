@@ -1,17 +1,14 @@
-import { circlesOverlap } from "../../../Libraries/Spatial/collision/overlap.js";
-import { Entity } from "../../../Entities/Entity.js";
-import { drawProjectileTracer } from "../render/ProjectileDraw.js";
-import { getProjectileDamage } from "../combat/impactDamage.js";
-import { applyActorImpactKnockback } from "../combat/impactKnockback.js";
-import { getGunImpactKnockback } from "../combat/gunCombat.js";
-import { getGunDefinition } from "../config/content/guns.js";
-import { Enemy } from "./Enemy.js";
-import { getInteractionPairFilter, getPlayerActors } from "../../../Core/GamePorts.js";
-import { RagdollCorpse } from "../../../Entities/RagdollCorpse.js";
+import { circlesOverlap } from "../Libraries/Spatial/collision/overlap.js";
+import { Entity } from "./Entity.js";
+import { drawProjectileTracer } from "../Libraries/Render/projectileDraw.js";
+import { getProjectileDamage } from "../Libraries/Combat/impactDamage.js";
+import { getGunDefinition } from "../Libraries/Combat/gunDefaults.js";
+import { getInteractionPairFilter, getWorldPlayBounds } from "../Core/GamePorts.js";
+import { RagdollCorpse } from "./RagdollCorpse.js";
 // Grenade-specific imports
-import { Explosion } from "../../../Entities/Explosion/Explosion.js";
-import { ProgressBar } from "../../../Libraries/Canvas/ProgressBar.js";
-import { CombatParticles } from "../../../Libraries/Render/CombatParticles.js";
+import { Explosion } from "./Explosion/Explosion.js";
+import { ProgressBar } from "../Libraries/Canvas/ProgressBar.js";
+import { CombatParticles } from "../Libraries/Render/CombatParticles.js";
 const grenadeProgressBar = new ProgressBar({ width: 24, height: 4, borderRadius: 2, quantizationSteps: 30, colorFn: () => "#FF1744" });
 export const ProjectileStrategies = {
     bullet: {
@@ -30,10 +27,7 @@ export const ProjectileStrategies = {
         onFactionCollision(p, state, target, events, spatialFrame) {
             const damage = getProjectileDamage(p);
             events.push({ target, damage, projectile: p });
-            if (p.gunId && target instanceof Enemy) {
-                const impactKnockback = getGunImpactKnockback(getGunDefinition(p.gunId));
-                if (impactKnockback) applyActorImpactKnockback(target, p.angle, impactKnockback, spatialFrame, state);
-            }
+            // De-coupled specific knockback here; if games need it, we can put it in handleHit
             if (target.health <= damage && p.penetration > 0) p.penetration--;
             else p.isDead = true;
         },
@@ -70,7 +64,6 @@ export const ProjectileStrategies = {
             return true;
         },
         render(p, ctx, caches) {
-            // Draw a green circular grenade with a flashing red core
             ctx.beginPath();
             ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
             ctx.fillStyle = "#2E7D32"; // premium green
@@ -92,6 +85,7 @@ export const ProjectileStrategies = {
 };
 export class Projectile extends Entity {
     static checkSpawnCollisions(state, spatialFrame, events) {
+        if (!state.projectiles) return;
         for (const p of state.projectiles) {
             if (!p._spawnFrameCheck || p.isDead) continue;
             p._spawnFrameCheck = false;
@@ -99,6 +93,7 @@ export class Projectile extends Entity {
         }
     }
     static updateAll(state, dt) {
+        if (!state.projectiles) return;
         for (let i = state.projectiles.length - 1; i >= 0; i--) {
             const p = state.projectiles[i];
             p.update(dt, state);
@@ -153,11 +148,14 @@ export class Projectile extends Entity {
         this.strategy.move(this, dt);
     }
     checkOutOfBounds(state) {
-        const anchors = getPlayerActors(state);
-        if (anchors.length === 0) return false;
-        let minDist = Infinity;
-        for (const anchor of anchors) minDist = Math.min(minDist, Math.hypot(this.x - anchor.x, this.y - anchor.y));
-        if (minDist > 1500) {
+        const bounds = getWorldPlayBounds(state);
+        if (bounds) {
+            if (this.x < bounds.minX - 500 || this.x > bounds.maxX + 500 || this.y < bounds.minY - 500 || this.y > bounds.maxY + 500) {
+                this.isDead = true;
+                return true;
+            }
+        } else if (Math.abs(this.x) > 3000 || Math.abs(this.y) > 3000) {
+            // fallback if no world bounds
             this.isDead = true;
             return true;
         }

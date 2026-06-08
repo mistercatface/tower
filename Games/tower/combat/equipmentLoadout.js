@@ -1,1 +1,1 @@
-export * from "../../../../Libraries/Combat/equipmentLoadout.js";
+export * from "../../../Libraries/Combat/equipmentLoadout.js";

@@ -52,11 +52,11 @@ export class NavigationService {
     updateFlowField(opts) {
         return this._controller.updateFlowField(opts);
     }
-    onObstaclesChanged(damageBounds, playerX, playerY, playerTargetX = null, playerTargetY = null) {
-        this._controller.onObstaclesChanged(damageBounds, playerX, playerY, playerTargetX, playerTargetY);
+    onObstaclesChanged(damageBounds) {
+        this._controller.onObstaclesChanged(damageBounds);
     }
-    rebuildNavigationGraph(playerX, playerY, playerTargetX = null, playerTargetY = null) {
-        this._controller.rebuildNavigationGraph(playerX, playerY, playerTargetX, playerTargetY);
+    rebuildNavigationGraph(playerX, playerY) {
+        this._controller.rebuildNavigationGraph(playerX, playerY);
     }
     rebuildPlayerFlowField(targetX, targetY) {
         this._controller.rebuildPlayerFlowField(targetX, targetY);

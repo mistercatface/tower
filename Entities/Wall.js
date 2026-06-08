@@ -19,13 +19,7 @@ export class Segment extends DestructibleEntity {
             if (ctx.state.wallSpatialIndex) ctx.state.wallSpatialIndex.remove(this);
             const damageBounds = ctx.state.obstacleGrid.patchAfterWallRemoved(this, ctx.state.wallSpatialIndex);
             ctx.state.worldSurfaces.invalidateGridBounds(damageBounds, ctx.state);
-            ctx.state.navigation.onObstaclesChanged(
-                damageBounds,
-                ctx.state.player.x,
-                ctx.state.player.y,
-                ctx.state.player.isMoving ? ctx.state.player.targetX : null,
-                ctx.state.player.isMoving ? ctx.state.player.targetY : null,
-            );
+            ctx.state.navigation.onObstaclesChanged(damageBounds);
         }
     }
 }

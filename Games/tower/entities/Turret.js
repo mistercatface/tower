@@ -3,12 +3,12 @@ import { combatSprites } from "../render/combatSprites.js";
 import { defaultGunId, getGunDefinition } from "../config/content/guns.js";
 import { defaultTurretLoadout, resolveFireAngleOffsets } from "../config/content/turrets/loadout.js";
 import { applyKnockback } from "../../../Libraries/Motion/index.js";
-import { getGunProjectileConfig } from "../combat/gunCombat.js";
+import { getGunProjectileConfig } from "../../../Libraries/Combat/gunCombat.js";
 import { inferFaction, areHostile } from "../../../Core/GamePorts.js";
 import { CombatParticles } from "../../../Libraries/Render/CombatParticles.js";
 import { resolveBodyRadius } from "../../../Libraries/Motion/bodyDefaults.js";
 import { resolveKinematicsMuzzlePosition, resolveActorKinematicsCamera } from "../../../Libraries/Render/Characters/actorKinematicsRenderer.js";
-import { Projectile } from "./Projectile.js";
+import { Projectile } from "../../../Entities/Projectile.js";
 export class Turret {
     constructor(angle, turnSpeed, loadout = defaultTurretLoadout) {
         this.angle = normalizeAngle(angle);

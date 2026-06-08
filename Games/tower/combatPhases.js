@@ -1,7 +1,7 @@
 import { FloatingText } from "../../Render/FloatingText.js";
 import { CombatParticles } from "../../Libraries/Render/CombatParticles.js";
 import { RagdollCorpse } from "../../Entities/RagdollCorpse.js";
-import { Projectile } from "./entities/Projectile.js";
+import { Projectile } from "../../Entities/Projectile.js";
 import { Explosion } from "../../Entities/Explosion/Explosion.js";
 /** @typedef {import("../../Systems/Simulation/SimulationRuntime.js").SimulationRuntime} SimulationRuntime */
 /** @typedef {{ run: (ctx: object, dt: number, runtime: SimulationRuntime) => void }} SimulationPhase */

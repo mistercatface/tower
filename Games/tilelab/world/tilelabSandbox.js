@@ -3,6 +3,7 @@ import {
     createDragLaunchBehavior,
     createRollToCursorDirectBehavior,
     createRollToCursorHpaBehavior,
+    createShootBehavior,
     createSandboxController,
     DRAG_LAUNCH_BEHAVIOR_ID,
     mountSandboxToyUi,
@@ -19,7 +20,7 @@ export function mountTilelabSandbox(state, requestRedraw) {
     destroyTilelabSandbox();
     sandboxController = createSandboxController(createTilelabSandboxHost(state, requestRedraw), {
         defaultSpawnPropId: TILELAB_SANDBOX_SPAWN_PROP,
-        behaviors: [createDragLaunchBehavior(), createRollToCursorDirectBehavior(), createRollToCursorHpaBehavior()],
+        behaviors: [createDragLaunchBehavior(), createShootBehavior(), createRollToCursorDirectBehavior(), createRollToCursorHpaBehavior()],
         defaultBehaviorId: DRAG_LAUNCH_BEHAVIOR_ID,
     });
     sandboxController.register();
