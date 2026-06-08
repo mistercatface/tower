@@ -16,9 +16,12 @@ export function populateCombatFrame(frame, state, combatants, pushables) {
     combatants.length = 0;
     pushables.length = 0;
     let physIdCounter = 0;
+    const inserted = new Set();
     for (const actor of getTargeting().getBroadphaseActors(state)) {
+        if (inserted.has(actor)) continue;
+        inserted.add(actor);
         frame.insertEntity(actor, physIdCounter++);
         combatants.push(actor);
     }
-    insertPushables(frame, state, pushables, physIdCounter);
+    insertPushables(frame, state, pushables, physIdCounter, inserted);
 }
