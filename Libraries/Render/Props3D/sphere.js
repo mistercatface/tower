@@ -4,9 +4,6 @@ import { buildSphereMesh } from "./sphereMesh.js";
 import { drawPropMeshFace, isPropMeshFaceVisible } from "./propMesh.js";
 const DEFAULT_PANEL_COLORS = ["#F44336", "#FFEB3B", "#2196F3", "#4CAF50", "#FF9800", "#FFFFFF"];
 /**
- * Low-poly beach-ball sphere: explicit 3D vertices projected to iso quads/tris.
- * Roll orientation (prop.rollQuat) rotates the mesh; quantized into sprite cache buckets.
- *
  * @param {CanvasRenderingContext2D} ctx
  * @param {object} prop
  * @param {number} px
@@ -21,7 +18,7 @@ const DEFAULT_PANEL_COLORS = ["#F44336", "#FFEB3B", "#2196F3", "#4CAF50", "#FF98
  *   lineWidth?: number,
  * }} [options]
  */
-export function drawLoFiSphere(ctx, prop, px, py, options = {}) {
+export function drawSphere(ctx, prop, px, py, options = {}) {
     const radius = options.baseRadius ?? resolveBodyRadius(prop);
     const panelCount = Math.max(3, options.panelCount ?? 6);
     const latBands = Math.max(3, options.latBands ?? 5);

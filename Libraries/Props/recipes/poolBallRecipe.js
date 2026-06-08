@@ -1,4 +1,4 @@
-import { drawLoFiSphere } from "../../Render/Props3D/lofiSphere.js";
+import { drawSphere } from "../../Render/Props3D/sphere.js";
 import { drawSphereTexturePatch } from "../../Render/SurfaceTexturing/drawSphereTexturePatch.js";
 import { getPoolBallLabelImage, resolvePoolBallFaceColor } from "../../Render/Props3D/poolBallArt.js";
 /** @param {object} visuals */
@@ -6,7 +6,7 @@ export function createPoolBallDraw(visuals) {
     return (ctx, prop, px, py) => {
         const poolBall = prop.poolBall ?? visuals.defaultPoolBall;
         const radius = prop.radius || visuals.defaultRadius || 6;
-        drawLoFiSphere(ctx, prop, px, py, {
+        drawSphere(ctx, prop, px, py, {
             baseRadius: radius,
             panelCount: visuals.panelCount ?? 12,
             latBands: visuals.latBands ?? 8,

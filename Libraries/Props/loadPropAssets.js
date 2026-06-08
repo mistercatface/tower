@@ -2,7 +2,6 @@ import * as propAssets from "../../Assets/props/index.js";
 import { setPropCatalog } from "./PropCatalog.js";
 import { PROP_PRIMITIVE_BUILDERS } from "./primitives/index.js";
 import { PROP_RECIPE_BUILDERS } from "./recipes/index.js";
-
 /**
  * @param {object} asset
  */
@@ -11,7 +10,6 @@ function assetToDefinition(asset) {
     const { hitBehavior, spawn, renderMode, ...strategy } = physics;
     return { render3DKey: id, renderMode: renderMode ?? "3d", hitBehavior, spawn, inspectKey: null, ...strategy };
 }
-
 /**
  * @param {object} asset
  * @param {Record<string, Function>} recipes
@@ -28,7 +26,6 @@ function registerAssetRecipes(asset, recipes) {
         recipes[asset.id] = builder(asset.visuals);
     }
 }
-
 /** Load shared Assets/props into the runtime prop catalog. Call once before createGame(). */
 export function loadPropAssets() {
     const definitions = {};
