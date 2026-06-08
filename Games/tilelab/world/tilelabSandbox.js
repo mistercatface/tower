@@ -5,8 +5,6 @@ import {
     createRollToCursorHpaBehavior,
     createSandboxController,
     DRAG_LAUNCH_BEHAVIOR_ID,
-    ROLL_TO_CURSOR_DIRECT_BEHAVIOR_ID,
-    ROLL_TO_CURSOR_HPA_BEHAVIOR_ID,
     mountSandboxToyUi,
 } from "../../../Libraries/Sandbox/index.js";
 import { createTilelabSandboxHost } from "./tilelabSandboxHost.js";

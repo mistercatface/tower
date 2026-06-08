@@ -10,8 +10,8 @@ import { createSandboxSession } from "./sandboxSession.js";
  * @property {(pickup: object, world: { x: number, y: number }, e: PointerEvent) => boolean} onPointerDown
  * @property {(pickup: object, world: { x: number, y: number }, e: PointerEvent) => void} onPointerMove
  * @property {(pickup: object, e: PointerEvent) => void} onPointerUp
- * @property {(pickup: object, dt: number) => void} [tick]
- * @property {(ctx: CanvasRenderingContext2D, pickup: object) => void} [drawOverlay]
+ * @property {(pickup: object, dt: number, host: SandboxHostPort) => void} [tick]
+ * @property {(ctx: CanvasRenderingContext2D, pickup: object, host: SandboxHostPort) => void} [drawOverlay]
  * @property {() => void} [reset]
  */
 /**
