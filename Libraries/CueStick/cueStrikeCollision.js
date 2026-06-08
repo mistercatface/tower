@@ -4,6 +4,7 @@ import { applyRigidBodyImpulse } from "../Motion/rigidBodyImpulse.js";
 import { massFromBody } from "../Motion/bodyMass.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
 /** Cue tip effective mass vs cue ball — near equal mass gives realistic transfer (~cue speed, not 2×). */
+// THIS IS TALKED ABOUT IN TERMS OF POOL BUT REALLY IT'S JUST APPLYING AN IMPULSE TO A PHYSICS BODY
 export const CUE_STRIKER_MASS_RATIO = 1.0;
 export const CUE_BALL_RESTITUTION = 0.93;
 /**
