@@ -2,7 +2,7 @@ import { gridSettings } from "../../Config/Config.js";
 import { resolveSurfaceProfileId } from "../../Config/procedural/profiles.js";
 import { rollPlayerStartLoadout } from "./combat/weaponLoadout.js";
 import { getWorldGen } from "../../Core/GamePorts.js";
-import { spawnInitialPickups, spawnStartGamePickups } from "../../Entities/Pickup.js";
+import { spawnInitialPickups, spawnStartGamePickups } from "../../Entities/PickupSpawner.js";
 import { finalizeGeneratedWorld } from "../../Libraries/WorldGen/finalizeGeneratedWorld.js";
 import { ROGUELIKE_MAP_TOPOLOGY } from "../../Libraries/WorldGen/presets/roguelikeMap.js";
 import { serializeWalls } from "../../Libraries/WorldGen/worldGenUtils.js";
