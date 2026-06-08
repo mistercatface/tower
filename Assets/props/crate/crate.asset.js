@@ -1,6 +1,10 @@
 export default {
     id: "crate",
     primitive: "box",
+    sandbox: {
+        behaviors: ["dragLaunch"],
+        dragLaunch: { minPower: 20, maxPower: 260 },
+    },
     physics: {
         hitBehavior: "damage",
         radius: 8,

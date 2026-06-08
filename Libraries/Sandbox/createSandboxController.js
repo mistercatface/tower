@@ -1,10 +1,13 @@
+import { getPropAsset } from "../Props/PropCatalog.js";
 import { bindCanvasPointers, releasePointerCapture } from "./bindCanvasPointers.js";
 import { findPickupAt } from "./findPickupAt.js";
 import { createSandboxSession } from "./sandboxSession.js";
+import { resolveSandboxBehaviors } from "./sandboxCapabilities.js";
 /** @typedef {import("./SandboxHostPort.js").SandboxHostPort} SandboxHostPort */
 /**
  * @typedef {object} SandboxBehavior
  * @property {string} id
+ * @property {(pickup: object | null, asset: object) => boolean} [supports]
  * @property {(pickup: object, world: { x: number, y: number }, e: PointerEvent) => boolean} onPointerDown
  * @property {(pickup: object, world: { x: number, y: number }, e: PointerEvent) => void} onPointerMove
  * @property {(pickup: object, e: PointerEvent) => void} onPointerUp
@@ -28,7 +31,24 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
     let interactionBehavior = null;
     /** @type {(() => void) | null} */
     let unbindPointers = null;
-    const resolveBehavior = () => behaviorById.get(activeBehaviorId) ?? null;
+    const contextAsset = () => {
+        const pickup = session.getSelectedPickup();
+        if (pickup) return getPropAsset(pickup.type);
+        return getPropAsset(session.getSpawnPropId());
+    };
+    const listBehaviorsForContext = () => resolveSandboxBehaviors(contextAsset(), behaviors, session.getSelectedPickup());
+    const clampActiveBehavior = () => {
+        const allowed = listBehaviorsForContext();
+        if (allowed.length === 0) return;
+        if (!allowed.includes(activeBehaviorId)) activeBehaviorId = allowed[0];
+    };
+    clampActiveBehavior();
+    const resolveBehavior = () => {
+        const behavior = behaviorById.get(activeBehaviorId) ?? null;
+        if (!behavior) return null;
+        if (!listBehaviorsForContext().includes(behavior.id)) return null;
+        return behavior;
+    };
     const resetBehaviors = () => {
         for (const behavior of behaviors) behavior.reset?.();
         interactionBehavior = null;
@@ -88,19 +108,26 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
     const controller = {
         session,
         getSpawnPropId: () => session.getSpawnPropId(),
-        setSpawnPropId: (id) => session.setSpawnPropId(id),
+        setSpawnPropId: (id) => {
+            session.setSpawnPropId(id);
+            clampActiveBehavior();
+        },
         getSelectedPickupId: () => session.getSelectedPickupId(),
-        setSelectedPickupId: (id) => session.setSelectedPickupId(id),
+        setSelectedPickupId: (id) => {
+            session.setSelectedPickupId(id);
+            clampActiveBehavior();
+        },
         spawnAtCameraOrigin: () => session.spawnAtCameraOrigin(),
         deletePickupById: (id) => session.deletePickupById(id),
         listPlacedPickups: () => session.listPlacedPickups(),
         setUiSync: (fn) => session.setUiSync(fn),
         getActiveBehaviorId: () => activeBehaviorId,
         setActiveBehaviorId: (id) => {
-            activeBehaviorId = id;
+            const allowed = listBehaviorsForContext();
+            activeBehaviorId = allowed.includes(id) ? id : (allowed[0] ?? id);
             session.sync();
         },
-        listBehaviors: () => behaviors.map(({ id }) => id),
+        listBehaviors: () => listBehaviorsForContext(),
         register() {
             controller.destroy();
             unbindPointers = bindCanvasPointers(host, { pointerdown: onPointerDown, pointermove: onPointerMove, pointerup: onPointerUp, pointercancel: onPointerUp });

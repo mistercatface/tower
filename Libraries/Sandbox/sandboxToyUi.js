@@ -1,6 +1,6 @@
 import { getPropAsset, getWorldPropDefinitions } from "../Props/PropCatalog.js";
+import { getSandboxBehaviorLabel } from "./sandboxCapabilities.js";
 import { isSandboxProp } from "./dragLaunch.js";
-const BEHAVIOR_LABELS = { dragLaunch: "Drag launch", rollToCursorDirect: "Roll to cursor (direct)", rollToCursorHpa: "Roll to cursor (HPA)" };
 /**
  * @param {HTMLElement} container
  * @param {ReturnType<import("./createSandboxController.js").createSandboxController>} controller
@@ -55,7 +55,7 @@ export function mountSandboxToyUi(container, controller, onChange) {
         for (const behaviorId of controller.listBehaviors()) {
             const option = document.createElement("option");
             option.value = behaviorId;
-            option.textContent = BEHAVIOR_LABELS[behaviorId] ?? behaviorId;
+            option.textContent = getSandboxBehaviorLabel(behaviorId);
             modeSelect.appendChild(option);
         }
         modeSelect.value = controller.getActiveBehaviorId();
