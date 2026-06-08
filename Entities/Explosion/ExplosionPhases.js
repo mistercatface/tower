@@ -1,9 +1,9 @@
 import { CollisionSystem } from "../../Systems/Collision/CollisionSystem.js";
 import { minDistanceSegmentToWall } from "../../Libraries/Spatial/geometry/WallGeometry.js";
+import { getTargeting } from "../../Core/GamePorts.js";
+
 function getBroadphaseActors(state) {
-    if (state.getCombatants) return state.getCombatants();
-    if (state.getPlayerActors) return state.getPlayerActors();
-    return [];
+    return getTargeting().getBroadphaseActors(state);
 }
 import { LIBRARY_EXPLOSION_DEFAULTS as explosionSettings } from "../../Libraries/Combat/explosionDefaults.js";
 function blastDamage(exp, dist, maxMultiplier, minMultiplier) {

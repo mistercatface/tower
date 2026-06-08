@@ -1,6 +1,26 @@
 import { getPropAsset, getWorldPropDefinitions } from "../Props/PropCatalog.js";
+import { SANDBOX_DEFAULT_FACTION, SANDBOX_FACTION_OPTIONS, formatSandboxFactionLabel, resolveSandboxFaction } from "../Combat/sandboxTargeting.js";
 import { getSandboxBehaviorLabel, isSandboxEquippable, isSandboxSpawnable } from "./sandboxCapabilities.js";
 import { renderSandboxEquipPanel } from "./sandboxEquipPanel.js";
+
+function appendFactionSelect(parent, { value, onChange }) {
+    const field = document.createElement("div");
+    field.className = "param-field";
+    const label = document.createElement("span");
+    label.textContent = "Team";
+    const select = document.createElement("select");
+    for (const option of SANDBOX_FACTION_OPTIONS) {
+        const el = document.createElement("option");
+        el.value = option.id;
+        el.textContent = option.label;
+        select.appendChild(el);
+    }
+    select.value = value ?? SANDBOX_DEFAULT_FACTION;
+    select.addEventListener("change", () => onChange(select.value));
+    field.append(label, select);
+    parent.appendChild(field);
+    return select;
+}
 /**
  * @param {HTMLElement} container
  * @param {ReturnType<import("./createSandboxController.js").createSandboxController>} controller
@@ -35,6 +55,13 @@ export function mountSandboxToyUi(container, controller, onChange) {
             onChange();
         });
         typeField.append(typeLabel, typeSelect);
+        appendFactionSelect(addRow, {
+            value: controller.getSpawnFaction(),
+            onChange: (faction) => {
+                controller.setSpawnFaction(faction);
+                onChange();
+            },
+        });
         const addBtn = document.createElement("button");
         addBtn.type = "button";
         addBtn.className = "secondary";
@@ -87,7 +114,7 @@ export function mountSandboxToyUi(container, controller, onChange) {
                 const selectBtn = document.createElement("button");
                 selectBtn.type = "button";
                 selectBtn.className = "toy-select-btn";
-                selectBtn.textContent = entry.label;
+                selectBtn.textContent = `${entry.label} · ${formatSandboxFactionLabel(entry.faction)}`;
                 selectBtn.addEventListener("click", () => {
                     controller.setSelectedPickupId(entry.id);
                 });
@@ -104,6 +131,23 @@ export function mountSandboxToyUi(container, controller, onChange) {
             }
         container.appendChild(list);
         const selectedPickup = controller.getSelectedPickup?.() ?? null;
+        if (selectedPickup) {
+            const selectedPanel = document.createElement("div");
+            selectedPanel.className = "sandbox-selected-panel";
+            const selectedHead = document.createElement("div");
+            selectedHead.className = "editor-subhead";
+            selectedHead.textContent = "Selected toy";
+            selectedPanel.appendChild(selectedHead);
+            appendFactionSelect(selectedPanel, {
+                value: resolveSandboxFaction(selectedPickup),
+                onChange: (faction) => {
+                    selectedPickup.faction = faction;
+                    controller.sync?.();
+                    onChange();
+                },
+            });
+            container.appendChild(selectedPanel);
+        }
         const equipPanel = document.createElement("div");
         equipPanel.className = "sandbox-equip-panel";
         if (selectedPickup && isSandboxEquippable(getPropAsset(selectedPickup.type)))

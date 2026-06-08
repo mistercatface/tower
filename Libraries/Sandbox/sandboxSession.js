@@ -1,5 +1,6 @@
 import { Pickup } from "../../Entities/Pickup.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
+import { SANDBOX_DEFAULT_FACTION, resolveSandboxFaction } from "../Combat/sandboxTargeting.js";
 /** @typedef {import("./SandboxHostPort.js").SandboxHostPort} SandboxHostPort */
 /**
  * @param {SandboxHostPort} host
@@ -7,6 +8,7 @@ import { getPropAsset } from "../Props/PropCatalog.js";
  */
 export function createSandboxSession(host, { defaultSpawnPropId }) {
     let spawnPropId = defaultSpawnPropId;
+    let spawnFaction = SANDBOX_DEFAULT_FACTION;
     /** @type {number | null} */
     let selectedPickupId = null;
     /** @type {(() => void) | null} */
@@ -25,6 +27,7 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
     const spawnAt = (worldX, worldY) => {
         if (!getPropAsset(spawnPropId)) return null;
         const prop = new Pickup(worldX, worldY, spawnPropId, 0);
+        prop.faction = spawnFaction;
         host.addPickup(prop);
         selectedPickupId = prop.id;
         sync();
@@ -34,6 +37,10 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
         getSpawnPropId: () => spawnPropId,
         setSpawnPropId: (id) => {
             spawnPropId = id;
+        },
+        getSpawnFaction: () => spawnFaction,
+        setSpawnFaction: (faction) => {
+            spawnFaction = faction;
         },
         getSelectedPickupId: () => selectedPickupId,
         setSelectedPickupId: (id) => {
@@ -67,7 +74,7 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
                 const typeLabel = (pickup.type ?? "prop").replace(/_/g, " ");
                 const index = (counts.get(pickup.type) ?? 0) + 1;
                 counts.set(pickup.type, index);
-                return { id: pickup.id, type: pickup.type, label: `${typeLabel} #${index}` };
+                return { id: pickup.id, type: pickup.type, faction: resolveSandboxFaction(pickup), label: `${typeLabel} #${index}` };
             });
         },
         clear() {

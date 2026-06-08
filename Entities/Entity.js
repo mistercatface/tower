@@ -58,6 +58,12 @@ export class Entity {
         if (!wallCtx) return true;
         return hasLineOfSight(x, y, this.x, this.y, wallCtx, sourceRadius, this.radius ?? 0);
     }
+    hasLineOfSightTo(other, stateOrWalls) {
+        if (!other) return false;
+        const wallCtx = this.resolveWallContext(stateOrWalls);
+        if (!wallCtx) return true;
+        return hasLineOfSight(this.x, this.y, other.x, other.y, wallCtx, this.radius ?? 0, other.radius ?? 0);
+    }
 }
 export class DestructibleEntity extends Entity {
     constructor(x, y, angle = 0, maxHealth = 1, health = maxHealth, isDead = false) {

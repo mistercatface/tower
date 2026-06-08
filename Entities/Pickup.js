@@ -134,6 +134,9 @@ export class Pickup extends Entity {
         if (this.currentState?.getRender3DKey) return this.currentState.getRender3DKey(this);
         return this.strategy.render3DKey;
     }
+    handleHit(damage, ctx) {
+        return this.takeDamage(damage, ctx?.state);
+    }
     takeDamage(amount, gameState) {
         if (this.maxHealth == null || this.isDead) return false;
         this.health -= amount;

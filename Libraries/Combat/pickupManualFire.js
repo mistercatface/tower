@@ -28,7 +28,7 @@ function firePickupProjectileTurret(state, pickup, turret, turretIndex, gun) {
     const radiusMultiplier = loadout?.radiusMultiplier ?? 1;
     let muzzle = resolveKinematicsMuzzlePosition(pickup, turretIndex, resolveActorKinematicsCamera(pickup));
     const angleOffsets = resolveFireAngleOffsets(loadout);
-    const faction = inferFaction(pickup) ?? "player";
+    const faction = inferFaction(pickup);
     spawnProjectilesFromGun(state, pickup, { tx: muzzle.x, ty: muzzle.y, baseAngle: turret.angle, gun, radiusMultiplier, angleOffsets, faction, penetration: pickup.weapon?.penetration ?? 0 });
     CombatParticles.spawnMuzzleFlash(state, muzzle.x, muzzle.y, turret.angle, { isPellet: loadout?.pelletCount != null });
     return true;

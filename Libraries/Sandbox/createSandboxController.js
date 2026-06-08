@@ -119,6 +119,8 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
             session.setSpawnPropId(id);
             clampActiveBehavior();
         },
+        getSpawnFaction: () => session.getSpawnFaction(),
+        setSpawnFaction: (faction) => session.setSpawnFaction(faction),
         getSelectedPickupId: () => session.getSelectedPickupId(),
         getSelectedPickup: () => session.getSelectedPickup(),
         setSelectedPickupId: (id) => {

@@ -2,11 +2,21 @@ import { CombatParticles } from "../Render/CombatParticles.js";
 import { RagdollCorpse } from "../../Entities/RagdollCorpse.js";
 import { Projectile } from "../../Entities/Projectile.js";
 import { Explosion } from "../../Entities/Explosion/Explosion.js";
+import { updateSandboxAutoCombat } from "./pickupAutoCombat.js";
 /** @typedef {import("../../Systems/Simulation/SimulationRuntime.js").SimulationRuntime} SimulationRuntime */
 /** @typedef {{ run: (ctx: object, dt: number, runtime?: SimulationRuntime) => void }} SimulationPhase */
 function dispatchSimulationEvents(events, ctx) {
-    for (const event of events) if (event.target?.handleHit) event.target.handleHit(event.damage, ctx, event.type, event);
+    for (const event of events) {
+        if (event.target?.handleHit) event.target.handleHit(event.damage, ctx, event.type, event);
+        else if (event.target?.takeDamage) event.target.takeDamage(event.damage, ctx?.state);
+    }
 }
+/** @type {SimulationPhase} */
+export const sandboxAutoCombatPhase = {
+    run(ctx, dt) {
+        updateSandboxAutoCombat(ctx.state, dt);
+    },
+};
 /** @type {SimulationPhase} */
 export const projectilesPhase = {
     run(ctx, dt, runtime) {
