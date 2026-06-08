@@ -1,5 +1,6 @@
 import { getPropAsset, getWorldPropDefinitions } from "../Props/PropCatalog.js";
 import { isDragLaunchProp } from "./dragLaunch.js";
+const BEHAVIOR_LABELS = { dragLaunch: "Drag launch", rollToCursor: "Roll to cursor" };
 /**
  * @param {HTMLElement} container
  * @param {ReturnType<import("./createSandboxController.js").createSandboxController>} controller
@@ -43,6 +44,27 @@ export function mountSandboxToyUi(container, controller, onChange) {
         });
         addRow.append(typeField, addBtn);
         container.appendChild(addRow);
+        // Mode selection dropdown
+        const modeField = document.createElement("div");
+        modeField.className = "param-field";
+        modeField.style.marginTop = "8px";
+        modeField.style.marginBottom = "8px";
+        const modeLabel = document.createElement("span");
+        modeLabel.textContent = "Mode";
+        const modeSelect = document.createElement("select");
+        for (const behaviorId of controller.listBehaviors()) {
+            const option = document.createElement("option");
+            option.value = behaviorId;
+            option.textContent = BEHAVIOR_LABELS[behaviorId] ?? behaviorId;
+            modeSelect.appendChild(option);
+        }
+        modeSelect.value = controller.getActiveBehaviorId();
+        modeSelect.addEventListener("change", () => {
+            controller.setActiveBehaviorId(modeSelect.value);
+            onChange();
+        });
+        modeField.append(modeLabel, modeSelect);
+        container.appendChild(modeField);
         const listHead = document.createElement("div");
         listHead.className = "editor-subhead";
         listHead.textContent = "Placed toys";
