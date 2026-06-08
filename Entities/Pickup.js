@@ -164,10 +164,14 @@ export class Pickup extends Entity {
                 this.facing += angleDiff * Math.min(1, turnSpeed * (dt / 1000));
             }
             advanceActorKinematics(this, dt, { x: this.x, y: this.y });
-            if (this.turrets?.length) {
-                const facing = this.facing ?? this.angle ?? 0;
-                for (const turret of this.turrets) turret.angle = facing;
-            }
+            if (this.turrets?.length)
+                if (this.weaponLoadout?.length > 0) {
+                    const aimAngle = this.turrets[0]?.angle;
+                    if (aimAngle != null) this.facing = aimAngle;
+                } else {
+                    const facing = this.facing ?? this.angle ?? 0;
+                    for (const turret of this.turrets) turret.angle = facing;
+                }
         }
         if (this.isSleeping && (!this.strategy?.standTip || !isStandTipActive(this))) return;
         if (this.strategy.rolls || this.strategy.standTip) integratePropMotion(this, dt);

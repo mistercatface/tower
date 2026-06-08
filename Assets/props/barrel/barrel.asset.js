@@ -1,6 +1,7 @@
 export default {
     id: "barrel",
     primitive: "cylinder",
+    sandbox: { equip: false, behaviors: ["dragLaunch"], dragLaunch: { minPower: 20, maxPower: 260 } },
     physics: {
         hitBehavior: "explosive",
         radius: 8,

@@ -1,6 +1,7 @@
 import { repelActorFromExplosion } from "../../Libraries/Combat/explosionKnockback.js";
 function repelEntities(state, exp, _dt, spatialFrame) {
-    for (const actor of state.getCombatants()) repelActorFromExplosion(actor, exp, spatialFrame, state);
+    const actors = state.getCombatants ? state.getCombatants() : state.getPlayerActors ? state.getPlayerActors() : [];
+    for (const actor of actors) repelActorFromExplosion(actor, exp, spatialFrame, state);
 }
 export const ExplosionStrategies = {
     standard: {

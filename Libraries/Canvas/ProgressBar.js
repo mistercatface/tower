@@ -15,9 +15,32 @@ export class ProgressBar {
                 return "#FF1744";
             });
     }
-    render(ctx, x, y, ratio, cache) {
+    render(ctx, x, y, ratio, cache = null) {
         const clampedRatio = clamp(ratio, 0, 1);
         const quantizedRatio = Math.round(clampedRatio * this.quantizationSteps) / this.quantizationSteps;
+        if (!cache) {
+            // Draw un-cached fallback if no sprite cache is provided
+            const fillW = Math.max(0, Math.round(this.width * quantizedRatio));
+            ctx.save();
+            ctx.translate(x - this.width / 2, y - this.height / 2);
+            ctx.fillStyle = this.bgColor;
+            ctx.strokeStyle = this.borderColor;
+            ctx.lineWidth = 1;
+            this._drawRoundRect(ctx, 0, 0, this.width, this.height, this.borderRadius);
+            ctx.fill();
+            ctx.stroke();
+            if (quantizedRatio > 0) {
+                ctx.fillStyle = this.colorFn(quantizedRatio);
+                ctx.beginPath();
+                this._drawRoundRect(ctx, 0, 0, this.width, this.height, this.borderRadius);
+                ctx.clip();
+                ctx.beginPath();
+                ctx.rect(0, 0, fillW, this.height);
+                ctx.fill();
+            }
+            ctx.restore();
+            return;
+        }
         const cacheKey = `pb_${this.width}_${this.height}_${quantizedRatio.toFixed(2)}`;
         const cachedSprite = cache.get(cacheKey, () => {
             const canvasSizeW = this.width + 2;

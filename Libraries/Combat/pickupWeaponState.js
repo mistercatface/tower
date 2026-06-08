@@ -22,7 +22,18 @@ export function syncPickupWeaponState(pickup) {
     while (pickup.weaponSlotState.length > loadout.length) pickup.weaponSlotState.pop();
     while (pickup.weaponSlotState.length < loadout.length) pickup.weaponSlotState.push({});
     const facing = pickup.facing ?? pickup.angle ?? 0;
-    pickup.turrets = loadout.map((gunId, index) => ({ angle: facing, gunId, gun: resolvePickupSlotGun(pickup, index) }));
+    const turnSpeed = pickup.stats?.turnSpeed?.value ?? pickup.turnSpeed ?? 10;
+    const prevTurrets = pickup.turrets ?? [];
+    pickup.turrets = loadout.map((gunId, index) => {
+        const existing = prevTurrets[index];
+        if (existing?.gunId === gunId) {
+            existing.gun = resolvePickupSlotGun(pickup, index);
+            if (existing.angle == null) existing.angle = facing;
+            if (existing.turnSpeed == null) existing.turnSpeed = turnSpeed;
+            return existing;
+        }
+        return { angle: facing, gunId, gun: resolvePickupSlotGun(pickup, index), charge: 0, swayPhase: 0, turnSpeed };
+    });
 }
 export function gunSupportsAttachment(gunId, attachmentId) {
     return !!getGunDefinition(gunId).attachments?.[attachmentId];

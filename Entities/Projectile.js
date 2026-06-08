@@ -63,7 +63,7 @@ export const ProjectileStrategies = {
             p.explode(state);
             return true;
         },
-        render(p, ctx, caches) {
+        render(p, ctx, caches = {}) {
             ctx.beginPath();
             ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
             ctx.fillStyle = "#2E7D32"; // premium green
@@ -79,7 +79,7 @@ export const ProjectileStrategies = {
                 ctx.fill();
             }
             const ratio = Math.max(0, p.fuseTimer / p.fuseTime);
-            grenadeProgressBar.render(ctx, p.x, p.y - p.radius - 8, ratio, caches.actorCache);
+            grenadeProgressBar.render(ctx, p.x, p.y - p.radius - 8, ratio, caches?.actorCache ?? null);
         },
     },
 };

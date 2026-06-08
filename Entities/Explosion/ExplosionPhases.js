@@ -1,5 +1,10 @@
 import { CollisionSystem } from "../../Systems/Collision/CollisionSystem.js";
-import { distanceToLineSegment } from "../../Libraries/Math/Segment2D.js";
+import { minDistanceSegmentToWall } from "../../Libraries/Spatial/geometry/WallGeometry.js";
+function getBroadphaseActors(state) {
+    if (state.getCombatants) return state.getCombatants();
+    if (state.getPlayerActors) return state.getPlayerActors();
+    return [];
+}
 import { LIBRARY_EXPLOSION_DEFAULTS as explosionSettings } from "../../Libraries/Combat/explosionDefaults.js";
 function blastDamage(exp, dist, maxMultiplier, minMultiplier) {
     const maxDmg = exp.damage * maxMultiplier;
@@ -18,8 +23,7 @@ function applyExpandingDamage(state, exp, allEvents) {
             let blocked = false;
             for (const otherSeg of state.walls) {
                 if (otherSeg === seg || otherSeg.isDead) continue;
-                const dist = distanceToLineSegment(otherSeg.x, otherSeg.y, exp.x, exp.y, seg.x, seg.y);
-                if (dist < otherSeg.size * 0.5) {
+                if (minDistanceSegmentToWall(exp.x, exp.y, seg.x, seg.y, otherSeg) === 0) {
                     blocked = true;
                     break;
                 }
@@ -30,7 +34,7 @@ function applyExpandingDamage(state, exp, allEvents) {
             }
         }
     }
-    for (const actor of state.getCombatants()) {
+    for (const actor of getBroadphaseActors(state)) {
         if (exp.hitTargets.has(actor)) continue;
         const dist = Math.hypot(actor.x - exp.x, actor.y - exp.y);
         if (dist <= exp.radius + actor.radius)
