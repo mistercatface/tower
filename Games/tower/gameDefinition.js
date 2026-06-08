@@ -8,7 +8,7 @@ import * as towerTargeting from "./targeting.js";
 import { towerRunScenePort } from "./runScenePort.js";
 import { registerTowerEntities } from "./config/entities.js";
 import { applyInspectManifestToProps } from "./config/inspectManifest.js";
-import { getWorldPropDefinitions } from "../../Libraries/Content/PropCatalog.js";
+import { getWorldPropDefinitions } from "../../Libraries/Props/PropCatalog.js";
 import { towerInteractionPairs, towerRenderPorts } from "./ports.js";
 import { towerSimulation } from "./simulation.js";
 import { towerUiPort } from "./ui/towerUiPort.js";

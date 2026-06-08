@@ -1,4 +1,4 @@
-import { getPropAsset } from "../../../../Libraries/Content/PropCatalog.js";
+import { getPropAsset } from "../../../../Libraries/Props/PropCatalog.js";
 import { registerInspectEntry, withInspectDefaults } from "../../../../Libraries/Inspect/InspectCatalog.js";
 import { createLabeledCanInspect } from "../../../../Libraries/Inspect/factories/LabeledCanInspect.js";
 import { createLabeledBoxInspect } from "../../../../Libraries/Inspect/factories/LabeledBoxInspect.js";

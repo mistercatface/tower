@@ -1,4 +1,4 @@
-import { getPropAsset } from "../../../../../../Libraries/Content/PropCatalog.js";
+import { getPropAsset } from "../../../../../../Libraries/Props/PropCatalog.js";
 import { buildBoxMesh } from "../../../../../../Libraries/Inspect/geometry/BoxMesh.js";
 export function buildCrateInspectMesh() {
     const { halfExtents, colors } = getPropAsset("crate")?.visuals ?? {};

@@ -1,23 +1,24 @@
 import { Pickup } from "../../Entities/Pickup.js";
-import { getPropAsset } from "../Content/PropCatalog.js";
-import { applyDragLaunchVelocity, createDragLaunchAim, drawDragLaunchPreview, getDragLaunchConfig, releaseDragLaunch, updateDragLaunchAim } from "../Props/dragLaunchToy.js";
+import { getPropAsset } from "../Props/PropCatalog.js";
+import { getDefaultDragLaunchPropId } from "./dragLaunchCatalog.js";
+import { applyDragLaunchVelocity, createDragLaunchAim, drawDragLaunchPreview, getDragLaunchConfig, releaseDragLaunch, updateDragLaunchAim } from "./dragLaunch.js";
 /** @typedef {import("./SandboxHostPort.js").SandboxHostPort} SandboxHostPort */
 /**
- * Drag-launch sandbox toy — owns pointer input, aim state, spawn, and overlay draw.
- * Launch tuning defaults live in dragLaunchToy.js; props opt in via `sandbox.dragLaunch`.
+ * Drag-launch sandbox toy — input, aim, spawn, overlay.
+ * Props opt in via `sandbox.dragLaunch` on their asset file.
  *
  * @param {SandboxHostPort} host
  */
 export function createDragLaunchToy(host) {
-    /** @type {import("../Props/dragLaunchToy.js").DragLaunchAim | null} */
+    /** @type {import("./dragLaunch.js").DragLaunchAim | null} */
     let aim = null;
+    let focusedPropId = getDefaultDragLaunchPropId();
     /** @type {(() => void)[]} */
     const unbind = [];
-    const launchConfig = () => getDragLaunchConfig(getPropAsset(host.getFocusedPropId()));
+    const launchConfig = () => getDragLaunchConfig(getPropAsset(focusedPropId));
     const spawnFocusedProp = (worldX, worldY) => {
-        const type = host.getFocusedPropId();
-        if (!getPropAsset(type)) return null;
-        const prop = new Pickup(worldX, worldY, type, 0);
+        if (!getPropAsset(focusedPropId)) return null;
+        const prop = new Pickup(worldX, worldY, focusedPropId, 0);
         host.addPickup(prop);
         return prop;
     };
@@ -71,6 +72,10 @@ export function createDragLaunchToy(host) {
         unbind.push(() => canvas.removeEventListener(type, handler, true));
     };
     return {
+        getFocusedPropId: () => focusedPropId,
+        setFocusedPropId: (id) => {
+            focusedPropId = id;
+        },
         register() {
             bind("pointerdown", onPointerDown);
             bind("pointermove", onPointerMove);

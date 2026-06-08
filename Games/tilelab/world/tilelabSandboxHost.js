@@ -1,7 +1,5 @@
 import { canvasClientToWorld } from "../ui/labCanvas.js";
 /** @typedef {import("../../../Libraries/Sandbox/SandboxHostPort.js").SandboxHostPort} SandboxHostPort */
-/** Default until focus selector UI — must be a prop with `sandbox.dragLaunch`. */
-const DEFAULT_FOCUS_PROP_ID = "beach_ball";
 /**
  * @param {import("../TileLabGameState.js").TileLabGameState} state
  * @param {() => void} requestRedraw
@@ -18,7 +16,6 @@ export function createTilelabSandboxHost(state, requestRedraw) {
         },
         isInputBlocked: () => state.labShowTopologyOverlay,
         requestRedraw,
-        getFocusedPropId: () => DEFAULT_FOCUS_PROP_ID,
         getPickups: () => state.pickups,
         addPickup: (prop) => state.pickups.push(prop),
         clearPickups: () => {

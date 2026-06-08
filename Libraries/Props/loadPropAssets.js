@@ -1,6 +1,6 @@
 import * as propAssets from "../../Assets/props/index.js";
 import { setPropCatalog } from "./PropCatalog.js";
-import { PROP_RECIPE_BUILDERS } from "../Props/recipes/index.js";
+import { PROP_RECIPE_BUILDERS } from "./recipes/index.js";
 /**
  * @param {object} asset
  */

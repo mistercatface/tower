@@ -5,6 +5,7 @@ export const TILELAB_UI_HTML = `
         <span class="sep"></span>
         <label class="check-inline"><input type="checkbox" id="showTopologyOverlayInput"> Topology overlay</label>
         <span class="hint-inline">Drag to launch beach ball</span>
+        <span id="toyFocusBar" style="display: inline-flex; align-items: center; margin-left: 8px;"></span>
         <span class="sep"></span>
         <label>Map seed <input id="mapSeedInput" type="number" value="42"></label>
         <button type="button" id="regenMapBtn" class="secondary">New map</button>

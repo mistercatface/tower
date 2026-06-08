@@ -1,7 +1,7 @@
 export default {
     id: "beach_ball",
     recipe: "lofiSphere",
-    /** Opt in to drag-launch sandbox; tuning defaults live in Libraries/Props/dragLaunchToy.js */
+    /** Opt in to drag-launch sandbox; tuning defaults live in Libraries/Sandbox/dragLaunch.js */
     sandbox: { dragLaunch: true },
     physics: {
         hitBehavior: "none",

@@ -5,7 +5,7 @@ import { integratePropMotion } from "../Libraries/Props/propMotion.js";
 import { HIT_BEHAVIOR_HANDLERS } from "../Libraries/Props/hitBehaviors.js";
 import { initStandTipState, isStandTipActive } from "../Libraries/Props/standTipMotion.js";
 import { withPropStrategyDefaults } from "../Libraries/Props/propStrategy.js";
-import { getPropAsset, getWorldPropDefinitions } from "../Libraries/Content/PropCatalog.js";
+import { getPropAsset, getWorldPropDefinitions } from "../Libraries/Props/PropCatalog.js";
 import { transitionEntity } from "../Libraries/FSM/transition.js";
 import { pickupStates } from "./PickupStates.js";
 import { CircleShape, PolygonShape } from "../Libraries/Spatial/collision/Shapes.js";

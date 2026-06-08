@@ -1,4 +1,4 @@
-import { getWorldPropRecipes } from "../Content/PropCatalog.js";
+import { getWorldPropRecipes } from "../Props/PropCatalog.js";
 import { createDefaultKinematicsPorts } from "../Kinematics/kinematicsPorts.js";
 import { createLiveWorldStructure } from "./worldStructure/LiveWorldStructure.js";
 /**
