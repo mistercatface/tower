@@ -93,9 +93,15 @@ export function drawTilelabSurfaceFrame(ctx, canvas, worldState, profileId, weap
     ctx.restore();
     ctx.save();
     viewport.apply(ctx);
-    const phases = mapLab ? ["ground"] : ["ground", "buildings", "roofs", "bloom"];
-    drawWorldScene(ctx, { state: worldState, viewport, worldSceneRenderer: getLabRender3D(), canvas, worldRenderInput, phases });
-    if (mapLab && topologyOptions) drawMapLabInWorld(ctx, worldState, viewport, topologyOptions, mapLab);
+    drawWorldScene(ctx, {
+        state: worldState,
+        viewport,
+        worldSceneRenderer: getLabRender3D(),
+        canvas,
+        worldRenderInput,
+        phases: ["ground", "buildings", "roofs", "bloom"],
+    });
+    if (mapLab && topologyOptions) drawMapLabInWorld(ctx, worldState, viewport, topologyOptions, mapLab, { overlay: true });
     worldState.surfaceProfileOverride = prevProfileOverride;
     if (showRangeRing) drawWeaponRangeRing(ctx, cameraX, cameraY, weaponRange);
     if (showFocusMarker) drawFocusMarker(ctx, cameraX, cameraY);

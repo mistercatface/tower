@@ -41,9 +41,14 @@ function drawMapGraph(ctx, state, styles, context = {}) {
     drawMapNodes(ctx, state, styles, context);
 }
 function renderMapViewContent(ctx, state, config) {
-    const { showWalls = true, showGraph = true, showPathDebug = false, graphContext = {}, graphStyles = GAME_MAP_GRAPH_STYLES, wallCache = null } = config;
+    const { showWalls = true, showGraph = true, showPathDebug = false, graphContext = {}, graphStyles = GAME_MAP_GRAPH_STYLES, wallCache = null, overlay = false } = config;
     if (showPathDebug) drawMapPathDebugCache(ctx, state.mapPathDebugCache);
-    if (showWalls && wallCache) drawMapWallCache(ctx, wallCache);
+    if (showWalls && wallCache) {
+        if (overlay) ctx.save();
+        if (overlay) ctx.globalAlpha = 0.35;
+        drawMapWallCache(ctx, wallCache);
+        if (overlay) ctx.restore();
+    }
     if (showGraph) drawMapGraph(ctx, state, graphStyles, graphContext);
 }
 /** Map graph + debug layers in an already world-transformed context (no clear, no viewport.apply). */

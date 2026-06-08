@@ -12,7 +12,7 @@ import { drawTopologyOverlays } from "../render/topologyOverlays.js";
  * @param {ReturnType<import("../ui/mapInspector.js").readMapControls>} topologyOptions
  * @param {import("../TileLabGameState.js").TileLabGameState["mapLab"]} mapLab
  */
-export function drawMapLabInWorld(ctx, state, viewport, topologyOptions, mapLab) {
+export function drawMapLabInWorld(ctx, state, viewport, topologyOptions, mapLab, { overlay = false } = {}) {
     drawMapViewInWorld(ctx, state, {
         ...createTopologyMapViewConfig(topologyOptions, { viewport, selectedNodeId: mapLab.selectedNodeId }),
         graphStyles: TOPOLOGY_MAP_GRAPH_STYLES,
@@ -24,5 +24,6 @@ export function drawMapLabInWorld(ctx, state, viewport, topologyOptions, mapLab)
         currentPath: mapLab.currentPath,
         abstractPath: mapLab.currentAbstractPath,
         drawOverlays: drawTopologyOverlays,
+        overlay,
     });
 }
