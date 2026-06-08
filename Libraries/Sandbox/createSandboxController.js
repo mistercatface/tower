@@ -3,6 +3,7 @@ import { bindCanvasPointers, releasePointerCapture } from "./bindCanvasPointers.
 import { findPickupAt } from "./findPickupAt.js";
 import { createSandboxSession } from "./sandboxSession.js";
 import { resolveSandboxBehaviors } from "./sandboxCapabilities.js";
+import { drawSandboxLaserSights } from "./drawLaserSights.js";
 /** @typedef {import("./SandboxHostPort.js").SandboxHostPort} SandboxHostPort */
 /**
  * @typedef {object} SandboxBehavior
@@ -119,6 +120,7 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
             clampActiveBehavior();
         },
         getSelectedPickupId: () => session.getSelectedPickupId(),
+        getSelectedPickup: () => session.getSelectedPickup(),
         setSelectedPickupId: (id) => {
             session.setSelectedPickupId(id);
             clampActiveBehavior();
@@ -126,6 +128,7 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
         spawnAtCameraOrigin: () => session.spawnAtCameraOrigin(),
         deletePickupById: (id) => session.deletePickupById(id),
         listPlacedPickups: () => session.listPlacedPickups(),
+        sync: () => session.sync(),
         setUiSync: (fn) => session.setUiSync(fn),
         getActiveBehaviorId: () => activeBehaviorId,
         setActiveBehaviorId: (id) => {
@@ -160,6 +163,7 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
             const pickup = session.getSelectedPickup();
             const behavior = resolveBehavior();
             behavior?.drawOverlay?.(ctx, pickup, host);
+            drawSandboxLaserSights(ctx, host);
         },
     };
     return controller;

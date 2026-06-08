@@ -1,5 +1,6 @@
 import { getPropAsset, getWorldPropDefinitions } from "../Props/PropCatalog.js";
-import { getSandboxBehaviorLabel, isSandboxSpawnable } from "./sandboxCapabilities.js";
+import { getSandboxBehaviorLabel, isSandboxEquippable, isSandboxSpawnable } from "./sandboxCapabilities.js";
+import { renderSandboxEquipPanel } from "./sandboxEquipPanel.js";
 /**
  * @param {HTMLElement} container
  * @param {ReturnType<import("./createSandboxController.js").createSandboxController>} controller
@@ -102,6 +103,15 @@ export function mountSandboxToyUi(container, controller, onChange) {
                 list.appendChild(row);
             }
         container.appendChild(list);
+        const selectedPickup = controller.getSelectedPickup?.() ?? null;
+        const equipPanel = document.createElement("div");
+        equipPanel.className = "sandbox-equip-panel";
+        if (selectedPickup && isSandboxEquippable(getPropAsset(selectedPickup.type)))
+            renderSandboxEquipPanel(equipPanel, selectedPickup, () => {
+                controller.sync?.();
+                onChange();
+            });
+        if (equipPanel.childElementCount > 0) container.appendChild(equipPanel);
     };
     controller.setUiSync(render);
     render();

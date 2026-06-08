@@ -1,6 +1,5 @@
 import { normalizeAngle } from "../../Libraries/Math/Angle.js";
-import { wallContextFromState } from "../../Libraries/Spatial/query/wallContext.js";
-import { castSteppedCircleRay } from "../../Libraries/Spatial/query/steppedCircleRayCast.js";
+import { buildLaserTargetCircles, castLaserRay } from "../../Libraries/Combat/laserCast.js";
 import { Laser } from "./entities/Laser.js";
 import { defaultGunId, getGunDefinition } from "./config/content/guns.js";
 import { getSlotFireIntervalMs, getSlotReloadTimeMs } from "./combat/gunCombat.js";
@@ -127,18 +126,9 @@ export function resolveWeaponModeForGun(gun) {
 export const LASER_WEAPON_MODE = createLaserWeaponMode();
 export class WeaponSystem {
     static castLaser(startX, startY, angle, maxDist, state, beamRadius = 1, source = null) {
-        /** @type {import("../../Libraries/Spatial/query/steppedCircleRayCast.js").SteppedCircleRayCircleTarget[]} */
-        const circles = [];
-        for (const p of state.pickups) {
-            if (p.isDead || !p.strategy?.laserTargetable) continue;
-            circles.push({ entity: p, radius: p.radius, hitKind: "pickup" });
-        }
         const actorTargets = source ? getHostiles(state, source) : getBroadphaseActors(state);
-        for (const e of actorTargets) {
-            if (e.isDead) continue;
-            circles.push({ entity: e, radius: e.radius, hitKind: "actor" });
-        }
-        return castSteppedCircleRay(startX, startY, angle, maxDist, beamRadius, { wallCtx: wallContextFromState(state), circles });
+        const circles = buildLaserTargetCircles(state, { source, includePickups: true, includeActors: actorTargets });
+        return castLaserRay(startX, startY, angle, maxDist, state, beamRadius, circles);
     }
     static computeAccuracySway(source, turret, dt, requireCharge = false) {
         const weapon = source.weapon;

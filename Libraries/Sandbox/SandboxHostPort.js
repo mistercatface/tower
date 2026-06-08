@@ -12,5 +12,6 @@
  * @property {(prop: object) => void} addPickup
  * @property {(prop: object) => void} removePickup
  * @property {() => void} clearPickups
+ * @property {() => object} [getWorldState] — walls/pickups for laser-sight raycasts
  */
 export {};

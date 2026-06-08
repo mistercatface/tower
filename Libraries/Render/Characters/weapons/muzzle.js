@@ -34,9 +34,8 @@ export function createMuzzleResolver(weaponVisuals) {
         if (!slot) return null;
         const turrets = actor.turrets ?? [];
         const turret = turrets[turretIndex] ?? turrets[0];
-        if (!turret) return null;
         const hand = weaponVisuals.resolveProjectedHandsForSlot(rigData, slot, project);
-        const aimAngle = facing.gunCanvasAim(turret.angle);
+        const aimAngle = facing.gunCanvasAim(turret?.angle ?? actor.angle ?? actor.facing ?? 0);
         const barrelRatio = weaponVisuals.getBarrelRatioForGunId(slot.gunId);
         const offset = calculateMuzzleCanvasOffset(aimAngle, hand.scale ?? 1, config, barrelRatio);
         const metrics = spriteMetricsFromConfig(config);

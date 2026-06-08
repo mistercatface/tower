@@ -6,6 +6,10 @@ const ROLL_BEHAVIOR_IDS = new Set([ROLL_TO_CURSOR_DIRECT_BEHAVIOR_ID, ROLL_TO_CU
 export function getSandboxBehaviorLabel(behaviorId) {
     return SANDBOX_BEHAVIOR_LABELS[behaviorId] ?? behaviorId;
 }
+/** @param {object | null | undefined} asset */
+export function isSandboxEquippable(asset) {
+    return asset?.sandbox?.equip === true;
+}
 /** Props listed in the sandbox "Add" dropdown (excludes shard debris spawned from breaks). */
 /** @param {object | null | undefined} asset */
 export function isSandboxSpawnable(asset) {

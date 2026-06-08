@@ -1,7 +1,9 @@
 import { createRoguelikeWorldGenPort, roguelikeProceduralDesign } from "../../Libraries/WorldGen/presets/roguelikeMap.js";
 import { tilelabMapTopology } from "./mapTopology.js";
 import { layoutOnlyRunBootstrap } from "../../Libraries/RunBootstrap/phases.js";
+import { GUN_ID_TO_VISUAL } from "../../Assets/guns/visualMap.js";
 import { createDefaultRenderPorts } from "../../Libraries/Render/defaultRenderPorts.js";
+import { createWeaponVisuals } from "../../Libraries/Render/Characters/weapons/createWeaponVisuals.js";
 import { TileLabGameState } from "./TileLabGameState.js";
 import { TileLabSimulationState } from "./TileLabSimulationState.js";
 import { tilelabSimulation } from "./simulation.js";
@@ -23,7 +25,7 @@ export const tilelabGame = {
     initialState: "simulation",
     simulationPort: tilelabSimulation,
     uiPort: tilelabUiPort,
-    render: createDefaultRenderPorts(),
+    render: createDefaultRenderPorts({ weaponVisuals: createWeaponVisuals(GUN_ID_TO_VISUAL) }),
     worldGen: createRoguelikeWorldGenPort({ topology: tilelabMapTopology }),
     proceduralDesign: roguelikeProceduralDesign,
     runBootstrapPort: layoutOnlyRunBootstrap,

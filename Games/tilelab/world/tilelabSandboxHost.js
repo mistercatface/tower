@@ -29,5 +29,6 @@ export function createTilelabSandboxHost(state, requestRedraw) {
         clearPickups: () => {
             state.pickups = [];
         },
+        getWorldState: () => state,
     };
 }

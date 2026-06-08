@@ -175,3 +175,135 @@
     padding: 4px 8px;
     font-size: 11px;
 }
+
+.sandbox-equip-panel {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+}
+
+.sandbox-equip-slots {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 4px;
+}
+
+.sandbox-equip-slot {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: rgba(0, 0, 0, 0.2);
+    font-size: 11px;
+}
+
+.sandbox-equip-slot.filled {
+    border-color: rgba(0, 188, 212, 0.25);
+}
+
+.sandbox-equip-slot.empty {
+    opacity: 0.75;
+}
+
+.sandbox-equip-slot-label {
+    color: var(--muted);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.sandbox-equip-slot-name {
+    font-size: 12px;
+}
+
+.sandbox-equip-unequip {
+    align-self: flex-start;
+    padding: 2px 8px;
+    font-size: 11px;
+}
+
+.sandbox-equip-armory {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 180px;
+    overflow-y: auto;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 2px;
+}
+
+.sandbox-equip-armory-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 4px;
+}
+
+.sandbox-equip-armory-row.equipped {
+    background: rgba(0, 188, 212, 0.08);
+}
+
+.sandbox-equip-armory-row.blocked {
+    opacity: 0.55;
+}
+
+.sandbox-equip-armory-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.sandbox-equip-armory-name {
+    font-size: 12px;
+}
+
+.sandbox-equip-armory-meta {
+    font-size: 10px;
+    color: var(--muted);
+}
+
+.sandbox-equip-btn {
+    flex: 0 0 auto;
+    padding: 4px 8px;
+    font-size: 11px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text);
+    cursor: pointer;
+}
+
+.sandbox-equip-btn.equip {
+    border-color: rgba(0, 188, 212, 0.35);
+}
+
+.sandbox-equip-btn.unequip {
+    border-color: rgba(244, 67, 54, 0.35);
+}
+
+.sandbox-equip-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.sandbox-equip-laser-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+    font-size: 11px;
+    color: #00bcd4;
+    cursor: pointer;
+    user-select: none;
+    font-weight: 600;
+}
+
+.sandbox-equip-laser-toggle input {
+    margin: 0;
+    cursor: pointer;
+}

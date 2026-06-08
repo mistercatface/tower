@@ -6,7 +6,8 @@ export { createDragLaunchBehavior, DRAG_LAUNCH_BEHAVIOR_ID } from "./behaviors/d
 export { createRollToCursorDirectBehavior, ROLL_TO_CURSOR_DIRECT_BEHAVIOR_ID } from "./behaviors/rollToCursorDirectBehavior.js";
 export { createRollToCursorHpaBehavior, ROLL_TO_CURSOR_HPA_BEHAVIOR_ID } from "./behaviors/rollToCursorHpaBehavior.js";
 export { mountSandboxToyUi } from "./sandboxToyUi.js";
-export { getSandboxBehaviorLabel, isSandboxSpawnable, resolveSandboxBehaviors, SANDBOX_BEHAVIOR_LABELS } from "./sandboxCapabilities.js";
+export { renderSandboxEquipPanel } from "./sandboxEquipPanel.js";
+export { getSandboxBehaviorLabel, isSandboxEquippable, isSandboxSpawnable, resolveSandboxBehaviors, SANDBOX_BEHAVIOR_LABELS } from "./sandboxCapabilities.js";
 export {
     DRAG_LAUNCH_DEFAULTS,
     applyDragLaunchVelocity,

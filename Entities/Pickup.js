@@ -67,6 +67,10 @@ export class Pickup extends Entity {
             this.health = this.strategy.maxHealth;
         }
         this.usesKinematicsBody = !!this.strategy.kinematics;
+        if (getPropAsset(type)?.sandbox?.equip) {
+            this.weaponLoadout = [];
+            this.weaponSlotState = [];
+        }
         this.ageMs = 0;
         this._sleepFrames = 0;
         this.isSleeping = false;
@@ -160,6 +164,10 @@ export class Pickup extends Entity {
                 this.facing += angleDiff * Math.min(1, turnSpeed * (dt / 1000));
             }
             advanceActorKinematics(this, dt, { x: this.x, y: this.y });
+            if (this.turrets?.length) {
+                const facing = this.facing ?? this.angle ?? 0;
+                for (const turret of this.turrets) turret.angle = facing;
+            }
         }
         if (this.isSleeping && (!this.strategy?.standTip || !isStandTipActive(this))) return;
         if (this.strategy.rolls || this.strategy.standTip) integratePropMotion(this, dt);

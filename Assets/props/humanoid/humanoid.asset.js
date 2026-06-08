@@ -1,6 +1,6 @@
 export default {
     id: "humanoid",
-    sandbox: { dragLaunch: { minPower: 25, maxPower: 120 } },
+    sandbox: { equip: true, dragLaunch: { minPower: 25, maxPower: 120 } },
     physics: {
         radius: 8,
         isPushable: true,

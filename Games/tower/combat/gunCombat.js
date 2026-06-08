@@ -1,4 +1,6 @@
 import { defaultGunId, getGunDefinition, gunDefinitions } from "../config/content/guns.js";
+import { getActiveEquipModifiers } from "../../../Libraries/Combat/gunModifiers.js";
+export { getActiveEquipModifiers };
 export function getSlotFireIntervalMs(gun, actor) {
     const multiplier = actor.stats?.fireIntervalMultiplier?.value ?? 1;
     return gun.fireIntervalMs * multiplier;
@@ -13,16 +15,6 @@ export function getGunProjectileConfig(gun) {
 }
 export function getGunImpactKnockback(gun) {
     return getGunProjectileConfig(gun).impactKnockback ?? null;
-}
-export function getActiveEquipModifiers(gun) {
-    const mods = { ...gun.equipModifiers };
-    if (gun.attachments)
-        for (const attachment of Object.values(gun.attachments))
-            if (attachment.enabled && attachment.modifiers)
-                for (const [key, val] of Object.entries(attachment.modifiers))
-                    if (key.endsWith("Multiplier")) mods[key] = (mods[key] ?? 1) * val;
-                    else if (key.endsWith("Bonus")) mods[key] = (mods[key] ?? 0) + val;
-    return mods;
 }
 export function applyActorGunModifiers(actor) {
     if (!actor.stats) return;
