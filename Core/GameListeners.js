@@ -1,11 +1,9 @@
 import { Events, requestUiUpdate } from "./EventSystem.js";
 import { registerPauseListeners } from "./PauseManager.js";
-import { FloatingText } from "../Render/FloatingText.js";
 import { adjustSelectedSpeed } from "../Libraries/Playback/index.js";
 import { getActiveGameDefinition } from "./ActiveGameDefinition.js";
 /** @param {import("../Libraries/Events/EventBus.js").EventBus} eventBus @param {import("./PauseManager.js").PauseManager} pauseManager */
 export function registerCoreListeners(eventBus, pauseManager) {
-    FloatingText.registerEventListener(eventBus);
     registerPauseListeners(eventBus, pauseManager);
     eventBus.on(Events.GAME_TOGGLE_PAUSE, () => {
         requestUiUpdate();

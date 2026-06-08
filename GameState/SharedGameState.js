@@ -17,9 +17,7 @@ export class SharedGameState {
         this.mapNodeById = new Map();
         this.currentNodeId = 0;
         this.obstacleGrid = new WorldObstacleGrid(gridSettings.cellSize);
-        this.hierarchicalNavigator = new HierarchicalNavigator(gridSettings.cellSize, gridSettings.maxCellsPerChunk, gridSettings.minCellsPerChunk, this.obstacleGrid, {
-            damagePadding: 12,
-        });
+        this.hierarchicalNavigator = new HierarchicalNavigator(gridSettings.cellSize, gridSettings.maxCellsPerChunk, gridSettings.minCellsPerChunk, this.obstacleGrid, { damagePadding: 12 });
         this.wallSpatialIndex = new WallSpatialIndex(100);
         this.worldSurfaces = new WorldSurfaceSystem(getGameWorldSurfaceSettings());
         this.worldSurfaceSeed = 0;
@@ -37,7 +35,6 @@ export class SharedGameState {
         this.skipSimulationEnterReset = false;
         this.walls = [];
         this.pickups = [];
-        this.floatingTexts = [];
         this.wallResolver = new WallCollisionResolver();
     }
     get phase() {

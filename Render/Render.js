@@ -10,7 +10,6 @@ export class Renderer {
         this.canvas = canvas;
         this.ctx = ctx;
         this.caches = caches;
-        this.floatingTextCache = new SpriteCache();
         this.render3D = new WorldSceneRenderer(getGameWorldSurfaceSettings(), getRenderPorts().world3dPropRecipes);
         this.effectPasses = [
             { zIndex: -5, fn: (state, viewport) => drawWorldScene(this.ctx, { state, viewport, worldSceneRenderer: this.render3D, phases: ["ground", "debris"] }) },

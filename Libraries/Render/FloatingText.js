@@ -1,5 +1,7 @@
-import { Events } from "../Core/EventNames.js";
-import { RenderSprites } from "./RenderSprites.js";
+import { Events } from "../../Core/EventNames.js";
+import { RenderSprites } from "../../Render/RenderSprites.js";
+import { SpriteCache } from "../Canvas/SpriteCache.js";
+const floatingTextCache = new SpriteCache();
 export const TextStyles = {
     standard: {
         font: "bold 10px monospace",
@@ -83,6 +85,7 @@ export class FloatingText {
         state.floatingTexts.push(ft);
     }
     static updateAll(state, dt) {
+        if (!state.floatingTexts) return;
         for (let i = state.floatingTexts.length - 1; i >= 0; i--) {
             const ft = state.floatingTexts[i];
             ft.update(dt, state.scheduler);
@@ -90,6 +93,7 @@ export class FloatingText {
         }
     }
     static handleSpawnEvent({ state, variant = "custom", x, y, text, color, style, options, damage }) {
+        if (!state.floatingTexts) return;
         switch (variant) {
             case "blastDamage":
                 FloatingText.spawnBlastDamageText(state, x, y, damage);
@@ -107,7 +111,7 @@ export class FloatingText {
     }
     render(ctx, renderer, state) {
         const cacheKey = this.getCacheKey();
-        const sprite = renderer.floatingTextCache.get(cacheKey, RenderSprites.floatingText, this.text, this.style, this.color);
+        const sprite = floatingTextCache.get(cacheKey, RenderSprites.floatingText, this.text, this.style, this.color);
         const img = sprite.offCanvas || sprite;
         const cx = sprite.cx !== undefined ? sprite.cx : img.width / 2;
         const cy = sprite.cy !== undefined ? sprite.cy : img.height / 2;
