@@ -4,6 +4,7 @@ export const TILELAB_UI_HTML = `
         <h1>Tile Lab</h1>
         <span class="sep"></span>
         <label class="check-inline"><input type="checkbox" id="showTopologyOverlayInput"> Topology overlay</label>
+        <span class="hint-inline">Shift+click spawn ball</span>
         <span class="sep"></span>
         <label>Map seed <input id="mapSeedInput" type="number" value="42"></label>
         <button type="button" id="regenMapBtn" class="secondary">New map</button>

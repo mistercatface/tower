@@ -1,3 +1,4 @@
+import { getRenderPorts } from "../../../Core/GamePorts.js";
 import { getGameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.js";
 import { WorldSceneRenderer } from "../../../Libraries/Render/WorldSceneRenderer.js";
 import { buildWorldRenderInput } from "../../../Render/adapters/WorldRenderAdapter.js";
@@ -13,7 +14,7 @@ let render3DSettings = null;
 function getLabRender3D() {
     const settings = getGameWorldSurfaceSettings();
     if (!render3D || render3DSettings !== settings) {
-        render3D = new WorldSceneRenderer(settings);
+        render3D = new WorldSceneRenderer(settings, getRenderPorts().world3dPropRecipes);
         render3DSettings = settings;
     }
     return render3D;
