@@ -58,6 +58,8 @@
  * @typedef {object} SimulationPort
  * @property {(ctx: object, dt: number) => void} runTick
  * @property {(ctx: object) => void} [onEnter]
+ * @property {import("../../Systems/Simulation/SimulationPipeline.js").SimulationPhase[]} [phases] — used by feature merging
+ * @property {(ctx: object) => import("../../Systems/Simulation/SimulationRuntime.js").SimulationRuntime} [beginRuntime]
  */
 /**
  * @typedef {object} UiContext
@@ -120,6 +122,9 @@
  * @property {(state: object) => void} [initState]
  * @property {(eventBus: import("../Libraries/Events/EventBus.js").EventBus, boot?: { state: object, fsm: import("../Libraries/FSM/StateMachine.js").StateMachine, resetGame: () => void }) => void} [registerListeners]
  * @property {import("../../Systems/Simulation/SimulationPipeline.js").SimulationPhase[]} [simulationPhases]
+ * @property {string} [simulationPhaseInsertAfter] — splice after a base phase `id`; append when omitted
+ * @property {SimulationEffectPass[]} [simulationEffectPasses]
+ * @property {(state: object, viewport: object, ctx: CanvasRenderingContext2D, renderer: import("../Render/Render.js").Renderer) => void} [drawPostSimulation]
  */
 /**
  * @typedef {object} GameDefinition

@@ -14,8 +14,6 @@ export class TileLabGameState extends SharedGameState {
         this.roguelikeMapSession = createRoguelikeMapSession();
         this.entityLayers = [{ key: "projectiles", zIndex: 20 }];
         this.projectiles = [];
-        this.explosions = [];
-        this.combatParticles = [];
         this.activeLasers = [];
     }
 }

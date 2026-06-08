@@ -17,11 +17,12 @@ import { sandboxInteractionPairs } from "../../Libraries/Combat/sandboxInteracti
 import { sandboxTargeting } from "../../Libraries/Combat/sandboxTargeting.js";
 import { tilelabViewPort } from "./viewPort.js";
 import { createFloatingTextFeature } from "../../Libraries/Render/createFloatingTextFeature.js";
+import { createCombatVfxFeature } from "../../Libraries/Render/createCombatVfxFeature.js";
 /** @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition */
 export const tilelabGame = {
     id: "tilelab",
     canvasId: "gameCanvas",
-    features: [createFloatingTextFeature({ zIndex: 100 })],
+    features: [createFloatingTextFeature({ zIndex: 100 }), createCombatVfxFeature()],
     interactionPairs: sandboxInteractionPairs,
     targeting: sandboxTargeting,
     createGameState() {

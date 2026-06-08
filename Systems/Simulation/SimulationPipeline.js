@@ -1,5 +1,5 @@
 import { beginSimulationRuntime } from "./SimulationRuntime.js";
-/** @typedef {import("./phases.js").SimulationPhase} SimulationPhase */
+/** @typedef {{ id?: string, run: (ctx: object, dt: number, runtime?: import("./SimulationRuntime.js").SimulationRuntime) => void }} SimulationPhase */
 /** @typedef {import("../../Core/GameDefinitionTypes.js").SimulationPort} SimulationPort */
 export class SimulationPipeline {
     /** @param {SimulationPhase[]} phases @param {(ctx: object) => import("./SimulationRuntime.js").SimulationRuntime} beginRuntime */
@@ -21,5 +21,5 @@ export class SimulationPipeline {
 export function createSimulationPort(phases, options = {}) {
     const beginRuntime = options.beginRuntime ?? beginSimulationRuntime;
     const tickPipeline = new SimulationPipeline(phases, beginRuntime);
-    return { runTick: (ctx, dt) => tickPipeline.runTick(ctx, dt), onEnter: options.onEnter };
+    return { runTick: (ctx, dt) => tickPipeline.runTick(ctx, dt), onEnter: options.onEnter, phases, beginRuntime };
 }

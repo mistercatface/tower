@@ -1,3 +1,4 @@
+import { applyGameFeatures } from "./applyGameFeatures.js";
 import { installGameState } from "../GameState/GameState.js";
 import { applyGameBootstrap } from "../Libraries/Bootstrap/applyGameBootstrap.js";
 import { getRenderPorts, resetRun } from "./GamePorts.js";
@@ -20,6 +21,7 @@ import { applyGamePropQuantizeSettings } from "./GamePropQuantizeSettings.js";
  */
 export function createGame(definition) {
     setActiveGameDefinition(definition);
+    applyGameFeatures(definition);
     const state = definition.createGameState();
     if (definition.features) for (const feature of definition.features) feature.initState?.(state);
     installGameState(state);
@@ -40,16 +42,6 @@ export function createGame(definition) {
     state.fsm = fsm;
     for (const [name, StateClass] of Object.entries(definition.states)) fsm.addState(name, new StateClass());
     const pauseManager = new PauseManager(state);
-    if (definition.features && definition.simulationPort) {
-        const featurePhases = definition.features.flatMap((f) => f.simulationPhases || []);
-        if (featurePhases.length > 0) {
-            const originalRunTick = definition.simulationPort.runTick;
-            definition.simulationPort.runTick = (ctx, dt) => {
-                originalRunTick(ctx, dt);
-                for (const phase of featurePhases) phase.run(ctx, dt);
-            };
-        }
-    }
     function loop(timestamp) {
         if (state.lastTime === 0) state.lastTime = timestamp;
         let dt = timestamp - state.lastTime;
