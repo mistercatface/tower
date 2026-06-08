@@ -28,6 +28,7 @@ export function spawnProjectilesFromGun(state, source, { tx, ty, baseAngle, gun,
     state.projectiles.push(...projectiles);
     if (projectiles.length > 0) {
         const knockbackScale = projectiles.reduce((sum, p) => sum + p.radius, 0);
-        applyKnockback(source, baseAngle + Math.PI, knockbackScale * (projectileConfig.shooterKnockbackMultiplier ?? 0));
+        const multiplier = source.strategy?.shooterKnockbackMultiplier ?? projectileConfig.shooterKnockbackMultiplier ?? 0;
+        if (multiplier > 0) applyKnockback(source, baseAngle + Math.PI, knockbackScale * multiplier);
     }
 }
