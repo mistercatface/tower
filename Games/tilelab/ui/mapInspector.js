@@ -2,7 +2,8 @@ import { ROGUELIKE_MAP_TOPOLOGY } from "../../../Libraries/WorldGen/presets/rogu
 import { getWorldGen } from "../../../Core/GamePorts.js";
 import { SliderControl } from "../../../Tools/Lab/ui/controls/SliderControl.js";
 import { calculatePathTest } from "../world/mapPathTest.js";
-import { generateTilelabMap } from "../world/mapWorld.js";
+import { focusLabNode, generateTilelabMap } from "../world/mapWorld.js";
+import { syncZoomSliderFromViewport } from "./zoomSlider.js";
 import { readControls } from "./toolbar.js";
 export function readMapControls() {
     return {
@@ -71,9 +72,9 @@ export function renderNodeInspector(state, onRedraw) {
     focusBtn.className = "focus-btn";
     focusBtn.textContent = "Focus Node";
     focusBtn.addEventListener("click", () => {
-        const coords = state.getNodeWorldCoords(node);
-        state.mapViewport.snapTo(coords.x, coords.y);
+        focusLabNode(state, node.id);
         state.mapViewport.zoom = 0.5;
+        syncZoomSliderFromViewport(state);
         onRedraw?.();
     });
     infoPanel.appendChild(focusBtn);

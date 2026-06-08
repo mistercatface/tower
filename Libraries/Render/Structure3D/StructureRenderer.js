@@ -14,8 +14,6 @@ export class StructureRenderer {
         this.lastWallCount = 0;
         this.sharedEdgesDirty = true;
         this._wallQuery = new SpatialQuery();
-        this._cachedWalls = [];
-        this._lastQueryKey = null;
     }
     getSegmentEdges(seg) {
         if (seg._cachedEdges) return seg._cachedEdges;
@@ -45,7 +43,6 @@ export class StructureRenderer {
             this.lastWalls = walls;
             this.lastWallCount = walls.length;
             this.sharedEdgesDirty = false;
-            this._lastQueryKey = null;
             this.rebuildSharedEdgesAsync(input);
         }
     }
@@ -116,17 +113,10 @@ export class StructureRenderer {
     collectVisibleWalls(input, viewport, px, py) {
         const wallIndex = input.wallSpatialIndex;
         if (!viewport || !wallIndex) {
-            this._lastQueryKey = null;
             const margin = spatialWorldMargin;
             return wallIndex ? wallIndex.collectInBounds(px - margin, py - margin, px + margin, py + margin, this._wallQuery) : input.walls;
         }
-        const rawBounds = getViewQueryBounds(viewport, px, py, this.settings.viewQueryPadPx);
-        const bounds = alignBoundsToHash(rawBounds, wallIndex.cellSize);
-        const queryKey = `${rawBounds.minX}|${rawBounds.minY}|${rawBounds.maxX}|${rawBounds.maxY}|${input.walls.length}`;
-        if (queryKey !== this._lastQueryKey) {
-            this._lastQueryKey = queryKey;
-            this._cachedWalls = wallIndex.collectInBounds(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY, this._wallQuery);
-        }
-        return this._cachedWalls;
+        const bounds = alignBoundsToHash(getViewQueryBounds(viewport, this.settings.viewQueryPadPx, input.canvasBounds), wallIndex.cellSize);
+        return wallIndex.collectInBounds(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY, this._wallQuery);
     }
 }

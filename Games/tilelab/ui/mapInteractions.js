@@ -1,17 +1,9 @@
-import { Viewport } from "../../../Libraries/Viewport/Viewport.js";
 import { setupLabViewportNavigation } from "../../../Tools/Lab/lab-shared.js";
-import { getLabFocus } from "../world/mapFocus.js";
-import { getSurfaceZoom } from "../world/labCamera.js";
+import { clampLabZoom, syncZoomSliderFromViewport } from "./zoomSlider.js";
 import { placePathTestAgent } from "../world/mapPathTest.js";
 import { populateNodeList, renderNodeInspector } from "./mapInspector.js";
 /** @param {import("../TileLabGameState.js").TileLabGameState} state @param {HTMLCanvasElement} canvas */
 function resolveTopologyClickViewport(state, canvas) {
-    if (state.labViewMode === "both") {
-        const focus = getLabFocus(state);
-        const viewport = new Viewport(focus.x, focus.y, getSurfaceZoom());
-        viewport.setCanvasSize(canvas.width, canvas.height);
-        return viewport;
-    }
     state.mapViewport.setCanvasSize(canvas.width, canvas.height);
     return state.mapViewport;
 }
@@ -21,7 +13,8 @@ export function initMapTopologyNavigation(state, onRedraw) {
         getCamera: () => state.mapViewport,
         setCamera: (x, y, zoom) => {
             state.mapViewport.snapTo(x, y);
-            state.mapViewport.zoom = zoom;
+            state.mapViewport.zoom = clampLabZoom(zoom);
+            syncZoomSliderFromViewport(state);
         },
         onUpdate: onRedraw,
     });

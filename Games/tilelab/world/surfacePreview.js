@@ -1,11 +1,10 @@
 import { getGameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.js";
 import { WorldSceneRenderer } from "../../../Libraries/Render/WorldSceneRenderer.js";
 import { drawWorldScene } from "../../../Render/worldSceneDraw.js";
-import { Viewport } from "../../../Libraries/Viewport/Viewport.js";
 import { getSurfaceProfileRevision } from "../../../Libraries/WorldSurface/SurfaceProfileRevision.js";
 import { invalidateWallAtlasKeyMemos } from "../../../Render/game/wallSurfaceInvalidation.js";
 import { setupLabViewportNavigation } from "../../../Tools/Lab/lab-shared.js";
-import { getLabFocus, setLabFocus } from "./mapFocus.js";
+import { clampLabZoom, syncZoomSliderFromViewport } from "../ui/zoomSlider.js";
 import { drawMapLabInWorld } from "./drawMapLabInWorld.js";
 /** @type {WorldSceneRenderer | null} */
 let render3D = null;
@@ -66,16 +65,16 @@ function maybeClearBakeCaches(worldState, profileId) {
  * @param {CanvasRenderingContext2D} ctx
  * @param {HTMLCanvasElement} canvas
  */
-export function drawTilelabSurfaceFrame(ctx, canvas, worldState, profileId, gameZoom, weaponRange, drawOptions = {}) {
+export function drawTilelabSurfaceFrame(ctx, canvas, worldState, profileId, weaponRange, drawOptions = {}) {
     const { showVignette = false, showRangeRing = false, showFocusMarker = true, viewW, viewH, mapLab = null, topologyOptions = null } = drawOptions;
     worldState.phase = "simulation";
     const prevProfileOverride = worldState.surfaceProfileOverride;
     worldState.surfaceProfileOverride = profileId;
     maybeClearBakeCaches(worldState, profileId);
-    const { x: cameraX, y: cameraY } = getLabFocus(worldState);
-    const viewport = new Viewport(cameraX, cameraY, gameZoom);
+    const viewport = worldState.mapViewport;
     viewport.setCanvasSize(viewW, viewH);
-    viewport.zoom = gameZoom;
+    const cameraX = viewport.x;
+    const cameraY = viewport.y;
     const prevCanvasBounds = worldState.canvasBounds;
     worldState.canvasBounds = { width: viewW, height: viewH };
     ctx.save();
@@ -114,18 +113,15 @@ export function invalidateMapPreviewBakes() {
 export function initMapPreviewNavigation(getOptions, handlers = {}) {
     setupLabViewportNavigation("gameCanvas", {
         getCamera: () => {
-            const world = getOptions().worldState;
-            const focus = world ? getLabFocus(world) : { x: 0, y: 0 };
-            return { x: focus.x, y: focus.y, zoom: getOptions().gameZoom ?? 1 };
+            const vp = getOptions().worldState?.mapViewport;
+            return vp ? { x: vp.x, y: vp.y, zoom: vp.zoom || 1 } : { x: 0, y: 0, zoom: 1 };
         },
         setCamera: (x, y, zoom) => {
             const world = getOptions().worldState;
-            if (world) setLabFocus(world, x, y);
-            const zoomInput = document.getElementById("gameZoomInput");
-            if (zoomInput) {
-                zoomInput.value = String(zoom);
-                const valEl = document.getElementById("gameZoomValue");
-                if (valEl) valEl.textContent = zoomInput.value;
+            if (world?.mapViewport) {
+                world.mapViewport.snapTo(x, y);
+                world.mapViewport.zoom = clampLabZoom(zoom);
+                syncZoomSliderFromViewport(world);
             }
         },
         onUpdate: handlers.onViewChange,

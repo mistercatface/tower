@@ -1,15 +1,14 @@
 /**
+ * Visible-world AABB for spatial queries — matches clipToViewport / drawGround bounds.
+ *
  * @param {import("../../Viewport/Viewport.js").Viewport} viewport
- * @param {number} px
- * @param {number} py
  * @param {number} padPx
+ * @param {{ width: number, height: number } | null | undefined} [canvasBounds]
  */
-export function getViewQueryBounds(viewport, px, py, padPx) {
-    const halfW = viewport.cx / viewport.zoom;
-    const halfH = viewport.cy / viewport.zoom;
-    const centerX = viewport.x ?? px;
-    const centerY = viewport.y ?? py;
-    return { minX: centerX - halfW - padPx, minY: centerY - halfH - padPx, maxX: centerX + halfW + padPx, maxY: centerY + halfH + padPx };
+export function getViewQueryBounds(viewport, padPx, canvasBounds = null) {
+    const screenW = canvasBounds?.width ?? viewport.cx * 2;
+    const screenH = canvasBounds?.height ?? viewport.cy * 2;
+    return viewport.getWorldBounds(screenW, screenH, padPx);
 }
 export function alignBoundsToHash(bounds, cellSize) {
     return {

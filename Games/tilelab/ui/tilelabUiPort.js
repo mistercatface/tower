@@ -88,11 +88,11 @@ function bootstrapTilelabUi(state) {
         },
         onStageResize: () => {
             applyToolbarDefaults();
-            syncPreviewZoomToStage();
+            syncPreviewZoomToStage(state);
             renderActiveLabView(state);
         },
     });
-    initToolbarDefaults();
+    initToolbarDefaults(state);
     const animCanvas = document.getElementById("animationPreviewCanvas");
     applySquareCanvasResize(animCanvas, {
         host: document.getElementById("animationPreviewHost"),
@@ -116,18 +116,18 @@ function bootstrapTilelabUi(state) {
         },
         onResize: () => {
             applyToolbarDefaults();
-            syncPreviewZoomToStage();
+            syncPreviewZoomToStage(state);
             renderActiveLabView(state);
         },
     });
     initResizer("resizer", () => {
         applyToolbarDefaults();
-        syncPreviewZoomToStage();
+        syncPreviewZoomToStage(state);
         renderActiveLabView(state);
     });
     registerEditorProfiles(state).then(() => {
         applyToolbarDefaults();
-        syncPreviewZoomToStage();
+        syncPreviewZoomToStage(state);
         syncMapInspectorAfterRegen(state, () => renderActiveLabView(state));
         refreshPreview(state);
     });

@@ -9,6 +9,7 @@ export function renderMapTopologyView(state, viewport, options, selectedNodeId, 
     const canvas = document.getElementById("mapPreview");
     const size = prepareGameCanvas(canvas, stage);
     if (!size || !canvas) return;
+    viewport.setCanvasSize(size.width, size.height);
     renderMapView(canvas.getContext("2d"), state, {
         ...createTopologyMapViewConfig(options, { viewport, selectedNodeId }),
         width: size.width,

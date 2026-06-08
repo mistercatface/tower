@@ -1,4 +1,3 @@
-import { syncCamerasForViewMode } from "../world/labCamera.js";
 /** @typedef {"surface" | "topology" | "both"} LabViewMode */
 /** @param {LabViewMode | string} mode */
 export function showsSurfaceView(mode) {
@@ -45,9 +44,7 @@ export function bindViewModeControls(state, onChange) {
     document.querySelectorAll('input[name="labViewMode"]').forEach((el) => {
         el.addEventListener("change", () => {
             if (!el.checked) return;
-            const nextMode = parseLabViewMode(el.value);
-            if (nextMode !== state.labViewMode) syncCamerasForViewMode(state, nextMode);
-            state.labViewMode = nextMode;
+            state.labViewMode = parseLabViewMode(el.value);
             applyLabViewMode(state);
             onChange();
         });

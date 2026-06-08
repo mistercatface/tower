@@ -2,38 +2,34 @@ import { roguelikeProceduralDesign } from "../../../Libraries/WorldGen/presets/r
 import { getDefaultSimulationZoom } from "../../../Render/SimulationViewport.js";
 import { LAB_PREVIEW_RANGE } from "../config.js";
 import { focusLabNode, generateTilelabMap } from "../world/mapWorld.js";
+import { applyZoomSliderToViewport, syncZoomSliderFromViewport } from "./zoomSlider.js";
 import { invalidateMapPreviewBakes } from "../world/surfacePreview.js";
-
 export function readControls(state) {
+    applyZoomSliderToViewport(state);
     return {
         seed: Number(document.getElementById("seedInput")?.value) || 0,
         mapSeed: Number(document.getElementById("mapSeedInput")?.value) || 0,
-        gameZoom: Number(document.getElementById("gameZoomInput")?.value) || 1,
+        gameZoom: state.mapViewport.zoom,
         weaponRange: LAB_PREVIEW_RANGE,
         showRangeRing: document.getElementById("showRangeRingInput")?.checked ?? true,
         showVignette: document.getElementById("showVignetteInput")?.checked ?? false,
         state,
     };
 }
-
-export function syncPreviewZoomToStage() {
+/** @param {import("../TileLabGameState.js").TileLabGameState | null | undefined} [state] */
+export function syncPreviewZoomToStage(state) {
     const stage = document.getElementById("mapStage");
     const rect = stage?.getBoundingClientRect();
     const viewW = Math.max(320, Math.floor(rect?.width ?? 800));
     const viewH = Math.max(240, Math.floor(rect?.height ?? 600));
     const zoom = getDefaultSimulationZoom(viewW, viewH, LAB_PREVIEW_RANGE, LAB_PREVIEW_RANGE);
-    const zoomEl = document.getElementById("gameZoomInput");
-    if (zoomEl) {
-        zoomEl.value = String(zoom.toFixed(2));
-        document.getElementById("gameZoomValue").textContent = zoomEl.value;
-    }
+    if (state?.mapViewport) state.mapViewport.zoom = zoom;
+    syncZoomSliderFromViewport(state);
 }
-
 export function applyToolbarDefaults() {
     const rangeMeta = document.getElementById("rangeMeta");
     if (rangeMeta) rangeMeta.textContent = `range ${LAB_PREVIEW_RANGE}`;
 }
-
 export function initPresetSelect(profileIds) {
     const select = document.getElementById("presetSelect");
     if (!select) return;
@@ -45,13 +41,11 @@ export function initPresetSelect(profileIds) {
     }
     select.value = roguelikeProceduralDesign.surfaceProfileId;
 }
-
-export function initToolbarDefaults() {
+export function initToolbarDefaults(state) {
     document.getElementById("mapSeedInput").value = "42";
     document.getElementById("seedInput").value = "42";
-    syncPreviewZoomToStage();
+    syncPreviewZoomToStage(state);
 }
-
 /**
  * @param {import("../TileLabGameState.js").TileLabGameState} state
  * @param {{ mapSeed: number, floorSeed: number }} ctrl
@@ -70,9 +64,8 @@ export function syncTilelabWorld(state, ctrl, forceRegen = false) {
         invalidateMapPreviewBakes();
     }
     const nodeId = Number(document.getElementById("mapNodeSelect")?.value) || 0;
-    focusLabNode(state, nodeId);
+    if (state.currentNodeId !== nodeId) focusLabNode(state, nodeId);
 }
-
 /**
  * @param {{ onRefresh: () => void, onStageResize: () => void }} handlers
  */

@@ -3,7 +3,6 @@ import { getSurfaceProfileProvider } from "../../../Libraries/Procedural/Surface
 import { invalidateProfileScratch } from "../../../Libraries/WorldSurface/ProfileBakeResolver.js";
 import { TileWorkerCoordinator } from "../../../Libraries/WorldSurface/TileWorkerCoordinator.js";
 import { invalidateWallAtlasKeyMemos } from "../../../Render/game/wallSurfaceInvalidation.js";
-import { getLabFocus } from "../world/mapFocus.js";
 import { readMapControls } from "./mapInspector.js";
 import { drawTilelabSurfaceFrame, invalidateMapPreviewBakes, prepareGameCanvas } from "../world/surfacePreview.js";
 import { getLabPreviewProfile, RUNTIME_LAB_PROFILE_ID } from "./profile/ProfileEditor.js";
@@ -36,7 +35,7 @@ export function renderTilelabPreview(state, ctrl) {
     const canvas = document.getElementById("gameCanvas");
     const size = prepareGameCanvas(canvas, stage);
     if (!size || !canvas) return;
-    drawTilelabSurfaceFrame(canvas.getContext("2d"), canvas, state, RUNTIME_LAB_PROFILE_ID, ctrl.gameZoom, ctrl.weaponRange, {
+    drawTilelabSurfaceFrame(canvas.getContext("2d"), canvas, state, RUNTIME_LAB_PROFILE_ID, ctrl.weaponRange, {
         showVignette: ctrl.showVignette,
         showRangeRing: ctrl.showRangeRing,
         viewW: size.width,
@@ -47,10 +46,10 @@ export function renderTilelabPreview(state, ctrl) {
     const gameMeta = document.getElementById("gameMetaLine");
     if (gameMeta) {
         const node = state.getCurrentMapNode();
-        const focus = getLabFocus(state);
+        const { mapViewport } = state;
         gameMeta.textContent =
             `node ${state.currentNodeId} ${node?.strategy ?? ""} · map ${state.mapSeed} · ` +
-            `focus ${Math.round(focus.x)},${Math.round(focus.y)} · ` +
-            `zoom ${ctrl.gameZoom.toFixed(2)} · range ${ctrl.weaponRange} · WASD`;
+            `focus ${Math.round(mapViewport.x)},${Math.round(mapViewport.y)} · ` +
+            `zoom ${mapViewport.zoom.toFixed(2)} · range ${ctrl.weaponRange} · WASD`;
     }
 }
