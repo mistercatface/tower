@@ -13,6 +13,12 @@
  * @property {PairFilterConfig} projectileHitPickup
  */
 /**
+ * World-space focus for kinematics tilt and simulation LOD (not necessarily a playable actor).
+ *
+ * @typedef {object} ViewPort
+ * @property {(state: object) => { x: number, y: number } | null} getViewCenter
+ */
+/**
  * @typedef {object} TargetingPort
  * @property {(actor: object) => string | undefined} inferFaction
  * @property {(a: object, b: object) => boolean} areHostile
@@ -122,6 +128,7 @@
  * @property {SimulationPort} simulationPort — phase pipeline (`runTick`, `onEnter`, …)
  * @property {UiPort} uiPort — DOM chrome mount + HUD/panel updates
  * @property {TargetingPort} [targeting] — defaults to noop when omitted
+ * @property {ViewPort} [viewPort] — defaults to noop when omitted
  * @property {RenderPorts} render
  * @property {WorldGenPort} worldGen
  * @property {RunBootstrapPort} runBootstrapPort — new-run entity/world setup after `generateWorld`

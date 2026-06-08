@@ -15,6 +15,7 @@ import { syncLabScreenCanvasBounds } from "./ui/labCanvas.js";
 import { registerPickupStates } from "../../Entities/PickupStates.js";
 import { combatPickupStates } from "../../Entities/pickupCombatStates.js";
 import { tilelabInteractionPairs } from "./tilelabInteraction.js";
+import { tilelabViewPort } from "./viewPort.js";
 /** @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition */
 export const tilelabGame = {
     id: "tilelab",
@@ -32,6 +33,7 @@ export const tilelabGame = {
     proceduralDesign: roguelikeProceduralDesign,
     runBootstrapPort: layoutOnlyRunBootstrap,
     runScenePort: tilelabRunScenePort,
+    viewPort: tilelabViewPort,
     registerListeners: registerTilelabListeners,
     onCanvasResize() {
         const state = getGameState();

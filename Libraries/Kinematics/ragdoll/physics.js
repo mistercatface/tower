@@ -179,11 +179,11 @@ export function applyRagdollImpulse(ragdoll, forceX, forceY, forceZ, hitPart, ri
     }
     processRagdollGoreHit(ragdoll, forceX, forceY, forceZ, hitPart, damageVal, offsetT, rig);
 }
-export function updateRagdoll(ragdoll, dtSec, worldX, worldY, rotation, wallChecker, playerX, playerY, rig) {
+export function updateRagdoll(ragdoll, dtSec, worldX, worldY, rotation, wallChecker, viewCenterX, viewCenterY, rig) {
     if (!ragdoll) return { shiftX: 0, shiftY: 0 };
-    const distToPlayer = Math.abs(worldX - playerX) + Math.abs(worldY - playerY);
-    if (distToPlayer > 400 && ragdoll.sleepTimer > 0.1) return { shiftX: 0, shiftY: 0 };
-    if (distToPlayer > 240 && Math.random() > 0.5) return { shiftX: 0, shiftY: 0 };
+    const distToView = Math.abs(worldX - viewCenterX) + Math.abs(worldY - viewCenterY);
+    if (distToView > 400 && ragdoll.sleepTimer > 0.1) return { shiftX: 0, shiftY: 0 };
+    if (distToView > 240 && Math.random() > 0.5) return { shiftX: 0, shiftY: 0 };
     if (ragdoll.settled) {
         ragdoll.sleepTimer += dtSec;
         return { shiftX: 0, shiftY: 0 };

@@ -5,6 +5,7 @@ import { towerInput } from "./input.js";
 import { isTowerWorldScene } from "./towerPhase.js";
 import { towerCombatPort } from "./combatPort.js";
 import * as towerTargeting from "./targeting.js";
+import { towerViewPort } from "./viewPort.js";
 import { towerRunScenePort } from "./runScenePort.js";
 import { registerTowerEntities } from "./config/entities.js";
 import { applyInspectManifestToProps } from "./config/inspectManifest.js";
@@ -32,6 +33,7 @@ export const towerGame = {
     simulationPort: towerSimulation,
     uiPort: towerUiPort,
     targeting: towerTargeting,
+    viewPort: towerViewPort,
     render: towerRenderPorts,
     worldGen: createRoguelikeWorldGenPort(),
     runBootstrapPort: createTowerRunBootstrapPort(),

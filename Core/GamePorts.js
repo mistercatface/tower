@@ -1,12 +1,13 @@
 import { PairFilter } from "../Libraries/Interaction/PairFilter.js";
 import { createDefaultInteractionPairs } from "../Libraries/Interaction/defaultPhysicsPairs.js";
 import { BaseGeneratorStrategies } from "../Generator/GeneratorStrategies.js";
-import { NOOP_COMBAT_PORT, NOOP_TARGETING_PORT } from "../Libraries/Ports/noopPorts.js";
+import { NOOP_COMBAT_PORT, NOOP_TARGETING_PORT, NOOP_VIEW_PORT } from "../Libraries/Ports/noopPorts.js";
 import { getActiveGameDefinition } from "./ActiveGameDefinition.js";
 /** @typedef {import("./GameDefinitionTypes.js").InteractionPairsPort} InteractionPairsPort */
 /** @typedef {import("./GameDefinitionTypes.js").SimulationPort} SimulationPort */
 /** @typedef {import("./GameDefinitionTypes.js").UiPort} UiPort */
 /** @typedef {import("./GameDefinitionTypes.js").TargetingPort} TargetingPort */
+/** @typedef {import("./GameDefinitionTypes.js").ViewPort} ViewPort */
 /** @typedef {import("./GameDefinitionTypes.js").RenderPorts} RenderPorts */
 /** @typedef {import("./GameDefinitionTypes.js").WorldGenPort} WorldGenPort */
 /** @typedef {import("./GameDefinitionTypes.js").RunBootstrapPort} RunBootstrapPort */
@@ -38,6 +39,14 @@ export function getUiPort() {
 /** @returns {TargetingPort} */
 export function getTargeting() {
     return requireGameDefinition().targeting ?? NOOP_TARGETING_PORT;
+}
+/** @returns {ViewPort} */
+export function getViewPort() {
+    return requireGameDefinition().viewPort ?? NOOP_VIEW_PORT;
+}
+/** @param {object} state */
+export function getViewCenter(state) {
+    return getViewPort().getViewCenter(state);
 }
 /** @returns {RenderPorts} */
 export function getRenderPorts() {

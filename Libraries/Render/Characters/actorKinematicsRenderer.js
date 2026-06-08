@@ -2,7 +2,7 @@ import { LIBRARY_KINEMATICS_PIXEL_SIZE as kinematicsPixelSize } from "../../../L
 import { blitCenteredSprite } from "../../Canvas/QuantizedSpriteCache.js";
 import { CAMERA_HEIGHT } from "../../Spatial/iso/IsometricProjection.js";
 import { createKinematicsBundle } from "../../Kinematics/createKinematicsBundle.js";
-import { getRenderPorts } from "../../../Core/GamePorts.js";
+import { getRenderPorts, getViewCenter } from "../../../Core/GamePorts.js";
 export class ActorKinematicsRenderer {
     constructor(radius) {
         const displayDiameter = radius * 4;
@@ -36,8 +36,8 @@ export function clearActorKinematics(actor, radius = actor.radius) {
 }
 export function resolveKinematicsCamera(actor, state) {
     if (actor && typeof actor.getKinematicsCamera === "function") return actor.getKinematicsCamera(state);
-    if (state?.player) return { x: state.player.x, y: state.player.y };
-    if (state?.mapViewport) return { x: state.mapViewport.x, y: state.mapViewport.y };
+    const view = state ? getViewCenter(state) : null;
+    if (view) return view;
     return { x: actor?.x ?? 0, y: actor?.y ?? 0 };
 }
 export function captureActorRigForRagdoll(actor, camera, radius = actor.radius) {
@@ -62,8 +62,7 @@ export function renderActorKinematicsBody(ctx, actor, camera, radius = actor.rad
 }
 export function renderCorpseKinematicsBody(ctx, corpse, state) {
     const kinematics = getKinematicsRenderer(corpse.radius);
-    const player = state?.player;
-    const camera = player ? { x: player.x, y: player.y } : resolveKinematicsCamera(corpse.actor, state);
+    const camera = resolveKinematicsCamera(corpse, state);
     const frame = kinematics.bundle.resolveCorpseFrame(corpse, camera);
     renderKinematicsBody(ctx, { ...frame, radius: corpse.radius, opacity: corpse.opacity });
 }

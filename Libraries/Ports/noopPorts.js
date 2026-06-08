@@ -1,6 +1,7 @@
 import { createFactionResolver } from "../Interaction/createFactionResolver.js";
 /** @typedef {import("../../Core/GameDefinitionTypes.js").CombatPort} CombatPort */
 /** @typedef {import("../../Core/GameDefinitionTypes.js").TargetingPort} TargetingPort */
+/** @typedef {import("../../Core/GameDefinitionTypes.js").ViewPort} ViewPort */
 const { resolveFaction: noopInferFaction, areHostile: noopAreHostile } = createFactionResolver({
     resolveFaction(actor) {
         if (actor.faction) return actor.faction;
@@ -29,5 +30,11 @@ export const NOOP_TARGETING_PORT = {
     },
     isValidTurretTarget() {
         return false;
+    },
+};
+/** @type {ViewPort} */
+export const NOOP_VIEW_PORT = {
+    getViewCenter() {
+        return null;
     },
 };
