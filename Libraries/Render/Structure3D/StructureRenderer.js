@@ -63,6 +63,7 @@ export class StructureRenderer {
         const textureEnabled = options.textureEnabled !== false;
         drawProjectedWallFace(ctx, p1, p2, px, py, wallColor, input.worldSurfaces, input.surfaceBake, {
             viewport,
+            worldBounds: options.worldBounds,
             damageAlpha,
             textureEnabled,
             cacheObj,

@@ -22,7 +22,6 @@
  */
 /**
  * @typedef {Object} WorldSceneDrawOptions
- * @property {boolean} [fastNav]
  * @property {boolean} [textureEnabled]
  */
 export {};

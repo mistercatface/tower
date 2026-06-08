@@ -32,7 +32,6 @@ export class WorldSceneRenderer {
     drawDebrisProps(ctx, input, viewport, options = {}) {
         const px = input.viewer.x;
         const py = input.viewer.y;
-        if (options.fastNav === true) return;
         ctx.save();
         if (viewport) clipToViewport(ctx, viewport, input.canvasBounds);
         for (let i = 0; i < input.pickups.length; i++) {
@@ -51,9 +50,8 @@ export class WorldSceneRenderer {
      * @param {import("../Viewport/Viewport.js").Viewport | null} viewport
      * @param {number} px
      * @param {number} py
-     * @param {boolean} fastNav
      */
-    _appendVisibleWalls(input, viewport, px, py, fastNav) {
+    _appendVisibleWalls(input, viewport, px, py) {
         const visibleObjects = this._visibleObjects;
         const candidateWalls = this.structure.collectVisibleWalls(input, viewport, px, py);
         for (let i = 0; i < candidateWalls.length; i++) {
@@ -68,10 +66,8 @@ export class WorldSceneRenderer {
      * @param {import("../Viewport/Viewport.js").Viewport | null} viewport
      * @param {number} px
      * @param {number} py
-     * @param {boolean} fastNav
      */
-    _appendVisible3dProps(input, viewport, px, py, fastNav) {
-        if (fastNav) return;
+    _appendVisible3dProps(input, viewport, px, py) {
         const visibleObjects = this._visibleObjects;
         if (input.pickups.length > 0)
             for (let i = 0; i < input.pickups.length; i++) {
@@ -101,9 +97,9 @@ export class WorldSceneRenderer {
     drawStructureOnly(ctx, input, viewport, options = {}) {
         const px = input.viewer.x;
         const py = input.viewer.y;
-        const fastNav = options.fastNav === true;
-        const wallDrawOptions = { textureEnabled: options.textureEnabled !== false && !fastNav };
-        if (!fastNav) this.structure.updateSharedEdges(input);
+        const worldBounds = viewport ? viewport.getWorldBounds(viewport.cx * 2, viewport.cy * 2, this.settings.viewPaddingPx) : null;
+        const wallDrawOptions = { textureEnabled: options.textureEnabled !== false, worldBounds };
+        this.structure.updateSharedEdges(input);
         ctx.save();
         if (viewport) clipToViewport(ctx, viewport, input.canvasBounds);
         const candidateWalls = this.structure.collectVisibleWalls(input, viewport, px, py);
@@ -123,12 +119,11 @@ export class WorldSceneRenderer {
     drawDynamicPropsOnly(ctx, input, viewport, options = {}) {
         const px = input.viewer.x;
         const py = input.viewer.y;
-        const fastNav = options.fastNav === true;
         ctx.save();
         if (viewport) clipToViewport(ctx, viewport, input.canvasBounds);
         const visibleProps = this._visibleObjects;
         visibleProps.length = 0;
-        this._appendVisible3dProps(input, viewport, px, py, fastNav);
+        this._appendVisible3dProps(input, viewport, px, py);
         visibleProps.sort((a, b) => b._distSq - a._distSq);
         for (let i = 0; i < visibleProps.length; i++) {
             const obj = visibleProps[i];
@@ -147,15 +142,15 @@ export class WorldSceneRenderer {
     draw3DBuildings(ctx, input, viewport, options = {}) {
         const px = input.viewer.x;
         const py = input.viewer.y;
-        const fastNav = options.fastNav === true;
-        const wallDrawOptions = { textureEnabled: options.textureEnabled !== false && !fastNav };
-        if (!fastNav) this.structure.updateSharedEdges(input);
+        const worldBounds = viewport ? viewport.getWorldBounds(viewport.cx * 2, viewport.cy * 2, this.settings.viewPaddingPx) : null;
+        const wallDrawOptions = { textureEnabled: options.textureEnabled !== false, worldBounds };
+        this.structure.updateSharedEdges(input);
         ctx.save();
         if (viewport) clipToViewport(ctx, viewport, input.canvasBounds);
         const visibleObjects = this._visibleObjects;
         visibleObjects.length = 0;
-        this._appendVisibleWalls(input, viewport, px, py, fastNav);
-        this._appendVisible3dProps(input, viewport, px, py, fastNav);
+        this._appendVisibleWalls(input, viewport, px, py);
+        this._appendVisible3dProps(input, viewport, px, py);
         visibleObjects.sort((a, b) => b._distSq - a._distSq);
         for (let i = 0; i < visibleObjects.length; i++) {
             const obj = visibleObjects[i];
