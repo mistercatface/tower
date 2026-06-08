@@ -1,5 +1,6 @@
 import { SharedGameState } from "../../GameState/SharedGameState.js";
 import { createRoguelikeNavRuntime } from "../../Libraries/Navigation/createRoguelikeNavRuntime.js";
+import { createRoguelikeMapSession } from "../../Libraries/WorldGen/session/index.js";
 import { Viewport } from "../../Libraries/Viewport/Viewport.js";
 export class TileLabGameState extends SharedGameState {
     constructor() {
@@ -10,6 +11,6 @@ export class TileLabGameState extends SharedGameState {
         this._pendingProfileRefresh = false;
         this.labShowTopologyOverlay = false;
         this.mapViewport = new Viewport(0, 0, 1);
-        this.mapLab = { selectedNodeId: null, playerPos: null, targetPos: null, currentPath: null, currentAbstractPath: null };
+        this.roguelikeMapSession = createRoguelikeMapSession();
     }
 }

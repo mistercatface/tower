@@ -13,4 +13,4 @@ export {
 } from "./phases.js";
 export { createRoguelikeWorldGenPort, buildRoguelikeMapPhases, ROGUELIKE_MAP_TOPOLOGY, roguelikeProceduralDesign } from "./presets/roguelikeMap.js";
 export { createSingleArenaWorldGenPort } from "./presets/singleArena.js";
-export { regenerateRoguelikeMap, resetPathTestSession, computePathTestSession, placePathTestAgentSession } from "./session/index.js";
+export { regenerateRoguelikeMap, resetPathTestSession, computePathTestSession, placePathTestAgentSession, createRoguelikeMapSession, getRoguelikeMapSession } from "./session/index.js";

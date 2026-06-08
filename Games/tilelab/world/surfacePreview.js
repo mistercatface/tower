@@ -52,7 +52,7 @@ function maybeClearBakeCaches(worldState, profileId) {
  * @param {HTMLCanvasElement} canvas
  */
 export function drawTilelabSurfaceFrame(ctx, canvas, worldState, profileId, weaponRange, drawOptions = {}) {
-    const { showVignette = false, showRangeRing = false, showFocusMarker = true, mapLab = null, topologyOptions = null } = drawOptions;
+    const { showVignette = false, showRangeRing = false, showFocusMarker = true, topologySession = null, topologyOptions = null } = drawOptions;
     const size = syncLabScreenCanvasBounds(worldState);
     if (!size) return;
     const viewW = size.width;
@@ -73,7 +73,7 @@ export function drawTilelabSurfaceFrame(ctx, canvas, worldState, profileId, weap
     ctx.save();
     viewport.apply(ctx);
     drawWorldScene(ctx, { state: worldState, viewport, worldSceneRenderer: getLabRender3D(), canvas, worldRenderInput, phases: ["ground", "buildings", "roofs", "bloom"] });
-    if (mapLab && topologyOptions) drawTopologyLayer(ctx, worldState, viewport, topologyOptions, mapLab, { overlay: true });
+    if (topologySession && topologyOptions) drawTopologyLayer(ctx, worldState, viewport, topologyOptions, topologySession, { overlay: true });
     worldState.surfaceProfileOverride = prevProfileOverride;
     if (showRangeRing) drawWeaponRangeRing(ctx, cameraX, cameraY, weaponRange);
     if (showFocusMarker) drawFocusMarker(ctx, cameraX, cameraY);

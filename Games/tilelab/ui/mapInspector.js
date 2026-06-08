@@ -22,7 +22,7 @@ export function populateNodeList(state, onRedraw) {
     listPanel.innerHTML = "";
     for (const node of [...state.mapNodes].sort((a, b) => a.layer - b.layer || a.id - b.id)) {
         const item = document.createElement("div");
-        item.className = `node-row${node.id === state.mapLab.selectedNodeId ? " selected" : ""}`;
+        item.className = `node-row${node.id === state.roguelikeMapSession.selectedNodeId ? " selected" : ""}`;
         const themeColor = node.wallTheme ? `rgb(${node.wallTheme.r}, ${node.wallTheme.g}, ${node.wallTheme.b})` : "#fff";
         item.innerHTML = `
             <span class="node-id">#${node.id}</span>
@@ -30,7 +30,7 @@ export function populateNodeList(state, onRedraw) {
             <span class="node-strategy">${node.strategy ?? "Unknown"}</span>
             <span class="color-badge" style="background-color: ${themeColor}"></span>`;
         item.addEventListener("click", () => {
-            state.mapLab.selectedNodeId = node.id;
+            state.roguelikeMapSession.selectedNodeId = node.id;
             populateNodeList(state, onRedraw);
             renderNodeInspector(state, onRedraw);
             onRedraw?.();
@@ -42,11 +42,11 @@ export function populateNodeList(state, onRedraw) {
 export function renderNodeInspector(state, onRedraw) {
     const infoPanel = document.getElementById("nodeInfoPanel");
     if (!infoPanel) return;
-    if (state.mapLab.selectedNodeId == null) {
+    if (state.roguelikeMapSession.selectedNodeId == null) {
         infoPanel.textContent = "Select a node from the map or list.";
         return;
     }
-    const node = state.getMapNode(state.mapLab.selectedNodeId);
+    const node = state.getMapNode(state.roguelikeMapSession.selectedNodeId);
     if (!node) return;
     infoPanel.innerHTML = "";
     const grid = document.createElement("div");

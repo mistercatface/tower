@@ -39,7 +39,7 @@ export function renderTilelabPreview(state, ctrl) {
     drawTilelabSurfaceFrame(canvas.getContext("2d"), canvas, state, RUNTIME_LAB_PROFILE_ID, ctrl.weaponRange, {
         showVignette: ctrl.showVignette,
         showRangeRing: ctrl.showRangeRing,
-        mapLab: state.labShowTopologyOverlay ? state.mapLab : null,
+        topologySession: state.labShowTopologyOverlay ? state.roguelikeMapSession : null,
         topologyOptions: state.labShowTopologyOverlay ? readMapControls() : null,
     });
     const gameMeta = document.getElementById("gameMetaLine");

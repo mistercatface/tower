@@ -1,26 +1,26 @@
 import { resolveRepositionTarget } from "../../Pathfinding/PathClearance.js";
+import { getRoguelikeMapSession } from "./roguelikeMapSession.js";
 const DEFAULT_PATH_AGENT_RADIUS = 8;
 /**
  * @typedef {Object} PathTestStatus
  * @property {string} message
  * @property {boolean} isError
  */
-/**
- * @param {object} state
- */
+/** @param {object} state */
 export function resetPathTestSession(state) {
+    const session = getRoguelikeMapSession(state);
     const startNode = state.getMapNode(0);
     if (startNode) {
-        state.mapLab.playerPos = state.getNodeWorldCoords(startNode);
+        session.playerPos = state.getNodeWorldCoords(startNode);
         const nextId = startNode.connections[0];
         const nextNode = state.getMapNode(nextId);
-        state.mapLab.targetPos = nextNode ? state.getNodeWorldCoords(nextNode) : { x: state.mapLab.playerPos.x + 300, y: state.mapLab.playerPos.y };
+        session.targetPos = nextNode ? state.getNodeWorldCoords(nextNode) : { x: session.playerPos.x + 300, y: session.playerPos.y };
     } else {
-        state.mapLab.playerPos = { x: 0, y: 0 };
-        state.mapLab.targetPos = { x: 300, y: 0 };
+        session.playerPos = { x: 0, y: 0 };
+        session.targetPos = { x: 300, y: 0 };
     }
-    state.mapLab.currentPath = null;
-    state.mapLab.currentAbstractPath = null;
+    session.currentPath = null;
+    session.currentAbstractPath = null;
 }
 /**
  * @param {object} state
@@ -28,30 +28,31 @@ export function resetPathTestSession(state) {
  * @returns {PathTestStatus}
  */
 export function computePathTestSession(state, { enabled = true } = {}) {
+    const session = getRoguelikeMapSession(state);
     if (!enabled) {
-        state.mapLab.currentPath = null;
-        state.mapLab.currentAbstractPath = null;
+        session.currentPath = null;
+        session.currentAbstractPath = null;
         return { message: "Path test is disabled.", isError: false };
     }
-    const { playerPos, targetPos } = state.mapLab;
+    const { playerPos, targetPos } = session;
     if (!playerPos || !targetPos) {
-        state.mapLab.currentPath = null;
-        state.mapLab.currentAbstractPath = null;
+        session.currentPath = null;
+        session.currentAbstractPath = null;
         return { message: "Need both player and target positions.", isError: false };
     }
     try {
         const result = state.hierarchicalNavigator.computePath(playerPos.x, playerPos.y, targetPos.x, targetPos.y);
-        state.mapLab.currentPath = result?.waypoints ?? null;
-        state.mapLab.currentAbstractPath = result?.abstractNodes ?? null;
-        if (state.mapLab.currentPath) {
-            const hops = state.mapLab.currentAbstractPath ? state.mapLab.currentAbstractPath.length : 0;
-            return { message: `Path found: ${state.mapLab.currentPath.length} waypoints, ${hops} abstract nodes.`, isError: false };
+        session.currentPath = result?.waypoints ?? null;
+        session.currentAbstractPath = result?.abstractNodes ?? null;
+        if (session.currentPath) {
+            const hops = session.currentAbstractPath ? session.currentAbstractPath.length : 0;
+            return { message: `Path found: ${session.currentPath.length} waypoints, ${hops} abstract nodes.`, isError: false };
         }
         return { message: "No path found (blocked or too far).", isError: true };
     } catch (err) {
         console.error(err);
-        state.mapLab.currentPath = null;
-        state.mapLab.currentAbstractPath = null;
+        session.currentPath = null;
+        session.currentAbstractPath = null;
         return { message: "Error calculating path.", isError: true };
     }
 }
@@ -66,7 +67,8 @@ export function computePathTestSession(state, { enabled = true } = {}) {
 export function placePathTestAgentSession(state, worldX, worldY, role, agentRadius = DEFAULT_PATH_AGENT_RADIUS) {
     const target = resolveRepositionTarget(state.obstacleGrid, worldX, worldY, agentRadius);
     if (!target) return { ok: false, status: { message: `Cannot set ${role}: cell is blocked or has insufficient wall clearance.`, isError: true } };
-    if (role === "player") state.mapLab.playerPos = { x: target.x, y: target.y };
-    else state.mapLab.targetPos = { x: target.x, y: target.y };
+    const session = getRoguelikeMapSession(state);
+    if (role === "player") session.playerPos = { x: target.x, y: target.y };
+    else session.targetPos = { x: target.x, y: target.y };
     return { ok: true };
 }

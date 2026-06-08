@@ -28,7 +28,7 @@ export function initMapTopologyInteractions(state, onRedraw) {
                 }
             }
             if (nearestNode) {
-                state.mapLab.selectedNodeId = nearestNode.id;
+                state.roguelikeMapSession.selectedNodeId = nearestNode.id;
                 populateNodeList(state, onRedraw);
                 renderNodeInspector(state, onRedraw);
                 onRedraw();
