@@ -1,6 +1,6 @@
 import { applyZoomControl, clampZoom, directZoomMapping } from "../../../Libraries/Viewport/index.js";
 import { getDefaultSimulationZoom } from "../../../Render/SimulationViewport.js";
-import { setupLabViewportNavigation } from "../../../Tools/Lab/lab-shared.js";
+import { setupLabViewportNavigation } from "./lab-shared.js";
 import { LAB_PREVIEW_RANGE } from "../config.js";
 import { syncLabScreenCanvasBounds } from "./labCanvas.js";
 export const LAB_ZOOM_MIN = 0.25;

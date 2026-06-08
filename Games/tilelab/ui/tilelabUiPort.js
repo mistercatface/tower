@@ -1,7 +1,7 @@
 import { listShippedSurfaceProfileIds } from "../../../Config/procedural/profiles.js";
 import { getUiRoot } from "../../../UI/Core/uiRoot.js";
 import { applySquareCanvasResize } from "../../../Libraries/Canvas/index.js";
-import { initResizer } from "../../../Tools/Lab/lab-shared.js";
+import { initResizer } from "./lab-shared.js";
 import { initAnimationPreview } from "./LabAnimationPreview.js";
 import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEditor.js";
 import { registerEditorProfiles, renderTilelabPreview, syncRuntimeLabProfile } from "./preview.js";

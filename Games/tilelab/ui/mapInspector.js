@@ -1,6 +1,6 @@
 import { tilelabMapTopology } from "../mapTopology.js";
 import { getWorldGen } from "../../../Core/GamePorts.js";
-import { SliderControl } from "../../../Tools/Lab/ui/controls/SliderControl.js";
+import { SliderControl } from "./controls/SliderControl.js";
 import { calculatePathTest } from "../world/mapPathTest.js";
 import { focusLabNode, generateTilelabMap, listLabMapNodes, selectLabNode } from "../world/mapWorld.js";
 import { setLabCamera } from "./labViewport.js";

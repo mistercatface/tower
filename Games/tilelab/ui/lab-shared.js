@@ -30,9 +30,8 @@ export function setupLabViewportNavigation(canvasId, { getCamera, setCamera, onU
     };
     const moveKeys = new Set();
     let moveRaf = null;
-    // Use a fixed speed scalar for panning WASD.
     const MOVE_SPEED_SCALE = 1;
-    const baseSpeed = 150; // equivalent to player speed
+    const baseSpeed = 150;
     const moveSpeed = () => (baseSpeed * MOVE_SPEED_SCALE) / (getCamera().zoom || 1);
     const applyDelta = (dx, dy) => {
         const cam = getCamera();
