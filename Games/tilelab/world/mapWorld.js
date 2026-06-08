@@ -1,9 +1,8 @@
 import { gridSettings } from "../../../Config/Config.js";
 import { generateWorld, getWorldGen } from "../../../Core/GamePorts.js";
-import { buildGameMapRenderCaches, buildTopologyMapRenderCaches } from "../../../Libraries/Render/map/MapRenderCache.js";
-import { withSeededRandom } from "../../../Libraries/Random/index.js";
-import { calculatePathTest, resetPathTestPositions } from "./mapPathTest.js";
+import { regenerateRoguelikeMap } from "../../../Libraries/WorldGen/session/index.js";
 import { syncLabScreenCanvasBounds } from "../ui/labCanvas.js";
+import { calculatePathTest } from "./mapPathTest.js";
 export const mapGenCanvasBounds = { width: gridSettings.width, height: gridSettings.height };
 export function populateNodeSelect(state) {
     const select = document.getElementById("mapNodeSelect");
@@ -26,21 +25,10 @@ export function listLabMapNodes(state) {
  * @param {{ mapSeed: number, floorSeed: number }} seeds
  */
 export function generateTilelabMap(state, { mapSeed, floorSeed }) {
-    state.canvasBounds = { ...mapGenCanvasBounds };
-    withSeededRandom(mapSeed, () => {
-        generateWorld(state);
-    });
+    regenerateRoguelikeMap(state, { mapSeed, floorSeed, canvasBounds: mapGenCanvasBounds, generateWorld });
     syncLabScreenCanvasBounds(state);
-    buildGameMapRenderCaches(state);
-    buildTopologyMapRenderCaches(state);
-    state.worldSurfaceSeed = floorSeed;
-    state.worldSurfaces.clear();
-    state.mapSeed = mapSeed;
-    state.floorSeed = floorSeed;
-    state.mapLab.selectedNodeId = null;
     const bounds = state.obstacleGrid;
     if (bounds?.minX !== undefined) state.mapViewport.snapTo((bounds.minX + bounds.maxX) / 2, (bounds.minY + bounds.maxY) / 2);
-    resetPathTestPositions(state);
     calculatePathTest(state);
     focusLabNode(state, Number(document.getElementById("mapNodeSelect")?.value) || 0);
     populateNodeSelect(state);

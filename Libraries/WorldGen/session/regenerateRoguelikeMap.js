@@ -1,0 +1,24 @@
+import { buildGameMapRenderCaches, buildTopologyMapRenderCaches } from "../../Render/map/MapRenderCache.js";
+import { withSeededRandom } from "../../Random/index.js";
+import { resetPathTestSession } from "./pathTestSession.js";
+/**
+ * Headless roguelike map regeneration: world gen, render caches, and session reset.
+ * Does not touch DOM, viewport, or path-test UI.
+ *
+ * @param {object} state
+ * @param {{ mapSeed: number, floorSeed: number, canvasBounds: { width: number, height: number }, generateWorld: (state: object) => void }} options
+ */
+export function regenerateRoguelikeMap(state, { mapSeed, floorSeed, canvasBounds, generateWorld }) {
+    state.canvasBounds = { ...canvasBounds };
+    withSeededRandom(mapSeed, () => {
+        generateWorld(state);
+    });
+    buildGameMapRenderCaches(state);
+    buildTopologyMapRenderCaches(state);
+    state.worldSurfaceSeed = floorSeed;
+    state.worldSurfaces.clear();
+    state.mapSeed = mapSeed;
+    state.floorSeed = floorSeed;
+    state.mapLab.selectedNodeId = null;
+    resetPathTestSession(state);
+}
