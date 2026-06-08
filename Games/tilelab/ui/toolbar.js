@@ -2,10 +2,9 @@ import { roguelikeProceduralDesign } from "../../../Libraries/WorldGen/presets/r
 import { getDefaultSimulationZoom } from "../../../Render/SimulationViewport.js";
 import { LAB_PREVIEW_RANGE } from "../config.js";
 import { focusLabNode, generateTilelabMap } from "../world/mapWorld.js";
-import { applyZoomSliderToViewport, syncZoomSliderFromViewport } from "./zoomSlider.js";
+import { pushLabZoomToControl } from "./labZoomUi.js";
 import { invalidateMapPreviewBakes } from "../world/surfacePreview.js";
 export function readControls(state) {
-    applyZoomSliderToViewport(state);
     return {
         seed: Number(document.getElementById("seedInput")?.value) || 0,
         mapSeed: Number(document.getElementById("mapSeedInput")?.value) || 0,
@@ -16,15 +15,14 @@ export function readControls(state) {
         state,
     };
 }
-/** @param {import("../TileLabGameState.js").TileLabGameState | null | undefined} [state] */
+/** @param {import("../TileLabGameState.js").TileLabGameState} state */
 export function syncPreviewZoomToStage(state) {
     const stage = document.getElementById("mapStage");
     const rect = stage?.getBoundingClientRect();
     const viewW = Math.max(320, Math.floor(rect?.width ?? 800));
     const viewH = Math.max(240, Math.floor(rect?.height ?? 600));
     const zoom = getDefaultSimulationZoom(viewW, viewH, LAB_PREVIEW_RANGE, LAB_PREVIEW_RANGE);
-    if (state?.mapViewport) state.mapViewport.zoom = zoom;
-    syncZoomSliderFromViewport(state);
+    pushLabZoomToControl(state, zoom);
 }
 export function applyToolbarDefaults() {
     const rangeMeta = document.getElementById("rangeMeta");
@@ -41,6 +39,7 @@ export function initPresetSelect(profileIds) {
     }
     select.value = roguelikeProceduralDesign.surfaceProfileId;
 }
+/** @param {import("../TileLabGameState.js").TileLabGameState} state */
 export function initToolbarDefaults(state) {
     document.getElementById("mapSeedInput").value = "42";
     document.getElementById("seedInput").value = "42";
@@ -71,15 +70,11 @@ export function syncTilelabWorld(state, ctrl, forceRegen = false) {
  */
 export function bindToolbarControls(handlers) {
     const { onRefresh, onStageResize } = handlers;
-    const ids = ["seedInput", "gameZoomInput", "mapSeedInput", "mapNodeSelect", "showRangeRingInput", "showVignetteInput"];
+    const ids = ["seedInput", "mapSeedInput", "mapNodeSelect", "showRangeRingInput", "showVignetteInput"];
     for (const id of ids) {
         document.getElementById(id)?.addEventListener("input", onRefresh);
         document.getElementById(id)?.addEventListener("change", onRefresh);
     }
-    document.getElementById("gameZoomInput")?.addEventListener("input", (e) => {
-        document.getElementById("gameZoomValue").textContent = e.target.value;
-        onRefresh();
-    });
     document.getElementById("regenerateBtn")?.addEventListener("click", onRefresh);
     document.getElementById("randomSeedBtn")?.addEventListener("click", () => {
         document.getElementById("seedInput").value = String(Math.floor(Math.random() * 1_000_000));

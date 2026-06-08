@@ -74,10 +74,10 @@ const TOWER_UI_HTML = `
     <div id="controlsBar" class="chrome-control-panel">
         ${TOWER_SPEED_CONTROL_HTML}
         <div id="controlsDivider"></div>
-        <div id="zoomControls">
+        <div id="zoomControls" class="viewport-zoom-control">
             <span class="zoom-controls-label">ZOOM</span>
-            <input type="range" id="zoomSlider" min="0" max="100" value="0" class="premium-slider">
-            <span id="zoomDisplay">100%</span>
+            <input type="range" id="zoomSlider" min="0" max="100" value="0" class="viewport-zoom-control-slider premium-slider">
+            <span id="zoomDisplay" class="viewport-zoom-control-display">100%</span>
         </div>
     </div>
     <div id="healthBarContainer">

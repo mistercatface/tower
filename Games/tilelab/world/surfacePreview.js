@@ -4,7 +4,7 @@ import { drawWorldScene } from "../../../Render/worldSceneDraw.js";
 import { getSurfaceProfileRevision } from "../../../Libraries/WorldSurface/SurfaceProfileRevision.js";
 import { invalidateWallAtlasKeyMemos } from "../../../Render/game/wallSurfaceInvalidation.js";
 import { setupLabViewportNavigation } from "../../../Tools/Lab/lab-shared.js";
-import { clampLabZoom, syncZoomSliderFromViewport } from "../ui/zoomSlider.js";
+import { clampLabZoom, getLabZoomControl } from "../ui/labZoomUi.js";
 import { drawMapLabInWorld } from "./drawMapLabInWorld.js";
 /** @type {WorldSceneRenderer | null} */
 let render3D = null;
@@ -121,7 +121,7 @@ export function initMapPreviewNavigation(getOptions, handlers = {}) {
             if (world?.mapViewport) {
                 world.mapViewport.snapTo(x, y);
                 world.mapViewport.zoom = clampLabZoom(zoom);
-                syncZoomSliderFromViewport(world);
+                getLabZoomControl()?.setZoom(world.mapViewport.zoom);
             }
         },
         onUpdate: handlers.onViewChange,

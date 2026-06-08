@@ -7,6 +7,7 @@ import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEdit
 import { initMapPreviewNavigation } from "../world/surfacePreview.js";
 import { registerEditorProfiles, renderTilelabPreview, syncRuntimeLabProfile } from "./preview.js";
 import { readControls, applyToolbarDefaults, initPresetSelect, initToolbarDefaults, bindToolbarControls, syncTilelabWorld, syncPreviewZoomToStage } from "./toolbar.js";
+import { mountLabZoomControl } from "./labZoomUi.js";
 import { TILELAB_UI_HTML } from "./shellHtml.js";
 import { bindMapInspectorControls, syncMapInspectorAfterRegen } from "./mapInspector.js";
 import { initMapTopologyNavigation } from "./mapInteractions.js";
@@ -69,6 +70,7 @@ function bootstrapTilelabUi(state) {
         },
     });
     void syncRuntimeLabProfile();
+    mountLabZoomControl(state, () => schedulePreviewRefresh(state, 0));
     bindViewModeControls(state, () => renderActiveLabView(state));
     bindMapInspectorControls(state, () => renderActiveLabView(state));
     initMapTopologyNavigation(state, () => renderActiveLabView(state));

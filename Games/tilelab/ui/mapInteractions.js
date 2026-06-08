@@ -1,5 +1,5 @@
 import { setupLabViewportNavigation } from "../../../Tools/Lab/lab-shared.js";
-import { clampLabZoom, syncZoomSliderFromViewport } from "./zoomSlider.js";
+import { clampLabZoom, getLabZoomControl } from "./labZoomUi.js";
 import { placePathTestAgent } from "../world/mapPathTest.js";
 import { populateNodeList, renderNodeInspector } from "./mapInspector.js";
 /** @param {import("../TileLabGameState.js").TileLabGameState} state @param {HTMLCanvasElement} canvas */
@@ -14,7 +14,7 @@ export function initMapTopologyNavigation(state, onRedraw) {
         setCamera: (x, y, zoom) => {
             state.mapViewport.snapTo(x, y);
             state.mapViewport.zoom = clampLabZoom(zoom);
-            syncZoomSliderFromViewport(state);
+            getLabZoomControl()?.setZoom(state.mapViewport.zoom);
         },
         onUpdate: onRedraw,
     });

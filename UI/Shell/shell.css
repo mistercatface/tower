@@ -156,34 +156,11 @@ body.shell-landscape-minimal .pool-top-controls {
     margin: 0 8px;
 }
 
-#zoomControls {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex: 1;
-    margin-left: 4px;
-}
-
-.zoom-controls-label {
-    font-size: 10px;
-    font-weight: bold;
-    color: #cbd5e1;
-    user-select: none;
-}
-
-#zoomSlider {
-    flex: 1;
-    cursor: pointer;
-    min-width: 60px;
-}
-
 #zoomDisplay {
     font-size: 10px;
     font-family: monospace;
     color: #00bcd4;
     min-width: 32px;
-    text-align: right;
-    user-select: none;
 }
 
 #healthBarContainer {

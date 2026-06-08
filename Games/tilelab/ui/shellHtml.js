@@ -17,9 +17,7 @@ export const TILELAB_UI_HTML = `
             <label>Floor seed <input id="seedInput" type="number" value="42" step="1"></label>
             <button type="button" id="randomSeedBtn" class="secondary">Rand</button>
             <span class="sep"></span>
-            <label title="Preview zoom">Cam <span id="gameZoomValue">1</span>×
-                <input id="gameZoomInput" type="range" min="0.25" max="2.5" value="1" step="0.05">
-            </label>
+            <div id="labZoomControl"></div>
             <span id="rangeMeta" class="range-meta"></span>
             <span class="sep"></span>
             <label class="check-inline"><input id="showRangeRingInput" type="checkbox" checked> Range ring</label>

@@ -13,12 +13,15 @@ import { setGameZoomFromSlider, emitMapToggle } from "../events.js";
 import { bindTowerShellElements } from "./towerShellElements.js";
 import { wireSettingsModal } from "./wireSettingsModal.js";
 import { applySpeedControl } from "../../../Libraries/Playback/index.js";
+import { applyZoomControl } from "../../../Libraries/Viewport/index.js";
 import { mountTowerChrome, unmountTowerChrome } from "./mountTowerChrome.js";
 import { inspectBridge } from "../inspect/InspectBridge.js";
 /** @type {Record<string, HTMLElement | NodeListOf<Element> | null>} */
 let elements = {};
 /** @type {import("../../../Libraries/Playback/speedControl.js").SpeedControlHandle | null} */
 let towerSpeedControl = null;
+/** @type {import("../../../Libraries/Viewport/zoomControl.js").ZoomControlHandle | null} */
+let towerZoomControl = null;
 const dynamicElements = {};
 function createButton(styles, innerHTML, onClick, id = "") {
     const btn = document.createElement("button");
@@ -142,7 +145,6 @@ function updateProgressBar(containerId, textId, textString, ratio, totalSegments
     }
 }
 function wireTowerControls(state) {
-    elements.zoomSlider?.addEventListener("input", (e) => setGameZoomFromSlider(parseFloat(e.target.value)));
     elements.restartBtn?.addEventListener("click", () => emitGameRestart());
     wireSettingsModal(state);
     elements.mapBtn?.addEventListener("click", () => emitMapToggle());
@@ -156,10 +158,28 @@ function mountTowerUi(state) {
     const upgrades = getUpgradeDefs(state);
     mountTowerChrome();
     elements = bindTowerShellElements();
+    elements.zoomControls = document.getElementById("zoomControls");
     elements.inspectMissionBanner = document.getElementById("inspectMissionBanner");
     elements.inspectMissionText = document.getElementById("inspectMissionText");
     inspectBridge.mount();
     towerSpeedControl = applySpeedControl(elements.speedControls, { definition: getActiveGameDefinition() });
+    towerZoomControl = applyZoomControl(elements.zoomControls, {
+        inject: false,
+        min: 0,
+        max: 100,
+        step: 1,
+        ids: { slider: "zoomSlider", label: "zoomDisplay" },
+        getZoom: (ctx) => ctx?.fsm?.context?.viewport?.zoom ?? 1,
+        zoomToSlider: (zoom, ctx) => {
+            const viewport = ctx?.fsm?.context?.viewport;
+            if (!viewport || !ctx) return 0;
+            if (isSimulation(ctx.phase)) return viewport.zoomProgress * 100;
+            return Math.round(((viewport.zoom - 0.5) / 1.5) * 100);
+        },
+        sliderToZoom: (sliderVal) => sliderVal,
+        setZoom: (sliderVal) => setGameZoomFromSlider(sliderVal),
+        formatLabel: (zoom) => `${Math.round(zoom * 100)}%`,
+    });
     elements.passivesContainer.innerHTML = "";
     upgrades
         .filter((u) => u.isAbility && !u.showInHud)
@@ -454,14 +474,7 @@ function drawStat(state, upg, abilityLayoutById) {
 function updateUI(state) {
     const upgrades = getUpgradeDefs(state);
     updateInspectMissionBanner(state);
-    const viewport = state.fsm?.context?.viewport;
-    if (elements.zoomDisplay && viewport) elements.zoomDisplay.innerText = Math.round(viewport.zoom * 100) + "%";
-    if (elements.zoomSlider && viewport) {
-        let sliderVal = 0.5;
-        if (isSimulation(state.phase)) sliderVal = viewport.zoomProgress;
-        else sliderVal = (viewport.zoom - 0.5) / 1.5;
-        elements.zoomSlider.value = Math.round(sliderVal * 100);
-    }
+    towerZoomControl?.refresh(state);
     let hasAnyAbilities = false;
     upgrades
         .filter((u) => u.isAbility && u.showInHud)
