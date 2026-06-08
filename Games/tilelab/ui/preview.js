@@ -4,7 +4,8 @@ import { invalidateProfileScratch } from "../../../Libraries/WorldSurface/Profil
 import { TileWorkerCoordinator } from "../../../Libraries/WorldSurface/TileWorkerCoordinator.js";
 import { invalidateWallAtlasKeyMemos } from "../../../Render/game/wallSurfaceInvalidation.js";
 import { readMapControls } from "./mapInspector.js";
-import { drawTilelabSurfaceFrame, invalidateMapPreviewBakes, prepareGameCanvas } from "../world/surfacePreview.js";
+import { prepareGameCanvas } from "./labCanvas.js";
+import { drawTilelabSurfaceFrame, invalidateMapPreviewBakes } from "../world/surfacePreview.js";
 import { getLabPreviewProfile, RUNTIME_LAB_PROFILE_ID } from "./profile/ProfileEditor.js";
 let registerEditorProfilesSerial = Promise.resolve();
 /** Sync path — must run before the game loop can draw `__labA__`. */

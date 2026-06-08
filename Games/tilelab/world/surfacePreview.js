@@ -5,6 +5,7 @@ import { drawWorldScene } from "../../../Render/worldSceneDraw.js";
 import { getSurfaceProfileRevision } from "../../../Libraries/WorldSurface/SurfaceProfileRevision.js";
 import { invalidateWallAtlasKeyMemos } from "../../../Render/game/wallSurfaceInvalidation.js";
 import { drawTopologyLayer } from "../../../Libraries/Render/map/topology/index.js";
+import { syncLabScreenCanvasBounds } from "../ui/labCanvas.js";
 /** @type {WorldSceneRenderer | null} */
 let render3D = null;
 /** @type {import("../../../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings | null} */
@@ -18,28 +19,6 @@ function getLabRender3D() {
     return render3D;
 }
 let lastBakeKey = "";
-export function prepareGameCanvas(canvas, stage) {
-    if (!canvas || !stage) return null;
-    const rect = stage.getBoundingClientRect();
-    const width = Math.floor(rect.width);
-    const height = Math.floor(rect.height);
-    if (width < 32 || height < 32) return null;
-    if (canvas.width !== width || canvas.height !== height) {
-        canvas.width = width;
-        canvas.height = height;
-    }
-    return { width, height };
-}
-/** Sync canvas pixel size, state.canvasBounds, and mapViewport cx/cy together. */
-export function syncLabScreenCanvasBounds(state) {
-    const stage = document.getElementById("mapStage");
-    const canvas = document.getElementById("gameCanvas");
-    const size = prepareGameCanvas(canvas, stage);
-    if (!size) return null;
-    state.canvasBounds = { width: size.width, height: size.height };
-    state.mapViewport.setCanvasSize(size.width, size.height);
-    return size;
-}
 function drawWeaponRangeRing(ctx, x, y, range) {
     ctx.save();
     ctx.beginPath();
@@ -93,14 +72,7 @@ export function drawTilelabSurfaceFrame(ctx, canvas, worldState, profileId, weap
     ctx.restore();
     ctx.save();
     viewport.apply(ctx);
-    drawWorldScene(ctx, {
-        state: worldState,
-        viewport,
-        worldSceneRenderer: getLabRender3D(),
-        canvas,
-        worldRenderInput,
-        phases: ["ground", "buildings", "roofs", "bloom"],
-    });
+    drawWorldScene(ctx, { state: worldState, viewport, worldSceneRenderer: getLabRender3D(), canvas, worldRenderInput, phases: ["ground", "buildings", "roofs", "bloom"] });
     if (mapLab && topologyOptions) drawTopologyLayer(ctx, worldState, viewport, topologyOptions, mapLab, { overlay: true });
     worldState.surfaceProfileOverride = prevProfileOverride;
     if (showRangeRing) drawWeaponRangeRing(ctx, cameraX, cameraY, weaponRange);

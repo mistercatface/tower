@@ -2,7 +2,7 @@ import { applyZoomControl, clampZoom, directZoomMapping } from "../../../Librari
 import { getDefaultSimulationZoom } from "../../../Render/SimulationViewport.js";
 import { setupLabViewportNavigation } from "../../../Tools/Lab/lab-shared.js";
 import { LAB_PREVIEW_RANGE } from "../config.js";
-import { syncLabScreenCanvasBounds } from "../world/surfacePreview.js";
+import { syncLabScreenCanvasBounds } from "./labCanvas.js";
 export const LAB_ZOOM_MIN = 0.25;
 export const LAB_ZOOM_MAX = 2.5;
 /** @type {import("../../../Libraries/Viewport/zoomControl.js").ZoomControlHandle | null} */

@@ -3,7 +3,7 @@ import { generateWorld, getWorldGen } from "../../../Core/GamePorts.js";
 import { buildGameMapRenderCaches, buildTopologyMapRenderCaches } from "../../../Libraries/Render/map/MapRenderCache.js";
 import { withSeededRandom } from "../../../Libraries/Random/index.js";
 import { calculatePathTest, resetPathTestPositions } from "./mapPathTest.js";
-import { syncLabScreenCanvasBounds } from "./surfacePreview.js";
+import { syncLabScreenCanvasBounds } from "../ui/labCanvas.js";
 export const mapGenCanvasBounds = { width: gridSettings.width, height: gridSettings.height };
 export function populateNodeSelect(state) {
     const select = document.getElementById("mapNodeSelect");

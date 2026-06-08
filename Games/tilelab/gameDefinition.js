@@ -8,10 +8,8 @@ import { tilelabUiPort } from "./ui/tilelabUiPort.js";
 import { tilelabRunScenePort } from "./runScenePort.js";
 import { registerTilelabListeners } from "./listeners.js";
 import { getGameState } from "../../GameState/GameState.js";
-import { syncLabScreenCanvasBounds } from "./world/surfacePreview.js";
-
+import { syncLabScreenCanvasBounds } from "./ui/labCanvas.js";
 /** @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition */
-
 export const tilelabGame = {
     id: "tilelab",
     canvasId: "gameCanvas",
