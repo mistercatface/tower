@@ -106,7 +106,7 @@ function drawBoxSideFace(ctx, face, originX, originY, colors, { stroke, lineWidt
         }
     }
 }
-export function drawExtrudedBox(
+export function drawBox(
     ctx,
     prop,
     px,

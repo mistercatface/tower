@@ -1,4 +1,4 @@
-import { drawExtrudedBox } from "../../Render/Props3D/SolidDraw.js";
+import { drawBox } from "../../Render/Props3D/SolidDraw.js";
 /** @param {object} visuals */
 export function createBoxPrimitive(visuals) {
     const { colors, world, plankTs, topCross, lineWidth } = visuals;
@@ -10,7 +10,7 @@ export function createBoxPrimitive(visuals) {
             ctx.save();
             ctx.globalAlpha = opacity;
         }
-        drawExtrudedBox(ctx, prop, px, py, {
+        drawBox(ctx, prop, px, py, {
             halfSize,
             height,
             facing: prop.facing,
