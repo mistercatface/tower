@@ -1,79 +1,12 @@
 import { syncPickupWeaponState } from "./pickupWeaponState.js";
-import { spawnProjectilesFromGun } from "./spawnProjectiles.js";
-import { resolveFireAngleOffsets } from "./turretLoadout.js";
-import { resolveKinematicsMuzzlePosition, resolveActorKinematicsCamera } from "../Render/Characters/actorKinematicsRenderer.js";
-import { CombatParticles } from "../Render/CombatParticles.js";
-import { inferFaction } from "../../Core/GamePorts.js";
-import { getSlotFireIntervalMs } from "./gunCombat.js";
-import { advanceTurretAmmo } from "./turretAmmo.js";
-import { normalizeAngle } from "../Math/Angle.js";
-function resolvePickupTurretTurnSpeed(pickup) {
-    return pickup.stats?.turnSpeed?.value ?? pickup.turnSpeed ?? 10;
-}
-function aimPickupTurret(turret, sourceX, sourceY, targetX, targetY, dt) {
-    const targetAngle = Math.atan2(targetY - sourceY, targetX - sourceX);
-    let diff = targetAngle - turret.angle;
-    diff = normalizeAngle(diff);
-    const turnSpeed = turret.turnSpeed ?? 10;
-    if (Math.abs(diff) < 0.05) {
-        turret.angle = targetAngle;
-        return true;
-    }
-    turret.angle += Math.sign(diff) * Math.min(Math.abs(diff), turnSpeed * (dt / 1000));
-    turret.angle = normalizeAngle(turret.angle);
-    return false;
-}
-function firePickupProjectileTurret(state, pickup, turret, turretIndex, gun) {
-    const loadout = gun.turretLoadout;
-    const radiusMultiplier = loadout?.radiusMultiplier ?? 1;
-    let muzzle = resolveKinematicsMuzzlePosition(pickup, turretIndex, resolveActorKinematicsCamera(pickup));
-    const angleOffsets = resolveFireAngleOffsets(loadout);
-    const faction = inferFaction(pickup);
-    spawnProjectilesFromGun(state, pickup, { tx: muzzle.x, ty: muzzle.y, baseAngle: turret.angle, gun, radiusMultiplier, angleOffsets, faction, penetration: pickup.weapon?.penetration ?? 0 });
-    CombatParticles.spawnMuzzleFlash(state, muzzle.x, muzzle.y, turret.angle, { isPellet: loadout?.pelletCount != null });
-    return true;
-}
-/** Handle manual fire for pickups without full Turret AI controllers. */
+import { TurretController } from "./TurretController.js";
+/** Handle manual fire for pickups using Turret AI controllers. */
 export function manualFirePickup(state, pickup, targetX, targetY, dt, isShooting) {
     syncPickupWeaponState(pickup);
-    let firedAny = false;
-    const turnSpeed = resolvePickupTurretTurnSpeed(pickup);
-    for (let i = 0; i < pickup.turrets.length; i++) {
-        const turret = pickup.turrets[i];
-        if (!turret?.gun) continue;
-        const gun = turret.gun;
-        if (turret.turnSpeed == null) turret.turnSpeed = turnSpeed;
-        const reloading = advanceTurretAmmo(dt, turret, gun, pickup);
-        if (reloading) {
-            turret.charge = 0;
-            continue;
-        }
-        if (!isShooting) {
-            turret.charge = 0;
-            continue;
-        }
-        const isAimed = aimPickupTurret(turret, pickup.x, pickup.y, targetX, targetY, dt);
-        if (!isAimed) {
-            turret.charge = 0;
-            continue;
-        }
-        const fireIntervalMs = getSlotFireIntervalMs(gun, pickup);
-        turret.charge = (turret.charge ?? 0) + dt;
-        if (turret.charge < fireIntervalMs || turret.ammo <= 0) continue;
-        if (gun.kind !== "projectile") {
-            turret.charge = 0;
-            continue;
-        }
-        if (firePickupProjectileTurret(state, pickup, turret, i, gun)) {
-            firedAny = true;
-            turret.ammo--;
-            turret.charge = 0;
-            if (turret.ammo <= 0) {
-                turret.reloading = true;
-                turret.reloadTimer = 0;
-            }
-        }
-    }
-    if (isShooting && pickup.turrets[0]?.angle != null) pickup.facing = pickup.turrets[0].angle;
-    return firedAny;
+    if (!pickup.turretController) pickup.turretController = new TurretController(pickup);
+    pickup.isManualShootActive = isShooting;
+    pickup.turretController.updateTurretCombat(dt, state, { combatEvents: [] });
+    if (pickup.turrets && pickup.turrets[0]?.angle != null) pickup.facing = pickup.turrets[0].angle;
+    if (isShooting) return pickup.turretController.manualFire(state, targetX, targetY);
+    return false;
 }

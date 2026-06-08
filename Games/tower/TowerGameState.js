@@ -4,7 +4,7 @@ import { Sidekick } from "./entities/Sidekick.js";
 import { getAllyDefinition, getRunParty } from "./entities/EntityRegistry.js";
 import { combatActorRadius, runBaseStats } from "./config/towerConfig.js";
 import { HordeSpawner } from "./HordeSpawner.js";
-import { TurretController } from "./TurretController.js";
+import { TurretController } from "../../Libraries/Combat/TurretController.js";
 import { towerPools } from "./pools.js";
 import { createRunStats } from "./entities/CombatantStats.js";
 import { SharedGameState } from "../../GameState/SharedGameState.js";

@@ -5,7 +5,7 @@ import { initMobileAgent } from "../../../Libraries/Agent/index.js";
 import { actorStates } from "./ActorStates.js";
 import { transitionEntity } from "../../../Libraries/FSM/transition.js";
 import { createCombatantStats, applyUpgrades, applyUpgradesToStats, syncActorCombatFromStats, initCombatantUpgradeSlots } from "./CombatantStats.js";
-import { Turret } from "./Turret.js";
+import { Turret } from "../../../Libraries/Combat/Turret.js";
 import { hasLineOfSight } from "../../../Libraries/Spatial/query/lineOfSight.js";
 import { spawnFloatingText } from "../../../Core/EventSystem.js";
 import { applyActorGunModifiers, getSlotReloadTimeMs } from "../combat/gunCombat.js";
@@ -103,11 +103,13 @@ export class Actor extends DestructibleEntity {
     }
     updateCombat(dt, state, spatialFrame, options = {}) {
         this.updateLocomotion(dt, state, spatialFrame, options);
-        if (this.type === "player" && state.abilities["Shoot"])
+        if (this.type === "player" && state.abilities["Shoot"]) {
+            this.isManualShootActive = true;
             for (const turret of this.getTurrets()) {
                 if (turret.manualFireCooldown === undefined) turret.manualFireCooldown = 0;
                 if (turret.manualFireCooldown > 0) turret.manualFireCooldown -= dt;
             }
+        } else this.isManualShootActive = false;
         const combatEvents = options.combatEvents ?? [];
         const events = this.turretController?.updateTurretCombat(dt, state, { ...options, combatEvents }) ?? combatEvents;
         if (this.usesKinematicsBody) {

@@ -1,4 +1,4 @@
-import { drawLaserBeam } from "../../../Libraries/Render/LaserBeam.js";
+import { drawLaserBeam } from "../Render/LaserBeam.js";
 export class Laser {
     constructor(x1, y1, x2, y2, color = "#ff0000", isSight = false) {
         this.x1 = x1;

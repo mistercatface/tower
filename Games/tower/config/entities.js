@@ -5,7 +5,7 @@ import { Sidekick } from "../entities/Sidekick.js";
 import { registerEntityCatalog } from "../entities/EntityRegistry.js";
 import { registerPickupStates } from "../../../Entities/PickupStates.js";
 import { combatPickupStates } from "../../../Entities/pickupCombatStates.js";
-import { TurretController } from "../TurretController.js";
+import { TurretController } from "../../../Libraries/Combat/TurretController.js";
 /** @type {import("../entities/EntityRegistryTypes.js").EntityCatalog} */
 export const towerEntityCatalog = {
     enemies: {

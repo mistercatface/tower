@@ -1,5 +1,6 @@
 import { normalizeWeaponLoadout } from "./equipmentLoadout.js";
 import { cloneGunDefinition, getGunDefinition } from "./gunDefaults.js";
+import { Turret } from "./Turret.js";
 /** Default laser-sight preview range for sandbox humanoids (no combat weapon stats). */
 export const DEFAULT_SIGHT_RANGE = 200;
 export function ensurePickupWeaponState(pickup) {
@@ -26,13 +27,17 @@ export function syncPickupWeaponState(pickup) {
     const prevTurrets = pickup.turrets ?? [];
     pickup.turrets = loadout.map((gunId, index) => {
         const existing = prevTurrets[index];
-        if (existing?.gunId === gunId) {
+        if (existing && existing.gunId === gunId && existing instanceof Turret) {
             existing.gun = resolvePickupSlotGun(pickup, index);
             if (existing.angle == null) existing.angle = facing;
             if (existing.turnSpeed == null) existing.turnSpeed = turnSpeed;
             return existing;
         }
-        return { angle: facing, gunId, gun: resolvePickupSlotGun(pickup, index), charge: 0, swayPhase: 0, turnSpeed };
+        const gun = resolvePickupSlotGun(pickup, index);
+        const turret = new Turret(facing, turnSpeed, gun?.turretLoadout);
+        turret.gunId = gunId;
+        turret.gun = gun;
+        return turret;
     });
 }
 export function gunSupportsAttachment(gunId, attachmentId) {

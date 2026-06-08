@@ -1,11 +1,11 @@
-import { normalizeAngle } from "../../Libraries/Math/Angle.js";
-import { buildLaserTargetCircles, castLaserRay } from "../../Libraries/Combat/laserCast.js";
-import { Laser } from "./entities/Laser.js";
-import { defaultGunId, getGunDefinition } from "./config/content/guns.js";
-import { getSlotFireIntervalMs } from "./combat/gunCombat.js";
-import { getBeamTickDamage, createBeamHitSource } from "./combat/impactDamage.js";
-import { areHostile, getBroadphaseActors, getHostiles } from "./targeting.js";
-import { advanceTurretAmmo } from "../../Libraries/Combat/turretAmmo.js";
+import { normalizeAngle } from "../Math/Angle.js";
+import { buildLaserTargetCircles, castLaserRay } from "./laserCast.js";
+import { Laser } from "./Laser.js";
+import { defaultGunId, getGunDefinition } from "./gunDefaults.js";
+import { getSlotFireIntervalMs } from "./gunCombat.js";
+import { getBeamTickDamage, createBeamHitSource } from "./impactDamage.js";
+import { areHostile, getBroadphaseActors, getHostiles } from "../../Core/GamePorts.js";
+import { advanceTurretAmmo } from "./turretAmmo.js";
 export { advanceTurretAmmo };
 export class ChargedWeaponMode {
     constructor(onFireFn) {
@@ -78,7 +78,7 @@ export function createLaserWeaponMode() {
             turret.laserTimer = 0;
         }
         turret.currentLaserLength = (turret.currentLaserLength || 0) + gun.beamGrowthSpeed * (dt / 1000);
-        turret.currentLaserLength = Math.min(source.weapon.range, turret.currentLaserLength);
+        turret.currentLaserLength = Math.min(source.weapon?.range ?? 200, turret.currentLaserLength);
         const hit = WeaponSystem.castLaser(tx, ty, turret.angle, turret.currentLaserLength, state, gun.beamRadius, source);
         turret.currentLaserLength = hit.dist;
         state.activeLasers.push(new Laser(tx, ty, hit.x, hit.y));
@@ -91,9 +91,9 @@ export function createLaserWeaponMode() {
                 }
             }
             const tickDamage = getBeamTickDamage(gun);
-            if (hit.hit === "actor" && areHostile(source, hit.entity)) combatEvents.push({ target: hit.entity, damage: tickDamage });
+            if (hit.hit === "actor" && areHostile(source, hit.entity)) combatEvents.push({ target: hit.entity, damage: tickDamage, type: "beam" });
             else if (hit.hit === "pickup" && hit.entity.strategy?.onHit) {
-                const skipExplosive = state.abilities["TargetVerification"] && hit.entity.strategy.isExplosive;
+                const skipExplosive = state.abilities?.["TargetVerification"] && hit.entity.strategy.isExplosive;
                 if (!skipExplosive) hit.entity.strategy.onHit(state, hit.entity, createBeamHitSource(gun), combatEvents);
             }
         }
@@ -114,11 +114,11 @@ export class WeaponSystem {
         const weapon = source.weapon;
         if (!weapon || weapon.accuracy === undefined) return 0;
         if (requireCharge && turret.charge <= 0) return 0;
-        const effectiveAccuracy = source.applyMovementAccuracyPenalty(weapon.accuracy);
+        const effectiveAccuracy = typeof source.applyMovementAccuracyPenalty === "function" ? source.applyMovementAccuracyPenalty(weapon.accuracy) : weapon.accuracy;
         const accuracySpread = (((1 - effectiveAccuracy) * Math.PI) / 2) * 0.5;
         const frequency = 0.005;
-        turret.swayPhase += dt * frequency;
-        const turretsList = source.getTurrets();
+        turret.swayPhase = (turret.swayPhase || 0) + dt * frequency;
+        const turretsList = source.getTurrets ? source.getTurrets() : source.turrets || [];
         const phaseOffset = turretsList.indexOf(turret) * 2.0;
         return Math.sin(turret.swayPhase + phaseOffset) * accuracySpread;
     }
@@ -128,11 +128,12 @@ export class WeaponSystem {
         targetAngle += sway;
         let diff = targetAngle - turret.angle;
         diff = normalizeAngle(diff);
+        const turnSpeed = turret.turnSpeed ?? 10;
         if (Math.abs(diff) < 0.05) {
             turret.angle = targetAngle;
             return true;
         } else {
-            turret.angle += Math.sign(diff) * Math.min(Math.abs(diff), turret.turnSpeed * (dt / 1000));
+            turret.angle += Math.sign(diff) * Math.min(Math.abs(diff), turnSpeed * (dt / 1000));
             turret.angle = normalizeAngle(turret.angle);
             return false;
         }

@@ -1,38 +1,43 @@
-import { normalizeAngle } from "../../Libraries/Math/Angle.js";
-import { resolveWeaponModeForGun, WeaponSystem, advanceTurretAmmo } from "./WeaponSystem.js";
-import { getSlotFireIntervalMs } from "./combat/gunCombat.js";
-import { Laser } from "./entities/Laser.js";
-import { getBeamTickDamage, createBeamHitSource } from "./combat/impactDamage.js";
-import { getGunDefinition } from "./config/content/guns.js";
-import { areHostile, getNearestHostile, getPlayerActors, isValidTurretTarget } from "../../Core/GamePorts.js";
-import { normalizeWeaponLoadout } from "./combat/equipmentLoadout.js";
+import { normalizeAngle } from "../Math/Angle.js";
+import { resolveWeaponModeForGun, WeaponSystem } from "./WeaponSystem.js";
+import { getSlotFireIntervalMs } from "./gunCombat.js";
+import { Laser } from "./Laser.js";
+import { getBeamTickDamage, createBeamHitSource } from "./impactDamage.js";
+import { getGunDefinition } from "./gunDefaults.js";
+import { areHostile, getNearestHostile, getBroadphaseActors, inferFaction } from "../../Core/GamePorts.js";
+import { normalizeWeaponLoadout } from "./equipmentLoadout.js";
+import { advanceTurretAmmo } from "./turretAmmo.js";
 export class TurretController {
     constructor(actor) {
         this.actor = actor;
     }
     updateTurretCombat(dt, state, options = {}) {
-        if (!this.actor.weapon || this.actor.turrets.length === 0) return options.combatEvents ?? [];
+        const weaponLoadout = normalizeWeaponLoadout(this.actor.weaponLoadout ?? []);
+        if (weaponLoadout.length === 0 || !this.actor.turrets || this.actor.turrets.length === 0) return options.combatEvents ?? [];
         const blocksTargeting = options.blocksTargeting || this.getExternalBlocksTargeting(state);
         const combatEvents = options.combatEvents ?? [];
-        if (this.actor.canRunTurretCombat()) {
+        const canRunTurretCombat = typeof this.actor.canRunTurretCombat === "function" ? this.actor.canRunTurretCombat() : !this.actor.isDead;
+        if (canRunTurretCombat) {
             this.acquireTurretTargets(state, blocksTargeting);
             this.processAllTurrets(dt, state, blocksTargeting, combatEvents);
         } else this.aimIdleTurrets(dt, state, blocksTargeting);
         return combatEvents;
     }
     blocksTurretLineOfSight(target, state) {
-        return !target || !this.actor.hasLineOfSightTo(target, state);
+        if (!target) return true;
+        if (typeof this.actor.hasLineOfSightTo === "function") return !this.actor.hasLineOfSightTo(target, state);
+        return false;
     }
     getAllyActors(state) {
         if (!state) return [];
-        let allies = [];
-        if (this.actor.teamId != null) allies = state.getCombatants().filter((other) => other !== this.actor && !other.isDead && other.teamId === this.actor.teamId && !areHostile(this.actor, other));
-        if (allies.length === 0 && this.actor.faction === "player") allies = getPlayerActors(state).filter((ally) => ally !== this.actor && !ally.isDead);
-        return allies;
+        const myFaction = inferFaction(this.actor);
+        return getBroadphaseActors(state).filter((other) => other !== this.actor && !other.isDead && inferFaction(other) === myFaction && !areHostile(this.actor, other));
     }
     getEngagedTargetsFrom(ally) {
         const targets = [];
-        for (const turret of ally.getTurrets()) {
+        if (!ally.getTurrets && !ally.turrets) return targets;
+        const turrets = ally.getTurrets ? ally.getTurrets() : ally.turrets;
+        for (const turret of turrets) {
             if (turret.target && !turret.target.isDead) targets.push(turret.target);
             if (this.isTurretChargeCommitted(turret)) {
                 const committed = this.getCommittedTurretTarget(turret);
@@ -70,13 +75,17 @@ export class TurretController {
         return bonus;
     }
     getEffectiveTurretRange(state, target) {
-        const baseRange = this.actor.weapon?.range ?? 0;
+        const baseRange = this.actor.weapon?.range ?? this.actor.combatRange ?? 200;
         if (!target) return baseRange;
         return baseRange + this.getMutualAssistRangeBonus(state, target);
     }
     isValidTurretTargetForSelf(target, state, { blocksTargeting = false } = {}) {
-        if (!this.actor.weapon || !target) return false;
-        return isValidTurretTarget(this.actor, target, state, this.getEffectiveTurretRange(state, target), blocksTargeting, { requireLos: true });
+        if (!target || target.isDead) return false;
+        const range = this.getEffectiveTurretRange(state, target);
+        const distSq = Math.pow(target.x - this.actor.x, 2) + Math.pow(target.y - this.actor.y, 2);
+        if (distSq > range * range) return false;
+        if (this.blocksTurretLineOfSight(target, state)) return false;
+        return true;
     }
     buildIndependentTargetExclusions(ownExcluded, state) {
         const excluded = new Set(ownExcluded ?? []);
@@ -84,11 +93,11 @@ export class TurretController {
         return excluded;
     }
     findIndependentTurretTarget(state, ownExcluded) {
-        if (!this.actor.weapon) return null;
-        return getNearestHostile(state, this.actor, this.actor.weapon.range, this.buildIndependentTargetExclusions(ownExcluded, state));
+        const range = this.actor.weapon?.range ?? this.actor.combatRange ?? 200;
+        return getNearestHostile(state, this.actor, range, this.buildIndependentTargetExclusions(ownExcluded, state));
     }
     findTurretTarget(state, ownExcluded) {
-        if (!this.actor.weapon) return null;
+        const range = this.actor.weapon?.range ?? this.actor.combatRange ?? 200;
         const ownExcludedSet = ownExcluded ?? new Set();
         const allyEngaged = this.getMutualAssistTargets(state);
         const independent = this.findIndependentTurretTarget(state, ownExcludedSet);
@@ -97,23 +106,20 @@ export class TurretController {
             if (ownExcludedSet.has(target)) continue;
             if (this.isValidTurretTargetForSelf(target, state)) return target;
         }
-        const shared = getNearestHostile(state, this.actor, this.actor.weapon.range, ownExcludedSet);
+        const shared = getNearestHostile(state, this.actor, range, ownExcludedSet);
         if (shared) return shared;
         for (const target of allyEngaged) {
             if (ownExcludedSet.has(target)) continue;
             if (this.isValidTurretTargetForSelf(target, state)) return target;
         }
-        return getNearestHostile(state, this.actor, this.actor.weapon.range);
+        return getNearestHostile(state, this.actor, range);
     }
     getExternalBlocksTargeting(state) {
-        if (!this.actor.isAbilityOwner(state) || !state?.abilities || !state?.scheduler) return false;
-        for (const upg of state.upgradeDefs ?? []) {
-            if (!upg.isAbility || !state.abilities[upg.id] || !upg.blocksTargeting) continue;
-            const timers = state.abilityTimers[upg.id];
-            if (!timers) continue;
-            if (state.scheduler.getTimeRemaining(timers.activeId) > 0) return true;
-        }
+        if (typeof this.actor.getExternalBlocksTargeting === "function") return this.actor.getExternalBlocksTargeting(state);
         return false;
+    }
+    getTurrets() {
+        return this.actor.getTurrets ? this.actor.getTurrets() : this.actor.turrets || [];
     }
     getTurretAimPoint(turret, state, target, blocksTargeting) {
         if (this.actor.currentState?.getAimTarget) return this.actor.currentState.getAimTarget(this.actor, target, blocksTargeting, turret);
@@ -123,35 +129,41 @@ export class TurretController {
     getMovementAimPoint(_state) {
         if (this.actor.targetX != null && this.actor.targetY != null && this.actor.isMoving)
             return { x: this.actor.targetNodeX != null ? this.actor.targetNodeX : this.actor.targetX, y: this.actor.targetNodeY != null ? this.actor.targetNodeY : this.actor.targetY };
-        const desiredLen = Math.hypot(this.actor.desiredX, this.actor.desiredY);
+        const desiredX = this.actor.desiredX ?? 0;
+        const desiredY = this.actor.desiredY ?? 0;
+        const desiredLen = Math.hypot(desiredX, desiredY);
         if (desiredLen > 0.001) {
             const dist = 100;
-            return { x: this.actor.x + (this.actor.desiredX / desiredLen) * dist, y: this.actor.y + (this.actor.desiredY / desiredLen) * dist };
+            return { x: this.actor.x + (desiredX / desiredLen) * dist, y: this.actor.y + (desiredY / desiredLen) * dist };
         }
-        if (this.actor.hasLocomotionIntent()) {
-            const velLen = Math.hypot(this.actor.vx, this.actor.vy);
+        const vx = this.actor.vx ?? 0;
+        const vy = this.actor.vy ?? 0;
+        const hasIntent = typeof this.actor.hasLocomotionIntent === "function" ? this.actor.hasLocomotionIntent() : Math.abs(vx) > 1 || Math.abs(vy) > 1;
+        if (hasIntent) {
+            const velLen = Math.hypot(vx, vy);
             if (velLen > 1) {
                 const dist = 100;
-                return { x: this.actor.x + (this.actor.vx / velLen) * dist, y: this.actor.y + (this.actor.vy / velLen) * dist };
+                return { x: this.actor.x + (vx / velLen) * dist, y: this.actor.y + (vy / velLen) * dist };
             }
         }
         if (normalizeWeaponLoadout(this.actor.weaponLoadout ?? []).length > 0) {
             const dist = 100;
-            return { x: this.actor.x + Math.cos(this.actor.angle) * dist, y: this.actor.y + Math.sin(this.actor.angle) * dist };
+            const angle = this.actor.facing ?? this.actor.angle ?? 0;
+            return { x: this.actor.x + Math.cos(angle) * dist, y: this.actor.y + Math.sin(angle) * dist };
         }
         return null;
     }
     aimIdleTurrets(dt, state, blocksTargeting = false) {
         const effectiveBlocks = this.resolveBlocksTargeting(state, blocksTargeting);
         if (this.actor.currentState?.locksTurretAim) {
-            for (const turret of this.actor.getTurrets()) {
+            for (const turret of this.getTurrets()) {
                 const aimTarget = this.getTurretAimPoint(turret, state, null, effectiveBlocks);
                 if (!aimTarget) continue;
                 turret.angle = normalizeAngle(Math.atan2(aimTarget.y - this.actor.y, aimTarget.x - this.actor.x));
             }
             return;
         }
-        for (const turret of this.actor.getTurrets()) {
+        for (const turret of this.getTurrets()) {
             const aimTarget = this.resolveTurretAimPoint(turret, state, null, effectiveBlocks);
             if (!aimTarget) continue;
             WeaponSystem.aimTurret(turret, this.actor.x, this.actor.y, aimTarget.x, aimTarget.y, dt, 0);
@@ -170,7 +182,7 @@ export class TurretController {
     }
     getCommittedTurretTarget(turret) {
         const target = turret.lastTarget ?? turret.target;
-        if (!target) return null;
+        if (!target || target.isDead) return null;
         return target;
     }
     isTurretChargeCommitted(turret) {
@@ -200,15 +212,13 @@ export class TurretController {
         }
     }
     acquireTurretTargets(state, blocksTargeting = false) {
-        const weapon = this.actor.weapon;
-        if (!weapon) return;
-        if (this.actor.type === "player" && state.abilities["Shoot"]) {
-            for (const turret of this.actor.getTurrets()) turret.target = null;
+        if (this.actor.isManualShootActive) {
+            for (const turret of this.getTurrets()) turret.target = null;
             return;
         }
         const actualBlocks = this.resolveBlocksTargeting(state, blocksTargeting);
         const engagedTargets = new Set();
-        for (const turret of this.actor.getTurrets()) {
+        for (const turret of this.getTurrets()) {
             const committed = this.isTurretChargeCommitted(turret);
             if (committed) {
                 const chargeTarget = this.getCommittedTurretTarget(turret);
@@ -236,8 +246,8 @@ export class TurretController {
         }
     }
     processAllTurrets(dt, state, blocksTargeting = false, combatEvents = []) {
-        const isPlayerManualShoot = this.actor.type === "player" && state.abilities["Shoot"];
-        for (const turret of this.actor.getTurrets()) {
+        const isManualShoot = this.actor.isManualShootActive;
+        for (const turret of this.getTurrets()) {
             const gun = turret.gun ?? getGunDefinition(turret.gunId);
             let activeSight = null;
             if (gun.attachments)
@@ -246,15 +256,15 @@ export class TurretController {
                         activeSight = attachment;
                         break;
                     }
-            if (activeSight && state) {
+            if (activeSight && state && state.activeLasers) {
                 const target = this.resolveTurretTargetForProcessing(turret);
                 const { x: tx, y: ty } = turret.getMuzzlePosition(this.actor, gun.bulletRadius ?? 2, target);
-                const range = this.actor.weapon?.range ?? 200;
+                const range = this.actor.weapon?.range ?? this.actor.combatRange ?? 200;
                 const hit = WeaponSystem.castLaser(tx, ty, turret.angle, range, state, 1, this.actor);
                 const color = hit.hit === "actor" && areHostile(this.actor, hit.entity) ? "#ff0000" : "#00ff00";
                 state.activeLasers.push(new Laser(tx, ty, hit.x, hit.y, color, true));
             }
-            if (isPlayerManualShoot) {
+            if (isManualShoot) {
                 advanceTurretAmmo(dt, turret, gun, this.actor);
                 continue;
             }
@@ -267,7 +277,7 @@ export class TurretController {
     }
     manualFire(state, targetX, targetY) {
         let firedAny = false;
-        for (const turret of this.actor.getTurrets()) {
+        for (const turret of this.getTurrets()) {
             const gun = turret.gun ?? getGunDefinition(turret.gunId);
             const fireIntervalMs = getSlotFireIntervalMs(gun, this.actor);
             if (turret.manualFireCooldown === undefined) turret.manualFireCooldown = 0;
@@ -275,17 +285,19 @@ export class TurretController {
             const angle = Math.atan2(targetY - this.actor.y, targetX - this.actor.x);
             turret.angle = angle;
             if (gun.kind === "projectile") {
-                turret.fire(state, this.actor);
-                firedAny = true;
+                if (typeof turret.fire === "function") {
+                    turret.fire(state, this.actor);
+                    firedAny = true;
+                }
             } else if (gun.kind === "beam") {
                 const { x: tx, y: ty } = turret.getMuzzlePosition(this.actor, gun.bulletRadius ?? 2);
-                const range = this.actor.weapon?.range ?? 200;
+                const range = this.actor.weapon?.range ?? this.actor.combatRange ?? 200;
                 const hit = WeaponSystem.castLaser(tx, ty, turret.angle, range, state, gun.beamRadius, this.actor);
-                state.activeLasers.push(new Laser(tx, ty, hit.x, hit.y));
+                if (state.activeLasers) state.activeLasers.push(new Laser(tx, ty, hit.x, hit.y));
                 const tickDamage = getBeamTickDamage(gun);
-                if (hit.hit === "actor" && areHostile(this.actor, hit.entity)) hit.entity.handleHit(tickDamage, { state }, "beam");
+                if (hit.hit === "actor" && areHostile(this.actor, hit.entity)) hit.entity.handleHit?.(tickDamage, { state }, "beam");
                 else if (hit.hit === "pickup" && hit.entity.strategy?.onHit) {
-                    const skipExplosive = state.abilities["TargetVerification"] && hit.entity.strategy.isExplosive;
+                    const skipExplosive = state.abilities?.["TargetVerification"] && hit.entity.strategy.isExplosive;
                     if (!skipExplosive) hit.entity.strategy.onHit(state, hit.entity, createBeamHitSource(gun), []);
                 }
                 firedAny = true;
@@ -301,5 +313,6 @@ export class TurretController {
                 }
             }
         }
+        return firedAny;
     }
 }
