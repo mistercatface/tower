@@ -17,6 +17,16 @@ export {
     transformRollVertex,
 } from "./rollingMotion.js";
 export { spawnStartProps } from "./spawnStartProps.js";
+export {
+    DRAG_LAUNCH_DEFAULTS,
+    applyDragLaunchVelocity,
+    createDragLaunchAim,
+    drawDragLaunchPreview,
+    getDragLaunchConfig,
+    getDragLaunchPreview,
+    releaseDragLaunch,
+    updateDragLaunchAim,
+} from "./dragLaunchToy.js";
 export { getWorldPropDefinitions, getWorldPropRecipes, getPropAsset } from "../Content/PropCatalog.js";
 export { loadPropAssets } from "../Content/loadPropAssets.js";
 export { PROP_RECIPE_BUILDERS } from "./recipes/index.js";

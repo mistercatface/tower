@@ -10,7 +10,7 @@ import { mountLabViewport } from "./labViewport.js";
 import { TILELAB_UI_HTML } from "./shellHtml.js";
 import { bindMapInspectorControls, syncMapInspectorAfterRegen } from "./mapInspector.js";
 import { initMapTopologyInteractions } from "./mapInteractions.js";
-import { initPhysicsSpawning } from "../world/physicsSandbox.js";
+import { initLabDragLaunchToy } from "../world/physicsSandbox.js";
 import { bindViewModeControls } from "./viewMode.js";
 import { renderActiveLabView } from "./renderLabView.js";
 /** @typedef {import("../../../Core/GameDefinitionTypes.js").UiPort} UiPort */
@@ -75,7 +75,7 @@ function bootstrapTilelabUi(state) {
     bindViewModeControls(state, () => renderActiveLabView(state));
     bindMapInspectorControls(state, () => renderActiveLabView(state));
     initMapTopologyInteractions(state, () => renderActiveLabView(state));
-    initPhysicsSpawning(state, () => renderActiveLabView(state));
+    initLabDragLaunchToy(state, () => renderActiveLabView(state));
     bindToolbarControls({
         onRefresh: () => schedulePreviewRefresh(state, 0),
         onRegenMap: () => {

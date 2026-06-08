@@ -52,6 +52,6 @@ export function renderTilelabPreview(state, ctrl) {
         gameMeta.textContent =
             `${nodeLabel} · map ${state.mapSeed} · ` +
             `focus ${Math.round(mapViewport.x)},${Math.round(mapViewport.y)} · ` +
-            `zoom ${mapViewport.zoom.toFixed(2)} · props ${propCount} · range ${ctrl.weaponRange} · WASD`;
+            `zoom ${mapViewport.zoom.toFixed(2)} · props ${propCount} · range ${ctrl.weaponRange} · WASD · right-drag pan`;
     }
 }

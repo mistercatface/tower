@@ -80,8 +80,9 @@ export function setupLabViewportNavigation(canvasId, { getCamera, setCamera, onU
             },
             { passive: false },
         );
+        canvas.addEventListener("contextmenu", (e) => e.preventDefault());
         canvas.addEventListener("pointerdown", (e) => {
-            if (e.button !== 0 || e.shiftKey) return;
+            if (e.button !== 2) return;
             const cam = getCamera();
             dragState = { canvas, startX: e.clientX, startY: e.clientY, camX: cam.x, camY: cam.y, zoom: cam.zoom || 1 };
             canvas.setPointerCapture(e.pointerId);
