@@ -10,6 +10,7 @@ import { syncLabScreenCanvasBounds } from "../ui/labCanvas.js";
 import { getTilelabSandboxController } from "./tilelabSandbox.js";
 import { renderActorKinematicsBody } from "../../../Libraries/Render/Characters/actorKinematicsRenderer.js";
 import { CombatParticles } from "../../../Libraries/Render/CombatParticles.js";
+import { renderExplosions } from "../../../Libraries/Render/explosionDraw.js";
 /** @type {WorldSceneRenderer | null} */
 let render3D = null;
 /** @type {import("../../../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings | null} */
@@ -77,12 +78,9 @@ export function drawTilelabSurfaceFrame(ctx, canvas, worldState, profileId, weap
     ctx.save();
     viewport.apply(ctx);
     drawWorldScene(ctx, { state: worldState, viewport, worldSceneRenderer: getLabRender3D(), canvas, worldRenderInput, phases: ["ground", "debris", "buildings", "roofs", "bloom"] });
-    if (worldState.projectiles) {
-        for (const p of worldState.projectiles) p.render(ctx, { caches: {} }, worldState);
-    }
-    if (worldState.particles) {
-        CombatParticles.drawCombatParticles(ctx, worldState);
-    }
+    if (worldState.projectiles) for (const p of worldState.projectiles) p.render(ctx, { caches: {} }, worldState);
+    renderExplosions(ctx, worldState, viewport, getLabRender3D(), worldRenderInput);
+    CombatParticles.renderAll(ctx, worldState, viewport);
     if (topologySession && topologyOptions) drawTopologyLayer(ctx, worldState, viewport, topologyOptions, topologySession, { overlay: true });
     worldState.surfaceProfileOverride = prevProfileOverride;
     if (showRangeRing) drawWeaponRangeRing(ctx, cameraX, cameraY, weaponRange);

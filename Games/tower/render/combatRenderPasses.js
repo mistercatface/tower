@@ -2,51 +2,8 @@ import { COMBAT_HUD_MODE, hudSettings } from "../config/towerConfig.js";
 import { getPlayerActors, isWorldScene } from "../../../Core/GamePorts.js";
 import { drawHostileOffScreenIndicators } from "./OffScreenIndicators.js";
 import { CombatParticles } from "../../../Libraries/Render/CombatParticles.js";
+import { renderExplosions } from "../../../Libraries/Render/explosionDraw.js";
 import { drawTowerDebugOverlay } from "./debugOverlay.js";
-/** @param {import("../../../Render/Render.js").Renderer} renderer @param {object} state @param {object | null} viewport */
-function renderExplosions(renderer, state, viewport) {
-    if (!state.explosions) return;
-    for (const exp of state.explosions) {
-        if (viewport && !viewport.isVisible(exp.x, exp.y, exp.maxRadius)) continue;
-        const canvasSize = exp.maxRadius * 2;
-        if (canvasSize <= 0) continue;
-        if (!exp.offCanvas) {
-            exp.offCanvas = new OffscreenCanvas(canvasSize, canvasSize);
-            exp.offCtx = exp.offCanvas.getContext("2d");
-        }
-        const offCanvas = exp.offCanvas;
-        const offCtx = exp.offCtx;
-        const cx = exp.maxRadius;
-        const cy = exp.maxRadius;
-        offCtx.globalCompositeOperation = "source-over";
-        offCtx.clearRect(0, 0, canvasSize, canvasSize);
-        offCtx.beginPath();
-        offCtx.arc(cx, cy, exp.radius, 0, Math.PI * 2);
-        if (exp.currentPhase?.brightFill) {
-            offCtx.fillStyle = "rgba(244, 67, 54, 0.6)";
-            offCtx.fill();
-        } else {
-            offCtx.fillStyle = "rgba(139, 0, 0, 0.9)";
-            offCtx.fill();
-        }
-        offCtx.globalCompositeOperation = "destination-out";
-        offCtx.fillStyle = "#000000";
-        offCtx.save();
-        offCtx.translate(cx - exp.x, cy - exp.y);
-        renderer.render3D.drawExplosion(exp.x, exp.y, exp.maxRadius, renderer.getWorldRenderInput(state, viewport), offCtx);
-        offCtx.restore();
-        renderer.ctx.save();
-        if (exp.currentPhase?.screenBlend) {
-            renderer.ctx.globalCompositeOperation = "screen";
-            renderer.ctx.globalAlpha = 1.0;
-        } else {
-            renderer.ctx.globalCompositeOperation = "source-over";
-            renderer.ctx.globalAlpha = exp.opacity !== undefined ? exp.opacity : 1.0;
-        }
-        renderer.ctx.drawImage(offCanvas, exp.x - exp.maxRadius, exp.y - exp.maxRadius);
-        renderer.ctx.restore();
-    }
-}
 /** @param {import("../../../Render/Render.js").Renderer} renderer @param {object} actor @param {object} state @param {object | null} viewport */
 function drawActorAndTurrets(renderer, actor, state, viewport) {
     if (!actor || actor.isDead) return;
@@ -89,8 +46,8 @@ export function createTowerCombatRenderPasses() {
         },
         {
             zIndex: 60,
-            draw(state, viewport, _ctx, renderer) {
-                renderExplosions(renderer, state, viewport);
+            draw(state, viewport, ctx, renderer) {
+                renderExplosions(ctx, state, viewport, renderer.render3D, renderer.getWorldRenderInput(state, viewport));
             },
         },
         {
