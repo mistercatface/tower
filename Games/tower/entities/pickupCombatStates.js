@@ -1,4 +1,7 @@
 import { Explosion } from "./Explosion/Explosion.js";
+import { RagdollCorpse } from "./RagdollCorpse.js";
+import { clearActorKinematics } from "../../../Libraries/Render/Characters/actorKinematicsRenderer.js";
+
 function spawnExplosion(gameState, x, y, config) {
     if (!gameState || !config?.type) return;
     if (!gameState.explosions) gameState.explosions = [];
@@ -52,6 +55,13 @@ export class PickupExplodedState {
     onEnter(pickup) {
         pickup.isDead = true;
         const gameState = pickup.stateData.gameState;
+        
+        if (pickup.usesKinematicsBody && gameState) {
+            const camera = pickup._kinematicsCamera ?? { x: pickup.x, y: pickup.y };
+            RagdollCorpse.spawnFromActor(gameState, pickup, null, camera);
+            clearActorKinematics(pickup);
+        }
+
         if (pickup.strategy.splittable && typeof pickup.spawnShards === "function") pickup.spawnShards(gameState);
         else spawnExplosion(gameState, pickup.x, pickup.y, pickup.strategy?.explosion);
     }

@@ -24,6 +24,7 @@ export function buildWorldRenderInput(state, viewport = null) {
         walls: state.walls,
         wallSpatialIndex: state.wallSpatialIndex ?? null,
         pickups: state.pickups ?? [],
+        ragdollCorpses: state.ragdollCorpses ?? [],
         canvasBounds: state.canvasBounds ?? null,
         worldSurfaces: state.worldSurfaces,
         surfaceBake: {

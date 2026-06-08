@@ -28,12 +28,23 @@ function pushablePairRestitution(p1, p2) {
     if (r1 != null && r2 != null) return (r1 + r2) * 0.5;
     return r1 ?? r2 ?? getCollisionSettings().restitution.pushablePair;
 }
-function resolvePushablePair(p1, p2) {
+function resolvePushablePair(p1, p2, state) {
     const shapeA = p1.getShape();
     const shapeB = p2.getShape();
     const restitution = pushablePairRestitution(p1, p2);
+    // Calculate pre-collision relative velocity for damage
+    const preDvx = p2.vx - p1.vx;
+    const preDvy = p2.vy - p1.vy;
+    const preSpeedSq = preDvx * preDvx + preDvy * preDvy;
     if (shapeA.type === "Circle" && shapeB.type === "Circle") {
         if (resolveCirclePair(p1, p2, { restitution })) {
+            if (preSpeedSq > 8000) {
+                const dmg = Math.floor(Math.sqrt(preSpeedSq) / 60);
+                if (dmg > 0) {
+                    if (p1.takeDamage) p1.takeDamage(dmg, state);
+                    if (p2.takeDamage) p2.takeDamage(dmg, state);
+                }
+            }
             invalidateWallResolveCache(p1, p2);
             wakePushableBody(p1);
             wakePushableBody(p2);
@@ -42,6 +53,14 @@ function resolvePushablePair(p1, p2) {
     }
     const collisionInfo = resolveSatPair(p1, shapeA, p2, shapeB, { massA: massFromBody(p1), massB: massFromBody(p2), restitution });
     if (!collisionInfo) return;
+    // Apply damage on high-speed impacts using pre-collision speed
+    if (preSpeedSq > 8000) {
+        const dmg = Math.floor(Math.sqrt(preSpeedSq) / 60);
+        if (dmg > 0) {
+            if (p1.takeDamage) p1.takeDamage(dmg, state);
+            if (p2.takeDamage) p2.takeDamage(dmg, state);
+        }
+    }
     invalidateWallResolveCache(p1, p2);
     wakePushableBody(p1);
     wakePushableBody(p2);
@@ -112,7 +131,7 @@ export function runCollisionPipeline(
             if (hasCombatants && spatialFrame.forEachActorPushablePair)
                 spatialFrame.forEachActorPushablePair((actor, pickup) => resolveActorPushable(actor, pickup, resolveWalls, spatialFrame, state));
             if (hasPushables) {
-                spatialFrame.forEachPushablePair((p1, p2) => resolvePushablePair(p1, p2));
+                spatialFrame.forEachPushablePair((p1, p2) => resolvePushablePair(p1, p2, state));
                 for (let i = 0; i < pushables.length; i++) {
                     const pickup = pushables[i];
                     if (pickup.isDead || !pickup.needsWallCollision()) continue;
