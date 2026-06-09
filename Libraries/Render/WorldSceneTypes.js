@@ -14,7 +14,6 @@
  */
 /**
  * @typedef {Object} WorldSceneDrawInput
- * @property {object[]} walls
  * @property {object[]} pickups
  * @property {object[]} [ragdollCorpses]
  * @property {import("../WorldSurface/WorldSurfaceEngine.js").WorldSurfaceEngine|null} [worldSurfaces]

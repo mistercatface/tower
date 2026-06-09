@@ -12,7 +12,6 @@ export class Renderer {
         this.caches = caches;
         this.render3D = new WorldSceneRenderer(getGameWorldSurfaceSettings(), getRenderPorts().world3dPropRecipes);
         this.worldSceneDrawInput = {
-            walls: [],
             pickups: [],
             ragdollCorpses: [],
             worldSurfaces: null,
@@ -40,7 +39,6 @@ export class Renderer {
     /** @param {import("../GameState/GameState.js").GameState} state */
     syncWorldSceneDrawInput(state) {
         const input = this.worldSceneDrawInput;
-        input.walls = state.walls;
         input.pickups = state.pickups;
         input.ragdollCorpses = state.ragdollCorpses ?? [];
         input.worldSurfaces = state.worldSurfaces;
@@ -64,7 +62,7 @@ export class Renderer {
     /** Walls and roofs — zIndex 70. */
     drawWorldSceneStructure(state, viewport) {
         if (!isWorldScene(state.phase)) return;
-        this.render3D.draw3DBuildings(this.ctx, this.worldSceneDrawInput, viewport);
+        this.render3D.draw3DBuildings(this.ctx, this.worldSceneDrawInput, viewport, state.walls);
         state.worldSurfaces.drawRoofs(this.ctx, state, viewport);
     }
     /** Full-canvas bloom — zIndex 71 when enabled. */

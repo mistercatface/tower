@@ -101,11 +101,11 @@ export class WorldSceneRenderer {
         for (let i = 0; i < visibleCorpses.length; i++) visibleCorpses[i].render(ctx);
         ctx.restore();
     }
-    draw3DBuildings(ctx, input, viewport, options = {}) {
+    draw3DBuildings(ctx, input, viewport, walls, options = {}) {
         const px = viewport.x;
         const py = viewport.y;
         const worldBounds = viewport.boundsDraw;
-        this.structure.updateSharedEdges(input);
+        this.structure.updateSharedEdges(walls);
         ctx.save();
         clipToViewport(ctx, viewport);
         const visibleObjects = this.visibleDrawables;
