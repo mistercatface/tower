@@ -119,8 +119,6 @@ export function drawActivePathOverlay(ctx, overlay, zoom, visual = "debug") {
                 ctx.stroke();
             }
         }
-        drawPathMarker(ctx, fromX, fromY, 16 / zoom, "#00bcd4", "P", zoom);
-        drawPathMarker(ctx, targetX, targetY, 16 / zoom, "#e91e63", "T", zoom);
         return;
     }
     ctx.strokeStyle = "rgba(0, 188, 212, 0.65)";

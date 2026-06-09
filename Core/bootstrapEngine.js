@@ -40,15 +40,8 @@ function syncWorldSurfaceEngineSettings(state) {
     if (!engine) return;
     const settings = getGameWorldSurfaceSettings();
     const prev = engine.settings;
-    const bakeSettingsChanged =
-        prev.groundChunkAnimationsOn !== settings.groundChunkAnimationsOn ||
-        prev.wallAnimationsOn !== settings.wallAnimationsOn ||
-        prev.animationBakeMaxFrames !== settings.animationBakeMaxFrames ||
-        prev.animationFrameBatchSize !== settings.animationFrameBatchSize ||
-        prev.pixelsPerCell !== settings.pixelsPerCell ||
-        prev.wallHeight !== settings.wallHeight ||
-        prev.cameraHeight !== settings.cameraHeight ||
-        JSON.stringify(prev.roofZLevels ?? []) !== JSON.stringify(settings.roofZLevels ?? []);
+    const keysToCheck = ["groundChunkAnimationsOn", "wallAnimationsOn", "animationBakeMaxFrames", "animationFrameBatchSize", "pixelsPerCell", "wallHeight", "cameraHeight"];
+    const bakeSettingsChanged = keysToCheck.some((key) => prev[key] !== settings[key]) || JSON.stringify(prev.roofZLevels ?? []) !== JSON.stringify(settings.roofZLevels ?? []);
     engine.settings = settings;
     if (bakeSettingsChanged) engine.clear();
 }
