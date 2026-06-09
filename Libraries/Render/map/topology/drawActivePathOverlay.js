@@ -7,6 +7,7 @@
  * @property {number} targetY
  * @property {Array<{ x: number, y: number }>} [waypoints]
  * @property {Array<{ x: number, y: number, id?: string }>} [abstractPath]
+ * @property {"local" | "hpa"} [pathPlanner]
  */
 function drawPathMarker(ctx, x, y, radius, fillStyle, label, zoom) {
     ctx.beginPath();
@@ -24,12 +25,16 @@ function drawPathMarker(ctx, x, y, radius, fillStyle, label, zoom) {
         ctx.fillText(label, x, y);
     }
 }
-function drawAbstractPath(ctx, abstractPath, zoom) {
+function drawAbstractPath(ctx, abstractPath, zoom, pathPlanner = "hpa") {
     if (!abstractPath || abstractPath.length < 2) return;
+    const isLocal = pathPlanner === "local";
+    const lineColor = isLocal ? "#ff9800" : "#ffeb3b";
+    const nodeColor = isLocal ? "#ffb74d" : "#ffeb3b";
+    const endpointColor = isLocal ? "#f57c00" : "#ff9800";
     ctx.beginPath();
     ctx.moveTo(abstractPath[0].x, abstractPath[0].y);
     for (let i = 1; i < abstractPath.length; i++) ctx.lineTo(abstractPath[i].x, abstractPath[i].y);
-    ctx.strokeStyle = "#ffeb3b";
+    ctx.strokeStyle = lineColor;
     ctx.lineWidth = 5 / zoom;
     ctx.setLineDash([12 / zoom, 8 / zoom]);
     ctx.stroke();
@@ -39,7 +44,7 @@ function drawAbstractPath(ctx, abstractPath, zoom) {
         const radius = (isEndpoint ? 8 : 10) / zoom;
         ctx.beginPath();
         ctx.arc(node.x, node.y, radius, 0, Math.PI * 2);
-        ctx.fillStyle = isEndpoint ? "#ff9800" : "#ffeb3b";
+        ctx.fillStyle = isEndpoint ? endpointColor : nodeColor;
         ctx.fill();
         ctx.strokeStyle = "#fff";
         ctx.lineWidth = 2 / zoom;
@@ -52,9 +57,9 @@ function drawAbstractPath(ctx, abstractPath, zoom) {
  * @param {number} zoom
  */
 export function drawActivePathOverlay(ctx, overlay, zoom) {
-    const { mode, fromX, fromY, targetX, targetY, waypoints, abstractPath } = overlay;
+    const { mode, fromX, fromY, targetX, targetY, waypoints, abstractPath, pathPlanner } = overlay;
     if (mode === "hpa") {
-        if (abstractPath) drawAbstractPath(ctx, abstractPath, zoom);
+        if (abstractPath) drawAbstractPath(ctx, abstractPath, zoom, pathPlanner ?? "hpa");
         if (waypoints?.length) {
             ctx.beginPath();
             ctx.moveTo(fromX, fromY);

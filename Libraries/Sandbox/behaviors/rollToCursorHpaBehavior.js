@@ -48,6 +48,7 @@ export function createRollToCursorHpaBehavior() {
                 targetY: targetWorld.y,
                 waypoints: hpaNav.navState.path ?? undefined,
                 abstractPath: hpaNav.navState.abstractPath ?? undefined,
+                pathPlanner: hpaNav.navState.pathPlanner ?? undefined,
             };
         },
         reset() {
