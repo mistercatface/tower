@@ -169,10 +169,13 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
             const behavior = resolveBehavior();
             if (pickup) drawSandboxPathOverlay(ctx, pickup, behavior, host);
         },
-        drawOverlay(ctx) {
+        /** Drag-launch aim preview — same layer as path overlays (above floors, below walls). */
+        drawLaunchPreview(ctx) {
             const pickup = session.getSelectedPickup();
             const behavior = resolveBehavior();
             behavior?.drawOverlay?.(ctx, pickup, host);
+        },
+        drawOverlay(ctx) {
             drawSandboxWeaponBars(ctx, host);
             drawSandboxLaserSights(ctx, host);
         },

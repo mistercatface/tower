@@ -13,6 +13,7 @@ export class Renderer {
         this.render3D = new WorldSceneRenderer(getGameWorldSurfaceSettings(), getRenderPorts().world3dPropRecipes);
         this.effectPasses = [
             { zIndex: -5, fn: (state, viewport) => drawWorldScene(this.ctx, { state, viewport, worldSceneRenderer: this.render3D, phases: ["ground", "debris"] }) },
+            { zIndex: 55, fn: (state, viewport) => this.render3D.drawRagdollCorpsesOnly(this.ctx, this.getWorldRenderInput(state, viewport), viewport) },
             {
                 zIndex: 70,
                 fn: (state, viewport) =>

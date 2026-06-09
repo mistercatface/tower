@@ -78,15 +78,23 @@ export class WorldSceneRenderer {
                 p._distSq = (p.x - px) ** 2 + (p.y - py) ** 2;
                 visibleObjects.push(p);
             }
-        if (input.ragdollCorpses && input.ragdollCorpses.length > 0)
-            for (let i = 0; i < input.ragdollCorpses.length; i++) {
-                const corpse = input.ragdollCorpses[i];
-                if (corpse.isDead || corpse.opacity <= 0) continue;
-                if (viewport && typeof corpse.isVisible === "function" && !corpse.isVisible(viewport)) continue;
-                corpse._distSq = (corpse.x - px) ** 2 + (corpse.y - py) ** 2;
-                corpse.isRagdollCorpse = true; // Flag for drawing
-                visibleObjects.push(corpse);
-            }
+    }
+    /**
+     * @param {WorldSceneDrawInput} input
+     * @param {import("../Viewport/Viewport.js").Viewport | null} viewport
+     * @param {number} px
+     * @param {number} py
+     * @param {object[]} visibleObjects
+     */
+    _appendVisibleRagdolls(input, viewport, px, py, visibleObjects) {
+        if (!input.ragdollCorpses?.length) return;
+        for (let i = 0; i < input.ragdollCorpses.length; i++) {
+            const corpse = input.ragdollCorpses[i];
+            if (corpse.isDead || corpse.opacity <= 0) continue;
+            if (viewport && typeof corpse.isVisible === "function" && !corpse.isVisible(viewport)) continue;
+            corpse._distSq = (corpse.x - px) ** 2 + (corpse.y - py) ** 2;
+            visibleObjects.push(corpse);
+        }
     }
     /**
      * @param {CanvasRenderingContext2D} ctx
@@ -127,10 +135,26 @@ export class WorldSceneRenderer {
         visibleProps.sort((a, b) => b._distSq - a._distSq);
         for (let i = 0; i < visibleProps.length; i++) {
             const obj = visibleProps[i];
-            if (obj.isRagdollCorpse) obj.render(ctx);
-            else if (obj.usesKinematicsBody) renderActorKinematicsBody(ctx, obj, viewport);
+            if (obj.usesKinematicsBody) renderActorKinematicsBody(ctx, obj, viewport);
             else this.drawProp(ctx, obj, px, py);
         }
+        ctx.restore();
+    }
+    /**
+     * @param {CanvasRenderingContext2D} ctx
+     * @param {WorldSceneDrawInput} input
+     * @param {import("../Viewport/Viewport.js").Viewport | null} viewport
+     */
+    drawRagdollCorpsesOnly(ctx, input, viewport) {
+        const px = input.viewer.x;
+        const py = input.viewer.y;
+        ctx.save();
+        if (viewport) clipToViewport(ctx, viewport, input.canvasBounds);
+        const visibleCorpses = this._visibleObjects;
+        visibleCorpses.length = 0;
+        this._appendVisibleRagdolls(input, viewport, px, py, visibleCorpses);
+        visibleCorpses.sort((a, b) => b._distSq - a._distSq);
+        for (let i = 0; i < visibleCorpses.length; i++) visibleCorpses[i].render(ctx);
         ctx.restore();
     }
     /**
@@ -154,8 +178,7 @@ export class WorldSceneRenderer {
         visibleObjects.sort((a, b) => b._distSq - a._distSq);
         for (let i = 0; i < visibleObjects.length; i++) {
             const obj = visibleObjects[i];
-            if (obj.isRagdollCorpse) obj.render(ctx);
-            else if (obj.usesKinematicsBody) renderActorKinematicsBody(ctx, obj, viewport);
+            if (obj.usesKinematicsBody) renderActorKinematicsBody(ctx, obj, viewport);
             else if (obj.strategy) this.drawProp(ctx, obj, px, py);
             else this.structure.drawWallSegmentFaces(ctx, obj, px, py, input, viewport, wallDrawOptions);
         }
