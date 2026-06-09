@@ -7,7 +7,6 @@ import { getGameState } from "../../GameState/GameState.js";
 import { createCombatWallResolver } from "../../Systems/Motion/createCombatWallResolver.js";
 import { applyLabCanvasSize } from "./ui/labCanvas.js";
 import { createSandboxCombatFeature } from "../../Libraries/Combat/createSandboxCombatFeature.js";
-import { createPropZoneFeature } from "../../Libraries/Props/zones/createPropZoneFeature.js";
 import { createFloatingTextFeature } from "../../Libraries/Render/createFloatingTextFeature.js";
 import { SharedGameState } from "../../GameState/SharedGameState.js";
 import { createRoguelikeNavRuntime } from "../../Libraries/Navigation/createRoguelikeNavRuntime.js";
@@ -85,7 +84,7 @@ export class TileLabSimulationState {
 export const tilelabGame = {
     id: "tilelab",
     canvasId: "gameCanvas",
-    features: [...createSandboxCombatFeature(), createPropZoneFeature(), createFloatingTextFeature()],
+    features: [...createSandboxCombatFeature(), createFloatingTextFeature()],
     createGameState() {
         return new TileLabGameState();
     },

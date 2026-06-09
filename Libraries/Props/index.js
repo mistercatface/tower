@@ -19,8 +19,5 @@ export {
 export { spawnStartProps } from "./spawnStartProps.js";
 export { getWorldPropDefinitions, getWorldPropRecipes, getPropAsset } from "./PropCatalog.js";
 export { loadPropAssets } from "./loadPropAssets.js";
-export { createPropZoneFeature } from "./zones/createPropZoneFeature.js";
-export { processPropZones } from "./zones/processPropZones.js";
-export { ZONE_HANDLERS, getZoneHandler, isInZone, isZoneVictim } from "./zones/zoneHandlers.js";
 export { PROP_RECIPE_BUILDERS } from "./recipes/index.js";
 export { PROP_PRIMITIVE_BUILDERS } from "./primitives/index.js";
