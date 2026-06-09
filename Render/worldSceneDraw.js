@@ -9,12 +9,10 @@ import { LIBRARY_WORLD_SURFACE_DEFAULTS } from "../Libraries/WorldSurface/worldS
  */
 /**
  * @param {CanvasRenderingContext2D} ctx
- * @param {Omit<WorldSceneDrawContext, "worldRenderInput"> & { worldRenderInput?: WorldSceneDrawContext["worldRenderInput"] }} options
- * @returns {WorldSceneDrawContext | null}
+ * @param {WorldSceneDrawContext} options
  */
-function resolveWorldSceneDraw(options) {
-    const { state, viewport, worldSceneRenderer, worldRenderInput } = options;
-    if (!viewport || !isWorldScene(state.phase)) return null;
+function resolveWorldSceneDraw({ state, viewport, worldSceneRenderer, worldRenderInput }) {
+    if (!isWorldScene(state.phase)) return null;
     return { state, viewport, worldSceneRenderer, worldRenderInput };
 }
 /** Ground tiles and debris props — zIndex -5 pass. */
@@ -35,7 +33,6 @@ export function drawWorldSceneStructure(ctx, options) {
 }
 /** Full-canvas bloom — register as a pipeline pass when enabled, not per-frame config probing. */
 export function drawWorldSceneBloom(ctx, canvas) {
-    if (!canvas) return;
     const { blur } = LIBRARY_WORLD_SURFACE_DEFAULTS.bloom;
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);

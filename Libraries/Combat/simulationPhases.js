@@ -38,14 +38,6 @@ export const ragdollCorpsePhase = {
         RagdollCorpse.updateAll(ctx.state, dt, runtime.spatialFrame);
     },
 };
-/** Combat particles + ragdoll corpses (tower keeps both in one phase for phase-order history). */
-/** @type {SimulationPhase} */
-export const particlesPhase = {
-    run(ctx, dt, runtime) {
-        combatParticlesPhase.run(ctx, dt, runtime);
-        ragdollCorpsePhase.run(ctx, dt, runtime);
-    },
-};
 /** @type {SimulationPhase} */
 export const dispatchEventsPhase = {
     id: "dispatchEvents",
@@ -53,11 +45,3 @@ export const dispatchEventsPhase = {
         dispatchSimulationEvents(runtime.events, ctx);
     },
 };
-/**
- * Shared combat tick phases for prop/sandbox worlds.
- * Games insert sandbox/physics/scene phases around this block.
- * @returns {SimulationPhase[]}
- */
-export function createCombatWorldPhases() {
-    return [projectilesPhase, combatParticlesPhase, dispatchEventsPhase];
-}

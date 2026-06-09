@@ -4,7 +4,6 @@ export function createProjectileCombatFeature({ projectileZIndex = 20 } = {}) {
         initState(state) {
             state.projectiles = state.projectiles ?? [];
             state.activeLasers = state.activeLasers ?? [];
-            state.entityLayers = state.entityLayers ?? [];
             if (!state.entityLayers.some((layer) => layer.key === "projectiles")) state.entityLayers.push({ key: "projectiles", zIndex: projectileZIndex });
         },
         simulationPhaseInsertAfter: "sandboxTick",

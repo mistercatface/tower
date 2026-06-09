@@ -1,6 +1,5 @@
 /** Game-side wall atlas cache invalidation (edge memo fields on live wall segments). */
 export function invalidateWallAtlasKeyMemos(state) {
-    if (!state?.walls) return;
     for (const seg of state.walls) {
         const edges = seg._cachedEdges;
         if (!edges) continue;

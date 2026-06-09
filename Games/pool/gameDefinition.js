@@ -11,7 +11,7 @@ import { createRunBootstrapPort } from "../../Libraries/RunBootstrap/RunBootstra
 import { generateWorldPhase } from "../../Libraries/RunBootstrap/phases.js";
 import { createDefaultRenderPorts } from "../../Libraries/Render/defaultRenderPorts.js";
 import { PoolGameState } from "./PoolGameState.js";
-import { registerPickupStates } from "../../Entities/PickupStates.js";
+import { pickupStates } from "../../Entities/PickupStates.js";
 import { poolPickupStates } from "./pickupPoolStates.js";
 /** @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition */
 /**
@@ -37,7 +37,8 @@ export const poolGame = {
     states: { simulation: PoolSimulationState },
     initialState: "simulation",
     prepare() {
-        registerPickupStates(poolPickupStates);
+        for (const key of Object.keys(pickupStates)) if (key !== "normal") delete pickupStates[key];
+        Object.assign(pickupStates, poolPickupStates);
         document.title = "Pool";
         document.body.classList.add("shell-landscape-minimal");
     },

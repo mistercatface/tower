@@ -42,7 +42,7 @@ export class Renderer {
         this._frameWorldRenderInput = null;
         this.ctx.save();
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        if (viewport) viewport.apply(this.ctx);
+        viewport.apply(this.ctx);
         if (!this._simulationPipeline || this._pipelineEntityLayers !== state.entityLayers) {
             this.buildSimulationPipeline(state, viewport);
             this._pipelineEntityLayers = state.entityLayers;

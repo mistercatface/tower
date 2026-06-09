@@ -1,4 +1,4 @@
-import { computeProjectedFace, drawPrecalculatedFaceTexture } from "../Structure3D/ProjectedWallDraw.js";
+import { computeProjectedFace, drawFaceTexture } from "../Structure3D/ProjectedWallDraw.js";
 import { wallDamageOverlayStyle } from "../Structure3D/wallDamageVisual.js";
 /**
  * Base class for all pre-calculated static geometry.
@@ -59,7 +59,7 @@ export class RenderableWallFace extends Renderable {
         ctx.lineTo(this.p2.x, this.p2.y);
         ctx.closePath();
         if (worldSurfaces && surfaceBake) {
-            drawPrecalculatedFaceTexture(ctx, this.p1, this.p2, face, worldSurfaces, surfaceBake, { x: viewerX, y: viewerY }, viewport, this.wallHeight, fillStyle, this.simWall, worldBounds);
+            drawFaceTexture(ctx, this.p1, this.p2, face, worldSurfaces, surfaceBake, { x: viewerX, y: viewerY }, viewport, this.wallHeight, fillStyle, this.simWall, worldBounds);
             if (damageAlpha > 0) {
                 ctx.save();
                 ctx.beginPath();

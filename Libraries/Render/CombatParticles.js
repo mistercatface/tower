@@ -35,7 +35,6 @@ class PixelParticle {
         if (this.life <= 0) this.isDead = true;
     }
     isVisible(viewport) {
-        if (!viewport?.isVisible) return true;
         return viewport.isVisible(this.x, this.y, 14);
     }
     renderScreen(ctx, viewport) {
@@ -68,7 +67,6 @@ class MuzzleFlashParticle {
         if (this.life <= 0) this.isDead = true;
     }
     isVisible(viewport) {
-        if (!viewport?.isVisible) return true;
         return viewport.isVisible(this.x, this.y, 20);
     }
     renderScreen(ctx, viewport) {
@@ -103,7 +101,6 @@ class SmokeParticle {
         if (this.life <= 0) this.isDead = true;
     }
     isVisible(viewport) {
-        if (!viewport?.isVisible) return true;
         return viewport.isVisible(this.x, this.y, 16);
     }
     renderScreen(ctx, viewport) {
@@ -117,11 +114,7 @@ class SmokeParticle {
     }
 }
 export class CombatParticles {
-    static ensure(state) {
-        if (!state.combatParticles) state.combatParticles = [];
-    }
     static spawnBlood(state, x, y, options = {}) {
-        CombatParticles.ensure(state);
         const count = options.count ?? 3;
         const intensity = options.intensity ?? 1;
         const impactAngle = options.impactAngle;
@@ -139,7 +132,6 @@ export class CombatParticles {
         trimParticles(state.combatParticles);
     }
     static spawnImpactSparks(state, x, y, options = {}) {
-        CombatParticles.ensure(state);
         const kind = options.kind ?? "default";
         const palette = kind === "ricochet" ? RICOCHET_PALETTE : SPARK_PALETTE;
         const count = kind === "ricochet" ? 3 : 4;
@@ -158,7 +150,6 @@ export class CombatParticles {
         trimParticles(state.combatParticles);
     }
     static spawnMuzzleFlash(state, x, y, angle, options = {}) {
-        CombatParticles.ensure(state);
         const isPellet = options.isPellet ?? false;
         state.combatParticles.push(new MuzzleFlashParticle(x, y));
         if (!isPellet || Math.random() > 0.5) {
@@ -189,7 +180,7 @@ export class CombatParticles {
         CombatParticles.spawnBlood(state, bx, by, { impactAngle, count, intensity: 1, sizePx });
     }
     static updateAll(state, dt) {
-        if (!state.combatParticles?.length) return;
+        if (!state.combatParticles.length) return;
         for (let i = state.combatParticles.length - 1; i >= 0; i--) {
             const p = state.combatParticles[i];
             p.update(dt);
@@ -198,7 +189,7 @@ export class CombatParticles {
     }
     /** Screen-space pass — crisp pixels, no subpixel alpha blur. */
     static renderAll(ctx, state, viewport) {
-        if (!state.combatParticles?.length || !viewport) return;
+        if (!state.combatParticles.length) return;
         ctx.save();
         ctx.imageSmoothingEnabled = false;
         for (const p of state.combatParticles) {

@@ -57,8 +57,6 @@ function applyExpandingDamage(state, exp, allEvents) {
 export class ExplosionExpandingPhase {
     constructor() {
         this.repelsEntities = true;
-        this.brightFill = true;
-        this.screenBlend = true;
     }
     update(state, exp, dt, allEvents) {
         exp.radius += exp.speed * (dt / 1000);
@@ -72,8 +70,6 @@ export class ExplosionExpandingPhase {
 export class ExplosionLingeringPhase {
     constructor() {
         this.repelsEntities = true;
-        this.brightFill = false;
-        this.screenBlend = false;
     }
     update(state, exp, dt) {
         exp.lingerTimer -= dt;
@@ -83,8 +79,6 @@ export class ExplosionLingeringPhase {
 export class ExplosionFadingPhase {
     constructor() {
         this.repelsEntities = false;
-        this.brightFill = false;
-        this.screenBlend = false;
     }
     update(state, exp, dt) {
         exp.fadeTimer -= dt;

@@ -2,14 +2,14 @@ import { getRunScenePort } from "../../Core/GamePorts.js";
 import { ensurePoolState } from "./balls.js";
 import { getPocketArcAngles } from "./config/tableLayout.js";
 import { CAMERA_HEIGHT, PERSPECTIVE_STRENGTH } from "../../Libraries/Spatial/iso/IsometricProjection.js";
-import { resolveRenderViewer } from "../../Render/adapters/WorldRenderAdapter.js";
 /** Pocket holes on the felt and depth below it — drawn before wall faces. */
 export function drawPoolPockets(state, viewport, canvasCtx) {
     const layout = getRunScenePort().getLayout(state);
     if (!layout?.pockets) return;
     const pool = ensurePoolState(state);
     if (pool.won) return;
-    const { x: px, y: py } = resolveRenderViewer(state, viewport);
+    const px = viewport.x;
+    const py = viewport.y;
     const lineW = viewport?.zoom ? 2 / viewport.zoom : 2;
     const mouthRadius = layout.sidePocketRadius ?? 16;
     const pocketDepth = layout.pocketDepth ?? 24;

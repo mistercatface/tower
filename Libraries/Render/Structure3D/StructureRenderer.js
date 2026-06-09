@@ -46,15 +46,6 @@ export class StructureRenderer {
             this.rebuildSharedEdgesAsync(input);
         }
     }
-    drawWallFace(ctx, seg, p1, p2, px, py, input, viewport, worldBounds, options = {}, cacheObj = null) {
-        drawProjectedWallFace(ctx, p1, p2, px, py, getWallDamageColor(seg, 1.0), input.worldSurfaces, input.surfaceBake, viewport, worldBounds, {
-            damageAlpha: getWallDamageAlpha(seg),
-            textureEnabled: options.textureEnabled !== false,
-            cacheObj,
-            settings: this.settings,
-            wallHeight: seg.wallHeight ?? getWallHeight(this.settings),
-        });
-    }
     drawWallSegmentFaces(ctx, seg, px, py, input, viewport, worldBounds, options = {}) {
         const edges = this.getSegmentEdges(seg);
         if (!seg.sharedEdges) seg.sharedEdges = [false, false, false, false];
@@ -64,7 +55,13 @@ export class StructureRenderer {
             const viewX = edge.cx - px;
             const viewY = edge.cy - py;
             if (edge.outX * viewX + edge.outY * viewY >= 0) continue;
-            this.drawWallFace(ctx, seg, edge[0], edge[1], px, py, input, viewport, worldBounds, options, edge);
+            drawProjectedWallFace(ctx, edge[0], edge[1], px, py, getWallDamageColor(seg, 1.0), input.worldSurfaces, input.surfaceBake, viewport, worldBounds, {
+                damageAlpha: getWallDamageAlpha(seg),
+                textureEnabled: options.textureEnabled !== false,
+                cacheObj: edge,
+                settings: this.settings,
+                wallHeight: seg.wallHeight ?? getWallHeight(this.settings),
+            });
         }
     }
     rebuildSharedEdgesAsync(input) {

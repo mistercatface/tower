@@ -4,7 +4,6 @@ export function createFloatingTextFeature({ zIndex = 100 } = {}) {
     return {
         initState(state) {
             state.floatingTexts = state.floatingTexts ?? [];
-            state.entityLayers = state.entityLayers ?? [];
             if (!state.entityLayers.some((layer) => layer.key === "floatingTexts")) state.entityLayers.push({ key: "floatingTexts", zIndex });
         },
         simulationPhases: [

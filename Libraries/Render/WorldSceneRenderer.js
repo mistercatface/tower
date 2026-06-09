@@ -23,9 +23,6 @@ export class WorldSceneRenderer {
     setPropRecipes(propRecipes) {
         this.props.setPropRecipes(propRecipes);
     }
-    drawProp(ctx, prop, px, py) {
-        this.props.drawProp(ctx, prop, px, py);
-    }
     /**
      * @param {CanvasRenderingContext2D} ctx
      * @param {WorldSceneDrawInput} input
@@ -41,7 +38,7 @@ export class WorldSceneRenderer {
             const p = input.pickups[i];
             if (p.isDead || p.strategy?.renderMode !== "debris") continue;
             if (typeof p.isVisible === "function" && !p.isVisible(viewport)) continue;
-            this.drawProp(ctx, p, px, py);
+            this.props.drawProp(ctx, p, px, py);
         }
         ctx.restore();
     }
@@ -110,51 +107,6 @@ export class WorldSceneRenderer {
         const fillStyle = this.settings.floorShadow ?? "#12161c";
         face.draw(ctx, viewport, input.worldSurfaces, input.surfaceBake, fillStyle, getWallDamageAlpha(face.simWall), px, py, worldBounds);
     }
-    drawStructureOnly(ctx, input, viewport, options = {}) {
-        const scene = input.worldSurfaces.renderScene;
-        const px = input.viewer.x;
-        const py = input.viewer.y;
-        const worldBounds = this._worldBounds(viewport);
-        this.structure.updateSharedEdges(input);
-        ctx.save();
-        clipToViewport(ctx, viewport, input.canvasBounds);
-        if (scene.chunks.size > 0) {
-            const { minCol, maxCol, minRow, maxRow } = this._getSceneChunkRange(scene, viewport, input);
-            const walls = scene.collectPass("walls", minCol, minRow, maxCol, maxRow);
-            for (let i = 0; i < walls.length; i++) walls[i]._distSq = (walls[i].cx - px) ** 2 + (walls[i].cy - py) ** 2;
-            walls.sort((a, b) => b._distSq - a._distSq || a.cy - b.cy);
-            for (let i = 0; i < walls.length; i++) {
-                const face = walls[i];
-                if (!face.shouldDraw(px, py)) continue;
-                this._drawRetainedWallFace(ctx, face, input, viewport, px, py, worldBounds);
-            }
-        } else {
-            const wallDrawOptions = { textureEnabled: options.textureEnabled !== false };
-            const candidateWalls = this.structure.collectVisibleWalls(input, viewport, px, py);
-            for (let i = 0; i < candidateWalls.length; i++) {
-                const seg = candidateWalls[i];
-                if (seg.isDead) continue;
-                this.structure.drawWallSegmentFaces(ctx, seg, px, py, input, viewport, worldBounds, wallDrawOptions);
-            }
-        }
-        ctx.restore();
-    }
-    drawDynamicPropsOnly(ctx, input, viewport, options = {}) {
-        const px = input.viewer.x;
-        const py = input.viewer.y;
-        ctx.save();
-        clipToViewport(ctx, viewport, input.canvasBounds);
-        const visibleProps = this._visibleObjects;
-        visibleProps.length = 0;
-        this._appendVisible3dProps(input, viewport, px, py);
-        visibleProps.sort((a, b) => b._distSq - a._distSq);
-        for (let i = 0; i < visibleProps.length; i++) {
-            const obj = visibleProps[i];
-            if (obj.usesKinematicsBody) renderActorKinematicsBody(ctx, obj, viewport);
-            else this.drawProp(ctx, obj, px, py);
-        }
-        ctx.restore();
-    }
     drawRagdollCorpsesOnly(ctx, input, viewport) {
         const px = input.viewer.x;
         const py = input.viewer.y;
@@ -183,7 +135,7 @@ export class WorldSceneRenderer {
         for (let i = 0; i < visibleObjects.length; i++) {
             const obj = visibleObjects[i];
             if (obj.usesKinematicsBody) renderActorKinematicsBody(ctx, obj, viewport);
-            else if (obj.strategy) this.drawProp(ctx, obj, px, py);
+            else if (obj.strategy) this.props.drawProp(ctx, obj, px, py);
             else if (obj.pass === "walls") this._drawRetainedWallFace(ctx, obj, input, viewport, px, py, worldBounds);
             else this.structure.drawWallSegmentFaces(ctx, obj, px, py, input, viewport, worldBounds, wallDrawOptions);
         }

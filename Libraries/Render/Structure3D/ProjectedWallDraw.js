@@ -70,10 +70,7 @@ function resolveWallProfileId(surfaceBake, wallCx, wallCy, cacheObj) {
     }
     return profileId;
 }
-export function drawPrecalculatedFaceTexture(ctx, p1, p2, face, worldSurfaces, surfaceBake, viewer, viewport, wallHeight, fillStyle, cacheObj = null, worldBounds = null) {
-    drawFaceTexture(ctx, p1, p2, face, worldSurfaces, surfaceBake, viewer, viewport, wallHeight, fillStyle, cacheObj, worldBounds);
-}
-function drawFaceTexture(ctx, p1, p2, face, worldSurfaces, surfaceBake, viewer, viewport, wallHeight, fillStyle, cacheObj = null, worldBounds = null) {
+export function drawFaceTexture(ctx, p1, p2, face, worldSurfaces, surfaceBake, viewer, viewport, wallHeight, fillStyle, cacheObj = null, worldBounds = null) {
     const settings = worldSurfaces.settings;
     if (!settings) return;
     const cellSize = settings.cellSize;
@@ -94,7 +91,6 @@ function drawFaceTexture(ctx, p1, p2, face, worldSurfaces, surfaceBake, viewer, 
         ctx.fill();
         return;
     }
-    const safeWorldBounds = worldBounds;
     const bleedPx = settings.wallTextureBleedPx ?? 1;
     const clampedHeight = Math.min(wallHeight, settings.cameraHeight - 1);
     const alphaMax = resolveElevationAlpha(clampedHeight, settings.cameraHeight);
@@ -132,7 +128,7 @@ function drawFaceTexture(ctx, p1, p2, face, worldSurfaces, surfaceBake, viewer, 
             computeFaceCorner(sCorner1, p1, p2, face.proj1X, face.proj1Y, face.proj2X, face.proj2Y, u1, v0);
             computeFaceCorner(sCorner2, p1, p2, face.proj1X, face.proj1Y, face.proj2X, face.proj2Y, u1, v1);
             computeFaceCorner(sCorner3, p1, p2, face.proj1X, face.proj1Y, face.proj2X, face.proj2Y, u0, v1);
-            if (!rowBoundsIntersects(sCorner0, sCorner1, sCorner2, sCorner3, safeWorldBounds)) continue;
+            if (!rowBoundsIntersects(sCorner0, sCorner1, sCorner2, sCorner3, worldBounds)) continue;
             const sx0 = u0 * flatCanvas.width;
             const sx1 = u1 * flatCanvas.width;
             drawImageQuad(ctx, flatCanvas, sx0, sy0, sx1, sy1, sCorner0, sCorner1, sCorner2, sCorner3, { bleedPx });
