@@ -21,8 +21,10 @@ function defaultWorldFocus(state) {
 export const initMapSpawnPhase = {
     run(ctx) {
         const { state } = ctx;
-        state.mapBaseSpawnX = state.canvasBounds.width > 0 ? state.canvasBounds.width / 2 : 225;
-        state.mapBaseSpawnY = state.canvasBounds.height > 0 ? state.canvasBounds.height / 2 : 225;
+        const viewW = state.viewport?.width ?? 0;
+        const viewH = state.viewport?.height ?? 0;
+        state.mapBaseSpawnX = viewW > 0 ? viewW / 2 : 225;
+        state.mapBaseSpawnY = viewH > 0 ? viewH / 2 : 225;
     },
 };
 /** @type {WorldGenPhase} */

@@ -32,12 +32,12 @@ function maybeClearBakeCaches(worldState, profileId) {
  */
 export function drawTilelabSurfaceFrame(ctx, canvas, worldState, profileId, drawOptions = {}) {
     const { showVignette = false, topologySession = null, topologyOptions = null } = drawOptions;
-    const viewW = worldState.canvasBounds.width;
-    const viewH = worldState.canvasBounds.height;
+    const viewW = worldState.viewport.width;
+    const viewH = worldState.viewport.height;
     const prevProfileOverride = worldState.worldSurfaces.surfaceProfileOverride;
     worldState.worldSurfaces.surfaceProfileOverride = profileId;
     maybeClearBakeCaches(worldState, profileId);
-    const viewport = worldState.mapViewport;
+    const viewport = worldState.viewport;
     getLabRenderer(canvas, ctx).renderSimulationScene(worldState, viewport);
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);

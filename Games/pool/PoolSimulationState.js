@@ -26,12 +26,13 @@ export class PoolSimulationState {
         const cx = layout.tableCenterX;
         const cy = layout.tableCenterY;
         if (layout.tableWidth && layout.tableHeight) {
-            const bounds = ctx.state.canvasBounds;
             const halfW = layout.tableWidth / 2;
             const cellSize = layout.tableWidth / 24;
+            const viewW = ctx.viewport.width;
+            const viewH = ctx.viewport.height;
             let zoomX;
-            if (bounds?.width && bounds?.height) {
-                zoomX = bounds.width / 2 / (halfW + cellSize);
+            if (viewW && viewH) {
+                zoomX = viewW / 2 / (halfW + cellSize);
                 ctx.viewport.zoom = zoomX;
             } else {
                 const vr = ctx.viewport.getVisualRadius();

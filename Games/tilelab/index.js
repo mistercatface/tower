@@ -60,8 +60,7 @@ export class TileLabGameState extends SharedGameState {
         this.labShowSandboxPanel = true;
         this.labShowProfilePanel = true;
         this.labShowTopologyOverlay = false;
-        this.mapViewport = new Viewport(0, 0, 1);
-        /** @type {HTMLCanvasElement | null} */
+        this.viewport = new Viewport(0, 0, 1);
         this.labCanvas = null;
         this.groundZones = [];
         this.roguelikeMapSession = createRoguelikeMapSession();
@@ -101,7 +100,7 @@ export const tilelabGame = {
     runScenePort: tilelabRunScenePort,
     viewPort: {
         getViewCenter(state) {
-            const viewport = state.mapViewport;
+            const viewport = state.viewport;
             return viewport ? { x: viewport.x, y: viewport.y } : null;
         },
     },

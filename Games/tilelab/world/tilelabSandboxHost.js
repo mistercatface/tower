@@ -11,9 +11,9 @@ export function createTilelabSandboxHost(state, requestRedraw) {
         clientToWorld(clientX, clientY) {
             const canvas = state.labCanvas;
             if (!canvas) return null;
-            return canvasClientToWorld(canvas, state.mapViewport, clientX, clientY);
+            return canvasClientToWorld(canvas, state.viewport, clientX, clientY);
         },
-        getCameraOrigin: () => ({ x: state.mapViewport.x, y: state.mapViewport.y }),
+        getCameraOrigin: () => ({ x: state.viewport.x, y: state.viewport.y }),
         requestRedraw,
         computePath: (startX, startY, targetX, targetY) => {
             return state.hierarchicalNavigator?.computePath(startX, startY, targetX, targetY) ?? null;

@@ -17,9 +17,9 @@ function clampLabZoom(zoom) {
 }
 /** @param {import("../index.js").TileLabGameState} state @param {number} x @param {number} y @param {number} zoom */
 function applyCamera(state, x, y, zoom) {
-    state.mapViewport.snapTo(x, y);
-    state.mapViewport.zoom = clampLabZoom(zoom);
-    zoomControl?.setZoom(state.mapViewport.zoom);
+    state.viewport.snapTo(x, y);
+    state.viewport.zoom = clampLabZoom(zoom);
+    zoomControl?.setZoom(state.viewport.zoom);
 }
 /** @param {import("../index.js").TileLabGameState} state @param {number} x @param {number} y @param {number} zoom */
 export function setLabCamera(state, x, y, zoom) {
@@ -28,11 +28,11 @@ export function setLabCamera(state, x, y, zoom) {
 }
 /** @param {import("../index.js").TileLabGameState} state */
 export function fitLabStageToView(state) {
-    const viewW = Math.max(320, state.canvasBounds.width || 800);
-    const viewH = Math.max(240, state.canvasBounds.height || 600);
+    const viewW = Math.max(320, state.viewport.width || 800);
+    const viewH = Math.max(240, state.viewport.height || 600);
     const zoom = getDefaultSimulationZoom(viewW, viewH, LAB_PREVIEW_RANGE, LAB_PREVIEW_RANGE);
-    state.mapViewport.zoom = clampLabZoom(zoom);
-    zoomControl?.setZoom(state.mapViewport.zoom);
+    state.viewport.zoom = clampLabZoom(zoom);
+    zoomControl?.setZoom(state.viewport.zoom);
 }
 /**
  * @param {import("../index.js").TileLabGameState} state
@@ -44,15 +44,15 @@ export function mountLabViewport(state, onViewChange) {
         inject: true,
         prefix: "Cam",
         ...directZoomMapping({ min: LAB_ZOOM_MIN, max: LAB_ZOOM_MAX, step: 0.05 }),
-        getZoom: () => state.mapViewport.zoom,
+        getZoom: () => state.viewport.zoom,
         setZoom: (zoom) => {
-            state.mapViewport.zoom = clampLabZoom(zoom);
+            state.viewport.zoom = clampLabZoom(zoom);
             onViewChange();
         },
     });
     speedControl = applySpeedControl(document.getElementById("labSpeedControl"), { inject: true, definition: getActiveGameDefinition() });
     speedControl.refresh(state);
-    setupLabViewportNavigation("gameCanvas", { getCamera: () => state.mapViewport, setCamera: (x, y, zoom) => applyCamera(state, x, y, zoom), onUpdate: onViewChange });
+    setupLabViewportNavigation("gameCanvas", { getCamera: () => state.viewport, setCamera: (x, y, zoom) => applyCamera(state, x, y, zoom), onUpdate: onViewChange });
 }
 /** @param {import("../index.js").TileLabGameState} state */
 export function refreshLabViewportControls(state) {

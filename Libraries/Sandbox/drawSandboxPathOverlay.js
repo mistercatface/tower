@@ -11,6 +11,6 @@ export function drawSandboxPathOverlay(ctx, pickup, behavior, host) {
     if (visual === "off" || !behavior?.getPathOverlay) return;
     const overlay = behavior.getPathOverlay(pickup, host);
     if (!overlay) return;
-    const zoom = host.getWorldState?.()?.mapViewport?.zoom ?? 1;
+    const zoom = host.getWorldState?.()?.viewport?.zoom ?? 1;
     drawActivePathOverlay(ctx, overlay, zoom, visual);
 }

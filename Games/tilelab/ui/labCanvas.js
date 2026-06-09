@@ -6,8 +6,7 @@
  * @param {number} height
  */
 export function applyLabCanvasSize(state, width, height) {
-    state.canvasBounds = { width, height };
-    state.mapViewport.setCanvasSize(width, height);
+    state.viewport.setCanvasSize(width, height);
 }
 /** Map a DOM pointer position to canvas pixel coordinates (handles CSS scaling). */
 export function canvasClientToScreen(canvas, clientX, clientY) {

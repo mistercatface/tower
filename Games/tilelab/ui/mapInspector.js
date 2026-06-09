@@ -71,7 +71,7 @@ export function renderNodeInspector(state, onRedraw) {
     focusBtn.textContent = "Focus Node";
     focusBtn.addEventListener("click", () => {
         focusLabNode(state, node.id);
-        setLabCamera(state, state.mapViewport.x, state.mapViewport.y, 0.5);
+        setLabCamera(state, state.viewport.x, state.viewport.y, 0.5);
     });
     infoPanel.appendChild(focusBtn);
 }

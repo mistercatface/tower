@@ -19,7 +19,7 @@ export function generateTilelabMap(state, { mapSeed, floorSeed }) {
     regenerateRoguelikeMap(state, { mapSeed, floorSeed, generateWorld });
     clearTilelabSandbox();
     const bounds = state.obstacleGrid;
-    if (bounds?.minX !== undefined) state.mapViewport.snapTo((bounds.minX + bounds.maxX) / 2, (bounds.minY + bounds.maxY) / 2);
+    if (bounds?.minX !== undefined) state.viewport.snapTo((bounds.minX + bounds.maxX) / 2, (bounds.minY + bounds.maxY) / 2);
     resetTilelabGroundZones(state);
     spawnSandboxBattleGroups(state);
 }
@@ -33,6 +33,6 @@ export function focusLabNode(state, nodeId) {
     const startNodeId = getWorldGen().startMapNodeId ?? 0;
     if (nodeId === startNodeId) {
         const layout = getWorldGen().getStartLayout(worldCoords.x, worldCoords.y, gridSettings.cellSize);
-        state.mapViewport.snapTo(layout.spawnX, layout.spawnY);
-    } else state.mapViewport.snapTo(worldCoords.x, worldCoords.y);
+        state.viewport.snapTo(layout.spawnX, layout.spawnY);
+    } else state.viewport.snapTo(worldCoords.x, worldCoords.y);
 }

@@ -36,7 +36,8 @@ export function createGame(definition) {
     const ctx = canvas.getContext("2d");
     ctx.imageSmoothingEnabled = false;
     const renderer = new Renderer(canvas, ctx, definition.caches);
-    const viewport = new SimulationViewport(0, 0);
+    const viewport = state.viewport ?? new SimulationViewport(0, 0);
+    state.viewport = viewport;
     const stateMachineContext = { state, viewport, renderer };
     const fsm = new StateMachine(stateMachineContext);
     stateMachineContext.fsm = fsm;
@@ -71,7 +72,6 @@ export function createGame(definition) {
     function resizeCanvas() {
         canvas.width = canvas.clientWidth;
         canvas.height = canvas.clientHeight;
-        state.canvasBounds = { width: canvas.width, height: canvas.height };
         viewport.setCanvasSize(canvas.width, canvas.height);
         definition.onCanvasResize?.();
     }

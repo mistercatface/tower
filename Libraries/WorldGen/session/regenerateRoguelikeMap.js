@@ -3,13 +3,13 @@ import { withSeededRandom } from "../../Random/index.js";
 import { getRoguelikeMapSession } from "./roguelikeMapSession.js";
 /**
  * Headless roguelike map regeneration: world gen, render caches, and session reset.
- * Does not touch DOM, viewport, or path-test UI.
+ * Does not touch DOM or path-test UI.
  *
  * @param {object} state
- * @param {{ mapSeed: number, floorSeed: number, generateWorld: (state: object) => void, canvasBounds?: { width: number, height: number } | null }} options
+ * @param {{ mapSeed: number, floorSeed: number, generateWorld: (state: object) => void, canvasSize?: { width: number, height: number } | null }} options
  */
-export function regenerateRoguelikeMap(state, { mapSeed, floorSeed, generateWorld, canvasBounds = null }) {
-    if (canvasBounds) state.canvasBounds = { ...canvasBounds };
+export function regenerateRoguelikeMap(state, { mapSeed, floorSeed, generateWorld, canvasSize = null }) {
+    if (canvasSize && state.viewport) state.viewport.setCanvasSize(canvasSize.width, canvasSize.height);
     withSeededRandom(mapSeed, () => {
         generateWorld(state);
     });

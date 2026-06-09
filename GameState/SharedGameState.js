@@ -20,7 +20,8 @@ export class SharedGameState {
         this.hierarchicalNavigator = new HierarchicalNavigator(gridSettings.cellSize, gridSettings.maxCellsPerChunk, gridSettings.minCellsPerChunk, this.obstacleGrid, { damagePadding: 12 });
         this.wallSpatialIndex = new WallSpatialIndex(100);
         this.worldSurfaces = new WorldSurfaceSystem(getGameWorldSurfaceSettings());
-        this.canvasBounds = { width: 0, height: 0 };
+        /** @type {import("../Libraries/Viewport/Viewport.js").Viewport | null} */
+        this.viewport = null;
         this.lastTime = 0;
         this.gameTime = 0;
         this.selectedSpeed = 1.0;
@@ -42,10 +43,9 @@ export class SharedGameState {
         this._phase = value;
     }
     getMapSpawnOrigin() {
-        return {
-            x: this.mapBaseSpawnX !== undefined ? this.mapBaseSpawnX : this.canvasBounds.width > 0 ? this.canvasBounds.width / 2 : 225,
-            y: this.mapBaseSpawnY !== undefined ? this.mapBaseSpawnY : this.canvasBounds.height > 0 ? this.canvasBounds.height / 2 : 225,
-        };
+        const viewW = this.viewport?.width ?? 0;
+        const viewH = this.viewport?.height ?? 0;
+        return { x: this.mapBaseSpawnX !== undefined ? this.mapBaseSpawnX : viewW > 0 ? viewW / 2 : 225, y: this.mapBaseSpawnY !== undefined ? this.mapBaseSpawnY : viewH > 0 ? viewH / 2 : 225 };
     }
     getNodeWorldCoords(node) {
         if (!node) return { x: 0, y: 0 };

@@ -10,7 +10,7 @@ const GROUP_SPREAD_Y = 100;
 export function resolveSandboxBattleCenter(state) {
     const grid = state.obstacleGrid;
     if (grid?.minX !== undefined) return { x: (grid.minX + grid.maxX) / 2, y: (grid.minY + grid.maxY) / 2 };
-    if (state.mapViewport) return { x: state.mapViewport.x, y: state.mapViewport.y };
+    if (state.viewport) return { x: state.viewport.x, y: state.viewport.y };
     return { x: 0, y: 0 };
 }
 /**

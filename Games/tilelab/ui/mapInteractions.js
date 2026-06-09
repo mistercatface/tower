@@ -8,7 +8,7 @@ export function initMapTopologyInteractions(state, onRedraw) {
     canvas?.addEventListener("pointerdown", (e) => {
         if (!state.labShowTopologyOverlay || e.button !== 0) return;
         if (e.defaultPrevented) return;
-        const world = canvasClientToWorld(canvas, state.mapViewport, e.clientX, e.clientY);
+        const world = canvasClientToWorld(canvas, state.viewport, e.clientX, e.clientY);
         if (!world) return;
         const { x: worldX, y: worldY } = world;
         if (findPickupAt(state.pickups, worldX, worldY)) return;
