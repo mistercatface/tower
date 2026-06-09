@@ -60,6 +60,8 @@ export { entityWorldAabb, collectWallSegmentsForEntity, collectWallSegmentsAlong
 export { wallContextFromState, getNearbyWalls, getWallsAlongLine } from "./query/wallContext.js";
 export { hasLineOfSight } from "./query/lineOfSight.js";
 export { castCircleRay, rayCircleHitDistance } from "./query/circleCast.js";
+export { estimateRollingTravelDistance, computeCircleAimLineSegment } from "./query/circleAimLinePreview.js";
+export { castSteppedCircleRay } from "./query/steppedCircleRayCast.js";
 // World frame
 export { SpatialFrameCore } from "./world/SpatialFrameCore.js";
 // Iso / structure

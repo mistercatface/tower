@@ -1,6 +1,8 @@
 import { normalizeXY } from "../Math/Vec2.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { drawAimSegment } from "../Render/contactPreviewDraw.js";
+import { computeCircleAimLineSegment, estimateRollingTravelDistance } from "../Spatial/query/circleAimLinePreview.js";
+import { wallContextFromState } from "../Spatial/query/wallContext.js";
 /** @typedef {{ minDrag: number, maxPull: number, pullScale: number, minPower: number, maxPower: number }} DragLaunchConfig */
 /** @typedef {{ active: boolean, anchorX: number, anchorY: number, startX: number, startY: number, pullX: number, pullY: number, shotNx: number | null, shotNy: number | null }} DragLaunchAim */
 export const DRAG_LAUNCH_DEFAULTS = { minDrag: 10, maxPull: 110, pullScale: 1.25, minPower: 55, maxPower: 340 };
@@ -82,6 +84,42 @@ export function releaseDragLaunch(aim, config) {
     if (power <= 0) return null;
     return { anchorX: aim.anchorX, anchorY: aim.anchorY, nx: aim.shotNx, ny: aim.shotNy, power };
 }
+/**
+ * @param {object} pickup
+ * @param {import("./SandboxHostPort.js").SandboxHostPort | null | undefined} host
+ */
+export function buildDragLaunchAimLineContext(pickup, host) {
+    const state = host?.getWorldState?.();
+    if (!state || !pickup) return null;
+    const radius = pickup.radius ?? 8;
+    const circleTargets = [];
+    for (const p of state.pickups ?? []) {
+        if (p === pickup || p.isDead) continue;
+        circleTargets.push({ x: p.x, y: p.y, radius: p.radius ?? 8 });
+    }
+    const grid = state.obstacleGrid;
+    const maxRayDist = grid?.minX != null ? Math.hypot(grid.maxX - grid.minX, grid.maxY - grid.minY) * 1.25 : 2400;
+    return { pickup, radius, circleTargets, wallCtx: wallContextFromState(state), maxRayDist };
+}
+/**
+ * @param {ReturnType<typeof getDragLaunchPreview>} preview
+ * @param {ReturnType<typeof buildDragLaunchAimLineContext>} aimLineContext
+ */
+export function getDragLaunchAimLine(preview, aimLineContext) {
+    if (!preview || preview.power <= 0 || !aimLineContext) return null;
+    const travelDist = estimateRollingTravelDistance(preview.power, aimLineContext.pickup?.strategy ?? {});
+    return computeCircleAimLineSegment({
+        originX: preview.anchorX,
+        originY: preview.anchorY,
+        radius: aimLineContext.radius,
+        nx: preview.nx,
+        ny: preview.ny,
+        maxTravelDist: travelDist,
+        maxRayDist: aimLineContext.maxRayDist,
+        wallCtx: aimLineContext.wallCtx,
+        circleTargets: aimLineContext.circleTargets,
+    });
+}
 /** @param {object} body @param {number} nx @param {number} ny @param {number} power */
 export function applyDragLaunchVelocity(body, nx, ny, power) {
     body.vx = nx * power;
@@ -92,8 +130,8 @@ export function applyDragLaunchVelocity(body, nx, ny, power) {
     }
     wakePushableBody(body);
 }
-/** @param {CanvasRenderingContext2D} ctx @param {DragLaunchAim | null | undefined} aim @param {DragLaunchConfig} config */
-export function drawDragLaunchPreview(ctx, aim, config) {
+/** @param {CanvasRenderingContext2D} ctx @param {DragLaunchAim | null | undefined} aim @param {DragLaunchConfig} config @param {ReturnType<typeof buildDragLaunchAimLineContext>} [aimLineContext] */
+export function drawDragLaunchPreview(ctx, aim, config, aimLineContext = null) {
     const preview = getDragLaunchPreview(aim, config);
     if (!preview) return;
     const ratio = config.maxPower > config.minPower ? Math.max(0, Math.min(1, (preview.power - config.minPower) / (config.maxPower - config.minPower))) : 0;
@@ -156,10 +194,7 @@ export function drawDragLaunchPreview(ctx, aim, config) {
     ctx.stroke();
     ctx.restore();
     if (preview.power <= 0) return;
-    const len = 20 + ratio * 80;
-    drawAimSegment(
-        ctx,
-        { x1: preview.anchorX, y1: preview.anchorY, x2: preview.anchorX + preview.nx * len, y2: preview.anchorY + preview.ny * len },
-        { color: `hsl(${hue}, 100%, 50%)`, lineWidth: 3 * lineScale, glowHue: hue },
-    );
+    const aimLine = getDragLaunchAimLine(preview, aimLineContext);
+    if (!aimLine) return;
+    drawAimSegment(ctx, aimLine, { color: `hsl(${hue}, 100%, 50%)`, lineWidth: 3 * lineScale, glowHue: hue });
 }

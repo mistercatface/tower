@@ -1,6 +1,6 @@
 import { getPropAsset } from "../../Props/PropCatalog.js";
 import { wakePushableBody } from "../../Motion/pushableSleep.js";
-import { applyDragLaunchVelocity, createDragLaunchAim, drawDragLaunchPreview, getDragLaunchConfig, releaseDragLaunch, updateDragLaunchAim } from "../dragLaunch.js";
+import { applyDragLaunchVelocity, buildDragLaunchAimLineContext, createDragLaunchAim, drawDragLaunchPreview, getDragLaunchConfig, releaseDragLaunch, updateDragLaunchAim } from "../dragLaunch.js";
 export const DRAG_LAUNCH_BEHAVIOR_ID = "dragLaunch";
 /** @returns {import("../createSandboxController.js").SandboxBehavior} */
 export function createDragLaunchBehavior() {
@@ -25,9 +25,9 @@ export function createDragLaunchBehavior() {
             aim = null;
             if (shot) applyDragLaunchVelocity(pickup, shot.nx, shot.ny, shot.power);
         },
-        drawOverlay(ctx, pickup) {
+        drawOverlay(ctx, pickup, host) {
             if (!aim?.active) return;
-            drawDragLaunchPreview(ctx, aim, configFor(pickup));
+            drawDragLaunchPreview(ctx, aim, configFor(pickup), buildDragLaunchAimLineContext(pickup, host));
         },
         reset() {
             aim = null;
