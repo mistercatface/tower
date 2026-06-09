@@ -1,6 +1,5 @@
-import { repelActorFromExplosion } from "../../Libraries/Combat/explosionKnockback.js";
+import { repelActorFromExplosion } from "./explosionKnockback.js";
 import { getTargeting } from "../../Core/GamePorts.js";
-
 function repelEntities(state, exp, _dt, spatialFrame) {
     const actors = getTargeting().getBroadphaseActors(state);
     for (const actor of actors) repelActorFromExplosion(actor, exp, spatialFrame, state);

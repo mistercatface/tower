@@ -22,7 +22,7 @@ function buildWorldPropStrategy(type) {
     const def = getWorldPropDefinitions()[type];
     if (!def) return withPropStrategyDefaults({});
     const { hitBehavior, spawn, ...strategyFields } = def;
-    return withPropStrategyDefaults({ ...strategyFields, isExplosive: hitBehavior === "explosive", onHit: HIT_BEHAVIOR_HANDLERS[hitBehavior] ?? HIT_BEHAVIOR_HANDLERS.none });
+    return withPropStrategyDefaults({ ...strategyFields, onHit: HIT_BEHAVIOR_HANDLERS[hitBehavior] ?? HIT_BEHAVIOR_HANDLERS.none });
 }
 export class Pickup extends Entity {
     constructor(x, y, type, facing = null) {
@@ -143,17 +143,14 @@ export class Pickup extends Entity {
         this.health -= amount;
         if (this.health <= 0) {
             this.health = 0;
-            if (this.currentStateName === "normal" && this.strategy.onFire) this.changeState("on_fire");
-            else {
-                this.changeState("exploded", { gameState });
-                return true;
-            }
+            this.die(gameState);
+            return true;
         }
         return false;
     }
-    explode(gameState) {
-        if (this.isDead || this.currentStateName === "exploded") return;
-        this.changeState("exploded", { gameState });
+    die(gameState) {
+        if (this.isDead || this.currentStateName === "dead") return;
+        this.changeState("dead", { gameState });
     }
     needsWallCollision() {
         return speedSqXY(this.vx, this.vy) > MOVING_SPEED_SQ;

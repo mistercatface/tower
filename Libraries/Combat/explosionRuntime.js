@@ -1,8 +1,12 @@
-import { Entity } from "../Entity.js";
-import { LIBRARY_EXPLOSION_DEFAULTS } from "../../Libraries/Combat/explosionDefaults.js";
-import { ExplosionStrategies } from "./ExplosionStrategies.js";
-import { standardExplosionPhases } from "./ExplosionPhases.js";
-import { transitionPhase } from "../../Libraries/FSM/transition.js";
+/**
+ * Explosion sim host — not wired into any game feature yet.
+ * Reuse with explosionPhases, explosionStrategies, and a render pass when re-implementing.
+ */
+import { Entity } from "../../Entities/Entity.js";
+import { transitionPhase } from "../FSM/transition.js";
+import { LIBRARY_EXPLOSION_DEFAULTS } from "./explosionDefaults.js";
+import { standardExplosionPhases } from "./explosionPhases.js";
+import { ExplosionStrategies } from "./explosionStrategies.js";
 export class Explosion extends Entity {
     static updateAll(state, dt, allEvents, spatialFrame) {
         if (!state.explosions) return;

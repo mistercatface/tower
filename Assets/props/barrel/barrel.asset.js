@@ -3,7 +3,7 @@ export default {
     primitive: "cylinder",
     sandbox: { equip: false, behaviors: ["dragLaunch"], dragLaunch: { minPower: 20, maxPower: 260 } },
     physics: {
-        hitBehavior: "explosive",
+        hitBehavior: "damage",
         radius: 8,
         isPushable: true,
         rolls: true,
@@ -18,11 +18,8 @@ export default {
         actorTipGain: 0.22,
         laserTargetable: true,
         maxHealth: 3,
-        onFire: { burnDurationMs: 2000 },
-        onFireRender3DKey: "fire_barrel",
         wallPhysics: { restitution: 0.25, friction: 0.75 },
         quantizeSteps: { facing: 64, roll: 32 },
-        explosion: { type: "standard", radius: 0, maxRadius: 100, speed: 300, damage: 5, lingerTimer: 750, fadeTimer: 250 },
         spawn: { minRadius: 150, maxRadius: 1000, minCount: 4, randomRange: 8 },
     },
     visuals: {

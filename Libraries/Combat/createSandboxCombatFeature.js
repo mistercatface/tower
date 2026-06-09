@@ -6,14 +6,14 @@ import { createFloatingTextFeature } from "../Render/createFloatingTextFeature.j
 /**
  * Full sandbox combat stack — one line in `gameDefinition.features`.
  *
- * @param {{ projectileZIndex?: number, explosionZIndex?: number, floatingTextZIndex?: number }} [options]
+ * @param {{ projectileZIndex?: number, floatingTextZIndex?: number }} [options]
  * @returns {import("../../Core/GameDefinitionTypes.js").GameFeature[]}
  */
-export function createSandboxCombatFeature({ projectileZIndex = 20, explosionZIndex = 60, floatingTextZIndex = 100 } = {}) {
+export function createSandboxCombatFeature({ projectileZIndex = 20, floatingTextZIndex = 100 } = {}) {
     return [
         createSandboxCombatInfraFeature(),
         createProjectileCombatFeature({ projectileZIndex }),
-        createCombatVfxFeature({ explosionZIndex }),
+        createCombatVfxFeature(),
         createCombatResolutionFeature(),
         createFloatingTextFeature({ zIndex: floatingTextZIndex }),
     ];

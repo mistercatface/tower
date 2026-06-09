@@ -5,7 +5,7 @@ export { applyActorPushTipImpulse } from "./actorPushTip.js";
 export { syncLongAxisCollisionShape, usesLongAxisCollisionShape } from "./longAxisCollision.js";
 export { measureTipFallWallBlock, measureTipFallWallBlockFromState } from "./tipWallSupport.js";
 export { applyProjectileImpulseToPickup, applyTipImpulseFromForce } from "./projectileImpulse.js";
-export { HIT_BEHAVIOR_HANDLERS, explosiveOnHit, damageOnHit, impulseOnHit } from "./hitBehaviors.js";
+export { HIT_BEHAVIOR_HANDLERS, damageOnHit, impulseOnHit } from "./hitBehaviors.js";
 export {
     IDENTITY_ROLL_QUAT,
     integrateRollOrientation,

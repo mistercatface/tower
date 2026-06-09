@@ -45,9 +45,6 @@ export class WorldSceneRenderer {
         }
         ctx.restore();
     }
-    drawExplosionWallMask(px, py, maxDist, input, viewport, targetCtx) {
-        this.structure.drawExplosionWallMask(targetCtx, px, py, maxDist, input, viewport);
-    }
     _worldBounds(viewport) {
         return viewport.getWorldBounds(viewport.cx * 2, viewport.cy * 2, this.settings.viewPaddingPx);
     }

@@ -8,7 +8,7 @@ export function transitionEntity(host, states, name, stateDataInit = null) {
     host.stateData = stateDataInit ?? {};
     if (host.currentState?.onEnter) host.currentState.onEnter(host);
 }
-/** Phase lifecycle for explosions (uses currentPhase / currentPhaseName on the host). */
+/** Phase lifecycle for timed VFX hosts (uses currentPhase / currentPhaseName on the host). */
 export function transitionPhase(host, phases, name, phaseDataInit = null) {
     if (host.currentPhase?.onExit) host.currentPhase.onExit(host);
     host.currentPhase = phases[name];

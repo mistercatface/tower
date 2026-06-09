@@ -1,7 +1,6 @@
 import { CombatParticles } from "../Render/CombatParticles.js";
 import { RagdollCorpse } from "../../Entities/RagdollCorpse.js";
 import { Projectile } from "../../Entities/Projectile.js";
-import { Explosion } from "../../Entities/Explosion/Explosion.js";
 import { updateSandboxAutoCombat } from "./pickupAutoCombat.js";
 /** @typedef {import("../../Systems/Simulation/SimulationRuntime.js").SimulationRuntime} SimulationRuntime */
 /** @typedef {{ run: (ctx: object, dt: number, runtime?: SimulationRuntime) => void }} SimulationPhase */
@@ -48,13 +47,6 @@ export const particlesPhase = {
     },
 };
 /** @type {SimulationPhase} */
-export const explosionsPhase = {
-    id: "explosions",
-    run(ctx, dt, runtime) {
-        Explosion.updateAll(ctx.state, dt, runtime.events, runtime.spatialFrame);
-    },
-};
-/** @type {SimulationPhase} */
 export const dispatchEventsPhase = {
     id: "dispatchEvents",
     run(ctx, _dt, runtime) {
@@ -67,5 +59,5 @@ export const dispatchEventsPhase = {
  * @returns {SimulationPhase[]}
  */
 export function createCombatWorldPhases() {
-    return [projectilesPhase, explosionsPhase, combatParticlesPhase, dispatchEventsPhase];
+    return [projectilesPhase, combatParticlesPhase, dispatchEventsPhase];
 }

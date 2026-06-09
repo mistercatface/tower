@@ -92,10 +92,7 @@ export function createLaserWeaponMode() {
             }
             const tickDamage = getBeamTickDamage(gun);
             if (hit.hit === "actor" && areHostile(source, hit.entity)) combatEvents.push({ target: hit.entity, damage: tickDamage, type: "beam" });
-            else if (hit.hit === "pickup" && hit.entity.strategy?.onHit) {
-                const skipExplosive = state.abilities?.["TargetVerification"] && hit.entity.strategy.isExplosive;
-                if (!skipExplosive) hit.entity.strategy.onHit(state, hit.entity, createBeamHitSource(gun), combatEvents);
-            }
+            else if (hit.hit === "pickup" && hit.entity.strategy?.onHit) hit.entity.strategy.onHit(state, hit.entity, createBeamHitSource(gun), combatEvents);
         }
     });
 }

@@ -67,23 +67,6 @@ export class StructureRenderer {
             this.drawWallFace(ctx, seg, edge[0], edge[1], px, py, input, viewport, worldBounds, options, edge);
         }
     }
-    /** Offscreen wall carve for explosion destination-out — textured faces aligned with world draw. */
-    drawExplosionWallMask(targetCtx, px, py, maxDist, input, viewport) {
-        this.updateSharedEdges(input);
-        const maxDistSq = maxDist * maxDist;
-        const visibleWalls = [];
-        const candidateWalls = input.wallSpatialIndex ? input.wallSpatialIndex.collectInBounds(px - maxDist, py - maxDist, px + maxDist, py + maxDist) : input.walls;
-        for (let i = 0; i < candidateWalls.length; i++) {
-            const seg = candidateWalls[i];
-            if (seg.isDead) continue;
-            const distSq = (seg.x - px) ** 2 + (seg.y - py) ** 2;
-            if (distSq > maxDistSq) continue;
-            seg._distSq = distSq;
-            visibleWalls.push(seg);
-        }
-        visibleWalls.sort((a, b) => b._distSq - a._distSq);
-        for (let i = 0; i < visibleWalls.length; i++) this.drawWallSegmentFaces(targetCtx, visibleWalls[i], px, py, input, viewport, null, { textureEnabled: true });
-    }
     rebuildSharedEdgesAsync(input) {
         const walls = input.walls;
         const numWalls = writeWallGeometry(walls, this.settings);

@@ -17,7 +17,7 @@ function resolveRollingFriction(strategy, body) {
     return base + (boosted - base) * t * t;
 }
 /**
- * Single motion entry for pushable props — lifecycle states (on_fire, etc.) do not branch here.
+ * Single motion entry for pushable props — lifecycle states do not branch here.
  *
  * @param {object} body
  * @param {number} dtMs

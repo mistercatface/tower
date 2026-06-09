@@ -23,7 +23,6 @@ function registerPropDraw(asset, recipes) {
         const builder = PROP_PRIMITIVE_BUILDERS[asset.primitive];
         if (!builder) throw new Error(`Unknown primitive "${asset.primitive}" for asset "${asset.id}"`);
         recipes[asset.id] = builder(asset.visuals);
-        if (asset.id === "barrel") recipes.fire_barrel = PROP_PRIMITIVE_BUILDERS.cylinder(asset.visuals, { onFire: true });
         return;
     }
     if (asset.recipe) {

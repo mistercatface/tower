@@ -8,7 +8,7 @@ export const playerStartGunId = "sawedOffShotgun";
 export const playerStartGunPool = ["servicePistol", "shotgun", "sawedOffShotgun", "tommyGun"];
 export const enemyStartGunPool = ["enemyRifle", "servicePistol"];
 /** Guns available in sandbox equip panels and the Tower equipment tab. */
-export const playerEquipmentCatalog = ["servicePistol", "shotgun", "sawedOffShotgun", "tommyGun", "grenadeLauncher"];
+export const playerEquipmentCatalog = ["servicePistol", "shotgun", "sawedOffShotgun", "tommyGun"];
 /** All projectile hits and beam ticks deal flat damage (matches integer HP). */
 const FLAT_DAMAGE = 1;
 /** Fixed ballistics and damage per gun. */
@@ -102,27 +102,6 @@ export const gunDefinitions = {
         reloadTimeMs: 1500,
         turretLoadout: { radiusMultiplier: playerProjectileSettings.radiusMultiplier, angleOffsets: [0] },
         projectile: projectilePresets.enemyStandard,
-    },
-    grenadeLauncher: {
-        id: "grenadeLauncher",
-        name: "Grenade Launcher",
-        handedness: Handedness.TWO_HANDED,
-        kind: "projectile",
-        fireIntervalMs: 1500,
-        muzzleSpeed: 300,
-        bulletRadius: 8,
-        damage: FLAT_DAMAGE,
-        maxAmmo: 3,
-        reloadTimeMs: 2200,
-        turretLoadout: { radiusMultiplier: 1.0, angleOffsets: [0] },
-        projectile: {
-            color: "#4CAF50",
-            strategy: "grenade",
-            drag: 4.0,
-            fuseTimeMs: 1500,
-            shooterKnockbackMultiplier: playerProjectileSettings.knockbackMultiplier,
-            explosion: { type: "standard", radius: 0, maxRadius: 60, speed: 250, damage: 3, lingerTimer: 500, fadeTimer: 150 },
-        },
     },
 };
 export function getGunDefinition(gunId) {

@@ -6,7 +6,6 @@ export const PROP_STRATEGY_DEFAULTS = {
     renderMode: "3d",
     render3DKey: null,
     inspectKey: null,
-    isExplosive: false,
     laserTargetable: false,
     mass: 1,
     friction: 8,
@@ -35,8 +34,6 @@ export const PROP_STRATEGY_DEFAULTS = {
     fallenRollHeight: null,
     splittable: false,
     randomFaceLabels: false,
-    onFire: null,
-    onFireRender3DKey: null,
 };
 /**
  * @param {object} prop
