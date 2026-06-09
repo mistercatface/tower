@@ -69,9 +69,8 @@ function aabbOverlap(a, b) {
     return a.minX <= b.maxX && a.maxX >= b.minX && a.minY <= b.maxY && a.maxY >= b.minY;
 }
 /** Draw cull only — sim tick ignores viewport. @param {import("../../Viewport/Viewport.js").Viewport} viewport */
-export function isGroundZoneInView(zone, viewport, padPx = 0) {
-    const bounds = padPx === 0 ? viewport.boundsClip : viewport.getWorldBounds(padPx);
-    return aabbOverlap(zone.aabb, bounds);
+export function isGroundZoneInView(zone, viewport) {
+    return aabbOverlap(zone.aabb, viewport.boundsClip);
 }
 /** @param {CanvasRenderingContext2D} ctx @param {ReturnType<typeof createRectGroundZone>} zone */
 export function drawGroundZone(ctx, zone, { fill = "rgba(120, 200, 255, 0.18)", stroke = "rgba(120, 200, 255, 0.65)", lineWidth = 2 } = {}) {

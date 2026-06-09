@@ -1,56 +1,53 @@
 /** 2D world camera: pan, zoom, and screen/world coordinate transforms. */
 export class Viewport {
     constructor(x, y, zoom = 1.0) {
-        this.x = x;
-        this.y = y;
-        this.zoom = zoom;
+        this._x = x;
+        this._y = y;
+        this._zoom = zoom;
         this.cx = 0;
         this.cy = 0;
         this.width = 0;
         this.height = 0;
-        /** World-space half extents of the visible rect (from cx/cy and zoom). */
         this.halfW = 0;
         this.halfH = 0;
         this.invZoom = 1;
-        this._derivedZoom = NaN;
-        this._derivedCx = NaN;
-        this._derivedCy = NaN;
-        /** Per-frame world AABBs — set by {@link beginFrame}. */
-        this.boundsClip = null;
-        this.boundsQuery = null;
-        this.boundsDraw = null;
+        this.viewQueryPadPx = 0;
+        this.viewPaddingPx = 0;
+        this.boundsClip = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+        this.boundsQuery = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+        this.boundsDraw = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+        Object.defineProperty(this, "x", { get: () => this._x, set: (v) => this._setPosition(v, this._y) });
+        Object.defineProperty(this, "y", { get: () => this._y, set: (v) => this._setPosition(this._x, v) });
+        Object.defineProperty(this, "zoom", { get: () => this._zoom, set: (v) => this._setZoom(v) });
     }
-    _syncDerived() {
-        if (this._derivedZoom === this.zoom && this._derivedCx === this.cx && this._derivedCy === this.cy) return;
-        this.halfW = this.cx / this.zoom;
-        this.halfH = this.cy / this.zoom;
-        this.invZoom = 1 / this.zoom;
-        this._derivedZoom = this.zoom;
-        this._derivedCx = this.cx;
-        this._derivedCy = this.cy;
+    /** @param {number} viewQueryPadPx @param {number} viewPaddingPx */
+    configureDrawBounds(viewQueryPadPx, viewPaddingPx) {
+        if (this.viewQueryPadPx === viewQueryPadPx && this.viewPaddingPx === viewPaddingPx) return;
+        this.viewQueryPadPx = viewQueryPadPx;
+        this.viewPaddingPx = viewPaddingPx;
+        this._recompute();
     }
-    _resolveCanvasSize(width, height) {
-        return { width: width ?? (this.width > 0 ? this.width : this.cx * 2), height: height ?? (this.height > 0 ? this.height : this.cy * 2) };
+    _setZoom(zoom) {
+        this._zoom = zoom;
+        this._recompute();
     }
-    _worldHalfExtents(width, height) {
-        this._syncDerived();
-        const size = this._resolveCanvasSize(width, height);
-        return { halfW: size.width / (2 * this.zoom), halfH: size.height / (2 * this.zoom) };
+    _setPosition(x, y) {
+        this._x = x;
+        this._y = y;
+        this._recompute();
     }
-    _worldBoundsFromHalfExtents(halfW, halfH, padding = 0) {
-        return { minX: this.x - halfW - padding, minY: this.y - halfH - padding, maxX: this.x + halfW + padding, maxY: this.y + halfH + padding };
+    _recompute() {
+        const w = this.width > 0 ? this.width : this.cx * 2;
+        const h = this.height > 0 ? this.height : this.cy * 2;
+        this.halfW = w / (2 * this._zoom);
+        this.halfH = h / (2 * this._zoom);
+        this.invZoom = 1 / this._zoom;
+        this.boundsClip = this._worldBounds(this.halfW, this.halfH, 0);
+        this.boundsQuery = this._worldBounds(this.halfW, this.halfH, this.viewQueryPadPx);
+        this.boundsDraw = this._worldBounds(this.halfW, this.halfH, this.viewPaddingPx);
     }
-    /**
-     * Cache padded world bounds for the current frame. Call once before draw/sim cull passes.
-     *
-     * @param {{ width?: number, height?: number, viewQueryPadPx?: number, viewPaddingPx?: number }} [options]
-     */
-    beginFrame({ width, height, viewQueryPadPx, viewPaddingPx } = {}) {
-        this._syncDerived();
-        const { halfW, halfH } = this._worldHalfExtents(width, height);
-        this.boundsClip = this._worldBoundsFromHalfExtents(halfW, halfH, 0);
-        this.boundsQuery = viewQueryPadPx != null ? this._worldBoundsFromHalfExtents(halfW, halfH, viewQueryPadPx) : null;
-        this.boundsDraw = viewPaddingPx != null ? this._worldBoundsFromHalfExtents(halfW, halfH, viewPaddingPx) : null;
+    _worldBounds(halfW, halfH, padding) {
+        return { minX: this._x - halfW - padding, minY: this._y - halfH - padding, maxX: this._x + halfW + padding, maxY: this._y + halfH + padding };
     }
     apply(ctx) {
         ctx.translate(this.cx, this.cy);
@@ -58,45 +55,34 @@ export class Viewport {
         ctx.translate(-this.x, -this.y);
     }
     screenToWorld(screenX, screenY) {
-        this._syncDerived();
         return { x: (screenX - this.cx) * this.invZoom + this.x, y: (screenY - this.cy) * this.invZoom + this.y };
     }
     worldToScreen(worldX, worldY) {
-        this._syncDerived();
         return { x: (worldX - this.x) * this.zoom + this.cx, y: (worldY - this.y) * this.zoom + this.cy };
     }
     follow(targetX, targetY, factor = 0.1) {
-        this.x += (targetX - this.x) * factor;
-        this.y += (targetY - this.y) * factor;
+        this._setPosition(this._x + (targetX - this._x) * factor, this._y + (targetY - this._y) * factor);
     }
     snapTo(x, y) {
-        this.x = x;
-        this.y = y;
+        this._setPosition(x, y);
     }
-    /** Set screen-space center from canvas dimensions (call on resize). */
     setCanvasSize(width, height) {
         this.width = width;
         this.height = height;
         this.cx = width / 2;
         this.cy = height / 2;
+        this._recompute();
     }
     getVisualRadius() {
         return Math.max(1, Math.min(this.cx, this.cy) - 4);
     }
     isVisible(worldX, worldY, radius = 0, padding = 20) {
-        this._syncDerived();
         const limit = radius + padding;
         return worldX >= this.x - this.halfW - limit && worldX <= this.x + this.halfW + limit && worldY >= this.y - this.halfH - limit && worldY <= this.y + this.halfH + limit;
     }
-    /** World AABB overlap test against the visible rect (e.g. line segments). */
     intersectsWorldAabb(minX, maxX, minY, maxY, padding = 0) {
-        this._syncDerived();
         const hw = this.halfW + padding;
         const hh = this.halfH + padding;
         return minX <= this.x + hw && maxX >= this.x - hw && minY <= this.y + hh && maxY >= this.y - hh;
-    }
-    getWorldBounds(padding = 0) {
-        const { halfW, halfH } = this._worldHalfExtents();
-        return this._worldBoundsFromHalfExtents(halfW, halfH, padding);
     }
 }
