@@ -1,10 +1,9 @@
 /** @typedef {import("../WorldSceneTypes.js").WorldSceneDrawInput} WorldSceneDrawInput */
-import { spatialWorldMargin } from "../../../Config/Config.js";
 import { getWallHeight } from "../../WorldSurface/WorldSurfaceSettings.js";
 import { getSegmentFootprintCorners } from "../../Spatial/geometry/WallGeometry.js";
 import { SpatialQuery } from "../../Spatial/query/SpatialQuery.js";
 import { alignBoundsToHash, getViewQueryBounds } from "../common/viewportUtils.js";
-import { drawProjectedWallFace } from "./ProjectedWallDraw.js";
+import { drawProjectedWallFace, drawProjectedWallMaskFace } from "./ProjectedWallDraw.js";
 import { applySharedEdgeFlags, requestSharedEdgeSolve, writeWallGeometry } from "./SharedEdgeBridge.js";
 import { getWallDamageAlpha, getWallDamageColor } from "./wallDamageVisual.js";
 export class StructureRenderer {
@@ -47,25 +46,16 @@ export class StructureRenderer {
             this.rebuildSharedEdgesAsync(input);
         }
     }
-    getWallColor(seg, darkenRatio = 1.0) {
-        return getWallDamageColor(seg, darkenRatio);
-    }
-    drawWallFace(ctx, seg, p1, p2, px, py, input, viewport, options = {}, cacheObj = null) {
-        const wallColor = getWallDamageColor(seg, 1.0);
-        const damageAlpha = getWallDamageAlpha(seg);
-        const textureEnabled = options.textureEnabled !== false;
-        drawProjectedWallFace(ctx, p1, p2, px, py, wallColor, input.worldSurfaces, input.surfaceBake, {
-            viewport,
-            worldBounds: options.worldBounds,
-            damageAlpha,
-            textureEnabled,
+    drawWallFace(ctx, seg, p1, p2, px, py, input, viewport, worldBounds, options = {}, cacheObj = null) {
+        drawProjectedWallFace(ctx, p1, p2, px, py, getWallDamageColor(seg, 1.0), input.worldSurfaces, input.surfaceBake, viewport, worldBounds, {
+            damageAlpha: getWallDamageAlpha(seg),
+            textureEnabled: options.textureEnabled !== false,
             cacheObj,
             settings: this.settings,
             wallHeight: seg.wallHeight ?? getWallHeight(this.settings),
         });
     }
-    drawWallSegmentFaces(ctx, seg, px, py, input, viewport, options = {}) {
-        // Immediate-mode fallback when no compiled RenderScene is available (explosions always use this).
+    drawWallSegmentFaces(ctx, seg, px, py, input, viewport, worldBounds, options = {}) {
         const edges = this.getSegmentEdges(seg);
         if (!seg.sharedEdges) seg.sharedEdges = [false, false, false, false];
         for (let i = 0; i < 4; i++) {
@@ -74,25 +64,33 @@ export class StructureRenderer {
             const viewX = edge.cx - px;
             const viewY = edge.cy - py;
             if (edge.outX * viewX + edge.outY * viewY >= 0) continue;
-            this.drawWallFace(ctx, seg, edge[0], edge[1], px, py, input, viewport, options, edge);
+            this.drawWallFace(ctx, seg, edge[0], edge[1], px, py, input, viewport, worldBounds, options, edge);
         }
     }
-    drawExplosion(px, py, maxDist, input, targetCtx) {
+    drawWallMaskSegmentFaces(ctx, seg, px, py, fillStyle) {
+        const edges = this.getSegmentEdges(seg);
+        if (!seg.sharedEdges) seg.sharedEdges = [false, false, false, false];
+        for (let i = 0; i < 4; i++) {
+            if (seg.sharedEdges[i]) continue;
+            const edge = edges[i];
+            const viewX = edge.cx - px;
+            const viewY = edge.cy - py;
+            if (edge.outX * viewX + edge.outY * viewY >= 0) continue;
+            drawProjectedWallMaskFace(ctx, edge[0], edge[1], px, py, fillStyle, this.settings, seg.wallHeight ?? getWallHeight(this.settings));
+        }
+    }
+    /** Offscreen wall silhouettes for explosion destination-out carving. */
+    drawExplosionWallMask(targetCtx, px, py, maxDist, input) {
         this.updateSharedEdges(input);
         const maxDistSq = maxDist * maxDist;
-        const visibleWalls = [];
+        const fillStyle = "#000";
         const candidateWalls = input.wallSpatialIndex ? input.wallSpatialIndex.collectInBounds(px - maxDist, py - maxDist, px + maxDist, py + maxDist) : input.walls;
         for (let i = 0; i < candidateWalls.length; i++) {
             const seg = candidateWalls[i];
             if (seg.isDead) continue;
-            const distSq = (seg.x - px) ** 2 + (seg.y - py) ** 2;
-            if (distSq <= maxDistSq) {
-                seg._distSq = distSq;
-                visibleWalls.push(seg);
-            }
+            if ((seg.x - px) ** 2 + (seg.y - py) ** 2 > maxDistSq) continue;
+            this.drawWallMaskSegmentFaces(targetCtx, seg, px, py, fillStyle);
         }
-        visibleWalls.sort((a, b) => b._distSq - a._distSq);
-        for (const seg of visibleWalls) this.drawWallSegmentFaces(targetCtx, seg, px, py, input, null);
     }
     rebuildSharedEdgesAsync(input) {
         const walls = input.walls;
@@ -107,10 +105,7 @@ export class StructureRenderer {
     }
     collectVisibleWalls(input, viewport, px, py) {
         const wallIndex = input.wallSpatialIndex;
-        if (!viewport || !wallIndex) {
-            const margin = spatialWorldMargin;
-            return wallIndex ? wallIndex.collectInBounds(px - margin, py - margin, px + margin, py + margin, this._wallQuery) : input.walls;
-        }
+        if (!wallIndex) return input.walls;
         const bounds = alignBoundsToHash(getViewQueryBounds(viewport, this.settings.viewQueryPadPx, input.canvasBounds), wallIndex.cellSize);
         return wallIndex.collectInBounds(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY, this._wallQuery);
     }

@@ -46,9 +46,13 @@ export function traceProjectedFace(ctx, p1, p2, face) {
     ctx.lineTo(p2.x, p2.y);
     ctx.closePath();
 }
-function getViewportWorldBounds(viewport, padding) {
-    if (!viewport) return null;
-    return viewport.getWorldBounds(viewport.cx * 2, viewport.cy * 2, padding);
+/** Solid wall silhouette for offscreen explosion carving — no viewport clip or textures. */
+export function drawProjectedWallMaskFace(ctx, p1, p2, px, py, fillStyle, settings, wallHeight = null) {
+    const finalWallHeight = wallHeight ?? getWallHeight(settings);
+    const face = computeProjectedFace(p1, p2, px, py, finalWallHeight, settings);
+    traceProjectedFace(ctx, p1, p2, face);
+    ctx.fillStyle = fillStyle;
+    ctx.fill();
 }
 function rowBoundsIntersects(bl, br, tl, tr, bounds) {
     if (!bounds) return true;
@@ -98,7 +102,7 @@ function drawFaceTexture(ctx, p1, p2, face, worldSurfaces, surfaceBake, viewer, 
         ctx.fill();
         return;
     }
-    const safeWorldBounds = worldBounds || getViewportWorldBounds(viewport, settings.viewPaddingPx);
+    const safeWorldBounds = worldBounds;
     const bleedPx = settings.wallTextureBleedPx ?? 1;
     const clampedHeight = Math.min(wallHeight, settings.cameraHeight - 1);
     const alphaMax = resolveElevationAlpha(clampedHeight, settings.cameraHeight);
@@ -153,38 +157,24 @@ export function drawProjectedWallFace(
     fillStyle,
     worldSurfaces,
     surfaceBake,
-    { viewport = null, worldBounds = null, damageAlpha = 0, textureEnabled = true, cacheObj = null, wallHeight = null, settings = null } = {},
+    viewport,
+    worldBounds,
+    { damageAlpha = 0, textureEnabled = true, cacheObj = null, wallHeight = null, settings = null } = {},
 ) {
-    // This function is kept for backwards compatibility with explosions and other
-    // dynamic systems that still use the old immediate mode drawing.
-    const resolvedSettings = settings ?? worldSurfaces?.settings;
-    if (!resolvedSettings) {
-        ctx.fillStyle = fillStyle;
-        ctx.beginPath();
-        ctx.moveTo(p1.x, p1.y);
-        ctx.lineTo(p2.x, p2.y);
-        ctx.closePath();
-        ctx.fill();
-        return;
-    }
+    const resolvedSettings = settings ?? worldSurfaces.settings;
     const finalWallHeight = wallHeight ?? getWallHeight(resolvedSettings);
     const face = computeProjectedFace(p1, p2, px, py, finalWallHeight, resolvedSettings);
-    if (viewport) {
-        const safeWorldBounds = worldBounds || getViewportWorldBounds(viewport, resolvedSettings.viewPaddingPx);
-        if (safeWorldBounds) {
-            sCorner0.x = p1.x;
-            sCorner0.y = p1.y;
-            sCorner1.x = p2.x;
-            sCorner1.y = p2.y;
-            sCorner2.x = face.proj2X;
-            sCorner2.y = face.proj2Y;
-            sCorner3.x = face.proj1X;
-            sCorner3.y = face.proj1Y;
-            if (!rowBoundsIntersects(sCorner0, sCorner1, sCorner2, sCorner3, safeWorldBounds)) return;
-        }
-    }
+    sCorner0.x = p1.x;
+    sCorner0.y = p1.y;
+    sCorner1.x = p2.x;
+    sCorner1.y = p2.y;
+    sCorner2.x = face.proj2X;
+    sCorner2.y = face.proj2Y;
+    sCorner3.x = face.proj1X;
+    sCorner3.y = face.proj1Y;
+    if (!rowBoundsIntersects(sCorner0, sCorner1, sCorner2, sCorner3, worldBounds)) return;
     traceProjectedFace(ctx, p1, p2, face);
-    if (worldSurfaces && surfaceBake && textureEnabled) drawFaceTexture(ctx, p1, p2, face, worldSurfaces, surfaceBake, { x: px, y: py }, viewport, finalWallHeight, fillStyle, cacheObj, worldBounds);
+    if (textureEnabled) drawFaceTexture(ctx, p1, p2, face, worldSurfaces, surfaceBake, { x: px, y: py }, viewport, finalWallHeight, fillStyle, cacheObj, worldBounds);
     else {
         ctx.fillStyle = fillStyle;
         ctx.fill();

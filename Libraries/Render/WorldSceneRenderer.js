@@ -29,31 +29,28 @@ export class WorldSceneRenderer {
     /**
      * @param {CanvasRenderingContext2D} ctx
      * @param {WorldSceneDrawInput} input
-     * @param {import("../Viewport/Viewport.js").Viewport | null} viewport
+     * @param {import("../Viewport/Viewport.js").Viewport} viewport
      * @param {WorldSceneDrawOptions} [options]
      */
     drawDebrisProps(ctx, input, viewport, options = {}) {
         const px = input.viewer.x;
         const py = input.viewer.y;
         ctx.save();
-        if (viewport) clipToViewport(ctx, viewport, input.canvasBounds);
+        clipToViewport(ctx, viewport, input.canvasBounds);
         for (let i = 0; i < input.pickups.length; i++) {
             const p = input.pickups[i];
             if (p.isDead || p.strategy?.renderMode !== "debris") continue;
-            if (viewport && typeof p.isVisible === "function" && !p.isVisible(viewport)) continue;
+            if (typeof p.isVisible === "function" && !p.isVisible(viewport)) continue;
             this.drawProp(ctx, p, px, py);
         }
         ctx.restore();
     }
-    drawExplosion(px, py, maxDist, input, targetCtx) {
-        this.structure.drawExplosion(px, py, maxDist, input, targetCtx);
+    drawExplosionWallMask(px, py, maxDist, input, targetCtx) {
+        this.structure.drawExplosionWallMask(targetCtx, px, py, maxDist, input);
     }
-    /**
-     * @param {WorldSceneDrawInput} input
-     * @param {import("../Viewport/Viewport.js").Viewport | null} viewport
-     * @param {number} px
-     * @param {number} py
-     */
+    _worldBounds(viewport) {
+        return viewport.getWorldBounds(viewport.cx * 2, viewport.cy * 2, this.settings.viewPaddingPx);
+    }
     _appendVisibleWalls(input, viewport, px, py) {
         const visibleObjects = this._visibleObjects;
         const candidateWalls = this.structure.collectVisibleWalls(input, viewport, px, py);
@@ -64,11 +61,6 @@ export class WorldSceneRenderer {
             visibleObjects.push(seg);
         }
     }
-    /**
-     * @param {import("./Scene/RenderScene.js").RenderScene} scene
-     * @param {import("../Viewport/Viewport.js").Viewport} viewport
-     * @param {import("./WorldSceneTypes.js").WorldSceneDrawInput} input
-     */
     _getSceneChunkRange(scene, viewport, input) {
         const bounds = getViewQueryBounds(viewport, this.settings.viewQueryPadPx, input.canvasBounds);
         return {
@@ -78,18 +70,9 @@ export class WorldSceneRenderer {
             maxRow: worldToChunkRow(bounds.maxY - 1, scene.gridMinY, scene.chunkSizePx),
         };
     }
-    /**
-     * Retained-mode wall collection: pulls visible wall faces from pre-compiled
-     * RenderScene chunks. Projection and textures are still resolved per frame.
-     *
-     * @param {WorldSceneDrawInput} input
-     * @param {import("../Viewport/Viewport.js").Viewport | null} viewport
-     * @param {number} px
-     * @param {number} py
-     */
     _appendVisibleWallsFromScene(input, viewport, px, py) {
         const scene = input.worldSurfaces.renderScene;
-        if (scene.chunks.size === 0 || !viewport) {
+        if (scene.chunks.size === 0) {
             this._appendVisibleWalls(input, viewport, px, py);
             return;
         }
@@ -104,12 +87,6 @@ export class WorldSceneRenderer {
             visibleObjects.push(face);
         }
     }
-    /**
-     * @param {WorldSceneDrawInput} input
-     * @param {import("../Viewport/Viewport.js").Viewport | null} viewport
-     * @param {number} px
-     * @param {number} py
-     */
     _appendVisible3dProps(input, viewport, px, py) {
         const visibleObjects = this._visibleObjects;
         if (input.pickups.length > 0)
@@ -117,98 +94,59 @@ export class WorldSceneRenderer {
                 const p = input.pickups[i];
                 if (p.isDead) continue;
                 if (p.strategy?.renderMode !== "3d" && !p.usesKinematicsBody) continue;
-                if (viewport && typeof p.isVisible === "function" && !p.isVisible(viewport)) continue;
+                if (typeof p.isVisible === "function" && !p.isVisible(viewport)) continue;
                 p._distSq = (p.x - px) ** 2 + (p.y - py) ** 2;
                 visibleObjects.push(p);
             }
     }
-    /**
-     * @param {WorldSceneDrawInput} input
-     * @param {import("../Viewport/Viewport.js").Viewport | null} viewport
-     * @param {number} px
-     * @param {number} py
-     * @param {object[]} visibleObjects
-     */
     _appendVisibleRagdolls(input, viewport, px, py, visibleObjects) {
         if (!input.ragdollCorpses?.length) return;
         for (let i = 0; i < input.ragdollCorpses.length; i++) {
             const corpse = input.ragdollCorpses[i];
             if (corpse.isDead || corpse.opacity <= 0) continue;
-            if (viewport && typeof corpse.isVisible === "function" && !corpse.isVisible(viewport)) continue;
+            if (typeof corpse.isVisible === "function" && !corpse.isVisible(viewport)) continue;
             corpse._distSq = (corpse.x - px) ** 2 + (corpse.y - py) ** 2;
             visibleObjects.push(corpse);
         }
     }
-    /**
-     * @param {CanvasRenderingContext2D} ctx
-     * @param {import("./Scene/Renderables.js").RenderableWallFace} face
-     * @param {WorldSceneDrawInput} input
-     * @param {import("../Viewport/Viewport.js").Viewport | null} viewport
-     * @param {number} px
-     * @param {number} py
-     * @param {{ minX: number, minY: number, maxX: number, maxY: number } | null} worldBounds
-     */
     _drawRetainedWallFace(ctx, face, input, viewport, px, py, worldBounds) {
         const fillStyle = this.settings.floorShadow ?? "#12161c";
-        const damageAlpha = getWallDamageAlpha(face.simWall);
-        face.draw(ctx, viewport, input.worldSurfaces, input.surfaceBake, fillStyle, damageAlpha, px, py, worldBounds);
+        face.draw(ctx, viewport, input.worldSurfaces, input.surfaceBake, fillStyle, getWallDamageAlpha(face.simWall), px, py, worldBounds);
     }
-    /**
-     * @param {CanvasRenderingContext2D} ctx
-     * @param {WorldSceneDrawInput} input
-     * @param {import("../Viewport/Viewport.js").Viewport | null} viewport
-     * @param {WorldSceneDrawOptions} [options]
-     */
     drawStructureOnly(ctx, input, viewport, options = {}) {
         const scene = input.worldSurfaces.renderScene;
-        if (scene.chunks.size > 0 && viewport) {
-            const px = input.viewer.x;
-            const py = input.viewer.y;
-            const worldBounds = viewport.getWorldBounds(viewport.cx * 2, viewport.cy * 2, this.settings.viewPaddingPx);
+        const px = input.viewer.x;
+        const py = input.viewer.y;
+        const worldBounds = this._worldBounds(viewport);
+        this.structure.updateSharedEdges(input);
+        ctx.save();
+        clipToViewport(ctx, viewport, input.canvasBounds);
+        if (scene.chunks.size > 0) {
             const { minCol, maxCol, minRow, maxRow } = this._getSceneChunkRange(scene, viewport, input);
-            this.structure.updateSharedEdges(input);
-            ctx.save();
-            if (viewport) clipToViewport(ctx, viewport, input.canvasBounds);
             const walls = scene.collectPass("walls", minCol, minRow, maxCol, maxRow);
-            for (let i = 0; i < walls.length; i++) {
-                const face = walls[i];
-                face._distSq = (face.cx - px) ** 2 + (face.cy - py) ** 2;
-            }
+            for (let i = 0; i < walls.length; i++) walls[i]._distSq = (walls[i].cx - px) ** 2 + (walls[i].cy - py) ** 2;
             walls.sort((a, b) => b._distSq - a._distSq || a.cy - b.cy);
             for (let i = 0; i < walls.length; i++) {
                 const face = walls[i];
                 if (!face.shouldDraw(px, py)) continue;
                 this._drawRetainedWallFace(ctx, face, input, viewport, px, py, worldBounds);
             }
-            ctx.restore();
-            return;
-        }
-        const px = input.viewer.x;
-        const py = input.viewer.y;
-        const worldBounds = viewport ? viewport.getWorldBounds(viewport.cx * 2, viewport.cy * 2, this.settings.viewPaddingPx) : null;
-        const wallDrawOptions = { textureEnabled: options.textureEnabled !== false, worldBounds };
-        this.structure.updateSharedEdges(input);
-        ctx.save();
-        if (viewport) clipToViewport(ctx, viewport, input.canvasBounds);
-        const candidateWalls = this.structure.collectVisibleWalls(input, viewport, px, py);
-        for (let i = 0; i < candidateWalls.length; i++) {
-            const seg = candidateWalls[i];
-            if (seg.isDead) continue;
-            this.structure.drawWallSegmentFaces(ctx, seg, px, py, input, viewport, wallDrawOptions);
+        } else {
+            const wallDrawOptions = { textureEnabled: options.textureEnabled !== false };
+            const candidateWalls = this.structure.collectVisibleWalls(input, viewport, px, py);
+            for (let i = 0; i < candidateWalls.length; i++) {
+                const seg = candidateWalls[i];
+                if (seg.isDead) continue;
+                this.structure.drawWallSegmentFaces(ctx, seg, px, py, input, viewport, worldBounds, wallDrawOptions);
+            }
         }
         ctx.restore();
     }
-    /**
-     * @param {CanvasRenderingContext2D} ctx
-     * @param {WorldSceneDrawInput} input
-     * @param {import("../Viewport/Viewport.js").Viewport | null} viewport
-     * @param {WorldSceneDrawOptions} [options]
-     */
     drawDynamicPropsOnly(ctx, input, viewport, options = {}) {
         const px = input.viewer.x;
         const py = input.viewer.y;
         ctx.save();
-        if (viewport) clipToViewport(ctx, viewport, input.canvasBounds);
+        clipToViewport(ctx, viewport, input.canvasBounds);
         const visibleProps = this._visibleObjects;
         visibleProps.length = 0;
         this._appendVisible3dProps(input, viewport, px, py);
@@ -220,16 +158,11 @@ export class WorldSceneRenderer {
         }
         ctx.restore();
     }
-    /**
-     * @param {CanvasRenderingContext2D} ctx
-     * @param {WorldSceneDrawInput} input
-     * @param {import("../Viewport/Viewport.js").Viewport | null} viewport
-     */
     drawRagdollCorpsesOnly(ctx, input, viewport) {
         const px = input.viewer.x;
         const py = input.viewer.y;
         ctx.save();
-        if (viewport) clipToViewport(ctx, viewport, input.canvasBounds);
+        clipToViewport(ctx, viewport, input.canvasBounds);
         const visibleCorpses = this._visibleObjects;
         visibleCorpses.length = 0;
         this._appendVisibleRagdolls(input, viewport, px, py, visibleCorpses);
@@ -237,20 +170,14 @@ export class WorldSceneRenderer {
         for (let i = 0; i < visibleCorpses.length; i++) visibleCorpses[i].render(ctx);
         ctx.restore();
     }
-    /**
-     * @param {CanvasRenderingContext2D} ctx
-     * @param {WorldSceneDrawInput} input
-     * @param {import("../Viewport/Viewport.js").Viewport | null} viewport
-     * @param {WorldSceneDrawOptions} [options]
-     */
     draw3DBuildings(ctx, input, viewport, options = {}) {
         const px = input.viewer.x;
         const py = input.viewer.y;
-        const worldBounds = viewport ? viewport.getWorldBounds(viewport.cx * 2, viewport.cy * 2, this.settings.viewPaddingPx) : null;
-        const wallDrawOptions = { textureEnabled: options.textureEnabled !== false, worldBounds };
+        const worldBounds = this._worldBounds(viewport);
+        const wallDrawOptions = { textureEnabled: options.textureEnabled !== false };
         this.structure.updateSharedEdges(input);
         ctx.save();
-        if (viewport) clipToViewport(ctx, viewport, input.canvasBounds);
+        clipToViewport(ctx, viewport, input.canvasBounds);
         const visibleObjects = this._visibleObjects;
         visibleObjects.length = 0;
         this._appendVisibleWallsFromScene(input, viewport, px, py);
@@ -261,7 +188,7 @@ export class WorldSceneRenderer {
             if (obj.usesKinematicsBody) renderActorKinematicsBody(ctx, obj, viewport);
             else if (obj.strategy) this.drawProp(ctx, obj, px, py);
             else if (obj.pass === "walls") this._drawRetainedWallFace(ctx, obj, input, viewport, px, py, worldBounds);
-            else this.structure.drawWallSegmentFaces(ctx, obj, px, py, input, viewport, wallDrawOptions);
+            else this.structure.drawWallSegmentFaces(ctx, obj, px, py, input, viewport, worldBounds, wallDrawOptions);
         }
         ctx.restore();
     }
