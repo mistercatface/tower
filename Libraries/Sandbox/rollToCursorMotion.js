@@ -1,3 +1,4 @@
+import { steerLocomotionPickup, stopLocomotionPickup, usesLocomotionPickup } from "../Props/locomotionPickup.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
 const ROLL_TO_CURSOR_DEFAULTS = { maxSpeed: 180, accel: 600, stopRadius: 6 };
 /** @param {object} pickup @param {object} [overrides] */
@@ -17,6 +18,7 @@ export function applyRollSpin(pickup) {
  * @returns {boolean} true when the body was still moving
  */
 export function decelerateRoll(pickup, dt, config) {
+    if (stopLocomotionPickup(pickup)) return Math.hypot(pickup.vx ?? 0, pickup.vy ?? 0) > 0;
     const speed = Math.hypot(pickup.vx, pickup.vy);
     if (speed <= 0) return false;
     const decel = config.accel * dt * 2;
@@ -40,6 +42,10 @@ export function decelerateRoll(pickup, dt, config) {
  * @param {{ maxSpeed: number, accel: number }} config
  */
 export function steerRollToward(pickup, dirX, dirY, dt, config) {
+    if (usesLocomotionPickup(pickup)) {
+        steerLocomotionPickup(pickup, dirX, dirY, config);
+        return;
+    }
     const targetVx = dirX * config.maxSpeed;
     const targetVy = dirY * config.maxSpeed;
     const dvx = targetVx - pickup.vx;

@@ -17,6 +17,7 @@ import { speedSqXY } from "../Libraries/Math/Vec2.js";
 import { resolveBodyRadius } from "../Libraries/Motion/bodyDefaults.js";
 import { SPLITTABLE_MIN_PIECE_SIZE } from "../Libraries/Props/splittable.js";
 import { wakePushableBody } from "../Libraries/Motion/pushableSleep.js";
+import { ensureLocomotionPickup, updateLocomotionPickup, usesLocomotionPickup } from "../Libraries/Props/locomotionPickup.js";
 import { resolveKinematicsCamera } from "../Libraries/Render/Characters/actorKinematicsRenderer.js";
 function buildWorldPropStrategy(type) {
     const def = getWorldPropDefinitions()[type];
@@ -69,6 +70,7 @@ export class Pickup extends Entity {
             this.health = this.strategy.maxHealth;
         }
         this.usesKinematicsBody = !!this.strategy.kinematics;
+        if (usesLocomotionPickup(this)) ensureLocomotionPickup(this);
         if (getPropAsset(type)?.sandbox?.equip) {
             this.weaponLoadout = [];
             this.weaponSlotState = [];
@@ -157,13 +159,20 @@ export class Pickup extends Entity {
     }
     update(dt, state, spatialFrame, { resolveWalls = false } = {}) {
         this.ageMs += dt;
+        if (this.isSleeping && (!this.strategy?.standTip || !isStandTipActive(this))) return;
+        if (updateLocomotionPickup(this, dt, spatialFrame)) {
+            // separation + integrateSteering (Libraries/Motion)
+        } else if (this.strategy.rolls || this.strategy.standTip) integratePropMotion(this, dt);
+        else applyVelocityDamping(this, dt, { friction: this.strategy.friction });
         if (this.usesKinematicsBody) {
-            const speed = Math.hypot(this.vx, this.vy);
-            if (speed > 2) {
-                const targetAngle = Math.atan2(this.vy, this.vx);
-                let angleDiff = Math.atan2(Math.sin(targetAngle - this.facing), Math.cos(targetAngle - this.facing));
-                const turnSpeed = 10;
-                this.facing += angleDiff * Math.min(1, turnSpeed * (dt / 1000));
+            if (!usesLocomotionPickup(this)) {
+                const speed = Math.hypot(this.vx, this.vy);
+                if (speed > 2) {
+                    const targetAngle = Math.atan2(this.vy, this.vx);
+                    let angleDiff = Math.atan2(Math.sin(targetAngle - this.facing), Math.cos(targetAngle - this.facing));
+                    const turnSpeed = 10;
+                    this.facing += angleDiff * Math.min(1, turnSpeed * (dt / 1000));
+                }
             }
             this._kinematicsCamera = resolveKinematicsCamera(this, state);
             advanceActorKinematics(this, dt, this._kinematicsCamera);
@@ -176,9 +185,6 @@ export class Pickup extends Entity {
                     for (const turret of this.turrets) turret.angle = facing;
                 }
         }
-        if (this.isSleeping && (!this.strategy?.standTip || !isStandTipActive(this))) return;
-        if (this.strategy.rolls || this.strategy.standTip) integratePropMotion(this, dt);
-        else applyVelocityDamping(this, dt, { friction: this.strategy.friction });
         if (resolveWalls && this.strategy.isPushable && this.needsWallCollision()) state.wallResolver.resolve(this, spatialFrame);
         if (this.currentState?.update) this.currentState.update(this, dt, state.walls, state);
     }

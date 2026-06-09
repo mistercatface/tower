@@ -10,6 +10,7 @@ export default {
         shooterKnockbackMultiplier: 2,
         friction: 8,
         kinematics: true,
+        locomotion: true,
         renderMode: "none",
         rollToCursor: { maxSpeed: 50, accel: 220 },
         maxHealth: 1,
