@@ -22,7 +22,6 @@ import { mergePairFilter } from "../../Libraries/Interaction/pairRules.js";
 import { excludeDeadOther, excludeActorOther, requirePickupOnHit } from "../../Libraries/Interaction/pairRuleClauses.js";
 import { tilelabUiPort } from "./ui/tilelabUiPort.js";
 export const LAB_PREVIEW_RANGE = 160;
-export const LAB_PATH_AGENT_RADIUS = 8;
 export const TILELAB_SANDBOX_SPAWN_PROP = "beach_ball";
 export const tilelabMapTopology = { ...ROGUELIKE_MAP_TOPOLOGY };
 const SANDBOX_PROJECTILE_HIT_PICKUP = mergePairFilter(excludeDeadOther, excludeActorOther, requirePickupOnHit);

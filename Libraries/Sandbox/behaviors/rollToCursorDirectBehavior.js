@@ -1,4 +1,4 @@
-import { decelerateRoll, drawRollTargetOverlay, getRollToCursorConfig, steerRollToward } from "../rollToCursorMotion.js";
+import { decelerateRoll, getRollToCursorConfig, steerRollToward } from "../rollToCursorMotion.js";
 export const ROLL_TO_CURSOR_DIRECT_BEHAVIOR_ID = "rollToCursorDirect";
 /** @returns {import("../createSandboxController.js").SandboxBehavior} */
 export function createRollToCursorDirectBehavior() {
@@ -31,9 +31,9 @@ export function createRollToCursorDirectBehavior() {
             }
             steerRollToward(pickup, dx / dist, dy / dist, dt, config);
         },
-        drawOverlay(ctx, pickup) {
-            if (!active || !targetWorld) return;
-            drawRollTargetOverlay(ctx, pickup.x, pickup.y, targetWorld.x, targetWorld.y, { lineColor: "rgba(0, 188, 212, 0.5)", markerColor: "rgba(0, 188, 212, 0.8)", dashed: true });
+        getPathOverlay(pickup) {
+            if (!active || !targetWorld) return null;
+            return { mode: "direct", fromX: pickup.x, fromY: pickup.y, targetX: targetWorld.x, targetY: targetWorld.y };
         },
         reset() {
             active = false;

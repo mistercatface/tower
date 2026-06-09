@@ -38,31 +38,17 @@ export function createRollToCursorHpaBehavior() {
             }
             steerRollToward(pickup, steering.desiredX, steering.desiredY, dt, config);
         },
-        drawOverlay(ctx, pickup) {
-            if (!active || !targetWorld) return;
-            const lineScale = 1 / Math.max(0.001, ctx.getTransform().a);
-            const path = hpaNav.navState.path;
-            ctx.save();
-            if (path && path.length > 0) {
-                ctx.strokeStyle = "rgba(156, 39, 176, 0.6)";
-                ctx.lineWidth = 2 * lineScale;
-                ctx.beginPath();
-                ctx.moveTo(pickup.x, pickup.y);
-                for (let i = 1; i < path.length; i++) ctx.lineTo(path[i].x, path[i].y);
-                ctx.stroke();
-                ctx.fillStyle = "rgba(156, 39, 176, 0.8)";
-                for (let i = 1; i < path.length; i++) {
-                    ctx.beginPath();
-                    ctx.arc(path[i].x, path[i].y, 3 * lineScale, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-            }
-            ctx.strokeStyle = "rgba(156, 39, 176, 0.9)";
-            ctx.lineWidth = 2 * lineScale;
-            ctx.beginPath();
-            ctx.arc(targetWorld.x, targetWorld.y, 5 * lineScale, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.restore();
+        getPathOverlay(pickup) {
+            if (!active || !targetWorld) return null;
+            return {
+                mode: "hpa",
+                fromX: pickup.x,
+                fromY: pickup.y,
+                targetX: targetWorld.x,
+                targetY: targetWorld.y,
+                waypoints: hpaNav.navState.path ?? undefined,
+                abstractPath: hpaNav.navState.abstractPath ?? undefined,
+            };
         },
         reset() {
             active = false;

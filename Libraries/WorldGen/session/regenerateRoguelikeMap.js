@@ -1,6 +1,5 @@
 import { buildGameMapRenderCaches, buildTopologyMapRenderCaches } from "../../Render/map/MapRenderCache.js";
 import { withSeededRandom } from "../../Random/index.js";
-import { resetPathTestSession } from "./pathTestSession.js";
 import { getRoguelikeMapSession } from "./roguelikeMapSession.js";
 /**
  * Headless roguelike map regeneration: world gen, render caches, and session reset.
@@ -21,5 +20,4 @@ export function regenerateRoguelikeMap(state, { mapSeed, floorSeed, generateWorl
     state.mapSeed = mapSeed;
     state.floorSeed = floorSeed;
     getRoguelikeMapSession(state).selectedNodeId = null;
-    resetPathTestSession(state);
 }

@@ -5,7 +5,6 @@
  * @property {boolean} showPathDebug
  * @property {boolean} [showRoomZones]
  * @property {boolean} [showGridBounds]
- * @property {boolean} [showPathTest]
  */
 /**
  * @param {TopologyDisplayOptions} options

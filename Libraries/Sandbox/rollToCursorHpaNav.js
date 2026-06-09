@@ -10,6 +10,7 @@ export function createRollToCursorHpaNav() {
     let replanClockMs = 0;
     const reset = () => {
         navState.path = null;
+        navState.abstractPath = null;
         navState.pathProgressIdx = 0;
         navState.lastTargetX = null;
         navState.lastTargetY = null;
@@ -19,11 +20,13 @@ export function createRollToCursorHpaNav() {
     const replan = (pickup, targetX, targetY, host) => {
         if (!host.computePath) {
             navState.path = null;
+            navState.abstractPath = null;
             return;
         }
         const result = host.computePath(pickup.x, pickup.y, targetX, targetY);
         const rawPath = result?.waypoints ?? null;
         navState.path = rawPath ? trimPathAhead(pickup.x, pickup.y, rawPath) : null;
+        navState.abstractPath = navState.path ? (result?.abstractNodes ?? null) : null;
         navState.pathProgressIdx = 0;
         navState.lastTargetX = targetX;
         navState.lastTargetY = targetY;

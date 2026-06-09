@@ -1,7 +1,6 @@
 import { tilelabMapTopology } from "../index.js";
 import { getWorldGen } from "../../../Core/GamePorts.js";
 import { SliderControl } from "./controls/SliderControl.js";
-import { calculatePathTest } from "../world/mapPathTest.js";
 import { focusLabNode, generateTilelabMap, listLabMapNodes, selectLabNode } from "../world/mapWorld.js";
 import { setLabCamera } from "./labViewport.js";
 import { readControls } from "./toolbar.js";
@@ -12,7 +11,6 @@ export function readMapControls() {
         showWalls: document.getElementById("showWallsInput")?.checked ?? true,
         showGridBounds: document.getElementById("showGridBoundsInput")?.checked ?? true,
         showPathDebug: document.getElementById("showPathDebugInput")?.checked ?? true,
-        showPathTest: document.getElementById("showPathTestInput")?.checked ?? true,
     };
 }
 /** @param {import("../index.js").TileLabGameState} state @param {(() => void) | null} [onRedraw] */
@@ -121,16 +119,5 @@ export function syncMapInspectorAfterRegen(state, onRedraw) {
 /** @param {import("../index.js").TileLabGameState} state @param {() => void} onRedraw */
 export function bindMapInspectorControls(state, onRedraw) {
     buildTopologySettingsPanel(state);
-    for (const id of ["showNodesInput", "showRoomZonesInput", "showWallsInput", "showGridBoundsInput", "showPathDebugInput", "showPathTestInput"])
-        document.getElementById(id)?.addEventListener("change", () => {
-            if (id === "showPathTestInput") {
-                const checked = document.getElementById("showPathTestInput")?.checked ?? false;
-                const el = document.getElementById("pathTestControls");
-                if (el) el.style.display = checked ? "block" : "none";
-                calculatePathTest(state);
-            }
-            onRedraw();
-        });
-    const pathTestControls = document.getElementById("pathTestControls");
-    if (pathTestControls) pathTestControls.style.display = (document.getElementById("showPathTestInput")?.checked ?? false) ? "block" : "none";
+    for (const id of ["showNodesInput", "showRoomZonesInput", "showWallsInput", "showGridBoundsInput", "showPathDebugInput"]) document.getElementById(id)?.addEventListener("change", () => onRedraw());
 }

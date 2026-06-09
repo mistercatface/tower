@@ -89,13 +89,6 @@
     margin-bottom: 4px;
 }
 
-.path-status {
-    margin-top: 8px;
-    font-size: 11px;
-    color: #00bcd4;
-    font-family: monospace;
-}
-
 .view-mode-group {
     display: inline-flex;
     gap: 8px;

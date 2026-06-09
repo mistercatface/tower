@@ -15,6 +15,7 @@ import { drawSandboxWeaponBars } from "./drawPickupWeaponBars.js";
  * @property {(pickup: object, e: PointerEvent) => void} onPointerUp
  * @property {(pickup: object, dt: number, host: SandboxHostPort) => void} [tick]
  * @property {(ctx: CanvasRenderingContext2D, pickup: object, host: SandboxHostPort) => void} [drawOverlay]
+ * @property {(pickup: object, host: SandboxHostPort) => import("../../Render/map/topology/drawActivePathOverlay.js").ActivePathOverlay | null} [getPathOverlay]
  * @property {() => void} [reset]
  */
 /**
@@ -168,6 +169,12 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
             behavior?.drawOverlay?.(ctx, pickup, host);
             drawSandboxWeaponBars(ctx, host);
             drawSandboxLaserSights(ctx, host);
+        },
+        collectActivePathOverlay() {
+            const pickup = session.getSelectedPickup();
+            const behavior = resolveBehavior();
+            if (!pickup || !behavior?.getPathOverlay) return null;
+            return behavior.getPathOverlay(pickup, host);
         },
     };
     return controller;

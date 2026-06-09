@@ -74,20 +74,7 @@ export const TILELAB_UI_HTML = `
                             <label class="check-inline block-check"><input id="showRoomZonesInput" type="checkbox" checked> Show Room Exclusion Zones</label>
                             <label class="check-inline block-check"><input id="showWallsInput" type="checkbox" checked> Show Physics Walls</label>
                             <label class="check-inline block-check"><input id="showGridBoundsInput" type="checkbox" checked> Show Entity Grid Bounds</label>
-                        </div>
-                    </details>
-                    <details class="editor-block" open>
-                        <summary>Pathfinding Test</summary>
-                        <div>
                             <label class="check-inline block-check"><input id="showPathDebugInput" type="checkbox" checked> Show HPA* Grid &amp; Regions</label>
-                            <label class="check-inline block-check"><input id="showPathTestInput" type="checkbox" checked> Enable Pathing Test</label>
-                            <div id="pathTestControls" style="display:none;margin-top:8px;border-top:1px solid var(--border);padding-top:8px">
-                                <div style="margin-bottom:8px"><strong>Click Action:</strong></div>
-                                <label class="block-check"><input type="radio" name="clickAction" value="selectNode" checked> Select Node</label>
-                                <label class="block-check"><input type="radio" name="clickAction" value="repositionPlayer"> Reposition Player</label>
-                                <label class="block-check"><input type="radio" name="clickAction" value="setTarget"> Set Path Target</label>
-                                <div id="pathStatus" class="path-status">No path calculated</div>
-                            </div>
                         </div>
                     </details>
                     <details class="editor-block" open>
