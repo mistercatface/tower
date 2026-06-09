@@ -3,7 +3,7 @@ import { SpriteCache } from "../Libraries/Canvas/SpriteCache.js";
 import { WorldSceneRenderer } from "../Libraries/Render/WorldSceneRenderer.js";
 import { getRenderPorts } from "../Core/GamePorts.js";
 import { buildWorldRenderInput } from "./adapters/WorldRenderAdapter.js";
-import { drawWorldScene } from "./worldSceneDraw.js";
+import { drawWorldSceneBackdrop, drawWorldSceneStructure } from "./worldSceneDraw.js";
 export class Renderer {
     /** @param {{ actorCache?: SpriteCache, turretCache?: SpriteCache } | undefined} caches */
     constructor(canvas, ctx, caches) {
@@ -12,19 +12,12 @@ export class Renderer {
         this.caches = caches;
         this.render3D = new WorldSceneRenderer(getGameWorldSurfaceSettings(), getRenderPorts().world3dPropRecipes);
         this.effectPasses = [
-            { zIndex: -5, fn: (state, viewport) => drawWorldScene(this.ctx, { state, viewport, worldSceneRenderer: this.render3D, phases: ["ground", "debris"] }) },
+            { zIndex: -5, fn: (state, viewport) => drawWorldSceneBackdrop(this.ctx, { state, viewport, worldSceneRenderer: this.render3D }) },
             { zIndex: 55, fn: (state, viewport) => this.render3D.drawRagdollCorpsesOnly(this.ctx, this.getWorldRenderInput(state, viewport), viewport) },
             {
                 zIndex: 70,
                 fn: (state, viewport) =>
-                    drawWorldScene(this.ctx, {
-                        state,
-                        viewport,
-                        worldSceneRenderer: this.render3D,
-                        canvas: this.canvas,
-                        worldRenderInput: this.getWorldRenderInput(state, viewport),
-                        phases: ["buildings", "roofs", "bloom"],
-                    }),
+                    drawWorldSceneStructure(this.ctx, { state, viewport, worldSceneRenderer: this.render3D, canvas: this.canvas, worldRenderInput: this.getWorldRenderInput(state, viewport) }),
             },
         ];
     }

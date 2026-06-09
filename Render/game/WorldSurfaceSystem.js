@@ -40,7 +40,7 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
     }
     /** Draw procedural ground: shadow underpaint + baked chunk textures (simulation/inspector scenes only). */
     drawGround(ctx, state, viewport) {
-        if (!viewport || !isWorldScene(state.phase) || !state.obstacleGrid?.cols) return;
+        if (!viewport || !isWorldScene(state.phase)) return;
         this.drawGroundChunks(ctx, {
             obstacleGrid: state.obstacleGrid,
             viewport,
@@ -58,7 +58,7 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
     }
     /** Chunk-cached roof layers at wall height (after walls). */
     drawRoofs(ctx, state, viewport) {
-        if (!viewport || !isWorldScene(state.phase) || !state.obstacleGrid?.cols) return;
+        if (!viewport || !isWorldScene(state.phase)) return;
         if (!this.roofZLevels) {
             const zSet = new Set();
             this.roofSpatialIndices = new Map();
