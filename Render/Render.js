@@ -2,7 +2,7 @@ import { getGameWorldSurfaceSettings } from "./WorldSurfaceBootstrap.js";
 import { SpriteCache } from "../Libraries/Canvas/SpriteCache.js";
 import { WorldSceneRenderer } from "../Libraries/Render/WorldSceneRenderer.js";
 import { getRenderPorts, isWorldScene } from "../Core/GamePorts.js";
-import { createWorldSceneDrawInput, syncWorldSceneDrawInput } from "./adapters/WorldRenderAdapter.js";
+import { resolveSurfaceProfileAtCoords } from "./game/surfaceProfileResolver.js";
 import { LIBRARY_WORLD_SURFACE_DEFAULTS } from "../Libraries/WorldSurface/worldSurfaceDefaults.js";
 export class Renderer {
     /** @param {{ actorCache?: SpriteCache, turretCache?: SpriteCache } | undefined} caches */
@@ -11,7 +11,22 @@ export class Renderer {
         this.ctx = ctx;
         this.caches = caches;
         this.render3D = new WorldSceneRenderer(getGameWorldSurfaceSettings(), getRenderPorts().world3dPropRecipes);
-        this.worldSceneDrawInput = createWorldSceneDrawInput();
+        this.worldSceneDrawInput = {
+            walls: [],
+            pickups: [],
+            ragdollCorpses: [],
+            worldSurfaces: null,
+            proceduralSurfaceDraw: {
+                surfaceSeed: 0,
+                gameTime: 0,
+                surfaceProfileOverride: null,
+                obstacleCellSize: 0,
+                boundGameState: null,
+                resolveProfileAt(x, y) {
+                    return resolveSurfaceProfileAtCoords(this.boundGameState, x, y);
+                },
+            },
+        };
         const surfaceSettings = getGameWorldSurfaceSettings();
         this.surfaceDrawPadQuery = surfaceSettings.viewQueryPadPx;
         this.surfaceDrawPadDraw = surfaceSettings.viewPaddingPx;
@@ -21,6 +36,20 @@ export class Renderer {
             { zIndex: 70, fn: (state, viewport) => this.drawWorldSceneStructure(state, viewport) },
         ];
         if (LIBRARY_WORLD_SURFACE_DEFAULTS.bloom.enabled) this.effectPasses.push({ zIndex: 71, fn: () => this.drawWorldSceneBloom() });
+    }
+    /** @param {import("../GameState/GameState.js").GameState} state */
+    syncWorldSceneDrawInput(state) {
+        const input = this.worldSceneDrawInput;
+        input.walls = state.walls;
+        input.pickups = state.pickups;
+        input.ragdollCorpses = state.ragdollCorpses ?? [];
+        input.worldSurfaces = state.worldSurfaces;
+        const surfaceDraw = input.proceduralSurfaceDraw;
+        surfaceDraw.boundGameState = state;
+        surfaceDraw.surfaceSeed = state.worldSurfaces.worldSurfaceSeed ?? 0;
+        surfaceDraw.gameTime = state.gameTime;
+        surfaceDraw.surfaceProfileOverride = state.worldSurfaces.surfaceProfileOverride ?? null;
+        surfaceDraw.obstacleCellSize = state.obstacleGrid.cellSize;
     }
     /** Ground tiles and debris props — zIndex -5. */
     drawWorldSceneBackdrop(state, viewport) {
@@ -57,7 +86,7 @@ export class Renderer {
         this.simulationPipeline = pipeline.map((p) => p.fn);
     }
     renderSimulationScene(state, viewport) {
-        syncWorldSceneDrawInput(this.worldSceneDrawInput, state);
+        this.syncWorldSceneDrawInput(state);
         viewport.configureDrawBounds(this.surfaceDrawPadQuery, this.surfaceDrawPadDraw);
         this.ctx.save();
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
