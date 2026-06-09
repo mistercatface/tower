@@ -1,3 +1,4 @@
+import { findPickupAt } from "../../../Libraries/Sandbox/findPickupAt.js";
 import { selectLabNode } from "../world/mapWorld.js";
 import { canvasClientToWorld } from "./labCanvas.js";
 import { populateNodeList, renderNodeInspector } from "./mapInspector.js";
@@ -10,11 +11,13 @@ function resolveTopologyClickViewport(state, canvas) {
 export function initMapTopologyInteractions(state, onRedraw) {
     const canvas = document.getElementById("gameCanvas");
     canvas?.addEventListener("pointerdown", (e) => {
-        if (!state.labShowTopologyOverlay) return;
+        if (!state.labShowTopologyOverlay || e.button !== 0) return;
+        if (e.defaultPrevented) return;
         const viewport = resolveTopologyClickViewport(state, canvas);
         const world = canvasClientToWorld(canvas, viewport, e.clientX, e.clientY);
         if (!world) return;
         const { x: worldX, y: worldY } = world;
+        if (findPickupAt(state.pickups, worldX, worldY)) return;
         let nearestNode = null;
         let nearestDist = Infinity;
         for (const node of state.mapNodes) {

@@ -58,7 +58,7 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
     };
     /** @param {PointerEvent} e */
     const onPointerDown = (e) => {
-        if (host.isInputBlocked()) return;
+        if (host.isInputBlocked?.()) return;
         const canvas = host.getCanvas();
         if (!canvas) return;
         const world = host.clientToWorld(e.clientX, e.clientY);
@@ -97,7 +97,6 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
         if (!world) return;
         e.stopPropagation();
         interactionBehavior.onPointerMove(pickup, world, e);
-        host.requestRedraw();
     };
     /** @param {PointerEvent} e */
     const onPointerUp = (e) => {

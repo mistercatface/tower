@@ -3,7 +3,8 @@ import { createNavState } from "../Pathfinding/navSession.js";
 import { computePathSteering, trimPathAhead } from "../Pathfinding/pathFollow.js";
 /** @typedef {import("./SandboxHostPort.js").SandboxHostPort} SandboxHostPort */
 /** @typedef {import("../Pathfinding/navSession.js").NavSessionState} NavSessionState */
-const REPLAN_INTERVAL_MS = 150;
+const REPLAN_INTERVAL_MS = 250;
+const REPLAN_TARGET_MOVE_PX = 64;
 /** @returns {{ navState: NavSessionState, reset: () => void, update: (pickup: object, targetX: number, targetY: number, host: SandboxHostPort, dtMs: number) => void, getSteering: (pickup: object, targetX: number, targetY: number, settings: object) => import("../Agent/types.js").SteeringResult | null }} */
 export function createRollToCursorHpaNav() {
     const navState = createNavState();
@@ -34,8 +35,8 @@ export function createRollToCursorHpaNav() {
     };
     const update = (pickup, targetX, targetY, host, dtMs) => {
         replanClockMs += dtMs;
-        const targetMoved = navState.lastTargetX !== targetX || navState.lastTargetY !== targetY;
-        const needsReplan = !navState.path || targetMoved || replanClockMs - navState.lastUpdate >= REPLAN_INTERVAL_MS;
+        const targetMovedPx = navState.lastTargetX == null || navState.lastTargetY == null ? Infinity : Math.hypot(targetX - navState.lastTargetX, targetY - navState.lastTargetY);
+        const needsReplan = !navState.path || targetMovedPx >= REPLAN_TARGET_MOVE_PX || replanClockMs - navState.lastUpdate >= REPLAN_INTERVAL_MS;
         if (needsReplan) replan(pickup, targetX, targetY, host);
     };
     const getSteering = (pickup, targetX, targetY, settings) => {

@@ -14,7 +14,6 @@ export function createTilelabSandboxHost(state, requestRedraw) {
             state.mapViewport.setCanvasSize(canvas.width, canvas.height);
             return canvasClientToWorld(canvas, state.mapViewport, clientX, clientY);
         },
-        isInputBlocked: () => state.labShowTopologyOverlay,
         getCameraOrigin: () => ({ x: state.mapViewport.x, y: state.mapViewport.y }),
         requestRedraw,
         computePath: (startX, startY, targetX, targetY) => {

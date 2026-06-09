@@ -4,7 +4,7 @@
  * @typedef {object} SandboxHostPort
  * @property {() => HTMLCanvasElement | null} getCanvas
  * @property {(clientX: number, clientY: number) => { x: number, y: number } | null} clientToWorld
- * @property {() => boolean} isInputBlocked
+ * @property {() => boolean} [isInputBlocked]
  * @property {() => { x: number, y: number }} getCameraOrigin
  * @property {() => void} requestRedraw
  * @property {(startX: number, startY: number, targetX: number, targetY: number) => { waypoints: { x: number, y: number }[], abstractNodes?: object[] } | null} [computePath]

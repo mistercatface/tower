@@ -23,6 +23,16 @@ export function initResizer(resizerId = "resizer", onResizeCallback) {
         }
     });
 }
+function isCameraMoveBlockedTarget(target) {
+    if (!(target instanceof HTMLElement)) return false;
+    if (target.isContentEditable) return true;
+    if (target.matches("textarea, select")) return true;
+    if (target instanceof HTMLInputElement) {
+        const type = target.type;
+        return type === "text" || type === "number" || type === "password" || type === "search" || type === "email" || type === "url";
+    }
+    return false;
+}
 export function setupLabViewportNavigation(canvasId, { getCamera, setCamera, onUpdate }) {
     const canvases = () => {
         const idList = Array.isArray(canvasId) ? canvasId : [canvasId];
@@ -53,7 +63,7 @@ export function setupLabViewportNavigation(canvasId, { getCamera, setCamera, onU
         moveRaf = requestAnimationFrame(tickMove);
     };
     window.addEventListener("keydown", (e) => {
-        if (e.target.matches("input, textarea, select")) return;
+        if (isCameraMoveBlockedTarget(e.target)) return;
         if (["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) {
             moveKeys.add(e.code);
             e.preventDefault();
