@@ -3,12 +3,12 @@ import { normalizeVector } from "../Math/Vec2.js";
 /** @typedef {import("./types.js").MobileAgent} MobileAgent */
 /** @typedef {import("./types.js").SteeringResult} SteeringResult */
 /** @returns {{ x: number, y: number }} */
-export function seekDirection(dx, dy) {
+function seekDirection(dx, dy) {
     const vec = normalizeVector(dx, dy);
     return { x: vec.x, y: vec.y };
 }
 /** @returns {{ x: number, y: number }} */
-export function seekDirectionToward(x, y, targetX, targetY) {
+function seekDirectionToward(x, y, targetX, targetY) {
     return seekDirection(targetX - x, targetY - y);
 }
 /**
