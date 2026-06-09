@@ -50,7 +50,7 @@ export class Renderer {
     renderEntityCollection(collection, state, viewport) {
         if (!collection) return;
         for (const entity of collection) {
-            if (viewport && typeof entity.isVisible === "function" && !entity.isVisible(viewport)) continue;
+            if (typeof entity.isVisible === "function" && !entity.isVisible(viewport)) continue;
             entity.render(this.ctx, this, state);
         }
     }

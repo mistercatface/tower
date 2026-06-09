@@ -33,7 +33,6 @@ export class Entity {
         return this.radius || 0;
     }
     isVisible(viewport) {
-        if (!viewport) return true;
         return viewport.isVisible(this.x, this.y, this.getBoundingRadius());
     }
     renderCachedSprite(ctx, cache, cacheKey, generateFn, ...generateArgs) {

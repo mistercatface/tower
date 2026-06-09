@@ -9,7 +9,6 @@ export class Laser {
         this.isSight = isSight;
     }
     isVisible(viewport) {
-        if (!viewport) return true;
         return viewport.intersectsWorldAabb(Math.min(this.x1, this.x2), Math.max(this.x1, this.x2), Math.min(this.y1, this.y2), Math.max(this.y1, this.y2));
     }
     render(ctx) {

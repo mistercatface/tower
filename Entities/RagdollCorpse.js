@@ -89,7 +89,6 @@ export class RagdollCorpse extends Entity {
         if (this.opacity <= 0.02) this.isDead = true;
     }
     isVisible(viewport) {
-        if (!viewport?.isVisible) return true;
         return viewport.isVisible(this.x, this.y, this.radius * 3);
     }
     render(ctx, _renderer, state) {

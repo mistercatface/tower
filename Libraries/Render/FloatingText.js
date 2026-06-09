@@ -60,7 +60,6 @@ export class FloatingText {
         if (remaining <= 0) this.isDead = true;
     }
     isVisible(viewport) {
-        if (!viewport) return true;
         return viewport.isVisible(this.x, this.y, 20);
     }
     static spawnBlastDamageText(state, x, y, damage) {
