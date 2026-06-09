@@ -77,7 +77,7 @@ export class WallSpatialIndex {
             this.buckets.removeFrom(key, entity);
         });
     }
-    collectNearby(entity, query = fallbackQuery) {
+    collectNearby(entity, query) {
         let minX, minY, maxX, maxY;
         if (entity.getBounds) {
             const b = entity.getBounds();

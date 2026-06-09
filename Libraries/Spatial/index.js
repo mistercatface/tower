@@ -56,8 +56,8 @@ export { EntityGrid } from "./indexes/EntityGrid.js";
 export { WallSpatialIndex } from "./indexes/WallSpatialIndex.js";
 // Query
 export { SpatialQuery } from "./query/SpatialQuery.js";
-export { entityWorldAabb, collectWallSegmentsForEntity, collectWallSegmentsAlongLine, collectObstacleGridSegmentsNearPose } from "./query/wallSegmentQuery.js";
-export { wallContextFromState, getNearbyWalls, getWallsAlongLine } from "./query/wallContext.js";
+export { collectWallSegmentsForEntity, collectWallSegmentsAlongLine } from "./query/wallSegmentQuery.js";
+export { wallContextFromState, getWallsAlongLine } from "./query/wallContext.js";
 export { hasLineOfSight } from "./query/lineOfSight.js";
 export { castCircleRay, rayCircleHitDistance } from "./query/circleCast.js";
 export { estimateRollingTravelDistance, computeCircleAimLineSegment } from "./query/circleAimLinePreview.js";
