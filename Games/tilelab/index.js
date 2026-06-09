@@ -91,6 +91,7 @@ export const tilelabGame = {
     uiPort: tilelabUiPort,
     render: { ...createDefaultRenderPorts({ weaponVisuals: createWeaponVisuals(GUN_ID_TO_VISUAL) }), simulationEffectPasses: [sandboxPathEffectPass] },
     worldGen: createRoguelikeWorldGenPort({ topology: tilelabMapTopology }),
+    worldSurface: { pixelsPerCell: 6 },
     proceduralDesign: roguelikeProceduralDesign,
     runBootstrapPort: layoutOnlyRunBootstrap,
     runScenePort: tilelabRunScenePort,

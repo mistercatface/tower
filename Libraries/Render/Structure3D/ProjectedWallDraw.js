@@ -107,9 +107,9 @@ function drawFaceTexture(ctx, p1, p2, face, worldSurfaces, surfaceBake, viewer, 
     const py = viewer.y;
     const dist = Math.hypot(wallCx - px, wallCy - py);
     const subdivScale = Math.max(0.05, Math.min(1.0, 1.0 - (dist - settings.wallSubdivNearPx) / settings.wallSubdivFarPx));
-    const heightCells = settings.wallHeightCells;
+    const visibleHeightCells = clampedHeight / cellSize;
     const SUBDIV_X = Math.max(1, Math.min(2, Math.ceil((edgeLen / cellSize) * subdivScale)));
-    const SUBDIV_Y = Math.max(1, Math.ceil(heightCells * subdivScale));
+    const SUBDIV_Y = Math.max(1, Math.ceil(visibleHeightCells * subdivScale));
     const H_px = clampedHeight * ppwu;
     for (let row = 0; row < SUBDIV_Y; row++) {
         const bottomZ = row * (wallHeight / SUBDIV_Y);

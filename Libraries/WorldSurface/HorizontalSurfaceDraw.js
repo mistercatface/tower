@@ -25,6 +25,25 @@ export function chunkHasWallSegments(wallSpatialIndex, chunkOriginX, chunkOrigin
     return false;
 }
 /**
+ * @param {import("../Spatial/indexes/WallSpatialIndex.js").WallSpatialIndex | null | undefined} wallSpatialIndex
+ * @param {number} chunkOriginX
+ * @param {number} chunkOriginY
+ * @param {number} chunkSizePx
+ * @param {number} zLevel
+ * @param {number} defaultWallHeight
+ */
+export function chunkHasWallSegmentsAtZ(wallSpatialIndex, chunkOriginX, chunkOriginY, chunkSizePx, zLevel, defaultWallHeight) {
+    if (!wallSpatialIndex) return false;
+    const segments = wallSpatialIndex.collectInBounds(chunkOriginX, chunkOriginY, chunkOriginX + chunkSizePx, chunkOriginY + chunkSizePx);
+    for (let i = 0; i < segments.length; i++) {
+        const segment = segments[i];
+        if (segment.isDead) continue;
+        const segZ = segment.wallHeight ?? defaultWallHeight;
+        if (Math.abs(segZ - zLevel) <= 0.01) return true;
+    }
+    return false;
+}
+/**
  * Clip draw to projected wall-segment footprints at roof elevation.
  *
  * @param {CanvasRenderingContext2D} ctx

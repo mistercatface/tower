@@ -9,7 +9,7 @@ import { intersectWorldBounds } from "../WorldGen/playBounds.js";
 import { chunkToWorldOrigin, getChunkSizePx, gridBoundsToChunkRange, worldBoundsToChunkRange } from "../Spatial/grid/ChunkGrid.js";
 import { ProgressiveFrameCache } from "./ProgressiveFrameCache.js";
 import { getHorizontalSurfaceZLevels, groundChunkCachePrefix, getGroundChunkAnimationInfo, getWallAtlasAnimationInfo, isWallAtlasAnimationEnabled } from "./bake/SurfaceBakeHelpers.js";
-import { chunkHasWallSegments, clipChunkToRoofFootprints, drawRoofSegmentDamageOverlays, projectHorizontalSurfaceCorners } from "./HorizontalSurfaceDraw.js";
+import { chunkHasWallSegmentsAtZ, clipChunkToRoofFootprints, drawRoofSegmentDamageOverlays, projectHorizontalSurfaceCorners } from "./HorizontalSurfaceDraw.js";
 import { drawImageQuad } from "../Canvas/AffineTexture.js";
 import { getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
 import { getWallAtlasCacheInfo } from "./WallSurfaceCache.js";
@@ -245,7 +245,7 @@ export class WorldSurfaceEngine {
         }
         ctx.imageSmoothingEnabled = false;
         for (const chunk of chunksToDraw) {
-            if (zLevel > 0 && !chunkHasWallSegments(wallSpatialIndex, chunk.origin.x, chunk.origin.y, chunkSizePx)) continue;
+            if (zLevel > 0 && !chunkHasWallSegmentsAtZ(wallSpatialIndex, chunk.origin.x, chunk.origin.y, chunkSizePx, zLevel, this.settings.wallHeight)) continue;
             const payload = this._resolveChunkPayload(state, chunk.chunkCol, chunk.chunkRow, zLevel);
             const canvases = this.getGroundChunkCanvas(chunk.chunkCol, chunk.chunkRow, state, payload, zLevel);
             let canvas = canvases[0];
