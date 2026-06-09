@@ -65,6 +65,15 @@ export function processGroundZones(spatialFrame, zones, { onEnter, onExit } = {}
         zone._nextOccupants = prev;
     }
 }
+function aabbOverlap(a, b) {
+    return a.minX <= b.maxX && a.maxX >= b.minX && a.minY <= b.maxY && a.maxY >= b.minY;
+}
+/** Draw cull only — sim tick ignores viewport. @param {import("../../Viewport/Viewport.js").Viewport} viewport */
+export function isGroundZoneInView(zone, viewport, canvasBounds = null, padPx = 0) {
+    const screenW = canvasBounds?.width ?? viewport.cx * 2;
+    const screenH = canvasBounds?.height ?? viewport.cy * 2;
+    return aabbOverlap(zone.aabb, viewport.getWorldBounds(screenW, screenH, padPx));
+}
 /** @param {CanvasRenderingContext2D} ctx @param {ReturnType<typeof createRectGroundZone>} zone */
 export function drawGroundZone(ctx, zone, { fill = "rgba(120, 200, 255, 0.18)", stroke = "rgba(120, 200, 255, 0.65)", lineWidth = 2 } = {}) {
     const shape = zone.shape;

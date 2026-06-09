@@ -1,4 +1,4 @@
-import { createCircleGroundZone, createRectGroundZone, drawGroundZone, processGroundZones } from "../../Libraries/Spatial/zones/groundZones.js";
+import { createCircleGroundZone, createRectGroundZone, drawGroundZone, isGroundZoneInView, processGroundZones } from "../../Libraries/Spatial/zones/groundZones.js";
 /** @param {import("./index.js").TileLabGameState} state */
 export function resetTilelabGroundZones(state) {
     const origin = state.getMapSpawnOrigin();
@@ -13,11 +13,14 @@ export const tilelabGroundZonePhase = {
 /** @type {import("../../Core/GameDefinitionTypes.js").SimulationEffectPass} */
 export const tilelabGroundZoneEffectPass = {
     zIndex: 12,
-    draw(state, _viewport, ctx) {
+    draw(state, viewport, ctx) {
         const zones = state.groundZones;
-        if (!zones?.length) return;
+        if (!zones?.length || !viewport) return;
         ctx.save();
-        for (let z = 0; z < zones.length; z++) drawGroundZone(ctx, zones[z]);
+        for (let z = 0; z < zones.length; z++) {
+            if (!isGroundZoneInView(zones[z], viewport, state.canvasBounds)) continue;
+            drawGroundZone(ctx, zones[z]);
+        }
         ctx.restore();
     },
 };
