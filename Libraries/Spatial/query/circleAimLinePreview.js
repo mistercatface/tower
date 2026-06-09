@@ -15,7 +15,9 @@ export function estimateRollingTravelDistance(v0, strategy) {
     const sC = strategy.snapSpeed ?? 1.8;
     if (v0 <= sC) return 0;
     const b = fLow - fBase;
-    if (Math.abs(b) < 1e-5) return (v0 - sC) / fBase;
+    // Two-regime damping only applies when low-speed friction exceeds base (pool balls).
+    // Most sandbox props use high base friction; fall back to constant damping.
+    if (b <= 1e-5) return (v0 - sC) / fBase;
     if (v0 >= vTh) {
         const d1 = (v0 - vTh) / fBase;
         const a = fBase;
