@@ -1,8 +1,8 @@
-import { createRectGroundZone, processGroundZones } from "../../Libraries/Spatial/zones/groundZones.js";
+import { createCircleGroundZone, createRectGroundZone, drawGroundZone, processGroundZones } from "../../Libraries/Spatial/zones/groundZones.js";
 /** @param {import("./index.js").TileLabGameState} state */
 export function resetTilelabGroundZones(state) {
     const origin = state.getMapSpawnOrigin();
-    state.groundZones = [createRectGroundZone(origin.x, origin.y, 80, 80, { id: "tilelab:debug" })];
+    state.groundZones = [createRectGroundZone(origin.x, origin.y, 80, 80, { id: "tilelab:debug-rect" }), createCircleGroundZone(origin.x + 140, origin.y, 70, { id: "tilelab:debug-circle" })];
 }
 export const tilelabGroundZonePhase = {
     id: "groundZone",
@@ -17,19 +17,7 @@ export const tilelabGroundZoneEffectPass = {
         const zones = state.groundZones;
         if (!zones?.length) return;
         ctx.save();
-        for (let z = 0; z < zones.length; z++) {
-            const zone = zones[z];
-            const verts = zone.shape.vertices;
-            ctx.beginPath();
-            ctx.moveTo(zone.x + verts[0].x, zone.y + verts[0].y);
-            for (let i = 1; i < verts.length; i++) ctx.lineTo(zone.x + verts[i].x, zone.y + verts[i].y);
-            ctx.closePath();
-            ctx.fillStyle = "rgba(120, 200, 255, 0.18)";
-            ctx.fill();
-            ctx.strokeStyle = "rgba(120, 200, 255, 0.65)";
-            ctx.lineWidth = 2;
-            ctx.stroke();
-        }
+        for (let z = 0; z < zones.length; z++) drawGroundZone(ctx, zones[z]);
         ctx.restore();
     },
 };
