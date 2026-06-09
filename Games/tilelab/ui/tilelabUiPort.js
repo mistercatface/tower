@@ -6,7 +6,7 @@ import { initAnimationPreview } from "./LabAnimationPreview.js";
 import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEditor.js";
 import { registerEditorProfiles, renderTilelabPreview, syncRuntimeLabProfile } from "./preview.js";
 import { readControls, initPresetSelect, initToolbarDefaults, bindToolbarControls, syncTilelabWorld, syncPreviewZoomToStage } from "./toolbar.js";
-import { mountLabViewport } from "./labViewport.js";
+import { mountLabViewport, refreshLabViewportControls } from "./labViewport.js";
 import { TILELAB_UI_HTML } from "./shellHtml.js";
 import { bindMapInspectorControls, syncMapInspectorAfterRegen } from "./mapInspector.js";
 import { initMapTopologyInteractions } from "./mapInteractions.js";
@@ -108,7 +108,12 @@ function bootstrapTilelabUi(state) {
             const container = document.querySelector(".map-container");
             if (!container) return 1200;
             const rect = container.getBoundingClientRect();
-            return Math.max(160, Math.floor(Math.min(rect.width, rect.height)));
+            const column = document.querySelector(".map-viewport-column");
+            const zoom = document.getElementById("labZoomControl");
+            const speed = document.getElementById("labSpeedControl");
+            const gap = column ? parseFloat(getComputedStyle(column).gap) || 10 : 10;
+            const controlsH = (zoom?.offsetHeight ?? 0) + (speed?.offsetHeight ?? 0) + gap * 2;
+            return Math.max(160, Math.floor(Math.min(rect.width, rect.height - controlsH) - 8));
         },
         onResize: () => {
             syncPreviewZoomToStage(state);
@@ -139,9 +144,13 @@ export const tilelabUiPort = {
         destroyTilelabSandbox();
         bootstrapped = false;
     },
-    updateHud() {},
+    updateHud({ state }) {
+        if (!bootstrapped) return;
+        refreshLabViewportControls(state);
+    },
     updateUI({ state }) {
         if (!bootstrapped) return;
+        refreshLabViewportControls(state);
         renderActiveLabView(state);
         if (state.worldSurfaces?.hasPendingSurfaceBakes?.()) runBakeRepaintLoop(state);
     },

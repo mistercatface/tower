@@ -1,0 +1,46 @@
+/* Shared pause / speed stepper — keep all buttons the same height everywhere. */
+
+.speed-control {
+    display: inline-flex;
+    align-items: stretch;
+    gap: 4px;
+}
+
+.speed-control > button {
+    box-sizing: border-box;
+    margin: 0;
+    min-height: 2.5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+}
+
+.speed-control-down,
+.speed-control-up {
+    min-width: 2.5rem;
+    padding: 4px 10px;
+}
+
+.speed-control-pause {
+    flex-direction: column;
+    gap: 1px;
+    min-width: 4.75rem;
+    max-width: none;
+    padding: 4px 10px;
+    line-height: 1.1;
+}
+
+/* Games that still pass chrome `control-btn-large` on pause — keep row height uniform. */
+.speed-control > .speed-control-pause.control-btn-large {
+    min-width: 4.75rem;
+    padding: 4px 10px;
+    line-height: 1.1;
+}
+
+.speed-control-speed-label {
+    font-size: 0.65rem;
+    font-weight: normal;
+    opacity: 0.85;
+    margin: 0;
+}

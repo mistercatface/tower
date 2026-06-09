@@ -26,41 +26,81 @@ body.shell-tilelab .app {
     height: 100%;
 }
 
+body.shell-tilelab .map-container {
+    flex: 1 1 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+body.shell-tilelab .map-viewport-column {
+    --map-viewport-gap: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--map-viewport-gap);
+    width: fit-content;
+    max-width: 100%;
+    max-height: 100%;
+    box-sizing: border-box;
+}
+
+body.shell-tilelab .map-stage {
+    position: relative;
+    flex: 0 0 auto;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
+}
+
 body.shell-tilelab #gameCanvas {
-    position: absolute;
-    inset: 0;
+    position: static;
+    display: block;
     width: 100%;
     height: 100%;
     aspect-ratio: unset;
     flex: none;
 }
 
-body.shell-tilelab .map-container {
-    align-items: center;
+body.shell-tilelab .map-viewport-control {
+    flex: 0 0 auto;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+body.shell-tilelab #labZoomControl {
+    font-size: 11px;
+    color: var(--muted);
+}
+
+body.shell-tilelab #labZoomControl .viewport-zoom-control {
+    width: 100%;
+    flex: none;
+}
+
+body.shell-tilelab #labZoomControl .viewport-zoom-control-prefix,
+body.shell-tilelab #labZoomControl .viewport-zoom-control-value {
+    flex: 0 0 auto;
+}
+
+body.shell-tilelab #labSpeedControl {
+    display: flex;
     justify-content: center;
 }
 
-body.shell-tilelab .map-stage {
-    position: relative;
-    flex: none;
-    min-height: 0;
-    min-width: 0;
-    overflow: hidden;
-}
-
-body.shell-tilelab .map-zoom-bar {
-    flex: 0 0 auto;
-    display: flex;
-    align-items: center;
-    padding: 6px 10px;
-    border-bottom: 1px solid var(--border);
-    background: rgba(0, 0, 0, 0.12);
-}
-
-body.shell-tilelab .map-zoom-bar #labZoomControl {
-    flex: 1;
-    min-width: 0;
-    max-width: 360px;
+body.shell-tilelab #labSpeedControl .speed-control button {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font: inherit;
     font-size: 11px;
-    color: var(--muted);
+    cursor: pointer;
+}
+
+body.shell-tilelab #labSpeedControl .speed-control button:hover {
+    border-color: var(--accent);
+    color: var(--accent);
 }

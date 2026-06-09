@@ -25,7 +25,7 @@ function bindPoolElements() {
     poolSpeedControl = applySpeedControl(document.getElementById("poolSpeedOverlay"), {
         inject: true,
         definition: getActiveGameDefinition(),
-        classNames: { root: "speed-control chrome-control-panel", button: "control-btn", pause: "control-btn control-btn-large" },
+        classNames: { root: "speed-control chrome-control-panel", button: "control-btn", pause: "control-btn" },
     });
 }
 /** @param {object} state */

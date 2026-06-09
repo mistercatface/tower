@@ -1,3 +1,5 @@
+import { getActiveGameDefinition } from "../../../Core/ActiveGameDefinition.js";
+import { applySpeedControl } from "../../../Libraries/Playback/index.js";
 import { applyZoomControl, clampZoom, directZoomMapping } from "../../../Libraries/Viewport/index.js";
 import { getDefaultSimulationZoom } from "../../../Render/SimulationViewport.js";
 import { setupLabViewportNavigation } from "./lab-shared.js";
@@ -7,6 +9,8 @@ export const LAB_ZOOM_MIN = 0.25;
 export const LAB_ZOOM_MAX = 2.5;
 /** @type {import("../../../Libraries/Viewport/zoomControl.js").ZoomControlHandle | null} */
 let zoomControl = null;
+/** @type {import("../../../Libraries/Playback/speedControl.js").SpeedControlHandle | null} */
+let speedControl = null;
 /** @type {(() => void) | null} */
 let notifyViewChange = null;
 function clampLabZoom(zoom) {
@@ -51,5 +55,11 @@ export function mountLabViewport(state, onViewChange) {
             onViewChange();
         },
     });
+    speedControl = applySpeedControl(document.getElementById("labSpeedControl"), { inject: true, definition: getActiveGameDefinition() });
+    speedControl.refresh(state);
     setupLabViewportNavigation("gameCanvas", { getCamera: () => state.mapViewport, setCamera: (x, y, zoom) => applyCamera(state, x, y, zoom), onUpdate: onViewChange });
+}
+/** @param {import("../index.js").TileLabGameState} state */
+export function refreshLabViewportControls(state) {
+    speedControl?.refresh(state);
 }

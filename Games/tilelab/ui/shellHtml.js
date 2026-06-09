@@ -112,11 +112,12 @@ export const TILELAB_UI_HTML = `
         <div class="resizer" id="resizer"></div>
         <section class="col col-map">
             <div class="map-status" id="mapStatusLine" style="display:none">WASD move · drag · wheel zoom</div>
-            <div class="map-zoom-bar">
-                <div id="labZoomControl"></div>
-            </div>
             <div class="map-container">
-                <div class="map-stage" id="mapStage"></div>
+                <div class="map-viewport-column">
+                    <div class="map-stage" id="mapStage"></div>
+                    <div id="labZoomControl" class="map-viewport-control"></div>
+                    <div id="labSpeedControl" class="map-viewport-control"></div>
+                </div>
             </div>
         </section>
     </div>

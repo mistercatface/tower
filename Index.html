@@ -1,36 +1,34 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+        <title>Game</title>
+        <link rel="stylesheet" href="Styles.css" />
+        <link rel="stylesheet" href="Libraries/Viewport/zoomControl.css" />
+        <link rel="stylesheet" href="Libraries/Playback/speedControl.css" />
+        <link rel="stylesheet" href="UI/Shell/shell.css" />
+    </head>
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Game</title>
-    <link rel="stylesheet" href="Styles.css">
-    <link rel="stylesheet" href="Libraries/Viewport/zoomControl.css">
-    <link rel="stylesheet" href="UI/Shell/shell.css">
-</head>
+    <body>
+        <div id="gameWrapper">
+            <canvas id="gameCanvas"></canvas>
 
-<body>
-    <div id="gameWrapper">
-        <canvas id="gameCanvas"></canvas>
+            <!-- Per-game chrome injected by uiPort.mount() -->
+            <div id="ui-root"></div>
 
-        <!-- Per-game chrome injected by uiPort.mount() -->
-        <div id="ui-root"></div>
-
-        <!-- Engine overlays (shared by all games) -->
-        <div id="radioDialog" class="radio-dialog" style="display: none;">
-            <button type="button" class="radio-dialog-screen" id="radioDialogAdvanceBtn">
-                <div id="radioPortraitRow" class="radio-dialog-portraits"></div>
-                <div class="radio-dialog-text-panel">
-                    <div id="radioSpeakerName" class="radio-dialog-speaker"></div>
-                    <div id="radioLineText" class="radio-dialog-line"></div>
-                </div>
-                <div class="radio-dialog-hint">Tap to continue</div>
-            </button>
+            <!-- Engine overlays (shared by all games) -->
+            <div id="radioDialog" class="radio-dialog" style="display: none">
+                <button type="button" class="radio-dialog-screen" id="radioDialogAdvanceBtn">
+                    <div id="radioPortraitRow" class="radio-dialog-portraits"></div>
+                    <div class="radio-dialog-text-panel">
+                        <div id="radioSpeakerName" class="radio-dialog-speaker"></div>
+                        <div id="radioLineText" class="radio-dialog-line"></div>
+                    </div>
+                    <div class="radio-dialog-hint">Tap to continue</div>
+                </button>
+            </div>
         </div>
-
-    </div>
-    <script type="module" src="main.js"></script>
-</body>
-
+        <script type="module" src="main.js"></script>
+    </body>
 </html>
