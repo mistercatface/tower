@@ -17,18 +17,6 @@ export function resolveSurfaceProfileAtCoords(state, x, y) {
     if (closestNode?.surfaceProfileId) return closestNode.surfaceProfileId;
     return getSurfaceProfileProvider().defaultId;
 }
-/** World position used to pick a surface profile when finalize did not pass explicit focus coords. */
-export function resolveSurfaceProfileRunFocusCoords(state) {
-    const grid = state.obstacleGrid;
-    if (grid?.cols && grid?.rows) return { x: grid.minX + (grid.cols * grid.cellSize) / 2, y: grid.minY + (grid.rows * grid.cellSize) / 2 };
-    return state.getMapSpawnOrigin();
-}
-export function resolveSurfaceProfileAtPlayer(state) {
-    const { x, y } = resolveSurfaceProfileRunFocusCoords(state);
-    return resolveSurfaceProfileAtCoords(state, x, y);
-}
-/** Apply active node profile to the surface cache. */
-export function syncSurfaceProfile(_state, _focusX, _focusY) {}
 /** Worker-serializable ground-chunk bake payload from live game state. */
 export function buildGroundChunkBakePayload(state, chunkCol, chunkRow, zLevel = 0) {
     const obstacleGrid = state.obstacleGrid;

@@ -31,7 +31,6 @@ export function createShootBehavior() {
             if (!state) return;
             manualFirePickup(state, pickup, aimX, aimY, dt, isShooting);
         },
-        drawOverlay() {},
         reset() {
             isShooting = false;
         },

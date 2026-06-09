@@ -28,20 +28,3 @@ export function applySteeringResult(agent, result) {
     agent.desiredX = result.desiredX;
     agent.desiredY = result.desiredY;
 }
-/**
- * @param {Pick<MobileAgent, "desiredX" | "desiredY">} agent
- * @returns {{ x: number, y: number }}
- */
-export function applyDesiredDirection(agent, dx, dy) {
-    const dir = seekDirection(dx, dy);
-    agent.desiredX = dir.x;
-    agent.desiredY = dir.y;
-    return dir;
-}
-/**
- * @param {AgentPose & Pick<MobileAgent, "desiredX" | "desiredY">} agent
- * @returns {{ x: number, y: number }}
- */
-export function applyDesiredDirectionToward(agent, targetX, targetY) {
-    return applyDesiredDirection(agent, targetX - agent.x, targetY - agent.y);
-}

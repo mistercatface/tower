@@ -3,7 +3,7 @@ export { integratePropMotion } from "./propMotion.js";
 export { integrateStandTipMotion, integrateStandTip, integrateStandTipsAfterCollisions, initStandTipState, isStandTipActive, needsStandTipIntegration } from "./standTipMotion.js";
 export { applyActorPushTipImpulse } from "./actorPushTip.js";
 export { syncLongAxisCollisionShape, usesLongAxisCollisionShape } from "./longAxisCollision.js";
-export { measureTipFallWallBlock, measureTipFallWallBlockFromState } from "./tipWallSupport.js";
+export { measureTipFallWallBlock } from "./tipWallSupport.js";
 export { applyProjectileImpulseToPickup, applyTipImpulseFromForce } from "./projectileImpulse.js";
 export { HIT_BEHAVIOR_HANDLERS, damageOnHit, impulseOnHit } from "./hitBehaviors.js";
 export {

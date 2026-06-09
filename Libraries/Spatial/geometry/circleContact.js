@@ -16,9 +16,3 @@ export function circlePairContactPoint(centerAx, centerAy, radiusA, centerBx, ce
     if (d < 1e-8) return { x: centerAx + radiusA, y: centerAy };
     return { x: centerAx + nx * radiusA, y: centerAy + ny * radiusA };
 }
-/** Unit direction the struck circle (B) travels — line of centers at contact (A → B). */
-export function circlePairStruckUnitDirection(contactAx, contactAy, centerBx, centerBy) {
-    const { nx, ny, len: d } = normalizeXY(centerBx - contactAx, centerBy - contactAy);
-    if (d < 1e-8) return { x: 1, y: 0 };
-    return { x: nx, y: ny };
-}

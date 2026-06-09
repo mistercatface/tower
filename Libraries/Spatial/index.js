@@ -23,7 +23,7 @@ export {
     findClosestPointOnPathToWall,
     minDistanceSegmentToWall,
 } from "./geometry/WallGeometry.js";
-export { circleLeadingPoint, circleWallContactPoint, circlePairContactPoint, circlePairStruckUnitDirection } from "./geometry/circleContact.js";
+export { circleLeadingPoint, circleWallContactPoint, circlePairContactPoint } from "./geometry/circleContact.js";
 export { rayExpandedLocalAabbHit, sweepCircleAgainstSegment, sweepCircleAgainstSegments } from "./geometry/circleSweep.js";
 export { projectOntoPath, projectOntoPathFrom } from "./geometry/PathGeometry.js";
 // Collision
@@ -59,7 +59,7 @@ export { SpatialQuery } from "./query/SpatialQuery.js";
 export { collectWallSegmentsForEntity, collectWallSegmentsAlongLine } from "./query/wallSegmentQuery.js";
 export { wallContextFromState } from "./query/wallContext.js";
 export { hasLineOfSight } from "./query/lineOfSight.js";
-export { castCircleRay, rayCircleHitDistance } from "./query/circleCast.js";
+export { rayCircleHitDistance } from "./query/circleCast.js";
 export { estimateRollingTravelDistance, computeCircleAimLineSegment } from "./query/circleAimLinePreview.js";
 export { castSteppedCircleRay } from "./query/steppedCircleRayCast.js";
 // World frame

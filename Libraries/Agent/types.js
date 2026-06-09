@@ -1,6 +1,6 @@
 /**
  * Cross-cutting locomotion / navigation data contracts.
- * Not a game Entity — duck-typed objects or createMobileAgent() snapshots.
+ * Not a game Entity — duck-typed objects or initMobileAgent() on an existing host.
  */
 /**
  * Minimal pose for planning and steering math (path follow, flow sample, direct seek).

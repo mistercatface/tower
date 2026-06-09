@@ -1,5 +1,4 @@
 import { resolveBodyRadius } from "../Motion/bodyDefaults.js";
-import { wallContextFromState } from "../Spatial/query/wallContext.js";
 import { collectWallSegmentsForEntity } from "../Spatial/query/wallSegmentQuery.js";
 import { SpatialQuery } from "../Spatial/query/SpatialQuery.js";
 import { distanceToSegment } from "../Spatial/geometry/WallGeometry.js";
@@ -43,11 +42,4 @@ export function measureTipFallWallBlock(prop, wallCtx = null) {
     }
     if (firstBlock > steps) return 0;
     return 1 - (firstBlock - 1) / steps;
-}
-/**
- * @param {object} state
- * @param {object} prop
- */
-export function measureTipFallWallBlockFromState(state, prop) {
-    return measureTipFallWallBlock(prop, wallContextFromState(state));
 }

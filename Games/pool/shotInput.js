@@ -148,8 +148,6 @@ export function getAimPreview(state) {
     if (!physics) return null;
     return { nx: physics.shotNx, ny: physics.shotNy, power: computeShotPower(pool.aim), drag: physics.drag, pullBack: physics.pullBack, currentDrag: pool.aim.currentDrag };
 }
-/** @deprecated Use {@link estimateRollingTravelDistance} from Libraries/Spatial. */
-export const estimateCueBallTravelDistance = estimateRollingTravelDistance;
 /**
  * Cue-ball aim line — walls via {@link castSteppedCircleRay}, balls via analytic ray.
  *

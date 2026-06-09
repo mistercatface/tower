@@ -31,17 +31,6 @@ export function getMobileAgent(entity) {
     return entity.mobile ?? entity;
 }
 /**
- * Standalone mobile agent snapshot (not a game entity).
- *
- * @param {number} x
- * @param {number} y
- * @param {Partial<MobileAgent>} [options]
- * @returns {MobileAgent}
- */
-export function createMobileAgent(x, y, options = {}) {
-    return initMobileAgent({ x, y, angle: options.angle ?? 0, radius: options.radius ?? 6 }, options);
-}
-/**
  * Extract planning pose from any object with x/y (entity, mobile agent, snapshot).
  * @param {{ x: number, y: number, radius?: number }} source
  * @returns {AgentPose}

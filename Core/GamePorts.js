@@ -137,9 +137,6 @@ export function inferFaction(actor) {
 export function areHostile(a, b) {
     return getTargeting().areHostile(a, b);
 }
-export function getPlayerActors(state) {
-    return getTargeting().getPlayerActors(state);
-}
 export function getHostiles(state, actor) {
     return getTargeting().getHostiles(state, actor);
 }
@@ -148,7 +145,4 @@ export function getBroadphaseActors(state) {
 }
 export function getNearestHostile(state, source, range, excludedTargets = null, opts = {}) {
     return getTargeting().getNearestHostile(state, source, range, excludedTargets, opts);
-}
-export function isValidTurretTarget(actor, target, state, range, blocksTargeting, opts = {}) {
-    return getTargeting().isValidTurretTarget(actor, target, state, range, blocksTargeting, opts);
 }

@@ -1,5 +1,4 @@
 import { SceneCompiler } from "../../Libraries/Render/Scene/SceneCompiler.js";
-import { syncSurfaceProfile } from "../../Render/game/surfaceProfileResolver.js";
 /**
  * Shared post-generation steps after walls are in `state.walls` / spatial index.
  *
@@ -16,5 +15,4 @@ export function finalizeGeneratedWorld(state, { centerX, centerY, gridBounds = n
     state.worldSurfaces.worldSurfaceSeed = (Math.random() * 0x7fffffff) | 0;
     state.worldSurfaces.clear();
     SceneCompiler.compileWalls(state, state.worldSurfaces.renderScene, state.obstacleGrid.minX, state.obstacleGrid.minY);
-    syncSurfaceProfile(state, centerX, centerY);
 }

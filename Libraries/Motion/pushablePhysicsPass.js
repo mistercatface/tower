@@ -1,14 +1,7 @@
 import { getCollisionSettings } from "../../Core/GameCollisionSettings.js";
-import { advancePushableSleep, evaluatePushableSleepEligible, wakePushableBody } from "./pushableSleep.js";
+import { advancePushableSleep, evaluatePushableSleepEligible } from "./pushableSleep.js";
 import { countMotionSubsteps } from "./motionSubsteps.js";
 import { integrateStandTipsAfterCollisions } from "../Props/standTipMotion.js";
-/**
- * @param {object} state
- */
-export function wakeAllPushables(state) {
-    if (!state?.pickups) return;
-    for (let i = 0; i < state.pickups.length; i++) wakePushableBody(state.pickups[i]);
-}
 /**
  * @param {object} spatialFrame
  * @param {{ blocksSleep?: (pickup: object) => boolean }} [options]
