@@ -1,10 +1,9 @@
 import { getGameWorldSurfaceSettings } from "./WorldSurfaceBootstrap.js";
 import { SpriteCache } from "../Libraries/Canvas/SpriteCache.js";
 import { WorldSceneRenderer } from "../Libraries/Render/WorldSceneRenderer.js";
-import { getRenderPorts } from "../Core/GamePorts.js";
+import { getRenderPorts, isWorldScene } from "../Core/GamePorts.js";
 import { createWorldSceneDrawInput, syncWorldSceneDrawInput } from "./adapters/WorldRenderAdapter.js";
 import { LIBRARY_WORLD_SURFACE_DEFAULTS } from "../Libraries/WorldSurface/worldSurfaceDefaults.js";
-import { drawWorldSceneBackdrop, drawWorldSceneBloom, drawWorldSceneStructure } from "./worldSceneDraw.js";
 export class Renderer {
     /** @param {{ actorCache?: SpriteCache, turretCache?: SpriteCache } | undefined} caches */
     constructor(canvas, ctx, caches) {
@@ -17,11 +16,37 @@ export class Renderer {
         this.surfaceDrawPadQuery = surfaceSettings.viewQueryPadPx;
         this.surfaceDrawPadDraw = surfaceSettings.viewPaddingPx;
         this.effectPasses = [
-            { zIndex: -5, fn: (state, viewport) => drawWorldSceneBackdrop(this.ctx, { state, viewport, worldSceneRenderer: this.render3D, worldRenderInput: this.getWorldRenderInput(state) }) },
-            { zIndex: 55, fn: (state, viewport) => this.render3D.drawRagdollCorpsesOnly(this.ctx, this.getWorldRenderInput(state), viewport) },
-            { zIndex: 70, fn: (state, viewport) => drawWorldSceneStructure(this.ctx, { state, viewport, worldSceneRenderer: this.render3D, worldRenderInput: this.getWorldRenderInput(state) }) },
+            { zIndex: -5, fn: (state, viewport) => this.drawWorldSceneBackdrop(state, viewport) },
+            { zIndex: 55, fn: (state, viewport) => this.drawRagdollCorpses(state, viewport) },
+            { zIndex: 70, fn: (state, viewport) => this.drawWorldSceneStructure(state, viewport) },
         ];
-        if (LIBRARY_WORLD_SURFACE_DEFAULTS.bloom.enabled) this.effectPasses.push({ zIndex: 71, fn: () => drawWorldSceneBloom(this.ctx, this.canvas) });
+        if (LIBRARY_WORLD_SURFACE_DEFAULTS.bloom.enabled) this.effectPasses.push({ zIndex: 71, fn: () => this.drawWorldSceneBloom() });
+    }
+    /** Ground tiles and debris props — zIndex -5. */
+    drawWorldSceneBackdrop(state, viewport) {
+        if (!isWorldScene(state.phase)) return;
+        state.worldSurfaces.drawGround(this.ctx, state, viewport);
+        this.render3D.drawDebrisProps(this.ctx, this.worldSceneDrawInput, viewport);
+    }
+    /** Ragdoll corpses between entities and structure — zIndex 55. */
+    drawRagdollCorpses(state, viewport) {
+        this.render3D.drawRagdollCorpsesOnly(this.ctx, this.worldSceneDrawInput, viewport);
+    }
+    /** Walls and roofs — zIndex 70. */
+    drawWorldSceneStructure(state, viewport) {
+        if (!isWorldScene(state.phase)) return;
+        this.render3D.draw3DBuildings(this.ctx, this.worldSceneDrawInput, viewport);
+        state.worldSurfaces.drawRoofs(this.ctx, state, viewport);
+    }
+    /** Full-canvas bloom — zIndex 71 when enabled. */
+    drawWorldSceneBloom() {
+        const { blur } = LIBRARY_WORLD_SURFACE_DEFAULTS.bloom;
+        this.ctx.save();
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+        this.ctx.globalCompositeOperation = "screen";
+        this.ctx.filter = `blur(${blur}px)`;
+        this.ctx.drawImage(this.canvas, 0, 0);
+        this.ctx.restore();
     }
     buildSimulationPipeline(state, viewport) {
         const entityPasses = (state.entityLayers ?? []).map((layer) => ({ zIndex: layer.zIndex, fn: (state, viewport) => this.renderEntityCollection(state[layer.key], state, viewport) }));
@@ -31,11 +56,8 @@ export class Renderer {
         pipeline.sort((a, b) => a.zIndex - b.zIndex);
         this.simulationPipeline = pipeline.map((p) => p.fn);
     }
-    getWorldRenderInput(state) {
-        syncWorldSceneDrawInput(this.worldSceneDrawInput, state);
-        return this.worldSceneDrawInput;
-    }
     renderSimulationScene(state, viewport) {
+        syncWorldSceneDrawInput(this.worldSceneDrawInput, state);
         viewport.configureDrawBounds(this.surfaceDrawPadQuery, this.surfaceDrawPadDraw);
         this.ctx.save();
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
