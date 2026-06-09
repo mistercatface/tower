@@ -2,6 +2,7 @@ import { gridSettings } from "../../../Config/Config.js";
 import { generateWorld, getWorldGen } from "../../../Core/GamePorts.js";
 import { regenerateRoguelikeMap } from "../../../Libraries/WorldGen/session/index.js";
 import { clearTilelabSandbox } from "./tilelabSandbox.js";
+import { resetTilelabGroundZones } from "./tilelabGroundZones.js";
 import { spawnSandboxBattleGroups } from "./sandboxBattleSpawn.js";
 export function listLabMapNodes(state) {
     return state.mapNodes.map((n) => ({ id: n.id, layer: n.layer, strategy: n.strategy ?? "?" })).sort((a, b) => a.layer - b.layer || a.id - b.id);
@@ -19,6 +20,7 @@ export function generateTilelabMap(state, { mapSeed, floorSeed }) {
     clearTilelabSandbox();
     const bounds = state.obstacleGrid;
     if (bounds?.minX !== undefined) state.mapViewport.snapTo((bounds.minX + bounds.maxX) / 2, (bounds.minY + bounds.maxY) / 2);
+    resetTilelabGroundZones(state);
     spawnSandboxBattleGroups(state);
 }
 /** @param {import("../index.js").TileLabGameState} state */

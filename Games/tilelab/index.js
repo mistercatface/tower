@@ -13,7 +13,7 @@ import { createRoguelikeNavRuntime } from "../../Libraries/Navigation/createRogu
 import { createRoguelikeMapSession } from "../../Libraries/WorldGen/session/index.js";
 import { Viewport } from "../../Libraries/Viewport/Viewport.js";
 import { createSimulationPort } from "../../Systems/Simulation/SimulationPipeline.js";
-import { gameSceneTickPhase, pushablePhysicsPhase } from "../../Systems/Simulation/phases.js";
+import { gameSceneTickPhase, groundZonePhase, pushablePhysicsPhase } from "../../Systems/Simulation/phases.js";
 import { getTilelabSandboxController } from "./world/tilelabSandbox.js";
 import { requestUiUpdate } from "../../Core/EventSystem.js";
 import { getRunScenePort, getSimulationPort } from "../../Core/GamePorts.js";
@@ -23,6 +23,7 @@ import { mergePairFilter } from "../../Libraries/Interaction/pairRules.js";
 import { excludeDeadOther, excludeActorOther, requirePickupOnHit } from "../../Libraries/Interaction/pairRuleClauses.js";
 import { tilelabUiPort } from "./ui/tilelabUiPort.js";
 import { sandboxPathEffectPass } from "./render/sandboxPathEffectPass.js";
+import { groundZoneEffectPass } from "./render/groundZoneEffectPass.js";
 export const LAB_PREVIEW_RANGE = 160;
 export const TILELAB_SANDBOX_SPAWN_PROP = "beach_ball";
 export const tilelabMapTopology = { ...ROGUELIKE_MAP_TOPOLOGY };
@@ -34,7 +35,7 @@ const sandboxTickPhase = {
         getTilelabSandboxController()?.tick(dt);
     },
 };
-export const tilelabSimulation = createSimulationPort([sandboxTickPhase, pushablePhysicsPhase, gameSceneTickPhase]);
+export const tilelabSimulation = createSimulationPort([sandboxTickPhase, pushablePhysicsPhase, groundZonePhase, gameSceneTickPhase]);
 /** @type {import("../../Core/GameDefinitionTypes.js").RunScenePort} */
 export const tilelabRunScenePort = {
     getLayout: () => null,
@@ -62,6 +63,8 @@ export class TileLabGameState extends SharedGameState {
         this.mapViewport = new Viewport(0, 0, 1);
         /** @type {HTMLCanvasElement | null} */
         this.labCanvas = null;
+        /** @type {import("../../Libraries/Spatial/zones/groundZone.js").ReturnType<typeof import("../../Libraries/Spatial/zones/groundZone.js").createRectGroundZone>[]} */
+        this.groundZones = [];
         this.roguelikeMapSession = createRoguelikeMapSession();
         this.wallResolver = createCombatWallResolver(() => getGameState());
     }
@@ -91,7 +94,7 @@ export const tilelabGame = {
     initialState: "simulation",
     simulationPort: tilelabSimulation,
     uiPort: tilelabUiPort,
-    render: { ...createDefaultRenderPorts({ weaponVisuals: createWeaponVisuals(GUN_ID_TO_VISUAL) }), simulationEffectPasses: [sandboxPathEffectPass] },
+    render: { ...createDefaultRenderPorts({ weaponVisuals: createWeaponVisuals(GUN_ID_TO_VISUAL) }), simulationEffectPasses: [groundZoneEffectPass, sandboxPathEffectPass] },
     worldGen: createRoguelikeWorldGenPort({ topology: tilelabMapTopology }),
     worldSurface: { pixelsPerCell: 6 },
     proceduralDesign: roguelikeProceduralDesign,
