@@ -1,5 +1,6 @@
 import { forEachDenseCellInRect } from "../../DataStructures/CellRect.js";
 import { entityBroadphaseExtent, NEIGHBOR_QUERY_PAD } from "../collision/entityBroadphase.js";
+/** @typedef {import("../query/SpatialQuery.js").SpatialQuery} SpatialQueryType */
 const MAX_ENTITIES = 4096;
 const GLOBAL_QUERY_RESULT = [];
 export class EntityGrid {
@@ -90,28 +91,67 @@ export class EntityGrid {
         }
         entity._gridTileIdx = -1;
     }
-    collectNearby(entity) {
-        GLOBAL_QUERY_RESULT.length = 0;
-        this.queryGen++;
-        const searchRadius = entityBroadphaseExtent(entity) + this.maxInsertedExtent + NEIGHBOR_QUERY_PAD;
-        const minX = entity.x - searchRadius;
-        const minY = entity.y - searchRadius;
-        const maxX = entity.x + searchRadius;
-        const maxY = entity.y + searchRadius;
+    /**
+     * @param {number} minX
+     * @param {number} minY
+     * @param {number} maxX
+     * @param {number} maxY
+     * @param {object | null} exclude
+     * @param {number} queryGen
+     * @param {(entity: object) => void} fn
+     */
+    forEachInBoundsCoords(minX, minY, maxX, maxY, exclude, queryGen, fn) {
         const minCol = Math.max(0, Math.floor((minX - this.minX) / this.cellSize));
         const maxCol = Math.min(this.cols - 1, Math.floor((maxX - this.minX) / this.cellSize));
         const minRow = Math.max(0, Math.floor((minY - this.minY) / this.cellSize));
         const maxRow = Math.min(this.rows - 1, Math.floor((maxY - this.minY) / this.cellSize));
+        if (minCol > maxCol || minRow > maxRow) return;
         forEachDenseCellInRect(minCol, maxCol, minRow, maxRow, this.cols, (_c, _r, cellIdx) => {
             let curr = this.cellHead[cellIdx];
             while (curr !== -1) {
                 const other = this.entities[curr];
-                if (other && other !== entity && other._spatialGen !== this.queryGen) {
-                    other._spatialGen = this.queryGen;
-                    GLOBAL_QUERY_RESULT.push(other);
+                if (other && other !== exclude && other._spatialGen !== queryGen) {
+                    other._spatialGen = queryGen;
+                    fn(other);
                 }
                 curr = this.entityNext[curr];
             }
+        });
+    }
+    /**
+     * Entities whose grid cell falls inside a world AABB. Because bodies are indexed at
+     * their center point, bounds are expanded by maxInsertedExtent + NEIGHBOR_QUERY_PAD
+     * unless expandForEntityExtents is false.
+     *
+     * @param {number} minX
+     * @param {number} minY
+     * @param {number} maxX
+     * @param {number} maxY
+     * @param {SpatialQueryType} query
+     * @param {object | null} [exclude]
+     * @param {{ expandForEntityExtents?: boolean }} [options]
+     * @returns {object[]}
+     */
+    collectInBounds(minX, minY, maxX, maxY, query, exclude = null, { expandForEntityExtents = true } = {}) {
+        let qMinX = minX;
+        let qMinY = minY;
+        let qMaxX = maxX;
+        let qMaxY = maxY;
+        if (expandForEntityExtents) {
+            const pad = this.maxInsertedExtent + NEIGHBOR_QUERY_PAD;
+            qMinX -= pad;
+            qMinY -= pad;
+            qMaxX += pad;
+            qMaxY += pad;
+        }
+        return query.collectInIndexCoords(this, qMinX, qMinY, qMaxX, qMaxY, exclude);
+    }
+    collectNearby(entity) {
+        GLOBAL_QUERY_RESULT.length = 0;
+        this.queryGen++;
+        const searchRadius = entityBroadphaseExtent(entity) + this.maxInsertedExtent + NEIGHBOR_QUERY_PAD;
+        this.forEachInBoundsCoords(entity.x - searchRadius, entity.y - searchRadius, entity.x + searchRadius, entity.y + searchRadius, entity, this.queryGen, (other) => {
+            GLOBAL_QUERY_RESULT.push(other);
         });
         return GLOBAL_QUERY_RESULT;
     }

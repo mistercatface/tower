@@ -1,6 +1,7 @@
 import { EntityGrid } from "../indexes/EntityGrid.js";
 import { collectWallSegmentsForEntity } from "../query/wallSegmentQuery.js";
 import { SpatialQuery } from "../query/SpatialQuery.js";
+import { entityBroadphaseExtent, NEIGHBOR_QUERY_PAD } from "../collision/entityBroadphase.js";
 /** @typedef {import("../query/wallContext.js").WallContext} WallContext */
 /**
  * Duck-typed per-tick spatial frame: entity grid, neighbor cache, wall segment cache.
@@ -87,5 +88,32 @@ export class SpatialFrameCore {
                 fn(primary, neighbor);
             }
         }
+    }
+    /**
+     * Entities in grid cells overlapping a world AABB. Bounds are expanded by the largest
+     * inserted body extent so center-indexed bodies on the edge are not missed.
+     *
+     * @param {number} minX
+     * @param {number} minY
+     * @param {number} maxX
+     * @param {number} maxY
+     * @param {object | null} [exclude]
+     * @returns {object[]}
+     */
+    collectEntitiesInBounds(minX, minY, maxX, maxY, exclude = null) {
+        return this.entityGrid.collectInBounds(minX, minY, maxX, maxY, this.wallQuery, exclude);
+    }
+    /**
+     * Broadphase around a query anchor (e.g. zone centroid + shape). Does not require insertion.
+     *
+     * @param {{ x: number, y: number, getShape?: () => import("../collision/Shapes.js").Shape }} anchor
+     * @param {object | null} [exclude]
+     * @returns {object[]}
+     */
+    collectEntitiesNear(anchor, exclude = null) {
+        const searchRadius = entityBroadphaseExtent(anchor) + this.entityGrid.maxInsertedExtent + NEIGHBOR_QUERY_PAD;
+        return this.entityGrid.collectInBounds(anchor.x - searchRadius, anchor.y - searchRadius, anchor.x + searchRadius, anchor.y + searchRadius, this.wallQuery, exclude, {
+            expandForEntityExtents: false,
+        });
     }
 }
