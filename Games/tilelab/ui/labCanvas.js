@@ -1,3 +1,25 @@
+/** @typedef {{ width: number, height: number }} LabCanvasSize */
+/** @type {HTMLElement | null} */
+let labStage = null;
+/** @type {HTMLCanvasElement | null} */
+let labCanvas = null;
+/** Cache lab DOM nodes once after the shell mounts. */
+export function bindLabCanvasElements(stage, canvas) {
+    labStage = stage ?? null;
+    labCanvas = canvas ?? null;
+}
+export function clearLabCanvasElements() {
+    labStage = null;
+    labCanvas = null;
+}
+export function getLabStage() {
+    if (!labStage) labStage = document.getElementById("mapStage");
+    return labStage;
+}
+export function getLabCanvas() {
+    if (!labCanvas) labCanvas = document.getElementById("gameCanvas");
+    return labCanvas;
+}
 /** Map a DOM pointer position to canvas pixel coordinates (handles CSS scaling). */
 export function canvasClientToScreen(canvas, clientX, clientY) {
     if (!canvas) return null;
@@ -13,25 +35,32 @@ export function canvasClientToWorld(canvas, viewport, clientX, clientY) {
     if (!screen) return null;
     return viewport.screenToWorld(screen.x, screen.y);
 }
-export function prepareGameCanvas(canvas, stage) {
-    if (!canvas || !stage) return null;
+/**
+ * Read the stage's laid-out CSS size. Only call from explicit resize / fit-to-view paths.
+ * @returns {LabCanvasSize | null}
+ */
+export function measureLabStageSize(stage = getLabStage()) {
+    if (!stage) return null;
     const rect = stage.getBoundingClientRect();
     const width = Math.floor(rect.width);
     const height = Math.floor(rect.height);
     if (width < 32 || height < 32) return null;
-    if (canvas.width !== width || canvas.height !== height) {
-        canvas.width = width;
-        canvas.height = height;
-    }
     return { width, height };
 }
-/** Sync canvas pixel size, state.canvasBounds, and mapViewport cx/cy together. */
+/**
+ * Sync state.canvasBounds and mapViewport cx/cy from the canvas pixel buffer.
+ * Canvas width/height are owned by resize handlers (square-canvas-resize, resizer, etc.).
+ *
+ * @param {import("../index.js").TileLabGameState} state
+ * @returns {LabCanvasSize | null}
+ */
 export function syncLabScreenCanvasBounds(state) {
-    const stage = document.getElementById("mapStage");
-    const canvas = document.getElementById("gameCanvas");
-    const size = prepareGameCanvas(canvas, stage);
-    if (!size) return null;
-    state.canvasBounds = { width: size.width, height: size.height };
-    state.mapViewport.setCanvasSize(size.width, size.height);
-    return size;
+    const canvas = getLabCanvas();
+    if (!canvas || canvas.width < 32 || canvas.height < 32) return null;
+    const width = canvas.width;
+    const height = canvas.height;
+    if (state.canvasBounds?.width === width && state.canvasBounds?.height === height) return { width, height };
+    state.canvasBounds = { width, height };
+    state.mapViewport.setCanvasSize(width, height);
+    return { width, height };
 }

@@ -31,10 +31,9 @@ export function setLabCamera(state, x, y, zoom) {
 /** @param {import("../index.js").TileLabGameState} state */
 export function fitLabStageToView(state) {
     syncLabScreenCanvasBounds(state);
-    const stage = document.getElementById("mapStage");
-    const rect = stage?.getBoundingClientRect();
-    const viewW = Math.max(320, Math.floor(rect?.width ?? 800));
-    const viewH = Math.max(240, Math.floor(rect?.height ?? 600));
+    const size = state.canvasBounds;
+    const viewW = Math.max(320, size.width || 800);
+    const viewH = Math.max(240, size.height || 600);
     const zoom = getDefaultSimulationZoom(viewW, viewH, LAB_PREVIEW_RANGE, LAB_PREVIEW_RANGE);
     state.mapViewport.zoom = clampLabZoom(zoom);
     zoomControl?.setZoom(state.mapViewport.zoom);

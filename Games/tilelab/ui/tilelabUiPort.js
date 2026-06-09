@@ -4,6 +4,7 @@ import { applySquareCanvasResize } from "../../../Libraries/Canvas/index.js";
 import { initResizer } from "./lab-shared.js";
 import { initAnimationPreview } from "./LabAnimationPreview.js";
 import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEditor.js";
+import { bindLabCanvasElements, clearLabCanvasElements, syncLabScreenCanvasBounds } from "./labCanvas.js";
 import { registerEditorProfiles, renderTilelabPreview, syncRuntimeLabProfile } from "./preview.js";
 import { readControls, initPresetSelect, initToolbarDefaults, bindToolbarControls, syncTilelabWorld, syncPreviewZoomToStage } from "./toolbar.js";
 import { mountLabViewport, refreshLabViewportControls } from "./labViewport.js";
@@ -54,6 +55,7 @@ function attachGameCanvas() {
         mapStage.appendChild(canvas);
         canvas.id = "gameCanvas";
     }
+    bindLabCanvasElements(mapStage, canvas);
 }
 function bootstrapTilelabUi(state) {
     if (bootstrapped) return;
@@ -84,6 +86,7 @@ function bootstrapTilelabUi(state) {
             renderActiveLabView(state);
         },
         onStageResize: () => {
+            syncLabScreenCanvasBounds(state);
             syncPreviewZoomToStage(state);
             renderActiveLabView(state);
         },
@@ -116,11 +119,13 @@ function bootstrapTilelabUi(state) {
             return Math.max(160, Math.floor(Math.min(rect.width, rect.height - controlsH) - 8));
         },
         onResize: () => {
+            syncLabScreenCanvasBounds(state);
             syncPreviewZoomToStage(state);
             renderActiveLabView(state);
         },
     });
     initResizer("resizer", () => {
+        syncLabScreenCanvasBounds(state);
         syncPreviewZoomToStage(state);
         renderActiveLabView(state);
     });
@@ -142,6 +147,7 @@ export const tilelabUiPort = {
     unmount() {
         if (bakeRepaintRaf != null) cancelAnimationFrame(bakeRepaintRaf);
         destroyTilelabSandbox();
+        clearLabCanvasElements();
         bootstrapped = false;
     },
     updateHud({ state }) {
