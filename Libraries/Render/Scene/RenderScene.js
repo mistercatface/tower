@@ -24,6 +24,8 @@ export class RenderScene {
         this.gridMinX = 0;
         this.gridMinY = 0;
         this.chunks = new Map();
+        this.passDedup = new Set();
+        this.passCollectBuffer = [];
     }
     setGridOrigin(gridMinX, gridMinY) {
         this.gridMinX = gridMinX;
@@ -60,23 +62,26 @@ export class RenderScene {
     }
     /**
      * Collects all renderables of a specific pass in the given chunk range.
+     * Reuses passDedup and, when outArray is omitted, passCollectBuffer.
      */
-    collectPass(pass, minCol, minRow, maxCol, maxRow, outArray = []) {
-        const seen = new Set();
+    collectPass(pass, minCol, minRow, maxCol, maxRow, outArray) {
+        const out = outArray ?? this.passCollectBuffer;
+        out.length = 0;
+        this.passDedup.clear();
         for (let r = minRow; r <= maxRow; r++)
             for (let c = minCol; c <= maxCol; c++) {
                 const key = this._getChunkKey(c, r);
                 const chunk = this.chunks.get(key);
                 if (chunk)
                     for (let i = 0; i < chunk.renderables.length; i++) {
-                        const r = chunk.renderables[i];
-                        if (r.pass === pass && !seen.has(r)) {
-                            seen.add(r);
-                            outArray.push(r);
+                        const renderable = chunk.renderables[i];
+                        if (renderable.pass === pass && !this.passDedup.has(renderable)) {
+                            this.passDedup.add(renderable);
+                            out.push(renderable);
                         }
                     }
             }
-        return outArray;
+        return out;
     }
     /**
      * Draws a specific pass (e.g., 'roofs', 'walls') for the given chunk range.

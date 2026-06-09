@@ -9,9 +9,9 @@ export function createProceduralSurfaceDrawContext() {
         gameTime: 0,
         surfaceProfileOverride: null,
         obstacleCellSize: 0,
-        _gameState: null,
+        boundGameState: null,
         resolveProfileAt(x, y) {
-            return resolveSurfaceProfileAtCoords(this._gameState, x, y);
+            return resolveSurfaceProfileAtCoords(this.boundGameState, x, y);
         },
     };
 }
@@ -31,7 +31,7 @@ export function syncWorldSceneDrawInput(input, state) {
     input.ragdollCorpses = state.ragdollCorpses ?? [];
     input.worldSurfaces = state.worldSurfaces;
     const surfaceDraw = input.proceduralSurfaceDraw;
-    surfaceDraw._gameState = state;
+    surfaceDraw.boundGameState = state;
     surfaceDraw.surfaceSeed = state.worldSurfaces.worldSurfaceSeed ?? 0;
     surfaceDraw.gameTime = state.gameTime;
     surfaceDraw.surfaceProfileOverride = state.worldSurfaces.surfaceProfileOverride ?? null;

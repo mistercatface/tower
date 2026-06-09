@@ -16,8 +16,8 @@ export class WorldSceneRenderer {
         this.settings = settings;
         this.structure = new StructureRenderer(settings);
         this.props = new PropRenderer(propRecipes);
-        this._visibleObjects = [];
-        this._sceneWallScratch = [];
+        this.visibleDrawables = [];
+        this.wallPassBuffer = [];
     }
     /** @param {Record<string, PropDrawRecipe>} propRecipes */
     setPropRecipes(propRecipes) {
@@ -54,9 +54,8 @@ export class WorldSceneRenderer {
     _appendVisibleWallsFromScene(input, viewport, px, py) {
         const scene = input.worldSurfaces.renderScene;
         const { minCol, maxCol, minRow, maxRow } = this._getSceneChunkRange(scene, viewport);
-        this._sceneWallScratch.length = 0;
-        const renderables = scene.collectPass("walls", minCol, minRow, maxCol, maxRow, this._sceneWallScratch);
-        const visibleObjects = this._visibleObjects;
+        const renderables = scene.collectPass("walls", minCol, minRow, maxCol, maxRow, this.wallPassBuffer);
+        const visibleObjects = this.visibleDrawables;
         for (let i = 0; i < renderables.length; i++) {
             const face = renderables[i];
             if (!face.shouldDraw(px, py)) continue;
@@ -65,7 +64,7 @@ export class WorldSceneRenderer {
         }
     }
     _appendVisible3dProps(input, viewport, px, py) {
-        const visibleObjects = this._visibleObjects;
+        const visibleObjects = this.visibleDrawables;
         if (input.pickups.length > 0)
             for (let i = 0; i < input.pickups.length; i++) {
                 const p = input.pickups[i];
@@ -95,7 +94,7 @@ export class WorldSceneRenderer {
         const py = viewport.y;
         ctx.save();
         clipToViewport(ctx, viewport);
-        const visibleCorpses = this._visibleObjects;
+        const visibleCorpses = this.visibleDrawables;
         visibleCorpses.length = 0;
         this._appendVisibleRagdolls(input, viewport, px, py, visibleCorpses);
         visibleCorpses.sort((a, b) => b._distSq - a._distSq);
@@ -109,7 +108,7 @@ export class WorldSceneRenderer {
         this.structure.updateSharedEdges(input);
         ctx.save();
         clipToViewport(ctx, viewport);
-        const visibleObjects = this._visibleObjects;
+        const visibleObjects = this.visibleDrawables;
         visibleObjects.length = 0;
         this._appendVisibleWallsFromScene(input, viewport, px, py);
         this._appendVisible3dProps(input, viewport, px, py);

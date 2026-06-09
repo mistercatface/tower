@@ -12,10 +12,10 @@ export class Renderer {
         this.ctx = ctx;
         this.caches = caches;
         this.render3D = new WorldSceneRenderer(getGameWorldSurfaceSettings(), getRenderPorts().world3dPropRecipes);
-        this._worldSceneDrawInput = createWorldSceneDrawInput();
+        this.worldSceneDrawInput = createWorldSceneDrawInput();
         const surfaceSettings = getGameWorldSurfaceSettings();
-        this._surfaceDrawPadQuery = surfaceSettings.viewQueryPadPx;
-        this._surfaceDrawPadDraw = surfaceSettings.viewPaddingPx;
+        this.surfaceDrawPadQuery = surfaceSettings.viewQueryPadPx;
+        this.surfaceDrawPadDraw = surfaceSettings.viewPaddingPx;
         this.effectPasses = [
             { zIndex: -5, fn: (state, viewport) => drawWorldSceneBackdrop(this.ctx, { state, viewport, worldSceneRenderer: this.render3D, worldRenderInput: this.getWorldRenderInput(state) }) },
             { zIndex: 55, fn: (state, viewport) => this.render3D.drawRagdollCorpsesOnly(this.ctx, this.getWorldRenderInput(state), viewport) },
@@ -29,22 +29,22 @@ export class Renderer {
         const portPasses = (getRenderPorts().simulationEffectPasses ?? []).map((pass) => ({ zIndex: pass.zIndex, fn: (state, viewport) => pass.draw(state, viewport, this.ctx, this) }));
         const pipeline = [...enabledEffects, ...portPasses, ...entityPasses];
         pipeline.sort((a, b) => a.zIndex - b.zIndex);
-        this._simulationPipeline = pipeline.map((p) => p.fn);
+        this.simulationPipeline = pipeline.map((p) => p.fn);
     }
     getWorldRenderInput(state) {
-        syncWorldSceneDrawInput(this._worldSceneDrawInput, state);
-        return this._worldSceneDrawInput;
+        syncWorldSceneDrawInput(this.worldSceneDrawInput, state);
+        return this.worldSceneDrawInput;
     }
     renderSimulationScene(state, viewport) {
-        viewport.configureDrawBounds(this._surfaceDrawPadQuery, this._surfaceDrawPadDraw);
+        viewport.configureDrawBounds(this.surfaceDrawPadQuery, this.surfaceDrawPadDraw);
         this.ctx.save();
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         viewport.apply(this.ctx);
-        if (!this._simulationPipeline || this._pipelineEntityLayers !== state.entityLayers) {
+        if (!this.simulationPipeline || this.pipelineEntityLayers !== state.entityLayers) {
             this.buildSimulationPipeline(state, viewport);
-            this._pipelineEntityLayers = state.entityLayers;
+            this.pipelineEntityLayers = state.entityLayers;
         }
-        for (let i = 0; i < this._simulationPipeline.length; i++) this._simulationPipeline[i](state, viewport);
+        for (let i = 0; i < this.simulationPipeline.length; i++) this.simulationPipeline[i](state, viewport);
         this.ctx.restore();
         getRenderPorts().drawPostSimulation?.(state, viewport, this.ctx, this);
     }

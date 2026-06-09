@@ -34,7 +34,7 @@ export class WorldSurfaceEngine {
         this.surfaceCache = new ProgressiveFrameCache(settings.maxCachedSurfaces);
         this._globalGeneration = 0;
         this._buildChunkPayload = hooks.buildChunkPayload ?? null;
-        this._chunkDrawBounds = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+        this.chunkDrawBounds = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
     }
     clear() {
         this.surfaceCache.clear();
@@ -223,8 +223,8 @@ export class WorldSurfaceEngine {
         const viewportBounds = viewport.boundsDraw;
         let bounds = viewportBounds;
         if (playBounds) {
-            if (!intersectWorldBoundsInto(this._chunkDrawBounds, viewportBounds, playBounds)) return;
-            bounds = this._chunkDrawBounds;
+            if (!intersectWorldBoundsInto(this.chunkDrawBounds, viewportBounds, playBounds)) return;
+            bounds = this.chunkDrawBounds;
         }
         TileWorkerCoordinator.updateFocus(viewport.x, viewport.y);
         if (beforeDraw) beforeDraw(ctx, bounds);
