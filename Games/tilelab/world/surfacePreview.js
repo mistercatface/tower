@@ -21,7 +21,7 @@ function getLabRenderer(canvas, ctx) {
 let lastBakeKey = "";
 function maybeClearBakeCaches(worldState, profileId) {
     const rev = getSurfaceProfileRevision(profileId);
-    const key = `${profileId}:${rev}:${worldState.worldSurfaceSeed ?? 0}`;
+    const key = `${profileId}:${rev}:${worldState.worldSurfaces.worldSurfaceSeed ?? 0}`;
     if (lastBakeKey === key) return;
     lastBakeKey = key;
     invalidateWallAtlasKeyMemos(worldState);
@@ -38,8 +38,8 @@ export function drawTilelabSurfaceFrame(ctx, canvas, worldState, profileId, draw
     const viewW = size.width;
     const viewH = size.height;
     worldState.phase = "simulation";
-    const prevProfileOverride = worldState.surfaceProfileOverride;
-    worldState.surfaceProfileOverride = profileId;
+    const prevProfileOverride = worldState.worldSurfaces.surfaceProfileOverride;
+    worldState.worldSurfaces.surfaceProfileOverride = profileId;
     maybeClearBakeCaches(worldState, profileId);
     const viewport = worldState.mapViewport;
     getLabRenderer(canvas, ctx).renderSimulationScene(worldState, viewport);
@@ -52,7 +52,7 @@ export function drawTilelabSurfaceFrame(ctx, canvas, worldState, profileId, draw
     ctx.save();
     viewport.apply(ctx);
     if (topologySession && topologyOptions) drawTopologyLayer(ctx, worldState, viewport, topologyOptions, topologySession, { overlay: true });
-    worldState.surfaceProfileOverride = prevProfileOverride;
+    worldState.worldSurfaces.surfaceProfileOverride = prevProfileOverride;
     getTilelabSandboxController()?.drawOverlay(ctx);
     ctx.restore();
     if (showVignette) {

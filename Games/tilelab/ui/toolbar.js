@@ -44,7 +44,7 @@ export function syncTilelabWorld(state, ctrl, forceRegen = false) {
     }
     if (state.floorSeed !== ctrl.seed) {
         state.floorSeed = ctrl.seed;
-        state.worldSurfaceSeed = ctrl.seed;
+        state.worldSurfaces.worldSurfaceSeed = ctrl.seed;
         state.worldSurfaces.clear();
         invalidateMapPreviewBakes();
     }

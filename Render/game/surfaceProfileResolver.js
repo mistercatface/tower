@@ -3,7 +3,7 @@ import { createGroundChunkBakePayload, isGroundChunkAnimationEnabled } from "../
 import { getSurfaceProfileProvider } from "../../Libraries/Procedural/SurfaceProfileProvider.js";
 /** @typedef {import("../../GameState/GameState.js").GameState} GameState */
 export function resolveSurfaceProfileAtCoords(state, x, y) {
-    if (state.surfaceProfileOverride) return state.surfaceProfileOverride;
+    if (state.worldSurfaces.surfaceProfileOverride) return state.worldSurfaces.surfaceProfileOverride;
     let closestNode = null;
     let minDist = Infinity;
     for (const node of state.mapNodes) {
@@ -51,7 +51,7 @@ export function buildGroundChunkBakePayload(state, chunkCol, chunkRow, zLevel = 
         chunkRow,
         minX: obstacleGrid.minX,
         minY: obstacleGrid.minY,
-        seed: state.worldSurfaceSeed ?? 0,
+        seed: state.worldSurfaces.worldSurfaceSeed ?? 0,
         profileId,
         zLevel,
         cellsPerChunk,

@@ -12,9 +12,23 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
     /** @param {import("../../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} [settings] */
     constructor(settings = getGameWorldSurfaceSettings()) {
         super(settings, { buildChunkPayload: (state, chunkCol, chunkRow, zLevel) => buildGroundChunkBakePayload(state, chunkCol, chunkRow, zLevel) });
+        this.roofZLevels = null;
+        this.roofSpatialIndices = null;
+        this.worldSurfaceSeed = 0;
+        this.surfaceProfileOverride = null;
+    }
+    clear() {
+        super.clear();
+        this.roofZLevels = null;
+        this.roofSpatialIndices = null;
+        this.surfaceProfileOverride = null;
+    }
+    invalidateRoofs() {
+        this.roofZLevels = null;
+        this.roofSpatialIndices = null;
     }
     invalidateGridBounds(bounds, state, cellsPerChunk = this.settings.cellsPerChunk) {
-        super.invalidateGridBounds(bounds, state.obstacleGrid, (x, y) => resolveSurfaceProfileAtCoords(state, x, y), cellsPerChunk, state.roofZLevels);
+        super.invalidateGridBounds(bounds, state.obstacleGrid, (x, y) => resolveSurfaceProfileAtCoords(state, x, y), cellsPerChunk, this.roofZLevels);
     }
     /** Draw procedural ground: shadow underpaint + baked chunk textures (simulation/inspector scenes only). */
     drawGround(ctx, state, viewport) {
@@ -37,20 +51,20 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
     /** Chunk-cached roof layers at wall height (after walls). */
     drawRoofs(ctx, state, viewport) {
         if (!viewport || !isWorldScene(state.phase) || !state.obstacleGrid?.cols) return;
-        if (!state.roofZLevels) {
+        if (!this.roofZLevels) {
             const zSet = new Set();
-            state.roofSpatialIndices = new Map();
+            this.roofSpatialIndices = new Map();
             for (const w of state.walls)
                 if (!w.isDead && w.wallHeight != null) {
                     zSet.add(w.wallHeight);
-                    let index = state.roofSpatialIndices.get(w.wallHeight);
+                    let index = this.roofSpatialIndices.get(w.wallHeight);
                     if (!index) {
                         index = new WallSpatialIndex(100);
-                        state.roofSpatialIndices.set(w.wallHeight, index);
+                        this.roofSpatialIndices.set(w.wallHeight, index);
                     }
                     index.insert(w);
                 }
-            state.roofZLevels = Array.from(zSet).sort((a, b) => a - b);
+            this.roofZLevels = Array.from(zSet).sort((a, b) => a - b);
         }
         this.drawRoofLayers(ctx, {
             obstacleGrid: state.obstacleGrid,
@@ -61,7 +75,8 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
             state,
             gameTime: state.gameTime ?? 0,
             playBounds: getWorldPlayBounds(state),
-            roofZLevels: state.roofZLevels,
+            roofZLevels: this.roofZLevels,
+            roofSpatialIndices: this.roofSpatialIndices,
         });
     }
 }

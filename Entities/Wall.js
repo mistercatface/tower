@@ -17,12 +17,9 @@ export class Segment extends DestructibleEntity {
             const idx = ctx.state.walls.indexOf(this);
             if (idx !== -1) ctx.state.walls.splice(idx, 1);
             if (ctx.state.wallSpatialIndex) ctx.state.wallSpatialIndex.remove(this);
-            if (ctx.state.roofSpatialIndices && this.wallHeight != null) {
-                const roofIndex = ctx.state.roofSpatialIndices.get(this.wallHeight);
-                if (roofIndex) roofIndex.remove(this);
-            }
             const damageBounds = ctx.state.obstacleGrid.patchAfterWallRemoved(this, ctx.state.wallSpatialIndex);
             ctx.state.worldSurfaces.invalidateGridBounds(damageBounds, ctx.state);
+            ctx.state.worldSurfaces.invalidateRoofs();
             ctx.state.navigation.onObstaclesChanged(damageBounds);
         }
     }

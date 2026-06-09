@@ -282,7 +282,7 @@ export class WorldSurfaceEngine {
         for (let i = 0; i < levels.length; i++) {
             const z = levels[i];
             if (z <= 0) continue;
-            const roofSpatialIndex = baseOptions.state?.roofSpatialIndices?.get(z) ?? baseOptions.wallSpatialIndex;
+            const roofSpatialIndex = baseOptions.roofSpatialIndices?.get(z) ?? baseOptions.wallSpatialIndex;
             this.drawGroundChunks(ctx, { ...baseOptions, wallSpatialIndex: roofSpatialIndex, zLevel: z, beforeDraw: undefined });
         }
     }

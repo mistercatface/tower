@@ -28,9 +28,9 @@ export function buildWorldRenderInput(state, viewport = null) {
         canvasBounds: state.canvasBounds ?? null,
         worldSurfaces: state.worldSurfaces,
         surfaceBake: {
-            surfaceSeed: state.worldSurfaceSeed ?? 0,
+            surfaceSeed: state.worldSurfaces.worldSurfaceSeed ?? 0,
             gameTime: state.gameTime ?? 0,
-            surfaceProfileOverride: state.surfaceProfileOverride ?? null,
+            surfaceProfileOverride: state.worldSurfaces.surfaceProfileOverride ?? null,
             resolveProfileAt: (x, y) => resolveSurfaceProfileAtCoords(state, x, y),
             obstacleCellSize: state.obstacleGrid?.cellSize ?? 16,
         },

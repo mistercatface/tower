@@ -12,7 +12,7 @@ export function finalizeGeneratedWorld(state, { centerX, centerY, gridBounds = n
         for (const wall of state.walls) state.obstacleGrid.addWall(wall);
     } else state.obstacleGrid.rebuild(state.walls);
     state.hierarchicalNavigator.initialize(centerX, centerY);
-    state.worldSurfaceSeed = (Math.random() * 0x7fffffff) | 0;
+    state.worldSurfaces.worldSurfaceSeed = (Math.random() * 0x7fffffff) | 0;
     state.worldSurfaces.clear();
     state.roofZLevels = null;
     state.roofSpatialIndices = null;

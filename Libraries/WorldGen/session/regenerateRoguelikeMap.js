@@ -15,7 +15,7 @@ export function regenerateRoguelikeMap(state, { mapSeed, floorSeed, generateWorl
     });
     buildGameMapRenderCaches(state);
     buildTopologyMapRenderCaches(state);
-    state.worldSurfaceSeed = floorSeed;
+    state.worldSurfaces.worldSurfaceSeed = floorSeed;
     state.worldSurfaces.clear();
     state.mapSeed = mapSeed;
     state.floorSeed = floorSeed;
