@@ -77,7 +77,6 @@ function resolveWallProfileId(surfaceBake, wallCx, wallCy, cacheObj) {
 export function drawPrecalculatedFaceTexture(ctx, p1, p2, face, worldSurfaces, surfaceBake, viewer, viewport, wallHeight, fillStyle, cacheObj = null, worldBounds = null) {
     drawFaceTexture(ctx, p1, p2, face, worldSurfaces, surfaceBake, viewer, viewport, wallHeight, fillStyle, cacheObj, worldBounds);
 }
-
 function drawFaceTexture(ctx, p1, p2, face, worldSurfaces, surfaceBake, viewer, viewport, wallHeight, fillStyle, cacheObj = null, worldBounds = null) {
     const settings = worldSurfaces.settings;
     if (!settings) return;
@@ -85,12 +84,10 @@ function drawFaceTexture(ctx, p1, p2, face, worldSurfaces, surfaceBake, viewer, 
     if (!worldSurfaces || !surfaceBake) return;
     const wallCx = cacheObj && cacheObj.cx !== undefined ? cacheObj.cx : (p1.x + p2.x) * 0.5;
     const wallCy = cacheObj && cacheObj.cy !== undefined ? cacheObj.cy : (p1.y + p2.y) * 0.5;
-    
     // In Retained Mode, cacheObj is often the simulation wall itself, which doesn't have cx/cy.
     // We can compute it if missing.
     const finalWallCx = wallCx ?? (p1.x + p2.x) * 0.5;
     const finalWallCy = wallCy ?? (p1.y + p2.y) * 0.5;
-
     const profileId = resolveWallProfileId(surfaceBake, finalWallCx, finalWallCy, cacheObj);
     const ppwu = getTexelResolution(settings);
     const atlas = worldSurfaces.getOrEnsureWallAtlas(p1, p2, { profileId, surfaceBake, wallHeight, cacheObj });

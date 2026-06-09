@@ -65,12 +65,22 @@ export class WorldSceneRenderer {
         }
     }
     /**
-     * Retained-mode wall collection: pulls the visible wall set from the pre-baked
-     * RenderScene chunks instead of querying the spatial index every frame. The
-     * simulation segments are still pushed into the shared visibleObjects buffer so
-     * they take part in the same back-to-front sort as props, and projection stays
-     * per-frame (the isometric lean is viewer-relative and cannot be pre-baked).
-     * Falls back to the spatial-query path when no compiled scene is available.
+     * @param {import("./Scene/RenderScene.js").RenderScene} scene
+     * @param {import("../Viewport/Viewport.js").Viewport} viewport
+     * @param {import("./WorldSceneTypes.js").WorldSceneDrawInput} input
+     */
+    _getSceneChunkRange(scene, viewport, input) {
+        const bounds = getViewQueryBounds(viewport, this.settings.viewQueryPadPx, input.canvasBounds);
+        return {
+            minCol: worldToChunkCol(bounds.minX, scene.gridMinX, scene.chunkSizePx),
+            maxCol: worldToChunkCol(bounds.maxX - 1, scene.gridMinX, scene.chunkSizePx),
+            minRow: worldToChunkRow(bounds.minY, scene.gridMinY, scene.chunkSizePx),
+            maxRow: worldToChunkRow(bounds.maxY - 1, scene.gridMinY, scene.chunkSizePx),
+        };
+    }
+    /**
+     * Retained-mode wall collection: pulls visible wall faces from pre-compiled
+     * RenderScene chunks. Projection and textures are still resolved per frame.
      *
      * @param {WorldSceneDrawInput} input
      * @param {import("../Viewport/Viewport.js").Viewport | null} viewport
@@ -83,19 +93,15 @@ export class WorldSceneRenderer {
             this._appendVisibleWalls(input, viewport, px, py);
             return;
         }
-        const bounds = getViewQueryBounds(viewport, this.settings.viewQueryPadPx, input.canvasBounds);
-        const minCol = worldToChunkCol(bounds.minX, scene.gridMinX, scene.chunkSizePx);
-        const maxCol = worldToChunkCol(bounds.maxX - 1, scene.gridMinX, scene.chunkSizePx);
-        const minRow = worldToChunkRow(bounds.minY, scene.gridMinY, scene.chunkSizePx);
-        const maxRow = worldToChunkRow(bounds.maxY - 1, scene.gridMinY, scene.chunkSizePx);
+        const { minCol, maxCol, minRow, maxRow } = this._getSceneChunkRange(scene, viewport, input);
         this._sceneWallScratch.length = 0;
         const renderables = scene.collectPass("walls", minCol, minRow, maxCol, maxRow, this._sceneWallScratch);
         const visibleObjects = this._visibleObjects;
         for (let i = 0; i < renderables.length; i++) {
-            const seg = renderables[i].simWall;
-            if (!seg || seg.isDead) continue;
-            seg._distSq = (seg.x - px) ** 2 + (seg.y - py) ** 2;
-            visibleObjects.push(seg);
+            const face = renderables[i];
+            if (!face.shouldDraw(px, py)) continue;
+            face._distSq = (face.cx - px) ** 2 + (face.cy - py) ** 2;
+            visibleObjects.push(face);
         }
     }
     /**
@@ -135,62 +141,44 @@ export class WorldSceneRenderer {
     }
     /**
      * @param {CanvasRenderingContext2D} ctx
+     * @param {import("./Scene/Renderables.js").RenderableWallFace} face
+     * @param {WorldSceneDrawInput} input
+     * @param {import("../Viewport/Viewport.js").Viewport | null} viewport
+     * @param {number} px
+     * @param {number} py
+     * @param {{ minX: number, minY: number, maxX: number, maxY: number } | null} worldBounds
+     */
+    _drawRetainedWallFace(ctx, face, input, viewport, px, py, worldBounds) {
+        const fillStyle = this.settings.floorShadow ?? "#12161c";
+        const damageAlpha = face.simWall ? getWallDamageAlpha(face.simWall) : 0;
+        face.draw(ctx, viewport, input.worldSurfaces, input.surfaceBake, fillStyle, damageAlpha, px, py, worldBounds);
+    }
+    /**
+     * @param {CanvasRenderingContext2D} ctx
      * @param {WorldSceneDrawInput} input
      * @param {import("../Viewport/Viewport.js").Viewport | null} viewport
      * @param {WorldSceneDrawOptions} [options]
      */
     drawStructureOnly(ctx, input, viewport, options = {}) {
-        // If we have a compiled render scene, use it!
-        if (input.worldSurfaces?.renderScene) {
-            const scene = input.worldSurfaces.renderScene;
-            const canvasWidth = viewport.cx * 2;
-            const canvasHeight = viewport.cy * 2;
-            const viewportBounds = viewport.getWorldBounds(canvasWidth, canvasHeight, this.settings.viewPaddingPx);
-            const minCol = Math.floor(viewportBounds.minX / scene.chunkSizePx);
-            const maxCol = Math.floor(viewportBounds.maxX / scene.chunkSizePx);
-            const minRow = Math.floor(viewportBounds.minY / scene.chunkSizePx);
-            const maxRow = Math.floor(viewportBounds.maxY / scene.chunkSizePx);
+        const scene = input.worldSurfaces?.renderScene;
+        if (scene && scene.chunks.size > 0 && viewport) {
+            const px = input.viewer.x;
+            const py = input.viewer.y;
+            const worldBounds = viewport.getWorldBounds(viewport.cx * 2, viewport.cy * 2, this.settings.viewPaddingPx);
+            const { minCol, maxCol, minRow, maxRow } = this._getSceneChunkRange(scene, viewport, input);
+            this.structure.updateSharedEdges(input);
             ctx.save();
             if (viewport) clipToViewport(ctx, viewport, input.canvasBounds);
             const walls = scene.collectPass("walls", minCol, minRow, maxCol, maxRow);
-            // Sort walls back-to-front based on distance from viewer
-            const px = input.viewer.x;
-            const py = input.viewer.y;
             for (let i = 0; i < walls.length; i++) {
-                const w = walls[i];
-                // Rough distance to center of wall face
-                const cx = (w.p1.x + w.p2.x) / 2;
-                const cy = (w.p1.y + w.p2.y) / 2;
-                w._distSq = (cx - px) ** 2 + (cy - py) ** 2;
+                const face = walls[i];
+                face._distSq = (face.cx - px) ** 2 + (face.cy - py) ** 2;
             }
-            // Add a secondary sort by Y coordinate to handle walls at the same distance
-            walls.sort((a, b) => {
-                const distDiff = b._distSq - a._distSq;
-                if (Math.abs(distDiff) < 0.1) return Math.min(a.p1.y, a.p2.y) - Math.min(b.p1.y, b.p2.y);
-                return distDiff;
-            });
-            const fillStyle = this.settings.floorShadow ?? "#12161c";
-            // We need to handle back-face culling just like the old renderer did
-            const visibleWalls = [];
+            walls.sort((a, b) => b._distSq - a._distSq || a.cy - b.cy);
             for (let i = 0; i < walls.length; i++) {
-                const w = walls[i];
-                if (w.simWall && w.simWall.isDead) continue;
-                // Culling: check if the 2D bounding box of the wall face intersects the viewport
-                if (w.bounds.maxX < viewportBounds.minX || w.bounds.minX > viewportBounds.maxX || w.bounds.maxY < viewportBounds.minY || w.bounds.minY > viewportBounds.maxY) continue;
-                // Back-face culling
-                const dx = w.p2.x - w.p1.x;
-                const dy = w.p2.y - w.p1.y;
-                const normalX = dy;
-                const normalY = -dx;
-                const viewX = w.p1.x - px;
-                const viewY = w.p1.y - py;
-                if (normalX * viewX + normalY * viewY >= 0) continue;
-                visibleWalls.push(w);
-            }
-            for (let i = 0; i < visibleWalls.length; i++) {
-                const w = visibleWalls[i];
-                const damageAlpha = w.simWall ? getWallDamageAlpha(w.simWall) : 0;
-                w.draw(ctx, viewport, input.worldSurfaces, input.surfaceBake, fillStyle, damageAlpha, px, py, viewportBounds);
+                const face = walls[i];
+                if (!face.shouldDraw(px, py)) continue;
+                this._drawRetainedWallFace(ctx, face, input, viewport, px, py, worldBounds);
             }
             ctx.restore();
             return;
@@ -272,6 +260,7 @@ export class WorldSceneRenderer {
             const obj = visibleObjects[i];
             if (obj.usesKinematicsBody) renderActorKinematicsBody(ctx, obj, viewport);
             else if (obj.strategy) this.drawProp(ctx, obj, px, py);
+            else if (obj.pass === "walls") this._drawRetainedWallFace(ctx, obj, input, viewport, px, py, worldBounds);
             else this.structure.drawWallSegmentFaces(ctx, obj, px, py, input, viewport, wallDrawOptions);
         }
         ctx.restore();

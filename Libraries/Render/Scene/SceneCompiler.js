@@ -1,5 +1,4 @@
 import { RenderableWallFace, RenderableRoofCap } from "./Renderables.js";
-import { computeProjectedFace } from "../Structure3D/ProjectedWallDraw.js";
 import { getSegmentFootprintCorners } from "../../Spatial/geometry/WallGeometry.js";
 import { getWallHeight } from "../../WorldSurface/WorldSurfaceSettings.js";
 export class SceneCompiler {
@@ -16,28 +15,19 @@ export class SceneCompiler {
         for (const wall of state.walls) {
             if (wall.isDead) continue;
             const wallHeight = wall.wallHeight ?? defaultWallHeight;
-            // 1. Pre-calculate the isometric wall face
-            // We project relative to the wall's center to keep the math happy
-            const cx = (wall.x + (wall.x + Math.cos(wall.angle) * wall.size)) / 2;
-            const cy = (wall.y + (wall.y + Math.sin(wall.angle) * wall.size)) / 2;
-            const p1 = { x: wall.x, y: wall.y };
-            const p2 = { x: wall.x + Math.cos(wall.angle) * wall.size, y: wall.y + Math.sin(wall.angle) * wall.size };
-            const face = computeProjectedFace(p1, p2, cx, cy, wallHeight, settings);
-            const renderableWall = new RenderableWallFace(
-                wall.id ?? wall, // If walls don't have string IDs, use the reference
-                p1,
-                p2,
-                { x: face.proj1X, y: face.proj1Y },
-                { x: face.proj2X, y: face.proj2Y },
-                wallHeight,
-            );
-            // Store a reference to the simulation wall for now so we can still draw damage/textures
-            renderableWall.simWall = wall;
-            scene.insert(renderableWall);
-            // 2. Pre-calculate the roof cap (if it's not an infiniwall)
+            const sourceId = wall.id ?? wall;
+            const corners = getSegmentFootprintCorners(wall);
+            for (let i = 0; i < 4; i++) {
+                const p1 = corners[i];
+                const p2 = corners[(i + 1) % 4];
+                const cx = (p1.x + p2.x) / 2;
+                const cy = (p1.y + p2.y) / 2;
+                const renderableWall = new RenderableWallFace(sourceId, p1, p2, wallHeight, i, { cx, cy, outX: cx - wall.x, outY: cy - wall.y });
+                renderableWall.simWall = wall;
+                scene.insert(renderableWall);
+            }
             if (wall.wallHeight != null) {
-                const corners = getSegmentFootprintCorners(wall);
-                const renderableRoof = new RenderableRoofCap(wall.id ?? wall, wall.wallHeight, corners);
+                const renderableRoof = new RenderableRoofCap(sourceId, wall.wallHeight, corners);
                 renderableRoof.simWall = wall;
                 scene.insert(renderableRoof);
             }
