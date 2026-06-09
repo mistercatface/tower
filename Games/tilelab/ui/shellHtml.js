@@ -107,7 +107,6 @@ export const TILELAB_UI_HTML = `
         </aside>
         <div class="resizer" id="resizer"></div>
         <section class="col col-map">
-            <div class="map-status" id="gameMetaLine">WASD move · drag · wheel zoom</div>
             <div class="map-status" id="mapStatusLine" style="display:none">WASD move · drag · wheel zoom</div>
             <div class="map-zoom-bar">
                 <div id="labZoomControl"></div>

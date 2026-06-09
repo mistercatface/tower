@@ -26,31 +26,21 @@ export function registerEditorProfiles(state) {
     });
     return registerEditorProfilesSerial;
 }
+let cachedStage = null;
+let cachedCanvas = null;
 /**
  * @param {import("../index.js").TileLabGameState} state
  * @param {ReturnType<import("./toolbar.js").readControls>} ctrl
  */
 export function renderTilelabPreview(state, ctrl) {
     if (!getSurfaceProfileProvider().hasProfile(RUNTIME_LAB_PROFILE_ID)) return;
-    const stage = document.getElementById("mapStage");
-    const canvas = document.getElementById("gameCanvas");
-    const size = prepareGameCanvas(canvas, stage);
-    if (!size || !canvas) return;
-    drawTilelabSurfaceFrame(canvas.getContext("2d"), canvas, state, RUNTIME_LAB_PROFILE_ID, {
+    if (!cachedStage) cachedStage = document.getElementById("mapStage");
+    if (!cachedCanvas) cachedCanvas = document.getElementById("gameCanvas");
+    const size = prepareGameCanvas(cachedCanvas, cachedStage);
+    if (!size || !cachedCanvas) return;
+    drawTilelabSurfaceFrame(cachedCanvas.getContext("2d"), cachedCanvas, state, RUNTIME_LAB_PROFILE_ID, {
         showVignette: ctrl.showVignette,
         topologySession: state.labShowTopologyOverlay ? state.roguelikeMapSession : null,
         topologyOptions: state.labShowTopologyOverlay ? readMapControls() : null,
     });
-    const gameMeta = document.getElementById("gameMetaLine");
-    if (gameMeta) {
-        const selectedId = state.roguelikeMapSession.selectedNodeId;
-        const node = selectedId != null ? state.getMapNode(selectedId) : null;
-        const { mapViewport } = state;
-        const nodeLabel = selectedId != null ? `node ${selectedId}${node?.strategy ? ` ${node.strategy}` : ""}` : "no node selected";
-        const propCount = state.pickups?.length ?? 0;
-        gameMeta.textContent =
-            `${nodeLabel} · map ${state.mapSeed} · ` +
-            `focus ${Math.round(mapViewport.x)},${Math.round(mapViewport.y)} · ` +
-            `zoom ${mapViewport.zoom.toFixed(2)} · props ${propCount} · WASD · right-drag pan`;
-    }
 }
