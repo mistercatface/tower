@@ -1,4 +1,3 @@
-import { getGeneratorStrategies, getRandomGeneratorStrategyKeys } from "../../Core/GamePorts.js";
 import { gridSettings } from "../../Config/Config.js";
 import { FLOW_FIELD_WORKER_URL } from "../../Render/WorldSurfaceBootstrap.js";
 import { FlowFieldGrid } from "../../Libraries/Pathfinding/FlowFieldGrid.js";
@@ -51,11 +50,4 @@ export function checkNodePathability(state, nodeA, nodeB, wallsA, wallsB, tempOb
     for (let i = 0; i < wallsB.length; i++) tempObstacleGrid.markWall(wallsB[i]);
     tempFlowFieldGrid.syncLocalObstacles();
     return tempFlowFieldGrid.checkReachability(coordsA.x, coordsA.y, coordsB.x, coordsB.y);
-}
-/** @returns {string[]} */
-export function pickRandomGeneratorStrategyKeys() {
-    return getRandomGeneratorStrategyKeys();
-}
-export function getMergedGeneratorStrategies() {
-    return getGeneratorStrategies();
 }

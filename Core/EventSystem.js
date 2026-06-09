@@ -4,9 +4,6 @@ export const events = new EventBus();
 export function requestUiUpdate() {
     events.emit(Events.UI_UPDATE);
 }
-export function requestUiHudUpdate() {
-    events.emit(Events.UI_UPDATE_HUD);
-}
 export function requestGamePause(reason) {
     events.emit(Events.GAME_PAUSE, { reason });
 }

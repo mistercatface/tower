@@ -13,10 +13,6 @@ import { getSurfaceProfileProvider } from "../Libraries/Procedural/SurfaceProfil
  */
 /** @type {ProceduralDesignConfig | null} */
 let activeProceduralDesign = null;
-/** @returns {ProceduralDesignConfig | null} */
-export function getActiveProceduralDesign() {
-    return activeProceduralDesign;
-}
 /**
  * @param {import("./GameDefinitionTypes.js").GameDefinition | null | undefined} definition
  * @returns {ProceduralDesignConfig | null}

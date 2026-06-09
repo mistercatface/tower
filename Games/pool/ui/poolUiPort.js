@@ -64,7 +64,4 @@ export const poolUiPort = {
     updateUI(ctx) {
         updatePoolHud(ctx.state);
     },
-    updateHud(ctx) {
-        poolUiPort.updateUI(ctx);
-    },
 };

@@ -13,7 +13,6 @@ import { bindMapInspectorControls, syncMapInspectorAfterRegen } from "./mapInspe
 import { initMapTopologyInteractions } from "./mapInteractions.js";
 import { destroyTilelabSandbox, mountTilelabSandbox } from "../world/tilelabSandbox.js";
 import { bindViewModeControls } from "./viewMode.js";
-import { renderActiveLabView } from "./renderLabView.js";
 /** @typedef {import("../../../Core/GameDefinitionTypes.js").UiPort} UiPort */
 let previewRefreshTimer = null;
 let bakeRepaintRaf = null;
@@ -42,9 +41,9 @@ function runBakeRepaintLoop(state) {
 async function refreshPreview(state) {
     const ctrl = readControls(state);
     syncTilelabWorld(state, ctrl);
-    syncMapInspectorAfterRegen(state, () => renderActiveLabView(state));
+    syncMapInspectorAfterRegen(state, () => renderTilelabPreview(state, readControls(state)));
     await registerEditorProfiles(state);
-    renderActiveLabView(state);
+    renderTilelabPreview(state, readControls(state));
     runBakeRepaintLoop(state);
 }
 function attachGameCanvas(state) {
@@ -69,25 +68,25 @@ function bootstrapTilelabUi(state) {
     });
     void syncRuntimeLabProfile();
     const onLabViewChange = () => {
-        renderActiveLabView(state);
+        renderTilelabPreview(state, readControls(state));
         if (state.worldSurfaces.hasPendingSurfaceBakes()) runBakeRepaintLoop(state);
     };
     mountLabViewport(state, onLabViewChange);
-    bindViewModeControls(state, () => renderActiveLabView(state));
-    bindMapInspectorControls(state, () => renderActiveLabView(state));
-    initMapTopologyInteractions(state, () => renderActiveLabView(state));
-    mountTilelabSandbox(state, () => renderActiveLabView(state));
+    bindViewModeControls(state, () => renderTilelabPreview(state, readControls(state)));
+    bindMapInspectorControls(state, () => renderTilelabPreview(state, readControls(state)));
+    initMapTopologyInteractions(state, () => renderTilelabPreview(state, readControls(state)));
+    mountTilelabSandbox(state, () => renderTilelabPreview(state, readControls(state)));
     bindToolbarControls({
         onRefresh: () => schedulePreviewRefresh(state, 0),
         onRegenMap: () => {
             syncTilelabWorld(state, readControls(state), true);
-            syncMapInspectorAfterRegen(state, () => renderActiveLabView(state));
-            renderActiveLabView(state);
+            syncMapInspectorAfterRegen(state, () => renderTilelabPreview(state, readControls(state)));
+            renderTilelabPreview(state, readControls(state));
         },
         onStageResize: () => {
             if (state.labCanvas) applyLabCanvasSize(state, state.labCanvas.width, state.labCanvas.height);
             syncPreviewZoomToStage(state);
-            renderActiveLabView(state);
+            renderTilelabPreview(state, readControls(state));
         },
     });
     initToolbarDefaults(state);
@@ -120,17 +119,17 @@ function bootstrapTilelabUi(state) {
         onResize: (size) => {
             applyLabCanvasSize(state, size, size);
             syncPreviewZoomToStage(state);
-            renderActiveLabView(state);
+            renderTilelabPreview(state, readControls(state));
         },
     });
     initResizer("resizer", () => {
         if (state.labCanvas) applyLabCanvasSize(state, state.labCanvas.width, state.labCanvas.height);
         syncPreviewZoomToStage(state);
-        renderActiveLabView(state);
+        renderTilelabPreview(state, readControls(state));
     });
     registerEditorProfiles(state).then(() => {
         syncPreviewZoomToStage(state);
-        syncMapInspectorAfterRegen(state, () => renderActiveLabView(state));
+        syncMapInspectorAfterRegen(state, () => renderTilelabPreview(state, readControls(state)));
         refreshPreview(state);
     });
 }
@@ -148,14 +147,10 @@ export const tilelabUiPort = {
         destroyTilelabSandbox();
         bootstrapped = false;
     },
-    updateHud({ state }) {
-        if (!bootstrapped) return;
-        refreshLabViewportControls(state);
-    },
     updateUI({ state }) {
         if (!bootstrapped) return;
         refreshLabViewportControls(state);
-        renderActiveLabView(state);
+        renderTilelabPreview(state, readControls(state));
         if (state.worldSurfaces.hasPendingSurfaceBakes()) runBakeRepaintLoop(state);
     },
 };

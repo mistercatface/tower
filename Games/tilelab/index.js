@@ -17,8 +17,7 @@ import { gameSceneTickPhase, pushablePhysicsPhase } from "../../Systems/Simulati
 import { getTilelabSandboxController } from "./world/tilelabSandbox.js";
 import { requestUiUpdate } from "../../Core/EventSystem.js";
 import { getRunScenePort, getSimulationPort } from "../../Core/GamePorts.js";
-import { renderActiveLabView } from "./ui/renderLabView.js";
-import { registerEditorProfiles } from "./ui/preview.js";
+import { registerEditorProfiles, renderTilelabPreview } from "./ui/preview.js";
 import { syncTilelabWorld, readControls, syncPreviewZoomToStage } from "./ui/toolbar.js";
 import { mergePairFilter } from "../../Libraries/Interaction/pairRules.js";
 import { excludeDeadOther, excludeActorOther, requirePickupOnHit } from "../../Libraries/Interaction/pairRuleClauses.js";
@@ -77,7 +76,7 @@ export class TileLabSimulationState {
         getSimulationPort().runTick(ctx, dt);
     }
     render(ctx) {
-        renderActiveLabView(ctx.state);
+        renderTilelabPreview(ctx.state, readControls(ctx.state));
     }
 }
 /** @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition */

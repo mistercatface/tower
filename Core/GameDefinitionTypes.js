@@ -68,7 +68,6 @@
  * @typedef {object} UiPort
  * @property {(ctx: UiContext) => void} mount
  * @property {() => void} [unmount]
- * @property {(ctx: UiContext) => void} updateHud
  * @property {(ctx: UiContext) => void} updateUI
  */
 /**

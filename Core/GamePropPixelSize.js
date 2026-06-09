@@ -12,10 +12,6 @@ import { LIBRARY_KINEMATICS_PIXEL_SIZE } from "../Libraries/Motion/bodyDefaults.
 export const defaultPropPixelSize = LIBRARY_KINEMATICS_PIXEL_SIZE;
 /** @type {number | null} */
 let activePropPixelSize = null;
-/** @returns {number | null} */
-export function getActivePropPixelSize() {
-    return activePropPixelSize;
-}
 /** @param {object} [prop] */
 export function hasEntityPropPixelSize(prop) {
     const value = prop?.strategy?.propPixelSize;

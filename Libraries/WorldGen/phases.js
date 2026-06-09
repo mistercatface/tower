@@ -1,10 +1,10 @@
 import { Segment } from "../../Entities/Wall.js";
-import { getWorldGen } from "../../Core/GamePorts.js";
+import { getGeneratorStrategies, getRandomGeneratorStrategyKeys, getWorldGen } from "../../Core/GamePorts.js";
 import { gridSettings } from "../../Config/Config.js";
 import { resolveSurfaceProfileId } from "../../Config/procedural/profiles.js";
 import { finalizeGeneratedWorld } from "./finalizeGeneratedWorld.js";
 import { beginWorldGenRuntime } from "./WorldGenRuntime.js";
-import { buildIncomingNodesMap, checkNodePathability, getMergedGeneratorStrategies, getWorldGenTempGrids, pickRandomGeneratorStrategyKeys, serializeWalls } from "./worldGenUtils.js";
+import { buildIncomingNodesMap, checkNodePathability, getWorldGenTempGrids, serializeWalls } from "./worldGenUtils.js";
 /**
  * @typedef {object} WorldGenContext
  * @property {object} state
@@ -183,8 +183,8 @@ export function pregenerateRoguelikeNodeRoomsPhase(topology) {
             const { state } = ctx;
             const { tempObstacleGrid, tempFlowFieldGrid } = getWorldGenTempGrids();
             const incomingByNodeId = buildIncomingNodesMap(state.mapNodes);
-            const strategies = getMergedGeneratorStrategies();
-            const strategyKeys = pickRandomGeneratorStrategyKeys();
+            const strategies = getGeneratorStrategies();
+            const strategyKeys = getRandomGeneratorStrategyKeys();
             const serializeRadius = topology.nodeRoomSerializeRadius;
             const { numLayers } = topology;
             for (let l = 0; l < numLayers; l++) {

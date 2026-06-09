@@ -19,9 +19,6 @@ function registerUiEventListeners(eventBus) {
     eventBus.on(Events.UI_UPDATE, ({ state }) => {
         getUiPort().updateUI({ state });
     });
-    eventBus.on(Events.UI_UPDATE_HUD, ({ state }) => {
-        getUiPort().updateHud({ state });
-    });
 }
 /**
  * Feature-gated createGame tail — no tower assumptions.
