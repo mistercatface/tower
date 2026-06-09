@@ -245,7 +245,7 @@ export class WorldSurfaceEngine {
         }
         ctx.imageSmoothingEnabled = false;
         for (const chunk of chunksToDraw) {
-            if (zLevel > 0 && !chunkHasWallSegmentsAtZ(wallSpatialIndex, chunk.origin.x, chunk.origin.y, chunkSizePx, zLevel, this.settings.wallHeight)) continue;
+            if (zLevel > 0 && !chunkHasWallSegmentsAtZ(wallSpatialIndex, chunk.origin.x, chunk.origin.y, chunkSizePx, zLevel)) continue;
             const payload = this._resolveChunkPayload(state, chunk.chunkCol, chunk.chunkRow, zLevel);
             const canvases = this.getGroundChunkCanvas(chunk.chunkCol, chunk.chunkRow, state, payload, zLevel);
             let canvas = canvases[0];
@@ -259,7 +259,7 @@ export class WorldSurfaceEngine {
             }
             if (zLevel > 0) {
                 ctx.save();
-                if (!clipChunkToRoofFootprints(ctx, wallSpatialIndex, chunk.origin.x, chunk.origin.y, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight, this.settings.wallHeight)) {
+                if (!clipChunkToRoofFootprints(ctx, wallSpatialIndex, chunk.origin.x, chunk.origin.y, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight)) {
                     ctx.restore();
                     continue;
                 }
@@ -271,7 +271,7 @@ export class WorldSurfaceEngine {
                 const bleedPx = this.settings.wallTextureBleedPx ?? 1;
                 ctx.drawImage(canvas, dstX - bleedPx, dstY - bleedPx, dstW + bleedPx * 2, dstH + bleedPx * 2);
                 ctx.restore();
-                drawRoofSegmentDamageOverlays(ctx, wallSpatialIndex, chunk.origin.x, chunk.origin.y, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight, this.settings.wallHeight);
+                drawRoofSegmentDamageOverlays(ctx, wallSpatialIndex, chunk.origin.x, chunk.origin.y, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight);
             } else drawBakedTexture(ctx, canvas, chunk.origin.x, chunk.origin.y, chunkSizePx, chunkSizePx, this.settings);
         }
         ctx.restore();

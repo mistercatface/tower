@@ -32,14 +32,14 @@ export function chunkHasWallSegments(wallSpatialIndex, chunkOriginX, chunkOrigin
  * @param {number} zLevel
  * @param {number} defaultWallHeight
  */
-export function chunkHasWallSegmentsAtZ(wallSpatialIndex, chunkOriginX, chunkOriginY, chunkSizePx, zLevel, defaultWallHeight) {
+export function chunkHasWallSegmentsAtZ(wallSpatialIndex, chunkOriginX, chunkOriginY, chunkSizePx, zLevel) {
     if (!wallSpatialIndex) return false;
     const segments = wallSpatialIndex.collectInBounds(chunkOriginX, chunkOriginY, chunkOriginX + chunkSizePx, chunkOriginY + chunkSizePx);
     for (let i = 0; i < segments.length; i++) {
         const segment = segments[i];
         if (segment.isDead) continue;
-        const segZ = segment.wallHeight ?? defaultWallHeight;
-        if (Math.abs(segZ - zLevel) <= 0.01) return true;
+        const segZ = segment.wallHeight;
+        if (segZ != null && Math.abs(segZ - zLevel) <= 0.01) return true;
     }
     return false;
 }
@@ -57,7 +57,7 @@ export function chunkHasWallSegmentsAtZ(wallSpatialIndex, chunkOriginX, chunkOri
  * @param {number} cameraHeight
  * @returns {boolean}
  */
-export function clipChunkToRoofFootprints(ctx, wallSpatialIndex, chunkOriginX, chunkOriginY, chunkSizePx, zLevel, viewerX, viewerY, cameraHeight, defaultWallHeight) {
+export function clipChunkToRoofFootprints(ctx, wallSpatialIndex, chunkOriginX, chunkOriginY, chunkSizePx, zLevel, viewerX, viewerY, cameraHeight) {
     if (!wallSpatialIndex) return false;
     const segments = wallSpatialIndex.collectInBounds(chunkOriginX, chunkOriginY, chunkOriginX + chunkSizePx, chunkOriginY + chunkSizePx);
     let clippedAny = false;
@@ -66,8 +66,8 @@ export function clipChunkToRoofFootprints(ctx, wallSpatialIndex, chunkOriginX, c
     for (let i = 0; i < segments.length; i++) {
         const segment = segments[i];
         if (segment.isDead) continue;
-        const segZ = segment.wallHeight ?? defaultWallHeight;
-        if (Math.abs(segZ - zLevel) > 0.01) continue;
+        const segZ = segment.wallHeight;
+        if (segZ == null || Math.abs(segZ - zLevel) > 0.01) continue;
         const corners = getSegmentFootprintCorners(segment);
         for (let j = 0; j < 4; j++) {
             const corner = corners[j];
@@ -97,15 +97,15 @@ export function clipChunkToRoofFootprints(ctx, wallSpatialIndex, chunkOriginX, c
  * @param {number} cameraHeight
  * @param {number} defaultWallHeight
  */
-export function drawRoofSegmentDamageOverlays(ctx, wallSpatialIndex, chunkOriginX, chunkOriginY, chunkSizePx, zLevel, viewerX, viewerY, cameraHeight, defaultWallHeight) {
+export function drawRoofSegmentDamageOverlays(ctx, wallSpatialIndex, chunkOriginX, chunkOriginY, chunkSizePx, zLevel, viewerX, viewerY, cameraHeight) {
     if (!wallSpatialIndex) return;
     const segments = wallSpatialIndex.collectInBounds(chunkOriginX, chunkOriginY, chunkOriginX + chunkSizePx, chunkOriginY + chunkSizePx);
     const alpha = resolveElevationAlpha(zLevel, cameraHeight, 1);
     for (let i = 0; i < segments.length; i++) {
         const segment = segments[i];
         if (segment.isDead) continue;
-        const segZ = segment.wallHeight ?? defaultWallHeight;
-        if (Math.abs(segZ - zLevel) > 0.01) continue;
+        const segZ = segment.wallHeight;
+        if (segZ == null || Math.abs(segZ - zLevel) > 0.01) continue;
         const damageAlpha = getWallDamageAlpha(segment);
         if (damageAlpha <= 0) continue;
         const corners = getSegmentFootprintCorners(segment);

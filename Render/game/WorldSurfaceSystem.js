@@ -38,7 +38,7 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
         if (!viewport || !isWorldScene(state.phase) || !state.obstacleGrid?.cols) return;
         if (!state.roofZLevels) {
             const zSet = new Set();
-            for (const w of state.walls) if (!w.isDead) zSet.add(w.wallHeight ?? this.settings.wallHeight);
+            for (const w of state.walls) if (!w.isDead && w.wallHeight != null) zSet.add(w.wallHeight);
             state.roofZLevels = Array.from(zSet).sort((a, b) => a - b);
         }
         this.drawRoofLayers(ctx, {
