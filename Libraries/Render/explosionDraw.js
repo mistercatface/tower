@@ -37,7 +37,7 @@ export function renderExplosions(ctx, state, viewport, worldSceneRenderer, world
         offCtx.fillStyle = "#000000";
         offCtx.save();
         offCtx.translate(cx - exp.x, cy - exp.y);
-        worldSceneRenderer.drawExplosionWallMask(exp.x, exp.y, exp.maxRadius, worldRenderInput, offCtx);
+        worldSceneRenderer.drawExplosionWallMask(exp.x, exp.y, exp.maxRadius, worldRenderInput, viewport, offCtx);
         offCtx.restore();
         ctx.save();
         if (exp.currentPhase?.screenBlend) {

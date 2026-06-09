@@ -46,14 +46,6 @@ export function traceProjectedFace(ctx, p1, p2, face) {
     ctx.lineTo(p2.x, p2.y);
     ctx.closePath();
 }
-/** Solid wall silhouette for offscreen explosion carving — no viewport clip or textures. */
-export function drawProjectedWallMaskFace(ctx, p1, p2, px, py, fillStyle, settings, wallHeight = null) {
-    const finalWallHeight = wallHeight ?? getWallHeight(settings);
-    const face = computeProjectedFace(p1, p2, px, py, finalWallHeight, settings);
-    traceProjectedFace(ctx, p1, p2, face);
-    ctx.fillStyle = fillStyle;
-    ctx.fill();
-}
 function rowBoundsIntersects(bl, br, tl, tr, bounds) {
     if (!bounds) return true;
     const minX = Math.min(bl.x, br.x, tl.x, tr.x);
