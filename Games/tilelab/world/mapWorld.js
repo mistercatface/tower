@@ -2,7 +2,7 @@ import { gridSettings } from "../../../Config/Config.js";
 import { generateWorld, getWorldGen } from "../../../Core/GamePorts.js";
 import { regenerateRoguelikeMap } from "../../../Libraries/WorldGen/session/index.js";
 import { clearTilelabSandbox } from "./tilelabSandbox.js";
-import { resetTilelabGroundZones } from "./tilelabGroundZones.js";
+import { resetTilelabGroundZones } from "../groundZones.js";
 import { spawnSandboxBattleGroups } from "./sandboxBattleSpawn.js";
 export function listLabMapNodes(state) {
     return state.mapNodes.map((n) => ({ id: n.id, layer: n.layer, strategy: n.strategy ?? "?" })).sort((a, b) => a.layer - b.layer || a.id - b.id);
