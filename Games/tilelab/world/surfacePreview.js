@@ -19,17 +19,6 @@ function getLabRenderer(canvas, ctx) {
     return labRenderer;
 }
 let lastBakeKey = "";
-function drawFocusMarker(ctx, x, y) {
-    ctx.save();
-    ctx.fillStyle = "#00bcd4";
-    ctx.strokeStyle = "#003840";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(x, y, 6, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    ctx.restore();
-}
 function maybeClearBakeCaches(worldState, profileId) {
     const rev = getSurfaceProfileRevision(profileId);
     const key = `${profileId}:${rev}:${worldState.worldSurfaceSeed ?? 0}`;
@@ -43,7 +32,7 @@ function maybeClearBakeCaches(worldState, profileId) {
  * @param {HTMLCanvasElement} canvas
  */
 export function drawTilelabSurfaceFrame(ctx, canvas, worldState, profileId, drawOptions = {}) {
-    const { showVignette = false, showFocusMarker = true, topologySession = null, topologyOptions = null } = drawOptions;
+    const { showVignette = false, topologySession = null, topologyOptions = null } = drawOptions;
     const size = syncLabScreenCanvasBounds(worldState);
     if (!size) return;
     const viewW = size.width;
@@ -53,8 +42,6 @@ export function drawTilelabSurfaceFrame(ctx, canvas, worldState, profileId, draw
     worldState.surfaceProfileOverride = profileId;
     maybeClearBakeCaches(worldState, profileId);
     const viewport = worldState.mapViewport;
-    const cameraX = viewport.x;
-    const cameraY = viewport.y;
     getLabRenderer(canvas, ctx).renderSimulationScene(worldState, viewport);
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -66,7 +53,6 @@ export function drawTilelabSurfaceFrame(ctx, canvas, worldState, profileId, draw
     viewport.apply(ctx);
     if (topologySession && topologyOptions) drawTopologyLayer(ctx, worldState, viewport, topologyOptions, topologySession, { overlay: true });
     worldState.surfaceProfileOverride = prevProfileOverride;
-    if (showFocusMarker) drawFocusMarker(ctx, cameraX, cameraY);
     getTilelabSandboxController()?.drawOverlay(ctx);
     ctx.restore();
     if (showVignette) {
