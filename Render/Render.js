@@ -2,7 +2,7 @@ import { getGameWorldSurfaceSettings } from "./WorldSurfaceBootstrap.js";
 import { SpriteCache } from "../Libraries/Canvas/SpriteCache.js";
 import { WorldSceneRenderer } from "../Libraries/Render/WorldSceneRenderer.js";
 import { getRenderPorts } from "../Core/GamePorts.js";
-import { buildWorldRenderInput } from "./adapters/WorldRenderAdapter.js";
+import { createWorldSceneDrawInput, syncWorldSceneDrawInput } from "./adapters/WorldRenderAdapter.js";
 import { LIBRARY_WORLD_SURFACE_DEFAULTS } from "../Libraries/WorldSurface/worldSurfaceDefaults.js";
 import { drawWorldSceneBackdrop, drawWorldSceneBloom, drawWorldSceneStructure } from "./worldSceneDraw.js";
 export class Renderer {
@@ -12,6 +12,10 @@ export class Renderer {
         this.ctx = ctx;
         this.caches = caches;
         this.render3D = new WorldSceneRenderer(getGameWorldSurfaceSettings(), getRenderPorts().world3dPropRecipes);
+        this._worldSceneDrawInput = createWorldSceneDrawInput();
+        const surfaceSettings = getGameWorldSurfaceSettings();
+        this._surfaceDrawPadQuery = surfaceSettings.viewQueryPadPx;
+        this._surfaceDrawPadDraw = surfaceSettings.viewPaddingPx;
         this.effectPasses = [
             { zIndex: -5, fn: (state, viewport) => drawWorldSceneBackdrop(this.ctx, { state, viewport, worldSceneRenderer: this.render3D, worldRenderInput: this.getWorldRenderInput(state) }) },
             { zIndex: 55, fn: (state, viewport) => this.render3D.drawRagdollCorpsesOnly(this.ctx, this.getWorldRenderInput(state), viewport) },
@@ -27,15 +31,12 @@ export class Renderer {
         pipeline.sort((a, b) => a.zIndex - b.zIndex);
         this._simulationPipeline = pipeline.map((p) => p.fn);
     }
-    /** Cached once per simulation frame — walls share the same draw input. */
     getWorldRenderInput(state) {
-        if (!this._frameWorldRenderInput) this._frameWorldRenderInput = buildWorldRenderInput(state);
-        return this._frameWorldRenderInput;
+        syncWorldSceneDrawInput(this._worldSceneDrawInput, state);
+        return this._worldSceneDrawInput;
     }
     renderSimulationScene(state, viewport) {
-        this._frameWorldRenderInput = null;
-        const surfaceSettings = getGameWorldSurfaceSettings();
-        viewport.configureDrawBounds(surfaceSettings.viewQueryPadPx, surfaceSettings.viewPaddingPx);
+        viewport.configureDrawBounds(this._surfaceDrawPadQuery, this._surfaceDrawPadDraw);
         this.ctx.save();
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         viewport.apply(this.ctx);

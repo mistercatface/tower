@@ -88,7 +88,7 @@ export class WorldSceneRenderer {
     }
     _drawRetainedWallFace(ctx, face, input, viewport, px, py, worldBounds) {
         const fillStyle = this.settings.floorShadow ?? "#12161c";
-        face.draw(ctx, viewport, input.worldSurfaces, input.surfaceBake, fillStyle, getWallDamageAlpha(face.simWall), px, py, worldBounds);
+        face.draw(ctx, viewport, input.worldSurfaces, input.proceduralSurfaceDraw, fillStyle, getWallDamageAlpha(face.simWall), px, py, worldBounds);
     }
     drawRagdollCorpsesOnly(ctx, input, viewport) {
         const px = viewport.x;

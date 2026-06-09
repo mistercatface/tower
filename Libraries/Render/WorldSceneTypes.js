@@ -3,7 +3,9 @@
  * WorldSurface is optional — omit both fields for solid-color structure placeholders.
  */
 /**
- * @typedef {Object} SurfaceBakeContext
+ * Per-frame procedural ground/wall texture lookup — profile, seed, and animation time.
+ *
+ * @typedef {Object} ProceduralSurfaceDrawContext
  * @property {number} surfaceSeed
  * @property {number} gameTime
  * @property {string|null} surfaceProfileOverride
@@ -16,7 +18,7 @@
  * @property {object[]} pickups
  * @property {object[]} [ragdollCorpses]
  * @property {import("../WorldSurface/WorldSurfaceEngine.js").WorldSurfaceEngine|null} [worldSurfaces]
- * @property {SurfaceBakeContext|null} [surfaceBake]
+ * @property {ProceduralSurfaceDrawContext|null} [proceduralSurfaceDraw]
  */
 /**
  * @typedef {Object} WorldSceneDrawOptions

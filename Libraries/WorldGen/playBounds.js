@@ -7,14 +7,41 @@
  * @returns {WorldPlayBounds | null}
  */
 export function intersectWorldBounds(a, b) {
-    if (!a) return b ?? null;
-    if (!b) return a;
+    const out = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+    return intersectWorldBoundsInto(out, a, b) ? out : null;
+}
+/**
+ * @param {WorldPlayBounds} out
+ * @param {WorldPlayBounds | null | undefined} a
+ * @param {WorldPlayBounds | null | undefined} b
+ * @returns {boolean}
+ */
+export function intersectWorldBoundsInto(out, a, b) {
+    if (!a) {
+        if (!b) return false;
+        out.minX = b.minX;
+        out.minY = b.minY;
+        out.maxX = b.maxX;
+        out.maxY = b.maxY;
+        return true;
+    }
+    if (!b) {
+        out.minX = a.minX;
+        out.minY = a.minY;
+        out.maxX = a.maxX;
+        out.maxY = a.maxY;
+        return true;
+    }
     const minX = Math.max(a.minX, b.minX);
     const minY = Math.max(a.minY, b.minY);
     const maxX = Math.min(a.maxX, b.maxX);
     const maxY = Math.min(a.maxY, b.maxY);
-    if (minX >= maxX || minY >= maxY) return null;
-    return { minX, minY, maxX, maxY };
+    if (minX >= maxX || minY >= maxY) return false;
+    out.minX = minX;
+    out.minY = minY;
+    out.maxX = maxX;
+    out.maxY = maxY;
+    return true;
 }
 /**
  * @param {{ minX: number, minY: number, maxX: number, maxY: number, cols?: number } | null | undefined} grid

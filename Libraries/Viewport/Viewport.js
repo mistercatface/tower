@@ -42,12 +42,15 @@ export class Viewport {
         this.halfW = w / (2 * this._zoom);
         this.halfH = h / (2 * this._zoom);
         this.invZoom = 1 / this._zoom;
-        this.boundsClip = this._worldBounds(this.halfW, this.halfH, 0);
-        this.boundsQuery = this._worldBounds(this.halfW, this.halfH, this.viewQueryPadPx);
-        this.boundsDraw = this._worldBounds(this.halfW, this.halfH, this.viewPaddingPx);
+        this._writeWorldBounds(this.boundsClip, this.halfW, this.halfH, 0);
+        this._writeWorldBounds(this.boundsQuery, this.halfW, this.halfH, this.viewQueryPadPx);
+        this._writeWorldBounds(this.boundsDraw, this.halfW, this.halfH, this.viewPaddingPx);
     }
-    _worldBounds(halfW, halfH, padding) {
-        return { minX: this._x - halfW - padding, minY: this._y - halfH - padding, maxX: this._x + halfW + padding, maxY: this._y + halfH + padding };
+    _writeWorldBounds(out, halfW, halfH, padding) {
+        out.minX = this._x - halfW - padding;
+        out.minY = this._y - halfH - padding;
+        out.maxX = this._x + halfW + padding;
+        out.maxY = this._y + halfH + padding;
     }
     apply(ctx) {
         ctx.translate(this.cx, this.cy);

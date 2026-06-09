@@ -48,7 +48,7 @@ export class RenderableWallFace extends Renderable {
         const viewY = this.cy - viewerY;
         return this.outX * viewX + this.outY * viewY < 0;
     }
-    draw(ctx, viewport, worldSurfaces, surfaceBake, fillStyle, damageAlpha, viewerX, viewerY, worldBounds) {
+    draw(ctx, viewport, worldSurfaces, proceduralSurfaceDraw, fillStyle, damageAlpha, viewerX, viewerY, worldBounds) {
         const settings = worldSurfaces.settings;
         if (!settings) return;
         const face = computeProjectedFace(this.p1, this.p2, viewerX, viewerY, this.wallHeight, settings);
@@ -58,8 +58,8 @@ export class RenderableWallFace extends Renderable {
         ctx.lineTo(face.proj2X, face.proj2Y);
         ctx.lineTo(this.p2.x, this.p2.y);
         ctx.closePath();
-        if (worldSurfaces && surfaceBake) {
-            drawFaceTexture(ctx, this.p1, this.p2, face, worldSurfaces, surfaceBake, { x: viewerX, y: viewerY }, viewport, this.wallHeight, fillStyle, this.simWall, worldBounds);
+        if (worldSurfaces && proceduralSurfaceDraw) {
+            drawFaceTexture(ctx, this.p1, this.p2, face, worldSurfaces, proceduralSurfaceDraw, { x: viewerX, y: viewerY }, viewport, this.wallHeight, fillStyle, this.simWall, worldBounds);
             if (damageAlpha > 0) {
                 ctx.save();
                 ctx.beginPath();

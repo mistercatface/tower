@@ -4,7 +4,7 @@
  */
 import { getWallHeight } from "../../WorldSurface/WorldSurfaceSettings.js";
 import { drawImageQuad } from "../../Canvas/AffineTexture.js";
-/** @typedef {import("../WorldSceneTypes.js").SurfaceBakeContext} SurfaceBakeContext */
+/** @typedef {import("../WorldSceneTypes.js").ProceduralSurfaceDrawContext} ProceduralSurfaceDrawContext */
 import { getTexelResolution, shouldSmoothTextureDownsample } from "../../WorldSurface/WorldSurfaceResolution.js";
 import { wallDamageOverlayStyle } from "./wallDamageVisual.js";
 import { resolveElevationAlpha } from "../../Spatial/iso/IsometricProjection.js";
@@ -62,30 +62,30 @@ function computeFaceCorner(out, p1, p2, proj1X, proj1Y, proj2X, proj2Y, u, v) {
     out.x = bx + (tx - bx) * v;
     out.y = by + (ty - by) * v;
 }
-function resolveWallProfileId(surfaceBake, wallCx, wallCy, cacheObj) {
+function resolveWallProfileId(proceduralSurfaceDraw, wallCx, wallCy, cacheObj) {
     let profileId = cacheObj && cacheObj._cachedProfileId ? cacheObj._cachedProfileId : null;
-    if (!profileId || surfaceBake.surfaceProfileOverride) {
-        profileId = surfaceBake.resolveProfileAt(wallCx, wallCy);
-        if (cacheObj && !surfaceBake.surfaceProfileOverride) cacheObj._cachedProfileId = profileId;
+    if (!profileId || proceduralSurfaceDraw.surfaceProfileOverride) {
+        profileId = proceduralSurfaceDraw.resolveProfileAt(wallCx, wallCy);
+        if (cacheObj && !proceduralSurfaceDraw.surfaceProfileOverride) cacheObj._cachedProfileId = profileId;
     }
     return profileId;
 }
-export function drawFaceTexture(ctx, p1, p2, face, worldSurfaces, surfaceBake, viewer, viewport, wallHeight, fillStyle, cacheObj = null, worldBounds = null) {
+export function drawFaceTexture(ctx, p1, p2, face, worldSurfaces, proceduralSurfaceDraw, viewer, viewport, wallHeight, fillStyle, cacheObj = null, worldBounds = null) {
     const settings = worldSurfaces.settings;
     if (!settings) return;
     const cellSize = settings.cellSize;
-    if (!worldSurfaces || !surfaceBake) return;
+    if (!worldSurfaces || !proceduralSurfaceDraw) return;
     const wallCx = cacheObj && cacheObj.cx !== undefined ? cacheObj.cx : (p1.x + p2.x) * 0.5;
     const wallCy = cacheObj && cacheObj.cy !== undefined ? cacheObj.cy : (p1.y + p2.y) * 0.5;
     // In Retained Mode, cacheObj is often the simulation wall itself, which doesn't have cx/cy.
     // We can compute it if missing.
     const finalWallCx = wallCx ?? (p1.x + p2.x) * 0.5;
     const finalWallCy = wallCy ?? (p1.y + p2.y) * 0.5;
-    const profileId = resolveWallProfileId(surfaceBake, finalWallCx, finalWallCy, cacheObj);
+    const profileId = resolveWallProfileId(proceduralSurfaceDraw, finalWallCx, finalWallCy, cacheObj);
     const ppwu = getTexelResolution(settings);
-    const atlas = worldSurfaces.getOrEnsureWallAtlas(p1, p2, { profileId, surfaceBake, wallHeight, cacheObj });
+    const atlas = worldSurfaces.getOrEnsureWallAtlas(p1, p2, { profileId, proceduralSurfaceDraw, wallHeight, cacheObj });
     if (!atlas) return;
-    const flatCanvas = worldSurfaces.resolveWallAtlasCanvas(atlas.canvases, profileId, surfaceBake.gameTime);
+    const flatCanvas = worldSurfaces.resolveWallAtlasCanvas(atlas.canvases, profileId, proceduralSurfaceDraw.gameTime);
     if (!flatCanvas || flatCanvas.isPlaceholder) {
         ctx.fillStyle = fillStyle;
         ctx.fill();
@@ -144,7 +144,7 @@ export function drawProjectedWallFace(
     py,
     fillStyle,
     worldSurfaces,
-    surfaceBake,
+    proceduralSurfaceDraw,
     viewport,
     worldBounds,
     { damageAlpha = 0, textureEnabled = true, cacheObj = null, wallHeight = null, settings = null } = {},
@@ -162,7 +162,7 @@ export function drawProjectedWallFace(
     sCorner3.y = face.proj1Y;
     if (!rowBoundsIntersects(sCorner0, sCorner1, sCorner2, sCorner3, worldBounds)) return;
     traceProjectedFace(ctx, p1, p2, face);
-    if (textureEnabled) drawFaceTexture(ctx, p1, p2, face, worldSurfaces, surfaceBake, { x: px, y: py }, viewport, finalWallHeight, fillStyle, cacheObj, worldBounds);
+    if (textureEnabled) drawFaceTexture(ctx, p1, p2, face, worldSurfaces, proceduralSurfaceDraw, { x: px, y: py }, viewport, finalWallHeight, fillStyle, cacheObj, worldBounds);
     else {
         ctx.fillStyle = fillStyle;
         ctx.fill();
@@ -176,15 +176,15 @@ export function drawProjectedWallFace(
         ctx.restore();
     }
 }
-export function preloadProjectedWallFace(p1, p2, worldSurfaces, surfaceBake, cacheObj = null) {
+export function preloadProjectedWallFace(p1, p2, worldSurfaces, proceduralSurfaceDraw, cacheObj = null) {
     const settings = worldSurfaces?.settings;
     if (!settings) return;
-    if (!worldSurfaces || !surfaceBake) return;
+    if (!worldSurfaces || !proceduralSurfaceDraw) return;
     const wallCx = cacheObj && cacheObj.cx !== undefined ? cacheObj.cx : (p1.x + p2.x) * 0.5;
     const wallCy = cacheObj && cacheObj.cy !== undefined ? cacheObj.cy : (p1.y + p2.y) * 0.5;
     const finalWallCx = wallCx ?? (p1.x + p2.x) * 0.5;
     const finalWallCy = wallCy ?? (p1.y + p2.y) * 0.5;
-    const profileId = resolveWallProfileId(surfaceBake, finalWallCx, finalWallCy, cacheObj);
+    const profileId = resolveWallProfileId(proceduralSurfaceDraw, finalWallCx, finalWallCy, cacheObj);
     const wallHeight = getWallHeight(settings);
-    worldSurfaces.getOrEnsureWallAtlas(p1, p2, { profileId, surfaceBake, wallHeight, cacheObj });
+    worldSurfaces.getOrEnsureWallAtlas(p1, p2, { profileId, proceduralSurfaceDraw, wallHeight, cacheObj });
 }
