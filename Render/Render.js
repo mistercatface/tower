@@ -3,7 +3,8 @@ import { SpriteCache } from "../Libraries/Canvas/SpriteCache.js";
 import { WorldSceneRenderer } from "../Libraries/Render/WorldSceneRenderer.js";
 import { getRenderPorts } from "../Core/GamePorts.js";
 import { buildWorldRenderInput } from "./adapters/WorldRenderAdapter.js";
-import { drawWorldSceneBackdrop, drawWorldSceneStructure } from "./worldSceneDraw.js";
+import { LIBRARY_WORLD_SURFACE_DEFAULTS } from "../Libraries/WorldSurface/worldSurfaceDefaults.js";
+import { drawWorldSceneBackdrop, drawWorldSceneBloom, drawWorldSceneStructure } from "./worldSceneDraw.js";
 export class Renderer {
     /** @param {{ actorCache?: SpriteCache, turretCache?: SpriteCache } | undefined} caches */
     constructor(canvas, ctx, caches) {
@@ -12,14 +13,17 @@ export class Renderer {
         this.caches = caches;
         this.render3D = new WorldSceneRenderer(getGameWorldSurfaceSettings(), getRenderPorts().world3dPropRecipes);
         this.effectPasses = [
-            { zIndex: -5, fn: (state, viewport) => drawWorldSceneBackdrop(this.ctx, { state, viewport, worldSceneRenderer: this.render3D }) },
+            {
+                zIndex: -5,
+                fn: (state, viewport) => drawWorldSceneBackdrop(this.ctx, { state, viewport, worldSceneRenderer: this.render3D, worldRenderInput: this.getWorldRenderInput(state, viewport) }),
+            },
             { zIndex: 55, fn: (state, viewport) => this.render3D.drawRagdollCorpsesOnly(this.ctx, this.getWorldRenderInput(state, viewport), viewport) },
             {
                 zIndex: 70,
-                fn: (state, viewport) =>
-                    drawWorldSceneStructure(this.ctx, { state, viewport, worldSceneRenderer: this.render3D, canvas: this.canvas, worldRenderInput: this.getWorldRenderInput(state, viewport) }),
+                fn: (state, viewport) => drawWorldSceneStructure(this.ctx, { state, viewport, worldSceneRenderer: this.render3D, worldRenderInput: this.getWorldRenderInput(state, viewport) }),
             },
         ];
+        if (LIBRARY_WORLD_SURFACE_DEFAULTS.bloom.enabled) this.effectPasses.push({ zIndex: 71, fn: () => drawWorldSceneBloom(this.ctx, this.canvas) });
     }
     buildSimulationPipeline(state, viewport) {
         const entityPasses = (state.entityLayers ?? []).map((layer) => ({ zIndex: layer.zIndex, fn: (state, viewport) => this.renderEntityCollection(state[layer.key], state, viewport) }));
@@ -39,7 +43,10 @@ export class Renderer {
         this.ctx.save();
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         if (viewport) viewport.apply(this.ctx);
-        this.buildSimulationPipeline(state, viewport);
+        if (!this._simulationPipeline || this._pipelineEntityLayers !== state.entityLayers) {
+            this.buildSimulationPipeline(state, viewport);
+            this._pipelineEntityLayers = state.entityLayers;
+        }
         for (let i = 0; i < this._simulationPipeline.length; i++) this._simulationPipeline[i](state, viewport);
         this.ctx.restore();
         getRenderPorts().drawPostSimulation?.(state, viewport, this.ctx, this);

@@ -28,14 +28,7 @@ export function resolveSurfaceProfileAtPlayer(state) {
     return resolveSurfaceProfileAtCoords(state, x, y);
 }
 /** Apply active node profile to the surface cache. */
-export function syncSurfaceProfile(state, focusX, focusY) {
-    const x = focusX ?? resolveSurfaceProfileRunFocusCoords(state).x;
-    const y = focusY ?? resolveSurfaceProfileRunFocusCoords(state).y;
-    const profileId = resolveSurfaceProfileAtCoords(state, x, y);
-    if (state.worldSurfaces.proceduralProfileId === profileId) return;
-    state.worldSurfaces.proceduralProfileId = profileId;
-    // state.worldSurfaces.clear(); // Disabled for mega-map chunk rendering
-}
+export function syncSurfaceProfile(_state, _focusX, _focusY) {}
 /** Worker-serializable ground-chunk bake payload from live game state. */
 export function buildGroundChunkBakePayload(state, chunkCol, chunkRow, zLevel = 0) {
     const obstacleGrid = state.obstacleGrid;

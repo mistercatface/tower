@@ -32,7 +32,6 @@ export class WorldSurfaceEngine {
     constructor(settings, hooks = {}) {
         this.settings = settings;
         this.surfaceCache = new ProgressiveFrameCache(settings.maxCachedSurfaces);
-        this.proceduralProfileId = null;
         this._globalGeneration = 0;
         this._buildChunkPayload = hooks.buildChunkPayload ?? null;
     }

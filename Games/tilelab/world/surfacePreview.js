@@ -34,8 +34,6 @@ export function drawTilelabSurfaceFrame(ctx, canvas, worldState, profileId, draw
     const { showVignette = false, topologySession = null, topologyOptions = null } = drawOptions;
     const viewW = worldState.canvasBounds.width;
     const viewH = worldState.canvasBounds.height;
-    if (viewW < 32 || viewH < 32) return;
-    worldState.phase = "simulation";
     const prevProfileOverride = worldState.worldSurfaces.surfaceProfileOverride;
     worldState.worldSurfaces.surfaceProfileOverride = profileId;
     maybeClearBakeCaches(worldState, profileId);

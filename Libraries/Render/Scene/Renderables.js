@@ -49,8 +49,7 @@ export class RenderableWallFace extends Renderable {
         return this.outX * viewX + this.outY * viewY < 0;
     }
     draw(ctx, viewport, worldSurfaces, surfaceBake, fillStyle, damageAlpha, viewerX, viewerY, worldBounds) {
-        if (!this.shouldDraw(viewerX, viewerY)) return;
-        const settings = worldSurfaces?.settings;
+        const settings = worldSurfaces.settings;
         if (!settings) return;
         const face = computeProjectedFace(this.p1, this.p2, viewerX, viewerY, this.wallHeight, settings);
         ctx.beginPath();

@@ -8,7 +8,7 @@ export class SceneCompiler {
      * @param {number} [gridMinX]
      * @param {number} [gridMinY]
      */
-    static compileWalls(state, scene, gridMinX = state.obstacleGrid?.minX ?? 0, gridMinY = state.obstacleGrid?.minY ?? 0) {
+    static compileWalls(state, scene, gridMinX = state.obstacleGrid.minX, gridMinY = state.obstacleGrid.minY) {
         scene.setGridOrigin(gridMinX, gridMinY);
         const settings = state.worldSurfaces.settings;
         const defaultWallHeight = getWallHeight(settings);

@@ -32,7 +32,7 @@ export function buildWorldRenderInput(state, viewport = null) {
             gameTime: state.gameTime ?? 0,
             surfaceProfileOverride: state.worldSurfaces.surfaceProfileOverride ?? null,
             resolveProfileAt: (x, y) => resolveSurfaceProfileAtCoords(state, x, y),
-            obstacleCellSize: state.obstacleGrid?.cellSize ?? 16,
+            obstacleCellSize: state.obstacleGrid.cellSize,
         },
     };
 }

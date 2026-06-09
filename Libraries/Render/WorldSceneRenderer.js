@@ -88,8 +88,8 @@ export class WorldSceneRenderer {
      * @param {number} py
      */
     _appendVisibleWallsFromScene(input, viewport, px, py) {
-        const scene = input.worldSurfaces?.renderScene;
-        if (!scene || scene.chunks.size === 0 || !viewport) {
+        const scene = input.worldSurfaces.renderScene;
+        if (scene.chunks.size === 0 || !viewport) {
             this._appendVisibleWalls(input, viewport, px, py);
             return;
         }
@@ -150,7 +150,7 @@ export class WorldSceneRenderer {
      */
     _drawRetainedWallFace(ctx, face, input, viewport, px, py, worldBounds) {
         const fillStyle = this.settings.floorShadow ?? "#12161c";
-        const damageAlpha = face.simWall ? getWallDamageAlpha(face.simWall) : 0;
+        const damageAlpha = getWallDamageAlpha(face.simWall);
         face.draw(ctx, viewport, input.worldSurfaces, input.surfaceBake, fillStyle, damageAlpha, px, py, worldBounds);
     }
     /**
@@ -160,8 +160,8 @@ export class WorldSceneRenderer {
      * @param {WorldSceneDrawOptions} [options]
      */
     drawStructureOnly(ctx, input, viewport, options = {}) {
-        const scene = input.worldSurfaces?.renderScene;
-        if (scene && scene.chunks.size > 0 && viewport) {
+        const scene = input.worldSurfaces.renderScene;
+        if (scene.chunks.size > 0 && viewport) {
             const px = input.viewer.x;
             const py = input.viewer.y;
             const worldBounds = viewport.getWorldBounds(viewport.cx * 2, viewport.cy * 2, this.settings.viewPaddingPx);

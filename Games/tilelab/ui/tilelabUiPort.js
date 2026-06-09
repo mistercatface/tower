@@ -34,7 +34,7 @@ function runBakeRepaintLoop(state) {
     if (bakeRepaintRaf != null) cancelAnimationFrame(bakeRepaintRaf);
     const tick = () => {
         renderTilelabPreview(state, readControls(state));
-        if (state.worldSurfaces?.hasPendingSurfaceBakes?.()) bakeRepaintRaf = requestAnimationFrame(tick);
+        if (state.worldSurfaces.hasPendingSurfaceBakes()) bakeRepaintRaf = requestAnimationFrame(tick);
         else bakeRepaintRaf = null;
     };
     bakeRepaintRaf = requestAnimationFrame(tick);
@@ -43,7 +43,6 @@ async function refreshPreview(state) {
     const ctrl = readControls(state);
     syncTilelabWorld(state, ctrl);
     syncMapInspectorAfterRegen(state, () => renderActiveLabView(state));
-    state.worldSurfaces.clear();
     await registerEditorProfiles(state);
     renderActiveLabView(state);
     runBakeRepaintLoop(state);
@@ -71,7 +70,7 @@ function bootstrapTilelabUi(state) {
     void syncRuntimeLabProfile();
     const onLabViewChange = () => {
         renderActiveLabView(state);
-        if (state.worldSurfaces?.hasPendingSurfaceBakes?.()) runBakeRepaintLoop(state);
+        if (state.worldSurfaces.hasPendingSurfaceBakes()) runBakeRepaintLoop(state);
     };
     mountLabViewport(state, onLabViewChange);
     bindViewModeControls(state, () => renderActiveLabView(state));
@@ -157,6 +156,6 @@ export const tilelabUiPort = {
         if (!bootstrapped) return;
         refreshLabViewportControls(state);
         renderActiveLabView(state);
-        if (state.worldSurfaces?.hasPendingSurfaceBakes?.()) runBakeRepaintLoop(state);
+        if (state.worldSurfaces.hasPendingSurfaceBakes()) runBakeRepaintLoop(state);
     },
 };
