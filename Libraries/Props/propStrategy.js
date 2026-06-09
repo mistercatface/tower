@@ -11,6 +11,8 @@ export const PROP_STRATEGY_DEFAULTS = {
     mass: 1,
     friction: 8,
     wallPhysics: null,
+    canDamageWalls: false,
+    wallDamage: 10,
     maxHealth: null,
     /** @type {PropCollisionShape} */
     collisionShape: "circle",

@@ -4,6 +4,7 @@ import { GUN_ID_TO_VISUAL } from "../../Assets/guns/visualMap.js";
 import { createDefaultRenderPorts } from "../../Libraries/Render/defaultRenderPorts.js";
 import { createWeaponVisuals } from "../../Libraries/Render/Characters/weapons/createWeaponVisuals.js";
 import { getGameState } from "../../GameState/GameState.js";
+import { createCombatWallResolver } from "../../Systems/Motion/createCombatWallResolver.js";
 import { syncLabScreenCanvasBounds } from "./ui/labCanvas.js";
 import { createSandboxCombatFeature } from "../../Libraries/Combat/createSandboxCombatFeature.js";
 import { SharedGameState } from "../../GameState/SharedGameState.js";
@@ -60,6 +61,7 @@ export class TileLabGameState extends SharedGameState {
         this.labShowTopologyOverlay = false;
         this.mapViewport = new Viewport(0, 0, 1);
         this.roguelikeMapSession = createRoguelikeMapSession();
+        this.wallResolver = createCombatWallResolver(() => getGameState());
     }
 }
 export class TileLabSimulationState {

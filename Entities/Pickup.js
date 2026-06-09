@@ -38,6 +38,7 @@ export class Pickup extends Entity {
         this.vy = 0;
         this.angularVelocity = 0;
         this.mass = this.strategy.mass;
+        this.canDamageWalls = !!this.strategy.canDamageWalls;
         this.zIndex = 10;
         this.facing = facing ?? Math.random() * Math.PI * 2;
         if (this.strategy.standTip) {
