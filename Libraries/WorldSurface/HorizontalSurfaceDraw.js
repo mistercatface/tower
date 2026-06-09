@@ -1,7 +1,7 @@
 /**
  * World-aligned horizontal surface chunks (ground z=0, elevated roofs z>0).
  */
-import { projectWorldPointAtHeight, projectWorldRectCorners } from "../Spatial/iso/IsometricProjection.js";
+import { projectWorldPointAtHeight, projectWorldRectCorners, resolveElevationAlpha } from "../Spatial/iso/IsometricProjection.js";
 import { getSegmentFootprintCorners } from "../Spatial/geometry/WallGeometry.js";
 /** @returns {{ x: number, y: number }} */
 export function projectHorizontalSurfaceOrigin(worldX, worldY, zLevel, viewerX, viewerY, cameraHeight) {
@@ -17,34 +17,11 @@ export function projectHorizontalSurfaceCorners(originX, originY, sizePx, zLevel
  * @param {number} chunkOriginY
  * @param {number} chunkSizePx
  */
-function collectWallSegmentsInChunk(wallSpatialIndex, chunkOriginX, chunkOriginY, chunkSizePx) {
-    if (!wallSpatialIndex) return [];
-    return wallSpatialIndex.collectInBounds(chunkOriginX, chunkOriginY, chunkOriginX + chunkSizePx, chunkOriginY + chunkSizePx).filter((segment) => !segment.isDead);
-}
-/**
- * @param {import("../Spatial/indexes/WallSpatialIndex.js").WallSpatialIndex | null | undefined} wallSpatialIndex
- * @param {number} chunkOriginX
- * @param {number} chunkOriginY
- * @param {number} chunkSizePx
- */
 export function chunkHasWallSegments(wallSpatialIndex, chunkOriginX, chunkOriginY, chunkSizePx) {
-    return collectWallSegmentsInChunk(wallSpatialIndex, chunkOriginX, chunkOriginY, chunkSizePx).length > 0;
-}
-/**
- * @param {CanvasRenderingContext2D} ctx
- * @param {[{ x: number, y: number }, { x: number, y: number }, { x: number, y: number }, { x: number, y: number }]} corners
- * @param {number} zLevel
- * @param {number} viewerX
- * @param {number} viewerY
- * @param {number} cameraHeight
- */
-function clipProjectedQuad(ctx, corners, zLevel, viewerX, viewerY, cameraHeight) {
-    const projected = corners.map((corner) => projectHorizontalSurfaceOrigin(corner.x, corner.y, zLevel, viewerX, viewerY, cameraHeight));
-    ctx.moveTo(projected[0].x, projected[0].y);
-    ctx.lineTo(projected[1].x, projected[1].y);
-    ctx.lineTo(projected[2].x, projected[2].y);
-    ctx.lineTo(projected[3].x, projected[3].y);
-    ctx.closePath();
+    if (!wallSpatialIndex) return false;
+    const segments = wallSpatialIndex.collectInBounds(chunkOriginX, chunkOriginY, chunkOriginX + chunkSizePx, chunkOriginY + chunkSizePx);
+    for (let i = 0; i < segments.length; i++) if (!segments[i].isDead) return true;
+    return false;
 }
 /**
  * Clip draw to projected wall-segment footprints at roof elevation.
@@ -61,13 +38,25 @@ function clipProjectedQuad(ctx, corners, zLevel, viewerX, viewerY, cameraHeight)
  * @returns {boolean}
  */
 export function clipChunkToRoofFootprints(ctx, wallSpatialIndex, chunkOriginX, chunkOriginY, chunkSizePx, zLevel, viewerX, viewerY, cameraHeight, defaultWallHeight) {
-    const segments = collectWallSegmentsInChunk(wallSpatialIndex, chunkOriginX, chunkOriginY, chunkSizePx);
+    if (!wallSpatialIndex) return false;
+    const segments = wallSpatialIndex.collectInBounds(chunkOriginX, chunkOriginY, chunkOriginX + chunkSizePx, chunkOriginY + chunkSizePx);
     let clippedAny = false;
+    const alpha = resolveElevationAlpha(zLevel, cameraHeight, 1);
     ctx.beginPath();
-    for (const segment of segments) {
+    for (let i = 0; i < segments.length; i++) {
+        const segment = segments[i];
+        if (segment.isDead) continue;
         const segZ = segment.wallHeight ?? defaultWallHeight;
         if (Math.abs(segZ - zLevel) > 0.01) continue;
-        clipProjectedQuad(ctx, getSegmentFootprintCorners(segment), zLevel, viewerX, viewerY, cameraHeight);
+        const corners = getSegmentFootprintCorners(segment);
+        for (let j = 0; j < 4; j++) {
+            const corner = corners[j];
+            const px = corner.x + (corner.x - viewerX) * alpha;
+            const py = corner.y + (corner.y - viewerY) * alpha;
+            if (j === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
         clippedAny = true;
     }
     if (!clippedAny) return false;
