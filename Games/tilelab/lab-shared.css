@@ -144,7 +144,8 @@ body {
 
 .toolbar button,
 .editor-tools button,
-.col-body button {
+.col-body button,
+.editor-panel-section button {
     background: var(--accent-dim);
     border: 1px solid var(--accent);
     color: var(--accent);
@@ -160,7 +161,8 @@ body {
 
 .toolbar button:hover,
 .editor-tools button:hover,
-.col-body button:hover {
+.col-body button:hover,
+.editor-panel-section button:hover {
     background: var(--accent);
     color: var(--bg);
     transform: translateY(-1px);
@@ -168,13 +170,15 @@ body {
 }
 
 .toolbar button.secondary,
-.col-body button.secondary {
+.col-body button.secondary,
+.editor-panel-section button.secondary {
     background: transparent;
     border-color: var(--border);
     color: var(--text);
 }
 
-.col-body button.secondary:hover {
+.col-body button.secondary:hover,
+.editor-panel-section button.secondary:hover {
     background: rgba(255, 255, 255, 0.05);
     color: var(--text);
     box-shadow: none;
@@ -252,6 +256,133 @@ body {
 }
 
 /* —— Editor column —— */
+.col-editor {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.editor-sidebar-head {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(0, 0, 0, 0.25);
+}
+
+.editor-sidebar-title {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.editor-panel-toggles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: flex-end;
+}
+
+.editor-panel-toggle {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+}
+
+.editor-panel-toggle input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+}
+
+.editor-panel-toggle span {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 500;
+    transition:
+        background var(--transition),
+        border-color var(--transition),
+        color var(--transition),
+        box-shadow var(--transition);
+}
+
+.editor-panel-toggle:hover span {
+    border-color: rgba(56, 189, 248, 0.35);
+    color: var(--text);
+}
+
+.editor-panel-toggle input:checked + span {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.15);
+}
+
+.editor-panels-stack {
+    flex: 1 1 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px;
+    overflow: hidden;
+}
+
+.editor-panel-section {
+    display: none;
+    flex-direction: column;
+    min-height: 0;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.22);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+}
+
+.editor-panel-section.is-visible {
+    display: flex;
+    flex: 1 1 0;
+    min-height: 140px;
+}
+
+.col-editor[data-active-panels="sandbox"] #sandboxPanel,
+.col-editor[data-active-panels="profile"] #surfaceEditorPanel,
+.col-editor[data-active-panels="map"] #topologyEditorPanel,
+.col-editor[data-active-panels=""] .editor-panels-stack {
+    flex: 1 1 auto;
+}
+
+.editor-panel-head {
+    flex: 0 0 auto;
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.editor-panel-body {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+}
+
 .editor-tools {
     flex: 0 0 auto;
     display: flex;

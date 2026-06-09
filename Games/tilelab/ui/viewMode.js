@@ -1,17 +1,42 @@
+/** @param {string} panelId @param {boolean} visible */
+function setEditorPanelVisible(panelId, visible) {
+    const panel = document.getElementById(panelId);
+    if (!panel) return;
+    panel.classList.toggle("is-visible", visible);
+    panel.hidden = !visible;
+}
 /** @param {import("../index.js").TileLabGameState} state */
 export function applyLabViewChrome(state) {
-    const showOverlay = state.labShowTopologyOverlay;
-    const app = document.querySelector(".app");
-    if (app) app.dataset.topologyOverlay = showOverlay ? "true" : "false";
-    const topologyPanel = document.getElementById("topologyEditorPanel");
+    setEditorPanelVisible("sandboxPanel", state.labShowSandboxPanel);
+    setEditorPanelVisible("surfaceEditorPanel", state.labShowProfilePanel);
+    setEditorPanelVisible("topologyEditorPanel", state.labShowTopologyOverlay);
+    const editor = document.querySelector(".col-editor");
+    if (editor) {
+        const active = [];
+        if (state.labShowSandboxPanel) active.push("sandbox");
+        if (state.labShowProfilePanel) active.push("profile");
+        if (state.labShowTopologyOverlay) active.push("map");
+        editor.dataset.activePanels = active.join(" ");
+    }
     const mapStatus = document.getElementById("mapStatusLine");
-    if (topologyPanel) topologyPanel.style.display = showOverlay ? "flex" : "none";
-    if (mapStatus) mapStatus.style.display = showOverlay ? "block" : "none";
-    const checkbox = document.getElementById("showTopologyOverlayInput");
-    if (checkbox) checkbox.checked = showOverlay;
+    if (mapStatus) mapStatus.style.display = state.labShowTopologyOverlay ? "block" : "none";
+    const sandboxToggle = document.getElementById("showSandboxPanelInput");
+    if (sandboxToggle) sandboxToggle.checked = state.labShowSandboxPanel;
+    const profileToggle = document.getElementById("showProfilePanelInput");
+    if (profileToggle) profileToggle.checked = state.labShowProfilePanel;
+    const topologyToggle = document.getElementById("showTopologyOverlayInput");
+    if (topologyToggle) topologyToggle.checked = state.labShowTopologyOverlay;
 }
 /** @param {import("../index.js").TileLabGameState} state @param {() => void} onChange */
 export function bindViewModeControls(state, onChange) {
+    document.getElementById("showSandboxPanelInput")?.addEventListener("change", (e) => {
+        state.labShowSandboxPanel = /** @type {HTMLInputElement} */ (e.target).checked;
+        applyLabViewChrome(state);
+    });
+    document.getElementById("showProfilePanelInput")?.addEventListener("change", (e) => {
+        state.labShowProfilePanel = /** @type {HTMLInputElement} */ (e.target).checked;
+        applyLabViewChrome(state);
+    });
     document.getElementById("showTopologyOverlayInput")?.addEventListener("change", (e) => {
         state.labShowTopologyOverlay = /** @type {HTMLInputElement} */ (e.target).checked;
         applyLabViewChrome(state);

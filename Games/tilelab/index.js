@@ -55,6 +55,8 @@ export class TileLabGameState extends SharedGameState {
         this.mapSeed = rand;
         this.floorSeed = rand;
         this._pendingProfileRefresh = false;
+        this.labShowSandboxPanel = true;
+        this.labShowProfilePanel = true;
         this.labShowTopologyOverlay = false;
         this.mapViewport = new Viewport(0, 0, 1);
         this.roguelikeMapSession = createRoguelikeMapSession();

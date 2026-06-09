@@ -89,20 +89,14 @@
     margin-bottom: 4px;
 }
 
-.view-mode-group {
-    display: inline-flex;
-    gap: 8px;
-}
-
-#topologyEditorPanel,
-#surfaceEditorPanel {
-    flex-direction: column;
-    min-height: 0;
-    flex: 1;
-}
-
-#sandboxPanel {
+#surfaceEditorPanel .editor-tools {
     flex: 0 0 auto;
+}
+
+#surfaceEditorPanel .editor-scroll,
+#topologyEditorPanel .editor-scroll {
+    flex: 1 1 0;
+    min-height: 0;
 }
 
 .sandbox-panel-body {
