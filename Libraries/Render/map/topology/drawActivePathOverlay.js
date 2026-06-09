@@ -1,3 +1,4 @@
+/** @typedef {"normal" | "debug"} PathOverlayVisual */
 /**
  * @typedef {Object} ActivePathOverlay
  * @property {"direct" | "hpa"} mode
@@ -9,6 +10,42 @@
  * @property {Array<{ x: number, y: number, id?: string }>} [abstractPath]
  * @property {"local" | "hpa"} [pathPlanner]
  */
+function drawNormalPathOverlay(ctx, overlay) {
+    const { mode, fromX, fromY, targetX, targetY, waypoints } = overlay;
+    const lineScale = 1 / Math.max(0.001, ctx.getTransform().a);
+    if (mode === "direct") {
+        ctx.save();
+        ctx.setLineDash([4 * lineScale, 4 * lineScale]);
+        ctx.strokeStyle = "rgba(0, 188, 212, 0.55)";
+        ctx.lineWidth = 1.5 * lineScale;
+        ctx.beginPath();
+        ctx.moveTo(fromX, fromY);
+        ctx.lineTo(targetX, targetY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.strokeStyle = "rgba(0, 188, 212, 0.85)";
+        ctx.lineWidth = 2 * lineScale;
+        ctx.beginPath();
+        ctx.arc(targetX, targetY, 4 * lineScale, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+        return;
+    }
+    ctx.save();
+    ctx.strokeStyle = "rgba(156, 39, 176, 0.65)";
+    ctx.lineWidth = 2.5 * lineScale;
+    ctx.beginPath();
+    ctx.moveTo(fromX, fromY);
+    if (waypoints?.length) for (const wp of waypoints) ctx.lineTo(wp.x, wp.y);
+    else ctx.lineTo(targetX, targetY);
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(156, 39, 176, 0.9)";
+    ctx.lineWidth = 2 * lineScale;
+    ctx.beginPath();
+    ctx.arc(targetX, targetY, 5 * lineScale, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+}
 function drawPathMarker(ctx, x, y, radius, fillStyle, label, zoom) {
     ctx.beginPath();
     ctx.arc(x, y, radius, 0, Math.PI * 2);
@@ -55,8 +92,13 @@ function drawAbstractPath(ctx, abstractPath, zoom, pathPlanner = "hpa") {
  * @param {CanvasRenderingContext2D} ctx
  * @param {ActivePathOverlay} overlay
  * @param {number} zoom
+ * @param {PathOverlayVisual} [visual]
  */
-export function drawActivePathOverlay(ctx, overlay, zoom) {
+export function drawActivePathOverlay(ctx, overlay, zoom, visual = "debug") {
+    if (visual === "normal") {
+        drawNormalPathOverlay(ctx, overlay);
+        return;
+    }
     const { mode, fromX, fromY, targetX, targetY, waypoints, abstractPath, pathPlanner } = overlay;
     if (mode === "hpa") {
         if (abstractPath) drawAbstractPath(ctx, abstractPath, zoom, pathPlanner ?? "hpa");

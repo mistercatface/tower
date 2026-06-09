@@ -64,8 +64,7 @@ export function drawTilelabSurfaceFrame(ctx, canvas, worldState, profileId, draw
     ctx.restore();
     ctx.save();
     viewport.apply(ctx);
-    if (topologySession && topologyOptions)
-        drawTopologyLayer(ctx, worldState, viewport, topologyOptions, topologySession, { overlay: true, activePathOverlay: getTilelabSandboxController()?.collectActivePathOverlay() ?? null });
+    if (topologySession && topologyOptions) drawTopologyLayer(ctx, worldState, viewport, topologyOptions, topologySession, { overlay: true });
     worldState.surfaceProfileOverride = prevProfileOverride;
     if (showFocusMarker) drawFocusMarker(ctx, cameraX, cameraY);
     getTilelabSandboxController()?.drawOverlay(ctx);

@@ -1,4 +1,3 @@
-import { drawActivePathOverlay } from "./drawActivePathOverlay.js";
 export function drawTopologyGridBounds(ctx, grid, zoom) {
     if (grid.minX === undefined || grid.maxX === undefined) return;
     ctx.strokeStyle = "rgba(255, 0, 0, 0.3)";
@@ -20,9 +19,8 @@ export function drawTopologyRoomZones(ctx, state, zoom) {
     }
 }
 export function drawTopologyOverlays(ctx, state, config) {
-    const { topologyOptions, viewport, activePathOverlay } = config;
+    const { topologyOptions, viewport } = config;
     if (!topologyOptions || !viewport) return;
     if (topologyOptions.showGridBounds && state.obstacleGrid) drawTopologyGridBounds(ctx, state.obstacleGrid, viewport.zoom);
     if (topologyOptions.showRoomZones) drawTopologyRoomZones(ctx, state, viewport.zoom);
-    if (activePathOverlay) drawActivePathOverlay(ctx, activePathOverlay, viewport.zoom);
 }

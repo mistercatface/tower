@@ -2,6 +2,7 @@ import { getPropAsset, getWorldPropDefinitions } from "../Props/PropCatalog.js";
 import { SANDBOX_DEFAULT_FACTION, SANDBOX_FACTION_OPTIONS, formatSandboxFactionLabel, resolveSandboxFaction } from "../Combat/sandboxTargeting.js";
 import { getSandboxBehaviorLabel, isSandboxEquippable, isSandboxSpawnable } from "./sandboxCapabilities.js";
 import { renderSandboxEquipPanel } from "./sandboxEquipPanel.js";
+import { SANDBOX_PATH_VISUAL_LABELS, SANDBOX_PATH_VISUAL_OPTIONS } from "./sandboxPathVisual.js";
 
 function appendFactionSelect(parent, { value, onChange }) {
     const field = document.createElement("div");
@@ -146,6 +147,24 @@ export function mountSandboxToyUi(container, controller, onChange) {
                     onChange();
                 },
             });
+            const pathField = document.createElement("div");
+            pathField.className = "param-field";
+            const pathLabel = document.createElement("span");
+            pathLabel.textContent = "Path visual";
+            const pathSelect = document.createElement("select");
+            for (const optionId of SANDBOX_PATH_VISUAL_OPTIONS) {
+                const option = document.createElement("option");
+                option.value = optionId;
+                option.textContent = SANDBOX_PATH_VISUAL_LABELS[optionId];
+                pathSelect.appendChild(option);
+            }
+            pathSelect.value = controller.getPathVisual(selectedPickup);
+            pathSelect.addEventListener("change", () => {
+                controller.setPathVisual(pathSelect.value, selectedPickup);
+                onChange();
+            });
+            pathField.append(pathLabel, pathSelect);
+            selectedPanel.appendChild(pathField);
             container.appendChild(selectedPanel);
         }
         const equipPanel = document.createElement("div");

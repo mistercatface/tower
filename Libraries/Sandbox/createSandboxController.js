@@ -4,7 +4,9 @@ import { findPickupAt } from "./findPickupAt.js";
 import { createSandboxSession } from "./sandboxSession.js";
 import { resolveSandboxBehaviors } from "./sandboxCapabilities.js";
 import { drawSandboxLaserSights } from "./drawLaserSights.js";
+import { drawSandboxPathOverlay } from "./drawSandboxPathOverlay.js";
 import { drawSandboxWeaponBars } from "./drawPickupWeaponBars.js";
+import { resolveSandboxPathVisual, setSandboxPathVisual } from "./sandboxPathVisual.js";
 /** @typedef {import("./SandboxHostPort.js").SandboxHostPort} SandboxHostPort */
 /**
  * @typedef {object} SandboxBehavior
@@ -162,6 +164,11 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
             behavior.tick(pickup, dt, host);
         },
         /** @param {CanvasRenderingContext2D} ctx */
+        drawPathOverlay(ctx) {
+            const pickup = session.getSelectedPickup();
+            const behavior = resolveBehavior();
+            if (pickup) drawSandboxPathOverlay(ctx, pickup, behavior, host);
+        },
         drawOverlay(ctx) {
             const pickup = session.getSelectedPickup();
             const behavior = resolveBehavior();
@@ -169,11 +176,13 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
             drawSandboxWeaponBars(ctx, host);
             drawSandboxLaserSights(ctx, host);
         },
-        collectActivePathOverlay() {
-            const pickup = session.getSelectedPickup();
-            const behavior = resolveBehavior();
-            if (!pickup || !behavior?.getPathOverlay) return null;
-            return behavior.getPathOverlay(pickup, host);
+        getPathVisual(pickup = session.getSelectedPickup()) {
+            return pickup ? resolveSandboxPathVisual(pickup) : "off";
+        },
+        setPathVisual(visual, pickup = session.getSelectedPickup()) {
+            if (!pickup) return;
+            setSandboxPathVisual(pickup, visual);
+            session.sync();
         },
     };
     return controller;

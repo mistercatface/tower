@@ -21,6 +21,7 @@ import { syncTilelabWorld, readControls, syncPreviewZoomToStage } from "./ui/too
 import { mergePairFilter } from "../../Libraries/Interaction/pairRules.js";
 import { excludeDeadOther, excludeActorOther, requirePickupOnHit } from "../../Libraries/Interaction/pairRuleClauses.js";
 import { tilelabUiPort } from "./ui/tilelabUiPort.js";
+import { sandboxPathEffectPass } from "./render/sandboxPathEffectPass.js";
 export const LAB_PREVIEW_RANGE = 160;
 export const TILELAB_SANDBOX_SPAWN_PROP = "beach_ball";
 export const tilelabMapTopology = { ...ROGUELIKE_MAP_TOPOLOGY };
@@ -84,7 +85,7 @@ export const tilelabGame = {
     initialState: "simulation",
     simulationPort: tilelabSimulation,
     uiPort: tilelabUiPort,
-    render: createDefaultRenderPorts({ weaponVisuals: createWeaponVisuals(GUN_ID_TO_VISUAL) }),
+    render: { ...createDefaultRenderPorts({ weaponVisuals: createWeaponVisuals(GUN_ID_TO_VISUAL) }), simulationEffectPasses: [sandboxPathEffectPass] },
     worldGen: createRoguelikeWorldGenPort({ topology: tilelabMapTopology }),
     proceduralDesign: roguelikeProceduralDesign,
     runBootstrapPort: layoutOnlyRunBootstrap,

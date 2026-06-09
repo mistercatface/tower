@@ -2,7 +2,6 @@ import { drawMapViewInWorld } from "../MapViewRenderer.js";
 import { createTopologyMapViewConfig } from "./topologyMapPresets.js";
 import { TOPOLOGY_MAP_GRAPH_STYLES } from "./topologyMapStyles.js";
 import { drawTopologyOverlays } from "./topologyOverlays.js";
-/** @typedef {import("./drawActivePathOverlay.js").ActivePathOverlay} ActivePathOverlay */
 /**
  * @typedef {Object} TopologySession
  * @property {number | null} selectedNodeId
@@ -16,16 +15,15 @@ import { drawTopologyOverlays } from "./topologyOverlays.js";
  * @param {import("../../../Viewport/Viewport.js").Viewport} viewport
  * @param {import("./topologyMapPresets.js").TopologyDisplayOptions} displayOptions
  * @param {TopologySession} session
- * @param {{ overlay?: boolean, activePathOverlay?: ActivePathOverlay | null }} [options]
+ * @param {{ overlay?: boolean }} [options]
  */
-export function drawTopologyLayer(ctx, state, viewport, displayOptions, session, { overlay = false, activePathOverlay = null } = {}) {
+export function drawTopologyLayer(ctx, state, viewport, displayOptions, session, { overlay = false } = {}) {
     drawMapViewInWorld(ctx, state, {
         ...createTopologyMapViewConfig(displayOptions, { viewport, selectedNodeId: session.selectedNodeId }),
         graphStyles: TOPOLOGY_MAP_GRAPH_STYLES,
         wallCache: state.mapTopologyWallCache,
         viewport,
         topologyOptions: displayOptions,
-        activePathOverlay,
         drawOverlays: drawTopologyOverlays,
         overlay,
     });

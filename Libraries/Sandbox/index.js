@@ -14,6 +14,16 @@ export { createRollToCursorDirectBehavior, ROLL_TO_CURSOR_DIRECT_BEHAVIOR_ID } f
 export { createRollToCursorHpaBehavior, ROLL_TO_CURSOR_HPA_BEHAVIOR_ID } from "./behaviors/rollToCursorHpaBehavior.js";
 export { createShootBehavior, SHOOT_BEHAVIOR_ID } from "./behaviors/shootBehavior.js";
 export { mountSandboxToyUi } from "./sandboxToyUi.js";
+export {
+    SANDBOX_PATH_VISUAL_OFF,
+    SANDBOX_PATH_VISUAL_NORMAL,
+    SANDBOX_PATH_VISUAL_DEBUG,
+    SANDBOX_PATH_VISUAL_OPTIONS,
+    SANDBOX_PATH_VISUAL_LABELS,
+    resolveSandboxPathVisual,
+    setSandboxPathVisual,
+} from "./sandboxPathVisual.js";
+export { drawSandboxPathOverlay } from "./drawSandboxPathOverlay.js";
 export { renderSandboxEquipPanel } from "./sandboxEquipPanel.js";
 export { getSandboxBehaviorLabel, isSandboxEquippable, isSandboxSpawnable, resolveSandboxBehaviors, SANDBOX_BEHAVIOR_LABELS } from "./sandboxCapabilities.js";
 export {
