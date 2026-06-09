@@ -9,6 +9,7 @@ import {
     mountSandboxToyUi,
 } from "../../../Libraries/Sandbox/index.js";
 import { createTilelabSandboxHost } from "./tilelabSandboxHost.js";
+import { registerSandboxVoidPickupStates, unregisterSandboxVoidPickupStates } from "../sandboxVoidZones.js";
 /** @type {ReturnType<typeof createSandboxController> | null} */
 let sandboxController = null;
 let unmountToyUi = null;
@@ -18,6 +19,7 @@ let unmountToyUi = null;
  */
 export function mountTilelabSandbox(state, requestRedraw) {
     destroyTilelabSandbox();
+    registerSandboxVoidPickupStates();
     sandboxController = createSandboxController(createTilelabSandboxHost(state, requestRedraw), {
         defaultSpawnPropId: TILELAB_SANDBOX_SPAWN_PROP,
         behaviors: [createDragLaunchBehavior(), createShootBehavior(), createRollToCursorDirectBehavior(), createRollToCursorHpaBehavior()],
@@ -32,6 +34,7 @@ export function destroyTilelabSandbox() {
     unmountToyUi = null;
     sandboxController?.destroy();
     sandboxController = null;
+    unregisterSandboxVoidPickupStates();
 }
 export function clearTilelabSandbox() {
     sandboxController?.clearBodies();

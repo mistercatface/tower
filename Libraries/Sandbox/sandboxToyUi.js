@@ -3,7 +3,6 @@ import { SANDBOX_DEFAULT_FACTION, SANDBOX_FACTION_OPTIONS, formatSandboxFactionL
 import { getSandboxBehaviorLabel, isSandboxEquippable, isSandboxSpawnable } from "./sandboxCapabilities.js";
 import { renderSandboxEquipPanel } from "./sandboxEquipPanel.js";
 import { SANDBOX_PATH_VISUAL_LABELS, SANDBOX_PATH_VISUAL_OPTIONS } from "./sandboxPathVisual.js";
-
 function appendFactionSelect(parent, { value, onChange }) {
     const field = document.createElement("div");
     field.className = "param-field";
@@ -70,7 +69,14 @@ export function mountSandboxToyUi(container, controller, onChange) {
         addBtn.addEventListener("click", () => {
             controller.spawnAtCameraOrigin();
         });
-        addRow.append(typeField, addBtn);
+        const addVoidBtn = document.createElement("button");
+        addVoidBtn.type = "button";
+        addVoidBtn.className = "secondary";
+        addVoidBtn.textContent = "Add void";
+        addVoidBtn.addEventListener("click", () => {
+            controller.spawnVoidAtCameraOrigin();
+        });
+        addRow.append(typeField, addBtn, addVoidBtn);
         container.appendChild(addRow);
         const behaviorIds = controller.listBehaviors();
         if (behaviorIds.length > 0) {
@@ -131,6 +137,30 @@ export function mountSandboxToyUi(container, controller, onChange) {
                 list.appendChild(row);
             }
         container.appendChild(list);
+        const voidZones = controller.listVoidZones?.() ?? [];
+        if (voidZones.length > 0) {
+            const voidHead = document.createElement("div");
+            voidHead.className = "editor-subhead";
+            voidHead.textContent = "Void zones";
+            container.appendChild(voidHead);
+            const voidList = document.createElement("div");
+            voidList.className = "toy-instance-list";
+            for (const entry of voidZones) {
+                const row = document.createElement("div");
+                row.className = "toy-instance-row";
+                const label = document.createElement("span");
+                label.className = "toy-select-btn";
+                label.textContent = `${entry.label} · r${entry.radius}`;
+                const deleteBtn = document.createElement("button");
+                deleteBtn.type = "button";
+                deleteBtn.className = "toy-delete-btn secondary";
+                deleteBtn.textContent = "Delete";
+                deleteBtn.addEventListener("click", () => controller.deleteVoidZoneById(entry.id));
+                row.append(label, deleteBtn);
+                voidList.appendChild(row);
+            }
+            container.appendChild(voidList);
+        }
         const selectedPickup = controller.getSelectedPickup?.() ?? null;
         if (selectedPickup) {
             const selectedPanel = document.createElement("div");

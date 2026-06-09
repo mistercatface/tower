@@ -131,6 +131,9 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
             clampActiveBehavior();
         },
         spawnAtCameraOrigin: () => session.spawnAtCameraOrigin(),
+        spawnVoidAtCameraOrigin: () => session.spawnVoidAtCameraOrigin(),
+        deleteVoidZoneById: (id) => session.deleteVoidZoneById(id),
+        listVoidZones: () => session.listVoidZones(),
         deletePickupById: (id) => session.deletePickupById(id),
         listPlacedPickups: () => session.listPlacedPickups(),
         sync: () => session.sync(),

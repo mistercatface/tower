@@ -1,8 +1,7 @@
-import { createCircleGroundZone, createRectGroundZone, drawGroundZone, isGroundZoneInView, processGroundZones } from "../../Libraries/Spatial/zones/groundZones.js";
+import { drawGroundZone, isGroundZoneInView, processGroundZones } from "../../Libraries/Spatial/zones/groundZones.js";
 /** @param {import("./index.js").TileLabGameState} state */
 export function resetTilelabGroundZones(state) {
-    const origin = state.getMapSpawnOrigin();
-    state.groundZones = [createRectGroundZone(origin.x, origin.y, 80, 80, { id: "tilelab:debug-rect" }), createCircleGroundZone(origin.x + 140, origin.y, 70, { id: "tilelab:debug-circle" })];
+    state.groundZones = [];
 }
 export const tilelabGroundZonePhase = {
     id: "groundZone",

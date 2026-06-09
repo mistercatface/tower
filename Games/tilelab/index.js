@@ -15,6 +15,7 @@ import { Viewport } from "../../Libraries/Viewport/Viewport.js";
 import { createSimulationPort } from "../../Systems/Simulation/SimulationPipeline.js";
 import { gameSceneTickPhase, pushablePhysicsPhase } from "../../Systems/Simulation/phases.js";
 import { tilelabGroundZoneEffectPass, tilelabGroundZonePhase } from "./groundZones.js";
+import { sandboxVoidZoneEffectPass, sandboxVoidZonePhase } from "./sandboxVoidZones.js";
 import { getTilelabSandboxController } from "./world/tilelabSandbox.js";
 import { requestUiUpdate } from "../../Core/EventSystem.js";
 import { getRunScenePort, getSimulationPort } from "../../Core/GamePorts.js";
@@ -35,7 +36,7 @@ const sandboxTickPhase = {
         getTilelabSandboxController()?.tick(dt);
     },
 };
-export const tilelabSimulation = createSimulationPort([sandboxTickPhase, pushablePhysicsPhase, tilelabGroundZonePhase, gameSceneTickPhase]);
+export const tilelabSimulation = createSimulationPort([sandboxTickPhase, pushablePhysicsPhase, sandboxVoidZonePhase, tilelabGroundZonePhase, gameSceneTickPhase]);
 /** @type {import("../../Core/GameDefinitionTypes.js").RunScenePort} */
 export const tilelabRunScenePort = {
     getLayout: () => null,
@@ -63,6 +64,7 @@ export class TileLabGameState extends SharedGameState {
         this.viewport = new Viewport(0, 0, 1);
         this.labCanvas = null;
         this.groundZones = [];
+        this.sandboxVoidZones = [];
         this.roguelikeMapSession = createRoguelikeMapSession();
         this.wallResolver = createCombatWallResolver(() => getGameState());
     }
@@ -92,7 +94,10 @@ export const tilelabGame = {
     initialState: "simulation",
     simulationPort: tilelabSimulation,
     uiPort: tilelabUiPort,
-    render: { ...createDefaultRenderPorts({ weaponVisuals: createWeaponVisuals(GUN_ID_TO_VISUAL) }), simulationEffectPasses: [tilelabGroundZoneEffectPass, sandboxPathEffectPass] },
+    render: {
+        ...createDefaultRenderPorts({ weaponVisuals: createWeaponVisuals(GUN_ID_TO_VISUAL) }),
+        simulationEffectPasses: [sandboxVoidZoneEffectPass, tilelabGroundZoneEffectPass, sandboxPathEffectPass],
+    },
     worldGen: createRoguelikeWorldGenPort({ topology: tilelabMapTopology }),
     worldSurface: { pixelsPerCell: 6 },
     proceduralDesign: roguelikeProceduralDesign,

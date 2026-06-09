@@ -1,6 +1,7 @@
 import { Pickup } from "../../Entities/Pickup.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { SANDBOX_DEFAULT_FACTION, resolveSandboxFaction } from "../Combat/sandboxTargeting.js";
+import { createVoidZone, DEFAULT_VOID_RADIUS } from "../Spatial/zones/voidZone.js";
 /** @typedef {import("./SandboxHostPort.js").SandboxHostPort} SandboxHostPort */
 /**
  * @param {SandboxHostPort} host
@@ -33,6 +34,20 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
         sync();
         return prop;
     };
+    const voidZones = () => {
+        const state = host.getWorldState?.();
+        if (!state) return null;
+        if (!state.sandboxVoidZones) state.sandboxVoidZones = [];
+        return state.sandboxVoidZones;
+    };
+    const spawnVoidAt = (worldX, worldY, radius = DEFAULT_VOID_RADIUS) => {
+        const zones = voidZones();
+        if (!zones) return null;
+        const zone = createVoidZone(worldX, worldY, radius, { id: `void:${zones.length + 1}` });
+        zones.push(zone);
+        sync();
+        return zone;
+    };
     return {
         getSpawnPropId: () => spawnPropId,
         setSpawnPropId: (id) => {
@@ -58,6 +73,24 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
             if (!origin) return null;
             return spawnAt(origin.x, origin.y);
         },
+        spawnVoidAt,
+        spawnVoidAtCameraOrigin() {
+            const origin = host.getCameraOrigin?.();
+            if (!origin) return null;
+            return spawnVoidAt(origin.x, origin.y);
+        },
+        deleteVoidZoneById(id) {
+            const zones = voidZones();
+            if (!zones) return;
+            const index = zones.findIndex((zone) => zone.id === id);
+            if (index >= 0) zones.splice(index, 1);
+            sync();
+        },
+        listVoidZones() {
+            const zones = voidZones();
+            if (!zones) return [];
+            return zones.map((zone, index) => ({ id: zone.id, label: `void #${index + 1}`, radius: zone.shape.radius }));
+        },
         deletePickup(pickup) {
             if (!pickup) return;
             host.removePickup(pickup);
@@ -79,6 +112,8 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
         },
         clear() {
             host.clearPickups();
+            const zones = voidZones();
+            if (zones) zones.length = 0;
             selectedPickupId = null;
             sync();
         },
