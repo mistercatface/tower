@@ -2,7 +2,6 @@
  * World-aligned horizontal surface chunks (ground z=0, elevated roofs z>0).
  */
 import { projectWorldPointAtHeight, projectWorldRectCorners, resolveElevationAlpha } from "../Spatial/iso/IsometricProjection.js";
-import { getSegmentFootprintCorners } from "../Spatial/geometry/WallGeometry.js";
 import { worldToChunkCol, worldToChunkRow } from "../Spatial/grid/ChunkGrid.js";
 import { getWallDamageAlpha, wallDamageOverlayStyle } from "../Render/Structure3D/wallDamageVisual.js";
 /** @returns {{ x: number, y: number }} */
@@ -26,10 +25,9 @@ export function chunkHasWallSegments(wallSpatialIndex, chunkOriginX, chunkOrigin
     return false;
 }
 /**
- * Clip draw to projected wall-segment footprints at roof elevation.
+ * Clip draw to retained roof-cap footprints at the given elevation.
  *
  * @param {CanvasRenderingContext2D} ctx
- * @param {import("../Spatial/indexes/WallSpatialIndex.js").WallSpatialIndex | null | undefined} wallSpatialIndex
  * @param {number} chunkOriginX
  * @param {number} chunkOriginY
  * @param {number} chunkSizePx
@@ -37,49 +35,26 @@ export function chunkHasWallSegments(wallSpatialIndex, chunkOriginX, chunkOrigin
  * @param {number} viewerX
  * @param {number} viewerY
  * @param {number} cameraHeight
+ * @param {import("../Render/Scene/RenderScene.js").RenderScene | null | undefined} renderScene
  * @returns {boolean}
  */
-function clipRoofsFromSpatialIndex(ctx, wallSpatialIndex, chunkOriginX, chunkOriginY, chunkSizePx, zLevel, viewerX, viewerY, alpha) {
-    if (!wallSpatialIndex) return false;
+export function clipChunkToRoofFootprints(ctx, chunkOriginX, chunkOriginY, chunkSizePx, zLevel, viewerX, viewerY, cameraHeight, renderScene) {
+    if (!renderScene) return false;
+    const alpha = resolveElevationAlpha(zLevel, cameraHeight, 1);
+    const minCol = worldToChunkCol(chunkOriginX, renderScene.gridMinX, renderScene.chunkSizePx);
+    const maxCol = worldToChunkCol(chunkOriginX + chunkSizePx - 1, renderScene.gridMinX, renderScene.chunkSizePx);
+    const minRow = worldToChunkRow(chunkOriginY, renderScene.gridMinY, renderScene.chunkSizePx);
+    const maxRow = worldToChunkRow(chunkOriginY + chunkSizePx - 1, renderScene.gridMinY, renderScene.chunkSizePx);
+    const roofs = renderScene.collectPass("roofs", minCol, minRow, maxCol, maxRow);
+    ctx.beginPath();
     let clippedAny = false;
-    const segments = wallSpatialIndex.collectInBounds(chunkOriginX, chunkOriginY, chunkOriginX + chunkSizePx, chunkOriginY + chunkSizePx);
-    for (let i = 0; i < segments.length; i++) {
-        const segment = segments[i];
-        if (segment.isDead) continue;
-        const segZ = segment.wallHeight;
-        if (segZ == null || Math.abs(segZ - zLevel) > 0.01) continue;
-        const corners = getSegmentFootprintCorners(segment);
-        for (let j = 0; j < 4; j++) {
-            const corner = corners[j];
-            const px = corner.x + (corner.x - viewerX) * alpha;
-            const py = corner.y + (corner.y - viewerY) * alpha;
-            if (j === 0) ctx.moveTo(px, py);
-            else ctx.lineTo(px, py);
-        }
-        ctx.closePath();
+    for (let i = 0; i < roofs.length; i++) {
+        const roof = roofs[i];
+        if (roof.simWall?.isDead) continue;
+        if (Math.abs(roof.zLevel - zLevel) > 0.01) continue;
+        roof.draw(ctx, null, alpha, viewerX, viewerY);
         clippedAny = true;
     }
-    return clippedAny;
-}
-export function clipChunkToRoofFootprints(ctx, wallSpatialIndex, chunkOriginX, chunkOriginY, chunkSizePx, zLevel, viewerX, viewerY, cameraHeight, renderScene = null) {
-    let clippedAny = false;
-    const alpha = resolveElevationAlpha(zLevel, cameraHeight, 1);
-    ctx.beginPath();
-    if (renderScene) {
-        const minCol = worldToChunkCol(chunkOriginX, renderScene.gridMinX, renderScene.chunkSizePx);
-        const maxCol = worldToChunkCol(chunkOriginX + chunkSizePx - 1, renderScene.gridMinX, renderScene.chunkSizePx);
-        const minRow = worldToChunkRow(chunkOriginY, renderScene.gridMinY, renderScene.chunkSizePx);
-        const maxRow = worldToChunkRow(chunkOriginY + chunkSizePx - 1, renderScene.gridMinY, renderScene.chunkSizePx);
-        const roofs = renderScene.collectPass("roofs", minCol, minRow, maxCol, maxRow);
-        for (let i = 0; i < roofs.length; i++) {
-            const roof = roofs[i];
-            if (roof.simWall && roof.simWall.isDead) continue;
-            if (Math.abs(roof.zLevel - zLevel) > 0.01) continue;
-            roof.draw(ctx, null, alpha, viewerX, viewerY);
-            clippedAny = true;
-        }
-    }
-    if (!clippedAny) clippedAny = clipRoofsFromSpatialIndex(ctx, wallSpatialIndex, chunkOriginX, chunkOriginY, chunkSizePx, zLevel, viewerX, viewerY, alpha);
     if (!clippedAny) return false;
     ctx.clip();
     return true;
@@ -88,7 +63,6 @@ export function clipChunkToRoofFootprints(ctx, wallSpatialIndex, chunkOriginX, c
  * Per-wall roof damage tint — same health → overlay mapping as projected wall faces.
  *
  * @param {CanvasRenderingContext2D} ctx
- * @param {import("../Spatial/indexes/WallSpatialIndex.js").WallSpatialIndex | null | undefined} wallSpatialIndex
  * @param {number} chunkOriginX
  * @param {number} chunkOriginY
  * @param {number} chunkSizePx
@@ -96,54 +70,25 @@ export function clipChunkToRoofFootprints(ctx, wallSpatialIndex, chunkOriginX, c
  * @param {number} viewerX
  * @param {number} viewerY
  * @param {number} cameraHeight
- * @param {number} defaultWallHeight
+ * @param {import("../Render/Scene/RenderScene.js").RenderScene | null | undefined} renderScene
  */
-export function drawRoofSegmentDamageOverlays(ctx, wallSpatialIndex, chunkOriginX, chunkOriginY, chunkSizePx, zLevel, viewerX, viewerY, cameraHeight, renderScene = null) {
+export function drawRoofSegmentDamageOverlays(ctx, chunkOriginX, chunkOriginY, chunkSizePx, zLevel, viewerX, viewerY, cameraHeight, renderScene) {
+    if (!renderScene) return;
     const alpha = resolveElevationAlpha(zLevel, cameraHeight, 1);
-    let drewAny = false;
-    if (renderScene) {
-        const minCol = worldToChunkCol(chunkOriginX, renderScene.gridMinX, renderScene.chunkSizePx);
-        const maxCol = worldToChunkCol(chunkOriginX + chunkSizePx - 1, renderScene.gridMinX, renderScene.chunkSizePx);
-        const minRow = worldToChunkRow(chunkOriginY, renderScene.gridMinY, renderScene.chunkSizePx);
-        const maxRow = worldToChunkRow(chunkOriginY + chunkSizePx - 1, renderScene.gridMinY, renderScene.chunkSizePx);
-        const roofs = renderScene.collectPass("roofs", minCol, minRow, maxCol, maxRow);
-        for (let i = 0; i < roofs.length; i++) {
-            const roof = roofs[i];
-            if (roof.simWall && roof.simWall.isDead) continue;
-            if (Math.abs(roof.zLevel - zLevel) > 0.01) continue;
-            const damageAlpha = getWallDamageAlpha(roof.simWall);
-            if (damageAlpha <= 0) continue;
-            ctx.save();
-            ctx.beginPath();
-            roof.draw(ctx, null, alpha, viewerX, viewerY);
-            ctx.clip();
-            ctx.fillStyle = wallDamageOverlayStyle(damageAlpha);
-            ctx.fill();
-            ctx.restore();
-            drewAny = true;
-        }
-    }
-    if (drewAny) return;
-    if (!wallSpatialIndex) return;
-    const segments = wallSpatialIndex.collectInBounds(chunkOriginX, chunkOriginY, chunkOriginX + chunkSizePx, chunkOriginY + chunkSizePx);
-    for (let i = 0; i < segments.length; i++) {
-        const segment = segments[i];
-        if (segment.isDead) continue;
-        const segZ = segment.wallHeight;
-        if (segZ == null || Math.abs(segZ - zLevel) > 0.01) continue;
-        const damageAlpha = getWallDamageAlpha(segment);
+    const minCol = worldToChunkCol(chunkOriginX, renderScene.gridMinX, renderScene.chunkSizePx);
+    const maxCol = worldToChunkCol(chunkOriginX + chunkSizePx - 1, renderScene.gridMinX, renderScene.chunkSizePx);
+    const minRow = worldToChunkRow(chunkOriginY, renderScene.gridMinY, renderScene.chunkSizePx);
+    const maxRow = worldToChunkRow(chunkOriginY + chunkSizePx - 1, renderScene.gridMinY, renderScene.chunkSizePx);
+    const roofs = renderScene.collectPass("roofs", minCol, minRow, maxCol, maxRow);
+    for (let i = 0; i < roofs.length; i++) {
+        const roof = roofs[i];
+        if (roof.simWall?.isDead) continue;
+        if (Math.abs(roof.zLevel - zLevel) > 0.01) continue;
+        const damageAlpha = getWallDamageAlpha(roof.simWall);
         if (damageAlpha <= 0) continue;
-        const corners = getSegmentFootprintCorners(segment);
         ctx.save();
         ctx.beginPath();
-        for (let j = 0; j < 4; j++) {
-            const corner = corners[j];
-            const px = corner.x + (corner.x - viewerX) * alpha;
-            const py = corner.y + (corner.y - viewerY) * alpha;
-            if (j === 0) ctx.moveTo(px, py);
-            else ctx.lineTo(px, py);
-        }
-        ctx.closePath();
+        roof.draw(ctx, null, alpha, viewerX, viewerY);
         ctx.clip();
         ctx.fillStyle = wallDamageOverlayStyle(damageAlpha);
         ctx.fill();

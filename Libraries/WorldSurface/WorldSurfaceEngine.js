@@ -257,7 +257,7 @@ export class WorldSurfaceEngine {
                 }
                 if (zLevel > 0) {
                     ctx.save();
-                    if (!clipChunkToRoofFootprints(ctx, wallSpatialIndex, originX, originY, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight, options.renderScene)) {
+                    if (!clipChunkToRoofFootprints(ctx, originX, originY, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight, options.renderScene)) {
                         ctx.restore();
                         continue;
                     }
@@ -269,7 +269,7 @@ export class WorldSurfaceEngine {
                     const bleedPx = this.settings.wallTextureBleedPx ?? 1;
                     ctx.drawImage(canvas, dstX - bleedPx, dstY - bleedPx, dstW + bleedPx * 2, dstH + bleedPx * 2);
                     ctx.restore();
-                    drawRoofSegmentDamageOverlays(ctx, wallSpatialIndex, originX, originY, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight, options.renderScene);
+                    drawRoofSegmentDamageOverlays(ctx, originX, originY, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight, options.renderScene);
                 } else drawBakedTexture(ctx, canvas, originX, originY, chunkSizePx, chunkSizePx, this.settings);
             }
         ctx.restore();
