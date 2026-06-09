@@ -30,8 +30,8 @@ export class WorldSceneRenderer {
      * @param {WorldSceneDrawOptions} [options]
      */
     drawDebrisProps(ctx, input, viewport, options = {}) {
-        const px = input.viewer.x;
-        const py = input.viewer.y;
+        const px = viewport.x;
+        const py = viewport.y;
         ctx.save();
         clipToViewport(ctx, viewport);
         for (let i = 0; i < input.pickups.length; i++) {
@@ -43,7 +43,7 @@ export class WorldSceneRenderer {
         ctx.restore();
     }
     _getSceneChunkRange(scene, viewport) {
-        const bounds = viewport.boundsQuery ?? viewport.getWorldBounds(undefined, undefined, this.settings.viewQueryPadPx);
+        const bounds = viewport.boundsQuery;
         return {
             minCol: worldToChunkCol(bounds.minX, scene.gridMinX, scene.chunkSizePx),
             maxCol: worldToChunkCol(bounds.maxX - 1, scene.gridMinX, scene.chunkSizePx),
@@ -91,8 +91,8 @@ export class WorldSceneRenderer {
         face.draw(ctx, viewport, input.worldSurfaces, input.surfaceBake, fillStyle, getWallDamageAlpha(face.simWall), px, py, worldBounds);
     }
     drawRagdollCorpsesOnly(ctx, input, viewport) {
-        const px = input.viewer.x;
-        const py = input.viewer.y;
+        const px = viewport.x;
+        const py = viewport.y;
         ctx.save();
         clipToViewport(ctx, viewport);
         const visibleCorpses = this._visibleObjects;
@@ -103,9 +103,9 @@ export class WorldSceneRenderer {
         ctx.restore();
     }
     draw3DBuildings(ctx, input, viewport, options = {}) {
-        const px = input.viewer.x;
-        const py = input.viewer.y;
-        const worldBounds = viewport.boundsDraw ?? viewport.getWorldBounds(undefined, undefined, this.settings.viewPaddingPx);
+        const px = viewport.x;
+        const py = viewport.y;
+        const worldBounds = viewport.boundsDraw;
         this.structure.updateSharedEdges(input);
         ctx.save();
         clipToViewport(ctx, viewport);

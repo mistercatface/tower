@@ -95,8 +95,8 @@ export class Viewport {
         const hh = this.halfH + padding;
         return minX <= this.x + hw && maxX >= this.x - hw && minY <= this.y + hh && maxY >= this.y - hh;
     }
-    getWorldBounds(canvasWidth, canvasHeight, padding = 0) {
-        const { halfW, halfH } = this._worldHalfExtents(canvasWidth, canvasHeight);
+    getWorldBounds(padding = 0) {
+        const { halfW, halfH } = this._worldHalfExtents();
         return this._worldBoundsFromHalfExtents(halfW, halfH, padding);
     }
 }

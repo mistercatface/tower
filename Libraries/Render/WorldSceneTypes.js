@@ -12,10 +12,9 @@
  */
 /**
  * @typedef {Object} WorldSceneDrawInput
- * @property {{ x: number, y: number }} viewer
  * @property {object[]} walls
  * @property {object[]} pickups
- * @property {{ width: number, height: number }|null} canvasBounds
+ * @property {object[]} [ragdollCorpses]
  * @property {import("../WorldSurface/WorldSurfaceEngine.js").WorldSurfaceEngine|null} [worldSurfaces]
  * @property {SurfaceBakeContext|null} [surfaceBake]
  */

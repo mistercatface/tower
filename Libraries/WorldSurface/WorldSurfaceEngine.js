@@ -205,8 +205,6 @@ export class WorldSurfaceEngine {
      * @param {{
      *   obstacleGrid: { cols: number, cellSize: number, minX: number, minY: number },
      *   viewport: import("../../Libraries/Viewport/Viewport.js").Viewport,
-     *   canvasWidth: number,
-     *   canvasHeight: number,
      *   state: object,
      *   gameTime?: number,
      *   zLevel?: number,
@@ -216,12 +214,12 @@ export class WorldSurfaceEngine {
      * }} options
      */
     drawGroundChunks(ctx, options) {
-        const { obstacleGrid, viewport, canvasWidth, canvasHeight, state, gameTime = 0, zLevel = 0, wallSpatialIndex = null, playBounds = null, beforeDraw } = options;
+        const { obstacleGrid, viewport, state, gameTime = 0, zLevel = 0, wallSpatialIndex = null, playBounds = null, beforeDraw } = options;
         const viewerX = viewport.x;
         const viewerY = viewport.y;
         const cellsPerChunk = this.settings.cellsPerChunk;
         const chunkSizePx = getChunkSizePx(obstacleGrid.cellSize, cellsPerChunk);
-        const viewportBounds = viewport.boundsDraw ?? viewport.getWorldBounds(canvasWidth, canvasHeight, this.settings.viewPaddingPx);
+        const viewportBounds = viewport.boundsDraw;
         const bounds = intersectWorldBounds(viewportBounds, playBounds);
         if (!bounds) return;
         TileWorkerCoordinator.updateFocus(viewport.x, viewport.y);

@@ -43,8 +43,6 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
         this.drawGroundChunks(ctx, {
             obstacleGrid: state.obstacleGrid,
             viewport,
-            canvasWidth: state.canvasBounds.width,
-            canvasHeight: state.canvasBounds.height,
             state,
             gameTime: state.gameTime,
             zLevel: 0,
@@ -76,8 +74,6 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
             obstacleGrid: state.obstacleGrid,
             wallSpatialIndex: state.wallSpatialIndex,
             viewport,
-            canvasWidth: state.canvasBounds.width,
-            canvasHeight: state.canvasBounds.height,
             state,
             gameTime: state.gameTime,
             playBounds: getWorldPlayBounds(state),

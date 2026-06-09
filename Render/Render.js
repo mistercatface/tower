@@ -13,15 +13,9 @@ export class Renderer {
         this.caches = caches;
         this.render3D = new WorldSceneRenderer(getGameWorldSurfaceSettings(), getRenderPorts().world3dPropRecipes);
         this.effectPasses = [
-            {
-                zIndex: -5,
-                fn: (state, viewport) => drawWorldSceneBackdrop(this.ctx, { state, viewport, worldSceneRenderer: this.render3D, worldRenderInput: this.getWorldRenderInput(state, viewport) }),
-            },
-            { zIndex: 55, fn: (state, viewport) => this.render3D.drawRagdollCorpsesOnly(this.ctx, this.getWorldRenderInput(state, viewport), viewport) },
-            {
-                zIndex: 70,
-                fn: (state, viewport) => drawWorldSceneStructure(this.ctx, { state, viewport, worldSceneRenderer: this.render3D, worldRenderInput: this.getWorldRenderInput(state, viewport) }),
-            },
+            { zIndex: -5, fn: (state, viewport) => drawWorldSceneBackdrop(this.ctx, { state, viewport, worldSceneRenderer: this.render3D, worldRenderInput: this.getWorldRenderInput(state) }) },
+            { zIndex: 55, fn: (state, viewport) => this.render3D.drawRagdollCorpsesOnly(this.ctx, this.getWorldRenderInput(state), viewport) },
+            { zIndex: 70, fn: (state, viewport) => drawWorldSceneStructure(this.ctx, { state, viewport, worldSceneRenderer: this.render3D, worldRenderInput: this.getWorldRenderInput(state) }) },
         ];
         if (LIBRARY_WORLD_SURFACE_DEFAULTS.bloom.enabled) this.effectPasses.push({ zIndex: 71, fn: () => drawWorldSceneBloom(this.ctx, this.canvas) });
     }
@@ -34,14 +28,14 @@ export class Renderer {
         this._simulationPipeline = pipeline.map((p) => p.fn);
     }
     /** Cached once per simulation frame — walls share the same draw input. */
-    getWorldRenderInput(state, viewport) {
-        if (!this._frameWorldRenderInput) this._frameWorldRenderInput = buildWorldRenderInput(state, viewport);
+    getWorldRenderInput(state) {
+        if (!this._frameWorldRenderInput) this._frameWorldRenderInput = buildWorldRenderInput(state);
         return this._frameWorldRenderInput;
     }
     renderSimulationScene(state, viewport) {
         this._frameWorldRenderInput = null;
         const surfaceSettings = getGameWorldSurfaceSettings();
-        viewport.beginFrame({ width: state.canvasBounds.width, height: state.canvasBounds.height, viewQueryPadPx: surfaceSettings.viewQueryPadPx, viewPaddingPx: surfaceSettings.viewPaddingPx });
+        viewport.beginFrame({ width: viewport.width, height: viewport.height, viewQueryPadPx: surfaceSettings.viewQueryPadPx, viewPaddingPx: surfaceSettings.viewPaddingPx });
         this.ctx.save();
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         viewport.apply(this.ctx);

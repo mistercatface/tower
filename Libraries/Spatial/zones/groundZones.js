@@ -70,7 +70,7 @@ function aabbOverlap(a, b) {
 }
 /** Draw cull only — sim tick ignores viewport. @param {import("../../Viewport/Viewport.js").Viewport} viewport */
 export function isGroundZoneInView(zone, viewport, padPx = 0) {
-    const bounds = padPx === 0 && viewport.boundsClip ? viewport.boundsClip : viewport.getWorldBounds(undefined, undefined, padPx);
+    const bounds = padPx === 0 ? viewport.boundsClip : viewport.getWorldBounds(padPx);
     return aabbOverlap(zone.aabb, bounds);
 }
 /** @param {CanvasRenderingContext2D} ctx @param {ReturnType<typeof createRectGroundZone>} zone */
