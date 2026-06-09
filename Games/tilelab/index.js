@@ -5,7 +5,7 @@ import { createDefaultRenderPorts } from "../../Libraries/Render/defaultRenderPo
 import { createWeaponVisuals } from "../../Libraries/Render/Characters/weapons/createWeaponVisuals.js";
 import { getGameState } from "../../GameState/GameState.js";
 import { createCombatWallResolver } from "../../Systems/Motion/createCombatWallResolver.js";
-import { syncLabScreenCanvasBounds } from "./ui/labCanvas.js";
+import { applyLabCanvasSize } from "./ui/labCanvas.js";
 import { createSandboxCombatFeature } from "../../Libraries/Combat/createSandboxCombatFeature.js";
 import { SharedGameState } from "../../GameState/SharedGameState.js";
 import { createRoguelikeNavRuntime } from "../../Libraries/Navigation/createRoguelikeNavRuntime.js";
@@ -60,6 +60,8 @@ export class TileLabGameState extends SharedGameState {
         this.labShowProfilePanel = true;
         this.labShowTopologyOverlay = false;
         this.mapViewport = new Viewport(0, 0, 1);
+        /** @type {HTMLCanvasElement | null} */
+        this.labCanvas = null;
         this.roguelikeMapSession = createRoguelikeMapSession();
         this.wallResolver = createCombatWallResolver(() => getGameState());
     }
@@ -103,7 +105,9 @@ export const tilelabGame = {
     },
     onCanvasResize() {
         const state = getGameState();
-        if (state) syncLabScreenCanvasBounds(state);
+        const canvas = state?.labCanvas;
+        if (!canvas) return;
+        applyLabCanvasSize(state, canvas.width, canvas.height);
     },
     prepare() {
         document.title = "Tile Lab";

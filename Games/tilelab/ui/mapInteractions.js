@@ -4,7 +4,6 @@ import { canvasClientToWorld } from "./labCanvas.js";
 import { populateNodeList, renderNodeInspector } from "./mapInspector.js";
 /** @param {import("../index.js").TileLabGameState} state @param {HTMLCanvasElement} canvas */
 function resolveTopologyClickViewport(state, canvas) {
-    state.mapViewport.setCanvasSize(canvas.width, canvas.height);
     return state.mapViewport;
 }
 /** @param {import("../index.js").TileLabGameState} state @param {() => void} onRedraw */

@@ -7,11 +7,10 @@ import { canvasClientToWorld } from "../ui/labCanvas.js";
  */
 export function createTilelabSandboxHost(state, requestRedraw) {
     return {
-        getCanvas: () => document.getElementById("gameCanvas"),
+        getCanvas: () => state.labCanvas,
         clientToWorld(clientX, clientY) {
-            const canvas = document.getElementById("gameCanvas");
+            const canvas = state.labCanvas;
             if (!canvas) return null;
-            state.mapViewport.setCanvasSize(canvas.width, canvas.height);
             return canvasClientToWorld(canvas, state.mapViewport, clientX, clientY);
         },
         getCameraOrigin: () => ({ x: state.mapViewport.x, y: state.mapViewport.y }),

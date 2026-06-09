@@ -4,7 +4,7 @@ import { applySquareCanvasResize } from "../../../Libraries/Canvas/index.js";
 import { initResizer } from "./lab-shared.js";
 import { initAnimationPreview } from "./LabAnimationPreview.js";
 import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEditor.js";
-import { bindLabCanvasElements, clearLabCanvasElements, syncLabScreenCanvasBounds } from "./labCanvas.js";
+import { applyLabCanvasSize } from "./labCanvas.js";
 import { registerEditorProfiles, renderTilelabPreview, syncRuntimeLabProfile } from "./preview.js";
 import { readControls, initPresetSelect, initToolbarDefaults, bindToolbarControls, syncTilelabWorld, syncPreviewZoomToStage } from "./toolbar.js";
 import { mountLabViewport, refreshLabViewportControls } from "./labViewport.js";
@@ -48,14 +48,14 @@ async function refreshPreview(state) {
     renderActiveLabView(state);
     runBakeRepaintLoop(state);
 }
-function attachGameCanvas() {
+function attachGameCanvas(state) {
     const mapStage = document.getElementById("mapStage");
     const canvas = document.getElementById("gameCanvas");
     if (mapStage && canvas && canvas.parentElement !== mapStage) {
         mapStage.appendChild(canvas);
         canvas.id = "gameCanvas";
     }
-    bindLabCanvasElements(mapStage, canvas);
+    state.labCanvas = canvas ?? null;
 }
 function bootstrapTilelabUi(state) {
     if (bootstrapped) return;
@@ -86,7 +86,7 @@ function bootstrapTilelabUi(state) {
             renderActiveLabView(state);
         },
         onStageResize: () => {
-            syncLabScreenCanvasBounds(state);
+            if (state.labCanvas) applyLabCanvasSize(state, state.labCanvas.width, state.labCanvas.height);
             syncPreviewZoomToStage(state);
             renderActiveLabView(state);
         },
@@ -118,14 +118,14 @@ function bootstrapTilelabUi(state) {
             const controlsH = (zoom?.offsetHeight ?? 0) + (speed?.offsetHeight ?? 0) + gap * 2;
             return Math.max(160, Math.floor(Math.min(rect.width, rect.height - controlsH) - 8));
         },
-        onResize: () => {
-            syncLabScreenCanvasBounds(state);
+        onResize: (size) => {
+            applyLabCanvasSize(state, size, size);
             syncPreviewZoomToStage(state);
             renderActiveLabView(state);
         },
     });
     initResizer("resizer", () => {
-        syncLabScreenCanvasBounds(state);
+        if (state.labCanvas) applyLabCanvasSize(state, state.labCanvas.width, state.labCanvas.height);
         syncPreviewZoomToStage(state);
         renderActiveLabView(state);
     });
@@ -141,13 +141,12 @@ export const tilelabUiPort = {
         const uiRoot = getUiRoot();
         if (!uiRoot) throw new Error("tilelabUiPort: #ui-root missing");
         uiRoot.innerHTML = TILELAB_UI_HTML;
-        attachGameCanvas();
+        attachGameCanvas(state);
         bootstrapTilelabUi(state);
     },
     unmount() {
         if (bakeRepaintRaf != null) cancelAnimationFrame(bakeRepaintRaf);
         destroyTilelabSandbox();
-        clearLabCanvasElements();
         bootstrapped = false;
     },
     updateHud({ state }) {

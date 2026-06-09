@@ -1,7 +1,6 @@
 import { gridSettings } from "../../../Config/Config.js";
 import { generateWorld, getWorldGen } from "../../../Core/GamePorts.js";
 import { regenerateRoguelikeMap } from "../../../Libraries/WorldGen/session/index.js";
-import { syncLabScreenCanvasBounds } from "../ui/labCanvas.js";
 import { clearTilelabSandbox } from "./tilelabSandbox.js";
 import { spawnSandboxBattleGroups } from "./sandboxBattleSpawn.js";
 export function listLabMapNodes(state) {
@@ -18,7 +17,6 @@ export function selectLabNode(state, nodeId) {
 export function generateTilelabMap(state, { mapSeed, floorSeed }) {
     regenerateRoguelikeMap(state, { mapSeed, floorSeed, generateWorld });
     clearTilelabSandbox();
-    syncLabScreenCanvasBounds(state);
     const bounds = state.obstacleGrid;
     if (bounds?.minX !== undefined) state.mapViewport.snapTo((bounds.minX + bounds.maxX) / 2, (bounds.minY + bounds.maxY) / 2);
     spawnSandboxBattleGroups(state);

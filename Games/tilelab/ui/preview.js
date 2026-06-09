@@ -4,7 +4,6 @@ import { invalidateProfileScratch } from "../../../Libraries/WorldSurface/Profil
 import { TileWorkerCoordinator } from "../../../Libraries/WorldSurface/TileWorkerCoordinator.js";
 import { invalidateWallAtlasKeyMemos } from "../../../Render/game/wallSurfaceInvalidation.js";
 import { readMapControls } from "./mapInspector.js";
-import { getLabCanvas } from "./labCanvas.js";
 import { drawTilelabSurfaceFrame, invalidateMapPreviewBakes } from "../world/surfacePreview.js";
 import { getLabPreviewProfile, RUNTIME_LAB_PROFILE_ID } from "./profile/ProfileEditor.js";
 let registerEditorProfilesSerial = Promise.resolve();
@@ -32,8 +31,8 @@ export function registerEditorProfiles(state) {
  */
 export function renderTilelabPreview(state, ctrl) {
     if (!getSurfaceProfileProvider().hasProfile(RUNTIME_LAB_PROFILE_ID)) return;
-    const canvas = getLabCanvas();
-    if (!canvas || canvas.width < 32 || canvas.height < 32) return;
+    const canvas = state.labCanvas;
+    if (!canvas || state.canvasBounds.width < 32 || state.canvasBounds.height < 32) return;
     drawTilelabSurfaceFrame(canvas.getContext("2d"), canvas, state, RUNTIME_LAB_PROFILE_ID, {
         showVignette: ctrl.showVignette,
         topologySession: state.labShowTopologyOverlay ? state.roguelikeMapSession : null,

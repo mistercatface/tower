@@ -4,7 +4,6 @@ import { Renderer } from "../../../Render/Render.js";
 import { getSurfaceProfileRevision } from "../../../Libraries/WorldSurface/SurfaceProfileRevision.js";
 import { invalidateWallAtlasKeyMemos } from "../../../Render/game/wallSurfaceInvalidation.js";
 import { drawTopologyLayer } from "../../../Libraries/Render/map/topology/index.js";
-import { syncLabScreenCanvasBounds } from "../ui/labCanvas.js";
 import { getTilelabSandboxController } from "./tilelabSandbox.js";
 /** @type {Renderer | null} */
 let labRenderer = null;
@@ -33,10 +32,9 @@ function maybeClearBakeCaches(worldState, profileId) {
  */
 export function drawTilelabSurfaceFrame(ctx, canvas, worldState, profileId, drawOptions = {}) {
     const { showVignette = false, topologySession = null, topologyOptions = null } = drawOptions;
-    const size = syncLabScreenCanvasBounds(worldState);
-    if (!size) return;
-    const viewW = size.width;
-    const viewH = size.height;
+    const viewW = worldState.canvasBounds.width;
+    const viewH = worldState.canvasBounds.height;
+    if (viewW < 32 || viewH < 32) return;
     worldState.phase = "simulation";
     const prevProfileOverride = worldState.worldSurfaces.surfaceProfileOverride;
     worldState.worldSurfaces.surfaceProfileOverride = profileId;

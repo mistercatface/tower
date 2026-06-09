@@ -4,7 +4,6 @@ import { applyZoomControl, clampZoom, directZoomMapping } from "../../../Librari
 import { getDefaultSimulationZoom } from "../../../Render/SimulationViewport.js";
 import { setupLabViewportNavigation } from "./lab-shared.js";
 import { LAB_PREVIEW_RANGE } from "../index.js";
-import { syncLabScreenCanvasBounds } from "./labCanvas.js";
 export const LAB_ZOOM_MIN = 0.25;
 export const LAB_ZOOM_MAX = 2.5;
 /** @type {import("../../../Libraries/Viewport/zoomControl.js").ZoomControlHandle | null} */
@@ -18,7 +17,6 @@ function clampLabZoom(zoom) {
 }
 /** @param {import("../index.js").TileLabGameState} state @param {number} x @param {number} y @param {number} zoom */
 function applyCamera(state, x, y, zoom) {
-    syncLabScreenCanvasBounds(state);
     state.mapViewport.snapTo(x, y);
     state.mapViewport.zoom = clampLabZoom(zoom);
     zoomControl?.setZoom(state.mapViewport.zoom);
@@ -30,10 +28,8 @@ export function setLabCamera(state, x, y, zoom) {
 }
 /** @param {import("../index.js").TileLabGameState} state */
 export function fitLabStageToView(state) {
-    syncLabScreenCanvasBounds(state);
-    const size = state.canvasBounds;
-    const viewW = Math.max(320, size.width || 800);
-    const viewH = Math.max(240, size.height || 600);
+    const viewW = Math.max(320, state.canvasBounds.width || 800);
+    const viewH = Math.max(240, state.canvasBounds.height || 600);
     const zoom = getDefaultSimulationZoom(viewW, viewH, LAB_PREVIEW_RANGE, LAB_PREVIEW_RANGE);
     state.mapViewport.zoom = clampLabZoom(zoom);
     zoomControl?.setZoom(state.mapViewport.zoom);
