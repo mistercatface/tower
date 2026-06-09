@@ -1,0 +1,114 @@
+export class RenderChunk {
+    constructor(col, row) {
+        this.col = col;
+        this.row = row;
+        this.renderables = [];
+    }
+
+    add(renderable) {
+        this.renderables.push(renderable);
+    }
+
+    clear() {
+        this.renderables.length = 0;
+    }
+
+    draw(ctx, viewport, pass) {
+        for (let i = 0; i < this.renderables.length; i++) {
+            const r = this.renderables[i];
+            if (r.pass === pass) {
+                r.draw(ctx, viewport);
+            }
+        }
+    }
+}
+
+export class RenderScene {
+    constructor(chunkSizePx) {
+        this.chunkSizePx = chunkSizePx;
+        this.chunks = new Map();
+    }
+
+    _getChunkKey(col, row) {
+        return `${col},${row}`;
+    }
+
+    getChunk(col, row) {
+        const key = this._getChunkKey(col, row);
+        let chunk = this.chunks.get(key);
+        if (!chunk) {
+            chunk = new RenderChunk(col, row);
+            this.chunks.set(key, chunk);
+        }
+        return chunk;
+    }
+
+    clear() {
+        this.chunks.clear();
+    }
+
+    removeBySourceId(sourceId) {
+        for (const chunk of this.chunks.values()) {
+            for (let i = chunk.renderables.length - 1; i >= 0; i--) {
+                if (chunk.renderables[i].sourceId === sourceId) {
+                    chunk.renderables.splice(i, 1);
+                }
+            }
+        }
+    }
+
+    /**
+     * Adds a renderable to all chunks its bounding box overlaps.
+     */
+    insert(renderable) {
+        const bounds = renderable.bounds;
+        const minCol = Math.floor(bounds.minX / this.chunkSizePx);
+        const maxCol = Math.floor(bounds.maxX / this.chunkSizePx);
+        const minRow = Math.floor(bounds.minY / this.chunkSizePx);
+        const maxRow = Math.floor(bounds.maxY / this.chunkSizePx);
+
+        for (let r = minRow; r <= maxRow; r++) {
+            for (let c = minCol; c <= maxCol; c++) {
+                this.getChunk(c, r).add(renderable);
+            }
+        }
+    }
+
+    /**
+     * Collects all renderables of a specific pass in the given chunk range.
+     */
+    collectPass(pass, minCol, minRow, maxCol, maxRow, outArray = []) {
+        const seen = new Set();
+        for (let r = minRow; r <= maxRow; r++) {
+            for (let c = minCol; c <= maxCol; c++) {
+                const key = this._getChunkKey(c, r);
+                const chunk = this.chunks.get(key);
+                if (chunk) {
+                    for (let i = 0; i < chunk.renderables.length; i++) {
+                        const r = chunk.renderables[i];
+                        if (r.pass === pass && !seen.has(r)) {
+                            seen.add(r);
+                            outArray.push(r);
+                        }
+                    }
+                }
+            }
+        }
+        return outArray;
+    }
+
+    /**
+     * Draws a specific pass (e.g., 'roofs', 'walls') for the given chunk range.
+     */
+    drawPass(ctx, viewport, pass, minCol, minRow, maxCol, maxRow) {
+        for (let r = minRow; r <= maxRow; r++) {
+            for (let c = minCol; c <= maxCol; c++) {
+                const key = this._getChunkKey(c, r);
+                const chunk = this.chunks.get(key);
+                if (chunk) {
+                    chunk.draw(ctx, viewport, pass);
+                }
+            }
+        }
+    }
+}

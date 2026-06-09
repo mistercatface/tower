@@ -65,6 +65,9 @@ export class StructureRenderer {
         });
     }
     drawWallSegmentFaces(ctx, seg, px, py, input, viewport, options = {}) {
+        // In the new retained mode, we don't draw from simulation segments anymore.
+        // This method is kept for backwards compatibility with explosions, but
+        // the main draw loop will bypass this entirely.
         const edges = this.getSegmentEdges(seg);
         if (!seg.sharedEdges) seg.sharedEdges = [false, false, false, false];
         for (let i = 0; i < 4; i++) {

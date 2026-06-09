@@ -7,7 +7,10 @@ import { WorldSurfaceEngine } from "../../Libraries/WorldSurface/WorldSurfaceEng
 import { isWorldScene } from "../../Core/GamePorts.js";
 import { getGameWorldSurfaceSettings } from "../WorldSurfaceBootstrap.js";
 import { WallSpatialIndex } from "../../Libraries/Spatial/indexes/WallSpatialIndex.js";
+import { getChunkSizePx } from "../../Libraries/Spatial/grid/ChunkGrid.js";
 import { buildGroundChunkBakePayload, resolveSurfaceProfileAtCoords } from "./surfaceProfileResolver.js";
+import { RenderScene } from "../../Libraries/Render/Scene/RenderScene.js";
+import { SceneCompiler } from "../../Libraries/Render/Scene/SceneCompiler.js";
 export class WorldSurfaceSystem extends WorldSurfaceEngine {
     /** @param {import("../../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} [settings] */
     constructor(settings = getGameWorldSurfaceSettings()) {
@@ -16,12 +19,14 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
         this.roofSpatialIndices = null;
         this.worldSurfaceSeed = 0;
         this.surfaceProfileOverride = null;
+        this.renderScene = new RenderScene(getChunkSizePx(settings.cellSize, settings.cellsPerChunk));
     }
     clear() {
         super.clear();
         this.roofZLevels = null;
         this.roofSpatialIndices = null;
         this.surfaceProfileOverride = null;
+        this.renderScene.clear();
     }
     invalidateRoofs() {
         this.roofZLevels = null;

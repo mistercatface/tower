@@ -38,26 +38,42 @@ export function chunkHasWallSegments(wallSpatialIndex, chunkOriginX, chunkOrigin
  * @param {number} cameraHeight
  * @returns {boolean}
  */
-export function clipChunkToRoofFootprints(ctx, wallSpatialIndex, chunkOriginX, chunkOriginY, chunkSizePx, zLevel, viewerX, viewerY, cameraHeight) {
-    if (!wallSpatialIndex) return false;
-    const segments = wallSpatialIndex.collectInBounds(chunkOriginX, chunkOriginY, chunkOriginX + chunkSizePx, chunkOriginY + chunkSizePx);
+export function clipChunkToRoofFootprints(ctx, wallSpatialIndex, chunkOriginX, chunkOriginY, chunkSizePx, zLevel, viewerX, viewerY, cameraHeight, renderScene = null) {
     let clippedAny = false;
     const alpha = resolveElevationAlpha(zLevel, cameraHeight, 1);
     ctx.beginPath();
-    for (let i = 0; i < segments.length; i++) {
-        const segment = segments[i];
-        if (segment.isDead) continue;
-        const corners = getSegmentFootprintCorners(segment);
-        for (let j = 0; j < 4; j++) {
-            const corner = corners[j];
-            const px = corner.x + (corner.x - viewerX) * alpha;
-            const py = corner.y + (corner.y - viewerY) * alpha;
-            if (j === 0) ctx.moveTo(px, py);
-            else ctx.lineTo(px, py);
+
+    if (renderScene) {
+        const minCol = Math.floor(chunkOriginX / renderScene.chunkSizePx);
+        const maxCol = Math.floor((chunkOriginX + chunkSizePx) / renderScene.chunkSizePx);
+        const minRow = Math.floor(chunkOriginY / renderScene.chunkSizePx);
+        const maxRow = Math.floor((chunkOriginY + chunkSizePx) / renderScene.chunkSizePx);
+
+        const roofs = renderScene.collectPass('roofs', minCol, minRow, maxCol, maxRow);
+        for (let i = 0; i < roofs.length; i++) {
+            const roof = roofs[i];
+            if (roof.simWall && roof.simWall.isDead) continue;
+            if (Math.abs(roof.zLevel - zLevel) > 0.01) continue;
+            roof.draw(ctx, null, alpha, viewerX, viewerY);
+            clippedAny = true;
         }
-        ctx.closePath();
-        clippedAny = true;
+    } else if (wallSpatialIndex) {
+        const segments = wallSpatialIndex.collectInBounds(chunkOriginX, chunkOriginY, chunkOriginX + chunkSizePx, chunkOriginY + chunkSizePx);
+        for (let i = 0; i < segments.length; i++) {
+            const segment = segments[i];
+            if (segment.isDead) continue;
+            const corners = getSegmentFootprintCorners(segment);
+            for (let j = 0; j < 4; j++) {
+                const corner = corners[j];
+                const px = corner.x + (corner.x - viewerX) * alpha;
+                const py = corner.y + (corner.y - viewerY) * alpha;
+                if (j === 0) ctx.moveTo(px, py);
+                else ctx.lineTo(px, py);
+            }
+            clippedAny = true;
+        }
     }
+
     if (!clippedAny) return false;
     ctx.clip();
     return true;
@@ -76,10 +92,37 @@ export function clipChunkToRoofFootprints(ctx, wallSpatialIndex, chunkOriginX, c
  * @param {number} cameraHeight
  * @param {number} defaultWallHeight
  */
-export function drawRoofSegmentDamageOverlays(ctx, wallSpatialIndex, chunkOriginX, chunkOriginY, chunkSizePx, zLevel, viewerX, viewerY, cameraHeight) {
+export function drawRoofSegmentDamageOverlays(ctx, wallSpatialIndex, chunkOriginX, chunkOriginY, chunkSizePx, zLevel, viewerX, viewerY, cameraHeight, renderScene = null) {
+    const alpha = resolveElevationAlpha(zLevel, cameraHeight, 1);
+    
+    if (renderScene) {
+        const minCol = Math.floor(chunkOriginX / renderScene.chunkSizePx);
+        const maxCol = Math.floor((chunkOriginX + chunkSizePx) / renderScene.chunkSizePx);
+        const minRow = Math.floor(chunkOriginY / renderScene.chunkSizePx);
+        const maxRow = Math.floor((chunkOriginY + chunkSizePx) / renderScene.chunkSizePx);
+
+        const roofs = renderScene.collectPass('roofs', minCol, minRow, maxCol, maxRow);
+        for (let i = 0; i < roofs.length; i++) {
+            const roof = roofs[i];
+            if (roof.simWall && roof.simWall.isDead) continue;
+            if (Math.abs(roof.zLevel - zLevel) > 0.01) continue;
+            
+            const damageAlpha = getWallDamageAlpha(roof.simWall);
+            if (damageAlpha <= 0) continue;
+
+            ctx.save();
+            ctx.beginPath();
+            roof.draw(ctx, null, alpha, viewerX, viewerY);
+            ctx.clip();
+            ctx.fillStyle = wallDamageOverlayStyle(damageAlpha);
+            ctx.fill();
+            ctx.restore();
+        }
+        return;
+    }
+
     if (!wallSpatialIndex) return;
     const segments = wallSpatialIndex.collectInBounds(chunkOriginX, chunkOriginY, chunkOriginX + chunkSizePx, chunkOriginY + chunkSizePx);
-    const alpha = resolveElevationAlpha(zLevel, cameraHeight, 1);
     for (let i = 0; i < segments.length; i++) {
         const segment = segments[i];
         if (segment.isDead) continue;

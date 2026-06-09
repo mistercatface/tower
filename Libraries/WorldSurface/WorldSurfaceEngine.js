@@ -259,7 +259,7 @@ export class WorldSurfaceEngine {
             }
             if (zLevel > 0) {
                 ctx.save();
-                if (!clipChunkToRoofFootprints(ctx, wallSpatialIndex, chunk.origin.x, chunk.origin.y, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight)) {
+                if (!clipChunkToRoofFootprints(ctx, wallSpatialIndex, chunk.origin.x, chunk.origin.y, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight, this.renderScene)) {
                     ctx.restore();
                     continue;
                 }
@@ -271,13 +271,29 @@ export class WorldSurfaceEngine {
                 const bleedPx = this.settings.wallTextureBleedPx ?? 1;
                 ctx.drawImage(canvas, dstX - bleedPx, dstY - bleedPx, dstW + bleedPx * 2, dstH + bleedPx * 2);
                 ctx.restore();
-                drawRoofSegmentDamageOverlays(ctx, wallSpatialIndex, chunk.origin.x, chunk.origin.y, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight);
+                drawRoofSegmentDamageOverlays(ctx, wallSpatialIndex, chunk.origin.x, chunk.origin.y, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight, this.renderScene);
             } else drawBakedTexture(ctx, canvas, chunk.origin.x, chunk.origin.y, chunkSizePx, chunkSizePx, this.settings);
         }
         ctx.restore();
     }
     /** Elevated horizontal layers (z > 0) — chunk-cached, clipped to wall footprints. */
     drawRoofLayers(ctx, baseOptions) {
+        // If we have a compiled render scene, use it!
+        if (baseOptions.state?.worldSurfaces?.renderScene) {
+            const scene = baseOptions.state.worldSurfaces.renderScene;
+            const { viewport, canvasWidth, canvasHeight } = baseOptions;
+            const viewportBounds = viewport.getWorldBounds(canvasWidth, canvasHeight, this.settings.viewPaddingPx);
+            
+            const minCol = Math.floor(viewportBounds.minX / scene.chunkSizePx);
+            const maxCol = Math.floor(viewportBounds.maxX / scene.chunkSizePx);
+            const minRow = Math.floor(viewportBounds.minY / scene.chunkSizePx);
+            const maxRow = Math.floor(viewportBounds.maxY / scene.chunkSizePx);
+
+            // The Renderables themselves don't do the chunk caching yet, so we still 
+            // call the old drawGroundChunks, but eventually this entire function just becomes:
+            // scene.drawPass(ctx, viewport, 'roofs', minCol, minRow, maxCol, maxRow);
+        }
+
         const levels = baseOptions.roofZLevels ?? this.settings.roofZLevels ?? [];
         for (let i = 0; i < levels.length; i++) {
             const z = levels[i];

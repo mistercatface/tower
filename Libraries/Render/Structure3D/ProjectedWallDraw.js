@@ -67,13 +67,17 @@ function computeFaceCorner(out, p1, p2, proj1X, proj1Y, proj2X, proj2Y, u, v) {
     out.y = by + (ty - by) * v;
 }
 function resolveWallProfileId(surfaceBake, wallCx, wallCy, cacheObj) {
-    let profileId = cacheObj ? cacheObj._cachedProfileId : null;
+    let profileId = cacheObj && cacheObj._cachedProfileId ? cacheObj._cachedProfileId : null;
     if (!profileId || surfaceBake.surfaceProfileOverride) {
         profileId = surfaceBake.resolveProfileAt(wallCx, wallCy);
         if (cacheObj && !surfaceBake.surfaceProfileOverride) cacheObj._cachedProfileId = profileId;
     }
     return profileId;
 }
+export function drawPrecalculatedFaceTexture(ctx, p1, p2, face, worldSurfaces, surfaceBake, viewer, viewport, wallHeight, fillStyle, cacheObj = null, worldBounds = null) {
+    drawFaceTexture(ctx, p1, p2, face, worldSurfaces, surfaceBake, viewer, viewport, wallHeight, fillStyle, cacheObj, worldBounds);
+}
+
 function drawFaceTexture(ctx, p1, p2, face, worldSurfaces, surfaceBake, viewer, viewport, wallHeight, fillStyle, cacheObj = null, worldBounds = null) {
     const settings = worldSurfaces.settings;
     if (!settings) return;
@@ -81,7 +85,13 @@ function drawFaceTexture(ctx, p1, p2, face, worldSurfaces, surfaceBake, viewer, 
     if (!worldSurfaces || !surfaceBake) return;
     const wallCx = cacheObj && cacheObj.cx !== undefined ? cacheObj.cx : (p1.x + p2.x) * 0.5;
     const wallCy = cacheObj && cacheObj.cy !== undefined ? cacheObj.cy : (p1.y + p2.y) * 0.5;
-    const profileId = resolveWallProfileId(surfaceBake, wallCx, wallCy, cacheObj);
+    
+    // In Retained Mode, cacheObj is often the simulation wall itself, which doesn't have cx/cy.
+    // We can compute it if missing.
+    const finalWallCx = wallCx ?? (p1.x + p2.x) * 0.5;
+    const finalWallCy = wallCy ?? (p1.y + p2.y) * 0.5;
+
+    const profileId = resolveWallProfileId(surfaceBake, finalWallCx, finalWallCy, cacheObj);
     const ppwu = getTexelResolution(settings);
     const atlas = worldSurfaces.getOrEnsureWallAtlas(p1, p2, { profileId, surfaceBake, wallHeight, cacheObj });
     if (!atlas) return;
@@ -105,7 +115,7 @@ function drawFaceTexture(ctx, p1, p2, face, worldSurfaces, surfaceBake, viewer, 
     const edgeLen = cacheObj && cacheObj.edgeLen !== undefined ? cacheObj.edgeLen : Math.hypot(p2.x - p1.x, p2.y - p1.y);
     const px = viewer.x;
     const py = viewer.y;
-    const dist = Math.hypot(wallCx - px, wallCy - py);
+    const dist = Math.hypot(finalWallCx - px, finalWallCy - py);
     const subdivScale = Math.max(0.05, Math.min(1.0, 1.0 - (dist - settings.wallSubdivNearPx) / settings.wallSubdivFarPx));
     const visibleHeightCells = clampedHeight / cellSize;
     const SUBDIV_X = Math.max(1, Math.min(2, Math.ceil((edgeLen / cellSize) * subdivScale)));
@@ -148,6 +158,8 @@ export function drawProjectedWallFace(
     surfaceBake,
     { viewport = null, worldBounds = null, damageAlpha = 0, textureEnabled = true, cacheObj = null, wallHeight = null, settings = null } = {},
 ) {
+    // This function is kept for backwards compatibility with explosions and other
+    // dynamic systems that still use the old immediate mode drawing.
     const resolvedSettings = settings ?? worldSurfaces?.settings;
     if (!resolvedSettings) {
         ctx.fillStyle = fillStyle;
@@ -195,7 +207,9 @@ export function preloadProjectedWallFace(p1, p2, worldSurfaces, surfaceBake, cac
     if (!worldSurfaces || !surfaceBake) return;
     const wallCx = cacheObj && cacheObj.cx !== undefined ? cacheObj.cx : (p1.x + p2.x) * 0.5;
     const wallCy = cacheObj && cacheObj.cy !== undefined ? cacheObj.cy : (p1.y + p2.y) * 0.5;
-    const profileId = resolveWallProfileId(surfaceBake, wallCx, wallCy, cacheObj);
+    const finalWallCx = wallCx ?? (p1.x + p2.x) * 0.5;
+    const finalWallCy = wallCy ?? (p1.y + p2.y) * 0.5;
+    const profileId = resolveWallProfileId(surfaceBake, finalWallCx, finalWallCy, cacheObj);
     const wallHeight = getWallHeight(settings);
     worldSurfaces.getOrEnsureWallAtlas(p1, p2, { profileId, surfaceBake, wallHeight, cacheObj });
 }
