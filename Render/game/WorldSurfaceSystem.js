@@ -51,14 +51,6 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
             gameTime: state.gameTime ?? 0,
             playBounds: getWorldPlayBounds(state),
             roofZLevels: state.roofZLevels,
-            worldSurfaces: state.worldSurfaces,
-            surfaceBake: {
-                surfaceSeed: state.worldSurfaceSeed ?? 0,
-                gameTime: state.gameTime ?? 0,
-                surfaceProfileOverride: state.surfaceProfileOverride ?? null,
-                resolveProfileAt: (x, y) => resolveSurfaceProfileAtCoords(state, x, y),
-                obstacleCellSize: state.obstacleGrid?.cellSize ?? 16,
-            },
         });
     }
 }
