@@ -237,13 +237,13 @@ export class WorldSurfaceEngine {
                 const distSq = (centerX - viewport.x) ** 2 + (centerY - viewport.y) ** 2;
                 chunksToDraw.push({ chunkCol, chunkRow, origin, distSq });
             }
-        chunksToDraw.sort((a, b) => a.distSq - b.distSq);
         ctx.save();
         if (playBounds) {
             ctx.beginPath();
             ctx.rect(bounds.minX, bounds.minY, bounds.maxX - bounds.minX, bounds.maxY - bounds.minY);
             ctx.clip();
         }
+        ctx.imageSmoothingEnabled = false;
         for (const chunk of chunksToDraw) {
             if (zLevel > 0 && !chunkHasWallSegments(wallSpatialIndex, chunk.origin.x, chunk.origin.y, chunkSizePx)) continue;
             const payload = this._resolveChunkPayload(state, chunk.chunkCol, chunk.chunkRow, zLevel);
@@ -264,10 +264,12 @@ export class WorldSurfaceEngine {
                     continue;
                 }
                 const corners = projectHorizontalSurfaceCorners(chunk.origin.x, chunk.origin.y, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight);
-                const prevSmoothing = ctx.imageSmoothingEnabled;
-                ctx.imageSmoothingEnabled = shouldSmoothTextureDownsample(this.settings);
-                drawImageQuad(ctx, canvas, 0, 0, canvas.width, canvas.height, corners[0], corners[1], corners[2], corners[3], { bleedPx: this.settings.wallTextureBleedPx ?? 1 });
-                ctx.imageSmoothingEnabled = prevSmoothing;
+                const dstX = corners[0].x;
+                const dstY = corners[0].y;
+                const dstW = corners[2].x - corners[0].x;
+                const dstH = corners[2].y - corners[0].y;
+                const bleedPx = this.settings.wallTextureBleedPx ?? 1;
+                ctx.drawImage(canvas, dstX - bleedPx, dstY - bleedPx, dstW + bleedPx * 2, dstH + bleedPx * 2);
                 ctx.restore();
             } else drawBakedTexture(ctx, canvas, chunk.origin.x, chunk.origin.y, chunkSizePx, chunkSizePx, this.settings);
         }
