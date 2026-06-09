@@ -6,6 +6,7 @@ import { getWallHeight } from "../../WorldSurface/WorldSurfaceSettings.js";
 import { drawImageQuad } from "../../Canvas/AffineTexture.js";
 /** @typedef {import("../WorldSceneTypes.js").SurfaceBakeContext} SurfaceBakeContext */
 import { getTexelResolution, shouldSmoothTextureDownsample } from "../../WorldSurface/WorldSurfaceResolution.js";
+import { wallDamageOverlayStyle } from "./wallDamageVisual.js";
 import { resolveElevationAlpha } from "../../Spatial/iso/IsometricProjection.js";
 export { getWallHeight };
 export { wallFaceColumns } from "../../WorldSurface/WallFaceColumns.js";
@@ -183,7 +184,7 @@ export function drawProjectedWallFace(
         ctx.save();
         traceProjectedFace(ctx, p1, p2, face);
         ctx.clip();
-        ctx.fillStyle = `rgba(244, 67, 54, ${damageAlpha})`;
+        ctx.fillStyle = wallDamageOverlayStyle(damageAlpha);
         ctx.fill();
         ctx.restore();
     }

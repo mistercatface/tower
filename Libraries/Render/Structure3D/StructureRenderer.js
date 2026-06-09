@@ -6,6 +6,7 @@ import { SpatialQuery } from "../../Spatial/query/SpatialQuery.js";
 import { alignBoundsToHash, getViewQueryBounds } from "../common/viewportUtils.js";
 import { drawProjectedWallFace } from "./ProjectedWallDraw.js";
 import { applySharedEdgeFlags, requestSharedEdgeSolve, writeWallGeometry } from "./SharedEdgeBridge.js";
+import { getWallDamageAlpha, getWallDamageColor } from "./wallDamageVisual.js";
 export class StructureRenderer {
     /** @param {import("../../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} settings */
     constructor(settings) {
@@ -47,19 +48,11 @@ export class StructureRenderer {
         }
     }
     getWallColor(seg, darkenRatio = 1.0) {
-        const baseR = 245;
-        const baseG = 245;
-        const baseB = 247;
-        const healthRatio = Math.max(0, Math.round((seg.health / seg.maxHealth) * 10) / 10);
-        const r = Math.floor((baseR + (244 - baseR) * (1 - healthRatio)) * darkenRatio);
-        const g = Math.floor((baseG + (67 - baseG) * (1 - healthRatio)) * darkenRatio);
-        const b = Math.floor((baseB + (54 - baseB) * (1 - healthRatio)) * darkenRatio);
-        return `rgb(${r}, ${g}, ${b})`;
+        return getWallDamageColor(seg, darkenRatio);
     }
     drawWallFace(ctx, seg, p1, p2, px, py, input, viewport, options = {}, cacheObj = null) {
-        const wallColor = this.getWallColor(seg, 1.0);
-        const healthRatio = seg.health / seg.maxHealth;
-        const damageAlpha = healthRatio < 1 ? (1 - healthRatio) * 0.45 : 0;
+        const wallColor = getWallDamageColor(seg, 1.0);
+        const damageAlpha = getWallDamageAlpha(seg);
         const textureEnabled = options.textureEnabled !== false;
         drawProjectedWallFace(ctx, p1, p2, px, py, wallColor, input.worldSurfaces, input.surfaceBake, {
             viewport,
