@@ -1,4 +1,3 @@
-import { collectWallSegmentsAlongLine } from "./wallSegmentQuery.js";
 /** @typedef {import("../indexes/WallSpatialIndex.js").WallSpatialIndex} WallSpatialIndex */
 /** @typedef {import("../grid/WorldObstacleGrid.js").WorldObstacleGrid} WorldObstacleGrid */
 /**
@@ -11,8 +10,5 @@ import { collectWallSegmentsAlongLine } from "./wallSegmentQuery.js";
 export function wallContextFromState(state) {
     if (!state) return null;
     return { walls: state.walls ?? [], wallSpatialIndex: state.wallSpatialIndex ?? null, obstacleGrid: state.obstacleGrid ?? null };
-}
-export function getWallsAlongLine(x1, y1, x2, y2, wallCtx) {
-    return collectWallSegmentsAlongLine(wallCtx, x1, y1, x2, y2);
 }
 export {};

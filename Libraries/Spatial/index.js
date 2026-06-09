@@ -57,7 +57,7 @@ export { WallSpatialIndex } from "./indexes/WallSpatialIndex.js";
 // Query
 export { SpatialQuery } from "./query/SpatialQuery.js";
 export { collectWallSegmentsForEntity, collectWallSegmentsAlongLine } from "./query/wallSegmentQuery.js";
-export { wallContextFromState, getWallsAlongLine } from "./query/wallContext.js";
+export { wallContextFromState } from "./query/wallContext.js";
 export { hasLineOfSight } from "./query/lineOfSight.js";
 export { castCircleRay, rayCircleHitDistance } from "./query/circleCast.js";
 export { estimateRollingTravelDistance, computeCircleAimLineSegment } from "./query/circleAimLinePreview.js";

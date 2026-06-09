@@ -1,5 +1,5 @@
 import { circlesOverlap, findFirstCircleSegmentHit } from "../collision/overlap.js";
-import { getWallsAlongLine } from "./wallContext.js";
+import { collectWallSegmentsAlongLine } from "./wallSegmentQuery.js";
 /** @typedef {import("./wallContext.js").WallContext} WallContext */
 /** @typedef {"wall" | "none" | string} SteppedCircleRayHitKind */
 /**
@@ -31,7 +31,7 @@ function collectCandidateWalls(startX, startY, dx, dy, maxDist, wallCtx) {
     if (walls.length === 0) return [];
     const endX = startX + dx * maxDist;
     const endY = startY + dy * maxDist;
-    if (wallCtx?.obstacleGrid) return getWallsAlongLine(startX, startY, endX, endY, wallCtx);
+    if (wallCtx?.obstacleGrid) return collectWallSegmentsAlongLine(wallCtx, startX, startY, endX, endY);
     const minX = Math.min(startX, endX);
     const maxX = Math.max(startX, endX);
     const minY = Math.min(startY, endY);

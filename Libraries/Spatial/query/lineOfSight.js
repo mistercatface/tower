@@ -1,5 +1,5 @@
 import { distanceToSegment } from "../geometry/WallGeometry.js";
-import { getWallsAlongLine } from "./wallContext.js";
+import { collectWallSegmentsAlongLine } from "./wallSegmentQuery.js";
 /**
  * @typedef {import("./wallContext.js").WallContext} WallContext
  */
@@ -19,7 +19,7 @@ export function hasLineOfSight(x1, y1, x2, y2, wallCtx, sourceRadius = 0, target
     if (!wallCtx) return true;
     const corridorRadius = Math.max(sourceRadius, targetRadius);
     let candidateWalls;
-    if (wallCtx.obstacleGrid) candidateWalls = getWallsAlongLine(x1, y1, x2, y2, wallCtx);
+    if (wallCtx.obstacleGrid) candidateWalls = collectWallSegmentsAlongLine(wallCtx, x1, y1, x2, y2);
     else if (wallCtx.wallSpatialIndex) {
         const minX = Math.min(x1, x2) - corridorRadius;
         const minY = Math.min(y1, y2) - corridorRadius;

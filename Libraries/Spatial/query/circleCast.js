@@ -1,6 +1,6 @@
 import { sweepCircleAgainstSegments } from "../geometry/circleSweep.js";
 import { circlePairContactPoint, circleWallContactPoint } from "../geometry/circleContact.js";
-import { getWallsAlongLine } from "./wallContext.js";
+import { collectWallSegmentsAlongLine } from "./wallSegmentQuery.js";
 /**
  * @typedef {import("./wallContext.js").WallContext} WallContext
  * @typedef {"wall" | "circle"} CircleCastHitKind
@@ -55,7 +55,7 @@ function castCircleRayWallHit(ox, oy, dx, dy, radius, maxDist, wallCtx) {
     if (!wallCtx?.walls?.length) return null;
     const endX = ox + dx * maxDist;
     const endY = oy + dy * maxDist;
-    let candidates = getWallsAlongLine(ox, oy, endX, endY, wallCtx);
+    let candidates = collectWallSegmentsAlongLine(wallCtx, ox, oy, endX, endY);
     if (candidates.length === 0 && wallCtx.walls?.length) candidates = wallCtx.walls;
     if (candidates.length === 0) return null;
     const hit = sweepCircleAgainstSegments(ox, oy, dx, dy, radius, candidates, maxDist);
