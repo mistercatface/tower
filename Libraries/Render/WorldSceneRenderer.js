@@ -2,7 +2,7 @@
 /** @typedef {import("./WorldSceneTypes.js").WorldSceneDrawOptions} WorldSceneDrawOptions */
 /** @typedef {import("./Props3D/PropRenderer.js").PropDrawRecipe} PropDrawRecipe */
 import { getWallDamageAlpha } from "./Structure3D/wallDamageVisual.js";
-import { clipToViewport, getViewQueryBounds } from "./common/viewportUtils.js";
+import { clipToViewport } from "./common/viewportUtils.js";
 import { worldToChunkCol, worldToChunkRow } from "../Spatial/grid/ChunkGrid.js";
 import { PropRenderer } from "./Props3D/PropRenderer.js";
 import { StructureRenderer } from "./Structure3D/StructureRenderer.js";
@@ -33,7 +33,7 @@ export class WorldSceneRenderer {
         const px = input.viewer.x;
         const py = input.viewer.y;
         ctx.save();
-        clipToViewport(ctx, viewport, input.canvasBounds);
+        clipToViewport(ctx, viewport);
         for (let i = 0; i < input.pickups.length; i++) {
             const p = input.pickups[i];
             if (p.isDead || p.strategy?.renderMode !== "debris") continue;
@@ -42,11 +42,8 @@ export class WorldSceneRenderer {
         }
         ctx.restore();
     }
-    _worldBounds(viewport) {
-        return viewport.getWorldBounds(viewport.cx * 2, viewport.cy * 2, this.settings.viewPaddingPx);
-    }
-    _getSceneChunkRange(scene, viewport, input) {
-        const bounds = getViewQueryBounds(viewport, this.settings.viewQueryPadPx, input.canvasBounds);
+    _getSceneChunkRange(scene, viewport) {
+        const bounds = viewport.boundsQuery ?? viewport.getWorldBounds(undefined, undefined, this.settings.viewQueryPadPx);
         return {
             minCol: worldToChunkCol(bounds.minX, scene.gridMinX, scene.chunkSizePx),
             maxCol: worldToChunkCol(bounds.maxX - 1, scene.gridMinX, scene.chunkSizePx),
@@ -56,7 +53,7 @@ export class WorldSceneRenderer {
     }
     _appendVisibleWallsFromScene(input, viewport, px, py) {
         const scene = input.worldSurfaces.renderScene;
-        const { minCol, maxCol, minRow, maxRow } = this._getSceneChunkRange(scene, viewport, input);
+        const { minCol, maxCol, minRow, maxRow } = this._getSceneChunkRange(scene, viewport);
         this._sceneWallScratch.length = 0;
         const renderables = scene.collectPass("walls", minCol, minRow, maxCol, maxRow, this._sceneWallScratch);
         const visibleObjects = this._visibleObjects;
@@ -97,7 +94,7 @@ export class WorldSceneRenderer {
         const px = input.viewer.x;
         const py = input.viewer.y;
         ctx.save();
-        clipToViewport(ctx, viewport, input.canvasBounds);
+        clipToViewport(ctx, viewport);
         const visibleCorpses = this._visibleObjects;
         visibleCorpses.length = 0;
         this._appendVisibleRagdolls(input, viewport, px, py, visibleCorpses);
@@ -108,10 +105,10 @@ export class WorldSceneRenderer {
     draw3DBuildings(ctx, input, viewport, options = {}) {
         const px = input.viewer.x;
         const py = input.viewer.y;
-        const worldBounds = this._worldBounds(viewport);
+        const worldBounds = viewport.boundsDraw ?? viewport.getWorldBounds(undefined, undefined, this.settings.viewPaddingPx);
         this.structure.updateSharedEdges(input);
         ctx.save();
-        clipToViewport(ctx, viewport, input.canvasBounds);
+        clipToViewport(ctx, viewport);
         const visibleObjects = this._visibleObjects;
         visibleObjects.length = 0;
         this._appendVisibleWallsFromScene(input, viewport, px, py);

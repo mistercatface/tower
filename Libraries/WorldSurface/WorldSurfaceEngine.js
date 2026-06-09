@@ -221,7 +221,7 @@ export class WorldSurfaceEngine {
         const viewerY = viewport.y;
         const cellsPerChunk = this.settings.cellsPerChunk;
         const chunkSizePx = getChunkSizePx(obstacleGrid.cellSize, cellsPerChunk);
-        const viewportBounds = viewport.getWorldBounds(canvasWidth, canvasHeight, this.settings.viewPaddingPx);
+        const viewportBounds = viewport.boundsDraw ?? viewport.getWorldBounds(canvasWidth, canvasHeight, this.settings.viewPaddingPx);
         const bounds = intersectWorldBounds(viewportBounds, playBounds);
         if (!bounds) return;
         TileWorkerCoordinator.updateFocus(viewport.x, viewport.y);

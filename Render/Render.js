@@ -40,6 +40,8 @@ export class Renderer {
     }
     renderSimulationScene(state, viewport) {
         this._frameWorldRenderInput = null;
+        const surfaceSettings = getGameWorldSurfaceSettings();
+        viewport.beginFrame({ width: state.canvasBounds.width, height: state.canvasBounds.height, viewQueryPadPx: surfaceSettings.viewQueryPadPx, viewPaddingPx: surfaceSettings.viewPaddingPx });
         this.ctx.save();
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         viewport.apply(this.ctx);
