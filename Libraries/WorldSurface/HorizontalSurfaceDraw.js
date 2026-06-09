@@ -25,25 +25,6 @@ export function chunkHasWallSegments(wallSpatialIndex, chunkOriginX, chunkOrigin
     return false;
 }
 /**
- * @param {import("../Spatial/indexes/WallSpatialIndex.js").WallSpatialIndex | null | undefined} wallSpatialIndex
- * @param {number} chunkOriginX
- * @param {number} chunkOriginY
- * @param {number} chunkSizePx
- * @param {number} zLevel
- * @param {number} defaultWallHeight
- */
-export function chunkHasWallSegmentsAtZ(wallSpatialIndex, chunkOriginX, chunkOriginY, chunkSizePx, zLevel) {
-    if (!wallSpatialIndex) return false;
-    const segments = wallSpatialIndex.collectInBounds(chunkOriginX, chunkOriginY, chunkOriginX + chunkSizePx, chunkOriginY + chunkSizePx);
-    for (let i = 0; i < segments.length; i++) {
-        const segment = segments[i];
-        if (segment.isDead) continue;
-        const segZ = segment.wallHeight;
-        if (segZ != null && Math.abs(segZ - zLevel) <= 0.01) return true;
-    }
-    return false;
-}
-/**
  * Clip draw to projected wall-segment footprints at roof elevation.
  *
  * @param {CanvasRenderingContext2D} ctx
@@ -66,8 +47,6 @@ export function clipChunkToRoofFootprints(ctx, wallSpatialIndex, chunkOriginX, c
     for (let i = 0; i < segments.length; i++) {
         const segment = segments[i];
         if (segment.isDead) continue;
-        const segZ = segment.wallHeight;
-        if (segZ == null || Math.abs(segZ - zLevel) > 0.01) continue;
         const corners = getSegmentFootprintCorners(segment);
         for (let j = 0; j < 4; j++) {
             const corner = corners[j];
@@ -104,8 +83,6 @@ export function drawRoofSegmentDamageOverlays(ctx, wallSpatialIndex, chunkOrigin
     for (let i = 0; i < segments.length; i++) {
         const segment = segments[i];
         if (segment.isDead) continue;
-        const segZ = segment.wallHeight;
-        if (segZ == null || Math.abs(segZ - zLevel) > 0.01) continue;
         const damageAlpha = getWallDamageAlpha(segment);
         if (damageAlpha <= 0) continue;
         const corners = getSegmentFootprintCorners(segment);

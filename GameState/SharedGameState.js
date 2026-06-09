@@ -19,6 +19,7 @@ export class SharedGameState {
         this.obstacleGrid = new WorldObstacleGrid(gridSettings.cellSize);
         this.hierarchicalNavigator = new HierarchicalNavigator(gridSettings.cellSize, gridSettings.maxCellsPerChunk, gridSettings.minCellsPerChunk, this.obstacleGrid, { damagePadding: 12 });
         this.wallSpatialIndex = new WallSpatialIndex(100);
+        this.roofSpatialIndices = null;
         this.worldSurfaces = new WorldSurfaceSystem(getGameWorldSurfaceSettings());
         this.worldSurfaceSeed = 0;
         this.surfaceProfileOverride = null;

@@ -6,6 +6,7 @@ import { getWorldPlayBounds } from "../../Core/GamePorts.js";
 import { WorldSurfaceEngine } from "../../Libraries/WorldSurface/WorldSurfaceEngine.js";
 import { isWorldScene } from "../../Core/GamePorts.js";
 import { getGameWorldSurfaceSettings } from "../WorldSurfaceBootstrap.js";
+import { WallSpatialIndex } from "../../Libraries/Spatial/indexes/WallSpatialIndex.js";
 import { buildGroundChunkBakePayload, resolveSurfaceProfileAtCoords } from "./surfaceProfileResolver.js";
 export class WorldSurfaceSystem extends WorldSurfaceEngine {
     /** @param {import("../../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} [settings] */
@@ -38,7 +39,17 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
         if (!viewport || !isWorldScene(state.phase) || !state.obstacleGrid?.cols) return;
         if (!state.roofZLevels) {
             const zSet = new Set();
-            for (const w of state.walls) if (!w.isDead && w.wallHeight != null) zSet.add(w.wallHeight);
+            state.roofSpatialIndices = new Map();
+            for (const w of state.walls)
+                if (!w.isDead && w.wallHeight != null) {
+                    zSet.add(w.wallHeight);
+                    let index = state.roofSpatialIndices.get(w.wallHeight);
+                    if (!index) {
+                        index = new WallSpatialIndex(100);
+                        state.roofSpatialIndices.set(w.wallHeight, index);
+                    }
+                    index.insert(w);
+                }
             state.roofZLevels = Array.from(zSet).sort((a, b) => a - b);
         }
         this.drawRoofLayers(ctx, {

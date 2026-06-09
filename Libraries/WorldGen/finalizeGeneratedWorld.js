@@ -15,5 +15,6 @@ export function finalizeGeneratedWorld(state, { centerX, centerY, gridBounds = n
     state.worldSurfaceSeed = (Math.random() * 0x7fffffff) | 0;
     state.worldSurfaces.clear();
     state.roofZLevels = null;
+    state.roofSpatialIndices = null;
     syncSurfaceProfile(state, centerX, centerY);
 }
