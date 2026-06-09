@@ -15,8 +15,6 @@ export function finalizeGeneratedWorld(state, { centerX, centerY, gridBounds = n
     state.hierarchicalNavigator.initialize(centerX, centerY);
     state.worldSurfaces.worldSurfaceSeed = (Math.random() * 0x7fffffff) | 0;
     state.worldSurfaces.clear();
-    state.roofZLevels = null;
-    state.roofSpatialIndices = null;
-    SceneCompiler.compileWalls(state, state.worldSurfaces.renderScene);
+    SceneCompiler.compileWalls(state, state.worldSurfaces.renderScene, state.obstacleGrid.minX, state.obstacleGrid.minY);
     syncSurfaceProfile(state, centerX, centerY);
 }

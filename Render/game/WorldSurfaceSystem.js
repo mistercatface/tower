@@ -21,10 +21,13 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
         this.surfaceProfileOverride = null;
         this.renderScene = new RenderScene(getChunkSizePx(settings.cellSize, settings.cellsPerChunk));
     }
-    clear() {
+    /** Invalidate baked ground/wall textures only — keeps compiled static geometry. */
+    clearBakeCache() {
         super.clear();
-        this.roofZLevels = null;
-        this.roofSpatialIndices = null;
+        this.invalidateRoofs();
+    }
+    clear() {
+        this.clearBakeCache();
         this.surfaceProfileOverride = null;
         this.renderScene.clear();
     }
@@ -82,6 +85,7 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
             playBounds: getWorldPlayBounds(state),
             roofZLevels: this.roofZLevels,
             roofSpatialIndices: this.roofSpatialIndices,
+            renderScene: this.renderScene,
         });
     }
 }
