@@ -10,7 +10,6 @@ import { SURFACE_PROFILE_ID } from "../../Config/procedural/profileIds.js";
 import { createRunBootstrapPort } from "../../Libraries/RunBootstrap/RunBootstrapPipeline.js";
 import { generateWorldPhase } from "../../Libraries/RunBootstrap/phases.js";
 import { createDefaultRenderPorts } from "../../Libraries/Render/defaultRenderPorts.js";
-import { createCachedWorldStructure } from "../../Libraries/Render/worldStructure/CachedWorldStructure.js";
 import { PoolGameState } from "./PoolGameState.js";
 import { registerPickupStates } from "../../Entities/PickupStates.js";
 import { poolPickupStates } from "./pickupPoolStates.js";
@@ -30,7 +29,7 @@ export const poolGame = {
     worldSurface: { wallHeight: 20, pixelsPerCell: 6 },
     simulationPort: createSimulationPort([pushablePhysicsPhase, gameSceneTickPhase, worldSurfacePhase]),
     uiPort: poolUiPort,
-    render: { ...createDefaultRenderPorts(), worldStructure: createCachedWorldStructure(), simulationEffectPasses: [{ zIndex: 10, draw: drawPoolPockets }] },
+    render: { ...createDefaultRenderPorts(), simulationEffectPasses: [{ zIndex: 10, draw: drawPoolPockets }] },
     worldGen: poolWorldGen,
     runBootstrapPort: createRunBootstrapPort([generateWorldPhase]),
     runScenePort: poolRunScenePort,

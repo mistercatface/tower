@@ -1,7 +1,7 @@
 import { applyGameFeatures } from "./applyGameFeatures.js";
 import { installGameState } from "../GameState/GameState.js";
 import { applyGameBootstrap } from "../Libraries/Bootstrap/applyGameBootstrap.js";
-import { getRenderPorts, resetRun } from "./GamePorts.js";
+import { resetRun } from "./GamePorts.js";
 import { events, requestUiUpdate } from "./EventSystem.js";
 import { registerCoreListeners } from "./GameListeners.js";
 import { PauseManager } from "./PauseManager.js";
@@ -73,7 +73,6 @@ export function createGame(definition) {
         canvas.height = canvas.clientHeight;
         state.canvasBounds = { width: canvas.width, height: canvas.height };
         viewport.setCanvasSize(canvas.width, canvas.height);
-        getRenderPorts().worldStructure.invalidate("viewport");
         definition.onCanvasResize?.();
     }
     registerCoreListeners(events, pauseManager);
