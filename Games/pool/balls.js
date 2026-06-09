@@ -1,9 +1,4 @@
-import { Pickup } from "../../Entities/Pickup.js";
-import { wakePushableBody } from "../../Libraries/Motion/pushableSleep.js";
-import { poolBallFromNumber } from "../../Libraries/Render/Props3D/poolBallArt.js";
-import { getCollisionSettings } from "../../Core/GameCollisionSettings.js";
-import { speedSqXY } from "../../Libraries/Math/Vec2.js";
-import { POOL_OBJECT_BALL_COUNT } from "./config/tableLayout.js";
+import { POOL_BALL_RADIUS } from "./config/tableLayout.js";
 export const POOL_CUE_TAG = "_poolCue";
 export const POOL_OBJECT_TAG = "_poolObject";
 export function createInitialPoolState() {
@@ -67,6 +62,7 @@ export function spawnPoolBalls(state, layout) {
     ];
     for (const spec of specs) {
         const ball = new Pickup(spec.pos.x, spec.pos.y, spec.type, 0);
+        ball.radius = POOL_BALL_RADIUS;
         ball[spec.tag] = true;
         ball.poolBall = poolBallFromNumber(spec.number ?? 0);
         wakePushableBody(ball);

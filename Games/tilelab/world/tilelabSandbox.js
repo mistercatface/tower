@@ -1,5 +1,6 @@
 import { TILELAB_SANDBOX_SPAWN_PROP } from "../index.js";
 import {
+    createCueStrikeBehavior,
     createDragLaunchBehavior,
     createRollToCursorDirectBehavior,
     createRollToCursorHpaBehavior,
@@ -22,7 +23,7 @@ export function mountTilelabSandbox(state, requestRedraw) {
     registerSandboxVoidPickupStates();
     sandboxController = createSandboxController(createTilelabSandboxHost(state, requestRedraw), {
         defaultSpawnPropId: TILELAB_SANDBOX_SPAWN_PROP,
-        behaviors: [createDragLaunchBehavior(), createShootBehavior(), createRollToCursorDirectBehavior(), createRollToCursorHpaBehavior()],
+        behaviors: [createDragLaunchBehavior(), createCueStrikeBehavior(), createShootBehavior(), createRollToCursorDirectBehavior(), createRollToCursorHpaBehavior()],
         defaultBehaviorId: DRAG_LAUNCH_BEHAVIOR_ID,
     });
     sandboxController.register();

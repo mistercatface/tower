@@ -1,11 +1,10 @@
-import { POOL_BALL_RADIUS } from "../../../Games/pool/config/tableLayout.js";
 export default {
     id: "pool_cue_ball",
     recipe: "poolBall",
+    sandbox: { spawnable: true, behaviors: ["cueStrike"], cueStrike: { minDrag: 2, maxPull: 38, pullScale: 0.5, minPower: 8, maxPower: 600 } },
     physics: {
         hitBehavior: "none",
-        radius: POOL_BALL_RADIUS,
-        propPixelSize: 16,
+        radius: 8,
         isPushable: true,
         rolls: true,
         collisionShape: "circle",
@@ -18,5 +17,5 @@ export default {
         snapSpeed: 1.8,
         wallPhysics: { restitution: 0.94, friction: 0.06 },
     },
-    visuals: { defaultPoolBall: { kind: "cue" }, defaultRadius: POOL_BALL_RADIUS, panelCount: 12, latBands: 8, stroke: null },
+    visuals: { defaultPoolBall: { kind: "cue" }, defaultRadius: 8, panelCount: 12, latBands: 8, stroke: null },
 };

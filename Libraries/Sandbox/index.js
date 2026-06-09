@@ -9,6 +9,7 @@ export { findPickupAt } from "./findPickupAt.js";
 export { bindCanvasPointers, releasePointerCapture } from "./bindCanvasPointers.js";
 export { createSandboxSession } from "./sandboxSession.js";
 export { createSandboxController } from "./createSandboxController.js";
+export { createCueStrikeBehavior, CUE_STRIKE_BEHAVIOR_ID } from "./behaviors/cueStrikeBehavior.js";
 export { createDragLaunchBehavior, DRAG_LAUNCH_BEHAVIOR_ID } from "./behaviors/dragLaunchBehavior.js";
 export { createRollToCursorDirectBehavior, ROLL_TO_CURSOR_DIRECT_BEHAVIOR_ID } from "./behaviors/rollToCursorDirectBehavior.js";
 export { createRollToCursorHpaBehavior, ROLL_TO_CURSOR_HPA_BEHAVIOR_ID } from "./behaviors/rollToCursorHpaBehavior.js";

@@ -1,11 +1,10 @@
-import { POOL_BALL_RADIUS } from "../../../Games/pool/config/tableLayout.js";
 export default {
     id: "pool_ball",
     recipe: "poolBall",
+    sandbox: { spawnable: true },
     physics: {
         hitBehavior: "none",
-        radius: POOL_BALL_RADIUS,
-        propPixelSize: 16,
+        radius: 8,
         isPushable: true,
         rolls: true,
         collisionShape: "circle",
@@ -18,5 +17,5 @@ export default {
         snapSpeed: 1.8,
         wallPhysics: { restitution: 0.94, friction: 0.06 },
     },
-    visuals: { defaultPoolBall: { kind: "solid", number: 1, color: "#FFD600" }, defaultRadius: POOL_BALL_RADIUS, panelCount: 12, latBands: 8, stroke: null },
+    visuals: { defaultPoolBall: { kind: "solid", number: 1, color: "#FFD600" }, defaultRadius: 8, panelCount: 12, latBands: 8, stroke: null },
 };
