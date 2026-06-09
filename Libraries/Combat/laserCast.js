@@ -1,6 +1,5 @@
 import { wallContextFromState } from "../Spatial/query/wallContext.js";
 import { castSteppedCircleRay } from "../Spatial/query/steppedCircleRayCast.js";
-
 /**
  * @param {object} state
  * @param {{ source?: object | null, includePickups?: boolean, includeActors?: object[] }} [options]
@@ -21,7 +20,6 @@ export function buildLaserTargetCircles(state, { source = null, includePickups =
     }
     return circles;
 }
-
 export function castLaserRay(startX, startY, angle, maxDist, state, beamRadius, circles) {
     return castSteppedCircleRay(startX, startY, angle, maxDist, beamRadius, { wallCtx: wallContextFromState(state), circles });
 }
