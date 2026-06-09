@@ -14,7 +14,6 @@
  * @typedef {Object} WorldSceneDrawInput
  * @property {{ x: number, y: number }} viewer
  * @property {object[]} walls
- * @property {object|null} wallSpatialIndex
  * @property {object[]} pickups
  * @property {{ width: number, height: number }|null} canvasBounds
  * @property {import("../WorldSurface/WorldSurfaceEngine.js").WorldSurfaceEngine|null} [worldSurfaces]

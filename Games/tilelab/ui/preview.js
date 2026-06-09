@@ -16,7 +16,7 @@ export function registerEditorProfiles(state) {
     registerEditorProfilesSerial = registerEditorProfilesSerial.then(async () => {
         invalidateProfileScratch(RUNTIME_LAB_PROFILE_ID);
         invalidateWallAtlasKeyMemos(state);
-        state.worldSurfaces.clear();
+        state.worldSurfaces.clearBakeCache();
         invalidateMapPreviewBakes();
         await syncRuntimeLabProfile();
     });

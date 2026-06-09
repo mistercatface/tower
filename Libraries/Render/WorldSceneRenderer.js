@@ -45,16 +45,6 @@ export class WorldSceneRenderer {
     _worldBounds(viewport) {
         return viewport.getWorldBounds(viewport.cx * 2, viewport.cy * 2, this.settings.viewPaddingPx);
     }
-    _appendVisibleWalls(input, viewport, px, py) {
-        const visibleObjects = this._visibleObjects;
-        const candidateWalls = this.structure.collectVisibleWalls(input, viewport, px, py);
-        for (let i = 0; i < candidateWalls.length; i++) {
-            const seg = candidateWalls[i];
-            if (seg.isDead) continue;
-            seg._distSq = (seg.x - px) ** 2 + (seg.y - py) ** 2;
-            visibleObjects.push(seg);
-        }
-    }
     _getSceneChunkRange(scene, viewport, input) {
         const bounds = getViewQueryBounds(viewport, this.settings.viewQueryPadPx, input.canvasBounds);
         return {
@@ -66,10 +56,6 @@ export class WorldSceneRenderer {
     }
     _appendVisibleWallsFromScene(input, viewport, px, py) {
         const scene = input.worldSurfaces.renderScene;
-        if (scene.chunks.size === 0) {
-            this._appendVisibleWalls(input, viewport, px, py);
-            return;
-        }
         const { minCol, maxCol, minRow, maxRow } = this._getSceneChunkRange(scene, viewport, input);
         this._sceneWallScratch.length = 0;
         const renderables = scene.collectPass("walls", minCol, minRow, maxCol, maxRow, this._sceneWallScratch);
@@ -123,7 +109,6 @@ export class WorldSceneRenderer {
         const px = input.viewer.x;
         const py = input.viewer.y;
         const worldBounds = this._worldBounds(viewport);
-        const wallDrawOptions = { textureEnabled: options.textureEnabled !== false };
         this.structure.updateSharedEdges(input);
         ctx.save();
         clipToViewport(ctx, viewport, input.canvasBounds);
@@ -137,7 +122,6 @@ export class WorldSceneRenderer {
             if (obj.usesKinematicsBody) renderActorKinematicsBody(ctx, obj, viewport);
             else if (obj.strategy) this.props.drawProp(ctx, obj, px, py);
             else if (obj.pass === "walls") this._drawRetainedWallFace(ctx, obj, input, viewport, px, py, worldBounds);
-            else this.structure.drawWallSegmentFaces(ctx, obj, px, py, input, viewport, worldBounds, wallDrawOptions);
         }
         ctx.restore();
     }

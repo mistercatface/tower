@@ -24,7 +24,7 @@ function maybeClearBakeCaches(worldState, profileId) {
     if (lastBakeKey === key) return;
     lastBakeKey = key;
     invalidateWallAtlasKeyMemos(worldState);
-    worldState.worldSurfaces.clear();
+    worldState.worldSurfaces.clearBakeCache();
 }
 /**
  * @param {CanvasRenderingContext2D} ctx

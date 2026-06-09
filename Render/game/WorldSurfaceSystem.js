@@ -25,6 +25,7 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
         super.clear();
         this.invalidateRoofs();
     }
+    /** Full reset — compiled wall scene too. Only call from world gen / map regen (then compileWalls). */
     clear() {
         this.clearBakeCache();
         this.surfaceProfileOverride = null;

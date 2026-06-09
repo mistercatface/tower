@@ -10,7 +10,6 @@ export function buildWorldRenderInput(state, viewport) {
     return {
         viewer: { x: viewport.x, y: viewport.y },
         walls: state.walls,
-        wallSpatialIndex: state.wallSpatialIndex,
         pickups: state.pickups,
         ragdollCorpses: state.ragdollCorpses ?? [],
         canvasBounds: state.canvasBounds,
