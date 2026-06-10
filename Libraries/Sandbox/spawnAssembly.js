@@ -72,6 +72,9 @@ function registerAssemblyPlayfieldSurface(state, layout, resolved, groupId, grou
     const zone = createAssemblySurfaceZone({ id: `${groupId}:surface`, profileId, play: layout.play, bounds: layout.bounds, railHeight: resolved.arena.walls.height });
     stampAssemblyGroupMember(zone, groupId, resolved.id, groupField);
     state.sandboxSurfaceProfileZones.push(zone);
+    const railHeight = resolved.arena.walls.height;
+    const zLevels = railHeight > 0 ? [0, railHeight] : [0];
+    state.worldSurfaces?.invalidateProfileGroundChunks(profileId, layout.bounds, state.obstacleGrid, zLevels);
 }
 /**
  * @param {import("./SandboxHostPort.js").SandboxHostPort} host

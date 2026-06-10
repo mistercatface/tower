@@ -46,6 +46,9 @@ export function buildGroundChunkBakePayload(state, chunkCol, chunkRow, zLevel = 
         if (wallProfileId) profileId = wallProfileId;
     }
     const profile = getSurfaceProfileProvider().getProfile(profileId);
+    const forceAnimation = state.worldSurfaces?.forceChunkAnimation === true;
+    const animEnabled = isGroundChunkAnimationEnabled(profile, settings, forceAnimation);
+    const includeAnimTime = animEnabled && profile?.animation && (zLevel === 0 || forceAnimation);
     return createGroundChunkBakePayload({
         chunkCol,
         chunkRow,
@@ -57,6 +60,6 @@ export function buildGroundChunkBakePayload(state, chunkCol, chunkRow, zLevel = 
         cellsPerChunk,
         cellSize: settings.cellSize,
         texelResolution: settings.texelResolution,
-        gameTime: zLevel === 0 && isGroundChunkAnimationEnabled(profile, settings) ? (state.gameTime ?? 0) : undefined,
+        gameTime: includeAnimTime ? (state.gameTime ?? 0) : undefined,
     });
 }

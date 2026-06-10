@@ -6,9 +6,16 @@
 import { getWallHeight } from "./WorldSurfaceSettings.js";
 import { getSurfaceProfileProvider } from "../Procedural/SurfaceProfileProvider.js";
 import { intersectWorldBoundsInto } from "../WorldGen/playBounds.js";
-import { getChunkSizePx, gridBoundsToChunkRange, worldToChunkCol, worldToChunkRow } from "../Spatial/grid/ChunkGrid.js";
+import { getChunkSizePx, gridBoundsToChunkRange, worldBoundsToChunkRange, worldToChunkCol, worldToChunkRow } from "../Spatial/grid/ChunkGrid.js";
 import { ProgressiveFrameCache } from "./ProgressiveFrameCache.js";
-import { getHorizontalSurfaceZLevels, groundChunkCachePrefix, getGroundChunkAnimationInfo, getWallAtlasAnimationInfo, isWallAtlasAnimationEnabled } from "./bake/SurfaceBakeHelpers.js";
+import {
+    getHorizontalSurfaceZLevels,
+    groundChunkCachePrefix,
+    getGroundChunkAnimationInfo,
+    getWallAtlasAnimationInfo,
+    isWallAtlasAnimationEnabled,
+    invalidateGroundChunkCacheEntry,
+} from "./bake/SurfaceBakeHelpers.js";
 import { chunkHasWallSegments, clipChunkToRoofFootprints, drawRoofSegmentDamageOverlays, projectHorizontalSurfaceCorners } from "./HorizontalSurfaceDraw.js";
 import { drawImageQuad } from "../Canvas/AffineTexture.js";
 import { getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
@@ -57,8 +64,28 @@ export class WorldSurfaceEngine {
                 const profileId = resolveProfileAt(chunkCenterX, chunkCenterY);
                 const ppwu = getTexelResolution(this.settings);
                 const rev = getSurfaceProfileRevision(profileId);
-                for (const zLevel of zLevels) this.surfaceCache.deleteByPrefix(groundChunkCachePrefix(chunkCol, chunkRow, profileId, rev, ppwu, zLevel).substring(6));
+                const profile = getSurfaceProfileProvider().getProfile(profileId);
+                const { totalFrames } = getGroundChunkAnimationInfo(profile, this.settings, true);
+                for (const zLevel of zLevels) invalidateGroundChunkCacheEntry(this.surfaceCache, chunkCol, chunkRow, profileId, rev, ppwu, zLevel, totalFrames);
             }
+    }
+    /**
+     * Drop baked ground chunks for a profile inside world bounds (e.g. assembly playfield overlay).
+     * @param {string} profileId
+     * @param {{ minX: number, minY: number, maxX: number, maxY: number }} worldBounds
+     * @param {number[]} [zLevels]
+     */
+    invalidateProfileGroundChunks(profileId, worldBounds, obstacleGrid, zLevels = [0]) {
+        if (!worldBounds || !obstacleGrid || !profileId) return;
+        const chunkSizePx = getChunkSizePx(obstacleGrid.cellSize, this.settings.cellsPerChunk);
+        const range = worldBoundsToChunkRange(worldBounds.minX, worldBounds.minY, worldBounds.maxX, worldBounds.maxY, obstacleGrid.minX, obstacleGrid.minY, chunkSizePx);
+        const ppwu = getTexelResolution(this.settings);
+        const rev = getSurfaceProfileRevision(profileId);
+        const profile = getSurfaceProfileProvider().getProfile(profileId);
+        const { totalFrames } = getGroundChunkAnimationInfo(profile, this.settings, true);
+        for (let chunkRow = range.minChunkRow; chunkRow <= range.maxChunkRow; chunkRow++)
+            for (let chunkCol = range.minChunkCol; chunkCol <= range.maxChunkCol; chunkCol++)
+                for (let z = 0; z < zLevels.length; z++) invalidateGroundChunkCacheEntry(this.surfaceCache, chunkCol, chunkRow, profileId, rev, ppwu, zLevels[z], totalFrames);
     }
     requestWallAtlasBake(width, height, p1, p2, pixelsPerUnit, proceduralSurfaceDraw, frameRange, profileId, wallHeight = null, wallWidth = null) {
         const centerX = (p1.x + p2.x) / 2;
@@ -109,14 +136,19 @@ export class WorldSurfaceEngine {
         });
         return placeholder;
     }
+    _isChunkAnimationForced(state) {
+        return state?.worldSurfaces?.forceChunkAnimation === true;
+    }
     getGroundChunkCanvas(chunkCol, chunkRow, state, payload = null, zLevel = 0) {
         if (!payload) payload = this._resolveChunkPayload(state, chunkCol, chunkRow, zLevel);
         const resolvedZ = payload.zLevel ?? zLevel;
-        const key = groundChunkCachePrefix(chunkCol, chunkRow, payload.profileId, getSurfaceProfileRevision(payload.profileId), getTexelResolution(this.settings), resolvedZ);
+        const profile = getSurfaceProfileProvider().getProfile(payload.profileId);
+        const forceAnimation = this._isChunkAnimationForced(state);
+        const { enabled: isAnimated, totalFrames, sourceTotal } = getGroundChunkAnimationInfo(profile, this.settings, forceAnimation);
+        const bakeFrameCount = isAnimated ? totalFrames : 1;
+        const key = groundChunkCachePrefix(chunkCol, chunkRow, payload.profileId, getSurfaceProfileRevision(payload.profileId), getTexelResolution(this.settings), resolvedZ, bakeFrameCount);
         let canvases = this.surfaceCache.get(key);
         if (canvases) return canvases;
-        const profile = getSurfaceProfileProvider().getProfile(payload.profileId);
-        const { enabled: isAnimated, totalFrames, sourceTotal } = getGroundChunkAnimationInfo(profile, this.settings);
         const animationFrameBatchSize = this.settings.animationFrameBatchSize ?? 8;
         const bakePayload = { ...payload, animationBakeFrames: totalFrames, animationSourceFrames: sourceTotal };
         const meta = { kind: "chunk", payload: bakePayload, totalFrames, animationFrameBatchSize };
@@ -215,18 +247,7 @@ export class WorldSurfaceEngine {
      * }} options
      */
     drawGroundChunks(ctx, options) {
-        const {
-            obstacleGrid,
-            viewport,
-            state,
-            gameTime = 0,
-            zLevel = 0,
-            wallSpatialIndex = null,
-            playBounds = null,
-            beforeDraw,
-            requireWallSegments = true,
-            skipRoofFootprintClip = false,
-        } = options;
+        const { obstacleGrid, viewport, state, gameTime = 0, zLevel = 0, wallSpatialIndex = null, playBounds = null, beforeDraw, requireWallSegments = true, skipRoofFootprintClip = false } = options;
         const viewerX = viewport.x;
         const viewerY = viewport.y;
         const cellsPerChunk = this.settings.cellsPerChunk;
@@ -260,8 +281,9 @@ export class WorldSurfaceEngine {
                 let canvas = canvases[0];
                 if (canvas.isPlaceholder) continue;
                 const profile = getSurfaceProfileProvider().getProfile(payload.profileId);
-                const { enabled: chunkAnimationEnabled, totalFrames: bakeTotal, sourceTotal } = getGroundChunkAnimationInfo(profile, this.settings);
-                if (zLevel === 0 && chunkAnimationEnabled && canvases.length > 1) {
+                const forceAnimation = this._isChunkAnimationForced(state);
+                const { enabled: chunkAnimationEnabled, totalFrames: bakeTotal, sourceTotal } = getGroundChunkAnimationInfo(profile, this.settings, forceAnimation);
+                if ((zLevel === 0 || forceAnimation) && chunkAnimationEnabled && canvases.length > 1) {
                     const sourceFrame = animationFrameIndex(profile.animation, { gameTime });
                     const bakedSlot = bakeSlotForSourceFrame(sourceFrame, bakeTotal, sourceTotal);
                     canvas = canvases[Math.min(canvases.length - 1, Math.max(0, bakedSlot))];

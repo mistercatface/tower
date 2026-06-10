@@ -1,5 +1,4 @@
 /** @typedef {import("../WorldSurfaceSettings.js").WorldSurfaceSettings} WorldSurfaceSettings */
-
 /**
  * @typedef {Object} GroundChunkBakePayload
  * @property {number} chunkCol
@@ -14,13 +13,11 @@
  * @property {number} [cellSize]
  * @property {number} [texelResolution]
  */
-
 function countAnimationFrames(animation) {
     if (!animation) return 1;
     const stages = animation.stages || [];
     return stages.reduce((sum, stage) => sum + (stage.frames ?? 30), 0) || 1;
 }
-
 /**
  * @param {object | null | undefined} profile
  * @param {WorldSurfaceSettings} settings
@@ -28,55 +25,48 @@ function countAnimationFrames(animation) {
 export function resolveAnimationBakeFrameCounts(profile, settings) {
     const sourceTotal = countAnimationFrames(profile?.animation);
     const cap = settings.animationBakeMaxFrames;
-    const bakeTotal =
-        cap != null && cap > 0 ? Math.min(sourceTotal, Math.floor(cap)) : sourceTotal;
+    const bakeTotal = cap != null && cap > 0 ? Math.min(sourceTotal, Math.floor(cap)) : sourceTotal;
     return { sourceTotal, bakeTotal };
 }
-
-/** @param {WorldSurfaceSettings} settings */
-export function isGroundChunkAnimationEnabled(profile, settings) {
-    return Boolean(profile?.animation) && settings.groundChunkAnimationsOn !== false;
+/** @param {WorldSurfaceSettings} settings @param {boolean} [force] */
+export function isGroundChunkAnimationEnabled(profile, settings, force = false) {
+    return Boolean(profile?.animation) && (force || settings.groundChunkAnimationsOn !== false);
 }
-
 /** @param {WorldSurfaceSettings} settings */
 export function isWallAtlasAnimationEnabled(profile, settings) {
     return Boolean(profile?.animation) && settings.wallAnimationsOn !== false;
 }
-
-/** @param {WorldSurfaceSettings} settings */
-export function getGroundChunkAnimationInfo(profile, settings) {
-    const enabled = isGroundChunkAnimationEnabled(profile, settings);
-    if (!enabled) {
-        return { enabled, totalFrames: 1, sourceTotal: 1 };
-    }
+/** @param {WorldSurfaceSettings} settings @param {boolean} [force] */
+export function getGroundChunkAnimationInfo(profile, settings, force = false) {
+    const enabled = isGroundChunkAnimationEnabled(profile, settings, force);
+    if (!enabled) return { enabled, totalFrames: 1, sourceTotal: 1 };
     const { sourceTotal, bakeTotal } = resolveAnimationBakeFrameCounts(profile, settings);
     return { enabled, totalFrames: bakeTotal, sourceTotal };
 }
-
 /** @param {WorldSurfaceSettings} settings */
 export function getWallAtlasAnimationInfo(profile, settings) {
     const enabled = isWallAtlasAnimationEnabled(profile, settings);
-    if (!enabled) {
-        return { enabled, totalFrames: 1, sourceTotal: 1 };
-    }
+    if (!enabled) return { enabled, totalFrames: 1, sourceTotal: 1 };
     const { sourceTotal, bakeTotal } = resolveAnimationBakeFrameCounts(profile, settings);
     return { enabled, totalFrames: bakeTotal, sourceTotal };
 }
-
 export function horizontalZCacheTag(zLevel = 0) {
     return zLevel > 0 ? `z${zLevel}roof` : `z${zLevel}`;
 }
-
-export function groundChunkCachePrefix(chunkCol, chunkRow, profileId, profileRevision, pixelsPerWorldUnit, zLevel = 0) {
-    return `chunk:${profileRevision}:${pixelsPerWorldUnit}:${profileId}:${horizontalZCacheTag(zLevel)}:${chunkCol},${chunkRow}`;
+export function groundChunkCachePrefix(chunkCol, chunkRow, profileId, profileRevision, pixelsPerWorldUnit, zLevel = 0, bakeFrameCount = 1) {
+    const framesTag = bakeFrameCount > 1 ? `:f${bakeFrameCount}` : "";
+    return `chunk:${profileRevision}:${pixelsPerWorldUnit}:${profileId}:${horizontalZCacheTag(zLevel)}${framesTag}:${chunkCol},${chunkRow}`;
 }
-
+/** @param {import("../ProgressiveFrameCache.js").ProgressiveFrameCache} cache */
+export function invalidateGroundChunkCacheEntry(cache, chunkCol, chunkRow, profileId, profileRevision, pixelsPerWorldUnit, zLevel = 0, bakeFrameCount = 1) {
+    cache.delete(groundChunkCachePrefix(chunkCol, chunkRow, profileId, profileRevision, pixelsPerWorldUnit, zLevel, 1));
+    if (bakeFrameCount > 1) cache.delete(groundChunkCachePrefix(chunkCol, chunkRow, profileId, profileRevision, pixelsPerWorldUnit, zLevel, bakeFrameCount));
+}
 /** @param {WorldSurfaceSettings} settings @returns {number[]} */
 export function getHorizontalSurfaceZLevels(settings) {
     const roof = settings.roofZLevels ?? [];
     return [0, ...roof.filter((z) => z > 0)];
 }
-
 /**
  * Worker-serializable ground-chunk bake payload (profile already resolved by caller).
  * @param {GroundChunkBakePayload} payload

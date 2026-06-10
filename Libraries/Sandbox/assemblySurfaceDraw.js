@@ -31,14 +31,20 @@ export function drawAssemblySurfaceZone(ctx, zone, state, viewport) {
     if (!isGroundZoneInView(zone, viewport)) return;
     const worldSurfaces = state.worldSurfaces;
     const prevOverride = worldSurfaces.surfaceProfileOverride;
+    const prevForce = worldSurfaces.forceChunkAnimation;
     worldSurfaces.surfaceProfileOverride = zone.profileId;
-    drawProfileChunkPatch(ctx, worldSurfaces, state, viewport, zone.play, zone.profileId, { zLevel: 0 });
-    const railHeight = zone.railHeight;
-    if (railHeight > 0) {
-        const bands = getAssemblyRailBandBounds({ bounds: zone.bounds, play: zone.play });
-        for (let i = 0; i < bands.length; i++) drawProfileChunkPatch(ctx, worldSurfaces, state, viewport, bands[i], zone.profileId, { zLevel: railHeight, flatHorizontal: true });
+    worldSurfaces.forceChunkAnimation = true;
+    try {
+        drawProfileChunkPatch(ctx, worldSurfaces, state, viewport, zone.play, zone.profileId, { zLevel: 0 });
+        const railHeight = zone.railHeight;
+        if (railHeight > 0) {
+            const bands = getAssemblyRailBandBounds({ bounds: zone.bounds, play: zone.play });
+            for (let i = 0; i < bands.length; i++) drawProfileChunkPatch(ctx, worldSurfaces, state, viewport, bands[i], zone.profileId, { zLevel: railHeight, flatHorizontal: true });
+        }
+    } finally {
+        worldSurfaces.surfaceProfileOverride = prevOverride;
+        worldSurfaces.forceChunkAnimation = prevForce;
     }
-    worldSurfaces.surfaceProfileOverride = prevOverride;
 }
 /** @param {CanvasRenderingContext2D} ctx @param {object} state @param {import("../Viewport/Viewport.js").Viewport} viewport */
 export function drawSandboxAssemblySurfaces(ctx, state, viewport) {
