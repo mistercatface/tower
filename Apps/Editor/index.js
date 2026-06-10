@@ -87,8 +87,8 @@ export class TileLabSimulationState {
     }
 }
 /** @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition */
-export const tilelabGame = {
-    id: "tilelab",
+export const editorGame = {
+    id: "editor",
     canvasId: "gameCanvas",
     features: [...createSandboxCombatFeature(), createFloatingTextFeature()],
     createGameState() {
@@ -121,7 +121,7 @@ export const tilelabGame = {
         applyLabCanvasSize(state, canvas.width, canvas.height);
     },
     prepare() {
-        document.title = "Tile Lab";
+        document.title = "Editor";
         document.body.classList.add("shell-tilelab");
         if (!document.getElementById("tilelab-css")) {
             const link = document.createElement("link");

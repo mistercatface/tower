@@ -1,7 +1,7 @@
 export const TILELAB_UI_HTML = `
 <div class="app">
     <div class="toolbar">
-        <h1>Tile Lab</h1>
+        <h1>Editor</h1>
         <span class="sep"></span>
         <button type="button" id="randomMapBtn" class="secondary">Random</button>
         <span class="sep"></span>
