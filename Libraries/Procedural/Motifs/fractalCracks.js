@@ -19,7 +19,7 @@ function fbmRidged(x, y, octaves) {
 export const fractalCracksMotif = {
     metadata: {
         label: "Fractal cracks",
-        defaults: { type: "fractalCracks", coordinateSpace: "eval", frequency: 0.01, octaves: 3, threshold: 0.7, peak: 10, offset: [0, 0], tint: [1, 1, 1], opacity: 0.8, blendMode: "add" },
+        defaults: { type: "fractalCracks", coordinateSpace: "eval", frequency: 0.01, octaves: 3, threshold: 0.7, peak: 10, offset: [0, 0], tint: [1, 1, 1], blendMode: "add" },
         fields: [
             { path: "frequency", label: "Frequency", min: 0.005, max: 0.05, step: 0.001 },
             { path: "octaves", label: "Octaves", min: 1, max: 6, step: 1 },
@@ -28,7 +28,6 @@ export const fractalCracksMotif = {
             { path: "tint.0", label: "Tint R", min: -5, max: 5, step: 0.1 },
             { path: "tint.1", label: "Tint G", min: -5, max: 5, step: 0.1 },
             { path: "tint.2", label: "Tint B", min: -5, max: 5, step: 0.1 },
-            { path: "opacity", label: "Opacity", min: 0, max: 1, step: 0.05 },
         ],
     },
     apply(sample, rgb, config) {

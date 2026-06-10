@@ -5,7 +5,7 @@ import { sampleCoords, applyTint, hash2 } from "../util/motifUtilities.js";
 export const celticWeaveMotif = {
     metadata: {
         label: "Celtic weave",
-        defaults: { type: "celticWeave", coordinateSpace: "warped", gridSize: 32, pipeWidth: 4, peak: 10, tint: [0.8, 0.9, 1.1], opacity: 0.8, blendMode: "add" },
+        defaults: { type: "celticWeave", coordinateSpace: "warped", gridSize: 32, pipeWidth: 4, peak: 10, tint: [0.8, 0.9, 1.1], blendMode: "add" },
         fields: [
             { path: "gridSize", label: "Grid size", min: 8, max: 64, step: 2 },
             { path: "pipeWidth", label: "Pipe width", min: 1, max: 12, step: 0.5 },
@@ -13,7 +13,6 @@ export const celticWeaveMotif = {
             { path: "tint.0", label: "Tint R", min: -5, max: 5, step: 0.1 },
             { path: "tint.1", label: "Tint G", min: -5, max: 5, step: 0.1 },
             { path: "tint.2", label: "Tint B", min: -5, max: 5, step: 0.1 },
-            { path: "opacity", label: "Opacity", min: 0, max: 1, step: 0.05 },
         ],
     },
     apply(sample, rgb, config) {

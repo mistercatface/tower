@@ -26,7 +26,6 @@ export const circuitPanelsMotif = {
             rivetPeak: 6,
             rivetTint: [1.5, 1.5, 2.0],
             blendMode: "add",
-            opacity: 1,
         },
         fields: [
             { path: "gridSize", label: "Grid size", min: 8, max: 64, step: 1 },
@@ -43,7 +42,6 @@ export const circuitPanelsMotif = {
             { path: "rivetRadius", label: "Rivet radius", min: 0.02, max: 0.25, step: 0.01 },
             { path: "rivetSpacing", label: "Rivet spacing", min: 0.05, max: 0.35, step: 0.01 },
             { path: "rivetPeak", label: "Rivet peak", min: 0, max: 20, step: 1 },
-            { path: "opacity", label: "Opacity", min: 0, max: 1, step: 0.05 },
         ],
     },
     apply(sample, rgb, config) {

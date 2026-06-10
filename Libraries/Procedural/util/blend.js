@@ -4,18 +4,11 @@ export const BLEND_OPTIONS = ["replace", "add", "multiply", "screen", "overlay",
  * Blend motif layer into `out` without allocating a result object.
  * @param {{ r: number, g: number, b: number }} out
  */
-export function blendMotifRgb(out, before, after, blendMode, opacity) {
-    const t = Math.max(0, Math.min(1, opacity ?? 1));
-    if (t <= 0) {
-        out.r = before.r;
-        out.g = before.g;
-        out.b = before.b;
-        return out;
-    }
+export function blendMotifRgb(out, before, after, blendMode) {
     if (blendMode === "replace") {
-        out.r = clampByte(before.r * (1 - t) + after.r * t);
-        out.g = clampByte(before.g * (1 - t) + after.g * t);
-        out.b = clampByte(before.b * (1 - t) + after.b * t);
+        out.r = clampByte(after.r);
+        out.g = clampByte(after.g);
+        out.b = clampByte(after.b);
         return out;
     }
     let outR = after.r;
@@ -58,8 +51,8 @@ export function blendMotifRgb(out, before, after, blendMode, opacity) {
         outG = before.g + after.g;
         outB = before.b + after.b;
     }
-    out.r = clampByte(before.r * (1 - t) + outR * t);
-    out.g = clampByte(before.g * (1 - t) + outG * t);
-    out.b = clampByte(before.b * (1 - t) + outB * t);
+    out.r = clampByte(outR);
+    out.g = clampByte(outG);
+    out.b = clampByte(outB);
     return out;
 }

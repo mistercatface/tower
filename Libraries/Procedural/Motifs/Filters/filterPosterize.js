@@ -3,11 +3,10 @@ import { BLEND_OPTIONS } from "../../util/blend.js";
 export const filterPosterizeMotif = {
     metadata: {
         label: "Filter: Posterize",
-        defaults: { type: "filterPosterize", bands: 4, blendMode: "replace", opacity: 1 },
+        defaults: { type: "filterPosterize", bands: 4, blendMode: "replace" },
         fields: [
             { path: "bands", label: "Bands", min: 2, max: 64, step: 1 },
             { path: "blendMode", label: "Blend Mode", options: BLEND_OPTIONS },
-            { path: "opacity", label: "Opacity", min: 0, max: 1, step: 0.05 },
         ],
     },
     apply(sample, rgb, config) {

@@ -22,7 +22,6 @@ export const circuitLatticeMotif = {
             intersectionThreshold: 0.12,
             intersectionPeak: 12,
             intersectionTint: [0.5, 1.2, 1.8],
-            opacity: 0.55,
             blendMode: "add",
         },
         fields: [
@@ -31,7 +30,6 @@ export const circuitLatticeMotif = {
             { path: "ridgeThreshold", label: "Vein threshold", min: 0.05, max: 0.25, step: 0.01 },
             { path: "peak", label: "Vein peak", min: 0, max: 20, step: 1 },
             { path: "intersectionPeak", label: "Cross peak", min: 0, max: 20, step: 1 },
-            { path: "opacity", label: "Opacity", min: 0, max: 1, step: 0.05 },
         ],
     },
     apply(sample, rgb, config) {

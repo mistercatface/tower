@@ -13,7 +13,7 @@ function grainCoords(sample, grain) {
 export const baseMetalMotif = {
     metadata: {
         label: "Base metal",
-        defaults: { type: "baseMetal", structure: { frequency: 0.0025, octaves: 1, rgbDelta: [3, 3, 4] }, grain: { frequency: 0.18, octaves: 1, amplitude: 1 }, opacity: 1, blendMode: "add" },
+        defaults: { type: "baseMetal", structure: { frequency: 0.0025, octaves: 1, rgbDelta: [3, 3, 4] }, grain: { frequency: 0.18, octaves: 1, amplitude: 1 }, blendMode: "add" },
         fields: [
             { path: "structure.frequency", label: "Structure freq", min: 0.0005, max: 0.02, step: 0.0005 },
             { path: "structure.octaves", label: "Structure octaves", min: 1, max: 4, step: 1 },
@@ -22,7 +22,6 @@ export const baseMetalMotif = {
             { path: "structure.rgbDelta.2", label: "Struct B Δ", min: -12, max: 12, step: 1 },
             { path: "grain.frequency", label: "Grain freq", min: 0.05, max: 2, step: 0.05 },
             { path: "grain.amplitude", label: "Grain amp", min: 0, max: 6, step: 0.5 },
-            { path: "opacity", label: "Opacity", min: 0, max: 1, step: 0.05 },
         ],
     },
     apply(sample, rgb, config) {

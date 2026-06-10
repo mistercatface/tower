@@ -71,7 +71,6 @@ export const deckPlatesMotif = {
             rivetPeak: 5,
             rivetTint: [2, 4, 5],
             blendMode: "multiply",
-            opacity: 0.85,
         },
         fields: [
             { path: "cellWorldSize", label: "Cell world px", min: 8, max: 64, step: 1 },
@@ -84,7 +83,6 @@ export const deckPlatesMotif = {
             { path: "rivetPeak", label: "Rivet peak", min: 0, max: 12, step: 1 },
             { path: "accentWidth", label: "Warm seam (0=off)", min: 0, max: 0.06, step: 0.002 },
             { path: "accentPeak", label: "Seam peak", min: 0, max: 12, step: 1 },
-            { path: "opacity", label: "Opacity", min: 0, max: 1, step: 0.05 },
         ],
     },
     apply(sample, rgb, config) {

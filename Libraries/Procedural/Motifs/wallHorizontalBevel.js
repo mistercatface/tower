@@ -21,7 +21,6 @@ export const wallHorizontalBevelMotif = {
             corePeak: 6,
             coreTint: [0.4, 1.0, 1.6],
             snakeStrength: 0.25,
-            opacity: 0.85,
             blendMode: "add",
         },
         fields: [
@@ -30,7 +29,6 @@ export const wallHorizontalBevelMotif = {
             { path: "highlightPeak", label: "Highlight", min: 0, max: 16, step: 1 },
             { path: "shadowPeak", label: "Shadow", min: 0, max: 16, step: 1 },
             { path: "corePeak", label: "Core glow", min: 0, max: 12, step: 1 },
-            { path: "opacity", label: "Opacity", min: 0, max: 1, step: 0.05 },
         ],
     },
     apply(sample, rgb, config) {

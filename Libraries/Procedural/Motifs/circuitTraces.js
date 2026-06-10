@@ -24,7 +24,6 @@ export const circuitTracesMotif = {
             peak: 10,
             tint: [0.9, 0.4, 1.1],
             padEnabled: true,
-            opacity: 0.8,
             blendMode: "add",
         },
         fields: [
@@ -37,7 +36,6 @@ export const circuitTracesMotif = {
             { path: "tint.0", label: "Tint R", min: -5, max: 5, step: 0.1 },
             { path: "tint.1", label: "Tint G", min: -5, max: 5, step: 0.1 },
             { path: "tint.2", label: "Tint B", min: -5, max: 5, step: 0.1 },
-            { path: "opacity", label: "Opacity", min: 0, max: 1, step: 0.05 },
         ],
     },
     apply(sample, rgb, config) {

@@ -5,27 +5,13 @@ import { applyTint } from "../util/motifUtilities.js";
 export const panelBayMotif = {
     metadata: {
         label: "Panel bays (wall face)",
-        defaults: {
-            type: "panelBay",
-            rows: 5,
-            cols: 2,
-            inset: 0.16,
-            frameWidth: 0.07,
-            highlightPeak: 4,
-            shadowPeak: 5,
-            rimPeak: 5,
-            interiorDarken: 5,
-            surfaceMask: "wallFace",
-            opacity: 0.9,
-            blendMode: "add",
-        },
+        defaults: { type: "panelBay", rows: 5, cols: 2, inset: 0.16, frameWidth: 0.07, highlightPeak: 4, shadowPeak: 5, rimPeak: 5, interiorDarken: 5, surfaceMask: "wallFace", blendMode: "add" },
         fields: [
             { path: "rows", label: "Rows", min: 2, max: 12, step: 1 },
             { path: "cols", label: "Cols", min: 1, max: 6, step: 1 },
             { path: "inset", label: "Bay inset", min: 0.05, max: 0.3, step: 0.01 },
             { path: "interiorDarken", label: "Interior dark", min: 0, max: 14, step: 1 },
             { path: "rimPeak", label: "Rim glow", min: 0, max: 12, step: 1 },
-            { path: "opacity", label: "Opacity", min: 0, max: 1, step: 0.05 },
         ],
     },
     apply(sample, rgb, config) {

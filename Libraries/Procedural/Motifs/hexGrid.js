@@ -102,7 +102,6 @@ export const hexGridMotif = {
             shadowPeak: -6,
             bevelTint: [1, 1, 1],
             blendMode: "multiply",
-            opacity: 0.9,
         },
         fields: [
             { path: "cellWorldSize", label: "Cell world px", min: 8, max: 64, step: 1 },
@@ -117,7 +116,6 @@ export const hexGridMotif = {
             { path: "cellVariation", label: "Cell jitter", min: 0, max: 8, step: 0.5 },
             { path: "bevelCurve", label: "Bevel Curve", options: ["linear", "smooth", "steep"] },
             { path: "bevelFalloff", label: "Falloff", min: 0.1, max: 4.0, step: 0.1 },
-            { path: "opacity", label: "Opacity", min: 0, max: 1, step: 0.05 },
         ],
     },
     apply(sample, rgb, config) {

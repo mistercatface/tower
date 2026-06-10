@@ -89,7 +89,6 @@ export function composeSurfaceImage(samples, profile, seed) {
         }
         const motifImpl = getMotif(motifConfig.type);
         const blendMode = motifConfig.blendMode ?? "add";
-        const opacity = motifConfig.opacity ?? 1;
         for (let i = 0; i < numPixels; i++) {
             applyTranslateToSample(sampleScratch, samples, i, translateContext, warp);
             sampleScratch.wallU = samples.wallU[i];
@@ -103,7 +102,7 @@ export function composeSurfaceImage(samples, profile, seed) {
             layerRgb.g = beforeRgb.g;
             layerRgb.b = beforeRgb.b;
             motifImpl.apply(sampleScratch, layerRgb, motifConfig);
-            blendMotifRgb(blendOut, beforeRgb, layerRgb, blendMode, opacity);
+            blendMotifRgb(blendOut, beforeRgb, layerRgb, blendMode);
             rgbBuffer[idx] = blendOut.r;
             rgbBuffer[idx + 1] = blendOut.g;
             rgbBuffer[idx + 2] = blendOut.b;

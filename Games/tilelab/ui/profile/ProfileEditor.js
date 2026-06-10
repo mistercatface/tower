@@ -97,10 +97,9 @@ function motifsFromProfile(profile) {
     for (const motif of profile.motifs) {
         const config = deepClone(motif);
         const blendMode = config.blendMode ?? "add";
-        const opacity = config.opacity ?? 1;
         delete config.blendMode;
         delete config.opacity;
-        rows.push({ id: `m${nextMotifId++}`, enabled: motif.enabled !== false, surfaceMask: motif.surfaceMask ?? "all", blendMode, opacity, config });
+        rows.push({ id: `m${nextMotifId++}`, enabled: motif.enabled !== false, surfaceMask: motif.surfaceMask ?? "all", blendMode, config });
     }
     return rows;
 }
@@ -131,7 +130,6 @@ export function buildProfileFromEditor(state = editorState) {
         if (!isContextMotif(config.type)) {
             config.surfaceMask = row.surfaceMask;
             config.blendMode = row.blendMode ?? "add";
-            config.opacity = row.opacity ?? 1;
         }
         profile.motifs.push(config);
     }
@@ -364,7 +362,7 @@ function renderMotifParams(container) {
     renderScalarFields(
         container,
         row.config,
-        schema.fields.filter((field) => field.path !== "blendMode"),
+        schema.fields.filter((field) => field.path !== "blendMode" && field.path !== "opacity"),
     );
 }
 function renderGlobalParams(container) {
@@ -695,7 +693,7 @@ export function initProfileEditor({ onChange }) {
         const type = addSelect.value;
         const schema = MOTIF_TYPES[type];
         if (!schema || !editorState) return;
-        const row = { id: `m${nextMotifId++}`, enabled: true, surfaceMask: "all", blendMode: "add", opacity: 1, config: deepClone(schema.defaults) };
+        const row = { id: `m${nextMotifId++}`, enabled: true, surfaceMask: "all", blendMode: "add", config: deepClone(schema.defaults) };
         editorState.motifs.push(row);
         selectMotifById(row.id);
         notifyChange();
