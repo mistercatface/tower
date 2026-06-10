@@ -12,7 +12,6 @@ import { PauseManager } from "../../Libraries/Pause/index.js";
 import { installEngineGlobals } from "../../Core/engineGlobals.js";
 import { adjustSelectedSpeed, bindPlayback } from "../../Libraries/Playback/playbackController.js";
 import { combatSpatial } from "../../Systems/World/CombatSpatialFrame.js";
-import { createSimulationPort } from "../../Systems/Simulation/SimulationPipeline.js";
 import { CombatParticles } from "../../Libraries/Render/CombatParticles.js";
 import { sandboxInteractionPairs } from "../../Libraries/Combat/sandboxInteraction.js";
 import { sandboxTargeting } from "../../Libraries/Combat/sandboxTargeting.js";
@@ -28,6 +27,36 @@ import { fitLabStageToView } from "./ui/labViewport.js";
 import { mountEditorUi, refreshEditorUi } from "./ui/editorUi.js";
 import { drawLabFrame } from "./ui/preview.js";
 const EDITOR_SURFACE_PROFILE_ID = SURFACE_PROFILE_ID.tomatoGarden;
+const simulationPhases = [
+    {
+        id: "sandboxTick",
+        run(_ctx, dt) {
+            sandboxController?.tick(dt);
+        },
+    },
+    sandboxAutoCombatPhase,
+    projectilesPhase,
+    combatParticlesPhase,
+    pushablePhysicsPhase,
+    ragdollCorpsePhase,
+    dispatchEventsPhase,
+    sandboxVoidZonePhase,
+    tilelabGroundZonePhase,
+    {
+        id: "floatingText",
+        run(ctx, dt) {
+            FloatingText.updateAll(ctx.state, dt);
+        },
+    },
+];
+/** @param {import("./state.js").TileLabGameState} state @param {number} dt */
+function runSimulationTick(state, dt) {
+    const simDt = dt * (state.selectedSpeed ?? 1);
+    state.gameTime = (state.gameTime ?? 0) + simDt;
+    const ctx = { state };
+    const runtime = { spatialFrame: combatSpatial.begin(state), events: [] };
+    for (const phase of simulationPhases) phase.run(ctx, simDt, runtime);
+}
 /** @typedef {{ togglePause: () => void, adjustSpeed: (delta: number) => void }} PlaybackHandlers */
 export const engine = {
     id: "editor",
@@ -64,35 +93,6 @@ export const engine = {
             return { x: state.viewport.x, y: state.viewport.y };
         },
     },
-    simulationPort: createSimulationPort(
-        [
-            {
-                id: "sandboxTick",
-                run(ctx, dt) {
-                    sandboxController?.tick(dt);
-                },
-            },
-            sandboxAutoCombatPhase,
-            projectilesPhase,
-            combatParticlesPhase,
-            pushablePhysicsPhase,
-            ragdollCorpsePhase,
-            dispatchEventsPhase,
-            sandboxVoidZonePhase,
-            tilelabGroundZonePhase,
-            {
-                id: "floatingText",
-                run(ctx, dt) {
-                    FloatingText.updateAll(ctx.state, dt);
-                },
-            },
-        ],
-        {
-            beginRuntime(ctx) {
-                return { spatialFrame: combatSpatial.begin(ctx.state), events: [] };
-            },
-        },
-    ),
     playbackHandlers: { togglePause() {}, adjustSpeed() {} },
 };
 export function createEditorApp() {
@@ -129,17 +129,13 @@ export function createEditorApp() {
             requestUiUpdate();
         },
     };
-    const simulation = engine.simulationPort;
     function loop(timestamp) {
         if (state.lastTime === 0) state.lastTime = timestamp;
         let dt = timestamp - state.lastTime;
         state.lastTime = timestamp;
         dt = Math.min(dt, 50);
         state.scheduler.update(dt);
-        if (!state.isPaused) {
-            state.gameTime += dt * state.selectedSpeed;
-            simulation.runTick({ state }, dt * state.selectedSpeed);
-        }
+        if (!state.isPaused) runSimulationTick(state, dt);
         drawLabFrame(state);
         requestAnimationFrame(loop);
     }

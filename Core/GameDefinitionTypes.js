@@ -55,13 +55,6 @@
  * @property {Record<string, { x: number, y: number }>} [spawnSlots]
  */
 /**
- * @typedef {object} SimulationPort
- * @property {(ctx: object, dt: number) => void} runTick
- * @property {(ctx: object) => void} [onEnter]
- * @property {import("../../Systems/Simulation/SimulationPipeline.js").SimulationPhase[]} [phases]
- * @property {(ctx: object) => import("../../Systems/Simulation/SimulationRuntime.js").SimulationRuntime} [beginRuntime]
- */
-/**
  * @typedef {{ minX: number, minY: number, maxX: number, maxY: number }} WorldPlayBounds
  */
 /**
@@ -98,7 +91,6 @@
  * @typedef {object} EngineProfile
  * @property {string} id
  * @property {Partial<InteractionPairsPort>} interactionPairs
- * @property {SimulationPort} simulationPort
  * @property {TargetingPort} targeting
  * @property {ViewPort} viewPort
  * @property {RenderPorts} render
