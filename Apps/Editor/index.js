@@ -16,8 +16,7 @@ import { pushablePhysicsPhase } from "../../Systems/Simulation/phases.js";
 import { tilelabGroundZoneEffectPass, tilelabGroundZonePhase } from "./groundZones.js";
 import { sandboxVoidZoneEffectPass, sandboxVoidZonePhase } from "./sandboxVoidZones.js";
 import { getTilelabSandboxController } from "./world/tilelabSandbox.js";
-import { requestUiUpdate } from "../../Core/EventSystem.js";
-import { registerEditorProfiles, renderTilelabPreview } from "./ui/preview.js";
+import { registerEditorProfiles } from "./ui/preview.js";
 import { readControls, syncPreviewZoomToStage } from "./ui/toolbar.js";
 import { initEmptyTilelabMap } from "./world/mapWorld.js";
 import { mergePairFilter } from "../../Libraries/Interaction/pairRules.js";
@@ -70,19 +69,6 @@ export class TileLabGameState extends SharedGameState {
         this.wallResolver = createCombatWallResolver(() => getGameState());
     }
 }
-export class TileLabSimulationState {
-    onEnter(ctx) {
-        tilelabRunScenePort.onSimulationEnter(ctx);
-        requestUiUpdate();
-    }
-    update(dt, ctx) {
-        if (ctx.state.isPaused) return;
-        tilelabSimulation.runTick(ctx, dt);
-    }
-    render(ctx) {
-        renderTilelabPreview(ctx.state, readControls(ctx.state));
-    }
-}
 /** @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition */
 export const editorGame = {
     id: "editor",
@@ -91,8 +77,6 @@ export const editorGame = {
     createGameState() {
         return new TileLabGameState();
     },
-    states: { simulation: TileLabSimulationState },
-    initialState: "simulation",
     simulationPort: tilelabSimulation,
     uiPort: tilelabUiPort,
     render: {

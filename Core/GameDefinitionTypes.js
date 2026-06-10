@@ -137,8 +137,8 @@
  * @property {string} [saveKey]
  * @property {() => import("../GameState/SharedGameState.js").SharedGameState} createGameState
  * @property {(eventBus: import("../Libraries/Events/EventBus.js").EventBus, boot?: { state: object, fsm: import("../Libraries/FSM/StateMachine.js").StateMachine, resetGame: () => void }) => void} [registerListeners]
- * @property {Record<string, new () => object>} states
- * @property {string} initialState
+ * @property {Record<string, new () => object>} [states]
+ * @property {string} [initialState]
  * @property {Partial<InteractionPairsPort>} [interactionPairs] — combat/physics overrides; physics defaults from engine
  * @property {SimulationPort} simulationPort — phase pipeline (`runTick`, `onEnter`, …)
  * @property {UiPort} uiPort — DOM chrome mount + HUD/panel updates
