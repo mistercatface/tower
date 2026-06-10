@@ -39,10 +39,6 @@ function replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, o
  */
 export function planHpaSteering(entity, targetX, targetY, hierarchicalNavigator, navState, profile, settings, obstacleGrid, obstacleGeneration, hooks = {}, nowMs = Date.now()) {
     const isVisible = hooks.isVisible ? hooks.isVisible(entity) : true;
-    const replanScale = hooks.getReplanScale ? hooks.getReplanScale(entity) : 1;
-    const replanMs = profile.replanMs * replanScale;
-    const effectiveReplanMs = replanMs;
-    const replanWhileMoving = profile.replanWhileMoving !== false;
     const obstaclesChanged = navState.obstacleGeneration !== obstacleGeneration;
     const moved = Math.hypot(entity.x - (navState.lastX ?? entity.x), entity.y - (navState.lastY ?? entity.y));
     navState.lastX = entity.x;
@@ -62,20 +58,19 @@ export function planHpaSteering(entity, targetX, targetY, hierarchicalNavigator,
             didReplanForObstacles = true;
         }
     }
-    const needsReplan = !navState.path || navState.stuckFrames > settings.stuckReplanFrames || (replanWhileMoving && now - navState.lastUpdate > effectiveReplanMs);
+    const needsReplan = !navState.path || navState.stuckFrames > settings.stuckReplanFrames;
     if (needsReplan && !didReplanForObstacles) {
         if (!navState.path) replanReason = "noPath";
         else if (navState.stuckFrames > settings.stuckReplanFrames) replanReason = "stuck";
-        else replanReason = "interval";
         const applyClearance = shouldApplyClearance(navState, targetX, targetY, false);
-        if (isVisible || navState.stuckFrames > settings.stuckReplanFrames || now - navState.lastUpdate > effectiveReplanMs) {
+        if (isVisible || navState.stuckFrames > settings.stuckReplanFrames) {
             replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings, applyClearance, profile, hooks, now);
             navState.stuckFrames = 0;
         }
     }
     const pose = agentPose(entity);
     let steering = computeHpaSteering(pose, navState.path, targetX, targetY, settings, navState);
-    if (navState.path && navState.path.length >= 2 && steering.offPath && now - navState.lastOffPathReplan >= effectiveReplanMs) {
+    if (navState.path && navState.path.length >= 2 && steering.offPath && now - navState.lastOffPathReplan >= 250) {
         replanReason = "offPath";
         navState.lastOffPathReplan = now;
         replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings, false, profile, hooks, now);

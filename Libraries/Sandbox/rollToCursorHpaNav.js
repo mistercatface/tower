@@ -39,7 +39,7 @@ export function createRollToCursorHpaNav() {
     const update = (pickup, targetX, targetY, host, dtMs) => {
         replanClockMs += dtMs;
         const targetMovedPx = navState.lastTargetX == null || navState.lastTargetY == null ? Infinity : Math.hypot(targetX - navState.lastTargetX, targetY - navState.lastTargetY);
-        const needsReplan = !navState.path || targetMovedPx >= REPLAN_TARGET_MOVE_PX || replanClockMs - navState.lastUpdate >= REPLAN_INTERVAL_MS;
+        const needsReplan = !navState.path || targetMovedPx >= REPLAN_TARGET_MOVE_PX;
         if (needsReplan) replan(pickup, targetX, targetY, host);
     };
     const getSteering = (pickup, targetX, targetY, settings) => {
