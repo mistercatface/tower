@@ -124,7 +124,7 @@ const POOL_BALL_PHYSICS = {
     wallPhysics: { restitution: 0.94, friction: 0.06 },
     getCustomSpriteCacheKey: (prop) => {
         const pb = prop.poolBall;
-        return `pb${pb.kind}_${pb.number}`;
+        return pb ? `pb${pb.kind}_${pb.number ?? 0}` : "";
     },
 };
 const POOL_BALL_VISUALS = {
