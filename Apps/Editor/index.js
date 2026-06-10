@@ -1,5 +1,4 @@
 import { createRoguelikeWorldGenPort, roguelikeProceduralDesign, ROGUELIKE_MAP_TOPOLOGY } from "../../Libraries/WorldGen/presets/roguelikeMap.js";
-import { emptyRunBootstrap } from "../../Libraries/RunBootstrap/phases.js";
 import { GUN_ID_TO_VISUAL } from "../../Assets/guns/visualMap.js";
 import { createDefaultRenderPorts } from "../../Libraries/Render/defaultRenderPorts.js";
 import { createWeaponVisuals } from "../../Libraries/Render/Characters/weapons/createWeaponVisuals.js";
@@ -13,12 +12,11 @@ import { createRoguelikeNavRuntime } from "../../Libraries/Navigation/createRogu
 import { createRoguelikeMapSession } from "../../Libraries/WorldGen/session/index.js";
 import { Viewport } from "../../Libraries/Viewport/Viewport.js";
 import { createSimulationPort } from "../../Systems/Simulation/SimulationPipeline.js";
-import { gameSceneTickPhase, pushablePhysicsPhase } from "../../Systems/Simulation/phases.js";
+import { pushablePhysicsPhase } from "../../Systems/Simulation/phases.js";
 import { tilelabGroundZoneEffectPass, tilelabGroundZonePhase } from "./groundZones.js";
 import { sandboxVoidZoneEffectPass, sandboxVoidZonePhase } from "./sandboxVoidZones.js";
 import { getTilelabSandboxController } from "./world/tilelabSandbox.js";
 import { requestUiUpdate } from "../../Core/EventSystem.js";
-import { getRunScenePort, getSimulationPort } from "../../Core/GamePorts.js";
 import { registerEditorProfiles, renderTilelabPreview } from "./ui/preview.js";
 import { readControls, syncPreviewZoomToStage } from "./ui/toolbar.js";
 import { initEmptyTilelabMap } from "./world/mapWorld.js";
@@ -38,7 +36,7 @@ const sandboxTickPhase = {
         getTilelabSandboxController()?.tick(dt);
     },
 };
-export const tilelabSimulation = createSimulationPort([sandboxTickPhase, pushablePhysicsPhase, sandboxVoidZonePhase, tilelabGroundZonePhase, gameSceneTickPhase]);
+export const tilelabSimulation = createSimulationPort([sandboxTickPhase, pushablePhysicsPhase, sandboxVoidZonePhase, tilelabGroundZonePhase]);
 /** @type {import("../../Core/GameDefinitionTypes.js").RunScenePort} */
 export const tilelabRunScenePort = {
     getLayout: () => null,
@@ -49,7 +47,6 @@ export const tilelabRunScenePort = {
             syncPreviewZoomToStage(state);
         });
     },
-    onTick() {},
 };
 export class TileLabGameState extends SharedGameState {
     constructor() {
@@ -75,12 +72,12 @@ export class TileLabGameState extends SharedGameState {
 }
 export class TileLabSimulationState {
     onEnter(ctx) {
-        getRunScenePort().onSimulationEnter(ctx);
+        tilelabRunScenePort.onSimulationEnter(ctx);
         requestUiUpdate();
     }
     update(dt, ctx) {
         if (ctx.state.isPaused) return;
-        getSimulationPort().runTick(ctx, dt);
+        tilelabSimulation.runTick(ctx, dt);
     }
     render(ctx) {
         renderTilelabPreview(ctx.state, readControls(ctx.state));
@@ -106,7 +103,6 @@ export const editorGame = {
     worldGen: createRoguelikeWorldGenPort({ topology: tilelabMapTopology }),
     worldSurface: { pixelsPerCell: 6 },
     proceduralDesign: roguelikeProceduralDesign,
-    runBootstrapPort: emptyRunBootstrap,
     runScenePort: tilelabRunScenePort,
     viewPort: {
         getViewCenter(state) {

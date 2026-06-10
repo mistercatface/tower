@@ -75,15 +75,13 @@ export function isWorldScene(phase) {
     if (check) return check(phase);
     return phase === "simulation";
 }
-/** @returns {RunBootstrapPort} */
+/** @returns {RunBootstrapPort | null} */
 export function getRunBootstrapPort() {
-    const port = requireGameDefinition().runBootstrapPort;
-    if (!port) throw new Error("Active game definition missing runBootstrapPort.");
-    return port;
+    return requireGameDefinition().runBootstrapPort ?? null;
 }
 /** @param {object} state */
 export function resetRun(state) {
-    getRunBootstrapPort().resetRun(state);
+    getRunBootstrapPort()?.resetRun(state);
 }
 /** @param {object} state */
 export function generateWorld(state) {
