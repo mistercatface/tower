@@ -1,6 +1,7 @@
 {
     "id": "poolTable",
     "label": "8-ball table",
+    "surfaceProfileId": "poolTableFelt",
     "version": 2,
     "arena": {
         "width": 96,

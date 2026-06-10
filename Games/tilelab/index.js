@@ -25,6 +25,7 @@ import { mergePairFilter } from "../../Libraries/Interaction/pairRules.js";
 import { excludeDeadOther, excludeActorOther, requirePickupOnHit } from "../../Libraries/Interaction/pairRuleClauses.js";
 import { tilelabUiPort } from "./ui/tilelabUiPort.js";
 import { sandboxPathEffectPass } from "./render/sandboxPathEffectPass.js";
+import { drawSurfaceProfileRectZones } from "../../Libraries/Spatial/zones/surfaceProfileRectZone.js";
 export const LAB_PREVIEW_RANGE = 160;
 export const TILELAB_SANDBOX_SPAWN_PROP = "beach_ball";
 export const tilelabMapTopology = { ...ROGUELIKE_MAP_TOPOLOGY };
@@ -65,6 +66,7 @@ export class TileLabGameState extends SharedGameState {
         this.labCanvas = null;
         this.groundZones = [];
         this.sandboxVoidZones = [];
+        this.sandboxSurfaceProfileZones = [];
         this.sandboxAssemblyInstances = [];
         this.roguelikeMapSession = createRoguelikeMapSession();
         this.wallResolver = createCombatWallResolver(() => getGameState());
@@ -97,6 +99,7 @@ export const tilelabGame = {
     uiPort: tilelabUiPort,
     render: {
         ...createDefaultRenderPorts({ weaponVisuals: createWeaponVisuals(GUN_ID_TO_VISUAL) }),
+        drawGroundOverlays: (state, viewport, ctx) => drawSurfaceProfileRectZones(ctx, state, viewport),
         simulationEffectPasses: [sandboxVoidZoneEffectPass, tilelabGroundZoneEffectPass, sandboxPathEffectPass],
     },
     worldGen: createRoguelikeWorldGenPort({ topology: tilelabMapTopology }),

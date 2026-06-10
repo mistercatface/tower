@@ -9,6 +9,7 @@ import { buildAssemblyLayout, buildAssemblyClearBounds, buildAssemblyWallSegment
 import { getResolvedAssembly } from "./assemblies/assemblyRegistry.js";
 import { resolvePlacement } from "./assemblies/assemblyPlacement.js";
 import { stampAssemblyGroupMember, entityBelongsToAssemblyGroup } from "./assemblies/assemblyLink.js";
+import { createSurfaceProfileRectZone } from "../Spatial/zones/surfaceProfileRectZone.js";
 /** @param {import("./assemblies/assemblyManifest.js").ResolvedAssemblyManifest} resolved @param {string} propId */
 function assemblyIncludesProp(resolved, propId) {
     if (!resolved.props.length) return true;
@@ -109,6 +110,15 @@ export function spawnResolvedAssembly(host, centerX, centerY, resolved, { factio
     const groupId = groupIdOverride ?? `${resolved.id}:${Date.now()}`;
     const rackId = `${groupId}:rack`;
     const groupField = resolved.groupField;
+    if (resolved.surfaceProfileId) {
+        if (!state.sandboxSurfaceProfileZones) state.sandboxSurfaceProfileZones = [];
+        const play = layout.play;
+        const zone = createSurfaceProfileRectZone((play.minX + play.maxX) / 2, (play.minY + play.maxY) / 2, (play.maxX - play.minX) / 2, (play.maxY - play.minY) / 2, resolved.surfaceProfileId, {
+            id: `${groupId}:felt`,
+        });
+        stampAssemblyGroupMember(zone, groupId, resolved.id, groupField);
+        state.sandboxSurfaceProfileZones.push(zone);
+    }
     const arenaWidth = resolved.arena.width;
     const arenaHeight = resolved.arena.height;
     if (spawnIncludes(spawnSteps, ["arena.walls"])) {
@@ -150,6 +160,9 @@ export function spawnAssembly(host, centerX, centerY, assemblyId = "poolTable", 
 /** @param {object} state @param {string} groupId @param {string} [groupField] */
 export function deleteAssemblyInstance(state, groupId, groupField = "sandboxGroupId") {
     if (!state) return;
+    if (state.sandboxSurfaceProfileZones)
+        for (let z = state.sandboxSurfaceProfileZones.length - 1; z >= 0; z--)
+            if (entityBelongsToAssemblyGroup(state.sandboxSurfaceProfileZones[z], groupId, groupField)) state.sandboxSurfaceProfileZones.splice(z, 1);
     for (let i = state.walls.length - 1; i >= 0; i--) if (entityBelongsToAssemblyGroup(state.walls[i], groupId, groupField)) removeSandboxWall(state, state.walls[i]);
     if (state.sandboxVoidZones)
         for (let z = state.sandboxVoidZones.length - 1; z >= 0; z--) if (entityBelongsToAssemblyGroup(state.sandboxVoidZones[z], groupId, groupField)) state.sandboxVoidZones.splice(z, 1);

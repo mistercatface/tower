@@ -38,6 +38,7 @@
  * @property {Record<string, Function>} world3dPropRecipes
  * @property {object} kinematicsPorts
  * @property {SimulationEffectPass[]} [simulationEffectPasses]
+ * @property {(state: object, viewport: object, ctx: CanvasRenderingContext2D) => void} [drawGroundOverlays]
  * @property {(state: object, viewport: object, ctx: CanvasRenderingContext2D, renderer: import("../Render/Render.js").Renderer) => void} [drawPostSimulation]
  */
 /**

@@ -53,6 +53,7 @@ export class Renderer {
     drawWorldSceneBackdrop(state, viewport) {
         if (!isWorldScene(state.phase)) return;
         state.worldSurfaces.drawGround(this.ctx, state, viewport);
+        getRenderPorts().drawGroundOverlays?.(state, viewport, this.ctx);
         this.render3D.drawDebrisProps(this.ctx, this.worldSceneDrawInput, viewport);
     }
     /** Ragdoll corpses between entities and structure — zIndex 55. */
