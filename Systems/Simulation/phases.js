@@ -15,9 +15,3 @@ export const pushablePhysicsPhase = {
         runPushablePhysics(ctx.state, dt, runtime.spatialFrame, runtime.events);
     },
 };
-/** @type {SimulationPhase} */
-export const worldSurfacePhase = {
-    run(ctx) {
-        ctx.state.worldSurfaces.updateFills();
-    },
-};

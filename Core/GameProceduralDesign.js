@@ -5,11 +5,7 @@ import { getSurfaceProfileProvider } from "../Libraries/Procedural/SurfaceProfil
  * @property {string} [startSurfaceProfileId]
  * @property {string} [defaultSurfaceProfileId]
  * @property {Record<string, string>} [surfaceProfileByStrategy]
- * @property {boolean} [proceduralAnimation] — enable ground + wall profile animation bakes
- * @property {boolean} [groundChunkAnimationsOn]
- * @property {boolean} [wallAnimationsOn]
- * @property {number|null} [animationBakeMaxFrames]
- * @property {number} [animationFrameBatchSize]
+ * @property {number|null} [animationBakeMaxFrames] — cap assembly surface flipbook length
  */
 /** @type {ProceduralDesignConfig | null} */
 let activeProceduralDesign = null;
@@ -24,7 +20,12 @@ export function resolveProceduralDesignConfig(definition) {
     const startKey = definition?.worldGen?.startNodeStrategyKey;
     const strategyMap = { ...raw.surfaceProfileByStrategy };
     if (shorthand && startKey && !strategyMap[startKey]) strategyMap[startKey] = shorthand;
-    return { startSurfaceProfileId: raw.startSurfaceProfileId ?? shorthand ?? null, defaultSurfaceProfileId: raw.defaultSurfaceProfileId ?? shorthand ?? null, surfaceProfileByStrategy: strategyMap };
+    return {
+        startSurfaceProfileId: raw.startSurfaceProfileId ?? shorthand ?? null,
+        defaultSurfaceProfileId: raw.defaultSurfaceProfileId ?? shorthand ?? null,
+        surfaceProfileByStrategy: strategyMap,
+        animationBakeMaxFrames: raw.animationBakeMaxFrames,
+    };
 }
 /**
  * @param {{ layer?: number, strategy?: string }} args
@@ -45,25 +46,12 @@ export function resolveActiveSurfaceProfileId({ layer = 0, strategy } = {}) {
 }
 /**
  * @param {import("./GameDefinitionTypes.js").GameDefinition | null | undefined} definition
- * @returns {Pick<import("../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings, "groundChunkAnimationsOn" | "wallAnimationsOn">}
- */
-export function resolveProceduralAnimationSettings(definition) {
-    const raw = definition?.proceduralDesign;
-    if (!raw) return { groundChunkAnimationsOn: false, wallAnimationsOn: false };
-    if (raw.proceduralAnimation) return { groundChunkAnimationsOn: true, wallAnimationsOn: true };
-    return { groundChunkAnimationsOn: raw.groundChunkAnimationsOn ?? false, wallAnimationsOn: raw.wallAnimationsOn ?? false };
-}
-/**
- * @param {import("./GameDefinitionTypes.js").GameDefinition | null | undefined} definition
- * @returns {Pick<import("../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings, "animationBakeMaxFrames" | "animationFrameBatchSize">}
+ * @returns {Pick<import("../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings, "animationBakeMaxFrames">}
  */
 export function resolveProceduralBakeSettings(definition) {
     const raw = definition?.proceduralDesign;
-    if (!raw) return {};
-    const out = {};
-    if (raw.animationBakeMaxFrames !== undefined) out.animationBakeMaxFrames = raw.animationBakeMaxFrames;
-    if (raw.animationFrameBatchSize != null) out.animationFrameBatchSize = raw.animationFrameBatchSize;
-    return out;
+    if (!raw || raw.animationBakeMaxFrames === undefined) return {};
+    return { animationBakeMaxFrames: raw.animationBakeMaxFrames };
 }
 /** @param {import("./GameDefinitionTypes.js").GameDefinition} definition */
 export function applyGameProceduralDesign(definition) {

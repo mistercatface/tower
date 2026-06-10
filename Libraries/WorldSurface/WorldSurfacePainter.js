@@ -115,32 +115,25 @@ function chunkWorldOrigin(chunkCol, chunkRow, minX, minY, cellsPerChunk, cellSiz
 function chunkNeedsRuntimeResolve(profile) {
     return Boolean(profile.animation);
 }
-/** Bake one or more ground-chunk canvases from a single worker payload. */
+/** Bake a static ground-chunk canvas (frame 0 when the profile has a timeline). */
 export function bakeGroundChunkCanvases(payload) {
     const provider = getSurfaceProfileProvider();
     const profileId = payload.profileId ?? provider.defaultId;
     const baseProfile = provider.getProfile(profileId);
-    const { frameStart, frameCount } = payload;
     const { chunkCol, chunkRow, minX, minY, seed, cellsPerChunk, cellSize, texelResolution } = payload;
     if (cellsPerChunk == null || cellSize == null || texelResolution == null) throw new Error("bakeGroundChunkCanvases payload requires cellsPerChunk, cellSize, texelResolution");
     const { x: chunkWorldX, y: chunkWorldY, bakeSize } = chunkWorldOrigin(chunkCol, chunkRow, minX, minY, cellsPerChunk, cellSize, texelResolution);
-    const useResolver = chunkNeedsRuntimeResolve(baseProfile);
     const pixelsPerUnit = texelResolution;
     const zLevel = payload.zLevel ?? 0;
     const paintOptions = zLevel > 0 ? { cellSize, pixelsPerUnit, isWall: true, roofSurface: true } : { cellSize, pixelsPerUnit };
-    const canvases = [];
-    const sourceTotal = getAnimationFrames(baseProfile.animation);
-    const bakeTotal = payload.animationBakeFrames ?? sourceTotal;
-    for (let i = 0; i < frameCount; i++) {
-        payload.frameIndex = sourceFrameIndexForBakeSlot(frameStart + i, bakeTotal, sourceTotal);
-        const canvas = new OffscreenCanvas(bakeSize, bakeSize);
-        const ctx = canvas.getContext("2d");
-        ctx.imageSmoothingEnabled = false;
-        if (useResolver) bakeResolvedProfile(ctx, bakeSize, bakeSize, chunkWorldX, chunkWorldY, seed, paintOptions, baseProfile, profileId, payload);
-        else paintPixelArea(ctx, bakeSize, bakeSize, chunkWorldX, chunkWorldY, seed, paintOptions, profileId);
-        canvases.push(canvas);
-    }
-    return canvases;
+    const canvas = new OffscreenCanvas(bakeSize, bakeSize);
+    const ctx = canvas.getContext("2d");
+    ctx.imageSmoothingEnabled = false;
+    if (chunkNeedsRuntimeResolve(baseProfile)) {
+        payload.frameIndex = 0;
+        bakeResolvedProfile(ctx, bakeSize, bakeSize, chunkWorldX, chunkWorldY, seed, paintOptions, baseProfile, profileId, payload);
+    } else paintPixelArea(ctx, bakeSize, bakeSize, chunkWorldX, chunkWorldY, seed, paintOptions, profileId);
+    return [canvas];
 }
 /** Bake a world-aligned horizontal patch (assembly playfield / rail band). */
 export function bakeHorizontalPatchCanvases(payload) {
@@ -173,14 +166,6 @@ export function bakeHorizontalPatchCanvases(payload) {
 export function bakeWallAtlasCanvases(width, height, p1, p2, pixelsPerUnit, seed, profileId, payload = {}) {
     const provider = getSurfaceProfileProvider();
     const baseProfile = provider.getProfile(profileId ?? provider.defaultId);
-    if (!baseProfile.animation) return [bakeWallAtlasCanvas(width, height, p1, p2, pixelsPerUnit, seed, profileId, null, payload)];
-    const { frameStart, frameCount } = payload;
-    const sourceTotal = getAnimationFrames(baseProfile.animation);
-    const bakeTotal = payload.animationBakeFrames ?? sourceTotal;
-    const canvases = [];
-    for (let i = 0; i < frameCount; i++) {
-        payload.frameIndex = sourceFrameIndexForBakeSlot(frameStart + i, bakeTotal, sourceTotal);
-        canvases.push(bakeWallAtlasCanvas(width, height, p1, p2, pixelsPerUnit, seed, profileId, payload, payload));
-    }
-    return canvases;
+    if (baseProfile.animation) payload.frameIndex = 0;
+    return [bakeWallAtlasCanvas(width, height, p1, p2, pixelsPerUnit, seed, profileId, baseProfile.animation ? payload : null, payload)];
 }

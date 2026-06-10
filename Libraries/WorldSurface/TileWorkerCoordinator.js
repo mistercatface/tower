@@ -205,27 +205,24 @@ export const TileWorkerCoordinator = {
         const profileId = payload.profileId;
         return ensureRuntimeProfileOnWorkers(profileId).then(() => {
             const profile = getSurfaceProfileProvider().getProfile(profileId);
-            const isAnimated = Boolean(profile?.animation);
             const normalized = withBakeFrameRange(payload, profile);
-            return requestBake("bakeGroundChunk", normalized, isAnimated);
+            return sendRequest("bakeGroundChunk", normalized, TIER_STATIC);
         });
     },
     requestWallAtlasBake(payload) {
         const profileId = payload.profileId;
         return ensureRuntimeProfileOnWorkers(profileId).then(() => {
             const profile = getSurfaceProfileProvider().getProfile(profileId);
-            const isAnimated = Boolean(profile?.animation);
             const normalized = withBakeFrameRange(payload, profile);
-            return requestBake("bakeWallAtlas", normalized, isAnimated);
+            return sendRequest("bakeWallAtlas", normalized, TIER_STATIC);
         });
     },
     requestHorizontalPatchBake(payload) {
         const profileId = payload.profileId;
         return ensureRuntimeProfileOnWorkers(profileId).then(() => {
             const profile = getSurfaceProfileProvider().getProfile(profileId);
-            const isAnimated = Boolean(profile?.animation) && (payload.frameCount ?? 1) > 1;
             const normalized = withBakeFrameRange(payload, profile);
-            return requestBake("bakeHorizontalPatch", normalized, isAnimated);
+            return requestBake("bakeHorizontalPatch", normalized, (normalized.frameCount ?? 1) > 1);
         });
     },
     registerRuntimeProfile(profileId, profile) {

@@ -17,7 +17,6 @@ export class Renderer {
             worldSurfaces: null,
             proceduralSurfaceDraw: {
                 surfaceSeed: 0,
-                gameTime: 0,
                 surfaceProfileOverride: null,
                 obstacleCellSize: 0,
                 boundGameState: null,
@@ -45,7 +44,6 @@ export class Renderer {
         const surfaceDraw = input.proceduralSurfaceDraw;
         surfaceDraw.boundGameState = state;
         surfaceDraw.surfaceSeed = state.worldSurfaces.worldSurfaceSeed ?? 0;
-        surfaceDraw.gameTime = state.gameTime;
         surfaceDraw.surfaceProfileOverride = state.worldSurfaces.surfaceProfileOverride ?? null;
         surfaceDraw.obstacleCellSize = state.obstacleGrid.cellSize;
     }

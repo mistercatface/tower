@@ -14,10 +14,7 @@
  * @property {number} wallTextureBleedPx
  * @property {number} wallSubdivNearPx
  * @property {number} wallSubdivFarPx
- * @property {boolean} groundChunkAnimationsOn
- * @property {boolean} wallAnimationsOn
- * @property {number|null} [animationBakeMaxFrames]
- * @property {number} [animationFrameBatchSize]
+ * @property {number|null} [animationBakeMaxFrames] — assembly surface flipbook cap
  * @property {number[]} roofZLevels — derived: [wallHeight]
  * @property {number} cellSize
  * @property {number} cameraHeight
@@ -28,7 +25,7 @@
  * @returns {WorldSurfaceSettings}
  */
 export function createWorldSurfaceSettings(params) {
-    return { groundChunkAnimationsOn: false, wallAnimationsOn: false, ...params };
+    return { ...params };
 }
 /** @param {WorldSurfaceSettings} settings */
 export function getWallHeight(settings) {

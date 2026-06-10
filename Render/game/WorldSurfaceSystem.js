@@ -44,7 +44,6 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
             obstacleGrid: state.obstacleGrid,
             viewport,
             state,
-            gameTime: state.gameTime,
             zLevel: 0,
             playBounds: getWorldPlayBounds(state),
             beforeDraw: (drawCtx, bounds) => {
@@ -75,7 +74,6 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
             wallSpatialIndex: state.wallSpatialIndex,
             viewport,
             state,
-            gameTime: state.gameTime,
             playBounds: getWorldPlayBounds(state),
             roofZLevels: this.roofZLevels,
             roofSpatialIndices: this.roofSpatialIndices,

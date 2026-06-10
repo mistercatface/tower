@@ -1,6 +1,6 @@
 import { gridSettings } from "../../Config/balance/grid.js";
 /** @typedef {typeof LIBRARY_WORLD_SURFACE_DEFAULTS} LibraryWorldSurfaceDefaults */
-/** Library baseline — games override via `gameDefinition.worldSurface` (+ proceduralDesign for animation bakes). */
+/** Library baseline — games override via `gameDefinition.worldSurface` (+ proceduralDesign for assembly bake caps). */
 export const LIBRARY_WORLD_SURFACE_DEFAULTS = {
     cellsPerChunk: gridSettings.minCellsPerChunk,
     chunkWorldSize: 64 * gridSettings.cellSize,
@@ -14,8 +14,5 @@ export const LIBRARY_WORLD_SURFACE_DEFAULTS = {
     wallSubdivFarPx: 320,
     floorShadow: "#12161c",
     bloom: { enabled: false, blur: 2 },
-    groundChunkAnimationsOn: false,
-    wallAnimationsOn: false,
     animationBakeMaxFrames: null,
-    animationFrameBatchSize: 8,
 };

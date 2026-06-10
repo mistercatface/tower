@@ -3,11 +3,10 @@
  * WorldSurface is optional — omit both fields for solid-color structure placeholders.
  */
 /**
- * Per-frame procedural ground/wall texture lookup — profile, seed, and animation time.
+ * Per-frame procedural ground/wall texture lookup — profile and seed.
  *
  * @typedef {Object} ProceduralSurfaceDrawContext
  * @property {number} surfaceSeed
- * @property {number} gameTime
  * @property {string|null} surfaceProfileOverride
  * @property {(x: number, y: number) => string} resolveProfileAt
  * @property {number} obstacleCellSize

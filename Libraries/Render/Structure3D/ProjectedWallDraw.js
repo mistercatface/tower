@@ -86,7 +86,7 @@ export function drawFaceTexture(ctx, p1, p2, face, worldSurfaces, proceduralSurf
     const ppwu = getTexelResolution(settings);
     const atlas = worldSurfaces.getOrEnsureWallAtlas(p1, p2, { profileId, proceduralSurfaceDraw, wallHeight, cacheObj });
     if (!atlas) return;
-    const flatCanvas = worldSurfaces.resolveWallAtlasCanvas(atlas.canvases, profileId, proceduralSurfaceDraw.gameTime);
+    const flatCanvas = atlas.canvases[0];
     if (!flatCanvas || flatCanvas.isPlaceholder) {
         ctx.fillStyle = fillStyle;
         ctx.fill();

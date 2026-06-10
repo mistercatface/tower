@@ -4,7 +4,7 @@ import { configureTileWorkerCoordinator } from "../Libraries/WorldSurface/TileWo
 import { clearInteractionPairFilterCache } from "./GamePorts.js";
 import { peekGameState } from "../GameState/GameState.js";
 import { resolvePerspectiveConfig, setCameraHeight, setPerspectiveStrength } from "./GamePerspective.js";
-import { applyGameProceduralDesign, resolveProceduralAnimationSettings, resolveProceduralBakeSettings } from "./GameProceduralDesign.js";
+import { applyGameProceduralDesign, resolveProceduralBakeSettings } from "./GameProceduralDesign.js";
 /** @typedef {import("./GameDefinitionTypes.js").GameDefinition} GameDefinition */
 let workersConfigured = false;
 /**
@@ -28,7 +28,6 @@ export function bootstrapEngine(definition) {
         cameraHeight: perspective.cameraHeight,
         pixelsPerCell: definition?.worldSurface?.pixelsPerCell,
         wallHeight: definition?.worldSurface?.wallHeight,
-        ...resolveProceduralAnimationSettings(definition),
         ...resolveProceduralBakeSettings(definition),
     });
     const state = peekGameState();
@@ -40,7 +39,7 @@ function syncWorldSurfaceEngineSettings(state) {
     if (!engine) return;
     const settings = getGameWorldSurfaceSettings();
     const prev = engine.settings;
-    const keysToCheck = ["groundChunkAnimationsOn", "wallAnimationsOn", "animationBakeMaxFrames", "animationFrameBatchSize", "pixelsPerCell", "wallHeight", "cameraHeight"];
+    const keysToCheck = ["animationBakeMaxFrames", "pixelsPerCell", "wallHeight", "cameraHeight"];
     const bakeSettingsChanged = keysToCheck.some((key) => prev[key] !== settings[key]) || JSON.stringify(prev.roofZLevels ?? []) !== JSON.stringify(settings.roofZLevels ?? []);
     engine.settings = settings;
     if (bakeSettingsChanged) engine.clear();

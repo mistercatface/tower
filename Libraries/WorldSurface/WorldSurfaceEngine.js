@@ -1,12 +1,11 @@
 /**
- * Procedural world-surface bake cache: ground chunks + wall atlases.
- * Game-agnostic — no phase checks, shadow fill, or GameState profile resolution.
- * See Render/game/WorldSurfaceSystem.js for the game wrapper; Libraries/Render/Structure3D for wall projection.
+ * Procedural world-surface bake cache: static ground chunks + wall atlases (frame 0 only).
+ * Animated surfaces are baked at assembly spawn — see Libraries/Sandbox/assemblySurfaceBake.js.
  */
 import { getWallHeight } from "./WorldSurfaceSettings.js";
 import { intersectWorldBoundsInto } from "../WorldGen/playBounds.js";
 import { getChunkSizePx, gridBoundsToChunkRange, worldToChunkCol, worldToChunkRow } from "../Spatial/grid/ChunkGrid.js";
-import { ProgressiveFrameCache } from "./ProgressiveFrameCache.js";
+import { SurfaceBitmapCache } from "./SurfaceBitmapCache.js";
 import { groundChunkCachePrefix } from "./bake/SurfaceBakeHelpers.js";
 import { chunkHasWallSegments, clipChunkToRoofFootprints, drawRoofSegmentDamageOverlays, projectHorizontalSurfaceCorners } from "./HorizontalSurfaceDraw.js";
 import { getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
@@ -27,8 +26,7 @@ export class WorldSurfaceEngine {
      */
     constructor(settings, hooks = {}) {
         this.settings = settings;
-        this.surfaceCache = new ProgressiveFrameCache(settings.maxCachedSurfaces);
-        this._globalGeneration = 0;
+        this.surfaceCache = new SurfaceBitmapCache(settings.maxCachedSurfaces);
         this._buildChunkPayload = hooks.buildChunkPayload ?? null;
         this.chunkDrawBounds = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
     }
@@ -56,67 +54,6 @@ export class WorldSurfaceEngine {
                 for (const zLevel of zLevels) this.surfaceCache.delete(groundChunkCachePrefix(chunkCol, chunkRow, profileId, rev, ppwu, zLevel));
             }
     }
-    requestWallAtlasBake(width, height, p1, p2, pixelsPerUnit, proceduralSurfaceDraw, frameRange, profileId, wallHeight = null, wallWidth = null) {
-        const centerX = (p1.x + p2.x) / 2;
-        const centerY = (p1.y + p2.y) / 2;
-        return TileWorkerCoordinator.requestWallAtlasBake({
-            width,
-            height,
-            p1,
-            p2,
-            pixelsPerUnit,
-            seed: proceduralSurfaceDraw.surfaceSeed,
-            profileId,
-            ...frameRange,
-            centerX,
-            centerY,
-            wallHeight,
-            wallWidth,
-            cellSize: wallWidth,
-            animationBakeFrames: proceduralSurfaceDraw.animationBakeFrames,
-            animationSourceFrames: proceduralSurfaceDraw.animationSourceFrames,
-        });
-    }
-    _resolveChunkPayload(state, chunkCol, chunkRow, zLevel = 0) {
-        if (!this._buildChunkPayload) throw new Error("WorldSurfaceEngine requires buildChunkPayload hook");
-        const payload = this._buildChunkPayload(state, chunkCol, chunkRow, zLevel);
-        const obstacleGrid = state.obstacleGrid;
-        const cellsPerChunk = this.settings.cellsPerChunk;
-        if (obstacleGrid && payload.centerX == null) {
-            const chunkSizePx = obstacleGrid.cellSize * cellsPerChunk;
-            payload.centerX = obstacleGrid.minX + chunkCol * chunkSizePx + chunkSizePx / 2;
-            payload.centerY = obstacleGrid.minY + chunkRow * chunkSizePx + chunkSizePx / 2;
-        }
-        return payload;
-    }
-    updateFills() {
-        this.surfaceCache.updateFills();
-    }
-    hasPendingSurfaceBakes() {
-        return this.surfaceCache.hasPendingWork();
-    }
-    _scheduleAnimatedEntry(key, meta, bakeFirstFn, bakeBatchFn) {
-        const placeholder = this.surfaceCache.getOrStart(key, meta);
-        const generation = this.surfaceCache.getCurrentGeneration(key);
-        const isAnimated = meta.totalFrames > 1;
-        if (isAnimated) this.surfaceCache.requestFill(key, bakeBatchFn, meta.totalFrames);
-        bakeFirstFn().then((firstFrameBitmaps) => {
-            this.surfaceCache.commitFirstFrame(key, generation, firstFrameBitmaps);
-        });
-        return placeholder;
-    }
-    getGroundChunkCanvas(chunkCol, chunkRow, state, payload = null, zLevel = 0) {
-        if (!payload) payload = this._resolveChunkPayload(state, chunkCol, chunkRow, zLevel);
-        const resolvedZ = payload.zLevel ?? zLevel;
-        const key = groundChunkCachePrefix(chunkCol, chunkRow, payload.profileId, getSurfaceProfileRevision(payload.profileId), getTexelResolution(this.settings), resolvedZ);
-        let canvases = this.surfaceCache.get(key);
-        if (canvases) return canvases;
-        const bakePayload = { ...payload, animationBakeFrames: 1, animationSourceFrames: 1 };
-        const meta = { kind: "chunk", payload: bakePayload, totalFrames: 1, animationFrameBatchSize: 0 };
-        const bakeFirstFn = () => TileWorkerCoordinator.requestGroundChunkBake({ ...bakePayload, ...bakeFrameRange.first() });
-        return this._scheduleAnimatedEntry(key, meta, bakeFirstFn, null);
-    }
-    /** Ensure a baked wall atlas exists in the cache (wall faces). */
     ensureWallAtlas(key, p1, p2, columns, proceduralSurfaceDraw, wallHeight = null, profileId = null) {
         let cached = this.surfaceCache.get(key);
         if (cached) return cached;
@@ -131,13 +68,57 @@ export class WorldSurfaceEngine {
         const wallCenterX = (p1.x + p2.x) / 2;
         const wallCenterY = (p1.y + p2.y) / 2;
         const bakeProfileId = profileId ?? proceduralSurfaceDraw.resolveProfileAt(wallCenterX, wallCenterY);
-        const staticSurfaceDraw = { ...proceduralSurfaceDraw, animationBakeFrames: 1, animationSourceFrames: 1 };
-        const meta = { kind: "wall", width: canvasWidth, height: canvasHeight, p1, p2, pixelsPerUnit, totalFrames: 1, animationFrameBatchSize: 0 };
-        const bakeFirstFn = () => this.requestWallAtlasBake(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, staticSurfaceDraw, bakeFrameRange.first(), bakeProfileId, hVal, cellSize);
-        return this._scheduleAnimatedEntry(key, meta, bakeFirstFn, null);
+        return this._scheduleBake(key, () =>
+            TileWorkerCoordinator.requestWallAtlasBake({
+                width: canvasWidth,
+                height: canvasHeight,
+                p1,
+                p2,
+                pixelsPerUnit,
+                seed: proceduralSurfaceDraw.surfaceSeed,
+                profileId: bakeProfileId,
+                ...bakeFrameRange.first(),
+                centerX: wallCenterX,
+                centerY: wallCenterY,
+                wallHeight: hVal,
+                wallWidth: cellSize,
+                cellSize,
+            }),
+        );
+    }
+    _resolveChunkPayload(state, chunkCol, chunkRow, zLevel = 0) {
+        if (!this._buildChunkPayload) throw new Error("WorldSurfaceEngine requires buildChunkPayload hook");
+        const payload = this._buildChunkPayload(state, chunkCol, chunkRow, zLevel);
+        const obstacleGrid = state.obstacleGrid;
+        const cellsPerChunk = this.settings.cellsPerChunk;
+        if (obstacleGrid && payload.centerX == null) {
+            const chunkSizePx = obstacleGrid.cellSize * cellsPerChunk;
+            payload.centerX = obstacleGrid.minX + chunkCol * chunkSizePx + chunkSizePx / 2;
+            payload.centerY = obstacleGrid.minY + chunkRow * chunkSizePx + chunkSizePx / 2;
+        }
+        return payload;
+    }
+    hasPendingSurfaceBakes() {
+        return this.surfaceCache.hasPlaceholders();
+    }
+    _scheduleBake(key, bakeFn) {
+        const placeholder = this.surfaceCache.getOrStart(key);
+        const generation = this.surfaceCache.getCurrentGeneration(key);
+        bakeFn().then((bitmaps) => {
+            this.surfaceCache.commitBake(key, generation, bitmaps);
+        });
+        return placeholder;
+    }
+    getGroundChunkCanvas(chunkCol, chunkRow, state, payload = null, zLevel = 0) {
+        if (!payload) payload = this._resolveChunkPayload(state, chunkCol, chunkRow, zLevel);
+        const resolvedZ = payload.zLevel ?? zLevel;
+        const key = groundChunkCachePrefix(chunkCol, chunkRow, payload.profileId, getSurfaceProfileRevision(payload.profileId), getTexelResolution(this.settings), resolvedZ);
+        let canvases = this.surfaceCache.get(key);
+        if (canvases) return canvases;
+        const bakePayload = { ...payload, ...bakeFrameRange.first() };
+        return this._scheduleBake(key, () => TileWorkerCoordinator.requestGroundChunkBake(bakePayload));
     }
     /**
-     * Resolve cache key and return baked wall atlas frames, scheduling a bake if needed.
      * @param {{ x: number, y: number }} p1
      * @param {{ x: number, y: number }} p2
      * @param {{
@@ -146,7 +127,6 @@ export class WorldSurfaceEngine {
      *   wallHeight?: number | null,
      *   cacheObj?: object | null,
      * }} options
-     * @returns {{ key: string, wrappedP1: { x: number, y: number }, wrappedP2: { x: number, y: number }, canvases: object[] } | null}
      */
     getOrEnsureWallAtlas(p1, p2, options) {
         const { profileId, proceduralSurfaceDraw, wallHeight = null, cacheObj = null } = options;
@@ -161,23 +141,19 @@ export class WorldSurfaceEngine {
         }
         return { key, wrappedP1, wrappedP2, canvases };
     }
-    /** Return the static baked wall atlas frame. */
-    resolveWallAtlasCanvas(canvases) {
-        if (!canvases?.length) return null;
-        return canvases[0];
-    }
     /**
-     * Draw visible ground chunks (no backdrop — use beforeDraw for that).
      * @param {CanvasRenderingContext2D} ctx
      * @param {{
      *   obstacleGrid: { cols: number, cellSize: number, minX: number, minY: number },
      *   viewport: import("../../Libraries/Viewport/Viewport.js").Viewport,
      *   state: object,
-     *   gameTime?: number,
      *   zLevel?: number,
      *   wallSpatialIndex?: import("../Spatial/indexes/WallSpatialIndex.js").WallSpatialIndex | null,
      *   playBounds?: { minX: number, minY: number, maxX: number, maxY: number } | null,
      *   beforeDraw?: (ctx: CanvasRenderingContext2D, bounds: { minX: number, minY: number, maxX: number, maxY: number }) => void,
+     *   requireWallSegments?: boolean,
+     *   skipRoofFootprintClip?: boolean,
+     *   renderScene?: import("../Render/Scene/RenderScene.js").RenderScene,
      * }} options
      */
     drawGroundChunks(ctx, options) {
@@ -233,7 +209,6 @@ export class WorldSurfaceEngine {
             }
         ctx.restore();
     }
-    /** Elevated horizontal layers (z > 0) — chunk-cached, clipped to wall footprints. */
     drawRoofLayers(ctx, baseOptions) {
         const levels = baseOptions.roofZLevels ?? this.settings.roofZLevels ?? [];
         for (let i = 0; i < levels.length; i++) {

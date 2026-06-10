@@ -1,26 +1,11 @@
 /**
- * ANIMATION BAKE PIPELINE
- *
- * 1. Authored timeline != Baked flipbook:
- *    The timeline (stages/tracks) is resolved to a specific moment during bake.
- *
- * 2. Progressive Fill (Floor/Wall):
- *    - Frame 0 is baked immediately on the STATIC worker tier.
- *    - Subsequent frames are batched and baked on the ANIMATION worker tier.
- *
- * 3. Draw Time:
- *    - The draw loop picks the target frame index based on `gameTime`.
- *    - If the target frame hasn't baked yet, it clamps to the nearest available baked frame.
+ * Profile timeline → bake frame index helpers.
+ * World render bakes frame 0 only; assembly surfaces bake full flipbooks at spawn.
  */
-/** Frames baked per incremental animation request (after frame 0). */
-export const ANIMATION_FRAME_BATCH_SIZE = 8;
-/** Explicit frame ranges for bake requests (always pass one of these at call sites). */
+/** Explicit frame ranges for worker bake requests. */
 export const bakeFrameRange = {
     first() {
         return { frameStart: 0, frameCount: 1 };
-    },
-    all(totalFrames) {
-        return { frameStart: 0, frameCount: totalFrames };
     },
     batch(frameStart, frameCount) {
         return { frameStart, frameCount };
@@ -38,12 +23,6 @@ export function bakeSlotForSourceFrame(sourceIndex, bakeTotal, sourceTotal) {
     if (bakeTotal <= 1 || sourceTotal <= 1) return 0;
     if (bakeTotal >= sourceTotal) return Math.min(bakeTotal - 1, sourceIndex);
     return Math.min(bakeTotal - 1, Math.round((sourceIndex * (bakeTotal - 1)) / (sourceTotal - 1)));
-}
-export function nextAnimationBatchRange(currentLength, totalFrames, batchSize = ANIMATION_FRAME_BATCH_SIZE) {
-    if (currentLength >= totalFrames) return null;
-    const frameStart = currentLength;
-    const frameCount = Math.min(batchSize, totalFrames - frameStart);
-    return { frameStart, frameCount };
 }
 export function clampBakeFrameRange(range, totalFrames) {
     if (range?.frameStart == null || range?.frameCount == null) throw new Error("Bake frame range requires frameStart and frameCount");
