@@ -101,8 +101,8 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
         },
         listPoolTables() {
             const state = host.getWorldState?.();
-            if (!state?.sandboxPoolTables?.length) return [];
-            return state.sandboxPoolTables.map((entry, index) => ({ id: entry.id, label: `pool table #${index + 1}`, cueBallId: entry.cueBallId }));
+            if (!state?.sandboxAssemblyInstances?.length) return [];
+            return state.sandboxAssemblyInstances.map((entry, index) => ({ id: entry.id, label: `pool table #${index + 1}`, cueBallId: entry.cueBallId }));
         },
         deleteVoidZoneById(id) {
             const zones = voidZones();
@@ -114,7 +114,7 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
         listVoidZones() {
             const zones = voidZones();
             if (!zones) return [];
-            return zones.filter((zone) => !zone.sandboxGroupId && !zone.sandboxPoolTableId).map((zone, index) => ({ id: zone.id, label: `void #${index + 1}`, radius: zone.shape.radius }));
+            return zones.filter((zone) => !zone.sandboxGroupId).map((zone, index) => ({ id: zone.id, label: `void #${index + 1}`, radius: zone.shape.radius }));
         },
         deletePickup(pickup) {
             if (!pickup) return;
@@ -130,7 +130,7 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
             const counts = new Map();
             return host
                 .getPickups()
-                .filter((pickup) => !pickup.sandboxGroupId && !pickup.sandboxPoolRackId && !pickup.sandboxPoolTableId)
+                .filter((pickup) => !pickup.sandboxGroupId && !pickup.assemblyRackId)
                 .map((pickup) => {
                     const typeLabel = (pickup.type ?? "prop").replace(/_/g, " ");
                     const index = (counts.get(pickup.type) ?? 0) + 1;

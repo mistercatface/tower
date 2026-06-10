@@ -1,33 +1,43 @@
-import { gridSettings } from "../../../Config/Config.js";
 import { getResolvedAssembly } from "./assemblies/assemblyRegistry.js";
-const _defaultAssembly = getResolvedAssembly("poolTable");
-const _layout = _defaultAssembly.layout;
-/** Ball radius the default pool assembly was originally tuned at. */
-export const POOL_REFERENCE_BALL_RADIUS = _layout.referenceBallRadius;
-/** Current pool ball radius from the default assembly manifest. */
-export const POOL_BALL_RADIUS = _layout.ballRadius;
-export const POOL_SCALE = _layout.scale;
-export const POOL_TABLE_COLS = _layout.cols;
-export const POOL_TABLE_ROWS = _layout.rows;
-export const POOL_TABLE_RAIL_CELLS = _layout.railCells;
-export const POOL_CUE_STRIKE = _defaultAssembly.behaviors.pool_cue_ball.cueStrike;
-export const POOL_CUE_INPUT_GATES = _defaultAssembly.behaviors.pool_cue_ball.inputGates;
+function poolAssembly() {
+    const assembly = getResolvedAssembly("poolTable");
+    if (!assembly) throw new Error("Pool table assembly not loaded — call loadAssemblyManifests() first");
+    return assembly;
+}
+export function getPoolReferenceBallRadius() {
+    return poolAssembly().scale.referenceBallRadius;
+}
+export function getPoolBallRadius() {
+    return poolAssembly().scale.ballRadius;
+}
+export function getPoolScale() {
+    return poolAssembly().scale.factor;
+}
+export const POOL_REFERENCE_BALL_RADIUS = 8;
+export const POOL_BALL_RADIUS = 2;
+export const POOL_SCALE = POOL_BALL_RADIUS / POOL_REFERENCE_BALL_RADIUS;
+export const POOL_TABLE_COLS = 24;
+export const POOL_TABLE_ROWS = 44;
+export const POOL_TABLE_RAIL_CELLS = 2;
+export function getPoolCueStrike() {
+    return poolAssembly().behaviors.pool_cue_ball.cueStrike;
+}
+export function getPoolCueInputGates() {
+    return poolAssembly().behaviors.pool_cue_ball.inputGates;
+}
 export function getPoolCellSize() {
-    return _layout.cellSize;
+    return poolAssembly().arena.cellSize;
 }
 /** @param {number} [ballRadius] */
-export function getPoolPocketRadii(ballRadius = POOL_BALL_RADIUS) {
-    const ratio = ballRadius / _layout.ballRadius;
-    const pockets = _layout.pocketRadii;
-    return { corner: pockets.corner * ratio, side: pockets.side * ratio, depth: pockets.depth * ratio };
+export function getPoolVoidRadii(ballRadius = getPoolBallRadius()) {
+    const assembly = poolAssembly();
+    const ratio = ballRadius / assembly.scale.ballRadius;
+    const radii = assembly.refs.voidRadii;
+    return { corner: radii.corner * ratio, side: radii.side * ratio, depth: radii.depth * ratio };
 }
-export function getPoolWallPocketSegmentSize() {
-    return _layout.wallPocketSegmentSize;
+export function getPoolVoidBackArcSegmentSize() {
+    return poolAssembly().arena.walls.voidBackArcSegmentSize;
 }
-/**
- * Render-only knobs — independent of ball radius in the assembly manifest.
- * Sprite bake resolution uses the game default like other props.
- */
 export const POOL_VISUAL = {
     panelCount: 10,
     latBands: 6,
@@ -39,12 +49,12 @@ export const POOL_VISUAL = {
     labelImageSmoothing: false,
     showLabels: false,
 };
-/** Shared pool-ball physics block for prop assets. */
 export function getPoolBallPhysics() {
-    const s = POOL_SCALE;
+    const ballRadius = getPoolBallRadius();
+    const s = ballRadius / getPoolReferenceBallRadius();
     return {
         hitBehavior: "none",
-        radius: POOL_BALL_RADIUS,
+        radius: ballRadius,
         isPushable: true,
         rolls: true,
         collisionShape: "circle",
@@ -60,9 +70,15 @@ export function getPoolBallPhysics() {
 }
 /** @param {object} defaultPoolBall */
 export function getPoolBallVisuals(defaultPoolBall) {
-    return { defaultPoolBall, defaultRadius: POOL_BALL_RADIUS, ...POOL_VISUAL };
+    return { defaultPoolBall, defaultRadius: getPoolBallRadius(), ...POOL_VISUAL };
 }
 /** @param {number} [tableWidth] @param {number} [tableHeight] */
-export function getPoolTableWorldSize(tableWidth = POOL_TABLE_COLS * getPoolCellSize(), tableHeight = POOL_TABLE_ROWS * getPoolCellSize()) {
+export function getPoolTableWorldSize(tableWidth = getPoolTableCols() * getPoolCellSize(), tableHeight = getPoolTableRows() * getPoolCellSize()) {
     return { tableWidth, tableHeight };
+}
+export function getPoolTableCols() {
+    return poolAssembly().arena.grid.cols;
+}
+export function getPoolTableRows() {
+    return poolAssembly().arena.grid.rows;
 }

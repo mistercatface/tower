@@ -12,7 +12,7 @@ function getCueStrikeConfig(pickup, asset) {
 }
 /** @param {object} pickup @param {import("../SandboxHostPort.js").SandboxHostPort} host */
 function cueStrikeTableBounds(pickup, host) {
-    const groupId = pickup?.sandboxGroupId ?? pickup?.sandboxPoolTableId;
+    const groupId = pickup?.sandboxGroupId;
     if (!groupId) return {};
     const state = host.getWorldState?.();
     const instance = state?.sandboxAssemblyInstances?.find((entry) => entry.id === groupId);

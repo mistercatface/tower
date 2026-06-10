@@ -3,10 +3,18 @@ import { getGameWorldSurfaceSettings } from "../../Render/WorldSurfaceBootstrap.
 import { SceneCompiler } from "../Render/Scene/SceneCompiler.js";
 import { createVoidZone } from "../Spatial/zones/voidZone.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
+import { Pickup } from "../../Entities/Pickup.js";
+import { wakePushableBody } from "../Motion/pushableSleep.js";
+import { poolBallFromNumber } from "../Render/Props3D/poolBallArt.js";
 import { buildSandboxPoolTableLayout, buildPoolTableClearBounds, buildPoolTableWallSegments } from "./poolTableLayout.js";
-import { spawnAssemblyRack } from "./spawnAssemblyRack.js";
 import { getResolvedAssembly } from "./assemblies/assemblyRegistry.js";
+import { resolvePlacement } from "./assemblies/assemblyPlacement.js";
 import { stampAssemblyGroupMember, entityBelongsToAssemblyGroup } from "./assemblies/assemblyLink.js";
+/** @param {string[]} spawnSteps @param {string[]} names */
+function spawnIncludes(spawnSteps, names) {
+    for (let i = 0; i < names.length; i++) if (spawnSteps.includes(names[i])) return true;
+    return false;
+}
 /** @param {object} state @param {object} wall */
 function removeSandboxWall(state, wall) {
     const idx = state.walls.indexOf(wall);
@@ -53,6 +61,32 @@ function clearWallsInBounds(state, bounds) {
 }
 /**
  * @param {import("./SandboxHostPort.js").SandboxHostPort} host
+ * @param {ReturnType<typeof buildSandboxPoolTableLayout>} layout
+ * @param {import("./assemblies/assemblyManifest.js").ResolvedAssemblyManifest} resolved
+ * @param {{ faction?: string, groupId: string, rackId: string, groupField: string }} options
+ */
+function spawnManifestPickups(host, layout, resolved, { faction, groupId, rackId, groupField }) {
+    /** @type {string | null} */
+    let cueBallId = null;
+    for (let i = 0; i < resolved.pickups.length; i++) {
+        const entry = resolved.pickups[i];
+        if (!getPropAsset(entry.prop)) return null;
+        const at = resolvePlacement(layout.play, entry.at);
+        const pickup = new Pickup(at.x, at.y, entry.prop, 0);
+        pickup.faction = faction;
+        pickup.assemblyRackId = rackId;
+        stampAssemblyGroupMember(pickup, groupId, resolved.id, groupField);
+        const behavior = resolved.behaviors[entry.prop];
+        if (behavior) pickup.sandboxBehaviorOverrides = behavior;
+        if (entry.poolBall != null) pickup.poolBall = poolBallFromNumber(entry.poolBall);
+        wakePushableBody(pickup);
+        host.addPickup(pickup);
+        if (entry.id === "cue") cueBallId = pickup.id;
+    }
+    return { cueBallId };
+}
+/**
+ * @param {import("./SandboxHostPort.js").SandboxHostPort} host
  * @param {number} centerX
  * @param {number} centerY
  * @param {import("./assemblies/assemblyManifest.js").ResolvedAssemblyManifest} resolved
@@ -61,43 +95,39 @@ function clearWallsInBounds(state, bounds) {
 export function spawnPoolTableAssembly(host, centerX, centerY, resolved, { faction, groupId: groupIdOverride } = {}) {
     const state = host.getWorldState?.();
     if (!state || resolved.id !== "poolTable") return null;
-    if (!getPropAsset(resolved.props.cueBall) || !getPropAsset(resolved.props.objectBall)) return null;
-    const tableLayout = resolved.layout;
-    const ballRadius = tableLayout.ballRadius;
-    const layout = buildSandboxPoolTableLayout(centerX, centerY, tableLayout);
-    clearWallsInBounds(state, buildPoolTableClearBounds(layout));
+    if (!resolved.pickups?.length) return null;
+    for (let i = 0; i < resolved.pickups.length; i++) if (!getPropAsset(resolved.pickups[i].prop)) return null;
+    const layout = buildSandboxPoolTableLayout(centerX, centerY, resolved);
+    const spawnSteps = resolved.spawn;
+    if (spawnIncludes(spawnSteps, ["arena.clear"])) clearWallsInBounds(state, buildPoolTableClearBounds(layout, resolved));
     const groupId = groupIdOverride ?? `${resolved.id}:${Date.now()}`;
     const rackId = `${groupId}:rack`;
     const groupField = resolved.groupField;
-    const tableWidth = tableLayout.cols * tableLayout.cellSize;
-    const tableHeight = tableLayout.rows * tableLayout.cellSize;
-    const spawnSteps = new Set(resolved.spawn);
-    if (spawnSteps.has("walls")) {
-        const railHeight = layout.cellSize;
-        const walls = buildPoolTableWallSegments(layout, ballRadius, railHeight, tableLayout);
+    const tableWidth = resolved.arena.grid.cols * resolved.arena.cellSize;
+    const tableHeight = resolved.arena.grid.rows * resolved.arena.cellSize;
+    if (spawnIncludes(spawnSteps, ["arena.walls"])) {
+        const walls = buildPoolTableWallSegments(layout, resolved);
         for (let i = 0; i < walls.length; i++) stampAssemblyGroupMember(walls[i], groupId, resolved.id, groupField);
         addSandboxWalls(state, walls);
     }
-    if (spawnSteps.has("voidPockets")) {
+    if (spawnIncludes(spawnSteps, ["voidCircles"])) {
         if (!state.sandboxVoidZones) state.sandboxVoidZones = [];
-        for (let p = 0; p < layout.pockets.length; p++) {
-            const pocket = layout.pockets[p];
-            const zone = createVoidZone(pocket.x, pocket.y, pocket.radius, { id: `${groupId}:pocket:${p + 1}`, depth: layout.pocketDepth });
+        for (let p = 0; p < layout.voids.length; p++) {
+            const voidCircle = layout.voids[p];
+            const zone = createVoidZone(voidCircle.x, voidCircle.y, voidCircle.radius, { id: `${groupId}:void:${voidCircle.id ?? p + 1}`, depth: voidCircle.depth ?? layout.voidDepth });
             stampAssemblyGroupMember(zone, groupId, resolved.id, groupField);
             state.sandboxVoidZones.push(zone);
         }
     }
-    let rack = null;
-    if (spawnSteps.has("rack")) {
-        rack = spawnAssemblyRack(host, layout.balls.cue.x, layout.balls.cue.y, { faction, rackId, groupId, resolved, layout: layout.balls });
-        if (!rack) return null;
+    let spawned = null;
+    if (spawnIncludes(spawnSteps, ["pickups"])) {
+        spawned = spawnManifestPickups(host, layout, resolved, { faction, groupId, rackId, groupField });
+        if (!spawned) return null;
     }
     if (!state.sandboxAssemblyInstances) state.sandboxAssemblyInstances = [];
-    const instance = { id: groupId, assemblyId: resolved.id, rackId, cueBallId: rack?.cueBallId ?? null, tableWidth, tableHeight, groupField };
+    const instance = { id: groupId, assemblyId: resolved.id, rackId, cueBallId: spawned?.cueBallId ?? null, tableWidth, tableHeight, groupField };
     state.sandboxAssemblyInstances.push(instance);
-    if (!state.sandboxPoolTables) state.sandboxPoolTables = [];
-    state.sandboxPoolTables.push({ id: groupId, assemblyId: resolved.id, rackId, cueBallId: rack?.cueBallId ?? null });
-    return { id: groupId, assemblyId: resolved.id, cueBallId: rack?.cueBallId ?? null, centerX, centerY };
+    return { id: groupId, assemblyId: resolved.id, cueBallId: spawned?.cueBallId ?? null, centerX, centerY };
 }
 /**
  * @param {import("./SandboxHostPort.js").SandboxHostPort} host
@@ -121,20 +151,16 @@ export function deleteAssemblyInstance(state, groupId, groupField = "sandboxGrou
     const rackId = `${groupId}:rack`;
     for (let i = state.pickups.length - 1; i >= 0; i--) {
         const pickup = state.pickups[i];
-        if (pickup.sandboxPoolRackId === rackId || entityBelongsToAssemblyGroup(pickup, groupId, groupField)) state.pickups.splice(i, 1);
+        if (pickup.assemblyRackId === rackId || entityBelongsToAssemblyGroup(pickup, groupId, groupField)) state.pickups.splice(i, 1);
     }
     if (state.sandboxAssemblyInstances) {
         const idx = state.sandboxAssemblyInstances.findIndex((entry) => entry.id === groupId);
         if (idx >= 0) state.sandboxAssemblyInstances.splice(idx, 1);
     }
-    if (state.sandboxPoolTables) {
-        const idx = state.sandboxPoolTables.findIndex((entry) => entry.id === groupId);
-        if (idx >= 0) state.sandboxPoolTables.splice(idx, 1);
-    }
 }
 /** @param {object} state */
 export function clearAssemblyInstances(state) {
-    if (!state?.sandboxAssemblyInstances?.length && !state?.sandboxPoolTables?.length) return;
-    const ids = (state.sandboxAssemblyInstances ?? state.sandboxPoolTables).map((entry) => entry.id);
+    if (!state?.sandboxAssemblyInstances?.length) return;
+    const ids = state.sandboxAssemblyInstances.map((entry) => entry.id);
     for (let i = 0; i < ids.length; i++) deleteAssemblyInstance(state, ids[i]);
 }

@@ -30,6 +30,8 @@ export { getSandboxBehaviorLabel, isSandboxEquippable, isSandboxSpawnable, resol
 export { evaluateInputGates, evaluateInputGateRule, isEntityAtRest, isEntityAsleep, resolveInputGateScope } from "./inputGates.js";
 export { resolvePickupSandboxBehavior, resolvePickupInputGateRules } from "./sandboxBehaviorConfig.js";
 export { getAssemblyManifest, getDefaultPoolTableAssemblyManifest, getResolvedAssembly, registerAssemblyManifest, resolveAssemblyManifest } from "./assemblies/assemblyRegistry.js";
+export { loadAssemblyManifests } from "./assemblies/loadAssemblyManifests.js";
+export { resolvePlacement, resolveAnchoredPlacement, resolvePlayfieldPlacement } from "./assemblies/assemblyPlacement.js";
 export { spawnAssembly, deleteAssemblyInstance, clearAssemblyInstances } from "./spawnAssembly.js";
 export {
     DRAG_LAUNCH_DEFAULTS,
