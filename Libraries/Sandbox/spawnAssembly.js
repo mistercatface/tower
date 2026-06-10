@@ -9,6 +9,11 @@ import { buildAssemblyLayout, buildAssemblyClearBounds, buildAssemblyWallSegment
 import { getResolvedAssembly } from "./assemblies/assemblyRegistry.js";
 import { resolvePlacement } from "./assemblies/assemblyPlacement.js";
 import { stampAssemblyGroupMember, entityBelongsToAssemblyGroup } from "./assemblies/assemblyLink.js";
+/** @param {import("./assemblies/assemblyManifest.js").ResolvedAssemblyManifest} resolved @param {string} propId */
+function assemblyIncludesProp(resolved, propId) {
+    if (!resolved.props.length) return true;
+    return resolved.props.includes(propId);
+}
 /** @param {string[]} spawnSteps @param {string[]} names */
 function spawnIncludes(spawnSteps, names) {
     for (let i = 0; i < names.length; i++) if (spawnSteps.includes(names[i])) return true;
@@ -69,7 +74,7 @@ function spawnManifestPickups(host, layout, resolved, { faction, groupId, rackId
     let cueBallId = null;
     for (let i = 0; i < resolved.pickups.length; i++) {
         const entry = resolved.pickups[i];
-        if (!getPropAsset(entry.prop)) return null;
+        if (!assemblyIncludesProp(resolved, entry.prop) || !getPropAsset(entry.prop)) return null;
         const at = resolvePlacement(layout.play, entry.at);
         const pickup = new Pickup(at.x, at.y, entry.prop, 0);
         pickup.faction = faction;
@@ -94,7 +99,10 @@ export function spawnResolvedAssembly(host, centerX, centerY, resolved, { factio
     const state = host.getWorldState?.();
     if (!state) return null;
     if (!resolved.pickups?.length) return null;
-    for (let i = 0; i < resolved.pickups.length; i++) if (!getPropAsset(resolved.pickups[i].prop)) return null;
+    for (let i = 0; i < resolved.pickups.length; i++) {
+        const entry = resolved.pickups[i];
+        if (!assemblyIncludesProp(resolved, entry.prop) || !getPropAsset(entry.prop)) return null;
+    }
     const layout = buildAssemblyLayout(centerX, centerY, resolved);
     const spawnSteps = resolved.spawn;
     if (spawnIncludes(spawnSteps, ["arena.clear"])) clearWallsInBounds(state, buildAssemblyClearBounds(layout, resolved));

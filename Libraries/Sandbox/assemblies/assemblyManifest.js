@@ -1,9 +1,4 @@
 /**
- * @typedef {object} AssemblyPropManifest
- * @property {object} physics
- * @property {object} visuals
- */
-/**
  * @typedef {object} AssemblyArenaWallsManifest
  * @property {number} width — rail thickness in world units
  * @property {number} height — wall prism height in world units
@@ -43,7 +38,7 @@
  * @property {string} id
  * @property {number} [version]
  * @property {AssemblyArenaManifest} [arena]
- * @property {Record<string, AssemblyPropManifest>} [props]
+ * @property {string[]} [props] — prop catalog ids this assembly uses
  * @property {AssemblyVoidCircleManifest[]} [voidCircles]
  * @property {AssemblyPickupManifest[]} [pickups]
  * @property {{ groupField: string }} link
@@ -55,7 +50,7 @@
  * @property {string} id
  * @property {number} version
  * @property {AssemblyArenaManifest} arena
- * @property {Record<string, AssemblyPropManifest>} props
+ * @property {string[]} props
  * @property {AssemblyVoidCircleManifest[]} voidCircles
  * @property {AssemblyPickupManifest[]} pickups
  * @property {string} groupField
