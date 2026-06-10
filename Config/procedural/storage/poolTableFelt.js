@@ -46,8 +46,8 @@ export default {
     animation: {
         stages: [
             {
-                frames: 15,
-                durationMs: 3200,
+                frames: 24,
+                durationMs: 2400,
                 tracks: [
                     { targetPath: "motifs[3].x", startValue: 0, endValue: 18, easing: "easeInOutSine" },
                     { targetPath: "motifs[3].y", startValue: 0, endValue: 10, easing: "easeInOutSine" },
@@ -62,8 +62,8 @@ export default {
                 ],
             },
             {
-                frames: 15,
-                durationMs: 3200,
+                frames: 24,
+                durationMs: 2400,
                 tracks: [
                     { targetPath: "motifs[3].x", startValue: 18, endValue: 44, easing: "easeInCubic" },
                     { targetPath: "motifs[3].y", startValue: 10, endValue: 22, easing: "easeInCubic" },
@@ -82,8 +82,8 @@ export default {
                 ],
             },
             {
-                frames: 15,
-                durationMs: 3200,
+                frames: 24,
+                durationMs: 2400,
                 tracks: [
                     { targetPath: "motifs[3].x", startValue: 44, endValue: 0, easing: "easeInOutCubic" },
                     { targetPath: "motifs[3].y", startValue: 22, endValue: 0, easing: "easeInOutCubic" },
