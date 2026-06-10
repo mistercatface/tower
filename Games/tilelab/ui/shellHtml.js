@@ -39,11 +39,15 @@ export const TILELAB_UI_HTML = `
                 <div id="surfaceEditorPanel" class="editor-panel-section is-visible" data-panel="profile">
                     <div class="editor-panel-head">Profile editor</div>
                     <div class="editor-tools">
-                        <select id="presetSelect"></select>
-                        <button type="button" id="loadPresetBtn">Load</button>
-                        <select id="addMotifType"></select>
-                        <button type="button" id="addMotifBtn" class="secondary">+ Motif</button>
-                        <button type="button" id="copyExportBtn">Copy export</button>
+                        <div class="editor-tools-row">
+                            <select id="presetSelect"></select>
+                            <button type="button" id="loadPresetBtn">Load</button>
+                            <button type="button" id="copyExportBtn">Copy export</button>
+                        </div>
+                        <div class="editor-tools-row">
+                            <select id="addMotifType"></select>
+                            <button type="button" id="addMotifBtn" class="secondary">+ Motif</button>
+                        </div>
                     </div>
                     <div class="editor-scroll">
                         <details class="editor-block" open>

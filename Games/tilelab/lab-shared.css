@@ -386,10 +386,17 @@ body {
 .editor-tools {
     flex: 0 0 auto;
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
     gap: 6px;
     padding: 8px;
     border-bottom: 1px solid var(--border);
+}
+
+.editor-tools-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    width: 100%;
 }
 
 .editor-tools select {
