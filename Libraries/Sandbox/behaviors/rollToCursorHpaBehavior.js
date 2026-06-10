@@ -30,7 +30,8 @@ export function createRollToCursorHpaBehavior() {
             if (!targetWorld) return;
             const config = getRollToCursorConfig(pickup, { stopRadius: 8 });
             const distToTarget = Math.hypot(targetWorld.x - pickup.x, targetWorld.y - pickup.y);
-            if (distToTarget <= config.stopRadius) {
+            const isFinalLeg = !hpaNav.navState.path || hpaNav.navState.pathProgressIdx >= hpaNav.navState.path.length - 1;
+            if (isFinalLeg && distToTarget <= config.stopRadius) {
                 decelerateRoll(pickup, dt, config);
                 const speed = Math.hypot(pickup.vx ?? 0, pickup.vy ?? 0);
                 if (speed < 0.5) clearTarget();

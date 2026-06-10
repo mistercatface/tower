@@ -1,11 +1,9 @@
 /** @typedef {import("../Agent/types.js").AgentPose} AgentPose */
 /** @typedef {import("../Agent/types.js").SteeringResult} SteeringResult */
 /** @typedef {import("./navSession.js").NavSessionState} NavSessionState */
-
 export function trimPathAhead(x, y, path) {
     return path;
 }
-
 /**
  * @param {AgentPose} pose
  * @param {{ x: number, y: number }[]} path
@@ -23,15 +21,12 @@ export function computePathSteering(pose, path, targetX, targetY, settings = {},
     const arrivalDistance = settings.arrivalDistance ?? 2;
     // BOIDS drops the path if distance > 4.0 grid units (64 pixels)
     const offPathDistance = settings.pathOffPathDistance ?? 64;
-
     let step = navState?.pathProgressIdx ?? 0;
     if (step >= path.length) step = path.length - 1;
-
     let steerTarget = path[step];
     let dx = steerTarget.x - x;
     let dy = steerTarget.y - y;
     let dist = Math.hypot(dx, dy);
-
     // Advance to next waypoint if close enough
     while (dist < waypointArrival && step < path.length - 1) {
         step++;
@@ -41,16 +36,9 @@ export function computePathSteering(pose, path, targetX, targetY, settings = {},
         dy = steerTarget.y - y;
         dist = Math.hypot(dx, dy);
     }
-
     const distToTarget = Math.hypot(targetX - x, targetY - y);
-    if (distToTarget <= arrivalDistance) {
-        return { desiredX: 0, desiredY: 0, offPath: false };
-    }
-
-    if (dist < 0.01) {
-        return { desiredX: 0, desiredY: 0, offPath: false };
-    }
-
+    if (step >= path.length - 1 && distToTarget <= arrivalDistance) return { desiredX: 0, desiredY: 0, offPath: false };
+    if (dist < 0.01) return { desiredX: 0, desiredY: 0, offPath: false };
     const offPath = dist > offPathDistance;
     return { desiredX: dx / dist, desiredY: dy / dist, offPath };
 }
