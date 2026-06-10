@@ -3,21 +3,16 @@ import { GUN_ID_TO_VISUAL } from "../../Assets/guns/visualMap.js";
 import { createDefaultRenderPorts } from "../../Libraries/Render/defaultRenderPorts.js";
 import { createWeaponVisuals } from "../../Libraries/Render/Characters/weapons/createWeaponVisuals.js";
 import { getGameState } from "../../GameState/GameState.js";
-import { pickupStates } from "../../Entities/PickupStates.js";
-import { combatPickupStates } from "../../Entities/pickupCombatStates.js";
 import { drawSandboxAssemblySurfaces } from "../../Libraries/Sandbox/assemblySurfaceDraw.js";
 import { TileLabGameState, tilelabMapTopology } from "./state.js";
 import { applyLabCanvasSize } from "./ui/labCanvas.js";
 import { sandboxPathEffectPass } from "./render/sandboxPathEffectPass.js";
 import { tilelabGroundZoneEffectPass } from "./groundZones.js";
 import { sandboxVoidZoneEffectPass } from "./sandboxVoidZones.js";
-/** Editor engine profile — render/sim/world-gen hooks for shared engine code. */
+
+/** Editor engine profile — hooks for shared render/sim/world-gen code (`GamePorts`). */
 export const engine = {
     id: "editor",
-    createGameState() {
-        return new TileLabGameState();
-    },
-    /** Filled in by editorSimulation.js (after this module loads). */
     simulationPort: null,
     render: {
         ...createDefaultRenderPorts({ weaponVisuals: createWeaponVisuals(GUN_ID_TO_VISUAL) }),
@@ -39,29 +34,4 @@ export const engine = {
         if (!canvas) return;
         applyLabCanvasSize(state, canvas.width, canvas.height);
     },
-    prepare() {
-        document.title = "Editor";
-        document.body.classList.add("shell-tilelab");
-        if (!document.getElementById("tilelab-css")) {
-            const link = document.createElement("link");
-            link.id = "tilelab-css";
-            link.rel = "stylesheet";
-            link.href = new URL("./tilelab.css", import.meta.url).href;
-            document.head.appendChild(link);
-        }
-    },
 };
-/** @param {import("./state.js").TileLabGameState} state */
-export function initEngineState(state) {
-    state.entityLayers = state.entityLayers ?? [];
-    state.combatParticles = state.combatParticles ?? [];
-    state.projectiles = state.projectiles ?? [];
-    state.activeLasers = state.activeLasers ?? [];
-    state.floatingTexts = state.floatingTexts ?? [];
-    if (!state.entityLayers.some((layer) => layer.key === "projectiles")) state.entityLayers.push({ key: "projectiles", zIndex: 20 });
-    if (!state.entityLayers.some((layer) => layer.key === "floatingTexts")) state.entityLayers.push({ key: "floatingTexts", zIndex: 100 });
-}
-export function prepareEngine() {
-    for (const key of Object.keys(pickupStates)) if (key !== "normal") delete pickupStates[key];
-    Object.assign(pickupStates, combatPickupStates);
-}

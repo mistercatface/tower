@@ -6,7 +6,7 @@ const GROUP_COUNT = 5;
 const GROUP_SEPARATION = 140;
 const GROUP_SPREAD_X = 50;
 const GROUP_SPREAD_Y = 100;
-/** @param {import("../index.js").TileLabGameState} state */
+/** @param {import("../state.js").TileLabGameState} state */
 export function resolveSandboxBattleCenter(state) {
     const grid = state.obstacleGrid;
     if (grid?.minX !== undefined) return { x: (grid.minX + grid.maxX) / 2, y: (grid.minY + grid.maxY) / 2 };
@@ -15,7 +15,7 @@ export function resolveSandboxBattleCenter(state) {
 }
 /**
  * Spawn Alpha left, Bravo right — armed humanoids ready to fight.
- * @param {import("../index.js").TileLabGameState} state
+ * @param {import("../state.js").TileLabGameState} state
  * @param {{ replace?: boolean }} [options]
  */
 export function spawnSandboxBattleGroups(state, { replace = true } = {}) {

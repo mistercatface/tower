@@ -1,7 +1,7 @@
 /**
  * Commit lab canvas pixel size into game state. Call only when the canvas buffer changes.
  *
- * @param {import("../index.js").TileLabGameState} state
+ * @param {import("../state.js").TileLabGameState} state
  * @param {number} width
  * @param {number} height
  */

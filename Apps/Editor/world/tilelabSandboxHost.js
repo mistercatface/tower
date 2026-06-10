@@ -1,7 +1,7 @@
 import { canvasClientToWorld } from "../ui/labCanvas.js";
 /** @typedef {import("../../../Libraries/Sandbox/SandboxHostPort.js").SandboxHostPort} SandboxHostPort */
 /**
- * @param {import("../index.js").TileLabGameState} state
+ * @param {import("../state.js").TileLabGameState} state
  * @param {() => void} requestRedraw
  * @returns {SandboxHostPort}
  */

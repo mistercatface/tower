@@ -8,11 +8,11 @@ import { spawnSandboxBattleGroups } from "./sandboxBattleSpawn.js";
 export function listLabMapNodes(state) {
     return state.mapNodes.map((n) => ({ id: n.id, layer: n.layer, strategy: n.strategy ?? "?" })).sort((a, b) => a.layer - b.layer || a.id - b.id);
 }
-/** @param {import("../index.js").TileLabGameState} state @param {number | null} nodeId */
+/** @param {import("../state.js").TileLabGameState} state @param {number | null} nodeId */
 export function selectLabNode(state, nodeId) {
     state.roguelikeMapSession.selectedNodeId = nodeId;
 }
-/** @param {import("../index.js").TileLabGameState} state */
+/** @param {import("../state.js").TileLabGameState} state */
 export function initEmptyTilelabMap(state) {
     const viewW = state.viewport?.width ?? 0;
     const viewH = state.viewport?.height ?? 0;
@@ -37,7 +37,7 @@ export function initEmptyTilelabMap(state) {
     resetTilelabGroundZones(state);
 }
 /**
- * @param {import("../index.js").TileLabGameState} state
+ * @param {import("../state.js").TileLabGameState} state
  * @param {{ mapSeed: number, floorSeed: number }} seeds
  */
 export function generateTilelabMap(state, { mapSeed, floorSeed }) {
@@ -48,7 +48,7 @@ export function generateTilelabMap(state, { mapSeed, floorSeed }) {
     resetTilelabGroundZones(state);
     spawnSandboxBattleGroups(state);
 }
-/** @param {import("../index.js").TileLabGameState} state */
+/** @param {import("../state.js").TileLabGameState} state */
 export function focusLabNode(state, nodeId) {
     selectLabNode(state, nodeId);
     state.currentNodeId = nodeId;

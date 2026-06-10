@@ -106,7 +106,6 @@
  *
  * @typedef {object} EngineProfile
  * @property {string} id
- * @property {() => import("../GameState/SharedGameState.js").SharedGameState} createGameState
  * @property {Partial<InteractionPairsPort>} [interactionPairs]
  * @property {SimulationPort} simulationPort
  * @property {TargetingPort} [targeting]

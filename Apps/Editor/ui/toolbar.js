@@ -9,7 +9,7 @@ export function readControls(state) {
     };
 }
 
-/** @param {import("../index.js").TileLabGameState} state */
+/** @param {import("../state.js").TileLabGameState} state */
 export function syncPreviewZoomToStage(state) {
     fitLabStageToView(state);
 }
@@ -20,7 +20,7 @@ export function rollRandomMapSeed() {
 
 /**
  * Roll new map + floor seeds and regenerate the lab world.
- * @param {import("../index.js").TileLabGameState} state
+ * @param {import("../state.js").TileLabGameState} state
  */
 export function rollRandomTilelabMap(state) {
     const seed = rollRandomMapSeed();
@@ -39,7 +39,7 @@ export function initPresetSelect(profileIds) {
     select.value = roguelikeProceduralDesign.surfaceProfileId;
 }
 
-/** @param {import("../index.js").TileLabGameState} state */
+/** @param {import("../state.js").TileLabGameState} state */
 export function initToolbarDefaults(state) {
     syncPreviewZoomToStage(state);
 }

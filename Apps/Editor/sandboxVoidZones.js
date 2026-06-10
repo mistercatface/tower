@@ -3,7 +3,7 @@ import { voidSinkPickupStates } from "../../Entities/pickupVoidSinkState.js";
 import { processGroundZones, isGroundZoneInView } from "../../Libraries/Spatial/zones/groundZones.js";
 import { createVoidZone, drawVoidZone, isInsideVoidMouth, voidMouthReach } from "../../Libraries/Spatial/zones/voidZone.js";
 import { NEIGHBOR_QUERY_PAD } from "../../Libraries/Spatial/collision/entityBroadphase.js";
-/** @param {import("./index.js").TileLabGameState} state */
+/** @param {import("./state.js").TileLabGameState} state */
 export function ensureSandboxVoidZones(state) {
     if (!state.sandboxVoidZones) state.sandboxVoidZones = [];
     for (let i = 0; i < state.sandboxVoidZones.length; i++) {
@@ -32,7 +32,7 @@ function beginVoidSink(pickup, zone) {
     pickup.voidCaptured = Math.hypot(zone.x - pickup.x, zone.y - pickup.y) <= voidMouthReach(zone.shape.radius, pickup) * 0.65;
     pickup.changeState("voidSink");
 }
-/** @param {import("./index.js").TileLabGameState} state @param {number} entityId @param {ReturnType<typeof createVoidZone>} zone */
+/** @param {import("./state.js").TileLabGameState} state @param {number} entityId @param {ReturnType<typeof createVoidZone>} zone */
 function rimOutVoidSink(state, entityId, zone) {
     const pickup = state.pickups.find((p) => p.id === entityId);
     if (!pickup || pickup.currentStateName !== "voidSink" || pickup.voidCaptured) return;

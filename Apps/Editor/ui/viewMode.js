@@ -12,7 +12,7 @@ function setAnimationPreviewVisible(visible) {
     stage.classList.toggle("is-visible", visible);
     stage.hidden = !visible;
 }
-/** @param {import("../index.js").TileLabGameState} state */
+/** @param {import("../state.js").TileLabGameState} state */
 export function applyLabViewChrome(state) {
     setEditorPanelVisible("sandboxPanel", state.labShowSandboxPanel);
     setEditorPanelVisible("surfaceEditorPanel", state.labShowProfilePanel);
@@ -37,7 +37,7 @@ export function applyLabViewChrome(state) {
     const animationToggle = document.getElementById("showAnimationPreviewInput");
     if (animationToggle) animationToggle.checked = state.labShowAnimationPreview;
 }
-/** @param {import("../index.js").TileLabGameState} state @param {() => void} onChange @param {(() => void) | null} [onLayoutChange] */
+/** @param {import("../state.js").TileLabGameState} state @param {() => void} onChange @param {(() => void) | null} [onLayoutChange] */
 export function bindViewModeControls(state, onChange, onLayoutChange = null) {
     document.getElementById("showSandboxPanelInput")?.addEventListener("change", (e) => {
         state.labShowSandboxPanel = /** @type {HTMLInputElement} */ (e.target).checked;

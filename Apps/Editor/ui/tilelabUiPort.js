@@ -1,5 +1,4 @@
 import { listShippedSurfaceProfileIds } from "../../../Config/procedural/profiles.js";
-import { getUiRoot } from "../../../UI/Core/uiRoot.js";
 import { applySquareCanvasResize } from "../../../Libraries/Canvas/index.js";
 import { initResizer } from "./lab-shared.js";
 import { initAnimationPreview, estimateAnimationPreviewHeight } from "./LabAnimationPreview.js";
@@ -58,7 +57,7 @@ function attachGameCanvas(state) {
     }
     state.labCanvas = canvas ?? null;
 }
-/** @param {import("../index.js").TileLabGameState} state */
+/** @param {import("../state.js").TileLabGameState} state */
 function refreshLabViewportLayout(state) {
     if (mapCanvasResize) mapCanvasResize.setSize(mapCanvasResize.getSize());
     if (animCanvasResize && state.labShowAnimationPreview) animCanvasResize.setSize(animCanvasResize.getSize());
@@ -157,7 +156,7 @@ function bootstrapTilelabUi(state) {
 /** @type {UiPort} */
 export const tilelabUiPort = {
     mount({ state }) {
-        const uiRoot = getUiRoot();
+        const uiRoot = document.getElementById("ui-root");
         if (!uiRoot) throw new Error("tilelabUiPort: #ui-root missing");
         uiRoot.innerHTML = TILELAB_UI_HTML;
         attachGameCanvas(state);

@@ -23,7 +23,7 @@ export function registerEditorProfiles(state) {
     return registerEditorProfilesSerial;
 }
 /**
- * @param {import("../index.js").TileLabGameState} state
+ * @param {import("../state.js").TileLabGameState} state
  * @param {ReturnType<import("./toolbar.js").readControls>} ctrl
  */
 export function renderTilelabPreview(state, ctrl) {

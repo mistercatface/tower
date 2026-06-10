@@ -2,7 +2,7 @@ import { findPickupAt } from "../../../Libraries/Sandbox/findPickupAt.js";
 import { selectLabNode } from "../world/mapWorld.js";
 import { canvasClientToWorld } from "./labCanvas.js";
 import { populateNodeList, renderNodeInspector } from "./mapInspector.js";
-/** @param {import("../index.js").TileLabGameState} state @param {() => void} onRedraw */
+/** @param {import("../state.js").TileLabGameState} state @param {() => void} onRedraw */
 export function initMapTopologyInteractions(state, onRedraw) {
     const canvas = document.getElementById("gameCanvas");
     canvas?.addEventListener("pointerdown", (e) => {
