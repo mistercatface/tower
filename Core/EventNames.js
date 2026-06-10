@@ -1,9 +1,5 @@
 export const Events = {
     UI_UPDATE: "ui:update",
-    GAME_PAUSE: "game:pause",
-    GAME_RESUME: "game:resume",
-    GAME_TOGGLE_PAUSE: "game:togglePause",
-    GAME_SET_SPEED: "game:setSpeed",
     RADIO_START: "radio:start",
     RADIO_TRIGGER: "radio:trigger",
     RADIO_ADVANCE: "radio:advance",

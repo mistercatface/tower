@@ -1,4 +1,3 @@
-import { adjustGameSpeed, toggleGamePause } from "../../Core/EventSystem.js";
 import { engine } from "../../Apps/Editor/engine.js";
 import { clampSelectedSpeed, getSpeedControlView, resolveStep } from "./playbackController.js";
 /**
@@ -19,19 +18,16 @@ import { clampSelectedSpeed, getSpeedControlView, resolveStep } from "./playback
 /**
  * @typedef {object} ApplySpeedControlOptions
  * @property {boolean} [inject]
- * @property {import("../../Core/GameDefinitionTypes.js").EngineProfile | null} [definition]
  * @property {SpeedControlClassNames} [classNames]
  * @property {SpeedControlIds} [ids]
  */
 /**
  * @typedef {object} SpeedControlHandle
  * @property {HTMLElement | null} root
- * @property {(state: object, definition?: import("../../Core/GameDefinitionTypes.js").EngineProfile | null) => void} refresh
+ * @property {(state: object) => void} refresh
  */
 const wiredHosts = new WeakSet();
-/**
- * @param {ApplySpeedControlOptions} options
- */
+/** @param {ApplySpeedControlOptions} options */
 function buildSpeedControlMarkup(options) {
     const { classNames = {}, ids = {} } = options;
     const rootClass = classNames.root ?? "speed-control";
@@ -61,8 +57,6 @@ function querySpeedControlElements(scope) {
     };
 }
 /**
- * Mount pause/speed step controls on `host`. Wire once; call `.refresh(state)` on HUD ticks.
- *
  * @param {ParentNode | null} host
  * @param {ApplySpeedControlOptions} [options]
  * @returns {SpeedControlHandle}
@@ -70,23 +64,21 @@ function querySpeedControlElements(scope) {
 export function applySpeedControl(host, options = {}) {
     const noop = { root: null, refresh: () => {} };
     if (!host) return noop;
-    const { inject = false, definition, classNames, ids } = options;
+    const { inject = false, classNames, ids } = options;
     if (inject || !host.querySelector("[data-speed-pause]")) host.innerHTML = buildSpeedControlMarkup({ classNames, ids });
     const elements = querySpeedControlElements(host);
     const root = elements.root instanceof HTMLElement ? elements.root : null;
     if (!wiredHosts.has(host)) {
         wiredHosts.add(host);
-        const resolveDef = () => definition ?? engine;
-        elements.speedDownBtn?.addEventListener("click", () => adjustGameSpeed(-resolveStep(resolveDef())));
-        elements.speedUpBtn?.addEventListener("click", () => adjustGameSpeed(resolveStep(resolveDef())));
-        elements.pauseBtn?.addEventListener("click", () => toggleGamePause());
+        elements.speedDownBtn?.addEventListener("click", () => engine.playbackHandlers?.adjustSpeed(-resolveStep()));
+        elements.speedUpBtn?.addEventListener("click", () => engine.playbackHandlers?.adjustSpeed(resolveStep()));
+        elements.pauseBtn?.addEventListener("click", () => engine.playbackHandlers?.togglePause());
     }
     return {
         root,
-        refresh(state, definitionOverride) {
-            const def = definitionOverride ?? definition ?? engine;
-            clampSelectedSpeed(state, def);
-            const view = getSpeedControlView(state, def);
+        refresh(state) {
+            clampSelectedSpeed(state);
+            const view = getSpeedControlView(state);
             if (elements.pauseLabel) elements.pauseLabel.textContent = view.pauseLabel;
             if (elements.speedLabel) elements.speedLabel.textContent = view.speedLabel;
             if (elements.speedDownBtn) elements.speedDownBtn.style.opacity = view.canDecrease ? "1" : "0.5";

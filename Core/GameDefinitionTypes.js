@@ -62,16 +62,6 @@
  * @property {(ctx: object) => import("../../Systems/Simulation/SimulationRuntime.js").SimulationRuntime} [beginRuntime]
  */
 /**
- * @typedef {object} UiContext
- * @property {object} state
- */
-/**
- * @typedef {object} UiPort
- * @property {(ctx: UiContext) => void} mount
- * @property {() => void} [unmount]
- * @property {(ctx: UiContext) => void} updateUI
- */
-/**
  * @typedef {{ minX: number, minY: number, maxX: number, maxY: number }} WorldPlayBounds
  */
 /**
@@ -97,9 +87,6 @@
  */
 /**
  * @typedef {import("./GamePerspective.js").PerspectiveConfig} PerspectiveConfig
- */
-/**
- * @typedef {object} CombatPort
  */
 /**
  * Editor engine profile (`engine` in Apps/Editor/engine.js).

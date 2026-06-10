@@ -1,5 +1,4 @@
 import { createFactionResolver } from "../Interaction/createFactionResolver.js";
-/** @typedef {import("../../Core/GameDefinitionTypes.js").CombatPort} CombatPort */
 /** @typedef {import("../../Core/GameDefinitionTypes.js").TargetingPort} TargetingPort */
 /** @typedef {import("../../Core/GameDefinitionTypes.js").ViewPort} ViewPort */
 const { resolveFaction: noopInferFaction, areHostile: noopAreHostile } = createFactionResolver({
@@ -10,8 +9,6 @@ const { resolveFaction: noopInferFaction, areHostile: noopAreHostile } = createF
     },
     hostilePairs: [],
 });
-/** @type {CombatPort} */
-export const NOOP_COMBAT_PORT = {};
 /** @type {TargetingPort} */
 export const NOOP_TARGETING_PORT = {
     inferFaction: noopInferFaction,

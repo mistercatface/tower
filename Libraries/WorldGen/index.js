@@ -12,5 +12,4 @@ export {
     finalizeWorldPhase,
 } from "./phases.js";
 export { createRoguelikeWorldGenPort, buildRoguelikeMapPhases, ROGUELIKE_MAP_TOPOLOGY, roguelikeProceduralDesign } from "./presets/roguelikeMap.js";
-export { createSingleArenaWorldGenPort } from "./presets/singleArena.js";
 export { regenerateRoguelikeMap, createRoguelikeMapSession, getRoguelikeMapSession } from "./session/index.js";

@@ -12,7 +12,6 @@ import { bindMapInspectorControls, syncMapInspectorAfterRegen } from "./mapInspe
 import { initMapTopologyInteractions } from "./mapInteractions.js";
 import { destroyTilelabSandbox, mountTilelabSandbox } from "../world/tilelabSandbox.js";
 import { bindViewModeControls } from "./viewMode.js";
-/** @typedef {import("../../../Core/GameDefinitionTypes.js").UiPort} UiPort */
 /** @typedef {import("../../../Libraries/Canvas/squareCanvasResize.js").SquareCanvasResizeHandle} SquareCanvasResizeHandle */
 let previewRefreshTimer = null;
 let bakeRepaintRaf = null;
@@ -153,7 +152,6 @@ function bootstrapTilelabUi(state) {
         refreshPreview(state);
     });
 }
-/** @type {UiPort} */
 export const tilelabUiPort = {
     mount({ state }) {
         const uiRoot = document.getElementById("ui-root");
