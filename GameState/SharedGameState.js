@@ -7,12 +7,11 @@ import { WallSpatialIndex } from "../Libraries/Spatial/indexes/WallSpatialIndex.
 import { Scheduler } from "../Libraries/Scheduler/Scheduler.js";
 import { WorldSurfaceSystem } from "../Render/game/WorldSurfaceSystem.js";
 import { WallCollisionResolver } from "../Libraries/Motion/WallCollisionResolver.js";
-/** Fields and helpers both pool and tower need for engine loop, world bake, and sim render. */
+/** Base state for engine loop, world bake, and sim render. */
 export class SharedGameState {
     constructor() {
-        this.fsm = null;
         this.scheduler = new Scheduler();
-        this._phase = "simulation";
+        this.phase = "simulation";
         this.mapNodes = [];
         this.mapNodeById = new Map();
         this.currentNodeId = 0;
@@ -25,22 +24,12 @@ export class SharedGameState {
         this.lastTime = 0;
         this.gameTime = 0;
         this.selectedSpeed = 1.0;
-        this.isGameOver = false;
         this.isPaused = false;
         this.debugMode = false;
         this.radioSeenThisRun = {};
-        this.runScene = null;
-        this.runSceneInitialized = false;
-        this.skipSimulationEnterReset = false;
         this.walls = [];
         this.pickups = [];
         this.wallResolver = new WallCollisionResolver();
-    }
-    get phase() {
-        return this.fsm?.currentStateName ?? this._phase;
-    }
-    set phase(value) {
-        this._phase = value;
     }
     getMapSpawnOrigin() {
         const viewW = this.viewport?.width ?? 0;

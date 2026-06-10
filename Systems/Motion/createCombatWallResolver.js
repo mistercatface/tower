@@ -9,10 +9,8 @@ function applyWallDamageHit(entity, hit, state) {
     if (hit.approachDot >= 0) return;
     const impactSpeed = -hit.approachDot;
     if (impactSpeed <= 75) return;
-    const ctx = state.fsm ? state.fsm.context : null;
-    if (!ctx) return;
     const damage = entity.strategy?.wallDamage ?? 10;
-    hit.segment.handleHit(damage, ctx);
+    hit.segment.handleHit(damage, { state });
     entity.vx += 0.25 * impactSpeed * hit.normalX;
     entity.vy += 0.25 * impactSpeed * hit.normalY;
 }
