@@ -1,5 +1,22 @@
-import { labCavernConfig, generateLabCaverns } from "../world/mapWorld.js";
+import { labCavernConfig, generateLabCaverns, PLAY_AREA_CELL_OPTIONS, playAreaCellsToIndex } from "../world/mapWorld.js";
 import { SliderControl } from "./controls/SliderControl.js";
+/** @param {string} label @param {"playAreaCols" | "playAreaRows"} key */
+function addPlayAreaSlider(panel, label, key) {
+    const maxIndex = PLAY_AREA_CELL_OPTIONS.length - 1;
+    panel.appendChild(
+        new SliderControl(
+            label,
+            0,
+            maxIndex,
+            1,
+            playAreaCellsToIndex(labCavernConfig[key]),
+            (index) => {
+                labCavernConfig[key] = PLAY_AREA_CELL_OPTIONS[index];
+            },
+            (index) => `${PLAY_AREA_CELL_OPTIONS[index]} cells`,
+        ).element,
+    );
+}
 /** @param {import("../state.js").TileLabGameState} state @param {() => void} onGenerated */
 export function buildMapPanel(state, onGenerated) {
     const panel = document.getElementById("mapSettingsPanel");
@@ -19,8 +36,8 @@ export function buildMapPanel(state, onGenerated) {
             ).element,
         );
     };
-    addSlider("Width", 400, 4000, 100, "halfWidth");
-    addSlider("Height", 400, 4000, 100, "halfHeight");
+    addPlayAreaSlider(panel, "Play width", "playAreaCols");
+    addPlayAreaSlider(panel, "Play height", "playAreaRows");
     addSlider("Rock density", 0.2, 0.7, 0.05, "fillChance", (v) => `${Math.round(v * 100)}%`);
     addSlider("Smooth passes", 1, 8, 1, "iterations");
     const seedLine = document.createElement("p");

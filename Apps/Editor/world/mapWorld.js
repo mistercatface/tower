@@ -5,19 +5,21 @@ import { buildTopologyMapRenderCaches } from "../../../Libraries/Render/map/MapR
 import { finalizeGeneratedWorld } from "../../../Libraries/WorldGen/finalizeGeneratedWorld.js";
 import { withSeededRandom } from "../../../Libraries/Random/index.js";
 import { sandboxController } from "./tilelabSandbox.js";
-export const labCavernConfig = { halfWidth: 1600, halfHeight: 1600, fillChance: 0.45, iterations: 3 };
-function generateCavernWalls(centerX, centerY, { halfWidth, halfHeight, fillChance, iterations }) {
+export const PLAY_AREA_CELL_OPTIONS = [64, 128, 256, 512, 1024, 2048, 4096];
+export const labCavernConfig = { playAreaCols: 256, playAreaRows: 256, fillChance: 0.45, iterations: 3 };
+/** @param {number} cells */
+export function playAreaCellsToIndex(cells) {
+    const index = PLAY_AREA_CELL_OPTIONS.indexOf(cells);
+    return index >= 0 ? index : PLAY_AREA_CELL_OPTIONS.indexOf(256);
+}
+function generateCavernWalls(centerX, centerY, { playAreaCols, playAreaRows, fillChance, iterations }) {
     const cellSize = gridSettings.cellSize;
-    const minX = centerX - halfWidth;
-    const minY = centerY - halfHeight;
-    const maxX = centerX + halfWidth;
-    const maxY = centerY + halfHeight;
-    const caMinX = Math.floor(minX / cellSize) * cellSize;
-    const caMinY = Math.floor(minY / cellSize) * cellSize;
-    const caMaxX = Math.ceil(maxX / cellSize) * cellSize;
-    const caMaxY = Math.ceil(maxY / cellSize) * cellSize;
-    const cols = (caMaxX - caMinX) / cellSize;
-    const rows = (caMaxY - caMinY) / cellSize;
+    const width = playAreaCols * cellSize;
+    const height = playAreaRows * cellSize;
+    const caMinX = centerX - width / 2;
+    const caMinY = centerY - height / 2;
+    const cols = playAreaCols;
+    const rows = playAreaRows;
     let grid = new Uint8Array(cols * rows);
     for (let i = 0; i < grid.length; i++) if (Math.random() < fillChance) grid[i] = 1;
     let nextGrid = new Uint8Array(cols * rows);
@@ -45,7 +47,7 @@ function generateCavernWalls(centerX, centerY, { halfWidth, halfHeight, fillChan
             if (grid[r * cols + c] !== 1) continue;
             walls.push(new Segment(caMinX + c * cellSize + cellSize / 2, caMinY + r * cellSize + cellSize / 2, 0, cellSize, 0));
         }
-    return walls;
+    return { walls, width, height };
 }
 function rebuildLabMapCaches(state) {
     buildTopologyMapRenderCaches(state);
@@ -55,12 +57,18 @@ function rebuildLabMapCaches(state) {
 export function generateLabCaverns(state) {
     const centerX = state.viewport.x;
     const centerY = state.viewport.y;
+    const { playAreaCols, playAreaRows } = labCavernConfig;
+    let playWidth = playAreaCols * gridSettings.cellSize;
+    let playHeight = playAreaRows * gridSettings.cellSize;
     withSeededRandom(state.mapSeed, () => {
-        state.walls = generateCavernWalls(centerX, centerY, labCavernConfig);
+        const result = generateCavernWalls(centerX, centerY, labCavernConfig);
+        state.walls = result.walls;
+        playWidth = result.width;
+        playHeight = result.height;
         state.wallSpatialIndex.clear();
         for (const wall of state.walls) state.wallSpatialIndex.insert(wall);
     });
-    finalizeGeneratedWorld(state, { centerX, centerY });
+    finalizeGeneratedWorld(state, { centerX, centerY, gridBounds: { centerX, centerY, width: playWidth, height: playHeight } });
     state.floorSeed = state.mapSeed;
     state.worldSurfaces.clearBakeCache();
     rebuildLabMapCaches(state);
