@@ -24,9 +24,13 @@ function resolvePoolBallFaceColor(face, poolBall, faceShade) {
     return vMid < 0.18 || vMid > 0.82 ? shadeHex(base, faceShade) : base;
 }
 const labelCache = new Map();
+/** @param {number} radius */
+function poolBallLabelCanvasSize(radius) {
+    return Math.max(24, Math.min(96, Math.round(radius * 12)));
+}
 /** @param {{ kind: "cue" | "solid" | "stripe", number?: number }} poolBall @param {number} radius @param {boolean} compact */
 function getPoolBallLabelImage(poolBall, radius, compact) {
-    const labelSize = radius < 6 ? 512 : 384;
+    const labelSize = poolBallLabelCanvasSize(radius);
     const key = `${poolBall.kind}_${poolBall.number ?? 0}_${labelSize}`;
     if (labelCache.has(key)) return labelCache.get(key);
     if (poolBall.kind === "cue") {
@@ -118,12 +122,12 @@ const POOL_BALL_PHYSICS = {
 };
 const POOL_BALL_VISUALS = {
     defaultRadius: 2,
-    panelCount: 10,
-    latBands: 6,
+    panelCount: 6,
+    latBands: 4,
     stroke: null,
     faceShade: 0.05,
     labelCapAngle: 0.78,
-    labelGridSegments: 16,
+    labelGridSegments: 8,
     labelSubSegments: 1,
     labelImageSmoothing: false,
     showLabels: false,

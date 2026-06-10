@@ -212,7 +212,7 @@
                 "maxPull": 18.75,
                 "pullScale": 0.5,
                 "minPower": 4,
-                "maxPower": 1200,
+                "maxPower": 800,
                 "powerCurve": 2.5
             },
             "inputGates": {
