@@ -12,9 +12,9 @@ let workersConfigured = false;
  * Configure shared engine module globals from the editor profile (once per boot).
  *
  * @param {import("./GameDefinitionTypes.js").EngineProfile} profile
- * @param {object | null} [state]
+ * @param {object} state
  */
-export function installEngineGlobals(profile, state = null) {
+export function installEngineGlobals(profile, state) {
     clearInteractionPairFilterCache();
     installGameSurfaceProfileProvider(profile);
     if (!workersConfigured) {
@@ -32,7 +32,6 @@ export function installEngineGlobals(profile, state = null) {
     applyGameCollisionSettings(profile);
     applyGamePropQuantizeSettings(profile);
     applyGamePropPixelSize(profile);
-    if (!state?.worldSurfaces) return;
     const worldSurfaces = state.worldSurfaces;
     const settings = getGameWorldSurfaceSettings();
     const prev = worldSurfaces.settings;

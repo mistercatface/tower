@@ -50,7 +50,6 @@ export function runPushablePhysicsPass(state, dt, spatialFrame, { updatePickups,
 }
 /** In-plane spin about center: collision ω_z → facing (same frame, separate from 3D tumble). */
 export function integrateLongAxisLogFacing(state, dt) {
-    if (!state?.pickups) return;
     for (let i = 0; i < state.pickups.length; i++) {
         const pickup = state.pickups[i];
         if (pickup.isDead || pickup.isSleeping) continue;

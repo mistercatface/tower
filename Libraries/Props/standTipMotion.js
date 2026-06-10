@@ -48,7 +48,6 @@ export function needsStandTipIntegration(body) {
  * @param {number} dtMs
  */
 export function integrateStandTipsAfterCollisions(state, dtMs) {
-    if (!state?.pickups) return;
     const wallCtx = wallContextFromState(state);
     for (let i = 0; i < state.pickups.length; i++) {
         const pickup = state.pickups[i];

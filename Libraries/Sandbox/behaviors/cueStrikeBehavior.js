@@ -14,8 +14,8 @@ function getCueStrikeConfig(pickup, asset) {
 function cueStrikeTableBounds(pickup, host) {
     const groupId = pickup?.sandboxGroupId;
     if (!groupId) return {};
-    const state = host.getWorldState?.();
-    const instance = state?.sandboxAssemblyInstances?.find((entry) => entry.id === groupId);
+    const state = host.getWorldState();
+    const instance = state.sandboxAssemblyInstances.find((entry) => entry.id === groupId);
     if (!instance) return {};
     return { tableWidth: instance.arenaWidth, tableHeight: instance.arenaHeight };
 }

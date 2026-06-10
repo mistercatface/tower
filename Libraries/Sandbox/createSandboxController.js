@@ -65,7 +65,6 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
     };
     /** @param {PointerEvent} e */
     const onPointerDown = (e) => {
-        if (host.isInputBlocked?.()) return;
         const canvas = host.getCanvas();
         const world = host.clientToWorld(e.clientX, e.clientY);
         if (e.button === 2) {

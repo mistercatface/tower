@@ -18,12 +18,12 @@ function clampLabZoom(zoom) {
 function applyCamera(state, x, y, zoom) {
     state.viewport.snapTo(x, y);
     state.viewport.zoom = clampLabZoom(zoom);
-    zoomControl?.setZoom(state.viewport.zoom);
+    zoomControl.setZoom(state.viewport.zoom);
 }
 /** @param {import("../state.js").TileLabGameState} state @param {number} x @param {number} y @param {number} zoom */
 export function setLabCamera(state, x, y, zoom) {
     applyCamera(state, x, y, zoom);
-    notifyViewChange?.();
+    notifyViewChange();
 }
 /** @param {import("../state.js").TileLabGameState} state */
 export function fitLabStageToView(state) {
@@ -31,7 +31,7 @@ export function fitLabStageToView(state) {
     const viewH = Math.max(240, state.viewport.height || 600);
     const zoom = getDefaultSimulationZoom(viewW, viewH, LAB_PREVIEW_RANGE, LAB_PREVIEW_RANGE);
     state.viewport.zoom = clampLabZoom(zoom);
-    zoomControl?.setZoom(state.viewport.zoom);
+    zoomControl.setZoom(state.viewport.zoom);
 }
 /**
  * @param {import("../state.js").TileLabGameState} state
@@ -55,5 +55,5 @@ export function mountLabViewport(state, onViewChange) {
 }
 /** @param {import("../state.js").TileLabGameState} state */
 export function refreshLabViewportControls(state) {
-    speedControl?.refresh(state);
+    speedControl.refresh(state);
 }

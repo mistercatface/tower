@@ -14,8 +14,8 @@ export function selectLabNode(state, nodeId) {
 }
 /** @param {import("../state.js").TileLabGameState} state */
 export function initEmptyTilelabMap(state) {
-    const viewW = state.viewport?.width ?? 0;
-    const viewH = state.viewport?.height ?? 0;
+    const viewW = state.viewport.width;
+    const viewH = state.viewport.height;
     state.mapBaseSpawnX = viewW > 0 ? viewW / 2 : 225;
     state.mapBaseSpawnY = viewH > 0 ? viewH / 2 : 225;
     state.walls = [];
@@ -25,8 +25,8 @@ export function initEmptyTilelabMap(state) {
     state.currentNodeId = 0;
     state.pickups = [];
     state.obstacleGrid.rebuild([]);
-    const centerX = state.viewport?.x ?? 0;
-    const centerY = state.viewport?.y ?? 0;
+    const centerX = state.viewport.x;
+    const centerY = state.viewport.y;
     state.hierarchicalNavigator.initialize(centerX, centerY);
     state.worldSurfaces.clear();
     state.worldSurfaces.clearBakeCache();
@@ -44,7 +44,7 @@ export function generateTilelabMap(state, { mapSeed, floorSeed }) {
     regenerateRoguelikeMap(state, { mapSeed, floorSeed, generateWorld: (s) => engine.worldGen.generateWorld(s) });
     clearTilelabSandbox();
     const bounds = state.obstacleGrid;
-    if (bounds?.minX !== undefined) state.viewport.snapTo((bounds.minX + bounds.maxX) / 2, (bounds.minY + bounds.maxY) / 2);
+    if (bounds.minX !== undefined) state.viewport.snapTo((bounds.minX + bounds.maxX) / 2, (bounds.minY + bounds.maxY) / 2);
     resetTilelabGroundZones(state);
     spawnSandboxBattleGroups(state);
 }

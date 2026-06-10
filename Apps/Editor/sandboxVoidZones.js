@@ -5,7 +5,6 @@ import { createVoidZone, drawVoidZone, isInsideVoidMouth, voidMouthReach } from 
 import { NEIGHBOR_QUERY_PAD } from "../../Libraries/Spatial/collision/entityBroadphase.js";
 /** @param {import("./state.js").TileLabGameState} state */
 export function ensureSandboxVoidZones(state) {
-    if (!state.sandboxVoidZones) state.sandboxVoidZones = [];
     for (let i = 0; i < state.sandboxVoidZones.length; i++) {
         const zone = state.sandboxVoidZones[i];
         if (zone.kind !== "void") continue;
@@ -60,7 +59,6 @@ export const sandboxVoidZoneEffectPass = {
     zIndex: 11,
     draw(state, viewport, ctx) {
         const zones = state.sandboxVoidZones;
-        if (!zones?.length || !viewport) return;
         ctx.save();
         for (let z = 0; z < zones.length; z++) {
             const zone = zones[z];

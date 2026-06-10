@@ -46,8 +46,8 @@ export const engine = {
                 zIndex: 65,
                 draw(_state, _viewport, ctx) {
                     const controller = getTilelabSandboxController();
-                    controller?.drawPathOverlay(ctx);
-                    controller?.drawLaunchPreview(ctx);
+                    controller.drawPathOverlay(ctx);
+                    controller.drawLaunchPreview(ctx);
                 },
             },
         ],
@@ -57,8 +57,7 @@ export const engine = {
     proceduralDesign: roguelikeProceduralDesign,
     viewPort: {
         getViewCenter(state) {
-            const viewport = state.viewport;
-            return viewport ? { x: viewport.x, y: viewport.y } : null;
+            return { x: state.viewport.x, y: state.viewport.y };
         },
     },
     simulationPort: createSimulationPort(
@@ -66,7 +65,7 @@ export const engine = {
             {
                 id: "sandboxTick",
                 run(ctx, dt) {
-                    getTilelabSandboxController()?.tick(dt);
+                    getTilelabSandboxController().tick(dt);
                 },
             },
             sandboxAutoCombatPhase,

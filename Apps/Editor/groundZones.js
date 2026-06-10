@@ -14,7 +14,6 @@ export const tilelabGroundZoneEffectPass = {
     zIndex: 12,
     draw(state, viewport, ctx) {
         const zones = state.groundZones;
-        if (!zones?.length || !viewport) return;
         ctx.save();
         for (let z = 0; z < zones.length; z++) {
             if (!isGroundZoneInView(zones[z], viewport)) continue;

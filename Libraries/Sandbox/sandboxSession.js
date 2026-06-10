@@ -36,15 +36,9 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
         sync();
         return prop;
     };
-    const voidZones = () => {
-        const state = host.getWorldState?.();
-        if (!state) return null;
-        if (!state.sandboxVoidZones) state.sandboxVoidZones = [];
-        return state.sandboxVoidZones;
-    };
+    const voidZones = () => host.getWorldState().sandboxVoidZones;
     const spawnVoidAt = (worldX, worldY, radius = DEFAULT_VOID_RADIUS) => {
         const zones = voidZones();
-        if (!zones) return null;
         const zone = createVoidZone(worldX, worldY, radius, { id: `void:${zones.length + 1}` });
         zones.push(zone);
         sync();
@@ -71,14 +65,12 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
         pruneSelection,
         spawnAt,
         spawnAtCameraOrigin() {
-            const origin = host.getCameraOrigin?.();
-            if (!origin) return null;
+            const origin = host.getCameraOrigin();
             return spawnAt(origin.x, origin.y);
         },
         spawnVoidAt,
         spawnVoidAtCameraOrigin() {
-            const origin = host.getCameraOrigin?.();
-            if (!origin) return null;
+            const origin = host.getCameraOrigin();
             return spawnVoidAt(origin.x, origin.y);
         },
         spawnAssemblyAt(centerX, centerY, assemblyId) {
@@ -89,21 +81,17 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
             return instance;
         },
         spawnAssemblyAtCameraOrigin(assemblyId) {
-            const origin = host.getCameraOrigin?.();
-            if (!origin) return null;
+            const origin = host.getCameraOrigin();
             return this.spawnAssemblyAt(origin.x, origin.y, assemblyId);
         },
         listAssemblyManifests: () => listAssemblyManifests(),
         deleteAssemblyById(assemblyId) {
-            const state = host.getWorldState?.();
-            if (!state) return;
-            deleteAssemblyInstance(state, assemblyId);
+            deleteAssemblyInstance(host.getWorldState(), assemblyId);
             pruneSelection();
             sync();
         },
         listAssemblies() {
-            const state = host.getWorldState?.();
-            if (!state?.sandboxAssemblyInstances?.length) return [];
+            const state = host.getWorldState();
             return state.sandboxAssemblyInstances.map((entry, index) => ({
                 id: entry.id,
                 label: getAssemblyManifest(entry.assemblyId)?.label ?? entry.assemblyId ?? `table #${index + 1}`,
@@ -112,15 +100,14 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
         },
         deleteVoidZoneById(id) {
             const zones = voidZones();
-            if (!zones) return;
             const index = zones.findIndex((zone) => zone.id === id);
             if (index >= 0) zones.splice(index, 1);
             sync();
         },
         listVoidZones() {
-            const zones = voidZones();
-            if (!zones) return [];
-            return zones.filter((zone) => !zone.sandboxGroupId).map((zone, index) => ({ id: zone.id, label: `void #${index + 1}`, radius: zone.shape.radius }));
+            return voidZones()
+                .filter((zone) => !zone.sandboxGroupId)
+                .map((zone, index) => ({ id: zone.id, label: `void #${index + 1}`, radius: zone.shape.radius }));
         },
         deletePickup(pickup) {
             if (!pickup) return;
@@ -146,10 +133,8 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
         },
         clear() {
             host.clearPickups();
-            const state = host.getWorldState?.();
-            if (state) clearAssemblyInstances(state);
-            const zones = voidZones();
-            if (zones) zones.length = 0;
+            clearAssemblyInstances(host.getWorldState());
+            voidZones().length = 0;
             selectedPickupId = null;
             sync();
         },

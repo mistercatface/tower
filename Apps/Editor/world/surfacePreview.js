@@ -48,7 +48,7 @@ export function drawTilelabSurfaceFrame(ctx, canvas, worldState, profileId, draw
     viewport.apply(ctx);
     if (topologySession && topologyOptions) drawTopologyLayer(ctx, worldState, viewport, topologyOptions, topologySession, { overlay: true });
     worldState.worldSurfaces.surfaceProfileOverride = prevProfileOverride;
-    getTilelabSandboxController()?.drawOverlay(ctx);
+    getTilelabSandboxController().drawOverlay(ctx);
     ctx.restore();
     if (showVignette) {
         const R = viewport.getVisualRadius();

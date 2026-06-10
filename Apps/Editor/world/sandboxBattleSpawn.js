@@ -9,9 +9,8 @@ const GROUP_SPREAD_Y = 100;
 /** @param {import("../state.js").TileLabGameState} state */
 export function resolveSandboxBattleCenter(state) {
     const grid = state.obstacleGrid;
-    if (grid?.minX !== undefined) return { x: (grid.minX + grid.maxX) / 2, y: (grid.minY + grid.maxY) / 2 };
-    if (state.viewport) return { x: state.viewport.x, y: state.viewport.y };
-    return { x: 0, y: 0 };
+    if (grid.minX !== undefined) return { x: (grid.minX + grid.maxX) / 2, y: (grid.minY + grid.maxY) / 2 };
+    return { x: state.viewport.x, y: state.viewport.y };
 }
 /**
  * Spawn Alpha left, Bravo right — armed humanoids ready to fight.
@@ -19,7 +18,6 @@ export function resolveSandboxBattleCenter(state) {
  * @param {{ replace?: boolean }} [options]
  */
 export function spawnSandboxBattleGroups(state, { replace = true } = {}) {
-    if (!state.pickups) state.pickups = [];
     if (!replace && state.pickups.length > 0) return;
     if (replace) state.pickups.length = 0;
     const { x: originX, y: originY } = resolveSandboxBattleCenter(state);
@@ -35,5 +33,5 @@ export function spawnSandboxBattleGroups(state, { replace = true } = {}) {
     };
     spawnGroup(sandboxFactions.alpha, originX - GROUP_SEPARATION, originY, "servicePistol", 0);
     spawnGroup(sandboxFactions.bravo, originX + GROUP_SEPARATION, originY, "servicePistol", Math.PI);
-    getTilelabSandboxController()?.sync?.();
+    getTilelabSandboxController().sync();
 }
