@@ -14,7 +14,7 @@ function setAnimationPreviewVisible(visible) {
 export function applyLabViewChrome(state) {
     setEditorPanelVisible("sandboxPanel", state.labShowSandboxPanel);
     setEditorPanelVisible("surfaceEditorPanel", state.labShowProfilePanel);
-    setEditorPanelVisible("topologyEditorPanel", state.labShowMapPanel);
+    setEditorPanelVisible("mapPanel", state.labShowMapPanel);
     setAnimationPreviewVisible(state.labShowAnimationPreview);
     const editor = document.querySelector(".col-editor");
     const active = [];
@@ -24,7 +24,7 @@ export function applyLabViewChrome(state) {
     editor.dataset.activePanels = active.join(" ");
     document.getElementById("showSandboxPanelInput").checked = state.labShowSandboxPanel;
     document.getElementById("showProfilePanelInput").checked = state.labShowProfilePanel;
-    document.getElementById("showTopologyOverlayInput").checked = state.labShowMapPanel;
+    document.getElementById("showMapPanelInput").checked = state.labShowMapPanel;
     document.getElementById("showAnimationPreviewInput").checked = state.labShowAnimationPreview;
 }
 /** @param {import("../state.js").TileLabGameState} state @param {() => void} onChange @param {(() => void) | null} [onLayoutChange] */
@@ -37,7 +37,7 @@ export function bindViewModeControls(state, onChange, onLayoutChange = null) {
         state.labShowProfilePanel = /** @type {HTMLInputElement} */ (e.target).checked;
         applyLabViewChrome(state);
     });
-    document.getElementById("showTopologyOverlayInput").addEventListener("change", (e) => {
+    document.getElementById("showMapPanelInput").addEventListener("change", (e) => {
         state.labShowMapPanel = /** @type {HTMLInputElement} */ (e.target).checked;
         applyLabViewChrome(state);
     });

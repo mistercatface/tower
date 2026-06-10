@@ -1,4 +1,4 @@
-import { roguelikeProceduralDesign } from "../../../Libraries/WorldGen/presets/roguelikeMap.js";
+import { SURFACE_PROFILE_ID } from "../../../Config/procedural/profileIds.js";
 export function initPresetSelect(profileIds) {
     const select = document.getElementById("presetSelect");
     for (const id of profileIds) {
@@ -7,16 +7,13 @@ export function initPresetSelect(profileIds) {
         opt.textContent = id;
         select.appendChild(opt);
     }
-    select.value = roguelikeProceduralDesign.surfaceProfileId;
+    select.value = SURFACE_PROFILE_ID.tomatoGarden;
 }
-/** @param {{ onRefresh: () => void, onStageResize: () => void }} handlers */
+/** @param {{ onOverlayChange: () => void, onRedraw: () => void, onStageResize: () => void }} handlers */
 export function bindToolbarControls(handlers) {
-    const { onRefresh, onStageResize } = handlers;
-    for (const id of ["showVignetteInput", "showWallsInput", "showPathDebugInput"]) document.getElementById(id).addEventListener("change", onRefresh);
-    document.getElementById("regenerateBtn").addEventListener("click", onRefresh);
+    const { onOverlayChange, onRedraw, onStageResize } = handlers;
+    for (const id of ["showVignetteInput", "showWallsInput", "showPathDebugInput"]) document.getElementById(id).addEventListener("change", onOverlayChange);
+    document.getElementById("regenerateBtn").addEventListener("click", onRedraw);
     const stage = document.getElementById("mapStage");
-    if (typeof ResizeObserver !== "undefined") {
-        const ro = new ResizeObserver(onStageResize);
-        ro.observe(stage);
-    }
+    if (typeof ResizeObserver !== "undefined") new ResizeObserver(onStageResize).observe(stage);
 }

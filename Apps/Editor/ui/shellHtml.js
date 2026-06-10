@@ -24,7 +24,7 @@ export const TILELAB_UI_HTML = `
                         <span>Profile</span>
                     </label>
                     <label class="editor-panel-toggle">
-                        <input type="checkbox" id="showTopologyOverlayInput">
+                        <input type="checkbox" id="showMapPanelInput">
                         <span>Map</span>
                     </label>
                 </div>
@@ -75,7 +75,7 @@ export const TILELAB_UI_HTML = `
                         </details>
                     </div>
                 </div>
-                <div id="topologyEditorPanel" class="editor-panel-section" data-panel="map">
+                <div id="mapPanel" class="editor-panel-section" data-panel="map">
                     <div class="editor-panel-head">Map</div>
                     <div class="editor-scroll">
                         <p class="editor-hint">Caverns generate around the current camera center.</p>

@@ -25,7 +25,6 @@ export function buildMapPanel(state, onGenerated) {
     addSlider("Smooth passes", 1, 8, 1, "iterations");
     const seedLine = document.createElement("p");
     seedLine.className = "editor-hint";
-    seedLine.id = "mapSeedLine";
     seedLine.textContent = `Seed ${state.mapSeed}`;
     panel.appendChild(seedLine);
     const row = document.createElement("div");

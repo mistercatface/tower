@@ -1,4 +1,4 @@
-import { roguelikeProceduralDesign } from "../../Libraries/WorldGen/presets/roguelikeMap.js";
+import { SURFACE_PROFILE_ID } from "../../Config/procedural/profileIds.js";
 import { playBoundsFromObstacleGrid } from "../../Libraries/WorldGen/playBounds.js";
 import { GUN_ID_TO_VISUAL } from "../../Assets/guns/visualMap.js";
 import { createDefaultRenderPorts } from "../../Libraries/Render/defaultRenderPorts.js";
@@ -10,7 +10,7 @@ import { installGameState } from "../../GameState/GameState.js";
 import { events, requestUiUpdate, Events } from "../../Core/EventSystem.js";
 import { PauseManager } from "../../Libraries/Pause/index.js";
 import { installEngineGlobals } from "../../Core/engineGlobals.js";
-import { adjustSelectedSpeed, bindPlayback, resolveStep } from "../../Libraries/Playback/playbackController.js";
+import { adjustSelectedSpeed, bindPlayback } from "../../Libraries/Playback/playbackController.js";
 import { combatSpatial } from "../../Systems/World/CombatSpatialFrame.js";
 import { createSimulationPort } from "../../Systems/Simulation/SimulationPipeline.js";
 import { CombatParticles } from "../../Libraries/Render/CombatParticles.js";
@@ -25,10 +25,10 @@ import { tilelabGroundZoneEffectPass, tilelabGroundZonePhase } from "./groundZon
 import { sandboxVoidZoneEffectPass, sandboxVoidZonePhase } from "./sandboxVoidZones.js";
 import { sandboxController } from "./world/tilelabSandbox.js";
 import { fitLabStageToView } from "./ui/labViewport.js";
-import { tilelabUiPort } from "./ui/tilelabUiPort.js";
-import { renderTilelabPreview } from "./ui/preview.js";
+import { mountEditorUi, refreshEditorUi } from "./ui/editorUi.js";
+import { drawLabFrame } from "./ui/preview.js";
+const EDITOR_SURFACE_PROFILE_ID = SURFACE_PROFILE_ID.tomatoGarden;
 /** @typedef {{ togglePause: () => void, adjustSpeed: (delta: number) => void }} PlaybackHandlers */
-/** Editor engine profile — shared render/sim/world-gen hooks. */
 export const engine = {
     id: "editor",
     interactionPairs: sandboxInteractionPairs,
@@ -43,8 +43,8 @@ export const engine = {
             {
                 zIndex: 65,
                 draw(_state, _viewport, ctx) {
-                    sandboxController.drawPathOverlay(ctx);
-                    sandboxController.drawLaunchPreview(ctx);
+                    sandboxController?.drawPathOverlay(ctx);
+                    sandboxController?.drawLaunchPreview(ctx);
                 },
             },
         ],
@@ -58,7 +58,7 @@ export const engine = {
         },
     },
     worldSurface: { pixelsPerCell: 6 },
-    proceduralDesign: roguelikeProceduralDesign,
+    proceduralDesign: { surfaceProfileId: EDITOR_SURFACE_PROFILE_ID },
     viewPort: {
         getViewCenter(state) {
             return { x: state.viewport.x, y: state.viewport.y };
@@ -69,7 +69,7 @@ export const engine = {
             {
                 id: "sandboxTick",
                 run(ctx, dt) {
-                    sandboxController.tick(dt);
+                    sandboxController?.tick(dt);
                 },
             },
             sandboxAutoCombatPhase,
@@ -93,14 +93,8 @@ export const engine = {
             },
         },
     ),
-    /** @type {PlaybackHandlers} */
     playbackHandlers: { togglePause() {}, adjustSpeed() {} },
-    onCanvasResize() {
-        const state = getGameState();
-        state.viewport.setCanvasSize(state.labCanvas.width, state.labCanvas.height);
-    },
 };
-/** Editor boot — engine setup, UI mount, RAF loop. */
 export function createEditorApp() {
     const state = new TileLabGameState();
     state.entityLayers = state.entityLayers ?? [];
@@ -136,13 +130,6 @@ export function createEditorApp() {
         },
     };
     const simulation = engine.simulationPort;
-    function tickSimulation(dt) {
-        if (state.isPaused) return;
-        simulation.runTick({ state }, dt);
-    }
-    function drawFrame() {
-        renderTilelabPreview(state);
-    }
     function loop(timestamp) {
         if (state.lastTime === 0) state.lastTime = timestamp;
         let dt = timestamp - state.lastTime;
@@ -151,20 +138,16 @@ export function createEditorApp() {
         state.scheduler.update(dt);
         if (!state.isPaused) {
             state.gameTime += dt * state.selectedSpeed;
-            tickSimulation(dt * state.selectedSpeed);
+            simulation.runTick({ state }, dt * state.selectedSpeed);
         }
-        drawFrame();
+        drawLabFrame(state);
         requestAnimationFrame(loop);
     }
-    function resizeCanvas() {
-        engine.onCanvasResize();
-    }
     events.on(FLOATING_TEXT_SPAWN_EVENT, FloatingText.handleSpawnEvent);
-    events.warnOnMissingListeners = true;
-    events.on(Events.UI_UPDATE, () => tilelabUiPort.updateUI({ state }));
-    window.addEventListener("resize", resizeCanvas);
-    tilelabUiPort.mount({ state });
-    resizeCanvas();
+    events.on(Events.UI_UPDATE, () => refreshEditorUi(state));
+    window.addEventListener("resize", () => state.viewport.setCanvasSize(state.labCanvas.width, state.labCanvas.height));
+    mountEditorUi(state);
+    state.viewport.setCanvasSize(state.labCanvas.width, state.labCanvas.height);
     fitLabStageToView(state);
     requestAnimationFrame(loop);
 }
