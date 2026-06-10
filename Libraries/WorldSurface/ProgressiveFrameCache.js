@@ -82,6 +82,19 @@ export class ProgressiveFrameCache {
         for (const value of this.cache.values()) if (Array.isArray(value) && value[0]?.isPlaceholder) return true;
         return false;
     }
+    /** True while first-frame placeholders or animation flipbook fills are still in progress. */
+    hasPendingWork() {
+        if (this.hasPlaceholders()) return true;
+        if (this._pendingFill.size > 0) return true;
+        for (const [key, meta] of this._meta) {
+            const totalFrames = meta?.totalFrames;
+            if (!totalFrames || totalFrames <= 1) continue;
+            const canvases = this.peek(key);
+            if (!canvases || canvases[0]?.isPlaceholder) continue;
+            if (canvases.length < totalFrames) return true;
+        }
+        return false;
+    }
     /**
      * Retrieves the canvas array for the key. If empty, sets a placeholder and returns it.
      * @param {string} key

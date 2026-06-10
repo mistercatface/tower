@@ -56,6 +56,7 @@ export function createGame(definition) {
                 fsm.update(dt * state.selectedSpeed);
             }
         }
+        state.worldSurfaces?.updateFills();
         fsm.render();
         requestAnimationFrame(loop);
     }

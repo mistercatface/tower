@@ -124,7 +124,7 @@ export class WorldSurfaceEngine {
         this.surfaceCache.updateFills();
     }
     hasPendingSurfaceBakes() {
-        return this.surfaceCache.hasPlaceholders();
+        return this.surfaceCache.hasPendingWork();
     }
     _scheduleAnimatedEntry(key, meta, bakeFirstFn, bakeBatchFn) {
         const placeholder = this.surfaceCache.getOrStart(key, meta);

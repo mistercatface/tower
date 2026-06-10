@@ -32,6 +32,7 @@ function schedulePreviewRefresh(state, debounceMs) {
 function runBakeRepaintLoop(state) {
     if (bakeRepaintRaf != null) cancelAnimationFrame(bakeRepaintRaf);
     const tick = () => {
+        state.worldSurfaces.updateFills();
         renderTilelabPreview(state, readControls(state));
         if (state.worldSurfaces.hasPendingSurfaceBakes()) bakeRepaintRaf = requestAnimationFrame(tick);
         else bakeRepaintRaf = null;
