@@ -10,7 +10,7 @@ export const POOL_TABLE_RAIL_CELLS = 2;
 /** Pocket arc wall segment length at reference scale. */
 const POOL_REFERENCE_WALL_POCKET_SEGMENT_SIZE = 6;
 /** Cue-strike tuning at {@link POOL_REFERENCE_BALL_RADIUS}. */
-const POOL_REFERENCE_CUE_STRIKE = { minDrag: 3, maxPull: 75, pullScale: 0.5, minPower: 16, maxPower: 1200 };
+const POOL_REFERENCE_CUE_STRIKE = { minDrag: 3, maxPull: 75, pullScale: 0.5, minPower: 16, maxPower: 1200, powerCurve: 2.5 };
 /** @param {number} value */
 function scale(value) {
     return value * POOL_SCALE;
@@ -31,6 +31,14 @@ export const POOL_CUE_STRIKE = {
     pullScale: POOL_REFERENCE_CUE_STRIKE.pullScale,
     minPower: scale(POOL_REFERENCE_CUE_STRIKE.minPower),
     maxPower: POOL_REFERENCE_CUE_STRIKE.maxPower,
+    powerCurve: POOL_REFERENCE_CUE_STRIKE.powerCurve,
+};
+/** Cue-strike input gates — wait until cue ball and table balls have settled. */
+export const POOL_CUE_INPUT_GATES = {
+    cueStrike: [
+        { scope: "self", until: "atRest" },
+        { scope: "groupPickups", link: "sandboxPoolTableId", until: "allAtRest", excludeStates: ["voidSink"] },
+    ],
 };
 /**
  * Render-only knobs — independent of {@link POOL_BALL_RADIUS}.

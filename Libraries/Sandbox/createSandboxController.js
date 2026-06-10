@@ -12,7 +12,7 @@ import { resolveSandboxPathVisual, setSandboxPathVisual } from "./sandboxPathVis
  * @typedef {object} SandboxBehavior
  * @property {string} id
  * @property {(pickup: object | null, asset: object) => boolean} [supports]
- * @property {(pickup: object, world: { x: number, y: number }, e: PointerEvent) => boolean} onPointerDown
+ * @property {(pickup: object, world: { x: number, y: number }, e: PointerEvent, host: SandboxHostPort) => boolean} onPointerDown
  * @property {(pickup: object, world: { x: number, y: number }, e: PointerEvent) => void} onPointerMove
  * @property {(pickup: object, e: PointerEvent) => void} onPointerUp
  * @property {(pickup: object, dt: number, host: SandboxHostPort) => void} [tick]
@@ -88,7 +88,7 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
         const pickup = session.getSelectedPickup();
         const behavior = resolveBehavior();
         if (!pickup || !behavior) return;
-        if (!behavior.onPointerDown(pickup, world, e)) return;
+        if (!behavior.onPointerDown(pickup, world, e, host)) return;
         e.preventDefault();
         e.stopPropagation();
         interactionBehavior = behavior;

@@ -3,7 +3,7 @@ import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { drawAimSegment } from "../Render/contactPreviewDraw.js";
 import { computeCircleAimLineSegment, estimateRollingTravelDistance } from "../Spatial/query/circleAimLinePreview.js";
 import { wallContextFromState } from "../Spatial/query/wallContext.js";
-/** @typedef {{ minDrag: number, maxPull: number, pullScale: number, minPower: number, maxPower: number }} DragLaunchConfig */
+/** @typedef {{ minDrag: number, maxPull: number, pullScale: number, minPower: number, maxPower: number, powerCurve?: number }} DragLaunchConfig */
 /** @typedef {{ active: boolean, anchorX: number, anchorY: number, startX: number, startY: number, pullX: number, pullY: number, shotNx: number | null, shotNy: number | null }} DragLaunchAim */
 export const DRAG_LAUNCH_DEFAULTS = { minDrag: 10, maxPull: 110, pullScale: 1.25, minPower: 55, maxPower: 340 };
 /** @param {object | null | undefined} asset */
@@ -37,12 +37,22 @@ function resolveDragAimPhysics(aim, config) {
     const pullBack = Math.min(config.maxPull, drag * config.pullScale);
     return { shotNx: aim.shotNx, shotNy: aim.shotNy, drag, pullBack };
 }
-/** @param {number} drag @param {DragLaunchConfig} config */
-function computeLaunchPower(drag, config) {
+/** @param {number} drag @param {DragLaunchConfig} config @returns {number} 0–1 pull amount after minDrag */
+export function resolveDragLaunchPullRatio(drag, config) {
     if (drag < config.minDrag) return 0;
     const maxFingerDrag = config.maxPull / config.pullScale;
-    const pullRatio = Math.min(1, drag / Math.max(1, maxFingerDrag));
-    return Math.min(config.maxPower, Math.max(config.minPower, pullRatio * config.maxPower));
+    const span = Math.max(0.001, maxFingerDrag - config.minDrag);
+    return Math.min(1, (drag - config.minDrag) / span);
+}
+/** @param {number} drag @param {DragLaunchConfig} config */
+function computeLaunchPower(drag, config) {
+    const pullRatio = resolveDragLaunchPullRatio(drag, config);
+    if (pullRatio <= 0) return 0;
+    const exponent = config.powerCurve ?? 1;
+    const curved = exponent === 1 ? pullRatio : Math.pow(pullRatio, exponent);
+    const minPower = config.minPower;
+    const maxPower = config.maxPower;
+    return minPower + curved * (maxPower - minPower);
 }
 /** @param {DragLaunchAim | null | undefined} aim @param {number} pullX @param {number} pullY @param {DragLaunchConfig} config */
 export function updateDragLaunchAim(aim, pullX, pullY, config) {

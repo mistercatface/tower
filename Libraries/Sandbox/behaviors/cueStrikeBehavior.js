@@ -4,6 +4,7 @@ import { getPoolCellSize, POOL_CUE_STRIKE, POOL_TABLE_COLS, POOL_TABLE_ROWS } fr
 import { getPropAsset } from "../../Props/PropCatalog.js";
 import { wakePushableBody } from "../../Motion/pushableSleep.js";
 import { createDragLaunchAim, drawDragLaunchPreview, releaseDragLaunch, updateDragLaunchAim } from "../dragLaunch.js";
+import { evaluateInputGates } from "../inputGates.js";
 export const CUE_STRIKE_BEHAVIOR_ID = "cueStrike";
 const CUE_STRIKE_DEFAULTS = POOL_CUE_STRIKE;
 /** @param {object | null | undefined} asset */
@@ -25,7 +26,9 @@ export function createCueStrikeBehavior() {
     const configFor = (pickup) => getCueStrikeConfig(getPropAsset(pickup?.type));
     return {
         id: CUE_STRIKE_BEHAVIOR_ID,
-        onPointerDown(pickup, world) {
+        onPointerDown(pickup, world, _e, host) {
+            const asset = getPropAsset(pickup?.type);
+            if (host && !evaluateInputGates(CUE_STRIKE_BEHAVIOR_ID, pickup, asset, host).allowed) return false;
             wakePushableBody(pickup);
             aim = createDragLaunchAim(pickup.x, pickup.y, world.x, world.y);
             updateDragLaunchAim(aim, world.x, world.y, configFor(pickup));
