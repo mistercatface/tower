@@ -2,69 +2,55 @@
     "id": "poolTable",
     "version": 2,
     "scale": {
-        "referenceBallRadius": 8,
         "ballRadius": 2
     },
     "arena": {
-        "grid": { "cols": 24, "rows": 44, "railCells": 2 },
-        "clearPaddingCells": 1,
+        "width": 96,
+        "height": 176,
+        "clearPadding": 4,
         "walls": {
-            "recipe": "gridRailWithVoidCarves",
-            "railHeightCells": 1,
-            "segment": { "padding": 0, "maxHealth": 30, "health": 30 },
-            "voidCarve": { "extraRadiusFactor": 0.125 },
-            "voidBackArc": { "segmentSizeAtReference": 6 }
-        }
-    },
-    "refs": {
-        "voidRadii": {
-            "corner": { "factor": 2.15, "of": "ballRadius" },
-            "side": { "factor": 1.75, "of": "ballRadius" },
-            "depth": { "factor": 3, "of": "ballRadius" }
+            "width": 8,
+            "height": 4,
+            "segmentSize": 4,
+            "segment": { "padding": 0, "maxHealth": 30, "health": 30 }
         }
     },
     "voidCircles": [
         {
             "id": "void-tl",
-            "radiusRef": "corner",
-            "depthRef": "depth",
-            "placement": { "anchor": "playfield.topLeft" },
-            "wallCarve": { "openingArc": { "start": 0, "end": 1.5707963267948966 } }
+            "radius": 4.3,
+            "depth": 6,
+            "placement": { "anchor": "playfield.topLeft" }
         },
         {
             "id": "void-left",
-            "radiusRef": "side",
-            "depthRef": "depth",
-            "placement": { "anchor": "playfield.left" },
-            "wallCarve": { "openingArc": { "start": -1.5707963267948966, "end": 1.5707963267948966 } }
+            "radius": 3.5,
+            "depth": 6,
+            "placement": { "anchor": "playfield.left" }
         },
         {
             "id": "void-tr",
-            "radiusRef": "corner",
-            "depthRef": "depth",
-            "placement": { "anchor": "playfield.topRight" },
-            "wallCarve": { "openingArc": { "start": 1.5707963267948966, "end": 3.141592653589793 } }
+            "radius": 4.3,
+            "depth": 6,
+            "placement": { "anchor": "playfield.topRight" }
         },
         {
             "id": "void-bl",
-            "radiusRef": "corner",
-            "depthRef": "depth",
-            "placement": { "anchor": "playfield.bottomLeft" },
-            "wallCarve": { "openingArc": { "start": 4.71238898038469, "end": 6.283185307179586 } }
+            "radius": 4.3,
+            "depth": 6,
+            "placement": { "anchor": "playfield.bottomLeft" }
         },
         {
             "id": "void-right",
-            "radiusRef": "side",
-            "depthRef": "depth",
-            "placement": { "anchor": "playfield.right" },
-            "wallCarve": { "openingArc": { "start": 1.5707963267948966, "end": 4.71238898038469 } }
+            "radius": 3.5,
+            "depth": 6,
+            "placement": { "anchor": "playfield.right" }
         },
         {
             "id": "void-br",
-            "radiusRef": "corner",
-            "depthRef": "depth",
-            "placement": { "anchor": "playfield.bottomRight" },
-            "wallCarve": { "openingArc": { "start": 3.141592653589793, "end": 4.71238898038469 } }
+            "radius": 4.3,
+            "depth": 6,
+            "placement": { "anchor": "playfield.bottomRight" }
         }
     ],
     "pickups": [
@@ -88,7 +74,7 @@
     "link": { "groupField": "sandboxGroupId" },
     "behaviors": {
         "pool_cue_ball": {
-            "cueStrike": { "minDrag": 3, "maxPull": 75, "pullScale": 0.5, "minPower": 16, "maxPower": 1200, "powerCurve": 2.5 },
+            "cueStrike": { "minDrag": 0.75, "maxPull": 18.75, "pullScale": 0.5, "minPower": 4, "maxPower": 1200, "powerCurve": 2.5 },
             "inputGates": {
                 "cueStrike": [
                     { "scope": "self", "until": "atRest" },

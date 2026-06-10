@@ -103,8 +103,8 @@ export function spawnPoolTableAssembly(host, centerX, centerY, resolved, { facti
     const groupId = groupIdOverride ?? `${resolved.id}:${Date.now()}`;
     const rackId = `${groupId}:rack`;
     const groupField = resolved.groupField;
-    const tableWidth = resolved.arena.grid.cols * resolved.arena.cellSize;
-    const tableHeight = resolved.arena.grid.rows * resolved.arena.cellSize;
+    const tableWidth = resolved.arena.width;
+    const tableHeight = resolved.arena.height;
     if (spawnIncludes(spawnSteps, ["arena.walls"])) {
         const walls = buildPoolTableWallSegments(layout, resolved);
         for (let i = 0; i < walls.length; i++) stampAssemblyGroupMember(walls[i], groupId, resolved.id, groupField);
@@ -114,7 +114,7 @@ export function spawnPoolTableAssembly(host, centerX, centerY, resolved, { facti
         if (!state.sandboxVoidZones) state.sandboxVoidZones = [];
         for (let p = 0; p < layout.voids.length; p++) {
             const voidCircle = layout.voids[p];
-            const zone = createVoidZone(voidCircle.x, voidCircle.y, voidCircle.radius, { id: `${groupId}:void:${voidCircle.id ?? p + 1}`, depth: voidCircle.depth ?? layout.voidDepth });
+            const zone = createVoidZone(voidCircle.x, voidCircle.y, voidCircle.radius, { id: `${groupId}:void:${voidCircle.id ?? p + 1}`, depth: voidCircle.depth });
             stampAssemblyGroupMember(zone, groupId, resolved.id, groupField);
             state.sandboxVoidZones.push(zone);
         }

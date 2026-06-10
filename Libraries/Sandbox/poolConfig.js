@@ -4,39 +4,15 @@ function poolAssembly() {
     if (!assembly) throw new Error("Pool table assembly not loaded — call loadAssemblyManifests() first");
     return assembly;
 }
-export function getPoolReferenceBallRadius() {
-    return poolAssembly().scale.referenceBallRadius;
-}
 export function getPoolBallRadius() {
     return poolAssembly().scale.ballRadius;
 }
-export function getPoolScale() {
-    return poolAssembly().scale.factor;
-}
-export const POOL_REFERENCE_BALL_RADIUS = 8;
 export const POOL_BALL_RADIUS = 2;
-export const POOL_SCALE = POOL_BALL_RADIUS / POOL_REFERENCE_BALL_RADIUS;
-export const POOL_TABLE_COLS = 24;
-export const POOL_TABLE_ROWS = 44;
-export const POOL_TABLE_RAIL_CELLS = 2;
 export function getPoolCueStrike() {
     return poolAssembly().behaviors.pool_cue_ball.cueStrike;
 }
 export function getPoolCueInputGates() {
     return poolAssembly().behaviors.pool_cue_ball.inputGates;
-}
-export function getPoolCellSize() {
-    return poolAssembly().arena.cellSize;
-}
-/** @param {number} [ballRadius] */
-export function getPoolVoidRadii(ballRadius = getPoolBallRadius()) {
-    const assembly = poolAssembly();
-    const ratio = ballRadius / assembly.scale.ballRadius;
-    const radii = assembly.refs.voidRadii;
-    return { corner: radii.corner * ratio, side: radii.side * ratio, depth: radii.depth * ratio };
-}
-export function getPoolVoidBackArcSegmentSize() {
-    return poolAssembly().arena.walls.voidBackArcSegmentSize;
 }
 export const POOL_VISUAL = {
     panelCount: 10,
@@ -51,7 +27,7 @@ export const POOL_VISUAL = {
 };
 export function getPoolBallPhysics() {
     const ballRadius = getPoolBallRadius();
-    const s = ballRadius / getPoolReferenceBallRadius();
+    const massScale = (ballRadius / 8) ** 2;
     return {
         hitBehavior: "none",
         radius: ballRadius,
@@ -59,12 +35,12 @@ export function getPoolBallPhysics() {
         rolls: true,
         collisionShape: "circle",
         laserTargetable: false,
-        mass: 1.0 * s * s,
+        mass: 1.0 * massScale,
         pairRestitution: 0.92,
         friction: 0.5,
-        lowSpeedFrictionThreshold: 10 * s,
+        lowSpeedFrictionThreshold: 10 * (ballRadius / 8),
         lowSpeedFriction: 2.8,
-        snapSpeed: 1.8 * s,
+        snapSpeed: 1.8 * (ballRadius / 8),
         wallPhysics: { restitution: 0.94, friction: 0.06 },
     };
 }
@@ -73,12 +49,12 @@ export function getPoolBallVisuals(defaultPoolBall) {
     return { defaultPoolBall, defaultRadius: getPoolBallRadius(), ...POOL_VISUAL };
 }
 /** @param {number} [tableWidth] @param {number} [tableHeight] */
-export function getPoolTableWorldSize(tableWidth = getPoolTableCols() * getPoolCellSize(), tableHeight = getPoolTableRows() * getPoolCellSize()) {
+export function getPoolTableWorldSize(tableWidth = getPoolTableWidth(), tableHeight = getPoolTableHeight()) {
     return { tableWidth, tableHeight };
 }
-export function getPoolTableCols() {
-    return poolAssembly().arena.grid.cols;
+export function getPoolTableWidth() {
+    return poolAssembly().arena.width;
 }
-export function getPoolTableRows() {
-    return poolAssembly().arena.grid.rows;
+export function getPoolTableHeight() {
+    return poolAssembly().arena.height;
 }
