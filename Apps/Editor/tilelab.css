@@ -153,6 +153,48 @@ details.editor-block-motifs {
     background: #080a0e;
 }
 
+.map-overview-stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 0 0 auto;
+    width: 100%;
+    padding: 0;
+    background: transparent;
+    border: none;
+}
+
+.map-overview-stage:not(.is-visible) {
+    display: none;
+}
+
+.map-overview-header {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    letter-spacing: 0.05em;
+    align-self: stretch;
+    text-align: center;
+}
+
+#mapOverviewHost {
+    flex: none;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    background: #080a0e;
+}
+
+#mapOverviewCanvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: #080a0e;
+    image-rendering: pixelated;
+}
+
 .track-list {
     margin-bottom: 8px;
     background: rgba(0, 0, 0, 0.2);

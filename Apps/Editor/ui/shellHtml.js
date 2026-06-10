@@ -6,7 +6,8 @@ export const TILELAB_UI_HTML = `
         <label class="check-inline"><input id="showWallsInput" type="checkbox"> Physics Walls</label>
         <label class="check-inline"><input id="showPathDebugInput" type="checkbox"> HPA* Grid</label>
         <label class="check-inline"><input id="showVignetteInput" type="checkbox"> Circular Overlay</label>
-        <label class="check-inline"><input id="showAnimationPreviewInput" type="checkbox" checked> Animation Preview</label>
+        <label class="check-inline"><input id="showAnimationPreviewInput" type="checkbox"> Animation Preview</label>
+        <label class="check-inline"><input id="showMapOverviewInput" type="checkbox"> Map Overview</label>
         <span class="sep"></span>
         <button type="button" id="regenerateBtn">Redraw</button>
     </div>
@@ -92,6 +93,12 @@ export const TILELAB_UI_HTML = `
                         <div class="animation-stage-header">Animation Preview</div>
                         <div id="animationPreviewHost">
                             <canvas id="animationPreviewCanvas"></canvas>
+                        </div>
+                    </div>
+                    <div class="map-overview-stage" id="mapOverviewStage">
+                        <div class="map-overview-header">Map Overview</div>
+                        <div id="mapOverviewHost">
+                            <canvas id="mapOverviewCanvas"></canvas>
                         </div>
                     </div>
                     <div class="map-stage" id="mapStage"></div>

@@ -4,8 +4,9 @@ import { bakeMapPathDebugCache } from "../../../Libraries/Render/map/MapPathDebu
 import { buildTopologyMapRenderCaches } from "../../../Libraries/Render/map/MapRenderCache.js";
 import { finalizeGeneratedWorld } from "../../../Libraries/WorldGen/finalizeGeneratedWorld.js";
 import { withSeededRandom } from "../../../Libraries/Random/index.js";
+import { bakeMapOverviewCache, refreshMapOverviewDisplay } from "../ui/mapOverview.js";
 import { sandboxController } from "./tilelabSandbox.js";
-export const PLAY_AREA_CELL_OPTIONS = [64, 128, 256, 512, 1024, 2048, 4096];
+export const PLAY_AREA_CELL_OPTIONS = [64, 128, 256, 512, 1024];
 export const labCavernConfig = { playAreaCols: 256, playAreaRows: 256, fillChance: 0.45, iterations: 3 };
 /** @param {number} cells */
 export function playAreaCellsToIndex(cells) {
@@ -52,6 +53,8 @@ function generateCavernWalls(centerX, centerY, { playAreaCols, playAreaRows, fil
 function rebuildLabMapCaches(state) {
     buildTopologyMapRenderCaches(state);
     state.mapPathDebugCache = bakeMapPathDebugCache(state);
+    state.mapOverviewCache = bakeMapOverviewCache(state);
+    refreshMapOverviewDisplay(state);
 }
 /** @param {import("../state.js").TileLabGameState} state */
 export function generateLabCaverns(state) {

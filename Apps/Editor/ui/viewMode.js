@@ -1,3 +1,4 @@
+import { refreshMapOverviewDisplay } from "./mapOverview.js";
 /** @param {string} panelId @param {boolean} visible */
 function setEditorPanelVisible(panelId, visible) {
     const panel = document.getElementById(panelId);
@@ -10,12 +11,19 @@ function setAnimationPreviewVisible(visible) {
     stage.classList.toggle("is-visible", visible);
     stage.hidden = !visible;
 }
+/** @param {boolean} visible */
+function setMapOverviewVisible(visible) {
+    const stage = document.getElementById("mapOverviewStage");
+    stage.classList.toggle("is-visible", visible);
+    stage.hidden = !visible;
+}
 /** @param {import("../state.js").TileLabGameState} state */
 export function applyLabViewChrome(state) {
     setEditorPanelVisible("sandboxPanel", state.labShowSandboxPanel);
     setEditorPanelVisible("surfaceEditorPanel", state.labShowProfilePanel);
     setEditorPanelVisible("mapPanel", state.labShowMapPanel);
     setAnimationPreviewVisible(state.labShowAnimationPreview);
+    setMapOverviewVisible(state.labShowMapOverview);
     const editor = document.querySelector(".col-editor");
     const active = [];
     if (state.labShowSandboxPanel) active.push("sandbox");
@@ -26,6 +34,7 @@ export function applyLabViewChrome(state) {
     document.getElementById("showProfilePanelInput").checked = state.labShowProfilePanel;
     document.getElementById("showMapPanelInput").checked = state.labShowMapPanel;
     document.getElementById("showAnimationPreviewInput").checked = state.labShowAnimationPreview;
+    document.getElementById("showMapOverviewInput").checked = state.labShowMapOverview;
 }
 /** @param {import("../state.js").TileLabGameState} state @param {() => void} onChange @param {(() => void) | null} [onLayoutChange] */
 export function bindViewModeControls(state, onChange, onLayoutChange = null) {
@@ -45,6 +54,12 @@ export function bindViewModeControls(state, onChange, onLayoutChange = null) {
         state.labShowAnimationPreview = /** @type {HTMLInputElement} */ (e.target).checked;
         applyLabViewChrome(state);
         onLayoutChange?.();
+    });
+    document.getElementById("showMapOverviewInput").addEventListener("change", (e) => {
+        state.labShowMapOverview = /** @type {HTMLInputElement} */ (e.target).checked;
+        applyLabViewChrome(state);
+        onLayoutChange?.();
+        if (state.labShowMapOverview) refreshMapOverviewDisplay(state);
     });
     applyLabViewChrome(state);
 }

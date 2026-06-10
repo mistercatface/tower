@@ -2,6 +2,7 @@ import { listShippedSurfaceProfileIds } from "../../../Config/procedural/profile
 import { applySquareCanvasResize } from "../../../Libraries/Canvas/index.js";
 import { initResizer } from "./lab-shared.js";
 import { initAnimationPreview, estimateAnimationPreviewHeight } from "./LabAnimationPreview.js";
+import { mountMapOverview, estimateMapOverviewHeight, refreshMapOverviewDisplay } from "./mapOverview.js";
 import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEditor.js";
 import { drawLabFrame, pushEditorProfile, repaintUntilBakesDone } from "./preview.js";
 import { initPresetSelect, bindToolbarControls } from "./toolbar.js";
@@ -33,6 +34,7 @@ function resizeCanvases(state) {
     if (animCanvasResize && state.labShowAnimationPreview) animCanvasResize.setSize(animCanvasResize.getSize());
     if (mapCanvasResize) mapCanvasResize.setSize(mapCanvasResize.getSize());
     else onMapCanvasResize(state, state.labCanvas.width);
+    refreshMapOverviewDisplay(state);
 }
 /** @param {import("../state.js").TileLabGameState} state */
 export function mountEditorUi(state) {
@@ -85,6 +87,7 @@ export function mountEditorUi(state) {
         },
     });
     initAnimationPreview(animCanvas, buildProfileFromEditor);
+    mountMapOverview(state);
     mapCanvasResize = applySquareCanvasResize(state.labCanvas, {
         host: document.getElementById("mapStage"),
         initialSize: 320,
@@ -96,7 +99,8 @@ export function mountEditorUi(state) {
             const gap = parseFloat(getComputedStyle(column).gap) || 10;
             const controlsH = (document.getElementById("labZoomControl")?.offsetHeight ?? 0) + (document.getElementById("labSpeedControl")?.offsetHeight ?? 0) + gap * 2;
             const animH = state.labShowAnimationPreview ? estimateAnimationPreviewHeight() + gap : 0;
-            return Math.max(160, Math.floor(Math.min(rect.width, rect.height - controlsH - animH) - 8));
+            const overviewH = state.labShowMapOverview ? estimateMapOverviewHeight() + gap : 0;
+            return Math.max(160, Math.floor(Math.min(rect.width, rect.height - controlsH - animH - overviewH) - 8));
         },
         onResize: (size) => onMapCanvasResize(state, size),
     });
