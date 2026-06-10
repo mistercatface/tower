@@ -58,7 +58,7 @@ export function drawAssemblySurfaceZone(ctx, zone, state, viewport) {
     const viewerY = viewport.y;
     drawAssemblyPatch(ctx, zone.flipbook.play, frameIndex, settings, 0, viewerX, viewerY);
     const railBands = zone.flipbook.railBands;
-    for (let i = 0; i < railBands.length; i++) drawAssemblyPatch(ctx, railBands[i], frameIndex, settings, railBands[i].zLevel, viewerX, viewerY);
+    for (let i = 0; i < railBands.length; i++) drawAssemblyPatch(ctx, railBands[i], frameIndex, settings, 0, viewerX, viewerY);
 }
 /** @param {CanvasRenderingContext2D} ctx @param {object} state @param {import("../Viewport/Viewport.js").Viewport} viewport */
 export function drawSandboxAssemblySurfaces(ctx, state, viewport) {
