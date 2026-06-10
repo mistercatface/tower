@@ -14,7 +14,7 @@ export function createPoolBallDraw(visuals) {
             getFaceColor: poolBall ? (face) => resolvePoolBallFaceColor(face, poolBall) : undefined,
             panelColors: poolBall ? [poolBall.color ?? "#888888"] : visuals.panels,
         });
-        if (!poolBall) return;
+        if (!poolBall || visuals.showLabels === false) return;
         const label = getPoolBallLabelImage(poolBall);
         if (!label) return;
         drawSphereTexturePatch(ctx, prop, px, py, label, {

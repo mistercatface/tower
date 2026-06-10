@@ -2,7 +2,7 @@ import { gridSettings } from "../../Config/Config.js";
 /** Ball radius the sandbox pool package was originally tuned at. */
 export const POOL_REFERENCE_BALL_RADIUS = 8;
 /** Current pool ball radius — change this to rescale the whole table package. */
-export const POOL_BALL_RADIUS = 4;
+export const POOL_BALL_RADIUS = 2;
 export const POOL_SCALE = POOL_BALL_RADIUS / POOL_REFERENCE_BALL_RADIUS;
 export const POOL_TABLE_COLS = 24;
 export const POOL_TABLE_ROWS = 44;
@@ -35,6 +35,7 @@ export const POOL_CUE_STRIKE = {
 /**
  * Render-only knobs — independent of {@link POOL_BALL_RADIUS}.
  * Physics, table layout, pockets, and cue power stay on POOL_BALL_RADIUS / POOL_SCALE.
+ * Sprite bake resolution uses the game default ({@link defaultPropPixelSize}) like other props.
  */
 export const POOL_VISUAL = {
     panelCount: 10,
@@ -46,8 +47,8 @@ export const POOL_VISUAL = {
     labelGridSegments: 16,
     labelSubSegments: 1,
     labelImageSmoothing: false,
-    /** Sprite bake diameter cap (strategy.propPixelSize). */
-    propPixelSize: 24,
+    /** Draw numbered/cue decals via {@link drawSphereTexturePatch} — off for sandbox table balls for now. */
+    showLabels: false,
 };
 /** Shared pool-ball physics block for prop assets. */
 export function getPoolBallPhysics() {
@@ -66,7 +67,6 @@ export function getPoolBallPhysics() {
         lowSpeedFriction: 2.8,
         snapSpeed: scale(1.8),
         wallPhysics: { restitution: 0.94, friction: 0.06 },
-        propPixelSize: POOL_VISUAL.propPixelSize,
     };
 }
 /** @param {object} defaultPoolBall */
