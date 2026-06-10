@@ -9,7 +9,6 @@ import { applyLabCanvasSize } from "./ui/labCanvas.js";
 import { sandboxPathEffectPass } from "./render/sandboxPathEffectPass.js";
 import { tilelabGroundZoneEffectPass } from "./groundZones.js";
 import { sandboxVoidZoneEffectPass } from "./sandboxVoidZones.js";
-
 /** Editor engine profile — hooks for shared render/sim/world-gen code (`GamePorts`). */
 export const engine = {
     id: "editor",
