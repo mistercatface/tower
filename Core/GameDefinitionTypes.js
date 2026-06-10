@@ -102,7 +102,7 @@
  * @typedef {object} GameFeature
  * @property {(state: object) => void} [initState]
  * @property {() => void} [prepare]
- * @property {(eventBus: import("../Libraries/Events/EventBus.js").EventBus, boot?: { state: object, resetApp?: () => void }) => void} [registerListeners]
+ * @property {(eventBus: import("../Libraries/Events/EventBus.js").EventBus) => void} [registerListeners]
  * @property {Partial<InteractionPairsPort>} [interactionPairs]
  * @property {TargetingPort} [targeting]
  * @property {(ctx: object) => import("../../Systems/Simulation/SimulationRuntime.js").SimulationRuntime} [beginRuntime]

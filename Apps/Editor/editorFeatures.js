@@ -111,10 +111,7 @@ export function initEditorFeatureState(state) {
 export function prepareEditorFeatures() {
     for (const feature of editorFeatures) feature.prepare?.();
 }
-/**
- * @param {import("../../Libraries/Events/EventBus.js").EventBus} eventBus
- * @param {{ state: object, resetGame?: () => void }} bootCtx
- */
-export function registerEditorFeatureListeners(eventBus, bootCtx) {
-    for (const feature of editorFeatures) feature.registerListeners?.(eventBus, bootCtx);
+/** @param {import("../../Libraries/Events/EventBus.js").EventBus} eventBus */
+export function registerEditorFeatureListeners(eventBus) {
+    for (const feature of editorFeatures) feature.registerListeners?.(eventBus);
 }

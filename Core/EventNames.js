@@ -4,7 +4,6 @@ export const Events = {
     GAME_RESUME: "game:resume",
     GAME_TOGGLE_PAUSE: "game:togglePause",
     GAME_SET_SPEED: "game:setSpeed",
-    GAME_RESTART: "game:restart",
     RADIO_START: "radio:start",
     RADIO_TRIGGER: "radio:trigger",
     RADIO_ADVANCE: "radio:advance",

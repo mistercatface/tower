@@ -41,23 +41,12 @@ export function createEditorApp() {
         let dt = timestamp - state.lastTime;
         state.lastTime = timestamp;
         dt = Math.min(dt, 50);
-        if (!state.isGameOver) {
-            state.scheduler.update(dt);
-            if (!state.isPaused) {
-                state.gameTime += dt * state.selectedSpeed;
-                tickSimulation(dt * state.selectedSpeed);
-            }
+        state.scheduler.update(dt);
+        if (!state.isPaused) {
+            state.gameTime += dt * state.selectedSpeed;
+            tickSimulation(dt * state.selectedSpeed);
         }
         drawFrame();
-        requestAnimationFrame(loop);
-    }
-    function resetEditor() {
-        state.scheduler.clear();
-        state.isGameOver = false;
-        pauseManager.reset();
-        viewport.snapTo(0, 0);
-        enterEditor();
-        requestUiUpdate();
         requestAnimationFrame(loop);
     }
     function enterEditor() {
@@ -67,13 +56,12 @@ export function createEditorApp() {
     function resizeCanvas() {
         editorGame.onCanvasResize?.();
     }
-    registerCoreListeners(events, pauseManager);
-    registerEditorFeatureListeners(events, { state, resetGame: resetEditor });
-    editorGame.registerListeners?.(events, { state, fsm: null, resetGame: resetEditor });
-    events.setContext({ state, viewport, fsm: null, resetGame: resetEditor });
+    registerCoreListeners(events, pauseManager, editorGame);
+    registerEditorFeatureListeners(events);
+    events.setContext({ state, viewport });
     events.warnOnMissingListeners = true;
-    events.on(Events.UI_UPDATE, ({ state: uiState }) => {
-        tilelabUiPort.updateUI({ state: uiState });
+    events.on(Events.UI_UPDATE, () => {
+        tilelabUiPort.updateUI({ state });
     });
     window.addEventListener("resize", resizeCanvas);
     window.gameState = state;

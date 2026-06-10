@@ -16,13 +16,4 @@ export function toggleGamePause() {
 export function adjustGameSpeed(delta) {
     events.emit(Events.GAME_SET_SPEED, { delta });
 }
-/** End the run once — call from game code when win/lose happens, not from the main loop. */
-export function endRun(state) {
-    if (!state || state.isGameOver) return;
-    state.isGameOver = true;
-    requestUiUpdate();
-}
-export function emitGameRestart() {
-    events.emit(Events.GAME_RESTART);
-}
 export { Events } from "./EventNames.js";
