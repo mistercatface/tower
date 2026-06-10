@@ -5,7 +5,7 @@ import { CAMERA_HEIGHT, PERSPECTIVE_STRENGTH } from "../../Spatial/iso/Isometric
 export function projectPropVertex(prop, px, py, lx, ly, lz) {
     const wx = prop.x + lx;
     const wy = prop.y + ly;
-    if (Math.abs(lz) <= 0.001) return { x: wx, y: wy, depth: H };
+    if (Math.abs(lz) <= 0.001) return { x: wx, y: wy, depth: lz };
     const dx = wx - px;
     const dy = wy - py;
     const dist = Math.hypot(dx, dy);

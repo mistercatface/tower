@@ -44,6 +44,7 @@ export function resolvePropQuantizeSteps(prop) {
     if (!override) return defaults;
     const facing = override.facing ?? defaults.facing;
     const roll = override.roll ?? override.facing ?? defaults.roll ?? facing;
+    return { facing, roll };
 }
 /**
  * @param {object} prop
