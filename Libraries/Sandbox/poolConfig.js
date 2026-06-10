@@ -1,61 +1,42 @@
-import { gridSettings } from "../../Config/Config.js";
-/** Ball radius the sandbox pool package was originally tuned at. */
-export const POOL_REFERENCE_BALL_RADIUS = 8;
-/** Current pool ball radius — change this to rescale the whole table package. */
-export const POOL_BALL_RADIUS = 2;
-export const POOL_SCALE = POOL_BALL_RADIUS / POOL_REFERENCE_BALL_RADIUS;
-export const POOL_TABLE_COLS = 24;
-export const POOL_TABLE_ROWS = 44;
-export const POOL_TABLE_RAIL_CELLS = 2;
-/** Pocket arc wall segment length at reference scale. */
-const POOL_REFERENCE_WALL_POCKET_SEGMENT_SIZE = 6;
-/** Cue-strike tuning at {@link POOL_REFERENCE_BALL_RADIUS}. */
-const POOL_REFERENCE_CUE_STRIKE = { minDrag: 3, maxPull: 75, pullScale: 0.5, minPower: 16, maxPower: 1200, powerCurve: 2.5 };
-/** @param {number} value */
-function scale(value) {
-    return value * POOL_SCALE;
-}
+import { gridSettings } from "../../../Config/Config.js";
+import { getResolvedAssembly } from "./assemblies/assemblyRegistry.js";
+const _defaultAssembly = getResolvedAssembly("poolTable");
+const _layout = _defaultAssembly.layout;
+/** Ball radius the default pool assembly was originally tuned at. */
+export const POOL_REFERENCE_BALL_RADIUS = _layout.referenceBallRadius;
+/** Current pool ball radius from the default assembly manifest. */
+export const POOL_BALL_RADIUS = _layout.ballRadius;
+export const POOL_SCALE = _layout.scale;
+export const POOL_TABLE_COLS = _layout.cols;
+export const POOL_TABLE_ROWS = _layout.rows;
+export const POOL_TABLE_RAIL_CELLS = _layout.railCells;
+export const POOL_CUE_STRIKE = _defaultAssembly.behaviors.pool_cue_ball.cueStrike;
+export const POOL_CUE_INPUT_GATES = _defaultAssembly.behaviors.pool_cue_ball.inputGates;
 export function getPoolCellSize() {
-    return gridSettings.cellSize * POOL_SCALE;
+    return _layout.cellSize;
 }
 /** @param {number} [ballRadius] */
 export function getPoolPocketRadii(ballRadius = POOL_BALL_RADIUS) {
-    return { corner: ballRadius * 2.15, side: ballRadius * 1.75, depth: ballRadius * 3 };
+    const ratio = ballRadius / _layout.ballRadius;
+    const pockets = _layout.pocketRadii;
+    return { corner: pockets.corner * ratio, side: pockets.side * ratio, depth: pockets.depth * ratio };
 }
 export function getPoolWallPocketSegmentSize() {
-    return scale(POOL_REFERENCE_WALL_POCKET_SEGMENT_SIZE);
+    return _layout.wallPocketSegmentSize;
 }
-export const POOL_CUE_STRIKE = {
-    minDrag: scale(POOL_REFERENCE_CUE_STRIKE.minDrag),
-    maxPull: scale(POOL_REFERENCE_CUE_STRIKE.maxPull),
-    pullScale: POOL_REFERENCE_CUE_STRIKE.pullScale,
-    minPower: scale(POOL_REFERENCE_CUE_STRIKE.minPower),
-    maxPower: POOL_REFERENCE_CUE_STRIKE.maxPower,
-    powerCurve: POOL_REFERENCE_CUE_STRIKE.powerCurve,
-};
-/** Cue-strike input gates — wait until cue ball and table balls have settled. */
-export const POOL_CUE_INPUT_GATES = {
-    cueStrike: [
-        { scope: "self", until: "atRest" },
-        { scope: "groupPickups", link: "sandboxPoolTableId", until: "allAtRest", excludeStates: ["voidSink"] },
-    ],
-};
 /**
- * Render-only knobs — independent of {@link POOL_BALL_RADIUS}.
- * Physics, table layout, pockets, and cue power stay on POOL_BALL_RADIUS / POOL_SCALE.
- * Sprite bake resolution uses the game default ({@link defaultPropPixelSize}) like other props.
+ * Render-only knobs — independent of ball radius in the assembly manifest.
+ * Sprite bake resolution uses the game default like other props.
  */
 export const POOL_VISUAL = {
     panelCount: 10,
     latBands: 6,
     stroke: null,
-    /** Softer equator/pole tint — lower reads rounder, less chunky. */
     faceShade: 0.05,
     labelCapAngle: 0.78,
     labelGridSegments: 16,
     labelSubSegments: 1,
     labelImageSmoothing: false,
-    /** Draw numbered/cue decals via {@link drawSphereTexturePatch} — off for sandbox table balls for now. */
     showLabels: false,
 };
 /** Shared pool-ball physics block for prop assets. */
@@ -71,9 +52,9 @@ export function getPoolBallPhysics() {
         mass: 1.0 * s * s,
         pairRestitution: 0.92,
         friction: 0.5,
-        lowSpeedFrictionThreshold: scale(10),
+        lowSpeedFrictionThreshold: 10 * s,
         lowSpeedFriction: 2.8,
-        snapSpeed: scale(1.8),
+        snapSpeed: 1.8 * s,
         wallPhysics: { restitution: 0.94, friction: 0.06 },
     };
 }

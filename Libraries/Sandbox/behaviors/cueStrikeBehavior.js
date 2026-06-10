@@ -1,29 +1,29 @@
 import { applyCueStrikeCollision } from "../../CueStick/cueStrikeCollision.js";
 import { buildCueStrikeAimLineContext, getCueStrikeAimLine } from "../../CueStick/cueStrikeAimPreview.js";
-import { getPoolCellSize, POOL_CUE_STRIKE, POOL_TABLE_COLS, POOL_TABLE_ROWS } from "../poolConfig.js";
 import { getPropAsset } from "../../Props/PropCatalog.js";
 import { wakePushableBody } from "../../Motion/pushableSleep.js";
-import { createDragLaunchAim, drawDragLaunchPreview, releaseDragLaunch, updateDragLaunchAim } from "../dragLaunch.js";
+import { createDragLaunchAim, drawDragLaunchPreview, releaseDragLaunch, updateDragLaunchAim, DRAG_LAUNCH_DEFAULTS } from "../dragLaunch.js";
 import { evaluateInputGates } from "../inputGates.js";
+import { resolvePickupSandboxBehavior } from "../sandboxBehaviorConfig.js";
 export const CUE_STRIKE_BEHAVIOR_ID = "cueStrike";
-const CUE_STRIKE_DEFAULTS = POOL_CUE_STRIKE;
-/** @param {object | null | undefined} asset */
-function getCueStrikeConfig(asset) {
-    const entry = asset?.sandbox?.cueStrike;
-    const overrides = entry === true ? {} : entry && typeof entry === "object" ? entry : {};
-    return { ...CUE_STRIKE_DEFAULTS, ...overrides };
+/** @param {object} pickup @param {object | null | undefined} asset */
+function getCueStrikeConfig(pickup, asset) {
+    return { ...DRAG_LAUNCH_DEFAULTS, ...resolvePickupSandboxBehavior(pickup, asset, "cueStrike") };
 }
-/** @param {object} pickup */
-function cueStrikeTableBounds(pickup) {
-    if (!pickup?.sandboxPoolTableId) return {};
-    const cellSize = getPoolCellSize();
-    return { tableWidth: POOL_TABLE_COLS * cellSize, tableHeight: POOL_TABLE_ROWS * cellSize };
+/** @param {object} pickup @param {import("../SandboxHostPort.js").SandboxHostPort} host */
+function cueStrikeTableBounds(pickup, host) {
+    const groupId = pickup?.sandboxGroupId ?? pickup?.sandboxPoolTableId;
+    if (!groupId) return {};
+    const state = host.getWorldState?.();
+    const instance = state?.sandboxAssemblyInstances?.find((entry) => entry.id === groupId);
+    if (!instance) return {};
+    return { tableWidth: instance.tableWidth, tableHeight: instance.tableHeight };
 }
 /** @returns {import("../createSandboxController.js").SandboxBehavior} */
 export function createCueStrikeBehavior() {
     /** @type {import("../dragLaunch.js").DragLaunchAim | null} */
     let aim = null;
-    const configFor = (pickup) => getCueStrikeConfig(getPropAsset(pickup?.type));
+    const configFor = (pickup) => getCueStrikeConfig(pickup, getPropAsset(pickup?.type));
     return {
         id: CUE_STRIKE_BEHAVIOR_ID,
         onPointerDown(pickup, world, _e, host) {
@@ -48,7 +48,7 @@ export function createCueStrikeBehavior() {
         drawOverlay(ctx, pickup, host) {
             if (!aim?.active) return;
             const state = host.getWorldState?.();
-            const aimLineContext = state ? buildCueStrikeAimLineContext(pickup, state, cueStrikeTableBounds(pickup)) : null;
+            const aimLineContext = state ? buildCueStrikeAimLineContext(pickup, state, cueStrikeTableBounds(pickup, host)) : null;
             drawDragLaunchPreview(ctx, aim, configFor(pickup), aimLineContext, getCueStrikeAimLine);
         },
         reset() {

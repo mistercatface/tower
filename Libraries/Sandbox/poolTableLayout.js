@@ -1,21 +1,20 @@
 import { snapLayoutOrigin } from "../../Generator/GridLayout.js";
 import { Segment } from "../../Entities/Wall.js";
 import { buildRackTriangle } from "./poolRackLayout.js";
-import {
-    getPoolCellSize,
-    getPoolPocketRadii,
-    getPoolWallPocketSegmentSize,
-    POOL_BALL_RADIUS,
-    POOL_TABLE_COLS,
-    POOL_TABLE_RAIL_CELLS,
-    POOL_TABLE_ROWS,
-} from "./poolConfig.js";
-
-export { POOL_TABLE_COLS, POOL_TABLE_ROWS, POOL_TABLE_RAIL_CELLS } from "./poolConfig.js";
-
-/** @param {number} ballRadius */
-export function poolPocketRadii(ballRadius) {
-    return getPoolPocketRadii(ballRadius);
+import { getResolvedAssembly } from "./assemblies/assemblyRegistry.js";
+import { getPoolPocketArcAngles } from "./poolTableLayoutShared.js";
+export { getPoolPocketArcAngles } from "./poolTableLayoutShared.js";
+/** @typedef {import("./assemblies/assemblyManifest.js").ResolvedAssemblyLayout} ResolvedAssemblyLayout */
+const defaultLayout = () => getResolvedAssembly("poolTable").layout;
+/** @param {ResolvedAssemblyLayout | undefined} tableLayout */
+function resolveTableLayout(tableLayout) {
+    return tableLayout ?? defaultLayout();
+}
+/** @param {number} ballRadius @param {ResolvedAssemblyLayout} tableLayout */
+export function pocketRadiiForLayout(ballRadius, tableLayout) {
+    const ratio = ballRadius / tableLayout.ballRadius;
+    const pockets = tableLayout.pocketRadii;
+    return { corner: pockets.corner * ratio, side: pockets.side * ratio, depth: pockets.depth * ratio };
 }
 /** @param {number} offsetX @param {number} offsetY @param {number} cellSize @param {number} cols @param {number} rows */
 function getTableWorldBounds(offsetX, offsetY, cellSize, cols, rows) {
@@ -27,9 +26,7 @@ function getTableWorldBounds(offsetX, offsetY, cellSize, cols, rows) {
 function getPlayfieldBounds(table, rail) {
     return { minX: table.minX + rail, minY: table.minY + rail, maxX: table.maxX - rail, maxY: table.maxY - rail, centerX: table.centerX, centerY: table.centerY };
 }
-/** @typedef {'corner-tl' | 'corner-tr' | 'corner-bl' | 'corner-br' | 'side-left' | 'side-right'} PoolPocketKind */
-/** @typedef {{ x: number, y: number, radius: number, kind: PoolPocketKind }} PoolPocket */
-/** @param {ReturnType<typeof getPlayfieldBounds>} play @param {ReturnType<typeof poolPocketRadii>} pockets */
+/** @param {ReturnType<typeof getPlayfieldBounds>} play @param {ReturnType<typeof pocketRadiiForLayout>} pockets */
 function getPocketPositions(play, pockets) {
     const cr = pockets.corner;
     const sr = pockets.side;
@@ -42,44 +39,27 @@ function getPocketPositions(play, pockets) {
         { x: play.maxX, y: play.maxY, radius: cr, kind: "corner-br" },
     ];
 }
-/** @param {PoolPocketKind} kind */
-export function getPoolPocketArcAngles(kind) {
-    switch (kind) {
-        case "corner-tl":
-            return { start: 0, end: Math.PI / 2 };
-        case "corner-tr":
-            return { start: Math.PI / 2, end: Math.PI };
-        case "corner-bl":
-            return { start: (3 * Math.PI) / 2, end: Math.PI * 2 };
-        case "corner-br":
-            return { start: Math.PI, end: (3 * Math.PI) / 2 };
-        case "side-left":
-            return { start: -Math.PI / 2, end: Math.PI / 2 };
-        case "side-right":
-            return { start: Math.PI / 2, end: (3 * Math.PI) / 2 };
-        default:
-            return { start: 0, end: Math.PI * 2 };
-    }
-}
 /**
  * @param {number} centerX
  * @param {number} centerY
- * @param {number} ballRadius
+ * @param {ResolvedAssemblyLayout} [tableLayout]
  */
-export function buildSandboxPoolTableLayout(centerX, centerY, ballRadius = POOL_BALL_RADIUS) {
-    const cellSize = getPoolCellSize();
-    const cols = POOL_TABLE_COLS;
-    const rows = POOL_TABLE_ROWS;
+export function buildSandboxPoolTableLayout(centerX, centerY, tableLayout = defaultLayout()) {
+    const layout = resolveTableLayout(tableLayout);
+    const ballRadius = layout.ballRadius;
+    const cellSize = layout.cellSize;
+    const cols = layout.cols;
+    const rows = layout.rows;
     const { offsetX, offsetY } = snapLayoutOrigin(centerX, centerY, cols, rows, cellSize);
     const table = getTableWorldBounds(offsetX, offsetY, cellSize, cols, rows);
-    const rail = POOL_TABLE_RAIL_CELLS * cellSize;
+    const rail = layout.railCells * cellSize;
     const play = getPlayfieldBounds(table, rail);
     const playfieldHeight = table.height - rail * 2;
     const headSpot = { x: play.centerX, y: play.minY + playfieldHeight * 0.75 };
     const regulationFootSpotY = play.minY + playfieldHeight * 0.25;
     const minFootSpotY = play.minY + (4 * Math.sqrt(3) + 2.5) * ballRadius;
     const footSpot = { x: play.centerX, y: Math.max(regulationFootSpotY, minFootSpotY) };
-    const pocketRadii = getPoolPocketRadii(ballRadius);
+    const pocketRadii = pocketRadiiForLayout(ballRadius, layout);
     return {
         cols,
         rows,
@@ -115,13 +95,15 @@ function carveRect(grid, cols, rows, x, y, w, h) {
  * @param {ReturnType<typeof buildSandboxPoolTableLayout>} layout
  * @param {number} ballRadius
  * @param {number} railHeight
+ * @param {ResolvedAssemblyLayout} [tableLayout]
  */
-export function buildPoolTableWallSegments(layout, ballRadius, railHeight) {
+export function buildPoolTableWallSegments(layout, ballRadius, railHeight, tableLayout = defaultLayout()) {
+    const resolvedLayout = resolveTableLayout(tableLayout);
     const cols = layout.cols;
     const rows = layout.rows;
     const cellSize = layout.cellSize;
     const grid = new Uint8Array(cols * rows).fill(1);
-    const rail = POOL_TABLE_RAIL_CELLS;
+    const rail = resolvedLayout.railCells;
     carveRect(grid, cols, rows, rail, rail, cols - rail * 2, rows - rail * 2);
     const carveRadius = Math.max(...layout.pockets.map((p) => p.radius)) + ballRadius / 8;
     for (let r = 0; r < rows; r++)
@@ -145,12 +127,13 @@ export function buildPoolTableWallSegments(layout, ballRadius, railHeight) {
             if (grid[r * cols + c] !== 1) continue;
             walls.push(new Segment(layout.offsetX + c * cellSize + cellSize / 2, layout.offsetY + r * cellSize + cellSize / 2, 0, cellSize, 0, 30, 30, false, railHeight));
         }
+    const wallPocketSegmentSize = resolvedLayout.wallPocketSegmentSize;
     for (const pocket of layout.pockets) {
         const { start, end } = getPoolPocketArcAngles(pocket.kind);
         const backStart = end;
         const backEnd = start + 2 * Math.PI;
         const radius = pocket.radius;
-        const size = getPoolWallPocketSegmentSize();
+        const size = wallPocketSegmentSize;
         const numSegments = Math.max(1, Math.ceil((radius * Math.abs(backEnd - backStart)) / (size * 1.1)));
         const angleStep = (backEnd - backStart) / numSegments;
         for (let i = 0; i < numSegments; i++) {
@@ -161,4 +144,12 @@ export function buildPoolTableWallSegments(layout, ballRadius, railHeight) {
         }
     }
     return walls;
+}
+// Re-export layout constants from default assembly for callers that still import them here.
+export const POOL_TABLE_COLS = defaultLayout().cols;
+export const POOL_TABLE_ROWS = defaultLayout().rows;
+export const POOL_TABLE_RAIL_CELLS = defaultLayout().railCells;
+/** @param {number} ballRadius @param {ResolvedAssemblyLayout} [tableLayout] */
+export function poolPocketRadii(ballRadius, tableLayout) {
+    return pocketRadiiForLayout(ballRadius, resolveTableLayout(tableLayout));
 }

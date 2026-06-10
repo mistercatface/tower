@@ -1,30 +1,8 @@
-import { Pickup } from "../../Entities/Pickup.js";
-import { wakePushableBody } from "../Motion/pushableSleep.js";
-import { POOL_BALL_RADIUS } from "./poolConfig.js";
-import { getPropAsset } from "../Props/PropCatalog.js";
-import { poolBallFromNumber } from "../Render/Props3D/poolBallArt.js";
-import { buildPoolRackLayout } from "./poolRackLayout.js";
-/** @param {import("./SandboxHostPort.js").SandboxHostPort} host @param {number} cueX @param {number} cueY @param {{ faction?: string, rackId?: string, tableId?: string, layout?: { cue: { x: number, y: number }, rack: { x: number, y: number, number: number }[] } }} [options] */
+import { getResolvedAssembly } from "./assemblies/assemblyRegistry.js";
+import { spawnAssemblyRack } from "./spawnAssemblyRack.js";
+/** @deprecated Use {@link spawnAssemblyRack} via {@link spawnAssembly}. */
 export function spawnPoolRack(host, cueX, cueY, { faction, rackId, tableId, layout: layoutOverride } = {}) {
-    if (!getPropAsset("pool_ball") || !getPropAsset("pool_cue_ball")) return null;
-    const ballRadius = POOL_BALL_RADIUS;
-    const layout = layoutOverride ?? buildPoolRackLayout(cueX, cueY, ballRadius);
-    const id = rackId ?? `pool-rack:${Date.now()}`;
-    const cue = new Pickup(layout.cue.x, layout.cue.y, "pool_cue_ball", 0);
-    cue.faction = faction;
-    cue.sandboxPoolRackId = id;
-    if (tableId) cue.sandboxPoolTableId = tableId;
-    wakePushableBody(cue);
-    host.addPickup(cue);
-    for (let i = 0; i < layout.rack.length; i++) {
-        const slot = layout.rack[i];
-        const ball = new Pickup(slot.x, slot.y, "pool_ball", 0);
-        ball.faction = faction;
-        ball.poolBall = poolBallFromNumber(slot.number);
-        ball.sandboxPoolRackId = id;
-        if (tableId) ball.sandboxPoolTableId = tableId;
-        wakePushableBody(ball);
-        host.addPickup(ball);
-    }
-    return { id, cueBallId: cue.id };
+    const resolved = getResolvedAssembly("poolTable");
+    if (!resolved) return null;
+    return spawnAssemblyRack(host, cueX, cueY, { faction, rackId, groupId: tableId, resolved, layout: layoutOverride });
 }

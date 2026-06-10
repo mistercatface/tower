@@ -1,3 +1,4 @@
+import { resolvePickupInputGateRules } from "./sandboxBehaviorConfig.js";
 import { isKinematicallyActive } from "../Spatial/collision/entityBroadphase.js";
 /**
  * @typedef {"self" | "groupPickups" | "groupPushables"} InputGateScope
@@ -75,8 +76,8 @@ export function evaluateInputGateRule(rule, pickup, pickups) {
  * @param {import("./SandboxHostPort.js").SandboxHostPort} host
  */
 export function evaluateInputGates(behaviorId, pickup, asset, host) {
-    const rules = asset?.sandbox?.inputGates?.[behaviorId];
-    if (!Array.isArray(rules) || rules.length === 0) return { allowed: true };
+    const rules = resolvePickupInputGateRules(pickup, asset, behaviorId);
+    if (rules.length === 0) return { allowed: true };
     const pickups = host.getPickups?.() ?? host.getWorldState?.()?.pickups ?? [];
     for (let i = 0; i < rules.length; i++) {
         const rule = rules[i];

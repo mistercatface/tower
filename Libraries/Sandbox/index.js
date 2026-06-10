@@ -28,6 +28,9 @@ export { drawSandboxPathOverlay } from "./drawSandboxPathOverlay.js";
 export { renderSandboxEquipPanel } from "./sandboxEquipPanel.js";
 export { getSandboxBehaviorLabel, isSandboxEquippable, isSandboxSpawnable, resolveSandboxBehaviors, SANDBOX_BEHAVIOR_LABELS } from "./sandboxCapabilities.js";
 export { evaluateInputGates, evaluateInputGateRule, isEntityAtRest, isEntityAsleep, resolveInputGateScope } from "./inputGates.js";
+export { resolvePickupSandboxBehavior, resolvePickupInputGateRules } from "./sandboxBehaviorConfig.js";
+export { getAssemblyManifest, getDefaultPoolTableAssemblyManifest, getResolvedAssembly, registerAssemblyManifest, resolveAssemblyManifest } from "./assemblies/assemblyRegistry.js";
+export { spawnAssembly, deleteAssemblyInstance, clearAssemblyInstances } from "./spawnAssembly.js";
 export {
     DRAG_LAUNCH_DEFAULTS,
     applyDragLaunchVelocity,
