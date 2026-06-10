@@ -149,7 +149,7 @@
  * @property {RunBootstrapPort} [runBootstrapPort] — new-run entity/world setup after `generateWorld`
  * @property {InputPort} [input] — optional canvas zoom/pinch hooks
  * @property {(phase: string) => boolean} [isWorldScene] — 3D world draw eligibility; defaults to simulation phase only
- * @property {RunScenePort} runScenePort — simulation enter/tick/layout hooks
+ * @property {RunScenePort} [runScenePort] — simulation enter/tick/layout hooks
  * @property {CombatPort} [combatPort] — defaults to noop when omitted
  * @property {(fsm: import("../Libraries/FSM/StateMachine.js").StateMachine) => import("../Libraries/Input/keyboardBindings.js").KeyBinding[]} [keyBindings]
  * @property {() => void} [onCanvasResize]

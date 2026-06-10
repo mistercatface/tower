@@ -19,16 +19,12 @@ import { getTilelabSandboxController } from "./world/tilelabSandbox.js";
 import { registerEditorProfiles } from "./ui/preview.js";
 import { readControls, syncPreviewZoomToStage } from "./ui/toolbar.js";
 import { initEmptyTilelabMap } from "./world/mapWorld.js";
-import { mergePairFilter } from "../../Libraries/Interaction/pairRules.js";
-import { excludeDeadOther, excludeActorOther, requirePickupOnHit } from "../../Libraries/Interaction/pairRuleClauses.js";
 import { tilelabUiPort } from "./ui/tilelabUiPort.js";
 import { sandboxPathEffectPass } from "./render/sandboxPathEffectPass.js";
 import { drawSandboxAssemblySurfaces } from "../../Libraries/Sandbox/assemblySurfaceDraw.js";
 export const LAB_PREVIEW_RANGE = 160;
 export const TILELAB_SANDBOX_SPAWN_PROP = "beach_ball";
 export const tilelabMapTopology = { ...ROGUELIKE_MAP_TOPOLOGY };
-const SANDBOX_PROJECTILE_HIT_PICKUP = mergePairFilter(excludeDeadOther, excludeActorOther, requirePickupOnHit);
-export const tilelabInteractionPairs = { projectileHitPickup: SANDBOX_PROJECTILE_HIT_PICKUP };
 const sandboxTickPhase = {
     id: "sandboxTick",
     run(ctx, dt) {
@@ -36,17 +32,6 @@ const sandboxTickPhase = {
     },
 };
 export const tilelabSimulation = createSimulationPort([sandboxTickPhase, pushablePhysicsPhase, sandboxVoidZonePhase, tilelabGroundZonePhase]);
-/** @type {import("../../Core/GameDefinitionTypes.js").RunScenePort} */
-export const tilelabRunScenePort = {
-    getLayout: () => null,
-    onSimulationEnter(ctx) {
-        const { state } = ctx;
-        initEmptyTilelabMap(state);
-        registerEditorProfiles(state).then(() => {
-            syncPreviewZoomToStage(state);
-        });
-    },
-};
 export class TileLabGameState extends SharedGameState {
     constructor() {
         super();
@@ -69,6 +54,14 @@ export class TileLabGameState extends SharedGameState {
         this.wallResolver = createCombatWallResolver(() => getGameState());
     }
 }
+/** @param {{ state: TileLabGameState }} ctx */
+export function initEditorSession(ctx) {
+    const { state } = ctx;
+    initEmptyTilelabMap(state);
+    registerEditorProfiles(state).then(() => {
+        syncPreviewZoomToStage(state);
+    });
+}
 /** @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition */
 export const editorGame = {
     id: "editor",
@@ -87,7 +80,6 @@ export const editorGame = {
     worldGen: createRoguelikeWorldGenPort({ topology: tilelabMapTopology }),
     worldSurface: { pixelsPerCell: 6 },
     proceduralDesign: roguelikeProceduralDesign,
-    runScenePort: tilelabRunScenePort,
     viewPort: {
         getViewCenter(state) {
             const viewport = state.viewport;

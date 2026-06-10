@@ -10,7 +10,7 @@ import { applyGamePropPixelSize } from "../../Core/GamePropPixelSize.js";
 import { applyGamePropQuantizeSettings } from "../../Core/GamePropQuantizeSettings.js";
 import { getUiPort } from "../../Core/GamePorts.js";
 import { mountGameUi } from "../../UI/Core/uiRoot.js";
-import { editorGame, tilelabRunScenePort } from "./index.js";
+import { editorGame, initEditorSession } from "./index.js";
 import { renderTilelabPreview } from "./ui/preview.js";
 import { readControls } from "./ui/toolbar.js";
 /** Editor boot — shared engine setup and loop, no FSM or createGame. */
@@ -61,7 +61,7 @@ export function createEditorApp() {
         requestAnimationFrame(loop);
     }
     function enterEditor() {
-        tilelabRunScenePort.onSimulationEnter({ state });
+        initEditorSession({ state });
         requestUiUpdate();
     }
     function resizeCanvas() {

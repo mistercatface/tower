@@ -4,14 +4,12 @@ import { BaseGeneratorStrategies } from "../Generator/GeneratorStrategies.js";
 import { NOOP_TARGETING_PORT, NOOP_VIEW_PORT } from "../Libraries/Ports/noopPorts.js";
 import { getActiveGameDefinition } from "./ActiveGameDefinition.js";
 /** @typedef {import("./GameDefinitionTypes.js").InteractionPairsPort} InteractionPairsPort */
-/** @typedef {import("./GameDefinitionTypes.js").SimulationPort} SimulationPort */
 /** @typedef {import("./GameDefinitionTypes.js").UiPort} UiPort */
 /** @typedef {import("./GameDefinitionTypes.js").TargetingPort} TargetingPort */
 /** @typedef {import("./GameDefinitionTypes.js").ViewPort} ViewPort */
 /** @typedef {import("./GameDefinitionTypes.js").RenderPorts} RenderPorts */
 /** @typedef {import("./GameDefinitionTypes.js").WorldGenPort} WorldGenPort */
 /** @typedef {import("./GameDefinitionTypes.js").RunBootstrapPort} RunBootstrapPort */
-/** @typedef {import("./GameDefinitionTypes.js").RunScenePort} RunScenePort */
 function requireGameDefinition() {
     const def = getActiveGameDefinition();
     if (!def) throw new Error("No active game definition — call setActiveGameDefinition before using game ports.");
@@ -22,12 +20,6 @@ export function getInteractionPairs() {
     const overrides = requireGameDefinition().interactionPairs;
     const base = createDefaultInteractionPairs();
     return overrides ? { ...base, ...overrides } : base;
-}
-/** @returns {SimulationPort} */
-export function getSimulationPort() {
-    const port = requireGameDefinition().simulationPort;
-    if (!port) throw new Error("Active game definition missing simulationPort.");
-    return port;
 }
 /** @returns {UiPort} */
 export function getUiPort() {
@@ -58,12 +50,6 @@ export function getWorldGen() {
     const worldGen = requireGameDefinition().worldGen;
     if (!worldGen) throw new Error("Active game definition missing worldGen port.");
     return worldGen;
-}
-/** @returns {RunScenePort} */
-export function getRunScenePort() {
-    const port = requireGameDefinition().runScenePort;
-    if (!port) throw new Error("Active game definition missing runScenePort.");
-    return port;
 }
 /** Roguelike map node → world scale; arena games default to 0. */
 export function getNodeWorldCoordScale() {
