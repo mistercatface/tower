@@ -10,7 +10,7 @@ import { getSurfaceProfileProvider } from "../Libraries/Procedural/SurfaceProfil
 /** @type {ProceduralDesignConfig | null} */
 let activeProceduralDesign = null;
 /**
- * @param {import("./GameDefinitionTypes.js").GameDefinition | null | undefined} definition
+ * @param {import("./GameDefinitionTypes.js").EngineProfile | null | undefined} definition
  * @returns {ProceduralDesignConfig | null}
  */
 export function resolveProceduralDesignConfig(definition) {
@@ -45,7 +45,7 @@ export function resolveActiveSurfaceProfileId({ layer = 0, strategy } = {}) {
     throw new Error("proceduralDesign.surfaceProfileId or defaultSurfaceProfileId required");
 }
 /**
- * @param {import("./GameDefinitionTypes.js").GameDefinition | null | undefined} definition
+ * @param {import("./GameDefinitionTypes.js").EngineProfile | null | undefined} definition
  * @returns {Pick<import("../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings, "animationBakeMaxFrames">}
  */
 export function resolveProceduralBakeSettings(definition) {
@@ -53,7 +53,7 @@ export function resolveProceduralBakeSettings(definition) {
     if (!raw || raw.animationBakeMaxFrames === undefined) return {};
     return { animationBakeMaxFrames: raw.animationBakeMaxFrames };
 }
-/** @param {import("./GameDefinitionTypes.js").GameDefinition} definition */
+/** @param {import("./GameDefinitionTypes.js").EngineProfile} definition */
 export function applyGameProceduralDesign(definition) {
     activeProceduralDesign = resolveProceduralDesignConfig(definition);
     if (!isSurfaceProfileProviderInstalled()) return;

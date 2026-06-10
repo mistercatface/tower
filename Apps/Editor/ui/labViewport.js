@@ -1,4 +1,4 @@
-import { editorGame } from "../index.js";
+import { engine } from "../engine.js";
 import { applySpeedControl } from "../../../Libraries/Playback/index.js";
 import { applyZoomControl, clampZoom, directZoomMapping } from "../../../Libraries/Viewport/index.js";
 import { getDefaultSimulationZoom } from "../../../Render/SimulationViewport.js";
@@ -50,7 +50,7 @@ export function mountLabViewport(state, onViewChange) {
             onViewChange();
         },
     });
-    speedControl = applySpeedControl(document.getElementById("labSpeedControl"), { inject: true, definition: editorGame });
+    speedControl = applySpeedControl(document.getElementById("labSpeedControl"), { inject: true, definition: engine });
     speedControl.refresh(state);
     setupLabViewportNavigation("gameCanvas", { getCamera: () => state.viewport, setCamera: (x, y, zoom) => applyCamera(state, x, y, zoom), onUpdate: onViewChange });
 }

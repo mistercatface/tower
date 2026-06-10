@@ -2,31 +2,25 @@ import { PairFilter } from "../Libraries/Interaction/PairFilter.js";
 import { createDefaultInteractionPairs } from "../Libraries/Interaction/defaultPhysicsPairs.js";
 import { BaseGeneratorStrategies } from "../Generator/GeneratorStrategies.js";
 import { NOOP_TARGETING_PORT, NOOP_VIEW_PORT } from "../Libraries/Ports/noopPorts.js";
-import { getActiveGameDefinition } from "./ActiveGameDefinition.js";
+import { engine } from "../Apps/Editor/engine.js";
 /** @typedef {import("./GameDefinitionTypes.js").InteractionPairsPort} InteractionPairsPort */
 /** @typedef {import("./GameDefinitionTypes.js").TargetingPort} TargetingPort */
 /** @typedef {import("./GameDefinitionTypes.js").ViewPort} ViewPort */
 /** @typedef {import("./GameDefinitionTypes.js").RenderPorts} RenderPorts */
 /** @typedef {import("./GameDefinitionTypes.js").WorldGenPort} WorldGenPort */
-/** @typedef {import("./GameDefinitionTypes.js").RunBootstrapPort} RunBootstrapPort */
-function requireGameDefinition() {
-    const def = getActiveGameDefinition();
-    if (!def) throw new Error("No active game definition — call setActiveGameDefinition before using game ports.");
-    return def;
-}
 /** @returns {InteractionPairsPort} */
 export function getInteractionPairs() {
-    const overrides = requireGameDefinition().interactionPairs;
+    const overrides = engine.interactionPairs;
     const base = createDefaultInteractionPairs();
     return overrides ? { ...base, ...overrides } : base;
 }
 /** @returns {TargetingPort} */
 export function getTargeting() {
-    return requireGameDefinition().targeting ?? NOOP_TARGETING_PORT;
+    return engine.targeting ?? NOOP_TARGETING_PORT;
 }
 /** @returns {ViewPort} */
 export function getViewPort() {
-    return requireGameDefinition().viewPort ?? NOOP_VIEW_PORT;
+    return engine.viewPort ?? NOOP_VIEW_PORT;
 }
 /** @param {object} state */
 export function getViewCenter(state) {
@@ -34,14 +28,14 @@ export function getViewCenter(state) {
 }
 /** @returns {RenderPorts} */
 export function getRenderPorts() {
-    const render = requireGameDefinition().render;
-    if (!render) throw new Error("Active game definition missing render port.");
+    const render = engine.render;
+    if (!render) throw new Error("Editor engine profile missing render port.");
     return render;
 }
 /** @returns {WorldGenPort} */
 export function getWorldGen() {
-    const worldGen = requireGameDefinition().worldGen;
-    if (!worldGen) throw new Error("Active game definition missing worldGen port.");
+    const worldGen = engine.worldGen;
+    if (!worldGen) throw new Error("Editor engine profile missing worldGen port.");
     return worldGen;
 }
 /** Roguelike map node → world scale; arena games default to 0. */
@@ -50,17 +44,9 @@ export function getNodeWorldCoordScale() {
 }
 /** @param {string} phase */
 export function isWorldScene(phase) {
-    const check = requireGameDefinition().isWorldScene;
+    const check = engine.isWorldScene;
     if (check) return check(phase);
     return phase === "simulation";
-}
-/** @returns {RunBootstrapPort | null} */
-export function getRunBootstrapPort() {
-    return requireGameDefinition().runBootstrapPort ?? null;
-}
-/** @param {object} state */
-export function resetRun(state) {
-    getRunBootstrapPort()?.resetRun(state);
 }
 /** @param {object} state */
 export function generateWorld(state) {

@@ -1,6 +1,6 @@
 /**
  * JSDoc types for the editor engine profile (render/sim/world-gen hooks).
- * Not a multi-game registry — one profile is installed at boot via `setActiveGameDefinition`.
+ * Shared engine code reads the installed profile via `Apps/Editor/engine.js`.
  */
 /**
  * @typedef {import("../Libraries/Interaction/pairRules.js").PairFilterConfig} PairFilterConfig
@@ -99,27 +99,10 @@
  * @typedef {import("./GamePerspective.js").PerspectiveConfig} PerspectiveConfig
  */
 /**
- * @typedef {object} GameFeature
- * @property {(state: object) => void} [initState]
- * @property {() => void} [prepare]
- * @property {(eventBus: import("../Libraries/Events/EventBus.js").EventBus) => void} [registerListeners]
- * @property {Partial<InteractionPairsPort>} [interactionPairs]
- * @property {TargetingPort} [targeting]
- * @property {(ctx: object) => import("../../Systems/Simulation/SimulationRuntime.js").SimulationRuntime} [beginRuntime]
- * @property {import("../../Systems/Simulation/SimulationPipeline.js").SimulationPhase[]} [simulationPhases]
- * @property {string} [simulationPhaseInsertAfter]
- * @property {SimulationEffectPass[]} [simulationEffectPasses]
- * @property {(state: object, viewport: object, ctx: CanvasRenderingContext2D, renderer: import("../Render/Render.js").Renderer) => void} [drawPostSimulation]
- */
-/**
- * @typedef {object} RunBootstrapPort
- * @property {(state: object) => void} resetRun
- */
-/**
  * @typedef {object} CombatPort
  */
 /**
- * Engine profile installed once at editor boot (`editorGame` in Apps/Editor).
+ * Editor engine profile (`engine` in Apps/Editor/engine.js).
  *
  * @typedef {object} EngineProfile
  * @property {string} id
@@ -142,5 +125,4 @@
  * @property {Partial<import("../Libraries/Props/propRenderDefaults.js").LibraryPropQuantizeSteps>} [propQuantizeSteps]
  * @property {PlaybackConfig} [playback]
  */
-/** @typedef {EngineProfile} GameDefinition */
 export {};

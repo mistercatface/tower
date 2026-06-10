@@ -1,11 +1,11 @@
 /** Baseline simulation playback tuning — games override via `definition.playback`. */
 export const LIBRARY_PLAYBACK_DEFAULTS = { minSpeed: 0.25, maxSpeed: 2.0, step: 0.25 };
 /**
- * @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition
+ * @typedef {import("../../Core/GameDefinitionTypes.js").EngineProfile} EngineProfile
  */
 /**
  * @param {object} state
- * @param {Partial<GameDefinition> | null | undefined} definition
+ * @param {Partial<EngineProfile> | null | undefined} definition
  */
 export function resolveMaxSpeed(state, definition) {
     if (definition?.playback?.maxSpeed != null) return definition.playback.maxSpeed;
@@ -14,20 +14,20 @@ export function resolveMaxSpeed(state, definition) {
     return LIBRARY_PLAYBACK_DEFAULTS.maxSpeed;
 }
 /**
- * @param {Partial<GameDefinition> | null | undefined} definition
+ * @param {Partial<EngineProfile> | null | undefined} definition
  */
 export function resolveMinSpeed(definition) {
     return definition?.playback?.minSpeed ?? LIBRARY_PLAYBACK_DEFAULTS.minSpeed;
 }
 /**
- * @param {Partial<GameDefinition> | null | undefined} definition
+ * @param {Partial<EngineProfile> | null | undefined} definition
  */
 export function resolveStep(definition) {
     return definition?.playback?.step ?? LIBRARY_PLAYBACK_DEFAULTS.step;
 }
 /**
  * @param {object} state
- * @param {Partial<GameDefinition> | null | undefined} definition
+ * @param {Partial<EngineProfile> | null | undefined} definition
  */
 export function clampSelectedSpeed(state, definition) {
     const max = resolveMaxSpeed(state, definition);
@@ -38,7 +38,7 @@ export function clampSelectedSpeed(state, definition) {
 /**
  * @param {object} state
  * @param {number} delta
- * @param {Partial<GameDefinition> | null | undefined} definition
+ * @param {Partial<EngineProfile> | null | undefined} definition
  */
 export function adjustSelectedSpeed(state, delta, definition) {
     const max = resolveMaxSpeed(state, definition);
@@ -49,7 +49,7 @@ export function adjustSelectedSpeed(state, delta, definition) {
 }
 /**
  * @param {object} state
- * @param {Partial<GameDefinition> | null | undefined} definition
+ * @param {Partial<EngineProfile> | null | undefined} definition
  */
 export function getSpeedControlView(state, definition) {
     const max = resolveMaxSpeed(state, definition);

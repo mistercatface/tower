@@ -1,6 +1,5 @@
 import { gridSettings } from "../../../Config/Config.js";
-import { generateWorld } from "../../../Core/GamePorts.js";
-import { editorGame } from "../index.js";
+import { generateWorld, getWorldGen } from "../../../Core/GamePorts.js";
 import { buildGameMapRenderCaches, buildTopologyMapRenderCaches } from "../../../Libraries/Render/map/MapRenderCache.js";
 import { getRoguelikeMapSession, regenerateRoguelikeMap } from "../../../Libraries/WorldGen/session/index.js";
 import { clearTilelabSandbox } from "./tilelabSandbox.js";
@@ -56,7 +55,7 @@ export function focusLabNode(state, nodeId) {
     const node = state.getMapNode(nodeId);
     if (!node) return;
     const worldCoords = state.getNodeWorldCoords(node);
-    const worldGen = editorGame.worldGen;
+    const worldGen = getWorldGen();
     const startNodeId = worldGen.startMapNodeId ?? 0;
     if (nodeId === startNodeId) {
         const layout = worldGen.getStartLayout(worldCoords.x, worldCoords.y, gridSettings.cellSize);

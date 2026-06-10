@@ -5,28 +5,28 @@ import { clearInteractionPairFilterCache } from "./GamePorts.js";
 import { peekGameState } from "../GameState/GameState.js";
 import { applyGamePerspective } from "./GamePerspective.js";
 import { applyGameProceduralDesign, resolveProceduralBakeSettings } from "./GameProceduralDesign.js";
-/** @typedef {import("./GameDefinitionTypes.js").GameDefinition} GameDefinition */
+/** @typedef {import("./GameDefinitionTypes.js").EngineProfile} EngineProfile */
 let workersConfigured = false;
 /**
  * Single engine bootstrap: surface profiles, workers, procedural defaults, perspective, world-surface settings.
  * Called from editor boot (`createEditorApp`) after `installGameState`.
  *
- * @param {GameDefinition} definition
+ * @param {EngineProfile} profile
  */
-export function bootstrapEngine(definition) {
+export function bootstrapEngine(profile) {
     clearInteractionPairFilterCache();
-    installGameSurfaceProfileProvider(definition);
+    installGameSurfaceProfileProvider(profile);
     if (!workersConfigured) {
         configureTileWorkerCoordinator({ workerUrl: TILE_WORKER_URL });
         workersConfigured = true;
     }
-    applyGameProceduralDesign(definition);
-    const perspective = applyGamePerspective(definition);
+    applyGameProceduralDesign(profile);
+    const perspective = applyGamePerspective(profile);
     installGameWorldSurfaceSettings({
         cameraHeight: perspective.cameraHeight,
-        pixelsPerCell: definition?.worldSurface?.pixelsPerCell,
-        wallHeight: definition?.worldSurface?.wallHeight,
-        ...resolveProceduralBakeSettings(definition),
+        pixelsPerCell: profile?.worldSurface?.pixelsPerCell,
+        wallHeight: profile?.worldSurface?.wallHeight,
+        ...resolveProceduralBakeSettings(profile),
     });
     const state = peekGameState();
     if (state) syncWorldSurfaceEngineSettings(state);

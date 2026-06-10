@@ -6,7 +6,7 @@ let activePropQuantizeSteps = LIBRARY_PROP_QUANTIZE_STEPS;
 export function getDefaultPropQuantizeSteps() {
     return activePropQuantizeSteps;
 }
-/** @param {import("./GameDefinitionTypes.js").GameDefinition | null | undefined} definition */
+/** @param {import("./GameDefinitionTypes.js").EngineProfile | null | undefined} definition */
 export function applyGamePropQuantizeSettings(definition) {
     activePropQuantizeSteps = mergeQuantizeSteps(LIBRARY_PROP_QUANTIZE_STEPS, definition?.propQuantizeSteps);
 }

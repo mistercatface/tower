@@ -22,13 +22,13 @@ export function resolvePropPixelSizeForProp(prop) {
     if (hasEntityPropPixelSize(prop)) return prop.strategy.propPixelSize;
     return activePropPixelSize;
 }
-/** @param {import("./GameDefinitionTypes.js").GameDefinition | null | undefined} definition */
+/** @param {import("./GameDefinitionTypes.js").EngineProfile | null | undefined} definition */
 export function resolvePropPixelSize(definition) {
     const value = definition?.propPixelSize;
     if (typeof value === "number" && value > 0) return value;
     return defaultPropPixelSize;
 }
-/** @param {import("./GameDefinitionTypes.js").GameDefinition} definition */
+/** @param {import("./GameDefinitionTypes.js").EngineProfile} definition */
 export function applyGamePropPixelSize(definition) {
     activePropPixelSize = resolvePropPixelSize(definition);
     clearPropSpriteCache();

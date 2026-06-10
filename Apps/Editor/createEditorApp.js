@@ -1,33 +1,32 @@
-import { composeEditorProfile, initEditorFeatureState, prepareEditorFeatures, registerEditorFeatureListeners } from "./editorFeatures.js";
+import { engine, initEngineState, prepareEngine } from "./engine.js";
+import { registerEngineSimulationListeners } from "./editorSimulation.js";
+import "./editorSimulation.js";
 import { installGameState } from "../../GameState/GameState.js";
 import { events, requestUiUpdate, Events } from "../../Core/EventSystem.js";
 import { registerCoreListeners } from "../../Core/GameListeners.js";
 import { PauseManager } from "../../Core/PauseManager.js";
-import { setActiveGameDefinition } from "../../Core/ActiveGameDefinition.js";
 import { bootstrapEngine } from "../../Core/bootstrapEngine.js";
 import { applyGameCollisionSettings } from "../../Core/GameCollisionSettings.js";
 import { applyGamePropPixelSize } from "../../Core/GamePropPixelSize.js";
 import { applyGamePropQuantizeSettings } from "../../Core/GamePropQuantizeSettings.js";
 import { mountGameUi } from "../../UI/Core/uiRoot.js";
-import { editorGame, initEditorSession } from "./index.js";
+import { initEditorSession } from "./index.js";
 import { tilelabUiPort } from "./ui/tilelabUiPort.js";
 import { renderTilelabPreview } from "./ui/preview.js";
 import { readControls } from "./ui/toolbar.js";
 /** Editor boot — shared engine setup and loop. */
 export function createEditorApp() {
-    setActiveGameDefinition(editorGame);
-    composeEditorProfile(editorGame);
-    const state = editorGame.createGameState();
-    initEditorFeatureState(state);
+    const state = engine.createGameState();
+    initEngineState(state);
     installGameState(state);
-    prepareEditorFeatures();
-    editorGame.prepare?.();
-    bootstrapEngine(editorGame);
-    applyGameCollisionSettings(editorGame);
-    applyGamePropQuantizeSettings(editorGame);
-    applyGamePropPixelSize(editorGame);
+    prepareEngine();
+    engine.prepare?.();
+    bootstrapEngine(engine);
+    applyGameCollisionSettings(engine);
+    applyGamePropQuantizeSettings(engine);
+    applyGamePropPixelSize(engine);
     const viewport = state.viewport;
-    const simulation = editorGame.simulationPort;
+    const simulation = engine.simulationPort;
     const pauseManager = new PauseManager(state);
     function tickSimulation(dt) {
         if (state.isPaused) return;
@@ -54,10 +53,10 @@ export function createEditorApp() {
         requestUiUpdate();
     }
     function resizeCanvas() {
-        editorGame.onCanvasResize?.();
+        engine.onCanvasResize?.();
     }
-    registerCoreListeners(events, pauseManager, editorGame);
-    registerEditorFeatureListeners(events);
+    registerCoreListeners(events, pauseManager, engine);
+    registerEngineSimulationListeners(events);
     events.setContext({ state, viewport });
     events.warnOnMissingListeners = true;
     events.on(Events.UI_UPDATE, () => {

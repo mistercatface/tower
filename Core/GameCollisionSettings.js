@@ -6,7 +6,7 @@ let activeCollisionSettings = LIBRARY_COLLISION_DEFAULTS;
 export function getCollisionSettings() {
     return activeCollisionSettings;
 }
-/** @param {import("./GameDefinitionTypes.js").GameDefinition | null | undefined} definition */
+/** @param {import("./GameDefinitionTypes.js").EngineProfile | null | undefined} definition */
 export function applyGameCollisionSettings(definition) {
     activeCollisionSettings = mergePartial(LIBRARY_COLLISION_DEFAULTS, definition?.collisionSettings);
 }

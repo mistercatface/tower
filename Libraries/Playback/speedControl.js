@@ -1,5 +1,5 @@
 import { adjustGameSpeed, toggleGamePause } from "../../Core/EventSystem.js";
-import { getActiveGameDefinition } from "../../Core/ActiveGameDefinition.js";
+import { engine } from "../../Apps/Editor/engine.js";
 import { clampSelectedSpeed, getSpeedControlView, resolveStep } from "./playbackController.js";
 /**
  * @typedef {object} SpeedControlClassNames
@@ -19,14 +19,14 @@ import { clampSelectedSpeed, getSpeedControlView, resolveStep } from "./playback
 /**
  * @typedef {object} ApplySpeedControlOptions
  * @property {boolean} [inject]
- * @property {import("../../Core/GameDefinitionTypes.js").GameDefinition | null} [definition]
+ * @property {import("../../Core/GameDefinitionTypes.js").EngineProfile | null} [definition]
  * @property {SpeedControlClassNames} [classNames]
  * @property {SpeedControlIds} [ids]
  */
 /**
  * @typedef {object} SpeedControlHandle
  * @property {HTMLElement | null} root
- * @property {(state: object, definition?: import("../../Core/GameDefinitionTypes.js").GameDefinition | null) => void} refresh
+ * @property {(state: object, definition?: import("../../Core/GameDefinitionTypes.js").EngineProfile | null) => void} refresh
  */
 const wiredHosts = new WeakSet();
 /**
@@ -76,7 +76,7 @@ export function applySpeedControl(host, options = {}) {
     const root = elements.root instanceof HTMLElement ? elements.root : null;
     if (!wiredHosts.has(host)) {
         wiredHosts.add(host);
-        const resolveDef = () => definition ?? getActiveGameDefinition();
+        const resolveDef = () => definition ?? engine;
         elements.speedDownBtn?.addEventListener("click", () => adjustGameSpeed(-resolveStep(resolveDef())));
         elements.speedUpBtn?.addEventListener("click", () => adjustGameSpeed(resolveStep(resolveDef())));
         elements.pauseBtn?.addEventListener("click", () => toggleGamePause());
@@ -84,7 +84,7 @@ export function applySpeedControl(host, options = {}) {
     return {
         root,
         refresh(state, definitionOverride) {
-            const def = definitionOverride ?? definition ?? getActiveGameDefinition();
+            const def = definitionOverride ?? definition ?? engine;
             clampSelectedSpeed(state, def);
             const view = getSpeedControlView(state, def);
             if (elements.pauseLabel) elements.pauseLabel.textContent = view.pauseLabel;

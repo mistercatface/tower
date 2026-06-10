@@ -4,7 +4,7 @@ import { surfaceProceduralProfiles } from "./profiles.js";
 /**
  * Install shipped profile catalog. Requires `definition.proceduralDesign.surfaceProfileId`.
  *
- * @param {import("../../Core/GameDefinitionTypes.js").GameDefinition | null | undefined} definition
+ * @param {import("../../Core/GameDefinitionTypes.js").EngineProfile | null | undefined} definition
  */
 export function installGameSurfaceProfileProvider(definition) {
     if (isSurfaceProfileProviderInstalled()) return getSurfaceProfileProvider();

@@ -10,12 +10,12 @@ import { setCameraHeight as setIsoCameraHeight, setPerspectiveStrength as setIso
 export const DEFAULT_PERSPECTIVE = { cameraHeight: LIBRARY_DEFAULT_CAMERA_HEIGHT, strength: LIBRARY_DEFAULT_PERSPECTIVE_STRENGTH, viewerSource: "player" };
 /** @type {PerspectiveConfig} */
 let activePerspective = { ...DEFAULT_PERSPECTIVE };
-/** @param {import("./GameDefinitionTypes.js").GameDefinition | null | undefined} definition */
+/** @param {import("./GameDefinitionTypes.js").EngineProfile | null | undefined} definition */
 export function resolvePerspectiveConfig(definition) {
     return { ...DEFAULT_PERSPECTIVE, ...definition?.perspective };
 }
 /**
- * @param {import("./GameDefinitionTypes.js").GameDefinition | null | undefined} definition
+ * @param {import("./GameDefinitionTypes.js").EngineProfile | null | undefined} definition
  * @returns {PerspectiveConfig}
  */
 export function applyGamePerspective(definition) {
