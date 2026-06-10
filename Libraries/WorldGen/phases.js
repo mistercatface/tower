@@ -1,5 +1,6 @@
 import { Segment } from "../../Entities/Wall.js";
-import { getGeneratorStrategies, getRandomGeneratorStrategyKeys, getWorldGen } from "../../Core/GamePorts.js";
+import { engine } from "../../Apps/Editor/engine.js";
+import { BaseGeneratorStrategies } from "../../Generator/GeneratorStrategies.js";
 import { gridSettings } from "../../Config/Config.js";
 import { resolveSurfaceProfileId } from "../../Config/procedural/profiles.js";
 import { finalizeGeneratedWorld } from "./finalizeGeneratedWorld.js";
@@ -185,8 +186,8 @@ export function pregenerateRoguelikeNodeRoomsPhase(topology) {
             const { state } = ctx;
             const { tempObstacleGrid, tempFlowFieldGrid } = getWorldGenTempGrids();
             const incomingByNodeId = buildIncomingNodesMap(state.mapNodes);
-            const strategies = getGeneratorStrategies();
-            const strategyKeys = getRandomGeneratorStrategyKeys();
+            const strategies = { ...BaseGeneratorStrategies, ...engine.worldGen.strategies };
+            const strategyKeys = Object.keys(BaseGeneratorStrategies);
             const serializeRadius = topology.nodeRoomSerializeRadius;
             const { numLayers } = topology;
             for (let l = 0; l < numLayers; l++) {
@@ -276,8 +277,7 @@ export const finalizeWorldPhase = {
     run(ctx) {
         const { state, runtime } = ctx;
         const focus = runtime.worldFocus ?? defaultWorldFocus(state);
-        const gridBounds = getWorldGen().getObstacleGridBounds?.(state) ?? null;
-        finalizeGeneratedWorld(state, { centerX: focus.centerX, centerY: focus.centerY, gridBounds });
+        finalizeGeneratedWorld(state, { centerX: focus.centerX, centerY: focus.centerY, gridBounds: null });
     },
 };
 /** @param {object} state @returns {WorldGenContext} */

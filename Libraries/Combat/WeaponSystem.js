@@ -4,7 +4,7 @@ import { Laser } from "./Laser.js";
 import { defaultGunId, getGunDefinition } from "./gunDefaults.js";
 import { getSlotFireIntervalMs } from "./gunCombat.js";
 import { getBeamTickDamage, createBeamHitSource } from "./impactDamage.js";
-import { areHostile, getBroadphaseActors, getHostiles } from "../../Core/GamePorts.js";
+import { engine } from "../../Apps/Editor/engine.js";
 import { advanceTurretAmmo } from "./turretAmmo.js";
 export { advanceTurretAmmo };
 export class ChargedWeaponMode {
@@ -91,7 +91,7 @@ export function createLaserWeaponMode() {
                 }
             }
             const tickDamage = getBeamTickDamage(gun);
-            if (hit.hit === "actor" && areHostile(source, hit.entity)) combatEvents.push({ target: hit.entity, damage: tickDamage, type: "beam" });
+            if (hit.hit === "actor" && engine.targeting.areHostile(source, hit.entity)) combatEvents.push({ target: hit.entity, damage: tickDamage, type: "beam" });
             else if (hit.hit === "pickup" && hit.entity.strategy?.onHit) hit.entity.strategy.onHit(state, hit.entity, createBeamHitSource(gun), combatEvents);
         }
     });
@@ -103,7 +103,7 @@ export function resolveWeaponModeForGun(gun) {
 export const LASER_WEAPON_MODE = createLaserWeaponMode();
 export class WeaponSystem {
     static castLaser(startX, startY, angle, maxDist, state, beamRadius = 1, source = null) {
-        const actorTargets = source ? getHostiles(state, source) : getBroadphaseActors(state);
+        const actorTargets = source ? engine.targeting.getHostiles(state, source) : engine.targeting.getBroadphaseActors(state);
         const circles = buildLaserTargetCircles(state, { source, includePickups: true, includeActors: actorTargets });
         return castLaserRay(startX, startY, angle, maxDist, state, beamRadius, circles);
     }

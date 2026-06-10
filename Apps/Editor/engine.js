@@ -30,14 +30,15 @@ import { syncPreviewZoomToStage, readControls } from "./ui/toolbar.js";
 import { tilelabUiPort } from "./ui/tilelabUiPort.js";
 import { renderTilelabPreview } from "./ui/preview.js";
 /** @typedef {{ togglePause: () => void, adjustSpeed: (delta: number) => void }} PlaybackHandlers */
-/** Editor engine profile — hooks for shared render/sim/world-gen code (`GamePorts`). */
+/** Editor engine profile — shared render/sim/world-gen hooks. */
 export const engine = {
     id: "editor",
-    /** @type {PlaybackHandlers | null} */
-    playbackHandlers: null,
+    interactionPairs: sandboxInteractionPairs,
+    targeting: sandboxTargeting,
     render: {
         ...createDefaultRenderPorts({ weaponVisuals: createWeaponVisuals(GUN_ID_TO_VISUAL) }),
         drawGroundOverlays: (state, viewport, ctx) => drawSandboxAssemblySurfaces(ctx, state, viewport),
+        drawPostSimulation: (state, viewport, ctx) => CombatParticles.renderAll(ctx, state, viewport),
         simulationEffectPasses: [
             sandboxVoidZoneEffectPass,
             tilelabGroundZoneEffectPass,
@@ -60,46 +61,43 @@ export const engine = {
             return viewport ? { x: viewport.x, y: viewport.y } : null;
         },
     },
+    simulationPort: createSimulationPort(
+        [
+            {
+                id: "sandboxTick",
+                run(ctx, dt) {
+                    getTilelabSandboxController()?.tick(dt);
+                },
+            },
+            sandboxAutoCombatPhase,
+            projectilesPhase,
+            combatParticlesPhase,
+            pushablePhysicsPhase,
+            ragdollCorpsePhase,
+            dispatchEventsPhase,
+            sandboxVoidZonePhase,
+            tilelabGroundZonePhase,
+            {
+                id: "floatingText",
+                run(ctx, dt) {
+                    FloatingText.updateAll(ctx.state, dt);
+                },
+            },
+        ],
+        {
+            beginRuntime(ctx) {
+                return { spatialFrame: combatSpatial.begin(ctx.state), events: [] };
+            },
+        },
+    ),
+    /** @type {PlaybackHandlers} */
+    playbackHandlers: { togglePause() {}, adjustSpeed() {} },
     onCanvasResize() {
         const state = getGameState();
         const canvas = state?.labCanvas;
         if (!canvas) return;
         applyLabCanvasSize(state, canvas.width, canvas.height);
     },
-};
-engine.interactionPairs = sandboxInteractionPairs;
-engine.targeting = sandboxTargeting;
-engine.simulationPort = createSimulationPort(
-    [
-        {
-            id: "sandboxTick",
-            run(ctx, dt) {
-                getTilelabSandboxController()?.tick(dt);
-            },
-        },
-        sandboxAutoCombatPhase,
-        projectilesPhase,
-        combatParticlesPhase,
-        pushablePhysicsPhase,
-        ragdollCorpsePhase,
-        dispatchEventsPhase,
-        sandboxVoidZonePhase,
-        tilelabGroundZonePhase,
-        {
-            id: "floatingText",
-            run(ctx, dt) {
-                FloatingText.updateAll(ctx.state, dt);
-            },
-        },
-    ],
-    {
-        beginRuntime(ctx) {
-            return { spatialFrame: combatSpatial.begin(ctx.state), events: [] };
-        },
-    },
-);
-engine.render.drawPostSimulation = (state, viewport, ctx) => {
-    CombatParticles.renderAll(ctx, state, viewport);
 };
 /** Editor boot — engine setup, UI mount, RAF loop. */
 export function createEditorApp() {
@@ -163,14 +161,12 @@ export function createEditorApp() {
         requestUiUpdate();
     }
     function resizeCanvas() {
-        engine.onCanvasResize?.();
+        engine.onCanvasResize();
     }
     events.on(FLOATING_TEXT_SPAWN_EVENT, FloatingText.handleSpawnEvent);
-    events.setContext({ state, viewport: state.viewport });
     events.warnOnMissingListeners = true;
     events.on(Events.UI_UPDATE, () => tilelabUiPort.updateUI({ state }));
     window.addEventListener("resize", resizeCanvas);
-    window.gameState = state;
     tilelabUiPort.mount({ state });
     resizeCanvas();
     enterEditor();

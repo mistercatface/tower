@@ -1,6 +1,6 @@
 import { SpatialFrameCore } from "../../Libraries/Spatial/world/SpatialFrameCore.js";
 import { populateCombatFrame } from "./populateCombatFrame.js";
-import { getInteractionPairFilter } from "../../Core/GamePorts.js";
+import { getInteractionPairFilter } from "../../Core/interactionPairFilters.js";
 /**
  * Combat/map-transition spatial frame — populates SpatialFrameCore from GameState.
  *

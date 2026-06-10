@@ -1,6 +1,6 @@
 import { SpatialFrameCore } from "../../Libraries/Spatial/world/SpatialFrameCore.js";
 import { populatePushableFrame } from "./populatePushableFrame.js";
-import { getInteractionPairFilter } from "../../Core/GamePorts.js";
+import { getInteractionPairFilter } from "../../Core/interactionPairFilters.js";
 /** Spatial frame for pushable-only sim ticks (no combatants). */
 export class PushableSpatialFrame extends SpatialFrameCore {
     constructor(cellSize = 50) {

@@ -1,6 +1,6 @@
 import { NEIGHBOR_QUERY_PAD } from "../Spatial/collision/entityBroadphase.js";
 import { PairFilter } from "../Interaction/PairFilter.js";
-import { getInteractionPairs } from "../../Core/GamePorts.js";
+import { getInteractionPairs } from "../../Core/interactionPairFilters.js";
 import { accumulateSeparationFromPair, clampSeparationAccum, createSeparationAccum } from "./separationForce.js";
 /** @typedef {import("../Interaction/pairRules.js").PairFilterConfig} PairFilterConfig */
 export class SeparationEngine {

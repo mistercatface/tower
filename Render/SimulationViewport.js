@@ -1,5 +1,4 @@
 import { Viewport } from "../Libraries/Viewport/Viewport.js";
-import { isWorldScene } from "../Core/GamePorts.js";
 export function getSimulationZoomRangeFromVisualRadius(visualRadius, outerFit, innerFit) {
     const radius = Math.max(1, visualRadius);
     const minZoom = radius / Math.max(1, outerFit);
@@ -21,7 +20,7 @@ export class SimulationViewport extends Viewport {
         this.mapZoom = 1.0;
     }
     updateZoomLimits(state, outerFit, innerFit) {
-        if (state && isWorldScene(state.phase)) {
+        if (state) {
             if (outerFit == null || innerFit == null) return;
             const { minZoom, maxZoom } = getSimulationZoomRangeFromVisualRadius(this.getVisualRadius(), outerFit, innerFit);
             if (maxZoom <= minZoom) this.zoom = minZoom;
@@ -29,7 +28,7 @@ export class SimulationViewport extends Viewport {
         } else this.zoom = this.mapZoom;
     }
     setZoom(value, state, outerFit, innerFit) {
-        if (state && isWorldScene(state.phase)) {
+        if (state) {
             if (outerFit == null || innerFit == null) return;
             const { minZoom, maxZoom } = getSimulationZoomRangeFromVisualRadius(this.getVisualRadius(), outerFit, innerFit);
             if (maxZoom <= minZoom) {

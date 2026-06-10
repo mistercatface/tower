@@ -1,4 +1,4 @@
-import { getTargeting } from "../../Core/GamePorts.js";
+import { engine } from "../../Apps/Editor/engine.js";
 import { insertPushables } from "./populatePushableFrame.js";
 import { wallContextFromState } from "../../Libraries/Spatial/query/wallContext.js";
 /**
@@ -17,7 +17,7 @@ export function populateCombatFrame(frame, state, combatants, pushables) {
     pushables.length = 0;
     let physIdCounter = 0;
     const inserted = new Set();
-    for (const actor of getTargeting().getBroadphaseActors(state)) {
+    for (const actor of engine.targeting.getBroadphaseActors(state)) {
         if (inserted.has(actor)) continue;
         inserted.add(actor);
         frame.insertEntity(actor, physIdCounter++);

@@ -58,7 +58,7 @@
  * @typedef {object} SimulationPort
  * @property {(ctx: object, dt: number) => void} runTick
  * @property {(ctx: object) => void} [onEnter]
- * @property {import("../../Systems/Simulation/SimulationPipeline.js").SimulationPhase[]} [phases] — used by feature merging
+ * @property {import("../../Systems/Simulation/SimulationPipeline.js").SimulationPhase[]} [phases]
  * @property {(ctx: object) => import("../../Systems/Simulation/SimulationRuntime.js").SimulationRuntime} [beginRuntime]
  */
 /**
@@ -68,8 +68,7 @@
  * @typedef {object} WorldGenPort
  * @property {(state: object) => void} generateWorld
  * @property {(state: object) => WorldPlayBounds | null} getPlayBounds
- * @property {(state: object) => { centerX: number, centerY: number, width: number, height: number } | null} [getObstacleGridBounds]
- * @property {number} [nodeWorldCoordScale]
+ * @property {number} nodeWorldCoordScale
  * @property {number} [startMapNodeId]
  * @property {(px: number, py: number, cellSize: number) => StartLayout} getStartLayout
  * @property {boolean} [skipStartPickups]
@@ -86,6 +85,11 @@
  * @property {number} [step]
  */
 /**
+ * @typedef {object} PlaybackHandlers
+ * @property {() => void} togglePause
+ * @property {(delta: number) => void} adjustSpeed
+ */
+/**
  * @typedef {import("./GamePerspective.js").PerspectiveConfig} PerspectiveConfig
  */
 /**
@@ -93,13 +97,12 @@
  *
  * @typedef {object} EngineProfile
  * @property {string} id
- * @property {Partial<InteractionPairsPort>} [interactionPairs]
+ * @property {Partial<InteractionPairsPort>} interactionPairs
  * @property {SimulationPort} simulationPort
- * @property {TargetingPort} [targeting]
- * @property {ViewPort} [viewPort]
+ * @property {TargetingPort} targeting
+ * @property {ViewPort} viewPort
  * @property {RenderPorts} render
  * @property {WorldGenPort} worldGen
- * @property {(phase: string) => boolean} [isWorldScene]
  * @property {() => void} [onCanvasResize]
  * @property {() => void | Promise<void>} [prepare]
  * @property {{ actorCache?: import("../Libraries/Canvas/SpriteCache.js").SpriteCache, turretCache?: import("../Libraries/Canvas/SpriteCache.js").SpriteCache }} [caches]
@@ -110,5 +113,6 @@
  * @property {Partial<import("../Libraries/Collision/collisionDefaults.js").LibraryCollisionSettings>} [collisionSettings]
  * @property {Partial<import("../Libraries/Props/propRenderDefaults.js").LibraryPropQuantizeSteps>} [propQuantizeSteps]
  * @property {PlaybackConfig} [playback]
+ * @property {PlaybackHandlers} playbackHandlers
  */
 export {};

@@ -1,5 +1,5 @@
 import { gridSettings } from "../Config/Config.js";
-import { getNodeWorldCoordScale } from "../Core/GamePorts.js";
+import { engine } from "../Apps/Editor/engine.js";
 import { getGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 import { HierarchicalNavigator } from "../Libraries/Pathfinding/HierarchicalNavigator.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
@@ -39,7 +39,7 @@ export class SharedGameState {
     getNodeWorldCoords(node) {
         if (!node) return { x: 0, y: 0 };
         const { x: baseSpawnX, y: baseSpawnY } = this.getMapSpawnOrigin();
-        const scale = getNodeWorldCoordScale();
+        const scale = engine.worldGen.nodeWorldCoordScale;
         return { x: baseSpawnX + node.x * scale, y: baseSpawnY + node.y * scale };
     }
     rebuildMapNodeIndex() {

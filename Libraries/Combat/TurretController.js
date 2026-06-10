@@ -4,7 +4,7 @@ import { getSlotFireIntervalMs } from "./gunCombat.js";
 import { Laser } from "./Laser.js";
 import { getBeamTickDamage, createBeamHitSource } from "./impactDamage.js";
 import { getGunDefinition } from "./gunDefaults.js";
-import { areHostile, getNearestHostile, getBroadphaseActors, inferFaction } from "../../Core/GamePorts.js";
+import { engine } from "../../Apps/Editor/engine.js";
 import { normalizeWeaponLoadout } from "./equipmentLoadout.js";
 import { advanceTurretAmmo } from "./turretAmmo.js";
 export class TurretController {
@@ -30,8 +30,10 @@ export class TurretController {
     }
     getAllyActors(state) {
         if (!state) return [];
-        const myFaction = inferFaction(this.actor);
-        return getBroadphaseActors(state).filter((other) => other !== this.actor && !other.isDead && inferFaction(other) === myFaction && !areHostile(this.actor, other));
+        const myFaction = engine.targeting.inferFaction(this.actor);
+        return engine.targeting
+            .getBroadphaseActors(state)
+            .filter((other) => other !== this.actor && !other.isDead && engine.targeting.inferFaction(other) === myFaction && !engine.targeting.areHostile(this.actor, other));
     }
     getEngagedTargetsFrom(ally) {
         const targets = [];
@@ -94,7 +96,7 @@ export class TurretController {
     }
     findIndependentTurretTarget(state, ownExcluded) {
         const range = this.actor.weapon?.range ?? this.actor.combatRange ?? 200;
-        return getNearestHostile(state, this.actor, range, this.buildIndependentTargetExclusions(ownExcluded, state));
+        return engine.targeting.getNearestHostile(state, this.actor, range, this.buildIndependentTargetExclusions(ownExcluded, state));
     }
     findTurretTarget(state, ownExcluded) {
         const range = this.actor.weapon?.range ?? this.actor.combatRange ?? 200;
@@ -106,13 +108,13 @@ export class TurretController {
             if (ownExcludedSet.has(target)) continue;
             if (this.isValidTurretTargetForSelf(target, state)) return target;
         }
-        const shared = getNearestHostile(state, this.actor, range, ownExcludedSet);
+        const shared = engine.targeting.getNearestHostile(state, this.actor, range, ownExcludedSet);
         if (shared) return shared;
         for (const target of allyEngaged) {
             if (ownExcludedSet.has(target)) continue;
             if (this.isValidTurretTargetForSelf(target, state)) return target;
         }
-        return getNearestHostile(state, this.actor, range);
+        return engine.targeting.getNearestHostile(state, this.actor, range);
     }
     getExternalBlocksTargeting(state) {
         if (typeof this.actor.getExternalBlocksTargeting === "function") return this.actor.getExternalBlocksTargeting(state);
@@ -261,7 +263,7 @@ export class TurretController {
                 const { x: tx, y: ty } = turret.getMuzzlePosition(this.actor, gun.bulletRadius ?? 2, target);
                 const range = this.actor.weapon?.range ?? this.actor.combatRange ?? 200;
                 const hit = WeaponSystem.castLaser(tx, ty, turret.angle, range, state, 1, this.actor);
-                const color = hit.hit === "actor" && areHostile(this.actor, hit.entity) ? "#ff0000" : "#00ff00";
+                const color = hit.hit === "actor" && engine.targeting.areHostile(this.actor, hit.entity) ? "#ff0000" : "#00ff00";
                 state.activeLasers.push(new Laser(tx, ty, hit.x, hit.y, color, true));
             }
             if (isManualShoot) {
@@ -295,7 +297,7 @@ export class TurretController {
                 const hit = WeaponSystem.castLaser(tx, ty, turret.angle, range, state, gun.beamRadius, this.actor);
                 if (state.activeLasers) state.activeLasers.push(new Laser(tx, ty, hit.x, hit.y));
                 const tickDamage = getBeamTickDamage(gun);
-                if (hit.hit === "actor" && areHostile(this.actor, hit.entity)) hit.entity.handleHit?.(tickDamage, { state }, "beam");
+                if (hit.hit === "actor" && engine.targeting.areHostile(this.actor, hit.entity)) hit.entity.handleHit?.(tickDamage, { state }, "beam");
                 else if (hit.hit === "pickup" && hit.entity.strategy?.onHit) hit.entity.strategy.onHit(state, hit.entity, createBeamHitSource(gun), []);
                 firedAny = true;
             }

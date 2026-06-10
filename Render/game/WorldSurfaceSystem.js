@@ -2,7 +2,7 @@
  * Game-facing world-surface system: wraps WorldSurfaceEngine with simulation
  * shadow underpaint and GameState profile / invalidation hooks.
  */
-import { getWorldPlayBounds } from "../../Core/GamePorts.js";
+import { engine } from "../../Apps/Editor/engine.js";
 import { WorldSurfaceEngine } from "../../Libraries/WorldSurface/WorldSurfaceEngine.js";
 import { getGameWorldSurfaceSettings } from "../WorldSurfaceBootstrap.js";
 import { WallSpatialIndex } from "../../Libraries/Spatial/indexes/WallSpatialIndex.js";
@@ -45,7 +45,7 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
             viewport,
             state,
             zLevel: 0,
-            playBounds: getWorldPlayBounds(state),
+            playBounds: engine.worldGen.getPlayBounds(state),
             beforeDraw: (drawCtx, bounds) => {
                 drawCtx.fillStyle = this.settings.floorShadow;
                 drawCtx.fillRect(bounds.minX, bounds.minY, bounds.maxX - bounds.minX, bounds.maxY - bounds.minY);
@@ -74,7 +74,7 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
             wallSpatialIndex: state.wallSpatialIndex,
             viewport,
             state,
-            playBounds: getWorldPlayBounds(state),
+            playBounds: engine.worldGen.getPlayBounds(state),
             roofZLevels: this.roofZLevels,
             roofSpatialIndices: this.roofSpatialIndices,
             renderScene: this.renderScene,

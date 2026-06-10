@@ -1,7 +1,7 @@
+import { engine } from "../Apps/Editor/engine.js";
 import { getGameWorldSurfaceSettings } from "./WorldSurfaceBootstrap.js";
 import { SpriteCache } from "../Libraries/Canvas/SpriteCache.js";
 import { WorldSceneRenderer } from "../Libraries/Render/WorldSceneRenderer.js";
-import { getRenderPorts, isWorldScene } from "../Core/GamePorts.js";
 import { resolveSurfaceProfileAtCoords } from "./game/surfaceProfileResolver.js";
 import { LIBRARY_WORLD_SURFACE_DEFAULTS } from "../Libraries/WorldSurface/worldSurfaceDefaults.js";
 export class Renderer {
@@ -10,7 +10,7 @@ export class Renderer {
         this.canvas = canvas;
         this.ctx = ctx;
         this.caches = caches;
-        this.render3D = new WorldSceneRenderer(getGameWorldSurfaceSettings(), getRenderPorts().world3dPropRecipes);
+        this.render3D = new WorldSceneRenderer(getGameWorldSurfaceSettings(), engine.render.world3dPropRecipes);
         this.worldSceneDrawInput = {
             pickups: [],
             ragdollCorpses: [],
@@ -49,9 +49,8 @@ export class Renderer {
     }
     /** Ground tiles and debris props — zIndex -5. */
     drawWorldSceneBackdrop(state, viewport) {
-        if (!isWorldScene(state.phase)) return;
         state.worldSurfaces.drawGround(this.ctx, state, viewport);
-        getRenderPorts().drawGroundOverlays?.(state, viewport, this.ctx);
+        engine.render.drawGroundOverlays(state, viewport, this.ctx);
         this.render3D.drawDebrisProps(this.ctx, this.worldSceneDrawInput, viewport);
     }
     /** Ragdoll corpses between entities and structure — zIndex 55. */
@@ -60,7 +59,6 @@ export class Renderer {
     }
     /** Walls and roofs — zIndex 70. */
     drawWorldSceneStructure(state, viewport) {
-        if (!isWorldScene(state.phase)) return;
         this.render3D.draw3DBuildings(this.ctx, this.worldSceneDrawInput, viewport, state.walls);
         state.worldSurfaces.drawRoofs(this.ctx, state, viewport);
     }
@@ -77,7 +75,7 @@ export class Renderer {
     buildSimulationPipeline(state, viewport) {
         const entityPasses = (state.entityLayers ?? []).map((layer) => ({ zIndex: layer.zIndex, fn: (state, viewport) => this.renderEntityCollection(state[layer.key], state, viewport) }));
         const enabledEffects = this.effectPasses;
-        const portPasses = (getRenderPorts().simulationEffectPasses ?? []).map((pass) => ({ zIndex: pass.zIndex, fn: (state, viewport) => pass.draw(state, viewport, this.ctx, this) }));
+        const portPasses = engine.render.simulationEffectPasses.map((pass) => ({ zIndex: pass.zIndex, fn: (state, viewport) => pass.draw(state, viewport, this.ctx, this) }));
         const pipeline = [...enabledEffects, ...portPasses, ...entityPasses];
         pipeline.sort((a, b) => a.zIndex - b.zIndex);
         this.simulationPipeline = pipeline.map((p) => p.fn);
@@ -94,7 +92,7 @@ export class Renderer {
         }
         for (let i = 0; i < this.simulationPipeline.length; i++) this.simulationPipeline[i](state, viewport);
         this.ctx.restore();
-        getRenderPorts().drawPostSimulation?.(state, viewport, this.ctx, this);
+        engine.render.drawPostSimulation(state, viewport, this.ctx, this);
     }
     renderEntityCollection(collection, state, viewport) {
         if (!collection) return;

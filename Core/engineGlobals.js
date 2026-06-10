@@ -1,4 +1,4 @@
-import { clearInteractionPairFilterCache } from "./GamePorts.js";
+import { clearInteractionPairFilterCache } from "./interactionPairFilters.js";
 import { applyGamePerspective } from "./GamePerspective.js";
 import { applyGameProceduralDesign, resolveProceduralBakeSettings } from "./GameProceduralDesign.js";
 import { applyGameCollisionSettings } from "./GameCollisionSettings.js";

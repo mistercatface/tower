@@ -1,17 +1,8 @@
-/**
- * Generic pub/sub event bus with optional shared emit context.
- */
+/** Generic pub/sub event bus. */
 export class EventBus {
     constructor() {
         this.listeners = new Map();
-        this.context = null;
         this.warnOnMissingListeners = false;
-    }
-    setContext(ctx) {
-        this.context = ctx;
-    }
-    getContext() {
-        return this.context;
     }
     on(event, callback) {
         if (!this.listeners.has(event)) this.listeners.set(event, []);
@@ -35,7 +26,6 @@ export class EventBus {
             if (this.warnOnMissingListeners) console.warn(`[EventBus] No listeners for "${event}"`);
             return;
         }
-        const payload = this.context ? { ...this.context, ...data } : { ...data };
-        callbacks.forEach((callback) => callback(payload));
+        callbacks.forEach((callback) => callback(data));
     }
 }

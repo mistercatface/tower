@@ -1,5 +1,5 @@
+import { engine } from "../engine.js";
 import { gridSettings } from "../../../Config/Config.js";
-import { generateWorld, getWorldGen } from "../../../Core/GamePorts.js";
 import { buildGameMapRenderCaches, buildTopologyMapRenderCaches } from "../../../Libraries/Render/map/MapRenderCache.js";
 import { getRoguelikeMapSession, regenerateRoguelikeMap } from "../../../Libraries/WorldGen/session/index.js";
 import { clearTilelabSandbox } from "./tilelabSandbox.js";
@@ -41,7 +41,7 @@ export function initEmptyTilelabMap(state) {
  * @param {{ mapSeed: number, floorSeed: number }} seeds
  */
 export function generateTilelabMap(state, { mapSeed, floorSeed }) {
-    regenerateRoguelikeMap(state, { mapSeed, floorSeed, generateWorld });
+    regenerateRoguelikeMap(state, { mapSeed, floorSeed, generateWorld: (s) => engine.worldGen.generateWorld(s) });
     clearTilelabSandbox();
     const bounds = state.obstacleGrid;
     if (bounds?.minX !== undefined) state.viewport.snapTo((bounds.minX + bounds.maxX) / 2, (bounds.minY + bounds.maxY) / 2);
@@ -55,8 +55,8 @@ export function focusLabNode(state, nodeId) {
     const node = state.getMapNode(nodeId);
     if (!node) return;
     const worldCoords = state.getNodeWorldCoords(node);
-    const worldGen = getWorldGen();
-    const startNodeId = worldGen.startMapNodeId ?? 0;
+    const worldGen = engine.worldGen;
+    const startNodeId = worldGen.startMapNodeId;
     if (nodeId === startNodeId) {
         const layout = worldGen.getStartLayout(worldCoords.x, worldCoords.y, gridSettings.cellSize);
         state.viewport.snapTo(layout.spawnX, layout.spawnY);

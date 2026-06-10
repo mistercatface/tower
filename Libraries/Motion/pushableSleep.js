@@ -1,4 +1,4 @@
-import { getInteractionPairFilter } from "../../Core/GamePorts.js";
+import { getInteractionPairFilter } from "../../Core/interactionPairFilters.js";
 import { isStandTipActive } from "../Props/standTipMotion.js";
 import { isMovingEntity, pairBroadphaseOverlap } from "../Spatial/collision/entityBroadphase.js";
 /** Consecutive still frames required before a pushable is treated as sleeping. */

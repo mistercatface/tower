@@ -70,9 +70,9 @@ export function applySpeedControl(host, options = {}) {
     const root = elements.root instanceof HTMLElement ? elements.root : null;
     if (!wiredHosts.has(host)) {
         wiredHosts.add(host);
-        elements.speedDownBtn?.addEventListener("click", () => engine.playbackHandlers?.adjustSpeed(-resolveStep()));
-        elements.speedUpBtn?.addEventListener("click", () => engine.playbackHandlers?.adjustSpeed(resolveStep()));
-        elements.pauseBtn?.addEventListener("click", () => engine.playbackHandlers?.togglePause());
+        elements.speedDownBtn?.addEventListener("click", () => engine.playbackHandlers.adjustSpeed(-resolveStep()));
+        elements.speedUpBtn?.addEventListener("click", () => engine.playbackHandlers.adjustSpeed(resolveStep()));
+        elements.pauseBtn?.addEventListener("click", () => engine.playbackHandlers.togglePause());
     }
     return {
         root,

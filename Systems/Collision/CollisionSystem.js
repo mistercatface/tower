@@ -1,7 +1,7 @@
 import { circlesOverlap, findFirstCircleSegmentHit } from "../../Libraries/Spatial/collision/overlap.js";
 import { runCollisionPipeline } from "../../Libraries/Spatial/collision/collisionPipeline.js";
 import { getCollisionSettings } from "../../Core/GameCollisionSettings.js";
-import { getInteractionPairFilter } from "../../Core/GamePorts.js";
+import { getInteractionPairFilter } from "../../Core/interactionPairFilters.js";
 export class CollisionSystem {
     static checkCircle(a, b) {
         return circlesOverlap(a, b);

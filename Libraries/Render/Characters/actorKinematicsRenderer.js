@@ -2,11 +2,11 @@ import { LIBRARY_KINEMATICS_PIXEL_SIZE as kinematicsPixelSize } from "../../../L
 import { blitCenteredSprite } from "../../Canvas/QuantizedSpriteCache.js";
 import { CAMERA_HEIGHT } from "../../Spatial/iso/IsometricProjection.js";
 import { createKinematicsBundle } from "../../Kinematics/createKinematicsBundle.js";
-import { getRenderPorts, getViewCenter } from "../../../Core/GamePorts.js";
+import { engine } from "../../../Apps/Editor/engine.js";
 export class ActorKinematicsRenderer {
     constructor(radius) {
         const displayDiameter = radius * 4;
-        this.bundle = createKinematicsBundle({ pixelSize: kinematicsPixelSize, cameraHeight: CAMERA_HEIGHT, maxTiltDist: radius * 15, displayDiameter, ports: getRenderPorts().kinematicsPorts });
+        this.bundle = createKinematicsBundle({ pixelSize: kinematicsPixelSize, cameraHeight: CAMERA_HEIGHT, maxTiltDist: radius * 15, displayDiameter, ports: engine.render.kinematicsPorts });
         this.displayDiameter = displayDiameter;
     }
     advance(actor, dt, camera) {
@@ -36,7 +36,7 @@ export function clearActorKinematics(actor, radius = actor.radius) {
 }
 export function resolveKinematicsCamera(actor, state) {
     if (actor && typeof actor.getKinematicsCamera === "function") return actor.getKinematicsCamera(state);
-    const view = state ? getViewCenter(state) : null;
+    const view = state ? engine.viewPort.getViewCenter(state) : null;
     if (view) return view;
     return { x: actor?.x ?? 0, y: actor?.y ?? 0 };
 }

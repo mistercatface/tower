@@ -1,10 +1,7 @@
 import { CollisionSystem } from "../../Systems/Collision/CollisionSystem.js";
 import { minDistanceSegmentToWall } from "../Spatial/geometry/WallGeometry.js";
-import { getTargeting } from "../../Core/GamePorts.js";
+import { engine } from "../../Apps/Editor/engine.js";
 import { LIBRARY_EXPLOSION_DEFAULTS as explosionSettings } from "./explosionDefaults.js";
-function getBroadphaseActors(state) {
-    return getTargeting().getBroadphaseActors(state);
-}
 function blastDamage(exp, dist, maxMultiplier, minMultiplier) {
     const maxDmg = exp.damage * maxMultiplier;
     const minDmg = exp.damage * minMultiplier;
@@ -33,7 +30,7 @@ function applyExpandingDamage(state, exp, allEvents) {
             }
         }
     }
-    for (const actor of getBroadphaseActors(state)) {
+    for (const actor of engine.targeting.getBroadphaseActors(state)) {
         if (exp.hitTargets.has(actor)) continue;
         const dist = Math.hypot(actor.x - exp.x, actor.y - exp.y);
         if (dist <= exp.radius + actor.radius)

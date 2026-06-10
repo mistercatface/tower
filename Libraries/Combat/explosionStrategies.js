@@ -1,7 +1,7 @@
 import { repelActorFromExplosion } from "./explosionKnockback.js";
-import { getTargeting } from "../../Core/GamePorts.js";
+import { engine } from "../../Apps/Editor/engine.js";
 function repelEntities(state, exp, _dt, spatialFrame) {
-    const actors = getTargeting().getBroadphaseActors(state);
+    const actors = engine.targeting.getBroadphaseActors(state);
     for (const actor of actors) repelActorFromExplosion(actor, exp, spatialFrame, state);
 }
 export const ExplosionStrategies = {

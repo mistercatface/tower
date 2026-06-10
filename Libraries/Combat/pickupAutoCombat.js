@@ -1,4 +1,3 @@
-import { getNearestHostile } from "../../Core/GamePorts.js";
 import { normalizeWeaponLoadout } from "./equipmentLoadout.js";
 import { TurretController } from "./TurretController.js";
 import { syncPickupWeaponState } from "./pickupWeaponState.js";

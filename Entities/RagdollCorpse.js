@@ -3,7 +3,7 @@ import { applyRagdollImpulse, updateRagdoll } from "../Libraries/Kinematics/ragd
 import { checkRagdollHit, ragdollPartToWorld } from "../Libraries/Kinematics/ragdoll/hitTest.js";
 import { seedRagdollBloodOnDeath, updateBloodEffects, addRagdollBleedEmitter } from "../Libraries/Render/Characters/ragdoll/blood.js";
 import { createObstacleWallChecker, createRagdollState, resolveDeathImpact } from "../Libraries/Kinematics/ragdoll/fromActor.js";
-import { getViewCenter } from "../Core/GamePorts.js";
+import { engine } from "../Apps/Editor/engine.js";
 import { captureActorRigForRagdoll, renderCorpseKinematicsBody } from "../Libraries/Render/Characters/actorKinematicsRenderer.js";
 import { CombatParticles } from "../Libraries/Render/CombatParticles.js";
 const CORPSE_MAX_MS = 12000;
@@ -36,7 +36,7 @@ export class RagdollCorpse extends Entity {
     }
     static updateAll(state, dt, spatialFrame) {
         if (!state.ragdollCorpses?.length) return;
-        const viewCenter = getViewCenter(state);
+        const viewCenter = engine.viewPort.getViewCenter(state);
         const wallChecker = createObstacleWallChecker(state);
         for (let i = state.ragdollCorpses.length - 1; i >= 0; i--) {
             const corpse = state.ragdollCorpses[i];
