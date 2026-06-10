@@ -63,6 +63,7 @@ function computeFaceCorner(out, p1, p2, proj1X, proj1Y, proj2X, proj2Y, u, v) {
     out.y = by + (ty - by) * v;
 }
 function resolveWallProfileId(proceduralSurfaceDraw, wallCx, wallCy, cacheObj) {
+    if (cacheObj?.surfaceProfileId) return cacheObj.surfaceProfileId;
     let profileId = cacheObj && cacheObj._cachedProfileId ? cacheObj._cachedProfileId : null;
     if (!profileId || proceduralSurfaceDraw.surfaceProfileOverride) {
         profileId = proceduralSurfaceDraw.resolveProfileAt(wallCx, wallCy);

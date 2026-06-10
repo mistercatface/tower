@@ -9,7 +9,7 @@ import { buildAssemblyLayout, buildAssemblyClearBounds, buildAssemblyWallSegment
 import { getResolvedAssembly } from "./assemblies/assemblyRegistry.js";
 import { resolvePlacement } from "./assemblies/assemblyPlacement.js";
 import { stampAssemblyGroupMember, entityBelongsToAssemblyGroup } from "./assemblies/assemblyLink.js";
-import { createSurfaceProfileRectZone } from "../Spatial/zones/surfaceProfileRectZone.js";
+import { createAssemblySurfaceZone } from "./assemblySurfaceDraw.js";
 /** @param {import("./assemblies/assemblyManifest.js").ResolvedAssemblyManifest} resolved @param {string} propId */
 function assemblyIncludesProp(resolved, propId) {
     if (!resolved.props.length) return true;
@@ -33,8 +33,8 @@ function removeSandboxWall(state, wall) {
     state.worldSurfaces?.renderScene?.removeBySourceId(wall.id ?? wall);
     state.worldSurfaces?.invalidateRoofs();
 }
-/** @param {object} state @param {object[]} walls */
-function addSandboxWalls(state, walls) {
+/** @param {object} state @param {object[]} walls @param {{ compileRender?: boolean }} [options] */
+function addSandboxWalls(state, walls, { compileRender = true } = {}) {
     const scene = state.worldSurfaces?.renderScene;
     const defaultWallHeight = getWallHeight(getGameWorldSurfaceSettings());
     const gridMinX = state.obstacleGrid.minX;
@@ -45,9 +45,9 @@ function addSandboxWalls(state, walls) {
         state.walls.push(wall);
         state.wallSpatialIndex?.insert(wall);
         state.obstacleGrid?.addWall(wall);
-        if (scene) SceneCompiler.compileWall(wall, scene, defaultWallHeight);
+        if (scene && compileRender && !wall.collisionOnly) SceneCompiler.compileWall(wall, scene, defaultWallHeight);
     }
-    state.worldSurfaces?.invalidateRoofs();
+    if (compileRender) state.worldSurfaces?.invalidateRoofs();
 }
 /** @param {{ minX: number, minY: number, maxX: number, maxY: number }} bounds */
 function wallCenterInsideBounds(wall, bounds) {
@@ -63,6 +63,15 @@ function clearWallsInBounds(state, bounds) {
         toRemove.push(wall);
     }
     for (let i = 0; i < toRemove.length; i++) removeSandboxWall(state, toRemove[i]);
+}
+/** @param {object} state @param {ReturnType<typeof buildAssemblyLayout>} layout @param {import("./assemblies/assemblyManifest.js").ResolvedAssemblyManifest} resolved @param {string} groupId @param {string} groupField */
+function registerAssemblyPlayfieldSurface(state, layout, resolved, groupId, groupField) {
+    const profileId = resolved.surfaceProfileId;
+    if (!profileId) return;
+    if (!state.sandboxSurfaceProfileZones) state.sandboxSurfaceProfileZones = [];
+    const zone = createAssemblySurfaceZone({ id: `${groupId}:surface`, profileId, play: layout.play, bounds: layout.bounds, railHeight: resolved.arena.walls.height });
+    stampAssemblyGroupMember(zone, groupId, resolved.id, groupField);
+    state.sandboxSurfaceProfileZones.push(zone);
 }
 /**
  * @param {import("./SandboxHostPort.js").SandboxHostPort} host
@@ -110,21 +119,15 @@ export function spawnResolvedAssembly(host, centerX, centerY, resolved, { factio
     const groupId = groupIdOverride ?? `${resolved.id}:${Date.now()}`;
     const rackId = `${groupId}:rack`;
     const groupField = resolved.groupField;
-    if (resolved.surfaceProfileId) {
-        if (!state.sandboxSurfaceProfileZones) state.sandboxSurfaceProfileZones = [];
-        const play = layout.play;
-        const zone = createSurfaceProfileRectZone((play.minX + play.maxX) / 2, (play.minY + play.maxY) / 2, (play.maxX - play.minX) / 2, (play.maxY - play.minY) / 2, resolved.surfaceProfileId, {
-            id: `${groupId}:surface`,
-        });
-        stampAssemblyGroupMember(zone, groupId, resolved.id, groupField);
-        state.sandboxSurfaceProfileZones.push(zone);
-    }
+    const flatSurface = Boolean(resolved.surfaceProfileId);
+    registerAssemblyPlayfieldSurface(state, layout, resolved, groupId, groupField);
     const arenaWidth = resolved.arena.width;
     const arenaHeight = resolved.arena.height;
     if (spawnIncludes(spawnSteps, ["arena.walls"])) {
-        const walls = buildAssemblyWallSegments(layout, resolved);
+        const walls = buildAssemblyWallSegments(layout, resolved, { collisionOnly: flatSurface });
+        if (flatSurface) for (let i = 0; i < walls.length; i++) walls[i].collisionOnly = true;
         for (let i = 0; i < walls.length; i++) stampAssemblyGroupMember(walls[i], groupId, resolved.id, groupField);
-        addSandboxWalls(state, walls);
+        addSandboxWalls(state, walls, { compileRender: !flatSurface });
     }
     if (spawnIncludes(spawnSteps, ["voidCircles"])) {
         if (!state.sandboxVoidZones) state.sandboxVoidZones = [];

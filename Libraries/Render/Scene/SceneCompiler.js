@@ -12,7 +12,7 @@ export class SceneCompiler {
         scene.setGridOrigin(gridMinX, gridMinY);
         const defaultWallHeight = getWallHeight(state.worldSurfaces.settings);
         for (const wall of state.walls) {
-            if (wall.isDead) continue;
+            if (wall.isDead || wall.collisionOnly) continue;
             SceneCompiler.compileWall(wall, scene, defaultWallHeight);
         }
     }

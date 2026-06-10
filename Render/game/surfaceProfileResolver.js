@@ -17,6 +17,21 @@ export function resolveSurfaceProfileAtCoords(state, x, y) {
     if (closestNode?.surfaceProfileId) return closestNode.surfaceProfileId;
     return getSurfaceProfileProvider().defaultId;
 }
+/** @param {GameState} state @param {number} x @param {number} y @param {number} zLevel */
+function resolveWallSegmentSurfaceProfileAt(state, x, y, zLevel) {
+    const index = state.wallSpatialIndex;
+    if (!index) return null;
+    const pad = (state.obstacleGrid?.cellSize ?? 4) * 4;
+    const walls = index.collectInBounds(x - pad, y - pad, x + pad, y + pad);
+    for (let i = 0; i < walls.length; i++) {
+        const wall = walls[i];
+        if (wall.isDead || !wall.surfaceProfileId) continue;
+        const wallZ = wall.wallHeight;
+        if (wallZ != null && Math.abs(wallZ - zLevel) > 0.01) continue;
+        return wall.surfaceProfileId;
+    }
+    return null;
+}
 /** Worker-serializable ground-chunk bake payload from live game state. */
 export function buildGroundChunkBakePayload(state, chunkCol, chunkRow, zLevel = 0) {
     const obstacleGrid = state.obstacleGrid;
@@ -25,7 +40,11 @@ export function buildGroundChunkBakePayload(state, chunkCol, chunkRow, zLevel = 
     const chunkSizePx = obstacleGrid.cellSize * cellsPerChunk;
     const chunkCenterX = obstacleGrid.minX + chunkCol * chunkSizePx + chunkSizePx / 2;
     const chunkCenterY = obstacleGrid.minY + chunkRow * chunkSizePx + chunkSizePx / 2;
-    const profileId = resolveSurfaceProfileAtCoords(state, chunkCenterX, chunkCenterY);
+    let profileId = resolveSurfaceProfileAtCoords(state, chunkCenterX, chunkCenterY);
+    if (zLevel > 0) {
+        const wallProfileId = resolveWallSegmentSurfaceProfileAt(state, chunkCenterX, chunkCenterY, zLevel);
+        if (wallProfileId) profileId = wallProfileId;
+    }
     const profile = getSurfaceProfileProvider().getProfile(profileId);
     return createGroundChunkBakePayload({
         chunkCol,

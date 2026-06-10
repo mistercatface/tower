@@ -132,7 +132,7 @@ export class WorldSurfaceEngine {
         return this._scheduleAnimatedEntry(key, meta, bakeFirstFn, bakeBatchFn);
     }
     /** Ensure a baked wall atlas exists in the cache (wall faces). */
-    ensureWallAtlas(key, p1, p2, columns, proceduralSurfaceDraw, wallHeight = null) {
+    ensureWallAtlas(key, p1, p2, columns, proceduralSurfaceDraw, wallHeight = null, profileId = null) {
         let cached = this.surfaceCache.get(key);
         if (cached) return cached;
         const edgeLen = Math.hypot(p2.x - p1.x, p2.y - p1.y);
@@ -145,19 +145,19 @@ export class WorldSurfaceEngine {
         const canvasHeight = Math.max(1, Math.ceil(unrolledHeight * pixelsPerUnit));
         const wallCenterX = (p1.x + p2.x) / 2;
         const wallCenterY = (p1.y + p2.y) / 2;
-        const profileId = proceduralSurfaceDraw.resolveProfileAt(wallCenterX, wallCenterY);
-        const profile = getSurfaceProfileProvider().getProfile(profileId);
+        const bakeProfileId = profileId ?? proceduralSurfaceDraw.resolveProfileAt(wallCenterX, wallCenterY);
+        const profile = getSurfaceProfileProvider().getProfile(bakeProfileId);
         const { enabled: isAnimated, totalFrames, sourceTotal } = getWallAtlasAnimationInfo(profile, this.settings);
         const animationFrameBatchSize = this.settings.animationFrameBatchSize ?? 8;
         const animatedSurfaceDraw = { ...proceduralSurfaceDraw, animationBakeFrames: totalFrames, animationSourceFrames: sourceTotal };
         const meta = { kind: "wall", width: canvasWidth, height: canvasHeight, p1, p2, pixelsPerUnit, totalFrames, animationFrameBatchSize };
         const bakeFirstFn = () => {
             const frameRange = bakeFrameRange.first();
-            return this.requestWallAtlasBake(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, animatedSurfaceDraw, frameRange, profileId, hVal, cellSize);
+            return this.requestWallAtlasBake(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, animatedSurfaceDraw, frameRange, bakeProfileId, hVal, cellSize);
         };
         const bakeBatchFn = isAnimated
             ? (batch) => {
-                  return this.requestWallAtlasBake(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, animatedSurfaceDraw, batch, profileId, hVal, cellSize);
+                  return this.requestWallAtlasBake(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, animatedSurfaceDraw, batch, bakeProfileId, hVal, cellSize);
               }
             : null;
         return this._scheduleAnimatedEntry(key, meta, bakeFirstFn, bakeBatchFn);
@@ -182,7 +182,7 @@ export class WorldSurfaceEngine {
         if (!canvases) {
             const columns = wallFaceColumns(wrappedP1, wrappedP2, this.settings.cellSize);
             if (columns.length === 0) return null;
-            canvases = this.ensureWallAtlas(key, wrappedP1, wrappedP2, columns, proceduralSurfaceDraw, wallHeight);
+            canvases = this.ensureWallAtlas(key, wrappedP1, wrappedP2, columns, proceduralSurfaceDraw, wallHeight, profileId);
             if (!canvases || canvases.length === 0) return null;
         }
         return { key, wrappedP1, wrappedP2, canvases };
@@ -215,7 +215,18 @@ export class WorldSurfaceEngine {
      * }} options
      */
     drawGroundChunks(ctx, options) {
-        const { obstacleGrid, viewport, state, gameTime = 0, zLevel = 0, wallSpatialIndex = null, playBounds = null, beforeDraw } = options;
+        const {
+            obstacleGrid,
+            viewport,
+            state,
+            gameTime = 0,
+            zLevel = 0,
+            wallSpatialIndex = null,
+            playBounds = null,
+            beforeDraw,
+            requireWallSegments = true,
+            skipRoofFootprintClip = false,
+        } = options;
         const viewerX = viewport.x;
         const viewerY = viewport.y;
         const cellsPerChunk = this.settings.cellsPerChunk;
@@ -243,7 +254,7 @@ export class WorldSurfaceEngine {
             for (let chunkCol = minChunkCol; chunkCol <= maxChunkCol; chunkCol++) {
                 const originX = obstacleGrid.minX + chunkCol * chunkSizePx;
                 const originY = obstacleGrid.minY + chunkRow * chunkSizePx;
-                if (zLevel > 0 && !chunkHasWallSegments(wallSpatialIndex, originX, originY, chunkSizePx)) continue;
+                if (zLevel > 0 && requireWallSegments && !chunkHasWallSegments(wallSpatialIndex, originX, originY, chunkSizePx)) continue;
                 const payload = this._resolveChunkPayload(state, chunkCol, chunkRow, zLevel);
                 const canvases = this.getGroundChunkCanvas(chunkCol, chunkRow, state, payload, zLevel);
                 let canvas = canvases[0];
@@ -257,7 +268,7 @@ export class WorldSurfaceEngine {
                 }
                 if (zLevel > 0) {
                     ctx.save();
-                    if (!clipChunkToRoofFootprints(ctx, originX, originY, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight, options.renderScene)) {
+                    if (!skipRoofFootprintClip && !clipChunkToRoofFootprints(ctx, originX, originY, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight, options.renderScene)) {
                         ctx.restore();
                         continue;
                     }

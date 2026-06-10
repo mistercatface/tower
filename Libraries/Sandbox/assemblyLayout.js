@@ -45,8 +45,9 @@ function tessellateWallEdge(x0, y0, x1, y1, segmentSize, angle, padding, maxHeal
     }
     return segments;
 }
-/** @param {ReturnType<typeof getArenaWorldBounds>} arenaBounds @param {import("./assemblies/assemblyManifest.js").AssemblyArenaWallsManifest} walls */
-function buildRectWallSegments(arenaBounds, walls) {
+/** @param {ReturnType<typeof getArenaWorldBounds>} arenaBounds @param {import("./assemblies/assemblyManifest.js").AssemblyArenaWallsManifest} walls @param {number | null} [wallHeight] */
+function buildRectWallSegments(arenaBounds, walls, wallHeight) {
+    const segmentWallHeight = wallHeight === undefined ? walls.height : wallHeight;
     const half = walls.width / 2;
     const left = arenaBounds.minX + half;
     const right = arenaBounds.maxX - half;
@@ -57,12 +58,11 @@ function buildRectWallSegments(arenaBounds, walls) {
     const maxHealth = segment.maxHealth ?? 30;
     const health = segment.health ?? maxHealth;
     const segmentSize = walls.segmentSize;
-    const wallHeight = walls.height;
     return [
-        ...tessellateWallEdge(left, top, right, top, segmentSize, 0, padding, maxHealth, health, wallHeight),
-        ...tessellateWallEdge(right, top, right, bottom, segmentSize, Math.PI / 2, padding, maxHealth, health, wallHeight),
-        ...tessellateWallEdge(right, bottom, left, bottom, segmentSize, 0, padding, maxHealth, health, wallHeight),
-        ...tessellateWallEdge(left, bottom, left, top, segmentSize, Math.PI / 2, padding, maxHealth, health, wallHeight),
+        ...tessellateWallEdge(left, top, right, top, segmentSize, 0, padding, maxHealth, health, segmentWallHeight),
+        ...tessellateWallEdge(right, top, right, bottom, segmentSize, Math.PI / 2, padding, maxHealth, health, segmentWallHeight),
+        ...tessellateWallEdge(right, bottom, left, bottom, segmentSize, 0, padding, maxHealth, health, segmentWallHeight),
+        ...tessellateWallEdge(left, bottom, left, top, segmentSize, Math.PI / 2, padding, maxHealth, health, segmentWallHeight),
     ];
 }
 /**
@@ -77,12 +77,24 @@ export function buildAssemblyLayout(centerX, centerY, resolved) {
     const play = getPlayfieldBounds(bounds, arena.walls.width);
     return { bounds, play, voids: resolveVoidCircles(voidCircles, play) };
 }
+/** @returns {{ minX: number, minY: number, maxX: number, maxY: number }[]} */
+export function getAssemblyRailBandBounds(layout) {
+    const { bounds, play } = layout;
+    /** @type {{ minX: number, minY: number, maxX: number, maxY: number }[]} */
+    const bands = [];
+    if (play.minY > bounds.minY) bands.push({ minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: play.minY });
+    if (play.maxY < bounds.maxY) bands.push({ minX: bounds.minX, minY: play.maxY, maxX: bounds.maxX, maxY: bounds.maxY });
+    if (play.minX > bounds.minX) bands.push({ minX: bounds.minX, minY: play.minY, maxX: play.minX, maxY: play.maxY });
+    if (play.maxX < bounds.maxX) bands.push({ minX: play.maxX, minY: play.minY, maxX: bounds.maxX, maxY: play.maxY });
+    return bands;
+}
 /** @param {ReturnType<typeof buildAssemblyLayout>} layout @param {ResolvedAssemblyManifest} resolved */
 export function buildAssemblyClearBounds(layout, resolved) {
     const pad = resolved.arena.clearPadding;
     return { minX: layout.bounds.minX - pad, minY: layout.bounds.minY - pad, maxX: layout.bounds.maxX + pad, maxY: layout.bounds.maxY + pad };
 }
-/** @param {ReturnType<typeof buildAssemblyLayout>} layout @param {ResolvedAssemblyManifest} resolved */
-export function buildAssemblyWallSegments(layout, resolved) {
-    return buildRectWallSegments(layout.bounds, resolved.arena.walls);
+/** @param {ReturnType<typeof buildAssemblyLayout>} layout @param {ResolvedAssemblyManifest} resolved @param {{ collisionOnly?: boolean }} [options] */
+export function buildAssemblyWallSegments(layout, resolved, { collisionOnly = false } = {}) {
+    const wallHeight = collisionOnly ? null : resolved.arena.walls.height;
+    return buildRectWallSegments(layout.bounds, resolved.arena.walls, wallHeight);
 }
