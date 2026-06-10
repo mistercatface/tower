@@ -33,9 +33,6 @@ export function clampBakeFrameRange(range, totalFrames) {
     if (frameStart + frameCount > totalFrames) throw new Error(`frame range ${frameStart}+${frameCount} exceeds animation length ${totalFrames}`);
     return { frameStart, frameCount };
 }
-export function frameRangeDedupeSuffix({ frameStart, frameCount }) {
-    return `:f${frameStart}-${frameStart + frameCount}`;
-}
 export function isFirstFrameRange({ frameStart, frameCount }) {
     return frameStart === 0 && frameCount === 1;
 }

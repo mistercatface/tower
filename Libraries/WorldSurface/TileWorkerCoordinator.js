@@ -1,6 +1,6 @@
 import { getSurfaceProfileProvider } from "../Procedural/SurfaceProfileProvider.js";
 import { bumpSurfaceProfileRevision, getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
-import { clampBakeFrameRange, frameRangeDedupeSuffix, isFirstFrameRange } from "./AnimationFrameBake.js";
+import { clampBakeFrameRange, isFirstFrameRange } from "./AnimationFrameBake.js";
 import { getAnimationFrames } from "./ProfileBakeResolver.js";
 import { MinHeap } from "../DataStructures/MinHeap.js";
 export const MAX_WALLS = 10000;
@@ -52,12 +52,12 @@ function whenWorkersReady(run) {
 function chunkDedupeKey(payload) {
     const rev = getProfileRevision(payload.profileId);
     const zTag = (payload.zLevel ?? 0) > 0 ? `z${payload.zLevel}roof` : `z${payload.zLevel ?? 0}`;
-    return `chunk:${payload.profileId}:${rev}:${zTag}:${payload.chunkCol},${payload.chunkRow}:${payload.seed ?? 0}${frameRangeDedupeSuffix(payload)}`;
+    return `chunk:${payload.profileId}:${rev}:${zTag}:${payload.chunkCol},${payload.chunkRow}:${payload.seed ?? 0}`;
 }
 function patchDedupeKey(payload) {
     const rev = getProfileRevision(payload.profileId);
     const zTag = (payload.zLevel ?? 0) > 0 ? `z${payload.zLevel}roof` : `z${payload.zLevel ?? 0}`;
-    return `patch:${payload.profileId}:${rev}:${zTag}:${payload.originX.toFixed(1)},${payload.originY.toFixed(1)}:${payload.worldWidth.toFixed(1)}x${payload.worldHeight.toFixed(1)}:${payload.seed ?? 0}${frameRangeDedupeSuffix(payload)}`;
+    return `patch:${payload.profileId}:${rev}:${zTag}:${payload.originX.toFixed(1)},${payload.originY.toFixed(1)}:${payload.worldWidth.toFixed(1)}x${payload.worldHeight.toFixed(1)}:${payload.seed ?? 0}`;
 }
 function jobDistSq(payload) {
     const cx = payload?.centerX ?? focusX;
