@@ -105,7 +105,7 @@ export function createPoolBallDraw(visuals) {
         });
     };
 }
-const POOL_BALL_RADIUS = 2;
+const POOL_BALL_RADIUS = 4;
 const POOL_BALL_PHYSICS = {
     hitBehavior: "none",
     radius: POOL_BALL_RADIUS,
