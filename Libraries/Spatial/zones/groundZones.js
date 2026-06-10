@@ -53,7 +53,7 @@ export function processGroundZones(spatialFrame, zones, { onEnter, onExit } = {}
         next.clear();
         for (let i = 0; i < candidates.length; i++) {
             const entity = candidates[i];
-            if (!entity || entity.isDead || (entity.elevation != null && entity.elevation < -6 && entity.currentStateName !== "voidSink") || typeof entity.getShape !== "function") continue;
+            if (!entity || entity.isDead || typeof entity.getShape !== "function") continue;
             const shape = entity.getShape();
             if (!shape || SatCollision.checkCollision(entity, shape, zone, zone.shape) == null) continue;
             next.add(entity.id);

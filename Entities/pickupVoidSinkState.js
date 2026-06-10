@@ -9,12 +9,8 @@ export class PickupVoidSinkState {
     }
     onEnter(pickup) {
         wakePushableBody(pickup);
-        pickup.elevation = 0;
-        pickup.elevationVelocity = 0;
     }
     onExit(pickup) {
-        pickup.elevation = 0;
-        pickup.elevationVelocity = 0;
         delete pickup.voidCaptured;
         delete pickup.voidX;
         delete pickup.voidY;
@@ -39,13 +35,10 @@ export class PickupVoidSinkState {
         const mouthReach = voidMouthReach(voidRadius, pickup);
         const captureThreshold = mouthReach * 0.65;
         if (dist <= captureThreshold) pickup.voidCaptured = true;
-        if (!pickup.voidCaptured && pickup.elevation > -6 && !isInsideVoidMouth(voidX, voidY, voidRadius, pickup)) {
+        if (!pickup.voidCaptured && !isInsideVoidMouth(voidX, voidY, voidRadius, pickup)) {
             pickup.changeState("normal");
             return;
         }
-        const gravity = pickup.voidCaptured ? -600 : -350;
-        pickup.elevationVelocity = (pickup.elevationVelocity ?? 0) + gravity * dtSec;
-        pickup.elevation = (pickup.elevation ?? 0) + pickup.elevationVelocity * dtSec;
         const radius = pickup.radius;
         const fadeStart = -radius;
         const fadeEnd = -voidDepth;
@@ -58,7 +51,7 @@ export class PickupVoidSinkState {
         const damping = Math.exp(-friction * dtSec);
         pickup.vx *= damping;
         pickup.vy *= damping;
-        if (pickup.elevation <= -voidDepth || pickup.voidSinkTimer <= 0) {
+        if (pickup.voidSinkTimer <= 0) {
             pickup.changeState("normal");
             pickup.isDead = true;
         }

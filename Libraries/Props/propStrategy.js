@@ -79,13 +79,11 @@ export function getBaseSpriteCacheKey(prop, deps) {
     if (prop.strategy?.rollAxis === "long") orientKey = buildLongAxisLogOrientKey(prop, quantizeAngleIndex);
     else if (prop.strategy?.rolls) orientKey = buildRollOrientKey(prop.rollQuat, resolvePropQuantizeSteps(prop).facing);
     else orientKey = `f${quantizeAngleIndex(prop.facing ?? 0, resolvePropQuantizeSteps(prop).facing)}`;
-    const radius = Math.round(prop.radius ?? 16);
+    const radius = Math.round(prop.radius);
     const { x: stratHx, y: stratHy } = propFootprintHalfExtents(prop);
     const halfX = Math.round(stratHx);
     const halfY = Math.round(stratHy);
-    const qElev = prop.elevation != null ? Math.round(prop.elevation * 2) / 2 : 0;
-    const elevKey = qElev !== 0 ? `_el${qElev}` : "";
-    return `${orientKey}_${radius}_${halfX}x${halfY}${elevKey}`;
+    return `${orientKey}_${radius}_${halfX}x${halfY}`;
 }
 /**
  * @param {object} prop
@@ -94,7 +92,6 @@ export function getBaseSpriteCacheKey(prop, deps) {
 export function getPropStageBakeState(prop, deps) {
     const { quantizeAngle, quantizeRollQuat, anchorX, anchorY } = deps;
     const logAngles = prop.strategy?.rollAxis === "long" ? quantizeLongAxisAngles(prop, quantizeAngle) : null;
-    const qElev = prop.elevation != null ? Math.round(prop.elevation * 2) / 2 : 0;
     return {
         ...prop,
         x: anchorX,
@@ -104,7 +101,6 @@ export function getPropStageBakeState(prop, deps) {
         facing: logAngles?.facing ?? quantizeAngle(prop.facing ?? 0, resolvePropQuantizeSteps(prop).facing),
         rollAngle: logAngles?.rollAngle ?? prop.rollAngle,
         rollQuat: prop.strategy?.rolls && prop.strategy?.rollAxis !== "long" ? quantizeRollQuat(prop.rollQuat, resolvePropQuantizeSteps(prop).facing) : prop.rollQuat,
-        elevation: qElev,
     };
 }
 /**

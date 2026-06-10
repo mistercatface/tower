@@ -9,8 +9,7 @@ import { wallContextFromState } from "../../Libraries/Spatial/query/wallContext.
 export function insertPushables(frame, state, pushables, physIdCounter = 0, inserted = null) {
     pushables.length = 0;
     for (const pickup of state.pickups) {
-        if (pickup.isDead) continue;
-        if (pickup.elevation != null && pickup.elevation < -6) continue;
+        if (!pickup || pickup.isDead || pickup.isHeld) continue;
         if (inserted && inserted.has(pickup)) {
             if (pickup.strategy?.isPushable) pushables.push(pickup);
             continue;
