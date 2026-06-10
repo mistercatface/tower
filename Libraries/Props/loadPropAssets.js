@@ -1,7 +1,6 @@
 import propCatalog from "../../Assets/props/index.js";
 import { setPropCatalog } from "./PropCatalog.js";
 import { PROP_PRIMITIVE_BUILDERS } from "./primitives/index.js";
-import { PROP_RECIPE_BUILDERS } from "./recipes/index.js";
 /**
  * @param {object} asset
  */
@@ -19,19 +18,17 @@ function registerPropDraw(asset, recipes) {
         recipes[asset.id] = () => {};
         return;
     }
+    if (typeof asset.draw === "function") {
+        recipes[asset.id] = asset.draw;
+        return;
+    }
     if (asset.primitive) {
         const builder = PROP_PRIMITIVE_BUILDERS[asset.primitive];
         if (!builder) throw new Error(`Unknown primitive "${asset.primitive}" for asset "${asset.id}"`);
         recipes[asset.id] = builder(asset.visuals);
         return;
     }
-    if (asset.recipe) {
-        const builder = PROP_RECIPE_BUILDERS[asset.recipe];
-        if (!builder) throw new Error(`Unknown recipe "${asset.recipe}" for asset "${asset.id}"`);
-        recipes[asset.id] = builder(asset.visuals);
-        return;
-    }
-    throw new Error(`Asset "${asset.id}" must define primitive or recipe`);
+    throw new Error(`Asset "${asset.id}" must define draw or primitive`);
 }
 /** Load shared Assets/props into the runtime prop catalog. Call once before createGame(). */
 export function loadPropAssets() {
