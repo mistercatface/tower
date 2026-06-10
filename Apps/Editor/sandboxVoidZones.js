@@ -32,16 +32,16 @@ function rimOutVoidSink(state, entityId, zone) {
 }
 export const sandboxVoidZonePhase = {
     id: "sandboxVoidZone",
-    run(ctx, _dt, runtime) {
-        ensureSandboxVoidZones(ctx.state);
-        const zones = ctx.state.sandboxVoidZones;
+    run(state, _dt, spatialFrame) {
+        ensureSandboxVoidZones(state);
+        const zones = state.sandboxVoidZones;
         if (!zones.length) return;
-        processGroundZones(runtime.spatialFrame, zones, {
+        processGroundZones(spatialFrame, zones, {
             onEnter(zone, entity) {
                 beginVoidSink(entity, zone);
             },
             onExit(zone, entityId) {
-                rimOutVoidSink(ctx.state, entityId, zone);
+                rimOutVoidSink(state, entityId, zone);
             },
         });
     },

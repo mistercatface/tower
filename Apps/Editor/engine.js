@@ -27,10 +27,12 @@ import { fitLabStageToView } from "./ui/labViewport.js";
 import { mountEditorUi, refreshEditorUi } from "./ui/editorUi.js";
 import { drawLabFrame } from "./ui/preview.js";
 const EDITOR_SURFACE_PROFILE_ID = SURFACE_PROFILE_ID.tomatoGarden;
+/** @type {object[]} */
+const simulationEvents = [];
 const simulationPhases = [
     {
         id: "sandboxTick",
-        run(_ctx, dt) {
+        run(_state, dt) {
             sandboxController?.tick(dt);
         },
     },
@@ -44,8 +46,8 @@ const simulationPhases = [
     tilelabGroundZonePhase,
     {
         id: "floatingText",
-        run(ctx, dt) {
-            FloatingText.updateAll(ctx.state, dt);
+        run(state, dt) {
+            FloatingText.updateAll(state, dt);
         },
     },
 ];
@@ -53,9 +55,9 @@ const simulationPhases = [
 function runSimulationTick(state, dt) {
     const simDt = dt * (state.selectedSpeed ?? 1);
     state.gameTime = (state.gameTime ?? 0) + simDt;
-    const ctx = { state };
-    const runtime = { spatialFrame: combatSpatial.begin(state), events: [] };
-    for (const phase of simulationPhases) phase.run(ctx, simDt, runtime);
+    const spatialFrame = combatSpatial.begin(state);
+    simulationEvents.length = 0;
+    for (const phase of simulationPhases) phase.run(state, simDt, spatialFrame, simulationEvents);
 }
 /** @typedef {{ togglePause: () => void, adjustSpeed: (delta: number) => void }} PlaybackHandlers */
 export const engine = {

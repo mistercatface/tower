@@ -1,10 +1,9 @@
 import { runPushablePhysics } from "./pushablePhysics.js";
-/** @typedef {import("./SimulationRuntime.js").SimulationRuntime} SimulationRuntime */
-/** @typedef {{ run: (ctx: object, dt: number, runtime: SimulationRuntime) => void }} SimulationPhase */
+/** @typedef {{ run: (state: object, dt: number, spatialFrame: object, events: object[]) => void }} SimulationPhase */
 /** @type {SimulationPhase} */
 export const pushablePhysicsPhase = {
     id: "pushablePhysics",
-    run(ctx, dt, runtime) {
-        runPushablePhysics(ctx.state, dt, runtime.spatialFrame, runtime.events);
+    run(state, dt, spatialFrame, events) {
+        runPushablePhysics(state, dt, spatialFrame, events);
     },
 };

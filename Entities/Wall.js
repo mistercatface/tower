@@ -11,19 +11,17 @@ export class Segment extends DestructibleEntity {
         const reach = getWallReach(this);
         return { minX: this.x - reach, minY: this.y - reach, maxX: this.x + reach, maxY: this.y + reach };
     }
-    handleHit(damage, ctx) {
+    handleHit(damage, state) {
         const died = this.takeDamage(damage);
         if (died) {
-            const idx = ctx.state.walls.indexOf(this);
-            if (idx !== -1) ctx.state.walls.splice(idx, 1);
-            if (ctx.state.wallSpatialIndex) ctx.state.wallSpatialIndex.remove(this);
-            const damageBounds = ctx.state.obstacleGrid.patchAfterWallRemoved(this, ctx.state.wallSpatialIndex);
-            ctx.state.worldSurfaces.invalidateGridBounds(damageBounds, ctx.state);
-            ctx.state.worldSurfaces.invalidateRoofs();
-            if (ctx.state.worldSurfaces.renderScene) {
-                ctx.state.worldSurfaces.renderScene.removeBySourceId(this.id ?? this);
-            }
-            ctx.state.navigation.onObstaclesChanged(damageBounds);
+            const idx = state.walls.indexOf(this);
+            if (idx !== -1) state.walls.splice(idx, 1);
+            if (state.wallSpatialIndex) state.wallSpatialIndex.remove(this);
+            const damageBounds = state.obstacleGrid.patchAfterWallRemoved(this, state.wallSpatialIndex);
+            state.worldSurfaces.invalidateGridBounds(damageBounds, state);
+            state.worldSurfaces.invalidateRoofs();
+            if (state.worldSurfaces.renderScene) state.worldSurfaces.renderScene.removeBySourceId(this.id ?? this);
+            state.navigation.onObstaclesChanged(damageBounds);
         }
     }
 }
