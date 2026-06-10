@@ -88,6 +88,11 @@ export function buildSandboxPoolTableLayout(centerX, centerY, ballRadius = 8) {
         balls: { cue: headSpot, rack: buildRackTriangle(footSpot.x, footSpot.y, ballRadius) },
     };
 }
+/** @param {ReturnType<typeof buildSandboxPoolTableLayout>} layout */
+export function buildPoolTableClearBounds(layout) {
+    const pad = layout.cellSize;
+    return { minX: layout.table.minX - pad, minY: layout.table.minY - pad, maxX: layout.table.maxX + pad, maxY: layout.table.maxY + pad };
+}
 /** @param {Uint8Array} grid @param {number} cols @param {number} rows @param {number} x @param {number} y @param {number} w @param {number} h */
 function carveRect(grid, cols, rows, x, y, w, h) {
     for (let r = y; r < y + h && r < rows; r++) {

@@ -3,7 +3,7 @@ import { getGameWorldSurfaceSettings } from "../../Render/WorldSurfaceBootstrap.
 import { SceneCompiler } from "../Render/Scene/SceneCompiler.js";
 import { createVoidZone } from "../Spatial/zones/voidZone.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
-import { buildSandboxPoolTableLayout, buildPoolTableWallSegments } from "./poolTableLayout.js";
+import { buildSandboxPoolTableLayout, buildPoolTableClearBounds, buildPoolTableWallSegments } from "./poolTableLayout.js";
 import { spawnPoolRack } from "./spawnPoolRack.js";
 /** @param {object} state @param {object} wall */
 function removeSandboxWall(state, wall) {
@@ -34,12 +34,28 @@ function addSandboxWalls(state, walls) {
     }
     state.worldSurfaces?.invalidateRoofs();
 }
+/** @param {{ minX: number, minY: number, maxX: number, maxY: number }} bounds */
+function wallCenterInsideBounds(wall, bounds) {
+    return wall.x >= bounds.minX && wall.x <= bounds.maxX && wall.y >= bounds.minY && wall.y <= bounds.maxY;
+}
+/** @param {object} state @param {{ minX: number, minY: number, maxX: number, maxY: number }} bounds */
+function clearWallsInBounds(state, bounds) {
+    const candidates = state.wallSpatialIndex ? state.wallSpatialIndex.collectInBounds(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY) : state.walls;
+    const toRemove = [];
+    for (let i = 0; i < candidates.length; i++) {
+        const wall = candidates[i];
+        if (wall.isDead || !wallCenterInsideBounds(wall, bounds)) continue;
+        toRemove.push(wall);
+    }
+    for (let i = 0; i < toRemove.length; i++) removeSandboxWall(state, toRemove[i]);
+}
 /** @param {import("./SandboxHostPort.js").SandboxHostPort} host @param {number} centerX @param {number} centerY @param {{ faction?: string }} [options] */
 export function spawnPoolTable(host, centerX, centerY, { faction } = {}) {
     const state = host.getWorldState?.();
     if (!state) return null;
     const ballRadius = getPropAsset("pool_ball")?.physics?.radius ?? 8;
     const layout = buildSandboxPoolTableLayout(centerX, centerY, ballRadius);
+    clearWallsInBounds(state, buildPoolTableClearBounds(layout));
     const tableId = `pool-table:${Date.now()}`;
     const rackId = `${tableId}:rack`;
     const railHeight = layout.cellSize;
