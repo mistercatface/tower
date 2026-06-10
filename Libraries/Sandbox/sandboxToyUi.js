@@ -76,14 +76,14 @@ export function mountSandboxToyUi(container, controller, onChange) {
         addVoidBtn.addEventListener("click", () => {
             controller.spawnVoidAtCameraOrigin();
         });
-        const addPoolTableBtn = document.createElement("button");
-        addPoolTableBtn.type = "button";
-        addPoolTableBtn.className = "secondary";
-        addPoolTableBtn.textContent = "Add pool table";
-        addPoolTableBtn.addEventListener("click", () => {
-            controller.spawnPoolTableAtCameraOrigin();
+        const addAssemblyBtn = document.createElement("button");
+        addAssemblyBtn.type = "button";
+        addAssemblyBtn.className = "secondary";
+        addAssemblyBtn.textContent = "Add assembly";
+        addAssemblyBtn.addEventListener("click", () => {
+            controller.spawnAssemblyAtCameraOrigin();
         });
-        addRow.append(typeField, addBtn, addVoidBtn, addPoolTableBtn);
+        addRow.append(typeField, addBtn, addVoidBtn, addAssemblyBtn);
         container.appendChild(addRow);
         const behaviorIds = controller.listBehaviors();
         if (behaviorIds.length > 0) {
@@ -168,15 +168,15 @@ export function mountSandboxToyUi(container, controller, onChange) {
             }
             container.appendChild(voidList);
         }
-        const poolTables = controller.listPoolTables?.() ?? [];
-        if (poolTables.length > 0) {
-            const tableHead = document.createElement("div");
-            tableHead.className = "editor-subhead";
-            tableHead.textContent = "Pool tables";
-            container.appendChild(tableHead);
-            const tableList = document.createElement("div");
-            tableList.className = "toy-instance-list";
-            for (const entry of poolTables) {
+        const assemblies = controller.listAssemblies?.() ?? [];
+        if (assemblies.length > 0) {
+            const assemblyHead = document.createElement("div");
+            assemblyHead.className = "editor-subhead";
+            assemblyHead.textContent = "Assemblies";
+            container.appendChild(assemblyHead);
+            const assemblyList = document.createElement("div");
+            assemblyList.className = "toy-instance-list";
+            for (const entry of assemblies) {
                 const row = document.createElement("div");
                 row.className = `toy-instance-row${entry.cueBallId === selectedId ? " selected" : ""}`;
                 const selectBtn = document.createElement("button");
@@ -190,11 +190,11 @@ export function mountSandboxToyUi(container, controller, onChange) {
                 deleteBtn.type = "button";
                 deleteBtn.className = "toy-delete-btn secondary";
                 deleteBtn.textContent = "Delete";
-                deleteBtn.addEventListener("click", () => controller.deletePoolTableById(entry.id));
+                deleteBtn.addEventListener("click", () => controller.deleteAssemblyById(entry.id));
                 row.append(selectBtn, deleteBtn);
-                tableList.appendChild(row);
+                assemblyList.appendChild(row);
             }
-            container.appendChild(tableList);
+            container.appendChild(assemblyList);
         }
         const selectedPickup = controller.getSelectedPickup?.() ?? null;
         if (selectedPickup) {

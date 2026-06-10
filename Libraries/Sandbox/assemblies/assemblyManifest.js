@@ -1,6 +1,7 @@
 /**
- * @typedef {object} AssemblyScaleManifest
- * @property {number} ballRadius
+ * @typedef {object} AssemblyPropManifest
+ * @property {object} physics
+ * @property {object} visuals
  */
 /**
  * @typedef {object} AssemblyArenaWallsManifest
@@ -36,14 +37,13 @@
  * @property {string} [id]
  * @property {string} prop
  * @property {AssemblyPlacementManifest} at
- * @property {number} [poolBall]
  */
 /**
  * @typedef {object} AssemblyManifest
  * @property {string} id
  * @property {number} [version]
- * @property {AssemblyScaleManifest} [scale]
  * @property {AssemblyArenaManifest} [arena]
+ * @property {Record<string, AssemblyPropManifest>} [props]
  * @property {AssemblyVoidCircleManifest[]} [voidCircles]
  * @property {AssemblyPickupManifest[]} [pickups]
  * @property {{ groupField: string }} link
@@ -54,8 +54,8 @@
  * @typedef {object} ResolvedAssemblyManifest
  * @property {string} id
  * @property {number} version
- * @property {{ ballRadius: number }} scale
  * @property {AssemblyArenaManifest} arena
+ * @property {Record<string, AssemblyPropManifest>} props
  * @property {AssemblyVoidCircleManifest[]} voidCircles
  * @property {AssemblyPickupManifest[]} pickups
  * @property {string} groupField

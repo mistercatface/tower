@@ -2,7 +2,7 @@ import { Pickup } from "../../Entities/Pickup.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { SANDBOX_DEFAULT_FACTION, resolveSandboxFaction } from "../Combat/sandboxTargeting.js";
 import { createVoidZone, DEFAULT_VOID_RADIUS } from "../Spatial/zones/voidZone.js";
-import { clearPoolTables, deletePoolTable, spawnPoolTable } from "./spawnPoolTable.js";
+import { spawnAssembly, deleteAssemblyInstance, clearAssemblyInstances } from "./spawnAssembly.js";
 /** @typedef {import("./SandboxHostPort.js").SandboxHostPort} SandboxHostPort */
 /**
  * @param {SandboxHostPort} host
@@ -80,29 +80,29 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
             if (!origin) return null;
             return spawnVoidAt(origin.x, origin.y);
         },
-        spawnPoolTableAt(centerX, centerY) {
-            const table = spawnPoolTable(host, centerX, centerY, { faction: spawnFaction });
-            if (!table) return null;
-            selectedPickupId = table.cueBallId;
+        spawnAssemblyAt(centerX, centerY) {
+            const instance = spawnAssembly(host, centerX, centerY, "poolTable", { faction: spawnFaction });
+            if (!instance) return null;
+            selectedPickupId = instance.cueBallId;
             sync();
-            return table;
+            return instance;
         },
-        spawnPoolTableAtCameraOrigin() {
+        spawnAssemblyAtCameraOrigin() {
             const origin = host.getCameraOrigin?.();
             if (!origin) return null;
-            return this.spawnPoolTableAt(origin.x, origin.y);
+            return this.spawnAssemblyAt(origin.x, origin.y);
         },
-        deletePoolTableById(tableId) {
+        deleteAssemblyById(assemblyId) {
             const state = host.getWorldState?.();
             if (!state) return;
-            deletePoolTable(state, tableId);
+            deleteAssemblyInstance(state, assemblyId);
             pruneSelection();
             sync();
         },
-        listPoolTables() {
+        listAssemblies() {
             const state = host.getWorldState?.();
             if (!state?.sandboxAssemblyInstances?.length) return [];
-            return state.sandboxAssemblyInstances.map((entry, index) => ({ id: entry.id, label: `pool table #${index + 1}`, cueBallId: entry.cueBallId }));
+            return state.sandboxAssemblyInstances.map((entry, index) => ({ id: entry.id, label: `assembly #${index + 1}`, cueBallId: entry.cueBallId }));
         },
         deleteVoidZoneById(id) {
             const zones = voidZones();
@@ -141,7 +141,7 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
         clear() {
             host.clearPickups();
             const state = host.getWorldState?.();
-            if (state) clearPoolTables(state);
+            if (state) clearAssemblyInstances(state);
             const zones = voidZones();
             if (zones) zones.length = 0;
             selectedPickupId = null;

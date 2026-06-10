@@ -136,15 +136,15 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
         },
         spawnAtCameraOrigin: () => session.spawnAtCameraOrigin(),
         spawnVoidAtCameraOrigin: () => session.spawnVoidAtCameraOrigin(),
-        spawnPoolTableAtCameraOrigin: () => {
-            const table = session.spawnPoolTableAtCameraOrigin();
+        spawnAssemblyAtCameraOrigin: () => {
+            const instance = session.spawnAssemblyAtCameraOrigin();
             clampActiveBehavior();
-            return table;
+            return instance;
         },
         deleteVoidZoneById: (id) => session.deleteVoidZoneById(id),
-        deletePoolTableById: (id) => session.deletePoolTableById(id),
+        deleteAssemblyById: (id) => session.deleteAssemblyById(id),
         listVoidZones: () => session.listVoidZones(),
-        listPoolTables: () => session.listPoolTables(),
+        listAssemblies: () => session.listAssemblies(),
         deletePickupById: (id) => session.deletePickupById(id),
         listPlacedPickups: () => session.listPlacedPickups(),
         sync: () => session.sync(),

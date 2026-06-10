@@ -1,4 +1,3 @@
-import { POOL_BALL_RADIUS, POOL_VISUAL } from "../../Sandbox/poolConfig.js";
 /** Standard pool ball palette (solids 1–8, stripes 9–15 share colors). */
 export const POOL_BALL_COLORS = { 1: "#FFD600", 2: "#1565C0", 3: "#D32F2F", 4: "#7B1FA2", 5: "#FF6F00", 6: "#2E7D32", 7: "#8B0000", 8: "#1A1A1A" };
 /**
@@ -21,38 +20,34 @@ export function resolvePoolBallColor(poolBall) {
     return poolBall.color ?? POOL_BALL_COLORS[((num - 1) % 8) + 1] ?? "#888888";
 }
 /**
- * Face fill for low-poly sphere panels.
- *
  * @param {object} face
  * @param {{ kind: 'cue' | 'solid' | 'stripe', number?: number, color?: string }} poolBall
+ * @param {number} faceShade
  */
-export function resolvePoolBallFaceColor(face, poolBall) {
+export function resolvePoolBallFaceColor(face, poolBall, faceShade) {
     const vMid = (face.lat0 + face.lat1) * 0.5;
     const base = resolvePoolBallColor(poolBall);
-    const shade = POOL_VISUAL.faceShade ?? 0.12;
     if (poolBall.kind === "stripe" && vMid > 0.26 && vMid < 0.74) return "#F5F5F5";
-    if (poolBall.kind === "cue") return vMid < 0.2 || vMid > 0.8 ? shadeHex(base, shade * 0.6) : base;
-    return vMid < 0.18 || vMid > 0.82 ? shadeHex(base, shade) : base;
+    if (poolBall.kind === "cue") return vMid < 0.2 || vMid > 0.8 ? shadeHex(base, faceShade * 0.6) : base;
+    return vMid < 0.18 || vMid > 0.82 ? shadeHex(base, faceShade) : base;
 }
-const LABEL_SIZE = POOL_BALL_RADIUS < 6 ? 512 : 384;
 const labelCache = new Map();
 /**
- * Square decal atlas for spherical cap UV (transparent outside the white disc).
- *
  * @param {{ kind: 'cue' | 'solid' | 'stripe', number?: number }} poolBall
- * @returns {OffscreenCanvas | null}
+ * @param {number} radius
+ * @param {boolean} compact
  */
-export function getPoolBallLabelImage(poolBall) {
-    const key = `${poolBall.kind}_${poolBall.number ?? 0}_${LABEL_SIZE}`;
+export function getPoolBallLabelImage(poolBall, radius, compact) {
+    const labelSize = radius < 6 ? 512 : 384;
+    const key = `${poolBall.kind}_${poolBall.number ?? 0}_${labelSize}`;
     if (labelCache.has(key)) return labelCache.get(key);
-    const compact = POOL_BALL_RADIUS < 6;
     if (poolBall.kind === "cue") {
-        const canvas = new OffscreenCanvas(LABEL_SIZE, LABEL_SIZE);
+        const canvas = new OffscreenCanvas(labelSize, labelSize);
         const ctx = canvas.getContext("2d");
         ctx.imageSmoothingEnabled = false;
-        const cx = LABEL_SIZE * 0.5;
-        const cy = LABEL_SIZE * 0.5;
-        const dotR = LABEL_SIZE * (compact ? 0.32 : 0.28);
+        const cx = labelSize * 0.5;
+        const cy = labelSize * 0.5;
+        const dotR = labelSize * (compact ? 0.32 : 0.28);
         ctx.fillStyle = "#D32F2F";
         ctx.beginPath();
         ctx.arc(cx, cy, dotR, 0, Math.PI * 2);
@@ -61,12 +56,12 @@ export function getPoolBallLabelImage(poolBall) {
         return canvas;
     }
     if (!poolBall.number) return null;
-    const canvas = new OffscreenCanvas(LABEL_SIZE, LABEL_SIZE);
+    const canvas = new OffscreenCanvas(labelSize, labelSize);
     const ctx = canvas.getContext("2d");
     ctx.imageSmoothingEnabled = false;
-    const cx = LABEL_SIZE * 0.5;
-    const cy = LABEL_SIZE * 0.5;
-    const discR = LABEL_SIZE * (compact ? 0.47 : 0.46);
+    const cx = labelSize * 0.5;
+    const cy = labelSize * 0.5;
+    const discR = labelSize * (compact ? 0.47 : 0.46);
     ctx.fillStyle = "#FFFFFF";
     ctx.beginPath();
     ctx.arc(cx, cy, discR, 0, Math.PI * 2);
@@ -86,15 +81,4 @@ export function getPoolBallLabelImage(poolBall) {
     }
     labelCache.set(key, canvas);
     return canvas;
-}
-/**
- * Build poolBall metadata from a ball number (1–15).
- *
- * @param {number} number
- */
-export function poolBallFromNumber(number) {
-    const color = POOL_BALL_COLORS[((number - 1) % 8) + 1];
-    if (number === 0 || number > 15) return { kind: "cue", color: "#F5F5F0" };
-    if (number <= 8) return { kind: "solid", number, color };
-    return { kind: "stripe", number, color };
 }

@@ -5,29 +5,30 @@ import { getPoolBallLabelImage, resolvePoolBallFaceColor } from "../../Render/Pr
 export function createPoolBallDraw(visuals) {
     return (ctx, prop, px, py) => {
         const poolBall = prop.poolBall ?? visuals.defaultPoolBall;
-        const radius = prop.radius || visuals.defaultRadius || 6;
+        const radius = prop.radius;
+        const compact = radius < 6;
         drawSphere(ctx, prop, px, py, {
             baseRadius: radius,
-            panelCount: visuals.panelCount ?? 12,
-            latBands: visuals.latBands ?? 8,
-            stroke: visuals.stroke ?? null,
-            getFaceColor: poolBall ? (face) => resolvePoolBallFaceColor(face, poolBall) : undefined,
+            panelCount: visuals.panelCount,
+            latBands: visuals.latBands,
+            stroke: visuals.stroke,
+            getFaceColor: poolBall ? (face) => resolvePoolBallFaceColor(face, poolBall, visuals.faceShade) : undefined,
             panelColors: poolBall ? [poolBall.color ?? "#888888"] : visuals.panels,
         });
-        if (!poolBall || visuals.showLabels === false) return;
-        const label = getPoolBallLabelImage(poolBall);
+        if (!poolBall || !visuals.showLabels) return;
+        const label = getPoolBallLabelImage(poolBall, radius, compact);
         if (!label) return;
         drawSphereTexturePatch(ctx, prop, px, py, label, {
             baseRadius: radius,
             phiCenter: Math.PI * 0.5,
             thetaCenter: 0,
-            capAngle: visuals.labelCapAngle ?? 0.5,
-            gridSegments: visuals.labelGridSegments ?? 18,
-            subSegments: visuals.labelSubSegments ?? 2,
+            capAngle: visuals.labelCapAngle,
+            gridSegments: visuals.labelGridSegments,
+            subSegments: visuals.labelSubSegments,
             radiusInflate: 1,
             uvBleed: 1,
             screenBleed: 0,
-            imageSmoothing: visuals.labelImageSmoothing ?? true,
+            imageSmoothing: visuals.labelImageSmoothing,
         });
     };
 }

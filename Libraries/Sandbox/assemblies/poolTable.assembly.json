@@ -1,9 +1,6 @@
 {
     "id": "poolTable",
     "version": 2,
-    "scale": {
-        "ballRadius": 2
-    },
     "arena": {
         "width": 96,
         "height": 176,
@@ -12,7 +9,603 @@
             "width": 8,
             "height": 4,
             "segmentSize": 4,
-            "segment": { "padding": 0, "maxHealth": 30, "health": 30 }
+            "segment": {
+                "padding": 0,
+                "maxHealth": 30,
+                "health": 30
+            }
+        }
+    },
+    "props": {
+        "pool_ball_1": {
+            "physics": {
+                "hitBehavior": "none",
+                "radius": 2,
+                "isPushable": true,
+                "rolls": true,
+                "collisionShape": "circle",
+                "laserTargetable": false,
+                "mass": 0.0625,
+                "pairRestitution": 0.92,
+                "friction": 0.5,
+                "lowSpeedFrictionThreshold": 2.5,
+                "lowSpeedFriction": 2.8,
+                "snapSpeed": 0.45,
+                "wallPhysics": {
+                    "restitution": 0.94,
+                    "friction": 0.06
+                }
+            },
+            "visuals": {
+                "defaultRadius": 2,
+                "panelCount": 10,
+                "latBands": 6,
+                "stroke": null,
+                "faceShade": 0.05,
+                "labelCapAngle": 0.78,
+                "labelGridSegments": 16,
+                "labelSubSegments": 1,
+                "labelImageSmoothing": false,
+                "showLabels": false,
+                "defaultPoolBall": {
+                    "kind": "solid",
+                    "number": 1,
+                    "color": "#FFD600"
+                }
+            }
+        },
+        "pool_ball_2": {
+            "physics": {
+                "hitBehavior": "none",
+                "radius": 2,
+                "isPushable": true,
+                "rolls": true,
+                "collisionShape": "circle",
+                "laserTargetable": false,
+                "mass": 0.0625,
+                "pairRestitution": 0.92,
+                "friction": 0.5,
+                "lowSpeedFrictionThreshold": 2.5,
+                "lowSpeedFriction": 2.8,
+                "snapSpeed": 0.45,
+                "wallPhysics": {
+                    "restitution": 0.94,
+                    "friction": 0.06
+                }
+            },
+            "visuals": {
+                "defaultRadius": 2,
+                "panelCount": 10,
+                "latBands": 6,
+                "stroke": null,
+                "faceShade": 0.05,
+                "labelCapAngle": 0.78,
+                "labelGridSegments": 16,
+                "labelSubSegments": 1,
+                "labelImageSmoothing": false,
+                "showLabels": false,
+                "defaultPoolBall": {
+                    "kind": "solid",
+                    "number": 2,
+                    "color": "#1565C0"
+                }
+            }
+        },
+        "pool_ball_3": {
+            "physics": {
+                "hitBehavior": "none",
+                "radius": 2,
+                "isPushable": true,
+                "rolls": true,
+                "collisionShape": "circle",
+                "laserTargetable": false,
+                "mass": 0.0625,
+                "pairRestitution": 0.92,
+                "friction": 0.5,
+                "lowSpeedFrictionThreshold": 2.5,
+                "lowSpeedFriction": 2.8,
+                "snapSpeed": 0.45,
+                "wallPhysics": {
+                    "restitution": 0.94,
+                    "friction": 0.06
+                }
+            },
+            "visuals": {
+                "defaultRadius": 2,
+                "panelCount": 10,
+                "latBands": 6,
+                "stroke": null,
+                "faceShade": 0.05,
+                "labelCapAngle": 0.78,
+                "labelGridSegments": 16,
+                "labelSubSegments": 1,
+                "labelImageSmoothing": false,
+                "showLabels": false,
+                "defaultPoolBall": {
+                    "kind": "solid",
+                    "number": 3,
+                    "color": "#D32F2F"
+                }
+            }
+        },
+        "pool_ball_4": {
+            "physics": {
+                "hitBehavior": "none",
+                "radius": 2,
+                "isPushable": true,
+                "rolls": true,
+                "collisionShape": "circle",
+                "laserTargetable": false,
+                "mass": 0.0625,
+                "pairRestitution": 0.92,
+                "friction": 0.5,
+                "lowSpeedFrictionThreshold": 2.5,
+                "lowSpeedFriction": 2.8,
+                "snapSpeed": 0.45,
+                "wallPhysics": {
+                    "restitution": 0.94,
+                    "friction": 0.06
+                }
+            },
+            "visuals": {
+                "defaultRadius": 2,
+                "panelCount": 10,
+                "latBands": 6,
+                "stroke": null,
+                "faceShade": 0.05,
+                "labelCapAngle": 0.78,
+                "labelGridSegments": 16,
+                "labelSubSegments": 1,
+                "labelImageSmoothing": false,
+                "showLabels": false,
+                "defaultPoolBall": {
+                    "kind": "solid",
+                    "number": 4,
+                    "color": "#7B1FA2"
+                }
+            }
+        },
+        "pool_ball_5": {
+            "physics": {
+                "hitBehavior": "none",
+                "radius": 2,
+                "isPushable": true,
+                "rolls": true,
+                "collisionShape": "circle",
+                "laserTargetable": false,
+                "mass": 0.0625,
+                "pairRestitution": 0.92,
+                "friction": 0.5,
+                "lowSpeedFrictionThreshold": 2.5,
+                "lowSpeedFriction": 2.8,
+                "snapSpeed": 0.45,
+                "wallPhysics": {
+                    "restitution": 0.94,
+                    "friction": 0.06
+                }
+            },
+            "visuals": {
+                "defaultRadius": 2,
+                "panelCount": 10,
+                "latBands": 6,
+                "stroke": null,
+                "faceShade": 0.05,
+                "labelCapAngle": 0.78,
+                "labelGridSegments": 16,
+                "labelSubSegments": 1,
+                "labelImageSmoothing": false,
+                "showLabels": false,
+                "defaultPoolBall": {
+                    "kind": "solid",
+                    "number": 5,
+                    "color": "#FF6F00"
+                }
+            }
+        },
+        "pool_ball_6": {
+            "physics": {
+                "hitBehavior": "none",
+                "radius": 2,
+                "isPushable": true,
+                "rolls": true,
+                "collisionShape": "circle",
+                "laserTargetable": false,
+                "mass": 0.0625,
+                "pairRestitution": 0.92,
+                "friction": 0.5,
+                "lowSpeedFrictionThreshold": 2.5,
+                "lowSpeedFriction": 2.8,
+                "snapSpeed": 0.45,
+                "wallPhysics": {
+                    "restitution": 0.94,
+                    "friction": 0.06
+                }
+            },
+            "visuals": {
+                "defaultRadius": 2,
+                "panelCount": 10,
+                "latBands": 6,
+                "stroke": null,
+                "faceShade": 0.05,
+                "labelCapAngle": 0.78,
+                "labelGridSegments": 16,
+                "labelSubSegments": 1,
+                "labelImageSmoothing": false,
+                "showLabels": false,
+                "defaultPoolBall": {
+                    "kind": "solid",
+                    "number": 6,
+                    "color": "#2E7D32"
+                }
+            }
+        },
+        "pool_ball_7": {
+            "physics": {
+                "hitBehavior": "none",
+                "radius": 2,
+                "isPushable": true,
+                "rolls": true,
+                "collisionShape": "circle",
+                "laserTargetable": false,
+                "mass": 0.0625,
+                "pairRestitution": 0.92,
+                "friction": 0.5,
+                "lowSpeedFrictionThreshold": 2.5,
+                "lowSpeedFriction": 2.8,
+                "snapSpeed": 0.45,
+                "wallPhysics": {
+                    "restitution": 0.94,
+                    "friction": 0.06
+                }
+            },
+            "visuals": {
+                "defaultRadius": 2,
+                "panelCount": 10,
+                "latBands": 6,
+                "stroke": null,
+                "faceShade": 0.05,
+                "labelCapAngle": 0.78,
+                "labelGridSegments": 16,
+                "labelSubSegments": 1,
+                "labelImageSmoothing": false,
+                "showLabels": false,
+                "defaultPoolBall": {
+                    "kind": "solid",
+                    "number": 7,
+                    "color": "#8B0000"
+                }
+            }
+        },
+        "pool_ball_8": {
+            "physics": {
+                "hitBehavior": "none",
+                "radius": 2,
+                "isPushable": true,
+                "rolls": true,
+                "collisionShape": "circle",
+                "laserTargetable": false,
+                "mass": 0.0625,
+                "pairRestitution": 0.92,
+                "friction": 0.5,
+                "lowSpeedFrictionThreshold": 2.5,
+                "lowSpeedFriction": 2.8,
+                "snapSpeed": 0.45,
+                "wallPhysics": {
+                    "restitution": 0.94,
+                    "friction": 0.06
+                }
+            },
+            "visuals": {
+                "defaultRadius": 2,
+                "panelCount": 10,
+                "latBands": 6,
+                "stroke": null,
+                "faceShade": 0.05,
+                "labelCapAngle": 0.78,
+                "labelGridSegments": 16,
+                "labelSubSegments": 1,
+                "labelImageSmoothing": false,
+                "showLabels": false,
+                "defaultPoolBall": {
+                    "kind": "solid",
+                    "number": 8,
+                    "color": "#1A1A1A"
+                }
+            }
+        },
+        "pool_ball_9": {
+            "physics": {
+                "hitBehavior": "none",
+                "radius": 2,
+                "isPushable": true,
+                "rolls": true,
+                "collisionShape": "circle",
+                "laserTargetable": false,
+                "mass": 0.0625,
+                "pairRestitution": 0.92,
+                "friction": 0.5,
+                "lowSpeedFrictionThreshold": 2.5,
+                "lowSpeedFriction": 2.8,
+                "snapSpeed": 0.45,
+                "wallPhysics": {
+                    "restitution": 0.94,
+                    "friction": 0.06
+                }
+            },
+            "visuals": {
+                "defaultRadius": 2,
+                "panelCount": 10,
+                "latBands": 6,
+                "stroke": null,
+                "faceShade": 0.05,
+                "labelCapAngle": 0.78,
+                "labelGridSegments": 16,
+                "labelSubSegments": 1,
+                "labelImageSmoothing": false,
+                "showLabels": false,
+                "defaultPoolBall": {
+                    "kind": "stripe",
+                    "number": 9,
+                    "color": "#FFD600"
+                }
+            }
+        },
+        "pool_ball_10": {
+            "physics": {
+                "hitBehavior": "none",
+                "radius": 2,
+                "isPushable": true,
+                "rolls": true,
+                "collisionShape": "circle",
+                "laserTargetable": false,
+                "mass": 0.0625,
+                "pairRestitution": 0.92,
+                "friction": 0.5,
+                "lowSpeedFrictionThreshold": 2.5,
+                "lowSpeedFriction": 2.8,
+                "snapSpeed": 0.45,
+                "wallPhysics": {
+                    "restitution": 0.94,
+                    "friction": 0.06
+                }
+            },
+            "visuals": {
+                "defaultRadius": 2,
+                "panelCount": 10,
+                "latBands": 6,
+                "stroke": null,
+                "faceShade": 0.05,
+                "labelCapAngle": 0.78,
+                "labelGridSegments": 16,
+                "labelSubSegments": 1,
+                "labelImageSmoothing": false,
+                "showLabels": false,
+                "defaultPoolBall": {
+                    "kind": "stripe",
+                    "number": 10,
+                    "color": "#1565C0"
+                }
+            }
+        },
+        "pool_ball_11": {
+            "physics": {
+                "hitBehavior": "none",
+                "radius": 2,
+                "isPushable": true,
+                "rolls": true,
+                "collisionShape": "circle",
+                "laserTargetable": false,
+                "mass": 0.0625,
+                "pairRestitution": 0.92,
+                "friction": 0.5,
+                "lowSpeedFrictionThreshold": 2.5,
+                "lowSpeedFriction": 2.8,
+                "snapSpeed": 0.45,
+                "wallPhysics": {
+                    "restitution": 0.94,
+                    "friction": 0.06
+                }
+            },
+            "visuals": {
+                "defaultRadius": 2,
+                "panelCount": 10,
+                "latBands": 6,
+                "stroke": null,
+                "faceShade": 0.05,
+                "labelCapAngle": 0.78,
+                "labelGridSegments": 16,
+                "labelSubSegments": 1,
+                "labelImageSmoothing": false,
+                "showLabels": false,
+                "defaultPoolBall": {
+                    "kind": "stripe",
+                    "number": 11,
+                    "color": "#D32F2F"
+                }
+            }
+        },
+        "pool_ball_12": {
+            "physics": {
+                "hitBehavior": "none",
+                "radius": 2,
+                "isPushable": true,
+                "rolls": true,
+                "collisionShape": "circle",
+                "laserTargetable": false,
+                "mass": 0.0625,
+                "pairRestitution": 0.92,
+                "friction": 0.5,
+                "lowSpeedFrictionThreshold": 2.5,
+                "lowSpeedFriction": 2.8,
+                "snapSpeed": 0.45,
+                "wallPhysics": {
+                    "restitution": 0.94,
+                    "friction": 0.06
+                }
+            },
+            "visuals": {
+                "defaultRadius": 2,
+                "panelCount": 10,
+                "latBands": 6,
+                "stroke": null,
+                "faceShade": 0.05,
+                "labelCapAngle": 0.78,
+                "labelGridSegments": 16,
+                "labelSubSegments": 1,
+                "labelImageSmoothing": false,
+                "showLabels": false,
+                "defaultPoolBall": {
+                    "kind": "stripe",
+                    "number": 12,
+                    "color": "#7B1FA2"
+                }
+            }
+        },
+        "pool_ball_13": {
+            "physics": {
+                "hitBehavior": "none",
+                "radius": 2,
+                "isPushable": true,
+                "rolls": true,
+                "collisionShape": "circle",
+                "laserTargetable": false,
+                "mass": 0.0625,
+                "pairRestitution": 0.92,
+                "friction": 0.5,
+                "lowSpeedFrictionThreshold": 2.5,
+                "lowSpeedFriction": 2.8,
+                "snapSpeed": 0.45,
+                "wallPhysics": {
+                    "restitution": 0.94,
+                    "friction": 0.06
+                }
+            },
+            "visuals": {
+                "defaultRadius": 2,
+                "panelCount": 10,
+                "latBands": 6,
+                "stroke": null,
+                "faceShade": 0.05,
+                "labelCapAngle": 0.78,
+                "labelGridSegments": 16,
+                "labelSubSegments": 1,
+                "labelImageSmoothing": false,
+                "showLabels": false,
+                "defaultPoolBall": {
+                    "kind": "stripe",
+                    "number": 13,
+                    "color": "#FF6F00"
+                }
+            }
+        },
+        "pool_ball_14": {
+            "physics": {
+                "hitBehavior": "none",
+                "radius": 2,
+                "isPushable": true,
+                "rolls": true,
+                "collisionShape": "circle",
+                "laserTargetable": false,
+                "mass": 0.0625,
+                "pairRestitution": 0.92,
+                "friction": 0.5,
+                "lowSpeedFrictionThreshold": 2.5,
+                "lowSpeedFriction": 2.8,
+                "snapSpeed": 0.45,
+                "wallPhysics": {
+                    "restitution": 0.94,
+                    "friction": 0.06
+                }
+            },
+            "visuals": {
+                "defaultRadius": 2,
+                "panelCount": 10,
+                "latBands": 6,
+                "stroke": null,
+                "faceShade": 0.05,
+                "labelCapAngle": 0.78,
+                "labelGridSegments": 16,
+                "labelSubSegments": 1,
+                "labelImageSmoothing": false,
+                "showLabels": false,
+                "defaultPoolBall": {
+                    "kind": "stripe",
+                    "number": 14,
+                    "color": "#2E7D32"
+                }
+            }
+        },
+        "pool_ball_15": {
+            "physics": {
+                "hitBehavior": "none",
+                "radius": 2,
+                "isPushable": true,
+                "rolls": true,
+                "collisionShape": "circle",
+                "laserTargetable": false,
+                "mass": 0.0625,
+                "pairRestitution": 0.92,
+                "friction": 0.5,
+                "lowSpeedFrictionThreshold": 2.5,
+                "lowSpeedFriction": 2.8,
+                "snapSpeed": 0.45,
+                "wallPhysics": {
+                    "restitution": 0.94,
+                    "friction": 0.06
+                }
+            },
+            "visuals": {
+                "defaultRadius": 2,
+                "panelCount": 10,
+                "latBands": 6,
+                "stroke": null,
+                "faceShade": 0.05,
+                "labelCapAngle": 0.78,
+                "labelGridSegments": 16,
+                "labelSubSegments": 1,
+                "labelImageSmoothing": false,
+                "showLabels": false,
+                "defaultPoolBall": {
+                    "kind": "stripe",
+                    "number": 15,
+                    "color": "#8B0000"
+                }
+            }
+        },
+        "pool_cue_ball": {
+            "physics": {
+                "hitBehavior": "none",
+                "radius": 2,
+                "isPushable": true,
+                "rolls": true,
+                "collisionShape": "circle",
+                "laserTargetable": false,
+                "mass": 0.0625,
+                "pairRestitution": 0.92,
+                "friction": 0.5,
+                "lowSpeedFrictionThreshold": 2.5,
+                "lowSpeedFriction": 2.8,
+                "snapSpeed": 0.45,
+                "wallPhysics": {
+                    "restitution": 0.94,
+                    "friction": 0.06
+                }
+            },
+            "visuals": {
+                "defaultRadius": 2,
+                "panelCount": 10,
+                "latBands": 6,
+                "stroke": null,
+                "faceShade": 0.05,
+                "labelCapAngle": 0.78,
+                "labelGridSegments": 16,
+                "labelSubSegments": 1,
+                "labelImageSmoothing": false,
+                "showLabels": false,
+                "defaultPoolBall": {
+                    "kind": "cue"
+                }
+            }
         }
     },
     "voidCircles": [
@@ -20,68 +613,201 @@
             "id": "void-tl",
             "radius": 4.3,
             "depth": 6,
-            "placement": { "anchor": "playfield.topLeft" }
+            "placement": {
+                "anchor": "playfield.topLeft"
+            }
         },
         {
             "id": "void-left",
             "radius": 3.5,
             "depth": 6,
-            "placement": { "anchor": "playfield.left" }
+            "placement": {
+                "anchor": "playfield.left"
+            }
         },
         {
             "id": "void-tr",
             "radius": 4.3,
             "depth": 6,
-            "placement": { "anchor": "playfield.topRight" }
+            "placement": {
+                "anchor": "playfield.topRight"
+            }
         },
         {
             "id": "void-bl",
             "radius": 4.3,
             "depth": 6,
-            "placement": { "anchor": "playfield.bottomLeft" }
+            "placement": {
+                "anchor": "playfield.bottomLeft"
+            }
         },
         {
             "id": "void-right",
             "radius": 3.5,
             "depth": 6,
-            "placement": { "anchor": "playfield.right" }
+            "placement": {
+                "anchor": "playfield.right"
+            }
         },
         {
             "id": "void-br",
             "radius": 4.3,
             "depth": 6,
-            "placement": { "anchor": "playfield.bottomRight" }
+            "placement": {
+                "anchor": "playfield.bottomRight"
+            }
         }
     ],
     "pickups": [
-        { "id": "cue", "prop": "pool_cue_ball", "at": { "u": 0.5, "v": 0.75 } },
-        { "prop": "pool_ball", "poolBall": 1, "at": { "u": 0.5, "v": 0.25 } },
-        { "prop": "pool_ball", "poolBall": 10, "at": { "u": 0.475, "v": 0.228349364905389 } },
-        { "prop": "pool_ball", "poolBall": 2, "at": { "u": 0.525, "v": 0.228349364905389 } },
-        { "prop": "pool_ball", "poolBall": 11, "at": { "u": 0.45, "v": 0.20669872981077808 } },
-        { "prop": "pool_ball", "poolBall": 8, "at": { "u": 0.5, "v": 0.20669872981077808 } },
-        { "prop": "pool_ball", "poolBall": 3, "at": { "u": 0.55, "v": 0.20669872981077808 } },
-        { "prop": "pool_ball", "poolBall": 12, "at": { "u": 0.425, "v": 0.1850480947161671 } },
-        { "prop": "pool_ball", "poolBall": 4, "at": { "u": 0.475, "v": 0.1850480947161671 } },
-        { "prop": "pool_ball", "poolBall": 13, "at": { "u": 0.525, "v": 0.1850480947161671 } },
-        { "prop": "pool_ball", "poolBall": 5, "at": { "u": 0.575, "v": 0.1850480947161671 } },
-        { "prop": "pool_ball", "poolBall": 6, "at": { "u": 0.4, "v": 0.16339745962155616 } },
-        { "prop": "pool_ball", "poolBall": 14, "at": { "u": 0.45, "v": 0.16339745962155616 } },
-        { "prop": "pool_ball", "poolBall": 7, "at": { "u": 0.5, "v": 0.16339745962155616 } },
-        { "prop": "pool_ball", "poolBall": 15, "at": { "u": 0.55, "v": 0.16339745962155616 } },
-        { "prop": "pool_ball", "poolBall": 9, "at": { "u": 0.6, "v": 0.16339745962155616 } }
+        {
+            "id": "cue",
+            "prop": "pool_cue_ball",
+            "at": {
+                "u": 0.5,
+                "v": 0.75
+            }
+        },
+        {
+            "prop": "pool_ball_1",
+            "at": {
+                "u": 0.5,
+                "v": 0.25
+            }
+        },
+        {
+            "prop": "pool_ball_10",
+            "at": {
+                "u": 0.475,
+                "v": 0.228349364905389
+            }
+        },
+        {
+            "prop": "pool_ball_2",
+            "at": {
+                "u": 0.525,
+                "v": 0.228349364905389
+            }
+        },
+        {
+            "prop": "pool_ball_11",
+            "at": {
+                "u": 0.45,
+                "v": 0.20669872981077808
+            }
+        },
+        {
+            "prop": "pool_ball_8",
+            "at": {
+                "u": 0.5,
+                "v": 0.20669872981077808
+            }
+        },
+        {
+            "prop": "pool_ball_3",
+            "at": {
+                "u": 0.55,
+                "v": 0.20669872981077808
+            }
+        },
+        {
+            "prop": "pool_ball_12",
+            "at": {
+                "u": 0.425,
+                "v": 0.1850480947161671
+            }
+        },
+        {
+            "prop": "pool_ball_4",
+            "at": {
+                "u": 0.475,
+                "v": 0.1850480947161671
+            }
+        },
+        {
+            "prop": "pool_ball_13",
+            "at": {
+                "u": 0.525,
+                "v": 0.1850480947161671
+            }
+        },
+        {
+            "prop": "pool_ball_5",
+            "at": {
+                "u": 0.575,
+                "v": 0.1850480947161671
+            }
+        },
+        {
+            "prop": "pool_ball_6",
+            "at": {
+                "u": 0.4,
+                "v": 0.16339745962155616
+            }
+        },
+        {
+            "prop": "pool_ball_14",
+            "at": {
+                "u": 0.45,
+                "v": 0.16339745962155616
+            }
+        },
+        {
+            "prop": "pool_ball_7",
+            "at": {
+                "u": 0.5,
+                "v": 0.16339745962155616
+            }
+        },
+        {
+            "prop": "pool_ball_15",
+            "at": {
+                "u": 0.55,
+                "v": 0.16339745962155616
+            }
+        },
+        {
+            "prop": "pool_ball_9",
+            "at": {
+                "u": 0.6,
+                "v": 0.16339745962155616
+            }
+        }
     ],
-    "link": { "groupField": "sandboxGroupId" },
+    "link": {
+        "groupField": "sandboxGroupId"
+    },
     "behaviors": {
         "pool_cue_ball": {
-            "cueStrike": { "minDrag": 0.75, "maxPull": 18.75, "pullScale": 0.5, "minPower": 4, "maxPower": 1200, "powerCurve": 2.5 },
+            "cueStrike": {
+                "minDrag": 0.75,
+                "maxPull": 18.75,
+                "pullScale": 0.5,
+                "minPower": 4,
+                "maxPower": 1200,
+                "powerCurve": 2.5
+            },
             "inputGates": {
                 "cueStrike": [
-                    { "scope": "self", "until": "atRest" },
-                    { "scope": "groupPickups", "link": "sandboxGroupId", "until": "allAtRest", "excludeStates": ["voidSink"] }
+                    {
+                        "scope": "self",
+                        "until": "atRest"
+                    },
+                    {
+                        "scope": "groupPickups",
+                        "link": "sandboxGroupId",
+                        "until": "allAtRest",
+                        "excludeStates": [
+                            "voidSink"
+                        ]
+                    }
                 ]
             }
         }
     },
-    "spawn": ["arena.clear", "arena.walls", "voidCircles", "pickups"]
+    "spawn": [
+        "arena.clear",
+        "arena.walls",
+        "voidCircles",
+        "pickups"
+    ]
 }

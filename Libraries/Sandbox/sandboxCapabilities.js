@@ -25,6 +25,15 @@ export function isSandboxSpawnable(asset) {
  */
 export function resolveSandboxBehaviors(asset, registeredBehaviors, pickup = null) {
     const byId = new Map(registeredBehaviors.map((behavior) => [behavior.id, behavior]));
+    if (pickup?.sandboxBehaviorOverrides) {
+        /** @type {string[]} */
+        const stamped = [];
+        for (const key of Object.keys(pickup.sandboxBehaviorOverrides)) {
+            if (key === "inputGates") continue;
+            if (byId.has(key)) stamped.push(key);
+        }
+        if (stamped.length) return stamped;
+    }
     if (Array.isArray(asset?.sandbox?.behaviors)) return asset.sandbox.behaviors.filter((id) => byId.has(id));
     const sandbox = asset?.sandbox;
     return [...byId.values()]

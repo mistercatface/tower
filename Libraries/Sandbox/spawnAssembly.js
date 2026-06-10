@@ -5,7 +5,6 @@ import { createVoidZone } from "../Spatial/zones/voidZone.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { Pickup } from "../../Entities/Pickup.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
-import { poolBallFromNumber } from "../Render/Props3D/poolBallArt.js";
 import { buildAssemblyLayout, buildAssemblyClearBounds, buildAssemblyWallSegments } from "./assemblyLayout.js";
 import { getResolvedAssembly } from "./assemblies/assemblyRegistry.js";
 import { resolvePlacement } from "./assemblies/assemblyPlacement.js";
@@ -78,7 +77,6 @@ function spawnManifestPickups(host, layout, resolved, { faction, groupId, rackId
         stampAssemblyGroupMember(pickup, groupId, resolved.id, groupField);
         const behavior = resolved.behaviors[entry.prop];
         if (behavior) pickup.sandboxBehaviorOverrides = behavior;
-        if (entry.poolBall != null) pickup.poolBall = poolBallFromNumber(entry.poolBall);
         wakePushableBody(pickup);
         host.addPickup(pickup);
         if (entry.id === "cue") cueBallId = pickup.id;
