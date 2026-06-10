@@ -3,17 +3,11 @@ export const TILELAB_UI_HTML = `
     <div class="toolbar">
         <h1>Tile Lab</h1>
         <span class="sep"></span>
-        <label>Map seed <input id="mapSeedInput" type="number" value="42"></label>
-        <button type="button" id="regenMapBtn" class="secondary">New map</button>
-        <span id="surfaceToolbarGroup">
-            <span class="sep"></span>
-            <label>Floor seed <input id="seedInput" type="number" value="42" step="1"></label>
-            <button type="button" id="randomSeedBtn" class="secondary">Rand</button>
-            <span class="sep"></span>
-            <label class="check-inline"><input id="showVignetteInput" type="checkbox"> Circular Overlay</label>
-            <span class="sep"></span>
-            <button type="button" id="regenerateBtn">Redraw</button>
-        </span>
+        <button type="button" id="randomMapBtn" class="secondary">Random</button>
+        <span class="sep"></span>
+        <label class="check-inline"><input id="showVignetteInput" type="checkbox"> Circular Overlay</label>
+        <span class="sep"></span>
+        <button type="button" id="regenerateBtn">Redraw</button>
     </div>
     <div class="workspace">
         <aside class="col col-editor">

@@ -6,7 +6,7 @@ import { initAnimationPreview, estimateAnimationPreviewHeight } from "./LabAnima
 import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEditor.js";
 import { applyLabCanvasSize } from "./labCanvas.js";
 import { registerEditorProfiles, renderTilelabPreview, syncRuntimeLabProfile } from "./preview.js";
-import { readControls, initPresetSelect, initToolbarDefaults, bindToolbarControls, syncTilelabWorld, syncPreviewZoomToStage } from "./toolbar.js";
+import { readControls, initPresetSelect, initToolbarDefaults, bindToolbarControls, rollRandomTilelabMap, syncPreviewZoomToStage } from "./toolbar.js";
 import { mountLabViewport, refreshLabViewportControls } from "./labViewport.js";
 import { TILELAB_UI_HTML } from "./shellHtml.js";
 import { bindMapInspectorControls, syncMapInspectorAfterRegen } from "./mapInspector.js";
@@ -39,8 +39,6 @@ function runBakeRepaintLoop(state) {
     bakeRepaintRaf = requestAnimationFrame(tick);
 }
 async function refreshPreview(state) {
-    const ctrl = readControls(state);
-    syncTilelabWorld(state, ctrl);
     syncMapInspectorAfterRegen(state, () => renderTilelabPreview(state, readControls(state)));
     await registerEditorProfiles(state);
     renderTilelabPreview(state, readControls(state));
@@ -78,10 +76,9 @@ function bootstrapTilelabUi(state) {
     mountTilelabSandbox(state, () => renderTilelabPreview(state, readControls(state)));
     bindToolbarControls({
         onRefresh: () => schedulePreviewRefresh(state, 0),
-        onRegenMap: () => {
-            syncTilelabWorld(state, readControls(state), true);
-            syncMapInspectorAfterRegen(state, () => renderTilelabPreview(state, readControls(state)));
-            renderTilelabPreview(state, readControls(state));
+        onRandomMap: () => {
+            rollRandomTilelabMap(state);
+            schedulePreviewRefresh(state, 0);
         },
         onStageResize: () => {
             if (state.labCanvas) applyLabCanvasSize(state, state.labCanvas.width, state.labCanvas.height);

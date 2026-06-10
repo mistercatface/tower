@@ -20,7 +20,8 @@ import { getTilelabSandboxController } from "./world/tilelabSandbox.js";
 import { requestUiUpdate } from "../../Core/EventSystem.js";
 import { getRunScenePort, getSimulationPort } from "../../Core/GamePorts.js";
 import { registerEditorProfiles, renderTilelabPreview } from "./ui/preview.js";
-import { syncTilelabWorld, readControls, syncPreviewZoomToStage } from "./ui/toolbar.js";
+import { readControls, syncPreviewZoomToStage } from "./ui/toolbar.js";
+import { generateTilelabMap } from "./world/mapWorld.js";
 import { mergePairFilter } from "../../Libraries/Interaction/pairRules.js";
 import { excludeDeadOther, excludeActorOther, requirePickupOnHit } from "../../Libraries/Interaction/pairRuleClauses.js";
 import { tilelabUiPort } from "./ui/tilelabUiPort.js";
@@ -43,8 +44,7 @@ export const tilelabRunScenePort = {
     getLayout: () => null,
     onSimulationEnter(ctx) {
         const { state } = ctx;
-        const ctrl = readControls(state);
-        syncTilelabWorld(state, ctrl, true);
+        generateTilelabMap(state, { mapSeed: state.mapSeed, floorSeed: state.floorSeed });
         registerEditorProfiles(state).then(() => {
             syncPreviewZoomToStage(state);
         });

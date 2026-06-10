@@ -3,7 +3,6 @@ import { getWorldGen } from "../../../Core/GamePorts.js";
 import { SliderControl } from "./controls/SliderControl.js";
 import { focusLabNode, generateTilelabMap, listLabMapNodes, selectLabNode } from "../world/mapWorld.js";
 import { setLabCamera } from "./labViewport.js";
-import { readControls } from "./toolbar.js";
 export function readMapControls() {
     return {
         showNodes: document.getElementById("showNodesInput")?.checked ?? true,
@@ -81,7 +80,7 @@ export function buildTopologySettingsPanel(state) {
     if (!panel) return;
     panel.innerHTML = "";
     const worldGen = getWorldGen();
-    const regen = () => generateTilelabMap(state, readControls(state));
+    const regen = () => generateTilelabMap(state, { mapSeed: state.mapSeed, floorSeed: state.floorSeed });
     const addSlider = (label, min, max, step, obj, key) => {
         panel.appendChild(
             new SliderControl(label, min, max, step, obj[key], (val) => {
