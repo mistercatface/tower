@@ -24,9 +24,9 @@ function resolvePoolBallFaceColor(face, poolBall, faceShade) {
     return vMid < 0.18 || vMid > 0.82 ? shadeHex(base, faceShade) : base;
 }
 const labelCache = new Map();
-/** @param {number} radius */
+/** Label decal source — not the prop bake canvas (that stays ~86px at zoom 1). */
 function poolBallLabelCanvasSize(radius) {
-    return Math.max(24, Math.min(96, Math.round(radius * 12)));
+    return Math.max(32, Math.min(64, Math.round(radius * 16)));
 }
 /** @param {{ kind: "cue" | "solid" | "stripe", number?: number }} poolBall @param {number} radius @param {boolean} compact */
 function getPoolBallLabelImage(poolBall, radius, compact) {
@@ -125,14 +125,14 @@ const POOL_BALL_PHYSICS = {
 };
 const POOL_BALL_VISUALS = {
     defaultRadius: POOL_BALL_RADIUS,
-    panelCount: 6,
-    latBands: 4,
+    panelCount: 10,
+    latBands: 6,
     stroke: null,
-    faceShade: 0.05,
+    faceShade: 0.06,
     labelCapAngle: 0.78,
-    labelGridSegments: 8,
+    labelGridSegments: 12,
     labelSubSegments: 1,
-    labelImageSmoothing: false,
+    labelImageSmoothing: true,
     showLabels: false,
 };
 /** @param {number} number */
