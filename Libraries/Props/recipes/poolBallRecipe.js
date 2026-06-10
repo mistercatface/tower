@@ -21,13 +21,13 @@ export function createPoolBallDraw(visuals) {
             baseRadius: radius,
             phiCenter: Math.PI * 0.5,
             thetaCenter: 0,
-            capAngle: 0.5,
-            gridSegments: 22,
-            subSegments: 2,
+            capAngle: visuals.labelCapAngle ?? 0.5,
+            gridSegments: visuals.labelGridSegments ?? 18,
+            subSegments: visuals.labelSubSegments ?? 2,
             radiusInflate: 1,
             uvBleed: 1,
             screenBleed: 0,
-            imageSmoothing: true,
+            imageSmoothing: visuals.labelImageSmoothing ?? true,
         });
     };
 }

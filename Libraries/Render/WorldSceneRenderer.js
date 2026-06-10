@@ -32,13 +32,14 @@ export class WorldSceneRenderer {
     drawDebrisProps(ctx, input, viewport, options = {}) {
         const px = viewport.x;
         const py = viewport.y;
+        const zoom = viewport.zoom ?? 1;
         ctx.save();
         clipToViewport(ctx, viewport);
         for (let i = 0; i < input.pickups.length; i++) {
             const p = input.pickups[i];
             if (p.isDead || p.strategy?.renderMode !== "debris") continue;
             if (typeof p.isVisible === "function" && !p.isVisible(viewport)) continue;
-            this.props.drawProp(ctx, p, px, py);
+            this.props.drawProp(ctx, p, px, py, { zoom });
         }
         ctx.restore();
     }
@@ -104,6 +105,7 @@ export class WorldSceneRenderer {
     draw3DBuildings(ctx, input, viewport, walls, options = {}) {
         const px = viewport.x;
         const py = viewport.y;
+        const zoom = viewport.zoom ?? 1;
         const worldBounds = viewport.boundsDraw;
         this.structure.updateSharedEdges(walls);
         ctx.save();
@@ -116,7 +118,7 @@ export class WorldSceneRenderer {
         for (let i = 0; i < visibleObjects.length; i++) {
             const obj = visibleObjects[i];
             if (obj.usesKinematicsBody) renderActorKinematicsBody(ctx, obj, viewport);
-            else if (obj.strategy) this.props.drawProp(ctx, obj, px, py);
+            else if (obj.strategy) this.props.drawProp(ctx, obj, px, py, { zoom });
             else if (obj.pass === "walls") this._drawRetainedWallFace(ctx, obj, input, viewport, px, py, worldBounds);
         }
         ctx.restore();

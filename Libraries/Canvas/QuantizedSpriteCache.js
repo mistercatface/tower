@@ -3,7 +3,7 @@ import { quantizeAngle, quantizeAngleIndex, quantizeViewOffset } from "./viewQua
 import { clamp } from "../Math/Interpolate.js";
 import { buildRollOrientKey, quantizeRollQuat } from "../Props/rollingMotion.js";
 import { standTipStageRadius } from "../Spatial/transforms/longAxisBox3d.js";
-import { resolvePropBakeScaleForProp, resolvePropPixelSizeForProp } from "../../Core/GamePropPixelSize.js";
+import { resolvePropBakeScaleForProp, resolvePropPixelSizeForProp, quantizePropBakeZoom } from "../../Core/GamePropPixelSize.js";
 import { resolveBodyRadius } from "../Motion/bodyDefaults.js";
 import { resolvePropQuantizeSteps } from "../Props/propStrategy.js";
 /**
@@ -149,8 +149,9 @@ export function quantizeLongAxisAngles(prop) {
  * @param {number} py
  * @param {string} renderKey
  * @param {number} [animFrame]
+ * @param {number} [zoom]
  */
-export function buildPropSpriteKey(prop, px, py, renderKey, animFrame = 0) {
+export function buildPropSpriteKey(prop, px, py, renderKey, animFrame = 0, zoom = 1) {
     const dx = prop.x - px;
     const dy = prop.y - py;
     const { keyDx, keyDy } = propSpriteCache.quantizeView(dx, dy);
@@ -170,7 +171,8 @@ export function buildPropSpriteKey(prop, px, py, renderKey, animFrame = 0) {
     const elevKey = qElev !== 0 ? `_el${qElev}` : "";
     const pixelSize = resolvePropPixelSizeForProp(prop);
     const pixelKey = pixelSize ? `_px${pixelSize}` : "";
-    return `${renderKey}_${poolBallKey}_${orientKey}_${keyDx}_${keyDy}_${radius}_${halfX}x${halfY}_${opacityBucket}_${animFrame}${elevKey}${pixelKey}`;
+    const zoomKey = `_z${quantizePropBakeZoom(zoom)}`;
+    return `${renderKey}_${poolBallKey}_${orientKey}_${keyDx}_${keyDy}_${radius}_${halfX}x${halfY}_${opacityBucket}_${animFrame}${elevKey}${pixelKey}${zoomKey}`;
 }
 /**
  * @param {object} spec
@@ -180,9 +182,10 @@ export function buildPropSpriteKey(prop, px, py, renderKey, animFrame = 0) {
  * @param {string} spec.renderKey
  * @param {(ctx: CanvasRenderingContext2D, prop: object, px: number, py: number) => void} spec.draw
  * @param {number} [spec.animFrame]
+ * @param {number} [spec.zoom]
  */
-export function getOrBakePropSprite({ prop, px, py, renderKey, draw, animFrame = 0 }) {
-    const key = buildPropSpriteKey(prop, px, py, renderKey, animFrame);
+export function getOrBakePropSprite({ prop, px, py, renderKey, draw, animFrame = 0, zoom = 1 }) {
+    const key = buildPropSpriteKey(prop, px, py, renderKey, animFrame, zoom);
     return propSpriteCache.getOrBake(key, () => {
         const dx = prop.x - px;
         const dy = prop.y - py;
@@ -190,7 +193,7 @@ export function getOrBakePropSprite({ prop, px, py, renderKey, draw, animFrame =
         const stageR = prop.strategy?.standTip ? standTipStageRadius(prop) : resolveBodyRadius(prop);
         const footprint = propFootprintHalfExtents(prop);
         const worldDiameter = Math.max(stageR * 2, footprint.x * 2, footprint.y * 2);
-        const bakeScale = resolvePropBakeScaleForProp(prop, worldDiameter);
+        const bakeScale = resolvePropBakeScaleForProp(prop, worldDiameter, zoom);
         const stageSpan = Math.ceil((stageR * 2.6 + PROP_STAGE_PADDING * 2) * bakeScale);
         const anchorX = PROP_STAGE_PADDING + stageR * 1.3;
         const anchorY = PROP_STAGE_PADDING + stageR * 1.3;

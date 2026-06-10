@@ -33,18 +33,26 @@ export function applyGamePropPixelSize(definition) {
     activePropPixelSize = resolvePropPixelSize(definition);
     clearPropSpriteCache();
 }
+/** Quantize zoom for prop bake cache keys — eighth-step buckets. */
+export function quantizePropBakeZoom(zoom) {
+    if (!Number.isFinite(zoom) || zoom <= 0) return 1;
+    return Math.max(0.25, Math.round(zoom * 8) / 8);
+}
 /**
  * @param {number} worldDiameter — full prop extent in world units (max of width/height)
  * @param {number | null} [pixelSize]
  * @param {boolean} [entityOverride] — per-prop bake diameter (no world-size floor)
+ * @param {number} [zoom] — viewport zoom so bake density tracks on-screen size
  */
-export function resolvePropBakeScale(worldDiameter, pixelSize = activePropPixelSize, entityOverride = false) {
+export function resolvePropBakeScale(worldDiameter, pixelSize = activePropPixelSize, entityOverride = false, zoom = 1) {
     if (!pixelSize || worldDiameter <= 0) return 1;
-    const bakeDiameter = entityOverride ? pixelSize : Math.max(pixelSize, worldDiameter);
+    const viewZoom = Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
+    const screenDiameter = worldDiameter * viewZoom;
+    const bakeDiameter = entityOverride ? Math.max(pixelSize, screenDiameter) : Math.max(pixelSize, screenDiameter, worldDiameter);
     return bakeDiameter / worldDiameter;
 }
-/** @param {object} prop */
-export function resolvePropBakeScaleForProp(prop, worldDiameter) {
+/** @param {object} prop @param {number} worldDiameter @param {number} [zoom] */
+export function resolvePropBakeScaleForProp(prop, worldDiameter, zoom = 1) {
     const pixelSize = resolvePropPixelSizeForProp(prop);
-    return resolvePropBakeScale(worldDiameter, pixelSize, hasEntityPropPixelSize(prop));
+    return resolvePropBakeScale(worldDiameter, pixelSize, hasEntityPropPixelSize(prop), zoom);
 }
