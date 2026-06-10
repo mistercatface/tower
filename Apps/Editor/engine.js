@@ -24,7 +24,6 @@ import { tilelabGroundZoneEffectPass, tilelabGroundZonePhase } from "./groundZon
 import { sandboxVoidZoneEffectPass, sandboxVoidZonePhase } from "./sandboxVoidZones.js";
 import { sandboxController } from "./world/tilelabSandbox.js";
 import { initEmptyTilelabMap } from "./world/mapWorld.js";
-import { registerEditorProfiles } from "./ui/preview.js";
 import { fitLabStageToView } from "./ui/labViewport.js";
 import { tilelabUiPort } from "./ui/tilelabUiPort.js";
 import { renderTilelabPreview } from "./ui/preview.js";
@@ -152,7 +151,7 @@ export function createEditorApp() {
     }
     function enterEditor() {
         initEmptyTilelabMap(state);
-        registerEditorProfiles(state).then(() => fitLabStageToView(state));
+        fitLabStageToView(state);
         requestUiUpdate();
     }
     function resizeCanvas() {

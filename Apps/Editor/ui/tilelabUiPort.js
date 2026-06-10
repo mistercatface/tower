@@ -3,7 +3,7 @@ import { applySquareCanvasResize } from "../../../Libraries/Canvas/index.js";
 import { initResizer } from "./lab-shared.js";
 import { initAnimationPreview, estimateAnimationPreviewHeight } from "./LabAnimationPreview.js";
 import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEditor.js";
-import { registerEditorProfiles, renderTilelabPreview } from "./preview.js";
+import { syncEditorProfile, renderTilelabPreview } from "./preview.js";
 import { initPresetSelect, bindToolbarControls, rollRandomTilelabMap } from "./toolbar.js";
 import { fitLabStageToView, mountLabViewport } from "./labViewport.js";
 import { TILELAB_UI_HTML } from "./shellHtml.js";
@@ -42,9 +42,9 @@ function runBakeRepaintLoop(state) {
     };
     bakeRepaintRaf = requestAnimationFrame(tick);
 }
-async function refreshPreview(state) {
+function refreshPreview(state) {
     syncMapInspectorAfterRegen(state, () => renderTilelabPreview(state));
-    await registerEditorProfiles(state);
+    syncEditorProfile(state);
     renderTilelabPreview(state);
     runBakeRepaintLoop(state);
 }
@@ -72,7 +72,7 @@ function bootstrapTilelabUi(state) {
             else schedulePreviewRefresh(state, 300);
         },
     });
-    registerEditorProfiles(state);
+    syncEditorProfile(state);
     const onLabViewChange = () => {
         renderTilelabPreview(state);
         if (state.worldSurfaces.hasPendingSurfaceBakes()) runBakeRepaintLoop(state);
@@ -143,11 +143,8 @@ function bootstrapTilelabUi(state) {
         fitLabStageToView(state);
         renderTilelabPreview(state);
     });
-    registerEditorProfiles(state).then(() => {
-        fitLabStageToView(state);
-        syncMapInspectorAfterRegen(state, () => renderTilelabPreview(state));
-        refreshPreview(state);
-    });
+    syncMapInspectorAfterRegen(state, () => renderTilelabPreview(state));
+    runBakeRepaintLoop(state);
 }
 export const tilelabUiPort = {
     mount({ state }) {

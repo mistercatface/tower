@@ -4,24 +4,20 @@ import { TileWorkerCoordinator } from "../../../Libraries/WorldSurface/TileWorke
 import { invalidateWallAtlasKeyMemos } from "../../../Render/game/wallSurfaceInvalidation.js";
 import { drawTilelabSurfaceFrame, invalidateMapPreviewBakes } from "../world/surfacePreview.js";
 import { buildProfileFromEditor, RUNTIME_LAB_PROFILE_ID } from "./profile/ProfileEditor.js";
-let registerEditorProfilesSerial = Promise.resolve();
 function buildLabRuntimeProfile() {
     const profile = buildProfileFromEditor();
     if (profile?.animation) delete profile.animation;
     return profile;
 }
-export function registerEditorProfiles(state) {
-    registerRuntimeSurfaceProfile(RUNTIME_LAB_PROFILE_ID, buildLabRuntimeProfile());
-    registerEditorProfilesSerial = registerEditorProfilesSerial.then(async () => {
-        invalidateProfileScratch(RUNTIME_LAB_PROFILE_ID);
-        invalidateWallAtlasKeyMemos(state);
-        state.worldSurfaces.clearBakeCache();
-        invalidateMapPreviewBakes();
-        const profile = buildLabRuntimeProfile();
-        registerRuntimeSurfaceProfile(RUNTIME_LAB_PROFILE_ID, profile);
-        await TileWorkerCoordinator.registerRuntimeProfile(RUNTIME_LAB_PROFILE_ID, profile);
-    });
-    return registerEditorProfilesSerial;
+/** @param {import("../state.js").TileLabGameState} state */
+export function syncEditorProfile(state) {
+    invalidateProfileScratch(RUNTIME_LAB_PROFILE_ID);
+    invalidateWallAtlasKeyMemos(state);
+    state.worldSurfaces.clearBakeCache();
+    invalidateMapPreviewBakes();
+    const profile = buildLabRuntimeProfile();
+    registerRuntimeSurfaceProfile(RUNTIME_LAB_PROFILE_ID, profile);
+    void TileWorkerCoordinator.registerRuntimeProfile(RUNTIME_LAB_PROFILE_ID, profile);
 }
 /** @param {import("../state.js").TileLabGameState} state */
 export function renderTilelabPreview(state) {
