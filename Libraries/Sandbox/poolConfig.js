@@ -30,7 +30,7 @@ export const POOL_CUE_STRIKE = {
     maxPull: scale(POOL_REFERENCE_CUE_STRIKE.maxPull),
     pullScale: POOL_REFERENCE_CUE_STRIKE.pullScale,
     minPower: scale(POOL_REFERENCE_CUE_STRIKE.minPower),
-    maxPower: scale(POOL_REFERENCE_CUE_STRIKE.maxPower),
+    maxPower: POOL_REFERENCE_CUE_STRIKE.maxPower,
 };
 /**
  * Render-only knobs — independent of {@link POOL_BALL_RADIUS}.
