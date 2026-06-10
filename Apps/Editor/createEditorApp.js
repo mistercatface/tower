@@ -8,9 +8,9 @@ import { bootstrapEngine } from "../../Core/bootstrapEngine.js";
 import { applyGameCollisionSettings } from "../../Core/GameCollisionSettings.js";
 import { applyGamePropPixelSize } from "../../Core/GamePropPixelSize.js";
 import { applyGamePropQuantizeSettings } from "../../Core/GamePropQuantizeSettings.js";
-import { getUiPort } from "../../Core/GamePorts.js";
 import { mountGameUi } from "../../UI/Core/uiRoot.js";
 import { editorGame, initEditorSession } from "./index.js";
+import { tilelabUiPort } from "./ui/tilelabUiPort.js";
 import { renderTilelabPreview } from "./ui/preview.js";
 import { readControls } from "./ui/toolbar.js";
 /** Editor boot — shared engine setup and loop, no FSM or createGame. */
@@ -73,11 +73,11 @@ export function createEditorApp() {
     events.setContext({ state, viewport, fsm: null, resetGame: resetEditor });
     events.warnOnMissingListeners = true;
     events.on(Events.UI_UPDATE, ({ state: uiState }) => {
-        getUiPort().updateUI({ state: uiState });
+        tilelabUiPort.updateUI({ state: uiState });
     });
     window.addEventListener("resize", resizeCanvas);
     window.gameState = state;
-    mountGameUi(editorGame.uiPort, state);
+    mountGameUi(tilelabUiPort, state);
     resizeCanvas();
     enterEditor();
     requestAnimationFrame(loop);

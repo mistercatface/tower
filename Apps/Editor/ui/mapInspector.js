@@ -1,5 +1,5 @@
 import { tilelabMapTopology } from "../index.js";
-import { getWorldGen } from "../../../Core/GamePorts.js";
+import { editorGame } from "../index.js";
 import { SliderControl } from "./controls/SliderControl.js";
 import { focusLabNode, generateTilelabMap, listLabMapNodes, selectLabNode } from "../world/mapWorld.js";
 import { setLabCamera } from "./labViewport.js";
@@ -79,7 +79,7 @@ export function buildTopologySettingsPanel(state) {
     const panel = document.getElementById("mapSettingsPanel");
     if (!panel) return;
     panel.innerHTML = "";
-    const worldGen = getWorldGen();
+    const worldGen = editorGame.worldGen;
     const regen = () => generateTilelabMap(state, { mapSeed: state.mapSeed, floorSeed: state.floorSeed });
     const addSlider = (label, min, max, step, obj, key) => {
         panel.appendChild(
