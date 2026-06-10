@@ -76,14 +76,14 @@ export function mountSandboxToyUi(container, controller, onChange) {
         addVoidBtn.addEventListener("click", () => {
             controller.spawnVoidAtCameraOrigin();
         });
-        const addPoolRackBtn = document.createElement("button");
-        addPoolRackBtn.type = "button";
-        addPoolRackBtn.className = "secondary";
-        addPoolRackBtn.textContent = "Add pool rack";
-        addPoolRackBtn.addEventListener("click", () => {
-            controller.spawnPoolRackAtCameraOrigin();
+        const addPoolTableBtn = document.createElement("button");
+        addPoolTableBtn.type = "button";
+        addPoolTableBtn.className = "secondary";
+        addPoolTableBtn.textContent = "Add pool table";
+        addPoolTableBtn.addEventListener("click", () => {
+            controller.spawnPoolTableAtCameraOrigin();
         });
-        addRow.append(typeField, addBtn, addVoidBtn, addPoolRackBtn);
+        addRow.append(typeField, addBtn, addVoidBtn, addPoolTableBtn);
         container.appendChild(addRow);
         const behaviorIds = controller.listBehaviors();
         if (behaviorIds.length > 0) {
@@ -168,16 +168,15 @@ export function mountSandboxToyUi(container, controller, onChange) {
             }
             container.appendChild(voidList);
         }
-        const poolRacks = controller.listPoolRacks?.() ?? [];
-        if (poolRacks.length > 0) {
-            const rackHead = document.createElement("div");
-            rackHead.className = "editor-subhead";
-            rackHead.textContent = "Pool racks";
-            container.appendChild(rackHead);
-            const rackList = document.createElement("div");
-            rackList.className = "toy-instance-list";
-            const selectedId = controller.getSelectedPickupId();
-            for (const entry of poolRacks) {
+        const poolTables = controller.listPoolTables?.() ?? [];
+        if (poolTables.length > 0) {
+            const tableHead = document.createElement("div");
+            tableHead.className = "editor-subhead";
+            tableHead.textContent = "Pool tables";
+            container.appendChild(tableHead);
+            const tableList = document.createElement("div");
+            tableList.className = "toy-instance-list";
+            for (const entry of poolTables) {
                 const row = document.createElement("div");
                 row.className = `toy-instance-row${entry.cueBallId === selectedId ? " selected" : ""}`;
                 const selectBtn = document.createElement("button");
@@ -191,11 +190,11 @@ export function mountSandboxToyUi(container, controller, onChange) {
                 deleteBtn.type = "button";
                 deleteBtn.className = "toy-delete-btn secondary";
                 deleteBtn.textContent = "Delete";
-                deleteBtn.addEventListener("click", () => controller.deletePoolRackById(entry.id));
+                deleteBtn.addEventListener("click", () => controller.deletePoolTableById(entry.id));
                 row.append(selectBtn, deleteBtn);
-                rackList.appendChild(row);
+                tableList.appendChild(row);
             }
-            container.appendChild(rackList);
+            container.appendChild(tableList);
         }
         const selectedPickup = controller.getSelectedPickup?.() ?? null;
         if (selectedPickup) {

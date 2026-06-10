@@ -65,6 +65,7 @@ export class TileLabGameState extends SharedGameState {
         this.labCanvas = null;
         this.groundZones = [];
         this.sandboxVoidZones = [];
+        this.sandboxPoolTables = [];
         this.roguelikeMapSession = createRoguelikeMapSession();
         this.wallResolver = createCombatWallResolver(() => getGameState());
     }

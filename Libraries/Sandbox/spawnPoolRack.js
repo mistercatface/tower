@@ -3,15 +3,16 @@ import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { poolBallFromNumber } from "../Render/Props3D/poolBallArt.js";
 import { buildPoolRackLayout } from "./poolRackLayout.js";
-/** @param {import("./SandboxHostPort.js").SandboxHostPort} host @param {number} cueX @param {number} cueY @param {{ faction?: string, rackId?: string }} [options] */
-export function spawnPoolRack(host, cueX, cueY, { faction, rackId } = {}) {
+/** @param {import("./SandboxHostPort.js").SandboxHostPort} host @param {number} cueX @param {number} cueY @param {{ faction?: string, rackId?: string, tableId?: string, layout?: { cue: { x: number, y: number }, rack: { x: number, y: number, number: number }[] } }} [options] */
+export function spawnPoolRack(host, cueX, cueY, { faction, rackId, tableId, layout: layoutOverride } = {}) {
     if (!getPropAsset("pool_ball") || !getPropAsset("pool_cue_ball")) return null;
     const ballRadius = getPropAsset("pool_ball").physics?.radius ?? 8;
-    const layout = buildPoolRackLayout(cueX, cueY, ballRadius);
+    const layout = layoutOverride ?? buildPoolRackLayout(cueX, cueY, ballRadius);
     const id = rackId ?? `pool-rack:${Date.now()}`;
     const cue = new Pickup(layout.cue.x, layout.cue.y, "pool_cue_ball", 0);
     cue.faction = faction;
     cue.sandboxPoolRackId = id;
+    if (tableId) cue.sandboxPoolTableId = tableId;
     wakePushableBody(cue);
     host.addPickup(cue);
     for (let i = 0; i < layout.rack.length; i++) {
@@ -20,6 +21,7 @@ export function spawnPoolRack(host, cueX, cueY, { faction, rackId } = {}) {
         ball.faction = faction;
         ball.poolBall = poolBallFromNumber(slot.number);
         ball.sandboxPoolRackId = id;
+        if (tableId) ball.sandboxPoolTableId = tableId;
         wakePushableBody(ball);
         host.addPickup(ball);
     }
