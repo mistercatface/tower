@@ -1,13 +1,21 @@
-import { gridSettings } from "../../Config/Config.js";
 import { snapLayoutOrigin } from "../../Generator/GridLayout.js";
 import { Segment } from "../../Entities/Wall.js";
 import { buildRackTriangle } from "./poolRackLayout.js";
-export const POOL_TABLE_COLS = 24;
-export const POOL_TABLE_ROWS = 44;
-export const POOL_TABLE_RAIL_CELLS = 2;
+import {
+    getPoolCellSize,
+    getPoolPocketRadii,
+    getPoolWallPocketSegmentSize,
+    POOL_BALL_RADIUS,
+    POOL_TABLE_COLS,
+    POOL_TABLE_RAIL_CELLS,
+    POOL_TABLE_ROWS,
+} from "./poolConfig.js";
+
+export { POOL_TABLE_COLS, POOL_TABLE_ROWS, POOL_TABLE_RAIL_CELLS } from "./poolConfig.js";
+
 /** @param {number} ballRadius */
 export function poolPocketRadii(ballRadius) {
-    return { corner: ballRadius * 2.15, side: ballRadius * 1.75, depth: ballRadius * 3 };
+    return getPoolPocketRadii(ballRadius);
 }
 /** @param {number} offsetX @param {number} offsetY @param {number} cellSize @param {number} cols @param {number} rows */
 function getTableWorldBounds(offsetX, offsetY, cellSize, cols, rows) {
@@ -58,8 +66,8 @@ export function getPoolPocketArcAngles(kind) {
  * @param {number} centerY
  * @param {number} ballRadius
  */
-export function buildSandboxPoolTableLayout(centerX, centerY, ballRadius = 8) {
-    const cellSize = gridSettings.cellSize;
+export function buildSandboxPoolTableLayout(centerX, centerY, ballRadius = POOL_BALL_RADIUS) {
+    const cellSize = getPoolCellSize();
     const cols = POOL_TABLE_COLS;
     const rows = POOL_TABLE_ROWS;
     const { offsetX, offsetY } = snapLayoutOrigin(centerX, centerY, cols, rows, cellSize);
@@ -71,7 +79,7 @@ export function buildSandboxPoolTableLayout(centerX, centerY, ballRadius = 8) {
     const regulationFootSpotY = play.minY + playfieldHeight * 0.25;
     const minFootSpotY = play.minY + (4 * Math.sqrt(3) + 2.5) * ballRadius;
     const footSpot = { x: play.centerX, y: Math.max(regulationFootSpotY, minFootSpotY) };
-    const pocketRadii = poolPocketRadii(ballRadius);
+    const pocketRadii = getPoolPocketRadii(ballRadius);
     return {
         cols,
         rows,
@@ -142,7 +150,7 @@ export function buildPoolTableWallSegments(layout, ballRadius, railHeight) {
         const backStart = end;
         const backEnd = start + 2 * Math.PI;
         const radius = pocket.radius;
-        const size = 6;
+        const size = getPoolWallPocketSegmentSize();
         const numSegments = Math.max(1, Math.ceil((radius * Math.abs(backEnd - backStart)) / (size * 1.1)));
         const angleStep = (backEnd - backStart) / numSegments;
         for (let i = 0; i < numSegments; i++) {

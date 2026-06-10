@@ -2,7 +2,7 @@ import { getWallHeight } from "../WorldSurface/WorldSurfaceSettings.js";
 import { getGameWorldSurfaceSettings } from "../../Render/WorldSurfaceBootstrap.js";
 import { SceneCompiler } from "../Render/Scene/SceneCompiler.js";
 import { createVoidZone } from "../Spatial/zones/voidZone.js";
-import { getPropAsset } from "../Props/PropCatalog.js";
+import { POOL_BALL_RADIUS } from "./poolConfig.js";
 import { buildSandboxPoolTableLayout, buildPoolTableClearBounds, buildPoolTableWallSegments } from "./poolTableLayout.js";
 import { spawnPoolRack } from "./spawnPoolRack.js";
 /** @param {object} state @param {object} wall */
@@ -53,7 +53,7 @@ function clearWallsInBounds(state, bounds) {
 export function spawnPoolTable(host, centerX, centerY, { faction } = {}) {
     const state = host.getWorldState?.();
     if (!state) return null;
-    const ballRadius = getPropAsset("pool_ball")?.physics?.radius ?? 8;
+    const ballRadius = POOL_BALL_RADIUS;
     const layout = buildSandboxPoolTableLayout(centerX, centerY, ballRadius);
     clearWallsInBounds(state, buildPoolTableClearBounds(layout));
     const tableId = `pool-table:${Date.now()}`;

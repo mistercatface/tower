@@ -1,21 +1,9 @@
+import { getPoolBallPhysics, POOL_BALL_RADIUS, POOL_CUE_STRIKE } from "../../../Libraries/Sandbox/poolConfig.js";
+
 export default {
     id: "pool_cue_ball",
     recipe: "poolBall",
-    sandbox: { spawnable: false, behaviors: ["cueStrike"], cueStrike: { minDrag: 2, maxPull: 38, pullScale: 0.5, minPower: 8, maxPower: 600 } },
-    physics: {
-        hitBehavior: "none",
-        radius: 8,
-        isPushable: true,
-        rolls: true,
-        collisionShape: "circle",
-        laserTargetable: false,
-        mass: 1.0,
-        pairRestitution: 0.92,
-        friction: 0.5,
-        lowSpeedFrictionThreshold: 10,
-        lowSpeedFriction: 2.8,
-        snapSpeed: 1.8,
-        wallPhysics: { restitution: 0.94, friction: 0.06 },
-    },
-    visuals: { defaultPoolBall: { kind: "cue" }, defaultRadius: 8, panelCount: 12, latBands: 8, stroke: null },
+    sandbox: { spawnable: false, behaviors: ["cueStrike"], cueStrike: POOL_CUE_STRIKE },
+    physics: getPoolBallPhysics(),
+    visuals: { defaultPoolBall: { kind: "cue" }, defaultRadius: POOL_BALL_RADIUS, panelCount: 12, latBands: 8, stroke: null },
 };

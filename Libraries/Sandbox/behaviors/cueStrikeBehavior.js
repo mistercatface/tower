@@ -1,12 +1,11 @@
 import { applyCueStrikeCollision } from "../../CueStick/cueStrikeCollision.js";
 import { buildCueStrikeAimLineContext, getCueStrikeAimLine } from "../../CueStick/cueStrikeAimPreview.js";
-import { gridSettings } from "../../../Config/Config.js";
+import { getPoolCellSize, POOL_CUE_STRIKE, POOL_TABLE_COLS, POOL_TABLE_ROWS } from "../poolConfig.js";
 import { getPropAsset } from "../../Props/PropCatalog.js";
 import { wakePushableBody } from "../../Motion/pushableSleep.js";
-import { POOL_TABLE_COLS, POOL_TABLE_ROWS } from "../poolTableLayout.js";
 import { createDragLaunchAim, drawDragLaunchPreview, releaseDragLaunch, updateDragLaunchAim } from "../dragLaunch.js";
 export const CUE_STRIKE_BEHAVIOR_ID = "cueStrike";
-const CUE_STRIKE_DEFAULTS = { minDrag: 2, maxPull: 38, pullScale: 0.5, minPower: 8, maxPower: 600 };
+const CUE_STRIKE_DEFAULTS = POOL_CUE_STRIKE;
 /** @param {object | null | undefined} asset */
 function getCueStrikeConfig(asset) {
     const entry = asset?.sandbox?.cueStrike;
@@ -16,7 +15,7 @@ function getCueStrikeConfig(asset) {
 /** @param {object} pickup */
 function cueStrikeTableBounds(pickup) {
     if (!pickup?.sandboxPoolTableId) return {};
-    const cellSize = gridSettings.cellSize;
+    const cellSize = getPoolCellSize();
     return { tableWidth: POOL_TABLE_COLS * cellSize, tableHeight: POOL_TABLE_ROWS * cellSize };
 }
 /** @returns {import("../createSandboxController.js").SandboxBehavior} */

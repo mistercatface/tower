@@ -2,8 +2,10 @@
 const RACK_BALL_NUMBERS = [[1], [10, 2], [11, 8, 3], [12, 4, 13, 5], [6, 14, 7, 15, 9]];
 /** Head-spot to foot-spot spacing in ball radii (half a regulation playfield). */
 export const POOL_CUE_TO_RACK_APEX = 20;
+import { POOL_BALL_RADIUS } from "./poolConfig.js";
+
 /** @param {number} apexX @param {number} apexY @param {number} [ballRadius] */
-export function buildRackTriangle(apexX, apexY, ballRadius = 8) {
+export function buildRackTriangle(apexX, apexY, ballRadius = POOL_BALL_RADIUS) {
     const rowStep = Math.sqrt(3) * ballRadius;
     const colStep = ballRadius * 2;
     const rack = [];
@@ -21,6 +23,6 @@ export function buildRackTriangle(apexX, apexY, ballRadius = 8) {
  * @param {number} [ballRadius]
  * @returns {{ cue: { x: number, y: number }, rack: { x: number, y: number, number: number }[] }}
  */
-export function buildPoolRackLayout(cueX, cueY, ballRadius = 8) {
+export function buildPoolRackLayout(cueX, cueY, ballRadius = POOL_BALL_RADIUS) {
     return { cue: { x: cueX, y: cueY }, rack: buildRackTriangle(cueX, cueY - ballRadius * POOL_CUE_TO_RACK_APEX, ballRadius) };
 }
