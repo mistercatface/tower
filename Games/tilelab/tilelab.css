@@ -123,6 +123,10 @@ details.editor-block-motifs {
     border: none;
 }
 
+.animation-stage:not(.is-visible) {
+    display: none;
+}
+
 .animation-stage-header {
     font-size: 11px;
     color: var(--muted);

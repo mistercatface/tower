@@ -14,9 +14,14 @@ import { initMapTopologyInteractions } from "./mapInteractions.js";
 import { destroyTilelabSandbox, mountTilelabSandbox } from "../world/tilelabSandbox.js";
 import { bindViewModeControls } from "./viewMode.js";
 /** @typedef {import("../../../Core/GameDefinitionTypes.js").UiPort} UiPort */
+/** @typedef {import("../../../Libraries/Canvas/squareCanvasResize.js").SquareCanvasResizeHandle} SquareCanvasResizeHandle */
 let previewRefreshTimer = null;
 let bakeRepaintRaf = null;
 let bootstrapped = false;
+/** @type {SquareCanvasResizeHandle | null} */
+let animCanvasResize = null;
+/** @type {SquareCanvasResizeHandle | null} */
+let mapCanvasResize = null;
 function schedulePreviewRefresh(state, debounceMs) {
     if (previewRefreshTimer != null) clearTimeout(previewRefreshTimer);
     const run = () => refreshPreview(state);
@@ -53,6 +58,13 @@ function attachGameCanvas(state) {
     }
     state.labCanvas = canvas ?? null;
 }
+/** @param {import("../index.js").TileLabGameState} state */
+function refreshLabViewportLayout(state) {
+    if (mapCanvasResize) mapCanvasResize.setSize(mapCanvasResize.getSize());
+    if (animCanvasResize && state.labShowAnimationPreview) animCanvasResize.setSize(animCanvasResize.getSize());
+    syncPreviewZoomToStage(state);
+    renderTilelabPreview(state, readControls(state));
+}
 function bootstrapTilelabUi(state) {
     if (bootstrapped) return;
     bootstrapped = true;
@@ -70,7 +82,7 @@ function bootstrapTilelabUi(state) {
         if (state.worldSurfaces.hasPendingSurfaceBakes()) runBakeRepaintLoop(state);
     };
     mountLabViewport(state, onLabViewChange);
-    bindViewModeControls(state, () => renderTilelabPreview(state, readControls(state)));
+    bindViewModeControls(state, onLabViewChange, () => refreshLabViewportLayout(state));
     bindMapInspectorControls(state, () => renderTilelabPreview(state, readControls(state)));
     initMapTopologyInteractions(state, () => renderTilelabPreview(state, readControls(state)));
     mountTilelabSandbox(state, () => renderTilelabPreview(state, readControls(state)));
@@ -88,11 +100,12 @@ function bootstrapTilelabUi(state) {
     });
     initToolbarDefaults(state);
     const animCanvas = document.getElementById("animationPreviewCanvas");
-    applySquareCanvasResize(animCanvas, {
+    animCanvasResize = applySquareCanvasResize(animCanvas, {
         host: document.getElementById("animationPreviewHost"),
         initialSize: 200,
         minSize: 128,
         maxSize: () => {
+            if (!state.labShowAnimationPreview) return 128;
             const container = document.querySelector(".map-container");
             if (!container) return 512;
             const rect = container.getBoundingClientRect();
@@ -101,14 +114,14 @@ function bootstrapTilelabUi(state) {
             const speed = document.getElementById("labSpeedControl");
             const gap = column ? parseFloat(getComputedStyle(column).gap) || 10 : 10;
             const controlsH = (zoom?.offsetHeight ?? 0) + (speed?.offsetHeight ?? 0) + gap * 2;
-            const mapStage = document.getElementById("mapStage");
-            const mapH = mapStage?.offsetHeight ?? 0;
+            const minMapH = 160;
             const animHeader = 30;
-            return Math.max(128, Math.floor(Math.min(rect.width, rect.height - controlsH - mapH - animHeader - gap * 2) - 8));
+            const available = rect.height - controlsH - minMapH - gap * 3 - animHeader;
+            return Math.max(128, Math.floor(Math.min(rect.width, available) - 8));
         },
     });
     if (animCanvas) initAnimationPreview(animCanvas, buildProfileFromEditor);
-    applySquareCanvasResize(document.getElementById("gameCanvas"), {
+    mapCanvasResize = applySquareCanvasResize(document.getElementById("gameCanvas"), {
         host: document.getElementById("mapStage"),
         initialSize: 320,
         minSize: 160,
@@ -121,7 +134,7 @@ function bootstrapTilelabUi(state) {
             const speed = document.getElementById("labSpeedControl");
             const gap = column ? parseFloat(getComputedStyle(column).gap) || 10 : 10;
             const controlsH = (zoom?.offsetHeight ?? 0) + (speed?.offsetHeight ?? 0) + gap * 2;
-            const animH = estimateAnimationPreviewHeight() + gap;
+            const animH = state.labShowAnimationPreview ? estimateAnimationPreviewHeight() + gap : 0;
             return Math.max(160, Math.floor(Math.min(rect.width, rect.height - controlsH - animH) - 8));
         },
         onResize: (size) => {
@@ -153,6 +166,8 @@ export const tilelabUiPort = {
     unmount() {
         if (bakeRepaintRaf != null) cancelAnimationFrame(bakeRepaintRaf);
         destroyTilelabSandbox();
+        animCanvasResize = null;
+        mapCanvasResize = null;
         bootstrapped = false;
     },
     updateUI({ state }) {

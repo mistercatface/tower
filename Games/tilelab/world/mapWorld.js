@@ -1,6 +1,7 @@
 import { gridSettings } from "../../../Config/Config.js";
 import { generateWorld, getWorldGen } from "../../../Core/GamePorts.js";
-import { regenerateRoguelikeMap } from "../../../Libraries/WorldGen/session/index.js";
+import { buildGameMapRenderCaches, buildTopologyMapRenderCaches } from "../../../Libraries/Render/map/MapRenderCache.js";
+import { getRoguelikeMapSession, regenerateRoguelikeMap } from "../../../Libraries/WorldGen/session/index.js";
 import { clearTilelabSandbox } from "./tilelabSandbox.js";
 import { resetTilelabGroundZones } from "../groundZones.js";
 import { spawnSandboxBattleGroups } from "./sandboxBattleSpawn.js";
@@ -10,6 +11,30 @@ export function listLabMapNodes(state) {
 /** @param {import("../index.js").TileLabGameState} state @param {number | null} nodeId */
 export function selectLabNode(state, nodeId) {
     state.roguelikeMapSession.selectedNodeId = nodeId;
+}
+/** @param {import("../index.js").TileLabGameState} state */
+export function initEmptyTilelabMap(state) {
+    const viewW = state.viewport?.width ?? 0;
+    const viewH = state.viewport?.height ?? 0;
+    state.mapBaseSpawnX = viewW > 0 ? viewW / 2 : 225;
+    state.mapBaseSpawnY = viewH > 0 ? viewH / 2 : 225;
+    state.walls = [];
+    state.wallSpatialIndex.clear();
+    state.mapNodes = [];
+    state.mapNodeById.clear();
+    state.currentNodeId = 0;
+    state.pickups = [];
+    state.obstacleGrid.rebuild([]);
+    const centerX = state.viewport?.x ?? 0;
+    const centerY = state.viewport?.y ?? 0;
+    state.hierarchicalNavigator.initialize(centerX, centerY);
+    state.worldSurfaces.clear();
+    state.worldSurfaces.clearBakeCache();
+    buildGameMapRenderCaches(state);
+    buildTopologyMapRenderCaches(state);
+    getRoguelikeMapSession(state).selectedNodeId = null;
+    clearTilelabSandbox();
+    resetTilelabGroundZones(state);
 }
 /**
  * @param {import("../index.js").TileLabGameState} state

@@ -5,11 +5,19 @@ function setEditorPanelVisible(panelId, visible) {
     panel.classList.toggle("is-visible", visible);
     panel.hidden = !visible;
 }
+/** @param {boolean} visible */
+function setAnimationPreviewVisible(visible) {
+    const stage = document.getElementById("animationStage");
+    if (!stage) return;
+    stage.classList.toggle("is-visible", visible);
+    stage.hidden = !visible;
+}
 /** @param {import("../index.js").TileLabGameState} state */
 export function applyLabViewChrome(state) {
     setEditorPanelVisible("sandboxPanel", state.labShowSandboxPanel);
     setEditorPanelVisible("surfaceEditorPanel", state.labShowProfilePanel);
     setEditorPanelVisible("topologyEditorPanel", state.labShowTopologyOverlay);
+    setAnimationPreviewVisible(state.labShowAnimationPreview);
     const editor = document.querySelector(".col-editor");
     if (editor) {
         const active = [];
@@ -26,9 +34,11 @@ export function applyLabViewChrome(state) {
     if (profileToggle) profileToggle.checked = state.labShowProfilePanel;
     const topologyToggle = document.getElementById("showTopologyOverlayInput");
     if (topologyToggle) topologyToggle.checked = state.labShowTopologyOverlay;
+    const animationToggle = document.getElementById("showAnimationPreviewInput");
+    if (animationToggle) animationToggle.checked = state.labShowAnimationPreview;
 }
-/** @param {import("../index.js").TileLabGameState} state @param {() => void} onChange */
-export function bindViewModeControls(state, onChange) {
+/** @param {import("../index.js").TileLabGameState} state @param {() => void} onChange @param {(() => void) | null} [onLayoutChange] */
+export function bindViewModeControls(state, onChange, onLayoutChange = null) {
     document.getElementById("showSandboxPanelInput")?.addEventListener("change", (e) => {
         state.labShowSandboxPanel = /** @type {HTMLInputElement} */ (e.target).checked;
         applyLabViewChrome(state);
@@ -41,6 +51,11 @@ export function bindViewModeControls(state, onChange) {
         state.labShowTopologyOverlay = /** @type {HTMLInputElement} */ (e.target).checked;
         applyLabViewChrome(state);
         onChange();
+    });
+    document.getElementById("showAnimationPreviewInput")?.addEventListener("change", (e) => {
+        state.labShowAnimationPreview = /** @type {HTMLInputElement} */ (e.target).checked;
+        applyLabViewChrome(state);
+        onLayoutChange?.();
     });
     applyLabViewChrome(state);
 }

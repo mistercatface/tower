@@ -16,9 +16,10 @@ let isAnimationEnabled = false;
 let patchCanvas = null;
 /** Vertical space taken by the animation preview (for map canvas max-size). */
 export function estimateAnimationPreviewHeight(fallbackSize = 200) {
-    const host = document.getElementById("animationPreviewHost");
     const stage = document.getElementById("animationStage");
-    const headerH = stage?.querySelector(".animation-stage-header")?.offsetHeight ?? 18;
+    if (!stage || stage.hidden) return 0;
+    const host = document.getElementById("animationPreviewHost");
+    const headerH = stage.querySelector(".animation-stage-header")?.offsetHeight ?? 18;
     const hostH = host?.offsetHeight ?? fallbackSize;
     return hostH + headerH + 6;
 }

@@ -10,3 +10,5 @@ export const generateWorldPhase = {
 };
 /** New-run bootstrap with map layout only — no player, props, or party. */
 export const layoutOnlyRunBootstrap = createRunBootstrapPort([generateWorldPhase]);
+/** No world generation — for editors that generate on explicit user action. */
+export const emptyRunBootstrap = createRunBootstrapPort([]);

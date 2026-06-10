@@ -446,7 +446,7 @@ function renderAnimationParams(container) {
     if (!editorState.animation.enabled) {
         const hint = document.createElement("p");
         hint.className = "editor-hint";
-        hint.textContent = "Timeline is included in export and used in-game. Use the animation preview below the map for playback.";
+        hint.textContent = "Timeline is included in export and used in-game. Use the animation preview above the map for playback.";
         container.appendChild(hint);
         return;
     }

@@ -6,6 +6,7 @@ export const TILELAB_UI_HTML = `
         <button type="button" id="randomMapBtn" class="secondary">Random</button>
         <span class="sep"></span>
         <label class="check-inline"><input id="showVignetteInput" type="checkbox"> Circular Overlay</label>
+        <label class="check-inline"><input id="showAnimationPreviewInput" type="checkbox" checked> Animation Preview</label>
         <span class="sep"></span>
         <button type="button" id="regenerateBtn">Redraw</button>
     </div>
@@ -108,13 +109,13 @@ export const TILELAB_UI_HTML = `
             <div class="map-status" id="mapStatusLine" style="display:none">WASD move · drag · wheel zoom</div>
             <div class="map-container">
                 <div class="map-viewport-column">
-                    <div class="map-stage" id="mapStage"></div>
-                    <div class="animation-stage" id="animationStage">
+                    <div class="animation-stage is-visible" id="animationStage">
                         <div class="animation-stage-header">Animation Preview</div>
                         <div id="animationPreviewHost">
                             <canvas id="animationPreviewCanvas"></canvas>
                         </div>
                     </div>
+                    <div class="map-stage" id="mapStage"></div>
                     <div id="labZoomControl" class="map-viewport-control"></div>
                     <div id="labSpeedControl" class="map-viewport-control"></div>
                 </div>

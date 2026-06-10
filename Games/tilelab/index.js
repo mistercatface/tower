@@ -1,5 +1,5 @@
 import { createRoguelikeWorldGenPort, roguelikeProceduralDesign, ROGUELIKE_MAP_TOPOLOGY } from "../../Libraries/WorldGen/presets/roguelikeMap.js";
-import { layoutOnlyRunBootstrap } from "../../Libraries/RunBootstrap/phases.js";
+import { emptyRunBootstrap } from "../../Libraries/RunBootstrap/phases.js";
 import { GUN_ID_TO_VISUAL } from "../../Assets/guns/visualMap.js";
 import { createDefaultRenderPorts } from "../../Libraries/Render/defaultRenderPorts.js";
 import { createWeaponVisuals } from "../../Libraries/Render/Characters/weapons/createWeaponVisuals.js";
@@ -21,7 +21,7 @@ import { requestUiUpdate } from "../../Core/EventSystem.js";
 import { getRunScenePort, getSimulationPort } from "../../Core/GamePorts.js";
 import { registerEditorProfiles, renderTilelabPreview } from "./ui/preview.js";
 import { readControls, syncPreviewZoomToStage } from "./ui/toolbar.js";
-import { generateTilelabMap } from "./world/mapWorld.js";
+import { initEmptyTilelabMap } from "./world/mapWorld.js";
 import { mergePairFilter } from "../../Libraries/Interaction/pairRules.js";
 import { excludeDeadOther, excludeActorOther, requirePickupOnHit } from "../../Libraries/Interaction/pairRuleClauses.js";
 import { tilelabUiPort } from "./ui/tilelabUiPort.js";
@@ -44,7 +44,7 @@ export const tilelabRunScenePort = {
     getLayout: () => null,
     onSimulationEnter(ctx) {
         const { state } = ctx;
-        generateTilelabMap(state, { mapSeed: state.mapSeed, floorSeed: state.floorSeed });
+        initEmptyTilelabMap(state);
         registerEditorProfiles(state).then(() => {
             syncPreviewZoomToStage(state);
         });
@@ -62,6 +62,7 @@ export class TileLabGameState extends SharedGameState {
         this.labShowSandboxPanel = true;
         this.labShowProfilePanel = true;
         this.labShowTopologyOverlay = false;
+        this.labShowAnimationPreview = true;
         this.viewport = new Viewport(0, 0, 1);
         this.labCanvas = null;
         this.groundZones = [];
@@ -105,7 +106,7 @@ export const tilelabGame = {
     worldGen: createRoguelikeWorldGenPort({ topology: tilelabMapTopology }),
     worldSurface: { pixelsPerCell: 6 },
     proceduralDesign: roguelikeProceduralDesign,
-    runBootstrapPort: layoutOnlyRunBootstrap,
+    runBootstrapPort: emptyRunBootstrap,
     runScenePort: tilelabRunScenePort,
     viewPort: {
         getViewCenter(state) {
