@@ -2,7 +2,7 @@
     "id": "poolTable",
     "label": "8-ball table",
     "surfaceProfileId": "poolTableFelt",
-    "surfaceAnimation": false,
+    "surfaceAnimation": true,
     "version": 2,
     "arena": {
         "width": 96,
