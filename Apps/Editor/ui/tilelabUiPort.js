@@ -79,7 +79,11 @@ function bootstrapTilelabUi(state) {
     };
     labViewport = mountLabViewport(state, onLabViewChange);
     bindViewModeControls(state, onLabViewChange, () => refreshLabViewportLayout(state));
-    buildTopologySettingsPanel(state);
+    buildTopologySettingsPanel(state, () => {
+        syncMapInspectorAfterRegen(state, () => renderTilelabPreview(state));
+        renderTilelabPreview(state);
+        runBakeRepaintLoop(state);
+    });
     for (const id of ["showNodesInput", "showRoomZonesInput", "showWallsInput", "showGridBoundsInput", "showPathDebugInput"]) document.getElementById(id).addEventListener("change", onLabViewChange);
     initMapTopologyInteractions(state, () => renderTilelabPreview(state));
     mountTilelabSandbox(state, () => renderTilelabPreview(state));
