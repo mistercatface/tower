@@ -67,7 +67,7 @@ export function computeCueStrikeAimLineSegment({ originX, originY, radius, nx, n
  */
 export function buildCueStrikeAimLineContext(cueBall, state, { tableWidth, tableHeight } = {}) {
     if (!cueBall || !state) return null;
-    const radius = cueBall.radius ?? 8;
+    const radius = cueBall.radius;
     return {
         pickup: cueBall,
         radius,

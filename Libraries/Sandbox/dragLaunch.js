@@ -91,11 +91,11 @@ export function releaseDragLaunch(aim, config) {
 export function buildDragLaunchAimLineContext(pickup, host) {
     const state = host?.getWorldState?.();
     if (!state || !pickup) return null;
-    const radius = pickup.radius ?? 8;
+    const radius = pickup.radius;
     const circleTargets = [];
     for (const p of state.pickups ?? []) {
         if (p === pickup || p.isDead) continue;
-        circleTargets.push({ x: p.x, y: p.y, radius: p.radius ?? 8 });
+        circleTargets.push({ x: p.x, y: p.y, radius: p.radius });
     }
     const grid = state.obstacleGrid;
     const maxRayDist = grid?.minX != null ? Math.hypot(grid.maxX - grid.minX, grid.maxY - grid.minY) * 1.25 : 2400;

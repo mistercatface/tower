@@ -33,8 +33,8 @@ export class PickupVoidSinkState {
         }
         const dtSec = dt / 1000;
         pickup.voidSinkTimer = (pickup.voidSinkTimer ?? DEFAULT_DURATION_MS) - dt;
-        const voidRadius = pickup.voidRadius ?? 8;
-        const voidDepth = pickup.voidDepth ?? 24;
+        const voidRadius = pickup.voidRadius;
+        const voidDepth = pickup.voidDepth;
         const dx = voidX - pickup.x;
         const dy = voidY - pickup.y;
         const dist = Math.hypot(dx, dy);
@@ -48,7 +48,7 @@ export class PickupVoidSinkState {
         const gravity = pickup.voidCaptured ? -600 : -350;
         pickup.elevationVelocity = (pickup.elevationVelocity ?? 0) + gravity * dtSec;
         pickup.elevation = (pickup.elevation ?? 0) + pickup.elevationVelocity * dtSec;
-        const radius = pickup.radius ?? 8;
+        const radius = pickup.radius;
         const fadeStart = -radius;
         const fadeEnd = -voidDepth;
         if (pickup.elevation > fadeStart) pickup.opacity = 1;

@@ -10,7 +10,7 @@ export function findPickupAt(pickups, worldX, worldY, padding = 8) {
     let bestDistSq = Infinity;
     for (const pickup of pickups) {
         if (pickup.isDead) continue;
-        const tapRadius = (pickup.radius ?? 8) + padding;
+        const tapRadius = pickup.radius + padding;
         const distSq = (pickup.x - worldX) ** 2 + (pickup.y - worldY) ** 2;
         if (distSq <= tapRadius * tapRadius && distSq < bestDistSq) {
             best = pickup;
