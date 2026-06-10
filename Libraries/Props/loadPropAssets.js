@@ -30,7 +30,7 @@ function registerPropDraw(asset, recipes) {
     }
     throw new Error(`Asset "${asset.id}" must define draw or primitive`);
 }
-/** Load shared Assets/props into the runtime prop catalog. Call once before createGame(). */
+/** Load shared Assets/props into the runtime prop catalog. Call once before boot. */
 export function loadPropAssets() {
     const definitions = {};
     const recipes = {};
