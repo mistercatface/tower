@@ -14,18 +14,17 @@ function setAnimationPreviewVisible(visible) {
 export function applyLabViewChrome(state) {
     setEditorPanelVisible("sandboxPanel", state.labShowSandboxPanel);
     setEditorPanelVisible("surfaceEditorPanel", state.labShowProfilePanel);
-    setEditorPanelVisible("topologyEditorPanel", state.labShowTopologyOverlay);
+    setEditorPanelVisible("topologyEditorPanel", state.labShowMapPanel);
     setAnimationPreviewVisible(state.labShowAnimationPreview);
     const editor = document.querySelector(".col-editor");
     const active = [];
     if (state.labShowSandboxPanel) active.push("sandbox");
     if (state.labShowProfilePanel) active.push("profile");
-    if (state.labShowTopologyOverlay) active.push("map");
+    if (state.labShowMapPanel) active.push("map");
     editor.dataset.activePanels = active.join(" ");
-    document.getElementById("mapStatusLine").style.display = state.labShowTopologyOverlay ? "block" : "none";
     document.getElementById("showSandboxPanelInput").checked = state.labShowSandboxPanel;
     document.getElementById("showProfilePanelInput").checked = state.labShowProfilePanel;
-    document.getElementById("showTopologyOverlayInput").checked = state.labShowTopologyOverlay;
+    document.getElementById("showTopologyOverlayInput").checked = state.labShowMapPanel;
     document.getElementById("showAnimationPreviewInput").checked = state.labShowAnimationPreview;
 }
 /** @param {import("../state.js").TileLabGameState} state @param {() => void} onChange @param {(() => void) | null} [onLayoutChange] */
@@ -39,9 +38,8 @@ export function bindViewModeControls(state, onChange, onLayoutChange = null) {
         applyLabViewChrome(state);
     });
     document.getElementById("showTopologyOverlayInput").addEventListener("change", (e) => {
-        state.labShowTopologyOverlay = /** @type {HTMLInputElement} */ (e.target).checked;
+        state.labShowMapPanel = /** @type {HTMLInputElement} */ (e.target).checked;
         applyLabViewChrome(state);
-        onChange();
     });
     document.getElementById("showAnimationPreviewInput").addEventListener("change", (e) => {
         state.labShowAnimationPreview = /** @type {HTMLInputElement} */ (e.target).checked;

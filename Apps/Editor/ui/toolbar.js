@@ -1,13 +1,4 @@
 import { roguelikeProceduralDesign } from "../../../Libraries/WorldGen/presets/roguelikeMap.js";
-import { generateTilelabMap } from "../world/mapWorld.js";
-/**
- * Roll new map + floor seeds and regenerate the lab world.
- * @param {import("../state.js").TileLabGameState} state
- */
-export function rollRandomTilelabMap(state) {
-    const seed = Math.floor(1 + Math.random() * 1_000_000_000);
-    generateTilelabMap(state, { mapSeed: seed, floorSeed: seed });
-}
 export function initPresetSelect(profileIds) {
     const select = document.getElementById("presetSelect");
     for (const id of profileIds) {
@@ -18,15 +9,11 @@ export function initPresetSelect(profileIds) {
     }
     select.value = roguelikeProceduralDesign.surfaceProfileId;
 }
-/**
- * @param {{ onRefresh: () => void, onRandomMap: () => void, onStageResize: () => void }} handlers
- */
+/** @param {{ onRefresh: () => void, onStageResize: () => void }} handlers */
 export function bindToolbarControls(handlers) {
-    const { onRefresh, onRandomMap, onStageResize } = handlers;
-    document.getElementById("showVignetteInput").addEventListener("input", onRefresh);
-    document.getElementById("showVignetteInput").addEventListener("change", onRefresh);
+    const { onRefresh, onStageResize } = handlers;
+    for (const id of ["showVignetteInput", "showWallsInput", "showPathDebugInput"]) document.getElementById(id).addEventListener("change", onRefresh);
     document.getElementById("regenerateBtn").addEventListener("click", onRefresh);
-    document.getElementById("randomMapBtn").addEventListener("click", onRandomMap);
     const stage = document.getElementById("mapStage");
     if (typeof ResizeObserver !== "undefined") {
         const ro = new ResizeObserver(onStageResize);

@@ -4,11 +4,10 @@ import { initResizer } from "./lab-shared.js";
 import { initAnimationPreview, estimateAnimationPreviewHeight } from "./LabAnimationPreview.js";
 import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEditor.js";
 import { syncEditorProfile, renderTilelabPreview } from "./preview.js";
-import { initPresetSelect, bindToolbarControls, rollRandomTilelabMap } from "./toolbar.js";
+import { initPresetSelect, bindToolbarControls } from "./toolbar.js";
 import { fitLabStageToView, mountLabViewport } from "./labViewport.js";
 import { TILELAB_UI_HTML } from "./shellHtml.js";
-import { buildTopologySettingsPanel, syncMapInspectorAfterRegen } from "./mapInspector.js";
-import { initMapTopologyInteractions } from "./mapInteractions.js";
+import { buildMapPanel } from "./mapInspector.js";
 import { destroyTilelabSandbox, mountTilelabSandbox } from "../world/tilelabSandbox.js";
 import { bindViewModeControls } from "./viewMode.js";
 /** @typedef {import("../../../Libraries/Canvas/squareCanvasResize.js").SquareCanvasResizeHandle} SquareCanvasResizeHandle */
@@ -43,7 +42,6 @@ function runBakeRepaintLoop(state) {
     bakeRepaintRaf = requestAnimationFrame(tick);
 }
 function refreshPreview(state) {
-    syncMapInspectorAfterRegen(state, () => renderTilelabPreview(state));
     syncEditorProfile(state);
     renderTilelabPreview(state);
     runBakeRepaintLoop(state);
@@ -54,7 +52,6 @@ function attachGameCanvas(state) {
     if (canvas.parentElement !== mapStage) mapStage.appendChild(canvas);
     state.labCanvas = canvas;
 }
-/** @param {import("../state.js").TileLabGameState} state */
 function refreshLabViewportLayout(state) {
     if (mapCanvasResize) mapCanvasResize.setSize(mapCanvasResize.getSize());
     if (animCanvasResize && state.labShowAnimationPreview) animCanvasResize.setSize(animCanvasResize.getSize());
@@ -79,20 +76,13 @@ function bootstrapTilelabUi(state) {
     };
     labViewport = mountLabViewport(state, onLabViewChange);
     bindViewModeControls(state, onLabViewChange, () => refreshLabViewportLayout(state));
-    buildTopologySettingsPanel(state, () => {
-        syncMapInspectorAfterRegen(state, () => renderTilelabPreview(state));
+    buildMapPanel(state, () => {
         renderTilelabPreview(state);
         runBakeRepaintLoop(state);
     });
-    for (const id of ["showNodesInput", "showRoomZonesInput", "showWallsInput", "showGridBoundsInput", "showPathDebugInput"]) document.getElementById(id).addEventListener("change", onLabViewChange);
-    initMapTopologyInteractions(state, () => renderTilelabPreview(state));
     mountTilelabSandbox(state, () => renderTilelabPreview(state));
     bindToolbarControls({
         onRefresh: () => schedulePreviewRefresh(state, 0),
-        onRandomMap: () => {
-            rollRandomTilelabMap(state);
-            schedulePreviewRefresh(state, 0);
-        },
         onStageResize: () => {
             state.viewport.setCanvasSize(state.labCanvas.width, state.labCanvas.height);
             fitLabStageToView(state);
@@ -147,7 +137,6 @@ function bootstrapTilelabUi(state) {
         fitLabStageToView(state);
         renderTilelabPreview(state);
     });
-    syncMapInspectorAfterRegen(state, () => renderTilelabPreview(state));
     runBakeRepaintLoop(state);
 }
 export const tilelabUiPort = {

@@ -3,8 +3,8 @@ export const TILELAB_UI_HTML = `
     <div class="toolbar">
         <h1>Editor</h1>
         <span class="sep"></span>
-        <button type="button" id="randomMapBtn" class="secondary">Random</button>
-        <span class="sep"></span>
+        <label class="check-inline"><input id="showWallsInput" type="checkbox"> Physics Walls</label>
+        <label class="check-inline"><input id="showPathDebugInput" type="checkbox"> HPA* Grid</label>
         <label class="check-inline"><input id="showVignetteInput" type="checkbox"> Circular Overlay</label>
         <label class="check-inline"><input id="showAnimationPreviewInput" type="checkbox" checked> Animation Preview</label>
         <span class="sep"></span>
@@ -76,37 +76,16 @@ export const TILELAB_UI_HTML = `
                     </div>
                 </div>
                 <div id="topologyEditorPanel" class="editor-panel-section" data-panel="map">
-                    <div class="editor-panel-head">Map inspector</div>
+                    <div class="editor-panel-head">Map</div>
                     <div class="editor-scroll">
-                        <details class="editor-block" open>
-                            <summary>Display Overlays</summary>
-                            <div>
-                                <label class="check-inline block-check"><input id="showNodesInput" type="checkbox" checked> Show Nodes &amp; Connections</label>
-                                <label class="check-inline block-check"><input id="showRoomZonesInput" type="checkbox" checked> Show Room Exclusion Zones</label>
-                                <label class="check-inline block-check"><input id="showWallsInput" type="checkbox" checked> Show Physics Walls</label>
-                                <label class="check-inline block-check"><input id="showGridBoundsInput" type="checkbox" checked> Show Entity Grid Bounds</label>
-                                <label class="check-inline block-check"><input id="showPathDebugInput" type="checkbox" checked> Show HPA* Grid &amp; Regions</label>
-                            </div>
-                        </details>
-                        <details class="editor-block" open>
-                            <summary>Generation Config</summary>
-                            <div id="mapSettingsPanel"></div>
-                        </details>
-                        <details class="editor-block" open>
-                            <summary>Node Info</summary>
-                            <div id="nodeInfoPanel">Select a node from the map or list.</div>
-                        </details>
-                        <details class="editor-block" open>
-                            <summary>Node List</summary>
-                            <div id="nodeListPanel"></div>
-                        </details>
+                        <p class="editor-hint">Caverns generate around the current camera center.</p>
+                        <div id="mapSettingsPanel"></div>
                     </div>
                 </div>
             </div>
         </aside>
         <div class="resizer" id="resizer"></div>
         <section class="col col-map">
-            <div class="map-status" id="mapStatusLine" style="display:none">WASD move · drag · wheel zoom</div>
             <div class="map-container">
                 <div class="map-viewport-column">
                     <div class="animation-stage is-visible" id="animationStage">

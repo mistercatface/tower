@@ -1,6 +1,7 @@
 import { registerRuntimeSurfaceProfile } from "../../../Config/procedural/profiles.js";
 import { invalidateProfileScratch } from "../../../Libraries/WorldSurface/ProfileBakeResolver.js";
 import { TileWorkerCoordinator } from "../../../Libraries/WorldSurface/TileWorkerCoordinator.js";
+import { drawTopologyLayer } from "../../../Libraries/Render/map/topology/index.js";
 import { invalidateWallAtlasKeyMemos } from "../../../Render/game/wallSurfaceInvalidation.js";
 import { drawTilelabSurfaceFrame, invalidateMapPreviewBakes } from "../world/surfacePreview.js";
 import { buildProfileFromEditor, RUNTIME_LAB_PROFILE_ID } from "./profile/ProfileEditor.js";
@@ -22,17 +23,10 @@ export function syncEditorProfile(state) {
 /** @param {import("../state.js").TileLabGameState} state */
 export function renderTilelabPreview(state) {
     const canvas = state.labCanvas;
+    const showWalls = document.getElementById("showWallsInput").checked;
+    const showPathDebug = document.getElementById("showPathDebugInput").checked;
     drawTilelabSurfaceFrame(canvas.getContext("2d"), canvas, state, RUNTIME_LAB_PROFILE_ID, {
         showVignette: document.getElementById("showVignetteInput").checked,
-        topologySession: state.labShowTopologyOverlay ? state.roguelikeMapSession : null,
-        topologyOptions: state.labShowTopologyOverlay
-            ? {
-                  showNodes: document.getElementById("showNodesInput").checked,
-                  showRoomZones: document.getElementById("showRoomZonesInput").checked,
-                  showWalls: document.getElementById("showWallsInput").checked,
-                  showGridBounds: document.getElementById("showGridBoundsInput").checked,
-                  showPathDebug: document.getElementById("showPathDebugInput").checked,
-              }
-            : null,
+        debugOverlay: showWalls || showPathDebug ? { showWalls, showPathDebug } : null,
     });
 }

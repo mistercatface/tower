@@ -30,7 +30,7 @@ function maybeClearBakeCaches(worldState, profileId) {
  * @param {HTMLCanvasElement} canvas
  */
 export function drawTilelabSurfaceFrame(ctx, canvas, worldState, profileId, drawOptions = {}) {
-    const { showVignette = false, topologySession = null, topologyOptions = null } = drawOptions;
+    const { showVignette = false, debugOverlay = null } = drawOptions;
     const viewW = worldState.viewport.width;
     const viewH = worldState.viewport.height;
     const prevProfileOverride = worldState.worldSurfaces.surfaceProfileOverride;
@@ -46,9 +46,17 @@ export function drawTilelabSurfaceFrame(ctx, canvas, worldState, profileId, draw
     ctx.restore();
     ctx.save();
     viewport.apply(ctx);
-    if (topologySession && topologyOptions) drawTopologyLayer(ctx, worldState, viewport, topologyOptions, topologySession, { overlay: true });
+    if (debugOverlay)
+        drawTopologyLayer(
+            ctx,
+            worldState,
+            viewport,
+            { showNodes: false, showRoomZones: false, showGridBounds: false, showWalls: debugOverlay.showWalls, showPathDebug: debugOverlay.showPathDebug },
+            { selectedNodeId: null },
+            { overlay: true },
+        );
     worldState.worldSurfaces.surfaceProfileOverride = prevProfileOverride;
-    sandboxController.drawOverlay(ctx);
+    sandboxController?.drawOverlay(ctx);
     ctx.restore();
     if (showVignette) {
         const R = viewport.getVisualRadius();

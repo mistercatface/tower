@@ -1,4 +1,5 @@
-import { createRoguelikeWorldGenPort, roguelikeProceduralDesign } from "../../Libraries/WorldGen/presets/roguelikeMap.js";
+import { roguelikeProceduralDesign } from "../../Libraries/WorldGen/presets/roguelikeMap.js";
+import { playBoundsFromObstacleGrid } from "../../Libraries/WorldGen/playBounds.js";
 import { GUN_ID_TO_VISUAL } from "../../Assets/guns/visualMap.js";
 import { createDefaultRenderPorts } from "../../Libraries/Render/defaultRenderPorts.js";
 import { createWeaponVisuals } from "../../Libraries/Render/Characters/weapons/createWeaponVisuals.js";
@@ -19,11 +20,10 @@ import { combatParticlesPhase, dispatchEventsPhase, projectilesPhase, ragdollCor
 import { pushablePhysicsPhase } from "../../Systems/Simulation/phases.js";
 import { FLOATING_TEXT_SPAWN_EVENT, FloatingText } from "../../Libraries/Render/FloatingText.js";
 import { drawSandboxAssemblySurfaces } from "../../Libraries/Sandbox/assemblySurfaceDraw.js";
-import { TileLabGameState, tilelabMapTopology } from "./state.js";
+import { TileLabGameState } from "./state.js";
 import { tilelabGroundZoneEffectPass, tilelabGroundZonePhase } from "./groundZones.js";
 import { sandboxVoidZoneEffectPass, sandboxVoidZonePhase } from "./sandboxVoidZones.js";
 import { sandboxController } from "./world/tilelabSandbox.js";
-import { initEmptyTilelabMap } from "./world/mapWorld.js";
 import { fitLabStageToView } from "./ui/labViewport.js";
 import { tilelabUiPort } from "./ui/tilelabUiPort.js";
 import { renderTilelabPreview } from "./ui/preview.js";
@@ -49,7 +49,14 @@ export const engine = {
             },
         ],
     },
-    worldGen: createRoguelikeWorldGenPort({ topology: tilelabMapTopology }),
+    worldGen: {
+        nodeWorldCoordScale: 1,
+        strategies: {},
+        generateWorld() {},
+        getPlayBounds(state) {
+            return playBoundsFromObstacleGrid(state.obstacleGrid);
+        },
+    },
     worldSurface: { pixelsPerCell: 6 },
     proceduralDesign: roguelikeProceduralDesign,
     viewPort: {
@@ -149,11 +156,6 @@ export function createEditorApp() {
         drawFrame();
         requestAnimationFrame(loop);
     }
-    function enterEditor() {
-        initEmptyTilelabMap(state);
-        fitLabStageToView(state);
-        requestUiUpdate();
-    }
     function resizeCanvas() {
         engine.onCanvasResize();
     }
@@ -163,6 +165,6 @@ export function createEditorApp() {
     window.addEventListener("resize", resizeCanvas);
     tilelabUiPort.mount({ state });
     resizeCanvas();
-    enterEditor();
+    fitLabStageToView(state);
     requestAnimationFrame(loop);
 }
