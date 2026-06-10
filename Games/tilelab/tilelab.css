@@ -5,13 +5,26 @@
 @import url('./tilelab-shell.css');
 @import url('./tilelab-map.css');
 
+.motif-list-host {
+    resize: vertical;
+    overflow: hidden;
+    height: 140px;
+    min-height: 72px;
+    max-height: min(480px, 50vh);
+}
+
 #motifList {
-    max-height: 140px;
+    height: 100%;
     overflow-y: auto;
     background: rgba(0, 0, 0, 0.2);
     border: 1px solid var(--border);
     border-radius: 6px;
     padding: 2px;
+    box-sizing: border-box;
+}
+
+details.editor-block-motifs {
+    overflow: visible;
 }
 
 .motif-row {

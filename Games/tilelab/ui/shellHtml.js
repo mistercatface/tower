@@ -50,9 +50,11 @@ export const TILELAB_UI_HTML = `
                         </div>
                     </div>
                     <div class="editor-scroll">
-                        <details class="editor-block" open>
+                        <details class="editor-block editor-block-motifs" open>
                             <summary>Motifs</summary>
-                            <div id="motifList"></div>
+                            <div class="motif-list-host">
+                                <div id="motifList"></div>
+                            </div>
                         </details>
                         <details class="editor-block" open>
                             <summary>Selected</summary>
