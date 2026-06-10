@@ -122,6 +122,10 @@ const POOL_BALL_PHYSICS = {
     lowSpeedFriction: 2.8,
     snapSpeed: 0.45,
     wallPhysics: { restitution: 0.94, friction: 0.06 },
+    getCustomSpriteCacheKey: (prop) => {
+        const pb = prop.poolBall;
+        return `pb${pb.kind}_${pb.number}`;
+    },
 };
 const POOL_BALL_VISUALS = {
     defaultRadius: POOL_BALL_RADIUS,

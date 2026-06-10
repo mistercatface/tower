@@ -5,11 +5,7 @@ import { buildRollOrientKey, quantizeRollQuat } from "../Props/rollingMotion.js"
 import { standTipStageRadius } from "../Spatial/transforms/longAxisBox3d.js";
 import { resolvePropBakeScaleForProp, resolvePropPixelSizeForProp, quantizePropBakeZoom } from "../../Core/GamePropPixelSize.js";
 import { resolveBodyRadius } from "../Motion/bodyDefaults.js";
-import { resolvePropQuantizeSteps } from "../Props/propStrategy.js";
-/**
- * @typedef {ReturnType<createBakedSpriteCache>} BakedSpriteCache
- * @typedef {ReturnType<createQuantizedSpriteCache>} QuantizedSpriteCache
- */
+import { resolvePropQuantizeSteps, getBaseSpriteCacheKey, getPropStageBakeState, propFootprintHalfExtents } from "../Props/propStrategy.js";
 /**
  * LRU baked-sprite cache with shared viewer-offset quantization.
  * Kinematics bodies and iso props both use this; domain key/bake helpers live below.
@@ -117,34 +113,6 @@ const propSpriteCache = createQuantizedSpriteCache({ maxItems: 2560 });
 const PROP_STAGE_PADDING = 40;
 /**
  * @param {object} prop
- */
-export function quantizeLongAxisLogAngles(prop) {
-    return quantizeLongAxisAngles(prop);
-}
-/**
- * @param {object} prop
- */
-function propFootprintHalfExtents(prop) {
-    const radius = resolveBodyRadius(prop);
-    if (prop.halfExtents) return { x: prop.halfExtents.x, y: prop.halfExtents.y };
-    return { x: prop.strategy?.halfExtents?.x ?? radius, y: prop.strategy?.halfExtents?.y ?? radius };
-}
-/**
- * @param {object} prop
- */
-export function buildLongAxisLogOrientKey(prop) {
-    const { facing, roll } = resolvePropQuantizeSteps(prop);
-    return `f${quantizeAngleIndex(prop.facing ?? 0, facing)}_a${quantizeAngleIndex(prop.rollAngle ?? 0, roll)}`;
-}
-/**
- * @param {object} prop
- */
-export function quantizeLongAxisAngles(prop) {
-    const { facing, roll } = resolvePropQuantizeSteps(prop);
-    return { facing: quantizeAngle(prop.facing ?? 0, facing), rollAngle: quantizeAngle(prop.rollAngle ?? 0, roll) };
-}
-/**
- * @param {object} prop
  * @param {number} px
  * @param {number} py
  * @param {string} renderKey
@@ -155,24 +123,13 @@ export function buildPropSpriteKey(prop, px, py, renderKey, animFrame = 0, zoom 
     const dx = prop.x - px;
     const dy = prop.y - py;
     const { keyDx, keyDy } = propSpriteCache.quantizeView(dx, dy);
-    const orientKey =
-        prop.strategy?.rollAxis === "long"
-            ? buildLongAxisLogOrientKey(prop)
-            : prop.strategy?.rolls
-              ? buildRollOrientKey(prop.rollQuat, resolvePropQuantizeSteps(prop).facing)
-              : `f${quantizeAngleIndex(prop.facing ?? 0, resolvePropQuantizeSteps(prop).facing)}`;
-    const radius = Math.round(resolveBodyRadius(prop));
-    const { x: stratHx, y: stratHy } = propFootprintHalfExtents(prop);
-    const halfX = Math.round(stratHx);
-    const halfY = Math.round(stratHy);
-    const opacityBucket = (prop.opacity ?? 1) < 0.99 ? "fade" : "solid";
-    const poolBallKey = prop.poolBall ? `pb${prop.poolBall.kind}_${prop.poolBall.number ?? 0}` : "";
-    const qElev = prop.elevation != null ? Math.round(prop.elevation * 2) / 2 : 0;
-    const elevKey = qElev !== 0 ? `_el${qElev}` : "";
+    const basePhysicsKey = getBaseSpriteCacheKey(prop, { quantizeAngleIndex, buildRollOrientKey });
+    const customKey = prop.strategy?.getCustomSpriteCacheKey?.(prop) ?? prop.getCustomSpriteCacheKey?.(prop) ?? "";
+    const customPart = customKey ? `_${customKey}` : "";
     const pixelSize = resolvePropPixelSizeForProp(prop);
     const pixelKey = pixelSize ? `_px${pixelSize}` : "";
     const zoomKey = `_z${quantizePropBakeZoom(zoom)}`;
-    return `${renderKey}_${poolBallKey}_${orientKey}_${keyDx}_${keyDy}_${radius}_${halfX}x${halfY}_${opacityBucket}_${animFrame}${elevKey}${pixelKey}${zoomKey}`;
+    return `${renderKey}${customPart}_${basePhysicsKey}_${keyDx}_${keyDy}_${animFrame}${pixelKey}${zoomKey}`;
 }
 /**
  * @param {object} spec
@@ -199,20 +156,8 @@ export function getOrBakePropSprite({ prop, px, py, renderKey, draw, animFrame =
         const anchorY = PROP_STAGE_PADDING + stageR * 1.3;
         const canvas = new OffscreenCanvas(stageSpan, stageSpan);
         const ctx = canvas.getContext("2d", { alpha: true });
-        const logAngles = prop.strategy?.rollAxis === "long" ? quantizeLongAxisLogAngles(prop) : null;
-        const qElev = prop.elevation != null ? Math.round(prop.elevation * 2) / 2 : 0;
-        const stageProp = {
-            ...prop,
-            x: anchorX,
-            y: anchorY,
-            radius: resolveBodyRadius(prop),
-            halfExtents: footprint,
-            facing: logAngles?.facing ?? quantizeAngle(prop.facing ?? 0, resolvePropQuantizeSteps(prop).facing),
-            rollAngle: logAngles?.rollAngle ?? prop.rollAngle,
-            rollQuat: prop.strategy?.rolls && prop.strategy?.rollAxis !== "long" ? quantizeRollQuat(prop.rollQuat, resolvePropQuantizeSteps(prop).facing) : prop.rollQuat,
-            opacity: 1,
-            elevation: qElev,
-        };
+        const stageProp = getPropStageBakeState(prop, { quantizeAngle, quantizeRollQuat, anchorX, anchorY });
+        stageProp.radius = resolveBodyRadius(prop);
         ctx.save();
         if (bakeScale !== 1) ctx.scale(bakeScale, bakeScale);
         const prevSmooth = ctx.imageSmoothingEnabled;

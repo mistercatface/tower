@@ -44,8 +44,72 @@ export function resolvePropQuantizeSteps(prop) {
     if (!override) return defaults;
     const facing = override.facing ?? defaults.facing;
     const roll = override.roll ?? override.facing ?? defaults.roll ?? facing;
-    return { facing, roll };
-} /**
+}
+/**
+ * @param {object} prop
+ */
+export function propFootprintHalfExtents(prop) {
+    const radius = prop.radius;
+    if (prop.halfExtents) return { x: prop.halfExtents.x, y: prop.halfExtents.y };
+    return { x: prop.strategy?.halfExtents?.x ?? radius, y: prop.strategy?.halfExtents?.y ?? radius };
+}
+/**
+ * @param {object} prop
+ * @param {typeof import("../Canvas/viewQuantize.js").quantizeAngleIndex} quantizeAngleIndex
+ */
+export function buildLongAxisLogOrientKey(prop, quantizeAngleIndex) {
+    const { facing, roll } = resolvePropQuantizeSteps(prop);
+    return `f${quantizeAngleIndex(prop.facing ?? 0, facing)}_a${quantizeAngleIndex(prop.rollAngle ?? 0, roll)}`;
+}
+/**
+ * @param {object} prop
+ * @param {typeof import("../Canvas/viewQuantize.js").quantizeAngle} quantizeAngle
+ */
+export function quantizeLongAxisAngles(prop, quantizeAngle) {
+    const { facing, roll } = resolvePropQuantizeSteps(prop);
+    return { facing: quantizeAngle(prop.facing ?? 0, facing), rollAngle: quantizeAngle(prop.rollAngle ?? 0, roll) };
+}
+/**
+ * @param {object} prop
+ * @param {object} deps
+ */
+export function getBaseSpriteCacheKey(prop, deps) {
+    const { quantizeAngleIndex, buildRollOrientKey } = deps;
+    let orientKey = "";
+    if (prop.strategy?.rollAxis === "long") orientKey = buildLongAxisLogOrientKey(prop, quantizeAngleIndex);
+    else if (prop.strategy?.rolls) orientKey = buildRollOrientKey(prop.rollQuat, resolvePropQuantizeSteps(prop).facing);
+    else orientKey = `f${quantizeAngleIndex(prop.facing ?? 0, resolvePropQuantizeSteps(prop).facing)}`;
+    const radius = Math.round(prop.radius ?? 16);
+    const { x: stratHx, y: stratHy } = propFootprintHalfExtents(prop);
+    const halfX = Math.round(stratHx);
+    const halfY = Math.round(stratHy);
+    const opacityBucket = (prop.opacity ?? 1) < 0.99 ? "fade" : "solid";
+    const qElev = prop.elevation != null ? Math.round(prop.elevation * 2) / 2 : 0;
+    const elevKey = qElev !== 0 ? `_el${qElev}` : "";
+    return `${orientKey}_${radius}_${halfX}x${halfY}_${opacityBucket}${elevKey}`;
+}
+/**
+ * @param {object} prop
+ * @param {object} deps
+ */
+export function getPropStageBakeState(prop, deps) {
+    const { quantizeAngle, quantizeRollQuat, anchorX, anchorY } = deps;
+    const logAngles = prop.strategy?.rollAxis === "long" ? quantizeLongAxisAngles(prop, quantizeAngle) : null;
+    const qElev = prop.elevation != null ? Math.round(prop.elevation * 2) / 2 : 0;
+    return {
+        ...prop,
+        x: anchorX,
+        y: anchorY,
+        radius: prop.radius,
+        halfExtents: propFootprintHalfExtents(prop),
+        facing: logAngles?.facing ?? quantizeAngle(prop.facing ?? 0, resolvePropQuantizeSteps(prop).facing),
+        rollAngle: logAngles?.rollAngle ?? prop.rollAngle,
+        rollQuat: prop.strategy?.rolls && prop.strategy?.rollAxis !== "long" ? quantizeRollQuat(prop.rollQuat, resolvePropQuantizeSteps(prop).facing) : prop.rollQuat,
+        opacity: 1,
+        elevation: qElev,
+    };
+}
+/**
  * @param {object} strategy
  */
 export function withPropStrategyDefaults(strategy) {
