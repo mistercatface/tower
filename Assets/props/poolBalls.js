@@ -105,9 +105,12 @@ export function createPoolBallDraw(visuals) {
         });
     };
 }
+const POOL_BALL_RADIUS = 2;
 const POOL_BALL_PHYSICS = {
     hitBehavior: "none",
-    radius: 2,
+    radius: POOL_BALL_RADIUS,
+    /** World-diameter bake — skips global propPixelSize (32) upscaling that blew sprites to ~680px. */
+    propPixelSize: POOL_BALL_RADIUS * 2,
     isPushable: true,
     rolls: true,
     collisionShape: "circle",
@@ -121,7 +124,7 @@ const POOL_BALL_PHYSICS = {
     wallPhysics: { restitution: 0.94, friction: 0.06 },
 };
 const POOL_BALL_VISUALS = {
-    defaultRadius: 2,
+    defaultRadius: POOL_BALL_RADIUS,
     panelCount: 6,
     latBands: 4,
     stroke: null,
