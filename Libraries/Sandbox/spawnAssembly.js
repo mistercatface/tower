@@ -6,7 +6,7 @@ import { getPropAsset } from "../Props/PropCatalog.js";
 import { Pickup } from "../../Entities/Pickup.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { poolBallFromNumber } from "../Render/Props3D/poolBallArt.js";
-import { buildSandboxPoolTableLayout, buildPoolTableClearBounds, buildPoolTableWallSegments } from "./poolTableLayout.js";
+import { buildAssemblyLayout, buildAssemblyClearBounds, buildAssemblyWallSegments } from "./assemblyLayout.js";
 import { getResolvedAssembly } from "./assemblies/assemblyRegistry.js";
 import { resolvePlacement } from "./assemblies/assemblyPlacement.js";
 import { stampAssemblyGroupMember, entityBelongsToAssemblyGroup } from "./assemblies/assemblyLink.js";
@@ -61,7 +61,7 @@ function clearWallsInBounds(state, bounds) {
 }
 /**
  * @param {import("./SandboxHostPort.js").SandboxHostPort} host
- * @param {ReturnType<typeof buildSandboxPoolTableLayout>} layout
+ * @param {ReturnType<typeof buildAssemblyLayout>} layout
  * @param {import("./assemblies/assemblyManifest.js").ResolvedAssemblyManifest} resolved
  * @param {{ faction?: string, groupId: string, rackId: string, groupField: string }} options
  */
@@ -92,21 +92,21 @@ function spawnManifestPickups(host, layout, resolved, { faction, groupId, rackId
  * @param {import("./assemblies/assemblyManifest.js").ResolvedAssemblyManifest} resolved
  * @param {{ faction?: string, groupId?: string }} [options]
  */
-export function spawnPoolTableAssembly(host, centerX, centerY, resolved, { faction, groupId: groupIdOverride } = {}) {
+export function spawnResolvedAssembly(host, centerX, centerY, resolved, { faction, groupId: groupIdOverride } = {}) {
     const state = host.getWorldState?.();
-    if (!state || resolved.id !== "poolTable") return null;
+    if (!state) return null;
     if (!resolved.pickups?.length) return null;
     for (let i = 0; i < resolved.pickups.length; i++) if (!getPropAsset(resolved.pickups[i].prop)) return null;
-    const layout = buildSandboxPoolTableLayout(centerX, centerY, resolved);
+    const layout = buildAssemblyLayout(centerX, centerY, resolved);
     const spawnSteps = resolved.spawn;
-    if (spawnIncludes(spawnSteps, ["arena.clear"])) clearWallsInBounds(state, buildPoolTableClearBounds(layout, resolved));
+    if (spawnIncludes(spawnSteps, ["arena.clear"])) clearWallsInBounds(state, buildAssemblyClearBounds(layout, resolved));
     const groupId = groupIdOverride ?? `${resolved.id}:${Date.now()}`;
     const rackId = `${groupId}:rack`;
     const groupField = resolved.groupField;
-    const tableWidth = resolved.arena.width;
-    const tableHeight = resolved.arena.height;
+    const arenaWidth = resolved.arena.width;
+    const arenaHeight = resolved.arena.height;
     if (spawnIncludes(spawnSteps, ["arena.walls"])) {
-        const walls = buildPoolTableWallSegments(layout, resolved);
+        const walls = buildAssemblyWallSegments(layout, resolved);
         for (let i = 0; i < walls.length; i++) stampAssemblyGroupMember(walls[i], groupId, resolved.id, groupField);
         addSandboxWalls(state, walls);
     }
@@ -125,7 +125,7 @@ export function spawnPoolTableAssembly(host, centerX, centerY, resolved, { facti
         if (!spawned) return null;
     }
     if (!state.sandboxAssemblyInstances) state.sandboxAssemblyInstances = [];
-    const instance = { id: groupId, assemblyId: resolved.id, rackId, cueBallId: spawned?.cueBallId ?? null, tableWidth, tableHeight, groupField };
+    const instance = { id: groupId, assemblyId: resolved.id, rackId, cueBallId: spawned?.cueBallId ?? null, arenaWidth, arenaHeight, groupField };
     state.sandboxAssemblyInstances.push(instance);
     return { id: groupId, assemblyId: resolved.id, cueBallId: spawned?.cueBallId ?? null, centerX, centerY };
 }
@@ -139,8 +139,7 @@ export function spawnPoolTableAssembly(host, centerX, centerY, resolved, { facti
 export function spawnAssembly(host, centerX, centerY, assemblyId = "poolTable", options = {}) {
     const resolved = getResolvedAssembly(assemblyId);
     if (!resolved) return null;
-    if (resolved.id === "poolTable") return spawnPoolTableAssembly(host, centerX, centerY, resolved, options);
-    return null;
+    return spawnResolvedAssembly(host, centerX, centerY, resolved, options);
 }
 /** @param {object} state @param {string} groupId @param {string} [groupField] */
 export function deleteAssemblyInstance(state, groupId, groupField = "sandboxGroupId") {

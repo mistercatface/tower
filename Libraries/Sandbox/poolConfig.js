@@ -48,13 +48,7 @@ export function getPoolBallPhysics() {
 export function getPoolBallVisuals(defaultPoolBall) {
     return { defaultPoolBall, defaultRadius: getPoolBallRadius(), ...POOL_VISUAL };
 }
-/** @param {number} [tableWidth] @param {number} [tableHeight] */
-export function getPoolTableWorldSize(tableWidth = getPoolTableWidth(), tableHeight = getPoolTableHeight()) {
-    return { tableWidth, tableHeight };
-}
-export function getPoolTableWidth() {
-    return poolAssembly().arena.width;
-}
-export function getPoolTableHeight() {
-    return poolAssembly().arena.height;
+export function getPoolTableWorldSize() {
+    const { width, height } = poolAssembly().arena;
+    return { tableWidth: width, tableHeight: height };
 }

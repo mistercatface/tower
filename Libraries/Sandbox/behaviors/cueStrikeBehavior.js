@@ -17,7 +17,7 @@ function cueStrikeTableBounds(pickup, host) {
     const state = host.getWorldState?.();
     const instance = state?.sandboxAssemblyInstances?.find((entry) => entry.id === groupId);
     if (!instance) return {};
-    return { tableWidth: instance.tableWidth, tableHeight: instance.tableHeight };
+    return { tableWidth: instance.arenaWidth, tableHeight: instance.arenaHeight };
 }
 /** @returns {import("../createSandboxController.js").SandboxBehavior} */
 export function createCueStrikeBehavior() {

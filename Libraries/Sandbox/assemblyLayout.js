@@ -1,17 +1,7 @@
 import { snapLayoutOrigin } from "../../Generator/GridLayout.js";
 import { Segment } from "../../Entities/Wall.js";
-import { getResolvedAssembly } from "./assemblies/assemblyRegistry.js";
 import { resolvePlacement } from "./assemblies/assemblyPlacement.js";
 /** @typedef {import("./assemblies/assemblyManifest.js").ResolvedAssemblyManifest} ResolvedAssemblyManifest */
-function defaultAssembly() {
-    return getResolvedAssembly("poolTable");
-}
-/** @param {ResolvedAssemblyManifest | null | undefined} resolved */
-function resolveAssembly(resolved) {
-    const assembly = resolved ?? defaultAssembly();
-    if (!assembly) throw new Error("Pool table assembly not loaded — call loadAssemblyManifests() first");
-    return assembly;
-}
 /**
  * @param {import("./assemblies/assemblyManifest.js").AssemblyVoidCircleManifest[]} voidCircles
  * @param {ReturnType<typeof getPlayfieldBounds>} play
@@ -23,12 +13,12 @@ function resolveVoidCircles(voidCircles, play) {
     });
 }
 /** @param {number} offsetX @param {number} offsetY @param {number} width @param {number} height */
-function getTableWorldBounds(offsetX, offsetY, width, height) {
+function getArenaWorldBounds(offsetX, offsetY, width, height) {
     return { minX: offsetX, minY: offsetY, maxX: offsetX + width, maxY: offsetY + height, centerX: offsetX + width / 2, centerY: offsetY + height / 2, width, height };
 }
-/** @param {ReturnType<typeof getTableWorldBounds>} table @param {number} inset */
-function getPlayfieldBounds(table, inset) {
-    return { minX: table.minX + inset, minY: table.minY + inset, maxX: table.maxX - inset, maxY: table.maxY - inset, centerX: table.centerX, centerY: table.centerY };
+/** @param {ReturnType<typeof getArenaWorldBounds>} arena @param {number} inset */
+function getPlayfieldBounds(arena, inset) {
+    return { minX: arena.minX + inset, minY: arena.minY + inset, maxX: arena.maxX - inset, maxY: arena.maxY - inset, centerX: arena.centerX, centerY: arena.centerY };
 }
 /**
  * @param {number} x0
@@ -55,13 +45,13 @@ function tessellateWallEdge(x0, y0, x1, y1, segmentSize, angle, padding, maxHeal
     }
     return segments;
 }
-/** @param {ReturnType<typeof getTableWorldBounds>} table @param {import("./assemblies/assemblyManifest.js").AssemblyArenaWallsManifest} walls */
-function buildRectWallSegments(table, walls) {
+/** @param {ReturnType<typeof getArenaWorldBounds>} arenaBounds @param {import("./assemblies/assemblyManifest.js").AssemblyArenaWallsManifest} walls */
+function buildRectWallSegments(arenaBounds, walls) {
     const half = walls.width / 2;
-    const left = table.minX + half;
-    const right = table.maxX - half;
-    const top = table.minY + half;
-    const bottom = table.maxY - half;
+    const left = arenaBounds.minX + half;
+    const right = arenaBounds.maxX - half;
+    const top = arenaBounds.minY + half;
+    const bottom = arenaBounds.maxY - half;
     const segment = walls.segment ?? {};
     const padding = segment.padding ?? 0;
     const maxHealth = segment.maxHealth ?? 30;
@@ -78,31 +68,21 @@ function buildRectWallSegments(table, walls) {
 /**
  * @param {number} centerX
  * @param {number} centerY
- * @param {ResolvedAssemblyManifest} [resolved]
+ * @param {ResolvedAssemblyManifest} resolved
  */
-export function buildSandboxPoolTableLayout(centerX, centerY, resolved = defaultAssembly()) {
-    const assembly = resolveAssembly(resolved);
-    const { arena, voidCircles } = assembly;
-    const width = arena.width;
-    const height = arena.height;
-    const { offsetX, offsetY } = snapLayoutOrigin(centerX, centerY, width, height, 1);
-    const table = getTableWorldBounds(offsetX, offsetY, width, height);
-    const play = getPlayfieldBounds(table, arena.walls.width);
-    const voids = resolveVoidCircles(voidCircles, play);
-    return { width, height, offsetX, offsetY, table, play, voids };
+export function buildAssemblyLayout(centerX, centerY, resolved) {
+    const { arena, voidCircles } = resolved;
+    const { offsetX, offsetY } = snapLayoutOrigin(centerX, centerY, arena.width, arena.height, 1);
+    const bounds = getArenaWorldBounds(offsetX, offsetY, arena.width, arena.height);
+    const play = getPlayfieldBounds(bounds, arena.walls.width);
+    return { bounds, play, voids: resolveVoidCircles(voidCircles, play) };
 }
-/** @param {ReturnType<typeof buildSandboxPoolTableLayout>} layout @param {ResolvedAssemblyManifest} [resolved] */
-export function buildPoolTableClearBounds(layout, resolved = defaultAssembly()) {
-    const pad = resolveAssembly(resolved).arena.clearPadding;
-    return { minX: layout.table.minX - pad, minY: layout.table.minY - pad, maxX: layout.table.maxX + pad, maxY: layout.table.maxY + pad };
+/** @param {ReturnType<typeof buildAssemblyLayout>} layout @param {ResolvedAssemblyManifest} resolved */
+export function buildAssemblyClearBounds(layout, resolved) {
+    const pad = resolved.arena.clearPadding;
+    return { minX: layout.bounds.minX - pad, minY: layout.bounds.minY - pad, maxX: layout.bounds.maxX + pad, maxY: layout.bounds.maxY + pad };
 }
-/** @param {ReturnType<typeof buildSandboxPoolTableLayout>} layout @param {ResolvedAssemblyManifest} [resolved] */
-export function buildPoolTableWallSegments(layout, resolved = defaultAssembly()) {
-    return buildRectWallSegments(layout.table, resolveAssembly(resolved).arena.walls);
-}
-export function getPoolTableWidth() {
-    return resolveAssembly().arena.width;
-}
-export function getPoolTableHeight() {
-    return resolveAssembly().arena.height;
+/** @param {ReturnType<typeof buildAssemblyLayout>} layout @param {ResolvedAssemblyManifest} resolved */
+export function buildAssemblyWallSegments(layout, resolved) {
+    return buildRectWallSegments(layout.bounds, resolved.arena.walls);
 }
