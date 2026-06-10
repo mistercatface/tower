@@ -4,28 +4,38 @@ export const ROLL_TO_CURSOR_HPA_BEHAVIOR_ID = "rollToCursorHpa";
 /** @returns {import("../createSandboxController.js").SandboxBehavior} */
 export function createRollToCursorHpaBehavior() {
     let targetWorld = null;
-    let active = false;
+    let dragging = false;
     const hpaNav = createRollToCursorHpaNav();
+    const clearTarget = () => {
+        targetWorld = null;
+        dragging = false;
+        hpaNav.reset();
+    };
     return {
         id: ROLL_TO_CURSOR_HPA_BEHAVIOR_ID,
         onPointerDown(pickup, world) {
-            active = true;
+            dragging = true;
             targetWorld = { x: world.x, y: world.y };
             hpaNav.reset();
             return true;
         },
         onPointerMove(pickup, world) {
-            if (!active) return;
+            if (!dragging || !targetWorld) return;
             targetWorld = { x: world.x, y: world.y };
         },
-        onPointerUp(pickup) {
-            active = false;
-            targetWorld = null;
-            hpaNav.reset();
+        onPointerUp() {
+            dragging = false;
         },
         tick(pickup, dt, host) {
-            if (!active || !targetWorld) return;
+            if (!targetWorld) return;
             const config = getRollToCursorConfig(pickup, { stopRadius: 8 });
+            const distToTarget = Math.hypot(targetWorld.x - pickup.x, targetWorld.y - pickup.y);
+            if (distToTarget <= config.stopRadius) {
+                decelerateRoll(pickup, dt, config);
+                const speed = Math.hypot(pickup.vx ?? 0, pickup.vy ?? 0);
+                if (speed < 0.5) clearTarget();
+                return;
+            }
             hpaNav.update(pickup, targetWorld.x, targetWorld.y, host, dt * 1000);
             const steering = hpaNav.getSteering(pickup, targetWorld.x, targetWorld.y, {
                 pathWaypointArrival: Math.max(12, (pickup.radius ?? 6) * 1.5),
@@ -39,7 +49,7 @@ export function createRollToCursorHpaBehavior() {
             steerRollToward(pickup, steering.desiredX, steering.desiredY, dt, config);
         },
         getPathOverlay(pickup) {
-            if (!active || !targetWorld) return null;
+            if (!targetWorld) return null;
             return {
                 mode: "hpa",
                 fromX: pickup.x,
@@ -52,9 +62,7 @@ export function createRollToCursorHpaBehavior() {
             };
         },
         reset() {
-            active = false;
-            targetWorld = null;
-            hpaNav.reset();
+            clearTarget();
         },
     };
 }
