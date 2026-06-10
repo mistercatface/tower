@@ -65,8 +65,6 @@ export class PickupVoidSinkState {
         if (pickup.elevation <= -voidDepth || pickup.voidSinkTimer <= 0) {
             pickup.changeState("normal");
             pickup.isDead = true;
-            const idx = state.pickups.indexOf(pickup);
-            if (idx >= 0) state.pickups.splice(idx, 1);
         }
     }
 }
