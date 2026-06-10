@@ -3,7 +3,7 @@ import { getGameWorldSurfaceSettings, installGameWorldSurfaceSettings, TILE_WORK
 import { configureTileWorkerCoordinator } from "../Libraries/WorldSurface/TileWorkerCoordinator.js";
 import { clearInteractionPairFilterCache } from "./GamePorts.js";
 import { peekGameState } from "../GameState/GameState.js";
-import { resolvePerspectiveConfig, setCameraHeight, setPerspectiveStrength } from "./GamePerspective.js";
+import { applyGamePerspective } from "./GamePerspective.js";
 import { applyGameProceduralDesign, resolveProceduralBakeSettings } from "./GameProceduralDesign.js";
 /** @typedef {import("./GameDefinitionTypes.js").GameDefinition} GameDefinition */
 let workersConfigured = false;
@@ -21,9 +21,7 @@ export function bootstrapEngine(definition) {
         workersConfigured = true;
     }
     applyGameProceduralDesign(definition);
-    const perspective = resolvePerspectiveConfig(definition);
-    setCameraHeight(perspective.cameraHeight);
-    setPerspectiveStrength(perspective.strength);
+    const perspective = applyGamePerspective(definition);
     installGameWorldSurfaceSettings({
         cameraHeight: perspective.cameraHeight,
         pixelsPerCell: definition?.worldSurface?.pixelsPerCell,

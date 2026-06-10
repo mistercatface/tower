@@ -1,16 +1,24 @@
 /**
  * World-aligned horizontal surface chunks (ground z=0, elevated roofs z>0).
  */
-import { projectWorldPointAtHeight, projectWorldRectCorners, resolveElevationAlpha } from "../Spatial/iso/IsometricProjection.js";
+import { resolveStructurePerspectiveStrength } from "../../Core/GamePerspective.js";
+import { projectWorldPointAtHeight } from "../Spatial/iso/IsometricProjection.js";
 import { worldToChunkCol, worldToChunkRow } from "../Spatial/grid/ChunkGrid.js";
 import { getWallDamageAlpha, wallDamageOverlayStyle } from "../Render/Structure3D/wallDamageVisual.js";
 /** @returns {{ x: number, y: number }} */
-export function projectHorizontalSurfaceOrigin(worldX, worldY, zLevel, viewerX, viewerY, cameraHeight) {
-    return projectWorldPointAtHeight(worldX, worldY, viewerX, viewerY, zLevel, cameraHeight);
+export function projectHorizontalSurfaceOrigin(worldX, worldY, zLevel, viewerX, viewerY, cameraHeight, viewport = null) {
+    const strength = resolveStructurePerspectiveStrength(viewport);
+    return projectWorldPointAtHeight(worldX, worldY, viewerX, viewerY, zLevel, cameraHeight, strength);
 }
 /** @returns {[{ x: number, y: number }, { x: number, y: number }, { x: number, y: number }, { x: number, y: number }]} */
-export function projectHorizontalSurfaceCorners(originX, originY, sizePx, zLevel, viewerX, viewerY, cameraHeight) {
-    return projectWorldRectCorners(originX, originY, sizePx, zLevel, viewerX, viewerY, cameraHeight);
+export function projectHorizontalSurfaceCorners(originX, originY, sizePx, zLevel, viewerX, viewerY, cameraHeight, viewport = null) {
+    const strength = resolveStructurePerspectiveStrength(viewport);
+    return [
+        projectWorldPointAtHeight(originX, originY, viewerX, viewerY, zLevel, cameraHeight, strength),
+        projectWorldPointAtHeight(originX + sizePx, originY, viewerX, viewerY, zLevel, cameraHeight, strength),
+        projectWorldPointAtHeight(originX + sizePx, originY + sizePx, viewerX, viewerY, zLevel, cameraHeight, strength),
+        projectWorldPointAtHeight(originX, originY + sizePx, viewerX, viewerY, zLevel, cameraHeight, strength),
+    ];
 }
 /**
  * @param {import("../Spatial/indexes/WallSpatialIndex.js").WallSpatialIndex | null | undefined} wallSpatialIndex
@@ -36,11 +44,11 @@ export function chunkHasWallSegments(wallSpatialIndex, chunkOriginX, chunkOrigin
  * @param {number} viewerY
  * @param {number} cameraHeight
  * @param {import("../Render/Scene/RenderScene.js").RenderScene | null | undefined} renderScene
+ * @param {import("../Viewport/Viewport.js").Viewport | null | undefined} [viewport]
  * @returns {boolean}
  */
-export function clipChunkToRoofFootprints(ctx, chunkOriginX, chunkOriginY, chunkSizePx, zLevel, viewerX, viewerY, cameraHeight, renderScene) {
+export function clipChunkToRoofFootprints(ctx, chunkOriginX, chunkOriginY, chunkSizePx, zLevel, viewerX, viewerY, cameraHeight, renderScene, viewport = null) {
     if (!renderScene) return false;
-    const alpha = resolveElevationAlpha(zLevel, cameraHeight, 1);
     const minCol = worldToChunkCol(chunkOriginX, renderScene.gridMinX, renderScene.chunkSizePx);
     const maxCol = worldToChunkCol(chunkOriginX + chunkSizePx - 1, renderScene.gridMinX, renderScene.chunkSizePx);
     const minRow = worldToChunkRow(chunkOriginY, renderScene.gridMinY, renderScene.chunkSizePx);
@@ -52,7 +60,7 @@ export function clipChunkToRoofFootprints(ctx, chunkOriginX, chunkOriginY, chunk
         const roof = roofs[i];
         if (roof.simWall?.isDead) continue;
         if (Math.abs(roof.zLevel - zLevel) > 0.01) continue;
-        roof.draw(ctx, null, alpha, viewerX, viewerY);
+        roof.draw(ctx, viewport, cameraHeight, viewerX, viewerY);
         clippedAny = true;
     }
     if (!clippedAny) return false;
@@ -71,10 +79,10 @@ export function clipChunkToRoofFootprints(ctx, chunkOriginX, chunkOriginY, chunk
  * @param {number} viewerY
  * @param {number} cameraHeight
  * @param {import("../Render/Scene/RenderScene.js").RenderScene | null | undefined} renderScene
+ * @param {import("../Viewport/Viewport.js").Viewport | null | undefined} [viewport]
  */
-export function drawRoofSegmentDamageOverlays(ctx, chunkOriginX, chunkOriginY, chunkSizePx, zLevel, viewerX, viewerY, cameraHeight, renderScene) {
+export function drawRoofSegmentDamageOverlays(ctx, chunkOriginX, chunkOriginY, chunkSizePx, zLevel, viewerX, viewerY, cameraHeight, renderScene, viewport = null) {
     if (!renderScene) return;
-    const alpha = resolveElevationAlpha(zLevel, cameraHeight, 1);
     const minCol = worldToChunkCol(chunkOriginX, renderScene.gridMinX, renderScene.chunkSizePx);
     const maxCol = worldToChunkCol(chunkOriginX + chunkSizePx - 1, renderScene.gridMinX, renderScene.chunkSizePx);
     const minRow = worldToChunkRow(chunkOriginY, renderScene.gridMinY, renderScene.chunkSizePx);
@@ -88,7 +96,7 @@ export function drawRoofSegmentDamageOverlays(ctx, chunkOriginX, chunkOriginY, c
         if (damageAlpha <= 0) continue;
         ctx.save();
         ctx.beginPath();
-        roof.draw(ctx, null, alpha, viewerX, viewerY);
+        roof.draw(ctx, viewport, cameraHeight, viewerX, viewerY);
         ctx.clip();
         ctx.fillStyle = wallDamageOverlayStyle(damageAlpha);
         ctx.fill();

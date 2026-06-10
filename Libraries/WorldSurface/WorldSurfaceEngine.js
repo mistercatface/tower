@@ -192,11 +192,11 @@ export class WorldSurfaceEngine {
                 if (canvas.isPlaceholder) continue;
                 if (zLevel > 0) {
                     ctx.save();
-                    if (!skipRoofFootprintClip && !clipChunkToRoofFootprints(ctx, originX, originY, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight, options.renderScene)) {
+                    if (!skipRoofFootprintClip && !clipChunkToRoofFootprints(ctx, originX, originY, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight, options.renderScene, viewport)) {
                         ctx.restore();
                         continue;
                     }
-                    const corners = projectHorizontalSurfaceCorners(originX, originY, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight);
+                    const corners = projectHorizontalSurfaceCorners(originX, originY, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight, viewport);
                     const dstX = corners[0].x;
                     const dstY = corners[0].y;
                     const dstW = corners[2].x - corners[0].x;
@@ -204,7 +204,7 @@ export class WorldSurfaceEngine {
                     const bleedPx = this.settings.wallTextureBleedPx ?? 1;
                     ctx.drawImage(canvas, dstX - bleedPx, dstY - bleedPx, dstW + bleedPx * 2, dstH + bleedPx * 2);
                     ctx.restore();
-                    drawRoofSegmentDamageOverlays(ctx, originX, originY, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight, options.renderScene);
+                    drawRoofSegmentDamageOverlays(ctx, originX, originY, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight, options.renderScene, viewport);
                 } else drawBakedTexture(ctx, canvas, originX, originY, chunkSizePx, chunkSizePx, this.settings);
             }
         ctx.restore();

@@ -1,3 +1,5 @@
+import { resolveStructurePerspectiveStrength } from "../../../Core/GamePerspective.js";
+import { resolveElevationAlpha } from "../../Spatial/iso/IsometricProjection.js";
 import { computeProjectedFace, drawFaceTexture } from "../Structure3D/ProjectedWallDraw.js";
 import { wallDamageOverlayStyle } from "../Structure3D/wallDamageVisual.js";
 /**
@@ -51,7 +53,7 @@ export class RenderableWallFace extends Renderable {
     draw(ctx, viewport, worldSurfaces, proceduralSurfaceDraw, fillStyle, damageAlpha, viewerX, viewerY, worldBounds) {
         const settings = worldSurfaces.settings;
         if (!settings) return;
-        const face = computeProjectedFace(this.p1, this.p2, viewerX, viewerY, this.wallHeight, settings);
+        const face = computeProjectedFace(this.p1, this.p2, viewerX, viewerY, this.wallHeight, settings, undefined, viewport);
         ctx.beginPath();
         ctx.moveTo(this.p1.x, this.p1.y);
         ctx.lineTo(face.proj1X, face.proj1Y);
@@ -97,7 +99,9 @@ export class RenderableRoofCap extends Renderable {
             maxY: Math.max(...corners.map((c) => c.y)),
         };
     }
-    draw(ctx, viewport, alpha, viewerX, viewerY) {
+    draw(ctx, viewport, cameraHeight, viewerX, viewerY) {
+        const strength = resolveStructurePerspectiveStrength(viewport);
+        const alpha = resolveElevationAlpha(this.zLevel, cameraHeight, strength);
         for (let j = 0; j < 4; j++) {
             const corner = this.corners[j];
             const px = corner.x + (corner.x - viewerX) * alpha;

@@ -7,6 +7,7 @@ import { drawImageQuad } from "../../Canvas/AffineTexture.js";
 /** @typedef {import("../WorldSceneTypes.js").ProceduralSurfaceDrawContext} ProceduralSurfaceDrawContext */
 import { getTexelResolution, shouldSmoothTextureDownsample } from "../../WorldSurface/WorldSurfaceResolution.js";
 import { wallDamageOverlayStyle } from "./wallDamageVisual.js";
+import { resolveStructurePerspectiveStrength } from "../../../Core/GamePerspective.js";
 import { resolveElevationAlpha } from "../../Spatial/iso/IsometricProjection.js";
 export { getWallHeight };
 export { wallFaceColumns } from "../../WorldSurface/WallFaceColumns.js";
@@ -16,7 +17,7 @@ const sCorner1 = { x: 0, y: 0 };
 const sCorner2 = { x: 0, y: 0 };
 const sCorner3 = { x: 0, y: 0 };
 export const sharedScratchFace = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
-export function computeProjectedFace(p1, p2, px, py, wallHeight, settings, out = sharedScratchFace) {
+export function computeProjectedFace(p1, p2, px, py, wallHeight, settings, out = sharedScratchFace, viewport = null) {
     let angle1 = Math.atan2(p1.y - py, p1.x - px);
     let angle2 = Math.atan2(p2.y - py, p2.x - px);
     const cross = (p1.x - px) * (p2.y - py) - (p1.y - py) * (p2.x - px);
@@ -31,7 +32,7 @@ export function computeProjectedFace(p1, p2, px, py, wallHeight, settings, out =
     const dist2 = Math.hypot(p2.x - px, p2.y - py);
     const { cameraHeight } = settings;
     const clampedHeight = Math.min(wallHeight, cameraHeight - 1);
-    const alpha = resolveElevationAlpha(clampedHeight, cameraHeight);
+    const alpha = resolveElevationAlpha(clampedHeight, cameraHeight, resolveStructurePerspectiveStrength(viewport));
     out.proj1X = p1.x + Math.cos(angle1) * dist1 * alpha;
     out.proj1Y = p1.y + Math.sin(angle1) * dist1 * alpha;
     out.proj2X = p2.x + Math.cos(angle2) * dist2 * alpha;
@@ -94,7 +95,8 @@ export function drawFaceTexture(ctx, p1, p2, face, worldSurfaces, proceduralSurf
     }
     const bleedPx = settings.wallTextureBleedPx ?? 1;
     const clampedHeight = Math.min(wallHeight, settings.cameraHeight - 1);
-    const alphaMax = resolveElevationAlpha(clampedHeight, settings.cameraHeight);
+    const perspectiveStrength = resolveStructurePerspectiveStrength(viewport);
+    const alphaMax = resolveElevationAlpha(clampedHeight, settings.cameraHeight, perspectiveStrength);
     if (alphaMax <= 0) {
         ctx.fillStyle = fillStyle;
         ctx.fill();
@@ -116,8 +118,8 @@ export function drawFaceTexture(ctx, p1, p2, face, worldSurfaces, proceduralSurf
         let topZ = (row + 1) * (wallHeight / SUBDIV_Y);
         if (bottomZ >= settings.cameraHeight) break;
         if (topZ >= settings.cameraHeight) topZ = settings.cameraHeight - 1;
-        const alphaBottom = resolveElevationAlpha(bottomZ, settings.cameraHeight);
-        const alphaTop = resolveElevationAlpha(topZ, settings.cameraHeight);
+        const alphaBottom = resolveElevationAlpha(bottomZ, settings.cameraHeight, perspectiveStrength);
+        const alphaTop = resolveElevationAlpha(topZ, settings.cameraHeight, perspectiveStrength);
         const v0 = alphaBottom / alphaMax;
         const v1 = alphaTop / alphaMax;
         const sy0 = (row / SUBDIV_Y) * H_px;
@@ -152,7 +154,7 @@ export function drawProjectedWallFace(
 ) {
     const resolvedSettings = settings ?? worldSurfaces.settings;
     const finalWallHeight = wallHeight ?? getWallHeight(resolvedSettings);
-    const face = computeProjectedFace(p1, p2, px, py, finalWallHeight, resolvedSettings);
+    const face = computeProjectedFace(p1, p2, px, py, finalWallHeight, resolvedSettings, sharedScratchFace, viewport);
     sCorner0.x = p1.x;
     sCorner0.y = p1.y;
     sCorner1.x = p2.x;
