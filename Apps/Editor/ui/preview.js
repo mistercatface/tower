@@ -28,7 +28,6 @@ export function registerEditorProfiles(state) {
  */
 export function renderTilelabPreview(state, ctrl) {
     const canvas = state.labCanvas;
-    if (!canvas || state.viewport.width < 32) return;
     drawTilelabSurfaceFrame(canvas.getContext("2d"), canvas, state, RUNTIME_LAB_PROFILE_ID, {
         showVignette: ctrl.showVignette,
         topologySession: state.labShowTopologyOverlay ? state.roguelikeMapSession : null,

@@ -4,13 +4,10 @@ import { canvasClientToWorld } from "./labCanvas.js";
 import { populateNodeList, renderNodeInspector } from "./mapInspector.js";
 /** @param {import("../state.js").TileLabGameState} state @param {() => void} onRedraw */
 export function initMapTopologyInteractions(state, onRedraw) {
-    const canvas = document.getElementById("gameCanvas");
-    canvas?.addEventListener("pointerdown", (e) => {
+    document.getElementById("gameCanvas").addEventListener("pointerdown", (e) => {
         if (!state.labShowTopologyOverlay || e.button !== 0) return;
         if (e.defaultPrevented) return;
-        const world = canvasClientToWorld(canvas, state.viewport, e.clientX, e.clientY);
-        if (!world) return;
-        const { x: worldX, y: worldY } = world;
+        const { x: worldX, y: worldY } = canvasClientToWorld(state.labCanvas, state.viewport, e.clientX, e.clientY);
         if (findPickupAt(state.pickups, worldX, worldY)) return;
         let nearestNode = null;
         let nearestDist = Infinity;

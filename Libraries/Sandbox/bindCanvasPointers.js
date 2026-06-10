@@ -6,7 +6,6 @@
  */
 export function bindCanvasPointers(host, handlers) {
     const canvas = host.getCanvas();
-    if (!canvas) return () => {};
     /** @type {(() => void)[]} */
     const unbind = [];
     for (const [type, handler] of Object.entries(handlers)) {

@@ -67,9 +67,7 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
     const onPointerDown = (e) => {
         if (host.isInputBlocked?.()) return;
         const canvas = host.getCanvas();
-        if (!canvas) return;
         const world = host.clientToWorld(e.clientX, e.clientY);
-        if (!world) return;
         if (e.button === 2) {
             const hit = findPickupAt(host.getPickups(), world.x, world.y);
             if (!hit) return;
@@ -101,7 +99,6 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
         const pickup = session.getSelectedPickup();
         if (!pickup) return;
         const world = host.clientToWorld(e.clientX, e.clientY);
-        if (!world) return;
         e.stopPropagation();
         interactionBehavior.onPointerMove(pickup, world, e);
     };
@@ -112,7 +109,7 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
         const pickup = session.getSelectedPickup();
         if (pickup) {
             const world = host.clientToWorld(e.clientX, e.clientY);
-            if (world) interactionBehavior.onPointerMove(pickup, world, e);
+            interactionBehavior.onPointerMove(pickup, world, e);
             interactionBehavior.onPointerUp(pickup, e);
         }
         interactionBehavior = null;

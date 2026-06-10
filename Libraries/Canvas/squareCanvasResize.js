@@ -1,6 +1,5 @@
 const HOST_CLASS = "square-canvas-resize-host";
 const HANDLE_CLASS = "square-canvas-resize-handle";
-
 /**
  * @typedef {object} SquareCanvasResizeOptions
  * @property {number} initialSize
@@ -10,7 +9,6 @@ const HANDLE_CLASS = "square-canvas-resize-handle";
  * @property {boolean} [syncCanvasPixels=true]
  * @property {HTMLElement} [host]
  */
-
 /**
  * @typedef {object} SquareCanvasResizeHandle
  * @property {HTMLElement} host
@@ -18,16 +16,14 @@ const HANDLE_CLASS = "square-canvas-resize-handle";
  * @property {() => number} getSize
  * @property {(size: number) => number} setSize
  */
-
 /**
  * 1:1 drag-resize frame for a canvas. Corner handle; optional pixel buffer sync.
  *
  * @param {HTMLCanvasElement | null} canvas
  * @param {SquareCanvasResizeOptions} options
- * @returns {SquareCanvasResizeHandle | null}
+ * @returns {SquareCanvasResizeHandle}
  */
 export function applySquareCanvasResize(canvas, options) {
-    if (!canvas) return null;
     const { initialSize, minSize = 64, maxSize, onResize, syncCanvasPixels = true, host: hostOption } = options;
     const host = resolveHost(canvas, hostOption);
     const resolveMax = () => {
@@ -76,14 +72,8 @@ export function applySquareCanvasResize(canvas, options) {
             handle.addEventListener("pointercancel", onUp);
         });
     }
-    return {
-        host,
-        handle,
-        getSize: () => host.offsetWidth,
-        setSize: applySize,
-    };
+    return { host, handle, getSize: () => host.offsetWidth, setSize: applySize };
 }
-
 /** @param {HTMLCanvasElement} canvas @param {HTMLElement | undefined} hostOption */
 function resolveHost(canvas, hostOption) {
     if (hostOption) {
@@ -99,7 +89,6 @@ function resolveHost(canvas, hostOption) {
     host.appendChild(canvas);
     return host;
 }
-
 /** @param {HTMLElement} host */
 function createHandle(host) {
     const handle = document.createElement("div");

@@ -16,13 +16,11 @@ function createSandboxHost(state, requestRedraw) {
     return {
         getCanvas: () => state.labCanvas,
         clientToWorld(clientX, clientY) {
-            const canvas = state.labCanvas;
-            if (!canvas) return null;
-            return canvasClientToWorld(canvas, state.viewport, clientX, clientY);
+            return canvasClientToWorld(state.labCanvas, state.viewport, clientX, clientY);
         },
         getCameraOrigin: () => ({ x: state.viewport.x, y: state.viewport.y }),
         requestRedraw,
-        computePath: (startX, startY, targetX, targetY) => state.hierarchicalNavigator?.computePath(startX, startY, targetX, targetY) ?? null,
+        computePath: (startX, startY, targetX, targetY) => state.hierarchicalNavigator.computePath(startX, startY, targetX, targetY),
         getPickups: () => state.pickups,
         addPickup: (prop) => state.pickups.push(prop),
         removePickup: (prop) => {
@@ -51,8 +49,7 @@ export function mountTilelabSandbox(state, requestRedraw) {
         defaultBehaviorId: DRAG_LAUNCH_BEHAVIOR_ID,
     });
     sandboxController.register();
-    const container = document.getElementById("sandboxToyPanel");
-    if (container) unmountToyUi = mountSandboxToyUi(container, sandboxController, requestRedraw);
+    unmountToyUi = mountSandboxToyUi(document.getElementById("sandboxToyPanel"), sandboxController, requestRedraw);
 }
 export function destroyTilelabSandbox() {
     unmountToyUi?.();

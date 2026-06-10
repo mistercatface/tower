@@ -94,9 +94,7 @@ export const engine = {
     playbackHandlers: { togglePause() {}, adjustSpeed() {} },
     onCanvasResize() {
         const state = getGameState();
-        const canvas = state?.labCanvas;
-        if (!canvas) return;
-        applyLabCanvasSize(state, canvas.width, canvas.height);
+        applyLabCanvasSize(state, state.labCanvas.width, state.labCanvas.height);
     },
 };
 /** Editor boot — engine setup, UI mount, RAF loop. */

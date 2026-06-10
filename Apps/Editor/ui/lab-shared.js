@@ -1,6 +1,5 @@
 export function initResizer(resizerId = "resizer", onResizeCallback) {
     const resizer = document.getElementById(resizerId);
-    if (!resizer) return;
     let isResizing = false;
     resizer.addEventListener("mousedown", (e) => {
         isResizing = true;
@@ -36,7 +35,7 @@ function isCameraMoveBlockedTarget(target) {
 export function setupLabViewportNavigation(canvasId, { getCamera, setCamera, onUpdate }) {
     const canvases = () => {
         const idList = Array.isArray(canvasId) ? canvasId : [canvasId];
-        return idList.map((id) => document.getElementById(id)).filter(Boolean);
+        return idList.map((id) => document.getElementById(id));
     };
     const moveKeys = new Set();
     let moveRaf = null;

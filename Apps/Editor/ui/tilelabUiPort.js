@@ -50,11 +50,8 @@ async function refreshPreview(state) {
 function attachGameCanvas(state) {
     const mapStage = document.getElementById("mapStage");
     const canvas = document.getElementById("gameCanvas");
-    if (mapStage && canvas && canvas.parentElement !== mapStage) {
-        mapStage.appendChild(canvas);
-        canvas.id = "gameCanvas";
-    }
-    state.labCanvas = canvas ?? null;
+    if (canvas.parentElement !== mapStage) mapStage.appendChild(canvas);
+    state.labCanvas = canvas;
 }
 /** @param {import("../state.js").TileLabGameState} state */
 function refreshLabViewportLayout(state) {
@@ -91,7 +88,7 @@ function bootstrapTilelabUi(state) {
             schedulePreviewRefresh(state, 0);
         },
         onStageResize: () => {
-            if (state.labCanvas) applyLabCanvasSize(state, state.labCanvas.width, state.labCanvas.height);
+            applyLabCanvasSize(state, state.labCanvas.width, state.labCanvas.height);
             syncPreviewZoomToStage(state);
             renderTilelabPreview(state, readControls(state));
         },
@@ -105,12 +102,11 @@ function bootstrapTilelabUi(state) {
         maxSize: () => {
             if (!state.labShowAnimationPreview) return 128;
             const container = document.querySelector(".map-container");
-            if (!container) return 512;
             const rect = container.getBoundingClientRect();
             const column = document.querySelector(".map-viewport-column");
             const zoom = document.getElementById("labZoomControl");
             const speed = document.getElementById("labSpeedControl");
-            const gap = column ? parseFloat(getComputedStyle(column).gap) || 10 : 10;
+            const gap = parseFloat(getComputedStyle(column).gap) || 10;
             const controlsH = (zoom?.offsetHeight ?? 0) + (speed?.offsetHeight ?? 0) + gap * 2;
             const minMapH = 160;
             const animHeader = 30;
@@ -118,19 +114,18 @@ function bootstrapTilelabUi(state) {
             return Math.max(128, Math.floor(Math.min(rect.width, available) - 8));
         },
     });
-    if (animCanvas) initAnimationPreview(animCanvas, buildProfileFromEditor);
-    mapCanvasResize = applySquareCanvasResize(document.getElementById("gameCanvas"), {
+    initAnimationPreview(animCanvas, buildProfileFromEditor);
+    mapCanvasResize = applySquareCanvasResize(state.labCanvas, {
         host: document.getElementById("mapStage"),
         initialSize: 320,
         minSize: 160,
         maxSize: () => {
             const container = document.querySelector(".map-container");
-            if (!container) return 1200;
             const rect = container.getBoundingClientRect();
             const column = document.querySelector(".map-viewport-column");
             const zoom = document.getElementById("labZoomControl");
             const speed = document.getElementById("labSpeedControl");
-            const gap = column ? parseFloat(getComputedStyle(column).gap) || 10 : 10;
+            const gap = parseFloat(getComputedStyle(column).gap) || 10;
             const controlsH = (zoom?.offsetHeight ?? 0) + (speed?.offsetHeight ?? 0) + gap * 2;
             const animH = state.labShowAnimationPreview ? estimateAnimationPreviewHeight() + gap : 0;
             return Math.max(160, Math.floor(Math.min(rect.width, rect.height - controlsH - animH) - 8));
@@ -142,7 +137,7 @@ function bootstrapTilelabUi(state) {
         },
     });
     initResizer("resizer", () => {
-        if (state.labCanvas) applyLabCanvasSize(state, state.labCanvas.width, state.labCanvas.height);
+        applyLabCanvasSize(state, state.labCanvas.width, state.labCanvas.height);
         syncPreviewZoomToStage(state);
         renderTilelabPreview(state, readControls(state));
     });
