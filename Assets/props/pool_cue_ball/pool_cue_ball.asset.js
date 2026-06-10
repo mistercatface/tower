@@ -1,7 +1,7 @@
 export default {
     id: "pool_cue_ball",
     recipe: "poolBall",
-    sandbox: { spawnable: true, behaviors: ["cueStrike"], cueStrike: { minDrag: 2, maxPull: 38, pullScale: 0.5, minPower: 8, maxPower: 600 } },
+    sandbox: { spawnable: false, behaviors: ["cueStrike"], cueStrike: { minDrag: 2, maxPull: 38, pullScale: 0.5, minPower: 8, maxPower: 600 } },
     physics: {
         hitBehavior: "none",
         radius: 8,

@@ -76,7 +76,14 @@ export function mountSandboxToyUi(container, controller, onChange) {
         addVoidBtn.addEventListener("click", () => {
             controller.spawnVoidAtCameraOrigin();
         });
-        addRow.append(typeField, addBtn, addVoidBtn);
+        const addPoolRackBtn = document.createElement("button");
+        addPoolRackBtn.type = "button";
+        addPoolRackBtn.className = "secondary";
+        addPoolRackBtn.textContent = "Add pool rack";
+        addPoolRackBtn.addEventListener("click", () => {
+            controller.spawnPoolRackAtCameraOrigin();
+        });
+        addRow.append(typeField, addBtn, addVoidBtn, addPoolRackBtn);
         container.appendChild(addRow);
         const behaviorIds = controller.listBehaviors();
         if (behaviorIds.length > 0) {
@@ -160,6 +167,35 @@ export function mountSandboxToyUi(container, controller, onChange) {
                 voidList.appendChild(row);
             }
             container.appendChild(voidList);
+        }
+        const poolRacks = controller.listPoolRacks?.() ?? [];
+        if (poolRacks.length > 0) {
+            const rackHead = document.createElement("div");
+            rackHead.className = "editor-subhead";
+            rackHead.textContent = "Pool racks";
+            container.appendChild(rackHead);
+            const rackList = document.createElement("div");
+            rackList.className = "toy-instance-list";
+            const selectedId = controller.getSelectedPickupId();
+            for (const entry of poolRacks) {
+                const row = document.createElement("div");
+                row.className = `toy-instance-row${entry.cueBallId === selectedId ? " selected" : ""}`;
+                const selectBtn = document.createElement("button");
+                selectBtn.type = "button";
+                selectBtn.className = "toy-select-btn";
+                selectBtn.textContent = entry.label;
+                selectBtn.addEventListener("click", () => {
+                    if (entry.cueBallId != null) controller.setSelectedPickupId(entry.cueBallId);
+                });
+                const deleteBtn = document.createElement("button");
+                deleteBtn.type = "button";
+                deleteBtn.className = "toy-delete-btn secondary";
+                deleteBtn.textContent = "Delete";
+                deleteBtn.addEventListener("click", () => controller.deletePoolRackById(entry.id));
+                row.append(selectBtn, deleteBtn);
+                rackList.appendChild(row);
+            }
+            container.appendChild(rackList);
         }
         const selectedPickup = controller.getSelectedPickup?.() ?? null;
         if (selectedPickup) {

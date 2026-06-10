@@ -2,6 +2,7 @@ import { Pickup } from "../../Entities/Pickup.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { SANDBOX_DEFAULT_FACTION, resolveSandboxFaction } from "../Combat/sandboxTargeting.js";
 import { createVoidZone, DEFAULT_VOID_RADIUS } from "../Spatial/zones/voidZone.js";
+import { spawnPoolRack } from "./spawnPoolRack.js";
 /** @typedef {import("./SandboxHostPort.js").SandboxHostPort} SandboxHostPort */
 /**
  * @param {SandboxHostPort} host
@@ -48,6 +49,24 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
         sync();
         return zone;
     };
+    const listPoolRacks = () => {
+        const racks = new Map();
+        for (const pickup of host.getPickups()) {
+            const rackId = pickup.sandboxPoolRackId;
+            if (!rackId) continue;
+            let entry = racks.get(rackId);
+            if (!entry) entry = { id: rackId, cueBallId: null };
+            if (pickup.type === "pool_cue_ball") entry.cueBallId = pickup.id;
+            racks.set(rackId, entry);
+        }
+        return [...racks.values()].map((entry, index) => ({ id: entry.id, label: `pool rack #${index + 1}`, cueBallId: entry.cueBallId }));
+    };
+    const deletePoolRackById = (rackId) => {
+        const toRemove = host.getPickups().filter((p) => p.sandboxPoolRackId === rackId);
+        for (let i = 0; i < toRemove.length; i++) host.removePickup(toRemove[i]);
+        if (toRemove.some((p) => p.id === selectedPickupId)) selectedPickupId = host.getPickups()[0]?.id ?? null;
+        sync();
+    };
     return {
         getSpawnPropId: () => spawnPropId,
         setSpawnPropId: (id) => {
@@ -79,6 +98,20 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
             if (!origin) return null;
             return spawnVoidAt(origin.x, origin.y);
         },
+        spawnPoolRackAt(cueX, cueY) {
+            const rack = spawnPoolRack(host, cueX, cueY, { faction: spawnFaction });
+            if (!rack) return null;
+            selectedPickupId = rack.cueBallId;
+            sync();
+            return rack;
+        },
+        spawnPoolRackAtCameraOrigin() {
+            const origin = host.getCameraOrigin?.();
+            if (!origin) return null;
+            return this.spawnPoolRackAt(origin.x, origin.y);
+        },
+        deletePoolRackById,
+        listPoolRacks,
         deleteVoidZoneById(id) {
             const zones = voidZones();
             if (!zones) return;
@@ -103,12 +136,15 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
         },
         listPlacedPickups() {
             const counts = new Map();
-            return host.getPickups().map((pickup) => {
-                const typeLabel = (pickup.type ?? "prop").replace(/_/g, " ");
-                const index = (counts.get(pickup.type) ?? 0) + 1;
-                counts.set(pickup.type, index);
-                return { id: pickup.id, type: pickup.type, faction: resolveSandboxFaction(pickup), label: `${typeLabel} #${index}` };
-            });
+            return host
+                .getPickups()
+                .filter((pickup) => !pickup.sandboxPoolRackId)
+                .map((pickup) => {
+                    const typeLabel = (pickup.type ?? "prop").replace(/_/g, " ");
+                    const index = (counts.get(pickup.type) ?? 0) + 1;
+                    counts.set(pickup.type, index);
+                    return { id: pickup.id, type: pickup.type, faction: resolveSandboxFaction(pickup), label: `${typeLabel} #${index}` };
+                });
         },
         clear() {
             host.clearPickups();

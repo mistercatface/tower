@@ -1,11 +1,11 @@
 /** @typedef {import("./GameDefinitionTypes.js").GameDefinition} GameDefinition */
 /** @type {Record<string, () => Promise<GameDefinition>>} */
-const GAME_LOADERS = { pool: () => import("../Games/pool/gameDefinition.js").then((m) => m.poolGame), tilelab: () => import("../Games/tilelab/index.js").then((m) => m.tilelabGame) };
+const GAME_LOADERS = { tilelab: () => import("../Games/tilelab/index.js").then((m) => m.tilelabGame) };
 /** @type {keyof typeof GAME_LOADERS} */
-export const DEFAULT_GAME_ID = "pool";
+export const DEFAULT_GAME_ID = "tilelab";
 export const GAME_IDS = Object.keys(GAME_LOADERS);
 /**
- * Load and return the game definition for `?game=<id>` (e.g. `?game=tilelab`, `?game=pool`).
+ * Load and return the game definition for `?game=<id>` (e.g. `?game=tilelab`).
  * Only the selected game's modules are imported.
  *
  * @param {string} [search] — defaults to `window.location.search`

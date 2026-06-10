@@ -48,7 +48,12 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
         if (!allowed.includes(activeBehaviorId)) activeBehaviorId = allowed[0];
     };
     clampActiveBehavior();
+    const selectPickup = (id) => {
+        session.setSelectedPickupId(id);
+        clampActiveBehavior();
+    };
     const resolveBehavior = () => {
+        clampActiveBehavior();
         const behavior = behaviorById.get(activeBehaviorId) ?? null;
         if (!behavior) return null;
         if (!listBehaviorsForContext().includes(behavior.id)) return null;
@@ -78,7 +83,7 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
         const hit = findPickupAt(host.getPickups(), world.x, world.y);
         if (hit) {
             const allowed = resolveSandboxBehaviors(getPropAsset(hit.type), behaviors, hit);
-            if (allowed.length > 0) session.setSelectedPickupId(hit.id);
+            if (allowed.length > 0) selectPickup(hit.id);
         }
         const pickup = session.getSelectedPickup();
         const behavior = resolveBehavior();
@@ -127,18 +132,27 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
         getSelectedPickupId: () => session.getSelectedPickupId(),
         getSelectedPickup: () => session.getSelectedPickup(),
         setSelectedPickupId: (id) => {
-            session.setSelectedPickupId(id);
-            clampActiveBehavior();
+            selectPickup(id);
         },
         spawnAtCameraOrigin: () => session.spawnAtCameraOrigin(),
         spawnVoidAtCameraOrigin: () => session.spawnVoidAtCameraOrigin(),
+        spawnPoolRackAtCameraOrigin: () => {
+            const rack = session.spawnPoolRackAtCameraOrigin();
+            clampActiveBehavior();
+            return rack;
+        },
         deleteVoidZoneById: (id) => session.deleteVoidZoneById(id),
+        deletePoolRackById: (id) => session.deletePoolRackById(id),
         listVoidZones: () => session.listVoidZones(),
+        listPoolRacks: () => session.listPoolRacks(),
         deletePickupById: (id) => session.deletePickupById(id),
         listPlacedPickups: () => session.listPlacedPickups(),
         sync: () => session.sync(),
         setUiSync: (fn) => session.setUiSync(fn),
-        getActiveBehaviorId: () => activeBehaviorId,
+        getActiveBehaviorId: () => {
+            clampActiveBehavior();
+            return activeBehaviorId;
+        },
         setActiveBehaviorId: (id) => {
             const allowed = listBehaviorsForContext();
             activeBehaviorId = allowed.includes(id) ? id : (allowed[0] ?? id);

@@ -1,7 +1,7 @@
 export default {
     id: "pool_ball",
     recipe: "poolBall",
-    sandbox: { spawnable: true },
+    sandbox: { spawnable: false, behaviors: [] },
     physics: {
         hitBehavior: "none",
         radius: 8,
