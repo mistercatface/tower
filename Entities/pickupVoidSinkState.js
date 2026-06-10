@@ -11,12 +11,10 @@ export class PickupVoidSinkState {
         wakePushableBody(pickup);
         pickup.elevation = 0;
         pickup.elevationVelocity = 0;
-        pickup.opacity = 1;
     }
     onExit(pickup) {
         pickup.elevation = 0;
         pickup.elevationVelocity = 0;
-        pickup.opacity = 1;
         delete pickup.voidCaptured;
         delete pickup.voidX;
         delete pickup.voidY;
@@ -51,8 +49,6 @@ export class PickupVoidSinkState {
         const radius = pickup.radius;
         const fadeStart = -radius;
         const fadeEnd = -voidDepth;
-        if (pickup.elevation > fadeStart) pickup.opacity = 1;
-        else pickup.opacity = Math.max(0, Math.min(1, 1 - (pickup.elevation - fadeStart) / (fadeEnd - fadeStart)));
         if (dist > 0.001) {
             const pull = pickup.voidCaptured ? DEFAULT_CAPTURED_PULL : DEFAULT_PULL;
             pickup.vx += (dx / dist) * pull * dtSec;

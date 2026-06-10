@@ -55,7 +55,7 @@ export function renderKinematicsBody(ctx, spec) {
     const kinematics = getKinematicsRenderer(spec.radius);
     const camera = spec.camera ?? resolveKinematicsCamera(spec.actor, spec.state);
     const sprite = spec.rigData ? kinematics.bundle.renderKinematicsFrame({ ...spec, camera }) : kinematics.getSprite(spec.actor, camera);
-    blitCenteredSprite(ctx, sprite, spec.x, spec.y, kinematics.displayDiameter, { opacity: spec.opacity ?? 1 });
+    blitCenteredSprite(ctx, sprite, spec.x, spec.y, kinematics.displayDiameter);
 }
 export function renderActorKinematicsBody(ctx, actor, camera, radius = actor.radius) {
     renderKinematicsBody(ctx, { x: actor.x, y: actor.y, radius, actor, camera });
@@ -64,5 +64,5 @@ export function renderCorpseKinematicsBody(ctx, corpse, state) {
     const kinematics = getKinematicsRenderer(corpse.radius);
     const camera = resolveKinematicsCamera(corpse, state);
     const frame = kinematics.bundle.resolveCorpseFrame(corpse, camera);
-    renderKinematicsBody(ctx, { ...frame, radius: corpse.radius, opacity: corpse.opacity });
+    renderKinematicsBody(ctx, { ...frame, radius: corpse.radius });
 }

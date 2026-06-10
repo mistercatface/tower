@@ -47,14 +47,13 @@ export function createQuantizedSpriteCache({ maxItems = 2000, viewStep = 30, vie
     };
 }
 /** World-anchored blit (iso props). Opacity applied at blit time, not bake time. */
-export function blitAnchoredSprite(ctx, sprite, worldX, worldY, { opacity = 1 } = {}) {
+export function blitAnchoredSprite(ctx, sprite, worldX, worldY) {
     const bakeScale = sprite.bakeScale ?? 1;
     const anchorX = sprite.anchorX ?? 0;
     const anchorY = sprite.anchorY ?? 0;
     const drawW = sprite.width / bakeScale;
     const drawH = sprite.height / bakeScale;
     ctx.save();
-    if (opacity < 1) ctx.globalAlpha = clamp(opacity, 0, 1);
     const smoothDownscale = bakeScale > 1;
     const prevSmooth = ctx.imageSmoothingEnabled;
     if (smoothDownscale) ctx.imageSmoothingEnabled = true;
@@ -63,13 +62,12 @@ export function blitAnchoredSprite(ctx, sprite, worldX, worldY, { opacity = 1 } 
     ctx.restore();
 }
 /** Center-anchored blit (kinematics humanoids). */
-export function blitCenteredSprite(ctx, sprite, x, y, displayDiameter, { opacity = 1 } = {}) {
+export function blitCenteredSprite(ctx, sprite, x, y, displayDiameter) {
     const drawRatio = sprite.drawRatio ?? 1;
     const drawW = displayDiameter * drawRatio;
     const drawH = drawW * (sprite.height / sprite.width);
     const vShift = (sprite.verticalShift ?? 0) * (drawW / sprite.width);
     ctx.save();
-    if (opacity < 1) ctx.globalAlpha = clamp(opacity, 0, 1);
     ctx.translate(x, y);
     ctx.drawImage(sprite, -drawW / 2, -drawH / 2 - vShift, drawW, drawH);
     ctx.restore();

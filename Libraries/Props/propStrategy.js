@@ -83,10 +83,9 @@ export function getBaseSpriteCacheKey(prop, deps) {
     const { x: stratHx, y: stratHy } = propFootprintHalfExtents(prop);
     const halfX = Math.round(stratHx);
     const halfY = Math.round(stratHy);
-    const opacityBucket = (prop.opacity ?? 1) < 0.99 ? "fade" : "solid";
     const qElev = prop.elevation != null ? Math.round(prop.elevation * 2) / 2 : 0;
     const elevKey = qElev !== 0 ? `_el${qElev}` : "";
-    return `${orientKey}_${radius}_${halfX}x${halfY}_${opacityBucket}${elevKey}`;
+    return `${orientKey}_${radius}_${halfX}x${halfY}${elevKey}`;
 }
 /**
  * @param {object} prop
@@ -105,7 +104,6 @@ export function getPropStageBakeState(prop, deps) {
         facing: logAngles?.facing ?? quantizeAngle(prop.facing ?? 0, resolvePropQuantizeSteps(prop).facing),
         rollAngle: logAngles?.rollAngle ?? prop.rollAngle,
         rollQuat: prop.strategy?.rolls && prop.strategy?.rollAxis !== "long" ? quantizeRollQuat(prop.rollQuat, resolvePropQuantizeSteps(prop).facing) : prop.rollQuat,
-        opacity: 1,
         elevation: qElev,
     };
 }

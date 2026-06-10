@@ -80,7 +80,7 @@ export class WorldSceneRenderer {
         if (!input.ragdollCorpses?.length) return;
         for (let i = 0; i < input.ragdollCorpses.length; i++) {
             const corpse = input.ragdollCorpses[i];
-            if (corpse.isDead || corpse.opacity <= 0) continue;
+            if (corpse.isDead) continue;
             if (typeof corpse.isVisible === "function" && !corpse.isVisible(viewport)) continue;
             corpse._distSq = (corpse.x - px) ** 2 + (corpse.y - py) ** 2;
             visibleObjects.push(corpse);

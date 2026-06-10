@@ -65,7 +65,6 @@ export class RagdollCorpse extends Entity {
         this.bindFrame = bindFrame;
         this.kinematicsCtx = kinematicsCtx;
         this.ageMs = 0;
-        this.opacity = 1;
         this.isDead = false;
     }
     update(dt, state, _spatialFrame, viewCenter, wallChecker) {
@@ -82,17 +81,11 @@ export class RagdollCorpse extends Entity {
             this.y += shiftY;
         }
         updateBloodEffects(this.ragdoll, dtSec, rig);
-        if (this.ragdoll.settled) {
-            const fadeStart = CORPSE_MAX_MS - CORPSE_FADE_MS;
-            if (this.ageMs > fadeStart) this.opacity = Math.max(0, 1 - (this.ageMs - fadeStart) / CORPSE_FADE_MS);
-        }
-        if (this.opacity <= 0.02) this.isDead = true;
     }
     isVisible(viewport) {
         return viewport.isVisible(this.x, this.y, this.radius * 3);
     }
     render(ctx, _renderer, state) {
-        if (this.opacity <= 0) return;
         renderCorpseKinematicsBody(ctx, this, state);
     }
 }
