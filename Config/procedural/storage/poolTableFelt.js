@@ -10,6 +10,7 @@ export default {
             blendMode: "add",
             opacity: 1,
         },
+        { type: "filterHSV", hueShift: -180, saturation: 1, value: 1, blendMode: "add", opacity: 1, surfaceMask: "all" },
         {
             type: "stainBlotch",
             surfaceMask: "all",
@@ -71,12 +72,12 @@ export default {
             opacity: 0.85,
         },
         { type: "wallLighting", surfaceMask: "wall", power: 1.3, topDarken: 25, coolBias: 1.06, blendMode: "multiply", opacity: 1 },
-        { type: "filterHSV", surfaceMask: "all", hueShift: 102, saturation: 5, value: 0.85, blendMode: "add", opacity: 1 },
+        { type: "filterHSV", surfaceMask: "all", hueShift: 107, saturation: 5, value: 0.85, blendMode: "add", opacity: 1 },
     ],
     animation: {
         stages: [
-            { frames: 30, durationMs: 600, tracks: [{ targetPath: "motifs[1].frequency", startValue: 0.05, endValue: 0, easing: "easeInCubic" }] },
-            { frames: 30, durationMs: 600, tracks: [{ targetPath: "motifs[1].frequency", startValue: 0, endValue: 0.05, easing: "easeOutCubic" }] },
+            { frames: 30, durationMs: 3600, tracks: [{ targetPath: "motifs[1].hueShift", startValue: -180, endValue: 180, easing: "easeOutCubic" }] },
+            { frames: 30, durationMs: 3600, tracks: [{ targetPath: "motifs[1].hueShift", startValue: 180, endValue: -180, easing: "easeInCubic" }] },
         ],
     },
 };
