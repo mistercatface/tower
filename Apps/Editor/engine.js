@@ -15,13 +15,15 @@ import { combatSpatial } from "../../Systems/World/CombatSpatialFrame.js";
 import { CombatParticles } from "../../Libraries/Render/CombatParticles.js";
 import { sandboxInteractionPairs } from "../../Libraries/Combat/sandboxInteraction.js";
 import { sandboxTargeting } from "../../Libraries/Combat/sandboxTargeting.js";
-import { combatParticlesPhase, dispatchEventsPhase, projectilesPhase, ragdollCorpsePhase, sandboxAutoCombatPhase } from "../../Libraries/Combat/simulationPhases.js";
-import { pushablePhysicsPhase } from "../../Systems/Simulation/phases.js";
+import { updateSandboxAutoCombat } from "../../Libraries/Combat/pickupAutoCombat.js";
+import { Projectile } from "../../Entities/Projectile.js";
+import { RagdollCorpse } from "../../Entities/RagdollCorpse.js";
+import { runPushablePhysics } from "../../Libraries/Motion/pushablePhysicsPass.js";
 import { FLOATING_TEXT_SPAWN_EVENT, FloatingText } from "../../Libraries/Render/FloatingText.js";
 import { drawSandboxAssemblySurfaces } from "../../Libraries/Sandbox/assemblySurfaceDraw.js";
 import { TileLabGameState } from "./state.js";
-import { tilelabGroundZoneEffectPass, tilelabGroundZonePhase } from "./groundZones.js";
-import { sandboxVoidZoneEffectPass, sandboxVoidZonePhase } from "./sandboxVoidZones.js";
+import { tilelabGroundZoneEffectPass, tickTilelabGroundZones } from "./groundZones.js";
+import { sandboxVoidZoneEffectPass, tickSandboxVoidZones } from "./sandboxVoidZones.js";
 import { sandboxController } from "./world/tilelabSandbox.js";
 import { fitLabStageToView } from "./ui/labViewport.js";
 import { mountEditorUi, refreshEditorUi } from "./ui/editorUi.js";
@@ -29,35 +31,29 @@ import { drawLabFrame } from "./ui/preview.js";
 const EDITOR_SURFACE_PROFILE_ID = SURFACE_PROFILE_ID.tomatoGarden;
 /** @type {object[]} */
 const simulationEvents = [];
-const simulationPhases = [
-    {
-        id: "sandboxTick",
-        run(_state, dt) {
-            sandboxController?.tick(dt);
-        },
-    },
-    sandboxAutoCombatPhase,
-    projectilesPhase,
-    combatParticlesPhase,
-    pushablePhysicsPhase,
-    ragdollCorpsePhase,
-    dispatchEventsPhase,
-    sandboxVoidZonePhase,
-    tilelabGroundZonePhase,
-    {
-        id: "floatingText",
-        run(state, dt) {
-            FloatingText.updateAll(state, dt);
-        },
-    },
-];
+/** @param {object[]} events @param {import("./state.js").TileLabGameState} state */
+function dispatchSimulationEvents(events, state) {
+    for (const event of events)
+        if (event.target.handleHit) event.target.handleHit(event.damage, state, event.type, event);
+        else if (event.target.takeDamage) event.target.takeDamage(event.damage, state);
+}
 /** @param {import("./state.js").TileLabGameState} state @param {number} dt */
 function runSimulationTick(state, dt) {
     const simDt = dt * state.selectedSpeed;
     state.gameTime += simDt;
     const spatialFrame = combatSpatial.begin(state);
     simulationEvents.length = 0;
-    for (const phase of simulationPhases) phase.run(state, simDt, spatialFrame, simulationEvents);
+    sandboxController?.tick(dt);
+    updateSandboxAutoCombat(state, simDt);
+    Projectile.checkSpawnCollisions(state, spatialFrame, simulationEvents);
+    Projectile.updateAll(state, simDt);
+    CombatParticles.updateAll(state, simDt);
+    runPushablePhysics(state, simDt, spatialFrame, simulationEvents);
+    RagdollCorpse.updateAll(state, simDt, spatialFrame);
+    dispatchSimulationEvents(simulationEvents, state);
+    tickSandboxVoidZones(state, spatialFrame);
+    tickTilelabGroundZones(state, spatialFrame);
+    FloatingText.updateAll(state, simDt);
 }
 /** @typedef {{ togglePause: () => void, adjustSpeed: (delta: number) => void }} PlaybackHandlers */
 export const engine = {

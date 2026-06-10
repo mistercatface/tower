@@ -30,22 +30,19 @@ function rimOutVoidSink(state, entityId, zone) {
     if (isInsideVoidMouth(zone.x, zone.y, zone.shape.radius, pickup)) return;
     pickup.changeState("normal");
 }
-export const sandboxVoidZonePhase = {
-    id: "sandboxVoidZone",
-    run(state, _dt, spatialFrame) {
-        ensureSandboxVoidZones(state);
-        const zones = state.sandboxVoidZones;
-        if (!zones.length) return;
-        processGroundZones(spatialFrame, zones, {
-            onEnter(zone, entity) {
-                beginVoidSink(entity, zone);
-            },
-            onExit(zone, entityId) {
-                rimOutVoidSink(state, entityId, zone);
-            },
-        });
-    },
-};
+export function tickSandboxVoidZones(state, spatialFrame) {
+    ensureSandboxVoidZones(state);
+    const zones = state.sandboxVoidZones;
+    if (!zones.length) return;
+    processGroundZones(spatialFrame, zones, {
+        onEnter(zone, entity) {
+            beginVoidSink(entity, zone);
+        },
+        onExit(zone, entityId) {
+            rimOutVoidSink(state, entityId, zone);
+        },
+    });
+}
 /** @type {import("../../Core/GameDefinitionTypes.js").SimulationEffectPass} */
 export const sandboxVoidZoneEffectPass = {
     zIndex: 11,

@@ -1,10 +1,8 @@
 import { drawGroundZone, isGroundZoneInView, processGroundZones } from "../../Libraries/Spatial/zones/groundZones.js";
-export const tilelabGroundZonePhase = {
-    id: "groundZone",
-    run(state, _dt, spatialFrame) {
-        processGroundZones(spatialFrame, state.groundZones);
-    },
-};
+/** @param {import("./state.js").TileLabGameState} state @param {object} spatialFrame */
+export function tickTilelabGroundZones(state, spatialFrame) {
+    processGroundZones(spatialFrame, state.groundZones);
+}
 /** @type {import("../../Core/GameDefinitionTypes.js").SimulationEffectPass} */
 export const tilelabGroundZoneEffectPass = {
     zIndex: 12,
