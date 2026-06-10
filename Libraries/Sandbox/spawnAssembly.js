@@ -114,7 +114,7 @@ export function spawnResolvedAssembly(host, centerX, centerY, resolved, { factio
         if (!state.sandboxSurfaceProfileZones) state.sandboxSurfaceProfileZones = [];
         const play = layout.play;
         const zone = createSurfaceProfileRectZone((play.minX + play.maxX) / 2, (play.minY + play.maxY) / 2, (play.maxX - play.minX) / 2, (play.maxY - play.minY) / 2, resolved.surfaceProfileId, {
-            id: `${groupId}:felt`,
+            id: `${groupId}:surface`,
         });
         stampAssemblyGroupMember(zone, groupId, resolved.id, groupField);
         state.sandboxSurfaceProfileZones.push(zone);
