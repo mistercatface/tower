@@ -2,6 +2,7 @@
     "id": "poolTable9Ball",
     "label": "9-ball table",
     "surfaceProfileId": "poolTableFelt",
+    "surfaceAnimation": true,
     "version": 2,
     "arena": {
         "width": 96,

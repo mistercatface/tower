@@ -54,9 +54,10 @@ function chunkDedupeKey(payload) {
     const zTag = (payload.zLevel ?? 0) > 0 ? `z${payload.zLevel}roof` : `z${payload.zLevel ?? 0}`;
     return `chunk:${payload.profileId}:${rev}:${zTag}:${payload.chunkCol},${payload.chunkRow}:${payload.seed ?? 0}${frameRangeDedupeSuffix(payload)}`;
 }
-function wallDedupeKey(payload) {
+function patchDedupeKey(payload) {
     const rev = getProfileRevision(payload.profileId);
-    return `wall:${payload.profileId}:${rev}:${payload.p1.x.toFixed(1)},${payload.p1.y.toFixed(1)}-${payload.p2.x.toFixed(1)},${payload.p2.y.toFixed(1)}:${payload.seed ?? 0}${frameRangeDedupeSuffix(payload)}`;
+    const zTag = (payload.zLevel ?? 0) > 0 ? `z${payload.zLevel}roof` : `z${payload.zLevel ?? 0}`;
+    return `patch:${payload.profileId}:${rev}:${zTag}:${payload.originX.toFixed(1)},${payload.originY.toFixed(1)}:${payload.worldWidth.toFixed(1)}x${payload.worldHeight.toFixed(1)}:${payload.seed ?? 0}${frameRangeDedupeSuffix(payload)}`;
 }
 function jobDistSq(payload) {
     const cx = payload?.centerX ?? focusX;
@@ -216,6 +217,15 @@ export const TileWorkerCoordinator = {
             const isAnimated = Boolean(profile?.animation);
             const normalized = withBakeFrameRange(payload, profile);
             return requestBake("bakeWallAtlas", normalized, isAnimated);
+        });
+    },
+    requestHorizontalPatchBake(payload) {
+        const profileId = payload.profileId;
+        return ensureRuntimeProfileOnWorkers(profileId).then(() => {
+            const profile = getSurfaceProfileProvider().getProfile(profileId);
+            const isAnimated = Boolean(profile?.animation) && (payload.frameCount ?? 1) > 1;
+            const normalized = withBakeFrameRange(payload, profile);
+            return requestBake("bakeHorizontalPatch", normalized, isAnimated);
         });
     },
     registerRuntimeProfile(profileId, profile) {

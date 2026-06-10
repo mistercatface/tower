@@ -13,7 +13,7 @@ import { createRoguelikeNavRuntime } from "../../Libraries/Navigation/createRogu
 import { createRoguelikeMapSession } from "../../Libraries/WorldGen/session/index.js";
 import { Viewport } from "../../Libraries/Viewport/Viewport.js";
 import { createSimulationPort } from "../../Systems/Simulation/SimulationPipeline.js";
-import { gameSceneTickPhase, pushablePhysicsPhase, worldSurfacePhase } from "../../Systems/Simulation/phases.js";
+import { gameSceneTickPhase, pushablePhysicsPhase } from "../../Systems/Simulation/phases.js";
 import { tilelabGroundZoneEffectPass, tilelabGroundZonePhase } from "./groundZones.js";
 import { sandboxVoidZoneEffectPass, sandboxVoidZonePhase } from "./sandboxVoidZones.js";
 import { getTilelabSandboxController } from "./world/tilelabSandbox.js";
@@ -37,7 +37,7 @@ const sandboxTickPhase = {
         getTilelabSandboxController()?.tick(dt);
     },
 };
-export const tilelabSimulation = createSimulationPort([sandboxTickPhase, pushablePhysicsPhase, sandboxVoidZonePhase, tilelabGroundZonePhase, worldSurfacePhase, gameSceneTickPhase]);
+export const tilelabSimulation = createSimulationPort([sandboxTickPhase, pushablePhysicsPhase, sandboxVoidZonePhase, tilelabGroundZonePhase, gameSceneTickPhase]);
 /** @type {import("../../Core/GameDefinitionTypes.js").RunScenePort} */
 export const tilelabRunScenePort = {
     getLayout: () => null,

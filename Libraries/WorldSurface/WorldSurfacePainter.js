@@ -142,6 +142,34 @@ export function bakeGroundChunkCanvases(payload) {
     }
     return canvases;
 }
+/** Bake a world-aligned horizontal patch (assembly playfield / rail band). */
+export function bakeHorizontalPatchCanvases(payload) {
+    const provider = getSurfaceProfileProvider();
+    const profileId = payload.profileId ?? provider.defaultId;
+    const baseProfile = provider.getProfile(profileId);
+    const { frameStart, frameCount } = payload;
+    const { originX, originY, worldWidth, worldHeight, seed, cellSize, texelResolution } = payload;
+    if (cellSize == null || texelResolution == null) throw new Error("bakeHorizontalPatchCanvases payload requires cellSize, texelResolution");
+    const widthPx = bakePixelsForWorldSpan(worldWidth, { texelResolution });
+    const heightPx = bakePixelsForWorldSpan(worldHeight, { texelResolution });
+    const useResolver = chunkNeedsRuntimeResolve(baseProfile);
+    const pixelsPerUnit = texelResolution;
+    const zLevel = payload.zLevel ?? 0;
+    const paintOptions = zLevel > 0 ? { cellSize, pixelsPerUnit, isWall: true, roofSurface: true } : { cellSize, pixelsPerUnit };
+    const canvases = [];
+    const sourceTotal = getAnimationFrames(baseProfile.animation);
+    const bakeTotal = payload.animationBakeFrames ?? sourceTotal;
+    for (let i = 0; i < frameCount; i++) {
+        payload.frameIndex = sourceFrameIndexForBakeSlot(frameStart + i, bakeTotal, sourceTotal);
+        const canvas = new OffscreenCanvas(widthPx, heightPx);
+        const ctx = canvas.getContext("2d");
+        ctx.imageSmoothingEnabled = false;
+        if (useResolver) bakeResolvedProfile(ctx, widthPx, heightPx, originX, originY, seed, paintOptions, baseProfile, profileId, payload);
+        else paintPixelArea(ctx, widthPx, heightPx, originX, originY, seed, paintOptions, profileId);
+        canvases.push(canvas);
+    }
+    return canvases;
+}
 export function bakeWallAtlasCanvases(width, height, p1, p2, pixelsPerUnit, seed, profileId, payload = {}) {
     const provider = getSurfaceProfileProvider();
     const baseProfile = provider.getProfile(profileId ?? provider.defaultId);

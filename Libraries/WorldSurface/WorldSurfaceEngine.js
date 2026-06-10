@@ -4,28 +4,17 @@
  * See Render/game/WorldSurfaceSystem.js for the game wrapper; Libraries/Render/Structure3D for wall projection.
  */
 import { getWallHeight } from "./WorldSurfaceSettings.js";
-import { getSurfaceProfileProvider } from "../Procedural/SurfaceProfileProvider.js";
 import { intersectWorldBoundsInto } from "../WorldGen/playBounds.js";
-import { getChunkSizePx, gridBoundsToChunkRange, worldBoundsToChunkRange, worldToChunkCol, worldToChunkRow } from "../Spatial/grid/ChunkGrid.js";
+import { getChunkSizePx, gridBoundsToChunkRange, worldToChunkCol, worldToChunkRow } from "../Spatial/grid/ChunkGrid.js";
 import { ProgressiveFrameCache } from "./ProgressiveFrameCache.js";
-import {
-    getHorizontalSurfaceZLevels,
-    groundChunkCachePrefix,
-    getGroundChunkAnimationInfo,
-    getWallAtlasAnimationInfo,
-    isWallAtlasAnimationEnabled,
-    invalidateGroundChunkCacheEntry,
-} from "./bake/SurfaceBakeHelpers.js";
+import { groundChunkCachePrefix } from "./bake/SurfaceBakeHelpers.js";
 import { chunkHasWallSegments, clipChunkToRoofFootprints, drawRoofSegmentDamageOverlays, projectHorizontalSurfaceCorners } from "./HorizontalSurfaceDraw.js";
-import { drawImageQuad } from "../Canvas/AffineTexture.js";
 import { getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
 import { getWallAtlasCacheInfo } from "./WallSurfaceCache.js";
 import { wallFaceAtlasUnrolledHeight } from "./SurfaceCoordinateMapper.js";
 import { wallFaceColumns } from "./WallFaceColumns.js";
 import { TileWorkerCoordinator } from "./TileWorkerCoordinator.js";
-import { drawBakedTexture, getTexelResolution, shouldSmoothTextureDownsample } from "./WorldSurfaceResolution.js";
-import { animationFrameIndex } from "./ProfileBakeResolver.js";
-import { bakeSlotForSourceFrame } from "./AnimationFrameBake.js";
+import { drawBakedTexture, getTexelResolution } from "./WorldSurfaceResolution.js";
 import { bakeFrameRange } from "./AnimationFrameBake.js";
 /**
  * @typedef {Object} WorldSurfaceEngineHooks
@@ -64,28 +53,8 @@ export class WorldSurfaceEngine {
                 const profileId = resolveProfileAt(chunkCenterX, chunkCenterY);
                 const ppwu = getTexelResolution(this.settings);
                 const rev = getSurfaceProfileRevision(profileId);
-                const profile = getSurfaceProfileProvider().getProfile(profileId);
-                const { totalFrames } = getGroundChunkAnimationInfo(profile, this.settings, true);
-                for (const zLevel of zLevels) invalidateGroundChunkCacheEntry(this.surfaceCache, chunkCol, chunkRow, profileId, rev, ppwu, zLevel, totalFrames);
+                for (const zLevel of zLevels) this.surfaceCache.delete(groundChunkCachePrefix(chunkCol, chunkRow, profileId, rev, ppwu, zLevel));
             }
-    }
-    /**
-     * Drop baked ground chunks for a profile inside world bounds (e.g. assembly playfield overlay).
-     * @param {string} profileId
-     * @param {{ minX: number, minY: number, maxX: number, maxY: number }} worldBounds
-     * @param {number[]} [zLevels]
-     */
-    invalidateProfileGroundChunks(profileId, worldBounds, obstacleGrid, zLevels = [0]) {
-        if (!worldBounds || !obstacleGrid || !profileId) return;
-        const chunkSizePx = getChunkSizePx(obstacleGrid.cellSize, this.settings.cellsPerChunk);
-        const range = worldBoundsToChunkRange(worldBounds.minX, worldBounds.minY, worldBounds.maxX, worldBounds.maxY, obstacleGrid.minX, obstacleGrid.minY, chunkSizePx);
-        const ppwu = getTexelResolution(this.settings);
-        const rev = getSurfaceProfileRevision(profileId);
-        const profile = getSurfaceProfileProvider().getProfile(profileId);
-        const { totalFrames } = getGroundChunkAnimationInfo(profile, this.settings, true);
-        for (let chunkRow = range.minChunkRow; chunkRow <= range.maxChunkRow; chunkRow++)
-            for (let chunkCol = range.minChunkCol; chunkCol <= range.maxChunkCol; chunkCol++)
-                for (let z = 0; z < zLevels.length; z++) invalidateGroundChunkCacheEntry(this.surfaceCache, chunkCol, chunkRow, profileId, rev, ppwu, zLevels[z], totalFrames);
     }
     requestWallAtlasBake(width, height, p1, p2, pixelsPerUnit, proceduralSurfaceDraw, frameRange, profileId, wallHeight = null, wallWidth = null) {
         const centerX = (p1.x + p2.x) / 2;
@@ -136,32 +105,16 @@ export class WorldSurfaceEngine {
         });
         return placeholder;
     }
-    _isChunkAnimationForced(state) {
-        return state?.worldSurfaces?.forceChunkAnimation === true;
-    }
     getGroundChunkCanvas(chunkCol, chunkRow, state, payload = null, zLevel = 0) {
         if (!payload) payload = this._resolveChunkPayload(state, chunkCol, chunkRow, zLevel);
         const resolvedZ = payload.zLevel ?? zLevel;
-        const profile = getSurfaceProfileProvider().getProfile(payload.profileId);
-        const forceAnimation = this._isChunkAnimationForced(state);
-        const { enabled: isAnimated, totalFrames, sourceTotal } = getGroundChunkAnimationInfo(profile, this.settings, forceAnimation);
-        const bakeFrameCount = isAnimated ? totalFrames : 1;
-        const key = groundChunkCachePrefix(chunkCol, chunkRow, payload.profileId, getSurfaceProfileRevision(payload.profileId), getTexelResolution(this.settings), resolvedZ, bakeFrameCount);
+        const key = groundChunkCachePrefix(chunkCol, chunkRow, payload.profileId, getSurfaceProfileRevision(payload.profileId), getTexelResolution(this.settings), resolvedZ);
         let canvases = this.surfaceCache.get(key);
         if (canvases) return canvases;
-        const animationFrameBatchSize = this.settings.animationFrameBatchSize ?? 8;
-        const bakePayload = { ...payload, animationBakeFrames: totalFrames, animationSourceFrames: sourceTotal };
-        const meta = { kind: "chunk", payload: bakePayload, totalFrames, animationFrameBatchSize };
-        const bakeFirstFn = () => {
-            const framePayload = { ...bakePayload, ...bakeFrameRange.first() };
-            return TileWorkerCoordinator.requestGroundChunkBake(framePayload);
-        };
-        const bakeBatchFn = isAnimated
-            ? (batch) => {
-                  return TileWorkerCoordinator.requestGroundChunkBake({ ...bakePayload, ...batch });
-              }
-            : null;
-        return this._scheduleAnimatedEntry(key, meta, bakeFirstFn, bakeBatchFn);
+        const bakePayload = { ...payload, animationBakeFrames: 1, animationSourceFrames: 1 };
+        const meta = { kind: "chunk", payload: bakePayload, totalFrames: 1, animationFrameBatchSize: 0 };
+        const bakeFirstFn = () => TileWorkerCoordinator.requestGroundChunkBake({ ...bakePayload, ...bakeFrameRange.first() });
+        return this._scheduleAnimatedEntry(key, meta, bakeFirstFn, null);
     }
     /** Ensure a baked wall atlas exists in the cache (wall faces). */
     ensureWallAtlas(key, p1, p2, columns, proceduralSurfaceDraw, wallHeight = null, profileId = null) {
@@ -178,21 +131,10 @@ export class WorldSurfaceEngine {
         const wallCenterX = (p1.x + p2.x) / 2;
         const wallCenterY = (p1.y + p2.y) / 2;
         const bakeProfileId = profileId ?? proceduralSurfaceDraw.resolveProfileAt(wallCenterX, wallCenterY);
-        const profile = getSurfaceProfileProvider().getProfile(bakeProfileId);
-        const { enabled: isAnimated, totalFrames, sourceTotal } = getWallAtlasAnimationInfo(profile, this.settings);
-        const animationFrameBatchSize = this.settings.animationFrameBatchSize ?? 8;
-        const animatedSurfaceDraw = { ...proceduralSurfaceDraw, animationBakeFrames: totalFrames, animationSourceFrames: sourceTotal };
-        const meta = { kind: "wall", width: canvasWidth, height: canvasHeight, p1, p2, pixelsPerUnit, totalFrames, animationFrameBatchSize };
-        const bakeFirstFn = () => {
-            const frameRange = bakeFrameRange.first();
-            return this.requestWallAtlasBake(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, animatedSurfaceDraw, frameRange, bakeProfileId, hVal, cellSize);
-        };
-        const bakeBatchFn = isAnimated
-            ? (batch) => {
-                  return this.requestWallAtlasBake(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, animatedSurfaceDraw, batch, bakeProfileId, hVal, cellSize);
-              }
-            : null;
-        return this._scheduleAnimatedEntry(key, meta, bakeFirstFn, bakeBatchFn);
+        const staticSurfaceDraw = { ...proceduralSurfaceDraw, animationBakeFrames: 1, animationSourceFrames: 1 };
+        const meta = { kind: "wall", width: canvasWidth, height: canvasHeight, p1, p2, pixelsPerUnit, totalFrames: 1, animationFrameBatchSize: 0 };
+        const bakeFirstFn = () => this.requestWallAtlasBake(canvasWidth, canvasHeight, p1, p2, pixelsPerUnit, staticSurfaceDraw, bakeFrameRange.first(), bakeProfileId, hVal, cellSize);
+        return this._scheduleAnimatedEntry(key, meta, bakeFirstFn, null);
     }
     /**
      * Resolve cache key and return baked wall atlas frames, scheduling a bake if needed.
@@ -219,18 +161,10 @@ export class WorldSurfaceEngine {
         }
         return { key, wrappedP1, wrappedP2, canvases };
     }
-    /** Pick the animation frame (or first frame) from a wall atlas bake. */
-    resolveWallAtlasCanvas(canvases, profileId, gameTime = 0) {
+    /** Return the static baked wall atlas frame. */
+    resolveWallAtlasCanvas(canvases) {
         if (!canvases?.length) return null;
-        let canvas = canvases[0];
-        const profile = getSurfaceProfileProvider().getProfile(profileId);
-        if (isWallAtlasAnimationEnabled(profile, this.settings) && canvases.length > 1) {
-            const { totalFrames: bakeTotal, sourceTotal } = getWallAtlasAnimationInfo(profile, this.settings);
-            const sourceFrame = animationFrameIndex(profile.animation, { gameTime });
-            const bakedSlot = bakeSlotForSourceFrame(sourceFrame, bakeTotal, sourceTotal);
-            canvas = canvases[Math.min(canvases.length - 1, Math.max(0, bakedSlot))];
-        }
-        return canvas;
+        return canvases[0];
     }
     /**
      * Draw visible ground chunks (no backdrop — use beforeDraw for that).
@@ -247,7 +181,7 @@ export class WorldSurfaceEngine {
      * }} options
      */
     drawGroundChunks(ctx, options) {
-        const { obstacleGrid, viewport, state, gameTime = 0, zLevel = 0, wallSpatialIndex = null, playBounds = null, beforeDraw, requireWallSegments = true, skipRoofFootprintClip = false } = options;
+        const { obstacleGrid, viewport, state, zLevel = 0, wallSpatialIndex = null, playBounds = null, beforeDraw, requireWallSegments = true, skipRoofFootprintClip = false } = options;
         const viewerX = viewport.x;
         const viewerY = viewport.y;
         const cellsPerChunk = this.settings.cellsPerChunk;
@@ -278,16 +212,8 @@ export class WorldSurfaceEngine {
                 if (zLevel > 0 && requireWallSegments && !chunkHasWallSegments(wallSpatialIndex, originX, originY, chunkSizePx)) continue;
                 const payload = this._resolveChunkPayload(state, chunkCol, chunkRow, zLevel);
                 const canvases = this.getGroundChunkCanvas(chunkCol, chunkRow, state, payload, zLevel);
-                let canvas = canvases[0];
+                const canvas = canvases[0];
                 if (canvas.isPlaceholder) continue;
-                const profile = getSurfaceProfileProvider().getProfile(payload.profileId);
-                const forceAnimation = this._isChunkAnimationForced(state);
-                const { enabled: chunkAnimationEnabled, totalFrames: bakeTotal, sourceTotal } = getGroundChunkAnimationInfo(profile, this.settings, forceAnimation);
-                if ((zLevel === 0 || forceAnimation) && chunkAnimationEnabled && canvases.length > 1) {
-                    const sourceFrame = animationFrameIndex(profile.animation, { gameTime });
-                    const bakedSlot = bakeSlotForSourceFrame(sourceFrame, bakeTotal, sourceTotal);
-                    canvas = canvases[Math.min(canvases.length - 1, Math.max(0, bakedSlot))];
-                }
                 if (zLevel > 0) {
                     ctx.save();
                     if (!skipRoofFootprintClip && !clipChunkToRoofFootprints(ctx, originX, originY, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight, options.renderScene)) {

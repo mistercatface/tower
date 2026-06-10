@@ -1,7 +1,7 @@
 import { surfaceProceduralProfiles } from "../../Config/procedural/profiles.js";
 import { getSurfaceProfileProvider, installSurfaceProfileProvider } from "../../Libraries/Procedural/SurfaceProfileProvider.js";
 import { SharedEdgeSolver } from "../../Libraries/Spatial/structure/SharedEdgeSolver.js";
-import { bakeGroundChunkCanvases, bakeWallAtlasCanvases } from "../../Libraries/WorldSurface/WorldSurfacePainter.js";
+import { bakeGroundChunkCanvases, bakeHorizontalPatchCanvases, bakeWallAtlasCanvases } from "../../Libraries/WorldSurface/WorldSurfacePainter.js";
 import { invalidateProfileScratch } from "../../Libraries/WorldSurface/ProfileBakeResolver.js";
 installSurfaceProfileProvider({ profiles: surfaceProceduralProfiles });
 let wallGeometrySab = null;
@@ -11,6 +11,9 @@ let wallSharedEdgesView = null;
 const HANDLERS = {
     bakeGroundChunk(payload) {
         return bakeGroundChunkCanvases(payload);
+    },
+    bakeHorizontalPatch(payload) {
+        return bakeHorizontalPatchCanvases(payload);
     },
     bakeWallAtlas(payload) {
         return bakeWallAtlasCanvases(payload.width, payload.height, payload.p1, payload.p2, payload.pixelsPerUnit, payload.seed, payload.profileId, payload);

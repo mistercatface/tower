@@ -38,6 +38,7 @@
  * @property {string} id
  * @property {string} [label]
  * @property {string} [surfaceProfileId]
+ * @property {boolean} [surfaceAnimation]
  * @property {number} [version]
  * @property {AssemblyArenaManifest} [arena]
  * @property {string[]} [props] — prop catalog ids this assembly uses
@@ -52,6 +53,7 @@
  * @property {string} id
  * @property {string} label
  * @property {string} [surfaceProfileId]
+ * @property {boolean} [surfaceAnimation]
  * @property {number} version
  * @property {AssemblyArenaManifest} arena
  * @property {string[]} props

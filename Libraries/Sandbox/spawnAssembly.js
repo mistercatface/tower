@@ -10,6 +10,8 @@ import { getResolvedAssembly } from "./assemblies/assemblyRegistry.js";
 import { resolvePlacement } from "./assemblies/assemblyPlacement.js";
 import { stampAssemblyGroupMember, entityBelongsToAssemblyGroup } from "./assemblies/assemblyLink.js";
 import { createAssemblySurfaceZone } from "./assemblySurfaceDraw.js";
+import { eagerBakeAssemblySurfaceFlipbook, releaseAssemblySurfaceFlipbook } from "./assemblySurfaceBake.js";
+import { requestUiUpdate } from "../../Core/EventSystem.js";
 /** @param {import("./assemblies/assemblyManifest.js").ResolvedAssemblyManifest} resolved @param {string} propId */
 function assemblyIncludesProp(resolved, propId) {
     if (!resolved.props.length) return true;
@@ -67,14 +69,35 @@ function clearWallsInBounds(state, bounds) {
 /** @param {object} state @param {ReturnType<typeof buildAssemblyLayout>} layout @param {import("./assemblies/assemblyManifest.js").ResolvedAssemblyManifest} resolved @param {string} groupId @param {string} groupField */
 function registerAssemblyPlayfieldSurface(state, layout, resolved, groupId, groupField) {
     const profileId = resolved.surfaceProfileId;
-    if (!profileId) return;
+    if (!profileId) return null;
     if (!state.sandboxSurfaceProfileZones) state.sandboxSurfaceProfileZones = [];
-    const zone = createAssemblySurfaceZone({ id: `${groupId}:surface`, profileId, play: layout.play, bounds: layout.bounds, railHeight: resolved.arena.walls.height });
+    const zone = createAssemblySurfaceZone({
+        id: `${groupId}:surface`,
+        profileId,
+        surfaceAnimation: resolved.surfaceAnimation === true,
+        play: layout.play,
+        bounds: layout.bounds,
+        railHeight: resolved.arena.walls.height,
+    });
     stampAssemblyGroupMember(zone, groupId, resolved.id, groupField);
     state.sandboxSurfaceProfileZones.push(zone);
-    const railHeight = resolved.arena.walls.height;
-    const zLevels = railHeight > 0 ? [0, railHeight] : [0];
-    state.worldSurfaces?.invalidateProfileGroundChunks(profileId, layout.bounds, state.obstacleGrid, zLevels);
+    const bakeGeneration = ++zone.bakeGeneration;
+    void eagerBakeAssemblySurfaceFlipbook(
+        { play: layout.play, bounds: layout.bounds, railHeight: resolved.arena.walls.height },
+        profileId,
+        resolved.surfaceAnimation === true,
+        state.worldSurfaces?.worldSurfaceSeed ?? 0,
+    )
+        .then((flipbook) => {
+            if (zone.bakeGeneration !== bakeGeneration) {
+                releaseAssemblySurfaceFlipbook(flipbook);
+                return;
+            }
+            zone.flipbook = flipbook;
+            requestUiUpdate();
+        })
+        .catch((err) => console.error("assembly surface bake failed:", err));
+    return zone;
 }
 /**
  * @param {import("./SandboxHostPort.js").SandboxHostPort} host
@@ -167,8 +190,14 @@ export function spawnAssembly(host, centerX, centerY, assemblyId = "poolTable", 
 export function deleteAssemblyInstance(state, groupId, groupField = "sandboxGroupId") {
     if (!state) return;
     if (state.sandboxSurfaceProfileZones)
-        for (let z = state.sandboxSurfaceProfileZones.length - 1; z >= 0; z--)
-            if (entityBelongsToAssemblyGroup(state.sandboxSurfaceProfileZones[z], groupId, groupField)) state.sandboxSurfaceProfileZones.splice(z, 1);
+        for (let z = state.sandboxSurfaceProfileZones.length - 1; z >= 0; z--) {
+            const zone = state.sandboxSurfaceProfileZones[z];
+            if (!entityBelongsToAssemblyGroup(zone, groupId, groupField)) continue;
+            zone.bakeGeneration++;
+            releaseAssemblySurfaceFlipbook(zone.flipbook);
+            zone.flipbook = null;
+            state.sandboxSurfaceProfileZones.splice(z, 1);
+        }
     for (let i = state.walls.length - 1; i >= 0; i--) if (entityBelongsToAssemblyGroup(state.walls[i], groupId, groupField)) removeSandboxWall(state, state.walls[i]);
     if (state.sandboxVoidZones)
         for (let z = state.sandboxVoidZones.length - 1; z >= 0; z--) if (entityBelongsToAssemblyGroup(state.sandboxVoidZones[z], groupId, groupField)) state.sandboxVoidZones.splice(z, 1);

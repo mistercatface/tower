@@ -1,5 +1,5 @@
 import { getGameWorldSurfaceSettings } from "../WorldSurfaceBootstrap.js";
-import { createGroundChunkBakePayload, isGroundChunkAnimationEnabled } from "../../Libraries/WorldSurface/bake/SurfaceBakeHelpers.js";
+import { createGroundChunkBakePayload } from "../../Libraries/WorldSurface/bake/SurfaceBakeHelpers.js";
 import { getSurfaceProfileProvider } from "../../Libraries/Procedural/SurfaceProfileProvider.js";
 /** @typedef {import("../../GameState/GameState.js").GameState} GameState */
 export function resolveSurfaceProfileAtCoords(state, x, y) {
@@ -45,10 +45,6 @@ export function buildGroundChunkBakePayload(state, chunkCol, chunkRow, zLevel = 
         const wallProfileId = resolveWallSegmentSurfaceProfileAt(state, chunkCenterX, chunkCenterY, zLevel);
         if (wallProfileId) profileId = wallProfileId;
     }
-    const profile = getSurfaceProfileProvider().getProfile(profileId);
-    const forceAnimation = state.worldSurfaces?.forceChunkAnimation === true;
-    const animEnabled = isGroundChunkAnimationEnabled(profile, settings, forceAnimation);
-    const includeAnimTime = animEnabled && profile?.animation && (zLevel === 0 || forceAnimation);
     return createGroundChunkBakePayload({
         chunkCol,
         chunkRow,
@@ -60,6 +56,5 @@ export function buildGroundChunkBakePayload(state, chunkCol, chunkRow, zLevel = 
         cellsPerChunk,
         cellSize: settings.cellSize,
         texelResolution: settings.texelResolution,
-        gameTime: includeAnimTime ? (state.gameTime ?? 0) : undefined,
     });
 }

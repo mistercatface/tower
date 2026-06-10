@@ -18,7 +18,6 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
         this.roofSpatialIndices = null;
         this.worldSurfaceSeed = 0;
         this.surfaceProfileOverride = null;
-        this.forceChunkAnimation = false;
         this.renderScene = new RenderScene(getChunkSizePx(settings.cellSize, settings.cellsPerChunk));
     }
     /** Invalidate baked ground/wall textures only — keeps compiled static geometry. */
@@ -30,7 +29,6 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
     clear() {
         this.clearBakeCache();
         this.surfaceProfileOverride = null;
-        this.forceChunkAnimation = false;
         this.renderScene.clear();
     }
     invalidateRoofs() {
