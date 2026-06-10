@@ -10,8 +10,15 @@ export function getAssemblyManifest(id) {
 }
 /** @param {import("./assemblyManifest.js").AssemblyManifest} manifest */
 export function resolveAssemblyManifest(manifest) {
-    const { arena, props = [], voidCircles, pickups, link, behaviors = {}, spawn = [] } = manifest;
-    return { id: manifest.id, version: manifest.version ?? 2, arena, props, voidCircles, pickups, groupField: link.groupField, behaviors, spawn };
+    const { arena, props = [], voidCircles, pickups, link, behaviors = {}, spawn = [], label } = manifest;
+    return { id: manifest.id, label: label ?? manifest.id, version: manifest.version ?? 2, arena, props, voidCircles, pickups, groupField: link.groupField, behaviors, spawn };
+}
+/** @returns {{ id: string, label: string }[]} */
+export function listAssemblyManifests() {
+    /** @type {{ id: string, label: string }[]} */
+    const entries = [];
+    for (const manifest of registry.values()) entries.push({ id: manifest.id, label: manifest.label ?? manifest.id });
+    return entries;
 }
 /** @param {string} [id] */
 export function getResolvedAssembly(id = "poolTable") {

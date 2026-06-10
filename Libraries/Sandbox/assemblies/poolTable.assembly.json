@@ -1,5 +1,6 @@
 {
     "id": "poolTable",
+    "label": "8-ball table",
     "version": 2,
     "arena": {
         "width": 96,

@@ -1,0 +1,77 @@
+{
+    "id": "poolTable9Ball",
+    "label": "9-ball table",
+    "version": 2,
+    "arena": {
+        "width": 96,
+        "height": 176,
+        "clearPadding": 4,
+        "walls": {
+            "width": 8,
+            "height": 4,
+            "segmentSize": 4,
+            "segment": {
+                "padding": 0,
+                "maxHealth": 30,
+                "health": 30
+            }
+        }
+    },
+    "props": [
+        "pool_ball_1",
+        "pool_ball_2",
+        "pool_ball_3",
+        "pool_ball_4",
+        "pool_ball_5",
+        "pool_ball_6",
+        "pool_ball_7",
+        "pool_ball_8",
+        "pool_ball_9",
+        "pool_cue_ball"
+    ],
+    "voidCircles": [
+        { "id": "void-tl", "radius": 4.3, "depth": 6, "placement": { "anchor": "playfield.topLeft" } },
+        { "id": "void-left", "radius": 3.5, "depth": 6, "placement": { "anchor": "playfield.left" } },
+        { "id": "void-tr", "radius": 4.3, "depth": 6, "placement": { "anchor": "playfield.topRight" } },
+        { "id": "void-bl", "radius": 4.3, "depth": 6, "placement": { "anchor": "playfield.bottomLeft" } },
+        { "id": "void-right", "radius": 3.5, "depth": 6, "placement": { "anchor": "playfield.right" } },
+        { "id": "void-br", "radius": 4.3, "depth": 6, "placement": { "anchor": "playfield.bottomRight" } }
+    ],
+    "pickups": [
+        { "id": "cue", "prop": "pool_cue_ball", "at": { "u": 0.5, "v": 0.75 } },
+        { "prop": "pool_ball_1", "at": { "u": 0.5, "v": 0.25 } },
+        { "prop": "pool_ball_2", "at": { "u": 0.475, "v": 0.228349364905389 } },
+        { "prop": "pool_ball_3", "at": { "u": 0.525, "v": 0.228349364905389 } },
+        { "prop": "pool_ball_4", "at": { "u": 0.45, "v": 0.20669872981077808 } },
+        { "prop": "pool_ball_9", "at": { "u": 0.5, "v": 0.20669872981077808 } },
+        { "prop": "pool_ball_5", "at": { "u": 0.55, "v": 0.20669872981077808 } },
+        { "prop": "pool_ball_7", "at": { "u": 0.475, "v": 0.1850480947161671 } },
+        { "prop": "pool_ball_8", "at": { "u": 0.525, "v": 0.1850480947161671 } },
+        { "prop": "pool_ball_6", "at": { "u": 0.5, "v": 0.16339745962155616 } }
+    ],
+    "link": { "groupField": "sandboxGroupId" },
+    "behaviors": {
+        "pool_cue_ball": {
+            "cueStrike": {
+                "minDrag": 0.75,
+                "maxPull": 18.75,
+                "pullScale": 0.5,
+                "minPower": 4,
+                "maxPower": 1200,
+                "powerCurve": 2.5
+            },
+            "inputGates": {
+                "cueStrike": [
+                    { "scope": "self", "until": "atRest" },
+                    {
+                        "scope": "groupPickups",
+                        "link": "sandboxGroupId",
+                        "until": "allAtRest",
+                        "excludeStates": ["voidSink"]
+                    }
+                ]
+            }
+        }
+    },
+    "spawn": ["arena.clear", "arena.walls", "voidCircles", "pickups"]
+}

@@ -3,6 +3,7 @@ import { getPropAsset } from "../Props/PropCatalog.js";
 import { SANDBOX_DEFAULT_FACTION, resolveSandboxFaction } from "../Combat/sandboxTargeting.js";
 import { createVoidZone, DEFAULT_VOID_RADIUS } from "../Spatial/zones/voidZone.js";
 import { spawnAssembly, deleteAssemblyInstance, clearAssemblyInstances } from "./spawnAssembly.js";
+import { getAssemblyManifest, listAssemblyManifests } from "./assemblies/assemblyRegistry.js";
 /** @typedef {import("./SandboxHostPort.js").SandboxHostPort} SandboxHostPort */
 /**
  * @param {SandboxHostPort} host
@@ -80,18 +81,19 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
             if (!origin) return null;
             return spawnVoidAt(origin.x, origin.y);
         },
-        spawnAssemblyAt(centerX, centerY) {
-            const instance = spawnAssembly(host, centerX, centerY, "poolTable", { faction: spawnFaction });
+        spawnAssemblyAt(centerX, centerY, assemblyId) {
+            const instance = spawnAssembly(host, centerX, centerY, assemblyId, { faction: spawnFaction });
             if (!instance) return null;
             selectedPickupId = instance.cueBallId;
             sync();
             return instance;
         },
-        spawnAssemblyAtCameraOrigin() {
+        spawnAssemblyAtCameraOrigin(assemblyId) {
             const origin = host.getCameraOrigin?.();
             if (!origin) return null;
-            return this.spawnAssemblyAt(origin.x, origin.y);
+            return this.spawnAssemblyAt(origin.x, origin.y, assemblyId);
         },
+        listAssemblyManifests: () => listAssemblyManifests(),
         deleteAssemblyById(assemblyId) {
             const state = host.getWorldState?.();
             if (!state) return;
@@ -102,7 +104,11 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
         listAssemblies() {
             const state = host.getWorldState?.();
             if (!state?.sandboxAssemblyInstances?.length) return [];
-            return state.sandboxAssemblyInstances.map((entry, index) => ({ id: entry.id, label: `assembly #${index + 1}`, cueBallId: entry.cueBallId }));
+            return state.sandboxAssemblyInstances.map((entry, index) => ({
+                id: entry.id,
+                label: getAssemblyManifest(entry.assemblyId)?.label ?? entry.assemblyId ?? `table #${index + 1}`,
+                cueBallId: entry.cueBallId,
+            }));
         },
         deleteVoidZoneById(id) {
             const zones = voidZones();

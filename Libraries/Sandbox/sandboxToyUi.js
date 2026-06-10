@@ -76,14 +76,18 @@ export function mountSandboxToyUi(container, controller, onChange) {
         addVoidBtn.addEventListener("click", () => {
             controller.spawnVoidAtCameraOrigin();
         });
-        const addAssemblyBtn = document.createElement("button");
-        addAssemblyBtn.type = "button";
-        addAssemblyBtn.className = "secondary";
-        addAssemblyBtn.textContent = "Add assembly";
-        addAssemblyBtn.addEventListener("click", () => {
-            controller.spawnAssemblyAtCameraOrigin();
-        });
-        addRow.append(typeField, addBtn, addVoidBtn, addAssemblyBtn);
+        addRow.append(typeField, addBtn, addVoidBtn);
+        const assemblyManifests = controller.listAssemblyManifests?.() ?? [];
+        for (const manifest of assemblyManifests) {
+            const addTableBtn = document.createElement("button");
+            addTableBtn.type = "button";
+            addTableBtn.className = "secondary";
+            addTableBtn.textContent = `Add ${manifest.label}`;
+            addTableBtn.addEventListener("click", () => {
+                controller.spawnAssemblyAtCameraOrigin(manifest.id);
+            });
+            addRow.appendChild(addTableBtn);
+        }
         container.appendChild(addRow);
         const behaviorIds = controller.listBehaviors();
         if (behaviorIds.length > 0) {
@@ -172,7 +176,7 @@ export function mountSandboxToyUi(container, controller, onChange) {
         if (assemblies.length > 0) {
             const assemblyHead = document.createElement("div");
             assemblyHead.className = "editor-subhead";
-            assemblyHead.textContent = "Assemblies";
+            assemblyHead.textContent = "Pool tables";
             container.appendChild(assemblyHead);
             const assemblyList = document.createElement("div");
             assemblyList.className = "toy-instance-list";

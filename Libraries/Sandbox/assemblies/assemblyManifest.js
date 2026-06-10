@@ -36,6 +36,7 @@
 /**
  * @typedef {object} AssemblyManifest
  * @property {string} id
+ * @property {string} [label]
  * @property {number} [version]
  * @property {AssemblyArenaManifest} [arena]
  * @property {string[]} [props] — prop catalog ids this assembly uses
@@ -48,6 +49,7 @@
 /**
  * @typedef {object} ResolvedAssemblyManifest
  * @property {string} id
+ * @property {string} label
  * @property {number} version
  * @property {AssemblyArenaManifest} arena
  * @property {string[]} props

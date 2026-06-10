@@ -136,11 +136,12 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
         },
         spawnAtCameraOrigin: () => session.spawnAtCameraOrigin(),
         spawnVoidAtCameraOrigin: () => session.spawnVoidAtCameraOrigin(),
-        spawnAssemblyAtCameraOrigin: () => {
-            const instance = session.spawnAssemblyAtCameraOrigin();
+        spawnAssemblyAtCameraOrigin: (assemblyId) => {
+            const instance = session.spawnAssemblyAtCameraOrigin(assemblyId);
             clampActiveBehavior();
             return instance;
         },
+        listAssemblyManifests: () => session.listAssemblyManifests(),
         deleteVoidZoneById: (id) => session.deleteVoidZoneById(id),
         deleteAssemblyById: (id) => session.deleteAssemblyById(id),
         listVoidZones: () => session.listVoidZones(),
