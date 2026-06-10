@@ -123,7 +123,6 @@
  *
  * @typedef {object} EngineProfile
  * @property {string} id
- * @property {GameFeature[]} [features]
  * @property {() => import("../GameState/SharedGameState.js").SharedGameState} createGameState
  * @property {Partial<InteractionPairsPort>} [interactionPairs]
  * @property {SimulationPort} simulationPort

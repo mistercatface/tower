@@ -1,4 +1,4 @@
-import { applyGameFeatures } from "../../Core/applyGameFeatures.js";
+import { composeEditorProfile, initEditorFeatureState, prepareEditorFeatures, registerEditorFeatureListeners } from "./editorFeatures.js";
 import { installGameState } from "../../GameState/GameState.js";
 import { events, requestUiUpdate, Events } from "../../Core/EventSystem.js";
 import { registerCoreListeners } from "../../Core/GameListeners.js";
@@ -16,11 +16,11 @@ import { readControls } from "./ui/toolbar.js";
 /** Editor boot — shared engine setup and loop. */
 export function createEditorApp() {
     setActiveGameDefinition(editorGame);
-    applyGameFeatures(editorGame);
+    composeEditorProfile(editorGame);
     const state = editorGame.createGameState();
-    for (const feature of editorGame.features ?? []) feature.initState?.(state);
+    initEditorFeatureState(state);
     installGameState(state);
-    for (const feature of editorGame.features ?? []) feature.prepare?.();
+    prepareEditorFeatures();
     editorGame.prepare?.();
     bootstrapEngine(editorGame);
     applyGameCollisionSettings(editorGame);
@@ -68,7 +68,7 @@ export function createEditorApp() {
         editorGame.onCanvasResize?.();
     }
     registerCoreListeners(events, pauseManager);
-    for (const feature of editorGame.features ?? []) feature.registerListeners?.(events, { state, fsm: null, resetGame: resetEditor });
+    registerEditorFeatureListeners(events, { state, resetGame: resetEditor });
     editorGame.registerListeners?.(events, { state, fsm: null, resetGame: resetEditor });
     events.setContext({ state, viewport, fsm: null, resetGame: resetEditor });
     events.warnOnMissingListeners = true;

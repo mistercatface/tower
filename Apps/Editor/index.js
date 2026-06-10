@@ -5,8 +5,6 @@ import { createWeaponVisuals } from "../../Libraries/Render/Characters/weapons/c
 import { getGameState } from "../../GameState/GameState.js";
 import { createCombatWallResolver } from "../../Systems/Motion/createCombatWallResolver.js";
 import { applyLabCanvasSize } from "./ui/labCanvas.js";
-import { createSandboxCombatFeature } from "../../Libraries/Combat/createSandboxCombatFeature.js";
-import { createFloatingTextFeature } from "../../Libraries/Render/createFloatingTextFeature.js";
 import { SharedGameState } from "../../GameState/SharedGameState.js";
 import { createRoguelikeNavRuntime } from "../../Libraries/Navigation/createRoguelikeNavRuntime.js";
 import { createRoguelikeMapSession } from "../../Libraries/WorldGen/session/index.js";
@@ -64,7 +62,6 @@ export function initEditorSession(ctx) {
 /** @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition */
 export const editorGame = {
     id: "editor",
-    features: [...createSandboxCombatFeature(), createFloatingTextFeature()],
     createGameState() {
         return new TileLabGameState();
     },

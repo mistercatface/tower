@@ -1,6 +1,7 @@
 import { RenderSprites } from "../../Render/RenderSprites.js";
 import { SpriteCache } from "../Canvas/SpriteCache.js";
 const floatingTextCache = new SpriteCache();
+export const FLOATING_TEXT_SPAWN_EVENT = "fx:floatingText";
 export const TextStyles = {
     standard: {
         font: "bold 10px monospace",
