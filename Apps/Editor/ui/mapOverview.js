@@ -6,6 +6,25 @@ function createBakeCanvas(width, height) {
     canvas.height = height;
     return canvas;
 }
+/** @param {CanvasRenderingContext2D} ctx @param {import("../../../Libraries/Viewport/Viewport.js").Viewport} viewport @param {MapOverviewCache} cache @param {number} displayW @param {number} displayH */
+function drawViewportBox(ctx, viewport, cache, displayW, displayH) {
+    const mapW = cache.maxX - cache.minX;
+    const mapH = cache.maxY - cache.minY;
+    if (mapW <= 0 || mapH <= 0) return;
+    const viewMinX = viewport.x - viewport.halfW;
+    const viewMinY = viewport.y - viewport.halfH;
+    const viewMaxX = viewport.x + viewport.halfW;
+    const viewMaxY = viewport.y + viewport.halfH;
+    const x = ((viewMinX - cache.minX) / mapW) * displayW;
+    const y = ((viewMinY - cache.minY) / mapH) * displayH;
+    const w = ((viewMaxX - viewMinX) / mapW) * displayW;
+    const h = ((viewMaxY - viewMinY) / mapH) * displayH;
+    ctx.save();
+    ctx.strokeStyle = "#00e5ff";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x, y, w, h);
+    ctx.restore();
+}
 /** @param {import("../state.js").TileLabGameState} state @returns {MapOverviewCache | null} */
 export function bakeMapOverviewCache(state) {
     const grid = state.obstacleGrid;
@@ -32,8 +51,9 @@ export function bakeMapOverviewCache(state) {
     ctx.putImageData(data, 0, 0);
     return { canvas, minX: grid.minX, minY: grid.minY, maxX: grid.maxX, maxY: grid.maxY };
 }
-/** @param {import("../state.js").TileLabGameState} state */
-export function refreshMapOverviewDisplay(state) {
+/** Blit cached map and draw live viewport box — not part of the bake. */
+export function paintMapOverviewFrame(state) {
+    if (!state.labShowMapOverview) return;
     const stage = document.getElementById("mapOverviewStage");
     const canvas = document.getElementById("mapOverviewCanvas");
     if (!stage || !canvas || stage.hidden) return;
@@ -43,6 +63,11 @@ export function refreshMapOverviewDisplay(state) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (!cache) return;
     ctx.drawImage(cache.canvas, 0, 0, canvas.width, canvas.height);
+    if (state.labShowMapOverviewViewport) drawViewportBox(ctx, state.viewport, cache, canvas.width, canvas.height);
+}
+/** @param {import("../state.js").TileLabGameState} state */
+export function refreshMapOverviewDisplay(state) {
+    paintMapOverviewFrame(state);
 }
 /** Vertical space for main map max-size when overview is visible. */
 export function estimateMapOverviewHeight(fallbackSize = 160) {
@@ -56,6 +81,6 @@ export function estimateMapOverviewHeight(fallbackSize = 160) {
 /** @param {import("../state.js").TileLabGameState} state */
 export function mountMapOverview(state) {
     const canvas = document.getElementById("mapOverviewCanvas");
-    applySquareCanvasResize(canvas, { host: document.getElementById("mapOverviewHost"), initialSize: 160, minSize: 96, maxSize: 512, onResize: () => refreshMapOverviewDisplay(state) });
-    refreshMapOverviewDisplay(state);
+    applySquareCanvasResize(canvas, { host: document.getElementById("mapOverviewHost"), initialSize: 160, minSize: 96, maxSize: 512, onResize: () => paintMapOverviewFrame(state) });
+    paintMapOverviewFrame(state);
 }

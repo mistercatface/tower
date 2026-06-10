@@ -8,6 +8,7 @@ export const TILELAB_UI_HTML = `
         <label class="check-inline"><input id="showVignetteInput" type="checkbox"> Circular Overlay</label>
         <label class="check-inline"><input id="showAnimationPreviewInput" type="checkbox"> Animation Preview</label>
         <label class="check-inline"><input id="showMapOverviewInput" type="checkbox"> Map Overview</label>
+        <label class="check-inline"><input id="showMapOverviewViewportInput" type="checkbox" checked> Overview Viewport</label>
         <span class="sep"></span>
         <button type="button" id="regenerateBtn">Redraw</button>
     </div>

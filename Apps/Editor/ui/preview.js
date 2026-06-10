@@ -8,6 +8,7 @@ import { invalidateWallAtlasKeyMemos } from "../../../Render/game/wallSurfaceInv
 import { getGameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.js";
 import { Renderer } from "../../../Render/Render.js";
 import { sandboxController } from "../world/tilelabSandbox.js";
+import { paintMapOverviewFrame } from "./mapOverview.js";
 import { buildProfileFromEditor, RUNTIME_LAB_PROFILE_ID } from "./profile/ProfileEditor.js";
 let labRenderer = null;
 let labRendererSettings = null;
@@ -90,6 +91,7 @@ export function drawLabFrame(state) {
         ctx.fill("evenodd");
         ctx.restore();
     }
+    paintMapOverviewFrame(state);
 }
 /** @param {import("../state.js").TileLabGameState} state */
 export function repaintUntilBakesDone(state) {

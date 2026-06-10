@@ -17,6 +17,7 @@ export class TileLabGameState extends SharedGameState {
         this.labShowMapPanel = false;
         this.labShowAnimationPreview = false;
         this.labShowMapOverview = false;
+        this.labShowMapOverviewViewport = true;
         this.viewport = new Viewport(0, 0, 1);
         this.labCanvas = null;
         this.groundZones = [];

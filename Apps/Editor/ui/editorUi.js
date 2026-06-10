@@ -2,7 +2,7 @@ import { listShippedSurfaceProfileIds } from "../../../Config/procedural/profile
 import { applySquareCanvasResize } from "../../../Libraries/Canvas/index.js";
 import { initResizer } from "./lab-shared.js";
 import { initAnimationPreview, estimateAnimationPreviewHeight } from "./LabAnimationPreview.js";
-import { mountMapOverview, estimateMapOverviewHeight, refreshMapOverviewDisplay } from "./mapOverview.js";
+import { mountMapOverview, estimateMapOverviewHeight, paintMapOverviewFrame } from "./mapOverview.js";
 import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEditor.js";
 import { drawLabFrame, pushEditorProfile, repaintUntilBakesDone } from "./preview.js";
 import { initPresetSelect, bindToolbarControls } from "./toolbar.js";
@@ -34,7 +34,7 @@ function resizeCanvases(state) {
     if (animCanvasResize && state.labShowAnimationPreview) animCanvasResize.setSize(animCanvasResize.getSize());
     if (mapCanvasResize) mapCanvasResize.setSize(mapCanvasResize.getSize());
     else onMapCanvasResize(state, state.labCanvas.width);
-    refreshMapOverviewDisplay(state);
+    paintMapOverviewFrame(state);
 }
 /** @param {import("../state.js").TileLabGameState} state */
 export function mountEditorUi(state) {
@@ -68,6 +68,11 @@ export function mountEditorUi(state) {
             requestRedraw();
         },
         onStageResize: () => resizeCanvases(state),
+    });
+    const overviewViewportInput = document.getElementById("showMapOverviewViewportInput");
+    overviewViewportInput.checked = state.labShowMapOverviewViewport;
+    overviewViewportInput.addEventListener("change", (e) => {
+        state.labShowMapOverviewViewport = /** @type {HTMLInputElement} */ (e.target).checked;
     });
     fitLabStageToView(state);
     const animCanvas = document.getElementById("animationPreviewCanvas");
