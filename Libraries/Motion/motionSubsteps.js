@@ -1,7 +1,7 @@
 import { lengthXY } from "../Math/Vec2.js";
 /**
  * Adaptive physics substep count from peak pushable displacement this tick.
- * Used by {@link runPushablePhysicsPass} — not a substitute for projectile sweep/CCD.
+ * Used by {@link runPushablePhysics} — not a substitute for projectile sweep/CCD.
  *
  * @param {number} dtMs
  * @param {object[] | null | undefined} bodies

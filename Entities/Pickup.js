@@ -157,7 +157,7 @@ export class Pickup extends Entity {
     needsWallCollision() {
         return speedSqXY(this.vx, this.vy) > MOVING_SPEED_SQ;
     }
-    update(dt, state, spatialFrame, { resolveWalls = false } = {}) {
+    update(dt, state, spatialFrame, resolveWalls = false) {
         this.ageMs += dt;
         if (this.isSleeping && (!this.strategy?.standTip || !isStandTipActive(this))) return;
         if (updateLocomotionPickup(this, dt, spatialFrame)) {

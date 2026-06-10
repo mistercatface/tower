@@ -17,12 +17,6 @@
  * @property {PairFilterConfig} projectileHitPickup
  */
 /**
- * World-space focus for kinematics tilt and simulation LOD (not necessarily a playable actor).
- *
- * @typedef {object} ViewPort
- * @property {(state: object) => { x: number, y: number } | null} getViewCenter
- */
-/**
  * @typedef {object} TargetingPort
  * @property {(actor: object) => string | undefined} inferFaction
  * @property {(a: object, b: object) => boolean} areHostile
@@ -92,7 +86,6 @@
  * @property {string} id
  * @property {Partial<InteractionPairsPort>} interactionPairs
  * @property {TargetingPort} targeting
- * @property {ViewPort} viewPort
  * @property {RenderPorts} render
  * @property {WorldGenPort} worldGen
  * @property {() => void} [onCanvasResize]

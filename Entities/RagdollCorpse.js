@@ -3,7 +3,6 @@ import { applyRagdollImpulse, updateRagdoll } from "../Libraries/Kinematics/ragd
 import { checkRagdollHit, ragdollPartToWorld } from "../Libraries/Kinematics/ragdoll/hitTest.js";
 import { seedRagdollBloodOnDeath, updateBloodEffects, addRagdollBleedEmitter } from "../Libraries/Render/Characters/ragdoll/blood.js";
 import { createObstacleWallChecker, createRagdollState, resolveDeathImpact } from "../Libraries/Kinematics/ragdoll/fromActor.js";
-import { engine } from "../Apps/Editor/engine.js";
 import { captureActorRigForRagdoll, renderCorpseKinematicsBody } from "../Libraries/Render/Characters/actorKinematicsRenderer.js";
 import { CombatParticles } from "../Libraries/Render/CombatParticles.js";
 const CORPSE_MAX_MS = 12000;
@@ -35,12 +34,13 @@ export class RagdollCorpse extends Entity {
         return false;
     }
     static updateAll(state, dt, spatialFrame) {
-        if (!state.ragdollCorpses?.length) return;
-        const viewCenter = engine.viewPort.getViewCenter(state);
+        if (!state.ragdollCorpses.length) return;
         const wallChecker = createObstacleWallChecker(state);
+        const viewX = state.viewport.x;
+        const viewY = state.viewport.y;
         for (let i = state.ragdollCorpses.length - 1; i >= 0; i--) {
             const corpse = state.ragdollCorpses[i];
-            corpse.update(dt, state, spatialFrame, viewCenter, wallChecker);
+            corpse.update(dt, state, spatialFrame, viewX, viewY, wallChecker);
             if (corpse.isDead) state.ragdollCorpses.splice(i, 1);
         }
     }
@@ -67,7 +67,7 @@ export class RagdollCorpse extends Entity {
         this.ageMs = 0;
         this.isDead = false;
     }
-    update(dt, state, _spatialFrame, viewCenter, wallChecker) {
+    update(dt, state, _spatialFrame, viewX, viewY, wallChecker) {
         this.ageMs += dt;
         if (this.ageMs >= CORPSE_MAX_MS) {
             this.isDead = true;
@@ -75,7 +75,7 @@ export class RagdollCorpse extends Entity {
         }
         const { rig } = this.kinematicsCtx;
         const dtSec = dt / 1000;
-        const { shiftX, shiftY } = updateRagdoll(this.ragdoll, dtSec, this.x, this.y, this.ragdoll.rotation, wallChecker, viewCenter?.x ?? this.x, viewCenter?.y ?? this.y, rig);
+        const { shiftX, shiftY } = updateRagdoll(this.ragdoll, dtSec, this.x, this.y, this.ragdoll.rotation, wallChecker, viewX, viewY, rig);
         if (shiftX || shiftY) {
             this.x += shiftX;
             this.y += shiftY;

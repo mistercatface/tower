@@ -35,10 +35,9 @@ export function clearActorKinematics(actor, radius = actor.radius) {
     getKinematicsRenderer(radius).bundle.clearActorState(actor.id);
 }
 export function resolveKinematicsCamera(actor, state) {
-    if (actor && typeof actor.getKinematicsCamera === "function") return actor.getKinematicsCamera(state);
-    const view = state ? engine.viewPort.getViewCenter(state) : null;
-    if (view) return view;
-    return { x: actor?.x ?? 0, y: actor?.y ?? 0 };
+    if (typeof actor.getKinematicsCamera === "function") return actor.getKinematicsCamera(state);
+    if (state) return state.viewport;
+    return actor;
 }
 export function captureActorRigForRagdoll(actor, camera, radius = actor.radius) {
     const kinematics = getKinematicsRenderer(radius);

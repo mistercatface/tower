@@ -2,6 +2,38 @@ import { circlesOverlap, findFirstCircleSegmentHit } from "../../Libraries/Spati
 import { runCollisionPipeline } from "../../Libraries/Spatial/collision/collisionPipeline.js";
 import { getCollisionSettings } from "../../Core/GameCollisionSettings.js";
 import { getInteractionPairFilter } from "../../Core/interactionPairFilters.js";
+/** @type {{ state: object | null, spatialFrame: object | null, events: object[] | null }} */
+const collisionRunCtx = { state: null, spatialFrame: null, events: null };
+const collisionPipelineHooks = {
+    get events() {
+        return collisionRunCtx.events;
+    },
+    get projectiles() {
+        return collisionRunCtx.state.projectiles;
+    },
+    get projectilePickupFilter() {
+        return getInteractionPairFilter("projectileHitPickup");
+    },
+    onProjectileWallHit(p, segment, events) {
+        p.strategy.onWallCollision(p, collisionRunCtx.state, segment, events);
+    },
+    onProjectilePickupHit(p, pickup, events) {
+        return p.strategy.onPickupCollision(p, collisionRunCtx.state, pickup, events);
+    },
+    onProjectileFactionCollisions(p, events) {
+        p.resolveFactionCollisions(collisionRunCtx.state, events, collisionRunCtx.spatialFrame);
+    },
+    resolveWalls(entity, frame) {
+        collisionRunCtx.state.wallResolver.resolve(entity, frame);
+    },
+    combatantRestitution(a, b) {
+        const chargeInvolved = a.attackType === "charge" || b.attackType === "charge";
+        return chargeInvolved ? 0.65 : 0.15;
+    },
+    onChargeImpact(charger, other, events) {
+        CollisionSystem.applyChargeImpact(charger, other, events);
+    },
+};
 export class CollisionSystem {
     static checkCircle(a, b) {
         return circlesOverlap(a, b);
@@ -13,28 +45,10 @@ export class CollisionSystem {
         return findFirstCircleSegmentHit(missile, candidateWalls);
     }
     static run(state, spatialFrame, events = null) {
-        return runCollisionPipeline(state, spatialFrame, {
-            events,
-            projectiles: state.projectiles,
-            projectilePickupFilter: getInteractionPairFilter("projectileHitPickup"),
-            onProjectileWallHit: (p, segment, events) => {
-                p.strategy.onWallCollision(p, state, segment, events);
-            },
-            onProjectilePickupHit: (p, pickup, events) => {
-                return p.strategy.onPickupCollision(p, state, pickup, events);
-            },
-            onProjectileFactionCollisions: (p, events) => {
-                p.resolveFactionCollisions(state, events, spatialFrame);
-            },
-            resolveWalls: (entity, frame) => state.wallResolver.resolve(entity, frame),
-            combatantRestitution: (a, b) => {
-                const chargeInvolved = a.attackType === "charge" || b.attackType === "charge";
-                return chargeInvolved ? 0.65 : 0.15;
-            },
-            onChargeImpact: (charger, other, events) => {
-                CollisionSystem.applyChargeImpact(charger, other, events);
-            },
-        });
+        collisionRunCtx.state = state;
+        collisionRunCtx.spatialFrame = spatialFrame;
+        collisionRunCtx.events = events;
+        return runCollisionPipeline(state, spatialFrame, collisionPipelineHooks);
     }
     static applyChargeImpact(charger, other, events) {
         if (getInteractionPairFilter("chargeImpact").allows(charger, other)) events.push({ target: other, damage: getCollisionSettings().chargeImpactDamage ?? 0 });

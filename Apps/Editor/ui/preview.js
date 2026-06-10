@@ -47,8 +47,7 @@ export function pushEditorProfile(state) {
 }
 /** @param {import("../state.js").TileLabGameState} state */
 export function drawLabFrame(state) {
-    const canvas = state?.labCanvas;
-    if (!canvas) return;
+    const canvas = state.labCanvas;
     const ctx = canvas.getContext("2d");
     const viewport = state.viewport;
     const showVignette = document.getElementById("showVignetteInput").checked;

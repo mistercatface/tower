@@ -53,8 +53,8 @@ const simulationPhases = [
 ];
 /** @param {import("./state.js").TileLabGameState} state @param {number} dt */
 function runSimulationTick(state, dt) {
-    const simDt = dt * (state.selectedSpeed ?? 1);
-    state.gameTime = (state.gameTime ?? 0) + simDt;
+    const simDt = dt * state.selectedSpeed;
+    state.gameTime += simDt;
     const spatialFrame = combatSpatial.begin(state);
     simulationEvents.length = 0;
     for (const phase of simulationPhases) phase.run(state, simDt, spatialFrame, simulationEvents);
@@ -90,22 +90,17 @@ export const engine = {
     },
     worldSurface: { pixelsPerCell: 6 },
     proceduralDesign: { surfaceProfileId: EDITOR_SURFACE_PROFILE_ID },
-    viewPort: {
-        getViewCenter(state) {
-            return { x: state.viewport.x, y: state.viewport.y };
-        },
-    },
     playbackHandlers: { togglePause() {}, adjustSpeed() {} },
 };
 export function createEditorApp() {
     const state = new TileLabGameState();
-    state.entityLayers = state.entityLayers ?? [];
-    state.combatParticles = state.combatParticles ?? [];
-    state.projectiles = state.projectiles ?? [];
-    state.activeLasers = state.activeLasers ?? [];
-    state.floatingTexts = state.floatingTexts ?? [];
-    if (!state.entityLayers.some((layer) => layer.key === "projectiles")) state.entityLayers.push({ key: "projectiles", zIndex: 20 });
-    if (!state.entityLayers.some((layer) => layer.key === "floatingTexts")) state.entityLayers.push({ key: "floatingTexts", zIndex: 100 });
+    state.ragdollCorpses = [];
+    state.entityLayers = [];
+    state.combatParticles = [];
+    state.projectiles = [];
+    state.activeLasers = [];
+    state.floatingTexts = [];
+    state.entityLayers.push({ key: "projectiles", zIndex: 20 }, { key: "floatingTexts", zIndex: 100 });
     installGameState(state);
     for (const key of Object.keys(pickupStates)) if (key !== "normal") delete pickupStates[key];
     Object.assign(pickupStates, combatPickupStates);
