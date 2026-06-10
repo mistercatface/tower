@@ -102,27 +102,38 @@
 .animation-stage {
     display: flex;
     flex-direction: column;
-    align-items: stretch;
-    margin: 8px 0 12px;
-    padding: 10px;
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid var(--border);
-    border-radius: 6px;
+    align-items: center;
+    flex: 0 0 auto;
+    width: 100%;
+    padding: 0;
+    background: transparent;
+    border: none;
 }
 
 .animation-stage-header {
     font-size: 11px;
     color: var(--muted);
     text-transform: uppercase;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     letter-spacing: 0.05em;
+    align-self: stretch;
+    text-align: center;
 }
 
-#animationPreviewCanvas {
+#animationPreviewHost {
+    flex: none;
+    overflow: hidden;
     border: 1px solid var(--border);
     border-radius: 4px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    background: #000;
+    background: #080a0e;
+}
+
+#animationPreviewCanvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: #080a0e;
 }
 
 .track-list {

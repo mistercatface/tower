@@ -2,7 +2,7 @@ import { listShippedSurfaceProfileIds } from "../../../Config/procedural/profile
 import { getUiRoot } from "../../../UI/Core/uiRoot.js";
 import { applySquareCanvasResize } from "../../../Libraries/Canvas/index.js";
 import { initResizer } from "./lab-shared.js";
-import { initAnimationPreview } from "./LabAnimationPreview.js";
+import { initAnimationPreview, estimateAnimationPreviewHeight } from "./LabAnimationPreview.js";
 import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEditor.js";
 import { applyLabCanvasSize } from "./labCanvas.js";
 import { registerEditorProfiles, renderTilelabPreview, syncRuntimeLabProfile } from "./preview.js";
@@ -93,11 +93,21 @@ function bootstrapTilelabUi(state) {
     const animCanvas = document.getElementById("animationPreviewCanvas");
     applySquareCanvasResize(animCanvas, {
         host: document.getElementById("animationPreviewHost"),
-        initialSize: 256,
+        initialSize: 200,
         minSize: 128,
         maxSize: () => {
-            const panel = document.getElementById("surfaceEditorPanel");
-            return panel ? Math.max(128, panel.clientWidth - 40) : 512;
+            const container = document.querySelector(".map-container");
+            if (!container) return 512;
+            const rect = container.getBoundingClientRect();
+            const column = document.querySelector(".map-viewport-column");
+            const zoom = document.getElementById("labZoomControl");
+            const speed = document.getElementById("labSpeedControl");
+            const gap = column ? parseFloat(getComputedStyle(column).gap) || 10 : 10;
+            const controlsH = (zoom?.offsetHeight ?? 0) + (speed?.offsetHeight ?? 0) + gap * 2;
+            const mapStage = document.getElementById("mapStage");
+            const mapH = mapStage?.offsetHeight ?? 0;
+            const animHeader = 30;
+            return Math.max(128, Math.floor(Math.min(rect.width, rect.height - controlsH - mapH - animHeader - gap * 2) - 8));
         },
     });
     if (animCanvas) initAnimationPreview(animCanvas, buildProfileFromEditor);
@@ -114,7 +124,8 @@ function bootstrapTilelabUi(state) {
             const speed = document.getElementById("labSpeedControl");
             const gap = column ? parseFloat(getComputedStyle(column).gap) || 10 : 10;
             const controlsH = (zoom?.offsetHeight ?? 0) + (speed?.offsetHeight ?? 0) + gap * 2;
-            return Math.max(160, Math.floor(Math.min(rect.width, rect.height - controlsH) - 8));
+            const animH = estimateAnimationPreviewHeight() + gap;
+            return Math.max(160, Math.floor(Math.min(rect.width, rect.height - controlsH - animH) - 8));
         },
         onResize: (size) => {
             applyLabCanvasSize(state, size, size);

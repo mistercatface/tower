@@ -1,12 +1,27 @@
 import { paintPixelArea } from "../../../Libraries/WorldSurface/WorldSurfacePainter.js";
 import { resolveBakeProfile, getAnimationDuration } from "../../../Libraries/WorldSurface/ProfileBakeResolver.js";
 import { getGameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.js";
-import { RUNTIME_LAB_PROFILE_ID } from "./profile/ProfileEditor.js";
+import { getAssemblyRailBandBounds } from "../../../Libraries/Sandbox/assemblyLayout.js";
+/** Square assembly with a wide rail band so wall motifs are easy to read. */
+const PREVIEW_ASSEMBLY = { size: 96, wallWidth: 16, railHeight: 4 };
+const previewLayout = {
+    bounds: { minX: 0, minY: 0, maxX: PREVIEW_ASSEMBLY.size, maxY: PREVIEW_ASSEMBLY.size },
+    play: { minX: PREVIEW_ASSEMBLY.wallWidth, minY: PREVIEW_ASSEMBLY.wallWidth, maxX: PREVIEW_ASSEMBLY.size - PREVIEW_ASSEMBLY.wallWidth, maxY: PREVIEW_ASSEMBLY.size - PREVIEW_ASSEMBLY.wallWidth },
+};
 let rafId = null;
-let currentProfileConfig = null;
 let lastGameTime = 0;
 let lastDrawTime = 0;
 let isAnimationEnabled = false;
+/** @type {HTMLCanvasElement | null} */
+let patchCanvas = null;
+/** Vertical space taken by the animation preview (for map canvas max-size). */
+export function estimateAnimationPreviewHeight(fallbackSize = 200) {
+    const host = document.getElementById("animationPreviewHost");
+    const stage = document.getElementById("animationStage");
+    const headerH = stage?.querySelector(".animation-stage-header")?.offsetHeight ?? 18;
+    const hostH = host?.offsetHeight ?? fallbackSize;
+    return hostH + headerH + 6;
+}
 export function initAnimationPreview(canvas, getProfileConfig) {
     const ctx = canvas.getContext("2d");
     ctx.imageSmoothingEnabled = false;
@@ -24,7 +39,7 @@ export function initAnimationPreview(canvas, getProfileConfig) {
         }
         if (!isAnimationEnabled) {
             if (forceDraw || lastDrawTime === 0) {
-                drawFrame(profile, 0);
+                drawFrame(ctx, canvas, profile, 0);
                 lastDrawTime = timestamp;
             }
             return;
@@ -33,19 +48,54 @@ export function initAnimationPreview(canvas, getProfileConfig) {
         if (forceDraw || delta > 32 || lastDrawTime === 0) {
             const duration = getAnimationDuration(profile.animation);
             if (!forceDraw || delta <= 32) lastGameTime = (lastGameTime + delta) % duration;
-            drawFrame(profile, lastGameTime);
+            drawFrame(ctx, canvas, profile, lastGameTime);
             lastDrawTime = timestamp;
         }
     }
-    function drawFrame(baseProfile, gameTime) {
-        const resolvedProfile = resolveBakeProfile(baseProfile, "__labAnimPreview__", { gameTime });
-        const { cellSize } = getGameWorldSurfaceSettings();
-        paintPixelArea(ctx, canvas.width, canvas.height, 0, 0, 42, { pixelsPerUnit: 2, cellSize }, resolvedProfile);
-    }
     if (rafId !== null) cancelAnimationFrame(rafId);
-    // Reset timers
     lastDrawTime = performance.now();
     lastGameTime = 0;
-    // Start loop
     rafId = requestAnimationFrame(tick);
+}
+/**
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {HTMLCanvasElement} canvas
+ * @param {object} baseProfile
+ * @param {number} gameTime
+ */
+function drawFrame(ctx, canvas, baseProfile, gameTime) {
+    const resolvedProfile = resolveBakeProfile(baseProfile, "__labAnimPreview__", { gameTime });
+    const { cellSize } = getGameWorldSurfaceSettings();
+    const { bounds, play } = previewLayout;
+    const pixelsPerUnit = canvas.width / PREVIEW_ASSEMBLY.size;
+    ctx.fillStyle = "#080a0e";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const railBands = getAssemblyRailBandBounds({ bounds, play });
+    paintPreviewPatch(ctx, bounds, play, pixelsPerUnit, cellSize, resolvedProfile, 0);
+    for (let i = 0; i < railBands.length; i++) paintPreviewPatch(ctx, bounds, railBands[i], pixelsPerUnit, cellSize, resolvedProfile, PREVIEW_ASSEMBLY.railHeight);
+}
+/**
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {{ minX: number, minY: number, maxX: number, maxY: number }} bounds
+ * @param {{ minX: number, minY: number, maxX: number, maxY: number }} worldRect
+ * @param {number} pixelsPerUnit
+ * @param {number} cellSize
+ * @param {object} profile
+ * @param {number} zLevel
+ */
+function paintPreviewPatch(ctx, bounds, worldRect, pixelsPerUnit, cellSize, profile, zLevel) {
+    const destX = Math.round((worldRect.minX - bounds.minX) * pixelsPerUnit);
+    const destY = Math.round((worldRect.minY - bounds.minY) * pixelsPerUnit);
+    const destW = Math.max(1, Math.round((worldRect.maxX - worldRect.minX) * pixelsPerUnit));
+    const destH = Math.max(1, Math.round((worldRect.maxY - worldRect.minY) * pixelsPerUnit));
+    if (!patchCanvas) patchCanvas = document.createElement("canvas");
+    if (patchCanvas.width !== destW || patchCanvas.height !== destH) {
+        patchCanvas.width = destW;
+        patchCanvas.height = destH;
+    }
+    const patchCtx = patchCanvas.getContext("2d");
+    patchCtx.imageSmoothingEnabled = false;
+    const paintOptions = zLevel > 0 ? { cellSize, pixelsPerUnit, isWall: true, roofSurface: true } : { cellSize, pixelsPerUnit };
+    paintPixelArea(patchCtx, destW, destH, worldRect.minX, worldRect.minY, 42, paintOptions, profile);
+    ctx.drawImage(patchCanvas, destX, destY);
 }
