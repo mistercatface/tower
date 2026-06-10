@@ -130,8 +130,14 @@ export function applyDragLaunchVelocity(body, nx, ny, power) {
     }
     wakePushableBody(body);
 }
-/** @param {CanvasRenderingContext2D} ctx @param {DragLaunchAim | null | undefined} aim @param {DragLaunchConfig} config @param {ReturnType<typeof buildDragLaunchAimLineContext>} [aimLineContext] */
-export function drawDragLaunchPreview(ctx, aim, config, aimLineContext = null) {
+/**
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {DragLaunchAim | null | undefined} aim
+ * @param {DragLaunchConfig} config
+ * @param {ReturnType<typeof buildDragLaunchAimLineContext>} [aimLineContext]
+ * @param {(preview: ReturnType<typeof getDragLaunchPreview>, aimLineContext: ReturnType<typeof buildDragLaunchAimLineContext>) => { x1: number, y1: number, x2: number, y2: number } | null} [resolveAimLine]
+ */
+export function drawDragLaunchPreview(ctx, aim, config, aimLineContext = null, resolveAimLine = getDragLaunchAimLine) {
     const preview = getDragLaunchPreview(aim, config);
     if (!preview) return;
     const ratio = config.maxPower > config.minPower ? Math.max(0, Math.min(1, (preview.power - config.minPower) / (config.maxPower - config.minPower))) : 0;
@@ -194,7 +200,7 @@ export function drawDragLaunchPreview(ctx, aim, config, aimLineContext = null) {
     ctx.stroke();
     ctx.restore();
     if (preview.power <= 0) return;
-    const aimLine = getDragLaunchAimLine(preview, aimLineContext);
+    const aimLine = resolveAimLine(preview, aimLineContext);
     if (!aimLine) return;
     drawAimSegment(ctx, aimLine, { color: `hsl(${hue}, 100%, 50%)`, lineWidth: 3 * lineScale, glowHue: hue });
 }

@@ -1,25 +1,24 @@
 import { applyCueStrikeCollision } from "../../CueStick/cueStrikeCollision.js";
+import { buildCueStrikeAimLineContext, getCueStrikeAimLine } from "../../CueStick/cueStrikeAimPreview.js";
+import { gridSettings } from "../../../Config/Config.js";
 import { getPropAsset } from "../../Props/PropCatalog.js";
 import { wakePushableBody } from "../../Motion/pushableSleep.js";
-import {
-    buildDragLaunchAimLineContext,
-    createDragLaunchAim,
-    drawDragLaunchPreview,
-    releaseDragLaunch,
-    updateDragLaunchAim,
-} from "../dragLaunch.js";
-
+import { POOL_TABLE_COLS, POOL_TABLE_ROWS } from "../poolTableLayout.js";
+import { createDragLaunchAim, drawDragLaunchPreview, releaseDragLaunch, updateDragLaunchAim } from "../dragLaunch.js";
 export const CUE_STRIKE_BEHAVIOR_ID = "cueStrike";
-
 const CUE_STRIKE_DEFAULTS = { minDrag: 2, maxPull: 38, pullScale: 0.5, minPower: 8, maxPower: 600 };
-
 /** @param {object | null | undefined} asset */
 function getCueStrikeConfig(asset) {
     const entry = asset?.sandbox?.cueStrike;
     const overrides = entry === true ? {} : entry && typeof entry === "object" ? entry : {};
     return { ...CUE_STRIKE_DEFAULTS, ...overrides };
 }
-
+/** @param {object} pickup */
+function cueStrikeTableBounds(pickup) {
+    if (!pickup?.sandboxPoolTableId) return {};
+    const cellSize = gridSettings.cellSize;
+    return { tableWidth: POOL_TABLE_COLS * cellSize, tableHeight: POOL_TABLE_ROWS * cellSize };
+}
 /** @returns {import("../createSandboxController.js").SandboxBehavior} */
 export function createCueStrikeBehavior() {
     /** @type {import("../dragLaunch.js").DragLaunchAim | null} */
@@ -46,7 +45,9 @@ export function createCueStrikeBehavior() {
         },
         drawOverlay(ctx, pickup, host) {
             if (!aim?.active) return;
-            drawDragLaunchPreview(ctx, aim, configFor(pickup), buildDragLaunchAimLineContext(pickup, host));
+            const state = host.getWorldState?.();
+            const aimLineContext = state ? buildCueStrikeAimLineContext(pickup, state, cueStrikeTableBounds(pickup)) : null;
+            drawDragLaunchPreview(ctx, aim, configFor(pickup), aimLineContext, getCueStrikeAimLine);
         },
         reset() {
             aim = null;

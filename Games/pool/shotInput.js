@@ -1,8 +1,8 @@
 import { requestUiUpdate } from "../../Core/EventSystem.js";
 import { getRunScenePort } from "../../Core/GamePorts.js";
-import { applyCueStrikeCollision, CUE_BALL_RESTITUTION } from "../../Libraries/CueStick/cueStrikeCollision.js";
+import { applyCueStrikeCollision } from "../../Libraries/CueStick/cueStrikeCollision.js";
+import { buildCueStrikeCircleTargets, computeCueStrikeAimLineSegment, resolveCueStrikeMaxRayDist } from "../../Libraries/CueStick/cueStrikeAimPreview.js";
 import { normalizeXY } from "../../Libraries/Math/Vec2.js";
-import { computeCircleAimLineSegment, estimateRollingTravelDistance } from "../../Libraries/Spatial/query/circleAimLinePreview.js";
 import { wallContextFromState } from "../../Libraries/Spatial/query/wallContext.js";
 import { MAX_SHOT_POWER, MIN_SHOT_POWER, CUE_GRAB_RADIUS_PAD, POOL_BALL_RADIUS, POOL_CUE_MAX_PULL, POOL_CUE_PULL_SCALE, POOL_CUE_MIN_PULL_DRAG } from "./config/tableLayout.js";
 import { getCueBall, ensurePoolState, allBallsStopped, getActiveBalls } from "./balls.js";
@@ -158,24 +158,18 @@ export function getCueAimLinePreview(state) {
     const preview = getAimPreview(state);
     const cue = getCueBall(state);
     if (!preview || !cue) return null;
-    const radius = cue.radius ?? POOL_BALL_RADIUS;
-    const speed = preview.power;
-    const v0 = (speed * (1 + CUE_BALL_RESTITUTION)) / 2;
-    const travelDist = estimateRollingTravelDistance(v0, cue.strategy ?? {});
     const layout = getRunScenePort().getLayout(state);
-    const maxRayDist = layout?.tableWidth && layout?.tableHeight ? Math.hypot(layout.tableWidth, layout.tableHeight) : 2400;
-    const circleTargets = getActiveBalls(state)
-        .filter((ball) => ball !== cue)
-        .map((ball) => ({ x: ball.x, y: ball.y, radius: ball.radius ?? radius }));
-    return computeCircleAimLineSegment({
+    const radius = cue.radius ?? POOL_BALL_RADIUS;
+    return computeCueStrikeAimLineSegment({
         originX: cue.x,
         originY: cue.y,
         radius,
         nx: preview.nx,
         ny: preview.ny,
-        maxTravelDist: travelDist,
-        maxRayDist,
+        strikePower: preview.power,
+        strategy: cue.strategy ?? {},
         wallCtx: wallContextFromState(state),
-        circleTargets,
+        circleTargets: buildCueStrikeCircleTargets(cue, getActiveBalls(state), radius),
+        maxRayDist: resolveCueStrikeMaxRayDist({ tableWidth: layout?.tableWidth, tableHeight: layout?.tableHeight }),
     });
 }
