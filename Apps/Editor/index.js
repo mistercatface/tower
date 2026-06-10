@@ -19,7 +19,6 @@ import { getTilelabSandboxController } from "./world/tilelabSandbox.js";
 import { registerEditorProfiles } from "./ui/preview.js";
 import { readControls, syncPreviewZoomToStage } from "./ui/toolbar.js";
 import { initEmptyTilelabMap } from "./world/mapWorld.js";
-import { tilelabUiPort } from "./ui/tilelabUiPort.js";
 import { sandboxPathEffectPass } from "./render/sandboxPathEffectPass.js";
 import { drawSandboxAssemblySurfaces } from "../../Libraries/Sandbox/assemblySurfaceDraw.js";
 export const LAB_PREVIEW_RANGE = 160;
@@ -65,13 +64,11 @@ export function initEditorSession(ctx) {
 /** @typedef {import("../../Core/GameDefinitionTypes.js").GameDefinition} GameDefinition */
 export const editorGame = {
     id: "editor",
-    canvasId: "gameCanvas",
     features: [...createSandboxCombatFeature(), createFloatingTextFeature()],
     createGameState() {
         return new TileLabGameState();
     },
     simulationPort: tilelabSimulation,
-    uiPort: tilelabUiPort,
     render: {
         ...createDefaultRenderPorts({ weaponVisuals: createWeaponVisuals(GUN_ID_TO_VISUAL) }),
         drawGroundOverlays: (state, viewport, ctx) => drawSandboxAssemblySurfaces(ctx, state, viewport),

@@ -13,6 +13,6 @@ export function peekGameState() {
 }
 /** @returns {GameState} */
 export function getGameState() {
-    if (!activeState) throw new Error("getGameState: no active state — call installGameState from createGame first");
+    if (!activeState) throw new Error("getGameState: no active state — call installGameState during boot first");
     return activeState;
 }

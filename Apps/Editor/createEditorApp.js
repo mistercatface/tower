@@ -13,7 +13,7 @@ import { editorGame, initEditorSession } from "./index.js";
 import { tilelabUiPort } from "./ui/tilelabUiPort.js";
 import { renderTilelabPreview } from "./ui/preview.js";
 import { readControls } from "./ui/toolbar.js";
-/** Editor boot — shared engine setup and loop, no FSM or createGame. */
+/** Editor boot — shared engine setup and loop. */
 export function createEditorApp() {
     setActiveGameDefinition(editorGame);
     applyGameFeatures(editorGame);

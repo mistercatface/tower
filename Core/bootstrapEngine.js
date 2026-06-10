@@ -9,7 +9,7 @@ import { applyGameProceduralDesign, resolveProceduralBakeSettings } from "./Game
 let workersConfigured = false;
 /**
  * Single engine bootstrap: surface profiles, workers, procedural defaults, perspective, world-surface settings.
- * Called from createGame (and dev tools that skip createGame).
+ * Called from editor boot (`createEditorApp`) after `installGameState`.
  *
  * @param {GameDefinition} definition
  */

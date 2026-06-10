@@ -4,7 +4,6 @@ import { BaseGeneratorStrategies } from "../Generator/GeneratorStrategies.js";
 import { NOOP_TARGETING_PORT, NOOP_VIEW_PORT } from "../Libraries/Ports/noopPorts.js";
 import { getActiveGameDefinition } from "./ActiveGameDefinition.js";
 /** @typedef {import("./GameDefinitionTypes.js").InteractionPairsPort} InteractionPairsPort */
-/** @typedef {import("./GameDefinitionTypes.js").UiPort} UiPort */
 /** @typedef {import("./GameDefinitionTypes.js").TargetingPort} TargetingPort */
 /** @typedef {import("./GameDefinitionTypes.js").ViewPort} ViewPort */
 /** @typedef {import("./GameDefinitionTypes.js").RenderPorts} RenderPorts */
@@ -20,12 +19,6 @@ export function getInteractionPairs() {
     const overrides = requireGameDefinition().interactionPairs;
     const base = createDefaultInteractionPairs();
     return overrides ? { ...base, ...overrides } : base;
-}
-/** @returns {UiPort} */
-export function getUiPort() {
-    const port = requireGameDefinition().uiPort;
-    if (!port) throw new Error("Active game definition missing uiPort.");
-    return port;
 }
 /** @returns {TargetingPort} */
 export function getTargeting() {

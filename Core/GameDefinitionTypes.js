@@ -1,4 +1,8 @@
 /**
+ * JSDoc types for the editor engine profile (render/sim/world-gen hooks).
+ * Not a multi-game registry — one profile is installed at boot via `setActiveGameDefinition`.
+ */
+/**
  * @typedef {import("../Libraries/Interaction/pairRules.js").PairFilterConfig} PairFilterConfig
  */
 /**
@@ -42,10 +46,6 @@
  * @property {(state: object, viewport: object, ctx: CanvasRenderingContext2D, renderer: import("../Render/Render.js").Renderer) => void} [drawPostSimulation]
  */
 /**
- * @typedef {object} WorldGenStrategy
- * @property {(state: object, px: number, py: number) => void} generate
- */
-/**
  * @typedef {object} StartLayout
  * @property {number} spawnX
  * @property {number} spawnY
@@ -72,40 +72,22 @@
  * @property {(ctx: UiContext) => void} updateUI
  */
 /**
- * @typedef {object} RunBootstrapPort
- * @property {(state: object) => void} resetRun
- */
-/**
- * @typedef {object} InputPort
- * @property {(delta: number) => void} [onWheelZoomDelta]
- * @property {(zoom: number) => void} [onPinchZoom]
- */
-/**
- * @typedef {object} RunScenePort
- * @property {(state: object) => object | null} getLayout
- * @property {(ctx: object) => void} onSimulationEnter
- * @property {(ctx: object, dt: number) => void} onTick
- * @property {(payload: { enemy: object, state: object, fsm: object }) => void} [onEnemyKilled]
- */
-/**
  * @typedef {{ minX: number, minY: number, maxX: number, maxY: number }} WorldPlayBounds
  */
 /**
- * World bootstrap port — compose via `createWorldGenPort(phases, …)` or presets
- * (`createSingleArenaWorldGenPort`, `createRoguelikeWorldGenPort`) in `Libraries/WorldGen/`.
- *
  * @typedef {object} WorldGenPort
- * @property {(state: object) => void} generateWorld — build walls, bounds, and surface caches for a new run
- * @property {(state: object) => WorldPlayBounds | null} getPlayBounds — clip rendering/surfaces to playable area
- * @property {(state: object) => { centerX: number, centerY: number, width: number, height: number } | null} [getObstacleGridBounds] — exact nav/surface grid (skips spatialWorldMargin)
- * @property {number} [nodeWorldCoordScale] — roguelike map: graph node units → world units
- * @property {number} [startMapNodeId] — map graph node used for default spawn layout (default 0)
+ * @property {(state: object) => void} generateWorld
+ * @property {(state: object) => WorldPlayBounds | null} getPlayBounds
+ * @property {(state: object) => { centerX: number, centerY: number, width: number, height: number } | null} [getObstacleGridBounds]
+ * @property {number} [nodeWorldCoordScale]
+ * @property {number} [startMapNodeId]
  * @property {(px: number, py: number, cellSize: number) => StartLayout} getStartLayout
- * @property {boolean} [skipStartPickups] — omit crate/barrel scatter on map reset
+ * @property {boolean} [skipStartPickups]
+ * @property {Record<string, import("./GameDefinitionTypes.js").WorldGenStrategy>} [strategies]
  */
 /**
- * @typedef {object} CombatPort
- * @property {(ctx: { state: object }) => void} [onRunOpeningComplete]
+ * @typedef {object} WorldGenStrategy
+ * @property {(state: object, px: number, py: number) => void} generate
  */
 /**
  * @typedef {object} PlaybackConfig
@@ -120,47 +102,46 @@
  * @typedef {object} GameFeature
  * @property {(state: object) => void} [initState]
  * @property {() => void} [prepare]
- * @property {(eventBus: import("../Libraries/Events/EventBus.js").EventBus, boot?: { state: object, fsm: import("../Libraries/FSM/StateMachine.js").StateMachine, resetGame: () => void }) => void} [registerListeners]
+ * @property {(eventBus: import("../Libraries/Events/EventBus.js").EventBus, boot?: { state: object, resetApp?: () => void }) => void} [registerListeners]
  * @property {Partial<InteractionPairsPort>} [interactionPairs]
  * @property {TargetingPort} [targeting]
  * @property {(ctx: object) => import("../../Systems/Simulation/SimulationRuntime.js").SimulationRuntime} [beginRuntime]
  * @property {import("../../Systems/Simulation/SimulationPipeline.js").SimulationPhase[]} [simulationPhases]
- * @property {string} [simulationPhaseInsertAfter] — splice after a base phase `id`; append when omitted
+ * @property {string} [simulationPhaseInsertAfter]
  * @property {SimulationEffectPass[]} [simulationEffectPasses]
  * @property {(state: object, viewport: object, ctx: CanvasRenderingContext2D, renderer: import("../Render/Render.js").Renderer) => void} [drawPostSimulation]
  */
 /**
- * @typedef {object} GameDefinition
+ * @typedef {object} RunBootstrapPort
+ * @property {(state: object) => void} resetRun
+ */
+/**
+ * @typedef {object} CombatPort
+ */
+/**
+ * Engine profile installed once at editor boot (`editorGame` in Apps/Editor).
+ *
+ * @typedef {object} EngineProfile
  * @property {string} id
- * @property {string} canvasId
  * @property {GameFeature[]} [features]
- * @property {string} [saveKey]
  * @property {() => import("../GameState/SharedGameState.js").SharedGameState} createGameState
- * @property {(eventBus: import("../Libraries/Events/EventBus.js").EventBus, boot?: { state: object, fsm: import("../Libraries/FSM/StateMachine.js").StateMachine, resetGame: () => void }) => void} [registerListeners]
- * @property {Record<string, new () => object>} [states]
- * @property {string} [initialState]
- * @property {Partial<InteractionPairsPort>} [interactionPairs] — combat/physics overrides; physics defaults from engine
- * @property {SimulationPort} simulationPort — phase pipeline (`runTick`, `onEnter`, …)
- * @property {UiPort} uiPort — DOM chrome mount + HUD/panel updates
- * @property {TargetingPort} [targeting] — defaults to noop when omitted
- * @property {ViewPort} [viewPort] — defaults to noop when omitted
+ * @property {Partial<InteractionPairsPort>} [interactionPairs]
+ * @property {SimulationPort} simulationPort
+ * @property {TargetingPort} [targeting]
+ * @property {ViewPort} [viewPort]
  * @property {RenderPorts} render
  * @property {WorldGenPort} worldGen
- * @property {RunBootstrapPort} [runBootstrapPort] — new-run entity/world setup after `generateWorld`
- * @property {InputPort} [input] — optional canvas zoom/pinch hooks
- * @property {(phase: string) => boolean} [isWorldScene] — 3D world draw eligibility; defaults to simulation phase only
- * @property {RunScenePort} [runScenePort] — simulation enter/tick/layout hooks
- * @property {CombatPort} [combatPort] — defaults to noop when omitted
- * @property {(fsm: import("../Libraries/FSM/StateMachine.js").StateMachine) => import("../Libraries/Input/keyboardBindings.js").KeyBinding[]} [keyBindings]
+ * @property {(phase: string) => boolean} [isWorldScene]
  * @property {() => void} [onCanvasResize]
  * @property {() => void | Promise<void>} [prepare]
  * @property {{ actorCache?: import("../Libraries/Canvas/SpriteCache.js").SpriteCache, turretCache?: import("../Libraries/Canvas/SpriteCache.js").SpriteCache }} [caches]
  * @property {Partial<import("./GamePerspective.js").PerspectiveConfig>} [perspective]
- * @property {number} [propPixelSize] — target bake diameter for small props; large props auto-match world size
+ * @property {number} [propPixelSize]
  * @property {Partial<import("./GameProceduralDesign.js").ProceduralDesignConfig>} [proceduralDesign]
- * @property {Partial<import("../Libraries/WorldSurface/worldSurfaceDefaults.js").LibraryWorldSurfaceDefaults> & { cameraHeight?: number, cellSize?: number, floorShadow?: string }} [worldSurface] — partial overrides on library world-surface defaults
- * @property {Partial<import("../Libraries/Collision/collisionDefaults.js").LibraryCollisionSettings>} [collisionSettings] — partial overrides on library collision defaults
- * @property {Partial<import("../Libraries/Props/propRenderDefaults.js").LibraryPropQuantizeSteps>} [propQuantizeSteps] — partial overrides on library prop facing/roll steps
- * @property {PlaybackConfig} [playback] — simulation speed cap/step; tower uses upgrade stat when omitted
+ * @property {Partial<import("../Libraries/WorldSurface/worldSurfaceDefaults.js").LibraryWorldSurfaceDefaults> & { cameraHeight?: number, cellSize?: number, floorShadow?: string }} [worldSurface]
+ * @property {Partial<import("../Libraries/Collision/collisionDefaults.js").LibraryCollisionSettings>} [collisionSettings]
+ * @property {Partial<import("../Libraries/Props/propRenderDefaults.js").LibraryPropQuantizeSteps>} [propQuantizeSteps]
+ * @property {PlaybackConfig} [playback]
  */
+/** @typedef {EngineProfile} GameDefinition */
 export {};
