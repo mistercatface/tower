@@ -1,13 +1,3 @@
-/**
- * Commit lab canvas pixel size into game state. Call only when the canvas buffer changes.
- *
- * @param {import("../state.js").TileLabGameState} state
- * @param {number} width
- * @param {number} height
- */
-export function applyLabCanvasSize(state, width, height) {
-    state.viewport.setCanvasSize(width, height);
-}
 /** Map a DOM pointer position to canvas pixel coordinates (handles CSS scaling). */
 export function canvasClientToScreen(canvas, clientX, clientY) {
     const rect = canvas.getBoundingClientRect();

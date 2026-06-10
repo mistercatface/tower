@@ -1,7 +1,7 @@
 import { Pickup } from "../../../Entities/Pickup.js";
 import { applyPickupWeaponLoadout } from "../../../Libraries/Combat/pickupWeaponLoadout.js";
 import { sandboxFactions } from "../../../Libraries/Combat/sandboxTargeting.js";
-import { getTilelabSandboxController } from "./tilelabSandbox.js";
+import { sandboxController } from "./tilelabSandbox.js";
 const GROUP_COUNT = 5;
 const GROUP_SEPARATION = 140;
 const GROUP_SPREAD_X = 50;
@@ -33,5 +33,5 @@ export function spawnSandboxBattleGroups(state, { replace = true } = {}) {
     };
     spawnGroup(sandboxFactions.alpha, originX - GROUP_SEPARATION, originY, "servicePistol", 0);
     spawnGroup(sandboxFactions.bravo, originX + GROUP_SEPARATION, originY, "servicePistol", Math.PI);
-    getTilelabSandboxController().sync();
+    sandboxController.sync();
 }

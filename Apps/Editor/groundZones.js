@@ -1,8 +1,4 @@
 import { drawGroundZone, isGroundZoneInView, processGroundZones } from "../../Libraries/Spatial/zones/groundZones.js";
-/** @param {import("./state.js").TileLabGameState} state */
-export function resetTilelabGroundZones(state) {
-    state.groundZones = [];
-}
 export const tilelabGroundZonePhase = {
     id: "groundZone",
     run(ctx, _dt, runtime) {

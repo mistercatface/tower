@@ -718,9 +718,3 @@ export function initProfileEditor({ onChange }) {
     refreshEditorPanels({ global: true });
     exportArea.value = exportProfileSnippet();
 }
-/** Runtime map preview: motif/warp/palette only (no timeline playback). */
-export function getLabPreviewProfile() {
-    const profile = buildProfileFromEditor();
-    if (profile?.animation) delete profile.animation;
-    return profile;
-}

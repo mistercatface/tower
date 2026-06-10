@@ -1,22 +1,11 @@
 import { roguelikeProceduralDesign } from "../../../Libraries/WorldGen/presets/roguelikeMap.js";
 import { generateTilelabMap } from "../world/mapWorld.js";
-import { fitLabStageToView } from "./labViewport.js";
-export function readControls(state) {
-    return { showVignette: document.getElementById("showVignetteInput").checked, state };
-}
-/** @param {import("../state.js").TileLabGameState} state */
-export function syncPreviewZoomToStage(state) {
-    fitLabStageToView(state);
-}
-export function rollRandomMapSeed() {
-    return Math.floor(1 + Math.random() * 1_000_000_000);
-}
 /**
  * Roll new map + floor seeds and regenerate the lab world.
  * @param {import("../state.js").TileLabGameState} state
  */
 export function rollRandomTilelabMap(state) {
-    const seed = rollRandomMapSeed();
+    const seed = Math.floor(1 + Math.random() * 1_000_000_000);
     generateTilelabMap(state, { mapSeed: seed, floorSeed: seed });
 }
 export function initPresetSelect(profileIds) {
@@ -28,10 +17,6 @@ export function initPresetSelect(profileIds) {
         select.appendChild(opt);
     }
     select.value = roguelikeProceduralDesign.surfaceProfileId;
-}
-/** @param {import("../state.js").TileLabGameState} state */
-export function initToolbarDefaults(state) {
-    syncPreviewZoomToStage(state);
 }
 /**
  * @param {{ onRefresh: () => void, onRandomMap: () => void, onStageResize: () => void }} handlers

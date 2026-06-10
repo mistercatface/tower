@@ -20,13 +20,12 @@ import { pushablePhysicsPhase } from "../../Systems/Simulation/phases.js";
 import { FLOATING_TEXT_SPAWN_EVENT, FloatingText } from "../../Libraries/Render/FloatingText.js";
 import { drawSandboxAssemblySurfaces } from "../../Libraries/Sandbox/assemblySurfaceDraw.js";
 import { TileLabGameState, tilelabMapTopology } from "./state.js";
-import { applyLabCanvasSize } from "./ui/labCanvas.js";
 import { tilelabGroundZoneEffectPass, tilelabGroundZonePhase } from "./groundZones.js";
 import { sandboxVoidZoneEffectPass, sandboxVoidZonePhase } from "./sandboxVoidZones.js";
-import { getTilelabSandboxController } from "./world/tilelabSandbox.js";
+import { sandboxController } from "./world/tilelabSandbox.js";
 import { initEmptyTilelabMap } from "./world/mapWorld.js";
 import { registerEditorProfiles } from "./ui/preview.js";
-import { syncPreviewZoomToStage, readControls } from "./ui/toolbar.js";
+import { fitLabStageToView } from "./ui/labViewport.js";
 import { tilelabUiPort } from "./ui/tilelabUiPort.js";
 import { renderTilelabPreview } from "./ui/preview.js";
 /** @typedef {{ togglePause: () => void, adjustSpeed: (delta: number) => void }} PlaybackHandlers */
@@ -45,9 +44,8 @@ export const engine = {
             {
                 zIndex: 65,
                 draw(_state, _viewport, ctx) {
-                    const controller = getTilelabSandboxController();
-                    controller.drawPathOverlay(ctx);
-                    controller.drawLaunchPreview(ctx);
+                    sandboxController.drawPathOverlay(ctx);
+                    sandboxController.drawLaunchPreview(ctx);
                 },
             },
         ],
@@ -65,7 +63,7 @@ export const engine = {
             {
                 id: "sandboxTick",
                 run(ctx, dt) {
-                    getTilelabSandboxController().tick(dt);
+                    sandboxController.tick(dt);
                 },
             },
             sandboxAutoCombatPhase,
@@ -93,7 +91,7 @@ export const engine = {
     playbackHandlers: { togglePause() {}, adjustSpeed() {} },
     onCanvasResize() {
         const state = getGameState();
-        applyLabCanvasSize(state, state.labCanvas.width, state.labCanvas.height);
+        state.viewport.setCanvasSize(state.labCanvas.width, state.labCanvas.height);
     },
 };
 /** Editor boot — engine setup, UI mount, RAF loop. */
@@ -137,7 +135,7 @@ export function createEditorApp() {
         simulation.runTick({ state }, dt);
     }
     function drawFrame() {
-        renderTilelabPreview(state, readControls(state));
+        renderTilelabPreview(state);
     }
     function loop(timestamp) {
         if (state.lastTime === 0) state.lastTime = timestamp;
@@ -154,7 +152,7 @@ export function createEditorApp() {
     }
     function enterEditor() {
         initEmptyTilelabMap(state);
-        registerEditorProfiles(state).then(() => syncPreviewZoomToStage(state));
+        registerEditorProfiles(state).then(() => fitLabStageToView(state));
         requestUiUpdate();
     }
     function resizeCanvas() {

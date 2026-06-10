@@ -1,5 +1,7 @@
 import { canvasClientToWorld } from "../ui/labCanvas.js";
 import { TILELAB_SANDBOX_SPAWN_PROP } from "../state.js";
+import { pickupStates } from "../../../Entities/PickupStates.js";
+import { voidSinkPickupStates } from "../../../Entities/pickupVoidSinkState.js";
 import {
     createCueStrikeBehavior,
     createDragLaunchBehavior,
@@ -10,7 +12,6 @@ import {
     DRAG_LAUNCH_BEHAVIOR_ID,
     mountSandboxToyUi,
 } from "../../../Libraries/Sandbox/index.js";
-import { registerSandboxVoidPickupStates, unregisterSandboxVoidPickupStates } from "../sandboxVoidZones.js";
 /** @param {import("../state.js").TileLabGameState} state @param {() => void} requestRedraw */
 function createSandboxHost(state, requestRedraw) {
     return {
@@ -34,7 +35,7 @@ function createSandboxHost(state, requestRedraw) {
     };
 }
 /** @type {ReturnType<typeof createSandboxController> | null} */
-let sandboxController = null;
+export let sandboxController = null;
 let unmountToyUi = null;
 /**
  * @param {import("../state.js").TileLabGameState} state
@@ -42,7 +43,7 @@ let unmountToyUi = null;
  */
 export function mountTilelabSandbox(state, requestRedraw) {
     destroyTilelabSandbox();
-    registerSandboxVoidPickupStates();
+    Object.assign(pickupStates, voidSinkPickupStates);
     sandboxController = createSandboxController(createSandboxHost(state, requestRedraw), {
         defaultSpawnPropId: TILELAB_SANDBOX_SPAWN_PROP,
         behaviors: [createDragLaunchBehavior(), createCueStrikeBehavior(), createShootBehavior(), createRollToCursorDirectBehavior(), createRollToCursorHpaBehavior()],
@@ -56,12 +57,5 @@ export function destroyTilelabSandbox() {
     unmountToyUi = null;
     sandboxController?.destroy();
     sandboxController = null;
-    unregisterSandboxVoidPickupStates();
-}
-export function clearTilelabSandbox() {
-    sandboxController?.clearBodies();
-}
-/** @returns {ReturnType<typeof createSandboxController> | null} */
-export function getTilelabSandboxController() {
-    return sandboxController;
+    delete pickupStates.voidSink;
 }

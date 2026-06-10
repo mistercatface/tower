@@ -3,7 +3,7 @@ import { Renderer } from "../../../Render/Render.js";
 import { getSurfaceProfileRevision } from "../../../Libraries/WorldSurface/SurfaceProfileRevision.js";
 import { invalidateWallAtlasKeyMemos } from "../../../Render/game/wallSurfaceInvalidation.js";
 import { drawTopologyLayer } from "../../../Libraries/Render/map/topology/index.js";
-import { getTilelabSandboxController } from "./tilelabSandbox.js";
+import { sandboxController } from "./tilelabSandbox.js";
 /** @type {Renderer | null} */
 let labRenderer = null;
 /** @type {import("../../../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings | null} */
@@ -48,7 +48,7 @@ export function drawTilelabSurfaceFrame(ctx, canvas, worldState, profileId, draw
     viewport.apply(ctx);
     if (topologySession && topologyOptions) drawTopologyLayer(ctx, worldState, viewport, topologyOptions, topologySession, { overlay: true });
     worldState.worldSurfaces.surfaceProfileOverride = prevProfileOverride;
-    getTilelabSandboxController().drawOverlay(ctx);
+    sandboxController.drawOverlay(ctx);
     ctx.restore();
     if (showVignette) {
         const R = viewport.getVisualRadius();

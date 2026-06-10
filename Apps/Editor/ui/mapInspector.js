@@ -1,17 +1,8 @@
 import { engine } from "../engine.js";
 import { tilelabMapTopology } from "../state.js";
 import { SliderControl } from "./controls/SliderControl.js";
-import { focusLabNode, generateTilelabMap, listLabMapNodes, selectLabNode } from "../world/mapWorld.js";
+import { focusLabNode, generateTilelabMap, listLabMapNodes } from "../world/mapWorld.js";
 import { setLabCamera } from "./labViewport.js";
-export function readMapControls() {
-    return {
-        showNodes: document.getElementById("showNodesInput").checked,
-        showRoomZones: document.getElementById("showRoomZonesInput").checked,
-        showWalls: document.getElementById("showWallsInput").checked,
-        showGridBounds: document.getElementById("showGridBoundsInput").checked,
-        showPathDebug: document.getElementById("showPathDebugInput").checked,
-    };
-}
 /** @param {import("../state.js").TileLabGameState} state @param {(() => void) | null} [onRedraw] */
 export function populateNodeList(state, onRedraw) {
     const listPanel = document.getElementById("nodeListPanel");
@@ -26,7 +17,7 @@ export function populateNodeList(state, onRedraw) {
             <span class="node-strategy">${node.strategy ?? "Unknown"}</span>
             <span class="color-badge" style="background-color: ${themeColor}"></span>`;
         item.addEventListener("click", () => {
-            selectLabNode(state, node.id);
+            state.roguelikeMapSession.selectedNodeId = node.id;
             populateNodeList(state, onRedraw);
             renderNodeInspector(state, onRedraw);
             onRedraw?.();
@@ -108,12 +99,7 @@ export function buildTopologySettingsPanel(state) {
 /** @param {import("../state.js").TileLabGameState} state @param {(() => void) | null} [onRedraw] */
 export function syncMapInspectorAfterRegen(state, onRedraw) {
     const { selectedNodeId } = state.roguelikeMapSession;
-    if (selectedNodeId != null && !state.getMapNode(selectedNodeId)) selectLabNode(state, null);
+    if (selectedNodeId != null && !state.getMapNode(selectedNodeId)) state.roguelikeMapSession.selectedNodeId = null;
     populateNodeList(state, onRedraw);
     renderNodeInspector(state, onRedraw);
-}
-/** @param {import("../state.js").TileLabGameState} state @param {() => void} onRedraw */
-export function bindMapInspectorControls(state, onRedraw) {
-    buildTopologySettingsPanel(state);
-    for (const id of ["showNodesInput", "showRoomZonesInput", "showWallsInput", "showGridBoundsInput", "showPathDebugInput"]) document.getElementById(id).addEventListener("change", () => onRedraw());
 }

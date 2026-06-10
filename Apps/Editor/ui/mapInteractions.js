@@ -1,5 +1,4 @@
 import { findPickupAt } from "../../../Libraries/Sandbox/findPickupAt.js";
-import { selectLabNode } from "../world/mapWorld.js";
 import { canvasClientToWorld } from "./labCanvas.js";
 import { populateNodeList, renderNodeInspector } from "./mapInspector.js";
 /** @param {import("../state.js").TileLabGameState} state @param {() => void} onRedraw */
@@ -20,7 +19,7 @@ export function initMapTopologyInteractions(state, onRedraw) {
             }
         }
         if (nearestNode) {
-            selectLabNode(state, nearestNode.id);
+            state.roguelikeMapSession.selectedNodeId = nearestNode.id;
             populateNodeList(state, onRedraw);
             renderNodeInspector(state, onRedraw);
             onRedraw();

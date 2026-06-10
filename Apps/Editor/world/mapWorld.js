@@ -2,15 +2,10 @@ import { engine } from "../engine.js";
 import { gridSettings } from "../../../Config/Config.js";
 import { buildGameMapRenderCaches, buildTopologyMapRenderCaches } from "../../../Libraries/Render/map/MapRenderCache.js";
 import { getRoguelikeMapSession, regenerateRoguelikeMap } from "../../../Libraries/WorldGen/session/index.js";
-import { clearTilelabSandbox } from "./tilelabSandbox.js";
-import { resetTilelabGroundZones } from "../groundZones.js";
+import { sandboxController } from "./tilelabSandbox.js";
 import { spawnSandboxBattleGroups } from "./sandboxBattleSpawn.js";
 export function listLabMapNodes(state) {
     return state.mapNodes.map((n) => ({ id: n.id, layer: n.layer, strategy: n.strategy ?? "?" })).sort((a, b) => a.layer - b.layer || a.id - b.id);
-}
-/** @param {import("../state.js").TileLabGameState} state @param {number | null} nodeId */
-export function selectLabNode(state, nodeId) {
-    state.roguelikeMapSession.selectedNodeId = nodeId;
 }
 /** @param {import("../state.js").TileLabGameState} state */
 export function initEmptyTilelabMap(state) {
@@ -33,8 +28,8 @@ export function initEmptyTilelabMap(state) {
     buildGameMapRenderCaches(state);
     buildTopologyMapRenderCaches(state);
     getRoguelikeMapSession(state).selectedNodeId = null;
-    clearTilelabSandbox();
-    resetTilelabGroundZones(state);
+    sandboxController?.clearBodies();
+    state.groundZones = [];
 }
 /**
  * @param {import("../state.js").TileLabGameState} state
@@ -42,15 +37,15 @@ export function initEmptyTilelabMap(state) {
  */
 export function generateTilelabMap(state, { mapSeed, floorSeed }) {
     regenerateRoguelikeMap(state, { mapSeed, floorSeed, generateWorld: (s) => engine.worldGen.generateWorld(s) });
-    clearTilelabSandbox();
+    sandboxController?.clearBodies();
     const bounds = state.obstacleGrid;
     if (bounds.minX !== undefined) state.viewport.snapTo((bounds.minX + bounds.maxX) / 2, (bounds.minY + bounds.maxY) / 2);
-    resetTilelabGroundZones(state);
+    state.groundZones = [];
     spawnSandboxBattleGroups(state);
 }
-/** @param {import("../state.js").TileLabGameState} state */
+/** @param {import("../state.js").TileLabGameState} state @param {number} nodeId */
 export function focusLabNode(state, nodeId) {
-    selectLabNode(state, nodeId);
+    state.roguelikeMapSession.selectedNodeId = nodeId;
     state.currentNodeId = nodeId;
     const node = state.getMapNode(nodeId);
     if (!node) return;

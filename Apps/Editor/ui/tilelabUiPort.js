@@ -3,12 +3,11 @@ import { applySquareCanvasResize } from "../../../Libraries/Canvas/index.js";
 import { initResizer } from "./lab-shared.js";
 import { initAnimationPreview, estimateAnimationPreviewHeight } from "./LabAnimationPreview.js";
 import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEditor.js";
-import { applyLabCanvasSize } from "./labCanvas.js";
-import { registerEditorProfiles, renderTilelabPreview, syncRuntimeLabProfile } from "./preview.js";
-import { readControls, initPresetSelect, initToolbarDefaults, bindToolbarControls, rollRandomTilelabMap, syncPreviewZoomToStage } from "./toolbar.js";
-import { mountLabViewport, refreshLabViewportControls } from "./labViewport.js";
+import { registerEditorProfiles, renderTilelabPreview } from "./preview.js";
+import { initPresetSelect, bindToolbarControls, rollRandomTilelabMap } from "./toolbar.js";
+import { fitLabStageToView, mountLabViewport } from "./labViewport.js";
 import { TILELAB_UI_HTML } from "./shellHtml.js";
-import { bindMapInspectorControls, syncMapInspectorAfterRegen } from "./mapInspector.js";
+import { buildTopologySettingsPanel, syncMapInspectorAfterRegen } from "./mapInspector.js";
 import { initMapTopologyInteractions } from "./mapInteractions.js";
 import { destroyTilelabSandbox, mountTilelabSandbox } from "../world/tilelabSandbox.js";
 import { bindViewModeControls } from "./viewMode.js";
@@ -20,6 +19,8 @@ let bootstrapped = false;
 let animCanvasResize = null;
 /** @type {SquareCanvasResizeHandle | null} */
 let mapCanvasResize = null;
+/** @type {ReturnType<typeof mountLabViewport> | null} */
+let labViewport = null;
 function schedulePreviewRefresh(state, debounceMs) {
     if (previewRefreshTimer != null) clearTimeout(previewRefreshTimer);
     const run = () => refreshPreview(state);
@@ -35,16 +36,16 @@ function schedulePreviewRefresh(state, debounceMs) {
 function runBakeRepaintLoop(state) {
     if (bakeRepaintRaf != null) cancelAnimationFrame(bakeRepaintRaf);
     const tick = () => {
-        renderTilelabPreview(state, readControls(state));
+        renderTilelabPreview(state);
         if (state.worldSurfaces.hasPendingSurfaceBakes()) bakeRepaintRaf = requestAnimationFrame(tick);
         else bakeRepaintRaf = null;
     };
     bakeRepaintRaf = requestAnimationFrame(tick);
 }
 async function refreshPreview(state) {
-    syncMapInspectorAfterRegen(state, () => renderTilelabPreview(state, readControls(state)));
+    syncMapInspectorAfterRegen(state, () => renderTilelabPreview(state));
     await registerEditorProfiles(state);
-    renderTilelabPreview(state, readControls(state));
+    renderTilelabPreview(state);
     runBakeRepaintLoop(state);
 }
 function attachGameCanvas(state) {
@@ -57,8 +58,8 @@ function attachGameCanvas(state) {
 function refreshLabViewportLayout(state) {
     if (mapCanvasResize) mapCanvasResize.setSize(mapCanvasResize.getSize());
     if (animCanvasResize && state.labShowAnimationPreview) animCanvasResize.setSize(animCanvasResize.getSize());
-    syncPreviewZoomToStage(state);
-    renderTilelabPreview(state, readControls(state));
+    fitLabStageToView(state);
+    renderTilelabPreview(state);
 }
 function bootstrapTilelabUi(state) {
     if (bootstrapped) return;
@@ -71,16 +72,17 @@ function bootstrapTilelabUi(state) {
             else schedulePreviewRefresh(state, 300);
         },
     });
-    void syncRuntimeLabProfile();
+    registerEditorProfiles(state);
     const onLabViewChange = () => {
-        renderTilelabPreview(state, readControls(state));
+        renderTilelabPreview(state);
         if (state.worldSurfaces.hasPendingSurfaceBakes()) runBakeRepaintLoop(state);
     };
-    mountLabViewport(state, onLabViewChange);
+    labViewport = mountLabViewport(state, onLabViewChange);
     bindViewModeControls(state, onLabViewChange, () => refreshLabViewportLayout(state));
-    bindMapInspectorControls(state, () => renderTilelabPreview(state, readControls(state)));
-    initMapTopologyInteractions(state, () => renderTilelabPreview(state, readControls(state)));
-    mountTilelabSandbox(state, () => renderTilelabPreview(state, readControls(state)));
+    buildTopologySettingsPanel(state);
+    for (const id of ["showNodesInput", "showRoomZonesInput", "showWallsInput", "showGridBoundsInput", "showPathDebugInput"]) document.getElementById(id).addEventListener("change", onLabViewChange);
+    initMapTopologyInteractions(state, () => renderTilelabPreview(state));
+    mountTilelabSandbox(state, () => renderTilelabPreview(state));
     bindToolbarControls({
         onRefresh: () => schedulePreviewRefresh(state, 0),
         onRandomMap: () => {
@@ -88,12 +90,12 @@ function bootstrapTilelabUi(state) {
             schedulePreviewRefresh(state, 0);
         },
         onStageResize: () => {
-            applyLabCanvasSize(state, state.labCanvas.width, state.labCanvas.height);
-            syncPreviewZoomToStage(state);
-            renderTilelabPreview(state, readControls(state));
+            state.viewport.setCanvasSize(state.labCanvas.width, state.labCanvas.height);
+            fitLabStageToView(state);
+            renderTilelabPreview(state);
         },
     });
-    initToolbarDefaults(state);
+    fitLabStageToView(state);
     const animCanvas = document.getElementById("animationPreviewCanvas");
     animCanvasResize = applySquareCanvasResize(animCanvas, {
         host: document.getElementById("animationPreviewHost"),
@@ -131,19 +133,19 @@ function bootstrapTilelabUi(state) {
             return Math.max(160, Math.floor(Math.min(rect.width, rect.height - controlsH - animH) - 8));
         },
         onResize: (size) => {
-            applyLabCanvasSize(state, size, size);
-            syncPreviewZoomToStage(state);
-            renderTilelabPreview(state, readControls(state));
+            state.viewport.setCanvasSize(size, size);
+            fitLabStageToView(state);
+            renderTilelabPreview(state);
         },
     });
     initResizer("resizer", () => {
-        applyLabCanvasSize(state, state.labCanvas.width, state.labCanvas.height);
-        syncPreviewZoomToStage(state);
-        renderTilelabPreview(state, readControls(state));
+        state.viewport.setCanvasSize(state.labCanvas.width, state.labCanvas.height);
+        fitLabStageToView(state);
+        renderTilelabPreview(state);
     });
     registerEditorProfiles(state).then(() => {
-        syncPreviewZoomToStage(state);
-        syncMapInspectorAfterRegen(state, () => renderTilelabPreview(state, readControls(state)));
+        fitLabStageToView(state);
+        syncMapInspectorAfterRegen(state, () => renderTilelabPreview(state));
         refreshPreview(state);
     });
 }
@@ -160,12 +162,13 @@ export const tilelabUiPort = {
         destroyTilelabSandbox();
         animCanvasResize = null;
         mapCanvasResize = null;
+        labViewport = null;
         bootstrapped = false;
     },
     updateUI({ state }) {
         if (!bootstrapped) return;
-        refreshLabViewportControls(state);
-        renderTilelabPreview(state, readControls(state));
+        labViewport.refresh(state);
+        renderTilelabPreview(state);
         if (state.worldSurfaces.hasPendingSurfaceBakes()) runBakeRepaintLoop(state);
     },
 };

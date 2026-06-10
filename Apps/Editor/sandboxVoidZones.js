@@ -1,6 +1,4 @@
-import { pickupStates } from "../../Entities/PickupStates.js";
-import { voidSinkPickupStates } from "../../Entities/pickupVoidSinkState.js";
-import { processGroundZones, isGroundZoneInView } from "../../Libraries/Spatial/zones/groundZones.js";
+import { drawGroundZone, isGroundZoneInView, processGroundZones } from "../../Libraries/Spatial/zones/groundZones.js";
 import { createVoidZone, drawVoidZone, isInsideVoidMouth, voidMouthReach } from "../../Libraries/Spatial/zones/voidZone.js";
 import { NEIGHBOR_QUERY_PAD } from "../../Libraries/Spatial/collision/entityBroadphase.js";
 /** @param {import("./state.js").TileLabGameState} state */
@@ -12,12 +10,6 @@ export function ensureSandboxVoidZones(state) {
         const pad = NEIGHBOR_QUERY_PAD;
         zone.aabb = { minX: zone.x - radius - pad, minY: zone.y - radius - pad, maxX: zone.x + radius + pad, maxY: zone.y + radius + pad };
     }
-}
-export function registerSandboxVoidPickupStates() {
-    Object.assign(pickupStates, voidSinkPickupStates);
-}
-export function unregisterSandboxVoidPickupStates() {
-    delete pickupStates.voidSink;
 }
 /** @param {object} pickup @param {ReturnType<typeof createVoidZone>} zone */
 function beginVoidSink(pickup, zone) {
