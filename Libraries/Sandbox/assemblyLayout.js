@@ -23,7 +23,9 @@ function resolveAssemblyPads(pads, play) {
         } else if (entry.preset === "button") {
             if (entry.radiusU == null) throw new Error(`Button pad "${entry.id}" missing radiusU`);
             resolved.radius = entry.radiusU * playW;
-            resolved.target = entry.target;
+            resolved.targets = entry.targets?.length ? entry.targets : entry.target ? [entry.target] : [];
+            if (entry.inputMode != null) resolved.inputMode = entry.inputMode;
+            if (entry.massThreshold != null) resolved.massThreshold = entry.massThreshold;
         }
         return resolved;
     });

@@ -19,8 +19,15 @@ export function spawnAssemblyPads(state, layout, { groupId, resolvedId, groupFie
             options.forceY = entry.forceY;
         } else if (entry.preset === "button") {
             options.radius = entry.radius;
-            const pickupId = pickupIdByManifestId.get(entry.target);
-            if (pickupId != null) options.buttonLinks = [{ type: "pickup", id: pickupId }];
+            if (entry.inputMode != null) options.inputMode = entry.inputMode;
+            if (entry.massThreshold != null) options.massThreshold = entry.massThreshold;
+            /** @type {import("./sandboxPadLinks.js").ButtonLinkTarget[]} */
+            const buttonLinks = [];
+            for (let t = 0; t < entry.targets.length; t++) {
+                const pickupId = pickupIdByManifestId.get(entry.targets[t]);
+                if (pickupId != null) buttonLinks.push({ type: "pickup", id: pickupId });
+            }
+            options.buttonLinks = buttonLinks;
         }
         const pad = buildSandboxPad(state, entry.preset, entry.x, entry.y, options);
         stampAssemblyGroupMember(pad, groupId, resolvedId, groupField);

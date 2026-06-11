@@ -50,7 +50,10 @@
  * @property {number} [height] — pull rect height
  * @property {number} [forceX] — pull override
  * @property {number} [forceY] — pull override
- * @property {string} [target] — button: assembly pickup id to fire at
+ * @property {string} [target] — button: single assembly pickup id (use targets for several)
+ * @property {string[]} [targets] — button: assembly pickup ids to wire
+ * @property {"tap" | "hold" | "massTap" | "massHold"} [inputMode]
+ * @property {number} [massThreshold]
  * @property {number} [radiusU] — button: radius as playfield width fraction
  */
 /**
