@@ -77,7 +77,6 @@ export const engine = {
         ],
     },
     worldGen: {
-        nodeWorldCoordScale: 1,
         strategies: {},
         generateWorld() {},
         getPlayBounds(state) {

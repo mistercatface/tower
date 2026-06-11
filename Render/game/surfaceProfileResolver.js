@@ -4,17 +4,6 @@ import { getSurfaceProfileProvider } from "../../Libraries/Procedural/SurfacePro
 /** @typedef {import("../../GameState/GameState.js").GameState} GameState */
 export function resolveSurfaceProfileAtCoords(state, x, y) {
     if (state.worldSurfaces.surfaceProfileOverride) return state.worldSurfaces.surfaceProfileOverride;
-    let closestNode = null;
-    let minDist = Infinity;
-    for (const node of state.mapNodes) {
-        const coords = state.getNodeWorldCoords(node);
-        const dist = Math.hypot(x - coords.x, y - coords.y);
-        if (dist < minDist) {
-            minDist = dist;
-            closestNode = node;
-        }
-    }
-    if (closestNode?.surfaceProfileId) return closestNode.surfaceProfileId;
     return getSurfaceProfileProvider().defaultId;
 }
 /** @param {GameState} state @param {number} x @param {number} y @param {number} zLevel */

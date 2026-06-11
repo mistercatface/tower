@@ -17,7 +17,7 @@ import { resolveSandboxPathVisual, setSandboxPathVisual } from "./sandboxPathVis
  * @property {(pickup: object, e: PointerEvent) => void} onPointerUp
  * @property {(pickup: object, dt: number, host: SandboxHostPort) => void} [tick]
  * @property {(ctx: CanvasRenderingContext2D, pickup: object, host: SandboxHostPort) => void} [drawOverlay]
- * @property {(pickup: object, host: SandboxHostPort) => import("../../Render/map/topology/drawActivePathOverlay.js").ActivePathOverlay | null} [getPathOverlay]
+ * @property {(pickup: object, host: SandboxHostPort) => import("../../Render/map/drawActivePathOverlay.js").ActivePathOverlay | null} [getPathOverlay]
  * @property {() => void} [reset]
  */
 /**

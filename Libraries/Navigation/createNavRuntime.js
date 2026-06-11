@@ -12,10 +12,8 @@ export const navigationSettings = {
     pathWaypointArrival: 10,
     hpaDamagePadding: 12,
 };
-/**
- * @param {import("../../GameState/SharedGameState.js").SharedGameState} state
- */
-export function createRoguelikeNavRuntime(state) {
+/** @param {import("../../GameState/SharedGameState.js").SharedGameState} state */
+export function createNavRuntime(state) {
     state.flowFieldGrid = new FlowFieldGrid(gridSettings.cellSize, gridSettings.width, gridSettings.height, state.obstacleGrid, FLOW_FIELD_WORKER_URL);
     state.navigation = new NavigationService(state.flowFieldGrid, state.hierarchicalNavigator, navigationSettings);
 }

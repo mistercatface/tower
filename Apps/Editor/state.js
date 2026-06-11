@@ -1,14 +1,14 @@
 import { getGameState } from "../../GameState/GameState.js";
 import { createCombatWallResolver } from "../../Systems/Motion/createCombatWallResolver.js";
 import { SharedGameState } from "../../GameState/SharedGameState.js";
-import { createRoguelikeNavRuntime } from "../../Libraries/Navigation/createRoguelikeNavRuntime.js";
+import { createNavRuntime } from "../../Libraries/Navigation/createNavRuntime.js";
 import { Viewport } from "../../Libraries/Viewport/Viewport.js";
 export const LAB_PREVIEW_RANGE = 160;
 export const TILELAB_SANDBOX_SPAWN_PROP = "beach_ball";
 export class TileLabGameState extends SharedGameState {
     constructor() {
         super();
-        createRoguelikeNavRuntime(this);
+        createNavRuntime(this);
         const rand = Math.floor(1 + Math.random() * 1000000000);
         this.mapSeed = rand;
         this.floorSeed = rand;

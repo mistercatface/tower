@@ -1,4 +1,4 @@
-import { drawActivePathOverlay } from "../Render/map/topology/drawActivePathOverlay.js";
+import { drawActivePathOverlay } from "../Render/map/drawActivePathOverlay.js";
 import { resolveSandboxPathVisual } from "./sandboxPathVisual.js";
 /**
  * @param {CanvasRenderingContext2D} ctx

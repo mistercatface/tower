@@ -17,9 +17,7 @@ export function resolveProceduralDesignConfig(definition) {
     const raw = definition?.proceduralDesign;
     if (!raw) return null;
     const shorthand = raw.surfaceProfileId;
-    const startKey = definition?.worldGen?.startNodeStrategyKey;
     const strategyMap = { ...raw.surfaceProfileByStrategy };
-    if (shorthand && startKey && !strategyMap[startKey]) strategyMap[startKey] = shorthand;
     return {
         startSurfaceProfileId: raw.startSurfaceProfileId ?? shorthand ?? null,
         defaultSurfaceProfileId: raw.defaultSurfaceProfileId ?? shorthand ?? null,

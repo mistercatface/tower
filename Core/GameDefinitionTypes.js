@@ -40,25 +40,12 @@
  * @property {(state: object, viewport: object, ctx: CanvasRenderingContext2D, renderer: import("../Render/Render.js").Renderer) => void} [drawPostSimulation]
  */
 /**
- * @typedef {object} StartLayout
- * @property {number} spawnX
- * @property {number} spawnY
- * @property {number} [spawnClearRadius]
- * @property {number} [guardFaceX]
- * @property {number} [guardFaceY]
- * @property {Record<string, { x: number, y: number }>} [spawnSlots]
- */
-/**
  * @typedef {{ minX: number, minY: number, maxX: number, maxY: number }} WorldPlayBounds
  */
 /**
  * @typedef {object} WorldGenPort
  * @property {(state: object) => void} generateWorld
  * @property {(state: object) => WorldPlayBounds | null} getPlayBounds
- * @property {number} nodeWorldCoordScale
- * @property {number} [startMapNodeId]
- * @property {(px: number, py: number, cellSize: number) => StartLayout} getStartLayout
- * @property {boolean} [skipStartPickups]
  * @property {Record<string, import("./GameDefinitionTypes.js").WorldGenStrategy>} [strategies]
  */
 /**
