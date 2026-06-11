@@ -5,6 +5,7 @@ import { voidSinkPickupStates } from "../../../Entities/pickupVoidSinkState.js";
 import {
     createCueStrikeBehavior,
     createDragLaunchBehavior,
+    createDragLaunchFacingBehavior,
     createDragLaunchWaitBehavior,
     createRollToCursorDirectBehavior,
     createRollToCursorHpaBehavior,
@@ -51,6 +52,7 @@ export function mountTilelabSandbox(state, requestRedraw) {
         behaviors: [
             createDragLaunchBehavior(),
             createDragLaunchWaitBehavior(),
+            createDragLaunchFacingBehavior(),
             createFlipperBehavior(),
             createCueStrikeBehavior(),
             createShootBehavior(),
