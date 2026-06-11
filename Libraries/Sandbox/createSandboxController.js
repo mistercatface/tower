@@ -1,7 +1,7 @@
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { bindCanvasPointers, releasePointerCapture } from "./bindCanvasPointers.js";
 import { findPickupAt } from "./findPickupAt.js";
-import { createSandboxSession, SANDBOX_SPAWN_ASSEMBLY_PREFIX, SANDBOX_SPAWN_VOID } from "./sandboxSession.js";
+import { createSandboxSession, SANDBOX_SPAWN_ASSEMBLY_PREFIX, SANDBOX_SPAWN_PRESSURE_PLATE, SANDBOX_SPAWN_VOID } from "./sandboxSession.js";
 import { resolveSandboxBehaviors } from "./sandboxCapabilities.js";
 import { drawSandboxLaserSights } from "./drawLaserSights.js";
 import { drawActivePathOverlay } from "../Render/map/drawActivePathOverlay.js";
@@ -42,7 +42,7 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
     let unbindPointers = null;
     const spawnAsset = () => {
         const spawnId = session.getSpawnPropId();
-        if (spawnId === SANDBOX_SPAWN_VOID || spawnId.startsWith(SANDBOX_SPAWN_ASSEMBLY_PREFIX)) return null;
+        if (spawnId === SANDBOX_SPAWN_VOID || spawnId === SANDBOX_SPAWN_PRESSURE_PLATE || spawnId.startsWith(SANDBOX_SPAWN_ASSEMBLY_PREFIX)) return null;
         return getPropAsset(spawnId);
     };
     /** @param {string} id @param {string[]} allowed */
@@ -179,6 +179,8 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
         },
         listAssemblyManifests: () => session.listAssemblyManifests(),
         deleteVoidZoneById: (id) => session.deleteVoidZoneById(id),
+        deletePressurePlateById: (id) => session.deletePressurePlateById(id),
+        listPressurePlates: () => session.listPressurePlates(),
         deleteAssemblyById: (id) => session.deleteAssemblyById(id),
         listVoidZones: () => session.listVoidZones(),
         listAssemblies: () => session.listAssemblies(),

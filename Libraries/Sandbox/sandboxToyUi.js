@@ -3,7 +3,7 @@ import { SANDBOX_DEFAULT_FACTION, SANDBOX_FACTION_OPTIONS, formatSandboxFactionL
 import { getSandboxBehaviorLabel, isSandboxEquippable, isSandboxSpawnable } from "./sandboxCapabilities.js";
 import { renderSandboxEquipPanel } from "./sandboxEquipPanel.js";
 import { SANDBOX_PATH_VISUAL_LABELS, SANDBOX_PATH_VISUAL_OPTIONS } from "./sandboxPathVisual.js";
-import { SANDBOX_SPAWN_VOID, sandboxSpawnAssemblyId } from "./sandboxSession.js";
+import { SANDBOX_SPAWN_VOID, SANDBOX_SPAWN_PRESSURE_PLATE, sandboxSpawnAssemblyId } from "./sandboxSession.js";
 function readOpenSections(root) {
     const open = new Set();
     for (const el of root.querySelectorAll("details[data-sandbox-section]")) if (el.open) open.add(el.dataset.sandboxSection);
@@ -107,6 +107,7 @@ function buildSpawnOptions(propIds, assemblyManifests) {
         options.push({ value: sandboxSpawnAssemblyId(manifest.id), label: manifest.label });
     }
     if (!options.some((option) => option.value === SANDBOX_SPAWN_VOID)) options.push({ value: SANDBOX_SPAWN_VOID, label: "Void" });
+    options.push({ value: SANDBOX_SPAWN_PRESSURE_PLATE, label: "Pressure plate" });
     return options;
 }
 /**
@@ -178,6 +179,7 @@ export function mountSandboxToyUi(container, controller, onChange) {
         });
         const placed = controller.listPlacedPickups();
         const voidZones = controller.listVoidZones?.() ?? [];
+        const pressurePlates = controller.listPressurePlates?.() ?? [];
         const assemblies = controller.listAssemblies?.() ?? [];
         appendSection(container, "scene", "Scene", sectionOpen("scene"), (body) => {
             appendSubhead(body, "Pickups");
@@ -196,6 +198,14 @@ export function mountSandboxToyUi(container, controller, onChange) {
                 appendEntityList(
                     body,
                     voidZones.map((entry) => ({ label: `${entry.label} · r${entry.radius}`, onDelete: () => controller.deleteVoidZoneById(entry.id) })),
+                    "",
+                );
+            }
+            if (pressurePlates.length > 0) {
+                appendSubhead(body, "Pressure plates");
+                appendEntityList(
+                    body,
+                    pressurePlates.map((entry) => ({ label: `${entry.label} · r${entry.radius}`, onDelete: () => controller.deletePressurePlateById(entry.id) })),
                     "",
                 );
             }

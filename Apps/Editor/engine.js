@@ -24,6 +24,7 @@ import { TileLabGameState } from "./state.js";
 import { tilelabGroundZoneEffectPass, tickTilelabGroundZones } from "./groundZones.js";
 import { sandboxVoidZoneEffectPass, tickSandboxVoidZones } from "./sandboxVoidZones.js";
 import { sandboxGravityZoneEffectPass, tickSandboxGravityZones } from "./sandboxGravityZones.js";
+import { pressurePlateEffectPass, tickPressurePlates } from "../../Libraries/Sandbox/pressurePlate.js";
 import { sandboxController } from "./world/tilelabSandbox.js";
 import { tickSandboxCameraFollow } from "../../Libraries/Sandbox/sandboxCameraTarget.js";
 import { fitLabStageToView } from "./ui/labViewport.js";
@@ -53,6 +54,7 @@ function runSimulationTick(state, dt) {
     RagdollCorpse.updateAll(state, simDt, spatialFrame);
     dispatchSimulationEvents(simulationEvents, state);
     tickSandboxVoidZones(state, spatialFrame);
+    tickPressurePlates(state, spatialFrame);
     tickTilelabGroundZones(state, spatialFrame);
     FloatingText.updateAll(state, simDt);
 }
@@ -70,6 +72,7 @@ export const engine = {
         drawPostSimulation: (state, viewport, ctx) => CombatParticles.renderAll(ctx, state, viewport),
         simulationEffectPasses: [
             sandboxVoidZoneEffectPass,
+            pressurePlateEffectPass,
             sandboxGravityZoneEffectPass,
             tilelabGroundZoneEffectPass,
             {

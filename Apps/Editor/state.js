@@ -30,10 +30,9 @@ export class TileLabGameState extends SharedGameState {
         this.viewport = new Viewport(0, 0, 1);
         this.labCanvas = null;
         this.groundZones = [];
-        /** @type {ReturnType<import("../../Libraries/Spatial/zones/voidZone.js").createVoidZone>[]} */
         this.sandboxVoidZones = [];
-        /** @type {ReturnType<import("../../Libraries/Spatial/zones/groundZones.js").createGravityZone>[]} */
         this.sandboxGravityZones = [];
+        this.sandboxPressurePlates = [];
         this.sandboxSurfaceProfileZones = [];
         this.sandboxAssemblyGuides = [];
         this.sandboxAssemblyInstances = [];

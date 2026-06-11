@@ -16,7 +16,7 @@ function spawnIncludes(spawnSteps, names) {
     return false;
 }
 /** @param {object} state @param {object} wall */
-function removeSandboxWall(state, wall) {
+export function removeSandboxWall(state, wall) {
     const idx = state.walls.indexOf(wall);
     if (idx >= 0) state.walls.splice(idx, 1);
     state.wallSpatialIndex?.remove(wall);
@@ -29,7 +29,7 @@ function removeSandboxWall(state, wall) {
     state.worldSurfaces?.invalidateRoofs();
 }
 /** @param {object} state @param {object[]} walls @param {{ compileRender?: boolean }} [options] */
-function addSandboxWalls(state, walls, { compileRender = true } = {}) {
+export function addSandboxWalls(state, walls, { compileRender = true } = {}) {
     const scene = state.worldSurfaces?.renderScene;
     const defaultWallHeight = getWallHeight(getGameWorldSurfaceSettings());
     const gridMinX = state.obstacleGrid.minX;
