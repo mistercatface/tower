@@ -33,10 +33,6 @@ export function removeSandboxWalls(state, walls, { notifyNavigation = true } = {
     if (damageBounds && notifyNavigation) state.navigation.onObstaclesChanged(damageBounds);
     if (walls.length) state.worldSurfaces.invalidateRoofs();
 }
-/** @param {object} state @param {object} wall */
-export function removeSandboxWall(state, wall) {
-    removeSandboxWalls(state, [wall]);
-}
 /** @param {object} state @param {object[]} walls @param {{ compileRender?: boolean, notifyNavigation?: boolean }} [options] */
 export function addSandboxWalls(state, walls, { compileRender = true, notifyNavigation = true } = {}) {
     const scene = state.worldSurfaces.renderScene;
@@ -76,7 +72,7 @@ function clearWallsInBounds(state, bounds) {
         if (wall.isDead || !wallCenterInsideBounds(wall, bounds)) continue;
         toRemove.push(wall);
     }
-    for (let i = 0; i < toRemove.length; i++) removeSandboxWall(state, toRemove[i]);
+    if (toRemove.length) removeSandboxWalls(state, toRemove);
 }
 /** @param {object} state @param {ReturnType<typeof buildAssemblyLayout>} layout @param {import("./assemblies/assemblyManifest.js").ResolvedAssemblyManifest} resolved @param {string} groupId @param {string} groupField */
 function registerAssemblyPlayfieldSurface(state, layout, resolved, groupId, groupField) {
@@ -174,7 +170,12 @@ export function deleteAssemblyInstance(state, groupId, groupField) {
         state.sandboxSurfaceProfileZones.splice(z, 1);
     }
     for (let z = state.sandboxAssemblyGuides.length - 1; z >= 0; z--) if (entityBelongsToAssemblyGroup(state.sandboxAssemblyGuides[z], groupId, groupField)) state.sandboxAssemblyGuides.splice(z, 1);
-    for (let i = state.walls.length - 1; i >= 0; i--) if (entityBelongsToAssemblyGroup(state.walls[i], groupId, groupField)) removeSandboxWall(state, state.walls[i]);
+    const wallsToRemove = [];
+    for (let i = state.walls.length - 1; i >= 0; i--) {
+        const wall = state.walls[i];
+        if (entityBelongsToAssemblyGroup(wall, groupId, groupField)) wallsToRemove.push(wall);
+    }
+    removeSandboxWalls(state, wallsToRemove);
     for (let z = state.sandboxPads.length - 1; z >= 0; z--) {
         const pad = state.sandboxPads[z];
         if (entityBelongsToAssemblyGroup(pad, groupId, groupField)) deleteSandboxPad(state, pad.id);
