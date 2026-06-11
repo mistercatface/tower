@@ -1,11 +1,10 @@
 import { getPropAsset } from "../../Props/PropCatalog.js";
 import { PolygonShape } from "../../Spatial/collision/Shapes.js";
 import { quantizeAngleIndex } from "../../Canvas/viewQuantize.js";
+import { FLIPPER_LAYOUT } from "../../../Assets/props/flipper/flipperShared.js";
 export const FLIPPER_BEHAVIOR_ID = "flipper";
 const SWING_SPEED_RAD = 20;
 const RETURN_SPEED_RAD = 8;
-const PIVOT_RADIUS = 5;
-const BUTTON_RADIUS = 13;
 const FLIPPER_ANGLE_STEPS = 24;
 /** @param {object} pickup */
 export function isFlipperPickup(pickup) {
@@ -15,28 +14,66 @@ export function isFlipperPickup(pickup) {
 function flipperConfig(asset) {
     return asset?.flipper ?? {};
 }
+/** @param {object} cfg @param {number | null} playW */
+function resolveFlipperDims(cfg, playW) {
+    const u = (key, fallback) => (playW != null ? playW * (cfg[key] ?? FLIPPER_LAYOUT[key] ?? fallback) : fallback);
+    const length = u("lengthU", 16);
+    const width = u("widthU", 4);
+    return {
+        length,
+        width,
+        height: u("heightU", 5),
+        pivotRadius: u("pivotU", 2.5),
+        buttonGap: u("buttonGapU", 3.2),
+        buttonYOffset: u("buttonYOffsetU", 0),
+        buttonRadius: u("buttonRadiusU", 3.6),
+    };
+}
+/**
+ * @param {object} pickup
+ * @param {ReturnType<typeof import("../assemblyLayout.js").buildAssemblyLayout>} layout
+ * @param {object} asset
+ */
+export function applyFlipperAssemblyScale(pickup, layout, asset) {
+    const cfg = flipperConfig(asset);
+    const playW = layout.play.maxX - layout.play.minX;
+    pickup._flipperPlayfieldWidth = playW;
+    const { length, width } = resolveFlipperDims(cfg, playW);
+    pickup.halfExtents = { x: length / 2, y: width / 2 };
+    pickup.radius = Math.max(pickup.halfExtents.x, pickup.halfExtents.y);
+    pickup.strategy.propPixelSize = Math.max(length, width * 2);
+    pickup._flipperShapeKey = null;
+}
 /** @param {object} pickup @param {object} asset */
 export function getFlipperSpec(pickup, asset) {
     const cfg = flipperConfig(asset);
+    const playW = pickup._flipperPlayfieldWidth ?? null;
+    const dims = resolveFlipperDims(cfg, playW);
     return {
+        playfieldWidth: playW,
         side: cfg.side ?? "left",
         extendDir: cfg.extendDir ?? 1,
-        length: cfg.length ?? 32,
-        width: cfg.width ?? 8,
+        length: dims.length,
+        width: dims.width,
+        height: dims.height,
+        pivotRadius: dims.pivotRadius,
         restAngle: pickup._flipperRestAngle ?? cfg.restAngle ?? 0.45,
         activeAngle: pickup._flipperActiveAngle ?? cfg.activeAngle ?? -0.55,
         buttonOutside: cfg.buttonOutside ?? -1,
-        buttonGap: cfg.buttonGap ?? 14,
-        buttonYOffset: cfg.buttonYOffset ?? 0,
+        buttonGap: dims.buttonGap,
+        buttonYOffset: dims.buttonYOffset,
+        buttonRadius: dims.buttonRadius,
     };
 }
 /** @param {object} prop */
 export function getFlipperSpriteCacheKey(prop) {
     const asset = getPropAsset(prop.type);
     const cfg = flipperConfig(asset);
+    const spec = getFlipperSpec(prop, asset);
     const angle = prop._flipperAngle ?? cfg.restAngle ?? 0.45;
     const active = prop._flipperTarget === "active" || prop._flipperButtonPressed ? 1 : 0;
-    return `${cfg.side ?? "left"}_a${quantizeAngleIndex(angle, FLIPPER_ANGLE_STEPS)}_${active}`;
+    const pw = spec.playfieldWidth != null ? Math.round(spec.playfieldWidth) : 0;
+    return `${cfg.side ?? "left"}_pw${pw}_L${Math.round(spec.length)}_a${quantizeAngleIndex(angle, FLIPPER_ANGLE_STEPS)}_${active}`;
 }
 /** @param {object} prop */
 export function syncFlipperCollisionShape(prop) {
@@ -73,10 +110,12 @@ function getButtonPosition(pickup, asset) {
     const spec = getFlipperSpec(pickup, asset);
     const rest = spec.restAngle;
     const halfW = spec.width * 0.5;
+    const pivotR = spec.pivotRadius;
     const tipX = Math.cos(rest) * spec.length * spec.extendDir;
-    const paddleLeft = Math.min(-PIVOT_RADIUS, tipX - halfW);
-    const paddleRight = Math.max(PIVOT_RADIUS, tipX + halfW);
-    const xOffset = spec.buttonOutside < 0 ? paddleLeft - spec.buttonGap - BUTTON_RADIUS : paddleRight + spec.buttonGap + BUTTON_RADIUS;
+    const paddleLeft = Math.min(-pivotR, tipX - halfW);
+    const paddleRight = Math.max(pivotR, tipX + halfW);
+    const btnR = spec.buttonRadius;
+    const xOffset = spec.buttonOutside < 0 ? paddleLeft - spec.buttonGap - btnR : paddleRight + spec.buttonGap + btnR;
     return { x: pickup.x + xOffset, y: pickup.y + spec.buttonYOffset };
 }
 /** @param {object} pickup @param {number} wx @param {number} wy */
@@ -85,7 +124,8 @@ function hitFlipButton(pickup, wx, wy) {
     if (!asset) return false;
     initFlipperAngle(pickup, asset);
     const btn = getButtonPosition(pickup, asset);
-    return Math.hypot(wx - btn.x, wy - btn.y) <= BUTTON_RADIUS + 4;
+    const spec = getFlipperSpec(pickup, asset);
+    return Math.hypot(wx - btn.x, wy - btn.y) <= spec.buttonRadius + 4;
 }
 /** @param {object} pickup */
 function activateFlipper(pickup) {
@@ -121,11 +161,11 @@ function drawFlipperButton(ctx, pickup) {
     initFlipperAngle(pickup, asset);
     const btn = getButtonPosition(pickup, asset);
     const pressed = pickup._flipperButtonPressed || pickup._flipperTarget === "active";
-    drawArcadeButton(ctx, btn.x, btn.y, pressed);
+    drawArcadeButton(ctx, btn.x, btn.y, pressed, getFlipperSpec(pickup, asset).buttonRadius);
 }
 /** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {boolean} pressed */
-function drawArcadeButton(ctx, x, y, pressed) {
-    const r = BUTTON_RADIUS;
+function drawArcadeButton(ctx, x, y, pressed, radius) {
+    const r = radius;
     const lineScale = 1 / Math.max(0.001, ctx.getTransform().a);
     ctx.save();
     ctx.translate(x, y);

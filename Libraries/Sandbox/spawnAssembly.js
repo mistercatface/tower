@@ -13,6 +13,7 @@ import { stampAssemblyGroupMember, entityBelongsToAssemblyGroup } from "./assemb
 import { createAssemblySurfaceZone } from "./assemblySurfaceDraw.js";
 import { eagerBakeAssemblySurfaceFlipbook, releaseAssemblySurfaceFlipbook } from "./assemblySurfaceBake.js";
 import { requestUiUpdate } from "../../Core/EventSystem.js";
+import { applyFlipperAssemblyScale } from "./behaviors/flipperBehavior.js";
 /** @param {import("./assemblies/assemblyManifest.js").ResolvedAssemblyManifest} resolved @param {string} propId */
 function assemblyIncludesProp(resolved, propId) {
     if (!resolved.props.length) return true;
@@ -116,6 +117,8 @@ function spawnManifestPickups(host, layout, resolved, { faction, groupId, rackId
         pickup.faction = faction;
         pickup.assemblyRackId = rackId;
         stampAssemblyGroupMember(pickup, groupId, resolved.id, groupField);
+        const asset = getPropAsset(entry.prop);
+        if (asset?.flipper) applyFlipperAssemblyScale(pickup, layout, asset);
         const behavior = resolved.behaviors[entry.prop];
         if (behavior) pickup.sandboxBehaviorOverrides = behavior;
         wakePushableBody(pickup);

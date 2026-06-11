@@ -60,11 +60,10 @@ function buildFlipperPaddleMesh(length, halfW, height, pivotRadius, facing, exte
 export function drawFlipperPaddle(ctx, prop, px, py, options) {
     const asset = getPropAsset(prop.type);
     const spec = getFlipperSpec(prop, asset);
-    const world = options.world ?? options;
-    const length = world.length ?? spec.length;
-    const halfW = (world.width ?? spec.width) * 0.5;
-    const height = world.height ?? 10;
-    const pivotRadius = world.pivotRadius ?? 5;
+    const length = spec.length;
+    const halfW = spec.width * 0.5;
+    const height = spec.height;
+    const pivotRadius = spec.pivotRadius;
     const angle = prop._flipperAngle ?? spec.restAngle;
     const colors = options.colors;
     const stroke = colors.stroke ?? "#263238";

@@ -17,7 +17,7 @@ export function tickSandboxGravityZones(state, spatialFrame, dt) {
         if (forceX === 0 && forceY === 0) continue;
         for (const entityId of zone._occupants) {
             const pickup = state.pickups.find((p) => p.id === entityId);
-            if (!pickup || pickup.isDead) continue;
+            if (!pickup || pickup.isDead || pickup.strategy?.gravityImmune) continue;
             wakePushableBody(pickup);
             if (pickup.isSleeping) continue;
             pickup.vx += forceX * dtSec;
