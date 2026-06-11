@@ -5,6 +5,16 @@ import { createVoidZone, DEFAULT_VOID_RADIUS } from "../Spatial/zones/voidZone.j
 import { spawnAssembly, deleteAssemblyInstance, clearAssemblyInstances } from "./spawnAssembly.js";
 import { getAssemblyManifest, listAssemblyManifests } from "./assemblies/assemblyRegistry.js";
 /** @typedef {import("./SandboxHostPort.js").SandboxHostPort} SandboxHostPort */
+export const SANDBOX_SPAWN_VOID = "void";
+export const SANDBOX_SPAWN_ASSEMBLY_PREFIX = "assembly:";
+/** @param {string} assemblyId */
+export function sandboxSpawnAssemblyId(assemblyId) {
+    return `${SANDBOX_SPAWN_ASSEMBLY_PREFIX}${assemblyId}`;
+}
+/** @param {string} spawnId */
+export function isSandboxSpawnPropId(spawnId) {
+    return spawnId !== SANDBOX_SPAWN_VOID && !spawnId.startsWith(SANDBOX_SPAWN_ASSEMBLY_PREFIX);
+}
 /**
  * @param {SandboxHostPort} host
  * @param {{ defaultSpawnPropId: string }} options
@@ -28,7 +38,7 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
         }
     };
     const spawnAt = (worldX, worldY) => {
-        if (!getPropAsset(spawnPropId)) return null;
+        if (!isSandboxSpawnPropId(spawnPropId) || !getPropAsset(spawnPropId)) return null;
         const prop = new Pickup(worldX, worldY, spawnPropId, 0);
         prop.faction = spawnFaction;
         host.addPickup(prop);
@@ -66,6 +76,8 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
         spawnAt,
         spawnAtCameraOrigin() {
             const origin = host.getCameraOrigin();
+            if (spawnPropId === SANDBOX_SPAWN_VOID) return spawnVoidAt(origin.x, origin.y);
+            if (spawnPropId.startsWith(SANDBOX_SPAWN_ASSEMBLY_PREFIX)) return this.spawnAssemblyAt(origin.x, origin.y, spawnPropId.slice(SANDBOX_SPAWN_ASSEMBLY_PREFIX.length));
             return spawnAt(origin.x, origin.y);
         },
         spawnVoidAt,

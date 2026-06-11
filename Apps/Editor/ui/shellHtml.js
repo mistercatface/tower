@@ -34,9 +34,8 @@ export const TILELAB_UI_HTML = `
             <div class="editor-panels-stack">
                 <div id="sandboxPanel" class="editor-panel-section is-visible" data-panel="sandbox">
                     <div class="editor-panel-head">Sandbox</div>
-                    <div class="editor-panel-body sandbox-panel-body">
+                    <div class="editor-panel-body sandbox-panel-body editor-scroll">
                         <div id="sandboxToyPanel"></div>
-                        <p class="editor-hint">Add at camera · select a toy to interact · drag to launch · delete from list or right-click</p>
                     </div>
                 </div>
                 <div id="surfaceEditorPanel" class="editor-panel-section is-visible" data-panel="profile">

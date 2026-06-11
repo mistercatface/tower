@@ -3,23 +3,111 @@ import { SANDBOX_DEFAULT_FACTION, SANDBOX_FACTION_OPTIONS, formatSandboxFactionL
 import { getSandboxBehaviorLabel, isSandboxEquippable, isSandboxSpawnable } from "./sandboxCapabilities.js";
 import { renderSandboxEquipPanel } from "./sandboxEquipPanel.js";
 import { SANDBOX_PATH_VISUAL_LABELS, SANDBOX_PATH_VISUAL_OPTIONS } from "./sandboxPathVisual.js";
-function appendFactionSelect(parent, { value, onChange }) {
+import { SANDBOX_SPAWN_VOID, sandboxSpawnAssemblyId } from "./sandboxSession.js";
+function readOpenSections(root) {
+    const open = new Set();
+    for (const el of root.querySelectorAll("details[data-sandbox-section]")) if (el.open) open.add(el.dataset.sandboxSection);
+    return open;
+}
+/** @param {HTMLElement} parent @param {string} id @param {string} title @param {boolean} defaultOpen @param {(body: HTMLElement) => void} build */
+function appendSection(parent, id, title, defaultOpen, build) {
+    const details = document.createElement("details");
+    details.className = "editor-block";
+    details.dataset.sandboxSection = id;
+    details.open = defaultOpen;
+    const summary = document.createElement("summary");
+    summary.textContent = title;
+    details.appendChild(summary);
+    const body = document.createElement("div");
+    build(body);
+    details.appendChild(body);
+    parent.appendChild(details);
+    return details;
+}
+function appendSubhead(parent, text) {
+    const head = document.createElement("div");
+    head.className = "editor-subhead";
+    head.textContent = text;
+    parent.appendChild(head);
+}
+function appendSelectField(parent, labelText, { value, options, onChange }) {
     const field = document.createElement("div");
     field.className = "param-field";
     const label = document.createElement("span");
-    label.textContent = "Team";
+    label.textContent = labelText;
     const select = document.createElement("select");
-    for (const option of SANDBOX_FACTION_OPTIONS) {
+    for (const option of options) {
         const el = document.createElement("option");
-        el.value = option.id;
+        el.value = option.value;
         el.textContent = option.label;
         select.appendChild(el);
     }
-    select.value = value ?? SANDBOX_DEFAULT_FACTION;
+    select.value = value;
     select.addEventListener("change", () => onChange(select.value));
     field.append(label, select);
     parent.appendChild(field);
     return select;
+}
+/**
+ * @param {HTMLElement} parent
+ * @param {Array<{ label: string, selected?: boolean, onSelect?: () => void, onDelete: () => void }>} entries
+ * @param {string} emptyText
+ */
+function appendEntityList(parent, entries, emptyText) {
+    const list = document.createElement("div");
+    list.className = "toy-instance-list";
+    if (entries.length === 0) {
+        const empty = document.createElement("p");
+        empty.className = "editor-hint";
+        empty.textContent = emptyText;
+        list.appendChild(empty);
+    } else
+        for (const entry of entries) {
+            const row = document.createElement("div");
+            row.className = `toy-instance-row${entry.selected ? " selected" : ""}`;
+            if (entry.onSelect) {
+                const selectBtn = document.createElement("button");
+                selectBtn.type = "button";
+                selectBtn.className = "toy-select-btn";
+                selectBtn.textContent = entry.label;
+                selectBtn.addEventListener("click", entry.onSelect);
+                row.appendChild(selectBtn);
+            } else {
+                const label = document.createElement("span");
+                label.className = "toy-select-btn";
+                label.textContent = entry.label;
+                row.appendChild(label);
+            }
+            const deleteBtn = document.createElement("button");
+            deleteBtn.type = "button";
+            deleteBtn.className = "toy-delete-btn secondary";
+            deleteBtn.textContent = "Delete";
+            deleteBtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                entry.onDelete();
+            });
+            row.appendChild(deleteBtn);
+            list.appendChild(row);
+        }
+    parent.appendChild(list);
+}
+function appendFactionSelect(parent, { value, onChange }) {
+    appendSelectField(parent, "Team", { value: value ?? SANDBOX_DEFAULT_FACTION, options: SANDBOX_FACTION_OPTIONS.map((option) => ({ value: option.id, label: option.label })), onChange });
+}
+/**
+ * @param {string[]} propIds
+ * @param {{ id: string, label: string }[]} assemblyManifests
+ */
+function buildSpawnOptions(propIds, assemblyManifests) {
+    /** @type {{ value: string, label: string }[]} */
+    const options = propIds.map((id) => ({ value: id, label: id.replace(/_/g, " ") }));
+    const assemblies = [...assemblyManifests].sort((a, b) => a.label.localeCompare(b.label));
+    for (const manifest of assemblies) {
+        if (manifest.label.toLowerCase().includes("pinball")) options.push({ value: SANDBOX_SPAWN_VOID, label: "Void" });
+        options.push({ value: sandboxSpawnAssemblyId(manifest.id), label: manifest.label });
+    }
+    if (!options.some((option) => option.value === SANDBOX_SPAWN_VOID)) options.push({ value: SANDBOX_SPAWN_VOID, label: "Void" });
+    return options;
 }
 /**
  * @param {HTMLElement} container
@@ -27,188 +115,116 @@ function appendFactionSelect(parent, { value, onChange }) {
  * @param {() => void} onChange
  */
 export function mountSandboxToyUi(container, controller, onChange) {
-    const ids = Object.keys(getWorldPropDefinitions())
+    const propIds = Object.keys(getWorldPropDefinitions())
         .filter((id) => isSandboxSpawnable(getPropAsset(id)))
         .sort();
+    let isFirstRender = true;
     const render = () => {
+        const openSections = readOpenSections(container);
         container.innerHTML = "";
-        if (ids.length === 0) {
-            container.innerHTML = `<p class="editor-hint">No sandbox props loaded</p>`;
+        const assemblyManifests = controller.listAssemblyManifests?.() ?? [];
+        const spawnOptions = buildSpawnOptions(propIds, assemblyManifests);
+        if (spawnOptions.length === 0) {
+            container.innerHTML = `<p class="editor-hint">No sandbox spawn options loaded</p>`;
             return;
         }
-        const addRow = document.createElement("div");
-        addRow.className = "sandbox-add-row";
-        const typeField = document.createElement("div");
-        typeField.className = "param-field";
-        const typeLabel = document.createElement("span");
-        typeLabel.textContent = "Type";
-        const typeSelect = document.createElement("select");
-        for (const id of ids) {
-            const option = document.createElement("option");
-            option.value = id;
-            option.textContent = id.replace(/_/g, " ");
-            typeSelect.appendChild(option);
-        }
-        typeSelect.value = controller.getSpawnPropId();
-        typeSelect.addEventListener("change", () => {
-            controller.setSpawnPropId(typeSelect.value);
-            onChange();
-        });
-        typeField.append(typeLabel, typeSelect);
-        appendFactionSelect(addRow, {
-            value: controller.getSpawnFaction(),
-            onChange: (faction) => {
-                controller.setSpawnFaction(faction);
-                onChange();
-            },
-        });
-        const addBtn = document.createElement("button");
-        addBtn.type = "button";
-        addBtn.className = "secondary";
-        addBtn.textContent = "Add at camera";
-        addBtn.addEventListener("click", () => {
-            controller.spawnAtCameraOrigin();
-        });
-        const addVoidBtn = document.createElement("button");
-        addVoidBtn.type = "button";
-        addVoidBtn.className = "secondary";
-        addVoidBtn.textContent = "Add void";
-        addVoidBtn.addEventListener("click", () => {
-            controller.spawnVoidAtCameraOrigin();
-        });
-        addRow.append(typeField, addBtn, addVoidBtn);
-        const assemblyManifests = controller.listAssemblyManifests?.() ?? [];
-        for (const manifest of assemblyManifests) {
-            const addTableBtn = document.createElement("button");
-            addTableBtn.type = "button";
-            addTableBtn.className = "secondary";
-            addTableBtn.textContent = `Add ${manifest.label}`;
-            addTableBtn.addEventListener("click", () => {
-                controller.spawnAssemblyAtCameraOrigin(manifest.id);
-            });
-            addRow.appendChild(addTableBtn);
-        }
-        container.appendChild(addRow);
-        const behaviorIds = controller.listBehaviors();
-        if (behaviorIds.length > 0) {
-            const modeField = document.createElement("div");
-            modeField.className = "param-field";
-            modeField.style.marginTop = "8px";
-            modeField.style.marginBottom = "8px";
-            const modeLabel = document.createElement("span");
-            modeLabel.textContent = "Mode";
-            const modeSelect = document.createElement("select");
-            for (const behaviorId of behaviorIds) {
-                const option = document.createElement("option");
-                option.value = behaviorId;
-                option.textContent = getSandboxBehaviorLabel(behaviorId);
-                modeSelect.appendChild(option);
-            }
-            modeSelect.value = controller.getActiveBehaviorId();
-            modeSelect.addEventListener("change", () => {
-                controller.setActiveBehaviorId(modeSelect.value);
-                onChange();
-            });
-            modeField.append(modeLabel, modeSelect);
-            container.appendChild(modeField);
-        }
-        const listHead = document.createElement("div");
-        listHead.className = "editor-subhead";
-        listHead.textContent = "Placed toys";
-        container.appendChild(listHead);
-        const list = document.createElement("div");
-        list.className = "toy-instance-list";
-        const placed = controller.listPlacedPickups();
+        const sectionOpen = (id, fallback = true) => {
+            if (openSections.size > 0) return openSections.has(id);
+            if (id === "selected") return !!controller.getSelectedPickup?.();
+            return isFirstRender ? fallback : openSections.has(id);
+        };
         const selectedId = controller.getSelectedPickupId();
-        if (placed.length === 0) {
-            const empty = document.createElement("p");
-            empty.className = "editor-hint";
-            empty.textContent = "No toys placed yet.";
-            list.appendChild(empty);
-        } else
-            for (const entry of placed) {
-                const row = document.createElement("div");
-                row.className = `toy-instance-row${entry.id === selectedId ? " selected" : ""}`;
-                const selectBtn = document.createElement("button");
-                selectBtn.type = "button";
-                selectBtn.className = "toy-select-btn";
-                selectBtn.textContent = `${entry.label} · ${formatSandboxFactionLabel(entry.faction)}`;
-                selectBtn.addEventListener("click", () => {
-                    controller.setSelectedPickupId(entry.id);
-                });
-                const deleteBtn = document.createElement("button");
-                deleteBtn.type = "button";
-                deleteBtn.className = "toy-delete-btn secondary";
-                deleteBtn.textContent = "Delete";
-                deleteBtn.addEventListener("click", (e) => {
-                    e.stopPropagation();
-                    controller.deletePickupById(entry.id);
-                });
-                row.append(selectBtn, deleteBtn);
-                list.appendChild(row);
-            }
-        container.appendChild(list);
-        const voidZones = controller.listVoidZones?.() ?? [];
-        if (voidZones.length > 0) {
-            const voidHead = document.createElement("div");
-            voidHead.className = "editor-subhead";
-            voidHead.textContent = "Void zones";
-            container.appendChild(voidHead);
-            const voidList = document.createElement("div");
-            voidList.className = "toy-instance-list";
-            for (const entry of voidZones) {
-                const row = document.createElement("div");
-                row.className = "toy-instance-row";
-                const label = document.createElement("span");
-                label.className = "toy-select-btn";
-                label.textContent = `${entry.label} · r${entry.radius}`;
-                const deleteBtn = document.createElement("button");
-                deleteBtn.type = "button";
-                deleteBtn.className = "toy-delete-btn secondary";
-                deleteBtn.textContent = "Delete";
-                deleteBtn.addEventListener("click", () => controller.deleteVoidZoneById(entry.id));
-                row.append(label, deleteBtn);
-                voidList.appendChild(row);
-            }
-            container.appendChild(voidList);
-        }
-        const assemblies = controller.listAssemblies?.() ?? [];
-        if (assemblies.length > 0) {
-            const assemblyHead = document.createElement("div");
-            assemblyHead.className = "editor-subhead";
-            assemblyHead.textContent = "Pool tables";
-            container.appendChild(assemblyHead);
-            const assemblyList = document.createElement("div");
-            assemblyList.className = "toy-instance-list";
-            for (const entry of assemblies) {
-                const row = document.createElement("div");
-                row.className = `toy-instance-row${entry.defaultPickupId === selectedId ? " selected" : ""}`;
-                const selectBtn = document.createElement("button");
-                selectBtn.type = "button";
-                selectBtn.className = "toy-select-btn";
-                selectBtn.textContent = entry.label;
-                selectBtn.addEventListener("click", () => {
-                    if (entry.defaultPickupId != null) controller.setSelectedPickupId(entry.defaultPickupId);
-                });
-                const deleteBtn = document.createElement("button");
-                deleteBtn.type = "button";
-                deleteBtn.className = "toy-delete-btn secondary";
-                deleteBtn.textContent = "Delete";
-                deleteBtn.addEventListener("click", () => controller.deleteAssemblyById(entry.id));
-                row.append(selectBtn, deleteBtn);
-                assemblyList.appendChild(row);
-            }
-            container.appendChild(assemblyList);
-        }
         const selectedPickup = controller.getSelectedPickup?.() ?? null;
-        if (selectedPickup) {
-            const selectedPanel = document.createElement("div");
-            selectedPanel.className = "sandbox-selected-panel";
-            const selectedHead = document.createElement("div");
-            selectedHead.className = "editor-subhead";
-            selectedHead.textContent = "Selected toy";
-            selectedPanel.appendChild(selectedHead);
-            appendFactionSelect(selectedPanel, {
+        appendSection(container, "spawn", "Spawn", sectionOpen("spawn"), (body) => {
+            const addRow = document.createElement("div");
+            addRow.className = "sandbox-add-row";
+            let spawnId = controller.getSpawnPropId();
+            if (!spawnOptions.some((option) => option.value === spawnId)) {
+                spawnId = spawnOptions[0].value;
+                controller.setSpawnPropId(spawnId);
+            }
+            appendSelectField(addRow, "Prop", {
+                value: spawnId,
+                options: spawnOptions,
+                onChange: (value) => {
+                    controller.setSpawnPropId(value);
+                    onChange();
+                },
+            });
+            appendFactionSelect(addRow, {
+                value: controller.getSpawnFaction(),
+                onChange: (faction) => {
+                    controller.setSpawnFaction(faction);
+                    onChange();
+                },
+            });
+            const spawnBehaviorIds = controller.listSpawnBehaviors();
+            if (spawnBehaviorIds.length > 0)
+                appendSelectField(addRow, "Mode", {
+                    value: controller.getSpawnBehaviorId(),
+                    options: spawnBehaviorIds.map((behaviorId) => ({ value: behaviorId, label: getSandboxBehaviorLabel(behaviorId) })),
+                    onChange: (value) => {
+                        controller.setSpawnBehaviorId(value);
+                        onChange();
+                    },
+                });
+            const addBtn = document.createElement("button");
+            addBtn.type = "button";
+            addBtn.className = "secondary";
+            addBtn.textContent = "Add at camera";
+            addBtn.addEventListener("click", () => controller.spawnAtCameraOrigin());
+            addRow.appendChild(addBtn);
+            body.appendChild(addRow);
+        });
+        const placed = controller.listPlacedPickups();
+        const voidZones = controller.listVoidZones?.() ?? [];
+        const assemblies = controller.listAssemblies?.() ?? [];
+        appendSection(container, "scene", "Scene", sectionOpen("scene"), (body) => {
+            appendSubhead(body, "Pickups");
+            appendEntityList(
+                body,
+                placed.map((entry) => ({
+                    label: `${entry.label} · ${formatSandboxFactionLabel(entry.faction)}`,
+                    selected: entry.id === selectedId,
+                    onSelect: () => controller.setSelectedPickupId(entry.id),
+                    onDelete: () => controller.deletePickupById(entry.id),
+                })),
+                "No pickups placed yet.",
+            );
+            if (voidZones.length > 0) {
+                appendSubhead(body, "Void zones");
+                appendEntityList(
+                    body,
+                    voidZones.map((entry) => ({ label: `${entry.label} · r${entry.radius}`, onDelete: () => controller.deleteVoidZoneById(entry.id) })),
+                    "",
+                );
+            }
+            if (assemblies.length > 0) {
+                appendSubhead(body, "Assemblies");
+                appendEntityList(
+                    body,
+                    assemblies.map((entry) => ({
+                        label: entry.label,
+                        selected: entry.defaultPickupId === selectedId,
+                        onSelect: () => {
+                            if (entry.defaultPickupId != null) controller.setSelectedPickupId(entry.defaultPickupId);
+                        },
+                        onDelete: () => controller.deleteAssemblyById(entry.id),
+                    })),
+                    "",
+                );
+            }
+        });
+        appendSection(container, "selected", "Selected", sectionOpen("selected", true), (body) => {
+            if (!selectedPickup) {
+                const empty = document.createElement("p");
+                empty.className = "editor-hint";
+                empty.textContent = "Select a pickup from Scene.";
+                body.appendChild(empty);
+                return;
+            }
+            const behaviorIds = controller.listSelectedBehaviors();
+            appendFactionSelect(body, {
                 value: resolveSandboxFaction(selectedPickup),
                 onChange: (faction) => {
                     selectedPickup.faction = faction;
@@ -216,45 +232,45 @@ export function mountSandboxToyUi(container, controller, onChange) {
                     onChange();
                 },
             });
-            const pathField = document.createElement("div");
-            pathField.className = "param-field";
-            const pathLabel = document.createElement("span");
-            pathLabel.textContent = "Path visual";
-            const pathSelect = document.createElement("select");
-            for (const optionId of SANDBOX_PATH_VISUAL_OPTIONS) {
-                const option = document.createElement("option");
-                option.value = optionId;
-                option.textContent = SANDBOX_PATH_VISUAL_LABELS[optionId];
-                pathSelect.appendChild(option);
+            if (behaviorIds.length > 0)
+                appendSelectField(body, "Mode", {
+                    value: controller.getSelectedBehaviorId(),
+                    options: behaviorIds.map((behaviorId) => ({ value: behaviorId, label: getSandboxBehaviorLabel(behaviorId) })),
+                    onChange: (value) => {
+                        controller.setSelectedBehaviorId(value);
+                        onChange();
+                    },
+                });
+            const focusField = document.createElement("label");
+            focusField.className = "param-field check-inline";
+            const focusCheckbox = document.createElement("input");
+            focusCheckbox.type = "checkbox";
+            focusCheckbox.checked = controller.isCameraTarget(selectedPickup);
+            focusCheckbox.addEventListener("change", () => {
+                controller.setCameraTarget(focusCheckbox.checked, selectedPickup);
+                onChange();
+            });
+            focusField.append(focusCheckbox, document.createTextNode(" Focus"));
+            body.appendChild(focusField);
+            appendSelectField(body, "Path visual", {
+                value: controller.getPathVisual(selectedPickup),
+                options: SANDBOX_PATH_VISUAL_OPTIONS.map((optionId) => ({ value: optionId, label: SANDBOX_PATH_VISUAL_LABELS[optionId] })),
+                onChange: (value) => {
+                    controller.setPathVisual(value, selectedPickup);
+                    onChange();
+                },
+            });
+            if (isSandboxEquippable(getPropAsset(selectedPickup.type))) {
+                const equipPanel = document.createElement("div");
+                equipPanel.className = "sandbox-equip-panel";
+                renderSandboxEquipPanel(equipPanel, selectedPickup, () => {
+                    controller.sync?.();
+                    onChange();
+                });
+                body.appendChild(equipPanel);
             }
-            pathSelect.value = controller.getPathVisual(selectedPickup);
-            pathSelect.addEventListener("change", () => {
-                controller.setPathVisual(pathSelect.value, selectedPickup);
-                onChange();
-            });
-            pathField.append(pathLabel, pathSelect);
-            selectedPanel.appendChild(pathField);
-            const cameraField = document.createElement("label");
-            cameraField.className = "param-field check-inline";
-            const cameraCheckbox = document.createElement("input");
-            cameraCheckbox.type = "checkbox";
-            cameraCheckbox.checked = controller.isCameraTarget(selectedPickup);
-            cameraCheckbox.addEventListener("change", () => {
-                controller.setCameraTarget(cameraCheckbox.checked, selectedPickup);
-                onChange();
-            });
-            cameraField.append(cameraCheckbox, document.createTextNode(" Make camera target"));
-            selectedPanel.appendChild(cameraField);
-            container.appendChild(selectedPanel);
-        }
-        const equipPanel = document.createElement("div");
-        equipPanel.className = "sandbox-equip-panel";
-        if (selectedPickup && isSandboxEquippable(getPropAsset(selectedPickup.type)))
-            renderSandboxEquipPanel(equipPanel, selectedPickup, () => {
-                controller.sync?.();
-                onChange();
-            });
-        if (equipPanel.childElementCount > 0) container.appendChild(equipPanel);
+        });
+        isFirstRender = false;
     };
     controller.setUiSync(render);
     render();

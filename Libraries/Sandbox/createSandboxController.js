@@ -1,7 +1,7 @@
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { bindCanvasPointers, releasePointerCapture } from "./bindCanvasPointers.js";
 import { findPickupAt } from "./findPickupAt.js";
-import { createSandboxSession } from "./sandboxSession.js";
+import { createSandboxSession, SANDBOX_SPAWN_ASSEMBLY_PREFIX, SANDBOX_SPAWN_VOID } from "./sandboxSession.js";
 import { resolveSandboxBehaviors } from "./sandboxCapabilities.js";
 import { drawSandboxLaserSights } from "./drawLaserSights.js";
 import { drawActivePathOverlay } from "../Render/map/drawActivePathOverlay.js";
@@ -35,32 +35,50 @@ import { isSandboxCameraTarget, setSandboxCameraTarget } from "./sandboxCameraTa
 export function createSandboxController(host, { defaultSpawnPropId, behaviors, defaultBehaviorId }) {
     const session = createSandboxSession(host, { defaultSpawnPropId });
     const behaviorById = new Map(behaviors.map((behavior) => [behavior.id, behavior]));
-    let activeBehaviorId = defaultBehaviorId ?? behaviors[0]?.id ?? "";
+    let spawnBehaviorId = defaultBehaviorId ?? behaviors[0]?.id ?? "";
     /** @type {SandboxBehavior | null} */
     let interactionBehavior = null;
     /** @type {(() => void) | null} */
     let unbindPointers = null;
-    const contextAsset = () => {
-        const pickup = session.getSelectedPickup();
-        if (pickup) return getPropAsset(pickup.type);
-        return getPropAsset(session.getSpawnPropId());
+    const spawnAsset = () => {
+        const spawnId = session.getSpawnPropId();
+        if (spawnId === SANDBOX_SPAWN_VOID || spawnId.startsWith(SANDBOX_SPAWN_ASSEMBLY_PREFIX)) return null;
+        return getPropAsset(spawnId);
     };
-    const listBehaviorsForContext = () => resolveSandboxBehaviors(contextAsset(), behaviors, session.getSelectedPickup());
-    const clampActiveBehavior = () => {
-        const allowed = listBehaviorsForContext();
+    /** @param {string} id @param {string[]} allowed */
+    const clampBehaviorId = (id, allowed) => {
+        if (allowed.length === 0) return id;
+        return allowed.includes(id) ? id : allowed[0];
+    };
+    const listSpawnBehaviors = () => resolveSandboxBehaviors(spawnAsset(), behaviors, null);
+    const clampSpawnBehavior = () => {
+        spawnBehaviorId = clampBehaviorId(spawnBehaviorId, listSpawnBehaviors());
+    };
+    /** @param {object | null | undefined} pickup */
+    const listSelectedBehaviors = (pickup = session.getSelectedPickup()) => {
+        if (!pickup) return [];
+        return resolveSandboxBehaviors(getPropAsset(pickup.type), behaviors, pickup);
+    };
+    /** @param {object} pickup */
+    const getPickupBehaviorId = (pickup) => {
+        const allowed = listSelectedBehaviors(pickup);
+        if (allowed.length === 0) return spawnBehaviorId;
+        return clampBehaviorId(pickup.sandboxActiveBehaviorId ?? spawnBehaviorId, allowed);
+    };
+    /** @param {object | null | undefined} pickup */
+    const stampPickupBehavior = (pickup) => {
+        if (!pickup) return;
+        const allowed = listSelectedBehaviors(pickup);
         if (allowed.length === 0) return;
-        if (!allowed.includes(activeBehaviorId)) activeBehaviorId = allowed[0];
+        pickup.sandboxActiveBehaviorId = clampBehaviorId(spawnBehaviorId, allowed);
     };
-    clampActiveBehavior();
-    const selectPickup = (id) => {
-        session.setSelectedPickupId(id);
-        clampActiveBehavior();
-    };
+    clampSpawnBehavior();
     const resolveBehavior = () => {
-        clampActiveBehavior();
-        const behavior = behaviorById.get(activeBehaviorId) ?? null;
-        if (!behavior) return null;
-        if (!listBehaviorsForContext().includes(behavior.id)) return null;
+        const pickup = session.getSelectedPickup();
+        if (!pickup) return null;
+        const allowed = listSelectedBehaviors(pickup);
+        const behavior = behaviorById.get(getPickupBehaviorId(pickup)) ?? null;
+        if (!behavior || !allowed.includes(behavior.id)) return null;
         return behavior;
     };
     const resetBehaviors = () => {
@@ -94,7 +112,7 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
         const hit = findPickupAt(host.getPickups(), world.x, world.y);
         if (hit) {
             const allowed = resolveSandboxBehaviors(getPropAsset(hit.type), behaviors, hit);
-            if (allowed.length > 0) selectPickup(hit.id);
+            if (allowed.length > 0) session.setSelectedPickupId(hit.id);
         }
         const pickup = session.getSelectedPickup();
         const behavior = resolveBehavior();
@@ -135,20 +153,23 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
         getSpawnPropId: () => session.getSpawnPropId(),
         setSpawnPropId: (id) => {
             session.setSpawnPropId(id);
-            clampActiveBehavior();
+            clampSpawnBehavior();
         },
         getSpawnFaction: () => session.getSpawnFaction(),
         setSpawnFaction: (faction) => session.setSpawnFaction(faction),
         getSelectedPickupId: () => session.getSelectedPickupId(),
         getSelectedPickup: () => session.getSelectedPickup(),
         setSelectedPickupId: (id) => {
-            selectPickup(id);
+            session.setSelectedPickupId(id);
         },
-        spawnAtCameraOrigin: () => session.spawnAtCameraOrigin(),
+        spawnAtCameraOrigin: () => {
+            session.spawnAtCameraOrigin();
+            stampPickupBehavior(session.getSelectedPickup());
+        },
         spawnVoidAtCameraOrigin: () => session.spawnVoidAtCameraOrigin(),
         spawnAssemblyAtCameraOrigin: (assemblyId) => {
             const instance = session.spawnAssemblyAtCameraOrigin(assemblyId);
-            clampActiveBehavior();
+            stampPickupBehavior(session.getSelectedPickup());
             return instance;
         },
         listAssemblyManifests: () => session.listAssemblyManifests(),
@@ -160,16 +181,26 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
         listPlacedPickups: () => session.listPlacedPickups(),
         sync: () => session.sync(),
         setUiSync: (fn) => session.setUiSync(fn),
-        getActiveBehaviorId: () => {
-            clampActiveBehavior();
-            return activeBehaviorId;
+        getSpawnBehaviorId: () => {
+            clampSpawnBehavior();
+            return spawnBehaviorId;
         },
-        setActiveBehaviorId: (id) => {
-            const allowed = listBehaviorsForContext();
-            activeBehaviorId = allowed.includes(id) ? id : (allowed[0] ?? id);
+        setSpawnBehaviorId: (id) => {
+            spawnBehaviorId = clampBehaviorId(id, listSpawnBehaviors());
             session.sync();
         },
-        listBehaviors: () => listBehaviorsForContext(),
+        listSpawnBehaviors,
+        getSelectedBehaviorId: () => {
+            const pickup = session.getSelectedPickup();
+            return pickup ? getPickupBehaviorId(pickup) : spawnBehaviorId;
+        },
+        setSelectedBehaviorId: (id) => {
+            const pickup = session.getSelectedPickup();
+            if (!pickup) return;
+            pickup.sandboxActiveBehaviorId = clampBehaviorId(id, listSelectedBehaviors(pickup));
+            session.sync();
+        },
+        listSelectedBehaviors: () => listSelectedBehaviors(),
         register() {
             controller.destroy();
             unbindPointers = bindCanvasPointers(host, { pointerdown: onPointerDown, pointermove: onPointerMove, pointerup: onPointerUp, pointercancel: onPointerUp });
