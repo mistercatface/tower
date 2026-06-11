@@ -1,4 +1,4 @@
-import { getFlipperSpriteCacheKey } from "../../../Libraries/Props/flipperCollision.js";
+import { getFlipperSpriteCacheKey, syncFlipperCollisionShape } from "../../../Libraries/Props/flipperCollision.js";
 export default {
     id: "flipper",
     primitive: "flipper",
@@ -17,6 +17,7 @@ export default {
         friction: 0,
         wallPhysics: { restitution: 0, friction: 0 },
         getCustomSpriteCacheKey: getFlipperSpriteCacheKey,
+        syncCollisionShape: syncFlipperCollisionShape,
     },
     visuals: {
         world: { length: 32, width: 8, height: 10, pivotRadius: 5, restAngle: 0.45 },
