@@ -161,6 +161,11 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
         getSelectedPickup: () => session.getSelectedPickup(),
         setSelectedPickupId: (id) => {
             session.setSelectedPickupId(id);
+            const pickup = session.getSelectedPickup();
+            if (pickup && pickup.sandboxActiveBehaviorId == null) {
+                const allowed = listSelectedBehaviors(pickup);
+                if (allowed.length > 0) pickup.sandboxActiveBehaviorId = allowed[0];
+            }
         },
         spawnAtCameraOrigin: () => {
             session.spawnAtCameraOrigin();
