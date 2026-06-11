@@ -8,12 +8,12 @@ export function getPipeElbowSpec(prop, asset) {
     const playW = prop._pipeElbowPlayfieldWidth ?? null;
     const scale = playW != null ? playW / 120 : 1;
     return {
-        outletLength: (cfg.outletLength ?? 14) * scale,
-        bendRadius: (cfg.bendRadius ?? 6) * scale,
-        pipeRadius: (cfg.pipeRadius ?? 3.5) * scale,
-        riserHeight: (cfg.riserHeight ?? 12) * scale,
-        flangeRadius: (cfg.flangeRadius ?? 5) * scale,
-        flangeHeight: (cfg.flangeHeight ?? 1.8) * scale,
+        outletLength: cfg.outletLength * scale,
+        bendRadius: cfg.bendRadius * scale,
+        pipeRadius: cfg.pipeRadius * scale,
+        riserHeight: cfg.riserHeight * scale,
+        flangeRadius: cfg.flangeRadius * scale,
+        flangeHeight: cfg.flangeHeight * scale,
     };
 }
 /**
