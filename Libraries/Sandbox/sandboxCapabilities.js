@@ -3,6 +3,7 @@ import { ROLL_TO_CURSOR_HPA_BEHAVIOR_ID } from "./behaviors/rollToCursorHpaBehav
 export const SANDBOX_BEHAVIOR_LABELS = {
     dragLaunch: "Drag launch",
     dragLaunchWait: "Drag launch (wait for rest)",
+    flipper: "Flipper",
     cueStrike: "Cue strike",
     rollToCursorDirect: "Roll to cursor (direct)",
     rollToCursorHpa: "Roll to cursor (HPA)",

@@ -25,6 +25,7 @@ import { tilelabGroundZoneEffectPass, tickTilelabGroundZones } from "./groundZon
 import { sandboxVoidZoneEffectPass, tickSandboxVoidZones } from "./sandboxVoidZones.js";
 import { sandboxController } from "./world/tilelabSandbox.js";
 import { tickSandboxCameraFollow } from "../../Libraries/Sandbox/sandboxCameraTarget.js";
+import { tickFlippers, drawFlippers } from "../../Libraries/Sandbox/behaviors/flipperBehavior.js";
 import { fitLabStageToView } from "./ui/labViewport.js";
 import { mountEditorUi, refreshEditorUi } from "./ui/editorUi.js";
 import { drawLabFrame } from "./ui/preview.js";
@@ -69,7 +70,8 @@ export const engine = {
             tilelabGroundZoneEffectPass,
             {
                 zIndex: 65,
-                draw(_state, _viewport, ctx) {
+                draw(state, _viewport, ctx) {
+                    drawFlippers(ctx, state.pickups);
                     sandboxController?.drawPathOverlay(ctx);
                     sandboxController?.drawLaunchPreview(ctx);
                 },
@@ -120,6 +122,7 @@ export function createEditorApp() {
         dt = Math.min(dt, 50);
         state.scheduler.update(dt);
         tickSandboxCameraFollow(state.viewport, state.pickups, dt);
+        tickFlippers(state.pickups, dt);
         if (!state.isPaused) runSimulationTick(state, dt);
         drawLabFrame(state);
         requestAnimationFrame(loop);

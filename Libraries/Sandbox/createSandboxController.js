@@ -13,6 +13,7 @@ import { isSandboxCameraTarget, setSandboxCameraTarget } from "./sandboxCameraTa
  * @typedef {object} SandboxBehavior
  * @property {string} id
  * @property {(pickup: object | null, asset: object) => boolean} [supports]
+ * @property {(world: { x: number, y: number }, e: PointerEvent, host: SandboxHostPort) => boolean} [tryCanvasInput]
  * @property {(pickup: object, world: { x: number, y: number }, e: PointerEvent, host: SandboxHostPort) => boolean} onPointerDown
  * @property {(pickup: object, world: { x: number, y: number }, e: PointerEvent) => void} onPointerMove
  * @property {(pickup: object, e: PointerEvent) => void} onPointerUp
@@ -64,6 +65,11 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
         for (const behavior of behaviors) behavior.reset?.();
         interactionBehavior = null;
     };
+    /** @param {{ x: number, y: number }} world @param {PointerEvent} e */
+    const tryCanvasInput = (world, e) => {
+        for (let i = 0; i < behaviors.length; i++) if (behaviors[i].tryCanvasInput?.(world, e, host)) return true;
+        return false;
+    };
     /** @param {PointerEvent} e */
     const onPointerDown = (e) => {
         const canvas = host.getCanvas();
@@ -77,6 +83,11 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
             return;
         }
         if (e.button !== 0) return;
+        if (tryCanvasInput(world, e)) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+        }
         session.pruneSelection();
         const hit = findPickupAt(host.getPickups(), world.x, world.y);
         if (hit) {

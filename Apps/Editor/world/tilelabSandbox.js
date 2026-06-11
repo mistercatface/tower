@@ -13,6 +13,7 @@ import {
     DRAG_LAUNCH_BEHAVIOR_ID,
     mountSandboxToyUi,
 } from "../../../Libraries/Sandbox/index.js";
+import { createFlipperBehavior } from "../../../Libraries/Sandbox/behaviors/flipperBehavior.js";
 /** @param {import("../state.js").TileLabGameState} state @param {() => void} requestRedraw */
 function createSandboxHost(state, requestRedraw) {
     return {
@@ -47,7 +48,15 @@ export function mountTilelabSandbox(state, requestRedraw) {
     Object.assign(pickupStates, voidSinkPickupStates);
     sandboxController = createSandboxController(createSandboxHost(state, requestRedraw), {
         defaultSpawnPropId: TILELAB_SANDBOX_SPAWN_PROP,
-        behaviors: [createDragLaunchBehavior(), createDragLaunchWaitBehavior(), createCueStrikeBehavior(), createShootBehavior(), createRollToCursorDirectBehavior(), createRollToCursorHpaBehavior()],
+        behaviors: [
+            createDragLaunchBehavior(),
+            createDragLaunchWaitBehavior(),
+            createFlipperBehavior(),
+            createCueStrikeBehavior(),
+            createShootBehavior(),
+            createRollToCursorDirectBehavior(),
+            createRollToCursorHpaBehavior(),
+        ],
         defaultBehaviorId: DRAG_LAUNCH_BEHAVIOR_ID,
     });
     sandboxController.register();
