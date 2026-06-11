@@ -17,20 +17,28 @@ function mergeCellBounds(a, b) {
     return { startCol: Math.min(a.startCol, b.startCol), endCol: Math.max(a.endCol, b.endCol), startRow: Math.min(a.startRow, b.startRow), endRow: Math.max(a.endRow, b.endRow) };
 }
 /** @param {object} state @param {object} wall */
-export function removeSandboxWall(state, wall) {
+function detachSandboxWall(state, wall) {
     const idx = state.walls.indexOf(wall);
     if (idx >= 0) state.walls.splice(idx, 1);
     state.wallSpatialIndex.remove(wall);
     const bounds = state.obstacleGrid.patchAfterWallRemoved(wall, state.wallSpatialIndex);
-    if (bounds) {
-        state.worldSurfaces.invalidateGridBounds(bounds, state);
-        state.navigation.onObstaclesChanged(bounds);
-    }
+    if (bounds) state.worldSurfaces.invalidateGridBounds(bounds, state);
     state.worldSurfaces.renderScene.removeBySourceId(wall.id);
-    state.worldSurfaces.invalidateRoofs();
+    return bounds ?? null;
 }
-/** @param {object} state @param {object[]} walls @param {{ compileRender?: boolean }} [options] */
-export function addSandboxWalls(state, walls, { compileRender = true } = {}) {
+/** @param {object} state @param {object[]} walls @param {{ notifyNavigation?: boolean }} [options] */
+export function removeSandboxWalls(state, walls, { notifyNavigation = true } = {}) {
+    let damageBounds = null;
+    for (let i = 0; i < walls.length; i++) damageBounds = mergeCellBounds(damageBounds, detachSandboxWall(state, walls[i]));
+    if (damageBounds && notifyNavigation) state.navigation.onObstaclesChanged(damageBounds);
+    if (walls.length) state.worldSurfaces.invalidateRoofs();
+}
+/** @param {object} state @param {object} wall */
+export function removeSandboxWall(state, wall) {
+    removeSandboxWalls(state, [wall]);
+}
+/** @param {object} state @param {object[]} walls @param {{ compileRender?: boolean, notifyNavigation?: boolean }} [options] */
+export function addSandboxWalls(state, walls, { compileRender = true, notifyNavigation = true } = {}) {
     const scene = state.worldSurfaces.renderScene;
     const defaultWallHeight = getWallHeight(getGameWorldSurfaceSettings());
     const grid = state.obstacleGrid;
@@ -51,7 +59,7 @@ export function addSandboxWalls(state, walls, { compileRender = true } = {}) {
     }
     if (damageBounds) {
         state.worldSurfaces.invalidateGridBounds(damageBounds, state);
-        state.navigation.onObstaclesChanged(damageBounds);
+        if (notifyNavigation) state.navigation.onObstaclesChanged(damageBounds);
     }
     if (compileRender) state.worldSurfaces.invalidateRoofs();
 }

@@ -219,29 +219,76 @@ export class HierarchicalNavigator {
             repositionNodeCentroid(node, this.cellToNode, this.grid, this.cols, this.rows, this.minX, this.minY, this.cellSize);
         }
     }
-    _clearRegionCellsInBox(startCol, endCol, startRow, endRow) {
+    /** @returns {Set<string>} */
+    _stripBlockedCellsFromRegions(startCol, endCol, startRow, endRow) {
         const touched = new Set();
-        const stripped = new Set();
         for (let row = startRow; row <= endRow; row++)
             for (let col = startCol; col <= endCol; col++) {
                 const idx = colRowToIndex(col, row, this.cols);
+                if (this.grid[idx] !== 1) continue;
                 const node = this.cellToNode[idx];
                 if (!node) continue;
                 touched.add(node.id);
-                stripped.add(idx);
+                node.cells = node.cells.filter((cellIdx) => cellIdx !== idx);
                 this.cellToNode[idx] = null;
             }
-        for (const id of touched) {
+        for (const id of [...touched]) {
             const node = this.nodesMap[id];
             if (!node) continue;
-            node.cells = node.cells.filter((cellIdx) => !stripped.has(cellIdx));
             if (node.cells.length === 0) {
                 for (const otherId in this.nodesMap) this.nodesMap[otherId].edges = this.nodesMap[otherId].edges.filter((e) => e.targetId !== id);
                 delete this.nodesMap[id];
+                touched.delete(id);
                 continue;
             }
             repositionNodeCentroid(node, this.cellToNode, this.grid, this.cols, this.rows, this.minX, this.minY, this.cellSize);
         }
+        return touched;
+    }
+    /** @param {object} node @returns {string[]} */
+    _splitRegionIfDisconnected(node) {
+        if (!node || node.cells.length === 0) return [];
+        const cellSet = new Set(node.cells);
+        const components = [];
+        const consumed = new Set();
+        for (let i = 0; i < node.cells.length; i++) {
+            const startIdx = node.cells[i];
+            if (consumed.has(startIdx)) continue;
+            const component = [];
+            const queue = [startIdx];
+            consumed.add(startIdx);
+            let head = 0;
+            while (head < queue.length) {
+                const idx = queue[head++];
+                component.push(idx);
+                const col = idx % this.cols;
+                const row = (idx / this.cols) | 0;
+                forEachCardinalNeighbor(col, row, this.cols, this.rows, (nc, nr, nIdx) => {
+                    if (this.grid[nIdx] !== 0 || !cellSet.has(nIdx) || consumed.has(nIdx)) return;
+                    consumed.add(nIdx);
+                    queue.push(nIdx);
+                });
+            }
+            components.push(component);
+        }
+        if (components.length <= 1) return [node.id];
+        node.cells = components[0];
+        repositionNodeCentroid(node, this.cellToNode, this.grid, this.cols, this.rows, this.minX, this.minY, this.cellSize);
+        const regionIds = [node.id];
+        for (let c = 1; c < components.length; c++) {
+            const component = components[c];
+            const startIdx = component[0];
+            const startCol = startIdx % this.cols;
+            const startRow = (startIdx / this.cols) | 0;
+            const id = `node_${++this.nodeIdCounter}`;
+            const splitNode = new RegionNode(id, startCol, startRow, startCol, startRow, this.minX, this.minY, this.cellSize);
+            splitNode.cells = component;
+            for (let i = 0; i < component.length; i++) this.cellToNode[component[i]] = splitNode;
+            repositionNodeCentroid(splitNode, this.cellToNode, this.grid, this.cols, this.rows, this.minX, this.minY, this.cellSize);
+            this.nodesMap[id] = splitNode;
+            regionIds.push(id);
+        }
+        return regionIds;
     }
     _assignOpenedCells(startCol, endCol, startRow, endRow) {
         const visited = new Uint8Array(this.cols * this.rows);
@@ -288,10 +335,16 @@ export class HierarchicalNavigator {
         if (!bounds || this.cols === 0 || this.rows === 0) return;
         this.ensureBuffers();
         const box = this._expandDamageBounds(bounds);
-        this._clearRegionCellsInBox(box.startCol, box.endCol, box.startRow, box.endRow);
+        const touched = this._stripBlockedCellsFromRegions(box.startCol, box.endCol, box.startRow, box.endRow);
+        const reconnectIds = new Set();
+        for (const id of touched) {
+            const node = this.nodesMap[id];
+            if (!node) continue;
+            for (const regionId of this._splitRegionIfDisconnected(node)) reconnectIds.add(regionId);
+        }
         this._assignOpenedCells(box.startCol, box.endCol, box.startRow, box.endRow);
-        const affectedIds = this._collectRegionIdsInBox(box.startCol, box.endCol, box.startRow, box.endRow);
-        for (const id of affectedIds) this._reconnectRegionEdges(this.nodesMap[id]);
+        for (const id of this._collectRegionIdsInBox(box.startCol, box.endCol, box.startRow, box.endRow)) reconnectIds.add(id);
+        for (const id of reconnectIds) this._reconnectRegionEdges(this.nodesMap[id]);
     }
     findNearestOpenCell(col, row) {
         if (this.grid[colRowToIndex(col, row, this.cols)] === 0) return { col, row };

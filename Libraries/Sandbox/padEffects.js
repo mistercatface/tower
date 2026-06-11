@@ -4,7 +4,7 @@ import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { releaseFlipper, triggerFlipper } from "./behaviors/flipperBehavior.js";
 import { buttonEffectiveActive } from "./buttonPad.js";
 import { getButtonPadLinks } from "./sandboxPadLinks.js";
-import { addSandboxWalls, removeSandboxWall } from "./spawnAssembly.js";
+import { addSandboxWalls, removeSandboxWalls } from "./spawnAssembly.js";
 /** @typedef {import("./padPresets.js").PadTriggerDef} PadTriggerDef */
 /**
  * @typedef {object} PadEffectContext
@@ -53,16 +53,24 @@ function buildPullPadWalls(state, pad) {
         return wall;
     });
 }
+/** @param {object} state */
+function rebuildPullPadNavigation(state) {
+    const seedX = state.viewport?.x ?? 0;
+    const seedY = state.viewport?.y ?? 0;
+    state.hierarchicalNavigator.rebuildRegions(seedX, seedY);
+    state.navigation.onObstaclesChanged(null);
+}
 /** @param {object} state @param {object} pad @param {boolean} wallsUp */
 function setPullPadWalls(state, pad, wallsUp) {
     if (!pad.wallMode || pad.wallsUp === wallsUp) return;
     if (wallsUp) {
         pad.walls = buildPullPadWalls(state, pad);
-        addSandboxWalls(state, pad.walls);
+        addSandboxWalls(state, pad.walls, { notifyNavigation: false });
     } else {
-        for (let i = 0; i < pad.walls.length; i++) removeSandboxWall(state, pad.walls[i]);
+        removeSandboxWalls(state, pad.walls, { notifyNavigation: false });
         pad.walls = [];
     }
+    rebuildPullPadNavigation(state);
     pad.wallsUp = wallsUp;
 }
 /** @param {object} state @param {object} pad */
