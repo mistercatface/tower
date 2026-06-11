@@ -22,15 +22,21 @@ export const DEFAULT_VOID_CAPTURE_TOLERANCE = 0.35;
 export function isFullyEnclosedInVoidMouth(pitX, pitY, pitRadius, entity) {
     return isVoidSinkCaptured(pitX, pitY, pitRadius, entity, 0);
 }
+/** True when the entity collision circle can fit through the mouth at all. */
+export function canEntityFitVoidPit(pitRadius, entity) {
+    const entityRadius = voidEntityRadius(entity);
+    return entityRadius > 0 && pitRadius > 0 && entityRadius <= pitRadius;
+}
 /**
- * True when enough of the entity is inside the mouth to start falling —
- * `captureTolerance` is the fraction of entity radius permitted past the lip.
+ * True when enough of the entity is inside the mouth to start falling.
+ * Entity must fit the pit (`entityRadius <= pitRadius`); tolerance only
+ * controls how much may hang past the lip once it fits.
  *
  * @param {number} [captureTolerance]
  */
 export function isVoidSinkCaptured(pitX, pitY, pitRadius, entity, captureTolerance = DEFAULT_VOID_CAPTURE_TOLERANCE) {
     const entityRadius = voidEntityRadius(entity);
-    if (entityRadius <= 0) return false;
+    if (!canEntityFitVoidPit(pitRadius, entity)) return false;
     const dist = Math.hypot(pitX - entity.x, pitY - entity.y);
     if (dist >= pitRadius + entityRadius) return false;
     const overlap = pitRadius + entityRadius - dist;

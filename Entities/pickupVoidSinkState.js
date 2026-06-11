@@ -1,6 +1,6 @@
 import { wakePushableBody } from "../Libraries/Motion/pushableSleep.js";
 import { resolveVoidSinkDrawModifier } from "../Libraries/Render/voidSinkVisual.js";
-import { isInsideVoidMouth, isVoidSinkCaptured } from "../Libraries/Spatial/zones/pit.js";
+import { canEntityFitVoidPit, isInsideVoidMouth, isVoidSinkCaptured } from "../Libraries/Spatial/zones/pit.js";
 const DEFAULT_PULL = 200;
 const DEFAULT_CAPTURED_PULL = 500;
 /** Backup despawn timer — only runs after capture, while the fall animation plays. */
@@ -43,6 +43,10 @@ export class PickupVoidSinkState {
         const dx = voidX - pickup.x;
         const dy = voidY - pickup.y;
         const dist = Math.hypot(dx, dy);
+        if (!canEntityFitVoidPit(voidRadius, pickup)) {
+            pickup.changeState("normal");
+            return;
+        }
         if (isVoidSinkCaptured(voidX, voidY, voidRadius, pickup, pickup.voidCaptureTolerance))
             if (!pickup.voidCaptured) {
                 pickup.voidCaptured = true;

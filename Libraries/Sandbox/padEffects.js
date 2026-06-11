@@ -1,6 +1,6 @@
 import { Segment } from "../../Entities/Wall.js";
 import { CAPTURED_SINK_DURATION_MS } from "../../Entities/pickupVoidSinkState.js";
-import { isInsideVoidMouth, isVoidSinkCaptured } from "../Spatial/zones/pit.js";
+import { canEntityFitVoidPit, isInsideVoidMouth, isVoidSinkCaptured } from "../Spatial/zones/pit.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { releaseFlipper, triggerFlipper } from "./behaviors/flipperBehavior.js";
 import { getButtonPadLinks } from "./sandboxPadLinks.js";
@@ -112,6 +112,7 @@ export function syncSandboxPadPower(state) {
 /** @param {object} pickup @param {object} pad */
 function beginSink(pickup, pad) {
     if (pickup.isDead || pickup.currentStateName === "voidSink") return;
+    if (!canEntityFitVoidPit(pad.shape.radius, pickup)) return;
     pickup.voidX = pad.x;
     pickup.voidY = pad.y;
     pickup.voidRadius = pad.shape.radius;
