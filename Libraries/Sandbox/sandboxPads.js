@@ -213,10 +213,22 @@ function readPullHalfExtents(pad) {
     const def = PAD_PRESETS.pull;
     return { halfWidth: def.halfWidth, halfHeight: def.halfHeight };
 }
+/** @param {object} state @param {object} pad */
+function syncPadPosition(state, pad) {
+    if (pad.shape.type === "Circle") resizeCirclePad(pad, pad.shape.radius, pad.preset);
+    else if (pad.shape.type === "Polygon") {
+        const { halfWidth, halfHeight } = readPullHalfExtents(pad);
+        syncRectPadAabb(pad, halfWidth, halfHeight);
+    }
+    if (pad.preset === "pull" && pad.wallMode && pad.wallsUp) {
+        teardownPullPad(state, pad);
+        syncPullPadWalls(state, pad);
+    }
+}
 /** @param {object} pad */
 export function getSandboxPadEditorState(pad) {
     /** @type {Record<string, number | string | null | undefined>} */
-    const snapshot = { id: pad.id, preset: pad.preset, label: PAD_PRESETS[pad.preset].listLabel };
+    const snapshot = { id: pad.id, preset: pad.preset, label: PAD_PRESETS[pad.preset].listLabel, x: pad.x, y: pad.y };
     if (pad.shape.type === "Circle") snapshot.radius = pad.shape.radius;
     if (pad.preset === "sink") {
         snapshot.sinkDepth = pad.sinkDepth;
@@ -275,11 +287,18 @@ function resizeCirclePad(pad, radius, preset) {
  *   massThreshold?: number,
  *   invert?: boolean,
  *   wallMode?: boolean,
+ *   x?: number,
+ *   y?: number,
  * }} patch
  */
 export function patchSandboxPad(state, id, patch) {
     const pad = getSandboxPad(state, id);
     if (!pad || pad.sandboxGroupId) return false;
+    if (patch.x != null || patch.y != null) {
+        if (patch.x != null) pad.x = patch.x;
+        if (patch.y != null) pad.y = patch.y;
+        syncPadPosition(state, pad);
+    }
     if (pad.preset === "sink") {
         if (patch.radius != null) resizeCirclePad(pad, patch.radius, pad.preset);
         if (patch.sinkDepth != null) pad.sinkDepth = patch.sinkDepth;

@@ -1,4 +1,4 @@
-/** @param {HTMLElement} parent @param {string} labelText @param {{ value: number, step?: number, min?: number, onChange: (value: number) => void }} opts */
+import { wakePushableBody } from "../Motion/pushableSleep.js";
 function appendNumberField(parent, labelText, { value, step = 1, min, onChange }) {
     const field = document.createElement("div");
     field.className = "param-field";
@@ -30,6 +30,20 @@ function applyPickupFacing(pickup, degrees) {
     pickup.angularVelocity = 0;
     pickup.strategy.syncCollisionShape?.(pickup);
 }
+/** @param {object} pickup @param {{ x?: number, y?: number }} pos */
+function applyPickupPosition(pickup, { x, y }) {
+    if (x != null) pickup.x = x;
+    if (y != null) pickup.y = y;
+    if (pickup.strategy?.isPushable) wakePushableBody(pickup);
+}
+/**
+ * @param {HTMLElement} body
+ * @param {{ x: number, y: number, step?: number, onPatch: (patch: { x?: number, y?: number }) => void }} opts
+ */
+export function appendTranslateFields(body, { x, y, step = 1, onPatch }) {
+    appendNumberField(body, "X", { value: x, step, onChange: (next) => onPatch({ x: next }) });
+    appendNumberField(body, "Y", { value: y, step, onChange: (next) => onPatch({ y: next }) });
+}
 /**
  * @param {HTMLElement} body
  * @param {object} pickup
@@ -41,5 +55,10 @@ export function appendSandboxPickupInspectorFields(body, pickup, { sync, onChang
         sync?.();
         onChange();
     };
+    appendTranslateFields(body, {
+        x: pickup.x,
+        y: pickup.y,
+        onPatch: (pos) => patch(() => applyPickupPosition(pickup, pos)),
+    });
     appendNumberField(body, "Facing (°)", { value: Math.round(((pickup.facing ?? 0) * 180) / Math.PI), step: 5, onChange: (degrees) => patch(() => applyPickupFacing(pickup, degrees)) });
 }

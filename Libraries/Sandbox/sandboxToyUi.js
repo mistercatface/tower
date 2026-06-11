@@ -2,7 +2,7 @@ import { getPropAsset, getWorldPropDefinitions } from "../Props/PropCatalog.js";
 import { SANDBOX_DEFAULT_FACTION, SANDBOX_FACTION_OPTIONS, formatSandboxFactionLabel, resolveSandboxFaction } from "../Combat/sandboxTargeting.js";
 import { getSandboxBehaviorLabel, isSandboxEquippable, isSandboxSpawnable } from "./sandboxCapabilities.js";
 import { isSpawnerProp, listSpawnerSpawnPropIds, resolveSpawnerPropId } from "./spawnerConfig.js";
-import { appendSandboxPickupInspectorFields } from "./sandboxPickupInspector.js";
+import { appendSandboxPickupInspectorFields, appendTranslateFields } from "./sandboxPickupInspector.js";
 import { PAD_PRESETS } from "./padPresets.js";
 import { renderSandboxEquipPanel } from "./sandboxEquipPanel.js";
 import { SANDBOX_PATH_VISUAL_LABELS, SANDBOX_PATH_VISUAL_OPTIONS } from "./sandboxPathVisual.js";
@@ -166,6 +166,16 @@ function renderSelectedPadInspector(body, controller, onChange) {
         controller.patchSelectedPad(fields);
         onChange();
     };
+    appendTranslateFields(body, {
+        x: pad.x,
+        y: pad.y,
+        onPatch: (pos) => {
+            const fields = {};
+            if (pos.x != null) fields.x = pos.x;
+            if (pos.y != null) fields.y = pos.y;
+            patch(fields);
+        },
+    });
     if (pad.preset === "sink") {
         appendNumberField(body, "Radius", { value: pad.radius, step: 0.5, min: 0.5, onChange: (radius) => patch({ radius }) });
         appendNumberField(body, "Depth", { value: pad.sinkDepth, step: 1, min: 1, onChange: (sinkDepth) => patch({ sinkDepth }) });
