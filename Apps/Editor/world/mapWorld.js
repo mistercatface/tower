@@ -1,21 +1,18 @@
 import { Segment } from "../../../Entities/Wall.js";
 import { gridSettings } from "../../../Config/Config.js";
 import { rebuildLabMapCaches } from "../../../Libraries/Render/map/labMapCaches.js";
-import { finalizeGeneratedWorld } from "../../../Libraries/WorldGen/finalizeGeneratedWorld.js";
+import { SceneCompiler } from "../../../Libraries/Render/Scene/SceneCompiler.js";
 import { withSeededRandom } from "../../../Libraries/Random/index.js";
 import { fillRandomGrid, runCellularAutomata } from "../../../Libraries/CA/index.js";
 import { paintMapOverviewFrame } from "../ui/mapOverview.js";
 import { sandboxController } from "./tilelabSandbox.js";
-
 export const PLAY_AREA_CELL_OPTIONS = [64, 128, 256, 512, 1024];
 export const labCavernConfig = { playAreaCols: 256, playAreaRows: 256, fillChance: 0.45, iterations: 3 };
-
 /** @param {number} cells */
 export function playAreaCellsToIndex(cells) {
     const index = PLAY_AREA_CELL_OPTIONS.indexOf(cells);
     return index >= 0 ? index : PLAY_AREA_CELL_OPTIONS.indexOf(256);
 }
-
 function generateCavernWalls(centerX, centerY, { playAreaCols, playAreaRows, fillChance, iterations }) {
     const cellSize = gridSettings.cellSize;
     const width = playAreaCols * cellSize;
@@ -34,7 +31,6 @@ function generateCavernWalls(centerX, centerY, { playAreaCols, playAreaRows, fil
         }
     return { walls, width, height };
 }
-
 /** @param {import("../state.js").TileLabGameState} state */
 export function generateLabCaverns(state) {
     const centerX = state.viewport.x;
@@ -50,7 +46,13 @@ export function generateLabCaverns(state) {
         state.wallSpatialIndex.clear();
         for (const wall of state.walls) state.wallSpatialIndex.insert(wall);
     });
-    finalizeGeneratedWorld(state, { centerX, centerY, gridBounds: { centerX, centerY, width: playWidth, height: playHeight } });
+    state.obstacleGrid.rebuildFixed(centerX, centerY, playWidth, playHeight);
+    state.obstacleGrid.segmentGrid = new Array(state.obstacleGrid.cols * state.obstacleGrid.rows);
+    for (const wall of state.walls) state.obstacleGrid.addWall(wall);
+    state.hierarchicalNavigator.initialize(centerX, centerY);
+    state.worldSurfaces.worldSurfaceSeed = (Math.random() * 0x7fffffff) | 0;
+    state.worldSurfaces.clear();
+    SceneCompiler.compileWalls(state, state.worldSurfaces.renderScene, state.obstacleGrid.minX, state.obstacleGrid.minY);
     state.floorSeed = state.mapSeed;
     state.worldSurfaces.clearBakeCache();
     rebuildLabMapCaches(state);

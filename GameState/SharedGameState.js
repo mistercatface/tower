@@ -9,7 +9,6 @@ import { Scheduler } from "../Libraries/Scheduler/Scheduler.js";
 import { WorldSurfaceSystem } from "../Render/game/WorldSurfaceSystem.js";
 import { WallCollisionResolver } from "../Libraries/Motion/WallCollisionResolver.js";
 import { NavigationService } from "../Systems/Navigation/NavigationService.js";
-
 const navigationSettings = {
     arrivalDistance: 2,
     recenterThreshold: 400,
@@ -20,8 +19,6 @@ const navigationSettings = {
     pathWaypointArrival: 10,
     hpaDamagePadding: 12,
 };
-
-/** Base state for engine loop, world bake, and sim render. */
 export class SharedGameState {
     constructor() {
         this.scheduler = new Scheduler();
@@ -32,7 +29,6 @@ export class SharedGameState {
         this.navigation = new NavigationService(this.flowFieldGrid, this.hierarchicalNavigator, navigationSettings);
         this.wallSpatialIndex = new WallSpatialIndex(100);
         this.worldSurfaces = new WorldSurfaceSystem(getGameWorldSurfaceSettings());
-        /** @type {import("../Libraries/Viewport/Viewport.js").Viewport | null} */
         this.viewport = null;
         this.lastTime = 0;
         this.gameTime = 0;
@@ -43,5 +39,8 @@ export class SharedGameState {
         this.walls = [];
         this.pickups = [];
         this.wallResolver = new WallCollisionResolver();
+        this.obstacleGrid.rebuildFixed(0, 0, gridSettings.width, gridSettings.height);
+        this.obstacleGrid.segmentGrid = new Array(this.obstacleGrid.cols * this.obstacleGrid.rows);
+        this.hierarchicalNavigator.initialize(0, 0);
     }
 }
