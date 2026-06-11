@@ -3,6 +3,7 @@ import { engine } from "../../Apps/Editor/engine.js";
 import { BaseGeneratorStrategies } from "../../Generator/GeneratorStrategies.js";
 import { gridSettings } from "../../Config/Config.js";
 import { resolveSurfaceProfileId } from "../../Config/procedural/profiles.js";
+import { fillRandomGrid, runCellularAutomata } from "../CA/index.js";
 import { finalizeGeneratedWorld } from "./finalizeGeneratedWorld.js";
 import { beginWorldGenRuntime } from "./WorldGenRuntime.js";
 import { buildIncomingNodesMap, checkNodePathability, getWorldGenTempGrids, serializeWalls } from "./worldGenUtils.js";
@@ -22,10 +23,8 @@ function defaultWorldFocus(state) {
 export const initMapSpawnPhase = {
     run(ctx) {
         const { state } = ctx;
-        const viewW = state.viewport?.width ?? 0;
-        const viewH = state.viewport?.height ?? 0;
-        state.mapBaseSpawnX = viewW > 0 ? viewW / 2 : 225;
-        state.mapBaseSpawnY = viewH > 0 ? viewH / 2 : 225;
+        state.mapBaseSpawnX = state.viewport.width / 2;
+        state.mapBaseSpawnY = state.viewport.height / 2;
     },
 };
 /** @type {WorldGenPhase} */
@@ -125,27 +124,8 @@ export function buildCellularBackdropPhase(topology) {
             const caMaxY = Math.ceil((maxY + backdropMargin) / cellSize) * cellSize;
             const cols = (caMaxX - caMinX) / cellSize;
             const rows = (caMaxY - caMinY) / cellSize;
-            let grid = new Uint8Array(cols * rows);
-            for (let i = 0; i < grid.length; i++) if (Math.random() < caFillChance) grid[i] = 1;
-            let nextGrid = new Uint8Array(cols * rows);
-            for (let iter = 0; iter < caIterations; iter++) {
-                for (let r = 0; r < rows; r++)
-                    for (let c = 0; c < cols; c++) {
-                        let wallsCount = 0;
-                        for (let dr = -1; dr <= 1; dr++)
-                            for (let dc = -1; dc <= 1; dc++) {
-                                const nr = r + dr;
-                                const nc = c + dc;
-                                if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
-                                    if (grid[nr * cols + nc] === 1) wallsCount++;
-                                } else wallsCount++;
-                            }
-                        nextGrid[r * cols + c] = wallsCount >= 5 ? 1 : 0;
-                    }
-                const temp = grid;
-                grid = nextGrid;
-                nextGrid = temp;
-            }
+            let grid = fillRandomGrid(cols, rows, caFillChance);
+            grid = runCellularAutomata(cols, rows, grid, { iterations: caIterations, scratch: new Uint8Array(cols * rows) });
             const roomZoneRadiusSq = roomZoneRadius * roomZoneRadius;
             const nodeCoords = state.mapNodes.map((node) => state.getNodeWorldCoords(node));
             const caWalls = [];

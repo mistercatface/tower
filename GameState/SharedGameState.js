@@ -32,9 +32,7 @@ export class SharedGameState {
         this.wallResolver = new WallCollisionResolver();
     }
     getMapSpawnOrigin() {
-        const viewW = this.viewport?.width ?? 0;
-        const viewH = this.viewport?.height ?? 0;
-        return { x: this.mapBaseSpawnX !== undefined ? this.mapBaseSpawnX : viewW > 0 ? viewW / 2 : 225, y: this.mapBaseSpawnY !== undefined ? this.mapBaseSpawnY : viewH > 0 ? viewH / 2 : 225 };
+        return { x: this.mapBaseSpawnX !== undefined ? this.mapBaseSpawnX : this.viewport.width / 2, y: this.mapBaseSpawnY !== undefined ? this.mapBaseSpawnY : this.viewport.height / 2 };
     }
     getNodeWorldCoords(node) {
         if (!node) return { x: 0, y: 0 };

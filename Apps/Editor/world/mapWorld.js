@@ -4,7 +4,9 @@ import { bakeMapPathDebugCache } from "../../../Libraries/Render/map/MapPathDebu
 import { buildTopologyMapRenderCaches } from "../../../Libraries/Render/map/MapRenderCache.js";
 import { finalizeGeneratedWorld } from "../../../Libraries/WorldGen/finalizeGeneratedWorld.js";
 import { withSeededRandom } from "../../../Libraries/Random/index.js";
-import { bakeMapOverviewCache, refreshMapOverviewDisplay } from "../ui/mapOverview.js";
+import { fillRandomGrid, runCellularAutomata } from "../../../Libraries/CA/index.js";
+import { bakeObstacleOverviewCache } from "../../../Libraries/Render/map/bakeObstacleOverview.js";
+import { refreshMapOverviewDisplay } from "../ui/mapOverview.js";
 import { sandboxController } from "./tilelabSandbox.js";
 export const PLAY_AREA_CELL_OPTIONS = [64, 128, 256, 512, 1024];
 export const labCavernConfig = { playAreaCols: 256, playAreaRows: 256, fillChance: 0.45, iterations: 3 };
@@ -21,27 +23,8 @@ function generateCavernWalls(centerX, centerY, { playAreaCols, playAreaRows, fil
     const caMinY = centerY - height / 2;
     const cols = playAreaCols;
     const rows = playAreaRows;
-    let grid = new Uint8Array(cols * rows);
-    for (let i = 0; i < grid.length; i++) if (Math.random() < fillChance) grid[i] = 1;
-    let nextGrid = new Uint8Array(cols * rows);
-    for (let iter = 0; iter < iterations; iter++) {
-        for (let r = 0; r < rows; r++)
-            for (let c = 0; c < cols; c++) {
-                let wallsCount = 0;
-                for (let dr = -1; dr <= 1; dr++)
-                    for (let dc = -1; dc <= 1; dc++) {
-                        const nr = r + dr;
-                        const nc = c + dc;
-                        if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
-                            if (grid[nr * cols + nc] === 1) wallsCount++;
-                        } else wallsCount++;
-                    }
-                nextGrid[r * cols + c] = wallsCount >= 5 ? 1 : 0;
-            }
-        const temp = grid;
-        grid = nextGrid;
-        nextGrid = temp;
-    }
+    let grid = fillRandomGrid(cols, rows, fillChance);
+    grid = runCellularAutomata(cols, rows, grid, { iterations, scratch: new Uint8Array(cols * rows) });
     const walls = [];
     for (let r = 0; r < rows; r++)
         for (let c = 0; c < cols; c++) {
@@ -53,7 +36,7 @@ function generateCavernWalls(centerX, centerY, { playAreaCols, playAreaRows, fil
 function rebuildLabMapCaches(state) {
     buildTopologyMapRenderCaches(state);
     state.mapPathDebugCache = bakeMapPathDebugCache(state);
-    state.mapOverviewCache = bakeMapOverviewCache(state);
+    state.mapOverviewCache = bakeObstacleOverviewCache(state.obstacleGrid);
     refreshMapOverviewDisplay(state);
 }
 /** @param {import("../state.js").TileLabGameState} state */

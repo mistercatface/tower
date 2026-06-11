@@ -3,10 +3,7 @@ function createBakeCanvas(width, height) {
     const w = Math.ceil(width);
     const h = Math.ceil(height);
     if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return null;
-    const canvas = typeof OffscreenCanvas !== "undefined" ? new OffscreenCanvas(w, h) : document.createElement("canvas");
-    canvas.width = w;
-    canvas.height = h;
-    return canvas;
+    return new OffscreenCanvas(w, h);
 }
 function drawGameMapWall(ctx, seg, baseSpawnX, baseSpawnY, scale) {
     const mx = (seg.x - baseSpawnX) / scale;

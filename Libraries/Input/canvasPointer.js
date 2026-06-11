@@ -1,11 +1,23 @@
 /**
+ * Map a DOM pointer position to canvas pixel coordinates (handles CSS scaling).
  * @param {HTMLCanvasElement} canvas
  * @param {number} clientX
  * @param {number} clientY
  */
-export function canvasClientCoords(canvas, clientX, clientY) {
+export function canvasClientToScreen(canvas, clientX, clientY) {
     const rect = canvas.getBoundingClientRect();
-    return { x: clientX - rect.left, y: clientY - rect.top };
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+}
+/** @deprecated Use canvasClientToScreen — same behavior. */
+export function canvasClientCoords(canvas, clientX, clientY) {
+    return canvasClientToScreen(canvas, clientX, clientY);
+}
+/** @param {import("../../Viewport/Viewport.js").Viewport} viewport */
+export function canvasClientToWorld(canvas, viewport, clientX, clientY) {
+    const screen = canvasClientToScreen(canvas, clientX, clientY);
+    return viewport.screenToWorld(screen.x, screen.y);
 }
 /**
  * @param {HTMLCanvasElement} canvas
@@ -17,7 +29,7 @@ export function canvasClientCoords(canvas, clientX, clientY) {
  */
 export function bindCanvasPointerDown(canvas, { screenToWorld, onPointerDown }) {
     const handler = (e) => {
-        const screen = canvasClientCoords(canvas, e.clientX, e.clientY);
+        const screen = canvasClientToScreen(canvas, e.clientX, e.clientY);
         onPointerDown(screenToWorld(screen.x, screen.y), screen, e);
     };
     canvas.addEventListener("pointerdown", handler);
@@ -33,7 +45,7 @@ export function bindCanvasPointerDown(canvas, { screenToWorld, onPointerDown }) 
  */
 export function bindCanvasPointerMove(canvas, { screenToWorld, onPointerMove }) {
     const handler = (e) => {
-        const screen = canvasClientCoords(canvas, e.clientX, e.clientY);
+        const screen = canvasClientToScreen(canvas, e.clientX, e.clientY);
         onPointerMove(screenToWorld(screen.x, screen.y), screen, e);
     };
     canvas.addEventListener("pointermove", handler);
@@ -49,7 +61,7 @@ export function bindCanvasPointerMove(canvas, { screenToWorld, onPointerMove }) 
  */
 export function bindCanvasPointerUp(canvas, { screenToWorld, onPointerUp }) {
     const handler = (e) => {
-        const screen = canvasClientCoords(canvas, e.clientX, e.clientY);
+        const screen = canvasClientToScreen(canvas, e.clientX, e.clientY);
         onPointerUp(screenToWorld(screen.x, screen.y), screen, e);
     };
     canvas.addEventListener("pointerup", handler);

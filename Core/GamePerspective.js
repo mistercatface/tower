@@ -1,5 +1,5 @@
 import { LIBRARY_DEFAULT_CAMERA_HEIGHT, LIBRARY_DEFAULT_PERSPECTIVE_STRENGTH, LIBRARY_MIN_WORLD_SPAN } from "../Libraries/Spatial/iso/perspectiveDefaults.js";
-import { setCameraHeight as setIsoCameraHeight, setPerspectiveStrength as setIsoPerspectiveStrength } from "../Libraries/Spatial/iso/IsometricProjection.js";
+import { setCameraHeight, setPerspectiveStrength } from "../Libraries/Spatial/iso/IsometricProjection.js";
 /** @typedef {"player" | "viewport"} PerspectiveViewerSource */
 /**
  * @typedef {object} PerspectiveConfig
@@ -29,22 +29,11 @@ export function applyGamePerspective(definition) {
  * BOIDS: `ratioBase = PERSPECTIVE_INTENSITY / max(10, viewport.width)`.
  * Here: `intensity * referenceSpan / worldSpan` — same inverse-zoom curve, props unchanged.
  *
- * @param {import("../Libraries/Viewport/Viewport.js").Viewport | null | undefined} viewport
+ * @param {import("../Libraries/Viewport/Viewport.js").Viewport} viewport
  */
 export function resolveStructurePerspectiveStrength(viewport) {
     const intensity = activePerspective.strength ?? LIBRARY_DEFAULT_PERSPECTIVE_STRENGTH;
-    const halfW = viewport?.halfW ?? 0;
-    const halfH = viewport?.halfH ?? 0;
-    if (halfW <= 0 || halfH <= 0) return intensity;
-    const worldSpan = Math.max(LIBRARY_MIN_WORLD_SPAN, Math.min(halfW, halfH) * 2);
-    const referenceSpan = Math.max(LIBRARY_MIN_WORLD_SPAN, (viewport.getVisualRadius?.() ?? worldSpan) * 2);
+    const worldSpan = Math.max(LIBRARY_MIN_WORLD_SPAN, Math.min(viewport.halfW, viewport.halfH) * 2);
+    const referenceSpan = Math.max(LIBRARY_MIN_WORLD_SPAN, viewport.getVisualRadius() * 2);
     return (intensity * referenceSpan) / worldSpan;
-}
-/** @param {number} cameraHeight */
-export function setCameraHeight(cameraHeight) {
-    setIsoCameraHeight(cameraHeight);
-}
-/** @param {number} strength */
-export function setPerspectiveStrength(strength) {
-    setIsoPerspectiveStrength(strength);
 }

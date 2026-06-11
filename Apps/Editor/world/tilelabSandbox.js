@@ -1,4 +1,4 @@
-import { canvasClientToWorld } from "../ui/labCanvas.js";
+import { canvasClientToWorld } from "../../../Libraries/Input/canvasPointer.js";
 import { TILELAB_SANDBOX_SPAWN_PROP } from "../state.js";
 import { pickupStates } from "../../../Entities/PickupStates.js";
 import { voidSinkPickupStates } from "../../../Entities/pickupVoidSinkState.js";

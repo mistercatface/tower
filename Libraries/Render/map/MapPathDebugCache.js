@@ -1,8 +1,5 @@
 function createBakeCanvas(width, height) {
-    const canvas = typeof OffscreenCanvas !== "undefined" ? new OffscreenCanvas(width, height) : document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-    return canvas;
+    return new OffscreenCanvas(width, height);
 }
 function bakePathDebugLayer(hnav, minX, minY, maxX, maxY) {
     const width = Math.ceil(maxX - minX);

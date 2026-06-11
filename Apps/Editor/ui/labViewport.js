@@ -14,9 +14,7 @@ function clampLabZoom(zoom) {
 }
 /** @param {import("../state.js").TileLabGameState} state */
 export function fitLabStageToView(state) {
-    const viewW = Math.max(320, state.viewport.width || 800);
-    const viewH = Math.max(240, state.viewport.height || 600);
-    const zoom = getDefaultSimulationZoom(viewW, viewH, LAB_PREVIEW_RANGE, LAB_PREVIEW_RANGE);
+    const zoom = getDefaultSimulationZoom(state.viewport.width, state.viewport.height, LAB_PREVIEW_RANGE, LAB_PREVIEW_RANGE);
     state.viewport.zoom = clampLabZoom(zoom);
     zoomControl?.setZoom(state.viewport.zoom);
 }
