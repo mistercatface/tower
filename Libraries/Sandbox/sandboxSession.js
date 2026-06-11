@@ -2,7 +2,7 @@ import { Pickup } from "../../Entities/Pickup.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { SANDBOX_DEFAULT_FACTION, resolveSandboxFaction } from "../Combat/sandboxTargeting.js";
 import { spawnAssembly, deleteAssemblyInstance, clearAssemblyInstances } from "./spawnAssembly.js";
-import { getAssemblyManifest, listAssemblyManifests } from "./assemblies/assemblyRegistry.js";
+import { getResolvedAssembly, listAssemblyManifests } from "./assemblies/assemblyRegistry.js";
 import { clearSandboxPads, deleteSandboxPad, isSandboxSpawnPadId, listSandboxPads, parseSandboxPadPreset, spawnSandboxPad } from "./sandboxPads.js";
 /** @typedef {import("./SandboxHostPort.js").SandboxHostPort} SandboxHostPort */
 export { SANDBOX_SPAWN_PAD_PREFIX, isSandboxSpawnPadId, parseSandboxPadPreset, sandboxSpawnPadId } from "./sandboxPads.js";
@@ -78,7 +78,6 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
         },
         spawnAssemblyAt(centerX, centerY, assemblyId) {
             const instance = spawnAssembly(host, centerX, centerY, assemblyId, { faction: spawnFaction });
-            if (!instance) return null;
             selectedPickupId = instance.defaultPickupId;
             sync();
             return instance;
@@ -89,17 +88,16 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
         },
         listAssemblyManifests: () => listAssemblyManifests(),
         deleteAssemblyById(assemblyId) {
-            deleteAssemblyInstance(host.getWorldState(), assemblyId);
+            const state = host.getWorldState();
+            const instance = state.sandboxAssemblyInstances.find((entry) => entry.id === assemblyId);
+            if (!instance) return;
+            deleteAssemblyInstance(state, assemblyId, getResolvedAssembly(instance.assemblyId).groupField);
             pruneSelection();
             sync();
         },
         listAssemblies() {
             const state = host.getWorldState();
-            return state.sandboxAssemblyInstances.map((entry, index) => ({
-                id: entry.id,
-                label: getAssemblyManifest(entry.assemblyId)?.label ?? entry.assemblyId ?? `table #${index + 1}`,
-                defaultPickupId: entry.defaultPickupId,
-            }));
+            return state.sandboxAssemblyInstances.map((entry) => ({ id: entry.id, label: getResolvedAssembly(entry.assemblyId).label, defaultPickupId: entry.defaultPickupId }));
         },
         deleteSandboxPadById(id) {
             deleteSandboxPad(host.getWorldState(), id);

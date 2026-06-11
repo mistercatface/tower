@@ -10,21 +10,8 @@ export function getAssemblyManifest(id) {
 }
 /** @param {import("./assemblyManifest.js").AssemblyManifest} manifest */
 export function resolveAssemblyManifest(manifest) {
-    const { arena, pads = [], wallSegments = [], arcWallSegments = [], pickups, link, behaviors = {}, label, surfaceProfileId, surfaceAnimation } = manifest;
-    return {
-        id: manifest.id,
-        label: label ?? manifest.id,
-        surfaceProfileId,
-        surfaceAnimation: surfaceAnimation === true,
-        version: manifest.version ?? 2,
-        arena,
-        pads,
-        wallSegments,
-        arcWallSegments,
-        pickups,
-        groupField: link.groupField,
-        behaviors,
-    };
+    const { id, label, surfaceProfileId, surfaceAnimation, arena, link, pads = [], wallSegments = [], arcWallSegments = [], pickups = [], behaviors = {} } = manifest;
+    return { id, label: label ?? id, surfaceProfileId, surfaceAnimation: surfaceAnimation === true, arena, pads, wallSegments, arcWallSegments, pickups, groupField: link.groupField, behaviors };
 }
 /** @returns {{ id: string, label: string }[]} */
 export function listAssemblyManifests() {
@@ -33,9 +20,9 @@ export function listAssemblyManifests() {
     for (const manifest of registry.values()) entries.push({ id: manifest.id, label: manifest.label ?? manifest.id });
     return entries;
 }
-/** @param {string} [id] */
-export function getResolvedAssembly(id = "poolTable") {
+/** @param {string} id */
+export function getResolvedAssembly(id) {
     const manifest = getAssemblyManifest(id);
-    if (!manifest) return null;
+    if (!manifest) throw new Error(`Unknown assembly "${id}"`);
     return resolveAssemblyManifest(manifest);
 }

@@ -2,7 +2,7 @@ import { createCircleFloorShape, createRectFloorShape, drawFloorShape, isAabbInV
 import { drawPit, syncSinkPadAabb } from "../Spatial/zones/pit.js";
 import { NEIGHBOR_QUERY_PAD } from "../Spatial/collision/entityBroadphase.js";
 import { PAD_PRESETS } from "./padPresets.js";
-import { drawGateWall, isPadTriggerActive, runPadEffect, setupPadPresetEffects, teardownSandboxPadEffects } from "./padEffects.js";
+import { drawGateWall, isPadTriggerActive, runPadEffect, setupGatePad, teardownGatePad } from "./padEffects.js";
 export const SANDBOX_SPAWN_PAD_PREFIX = "pad:";
 const POINTER_HIT_PADDING = 4;
 /** @param {string} preset */
@@ -79,6 +79,7 @@ export function handlePadPointerDown(state, pad, world) {
  */
 export function buildSandboxPad(state, preset, x, y, options = {}) {
     const def = PAD_PRESETS[preset];
+    if (!def) throw new Error(`Unknown pad preset "${preset}"`);
     const id = options.id ?? `${preset}:${state.sandboxPads.length + 1}`;
     /** @type {object} */
     let pad;
@@ -102,7 +103,7 @@ export function buildSandboxPad(state, preset, x, y, options = {}) {
         if (options.forceX != null) pad.triggers[0].forceX = options.forceX;
         if (options.forceY != null) pad.triggers[0].forceY = options.forceY;
     }
-    setupPadPresetEffects(state, pad, def);
+    if (def.linkedWalls) setupGatePad(state, pad);
     return pad;
 }
 /**
@@ -121,7 +122,7 @@ export function spawnSandboxPad(host, preset, x, y, options = {}) {
 /** @param {object} state @param {number} index */
 function removeSandboxPadAt(state, index) {
     const pad = state.sandboxPads[index];
-    teardownSandboxPadEffects(state, pad);
+    teardownGatePad(state, pad);
     state.sandboxPads.splice(index, 1);
 }
 /** @param {object} state @param {string} id */

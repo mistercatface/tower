@@ -7,37 +7,37 @@ import { stampAssemblyGroupMember, entityBelongsToAssemblyGroup } from "./assemb
 import { createAssemblyGuideOverlay, createAssemblySurfaceZone } from "./assemblySurfaceDraw.js";
 import { eagerBakeAssemblySurfaceFlipbook, releaseAssemblySurfaceFlipbook } from "./assemblySurfaceBake.js";
 import { requestUiUpdate } from "../../Core/EventSystem.js";
-import { spawnAssemblyPickups, validateAssemblyPickupManifest } from "./assemblyPickupSpawn.js";
+import { spawnAssemblyPickups } from "./assemblyPickupSpawn.js";
 import { spawnAssemblyPads } from "./assemblyPadSpawn.js";
 import { deleteSandboxPad } from "./sandboxPads.js";
 /** @param {object} state @param {object} wall */
 export function removeSandboxWall(state, wall) {
     const idx = state.walls.indexOf(wall);
     if (idx >= 0) state.walls.splice(idx, 1);
-    state.wallSpatialIndex?.remove(wall);
-    const bounds = state.obstacleGrid?.patchAfterWallRemoved(wall, state.wallSpatialIndex);
+    state.wallSpatialIndex.remove(wall);
+    const bounds = state.obstacleGrid.patchAfterWallRemoved(wall, state.wallSpatialIndex);
     if (bounds) {
-        state.worldSurfaces?.invalidateGridBounds(bounds, state);
-        state.navigation?.onObstaclesChanged(bounds);
+        state.worldSurfaces.invalidateGridBounds(bounds, state);
+        state.navigation.onObstaclesChanged(bounds);
     }
-    state.worldSurfaces?.renderScene?.removeBySourceId(wall.id ?? wall);
-    state.worldSurfaces?.invalidateRoofs();
+    state.worldSurfaces.renderScene.removeBySourceId(wall.id);
+    state.worldSurfaces.invalidateRoofs();
 }
 /** @param {object} state @param {object[]} walls @param {{ compileRender?: boolean }} [options] */
 export function addSandboxWalls(state, walls, { compileRender = true } = {}) {
-    const scene = state.worldSurfaces?.renderScene;
+    const scene = state.worldSurfaces.renderScene;
     const defaultWallHeight = getWallHeight(getGameWorldSurfaceSettings());
     const gridMinX = state.obstacleGrid.minX;
     const gridMinY = state.obstacleGrid.minY;
-    if (scene) scene.setGridOrigin(gridMinX, gridMinY);
+    scene.setGridOrigin(gridMinX, gridMinY);
     for (let i = 0; i < walls.length; i++) {
         const wall = walls[i];
         state.walls.push(wall);
-        state.wallSpatialIndex?.insert(wall);
-        state.obstacleGrid?.addWall(wall);
-        if (scene && compileRender && !wall.collisionOnly) SceneCompiler.compileWall(wall, scene, defaultWallHeight);
+        state.wallSpatialIndex.insert(wall);
+        state.obstacleGrid.addWall(wall);
+        if (compileRender && !wall.collisionOnly) SceneCompiler.compileWall(wall, scene, defaultWallHeight);
     }
-    if (compileRender) state.worldSurfaces?.invalidateRoofs();
+    if (compileRender) state.worldSurfaces.invalidateRoofs();
 }
 /** @param {{ minX: number, minY: number, maxX: number, maxY: number }} bounds */
 function wallCenterInsideBounds(wall, bounds) {
@@ -45,7 +45,7 @@ function wallCenterInsideBounds(wall, bounds) {
 }
 /** @param {object} state @param {{ minX: number, minY: number, maxX: number, maxY: number }} bounds */
 function clearWallsInBounds(state, bounds) {
-    const candidates = state.wallSpatialIndex ? state.wallSpatialIndex.collectInBounds(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY) : state.walls;
+    const candidates = state.wallSpatialIndex.collectInBounds(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY);
     const toRemove = [];
     for (let i = 0; i < candidates.length; i++) {
         const wall = candidates[i];
@@ -73,17 +73,15 @@ function registerAssemblyPlayfieldSurface(state, layout, resolved, groupId, grou
         { play: layout.play, bounds: layout.bounds, railHeight: resolved.arena.walls.height },
         profileId,
         resolved.surfaceAnimation === true,
-        state.worldSurfaces?.worldSurfaceSeed ?? 0,
-    )
-        .then((flipbook) => {
-            if (zone.bakeGeneration !== bakeGeneration) {
-                releaseAssemblySurfaceFlipbook(flipbook);
-                return;
-            }
-            zone.flipbook = flipbook;
-            requestUiUpdate();
-        })
-        .catch((err) => console.error("assembly surface bake failed:", err));
+        state.worldSurfaces.worldSurfaceSeed,
+    ).then((flipbook) => {
+        if (zone.bakeGeneration !== bakeGeneration) {
+            releaseAssemblySurfaceFlipbook(flipbook);
+            return;
+        }
+        zone.flipbook = flipbook;
+        requestUiUpdate();
+    });
     return zone;
 }
 /** @param {object} state @param {ReturnType<typeof buildAssemblyLayout>} layout @param {string} groupId @param {string} assemblyId @param {string} groupField */
@@ -91,7 +89,7 @@ function registerAssemblyGuideOverlay(state, layout, groupId, assemblyId, groupF
     if (!layout.wallSegments.length && !layout.arcWallSegments.length) return null;
     const guide = createAssemblyGuideOverlay({ id: `${groupId}:guides`, wallSegments: layout.wallSegments, arcWallSegments: layout.arcWallSegments, railWidth: 3.2 });
     stampAssemblyGroupMember(guide, groupId, assemblyId, groupField);
-    state.sandboxAssemblyGuides?.push(guide);
+    state.sandboxAssemblyGuides.push(guide);
     return guide;
 }
 /**
@@ -99,14 +97,13 @@ function registerAssemblyGuideOverlay(state, layout, groupId, assemblyId, groupF
  * @param {number} centerX
  * @param {number} centerY
  * @param {import("./assemblies/assemblyManifest.js").ResolvedAssemblyManifest} resolved
- * @param {{ faction?: string, groupId?: string }} [options]
+ * @param {{ faction?: string }} [options]
  */
-export function spawnResolvedAssembly(host, centerX, centerY, resolved, { faction, groupId: groupIdOverride } = {}) {
+export function spawnResolvedAssembly(host, centerX, centerY, resolved, { faction } = {}) {
     const state = host.getWorldState();
-    if (resolved.pickups.length && !validateAssemblyPickupManifest(resolved.pickups)) return null;
     const layout = buildAssemblyLayout(centerX, centerY, resolved);
     clearWallsInBounds(state, buildAssemblyClearBounds(layout, resolved));
-    const groupId = groupIdOverride ?? `${resolved.id}:${Date.now()}`;
+    const groupId = `${resolved.id}:${Date.now()}`;
     const rackId = `${groupId}:rack`;
     const groupField = resolved.groupField;
     const flatSurface = Boolean(resolved.surfaceProfileId);
@@ -127,7 +124,7 @@ export function spawnResolvedAssembly(host, centerX, centerY, resolved, { factio
         pickupIdByManifestId = spawned.pickupIdByManifestId;
     }
     if (resolved.pads.length) spawnAssemblyPads(state, layout, { groupId, resolvedId: resolved.id, groupField, pickupIdByManifestId });
-    const instance = { id: groupId, assemblyId: resolved.id, rackId, defaultPickupId, arenaWidth, arenaHeight, groupField };
+    const instance = { id: groupId, assemblyId: resolved.id, defaultPickupId, arenaWidth, arenaHeight };
     state.sandboxAssemblyInstances.push(instance);
     return { id: groupId, assemblyId: resolved.id, defaultPickupId, centerX, centerY };
 }
@@ -135,16 +132,15 @@ export function spawnResolvedAssembly(host, centerX, centerY, resolved, { factio
  * @param {import("./SandboxHostPort.js").SandboxHostPort} host
  * @param {number} centerX
  * @param {number} centerY
- * @param {string} [assemblyId]
+ * @param {string} assemblyId
  * @param {{ faction?: string }} [options]
  */
-export function spawnAssembly(host, centerX, centerY, assemblyId = "poolTable", options = {}) {
+export function spawnAssembly(host, centerX, centerY, assemblyId, options = {}) {
     const resolved = getResolvedAssembly(assemblyId);
-    if (!resolved) return null;
     return spawnResolvedAssembly(host, centerX, centerY, resolved, options);
 }
-/** @param {object} state @param {string} groupId @param {string} [groupField] */
-export function deleteAssemblyInstance(state, groupId, groupField = "sandboxGroupId") {
+/** @param {object} state @param {string} groupId @param {string} groupField */
+export function deleteAssemblyInstance(state, groupId, groupField) {
     for (let z = state.sandboxSurfaceProfileZones.length - 1; z >= 0; z--) {
         const zone = state.sandboxSurfaceProfileZones[z];
         if (!entityBelongsToAssemblyGroup(zone, groupId, groupField)) continue;
@@ -153,9 +149,7 @@ export function deleteAssemblyInstance(state, groupId, groupField = "sandboxGrou
         zone.flipbook = null;
         state.sandboxSurfaceProfileZones.splice(z, 1);
     }
-    if (state.sandboxAssemblyGuides)
-        for (let z = state.sandboxAssemblyGuides.length - 1; z >= 0; z--)
-            if (entityBelongsToAssemblyGroup(state.sandboxAssemblyGuides[z], groupId, groupField)) state.sandboxAssemblyGuides.splice(z, 1);
+    for (let z = state.sandboxAssemblyGuides.length - 1; z >= 0; z--) if (entityBelongsToAssemblyGroup(state.sandboxAssemblyGuides[z], groupId, groupField)) state.sandboxAssemblyGuides.splice(z, 1);
     for (let i = state.walls.length - 1; i >= 0; i--) if (entityBelongsToAssemblyGroup(state.walls[i], groupId, groupField)) removeSandboxWall(state, state.walls[i]);
     for (let z = state.sandboxPads.length - 1; z >= 0; z--) {
         const pad = state.sandboxPads[z];
@@ -171,7 +165,6 @@ export function deleteAssemblyInstance(state, groupId, groupField = "sandboxGrou
 }
 /** @param {object} state */
 export function clearAssemblyInstances(state) {
-    if (!state.sandboxAssemblyInstances.length) return;
-    const ids = state.sandboxAssemblyInstances.map((entry) => entry.id);
-    for (let i = 0; i < ids.length; i++) deleteAssemblyInstance(state, ids[i]);
+    const snapshot = state.sandboxAssemblyInstances.map((entry) => ({ id: entry.id, groupField: getResolvedAssembly(entry.assemblyId).groupField }));
+    for (let i = 0; i < snapshot.length; i++) deleteAssemblyInstance(state, snapshot[i].id, snapshot[i].groupField);
 }

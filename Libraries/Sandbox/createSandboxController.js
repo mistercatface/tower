@@ -1,7 +1,7 @@
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { bindCanvasPointers, releasePointerCapture } from "./bindCanvasPointers.js";
 import { findPickupAt } from "./findPickupAt.js";
-import { createSandboxSession, SANDBOX_SPAWN_ASSEMBLY_PREFIX, sandboxSpawnAssemblyId } from "./sandboxSession.js";
+import { createSandboxSession, SANDBOX_SPAWN_ASSEMBLY_PREFIX } from "./sandboxSession.js";
 import { handlePadPointerDown, hitTestPad, isSandboxSpawnPadId } from "./sandboxPads.js";
 import { resolveSandboxBehaviors } from "./sandboxCapabilities.js";
 import { drawSandboxLaserSights } from "./drawLaserSights.js";

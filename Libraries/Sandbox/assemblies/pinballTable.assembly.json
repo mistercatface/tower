@@ -3,7 +3,6 @@
     "label": "Pinball Table",
     "surfaceProfileId": "poolTableFelt",
     "surfaceAnimation": true,
-    "version": 2,
     "arena": {
         "width": 96,
         "height": 176,
@@ -29,12 +28,14 @@
             "id": "btn-left",
             "preset": "button",
             "at": { "u": 0.06, "v": 0.96 },
+            "radiusU": 0.045,
             "target": "paddleL"
         },
         {
             "id": "btn-right",
             "preset": "button",
             "at": { "u": 0.94, "v": 0.96 },
+            "radiusU": 0.045,
             "target": "paddleR"
         }
     ],

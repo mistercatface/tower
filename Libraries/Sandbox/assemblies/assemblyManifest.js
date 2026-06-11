@@ -66,7 +66,6 @@
  * @property {string} [label]
  * @property {string} [surfaceProfileId]
  * @property {boolean} [surfaceAnimation]
- * @property {number} [version]
  * @property {AssemblyArenaManifest} [arena]
  * @property {AssemblyPadManifest[]} [pads]
  * @property {AssemblyWallSegmentManifest[]} [wallSegments]
@@ -81,7 +80,6 @@
  * @property {string} label
  * @property {string} [surfaceProfileId]
  * @property {boolean} [surfaceAnimation]
- * @property {number} version
  * @property {AssemblyArenaManifest} arena
  * @property {AssemblyPadManifest[]} pads
  * @property {AssemblyWallSegmentManifest[]} wallSegments

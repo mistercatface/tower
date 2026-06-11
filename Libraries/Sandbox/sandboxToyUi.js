@@ -123,7 +123,7 @@ export function mountSandboxToyUi(container, controller, onChange) {
     const render = () => {
         const openSections = readOpenSections(container);
         container.innerHTML = "";
-        const assemblyManifests = controller.listAssemblyManifests?.() ?? [];
+        const assemblyManifests = controller.listAssemblyManifests();
         const spawnOptions = buildSpawnOptions(propIds, assemblyManifests);
         if (spawnOptions.length === 0) {
             container.innerHTML = `<p class="editor-hint">No sandbox spawn options loaded</p>`;
@@ -131,11 +131,11 @@ export function mountSandboxToyUi(container, controller, onChange) {
         }
         const sectionOpen = (id, fallback = true) => {
             if (openSections.size > 0) return openSections.has(id);
-            if (id === "selected") return !!controller.getSelectedPickup?.();
+            if (id === "selected") return !!controller.getSelectedPickup();
             return isFirstRender ? fallback : openSections.has(id);
         };
         const selectedId = controller.getSelectedPickupId();
-        const selectedPickup = controller.getSelectedPickup?.() ?? null;
+        const selectedPickup = controller.getSelectedPickup();
         appendSection(container, "spawn", "Spawn", sectionOpen("spawn"), (body) => {
             const addRow = document.createElement("div");
             addRow.className = "sandbox-add-row";
@@ -178,8 +178,8 @@ export function mountSandboxToyUi(container, controller, onChange) {
             body.appendChild(addRow);
         });
         const placed = controller.listPlacedPickups();
-        const sandboxPads = controller.listSandboxPads?.() ?? [];
-        const assemblies = controller.listAssemblies?.() ?? [];
+        const sandboxPads = controller.listSandboxPads();
+        const assemblies = controller.listAssemblies();
         appendSection(container, "scene", "Scene", sectionOpen("scene"), (body) => {
             appendSubhead(body, "Pickups");
             appendEntityList(

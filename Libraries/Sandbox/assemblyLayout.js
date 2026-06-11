@@ -21,7 +21,8 @@ function resolveAssemblyPads(pads, play) {
             resolved.forceX = entry.forceX;
             resolved.forceY = entry.forceY;
         } else if (entry.preset === "button") {
-            resolved.radius = (entry.radiusU ?? 0.045) * playW;
+            if (entry.radiusU == null) throw new Error(`Button pad "${entry.id}" missing radiusU`);
+            resolved.radius = entry.radiusU * playW;
             resolved.target = entry.target;
         }
         return resolved;
@@ -67,22 +68,29 @@ function wallGapFromOpening(opening) {
     const half = opening.widthU * 0.5;
     return { start: Math.max(0, opening.centerU - half), end: Math.min(1, opening.centerU + half) };
 }
+/** @param {import("./assemblies/assemblyManifest.js").AssemblyArenaWallsManifest} walls */
+function readArenaWallSegment(walls) {
+    const { padding, maxHealth, health } = walls.segment;
+    return { padding, maxHealth, health, segmentSize: walls.segmentSize };
+}
 /** @param {import("./assemblies/assemblyManifest.js").AssemblyWallSegmentManifest[]} segments @param {ReturnType<typeof getPlayfieldBounds>} play */
 function resolveWallSegments(segments, play) {
-    if (!segments?.length) return [];
-    return segments.map((entry, index) => {
+    if (!segments.length) return [];
+    return segments.map((entry) => {
+        if (!entry.id) throw new Error("wall segment missing id");
         const from = resolvePlacement(play, entry.from);
         const to = resolvePlacement(play, entry.to);
-        return { id: entry.id ?? `seg-${index + 1}`, from, to };
+        return { id: entry.id, from, to };
     });
 }
 /** @param {import("./assemblies/assemblyManifest.js").AssemblyArcWallSegmentManifest[]} segments @param {ReturnType<typeof getPlayfieldBounds>} play */
 function resolveArcWallSegments(segments, play) {
-    if (!segments?.length) return [];
+    if (!segments.length) return [];
     const playW = play.maxX - play.minX;
-    return segments.map((entry, index) => {
+    return segments.map((entry) => {
+        if (!entry.id) throw new Error("arc wall segment missing id");
         const center = resolvePlacement(play, entry.center);
-        return { id: entry.id ?? `arc-${index + 1}`, center, radius: entry.radiusU * playW, startAngle: entry.startAngle, endAngle: entry.endAngle };
+        return { id: entry.id, center, radius: entry.radiusU * playW, startAngle: entry.startAngle, endAngle: entry.endAngle };
     });
 }
 /** @param {ReturnType<typeof getArenaWorldBounds>} arenaBounds @param {import("./assemblies/assemblyManifest.js").AssemblyArenaWallsManifest} walls @param {number | null} [wallHeight] */
@@ -93,13 +101,8 @@ function buildRectWallSegments(arenaBounds, walls, wallHeight) {
     const right = arenaBounds.maxX - half;
     const top = arenaBounds.minY + half;
     const bottom = arenaBounds.maxY - half;
-    const segment = walls.segment ?? {};
-    const padding = segment.padding ?? 0;
-    const maxHealth = segment.maxHealth ?? 30;
-    const health = segment.health ?? maxHealth;
-    const segmentSize = walls.segmentSize;
-    const openings = walls.openings ?? {};
-    const bottomGap = openings.bottom ? wallGapFromOpening(openings.bottom) : null;
+    const { padding, maxHealth, health, segmentSize } = readArenaWallSegment(walls);
+    const bottomGap = walls.openings?.bottom ? wallGapFromOpening(walls.openings.bottom) : null;
     return [
         ...tessellateWallEdge(left, top, right, top, segmentSize, 0, padding, maxHealth, health, segmentWallHeight),
         ...tessellateWallEdge(right, top, right, bottom, segmentSize, Math.PI / 2, padding, maxHealth, health, segmentWallHeight),
@@ -111,11 +114,7 @@ function buildRectWallSegments(arenaBounds, walls, wallHeight) {
 function buildPlayfieldWallSegments(segments, walls, wallHeight) {
     if (!segments.length) return [];
     const segmentWallHeight = wallHeight === undefined ? walls.height : wallHeight;
-    const segment = walls.segment ?? {};
-    const padding = segment.padding ?? 0;
-    const maxHealth = segment.maxHealth ?? 30;
-    const health = segment.health ?? maxHealth;
-    const segmentSize = walls.segmentSize;
+    const { padding, maxHealth, health, segmentSize } = readArenaWallSegment(walls);
     /** @type {Segment[]} */
     const out = [];
     for (let i = 0; i < segments.length; i++) {
@@ -131,11 +130,7 @@ function buildPlayfieldWallSegments(segments, walls, wallHeight) {
 function buildPlayfieldArcWallSegments(arcs, walls, wallHeight) {
     if (!arcs.length) return [];
     const segmentWallHeight = wallHeight === undefined ? walls.height : wallHeight;
-    const segment = walls.segment ?? {};
-    const padding = segment.padding ?? 0;
-    const maxHealth = segment.maxHealth ?? 30;
-    const health = segment.health ?? maxHealth;
-    const segmentSize = walls.segmentSize;
+    const { padding, maxHealth, health, segmentSize } = readArenaWallSegment(walls);
     /** @type {Segment[]} */
     const out = [];
     for (let i = 0; i < arcs.length; i++) {
@@ -183,10 +178,8 @@ export function buildAssemblyClearBounds(layout, resolved) {
 export function buildAssemblyWallSegments(layout, resolved, { collisionOnly = false } = {}) {
     const rectWallHeight = collisionOnly ? null : resolved.arena.walls.height;
     const playfieldWallHeight = resolved.arena.walls.height;
-    const rectWalls = buildRectWallSegments(layout.bounds, resolved.arena.walls, rectWallHeight);
-    if (collisionOnly) for (let i = 0; i < rectWalls.length; i++) rectWalls[i].collisionOnly = true;
     return [
-        ...rectWalls,
+        ...buildRectWallSegments(layout.bounds, resolved.arena.walls, rectWallHeight),
         ...buildPlayfieldWallSegments(layout.wallSegments, resolved.arena.walls, playfieldWallHeight),
         ...buildPlayfieldArcWallSegments(layout.arcWallSegments, resolved.arena.walls, playfieldWallHeight),
     ];

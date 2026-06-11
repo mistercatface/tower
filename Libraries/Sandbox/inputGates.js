@@ -78,7 +78,7 @@ export function evaluateInputGateRule(rule, pickup, pickups) {
 export function evaluateInputGates(behaviorId, pickup, asset, host) {
     const rules = resolvePickupInputGateRules(pickup, asset, behaviorId);
     if (rules.length === 0) return { allowed: true };
-    const pickups = host.getPickups?.() ?? host.getWorldState?.()?.pickups ?? [];
+    const pickups = host.getPickups();
     for (let i = 0; i < rules.length; i++) {
         const rule = rules[i];
         if (!evaluateInputGateRule(rule, pickup, pickups)) return { allowed: false, failedRule: rule };

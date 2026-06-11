@@ -1,5 +1,5 @@
 import { Segment } from "../../Entities/Wall.js";
-import { DEFAULT_PIT_DEPTH, isInsideVoidMouth, voidMouthReach } from "../Spatial/zones/pit.js";
+import { isInsideVoidMouth, voidMouthReach } from "../Spatial/zones/pit.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { isFlipperButtonPressed, triggerFlipper } from "./behaviors/flipperBehavior.js";
 import { addSandboxWalls, removeSandboxWall } from "./spawnAssembly.js";
@@ -63,6 +63,16 @@ export function resolvePadTargetPickup(state, trigger, pad) {
     const targetId = trigger.targetPickupId ?? pad.targetPickupId;
     return state.pickups.find((entry) => entry.id === targetId && !entry.isDead);
 }
+/** @param {object} state @param {object} pad */
+export function setupGatePad(state, pad) {
+    pad.wallsUp = true;
+    pad.walls = [buildGateWall(pad.x, pad.y, pad.id)];
+    addSandboxWalls(state, pad.walls, { compileRender: false });
+}
+/** @param {object} state @param {object} pad */
+export function teardownGatePad(state, pad) {
+    if (pad.wallsUp) setGateWalls(state, pad, false);
+}
 /** @type {Record<string, PadEffectHandler>} */
 const PAD_EFFECTS = {
     sink: {
@@ -76,14 +86,8 @@ const PAD_EFFECTS = {
         },
     },
     gate: {
-        setup(state, pad) {
-            pad.wallsUp = true;
-            pad.walls = [buildGateWall(pad.x, pad.y, pad.id)];
-            addSandboxWalls(state, pad.walls, { compileRender: false });
-        },
-        teardown(state, pad) {
-            if (pad.wallsUp) setGateWalls(state, pad, false);
-        },
+        setup: setupGatePad,
+        teardown: teardownGatePad,
         run(state, pad, trigger) {
             setGateWalls(state, pad, trigger.up === true);
         },
@@ -111,29 +115,20 @@ const PAD_EFFECTS = {
         },
     },
 };
-/** @returns {string[]} */
-export function listPadEffectIds() {
-    return Object.keys(PAD_EFFECTS);
-}
-/** @param {object} state @param {object} pad @param {import("./padPresets.js").PadPresetDef} preset */
-export function setupPadPresetEffects(state, pad, preset) {
-    if (preset.linkedWalls) PAD_EFFECTS.gate.setup(state, pad);
-}
-/** @param {object} state @param {object} pad */
-export function teardownSandboxPadEffects(state, pad) {
-    if (pad.wallsUp) PAD_EFFECTS.gate.teardown(state, pad);
-}
 /** @param {object} state @param {object} pad @param {PadTriggerDef} trigger @param {PadEffectContext} ctx */
 export function runPadEffect(state, pad, trigger, ctx) {
-    PAD_EFFECTS[trigger.effect].run(state, pad, trigger, ctx);
+    const effect = PAD_EFFECTS[trigger.effect];
+    if (!effect) throw new Error(`Unknown pad effect "${trigger.effect}"`);
+    effect.run(state, pad, trigger, ctx);
 }
 /** @param {object} state @param {object} pad @param {PadTriggerDef[]} triggers @param {import("./padPresets.js").PadWhen} when */
 export function isPadTriggerActive(state, pad, triggers, when) {
     for (let i = 0; i < triggers.length; i++) {
         const trigger = triggers[i];
         if (trigger.when !== when) continue;
-        const isActive = PAD_EFFECTS[trigger.effect].isActive;
-        if (isActive && isActive(state, pad, trigger)) return true;
+        const effect = PAD_EFFECTS[trigger.effect];
+        if (!effect?.isActive) continue;
+        if (effect.isActive(state, pad, trigger)) return true;
     }
     return false;
 }

@@ -27,7 +27,3 @@ export const PAD_PRESETS = {
     pull: { listLabel: "Gravity pad", draw: "pull", triggers: [{ when: "occupied", effect: "pull", forceX: 0, forceY: 1000 }] },
     button: { listLabel: "Button pad", draw: "button", circleRadius: 8, triggers: [{ when: "pointerDown", effect: "flipper" }] },
 };
-/** @returns {string[]} */
-export function listPadPresetIds() {
-    return Object.keys(PAD_PRESETS);
-}
