@@ -4,7 +4,7 @@ import { findPickupAt } from "./findPickupAt.js";
 import { createSandboxSession } from "./sandboxSession.js";
 import { resolveSandboxBehaviors } from "./sandboxCapabilities.js";
 import { drawSandboxLaserSights } from "./drawLaserSights.js";
-import { drawSandboxPathOverlay } from "./drawSandboxPathOverlay.js";
+import { drawActivePathOverlay } from "../Render/map/drawActivePathOverlay.js";
 import { drawSandboxWeaponBars } from "./drawPickupWeaponBars.js";
 import { resolveSandboxPathVisual, setSandboxPathVisual } from "./sandboxPathVisual.js";
 /** @typedef {import("./SandboxHostPort.js").SandboxHostPort} SandboxHostPort */
@@ -181,7 +181,12 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
         drawPathOverlay(ctx) {
             const pickup = session.getSelectedPickup();
             const behavior = resolveBehavior();
-            if (pickup) drawSandboxPathOverlay(ctx, pickup, behavior, host);
+            if (!pickup) return;
+            const visual = resolveSandboxPathVisual(pickup);
+            if (visual === "off" || !behavior?.getPathOverlay) return;
+            const overlay = behavior.getPathOverlay(pickup, host);
+            if (!overlay) return;
+            drawActivePathOverlay(ctx, overlay, host.getWorldState().viewport.zoom, visual);
         },
         /** Drag-launch aim preview — same layer as path overlays (above floors, below walls). */
         drawLaunchPreview(ctx) {

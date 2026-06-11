@@ -3,7 +3,7 @@ import { Entity } from "./Entity.js";
 import { drawProjectileTracer } from "../Libraries/Render/projectileDraw.js";
 import { getProjectileDamage } from "../Libraries/Combat/impactDamage.js";
 import { getInteractionPairFilter } from "../Core/interactionPairFilters.js";
-import { engine } from "../Apps/Editor/engine.js";
+import { playBoundsFromObstacleGrid } from "../Libraries/WorldGen/playBounds.js";
 import { RagdollCorpse } from "./RagdollCorpse.js";
 import { CombatParticles } from "../Libraries/Render/CombatParticles.js";
 export const ProjectileStrategies = {
@@ -86,7 +86,7 @@ export class Projectile extends Entity {
         this.strategy.move(this, dt);
     }
     checkOutOfBounds(state) {
-        const bounds = engine.worldGen.getPlayBounds(state);
+        const bounds = playBoundsFromObstacleGrid(state.obstacleGrid);
         if (bounds) {
             if (this.x < bounds.minX - 500 || this.x > bounds.maxX + 500 || this.y < bounds.minY - 500 || this.y > bounds.maxY + 500) {
                 this.isDead = true;

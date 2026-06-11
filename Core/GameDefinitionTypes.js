@@ -40,19 +40,6 @@
  * @property {(state: object, viewport: object, ctx: CanvasRenderingContext2D, renderer: import("../Render/Render.js").Renderer) => void} [drawPostSimulation]
  */
 /**
- * @typedef {{ minX: number, minY: number, maxX: number, maxY: number }} WorldPlayBounds
- */
-/**
- * @typedef {object} WorldGenPort
- * @property {(state: object) => void} generateWorld
- * @property {(state: object) => WorldPlayBounds | null} getPlayBounds
- * @property {Record<string, import("./GameDefinitionTypes.js").WorldGenStrategy>} [strategies]
- */
-/**
- * @typedef {object} WorldGenStrategy
- * @property {(state: object, px: number, py: number) => void} generate
- */
-/**
  * @typedef {object} PlaybackConfig
  * @property {number} [minSpeed]
  * @property {number} [maxSpeed]
@@ -74,7 +61,6 @@
  * @property {Partial<InteractionPairsPort>} interactionPairs
  * @property {TargetingPort} targeting
  * @property {RenderPorts} render
- * @property {WorldGenPort} worldGen
  * @property {() => void} [onCanvasResize]
  * @property {() => void | Promise<void>} [prepare]
  * @property {{ actorCache?: import("../Libraries/Canvas/SpriteCache.js").SpriteCache, turretCache?: import("../Libraries/Canvas/SpriteCache.js").SpriteCache }} [caches]

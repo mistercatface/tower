@@ -1,6 +1,6 @@
 import { applySquareCanvasResize } from "../../../Libraries/Canvas/index.js";
 
-/** @typedef {import("../../../Libraries/Render/map/bakeObstacleOverview.js").ObstacleOverviewCache} MapOverviewCache */
+/** @typedef {import("../../../Libraries/Render/map/labMapCaches.js").ObstacleOverviewCache} MapOverviewCache */
 
 /** @param {CanvasRenderingContext2D} ctx @param {import("../../../Libraries/Viewport/Viewport.js").Viewport} viewport @param {MapOverviewCache} cache @param {number} displayW @param {number} displayH */
 function drawViewportBox(ctx, viewport, cache, displayW, displayH) {
@@ -35,11 +35,6 @@ export function paintMapOverviewFrame(state) {
     if (!cache) return;
     ctx.drawImage(cache.canvas, 0, 0, canvas.width, canvas.height);
     if (state.labShowMapOverviewViewport) drawViewportBox(ctx, state.viewport, cache, canvas.width, canvas.height);
-}
-
-/** @param {import("../state.js").TileLabGameState} state */
-export function refreshMapOverviewDisplay(state) {
-    paintMapOverviewFrame(state);
 }
 
 /** Vertical space for main map max-size when overview is visible. */

@@ -1,5 +1,4 @@
 import { SURFACE_PROFILE_ID } from "../../Config/procedural/profileIds.js";
-import { playBoundsFromObstacleGrid } from "../../Libraries/WorldGen/playBounds.js";
 import { GUN_ID_TO_VISUAL } from "../../Assets/guns/visualMap.js";
 import { createDefaultRenderPorts } from "../../Libraries/Render/defaultRenderPorts.js";
 import { createWeaponVisuals } from "../../Libraries/Render/Characters/weapons/createWeaponVisuals.js";
@@ -76,16 +75,8 @@ export const engine = {
             },
         ],
     },
-    worldGen: {
-        strategies: {},
-        generateWorld() {},
-        getPlayBounds(state) {
-            return playBoundsFromObstacleGrid(state.obstacleGrid);
-        },
-    },
     worldSurface: { pixelsPerCell: 6 },
     proceduralDesign: { surfaceProfileId: EDITOR_SURFACE_PROFILE_ID },
-    playbackHandlers: { togglePause() {}, adjustSpeed() {} },
 };
 export function createEditorApp() {
     const state = new TileLabGameState();

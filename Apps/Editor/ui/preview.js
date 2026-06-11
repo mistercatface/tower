@@ -1,8 +1,7 @@
 import { registerRuntimeSurfaceProfile } from "../../../Config/procedural/profiles.js";
 import { invalidateProfileScratch } from "../../../Libraries/WorldSurface/ProfileBakeResolver.js";
 import { TileWorkerCoordinator } from "../../../Libraries/WorldSurface/TileWorkerCoordinator.js";
-import { drawMapPathDebugCache } from "../../../Libraries/Render/map/MapPathDebugCache.js";
-import { drawMapWallCache } from "../../../Libraries/Render/map/MapWallCache.js";
+import { drawMapPathDebugCache, drawMapWallCache } from "../../../Libraries/Render/map/labMapCaches.js";
 import { getSurfaceProfileRevision } from "../../../Libraries/WorldSurface/SurfaceProfileRevision.js";
 import { invalidateWallAtlasKeyMemos } from "../../../Render/game/wallSurfaceInvalidation.js";
 import { getGameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.js";
@@ -68,10 +67,10 @@ export function drawLabFrame(state) {
         ctx.save();
         viewport.apply(ctx);
         if (showPathDebug && state.mapPathDebugCache) drawMapPathDebugCache(ctx, state.mapPathDebugCache);
-        if (showWalls && state.mapTopologyWallCache) {
+        if (showWalls && state.mapWallCache) {
             ctx.save();
             ctx.globalAlpha = 0.35;
-            drawMapWallCache(ctx, state.mapTopologyWallCache);
+            drawMapWallCache(ctx, state.mapWallCache);
             ctx.restore();
         }
         ctx.restore();

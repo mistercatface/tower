@@ -24,7 +24,6 @@ export {
     resolveSandboxPathVisual,
     setSandboxPathVisual,
 } from "./sandboxPathVisual.js";
-export { drawSandboxPathOverlay } from "./drawSandboxPathOverlay.js";
 export { renderSandboxEquipPanel } from "./sandboxEquipPanel.js";
 export { getSandboxBehaviorLabel, isSandboxEquippable, isSandboxSpawnable, resolveSandboxBehaviors, SANDBOX_BEHAVIOR_LABELS } from "./sandboxCapabilities.js";
 export { evaluateInputGates, evaluateInputGateRule, isEntityAtRest, isEntityAsleep, resolveInputGateScope } from "./inputGates.js";

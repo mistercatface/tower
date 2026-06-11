@@ -2,15 +2,6 @@
  * @typedef {{ minX: number, minY: number, maxX: number, maxY: number }} WorldPlayBounds
  */
 /**
- * @param {WorldPlayBounds | null | undefined} a
- * @param {WorldPlayBounds | null | undefined} b
- * @returns {WorldPlayBounds | null}
- */
-export function intersectWorldBounds(a, b) {
-    const out = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
-    return intersectWorldBoundsInto(out, a, b) ? out : null;
-}
-/**
  * @param {WorldPlayBounds} out
  * @param {WorldPlayBounds | null | undefined} a
  * @param {WorldPlayBounds | null | undefined} b

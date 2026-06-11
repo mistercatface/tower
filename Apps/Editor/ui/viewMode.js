@@ -1,4 +1,4 @@
-import { refreshMapOverviewDisplay } from "./mapOverview.js";
+import { paintMapOverviewFrame } from "./mapOverview.js";
 /** @param {string} panelId @param {boolean} visible */
 function setEditorPanelVisible(panelId, visible) {
     const panel = document.getElementById(panelId);
@@ -59,7 +59,7 @@ export function bindViewModeControls(state, onChange, onLayoutChange = null) {
         state.labShowMapOverview = /** @type {HTMLInputElement} */ (e.target).checked;
         applyLabViewChrome(state);
         onLayoutChange?.();
-        if (state.labShowMapOverview) refreshMapOverviewDisplay(state);
+        if (state.labShowMapOverview) paintMapOverviewFrame(state);
     });
     applyLabViewChrome(state);
 }
