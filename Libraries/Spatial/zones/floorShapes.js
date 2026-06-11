@@ -42,7 +42,7 @@ export function createCircleFloorShape(x, y, radius, { id = "floor-shape" } = {}
  * @param {{ onEnter: (shape: object, entity: object) => void, onExit: (shape: object, entityId: number) => void }} handlers
  */
 export function processFloorShapes(spatialFrame, shapes, { onEnter, onExit }) {
-    if (!spatialFrame || !shapes?.length || !onEnter || !onExit) return;
+    if (!shapes.length) return;
     for (let z = 0; z < shapes.length; z++) {
         const floorShape = shapes[z];
         const { minX, minY, maxX, maxY } = floorShape.aabb;
@@ -51,9 +51,9 @@ export function processFloorShapes(spatialFrame, shapes, { onEnter, onExit }) {
         next.clear();
         for (let i = 0; i < candidates.length; i++) {
             const entity = candidates[i];
-            if (!entity || entity.isDead || !entity.getShape) continue;
+            if (!entity || entity.isDead) continue;
             const shape = entity.getShape();
-            if (!shape || SatCollision.checkCollision(entity, shape, floorShape, floorShape.shape) == null) continue;
+            if (SatCollision.checkCollision(entity, shape, floorShape, floorShape.shape) == null) continue;
             next.add(entity.id);
             if (!floorShape._occupants.has(entity.id)) onEnter(floorShape, entity);
         }

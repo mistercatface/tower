@@ -68,9 +68,8 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
         spawnAt,
         spawnAtCameraOrigin() {
             const origin = host.getCameraOrigin();
-            const preset = parseSandboxPadPreset(spawnPropId);
-            if (preset) {
-                spawnSandboxPad(host, preset, origin.x, origin.y);
+            if (isSandboxSpawnPadId(spawnPropId)) {
+                spawnSandboxPad(host, parseSandboxPadPreset(spawnPropId), origin.x, origin.y);
                 sync();
                 return null;
             }

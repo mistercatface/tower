@@ -26,23 +26,14 @@ export function validateAssemblyPickupManifest(resolved) {
  * @param {{ groupId: string, resolvedId: string, groupField: string }} ctx
  */
 function spawnAssemblyButtonPad(state, layout, pickup, config, ctx) {
-    if (!config) return;
     const play = layout.play;
     const playW = play.maxX - play.minX;
-    const placement = config.at ?? (typeof config.u === "number" && typeof config.v === "number" ? { u: config.u, v: config.v } : null);
-    if (!placement) throw new Error("assembly button pad requires at or u/v playfield placement");
+    const placement = config.at ?? { u: config.u, v: config.v };
     const at = resolvePlacement(play, placement);
     const radius = (config.radiusU ?? 0.045) * playW;
-    const trigger = config.trigger ?? "flipper";
-    const pad = buildSandboxPad(state, "button", at.x, at.y, {
-        id: `${pickup.id}:button`,
-        radius,
-        targetPickupId: pickup.id,
-        triggers: [{ when: "pointerDown", effect: trigger, targetPickupId: pickup.id }],
-    });
-    if (!pad) return;
+    const effect = config.effect ?? "flipper";
+    const pad = buildSandboxPad(state, "button", at.x, at.y, { id: `${pickup.id}:button`, radius, targetPickupId: pickup.id, triggers: [{ when: "pointerDown", effect, targetPickupId: pickup.id }] });
     stampAssemblyGroupMember(pad, ctx.groupId, ctx.resolvedId, ctx.groupField);
-    if (!state.sandboxPads) state.sandboxPads = [];
     state.sandboxPads.push(pad);
 }
 /**

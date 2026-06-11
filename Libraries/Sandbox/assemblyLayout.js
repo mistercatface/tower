@@ -7,7 +7,6 @@ import { resolvePlacement } from "./assemblies/assemblyPlacement.js";
  * @param {ReturnType<typeof getPlayfieldBounds>} play
  */
 function resolveSinkPads(sinkPads, play) {
-    if (!sinkPads) return [];
     return sinkPads.map((entry) => {
         const point = resolvePlacement(play, entry.placement);
         return { id: entry.id, x: point.x, y: point.y, radius: entry.radius, depth: entry.depth };
@@ -15,7 +14,6 @@ function resolveSinkPads(sinkPads, play) {
 }
 /** @param {import("./assemblies/assemblyManifest.js").AssemblyPullPadManifest[]} pullPads @param {ReturnType<typeof getPlayfieldBounds>} play */
 function resolvePullPads(pullPads, play) {
-    if (!pullPads) return [];
     return pullPads.map((entry) => {
         const point = resolvePlacement(play, entry.placement);
         return { id: entry.id, x: point.x, y: point.y, halfWidth: entry.width / 2, halfHeight: entry.height / 2, forceX: entry.forceX, forceY: entry.forceY };

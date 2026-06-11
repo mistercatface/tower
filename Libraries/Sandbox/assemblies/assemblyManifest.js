@@ -60,7 +60,7 @@
  * @property {AssemblyPlacementManifest} [at] — playfield anchor or u/v
  * @property {number} [u] — playfield horizontal fraction (shorthand for at.u)
  * @property {number} [v] — playfield vertical fraction (shorthand for at.v)
- * @property {string} trigger — pointerDown effect id on the linked button pad
+ * @property {string} effect — registered pad effect id (e.g. flipper)
  * @property {number} [radiusU] — button radius as fraction of playfield width
  */
 /**

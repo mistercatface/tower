@@ -130,7 +130,6 @@ export function spawnResolvedAssembly(host, centerX, centerY, resolved, { factio
             const sinkPad = layout.sinkPads[p];
             const pad = buildSandboxPad(state, "sink", sinkPad.x, sinkPad.y, { id: `${groupId}:sink:${sinkPad.id ?? p + 1}`, radius: sinkPad.radius, sinkDepth: sinkPad.depth });
             stampAssemblyGroupMember(pad, groupId, resolved.id, groupField);
-            if (!state.sandboxPads) state.sandboxPads = [];
             state.sandboxPads.push(pad);
         }
     if (spawnIncludes(spawnSteps, ["pullPads"]))
@@ -144,7 +143,6 @@ export function spawnResolvedAssembly(host, centerX, centerY, resolved, { factio
                 forceY: pullPad.forceY,
             });
             stampAssemblyGroupMember(pad, groupId, resolved.id, groupField);
-            if (!state.sandboxPads) state.sandboxPads = [];
             state.sandboxPads.push(pad);
         }
     let defaultPickupId = null;

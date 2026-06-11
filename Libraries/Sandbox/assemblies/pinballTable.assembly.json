@@ -24,13 +24,13 @@
             "id": "paddleL",
             "prop": "flipper_left",
             "at": { "u": 0.35, "v": 0.85 },
-            "button": { "u": 0.06, "v": 0.96, "trigger": "flipper" }
+            "button": { "u": 0.06, "v": 0.96, "effect": "flipper" }
         },
         {
             "id": "paddleR",
             "prop": "flipper_right",
             "at": { "u": 0.65, "v": 0.85 },
-            "button": { "u": 0.94, "v": 0.96, "trigger": "flipper" }
+            "button": { "u": 0.94, "v": 0.96, "effect": "flipper" }
         },
         { "id": "ball", "prop": "pool_ball_1", "at": { "u": 0.5, "v": 0.15 } }
     ],
