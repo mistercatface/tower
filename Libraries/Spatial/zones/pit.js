@@ -26,23 +26,18 @@ export function drawPit(ctx, pad, viewerX, viewerY) {
     ctx.beginPath();
     ctx.arc(pad.x, pad.y, mouthRadius, 0, Math.PI * 2);
     ctx.clip();
-    // Draw the black background of the void pit (fixed at the mouth position)
-    ctx.fillStyle = "hsl(0, 0%, 0%)";
-    ctx.beginPath();
-    ctx.arc(pad.x, pad.y, mouthRadius, 0, Math.PI * 2);
-    ctx.fill();
-    // Draw the shifting inside of the well/funnel (shifting away from the camera)
+    // Draw the shifting inside of the well/funnel (with negative alpha)
     const step = pocketDepth / 8;
-    for (let H = -step; H >= -pocketDepth; H -= step) {
+    for (let H = 0; H >= -pocketDepth; H -= step) {
         const dx = pad.x - viewerX;
         const dy = pad.y - viewerY;
         const dist = Math.hypot(dx, dy);
-        const alpha = (-H / (CAMERA_HEIGHT - H)) * PERSPECTIVE_STRENGTH;
+        const alpha = (H / (CAMERA_HEIGHT - H)) * PERSPECTIVE_STRENGTH;
         const projX = dist === 0 ? pad.x : pad.x + dx * alpha;
         const projY = dist === 0 ? pad.y : pad.y + dy * alpha;
         const layerRadius = mouthRadius * (CAMERA_HEIGHT / (CAMERA_HEIGHT - H));
         const ratio = Math.min(1, -H / pocketDepth);
-        const lightness = Math.max(0, 14 - ratio * 14);
+        const lightness = Math.max(0, 100 - ratio * 100);
         ctx.fillStyle = `hsl(0, 0%, ${lightness}%)`;
         ctx.beginPath();
         ctx.arc(projX, projY, layerRadius, 0, Math.PI * 2);
