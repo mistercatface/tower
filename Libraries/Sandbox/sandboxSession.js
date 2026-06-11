@@ -3,9 +3,9 @@ import { getPropAsset } from "../Props/PropCatalog.js";
 import { SANDBOX_DEFAULT_FACTION, resolveSandboxFaction } from "../Combat/sandboxTargeting.js";
 import { spawnAssembly, deleteAssemblyInstance, clearAssemblyInstances } from "./spawnAssembly.js";
 import { getAssemblyManifest, listAssemblyManifests } from "./assemblies/assemblyRegistry.js";
-import { SANDBOX_SPAWN_PRESSURE_PLATE, SANDBOX_SPAWN_VOID, clearSandboxZones, deleteSandboxZone, isSandboxSpawnZoneId, listSandboxZones, spawnSandboxZone } from "./sandboxZones.js";
+import { clearSandboxPads, deleteSandboxPad, isSandboxSpawnPadId, listSandboxPads, parseSandboxPadPreset, spawnSandboxPad } from "./sandboxPads.js";
 /** @typedef {import("./SandboxHostPort.js").SandboxHostPort} SandboxHostPort */
-export { SANDBOX_SPAWN_PRESSURE_PLATE, SANDBOX_SPAWN_VOID } from "./sandboxZones.js";
+export { SANDBOX_SPAWN_PAD_PREFIX, isSandboxSpawnPadId, parseSandboxPadPreset, sandboxSpawnPadId } from "./sandboxPads.js";
 export const SANDBOX_SPAWN_ASSEMBLY_PREFIX = "assembly:";
 /** @param {string} assemblyId */
 export function sandboxSpawnAssemblyId(assemblyId) {
@@ -13,7 +13,7 @@ export function sandboxSpawnAssemblyId(assemblyId) {
 }
 /** @param {string} spawnId */
 export function isSandboxSpawnPropId(spawnId) {
-    return !isSandboxSpawnZoneId(spawnId) && !spawnId.startsWith(SANDBOX_SPAWN_ASSEMBLY_PREFIX);
+    return !isSandboxSpawnPadId(spawnId) && !spawnId.startsWith(SANDBOX_SPAWN_ASSEMBLY_PREFIX);
 }
 /**
  * @param {SandboxHostPort} host
@@ -68,8 +68,9 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
         spawnAt,
         spawnAtCameraOrigin() {
             const origin = host.getCameraOrigin();
-            if (isSandboxSpawnZoneId(spawnPropId)) {
-                spawnSandboxZone(host, /** @type {"void" | "pressurePlate"} */ (spawnPropId), origin.x, origin.y);
+            const preset = parseSandboxPadPreset(spawnPropId);
+            if (preset) {
+                spawnSandboxPad(host, preset, origin.x, origin.y);
                 sync();
                 return null;
             }
@@ -101,11 +102,11 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
                 defaultPickupId: entry.defaultPickupId,
             }));
         },
-        deleteSandboxZoneById(id) {
-            deleteSandboxZone(host.getWorldState(), id);
+        deleteSandboxPadById(id) {
+            deleteSandboxPad(host.getWorldState(), id);
             sync();
         },
-        listSandboxZones: () => listSandboxZones(host.getWorldState()),
+        listSandboxPads: () => listSandboxPads(host.getWorldState()),
         deletePickup(pickup) {
             if (!pickup) return;
             host.removePickup(pickup);
@@ -131,7 +132,7 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
         clear() {
             host.clearPickups();
             clearAssemblyInstances(host.getWorldState());
-            clearSandboxZones(host.getWorldState());
+            clearSandboxPads(host.getWorldState());
             selectedPickupId = null;
             sync();
         },

@@ -3,7 +3,7 @@ import { SANDBOX_DEFAULT_FACTION, SANDBOX_FACTION_OPTIONS, formatSandboxFactionL
 import { getSandboxBehaviorLabel, isSandboxEquippable, isSandboxSpawnable } from "./sandboxCapabilities.js";
 import { renderSandboxEquipPanel } from "./sandboxEquipPanel.js";
 import { SANDBOX_PATH_VISUAL_LABELS, SANDBOX_PATH_VISUAL_OPTIONS } from "./sandboxPathVisual.js";
-import { SANDBOX_SPAWN_VOID, SANDBOX_SPAWN_PRESSURE_PLATE, sandboxSpawnAssemblyId } from "./sandboxSession.js";
+import { sandboxSpawnAssemblyId, sandboxSpawnPadId } from "./sandboxSession.js";
 function readOpenSections(root) {
     const open = new Set();
     for (const el of root.querySelectorAll("details[data-sandbox-section]")) if (el.open) open.add(el.dataset.sandboxSection);
@@ -103,11 +103,11 @@ function buildSpawnOptions(propIds, assemblyManifests) {
     const options = propIds.map((id) => ({ value: id, label: id.replace(/_/g, " ") }));
     const assemblies = [...assemblyManifests].sort((a, b) => a.label.localeCompare(b.label));
     for (const manifest of assemblies) {
-        if (manifest.label.toLowerCase().includes("pinball")) options.push({ value: SANDBOX_SPAWN_VOID, label: "Void" });
+        if (manifest.label.toLowerCase().includes("pinball")) options.push({ value: sandboxSpawnPadId("sink"), label: "Void pit" });
         options.push({ value: sandboxSpawnAssemblyId(manifest.id), label: manifest.label });
     }
-    if (!options.some((option) => option.value === SANDBOX_SPAWN_VOID)) options.push({ value: SANDBOX_SPAWN_VOID, label: "Void" });
-    options.push({ value: SANDBOX_SPAWN_PRESSURE_PLATE, label: "Pressure plate" });
+    if (!options.some((option) => option.value === sandboxSpawnPadId("sink"))) options.push({ value: sandboxSpawnPadId("sink"), label: "Void pit" });
+    options.push({ value: sandboxSpawnPadId("gate"), label: "Pressure pad" });
     return options;
 }
 /**
@@ -178,7 +178,7 @@ export function mountSandboxToyUi(container, controller, onChange) {
             body.appendChild(addRow);
         });
         const placed = controller.listPlacedPickups();
-        const sandboxZones = controller.listSandboxZones?.() ?? [];
+        const sandboxPads = controller.listSandboxPads?.() ?? [];
         const assemblies = controller.listAssemblies?.() ?? [];
         appendSection(container, "scene", "Scene", sectionOpen("scene"), (body) => {
             appendSubhead(body, "Pickups");
@@ -192,11 +192,11 @@ export function mountSandboxToyUi(container, controller, onChange) {
                 })),
                 "No pickups placed yet.",
             );
-            if (sandboxZones.length > 0) {
-                appendSubhead(body, "Zones");
+            if (sandboxPads.length > 0) {
+                appendSubhead(body, "Pads");
                 appendEntityList(
                     body,
-                    sandboxZones.map((entry) => ({ label: entry.radius != null ? `${entry.label} · r${entry.radius}` : entry.label, onDelete: () => controller.deleteSandboxZoneById(entry.id) })),
+                    sandboxPads.map((entry) => ({ label: entry.radius != null ? `${entry.label} · r${entry.radius}` : entry.label, onDelete: () => controller.deleteSandboxPadById(entry.id) })),
                     "",
                 );
             }

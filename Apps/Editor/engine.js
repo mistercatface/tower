@@ -22,7 +22,7 @@ import { FLOATING_TEXT_SPAWN_EVENT, FloatingText } from "../../Libraries/Render/
 import { drawSandboxAssemblyGuides, drawSandboxAssemblySurfaces } from "../../Libraries/Sandbox/assemblySurfaceDraw.js";
 import { TileLabGameState } from "./state.js";
 import { tilelabGroundZoneEffectPass, tickTilelabGroundZones } from "./groundZones.js";
-import { sandboxZoneEffectPass, tickSandboxZones } from "../../Libraries/Sandbox/sandboxZones.js";
+import { sandboxPadEffectPass, tickSandboxPads } from "../../Libraries/Sandbox/sandboxPads.js";
 import { sandboxController } from "./world/tilelabSandbox.js";
 import { tickSandboxCameraFollow } from "../../Libraries/Sandbox/sandboxCameraTarget.js";
 import { fitLabStageToView } from "./ui/labViewport.js";
@@ -47,7 +47,7 @@ function runSimulationTick(state, dt) {
     Projectile.checkSpawnCollisions(state, spatialFrame, simulationEvents);
     Projectile.updateAll(state, simDt);
     CombatParticles.updateAll(state, simDt);
-    tickSandboxZones(state, spatialFrame, simDt);
+    tickSandboxPads(state, spatialFrame, simDt);
     runPushablePhysics(state, simDt, spatialFrame, simulationEvents);
     RagdollCorpse.updateAll(state, simDt, spatialFrame);
     dispatchSimulationEvents(simulationEvents, state);
@@ -67,7 +67,7 @@ export const engine = {
         },
         drawPostSimulation: (state, viewport, ctx) => CombatParticles.renderAll(ctx, state, viewport),
         simulationEffectPasses: [
-            sandboxZoneEffectPass,
+            sandboxPadEffectPass,
             tilelabGroundZoneEffectPass,
             {
                 zIndex: 65,
