@@ -69,6 +69,16 @@ export function syncPipeElbowCollisionShape(prop) {
     prop._collisionBoundingRadius = maxR;
     return prop.shape;
 }
+/** @param {object} prop @param {object | null | undefined} asset */
+export function getPipeElbowOutletWorld(prop, asset) {
+    const spec = getPipeElbowSpec(prop, asset);
+    const centerline = buildPipeElbowCenterline3D(spec);
+    const end = centerline[centerline.length - 1];
+    const facing = prop.facing ?? 0;
+    const cos = Math.cos(facing);
+    const sin = Math.sin(facing);
+    return { x: prop.x + end.x * cos - end.y * sin, y: prop.y + end.x * sin + end.y * cos, nx: cos, ny: sin };
+}
 /** @param {object} prop */
 export function getPipeElbowSpriteCacheKey(prop) {
     const asset = getPropAsset(prop.type);

@@ -1,8 +1,8 @@
-import { getPipeElbowSpriteCacheKey, syncPipeElbowCollisionShape } from "../../../Libraries/Props/pipeElbowGeometry.js";
+import { getPipeElbowOutletWorld, getPipeElbowSpriteCacheKey, syncPipeElbowCollisionShape } from "../../../Libraries/Props/pipeElbowGeometry.js";
 export default {
     id: "pipe_elbow",
     primitive: "pipeElbow",
-    sandbox: { behaviors: ["dragLaunchFacing"], dragLaunch: { minPower: 18, maxPower: 220 } },
+    sandbox: { behaviors: ["spawner"], spawner: { defaultPropId: "blue_ball", dragLaunch: { minPower: 20, maxPower: 750 }, getOutletWorld: getPipeElbowOutletWorld } },
     physics: {
         hitBehavior: "none",
         isPushable: true,

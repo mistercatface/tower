@@ -4,6 +4,7 @@ export const SANDBOX_BEHAVIOR_LABELS = {
     dragLaunch: "Drag launch",
     dragLaunchWait: "Drag launch (wait for rest)",
     dragLaunchFacing: "Drag launch (yaw to shot)",
+    spawner: "Spawner",
     flipper: "Flipper",
     cueStrike: "Cue strike",
     rollToCursorDirect: "Roll to cursor (direct)",

@@ -1,6 +1,7 @@
 import { getPropAsset, getWorldPropDefinitions } from "../Props/PropCatalog.js";
 import { SANDBOX_DEFAULT_FACTION, SANDBOX_FACTION_OPTIONS, formatSandboxFactionLabel, resolveSandboxFaction } from "../Combat/sandboxTargeting.js";
 import { getSandboxBehaviorLabel, isSandboxEquippable, isSandboxSpawnable } from "./sandboxCapabilities.js";
+import { isSpawnerProp, listSpawnerSpawnPropIds, resolveSpawnerPropId } from "./spawnerConfig.js";
 import { PAD_PRESETS } from "./padPresets.js";
 import { renderSandboxEquipPanel } from "./sandboxEquipPanel.js";
 import { SANDBOX_PATH_VISUAL_LABELS, SANDBOX_PATH_VISUAL_OPTIONS } from "./sandboxPathVisual.js";
@@ -397,6 +398,20 @@ export function mountSandboxToyUi(container, controller, onChange) {
                         onChange();
                     },
                 });
+            const selectedAsset = getPropAsset(selectedPickup.type);
+            if (isSpawnerProp(selectedAsset)) {
+                const spawnPropIds = listSpawnerSpawnPropIds();
+                if (spawnPropIds.length)
+                    appendSelectField(body, "Spawn prop", {
+                        value: resolveSpawnerPropId(selectedPickup, selectedAsset),
+                        options: spawnPropIds.map((id) => ({ value: id, label: id.replace(/_/g, " ") })),
+                        onChange: (value) => {
+                            selectedPickup.sandboxSpawnerPropId = value;
+                            controller.sync?.();
+                            onChange();
+                        },
+                    });
+            }
             const focusField = document.createElement("label");
             focusField.className = "param-field check-inline";
             const focusCheckbox = document.createElement("input");

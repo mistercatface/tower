@@ -150,6 +150,7 @@ export function applyDragLaunchVelocity(body, nx, ny, power) {
  *   getConfig: (pickup: object) => DragLaunchConfig,
  *   canStart?: (pickup: object, world: { x: number, y: number }, host: import("./SandboxHostPort.js").SandboxHostPort) => boolean,
  *   onLaunch?: (pickup: object, shot: { anchorX: number, anchorY: number, nx: number, ny: number, power: number }, host: import("./SandboxHostPort.js").SandboxHostPort) => void,
+ *   onAim?: (pickup: object, aim: DragLaunchAim) => void,
  *   buildAimLineContext?: (pickup: object, host: import("./SandboxHostPort.js").SandboxHostPort) => ReturnType<typeof buildDragLaunchAimLineContext>,
  *   resolveAimLine?: typeof getDragLaunchAimLine,
  * }} spec
@@ -167,11 +168,13 @@ export function createDragLaunchInteraction(spec) {
             wakePushableBody(pickup);
             aim = createDragLaunchAim(pickup.x, pickup.y, world.x, world.y);
             updateDragLaunchAim(aim, world.x, world.y, spec.getConfig(pickup));
+            spec.onAim?.(pickup, aim);
             return true;
         },
         onPointerMove(pickup, world) {
             if (!aim?.active) return;
             updateDragLaunchAim(aim, world.x, world.y, spec.getConfig(pickup));
+            spec.onAim?.(pickup, aim);
         },
         onPointerUp(pickup, _e, host) {
             if (!aim?.active) return;

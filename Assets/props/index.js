@@ -8,7 +8,7 @@ import crate_shard from "./crate_shard/crate_shard.asset.js";
 import log from "./log/log.asset.js";
 import humanoid from "./humanoid/humanoid.asset.js";
 import pipe_elbow from "./pipe_elbow/pipe_elbow.asset.js";
+import blue_ball from "./blue_ball/blue_ball.asset.js";
 import poolBalls from "./poolBalls.js";
-/** @type {Record<string, object>} */
-const catalog = { beach_ball, steel_ball, barrel, flipper_left, flipper_right, crate, crate_shard, log, humanoid, pipe_elbow, ...poolBalls };
+const catalog = { beach_ball, steel_ball, barrel, flipper_left, flipper_right, crate, crate_shard, log, humanoid, pipe_elbow, blue_ball, ...poolBalls };
 export default catalog;
