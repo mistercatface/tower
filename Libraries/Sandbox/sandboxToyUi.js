@@ -179,7 +179,7 @@ function renderSelectedPadInspector(body, controller, onChange) {
     else if (pad.preset === "button") {
         appendNumberField(body, "Radius", { value: pad.radius, step: 0.5, min: 0.5, onChange: (radius) => patch({ radius }) });
         appendSelectField(body, "Input", {
-            value: pad.inputMode ?? "tap",
+            value: pad.inputMode,
             options: [
                 { value: "tap", label: "Tap" },
                 { value: "hold", label: "Hold" },
@@ -189,7 +189,7 @@ function renderSelectedPadInspector(body, controller, onChange) {
             onChange: (inputMode) => patch({ inputMode }),
         });
         if (pad.inputMode === "massTap" || pad.inputMode === "massHold")
-            appendNumberField(body, "Mass threshold", { value: pad.massThreshold ?? 0, step: 0.01, min: 0, onChange: (massThreshold) => patch({ massThreshold }) });
+            appendNumberField(body, "Mass threshold", { value: pad.massThreshold, step: 0.01, min: 0, onChange: (massThreshold) => patch({ massThreshold }) });
         const links = controller.listSelectedPadLinks();
         const linkHint = document.createElement("p");
         linkHint.className = "editor-hint";

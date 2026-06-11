@@ -1,7 +1,7 @@
 import { DEFAULT_PIT_DEPTH, DEFAULT_PIT_RADIUS } from "../Spatial/zones/pit.js";
 /** @typedef {{ listLabel: string, draw: string, circleRadius?: number, halfWidth?: number, halfHeight?: number, sinkDepth?: number, triggers: PadTriggerDef[] }} PadPresetDef */
-/** @typedef {{ when?: PadWhen, effect: string, up?: boolean, forceX?: number, forceY?: number, targetPickupId?: number }} PadTriggerDef */
-/** @typedef {"enter" | "exit" | "occupied" | "empty" | "pointerDown"} PadWhen */
+/** @typedef {{ when?: PadWhen, effect: string, forceX?: number, forceY?: number }} PadTriggerDef */
+/** @typedef {"enter" | "exit" | "occupied" | "empty"} PadWhen */
 /** @type {Record<string, PadPresetDef>} */
 export const PAD_PRESETS = {
     sink: {

@@ -102,7 +102,6 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
             if (ok) sync();
             return ok;
         },
-        listPadTargetPickups: () => host.getPickups().map((pickup) => ({ id: pickup.id, label: `${(pickup.type ?? "prop").replace(/_/g, " ")} · #${pickup.id}` })),
         getSelectedPickup: () => {
             pruneSelection();
             return host.getPickups().find((p) => p.id === selectedPickupId) ?? null;

@@ -211,7 +211,6 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
         },
         getSelectedPad: () => session.getSelectedPad(),
         patchSelectedPad: (patch) => session.patchSelectedPad(patch),
-        listPadTargetPickups: () => session.listPadTargetPickups(),
         startPadWireLink: () => {
             if (session.getSelectedPad()?.preset !== "button") return;
             padWireMode = true;

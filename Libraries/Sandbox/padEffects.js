@@ -1,7 +1,6 @@
 import { isInsideVoidMouth, voidMouthReach } from "../Spatial/zones/pit.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
-import { isFlipperButtonPressed, triggerFlipper } from "./behaviors/flipperBehavior.js";
-import { isButtonPadActive } from "./buttonPad.js";
+import { triggerFlipper } from "./behaviors/flipperBehavior.js";
 import { getButtonPadLinks } from "./sandboxPadLinks.js";
 /** @typedef {import("./padPresets.js").PadTriggerDef} PadTriggerDef */
 /**
@@ -10,11 +9,6 @@ import { getButtonPadLinks } from "./sandboxPadLinks.js";
  * @property {number} [entityId]
  * @property {number} [dtSec]
  * @property {{ x: number, y: number }} [world]
- */
-/**
- * @typedef {object} PadEffectHandler
- * @property {(state: object, pad: object, trigger: PadTriggerDef, ctx: PadEffectContext) => void} run
- * @property {(state: object, pad: object, trigger: PadTriggerDef) => boolean} [isActive]
  */
 /** @param {object} pickup @param {object} pad */
 function beginSink(pickup, pad) {
@@ -39,7 +33,7 @@ function runButtonPickupLink(state, link) {
     const pickup = state.pickups.find((entry) => entry.id === link.id && !entry.isDead);
     if (pickup) triggerFlipper(pickup);
 }
-/** @type {Record<string, PadEffectHandler>} */
+/** @type {Record<string, { run: (state: object, pad: object, trigger: PadTriggerDef, ctx: PadEffectContext) => void }>} */
 const PAD_EFFECTS = {
     sink: {
         run(_state, pad, _trigger, ctx) {
@@ -66,24 +60,9 @@ const PAD_EFFECTS = {
         },
     },
     flipper: {
-        run(state, pad, trigger) {
+        run(state, pad) {
             const links = getButtonPadLinks(pad);
-            if (links.length) {
-                for (let i = 0; i < links.length; i++) runButtonPickupLink(state, links[i]);
-                return;
-            }
-            const targetId = trigger.targetPickupId;
-            if (targetId == null) return;
-            const pickup = state.pickups.find((entry) => entry.id === targetId && !entry.isDead);
-            if (pickup) triggerFlipper(pickup);
-        },
-        isActive(state, pad) {
-            if (isButtonPadActive(state, pad)) return true;
-            for (const link of getButtonPadLinks(pad)) {
-                const pickup = state.pickups.find((entry) => entry.id === link.id && !entry.isDead);
-                if (isFlipperButtonPressed(pickup)) return true;
-            }
-            return false;
+            for (let i = 0; i < links.length; i++) runButtonPickupLink(state, links[i]);
         },
     },
 };
@@ -92,15 +71,4 @@ export function runPadEffect(state, pad, trigger, ctx) {
     const effect = PAD_EFFECTS[trigger.effect];
     if (!effect) throw new Error(`Unknown pad effect "${trigger.effect}"`);
     effect.run(state, pad, trigger, ctx);
-}
-/** @param {object} state @param {object} pad @param {PadTriggerDef[]} triggers @param {import("./padPresets.js").PadWhen} when */
-export function isPadTriggerActive(state, pad, triggers, when) {
-    for (let i = 0; i < triggers.length; i++) {
-        const trigger = triggers[i];
-        if (trigger.when !== when) continue;
-        const effect = PAD_EFFECTS[trigger.effect];
-        if (!effect?.isActive) continue;
-        if (effect.isActive(state, pad, trigger)) return true;
-    }
-    return false;
 }

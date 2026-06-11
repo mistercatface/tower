@@ -5,24 +5,17 @@ function findSandboxPad(state, id) {
     return state.sandboxPads.find((pad) => pad.id === id) ?? null;
 }
 /** @typedef {{ type: "pickup", id: number }} ButtonLinkTarget */
-/** @param {ButtonLinkTarget} target */
-function linkKey(target) {
-    return `${target.type}:${target.id}`;
-}
 /** @param {object} pad */
 export function getButtonPadLinks(pad) {
-    if (pad.buttonLinks?.length) return pad.buttonLinks;
-    if (pad.targetPickupId != null) return [{ type: "pickup", id: pad.targetPickupId }];
-    return [];
+    return pad.buttonLinks;
 }
-/** @param {object} pad */
-export function setButtonPadLinks(pad, links) {
+/** @param {object} pad @param {ButtonLinkTarget[]} links */
+function setButtonPadLinks(pad, links) {
     pad.buttonLinks = links.map((link) => ({ ...link }));
-    delete pad.targetPickupId;
 }
-/** @param {object} pad @param {ButtonLinkTarget} target */
-function hasButtonPadLink(pad, target) {
-    return getButtonPadLinks(pad).some((link) => linkKey(link) === linkKey(target));
+/** @param {ButtonLinkTarget} a @param {ButtonLinkTarget} b */
+function sameButtonLink(a, b) {
+    return a.id === b.id;
 }
 /**
  * @param {object} state
@@ -32,8 +25,9 @@ function hasButtonPadLink(pad, target) {
 export function addButtonPadLink(state, buttonPadId, target) {
     const pad = findSandboxPad(state, buttonPadId);
     if (!pad || pad.preset !== "button") return false;
-    if (hasButtonPadLink(pad, target)) return true;
-    setButtonPadLinks(pad, [...getButtonPadLinks(pad), target]);
+    const links = getButtonPadLinks(pad);
+    if (links.some((link) => sameButtonLink(link, target))) return true;
+    setButtonPadLinks(pad, [...links, target]);
     return true;
 }
 /**
@@ -46,7 +40,7 @@ export function removeButtonPadLink(state, buttonPadId, target) {
     if (!pad || pad.preset !== "button") return false;
     setButtonPadLinks(
         pad,
-        getButtonPadLinks(pad).filter((link) => linkKey(link) !== linkKey(target)),
+        getButtonPadLinks(pad).filter((link) => !sameButtonLink(link, target)),
     );
     return true;
 }
@@ -55,12 +49,7 @@ export function clearButtonPadLinks(state, buttonPadId) {
     const pad = findSandboxPad(state, buttonPadId);
     if (!pad || pad.preset !== "button") return false;
     pad.buttonLinks = [];
-    delete pad.targetPickupId;
     return true;
-}
-/** @param {object} pickup */
-export function isButtonLinkPickup(pickup) {
-    return isFlipperPickup(pickup);
 }
 /**
  * @param {object} state
@@ -69,11 +58,11 @@ export function isButtonLinkPickup(pickup) {
  */
 export function findButtonLinkTarget(state, worldX, worldY) {
     const pickup = findPickupAt(state.pickups, worldX, worldY);
-    if (pickup && isButtonLinkPickup(pickup)) return { type: "pickup", id: pickup.id };
+    if (pickup && isFlipperPickup(pickup)) return { type: "pickup", id: pickup.id };
     return null;
 }
 /** @param {object} state @param {ButtonLinkTarget} target */
-export function resolveButtonLinkEndpoint(state, target) {
+function resolveButtonLinkEndpoint(state, target) {
     const pickup = state.pickups.find((entry) => entry.id === target.id && !entry.isDead);
     if (!pickup) return null;
     const typeLabel = (pickup.type ?? "prop").replace(/_/g, " ");
@@ -89,10 +78,6 @@ export function listButtonPadLinkEndpoints(state, buttonPad) {
         if (endpoint) endpoints.push(endpoint);
     }
     return endpoints;
-}
-/** @param {object} state @param {object} buttonPad */
-export function describeButtonPadLinks(state, buttonPad) {
-    return listButtonPadLinkEndpoints(state, buttonPad).map((entry) => entry.label);
 }
 /** @param {CanvasRenderingContext2D} ctx @param {object} state @param {{ wireFromPadId?: string | null, wireCursor?: { x: number, y: number } | null }} [options] */
 export function drawSandboxPadWires(ctx, state, { wireFromPadId = null, wireCursor = null } = {}) {

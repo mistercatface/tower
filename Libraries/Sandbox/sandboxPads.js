@@ -4,9 +4,7 @@ import { drawPit, syncSinkPadAabb } from "../Spatial/zones/pit.js";
 import { NEIGHBOR_QUERY_PAD } from "../Spatial/collision/entityBroadphase.js";
 import { PAD_PRESETS } from "./padPresets.js";
 import { runPadEffect } from "./padEffects.js";
-import { getButtonPadLinks } from "./sandboxPadLinks.js";
-import { BUTTON_INPUT_MODES, DEFAULT_BUTTON_INPUT_MODE, DEFAULT_BUTTON_MASS_THRESHOLD, isButtonPadActive, isMassButtonInputMode, normalizeButtonInputMode } from "./buttonPad.js";
-export { isButtonPadActive, BUTTON_INPUT_MODES, DEFAULT_BUTTON_INPUT_MODE, DEFAULT_BUTTON_MASS_THRESHOLD, isMassButtonInputMode, normalizeButtonInputMode } from "./buttonPad.js";
+import { DEFAULT_BUTTON_INPUT_MODE, DEFAULT_BUTTON_MASS_THRESHOLD, isButtonPadActive, isMassButtonInputMode } from "./buttonPad.js";
 export const SANDBOX_SPAWN_PAD_PREFIX = "pad:";
 const POINTER_HIT_PADDING = 4;
 /** @param {string} preset */
@@ -92,7 +90,6 @@ export function releaseButtonPointerHold(state) {
  *   forceX?: number,
  *   forceY?: number,
  *   buttonLinks?: import("./sandboxPadLinks.js").ButtonLinkTarget[],
- *   targetPickupId?: number,
  *   inputMode?: import("./buttonPad.js").ButtonInputMode,
  *   massThreshold?: number,
  *   triggers?: object[],
@@ -126,10 +123,9 @@ export function buildSandboxPad(state, preset, x, y, options = {}) {
     pad.preset = preset;
     pad.sinkDepth = options.sinkDepth ?? def.sinkDepth;
     if (preset === "button") {
-        pad.inputMode = normalizeButtonInputMode(options.inputMode);
+        pad.inputMode = options.inputMode ?? DEFAULT_BUTTON_INPUT_MODE;
         pad.massThreshold = options.massThreshold ?? DEFAULT_BUTTON_MASS_THRESHOLD;
-        if (options.buttonLinks?.length) pad.buttonLinks = options.buttonLinks.map((link) => ({ ...link }));
-        else if (options.targetPickupId != null) pad.buttonLinks = [{ type: "pickup", id: options.targetPickupId }];
+        pad.buttonLinks = options.buttonLinks?.map((link) => ({ ...link })) ?? [];
     }
     pad.triggers = (options.triggers ?? def.triggers).map((trigger) => ({ ...trigger }));
     if (preset === "pull") {
@@ -204,9 +200,9 @@ export function getSandboxPadEditorState(pad) {
         snapshot.forceY = trigger.forceY;
     }
     if (pad.preset === "button") {
-        snapshot.linkCount = getButtonPadLinks(pad).length;
-        snapshot.inputMode = normalizeButtonInputMode(pad.inputMode);
-        snapshot.massThreshold = pad.massThreshold ?? DEFAULT_BUTTON_MASS_THRESHOLD;
+        snapshot.linkCount = pad.buttonLinks.length;
+        snapshot.inputMode = pad.inputMode;
+        snapshot.massThreshold = pad.massThreshold;
     }
     return snapshot;
 }
@@ -261,7 +257,7 @@ export function patchSandboxPad(state, id, patch) {
         if (patch.forceY != null) trigger.forceY = patch.forceY;
     } else if (pad.preset === "button") {
         if (patch.radius != null) resizeCirclePad(pad, patch.radius, pad.preset);
-        if (patch.inputMode != null) pad.inputMode = normalizeButtonInputMode(patch.inputMode);
+        if (patch.inputMode != null) pad.inputMode = patch.inputMode;
         if (patch.massThreshold != null) pad.massThreshold = patch.massThreshold;
     }
     return true;
@@ -337,9 +333,8 @@ export function drawPad(ctx, pad, viewport, state) {
 function tickButtonPad(state, pad) {
     const active = isButtonPadActive(state, pad);
     const wasActive = pad._buttonWasActive ?? false;
-    const mode = normalizeButtonInputMode(pad.inputMode);
-    if ((mode === "hold" || mode === "massHold") && active) runButtonPadEffects(state, pad);
-    else if (mode === "massTap" && active && !wasActive) runButtonPadEffects(state, pad);
+    if ((pad.inputMode === "hold" || pad.inputMode === "massHold") && active) runButtonPadEffects(state, pad);
+    else if (pad.inputMode === "massTap" && active && !wasActive) runButtonPadEffects(state, pad);
     pad._buttonWasActive = active;
 }
 /** @param {object} state @param {import("../Spatial/world/SpatialFrameCore.js").SpatialFrameCore} spatialFrame @param {number} dt */
