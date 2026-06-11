@@ -5,77 +5,35 @@
     "surfaceAnimation": true,
     "version": 2,
     "arena": {
-        "width": 136,
-        "height": 284,
+        "width": 96,
+        "height": 176,
         "clearPadding": 4,
         "walls": {
             "width": 8,
             "height": 4,
             "segmentSize": 4,
-            "segment": { "padding": 0, "maxHealth": 30, "health": 30 },
-            "openings": { "bottom": { "centerU": 0.5, "widthU": 0.16 } }
+            "segment": { "padding": 0, "maxHealth": 30, "health": 30 }
         }
     },
-    "props": [
-        "flipper_left",
-        "flipper_right",
-        "pool_ball_1",
-        "pinball_post",
-        "pinball_bumper"
-    ],
+    "props": ["flipper_left", "flipper_right", "pool_ball_1"],
     "gravityZones": [
-        { "id": "gravity-main", "width": 120, "height": 268, "forceX": 0, "forceY": 1000, "placement": { "anchor": "playfield.center" } }
-    ],
-    "voidCircles": [
-        { "id": "drain", "radius": 4.6, "depth": 9, "placement": { "u": 0.5, "v": 0.992 } },
-        { "id": "outlane-l", "radius": 3.6, "depth": 8, "placement": { "u": 0.07, "v": 0.982 } },
-        { "id": "outlane-r", "radius": 3.6, "depth": 8, "placement": { "u": 0.93, "v": 0.982 } }
-    ],
-    "arcWallSegments": [
-        { "id": "upper-horseshoe", "center": { "u": 0.5, "v": 0.24 }, "radiusU": 0.42, "startAngle": 3.18, "endAngle": 6.25 },
-        { "id": "shooter-return", "center": { "u": 0.855, "v": 0.18 }, "radiusU": 0.115, "startAngle": 4.8, "endAngle": 6.2 }
-    ],
-    "wallSegments": [
-        { "id": "shooter-lane", "from": { "u": 0.855, "v": 0.18 }, "to": { "u": 0.855, "v": 0.9 } },
-        { "id": "lane-left", "from": { "u": 0.37, "v": 0.105 }, "to": { "u": 0.37, "v": 0.235 } },
-        { "id": "lane-mid-left", "from": { "u": 0.46, "v": 0.095 }, "to": { "u": 0.46, "v": 0.235 } },
-        { "id": "lane-mid-right", "from": { "u": 0.54, "v": 0.095 }, "to": { "u": 0.54, "v": 0.235 } },
-        { "id": "lane-right", "from": { "u": 0.63, "v": 0.105 }, "to": { "u": 0.63, "v": 0.235 } },
-        { "id": "left-outlane-guide", "from": { "u": 0.085, "v": 0.72 }, "to": { "u": 0.07, "v": 0.96 } },
-        { "id": "right-outlane-guide", "from": { "u": 0.915, "v": 0.72 }, "to": { "u": 0.93, "v": 0.96 } },
-        { "id": "left-inlane-guide", "from": { "u": 0.21, "v": 0.76 }, "to": { "u": 0.34, "v": 0.875 } },
-        { "id": "right-inlane-guide", "from": { "u": 0.79, "v": 0.76 }, "to": { "u": 0.66, "v": 0.875 } },
-        { "id": "left-sling-top", "from": { "u": 0.24, "v": 0.73 }, "to": { "u": 0.38, "v": 0.815 } },
-        { "id": "left-sling-bottom", "from": { "u": 0.38, "v": 0.815 }, "to": { "u": 0.28, "v": 0.89 } },
-        { "id": "right-sling-top", "from": { "u": 0.76, "v": 0.73 }, "to": { "u": 0.62, "v": 0.815 } },
-        { "id": "right-sling-bottom", "from": { "u": 0.62, "v": 0.815 }, "to": { "u": 0.72, "v": 0.89 } },
-        { "id": "left-drain-guide", "from": { "u": 0.36, "v": 0.915 }, "to": { "u": 0.455, "v": 0.972 } },
-        { "id": "right-drain-guide", "from": { "u": 0.64, "v": 0.915 }, "to": { "u": 0.545, "v": 0.972 } }
+        { "id": "gravity-main", "width": 80, "height": 160, "forceX": 0, "forceY": 1000, "placement": { "anchor": "playfield.center" } }
     ],
     "pickups": [
         {
             "id": "paddleL",
             "prop": "flipper_left",
-            "at": { "u": 0.405, "v": 0.895 },
-            "button": { "u": 0.05, "v": 0.97, "trigger": "flipper" }
+            "at": { "u": 0.35, "v": 0.85 },
+            "button": { "u": 0.06, "v": 0.96, "trigger": "flipper" }
         },
         {
             "id": "paddleR",
             "prop": "flipper_right",
-            "at": { "u": 0.595, "v": 0.895 },
-            "button": { "u": 0.95, "v": 0.97, "trigger": "flipper" }
+            "at": { "u": 0.65, "v": 0.85 },
+            "button": { "u": 0.94, "v": 0.96, "trigger": "flipper" }
         },
-        { "id": "ball", "prop": "pool_ball_1", "at": { "u": 0.5, "v": 0.16 } },
-        { "id": "lane-post-l", "prop": "pinball_post", "at": { "u": 0.325, "v": 0.245 } },
-        { "id": "lane-post-r", "prop": "pinball_post", "at": { "u": 0.675, "v": 0.245 } },
-        { "id": "sling-post-l", "prop": "pinball_post", "at": { "u": 0.25, "v": 0.72 } },
-        { "id": "sling-post-r", "prop": "pinball_post", "at": { "u": 0.75, "v": 0.72 } },
-        { "id": "drain-post-l", "prop": "pinball_post", "at": { "u": 0.455, "v": 0.955 } },
-        { "id": "drain-post-r", "prop": "pinball_post", "at": { "u": 0.545, "v": 0.955 } },
-        { "id": "bumper-top", "prop": "pinball_bumper", "at": { "u": 0.5, "v": 0.34 } },
-        { "id": "bumper-left", "prop": "pinball_bumper", "at": { "u": 0.37, "v": 0.47 } },
-        { "id": "bumper-right", "prop": "pinball_bumper", "at": { "u": 0.63, "v": 0.47 } }
+        { "id": "ball", "prop": "pool_ball_1", "at": { "u": 0.5, "v": 0.15 } }
     ],
     "link": { "groupField": "sandboxGroupId" },
-    "spawn": ["arena.clear", "arena.walls", "voidCircles", "gravityZones", "pickups"]
+    "spawn": ["arena.clear", "arena.walls", "gravityZones", "pickups"]
 }

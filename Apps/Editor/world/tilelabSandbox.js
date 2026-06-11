@@ -15,7 +15,6 @@ import {
 } from "../../../Libraries/Sandbox/index.js";
 import { createFlipperBehavior, isFlipperButtonPressed, triggerFlipper } from "../../../Libraries/Sandbox/behaviors/flipperBehavior.js";
 import { createPropButtonBehavior } from "../../../Libraries/Sandbox/behaviors/propButtonBehavior.js";
-import { createPinStaticBehavior } from "../../../Libraries/Sandbox/behaviors/pinStaticBehavior.js";
 /** @param {import("../state.js").TileLabGameState} state @param {() => void} requestRedraw */
 function createSandboxHost(state, requestRedraw) {
     return {
@@ -54,7 +53,6 @@ export function mountTilelabSandbox(state, requestRedraw) {
             createDragLaunchBehavior(),
             createDragLaunchWaitBehavior(),
             createPropButtonBehavior({ triggers: { flipper: { onPress: triggerFlipper, isPressed: isFlipperButtonPressed } } }),
-            createPinStaticBehavior(),
             createFlipperBehavior(),
             createCueStrikeBehavior(),
             createShootBehavior(),

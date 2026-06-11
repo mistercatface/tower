@@ -15,7 +15,6 @@ import { eagerBakeAssemblySurfaceFlipbook, releaseAssemblySurfaceFlipbook } from
 import { requestUiUpdate } from "../../Core/EventSystem.js";
 import { applyFlipperAssemblyScale } from "./behaviors/flipperBehavior.js";
 import { attachPropButton } from "./propAttachedButton.js";
-import { applyPinballObstacleScale } from "./pinballObstacleScale.js";
 /** @param {import("./assemblies/assemblyManifest.js").ResolvedAssemblyManifest} resolved @param {string} propId */
 function assemblyIncludesProp(resolved, propId) {
     if (!resolved.props.length) return true;
@@ -129,7 +128,6 @@ function spawnManifestPickups(host, layout, resolved, { faction, groupId, rackId
         stampAssemblyGroupMember(pickup, groupId, resolved.id, groupField);
         const asset = getPropAsset(entry.prop);
         if (asset?.flipper) applyFlipperAssemblyScale(pickup, layout, asset);
-        else if (asset?.physics?.radiusU != null) applyPinballObstacleScale(pickup, layout, asset);
         if (entry.button) attachPropButton(pickup, layout, entry.button);
         const behavior = resolved.behaviors[entry.prop];
         if (behavior) pickup.sandboxBehaviorOverrides = behavior;
