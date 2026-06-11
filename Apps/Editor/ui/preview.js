@@ -1,7 +1,7 @@
 import { registerRuntimeSurfaceProfile } from "../../../Config/procedural/profiles.js";
 import { invalidateProfileScratch } from "../../../Libraries/WorldSurface/ProfileBakeResolver.js";
 import { TileWorkerCoordinator } from "../../../Libraries/WorldSurface/TileWorkerCoordinator.js";
-import { drawMapPathDebugCache, drawMapWallCache } from "../../../Libraries/Render/map/labMapCaches.js";
+import { rebuildLabMapCaches } from "../../../Libraries/Render/map/labMapCaches.js";
 import { getSurfaceProfileRevision } from "../../../Libraries/WorldSurface/SurfaceProfileRevision.js";
 import { invalidateWallAtlasKeyMemos } from "../../../Render/game/wallSurfaceInvalidation.js";
 import { getGameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.js";
@@ -13,6 +13,7 @@ let labRenderer = null;
 let labRendererSettings = null;
 let lastProfileBakeKey = "";
 let bakeRepaintRaf = null;
+let labMapCacheObstacleGeneration = -1;
 function buildLabRuntimeProfile() {
     const profile = buildProfileFromEditor();
     if (profile?.animation) delete profile.animation;
@@ -56,6 +57,10 @@ export function drawLabFrame(state) {
     const prevProfileOverride = state.worldSurfaces.surfaceProfileOverride;
     state.worldSurfaces.surfaceProfileOverride = RUNTIME_LAB_PROFILE_ID;
     maybeClearProfileBakeCaches(state, RUNTIME_LAB_PROFILE_ID);
+    if (state.navigation.obstacleGeneration !== labMapCacheObstacleGeneration) {
+        rebuildLabMapCaches(state);
+        labMapCacheObstacleGeneration = state.navigation.obstacleGeneration;
+    }
     getLabRenderer(canvas, ctx).renderSimulationScene(state, viewport);
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -66,11 +71,15 @@ export function drawLabFrame(state) {
     if (showWalls || showPathDebug) {
         ctx.save();
         viewport.apply(ctx);
-        if (showPathDebug && state.mapPathDebugCache) drawMapPathDebugCache(ctx, state.mapPathDebugCache);
-        if (showWalls && state.mapWallCache) {
+        if (showPathDebug) {
+            const pathCache = state.mapPathDebugCache;
+            ctx.drawImage(pathCache.canvas, pathCache.minX, pathCache.minY);
+        }
+        if (showWalls) {
             ctx.save();
             ctx.globalAlpha = 0.35;
-            drawMapWallCache(ctx, state.mapWallCache);
+            const wallCache = state.mapWallCache;
+            ctx.drawImage(wallCache.canvas, wallCache.minX, wallCache.minY);
             ctx.restore();
         }
         ctx.restore();

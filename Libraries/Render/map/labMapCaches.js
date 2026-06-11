@@ -1,15 +1,12 @@
 const WALL_OVERLAY_THICKNESS = 20;
-
 /** @typedef {{ canvas: OffscreenCanvas, minX: number, minY: number, maxX: number, maxY: number }} MapImageCache */
 /** @typedef {MapImageCache} ObstacleOverviewCache */
-
 function bakeCanvas(width, height) {
     const w = Math.ceil(width);
     const h = Math.ceil(height);
     if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return null;
     return new OffscreenCanvas(w, h);
 }
-
 function drawWallSegment(ctx, seg) {
     ctx.save();
     ctx.translate(seg.x, seg.y);
@@ -22,7 +19,6 @@ function drawWallSegment(ctx, seg) {
     ctx.strokeRect(-halfSize, -WALL_OVERLAY_THICKNESS / 2, seg.size, WALL_OVERLAY_THICKNESS);
     ctx.restore();
 }
-
 function bakeWallLayer(walls, minX, minY, maxX, maxY) {
     const canvas = bakeCanvas(maxX - minX, maxY - minY);
     if (!canvas) return null;
@@ -34,7 +30,6 @@ function bakeWallLayer(walls, minX, minY, maxX, maxY) {
     }
     return { canvas, minX, minY, maxX, maxY };
 }
-
 function bakePathDebugLayer(hnav, minX, minY, maxX, maxY) {
     const canvas = bakeCanvas(maxX - minX, maxY - minY);
     if (!canvas || !hnav.grid) return null;
@@ -123,7 +118,6 @@ function bakePathDebugLayer(hnav, minX, minY, maxX, maxY) {
     }
     return { canvas, minX, minY, maxX, maxY };
 }
-
 /** @param {{ cols: number, rows: number, grid: ArrayLike<number>, minX: number, minY: number, maxX: number, maxY: number }} obstacleGrid */
 export function bakeObstacleOverviewCache(obstacleGrid) {
     if (!obstacleGrid.cols || !obstacleGrid.rows) return null;
@@ -149,24 +143,10 @@ export function bakeObstacleOverviewCache(obstacleGrid) {
     ctx.putImageData(data, 0, 0);
     return { canvas, minX: obstacleGrid.minX, minY: obstacleGrid.minY, maxX: obstacleGrid.maxX, maxY: obstacleGrid.maxY };
 }
-
 /** @param {object} state */
 export function rebuildLabMapCaches(state) {
     const grid = state.obstacleGrid;
-    state.mapWallCache = grid ? bakeWallLayer(state.walls, grid.minX, grid.minY, grid.maxX, grid.maxY) : null;
-    const hnav = state.hierarchicalNavigator;
-    state.mapPathDebugCache = grid && hnav ? bakePathDebugLayer(hnav, grid.minX, grid.minY, grid.maxX, grid.maxY) : null;
+    state.mapWallCache = bakeWallLayer(state.walls, grid.minX, grid.minY, grid.maxX, grid.maxY);
+    state.mapPathDebugCache = bakePathDebugLayer(state.hierarchicalNavigator, grid.minX, grid.minY, grid.maxX, grid.maxY);
     state.mapOverviewCache = bakeObstacleOverviewCache(grid);
-}
-
-/** @param {CanvasRenderingContext2D} ctx @param {MapImageCache | null | undefined} cache */
-export function drawMapWallCache(ctx, cache) {
-    if (!cache?.canvas) return;
-    ctx.drawImage(cache.canvas, cache.minX, cache.minY);
-}
-
-/** @param {CanvasRenderingContext2D} ctx @param {MapImageCache | null | undefined} cache */
-export function drawMapPathDebugCache(ctx, cache) {
-    if (!cache?.canvas) return;
-    ctx.drawImage(cache.canvas, cache.minX, cache.minY);
 }

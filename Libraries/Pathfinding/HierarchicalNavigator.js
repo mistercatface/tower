@@ -219,6 +219,30 @@ export class HierarchicalNavigator {
             repositionNodeCentroid(node, this.cellToNode, this.grid, this.cols, this.rows, this.minX, this.minY, this.cellSize);
         }
     }
+    _clearRegionCellsInBox(startCol, endCol, startRow, endRow) {
+        const touched = new Set();
+        const stripped = new Set();
+        for (let row = startRow; row <= endRow; row++)
+            for (let col = startCol; col <= endCol; col++) {
+                const idx = colRowToIndex(col, row, this.cols);
+                const node = this.cellToNode[idx];
+                if (!node) continue;
+                touched.add(node.id);
+                stripped.add(idx);
+                this.cellToNode[idx] = null;
+            }
+        for (const id of touched) {
+            const node = this.nodesMap[id];
+            if (!node) continue;
+            node.cells = node.cells.filter((cellIdx) => !stripped.has(cellIdx));
+            if (node.cells.length === 0) {
+                for (const otherId in this.nodesMap) this.nodesMap[otherId].edges = this.nodesMap[otherId].edges.filter((e) => e.targetId !== id);
+                delete this.nodesMap[id];
+                continue;
+            }
+            repositionNodeCentroid(node, this.cellToNode, this.grid, this.cols, this.rows, this.minX, this.minY, this.cellSize);
+        }
+    }
     _assignOpenedCells(startCol, endCol, startRow, endRow) {
         const visited = new Uint8Array(this.cols * this.rows);
         for (let row = startRow; row <= endRow; row++)
@@ -264,6 +288,7 @@ export class HierarchicalNavigator {
         if (!bounds || this.cols === 0 || this.rows === 0) return;
         this.ensureBuffers();
         const box = this._expandDamageBounds(bounds);
+        this._clearRegionCellsInBox(box.startCol, box.endCol, box.startRow, box.endRow);
         this._assignOpenedCells(box.startCol, box.endCol, box.startRow, box.endRow);
         const affectedIds = this._collectRegionIdsInBox(box.startCol, box.endCol, box.startRow, box.endRow);
         for (const id of affectedIds) this._reconnectRegionEdges(this.nodesMap[id]);

@@ -21,12 +21,7 @@ export class NavigationService {
                     controller.settings,
                     controller.flowFieldGrid.navGraph,
                     controller.obstacleGeneration,
-                    state?.viewport
-                        ? {
-                              isVisible: (e) => state.viewport.isVisible(e.x, e.y, e.radius, 128),
-                              getReplanScale: (e) => (state.viewport.isVisible(e.x, e.y, e.radius, 128) ? 1 : 10),
-                          }
-                        : {},
+                    state?.viewport ? { isVisible: (e) => state.viewport.isVisible(e.x, e.y, e.radius, 128), getReplanScale: (e) => (state.viewport.isVisible(e.x, e.y, e.radius, 128) ? 1 : 10) } : {},
                     state?.gameTime ?? Date.now(),
                 ),
             onSteerComplete: (entity, { navState, settings }) => {
@@ -58,6 +53,9 @@ export class NavigationService {
     }
     onObstaclesChanged(damageBounds) {
         this._controller.onObstaclesChanged(damageBounds);
+    }
+    get obstacleGeneration() {
+        return this._controller.obstacleGeneration;
     }
     rebuildNavigationGraph(playerX, playerY) {
         this._controller.rebuildNavigationGraph(playerX, playerY);

@@ -13,24 +13,42 @@ import { addSandboxWalls, removeSandboxWall } from "./spawnAssembly.js";
  * @property {number} [dtSec]
  * @property {{ x: number, y: number }} [world]
  */
-const PULL_WALL_HEIGHT = 1;
-const PULL_WALL_PADDING = 0;
 /** @param {object} pad */
 function readPullHalfExtents(pad) {
     const verts = pad.shape.vertices;
     return { halfWidth: Math.abs(verts[0].x), halfHeight: Math.abs(verts[0].y) };
 }
-/** @param {object} pad */
-function buildPullPadWalls(pad) {
+/** @param {object} grid @param {object} pad @param {number} halfWidth @param {number} halfHeight */
+function collectPadWallCells(grid, pad, halfWidth, halfHeight) {
+    const cellSize = grid.cellSize;
+    const padMinX = pad.x - halfWidth;
+    const padMinY = pad.y - halfHeight;
+    const padMaxX = pad.x + halfWidth;
+    const padMaxY = pad.y + halfHeight;
+    const startCol = grid.worldToGrid(padMinX, padMinY).col;
+    const startRow = grid.worldToGrid(padMinX, padMinY).row;
+    const endCol = grid.worldToGrid(padMaxX - 1e-6, padMaxY - 1e-6).col;
+    const endRow = grid.worldToGrid(padMaxX - 1e-6, padMaxY - 1e-6).row;
+    /** @type {{ col: number, row: number }[]} */
+    const cells = [];
+    for (let row = startRow; row <= endRow; row++)
+        for (let col = startCol; col <= endCol; col++) {
+            if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) continue;
+            const cellMinX = grid.minX + col * cellSize;
+            const cellMinY = grid.minY + row * cellSize;
+            if (padMaxX <= cellMinX || padMinX >= cellMinX + cellSize || padMaxY <= cellMinY || padMinY >= cellMinY + cellSize) continue;
+            cells.push({ col, row });
+        }
+    return cells;
+}
+/** @param {object} state @param {object} pad */
+function buildPullPadWalls(state, pad) {
     const { halfWidth, halfHeight } = readPullHalfExtents(pad);
-    const { x, y } = pad;
-    return [
-        new Segment(x, y - halfHeight, 0, halfWidth * 2, PULL_WALL_PADDING, 30, 30, false, PULL_WALL_HEIGHT),
-        new Segment(x, y + halfHeight, 0, halfWidth * 2, PULL_WALL_PADDING, 30, 30, false, PULL_WALL_HEIGHT),
-        new Segment(x - halfWidth, y, Math.PI / 2, halfHeight * 2, PULL_WALL_PADDING, 30, 30, false, PULL_WALL_HEIGHT),
-        new Segment(x + halfWidth, y, Math.PI / 2, halfHeight * 2, PULL_WALL_PADDING, 30, 30, false, PULL_WALL_HEIGHT),
-    ].map((wall) => {
-        wall.collisionOnly = true;
+    const grid = state.obstacleGrid;
+    const cellSize = grid.cellSize;
+    const cells = collectPadWallCells(grid, pad, halfWidth, halfHeight);
+    return cells.map(({ col, row }) => {
+        const wall = new Segment(grid.minX + col * cellSize + cellSize / 2, grid.minY + row * cellSize + cellSize / 2, 0, cellSize, 0, 30, 30, false, cellSize);
         wall.sandboxPadId = pad.id;
         return wall;
     });
@@ -39,8 +57,8 @@ function buildPullPadWalls(pad) {
 function setPullPadWalls(state, pad, wallsUp) {
     if (!pad.wallMode || pad.wallsUp === wallsUp) return;
     if (wallsUp) {
-        pad.walls = buildPullPadWalls(pad);
-        addSandboxWalls(state, pad.walls, { compileRender: false });
+        pad.walls = buildPullPadWalls(state, pad);
+        addSandboxWalls(state, pad.walls);
     } else {
         for (let i = 0; i < pad.walls.length; i++) removeSandboxWall(state, pad.walls[i]);
         pad.walls = [];
