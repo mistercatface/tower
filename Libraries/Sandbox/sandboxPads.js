@@ -3,7 +3,7 @@ import { PolygonShape } from "../Spatial/collision/Shapes.js";
 import { drawPit, syncSinkPadAabb } from "../Spatial/zones/pit.js";
 import { NEIGHBOR_QUERY_PAD } from "../Spatial/collision/entityBroadphase.js";
 import { PAD_PRESETS } from "./padPresets.js";
-import { runPadEffect, syncButtonFlipperLinks, syncPullPadWalls, syncSandboxPadPower, teardownPullPad } from "./padEffects.js";
+import { runPadEffect, syncButtonFlipperLinks, syncPullPadWalls, syncSandboxPadPower, teardownPullPad, tickButtonSpawnerLinks } from "./padEffects.js";
 import {
     DEFAULT_BUTTON_INPUT_MODE,
     DEFAULT_BUTTON_MASS_THRESHOLD,
@@ -389,6 +389,7 @@ function tickButtonPad(state, pad) {
         pad._massWasActive = massActive;
     }
     if (isSustainedFlipperButtonInputMode(pad.inputMode)) syncButtonFlipperLinks(state, pad);
+    tickButtonSpawnerLinks(state, pad);
     if (isToggleInputMode(pad.inputMode)) return;
     const active = isButtonPadActive(state, pad);
     const wasActive = pad._buttonWasActive ?? false;

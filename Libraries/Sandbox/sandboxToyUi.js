@@ -2,6 +2,7 @@ import { getPropAsset, getWorldPropDefinitions } from "../Props/PropCatalog.js";
 import { SANDBOX_DEFAULT_FACTION, SANDBOX_FACTION_OPTIONS, formatSandboxFactionLabel, resolveSandboxFaction } from "../Combat/sandboxTargeting.js";
 import { getSandboxBehaviorLabel, isSandboxEquippable, isSandboxSpawnable } from "./sandboxCapabilities.js";
 import { isSpawnerProp, listSpawnerSpawnPropIds, resolveSpawnerPropId } from "./spawnerConfig.js";
+import { appendSandboxPickupInspectorFields } from "./sandboxPickupInspector.js";
 import { PAD_PRESETS } from "./padPresets.js";
 import { renderSandboxEquipPanel } from "./sandboxEquipPanel.js";
 import { SANDBOX_PATH_VISUAL_LABELS, SANDBOX_PATH_VISUAL_OPTIONS } from "./sandboxPathVisual.js";
@@ -212,7 +213,7 @@ function renderSelectedPadInspector(body, controller, onChange) {
         const links = controller.listSelectedPadLinks();
         const linkHint = document.createElement("p");
         linkHint.className = "editor-hint";
-        linkHint.textContent = links.length ? `${links.length} wire${links.length === 1 ? "" : "s"} connected` : "No wires — link to flippers, gravity pads, or pits.";
+        linkHint.textContent = links.length ? `${links.length} wire${links.length === 1 ? "" : "s"} connected` : "No wires — link to flippers, spawners, gravity pads, or pits.";
         body.appendChild(linkHint);
         if (links.length)
             appendEntityList(
@@ -389,6 +390,7 @@ export function mountSandboxToyUi(container, controller, onChange) {
                     onChange();
                 },
             });
+            appendSandboxPickupInspectorFields(body, selectedPickup, { sync: () => controller.sync?.(), onChange });
             if (behaviorIds.length > 0)
                 appendSelectField(body, "Mode", {
                     value: controller.getSelectedBehaviorId(),

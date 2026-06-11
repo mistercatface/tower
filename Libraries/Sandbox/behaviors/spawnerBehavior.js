@@ -1,8 +1,6 @@
-import { Pickup } from "../../../Entities/Pickup.js";
 import { getPropAsset } from "../../Props/PropCatalog.js";
-import { resolveSandboxFaction } from "../../Combat/sandboxTargeting.js";
-import { applyDragLaunchVelocity, createDragLaunchInteraction } from "../dragLaunch.js";
-import { getSpawnerDragConfig, getSpawnerOutletWorld, isSpawnerProp, resolveSpawnerPropId } from "../spawnerConfig.js";
+import { createDragLaunchInteraction } from "../dragLaunch.js";
+import { fireSpawner, getSpawnerDragConfig, isSpawnerProp } from "../spawnerConfig.js";
 export const SPAWNER_BEHAVIOR_ID = "spawner";
 /** @param {object} pickup @param {import("../dragLaunch.js").DragLaunchAim | null} aim */
 function aimSpawnerFacing(pickup, aim) {
@@ -19,14 +17,7 @@ export function createSpawnerBehavior() {
             getConfig: (pickup) => getSpawnerDragConfig(pickup, getPropAsset(pickup.type)),
             onAim: aimSpawnerFacing,
             onLaunch(pickup, shot, host) {
-                const asset = getPropAsset(pickup.type);
-                const spawnId = resolveSpawnerPropId(pickup, asset);
-                if (!getPropAsset(spawnId)) return;
-                const outlet = getSpawnerOutletWorld(pickup, asset);
-                const spawned = new Pickup(outlet.x, outlet.y, spawnId, Math.atan2(outlet.ny, outlet.nx));
-                spawned.faction = resolveSandboxFaction(pickup);
-                applyDragLaunchVelocity(spawned, shot.nx, shot.ny, shot.power);
-                host.addPickup(spawned);
+                fireSpawner(host.getWorldState(), pickup, { nx: shot.nx, ny: shot.ny, power: shot.power });
             },
         }),
         supports(_pickup, asset) {

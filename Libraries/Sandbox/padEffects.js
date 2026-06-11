@@ -2,9 +2,10 @@ import { Segment } from "../../Entities/Wall.js";
 import { isInsideVoidMouth, voidMouthReach } from "../Spatial/zones/pit.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { releaseFlipper, triggerFlipper } from "./behaviors/flipperBehavior.js";
-import { buttonEffectiveActive, isSustainedFlipperButtonInputMode } from "./buttonPad.js";
 import { getButtonPadLinks } from "./sandboxPadLinks.js";
 import { addSandboxWalls, removeSandboxWalls } from "./spawnAssembly.js";
+import { buttonEffectiveActive, isSustainedFlipperButtonInputMode } from "./buttonPad.js";
+import { fireSpawner, isSpawnerPickup } from "./spawnerConfig.js";
 /** @typedef {import("./padPresets.js").PadTriggerDef} PadTriggerDef */
 /**
  * @typedef {object} PadEffectContext
@@ -128,10 +129,26 @@ function rimOutSink(state, entityId, pad) {
 /** @param {object} state @param {import("./sandboxPadLinks.js").ButtonLinkPickupTarget} link @param {object} buttonPad */
 function runButtonPickupLink(state, link, buttonPad) {
     const pickup = state.pickups.find((entry) => entry.id === link.id && !entry.isDead);
-    if (!pickup) return;
+    if (!pickup || isSpawnerPickup(pickup)) return;
     if (isSustainedFlipperButtonInputMode(buttonPad.inputMode)) return;
     if (buttonPad.invert) releaseFlipper(pickup);
     else triggerFlipper(pickup, { hold: false });
+}
+/** @param {object} state @param {object} buttonPad */
+export function tickButtonSpawnerLinks(state, buttonPad) {
+    const active = buttonEffectiveActive(state, buttonPad);
+    const wasActive = buttonPad._spawnerButtonWasActive ?? false;
+    if (active && !wasActive) {
+        const links = getButtonPadLinks(buttonPad);
+        for (let i = 0; i < links.length; i++) {
+            const link = links[i];
+            if (link.type !== "pickup") continue;
+            const pickup = state.pickups.find((entry) => entry.id === link.id && !entry.isDead);
+            if (!pickup || !isSpawnerPickup(pickup)) continue;
+            fireSpawner(state, pickup);
+        }
+    }
+    buttonPad._spawnerButtonWasActive = active;
 }
 /** @param {object} state @param {object} buttonPad */
 export function syncButtonFlipperLinks(state, buttonPad) {
@@ -141,7 +158,7 @@ export function syncButtonFlipperLinks(state, buttonPad) {
         const link = links[i];
         if (link.type !== "pickup") continue;
         const pickup = state.pickups.find((entry) => entry.id === link.id && !entry.isDead);
-        if (!pickup) continue;
+        if (!pickup || isSpawnerPickup(pickup)) continue;
         if (active) triggerFlipper(pickup);
         else releaseFlipper(pickup);
     }

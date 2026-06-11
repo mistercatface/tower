@@ -1,6 +1,7 @@
 import { findPickupAt } from "./findPickupAt.js";
 import { hitTestPad } from "./sandboxPads.js";
 import { isFlipperPickup } from "./behaviors/flipperBehavior.js";
+import { isSpawnerPickup } from "./spawnerConfig.js";
 /** @param {object} state @param {string} id */
 function findSandboxPad(state, id) {
     return state.sandboxPads.find((pad) => pad.id === id) ?? null;
@@ -66,7 +67,7 @@ export function clearButtonPadLinks(state, buttonPadId) {
  */
 export function findButtonLinkTarget(state, worldX, worldY, sourcePadId) {
     const pickup = findPickupAt(state.pickups, worldX, worldY);
-    if (pickup && isFlipperPickup(pickup)) return { type: "pickup", id: pickup.id };
+    if (pickup && (isFlipperPickup(pickup) || isSpawnerPickup(pickup))) return { type: "pickup", id: pickup.id };
     const pad = hitTestPad(state, worldX, worldY);
     if (pad && pad.id !== sourcePadId && isButtonLinkTargetPad(pad)) return { type: "pad", id: pad.id };
     return null;
@@ -81,7 +82,8 @@ export function resolveButtonLinkEndpoint(state, target) {
     const pickup = state.pickups.find((entry) => entry.id === target.id && !entry.isDead);
     if (!pickup) return null;
     const typeLabel = (pickup.type ?? "prop").replace(/_/g, " ");
-    return { target, label: `${typeLabel} · #${pickup.id}`, x: pickup.x, y: pickup.y };
+    const role = isSpawnerPickup(pickup) ? "spawner" : isFlipperPickup(pickup) ? "flipper" : typeLabel;
+    return { target, label: `${role} · #${pickup.id}`, x: pickup.x, y: pickup.y };
 }
 /** @param {object} state @param {object} buttonPad */
 export function listButtonPadLinkEndpoints(state, buttonPad) {
