@@ -11,6 +11,7 @@ import { transitionEntity } from "../Libraries/FSM/transition.js";
 import { pickupStates } from "./PickupStates.js";
 import { CircleShape, PolygonShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { syncLongAxisCollisionShape } from "../Libraries/Props/longAxisCollision.js";
+import { isFlipperProp, syncFlipperCollisionShape } from "../Libraries/Props/flipperCollision.js";
 import { isStandTipProp } from "../Libraries/Spatial/transforms/longAxisBox3d.js";
 import { MOVING_SPEED_SQ } from "../Libraries/Spatial/collision/entityBroadphase.js";
 import { speedSqXY } from "../Libraries/Math/Vec2.js";
@@ -111,6 +112,7 @@ export class Pickup extends Entity {
         transitionEntity(this, pickupStates, stateName, stateDataInit);
     }
     getShape() {
+        if (isFlipperProp(this)) return syncFlipperCollisionShape(this);
         if (isStandTipProp(this)) return syncLongAxisCollisionShape(this);
         if (this.shape) return this.shape;
         if (this.strategy.collisionShape === "box" && this.halfExtents) {

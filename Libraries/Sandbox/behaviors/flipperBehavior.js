@@ -1,10 +1,8 @@
 import { getPropAsset } from "../../Props/PropCatalog.js";
-import { applyImpulse } from "../../Motion/applyImpulse.js";
-import { wakePushableBody } from "../../Motion/pushableSleep.js";
+import { syncFlipperCollisionShape } from "../../Props/flipperCollision.js";
 export const FLIPPER_BEHAVIOR_ID = "flipper";
 const SWING_SPEED_RAD = 20;
 const RETURN_SPEED_RAD = 8;
-const SWING_FORCE = 2600;
 const PIVOT_RADIUS = 5;
 const BUTTON_RADIUS = 13;
 /** @param {object} pickup @param {object} asset */
@@ -46,8 +44,8 @@ function activateFlipper(pickup) {
     pickup._flipperTarget = "active";
     pickup._flipperButtonPressed = true;
 }
-/** @param {object} pickup @param {object} asset @param {number} dt @param {object[]} pickups */
-function tickFlipperPickup(pickup, asset, dt, pickups) {
+/** @param {object} pickup @param {object} asset @param {number} dt */
+function tickFlipperPickup(pickup, asset, dt) {
     initFlipperAngle(pickup, asset);
     const spec = getFlipperSpec(pickup, asset);
     const isActivating = pickup._flipperTarget === "active";
@@ -61,67 +59,20 @@ function tickFlipperPickup(pickup, asset, dt, pickups) {
         pickup._flipperAngle = target;
         if (isActivating) pickup._flipperTarget = "rest";
     } else pickup._flipperAngle = prevAngle + Math.sign(diff) * maxStep;
+    pickup._flipperAngVel = (pickup._flipperAngle - prevAngle) / dtSec;
+    pickup.angularVelocity = pickup._flipperAngVel;
+    pickup.vx = 0;
+    pickup.vy = 0;
+    syncFlipperCollisionShape(pickup);
     if (!isActivating && pickup._flipperButtonPressed) pickup._flipperButtonPressed = false;
-    if (isActivating && Math.abs(pickup._flipperAngle - prevAngle) > 0.001) {
-        const angVel = (pickup._flipperAngle - prevAngle) / dtSec;
-        const midAngle = (prevAngle + pickup._flipperAngle) * 0.5;
-        const px = -Math.sin(midAngle) * Math.sign(angVel);
-        const py = Math.cos(midAngle) * Math.sign(angVel);
-        for (let i = 0; i < pickups.length; i++) {
-            const other = pickups[i];
-            if (other === pickup || other.isDead) continue;
-            if (other.vx === undefined) continue;
-            const dx = other.x - pickup.x;
-            const dy = other.y - pickup.y;
-            const dist = Math.hypot(dx, dy);
-            if (dist > spec.length + (other.radius ?? 8)) continue;
-            const ballAngle = Math.atan2(dy, dx);
-            const lo = Math.min(prevAngle, pickup._flipperAngle) - 0.5;
-            const hi = Math.max(prevAngle, pickup._flipperAngle) + 0.5;
-            if (ballAngle < lo || ballAngle > hi) continue;
-            const distScale = 0.4 + 0.6 * Math.min(1, dist / spec.length);
-            applyImpulse(other, px * SWING_FORCE * distScale, py * SWING_FORCE * distScale);
-            wakePushableBody(other);
-        }
-    }
 }
 /** @param {CanvasRenderingContext2D} ctx @param {object} pickup */
-function drawFlipperPickup(ctx, pickup) {
+function drawFlipperButton(ctx, pickup) {
     const asset = getPropAsset(pickup.type);
     if (!asset) return;
     initFlipperAngle(pickup, asset);
-    const spec = getFlipperSpec(pickup, asset);
-    const angle = pickup._flipperAngle;
-    const tx = Math.cos(angle) * spec.length;
-    const ty = Math.sin(angle) * spec.length;
-    const isActive = pickup._flipperTarget === "active";
-    const armColor = isActive ? "#EF5350" : "#546E7A";
-    const armStroke = isActive ? "#B71C1C" : "#263238";
     const btn = getButtonPosition(pickup, asset);
-    const pressed = pickup._flipperButtonPressed || isActive;
-    ctx.save();
-    ctx.lineCap = "round";
-    ctx.translate(pickup.x, pickup.y);
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(tx, ty);
-    ctx.strokeStyle = armStroke;
-    ctx.lineWidth = spec.width + 2;
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(tx, ty);
-    ctx.strokeStyle = armColor;
-    ctx.lineWidth = spec.width;
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(0, 0, PIVOT_RADIUS, 0, Math.PI * 2);
-    ctx.fillStyle = "#90A4AE";
-    ctx.fill();
-    ctx.strokeStyle = armStroke;
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-    ctx.restore();
+    const pressed = pickup._flipperButtonPressed || pickup._flipperTarget === "active";
     drawArcadeButton(ctx, btn.x, btn.y, pressed);
 }
 /** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {boolean} pressed */
@@ -159,15 +110,15 @@ export function tickFlippers(pickups, dt) {
         if (pickup.isDead || pickup.type !== "flipper") continue;
         const asset = getPropAsset(pickup.type);
         if (!asset) continue;
-        tickFlipperPickup(pickup, asset, dt, pickups);
+        tickFlipperPickup(pickup, asset, dt);
     }
 }
 /** @param {CanvasRenderingContext2D} ctx @param {object[]} pickups */
-export function drawFlippers(ctx, pickups) {
+export function drawFlipperButtons(ctx, pickups) {
     for (let i = 0; i < pickups.length; i++) {
         const pickup = pickups[i];
         if (pickup.isDead || pickup.type !== "flipper") continue;
-        drawFlipperPickup(ctx, pickup);
+        drawFlipperButton(ctx, pickup);
     }
 }
 /** @returns {import("../createSandboxController.js").SandboxBehavior} */
