@@ -1,7 +1,7 @@
 import { drawExtrudedRadial } from "./SolidDraw.js";
 import { drawPropMeshFace, isPropMeshFaceVisible } from "./propMesh.js";
 /** @param {number} length @param {number} halfW @param {number} height @param {number} facing */
-function buildFlipperPaddleMesh(length, halfW, height, pivotRadius, facing) {
+function buildFlipperPaddleMesh(length, halfW, height, pivotRadius, facing, isMirrored) {
     const R1 = pivotRadius;
     const R2 = Math.max(1, halfW * 0.45);
     const D = length - R2;
@@ -29,9 +29,13 @@ function buildFlipperPaddleMesh(length, halfW, height, pivotRadius, facing) {
     for (let p of footprint) local.push({ ...p, z: height }); // Top
     const cos = Math.cos(facing);
     const sin = Math.sin(facing);
-    const corners = local.map((v) => ({ lx: v.lx * cos - v.ly * sin, ly: v.lx * sin + v.ly * cos, z: v.z }));
+    const corners = local.map((v) => {
+        const ly = isMirrored ? -v.ly : v.ly;
+        return { lx: v.lx * cos - ly * sin, ly: v.lx * sin + ly * cos, z: v.z };
+    });
     const face = (indices, panel) => {
         const verts = indices.map((i) => corners[i]);
+        if (isMirrored) verts.reverse();
         return { verts, panel, depth: verts.reduce((sum, v) => sum + v.z, 0) / verts.length };
     };
     const mesh = [];
@@ -65,10 +69,11 @@ export function drawFlipperPaddle(ctx, prop, px, py, options) {
     const height = options.height ?? 10;
     const pivotRadius = options.pivotRadius ?? 5;
     const angle = prop._flipperAngle ?? options.restAngle ?? 0.45;
+    const isMirrored = Math.abs(prop.facing || 0) > Math.PI / 2;
     const colors = options.colors;
     const stroke = colors.stroke ?? "#263238";
     const lineWidth = options.lineWidth ?? 0.9;
-    const mesh = buildFlipperPaddleMesh(length, halfW, height, pivotRadius, angle);
+    const mesh = buildFlipperPaddleMesh(length, halfW, height, pivotRadius, angle, isMirrored);
     const panelFill = {
         bottom: colors.bottom?.mid ?? colors.side.mid,
         top: colors.top?.mid ?? colors.side.highlight,

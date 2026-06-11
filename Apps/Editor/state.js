@@ -2,10 +2,8 @@ import { getGameState } from "../../GameState/GameState.js";
 import { SharedGameState } from "../../GameState/SharedGameState.js";
 import { Viewport } from "../../Libraries/Viewport/Viewport.js";
 import { WallCollisionResolver } from "../../Libraries/Motion/WallCollisionResolver.js";
-
 export const LAB_PREVIEW_RANGE = 160;
 export const TILELAB_SANDBOX_SPAWN_PROP = "beach_ball";
-
 /** @param {object} entity @param {object} hit @param {object | null} state */
 function applyWallDamageHit(entity, hit, state) {
     if (!entity.canDamageWalls || !state) return;
@@ -17,7 +15,6 @@ function applyWallDamageHit(entity, hit, state) {
     entity.vx += 0.25 * impactSpeed * hit.normalX;
     entity.vy += 0.25 * impactSpeed * hit.normalY;
 }
-
 export class TileLabGameState extends SharedGameState {
     constructor() {
         super();
@@ -33,7 +30,10 @@ export class TileLabGameState extends SharedGameState {
         this.viewport = new Viewport(0, 0, 1);
         this.labCanvas = null;
         this.groundZones = [];
+        /** @type {ReturnType<import("../../Libraries/Spatial/zones/voidZone.js").createVoidZone>[]} */
         this.sandboxVoidZones = [];
+        /** @type {ReturnType<import("../../Libraries/Spatial/zones/gravityZone.js").createGravityZone>[]} */
+        this.sandboxGravityZones = [];
         this.sandboxSurfaceProfileZones = [];
         this.sandboxAssemblyInstances = [];
         this.wallResolver = new WallCollisionResolver({

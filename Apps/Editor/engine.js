@@ -23,6 +23,7 @@ import { drawSandboxAssemblySurfaces } from "../../Libraries/Sandbox/assemblySur
 import { TileLabGameState } from "./state.js";
 import { tilelabGroundZoneEffectPass, tickTilelabGroundZones } from "./groundZones.js";
 import { sandboxVoidZoneEffectPass, tickSandboxVoidZones } from "./sandboxVoidZones.js";
+import { sandboxGravityZoneEffectPass, tickSandboxGravityZones } from "./sandboxGravityZones.js";
 import { sandboxController } from "./world/tilelabSandbox.js";
 import { tickSandboxCameraFollow } from "../../Libraries/Sandbox/sandboxCameraTarget.js";
 import { tickFlippers, drawFlipperButtons } from "../../Libraries/Sandbox/behaviors/flipperBehavior.js";
@@ -49,6 +50,7 @@ function runSimulationTick(state, dt) {
     Projectile.checkSpawnCollisions(state, spatialFrame, simulationEvents);
     Projectile.updateAll(state, simDt);
     CombatParticles.updateAll(state, simDt);
+    tickSandboxGravityZones(state, spatialFrame, simDt);
     runPushablePhysics(state, simDt, spatialFrame, simulationEvents);
     RagdollCorpse.updateAll(state, simDt, spatialFrame);
     dispatchSimulationEvents(simulationEvents, state);
@@ -67,6 +69,7 @@ export const engine = {
         drawPostSimulation: (state, viewport, ctx) => CombatParticles.renderAll(ctx, state, viewport),
         simulationEffectPasses: [
             sandboxVoidZoneEffectPass,
+            sandboxGravityZoneEffectPass,
             tilelabGroundZoneEffectPass,
             {
                 zIndex: 65,

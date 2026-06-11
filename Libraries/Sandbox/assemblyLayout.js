@@ -7,9 +7,17 @@ import { resolvePlacement } from "./assemblies/assemblyPlacement.js";
  * @param {ReturnType<typeof getPlayfieldBounds>} play
  */
 function resolveVoidCircles(voidCircles, play) {
+    if (!voidCircles) return [];
     return voidCircles.map((entry) => {
         const point = resolvePlacement(play, entry.placement);
         return { id: entry.id, x: point.x, y: point.y, radius: entry.radius, depth: entry.depth };
+    });
+}
+function resolveGravityZones(gravityZones, play) {
+    if (!gravityZones) return [];
+    return gravityZones.map((entry) => {
+        const point = resolvePlacement(play, entry.placement);
+        return { id: entry.id, x: point.x, y: point.y, halfWidth: entry.width / 2, halfHeight: entry.height / 2, forceX: entry.forceX, forceY: entry.forceY };
     });
 }
 /** @param {number} offsetX @param {number} offsetY @param {number} width @param {number} height */
@@ -71,11 +79,11 @@ function buildRectWallSegments(arenaBounds, walls, wallHeight) {
  * @param {ResolvedAssemblyManifest} resolved
  */
 export function buildAssemblyLayout(centerX, centerY, resolved) {
-    const { arena, voidCircles } = resolved;
+    const { arena, voidCircles, gravityZones } = resolved;
     const { offsetX, offsetY } = snapLayoutOrigin(centerX, centerY, arena.width, arena.height, 1);
     const bounds = getArenaWorldBounds(offsetX, offsetY, arena.width, arena.height);
     const play = getPlayfieldBounds(bounds, arena.walls.width);
-    return { bounds, play, voids: resolveVoidCircles(voidCircles, play) };
+    return { bounds, play, voids: resolveVoidCircles(voidCircles, play), gravityZones: resolveGravityZones(gravityZones, play) };
 }
 /** @returns {{ minX: number, minY: number, maxX: number, maxY: number }[]} */
 export function getAssemblyRailBandBounds(layout) {

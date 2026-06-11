@@ -5,8 +5,8 @@ export default {
     sandbox: { behaviors: ["flipper"] },
     physics: {
         hitBehavior: "none",
-        radius: 18,
-        halfExtents: { x: 16, y: 4 },
+        radius: 20,
+        halfExtents: { x: 19, y: 5 },
         propPixelSize: 72,
         isPushable: true,
         rolls: false,
@@ -20,7 +20,7 @@ export default {
         syncCollisionShape: syncFlipperCollisionShape,
     },
     visuals: {
-        world: { length: 32, width: 8, height: 10, pivotRadius: 5, restAngle: 0.45 },
+        world: { length: 38, width: 10, height: 12, pivotRadius: 6, restAngle: 0.45 },
         colors: {
             side: { shadow: "#455A64", mid: "#607D8B", highlight: "#90A4AE" },
             top: { light: "#78909C", mid: "#607D8B", dark: "#455A64" },

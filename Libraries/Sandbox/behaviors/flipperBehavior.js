@@ -7,17 +7,21 @@ const PIVOT_RADIUS = 5;
 const BUTTON_RADIUS = 13;
 /** @param {object} pickup @param {object} asset */
 function getFlipperSpec(pickup, asset) {
+    const isMirrored = Math.abs(pickup.facing || 0) > Math.PI / 2;
+    const rest = asset?.flipper?.restAngle ?? 0.45;
+    const active = asset?.flipper?.activeAngle ?? -0.55;
     return {
-        length: asset?.flipper?.length ?? 32,
-        width: asset?.flipper?.width ?? 8,
-        restAngle: pickup._flipperRestAngle ?? asset?.flipper?.restAngle ?? 0.45,
-        activeAngle: pickup._flipperActiveAngle ?? asset?.flipper?.activeAngle ?? -0.55,
+        length: asset?.flipper?.length ?? 38,
+        width: asset?.flipper?.width ?? 10,
+        restAngle: pickup._flipperRestAngle ?? (isMirrored ? -rest : rest),
+        activeAngle: pickup._flipperActiveAngle ?? (isMirrored ? -active : active),
+        isMirrored,
     };
 }
 /** @param {object} pickup @param {object} asset */
 function initFlipperAngle(pickup, asset) {
     if (pickup._flipperAngle == null) {
-        pickup._flipperAngle = pickup._flipperRestAngle ?? asset?.flipper?.restAngle ?? 0.45;
+        pickup._flipperAngle = getFlipperSpec(pickup, asset).restAngle;
         pickup._flipperTarget = "rest";
     }
 }
@@ -29,7 +33,9 @@ function getButtonPosition(pickup, asset) {
     const tipX = Math.cos(rest) * spec.length;
     const gap = asset?.flipper?.buttonGap ?? 14;
     const paddleLeft = Math.min(-PIVOT_RADIUS, tipX - halfW);
-    return { x: pickup.x + paddleLeft - gap - BUTTON_RADIUS, y: pickup.y + (asset?.flipper?.buttonYOffset ?? 0) };
+    const paddleRight = Math.max(PIVOT_RADIUS, tipX + halfW);
+    const xOffset = spec.isMirrored ? paddleRight + gap + BUTTON_RADIUS : paddleLeft - gap - BUTTON_RADIUS;
+    return { x: pickup.x + xOffset, y: pickup.y + (asset?.flipper?.buttonYOffset ?? 0) };
 }
 /** @param {object} pickup @param {number} wx @param {number} wy */
 function hitFlipButton(pickup, wx, wy) {

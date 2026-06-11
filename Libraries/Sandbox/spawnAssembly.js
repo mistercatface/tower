@@ -2,6 +2,7 @@ import { getWallHeight } from "../WorldSurface/WorldSurfaceSettings.js";
 import { getGameWorldSurfaceSettings } from "../../Render/WorldSurfaceBootstrap.js";
 import { SceneCompiler } from "../Render/Scene/SceneCompiler.js";
 import { createVoidZone } from "../Spatial/zones/voidZone.js";
+import { createGravityZone } from "../Spatial/zones/gravityZone.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { Pickup } from "../../Entities/Pickup.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
@@ -111,7 +112,7 @@ function spawnManifestPickups(host, layout, resolved, { faction, groupId, rackId
         const entry = resolved.pickups[i];
         if (!assemblyIncludesProp(resolved, entry.prop) || !getPropAsset(entry.prop)) return null;
         const at = resolvePlacement(layout.play, entry.at);
-        const pickup = new Pickup(at.x, at.y, entry.prop, 0);
+        const pickup = new Pickup(at.x, at.y, entry.prop, entry.facing ?? 0);
         pickup.faction = faction;
         pickup.assemblyRackId = rackId;
         stampAssemblyGroupMember(pickup, groupId, resolved.id, groupField);
@@ -160,6 +161,13 @@ export function spawnResolvedAssembly(host, centerX, centerY, resolved, { factio
             stampAssemblyGroupMember(zone, groupId, resolved.id, groupField);
             state.sandboxVoidZones.push(zone);
         }
+    if (spawnIncludes(spawnSteps, ["gravityZones"]))
+        for (let g = 0; g < layout.gravityZones.length; g++) {
+            const gz = layout.gravityZones[g];
+            const zone = createGravityZone(gz.x, gz.y, gz.halfWidth, gz.halfHeight, { id: `${groupId}:gravity:${gz.id ?? g + 1}`, forceX: gz.forceX, forceY: gz.forceY });
+            stampAssemblyGroupMember(zone, groupId, resolved.id, groupField);
+            state.sandboxGravityZones.push(zone);
+        }
     let spawned = null;
     if (spawnIncludes(spawnSteps, ["pickups"])) {
         spawned = spawnManifestPickups(host, layout, resolved, { faction, groupId, rackId, groupField });
@@ -193,6 +201,8 @@ export function deleteAssemblyInstance(state, groupId, groupField = "sandboxGrou
     }
     for (let i = state.walls.length - 1; i >= 0; i--) if (entityBelongsToAssemblyGroup(state.walls[i], groupId, groupField)) removeSandboxWall(state, state.walls[i]);
     for (let z = state.sandboxVoidZones.length - 1; z >= 0; z--) if (entityBelongsToAssemblyGroup(state.sandboxVoidZones[z], groupId, groupField)) state.sandboxVoidZones.splice(z, 1);
+    if (state.sandboxGravityZones)
+        for (let z = state.sandboxGravityZones.length - 1; z >= 0; z--) if (entityBelongsToAssemblyGroup(state.sandboxGravityZones[z], groupId, groupField)) state.sandboxGravityZones.splice(z, 1);
     const rackId = `${groupId}:rack`;
     for (let i = state.pickups.length - 1; i >= 0; i--) {
         const pickup = state.pickups[i];

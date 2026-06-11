@@ -1,10 +1,7 @@
 import { registerAssemblyManifest } from "./assemblyRegistry.js";
-
-const MANIFEST_FILES = ["poolTable.assembly.json", "poolTable9Ball.assembly.json"];
-
+const MANIFEST_FILES = ["poolTable.assembly.json", "poolTable9Ball.assembly.json", "pinballTable.assembly.json"];
 /** @type {Promise<void> | null} */
 let loadPromise = null;
-
 export function loadAssemblyManifests() {
     if (!loadPromise)
         loadPromise = Promise.all(
