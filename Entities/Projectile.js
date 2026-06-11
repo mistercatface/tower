@@ -3,7 +3,7 @@ import { Entity } from "./Entity.js";
 import { drawProjectileTracer } from "../Libraries/Render/projectileDraw.js";
 import { getProjectileDamage } from "../Libraries/Combat/impactDamage.js";
 import { getInteractionPairFilter } from "../Core/interactionPairFilters.js";
-import { playBoundsFromObstacleGrid } from "../Libraries/WorldGen/playBounds.js";
+import { playBoundsFromObstacleGrid } from "../Libraries/Spatial/playBounds.js";
 import { RagdollCorpse } from "./RagdollCorpse.js";
 import { CombatParticles } from "../Libraries/Render/CombatParticles.js";
 export const ProjectileStrategies = {

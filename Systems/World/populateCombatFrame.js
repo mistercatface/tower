@@ -1,5 +1,4 @@
 import { engine } from "../../Apps/Editor/engine.js";
-import { insertPushables } from "./populatePushableFrame.js";
 import { wallContextFromState } from "../../Libraries/Spatial/query/wallContext.js";
 /**
  * Insert combatants and pickups into a spatial frame for the current tick.
@@ -23,5 +22,14 @@ export function populateCombatFrame(frame, state, combatants, pushables) {
         frame.insertEntity(actor, physIdCounter++);
         combatants.push(actor);
     }
-    insertPushables(frame, state, pushables, physIdCounter, inserted);
+    for (const pickup of state.pickups) {
+        if (!pickup || pickup.isDead || pickup.isHeld) continue;
+        if (inserted.has(pickup)) {
+            if (pickup.strategy?.isPushable) pushables.push(pickup);
+            continue;
+        }
+        inserted.add(pickup);
+        frame.insertEntity(pickup, physIdCounter++);
+        if (pickup.strategy?.isPushable) pushables.push(pickup);
+    }
 }

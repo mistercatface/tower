@@ -1,5 +1,5 @@
 import { applySteeringResult, agentPose, getMobileAgent } from "../Agent/index.js";
-import { computeFlowFieldSteering } from "../Pathfinding/flowFieldPlan.js";
+import { computeFlowFieldSteering } from "../Pathfinding/flowSteering.js";
 import { createNavState } from "../Pathfinding/navSession.js";
 import { entityIntersectsCellBounds } from "../Spatial/grid/GridCoords.js";
 const ARRIVED_STEERING = { desiredX: 0, desiredY: 0 };

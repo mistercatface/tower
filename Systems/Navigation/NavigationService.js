@@ -1,5 +1,4 @@
 import { NavigationController } from "../../Libraries/Navigation/index.js";
-import { createHpaHooks } from "./hpaHooks.js";
 import { planHpaSteering } from "./HpaStrategy.js";
 /**
  * Game glue for navigation — wires HPA replan policy and entity post-steer hooks
@@ -22,7 +21,12 @@ export class NavigationService {
                     controller.settings,
                     controller.flowFieldGrid.navGraph,
                     controller.obstacleGeneration,
-                    createHpaHooks(state),
+                    state?.viewport
+                        ? {
+                              isVisible: (e) => state.viewport.isVisible(e.x, e.y, e.radius, 128),
+                              getReplanScale: (e) => (state.viewport.isVisible(e.x, e.y, e.radius, 128) ? 1 : 10),
+                          }
+                        : {},
                     state?.gameTime ?? Date.now(),
                 ),
             onSteerComplete: (entity, { navState, settings }) => {

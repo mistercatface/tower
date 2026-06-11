@@ -9,7 +9,7 @@ export { gridReachabilityBfs } from "./gridReachabilityBfs.js";
 export { sampleFlowDirection, sampleFlowDirectionOnGrid } from "./sampleFlowDirection.js";
 export { createNavState } from "./navSession.js";
 export { computeFlowSteering } from "./flowSteering.js";
-export { computeFlowFieldSteering } from "./flowFieldPlan.js";
+export { computeFlowFieldSteering } from "./flowSteering.js";
 export { computeHpaSteering } from "./hpaSteering.js";
 export {
     trimPathAhead,

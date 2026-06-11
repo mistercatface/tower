@@ -3,7 +3,7 @@
  * Animated surfaces are baked at assembly spawn — see Libraries/Sandbox/assemblySurfaceBake.js.
  */
 import { getWallHeight } from "./WorldSurfaceSettings.js";
-import { intersectWorldBoundsInto } from "../WorldGen/playBounds.js";
+import { intersectWorldBoundsInto } from "../Spatial/playBounds.js";
 import { getChunkSizePx, gridBoundsToChunkRange, worldToChunkCol, worldToChunkRow } from "../Spatial/grid/ChunkGrid.js";
 import { SurfaceBitmapCache } from "./SurfaceBitmapCache.js";
 import { groundChunkCachePrefix } from "./bake/SurfaceBakeHelpers.js";

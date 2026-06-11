@@ -2,7 +2,7 @@
  * Game-facing world-surface system: wraps WorldSurfaceEngine with simulation
  * shadow underpaint and GameState profile / invalidation hooks.
  */
-import { playBoundsFromObstacleGrid } from "../../Libraries/WorldGen/playBounds.js";
+import { playBoundsFromObstacleGrid } from "../../Libraries/Spatial/playBounds.js";
 import { WorldSurfaceEngine } from "../../Libraries/WorldSurface/WorldSurfaceEngine.js";
 import { getGameWorldSurfaceSettings } from "../WorldSurfaceBootstrap.js";
 import { WallSpatialIndex } from "../../Libraries/Spatial/indexes/WallSpatialIndex.js";
