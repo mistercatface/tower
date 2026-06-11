@@ -1,27 +1,27 @@
 import { entityBroadphaseExtent, NEIGHBOR_QUERY_PAD } from "../collision/entityBroadphase.js";
 import { CAMERA_HEIGHT, PERSPECTIVE_STRENGTH } from "../iso/IsometricProjection.js";
-export const DEFAULT_VOID_RADIUS = 8;
-export const DEFAULT_VOID_DEPTH = 24;
+export const DEFAULT_PIT_RADIUS = 8;
+export const DEFAULT_PIT_DEPTH = 24;
 /** Combined circle reach — center distance at which a prop still overlaps the pit mouth. */
-export function voidMouthReach(voidRadius, entity) {
+export function voidMouthReach(pitRadius, entity) {
     const entityRadius = entity.radius ?? entityBroadphaseExtent(entity) ?? 0;
-    return voidRadius + entityRadius;
+    return pitRadius + entityRadius;
 }
-/** @param {number} voidX @param {number} voidY @param {number} voidRadius @param {object} entity */
-export function isInsideVoidMouth(voidX, voidY, voidRadius, entity) {
-    const dx = voidX - entity.x;
-    const dy = voidY - entity.y;
-    return Math.hypot(dx, dy) <= voidMouthReach(voidRadius, entity);
+/** @param {number} pitX @param {number} pitY @param {number} pitRadius @param {object} entity */
+export function isInsideVoidMouth(pitX, pitY, pitRadius, entity) {
+    const dx = pitX - entity.x;
+    const dy = pitY - entity.y;
+    return Math.hypot(dx, dy) <= voidMouthReach(pitRadius, entity);
 }
 /** @param {object} pad @param {number} radius */
 export function syncSinkPadAabb(pad, radius) {
-    const padPad = NEIGHBOR_QUERY_PAD;
-    pad.aabb = { minX: pad.x - radius - padPad, minY: pad.y - radius - padPad, maxX: pad.x + radius + padPad, maxY: pad.y + radius + padPad };
+    const margin = NEIGHBOR_QUERY_PAD;
+    pad.aabb = { minX: pad.x - radius - margin, minY: pad.y - radius - margin, maxX: pad.x + radius + margin, maxY: pad.y + radius + margin };
 }
 /** @param {CanvasRenderingContext2D} ctx @param {object} pad @param {number} viewerX @param {number} viewerY */
 export function drawPit(ctx, pad, viewerX, viewerY) {
     const mouthRadius = pad.shape.radius;
-    const pocketDepth = pad.sinkDepth ?? DEFAULT_VOID_DEPTH;
+    const pocketDepth = pad.sinkDepth ?? DEFAULT_PIT_DEPTH;
     const step = pocketDepth / 8;
     for (let H = 0; H >= -pocketDepth; H -= step) {
         const dx = pad.x - viewerX;

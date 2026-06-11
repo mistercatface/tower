@@ -1,4 +1,4 @@
-import { isGroundZoneInView } from "../Spatial/zones/groundZones.js";
+import { isAabbInView } from "../Spatial/zones/floorShapes.js";
 import { getGameWorldSurfaceSettings } from "../../Render/WorldSurfaceBootstrap.js";
 import { getSurfaceProfileProvider } from "../Procedural/SurfaceProfileProvider.js";
 import { animationFrameIndex } from "../WorldSurface/ProfileBakeResolver.js";
@@ -55,7 +55,7 @@ function drawAssemblyPatch(ctx, patch, frameIndex, settings, zLevel, viewerX, vi
 /** @param {CanvasRenderingContext2D} ctx @param {ReturnType<typeof createAssemblySurfaceZone>} zone @param {object} state @param {import("../Viewport/Viewport.js").Viewport} viewport */
 export function drawAssemblySurfaceZone(ctx, zone, state, viewport) {
     if (!zone?.profileId || !zone.flipbook || !viewport) return;
-    if (!isGroundZoneInView(zone, viewport)) return;
+    if (!isAabbInView(zone, viewport)) return;
     const settings = getGameWorldSurfaceSettings();
     const frameIndex = resolveFlipbookFrameIndex(zone.flipbook, state.gameTime ?? 0);
     const viewerX = viewport.x;

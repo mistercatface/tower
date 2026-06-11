@@ -40,14 +40,14 @@
  * @property {number} [v]
  */
 /**
- * @typedef {object} AssemblyVoidCircleManifest
+ * @typedef {object} AssemblySinkPadManifest
  * @property {string} id
  * @property {number} radius
  * @property {number} depth
  * @property {AssemblyPlacementManifest} placement
  */
 /**
- * @typedef {object} AssemblyGravityZoneManifest
+ * @typedef {object} AssemblyPullPadManifest
  * @property {string} id
  * @property {number} width
  * @property {number} height
@@ -60,7 +60,7 @@
  * @property {AssemblyPlacementManifest} [at] — playfield anchor or u/v
  * @property {number} [u] — playfield horizontal fraction (shorthand for at.u)
  * @property {number} [v] — playfield vertical fraction (shorthand for at.v)
- * @property {string} trigger — id wired in createPropButtonBehavior
+ * @property {string} trigger — pointerDown effect id on the linked button pad
  * @property {number} [radiusU] — button radius as fraction of playfield width
  */
 /**
@@ -80,8 +80,8 @@
  * @property {number} [version]
  * @property {AssemblyArenaManifest} [arena]
  * @property {string[]} [props] — prop catalog ids this assembly uses
- * @property {AssemblyVoidCircleManifest[]} [voidCircles]
- * @property {AssemblyGravityZoneManifest[]} [gravityZones]
+ * @property {AssemblySinkPadManifest[]} [sinkPads]
+ * @property {AssemblyPullPadManifest[]} [pullPads]
  * @property {AssemblyWallSegmentManifest[]} [wallSegments]
  * @property {AssemblyArcWallSegmentManifest[]} [arcWallSegments]
  * @property {AssemblyPickupManifest[]} [pickups]
@@ -98,8 +98,8 @@
  * @property {number} version
  * @property {AssemblyArenaManifest} arena
  * @property {string[]} props
- * @property {AssemblyVoidCircleManifest[]} voidCircles
- * @property {AssemblyGravityZoneManifest[]} [gravityZones]
+ * @property {AssemblySinkPadManifest[]} sinkPads
+ * @property {AssemblyPullPadManifest[]} [pullPads]
  * @property {AssemblyWallSegmentManifest[]} wallSegments
  * @property {AssemblyArcWallSegmentManifest[]} arcWallSegments
  * @property {AssemblyPickupManifest[]} pickups

@@ -31,7 +31,7 @@
         "pool_ball_9",
         "pool_cue_ball"
     ],
-    "voidCircles": [
+    "sinkPads": [
         { "id": "void-tl", "radius": 4.3, "depth": 6, "placement": { "anchor": "playfield.topLeft" } },
         { "id": "void-left", "radius": 3.5, "depth": 6, "placement": { "anchor": "playfield.left" } },
         { "id": "void-tr", "radius": 4.3, "depth": 6, "placement": { "anchor": "playfield.topRight" } },
@@ -75,5 +75,5 @@
             }
         }
     },
-    "spawn": ["arena.clear", "arena.walls", "voidCircles", "pickups"]
+    "spawn": ["arena.clear", "arena.walls", "sinkPads", "pickups"]
 }

@@ -16,8 +16,8 @@
         }
     },
     "props": ["flipper_left", "flipper_right", "pool_ball_1"],
-    "gravityZones": [
-        { "id": "gravity-main", "width": 80, "height": 160, "forceX": 0, "forceY": 1000, "placement": { "anchor": "playfield.center" } }
+    "pullPads": [
+        { "id": "pull-main", "width": 80, "height": 160, "forceX": 0, "forceY": 1000, "placement": { "anchor": "playfield.center" } }
     ],
     "pickups": [
         {
@@ -35,5 +35,5 @@
         { "id": "ball", "prop": "pool_ball_1", "at": { "u": 0.5, "v": 0.15 } }
     ],
     "link": { "groupField": "sandboxGroupId" },
-    "spawn": ["arena.clear", "arena.walls", "gravityZones", "pickups"]
+    "spawn": ["arena.clear", "arena.walls", "pullPads", "pickups"]
 }

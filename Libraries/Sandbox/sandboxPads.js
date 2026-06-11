@@ -1,9 +1,8 @@
 import { Segment } from "../../Entities/Wall.js";
-import { createCircleGroundZone, createRectGroundZone, drawGroundZone, isGroundZoneInView, processGroundZones } from "../Spatial/zones/groundZones.js";
-import { DEFAULT_VOID_DEPTH, DEFAULT_VOID_RADIUS, drawPit, isInsideVoidMouth, syncSinkPadAabb, voidMouthReach } from "../Spatial/zones/voidZone.js";
+import { createCircleFloorShape, createRectFloorShape, drawFloorShape, isAabbInView, processFloorShapes } from "../Spatial/zones/floorShapes.js";
+import { DEFAULT_PIT_DEPTH, DEFAULT_PIT_RADIUS, drawPit, isInsideVoidMouth, syncSinkPadAabb, voidMouthReach } from "../Spatial/zones/pit.js";
 import { NEIGHBOR_QUERY_PAD } from "../Spatial/collision/entityBroadphase.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
-import { drawPropAttachedButton } from "./propAttachedButton.js";
 import { isFlipperButtonPressed, triggerFlipper } from "./behaviors/flipperBehavior.js";
 import { addSandboxWalls, removeSandboxWall } from "./spawnAssembly.js";
 export const SANDBOX_SPAWN_PAD_PREFIX = "pad:";
@@ -25,8 +24,8 @@ const PAD_PRESETS = {
     sink: {
         listLabel: "Void pit",
         draw: "pit",
-        circleRadius: DEFAULT_VOID_RADIUS,
-        sinkDepth: DEFAULT_VOID_DEPTH,
+        circleRadius: DEFAULT_PIT_RADIUS,
+        sinkDepth: DEFAULT_PIT_DEPTH,
         triggers: [
             { when: "enter", effect: "sink" },
             { when: "exit", effect: "unsink" },
@@ -84,7 +83,7 @@ function beginSink(pickup, pad) {
     pickup.voidX = pad.x;
     pickup.voidY = pad.y;
     pickup.voidRadius = pad.shape.radius;
-    pickup.voidDepth = pad.sinkDepth ?? DEFAULT_VOID_DEPTH;
+    pickup.voidDepth = pad.sinkDepth ?? DEFAULT_PIT_DEPTH;
     pickup.voidSinkTimer = 1500;
     pickup.voidCaptured = Math.hypot(pad.x - pickup.x, pad.y - pickup.y) <= voidMouthReach(pad.shape.radius, pickup) * 0.65;
     pickup.changeState("voidSink");
@@ -110,9 +109,16 @@ function resolvePadTargetPickup(state, trigger, pad) {
     if (targetId == null) return null;
     return state.pickups.find((entry) => entry.id === targetId && !entry.isDead) ?? null;
 }
+function isPadButtonPreset(pad) {
+    return pad.preset === "button";
+}
+/** @param {object} pad */
+function padDrawStyle(pad) {
+    return PAD_PRESETS[pad.preset]?.draw ?? "flat";
+}
 /** @param {object} state @param {object} pad */
 function isPadButtonPressed(state, pad) {
-    if (pad.draw !== "button") return Boolean(pad._pointerHeld);
+    if (!isPadButtonPreset(pad)) return Boolean(pad._pointerHeld);
     const pickup = resolvePadTargetPickup(state, {}, pad);
     if (pickup && pad.triggers.some((trigger) => trigger.effect === "flipper")) return isFlipperButtonPressed(pickup);
     return Boolean(pad._pointerHeld);
@@ -195,11 +201,11 @@ export function buildSandboxPad(state, preset, x, y, options = {}) {
     /** @type {object} */
     let pad;
     if (options.halfWidth != null && options.halfHeight != null) {
-        pad = createRectGroundZone(x, y, options.halfWidth, options.halfHeight, { id: options.id ?? `${preset}:${sandboxPads(state).length + 1}` });
+        pad = createRectFloorShape(x, y, options.halfWidth, options.halfHeight, { id: options.id ?? `${preset}:${sandboxPads(state).length + 1}` });
         syncRectPadAabb(pad, options.halfWidth, options.halfHeight);
     } else {
-        const radius = options.radius ?? def.circleRadius ?? DEFAULT_VOID_RADIUS;
-        pad = createCircleGroundZone(x, y, radius, { id: options.id ?? `${preset}:${sandboxPads(state).length + 1}` });
+        const radius = options.radius ?? def.circleRadius ?? DEFAULT_PIT_RADIUS;
+        pad = createCircleFloorShape(x, y, radius, { id: options.id ?? `${preset}:${sandboxPads(state).length + 1}` });
         if (preset === "sink") syncSinkPadAabb(pad, radius);
         else {
             const margin = NEIGHBOR_QUERY_PAD;
@@ -207,7 +213,6 @@ export function buildSandboxPad(state, preset, x, y, options = {}) {
         }
     }
     pad.preset = preset;
-    pad.draw = def.draw;
     pad.sinkDepth = options.sinkDepth ?? def.sinkDepth;
     pad.targetPickupId = options.targetPickupId ?? null;
     pad.triggers = (options.triggers ?? def.triggers).map((trigger) => ({ ...trigger }));
@@ -278,34 +283,62 @@ function drawGateWall(ctx, wall) {
     ctx.strokeRect(-half, -thickness / 2, wall.size, thickness);
     ctx.restore();
 }
+/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {boolean} pressed @param {number} radius */
+function drawPadButton(ctx, x, y, pressed, radius) {
+    const r = radius;
+    const lineScale = 1 / Math.max(0.001, ctx.getTransform().a);
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(pressed ? 0.88 : 1, pressed ? 0.88 : 1);
+    const grad = ctx.createRadialGradient(-r * 0.3, -r * 0.3, 0, 0, 0, r);
+    grad.addColorStop(0, pressed ? "#FFAB91" : "#FF7043");
+    grad.addColorStop(1, pressed ? "#BF360C" : "#E64A19");
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#3E2723";
+    ctx.lineWidth = 2.5 * lineScale;
+    ctx.stroke();
+    ctx.fillStyle = "rgba(255,255,255,0.38)";
+    ctx.beginPath();
+    ctx.arc(-r * 0.28, -r * 0.28, r * 0.32, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(0,0,0,0.18)";
+    ctx.lineWidth = 1.5 * lineScale;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.55, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+}
 /** @param {CanvasRenderingContext2D} ctx @param {object} pad @param {import("../../Viewport/Viewport.js").Viewport} viewport @param {object} state */
 export function drawPad(ctx, pad, viewport, state) {
-    if (pad.draw === "pit") {
+    const style = padDrawStyle(pad);
+    if (style === "pit") {
         drawPit(ctx, pad, viewport.x, viewport.y);
         return;
     }
-    if (pad.draw === "plate") {
-        drawGroundZone(ctx, pad, { fill: "rgba(76, 175, 80, 0.35)", stroke: "rgba(27, 94, 32, 0.9)", lineWidth: 2 });
+    if (style === "plate") {
+        drawFloorShape(ctx, pad, { fill: "rgba(76, 175, 80, 0.35)", stroke: "rgba(27, 94, 32, 0.9)", lineWidth: 2 });
         if (pad.wallsUp) for (let w = 0; w < pad.walls.length; w++) drawGateWall(ctx, pad.walls[w]);
         return;
     }
-    if (pad.draw === "pull") {
-        drawGroundZone(ctx, pad, { fill: "rgba(255, 100, 100, 0.05)", stroke: "rgba(255, 100, 100, 0.2)", lineWidth: 1 });
+    if (style === "pull") {
+        drawFloorShape(ctx, pad, { fill: "rgba(255, 100, 100, 0.05)", stroke: "rgba(255, 100, 100, 0.2)", lineWidth: 1 });
         return;
     }
-    if (pad.draw === "button") {
-        const radius = pad.shape.radius;
-        drawPropAttachedButton(ctx, pad.x, pad.y, isPadButtonPressed(state, pad), radius);
+    if (style === "button") {
+        drawPadButton(ctx, pad.x, pad.y, isPadButtonPressed(state, pad), pad.shape.radius);
         return;
     }
-    drawGroundZone(ctx, pad);
+    drawFloorShape(ctx, pad);
 }
 /** @param {object} state */
 function tickPadPointerRelease(state) {
     const pads = sandboxPads(state);
     for (let i = 0; i < pads.length; i++) {
         const pad = pads[i];
-        if (pad.draw !== "button") continue;
+        if (!isPadButtonPreset(pad)) continue;
         if (!isPadButtonPressed(state, pad)) pad._pointerHeld = false;
     }
 }
@@ -314,7 +347,7 @@ export function tickSandboxPads(state, spatialFrame, dt) {
     const pads = sandboxPads(state);
     if (!pads.length) return;
     const dtSec = dt / 1000;
-    processGroundZones(spatialFrame, pads, {
+    processFloorShapes(spatialFrame, pads, {
         onEnter(pad, entity) {
             runPadTriggers(state, pad, "enter", { entity });
         },
@@ -337,7 +370,7 @@ export const sandboxPadEffectPass = {
         ctx.save();
         for (let i = 0; i < pads.length; i++) {
             const pad = pads[i];
-            if (!isGroundZoneInView(pad, viewport)) continue;
+            if (!isAabbInView(pad, viewport)) continue;
             drawPad(ctx, pad, viewport, state);
         }
         ctx.restore();

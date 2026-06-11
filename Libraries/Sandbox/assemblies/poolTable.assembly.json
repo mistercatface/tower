@@ -37,7 +37,7 @@
         "pool_ball_15",
         "pool_cue_ball"
     ],
-    "voidCircles": [
+    "sinkPads": [
         {
             "id": "void-tl",
             "radius": 4.3,
@@ -236,7 +236,7 @@
     "spawn": [
         "arena.clear",
         "arena.walls",
-        "voidCircles",
+        "sinkPads",
         "pickups"
     ]
 }

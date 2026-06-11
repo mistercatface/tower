@@ -1,5 +1,5 @@
 import { wakePushableBody } from "../Libraries/Motion/pushableSleep.js";
-import { isInsideVoidMouth, voidMouthReach } from "../Libraries/Spatial/zones/voidZone.js";
+import { isInsideVoidMouth, voidMouthReach } from "../Libraries/Spatial/zones/pit.js";
 const DEFAULT_PULL = 200;
 const DEFAULT_CAPTURED_PULL = 500;
 const DEFAULT_DURATION_MS = 1500;

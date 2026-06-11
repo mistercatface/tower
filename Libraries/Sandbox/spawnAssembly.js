@@ -125,23 +125,23 @@ export function spawnResolvedAssembly(host, centerX, centerY, resolved, { factio
         for (let i = 0; i < walls.length; i++) stampAssemblyGroupMember(walls[i], groupId, resolved.id, groupField);
         addSandboxWalls(state, walls, { compileRender: true });
     }
-    if (spawnIncludes(spawnSteps, ["voidCircles"]))
-        for (let p = 0; p < layout.voids.length; p++) {
-            const voidCircle = layout.voids[p];
-            const pad = buildSandboxPad(state, "sink", voidCircle.x, voidCircle.y, { id: `${groupId}:void:${voidCircle.id ?? p + 1}`, radius: voidCircle.radius, sinkDepth: voidCircle.depth });
+    if (spawnIncludes(spawnSteps, ["sinkPads"]))
+        for (let p = 0; p < layout.sinkPads.length; p++) {
+            const sinkPad = layout.sinkPads[p];
+            const pad = buildSandboxPad(state, "sink", sinkPad.x, sinkPad.y, { id: `${groupId}:sink:${sinkPad.id ?? p + 1}`, radius: sinkPad.radius, sinkDepth: sinkPad.depth });
             stampAssemblyGroupMember(pad, groupId, resolved.id, groupField);
             if (!state.sandboxPads) state.sandboxPads = [];
             state.sandboxPads.push(pad);
         }
-    if (spawnIncludes(spawnSteps, ["gravityZones"]))
-        for (let g = 0; g < layout.gravityZones.length; g++) {
-            const gz = layout.gravityZones[g];
-            const pad = buildSandboxPad(state, "pull", gz.x, gz.y, {
-                id: `${groupId}:gravity:${gz.id ?? g + 1}`,
-                halfWidth: gz.halfWidth,
-                halfHeight: gz.halfHeight,
-                forceX: gz.forceX,
-                forceY: gz.forceY,
+    if (spawnIncludes(spawnSteps, ["pullPads"]))
+        for (let g = 0; g < layout.pullPads.length; g++) {
+            const pullPad = layout.pullPads[g];
+            const pad = buildSandboxPad(state, "pull", pullPad.x, pullPad.y, {
+                id: `${groupId}:pull:${pullPad.id ?? g + 1}`,
+                halfWidth: pullPad.halfWidth,
+                halfHeight: pullPad.halfHeight,
+                forceX: pullPad.forceX,
+                forceY: pullPad.forceY,
             });
             stampAssemblyGroupMember(pad, groupId, resolved.id, groupField);
             if (!state.sandboxPads) state.sandboxPads = [];

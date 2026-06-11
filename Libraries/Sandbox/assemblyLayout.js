@@ -3,19 +3,20 @@ import { Segment } from "../../Entities/Wall.js";
 import { resolvePlacement } from "./assemblies/assemblyPlacement.js";
 /** @typedef {import("./assemblies/assemblyManifest.js").ResolvedAssemblyManifest} ResolvedAssemblyManifest */
 /**
- * @param {import("./assemblies/assemblyManifest.js").AssemblyVoidCircleManifest[]} voidCircles
+ * @param {import("./assemblies/assemblyManifest.js").AssemblySinkPadManifest[]} sinkPads
  * @param {ReturnType<typeof getPlayfieldBounds>} play
  */
-function resolveVoidCircles(voidCircles, play) {
-    if (!voidCircles) return [];
-    return voidCircles.map((entry) => {
+function resolveSinkPads(sinkPads, play) {
+    if (!sinkPads) return [];
+    return sinkPads.map((entry) => {
         const point = resolvePlacement(play, entry.placement);
         return { id: entry.id, x: point.x, y: point.y, radius: entry.radius, depth: entry.depth };
     });
 }
-function resolveGravityZones(gravityZones, play) {
-    if (!gravityZones) return [];
-    return gravityZones.map((entry) => {
+/** @param {import("./assemblies/assemblyManifest.js").AssemblyPullPadManifest[]} pullPads @param {ReturnType<typeof getPlayfieldBounds>} play */
+function resolvePullPads(pullPads, play) {
+    if (!pullPads) return [];
+    return pullPads.map((entry) => {
         const point = resolvePlacement(play, entry.placement);
         return { id: entry.id, x: point.x, y: point.y, halfWidth: entry.width / 2, halfHeight: entry.height / 2, forceX: entry.forceX, forceY: entry.forceY };
     });
@@ -150,15 +151,15 @@ function buildPlayfieldArcWallSegments(arcs, walls, wallHeight) {
  * @param {ResolvedAssemblyManifest} resolved
  */
 export function buildAssemblyLayout(centerX, centerY, resolved) {
-    const { arena, voidCircles, gravityZones, wallSegments, arcWallSegments } = resolved;
+    const { arena, sinkPads, pullPads, wallSegments, arcWallSegments } = resolved;
     const { offsetX, offsetY } = snapLayoutOrigin(centerX, centerY, arena.width, arena.height, 1);
     const bounds = getArenaWorldBounds(offsetX, offsetY, arena.width, arena.height);
     const play = getPlayfieldBounds(bounds, arena.walls.width);
     return {
         bounds,
         play,
-        voids: resolveVoidCircles(voidCircles, play),
-        gravityZones: resolveGravityZones(gravityZones, play),
+        sinkPads: resolveSinkPads(sinkPads, play),
+        pullPads: resolvePullPads(pullPads, play),
         wallSegments: resolveWallSegments(wallSegments, play),
         arcWallSegments: resolveArcWallSegments(arcWallSegments, play),
     };
