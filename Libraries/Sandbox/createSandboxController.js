@@ -315,7 +315,7 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
             if (!overlay) return;
             drawActivePathOverlay(ctx, overlay, host.getWorldState().viewport.zoom, visual);
         },
-        /** Drag-launch aim preview — same layer as path overlays (above floors, below walls). */
+        /** Drag-launch aim preview — above world structure (walls/props/pit rims). */
         drawLaunchPreview(ctx) {
             const pickup = session.getSelectedPickup();
             const behavior = resolveBehavior();

@@ -1,3 +1,4 @@
+import { prepModifiedBlit } from "../Render/spriteDrawModifier.js";
 import { createBakedSpriteCache } from "./BakedSpriteCache.js";
 import { quantizeAngle, quantizeAngleIndex, quantizeViewOffset } from "./viewQuantize.js";
 import { clamp } from "../Math/Interpolate.js";
@@ -46,29 +47,53 @@ export function createQuantizedSpriteCache({ maxItems = 2000, viewStep = 30, vie
         },
     };
 }
-/** World-anchored blit (iso props). Opacity applied at blit time, not bake time. */
-export function blitAnchoredSprite(ctx, sprite, worldX, worldY) {
+/**
+ * World-anchored blit (iso props). Opacity applied at blit time, not bake time.
+ *
+ * @param {import("../Render/spriteDrawModifier.js").SpriteDrawModifier | null} [modifier]
+ */
+export function blitAnchoredSprite(ctx, sprite, worldX, worldY, modifier = null) {
     const bakeScale = sprite.bakeScale ?? 1;
     const anchorX = sprite.anchorX ?? 0;
     const anchorY = sprite.anchorY ?? 0;
     const drawW = sprite.width / bakeScale;
     const drawH = sprite.height / bakeScale;
+    const drawX = modifier?.drawX ?? worldX;
+    const drawY = modifier?.drawY ?? worldY;
+    const scale = modifier?.scale ?? 1;
     ctx.save();
+    prepModifiedBlit(ctx, modifier);
     const smoothDownscale = bakeScale > 1;
     const prevSmooth = ctx.imageSmoothingEnabled;
     if (smoothDownscale) ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(sprite, worldX - anchorX, worldY - anchorY, drawW, drawH);
+    ctx.translate(drawX, drawY);
+    if (scale !== 1) ctx.scale(scale, scale);
+    ctx.drawImage(sprite, -anchorX, -anchorY, drawW, drawH);
     if (smoothDownscale) ctx.imageSmoothingEnabled = prevSmooth;
     ctx.restore();
 }
-/** Center-anchored blit (kinematics humanoids). */
-export function blitCenteredSprite(ctx, sprite, x, y, displayDiameter) {
+/**
+ * Center-anchored blit (kinematics humanoids).
+ *
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {CanvasImageSource & { drawRatio?: number, verticalShift?: number, width: number, height: number }} sprite
+ * @param {number} x
+ * @param {number} y
+ * @param {number} displayDiameter
+ * @param {import("../Render/spriteDrawModifier.js").SpriteDrawModifier | null} [modifier]
+ */
+export function blitCenteredSprite(ctx, sprite, x, y, displayDiameter, modifier = null) {
     const drawRatio = sprite.drawRatio ?? 1;
     const drawW = displayDiameter * drawRatio;
     const drawH = drawW * (sprite.height / sprite.width);
     const vShift = (sprite.verticalShift ?? 0) * (drawW / sprite.width);
+    const drawX = modifier?.drawX ?? x;
+    const drawY = modifier?.drawY ?? y;
+    const scale = modifier?.scale ?? 1;
     ctx.save();
-    ctx.translate(x, y);
+    prepModifiedBlit(ctx, modifier);
+    ctx.translate(drawX, drawY);
+    if (scale !== 1) ctx.scale(scale, scale);
     ctx.drawImage(sprite, -drawW / 2, -drawH / 2 - vShift, drawW, drawH);
     ctx.restore();
 }

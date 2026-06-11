@@ -1,6 +1,6 @@
 import { createCircleFloorShape, createRectFloorShape, drawFloorShape, isAabbInView, processFloorShapes } from "../Spatial/zones/floorShapes.js";
 import { PolygonShape } from "../Spatial/collision/Shapes.js";
-import { drawPit, syncSinkPadAabb } from "../Spatial/zones/pit.js";
+import { drawPitInterior, syncSinkPadAabb } from "../Spatial/zones/pit.js";
 import { NEIGHBOR_QUERY_PAD } from "../Spatial/collision/entityBroadphase.js";
 import { PAD_PRESETS } from "./padPresets.js";
 import { runPadEffect, syncButtonFlipperLinks, syncPullPadWalls, syncSandboxPadPower, teardownPullPad, tickButtonSpawnerLinks } from "./padEffects.js";
@@ -385,7 +385,7 @@ function drawPadButton(ctx, x, y, pressed, radius) {
 export function drawPad(ctx, pad, viewport, state) {
     const style = PAD_PRESETS[pad.preset].draw;
     if (style === "pit") {
-        drawPit(ctx, pad, viewport.x, viewport.y);
+        drawPitInterior(ctx, pad, viewport.x, viewport.y);
         return;
     }
     if (style === "pull") {

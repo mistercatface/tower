@@ -1,5 +1,6 @@
 /** @typedef {(ctx: CanvasRenderingContext2D, prop: object, px: number, py: number) => void} PropDrawRecipe */
 import { blitAnchoredSprite, getOrBakePropSprite } from "../../Canvas/QuantizedSpriteCache.js";
+import { resolveSpriteDrawModifier } from "../spriteDrawModifier.js";
 export class PropRenderer {
     /** @param {Record<string, PropDrawRecipe>} [propRecipes] */
     constructor(propRecipes = {}) {
@@ -16,6 +17,8 @@ export class PropRenderer {
         const animFrame = options.animFrame ?? 0;
         const zoom = options.zoom ?? 1;
         const sprite = getOrBakePropSprite({ prop, px, py, renderKey, draw, animFrame, zoom });
-        blitAnchoredSprite(ctx, sprite, prop.x, prop.y);
+        const viewport = { x: px, y: py };
+        const modifier = resolveSpriteDrawModifier(prop, viewport);
+        blitAnchoredSprite(ctx, sprite, prop.x, prop.y, modifier);
     }
 }

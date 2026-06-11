@@ -1,5 +1,5 @@
 import { Segment } from "../../Entities/Wall.js";
-import { isInsideVoidMouth, voidMouthReach } from "../Spatial/zones/pit.js";
+import { isFullyEnclosedInVoidMouth, isInsideVoidMouth } from "../Spatial/zones/pit.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { releaseFlipper, triggerFlipper } from "./behaviors/flipperBehavior.js";
 import { getButtonPadLinks } from "./sandboxPadLinks.js";
@@ -116,7 +116,7 @@ function beginSink(pickup, pad) {
     pickup.voidRadius = pad.shape.radius;
     pickup.voidDepth = pad.sinkDepth;
     pickup.voidSinkTimer = 1500;
-    pickup.voidCaptured = Math.hypot(pad.x - pickup.x, pad.y - pickup.y) <= voidMouthReach(pad.shape.radius, pickup) * 0.65;
+    pickup.voidCaptured = isFullyEnclosedInVoidMouth(pad.x, pad.y, pad.shape.radius, pickup);
     pickup.changeState("voidSink");
 }
 /** @param {object} state @param {number} entityId @param {object} pad */

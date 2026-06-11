@@ -67,7 +67,7 @@ export const engine = {
         simulationEffectPasses: [
             sandboxPadEffectPass,
             {
-                zIndex: 65,
+                zIndex: 72,
                 draw(state, _viewport, ctx) {
                     sandboxController?.drawBehaviorOverlays(ctx);
                     sandboxController?.drawPathOverlay(ctx);

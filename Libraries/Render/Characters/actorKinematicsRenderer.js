@@ -1,5 +1,6 @@
 import { LIBRARY_KINEMATICS_PIXEL_SIZE as kinematicsPixelSize } from "../../../Libraries/Motion/bodyDefaults.js";
 import { blitCenteredSprite } from "../../Canvas/QuantizedSpriteCache.js";
+import { resolveSpriteDrawModifier } from "../spriteDrawModifier.js";
 import { CAMERA_HEIGHT } from "../../Spatial/iso/IsometricProjection.js";
 import { createKinematicsBundle } from "../../Kinematics/createKinematicsBundle.js";
 import { engine } from "../../../Apps/Editor/engine.js";
@@ -54,7 +55,8 @@ export function renderKinematicsBody(ctx, spec) {
     const kinematics = getKinematicsRenderer(spec.radius);
     const camera = spec.camera ?? resolveKinematicsCamera(spec.actor, spec.state);
     const sprite = spec.rigData ? kinematics.bundle.renderKinematicsFrame({ ...spec, camera }) : kinematics.getSprite(spec.actor, camera);
-    blitCenteredSprite(ctx, sprite, spec.x, spec.y, kinematics.displayDiameter);
+    const modifier = spec.actor ? resolveSpriteDrawModifier(spec.actor, camera) : null;
+    blitCenteredSprite(ctx, sprite, spec.x, spec.y, kinematics.displayDiameter, modifier);
 }
 export function renderActorKinematicsBody(ctx, actor, camera, radius = actor.radius) {
     renderKinematicsBody(ctx, { x: actor.x, y: actor.y, radius, actor, camera });
