@@ -1,10 +1,8 @@
-import { Segment } from "../../Entities/Wall.js";
 import { isInsideVoidMouth, voidMouthReach } from "../Spatial/zones/pit.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { isFlipperButtonPressed, triggerFlipper } from "./behaviors/flipperBehavior.js";
-import { getSandboxPad } from "./sandboxPads.js";
+import { isButtonPadActive } from "./buttonPad.js";
 import { getButtonPadLinks } from "./sandboxPadLinks.js";
-import { addSandboxWalls, removeSandboxWall } from "./spawnAssembly.js";
 /** @typedef {import("./padPresets.js").PadTriggerDef} PadTriggerDef */
 /**
  * @typedef {object} PadEffectContext
@@ -17,31 +15,7 @@ import { addSandboxWalls, removeSandboxWall } from "./spawnAssembly.js";
  * @typedef {object} PadEffectHandler
  * @property {(state: object, pad: object, trigger: PadTriggerDef, ctx: PadEffectContext) => void} run
  * @property {(state: object, pad: object, trigger: PadTriggerDef) => boolean} [isActive]
- * @property {(state: object, pad: object) => void} [setup]
- * @property {(state: object, pad: object) => void} [teardown]
  */
-const GATE_WALL_HEIGHT = 1;
-const GATE_WALL_SIZE = 16;
-const GATE_WALL_OFFSET_Y = -18;
-/** @param {number} x @param {number} y @param {string} ownerId */
-function buildGateWall(x, y, ownerId) {
-    const wall = new Segment(x, y + GATE_WALL_OFFSET_Y, 0, GATE_WALL_SIZE, 0, 30, 30, false, GATE_WALL_HEIGHT);
-    wall.collisionOnly = true;
-    wall.sandboxPadId = ownerId;
-    return wall;
-}
-/** @param {object} state @param {object} pad @param {boolean} wallsUp */
-function setGateWalls(state, pad, wallsUp) {
-    if (pad.wallsUp === wallsUp) return;
-    if (wallsUp) {
-        pad.walls = [buildGateWall(pad.x, pad.y, pad.id)];
-        addSandboxWalls(state, pad.walls, { compileRender: false });
-    } else {
-        for (let i = 0; i < pad.walls.length; i++) removeSandboxWall(state, pad.walls[i]);
-        pad.walls = [];
-    }
-    pad.wallsUp = wallsUp;
-}
 /** @param {object} pickup @param {object} pad */
 function beginSink(pickup, pad) {
     if (pickup.isDead || pickup.currentStateName === "voidSink") return;
@@ -60,33 +34,10 @@ function rimOutSink(state, entityId, pad) {
     if (isInsideVoidMouth(pad.x, pad.y, pad.shape.radius, pickup)) return;
     pickup.changeState("normal");
 }
-/** @param {object} state @param {object} pad @param {import("./sandboxPadLinks.js").ButtonLinkTarget} link */
-function runButtonLink(state, pad, link) {
-    if (link.type === "pad") {
-        const gatePad = getSandboxPad(state, link.id);
-        if (gatePad?.preset === "gate") setGateWalls(state, gatePad, false);
-        return;
-    }
+/** @param {object} state @param {import("./sandboxPadLinks.js").ButtonLinkTarget} link */
+function runButtonPickupLink(state, link) {
     const pickup = state.pickups.find((entry) => entry.id === link.id && !entry.isDead);
     if (pickup) triggerFlipper(pickup);
-}
-/** @param {object} state @param {object} pad */
-export function releaseButtonGateLinks(state, pad) {
-    for (const link of getButtonPadLinks(pad)) {
-        if (link.type !== "pad") continue;
-        const gatePad = getSandboxPad(state, link.id);
-        if (gatePad?.preset === "gate") setGateWalls(state, gatePad, true);
-    }
-}
-/** @param {object} state @param {object} pad */
-export function setupGatePad(state, pad) {
-    pad.wallsUp = true;
-    pad.walls = [buildGateWall(pad.x, pad.y, pad.id)];
-    addSandboxWalls(state, pad.walls, { compileRender: false });
-}
-/** @param {object} state @param {object} pad */
-export function teardownGatePad(state, pad) {
-    if (pad.wallsUp) setGateWalls(state, pad, false);
 }
 /** @type {Record<string, PadEffectHandler>} */
 const PAD_EFFECTS = {
@@ -98,13 +49,6 @@ const PAD_EFFECTS = {
     unsink: {
         run(state, pad, _trigger, ctx) {
             rimOutSink(state, ctx.entityId, pad);
-        },
-    },
-    gate: {
-        setup: setupGatePad,
-        teardown: teardownGatePad,
-        run(state, pad, trigger) {
-            setGateWalls(state, pad, trigger.up === true);
         },
     },
     pull: {
@@ -125,7 +69,7 @@ const PAD_EFFECTS = {
         run(state, pad, trigger) {
             const links = getButtonPadLinks(pad);
             if (links.length) {
-                for (let i = 0; i < links.length; i++) runButtonLink(state, pad, links[i]);
+                for (let i = 0; i < links.length; i++) runButtonPickupLink(state, links[i]);
                 return;
             }
             const targetId = trigger.targetPickupId;
@@ -133,10 +77,9 @@ const PAD_EFFECTS = {
             const pickup = state.pickups.find((entry) => entry.id === targetId && !entry.isDead);
             if (pickup) triggerFlipper(pickup);
         },
-        isActive(state, pad, trigger) {
-            if (pad._pointerHeld) return true;
+        isActive(state, pad) {
+            if (isButtonPadActive(state, pad)) return true;
             for (const link of getButtonPadLinks(pad)) {
-                if (link.type !== "pickup") continue;
                 const pickup = state.pickups.find((entry) => entry.id === link.id && !entry.isDead);
                 if (isFlipperButtonPressed(pickup)) return true;
             }
@@ -160,18 +103,4 @@ export function isPadTriggerActive(state, pad, triggers, when) {
         if (effect.isActive(state, pad, trigger)) return true;
     }
     return false;
-}
-/** @param {CanvasRenderingContext2D} ctx @param {import("../../Entities/Wall.js").Segment} wall */
-export function drawGateWall(ctx, wall) {
-    ctx.save();
-    ctx.translate(wall.x, wall.y);
-    ctx.rotate(wall.angle);
-    const half = wall.size / 2;
-    const thickness = 4;
-    ctx.fillStyle = "rgba(76, 175, 80, 0.85)";
-    ctx.strokeStyle = "rgba(27, 94, 32, 1)";
-    ctx.lineWidth = 2;
-    ctx.fillRect(-half, -thickness / 2, wall.size, thickness);
-    ctx.strokeRect(-half, -thickness / 2, wall.size, thickness);
-    ctx.restore();
 }

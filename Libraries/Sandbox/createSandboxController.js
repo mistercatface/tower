@@ -3,7 +3,7 @@ import { bindCanvasPointers, releasePointerCapture } from "./bindCanvasPointers.
 import { findPickupAt } from "./findPickupAt.js";
 import { createSandboxSession, SANDBOX_SPAWN_ASSEMBLY_PREFIX } from "./sandboxSession.js";
 import { addButtonPadLink, clearButtonPadLinks, drawSandboxPadWires, findButtonLinkTarget, listButtonPadLinkEndpoints, removeButtonPadLink } from "./sandboxPadLinks.js";
-import { getSandboxPad, handlePadPointerDown, hitTestPad, isSandboxSpawnPadId } from "./sandboxPads.js";
+import { getSandboxPad, handlePadPointerDown, hitTestPad, isSandboxSpawnPadId, releaseButtonPointerHold } from "./sandboxPads.js";
 import { resolveSandboxBehaviors } from "./sandboxCapabilities.js";
 import { drawSandboxLaserSights } from "./drawLaserSights.js";
 import { drawActivePathOverlay } from "../Render/map/drawActivePathOverlay.js";
@@ -112,7 +112,7 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
             const buttonPadId = session.getSelectedPadId();
             const buttonPad = buttonPadId ? getSandboxPad(host.getWorldState(), buttonPadId) : null;
             if (buttonPad?.preset === "button") {
-                const target = findButtonLinkTarget(host.getWorldState(), world.x, world.y, buttonPad.id);
+                const target = findButtonLinkTarget(host.getWorldState(), world.x, world.y);
                 if (target) addButtonPadLink(host.getWorldState(), buttonPad.id, target);
                 session.sync();
                 e.preventDefault();
@@ -163,6 +163,7 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
     };
     /** @param {PointerEvent} e */
     const onPointerUp = (e) => {
+        releaseButtonPointerHold(host.getWorldState());
         if (!interactionBehavior) return;
         const canvas = host.getCanvas();
         const pickup = session.getSelectedPickup();

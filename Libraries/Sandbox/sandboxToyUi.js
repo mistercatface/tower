@@ -167,8 +167,7 @@ function renderSelectedPadInspector(body, controller, onChange) {
     if (pad.preset === "sink") {
         appendNumberField(body, "Radius", { value: pad.radius, step: 0.5, min: 0.5, onChange: (radius) => patch({ radius }) });
         appendNumberField(body, "Depth", { value: pad.sinkDepth, step: 1, min: 1, onChange: (sinkDepth) => patch({ sinkDepth }) });
-    } else if (pad.preset === "gate") appendNumberField(body, "Radius", { value: pad.radius, step: 0.5, min: 0.5, onChange: (radius) => patch({ radius }) });
-    else if (pad.preset === "pull")
+    } else if (pad.preset === "pull")
         appendPullPadFields(body, {
             width: pad.halfWidth * 2,
             height: pad.halfHeight * 2,
@@ -179,10 +178,22 @@ function renderSelectedPadInspector(body, controller, onChange) {
         });
     else if (pad.preset === "button") {
         appendNumberField(body, "Radius", { value: pad.radius, step: 0.5, min: 0.5, onChange: (radius) => patch({ radius }) });
+        appendSelectField(body, "Input", {
+            value: pad.inputMode ?? "tap",
+            options: [
+                { value: "tap", label: "Tap" },
+                { value: "hold", label: "Hold" },
+                { value: "massTap", label: "Mass – Tap" },
+                { value: "massHold", label: "Mass – Hold" },
+            ],
+            onChange: (inputMode) => patch({ inputMode }),
+        });
+        if (pad.inputMode === "massTap" || pad.inputMode === "massHold")
+            appendNumberField(body, "Mass threshold", { value: pad.massThreshold ?? 0, step: 0.01, min: 0, onChange: (massThreshold) => patch({ massThreshold }) });
         const links = controller.listSelectedPadLinks();
         const linkHint = document.createElement("p");
         linkHint.className = "editor-hint";
-        linkHint.textContent = links.length ? `${links.length} wire${links.length === 1 ? "" : "s"} connected` : "No wires — link to flippers and/or gate pads.";
+        linkHint.textContent = links.length ? `${links.length} wire${links.length === 1 ? "" : "s"} connected` : "No wires — link to flippers.";
         body.appendChild(linkHint);
         if (links.length)
             appendEntityList(

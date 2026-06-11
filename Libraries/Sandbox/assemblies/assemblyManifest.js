@@ -42,9 +42,9 @@
 /**
  * @typedef {object} AssemblyPadManifest
  * @property {string} id
- * @property {string} preset — sink | gate | pull | button
+ * @property {string} preset — sink | pull | button
  * @property {AssemblyPlacementManifest} at
- * @property {number} [radius] — sink / gate circle radius
+ * @property {number} [radius] — sink circle radius
  * @property {number} [depth] — sink pit depth
  * @property {number} [width] — pull rect width
  * @property {number} [height] — pull rect height

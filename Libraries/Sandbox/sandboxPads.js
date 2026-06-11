@@ -3,8 +3,10 @@ import { PolygonShape } from "../Spatial/collision/Shapes.js";
 import { drawPit, syncSinkPadAabb } from "../Spatial/zones/pit.js";
 import { NEIGHBOR_QUERY_PAD } from "../Spatial/collision/entityBroadphase.js";
 import { PAD_PRESETS } from "./padPresets.js";
-import { drawGateWall, isPadTriggerActive, releaseButtonGateLinks, runPadEffect, setupGatePad, teardownGatePad } from "./padEffects.js";
+import { runPadEffect } from "./padEffects.js";
 import { getButtonPadLinks } from "./sandboxPadLinks.js";
+import { BUTTON_INPUT_MODES, DEFAULT_BUTTON_INPUT_MODE, DEFAULT_BUTTON_MASS_THRESHOLD, isButtonPadActive, isMassButtonInputMode, normalizeButtonInputMode } from "./buttonPad.js";
+export { isButtonPadActive, BUTTON_INPUT_MODES, DEFAULT_BUTTON_INPUT_MODE, DEFAULT_BUTTON_MASS_THRESHOLD, isMassButtonInputMode, normalizeButtonInputMode } from "./buttonPad.js";
 export const SANDBOX_SPAWN_PAD_PREFIX = "pad:";
 const POINTER_HIT_PADDING = 4;
 /** @param {string} preset */
@@ -27,16 +29,16 @@ function padHasOccupant(state, pad) {
     }
     return false;
 }
-/** @param {object} state @param {object} pad */
-function isPadButtonPressed(state, pad) {
-    return isPadTriggerActive(state, pad, pad.triggers, "pointerDown") || pad._pointerHeld;
-}
 /** @param {object} state @param {object} pad @param {import("./padPresets.js").PadWhen} when @param {import("./padEffects.js").PadEffectContext} ctx */
 function runPadTriggers(state, pad, when, ctx) {
     for (let i = 0; i < pad.triggers.length; i++) {
         const trigger = pad.triggers[i];
         if (trigger.when === when) runPadEffect(state, pad, trigger, ctx);
     }
+}
+/** @param {object} state @param {object} pad @param {import("./padEffects.js").PadEffectContext} [ctx] */
+function runButtonPadEffects(state, pad, ctx = {}) {
+    for (let i = 0; i < pad.triggers.length; i++) runPadEffect(state, pad, pad.triggers[i], ctx);
 }
 /** @param {object} pad @param {number} wx @param {number} wy @param {number} [padding] */
 function pointInPad(pad, wx, wy, padding = POINTER_HIT_PADDING) {
@@ -64,20 +66,37 @@ export function hitTestPad(state, wx, wy) {
 }
 /** @param {object} state @param {object} pad @param {{ x: number, y: number }} world */
 export function handlePadPointerDown(state, pad, world) {
-    for (let i = 0; i < pad.triggers.length; i++) {
-        if (pad.triggers[i].when !== "pointerDown") continue;
-        pad._pointerHeld = true;
-        runPadTriggers(state, pad, "pointerDown", { world });
-        return true;
+    if (pad.preset !== "button" || isMassButtonInputMode(pad.inputMode)) return false;
+    pad._pointerHeld = true;
+    runButtonPadEffects(state, pad, { world });
+    return true;
+}
+/** @param {object} state */
+export function releaseButtonPointerHold(state) {
+    for (let i = 0; i < state.sandboxPads.length; i++) {
+        const pad = state.sandboxPads[i];
+        if (pad.preset === "button" && !isMassButtonInputMode(pad.inputMode)) pad._pointerHeld = false;
     }
-    return false;
 }
 /**
  * @param {object} state
  * @param {string} preset
  * @param {number} x
  * @param {number} y
- * @param {{ id?: string, radius?: number, sinkDepth?: number, halfWidth?: number, halfHeight?: number, forceX?: number, forceY?: number, buttonLinks?: import("./sandboxPadLinks.js").ButtonLinkTarget[], targetPickupId?: number, triggers?: object[] }} [options]
+ * @param {{
+ *   id?: string,
+ *   radius?: number,
+ *   sinkDepth?: number,
+ *   halfWidth?: number,
+ *   halfHeight?: number,
+ *   forceX?: number,
+ *   forceY?: number,
+ *   buttonLinks?: import("./sandboxPadLinks.js").ButtonLinkTarget[],
+ *   targetPickupId?: number,
+ *   inputMode?: import("./buttonPad.js").ButtonInputMode,
+ *   massThreshold?: number,
+ *   triggers?: object[],
+ * }} [options]
  */
 export function buildSandboxPad(state, preset, x, y, options = {}) {
     const def = PAD_PRESETS[preset];
@@ -106,15 +125,17 @@ export function buildSandboxPad(state, preset, x, y, options = {}) {
     }
     pad.preset = preset;
     pad.sinkDepth = options.sinkDepth ?? def.sinkDepth;
-    if (preset === "button")
+    if (preset === "button") {
+        pad.inputMode = normalizeButtonInputMode(options.inputMode);
+        pad.massThreshold = options.massThreshold ?? DEFAULT_BUTTON_MASS_THRESHOLD;
         if (options.buttonLinks?.length) pad.buttonLinks = options.buttonLinks.map((link) => ({ ...link }));
         else if (options.targetPickupId != null) pad.buttonLinks = [{ type: "pickup", id: options.targetPickupId }];
+    }
     pad.triggers = (options.triggers ?? def.triggers).map((trigger) => ({ ...trigger }));
     if (preset === "pull") {
         if (options.forceX != null) pad.triggers[0].forceX = options.forceX;
         if (options.forceY != null) pad.triggers[0].forceY = options.forceY;
     }
-    if (def.linkedWalls) setupGatePad(state, pad);
     return pad;
 }
 /**
@@ -132,8 +153,6 @@ export function spawnSandboxPad(host, preset, x, y, options = {}) {
 }
 /** @param {object} state @param {number} index */
 function removeSandboxPadAt(state, index) {
-    const pad = state.sandboxPads[index];
-    teardownGatePad(state, pad);
     state.sandboxPads.splice(index, 1);
 }
 /** @param {object} state @param {string} id */
@@ -184,7 +203,11 @@ export function getSandboxPadEditorState(pad) {
         snapshot.forceX = trigger.forceX;
         snapshot.forceY = trigger.forceY;
     }
-    if (pad.preset === "button") snapshot.linkCount = getButtonPadLinks(pad).length;
+    if (pad.preset === "button") {
+        snapshot.linkCount = getButtonPadLinks(pad).length;
+        snapshot.inputMode = normalizeButtonInputMode(pad.inputMode);
+        snapshot.massThreshold = pad.massThreshold ?? DEFAULT_BUTTON_MASS_THRESHOLD;
+    }
     return snapshot;
 }
 /** @param {object} pad @param {number} halfWidth @param {number} halfHeight */
@@ -218,6 +241,8 @@ function resizeCirclePad(pad, radius, preset) {
  *   halfHeight?: number,
  *   forceX?: number,
  *   forceY?: number,
+ *   inputMode?: import("./buttonPad.js").ButtonInputMode,
+ *   massThreshold?: number,
  * }} patch
  */
 export function patchSandboxPad(state, id, patch) {
@@ -226,8 +251,6 @@ export function patchSandboxPad(state, id, patch) {
     if (pad.preset === "sink") {
         if (patch.radius != null) resizeCirclePad(pad, patch.radius, pad.preset);
         if (patch.sinkDepth != null) pad.sinkDepth = patch.sinkDepth;
-    } else if (pad.preset === "gate") {
-        if (patch.radius != null) resizeCirclePad(pad, patch.radius, pad.preset);
     } else if (pad.preset === "pull") {
         const current = readPullHalfExtents(pad);
         const halfWidth = patch.halfWidth ?? current.halfWidth;
@@ -236,7 +259,11 @@ export function patchSandboxPad(state, id, patch) {
         const trigger = pad.triggers[0];
         if (patch.forceX != null) trigger.forceX = patch.forceX;
         if (patch.forceY != null) trigger.forceY = patch.forceY;
-    } else if (pad.preset === "button") if (patch.radius != null) resizeCirclePad(pad, patch.radius, pad.preset);
+    } else if (pad.preset === "button") {
+        if (patch.radius != null) resizeCirclePad(pad, patch.radius, pad.preset);
+        if (patch.inputMode != null) pad.inputMode = normalizeButtonInputMode(patch.inputMode);
+        if (patch.massThreshold != null) pad.massThreshold = patch.massThreshold;
+    }
     return true;
 }
 /** @param {object} state */
@@ -258,6 +285,7 @@ export function listSandboxPads(state) {
                 entry.forceY = snapshot.forceY;
             }
             if (snapshot.linkCount != null) entry.linkCount = snapshot.linkCount;
+            if (snapshot.inputMode != null) entry.inputMode = snapshot.inputMode;
             return entry;
         });
 }
@@ -295,30 +323,24 @@ export function drawPad(ctx, pad, viewport, state) {
         drawPit(ctx, pad, viewport.x, viewport.y);
         return;
     }
-    if (style === "plate") {
-        drawFloorShape(ctx, pad, { fill: "rgba(76, 175, 80, 0.35)", stroke: "rgba(27, 94, 32, 0.9)", lineWidth: 2 });
-        if (pad.wallsUp) for (let w = 0; w < pad.walls.length; w++) drawGateWall(ctx, pad.walls[w]);
-        return;
-    }
     if (style === "pull") {
         drawFloorShape(ctx, pad, { fill: "rgba(255, 100, 100, 0.22)", stroke: "rgba(255, 80, 80, 0.9)", lineWidth: 2 });
         return;
     }
     if (style === "button") {
-        drawPadButton(ctx, pad.x, pad.y, isPadButtonPressed(state, pad), pad.shape.radius);
+        drawPadButton(ctx, pad.x, pad.y, isButtonPadActive(state, pad), pad.shape.radius);
         return;
     }
     drawFloorShape(ctx, pad);
 }
-/** @param {object} state */
-function tickPadPointerRelease(state) {
-    for (let i = 0; i < state.sandboxPads.length; i++) {
-        const pad = state.sandboxPads[i];
-        if (pad.preset !== "button") continue;
-        if (isPadButtonPressed(state, pad)) continue;
-        if (pad._pointerHeld) releaseButtonGateLinks(state, pad);
-        pad._pointerHeld = false;
-    }
+/** @param {object} state @param {object} pad */
+function tickButtonPad(state, pad) {
+    const active = isButtonPadActive(state, pad);
+    const wasActive = pad._buttonWasActive ?? false;
+    const mode = normalizeButtonInputMode(pad.inputMode);
+    if ((mode === "hold" || mode === "massHold") && active) runButtonPadEffects(state, pad);
+    else if (mode === "massTap" && active && !wasActive) runButtonPadEffects(state, pad);
+    pad._buttonWasActive = active;
 }
 /** @param {object} state @param {import("../Spatial/world/SpatialFrameCore.js").SpatialFrameCore} spatialFrame @param {number} dt */
 export function tickSandboxPads(state, spatialFrame, dt) {
@@ -335,9 +357,9 @@ export function tickSandboxPads(state, spatialFrame, dt) {
     });
     for (let i = 0; i < pads.length; i++) {
         const pad = pads[i];
-        runPadTriggers(state, pad, padHasOccupant(state, pad) ? "occupied" : "empty", { dtSec });
+        if (pad.preset === "button") tickButtonPad(state, pad);
+        else runPadTriggers(state, pad, padHasOccupant(state, pad) ? "occupied" : "empty", { dtSec });
     }
-    tickPadPointerRelease(state);
 }
 /** @type {import("../../Core/GameDefinitionTypes.js").SimulationEffectPass} */
 export const sandboxPadEffectPass = {
