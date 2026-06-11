@@ -10,6 +10,7 @@ import { createAssemblyGuideOverlay, createAssemblySurfaceZone } from "./assembl
 import { eagerBakeAssemblySurfaceFlipbook, releaseAssemblySurfaceFlipbook } from "./assemblySurfaceBake.js";
 import { requestUiUpdate } from "../../Core/EventSystem.js";
 import { spawnAssemblyPickups, validateAssemblyPickupManifest } from "./assemblyPickupSpawn.js";
+import { deleteSandboxZone } from "./sandboxZones.js";
 /** @param {string[]} spawnSteps @param {string[]} names */
 function spawnIncludes(spawnSteps, names) {
     for (let i = 0; i < names.length; i++) if (spawnSteps.includes(names[i])) return true;
@@ -131,14 +132,16 @@ export function spawnResolvedAssembly(host, centerX, centerY, resolved, { factio
             const voidCircle = layout.voids[p];
             const zone = createVoidZone(voidCircle.x, voidCircle.y, voidCircle.radius, { id: `${groupId}:void:${voidCircle.id ?? p + 1}`, depth: voidCircle.depth });
             stampAssemblyGroupMember(zone, groupId, resolved.id, groupField);
-            state.sandboxVoidZones.push(zone);
+            if (!state.sandboxZones) state.sandboxZones = [];
+            state.sandboxZones.push(zone);
         }
     if (spawnIncludes(spawnSteps, ["gravityZones"]))
         for (let g = 0; g < layout.gravityZones.length; g++) {
             const gz = layout.gravityZones[g];
             const zone = createGravityZone(gz.x, gz.y, gz.halfWidth, gz.halfHeight, { id: `${groupId}:gravity:${gz.id ?? g + 1}`, forceX: gz.forceX, forceY: gz.forceY });
             stampAssemblyGroupMember(zone, groupId, resolved.id, groupField);
-            state.sandboxGravityZones.push(zone);
+            if (!state.sandboxZones) state.sandboxZones = [];
+            state.sandboxZones.push(zone);
         }
     let defaultPickupId = null;
     if (spawnIncludes(spawnSteps, ["pickups"])) defaultPickupId = spawnAssemblyPickups(host, layout, resolved, { faction, groupId, rackId, groupField }).defaultPickupId;
@@ -172,9 +175,10 @@ export function deleteAssemblyInstance(state, groupId, groupField = "sandboxGrou
         for (let z = state.sandboxAssemblyGuides.length - 1; z >= 0; z--)
             if (entityBelongsToAssemblyGroup(state.sandboxAssemblyGuides[z], groupId, groupField)) state.sandboxAssemblyGuides.splice(z, 1);
     for (let i = state.walls.length - 1; i >= 0; i--) if (entityBelongsToAssemblyGroup(state.walls[i], groupId, groupField)) removeSandboxWall(state, state.walls[i]);
-    for (let z = state.sandboxVoidZones.length - 1; z >= 0; z--) if (entityBelongsToAssemblyGroup(state.sandboxVoidZones[z], groupId, groupField)) state.sandboxVoidZones.splice(z, 1);
-    if (state.sandboxGravityZones)
-        for (let z = state.sandboxGravityZones.length - 1; z >= 0; z--) if (entityBelongsToAssemblyGroup(state.sandboxGravityZones[z], groupId, groupField)) state.sandboxGravityZones.splice(z, 1);
+    for (let z = state.sandboxZones.length - 1; z >= 0; z--) {
+        const zone = state.sandboxZones[z];
+        if (entityBelongsToAssemblyGroup(zone, groupId, groupField)) deleteSandboxZone(state, zone.id);
+    }
     const rackId = `${groupId}:rack`;
     for (let i = state.pickups.length - 1; i >= 0; i--) {
         const pickup = state.pickups[i];

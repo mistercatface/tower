@@ -1,19 +1,11 @@
 import { Pickup } from "../../Entities/Pickup.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { SANDBOX_DEFAULT_FACTION, resolveSandboxFaction } from "../Combat/sandboxTargeting.js";
-import { createVoidZone, DEFAULT_VOID_RADIUS } from "../Spatial/zones/voidZone.js";
 import { spawnAssembly, deleteAssemblyInstance, clearAssemblyInstances } from "./spawnAssembly.js";
 import { getAssemblyManifest, listAssemblyManifests } from "./assemblies/assemblyRegistry.js";
-import {
-    SANDBOX_SPAWN_PRESSURE_PLATE,
-    clearPressurePlates,
-    deletePressurePlate,
-    listPressurePlates,
-    spawnPressurePlate,
-} from "./pressurePlate.js";
+import { SANDBOX_SPAWN_PRESSURE_PLATE, SANDBOX_SPAWN_VOID, clearSandboxZones, deleteSandboxZone, isSandboxSpawnZoneId, listSandboxZones, spawnSandboxZone } from "./sandboxZones.js";
 /** @typedef {import("./SandboxHostPort.js").SandboxHostPort} SandboxHostPort */
-export { SANDBOX_SPAWN_PRESSURE_PLATE } from "./pressurePlate.js";
-export const SANDBOX_SPAWN_VOID = "void";
+export { SANDBOX_SPAWN_PRESSURE_PLATE, SANDBOX_SPAWN_VOID } from "./sandboxZones.js";
 export const SANDBOX_SPAWN_ASSEMBLY_PREFIX = "assembly:";
 /** @param {string} assemblyId */
 export function sandboxSpawnAssemblyId(assemblyId) {
@@ -21,7 +13,7 @@ export function sandboxSpawnAssemblyId(assemblyId) {
 }
 /** @param {string} spawnId */
 export function isSandboxSpawnPropId(spawnId) {
-    return spawnId !== SANDBOX_SPAWN_VOID && spawnId !== SANDBOX_SPAWN_PRESSURE_PLATE && !spawnId.startsWith(SANDBOX_SPAWN_ASSEMBLY_PREFIX);
+    return !isSandboxSpawnZoneId(spawnId) && !spawnId.startsWith(SANDBOX_SPAWN_ASSEMBLY_PREFIX);
 }
 /**
  * @param {SandboxHostPort} host
@@ -54,14 +46,6 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
         sync();
         return prop;
     };
-    const voidZones = () => host.getWorldState().sandboxVoidZones;
-    const spawnVoidAt = (worldX, worldY, radius = DEFAULT_VOID_RADIUS) => {
-        const zones = voidZones();
-        const zone = createVoidZone(worldX, worldY, radius, { id: `void:${zones.length + 1}` });
-        zones.push(zone);
-        sync();
-        return zone;
-    };
     return {
         getSpawnPropId: () => spawnPropId,
         setSpawnPropId: (id) => {
@@ -84,19 +68,13 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
         spawnAt,
         spawnAtCameraOrigin() {
             const origin = host.getCameraOrigin();
-            if (spawnPropId === SANDBOX_SPAWN_VOID) return spawnVoidAt(origin.x, origin.y);
-            if (spawnPropId === SANDBOX_SPAWN_PRESSURE_PLATE) {
-                spawnPressurePlate(host, origin.x, origin.y);
+            if (isSandboxSpawnZoneId(spawnPropId)) {
+                spawnSandboxZone(host, /** @type {"void" | "pressurePlate"} */ (spawnPropId), origin.x, origin.y);
                 sync();
                 return null;
             }
             if (spawnPropId.startsWith(SANDBOX_SPAWN_ASSEMBLY_PREFIX)) return this.spawnAssemblyAt(origin.x, origin.y, spawnPropId.slice(SANDBOX_SPAWN_ASSEMBLY_PREFIX.length));
             return spawnAt(origin.x, origin.y);
-        },
-        spawnVoidAt,
-        spawnVoidAtCameraOrigin() {
-            const origin = host.getCameraOrigin();
-            return spawnVoidAt(origin.x, origin.y);
         },
         spawnAssemblyAt(centerX, centerY, assemblyId) {
             const instance = spawnAssembly(host, centerX, centerY, assemblyId, { faction: spawnFaction });
@@ -123,22 +101,11 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
                 defaultPickupId: entry.defaultPickupId,
             }));
         },
-        deleteVoidZoneById(id) {
-            const zones = voidZones();
-            const index = zones.findIndex((zone) => zone.id === id);
-            if (index >= 0) zones.splice(index, 1);
+        deleteSandboxZoneById(id) {
+            deleteSandboxZone(host.getWorldState(), id);
             sync();
         },
-        deletePressurePlateById(id) {
-            deletePressurePlate(host.getWorldState(), id);
-            sync();
-        },
-        listPressurePlates: () => listPressurePlates(host.getWorldState()),
-        listVoidZones() {
-            return voidZones()
-                .filter((zone) => !zone.sandboxGroupId)
-                .map((zone, index) => ({ id: zone.id, label: `void #${index + 1}`, radius: zone.shape.radius }));
-        },
+        listSandboxZones: () => listSandboxZones(host.getWorldState()),
         deletePickup(pickup) {
             if (!pickup) return;
             host.removePickup(pickup);
@@ -164,8 +131,7 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
         clear() {
             host.clearPickups();
             clearAssemblyInstances(host.getWorldState());
-            clearPressurePlates(host.getWorldState());
-            voidZones().length = 0;
+            clearSandboxZones(host.getWorldState());
             selectedPickupId = null;
             sync();
         },

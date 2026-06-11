@@ -178,8 +178,7 @@ export function mountSandboxToyUi(container, controller, onChange) {
             body.appendChild(addRow);
         });
         const placed = controller.listPlacedPickups();
-        const voidZones = controller.listVoidZones?.() ?? [];
-        const pressurePlates = controller.listPressurePlates?.() ?? [];
+        const sandboxZones = controller.listSandboxZones?.() ?? [];
         const assemblies = controller.listAssemblies?.() ?? [];
         appendSection(container, "scene", "Scene", sectionOpen("scene"), (body) => {
             appendSubhead(body, "Pickups");
@@ -193,19 +192,11 @@ export function mountSandboxToyUi(container, controller, onChange) {
                 })),
                 "No pickups placed yet.",
             );
-            if (voidZones.length > 0) {
-                appendSubhead(body, "Void zones");
+            if (sandboxZones.length > 0) {
+                appendSubhead(body, "Zones");
                 appendEntityList(
                     body,
-                    voidZones.map((entry) => ({ label: `${entry.label} · r${entry.radius}`, onDelete: () => controller.deleteVoidZoneById(entry.id) })),
-                    "",
-                );
-            }
-            if (pressurePlates.length > 0) {
-                appendSubhead(body, "Pressure plates");
-                appendEntityList(
-                    body,
-                    pressurePlates.map((entry) => ({ label: `${entry.label} · r${entry.radius}`, onDelete: () => controller.deletePressurePlateById(entry.id) })),
+                    sandboxZones.map((entry) => ({ label: entry.radius != null ? `${entry.label} · r${entry.radius}` : entry.label, onDelete: () => controller.deleteSandboxZoneById(entry.id) })),
                     "",
                 );
             }
