@@ -12,6 +12,7 @@ export function spawnAssemblyPads(state, layout, { groupId, resolvedId, groupFie
         if (entry.preset === "sink") {
             options.radius = entry.radius;
             options.sinkDepth = entry.sinkDepth;
+            if (entry.captureTolerance != null) options.captureTolerance = entry.captureTolerance;
             if (entry.powered === false) options.powered = false;
         } else if (entry.preset === "pull") {
             options.halfWidth = entry.halfWidth;

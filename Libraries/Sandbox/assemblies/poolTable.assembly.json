@@ -19,12 +19,12 @@
         }
     },
     "pads": [
-        { "id": "void-tl", "preset": "sink", "radius": 4.3, "depth": 6, "at": { "anchor": "playfield.topLeft" } },
-        { "id": "void-left", "preset": "sink", "radius": 3.5, "depth": 6, "at": { "anchor": "playfield.left" } },
-        { "id": "void-tr", "preset": "sink", "radius": 4.3, "depth": 6, "at": { "anchor": "playfield.topRight" } },
-        { "id": "void-bl", "preset": "sink", "radius": 4.3, "depth": 6, "at": { "anchor": "playfield.bottomLeft" } },
-        { "id": "void-right", "preset": "sink", "radius": 3.5, "depth": 6, "at": { "anchor": "playfield.right" } },
-        { "id": "void-br", "preset": "sink", "radius": 4.3, "depth": 6, "at": { "anchor": "playfield.bottomRight" } }
+        { "id": "void-tl", "preset": "sink", "radius": 6, "depth": 6, "captureTolerance": 0.45, "at": { "anchor": "playfield.topLeft" } },
+        { "id": "void-left", "preset": "sink", "radius": 5.5, "depth": 6, "captureTolerance": 0.45, "at": { "anchor": "playfield.left" } },
+        { "id": "void-tr", "preset": "sink", "radius": 6, "depth": 6, "captureTolerance": 0.45, "at": { "anchor": "playfield.topRight" } },
+        { "id": "void-bl", "preset": "sink", "radius": 6, "depth": 6, "captureTolerance": 0.45, "at": { "anchor": "playfield.bottomLeft" } },
+        { "id": "void-right", "preset": "sink", "radius": 5.5, "depth": 6, "captureTolerance": 0.45, "at": { "anchor": "playfield.right" } },
+        { "id": "void-br", "preset": "sink", "radius": 6, "depth": 6, "captureTolerance": 0.45, "at": { "anchor": "playfield.bottomRight" } }
     ],
     "pickups": [
         {

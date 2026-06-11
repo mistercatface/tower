@@ -100,6 +100,7 @@ export function releaseButtonPointerHold(state) {
  *   id?: string,
  *   radius?: number,
  *   sinkDepth?: number,
+ *   captureTolerance?: number,
  *   halfWidth?: number,
  *   halfHeight?: number,
  *   forceX?: number,
@@ -140,6 +141,7 @@ export function buildSandboxPad(state, preset, x, y, options = {}) {
     pad.preset = preset;
     pad.powered = options.powered ?? true;
     pad.sinkDepth = options.sinkDepth ?? def.sinkDepth;
+    if (options.captureTolerance != null) pad.captureTolerance = options.captureTolerance;
     if (preset === "button") {
         pad.inputMode = options.inputMode ?? DEFAULT_BUTTON_INPUT_MODE;
         pad.massThreshold = options.massThreshold ?? DEFAULT_BUTTON_MASS_THRESHOLD;
@@ -279,6 +281,7 @@ function resizeCirclePad(pad, radius, preset) {
  * @param {{
  *   radius?: number,
  *   sinkDepth?: number,
+ *   captureTolerance?: number,
  *   halfWidth?: number,
  *   halfHeight?: number,
  *   forceX?: number,

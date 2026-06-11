@@ -15,6 +15,7 @@ function resolveAssemblyPads(pads, play) {
         if (entry.preset === "sink") {
             resolved.radius = entry.radius;
             resolved.sinkDepth = entry.depth;
+            if (entry.captureTolerance != null) resolved.captureTolerance = entry.captureTolerance;
         } else if (entry.preset === "pull") {
             resolved.halfWidth = entry.width / 2;
             resolved.halfHeight = entry.height / 2;

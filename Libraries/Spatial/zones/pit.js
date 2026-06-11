@@ -16,13 +16,26 @@ export function isInsideVoidMouth(pitX, pitY, pitRadius, entity) {
     const dy = pitY - entity.y;
     return Math.hypot(dx, dy) <= voidMouthReach(pitRadius, entity);
 }
+/** Fraction of entity radius allowed to hang past the mouth lip (0 = strict full enclosure). */
+export const DEFAULT_VOID_CAPTURE_TOLERANCE = 0.35;
 /** True when the entity collision circle is entirely inside the pit mouth (not just overlapping). */
 export function isFullyEnclosedInVoidMouth(pitX, pitY, pitRadius, entity) {
+    return isVoidSinkCaptured(pitX, pitY, pitRadius, entity, 0);
+}
+/**
+ * True when enough of the entity is inside the mouth to start falling —
+ * `captureTolerance` is the fraction of entity radius permitted past the lip.
+ *
+ * @param {number} [captureTolerance]
+ */
+export function isVoidSinkCaptured(pitX, pitY, pitRadius, entity, captureTolerance = DEFAULT_VOID_CAPTURE_TOLERANCE) {
     const entityRadius = voidEntityRadius(entity);
-    if (entityRadius > pitRadius) return false;
-    const dx = pitX - entity.x;
-    const dy = pitY - entity.y;
-    return Math.hypot(dx, dy) + entityRadius <= pitRadius;
+    if (entityRadius <= 0) return false;
+    const dist = Math.hypot(pitX - entity.x, pitY - entity.y);
+    if (dist >= pitRadius + entityRadius) return false;
+    const overlap = pitRadius + entityRadius - dist;
+    const requiredOverlap = entityRadius * (1 - captureTolerance);
+    return overlap >= requiredOverlap;
 }
 /** @param {object} pad @param {number} radius */
 export function syncSinkPadAabb(pad, radius) {

@@ -1,10 +1,11 @@
 import { wakePushableBody } from "../Libraries/Motion/pushableSleep.js";
 import { resolveVoidSinkDrawModifier } from "../Libraries/Render/voidSinkVisual.js";
-import { isFullyEnclosedInVoidMouth, isInsideVoidMouth } from "../Libraries/Spatial/zones/pit.js";
+import { isInsideVoidMouth, isVoidSinkCaptured } from "../Libraries/Spatial/zones/pit.js";
 const DEFAULT_PULL = 200;
 const DEFAULT_CAPTURED_PULL = 500;
-const DEFAULT_DURATION_MS = 1500;
-const CAPTURED_SINK_SPEED = 48;
+/** Backup despawn timer — only runs after capture, while the fall animation plays. */
+export const CAPTURED_SINK_DURATION_MS = 800;
+const SINK_ANIMATION_SEC = 0.45;
 export class PickupVoidSinkState {
     blocksSleep() {
         return true;
@@ -12,6 +13,8 @@ export class PickupVoidSinkState {
     onEnter(pickup) {
         wakePushableBody(pickup);
         pickup.voidSinkZ = 0;
+        if (pickup.voidCaptured) pickup.voidSinkTimer = pickup.voidSinkTimer ?? CAPTURED_SINK_DURATION_MS;
+        else delete pickup.voidSinkTimer;
     }
     onExit(pickup) {
         delete pickup.voidCaptured;
@@ -21,6 +24,7 @@ export class PickupVoidSinkState {
         delete pickup.voidDepth;
         delete pickup.voidSinkTimer;
         delete pickup.voidSinkZ;
+        delete pickup.voidCaptureTolerance;
     }
     /** @param {object} pickup @param {object} viewport @returns {import("../Libraries/Render/spriteDrawModifier.js").SpriteDrawModifier | null} */
     resolveSpriteDrawModifier(pickup, viewport) {
@@ -34,31 +38,40 @@ export class PickupVoidSinkState {
             return;
         }
         const dtSec = dt / 1000;
-        pickup.voidSinkTimer = (pickup.voidSinkTimer ?? DEFAULT_DURATION_MS) - dt;
         const voidRadius = pickup.voidRadius;
         const voidDepth = pickup.voidDepth;
         const dx = voidX - pickup.x;
         const dy = voidY - pickup.y;
         const dist = Math.hypot(dx, dy);
-        if (isFullyEnclosedInVoidMouth(voidX, voidY, voidRadius, pickup)) pickup.voidCaptured = true;
+        if (isVoidSinkCaptured(voidX, voidY, voidRadius, pickup, pickup.voidCaptureTolerance))
+            if (!pickup.voidCaptured) {
+                pickup.voidCaptured = true;
+                pickup.voidSinkTimer = CAPTURED_SINK_DURATION_MS;
+                pickup.voidSinkZ = 0;
+            }
         if (!pickup.voidCaptured && !isInsideVoidMouth(voidX, voidY, voidRadius, pickup)) {
             pickup.changeState("normal");
             return;
         }
-        if (pickup.voidCaptured) pickup.voidSinkZ = Math.min(voidDepth, (pickup.voidSinkZ ?? 0) + CAPTURED_SINK_SPEED * dtSec);
+        if (pickup.voidCaptured) {
+            const sinkSpeed = voidDepth / SINK_ANIMATION_SEC;
+            pickup.voidSinkZ = Math.min(voidDepth, (pickup.voidSinkZ ?? 0) + sinkSpeed * dtSec);
+            pickup.voidSinkTimer = (pickup.voidSinkTimer ?? CAPTURED_SINK_DURATION_MS) - dt;
+            if (pickup.voidSinkZ >= voidDepth || pickup.voidSinkTimer <= 0) {
+                pickup.changeState("normal");
+                pickup.isDead = true;
+                return;
+            }
+        }
         if (dist > 0.001) {
             const pull = pickup.voidCaptured ? DEFAULT_CAPTURED_PULL : DEFAULT_PULL;
             pickup.vx += (dx / dist) * pull * dtSec;
             pickup.vy += (dy / dist) * pull * dtSec;
         }
-        const friction = pickup.voidCaptured ? 12 : 3.5;
+        const friction = pickup.voidCaptured ? 14 : 3.5;
         const damping = Math.exp(-friction * dtSec);
         pickup.vx *= damping;
         pickup.vy *= damping;
-        if (pickup.voidSinkTimer <= 0) {
-            pickup.changeState("normal");
-            pickup.isDead = true;
-        }
     }
 }
 export const voidSinkPickupStates = { voidSink: new PickupVoidSinkState() };
