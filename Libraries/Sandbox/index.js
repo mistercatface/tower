@@ -15,14 +15,15 @@ export { createRollToCursorHpaBehavior, ROLL_TO_CURSOR_HPA_BEHAVIOR_ID } from ".
 export { createShootBehavior, SHOOT_BEHAVIOR_ID } from "./behaviors/shootBehavior.js";
 export { mountSandboxToyUi } from "./sandboxToyUi.js";
 export {
+    resolveSandboxPathVisual,
+    setSandboxPathVisual,
     SANDBOX_PATH_VISUAL_OFF,
     SANDBOX_PATH_VISUAL_NORMAL,
     SANDBOX_PATH_VISUAL_DEBUG,
     SANDBOX_PATH_VISUAL_OPTIONS,
     SANDBOX_PATH_VISUAL_LABELS,
-    resolveSandboxPathVisual,
-    setSandboxPathVisual,
 } from "./sandboxPathVisual.js";
+export { isSandboxCameraTarget, setSandboxCameraTarget, findSandboxCameraTargetPickup, tickSandboxCameraFollow } from "./sandboxCameraTarget.js";
 export { renderSandboxEquipPanel } from "./sandboxEquipPanel.js";
 export { getSandboxBehaviorLabel, isSandboxEquippable, isSandboxSpawnable, resolveSandboxBehaviors, SANDBOX_BEHAVIOR_LABELS } from "./sandboxCapabilities.js";
 export { evaluateInputGates, evaluateInputGateRule, isEntityAtRest, isEntityAsleep, resolveInputGateScope } from "./inputGates.js";

@@ -7,6 +7,7 @@ import { drawSandboxLaserSights } from "./drawLaserSights.js";
 import { drawActivePathOverlay } from "../Render/map/drawActivePathOverlay.js";
 import { drawSandboxWeaponBars } from "./drawPickupWeaponBars.js";
 import { resolveSandboxPathVisual, setSandboxPathVisual } from "./sandboxPathVisual.js";
+import { isSandboxCameraTarget, setSandboxCameraTarget } from "./sandboxCameraTarget.js";
 /** @typedef {import("./SandboxHostPort.js").SandboxHostPort} SandboxHostPort */
 /**
  * @typedef {object} SandboxBehavior
@@ -204,6 +205,15 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
         setPathVisual(visual, pickup = session.getSelectedPickup()) {
             if (!pickup) return;
             setSandboxPathVisual(pickup, visual);
+            session.sync();
+        },
+        isCameraTarget(pickup = session.getSelectedPickup()) {
+            return pickup ? isSandboxCameraTarget(pickup) : false;
+        },
+        setCameraTarget(enabled, pickup = session.getSelectedPickup()) {
+            if (!pickup) return;
+            setSandboxCameraTarget(pickup, enabled, host.getPickups());
+            if (enabled) host.getWorldState()?.viewport?.snapTo(pickup.x, pickup.y);
             session.sync();
         },
     };

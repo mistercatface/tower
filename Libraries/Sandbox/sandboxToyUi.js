@@ -234,6 +234,17 @@ export function mountSandboxToyUi(container, controller, onChange) {
             });
             pathField.append(pathLabel, pathSelect);
             selectedPanel.appendChild(pathField);
+            const cameraField = document.createElement("label");
+            cameraField.className = "param-field check-inline";
+            const cameraCheckbox = document.createElement("input");
+            cameraCheckbox.type = "checkbox";
+            cameraCheckbox.checked = controller.isCameraTarget(selectedPickup);
+            cameraCheckbox.addEventListener("change", () => {
+                controller.setCameraTarget(cameraCheckbox.checked, selectedPickup);
+                onChange();
+            });
+            cameraField.append(cameraCheckbox, document.createTextNode(" Make camera target"));
+            selectedPanel.appendChild(cameraField);
             container.appendChild(selectedPanel);
         }
         const equipPanel = document.createElement("div");

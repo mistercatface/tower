@@ -24,6 +24,7 @@ import { TileLabGameState } from "./state.js";
 import { tilelabGroundZoneEffectPass, tickTilelabGroundZones } from "./groundZones.js";
 import { sandboxVoidZoneEffectPass, tickSandboxVoidZones } from "./sandboxVoidZones.js";
 import { sandboxController } from "./world/tilelabSandbox.js";
+import { tickSandboxCameraFollow } from "../../Libraries/Sandbox/sandboxCameraTarget.js";
 import { fitLabStageToView } from "./ui/labViewport.js";
 import { mountEditorUi, refreshEditorUi } from "./ui/editorUi.js";
 import { drawLabFrame } from "./ui/preview.js";
@@ -118,6 +119,7 @@ export function createEditorApp() {
         state.lastTime = timestamp;
         dt = Math.min(dt, 50);
         state.scheduler.update(dt);
+        tickSandboxCameraFollow(state.viewport, state.pickups, dt);
         if (!state.isPaused) runSimulationTick(state, dt);
         drawLabFrame(state);
         requestAnimationFrame(loop);
