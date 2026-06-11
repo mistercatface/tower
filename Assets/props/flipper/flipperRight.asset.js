@@ -1,6 +1,6 @@
 import { getFlipperSpriteCacheKey, syncFlipperCollisionShape } from "../../../Libraries/Sandbox/behaviors/flipperBehavior.js";
 import { FLIPPER_ACTIVE_COLORS, FLIPPER_COLORS, FLIPPER_LAYOUT } from "./flipperShared.js";
-const FLIPPER = { side: "right", extendDir: -1, ...FLIPPER_LAYOUT, restAngle: -0.45, activeAngle: 0.55, buttonOutside: 1 };
+const FLIPPER = { side: "right", extendDir: -1, ...FLIPPER_LAYOUT, restAngle: -0.45, activeAngle: 0.55 };
 export default {
     id: "flipper_right",
     primitive: "flipper",

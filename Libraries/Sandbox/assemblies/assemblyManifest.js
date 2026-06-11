@@ -37,11 +37,20 @@
  * @property {AssemblyPlacementManifest} placement
  */
 /**
+ * @typedef {object} AssemblyPropButtonManifest
+ * @property {AssemblyPlacementManifest} [at] — playfield anchor or u/v
+ * @property {number} [u] — playfield horizontal fraction (shorthand for at.u)
+ * @property {number} [v] — playfield vertical fraction (shorthand for at.v)
+ * @property {string} trigger — id wired in createPropButtonBehavior
+ * @property {number} [radiusU] — button radius as fraction of playfield width
+ */
+/**
  * @typedef {object} AssemblyPickupManifest
  * @property {string} [id]
  * @property {string} prop
  * @property {number} [facing]
  * @property {AssemblyPlacementManifest} at
+ * @property {AssemblyPropButtonManifest} [button]
  */
 /**
  * @typedef {object} AssemblyManifest

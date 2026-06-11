@@ -1,5 +1,5 @@
 /** Fractions of assembly playfield width — applied at spawn via applyFlipperAssemblyScale. */
-export const FLIPPER_LAYOUT = { lengthU: 0.2, widthU: 0.05, heightU: 0.0625, pivotU: 0.03125, buttonGapU: 0.04, buttonRadiusU: 0.045, buttonYOffsetU: 0 };
+export const FLIPPER_LAYOUT = { lengthU: 0.2, widthU: 0.05, heightU: 0.0625, pivotU: 0.03125 };
 export const FLIPPER_COLORS = {
     side: { shadow: "#455A64", mid: "#607D8B", highlight: "#90A4AE" },
     top: { light: "#78909C", mid: "#607D8B", dark: "#455A64" },
