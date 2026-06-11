@@ -2,7 +2,7 @@ import { Segment } from "../../Entities/Wall.js";
 import { isInsideVoidMouth, voidMouthReach } from "../Spatial/zones/pit.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { releaseFlipper, triggerFlipper } from "./behaviors/flipperBehavior.js";
-import { buttonEffectiveActive } from "./buttonPad.js";
+import { buttonEffectiveActive, isSustainedFlipperButtonInputMode } from "./buttonPad.js";
 import { getButtonPadLinks } from "./sandboxPadLinks.js";
 import { addSandboxWalls, removeSandboxWalls } from "./spawnAssembly.js";
 /** @typedef {import("./padPresets.js").PadTriggerDef} PadTriggerDef */
@@ -129,8 +129,22 @@ function rimOutSink(state, entityId, pad) {
 function runButtonPickupLink(state, link, buttonPad) {
     const pickup = state.pickups.find((entry) => entry.id === link.id && !entry.isDead);
     if (!pickup) return;
+    if (isSustainedFlipperButtonInputMode(buttonPad.inputMode)) return;
     if (buttonPad.invert) releaseFlipper(pickup);
-    else triggerFlipper(pickup);
+    else triggerFlipper(pickup, { hold: false });
+}
+/** @param {object} state @param {object} buttonPad */
+export function syncButtonFlipperLinks(state, buttonPad) {
+    const active = buttonEffectiveActive(state, buttonPad);
+    const links = getButtonPadLinks(buttonPad);
+    for (let i = 0; i < links.length; i++) {
+        const link = links[i];
+        if (link.type !== "pickup") continue;
+        const pickup = state.pickups.find((entry) => entry.id === link.id && !entry.isDead);
+        if (!pickup) continue;
+        if (active) triggerFlipper(pickup);
+        else releaseFlipper(pickup);
+    }
 }
 /** @type {Record<string, { run: (state: object, pad: object, trigger: PadTriggerDef, ctx: PadEffectContext) => void }>} */
 const PAD_EFFECTS = {

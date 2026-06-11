@@ -53,11 +53,11 @@ export function getFlipperSpec(pickup, asset) {
         activeAngle: pickup._flipperActiveAngle ?? cfg.activeAngle ?? -0.55,
     };
 }
-/** @param {object | null | undefined} pickup */
-export function triggerFlipper(pickup) {
+/** @param {object | null | undefined} pickup @param {{ hold?: boolean }} [options] */
+export function triggerFlipper(pickup, { hold = true } = {}) {
     if (!pickup) return;
     pickup._flipperTarget = "active";
-    pickup._flipperButtonPressed = true;
+    pickup._flipperButtonPressed = hold;
 }
 /** @param {object | null | undefined} pickup */
 export function releaseFlipper(pickup) {
@@ -123,14 +123,13 @@ function tickFlipperPickup(pickup, asset, dt) {
     const maxStep = speed * dtSec;
     if (Math.abs(diff) <= maxStep) {
         pickup._flipperAngle = target;
-        if (isActivating) pickup._flipperTarget = "rest";
+        if (isActivating && !pickup._flipperButtonPressed) pickup._flipperTarget = "rest";
     } else pickup._flipperAngle = prevAngle + Math.sign(diff) * maxStep;
     pickup._flipperAngVel = (pickup._flipperAngle - prevAngle) / dtSec;
     pickup.angularVelocity = pickup._flipperAngVel;
     pickup.vx = 0;
     pickup.vy = 0;
     syncFlipperCollisionShape(pickup);
-    if (!isActivating && pickup._flipperButtonPressed) pickup._flipperButtonPressed = false;
 }
 /** @param {import("../SandboxHostPort.js").SandboxHostPort} host @param {number} dt */
 function tickAllFlippers(host, dt) {

@@ -191,12 +191,14 @@ function renderSelectedPadInspector(body, controller, onChange) {
             options: [
                 { value: "tap", label: "Tap" },
                 { value: "hold", label: "Hold" },
+                { value: "toggle", label: "Toggle" },
                 { value: "massTap", label: "Mass – Tap" },
                 { value: "massHold", label: "Mass – Hold" },
+                { value: "massToggle", label: "Mass – Toggle" },
             ],
             onChange: (inputMode) => patch({ inputMode }),
         });
-        if (pad.inputMode === "massTap" || pad.inputMode === "massHold")
+        if (pad.inputMode === "massTap" || pad.inputMode === "massHold" || pad.inputMode === "massToggle")
             appendNumberField(body, "Mass threshold", { value: pad.massThreshold, step: 0.01, min: 0, onChange: (massThreshold) => patch({ massThreshold }) });
         const invertRow = document.createElement("label");
         invertRow.className = "param-field";

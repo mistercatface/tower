@@ -3,8 +3,16 @@ import { PolygonShape } from "../Spatial/collision/Shapes.js";
 import { drawPit, syncSinkPadAabb } from "../Spatial/zones/pit.js";
 import { NEIGHBOR_QUERY_PAD } from "../Spatial/collision/entityBroadphase.js";
 import { PAD_PRESETS } from "./padPresets.js";
-import { runPadEffect, syncPullPadWalls, syncSandboxPadPower, teardownPullPad } from "./padEffects.js";
-import { DEFAULT_BUTTON_INPUT_MODE, DEFAULT_BUTTON_MASS_THRESHOLD, isButtonPadActive, isMassButtonInputMode } from "./buttonPad.js";
+import { runPadEffect, syncButtonFlipperLinks, syncPullPadWalls, syncSandboxPadPower, teardownPullPad } from "./padEffects.js";
+import {
+    DEFAULT_BUTTON_INPUT_MODE,
+    DEFAULT_BUTTON_MASS_THRESHOLD,
+    buttonPadMass,
+    isButtonPadActive,
+    isMassButtonInputMode,
+    isSustainedFlipperButtonInputMode,
+    isToggleInputMode,
+} from "./buttonPad.js";
 export const SANDBOX_SPAWN_PAD_PREFIX = "pad:";
 const POINTER_HIT_PADDING = 4;
 /** @param {string} preset */
@@ -65,6 +73,10 @@ export function hitTestPad(state, wx, wy) {
 /** @param {object} state @param {object} pad @param {{ x: number, y: number }} world */
 export function handlePadPointerDown(state, pad, world) {
     if (pad.preset !== "button" || isMassButtonInputMode(pad.inputMode)) return false;
+    if (pad.inputMode === "toggle") {
+        pad._toggleLatched = !pad._toggleLatched;
+        return true;
+    }
     pad._pointerHeld = true;
     if (pad.inputMode === "tap" && pad.invert) return true;
     runButtonPadEffects(state, pad, { world });
@@ -74,7 +86,7 @@ export function handlePadPointerDown(state, pad, world) {
 export function releaseButtonPointerHold(state) {
     for (let i = 0; i < state.sandboxPads.length; i++) {
         const pad = state.sandboxPads[i];
-        if (pad.preset !== "button" || isMassButtonInputMode(pad.inputMode)) continue;
+        if (pad.preset !== "button" || isMassButtonInputMode(pad.inputMode) || pad.inputMode === "toggle") continue;
         if (pad.inputMode === "tap" && pad.invert) runButtonPadEffects(state, pad);
         pad._pointerHeld = false;
     }
@@ -132,6 +144,7 @@ export function buildSandboxPad(state, preset, x, y, options = {}) {
         pad.inputMode = options.inputMode ?? DEFAULT_BUTTON_INPUT_MODE;
         pad.massThreshold = options.massThreshold ?? DEFAULT_BUTTON_MASS_THRESHOLD;
         pad.invert = options.invert === true;
+        pad._toggleLatched = false;
         pad.buttonLinks = options.buttonLinks?.map((link) => ({ ...link })) ?? [];
     }
     if (preset === "pull") {
@@ -288,7 +301,12 @@ export function patchSandboxPad(state, id, patch) {
         } else if (patch.wallMode === true && !pad.wallsUp) syncPullPadWalls(state, pad);
     } else if (pad.preset === "button") {
         if (patch.radius != null) resizeCirclePad(pad, patch.radius, pad.preset);
-        if (patch.inputMode != null) pad.inputMode = patch.inputMode;
+        if (patch.inputMode != null) {
+            pad.inputMode = patch.inputMode;
+            pad._toggleLatched = false;
+            pad._massWasActive = false;
+            pad._buttonWasActive = false;
+        }
         if (patch.massThreshold != null) pad.massThreshold = patch.massThreshold;
         if (patch.invert != null) pad.invert = patch.invert;
     }
@@ -364,10 +382,17 @@ export function drawPad(ctx, pad, viewport, state) {
 }
 /** @param {object} state @param {object} pad */
 function tickButtonPad(state, pad) {
+    if (pad.inputMode === "massToggle") {
+        const massActive = buttonPadMass(state, pad) > pad.massThreshold;
+        const wasMassActive = pad._massWasActive ?? false;
+        if (massActive && !wasMassActive) pad._toggleLatched = !pad._toggleLatched;
+        pad._massWasActive = massActive;
+    }
+    if (isSustainedFlipperButtonInputMode(pad.inputMode)) syncButtonFlipperLinks(state, pad);
+    if (isToggleInputMode(pad.inputMode)) return;
     const active = isButtonPadActive(state, pad);
     const wasActive = pad._buttonWasActive ?? false;
-    if ((pad.inputMode === "hold" || pad.inputMode === "massHold") && active) runButtonPadEffects(state, pad);
-    else if (pad.inputMode === "massTap" && active && !wasActive) runButtonPadEffects(state, pad);
+    if (pad.inputMode === "massTap" && active && !wasActive) runButtonPadEffects(state, pad);
     pad._buttonWasActive = active;
 }
 /** @param {object} state @param {import("../Spatial/world/SpatialFrameCore.js").SpatialFrameCore} spatialFrame @param {number} dt */

@@ -54,7 +54,7 @@
  * @property {boolean} [powered] — pull / sink: starts off when false
  * @property {string} [target] — button: single assembly pickup or pad id
  * @property {string[]} [targets] — button: assembly pickup or pad ids to wire
- * @property {"tap" | "hold" | "massTap" | "massHold"} [inputMode]
+ * @property {"tap" | "hold" | "toggle" | "massTap" | "massHold" | "massToggle"} [inputMode]
  * @property {number} [massThreshold]
  * @property {boolean} [invert] — button: active when input is off
  * @property {number} [radiusU] — button: radius as playfield width fraction
