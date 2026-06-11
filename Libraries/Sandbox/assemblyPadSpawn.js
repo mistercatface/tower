@@ -19,7 +19,8 @@ export function spawnAssemblyPads(state, layout, { groupId, resolvedId, groupFie
             options.forceY = entry.forceY;
         } else if (entry.preset === "button") {
             options.radius = entry.radius;
-            options.targetPickupId = pickupIdByManifestId.get(entry.target);
+            const pickupId = pickupIdByManifestId.get(entry.target);
+            if (pickupId != null) options.buttonLinks = [{ type: "pickup", id: pickupId }];
         }
         const pad = buildSandboxPad(state, entry.preset, entry.x, entry.y, options);
         stampAssemblyGroupMember(pad, groupId, resolvedId, groupField);

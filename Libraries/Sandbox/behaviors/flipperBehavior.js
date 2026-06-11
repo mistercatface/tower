@@ -53,13 +53,15 @@ export function getFlipperSpec(pickup, asset) {
         activeAngle: pickup._flipperActiveAngle ?? cfg.activeAngle ?? -0.55,
     };
 }
-/** @param {object} pickup */
+/** @param {object | null | undefined} pickup */
 export function triggerFlipper(pickup) {
+    if (!pickup) return;
     pickup._flipperTarget = "active";
     pickup._flipperButtonPressed = true;
 }
-/** @param {object} pickup */
+/** @param {object | null | undefined} pickup */
 export function isFlipperButtonPressed(pickup) {
+    if (!pickup) return false;
     return Boolean(pickup._flipperButtonPressed || pickup._flipperTarget === "active");
 }
 /** @param {object} prop */

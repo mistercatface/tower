@@ -2,7 +2,8 @@ import { getPropAsset } from "../Props/PropCatalog.js";
 import { bindCanvasPointers, releasePointerCapture } from "./bindCanvasPointers.js";
 import { findPickupAt } from "./findPickupAt.js";
 import { createSandboxSession, SANDBOX_SPAWN_ASSEMBLY_PREFIX } from "./sandboxSession.js";
-import { handlePadPointerDown, hitTestPad, isSandboxSpawnPadId } from "./sandboxPads.js";
+import { addButtonPadLink, clearButtonPadLinks, drawSandboxPadWires, findButtonLinkTarget, listButtonPadLinkEndpoints, removeButtonPadLink } from "./sandboxPadLinks.js";
+import { getSandboxPad, handlePadPointerDown, hitTestPad, isSandboxSpawnPadId } from "./sandboxPads.js";
 import { resolveSandboxBehaviors } from "./sandboxCapabilities.js";
 import { drawSandboxLaserSights } from "./drawLaserSights.js";
 import { drawActivePathOverlay } from "../Render/map/drawActivePathOverlay.js";
@@ -41,6 +42,9 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
     let interactionBehavior = null;
     /** @type {(() => void) | null} */
     let unbindPointers = null;
+    let padWireMode = false;
+    /** @type {{ x: number, y: number } | null} */
+    let padWireCursor = null;
     const spawnAsset = () => {
         const spawnId = session.getSpawnPropId();
         if (isSandboxSpawnPadId(spawnId) || spawnId.startsWith(SANDBOX_SPAWN_ASSEMBLY_PREFIX)) return null;
@@ -104,6 +108,18 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
             return;
         }
         if (e.button !== 0) return;
+        if (padWireMode) {
+            const buttonPadId = session.getSelectedPadId();
+            const buttonPad = buttonPadId ? getSandboxPad(host.getWorldState(), buttonPadId) : null;
+            if (buttonPad?.preset === "button") {
+                const target = findButtonLinkTarget(host.getWorldState(), world.x, world.y, buttonPad.id);
+                if (target) addButtonPadLink(host.getWorldState(), buttonPad.id, target);
+                session.sync();
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+            }
+        }
         const pad = hitTestPad(host.getWorldState(), world.x, world.y);
         if (pad && handlePadPointerDown(host.getWorldState(), pad, world)) {
             e.preventDefault();
@@ -134,6 +150,10 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
     };
     /** @param {PointerEvent} e */
     const onPointerMove = (e) => {
+        if (padWireMode) {
+            padWireCursor = host.clientToWorld(e.clientX, e.clientY);
+            host.requestRedraw();
+        }
         if (!interactionBehavior) return;
         const pickup = session.getSelectedPickup();
         if (!pickup) return;
@@ -173,6 +193,8 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
         getSelectedPickupId: () => session.getSelectedPickupId(),
         getSelectedPickup: () => session.getSelectedPickup(),
         setSelectedPickupId: (id) => {
+            padWireMode = false;
+            padWireCursor = null;
             session.setSelectedPickupId(id);
             const pickup = session.getSelectedPickup();
             if (pickup && pickup.sandboxActiveBehaviorId == null) {
@@ -181,10 +203,45 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
             }
         },
         getSelectedPadId: () => session.getSelectedPadId(),
-        setSelectedPadId: (id) => session.setSelectedPadId(id),
+        setSelectedPadId: (id) => {
+            padWireMode = false;
+            padWireCursor = null;
+            session.setSelectedPadId(id);
+        },
         getSelectedPad: () => session.getSelectedPad(),
         patchSelectedPad: (patch) => session.patchSelectedPad(patch),
         listPadTargetPickups: () => session.listPadTargetPickups(),
+        startPadWireLink: () => {
+            if (session.getSelectedPad()?.preset !== "button") return;
+            padWireMode = true;
+            padWireCursor = host.getCameraOrigin();
+            session.sync();
+        },
+        cancelPadWireLink: () => {
+            padWireMode = false;
+            padWireCursor = null;
+            session.sync();
+        },
+        isPadWireLinkActive: () => padWireMode,
+        clearSelectedPadLinks: () => {
+            const padId = session.getSelectedPadId();
+            if (!padId) return;
+            clearButtonPadLinks(host.getWorldState(), padId);
+            session.sync();
+        },
+        removeSelectedPadLink: (target) => {
+            const padId = session.getSelectedPadId();
+            if (!padId) return;
+            removeButtonPadLink(host.getWorldState(), padId, target);
+            session.sync();
+        },
+        listSelectedPadLinks: () => {
+            const padId = session.getSelectedPadId();
+            if (!padId) return [];
+            const pad = getSandboxPad(host.getWorldState(), padId);
+            if (!pad) return [];
+            return listButtonPadLinkEndpoints(host.getWorldState(), pad);
+        },
         spawnAtCameraOrigin: () => {
             session.spawnAtCameraOrigin();
             stampPickupBehavior(session.getSelectedPickup());
@@ -230,6 +287,8 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
         destroy() {
             unbindPointers?.();
             unbindPointers = null;
+            padWireMode = false;
+            padWireCursor = null;
             resetBehaviors();
             session.setUiSync(null);
         },
@@ -263,6 +322,7 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
             behavior?.drawOverlay?.(ctx, pickup, host);
         },
         drawBehaviorOverlays(ctx) {
+            drawSandboxPadWires(ctx, host.getWorldState(), { wireFromPadId: padWireMode ? session.getSelectedPadId() : null, wireCursor: padWireMode ? padWireCursor : null });
             for (let i = 0; i < behaviors.length; i++) behaviors[i].drawWorldOverlay?.(ctx, host);
         },
         drawOverlay(ctx) {

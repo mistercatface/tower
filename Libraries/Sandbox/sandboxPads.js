@@ -3,7 +3,8 @@ import { PolygonShape } from "../Spatial/collision/Shapes.js";
 import { drawPit, syncSinkPadAabb } from "../Spatial/zones/pit.js";
 import { NEIGHBOR_QUERY_PAD } from "../Spatial/collision/entityBroadphase.js";
 import { PAD_PRESETS } from "./padPresets.js";
-import { drawGateWall, isPadTriggerActive, runPadEffect, setupGatePad, teardownGatePad } from "./padEffects.js";
+import { drawGateWall, isPadTriggerActive, releaseButtonGateLinks, runPadEffect, setupGatePad, teardownGatePad } from "./padEffects.js";
+import { getButtonPadLinks } from "./sandboxPadLinks.js";
 export const SANDBOX_SPAWN_PAD_PREFIX = "pad:";
 const POINTER_HIT_PADDING = 4;
 /** @param {string} preset */
@@ -76,7 +77,7 @@ export function handlePadPointerDown(state, pad, world) {
  * @param {string} preset
  * @param {number} x
  * @param {number} y
- * @param {{ id?: string, radius?: number, sinkDepth?: number, halfWidth?: number, halfHeight?: number, forceX?: number, forceY?: number, targetPickupId?: number, triggers?: object[] }} [options]
+ * @param {{ id?: string, radius?: number, sinkDepth?: number, halfWidth?: number, halfHeight?: number, forceX?: number, forceY?: number, buttonLinks?: import("./sandboxPadLinks.js").ButtonLinkTarget[], targetPickupId?: number, triggers?: object[] }} [options]
  */
 export function buildSandboxPad(state, preset, x, y, options = {}) {
     const def = PAD_PRESETS[preset];
@@ -105,7 +106,9 @@ export function buildSandboxPad(state, preset, x, y, options = {}) {
     }
     pad.preset = preset;
     pad.sinkDepth = options.sinkDepth ?? def.sinkDepth;
-    if (options.targetPickupId != null) pad.targetPickupId = options.targetPickupId;
+    if (preset === "button")
+        if (options.buttonLinks?.length) pad.buttonLinks = options.buttonLinks.map((link) => ({ ...link }));
+        else if (options.targetPickupId != null) pad.buttonLinks = [{ type: "pickup", id: options.targetPickupId }];
     pad.triggers = (options.triggers ?? def.triggers).map((trigger) => ({ ...trigger }));
     if (preset === "pull") {
         if (options.forceX != null) pad.triggers[0].forceX = options.forceX;
@@ -181,7 +184,7 @@ export function getSandboxPadEditorState(pad) {
         snapshot.forceX = trigger.forceX;
         snapshot.forceY = trigger.forceY;
     }
-    if (pad.preset === "button") snapshot.targetPickupId = pad.targetPickupId ?? null;
+    if (pad.preset === "button") snapshot.linkCount = getButtonPadLinks(pad).length;
     return snapshot;
 }
 /** @param {object} pad @param {number} halfWidth @param {number} halfHeight */
@@ -215,7 +218,6 @@ function resizeCirclePad(pad, radius, preset) {
  *   halfHeight?: number,
  *   forceX?: number,
  *   forceY?: number,
- *   targetPickupId?: number | null,
  * }} patch
  */
 export function patchSandboxPad(state, id, patch) {
@@ -234,10 +236,7 @@ export function patchSandboxPad(state, id, patch) {
         const trigger = pad.triggers[0];
         if (patch.forceX != null) trigger.forceX = patch.forceX;
         if (patch.forceY != null) trigger.forceY = patch.forceY;
-    } else if (pad.preset === "button") {
-        if (patch.radius != null) resizeCirclePad(pad, patch.radius, pad.preset);
-        if (patch.targetPickupId !== undefined) pad.targetPickupId = patch.targetPickupId;
-    }
+    } else if (pad.preset === "button") if (patch.radius != null) resizeCirclePad(pad, patch.radius, pad.preset);
     return true;
 }
 /** @param {object} state */
@@ -258,7 +257,7 @@ export function listSandboxPads(state) {
                 entry.forceX = snapshot.forceX;
                 entry.forceY = snapshot.forceY;
             }
-            if (snapshot.targetPickupId != null) entry.targetPickupId = snapshot.targetPickupId;
+            if (snapshot.linkCount != null) entry.linkCount = snapshot.linkCount;
             return entry;
         });
 }
@@ -316,7 +315,9 @@ function tickPadPointerRelease(state) {
     for (let i = 0; i < state.sandboxPads.length; i++) {
         const pad = state.sandboxPads[i];
         if (pad.preset !== "button") continue;
-        if (!isPadButtonPressed(state, pad)) pad._pointerHeld = false;
+        if (isPadButtonPressed(state, pad)) continue;
+        if (pad._pointerHeld) releaseButtonGateLinks(state, pad);
+        pad._pointerHeld = false;
     }
 }
 /** @param {object} state @param {import("../Spatial/world/SpatialFrameCore.js").SpatialFrameCore} spatialFrame @param {number} dt */

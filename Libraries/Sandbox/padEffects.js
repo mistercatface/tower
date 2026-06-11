@@ -2,6 +2,8 @@ import { Segment } from "../../Entities/Wall.js";
 import { isInsideVoidMouth, voidMouthReach } from "../Spatial/zones/pit.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { isFlipperButtonPressed, triggerFlipper } from "./behaviors/flipperBehavior.js";
+import { getSandboxPad } from "./sandboxPads.js";
+import { getButtonPadLinks } from "./sandboxPadLinks.js";
 import { addSandboxWalls, removeSandboxWall } from "./spawnAssembly.js";
 /** @typedef {import("./padPresets.js").PadTriggerDef} PadTriggerDef */
 /**
@@ -58,10 +60,23 @@ function rimOutSink(state, entityId, pad) {
     if (isInsideVoidMouth(pad.x, pad.y, pad.shape.radius, pickup)) return;
     pickup.changeState("normal");
 }
-/** @param {object} state @param {PadTriggerDef} trigger @param {object} pad */
-export function resolvePadTargetPickup(state, trigger, pad) {
-    const targetId = trigger.targetPickupId ?? pad.targetPickupId;
-    return state.pickups.find((entry) => entry.id === targetId && !entry.isDead);
+/** @param {object} state @param {object} pad @param {import("./sandboxPadLinks.js").ButtonLinkTarget} link */
+function runButtonLink(state, pad, link) {
+    if (link.type === "pad") {
+        const gatePad = getSandboxPad(state, link.id);
+        if (gatePad?.preset === "gate") setGateWalls(state, gatePad, false);
+        return;
+    }
+    const pickup = state.pickups.find((entry) => entry.id === link.id && !entry.isDead);
+    if (pickup) triggerFlipper(pickup);
+}
+/** @param {object} state @param {object} pad */
+export function releaseButtonGateLinks(state, pad) {
+    for (const link of getButtonPadLinks(pad)) {
+        if (link.type !== "pad") continue;
+        const gatePad = getSandboxPad(state, link.id);
+        if (gatePad?.preset === "gate") setGateWalls(state, gatePad, true);
+    }
 }
 /** @param {object} state @param {object} pad */
 export function setupGatePad(state, pad) {
@@ -108,10 +123,24 @@ const PAD_EFFECTS = {
     },
     flipper: {
         run(state, pad, trigger) {
-            triggerFlipper(resolvePadTargetPickup(state, trigger, pad));
+            const links = getButtonPadLinks(pad);
+            if (links.length) {
+                for (let i = 0; i < links.length; i++) runButtonLink(state, pad, links[i]);
+                return;
+            }
+            const targetId = trigger.targetPickupId;
+            if (targetId == null) return;
+            const pickup = state.pickups.find((entry) => entry.id === targetId && !entry.isDead);
+            if (pickup) triggerFlipper(pickup);
         },
         isActive(state, pad, trigger) {
-            return isFlipperButtonPressed(resolvePadTargetPickup(state, trigger, pad));
+            if (pad._pointerHeld) return true;
+            for (const link of getButtonPadLinks(pad)) {
+                if (link.type !== "pickup") continue;
+                const pickup = state.pickups.find((entry) => entry.id === link.id && !entry.isDead);
+                if (isFlipperButtonPressed(pickup)) return true;
+            }
+            return false;
         },
     },
 };

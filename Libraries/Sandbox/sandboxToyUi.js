@@ -129,9 +129,10 @@ function appendPullPadFields(parent, { width, height, forceX, forceY, showForce,
 function appendFactionSelect(parent, { value, onChange }) {
     appendSelectField(parent, "Team", { value: value ?? SANDBOX_DEFAULT_FACTION, options: SANDBOX_FACTION_OPTIONS.map((option) => ({ value: option.id, label: option.label })), onChange });
 }
-/** @param {{ id: string, preset: string, label: string, radius?: number, sinkDepth?: number, halfWidth?: number, halfHeight?: number, targetPickupId?: number }} entry */
+/** @param {{ id: string, preset: string, label: string, radius?: number, sinkDepth?: number, halfWidth?: number, halfHeight?: number, linkCount?: number }} entry */
 function formatPadListLabel(entry) {
     if (entry.preset === "pull" && entry.halfWidth != null && entry.halfHeight != null) return `${entry.label} · ${Math.round(entry.halfWidth * 2)}×${Math.round(entry.halfHeight * 2)}`;
+    if (entry.preset === "button" && entry.linkCount) return `${entry.label} · ${entry.linkCount} wire${entry.linkCount === 1 ? "" : "s"}`;
     if (entry.radius != null) return `${entry.label} · r${Math.round(entry.radius * 10) / 10}`;
     return entry.label;
 }
@@ -178,12 +179,42 @@ function renderSelectedPadInspector(body, controller, onChange) {
         });
     else if (pad.preset === "button") {
         appendNumberField(body, "Radius", { value: pad.radius, step: 0.5, min: 0.5, onChange: (radius) => patch({ radius }) });
-        const targets = controller.listPadTargetPickups();
-        appendSelectField(body, "Target", {
-            value: pad.targetPickupId != null ? String(pad.targetPickupId) : "",
-            options: [{ value: "", label: "— none —" }, ...targets.map((entry) => ({ value: String(entry.id), label: entry.label }))],
-            onChange: (value) => patch({ targetPickupId: value ? Number(value) : null }),
+        const links = controller.listSelectedPadLinks();
+        const linkHint = document.createElement("p");
+        linkHint.className = "editor-hint";
+        linkHint.textContent = links.length ? `${links.length} wire${links.length === 1 ? "" : "s"} connected` : "No wires — link to flippers and/or gate pads.";
+        body.appendChild(linkHint);
+        if (links.length)
+            appendEntityList(
+                body,
+                links.map((entry) => ({ label: entry.label, onDelete: () => controller.removeSelectedPadLink(entry.target) })),
+                "",
+            );
+        const wireRow = document.createElement("div");
+        wireRow.className = "sandbox-add-row";
+        const wireActive = controller.isPadWireLinkActive();
+        const connectBtn = document.createElement("button");
+        connectBtn.type = "button";
+        connectBtn.className = wireActive ? "primary" : "secondary";
+        connectBtn.textContent = wireActive ? "Click targets to wire…" : "Connect wire";
+        connectBtn.addEventListener("click", () => {
+            if (wireActive) controller.cancelPadWireLink();
+            else controller.startPadWireLink();
+            onChange();
         });
+        wireRow.appendChild(connectBtn);
+        if (links.length) {
+            const clearBtn = document.createElement("button");
+            clearBtn.type = "button";
+            clearBtn.className = "secondary";
+            clearBtn.textContent = "Clear all";
+            clearBtn.addEventListener("click", () => {
+                controller.clearSelectedPadLinks();
+                onChange();
+            });
+            wireRow.appendChild(clearBtn);
+        }
+        body.appendChild(wireRow);
     }
     return true;
 }
