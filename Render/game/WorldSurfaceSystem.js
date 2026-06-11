@@ -4,6 +4,7 @@
  */
 import { playBoundsFromObstacleGrid } from "../../Libraries/Spatial/playBounds.js";
 import { WorldSurfaceEngine } from "../../Libraries/WorldSurface/WorldSurfaceEngine.js";
+import { getWallHeight } from "../../Libraries/WorldSurface/WorldSurfaceSettings.js";
 import { getGameWorldSurfaceSettings } from "../WorldSurfaceBootstrap.js";
 import { WallSpatialIndex } from "../../Libraries/Spatial/indexes/WallSpatialIndex.js";
 import { getChunkSizePx } from "../../Libraries/Spatial/grid/ChunkGrid.js";
@@ -78,6 +79,19 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
             roofZLevels: this.roofZLevels,
             roofSpatialIndices: this.roofSpatialIndices,
             renderScene: this.renderScene,
+        });
+    }
+    /** Flat world-aligned wall rails — same chunk bake path as floor, clipped to segment footprints. */
+    drawFlatWallRails(ctx, state, viewport) {
+        const wallHeight = getWallHeight(this.settings);
+        this.drawGroundChunks(ctx, {
+            obstacleGrid: state.obstacleGrid,
+            wallSpatialIndex: state.wallSpatialIndex,
+            viewport,
+            state,
+            zLevel: wallHeight,
+            playBounds: playBoundsFromObstacleGrid(state.obstacleGrid),
+            flatWallRails: true,
         });
     }
 }

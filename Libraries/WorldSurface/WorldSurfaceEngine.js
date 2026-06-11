@@ -7,7 +7,7 @@ import { intersectWorldBoundsInto } from "../Spatial/playBounds.js";
 import { getChunkSizePx, gridBoundsToChunkRange, worldToChunkCol, worldToChunkRow } from "../Spatial/grid/ChunkGrid.js";
 import { SurfaceBitmapCache } from "./SurfaceBitmapCache.js";
 import { groundChunkCachePrefix } from "./bake/SurfaceBakeHelpers.js";
-import { chunkHasWallSegments, clipChunkToRoofFootprints, drawRoofSegmentDamageOverlays, projectHorizontalSurfaceCorners } from "./HorizontalSurfaceDraw.js";
+import { chunkHasWallSegments, clipChunkToRoofFootprints, clipChunkToWallFootprints, drawRoofSegmentDamageOverlays, projectHorizontalSurfaceCorners } from "./HorizontalSurfaceDraw.js";
 import { getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
 import { getWallAtlasCacheInfo } from "./WallSurfaceCache.js";
 import { wallFaceAtlasUnrolledHeight } from "./SurfaceCoordinateMapper.js";
@@ -153,11 +153,12 @@ export class WorldSurfaceEngine {
      *   beforeDraw?: (ctx: CanvasRenderingContext2D, bounds: { minX: number, minY: number, maxX: number, maxY: number }) => void,
      *   requireWallSegments?: boolean,
      *   skipRoofFootprintClip?: boolean,
+     *   flatWallRails?: boolean,
      *   renderScene?: import("../Render/Scene/RenderScene.js").RenderScene,
      * }} options
      */
     drawGroundChunks(ctx, options) {
-        const { obstacleGrid, viewport, state, zLevel = 0, wallSpatialIndex = null, playBounds = null, beforeDraw, requireWallSegments = true, skipRoofFootprintClip = false } = options;
+        const { obstacleGrid, viewport, state, zLevel = 0, wallSpatialIndex = null, playBounds = null, beforeDraw, requireWallSegments = true, skipRoofFootprintClip = false, flatWallRails = false } = options;
         const viewerX = viewport.x;
         const viewerY = viewport.y;
         const cellsPerChunk = this.settings.cellsPerChunk;
@@ -192,19 +193,25 @@ export class WorldSurfaceEngine {
                 if (canvas.isPlaceholder) continue;
                 if (zLevel > 0) {
                     ctx.save();
-                    if (!skipRoofFootprintClip && !clipChunkToRoofFootprints(ctx, originX, originY, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight, options.renderScene, viewport)) {
+                    const clipped = flatWallRails
+                        ? clipChunkToWallFootprints(ctx, originX, originY, chunkSizePx, wallSpatialIndex)
+                        : !skipRoofFootprintClip && clipChunkToRoofFootprints(ctx, originX, originY, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight, options.renderScene, viewport);
+                    if (!clipped) {
                         ctx.restore();
                         continue;
                     }
-                    const corners = projectHorizontalSurfaceCorners(originX, originY, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight, viewport);
-                    const dstX = corners[0].x;
-                    const dstY = corners[0].y;
-                    const dstW = corners[2].x - corners[0].x;
-                    const dstH = corners[2].y - corners[0].y;
-                    const bleedPx = this.settings.wallTextureBleedPx ?? 1;
-                    ctx.drawImage(canvas, dstX - bleedPx, dstY - bleedPx, dstW + bleedPx * 2, dstH + bleedPx * 2);
+                    if (flatWallRails) drawBakedTexture(ctx, canvas, originX, originY, chunkSizePx, chunkSizePx, this.settings);
+                    else {
+                        const corners = projectHorizontalSurfaceCorners(originX, originY, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight, viewport);
+                        const dstX = corners[0].x;
+                        const dstY = corners[0].y;
+                        const dstW = corners[2].x - corners[0].x;
+                        const dstH = corners[2].y - corners[0].y;
+                        const bleedPx = this.settings.wallTextureBleedPx ?? 1;
+                        ctx.drawImage(canvas, dstX - bleedPx, dstY - bleedPx, dstW + bleedPx * 2, dstH + bleedPx * 2);
+                        drawRoofSegmentDamageOverlays(ctx, originX, originY, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight, options.renderScene, viewport);
+                    }
                     ctx.restore();
-                    drawRoofSegmentDamageOverlays(ctx, originX, originY, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight, options.renderScene, viewport);
                 } else drawBakedTexture(ctx, canvas, originX, originY, chunkSizePx, chunkSizePx, this.settings);
             }
         ctx.restore();

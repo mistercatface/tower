@@ -4,8 +4,8 @@ import { initResizer } from "./lab-shared.js";
 import { initAnimationPreview, estimateAnimationPreviewHeight } from "./LabAnimationPreview.js";
 import { mountMapOverview, estimateMapOverviewHeight, paintMapOverviewFrame } from "./mapOverview.js";
 import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEditor.js";
-import { drawLabFrame, pushEditorProfile, repaintUntilBakesDone } from "./preview.js";
-import { initPresetSelect, bindToolbarControls } from "./toolbar.js";
+import { drawLabFrame, pushEditorProfile, repaintUntilBakesDone, applyLabWorldRenderMode } from "./preview.js";
+import { initPresetSelect, bindToolbarControls, syncWorldRenderModeUi } from "./toolbar.js";
 import { fitLabStageToView, mountLabViewport, refreshLabSpeed } from "./labViewport.js";
 import { TILELAB_UI_HTML } from "./shellHtml.js";
 import { buildMapPanel } from "./mapPanel.js";
@@ -68,7 +68,13 @@ export function mountEditorUi(state) {
             requestRedraw();
         },
         onStageResize: () => resizeCanvases(state),
+        onRenderModeChange: (mode) => {
+            state.worldRenderMode = mode;
+            applyLabWorldRenderMode(state);
+            requestRedraw();
+        },
     });
+    syncWorldRenderModeUi(state);
     const overviewViewportInput = document.getElementById("showMapOverviewViewportInput");
     overviewViewportInput.checked = state.labShowMapOverviewViewport;
     overviewViewportInput.addEventListener("change", (e) => {

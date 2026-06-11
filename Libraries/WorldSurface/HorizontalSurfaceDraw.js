@@ -3,6 +3,7 @@
  */
 import { resolveStructurePerspectiveStrength } from "../../Core/GamePerspective.js";
 import { projectWorldPointAtHeight } from "../Spatial/iso/IsometricProjection.js";
+import { getSegmentFootprintCorners } from "../Spatial/geometry/WallGeometry.js";
 import { worldToChunkCol, worldToChunkRow } from "../Spatial/grid/ChunkGrid.js";
 import { getWallDamageAlpha, wallDamageOverlayStyle } from "../Render/Structure3D/wallDamageVisual.js";
 /** @returns {{ x: number, y: number }} */
@@ -61,6 +62,34 @@ export function clipChunkToRoofFootprints(ctx, chunkOriginX, chunkOriginY, chunk
         if (roof.simWall?.isDead) continue;
         if (Math.abs(roof.zLevel - zLevel) > 0.01) continue;
         roof.draw(ctx, viewport, cameraHeight, viewerX, viewerY);
+        clippedAny = true;
+    }
+    if (!clippedAny) return false;
+    ctx.clip();
+    return true;
+}
+/**
+ * Clip draw to wall segment footprints in a chunk (flat 2D rail caps).
+ *
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} chunkOriginX
+ * @param {number} chunkOriginY
+ * @param {number} chunkSizePx
+ * @param {import("../Spatial/indexes/WallSpatialIndex.js").WallSpatialIndex | null | undefined} wallSpatialIndex
+ * @returns {boolean}
+ */
+export function clipChunkToWallFootprints(ctx, chunkOriginX, chunkOriginY, chunkSizePx, wallSpatialIndex) {
+    if (!wallSpatialIndex) return false;
+    const segments = wallSpatialIndex.collectInBounds(chunkOriginX, chunkOriginY, chunkOriginX + chunkSizePx, chunkOriginY + chunkSizePx);
+    ctx.beginPath();
+    let clippedAny = false;
+    for (let i = 0; i < segments.length; i++) {
+        const wall = segments[i];
+        if (wall.isDead || wall.collisionOnly) continue;
+        const corners = getSegmentFootprintCorners(wall);
+        ctx.moveTo(corners[0].x, corners[0].y);
+        for (let j = 1; j < corners.length; j++) ctx.lineTo(corners[j].x, corners[j].y);
+        ctx.closePath();
         clippedAny = true;
     }
     if (!clippedAny) return false;

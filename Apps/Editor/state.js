@@ -27,6 +27,7 @@ export class TileLabGameState extends SharedGameState {
         this.labShowAnimationPreview = false;
         this.labShowMapOverview = false;
         this.labShowMapOverviewViewport = true;
+        this.worldRenderMode = "radial";
         this.viewport = new Viewport(0, 0, 1);
         this.labCanvas = null;
         this.sandboxPads = [];

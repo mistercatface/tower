@@ -4,6 +4,8 @@ import { SpriteCache } from "../Libraries/Canvas/SpriteCache.js";
 import { WorldSceneRenderer } from "../Libraries/Render/WorldSceneRenderer.js";
 import { resolveSurfaceProfileAtCoords } from "./game/surfaceProfileResolver.js";
 import { LIBRARY_WORLD_SURFACE_DEFAULTS } from "../Libraries/WorldSurface/worldSurfaceDefaults.js";
+import { createStructureDrawPass } from "./StructureDrawPass.js";
+import { normalizeWorldRenderMode, WORLD_RENDER_MODE_DEFAULT } from "./WorldRenderMode.js";
 export class Renderer {
     /** @param {{ actorCache?: SpriteCache, turretCache?: SpriteCache } | undefined} caches */
     constructor(canvas, ctx, caches) {
@@ -28,6 +30,8 @@ export class Renderer {
         const surfaceSettings = getGameWorldSurfaceSettings();
         this.surfaceDrawPadQuery = surfaceSettings.viewQueryPadPx;
         this.surfaceDrawPadDraw = surfaceSettings.viewPaddingPx;
+        this.structureDrawPass = createStructureDrawPass(WORLD_RENDER_MODE_DEFAULT, this);
+        this._worldRenderMode = WORLD_RENDER_MODE_DEFAULT;
         this.effectPasses = [
             { zIndex: -5, fn: (state, viewport) => this.drawWorldSceneBackdrop(state, viewport) },
             { zIndex: 55, fn: (state, viewport) => this.drawRagdollCorpses(state, viewport) },
@@ -59,8 +63,14 @@ export class Renderer {
     }
     /** Walls and roofs — zIndex 70. */
     drawWorldSceneStructure(state, viewport) {
-        this.render3D.draw3DBuildings(this.ctx, this.worldSceneDrawInput, viewport, state.walls);
-        state.worldSurfaces.drawRoofs(this.ctx, state, viewport);
+        this.structureDrawPass.draw(this.ctx, state, viewport);
+    }
+    /** @param {import("./WorldRenderMode.js").WorldRenderMode} mode */
+    applyWorldRenderMode(mode) {
+        const normalized = normalizeWorldRenderMode(mode);
+        if (this._worldRenderMode === normalized) return;
+        this._worldRenderMode = normalized;
+        this.structureDrawPass = createStructureDrawPass(normalized, this);
     }
     /** Full-canvas bloom — zIndex 71 when enabled. */
     drawWorldSceneBloom() {

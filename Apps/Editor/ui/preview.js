@@ -6,6 +6,7 @@ import { getSurfaceProfileRevision } from "../../../Libraries/WorldSurface/Surfa
 import { invalidateWallAtlasKeyMemos } from "../../../Render/game/wallSurfaceInvalidation.js";
 import { getGameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.js";
 import { Renderer } from "../../../Render/Render.js";
+import { normalizeWorldRenderMode, WORLD_RENDER_MODE_DEFAULT } from "../../../Render/WorldRenderMode.js";
 import { sandboxController } from "../world/tilelabSandbox.js";
 import { paintMapOverviewFrame } from "./mapOverview.js";
 import { buildProfileFromEditor, RUNTIME_LAB_PROFILE_ID } from "./profile/ProfileEditor.js";
@@ -19,12 +20,18 @@ function buildLabRuntimeProfile() {
     if (profile?.animation) delete profile.animation;
     return profile;
 }
-function getLabRenderer(canvas, ctx) {
+/** @param {import("../state.js").TileLabGameState} state */
+export function applyLabWorldRenderMode(state) {
+    if (!state.labCanvas) return;
+    getLabRenderer(state.labCanvas, state.labCanvas.getContext("2d"), state).applyWorldRenderMode(state.worldRenderMode);
+}
+function getLabRenderer(canvas, ctx, state) {
     const settings = getGameWorldSurfaceSettings();
     if (!labRenderer || labRenderer.canvas !== canvas || labRendererSettings !== settings) {
         labRenderer = new Renderer(canvas, ctx);
         labRendererSettings = settings;
     }
+    labRenderer.applyWorldRenderMode(state?.worldRenderMode ?? WORLD_RENDER_MODE_DEFAULT);
     return labRenderer;
 }
 function maybeClearProfileBakeCaches(state, profileId) {
@@ -61,7 +68,7 @@ export function drawLabFrame(state) {
         rebuildLabMapCaches(state);
         labMapCacheObstacleGeneration = state.navigation.obstacleGeneration;
     }
-    getLabRenderer(canvas, ctx).renderSimulationScene(state, viewport);
+    getLabRenderer(canvas, ctx, state).renderSimulationScene(state, viewport);
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.globalCompositeOperation = "destination-over";

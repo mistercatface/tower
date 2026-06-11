@@ -103,23 +103,24 @@ export class WorldSceneRenderer {
         ctx.restore();
     }
     draw3DBuildings(ctx, input, viewport, walls, options = {}) {
+        const skipWalls = options.skipWalls === true;
         const px = viewport.x;
         const py = viewport.y;
         const zoom = viewport.zoom ?? 1;
         const worldBounds = viewport.boundsDraw;
-        this.structure.updateSharedEdges(walls);
+        if (!skipWalls) this.structure.updateSharedEdges(walls);
         ctx.save();
         clipToViewport(ctx, viewport);
         const visibleObjects = this.visibleDrawables;
         visibleObjects.length = 0;
-        this._appendVisibleWallsFromScene(input, viewport, px, py);
+        if (!skipWalls) this._appendVisibleWallsFromScene(input, viewport, px, py);
         this._appendVisible3dProps(input, viewport, px, py);
         visibleObjects.sort((a, b) => b._distSq - a._distSq);
         for (let i = 0; i < visibleObjects.length; i++) {
             const obj = visibleObjects[i];
             if (obj.usesKinematicsBody) renderActorKinematicsBody(ctx, obj, viewport);
             else if (obj.strategy) this.props.drawProp(ctx, obj, px, py, { zoom });
-            else if (obj.pass === "walls") this._drawRetainedWallFace(ctx, obj, input, viewport, px, py, worldBounds);
+            else if (!skipWalls && obj.pass === "walls") this._drawRetainedWallFace(ctx, obj, input, viewport, px, py, worldBounds);
         }
         ctx.restore();
     }
