@@ -19,7 +19,7 @@ import { Projectile } from "../../Entities/Projectile.js";
 import { RagdollCorpse } from "../../Entities/RagdollCorpse.js";
 import { runPushablePhysics } from "../../Libraries/Motion/pushablePhysicsPass.js";
 import { FLOATING_TEXT_SPAWN_EVENT, FloatingText } from "../../Libraries/Render/FloatingText.js";
-import { drawSandboxAssemblySurfaces } from "../../Libraries/Sandbox/assemblySurfaceDraw.js";
+import { drawSandboxAssemblyGuides, drawSandboxAssemblySurfaces } from "../../Libraries/Sandbox/assemblySurfaceDraw.js";
 import { TileLabGameState } from "./state.js";
 import { tilelabGroundZoneEffectPass, tickTilelabGroundZones } from "./groundZones.js";
 import { sandboxVoidZoneEffectPass, tickSandboxVoidZones } from "./sandboxVoidZones.js";
@@ -63,7 +63,10 @@ export const engine = {
     targeting: sandboxTargeting,
     render: {
         ...createDefaultRenderPorts({ weaponVisuals: createWeaponVisuals(GUN_ID_TO_VISUAL) }),
-        drawGroundOverlays: (state, viewport, ctx) => drawSandboxAssemblySurfaces(ctx, state, viewport),
+        drawGroundOverlays: (state, viewport, ctx) => {
+            drawSandboxAssemblySurfaces(ctx, state, viewport);
+            drawSandboxAssemblyGuides(ctx, state);
+        },
         drawPostSimulation: (state, viewport, ctx) => CombatParticles.renderAll(ctx, state, viewport),
         simulationEffectPasses: [
             sandboxVoidZoneEffectPass,

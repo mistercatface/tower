@@ -10,6 +10,10 @@ import { drawImageQuad } from "../Canvas/AffineTexture.js";
 export function createAssemblySurfaceZone({ play, bounds, railHeight, profileId, id, surfaceAnimation = false }) {
     return { id, kind: "assemblySurface", profileId, surfaceAnimation, play, bounds, railHeight, aabb: bounds, flipbook: null, bakeGeneration: 0 };
 }
+/** @param {{ id: string, wallSegments: object[], arcWallSegments: object[], railWidth?: number }} spec */
+export function createAssemblyGuideOverlay({ id, wallSegments, arcWallSegments, railWidth = 3 }) {
+    return { id, kind: "assemblyGuideOverlay", wallSegments, arcWallSegments, railWidth };
+}
 /** @param {import("./assemblySurfaceBake.js").AssemblySurfaceFlipbook} flipbook @param {number} gameTime */
 function resolveFlipbookFrameIndex(flipbook, gameTime) {
     if (!flipbook.animated || flipbook.play.frames.length <= 1) return 0;
@@ -68,6 +72,51 @@ export function drawSandboxAssemblySurfaces(ctx, state, viewport) {
     for (let i = 0; i < zones.length; i++) {
         const zone = zones[i];
         if (zone.kind === "assemblySurface") drawAssemblySurfaceZone(ctx, zone, state, viewport);
+    }
+    ctx.restore();
+}
+function strokeGuidePath(ctx, railWidth) {
+    const lineScale = 1 / Math.max(0.001, ctx.getTransform().a);
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.42)";
+    ctx.lineWidth = (railWidth + 2.8) * lineScale;
+    ctx.stroke();
+    ctx.strokeStyle = "#455A64";
+    ctx.lineWidth = (railWidth + 1.1) * lineScale;
+    ctx.stroke();
+    ctx.strokeStyle = "#ECEFF1";
+    ctx.lineWidth = railWidth * lineScale;
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(120, 144, 156, 0.9)";
+    ctx.lineWidth = Math.max(0.8, railWidth * 0.28) * lineScale;
+    ctx.stroke();
+}
+/** @param {CanvasRenderingContext2D} ctx @param {object} guide */
+function drawAssemblyGuideOverlay(ctx, guide) {
+    const railWidth = guide.railWidth ?? 3;
+    for (let i = 0; i < guide.wallSegments.length; i++) {
+        const seg = guide.wallSegments[i];
+        ctx.beginPath();
+        ctx.moveTo(seg.from.x, seg.from.y);
+        ctx.lineTo(seg.to.x, seg.to.y);
+        strokeGuidePath(ctx, railWidth);
+    }
+    for (let i = 0; i < guide.arcWallSegments.length; i++) {
+        const arc = guide.arcWallSegments[i];
+        ctx.beginPath();
+        ctx.arc(arc.center.x, arc.center.y, arc.radius, arc.startAngle, arc.endAngle, arc.endAngle < arc.startAngle);
+        strokeGuidePath(ctx, railWidth);
+    }
+}
+/** @param {CanvasRenderingContext2D} ctx @param {object} state */
+export function drawSandboxAssemblyGuides(ctx, state) {
+    const guides = state.sandboxAssemblyGuides;
+    if (!guides?.length) return;
+    ctx.save();
+    for (let i = 0; i < guides.length; i++) {
+        const guide = guides[i];
+        if (guide.kind === "assemblyGuideOverlay") drawAssemblyGuideOverlay(ctx, guide);
     }
     ctx.restore();
 }

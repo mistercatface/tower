@@ -10,7 +10,7 @@ import { buildAssemblyLayout, buildAssemblyClearBounds, buildAssemblyWallSegment
 import { getResolvedAssembly } from "./assemblies/assemblyRegistry.js";
 import { resolvePlacement } from "./assemblies/assemblyPlacement.js";
 import { stampAssemblyGroupMember, entityBelongsToAssemblyGroup } from "./assemblies/assemblyLink.js";
-import { createAssemblySurfaceZone } from "./assemblySurfaceDraw.js";
+import { createAssemblyGuideOverlay, createAssemblySurfaceZone } from "./assemblySurfaceDraw.js";
 import { eagerBakeAssemblySurfaceFlipbook, releaseAssemblySurfaceFlipbook } from "./assemblySurfaceBake.js";
 import { requestUiUpdate } from "../../Core/EventSystem.js";
 import { applyFlipperAssemblyScale } from "./behaviors/flipperBehavior.js";
@@ -102,6 +102,14 @@ function registerAssemblyPlayfieldSurface(state, layout, resolved, groupId, grou
         .catch((err) => console.error("assembly surface bake failed:", err));
     return zone;
 }
+/** @param {object} state @param {ReturnType<typeof buildAssemblyLayout>} layout @param {string} groupId @param {string} assemblyId @param {string} groupField */
+function registerAssemblyGuideOverlay(state, layout, groupId, assemblyId, groupField) {
+    if (!layout.wallSegments.length && !layout.arcWallSegments.length) return null;
+    const guide = createAssemblyGuideOverlay({ id: `${groupId}:guides`, wallSegments: layout.wallSegments, arcWallSegments: layout.arcWallSegments, railWidth: 3.2 });
+    stampAssemblyGroupMember(guide, groupId, assemblyId, groupField);
+    state.sandboxAssemblyGuides?.push(guide);
+    return guide;
+}
 /**
  * @param {import("./SandboxHostPort.js").SandboxHostPort} host
  * @param {ReturnType<typeof buildAssemblyLayout>} layout
@@ -153,10 +161,12 @@ export function spawnResolvedAssembly(host, centerX, centerY, resolved, { factio
     const groupField = resolved.groupField;
     const flatSurface = Boolean(resolved.surfaceProfileId);
     registerAssemblyPlayfieldSurface(state, layout, resolved, groupId, groupField);
+    if (flatSurface) registerAssemblyGuideOverlay(state, layout, groupId, resolved.id, groupField);
     const arenaWidth = resolved.arena.width;
     const arenaHeight = resolved.arena.height;
     if (spawnIncludes(spawnSteps, ["arena.walls"])) {
         const walls = buildAssemblyWallSegments(layout, resolved, { collisionOnly: flatSurface });
+        if (flatSurface) for (let i = 0; i < walls.length; i++) walls[i].collisionOnly = true;
         for (let i = 0; i < walls.length; i++) stampAssemblyGroupMember(walls[i], groupId, resolved.id, groupField);
         addSandboxWalls(state, walls, { compileRender: true });
     }
@@ -205,6 +215,9 @@ export function deleteAssemblyInstance(state, groupId, groupField = "sandboxGrou
         zone.flipbook = null;
         state.sandboxSurfaceProfileZones.splice(z, 1);
     }
+    if (state.sandboxAssemblyGuides)
+        for (let z = state.sandboxAssemblyGuides.length - 1; z >= 0; z--)
+            if (entityBelongsToAssemblyGroup(state.sandboxAssemblyGuides[z], groupId, groupField)) state.sandboxAssemblyGuides.splice(z, 1);
     for (let i = state.walls.length - 1; i >= 0; i--) if (entityBelongsToAssemblyGroup(state.walls[i], groupId, groupField)) removeSandboxWall(state, state.walls[i]);
     for (let z = state.sandboxVoidZones.length - 1; z >= 0; z--) if (entityBelongsToAssemblyGroup(state.sandboxVoidZones[z], groupId, groupField)) state.sandboxVoidZones.splice(z, 1);
     if (state.sandboxGravityZones)

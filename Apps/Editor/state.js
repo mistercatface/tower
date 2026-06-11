@@ -35,6 +35,7 @@ export class TileLabGameState extends SharedGameState {
         /** @type {ReturnType<import("../../Libraries/Spatial/zones/groundZones.js").createGravityZone>[]} */
         this.sandboxGravityZones = [];
         this.sandboxSurfaceProfileZones = [];
+        this.sandboxAssemblyGuides = [];
         this.sandboxAssemblyInstances = [];
         this.wallResolver = new WallCollisionResolver({
             onWallDamage: (entity, hit) => {
