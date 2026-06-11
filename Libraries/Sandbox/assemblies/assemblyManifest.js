@@ -1,9 +1,28 @@
 /**
+ * @typedef {object} AssemblyArenaWallOpeningsManifest
+ * @property {{ centerU: number, widthU: number }} [bottom]
+ */
+/**
  * @typedef {object} AssemblyArenaWallsManifest
  * @property {number} width — rail thickness in world units
  * @property {number} height — wall prism height in world units
  * @property {number} segmentSize — length of each wall segment along an edge
  * @property {{ padding?: number, maxHealth?: number, health?: number }} segment
+ * @property {AssemblyArenaWallOpeningsManifest} [openings]
+ */
+/**
+ * @typedef {object} AssemblyWallSegmentManifest
+ * @property {string} [id]
+ * @property {AssemblyPlacementManifest} from
+ * @property {AssemblyPlacementManifest} to
+ */
+/**
+ * @typedef {object} AssemblyArcWallSegmentManifest
+ * @property {string} [id]
+ * @property {AssemblyPlacementManifest} center
+ * @property {number} radiusU
+ * @property {number} startAngle
+ * @property {number} endAngle
  */
 /**
  * @typedef {object} AssemblyArenaManifest
@@ -63,6 +82,8 @@
  * @property {string[]} [props] — prop catalog ids this assembly uses
  * @property {AssemblyVoidCircleManifest[]} [voidCircles]
  * @property {AssemblyGravityZoneManifest[]} [gravityZones]
+ * @property {AssemblyWallSegmentManifest[]} [wallSegments]
+ * @property {AssemblyArcWallSegmentManifest[]} [arcWallSegments]
  * @property {AssemblyPickupManifest[]} [pickups]
  * @property {{ groupField: string }} link
  * @property {Record<string, { cueStrike?: object, inputGates?: Record<string, object[]> }>} [behaviors]
@@ -79,6 +100,8 @@
  * @property {string[]} props
  * @property {AssemblyVoidCircleManifest[]} voidCircles
  * @property {AssemblyGravityZoneManifest[]} [gravityZones]
+ * @property {AssemblyWallSegmentManifest[]} wallSegments
+ * @property {AssemblyArcWallSegmentManifest[]} arcWallSegments
  * @property {AssemblyPickupManifest[]} pickups
  * @property {string} groupField
  * @property {Record<string, { cueStrike?: object, inputGates?: Record<string, object[]> }>} behaviors

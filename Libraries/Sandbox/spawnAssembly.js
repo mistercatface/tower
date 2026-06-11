@@ -15,6 +15,7 @@ import { eagerBakeAssemblySurfaceFlipbook, releaseAssemblySurfaceFlipbook } from
 import { requestUiUpdate } from "../../Core/EventSystem.js";
 import { applyFlipperAssemblyScale } from "./behaviors/flipperBehavior.js";
 import { attachPropButton } from "./propAttachedButton.js";
+import { applyPinballObstacleScale } from "./pinballObstacleScale.js";
 /** @param {import("./assemblies/assemblyManifest.js").ResolvedAssemblyManifest} resolved @param {string} propId */
 function assemblyIncludesProp(resolved, propId) {
     if (!resolved.props.length) return true;
@@ -120,6 +121,7 @@ function spawnManifestPickups(host, layout, resolved, { faction, groupId, rackId
         stampAssemblyGroupMember(pickup, groupId, resolved.id, groupField);
         const asset = getPropAsset(entry.prop);
         if (asset?.flipper) applyFlipperAssemblyScale(pickup, layout, asset);
+        else if (asset?.physics?.radiusU != null) applyPinballObstacleScale(pickup, layout, asset);
         if (entry.button) attachPropButton(pickup, layout, entry.button);
         const behavior = resolved.behaviors[entry.prop];
         if (behavior) pickup.sandboxBehaviorOverrides = behavior;
@@ -155,9 +157,8 @@ export function spawnResolvedAssembly(host, centerX, centerY, resolved, { factio
     const arenaHeight = resolved.arena.height;
     if (spawnIncludes(spawnSteps, ["arena.walls"])) {
         const walls = buildAssemblyWallSegments(layout, resolved, { collisionOnly: flatSurface });
-        if (flatSurface) for (let i = 0; i < walls.length; i++) walls[i].collisionOnly = true;
         for (let i = 0; i < walls.length; i++) stampAssemblyGroupMember(walls[i], groupId, resolved.id, groupField);
-        addSandboxWalls(state, walls, { compileRender: !flatSurface });
+        addSandboxWalls(state, walls, { compileRender: true });
     }
     if (spawnIncludes(spawnSteps, ["voidCircles"]))
         for (let p = 0; p < layout.voids.length; p++) {
