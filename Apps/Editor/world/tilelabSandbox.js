@@ -5,6 +5,7 @@ import { voidSinkPickupStates } from "../../../Entities/pickupVoidSinkState.js";
 import {
     createCueStrikeBehavior,
     createDragLaunchBehavior,
+    createDragLaunchWaitBehavior,
     createRollToCursorDirectBehavior,
     createRollToCursorHpaBehavior,
     createShootBehavior,
@@ -46,7 +47,7 @@ export function mountTilelabSandbox(state, requestRedraw) {
     Object.assign(pickupStates, voidSinkPickupStates);
     sandboxController = createSandboxController(createSandboxHost(state, requestRedraw), {
         defaultSpawnPropId: TILELAB_SANDBOX_SPAWN_PROP,
-        behaviors: [createDragLaunchBehavior(), createCueStrikeBehavior(), createShootBehavior(), createRollToCursorDirectBehavior(), createRollToCursorHpaBehavior()],
+        behaviors: [createDragLaunchBehavior(), createDragLaunchWaitBehavior(), createCueStrikeBehavior(), createShootBehavior(), createRollToCursorDirectBehavior(), createRollToCursorHpaBehavior()],
         defaultBehaviorId: DRAG_LAUNCH_BEHAVIOR_ID,
     });
     sandboxController.register();

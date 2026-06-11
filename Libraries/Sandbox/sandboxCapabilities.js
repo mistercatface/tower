@@ -1,6 +1,13 @@
 import { ROLL_TO_CURSOR_DIRECT_BEHAVIOR_ID } from "./behaviors/rollToCursorDirectBehavior.js";
 import { ROLL_TO_CURSOR_HPA_BEHAVIOR_ID } from "./behaviors/rollToCursorHpaBehavior.js";
-export const SANDBOX_BEHAVIOR_LABELS = { dragLaunch: "Drag launch", cueStrike: "Cue strike", rollToCursorDirect: "Roll to cursor (direct)", rollToCursorHpa: "Roll to cursor (HPA)", shoot: "Shoot" };
+export const SANDBOX_BEHAVIOR_LABELS = {
+    dragLaunch: "Drag launch",
+    dragLaunchWait: "Drag launch (wait for rest)",
+    cueStrike: "Cue strike",
+    rollToCursorDirect: "Roll to cursor (direct)",
+    rollToCursorHpa: "Roll to cursor (HPA)",
+    shoot: "Shoot",
+};
 const ROLL_BEHAVIOR_IDS = new Set([ROLL_TO_CURSOR_DIRECT_BEHAVIOR_ID, ROLL_TO_CURSOR_HPA_BEHAVIOR_ID]);
 /** @param {string} behaviorId */
 export function getSandboxBehaviorLabel(behaviorId) {

@@ -1,8 +1,7 @@
 import { applyCueStrikeCollision } from "../../CueStick/cueStrikeCollision.js";
 import { buildCueStrikeAimLineContext, getCueStrikeAimLine } from "../../CueStick/cueStrikeAimPreview.js";
 import { getPropAsset } from "../../Props/PropCatalog.js";
-import { wakePushableBody } from "../../Motion/pushableSleep.js";
-import { createDragLaunchAim, drawDragLaunchPreview, releaseDragLaunch, updateDragLaunchAim, DRAG_LAUNCH_DEFAULTS } from "../dragLaunch.js";
+import { createDragLaunchInteraction, DRAG_LAUNCH_DEFAULTS } from "../dragLaunch.js";
 import { evaluateInputGates } from "../inputGates.js";
 import { resolvePickupSandboxBehavior } from "../sandboxBehaviorConfig.js";
 export const CUE_STRIKE_BEHAVIOR_ID = "cueStrike";
@@ -21,38 +20,19 @@ function cueStrikeTableBounds(pickup, host) {
 }
 /** @returns {import("../createSandboxController.js").SandboxBehavior} */
 export function createCueStrikeBehavior() {
-    /** @type {import("../dragLaunch.js").DragLaunchAim | null} */
-    let aim = null;
-    const configFor = (pickup) => getCueStrikeConfig(pickup, getPropAsset(pickup?.type));
-    return {
+    return createDragLaunchInteraction({
         id: CUE_STRIKE_BEHAVIOR_ID,
-        onPointerDown(pickup, world, _e, host) {
-            const asset = getPropAsset(pickup?.type);
-            if (host && !evaluateInputGates(CUE_STRIKE_BEHAVIOR_ID, pickup, asset, host).allowed) return false;
-            wakePushableBody(pickup);
-            aim = createDragLaunchAim(pickup.x, pickup.y, world.x, world.y);
-            updateDragLaunchAim(aim, world.x, world.y, configFor(pickup));
-            return true;
+        getConfig: (pickup) => getCueStrikeConfig(pickup, getPropAsset(pickup?.type)),
+        canStart(pickup, _world, host) {
+            return evaluateInputGates(CUE_STRIKE_BEHAVIOR_ID, pickup, getPropAsset(pickup?.type), host).allowed;
         },
-        onPointerMove(_pickup, world) {
-            if (!aim?.active) return;
-            updateDragLaunchAim(aim, world.x, world.y, configFor(_pickup));
-        },
-        onPointerUp(pickup) {
-            if (!aim?.active) return;
-            const shot = releaseDragLaunch(aim, configFor(pickup));
-            aim = null;
-            if (!shot) return;
+        onLaunch(pickup, shot) {
             applyCueStrikeCollision(pickup, shot);
         },
-        drawOverlay(ctx, pickup, host) {
-            if (!aim?.active) return;
+        buildAimLineContext(pickup, host) {
             const state = host.getWorldState?.();
-            const aimLineContext = state ? buildCueStrikeAimLineContext(pickup, state, cueStrikeTableBounds(pickup, host)) : null;
-            drawDragLaunchPreview(ctx, aim, configFor(pickup), aimLineContext, getCueStrikeAimLine);
+            return state ? buildCueStrikeAimLineContext(pickup, state, cueStrikeTableBounds(pickup, host)) : null;
         },
-        reset() {
-            aim = null;
-        },
-    };
+        resolveAimLine: getCueStrikeAimLine,
+    });
 }

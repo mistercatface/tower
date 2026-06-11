@@ -1,8 +1,10 @@
 import { normalizeXY } from "../Math/Vec2.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
+import { getPropAsset } from "../Props/PropCatalog.js";
 import { drawAimSegment } from "../Render/contactPreviewDraw.js";
 import { computeCircleAimLineSegment, estimateRollingTravelDistance } from "../Spatial/query/circleAimLinePreview.js";
 import { wallContextFromState } from "../Spatial/query/wallContext.js";
+import { evaluateInputGates, isEntityAtRest } from "./inputGates.js";
 /** @typedef {{ minDrag: number, maxPull: number, pullScale: number, minPower: number, maxPower: number, powerCurve?: number }} DragLaunchConfig */
 /** @typedef {{ active: boolean, anchorX: number, anchorY: number, startX: number, startY: number, pullX: number, pullY: number, shotNx: number | null, shotNy: number | null }} DragLaunchAim */
 export const DRAG_LAUNCH_DEFAULTS = { minDrag: 10, maxPull: 110, pullScale: 1.25, minPower: 55, maxPower: 340 };
@@ -139,6 +141,75 @@ export function applyDragLaunchVelocity(body, nx, ny, power) {
         body.angularVelocity = (power / r) * 0.12;
     }
     wakePushableBody(body);
+}
+/**
+ * Shared pointer-drag aim + launch for sandbox behaviors.
+ *
+ * @param {{
+ *   id: string,
+ *   getConfig: (pickup: object) => DragLaunchConfig,
+ *   canStart?: (pickup: object, world: { x: number, y: number }, host: import("./SandboxHostPort.js").SandboxHostPort) => boolean,
+ *   onLaunch?: (pickup: object, shot: { anchorX: number, anchorY: number, nx: number, ny: number, power: number }, host: import("./SandboxHostPort.js").SandboxHostPort) => void,
+ *   buildAimLineContext?: (pickup: object, host: import("./SandboxHostPort.js").SandboxHostPort) => ReturnType<typeof buildDragLaunchAimLineContext>,
+ *   resolveAimLine?: typeof getDragLaunchAimLine,
+ * }} spec
+ * @returns {import("./createSandboxController.js").SandboxBehavior}
+ */
+export function createDragLaunchInteraction(spec) {
+    /** @type {DragLaunchAim | null} */
+    let aim = null;
+    const buildCtx = spec.buildAimLineContext ?? buildDragLaunchAimLineContext;
+    const resolveLine = spec.resolveAimLine ?? getDragLaunchAimLine;
+    return {
+        id: spec.id,
+        onPointerDown(pickup, world, _e, host) {
+            if (spec.canStart && !spec.canStart(pickup, world, host)) return false;
+            wakePushableBody(pickup);
+            aim = createDragLaunchAim(pickup.x, pickup.y, world.x, world.y);
+            updateDragLaunchAim(aim, world.x, world.y, spec.getConfig(pickup));
+            return true;
+        },
+        onPointerMove(pickup, world) {
+            if (!aim?.active) return;
+            updateDragLaunchAim(aim, world.x, world.y, spec.getConfig(pickup));
+        },
+        onPointerUp(pickup, _e, host) {
+            if (!aim?.active) return;
+            const shot = releaseDragLaunch(aim, spec.getConfig(pickup));
+            aim = null;
+            if (!shot) return;
+            if (spec.onLaunch) spec.onLaunch(pickup, shot, host);
+            else applyDragLaunchVelocity(pickup, shot.nx, shot.ny, shot.power);
+        },
+        drawOverlay(ctx, pickup, host) {
+            if (!aim?.active) return;
+            drawDragLaunchPreview(ctx, aim, spec.getConfig(pickup), buildCtx(pickup, host), resolveLine);
+        },
+        reset() {
+            aim = null;
+        },
+    };
+}
+export const DRAG_LAUNCH_BEHAVIOR_ID = "dragLaunch";
+export const DRAG_LAUNCH_WAIT_BEHAVIOR_ID = "dragLaunchWait";
+/** @param {object} pickup */
+function dragLaunchConfigForPickup(pickup) {
+    return getDragLaunchConfig(getPropAsset(pickup?.type));
+}
+/** @returns {import("./createSandboxController.js").SandboxBehavior} */
+export function createDragLaunchBehavior() {
+    return createDragLaunchInteraction({ id: DRAG_LAUNCH_BEHAVIOR_ID, getConfig: dragLaunchConfigForPickup });
+}
+/** @returns {import("./createSandboxController.js").SandboxBehavior} */
+export function createDragLaunchWaitBehavior() {
+    return createDragLaunchInteraction({
+        id: DRAG_LAUNCH_WAIT_BEHAVIOR_ID,
+        getConfig: dragLaunchConfigForPickup,
+        canStart(pickup, _world, host) {
+            if (!isEntityAtRest(pickup)) return false;
+            return evaluateInputGates(DRAG_LAUNCH_WAIT_BEHAVIOR_ID, pickup, getPropAsset(pickup?.type), host).allowed;
+        },
+    });
 }
 /**
  * @param {CanvasRenderingContext2D} ctx

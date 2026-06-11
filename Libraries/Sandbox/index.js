@@ -10,7 +10,6 @@ export { bindCanvasPointers, releasePointerCapture } from "./bindCanvasPointers.
 export { createSandboxSession } from "./sandboxSession.js";
 export { createSandboxController } from "./createSandboxController.js";
 export { createCueStrikeBehavior, CUE_STRIKE_BEHAVIOR_ID } from "./behaviors/cueStrikeBehavior.js";
-export { createDragLaunchBehavior, DRAG_LAUNCH_BEHAVIOR_ID } from "./behaviors/dragLaunchBehavior.js";
 export { createRollToCursorDirectBehavior, ROLL_TO_CURSOR_DIRECT_BEHAVIOR_ID } from "./behaviors/rollToCursorDirectBehavior.js";
 export { createRollToCursorHpaBehavior, ROLL_TO_CURSOR_HPA_BEHAVIOR_ID } from "./behaviors/rollToCursorHpaBehavior.js";
 export { createShootBehavior, SHOOT_BEHAVIOR_ID } from "./behaviors/shootBehavior.js";
@@ -36,6 +35,9 @@ export {
     DRAG_LAUNCH_DEFAULTS,
     applyDragLaunchVelocity,
     createDragLaunchAim,
+    createDragLaunchBehavior,
+    createDragLaunchWaitBehavior,
+    createDragLaunchInteraction,
     drawDragLaunchPreview,
     getDragLaunchConfig,
     getDragLaunchPreview,
@@ -43,4 +45,6 @@ export {
     isSandboxProp,
     releaseDragLaunch,
     updateDragLaunchAim,
+    DRAG_LAUNCH_BEHAVIOR_ID,
+    DRAG_LAUNCH_WAIT_BEHAVIOR_ID,
 } from "./dragLaunch.js";
