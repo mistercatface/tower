@@ -22,12 +22,22 @@ export function syncSinkPadAabb(pad, radius) {
 export function drawPit(ctx, pad, viewerX, viewerY) {
     const mouthRadius = pad.shape.radius;
     const pocketDepth = pad.sinkDepth ?? DEFAULT_PIT_DEPTH;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(pad.x, pad.y, mouthRadius, 0, Math.PI * 2);
+    ctx.clip();
+    // Draw the black background of the void pit (fixed at the mouth position)
+    ctx.fillStyle = "hsl(0, 0%, 0%)";
+    ctx.beginPath();
+    ctx.arc(pad.x, pad.y, mouthRadius, 0, Math.PI * 2);
+    ctx.fill();
+    // Draw the shifting inside of the well/funnel (shifting away from the camera)
     const step = pocketDepth / 8;
-    for (let H = 0; H >= -pocketDepth; H -= step) {
+    for (let H = -step; H >= -pocketDepth; H -= step) {
         const dx = pad.x - viewerX;
         const dy = pad.y - viewerY;
         const dist = Math.hypot(dx, dy);
-        const alpha = (H / (CAMERA_HEIGHT - H)) * PERSPECTIVE_STRENGTH;
+        const alpha = (-H / (CAMERA_HEIGHT - H)) * PERSPECTIVE_STRENGTH;
         const projX = dist === 0 ? pad.x : pad.x + dx * alpha;
         const projY = dist === 0 ? pad.y : pad.y + dy * alpha;
         const layerRadius = mouthRadius * (CAMERA_HEIGHT / (CAMERA_HEIGHT - H));
@@ -38,6 +48,7 @@ export function drawPit(ctx, pad, viewerX, viewerY) {
         ctx.arc(projX, projY, layerRadius, 0, Math.PI * 2);
         ctx.fill();
     }
+    ctx.restore();
     ctx.beginPath();
     ctx.arc(pad.x, pad.y, mouthRadius, 0, Math.PI * 2);
     ctx.strokeStyle = "rgba(0, 0, 0, 0.45)";
