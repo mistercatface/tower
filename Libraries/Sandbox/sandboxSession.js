@@ -76,7 +76,7 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
         spawnAssemblyAt(centerX, centerY, assemblyId) {
             const instance = spawnAssembly(host, centerX, centerY, assemblyId, { faction: spawnFaction });
             if (!instance) return null;
-            selectedPickupId = instance.cueBallId;
+            selectedPickupId = instance.defaultPickupId;
             sync();
             return instance;
         },
@@ -95,7 +95,7 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
             return state.sandboxAssemblyInstances.map((entry, index) => ({
                 id: entry.id,
                 label: getAssemblyManifest(entry.assemblyId)?.label ?? entry.assemblyId ?? `table #${index + 1}`,
-                cueBallId: entry.cueBallId,
+                defaultPickupId: entry.defaultPickupId,
             }));
         },
         deleteVoidZoneById(id) {

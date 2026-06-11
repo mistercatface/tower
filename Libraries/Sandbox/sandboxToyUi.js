@@ -182,13 +182,13 @@ export function mountSandboxToyUi(container, controller, onChange) {
             assemblyList.className = "toy-instance-list";
             for (const entry of assemblies) {
                 const row = document.createElement("div");
-                row.className = `toy-instance-row${entry.cueBallId === selectedId ? " selected" : ""}`;
+                row.className = `toy-instance-row${entry.defaultPickupId === selectedId ? " selected" : ""}`;
                 const selectBtn = document.createElement("button");
                 selectBtn.type = "button";
                 selectBtn.className = "toy-select-btn";
                 selectBtn.textContent = entry.label;
                 selectBtn.addEventListener("click", () => {
-                    if (entry.cueBallId != null) controller.setSelectedPickupId(entry.cueBallId);
+                    if (entry.defaultPickupId != null) controller.setSelectedPickupId(entry.defaultPickupId);
                 });
                 const deleteBtn = document.createElement("button");
                 deleteBtn.type = "button";

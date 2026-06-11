@@ -3,23 +3,13 @@ import { getGameWorldSurfaceSettings } from "../../Render/WorldSurfaceBootstrap.
 import { SceneCompiler } from "../Render/Scene/SceneCompiler.js";
 import { createVoidZone } from "../Spatial/zones/voidZone.js";
 import { createGravityZone } from "../Spatial/zones/groundZones.js";
-import { getPropAsset } from "../Props/PropCatalog.js";
-import { Pickup } from "../../Entities/Pickup.js";
-import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { buildAssemblyLayout, buildAssemblyClearBounds, buildAssemblyWallSegments } from "./assemblyLayout.js";
 import { getResolvedAssembly } from "./assemblies/assemblyRegistry.js";
-import { resolvePlacement } from "./assemblies/assemblyPlacement.js";
 import { stampAssemblyGroupMember, entityBelongsToAssemblyGroup } from "./assemblies/assemblyLink.js";
 import { createAssemblyGuideOverlay, createAssemblySurfaceZone } from "./assemblySurfaceDraw.js";
 import { eagerBakeAssemblySurfaceFlipbook, releaseAssemblySurfaceFlipbook } from "./assemblySurfaceBake.js";
 import { requestUiUpdate } from "../../Core/EventSystem.js";
-import { applyFlipperAssemblyScale } from "./behaviors/flipperBehavior.js";
-import { attachPropButton } from "./propAttachedButton.js";
-/** @param {import("./assemblies/assemblyManifest.js").ResolvedAssemblyManifest} resolved @param {string} propId */
-function assemblyIncludesProp(resolved, propId) {
-    if (!resolved.props.length) return true;
-    return resolved.props.includes(propId);
-}
+import { spawnAssemblyPickups, validateAssemblyPickupManifest } from "./assemblyPickupSpawn.js";
 /** @param {string[]} spawnSteps @param {string[]} names */
 function spawnIncludes(spawnSteps, names) {
     for (let i = 0; i < names.length; i++) if (spawnSteps.includes(names[i])) return true;
@@ -111,34 +101,6 @@ function registerAssemblyGuideOverlay(state, layout, groupId, assemblyId, groupF
 }
 /**
  * @param {import("./SandboxHostPort.js").SandboxHostPort} host
- * @param {ReturnType<typeof buildAssemblyLayout>} layout
- * @param {import("./assemblies/assemblyManifest.js").ResolvedAssemblyManifest} resolved
- * @param {{ faction?: string, groupId: string, rackId: string, groupField: string }} options
- */
-function spawnManifestPickups(host, layout, resolved, { faction, groupId, rackId, groupField }) {
-    /** @type {string | null} */
-    let cueBallId = null;
-    for (let i = 0; i < resolved.pickups.length; i++) {
-        const entry = resolved.pickups[i];
-        if (!assemblyIncludesProp(resolved, entry.prop) || !getPropAsset(entry.prop)) return null;
-        const at = resolvePlacement(layout.play, entry.at);
-        const pickup = new Pickup(at.x, at.y, entry.prop, entry.facing ?? 0);
-        pickup.faction = faction;
-        pickup.assemblyRackId = rackId;
-        stampAssemblyGroupMember(pickup, groupId, resolved.id, groupField);
-        const asset = getPropAsset(entry.prop);
-        if (asset?.flipper) applyFlipperAssemblyScale(pickup, layout, asset);
-        if (entry.button) attachPropButton(pickup, layout, entry.button);
-        const behavior = resolved.behaviors[entry.prop];
-        if (behavior) pickup.sandboxBehaviorOverrides = behavior;
-        wakePushableBody(pickup);
-        host.addPickup(pickup);
-        if (entry.id === "cue") cueBallId = pickup.id;
-    }
-    return { cueBallId };
-}
-/**
- * @param {import("./SandboxHostPort.js").SandboxHostPort} host
  * @param {number} centerX
  * @param {number} centerY
  * @param {import("./assemblies/assemblyManifest.js").ResolvedAssemblyManifest} resolved
@@ -146,11 +108,7 @@ function spawnManifestPickups(host, layout, resolved, { faction, groupId, rackId
  */
 export function spawnResolvedAssembly(host, centerX, centerY, resolved, { faction, groupId: groupIdOverride } = {}) {
     const state = host.getWorldState();
-    if (!resolved.pickups.length) return null;
-    for (let i = 0; i < resolved.pickups.length; i++) {
-        const entry = resolved.pickups[i];
-        if (!assemblyIncludesProp(resolved, entry.prop) || !getPropAsset(entry.prop)) return null;
-    }
+    if (!resolved.pickups.length || !validateAssemblyPickupManifest(resolved)) return null;
     const layout = buildAssemblyLayout(centerX, centerY, resolved);
     const spawnSteps = resolved.spawn;
     if (spawnIncludes(spawnSteps, ["arena.clear"])) clearWallsInBounds(state, buildAssemblyClearBounds(layout, resolved));
@@ -182,14 +140,11 @@ export function spawnResolvedAssembly(host, centerX, centerY, resolved, { factio
             stampAssemblyGroupMember(zone, groupId, resolved.id, groupField);
             state.sandboxGravityZones.push(zone);
         }
-    let spawned = null;
-    if (spawnIncludes(spawnSteps, ["pickups"])) {
-        spawned = spawnManifestPickups(host, layout, resolved, { faction, groupId, rackId, groupField });
-        if (!spawned) return null;
-    }
-    const instance = { id: groupId, assemblyId: resolved.id, rackId, cueBallId: spawned?.cueBallId ?? null, arenaWidth, arenaHeight, groupField };
+    let defaultPickupId = null;
+    if (spawnIncludes(spawnSteps, ["pickups"])) defaultPickupId = spawnAssemblyPickups(host, layout, resolved, { faction, groupId, rackId, groupField }).defaultPickupId;
+    const instance = { id: groupId, assemblyId: resolved.id, rackId, defaultPickupId, arenaWidth, arenaHeight, groupField };
     state.sandboxAssemblyInstances.push(instance);
-    return { id: groupId, assemblyId: resolved.id, cueBallId: spawned?.cueBallId ?? null, centerX, centerY };
+    return { id: groupId, assemblyId: resolved.id, defaultPickupId, centerX, centerY };
 }
 /**
  * @param {import("./SandboxHostPort.js").SandboxHostPort} host
