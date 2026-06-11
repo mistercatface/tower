@@ -8,12 +8,8 @@ import { createAssemblyGuideOverlay, createAssemblySurfaceZone } from "./assembl
 import { eagerBakeAssemblySurfaceFlipbook, releaseAssemblySurfaceFlipbook } from "./assemblySurfaceBake.js";
 import { requestUiUpdate } from "../../Core/EventSystem.js";
 import { spawnAssemblyPickups, validateAssemblyPickupManifest } from "./assemblyPickupSpawn.js";
-import { buildSandboxPad, deleteSandboxPad } from "./sandboxPads.js";
-/** @param {string[]} spawnSteps @param {string[]} names */
-function spawnIncludes(spawnSteps, names) {
-    for (let i = 0; i < names.length; i++) if (spawnSteps.includes(names[i])) return true;
-    return false;
-}
+import { spawnAssemblyPads } from "./assemblyPadSpawn.js";
+import { deleteSandboxPad } from "./sandboxPads.js";
 /** @param {object} state @param {object} wall */
 export function removeSandboxWall(state, wall) {
     const idx = state.walls.indexOf(wall);
@@ -107,10 +103,9 @@ function registerAssemblyGuideOverlay(state, layout, groupId, assemblyId, groupF
  */
 export function spawnResolvedAssembly(host, centerX, centerY, resolved, { faction, groupId: groupIdOverride } = {}) {
     const state = host.getWorldState();
-    if (!resolved.pickups.length || !validateAssemblyPickupManifest(resolved)) return null;
+    if (resolved.pickups.length && !validateAssemblyPickupManifest(resolved.pickups)) return null;
     const layout = buildAssemblyLayout(centerX, centerY, resolved);
-    const spawnSteps = resolved.spawn;
-    if (spawnIncludes(spawnSteps, ["arena.clear"])) clearWallsInBounds(state, buildAssemblyClearBounds(layout, resolved));
+    clearWallsInBounds(state, buildAssemblyClearBounds(layout, resolved));
     const groupId = groupIdOverride ?? `${resolved.id}:${Date.now()}`;
     const rackId = `${groupId}:rack`;
     const groupField = resolved.groupField;
@@ -119,34 +114,19 @@ export function spawnResolvedAssembly(host, centerX, centerY, resolved, { factio
     if (flatSurface) registerAssemblyGuideOverlay(state, layout, groupId, resolved.id, groupField);
     const arenaWidth = resolved.arena.width;
     const arenaHeight = resolved.arena.height;
-    if (spawnIncludes(spawnSteps, ["arena.walls"])) {
-        const walls = buildAssemblyWallSegments(layout, resolved, { collisionOnly: flatSurface });
-        if (flatSurface) for (let i = 0; i < walls.length; i++) walls[i].collisionOnly = true;
-        for (let i = 0; i < walls.length; i++) stampAssemblyGroupMember(walls[i], groupId, resolved.id, groupField);
-        addSandboxWalls(state, walls, { compileRender: true });
-    }
-    if (spawnIncludes(spawnSteps, ["sinkPads"]))
-        for (let p = 0; p < layout.sinkPads.length; p++) {
-            const sinkPad = layout.sinkPads[p];
-            const pad = buildSandboxPad(state, "sink", sinkPad.x, sinkPad.y, { id: `${groupId}:sink:${sinkPad.id ?? p + 1}`, radius: sinkPad.radius, sinkDepth: sinkPad.depth });
-            stampAssemblyGroupMember(pad, groupId, resolved.id, groupField);
-            state.sandboxPads.push(pad);
-        }
-    if (spawnIncludes(spawnSteps, ["pullPads"]))
-        for (let g = 0; g < layout.pullPads.length; g++) {
-            const pullPad = layout.pullPads[g];
-            const pad = buildSandboxPad(state, "pull", pullPad.x, pullPad.y, {
-                id: `${groupId}:pull:${pullPad.id ?? g + 1}`,
-                halfWidth: pullPad.halfWidth,
-                halfHeight: pullPad.halfHeight,
-                forceX: pullPad.forceX,
-                forceY: pullPad.forceY,
-            });
-            stampAssemblyGroupMember(pad, groupId, resolved.id, groupField);
-            state.sandboxPads.push(pad);
-        }
+    const walls = buildAssemblyWallSegments(layout, resolved, { collisionOnly: flatSurface });
+    if (flatSurface) for (let i = 0; i < walls.length; i++) walls[i].collisionOnly = true;
+    for (let i = 0; i < walls.length; i++) stampAssemblyGroupMember(walls[i], groupId, resolved.id, groupField);
+    addSandboxWalls(state, walls, { compileRender: true });
     let defaultPickupId = null;
-    if (spawnIncludes(spawnSteps, ["pickups"])) defaultPickupId = spawnAssemblyPickups(host, layout, resolved, { faction, groupId, rackId, groupField }).defaultPickupId;
+    /** @type {Map<string, number>} */
+    let pickupIdByManifestId = new Map();
+    if (resolved.pickups.length) {
+        const spawned = spawnAssemblyPickups(host, layout, resolved, { faction, groupId, rackId, groupField });
+        defaultPickupId = spawned.defaultPickupId;
+        pickupIdByManifestId = spawned.pickupIdByManifestId;
+    }
+    if (resolved.pads.length) spawnAssemblyPads(state, layout, { groupId, resolvedId: resolved.id, groupField, pickupIdByManifestId });
     const instance = { id: groupId, assemblyId: resolved.id, rackId, defaultPickupId, arenaWidth, arenaHeight, groupField };
     state.sandboxAssemblyInstances.push(instance);
     return { id: groupId, assemblyId: resolved.id, defaultPickupId, centerX, centerY };

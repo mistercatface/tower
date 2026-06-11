@@ -10,7 +10,7 @@ export function getAssemblyManifest(id) {
 }
 /** @param {import("./assemblyManifest.js").AssemblyManifest} manifest */
 export function resolveAssemblyManifest(manifest) {
-    const { arena, props = [], sinkPads = [], pullPads = [], wallSegments = [], arcWallSegments = [], pickups, link, behaviors = {}, spawn = [], label, surfaceProfileId, surfaceAnimation } = manifest;
+    const { arena, pads = [], wallSegments = [], arcWallSegments = [], pickups, link, behaviors = {}, label, surfaceProfileId, surfaceAnimation } = manifest;
     return {
         id: manifest.id,
         label: label ?? manifest.id,
@@ -18,15 +18,12 @@ export function resolveAssemblyManifest(manifest) {
         surfaceAnimation: surfaceAnimation === true,
         version: manifest.version ?? 2,
         arena,
-        props,
-        sinkPads,
-        pullPads,
+        pads,
         wallSegments,
         arcWallSegments,
         pickups,
         groupField: link.groupField,
         behaviors,
-        spawn,
     };
 }
 /** @returns {{ id: string, label: string }[]} */

@@ -40,28 +40,18 @@
  * @property {number} [v]
  */
 /**
- * @typedef {object} AssemblySinkPadManifest
+ * @typedef {object} AssemblyPadManifest
  * @property {string} id
- * @property {number} radius
- * @property {number} depth
- * @property {AssemblyPlacementManifest} placement
- */
-/**
- * @typedef {object} AssemblyPullPadManifest
- * @property {string} id
- * @property {number} width
- * @property {number} height
- * @property {number} [forceX]
- * @property {number} [forceY]
- * @property {AssemblyPlacementManifest} placement
- */
-/**
- * @typedef {object} AssemblyPropButtonManifest
- * @property {AssemblyPlacementManifest} [at] — playfield anchor or u/v
- * @property {number} [u] — playfield horizontal fraction (shorthand for at.u)
- * @property {number} [v] — playfield vertical fraction (shorthand for at.v)
- * @property {string} effect — registered pad effect id (e.g. flipper)
- * @property {number} [radiusU] — button radius as fraction of playfield width
+ * @property {string} preset — sink | gate | pull | button
+ * @property {AssemblyPlacementManifest} at
+ * @property {number} [radius] — sink / gate circle radius
+ * @property {number} [depth] — sink pit depth
+ * @property {number} [width] — pull rect width
+ * @property {number} [height] — pull rect height
+ * @property {number} [forceX] — pull override
+ * @property {number} [forceY] — pull override
+ * @property {string} [target] — button: assembly pickup id to fire at
+ * @property {number} [radiusU] — button: radius as playfield width fraction
  */
 /**
  * @typedef {object} AssemblyPickupManifest
@@ -69,7 +59,6 @@
  * @property {string} prop
  * @property {number} [facing]
  * @property {AssemblyPlacementManifest} at
- * @property {AssemblyPropButtonManifest} [button]
  */
 /**
  * @typedef {object} AssemblyManifest
@@ -79,15 +68,12 @@
  * @property {boolean} [surfaceAnimation]
  * @property {number} [version]
  * @property {AssemblyArenaManifest} [arena]
- * @property {string[]} [props] — prop catalog ids this assembly uses
- * @property {AssemblySinkPadManifest[]} [sinkPads]
- * @property {AssemblyPullPadManifest[]} [pullPads]
+ * @property {AssemblyPadManifest[]} [pads]
  * @property {AssemblyWallSegmentManifest[]} [wallSegments]
  * @property {AssemblyArcWallSegmentManifest[]} [arcWallSegments]
  * @property {AssemblyPickupManifest[]} [pickups]
  * @property {{ groupField: string }} link
  * @property {Record<string, { cueStrike?: object, inputGates?: Record<string, object[]> }>} [behaviors]
- * @property {string[]} [spawn]
  */
 /**
  * @typedef {object} ResolvedAssemblyManifest
@@ -97,14 +83,11 @@
  * @property {boolean} [surfaceAnimation]
  * @property {number} version
  * @property {AssemblyArenaManifest} arena
- * @property {string[]} props
- * @property {AssemblySinkPadManifest[]} sinkPads
- * @property {AssemblyPullPadManifest[]} [pullPads]
+ * @property {AssemblyPadManifest[]} pads
  * @property {AssemblyWallSegmentManifest[]} wallSegments
  * @property {AssemblyArcWallSegmentManifest[]} arcWallSegments
  * @property {AssemblyPickupManifest[]} pickups
  * @property {string} groupField
  * @property {Record<string, { cueStrike?: object, inputGates?: Record<string, object[]> }>} behaviors
- * @property {string[]} spawn
  */
 export {};

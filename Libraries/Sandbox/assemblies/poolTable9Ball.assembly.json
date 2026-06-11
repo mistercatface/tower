@@ -19,25 +19,13 @@
             }
         }
     },
-    "props": [
-        "pool_ball_1",
-        "pool_ball_2",
-        "pool_ball_3",
-        "pool_ball_4",
-        "pool_ball_5",
-        "pool_ball_6",
-        "pool_ball_7",
-        "pool_ball_8",
-        "pool_ball_9",
-        "pool_cue_ball"
-    ],
-    "sinkPads": [
-        { "id": "void-tl", "radius": 4.3, "depth": 6, "placement": { "anchor": "playfield.topLeft" } },
-        { "id": "void-left", "radius": 3.5, "depth": 6, "placement": { "anchor": "playfield.left" } },
-        { "id": "void-tr", "radius": 4.3, "depth": 6, "placement": { "anchor": "playfield.topRight" } },
-        { "id": "void-bl", "radius": 4.3, "depth": 6, "placement": { "anchor": "playfield.bottomLeft" } },
-        { "id": "void-right", "radius": 3.5, "depth": 6, "placement": { "anchor": "playfield.right" } },
-        { "id": "void-br", "radius": 4.3, "depth": 6, "placement": { "anchor": "playfield.bottomRight" } }
+    "pads": [
+        { "id": "void-tl", "preset": "sink", "radius": 4.3, "depth": 6, "at": { "anchor": "playfield.topLeft" } },
+        { "id": "void-left", "preset": "sink", "radius": 3.5, "depth": 6, "at": { "anchor": "playfield.left" } },
+        { "id": "void-tr", "preset": "sink", "radius": 4.3, "depth": 6, "at": { "anchor": "playfield.topRight" } },
+        { "id": "void-bl", "preset": "sink", "radius": 4.3, "depth": 6, "at": { "anchor": "playfield.bottomLeft" } },
+        { "id": "void-right", "preset": "sink", "radius": 3.5, "depth": 6, "at": { "anchor": "playfield.right" } },
+        { "id": "void-br", "preset": "sink", "radius": 4.3, "depth": 6, "at": { "anchor": "playfield.bottomRight" } }
     ],
     "pickups": [
         { "id": "cue", "prop": "pool_cue_ball", "at": { "u": 0.5, "v": 0.75 } },
@@ -74,6 +62,5 @@
                 ]
             }
         }
-    },
-    "spawn": ["arena.clear", "arena.walls", "sinkPads", "pickups"]
+    }
 }

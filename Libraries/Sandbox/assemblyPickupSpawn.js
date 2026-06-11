@@ -4,37 +4,10 @@ import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { resolvePlacement } from "./assemblies/assemblyPlacement.js";
 import { stampAssemblyGroupMember } from "./assemblies/assemblyLink.js";
 import { applyFlipperAssemblyScale } from "./behaviors/flipperBehavior.js";
-import { buildSandboxPad } from "./sandboxPads.js";
-/** @param {import("./assemblies/assemblyManifest.js").ResolvedAssemblyManifest} resolved @param {string} propId */
-function assemblyAllowsProp(resolved, propId) {
-    if (!resolved.props.length) return true;
-    return resolved.props.includes(propId);
-}
-/** @param {import("./assemblies/assemblyManifest.js").ResolvedAssemblyManifest} resolved */
-export function validateAssemblyPickupManifest(resolved) {
-    for (let i = 0; i < resolved.pickups.length; i++) {
-        const entry = resolved.pickups[i];
-        if (!assemblyAllowsProp(resolved, entry.prop) || !getPropAsset(entry.prop)) return false;
-    }
+/** @param {import("./assemblies/assemblyManifest.js").AssemblyPickupManifest[]} pickups */
+export function validateAssemblyPickupManifest(pickups) {
+    for (let i = 0; i < pickups.length; i++) if (!getPropAsset(pickups[i].prop)) return false;
     return true;
-}
-/**
- * @param {object} state
- * @param {ReturnType<typeof import("./assemblyLayout.js").buildAssemblyLayout>} layout
- * @param {object} pickup
- * @param {import("./assemblies/assemblyManifest.js").AssemblyPickupManifest["button"]} config
- * @param {{ groupId: string, resolvedId: string, groupField: string }} ctx
- */
-function spawnAssemblyButtonPad(state, layout, pickup, config, ctx) {
-    const play = layout.play;
-    const playW = play.maxX - play.minX;
-    const placement = config.at ?? { u: config.u, v: config.v };
-    const at = resolvePlacement(play, placement);
-    const radius = (config.radiusU ?? 0.045) * playW;
-    const effect = config.effect ?? "flipper";
-    const pad = buildSandboxPad(state, "button", at.x, at.y, { id: `${pickup.id}:button`, radius, targetPickupId: pickup.id, triggers: [{ when: "pointerDown", effect, targetPickupId: pickup.id }] });
-    stampAssemblyGroupMember(pad, ctx.groupId, ctx.resolvedId, ctx.groupField);
-    state.sandboxPads.push(pad);
 }
 /**
  * @param {object} pickup
@@ -42,12 +15,9 @@ function spawnAssemblyButtonPad(state, layout, pickup, config, ctx) {
  * @param {import("./assemblies/assemblyManifest.js").AssemblyPickupManifest} entry
  * @param {import("./assemblies/assemblyManifest.js").ResolvedAssemblyManifest} resolved
  * @param {object} asset
- * @param {object} state
- * @param {{ groupId: string, rackId: string, groupField: string }} ctx
  */
-function configureAssemblyPickup(pickup, layout, entry, resolved, asset, state, ctx) {
+function configureAssemblyPickup(pickup, layout, entry, resolved, asset) {
     if (asset.flipper) applyFlipperAssemblyScale(pickup, layout, asset);
-    if (entry.button) spawnAssemblyButtonPad(state, layout, pickup, entry.button, { groupId: ctx.groupId, resolvedId: resolved.id, groupField: ctx.groupField });
     const overrides = resolved.behaviors[entry.prop];
     if (overrides) pickup.sandboxBehaviorOverrides = overrides;
 }
@@ -64,7 +34,8 @@ function resolveDefaultPickupId(entry, pickupId, resolved) {
  * @param {{ faction?: string, groupId: string, rackId: string, groupField: string }} ctx
  */
 export function spawnAssemblyPickups(host, layout, resolved, ctx) {
-    const state = host.getWorldState();
+    /** @type {Map<string, number>} */
+    const pickupIdByManifestId = new Map();
     /** @type {string | null} */
     let defaultPickupId = null;
     for (let i = 0; i < resolved.pickups.length; i++) {
@@ -75,11 +46,12 @@ export function spawnAssemblyPickups(host, layout, resolved, ctx) {
         pickup.faction = ctx.faction;
         pickup.assemblyRackId = ctx.rackId;
         stampAssemblyGroupMember(pickup, ctx.groupId, resolved.id, ctx.groupField);
-        configureAssemblyPickup(pickup, layout, entry, resolved, asset, state, ctx);
+        configureAssemblyPickup(pickup, layout, entry, resolved, asset);
         wakePushableBody(pickup);
         host.addPickup(pickup);
+        if (entry.id) pickupIdByManifestId.set(entry.id, pickup.id);
         const pickId = resolveDefaultPickupId(entry, pickup.id, resolved);
         if (pickId != null) defaultPickupId = pickId;
     }
-    return { defaultPickupId };
+    return { defaultPickupId, pickupIdByManifestId };
 }

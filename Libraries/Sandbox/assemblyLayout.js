@@ -3,20 +3,28 @@ import { Segment } from "../../Entities/Wall.js";
 import { resolvePlacement } from "./assemblies/assemblyPlacement.js";
 /** @typedef {import("./assemblies/assemblyManifest.js").ResolvedAssemblyManifest} ResolvedAssemblyManifest */
 /**
- * @param {import("./assemblies/assemblyManifest.js").AssemblySinkPadManifest[]} sinkPads
+ * @param {import("./assemblies/assemblyManifest.js").AssemblyPadManifest[]} pads
  * @param {ReturnType<typeof getPlayfieldBounds>} play
  */
-function resolveSinkPads(sinkPads, play) {
-    return sinkPads.map((entry) => {
-        const point = resolvePlacement(play, entry.placement);
-        return { id: entry.id, x: point.x, y: point.y, radius: entry.radius, depth: entry.depth };
-    });
-}
-/** @param {import("./assemblies/assemblyManifest.js").AssemblyPullPadManifest[]} pullPads @param {ReturnType<typeof getPlayfieldBounds>} play */
-function resolvePullPads(pullPads, play) {
-    return pullPads.map((entry) => {
-        const point = resolvePlacement(play, entry.placement);
-        return { id: entry.id, x: point.x, y: point.y, halfWidth: entry.width / 2, halfHeight: entry.height / 2, forceX: entry.forceX, forceY: entry.forceY };
+function resolveAssemblyPads(pads, play) {
+    const playW = play.maxX - play.minX;
+    return pads.map((entry) => {
+        const point = resolvePlacement(play, entry.at);
+        /** @type {object} */
+        const resolved = { id: entry.id, preset: entry.preset, x: point.x, y: point.y };
+        if (entry.preset === "sink") {
+            resolved.radius = entry.radius;
+            resolved.sinkDepth = entry.depth;
+        } else if (entry.preset === "pull") {
+            resolved.halfWidth = entry.width / 2;
+            resolved.halfHeight = entry.height / 2;
+            resolved.forceX = entry.forceX;
+            resolved.forceY = entry.forceY;
+        } else if (entry.preset === "button") {
+            resolved.radius = (entry.radiusU ?? 0.045) * playW;
+            resolved.target = entry.target;
+        }
+        return resolved;
     });
 }
 /** @param {number} offsetX @param {number} offsetY @param {number} width @param {number} height */
@@ -149,18 +157,11 @@ function buildPlayfieldArcWallSegments(arcs, walls, wallHeight) {
  * @param {ResolvedAssemblyManifest} resolved
  */
 export function buildAssemblyLayout(centerX, centerY, resolved) {
-    const { arena, sinkPads, pullPads, wallSegments, arcWallSegments } = resolved;
+    const { arena, pads, wallSegments, arcWallSegments } = resolved;
     const { offsetX, offsetY } = snapLayoutOrigin(centerX, centerY, arena.width, arena.height, 1);
     const bounds = getArenaWorldBounds(offsetX, offsetY, arena.width, arena.height);
     const play = getPlayfieldBounds(bounds, arena.walls.width);
-    return {
-        bounds,
-        play,
-        sinkPads: resolveSinkPads(sinkPads, play),
-        pullPads: resolvePullPads(pullPads, play),
-        wallSegments: resolveWallSegments(wallSegments, play),
-        arcWallSegments: resolveArcWallSegments(arcWallSegments, play),
-    };
+    return { bounds, play, pads: resolveAssemblyPads(pads, play), wallSegments: resolveWallSegments(wallSegments, play), arcWallSegments: resolveArcWallSegments(arcWallSegments, play) };
 }
 /** @returns {{ minX: number, minY: number, maxX: number, maxY: number }[]} */
 export function getAssemblyRailBandBounds(layout) {
