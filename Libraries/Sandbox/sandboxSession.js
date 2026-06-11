@@ -3,7 +3,18 @@ import { getPropAsset } from "../Props/PropCatalog.js";
 import { SANDBOX_DEFAULT_FACTION, resolveSandboxFaction } from "../Combat/sandboxTargeting.js";
 import { spawnAssembly, deleteAssemblyInstance, clearAssemblyInstances } from "./spawnAssembly.js";
 import { getResolvedAssembly, listAssemblyManifests } from "./assemblies/assemblyRegistry.js";
-import { clearSandboxPads, deleteSandboxPad, isSandboxSpawnPadId, listSandboxPads, parseSandboxPadPreset, spawnSandboxPad } from "./sandboxPads.js";
+import {
+    clearSandboxPads,
+    deleteSandboxPad,
+    getSandboxPad,
+    getSandboxPadEditorState,
+    isSandboxSpawnPadId,
+    listSandboxPads,
+    parseSandboxPadPreset,
+    patchSandboxPad,
+    spawnSandboxPad,
+} from "./sandboxPads.js";
+import { PAD_PRESETS } from "./padPresets.js";
 /** @typedef {import("./SandboxHostPort.js").SandboxHostPort} SandboxHostPort */
 export { SANDBOX_SPAWN_PAD_PREFIX, isSandboxSpawnPadId, parseSandboxPadPreset, sandboxSpawnPadId } from "./sandboxPads.js";
 export const SANDBOX_SPAWN_ASSEMBLY_PREFIX = "assembly:";
@@ -22,8 +33,12 @@ export function isSandboxSpawnPropId(spawnId) {
 export function createSandboxSession(host, { defaultSpawnPropId }) {
     let spawnPropId = defaultSpawnPropId;
     let spawnFaction = SANDBOX_DEFAULT_FACTION;
+    let spawnPullWidth = PAD_PRESETS.pull.halfWidth * 2;
+    let spawnPullHeight = PAD_PRESETS.pull.halfHeight * 2;
     /** @type {number | null} */
     let selectedPickupId = null;
+    /** @type {string | null} */
+    let selectedPadId = null;
     /** @type {(() => void) | null} */
     let uiSync = null;
     const sync = () => {
@@ -55,11 +70,39 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
         setSpawnFaction: (faction) => {
             spawnFaction = faction;
         },
+        getSpawnPullSize: () => ({ width: spawnPullWidth, height: spawnPullHeight }),
+        setSpawnPullSize: (width, height) => {
+            spawnPullWidth = width;
+            spawnPullHeight = height;
+        },
         getSelectedPickupId: () => selectedPickupId,
         setSelectedPickupId: (id) => {
             selectedPickupId = id;
+            selectedPadId = null;
             sync();
         },
+        getSelectedPadId: () => selectedPadId,
+        setSelectedPadId: (id) => {
+            selectedPadId = id;
+            selectedPickupId = null;
+            sync();
+        },
+        getSelectedPad: () => {
+            if (selectedPadId == null) return null;
+            const pad = getSandboxPad(host.getWorldState(), selectedPadId);
+            if (!pad || pad.sandboxGroupId) {
+                selectedPadId = null;
+                return null;
+            }
+            return getSandboxPadEditorState(pad);
+        },
+        patchSelectedPad: (patch) => {
+            if (selectedPadId == null) return false;
+            const ok = patchSandboxPad(host.getWorldState(), selectedPadId, patch);
+            if (ok) sync();
+            return ok;
+        },
+        listPadTargetPickups: () => host.getPickups().map((pickup) => ({ id: pickup.id, label: `${(pickup.type ?? "prop").replace(/_/g, " ")} · #${pickup.id}` })),
         getSelectedPickup: () => {
             pruneSelection();
             return host.getPickups().find((p) => p.id === selectedPickupId) ?? null;
@@ -69,7 +112,16 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
         spawnAtCameraOrigin() {
             const origin = host.getCameraOrigin();
             if (isSandboxSpawnPadId(spawnPropId)) {
-                spawnSandboxPad(host, parseSandboxPadPreset(spawnPropId), origin.x, origin.y);
+                const preset = parseSandboxPadPreset(spawnPropId);
+                /** @type {{ halfWidth?: number, halfHeight?: number }} */
+                const options = {};
+                if (preset === "pull") {
+                    options.halfWidth = spawnPullWidth / 2;
+                    options.halfHeight = spawnPullHeight / 2;
+                }
+                const pad = spawnSandboxPad(host, preset, origin.x, origin.y, options);
+                selectedPadId = pad.id;
+                selectedPickupId = null;
                 sync();
                 return null;
             }
@@ -101,6 +153,7 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
         },
         deleteSandboxPadById(id) {
             deleteSandboxPad(host.getWorldState(), id);
+            if (selectedPadId === id) selectedPadId = null;
             sync();
         },
         listSandboxPads: () => listSandboxPads(host.getWorldState()),
@@ -131,6 +184,7 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
             clearAssemblyInstances(host.getWorldState());
             clearSandboxPads(host.getWorldState());
             selectedPickupId = null;
+            selectedPadId = null;
             sync();
         },
         setUiSync(fn) {

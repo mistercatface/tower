@@ -1,9 +1,10 @@
 import { getPropAsset, getWorldPropDefinitions } from "../Props/PropCatalog.js";
 import { SANDBOX_DEFAULT_FACTION, SANDBOX_FACTION_OPTIONS, formatSandboxFactionLabel, resolveSandboxFaction } from "../Combat/sandboxTargeting.js";
 import { getSandboxBehaviorLabel, isSandboxEquippable, isSandboxSpawnable } from "./sandboxCapabilities.js";
+import { PAD_PRESETS } from "./padPresets.js";
 import { renderSandboxEquipPanel } from "./sandboxEquipPanel.js";
 import { SANDBOX_PATH_VISUAL_LABELS, SANDBOX_PATH_VISUAL_OPTIONS } from "./sandboxPathVisual.js";
-import { sandboxSpawnAssemblyId, sandboxSpawnPadId } from "./sandboxSession.js";
+import { sandboxSpawnAssemblyId, sandboxSpawnPadId, isSandboxSpawnPadId, isSandboxSpawnPropId, parseSandboxPadPreset } from "./sandboxSession.js";
 function readOpenSections(root) {
     const open = new Set();
     for (const el of root.querySelectorAll("details[data-sandbox-section]")) if (el.open) open.add(el.dataset.sandboxSection);
@@ -48,6 +49,32 @@ function appendSelectField(parent, labelText, { value, options, onChange }) {
     parent.appendChild(field);
     return select;
 }
+/** @param {HTMLElement} parent @param {string} labelText @param {{ value: number, step?: number, min?: number, onChange: (value: number) => void }} opts */
+function appendNumberField(parent, labelText, { value, step = 1, min, onChange }) {
+    const field = document.createElement("div");
+    field.className = "param-field";
+    const label = document.createElement("span");
+    label.textContent = labelText;
+    const input = document.createElement("input");
+    input.type = "number";
+    input.step = String(step);
+    if (min != null) input.min = String(min);
+    input.value = String(value);
+    const valueSpan = document.createElement("span");
+    valueSpan.className = "param-value";
+    valueSpan.textContent = String(value);
+    input.addEventListener("change", () => {
+        const next = Number(input.value);
+        if (!Number.isFinite(next)) {
+            input.value = String(value);
+            return;
+        }
+        onChange(next);
+        valueSpan.textContent = String(next);
+    });
+    field.append(label, input, valueSpan);
+    parent.appendChild(field);
+}
 /**
  * @param {HTMLElement} parent
  * @param {Array<{ label: string, selected?: boolean, onSelect?: () => void, onDelete: () => void }>} entries
@@ -91,8 +118,22 @@ function appendEntityList(parent, entries, emptyText) {
         }
     parent.appendChild(list);
 }
+function appendPullPadFields(parent, { width, height, forceX, forceY, showForce, onChange }) {
+    appendNumberField(parent, "Width", { value: width, step: 1, min: 1, onChange: (nextWidth) => onChange({ width: nextWidth, height, forceX, forceY }) });
+    appendNumberField(parent, "Height", { value: height, step: 1, min: 1, onChange: (nextHeight) => onChange({ width, height: nextHeight, forceX, forceY }) });
+    if (showForce) {
+        appendNumberField(parent, "Force X", { value: forceX, step: 50, onChange: (nextForceX) => onChange({ width, height, forceX: nextForceX, forceY }) });
+        appendNumberField(parent, "Force Y", { value: forceY, step: 50, onChange: (nextForceY) => onChange({ width, height, forceX, forceY: nextForceY }) });
+    }
+}
 function appendFactionSelect(parent, { value, onChange }) {
     appendSelectField(parent, "Team", { value: value ?? SANDBOX_DEFAULT_FACTION, options: SANDBOX_FACTION_OPTIONS.map((option) => ({ value: option.id, label: option.label })), onChange });
+}
+/** @param {{ id: string, preset: string, label: string, radius?: number, sinkDepth?: number, halfWidth?: number, halfHeight?: number, targetPickupId?: number }} entry */
+function formatPadListLabel(entry) {
+    if (entry.preset === "pull" && entry.halfWidth != null && entry.halfHeight != null) return `${entry.label} · ${Math.round(entry.halfWidth * 2)}×${Math.round(entry.halfHeight * 2)}`;
+    if (entry.radius != null) return `${entry.label} · r${Math.round(entry.radius * 10) / 10}`;
+    return entry.label;
 }
 /**
  * @param {string[]} propIds
@@ -101,14 +142,50 @@ function appendFactionSelect(parent, { value, onChange }) {
 function buildSpawnOptions(propIds, assemblyManifests) {
     /** @type {{ value: string, label: string }[]} */
     const options = propIds.map((id) => ({ value: id, label: id.replace(/_/g, " ") }));
+    for (const preset of Object.keys(PAD_PRESETS)) options.push({ value: sandboxSpawnPadId(preset), label: PAD_PRESETS[preset].listLabel });
     const assemblies = [...assemblyManifests].sort((a, b) => a.label.localeCompare(b.label));
-    for (const manifest of assemblies) {
-        if (manifest.label.toLowerCase().includes("pinball")) options.push({ value: sandboxSpawnPadId("sink"), label: "Void pit" });
-        options.push({ value: sandboxSpawnAssemblyId(manifest.id), label: manifest.label });
-    }
-    if (!options.some((option) => option.value === sandboxSpawnPadId("sink"))) options.push({ value: sandboxSpawnPadId("sink"), label: "Void pit" });
-    options.push({ value: sandboxSpawnPadId("gate"), label: "Pressure pad" });
+    for (const manifest of assemblies) options.push({ value: sandboxSpawnAssemblyId(manifest.id), label: manifest.label });
     return options;
+}
+/**
+ * @param {HTMLElement} body
+ * @param {ReturnType<import("./createSandboxController.js").createSandboxController>} controller
+ * @param {() => void} onChange
+ */
+function renderSelectedPadInspector(body, controller, onChange) {
+    const pad = controller.getSelectedPad();
+    if (!pad) return false;
+    const presetLabel = document.createElement("p");
+    presetLabel.className = "editor-hint";
+    presetLabel.textContent = `${pad.label} (${pad.preset})`;
+    body.appendChild(presetLabel);
+    const patch = (fields) => {
+        controller.patchSelectedPad(fields);
+        onChange();
+    };
+    if (pad.preset === "sink") {
+        appendNumberField(body, "Radius", { value: pad.radius, step: 0.5, min: 0.5, onChange: (radius) => patch({ radius }) });
+        appendNumberField(body, "Depth", { value: pad.sinkDepth, step: 1, min: 1, onChange: (sinkDepth) => patch({ sinkDepth }) });
+    } else if (pad.preset === "gate") appendNumberField(body, "Radius", { value: pad.radius, step: 0.5, min: 0.5, onChange: (radius) => patch({ radius }) });
+    else if (pad.preset === "pull")
+        appendPullPadFields(body, {
+            width: pad.halfWidth * 2,
+            height: pad.halfHeight * 2,
+            forceX: pad.forceX,
+            forceY: pad.forceY,
+            showForce: true,
+            onChange: ({ width, height, forceX, forceY }) => patch({ halfWidth: width / 2, halfHeight: height / 2, forceX, forceY }),
+        });
+    else if (pad.preset === "button") {
+        appendNumberField(body, "Radius", { value: pad.radius, step: 0.5, min: 0.5, onChange: (radius) => patch({ radius }) });
+        const targets = controller.listPadTargetPickups();
+        appendSelectField(body, "Target", {
+            value: pad.targetPickupId != null ? String(pad.targetPickupId) : "",
+            options: [{ value: "", label: "— none —" }, ...targets.map((entry) => ({ value: String(entry.id), label: entry.label }))],
+            onChange: (value) => patch({ targetPickupId: value ? Number(value) : null }),
+        });
+    }
+    return true;
 }
 /**
  * @param {HTMLElement} container
@@ -131,10 +208,10 @@ export function mountSandboxToyUi(container, controller, onChange) {
         }
         const sectionOpen = (id, fallback = true) => {
             if (openSections.size > 0) return openSections.has(id);
-            if (id === "selected") return !!controller.getSelectedPickup();
             return isFirstRender ? fallback : openSections.has(id);
         };
         const selectedId = controller.getSelectedPickupId();
+        const selectedPadId = controller.getSelectedPadId();
         const selectedPickup = controller.getSelectedPickup();
         appendSection(container, "spawn", "Spawn", sectionOpen("spawn"), (body) => {
             const addRow = document.createElement("div");
@@ -152,15 +229,29 @@ export function mountSandboxToyUi(container, controller, onChange) {
                     onChange();
                 },
             });
-            appendFactionSelect(addRow, {
-                value: controller.getSpawnFaction(),
-                onChange: (faction) => {
-                    controller.setSpawnFaction(faction);
-                    onChange();
-                },
-            });
+            if (isSandboxSpawnPadId(spawnId) && parseSandboxPadPreset(spawnId) === "pull") {
+                const pullSize = controller.getSpawnPullSize();
+                appendPullPadFields(addRow, {
+                    width: pullSize.width,
+                    height: pullSize.height,
+                    forceX: PAD_PRESETS.pull.triggers[0].forceX,
+                    forceY: PAD_PRESETS.pull.triggers[0].forceY,
+                    showForce: false,
+                    onChange: ({ width, height }) => {
+                        controller.setSpawnPullSize(width, height);
+                    },
+                });
+            }
+            if (isSandboxSpawnPropId(spawnId))
+                appendFactionSelect(addRow, {
+                    value: controller.getSpawnFaction(),
+                    onChange: (faction) => {
+                        controller.setSpawnFaction(faction);
+                        onChange();
+                    },
+                });
             const spawnBehaviorIds = controller.listSpawnBehaviors();
-            if (spawnBehaviorIds.length > 0)
+            if (isSandboxSpawnPropId(spawnId) && spawnBehaviorIds.length > 0)
                 appendSelectField(addRow, "Mode", {
                     value: controller.getSpawnBehaviorId(),
                     options: spawnBehaviorIds.map((behaviorId) => ({ value: behaviorId, label: getSandboxBehaviorLabel(behaviorId) })),
@@ -192,14 +283,17 @@ export function mountSandboxToyUi(container, controller, onChange) {
                 })),
                 "No pickups placed yet.",
             );
-            if (sandboxPads.length > 0) {
-                appendSubhead(body, "Pads");
-                appendEntityList(
-                    body,
-                    sandboxPads.map((entry) => ({ label: entry.radius != null ? `${entry.label} · r${entry.radius}` : entry.label, onDelete: () => controller.deleteSandboxPadById(entry.id) })),
-                    "",
-                );
-            }
+            appendSubhead(body, "Pads");
+            appendEntityList(
+                body,
+                sandboxPads.map((entry) => ({
+                    label: formatPadListLabel(entry),
+                    selected: entry.id === selectedPadId,
+                    onSelect: () => controller.setSelectedPadId(entry.id),
+                    onDelete: () => controller.deleteSandboxPadById(entry.id),
+                })),
+                "No pads placed yet.",
+            );
             if (assemblies.length > 0) {
                 appendSubhead(body, "Assemblies");
                 appendEntityList(
@@ -217,10 +311,11 @@ export function mountSandboxToyUi(container, controller, onChange) {
             }
         });
         appendSection(container, "selected", "Selected", sectionOpen("selected", true), (body) => {
+            if (renderSelectedPadInspector(body, controller, onChange)) return;
             if (!selectedPickup) {
                 const empty = document.createElement("p");
                 empty.className = "editor-hint";
-                empty.textContent = "Select a pickup from Scene.";
+                empty.textContent = "Select a pickup or pad from Scene.";
                 body.appendChild(empty);
                 return;
             }

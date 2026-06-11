@@ -165,6 +165,11 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
         },
         getSpawnFaction: () => session.getSpawnFaction(),
         setSpawnFaction: (faction) => session.setSpawnFaction(faction),
+        getSpawnPullSize: () => session.getSpawnPullSize(),
+        setSpawnPullSize: (width, height) => {
+            session.setSpawnPullSize(width, height);
+            session.sync();
+        },
         getSelectedPickupId: () => session.getSelectedPickupId(),
         getSelectedPickup: () => session.getSelectedPickup(),
         setSelectedPickupId: (id) => {
@@ -175,6 +180,11 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
                 if (allowed.length > 0) pickup.sandboxActiveBehaviorId = allowed[0];
             }
         },
+        getSelectedPadId: () => session.getSelectedPadId(),
+        setSelectedPadId: (id) => session.setSelectedPadId(id),
+        getSelectedPad: () => session.getSelectedPad(),
+        patchSelectedPad: (patch) => session.patchSelectedPad(patch),
+        listPadTargetPickups: () => session.listPadTargetPickups(),
         spawnAtCameraOrigin: () => {
             session.spawnAtCameraOrigin();
             stampPickupBehavior(session.getSelectedPickup());

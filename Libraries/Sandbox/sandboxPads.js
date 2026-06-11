@@ -1,4 +1,5 @@
 import { createCircleFloorShape, createRectFloorShape, drawFloorShape, isAabbInView, processFloorShapes } from "../Spatial/zones/floorShapes.js";
+import { PolygonShape } from "../Spatial/collision/Shapes.js";
 import { drawPit, syncSinkPadAabb } from "../Spatial/zones/pit.js";
 import { NEIGHBOR_QUERY_PAD } from "../Spatial/collision/entityBroadphase.js";
 import { PAD_PRESETS } from "./padPresets.js";
@@ -83,7 +84,14 @@ export function buildSandboxPad(state, preset, x, y, options = {}) {
     const id = options.id ?? `${preset}:${state.sandboxPads.length + 1}`;
     /** @type {object} */
     let pad;
-    if (options.halfWidth != null && options.halfHeight != null) {
+    if (preset === "pull") {
+        const defHalfWidth = def.halfWidth;
+        const defHalfHeight = def.halfHeight;
+        const halfWidth = options.halfWidth ?? defHalfWidth;
+        const halfHeight = options.halfHeight ?? defHalfHeight;
+        pad = createRectFloorShape(x, y, halfWidth, halfHeight, { id });
+        syncRectPadAabb(pad, halfWidth, halfHeight);
+    } else if (options.halfWidth != null && options.halfHeight != null) {
         pad = createRectFloorShape(x, y, options.halfWidth, options.halfHeight, { id });
         syncRectPadAabb(pad, options.halfWidth, options.halfHeight);
     } else {
@@ -135,6 +143,103 @@ export function deleteSandboxPad(state, id) {
 export function clearSandboxPads(state) {
     for (let i = state.sandboxPads.length - 1; i >= 0; i--) removeSandboxPadAt(state, i);
 }
+/** @param {object} state @param {string} id */
+export function getSandboxPad(state, id) {
+    return state.sandboxPads.find((pad) => pad.id === id) ?? null;
+}
+/** @param {object} pad @param {number} halfWidth @param {number} halfHeight */
+function ensurePullRectShape(pad, halfWidth, halfHeight) {
+    if (pad.shape.type === "Polygon") {
+        resizeRectPad(pad, halfWidth, halfHeight);
+        return;
+    }
+    pad.shape = new PolygonShape([
+        { x: -halfWidth, y: -halfHeight },
+        { x: halfWidth, y: -halfHeight },
+        { x: halfWidth, y: halfHeight },
+        { x: -halfWidth, y: halfHeight },
+    ]);
+    syncRectPadAabb(pad, halfWidth, halfHeight);
+}
+/** @param {object} pad */
+function readPullHalfExtents(pad) {
+    if (pad.shape.type === "Polygon") return { halfWidth: Math.abs(pad.shape.vertices[0].x), halfHeight: Math.abs(pad.shape.vertices[0].y) };
+    const def = PAD_PRESETS.pull;
+    return { halfWidth: def.halfWidth, halfHeight: def.halfHeight };
+}
+/** @param {object} pad */
+export function getSandboxPadEditorState(pad) {
+    /** @type {Record<string, number | string | null | undefined>} */
+    const snapshot = { id: pad.id, preset: pad.preset, label: PAD_PRESETS[pad.preset].listLabel };
+    if (pad.shape.type === "Circle") snapshot.radius = pad.shape.radius;
+    if (pad.preset === "sink") snapshot.sinkDepth = pad.sinkDepth;
+    if (pad.preset === "pull") {
+        const { halfWidth, halfHeight } = readPullHalfExtents(pad);
+        snapshot.halfWidth = halfWidth;
+        snapshot.halfHeight = halfHeight;
+        const trigger = pad.triggers[0];
+        snapshot.forceX = trigger.forceX;
+        snapshot.forceY = trigger.forceY;
+    }
+    if (pad.preset === "button") snapshot.targetPickupId = pad.targetPickupId ?? null;
+    return snapshot;
+}
+/** @param {object} pad @param {number} halfWidth @param {number} halfHeight */
+function resizeRectPad(pad, halfWidth, halfHeight) {
+    pad.shape.vertices = [
+        { x: -halfWidth, y: -halfHeight },
+        { x: halfWidth, y: -halfHeight },
+        { x: halfWidth, y: halfHeight },
+        { x: -halfWidth, y: halfHeight },
+    ];
+    pad.shape.normals = pad.shape._computeNormals();
+    pad.shape.boundingRadius = pad.shape._computeBoundingRadius();
+    syncRectPadAabb(pad, halfWidth, halfHeight);
+}
+/** @param {object} pad @param {number} radius @param {string} preset */
+function resizeCirclePad(pad, radius, preset) {
+    pad.shape.radius = radius;
+    if (preset === "sink") syncSinkPadAabb(pad, radius);
+    else {
+        const margin = NEIGHBOR_QUERY_PAD;
+        pad.aabb = { minX: pad.x - radius - margin, minY: pad.y - radius - margin, maxX: pad.x + radius + margin, maxY: pad.y + radius + margin };
+    }
+}
+/**
+ * @param {object} state
+ * @param {string} id
+ * @param {{
+ *   radius?: number,
+ *   sinkDepth?: number,
+ *   halfWidth?: number,
+ *   halfHeight?: number,
+ *   forceX?: number,
+ *   forceY?: number,
+ *   targetPickupId?: number | null,
+ * }} patch
+ */
+export function patchSandboxPad(state, id, patch) {
+    const pad = getSandboxPad(state, id);
+    if (!pad || pad.sandboxGroupId) return false;
+    if (pad.preset === "sink") {
+        if (patch.radius != null) resizeCirclePad(pad, patch.radius, pad.preset);
+        if (patch.sinkDepth != null) pad.sinkDepth = patch.sinkDepth;
+    } else if (pad.preset === "gate") {
+        if (patch.radius != null) resizeCirclePad(pad, patch.radius, pad.preset);
+    } else if (pad.preset === "pull") {
+        const current = readPullHalfExtents(pad);
+        const halfWidth = patch.halfWidth ?? current.halfWidth;
+        const halfHeight = patch.halfHeight ?? current.halfHeight;
+        if (patch.halfWidth != null || patch.halfHeight != null || pad.shape.type !== "Polygon") ensurePullRectShape(pad, halfWidth, halfHeight);
+        const trigger = pad.triggers[0];
+        if (patch.forceX != null) trigger.forceX = patch.forceX;
+        if (patch.forceY != null) trigger.forceY = patch.forceY;
+    } else if (pad.preset === "button") {
+        if (patch.radius != null) resizeCirclePad(pad, patch.radius, pad.preset);
+        if (patch.targetPickupId !== undefined) pad.targetPickupId = patch.targetPickupId;
+    }
+    return true;
+}
 /** @param {object} state */
 export function listSandboxPads(state) {
     const counts = {};
@@ -143,7 +248,18 @@ export function listSandboxPads(state) {
         .map((pad) => {
             counts[pad.preset] = (counts[pad.preset] ?? 0) + 1;
             const n = counts[pad.preset];
-            return { id: pad.id, preset: pad.preset, label: `${PAD_PRESETS[pad.preset].listLabel} #${n}`, radius: pad.shape.radius };
+            const entry = { id: pad.id, preset: pad.preset, label: `${PAD_PRESETS[pad.preset].listLabel} #${n}` };
+            const snapshot = getSandboxPadEditorState(pad);
+            if (snapshot.radius != null) entry.radius = snapshot.radius;
+            if (snapshot.sinkDepth != null) entry.sinkDepth = snapshot.sinkDepth;
+            if (snapshot.halfWidth != null) {
+                entry.halfWidth = snapshot.halfWidth;
+                entry.halfHeight = snapshot.halfHeight;
+                entry.forceX = snapshot.forceX;
+                entry.forceY = snapshot.forceY;
+            }
+            if (snapshot.targetPickupId != null) entry.targetPickupId = snapshot.targetPickupId;
+            return entry;
         });
 }
 /** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {boolean} pressed @param {number} radius */
@@ -186,7 +302,7 @@ export function drawPad(ctx, pad, viewport, state) {
         return;
     }
     if (style === "pull") {
-        drawFloorShape(ctx, pad, { fill: "rgba(255, 100, 100, 0.05)", stroke: "rgba(255, 100, 100, 0.2)", lineWidth: 1 });
+        drawFloorShape(ctx, pad, { fill: "rgba(255, 100, 100, 0.22)", stroke: "rgba(255, 80, 80, 0.9)", lineWidth: 2 });
         return;
     }
     if (style === "button") {

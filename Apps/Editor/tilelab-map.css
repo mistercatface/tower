@@ -27,6 +27,23 @@
     margin-bottom: 0;
 }
 
+.sandbox-panel-body .param-field input[type="number"] {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 4px 6px;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 11px;
+}
+
+.sandbox-panel-body .param-field input[type="number"]:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
 .sandbox-add-row > button {
     align-self: flex-start;
 }
