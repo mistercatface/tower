@@ -2,7 +2,7 @@ import { getPropAsset } from "../Props/PropCatalog.js";
 import { bindCanvasPointers, releasePointerCapture } from "./bindCanvasPointers.js";
 import { findPickupAt } from "./findPickupAt.js";
 import { createSandboxSession, SANDBOX_SPAWN_ASSEMBLY_PREFIX, sandboxSpawnAssemblyId } from "./sandboxSession.js";
-import { isSandboxSpawnPadId } from "./sandboxPads.js";
+import { handlePadPointerDown, hitTestPad, isSandboxSpawnPadId } from "./sandboxPads.js";
 import { resolveSandboxBehaviors } from "./sandboxCapabilities.js";
 import { drawSandboxLaserSights } from "./drawLaserSights.js";
 import { drawActivePathOverlay } from "../Render/map/drawActivePathOverlay.js";
@@ -104,6 +104,13 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
             return;
         }
         if (e.button !== 0) return;
+        const pad = hitTestPad(host.getWorldState(), world.x, world.y);
+        if (pad && handlePadPointerDown(host.getWorldState(), pad, world)) {
+            e.preventDefault();
+            e.stopPropagation();
+            session.sync();
+            return;
+        }
         if (tryCanvasInput(world, e)) {
             e.preventDefault();
             e.stopPropagation();

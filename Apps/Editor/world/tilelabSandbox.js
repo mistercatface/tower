@@ -13,8 +13,7 @@ import {
     DRAG_LAUNCH_BEHAVIOR_ID,
     mountSandboxToyUi,
 } from "../../../Libraries/Sandbox/index.js";
-import { createFlipperBehavior, isFlipperButtonPressed, triggerFlipper } from "../../../Libraries/Sandbox/behaviors/flipperBehavior.js";
-import { createPropButtonBehavior } from "../../../Libraries/Sandbox/behaviors/propButtonBehavior.js";
+import { createFlipperBehavior } from "../../../Libraries/Sandbox/behaviors/flipperBehavior.js";
 /** @param {import("../state.js").TileLabGameState} state @param {() => void} requestRedraw */
 function createSandboxHost(state, requestRedraw) {
     return {
@@ -52,7 +51,6 @@ export function mountTilelabSandbox(state, requestRedraw) {
         behaviors: [
             createDragLaunchBehavior(),
             createDragLaunchWaitBehavior(),
-            createPropButtonBehavior({ triggers: { flipper: { onPress: triggerFlipper, isPressed: isFlipperButtonPressed } } }),
             createFlipperBehavior(),
             createCueStrikeBehavior(),
             createShootBehavior(),

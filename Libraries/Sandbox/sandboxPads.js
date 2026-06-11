@@ -3,8 +3,11 @@ import { createCircleGroundZone, createRectGroundZone, drawGroundZone, isGroundZ
 import { DEFAULT_VOID_DEPTH, DEFAULT_VOID_RADIUS, drawPit, isInsideVoidMouth, syncSinkPadAabb, voidMouthReach } from "../Spatial/zones/voidZone.js";
 import { NEIGHBOR_QUERY_PAD } from "../Spatial/collision/entityBroadphase.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
+import { drawPropAttachedButton } from "./propAttachedButton.js";
+import { isFlipperButtonPressed, triggerFlipper } from "./behaviors/flipperBehavior.js";
 import { addSandboxWalls, removeSandboxWall } from "./spawnAssembly.js";
 export const SANDBOX_SPAWN_PAD_PREFIX = "pad:";
+const POINTER_HIT_PADDING = 4;
 /** @param {string} preset */
 export function sandboxSpawnPadId(preset) {
     return `${SANDBOX_SPAWN_PAD_PREFIX}${preset}`;
@@ -40,6 +43,7 @@ const PAD_PRESETS = {
         ],
     },
     pull: { listLabel: "Gravity pad", draw: "pull", triggers: [{ when: "occupied", effect: "pull", forceX: 0, forceY: 1000 }] },
+    button: { listLabel: "Button pad", draw: "button", circleRadius: 8, triggers: [{ when: "pointerDown", effect: "flipper" }] },
 };
 const GATE_WALL_HEIGHT = 1;
 const GATE_WALL_SIZE = 16;
@@ -100,7 +104,20 @@ function padHasOccupant(state, pad) {
     }
     return false;
 }
-/** @param {object} state @param {object} pad @param {object} trigger @param {{ entity?: object, entityId?: number, dtSec?: number }} ctx */
+/** @param {object} state @param {object} trigger */
+function resolvePadTargetPickup(state, trigger, pad) {
+    const targetId = trigger.targetPickupId ?? pad.targetPickupId;
+    if (targetId == null) return null;
+    return state.pickups.find((entry) => entry.id === targetId && !entry.isDead) ?? null;
+}
+/** @param {object} state @param {object} pad */
+function isPadButtonPressed(state, pad) {
+    if (pad.draw !== "button") return Boolean(pad._pointerHeld);
+    const pickup = resolvePadTargetPickup(state, {}, pad);
+    if (pickup && pad.triggers.some((trigger) => trigger.effect === "flipper")) return isFlipperButtonPressed(pickup);
+    return Boolean(pad._pointerHeld);
+}
+/** @param {object} state @param {object} pad @param {object} trigger @param {{ entity?: object, entityId?: number, dtSec?: number, world?: { x: number, y: number } }} ctx */
 function runPadEffect(state, pad, trigger, ctx) {
     if (trigger.effect === "sink") {
         if (ctx.entity) beginSink(ctx.entity, pad);
@@ -127,18 +144,50 @@ function runPadEffect(state, pad, trigger, ctx) {
             pickup.vx += forceX * dtSec;
             pickup.vy += forceY * dtSec;
         }
+        return;
+    }
+    if (trigger.effect === "flipper") {
+        const pickup = resolvePadTargetPickup(state, trigger, pad);
+        if (pickup) triggerFlipper(pickup);
     }
 }
-/** @param {object} state @param {object} pad @param {"enter" | "exit" | "occupied" | "empty"} when @param {object} ctx */
+/** @param {object} state @param {object} pad @param {"enter" | "exit" | "occupied" | "empty" | "pointerDown"} when @param {object} ctx */
 function runPadTriggers(state, pad, when, ctx) {
     for (let i = 0; i < pad.triggers.length; i++) if (pad.triggers[i].when === when) runPadEffect(state, pad, pad.triggers[i], ctx);
+}
+/** @param {object} pad @param {number} wx @param {number} wy @param {number} [padding] */
+function pointInPad(pad, wx, wy, padding = POINTER_HIT_PADDING) {
+    const shape = pad.shape;
+    if (shape.type === "Circle") return Math.hypot(wx - pad.x, wy - pad.y) <= shape.radius + padding;
+    const verts = shape.vertices;
+    let halfW = 0;
+    let halfH = 0;
+    for (let i = 0; i < verts.length; i++) {
+        halfW = Math.max(halfW, Math.abs(verts[i].x));
+        halfH = Math.max(halfH, Math.abs(verts[i].y));
+    }
+    return Math.abs(wx - pad.x) <= halfW + padding && Math.abs(wy - pad.y) <= halfH + padding;
+}
+/** @param {object} state @param {number} wx @param {number} wy */
+export function hitTestPad(state, wx, wy) {
+    const pads = sandboxPads(state);
+    for (let i = pads.length - 1; i >= 0; i--) if (pointInPad(pads[i], wx, wy)) return pads[i];
+    return null;
+}
+/** @param {object} state @param {object} pad @param {{ x: number, y: number }} world */
+export function handlePadPointerDown(state, pad, world) {
+    const hasPointerTrigger = pad.triggers?.some((trigger) => trigger.when === "pointerDown");
+    if (!hasPointerTrigger) return false;
+    pad._pointerHeld = true;
+    runPadTriggers(state, pad, "pointerDown", { world });
+    return true;
 }
 /**
  * @param {object} state
  * @param {string} preset
  * @param {number} x
  * @param {number} y
- * @param {{ id?: string, radius?: number, sinkDepth?: number, halfWidth?: number, halfHeight?: number, forceX?: number, forceY?: number, triggers?: object[] }} [options]
+ * @param {{ id?: string, radius?: number, sinkDepth?: number, halfWidth?: number, halfHeight?: number, forceX?: number, forceY?: number, targetPickupId?: number, triggers?: object[] }} [options]
  */
 export function buildSandboxPad(state, preset, x, y, options = {}) {
     const def = PAD_PRESETS[preset];
@@ -160,6 +209,7 @@ export function buildSandboxPad(state, preset, x, y, options = {}) {
     pad.preset = preset;
     pad.draw = def.draw;
     pad.sinkDepth = options.sinkDepth ?? def.sinkDepth;
+    pad.targetPickupId = options.targetPickupId ?? null;
     pad.triggers = (options.triggers ?? def.triggers).map((trigger) => ({ ...trigger }));
     if (preset === "pull" && options.forceX != null) pad.triggers[0].forceX = options.forceX;
     if (preset === "pull" && options.forceY != null) pad.triggers[0].forceY = options.forceY;
@@ -214,6 +264,51 @@ export function listSandboxPads(state) {
             return { id: pad.id, preset, label: `${label} #${counts[preset]}`, radius };
         });
 }
+/** @param {CanvasRenderingContext2D} ctx @param {import("../../Entities/Wall.js").Segment} wall */
+function drawGateWall(ctx, wall) {
+    ctx.save();
+    ctx.translate(wall.x, wall.y);
+    ctx.rotate(wall.angle);
+    const half = wall.size / 2;
+    const thickness = 4;
+    ctx.fillStyle = "rgba(76, 175, 80, 0.85)";
+    ctx.strokeStyle = "rgba(27, 94, 32, 1)";
+    ctx.lineWidth = 2;
+    ctx.fillRect(-half, -thickness / 2, wall.size, thickness);
+    ctx.strokeRect(-half, -thickness / 2, wall.size, thickness);
+    ctx.restore();
+}
+/** @param {CanvasRenderingContext2D} ctx @param {object} pad @param {import("../../Viewport/Viewport.js").Viewport} viewport @param {object} state */
+export function drawPad(ctx, pad, viewport, state) {
+    if (pad.draw === "pit") {
+        drawPit(ctx, pad, viewport.x, viewport.y);
+        return;
+    }
+    if (pad.draw === "plate") {
+        drawGroundZone(ctx, pad, { fill: "rgba(76, 175, 80, 0.35)", stroke: "rgba(27, 94, 32, 0.9)", lineWidth: 2 });
+        if (pad.wallsUp) for (let w = 0; w < pad.walls.length; w++) drawGateWall(ctx, pad.walls[w]);
+        return;
+    }
+    if (pad.draw === "pull") {
+        drawGroundZone(ctx, pad, { fill: "rgba(255, 100, 100, 0.05)", stroke: "rgba(255, 100, 100, 0.2)", lineWidth: 1 });
+        return;
+    }
+    if (pad.draw === "button") {
+        const radius = pad.shape.radius;
+        drawPropAttachedButton(ctx, pad.x, pad.y, isPadButtonPressed(state, pad), radius);
+        return;
+    }
+    drawGroundZone(ctx, pad);
+}
+/** @param {object} state */
+function tickPadPointerRelease(state) {
+    const pads = sandboxPads(state);
+    for (let i = 0; i < pads.length; i++) {
+        const pad = pads[i];
+        if (pad.draw !== "button") continue;
+        if (!isPadButtonPressed(state, pad)) pad._pointerHeld = false;
+    }
+}
 /** @param {object} state @param {import("../Spatial/world/SpatialFrameCore.js").SpatialFrameCore} spatialFrame @param {number} dt */
 export function tickSandboxPads(state, spatialFrame, dt) {
     const pads = sandboxPads(state);
@@ -231,37 +326,7 @@ export function tickSandboxPads(state, spatialFrame, dt) {
         const pad = pads[i];
         runPadTriggers(state, pad, padHasOccupant(state, pad) ? "occupied" : "empty", { dtSec });
     }
-}
-/** @param {CanvasRenderingContext2D} ctx @param {import("../../Entities/Wall.js").Segment} wall */
-function drawGateWall(ctx, wall) {
-    ctx.save();
-    ctx.translate(wall.x, wall.y);
-    ctx.rotate(wall.angle);
-    const half = wall.size / 2;
-    const thickness = 4;
-    ctx.fillStyle = "rgba(76, 175, 80, 0.85)";
-    ctx.strokeStyle = "rgba(27, 94, 32, 1)";
-    ctx.lineWidth = 2;
-    ctx.fillRect(-half, -thickness / 2, wall.size, thickness);
-    ctx.strokeRect(-half, -thickness / 2, wall.size, thickness);
-    ctx.restore();
-}
-/** @param {CanvasRenderingContext2D} ctx @param {object} pad @param {import("../../Viewport/Viewport.js").Viewport} viewport */
-function drawSandboxPad(ctx, pad, viewport) {
-    if (pad.draw === "pit") {
-        drawPit(ctx, pad, viewport.x, viewport.y);
-        return;
-    }
-    if (pad.draw === "plate") {
-        drawGroundZone(ctx, pad, { fill: "rgba(76, 175, 80, 0.35)", stroke: "rgba(27, 94, 32, 0.9)", lineWidth: 2 });
-        if (pad.wallsUp) for (let w = 0; w < pad.walls.length; w++) drawGateWall(ctx, pad.walls[w]);
-        return;
-    }
-    if (pad.draw === "pull") {
-        drawGroundZone(ctx, pad, { fill: "rgba(255, 100, 100, 0.05)", stroke: "rgba(255, 100, 100, 0.2)", lineWidth: 1 });
-        return;
-    }
-    drawGroundZone(ctx, pad);
+    tickPadPointerRelease(state);
 }
 /** @type {import("../../Core/GameDefinitionTypes.js").SimulationEffectPass} */
 export const sandboxPadEffectPass = {
@@ -273,7 +338,7 @@ export const sandboxPadEffectPass = {
         for (let i = 0; i < pads.length; i++) {
             const pad = pads[i];
             if (!isGroundZoneInView(pad, viewport)) continue;
-            drawSandboxPad(ctx, pad, viewport);
+            drawPad(ctx, pad, viewport, state);
         }
         ctx.restore();
     },
