@@ -50,10 +50,13 @@
  * @property {number} [height] — pull rect height
  * @property {number} [forceX] — pull override
  * @property {number} [forceY] — pull override
- * @property {string} [target] — button: single assembly pickup id (use targets for several)
- * @property {string[]} [targets] — button: assembly pickup ids to wire
+ * @property {boolean} [wallMode] — pull: solid walls when powered
+ * @property {boolean} [powered] — pull / sink: starts off when false
+ * @property {string} [target] — button: single assembly pickup or pad id
+ * @property {string[]} [targets] — button: assembly pickup or pad ids to wire
  * @property {"tap" | "hold" | "massTap" | "massHold"} [inputMode]
  * @property {number} [massThreshold]
+ * @property {boolean} [invert] — button: active when input is off
  * @property {number} [radiusU] — button: radius as playfield width fraction
  */
 /**

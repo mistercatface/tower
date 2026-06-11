@@ -167,7 +167,7 @@ function renderSelectedPadInspector(body, controller, onChange) {
     if (pad.preset === "sink") {
         appendNumberField(body, "Radius", { value: pad.radius, step: 0.5, min: 0.5, onChange: (radius) => patch({ radius }) });
         appendNumberField(body, "Depth", { value: pad.sinkDepth, step: 1, min: 1, onChange: (sinkDepth) => patch({ sinkDepth }) });
-    } else if (pad.preset === "pull")
+    } else if (pad.preset === "pull") {
         appendPullPadFields(body, {
             width: pad.halfWidth * 2,
             height: pad.halfHeight * 2,
@@ -176,7 +176,15 @@ function renderSelectedPadInspector(body, controller, onChange) {
             showForce: true,
             onChange: ({ width, height, forceX, forceY }) => patch({ halfWidth: width / 2, halfHeight: height / 2, forceX, forceY }),
         });
-    else if (pad.preset === "button") {
+        const wallRow = document.createElement("label");
+        wallRow.className = "param-field";
+        const wallCheck = document.createElement("input");
+        wallCheck.type = "checkbox";
+        wallCheck.checked = pad.wallMode;
+        wallCheck.addEventListener("change", () => patch({ wallMode: wallCheck.checked }));
+        wallRow.append("Wall mode ", wallCheck);
+        body.appendChild(wallRow);
+    } else if (pad.preset === "button") {
         appendNumberField(body, "Radius", { value: pad.radius, step: 0.5, min: 0.5, onChange: (radius) => patch({ radius }) });
         appendSelectField(body, "Input", {
             value: pad.inputMode,
@@ -190,10 +198,18 @@ function renderSelectedPadInspector(body, controller, onChange) {
         });
         if (pad.inputMode === "massTap" || pad.inputMode === "massHold")
             appendNumberField(body, "Mass threshold", { value: pad.massThreshold, step: 0.01, min: 0, onChange: (massThreshold) => patch({ massThreshold }) });
+        const invertRow = document.createElement("label");
+        invertRow.className = "param-field";
+        const invertCheck = document.createElement("input");
+        invertCheck.type = "checkbox";
+        invertCheck.checked = pad.invert;
+        invertCheck.addEventListener("change", () => patch({ invert: invertCheck.checked }));
+        invertRow.append("Invert (NOT) ", invertCheck);
+        body.appendChild(invertRow);
         const links = controller.listSelectedPadLinks();
         const linkHint = document.createElement("p");
         linkHint.className = "editor-hint";
-        linkHint.textContent = links.length ? `${links.length} wire${links.length === 1 ? "" : "s"} connected` : "No wires — link to flippers.";
+        linkHint.textContent = links.length ? `${links.length} wire${links.length === 1 ? "" : "s"} connected` : "No wires — link to flippers, gravity pads, or pits.";
         body.appendChild(linkHint);
         if (links.length)
             appendEntityList(

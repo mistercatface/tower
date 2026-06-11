@@ -20,12 +20,15 @@ function resolveAssemblyPads(pads, play) {
             resolved.halfHeight = entry.height / 2;
             resolved.forceX = entry.forceX;
             resolved.forceY = entry.forceY;
+            if (entry.wallMode === true) resolved.wallMode = true;
+            if (entry.powered === false) resolved.powered = false;
         } else if (entry.preset === "button") {
             if (entry.radiusU == null) throw new Error(`Button pad "${entry.id}" missing radiusU`);
             resolved.radius = entry.radiusU * playW;
             resolved.targets = entry.targets?.length ? entry.targets : entry.target ? [entry.target] : [];
             if (entry.inputMode != null) resolved.inputMode = entry.inputMode;
             if (entry.massThreshold != null) resolved.massThreshold = entry.massThreshold;
+            if (entry.invert === true) resolved.invert = true;
         }
         return resolved;
     });

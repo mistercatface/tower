@@ -21,3 +21,8 @@ export function isButtonPadActive(state, pad) {
     if (isMassButtonInputMode(pad.inputMode)) return buttonPadMass(state, pad) > pad.massThreshold;
     return Boolean(pad._pointerHeld);
 }
+/** @param {object} state @param {object} pad */
+export function buttonEffectiveActive(state, pad) {
+    const active = isButtonPadActive(state, pad);
+    return pad.invert ? !active : active;
+}

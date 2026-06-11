@@ -60,6 +60,12 @@ export function triggerFlipper(pickup) {
     pickup._flipperButtonPressed = true;
 }
 /** @param {object | null | undefined} pickup */
+export function releaseFlipper(pickup) {
+    if (!pickup) return;
+    pickup._flipperTarget = "rest";
+    pickup._flipperButtonPressed = false;
+}
+/** @param {object | null | undefined} pickup */
 export function isFlipperButtonPressed(pickup) {
     if (!pickup) return false;
     return Boolean(pickup._flipperButtonPressed || pickup._flipperTarget === "active");

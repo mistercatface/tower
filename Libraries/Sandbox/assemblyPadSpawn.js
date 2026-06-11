@@ -12,20 +12,26 @@ export function spawnAssemblyPads(state, layout, { groupId, resolvedId, groupFie
         if (entry.preset === "sink") {
             options.radius = entry.radius;
             options.sinkDepth = entry.sinkDepth;
+            if (entry.powered === false) options.powered = false;
         } else if (entry.preset === "pull") {
             options.halfWidth = entry.halfWidth;
             options.halfHeight = entry.halfHeight;
             options.forceX = entry.forceX;
             options.forceY = entry.forceY;
+            if (entry.wallMode === true) options.wallMode = true;
+            if (entry.powered === false) options.powered = false;
         } else if (entry.preset === "button") {
             options.radius = entry.radius;
             if (entry.inputMode != null) options.inputMode = entry.inputMode;
             if (entry.massThreshold != null) options.massThreshold = entry.massThreshold;
+            if (entry.invert === true) options.invert = true;
             /** @type {import("./sandboxPadLinks.js").ButtonLinkTarget[]} */
             const buttonLinks = [];
             for (let t = 0; t < entry.targets.length; t++) {
-                const pickupId = pickupIdByManifestId.get(entry.targets[t]);
+                const manifestId = entry.targets[t];
+                const pickupId = pickupIdByManifestId.get(manifestId);
                 if (pickupId != null) buttonLinks.push({ type: "pickup", id: pickupId });
+                else buttonLinks.push({ type: "pad", id: `${groupId}:pad:${manifestId}` });
             }
             options.buttonLinks = buttonLinks;
         }

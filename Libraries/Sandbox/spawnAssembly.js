@@ -10,6 +10,12 @@ import { requestUiUpdate } from "../../Core/EventSystem.js";
 import { spawnAssemblyPickups } from "./assemblyPickupSpawn.js";
 import { spawnAssemblyPads } from "./assemblyPadSpawn.js";
 import { deleteSandboxPad } from "./sandboxPads.js";
+import { getWallCellBounds } from "../Spatial/grid/wallGridBake.js";
+/** @param {{ startCol: number, endCol: number, startRow: number, endRow: number } | null} a @param {{ startCol: number, endCol: number, startRow: number, endRow: number }} b */
+function mergeCellBounds(a, b) {
+    if (!a) return b;
+    return { startCol: Math.min(a.startCol, b.startCol), endCol: Math.max(a.endCol, b.endCol), startRow: Math.min(a.startRow, b.startRow), endRow: Math.max(a.endRow, b.endRow) };
+}
 /** @param {object} state @param {object} wall */
 export function removeSandboxWall(state, wall) {
     const idx = state.walls.indexOf(wall);
@@ -27,15 +33,25 @@ export function removeSandboxWall(state, wall) {
 export function addSandboxWalls(state, walls, { compileRender = true } = {}) {
     const scene = state.worldSurfaces.renderScene;
     const defaultWallHeight = getWallHeight(getGameWorldSurfaceSettings());
-    const gridMinX = state.obstacleGrid.minX;
-    const gridMinY = state.obstacleGrid.minY;
+    const grid = state.obstacleGrid;
+    const gridMinX = grid.minX;
+    const gridMinY = grid.minY;
     scene.setGridOrigin(gridMinX, gridMinY);
+    let damageBounds = null;
     for (let i = 0; i < walls.length; i++) {
         const wall = walls[i];
         state.walls.push(wall);
         state.wallSpatialIndex.insert(wall);
-        state.obstacleGrid.addWall(wall);
+        grid.addWall(wall);
+        damageBounds = mergeCellBounds(
+            damageBounds,
+            getWallCellBounds(wall, (x, y) => grid.worldToGrid(x, y), grid.cols, grid.rows),
+        );
         if (compileRender && !wall.collisionOnly) SceneCompiler.compileWall(wall, scene, defaultWallHeight);
+    }
+    if (damageBounds) {
+        state.worldSurfaces.invalidateGridBounds(damageBounds, state);
+        state.navigation.onObstaclesChanged(damageBounds);
     }
     if (compileRender) state.worldSurfaces.invalidateRoofs();
 }

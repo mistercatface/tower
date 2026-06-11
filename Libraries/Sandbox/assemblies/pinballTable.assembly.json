@@ -25,6 +25,17 @@
             "forceY": 1000
         },
         {
+            "id": "pull-block",
+            "preset": "pull",
+            "at": { "u": 0.5, "v": 0.42 },
+            "width": 28,
+            "height": 10,
+            "forceX": 0,
+            "forceY": 0,
+            "wallMode": true,
+            "powered": false
+        },
+        {
             "id": "btn-kicker",
             "preset": "button",
             "at": { "u": 0.5, "v": 0.32 },
@@ -65,6 +76,23 @@
             "radiusU": 0.04,
             "inputMode": "tap",
             "targets": ["paddleL", "paddleR"]
+        },
+        {
+            "id": "btn-gravity",
+            "preset": "button",
+            "at": { "u": 0.22, "v": 0.96 },
+            "radiusU": 0.035,
+            "inputMode": "hold",
+            "invert": true,
+            "targets": ["pull-main"]
+        },
+        {
+            "id": "btn-wall",
+            "preset": "button",
+            "at": { "u": 0.78, "v": 0.96 },
+            "radiusU": 0.035,
+            "inputMode": "hold",
+            "targets": ["pull-block"]
         }
     ],
     "pickups": [

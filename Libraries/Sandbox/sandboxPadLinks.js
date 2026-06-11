@@ -1,10 +1,17 @@
 import { findPickupAt } from "./findPickupAt.js";
+import { hitTestPad } from "./sandboxPads.js";
 import { isFlipperPickup } from "./behaviors/flipperBehavior.js";
 /** @param {object} state @param {string} id */
 function findSandboxPad(state, id) {
     return state.sandboxPads.find((pad) => pad.id === id) ?? null;
 }
-/** @typedef {{ type: "pickup", id: number }} ButtonLinkTarget */
+/** @typedef {{ type: "pickup", id: number }} ButtonLinkPickupTarget */
+/** @typedef {{ type: "pad", id: string }} ButtonLinkPadTarget */
+/** @typedef {ButtonLinkPickupTarget | ButtonLinkPadTarget} ButtonLinkTarget */
+/** @param {object} pad */
+export function isButtonLinkTargetPad(pad) {
+    return pad.preset === "pull" || pad.preset === "sink";
+}
 /** @param {object} pad */
 export function getButtonPadLinks(pad) {
     return pad.buttonLinks;
@@ -15,7 +22,7 @@ function setButtonPadLinks(pad, links) {
 }
 /** @param {ButtonLinkTarget} a @param {ButtonLinkTarget} b */
 function sameButtonLink(a, b) {
-    return a.id === b.id;
+    return a.type === b.type && a.id === b.id;
 }
 /**
  * @param {object} state
@@ -55,14 +62,22 @@ export function clearButtonPadLinks(state, buttonPadId) {
  * @param {object} state
  * @param {number} worldX
  * @param {number} worldY
+ * @param {string} sourcePadId
  */
-export function findButtonLinkTarget(state, worldX, worldY) {
+export function findButtonLinkTarget(state, worldX, worldY, sourcePadId) {
     const pickup = findPickupAt(state.pickups, worldX, worldY);
     if (pickup && isFlipperPickup(pickup)) return { type: "pickup", id: pickup.id };
+    const pad = hitTestPad(state, worldX, worldY);
+    if (pad && pad.id !== sourcePadId && isButtonLinkTargetPad(pad)) return { type: "pad", id: pad.id };
     return null;
 }
 /** @param {object} state @param {ButtonLinkTarget} target */
-function resolveButtonLinkEndpoint(state, target) {
+export function resolveButtonLinkEndpoint(state, target) {
+    if (target.type === "pad") {
+        const pad = findSandboxPad(state, target.id);
+        if (!pad) return null;
+        return { target, label: `${pad.preset} · ${pad.id}`, x: pad.x, y: pad.y };
+    }
     const pickup = state.pickups.find((entry) => entry.id === target.id && !entry.isDead);
     if (!pickup) return null;
     const typeLabel = (pickup.type ?? "prop").replace(/_/g, " ");

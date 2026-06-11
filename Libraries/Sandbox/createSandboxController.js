@@ -112,7 +112,7 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
             const buttonPadId = session.getSelectedPadId();
             const buttonPad = buttonPadId ? getSandboxPad(host.getWorldState(), buttonPadId) : null;
             if (buttonPad?.preset === "button") {
-                const target = findButtonLinkTarget(host.getWorldState(), world.x, world.y);
+                const target = findButtonLinkTarget(host.getWorldState(), world.x, world.y, buttonPad.id);
                 if (target) addButtonPadLink(host.getWorldState(), buttonPad.id, target);
                 session.sync();
                 e.preventDefault();
