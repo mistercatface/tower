@@ -28,9 +28,19 @@
  * @property {AssemblyPlacementManifest} placement
  */
 /**
+ * @typedef {object} AssemblyGravityZoneManifest
+ * @property {string} id
+ * @property {number} width
+ * @property {number} height
+ * @property {number} [forceX]
+ * @property {number} [forceY]
+ * @property {AssemblyPlacementManifest} placement
+ */
+/**
  * @typedef {object} AssemblyPickupManifest
  * @property {string} [id]
  * @property {string} prop
+ * @property {number} [facing]
  * @property {AssemblyPlacementManifest} at
  */
 /**
@@ -43,6 +53,7 @@
  * @property {AssemblyArenaManifest} [arena]
  * @property {string[]} [props] — prop catalog ids this assembly uses
  * @property {AssemblyVoidCircleManifest[]} [voidCircles]
+ * @property {AssemblyGravityZoneManifest[]} [gravityZones]
  * @property {AssemblyPickupManifest[]} [pickups]
  * @property {{ groupField: string }} link
  * @property {Record<string, { cueStrike?: object, inputGates?: Record<string, object[]> }>} [behaviors]
@@ -58,6 +69,7 @@
  * @property {AssemblyArenaManifest} arena
  * @property {string[]} props
  * @property {AssemblyVoidCircleManifest[]} voidCircles
+ * @property {AssemblyGravityZoneManifest[]} [gravityZones]
  * @property {AssemblyPickupManifest[]} pickups
  * @property {string} groupField
  * @property {Record<string, { cueStrike?: object, inputGates?: Record<string, object[]> }>} behaviors

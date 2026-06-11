@@ -26,7 +26,6 @@ import { sandboxVoidZoneEffectPass, tickSandboxVoidZones } from "./sandboxVoidZo
 import { sandboxGravityZoneEffectPass, tickSandboxGravityZones } from "./sandboxGravityZones.js";
 import { sandboxController } from "./world/tilelabSandbox.js";
 import { tickSandboxCameraFollow } from "../../Libraries/Sandbox/sandboxCameraTarget.js";
-import { tickFlippers, drawFlipperButtons } from "../../Libraries/Sandbox/behaviors/flipperBehavior.js";
 import { fitLabStageToView } from "./ui/labViewport.js";
 import { mountEditorUi, refreshEditorUi } from "./ui/editorUi.js";
 import { drawLabFrame } from "./ui/preview.js";
@@ -45,7 +44,6 @@ function runSimulationTick(state, dt) {
     state.gameTime += simDt;
     const spatialFrame = combatSpatial.begin(state);
     simulationEvents.length = 0;
-    sandboxController?.tick(dt);
     updateSandboxAutoCombat(state, simDt);
     Projectile.checkSpawnCollisions(state, spatialFrame, simulationEvents);
     Projectile.updateAll(state, simDt);
@@ -74,7 +72,7 @@ export const engine = {
             {
                 zIndex: 65,
                 draw(state, _viewport, ctx) {
-                    drawFlipperButtons(ctx, state.pickups);
+                    sandboxController?.drawBehaviorOverlays(ctx);
                     sandboxController?.drawPathOverlay(ctx);
                     sandboxController?.drawLaunchPreview(ctx);
                 },
@@ -125,7 +123,7 @@ export function createEditorApp() {
         dt = Math.min(dt, 50);
         state.scheduler.update(dt);
         tickSandboxCameraFollow(state.viewport, state.pickups, dt);
-        tickFlippers(state.pickups, dt);
+        sandboxController?.tick(dt);
         if (!state.isPaused) runSimulationTick(state, dt);
         drawLabFrame(state);
         requestAnimationFrame(loop);

@@ -1,13 +1,13 @@
-import { drawExtrudedRadial } from "./SolidDraw.js";
+import { getPropAsset } from "../../Props/PropCatalog.js";
+import { getFlipperSpec } from "../../Sandbox/behaviors/flipperBehavior.js";
 import { drawPropMeshFace, isPropMeshFaceVisible } from "./propMesh.js";
-/** @param {number} length @param {number} halfW @param {number} height @param {number} facing */
-function buildFlipperPaddleMesh(length, halfW, height, pivotRadius, facing, isMirrored) {
+/** @param {number} length @param {number} halfW @param {number} height @param {number} facing @param {number} extendDir */
+function buildFlipperPaddleMesh(length, halfW, height, pivotRadius, facing, extendDir) {
     const R1 = pivotRadius;
     const R2 = Math.max(1, halfW * 0.45);
     const D = length - R2;
     const theta = Math.asin(Math.max(0, Math.min(1, (R1 - R2) / D)));
     const footprint = [];
-    // Base semi-circle (from bottom-left around back to top-left)
     const startBase = Math.PI / 2 - theta;
     const endBase = Math.PI * 1.5 + theta;
     const numBaseSegments = 6;
@@ -15,7 +15,6 @@ function buildFlipperPaddleMesh(length, halfW, height, pivotRadius, facing, isMi
         const a = startBase + (endBase - startBase) * (i / numBaseSegments);
         footprint.push({ lx: R1 * Math.cos(a), ly: R1 * Math.sin(a) });
     }
-    // Tip semi-circle (from top-right around front to bottom-right)
     const startTip = -Math.PI / 2 + theta;
     const endTip = Math.PI / 2 - theta;
     const numTipSegments = 5;
@@ -25,55 +24,52 @@ function buildFlipperPaddleMesh(length, halfW, height, pivotRadius, facing, isMi
     }
     const N = footprint.length;
     const local = [];
-    for (let p of footprint) local.push({ ...p, z: 0 }); // Bottom
-    for (let p of footprint) local.push({ ...p, z: height }); // Top
+    for (let p of footprint) local.push({ ...p, z: 0 });
+    for (let p of footprint) local.push({ ...p, z: height });
     const cos = Math.cos(facing);
     const sin = Math.sin(facing);
+    const flipX = extendDir < 0;
     const corners = local.map((v) => {
-        const ly = isMirrored ? -v.ly : v.ly;
-        return { lx: v.lx * cos - ly * sin, ly: v.lx * sin + ly * cos, z: v.z };
+        const lx0 = flipX ? -v.lx : v.lx;
+        return { lx: lx0 * cos - v.ly * sin, ly: lx0 * sin + v.ly * cos, z: v.z };
     });
     const face = (indices, panel) => {
         const verts = indices.map((i) => corners[i]);
-        if (isMirrored) verts.reverse();
+        if (flipX) verts.reverse();
         return { verts, panel, depth: verts.reduce((sum, v) => sum + v.z, 0) / verts.length };
     };
     const mesh = [];
-    // Bottom face (reverse to face down)
     const bottomIndices = [];
     for (let i = 0; i < N; i++) bottomIndices.push(N - 1 - i);
     mesh.push(face(bottomIndices, "bottom"));
-    // Top face
     const topIndices = [];
     for (let i = 0; i < N; i++) topIndices.push(i + N);
     mesh.push(face(topIndices, "top"));
-    // Sides
     for (let i = 0; i < N; i++) {
         const next = (i + 1) % N;
         let panel = "sideA";
-        if (i < numBaseSegments)
-            panel = "pivot"; // Rounded back
-        else if (i === numBaseSegments)
-            panel = "sideA"; // Straight top edge
-        else if (i > numBaseSegments && i < N - 1)
-            panel = "tip"; // Rounded front
-        else panel = "sideB"; // Straight bottom edge
+        if (i < numBaseSegments) panel = "pivot";
+        else if (i === numBaseSegments) panel = "sideA";
+        else if (i > numBaseSegments && i < N - 1) panel = "tip";
+        else panel = "sideB";
         mesh.push(face([i, next, next + N, i + N], panel));
     }
     return mesh;
 }
 /** @param {CanvasRenderingContext2D} ctx @param {object} prop @param {number} px @param {number} py @param {object} options */
 export function drawFlipperPaddle(ctx, prop, px, py, options) {
-    const length = options.length ?? 32;
-    const halfW = (options.width ?? 8) * 0.5;
-    const height = options.height ?? 10;
-    const pivotRadius = options.pivotRadius ?? 5;
-    const angle = prop._flipperAngle ?? options.restAngle ?? 0.45;
-    const isMirrored = Math.abs(prop.facing || 0) > Math.PI / 2;
+    const asset = getPropAsset(prop.type);
+    const spec = getFlipperSpec(prop, asset);
+    const world = options.world ?? options;
+    const length = world.length ?? spec.length;
+    const halfW = (world.width ?? spec.width) * 0.5;
+    const height = world.height ?? 10;
+    const pivotRadius = world.pivotRadius ?? 5;
+    const angle = prop._flipperAngle ?? spec.restAngle;
     const colors = options.colors;
     const stroke = colors.stroke ?? "#263238";
     const lineWidth = options.lineWidth ?? 0.9;
-    const mesh = buildFlipperPaddleMesh(length, halfW, height, pivotRadius, angle, isMirrored);
+    const mesh = buildFlipperPaddleMesh(length, halfW, height, pivotRadius, angle, spec.extendDir);
     const panelFill = {
         bottom: colors.bottom?.mid ?? colors.side.mid,
         top: colors.top?.mid ?? colors.side.highlight,
@@ -93,4 +89,12 @@ export function drawFlipperPaddle(ctx, prop, px, py, options) {
     };
     drawPass(backFaces);
     drawPass(frontFaces);
+}
+/** @param {object} visuals */
+export function createFlipperPrimitive(visuals) {
+    const { world, colors, activeColors } = visuals;
+    return (ctx, prop, px, py) => {
+        const active = prop._flipperTarget === "active" || prop._flipperButtonPressed;
+        drawFlipperPaddle(ctx, prop, px, py, { world, colors: active && activeColors ? activeColors : colors, lineWidth: visuals.lineWidth ?? 0.9 });
+    };
 }

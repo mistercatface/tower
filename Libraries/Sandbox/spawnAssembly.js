@@ -2,7 +2,7 @@ import { getWallHeight } from "../WorldSurface/WorldSurfaceSettings.js";
 import { getGameWorldSurfaceSettings } from "../../Render/WorldSurfaceBootstrap.js";
 import { SceneCompiler } from "../Render/Scene/SceneCompiler.js";
 import { createVoidZone } from "../Spatial/zones/voidZone.js";
-import { createGravityZone } from "../Spatial/zones/gravityZone.js";
+import { createGravityZone } from "../Spatial/zones/groundZones.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { Pickup } from "../../Entities/Pickup.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";

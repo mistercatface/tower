@@ -1,5 +1,6 @@
 import { CircleShape, PolygonShape } from "../collision/Shapes.js";
 import { SatCollision } from "../collision/SatCollision.js";
+import { NEIGHBOR_QUERY_PAD } from "../collision/entityBroadphase.js";
 function createGroundZone(x, y, shape, aabb, { id = "ground-zone" } = {}) {
     return {
         id,
@@ -33,6 +34,16 @@ export function createRectGroundZone(x, y, halfWidth, halfHeight, { id = "ground
 /** @param {number} x @param {number} y @param {number} radius @param {{ id?: string }} [options] */
 export function createCircleGroundZone(x, y, radius, { id = "ground-zone" } = {}) {
     return createGroundZone(x, y, new CircleShape(radius), { minX: x - radius, minY: y - radius, maxX: x + radius, maxY: y + radius }, { id });
+}
+/** @param {number} x @param {number} y @param {number} halfWidth @param {number} halfHeight @param {{ forceX?: number, forceY?: number, id?: string }} [options] */
+export function createGravityZone(x, y, halfWidth, halfHeight, { forceX = 0, forceY = 1000, id = "gravity-zone" } = {}) {
+    const pad = NEIGHBOR_QUERY_PAD;
+    const zone = createRectGroundZone(x, y, halfWidth, halfHeight, { id });
+    zone.kind = "gravity";
+    zone.forceX = forceX;
+    zone.forceY = forceY;
+    zone.aabb = { minX: x - halfWidth - pad, minY: y - halfHeight - pad, maxX: x + halfWidth + pad, maxY: y + halfHeight + pad };
+    return zone;
 }
 /**
  * Per-zone grid broadphase + SAT + enter/exit. Shape-agnostic — same path for rect and circle.

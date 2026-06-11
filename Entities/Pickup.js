@@ -11,7 +11,6 @@ import { transitionEntity } from "../Libraries/FSM/transition.js";
 import { pickupStates } from "./PickupStates.js";
 import { CircleShape, PolygonShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { syncLongAxisCollisionShape } from "../Libraries/Props/longAxisCollision.js";
-import { syncFlipperCollisionShape } from "../Libraries/Props/flipperCollision.js";
 import { isStandTipProp } from "../Libraries/Spatial/transforms/longAxisBox3d.js";
 import { MOVING_SPEED_SQ } from "../Libraries/Spatial/collision/entityBroadphase.js";
 import { speedSqXY } from "../Libraries/Math/Vec2.js";

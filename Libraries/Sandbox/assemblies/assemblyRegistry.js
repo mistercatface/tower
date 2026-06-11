@@ -10,7 +10,7 @@ export function getAssemblyManifest(id) {
 }
 /** @param {import("./assemblyManifest.js").AssemblyManifest} manifest */
 export function resolveAssemblyManifest(manifest) {
-    const { arena, props = [], voidCircles, pickups, link, behaviors = {}, spawn = [], label, surfaceProfileId, surfaceAnimation } = manifest;
+    const { arena, props = [], voidCircles, gravityZones, pickups, link, behaviors = {}, spawn = [], label, surfaceProfileId, surfaceAnimation } = manifest;
     return {
         id: manifest.id,
         label: label ?? manifest.id,
@@ -20,6 +20,7 @@ export function resolveAssemblyManifest(manifest) {
         arena,
         props,
         voidCircles,
+        gravityZones,
         pickups,
         groupField: link.groupField,
         behaviors,

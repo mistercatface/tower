@@ -18,7 +18,9 @@ import { isSandboxCameraTarget, setSandboxCameraTarget } from "./sandboxCameraTa
  * @property {(pickup: object, world: { x: number, y: number }, e: PointerEvent) => void} onPointerMove
  * @property {(pickup: object, e: PointerEvent) => void} onPointerUp
  * @property {(pickup: object, dt: number, host: SandboxHostPort) => void} [tick]
+ * @property {(dt: number, host: SandboxHostPort) => void} [tickWorld]
  * @property {(ctx: CanvasRenderingContext2D, pickup: object, host: SandboxHostPort) => void} [drawOverlay]
+ * @property {(ctx: CanvasRenderingContext2D, host: SandboxHostPort) => void} [drawWorldOverlay]
  * @property {(pickup: object, host: SandboxHostPort) => import("../../Render/map/drawActivePathOverlay.js").ActivePathOverlay | null} [getPathOverlay]
  * @property {() => void} [reset]
  */
@@ -184,6 +186,7 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
         },
         tick(dt) {
             session.pruneSelection();
+            for (let i = 0; i < behaviors.length; i++) behaviors[i].tickWorld?.(dt, host);
             const pickup = session.getSelectedPickup();
             const behavior = resolveBehavior();
             if (!pickup || !behavior?.tick) return;
@@ -205,6 +208,9 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
             const pickup = session.getSelectedPickup();
             const behavior = resolveBehavior();
             behavior?.drawOverlay?.(ctx, pickup, host);
+        },
+        drawBehaviorOverlays(ctx) {
+            for (let i = 0; i < behaviors.length; i++) behaviors[i].drawWorldOverlay?.(ctx, host);
         },
         drawOverlay(ctx) {
             drawSandboxWeaponBars(ctx, host);

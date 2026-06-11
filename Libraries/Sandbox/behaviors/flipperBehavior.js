@@ -1,22 +1,65 @@
 import { getPropAsset } from "../../Props/PropCatalog.js";
-import { syncFlipperCollisionShape } from "../../Props/flipperCollision.js";
+import { PolygonShape } from "../../Spatial/collision/Shapes.js";
+import { quantizeAngleIndex } from "../../Canvas/viewQuantize.js";
 export const FLIPPER_BEHAVIOR_ID = "flipper";
 const SWING_SPEED_RAD = 20;
 const RETURN_SPEED_RAD = 8;
 const PIVOT_RADIUS = 5;
 const BUTTON_RADIUS = 13;
+const FLIPPER_ANGLE_STEPS = 24;
+/** @param {object} pickup */
+export function isFlipperPickup(pickup) {
+    return Boolean(getPropAsset(pickup?.type)?.flipper?.side);
+}
+/** @param {object} asset */
+function flipperConfig(asset) {
+    return asset?.flipper ?? {};
+}
 /** @param {object} pickup @param {object} asset */
-function getFlipperSpec(pickup, asset) {
-    const isMirrored = Math.abs(pickup.facing || 0) > Math.PI / 2;
-    const rest = asset?.flipper?.restAngle ?? 0.45;
-    const active = asset?.flipper?.activeAngle ?? -0.55;
+export function getFlipperSpec(pickup, asset) {
+    const cfg = flipperConfig(asset);
     return {
-        length: asset?.flipper?.length ?? 38,
-        width: asset?.flipper?.width ?? 10,
-        restAngle: pickup._flipperRestAngle ?? (isMirrored ? -rest : rest),
-        activeAngle: pickup._flipperActiveAngle ?? (isMirrored ? -active : active),
-        isMirrored,
+        side: cfg.side ?? "left",
+        extendDir: cfg.extendDir ?? 1,
+        length: cfg.length ?? 32,
+        width: cfg.width ?? 8,
+        restAngle: pickup._flipperRestAngle ?? cfg.restAngle ?? 0.45,
+        activeAngle: pickup._flipperActiveAngle ?? cfg.activeAngle ?? -0.55,
+        buttonOutside: cfg.buttonOutside ?? -1,
+        buttonGap: cfg.buttonGap ?? 14,
+        buttonYOffset: cfg.buttonYOffset ?? 0,
     };
+}
+/** @param {object} prop */
+export function getFlipperSpriteCacheKey(prop) {
+    const asset = getPropAsset(prop.type);
+    const cfg = flipperConfig(asset);
+    const angle = prop._flipperAngle ?? cfg.restAngle ?? 0.45;
+    const active = prop._flipperTarget === "active" || prop._flipperButtonPressed ? 1 : 0;
+    return `${cfg.side ?? "left"}_a${quantizeAngleIndex(angle, FLIPPER_ANGLE_STEPS)}_${active}`;
+}
+/** @param {object} prop */
+export function syncFlipperCollisionShape(prop) {
+    const asset = getPropAsset(prop.type);
+    const spec = getFlipperSpec(prop, asset);
+    if (prop._flipperAngle == null) prop._flipperAngle = spec.restAngle;
+    const { length, width, extendDir } = spec;
+    const halfW = width * 0.5;
+    const angle = prop._flipperAngle;
+    const key = `flip_${spec.side}_${angle.toFixed(3)}_${length}_${halfW}`;
+    if (prop._flipperShapeKey === key && prop.shape?.type === "Polygon") return prop.shape;
+    const tipR = Math.max(1, halfW * 0.45);
+    prop.shape = new PolygonShape([
+        { x: 0, y: -halfW },
+        { x: (length - tipR) * extendDir, y: -tipR },
+        { x: length * extendDir, y: 0 },
+        { x: (length - tipR) * extendDir, y: tipR },
+        { x: 0, y: halfW },
+    ]);
+    prop._collisionFacing = angle;
+    prop._collisionBoundingRadius = Math.hypot(length, halfW);
+    prop._flipperShapeKey = key;
+    return prop.shape;
 }
 /** @param {object} pickup @param {object} asset */
 function initFlipperAngle(pickup, asset) {
@@ -30,12 +73,11 @@ function getButtonPosition(pickup, asset) {
     const spec = getFlipperSpec(pickup, asset);
     const rest = spec.restAngle;
     const halfW = spec.width * 0.5;
-    const tipX = Math.cos(rest) * spec.length;
-    const gap = asset?.flipper?.buttonGap ?? 14;
+    const tipX = Math.cos(rest) * spec.length * spec.extendDir;
     const paddleLeft = Math.min(-PIVOT_RADIUS, tipX - halfW);
     const paddleRight = Math.max(PIVOT_RADIUS, tipX + halfW);
-    const xOffset = spec.isMirrored ? paddleRight + gap + BUTTON_RADIUS : paddleLeft - gap - BUTTON_RADIUS;
-    return { x: pickup.x + xOffset, y: pickup.y + (asset?.flipper?.buttonYOffset ?? 0) };
+    const xOffset = spec.buttonOutside < 0 ? paddleLeft - spec.buttonGap - BUTTON_RADIUS : paddleRight + spec.buttonGap + BUTTON_RADIUS;
+    return { x: pickup.x + xOffset, y: pickup.y + spec.buttonYOffset };
 }
 /** @param {object} pickup @param {number} wx @param {number} wy */
 function hitFlipButton(pickup, wx, wy) {
@@ -109,21 +151,23 @@ function drawArcadeButton(ctx, x, y, pressed) {
     ctx.stroke();
     ctx.restore();
 }
-/** @param {object[]} pickups @param {number} dt */
-export function tickFlippers(pickups, dt) {
+/** @param {import("../SandboxHostPort.js").SandboxHostPort} host @param {number} dt */
+function tickAllFlippers(host, dt) {
+    const pickups = host.getPickups();
     for (let i = 0; i < pickups.length; i++) {
         const pickup = pickups[i];
-        if (pickup.isDead || pickup.type !== "flipper") continue;
+        if (pickup.isDead || !isFlipperPickup(pickup)) continue;
         const asset = getPropAsset(pickup.type);
         if (!asset) continue;
         tickFlipperPickup(pickup, asset, dt);
     }
 }
-/** @param {CanvasRenderingContext2D} ctx @param {object[]} pickups */
-export function drawFlipperButtons(ctx, pickups) {
+/** @param {CanvasRenderingContext2D} ctx @param {import("../SandboxHostPort.js").SandboxHostPort} host */
+function drawAllFlipperButtons(ctx, host) {
+    const pickups = host.getPickups();
     for (let i = 0; i < pickups.length; i++) {
         const pickup = pickups[i];
-        if (pickup.isDead || pickup.type !== "flipper") continue;
+        if (pickup.isDead || !isFlipperPickup(pickup)) continue;
         drawFlipperButton(ctx, pickup);
     }
 }
@@ -138,12 +182,18 @@ export function createFlipperBehavior() {
             const pickups = host.getPickups();
             for (let i = pickups.length - 1; i >= 0; i--) {
                 const pickup = pickups[i];
-                if (pickup.isDead || pickup.type !== "flipper") continue;
+                if (pickup.isDead || !isFlipperPickup(pickup)) continue;
                 if (!hitFlipButton(pickup, world.x, world.y)) continue;
                 activateFlipper(pickup);
                 return true;
             }
             return false;
+        },
+        tickWorld(dt, host) {
+            tickAllFlippers(host, dt);
+        },
+        drawWorldOverlay(ctx, host) {
+            drawAllFlipperButtons(ctx, host);
         },
         onPointerDown: () => false,
         onPointerMove() {},

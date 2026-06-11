@@ -5,11 +5,11 @@
     "surfaceAnimation": true,
     "version": 2,
     "arena": { "width": 96, "height": 176, "clearPadding": 4, "walls": { "width": 8, "height": 4, "segmentSize": 4, "segment": { "padding": 0, "maxHealth": 30, "health": 30 } } },
-    "props": ["flipper", "pool_ball_1"],
-    "gravityZones": [{ "id": "gravity-main", "width": 96, "height": 176, "forceX": 0, "forceY": 1000, "placement": { "anchor": "playfield.center" } }],
+    "props": ["flipper_left", "flipper_right", "pool_ball_1"],
+    "gravityZones": [{ "id": "gravity-main", "width": 80, "height": 160, "forceX": 0, "forceY": 1000, "placement": { "anchor": "playfield.center" } }],
     "pickups": [
-        { "id": "paddleL", "prop": "flipper", "facing": 0.25, "at": { "u": 0.35, "v": 0.85 } },
-        { "id": "paddleR", "prop": "flipper", "facing": 2.89, "at": { "u": 0.65, "v": 0.85 } },
+        { "id": "paddleL", "prop": "flipper_left", "at": { "u": 0.35, "v": 0.85 } },
+        { "id": "paddleR", "prop": "flipper_right", "at": { "u": 0.65, "v": 0.85 } },
         { "id": "ball", "prop": "pool_ball_1", "at": { "u": 0.5, "v": 0.15 } }
     ],
     "link": { "groupField": "sandboxGroupId" },
