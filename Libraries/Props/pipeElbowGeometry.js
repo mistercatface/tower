@@ -28,9 +28,9 @@ export function buildPipeElbowCenterline3D(spec) {
     const riserSteps = 5;
     for (let i = 1; i <= riserSteps; i++) pts.push({ x: 0, y: 0, z: (zArc * i) / riserSteps });
     const arcSteps = 8;
-    for (let i = 0; i <= arcSteps; i++) {
-        const a = Math.PI + (Math.PI / 2) * (i / arcSteps);
-        pts.push({ x: R + R * Math.cos(a), y: 0, z: zArc + R * Math.sin(a) });
+    for (let i = 1; i <= arcSteps; i++) {
+        const theta = (i / arcSteps) * (Math.PI / 2);
+        pts.push({ x: R - R * Math.cos(theta), y: 0, z: zArc + R * Math.sin(theta) });
     }
     const outSteps = 5;
     for (let i = 1; i <= outSteps; i++) pts.push({ x: R + (outletLength * i) / outSteps, y: 0, z: riserHeight });
@@ -42,18 +42,16 @@ export function buildPipeElbowCollisionFootprint(spec) {
     const baseR = spec.flangeRadius;
     const mouthR = spec.pipeRadius * 1.15;
     const arcSeg = 6;
-    /** @type {{ lx: number, ly: number }[]} */
+    /** @type {{ x: number, y: number }[]} */
     const pts = [];
     for (let i = 0; i <= arcSeg; i++) {
         const a = Math.PI * 0.5 + (Math.PI * i) / arcSeg;
-        pts.push({ lx: baseR * Math.cos(a), ly: baseR * Math.sin(a) });
+        pts.push({ x: baseR * Math.cos(a), y: baseR * Math.sin(a) });
     }
-    pts.push({ lx: endX, ly: mouthR });
     for (let i = 0; i <= arcSeg; i++) {
         const a = -Math.PI * 0.5 + (Math.PI * i) / arcSeg;
-        pts.push({ lx: endX + mouthR * Math.cos(a), ly: mouthR * Math.sin(a) });
+        pts.push({ x: endX + mouthR * Math.cos(a), y: mouthR * Math.sin(a) });
     }
-    pts.push({ lx: 0, ly: -baseR });
     return pts;
 }
 /** @param {object} prop */
@@ -61,13 +59,13 @@ export function syncPipeElbowCollisionShape(prop) {
     const asset = getPropAsset(prop.type);
     const spec = getPipeElbowSpec(prop, asset);
     const footprint = buildPipeElbowCollisionFootprint(spec);
-    const key = footprint.map((p) => `${p.lx.toFixed(1)},${p.ly.toFixed(1)}`).join("|");
+    const key = footprint.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join("|");
     prop._collisionFacing = prop.facing ?? 0;
     if (prop._pipeElbowShapeKey === key && prop.shape?.type === "Polygon") return prop.shape;
     prop.shape = new PolygonShape(footprint);
     prop._pipeElbowShapeKey = key;
     let maxR = 0;
-    for (let i = 0; i < footprint.length; i++) maxR = Math.max(maxR, Math.hypot(footprint[i].lx, footprint[i].ly));
+    for (let i = 0; i < footprint.length; i++) maxR = Math.max(maxR, Math.hypot(footprint[i].x, footprint[i].y));
     prop._collisionBoundingRadius = maxR;
     return prop.shape;
 }
