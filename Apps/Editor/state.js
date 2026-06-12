@@ -1,9 +1,13 @@
 import { getGameState } from "../../GameState/GameState.js";
 import { SharedGameState } from "../../GameState/SharedGameState.js";
+import { createAabb } from "../../Libraries/Math/Aabb2D.js";
 import { Viewport } from "../../Libraries/Viewport/Viewport.js";
 import { WallCollisionResolver } from "../../Libraries/Motion/WallCollisionResolver.js";
 export const LAB_PREVIEW_RANGE = 160;
 export const TILELAB_SANDBOX_SPAWN_PROP = "beach_ball";
+function createLabMapBoundsPreview() {
+    return { playArea: createAabb(), cavern: createAabb(), playViewportX: NaN, playViewportY: NaN, playCols: NaN, playRows: NaN, cavernCol: NaN, cavernRow: NaN, cavernCols: NaN, cavernRows: NaN };
+}
 /** @param {object} entity @param {object} hit @param {object | null} state */
 function applyWallDamageHit(entity, hit, state) {
     if (!entity.canDamageWalls || !state) return;
@@ -23,10 +27,7 @@ export class TileLabGameState extends SharedGameState {
         this.floorSeed = rand;
         this.labPlayConfig = { playAreaCols: 256, playAreaRows: 256 };
         this.labCavernConfig = { boundsCol: -128, boundsRow: -128, boundsCols: 256, boundsRows: 256, fillChance: 0.45, iterations: 3 };
-        this.labPlayAreaBoundsPreview = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
-        this.labCavernBoundsPreview = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
-        this._labPlayAreaBoundsKey = "";
-        this._labCavernBoundsKey = "";
+        this.labMapBoundsPreview = createLabMapBoundsPreview();
         this.labShowSandboxPanel = true;
         this.labShowProfilePanel = true;
         this.labShowMapPanel = false;

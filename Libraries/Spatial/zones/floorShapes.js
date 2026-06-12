@@ -1,5 +1,6 @@
 import { CircleShape, PolygonShape } from "../collision/Shapes.js";
 import { SatCollision } from "../collision/SatCollision.js";
+import { aabbOverlap } from "../../Math/Aabb2D.js";
 function createFloorShape(x, y, shape, aabb, { id = "floor-shape" } = {}) {
     return {
         id,
@@ -62,9 +63,6 @@ export function processFloorShapes(spatialFrame, shapes, { onEnter, onExit }) {
         floorShape._occupants = next;
         floorShape._nextOccupants = prev;
     }
-}
-function aabbOverlap(a, b) {
-    return a.minX <= b.maxX && a.maxX >= b.minX && a.minY <= b.maxY && a.maxY >= b.minY;
 }
 /** @param {{ aabb: { minX: number, minY: number, maxX: number, maxY: number } }} entity @param {import("../../Viewport/Viewport.js").Viewport} viewport */
 export function isAabbInView(entity, viewport) {

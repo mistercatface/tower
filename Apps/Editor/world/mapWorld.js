@@ -3,8 +3,8 @@ import { gridSettings } from "../../../Config/Config.js";
 import { rebuildLabMapCaches } from "../../../Libraries/Render/map/labMapCaches.js";
 import { withSeededRandom } from "../../../Libraries/Random/index.js";
 import { fillRandomGrid, runCellularAutomata } from "../../../Libraries/CA/index.js";
-import { aabbContains, centeredAabb, padAabb, unionAabb } from "../../../Libraries/Math/Aabb2D.js";
-import { worldBoundsFromCellOrigin } from "../../../Libraries/Spatial/grid/GridCoords.js";
+import { aabbContains, centeredAabb, centeredAabbInto, padAabb, unionAabb } from "../../../Libraries/Math/Aabb2D.js";
+import { worldBoundsFromCellOrigin, worldBoundsFromCellOriginInto } from "../../../Libraries/Spatial/grid/GridCoords.js";
 import { computeBoundsFromWalls } from "../../../Libraries/Spatial/grid/wallGridBake.js";
 import { addSandboxWalls, clearSandboxWallsInBounds } from "../../../Libraries/Sandbox/spawnAssembly.js";
 export const PLAY_AREA_CELL_OPTIONS = [64, 128, 256, 512, 1024];
@@ -24,27 +24,27 @@ export function getCavernBoundsPreview(cavernConfig) {
 }
 /** @param {import("../state.js").TileLabGameState} state */
 export function refreshLabMapBoundsPreview(state) {
+    const cache = state.labMapBoundsPreview;
     const { viewport, labPlayConfig, labCavernConfig } = state;
     const cellSize = gridSettings.cellSize;
-    const playKey = `${viewport.x}|${viewport.y}|${labPlayConfig.playAreaCols}|${labPlayConfig.playAreaRows}`;
-    if (state._labPlayAreaBoundsKey !== playKey) {
-        state._labPlayAreaBoundsKey = playKey;
-        const box = centeredAabb(viewport.x, viewport.y, labPlayConfig.playAreaCols * cellSize, labPlayConfig.playAreaRows * cellSize);
-        const out = state.labPlayAreaBoundsPreview;
-        out.minX = box.minX;
-        out.minY = box.minY;
-        out.maxX = box.maxX;
-        out.maxY = box.maxY;
+    if (cache.playViewportX !== viewport.x || cache.playViewportY !== viewport.y || cache.playCols !== labPlayConfig.playAreaCols || cache.playRows !== labPlayConfig.playAreaRows) {
+        cache.playViewportX = viewport.x;
+        cache.playViewportY = viewport.y;
+        cache.playCols = labPlayConfig.playAreaCols;
+        cache.playRows = labPlayConfig.playAreaRows;
+        centeredAabbInto(cache.playArea, viewport.x, viewport.y, labPlayConfig.playAreaCols * cellSize, labPlayConfig.playAreaRows * cellSize);
     }
-    const cavernKey = `${labCavernConfig.boundsCol}|${labCavernConfig.boundsRow}|${labCavernConfig.boundsCols}|${labCavernConfig.boundsRows}`;
-    if (state._labCavernBoundsKey !== cavernKey) {
-        state._labCavernBoundsKey = cavernKey;
-        const box = getCavernBoundsPreview(labCavernConfig);
-        const out = state.labCavernBoundsPreview;
-        out.minX = box.minX;
-        out.minY = box.minY;
-        out.maxX = box.maxX;
-        out.maxY = box.maxY;
+    if (
+        cache.cavernCol !== labCavernConfig.boundsCol ||
+        cache.cavernRow !== labCavernConfig.boundsRow ||
+        cache.cavernCols !== labCavernConfig.boundsCols ||
+        cache.cavernRows !== labCavernConfig.boundsRows
+    ) {
+        cache.cavernCol = labCavernConfig.boundsCol;
+        cache.cavernRow = labCavernConfig.boundsRow;
+        cache.cavernCols = labCavernConfig.boundsCols;
+        cache.cavernRows = labCavernConfig.boundsRows;
+        worldBoundsFromCellOriginInto(cache.cavern, labCavernConfig.boundsCol, labCavernConfig.boundsRow, labCavernConfig.boundsCols, labCavernConfig.boundsRows, cellSize);
     }
 }
 /**

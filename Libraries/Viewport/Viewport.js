@@ -1,4 +1,5 @@
-import { LIBRARY_DEFAULT_PERSPECTIVE_STRENGTH, LIBRARY_MIN_WORLD_SPAN } from "../Spatial/iso/perspectiveDefaults.js";
+import { centerHalfExtentsAabbInto, createAabb } from "../Math/Aabb2D.js";
+import { LIBRARY_MIN_WORLD_SPAN } from "../Spatial/iso/perspectiveDefaults.js";
 /** Default entity cull padding (px in world space). */
 export const VIEWPORT_VISIBILITY_PAD_DEFAULT = 20;
 /** Off-screen nav replan threshold padding. */
@@ -18,11 +19,11 @@ export class Viewport {
         this.invZoom = 1;
         this.viewQueryPadPx = 0;
         this.viewPaddingPx = 0;
-        this.boundsClip = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
-        this.boundsQuery = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
-        this.boundsDraw = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
-        this.boundsVisibleDefault = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
-        this.boundsVisibleNav = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+        this.boundsClip = createAabb();
+        this.boundsQuery = createAabb();
+        this.boundsDraw = createAabb();
+        this.boundsVisibleDefault = createAabb();
+        this.boundsVisibleNav = createAabb();
         this.structurePerspectiveWorldSpan = LIBRARY_MIN_WORLD_SPAN;
         this.structurePerspectiveReferenceSpan = LIBRARY_MIN_WORLD_SPAN;
         /** @type {number | undefined} Lazily filled by resolveStructurePerspectiveStrength. */
@@ -55,20 +56,14 @@ export class Viewport {
         this.halfW = w / (2 * this._zoom);
         this.halfH = h / (2 * this._zoom);
         this.invZoom = 1 / this._zoom;
-        this._writeWorldBounds(this.boundsClip, this.halfW, this.halfH, 0);
-        this._writeWorldBounds(this.boundsQuery, this.halfW, this.halfH, this.viewQueryPadPx);
-        this._writeWorldBounds(this.boundsDraw, this.halfW, this.halfH, this.viewPaddingPx);
-        this._writeWorldBounds(this.boundsVisibleDefault, this.halfW, this.halfH, VIEWPORT_VISIBILITY_PAD_DEFAULT);
-        this._writeWorldBounds(this.boundsVisibleNav, this.halfW, this.halfH, VIEWPORT_VISIBILITY_PAD_NAV);
+        centerHalfExtentsAabbInto(this.boundsClip, this._x, this._y, this.halfW, this.halfH, 0);
+        centerHalfExtentsAabbInto(this.boundsQuery, this._x, this._y, this.halfW, this.halfH, this.viewQueryPadPx);
+        centerHalfExtentsAabbInto(this.boundsDraw, this._x, this._y, this.halfW, this.halfH, this.viewPaddingPx);
+        centerHalfExtentsAabbInto(this.boundsVisibleDefault, this._x, this._y, this.halfW, this.halfH, VIEWPORT_VISIBILITY_PAD_DEFAULT);
+        centerHalfExtentsAabbInto(this.boundsVisibleNav, this._x, this._y, this.halfW, this.halfH, VIEWPORT_VISIBILITY_PAD_NAV);
         this.structurePerspectiveWorldSpan = Math.max(LIBRARY_MIN_WORLD_SPAN, Math.min(this.halfW, this.halfH) * 2);
         this.structurePerspectiveReferenceSpan = Math.max(LIBRARY_MIN_WORLD_SPAN, this.getVisualRadius() * 2);
         this.structurePerspectiveStrength = undefined;
-    }
-    _writeWorldBounds(out, halfW, halfH, padding) {
-        out.minX = this._x - halfW - padding;
-        out.minY = this._y - halfH - padding;
-        out.maxX = this._x + halfW + padding;
-        out.maxY = this._y + halfH + padding;
     }
     apply(ctx) {
         ctx.translate(this.cx, this.cy);

@@ -3,6 +3,7 @@
  * Animated surfaces are baked at assembly spawn — see Libraries/Sandbox/assemblySurfaceBake.js.
  */
 import { getWallHeight } from "./WorldSurfaceSettings.js";
+import { createAabb } from "../Math/Aabb2D.js";
 import { intersectWorldBoundsInto } from "../Spatial/playBounds.js";
 import { getChunkSizePx, gridBoundsToChunkRange, worldToChunkCol, worldToChunkRow } from "../Spatial/grid/ChunkGrid.js";
 import { SurfaceBitmapCache } from "./SurfaceBitmapCache.js";
@@ -35,7 +36,7 @@ export class WorldSurfaceEngine {
         this.settings = settings;
         this.surfaceCache = new SurfaceBitmapCache(settings.maxCachedSurfaces);
         this._buildChunkPayload = hooks.buildChunkPayload ?? null;
-        this.chunkDrawBounds = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+        this.chunkDrawBounds = createAabb();
     }
     clear() {
         this.surfaceCache.clear();

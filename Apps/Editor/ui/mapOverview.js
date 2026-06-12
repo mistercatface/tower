@@ -48,8 +48,8 @@ export function paintMapOverviewFrame(state) {
     refreshLabMapBoundsPreview(state);
     if (state.labShowMapOverviewViewport) drawWorldBoundsBox(ctx, state.viewport.boundsClip, cache, displayW, displayH, "#00e5ff");
     if (state.labShowMapOverviewGenBounds) {
-        drawWorldBoundsBox(ctx, state.labPlayAreaBoundsPreview, cache, displayW, displayH, "#76ff03", 2, [6, 4]);
-        drawWorldBoundsBox(ctx, state.labCavernBoundsPreview, cache, displayW, displayH, "#ff9800", 2);
+        drawWorldBoundsBox(ctx, state.labMapBoundsPreview.playArea, cache, displayW, displayH, "#76ff03", 2, [6, 4]);
+        drawWorldBoundsBox(ctx, state.labMapBoundsPreview.cavern, cache, displayW, displayH, "#ff9800", 2);
     }
 }
 /** Vertical space for main map max-size when overview is visible. */

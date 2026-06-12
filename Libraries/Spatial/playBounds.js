@@ -1,4 +1,4 @@
-import { padAabb, intersectAabbInto } from "../Math/Aabb2D.js";
+import { copyAabbInto, padAabb, intersectAabbInto } from "../Math/Aabb2D.js";
 /** @typedef {import("../Math/Aabb2D.js").Aabb2D} WorldPlayBounds */
 /**
  * @param {WorldPlayBounds} out
@@ -9,17 +9,11 @@ import { padAabb, intersectAabbInto } from "../Math/Aabb2D.js";
 export function intersectWorldBoundsInto(out, a, b) {
     if (!a) {
         if (!b) return false;
-        out.minX = b.minX;
-        out.minY = b.minY;
-        out.maxX = b.maxX;
-        out.maxY = b.maxY;
+        copyAabbInto(out, b);
         return true;
     }
     if (!b) {
-        out.minX = a.minX;
-        out.minY = a.minY;
-        out.maxX = a.maxX;
-        out.maxY = a.maxY;
+        copyAabbInto(out, a);
         return true;
     }
     return intersectAabbInto(out, a, b);
