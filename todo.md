@@ -50,7 +50,7 @@ Small repeated patterns worth extracting when touching nearby code:
 
 **Render / canvas (paused)**
 
-- [ ] **`gatherTexturedQuadCells`** in-place sort — still allocates per sphere draw
+- [ ] See **drawImage / texture backlog** below — `gatherTexturedQuadCells` moved there
 
 **Grid / surfaces**
 
@@ -79,7 +79,6 @@ Three projection layers exist — intentional, but easy to confuse:
 **3D props — lower priority**
 
 - [ ] **`drawRadialSilhouetteBody`** (`SolidDraw.js`) — custom arc path; OK to keep, optional named helper
-- [ ] **`gatherTexturedQuadCells`** — still allocates sorted cell list per sphere draw
 
 **ctx path — low priority**
 
@@ -139,9 +138,38 @@ Not dead — assemblies and pull pads still spawn `Segment` for grid occupancy +
 
 ---
 
+## drawImage / texture backlog
+
+Most warped textures already go through `drawImageQuad` (`AffineTexture.js`) or `drawBakedTexture` (`WorldSurfaceResolution.js`). These are the remaining gaps — ranked by impact.
+
+**1. `drawProjectedHorizontalChunk` (quality + dedup)**
+
+- [ ] **`drawProjectedHorizontalChunk(ctx, canvas, corners, settings)`** — Elevated roof chunks in `WorldSurfaceEngine.js` project four corners via `projectHorizontalSurfaceCornersInto`, then blit with a **single axis-aligned** `ctx.drawImage(dstX, dstY, dstW, dstH)` (duplicated for static-roof and entity-roof paths). That assumes the chunk is a screen-aligned rectangle and can **skew** at steep camera angles. Assembly elevated patches already use proper `drawImageQuad` in `assemblySurfaceDraw.js`. Helper should: flat z=0 → `drawBakedTexture`; elevated → `drawImageQuad` with projected corners + `wallTextureBleedPx`. Unifies corner→rect math and optionally fixes roof perspective.
+
+**2. Textured quad cell GC (perf — hot path)**
+
+- [ ] **`gatherTexturedQuadCells` scratch + in-place sort** — Sphere decals (`drawSphereTexturePatch`) and cylinder inspect build a new `cells` array every draw; `drawTexturedQuadCells` then `[...cells].sort(...)`. Pool the cell list and sort in place (or track max depth index) to cut allocations on pool-ball / prop texture draws.
+
+**3. Inspect label path convergence (consistency)**
+
+- [ ] **BoxInspectLabel → `drawTexturedQuadCells`** — `CylinderInspect` / sphere patches use `gatherTexturedQuadCells` + `drawTexturedQuadCells`; `BoxInspectLabel.js` hand-builds quads, sorts by depth, loops `drawImageQuad` directly. Same engine, two glue styles (`syTop`/`syBot` vs `sy0`/`sy1` naming only). Low priority — inspect-only, not simulation hot path.
+
+**4. Editor map cache blit (cosmetic)**
+
+- [ ] **`drawMapImageCache(ctx, cache)`** — Lab editor repeats `ctx.drawImage(cache.canvas, cache.minX, cache.minY)` (and scaled variants in `mapOverview.js`, `preview.js` wall/path layers). Thin wrapper over `{ canvas, minX, minY, maxX, maxY }` bake caches from `labMapCaches.js`.
+
+**5. Legacy sprite blit audit**
+
+- [ ] **Audit `Entity.renderCachedSprite` callers** — `QuantizedSpriteCache` already has `blitAnchoredSprite` / `blitCenteredSprite` (translate, scale, smoothing, `drawImage`). `Entity.renderCachedSprite` is an older parallel (translate, rotate, centered `drawImage`). Find callers; migrate hot paths to quantized blit helpers and retire or document the legacy path.
+
+**6. Image-smoothing boilerplate (nitpick)**
+
+- [ ] **`withImageSmoothing(ctx, enabled, fn)`** — Save/restore `imageSmoothingEnabled` repeated in `drawBakedTexture`, `drawTexturedQuadCells`, `blitAnchoredSprite`, `ProjectedWallDraw`, `assemblySurfaceDraw`, `BoxInspectLabel`. Tiny helper; low payoff unless touching those files anyway. Related: unify option names — walls use `bleedPx`, textured cells use `screenBleed` (same `drawImageTriangle` opt).
+
+---
+
 ## Render / canvas dedup (optional)
 
-- [ ] **`gatherTexturedQuadCells`** scratch / in-place sort for sphere draws
 - [ ] Migrate **`LaserBeam`**, particles, inspect draw if touched during prop work
 
 ---
