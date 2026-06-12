@@ -126,7 +126,7 @@ export function clipChunkToBlockedCells(ctx, pass) {
 export function clipChunkToWallFootprints(ctx, pass) {
     const { wallSpatialIndex, originX, originY, sizePx } = pass;
     if (!wallSpatialIndex) return false;
-    const segments = wallSpatialIndex.collectInBounds(originX, originY, originX + sizePx, originY + sizePx);
+    const segments = wallSpatialIndex.collectInBounds(chunkWorldAabb(originX, originY, sizePx));
     return clipToPath(ctx, (clipCtx) => {
         let clippedAny = false;
         for (let i = 0; i < segments.length; i++) {
@@ -153,7 +153,7 @@ export function drawStaticWallFootprintDamageOverlays(ctx, pass) {
 export function drawWallFootprintDamageOverlays(ctx, pass) {
     const { wallSpatialIndex, originX, originY, sizePx } = pass;
     if (!wallSpatialIndex) return;
-    const segments = wallSpatialIndex.collectInBounds(originX, originY, originX + sizePx, originY + sizePx);
+    const segments = wallSpatialIndex.collectInBounds(chunkWorldAabb(originX, originY, sizePx));
     for (let i = 0; i < segments.length; i++) {
         const wall = segments[i];
         if (wall.isDead || wall.collisionOnly) continue;

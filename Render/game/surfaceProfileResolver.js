@@ -1,7 +1,9 @@
 import { getGameWorldSurfaceSettings } from "../WorldSurfaceBootstrap.js";
 import { createGroundChunkBakePayload } from "../../Libraries/WorldSurface/bake/SurfaceBakeHelpers.js";
 import { getSurfaceProfileProvider } from "../../Libraries/Procedural/SurfaceProfileProvider.js";
+import { centerReachAabbInto, createAabb } from "../../Libraries/Math/Aabb2D.js";
 /** @typedef {import("../../GameState/GameState.js").GameState} GameState */
+const WALL_PROBE_BOUNDS = createAabb();
 export function resolveSurfaceProfileAtCoords(state, x, y) {
     if (state.worldSurfaces.surfaceProfileOverride) return state.worldSurfaces.surfaceProfileOverride;
     return getSurfaceProfileProvider().defaultId;
@@ -11,7 +13,7 @@ function resolveWallSegmentSurfaceProfileAt(state, x, y, zLevel) {
     const index = state.wallSpatialIndex;
     if (!index) return null;
     const pad = (state.obstacleGrid?.cellSize ?? 4) * 4;
-    const walls = index.collectInBounds(x - pad, y - pad, x + pad, y + pad);
+    const walls = index.collectInBounds(centerReachAabbInto(WALL_PROBE_BOUNDS, x, y, pad));
     for (let i = 0; i < walls.length; i++) {
         const wall = walls[i];
         if (wall.isDead || !wall.surfaceProfileId) continue;

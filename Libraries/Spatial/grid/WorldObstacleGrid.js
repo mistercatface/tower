@@ -156,7 +156,7 @@ export class WorldObstacleGrid {
         const bounds = getWallCellBounds(wall, (x, y) => this.worldToGrid(x, y), this.cols, this.rows);
         clearWallCells(this.grid, this.cols, bounds, this.segmentGrid);
         const worldBounds = cellBoundsToWorldBoundsInto(this.patchBoundsScratch, bounds, this.minX, this.minY, this.cellSize);
-        const localWalls = wallSpatialIndex ? wallSpatialIndex.collectInBounds(worldBounds.minX, worldBounds.minY, worldBounds.maxX, worldBounds.maxY) : [];
+        const localWalls = wallSpatialIndex ? wallSpatialIndex.collectInBounds(worldBounds) : [];
         for (const localWall of localWalls) this.addWall(localWall);
         return bounds;
     }
@@ -186,7 +186,7 @@ export class WorldObstacleGrid {
             }
         if (wallSpatialIndex && this.segmentGrid) {
             const worldBounds = cellBoundsToWorldBoundsInto(this.patchBoundsScratch, gridBounds, this.minX, this.minY, this.cellSize);
-            const localWalls = wallSpatialIndex.collectInBounds(worldBounds.minX, worldBounds.minY, worldBounds.maxX, worldBounds.maxY);
+            const localWalls = wallSpatialIndex.collectInBounds(worldBounds);
             for (let i = 0; i < localWalls.length; i++) this.addWall(localWalls[i]);
         }
         return gridBounds;

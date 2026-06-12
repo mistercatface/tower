@@ -48,7 +48,7 @@ export function addSandboxWalls(state, walls, { notifyNavigation = true } = {}) 
 }
 /** @param {object} state @param {import("../../../Libraries/Math/Aabb2D.js").Aabb2D} bounds */
 export function clearSandboxWallsInBounds(state, bounds) {
-    const candidates = state.wallSpatialIndex.collectInBounds(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY);
+    const candidates = state.wallSpatialIndex.collectInBounds(bounds);
     const toRemove = [];
     for (let i = 0; i < candidates.length; i++) {
         const wall = candidates[i];

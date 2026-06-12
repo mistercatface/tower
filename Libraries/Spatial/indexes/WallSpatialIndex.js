@@ -54,7 +54,8 @@ export class WallSpatialIndex {
         const padding = this.cellSize;
         return query.collectInIndexCoords(this, b.minX - padding, b.minY - padding, b.maxX + padding, b.maxY + padding, entity);
     }
-    collectInBounds(minX, minY, maxX, maxY, query = fallbackQuery) {
-        return query.collectInIndexCoords(this, minX, minY, maxX, maxY);
+    /** @param {import("../../Math/Aabb2D.js").Aabb2D} bounds @param {import("../query/SpatialQuery.js").SpatialQuery} [query] */
+    collectInBounds(bounds, query = fallbackQuery) {
+        return query.collectInIndexCoords(this, bounds.minX, bounds.minY, bounds.maxX, bounds.maxY);
     }
 }

@@ -24,7 +24,7 @@ import { createOffscreenCanvas } from "../Canvas/offscreenCanvas.js";
  */
 export function chunkHasWallSegments(wallSpatialIndex, chunkOriginX, chunkOriginY, chunkSizePx) {
     if (!wallSpatialIndex) return false;
-    const segments = wallSpatialIndex.collectInBounds(chunkOriginX, chunkOriginY, chunkOriginX + chunkSizePx, chunkOriginY + chunkSizePx);
+    const segments = wallSpatialIndex.collectInBounds(chunkWorldAabb(chunkOriginX, chunkOriginY, chunkSizePx));
     for (let i = 0; i < segments.length; i++) if (!segments[i].isDead) return true;
     return false;
 }
