@@ -29,6 +29,5 @@ export function createWorldSurfaceSettings(params) {
 }
 /** @param {WorldSurfaceSettings} settings */
 export function getWallHeight(settings) {
-    if (settings.wallHeight == null) throw new Error("worldSurface.wallHeight must be set on the active game definition");
     return settings.wallHeight;
 }
