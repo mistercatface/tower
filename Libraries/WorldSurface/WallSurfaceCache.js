@@ -37,7 +37,7 @@ export function buildWallAtlasCacheKey(p1, p2, proceduralSurfaceDraw, profileId,
  * @param {WallAtlasBakeContext} proceduralSurfaceDraw
  * @param {string} profileId
  * @param {number} ppwu
- * @param {{ wallHeight?: number, _wkInfo?: object, _wkProfileId?: string, _wkPpwu?: number, _wkRev?: number, _wkSeed?: number, _wkWallHeight?: number } | null} cacheObj
+ * @param {{ wallHeight?: number, _wkInfo?: object, _wkProfileId?: string, _wkPpwu?: number, _wkRev?: number, _wkSeed?: number, _wkWallHeight?: number, _wallAtlasStash?: object } | null} cacheObj
  * @param {import("./WorldSurfaceSettings.js").WorldSurfaceSettings} [settings]
  */
 export function getWallAtlasCacheInfo(p1, p2, proceduralSurfaceDraw, profileId, ppwu, cacheObj, settings) {

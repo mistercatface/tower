@@ -7,19 +7,7 @@ import { cellIsStaticBlocked, resolveStaticWallHeightAtCell } from "../../World/
 const sP1 = { x: 0, y: 0 };
 const sP2 = { x: 0, y: 0 };
 /** @type {{ grid: object | null, layers: object[] | null, occupancyRevision: number, defaultWallHeight: number, boundsMinX: number, boundsMaxX: number, boundsMinY: number, boundsMaxY: number, gridCols: number, gridRows: number, faces: object[] }} */
-const sGeomCache = {
-    grid: null,
-    layers: null,
-    occupancyRevision: -1,
-    defaultWallHeight: 0,
-    boundsMinX: 0,
-    boundsMaxX: 0,
-    boundsMinY: 0,
-    boundsMaxY: 0,
-    gridCols: 0,
-    gridRows: 0,
-    faces: [],
-};
+const sGeomCache = { grid: null, layers: null, occupancyRevision: -1, defaultWallHeight: 0, boundsMinX: 0, boundsMaxX: 0, boundsMinY: 0, boundsMaxY: 0, gridCols: 0, gridRows: 0, faces: [] };
 /** @param {typeof sGeomCache} cache @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {import("../../World/staticOccupancyLayers.js").StaticOccupancyLayer[] | null | undefined} layers @param {number} occupancyRevision @param {number} defaultWallHeight @param {import("../../Math/Aabb2D.js").Aabb2D} bounds */
 function geomCacheHit(cache, grid, layers, occupancyRevision, defaultWallHeight, bounds) {
     return (
@@ -111,6 +99,7 @@ function collectStaticGridWallFaceCandidates(obstacleGrid, bounds, layers, defau
             const ecx = (sP1.x + sP2.x) / 2;
             const ecy = (sP1.y + sP2.y) / 2;
             out.push({
+                staticGrid: true,
                 gridCol: col,
                 gridRow: row,
                 p1: { x: sP1.x, y: sP1.y },
@@ -149,19 +138,8 @@ export function collectStaticGridWallDrawables(obstacleGrid, viewport, layers, s
         const viewX = face.cx - viewerX;
         const viewY = face.cy - viewerY;
         if (face.outX * viewX + face.outY * viewY >= 0) continue;
-        out.push({
-            staticGrid: true,
-            gridCol: face.gridCol,
-            gridRow: face.gridRow,
-            p1: face.p1,
-            p2: face.p2,
-            wallHeight: face.wallHeight,
-            cx: face.cx,
-            cy: face.cy,
-            outX: face.outX,
-            outY: face.outY,
-            _distSq: viewX * viewX + viewY * viewY,
-        });
+        face._distSq = viewX * viewX + viewY * viewY;
+        out.push(face);
     }
     return out;
 }

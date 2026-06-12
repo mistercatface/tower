@@ -10,6 +10,7 @@ export function invalidateWallAtlasKeyMemos(state) {
             delete edge._wkRev;
             delete edge._wkSeed;
             delete edge._wkWallHeight;
+            delete edge._wallAtlasStash;
         }
     }
 }

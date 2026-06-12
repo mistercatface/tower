@@ -188,6 +188,20 @@ export class WorldSurfaceEngine {
     getOrEnsureWallAtlas(p1, p2, options) {
         const { profileId, proceduralSurfaceDraw, wallHeight = null, cacheObj = null } = options;
         const ppwu = getTexelResolution(this.settings);
+        const seed = proceduralSurfaceDraw.surfaceSeed;
+        const rev = getSurfaceProfileRevision(profileId);
+        const wallHeightKey = cacheObj?.wallHeight ?? wallHeight ?? getWallHeight(this.settings);
+        const stash = cacheObj?._wallAtlasStash;
+        if (
+            stash &&
+            stash.profileId === profileId &&
+            stash.ppwu === ppwu &&
+            stash.rev === rev &&
+            stash.seed === seed &&
+            stash.wallHeightKey === wallHeightKey &&
+            this.surfaceCache.get(stash.key) === stash.canvases
+        )
+            return stash;
         const { key, wrappedP1, wrappedP2 } = getWallAtlasCacheInfo(p1, p2, proceduralSurfaceDraw, profileId, ppwu, cacheObj, this.settings);
         let canvases = this.surfaceCache.get(key);
         if (!canvases) {
@@ -196,7 +210,9 @@ export class WorldSurfaceEngine {
             canvases = this.ensureWallAtlas(key, wrappedP1, wrappedP2, columns, proceduralSurfaceDraw, wallHeight, profileId);
             if (!canvases || canvases.length === 0) return null;
         }
-        return { key, wrappedP1, wrappedP2, canvases };
+        const resolved = { key, wrappedP1, wrappedP2, canvases, profileId, ppwu, rev, seed, wallHeightKey };
+        if (cacheObj) cacheObj._wallAtlasStash = resolved;
+        return resolved;
     }
     /**
      * @param {CanvasRenderingContext2D} ctx
