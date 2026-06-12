@@ -3,6 +3,7 @@ import { applySquareCanvasResize } from "../../../Libraries/Canvas/index.js";
 import { initResizer } from "./lab-shared.js";
 import { initAnimationPreview, estimateAnimationPreviewHeight } from "./LabAnimationPreview.js";
 import { mountMapOverview, estimateMapOverviewHeight, paintMapOverviewFrame } from "./mapOverview.js";
+import { refreshMapPanelInputs } from "./mapPanel.js";
 import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEditor.js";
 import { drawLabFrame, pushEditorProfile, repaintUntilBakesDone, applyLabWorldRenderMode } from "./preview.js";
 import { initPresetSelect, bindToolbarControls, syncWorldRenderModeUi } from "./toolbar.js";
@@ -60,6 +61,10 @@ export function mountEditorUi(state) {
     pushEditorProfile(state);
     mountLabViewport(state, requestRedraw);
     bindViewModeControls(state, requestRedraw, () => resizeCanvases(state));
+    mountMapOverview(state, () => {
+        paintMapOverviewFrame(state);
+        refreshMapPanelInputs();
+    });
     buildMapPanel(state, requestRedraw);
     mountTilelabSandbox(state, requestRedraw);
     bindToolbarControls({
@@ -99,7 +104,6 @@ export function mountEditorUi(state) {
         },
     });
     initAnimationPreview(animCanvas, buildProfileFromEditor);
-    mountMapOverview(state);
     mapCanvasResize = applySquareCanvasResize(state.labCanvas, {
         host: document.getElementById("mapStage"),
         initialSize: 320,
@@ -117,6 +121,7 @@ export function mountEditorUi(state) {
         onResize: (size) => onMapCanvasResize(state, size),
     });
     initResizer("resizer", () => resizeCanvases(state));
+    resizeCanvases(state);
     drawLabFrame(state);
 }
 /** @param {import("../state.js").TileLabGameState} state */

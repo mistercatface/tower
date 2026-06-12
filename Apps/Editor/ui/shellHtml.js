@@ -7,7 +7,7 @@ export const TILELAB_UI_HTML = `
         <label class="check-inline"><input id="showPathDebugInput" type="checkbox"> HPA* Grid</label>
         <label class="check-inline"><input id="showVignetteInput" type="checkbox"> Circular Overlay</label>
         <label class="check-inline"><input id="showAnimationPreviewInput" type="checkbox"> Animation Preview</label>
-        <label class="check-inline"><input id="showMapOverviewInput" type="checkbox"> Map Overview</label>
+        <label class="check-inline"><input id="showMapOverviewInput" type="checkbox" checked> Map Overview</label>
         <label class="check-inline"><input id="showMapOverviewViewportInput" type="checkbox" checked> Overview Viewport</label>
         <span class="sep"></span>
         <label class="toolbar-select">

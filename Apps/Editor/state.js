@@ -6,7 +6,23 @@ import { WallCollisionResolver } from "../../Libraries/Motion/WallCollisionResol
 export const LAB_PREVIEW_RANGE = 160;
 export const TILELAB_SANDBOX_SPAWN_PROP = "beach_ball";
 function createLabMapBoundsPreview() {
-    return { playArea: createAabb(), cavern: createAabb(), playViewportX: NaN, playViewportY: NaN, playCols: NaN, playRows: NaN, cavernCol: NaN, cavernRow: NaN, cavernCols: NaN, cavernRows: NaN };
+    return {
+        playArea: createAabb(),
+        cavern: createAabb(),
+        playViewportX: NaN,
+        playViewportY: NaN,
+        playCols: NaN,
+        playRows: NaN,
+        cavernMode: "",
+        cavernCol: NaN,
+        cavernRow: NaN,
+        cavernCols: NaN,
+        cavernRows: NaN,
+        centerCol: NaN,
+        centerRow: NaN,
+        outerRadiusCells: NaN,
+        donutThicknessCells: NaN,
+    };
 }
 /** @param {object} entity @param {object} hit @param {object | null} state */
 function applyWallDamageHit(entity, hit, state) {
@@ -26,13 +42,26 @@ export class TileLabGameState extends SharedGameState {
         this.mapSeed = rand;
         this.floorSeed = rand;
         this.labPlayConfig = { playAreaCols: 256, playAreaRows: 256 };
-        this.labCavernConfig = { boundsCol: -8, boundsRow: -8, boundsCols: 32, boundsRows: 32, fillChance: 0.45, iterations: 3, wallHeightLevel: 10 };
+        this.labCavernConfig = {
+            boundsMode: "rect",
+            boundsCol: -8,
+            boundsRow: -8,
+            boundsCols: 32,
+            boundsRows: 32,
+            centerCol: 8,
+            centerRow: 8,
+            outerRadiusCells: 16,
+            donutThicknessCells: 4,
+            fillChance: 0.45,
+            iterations: 3,
+            wallHeightLevel: 10,
+        };
         this.labMapBoundsPreview = createLabMapBoundsPreview();
         this.labShowSandboxPanel = true;
         this.labShowProfilePanel = true;
         this.labShowMapPanel = false;
         this.labShowAnimationPreview = false;
-        this.labShowMapOverview = false;
+        this.labShowMapOverview = true;
         this.labShowMapOverviewViewport = true;
         this.labShowMapOverviewGenBounds = true;
         this.worldRenderMode = "radial";

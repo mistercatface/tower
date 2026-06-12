@@ -3,11 +3,23 @@ import { rebuildLabMapCaches } from "../../../Libraries/Render/map/labMapCaches.
 import { withSeededRandom } from "../../../Libraries/Random/index.js";
 import { fillRandomGrid, runCellularAutomata } from "../../../Libraries/CA/index.js";
 import { centeredAabb, centeredAabbInto, padAabb, unionAabb } from "../../../Libraries/Math/Aabb2D.js";
-import { worldBoundsFromCellOrigin, worldBoundsFromCellOriginInto } from "../../../Libraries/Spatial/grid/GridCoords.js";
+import { worldBoundsFromCellOrigin, forEachObstacleGridCellInAabb } from "../../../Libraries/Spatial/grid/GridCoords.js";
+import { colRowToIndex } from "../../../Libraries/Spatial/grid/GridUtils.js";
 import { computeBoundsFromWalls } from "../../../Libraries/Spatial/grid/wallGridBake.js";
 import { clearSandboxWallsInBounds } from "../../../Libraries/Sandbox/spawnAssembly.js";
 import { resolveStampWallHeight } from "../../../Libraries/WorldSurface/stampWallHeight.js";
-import { appendStaticOccupancyLayer } from "../../../Libraries/World/staticOccupancyLayers.js";
+import { appendStaticOccupancyLayer, cellIsStaticBlocked, gridCellToGlobalColRow, patchStaticOccupancyCell } from "../../../Libraries/World/staticOccupancyLayers.js";
+import {
+    applyCavernShapeMask,
+    centerCavernBoundsOnViewport,
+    getCavernBoundsAabb,
+    getCavernBoundsAabbInto,
+    getCavernCenterWorld,
+    getCavernInnerRadiusCells,
+    getCavernStampExtent,
+    syncCavernSizeFromPlayArea,
+} from "./cavernBounds.js";
+export { getCavernBoundsAabb, centerCavernBoundsOnViewport, syncCavernSizeFromPlayArea };
 export const PLAY_AREA_CELL_OPTIONS = [64, 128, 256, 512, 1024];
 /** @param {number} cells */
 export function playAreaCellsToIndex(cells) {
@@ -21,7 +33,7 @@ export function getPlayAreaPreviewBounds(viewport, playConfig) {
 }
 /** @param {import("../state.js").TileLabGameState["labCavernConfig"]} cavernConfig */
 export function getCavernBoundsPreview(cavernConfig) {
-    return worldBoundsFromCellOrigin(cavernConfig.boundsCol, cavernConfig.boundsRow, cavernConfig.boundsCols, cavernConfig.boundsRows, gridSettings.cellSize);
+    return getCavernBoundsAabb(cavernConfig, gridSettings.cellSize);
 }
 /** @param {import("../state.js").TileLabGameState} state */
 export function refreshLabMapBoundsPreview(state) {
@@ -35,17 +47,28 @@ export function refreshLabMapBoundsPreview(state) {
         cache.playRows = labPlayConfig.playAreaRows;
         centeredAabbInto(cache.playArea, viewport.x, viewport.y, labPlayConfig.playAreaCols * cellSize, labPlayConfig.playAreaRows * cellSize);
     }
+    const cfg = labCavernConfig;
     if (
-        cache.cavernCol !== labCavernConfig.boundsCol ||
-        cache.cavernRow !== labCavernConfig.boundsRow ||
-        cache.cavernCols !== labCavernConfig.boundsCols ||
-        cache.cavernRows !== labCavernConfig.boundsRows
+        cache.cavernMode !== cfg.boundsMode ||
+        cache.cavernCol !== cfg.boundsCol ||
+        cache.cavernRow !== cfg.boundsRow ||
+        cache.cavernCols !== cfg.boundsCols ||
+        cache.cavernRows !== cfg.boundsRows ||
+        cache.centerCol !== cfg.centerCol ||
+        cache.centerRow !== cfg.centerRow ||
+        cache.outerRadiusCells !== cfg.outerRadiusCells ||
+        cache.donutThicknessCells !== cfg.donutThicknessCells
     ) {
-        cache.cavernCol = labCavernConfig.boundsCol;
-        cache.cavernRow = labCavernConfig.boundsRow;
-        cache.cavernCols = labCavernConfig.boundsCols;
-        cache.cavernRows = labCavernConfig.boundsRows;
-        worldBoundsFromCellOriginInto(cache.cavern, labCavernConfig.boundsCol, labCavernConfig.boundsRow, labCavernConfig.boundsCols, labCavernConfig.boundsRows, cellSize);
+        cache.cavernMode = cfg.boundsMode;
+        cache.cavernCol = cfg.boundsCol;
+        cache.cavernRow = cfg.boundsRow;
+        cache.cavernCols = cfg.boundsCols;
+        cache.cavernRows = cfg.boundsRows;
+        cache.centerCol = cfg.centerCol;
+        cache.centerRow = cfg.centerRow;
+        cache.outerRadiusCells = cfg.outerRadiusCells;
+        cache.donutThicknessCells = cfg.donutThicknessCells;
+        getCavernBoundsAabbInto(cache.cavern, cfg, cellSize);
     }
 }
 /**
@@ -55,16 +78,39 @@ export function refreshLabMapBoundsPreview(state) {
  * @param {{ center?: boolean, syncSizeFromPlay?: boolean }} [options]
  */
 export function syncCavernBoundsFromPlay(viewport, playConfig, cavernConfig, { center = true, syncSizeFromPlay = false } = {}) {
-    if (syncSizeFromPlay) {
-        cavernConfig.boundsCols = playConfig.playAreaCols;
-        cavernConfig.boundsRows = playConfig.playAreaRows;
-    }
-    if (!center) return;
-    const cellSize = gridSettings.cellSize;
-    const minX = viewport.x - (cavernConfig.boundsCols * cellSize) / 2;
-    const minY = viewport.y - (cavernConfig.boundsRows * cellSize) / 2;
-    cavernConfig.boundsCol = Math.round(minX / cellSize);
-    cavernConfig.boundsRow = Math.round(minY / cellSize);
+    if (syncSizeFromPlay) syncCavernSizeFromPlayArea(playConfig, cavernConfig);
+    if (center) centerCavernBoundsOnViewport(viewport, cavernConfig, gridSettings.cellSize);
+}
+/** @param {import("../state.js").TileLabGameState} state @param {number} centerWorldX @param {number} centerWorldY @param {number} radiusWorld */
+function clearStaticOccupancyInWorldCircle(state, centerWorldX, centerWorldY, radiusWorld) {
+    const grid = state.obstacleGrid;
+    if (!grid?.cols || radiusWorld <= 0) return;
+    const aabb = { minX: centerWorldX - radiusWorld, minY: centerWorldY - radiusWorld, maxX: centerWorldX + radiusWorld, maxY: centerWorldY + radiusWorld };
+    let startCol = Infinity;
+    let endCol = -1;
+    let startRow = Infinity;
+    let endRow = -1;
+    forEachObstacleGridCellInAabb(grid, aabb, (col, row) => {
+        const bounds = grid.getCellBounds(col, row);
+        const cx = (bounds.minX + bounds.maxX) * 0.5;
+        const cy = (bounds.minY + bounds.maxY) * 0.5;
+        if (Math.hypot(cx - centerWorldX, cy - centerWorldY) >= radiusWorld) return;
+        if (!cellIsStaticBlocked(grid, col, row)) return;
+        const idx = colRowToIndex(col, row, grid.cols);
+        if (grid.segmentGrid?.[idx]?.length) return;
+        grid.grid[idx] = 0;
+        const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
+        patchStaticOccupancyCell(state, globalCol, globalRow, 0);
+        state.staticCellHealth.delete(`${globalCol},${globalRow}`);
+        if (col < startCol) startCol = col;
+        if (col > endCol) endCol = col;
+        if (row < startRow) startRow = row;
+        if (row > endRow) endRow = row;
+    });
+    if (startCol === Infinity) return;
+    const damageBounds = { startCol, endCol, startRow, endRow };
+    state.worldSurfaces.invalidateGridBounds(damageBounds, state);
+    state.navigation.onObstaclesChanged(damageBounds);
 }
 /** @param {import("../state.js").TileLabGameState} state */
 function ensureLabObstacleGridCoverage(state) {
@@ -89,15 +135,16 @@ function ensureLabObstacleGridCoverage(state) {
 }
 /** @param {import("../state.js").TileLabGameState["labCavernConfig"]} config @returns {{ originCol: number, originRow: number, cols: number, rows: number, cells: Uint8Array }} */
 function generateCavernOccupancy(config) {
-    const cols = Math.max(1, Math.round(config.boundsCols));
-    const rows = Math.max(1, Math.round(config.boundsRows));
+    const { originCol, originRow, cols, rows } = getCavernStampExtent(config);
     let cells = fillRandomGrid(cols, rows, config.fillChance);
     cells = runCellularAutomata(cols, rows, cells, { iterations: config.iterations, scratch: new Uint8Array(cols * rows) });
-    return { originCol: config.boundsCol, originRow: config.boundsRow, cols, rows, cells };
+    applyCavernShapeMask(cells, cols, rows, config, originCol, originRow);
+    return { originCol, originRow, cols, rows, cells };
 }
 /** @param {import("../state.js").TileLabGameState} state */
 export function generateLabCaverns(state) {
     const { labCavernConfig } = state;
+    const cellSize = gridSettings.cellSize;
     const stampBounds = getCavernBoundsPreview(labCavernConfig);
     /** @type {{ originCol: number, originRow: number, cols: number, rows: number, cells: Uint8Array }} */
     let stamp = null;
@@ -106,9 +153,14 @@ export function generateLabCaverns(state) {
     });
     ensureLabObstacleGridCoverage(state);
     clearSandboxWallsInBounds(state, stampBounds);
-    const wallHeight = resolveStampWallHeight(labCavernConfig.wallHeightLevel, gridSettings.cellSize);
+    const wallHeight = resolveStampWallHeight(labCavernConfig.wallHeightLevel, cellSize);
     const damageBounds = state.obstacleGrid.stampStaticOccupancy(stamp.originCol, stamp.originRow, stamp.cols, stamp.rows, stamp.cells, state.wallSpatialIndex, { additive: true });
     appendStaticOccupancyLayer(state, { originCol: stamp.originCol, originRow: stamp.originRow, cols: stamp.cols, rows: stamp.rows, wallHeight, cells: stamp.cells });
+    if (labCavernConfig.boundsMode === "donut") {
+        const innerR = getCavernInnerRadiusCells(labCavernConfig) * cellSize;
+        const center = getCavernCenterWorld(labCavernConfig, cellSize);
+        clearStaticOccupancyInWorldCircle(state, center.x, center.y, innerR);
+    }
     state.worldSurfaces.invalidateGridBounds(damageBounds, state);
     state.navigation.onObstaclesChanged(damageBounds);
     state.floorSeed = state.mapSeed;

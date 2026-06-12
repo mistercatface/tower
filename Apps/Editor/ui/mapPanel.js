@@ -1,7 +1,13 @@
 import { generateLabCaverns, PLAY_AREA_CELL_OPTIONS, playAreaCellsToIndex, syncCavernBoundsFromPlay } from "../world/mapWorld.js";
+import { migrateCavernConfigForMode } from "../world/cavernBounds.js";
 import { formatStampWallHeightLevel, STAMP_WALL_LEVEL_INFINI, STAMP_WALL_LEVEL_MIN } from "../../../Libraries/WorldSurface/stampWallHeight.js";
 import { paintMapOverviewFrame } from "./mapOverview.js";
 import { SliderControl } from "./controls/SliderControl.js";
+/** @type {(() => void) | null} */
+let mapPanelRefreshInputs = null;
+export function refreshMapPanelInputs() {
+    mapPanelRefreshInputs?.();
+}
 /** @param {HTMLElement} panel @param {string} title */
 function appendSectionTitle(panel, title) {
     const heading = document.createElement("div");
@@ -75,6 +81,7 @@ export function buildMapPanel(state, onGenerated) {
     const refreshBoundInputs = () => {
         for (let i = 0; i < boundInputs.length; i++) boundInputs[i].input.value = String(boundInputs[i].getValue());
     };
+    mapPanelRefreshInputs = refreshBoundInputs;
     const playSection = document.createElement("div");
     playSection.className = "editor-block";
     appendSectionTitle(playSection, "Play area");
@@ -90,8 +97,25 @@ export function buildMapPanel(state, onGenerated) {
     appendSectionTitle(cavernSection, "Cavern generation");
     const cavernHint = document.createElement("p");
     cavernHint.className = "editor-hint";
-    cavernHint.textContent = "Set bounds size and position (orange box). Each generate adds rock — existing caverns stay.";
+    cavernHint.textContent = "Orange overlay on map overview — drag inside to move, drag edges/rings to resize.";
     cavernSection.appendChild(cavernHint);
+    const modeField = document.createElement("label");
+    modeField.className = "param-field";
+    const modeLabel = document.createElement("span");
+    modeLabel.textContent = "Bounds shape";
+    const modeSelect = document.createElement("select");
+    for (const mode of ["rect", "circle", "donut"]) {
+        const opt = document.createElement("option");
+        opt.value = mode;
+        opt.textContent = mode === "rect" ? "Rectangle" : mode === "circle" ? "Circle" : "Donut";
+        modeSelect.appendChild(opt);
+    }
+    modeSelect.value = labCavernConfig.boundsMode;
+    modeField.append(modeLabel, modeSelect);
+    cavernSection.appendChild(modeField);
+    const rectFields = document.createElement("div");
+    const circleFields = document.createElement("div");
+    const donutFields = document.createElement("div");
     const syncRow = document.createElement("div");
     syncRow.className = "editor-tools-row";
     const syncBtn = document.createElement("button");
@@ -100,55 +124,121 @@ export function buildMapPanel(state, onGenerated) {
     syncBtn.textContent = "Center bounds on camera";
     syncBtn.addEventListener("click", () => {
         syncCavernBoundsFromPlay(state.viewport, labPlayConfig, labCavernConfig);
+        migrateCavernConfigForMode(labCavernConfig);
         refreshBoundInputs();
         onPreviewChange();
     });
     syncRow.appendChild(syncBtn);
     cavernSection.appendChild(syncRow);
     addNumberField(
-        cavernSection,
+        rectFields,
         "Bounds col",
         () => labCavernConfig.boundsCol,
         (v) => {
             labCavernConfig.boundsCol = Math.round(v);
+            migrateCavernConfigForMode(labCavernConfig);
         },
         undefined,
         onPreviewChange,
         boundInputs,
     );
     addNumberField(
-        cavernSection,
+        rectFields,
         "Bounds row",
         () => labCavernConfig.boundsRow,
         (v) => {
             labCavernConfig.boundsRow = Math.round(v);
+            migrateCavernConfigForMode(labCavernConfig);
         },
         undefined,
         onPreviewChange,
         boundInputs,
     );
     addNumberField(
-        cavernSection,
+        rectFields,
         "Bounds cols",
         () => labCavernConfig.boundsCols,
         (v) => {
             labCavernConfig.boundsCols = Math.max(1, Math.round(v));
+            migrateCavernConfigForMode(labCavernConfig);
         },
         { min: 1 },
         onPreviewChange,
         boundInputs,
     );
     addNumberField(
-        cavernSection,
+        rectFields,
         "Bounds rows",
         () => labCavernConfig.boundsRows,
         (v) => {
             labCavernConfig.boundsRows = Math.max(1, Math.round(v));
+            migrateCavernConfigForMode(labCavernConfig);
         },
         { min: 1 },
         onPreviewChange,
         boundInputs,
     );
+    addNumberField(
+        circleFields,
+        "Center col",
+        () => labCavernConfig.centerCol,
+        (v) => {
+            labCavernConfig.centerCol = Math.round(v);
+            migrateCavernConfigForMode(labCavernConfig);
+        },
+        undefined,
+        onPreviewChange,
+        boundInputs,
+    );
+    addNumberField(
+        circleFields,
+        "Center row",
+        () => labCavernConfig.centerRow,
+        (v) => {
+            labCavernConfig.centerRow = Math.round(v);
+            migrateCavernConfigForMode(labCavernConfig);
+        },
+        undefined,
+        onPreviewChange,
+        boundInputs,
+    );
+    addNumberField(
+        circleFields,
+        "Radius (cells)",
+        () => labCavernConfig.outerRadiusCells,
+        (v) => {
+            labCavernConfig.outerRadiusCells = Math.max(1, Math.round(v));
+            migrateCavernConfigForMode(labCavernConfig);
+        },
+        { min: 1 },
+        onPreviewChange,
+        boundInputs,
+    );
+    addNumberField(
+        donutFields,
+        "Donut thickness (cells)",
+        () => labCavernConfig.donutThicknessCells,
+        (v) => {
+            labCavernConfig.donutThicknessCells = Math.max(1, Math.min(labCavernConfig.outerRadiusCells - 1, Math.round(v)));
+        },
+        { min: 1 },
+        onPreviewChange,
+        boundInputs,
+    );
+    const updateModeVisibility = () => {
+        rectFields.hidden = labCavernConfig.boundsMode !== "rect";
+        circleFields.hidden = labCavernConfig.boundsMode === "rect";
+        donutFields.hidden = labCavernConfig.boundsMode !== "donut";
+    };
+    modeSelect.addEventListener("change", () => {
+        labCavernConfig.boundsMode = /** @type {"rect" | "circle" | "donut"} */ (modeSelect.value);
+        migrateCavernConfigForMode(labCavernConfig);
+        refreshBoundInputs();
+        updateModeVisibility();
+        onPreviewChange();
+    });
+    cavernSection.append(rectFields, circleFields, donutFields);
+    updateModeVisibility();
     const addSlider = (label, min, max, step, key, format = (v) => String(v)) => {
         cavernSection.appendChild(
             new SliderControl(
