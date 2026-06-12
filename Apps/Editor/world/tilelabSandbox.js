@@ -27,7 +27,7 @@ function createSandboxHost(state, requestRedraw) {
         getCameraOrigin: () => ({ x: state.viewport.x, y: state.viewport.y }),
         requestRedraw,
         computePath: (startX, startY, targetX, targetY) => state.hierarchicalNavigator.computePath(startX, startY, targetX, targetY),
-        getProps: () => state.worldProps,
+        forEachWorldProp: (fn) => state.entityRegistry.forEachOfKind("worldProp", fn),
         addProp: (prop) => addWorldPropToState(state, prop),
         removeProp: (prop) => removeWorldPropFromState(state, prop),
         clearProps: () => clearWorldPropsInState(state),

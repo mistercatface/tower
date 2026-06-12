@@ -35,21 +35,20 @@ function isExcludedFromGate(entity, excludeStates) {
 /**
  * @param {InputGateScope} scope
  * @param {object} prop
- * @param {object[]} worldProps
+ * @param {import("../../GameState/EntityRegistry.js").EntityRegistry} registry
  * @param {string | undefined} linkField
  */
-export function resolveInputGateScope(scope, prop, worldProps, linkField) {
+export function resolveInputGateScope(scope, prop, registry, linkField) {
     if (scope === "self") return [prop];
     const linkValue = linkField ? prop[linkField] : undefined;
     if (linkValue == null) return [];
     const members = [];
-    for (let i = 0; i < worldProps.length; i++) {
-        const entity = worldProps[i];
-        if (entity.isDead) continue;
-        if (entity[linkField] !== linkValue) continue;
-        if (scope === "groupPushables" && !entity.strategy?.isPushable) continue;
+    registry.forEachOfKind("worldProp", (entity) => {
+        if (entity.isDead) return;
+        if (entity[linkField] !== linkValue) return;
+        if (scope === "groupPushables" && !entity.strategy?.isPushable) return;
         members.push(entity);
-    }
+    });
     return members;
 }
 /** @param {object[]} entities @param {InputGateUntil} until @param {string[] | undefined} excludeStates */
@@ -63,9 +62,9 @@ function scopePassesUntil(entities, until, excludeStates) {
     }
     return true;
 }
-/** @param {InputGateRule} rule @param {object} prop @param {object[]} worldProps */
-export function evaluateInputGateRule(rule, prop, worldProps) {
-    const entities = resolveInputGateScope(rule.scope, prop, worldProps, rule.link);
+/** @param {InputGateRule} rule @param {object} prop @param {import("../../GameState/EntityRegistry.js").EntityRegistry} registry */
+export function evaluateInputGateRule(rule, prop, registry) {
+    const entities = resolveInputGateScope(rule.scope, prop, registry, rule.link);
     if (entities.length === 0) return true;
     return scopePassesUntil(entities, rule.until, rule.excludeStates);
 }
@@ -78,10 +77,10 @@ export function evaluateInputGateRule(rule, prop, worldProps) {
 export function evaluateInputGates(behaviorId, prop, asset, host) {
     const rules = resolveWorldPropInputGateRules(prop, asset, behaviorId);
     if (rules.length === 0) return { allowed: true };
-    const worldProps = host.getProps();
+    const registry = host.getWorldState().entityRegistry;
     for (let i = 0; i < rules.length; i++) {
         const rule = rules[i];
-        if (!evaluateInputGateRule(rule, prop, worldProps)) return { allowed: false, failedRule: rule };
+        if (!evaluateInputGateRule(rule, prop, registry)) return { allowed: false, failedRule: rule };
     }
     return { allowed: true };
 }

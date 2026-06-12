@@ -7,7 +7,7 @@
  * @property {() => { x: number, y: number }} getCameraOrigin
  * @property {() => void} requestRedraw
  * @property {(startX: number, startY: number, targetX: number, targetY: number) => { waypoints: { x: number, y: number }[], abstractNodes?: object[], pathPlanner?: "local" | "hpa" } | null} computePath
- * @property {() => object[]} getProps
+ * @property {(fn: (prop: object) => void) => void} forEachWorldProp
  * @property {(prop: object) => void} addProp
  * @property {(prop: object) => void} removeProp
  * @property {() => void} clearProps

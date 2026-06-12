@@ -133,14 +133,12 @@ function tickFlipperWorldProp(prop, asset, dt) {
 }
 /** @param {import("../SandboxHostPort.js").SandboxHostPort} host @param {number} dt */
 function tickAllFlippers(host, dt) {
-    const worldProps = host.getProps();
-    for (let i = 0; i < worldProps.length; i++) {
-        const prop = worldProps[i];
-        if (prop.isDead || !isFlipperWorldProp(prop)) continue;
+    host.forEachWorldProp((prop) => {
+        if (prop.isDead || !isFlipperWorldProp(prop)) return;
         const asset = getPropAsset(prop.type);
-        if (!asset) continue;
+        if (!asset) return;
         tickFlipperWorldProp(prop, asset, dt);
-    }
+    });
 }
 /** @returns {import("../createSandboxController.js").SandboxBehavior} */
 export function createFlipperBehavior() {

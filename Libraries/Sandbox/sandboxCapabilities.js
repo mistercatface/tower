@@ -27,12 +27,12 @@ export function isSandboxEquippable(asset) {
  * @param {(prop: object) => void} fn
  */
 export function forEachArmedSandboxWorldProp(host, fn) {
-    for (const prop of host.getProps()) {
-        if (prop.isDead || !prop.weaponLoadout?.length) continue;
-        if (!isSandboxEquippable(getPropAsset(prop.type))) continue;
+    host.forEachWorldProp((prop) => {
+        if (prop.isDead || !prop.weaponLoadout?.length) return;
+        if (!isSandboxEquippable(getPropAsset(prop.type))) return;
         syncWorldPropWeaponState(prop);
         fn(prop);
-    }
+    });
 }
 /** Props listed in the sandbox "Add" dropdown (excludes shard debris spawned from breaks). */
 /** @param {object | null | undefined} asset */

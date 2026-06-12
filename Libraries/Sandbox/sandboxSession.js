@@ -150,7 +150,12 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
         deleteProp(prop) {
             if (!prop) return;
             host.removeProp(prop);
-            if (selectedPropId === prop.id) selectedPropId = host.getProps()[0]?.id ?? null;
+            if (selectedPropId === prop.id) {
+                selectedPropId = null;
+                registry().forEachOfKind("worldProp", (p) => {
+                    if (selectedPropId == null && !p.isDead) selectedPropId = p.id;
+                });
+            }
             sync();
         },
         deletePropById(id) {
