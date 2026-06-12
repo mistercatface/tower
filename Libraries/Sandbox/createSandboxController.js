@@ -16,6 +16,8 @@ import { resolveSandboxPathVisual, setSandboxPathVisual } from "./sandboxPathVis
 import { resolveSandboxPropVisual, setSandboxPropVisual } from "./sandboxPropVisual.js";
 import { isSandboxCameraTarget, setSandboxCameraTarget } from "./sandboxCameraTarget.js";
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
+import { drawCellEdgeBarrierDebugOverlay } from "./drawCellEdgeBarrierDebug.js";
+import { readCellEdgeBarrierMask } from "../Spatial/grid/gridCellEdges.js";
 /**
  * @typedef {object} SandboxBehavior
  * @property {string} id
@@ -431,6 +433,9 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
         },
         drawBehaviorOverlays(ctx) {
             drawButtonWires(ctx, state, { wireFromPropId: buttonWireMode ? session.getSelectedPropId() : null, wireCursor: buttonWireMode ? buttonWireCursor : null });
+            const selectedProp = session.getSelectedProp();
+            if (selectedProp && readCellEdgeBarrierMask(selectedProp) && getSandboxEntityMeta(state).getShowCellEdgeBarriers(selectedProp.id))
+                drawCellEdgeBarrierDebugOverlay(ctx, state, selectedProp);
             for (let i = 0; i < behaviors.length; i++) behaviors[i].drawWorldOverlay?.(ctx);
         },
         drawSelectionRings(ctx) {

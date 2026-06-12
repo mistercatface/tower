@@ -23,12 +23,12 @@ Floor props fixed to the obstacle grid, one cell per segment. Low box sprite (cr
 
 ### Phase 1.5 — cell edge barriers (physical rails)
 
-Grid-snapped props declare **which cell perimeter edges are solid** via a 4-bit local mask (`cellEdgeBarrier` on strategy). Rebuilt into `collisionOnly` `Segment`s on spawn / rotate / move / delete — same lifecycle as `pullFixtureWalls.js`. Straight belt facing → blocks **lateral** edges (top/bottom when facing right); entrance and exit stay open.
+Grid-snapped props declare **which cell perimeter edges are solid** via a 4-bit local mask (`cellEdgeBarrier` on strategy). Collision is **exact grid cell edge planes** in the physics pass — not `Segment` walls, nothing to sync on spawn/rotate.
 
-- [ ] **`gridCellEdges.js`** — `CELL_EDGE_*` bit constants, `CELL_EDGE_LATERAL` preset, `rotateCellEdgeMask(mask, facingSteps)`, `buildCellEdgeSegments(prop, grid, mask)` using `Angle.js` + cell halfExtents from `floorShapes.js`.
-- [ ] **`gridCellEdgeBarriers.js`** — `syncGridCellEdgeBarriers` / `teardownGridCellEdgeBarriers`; hook `anchorFloorPropToObstacleGrid`, `rotateCardinalFloorProp`, inspector move, `removeSandboxWorldProp`.
-- [ ] **Straight conveyor** — `cellEdgeBarrier: CELL_EDGE_LATERAL` on `conveyor.asset.js`; ball enters from rear, bounces off side rails.
-- [ ] **Elbow conveyors** — named asymmetric masks per asset (`conveyor_elbow_left` / `_right`); local mask rotates with `facing`, no per-frame vector lists.
+- [x] **`gridCellEdges.js`** — `CELL_EDGE_*` mask, `getGridCellBoundsForProp`, hard edge-plane resolve.
+- [x] **`gridCellEdgeBarriers.js`** — `resolveEntityCellEdgeBarriers` in collision pipeline only.
+- [x] **Straight conveyor** — `cellEdgeBarrier: CELL_EDGE_LATERAL` on `conveyor.asset.js`; ball enters from rear, bounces off side rails.
+- [x] **Elbow conveyors** — named asymmetric masks per asset (`conveyor_elbow_left` / `_right`); local mask rotates with `facing`, no per-frame vector lists.
 - [ ] **Smoke test** — roll ball into straight segment from entrance vs sideways; rotate belt and confirm barriers follow; elbow wedge-in blocked on outer arc.
 
 ### Phase 2 — chain placement (paint mode)

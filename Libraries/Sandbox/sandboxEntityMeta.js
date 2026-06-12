@@ -6,6 +6,7 @@
  * @property {Record<string, object>} [behaviorOverrides]
  * @property {SandboxPathVisual} [pathVisual]
  * @property {SandboxPropVisual} [propVisual]
+ * @property {boolean} [showCellEdgeBarriers]
  * @property {string} [assemblyGroupId]
  * @property {string} [assemblyRackId]
  * @property {string} [assemblyId]
@@ -83,6 +84,14 @@ export class SandboxEntityMetaStore {
     /** @param {number} entityId */
     getPropVisual(entityId) {
         return this.get(entityId)?.propVisual;
+    }
+    /** @param {number} entityId */
+    getShowCellEdgeBarriers(entityId) {
+        return this.get(entityId)?.showCellEdgeBarriers === true;
+    }
+    /** @param {number} entityId @param {boolean} enabled */
+    setShowCellEdgeBarriers(entityId, enabled) {
+        this.ensure(entityId).showCellEdgeBarriers = enabled;
     }
     /** @param {number} entityId */
     getAssemblyGroupId(entityId) {

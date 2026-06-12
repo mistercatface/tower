@@ -44,6 +44,27 @@ When implementing a change, remove the old path in the same pass. Do not leave:
 
 If migration is genuinely multi-step, say so explicitly and list what still removes — do not ship interim redundancy as the default state.
 
+## No in-memory migration theater
+
+Sandbox/editor sim state is **runtime-only** unless explicitly persisted (save/load, localStorage, server). A page refresh starts clean.
+
+- Do **not** add teardown/sync/migrate hooks so old in-memory representations "upgrade themselves" when the user didn't refresh.
+- Do **not** keep dual paths (old Segment walls + new edge planes, `cellEdgeWalls` cleanup, "call sync after rotate to rebuild", etc.) "in case they didn't refresh."
+- When replacing an approach, **delete the old path in the same pass** and wire the new one. Refresh is the migration.
+- Do **not** tell the user to respawn, rotate, or manually rebuild props to pick up a dev iteration unless the feature **requires** that action for real gameplay reasons — not to clear your leftover state.
+
+Migration code is OK only for **real persistence boundaries**: loaded saves, debounced storage, API payloads, schema version fields — places where refresh does **not** reset state.
+
+```javascript
+// ❌ BAD — legacy segment teardown on every spawn/rotate "just in case"
+export function syncGridCellEdgeBarriers(state, prop) {
+    teardownLegacySegments(state, prop);
+}
+
+// ✅ GOOD — one implementation; fresh session loads it
+export function resolveEntityCellEdgeBarriers(state, entity) { /* ... */ }
+```
+
 ## Extend shared libraries — do not reinvent
 
 When implementing new behavior, **use and extend** the existing domain modules instead of duplicating logic inline or in a one-off helper file.
@@ -66,3 +87,4 @@ prop.facing = quantizeCardinalAngle(angle);
 - Would removing a guard hide a real bug? If yes, fix the caller instead.
 - Would this new file be imported from 5+ places for <20 lines total? Inline or extend an existing module.
 - Is anything left that exists only because the old API used to? Delete it now.
+- Did I add sync/teardown "for users who didn't refresh"? Remove it — refresh is not a migration scenario here.
