@@ -238,7 +238,7 @@ export class EntityRegistry {
     _fillSpatialViewCandidates(out, bounds, kindSet, spatialFrame) {
         const seen = this._viewQueryDepth === 1 ? this._candidateSeenIds : new Set();
         seen.clear();
-        const entities = spatialFrame.collectEntitiesInBounds(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY);
+        const entities = spatialFrame.collectEntitiesInBounds(bounds);
         for (let i = 0; i < entities.length; i++) {
             const entry = this._entries.get(entities[i].id);
             if (!entry || !kindSet.has(entry.kind)) continue;

@@ -49,8 +49,7 @@ export function processFloorShapes(spatialFrame, shapes, { onEnter, onExit }) {
     if (!shapes.length) return;
     for (let z = 0; z < shapes.length; z++) {
         const floorShape = shapes[z];
-        const { minX, minY, maxX, maxY } = floorShape.aabb;
-        const candidates = spatialFrame.collectEntitiesInBounds(minX, minY, maxX, maxY);
+        const candidates = spatialFrame.collectEntitiesInBounds(floorShape.aabb);
         const next = floorShape._nextOccupants;
         next.clear();
         for (let i = 0; i < candidates.length; i++) {

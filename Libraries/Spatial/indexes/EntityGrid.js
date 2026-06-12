@@ -123,20 +123,17 @@ export class EntityGrid {
      * their center point, bounds are expanded by maxInsertedExtent + NEIGHBOR_QUERY_PAD
      * unless expandForEntityExtents is false.
      *
-     * @param {number} minX
-     * @param {number} minY
-     * @param {number} maxX
-     * @param {number} maxY
+     * @param {import("../../Math/Aabb2D.js").Aabb2D} bounds
      * @param {SpatialQueryType} query
      * @param {object | null} [exclude]
      * @param {{ expandForEntityExtents?: boolean }} [options]
      * @returns {object[]}
      */
-    collectInBounds(minX, minY, maxX, maxY, query, exclude = null, { expandForEntityExtents = true } = {}) {
-        let qMinX = minX;
-        let qMinY = minY;
-        let qMaxX = maxX;
-        let qMaxY = maxY;
+    collectInBounds(bounds, query, exclude = null, { expandForEntityExtents = true } = {}) {
+        let qMinX = bounds.minX;
+        let qMinY = bounds.minY;
+        let qMaxX = bounds.maxX;
+        let qMaxY = bounds.maxY;
         if (expandForEntityExtents) {
             const pad = this.maxInsertedExtent + NEIGHBOR_QUERY_PAD;
             qMinX -= pad;
