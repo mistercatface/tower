@@ -1,72 +1,9 @@
 import { gridSettings } from "../../../Config/Config.js";
 import { getCavernCenterWorld, getCavernInnerRadiusCells, migrateCavernConfigForMode } from "../world/cavernBounds.js";
+import { applyCellBoundsDrag, applyCellBoundsDragAtPointer, cellBoundsCursor, hitTestCellBounds } from "./cellBoundsOverview.js";
+import { drawWorldBoundsBox, drawWorldCircle, screenToWorld, worldToScreen } from "./mapOverviewDraw.js";
+export { drawWorldBoundsBox, drawWorldCircle } from "./mapOverviewDraw.js";
 const EDGE_HIT_PX = 8;
-/**
- * @param {number} wx
- * @param {number} wy
- * @param {import("../../../Libraries/Render/map/labMapCaches.js").ObstacleOverviewCache} cache
- * @param {number} displayW
- * @param {number} displayH
- */
-function worldToScreen(wx, wy, cache, displayW, displayH) {
-    const mapW = cache.maxX - cache.minX;
-    const mapH = cache.maxY - cache.minY;
-    return { x: ((wx - cache.minX) / mapW) * displayW, y: ((wy - cache.minY) / mapH) * displayH };
-}
-/**
- * @param {number} sx
- * @param {number} sy
- * @param {import("../../../Libraries/Render/map/labMapCaches.js").ObstacleOverviewCache} cache
- * @param {number} displayW
- * @param {number} displayH
- */
-function screenToWorld(sx, sy, cache, displayW, displayH) {
-    const mapW = cache.maxX - cache.minX;
-    const mapH = cache.maxY - cache.minY;
-    return { x: cache.minX + (sx / displayW) * mapW, y: cache.minY + (sy / displayH) * mapH };
-}
-/** @param {CanvasRenderingContext2D} ctx @param {number} cx @param {number} cy @param {number} radius @param {import("../../../Libraries/Render/map/labMapCaches.js").ObstacleOverviewCache} cache @param {number} displayW @param {number} displayH @param {string} strokeStyle @param {number} [lineWidth] @param {number[]} [dash] */
-function drawWorldCircle(ctx, cx, cy, radius, cache, displayW, displayH, strokeStyle, lineWidth = 2, dash = null) {
-    const mapW = cache.maxX - cache.minX;
-    const mapH = cache.maxY - cache.minY;
-    if (mapW <= 0 || mapH <= 0 || radius <= 0) return;
-    const center = worldToScreen(cx, cy, cache, displayW, displayH);
-    const rx = (radius / mapW) * displayW;
-    const ry = (radius / mapH) * displayH;
-    ctx.save();
-    ctx.strokeStyle = strokeStyle;
-    ctx.lineWidth = lineWidth;
-    if (dash) ctx.setLineDash(dash);
-    ctx.beginPath();
-    ctx.ellipse(center.x, center.y, rx, ry, 0, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
-}
-/**
- * @param {CanvasRenderingContext2D} ctx
- * @param {import("../../../Libraries/Math/Aabb2D.js").Aabb2D} bounds
- * @param {import("../../../Libraries/Render/map/labMapCaches.js").ObstacleOverviewCache} cache
- * @param {number} displayW
- * @param {number} displayH
- * @param {string} strokeStyle
- * @param {number} [lineWidth]
- * @param {number[]} [dash]
- */
-export function drawWorldBoundsBox(ctx, bounds, cache, displayW, displayH, strokeStyle, lineWidth = 2, dash = null) {
-    const mapW = cache.maxX - cache.minX;
-    const mapH = cache.maxY - cache.minY;
-    if (mapW <= 0 || mapH <= 0) return;
-    const x = ((bounds.minX - cache.minX) / mapW) * displayW;
-    const y = ((bounds.minY - cache.minY) / mapH) * displayH;
-    const w = ((bounds.maxX - bounds.minX) / mapW) * displayW;
-    const h = ((bounds.maxY - bounds.minY) / mapH) * displayH;
-    ctx.save();
-    ctx.strokeStyle = strokeStyle;
-    ctx.lineWidth = lineWidth;
-    if (dash) ctx.setLineDash(dash);
-    ctx.strokeRect(x, y, w, h);
-    ctx.restore();
-}
 /** @param {CanvasRenderingContext2D} ctx @param {import("../state.js").TileLabGameState["labCavernConfig"]} config @param {import("../../../Libraries/Render/map/labMapCaches.js").ObstacleOverviewCache} cache @param {number} displayW @param {number} displayH */
 export function drawCavernBoundsPreview(ctx, config, cache, displayW, displayH) {
     const cellSize = gridSettings.cellSize;
@@ -219,8 +156,10 @@ export function cavernBoundsCursor(mode) {
     return "nwse-resize";
 }
 /** @param {HTMLCanvasElement} canvas @param {import("../state.js").TileLabGameState} state @param {() => void} onChange */
-export function mountCavernBoundsOverviewEditor(canvas, state, onChange) {
-    /** @type {CavernDragMode | null} */
+export function mountOverviewBoundsEditors(canvas, state, onChange) {
+    /** @type {"cavern" | "wall" | null} */
+    let dragTarget = null;
+    /** @type {CavernDragMode | import("./cellBoundsOverview.js").CellBoundsDragMode | null} */
     let dragMode = null;
     let lastWorldX = 0;
     let lastWorldY = 0;
@@ -235,34 +174,55 @@ export function mountCavernBoundsOverviewEditor(canvas, state, onChange) {
         const rect = canvas.getBoundingClientRect();
         const sx = ((e.clientX - rect.left) / rect.width) * frame.displayW;
         const sy = ((e.clientY - rect.top) / rect.height) * frame.displayH;
-        if (dragMode) {
+        if (dragMode && dragTarget) {
             const world = screenToWorld(sx, sy, frame.cache, frame.displayW, frame.displayH);
-            if (dragMode === "resize-outer" || dragMode === "resize-inner") applyCavernBoundsDragAtPointer(dragMode, world.x, world.y, state.labCavernConfig);
-            else {
-                applyCavernBoundsDrag(dragMode, world.x - lastWorldX, world.y - lastWorldY, state.labCavernConfig);
-                lastWorldX = world.x;
-                lastWorldY = world.y;
-            }
+            if (dragTarget === "cavern")
+                if (dragMode === "resize-outer" || dragMode === "resize-inner") applyCavernBoundsDragAtPointer(dragMode, world.x, world.y, state.labCavernConfig);
+                else applyCavernBoundsDrag(dragMode, world.x - lastWorldX, world.y - lastWorldY, state.labCavernConfig);
+            else if (dragMode === "resize-outer") applyCellBoundsDragAtPointer(dragMode, world.x, world.y, state.labWallToolConfig);
+            else applyCellBoundsDrag(dragMode, world.x - lastWorldX, world.y - lastWorldY, state.labWallToolConfig);
+            lastWorldX = world.x;
+            lastWorldY = world.y;
             onChange();
             return;
         }
-        if (!state.labShowMapOverviewGenBounds) {
-            canvas.style.cursor = "default";
-            return;
+        let cursor = "default";
+        if (state.labShowMapOverviewWallBounds) {
+            const wallHit = hitTestCellBounds(sx, sy, state.labWallToolConfig, state.labMapBoundsPreview.wall, frame.cache, frame.displayW, frame.displayH);
+            if (wallHit) cursor = cellBoundsCursor(wallHit);
         }
-        canvas.style.cursor = cavernBoundsCursor(hitTestCavernBounds(sx, sy, state, frame.cache, frame.displayW, frame.displayH));
+        if (cursor === "default" && state.labShowMapOverviewGenBounds) {
+            const cavernHit = hitTestCavernBounds(sx, sy, state, frame.cache, frame.displayW, frame.displayH);
+            if (cavernHit) cursor = cavernBoundsCursor(cavernHit);
+        }
+        canvas.style.cursor = cursor;
     });
     canvas.addEventListener("pointerdown", (e) => {
-        if (!state.labShowMapOverviewGenBounds) return;
         const frame = getFrame();
         if (!frame) return;
         const rect = canvas.getBoundingClientRect();
         const sx = ((e.clientX - rect.left) / rect.width) * frame.displayW;
         const sy = ((e.clientY - rect.top) / rect.height) * frame.displayH;
+        if (state.labShowMapOverviewWallBounds) {
+            const wallHit = hitTestCellBounds(sx, sy, state.labWallToolConfig, state.labMapBoundsPreview.wall, frame.cache, frame.displayW, frame.displayH);
+            if (wallHit) {
+                e.preventDefault();
+                e.stopPropagation();
+                dragTarget = "wall";
+                dragMode = wallHit;
+                const world = screenToWorld(sx, sy, frame.cache, frame.displayW, frame.displayH);
+                lastWorldX = world.x;
+                lastWorldY = world.y;
+                canvas.setPointerCapture(e.pointerId);
+                return;
+            }
+        }
+        if (!state.labShowMapOverviewGenBounds) return;
         const hit = hitTestCavernBounds(sx, sy, state, frame.cache, frame.displayW, frame.displayH);
         if (!hit) return;
         e.preventDefault();
         e.stopPropagation();
+        dragTarget = "cavern";
         dragMode = hit;
         const world = screenToWorld(sx, sy, frame.cache, frame.displayW, frame.displayH);
         lastWorldX = world.x;
@@ -272,8 +232,13 @@ export function mountCavernBoundsOverviewEditor(canvas, state, onChange) {
     const finishDrag = (e) => {
         if (!dragMode) return;
         canvas.releasePointerCapture(e.pointerId);
+        dragTarget = null;
         dragMode = null;
     };
     canvas.addEventListener("pointerup", finishDrag);
     canvas.addEventListener("pointercancel", finishDrag);
+}
+/** @deprecated use mountOverviewBoundsEditors */
+export function mountCavernBoundsOverviewEditor(canvas, state, onChange) {
+    mountOverviewBoundsEditors(canvas, state, onChange);
 }

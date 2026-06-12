@@ -89,6 +89,7 @@ export const TILELAB_UI_HTML = `
                     <div class="editor-scroll">
                         <p class="editor-hint">Play area sets the obstacle grid; cavern bounds are in grid cells. Stamp multiple regions by moving bounds and generating again.</p>
                         <div id="mapSettingsPanel"></div>
+                        <div id="mapWallToolPanel" class="editor-block editor-block-separated"></div>
                     </div>
                 </div>
             </div>

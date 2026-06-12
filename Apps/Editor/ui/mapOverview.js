@@ -1,7 +1,8 @@
 import { applySquareCanvasResize } from "../../../Libraries/Canvas/index.js";
 import { rebuildLabMapCaches } from "../../../Libraries/Render/map/labMapCaches.js";
 import { refreshLabMapBoundsPreview } from "../world/mapWorld.js";
-import { drawCavernBoundsPreview, drawWorldBoundsBox, mountCavernBoundsOverviewEditor } from "./cavernBoundsOverviewEditor.js";
+import { drawCavernBoundsPreview, drawWorldBoundsBox, mountOverviewBoundsEditors } from "./cavernBoundsOverviewEditor.js";
+import { drawCellBoundsPreview } from "./cellBoundsOverview.js";
 /** @typedef {import("../../../Libraries/Render/map/labMapCaches.js").ObstacleOverviewCache} MapOverviewCache */
 let overviewCtx = null;
 /** Blit cached map and draw live viewport / generation bounds — not part of the bake. */
@@ -29,6 +30,7 @@ export function paintMapOverviewFrame(state) {
         if (cavernConfig.boundsMode === "rect") drawWorldBoundsBox(ctx, state.labMapBoundsPreview.cavern, cache, displayW, displayH, "#ff9800", 2);
         else drawCavernBoundsPreview(ctx, cavernConfig, cache, displayW, displayH);
     }
+    if (state.labShowMapOverviewWallBounds) drawCellBoundsPreview(ctx, state.labWallToolConfig, state.labMapBoundsPreview.wall, cache, displayW, displayH, "#f44336", 2);
 }
 /** Vertical space for main map max-size when overview is visible. */
 export function estimateMapOverviewHeight(fallbackSize = 160) {
@@ -44,6 +46,6 @@ export function mountMapOverview(state, onBoundsChange = null) {
     const canvas = document.getElementById("mapOverviewCanvas");
     overviewCtx = canvas.getContext("2d");
     applySquareCanvasResize(canvas, { host: document.getElementById("mapOverviewHost"), initialSize: 160, minSize: 96, maxSize: 512, onResize: () => paintMapOverviewFrame(state) });
-    if (onBoundsChange) mountCavernBoundsOverviewEditor(canvas, state, onBoundsChange);
+    if (onBoundsChange) mountOverviewBoundsEditors(canvas, state, onBoundsChange);
     paintMapOverviewFrame(state);
 }

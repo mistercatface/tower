@@ -22,6 +22,15 @@ function createLabMapBoundsPreview() {
         centerRow: NaN,
         outerRadiusCells: NaN,
         donutThicknessCells: NaN,
+        wall: createAabb(),
+        wallMode: "",
+        wallCol: NaN,
+        wallRow: NaN,
+        wallCols: NaN,
+        wallRows: NaN,
+        wallCenterCol: NaN,
+        wallCenterRow: NaN,
+        wallOuterRadiusCells: NaN,
     };
 }
 /** @param {object} entity @param {object} hit @param {object | null} state */
@@ -56,6 +65,7 @@ export class TileLabGameState extends SharedGameState {
             iterations: 3,
             wallHeightLevel: 10,
         };
+        this.labWallToolConfig = { boundsMode: "rect", boundsCol: 0, boundsRow: 0, boundsCols: 8, boundsRows: 8, centerCol: 4, centerRow: 4, outerRadiusCells: 4, wallHeightLevel: 1 };
         this.labMapBoundsPreview = createLabMapBoundsPreview();
         this.labShowSandboxPanel = true;
         this.labShowProfilePanel = true;
@@ -64,6 +74,7 @@ export class TileLabGameState extends SharedGameState {
         this.labShowMapOverview = true;
         this.labShowMapOverviewViewport = true;
         this.labShowMapOverviewGenBounds = true;
+        this.labShowMapOverviewWallBounds = false;
         this.worldRenderMode = "radial";
         this.viewport = new Viewport(0, 0, 1);
         this.labCanvas = null;

@@ -1,19 +1,14 @@
 import { generateLabCaverns, PLAY_AREA_CELL_OPTIONS, playAreaCellsToIndex, syncCavernBoundsFromPlay } from "../world/mapWorld.js";
+import { buildMapWallToolPanel } from "./mapWallTool.js";
 import { migrateCavernConfigForMode } from "../world/cavernBounds.js";
 import { formatStampWallHeightLevel, STAMP_WALL_LEVEL_INFINI, STAMP_WALL_LEVEL_MIN } from "../../../Libraries/WorldSurface/stampWallHeight.js";
 import { paintMapOverviewFrame } from "./mapOverview.js";
 import { SliderControl } from "./controls/SliderControl.js";
+import { appendSectionTitle, addNumberField } from "./mapPanelFields.js";
 /** @type {(() => void) | null} */
 let mapPanelRefreshInputs = null;
 export function refreshMapPanelInputs() {
     mapPanelRefreshInputs?.();
-}
-/** @param {HTMLElement} panel @param {string} title */
-function appendSectionTitle(panel, title) {
-    const heading = document.createElement("div");
-    heading.className = "editor-block-title";
-    heading.textContent = title;
-    panel.appendChild(heading);
 }
 /** @param {string} label @param {"playAreaCols" | "playAreaRows"} key @param {import("../state.js").TileLabGameState} state @param {() => void} onPreviewChange @param {() => void} refreshBoundInputs */
 function addPlayAreaSlider(panel, label, key, state, onPreviewChange, refreshBoundInputs) {
@@ -36,40 +31,6 @@ function addPlayAreaSlider(panel, label, key, state, onPreviewChange, refreshBou
         ).element,
     );
 }
-/**
- * @param {HTMLElement} panel
- * @param {string} label
- * @param {() => number} getValue
- * @param {(value: number) => void} setValue
- * @param {{ step?: number, min?: number }} [options]
- * @param {() => void} onPreviewChange
- * @param {{ input: HTMLInputElement, getValue: () => number }[]} boundInputs
- */
-function addNumberField(panel, label, getValue, setValue, options, onPreviewChange, boundInputs) {
-    const { step = 1, min = -999999 } = options ?? {};
-    const field = document.createElement("label");
-    field.className = "param-field";
-    const labelSpan = document.createElement("span");
-    labelSpan.textContent = label;
-    const input = document.createElement("input");
-    input.type = "number";
-    input.step = String(step);
-    input.min = String(min);
-    input.value = String(getValue());
-    field.append(labelSpan, input);
-    panel.appendChild(field);
-    input.addEventListener("change", () => {
-        const parsed = Number(input.value);
-        if (!Number.isFinite(parsed)) {
-            input.value = String(getValue());
-            return;
-        }
-        setValue(parsed);
-        input.value = String(getValue());
-        onPreviewChange();
-    });
-    boundInputs.push({ input, getValue });
-}
 /** @param {import("../state.js").TileLabGameState} state @param {() => void} onGenerated */
 export function buildMapPanel(state, onGenerated) {
     const { labPlayConfig, labCavernConfig } = state;
@@ -81,7 +42,6 @@ export function buildMapPanel(state, onGenerated) {
     const refreshBoundInputs = () => {
         for (let i = 0; i < boundInputs.length; i++) boundInputs[i].input.value = String(boundInputs[i].getValue());
     };
-    mapPanelRefreshInputs = refreshBoundInputs;
     const playSection = document.createElement("div");
     playSection.className = "editor-block";
     appendSectionTitle(playSection, "Play area");
@@ -292,5 +252,14 @@ export function buildMapPanel(state, onGenerated) {
     });
     row.append(newSeedBtn, genBtn);
     panel.appendChild(row);
+    const wallMount = document.getElementById("mapWallToolPanel");
+    const wallTool = buildMapWallToolPanel(state, wallMount, () => {
+        onGenerated();
+        paintMapOverviewFrame(state);
+    });
+    mapPanelRefreshInputs = () => {
+        refreshBoundInputs();
+        wallTool.refreshBoundInputs();
+    };
     onPreviewChange();
 }

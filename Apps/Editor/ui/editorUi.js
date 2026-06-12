@@ -42,6 +42,7 @@ export function mountEditorUi(state) {
     const requestRedraw = () => {
         drawLabFrame(state);
         repaintUntilBakesDone(state);
+        refreshMapPanelInputs();
     };
     const uiRoot = document.getElementById("ui-root");
     uiRoot.innerHTML = TILELAB_UI_HTML;

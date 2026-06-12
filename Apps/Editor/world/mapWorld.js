@@ -19,6 +19,7 @@ import {
     getCavernStampExtent,
     syncCavernSizeFromPlayArea,
 } from "./cavernBounds.js";
+import { getCellBoundsAabbInto } from "./cellBoundsConfig.js";
 export { getCavernBoundsAabb, centerCavernBoundsOnViewport, syncCavernSizeFromPlayArea };
 export const PLAY_AREA_CELL_OPTIONS = [64, 128, 256, 512, 1024];
 /** @param {number} cells */
@@ -70,6 +71,27 @@ export function refreshLabMapBoundsPreview(state) {
         cache.donutThicknessCells = cfg.donutThicknessCells;
         getCavernBoundsAabbInto(cache.cavern, cfg, cellSize);
     }
+    const wallCfg = state.labWallToolConfig;
+    if (
+        cache.wallMode !== wallCfg.boundsMode ||
+        cache.wallCol !== wallCfg.boundsCol ||
+        cache.wallRow !== wallCfg.boundsRow ||
+        cache.wallCols !== wallCfg.boundsCols ||
+        cache.wallRows !== wallCfg.boundsRows ||
+        cache.wallCenterCol !== wallCfg.centerCol ||
+        cache.wallCenterRow !== wallCfg.centerRow ||
+        cache.wallOuterRadiusCells !== wallCfg.outerRadiusCells
+    ) {
+        cache.wallMode = wallCfg.boundsMode;
+        cache.wallCol = wallCfg.boundsCol;
+        cache.wallRow = wallCfg.boundsRow;
+        cache.wallCols = wallCfg.boundsCols;
+        cache.wallRows = wallCfg.boundsRows;
+        cache.wallCenterCol = wallCfg.centerCol;
+        cache.wallCenterRow = wallCfg.centerRow;
+        cache.wallOuterRadiusCells = wallCfg.outerRadiusCells;
+        getCellBoundsAabbInto(cache.wall, wallCfg, cellSize);
+    }
 }
 /**
  * @param {import("../state.js").TileLabGameState["viewport"]} viewport
@@ -112,10 +134,11 @@ function clearStaticOccupancyInWorldCircle(state, centerWorldX, centerWorldY, ra
     state.worldSurfaces.invalidateGridBounds(damageBounds, state);
     state.navigation.onObstaclesChanged(damageBounds);
 }
-/** @param {import("../state.js").TileLabGameState} state */
-function ensureLabObstacleGridCoverage(state) {
+/** @param {import("../state.js").TileLabGameState} state @param {import("../../Math/Aabb2D.js").Aabb2D | null} [extraAabb] */
+export function ensureLabObstacleGridCoverage(state, extraAabb = null) {
     const cellSize = gridSettings.cellSize;
     let required = getCavernBoundsPreview(state.labCavernConfig);
+    if (extraAabb) required = unionAabb(required, extraAabb);
     for (const layer of state.staticOccupancyLayers ?? []) required = unionAabb(required, worldBoundsFromCellOrigin(layer.originCol, layer.originRow, layer.cols, layer.rows, cellSize));
     if (state.walls.length) required = unionAabb(required, computeBoundsFromWalls(state.walls, cellSize));
     required = padAabb(required, cellSize);
