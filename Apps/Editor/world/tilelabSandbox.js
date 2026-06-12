@@ -35,9 +35,9 @@ export function mountTilelabSandbox(state, requestRedraw) {
         },
         defaultSpawnPropId: TILELAB_SANDBOX_SPAWN_PROP,
         behaviors: [
-            createDragLaunchBehavior(),
+            createDragLaunchBehavior(state),
             createDragLaunchWaitBehavior(state),
-            createDragLaunchFacingBehavior(),
+            createDragLaunchFacingBehavior(state),
             createSpawnerBehavior(state),
             createFlipperBehavior(state),
             createCueStrikeBehavior(state),
