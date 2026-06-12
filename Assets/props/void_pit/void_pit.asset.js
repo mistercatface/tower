@@ -3,6 +3,7 @@ import { createVoidPitDraw } from "../../../Libraries/Render/voidPitDraw.js";
 export default {
     id: "void_pit",
     draw: createVoidPitDraw(DEFAULT_PIT_DEPTH),
+    sandbox: { spawnLabel: "Void pit" },
     physics: {
         renderMode: "floor",
         spatialRole: "trigger",

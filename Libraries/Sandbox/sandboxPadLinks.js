@@ -9,7 +9,7 @@ import { combatSpatial } from "../../Systems/World/CombatSpatialFrame.js";
 /** @typedef {ButtonLinkWorldPropTarget | ButtonLinkPadTarget} ButtonLinkTarget */
 /** @param {object} pad */
 export function isButtonLinkTargetPad(pad) {
-    return pad.preset === "pull" || pad.preset === "sink";
+    return pad.preset === "pull";
 }
 /** @param {object} pad */
 export function getButtonPadLinks(pad) {

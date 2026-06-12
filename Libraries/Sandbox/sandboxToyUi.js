@@ -145,7 +145,10 @@ function formatPadListLabel(entry) {
  */
 function buildSpawnOptions(propIds, assemblyManifests) {
     /** @type {{ value: string, label: string }[]} */
-    const options = propIds.map((id) => ({ value: id, label: id.replace(/_/g, " ") }));
+    const options = propIds.map((id) => {
+        const asset = getPropAsset(id);
+        return { value: id, label: asset?.sandbox?.spawnLabel ?? id.replace(/_/g, " ") };
+    });
     for (const preset of Object.keys(PAD_PRESETS)) options.push({ value: sandboxSpawnPadId(preset), label: PAD_PRESETS[preset].listLabel });
     const assemblies = [...assemblyManifests].sort((a, b) => a.label.localeCompare(b.label));
     for (const manifest of assemblies) options.push({ value: sandboxSpawnAssemblyId(manifest.id), label: manifest.label });
@@ -177,10 +180,7 @@ function renderSelectedPadInspector(body, controller, onChange) {
             patch(fields);
         },
     });
-    if (pad.preset === "sink") {
-        appendNumberField(body, "Radius", { value: pad.radius, step: 0.5, min: 0.5, onChange: (radius) => patch({ radius }) });
-        appendNumberField(body, "Depth", { value: pad.sinkDepth, step: 1, min: 1, onChange: (sinkDepth) => patch({ sinkDepth }) });
-    } else if (pad.preset === "pull") {
+    if (pad.preset === "pull") {
         appendPullPadFields(body, {
             width: pad.halfWidth * 2,
             height: pad.halfHeight * 2,

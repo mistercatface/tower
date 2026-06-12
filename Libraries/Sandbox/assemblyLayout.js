@@ -13,11 +13,7 @@ function resolveAssemblyPads(pads, play) {
         const point = resolvePlacement(play, entry.at);
         /** @type {object} */
         const resolved = { id: entry.id, preset: entry.preset, x: point.x, y: point.y };
-        if (entry.preset === "sink") {
-            resolved.radius = entry.radius;
-            resolved.sinkDepth = entry.depth;
-            if (entry.captureTolerance != null) resolved.captureTolerance = entry.captureTolerance;
-        } else if (entry.preset === "pull") {
+        if (entry.preset === "pull") {
             resolved.halfWidth = entry.width / 2;
             resolved.halfHeight = entry.height / 2;
             resolved.forceX = entry.forceX;

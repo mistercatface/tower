@@ -42,16 +42,14 @@
 /**
  * @typedef {object} AssemblyPadManifest
  * @property {string} id
- * @property {string} preset — sink | pull | button
+ * @property {string} preset — pull | button
  * @property {AssemblyPlacementManifest} at
- * @property {number} [radius] — sink circle radius
- * @property {number} [depth] — sink pit depth
  * @property {number} [width] — pull rect width
  * @property {number} [height] — pull rect height
  * @property {number} [forceX] — pull override
  * @property {number} [forceY] — pull override
  * @property {boolean} [wallMode] — pull: solid walls when powered
- * @property {boolean} [powered] — pull / sink: starts off when false
+ * @property {boolean} [powered] — pull: starts off when false
  * @property {string} [target] — button: single assembly prop or pad id
  * @property {string[]} [targets] — button: assembly prop or pad ids to wire
  * @property {"tap" | "hold" | "toggle" | "massTap" | "massHold" | "massToggle"} [inputMode]

@@ -3,7 +3,6 @@ import { addPadToState, clearPadsInState, removePadFromState } from "../../GameS
 import { getCanvasLineScale } from "../Render/common/viewportUtils.js";
 import { fillCircle, strokeCircle } from "../Canvas/CanvasPath.js";
 import { PolygonShape } from "../Spatial/collision/Shapes.js";
-import { drawPitInterior } from "../Spatial/zones/pit.js";
 import { PAD_PRESETS } from "./padPresets.js";
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 import { runPadEffect, syncButtonFlipperLinks, syncPullPadWalls, syncSandboxPadPower, teardownPullPad, tickButtonSpawnerLinks } from "./padEffects.js";
@@ -134,8 +133,6 @@ export function buildSandboxPad(state, preset, x, y, options = {}) {
     }
     pad.preset = preset;
     pad.powered = options.powered ?? true;
-    pad.sinkDepth = options.sinkDepth ?? def.sinkDepth;
-    if (options.captureTolerance != null) pad.captureTolerance = options.captureTolerance;
     if (preset === "button") {
         pad.inputMode = options.inputMode ?? DEFAULT_BUTTON_INPUT_MODE;
         pad.massThreshold = options.massThreshold ?? DEFAULT_BUTTON_MASS_THRESHOLD;
@@ -219,10 +216,6 @@ export function getSandboxPadEditorState(pad) {
     /** @type {Record<string, number | string | null | undefined>} */
     const snapshot = { id: pad.id, preset: pad.preset, label: PAD_PRESETS[pad.preset].listLabel, x: pad.x, y: pad.y };
     if (pad.shape.type === "Circle") snapshot.radius = pad.shape.radius;
-    if (pad.preset === "sink") {
-        snapshot.sinkDepth = pad.sinkDepth;
-        snapshot.powered = pad.powered;
-    }
     if (pad.preset === "pull") {
         const { halfWidth, halfHeight } = readRectPadHalfExtents(pad, PAD_PRESETS.pull);
         snapshot.halfWidth = halfWidth;
@@ -285,10 +278,7 @@ export function patchSandboxPad(state, id, patch) {
         if (patch.y != null) pad.y = patch.y;
         syncPadPosition(state, pad);
     }
-    if (pad.preset === "sink") {
-        if (patch.radius != null) resizeCirclePad(pad, patch.radius);
-        if (patch.sinkDepth != null) pad.sinkDepth = patch.sinkDepth;
-    } else if (pad.preset === "pull") {
+    if (pad.preset === "pull") {
         const current = readRectPadHalfExtents(pad, PAD_PRESETS.pull);
         const halfWidth = patch.halfWidth ?? current.halfWidth;
         const halfHeight = patch.halfHeight ?? current.halfHeight;
@@ -328,7 +318,6 @@ export function listSandboxPads(state) {
             const entry = { id: pad.id, preset: pad.preset, label: `${PAD_PRESETS[pad.preset].listLabel} #${n}` };
             const snapshot = getSandboxPadEditorState(pad);
             if (snapshot.radius != null) entry.radius = snapshot.radius;
-            if (snapshot.sinkDepth != null) entry.sinkDepth = snapshot.sinkDepth;
             if (snapshot.halfWidth != null) {
                 entry.halfWidth = snapshot.halfWidth;
                 entry.halfHeight = snapshot.halfHeight;
@@ -364,10 +353,6 @@ function drawPadButton(ctx, x, y, pressed, radius) {
 /** @param {CanvasRenderingContext2D} ctx @param {object} pad @param {import("../../Viewport/Viewport.js").Viewport} viewport @param {object} state */
 export function drawPad(ctx, pad, viewport, state) {
     const style = PAD_PRESETS[pad.preset].draw;
-    if (style === "pit") {
-        drawPitInterior(ctx, pad, viewport.x, viewport.y);
-        return;
-    }
     if (style === "pull") {
         const off = pad.powered ? 1 : 0.35;
         drawFloorShape(ctx, pad, { fill: `rgba(255, 100, 100, ${0.22 * off})`, stroke: pad.wallMode && pad.wallsUp ? "rgba(180, 180, 200, 0.95)" : `rgba(255, 80, 80, ${0.9 * off})`, lineWidth: 2 });

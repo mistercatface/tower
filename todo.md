@@ -69,7 +69,7 @@ Unified model: one `WorldProp` with `renderMode: "floor"`, quantized `PropRender
 - [x] **Floor prop asset** — `void_pit` with floor renderMode, pit draw recipe, sink triggers, assembly spawn fields (`radius`, `depth`, `captureTolerance`).
 - [x] **Pool table assembly** — floor props for pockets instead of `preset: "sink"` pads.
 - [ ] **Moving pit smoke test** — kinematic floor prop (update x/y per tick) still caches and triggers sink correctly; documents pattern for conveyor belt (pull trigger + floor visual on same prop).
-- [ ] **Deprecate pad sink preset** — archive `drawPitInterior` pad draw path once floor prop is default; keep pull/button pads until belt migration if needed.
+- [x] **Deprecate pad sink preset** — removed; void pits are `void_pit` floor props only.
 
 ## Move to `Libraries/Deprecated/` (archive, disconnect from active arch)
 
@@ -91,3 +91,7 @@ Removed (too trivial to archive): `spawnStartProps.js`.
 ### Still registered but legacy
 
 - [ ] **`panelGrid` motif** — remove from `MotifRegistry` or archive under `Deprecated/` if keeping for reference (`"Panel grid (legacy)"` label).
+
+### HUMAN IDEAS
+
+- [ ] floorprops: resize from UI, draw as rectangle, draw as polygon?

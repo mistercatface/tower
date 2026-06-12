@@ -1,4 +1,6 @@
 import { wakePushableBody } from "../Motion/pushableSleep.js";
+import { CircleShape } from "../Spatial/collision/Shapes.js";
+import { syncFloorTriggerAabb } from "../Spatial/zones/floorShapes.js";
 function appendNumberField(parent, labelText, { value, step = 1, min, onChange }) {
     const field = document.createElement("div");
     field.className = "param-field";
@@ -34,7 +36,18 @@ function applyWorldPropFacing(prop, degrees) {
 function applyWorldPropPosition(prop, { x, y }) {
     if (x != null) prop.x = x;
     if (y != null) prop.y = y;
+    if (prop.aabb) syncFloorTriggerAabb(prop);
     if (prop.strategy?.isPushable) wakePushableBody(prop);
+}
+/** @param {object} prop @param {{ radius?: number, sinkDepth?: number, captureTolerance?: number }} patch */
+function applyVoidPitPatch(prop, patch) {
+    if (patch.radius != null) {
+        prop.radius = patch.radius;
+        prop.shape = new CircleShape(patch.radius);
+    }
+    if (patch.sinkDepth != null) prop.sinkDepth = patch.sinkDepth;
+    if (patch.captureTolerance != null) prop.captureTolerance = patch.captureTolerance;
+    if (prop.aabb) syncFloorTriggerAabb(prop);
 }
 /**
  * @param {HTMLElement} body
@@ -55,10 +68,12 @@ export function appendSandboxWorldPropInspectorFields(body, prop, { sync, onChan
         sync?.();
         onChange();
     };
-    appendTranslateFields(body, {
-        x: prop.x,
-        y: prop.y,
-        onPatch: (pos) => patch(() => applyWorldPropPosition(prop, pos)),
-    });
+    appendTranslateFields(body, { x: prop.x, y: prop.y, onPatch: (pos) => patch(() => applyWorldPropPosition(prop, pos)) });
+    if (prop.strategy?.floorTriggers?.length) {
+        appendNumberField(body, "Radius", { value: prop.radius, step: 0.5, min: 0.5, onChange: (radius) => patch(() => applyVoidPitPatch(prop, { radius })) });
+        appendNumberField(body, "Depth", { value: prop.sinkDepth, step: 1, min: 1, onChange: (sinkDepth) => patch(() => applyVoidPitPatch(prop, { sinkDepth })) });
+        appendNumberField(body, "Capture", { value: prop.captureTolerance, step: 0.05, min: 0, onChange: (captureTolerance) => patch(() => applyVoidPitPatch(prop, { captureTolerance })) });
+        return;
+    }
     appendNumberField(body, "Facing (°)", { value: Math.round(((prop.facing ?? 0) * 180) / Math.PI), step: 5, onChange: (degrees) => patch(() => applyWorldPropFacing(prop, degrees)) });
 }
