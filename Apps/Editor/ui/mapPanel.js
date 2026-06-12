@@ -90,7 +90,7 @@ export function buildMapPanel(state, onGenerated) {
     appendSectionTitle(cavernSection, "Cavern generation");
     const cavernHint = document.createElement("p");
     cavernHint.className = "editor-hint";
-    cavernHint.textContent = "Bounds in grid cells. Move the orange box and generate again to stamp additional caverns.";
+    cavernHint.textContent = "Set bounds size and position (orange box). Each generate adds rock — existing caverns stay.";
     cavernSection.appendChild(cavernHint);
     const syncRow = document.createElement("div");
     syncRow.className = "editor-tools-row";

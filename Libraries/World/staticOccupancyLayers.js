@@ -25,6 +25,15 @@ function layersOverlap(a, b) {
     return a.originCol < bMaxCol && aMaxCol > b.originCol && a.originRow < bMaxRow && aMaxRow > b.originRow;
 }
 /**
+ * Append a stamp layer — previous stamps are kept.
+ * @param {object} state
+ * @param {StaticOccupancyLayer} layer
+ */
+export function appendStaticOccupancyLayer(state, layer) {
+    if (!state.staticOccupancyLayers) state.staticOccupancyLayers = [];
+    state.staticOccupancyLayers.push({ ...layer, cells: layer.cells.slice() });
+}
+/**
  * Replace any layers overlapping the new stamp and append it.
  * @param {object} state
  * @param {StaticOccupancyLayer} layer
@@ -48,7 +57,7 @@ export function reapplyStaticOccupancyLayers(state) {
     for (let i = 0; i < layers.length; i++) {
         const layer = layers[i];
         if (!layer.cells) continue;
-        const patch = grid.stampStaticOccupancy(layer.originCol, layer.originRow, layer.cols, layer.rows, layer.cells, state.wallSpatialIndex);
+        const patch = grid.stampStaticOccupancy(layer.originCol, layer.originRow, layer.cols, layer.rows, layer.cells, state.wallSpatialIndex, { additive: true });
         bounds = bounds ? unionGridCellRect(bounds, patch) : patch;
     }
     return bounds;

@@ -79,6 +79,48 @@ export class WorldObstacleGrid {
         this.grid = new Uint8Array(size);
         this.segmentGrid = null;
     }
+    /**
+     * Grow world coverage to include aabb. Preserves existing blocked cells; never shrinks or recenters inward.
+     * @param {{ minX: number, minY: number, maxX: number, maxY: number }} aabb
+     * @returns {boolean} true when grid origin or dimensions changed
+     */
+    expandToCoverAabb(aabb) {
+        if (this.cols <= 0) {
+            const width = aabb.maxX - aabb.minX;
+            const height = aabb.maxY - aabb.minY;
+            this.rebuildFixed((aabb.minX + aabb.maxX) / 2, (aabb.minY + aabb.maxY) / 2, width, height);
+            return true;
+        }
+        const newMinX = Math.min(this.minX, aabb.minX);
+        const newMinY = Math.min(this.minY, aabb.minY);
+        const newMaxX = Math.max(this.maxX, aabb.maxX);
+        const newMaxY = Math.max(this.maxY, aabb.maxY);
+        if (newMinX === this.minX && newMinY === this.minY && newMaxX === this.maxX && newMaxY === this.maxY) return false;
+        const oldMinX = this.minX;
+        const oldMinY = this.minY;
+        const oldCols = this.cols;
+        const oldRows = this.rows;
+        const oldGrid = this.grid;
+        const colOffset = Math.round((oldMinX - newMinX) / this.cellSize);
+        const rowOffset = Math.round((oldMinY - newMinY) / this.cellSize);
+        this.minX = newMinX;
+        this.minY = newMinY;
+        this.maxX = newMaxX;
+        this.maxY = newMaxY;
+        this.cols = Math.ceil((newMaxX - newMinX) / this.cellSize);
+        this.rows = Math.ceil((newMaxY - newMinY) / this.cellSize);
+        const newGrid = new Uint8Array(this.cols * this.rows);
+        for (let row = 0; row < oldRows; row++)
+            for (let col = 0; col < oldCols; col++) {
+                if (oldGrid[colRowToIndex(col, row, oldCols)] !== 1) continue;
+                const nc = col + colOffset;
+                const nr = row + rowOffset;
+                if (nc < 0 || nc >= this.cols || nr < 0 || nr >= this.rows) continue;
+                newGrid[colRowToIndex(nc, nr, this.cols)] = 1;
+            }
+        this.grid = newGrid;
+        return true;
+    }
     markWall(wall) {
         markWallOnGrid(wall, this.grid, this.cols, this.rows, { worldToGrid: (x, y) => this.worldToGrid(x, y), cellCenter: (col, row) => this.gridToWorld(col, row), cellSize: this.cellSize });
     }
@@ -110,12 +152,13 @@ export class WorldObstacleGrid {
      * @param {number} rows
      * @param {ArrayLike<number>} cells Row-major; value 1 = blocked.
      * @param {import("../indexes/WallSpatialIndex.js").WallSpatialIndex | null} [wallSpatialIndex]
+     * @param {{ additive?: boolean }} [options] additive: only write rock (1) cells; never clear the region first.
      * @returns {{ startCol: number, endCol: number, startRow: number, endRow: number }}
      */
-    stampStaticOccupancy(originCol, originRow, cols, rows, cells, wallSpatialIndex = null) {
+    stampStaticOccupancy(originCol, originRow, cols, rows, cells, wallSpatialIndex = null, { additive = false } = {}) {
         const { col: baseCol, row: baseRow } = this.worldToGrid(originCol * this.cellSize, originRow * this.cellSize);
         const gridBounds = { startCol: Math.max(0, baseCol), endCol: Math.min(this.cols - 1, baseCol + cols - 1), startRow: Math.max(0, baseRow), endRow: Math.min(this.rows - 1, baseRow + rows - 1) };
-        clearWallCells(this.grid, this.cols, gridBounds, this.segmentGrid);
+        if (!additive) clearWallCells(this.grid, this.cols, gridBounds, this.segmentGrid);
         for (let lr = 0; lr < rows; lr++)
             for (let lc = 0; lc < cols; lc++) {
                 if (cells[lr * cols + lc] !== 1) continue;

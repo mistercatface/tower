@@ -2,12 +2,12 @@ import { gridSettings } from "../../../Config/Config.js";
 import { rebuildLabMapCaches } from "../../../Libraries/Render/map/labMapCaches.js";
 import { withSeededRandom } from "../../../Libraries/Random/index.js";
 import { fillRandomGrid, runCellularAutomata } from "../../../Libraries/CA/index.js";
-import { aabbContains, centeredAabb, centeredAabbInto, padAabb, unionAabb } from "../../../Libraries/Math/Aabb2D.js";
+import { centeredAabb, centeredAabbInto, padAabb, unionAabb } from "../../../Libraries/Math/Aabb2D.js";
 import { worldBoundsFromCellOrigin, worldBoundsFromCellOriginInto } from "../../../Libraries/Spatial/grid/GridCoords.js";
 import { computeBoundsFromWalls } from "../../../Libraries/Spatial/grid/wallGridBake.js";
 import { clearSandboxWallsInBounds } from "../../../Libraries/Sandbox/spawnAssembly.js";
 import { resolveStampWallHeight } from "../../../Libraries/WorldSurface/stampWallHeight.js";
-import { upsertStaticOccupancyLayer, reapplyStaticOccupancyLayers } from "../../../Libraries/World/staticOccupancyLayers.js";
+import { appendStaticOccupancyLayer } from "../../../Libraries/World/staticOccupancyLayers.js";
 export const PLAY_AREA_CELL_OPTIONS = [64, 128, 256, 512, 1024];
 /** @param {number} cells */
 export function playAreaCellsToIndex(cells) {
@@ -69,23 +69,23 @@ export function syncCavernBoundsFromPlay(viewport, playConfig, cavernConfig, { c
 /** @param {import("../state.js").TileLabGameState} state */
 function ensureLabObstacleGridCoverage(state) {
     const cellSize = gridSettings.cellSize;
-    let required = getPlayAreaPreviewBounds(state.viewport, state.labPlayConfig);
-    required = unionAabb(required, getCavernBoundsPreview(state.labCavernConfig));
+    let required = getCavernBoundsPreview(state.labCavernConfig);
     for (const layer of state.staticOccupancyLayers ?? []) required = unionAabb(required, worldBoundsFromCellOrigin(layer.originCol, layer.originRow, layer.cols, layer.rows, cellSize));
     if (state.walls.length) required = unionAabb(required, computeBoundsFromWalls(state.walls, cellSize));
     required = padAabb(required, cellSize);
     const grid = state.obstacleGrid;
-    if (grid.cols > 0 && aabbContains(grid, required) && grid.segmentGrid) return;
-    const width = required.maxX - required.minX;
-    const height = required.maxY - required.minY;
-    const centerX = (required.minX + required.maxX) / 2;
-    const centerY = (required.minY + required.maxY) / 2;
-    grid.rebuildFixed(centerX, centerY, width, height);
-    grid.segmentGrid = new Array(grid.cols * grid.rows);
-    for (const wall of state.walls) grid.addWall(wall);
-    reapplyStaticOccupancyLayers(state);
-    state.hierarchicalNavigator.initialize(centerX, centerY);
-    state.worldSurfaces.renderScene.setGridOrigin(grid.minX, grid.minY);
+    const expanded = grid.expandToCoverAabb(required);
+    if (!grid.segmentGrid) {
+        grid.segmentGrid = new Array(grid.cols * grid.rows);
+        for (const wall of state.walls) grid.addWall(wall);
+    } else if (expanded) {
+        grid.segmentGrid = new Array(grid.cols * grid.rows);
+        for (const wall of state.walls) grid.addWall(wall);
+        const centerX = (grid.minX + grid.maxX) / 2;
+        const centerY = (grid.minY + grid.maxY) / 2;
+        state.hierarchicalNavigator.initialize(centerX, centerY);
+        state.worldSurfaces.renderScene.setGridOrigin(grid.minX, grid.minY);
+    }
 }
 /** @param {import("../state.js").TileLabGameState["labCavernConfig"]} config @returns {{ originCol: number, originRow: number, cols: number, rows: number, cells: Uint8Array }} */
 function generateCavernOccupancy(config) {
@@ -107,8 +107,8 @@ export function generateLabCaverns(state) {
     ensureLabObstacleGridCoverage(state);
     clearSandboxWallsInBounds(state, stampBounds);
     const wallHeight = resolveStampWallHeight(labCavernConfig.wallHeightLevel, gridSettings.cellSize);
-    const damageBounds = state.obstacleGrid.stampStaticOccupancy(stamp.originCol, stamp.originRow, stamp.cols, stamp.rows, stamp.cells, state.wallSpatialIndex);
-    upsertStaticOccupancyLayer(state, { originCol: stamp.originCol, originRow: stamp.originRow, cols: stamp.cols, rows: stamp.rows, wallHeight, cells: stamp.cells });
+    const damageBounds = state.obstacleGrid.stampStaticOccupancy(stamp.originCol, stamp.originRow, stamp.cols, stamp.rows, stamp.cells, state.wallSpatialIndex, { additive: true });
+    appendStaticOccupancyLayer(state, { originCol: stamp.originCol, originRow: stamp.originRow, cols: stamp.cols, rows: stamp.rows, wallHeight, cells: stamp.cells });
     state.worldSurfaces.invalidateGridBounds(damageBounds, state);
     state.navigation.onObstaclesChanged(damageBounds);
     state.floorSeed = state.mapSeed;
