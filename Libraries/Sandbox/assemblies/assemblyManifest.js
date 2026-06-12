@@ -64,6 +64,9 @@
  * @property {string} [id]
  * @property {string} prop
  * @property {number} [facing]
+ * @property {number} [radius] — floor fixtures e.g. void pit mouth radius
+ * @property {number} [depth] — void pit pocket depth
+ * @property {number} [captureTolerance]
  * @property {AssemblyPlacementManifest} at
  */
 /**

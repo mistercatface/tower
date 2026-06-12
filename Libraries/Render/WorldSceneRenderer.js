@@ -5,6 +5,7 @@ import { getStaticCellDamageAlphaAtIdx } from "../World/staticCellDamage.js";
 import { collectStaticGridWallDrawables } from "./Structure3D/StaticGridWallDraw.js";
 import { drawProjectedWallFace } from "./Structure3D/ProjectedWallDraw.js";
 /** @typedef {import("./Structure3D/WallDrawContext.js").WallDrawContext} WallDrawContext */
+import { aabbOverlap } from "../Math/Aabb2D.js";
 import { clipToViewport } from "./common/viewportUtils.js";
 import { PropRenderer } from "./Props3D/PropRenderer.js";
 import { drawWorldProp } from "./drawWorldProp.js";
@@ -41,6 +42,31 @@ export class WorldSceneRenderer {
             input.spatialFrame,
         );
         for (let i = 0; i < props.length; i++) drawWorldProp(ctx, props[i], viewport, { gameState: input.gameState, propRenderer: this.props, px, py, zoom });
+        ctx.restore();
+    }
+    /**
+     * @param {CanvasRenderingContext2D} ctx
+     * @param {WorldSceneDrawInput} input
+     * @param {import("../Viewport/Viewport.js").Viewport} viewport
+     */
+    drawFloorProps(ctx, input, viewport) {
+        const px = viewport.x;
+        const py = viewport.y;
+        const zoom = viewport.zoom ?? 1;
+        const bounds = viewport.boundsVisibleDefault;
+        const drawContext = { gameState: input.gameState, propRenderer: this.props, px, py, zoom };
+        ctx.save();
+        clipToViewport(ctx, viewport);
+        const visibleObjects = this.visibleDrawables;
+        visibleObjects.length = 0;
+        input.entityRegistry.forEachOfKind("worldProp", (prop) => {
+            if (prop.isDead || prop.strategy?.renderMode !== "floor") return;
+            if (!prop.aabb || !aabbOverlap(prop.aabb, bounds)) return;
+            prop._distSq = (prop.x - px) ** 2 + (prop.y - py) ** 2;
+            visibleObjects.push(prop);
+        });
+        visibleObjects.sort((a, b) => b._distSq - a._distSq);
+        for (let i = 0; i < visibleObjects.length; i++) drawWorldProp(ctx, visibleObjects[i], viewport, drawContext);
         ctx.restore();
     }
     _appendVisible3dProps(input, viewport, px, py) {

@@ -83,7 +83,9 @@ export function getBaseSpriteCacheKey(prop, deps) {
     const { x: stratHx, y: stratHy } = propFootprintHalfExtents(prop);
     const halfX = Math.round(stratHx);
     const halfY = Math.round(stratHy);
-    return `${orientKey}_${radius}_${halfX}x${halfY}`;
+    let key = `${orientKey}_${radius}_${halfX}x${halfY}`;
+    if (prop.sinkDepth != null) key += `_d${Math.round(prop.sinkDepth)}`;
+    return key;
 }
 /**
  * @param {object} prop

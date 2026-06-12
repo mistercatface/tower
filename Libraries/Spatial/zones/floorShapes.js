@@ -66,6 +66,21 @@ export function processFloorShapes(spatialFrame, shapes, { onEnter, onExit }) {
         floorShape._nextOccupants = prev;
     }
 }
+/** @param {object} prop */
+export function syncFloorTriggerAabb(prop) {
+    centerHalfExtentsAabbInto(prop.aabb, prop.x, prop.y, prop.radius, prop.radius, NEIGHBOR_QUERY_PAD);
+}
+/** @param {object} prop */
+export function initFloorTriggerProp(prop) {
+    prop._occupants = new Set();
+    prop._nextOccupants = new Set();
+    prop.triggers = prop.strategy.floorTriggers.map((trigger) => ({ ...trigger }));
+    prop.sinkDepth = prop.strategy.sinkDepth;
+    if (prop.strategy.captureTolerance != null) prop.captureTolerance = prop.strategy.captureTolerance;
+    prop.powered = true;
+    prop.aabb = createAabb();
+    syncFloorTriggerAabb(prop);
+}
 /** @param {{ shape: { type: string, vertices?: { x: number, y: number }[] } }} pad @param {{ halfWidth: number, halfHeight: number }} [defaults] */
 export function readRectPadHalfExtents(pad, defaults) {
     if (pad.shape.type === "Polygon") {

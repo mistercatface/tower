@@ -16,6 +16,7 @@ export function populateCombatFrame(frame, state, combatants, pushables) {
     let physIdCounter = 0;
     state.entityRegistry.forEachOfKind("worldProp", (prop) => {
         if (!prop || prop.isDead || prop.isHeld) return;
+        if (prop.strategy?.spatialRole === "trigger") return;
         frame.insertEntity(prop, physIdCounter++);
         combatants.push(prop);
         if (prop.strategy?.isPushable) pushables.push(prop);

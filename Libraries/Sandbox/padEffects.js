@@ -90,25 +90,27 @@ export function syncSandboxPadPower(state) {
         syncPullPadWalls(state, pad);
     }
 }
-/** @param {object} prop @param {object} pad */
-function beginSink(prop, pad) {
+/** @param {object} prop @param {object} source */
+function beginSink(prop, source) {
     if (prop.isDead || prop.currentStateName === "voidSink") return;
-    if (!canEntityFitVoidPit(pad.shape.radius, prop)) return;
-    prop.voidX = pad.x;
-    prop.voidY = pad.y;
-    prop.voidRadius = pad.shape.radius;
-    prop.voidDepth = pad.sinkDepth;
-    prop.voidCaptureTolerance = pad.captureTolerance;
-    prop.voidCaptured = isVoidSinkCaptured(pad.x, pad.y, pad.shape.radius, prop, pad.captureTolerance);
+    const mouthRadius = source.shape?.radius ?? source.radius;
+    if (!canEntityFitVoidPit(mouthRadius, prop)) return;
+    prop.voidX = source.x;
+    prop.voidY = source.y;
+    prop.voidRadius = mouthRadius;
+    prop.voidDepth = source.sinkDepth;
+    prop.voidCaptureTolerance = source.captureTolerance;
+    prop.voidCaptured = isVoidSinkCaptured(source.x, source.y, mouthRadius, prop, source.captureTolerance);
     if (prop.voidCaptured) prop.voidSinkTimer = CAPTURED_SINK_DURATION_MS;
     else delete prop.voidSinkTimer;
     prop.changeState("voidSink");
 }
-/** @param {object} state @param {number} entityId @param {object} pad */
-function rimOutSink(state, entityId, pad) {
+/** @param {object} state @param {number} entityId @param {object} source */
+function rimOutSink(state, entityId, source) {
     const prop = state.entityRegistry.get(entityId);
     if (!prop || prop.currentStateName !== "voidSink" || prop.voidCaptured) return;
-    if (isInsideVoidMouth(pad.x, pad.y, pad.shape.radius, prop)) return;
+    const mouthRadius = source.shape?.radius ?? source.radius;
+    if (isInsideVoidMouth(source.x, source.y, mouthRadius, prop)) return;
     prop.changeState("normal");
 }
 /** @param {object} state @param {import("./sandboxPadLinks.js").ButtonLinkWorldPropTarget} link @param {object} buttonPad */
