@@ -27,6 +27,7 @@ Living notes from the static-grid / render-path refactor. Not a release checklis
 - [x] **`getCanvasLineScale(ctx)`** — screen-constant stroke/dash/marker sizing in overlay draw paths.
 - [x] **`drawProjectedHorizontalChunk`** — perspective `drawImageQuad` blit for elevated horizontal chunks (`WorldSurfaceResolution.js`); roof chunks + assembly patches.
 - [x] **`Entity.renderCachedSprite` audit** — no callers; removed dead method. Live sprite blits: `blitAnchoredSprite` (`PropRenderer`), `blitCenteredSprite` (`actorKinematicsRenderer`). `FloatingText` / `ProgressBar` keep bespoke blits (alpha/scale/quantization).
+- [x] **`gatherTexturedQuadCells` scratch + in-place sort** — pooled cells + hull scratch in `texturedCells.js`.
 
 ---
 
@@ -52,7 +53,7 @@ Small repeated patterns worth extracting when touching nearby code:
 
 **Render / canvas (paused)**
 
-- [ ] See **drawImage / texture backlog** below — `gatherTexturedQuadCells` moved there
+- [ ] See **drawImage / texture backlog** below
 
 **Grid / surfaces**
 
@@ -146,9 +147,7 @@ Most warped textures already go through `drawImageQuad` (`AffineTexture.js`) or 
 
 **1. ~~`drawProjectedHorizontalChunk`~~** — done; perspective `drawImageQuad` for elevated horizontal chunks.
 
-**2. Textured quad cell GC (perf — hot path)**
-
-- [ ] **`gatherTexturedQuadCells` scratch + in-place sort** — Sphere decals (`drawSphereTexturePatch`) and cylinder inspect build a new `cells` array every draw; `drawTexturedQuadCells` then `[...cells].sort(...)`. Pool the cell list and sort in place (or track max depth index) to cut allocations on pool-ball / prop texture draws.
+**~~2. Textured quad cell GC~~** — done; see recently done.
 
 **3. Inspect label path convergence (consistency)**
 
