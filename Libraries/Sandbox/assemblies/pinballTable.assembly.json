@@ -14,67 +14,6 @@
             "segment": { "padding": 0, "maxHealth": 30, "health": 30 }
         }
     },
-    "pads": [
-        {
-            "id": "btn-kicker",
-            "preset": "button",
-            "at": { "u": 0.5, "v": 0.32 },
-            "radiusU": 0.035,
-            "inputMode": "massTap",
-            "massThreshold": 0,
-            "targets": ["paddleL", "paddleR"]
-        },
-        {
-            "id": "btn-nudge",
-            "preset": "button",
-            "at": { "u": 0.72, "v": 0.58 },
-            "radiusU": 0.028,
-            "inputMode": "massHold",
-            "massThreshold": 0,
-            "targets": ["paddleL", "paddleR"]
-        },
-        {
-            "id": "btn-left",
-            "preset": "button",
-            "at": { "u": 0.06, "v": 0.96 },
-            "radiusU": 0.045,
-            "inputMode": "tap",
-            "targets": ["paddleL"]
-        },
-        {
-            "id": "btn-right",
-            "preset": "button",
-            "at": { "u": 0.94, "v": 0.96 },
-            "radiusU": 0.045,
-            "inputMode": "hold",
-            "targets": ["paddleR"]
-        },
-        {
-            "id": "btn-jackpot",
-            "preset": "button",
-            "at": { "u": 0.5, "v": 0.96 },
-            "radiusU": 0.04,
-            "inputMode": "tap",
-            "targets": ["paddleL", "paddleR"]
-        },
-        {
-            "id": "btn-gravity",
-            "preset": "button",
-            "at": { "u": 0.22, "v": 0.96 },
-            "radiusU": 0.035,
-            "inputMode": "hold",
-            "invert": true,
-            "targets": ["pull-main"]
-        },
-        {
-            "id": "btn-wall",
-            "preset": "button",
-            "at": { "u": 0.78, "v": 0.96 },
-            "radiusU": 0.035,
-            "inputMode": "hold",
-            "targets": ["pull-block"]
-        }
-    ],
     "worldProps": [
         {
             "id": "pull-main",
@@ -95,6 +34,65 @@
             "forceY": 0,
             "wallMode": true,
             "powered": false
+        },
+        {
+            "id": "btn-kicker",
+            "prop": "button_floor",
+            "at": { "u": 0.5, "v": 0.32 },
+            "radiusU": 0.035,
+            "inputMode": "massTap",
+            "massThreshold": 0,
+            "targets": ["paddleL", "paddleR"]
+        },
+        {
+            "id": "btn-nudge",
+            "prop": "button_floor",
+            "at": { "u": 0.72, "v": 0.58 },
+            "radiusU": 0.028,
+            "inputMode": "massHold",
+            "massThreshold": 0,
+            "targets": ["paddleL", "paddleR"]
+        },
+        {
+            "id": "btn-left",
+            "prop": "button_floor",
+            "at": { "u": 0.06, "v": 0.96 },
+            "radiusU": 0.045,
+            "inputMode": "tap",
+            "targets": ["paddleL"]
+        },
+        {
+            "id": "btn-right",
+            "prop": "button_floor",
+            "at": { "u": 0.94, "v": 0.96 },
+            "radiusU": 0.045,
+            "inputMode": "hold",
+            "targets": ["paddleR"]
+        },
+        {
+            "id": "btn-jackpot",
+            "prop": "button_floor",
+            "at": { "u": 0.5, "v": 0.96 },
+            "radiusU": 0.04,
+            "inputMode": "tap",
+            "targets": ["paddleL", "paddleR"]
+        },
+        {
+            "id": "btn-gravity",
+            "prop": "button_floor",
+            "at": { "u": 0.22, "v": 0.96 },
+            "radiusU": 0.035,
+            "inputMode": "hold",
+            "invert": true,
+            "targets": ["pull-main"]
+        },
+        {
+            "id": "btn-wall",
+            "prop": "button_floor",
+            "at": { "u": 0.78, "v": 0.96 },
+            "radiusU": 0.035,
+            "inputMode": "hold",
+            "targets": ["pull-block"]
         },
         { "id": "paddleL", "prop": "flipper_left", "at": { "u": 0.35, "v": 0.85 } },
         { "id": "paddleR", "prop": "flipper_right", "at": { "u": 0.65, "v": 0.85 } },

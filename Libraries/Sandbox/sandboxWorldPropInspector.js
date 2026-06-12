@@ -2,6 +2,7 @@ import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { CircleShape } from "../Spatial/collision/Shapes.js";
 import { resizeFloorPropHalfExtents, syncFloorTriggerAabb } from "../Spatial/zones/floorShapes.js";
 import { syncPullFixtureWalls, teardownPullFixtureWalls } from "./pullFixtureWalls.js";
+import { isButtonEntity, isMassButtonInputMode } from "./buttonInput.js";
 function appendNumberField(parent, labelText, { value, step = 1, min, onChange }) {
     const field = document.createElement("div");
     field.className = "param-field";
@@ -79,6 +80,107 @@ function applyGravityPadPatch(state, prop, patch) {
     if (patch.forceX != null) pullTrigger.forceX = patch.forceX;
     if (patch.forceY != null) pullTrigger.forceY = patch.forceY;
 }
+/** @param {object} prop @param {{ radius?: number, inputMode?: string, massThreshold?: number, invert?: boolean }} patch */
+function applyButtonFloorPatch(prop, patch) {
+    if (patch.radius != null) {
+        prop.radius = patch.radius;
+        prop.shape = new CircleShape(patch.radius);
+        syncFloorTriggerAabb(prop);
+    }
+    if (patch.inputMode != null) {
+        prop.inputMode = patch.inputMode;
+        prop._toggleLatched = false;
+        prop._massWasActive = false;
+        prop._buttonWasActive = false;
+    }
+    if (patch.massThreshold != null) prop.massThreshold = patch.massThreshold;
+    if (patch.invert != null) prop.invert = patch.invert;
+}
+function appendSelectField(parent, labelText, { value, options, onChange }) {
+    const field = document.createElement("div");
+    field.className = "param-field";
+    const label = document.createElement("span");
+    label.textContent = labelText;
+    const select = document.createElement("select");
+    for (const option of options) {
+        const el = document.createElement("option");
+        el.value = option.value;
+        el.textContent = option.label;
+        select.appendChild(el);
+    }
+    select.value = value;
+    select.addEventListener("change", () => onChange(select.value));
+    field.append(label, select);
+    parent.appendChild(field);
+}
+/**
+ * @param {HTMLElement} body
+ * @param {{
+ *   listLinks: () => { target: import("./buttonLinks.js").ButtonLinkTarget, label: string }[],
+ *   isWireActive: () => boolean,
+ *   startWire: () => void,
+ *   cancelWire: () => void,
+ *   clearLinks: () => void,
+ *   removeLink: (target: import("./buttonLinks.js").ButtonLinkTarget) => void,
+ * }} wire
+ * @param {() => void} onChange
+ */
+export function appendButtonWireInspector(body, wire, onChange) {
+    const links = wire.listLinks();
+    const linkHint = document.createElement("p");
+    linkHint.className = "editor-hint";
+    linkHint.textContent = links.length ? `${links.length} wire${links.length === 1 ? "" : "s"} connected` : "No wires — link to flippers, spawners, or gravity pads.";
+    body.appendChild(linkHint);
+    if (links.length) {
+        const list = document.createElement("div");
+        list.className = "toy-instance-list";
+        for (const entry of links) {
+            const row = document.createElement("div");
+            row.className = "toy-instance-row";
+            const label = document.createElement("span");
+            label.className = "toy-select-btn";
+            label.textContent = entry.label;
+            row.appendChild(label);
+            const deleteBtn = document.createElement("button");
+            deleteBtn.type = "button";
+            deleteBtn.className = "toy-delete-btn secondary";
+            deleteBtn.textContent = "Delete";
+            deleteBtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                wire.removeLink(entry.target);
+                onChange();
+            });
+            row.appendChild(deleteBtn);
+            list.appendChild(row);
+        }
+        body.appendChild(list);
+    }
+    const wireRow = document.createElement("div");
+    wireRow.className = "sandbox-add-row";
+    const wireActive = wire.isWireActive();
+    const connectBtn = document.createElement("button");
+    connectBtn.type = "button";
+    connectBtn.className = wireActive ? "primary" : "secondary";
+    connectBtn.textContent = wireActive ? "Click targets to wire…" : "Connect wire";
+    connectBtn.addEventListener("click", () => {
+        if (wireActive) wire.cancelWire();
+        else wire.startWire();
+        onChange();
+    });
+    wireRow.appendChild(connectBtn);
+    if (links.length) {
+        const clearBtn = document.createElement("button");
+        clearBtn.type = "button";
+        clearBtn.className = "secondary";
+        clearBtn.textContent = "Clear all";
+        clearBtn.addEventListener("click", () => {
+            wire.clearLinks();
+            onChange();
+        });
+        wireRow.appendChild(clearBtn);
+    }
+    body.appendChild(wireRow);
+}
 /**
  * @param {HTMLElement} body
  * @param {{ x: number, y: number, step?: number, onPatch: (patch: { x?: number, y?: number }) => void }} opts
@@ -105,6 +207,32 @@ export function appendSandboxWorldPropInspectorFields(body, prop, { state, sync,
         appendNumberField(body, "Radius", { value: prop.radius, step: 0.5, min: 0.5, onChange: (radius) => patch(() => applyVoidPitPatch(prop, { radius })) });
         appendNumberField(body, "Depth", { value: prop.sinkDepth, step: 1, min: 1, onChange: (sinkDepth) => patch(() => applyVoidPitPatch(prop, { sinkDepth })) });
         appendNumberField(body, "Capture", { value: prop.captureTolerance, step: 0.05, min: 0, onChange: (captureTolerance) => patch(() => applyVoidPitPatch(prop, { captureTolerance })) });
+        return;
+    }
+    if (isButtonEntity(prop)) {
+        appendNumberField(body, "Radius", { value: prop.radius, step: 0.5, min: 0.5, onChange: (radius) => patch(() => applyButtonFloorPatch(prop, { radius })) });
+        appendSelectField(body, "Input", {
+            value: prop.inputMode,
+            options: [
+                { value: "tap", label: "Tap" },
+                { value: "hold", label: "Hold" },
+                { value: "toggle", label: "Toggle" },
+                { value: "massTap", label: "Mass – Tap" },
+                { value: "massHold", label: "Mass – Hold" },
+                { value: "massToggle", label: "Mass – Toggle" },
+            ],
+            onChange: (inputMode) => patch(() => applyButtonFloorPatch(prop, { inputMode })),
+        });
+        if (isMassButtonInputMode(prop.inputMode))
+            appendNumberField(body, "Mass threshold", { value: prop.massThreshold, step: 0.01, min: 0, onChange: (massThreshold) => patch(() => applyButtonFloorPatch(prop, { massThreshold })) });
+        const invertRow = document.createElement("label");
+        invertRow.className = "param-field";
+        const invertCheck = document.createElement("input");
+        invertCheck.type = "checkbox";
+        invertCheck.checked = prop.invert;
+        invertCheck.addEventListener("change", () => patch(() => applyButtonFloorPatch(prop, { invert: invertCheck.checked })));
+        invertRow.append("Invert (NOT) ", invertCheck);
+        body.appendChild(invertRow);
         return;
     }
     if (pullTrigger && prop.halfExtents && prop.aabb) {

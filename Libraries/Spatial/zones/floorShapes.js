@@ -3,6 +3,7 @@ import { SatCollision } from "../collision/SatCollision.js";
 import { aabbOverlap, centerHalfExtentsAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { fillStrokeCircle, fillStrokeClosedPolygonTranslated } from "../../Canvas/CanvasPath.js";
 import { NEIGHBOR_QUERY_PAD } from "../collision/entityBroadphase.js";
+import { DEFAULT_BUTTON_INPUT_MODE, DEFAULT_BUTTON_MASS_THRESHOLD } from "../../Sandbox/buttonInput.js";
 /** @typedef {import("../../Math/Aabb2D.js").Aabb2D} Aabb2D */
 function createFloorShape(x, y, shape, aabb, { id = "floor-shape" } = {}) {
     return {
@@ -84,6 +85,18 @@ export function initFloorTriggerProp(prop) {
         prop.wallsUp = false;
     }
     prop.powered = prop.strategy.powered !== false;
+    prop.aabb = createAabb();
+    syncFloorTriggerAabb(prop);
+}
+/** @param {object} prop */
+export function initFloorButtonProp(prop) {
+    prop._occupants = new Set();
+    prop._nextOccupants = new Set();
+    prop.buttonLinks = prop.strategy.buttonLinks.map((link) => ({ ...link }));
+    prop.inputMode = prop.strategy.inputMode ?? DEFAULT_BUTTON_INPUT_MODE;
+    prop.massThreshold = prop.strategy.massThreshold ?? DEFAULT_BUTTON_MASS_THRESHOLD;
+    prop.invert = prop.strategy.invert === true;
+    prop._toggleLatched = false;
     prop.aabb = createAabb();
     syncFloorTriggerAabb(prop);
 }

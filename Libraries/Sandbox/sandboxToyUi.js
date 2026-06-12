@@ -2,12 +2,12 @@ import { getPropAsset, getWorldPropDefinitions } from "../Props/PropCatalog.js";
 import { SANDBOX_DEFAULT_FACTION, SANDBOX_FACTION_OPTIONS, formatSandboxFactionLabel, resolveSandboxFaction } from "../Combat/sandboxTargeting.js";
 import { getSandboxBehaviorLabel, isSandboxEquippable, isSandboxSpawnable } from "./sandboxCapabilities.js";
 import { isSpawnerProp, listSpawnerSpawnPropIds, resolveSpawnerPropId } from "./spawnerConfig.js";
-import { appendSandboxWorldPropInspectorFields, appendTranslateFields } from "./sandboxWorldPropInspector.js";
-import { PAD_PRESETS } from "./padPresets.js";
+import { appendSandboxWorldPropInspectorFields, appendButtonWireInspector, appendTranslateFields } from "./sandboxWorldPropInspector.js";
+import { isButtonEntity } from "./buttonInput.js";
 import { renderSandboxEquipPanel } from "./sandboxEquipPanel.js";
 import { SANDBOX_PATH_VISUAL_LABELS, SANDBOX_PATH_VISUAL_OPTIONS } from "./sandboxPathVisual.js";
 import { SANDBOX_PROP_VISUAL_LABELS, SANDBOX_PROP_VISUAL_OPTIONS } from "./sandboxPropVisual.js";
-import { sandboxSpawnAssemblyId, sandboxSpawnPadId, isSandboxSpawnPadId, isSandboxSpawnPropId } from "./sandboxSession.js";
+import { sandboxSpawnAssemblyId, isSandboxSpawnPropId } from "./sandboxSession.js";
 function readOpenSections(root) {
     const open = new Set();
     for (const el of root.querySelectorAll("details[data-sandbox-section]")) if (el.open) open.add(el.dataset.sandboxSection);
@@ -124,12 +124,6 @@ function appendEntityList(parent, entries, emptyText) {
 function appendFactionSelect(parent, { value, onChange }) {
     appendSelectField(parent, "Team", { value: value ?? SANDBOX_DEFAULT_FACTION, options: SANDBOX_FACTION_OPTIONS.map((option) => ({ value: option.id, label: option.label })), onChange });
 }
-/** @param {{ id: string, preset: string, label: string, radius?: number, sinkDepth?: number, halfWidth?: number, halfHeight?: number, linkCount?: number }} entry */
-function formatPadListLabel(entry) {
-    if (entry.preset === "button" && entry.linkCount) return `${entry.label} · ${entry.linkCount} wire${entry.linkCount === 1 ? "" : "s"}`;
-    if (entry.radius != null) return `${entry.label} · r${Math.round(entry.radius * 10) / 10}`;
-    return entry.label;
-}
 /**
  * @param {string[]} propIds
  * @param {{ id: string, label: string }[]} assemblyManifests
@@ -140,99 +134,9 @@ function buildSpawnOptions(propIds, assemblyManifests) {
         const asset = getPropAsset(id);
         return { value: id, label: asset?.sandbox?.spawnLabel ?? id.replace(/_/g, " ") };
     });
-    for (const preset of Object.keys(PAD_PRESETS)) options.push({ value: sandboxSpawnPadId(preset), label: PAD_PRESETS[preset].listLabel });
     const assemblies = [...assemblyManifests].sort((a, b) => a.label.localeCompare(b.label));
     for (const manifest of assemblies) options.push({ value: sandboxSpawnAssemblyId(manifest.id), label: manifest.label });
     return options;
-}
-/**
- * @param {HTMLElement} body
- * @param {ReturnType<import("./createSandboxController.js").createSandboxController>} controller
- * @param {() => void} onChange
- */
-function renderSelectedPadInspector(body, controller, onChange) {
-    const pad = controller.getSelectedPad();
-    if (!pad) return false;
-    const presetLabel = document.createElement("p");
-    presetLabel.className = "editor-hint";
-    presetLabel.textContent = `${pad.label} (${pad.preset})`;
-    body.appendChild(presetLabel);
-    const patch = (fields) => {
-        controller.patchSelectedPad(fields);
-        onChange();
-    };
-    appendTranslateFields(body, {
-        x: pad.x,
-        y: pad.y,
-        onPatch: (pos) => {
-            const fields = {};
-            if (pos.x != null) fields.x = pos.x;
-            if (pos.y != null) fields.y = pos.y;
-            patch(fields);
-        },
-    });
-    if (pad.preset === "button") {
-        appendNumberField(body, "Radius", { value: pad.radius, step: 0.5, min: 0.5, onChange: (radius) => patch({ radius }) });
-        appendSelectField(body, "Input", {
-            value: pad.inputMode,
-            options: [
-                { value: "tap", label: "Tap" },
-                { value: "hold", label: "Hold" },
-                { value: "toggle", label: "Toggle" },
-                { value: "massTap", label: "Mass – Tap" },
-                { value: "massHold", label: "Mass – Hold" },
-                { value: "massToggle", label: "Mass – Toggle" },
-            ],
-            onChange: (inputMode) => patch({ inputMode }),
-        });
-        if (pad.inputMode === "massTap" || pad.inputMode === "massHold" || pad.inputMode === "massToggle")
-            appendNumberField(body, "Mass threshold", { value: pad.massThreshold, step: 0.01, min: 0, onChange: (massThreshold) => patch({ massThreshold }) });
-        const invertRow = document.createElement("label");
-        invertRow.className = "param-field";
-        const invertCheck = document.createElement("input");
-        invertCheck.type = "checkbox";
-        invertCheck.checked = pad.invert;
-        invertCheck.addEventListener("change", () => patch({ invert: invertCheck.checked }));
-        invertRow.append("Invert (NOT) ", invertCheck);
-        body.appendChild(invertRow);
-        const links = controller.listSelectedPadLinks();
-        const linkHint = document.createElement("p");
-        linkHint.className = "editor-hint";
-        linkHint.textContent = links.length ? `${links.length} wire${links.length === 1 ? "" : "s"} connected` : "No wires — link to flippers, spawners, gravity pads, or pits.";
-        body.appendChild(linkHint);
-        if (links.length)
-            appendEntityList(
-                body,
-                links.map((entry) => ({ label: entry.label, onDelete: () => controller.removeSelectedPadLink(entry.target) })),
-                "",
-            );
-        const wireRow = document.createElement("div");
-        wireRow.className = "sandbox-add-row";
-        const wireActive = controller.isPadWireLinkActive();
-        const connectBtn = document.createElement("button");
-        connectBtn.type = "button";
-        connectBtn.className = wireActive ? "primary" : "secondary";
-        connectBtn.textContent = wireActive ? "Click targets to wire…" : "Connect wire";
-        connectBtn.addEventListener("click", () => {
-            if (wireActive) controller.cancelPadWireLink();
-            else controller.startPadWireLink();
-            onChange();
-        });
-        wireRow.appendChild(connectBtn);
-        if (links.length) {
-            const clearBtn = document.createElement("button");
-            clearBtn.type = "button";
-            clearBtn.className = "secondary";
-            clearBtn.textContent = "Clear all";
-            clearBtn.addEventListener("click", () => {
-                controller.clearSelectedPadLinks();
-                onChange();
-            });
-            wireRow.appendChild(clearBtn);
-        }
-        body.appendChild(wireRow);
-    }
-    return true;
 }
 /**
  * @param {HTMLElement} container
@@ -259,7 +163,6 @@ export function mountSandboxToyUi(container, controller, onChange) {
         };
         const selectedId = controller.getSelectedPropId();
         const selectedPropIds = new Set(controller.getSelectedPropIds());
-        const selectedPadId = controller.getSelectedPadId();
         const selectedProp = controller.getSelectedProp();
         const selectionCount = selectedPropIds.size;
         const toolsRow = document.createElement("div");
@@ -329,7 +232,6 @@ export function mountSandboxToyUi(container, controller, onChange) {
             body.appendChild(addRow);
         });
         const placed = controller.listPlacedProps();
-        const sandboxPads = controller.listSandboxPads();
         const assemblies = controller.listAssemblies();
         appendSection(container, "scene", "Scene", sectionOpen("scene"), (body) => {
             appendSubhead(body, "Props");
@@ -342,17 +244,6 @@ export function mountSandboxToyUi(container, controller, onChange) {
                     onDelete: () => controller.deletePropById(entry.id),
                 })),
                 "No props placed yet.",
-            );
-            appendSubhead(body, "Pads");
-            appendEntityList(
-                body,
-                sandboxPads.map((entry) => ({
-                    label: formatPadListLabel(entry),
-                    selected: entry.id === selectedPadId,
-                    onSelect: () => controller.setSelectedPadId(entry.id),
-                    onDelete: () => controller.deleteSandboxPadById(entry.id),
-                })),
-                "No pads placed yet.",
             );
             if (assemblies.length > 0) {
                 appendSubhead(body, "Assemblies");
@@ -371,7 +262,6 @@ export function mountSandboxToyUi(container, controller, onChange) {
             }
         });
         appendSection(container, "selected", "Selected", sectionOpen("selected", true), (body) => {
-            if (renderSelectedPadInspector(body, controller, onChange)) return;
             if (selectionCount > 1) {
                 const multiHint = document.createElement("p");
                 multiHint.className = "editor-hint";
@@ -394,7 +284,7 @@ export function mountSandboxToyUi(container, controller, onChange) {
             if (!selectedProp) {
                 const empty = document.createElement("p");
                 empty.className = "editor-hint";
-                empty.textContent = "Select a prop or pad from Scene.";
+                empty.textContent = "Select a prop from Scene.";
                 body.appendChild(empty);
                 return;
             }
@@ -408,6 +298,19 @@ export function mountSandboxToyUi(container, controller, onChange) {
                 },
             });
             appendSandboxWorldPropInspectorFields(body, selectedProp, { state: controller.getState(), sync: () => controller.sync?.(), onChange });
+            if (isButtonEntity(selectedProp))
+                appendButtonWireInspector(
+                    body,
+                    {
+                        listLinks: () => controller.listSelectedButtonLinks(),
+                        isWireActive: () => controller.isButtonWireLinkActive(),
+                        startWire: () => controller.startButtonWireLink(),
+                        cancelWire: () => controller.cancelButtonWireLink(),
+                        clearLinks: () => controller.clearSelectedButtonLinks(),
+                        removeLink: (target) => controller.removeSelectedButtonLink(target),
+                    },
+                    onChange,
+                );
             if (behaviorIds.length > 0)
                 appendSelectField(body, "Mode", {
                     value: controller.getSelectedBehaviorId(),

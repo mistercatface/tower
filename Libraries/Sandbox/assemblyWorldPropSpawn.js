@@ -8,9 +8,13 @@ import { resolvePlacement } from "./assemblies/assemblyPlacement.js";
 import { stampAssemblyEntityMember } from "./assemblies/assemblyLink.js";
 import { applyFlipperAssemblyScale } from "./behaviors/flipperBehavior.js";
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
-/** @param {object} prop @param {import("./assemblies/assemblyManifest.js").AssemblyWorldPropManifest} entry */
-function applyAssemblyFloorPropOverrides(prop, entry) {
-    if (entry.radius != null) {
+/** @param {object} prop @param {import("./assemblies/assemblyManifest.js").AssemblyWorldPropManifest} entry @param {ReturnType<typeof import("./assemblyLayout.js").buildAssemblyLayout>["play"]} play */
+function applyAssemblyWorldPropOverrides(prop, entry, play) {
+    if (entry.radiusU != null) {
+        const radius = entry.radiusU * (play.maxX - play.minX);
+        prop.radius = radius;
+        prop.shape = new CircleShape(radius);
+    } else if (entry.radius != null) {
         prop.radius = entry.radius;
         prop.shape = new CircleShape(entry.radius);
     }
@@ -34,7 +38,18 @@ function applyAssemblyFloorPropOverrides(prop, entry) {
         prop.wallsUp = false;
     }
     if (entry.powered === false) prop.powered = false;
+    if (entry.inputMode != null) prop.inputMode = entry.inputMode;
+    if (entry.massThreshold != null) prop.massThreshold = entry.massThreshold;
+    if (entry.invert === true) prop.invert = true;
     if (prop.aabb) syncFloorTriggerAabb(prop);
+}
+/** @param {object} prop @param {string[]} targets @param {Map<string, number>} propIdByManifestId @param {string} assemblyId @param {string} buttonId */
+function wireAssemblyButtonLinks(prop, targets, propIdByManifestId, assemblyId, buttonId) {
+    prop.buttonLinks = targets.map((manifestId) => {
+        const linkedPropId = propIdByManifestId.get(manifestId);
+        if (linkedPropId == null) throw new Error(`Assembly "${assemblyId}" button "${buttonId}" target "${manifestId}" not found`);
+        return { type: "worldProp", id: linkedPropId };
+    });
 }
 /**
  * @param {object} state
@@ -45,6 +60,8 @@ function applyAssemblyFloorPropOverrides(prop, entry) {
 export function spawnAssemblyWorldProps(state, layout, resolved, ctx) {
     /** @type {Map<string, number>} */
     const propIdByManifestId = new Map();
+    /** @type {{ prop: object, targets: string[], buttonId: string }[]} */
+    const pendingButtonLinks = [];
     /** @type {string | null} */
     let defaultPropId = null;
     for (let i = 0; i < resolved.worldProps.length; i++) {
@@ -53,7 +70,7 @@ export function spawnAssemblyWorldProps(state, layout, resolved, ctx) {
         if (!asset) throw new Error(`Unknown prop "${entry.prop}" in assembly "${resolved.id}"`);
         const at = resolvePlacement(layout.play, entry.at);
         const prop = new WorldProp(at.x, at.y, entry.prop, entry.facing ?? 0);
-        applyAssemblyFloorPropOverrides(prop, entry);
+        applyAssemblyWorldPropOverrides(prop, entry, layout.play);
         prop.faction = ctx.faction;
         getSandboxEntityMeta(state).setAssemblyRackId(prop.id, ctx.rackId);
         stampAssemblyEntityMember(state, prop, ctx.groupId, resolved.id, ctx.groupField);
@@ -63,7 +80,12 @@ export function spawnAssemblyWorldProps(state, layout, resolved, ctx) {
         wakePushableBody(prop);
         addWorldPropToState(state, prop);
         if (entry.id) propIdByManifestId.set(entry.id, prop.id);
+        if (entry.targets?.length) pendingButtonLinks.push({ prop, targets: entry.targets, buttonId: entry.id ?? String(i) });
         if (entry.id === "cue" || resolved.behaviors[entry.prop]?.cueStrike) defaultPropId = prop.id;
+    }
+    for (let i = 0; i < pendingButtonLinks.length; i++) {
+        const { prop, targets, buttonId } = pendingButtonLinks[i];
+        wireAssemblyButtonLinks(prop, targets, propIdByManifestId, resolved.id, buttonId);
     }
     return { defaultPropId, propIdByManifestId };
 }

@@ -21,7 +21,6 @@ import { runPushablePhysics } from "../../Libraries/Motion/pushablePhysicsPass.j
 import { FLOATING_TEXT_SPAWN_EVENT, FloatingText } from "../../Libraries/Render/FloatingText.js";
 import { drawSandboxAssemblyGuides, drawSandboxAssemblySurfaces } from "../../Libraries/Sandbox/assemblySurfaceDraw.js";
 import { TileLabGameState } from "./state.js";
-import { sandboxPadEffectPass, tickSandboxPads } from "../../Libraries/Sandbox/sandboxPads.js";
 import { floorPropEffectPass, tickFloorProps } from "../../Libraries/Sandbox/floorProps.js";
 import { sandboxController } from "./world/tilelabSandbox.js";
 import { tickSandboxCameraFollow } from "../../Libraries/Sandbox/sandboxCameraTarget.js";
@@ -47,7 +46,6 @@ function runSimulationTick(state, dt) {
     Projectile.checkSpawnCollisions(state, spatialFrame, simulationEvents);
     Projectile.updateAll(state, simDt);
     CombatParticles.updateAll(state, simDt);
-    tickSandboxPads(state, spatialFrame, simDt);
     tickFloorProps(state, spatialFrame, simDt);
     runPushablePhysics(state, simDt, spatialFrame, simulationEvents);
     RagdollCorpse.updateAll(state, simDt, spatialFrame);
@@ -68,7 +66,6 @@ export const engine = {
         drawPostSimulation: (state, viewport, ctx) => CombatParticles.renderAll(ctx, state, viewport),
         simulationEffectPasses: [
             floorPropEffectPass,
-            sandboxPadEffectPass,
             {
                 zIndex: 65,
                 draw(_state, _viewport, ctx) {

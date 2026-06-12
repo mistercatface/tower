@@ -3,8 +3,9 @@ import { bindCanvasPointers, releasePointerCapture } from "./bindCanvasPointers.
 import { findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
 import { combatSpatial } from "../../Systems/World/CombatSpatialFrame.js";
 import { createSandboxSession, SANDBOX_SPAWN_ASSEMBLY_PREFIX } from "./sandboxSession.js";
-import { addButtonPadLink, clearButtonPadLinks, drawSandboxPadWires, findButtonLinkTarget, listButtonPadLinkEndpoints, removeButtonPadLink } from "./sandboxPadLinks.js";
-import { handlePadPointerDown, hitTestPad, isSandboxSpawnPadId, releaseButtonPointerHold } from "./sandboxPads.js";
+import { addButtonLink, clearButtonLinks, drawButtonWires, findButtonLinkTarget, listButtonLinkEndpoints, removeButtonLink } from "./buttonLinks.js";
+import { isButtonEntity } from "./buttonInput.js";
+import { handleButtonPointerDown, hitTestFloorButton, releaseButtonPointerHold } from "./floorButtons.js";
 import { resolveSandboxBehaviors } from "./sandboxCapabilities.js";
 import { drawSandboxLaserSights } from "./drawLaserSights.js";
 import { drawSandboxMarquee, drawSandboxSelectionRings, findSandboxPropsInWorldRect } from "./drawSandboxSelection.js";
@@ -52,9 +53,9 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
     let interactionBehavior = null;
     /** @type {(() => void) | null} */
     let unbindPointers = null;
-    let padWireMode = false;
+    let buttonWireMode = false;
     /** @type {{ x: number, y: number } | null} */
-    let padWireCursor = null;
+    let buttonWireCursor = null;
     let showSelectionRings = true;
     const MARQUEE_CLICK_THRESHOLD_PX = 4;
     /** @type {{ pointerId: number, startClientX: number, startClientY: number, startWorld: { x: number, y: number }, currentWorld: { x: number, y: number } } | null} */
@@ -64,7 +65,7 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
     const entityMeta = () => getSandboxEntityMeta(state);
     const spawnAsset = () => {
         const spawnId = session.getSpawnPropId();
-        if (isSandboxSpawnPadId(spawnId) || spawnId.startsWith(SANDBOX_SPAWN_ASSEMBLY_PREFIX)) return null;
+        if (spawnId.startsWith(SANDBOX_SPAWN_ASSEMBLY_PREFIX)) return null;
         return getPropAsset(spawnId);
     };
     /** @param {string} id @param {string[]} allowed */
@@ -147,20 +148,19 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
             return;
         }
         if (e.button !== 0) return;
-        if (padWireMode) {
-            const buttonPadId = session.getSelectedPadId();
-            const buttonPad = buttonPadId ? state.entityRegistry.get(buttonPadId) : null;
-            if (buttonPad?.preset === "button") {
-                const target = findButtonLinkTarget(state, world.x, world.y, buttonPad.id);
-                if (target) addButtonPadLink(state, buttonPad.id, target);
+        if (buttonWireMode) {
+            const button = session.getSelectedProp();
+            if (isButtonEntity(button)) {
+                const target = findButtonLinkTarget(state, world.x, world.y, button.id);
+                if (target) addButtonLink(state, button.id, target);
                 session.sync();
                 e.preventDefault();
                 e.stopPropagation();
                 return;
             }
         }
-        const pad = hitTestPad(state, world.x, world.y);
-        if (pad && handlePadPointerDown(state, pad, world)) {
+        const floorButton = hitTestFloorButton(state, world.x, world.y);
+        if (floorButton && handleButtonPointerDown(state, floorButton, world)) {
             e.preventDefault();
             e.stopPropagation();
             session.sync();
@@ -204,8 +204,8 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
     };
     /** @param {PointerEvent} e */
     const onPointerMove = (e) => {
-        if (padWireMode) {
-            padWireCursor = clientToWorld(e.clientX, e.clientY);
+        if (buttonWireMode) {
+            buttonWireCursor = clientToWorld(e.clientX, e.clientY);
             requestRedraw();
         }
         if (marqueeSelect) {
@@ -246,10 +246,8 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
             marqueeSelect = null;
             releasePointerCapture(canvas, e);
             const dragPx = Math.hypot(e.clientX - drag.startClientX, e.clientY - drag.startClientY);
-            if (dragPx < MARQUEE_CLICK_THRESHOLD_PX) {
-                session.clearPropSelection();
-                session.setSelectedPadId(null);
-            } else {
+            if (dragPx < MARQUEE_CLICK_THRESHOLD_PX) session.clearPropSelection();
+            else {
                 const endWorld = clientToWorld(e.clientX, e.clientY);
                 const props = findSandboxPropsInWorldRect(state, state.entityRegistry, aabbFromTwoPointsInto(MARQUEE_BOUNDS, drag.startWorld.x, drag.startWorld.y, endWorld.x, endWorld.y));
                 session.setSelectedPropIds(props.map((prop) => prop.id));
@@ -298,13 +296,13 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
         getSelectedPropIds: () => session.getSelectedPropIds(),
         getSelectedProp: () => session.getSelectedProp(),
         setSelectedPropIds: (ids) => {
-            padWireMode = false;
-            padWireCursor = null;
+            buttonWireMode = false;
+            buttonWireCursor = null;
             session.setSelectedPropIds(ids);
         },
         clearPropSelection: () => {
-            padWireMode = false;
-            padWireCursor = null;
+            buttonWireMode = false;
+            buttonWireCursor = null;
             session.clearPropSelection();
         },
         getShowSelectionRings: () => showSelectionRings,
@@ -314,8 +312,8 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
         },
         deleteSelectedProps: () => session.deleteSelectedProps(),
         setSelectedPropId: (id) => {
-            padWireMode = false;
-            padWireCursor = null;
+            buttonWireMode = false;
+            buttonWireCursor = null;
             session.setSelectedPropId(id);
             const prop = session.getSelectedProp();
             if (prop && entityMeta().getActiveBehaviorId(prop.id) == null) {
@@ -323,44 +321,34 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
                 if (allowed.length > 0) entityMeta().setActiveBehaviorId(prop.id, allowed[0]);
             }
         },
-        getSelectedPadId: () => session.getSelectedPadId(),
-        setSelectedPadId: (id) => {
-            padWireMode = false;
-            padWireCursor = null;
-            session.setSelectedPadId(id);
-        },
-        getSelectedPad: () => session.getSelectedPad(),
-        patchSelectedPad: (patch) => session.patchSelectedPad(patch),
-        startPadWireLink: () => {
-            if (session.getSelectedPad()?.preset !== "button") return;
-            padWireMode = true;
-            padWireCursor = { x: state.viewport.x, y: state.viewport.y };
+        startButtonWireLink: () => {
+            if (!isButtonEntity(session.getSelectedProp())) return;
+            buttonWireMode = true;
+            buttonWireCursor = { x: state.viewport.x, y: state.viewport.y };
             session.sync();
         },
-        cancelPadWireLink: () => {
-            padWireMode = false;
-            padWireCursor = null;
+        cancelButtonWireLink: () => {
+            buttonWireMode = false;
+            buttonWireCursor = null;
             session.sync();
         },
-        isPadWireLinkActive: () => padWireMode,
-        clearSelectedPadLinks: () => {
-            const padId = session.getSelectedPadId();
-            if (!padId) return;
-            clearButtonPadLinks(state, padId);
+        isButtonWireLinkActive: () => buttonWireMode,
+        clearSelectedButtonLinks: () => {
+            const button = session.getSelectedProp();
+            if (!isButtonEntity(button)) return;
+            clearButtonLinks(state, button.id);
             session.sync();
         },
-        removeSelectedPadLink: (target) => {
-            const padId = session.getSelectedPadId();
-            if (!padId) return;
-            removeButtonPadLink(state, padId, target);
+        removeSelectedButtonLink: (target) => {
+            const button = session.getSelectedProp();
+            if (!isButtonEntity(button)) return;
+            removeButtonLink(state, button.id, target);
             session.sync();
         },
-        listSelectedPadLinks: () => {
-            const padId = session.getSelectedPadId();
-            if (!padId) return [];
-            const pad = state.entityRegistry.get(padId);
-            if (!pad) return [];
-            return listButtonPadLinkEndpoints(state, pad);
+        listSelectedButtonLinks: () => {
+            const button = session.getSelectedProp();
+            if (!isButtonEntity(button)) return [];
+            return listButtonLinkEndpoints(state, button);
         },
         spawnAtCameraOrigin: () => {
             session.spawnAtCameraOrigin();
@@ -372,8 +360,6 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
             return instance;
         },
         listAssemblyManifests: () => session.listAssemblyManifests(),
-        deleteSandboxPadById: (id) => session.deleteSandboxPadById(id),
-        listSandboxPads: () => session.listSandboxPads(),
         deleteAssemblyById: (id) => session.deleteAssemblyById(id),
         listAssemblies: () => session.listAssemblies(),
         deletePropById: (id) => session.deletePropById(id),
@@ -408,8 +394,8 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
         destroy() {
             unbindPointers?.();
             unbindPointers = null;
-            padWireMode = false;
-            padWireCursor = null;
+            buttonWireMode = false;
+            buttonWireCursor = null;
             marqueeSelect = null;
             groundNav = null;
             resetBehaviors();
@@ -444,7 +430,7 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
             behavior?.drawOverlay?.(ctx, prop);
         },
         drawBehaviorOverlays(ctx) {
-            drawSandboxPadWires(ctx, state, { wireFromPadId: padWireMode ? session.getSelectedPadId() : null, wireCursor: padWireMode ? padWireCursor : null });
+            drawButtonWires(ctx, state, { wireFromPropId: buttonWireMode ? session.getSelectedPropId() : null, wireCursor: buttonWireMode ? buttonWireCursor : null });
             for (let i = 0; i < behaviors.length; i++) behaviors[i].drawWorldOverlay?.(ctx);
         },
         drawSelectionRings(ctx) {

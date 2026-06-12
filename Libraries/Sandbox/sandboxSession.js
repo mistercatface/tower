@@ -4,10 +4,8 @@ import { SANDBOX_DEFAULT_FACTION, resolveSandboxFaction } from "../Combat/sandbo
 import { addWorldPropToState } from "../../GameState/EntityRegistry.js";
 import { spawnAssembly, deleteAssemblyInstance, clearAssemblyInstances } from "./spawnAssembly.js";
 import { getResolvedAssembly, listAssemblyManifests } from "./assemblies/assemblyRegistry.js";
-import { clearSandboxPads, deleteSandboxPad, getSandboxPadEditorState, isSandboxSpawnPadId, listSandboxPads, parseSandboxPadPreset, patchSandboxPad, spawnSandboxPad } from "./sandboxPads.js";
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 import { removeSandboxWorldProp } from "./pullFixtureWalls.js";
-export { SANDBOX_SPAWN_PAD_PREFIX, isSandboxSpawnPadId, parseSandboxPadPreset, sandboxSpawnPadId } from "./sandboxPads.js";
 export const SANDBOX_SPAWN_ASSEMBLY_PREFIX = "assembly:";
 /** @param {string} assemblyId */
 export function sandboxSpawnAssemblyId(assemblyId) {
@@ -15,7 +13,7 @@ export function sandboxSpawnAssemblyId(assemblyId) {
 }
 /** @param {string} spawnId */
 export function isSandboxSpawnPropId(spawnId) {
-    return !isSandboxSpawnPadId(spawnId) && !spawnId.startsWith(SANDBOX_SPAWN_ASSEMBLY_PREFIX);
+    return !spawnId.startsWith(SANDBOX_SPAWN_ASSEMBLY_PREFIX);
 }
 /**
  * @param {object} state
@@ -28,8 +26,6 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
     let selectedPropIds = new Set();
     /** @type {number | null} */
     let selectedPropId = null;
-    /** @type {string | null} */
-    let selectedPadId = null;
     /** @type {(() => void) | null} */
     let uiSync = null;
     const sync = () => {
@@ -53,7 +49,6 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         selectedPropId = null;
     };
     const setSinglePropSelection = (id) => {
-        selectedPadId = null;
         if (id == null) {
             selectedPropIds.clear();
             selectedPropId = null;
@@ -108,7 +103,6 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             setSinglePropSelection(id);
         },
         setSelectedPropIds: (ids) => {
-            selectedPadId = null;
             selectedPropIds = new Set();
             for (let i = 0; i < ids.length; i++) {
                 const id = ids[i];
@@ -120,28 +114,6 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         clearPropSelection: () => {
             setSinglePropSelection(null);
         },
-        getSelectedPadId: () => selectedPadId,
-        setSelectedPadId: (id) => {
-            selectedPadId = id;
-            selectedPropIds.clear();
-            selectedPropId = null;
-            sync();
-        },
-        getSelectedPad: () => {
-            if (selectedPadId == null) return null;
-            const pad = state.entityRegistry.get(selectedPadId);
-            if (!pad || getSandboxEntityMeta(state).getAssemblyGroupId(pad.id)) {
-                selectedPadId = null;
-                return null;
-            }
-            return getSandboxPadEditorState(pad);
-        },
-        patchSelectedPad: (patch) => {
-            if (selectedPadId == null) return false;
-            const ok = patchSandboxPad(state, selectedPadId, patch);
-            if (ok) sync();
-            return ok;
-        },
         getSelectedProp: () => {
             pruneSelection();
             return selectedPropId == null ? null : registry().getLive(selectedPropId);
@@ -150,15 +122,6 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         spawnAt,
         spawnAtCameraOrigin() {
             const origin = { x: state.viewport.x, y: state.viewport.y };
-            if (isSandboxSpawnPadId(spawnPropId)) {
-                const preset = parseSandboxPadPreset(spawnPropId);
-                const pad = spawnSandboxPad(state, preset, origin.x, origin.y);
-                selectedPadId = pad.id;
-                selectedPropIds.clear();
-                selectedPropId = null;
-                sync();
-                return null;
-            }
             if (spawnPropId.startsWith(SANDBOX_SPAWN_ASSEMBLY_PREFIX)) return this.spawnAssemblyAt(origin.x, origin.y, spawnPropId.slice(SANDBOX_SPAWN_ASSEMBLY_PREFIX.length));
             return spawnAt(origin.x, origin.y);
         },
@@ -182,12 +145,6 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         listAssemblies() {
             return state.sandbox.assemblyInstances.map((entry) => ({ id: entry.id, label: getResolvedAssembly(entry.assemblyId).label, defaultPropId: entry.defaultPropId }));
         },
-        deleteSandboxPadById(id) {
-            deleteSandboxPad(state, id);
-            if (selectedPadId === id) selectedPadId = null;
-            sync();
-        },
-        listSandboxPads: () => listSandboxPads(state),
         deleteProp(prop) {
             if (!prop) return;
             removePropFromSelection(prop.id);
@@ -220,10 +177,8 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         clear() {
             for (let i = state.worldProps.length - 1; i >= 0; i--) removeSandboxWorldProp(state.worldProps[i]);
             clearAssemblyInstances(state);
-            clearSandboxPads(state);
             selectedPropIds.clear();
             selectedPropId = null;
-            selectedPadId = null;
             sync();
         },
         setUiSync(fn) {

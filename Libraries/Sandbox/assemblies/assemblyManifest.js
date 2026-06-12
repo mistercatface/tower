@@ -65,6 +65,11 @@
  * @property {number} [forceY] — gravity pad pull override
  * @property {boolean} [wallMode] — gravity pad wall mode when powered
  * @property {boolean} [powered] — starts unpowered when false
+ * @property {number} [radiusU] — button_floor: radius as playfield width fraction
+ * @property {"tap" | "hold" | "toggle" | "massTap" | "massHold" | "massToggle"} [inputMode]
+ * @property {number} [massThreshold]
+ * @property {boolean} [invert]
+ * @property {string[]} [targets] — button_floor manifest ids to wire
  * @property {AssemblyPlacementManifest} at
  */
 /**

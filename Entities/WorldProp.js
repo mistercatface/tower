@@ -20,7 +20,7 @@ import { SPLITTABLE_MIN_PIECE_SIZE } from "../Libraries/Props/splittable.js";
 import { wakePushableBody } from "../Libraries/Motion/pushableSleep.js";
 import { ensureLocomotionWorldProp, updateLocomotionWorldProp, usesLocomotionWorldProp } from "../Libraries/Props/locomotionWorldProp.js";
 import { resolveKinematicsCamera } from "../Libraries/Render/Characters/actorKinematicsRenderer.js";
-import { initFloorTriggerProp } from "../Libraries/Spatial/zones/floorShapes.js";
+import { initFloorButtonProp, initFloorTriggerProp } from "../Libraries/Spatial/zones/floorShapes.js";
 function buildWorldPropStrategy(type) {
     const def = getWorldPropDefinitions()[type];
     if (!def) return withPropStrategyDefaults({});
@@ -72,6 +72,7 @@ export class WorldProp extends Entity {
             this.health = this.strategy.maxHealth;
         }
         if (this.strategy.floorTriggers?.length) initFloorTriggerProp(this);
+        if (this.strategy.buttonLinks != null) initFloorButtonProp(this);
         this.usesKinematicsBody = !!this.strategy.kinematics;
         if (usesLocomotionWorldProp(this)) ensureLocomotionWorldProp(this);
         if (getPropAsset(type)?.sandbox?.equip) {

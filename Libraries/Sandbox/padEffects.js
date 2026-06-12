@@ -2,11 +2,12 @@ import { CAPTURED_SINK_DURATION_MS } from "../../Entities/worldPropVoidSinkState
 import { canEntityFitVoidPit, isInsideVoidMouth, isVoidSinkCaptured } from "../Spatial/zones/pit.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { releaseFlipper, triggerFlipper } from "./behaviors/flipperBehavior.js";
-import { getButtonPadLinks } from "./sandboxPadLinks.js";
-import { buttonEffectiveActive, isSustainedFlipperButtonInputMode, isSustainedSpawnerButtonInputMode } from "./buttonPad.js";
+import { forEachButtonEntity, getButtonLinks } from "./buttonLinks.js";
+import { buttonEffectiveActive, isSustainedFlipperButtonInputMode, isSustainedSpawnerButtonInputMode } from "./buttonInput.js";
 import { fireSpawner, isSpawnerWorldProp } from "./spawnerConfig.js";
-import { isPullPowerTarget, syncPullFixtureWalls, teardownPullFixtureWalls } from "./pullFixtureWalls.js";
-/** @typedef {import("./padPresets.js").PadTriggerDef} PadTriggerDef */
+import { isPullPowerTarget, syncPullFixtureWalls } from "./pullFixtureWalls.js";
+/** @typedef {{ when?: FloorTriggerWhen, effect: string, forceX?: number, forceY?: number }} PadTriggerDef */
+/** @typedef {"enter" | "exit" | "occupied" | "empty"} FloorTriggerWhen */
 /**
  * @typedef {object} PadEffectContext
  * @property {object} [entity]
@@ -19,15 +20,12 @@ function pullPowerKeyForProp(propId) {
     return `prop:${propId}`;
 }
 /** @param {object} state */
-export function syncSandboxPadPower(state) {
+export function syncSandboxButtonPower(state) {
     /** @type {Map<string, boolean>} */
     const poweredByTargetId = new Map();
-    const pads = state.sandbox.pads;
-    for (let i = 0; i < pads.length; i++) {
-        const pad = pads[i];
-        if (pad.preset !== "button") continue;
-        const signal = buttonEffectiveActive(state, pad);
-        const links = getButtonPadLinks(pad);
+    forEachButtonEntity(state, (button) => {
+        const signal = buttonEffectiveActive(state, button);
+        const links = getButtonLinks(button);
         for (let j = 0; j < links.length; j++) {
             const link = links[j];
             if (link.type !== "worldProp") continue;
@@ -36,7 +34,7 @@ export function syncSandboxPadPower(state) {
             const key = pullPowerKeyForProp(link.id);
             poweredByTargetId.set(key, (poweredByTargetId.get(key) ?? false) || signal);
         }
-    }
+    });
     state.entityRegistry.forEachOfKind("worldProp", (prop) => {
         if (!isPullPowerTarget(prop)) return;
         const powered = poweredByTargetId.has(pullPowerKeyForProp(prop.id)) ? poweredByTargetId.get(pullPowerKeyForProp(prop.id)) : true;
@@ -67,21 +65,29 @@ function rimOutSink(state, entityId, source) {
     if (isInsideVoidMouth(source.x, source.y, mouthRadius, prop)) return;
     prop.changeState("normal");
 }
-/** @param {object} state @param {import("./sandboxPadLinks.js").ButtonLinkWorldPropTarget} link @param {object} buttonPad */
-function runButtonWorldPropLink(state, link, buttonPad) {
+/** @param {object} state @param {import("./buttonLinks.js").ButtonLinkTarget} link @param {object} button */
+function runButtonWorldPropLink(state, link, button) {
     const prop = state.entityRegistry.getLive(link.id);
     if (!prop || isSpawnerWorldProp(prop)) return;
-    if (isSustainedFlipperButtonInputMode(buttonPad.inputMode)) return;
-    if (buttonPad.invert) releaseFlipper(prop);
+    if (isSustainedFlipperButtonInputMode(button.inputMode)) return;
+    if (button.invert) releaseFlipper(prop);
     else triggerFlipper(prop, { hold: false });
 }
-/** @param {object} state @param {object} buttonPad */
-export function tickButtonSpawnerLinks(state, buttonPad) {
-    const active = buttonEffectiveActive(state, buttonPad);
-    const wasActive = buttonPad._spawnerButtonWasActive ?? false;
-    const sustained = isSustainedSpawnerButtonInputMode(buttonPad.inputMode);
+/** @param {object} state @param {object} button @param {PadEffectContext} [ctx] */
+export function runButtonTapLinks(state, button, ctx = {}) {
+    const links = getButtonLinks(button);
+    for (let i = 0; i < links.length; i++) {
+        const link = links[i];
+        if (link.type === "worldProp") runButtonWorldPropLink(state, link, button);
+    }
+}
+/** @param {object} state @param {object} button */
+export function tickButtonSpawnerLinks(state, button) {
+    const active = buttonEffectiveActive(state, button);
+    const wasActive = button._spawnerButtonWasActive ?? false;
+    const sustained = isSustainedSpawnerButtonInputMode(button.inputMode);
     if (active && (sustained || !wasActive)) {
-        const links = getButtonPadLinks(buttonPad);
+        const links = getButtonLinks(button);
         for (let i = 0; i < links.length; i++) {
             const link = links[i];
             if (link.type !== "worldProp") continue;
@@ -90,12 +96,12 @@ export function tickButtonSpawnerLinks(state, buttonPad) {
             fireSpawner(state, prop);
         }
     }
-    buttonPad._spawnerButtonWasActive = active;
+    button._spawnerButtonWasActive = active;
 }
-/** @param {object} state @param {object} buttonPad */
-export function syncButtonFlipperLinks(state, buttonPad) {
-    const active = buttonEffectiveActive(state, buttonPad);
-    const links = getButtonPadLinks(buttonPad);
+/** @param {object} state @param {object} button */
+export function syncButtonFlipperLinks(state, button) {
+    const active = buttonEffectiveActive(state, button);
+    const links = getButtonLinks(button);
     for (let i = 0; i < links.length; i++) {
         const link = links[i];
         if (link.type !== "worldProp") continue;
@@ -128,15 +134,6 @@ const PAD_EFFECTS = {
                 if (prop.isSleeping) continue;
                 prop.vx += forceX * dtSec;
                 prop.vy += forceY * dtSec;
-            }
-        },
-    },
-    button: {
-        run(state, pad) {
-            const links = getButtonPadLinks(pad);
-            for (let i = 0; i < links.length; i++) {
-                const link = links[i];
-                if (link.type === "worldProp") runButtonWorldPropLink(state, link, pad);
             }
         },
     },

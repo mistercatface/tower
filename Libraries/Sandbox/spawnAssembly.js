@@ -5,8 +5,6 @@ import { createAssemblyGuideOverlay, createAssemblySurfaceZone } from "./assembl
 import { eagerBakeAssemblySurfaceFlipbook, releaseAssemblySurfaceFlipbook } from "./assemblySurfaceBake.js";
 import { requestUiUpdate } from "../../Core/EventSystem.js";
 import { spawnAssemblyWorldProps } from "./assemblyWorldPropSpawn.js";
-import { spawnAssemblyPads } from "./assemblyPadSpawn.js";
-import { deleteSandboxPad } from "./sandboxPads.js";
 import { getWallCellBounds, unionGridCellRect } from "../Spatial/grid/wallGridBake.js";
 import { pointInAabb } from "../Math/Aabb2D.js";
 import { removeSandboxWorldProp } from "./pullFixtureWalls.js";
@@ -124,7 +122,7 @@ export function spawnResolvedAssembly(state, centerX, centerY, resolved, { facti
         defaultPropId = spawned.defaultPropId;
         propIdByManifestId = spawned.propIdByManifestId;
     }
-    if (resolved.pads.length) spawnAssemblyPads(state, layout, { groupId, resolvedId: resolved.id, groupField, propIdByManifestId });
+    if (resolved.pads.length) throw new Error(`Assembly "${resolved.id}" still declares pads — migrate to worldProps`);
     const instance = { id: groupId, assemblyId: resolved.id, defaultPropId, arenaWidth, arenaHeight };
     state.sandbox.assemblyInstances.push(instance);
     return { id: groupId, assemblyId: resolved.id, defaultPropId, centerX, centerY };
@@ -158,10 +156,6 @@ export function deleteAssemblyInstance(state, groupId, groupField) {
         if (entityBelongsToAssemblyGroup(state, wall, groupId, groupField)) wallsToRemove.push(wall);
     }
     removeSandboxWalls(state, wallsToRemove);
-    for (let z = state.sandbox.pads.length - 1; z >= 0; z--) {
-        const pad = state.sandbox.pads[z];
-        if (entityBelongsToAssemblyGroup(state, pad, groupId, groupField)) deleteSandboxPad(state, pad.id);
-    }
     const rackId = `${groupId}:rack`;
     const meta = getSandboxEntityMeta(state);
     for (let i = state.worldProps.length - 1; i >= 0; i--) {

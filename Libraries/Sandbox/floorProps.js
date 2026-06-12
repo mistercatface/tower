@@ -1,7 +1,9 @@
 import { processFloorShapes } from "../Spatial/zones/floorShapes.js";
+import { tickFloorButtons } from "./floorButtons.js";
 import { runPadEffect } from "./padEffects.js";
 /** @param {object} state @param {import("../Spatial/world/SpatialFrameCore.js").SpatialFrameCore} spatialFrame @param {number} dt */
 export function tickFloorProps(state, spatialFrame, dt) {
+    tickFloorButtons(state, spatialFrame);
     /** @type {object[]} */
     const shapes = [];
     state.entityRegistry.forEachOfKind("worldProp", (prop) => {
@@ -34,7 +36,7 @@ function floorPropHasOccupant(state, prop) {
     }
     return false;
 }
-/** @param {object} state @param {object} prop @param {import("./padPresets.js").PadWhen} when @param {import("./padEffects.js").PadEffectContext} ctx */
+/** @param {object} state @param {object} prop @param {import("./padEffects.js").FloorTriggerWhen} when @param {import("./padEffects.js").PadEffectContext} ctx */
 function runFloorTriggers(state, prop, when, ctx) {
     for (let i = 0; i < prop.triggers.length; i++) {
         const trigger = prop.triggers[i];

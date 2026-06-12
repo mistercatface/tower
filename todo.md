@@ -47,19 +47,6 @@ Pushable or heavy fixture; activates on impact, not pointer.
 - [ ] **Inspector** — min impulse, links; no pointer fields; X/Y/facing like other props.
 - [ ] **No floor pass** — lives in `draw3DBuildings`; participates in push collision broadphase unless `spatialRole: "trigger"` (physical buttons should **not** use trigger skip).
 
-### Retire pad system
-
-- [ ] **Remove `button` from `PAD_PRESETS`** — delete pad draw/tick/inspector/spawn paths in `sandboxPads.js`, `sandboxToyUi.js`, `assemblyPadSpawn.js` (assemblies use `button_floor` worldProps if needed).
-- [ ] **Delete or empty `state.sandbox.pads` tick/draw** — if no presets remain, remove `tickSandboxPads`, `sandboxPadEffectPass`, pad selection UI; else only until last preset gone.
-- [ ] **Archive** — move pad-only draw helpers to Deprecated or inline into button floor draw recipe.
-
-### Order
-
-1. Shared link/power core (unblocks gravity `powered` + floor button wiring).
-2. `button_floor` (parity with current pad).
-3. `button_bumper` 3D (new gameplay).
-4. Remove `pad:button`.
-
 ## Floor props (done — void pit)
 
 - [x] Floor render pass @ ~10.5, `PropRenderer` cache, back-to-front sort

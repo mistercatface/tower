@@ -15,6 +15,9 @@ Thumbs.db
 # editor / temp
 *.bak
 
+# archived code (local only)
+Libraries/Deprecated/
+
 # Cursor IDE — local workspace state only (shared rules: .cursor/rules/)
 .cursor/*
 !.cursor/.gitignore
