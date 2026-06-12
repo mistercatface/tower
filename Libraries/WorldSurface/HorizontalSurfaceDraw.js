@@ -7,7 +7,7 @@ import { getSegmentFootprintCorners } from "../Spatial/geometry/WallGeometry.js"
 import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { forEachObstacleGridCellInAabb } from "../Spatial/grid/GridCoords.js";
 import { worldToChunkCol, worldToChunkRow } from "../Spatial/grid/ChunkGrid.js";
-import { getDamageAlphaFromHealth, wallDamageOverlayStyle } from "../Render/Structure3D/wallDamageVisual.js";
+import { getDamageAlphaFromHealth, drawAabbDamageOverlay, drawDamageOverlayInClip, drawPolygonDamageOverlay } from "../Render/Structure3D/wallDamageVisual.js";
 import { resolveStaticWallHeightAtCell, cellIsStaticBlocked } from "../World/staticOccupancyLayers.js";
 import { getStaticCellDamageAlphaAtGrid } from "../World/staticCellDamage.js";
 import { bakePixelsForWorldSpan } from "./WorldSurfaceResolution.js";
@@ -203,13 +203,10 @@ export function drawRoofSegmentDamageOverlays(ctx, chunkOriginX, chunkOriginY, c
         if (Math.abs(roof.zLevel - zLevel) > 0.01) continue;
         const damageAlpha = getDamageAlphaFromHealth(roof.simWall.health, roof.simWall.maxHealth);
         if (damageAlpha <= 0) continue;
-        ctx.save();
-        ctx.beginPath();
-        roof.draw(ctx, viewport, cameraHeight, viewerX, viewerY);
-        ctx.clip();
-        ctx.fillStyle = wallDamageOverlayStyle(damageAlpha);
-        ctx.fill();
-        ctx.restore();
+        drawDamageOverlayInClip(ctx, damageAlpha, (ctx) => {
+            ctx.beginPath();
+            roof.draw(ctx, viewport, cameraHeight, viewerX, viewerY);
+        });
     }
 }
 /**
@@ -237,16 +234,7 @@ export function drawStaticRoofDamageOverlays(ctx, obstacleGrid, chunkOriginX, ch
         if (damageAlpha <= 0) return;
         const bounds = obstacleGrid.getCellBounds(col, row);
         const corners = projectHorizontalSurfaceCorners(bounds.minX, bounds.minY, cellSize, zLevel, viewerX, viewerY, cameraHeight, viewport);
-        ctx.save();
-        ctx.beginPath();
-        for (let j = 0; j < 4; j++)
-            if (j === 0) ctx.moveTo(corners[j].x, corners[j].y);
-            else ctx.lineTo(corners[j].x, corners[j].y);
-        ctx.closePath();
-        ctx.clip();
-        ctx.fillStyle = wallDamageOverlayStyle(damageAlpha);
-        ctx.fill();
-        ctx.restore();
+        drawPolygonDamageOverlay(ctx, corners, damageAlpha);
     });
 }
 /**
@@ -261,19 +249,11 @@ export function drawStaticRoofDamageOverlays(ctx, obstacleGrid, chunkOriginX, ch
  */
 export function drawStaticWallFootprintDamageOverlays(ctx, obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx, state) {
     if (!obstacleGrid?.cols || !state) return;
-    const cellSize = obstacleGrid.cellSize;
     forEachObstacleGridCellInAabb(obstacleGrid, { minX: chunkOriginX, minY: chunkOriginY, maxX: chunkOriginX + chunkSizePx, maxY: chunkOriginY + chunkSizePx }, (col, row) => {
         if (!cellIsStaticBlocked(obstacleGrid, col, row)) return;
         const damageAlpha = getStaticCellDamageAlphaAtGrid(obstacleGrid, state, col, row);
         if (damageAlpha <= 0) return;
-        const bounds = obstacleGrid.getCellBounds(col, row);
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(bounds.minX, bounds.minY, cellSize, cellSize);
-        ctx.clip();
-        ctx.fillStyle = wallDamageOverlayStyle(damageAlpha);
-        ctx.fill();
-        ctx.restore();
+        drawAabbDamageOverlay(ctx, obstacleGrid.getCellBounds(col, row), damageAlpha);
     });
 }
 /**
@@ -293,15 +273,6 @@ export function drawWallFootprintDamageOverlays(ctx, chunkOriginX, chunkOriginY,
         if (wall.isDead || wall.collisionOnly) continue;
         const damageAlpha = getDamageAlphaFromHealth(wall.health, wall.maxHealth);
         if (damageAlpha <= 0) continue;
-        const corners = getSegmentFootprintCorners(wall);
-        ctx.save();
-        ctx.beginPath();
-        ctx.moveTo(corners[0].x, corners[0].y);
-        for (let j = 1; j < corners.length; j++) ctx.lineTo(corners[j].x, corners[j].y);
-        ctx.closePath();
-        ctx.clip();
-        ctx.fillStyle = wallDamageOverlayStyle(damageAlpha);
-        ctx.fill();
-        ctx.restore();
+        drawPolygonDamageOverlay(ctx, getSegmentFootprintCorners(wall), damageAlpha);
     }
 }

@@ -174,3 +174,14 @@ export function distanceToAabb(px, py, minX, minY, maxX, maxY) {
 export function circleIntersectsAabb(x, y, radius, { minX, minY, maxX, maxY }) {
     return distanceSqToAabb(x, y, minX, minY, maxX, maxY) <= radius * radius;
 }
+/** @param {CanvasRenderingContext2D} ctx @param {Aabb2D} box */
+export function traceAabbRect(ctx, { minX, minY, maxX, maxY }) {
+    ctx.rect(minX, minY, maxX - minX, maxY - minY);
+}
+/** @param {CanvasRenderingContext2D} ctx @param {{ x: number, y: number }[]} points */
+export function traceClosedPolygon(ctx, points) {
+    if (points.length < 3) return;
+    ctx.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+    ctx.closePath();
+}

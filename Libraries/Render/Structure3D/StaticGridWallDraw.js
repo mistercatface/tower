@@ -5,7 +5,7 @@ import { forEachObstacleGridCellInAabb } from "../../Spatial/grid/GridCoords.js"
 import { getWallHeight } from "../../WorldSurface/WorldSurfaceSettings.js";
 import { cellIsStaticBlocked, resolveStaticWallHeightAtCell } from "../../World/staticOccupancyLayers.js";
 import { computeProjectedFace, drawFaceTexture, traceProjectedFace } from "./ProjectedWallDraw.js";
-import { wallDamageOverlayStyle } from "./wallDamageVisual.js";
+import { drawDamageOverlayInClip } from "./wallDamageVisual.js";
 const sP1 = { x: 0, y: 0 };
 const sP2 = { x: 0, y: 0 };
 /** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} edge */
@@ -125,12 +125,5 @@ export function drawStaticGridWallFace(ctx, face, input, viewport, viewerX, view
         ctx.fillStyle = fillStyle;
         ctx.fill();
     }
-    if (damageAlpha > 0) {
-        ctx.save();
-        traceProjectedFace(ctx, face.p1, face.p2, projected);
-        ctx.clip();
-        ctx.fillStyle = wallDamageOverlayStyle(damageAlpha);
-        ctx.fill();
-        ctx.restore();
-    }
+    if (damageAlpha > 0) drawDamageOverlayInClip(ctx, damageAlpha, (ctx) => traceProjectedFace(ctx, face.p1, face.p2, projected));
 }

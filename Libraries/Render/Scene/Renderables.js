@@ -1,8 +1,8 @@
 import { resolveStructurePerspectiveStrength } from "../../../Core/GamePerspective.js";
 import { resolveElevationAlpha } from "../../Spatial/iso/IsometricProjection.js";
 import { createAabb, expandPointsAabbInto } from "../../Math/Aabb2D.js";
-import { computeProjectedFace, drawFaceTexture } from "../Structure3D/ProjectedWallDraw.js";
-import { wallDamageOverlayStyle } from "../Structure3D/wallDamageVisual.js";
+import { computeProjectedFace, drawFaceTexture, traceProjectedFace } from "../Structure3D/ProjectedWallDraw.js";
+import { drawDamageOverlayInClip } from "../Structure3D/wallDamageVisual.js";
 /**
  * Base class for all pre-calculated static geometry.
  */
@@ -62,19 +62,7 @@ export class RenderableWallFace extends Renderable {
         ctx.closePath();
         if (worldSurfaces && proceduralSurfaceDraw) {
             drawFaceTexture(ctx, this.p1, this.p2, face, worldSurfaces, proceduralSurfaceDraw, { x: viewerX, y: viewerY }, viewport, this.wallHeight, fillStyle, this.simWall, worldBounds);
-            if (damageAlpha > 0) {
-                ctx.save();
-                ctx.beginPath();
-                ctx.moveTo(this.p1.x, this.p1.y);
-                ctx.lineTo(face.proj1X, face.proj1Y);
-                ctx.lineTo(face.proj2X, face.proj2Y);
-                ctx.lineTo(this.p2.x, this.p2.y);
-                ctx.closePath();
-                ctx.clip();
-                ctx.fillStyle = wallDamageOverlayStyle(damageAlpha);
-                ctx.fill();
-                ctx.restore();
-            }
+            if (damageAlpha > 0) drawDamageOverlayInClip(ctx, damageAlpha, (ctx) => traceProjectedFace(ctx, this.p1, this.p2, face));
         } else {
             ctx.fillStyle = fillStyle;
             ctx.fill();
