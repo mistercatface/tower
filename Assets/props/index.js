@@ -13,6 +13,27 @@ import button_floor from "./button_floor/button_floor.asset.js";
 import gravity_pad from "./gravity_pad/gravity_pad.asset.js";
 import void_pit from "./void_pit/void_pit.asset.js";
 import conveyor from "./conveyor/conveyor.asset.js";
+import conveyor_elbow_left from "./conveyor/conveyorElbowLeft.asset.js";
+import conveyor_elbow_right from "./conveyor/conveyorElbowRight.asset.js";
 import poolBalls from "./poolBalls.js";
-const catalog = { beach_ball, steel_ball, barrel, flipper_left, flipper_right, crate, crate_shard, log, humanoid, pipe_elbow, blue_ball, void_pit, gravity_pad, button_floor, conveyor, ...poolBalls };
+const catalog = {
+    beach_ball,
+    steel_ball,
+    barrel,
+    flipper_left,
+    flipper_right,
+    crate,
+    crate_shard,
+    log,
+    humanoid,
+    pipe_elbow,
+    blue_ball,
+    void_pit,
+    gravity_pad,
+    button_floor,
+    conveyor,
+    conveyor_elbow_left,
+    conveyor_elbow_right,
+    ...poolBalls,
+};
 export default catalog;
