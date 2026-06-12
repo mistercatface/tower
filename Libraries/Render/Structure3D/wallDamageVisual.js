@@ -1,4 +1,4 @@
-import { traceAabbRect, traceClosedPolygon } from "../../Math/Aabb2D.js";
+import { traceAabbRect, traceClosedPolygon } from "../../Canvas/CanvasPath.js";
 /** @param {number} health @param {number} maxHealth */
 export function getDamageAlphaFromHealth(health, maxHealth) {
     const healthRatio = health / maxHealth;

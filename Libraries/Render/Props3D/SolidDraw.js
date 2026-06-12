@@ -9,6 +9,7 @@ import {
     createSideGradient,
     projectVertical,
 } from "../../Spatial/iso/IsometricProjection.js";
+import { traceQuad } from "../../Canvas/CanvasPath.js";
 export const DEFAULT_PROP_HEIGHT = 14;
 export const RADIAL_SEGMENTS = 14;
 export function drawCullFace(ctx, face, shadeAngle, { fill, stroke, lineWidth }) {
@@ -16,11 +17,7 @@ export function drawCullFace(ctx, face, shadeAngle, { fill, stroke, lineWidth })
     ctx.strokeStyle = stroke;
     ctx.lineWidth = lineWidth;
     ctx.beginPath();
-    ctx.moveTo(face.topA.x, face.topA.y);
-    ctx.lineTo(face.topB.x, face.topB.y);
-    ctx.lineTo(face.baseB.x, face.baseB.y);
-    ctx.lineTo(face.baseA.x, face.baseA.y);
-    ctx.closePath();
+    traceQuad(ctx, face.topA, face.topB, face.baseB, face.baseA);
     ctx.fill();
     ctx.stroke();
 }

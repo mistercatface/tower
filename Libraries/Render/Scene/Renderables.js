@@ -54,12 +54,7 @@ export class RenderableWallFace extends Renderable {
         const settings = worldSurfaces.settings;
         if (!settings) return;
         const face = computeProjectedFace(this.p1, this.p2, viewerX, viewerY, this.wallHeight, settings, undefined, viewport);
-        ctx.beginPath();
-        ctx.moveTo(this.p1.x, this.p1.y);
-        ctx.lineTo(face.proj1X, face.proj1Y);
-        ctx.lineTo(face.proj2X, face.proj2Y);
-        ctx.lineTo(this.p2.x, this.p2.y);
-        ctx.closePath();
+        traceProjectedFace(ctx, this.p1, this.p2, face);
         if (worldSurfaces && proceduralSurfaceDraw) {
             drawFaceTexture(ctx, this.p1, this.p2, face, worldSurfaces, proceduralSurfaceDraw, { x: viewerX, y: viewerY }, viewport, this.wallHeight, fillStyle, this.simWall, worldBounds);
             if (damageAlpha > 0) drawDamageOverlayInClip(ctx, damageAlpha, (ctx) => traceProjectedFace(ctx, this.p1, this.p2, face));

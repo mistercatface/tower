@@ -6,6 +6,7 @@ import { projectWorldPointAtHeight } from "../Spatial/iso/IsometricProjection.js
 import { getSegmentFootprintCorners } from "../Spatial/geometry/WallGeometry.js";
 import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { forEachObstacleGridCellInAabb } from "../Spatial/grid/GridCoords.js";
+import { traceAabbRect, traceClosedPolygon } from "../Canvas/CanvasPath.js";
 import { worldToChunkCol, worldToChunkRow } from "../Spatial/grid/ChunkGrid.js";
 import { getDamageAlphaFromHealth, drawAabbDamageOverlay, drawDamageOverlayInClip, drawPolygonDamageOverlay } from "../Render/Structure3D/wallDamageVisual.js";
 import { resolveStaticWallHeightAtCell, cellIsStaticBlocked } from "../World/staticOccupancyLayers.js";
@@ -56,7 +57,6 @@ export function chunkHasBlockedCells(obstacleGrid, chunkOriginX, chunkOriginY, c
  */
 export function clipChunkToBlockedCells(ctx, obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx) {
     if (!obstacleGrid?.cols) return false;
-    const cellSize = obstacleGrid.cellSize;
     const segmentGrid = obstacleGrid.segmentGrid;
     ctx.beginPath();
     let clippedAny = false;
@@ -65,7 +65,7 @@ export function clipChunkToBlockedCells(ctx, obstacleGrid, chunkOriginX, chunkOr
         const idx = colRowToIndex(col, row, obstacleGrid.cols);
         if (segmentGrid?.[idx]?.length) return;
         const bounds = obstacleGrid.getCellBounds(col, row);
-        ctx.rect(bounds.minX, bounds.minY, cellSize, cellSize);
+        traceAabbRect(ctx, bounds);
         clippedAny = true;
     });
     if (!clippedAny) return false;
@@ -166,10 +166,7 @@ export function clipChunkToWallFootprints(ctx, chunkOriginX, chunkOriginY, chunk
     for (let i = 0; i < segments.length; i++) {
         const wall = segments[i];
         if (wall.isDead || wall.collisionOnly) continue;
-        const corners = getSegmentFootprintCorners(wall);
-        ctx.moveTo(corners[0].x, corners[0].y);
-        for (let j = 1; j < corners.length; j++) ctx.lineTo(corners[j].x, corners[j].y);
-        ctx.closePath();
+        traceClosedPolygon(ctx, getSegmentFootprintCorners(wall));
         clippedAny = true;
     }
     if (!clippedAny) return false;

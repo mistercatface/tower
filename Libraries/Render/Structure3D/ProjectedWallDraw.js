@@ -9,6 +9,7 @@ import { getTexelResolution, shouldSmoothTextureDownsample } from "../../WorldSu
 import { resolveStructurePerspectiveStrength } from "../../../Core/GamePerspective.js";
 import { resolveElevationAlpha } from "../../Spatial/iso/IsometricProjection.js";
 import { pointsAabbOverlapAabb } from "../../Math/Aabb2D.js";
+import { traceQuad } from "../../Canvas/CanvasPath.js";
 export { getWallHeight };
 export { wallFaceColumns } from "../../WorldSurface/WallFaceColumns.js";
 const WALL_ANGLE_SPREAD = 0.002;
@@ -41,11 +42,7 @@ export function computeProjectedFace(p1, p2, px, py, wallHeight, settings, out =
 }
 export function traceProjectedFace(ctx, p1, p2, face) {
     ctx.beginPath();
-    ctx.moveTo(p1.x, p1.y);
-    ctx.lineTo(face.proj1X, face.proj1Y);
-    ctx.lineTo(face.proj2X, face.proj2Y);
-    ctx.lineTo(p2.x, p2.y);
-    ctx.closePath();
+    traceQuad(ctx, p1, { x: face.proj1X, y: face.proj1Y }, { x: face.proj2X, y: face.proj2Y }, p2);
 }
 function computeFaceCorner(out, p1, p2, proj1X, proj1Y, proj2X, proj2Y, u, v) {
     const bx = p1.x + (p2.x - p1.x) * u;

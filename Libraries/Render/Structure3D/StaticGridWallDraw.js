@@ -113,12 +113,7 @@ export function drawStaticGridWallFace(ctx, face, input, viewport, viewerX, view
     const settings = worldSurfaces?.settings;
     if (!settings) return;
     const projected = computeProjectedFace(face.p1, face.p2, viewerX, viewerY, face.wallHeight, settings, undefined, viewport);
-    ctx.beginPath();
-    ctx.moveTo(face.p1.x, face.p1.y);
-    ctx.lineTo(projected.proj1X, projected.proj1Y);
-    ctx.lineTo(projected.proj2X, projected.proj2Y);
-    ctx.lineTo(face.p2.x, face.p2.y);
-    ctx.closePath();
+    traceProjectedFace(ctx, face.p1, face.p2, projected);
     if (worldSurfaces && input.proceduralSurfaceDraw)
         drawFaceTexture(ctx, face.p1, face.p2, projected, worldSurfaces, input.proceduralSurfaceDraw, { x: viewerX, y: viewerY }, viewport, face.wallHeight, fillStyle, face, worldBounds);
     else {
