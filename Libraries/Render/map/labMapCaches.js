@@ -1,5 +1,5 @@
 const WALL_OVERLAY_THICKNESS = 20;
-/** @typedef {{ canvas: OffscreenCanvas, minX: number, minY: number, maxX: number, maxY: number }} MapImageCache */
+/** @typedef {import("../../Math/Aabb2D.js").Aabb2D & { canvas: OffscreenCanvas }} MapImageCache */
 /** @typedef {MapImageCache} ObstacleOverviewCache */
 function bakeCanvas(width, height) {
     const w = Math.ceil(width);
@@ -118,7 +118,7 @@ function bakePathDebugLayer(hnav, minX, minY, maxX, maxY) {
     }
     return { canvas, minX, minY, maxX, maxY };
 }
-/** @param {{ cols: number, rows: number, grid: ArrayLike<number>, minX: number, minY: number, maxX: number, maxY: number }} obstacleGrid */
+/** @param {import("../Math/Aabb2D.js").Aabb2D & { cols: number, rows: number, grid: ArrayLike<number>, cellSize: number }} obstacleGrid */
 export function bakeObstacleOverviewCache(obstacleGrid) {
     if (!obstacleGrid.cols || !obstacleGrid.rows) return null;
     const canvas = new OffscreenCanvas(obstacleGrid.cols, obstacleGrid.rows);

@@ -1,6 +1,8 @@
 import { CircleShape, PolygonShape } from "../collision/Shapes.js";
 import { SatCollision } from "../collision/SatCollision.js";
 import { aabbOverlap, centerHalfExtentsAabbInto, createAabb } from "../../Math/Aabb2D.js";
+import { NEIGHBOR_QUERY_PAD } from "../collision/entityBroadphase.js";
+/** @typedef {import("../../Math/Aabb2D.js").Aabb2D} Aabb2D */
 function createFloorShape(x, y, shape, aabb, { id = "floor-shape" } = {}) {
     return {
         id,
@@ -64,7 +66,16 @@ export function processFloorShapes(spatialFrame, shapes, { onEnter, onExit }) {
         floorShape._nextOccupants = prev;
     }
 }
-/** @param {{ aabb: import("../../Math/Aabb2D.js").Aabb2D }} entity @param {import("../../Viewport/Viewport.js").Viewport} viewport */
+/** @param {object} pad @param {number} halfWidth @param {number} halfHeight @param {number} [queryPad] */
+export function syncPadQueryAabb(pad, halfWidth, halfHeight, queryPad = NEIGHBOR_QUERY_PAD) {
+    if (!pad.aabb) pad.aabb = createAabb();
+    centerHalfExtentsAabbInto(pad.aabb, pad.x, pad.y, halfWidth, halfHeight, queryPad);
+}
+/** @param {object} pad @param {number} halfWidth @param {number} halfHeight @param {number} [queryPad] @returns {Aabb2D} */
+export function padStampBoundsInto(out, pad, halfWidth, halfHeight, queryPad = 0) {
+    return centerHalfExtentsAabbInto(out, pad.x, pad.y, halfWidth, halfHeight, queryPad);
+}
+/** @param {{ aabb: Aabb2D }} entity @param {import("../../Viewport/Viewport.js").Viewport} viewport */
 export function isAabbInView(entity, viewport) {
     return aabbOverlap(entity.aabb, viewport.boundsClip);
 }

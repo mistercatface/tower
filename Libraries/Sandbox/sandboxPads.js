@@ -1,8 +1,6 @@
-import { createCircleFloorShape, createRectFloorShape, drawFloorShape, isAabbInView, processFloorShapes } from "../Spatial/zones/floorShapes.js";
+import { createCircleFloorShape, createRectFloorShape, drawFloorShape, isAabbInView, processFloorShapes, syncPadQueryAabb } from "../Spatial/zones/floorShapes.js";
 import { PolygonShape } from "../Spatial/collision/Shapes.js";
-import { centerHalfExtentsAabbInto, createAabb } from "../Math/Aabb2D.js";
 import { drawPitInterior, syncSinkPadAabb } from "../Spatial/zones/pit.js";
-import { NEIGHBOR_QUERY_PAD } from "../Spatial/collision/entityBroadphase.js";
 import { PAD_PRESETS } from "./padPresets.js";
 import { runPadEffect, syncButtonFlipperLinks, syncPullPadWalls, syncSandboxPadPower, teardownPullPad, tickButtonSpawnerLinks } from "./padEffects.js";
 import {
@@ -62,13 +60,11 @@ function pointInPad(pad, wx, wy, padding = POINTER_HIT_PADDING) {
 }
 /** @param {object} pad @param {number} halfWidth @param {number} halfHeight */
 function syncRectPadAabb(pad, halfWidth, halfHeight) {
-    if (!pad.aabb) pad.aabb = createAabb();
-    centerHalfExtentsAabbInto(pad.aabb, pad.x, pad.y, halfWidth, halfHeight, NEIGHBOR_QUERY_PAD);
+    syncPadQueryAabb(pad, halfWidth, halfHeight);
 }
 /** @param {object} pad @param {number} radius */
 function syncCirclePadAabb(pad, radius) {
-    if (!pad.aabb) pad.aabb = createAabb();
-    centerHalfExtentsAabbInto(pad.aabb, pad.x, pad.y, radius, radius, NEIGHBOR_QUERY_PAD);
+    syncPadQueryAabb(pad, radius, radius);
 }
 /** @param {object} state @param {number} wx @param {number} wy */
 export function hitTestPad(state, wx, wy) {

@@ -33,7 +33,7 @@ export function buildCueStrikeCircleTargets(shooter, bodies, defaultRadius = 8) 
     return targets;
 }
 /**
- * @param {{ obstacleGrid?: { minX: number, minY: number, maxX: number, maxY: number } | null, tableWidth?: number, tableHeight?: number, fallback?: number }} options
+ * @param {{ obstacleGrid?: import("../Math/Aabb2D.js").Aabb2D | null, tableWidth?: number, tableHeight?: number, fallback?: number }} options
  */
 export function resolveCueStrikeMaxRayDist({ obstacleGrid, tableWidth, tableHeight, fallback = 2400 } = {}) {
     if (tableWidth && tableHeight) return Math.hypot(tableWidth, tableHeight);

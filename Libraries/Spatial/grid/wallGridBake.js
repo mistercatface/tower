@@ -4,6 +4,7 @@ import { spatialWorldMargin } from "../../../Config/Config.js";
 function isGridTileWall(wall, cellSize) {
     return Math.abs(wall.angle) < 1e-6 && (wall.padding ?? 0) === 0 && wall.size === cellSize;
 }
+/** @returns {{ startCol: number, endCol: number, startRow: number, endRow: number }} Same cell indices as boundsToCellRect minCol/maxCol. */
 export function getWallCellBounds(wall, worldToGrid, cols, rows, padding = wall.padding) {
     const reach = getWallReach(wall, padding);
     const minGrid = worldToGrid(wall.x - reach, wall.y - reach);

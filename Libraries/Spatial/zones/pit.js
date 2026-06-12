@@ -1,5 +1,5 @@
-import { entityBroadphaseExtent, NEIGHBOR_QUERY_PAD } from "../collision/entityBroadphase.js";
-import { centerHalfExtentsAabbInto, createAabb } from "../../Math/Aabb2D.js";
+import { entityBroadphaseExtent } from "../collision/entityBroadphase.js";
+import { syncPadQueryAabb } from "./floorShapes.js";
 import { CAMERA_HEIGHT, PERSPECTIVE_STRENGTH } from "../iso/IsometricProjection.js";
 export const DEFAULT_PIT_RADIUS = 8;
 export const DEFAULT_PIT_DEPTH = 24;
@@ -46,8 +46,7 @@ export function isVoidSinkCaptured(pitX, pitY, pitRadius, entity, captureToleran
 }
 /** @param {object} pad @param {number} radius */
 export function syncSinkPadAabb(pad, radius) {
-    if (!pad.aabb) pad.aabb = createAabb();
-    centerHalfExtentsAabbInto(pad.aabb, pad.x, pad.y, radius, radius, NEIGHBOR_QUERY_PAD);
+    syncPadQueryAabb(pad, radius, radius);
 }
 /** @param {CanvasRenderingContext2D} ctx @param {object} pad @param {number} viewerX @param {number} viewerY */
 export function drawPitInterior(ctx, pad, viewerX, viewerY) {

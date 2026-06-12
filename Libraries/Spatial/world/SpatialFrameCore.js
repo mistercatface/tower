@@ -16,7 +16,7 @@ export class SpatialFrameCore {
         /** @type {WallContext | null} */
         this._wallContext = null;
     }
-    /** @param {{ minX: number, minY: number, maxX: number, maxY: number } | null} obstacleGrid */
+    /** @param {(import("../Math/Aabb2D.js").Aabb2D & { cols: number, cellSize: number }) | null} obstacleGrid */
     resetFrame(obstacleGrid) {
         this.frameId = (this.frameId + 1) | 0;
         this._wallCache.clear();

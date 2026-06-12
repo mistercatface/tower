@@ -1,6 +1,8 @@
 import { Segment } from "../../Entities/Wall.js";
 import { CAPTURED_SINK_DURATION_MS } from "../../Entities/pickupVoidSinkState.js";
+import { createAabb } from "../Math/Aabb2D.js";
 import { canEntityFitVoidPit, isInsideVoidMouth, isVoidSinkCaptured } from "../Spatial/zones/pit.js";
+import { padStampBoundsInto } from "../Spatial/zones/floorShapes.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { releaseFlipper, triggerFlipper } from "./behaviors/flipperBehavior.js";
 import { getButtonPadLinks } from "./sandboxPadLinks.js";
@@ -8,6 +10,7 @@ import { addSandboxWalls, removeSandboxWalls } from "./spawnAssembly.js";
 import { buttonEffectiveActive, isSustainedFlipperButtonInputMode } from "./buttonPad.js";
 import { fireSpawner, isSpawnerPickup } from "./spawnerConfig.js";
 /** @typedef {import("./padPresets.js").PadTriggerDef} PadTriggerDef */
+const padStampScratch = createAabb();
 /**
  * @typedef {object} PadEffectContext
  * @property {object} [entity]
@@ -23,10 +26,11 @@ function readPullHalfExtents(pad) {
 /** @param {object} grid @param {object} pad @param {number} halfWidth @param {number} halfHeight */
 function collectPadWallCells(grid, pad, halfWidth, halfHeight) {
     const cellSize = grid.cellSize;
-    const padMinX = pad.x - halfWidth;
-    const padMinY = pad.y - halfHeight;
-    const padMaxX = pad.x + halfWidth;
-    const padMaxY = pad.y + halfHeight;
+    const stamp = padStampBoundsInto(padStampScratch, pad, halfWidth, halfHeight);
+    const padMinX = stamp.minX;
+    const padMinY = stamp.minY;
+    const padMaxX = stamp.maxX;
+    const padMaxY = stamp.maxY;
     const startCol = grid.worldToGrid(padMinX, padMinY).col;
     const startRow = grid.worldToGrid(padMinX, padMinY).row;
     const endCol = grid.worldToGrid(padMaxX - 1e-6, padMaxY - 1e-6).col;

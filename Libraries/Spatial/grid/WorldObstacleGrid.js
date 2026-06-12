@@ -1,5 +1,5 @@
 import { colRowToIndex } from "./GridUtils.js";
-import { createAabb } from "../../Math/Aabb2D.js";
+import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsAtOriginInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
 import { getWallCellBounds, markWallOnGrid, clearWallCells, computeBoundsFromWalls } from "./wallGridBake.js";
 import { collectSegmentsAlongLine, collectSegmentsInWorldBounds, collectSegmentsNearPose, segmentGridLayoutFromObstacleGrid } from "./segmentGridWalk.js";
@@ -35,10 +35,11 @@ export class WorldObstacleGrid {
         for (const wall of walls) this.addWall(wall);
     }
     rebuildFixed(centerX, centerY, width, height) {
-        this.minX = centerX - width / 2;
-        this.minY = centerY - height / 2;
-        this.maxX = centerX + width / 2;
-        this.maxY = centerY + height / 2;
+        centeredAabbInto(this.patchBoundsScratch, centerX, centerY, width, height);
+        this.minX = this.patchBoundsScratch.minX;
+        this.minY = this.patchBoundsScratch.minY;
+        this.maxX = this.patchBoundsScratch.maxX;
+        this.maxY = this.patchBoundsScratch.maxY;
         this.cols = Math.ceil(width / this.cellSize);
         this.rows = Math.ceil(height / this.cellSize);
         const size = this.cols * this.rows;

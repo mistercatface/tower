@@ -1,12 +1,13 @@
 import { paintPixelArea } from "../../../Libraries/WorldSurface/WorldSurfacePainter.js";
 import { resolveBakeProfile, getAnimationDuration } from "../../../Libraries/WorldSurface/ProfileBakeResolver.js";
+import { minCornerAabb } from "../../../Libraries/Math/Aabb2D.js";
 import { getGameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.js";
 import { getAssemblyRailBandBounds } from "../../../Libraries/Sandbox/assemblyLayout.js";
 /** Square assembly with a wide rail band so wall motifs are easy to read. */
 const PREVIEW_ASSEMBLY = { size: 96, wallWidth: 16, railHeight: 4 };
 const previewLayout = {
-    bounds: { minX: 0, minY: 0, maxX: PREVIEW_ASSEMBLY.size, maxY: PREVIEW_ASSEMBLY.size },
-    play: { minX: PREVIEW_ASSEMBLY.wallWidth, minY: PREVIEW_ASSEMBLY.wallWidth, maxX: PREVIEW_ASSEMBLY.size - PREVIEW_ASSEMBLY.wallWidth, maxY: PREVIEW_ASSEMBLY.size - PREVIEW_ASSEMBLY.wallWidth },
+    bounds: minCornerAabb(0, 0, PREVIEW_ASSEMBLY.size, PREVIEW_ASSEMBLY.size),
+    play: minCornerAabb(PREVIEW_ASSEMBLY.wallWidth, PREVIEW_ASSEMBLY.wallWidth, PREVIEW_ASSEMBLY.size - PREVIEW_ASSEMBLY.wallWidth * 2, PREVIEW_ASSEMBLY.size - PREVIEW_ASSEMBLY.wallWidth * 2),
 };
 let rafId = null;
 let lastGameTime = 0;
@@ -77,8 +78,8 @@ function drawFrame(ctx, canvas, baseProfile, gameTime) {
 }
 /**
  * @param {CanvasRenderingContext2D} ctx
- * @param {{ minX: number, minY: number, maxX: number, maxY: number }} bounds
- * @param {{ minX: number, minY: number, maxX: number, maxY: number }} worldRect
+ * @param {import("../../../Libraries/Math/Aabb2D.js").Aabb2D} bounds
+ * @param {import("../../../Libraries/Math/Aabb2D.js").Aabb2D} worldRect
  * @param {number} pixelsPerUnit
  * @param {number} cellSize
  * @param {object} profile

@@ -1,4 +1,9 @@
-/** Packed (col, row) key for sparse unbounded grids. */
+/**
+ * Packed (col, row) key for sparse unbounded grids.
+ *
+ * World AABB → cell index range uses minCol/maxCol/minRow/maxRow (see boundsToCellRect).
+ * Wall bake / obstacle patches use startCol/endCol/startRow/endRow for the same indices.
+ */
 export const KEY_STRIDE = 65536;
 export function packCellKey(col, row) {
     return col + row * KEY_STRIDE;

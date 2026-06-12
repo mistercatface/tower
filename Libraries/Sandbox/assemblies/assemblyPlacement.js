@@ -1,5 +1,6 @@
+/** @typedef {import("../../Math/Aabb2D.js").Aabb2D & { centerX?: number, centerY?: number }} AssemblyPlacementBounds */
 /**
- * @param {{ minX: number, minY: number, maxX: number, maxY: number, centerX?: number, centerY?: number }} bounds
+ * @param {AssemblyPlacementBounds} bounds
  * @param {{ anchor: string, offset?: { x?: number, y?: number } }} placement
  * @param {number} [offsetScale]
  */
@@ -38,7 +39,7 @@ export function resolveAnchoredPlacement(bounds, placement, offsetScale = 1) {
     return { x: point.x + ox, y: point.y + oy };
 }
 /**
- * @param {{ minX: number, minY: number, maxX: number, maxY: number, centerX?: number, centerY?: number }} bounds
+ * @param {AssemblyPlacementBounds} bounds
  * @param {{ space?: string, u: number, v: number }} placement
  */
 export function resolvePlayfieldPlacement(bounds, placement) {
@@ -48,7 +49,7 @@ export function resolvePlayfieldPlacement(bounds, placement) {
     return { x: bounds.minX + placement.u * width, y: bounds.minY + placement.v * height };
 }
 /**
- * @param {{ minX: number, minY: number, maxX: number, maxY: number, centerX?: number, centerY?: number }} bounds
+ * @param {AssemblyPlacementBounds} bounds
  * @param {{ anchor?: string, offset?: { x?: number, y?: number }, space?: string, u?: number, v?: number }} placement
  * @param {number} [offsetScale]
  */
