@@ -283,8 +283,34 @@ export function mountSandboxToyUi(container, controller, onChange) {
             return isFirstRender ? fallback : openSections.has(id);
         };
         const selectedId = controller.getSelectedPropId();
+        const selectedPropIds = new Set(controller.getSelectedPropIds());
         const selectedPadId = controller.getSelectedPadId();
         const selectedProp = controller.getSelectedProp();
+        const selectionCount = selectedPropIds.size;
+        const toolsRow = document.createElement("div");
+        toolsRow.className = "sandbox-add-row";
+        const ringsField = document.createElement("label");
+        ringsField.className = "param-field check-inline";
+        const ringsCheckbox = document.createElement("input");
+        ringsCheckbox.type = "checkbox";
+        ringsCheckbox.checked = controller.getShowSelectionRings();
+        ringsCheckbox.addEventListener("change", () => {
+            controller.setShowSelectionRings(ringsCheckbox.checked);
+            onChange();
+        });
+        ringsField.append(ringsCheckbox, document.createTextNode(" Selection rings"));
+        toolsRow.appendChild(ringsField);
+        const deleteSelectedBtn = document.createElement("button");
+        deleteSelectedBtn.type = "button";
+        deleteSelectedBtn.className = "secondary";
+        deleteSelectedBtn.disabled = selectionCount === 0;
+        deleteSelectedBtn.textContent = selectionCount > 1 ? `Delete selected (${selectionCount})` : "Delete selected";
+        deleteSelectedBtn.addEventListener("click", () => {
+            controller.deleteSelectedProps();
+            onChange();
+        });
+        toolsRow.appendChild(deleteSelectedBtn);
+        container.appendChild(toolsRow);
         appendSection(container, "spawn", "Spawn", sectionOpen("spawn"), (body) => {
             const addRow = document.createElement("div");
             addRow.className = "sandbox-add-row";
@@ -349,7 +375,7 @@ export function mountSandboxToyUi(container, controller, onChange) {
                 body,
                 placed.map((entry) => ({
                     label: `${entry.label} · ${formatSandboxFactionLabel(entry.faction)}`,
-                    selected: entry.id === selectedId,
+                    selected: selectedPropIds.has(entry.id),
                     onSelect: () => controller.setSelectedPropId(entry.id),
                     onDelete: () => controller.deletePropById(entry.id),
                 })),
@@ -384,6 +410,25 @@ export function mountSandboxToyUi(container, controller, onChange) {
         });
         appendSection(container, "selected", "Selected", sectionOpen("selected", true), (body) => {
             if (renderSelectedPadInspector(body, controller, onChange)) return;
+            if (selectionCount > 1) {
+                const multiHint = document.createElement("p");
+                multiHint.className = "editor-hint";
+                multiHint.textContent = `${selectionCount} props selected. Drag on empty space to box-select, or click one prop to select only that.`;
+                body.appendChild(multiHint);
+                const deleteRow = document.createElement("div");
+                deleteRow.className = "sandbox-add-row";
+                const deleteBtn = document.createElement("button");
+                deleteBtn.type = "button";
+                deleteBtn.className = "secondary";
+                deleteBtn.textContent = `Delete ${selectionCount} props`;
+                deleteBtn.addEventListener("click", () => {
+                    controller.deleteSelectedProps();
+                    onChange();
+                });
+                deleteRow.appendChild(deleteBtn);
+                body.appendChild(deleteRow);
+                return;
+            }
             if (!selectedProp) {
                 const empty = document.createElement("p");
                 empty.className = "editor-hint";

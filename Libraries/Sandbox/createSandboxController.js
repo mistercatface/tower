@@ -7,6 +7,7 @@ import { addButtonPadLink, clearButtonPadLinks, drawSandboxPadWires, findButtonL
 import { handlePadPointerDown, hitTestPad, isSandboxSpawnPadId, releaseButtonPointerHold } from "./sandboxPads.js";
 import { resolveSandboxBehaviors } from "./sandboxCapabilities.js";
 import { drawSandboxLaserSights } from "./drawLaserSights.js";
+import { drawSandboxMarquee, drawSandboxSelectionRings, findSandboxPropsInWorldRect } from "./drawSandboxSelection.js";
 import { drawActivePathOverlay } from "../Render/map/drawActivePathOverlay.js";
 import { drawSandboxWeaponBars } from "./drawWorldPropWeaponBars.js";
 import { resolveSandboxPathVisual, setSandboxPathVisual } from "./sandboxPathVisual.js";
@@ -49,6 +50,10 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
     let padWireMode = false;
     /** @type {{ x: number, y: number } | null} */
     let padWireCursor = null;
+    let showSelectionRings = true;
+    const MARQUEE_CLICK_THRESHOLD_PX = 4;
+    /** @type {{ pointerId: number, startClientX: number, startClientY: number, startWorld: { x: number, y: number }, currentWorld: { x: number, y: number } } | null} */
+    let marqueeSelect = null;
     const entityMeta = () => getSandboxEntityMeta(state);
     const spawnAsset = () => {
         const spawnId = session.getSpawnPropId();
@@ -143,22 +148,32 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
         if (hit) {
             const allowed = resolveSandboxBehaviors(getPropAsset(hit.type), behaviors, state, hit);
             if (allowed.length > 0) session.setSelectedPropId(hit.id);
+            const prop = session.getSelectedProp();
+            const behavior = resolveBehavior();
+            if (prop && behavior?.onPointerDown(prop, world, e)) {
+                e.preventDefault();
+                e.stopPropagation();
+                interactionBehavior = behavior;
+                canvas.setPointerCapture(e.pointerId);
+                session.sync();
+            }
+            return;
         }
-        const prop = session.getSelectedProp();
-        const behavior = resolveBehavior();
-        if (!prop || !behavior) return;
-        if (!behavior.onPointerDown(prop, world, e)) return;
+        marqueeSelect = { pointerId: e.pointerId, startClientX: e.clientX, startClientY: e.clientY, startWorld: world, currentWorld: world };
+        canvas.setPointerCapture(e.pointerId);
         e.preventDefault();
         e.stopPropagation();
-        interactionBehavior = behavior;
-        canvas.setPointerCapture(e.pointerId);
-        session.sync();
     };
     /** @param {PointerEvent} e */
     const onPointerMove = (e) => {
         if (padWireMode) {
             padWireCursor = clientToWorld(e.clientX, e.clientY);
             requestRedraw();
+        }
+        if (marqueeSelect) {
+            marqueeSelect.currentWorld = clientToWorld(e.clientX, e.clientY);
+            requestRedraw();
+            return;
         }
         if (!interactionBehavior) return;
         const prop = session.getSelectedProp();
@@ -170,8 +185,26 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
     /** @param {PointerEvent} e */
     const onPointerUp = (e) => {
         releaseButtonPointerHold(state);
-        if (!interactionBehavior) return;
         const canvas = getCanvas();
+        if (marqueeSelect) {
+            const drag = marqueeSelect;
+            marqueeSelect = null;
+            releasePointerCapture(canvas, e);
+            const dragPx = Math.hypot(e.clientX - drag.startClientX, e.clientY - drag.startClientY);
+            if (dragPx < MARQUEE_CLICK_THRESHOLD_PX) {
+                session.clearPropSelection();
+                session.setSelectedPadId(null);
+            } else {
+                const endWorld = clientToWorld(e.clientX, e.clientY);
+                const props = findSandboxPropsInWorldRect(state, state.entityRegistry, drag.startWorld.x, drag.startWorld.y, endWorld.x, endWorld.y);
+                session.setSelectedPropIds(props.map((prop) => prop.id));
+            }
+            e.preventDefault();
+            e.stopPropagation();
+            session.sync();
+            return;
+        }
+        if (!interactionBehavior) return;
         const prop = session.getSelectedProp();
         if (prop) {
             const world = clientToWorld(e.clientX, e.clientY);
@@ -182,6 +215,26 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
         releasePointerCapture(canvas, e);
         e.stopPropagation();
         session.sync();
+    };
+    /** @returns {{ selectedProps: object[], marqueeRect: { minX: number, minY: number, maxX: number, maxY: number } | null }} */
+    const selectionDrawState = () => {
+        const selectedIds = session.getSelectedPropIds();
+        /** @type {object[]} */
+        const selectedProps = [];
+        for (let i = 0; i < selectedIds.length; i++) {
+            const prop = state.entityRegistry.getLive(selectedIds[i]);
+            if (prop) selectedProps.push(prop);
+        }
+        /** @type {{ minX: number, minY: number, maxX: number, maxY: number } | null} */
+        let marqueeRect = null;
+        if (marqueeSelect)
+            marqueeRect = {
+                minX: Math.min(marqueeSelect.startWorld.x, marqueeSelect.currentWorld.x),
+                minY: Math.min(marqueeSelect.startWorld.y, marqueeSelect.currentWorld.y),
+                maxX: Math.max(marqueeSelect.startWorld.x, marqueeSelect.currentWorld.x),
+                maxY: Math.max(marqueeSelect.startWorld.y, marqueeSelect.currentWorld.y),
+            };
+        return { selectedProps, marqueeRect };
     };
     const controller = {
         session,
@@ -198,7 +251,24 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
             session.sync();
         },
         getSelectedPropId: () => session.getSelectedPropId(),
+        getSelectedPropIds: () => session.getSelectedPropIds(),
         getSelectedProp: () => session.getSelectedProp(),
+        setSelectedPropIds: (ids) => {
+            padWireMode = false;
+            padWireCursor = null;
+            session.setSelectedPropIds(ids);
+        },
+        clearPropSelection: () => {
+            padWireMode = false;
+            padWireCursor = null;
+            session.clearPropSelection();
+        },
+        getShowSelectionRings: () => showSelectionRings,
+        setShowSelectionRings: (enabled) => {
+            showSelectionRings = enabled;
+            session.sync();
+        },
+        deleteSelectedProps: () => session.deleteSelectedProps(),
         setSelectedPropId: (id) => {
             padWireMode = false;
             padWireCursor = null;
@@ -295,6 +365,7 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
             unbindPointers = null;
             padWireMode = false;
             padWireCursor = null;
+            marqueeSelect = null;
             resetBehaviors();
             session.setUiSync(null);
         },
@@ -329,6 +400,14 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
         drawBehaviorOverlays(ctx) {
             drawSandboxPadWires(ctx, state, { wireFromPadId: padWireMode ? session.getSelectedPadId() : null, wireCursor: padWireMode ? padWireCursor : null });
             for (let i = 0; i < behaviors.length; i++) behaviors[i].drawWorldOverlay?.(ctx);
+        },
+        drawSelectionRings(ctx) {
+            const { selectedProps } = selectionDrawState();
+            drawSandboxSelectionRings(ctx, { selectedProps, showRings: showSelectionRings });
+        },
+        drawMarqueeOverlay(ctx) {
+            const { marqueeRect } = selectionDrawState();
+            drawSandboxMarquee(ctx, { marqueeRect });
         },
         drawOverlay(ctx) {
             drawSandboxWeaponBars(ctx, state);

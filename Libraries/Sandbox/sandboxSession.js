@@ -26,6 +26,8 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
     let spawnFaction = SANDBOX_DEFAULT_FACTION;
     let spawnPullWidth = PAD_PRESETS.pull.halfWidth * 2;
     let spawnPullHeight = PAD_PRESETS.pull.halfHeight * 2;
+    /** @type {Set<number>} */
+    let selectedPropIds = new Set();
     /** @type {number | null} */
     let selectedPropId = null;
     /** @type {string | null} */
@@ -37,20 +39,56 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         uiSync?.();
     };
     const registry = () => state.entityRegistry;
-    const pruneSelection = () => {
-        if (selectedPropId == null) return;
-        if (!registry().getLive(selectedPropId)) {
+    const meta = () => getSandboxEntityMeta(state);
+    const syncPrimaryFromSet = () => {
+        if (selectedPropIds.size === 0) {
             selectedPropId = null;
+            return;
+        }
+        if (selectedPropId != null && selectedPropIds.has(selectedPropId) && registry().getLive(selectedPropId)) return;
+        for (const id of selectedPropIds)
+            if (registry().getLive(id)) {
+                selectedPropId = id;
+                return;
+            }
+        selectedPropIds.clear();
+        selectedPropId = null;
+    };
+    const setSinglePropSelection = (id) => {
+        selectedPadId = null;
+        if (id == null) {
+            selectedPropIds.clear();
+            selectedPropId = null;
+            sync();
+            return;
+        }
+        selectedPropIds = new Set([id]);
+        selectedPropId = id;
+        sync();
+    };
+    const pruneSelection = () => {
+        if (selectedPropIds.size === 0) return;
+        let changed = false;
+        for (const id of selectedPropIds)
+            if (!registry().getLive(id)) {
+                selectedPropIds.delete(id);
+                changed = true;
+            }
+        if (changed) {
+            syncPrimaryFromSet();
             uiSync?.();
         }
+    };
+    const removePropFromSelection = (propId) => {
+        if (!selectedPropIds.delete(propId)) return;
+        if (selectedPropId === propId) syncPrimaryFromSet();
     };
     const spawnAt = (worldX, worldY) => {
         if (!isSandboxSpawnPropId(spawnPropId) || !getPropAsset(spawnPropId)) return null;
         const prop = new WorldProp(worldX, worldY, spawnPropId, 0);
         prop.faction = spawnFaction;
         addWorldPropToState(state, prop);
-        selectedPropId = prop.id;
-        sync();
+        setSinglePropSelection(prop.id);
         return prop;
     };
     return {
@@ -68,14 +106,30 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             spawnPullHeight = height;
         },
         getSelectedPropId: () => selectedPropId,
+        getSelectedPropIds: () => {
+            pruneSelection();
+            return [...selectedPropIds];
+        },
         setSelectedPropId: (id) => {
-            selectedPropId = id;
+            setSinglePropSelection(id);
+        },
+        setSelectedPropIds: (ids) => {
             selectedPadId = null;
+            selectedPropIds = new Set();
+            for (let i = 0; i < ids.length; i++) {
+                const id = ids[i];
+                if (registry().getLive(id) && !meta().hasAssemblyMembership(id)) selectedPropIds.add(id);
+            }
+            syncPrimaryFromSet();
             sync();
+        },
+        clearPropSelection: () => {
+            setSinglePropSelection(null);
         },
         getSelectedPadId: () => selectedPadId,
         setSelectedPadId: (id) => {
             selectedPadId = id;
+            selectedPropIds.clear();
             selectedPropId = null;
             sync();
         },
@@ -112,6 +166,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
                 }
                 const pad = spawnSandboxPad(state, preset, origin.x, origin.y, options);
                 selectedPadId = pad.id;
+                selectedPropIds.clear();
                 selectedPropId = null;
                 sync();
                 return null;
@@ -121,8 +176,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         },
         spawnAssemblyAt(centerX, centerY, assemblyId) {
             const instance = spawnAssembly(state, centerX, centerY, assemblyId, { faction: spawnFaction });
-            selectedPropId = instance.defaultPropId;
-            sync();
+            setSinglePropSelection(instance.defaultPropId);
             return instance;
         },
         spawnAssemblyAtCameraOrigin(assemblyId) {
@@ -148,17 +202,22 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         listSandboxPads: () => listSandboxPads(state),
         deleteProp(prop) {
             if (!prop) return;
+            removePropFromSelection(prop.id);
             removeWorldPropFromState(state, prop);
-            if (selectedPropId === prop.id) {
-                selectedPropId = null;
-                registry().forEachOfKind("worldProp", (p) => {
-                    if (selectedPropId == null && !p.isDead) selectedPropId = p.id;
-                });
-            }
             sync();
         },
         deletePropById(id) {
             this.deleteProp(registry().get(id));
+        },
+        deleteSelectedProps() {
+            const ids = [...selectedPropIds];
+            for (let i = 0; i < ids.length; i++) {
+                const prop = registry().get(ids[i]);
+                if (prop) removeWorldPropFromState(state, prop);
+            }
+            selectedPropIds.clear();
+            selectedPropId = null;
+            sync();
         },
         listPlacedProps() {
             const counts = new Map();
@@ -177,6 +236,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             clearWorldPropsInState(state);
             clearAssemblyInstances(state);
             clearSandboxPads(state);
+            selectedPropIds.clear();
             selectedPropId = null;
             selectedPadId = null;
             sync();
