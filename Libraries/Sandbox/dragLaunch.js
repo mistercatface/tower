@@ -1,3 +1,4 @@
+import { normalizeXY } from "../Math/Vec2.js";
 import { getCanvasLineScale } from "../Render/common/viewportUtils.js";
 import { resolveCueStrikeMaxRayDist } from "../CueStick/cueStrikeAimPreview.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
