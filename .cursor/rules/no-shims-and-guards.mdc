@@ -16,13 +16,13 @@ Do not add defensive checks for invariants that callers already guarantee (requi
 ```javascript
 // ❌ BAD — masks upstream bug
 function draw(pass) {
-  if (!pass?.obstacleGrid) return;
-  pass.obstacleGrid.grid[idx];
+    if (!pass?.obstacleGrid) return;
+    pass.obstacleGrid.grid[idx];
 }
 
 // ✅ GOOD — broken wiring fails immediately
 function draw(pass) {
-  pass.obstacleGrid.grid[idx];
+    pass.obstacleGrid.grid[idx];
 }
 ```
 
@@ -46,19 +46,14 @@ If migration is genuinely multi-step, say so explicitly and list what still remo
 
 ## Extend shared libraries — do not reinvent
 
-When implementing grid, angle, bounds, or floor-prop behavior, **use and extend** the existing domain modules instead of duplicating logic inline or in a one-off helper file.
-
-- **Angles / facings** — `Libraries/Math/Angle.js` (`quantizeCardinalAngle`, `stepCardinalFacing`, `cardinalUnitVectorFromAngle`, …).
-- **Grid / cell coords** — `Libraries/Spatial/grid/GridCoords.js`, `WorldObstacleGrid`, `Libraries/World/wallGridCells.js` where applicable.
-- **Bounds / AABB** — `Libraries/Math/Aabb2D.js` (and future `Box4` work in backlog).
-- **Floor props** — `Libraries/Spatial/zones/floorShapes.js`, `Libraries/Sandbox/floorEffects.js`.
+When implementing new behavior, **use and extend** the existing domain modules instead of duplicating logic inline or in a one-off helper file.
 
 If a helper belongs in one of these modules (reused or clearly owned by that domain), add it there. If it is truly single-use and tiny, colocate with the primary caller — not a new micro-file.
 
 ```javascript
 // ❌ BAD — local cardinal snap duplicate
 function beltFacing(angle) {
-  return Math.round(angle / (Math.PI / 2)) * (Math.PI / 2);
+    return Math.round(angle / (Math.PI / 2)) * (Math.PI / 2);
 }
 
 // ✅ GOOD — shared Angle API
