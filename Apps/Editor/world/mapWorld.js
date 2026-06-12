@@ -68,14 +68,10 @@ function ensureLabObstacleGridCoverage(state) {
     const cellSize = gridSettings.cellSize;
     let required = getPlayAreaPreviewBounds(state.viewport, state.labPlayConfig);
     required = unionAabb(required, getCavernBoundsPreview(state.labCavernConfig));
-    if (state.walls.length) {
-        const wallBounds = computeBoundsFromWalls(state.walls, cellSize);
-        required = unionAabb(required, { minX: wallBounds.minX, minY: wallBounds.minY, maxX: wallBounds.maxX, maxY: wallBounds.maxY });
-    }
+    if (state.walls.length) required = unionAabb(required, computeBoundsFromWalls(state.walls, cellSize));
     required = padAabb(required, cellSize);
     const grid = state.obstacleGrid;
-    const gridBounds = { minX: grid.minX, minY: grid.minY, maxX: grid.maxX, maxY: grid.maxY };
-    if (grid.cols > 0 && aabbContains(gridBounds, required) && grid.segmentGrid) return;
+    if (grid.cols > 0 && aabbContains(grid, required) && grid.segmentGrid) return;
     const width = required.maxX - required.minX;
     const height = required.maxY - required.minY;
     const centerX = (required.minX + required.maxX) / 2;

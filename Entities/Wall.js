@@ -1,4 +1,5 @@
 import { DestructibleEntity } from "./Entity.js";
+import { centerReachAabbInto, createAabb } from "../Libraries/Math/Aabb2D.js";
 import { getWallReach } from "../Libraries/Spatial/geometry/WallGeometry.js";
 export class Segment extends DestructibleEntity {
     constructor(x, y, angle, size, padding = 10, maxHealth = 30, health = 30, isDead = false, wallHeight = null) {
@@ -6,10 +7,10 @@ export class Segment extends DestructibleEntity {
         this.size = size;
         this.padding = padding;
         this.wallHeight = wallHeight;
+        this.bounds = createAabb();
     }
     getBounds() {
-        const reach = getWallReach(this);
-        return { minX: this.x - reach, minY: this.y - reach, maxX: this.x + reach, maxY: this.y + reach };
+        return centerReachAabbInto(this.bounds, this.x, this.y, getWallReach(this));
     }
     handleHit(damage, state) {
         const died = this.takeDamage(damage);

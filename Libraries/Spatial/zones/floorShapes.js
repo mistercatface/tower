@@ -1,6 +1,6 @@
 import { CircleShape, PolygonShape } from "../collision/Shapes.js";
 import { SatCollision } from "../collision/SatCollision.js";
-import { aabbOverlap } from "../../Math/Aabb2D.js";
+import { aabbOverlap, centerHalfExtentsAabbInto, createAabb } from "../../Math/Aabb2D.js";
 function createFloorShape(x, y, shape, aabb, { id = "floor-shape" } = {}) {
     return {
         id,
@@ -27,13 +27,13 @@ export function createRectFloorShape(x, y, halfWidth, halfHeight, { id = "floor-
             { x: halfWidth, y: halfHeight },
             { x: -halfWidth, y: halfHeight },
         ]),
-        { minX: x - halfWidth, minY: y - halfHeight, maxX: x + halfWidth, maxY: y + halfHeight },
+        centerHalfExtentsAabbInto(createAabb(), x, y, halfWidth, halfHeight),
         { id },
     );
 }
 /** @param {number} x @param {number} y @param {number} radius @param {{ id?: string }} [options] */
 export function createCircleFloorShape(x, y, radius, { id = "floor-shape" } = {}) {
-    return createFloorShape(x, y, new CircleShape(radius), { minX: x - radius, minY: y - radius, maxX: x + radius, maxY: y + radius }, { id });
+    return createFloorShape(x, y, new CircleShape(radius), centerHalfExtentsAabbInto(createAabb(), x, y, radius, radius), { id });
 }
 /**
  * Track which entities overlap flat floor shapes (circle or rect polygon).
@@ -64,7 +64,7 @@ export function processFloorShapes(spatialFrame, shapes, { onEnter, onExit }) {
         floorShape._nextOccupants = prev;
     }
 }
-/** @param {{ aabb: { minX: number, minY: number, maxX: number, maxY: number } }} entity @param {import("../../Viewport/Viewport.js").Viewport} viewport */
+/** @param {{ aabb: import("../../Math/Aabb2D.js").Aabb2D }} entity @param {import("../../Viewport/Viewport.js").Viewport} viewport */
 export function isAabbInView(entity, viewport) {
     return aabbOverlap(entity.aabb, viewport.boundsClip);
 }

@@ -1,4 +1,4 @@
-import { centerHalfExtentsAabbInto, createAabb } from "../Math/Aabb2D.js";
+import { aabbIntersectsScalars, centerHalfExtentsAabbInto, createAabb } from "../Math/Aabb2D.js";
 import { LIBRARY_MIN_WORLD_SPAN } from "../Spatial/iso/perspectiveDefaults.js";
 /** Default entity cull padding (px in world space). */
 export const VIEWPORT_VISIBILITY_PAD_DEFAULT = 20;
@@ -92,7 +92,7 @@ export class Viewport {
     getVisualRadius() {
         return Math.max(1, Math.min(this.cx, this.cy) - 4);
     }
-    /** @param {number} worldX @param {number} worldY @param {number} radius @param {{ minX: number, minY: number, maxX: number, maxY: number }} bounds */
+    /** @param {import("../Math/Aabb2D.js").Aabb2D} bounds */
     _isVisibleInBounds(worldX, worldY, radius, bounds) {
         return worldX >= bounds.minX - radius && worldX <= bounds.maxX + radius && worldY >= bounds.minY - radius && worldY <= bounds.maxY + radius;
     }
@@ -107,7 +107,7 @@ export class Viewport {
         return this._isVisibleInBounds(worldX, worldY, radius, this.boundsVisibleNav);
     }
     intersectsWorldAabb(minX, maxX, minY, maxY, padding = 0) {
-        if (padding === 0) return minX <= this.boundsClip.maxX && maxX >= this.boundsClip.minX && minY <= this.boundsClip.maxY && maxY >= this.boundsClip.minY;
+        if (padding === 0) return aabbIntersectsScalars(minX, minY, maxX, maxY, this.boundsClip);
         const hw = this.halfW + padding;
         const hh = this.halfH + padding;
         return minX <= this.x + hw && maxX >= this.x - hw && minY <= this.y + hh && maxY >= this.y - hh;

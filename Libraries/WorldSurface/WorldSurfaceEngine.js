@@ -3,8 +3,7 @@
  * Animated surfaces are baked at assembly spawn — see Libraries/Sandbox/assemblySurfaceBake.js.
  */
 import { getWallHeight } from "./WorldSurfaceSettings.js";
-import { createAabb } from "../Math/Aabb2D.js";
-import { intersectWorldBoundsInto } from "../Spatial/playBounds.js";
+import { createAabb, intersectAabbOptionalInto } from "../Math/Aabb2D.js";
 import { getChunkSizePx, gridBoundsToChunkRange, worldToChunkCol, worldToChunkRow } from "../Spatial/grid/ChunkGrid.js";
 import { SurfaceBitmapCache } from "./SurfaceBitmapCache.js";
 import { groundChunkCachePrefix } from "./bake/SurfaceBakeHelpers.js";
@@ -157,8 +156,8 @@ export class WorldSurfaceEngine {
      *   state: object,
      *   zLevel?: number,
      *   wallSpatialIndex?: import("../Spatial/indexes/WallSpatialIndex.js").WallSpatialIndex | null,
-     *   playBounds?: { minX: number, minY: number, maxX: number, maxY: number } | null,
-     *   beforeDraw?: (ctx: CanvasRenderingContext2D, bounds: { minX: number, minY: number, maxX: number, maxY: number }) => void,
+     *   playBounds?: import("../Math/Aabb2D.js").Aabb2D | null,
+     *   beforeDraw?: (ctx: CanvasRenderingContext2D, bounds: import("../Math/Aabb2D.js").Aabb2D) => void,
      *   requireWallSegments?: boolean,
      *   skipRoofFootprintClip?: boolean,
      *   flatWallRails?: boolean,
@@ -185,7 +184,7 @@ export class WorldSurfaceEngine {
         const viewportBounds = viewport.boundsDraw;
         let bounds = viewportBounds;
         if (playBounds) {
-            if (!intersectWorldBoundsInto(this.chunkDrawBounds, viewportBounds, playBounds)) return;
+            if (!intersectAabbOptionalInto(this.chunkDrawBounds, viewportBounds, playBounds)) return;
             bounds = this.chunkDrawBounds;
         }
         TileWorkerCoordinator.updateFocus(viewport.x, viewport.y);

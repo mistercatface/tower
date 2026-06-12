@@ -4,9 +4,9 @@ import { getAssemblyRailBandBounds } from "./assemblyLayout.js";
 import { bakeFrameRange } from "../WorldSurface/AnimationFrameBake.js";
 import { resolveAnimationBakeFrameCounts } from "../WorldSurface/bake/SurfaceBakeHelpers.js";
 import { TileWorkerCoordinator } from "../WorldSurface/TileWorkerCoordinator.js";
+/** @typedef {import("../Math/Aabb2D.js").Aabb2D} Aabb2D */
 /**
- * @typedef {{ minX: number, minY: number, maxX: number, maxY: number }} WorldRect
- * @typedef {{ bounds: WorldRect, zLevel: number, frames: ImageBitmap[] }} AssemblySurfacePatchBake
+ * @typedef {{ bounds: Aabb2D, zLevel: number, frames: ImageBitmap[] }} AssemblySurfacePatchBake
  * @typedef {{
  *   profileId: string,
  *   animated: boolean,
@@ -16,7 +16,7 @@ import { TileWorkerCoordinator } from "../WorldSurface/TileWorkerCoordinator.js"
  *   railBands: AssemblySurfacePatchBake[],
  * }} AssemblySurfaceFlipbook
  */
-/** @param {WorldRect} rect */
+/** @param {Aabb2D} rect */
 function rectWorldSize(rect) {
     return { width: Math.max(1, rect.maxX - rect.minX), height: Math.max(1, rect.maxY - rect.minY) };
 }
@@ -34,7 +34,7 @@ export function releaseAssemblySurfaceFlipbook(flipbook) {
     for (let i = 0; i < flipbook.railBands.length; i++) closeBitmapFrames(flipbook.railBands[i].frames);
 }
 /**
- * @param {WorldRect} bounds
+ * @param {Aabb2D} bounds
  * @param {number} zLevel
  * @param {string} profileId
  * @param {number} seed
@@ -66,7 +66,7 @@ async function bakePatch(bounds, zLevel, profileId, seed, frameCount, bakeFrameC
 }
 /**
  * Eagerly bake all animation frames for an assembly surface (playfield + rail bands).
- * @param {{ play: WorldRect, bounds: WorldRect, railHeight: number }} layout
+ * @param {{ play: Aabb2D, bounds: Aabb2D, railHeight: number }} layout
  * @param {string} profileId
  * @param {boolean} surfaceAnimation
  * @param {number} seed

@@ -17,8 +17,22 @@ export function pointInAabb(px, py, { minX, minY, maxX, maxY }) {
 export function aabbOverlap(a, b) {
     return a.minX <= b.maxX && a.maxX >= b.minX && a.minY <= b.maxY && a.maxY >= b.minY;
 }
+export function aabbIntersectsScalars(minX, minY, maxX, maxY, box) {
+    return minX <= box.maxX && maxX >= box.minX && minY <= box.maxY && maxY >= box.minY;
+}
 export function aabbContains(outer, inner) {
     return outer.minX <= inner.minX && outer.minY <= inner.minY && outer.maxX >= inner.maxX && outer.maxY >= inner.maxY;
+}
+/** @param {Aabb2D} out @returns {Aabb2D} */
+export function minCornerAabbInto(out, minX, minY, width, height) {
+    out.minX = minX;
+    out.minY = minY;
+    out.maxX = minX + width;
+    out.maxY = minY + height;
+    return out;
+}
+export function minCornerAabb(minX, minY, width, height) {
+    return minCornerAabbInto(createAabb(), minX, minY, width, height);
 }
 /** @param {Aabb2D} out @returns {Aabb2D} */
 export function unionAabbInto(out, a, b) {
@@ -43,6 +57,17 @@ export function padAabb(a, pad) {
     return padAabbInto(createAabb(), a, pad);
 }
 /** @param {Aabb2D} out @returns {Aabb2D} */
+export function insetAabbInto(out, { minX, minY, maxX, maxY }, inset) {
+    out.minX = minX + inset;
+    out.minY = minY + inset;
+    out.maxX = maxX - inset;
+    out.maxY = maxY - inset;
+    return out;
+}
+export function insetAabb(a, inset) {
+    return insetAabbInto(createAabb(), a, inset);
+}
+/** @param {Aabb2D} out @returns {Aabb2D} */
 export function centeredAabbInto(out, cx, cy, width, height) {
     const halfW = width / 2;
     const halfH = height / 2;
@@ -55,7 +80,7 @@ export function centeredAabbInto(out, cx, cy, width, height) {
 export function centeredAabb(cx, cy, width, height) {
     return centeredAabbInto(createAabb(), cx, cy, width, height);
 }
-/** Centered box from half-extents; optional uniform padding (viewport-style). @param {Aabb2D} out @returns {Aabb2D} */
+/** @param {Aabb2D} out @returns {Aabb2D} */
 export function centerHalfExtentsAabbInto(out, cx, cy, halfW, halfH, padding = 0) {
     out.minX = cx - halfW - padding;
     out.minY = cy - halfH - padding;
@@ -63,14 +88,49 @@ export function centerHalfExtentsAabbInto(out, cx, cy, halfW, halfH, padding = 0
     out.maxY = cy + halfH + padding;
     return out;
 }
+/** @param {Aabb2D} out @returns {Aabb2D} */
+export function centerReachAabbInto(out, cx, cy, reach) {
+    out.minX = cx - reach;
+    out.minY = cy - reach;
+    out.maxX = cx + reach;
+    out.maxY = cy + reach;
+    return out;
+}
+export function centerReachAabb(cx, cy, reach) {
+    return centerReachAabbInto(createAabb(), cx, cy, reach);
+}
+/** @param {{ x: number, y: number }} p0 @param {{ x: number, y: number }} p1 @param {{ x: number, y: number }} p2 @param {{ x: number, y: number }} p3 @param {Aabb2D | null | undefined} box */
+export function pointsAabbOverlapAabb(p0, p1, p2, p3, box) {
+    if (!box) return true;
+    const minX = Math.min(p0.x, p1.x, p2.x, p3.x);
+    const maxX = Math.max(p0.x, p1.x, p2.x, p3.x);
+    const minY = Math.min(p0.y, p1.y, p2.y, p3.y);
+    const maxY = Math.max(p0.y, p1.y, p2.y, p3.y);
+    return aabbIntersectsScalars(minX, minY, maxX, maxY, box);
+}
+/** @param {Aabb2D} out @param {{ x: number, y: number }[]} points @param {number} [padding] @returns {Aabb2D} */
+export function expandPointsAabbInto(out, points, padding = 0) {
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (let i = 0; i < points.length; i++) {
+        const p = points[i];
+        if (p.x < minX) minX = p.x;
+        if (p.x > maxX) maxX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.y > maxY) maxY = p.y;
+    }
+    out.minX = minX - padding;
+    out.minY = minY - padding;
+    out.maxX = maxX + padding;
+    out.maxY = maxY + padding;
+    return out;
+}
 /** @returns {Aabb2D | null} */
 export function intersectAabb(a, b) {
-    const minX = Math.max(a.minX, b.minX);
-    const minY = Math.max(a.minY, b.minY);
-    const maxX = Math.min(a.maxX, b.maxX);
-    const maxY = Math.min(a.maxY, b.maxY);
-    if (minX >= maxX || minY >= maxY) return null;
-    return { minX, minY, maxX, maxY };
+    const out = createAabb();
+    return intersectAabbInto(out, a, b) ? out : null;
 }
 /** @param {Aabb2D} out @returns {boolean} */
 export function intersectAabbInto(out, a, b) {
@@ -84,6 +144,19 @@ export function intersectAabbInto(out, a, b) {
     out.maxX = maxX;
     out.maxY = maxY;
     return true;
+}
+/** @param {Aabb2D} out @param {Aabb2D | null | undefined} a @param {Aabb2D | null | undefined} b @returns {boolean} */
+export function intersectAabbOptionalInto(out, a, b) {
+    if (!a) {
+        if (!b) return false;
+        copyAabbInto(out, b);
+        return true;
+    }
+    if (!b) {
+        copyAabbInto(out, a);
+        return true;
+    }
+    return intersectAabbInto(out, a, b);
 }
 export function closestPointOnAabb(px, py, minX, minY, maxX, maxY) {
     return { x: Math.max(minX, Math.min(px, maxX)), y: Math.max(minY, Math.min(py, maxY)) };

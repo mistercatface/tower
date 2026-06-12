@@ -1,6 +1,6 @@
 import { snapLayoutOrigin } from "../../Generator/GridLayout.js";
 import { Segment } from "../../Entities/Wall.js";
-import { padAabb } from "../Math/Aabb2D.js";
+import { insetAabb, minCornerAabb, padAabb } from "../Math/Aabb2D.js";
 import { resolvePlacement } from "./assemblies/assemblyPlacement.js";
 /** @typedef {import("./assemblies/assemblyManifest.js").ResolvedAssemblyManifest} ResolvedAssemblyManifest */
 /**
@@ -37,11 +37,13 @@ function resolveAssemblyPads(pads, play) {
 }
 /** @param {number} offsetX @param {number} offsetY @param {number} width @param {number} height */
 function getArenaWorldBounds(offsetX, offsetY, width, height) {
-    return { minX: offsetX, minY: offsetY, maxX: offsetX + width, maxY: offsetY + height, centerX: offsetX + width / 2, centerY: offsetY + height / 2, width, height };
+    const box = minCornerAabb(offsetX, offsetY, width, height);
+    return { ...box, centerX: offsetX + width / 2, centerY: offsetY + height / 2, width, height };
 }
 /** @param {ReturnType<typeof getArenaWorldBounds>} arena @param {number} inset */
 function getPlayfieldBounds(arena, inset) {
-    return { minX: arena.minX + inset, minY: arena.minY + inset, maxX: arena.maxX - inset, maxY: arena.maxY - inset, centerX: arena.centerX, centerY: arena.centerY };
+    const box = insetAabb(arena, inset);
+    return { ...box, centerX: arena.centerX, centerY: arena.centerY };
 }
 /**
  * @param {number} x0
@@ -165,15 +167,15 @@ export function buildAssemblyLayout(centerX, centerY, resolved) {
     const play = getPlayfieldBounds(bounds, arena.walls.width);
     return { bounds, play, pads: resolveAssemblyPads(pads, play), wallSegments: resolveWallSegments(wallSegments, play), arcWallSegments: resolveArcWallSegments(arcWallSegments, play) };
 }
-/** @returns {{ minX: number, minY: number, maxX: number, maxY: number }[]} */
+/** @returns {import("../Math/Aabb2D.js").Aabb2D[]} */
 export function getAssemblyRailBandBounds(layout) {
     const { bounds, play } = layout;
-    /** @type {{ minX: number, minY: number, maxX: number, maxY: number }[]} */
+    /** @type {import("../Math/Aabb2D.js").Aabb2D[]} */
     const bands = [];
-    if (play.minY > bounds.minY) bands.push({ minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: play.minY });
-    if (play.maxY < bounds.maxY) bands.push({ minX: bounds.minX, minY: play.maxY, maxX: bounds.maxX, maxY: bounds.maxY });
-    if (play.minX > bounds.minX) bands.push({ minX: bounds.minX, minY: play.minY, maxX: play.minX, maxY: play.maxY });
-    if (play.maxX < bounds.maxX) bands.push({ minX: play.maxX, minY: play.minY, maxX: bounds.maxX, maxY: play.maxY });
+    if (play.minY > bounds.minY) bands.push(minCornerAabb(bounds.minX, bounds.minY, bounds.maxX - bounds.minX, play.minY - bounds.minY));
+    if (play.maxY < bounds.maxY) bands.push(minCornerAabb(bounds.minX, play.maxY, bounds.maxX - bounds.minX, bounds.maxY - play.maxY));
+    if (play.minX > bounds.minX) bands.push(minCornerAabb(bounds.minX, play.minY, play.minX - bounds.minX, play.maxY - play.minY));
+    if (play.maxX < bounds.maxX) bands.push(minCornerAabb(play.maxX, play.minY, bounds.maxX - play.maxX, play.maxY - play.minY));
     return bands;
 }
 /** @param {ReturnType<typeof buildAssemblyLayout>} layout @param {ResolvedAssemblyManifest} resolved */

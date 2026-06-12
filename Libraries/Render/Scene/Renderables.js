@@ -1,5 +1,6 @@
 import { resolveStructurePerspectiveStrength } from "../../../Core/GamePerspective.js";
 import { resolveElevationAlpha } from "../../Spatial/iso/IsometricProjection.js";
+import { createAabb, expandPointsAabbInto } from "../../Math/Aabb2D.js";
 import { computeProjectedFace, drawFaceTexture } from "../Structure3D/ProjectedWallDraw.js";
 import { wallDamageOverlayStyle } from "../Structure3D/wallDamageVisual.js";
 /**
@@ -8,7 +9,7 @@ import { wallDamageOverlayStyle } from "../Structure3D/wallDamageVisual.js";
 export class Renderable {
     constructor(pass) {
         this.pass = pass; // e.g., 'walls', 'roofs', 'ground'
-        this.bounds = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+        this.bounds = createAabb();
         this.sourceId = null; // Link back to simulation entity if needed for destruction
     }
     draw(ctx, viewport) {
@@ -39,8 +40,7 @@ export class RenderableWallFace extends Renderable {
         this.cy = edgeMeta.cy;
         this.outX = edgeMeta.outX;
         this.outY = edgeMeta.outY;
-        const pad = wallHeight;
-        this.bounds = { minX: Math.min(p1.x, p2.x) - pad, maxX: Math.max(p1.x, p2.x) + pad, minY: Math.min(p1.y, p2.y) - pad, maxY: Math.max(p1.y, p2.y) + pad };
+        expandPointsAabbInto(this.bounds, [p1, p2], wallHeight);
     }
     shouldDraw(viewerX, viewerY) {
         const seg = this.simWall;

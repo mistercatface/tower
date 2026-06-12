@@ -4,7 +4,7 @@ import { refreshLabMapBoundsPreview } from "../world/mapWorld.js";
 /** @typedef {import("../../../Libraries/Render/map/labMapCaches.js").ObstacleOverviewCache} MapOverviewCache */
 /**
  * @param {CanvasRenderingContext2D} ctx
- * @param {{ minX: number, minY: number, maxX: number, maxY: number }} bounds
+ * @param {import("../../../Libraries/Math/Aabb2D.js").Aabb2D} bounds
  * @param {MapOverviewCache} cache
  * @param {number} displayW
  * @param {number} displayH

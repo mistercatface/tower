@@ -55,7 +55,7 @@ export function addSandboxWalls(state, walls, { compileRender = true, notifyNavi
     }
     if (compileRender) state.worldSurfaces.invalidateRoofs();
 }
-/** @param {object} state @param {{ minX: number, minY: number, maxX: number, maxY: number }} bounds */
+/** @param {object} state @param {import("../../../Libraries/Math/Aabb2D.js").Aabb2D} bounds */
 export function clearSandboxWallsInBounds(state, bounds) {
     const candidates = state.wallSpatialIndex.collectInBounds(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY);
     const toRemove = [];

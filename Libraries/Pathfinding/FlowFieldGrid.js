@@ -1,7 +1,7 @@
-import { circleIntersectsAabb } from "../Math/Aabb2D.js";
+import { circleIntersectsAabb, createAabb } from "../Math/Aabb2D.js";
 import { gridReachabilityBfs } from "./gridReachabilityBfs.js";
 import { OCTILE_OFFSETS } from "../Spatial/grid/GridUtils.js";
-import { worldToGridCentered, gridToWorldCentered, getCellBoundsCentered } from "../Spatial/grid/GridCoords.js";
+import { worldToGridCentered, gridToWorldCentered, getCellBoundsCenteredInto } from "../Spatial/grid/GridCoords.js";
 const MAX_CACHE = 100;
 /**
  * Sliding-window flow-field over a NavGraph. BFS runs in an injected worker;
@@ -48,6 +48,7 @@ export class FlowFieldGrid {
         this.offsetY = height / 2 + cellSize / 2;
         this.centerX = 0;
         this.centerY = 0;
+        this.cellBounds = createAabb();
     }
     refresh() {
         this.syncLocalObstacles();
@@ -114,7 +115,7 @@ export class FlowFieldGrid {
         return gridToWorldCentered(col, row, this.centerX, this.centerY, this.offsetX, this.offsetY, this.cellSize);
     }
     getCellBounds(col, row) {
-        return getCellBoundsCentered(col, row, this.centerX, this.centerY, this.offsetX, this.offsetY, this.cellSize);
+        return getCellBoundsCenteredInto(this.cellBounds, col, row, this.centerX, this.centerY, this.offsetX, this.offsetY, this.cellSize);
     }
     entityIntersectsCell(x, y, radius, col, row) {
         return circleIntersectsAabb(x, y, radius, this.getCellBounds(col, row));

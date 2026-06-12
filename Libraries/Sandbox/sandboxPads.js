@@ -1,5 +1,6 @@
 import { createCircleFloorShape, createRectFloorShape, drawFloorShape, isAabbInView, processFloorShapes } from "../Spatial/zones/floorShapes.js";
 import { PolygonShape } from "../Spatial/collision/Shapes.js";
+import { centerHalfExtentsAabbInto, createAabb } from "../Math/Aabb2D.js";
 import { drawPitInterior, syncSinkPadAabb } from "../Spatial/zones/pit.js";
 import { NEIGHBOR_QUERY_PAD } from "../Spatial/collision/entityBroadphase.js";
 import { PAD_PRESETS } from "./padPresets.js";
@@ -61,8 +62,13 @@ function pointInPad(pad, wx, wy, padding = POINTER_HIT_PADDING) {
 }
 /** @param {object} pad @param {number} halfWidth @param {number} halfHeight */
 function syncRectPadAabb(pad, halfWidth, halfHeight) {
-    const margin = NEIGHBOR_QUERY_PAD;
-    pad.aabb = { minX: pad.x - halfWidth - margin, minY: pad.y - halfHeight - margin, maxX: pad.x + halfWidth + margin, maxY: pad.y + halfHeight + margin };
+    if (!pad.aabb) pad.aabb = createAabb();
+    centerHalfExtentsAabbInto(pad.aabb, pad.x, pad.y, halfWidth, halfHeight, NEIGHBOR_QUERY_PAD);
+}
+/** @param {object} pad @param {number} radius */
+function syncCirclePadAabb(pad, radius) {
+    if (!pad.aabb) pad.aabb = createAabb();
+    centerHalfExtentsAabbInto(pad.aabb, pad.x, pad.y, radius, radius, NEIGHBOR_QUERY_PAD);
 }
 /** @param {object} state @param {number} wx @param {number} wy */
 export function hitTestPad(state, wx, wy) {
@@ -133,10 +139,7 @@ export function buildSandboxPad(state, preset, x, y, options = {}) {
         const radius = options.radius ?? def.circleRadius;
         pad = createCircleFloorShape(x, y, radius, { id });
         if (preset === "sink") syncSinkPadAabb(pad, radius);
-        else {
-            const margin = NEIGHBOR_QUERY_PAD;
-            pad.aabb = { minX: x - radius - margin, minY: y - radius - margin, maxX: x + radius + margin, maxY: y + radius + margin };
-        }
+        else syncCirclePadAabb(pad, radius);
     }
     pad.preset = preset;
     pad.powered = options.powered ?? true;
@@ -270,10 +273,7 @@ function resizeRectPad(pad, halfWidth, halfHeight) {
 function resizeCirclePad(pad, radius, preset) {
     pad.shape.radius = radius;
     if (preset === "sink") syncSinkPadAabb(pad, radius);
-    else {
-        const margin = NEIGHBOR_QUERY_PAD;
-        pad.aabb = { minX: pad.x - radius - margin, minY: pad.y - radius - margin, maxX: pad.x + radius + margin, maxY: pad.y + radius + margin };
-    }
+    else syncCirclePadAabb(pad, radius);
 }
 /**
  * @param {object} state

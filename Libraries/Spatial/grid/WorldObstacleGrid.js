@@ -1,5 +1,6 @@
 import { colRowToIndex } from "./GridUtils.js";
-import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsToWorldBounds } from "./GridCoords.js";
+import { createAabb } from "../../Math/Aabb2D.js";
+import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsAtOriginInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
 import { getWallCellBounds, markWallOnGrid, clearWallCells, computeBoundsFromWalls } from "./wallGridBake.js";
 import { collectSegmentsAlongLine, collectSegmentsInWorldBounds, collectSegmentsNearPose, segmentGridLayoutFromObstacleGrid } from "./segmentGridWalk.js";
 export { getWallCellBounds, markWallOnGrid, clearWallCells, computeBoundsFromWalls } from "./wallGridBake.js";
@@ -17,6 +18,8 @@ export class WorldObstacleGrid {
         this.rows = 0;
         this.grid = new Uint8Array(0);
         this.segmentGrid = [];
+        this.cellBoundsScratch = createAabb();
+        this.patchBoundsScratch = createAabb();
     }
     rebuild(walls) {
         const bounds = computeBoundsFromWalls(walls, this.cellSize);
@@ -59,7 +62,7 @@ export class WorldObstacleGrid {
     patchAfterWallRemoved(wall, wallSpatialIndex) {
         const bounds = getWallCellBounds(wall, (x, y) => this.worldToGrid(x, y), this.cols, this.rows);
         clearWallCells(this.grid, this.cols, bounds, this.segmentGrid);
-        const worldBounds = cellBoundsToWorldBounds(bounds, this.minX, this.minY, this.cellSize);
+        const worldBounds = cellBoundsToWorldBoundsInto(this.patchBoundsScratch, bounds, this.minX, this.minY, this.cellSize);
         const localWalls = wallSpatialIndex ? wallSpatialIndex.collectInBounds(worldBounds.minX, worldBounds.minY, worldBounds.maxX, worldBounds.maxY) : [];
         for (const localWall of localWalls) this.addWall(localWall);
         return bounds;
@@ -79,7 +82,7 @@ export class WorldObstacleGrid {
         return this.isBlocked(col, row);
     }
     getCellBounds(col, row) {
-        return { minX: this.minX + col * this.cellSize, minY: this.minY + row * this.cellSize, maxX: this.minX + (col + 1) * this.cellSize, maxY: this.minY + (row + 1) * this.cellSize };
+        return cellBoundsAtOriginInto(this.cellBoundsScratch, this.minX, this.minY, col, row, this.cellSize);
     }
     _segmentLayout() {
         return segmentGridLayoutFromObstacleGrid(this);

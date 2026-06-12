@@ -9,6 +9,7 @@ import { getTexelResolution, shouldSmoothTextureDownsample } from "../../WorldSu
 import { wallDamageOverlayStyle } from "./wallDamageVisual.js";
 import { resolveStructurePerspectiveStrength } from "../../../Core/GamePerspective.js";
 import { resolveElevationAlpha } from "../../Spatial/iso/IsometricProjection.js";
+import { pointsAabbOverlapAabb } from "../../Math/Aabb2D.js";
 export { getWallHeight };
 export { wallFaceColumns } from "../../WorldSurface/WallFaceColumns.js";
 const WALL_ANGLE_SPREAD = 0.002;
@@ -46,14 +47,6 @@ export function traceProjectedFace(ctx, p1, p2, face) {
     ctx.lineTo(face.proj2X, face.proj2Y);
     ctx.lineTo(p2.x, p2.y);
     ctx.closePath();
-}
-function rowBoundsIntersects(bl, br, tl, tr, bounds) {
-    if (!bounds) return true;
-    const minX = Math.min(bl.x, br.x, tl.x, tr.x);
-    const maxX = Math.max(bl.x, br.x, tl.x, tr.x);
-    const minY = Math.min(bl.y, br.y, tl.y, tr.y);
-    const maxY = Math.max(bl.y, br.y, tl.y, tr.y);
-    return !(maxX < bounds.minX || minX > bounds.maxX || maxY < bounds.minY || minY > bounds.maxY);
 }
 function computeFaceCorner(out, p1, p2, proj1X, proj1Y, proj2X, proj2Y, u, v) {
     const bx = p1.x + (p2.x - p1.x) * u;
@@ -131,7 +124,7 @@ export function drawFaceTexture(ctx, p1, p2, face, worldSurfaces, proceduralSurf
             computeFaceCorner(sCorner1, p1, p2, face.proj1X, face.proj1Y, face.proj2X, face.proj2Y, u1, v0);
             computeFaceCorner(sCorner2, p1, p2, face.proj1X, face.proj1Y, face.proj2X, face.proj2Y, u1, v1);
             computeFaceCorner(sCorner3, p1, p2, face.proj1X, face.proj1Y, face.proj2X, face.proj2Y, u0, v1);
-            if (!rowBoundsIntersects(sCorner0, sCorner1, sCorner2, sCorner3, worldBounds)) continue;
+            if (!pointsAabbOverlapAabb(sCorner0, sCorner1, sCorner2, sCorner3, worldBounds)) continue;
             const sx0 = u0 * flatCanvas.width;
             const sx1 = u1 * flatCanvas.width;
             drawImageQuad(ctx, flatCanvas, sx0, sy0, sx1, sy1, sCorner0, sCorner1, sCorner2, sCorner3, { bleedPx });
@@ -163,7 +156,7 @@ export function drawProjectedWallFace(
     sCorner2.y = face.proj2Y;
     sCorner3.x = face.proj1X;
     sCorner3.y = face.proj1Y;
-    if (!rowBoundsIntersects(sCorner0, sCorner1, sCorner2, sCorner3, worldBounds)) return;
+    if (!pointsAabbOverlapAabb(sCorner0, sCorner1, sCorner2, sCorner3, worldBounds)) return;
     traceProjectedFace(ctx, p1, p2, face);
     if (textureEnabled) drawFaceTexture(ctx, p1, p2, face, worldSurfaces, proceduralSurfaceDraw, { x: px, y: py }, viewport, finalWallHeight, fillStyle, cacheObj, worldBounds);
     else {
