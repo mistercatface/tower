@@ -1,5 +1,5 @@
 import { entityBroadphaseExtent } from "../collision/entityBroadphase.js";
-import { traceCircle } from "../../Canvas/CanvasPath.js";
+import { traceCircle, withClip } from "../../Canvas/CanvasPath.js";
 import { CAMERA_HEIGHT, PERSPECTIVE_STRENGTH } from "../iso/IsometricProjection.js";
 export const DEFAULT_PIT_RADIUS = 8;
 export const DEFAULT_PIT_DEPTH = 24;
@@ -48,25 +48,28 @@ export function isVoidSinkCaptured(pitX, pitY, pitRadius, entity, captureToleran
 export function drawPitInterior(ctx, pad, viewerX, viewerY) {
     const mouthRadius = pad.shape.radius;
     const pocketDepth = pad.sinkDepth ?? DEFAULT_PIT_DEPTH;
-    ctx.save();
-    ctx.beginPath();
-    traceCircle(ctx, pad.x, pad.y, mouthRadius);
-    ctx.clip();
-    const step = pocketDepth / 8;
-    for (let H = 0; H >= -pocketDepth; H -= step) {
-        const dx = pad.x - viewerX;
-        const dy = pad.y - viewerY;
-        const dist = Math.hypot(dx, dy);
-        const alpha = (H / (CAMERA_HEIGHT - H)) * PERSPECTIVE_STRENGTH;
-        const projX = dist === 0 ? pad.x : pad.x + dx * alpha;
-        const projY = dist === 0 ? pad.y : pad.y + dy * alpha;
-        const layerRadius = mouthRadius * (CAMERA_HEIGHT / (CAMERA_HEIGHT - H));
-        const ratio = Math.min(1, -H / pocketDepth);
-        const lightness = Math.max(0, 100 - ratio * 100);
-        ctx.fillStyle = `hsl(0, 0%, ${lightness}%)`;
-        ctx.beginPath();
-        traceCircle(ctx, projX, projY, layerRadius);
-        ctx.fill();
-    }
-    ctx.restore();
+    withClip(
+        ctx,
+        (ctx) => {
+            traceCircle(ctx, pad.x, pad.y, mouthRadius);
+        },
+        (ctx) => {
+            const step = pocketDepth / 8;
+            for (let H = 0; H >= -pocketDepth; H -= step) {
+                const dx = pad.x - viewerX;
+                const dy = pad.y - viewerY;
+                const dist = Math.hypot(dx, dy);
+                const alpha = (H / (CAMERA_HEIGHT - H)) * PERSPECTIVE_STRENGTH;
+                const projX = dist === 0 ? pad.x : pad.x + dx * alpha;
+                const projY = dist === 0 ? pad.y : pad.y + dy * alpha;
+                const layerRadius = mouthRadius * (CAMERA_HEIGHT / (CAMERA_HEIGHT - H));
+                const ratio = Math.min(1, -H / pocketDepth);
+                const lightness = Math.max(0, 100 - ratio * 100);
+                ctx.fillStyle = `hsl(0, 0%, ${lightness}%)`;
+                ctx.beginPath();
+                traceCircle(ctx, projX, projY, layerRadius);
+                ctx.fill();
+            }
+        },
+    );
 }

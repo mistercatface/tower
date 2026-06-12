@@ -57,3 +57,38 @@ export function tracePolylineFrom(ctx, x0, y0, points, endX, endY) {
 export function traceAabbRect(ctx, { minX, minY, maxX, maxY }) {
     ctx.rect(minX, minY, maxX - minX, maxY - minY);
 }
+/**
+ * One path, one clip. `buildPath` traces subpaths on a fresh path; return false to skip clip.
+ *
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {(ctx: CanvasRenderingContext2D) => boolean | void} buildPath
+ * @returns {boolean}
+ */
+export function clipToPath(ctx, buildPath) {
+    ctx.beginPath();
+    if (buildPath(ctx) === false) return false;
+    ctx.clip();
+    return true;
+}
+/** @param {CanvasRenderingContext2D} ctx @param {import("../Math/Aabb2D.js").Aabb2D} box */
+export function clipToAabb(ctx, box) {
+    clipToPath(ctx, (ctx) => {
+        traceAabbRect(ctx, box);
+    });
+}
+/**
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {(ctx: CanvasRenderingContext2D) => boolean | void} buildPath
+ * @param {(ctx: CanvasRenderingContext2D) => void} draw
+ * @returns {boolean}
+ */
+export function withClip(ctx, buildPath, draw) {
+    ctx.save();
+    if (!clipToPath(ctx, buildPath)) {
+        ctx.restore();
+        return false;
+    }
+    draw(ctx);
+    ctx.restore();
+    return true;
+}

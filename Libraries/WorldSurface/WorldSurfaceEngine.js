@@ -4,6 +4,7 @@
  */
 import { getWallHeight } from "./WorldSurfaceSettings.js";
 import { createAabb, intersectAabbOptionalInto } from "../Math/Aabb2D.js";
+import { clipToAabb } from "../Canvas/CanvasPath.js";
 import { getChunkSizePx, worldBoundsToChunkRange, worldToChunkCol, worldToChunkRow } from "../Spatial/grid/ChunkGrid.js";
 import { SurfaceBitmapCache } from "./SurfaceBitmapCache.js";
 import { groundChunkCachePrefix, staticRoofDrawCachePrefix, staticRoofMaskCachePrefix } from "./bake/SurfaceBakeHelpers.js";
@@ -253,11 +254,7 @@ export class WorldSurfaceEngine {
         const minChunkRow = worldToChunkRow(bounds.minY, obstacleGrid.minY, chunkSizePx);
         const maxChunkRow = worldToChunkRow(bounds.maxY - 1, obstacleGrid.minY, chunkSizePx);
         ctx.save();
-        if (playBounds) {
-            ctx.beginPath();
-            ctx.rect(bounds.minX, bounds.minY, bounds.maxX - bounds.minX, bounds.maxY - bounds.minY);
-            ctx.clip();
-        }
+        if (playBounds) clipToAabb(ctx, bounds);
         ctx.imageSmoothingEnabled = false;
         for (let chunkRow = minChunkRow; chunkRow <= maxChunkRow; chunkRow++)
             for (let chunkCol = minChunkCol; chunkCol <= maxChunkCol; chunkCol++) {

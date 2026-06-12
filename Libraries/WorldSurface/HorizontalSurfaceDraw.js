@@ -6,7 +6,7 @@ import { projectWorldPointAtHeight } from "../Spatial/iso/IsometricProjection.js
 import { getSegmentFootprintCorners } from "../Spatial/geometry/WallGeometry.js";
 import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { forEachObstacleGridCellInAabb } from "../Spatial/grid/GridCoords.js";
-import { traceAabbRect, traceClosedPolygon } from "../Canvas/CanvasPath.js";
+import { traceAabbRect, traceClosedPolygon, clipToPath } from "../Canvas/CanvasPath.js";
 import { worldToChunkCol, worldToChunkRow } from "../Spatial/grid/ChunkGrid.js";
 import { getDamageAlphaFromHealth, drawAabbDamageOverlay, drawDamageOverlayInClip, drawPolygonDamageOverlay } from "../Render/Structure3D/wallDamageVisual.js";
 import { resolveStaticWallHeightAtCell, cellIsStaticBlocked } from "../World/staticOccupancyLayers.js";
@@ -58,19 +58,17 @@ export function chunkHasBlockedCells(obstacleGrid, chunkOriginX, chunkOriginY, c
 export function clipChunkToBlockedCells(ctx, obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx) {
     if (!obstacleGrid?.cols) return false;
     const segmentGrid = obstacleGrid.segmentGrid;
-    ctx.beginPath();
-    let clippedAny = false;
-    forEachObstacleGridCellInAabb(obstacleGrid, { minX: chunkOriginX, minY: chunkOriginY, maxX: chunkOriginX + chunkSizePx, maxY: chunkOriginY + chunkSizePx }, (col, row) => {
-        if (!obstacleGrid.isBlocked(col, row)) return;
-        const idx = colRowToIndex(col, row, obstacleGrid.cols);
-        if (segmentGrid?.[idx]?.length) return;
-        const bounds = obstacleGrid.getCellBounds(col, row);
-        traceAabbRect(ctx, bounds);
-        clippedAny = true;
+    return clipToPath(ctx, (ctx) => {
+        let clippedAny = false;
+        forEachObstacleGridCellInAabb(obstacleGrid, { minX: chunkOriginX, minY: chunkOriginY, maxX: chunkOriginX + chunkSizePx, maxY: chunkOriginY + chunkSizePx }, (col, row) => {
+            if (!obstacleGrid.isBlocked(col, row)) return;
+            const idx = colRowToIndex(col, row, obstacleGrid.cols);
+            if (segmentGrid?.[idx]?.length) return;
+            traceAabbRect(ctx, obstacleGrid.getCellBounds(col, row));
+            clippedAny = true;
+        });
+        return clippedAny;
     });
-    if (!clippedAny) return false;
-    ctx.clip();
-    return true;
 }
 /**
  * World-aligned alpha mask for static stamp roofs in one chunk (baked once per invalidation).
@@ -135,18 +133,17 @@ export function clipChunkToRoofFootprints(ctx, chunkOriginX, chunkOriginY, chunk
     const minRow = worldToChunkRow(chunkOriginY, renderScene.gridMinY, renderScene.chunkSizePx);
     const maxRow = worldToChunkRow(chunkOriginY + chunkSizePx - 1, renderScene.gridMinY, renderScene.chunkSizePx);
     const roofs = renderScene.collectPass("roofs", minCol, minRow, maxCol, maxRow);
-    ctx.beginPath();
-    let clippedAny = false;
-    for (let i = 0; i < roofs.length; i++) {
-        const roof = roofs[i];
-        if (roof.simWall?.isDead) continue;
-        if (Math.abs(roof.zLevel - zLevel) > 0.01) continue;
-        roof.draw(ctx, viewport, cameraHeight, viewerX, viewerY);
-        clippedAny = true;
-    }
-    if (!clippedAny) return false;
-    ctx.clip();
-    return true;
+    return clipToPath(ctx, (ctx) => {
+        let clippedAny = false;
+        for (let i = 0; i < roofs.length; i++) {
+            const roof = roofs[i];
+            if (roof.simWall?.isDead) continue;
+            if (Math.abs(roof.zLevel - zLevel) > 0.01) continue;
+            roof.draw(ctx, viewport, cameraHeight, viewerX, viewerY);
+            clippedAny = true;
+        }
+        return clippedAny;
+    });
 }
 /**
  * Clip draw to wall segment footprints in a chunk (flat 2D rail caps).
@@ -161,17 +158,16 @@ export function clipChunkToRoofFootprints(ctx, chunkOriginX, chunkOriginY, chunk
 export function clipChunkToWallFootprints(ctx, chunkOriginX, chunkOriginY, chunkSizePx, wallSpatialIndex) {
     if (!wallSpatialIndex) return false;
     const segments = wallSpatialIndex.collectInBounds(chunkOriginX, chunkOriginY, chunkOriginX + chunkSizePx, chunkOriginY + chunkSizePx);
-    ctx.beginPath();
-    let clippedAny = false;
-    for (let i = 0; i < segments.length; i++) {
-        const wall = segments[i];
-        if (wall.isDead || wall.collisionOnly) continue;
-        traceClosedPolygon(ctx, getSegmentFootprintCorners(wall));
-        clippedAny = true;
-    }
-    if (!clippedAny) return false;
-    ctx.clip();
-    return true;
+    return clipToPath(ctx, (ctx) => {
+        let clippedAny = false;
+        for (let i = 0; i < segments.length; i++) {
+            const wall = segments[i];
+            if (wall.isDead || wall.collisionOnly) continue;
+            traceClosedPolygon(ctx, getSegmentFootprintCorners(wall));
+            clippedAny = true;
+        }
+        return clippedAny;
+    });
 }
 /**
  * Per-wall roof damage tint — same health → overlay mapping as projected wall faces.
@@ -201,7 +197,6 @@ export function drawRoofSegmentDamageOverlays(ctx, chunkOriginX, chunkOriginY, c
         const damageAlpha = getDamageAlphaFromHealth(roof.simWall.health, roof.simWall.maxHealth);
         if (damageAlpha <= 0) continue;
         drawDamageOverlayInClip(ctx, damageAlpha, (ctx) => {
-            ctx.beginPath();
             roof.draw(ctx, viewport, cameraHeight, viewerX, viewerY);
         });
     }
