@@ -52,15 +52,15 @@
  * @property {number} [forceY] — pull override
  * @property {boolean} [wallMode] — pull: solid walls when powered
  * @property {boolean} [powered] — pull / sink: starts off when false
- * @property {string} [target] — button: single assembly pickup or pad id
- * @property {string[]} [targets] — button: assembly pickup or pad ids to wire
+ * @property {string} [target] — button: single assembly prop or pad id
+ * @property {string[]} [targets] — button: assembly prop or pad ids to wire
  * @property {"tap" | "hold" | "toggle" | "massTap" | "massHold" | "massToggle"} [inputMode]
  * @property {number} [massThreshold]
  * @property {boolean} [invert] — button: active when input is off
  * @property {number} [radiusU] — button: radius as playfield width fraction
  */
 /**
- * @typedef {object} AssemblyPickupManifest
+ * @typedef {object} AssemblyWorldPropManifest
  * @property {string} [id]
  * @property {string} prop
  * @property {number} [facing]
@@ -76,7 +76,7 @@
  * @property {AssemblyPadManifest[]} [pads]
  * @property {AssemblyWallSegmentManifest[]} [wallSegments]
  * @property {AssemblyArcWallSegmentManifest[]} [arcWallSegments]
- * @property {AssemblyPickupManifest[]} [pickups]
+ * @property {AssemblyWorldPropManifest[]} [worldProps]
  * @property {{ groupField: string }} link
  * @property {Record<string, { cueStrike?: object, inputGates?: Record<string, object[]> }>} [behaviors]
  */
@@ -90,7 +90,7 @@
  * @property {AssemblyPadManifest[]} pads
  * @property {AssemblyWallSegmentManifest[]} wallSegments
  * @property {AssemblyArcWallSegmentManifest[]} arcWallSegments
- * @property {AssemblyPickupManifest[]} pickups
+ * @property {AssemblyWorldPropManifest[]} worldProps
  * @property {string} groupField
  * @property {Record<string, { cueStrike?: object, inputGates?: Record<string, object[]> }>} behaviors
  */

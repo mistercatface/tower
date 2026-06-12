@@ -3,32 +3,32 @@ import { buildCueStrikeAimLineContext, getCueStrikeAimLine } from "../../CueStic
 import { getPropAsset } from "../../Props/PropCatalog.js";
 import { createDragLaunchInteraction, DRAG_LAUNCH_DEFAULTS } from "../dragLaunch.js";
 import { evaluateInputGates } from "../inputGates.js";
-import { resolvePickupSandboxBehavior } from "../sandboxBehaviorConfig.js";
+import { resolveWorldPropSandboxBehavior } from "../sandboxBehaviorConfig.js";
 export const CUE_STRIKE_BEHAVIOR_ID = "cueStrike";
-/** @param {object} pickup @param {object} asset */
-function getCueStrikeConfig(pickup, asset) {
-    return { ...DRAG_LAUNCH_DEFAULTS, ...resolvePickupSandboxBehavior(pickup, asset, "cueStrike") };
+/** @param {object} prop @param {object} asset */
+function getCueStrikeConfig(prop, asset) {
+    return { ...DRAG_LAUNCH_DEFAULTS, ...resolveWorldPropSandboxBehavior(prop, asset, "cueStrike") };
 }
-/** @param {object} pickup @param {import("../SandboxHostPort.js").SandboxHostPort} host */
-function cueStrikeTableBounds(pickup, host) {
+/** @param {object} prop @param {import("../SandboxHostPort.js").SandboxHostPort} host */
+function cueStrikeTableBounds(prop, host) {
     const state = host.getWorldState();
-    const instance = state.sandboxAssemblyInstances.find((entry) => entry.id === pickup.sandboxGroupId);
-    if (!instance) throw new Error(`Cue strike pickup has no assembly instance (${pickup.sandboxGroupId})`);
+    const instance = state.sandboxAssemblyInstances.find((entry) => entry.id === prop.sandboxGroupId);
+    if (!instance) throw new Error(`Cue strike prop has no assembly instance (${prop.sandboxGroupId})`);
     return { tableWidth: instance.arenaWidth, tableHeight: instance.arenaHeight };
 }
 /** @returns {import("../createSandboxController.js").SandboxBehavior} */
 export function createCueStrikeBehavior() {
     return createDragLaunchInteraction({
         id: CUE_STRIKE_BEHAVIOR_ID,
-        getConfig: (pickup) => getCueStrikeConfig(pickup, getPropAsset(pickup.type)),
-        canStart(pickup, _world, host) {
-            return evaluateInputGates(CUE_STRIKE_BEHAVIOR_ID, pickup, getPropAsset(pickup.type), host).allowed;
+        getConfig: (prop) => getCueStrikeConfig(prop, getPropAsset(prop.type)),
+        canStart(prop, _world, host) {
+            return evaluateInputGates(CUE_STRIKE_BEHAVIOR_ID, prop, getPropAsset(prop.type), host).allowed;
         },
-        onLaunch(pickup, shot) {
-            applyCueStrikeCollision(pickup, shot);
+        onLaunch(prop, shot) {
+            applyCueStrikeCollision(prop, shot);
         },
-        buildAimLineContext(pickup, host) {
-            return buildCueStrikeAimLineContext(pickup, host.getWorldState(), cueStrikeTableBounds(pickup, host));
+        buildAimLineContext(prop, host) {
+            return buildCueStrikeAimLineContext(prop, host.getWorldState(), cueStrikeTableBounds(prop, host));
         },
         resolveAimLine: getCueStrikeAimLine,
     });

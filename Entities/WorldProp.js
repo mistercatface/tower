@@ -8,17 +8,17 @@ import { initStandTipState, isStandTipActive } from "../Libraries/Props/standTip
 import { withPropStrategyDefaults } from "../Libraries/Props/propStrategy.js";
 import { getPropAsset, getWorldPropDefinitions } from "../Libraries/Props/PropCatalog.js";
 import { transitionEntity } from "../Libraries/FSM/transition.js";
-import { pickupStates } from "./PickupStates.js";
+import { worldPropStates } from "./WorldPropStates.js";
 import { CircleShape, PolygonShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { syncLongAxisCollisionShape } from "../Libraries/Props/longAxisCollision.js";
 import { isStandTipProp } from "../Libraries/Spatial/transforms/longAxisBox3d.js";
 import { MOVING_SPEED_SQ } from "../Libraries/Spatial/collision/entityBroadphase.js";
-import { addPickupToState } from "../GameState/EntityRegistry.js";
+import { addWorldPropToState } from "../GameState/EntityRegistry.js";
 import { speedSqXY } from "../Libraries/Math/Vec2.js";
 import { resolveBodyRadius } from "../Libraries/Motion/bodyDefaults.js";
 import { SPLITTABLE_MIN_PIECE_SIZE } from "../Libraries/Props/splittable.js";
 import { wakePushableBody } from "../Libraries/Motion/pushableSleep.js";
-import { ensureLocomotionPickup, updateLocomotionPickup, usesLocomotionPickup } from "../Libraries/Props/locomotionPickup.js";
+import { ensureLocomotionWorldProp, updateLocomotionWorldProp, usesLocomotionWorldProp } from "../Libraries/Props/locomotionWorldProp.js";
 import { resolveKinematicsCamera } from "../Libraries/Render/Characters/actorKinematicsRenderer.js";
 function buildWorldPropStrategy(type) {
     const def = getWorldPropDefinitions()[type];
@@ -26,7 +26,7 @@ function buildWorldPropStrategy(type) {
     const { hitBehavior, spawn, ...strategyFields } = def;
     return withPropStrategyDefaults({ ...strategyFields, onHit: HIT_BEHAVIOR_HANDLERS[hitBehavior] ?? HIT_BEHAVIOR_HANDLERS.none });
 }
-export class Pickup extends Entity {
+export class WorldProp extends Entity {
     constructor(x, y, type, facing = null) {
         super(x, y, 0, false);
         this.type = type;
@@ -71,7 +71,7 @@ export class Pickup extends Entity {
             this.health = this.strategy.maxHealth;
         }
         this.usesKinematicsBody = !!this.strategy.kinematics;
-        if (usesLocomotionPickup(this)) ensureLocomotionPickup(this);
+        if (usesLocomotionWorldProp(this)) ensureLocomotionWorldProp(this);
         if (getPropAsset(type)?.sandbox?.equip) {
             this.weaponLoadout = [];
             this.weaponSlotState = [];
@@ -109,7 +109,7 @@ export class Pickup extends Entity {
     }
     changeState(stateName, stateDataInit = null) {
         if (this.strategy?.isPushable) wakePushableBody(this);
-        transitionEntity(this, pickupStates, stateName, stateDataInit);
+        transitionEntity(this, worldPropStates, stateName, stateDataInit);
     }
     getShape() {
         if (this.strategy.syncCollisionShape) return this.strategy.syncCollisionShape(this);
@@ -162,12 +162,12 @@ export class Pickup extends Entity {
     update(dt, state, spatialFrame, resolveWalls = false) {
         this.ageMs += dt;
         if (this.isSleeping && (!this.strategy?.standTip || !isStandTipActive(this))) return;
-        if (updateLocomotionPickup(this, dt, spatialFrame)) {
+        if (updateLocomotionWorldProp(this, dt, spatialFrame)) {
             // separation + integrateSteering (Libraries/Motion)
         } else if (this.strategy.rolls || this.strategy.standTip) integratePropMotion(this, dt);
         else applyVelocityDamping(this, dt, { friction: this.strategy.friction });
         if (this.usesKinematicsBody) {
-            if (!usesLocomotionPickup(this)) {
+            if (!usesLocomotionWorldProp(this)) {
                 const speed = Math.hypot(this.vx, this.vy);
                 if (speed > 2) {
                     const targetAngle = Math.atan2(this.vy, this.vx);
@@ -191,7 +191,7 @@ export class Pickup extends Entity {
         if (this.currentState?.update) this.currentState.update(this, dt, state.walls, state);
     }
     spawnShards(gameState) {
-        if (!gameState || !gameState.pickups) return;
+        if (!gameState || !gameState.worldProps) return;
         const width = this.halfExtents ? this.halfExtents.x * 2 : this.radius * 2;
         const height = this.halfExtents ? this.halfExtents.y * 2 : this.radius * 2;
         const minSize = SPLITTABLE_MIN_PIECE_SIZE;
@@ -205,7 +205,7 @@ export class Pickup extends Entity {
             const hy = (rect.maxY - rect.minY) / 2;
             const worldX = this.x + localCx * cos - localCy * sin;
             const worldY = this.y + localCx * sin + localCy * cos;
-            const shard = new Pickup(worldX, worldY, "crate_shard", this.facing);
+            const shard = new WorldProp(worldX, worldY, "crate_shard", this.facing);
             shard.halfExtents = { x: hx, y: hy };
             shard.radius = Math.hypot(hx, hy);
             shard.shape = new PolygonShape([
@@ -229,7 +229,7 @@ export class Pickup extends Entity {
             shard.vx = this.vx + dx * speed + (Math.random() - 0.5) * 15;
             shard.vy = this.vy + dy * speed + (Math.random() - 0.5) * 15;
             wakePushableBody(shard);
-            addPickupToState(gameState, shard);
+            addWorldPropToState(gameState, shard);
         }
     }
 }

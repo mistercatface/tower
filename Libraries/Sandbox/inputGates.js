@@ -1,7 +1,7 @@
-import { resolvePickupInputGateRules } from "./sandboxBehaviorConfig.js";
+import { resolveWorldPropInputGateRules } from "./sandboxBehaviorConfig.js";
 import { isKinematicallyActive } from "../Spatial/collision/entityBroadphase.js";
 /**
- * @typedef {"self" | "groupPickups" | "groupPushables"} InputGateScope
+ * @typedef {"self" | "groupWorldProps" | "groupPushables"} InputGateScope
  * @typedef {"atRest" | "asleep" | "allAtRest" | "allAsleep"} InputGateUntil
  * @typedef {{
  *   scope: InputGateScope,
@@ -34,17 +34,17 @@ function isExcludedFromGate(entity, excludeStates) {
 }
 /**
  * @param {InputGateScope} scope
- * @param {object} pickup
- * @param {object[]} pickups
+ * @param {object} prop
+ * @param {object[]} worldProps
  * @param {string | undefined} linkField
  */
-export function resolveInputGateScope(scope, pickup, pickups, linkField) {
-    if (scope === "self") return [pickup];
-    const linkValue = linkField ? pickup[linkField] : undefined;
+export function resolveInputGateScope(scope, prop, worldProps, linkField) {
+    if (scope === "self") return [prop];
+    const linkValue = linkField ? prop[linkField] : undefined;
     if (linkValue == null) return [];
     const members = [];
-    for (let i = 0; i < pickups.length; i++) {
-        const entity = pickups[i];
+    for (let i = 0; i < worldProps.length; i++) {
+        const entity = worldProps[i];
         if (entity.isDead) continue;
         if (entity[linkField] !== linkValue) continue;
         if (scope === "groupPushables" && !entity.strategy?.isPushable) continue;
@@ -63,25 +63,25 @@ function scopePassesUntil(entities, until, excludeStates) {
     }
     return true;
 }
-/** @param {InputGateRule} rule @param {object} pickup @param {object[]} pickups */
-export function evaluateInputGateRule(rule, pickup, pickups) {
-    const entities = resolveInputGateScope(rule.scope, pickup, pickups, rule.link);
+/** @param {InputGateRule} rule @param {object} prop @param {object[]} worldProps */
+export function evaluateInputGateRule(rule, prop, worldProps) {
+    const entities = resolveInputGateScope(rule.scope, prop, worldProps, rule.link);
     if (entities.length === 0) return true;
     return scopePassesUntil(entities, rule.until, rule.excludeStates);
 }
 /**
  * @param {string} behaviorId
- * @param {object} pickup
+ * @param {object} prop
  * @param {object | null | undefined} asset
  * @param {import("./SandboxHostPort.js").SandboxHostPort} host
  */
-export function evaluateInputGates(behaviorId, pickup, asset, host) {
-    const rules = resolvePickupInputGateRules(pickup, asset, behaviorId);
+export function evaluateInputGates(behaviorId, prop, asset, host) {
+    const rules = resolveWorldPropInputGateRules(prop, asset, behaviorId);
     if (rules.length === 0) return { allowed: true };
-    const pickups = host.getPickups();
+    const worldProps = host.getProps();
     for (let i = 0; i < rules.length; i++) {
         const rule = rules[i];
-        if (!evaluateInputGateRule(rule, pickup, pickups)) return { allowed: false, failedRule: rule };
+        if (!evaluateInputGateRule(rule, prop, worldProps)) return { allowed: false, failedRule: rule };
     }
     return { allowed: true };
 }

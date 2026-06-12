@@ -25,7 +25,7 @@ function isCueStrikeAimTarget(body) {
 export function buildCueStrikeCircleTargets(shooter, registry, defaultRadius = 8) {
     const shooterRadius = shooter?.radius ?? defaultRadius;
     const targets = [];
-    registry.forEachOfKind("pickup", (body) => {
+    registry.forEachOfKind("worldProp", (body) => {
         if (body === shooter || !isCueStrikeAimTarget(body)) return;
         targets.push({ x: body.x, y: body.y, radius: body.radius ?? shooterRadius });
     });
@@ -68,7 +68,7 @@ export function buildCueStrikeAimLineContext(cueBall, state, { tableWidth, table
     if (!cueBall || !state) return null;
     const radius = cueBall.radius;
     return {
-        pickup: cueBall,
+        prop: cueBall,
         radius,
         circleTargets: buildCueStrikeCircleTargets(cueBall, state.entityRegistry, radius),
         wallCtx: wallContextFromState(state),
@@ -81,15 +81,15 @@ export function buildCueStrikeAimLineContext(cueBall, state, { tableWidth, table
  */
 export function getCueStrikeAimLine(preview, aimLineContext) {
     if (!preview || preview.power <= 0 || !aimLineContext) return null;
-    const pickup = aimLineContext.pickup;
+    const prop = aimLineContext.prop;
     return computeCueStrikeAimLineSegment({
-        originX: pickup?.x ?? preview.anchorX,
-        originY: pickup?.y ?? preview.anchorY,
+        originX: prop?.x ?? preview.anchorX,
+        originY: prop?.y ?? preview.anchorY,
         radius: aimLineContext.radius,
         nx: preview.nx,
         ny: preview.ny,
         strikePower: preview.power,
-        strategy: pickup?.strategy ?? {},
+        strategy: prop?.strategy ?? {},
         wallCtx: aimLineContext.wallCtx,
         circleTargets: aimLineContext.circleTargets,
         maxRayDist: aimLineContext.maxRayDist,

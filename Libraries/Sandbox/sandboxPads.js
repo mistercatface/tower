@@ -32,8 +32,8 @@ export function parseSandboxPadPreset(spawnId) {
 /** @param {object} state @param {object} pad */
 function padHasOccupant(state, pad) {
     for (const entityId of pad._occupants) {
-        const pickup = state.entityRegistry.get(entityId);
-        if (pickup && !pickup.isDead) return true;
+        const prop = state.entityRegistry.get(entityId);
+        if (prop && !prop.isDead) return true;
     }
     return false;
 }

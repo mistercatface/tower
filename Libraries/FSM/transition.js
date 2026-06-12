@@ -1,5 +1,5 @@
 /**
- * Shared enter/exit transitions for entity-level state machines (actors, pickups, …).
+ * Shared enter/exit transitions for entity-level state machines (actors, worldProps, …).
  */
 export function transitionEntity(host, states, name, stateDataInit = null) {
     if (host.currentState?.onExit) host.currentState.onExit(host);

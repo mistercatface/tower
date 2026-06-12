@@ -6,34 +6,34 @@ export function createRollToCursorDirectBehavior() {
     let active = false;
     return {
         id: ROLL_TO_CURSOR_DIRECT_BEHAVIOR_ID,
-        onPointerDown(pickup, world) {
+        onPointerDown(prop, world) {
             active = true;
             targetWorld = { x: world.x, y: world.y };
             return true;
         },
-        onPointerMove(pickup, world) {
+        onPointerMove(prop, world) {
             if (!active) return;
             targetWorld = { x: world.x, y: world.y };
         },
-        onPointerUp(pickup) {
+        onPointerUp(prop) {
             active = false;
             targetWorld = null;
         },
-        tick(pickup, dt) {
+        tick(prop, dt) {
             if (!active || !targetWorld) return;
-            const config = getRollToCursorConfig(pickup);
-            const dx = targetWorld.x - pickup.x;
-            const dy = targetWorld.y - pickup.y;
+            const config = getRollToCursorConfig(prop);
+            const dx = targetWorld.x - prop.x;
+            const dy = targetWorld.y - prop.y;
             const dist = Math.hypot(dx, dy);
             if (dist < config.stopRadius) {
-                decelerateRoll(pickup, dt, config);
+                decelerateRoll(prop, dt, config);
                 return;
             }
-            steerRollToward(pickup, dx / dist, dy / dist, dt, config);
+            steerRollToward(prop, dx / dist, dy / dist, dt, config);
         },
-        getPathOverlay(pickup) {
+        getPathOverlay(prop) {
             if (!active || !targetWorld) return null;
-            return { mode: "direct", fromX: pickup.x, fromY: pickup.y, targetX: targetWorld.x, targetY: targetWorld.y };
+            return { mode: "direct", fromX: prop.x, fromY: prop.y, targetX: targetWorld.x, targetY: targetWorld.y };
         },
         reset() {
             active = false;

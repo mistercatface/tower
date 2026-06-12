@@ -26,8 +26,8 @@ export const ProjectileStrategies = {
             if (target.health <= damage && p.penetration > 0) p.penetration--;
             else p.isDead = true;
         },
-        onPickupCollision(p, state, pickup, events) {
-            return pickup.strategy.onHit(state, pickup, p, events);
+        onWorldPropCollision(p, state, prop, events) {
+            return prop.strategy.onHit(state, prop, p, events);
         },
         render(p, ctx) {
             drawProjectileTracer(ctx, p);

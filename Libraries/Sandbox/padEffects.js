@@ -1,5 +1,5 @@
 import { Segment } from "../../Entities/Wall.js";
-import { CAPTURED_SINK_DURATION_MS } from "../../Entities/pickupVoidSinkState.js";
+import { CAPTURED_SINK_DURATION_MS } from "../../Entities/worldPropVoidSinkState.js";
 import { createAabb } from "../Math/Aabb2D.js";
 import { forEachObstacleGridCellInAabb } from "../Spatial/grid/GridCoords.js";
 import { canEntityFitVoidPit, isInsideVoidMouth, isVoidSinkCaptured } from "../Spatial/zones/pit.js";
@@ -9,7 +9,7 @@ import { releaseFlipper, triggerFlipper } from "./behaviors/flipperBehavior.js";
 import { getButtonPadLinks } from "./sandboxPadLinks.js";
 import { addSandboxWalls, removeSandboxWalls } from "./spawnAssembly.js";
 import { buttonEffectiveActive, isSustainedFlipperButtonInputMode } from "./buttonPad.js";
-import { fireSpawner, isSpawnerPickup } from "./spawnerConfig.js";
+import { fireSpawner, isSpawnerWorldProp } from "./spawnerConfig.js";
 /** @typedef {import("./padPresets.js").PadTriggerDef} PadTriggerDef */
 const padStampScratch = createAabb();
 /**
@@ -90,34 +90,34 @@ export function syncSandboxPadPower(state) {
         syncPullPadWalls(state, pad);
     }
 }
-/** @param {object} pickup @param {object} pad */
-function beginSink(pickup, pad) {
-    if (pickup.isDead || pickup.currentStateName === "voidSink") return;
-    if (!canEntityFitVoidPit(pad.shape.radius, pickup)) return;
-    pickup.voidX = pad.x;
-    pickup.voidY = pad.y;
-    pickup.voidRadius = pad.shape.radius;
-    pickup.voidDepth = pad.sinkDepth;
-    pickup.voidCaptureTolerance = pad.captureTolerance;
-    pickup.voidCaptured = isVoidSinkCaptured(pad.x, pad.y, pad.shape.radius, pickup, pad.captureTolerance);
-    if (pickup.voidCaptured) pickup.voidSinkTimer = CAPTURED_SINK_DURATION_MS;
-    else delete pickup.voidSinkTimer;
-    pickup.changeState("voidSink");
+/** @param {object} prop @param {object} pad */
+function beginSink(prop, pad) {
+    if (prop.isDead || prop.currentStateName === "voidSink") return;
+    if (!canEntityFitVoidPit(pad.shape.radius, prop)) return;
+    prop.voidX = pad.x;
+    prop.voidY = pad.y;
+    prop.voidRadius = pad.shape.radius;
+    prop.voidDepth = pad.sinkDepth;
+    prop.voidCaptureTolerance = pad.captureTolerance;
+    prop.voidCaptured = isVoidSinkCaptured(pad.x, pad.y, pad.shape.radius, prop, pad.captureTolerance);
+    if (prop.voidCaptured) prop.voidSinkTimer = CAPTURED_SINK_DURATION_MS;
+    else delete prop.voidSinkTimer;
+    prop.changeState("voidSink");
 }
 /** @param {object} state @param {number} entityId @param {object} pad */
 function rimOutSink(state, entityId, pad) {
-    const pickup = state.entityRegistry.get(entityId);
-    if (!pickup || pickup.currentStateName !== "voidSink" || pickup.voidCaptured) return;
-    if (isInsideVoidMouth(pad.x, pad.y, pad.shape.radius, pickup)) return;
-    pickup.changeState("normal");
+    const prop = state.entityRegistry.get(entityId);
+    if (!prop || prop.currentStateName !== "voidSink" || prop.voidCaptured) return;
+    if (isInsideVoidMouth(pad.x, pad.y, pad.shape.radius, prop)) return;
+    prop.changeState("normal");
 }
-/** @param {object} state @param {import("./sandboxPadLinks.js").ButtonLinkPickupTarget} link @param {object} buttonPad */
-function runButtonPickupLink(state, link, buttonPad) {
-    const pickup = state.entityRegistry.getLive(link.id);
-    if (!pickup || isSpawnerPickup(pickup)) return;
+/** @param {object} state @param {import("./sandboxPadLinks.js").ButtonLinkWorldPropTarget} link @param {object} buttonPad */
+function runButtonWorldPropLink(state, link, buttonPad) {
+    const prop = state.entityRegistry.getLive(link.id);
+    if (!prop || isSpawnerWorldProp(prop)) return;
     if (isSustainedFlipperButtonInputMode(buttonPad.inputMode)) return;
-    if (buttonPad.invert) releaseFlipper(pickup);
-    else triggerFlipper(pickup, { hold: false });
+    if (buttonPad.invert) releaseFlipper(prop);
+    else triggerFlipper(prop, { hold: false });
 }
 /** @param {object} state @param {object} buttonPad */
 export function tickButtonSpawnerLinks(state, buttonPad) {
@@ -127,10 +127,10 @@ export function tickButtonSpawnerLinks(state, buttonPad) {
         const links = getButtonPadLinks(buttonPad);
         for (let i = 0; i < links.length; i++) {
             const link = links[i];
-            if (link.type !== "pickup") continue;
-            const pickup = state.entityRegistry.getLive(link.id);
-            if (!pickup || !isSpawnerPickup(pickup)) continue;
-            fireSpawner(state, pickup);
+            if (link.type !== "worldProp") continue;
+            const prop = state.entityRegistry.getLive(link.id);
+            if (!prop || !isSpawnerWorldProp(prop)) continue;
+            fireSpawner(state, prop);
         }
     }
     buttonPad._spawnerButtonWasActive = active;
@@ -141,11 +141,11 @@ export function syncButtonFlipperLinks(state, buttonPad) {
     const links = getButtonPadLinks(buttonPad);
     for (let i = 0; i < links.length; i++) {
         const link = links[i];
-        if (link.type !== "pickup") continue;
-        const pickup = state.entityRegistry.getLive(link.id);
-        if (!pickup || isSpawnerPickup(pickup)) continue;
-        if (active) triggerFlipper(pickup);
-        else releaseFlipper(pickup);
+        if (link.type !== "worldProp") continue;
+        const prop = state.entityRegistry.getLive(link.id);
+        if (!prop || isSpawnerWorldProp(prop)) continue;
+        if (active) triggerFlipper(prop);
+        else releaseFlipper(prop);
     }
 }
 /** @type {Record<string, { run: (state: object, pad: object, trigger: PadTriggerDef, ctx: PadEffectContext) => void }>} */
@@ -165,12 +165,12 @@ const PAD_EFFECTS = {
             const { forceX, forceY } = trigger;
             const dtSec = ctx.dtSec;
             for (const entityId of pad._occupants) {
-                const pickup = state.entityRegistry.get(entityId);
-                if (!pickup || pickup.isDead || pickup.strategy.gravityImmune) continue;
-                wakePushableBody(pickup);
-                if (pickup.isSleeping) continue;
-                pickup.vx += forceX * dtSec;
-                pickup.vy += forceY * dtSec;
+                const prop = state.entityRegistry.get(entityId);
+                if (!prop || prop.isDead || prop.strategy.gravityImmune) continue;
+                wakePushableBody(prop);
+                if (prop.isSleeping) continue;
+                prop.vx += forceX * dtSec;
+                prop.vy += forceY * dtSec;
             }
         },
     },
@@ -179,7 +179,7 @@ const PAD_EFFECTS = {
             const links = getButtonPadLinks(pad);
             for (let i = 0; i < links.length; i++) {
                 const link = links[i];
-                if (link.type === "pickup") runButtonPickupLink(state, link, pad);
+                if (link.type === "worldProp") runButtonWorldPropLink(state, link, pad);
             }
         },
     },

@@ -14,7 +14,7 @@
  * @property {PairFilterConfig} combatant
  * @property {PairFilterConfig} chargeImpact
  * @property {PairFilterConfig} projectileHitActor
- * @property {PairFilterConfig} projectileHitPickup
+ * @property {PairFilterConfig} projectileHitWorldProp
  */
 /**
  * @typedef {object} TargetingPort

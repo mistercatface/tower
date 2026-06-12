@@ -4,7 +4,7 @@ import { Projectile } from "../../Entities/Projectile.js";
 /**
  * Spawns projectiles for a given gun and loadout.
  * @param {object} state The game state
- * @param {object} source The actor/pickup firing
+ * @param {object} source The actor/worldProp firing
  * @param {{ tx: number, ty: number, baseAngle: number, gun: object, radiusMultiplier: number, angleOffsets: number[], faction: string, penetration?: number }} params
  */
 export function spawnProjectilesFromGun(state, source, { tx, ty, baseAngle, gun, radiusMultiplier, angleOffsets, faction, penetration = 0 }) {

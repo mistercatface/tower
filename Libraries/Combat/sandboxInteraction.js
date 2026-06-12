@@ -6,7 +6,7 @@ import {
     excludeSameTeam,
     excludeSameFaction,
     excludePushableOther,
-    requirePickupOnHit,
+    requireWorldPropOnHit,
     requireActorOther
 } from "../Interaction/pairRuleClauses.js";
 import { areHostile, inferFaction } from "./sandboxTargeting.js";
@@ -16,7 +16,7 @@ import { sandboxHostilePairs } from "./sandboxTargeting.js";
 
 export const combatResolvers = { faction: inferFaction };
 export const sandboxPairResolvers = {
-    hostileDamageablePickup(self, other) {
+    hostileDamageableWorldProp(self, other) {
         if (other.maxHealth == null) return false;
         return areHostile(self, other);
     },
@@ -35,17 +35,17 @@ export const SANDBOX_SEPARATION = /** @type {PairFilterConfig} */ (
 
 export const SANDBOX_CHARGE_IMPACT = SANDBOX_HOSTILE_PAIR;
 
-// Hostile projectiles damage sandbox combat pickups (humanoids, etc.) via faction collision.
-export const requireDamageablePickup = { inclusions: [{ target: "other", has: "maxHealth" }] };
-export const SANDBOX_PROJECTILE_HIT_ACTOR = /** @type {PairFilterConfig} */ (mergePairFilter(SANDBOX_HOSTILE_PAIR, requireDamageablePickup));
-export const excludeHostileDamageablePickup = { exclusions: [{ target: "pair", pairResolve: "hostileDamageablePickup" }] };
-export const SANDBOX_PROJECTILE_HIT_PICKUP = /** @type {PairFilterConfig} */ (
-    mergePairFilter(withCombatResolvers, excludeDeadOther, requirePickupOnHit, excludeHostileDamageablePickup)
+// Hostile projectiles damage sandbox combat world props (humanoids, etc.) via faction collision.
+export const requireDamageableWorldProp = { inclusions: [{ target: "other", has: "maxHealth" }] };
+export const SANDBOX_PROJECTILE_HIT_ACTOR = /** @type {PairFilterConfig} */ (mergePairFilter(SANDBOX_HOSTILE_PAIR, requireDamageableWorldProp));
+export const excludeHostileDamageableWorldProp = { exclusions: [{ target: "pair", pairResolve: "hostileDamageableWorldProp" }] };
+export const SANDBOX_PROJECTILE_HIT_WORLD_PROP = /** @type {PairFilterConfig} */ (
+    mergePairFilter(withCombatResolvers, excludeDeadOther, requireWorldPropOnHit, excludeHostileDamageableWorldProp)
 );
 
 export const sandboxInteractionPairs = {
     separation: SANDBOX_SEPARATION,
     chargeImpact: SANDBOX_CHARGE_IMPACT,
     projectileHitActor: SANDBOX_PROJECTILE_HIT_ACTOR,
-    projectileHitPickup: SANDBOX_PROJECTILE_HIT_PICKUP,
+    projectileHitWorldProp: SANDBOX_PROJECTILE_HIT_WORLD_PROP,
 };

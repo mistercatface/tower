@@ -13,48 +13,48 @@ export function createRollToCursorHpaBehavior() {
     };
     return {
         id: ROLL_TO_CURSOR_HPA_BEHAVIOR_ID,
-        onPointerDown(pickup, world) {
+        onPointerDown(prop, world) {
             dragging = true;
             targetWorld = { x: world.x, y: world.y };
             hpaNav.reset();
             return true;
         },
-        onPointerMove(pickup, world) {
+        onPointerMove(prop, world) {
             if (!dragging || !targetWorld) return;
             targetWorld = { x: world.x, y: world.y };
         },
         onPointerUp() {
             dragging = false;
         },
-        tick(pickup, dt, host) {
+        tick(prop, dt, host) {
             if (!targetWorld) return;
-            const config = getRollToCursorConfig(pickup, { stopRadius: 8 });
-            const distToTarget = Math.hypot(targetWorld.x - pickup.x, targetWorld.y - pickup.y);
+            const config = getRollToCursorConfig(prop, { stopRadius: 8 });
+            const distToTarget = Math.hypot(targetWorld.x - prop.x, targetWorld.y - prop.y);
             const isFinalLeg = !hpaNav.navState.path || hpaNav.navState.pathProgressIdx >= hpaNav.navState.path.length - 1;
             if (isFinalLeg && distToTarget <= config.stopRadius) {
-                decelerateRoll(pickup, dt, config);
-                const speed = Math.hypot(pickup.vx ?? 0, pickup.vy ?? 0);
+                decelerateRoll(prop, dt, config);
+                const speed = Math.hypot(prop.vx ?? 0, prop.vy ?? 0);
                 if (speed < 0.5) clearTarget();
                 return;
             }
-            hpaNav.update(pickup, targetWorld.x, targetWorld.y, host, dt * 1000);
-            const steering = hpaNav.getSteering(pickup, targetWorld.x, targetWorld.y, {
-                pathWaypointArrival: Math.max(12, (pickup.radius ?? 6) * 1.5),
+            hpaNav.update(prop, targetWorld.x, targetWorld.y, host, dt * 1000);
+            const steering = hpaNav.getSteering(prop, targetWorld.x, targetWorld.y, {
+                pathWaypointArrival: Math.max(12, (prop.radius ?? 6) * 1.5),
                 arrivalDistance: config.stopRadius,
                 pathOffPathDistance: 80,
             });
             if (!steering || (steering.desiredX === 0 && steering.desiredY === 0)) {
-                decelerateRoll(pickup, dt, config);
+                decelerateRoll(prop, dt, config);
                 return;
             }
-            steerRollToward(pickup, steering.desiredX, steering.desiredY, dt, config);
+            steerRollToward(prop, steering.desiredX, steering.desiredY, dt, config);
         },
-        getPathOverlay(pickup) {
+        getPathOverlay(prop) {
             if (!targetWorld) return null;
             return {
                 mode: "hpa",
-                fromX: pickup.x,
-                fromY: pickup.y,
+                fromX: prop.x,
+                fromY: prop.y,
                 targetX: targetWorld.x,
                 targetY: targetWorld.y,
                 waypoints: hpaNav.navState.path ?? undefined,

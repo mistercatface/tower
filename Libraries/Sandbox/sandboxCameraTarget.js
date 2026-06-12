@@ -1,25 +1,25 @@
-/** @param {object | null | undefined} pickup */
-export function isSandboxCameraTarget(pickup) {
-    return Boolean(pickup?.sandboxCameraTarget);
+/** @param {object | null | undefined} prop */
+export function isSandboxCameraTarget(prop) {
+    return Boolean(prop?.sandboxCameraTarget);
 }
 /**
- * @param {object} pickup
+ * @param {object} prop
  * @param {boolean} enabled
  * @param {import("../../GameState/EntityRegistry.js").EntityRegistry} registry
  */
-export function setSandboxCameraTarget(pickup, enabled, registry) {
+export function setSandboxCameraTarget(prop, enabled, registry) {
     if (enabled) {
-        registry.forEachOfKind("pickup", (other) => {
-            if (other !== pickup) other.sandboxCameraTarget = false;
+        registry.forEachOfKind("worldProp", (other) => {
+            if (other !== prop) other.sandboxCameraTarget = false;
         });
-        pickup.sandboxCameraTarget = true;
-    } else pickup.sandboxCameraTarget = false;
+        prop.sandboxCameraTarget = true;
+    } else prop.sandboxCameraTarget = false;
 }
 /** @param {import("../../GameState/EntityRegistry.js").EntityRegistry} registry */
-export function findSandboxCameraTargetPickup(registry) {
+export function findSandboxCameraTargetWorldProp(registry) {
     let target = null;
-    registry.forEachOfKind("pickup", (pickup) => {
-        if (!pickup.isDead && pickup.sandboxCameraTarget) target = pickup;
+    registry.forEachOfKind("worldProp", (prop) => {
+        if (!prop.isDead && prop.sandboxCameraTarget) target = prop;
     });
     return target;
 }
@@ -29,7 +29,7 @@ export function findSandboxCameraTargetPickup(registry) {
  * @param {number} dtMs
  */
 export function tickSandboxCameraFollow(viewport, registry, dtMs) {
-    const target = findSandboxCameraTargetPickup(registry);
+    const target = findSandboxCameraTargetWorldProp(registry);
     if (!target) return;
     const factor = 1 - Math.exp(-8 * (dtMs / 1000));
     viewport.follow(target.x, target.y, factor);

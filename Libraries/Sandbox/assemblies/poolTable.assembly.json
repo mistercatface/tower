@@ -26,7 +26,7 @@
         { "id": "void-right", "preset": "sink", "radius": 5.5, "depth": 6, "captureTolerance": 0.45, "at": { "anchor": "playfield.right" } },
         { "id": "void-br", "preset": "sink", "radius": 6, "depth": 6, "captureTolerance": 0.45, "at": { "anchor": "playfield.bottomRight" } }
     ],
-    "pickups": [
+    "worldProps": [
         {
             "id": "cue",
             "prop": "pool_cue_ball",
@@ -161,7 +161,7 @@
                         "until": "atRest"
                     },
                     {
-                        "scope": "groupPickups",
+                        "scope": "groupWorldProps",
                         "link": "sandboxGroupId",
                         "until": "allAtRest",
                         "excludeStates": [

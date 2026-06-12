@@ -1,70 +1,70 @@
-import { steerLocomotionPickup, stopLocomotionPickup, usesLocomotionPickup } from "../Props/locomotionPickup.js";
+import { steerLocomotionWorldProp, stopLocomotionWorldProp, usesLocomotionWorldProp } from "../Props/locomotionWorldProp.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { getCanvasLineScale } from "../Render/common/viewportUtils.js";
 import { strokeCircle, strokeSegment } from "../Canvas/CanvasPath.js";
 const ROLL_TO_CURSOR_DEFAULTS = { maxSpeed: 180, accel: 600, stopRadius: 6 };
-/** @param {object} pickup @param {object} [overrides] */
-export function getRollToCursorConfig(pickup, overrides = {}) {
-    return { ...ROLL_TO_CURSOR_DEFAULTS, ...pickup.strategy?.rollToCursor, ...overrides };
+/** @param {object} prop @param {object} [overrides] */
+export function getRollToCursorConfig(prop, overrides = {}) {
+    return { ...ROLL_TO_CURSOR_DEFAULTS, ...prop.strategy?.rollToCursor, ...overrides };
 }
-/** @param {object} pickup */
-export function applyRollSpin(pickup) {
-    if (!pickup.strategy?.rolls) return;
-    const speed = Math.hypot(pickup.vx, pickup.vy);
-    pickup.angularVelocity = (speed / (pickup.radius || 8)) * 0.12;
+/** @param {object} prop */
+export function applyRollSpin(prop) {
+    if (!prop.strategy?.rolls) return;
+    const speed = Math.hypot(prop.vx, prop.vy);
+    prop.angularVelocity = (speed / (prop.radius || 8)) * 0.12;
 }
 /**
- * @param {object} pickup
+ * @param {object} prop
  * @param {number} dt
  * @param {{ accel: number }} config
  * @returns {boolean} true when the body was still moving
  */
-export function decelerateRoll(pickup, dt, config) {
-    if (stopLocomotionPickup(pickup)) return Math.hypot(pickup.vx ?? 0, pickup.vy ?? 0) > 0;
-    const speed = Math.hypot(pickup.vx, pickup.vy);
+export function decelerateRoll(prop, dt, config) {
+    if (stopLocomotionWorldProp(prop)) return Math.hypot(prop.vx ?? 0, prop.vy ?? 0) > 0;
+    const speed = Math.hypot(prop.vx, prop.vy);
     if (speed <= 0) return false;
     const decel = config.accel * dt * 2;
     if (speed <= decel) {
-        pickup.vx = 0;
-        pickup.vy = 0;
-        pickup.angularVelocity = 0;
+        prop.vx = 0;
+        prop.vy = 0;
+        prop.angularVelocity = 0;
     } else {
-        pickup.vx -= (pickup.vx / speed) * decel;
-        pickup.vy -= (pickup.vy / speed) * decel;
-        applyRollSpin(pickup);
+        prop.vx -= (prop.vx / speed) * decel;
+        prop.vy -= (prop.vy / speed) * decel;
+        applyRollSpin(prop);
     }
-    wakePushableBody(pickup);
+    wakePushableBody(prop);
     return true;
 }
 /**
- * @param {object} pickup
+ * @param {object} prop
  * @param {number} dirX unit direction x
  * @param {number} dirY unit direction y
  * @param {number} dt
  * @param {{ maxSpeed: number, accel: number }} config
  */
-export function steerRollToward(pickup, dirX, dirY, dt, config) {
-    if (usesLocomotionPickup(pickup)) {
-        steerLocomotionPickup(pickup, dirX, dirY, config);
+export function steerRollToward(prop, dirX, dirY, dt, config) {
+    if (usesLocomotionWorldProp(prop)) {
+        steerLocomotionWorldProp(prop, dirX, dirY, config);
         return;
     }
     const targetVx = dirX * config.maxSpeed;
     const targetVy = dirY * config.maxSpeed;
-    const dvx = targetVx - pickup.vx;
-    const dvy = targetVy - pickup.vy;
+    const dvx = targetVx - prop.vx;
+    const dvy = targetVy - prop.vy;
     const diff = Math.hypot(dvx, dvy);
     if (diff > 0) {
         const step = config.accel * dt;
         if (diff <= step) {
-            pickup.vx = targetVx;
-            pickup.vy = targetVy;
+            prop.vx = targetVx;
+            prop.vy = targetVy;
         } else {
-            pickup.vx += (dvx / diff) * step;
-            pickup.vy += (dvy / diff) * step;
+            prop.vx += (dvx / diff) * step;
+            prop.vy += (dvy / diff) * step;
         }
     }
-    applyRollSpin(pickup);
-    wakePushableBody(pickup);
+    applyRollSpin(prop);
+    wakePushableBody(prop);
 }
 /**
  * @param {CanvasRenderingContext2D} ctx

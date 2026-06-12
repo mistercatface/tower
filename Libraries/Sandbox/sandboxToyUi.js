@@ -2,7 +2,7 @@ import { getPropAsset, getWorldPropDefinitions } from "../Props/PropCatalog.js";
 import { SANDBOX_DEFAULT_FACTION, SANDBOX_FACTION_OPTIONS, formatSandboxFactionLabel, resolveSandboxFaction } from "../Combat/sandboxTargeting.js";
 import { getSandboxBehaviorLabel, isSandboxEquippable, isSandboxSpawnable } from "./sandboxCapabilities.js";
 import { isSpawnerProp, listSpawnerSpawnPropIds, resolveSpawnerPropId } from "./spawnerConfig.js";
-import { appendSandboxPickupInspectorFields, appendTranslateFields } from "./sandboxPickupInspector.js";
+import { appendSandboxWorldPropInspectorFields, appendTranslateFields } from "./sandboxWorldPropInspector.js";
 import { PAD_PRESETS } from "./padPresets.js";
 import { renderSandboxEquipPanel } from "./sandboxEquipPanel.js";
 import { SANDBOX_PATH_VISUAL_LABELS, SANDBOX_PATH_VISUAL_OPTIONS } from "./sandboxPathVisual.js";
@@ -282,9 +282,9 @@ export function mountSandboxToyUi(container, controller, onChange) {
             if (openSections.size > 0) return openSections.has(id);
             return isFirstRender ? fallback : openSections.has(id);
         };
-        const selectedId = controller.getSelectedPickupId();
+        const selectedId = controller.getSelectedPropId();
         const selectedPadId = controller.getSelectedPadId();
-        const selectedPickup = controller.getSelectedPickup();
+        const selectedProp = controller.getSelectedProp();
         appendSection(container, "spawn", "Spawn", sectionOpen("spawn"), (body) => {
             const addRow = document.createElement("div");
             addRow.className = "sandbox-add-row";
@@ -340,20 +340,20 @@ export function mountSandboxToyUi(container, controller, onChange) {
             addRow.appendChild(addBtn);
             body.appendChild(addRow);
         });
-        const placed = controller.listPlacedPickups();
+        const placed = controller.listPlacedProps();
         const sandboxPads = controller.listSandboxPads();
         const assemblies = controller.listAssemblies();
         appendSection(container, "scene", "Scene", sectionOpen("scene"), (body) => {
-            appendSubhead(body, "Pickups");
+            appendSubhead(body, "Props");
             appendEntityList(
                 body,
                 placed.map((entry) => ({
                     label: `${entry.label} · ${formatSandboxFactionLabel(entry.faction)}`,
                     selected: entry.id === selectedId,
-                    onSelect: () => controller.setSelectedPickupId(entry.id),
-                    onDelete: () => controller.deletePickupById(entry.id),
+                    onSelect: () => controller.setSelectedPropId(entry.id),
+                    onDelete: () => controller.deletePropById(entry.id),
                 })),
-                "No pickups placed yet.",
+                "No props placed yet.",
             );
             appendSubhead(body, "Pads");
             appendEntityList(
@@ -372,9 +372,9 @@ export function mountSandboxToyUi(container, controller, onChange) {
                     body,
                     assemblies.map((entry) => ({
                         label: entry.label,
-                        selected: entry.defaultPickupId === selectedId,
+                        selected: entry.defaultPropId === selectedId,
                         onSelect: () => {
-                            if (entry.defaultPickupId != null) controller.setSelectedPickupId(entry.defaultPickupId);
+                            if (entry.defaultPropId != null) controller.setSelectedPropId(entry.defaultPropId);
                         },
                         onDelete: () => controller.deleteAssemblyById(entry.id),
                     })),
@@ -384,23 +384,23 @@ export function mountSandboxToyUi(container, controller, onChange) {
         });
         appendSection(container, "selected", "Selected", sectionOpen("selected", true), (body) => {
             if (renderSelectedPadInspector(body, controller, onChange)) return;
-            if (!selectedPickup) {
+            if (!selectedProp) {
                 const empty = document.createElement("p");
                 empty.className = "editor-hint";
-                empty.textContent = "Select a pickup or pad from Scene.";
+                empty.textContent = "Select a prop or pad from Scene.";
                 body.appendChild(empty);
                 return;
             }
             const behaviorIds = controller.listSelectedBehaviors();
             appendFactionSelect(body, {
-                value: resolveSandboxFaction(selectedPickup),
+                value: resolveSandboxFaction(selectedProp),
                 onChange: (faction) => {
-                    selectedPickup.faction = faction;
+                    selectedProp.faction = faction;
                     controller.sync?.();
                     onChange();
                 },
             });
-            appendSandboxPickupInspectorFields(body, selectedPickup, { sync: () => controller.sync?.(), onChange });
+            appendSandboxWorldPropInspectorFields(body, selectedProp, { sync: () => controller.sync?.(), onChange });
             if (behaviorIds.length > 0)
                 appendSelectField(body, "Mode", {
                     value: controller.getSelectedBehaviorId(),
@@ -410,15 +410,15 @@ export function mountSandboxToyUi(container, controller, onChange) {
                         onChange();
                     },
                 });
-            const selectedAsset = getPropAsset(selectedPickup.type);
+            const selectedAsset = getPropAsset(selectedProp.type);
             if (isSpawnerProp(selectedAsset)) {
                 const spawnPropIds = listSpawnerSpawnPropIds();
                 if (spawnPropIds.length)
                     appendSelectField(body, "Spawn prop", {
-                        value: resolveSpawnerPropId(selectedPickup, selectedAsset),
+                        value: resolveSpawnerPropId(selectedProp, selectedAsset),
                         options: spawnPropIds.map((id) => ({ value: id, label: id.replace(/_/g, " ") })),
                         onChange: (value) => {
-                            selectedPickup.sandboxSpawnerPropId = value;
+                            selectedProp.sandboxSpawnerPropId = value;
                             controller.sync?.();
                             onChange();
                         },
@@ -428,25 +428,25 @@ export function mountSandboxToyUi(container, controller, onChange) {
             focusField.className = "param-field check-inline";
             const focusCheckbox = document.createElement("input");
             focusCheckbox.type = "checkbox";
-            focusCheckbox.checked = controller.isCameraTarget(selectedPickup);
+            focusCheckbox.checked = controller.isCameraTarget(selectedProp);
             focusCheckbox.addEventListener("change", () => {
-                controller.setCameraTarget(focusCheckbox.checked, selectedPickup);
+                controller.setCameraTarget(focusCheckbox.checked, selectedProp);
                 onChange();
             });
             focusField.append(focusCheckbox, document.createTextNode(" Focus"));
             body.appendChild(focusField);
             appendSelectField(body, "Path visual", {
-                value: controller.getPathVisual(selectedPickup),
+                value: controller.getPathVisual(selectedProp),
                 options: SANDBOX_PATH_VISUAL_OPTIONS.map((optionId) => ({ value: optionId, label: SANDBOX_PATH_VISUAL_LABELS[optionId] })),
                 onChange: (value) => {
-                    controller.setPathVisual(value, selectedPickup);
+                    controller.setPathVisual(value, selectedProp);
                     onChange();
                 },
             });
-            if (isSandboxEquippable(getPropAsset(selectedPickup.type))) {
+            if (isSandboxEquippable(getPropAsset(selectedProp.type))) {
                 const equipPanel = document.createElement("div");
                 equipPanel.className = "sandbox-equip-panel";
-                renderSandboxEquipPanel(equipPanel, selectedPickup, () => {
+                renderSandboxEquipPanel(equipPanel, selectedProp, () => {
                     controller.sync?.();
                     onChange();
                 });

@@ -11,14 +11,14 @@ const collisionPipelineHooks = {
     get projectiles() {
         return collisionRunCtx.state.projectiles;
     },
-    get projectilePickupFilter() {
-        return getInteractionPairFilter("projectileHitPickup");
+    get projectileWorldPropFilter() {
+        return getInteractionPairFilter("projectileHitWorldProp");
     },
     onProjectileWallHit(p, segment, events) {
         p.strategy.onWallCollision(p, collisionRunCtx.state, segment, events);
     },
-    onProjectilePickupHit(p, pickup, events) {
-        return p.strategy.onPickupCollision(p, collisionRunCtx.state, pickup, events);
+    onProjectileWorldPropHit(p, prop, events) {
+        return p.strategy.onWorldPropCollision(p, collisionRunCtx.state, prop, events);
     },
     onProjectileFactionCollisions(p, events) {
         p.resolveFactionCollisions(collisionRunCtx.state, events, collisionRunCtx.spatialFrame);

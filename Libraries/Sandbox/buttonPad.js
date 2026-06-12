@@ -18,9 +18,9 @@ export function isSustainedFlipperButtonInputMode(inputMode) {
 export function buttonPadMass(state, pad) {
     let total = 0;
     for (const entityId of pad._occupants) {
-        const pickup = state.entityRegistry.get(entityId);
-        if (!pickup || pickup.isDead) continue;
-        total += massFromBody(pickup);
+        const prop = state.entityRegistry.get(entityId);
+        if (!prop || prop.isDead) continue;
+        total += massFromBody(prop);
     }
     return total;
 }

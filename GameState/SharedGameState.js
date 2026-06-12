@@ -38,7 +38,7 @@ export class SharedGameState {
         this.debugMode = false;
         this.radioSeenThisRun = {};
         this.walls = [];
-        this.pickups = [];
+        this.worldProps = [];
         this.entityRegistry = new EntityRegistry();
         this.staticOccupancyLayers = [];
         this.staticOccupancyRevision = 0;

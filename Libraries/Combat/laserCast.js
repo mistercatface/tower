@@ -2,16 +2,16 @@ import { wallContextFromState } from "../Spatial/query/wallContext.js";
 import { castSteppedCircleRay } from "../Spatial/query/steppedCircleRayCast.js";
 /**
  * @param {object} state
- * @param {{ source?: object | null, includePickups?: boolean, includeActors?: object[] }} [options]
+ * @param {{ source?: object | null, includeWorldProps?: boolean, includeActors?: object[] }} [options]
  */
-export function buildLaserTargetCircles(state, { source = null, includePickups = true, includeActors = [] } = {}) {
+export function buildLaserTargetCircles(state, { source = null, includeWorldProps = true, includeActors = [] } = {}) {
     /** @type {import("../Spatial/query/steppedCircleRayCast.js").SteppedCircleRayCircleTarget[]} */
     const circles = [];
-    if (includePickups)
-        state.entityRegistry.forEachOfKind("pickup", (pickup) => {
-            if (pickup.isDead || !pickup.strategy?.laserTargetable) return;
-            if (source && pickup === source) return;
-            circles.push({ entity: pickup, radius: pickup.radius, hitKind: "pickup" });
+    if (includeWorldProps)
+        state.entityRegistry.forEachOfKind("worldProp", (prop) => {
+            if (prop.isDead || !prop.strategy?.laserTargetable) return;
+            if (source && prop === source) return;
+            circles.push({ entity: prop, radius: prop.radius, hitKind: "worldProp" });
         });
     for (const actor of includeActors) {
         if (actor.isDead) continue;

@@ -98,8 +98,8 @@ export function shouldResolvePushablePair(a, b) {
     if (a.isSleeping && b.isSleeping) return false;
     return pairShapeOverlap(a, b);
 }
-export function shouldResolveActorPushable(actor, pickup) {
-    if (!pairBroadphaseOverlap(actor, pickup)) return false;
-    if (isKinematicallyActive(actor) || isKinematicallyActive(pickup)) return true;
-    return pairShapeOverlap(actor, pickup);
+export function shouldResolveActorPushable(actor, prop) {
+    if (!pairBroadphaseOverlap(actor, prop)) return false;
+    if (isKinematicallyActive(actor) || isKinematicallyActive(prop)) return true;
+    return pairShapeOverlap(actor, prop);
 }

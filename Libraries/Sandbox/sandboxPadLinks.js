@@ -1,12 +1,12 @@
-import { findPickupAtInView } from "../../GameState/EntityRegistry.js";
+import { findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
 import { hitTestPad } from "./sandboxPads.js";
-import { isFlipperPickup } from "./behaviors/flipperBehavior.js";
-import { isSpawnerPickup } from "./spawnerConfig.js";
+import { isFlipperWorldProp } from "./behaviors/flipperBehavior.js";
+import { isSpawnerWorldProp } from "./spawnerConfig.js";
 import { fillCircle, strokeCircle, strokeSegment } from "../Canvas/CanvasPath.js";
 import { combatSpatial } from "../../Systems/World/CombatSpatialFrame.js";
-/** @typedef {{ type: "pickup", id: number }} ButtonLinkPickupTarget */
+/** @typedef {{ type: "worldProp", id: number }} ButtonLinkWorldPropTarget */
 /** @typedef {{ type: "pad", id: string }} ButtonLinkPadTarget */
-/** @typedef {ButtonLinkPickupTarget | ButtonLinkPadTarget} ButtonLinkTarget */
+/** @typedef {ButtonLinkWorldPropTarget | ButtonLinkPadTarget} ButtonLinkTarget */
 /** @param {object} pad */
 export function isButtonLinkTargetPad(pad) {
     return pad.preset === "pull" || pad.preset === "sink";
@@ -64,8 +64,8 @@ export function clearButtonPadLinks(state, buttonPadId) {
  * @param {string} sourcePadId
  */
 export function findButtonLinkTarget(state, worldX, worldY, sourcePadId) {
-    const pickup = findPickupAtInView(state.entityRegistry, combatSpatial, worldX, worldY);
-    if (pickup && (isFlipperPickup(pickup) || isSpawnerPickup(pickup))) return { type: "pickup", id: pickup.id };
+    const prop = findWorldPropAtInView(state.entityRegistry, combatSpatial, worldX, worldY);
+    if (prop && (isFlipperWorldProp(prop) || isSpawnerWorldProp(prop))) return { type: "worldProp", id: prop.id };
     const pad = hitTestPad(state, worldX, worldY);
     if (pad && pad.id !== sourcePadId && isButtonLinkTargetPad(pad)) return { type: "pad", id: pad.id };
     return null;
@@ -77,11 +77,11 @@ export function resolveButtonLinkEndpoint(state, target) {
         if (!pad) return null;
         return { target, label: `${pad.preset} · ${pad.id}`, x: pad.x, y: pad.y };
     }
-    const pickup = state.entityRegistry.getLive(target.id);
-    if (!pickup) return null;
-    const typeLabel = (pickup.type ?? "prop").replace(/_/g, " ");
-    const role = isSpawnerPickup(pickup) ? "spawner" : isFlipperPickup(pickup) ? "flipper" : typeLabel;
-    return { target, label: `${role} · #${pickup.id}`, x: pickup.x, y: pickup.y };
+    const prop = state.entityRegistry.getLive(target.id);
+    if (!prop) return null;
+    const typeLabel = (prop.type ?? "prop").replace(/_/g, " ");
+    const role = isSpawnerWorldProp(prop) ? "spawner" : isFlipperWorldProp(prop) ? "flipper" : typeLabel;
+    return { target, label: `${role} · #${prop.id}`, x: prop.x, y: prop.y };
 }
 /** @param {object} state @param {object} buttonPad */
 export function listButtonPadLinkEndpoints(state, buttonPad) {

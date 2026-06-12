@@ -1,5 +1,5 @@
 import { getCollisionSettings } from "../../../Core/GameCollisionSettings.js";
-import { canSplittablePickupSplit } from "../../Props/splittable.js";
+import { canSplittableWorldPropSplit } from "../../Props/splittable.js";
 import { invalidateWallResolveCache } from "../../Motion/WallCollisionResolver.js";
 import { massFromBody } from "../../Motion/bodyMass.js";
 import { applyActorPushTipImpulse } from "../../Props/actorPushTip.js";
@@ -8,20 +8,20 @@ import { shouldResolveActorPushable } from "./entityBroadphase.js";
 import { resolveCirclePair } from "./circlePair.js";
 import { circlesOverlap, findFirstCircleSegmentHit } from "./overlap.js";
 import { resolveSatPair } from "./satPair.js";
-function resolveActorPushable(actor, pickup, resolveWalls, spatialFrame, state) {
-    if (!shouldResolveActorPushable(actor, pickup)) return;
+function resolveActorPushable(actor, prop, resolveWalls, spatialFrame, state) {
+    if (!shouldResolveActorPushable(actor, prop)) return;
     const { mass, restitution } = getCollisionSettings();
-    const collisionInfo = resolveSatPair(actor, actor.getShape(), pickup, pickup.getShape(), {
+    const collisionInfo = resolveSatPair(actor, actor.getShape(), prop, prop.getShape(), {
         massA: actor.mass !== undefined ? actor.mass : actor.radius,
-        massB: pickup.mass !== undefined ? pickup.mass : mass.pickupFallback,
+        massB: prop.mass !== undefined ? prop.mass : mass.worldPropFallback,
         restitution: restitution.actorPushable,
     });
     if (!collisionInfo) return;
-    applyActorPushTipImpulse(actor, pickup, collisionInfo, state);
-    invalidateWallResolveCache(actor, pickup);
-    wakePushableBody(pickup);
+    applyActorPushTipImpulse(actor, prop, collisionInfo, state);
+    invalidateWallResolveCache(actor, prop);
+    wakePushableBody(prop);
     resolveWalls(actor, spatialFrame);
-    resolveWalls(pickup, spatialFrame);
+    resolveWalls(prop, spatialFrame);
 }
 function pushablePairRestitution(p1, p2) {
     const r1 = p1.strategy?.pairRestitution;
@@ -31,7 +31,7 @@ function pushablePairRestitution(p1, p2) {
 }
 function applyPushableCollisionDamage(body, dmg, state) {
     if (dmg <= 0 || !body.takeDamage) return;
-    if (body.strategy?.splittable && !canSplittablePickupSplit(body)) return;
+    if (body.strategy?.splittable && !canSplittableWorldPropSplit(body)) return;
     body.takeDamage(dmg, state);
 }
 function resolvePushablePair(p1, p2, state) {
@@ -75,9 +75,9 @@ function resolvePushablePair(p1, p2, state) {
  * @param {object} spatialFrame
  * @param {{
  *   projectiles: object[],
- *   projectilePickupFilter: { allows: (a: object, b: object) => boolean },
+ *   projectileWorldPropFilter: { allows: (a: object, b: object) => boolean },
  *   onProjectileWallHit: (projectile: object, segment: object, events: object[]) => void,
- *   onProjectilePickupHit: (projectile: object, pickup: object, events: object[]) => boolean,
+ *   onProjectileWorldPropHit: (projectile: object, prop: object, events: object[]) => boolean,
  *   onProjectileFactionCollisions: (projectile: object, events: object[]) => void,
  *   resolveWalls: (entity: object, spatialFrame: object) => void,
  *   combatantRestitution?: (a: object, b: object) => number,
@@ -92,9 +92,9 @@ export function runCollisionPipeline(
     spatialFrame,
     {
         projectiles,
-        projectilePickupFilter,
+        projectileWorldPropFilter,
         onProjectileWallHit,
-        onProjectilePickupHit,
+        onProjectileWorldPropHit,
         onProjectileFactionCollisions,
         resolveWalls,
         combatantRestitution = () => getCollisionSettings().restitution.combatant,
@@ -115,13 +115,13 @@ export function runCollisionPipeline(
                 onProjectileWallHit(p, segment, out);
                 continue;
             }
-            let hitPickup = false;
-            spatialFrame.forEachNeighbor(p, (pickup) => {
-                if (hitPickup || !projectilePickupFilter.allows(p, pickup)) return;
-                if (!circlesOverlap(p, pickup)) return;
-                if (onProjectilePickupHit(p, pickup, out)) hitPickup = true;
+            let hitWorldProp = false;
+            spatialFrame.forEachNeighbor(p, (prop) => {
+                if (hitWorldProp || !projectileWorldPropFilter.allows(p, prop)) return;
+                if (!circlesOverlap(p, prop)) return;
+                if (onProjectileWorldPropHit(p, prop, out)) hitWorldProp = true;
             });
-            if (hitPickup) continue;
+            if (hitWorldProp) continue;
             onProjectileFactionCollisions(p, out);
         }
     const pushables = spatialFrame._pushables;
@@ -131,13 +131,13 @@ export function runCollisionPipeline(
     if (hasPushables || hasCombatants)
         for (let iter = 0; iter < pushableIterations; iter++) {
             if (hasCombatants && spatialFrame.forEachActorPushablePair)
-                spatialFrame.forEachActorPushablePair((actor, pickup) => resolveActorPushable(actor, pickup, resolveWalls, spatialFrame, state));
+                spatialFrame.forEachActorPushablePair((actor, prop) => resolveActorPushable(actor, prop, resolveWalls, spatialFrame, state));
             if (hasPushables) {
                 spatialFrame.forEachPushablePair((p1, p2) => resolvePushablePair(p1, p2, state));
                 for (let i = 0; i < pushables.length; i++) {
-                    const pickup = pushables[i];
-                    if (pickup.isDead || !pickup.needsWallCollision()) continue;
-                    resolveWalls(pickup, spatialFrame);
+                    const prop = pushables[i];
+                    if (prop.isDead || !prop.needsWallCollision()) continue;
+                    resolveWalls(prop, spatialFrame);
                 }
             }
         }

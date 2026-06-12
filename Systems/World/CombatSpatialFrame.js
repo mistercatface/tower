@@ -23,7 +23,7 @@ export class CombatSpatialFrame extends SpatialFrameCore {
         this.forEachGroupNeighborPair(this._combatants, (a, b) => getInteractionPairFilter("combatant").allows(a, b), fn);
     }
     forEachActorPushablePair(fn) {
-        this.forEachGroupNeighborPair(this._combatants, (actor, pickup) => getInteractionPairFilter("actorPushable").allows(actor, pickup), fn);
+        this.forEachGroupNeighborPair(this._combatants, (actor, prop) => getInteractionPairFilter("actorPushable").allows(actor, prop), fn);
     }
     forEachPushablePair(fn) {
         this.forEachGroupNeighborPair(this._pushables, (p1, p2) => getInteractionPairFilter("pushable").allows(p1, p2), fn);

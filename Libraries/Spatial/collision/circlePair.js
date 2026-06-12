@@ -30,9 +30,9 @@ export function applyCirclePairContact(a, b, { restitution = getCollisionSetting
     const avy0 = a.vy ?? 0;
     const bvx0 = b.vx ?? 0;
     const bvy0 = b.vy ?? 0;
-    const pickupMass = getCollisionSettings().mass.pickupFallback;
-    const massA = massFromBody(a, pickupMass);
-    const massB = massFromBody(b, pickupMass);
+    const propMass = getCollisionSettings().mass.worldPropFallback;
+    const massA = massFromBody(a, propMass);
+    const massB = massFromBody(b, propMass);
     if (dist <= COINCIDENT_CIRCLE_EPS) {
         if (separate) separateCoincidentCirclePair(a, b, overlap || minDist, massA, massB);
         return { normalX: 0, normalY: 0, avx: avx0, avy: avy0, bvx: bvx0, bvy: bvy0, cutFactor: 0, struckSpeed: 0 };

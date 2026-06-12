@@ -47,27 +47,27 @@ export function advancePushableSleep(entity, eligible, requiredFrames = SLEEP_FR
     if (entity._sleepFrames >= requiredFrames) entity.isSleeping = true;
 }
 /**
- * @param {object} pickup
+ * @param {object} prop
  * @param {object[]} neighbors
  * @param {{ filter?: PairFilter, pairOverlaps?: (a: object, b: object) => boolean }} [opts]
  */
-export function hasSleepBlockingOverlap(pickup, neighbors, { filter = getInteractionPairFilter("pushableSleepBlocker"), pairOverlaps = pairBroadphaseOverlap } = {}) {
+export function hasSleepBlockingOverlap(prop, neighbors, { filter = getInteractionPairFilter("pushableSleepBlocker"), pairOverlaps = pairBroadphaseOverlap } = {}) {
     for (let i = 0; i < neighbors.length; i++) {
         const other = neighbors[i];
-        if (other === pickup) continue;
-        if (!filter.allows(pickup, other)) continue;
-        if (pairOverlaps(pickup, other)) return true;
+        if (other === prop) continue;
+        if (!filter.allows(prop, other)) continue;
+        if (pairOverlaps(prop, other)) return true;
     }
     return false;
 }
 /**
  * Full sleep eligibility: motion still + no blocking neighbor overlap.
  *
- * @param {object} pickup
+ * @param {object} prop
  * @param {object[]} neighbors
  * @param {{ blocksSleep?: (entity: object) => boolean, filter?: PairFilter, pairOverlaps?: (a: object, b: object) => boolean }} [opts]
  */
-export function evaluatePushableSleepEligible(pickup, neighbors, opts = {}) {
+export function evaluatePushableSleepEligible(prop, neighbors, opts = {}) {
     const { blocksSleep = () => false, filter, pairOverlaps } = opts;
-    return canSleepPushable(pickup, { blocksSleep }) && !hasSleepBlockingOverlap(pickup, neighbors, { filter, pairOverlaps });
+    return canSleepPushable(prop, { blocksSleep }) && !hasSleepBlockingOverlap(prop, neighbors, { filter, pairOverlaps });
 }

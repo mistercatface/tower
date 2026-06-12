@@ -2,7 +2,7 @@
  * Sandbox toy orchestration: host port, input session, behavior plugins, equip UI.
  *
  * Weapon semantics (ammo, charge cadence, projectile spawn, gun state) live in
- * `Libraries/Combat/` (`pickupManualFire`, `pickupWeaponState`, `spawnProjectiles`).
+ * `Libraries/Combat/` (`worldPropManualFire`, `worldPropWeaponState`, `spawnProjectiles`).
  * Behaviors here only wire pointer input and tick hooks to those modules.
  */
 export { bindCanvasPointers, releasePointerCapture } from "./bindCanvasPointers.js";
@@ -11,7 +11,7 @@ export { createSandboxController } from "./createSandboxController.js";
 export { createCueStrikeBehavior, CUE_STRIKE_BEHAVIOR_ID } from "./behaviors/cueStrikeBehavior.js";
 export { createDragLaunchFacingBehavior, DRAG_LAUNCH_FACING_BEHAVIOR_ID } from "./behaviors/dragLaunchFacingBehavior.js";
 export { createSpawnerBehavior, SPAWNER_BEHAVIOR_ID } from "./behaviors/spawnerBehavior.js";
-export { isSpawnerProp, isSpawnerPickup, listSpawnerSpawnPropIds, resolveSpawnerPropId, fireSpawner } from "./spawnerConfig.js";
+export { isSpawnerProp, isSpawnerWorldProp, listSpawnerSpawnPropIds, resolveSpawnerPropId, fireSpawner } from "./spawnerConfig.js";
 export { createRollToCursorDirectBehavior, ROLL_TO_CURSOR_DIRECT_BEHAVIOR_ID } from "./behaviors/rollToCursorDirectBehavior.js";
 export { createRollToCursorHpaBehavior, ROLL_TO_CURSOR_HPA_BEHAVIOR_ID } from "./behaviors/rollToCursorHpaBehavior.js";
 export { createShootBehavior, SHOOT_BEHAVIOR_ID } from "./behaviors/shootBehavior.js";
@@ -25,11 +25,11 @@ export {
     SANDBOX_PATH_VISUAL_OPTIONS,
     SANDBOX_PATH_VISUAL_LABELS,
 } from "./sandboxPathVisual.js";
-export { isSandboxCameraTarget, setSandboxCameraTarget, findSandboxCameraTargetPickup, tickSandboxCameraFollow } from "./sandboxCameraTarget.js";
+export { isSandboxCameraTarget, setSandboxCameraTarget, findSandboxCameraTargetWorldProp, tickSandboxCameraFollow } from "./sandboxCameraTarget.js";
 export { renderSandboxEquipPanel } from "./sandboxEquipPanel.js";
-export { getSandboxBehaviorLabel, isSandboxEquippable, isSandboxSpawnable, resolveSandboxBehaviors, forEachArmedSandboxPickup, SANDBOX_BEHAVIOR_LABELS } from "./sandboxCapabilities.js";
+export { getSandboxBehaviorLabel, isSandboxEquippable, isSandboxSpawnable, resolveSandboxBehaviors, forEachArmedSandboxWorldProp, SANDBOX_BEHAVIOR_LABELS } from "./sandboxCapabilities.js";
 export { evaluateInputGates, evaluateInputGateRule, isEntityAtRest, isEntityAsleep, resolveInputGateScope } from "./inputGates.js";
-export { resolvePickupSandboxBehavior, resolvePickupInputGateRules } from "./sandboxBehaviorConfig.js";
+export { resolveWorldPropSandboxBehavior, resolveWorldPropInputGateRules } from "./sandboxBehaviorConfig.js";
 export { getAssemblyManifest, getResolvedAssembly, listAssemblyManifests, registerAssemblyManifest, resolveAssemblyManifest } from "./assemblies/assemblyRegistry.js";
 export { loadAssemblyManifests } from "./assemblies/loadAssemblyManifests.js";
 export { resolvePlacement, resolveAnchoredPlacement, resolvePlayfieldPlacement } from "./assemblies/assemblyPlacement.js";

@@ -1,12 +1,12 @@
 /** Minimum edge length (px) for a splittable crate piece before it is treated as terminal debris. */
 export const SPLITTABLE_MIN_PIECE_SIZE = 3;
-/** @param {object} pickup */
-export function getSplittablePickupSize(pickup) {
-    return { width: pickup.halfExtents ? pickup.halfExtents.x * 2 : pickup.radius * 2, height: pickup.halfExtents ? pickup.halfExtents.y * 2 : pickup.radius * 2 };
+/** @param {object} prop */
+export function getSplittablePropSize(prop) {
+    return { width: prop.halfExtents ? prop.halfExtents.x * 2 : prop.radius * 2, height: prop.halfExtents ? prop.halfExtents.y * 2 : prop.radius * 2 };
 }
-/** @param {object} pickup @param {number} [minSize] */
-export function canSplittablePickupSplit(pickup, minSize = SPLITTABLE_MIN_PIECE_SIZE) {
-    if (!pickup?.strategy?.splittable) return false;
-    const { width, height } = getSplittablePickupSize(pickup);
+/** @param {object} prop @param {number} [minSize] */
+export function canSplittableWorldPropSplit(prop, minSize = SPLITTABLE_MIN_PIECE_SIZE) {
+    if (!prop?.strategy?.splittable) return false;
+    const { width, height } = getSplittablePropSize(prop);
     return width >= minSize * 2 && height >= minSize * 2;
 }

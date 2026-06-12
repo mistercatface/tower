@@ -1,4 +1,4 @@
-import { Pickup } from "../../Entities/Pickup.js";
+import { WorldProp } from "../../Entities/WorldProp.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { resolvePlacement } from "./assemblies/assemblyPlacement.js";
@@ -10,27 +10,27 @@ import { applyFlipperAssemblyScale } from "./behaviors/flipperBehavior.js";
  * @param {import("./assemblies/assemblyManifest.js").ResolvedAssemblyManifest} resolved
  * @param {{ faction?: string, groupId: string, rackId: string, groupField: string }} ctx
  */
-export function spawnAssemblyPickups(host, layout, resolved, ctx) {
+export function spawnAssemblyWorldProps(host, layout, resolved, ctx) {
     /** @type {Map<string, number>} */
-    const pickupIdByManifestId = new Map();
+    const propIdByManifestId = new Map();
     /** @type {string | null} */
-    let defaultPickupId = null;
-    for (let i = 0; i < resolved.pickups.length; i++) {
-        const entry = resolved.pickups[i];
+    let defaultPropId = null;
+    for (let i = 0; i < resolved.worldProps.length; i++) {
+        const entry = resolved.worldProps[i];
         const asset = getPropAsset(entry.prop);
         if (!asset) throw new Error(`Unknown prop "${entry.prop}" in assembly "${resolved.id}"`);
         const at = resolvePlacement(layout.play, entry.at);
-        const pickup = new Pickup(at.x, at.y, entry.prop, entry.facing ?? 0);
-        pickup.faction = ctx.faction;
-        pickup.assemblyRackId = ctx.rackId;
-        stampAssemblyGroupMember(pickup, ctx.groupId, resolved.id, ctx.groupField);
-        if (asset.flipper) applyFlipperAssemblyScale(pickup, layout, asset);
+        const prop = new WorldProp(at.x, at.y, entry.prop, entry.facing ?? 0);
+        prop.faction = ctx.faction;
+        prop.assemblyRackId = ctx.rackId;
+        stampAssemblyGroupMember(prop, ctx.groupId, resolved.id, ctx.groupField);
+        if (asset.flipper) applyFlipperAssemblyScale(prop, layout, asset);
         const overrides = resolved.behaviors[entry.prop];
-        if (overrides) pickup.sandboxBehaviorOverrides = overrides;
-        wakePushableBody(pickup);
-        host.addPickup(pickup);
-        if (entry.id) pickupIdByManifestId.set(entry.id, pickup.id);
-        if (entry.id === "cue" || resolved.behaviors[entry.prop]?.cueStrike) defaultPickupId = pickup.id;
+        if (overrides) prop.sandboxBehaviorOverrides = overrides;
+        wakePushableBody(prop);
+        host.addProp(prop);
+        if (entry.id) propIdByManifestId.set(entry.id, prop.id);
+        if (entry.id === "cue" || resolved.behaviors[entry.prop]?.cueStrike) defaultPropId = prop.id;
     }
-    return { defaultPickupId, pickupIdByManifestId };
+    return { defaultPropId, propIdByManifestId };
 }

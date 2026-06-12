@@ -36,13 +36,13 @@
 
 Core done: masterlist on `SharedGameState`, lifecycle hooks, `queryView` bounds cache, renderer cull, combat frame, aim previews, camera follow, sim pad id lookups.
 
-- [x] **`addPickupToState` / `removePickupFromState`** — `GameState/entityInstanceLifecycle.js`; sandbox host, spawner, start props, shards, assembly delete, physics death.
+- [x] **`addWorldPropToState` / `removeWorldPropFromState`** — `GameState/EntityRegistry.js`; sandbox host, spawner, start props, shards, assembly delete, physics death.
 - [x] **Pads in registry** — `addPadToState` / `removePadToState`; spawn/delete/clear; `getSandboxPad` → `registry.get`.
-- [x] **Combat + sim `forEachOfKind("pickup")`** — `pickupAutoCombat`, `laserCast`, `explosionPhases`, `sandboxTargeting.getAllCombatants`, `standTipMotion`.
-- [x] **Physics death via remove helper** — `pushablePhysicsPass` → `removePickupFromState`.
-- [x] **`findPickupAt.js` → registry wrappers** — `findPickupById` / `findLivePickup` / `findPickupAtInView`; legacy `findPickupAt` kept for array compat.
+- [x] **Combat + sim `forEachOfKind("worldProp")`** — `worldPropAutoCombat`, `laserCast`, `explosionPhases`, `sandboxTargeting.getAllCombatants`, `standTipMotion`.
+- [x] **Physics death via remove helper** — `pushablePhysicsPass` → `removeWorldPropFromState`.
+- [x] **`findWorldPropAtInView`** — in `EntityRegistry.js`; controller + pad links use registry bounds query.
 - [x] **UI selection via registry** — `sandboxSession` prune/select/list/delete by id.
-- [x] **UI hit-test via `queryView`** — `createSandboxController` + `sandboxPadLinks` use `findPickupAtInView`.
-- [x] **`sandboxPadLinks` → registry** — pad lookup + live pickup resolve.
-- [x] **Drop renderer fallback** — `WorldSceneRenderer` registry-only; `input.pickups` removed from draw input.
-- [ ] **Hardening / later** — `syncPickups()` when state hydrate/load exists; optional spatial bounds queries for combat effects if prop counts grow.
+- [x] **UI hit-test via `queryView`** — `createSandboxController` + `sandboxPadLinks` use `findWorldPropAtInView`.
+- [x] **`sandboxPadLinks` → registry** — pad lookup + live worldProp resolve.
+- [x] **Drop renderer fallback** — `WorldSceneRenderer` registry-only; draw input uses `entityRegistry` + `spatialFrame` only.
+- [ ] **Hardening / later** — `syncWorldProps()` when state hydrate/load exists; optional spatial bounds queries for combat effects if prop counts grow.

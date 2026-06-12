@@ -17,7 +17,7 @@ export function applyCueStrikeCollision(cueBall, strike) {
     const nx = strike.nx;
     const ny = strike.ny;
     const speed = strike.power;
-    const ballMass = massFromBody(cueBall, getCollisionSettings().mass.pickupFallback);
+    const ballMass = massFromBody(cueBall, getCollisionSettings().mass.worldPropFallback);
     const radius = resolveBodyRadius(cueBall);
     const striker = { x: cueBall.x - nx * (radius + 0.5), y: cueBall.y - ny * (radius + 0.5), vx: nx * speed, vy: ny * speed, mass: ballMass * CUE_STRIKER_MASS_RATIO };
     applyRigidBodyImpulse(striker, cueBall, { nx, ny, overlap: 0.1, cx: cueBall.x - nx * radius, cy: cueBall.y - ny * radius }, CUE_BALL_RESTITUTION);

@@ -40,7 +40,7 @@ function applyExpandingDamage(state, exp, allEvents) {
                 exp.hitTargets.add(actor);
             }
     }
-    state.entityRegistry.forEachOfKind("pickup", (p) => {
+    state.entityRegistry.forEachOfKind("worldProp", (p) => {
         if (p.isDead || exp.hitTargets.has(p)) return;
         const dist = Math.hypot(p.x - exp.x, p.y - exp.y);
         if (dist <= exp.radius + p.radius)

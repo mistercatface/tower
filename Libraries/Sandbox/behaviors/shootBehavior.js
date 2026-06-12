@@ -1,6 +1,6 @@
 import { isSandboxEquippable } from "../sandboxCapabilities.js";
 import { normalizeWeaponLoadout } from "../../Combat/equipmentLoadout.js";
-import { manualFirePickup } from "../../Combat/pickupManualFire.js";
+import { manualFireWorldProp } from "../../Combat/worldPropManualFire.js";
 import { getPropAsset } from "../../Props/PropCatalog.js";
 export const SHOOT_BEHAVIOR_ID = "shoot";
 /** @returns {import("../createSandboxController.js").SandboxBehavior} */
@@ -10,26 +10,26 @@ export function createShootBehavior() {
     let aimY = 0;
     return {
         id: SHOOT_BEHAVIOR_ID,
-        supports(pickup, asset) {
-            return isSandboxEquippable(asset) && normalizeWeaponLoadout(pickup?.weaponLoadout ?? []).length > 0;
+        supports(prop, asset) {
+            return isSandboxEquippable(asset) && normalizeWeaponLoadout(prop?.weaponLoadout ?? []).length > 0;
         },
-        onPointerDown(pickup, world, e) {
+        onPointerDown(prop, world, e) {
             isShooting = true;
             aimX = world.x;
             aimY = world.y;
             return true;
         },
-        onPointerMove(pickup, world, e) {
+        onPointerMove(prop, world, e) {
             aimX = world.x;
             aimY = world.y;
         },
-        onPointerUp(pickup, e) {
+        onPointerUp(prop, e) {
             isShooting = false;
         },
-        tick(pickup, dt, host) {
+        tick(prop, dt, host) {
             const state = host.getWorldState?.();
             if (!state) return;
-            manualFirePickup(state, pickup, aimX, aimY, dt, isShooting);
+            manualFireWorldProp(state, prop, aimX, aimY, dt, isShooting);
         },
         reset() {
             isShooting = false;

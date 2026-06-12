@@ -25,10 +25,10 @@ function resolveFaction(actor) {
 const { resolveFaction: inferFaction, areHostile } = createFactionResolver({ resolveFaction, hostilePairs: sandboxHostilePairs });
 export { inferFaction, areHostile };
 export function getAllCombatants(state) {
-    // Collect any explicit actors or pickups with a faction.
-    // Sandbox uses pickups as its primary test combatants.
+    // Collect any explicit actors or world props with a faction.
+    // Sandbox uses world props as its primary test combatants.
     const combatants = [];
-    state.entityRegistry.forEachOfKind("pickup", (p) => {
+    state.entityRegistry.forEachOfKind("worldProp", (p) => {
         if (!p.isDead) combatants.push(p);
     });
     if (state.actors) for (const a of state.actors) if (a.faction) combatants.push(a);

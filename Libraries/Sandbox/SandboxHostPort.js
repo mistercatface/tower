@@ -7,10 +7,10 @@
  * @property {() => { x: number, y: number }} getCameraOrigin
  * @property {() => void} requestRedraw
  * @property {(startX: number, startY: number, targetX: number, targetY: number) => { waypoints: { x: number, y: number }[], abstractNodes?: object[], pathPlanner?: "local" | "hpa" } | null} computePath
- * @property {() => object[]} getPickups
- * @property {(prop: object) => void} addPickup
- * @property {(prop: object) => void} removePickup
- * @property {() => void} clearPickups
+ * @property {() => object[]} getProps
+ * @property {(prop: object) => void} addProp
+ * @property {(prop: object) => void} removeProp
+ * @property {() => void} clearProps
  * @property {() => object} getWorldState
  */
 export {};

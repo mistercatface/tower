@@ -1,7 +1,7 @@
 import { engine } from "../../Apps/Editor/engine.js";
 import { wallContextFromState } from "../../Libraries/Spatial/query/wallContext.js";
 /**
- * Insert combatants and pickups into a spatial frame for the current tick.
+ * Insert combatants and world props into a spatial frame for the current tick.
  * Mutates `combatants` and `pushables` arrays (reused each frame).
  *
  * @param {import("../../Libraries/Spatial/world/SpatialFrameCore.js").SpatialFrameCore} frame
@@ -22,14 +22,14 @@ export function populateCombatFrame(frame, state, combatants, pushables) {
         frame.insertEntity(actor, physIdCounter++);
         combatants.push(actor);
     }
-    state.entityRegistry.forEachOfKind("pickup", (pickup) => {
-        if (!pickup || pickup.isDead || pickup.isHeld) return;
-        if (inserted.has(pickup)) {
-            if (pickup.strategy?.isPushable) pushables.push(pickup);
+    state.entityRegistry.forEachOfKind("worldProp", (prop) => {
+        if (!prop || prop.isDead || prop.isHeld) return;
+        if (inserted.has(prop)) {
+            if (prop.strategy?.isPushable) pushables.push(prop);
             return;
         }
-        inserted.add(pickup);
-        frame.insertEntity(pickup, physIdCounter++);
-        if (pickup.strategy?.isPushable) pushables.push(pickup);
+        inserted.add(prop);
+        frame.insertEntity(prop, physIdCounter++);
+        if (prop.strategy?.isPushable) pushables.push(prop);
     });
 }

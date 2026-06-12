@@ -1,4 +1,4 @@
-/** Default collision/render radius when a body omits `radius` (props, pickups, fallbacks). */
+/** Default collision/render radius when a body omits `radius` (props, worldProps, fallbacks). */
 export const LIBRARY_DEFAULT_BODY_RADIUS = 8;
 /** Default radius for combat humanoids when entity config omits `radius`. */
 export const LIBRARY_COMBAT_ACTOR_RADIUS = 8;

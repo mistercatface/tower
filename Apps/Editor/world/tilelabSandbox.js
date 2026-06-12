@@ -1,8 +1,8 @@
 import { canvasClientToWorld } from "../../../Libraries/Input/canvasPointer.js";
 import { TILELAB_SANDBOX_SPAWN_PROP } from "../state.js";
-import { pickupStates } from "../../../Entities/PickupStates.js";
-import { voidSinkPickupStates } from "../../../Entities/pickupVoidSinkState.js";
-import { addPickupToState, clearPickupsInState, removePickupFromState } from "../../../GameState/EntityRegistry.js";
+import { worldPropStates } from "../../../Entities/WorldPropStates.js";
+import { voidSinkWorldPropStates } from "../../../Entities/worldPropVoidSinkState.js";
+import { addWorldPropToState, clearWorldPropsInState, removeWorldPropFromState } from "../../../GameState/EntityRegistry.js";
 import {
     createCueStrikeBehavior,
     createDragLaunchBehavior,
@@ -27,10 +27,10 @@ function createSandboxHost(state, requestRedraw) {
         getCameraOrigin: () => ({ x: state.viewport.x, y: state.viewport.y }),
         requestRedraw,
         computePath: (startX, startY, targetX, targetY) => state.hierarchicalNavigator.computePath(startX, startY, targetX, targetY),
-        getPickups: () => state.pickups,
-        addPickup: (prop) => addPickupToState(state, prop),
-        removePickup: (prop) => removePickupFromState(state, prop),
-        clearPickups: () => clearPickupsInState(state),
+        getProps: () => state.worldProps,
+        addProp: (prop) => addWorldPropToState(state, prop),
+        removeProp: (prop) => removeWorldPropFromState(state, prop),
+        clearProps: () => clearWorldPropsInState(state),
         getWorldState: () => state,
     };
 }
@@ -43,7 +43,7 @@ let unmountToyUi = null;
  */
 export function mountTilelabSandbox(state, requestRedraw) {
     destroyTilelabSandbox();
-    Object.assign(pickupStates, voidSinkPickupStates);
+    Object.assign(worldPropStates, voidSinkWorldPropStates);
     sandboxController = createSandboxController(createSandboxHost(state, requestRedraw), {
         defaultSpawnPropId: TILELAB_SANDBOX_SPAWN_PROP,
         behaviors: [
@@ -67,5 +67,5 @@ export function destroyTilelabSandbox() {
     unmountToyUi = null;
     sandboxController?.destroy();
     sandboxController = null;
-    delete pickupStates.voidSink;
+    delete worldPropStates.voidSink;
 }

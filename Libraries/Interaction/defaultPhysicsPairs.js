@@ -30,6 +30,6 @@ export function createDefaultInteractionPairs() {
         combatant: DENY_ALL_PAIR,
         chargeImpact: DENY_ALL_PAIR,
         projectileHitActor: DENY_ALL_PAIR,
-        projectileHitPickup: DENY_ALL_PAIR,
+        projectileHitWorldProp: DENY_ALL_PAIR,
     };
 }

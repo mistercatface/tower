@@ -3,37 +3,37 @@ import { cloneGunDefinition, getGunDefinition } from "./gunDefaults.js";
 import { Turret } from "./Turret.js";
 /** Default laser-sight preview range for sandbox humanoids (no combat weapon stats). */
 export const DEFAULT_SIGHT_RANGE = 200;
-export function ensurePickupWeaponState(pickup) {
-    if (!pickup.weaponSlotState) pickup.weaponSlotState = [];
+export function ensureWorldPropWeaponState(prop) {
+    if (!prop.weaponSlotState) prop.weaponSlotState = [];
 }
-/** Clone gun definition for a slot and apply per-pickup attachment toggles. */
-export function resolvePickupSlotGun(pickup, slotIndex) {
-    const gunId = normalizeWeaponLoadout(pickup.weaponLoadout ?? [])[slotIndex];
+/** Clone gun definition for a slot and apply per-prop attachment toggles. */
+export function resolveWorldPropSlotGun(prop, slotIndex) {
+    const gunId = normalizeWeaponLoadout(prop.weaponLoadout ?? [])[slotIndex];
     if (!gunId) return null;
     const gun = cloneGunDefinition(getGunDefinition(gunId));
-    const slotState = pickup.weaponSlotState?.[slotIndex];
+    const slotState = prop.weaponSlotState?.[slotIndex];
     if (gun.attachments && slotState?.attachmentEnabled)
         for (const [attachmentId, enabled] of Object.entries(slotState.attachmentEnabled)) if (gun.attachments[attachmentId]) gun.attachments[attachmentId].enabled = !!enabled;
     return gun;
 }
 /** Keep slot attachment state and stub turrets aligned with the normalized loadout. */
-export function syncPickupWeaponState(pickup) {
-    const loadout = normalizeWeaponLoadout(pickup.weaponLoadout ?? []);
-    ensurePickupWeaponState(pickup);
-    while (pickup.weaponSlotState.length > loadout.length) pickup.weaponSlotState.pop();
-    while (pickup.weaponSlotState.length < loadout.length) pickup.weaponSlotState.push({});
-    const facing = pickup.facing ?? pickup.angle ?? 0;
-    const turnSpeed = pickup.stats?.turnSpeed?.value ?? pickup.turnSpeed ?? 10;
-    const prevTurrets = pickup.turrets ?? [];
-    pickup.turrets = loadout.map((gunId, index) => {
+export function syncWorldPropWeaponState(prop) {
+    const loadout = normalizeWeaponLoadout(prop.weaponLoadout ?? []);
+    ensureWorldPropWeaponState(prop);
+    while (prop.weaponSlotState.length > loadout.length) prop.weaponSlotState.pop();
+    while (prop.weaponSlotState.length < loadout.length) prop.weaponSlotState.push({});
+    const facing = prop.facing ?? prop.angle ?? 0;
+    const turnSpeed = prop.stats?.turnSpeed?.value ?? prop.turnSpeed ?? 10;
+    const prevTurrets = prop.turrets ?? [];
+    prop.turrets = loadout.map((gunId, index) => {
         const existing = prevTurrets[index];
         if (existing && existing.gunId === gunId && existing instanceof Turret) {
-            existing.gun = resolvePickupSlotGun(pickup, index);
+            existing.gun = resolveWorldPropSlotGun(prop, index);
             if (existing.angle == null) existing.angle = facing;
             if (existing.turnSpeed == null) existing.turnSpeed = turnSpeed;
             return existing;
         }
-        const gun = resolvePickupSlotGun(pickup, index);
+        const gun = resolveWorldPropSlotGun(prop, index);
         const turret = new Turret(facing, turnSpeed, gun?.turretLoadout);
         turret.gunId = gunId;
         turret.gun = gun;
@@ -43,15 +43,15 @@ export function syncPickupWeaponState(pickup) {
 export function gunSupportsAttachment(gunId, attachmentId) {
     return !!getGunDefinition(gunId).attachments?.[attachmentId];
 }
-export function isPickupAttachmentEnabled(pickup, slotIndex, attachmentId) {
-    return !!pickup.weaponSlotState?.[slotIndex]?.attachmentEnabled?.[attachmentId];
+export function isWorldPropAttachmentEnabled(prop, slotIndex, attachmentId) {
+    return !!prop.weaponSlotState?.[slotIndex]?.attachmentEnabled?.[attachmentId];
 }
-export function setPickupAttachmentEnabled(pickup, slotIndex, attachmentId, enabled) {
-    ensurePickupWeaponState(pickup);
-    syncPickupWeaponState(pickup);
-    const slotState = pickup.weaponSlotState[slotIndex];
+export function setWorldPropAttachmentEnabled(prop, slotIndex, attachmentId, enabled) {
+    ensureWorldPropWeaponState(prop);
+    syncWorldPropWeaponState(prop);
+    const slotState = prop.weaponSlotState[slotIndex];
     if (!slotState) return;
     if (!slotState.attachmentEnabled) slotState.attachmentEnabled = {};
     slotState.attachmentEnabled[attachmentId] = enabled;
-    syncPickupWeaponState(pickup);
+    syncWorldPropWeaponState(prop);
 }

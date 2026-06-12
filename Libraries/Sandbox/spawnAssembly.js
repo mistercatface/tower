@@ -4,12 +4,12 @@ import { stampAssemblyGroupMember, entityBelongsToAssemblyGroup } from "./assemb
 import { createAssemblyGuideOverlay, createAssemblySurfaceZone } from "./assemblySurfaceDraw.js";
 import { eagerBakeAssemblySurfaceFlipbook, releaseAssemblySurfaceFlipbook } from "./assemblySurfaceBake.js";
 import { requestUiUpdate } from "../../Core/EventSystem.js";
-import { spawnAssemblyPickups } from "./assemblyPickupSpawn.js";
+import { spawnAssemblyWorldProps } from "./assemblyWorldPropSpawn.js";
 import { spawnAssemblyPads } from "./assemblyPadSpawn.js";
 import { deleteSandboxPad } from "./sandboxPads.js";
 import { getWallCellBounds, unionGridCellRect } from "../Spatial/grid/wallGridBake.js";
 import { pointInAabb } from "../Math/Aabb2D.js";
-import { removePickupFromState } from "../../GameState/EntityRegistry.js";
+import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 /** @param {object} state @param {object} wall */
 function detachSandboxWall(state, wall) {
     const idx = state.walls.indexOf(wall);
@@ -116,18 +116,18 @@ export function spawnResolvedAssembly(host, centerX, centerY, resolved, { factio
     const walls = buildAssemblyWallSegments(layout, resolved, { collisionOnly: true });
     for (let i = 0; i < walls.length; i++) stampAssemblyGroupMember(walls[i], groupId, resolved.id, groupField);
     addSandboxWalls(state, walls);
-    let defaultPickupId = null;
+    let defaultPropId = null;
     /** @type {Map<string, number>} */
-    let pickupIdByManifestId = new Map();
-    if (resolved.pickups.length) {
-        const spawned = spawnAssemblyPickups(host, layout, resolved, { faction, groupId, rackId, groupField });
-        defaultPickupId = spawned.defaultPickupId;
-        pickupIdByManifestId = spawned.pickupIdByManifestId;
+    let propIdByManifestId = new Map();
+    if (resolved.worldProps.length) {
+        const spawned = spawnAssemblyWorldProps(host, layout, resolved, { faction, groupId, rackId, groupField });
+        defaultPropId = spawned.defaultPropId;
+        propIdByManifestId = spawned.propIdByManifestId;
     }
-    if (resolved.pads.length) spawnAssemblyPads(state, layout, { groupId, resolvedId: resolved.id, groupField, pickupIdByManifestId });
-    const instance = { id: groupId, assemblyId: resolved.id, defaultPickupId, arenaWidth, arenaHeight };
+    if (resolved.pads.length) spawnAssemblyPads(state, layout, { groupId, resolvedId: resolved.id, groupField, propIdByManifestId });
+    const instance = { id: groupId, assemblyId: resolved.id, defaultPropId, arenaWidth, arenaHeight };
     state.sandboxAssemblyInstances.push(instance);
-    return { id: groupId, assemblyId: resolved.id, defaultPickupId, centerX, centerY };
+    return { id: groupId, assemblyId: resolved.id, defaultPropId, centerX, centerY };
 }
 /**
  * @param {import("./SandboxHostPort.js").SandboxHostPort} host
@@ -162,9 +162,9 @@ export function deleteAssemblyInstance(state, groupId, groupField) {
         if (entityBelongsToAssemblyGroup(pad, groupId, groupField)) deleteSandboxPad(state, pad.id);
     }
     const rackId = `${groupId}:rack`;
-    for (let i = state.pickups.length - 1; i >= 0; i--) {
-        const pickup = state.pickups[i];
-        if (pickup.assemblyRackId === rackId || entityBelongsToAssemblyGroup(pickup, groupId, groupField)) removePickupFromState(state, pickup);
+    for (let i = state.worldProps.length - 1; i >= 0; i--) {
+        const prop = state.worldProps[i];
+        if (prop.assemblyRackId === rackId || entityBelongsToAssemblyGroup(prop, groupId, groupField)) removeWorldPropFromState(state, prop);
     }
     const idx = state.sandboxAssemblyInstances.findIndex((entry) => entry.id === groupId);
     if (idx >= 0) state.sandboxAssemblyInstances.splice(idx, 1);

@@ -298,7 +298,7 @@ export class TurretController {
                 if (state.activeLasers) state.activeLasers.push(new Laser(tx, ty, hit.x, hit.y));
                 const tickDamage = getBeamTickDamage(gun);
                 if (hit.hit === "actor" && engine.targeting.areHostile(this.actor, hit.entity)) hit.entity.handleHit?.(tickDamage, { state }, "beam");
-                else if (hit.hit === "pickup" && hit.entity.strategy?.onHit) hit.entity.strategy.onHit(state, hit.entity, createBeamHitSource(gun), []);
+                else if (hit.hit === "prop" && hit.entity.strategy?.onHit) hit.entity.strategy.onHit(state, hit.entity, createBeamHitSource(gun), []);
                 firedAny = true;
             }
             if (firedAny) {

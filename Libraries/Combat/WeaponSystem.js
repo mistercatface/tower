@@ -92,7 +92,7 @@ export function createLaserWeaponMode() {
             }
             const tickDamage = getBeamTickDamage(gun);
             if (hit.hit === "actor" && engine.targeting.areHostile(source, hit.entity)) combatEvents.push({ target: hit.entity, damage: tickDamage, type: "beam" });
-            else if (hit.hit === "pickup" && hit.entity.strategy?.onHit) hit.entity.strategy.onHit(state, hit.entity, createBeamHitSource(gun), combatEvents);
+            else if (hit.hit === "prop" && hit.entity.strategy?.onHit) hit.entity.strategy.onHit(state, hit.entity, createBeamHitSource(gun), combatEvents);
         }
     });
 }
@@ -104,7 +104,7 @@ export const LASER_WEAPON_MODE = createLaserWeaponMode();
 export class WeaponSystem {
     static castLaser(startX, startY, angle, maxDist, state, beamRadius = 1, source = null) {
         const actorTargets = source ? engine.targeting.getHostiles(state, source) : engine.targeting.getBroadphaseActors(state);
-        const circles = buildLaserTargetCircles(state, { source, includePickups: true, includeActors: actorTargets });
+        const circles = buildLaserTargetCircles(state, { source, includeWorldProps: true, includeActors: actorTargets });
         return castLaserRay(startX, startY, angle, maxDist, state, beamRadius, circles);
     }
     static computeAccuracySway(source, turret, dt, requireCharge = false) {

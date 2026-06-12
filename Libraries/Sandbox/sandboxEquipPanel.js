@@ -1,25 +1,25 @@
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { getGunDefinition, playerEquipmentCatalog } from "../Combat/gunDefaults.js";
-import { applyPickupWeaponLoadout } from "../Combat/pickupWeaponLoadout.js";
-import { gunSupportsAttachment, isPickupAttachmentEnabled, resolvePickupSlotGun, setPickupAttachmentEnabled } from "../Combat/pickupWeaponState.js";
+import { applyWorldPropWeaponLoadout } from "../Combat/worldPropWeaponLoadout.js";
+import { gunSupportsAttachment, isWorldPropAttachmentEnabled, resolveWorldPropSlotGun, setWorldPropAttachmentEnabled } from "../Combat/worldPropWeaponState.js";
 import { countGunInLoadout, formatHandednessLabel, getEquipmentSlotCount, getGunEquipAction, normalizeWeaponLoadout, toggleGunInLoadout, unequipSlot } from "../Combat/equipmentLoadout.js";
 import { isSandboxEquippable } from "./sandboxCapabilities.js";
 /**
  * @param {HTMLElement} container
- * @param {object | null} pickup
+ * @param {object | null} prop
  * @param {() => void} onChange
  */
-export function renderSandboxEquipPanel(container, pickup, onChange) {
+export function renderSandboxEquipPanel(container, prop, onChange) {
     container.innerHTML = "";
-    if (!pickup || !isSandboxEquippable(getPropAsset(pickup.type))) return;
+    if (!prop || !isSandboxEquippable(getPropAsset(prop.type))) return;
     const head = document.createElement("div");
     head.className = "editor-subhead";
     head.textContent = "Equipment";
     container.appendChild(head);
     const slotWrap = document.createElement("div");
     slotWrap.className = "sandbox-equip-slots";
-    const slotCount = getEquipmentSlotCount(pickup.weaponLoadout ?? []);
-    const loadout = normalizeWeaponLoadout(pickup.weaponLoadout ?? []);
+    const slotCount = getEquipmentSlotCount(prop.weaponLoadout ?? []);
+    const loadout = normalizeWeaponLoadout(prop.weaponLoadout ?? []);
     for (let index = 0; index < slotCount; index++) {
         const gunId = loadout[index];
         const slot = document.createElement("div");
@@ -32,15 +32,15 @@ export function renderSandboxEquipPanel(container, pickup, onChange) {
         name.textContent = gunId ? (getGunDefinition(gunId).name ?? gunId) : "—";
         slot.append(label, name);
         if (gunId) {
-            const gun = resolvePickupSlotGun(pickup, index) ?? getGunDefinition(gunId);
+            const gun = resolveWorldPropSlotGun(prop, index) ?? getGunDefinition(gunId);
             if (gun.attachments?.laserSights) {
                 const laserLabel = document.createElement("label");
                 laserLabel.className = "sandbox-equip-laser-toggle";
                 const laserCheckbox = document.createElement("input");
                 laserCheckbox.type = "checkbox";
-                laserCheckbox.checked = isPickupAttachmentEnabled(pickup, index, "laserSights");
+                laserCheckbox.checked = isWorldPropAttachmentEnabled(prop, index, "laserSights");
                 laserCheckbox.addEventListener("change", () => {
-                    setPickupAttachmentEnabled(pickup, index, "laserSights", laserCheckbox.checked);
+                    setWorldPropAttachmentEnabled(prop, index, "laserSights", laserCheckbox.checked);
                     onChange();
                 });
                 const laserSpan = document.createElement("span");
@@ -53,7 +53,7 @@ export function renderSandboxEquipPanel(container, pickup, onChange) {
             unequipBtn.className = "secondary sandbox-equip-unequip";
             unequipBtn.textContent = "Unequip";
             unequipBtn.addEventListener("click", () => {
-                applyPickupWeaponLoadout(pickup, unequipSlot(pickup.weaponLoadout ?? [], index));
+                applyWorldPropWeaponLoadout(prop, unequipSlot(prop.weaponLoadout ?? [], index));
                 onChange();
             });
             slot.appendChild(unequipBtn);
@@ -97,7 +97,7 @@ export function renderSandboxEquipPanel(container, pickup, onChange) {
             actionBtn.classList.add("equip");
         } else actionBtn.textContent = "Full";
         actionBtn.addEventListener("click", () => {
-            applyPickupWeaponLoadout(pickup, toggleGunInLoadout(pickup.weaponLoadout ?? [], gunId));
+            applyWorldPropWeaponLoadout(prop, toggleGunInLoadout(prop.weaponLoadout ?? [], gunId));
             onChange();
         });
         row.append(info, actionBtn);

@@ -1,7 +1,7 @@
 import { ROLL_TO_CURSOR_DIRECT_BEHAVIOR_ID } from "./behaviors/rollToCursorDirectBehavior.js";
 import { ROLL_TO_CURSOR_HPA_BEHAVIOR_ID } from "./behaviors/rollToCursorHpaBehavior.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
-import { syncPickupWeaponState } from "../Combat/pickupWeaponState.js";
+import { syncWorldPropWeaponState } from "../Combat/worldPropWeaponState.js";
 export const SANDBOX_BEHAVIOR_LABELS = {
     dragLaunch: "Drag launch",
     dragLaunchWait: "Drag launch (wait for rest)",
@@ -24,14 +24,14 @@ export function isSandboxEquippable(asset) {
 }
 /**
  * @param {import("./SandboxHostPort.js").SandboxHostPort} host
- * @param {(pickup: object) => void} fn
+ * @param {(prop: object) => void} fn
  */
-export function forEachArmedSandboxPickup(host, fn) {
-    for (const pickup of host.getPickups()) {
-        if (pickup.isDead || !pickup.weaponLoadout?.length) continue;
-        if (!isSandboxEquippable(getPropAsset(pickup.type))) continue;
-        syncPickupWeaponState(pickup);
-        fn(pickup);
+export function forEachArmedSandboxWorldProp(host, fn) {
+    for (const prop of host.getProps()) {
+        if (prop.isDead || !prop.weaponLoadout?.length) continue;
+        if (!isSandboxEquippable(getPropAsset(prop.type))) continue;
+        syncWorldPropWeaponState(prop);
+        fn(prop);
     }
 }
 /** Props listed in the sandbox "Add" dropdown (excludes shard debris spawned from breaks). */
@@ -44,15 +44,15 @@ export function isSandboxSpawnable(asset) {
 /**
  * @param {object | null | undefined} asset
  * @param {import("./createSandboxController.js").SandboxBehavior[]} registeredBehaviors
- * @param {object | null | undefined} [pickup]
+ * @param {object | null | undefined} [prop]
  * @returns {string[]}
  */
-export function resolveSandboxBehaviors(asset, registeredBehaviors, pickup = null) {
+export function resolveSandboxBehaviors(asset, registeredBehaviors, prop = null) {
     const byId = new Map(registeredBehaviors.map((behavior) => [behavior.id, behavior]));
-    if (pickup?.sandboxBehaviorOverrides) {
+    if (prop?.sandboxBehaviorOverrides) {
         /** @type {string[]} */
         const stamped = [];
-        for (const key of Object.keys(pickup.sandboxBehaviorOverrides)) {
+        for (const key of Object.keys(prop.sandboxBehaviorOverrides)) {
             if (key === "inputGates") continue;
             if (byId.has(key)) stamped.push(key);
         }
@@ -62,7 +62,7 @@ export function resolveSandboxBehaviors(asset, registeredBehaviors, pickup = nul
     const sandbox = asset?.sandbox;
     return [...byId.values()]
         .filter((behavior) => {
-            if (behavior.supports && asset && !behavior.supports(pickup, asset)) return false;
+            if (behavior.supports && asset && !behavior.supports(prop, asset)) return false;
             if (ROLL_BEHAVIOR_IDS.has(behavior.id) && sandbox?.rollToCursor === false) return false;
             return true;
         })

@@ -1,7 +1,7 @@
 import { getCollisionSettings } from "../../Core/GameCollisionSettings.js";
 import { dotXY } from "../Math/Vec2.js";
 /**
- * Two-body impulse exchange at a SAT contact (pickup / pushable pairs).
+ * Two-body impulse exchange at a SAT contact (prop / pushable pairs).
  */
 /**
  * @param {{

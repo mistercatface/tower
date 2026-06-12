@@ -13,7 +13,7 @@
  * @property {() => void} [preload] - Kick off asset preload at startup
  * @property {(subject: InspectSubject) => number} [getInitialYaw]
  * @property {(subject: InspectSubject) => number} [getInitialPitch]
- * @property {number} [tapPadding] - Extra tap radius beyond pickup.radius (default 14)
+ * @property {number} [tapPadding] - Extra tap radius beyond worldProp.radius (default 14)
  */
 /** @type {Map<string, InspectEntry>} */
 const inspectEntries = new Map();

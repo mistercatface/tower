@@ -1,5 +1,5 @@
-import { Pickup } from "../../Entities/Pickup.js";
-import { addPickupToState } from "../../GameState/EntityRegistry.js";
+import { WorldProp } from "../../Entities/WorldProp.js";
+import { addWorldPropToState } from "../../GameState/EntityRegistry.js";
 /**
  * @typedef {object} StartPropSpec
  * @property {string} type — worldPropDefinitions key
@@ -14,7 +14,7 @@ import { addPickupToState } from "../../GameState/EntityRegistry.js";
 export function spawnStartProps(state, specs) {
     if (!specs.length) return;
     for (const spec of specs) {
-        const pickup = new Pickup(spec.x, spec.y, spec.type, spec.facing ?? null);
-        addPickupToState(state, pickup);
+        const prop = new WorldProp(spec.x, spec.y, spec.type, spec.facing ?? null);
+        addWorldPropToState(state, prop);
     }
 }

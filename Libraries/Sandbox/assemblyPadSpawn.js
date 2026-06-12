@@ -4,9 +4,9 @@ import { addPadToState } from "../../GameState/EntityRegistry.js";
 /**
  * @param {object} state
  * @param {ReturnType<typeof import("./assemblyLayout.js").buildAssemblyLayout>} layout
- * @param {{ groupId: string, resolvedId: string, groupField: string, pickupIdByManifestId: Map<string, number> }} ctx
+ * @param {{ groupId: string, resolvedId: string, groupField: string, propIdByManifestId: Map<string, number> }} ctx
  */
-export function spawnAssemblyPads(state, layout, { groupId, resolvedId, groupField, pickupIdByManifestId }) {
+export function spawnAssemblyPads(state, layout, { groupId, resolvedId, groupField, propIdByManifestId }) {
     for (let i = 0; i < layout.pads.length; i++) {
         const entry = layout.pads[i];
         const options = { id: `${groupId}:pad:${entry.id}` };
@@ -31,8 +31,8 @@ export function spawnAssemblyPads(state, layout, { groupId, resolvedId, groupFie
             const buttonLinks = [];
             for (let t = 0; t < entry.targets.length; t++) {
                 const manifestId = entry.targets[t];
-                const pickupId = pickupIdByManifestId.get(manifestId);
-                if (pickupId != null) buttonLinks.push({ type: "pickup", id: pickupId });
+                const linkedPropId = propIdByManifestId.get(manifestId);
+                if (linkedPropId != null) buttonLinks.push({ type: "worldProp", id: linkedPropId });
                 else buttonLinks.push({ type: "pad", id: `${groupId}:pad:${manifestId}` });
             }
             options.buttonLinks = buttonLinks;

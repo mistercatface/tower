@@ -5,12 +5,12 @@ export const DRAG_LAUNCH_FACING_BEHAVIOR_ID = "dragLaunchFacing";
 export function createDragLaunchFacingBehavior() {
     return createDragLaunchInteraction({
         id: DRAG_LAUNCH_FACING_BEHAVIOR_ID,
-        getConfig: (pickup) => getDragLaunchConfig(getPropAsset(pickup.type)),
-        onLaunch(pickup, shot) {
-            pickup.facing = Math.atan2(shot.ny, shot.nx);
-            pickup.angularVelocity = 0;
-            pickup.strategy.syncCollisionShape?.(pickup);
-            applyDragLaunchVelocity(pickup, shot.nx, shot.ny, shot.power);
+        getConfig: (prop) => getDragLaunchConfig(getPropAsset(prop.type)),
+        onLaunch(prop, shot) {
+            prop.facing = Math.atan2(shot.ny, shot.nx);
+            prop.angularVelocity = 0;
+            prop.strategy.syncCollisionShape?.(prop);
+            applyDragLaunchVelocity(prop, shot.nx, shot.ny, shot.power);
         },
     });
 }

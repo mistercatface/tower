@@ -37,21 +37,21 @@ export class WorldSceneRenderer {
         const zoom = viewport.zoom ?? 1;
         ctx.save();
         clipToViewport(ctx, viewport);
-        const pickups = input.entityRegistry.queryView(
-            { bounds: viewportVisibleBounds(viewport), kinds: ["pickup"], filterId: "debris", match: (p) => p.strategy?.renderMode === "debris" },
+        const props = input.entityRegistry.queryView(
+            { bounds: viewportVisibleBounds(viewport), kinds: ["worldProp"], filterId: "debris", match: (p) => p.strategy?.renderMode === "debris" },
             input.spatialFrame,
         );
-        for (let i = 0; i < pickups.length; i++) this.props.drawProp(ctx, pickups[i], px, py, { zoom });
+        for (let i = 0; i < props.length; i++) this.props.drawProp(ctx, props[i], px, py, { zoom });
         ctx.restore();
     }
     _appendVisible3dProps(input, viewport, px, py) {
         const visibleObjects = this.visibleDrawables;
-        const pickups = input.entityRegistry.queryView(
-            { bounds: viewportVisibleBounds(viewport), kinds: ["pickup"], filterId: "3d", match: (p) => p.strategy?.renderMode === "3d" || p.usesKinematicsBody },
+        const props = input.entityRegistry.queryView(
+            { bounds: viewportVisibleBounds(viewport), kinds: ["worldProp"], filterId: "3d", match: (p) => p.strategy?.renderMode === "3d" || p.usesKinematicsBody },
             input.spatialFrame,
         );
-        for (let i = 0; i < pickups.length; i++) {
-            const p = pickups[i];
+        for (let i = 0; i < props.length; i++) {
+            const p = props[i];
             p._distSq = (p.x - px) ** 2 + (p.y - py) ** 2;
             visibleObjects.push(p);
         }

@@ -10,7 +10,7 @@ import { getTexture, loadTexture, onTextureReady } from "../core/TextureCache.js
 export function createLabeledCanInspect(canConfig, buildMesh) {
     const { labelSrc, halfHeight, bodyRadius, label, colors } = canConfig;
     const angleCenter = label.angleCenter ?? -Math.PI / 2;
-    /** Face the label toward the inspect camera (-Z); ignore pickup spawn facing. */
+    /** Face the label toward the inspect camera (-Z); ignore world prop spawn facing. */
     const initialYaw = -Math.PI / 2 - angleCenter;
     const initialPitch = canConfig.inspect?.initialPitch ?? 0.2;
     return {

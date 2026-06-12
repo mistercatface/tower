@@ -7,7 +7,7 @@
  * @property {string} [filterId] — cache key segment for optional `match`
  * @property {(ref: object) => boolean} [match]
  */
-const EMPTY_KINDS = ["pickup"];
+const EMPTY_KINDS = ["worldProp"];
 /** @param {BoundsRect} bounds */
 function boundsKey(bounds) {
     return `${bounds.minX}|${bounds.minY}|${bounds.maxX}|${bounds.maxY}`;
@@ -149,16 +149,16 @@ export class EntityRegistry {
     }
 }
 
-/** @param {object} state @param {object} pickup */
-export function addPickupToState(state, pickup) {
-    state.pickups.push(pickup);
-    state.entityRegistry.register("pickup", pickup);
+/** @param {object} state @param {object} prop */
+export function addWorldPropToState(state, prop) {
+    state.worldProps.push(prop);
+    state.entityRegistry.register("worldProp", prop);
 }
-/** @param {object} state @param {object} pickup */
-export function removePickupFromState(state, pickup) {
-    const index = state.pickups.indexOf(pickup);
-    if (index >= 0) state.pickups.splice(index, 1);
-    state.entityRegistry.unregister(pickup);
+/** @param {object} state @param {object} prop */
+export function removeWorldPropFromState(state, prop) {
+    const index = state.worldProps.indexOf(prop);
+    if (index >= 0) state.worldProps.splice(index, 1);
+    state.entityRegistry.unregister(prop);
 }
 /** @param {object} state @param {object} pad */
 export function addPadToState(state, pad) {
@@ -172,26 +172,26 @@ export function removePadFromState(state, pad) {
     state.entityRegistry.unregister(pad);
 }
 /** @param {object} state */
-export function clearPickupsInState(state) {
-    state.pickups = [];
-    state.entityRegistry.clear("pickup");
+export function clearWorldPropsInState(state) {
+    state.worldProps = [];
+    state.entityRegistry.clear("worldProp");
 }
 /** @param {object} state */
 export function clearPadsInState(state) {
     state.sandboxPads = [];
     state.entityRegistry.clear("pad");
 }
-/** @param {object[]} pickups @param {number} worldX @param {number} worldY @param {number} padding */
-function nearestPickupInList(pickups, worldX, worldY, padding) {
+/** @param {object[]} worldProps @param {number} worldX @param {number} worldY @param {number} padding */
+function nearestWorldPropInList(worldProps, worldX, worldY, padding) {
     let best = null;
     let bestDistSq = Infinity;
-    for (let i = 0; i < pickups.length; i++) {
-        const pickup = pickups[i];
-        if (pickup.isDead) continue;
-        const tapRadius = pickup.radius + padding;
-        const distSq = (pickup.x - worldX) ** 2 + (pickup.y - worldY) ** 2;
+    for (let i = 0; i < worldProps.length; i++) {
+        const prop = worldProps[i];
+        if (prop.isDead) continue;
+        const tapRadius = prop.radius + padding;
+        const distSq = (prop.x - worldX) ** 2 + (prop.y - worldY) ** 2;
         if (distSq <= tapRadius * tapRadius && distSq < bestDistSq) {
-            best = pickup;
+            best = prop;
             bestDistSq = distSq;
         }
     }
@@ -204,8 +204,8 @@ function nearestPickupInList(pickups, worldX, worldY, padding) {
  * @param {number} worldY
  * @param {number} [padding]
  */
-export function findPickupAtInView(registry, spatialFrame, worldX, worldY, padding = 8) {
+export function findWorldPropAtInView(registry, spatialFrame, worldX, worldY, padding = 8) {
     const searchPad = padding + 48;
-    const candidates = registry.queryView({ bounds: { minX: worldX - searchPad, minY: worldY - searchPad, maxX: worldX + searchPad, maxY: worldY + searchPad }, kinds: ["pickup"] }, spatialFrame);
-    return nearestPickupInList(candidates, worldX, worldY, padding);
+    const candidates = registry.queryView({ bounds: { minX: worldX - searchPad, minY: worldY - searchPad, maxX: worldX + searchPad, maxY: worldY + searchPad }, kinds: ["worldProp"] }, spatialFrame);
+    return nearestWorldPropInList(candidates, worldX, worldY, padding);
 }

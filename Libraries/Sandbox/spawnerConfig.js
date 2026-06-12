@@ -1,60 +1,60 @@
-import { Pickup } from "../../Entities/Pickup.js";
+import { WorldProp } from "../../Entities/WorldProp.js";
 import { resolveSandboxFaction } from "../Combat/sandboxTargeting.js";
 import { applyDragLaunchVelocity } from "./dragLaunch.js";
 import { getPropAsset, getWorldPropDefinitions } from "../Props/PropCatalog.js";
 import { isSandboxSpawnable } from "./sandboxCapabilities.js";
 import { DRAG_LAUNCH_DEFAULTS } from "./dragLaunch.js";
-import { addPickupToState } from "../../GameState/EntityRegistry.js";
+import { addWorldPropToState } from "../../GameState/EntityRegistry.js";
 /** @param {object | null | undefined} asset */
 export function isSpawnerProp(asset) {
     return asset?.sandbox?.spawner != null && typeof asset.sandbox.spawner === "object";
 }
-/** @param {object | null | undefined} pickup */
-export function isSpawnerPickup(pickup) {
-    return isSpawnerProp(getPropAsset(pickup?.type));
+/** @param {object | null | undefined} prop */
+export function isSpawnerWorldProp(prop) {
+    return isSpawnerProp(getPropAsset(prop?.type));
 }
-/** @param {object | null | undefined} pickup @param {object | null | undefined} asset */
-export function resolveSpawnerPropId(pickup, asset) {
-    const picked = pickup?.sandboxSpawnerPropId;
+/** @param {object | null | undefined} prop @param {object | null | undefined} asset */
+export function resolveSpawnerPropId(prop, asset) {
+    const picked = prop?.sandboxSpawnerPropId;
     if (picked && getPropAsset(picked)) return picked;
     const fallback = asset?.sandbox?.spawner?.defaultPropId;
     if (fallback && getPropAsset(fallback)) return fallback;
     return "beach_ball";
 }
-/** @param {object | null | undefined} pickup @param {object | null | undefined} asset */
-export function getSpawnerDragConfig(_pickup, asset) {
+/** @param {object | null | undefined} prop @param {object | null | undefined} asset */
+export function getSpawnerDragConfig(_prop, asset) {
     const overrides = asset?.sandbox?.spawner?.dragLaunch;
     return { ...DRAG_LAUNCH_DEFAULTS, ...(overrides && typeof overrides === "object" ? overrides : {}) };
 }
-/** @param {object} pickup @param {object | null | undefined} asset */
-export function getSpawnerOutletWorld(pickup, asset) {
+/** @param {object} prop @param {object | null | undefined} asset */
+export function getSpawnerOutletWorld(prop, asset) {
     const resolver = asset?.sandbox?.spawner?.getOutletWorld;
-    if (typeof resolver === "function") return resolver(pickup, asset);
-    const facing = pickup.facing ?? 0;
-    const reach = pickup._collisionBoundingRadius ?? pickup.radius ?? 8;
+    if (typeof resolver === "function") return resolver(prop, asset);
+    const facing = prop.facing ?? 0;
+    const reach = prop._collisionBoundingRadius ?? prop.radius ?? 8;
     const cos = Math.cos(facing);
     const sin = Math.sin(facing);
-    return { x: pickup.x + cos * reach, y: pickup.y + sin * reach, nx: cos, ny: sin };
+    return { x: prop.x + cos * reach, y: prop.y + sin * reach, nx: cos, ny: sin };
 }
 /**
  * @param {object} state
- * @param {object} spawnerPickup
+ * @param {object} spawnerWorldProp
  * @param {{ power?: number, nx?: number, ny?: number }} [options]
  */
-export function fireSpawner(state, spawnerPickup, { power, nx, ny } = {}) {
-    const asset = getPropAsset(spawnerPickup.type);
+export function fireSpawner(state, spawnerWorldProp, { power, nx, ny } = {}) {
+    const asset = getPropAsset(spawnerWorldProp.type);
     if (!isSpawnerProp(asset)) return null;
-    const config = getSpawnerDragConfig(spawnerPickup, asset);
-    const outlet = getSpawnerOutletWorld(spawnerPickup, asset);
+    const config = getSpawnerDragConfig(spawnerWorldProp, asset);
+    const outlet = getSpawnerOutletWorld(spawnerWorldProp, asset);
     const launchNx = nx ?? outlet.nx;
     const launchNy = ny ?? outlet.ny;
     const launchPower = power ?? config.maxPower;
-    const spawnId = resolveSpawnerPropId(spawnerPickup, asset);
+    const spawnId = resolveSpawnerPropId(spawnerWorldProp, asset);
     if (!getPropAsset(spawnId)) return null;
-    const spawned = new Pickup(outlet.x, outlet.y, spawnId, Math.atan2(launchNy, launchNx));
-    spawned.faction = resolveSandboxFaction(spawnerPickup);
+    const spawned = new WorldProp(outlet.x, outlet.y, spawnId, Math.atan2(launchNy, launchNx));
+    spawned.faction = resolveSandboxFaction(spawnerWorldProp);
     applyDragLaunchVelocity(spawned, launchNx, launchNy, launchPower);
-    addPickupToState(state, spawned);
+    addWorldPropToState(state, spawned);
     return spawned;
 }
 /** @returns {string[]} */

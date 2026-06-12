@@ -23,7 +23,7 @@ export const requireActorOther = { inclusions: [{ target: "other", has: "separat
 /** @type {PairFilterConfig} */
 export const requirePushableOther = { inclusions: [{ target: "other", has: "strategy.isPushable" }] };
 /** @type {PairFilterConfig} */
-export const requirePickupOnHit = { inclusions: [{ target: "other", hasFn: "strategy.onHit" }] };
+export const requireWorldPropOnHit = { inclusions: [{ target: "other", hasFn: "strategy.onHit" }] };
 /** @type {PairFilterConfig} */
 export const dedupPairById = { inclusions: [{ target: "pair", selfIdLessThanOther: true }] };
 /** @type {PairFilterConfig} */
