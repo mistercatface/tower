@@ -1,6 +1,5 @@
 import { CollisionSystem } from "../../Systems/Collision/CollisionSystem.js";
 import { minDistanceSegmentToWall } from "../Spatial/geometry/WallGeometry.js";
-import { engine } from "../../Apps/Editor/engine.js";
 import { LIBRARY_EXPLOSION_DEFAULTS as explosionSettings } from "./explosionDefaults.js";
 function blastDamage(exp, dist, maxMultiplier, minMultiplier) {
     const maxDmg = exp.damage * maxMultiplier;
@@ -11,6 +10,16 @@ function blastDamage(exp, dist, maxMultiplier, minMultiplier) {
 function blastMultipliersFor(actor) {
     if (typeof actor.getExplosionBlastMultipliers === "function") return actor.getExplosionBlastMultipliers();
     return actor.faction === "player" ? explosionSettings.playerMultipliers : explosionSettings.enemyMultipliers;
+}
+function applyBlastToTarget(state, exp, allEvents, target) {
+    if (exp.hitTargets.has(target) || target.isDead) return;
+    const dist = Math.hypot(target.x - exp.x, target.y - exp.y);
+    if (dist > exp.radius + target.radius) return;
+    if (!target.hasLineOfSightFromPoint(exp.x, exp.y, state, { sourceRadius: 0 })) return;
+    const [maxMultiplier, minMultiplier] = blastMultipliersFor(target);
+    allEvents.push({ target, damage: blastDamage(exp, dist, maxMultiplier, minMultiplier), type: "blast", explosion: exp });
+    exp.hitTargets.add(target);
+    if (target.strategy?.onHit) target.strategy.onHit(state, target, { isDead: false, isExplosion: true, x: exp.x, y: exp.y }, allEvents);
 }
 function applyExpandingDamage(state, exp, allEvents) {
     for (const seg of state.walls) {
@@ -30,26 +39,14 @@ function applyExpandingDamage(state, exp, allEvents) {
             }
         }
     }
-    for (const actor of engine.targeting.getBroadphaseActors(state)) {
-        if (exp.hitTargets.has(actor)) continue;
-        const dist = Math.hypot(actor.x - exp.x, actor.y - exp.y);
-        if (dist <= exp.radius + actor.radius)
-            if (actor.hasLineOfSightFromPoint(exp.x, exp.y, state, { sourceRadius: 0 })) {
-                const [maxMultiplier, minMultiplier] = blastMultipliersFor(actor);
-                allEvents.push({ target: actor, damage: blastDamage(exp, dist, maxMultiplier, minMultiplier), type: "blast", explosion: exp });
-                exp.hitTargets.add(actor);
-            }
-    }
-    state.entityRegistry.forEachOfKind("worldProp", (p) => {
-        if (p.isDead || exp.hitTargets.has(p)) return;
-        const dist = Math.hypot(p.x - exp.x, p.y - exp.y);
-        if (dist <= exp.radius + p.radius)
-            if (p.hasLineOfSightFromPoint(exp.x, exp.y, state, { sourceRadius: 0 }))
-                if (p.strategy?.onHit) {
-                    p.strategy.onHit(state, p, { isDead: false, isExplosion: true, x: exp.x, y: exp.y }, allEvents);
-                    exp.hitTargets.add(p);
-                }
-    });
+    state.entityRegistry.forEachOfKind("worldProp", (p) => applyBlastToTarget(state, exp, allEvents, p));
+    const actors = state.actors;
+    if (actors?.length)
+        for (let i = 0; i < actors.length; i++) {
+            const actor = actors[i];
+            if (!actor?.faction) continue;
+            applyBlastToTarget(state, exp, allEvents, actor);
+        }
 }
 export class ExplosionExpandingPhase {
     constructor() {

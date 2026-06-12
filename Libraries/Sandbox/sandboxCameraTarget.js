@@ -19,7 +19,7 @@ export function setSandboxCameraTarget(prop, enabled, registry) {
 export function findSandboxCameraTargetWorldProp(registry) {
     let target = null;
     registry.forEachOfKind("worldProp", (prop) => {
-        if (!prop.isDead && prop.sandboxCameraTarget) target = prop;
+        if (prop.sandboxCameraTarget) target = prop;
     });
     return target;
 }

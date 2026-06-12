@@ -14,9 +14,12 @@ export class CombatSpatialFrame extends SpatialFrameCore {
         super(cellSize);
         this._combatants = [];
         this._pushables = [];
+        /** Registry membershipGen when this frame was last populated. */
+        this.populatedMembershipGen = -1;
     }
     begin(state) {
         populateCombatFrame(this, state, this._combatants, this._pushables);
+        this.populatedMembershipGen = state.entityRegistry.membershipGen;
         return this;
     }
     forEachCombatantPair(fn) {

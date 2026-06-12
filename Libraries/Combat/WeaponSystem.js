@@ -103,8 +103,8 @@ export function resolveWeaponModeForGun(gun) {
 export const LASER_WEAPON_MODE = createLaserWeaponMode();
 export class WeaponSystem {
     static castLaser(startX, startY, angle, maxDist, state, beamRadius = 1, source = null) {
-        const actorTargets = source ? engine.targeting.getHostiles(state, source) : engine.targeting.getBroadphaseActors(state);
-        const circles = buildLaserTargetCircles(state, { source, includeWorldProps: true, includeActors: actorTargets });
+        const targets = source ? engine.targeting.getHostiles(state, source) : null;
+        const circles = buildLaserTargetCircles(state, { source, targets });
         return castLaserRay(startX, startY, angle, maxDist, state, beamRadius, circles);
     }
     static computeAccuracySway(source, turret, dt, requireCharge = false) {

@@ -20,5 +20,8 @@ export function autoFireWorldProp(state, prop, dt) {
 }
 /** @param {object} state */
 export function updateSandboxAutoCombat(state, dt) {
-    state.entityRegistry.forEachOfKind("worldProp", (prop) => autoFireWorldProp(state, prop, dt));
+    state.entityRegistry.forEachOfKind("worldProp", (prop) => {
+        if (prop.isDead) return;
+        autoFireWorldProp(state, prop, dt);
+    });
 }

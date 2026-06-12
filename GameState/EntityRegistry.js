@@ -110,7 +110,10 @@ export class EntityRegistry {
                 return result;
             }
         }
-        result = spatialFrame ? this._querySpatial(criteria.bounds, kindSet, criteria.match, spatialFrame) : this._queryFallback(criteria.bounds, kindSet, criteria.match);
+        result =
+            spatialFrame && spatialFrame.populatedMembershipGen === this.membershipGen
+                ? this._querySpatial(criteria.bounds, kindSet, criteria.match, spatialFrame)
+                : this._queryFallback(criteria.bounds, kindSet, criteria.match);
         this._queryCache.set(cacheKey, { result, spatialGen, membershipGen: this.membershipGen });
         return result;
     }
@@ -148,7 +151,6 @@ export class EntityRegistry {
         this._queryCache.clear();
     }
 }
-
 /** @param {object} state @param {object} prop */
 export function addWorldPropToState(state, prop) {
     state.worldProps.push(prop);

@@ -28,7 +28,7 @@ export function isSandboxEquippable(asset) {
  */
 export function forEachArmedSandboxWorldProp(host, fn) {
     host.forEachWorldProp((prop) => {
-        if (prop.isDead || !prop.weaponLoadout?.length) return;
+        if (!prop.weaponLoadout?.length) return;
         if (!isSandboxEquippable(getPropAsset(prop.type))) return;
         syncWorldPropWeaponState(prop);
         fn(prop);

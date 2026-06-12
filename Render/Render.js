@@ -41,6 +41,7 @@ export class Renderer {
     }
     /** @param {import("../GameState/GameState.js").GameState} state */
     syncWorldSceneDrawInput(state) {
+        combatSpatial.begin(state);
         const input = this.worldSceneDrawInput;
         input.entityRegistry = state.entityRegistry;
         input.spatialFrame = combatSpatial;

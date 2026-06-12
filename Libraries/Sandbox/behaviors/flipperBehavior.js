@@ -134,7 +134,7 @@ function tickFlipperWorldProp(prop, asset, dt) {
 /** @param {import("../SandboxHostPort.js").SandboxHostPort} host @param {number} dt */
 function tickAllFlippers(host, dt) {
     host.forEachWorldProp((prop) => {
-        if (prop.isDead || !isFlipperWorldProp(prop)) return;
+        if (!isFlipperWorldProp(prop)) return;
         const asset = getPropAsset(prop.type);
         if (!asset) return;
         tickFlipperWorldProp(prop, asset, dt);

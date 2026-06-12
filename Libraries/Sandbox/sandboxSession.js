@@ -166,7 +166,7 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
             /** @type {{ id: number, type: string, faction: string, label: string }[]} */
             const placed = [];
             registry().forEachOfKind("worldProp", (prop) => {
-                if (prop.sandboxGroupId || prop.assemblyRackId) return;
+                if (prop.isDead || prop.sandboxGroupId || prop.assemblyRackId) return;
                 const typeLabel = (prop.type ?? "prop").replace(/_/g, " ");
                 const index = (counts.get(prop.type) ?? 0) + 1;
                 counts.set(prop.type, index);

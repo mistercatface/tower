@@ -23,7 +23,7 @@ export function drawSandboxLaserSights(ctx, host) {
             if (!getActiveSightAttachment(gun)) continue;
             let muzzle = resolveKinematicsMuzzlePosition(prop, slotIndex, camera);
             const angle = prop.turrets?.[slotIndex]?.angle ?? prop.facing ?? prop.angle ?? 0;
-            const circles = buildLaserTargetCircles(worldState, { source: prop, includeWorldProps: true, includeActors: [] });
+            const circles = buildLaserTargetCircles(worldState, { source: prop });
             const hit = castLaserRay(muzzle.x, muzzle.y, angle, DEFAULT_SIGHT_RANGE, worldState, 1, circles);
             drawLaserBeam(ctx, muzzle.x, muzzle.y, hit.x, hit.y, resolveSightColor(hit, prop), true);
         }
