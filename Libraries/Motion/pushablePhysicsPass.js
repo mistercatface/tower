@@ -1,3 +1,4 @@
+import { removePickupFromState } from "../../GameState/EntityRegistry.js";
 import { getCollisionSettings } from "../../Core/GameCollisionSettings.js";
 import { CollisionSystem } from "../../Systems/Collision/CollisionSystem.js";
 import { advancePushableSleep, evaluatePushableSleepEligible } from "./pushableSleep.js";
@@ -28,10 +29,7 @@ export function runPushablePhysics(state, dt, spatialFrame, events) {
         for (let i = state.pickups.length - 1; i >= 0; i--) {
             const p = state.pickups[i];
             p.update(subDt, state, spatialFrame);
-            if (p.isDead) {
-                state.pickups.splice(i, 1);
-                state.entityRegistry.unregister(p);
-            }
+            if (p.isDead) removePickupFromState(state, p);
         }
         spatialFrame.reindexPushables(pushables);
         CollisionSystem.run(state, spatialFrame, events);

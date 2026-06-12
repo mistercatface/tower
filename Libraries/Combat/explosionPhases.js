@@ -40,8 +40,8 @@ function applyExpandingDamage(state, exp, allEvents) {
                 exp.hitTargets.add(actor);
             }
     }
-    for (const p of state.pickups) {
-        if (p.isDead || exp.hitTargets.has(p)) continue;
+    state.entityRegistry.forEachOfKind("pickup", (p) => {
+        if (p.isDead || exp.hitTargets.has(p)) return;
         const dist = Math.hypot(p.x - exp.x, p.y - exp.y);
         if (dist <= exp.radius + p.radius)
             if (p.hasLineOfSightFromPoint(exp.x, exp.y, state, { sourceRadius: 0 }))
@@ -49,7 +49,7 @@ function applyExpandingDamage(state, exp, allEvents) {
                     p.strategy.onHit(state, p, { isDead: false, isExplosion: true, x: exp.x, y: exp.y }, allEvents);
                     exp.hitTargets.add(p);
                 }
-    }
+    });
 }
 export class ExplosionExpandingPhase {
     constructor() {

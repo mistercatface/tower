@@ -5,7 +5,6 @@
  * `Libraries/Combat/` (`pickupManualFire`, `pickupWeaponState`, `spawnProjectiles`).
  * Behaviors here only wire pointer input and tick hooks to those modules.
  */
-export { findPickupAt, findPickupById, findLivePickup } from "./findPickupAt.js";
 export { bindCanvasPointers, releasePointerCapture } from "./bindCanvasPointers.js";
 export { createSandboxSession } from "./sandboxSession.js";
 export { createSandboxController } from "./createSandboxController.js";

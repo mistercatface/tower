@@ -15,7 +15,6 @@ export class Renderer {
         this.caches = caches;
         this.render3D = new WorldSceneRenderer(getGameWorldSurfaceSettings(), engine.render.world3dPropRecipes);
         this.worldSceneDrawInput = {
-            pickups: [],
             ragdollCorpses: [],
             worldSurfaces: null,
             proceduralSurfaceDraw: {
@@ -43,7 +42,6 @@ export class Renderer {
     /** @param {import("../GameState/GameState.js").GameState} state */
     syncWorldSceneDrawInput(state) {
         const input = this.worldSceneDrawInput;
-        input.pickups = state.pickups;
         input.entityRegistry = state.entityRegistry;
         input.spatialFrame = combatSpatial;
         input.ragdollCorpses = state.ragdollCorpses ?? [];

@@ -20,6 +20,5 @@ export function autoFirePickup(state, pickup, dt) {
 }
 /** @param {object} state */
 export function updateSandboxAutoCombat(state, dt) {
-    if (!state.pickups?.length) return;
-    for (const pickup of state.pickups) autoFirePickup(state, pickup, dt);
+    state.entityRegistry.forEachOfKind("pickup", (pickup) => autoFirePickup(state, pickup, dt));
 }

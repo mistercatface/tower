@@ -13,6 +13,7 @@ import { CircleShape, PolygonShape } from "../Libraries/Spatial/collision/Shapes
 import { syncLongAxisCollisionShape } from "../Libraries/Props/longAxisCollision.js";
 import { isStandTipProp } from "../Libraries/Spatial/transforms/longAxisBox3d.js";
 import { MOVING_SPEED_SQ } from "../Libraries/Spatial/collision/entityBroadphase.js";
+import { addPickupToState } from "../GameState/EntityRegistry.js";
 import { speedSqXY } from "../Libraries/Math/Vec2.js";
 import { resolveBodyRadius } from "../Libraries/Motion/bodyDefaults.js";
 import { SPLITTABLE_MIN_PIECE_SIZE } from "../Libraries/Props/splittable.js";
@@ -228,8 +229,7 @@ export class Pickup extends Entity {
             shard.vx = this.vx + dx * speed + (Math.random() - 0.5) * 15;
             shard.vy = this.vy + dy * speed + (Math.random() - 0.5) * 15;
             wakePushableBody(shard);
-            gameState.pickups.push(shard);
-            gameState.entityRegistry.registerPickup(shard);
+            addPickupToState(gameState, shard);
         }
     }
 }

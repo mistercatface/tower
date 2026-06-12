@@ -1,9 +1,10 @@
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { bindCanvasPointers, releasePointerCapture } from "./bindCanvasPointers.js";
-import { findPickupAt } from "./findPickupAt.js";
+import { findPickupAtInView } from "../../GameState/EntityRegistry.js";
+import { combatSpatial } from "../../Systems/World/CombatSpatialFrame.js";
 import { createSandboxSession, SANDBOX_SPAWN_ASSEMBLY_PREFIX } from "./sandboxSession.js";
 import { addButtonPadLink, clearButtonPadLinks, drawSandboxPadWires, findButtonLinkTarget, listButtonPadLinkEndpoints, removeButtonPadLink } from "./sandboxPadLinks.js";
-import { getSandboxPad, handlePadPointerDown, hitTestPad, isSandboxSpawnPadId, releaseButtonPointerHold } from "./sandboxPads.js";
+import { handlePadPointerDown, hitTestPad, isSandboxSpawnPadId, releaseButtonPointerHold } from "./sandboxPads.js";
 import { resolveSandboxBehaviors } from "./sandboxCapabilities.js";
 import { drawSandboxLaserSights } from "./drawLaserSights.js";
 import { drawActivePathOverlay } from "../Render/map/drawActivePathOverlay.js";
@@ -99,8 +100,9 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
     const onPointerDown = (e) => {
         const canvas = host.getCanvas();
         const world = host.clientToWorld(e.clientX, e.clientY);
+        const registry = host.getWorldState().entityRegistry;
         if (e.button === 2) {
-            const hit = findPickupAt(host.getPickups(), world.x, world.y);
+            const hit = findPickupAtInView(registry, combatSpatial, world.x, world.y);
             if (!hit) return;
             e.preventDefault();
             e.stopPropagation();
@@ -110,7 +112,7 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
         if (e.button !== 0) return;
         if (padWireMode) {
             const buttonPadId = session.getSelectedPadId();
-            const buttonPad = buttonPadId ? getSandboxPad(host.getWorldState(), buttonPadId) : null;
+            const buttonPad = buttonPadId ? host.getWorldState().entityRegistry.get(buttonPadId) : null;
             if (buttonPad?.preset === "button") {
                 const target = findButtonLinkTarget(host.getWorldState(), world.x, world.y, buttonPad.id);
                 if (target) addButtonPadLink(host.getWorldState(), buttonPad.id, target);
@@ -133,7 +135,7 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
             return;
         }
         session.pruneSelection();
-        const hit = findPickupAt(host.getPickups(), world.x, world.y);
+        const hit = findPickupAtInView(registry, combatSpatial, world.x, world.y);
         if (hit) {
             const allowed = resolveSandboxBehaviors(getPropAsset(hit.type), behaviors, hit);
             if (allowed.length > 0) session.setSelectedPickupId(hit.id);
@@ -238,7 +240,7 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
         listSelectedPadLinks: () => {
             const padId = session.getSelectedPadId();
             if (!padId) return [];
-            const pad = getSandboxPad(host.getWorldState(), padId);
+            const pad = host.getWorldState().entityRegistry.get(padId);
             if (!pad) return [];
             return listButtonPadLinkEndpoints(host.getWorldState(), pad);
         },

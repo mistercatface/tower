@@ -4,6 +4,7 @@ import { applyDragLaunchVelocity } from "./dragLaunch.js";
 import { getPropAsset, getWorldPropDefinitions } from "../Props/PropCatalog.js";
 import { isSandboxSpawnable } from "./sandboxCapabilities.js";
 import { DRAG_LAUNCH_DEFAULTS } from "./dragLaunch.js";
+import { addPickupToState } from "../../GameState/EntityRegistry.js";
 /** @param {object | null | undefined} asset */
 export function isSpawnerProp(asset) {
     return asset?.sandbox?.spawner != null && typeof asset.sandbox.spawner === "object";
@@ -53,8 +54,7 @@ export function fireSpawner(state, spawnerPickup, { power, nx, ny } = {}) {
     const spawned = new Pickup(outlet.x, outlet.y, spawnId, Math.atan2(launchNy, launchNx));
     spawned.faction = resolveSandboxFaction(spawnerPickup);
     applyDragLaunchVelocity(spawned, launchNx, launchNy, launchPower);
-    state.pickups.push(spawned);
-    state.entityRegistry.registerPickup(spawned);
+    addPickupToState(state, spawned);
     return spawned;
 }
 /** @returns {string[]} */

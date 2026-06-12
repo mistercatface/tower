@@ -1,12 +1,9 @@
-import { findLivePickup, findPickupAt } from "./findPickupAt.js";
+import { findPickupAtInView } from "../../GameState/EntityRegistry.js";
 import { hitTestPad } from "./sandboxPads.js";
 import { isFlipperPickup } from "./behaviors/flipperBehavior.js";
 import { isSpawnerPickup } from "./spawnerConfig.js";
 import { fillCircle, strokeCircle, strokeSegment } from "../Canvas/CanvasPath.js";
-/** @param {object} state @param {string} id */
-function findSandboxPad(state, id) {
-    return state.sandboxPads.find((pad) => pad.id === id) ?? null;
-}
+import { combatSpatial } from "../../Systems/World/CombatSpatialFrame.js";
 /** @typedef {{ type: "pickup", id: number }} ButtonLinkPickupTarget */
 /** @typedef {{ type: "pad", id: string }} ButtonLinkPadTarget */
 /** @typedef {ButtonLinkPickupTarget | ButtonLinkPadTarget} ButtonLinkTarget */
@@ -32,7 +29,7 @@ function sameButtonLink(a, b) {
  * @param {ButtonLinkTarget} target
  */
 export function addButtonPadLink(state, buttonPadId, target) {
-    const pad = findSandboxPad(state, buttonPadId);
+    const pad = state.entityRegistry.get(buttonPadId);
     if (!pad || pad.preset !== "button") return false;
     const links = getButtonPadLinks(pad);
     if (links.some((link) => sameButtonLink(link, target))) return true;
@@ -45,7 +42,7 @@ export function addButtonPadLink(state, buttonPadId, target) {
  * @param {ButtonLinkTarget} target
  */
 export function removeButtonPadLink(state, buttonPadId, target) {
-    const pad = findSandboxPad(state, buttonPadId);
+    const pad = state.entityRegistry.get(buttonPadId);
     if (!pad || pad.preset !== "button") return false;
     setButtonPadLinks(
         pad,
@@ -55,7 +52,7 @@ export function removeButtonPadLink(state, buttonPadId, target) {
 }
 /** @param {object} state @param {string} buttonPadId */
 export function clearButtonPadLinks(state, buttonPadId) {
-    const pad = findSandboxPad(state, buttonPadId);
+    const pad = state.entityRegistry.get(buttonPadId);
     if (!pad || pad.preset !== "button") return false;
     pad.buttonLinks = [];
     return true;
@@ -67,7 +64,7 @@ export function clearButtonPadLinks(state, buttonPadId) {
  * @param {string} sourcePadId
  */
 export function findButtonLinkTarget(state, worldX, worldY, sourcePadId) {
-    const pickup = findPickupAt(state.pickups, worldX, worldY);
+    const pickup = findPickupAtInView(state.entityRegistry, combatSpatial, worldX, worldY);
     if (pickup && (isFlipperPickup(pickup) || isSpawnerPickup(pickup))) return { type: "pickup", id: pickup.id };
     const pad = hitTestPad(state, worldX, worldY);
     if (pad && pad.id !== sourcePadId && isButtonLinkTargetPad(pad)) return { type: "pad", id: pad.id };
@@ -76,11 +73,11 @@ export function findButtonLinkTarget(state, worldX, worldY, sourcePadId) {
 /** @param {object} state @param {ButtonLinkTarget} target */
 export function resolveButtonLinkEndpoint(state, target) {
     if (target.type === "pad") {
-        const pad = findSandboxPad(state, target.id);
+        const pad = state.entityRegistry.get(target.id);
         if (!pad) return null;
         return { target, label: `${pad.preset} · ${pad.id}`, x: pad.x, y: pad.y };
     }
-    const pickup = findLivePickup(state.pickups, target.id);
+    const pickup = state.entityRegistry.getLive(target.id);
     if (!pickup) return null;
     const typeLabel = (pickup.type ?? "prop").replace(/_/g, " ");
     const role = isSpawnerPickup(pickup) ? "spawner" : isFlipperPickup(pickup) ? "flipper" : typeLabel;
@@ -111,7 +108,7 @@ export function drawSandboxPadWires(ctx, state, { wireFromPadId = null, wireCurs
         for (let j = 0; j < endpoints.length; j++) drawWire(ctx, pad.x, pad.y, endpoints[j].x, endpoints[j].y, color);
     }
     if (wireFromPadId && wireCursor) {
-        const from = findSandboxPad(state, wireFromPadId);
+        const from = state.entityRegistry.get(wireFromPadId);
         if (from) drawWire(ctx, from.x, from.y, wireCursor.x, wireCursor.y, "#FFB74D");
     }
     ctx.restore();

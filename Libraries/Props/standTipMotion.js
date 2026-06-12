@@ -49,12 +49,11 @@ export function needsStandTipIntegration(body) {
  */
 export function integrateStandTipsAfterCollisions(state, dtMs) {
     const wallCtx = wallContextFromState(state);
-    for (let i = 0; i < state.pickups.length; i++) {
-        const pickup = state.pickups[i];
-        if (pickup.isDead || !isStandTipProp(pickup)) continue;
+    state.entityRegistry.forEachOfKind("pickup", (pickup) => {
+        if (pickup.isDead || !isStandTipProp(pickup)) return;
         if (!pickup.isFallen && needsStandTipIntegration(pickup)) integrateStandTip(pickup, dtMs, { wallCtx });
         syncLongAxisCollisionShape(pickup);
-    }
+    });
 }
 /**
  * @param {object} body

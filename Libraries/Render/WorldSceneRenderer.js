@@ -37,54 +37,24 @@ export class WorldSceneRenderer {
         const zoom = viewport.zoom ?? 1;
         ctx.save();
         clipToViewport(ctx, viewport);
-        const queried = input.entityRegistry?.queryView(
-            {
-                bounds: viewportVisibleBounds(viewport),
-                kinds: ["pickup"],
-                filterId: "debris",
-                match: (p) => p.strategy?.renderMode === "debris",
-            },
+        const pickups = input.entityRegistry.queryView(
+            { bounds: viewportVisibleBounds(viewport), kinds: ["pickup"], filterId: "debris", match: (p) => p.strategy?.renderMode === "debris" },
             input.spatialFrame,
         );
-        const pickups = queried ?? input.pickups;
-        for (let i = 0; i < pickups.length; i++) {
-            const p = pickups[i];
-            if (p.isDead || p.strategy?.renderMode !== "debris") continue;
-            if (!queried && !p.isVisible(viewport)) continue;
-            this.props.drawProp(ctx, p, px, py, { zoom });
-        }
+        for (let i = 0; i < pickups.length; i++) this.props.drawProp(ctx, pickups[i], px, py, { zoom });
         ctx.restore();
     }
     _appendVisible3dProps(input, viewport, px, py) {
         const visibleObjects = this.visibleDrawables;
-        const pickups = input.entityRegistry?.queryView(
-            {
-                bounds: viewportVisibleBounds(viewport),
-                kinds: ["pickup"],
-                filterId: "3d",
-                match: (p) => p.strategy?.renderMode === "3d" || p.usesKinematicsBody,
-            },
+        const pickups = input.entityRegistry.queryView(
+            { bounds: viewportVisibleBounds(viewport), kinds: ["pickup"], filterId: "3d", match: (p) => p.strategy?.renderMode === "3d" || p.usesKinematicsBody },
             input.spatialFrame,
         );
-        if (pickups?.length) {
-            for (let i = 0; i < pickups.length; i++) {
-                const p = pickups[i];
-                if (p.isDead) continue;
-                if (p.strategy?.renderMode !== "3d" && !p.usesKinematicsBody) continue;
-                p._distSq = (p.x - px) ** 2 + (p.y - py) ** 2;
-                visibleObjects.push(p);
-            }
-            return;
+        for (let i = 0; i < pickups.length; i++) {
+            const p = pickups[i];
+            p._distSq = (p.x - px) ** 2 + (p.y - py) ** 2;
+            visibleObjects.push(p);
         }
-        if (input.pickups.length > 0)
-            for (let i = 0; i < input.pickups.length; i++) {
-                const p = input.pickups[i];
-                if (p.isDead) continue;
-                if (p.strategy?.renderMode !== "3d" && !p.usesKinematicsBody) continue;
-                if (!p.isVisible(viewport)) continue;
-                p._distSq = (p.x - px) ** 2 + (p.y - py) ** 2;
-                visibleObjects.push(p);
-            }
     }
     _appendVisibleRagdolls(input, viewport, px, py, visibleObjects) {
         if (!input.ragdollCorpses?.length) return;

@@ -3,17 +3,7 @@ import { getPropAsset } from "../Props/PropCatalog.js";
 import { SANDBOX_DEFAULT_FACTION, resolveSandboxFaction } from "../Combat/sandboxTargeting.js";
 import { spawnAssembly, deleteAssemblyInstance, clearAssemblyInstances } from "./spawnAssembly.js";
 import { getResolvedAssembly, listAssemblyManifests } from "./assemblies/assemblyRegistry.js";
-import {
-    clearSandboxPads,
-    deleteSandboxPad,
-    getSandboxPad,
-    getSandboxPadEditorState,
-    isSandboxSpawnPadId,
-    listSandboxPads,
-    parseSandboxPadPreset,
-    patchSandboxPad,
-    spawnSandboxPad,
-} from "./sandboxPads.js";
+import { clearSandboxPads, deleteSandboxPad, getSandboxPadEditorState, isSandboxSpawnPadId, listSandboxPads, parseSandboxPadPreset, patchSandboxPad, spawnSandboxPad } from "./sandboxPads.js";
 import { PAD_PRESETS } from "./padPresets.js";
 /** @typedef {import("./SandboxHostPort.js").SandboxHostPort} SandboxHostPort */
 export { SANDBOX_SPAWN_PAD_PREFIX, isSandboxSpawnPadId, parseSandboxPadPreset, sandboxSpawnPadId } from "./sandboxPads.js";
@@ -45,9 +35,10 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
         host.requestRedraw();
         uiSync?.();
     };
+    const registry = () => host.getWorldState().entityRegistry;
     const pruneSelection = () => {
         if (selectedPickupId == null) return;
-        if (!host.getPickups().some((p) => p.id === selectedPickupId && !p.isDead)) {
+        if (!registry().getLive(selectedPickupId)) {
             selectedPickupId = null;
             uiSync?.();
         }
@@ -89,7 +80,7 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
         },
         getSelectedPad: () => {
             if (selectedPadId == null) return null;
-            const pad = getSandboxPad(host.getWorldState(), selectedPadId);
+            const pad = host.getWorldState().entityRegistry.get(selectedPadId);
             if (!pad || pad.sandboxGroupId) {
                 selectedPadId = null;
                 return null;
@@ -104,7 +95,7 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
         },
         getSelectedPickup: () => {
             pruneSelection();
-            return host.getPickups().find((p) => p.id === selectedPickupId) ?? null;
+            return selectedPickupId == null ? null : registry().getLive(selectedPickupId);
         },
         pruneSelection,
         spawnAt,
@@ -163,20 +154,20 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
             sync();
         },
         deletePickupById(id) {
-            const pickup = host.getPickups().find((p) => p.id === id);
-            this.deletePickup(pickup);
+            this.deletePickup(registry().get(id));
         },
         listPlacedPickups() {
             const counts = new Map();
-            return host
-                .getPickups()
-                .filter((pickup) => !pickup.sandboxGroupId && !pickup.assemblyRackId)
-                .map((pickup) => {
-                    const typeLabel = (pickup.type ?? "prop").replace(/_/g, " ");
-                    const index = (counts.get(pickup.type) ?? 0) + 1;
-                    counts.set(pickup.type, index);
-                    return { id: pickup.id, type: pickup.type, faction: resolveSandboxFaction(pickup), label: `${typeLabel} #${index}` };
-                });
+            /** @type {{ id: number, type: string, faction: string, label: string }[]} */
+            const placed = [];
+            registry().forEachOfKind("pickup", (pickup) => {
+                if (pickup.sandboxGroupId || pickup.assemblyRackId) return;
+                const typeLabel = (pickup.type ?? "prop").replace(/_/g, " ");
+                const index = (counts.get(pickup.type) ?? 0) + 1;
+                counts.set(pickup.type, index);
+                placed.push({ id: pickup.id, type: pickup.type, faction: resolveSandboxFaction(pickup), label: `${typeLabel} #${index}` });
+            });
+            return placed;
         },
         clear() {
             host.clearPickups();

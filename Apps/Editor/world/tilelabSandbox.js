@@ -2,6 +2,7 @@ import { canvasClientToWorld } from "../../../Libraries/Input/canvasPointer.js";
 import { TILELAB_SANDBOX_SPAWN_PROP } from "../state.js";
 import { pickupStates } from "../../../Entities/PickupStates.js";
 import { voidSinkPickupStates } from "../../../Entities/pickupVoidSinkState.js";
+import { addPickupToState, clearPickupsInState, removePickupFromState } from "../../../GameState/EntityRegistry.js";
 import {
     createCueStrikeBehavior,
     createDragLaunchBehavior,
@@ -27,19 +28,9 @@ function createSandboxHost(state, requestRedraw) {
         requestRedraw,
         computePath: (startX, startY, targetX, targetY) => state.hierarchicalNavigator.computePath(startX, startY, targetX, targetY),
         getPickups: () => state.pickups,
-        addPickup: (prop) => {
-            state.pickups.push(prop);
-            state.entityRegistry.registerPickup(prop);
-        },
-        removePickup: (prop) => {
-            const index = state.pickups.indexOf(prop);
-            if (index >= 0) state.pickups.splice(index, 1);
-            state.entityRegistry.unregister(prop);
-        },
-        clearPickups: () => {
-            state.pickups = [];
-            state.entityRegistry.clear("pickup");
-        },
+        addPickup: (prop) => addPickupToState(state, prop),
+        removePickup: (prop) => removePickupFromState(state, prop),
+        clearPickups: () => clearPickupsInState(state),
         getWorldState: () => state,
     };
 }

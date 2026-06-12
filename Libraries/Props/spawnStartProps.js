@@ -1,4 +1,5 @@
 import { Pickup } from "../../Entities/Pickup.js";
+import { addPickupToState } from "../../GameState/EntityRegistry.js";
 /**
  * @typedef {object} StartPropSpec
  * @property {string} type — worldPropDefinitions key
@@ -14,7 +15,6 @@ export function spawnStartProps(state, specs) {
     if (!specs.length) return;
     for (const spec of specs) {
         const pickup = new Pickup(spec.x, spec.y, spec.type, spec.facing ?? null);
-        state.pickups.push(pickup);
-        state.entityRegistry.registerPickup(pickup);
+        addPickupToState(state, pickup);
     }
 }

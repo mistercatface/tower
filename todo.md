@@ -36,13 +36,13 @@
 
 Core done: masterlist on `SharedGameState`, lifecycle hooks, `queryView` bounds cache, renderer cull, combat frame, aim previews, camera follow, sim pad id lookups.
 
-- [ ] **`addPickupToState` / `removePickupFromState`** — single helper (host or state module) so `push` + `registerPickup` / `splice` + `unregister` aren't duplicated across sandbox host, spawner, start props, shards, assembly delete, physics death.
-- [ ] **Pads in registry** — register/unregister on `spawnSandboxPad` / `assemblyPadSpawn` / `deleteSandboxPad`; `get(id)` for pad lookups (string ids, separate kind).
-- [ ] **Combat + sim `forEachOfKind("pickup")`** — replace full `state.pickups` scans in `pickupAutoCombat`, `laserCast`, `explosionPhases`, `sandboxTargeting.getAllCombatants`, `standTipMotion`.
-- [ ] **Physics death via remove helper** — `pushablePhysicsPass` calls centralized remove instead of inline splice + manual unregister.
-- [ ] **`findPickupAt.js` → registry wrappers** — reimplement `findPickupById` / `findLivePickup` as `registry.get` / `getLive`; drop array-scan bodies once call sites updated.
-- [ ] **UI selection via registry** — `sandboxSession` / controller: `registry.get(selectedPickupId)` instead of `getPickups().find(…)`.
-- [ ] **UI hit-test via `queryView`** — `createSandboxController` pointer pick: small bounds around click + `queryView` (or nearest-in-result) instead of `findPickupAt(full array)`.
-- [ ] **`sandboxPadLinks` → registry** — link editor resolve endpoints with `get` / `getLive` (still UI-adjacent but mechanical).
-- [ ] **Drop renderer fallback** — remove full-`input.pickups` path from `WorldSceneRenderer`; stop syncing `input.pickups` in `Render.js` once draw input is registry-only.
-- [ ] **Hardening / later** — `notifyTagsChanged()` if tag-based `queryView` filters ever change without re-register; call `syncPickups()` after state hydrate/load; optional spatial bounds queries for combat effects if prop counts grow.
+- [x] **`addPickupToState` / `removePickupFromState`** — `GameState/entityInstanceLifecycle.js`; sandbox host, spawner, start props, shards, assembly delete, physics death.
+- [x] **Pads in registry** — `addPadToState` / `removePadToState`; spawn/delete/clear; `getSandboxPad` → `registry.get`.
+- [x] **Combat + sim `forEachOfKind("pickup")`** — `pickupAutoCombat`, `laserCast`, `explosionPhases`, `sandboxTargeting.getAllCombatants`, `standTipMotion`.
+- [x] **Physics death via remove helper** — `pushablePhysicsPass` → `removePickupFromState`.
+- [x] **`findPickupAt.js` → registry wrappers** — `findPickupById` / `findLivePickup` / `findPickupAtInView`; legacy `findPickupAt` kept for array compat.
+- [x] **UI selection via registry** — `sandboxSession` prune/select/list/delete by id.
+- [x] **UI hit-test via `queryView`** — `createSandboxController` + `sandboxPadLinks` use `findPickupAtInView`.
+- [x] **`sandboxPadLinks` → registry** — pad lookup + live pickup resolve.
+- [x] **Drop renderer fallback** — `WorldSceneRenderer` registry-only; `input.pickups` removed from draw input.
+- [ ] **Hardening / later** — `syncPickups()` when state hydrate/load exists; optional spatial bounds queries for combat effects if prop counts grow.

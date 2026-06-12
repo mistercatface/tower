@@ -29,7 +29,7 @@ export function viewportVisibleBounds(viewport) {
  */
 export class EntityRegistry {
     constructor() {
-        /** @type {Map<number, EntityRegistryEntry>} */
+        /** @type {Map<string | number, EntityRegistryEntry>} */
         this._entries = new Map();
         this.membershipGen = 0;
         /** @type {Map<string, { result: object[], spatialGen: number, membershipGen: number }>} */
@@ -41,13 +41,9 @@ export class EntityRegistry {
         this._entries.set(ref.id, { kind, ref });
         this._bumpMembership();
     }
-    /** @param {object} ref */
-    registerPickup(ref) {
-        this.register("pickup", ref);
-    }
-    /** @param {object | number} refOrId */
+    /** @param {object | string | number} refOrId */
     unregister(refOrId) {
-        const id = typeof refOrId === "number" ? refOrId : refOrId?.id;
+        const id = typeof refOrId === "object" && refOrId != null ? refOrId.id : refOrId;
         if (id == null) return;
         const entry = this._entries.get(id);
         if (!entry) return;
@@ -71,20 +67,11 @@ export class EntityRegistry {
         }
         if (removed) this._bumpMembership();
     }
-    /** @param {object[]} pickups */
-    syncPickups(pickups) {
-        this.clear("pickup");
-        for (let i = 0; i < pickups.length; i++) {
-            const pickup = pickups[i];
-            if (pickup?.id != null) this._entries.set(pickup.id, { kind: "pickup", ref: pickup });
-        }
-        this._bumpMembership();
-    }
-    /** @param {number} id @returns {object | null} */
+    /** @param {string | number} id @returns {object | null} */
     get(id) {
         return this._entries.get(id)?.ref ?? null;
     }
-    /** @param {number} id @returns {object | null} */
+    /** @param {string | number} id @returns {object | null} */
     getLive(id) {
         const ref = this.get(id);
         return ref && !ref.isDead ? ref : null;
@@ -160,4 +147,65 @@ export class EntityRegistry {
         this.membershipGen = (this.membershipGen + 1) | 0;
         this._queryCache.clear();
     }
+}
+
+/** @param {object} state @param {object} pickup */
+export function addPickupToState(state, pickup) {
+    state.pickups.push(pickup);
+    state.entityRegistry.register("pickup", pickup);
+}
+/** @param {object} state @param {object} pickup */
+export function removePickupFromState(state, pickup) {
+    const index = state.pickups.indexOf(pickup);
+    if (index >= 0) state.pickups.splice(index, 1);
+    state.entityRegistry.unregister(pickup);
+}
+/** @param {object} state @param {object} pad */
+export function addPadToState(state, pad) {
+    state.sandboxPads.push(pad);
+    state.entityRegistry.register("pad", pad);
+}
+/** @param {object} state @param {object} pad */
+export function removePadFromState(state, pad) {
+    const index = state.sandboxPads.indexOf(pad);
+    if (index >= 0) state.sandboxPads.splice(index, 1);
+    state.entityRegistry.unregister(pad);
+}
+/** @param {object} state */
+export function clearPickupsInState(state) {
+    state.pickups = [];
+    state.entityRegistry.clear("pickup");
+}
+/** @param {object} state */
+export function clearPadsInState(state) {
+    state.sandboxPads = [];
+    state.entityRegistry.clear("pad");
+}
+/** @param {object[]} pickups @param {number} worldX @param {number} worldY @param {number} padding */
+function nearestPickupInList(pickups, worldX, worldY, padding) {
+    let best = null;
+    let bestDistSq = Infinity;
+    for (let i = 0; i < pickups.length; i++) {
+        const pickup = pickups[i];
+        if (pickup.isDead) continue;
+        const tapRadius = pickup.radius + padding;
+        const distSq = (pickup.x - worldX) ** 2 + (pickup.y - worldY) ** 2;
+        if (distSq <= tapRadius * tapRadius && distSq < bestDistSq) {
+            best = pickup;
+            bestDistSq = distSq;
+        }
+    }
+    return best;
+}
+/**
+ * @param {EntityRegistry} registry
+ * @param {import("../Libraries/Spatial/world/SpatialFrameCore.js").SpatialFrameCore} spatialFrame
+ * @param {number} worldX
+ * @param {number} worldY
+ * @param {number} [padding]
+ */
+export function findPickupAtInView(registry, spatialFrame, worldX, worldY, padding = 8) {
+    const searchPad = padding + 48;
+    const candidates = registry.queryView({ bounds: { minX: worldX - searchPad, minY: worldY - searchPad, maxX: worldX + searchPad, maxY: worldY + searchPad }, kinds: ["pickup"] }, spatialFrame);
+    return nearestPickupInList(candidates, worldX, worldY, padding);
 }

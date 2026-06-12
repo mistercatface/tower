@@ -1,4 +1,5 @@
 import { createCircleFloorShape, createRectFloorShape, drawFloorShape, isAabbInView, processFloorShapes, readRectPadHalfExtents, syncPadQueryAabb } from "../Spatial/zones/floorShapes.js";
+import { addPadToState, clearPadsInState, removePadFromState } from "../../GameState/EntityRegistry.js";
 import { getCanvasLineScale } from "../Render/common/viewportUtils.js";
 import { fillCircle, strokeCircle } from "../Canvas/CanvasPath.js";
 import { PolygonShape } from "../Spatial/collision/Shapes.js";
@@ -164,14 +165,14 @@ export function buildSandboxPad(state, preset, x, y, options = {}) {
 export function spawnSandboxPad(host, preset, x, y, options = {}) {
     const state = host.getWorldState();
     const pad = buildSandboxPad(state, preset, x, y, options);
-    state.sandboxPads.push(pad);
+    addPadToState(state, pad);
     return pad;
 }
 /** @param {object} state @param {number} index */
 function removeSandboxPadAt(state, index) {
     const pad = state.sandboxPads[index];
     if (pad.preset === "pull") teardownPullPad(state, pad);
-    state.sandboxPads.splice(index, 1);
+    removePadFromState(state, pad);
 }
 /** @param {object} state @param {string} id */
 export function deleteSandboxPad(state, id) {
@@ -181,11 +182,11 @@ export function deleteSandboxPad(state, id) {
 }
 /** @param {object} state */
 export function clearSandboxPads(state) {
-    for (let i = state.sandboxPads.length - 1; i >= 0; i--) removeSandboxPadAt(state, i);
-}
-/** @param {object} state @param {string} id */
-export function getSandboxPad(state, id) {
-    return state.sandboxPads.find((pad) => pad.id === id) ?? null;
+    for (let i = state.sandboxPads.length - 1; i >= 0; i--) {
+        const pad = state.sandboxPads[i];
+        if (pad.preset === "pull") teardownPullPad(state, pad);
+    }
+    clearPadsInState(state);
 }
 /** @param {object} pad @param {number} halfWidth @param {number} halfHeight */
 function ensurePullRectShape(pad, halfWidth, halfHeight) {
@@ -277,7 +278,7 @@ function resizeCirclePad(pad, radius) {
  * }} patch
  */
 export function patchSandboxPad(state, id, patch) {
-    const pad = getSandboxPad(state, id);
+    const pad = state.entityRegistry.get(id);
     if (!pad || pad.sandboxGroupId) return false;
     if (patch.x != null || patch.y != null) {
         if (patch.x != null) pad.x = patch.x;

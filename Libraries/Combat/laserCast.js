@@ -7,12 +7,12 @@ import { castSteppedCircleRay } from "../Spatial/query/steppedCircleRayCast.js";
 export function buildLaserTargetCircles(state, { source = null, includePickups = true, includeActors = [] } = {}) {
     /** @type {import("../Spatial/query/steppedCircleRayCast.js").SteppedCircleRayCircleTarget[]} */
     const circles = [];
-    if (includePickups && state.pickups)
-        for (const pickup of state.pickups) {
-            if (pickup.isDead || !pickup.strategy?.laserTargetable) continue;
-            if (source && pickup === source) continue;
+    if (includePickups)
+        state.entityRegistry.forEachOfKind("pickup", (pickup) => {
+            if (pickup.isDead || !pickup.strategy?.laserTargetable) return;
+            if (source && pickup === source) return;
             circles.push({ entity: pickup, radius: pickup.radius, hitKind: "pickup" });
-        }
+        });
     for (const actor of includeActors) {
         if (actor.isDead) continue;
         if (source && actor === source) continue;

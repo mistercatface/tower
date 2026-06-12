@@ -13,7 +13,8 @@
  */
 /**
  * @typedef {Object} WorldSceneDrawInput
- * @property {object[]} pickups
+ * @property {import("../../GameState/EntityRegistry.js").EntityRegistry} entityRegistry
+ * @property {import("../Spatial/world/SpatialFrameCore.js").SpatialFrameCore} spatialFrame
  * @property {object[]} [ragdollCorpses]
  * @property {import("../WorldSurface/WorldSurfaceEngine.js").WorldSurfaceEngine|null} [worldSurfaces]
  * @property {ProceduralSurfaceDrawContext|null} [proceduralSurfaceDraw]
