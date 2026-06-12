@@ -1,4 +1,4 @@
-import { findPickupAt } from "./findPickupAt.js";
+import { findLivePickup, findPickupAt } from "./findPickupAt.js";
 import { hitTestPad } from "./sandboxPads.js";
 import { isFlipperPickup } from "./behaviors/flipperBehavior.js";
 import { isSpawnerPickup } from "./spawnerConfig.js";
@@ -80,7 +80,7 @@ export function resolveButtonLinkEndpoint(state, target) {
         if (!pad) return null;
         return { target, label: `${pad.preset} · ${pad.id}`, x: pad.x, y: pad.y };
     }
-    const pickup = state.pickups.find((entry) => entry.id === target.id && !entry.isDead);
+    const pickup = findLivePickup(state.pickups, target.id);
     if (!pickup) return null;
     const typeLabel = (pickup.type ?? "prop").replace(/_/g, " ");
     const role = isSpawnerPickup(pickup) ? "spawner" : isFlipperPickup(pickup) ? "flipper" : typeLabel;

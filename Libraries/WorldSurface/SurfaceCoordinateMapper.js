@@ -3,10 +3,13 @@ export function wallFaceAtlasUnrolledHeight(wallHeight, wallWidth) {
     return wallHeight + wallWidth;
 }
 export function createWallFaceAxes(p1, p2) {
-    const edgeLen = Math.hypot(p2.x - p1.x, p2.y - p1.y);
-    const dirX = (p2.x - p1.x) / edgeLen;
-    const dirY = (p2.y - p1.y) / edgeLen;
-    return { dirX, dirY, foldX: -dirY, foldY: dirX };
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const edgeLen = Math.hypot(dx, dy);
+    if (edgeLen <= 0) return { edgeLen: 0, dirX: 0, dirY: 0, foldX: 0, foldY: 0 };
+    const dirX = dx / edgeLen;
+    const dirY = dy / edgeLen;
+    return { edgeLen, dirX, dirY, foldX: -dirY, foldY: dirX };
 }
 /**
  * Per-bake constants for filling sample buffers. Built once per paintPixelArea call.

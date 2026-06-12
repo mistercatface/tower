@@ -44,9 +44,8 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, see
     let zOffset = 0;
     if (isWall && options.p1 && options.p2) {
         surfaceKind = "wallFace";
-        const edgeLen = Math.hypot(options.p2.x - options.p1.x, options.p2.y - options.p1.y);
         const axes = createWallFaceAxes(options.p1, options.p2);
-        wallFace = { p1: options.p1, edgeLen, ...axes };
+        wallFace = { p1: options.p1, ...axes };
     } else if (options.roofSurface) surfaceKind = "roof";
     else if (isWall) {
         surfaceKind = "wallCell";

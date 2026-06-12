@@ -25,7 +25,7 @@ import {
 import { chunkHasStaticRoofAtLevel } from "../World/staticOccupancyLayers.js";
 import { getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
 import { getWallAtlasCacheInfo } from "./WallSurfaceCache.js";
-import { wallFaceAtlasUnrolledHeight } from "./SurfaceCoordinateMapper.js";
+import { createWallFaceAxes, wallFaceAtlasUnrolledHeight } from "./SurfaceCoordinateMapper.js";
 import { wallFaceColumns } from "./WallFaceColumns.js";
 import { TileWorkerCoordinator } from "./TileWorkerCoordinator.js";
 import { drawBakedTexture, getTexelResolution } from "./WorldSurfaceResolution.js";
@@ -88,7 +88,7 @@ export class WorldSurfaceEngine {
     ensureWallAtlas(key, p1, p2, columns, proceduralSurfaceDraw, wallHeight = null, profileId = null) {
         let cached = this.surfaceCache.get(key);
         if (cached) return cached;
-        const edgeLen = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+        const edgeLen = createWallFaceAxes(p1, p2).edgeLen;
         if (edgeLen < 0.001 || columns.length === 0) return null;
         const cellSize = proceduralSurfaceDraw.obstacleCellSize ?? this.settings.cellSize;
         const pixelsPerUnit = getTexelResolution(this.settings);

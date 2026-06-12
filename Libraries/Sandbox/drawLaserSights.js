@@ -1,8 +1,7 @@
 import { getActiveSightAttachment } from "../Combat/gunModifiers.js";
 import { buildLaserTargetCircles, castLaserRay } from "../Combat/laserCast.js";
-import { DEFAULT_SIGHT_RANGE, resolvePickupSlotGun, syncPickupWeaponState } from "../Combat/pickupWeaponState.js";
-import { isSandboxEquippable } from "./sandboxCapabilities.js";
-import { getPropAsset } from "../Props/PropCatalog.js";
+import { DEFAULT_SIGHT_RANGE, resolvePickupSlotGun } from "../Combat/pickupWeaponState.js";
+import { forEachArmedSandboxPickup } from "./sandboxCapabilities.js";
 import { resolveKinematicsMuzzlePosition } from "../Render/Characters/actorKinematicsRenderer.js";
 import { drawLaserBeam } from "../Render/LaserBeam.js";
 function resolveSightColor(hit, source) {
@@ -17,10 +16,7 @@ export function drawSandboxLaserSights(ctx, host) {
     const worldState = host.getWorldState?.();
     if (!worldState) return;
     const camera = host.getCameraOrigin?.() ?? { x: 0, y: 0 };
-    for (const pickup of host.getPickups()) {
-        if (pickup.isDead || !pickup.weaponLoadout?.length) continue;
-        if (!isSandboxEquippable(getPropAsset(pickup.type))) continue;
-        syncPickupWeaponState(pickup);
+    forEachArmedSandboxPickup(host, (pickup) => {
         const loadout = pickup.weaponLoadout;
         for (let slotIndex = 0; slotIndex < loadout.length; slotIndex++) {
             const gun = resolvePickupSlotGun(pickup, slotIndex);
@@ -31,5 +27,5 @@ export function drawSandboxLaserSights(ctx, host) {
             const hit = castLaserRay(muzzle.x, muzzle.y, angle, DEFAULT_SIGHT_RANGE, worldState, 1, circles);
             drawLaserBeam(ctx, muzzle.x, muzzle.y, hit.x, hit.y, resolveSightColor(hit, pickup), true);
         }
-    }
+    });
 }

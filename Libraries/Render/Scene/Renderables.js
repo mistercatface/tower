@@ -81,13 +81,7 @@ export class RenderableRoofCap extends Renderable {
         this.zLevel = zLevel;
         // The 4 corners of the roof footprint in world space
         this.corners = corners; // [{x,y}, {x,y}, {x,y}, {x,y}]
-        // Calculate 2D bounding box for chunk assignment
-        this.bounds = {
-            minX: Math.min(...corners.map((c) => c.x)),
-            maxX: Math.max(...corners.map((c) => c.x)),
-            minY: Math.min(...corners.map((c) => c.y)),
-            maxY: Math.max(...corners.map((c) => c.y)),
-        };
+        expandPointsAabbInto(this.bounds, corners);
     }
     draw(ctx, viewport, cameraHeight, viewerX, viewerY) {
         const strength = resolveStructurePerspectiveStrength(viewport);

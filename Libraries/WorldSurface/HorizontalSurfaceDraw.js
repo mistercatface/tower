@@ -5,7 +5,7 @@ import { resolveStructurePerspectiveStrength } from "../../Core/GamePerspective.
 import { projectWorldAabbCornersInto } from "../Spatial/iso/IsometricProjection.js";
 import { getSegmentFootprintCorners } from "../Spatial/geometry/WallGeometry.js";
 import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
-import { forEachObstacleGridCellInAabb } from "../Spatial/grid/GridCoords.js";
+import { forEachObstacleGridCellInAabb, chunkWorldAabb } from "../Spatial/grid/GridCoords.js";
 import { traceAabbRect, traceClosedPolygon, clipToPath } from "../Canvas/CanvasPath.js";
 import { worldToChunkCol, worldToChunkRow } from "../Spatial/grid/ChunkGrid.js";
 import { getDamageAlphaFromHealth, drawAabbDamageOverlay, drawDamageOverlayInClip, drawPolygonDamageOverlay } from "../Render/Structure3D/wallDamageVisual.js";
@@ -51,7 +51,7 @@ export function chunkHasWallSegments(wallSpatialIndex, chunkOriginX, chunkOrigin
 export function chunkHasBlockedCells(obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx) {
     if (!obstacleGrid?.cols) return false;
     let found = false;
-    forEachObstacleGridCellInAabb(obstacleGrid, { minX: chunkOriginX, minY: chunkOriginY, maxX: chunkOriginX + chunkSizePx, maxY: chunkOriginY + chunkSizePx }, (col, row) => {
+    forEachObstacleGridCellInAabb(obstacleGrid, chunkWorldAabb(chunkOriginX, chunkOriginY, chunkSizePx), (col, row) => {
         if (obstacleGrid.isBlocked(col, row)) found = true;
     });
     return found;
@@ -68,7 +68,7 @@ export function clipChunkToBlockedCells(ctx, obstacleGrid, chunkOriginX, chunkOr
     const segmentGrid = obstacleGrid.segmentGrid;
     return clipToPath(ctx, (ctx) => {
         let clippedAny = false;
-        forEachObstacleGridCellInAabb(obstacleGrid, { minX: chunkOriginX, minY: chunkOriginY, maxX: chunkOriginX + chunkSizePx, maxY: chunkOriginY + chunkSizePx }, (col, row) => {
+        forEachObstacleGridCellInAabb(obstacleGrid, chunkWorldAabb(chunkOriginX, chunkOriginY, chunkSizePx), (col, row) => {
             if (!obstacleGrid.isBlocked(col, row)) return;
             const idx = colRowToIndex(col, row, obstacleGrid.cols);
             if (segmentGrid?.[idx]?.length) return;
@@ -98,7 +98,7 @@ export function buildStaticRoofMaskCanvas(obstacleGrid, chunkOriginX, chunkOrigi
     const ctx = canvas.getContext("2d");
     ctx.fillStyle = "#ffffff";
     let any = false;
-    forEachObstacleGridCellInAabb(obstacleGrid, { minX: chunkOriginX, minY: chunkOriginY, maxX: chunkOriginX + chunkSizePx, maxY: chunkOriginY + chunkSizePx }, (col, row) => {
+    forEachObstacleGridCellInAabb(obstacleGrid, chunkWorldAabb(chunkOriginX, chunkOriginY, chunkSizePx), (col, row) => {
         if (resolveStaticWallHeightAtCell(obstacleGrid, col, row, staticOccupancyLayers) !== zLevel) return;
         const bounds = obstacleGrid.getCellBounds(col, row);
         const x = Math.round((bounds.minX - chunkOriginX) * texelResolution);
@@ -228,7 +228,7 @@ export function drawRoofSegmentDamageOverlays(ctx, chunkOriginX, chunkOriginY, c
 export function drawStaticRoofDamageOverlays(ctx, obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx, zLevel, staticOccupancyLayers, state, viewerX, viewerY, cameraHeight, viewport = null) {
     if (!obstacleGrid?.cols || !staticOccupancyLayers?.length || !state) return;
     const cellSize = obstacleGrid.cellSize;
-    forEachObstacleGridCellInAabb(obstacleGrid, { minX: chunkOriginX, minY: chunkOriginY, maxX: chunkOriginX + chunkSizePx, maxY: chunkOriginY + chunkSizePx }, (col, row) => {
+    forEachObstacleGridCellInAabb(obstacleGrid, chunkWorldAabb(chunkOriginX, chunkOriginY, chunkSizePx), (col, row) => {
         if (resolveStaticWallHeightAtCell(obstacleGrid, col, row, staticOccupancyLayers) !== zLevel) return;
         const damageAlpha = getStaticCellDamageAlphaAtGrid(obstacleGrid, state, col, row);
         if (damageAlpha <= 0) return;
@@ -249,7 +249,7 @@ export function drawStaticRoofDamageOverlays(ctx, obstacleGrid, chunkOriginX, ch
  */
 export function drawStaticWallFootprintDamageOverlays(ctx, obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx, state) {
     if (!obstacleGrid?.cols || !state) return;
-    forEachObstacleGridCellInAabb(obstacleGrid, { minX: chunkOriginX, minY: chunkOriginY, maxX: chunkOriginX + chunkSizePx, maxY: chunkOriginY + chunkSizePx }, (col, row) => {
+    forEachObstacleGridCellInAabb(obstacleGrid, chunkWorldAabb(chunkOriginX, chunkOriginY, chunkSizePx), (col, row) => {
         if (!cellIsStaticBlocked(obstacleGrid, col, row)) return;
         const damageAlpha = getStaticCellDamageAlphaAtGrid(obstacleGrid, state, col, row);
         if (damageAlpha <= 0) return;

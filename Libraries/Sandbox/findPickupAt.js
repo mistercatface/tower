@@ -19,3 +19,13 @@ export function findPickupAt(pickups, worldX, worldY, padding = 8) {
     }
     return best;
 }
+/** @param {object[]} pickups @param {number} id @returns {object | null} */
+export function findPickupById(pickups, id) {
+    for (const pickup of pickups) if (pickup.id === id) return pickup;
+    return null;
+}
+/** @param {object[]} pickups @param {number} id @returns {object | null} */
+export function findLivePickup(pickups, id) {
+    const pickup = findPickupById(pickups, id);
+    return pickup && !pickup.isDead ? pickup : null;
+}

@@ -1,4 +1,5 @@
 import { normalizeXY } from "../Math/Vec2.js";
+import { resolveCueStrikeMaxRayDist } from "../CueStick/cueStrikeAimPreview.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { drawAimSegment } from "../Render/contactPreviewDraw.js";
@@ -111,7 +112,7 @@ export function buildDragLaunchAimLineContext(pickup, host) {
         circleTargets.push({ x: p.x, y: p.y, radius: p.radius });
     }
     const grid = state.obstacleGrid;
-    const maxRayDist = Math.hypot(grid.maxX - grid.minX, grid.maxY - grid.minY) * 1.25;
+    const maxRayDist = resolveCueStrikeMaxRayDist({ obstacleGrid: grid });
     return { pickup, radius, circleTargets, wallCtx: wallContextFromState(state), maxRayDist };
 }
 /**

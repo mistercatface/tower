@@ -1,3 +1,4 @@
+import { findPickupById } from "./findPickupAt.js";
 import { createCircleFloorShape, createRectFloorShape, drawFloorShape, isAabbInView, processFloorShapes, readRectPadHalfExtents, syncPadQueryAabb } from "../Spatial/zones/floorShapes.js";
 import { fillCircle, strokeCircle } from "../Canvas/CanvasPath.js";
 import { PolygonShape } from "../Spatial/collision/Shapes.js";
@@ -30,7 +31,7 @@ export function parseSandboxPadPreset(spawnId) {
 /** @param {object} state @param {object} pad */
 function padHasOccupant(state, pad) {
     for (const entityId of pad._occupants) {
-        const pickup = state.pickups.find((entry) => entry.id === entityId);
+        const pickup = findPickupById(state.pickups, entityId);
         if (pickup && !pickup.isDead) return true;
     }
     return false;

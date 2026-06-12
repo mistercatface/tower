@@ -1,9 +1,8 @@
+import { createWallFaceAxes } from "./SurfaceCoordinateMapper.js";
 /** World-aligned slices along a wall base edge (stable when the camera moves). */
 export function wallFaceColumns(p1, p2, cellSize) {
-    const edgeLen = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+    const { edgeLen, dirX: edgeDirX, dirY: edgeDirY } = createWallFaceAxes(p1, p2);
     if (edgeLen < 0.001) return [];
-    const edgeDirX = (p2.x - p1.x) / edgeLen;
-    const edgeDirY = (p2.y - p1.y) / edgeLen;
     const uStart = p1.x * edgeDirX + p1.y * edgeDirY;
     const uEnd = uStart + edgeLen;
     const firstTile = Math.floor(uStart / cellSize);

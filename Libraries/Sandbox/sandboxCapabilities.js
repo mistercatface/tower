@@ -1,5 +1,7 @@
 import { ROLL_TO_CURSOR_DIRECT_BEHAVIOR_ID } from "./behaviors/rollToCursorDirectBehavior.js";
 import { ROLL_TO_CURSOR_HPA_BEHAVIOR_ID } from "./behaviors/rollToCursorHpaBehavior.js";
+import { getPropAsset } from "../Props/PropCatalog.js";
+import { syncPickupWeaponState } from "../Combat/pickupWeaponState.js";
 export const SANDBOX_BEHAVIOR_LABELS = {
     dragLaunch: "Drag launch",
     dragLaunchWait: "Drag launch (wait for rest)",
@@ -19,6 +21,18 @@ export function getSandboxBehaviorLabel(behaviorId) {
 /** @param {object | null | undefined} asset */
 export function isSandboxEquippable(asset) {
     return asset?.sandbox?.equip === true;
+}
+/**
+ * @param {import("./SandboxHostPort.js").SandboxHostPort} host
+ * @param {(pickup: object) => void} fn
+ */
+export function forEachArmedSandboxPickup(host, fn) {
+    for (const pickup of host.getPickups()) {
+        if (pickup.isDead || !pickup.weaponLoadout?.length) continue;
+        if (!isSandboxEquippable(getPropAsset(pickup.type))) continue;
+        syncPickupWeaponState(pickup);
+        fn(pickup);
+    }
 }
 /** Props listed in the sandbox "Add" dropdown (excludes shard debris spawned from breaks). */
 /** @param {object | null | undefined} asset */

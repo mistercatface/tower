@@ -2,7 +2,7 @@
  * Static occupancy stamp metadata — wall height is fixed at stamp time, not from live editor config.
  */
 import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
-import { forEachObstacleGridCellInAabb } from "../Spatial/grid/GridCoords.js";
+import { forEachObstacleGridCellInAabb, chunkWorldAabb } from "../Spatial/grid/GridCoords.js";
 /** @typedef {{ originCol: number, originRow: number, cols: number, rows: number, wallHeight: number | null, cells: Uint8Array }} StaticOccupancyLayer */
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row */
 export function cellIsStaticBlocked(grid, col, row) {
@@ -81,7 +81,7 @@ export function collectStaticRoofHeights(layers) {
 export function chunkHasStaticRoofAtLevel(obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx, zLevel, layers) {
     if (!obstacleGrid?.cols || !layers?.length) return false;
     let found = false;
-    forEachObstacleGridCellInAabb(obstacleGrid, { minX: chunkOriginX, minY: chunkOriginY, maxX: chunkOriginX + chunkSizePx, maxY: chunkOriginY + chunkSizePx }, (col, row) => {
+    forEachObstacleGridCellInAabb(obstacleGrid, chunkWorldAabb(chunkOriginX, chunkOriginY, chunkSizePx), (col, row) => {
         if (resolveStaticWallHeightAtCell(obstacleGrid, col, row, layers) === zLevel) found = true;
     });
     return found;

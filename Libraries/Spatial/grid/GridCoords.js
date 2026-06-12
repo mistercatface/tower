@@ -70,3 +70,7 @@ export function forEachObstacleGridCellInAabb(grid, aabb, fn) {
     const rowMax = Math.min(grid.rows - 1, maxRow);
     for (let row = rowMin; row <= rowMax; row++) for (let col = colMin; col <= colMax; col++) fn(col, row);
 }
+/** @param {number} originX @param {number} originY @param {number} sizePx @returns {import("../../Math/Aabb2D.js").Aabb2D} */
+export function chunkWorldAabb(originX, originY, sizePx) {
+    return { minX: originX, minY: originY, maxX: originX + sizePx, maxY: originY + sizePx };
+}

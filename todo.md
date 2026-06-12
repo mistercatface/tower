@@ -18,6 +18,44 @@ Living notes from the static-grid / render-path refactor. Not a release checklis
 - [x] **Prop mesh projection** — `projectPropVertexInto` + scratch verts in `drawPropMeshFace` (no `.map()` per face).
 - [x] **`traceClosedPolygonCount`** — prefix-length polygon trace for scratch vertex buffers.
 - [x] **Assembly elevated patches** — `projectWorldAabbCornersInto` instead of four allocating `projectWorldPointAtHeight` calls.
+- [x] **`resolveCueStrikeMaxRayDist` in dragLaunch** — dropped inline grid diagonal math.
+- [x] **`findPickupById` / `findLivePickup`** — sandbox pad/link/button lookups (`findPickupAt.js`).
+- [x] **`chunkWorldAabb`** — chunk cell iteration in `HorizontalSurfaceDraw` + `staticOccupancyLayers`.
+- [x] **`createWallFaceAxes` returns `edgeLen`** — shared wall-edge direction in WorldSurface cluster.
+- [x] **`forEachArmedSandboxPickup`** — weapon bars + laser sights share armed-pickup gate.
+- [x] **`RenderableRoofCap` bounds** — uses `expandPointsAabbInto` like wall faces.
+
+---
+
+## Dedup / helper backlog
+
+Small repeated patterns worth extracting when touching nearby code:
+
+**Sandbox / combat**
+
+- [ ] **`buildCueStrikeCircleTargets` in dragLaunch** — drag aim still builds `{ x, y, radius }[]` inline; cue strike has richer filter (void/sink skip)
+- [ ] **`mergeConfig(defaults, ...layers)`** — shallow merge in `getDragLaunchConfig`, `getRollToCursorConfig`, `getSpawnerDragConfig`
+
+**Lifecycle / collections**
+
+- [ ] **Entity id masterlist (`Map<id, entity>`)** — `state.pickups` is array-only today; pad links, button effects, and `findPickupById` linear-scan on every lookup. Maintain a central id→entity index on spawn/remove/death (pickups first; extend to walls/actors if link-by-id spreads). Replace `findPickupById` call sites with map lookup; keep array for iteration order.
+- [ ] **`pruneDeadInPlace(arr)`** — reverse-loop splice in `CombatParticles`, `FloatingText`, `explosionRuntime`, `RagdollCorpse`, `pushablePhysicsPass`
+- [ ] **`collectVisibleWithDepth(entities, viewport, px, py)`** — duplicate loops in `WorldSceneRenderer` (_appendVisible3dProps / _appendVisibleRagdolls)
+
+**Math / geometry adoption**
+
+- [ ] **Use `Vec2` helpers opportunistically** — `lengthXY`, `distSqXY`, `withinRadiusSq` exist; many sites still hand-roll `Math.hypot` / `(dx)**2`
+- [ ] **`findPickupAt` dist check** — could use `distSqXY` + `withinRadiusSq`
+
+**Render / canvas (paused)**
+
+- [ ] **`getCanvasLineScale(ctx)`** — `1 / Math.max(0.001, ctx.getTransform().a)` in 6 overlay files
+- [ ] **`gatherTexturedQuadCells`** in-place sort — still allocates per sphere draw
+
+**Grid / surfaces**
+
+- [ ] **`forEachObstacleGridCellInChunk(grid, originX, originY, sizePx, fn)`** — thin wrapper over `chunkWorldAabb` + `forEachObstacleGridCellInAabb` if chunk iteration keeps spreading
+- [ ] **`isRenderableWall(w)`** — `wall.isDead || wall.collisionOnly` skip in legacy SceneCompiler / HorizontalSurfaceDraw
 
 ---
 
