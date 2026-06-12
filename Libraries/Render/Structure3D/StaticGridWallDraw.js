@@ -36,8 +36,15 @@ function storeGeomCache(cache, grid, layers, occupancyRevision, defaultWallHeigh
     cache.boundsMinY = bounds.minY;
     cache.boundsMaxY = bounds.maxY;
 }
-/** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} edge */
-function staticCellEdgeOpen(grid, col, row, edge) {
+/** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {import("../../World/staticOccupancyLayers.js").StaticOccupancyLayer[] | null | undefined} layers @param {number} defaultWallHeight @returns {number | null} null = open air */
+function staticCellCapHeight(grid, col, row, layers, defaultWallHeight) {
+    if (!grid.isBlocked(col, row)) return null;
+    const stamped = resolveStaticWallHeightAtCell(grid, col, row, layers);
+    if (stamped !== undefined) return stamped ?? defaultWallHeight;
+    return defaultWallHeight;
+}
+/** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} edge @param {import("../../World/staticOccupancyLayers.js").StaticOccupancyLayer[] | null | undefined} layers @param {number} faceHeight @param {number} defaultWallHeight */
+function staticCellEdgeShouldShowFace(grid, col, row, edge, layers, faceHeight, defaultWallHeight) {
     let nc = col;
     let nr = row;
     if (edge === 0) nr = row - 1;
@@ -45,7 +52,9 @@ function staticCellEdgeOpen(grid, col, row, edge) {
     else if (edge === 2) nr = row + 1;
     else nc = col - 1;
     if (nc < 0 || nc >= grid.cols || nr < 0 || nr >= grid.rows) return true;
-    return !grid.isBlocked(nc, nr);
+    const neighborCap = staticCellCapHeight(grid, nc, nr, layers, defaultWallHeight);
+    if (neighborCap == null) return true;
+    return faceHeight > neighborCap;
 }
 /** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} edge @param {typeof sP1} p1 @param {typeof sP2} p2 */
 function staticCellEdgeEndpoints(grid, col, row, edge, p1, p2) {
@@ -94,7 +103,7 @@ function collectStaticGridWallFaceCandidates(obstacleGrid, bounds, layers, defau
         const cx = (cellBounds.minX + cellBounds.maxX) / 2;
         const cy = (cellBounds.minY + cellBounds.maxY) / 2;
         for (let edge = 0; edge < 4; edge++) {
-            if (!staticCellEdgeOpen(obstacleGrid, col, row, edge)) continue;
+            if (!staticCellEdgeShouldShowFace(obstacleGrid, col, row, edge, layers, faceHeight, defaultWallHeight)) continue;
             staticCellEdgeEndpoints(obstacleGrid, col, row, edge, sP1, sP2);
             const ecx = (sP1.x + sP2.x) / 2;
             const ecy = (sP1.y + sP2.y) / 2;
