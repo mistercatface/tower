@@ -43,18 +43,31 @@ function staticCellCapHeight(grid, col, row, layers, defaultWallHeight) {
     if (stamped !== undefined) return stamped ?? defaultWallHeight;
     return defaultWallHeight;
 }
-/** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} edge @param {import("../../World/staticOccupancyLayers.js").StaticOccupancyLayer[] | null | undefined} layers @param {number} faceHeight @param {number} defaultWallHeight */
-function staticCellEdgeShouldShowFace(grid, col, row, edge, layers, faceHeight, defaultWallHeight) {
+/** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} edge */
+function staticCellNeighbor(grid, col, row, edge) {
     let nc = col;
     let nr = row;
     if (edge === 0) nr = row - 1;
     else if (edge === 1) nc = col + 1;
     else if (edge === 2) nr = row + 1;
     else nc = col - 1;
+    return { nc, nr };
+}
+/** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} edge @param {import("../../World/staticOccupancyLayers.js").StaticOccupancyLayer[] | null | undefined} layers @param {number} faceHeight @param {number} defaultWallHeight */
+function staticCellEdgeShouldShowFace(grid, col, row, edge, layers, faceHeight, defaultWallHeight) {
+    const { nc, nr } = staticCellNeighbor(grid, col, row, edge);
     if (nc < 0 || nc >= grid.cols || nr < 0 || nr >= grid.rows) return true;
     const neighborCap = staticCellCapHeight(grid, nc, nr, layers, defaultWallHeight);
     if (neighborCap == null) return true;
     return faceHeight > neighborCap;
+}
+/** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} edge @param {import("../../World/staticOccupancyLayers.js").StaticOccupancyLayer[] | null | undefined} layers @param {number} faceHeight @param {number} defaultWallHeight @returns {number} */
+function staticCellEdgeWallBaseZ(grid, col, row, edge, layers, faceHeight, defaultWallHeight) {
+    const { nc, nr } = staticCellNeighbor(grid, col, row, edge);
+    if (nc < 0 || nc >= grid.cols || nr < 0 || nr >= grid.rows) return 0;
+    const neighborCap = staticCellCapHeight(grid, nc, nr, layers, defaultWallHeight);
+    if (neighborCap == null || faceHeight <= neighborCap) return 0;
+    return neighborCap;
 }
 /** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} edge @param {typeof sP1} p1 @param {typeof sP2} p2 */
 function staticCellEdgeEndpoints(grid, col, row, edge, p1, p2) {
@@ -107,13 +120,16 @@ function collectStaticGridWallFaceCandidates(obstacleGrid, bounds, layers, defau
             staticCellEdgeEndpoints(obstacleGrid, col, row, edge, sP1, sP2);
             const ecx = (sP1.x + sP2.x) / 2;
             const ecy = (sP1.y + sP2.y) / 2;
+            const wallBaseZ = staticCellEdgeWallBaseZ(obstacleGrid, col, row, edge, layers, faceHeight, defaultWallHeight);
             out.push({
                 staticGrid: true,
                 gridCol: col,
                 gridRow: row,
                 p1: { x: sP1.x, y: sP1.y },
                 p2: { x: sP2.x, y: sP2.y },
-                wallHeight: faceHeight,
+                wallBaseZ,
+                wallHeight: faceHeight - wallBaseZ,
+                wallCapHeight: faceHeight,
                 cx: ecx,
                 cy: ecy,
                 outX: ecx - cx,

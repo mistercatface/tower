@@ -190,7 +190,7 @@ export class WorldSurfaceEngine {
         const ppwu = getTexelResolution(this.settings);
         const seed = proceduralSurfaceDraw.surfaceSeed;
         const rev = getSurfaceProfileRevision(profileId);
-        const wallHeightKey = cacheObj?.wallHeight ?? wallHeight ?? getWallHeight(this.settings);
+        const wallHeightKey = wallHeight ?? getWallHeight(this.settings);
         const stash = cacheObj?._wallAtlasStash;
         if (
             stash &&
@@ -202,7 +202,7 @@ export class WorldSurfaceEngine {
             this.surfaceCache.get(stash.key) === stash.canvases
         )
             return stash;
-        const { key, wrappedP1, wrappedP2 } = getWallAtlasCacheInfo(p1, p2, proceduralSurfaceDraw, profileId, ppwu, cacheObj, this.settings);
+        const { key, wrappedP1, wrappedP2 } = getWallAtlasCacheInfo(p1, p2, proceduralSurfaceDraw, profileId, ppwu, cacheObj, this.settings, wallHeightKey);
         let canvases = this.surfaceCache.get(key);
         if (!canvases) {
             const columns = wallFaceColumns(wrappedP1, wrappedP2, this.settings.cellSize);

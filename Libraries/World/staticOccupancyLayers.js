@@ -17,7 +17,7 @@ export function gridCellToGlobalColRow(grid, col, row) {
 }
 /** @param {object} state */
 function bumpStaticOccupancyRevision(state) {
-    state.staticOccupancyRevision = (state.staticOccupancyRevision ?? 0) + 1;
+    state.staticOccupancyRevision++;
 }
 /** @param {object} state @param {number} globalCol @param {number} globalRow @param {0 | 1} value */
 export function patchStaticOccupancyCell(state, globalCol, globalRow, value) {

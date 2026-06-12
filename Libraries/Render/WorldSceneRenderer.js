@@ -104,6 +104,8 @@ export class WorldSceneRenderer {
             else if (obj.strategy) this.props.drawProp(ctx, obj, px, py, { zoom });
             else if (!skipWalls && obj.staticGrid) {
                 wallCtx.wallHeight = obj.wallHeight;
+                wallCtx.wallBaseZ = obj.wallBaseZ;
+                wallCtx.wallCapHeight = obj.wallCapHeight;
                 wallCtx.cacheObj = obj;
                 wallCtx.damageAlpha = getStaticCellDamageAlphaAtGrid(input.obstacleGrid, input.gameState, obj.gridCol, obj.gridRow);
                 drawProjectedWallFace(ctx, obj.p1, obj.p2, wallCtx);

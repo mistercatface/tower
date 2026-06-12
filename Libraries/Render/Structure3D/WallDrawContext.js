@@ -4,7 +4,9 @@
 /** @typedef {import("../WorldSceneTypes.js").ProceduralSurfaceDrawContext} ProceduralSurfaceDrawContext */
 /**
  * @typedef {Object} WallDrawContext
- * @property {number} wallHeight
+ * @property {number} wallHeight — visible band height (top − base)
+ * @property {number} wallBaseZ — world z of band bottom
+ * @property {number} wallCapHeight — full wall bake height for atlas lookup
  * @property {import("../../Viewport/Viewport.js").Viewport} viewport
  * @property {{ settings: import("../../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings }} worldSurfaces
  * @property {ProceduralSurfaceDrawContext} proceduralSurfaceDraw

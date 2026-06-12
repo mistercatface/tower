@@ -60,6 +60,8 @@ export class RenderableWallFace extends Renderable {
     /** @param {CanvasRenderingContext2D} ctx @param {WallDrawContext} wallCtx */
     draw(ctx, wallCtx) {
         wallCtx.wallHeight = this.wallHeight;
+        wallCtx.wallBaseZ = 0;
+        wallCtx.wallCapHeight = this.wallHeight;
         wallCtx.cacheObj = this.simWall;
         drawProjectedWallFace(ctx, this.p1, this.p2, wallCtx);
     }

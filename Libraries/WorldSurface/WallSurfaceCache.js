@@ -1,4 +1,3 @@
-import { getWallHeight } from "./WorldSurfaceSettings.js";
 import { getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
 /**
  * @typedef {Object} WallAtlasBakeContext
@@ -10,10 +9,10 @@ import { getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
  * @param {WallAtlasBakeContext} proceduralSurfaceDraw
  * @param {string} profileId
  * @param {number} ppwu
- * @param {{ wallHeight?: number } | null} [cacheObj]
+ * @param {number} atlasHeight
  * @param {import("./WorldSurfaceSettings.js").WorldSurfaceSettings} [settings]
  */
-export function buildWallAtlasCacheKey(p1, p2, proceduralSurfaceDraw, profileId, ppwu, cacheObj = null, settings) {
+export function buildWallAtlasCacheKey(p1, p2, proceduralSurfaceDraw, profileId, ppwu, atlasHeight, settings) {
     const chunkWorldSize = settings.chunkWorldSize || 128 * settings.cellSize;
     const wx1 = ((p1.x % chunkWorldSize) + chunkWorldSize) % chunkWorldSize;
     const wy1 = ((p1.y % chunkWorldSize) + chunkWorldSize) % chunkWorldSize;
@@ -27,8 +26,7 @@ export function buildWallAtlasCacheKey(p1, p2, proceduralSurfaceDraw, profileId,
     const ky2 = wy2.toFixed(1);
     const seed = proceduralSurfaceDraw.surfaceSeed;
     const rev = getSurfaceProfileRevision(profileId);
-    const wallHeight = cacheObj?.wallHeight ?? getWallHeight(settings);
-    const key = `wall:${rev}:${ppwu}:${profileId}:${seed}:${wallHeight}:${kx1},${ky1}-${kx2},${ky2}`;
+    const key = `wall:${rev}:${ppwu}:${profileId}:${seed}:${atlasHeight}:${kx1},${ky1}-${kx2},${ky2}`;
     return { key, wrappedP1: { x: wx1, y: wy1 }, wrappedP2: { x: wx2, y: wy2 } };
 }
 /**
@@ -37,13 +35,13 @@ export function buildWallAtlasCacheKey(p1, p2, proceduralSurfaceDraw, profileId,
  * @param {WallAtlasBakeContext} proceduralSurfaceDraw
  * @param {string} profileId
  * @param {number} ppwu
- * @param {{ wallHeight?: number, _wkInfo?: object, _wkProfileId?: string, _wkPpwu?: number, _wkRev?: number, _wkSeed?: number, _wkWallHeight?: number, _wallAtlasStash?: object } | null} cacheObj
+ * @param {{ _wkInfo?: object, _wkProfileId?: string, _wkPpwu?: number, _wkRev?: number, _wkSeed?: number, _wkWallHeight?: number, _wallAtlasStash?: object } | null} cacheObj
  * @param {import("./WorldSurfaceSettings.js").WorldSurfaceSettings} [settings]
+ * @param {number} atlasHeight
  */
-export function getWallAtlasCacheInfo(p1, p2, proceduralSurfaceDraw, profileId, ppwu, cacheObj, settings) {
+export function getWallAtlasCacheInfo(p1, p2, proceduralSurfaceDraw, profileId, ppwu, cacheObj, settings, atlasHeight) {
     const seed = proceduralSurfaceDraw.surfaceSeed;
     const rev = getSurfaceProfileRevision(profileId);
-    const wallHeightKey = cacheObj?.wallHeight ?? getWallHeight(settings);
     if (
         cacheObj &&
         cacheObj._wkInfo &&
@@ -51,17 +49,17 @@ export function getWallAtlasCacheInfo(p1, p2, proceduralSurfaceDraw, profileId, 
         cacheObj._wkPpwu === ppwu &&
         cacheObj._wkRev === rev &&
         cacheObj._wkSeed === seed &&
-        cacheObj._wkWallHeight === wallHeightKey
+        cacheObj._wkWallHeight === atlasHeight
     )
         return cacheObj._wkInfo;
-    const info = buildWallAtlasCacheKey(p1, p2, proceduralSurfaceDraw, profileId, ppwu, cacheObj, settings);
+    const info = buildWallAtlasCacheKey(p1, p2, proceduralSurfaceDraw, profileId, ppwu, atlasHeight, settings);
     if (cacheObj) {
         cacheObj._wkInfo = info;
         cacheObj._wkProfileId = profileId;
         cacheObj._wkPpwu = ppwu;
         cacheObj._wkRev = rev;
         cacheObj._wkSeed = seed;
-        cacheObj._wkWallHeight = wallHeightKey;
+        cacheObj._wkWallHeight = atlasHeight;
     }
     return info;
 }
