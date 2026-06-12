@@ -53,6 +53,11 @@ export function snapWorldToCellOrigin(worldX, worldY, minX, minY, cellSize) {
     const row = Math.floor((worldY - minY) / cellSize);
     return { col, row, x: minX + col * cellSize, y: minY + row * cellSize };
 }
+/** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid @param {number} worldX @param {number} worldY */
+export function snapWorldToObstacleCellCenter(obstacleGrid, worldX, worldY) {
+    const { col, row } = obstacleGrid.worldToGrid(worldX, worldY);
+    return { col, row, ...obstacleGrid.gridToWorld(col, row) };
+}
 /**
  * Visit each obstacle-grid cell overlapping a world AABB.
  * @param {{ minX: number, minY: number, cols: number, rows: number, cellSize: number }} grid

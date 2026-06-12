@@ -38,3 +38,21 @@ export function quantizeAngle(angle, steps) {
     const step = (Math.PI * 2) / steps;
     return quantizeAngleIndex(angle, steps) * step;
 }
+/** Cardinal belt / grid-facing props — 4 steps (E, S, W, N by increasing angle). */
+export const CARDINAL_FACING_STEPS = 4;
+/** @param {number} angle */
+export function quantizeCardinalAngle(angle) {
+    return quantizeAngle(angle, CARDINAL_FACING_STEPS);
+}
+/** @param {number} angle @param {number} [steps] quarter-turns to add */
+export function stepCardinalFacing(angle, steps = 1) {
+    return quantizeCardinalAngle(angle + steps * ((Math.PI * 2) / CARDINAL_FACING_STEPS));
+}
+/** Unit direction from angle (radians). */
+export function unitVectorFromAngle(angle) {
+    return { x: Math.cos(angle), y: Math.sin(angle) };
+}
+/** Cardinal unit direction — snaps angle to 4-way facing first. */
+export function cardinalUnitVectorFromAngle(angle) {
+    return unitVectorFromAngle(quantizeCardinalAngle(angle));
+}

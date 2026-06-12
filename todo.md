@@ -6,22 +6,20 @@ Floor props fixed to the obstacle grid, one cell per segment. Low box sprite (cr
 
 **Corners:** no separate elbow prop or L-shaped physics. A 90° turn is just two (or more) grid cells with different facings; force is always “along this cell’s arrow.” Elbow look is **draw-only** (corner sprite / join art) — optional polish, not a blocker.
 
-### Prerequisites (not built yet)
+### Prerequisites
 
-These are the gaps between today’s sandbox and a working belt. Do these first.
+- [x] **Grid-anchored sandbox placement** — `anchorFloorPropToObstacleGrid`, spawn + inspector snap via `state.obstacleGrid` + `snapWorldToObstacleCellCenter` (`GridCoords.js`).
+- [x] **One prop = one grid cell** — footprint = `cellSize × cellSize`; `gridCol` / `gridRow` on prop; conflict check via `findGridAnchoredFloorPropAtCell`.
+- [x] **Cardinal facing only** — `quantizeSteps: { facing: 4 }`, `cardinalFacing` strategy flag, `rotateCardinalFloorProp` / inspector 90° rotate.
+- [x] **Directional pull from facing** — `pullAlongFacing` floor effect in `floorEffects.js` using `cardinalUnitVectorFromAngle`.
+- [x] **Per-cell occupancy** — one cell rect per segment via `processFloorShapes` + `syncFloorPropCollisionShape`.
 
-- [ ] **Grid-anchored sandbox placement** — snap spawn and drag-move to cell centers via `state.obstacleGrid` + `gridToWorldAtOrigin` / `worldToGridAtOrigin` (`GridCoords.js`). Today `sandboxSession.spawnAt(x, y)` is free-form world coords.
-- [ ] **One prop = one grid cell** — footprint equals `cellSize × cellSize` (match obstacle grid, not arbitrary `halfExtents`). Store `gridCol` / `gridRow` on the prop (or derive from snapped position) for chain logic and conflict checks.
-- [ ] **Cardinal facing only** — `quantizeSteps: { facing: 4 }` (or a dedicated `conveyorFacing: 0|1|2|3` field). Inspector and rotate hotkey step in 90°; no free-angle facing for belt props.
-- [ ] **Directional pull from facing** — today `gravity_pad` uses fixed `forceX` / `forceY` on the trigger. Belts need force derived from facing (e.g. N → `(0, -F)`). Either sync trigger forces when facing changes or add a `pullAlongFacing` floor effect in `floorEffects.js`.
-- [ ] **Per-cell occupancy** — one cell rect per segment; reuse `processFloorShapes` + `syncFloorPropCollisionShape`.
+### Phase 1 — belt segment (`conveyor`)
 
-### Phase 1 — belt segment (`conveyor` or `conveyor_straight`)
-
-- [ ] **Asset** — `renderMode: "floor"`, `spatialRole: "trigger"`, `collisionShape: "box"`, halfExtents = half cell, low `world.height` (crate palette, arrow decal on top face).
-- [ ] **Draw** — baked floor sprite; cache key includes cardinal facing (4 variants); arrow shows flow direction.
-- [ ] **Physics** — `floorTriggers: [{ when: "occupied", effect: "pullAlongFacing", force: … }]`; occupants accelerated along facing each tick.
-- [ ] **Spawn** — menu entry; single-click places one snapped cell with current facing.
+- [x] **Asset** — `conveyor` floor trigger prop; `gridAnchored`, `cardinalFacing`, cell halfExtents.
+- [x] **Draw** — `createConveyorDraw()`; cache key includes cardinal facing (4 variants via `quantizeSteps`).
+- [x] **Physics** — `floorTriggers: [{ when: "occupied", effect: "pullAlongFacing", force: … }]`.
+- [x] **Spawn** — sandbox menu entry; single-click places one snapped cell with current facing.
 
 ### Phase 2 — chain placement (paint mode)
 
@@ -32,7 +30,7 @@ These are the gaps between today’s sandbox and a working belt. Do these first.
 
 ### Phase 3 — polish
 
-- [ ] **Inspector** — force/speed slider; rotate 90°; read-only grid coords.
+- [ ] **Inspector** — force slider; rotate 90°; read-only grid coords. *(partial — done for `conveyor`; generalize if more grid props appear)*
 - [ ] **Corner draw variants (optional)** — mitered/corner top-face art when a cell has a perpendicular belt neighbor; cosmetic only, no new collision or effect.
 - [ ] **Smoke test** — L-shaped path of cells + ball dropped on entry.
 

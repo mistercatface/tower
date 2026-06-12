@@ -21,6 +21,7 @@ import { wakePushableBody } from "../Libraries/Motion/pushableSleep.js";
 import { ensureLocomotionWorldProp, updateLocomotionWorldProp, usesLocomotionWorldProp } from "../Libraries/Props/locomotionWorldProp.js";
 import { resolveKinematicsCamera } from "../Libraries/Render/Characters/actorKinematicsRenderer.js";
 import { initFloorButtonProp, initFloorTriggerProp } from "../Libraries/Spatial/zones/floorShapes.js";
+import { quantizeCardinalAngle } from "../Libraries/Math/Angle.js";
 function buildWorldPropStrategy(type) {
     const def = getWorldPropDefinitions()[type];
     if (!def) return withPropStrategyDefaults({});
@@ -43,7 +44,8 @@ export class WorldProp extends Entity {
         this.mass = this.strategy.mass;
         this.canDamageWalls = !!this.strategy.canDamageWalls;
         this.zIndex = 10;
-        this.facing = facing ?? Math.random() * Math.PI * 2;
+        if (this.strategy.cardinalFacing) this.facing = quantizeCardinalAngle(facing ?? 0);
+        else this.facing = facing ?? Math.random() * Math.PI * 2;
         if (this.strategy.standTip) {
             this._baseRadius = this.radius;
             initStandTipState(this);

@@ -44,6 +44,28 @@ When implementing a change, remove the old path in the same pass. Do not leave:
 
 If migration is genuinely multi-step, say so explicitly and list what still removes — do not ship interim redundancy as the default state.
 
+## Extend shared libraries — do not reinvent
+
+When implementing grid, angle, bounds, or floor-prop behavior, **use and extend** the existing domain modules instead of duplicating logic inline or in a one-off helper file.
+
+- **Angles / facings** — `Libraries/Math/Angle.js` (`quantizeCardinalAngle`, `stepCardinalFacing`, `cardinalUnitVectorFromAngle`, …).
+- **Grid / cell coords** — `Libraries/Spatial/grid/GridCoords.js`, `WorldObstacleGrid`, `Libraries/World/wallGridCells.js` where applicable.
+- **Bounds / AABB** — `Libraries/Math/Aabb2D.js` (and future `Box4` work in backlog).
+- **Floor props** — `Libraries/Spatial/zones/floorShapes.js`, `Libraries/Sandbox/floorEffects.js`.
+
+If a helper belongs in one of these modules (reused or clearly owned by that domain), add it there. If it is truly single-use and tiny, colocate with the primary caller — not a new micro-file.
+
+```javascript
+// ❌ BAD — local cardinal snap duplicate
+function beltFacing(angle) {
+  return Math.round(angle / (Math.PI / 2)) * (Math.PI / 2);
+}
+
+// ✅ GOOD — shared Angle API
+import { quantizeCardinalAngle } from "../Math/Angle.js";
+prop.facing = quantizeCardinalAngle(angle);
+```
+
 ## Review bar before finishing
 
 - Would removing a guard hide a real bug? If yes, fix the caller instead.
