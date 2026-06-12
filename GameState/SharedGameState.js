@@ -9,6 +9,7 @@ import { Scheduler } from "../Libraries/Scheduler/Scheduler.js";
 import { WorldSurfaceSystem } from "../Render/game/WorldSurfaceSystem.js";
 import { WallCollisionResolver } from "../Libraries/Motion/WallCollisionResolver.js";
 import { NavigationService } from "../Systems/Navigation/NavigationService.js";
+import { EntityRegistry } from "./EntityRegistry.js";
 const navigationSettings = {
     arrivalDistance: 2,
     recenterThreshold: 400,
@@ -38,6 +39,7 @@ export class SharedGameState {
         this.radioSeenThisRun = {};
         this.walls = [];
         this.pickups = [];
+        this.entityRegistry = new EntityRegistry();
         this.staticOccupancyLayers = [];
         this.staticOccupancyRevision = 0;
         this.staticCellHealth = new Map();

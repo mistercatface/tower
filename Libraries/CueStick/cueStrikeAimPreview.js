@@ -19,17 +19,16 @@ function isCueStrikeAimTarget(body) {
  * Circle targets for cue-ball aim preview — skips dead and pocket-sinking bodies.
  *
  * @param {object} shooter
- * @param {object[]} bodies
+ * @param {import("../../GameState/EntityRegistry.js").EntityRegistry} registry
  * @param {number} [defaultRadius]
  */
-export function buildCueStrikeCircleTargets(shooter, bodies, defaultRadius = 8) {
+export function buildCueStrikeCircleTargets(shooter, registry, defaultRadius = 8) {
     const shooterRadius = shooter?.radius ?? defaultRadius;
     const targets = [];
-    for (let i = 0; i < bodies.length; i++) {
-        const body = bodies[i];
-        if (body === shooter || !isCueStrikeAimTarget(body)) continue;
+    registry.forEachOfKind("pickup", (body) => {
+        if (body === shooter || !isCueStrikeAimTarget(body)) return;
         targets.push({ x: body.x, y: body.y, radius: body.radius ?? shooterRadius });
-    }
+    });
     return targets;
 }
 /**
@@ -71,7 +70,7 @@ export function buildCueStrikeAimLineContext(cueBall, state, { tableWidth, table
     return {
         pickup: cueBall,
         radius,
-        circleTargets: buildCueStrikeCircleTargets(cueBall, state.pickups, radius),
+        circleTargets: buildCueStrikeCircleTargets(cueBall, state.entityRegistry, radius),
         wallCtx: wallContextFromState(state),
         maxRayDist: resolveCueStrikeMaxRayDist({ obstacleGrid: state.obstacleGrid, tableWidth, tableHeight }),
     };

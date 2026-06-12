@@ -6,6 +6,7 @@ import { resolveSurfaceProfileAtCoords } from "./game/surfaceProfileResolver.js"
 import { LIBRARY_WORLD_SURFACE_DEFAULTS } from "../Libraries/WorldSurface/worldSurfaceDefaults.js";
 import { createStructureDrawPass } from "./StructureDrawPass.js";
 import { normalizeWorldRenderMode, WORLD_RENDER_MODE_DEFAULT } from "./WorldRenderMode.js";
+import { combatSpatial } from "../Systems/World/CombatSpatialFrame.js";
 export class Renderer {
     /** @param {{ actorCache?: SpriteCache, turretCache?: SpriteCache } | undefined} caches */
     constructor(canvas, ctx, caches) {
@@ -43,6 +44,8 @@ export class Renderer {
     syncWorldSceneDrawInput(state) {
         const input = this.worldSceneDrawInput;
         input.pickups = state.pickups;
+        input.entityRegistry = state.entityRegistry;
+        input.spatialFrame = combatSpatial;
         input.ragdollCorpses = state.ragdollCorpses ?? [];
         input.worldSurfaces = state.worldSurfaces;
         input.obstacleGrid = state.obstacleGrid;

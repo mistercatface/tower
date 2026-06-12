@@ -4,6 +4,7 @@
 import { getStaticCellDamageAlphaAtGrid } from "../World/staticCellDamage.js";
 import { collectStaticGridWallDrawables } from "./Structure3D/StaticGridWallDraw.js";
 import { drawProjectedWallFace } from "./Structure3D/ProjectedWallDraw.js";
+import { viewportVisibleBounds } from "../../GameState/EntityRegistry.js";
 /** @typedef {import("./Structure3D/WallDrawContext.js").WallDrawContext} WallDrawContext */
 import { clipToViewport } from "./common/viewportUtils.js";
 import { PropRenderer } from "./Props3D/PropRenderer.js";
@@ -36,16 +37,45 @@ export class WorldSceneRenderer {
         const zoom = viewport.zoom ?? 1;
         ctx.save();
         clipToViewport(ctx, viewport);
-        for (let i = 0; i < input.pickups.length; i++) {
-            const p = input.pickups[i];
+        const queried = input.entityRegistry?.queryView(
+            {
+                bounds: viewportVisibleBounds(viewport),
+                kinds: ["pickup"],
+                filterId: "debris",
+                match: (p) => p.strategy?.renderMode === "debris",
+            },
+            input.spatialFrame,
+        );
+        const pickups = queried ?? input.pickups;
+        for (let i = 0; i < pickups.length; i++) {
+            const p = pickups[i];
             if (p.isDead || p.strategy?.renderMode !== "debris") continue;
-            if (!p.isVisible(viewport)) continue;
+            if (!queried && !p.isVisible(viewport)) continue;
             this.props.drawProp(ctx, p, px, py, { zoom });
         }
         ctx.restore();
     }
     _appendVisible3dProps(input, viewport, px, py) {
         const visibleObjects = this.visibleDrawables;
+        const pickups = input.entityRegistry?.queryView(
+            {
+                bounds: viewportVisibleBounds(viewport),
+                kinds: ["pickup"],
+                filterId: "3d",
+                match: (p) => p.strategy?.renderMode === "3d" || p.usesKinematicsBody,
+            },
+            input.spatialFrame,
+        );
+        if (pickups?.length) {
+            for (let i = 0; i < pickups.length; i++) {
+                const p = pickups[i];
+                if (p.isDead) continue;
+                if (p.strategy?.renderMode !== "3d" && !p.usesKinematicsBody) continue;
+                p._distSq = (p.x - px) ** 2 + (p.y - py) ** 2;
+                visibleObjects.push(p);
+            }
+            return;
+        }
         if (input.pickups.length > 0)
             for (let i = 0; i < input.pickups.length; i++) {
                 const p = input.pickups[i];

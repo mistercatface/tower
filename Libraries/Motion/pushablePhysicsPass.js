@@ -28,7 +28,10 @@ export function runPushablePhysics(state, dt, spatialFrame, events) {
         for (let i = state.pickups.length - 1; i >= 0; i--) {
             const p = state.pickups[i];
             p.update(subDt, state, spatialFrame);
-            if (p.isDead) state.pickups.splice(i, 1);
+            if (p.isDead) {
+                state.pickups.splice(i, 1);
+                state.entityRegistry.unregister(p);
+            }
         }
         spatialFrame.reindexPushables(pushables);
         CollisionSystem.run(state, spatialFrame, events);

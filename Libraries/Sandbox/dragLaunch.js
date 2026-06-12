@@ -108,10 +108,10 @@ export function buildDragLaunchAimLineContext(pickup, host) {
     if (!state || !pickup) return null;
     const radius = pickup.radius;
     const circleTargets = [];
-    for (const p of state.pickups) {
-        if (p === pickup || p.isDead) continue;
+    state.entityRegistry.forEachOfKind("pickup", (p) => {
+        if (p === pickup || p.isDead) return;
         circleTargets.push({ x: p.x, y: p.y, radius: p.radius });
-    }
+    });
     const grid = state.obstacleGrid;
     const maxRayDist = resolveCueStrikeMaxRayDist({ obstacleGrid: grid });
     return { pickup, radius, circleTargets, wallCtx: wallContextFromState(state), maxRayDist };

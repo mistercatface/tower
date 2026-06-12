@@ -54,6 +54,7 @@ export function fireSpawner(state, spawnerPickup, { power, nx, ny } = {}) {
     spawned.faction = resolveSandboxFaction(spawnerPickup);
     applyDragLaunchVelocity(spawned, launchNx, launchNy, launchPower);
     state.pickups.push(spawned);
+    state.entityRegistry.registerPickup(spawned);
     return spawned;
 }
 /** @returns {string[]} */

@@ -10,7 +10,6 @@ import { getButtonPadLinks } from "./sandboxPadLinks.js";
 import { addSandboxWalls, removeSandboxWalls } from "./spawnAssembly.js";
 import { buttonEffectiveActive, isSustainedFlipperButtonInputMode } from "./buttonPad.js";
 import { fireSpawner, isSpawnerPickup } from "./spawnerConfig.js";
-import { findLivePickup, findPickupById } from "./findPickupAt.js";
 /** @typedef {import("./padPresets.js").PadTriggerDef} PadTriggerDef */
 const padStampScratch = createAabb();
 /**
@@ -107,14 +106,14 @@ function beginSink(pickup, pad) {
 }
 /** @param {object} state @param {number} entityId @param {object} pad */
 function rimOutSink(state, entityId, pad) {
-    const pickup = findPickupById(state.pickups, entityId);
+    const pickup = state.entityRegistry.get(entityId);
     if (!pickup || pickup.currentStateName !== "voidSink" || pickup.voidCaptured) return;
     if (isInsideVoidMouth(pad.x, pad.y, pad.shape.radius, pickup)) return;
     pickup.changeState("normal");
 }
 /** @param {object} state @param {import("./sandboxPadLinks.js").ButtonLinkPickupTarget} link @param {object} buttonPad */
 function runButtonPickupLink(state, link, buttonPad) {
-    const pickup = findLivePickup(state.pickups, link.id);
+    const pickup = state.entityRegistry.getLive(link.id);
     if (!pickup || isSpawnerPickup(pickup)) return;
     if (isSustainedFlipperButtonInputMode(buttonPad.inputMode)) return;
     if (buttonPad.invert) releaseFlipper(pickup);
@@ -129,7 +128,7 @@ export function tickButtonSpawnerLinks(state, buttonPad) {
         for (let i = 0; i < links.length; i++) {
             const link = links[i];
             if (link.type !== "pickup") continue;
-            const pickup = findLivePickup(state.pickups, link.id);
+            const pickup = state.entityRegistry.getLive(link.id);
             if (!pickup || !isSpawnerPickup(pickup)) continue;
             fireSpawner(state, pickup);
         }
@@ -143,7 +142,7 @@ export function syncButtonFlipperLinks(state, buttonPad) {
     for (let i = 0; i < links.length; i++) {
         const link = links[i];
         if (link.type !== "pickup") continue;
-        const pickup = findLivePickup(state.pickups, link.id);
+        const pickup = state.entityRegistry.getLive(link.id);
         if (!pickup || isSpawnerPickup(pickup)) continue;
         if (active) triggerFlipper(pickup);
         else releaseFlipper(pickup);
@@ -166,7 +165,7 @@ const PAD_EFFECTS = {
             const { forceX, forceY } = trigger;
             const dtSec = ctx.dtSec;
             for (const entityId of pad._occupants) {
-                const pickup = findPickupById(state.pickups, entityId);
+                const pickup = state.entityRegistry.get(entityId);
                 if (!pickup || pickup.isDead || pickup.strategy.gravityImmune) continue;
                 wakePushableBody(pickup);
                 if (pickup.isSleeping) continue;

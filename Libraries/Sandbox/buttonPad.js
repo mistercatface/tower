@@ -1,4 +1,4 @@
-import { findPickupById } from "./findPickupAt.js";
+import { massFromBody } from "../Motion/bodyMass.js";
 /** @typedef {"tap" | "hold" | "toggle" | "massTap" | "massHold" | "massToggle"} ButtonInputMode */
 export const DEFAULT_BUTTON_INPUT_MODE = /** @type {ButtonInputMode} */ ("tap");
 export const DEFAULT_BUTTON_MASS_THRESHOLD = 0;
@@ -18,7 +18,7 @@ export function isSustainedFlipperButtonInputMode(inputMode) {
 export function buttonPadMass(state, pad) {
     let total = 0;
     for (const entityId of pad._occupants) {
-        const pickup = findPickupById(state.pickups, entityId);
+        const pickup = state.entityRegistry.get(entityId);
         if (!pickup || pickup.isDead) continue;
         total += massFromBody(pickup);
     }

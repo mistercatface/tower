@@ -229,6 +229,7 @@ export class Pickup extends Entity {
             shard.vy = this.vy + dy * speed + (Math.random() - 0.5) * 15;
             wakePushableBody(shard);
             gameState.pickups.push(shard);
+            gameState.entityRegistry.registerPickup(shard);
         }
     }
 }

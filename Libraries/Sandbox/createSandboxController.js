@@ -342,7 +342,7 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
         },
         setCameraTarget(enabled, pickup = session.getSelectedPickup()) {
             if (!pickup) return;
-            setSandboxCameraTarget(pickup, enabled, host.getPickups());
+            setSandboxCameraTarget(pickup, enabled, host.getWorldState().entityRegistry);
             if (enabled) host.getWorldState().viewport.snapTo(pickup.x, pickup.y);
             session.sync();
         },

@@ -163,7 +163,10 @@ export function deleteAssemblyInstance(state, groupId, groupField) {
     const rackId = `${groupId}:rack`;
     for (let i = state.pickups.length - 1; i >= 0; i--) {
         const pickup = state.pickups[i];
-        if (pickup.assemblyRackId === rackId || entityBelongsToAssemblyGroup(pickup, groupId, groupField)) state.pickups.splice(i, 1);
+        if (pickup.assemblyRackId === rackId || entityBelongsToAssemblyGroup(pickup, groupId, groupField)) {
+            state.pickups.splice(i, 1);
+            state.entityRegistry.unregister(pickup);
+        }
     }
     const idx = state.sandboxAssemblyInstances.findIndex((entry) => entry.id === groupId);
     if (idx >= 0) state.sandboxAssemblyInstances.splice(idx, 1);

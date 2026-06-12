@@ -119,7 +119,7 @@ export function createEditorApp() {
         state.lastTime = timestamp;
         dt = Math.min(dt, 50);
         state.scheduler.update(dt);
-        tickSandboxCameraFollow(state.viewport, state.pickups, dt);
+        tickSandboxCameraFollow(state.viewport, state.entityRegistry, dt);
         sandboxController?.tick(dt);
         if (!state.isPaused) runSimulationTick(state, dt);
         drawLabFrame(state);

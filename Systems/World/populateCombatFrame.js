@@ -22,14 +22,14 @@ export function populateCombatFrame(frame, state, combatants, pushables) {
         frame.insertEntity(actor, physIdCounter++);
         combatants.push(actor);
     }
-    for (const pickup of state.pickups) {
-        if (!pickup || pickup.isDead || pickup.isHeld) continue;
+    state.entityRegistry.forEachOfKind("pickup", (pickup) => {
+        if (!pickup || pickup.isDead || pickup.isHeld) return;
         if (inserted.has(pickup)) {
             if (pickup.strategy?.isPushable) pushables.push(pickup);
-            continue;
+            return;
         }
         inserted.add(pickup);
         frame.insertEntity(pickup, physIdCounter++);
         if (pickup.strategy?.isPushable) pushables.push(pickup);
-    }
+    });
 }

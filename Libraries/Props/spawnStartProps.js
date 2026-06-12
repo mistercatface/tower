@@ -12,5 +12,9 @@ import { Pickup } from "../../Entities/Pickup.js";
  */
 export function spawnStartProps(state, specs) {
     if (!specs.length) return;
-    for (const spec of specs) state.pickups.push(new Pickup(spec.x, spec.y, spec.type, spec.facing ?? null));
+    for (const spec of specs) {
+        const pickup = new Pickup(spec.x, spec.y, spec.type, spec.facing ?? null);
+        state.pickups.push(pickup);
+        state.entityRegistry.registerPickup(pickup);
+    }
 }
