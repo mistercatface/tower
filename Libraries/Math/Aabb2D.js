@@ -35,6 +35,18 @@ export function minCornerAabb(minX, minY, width, height) {
     return minCornerAabbInto(createAabb(), minX, minY, width, height);
 }
 /** @param {Aabb2D} out @returns {Aabb2D} */
+export function aabbFromTwoPointsInto(out, x1, y1, x2, y2) {
+    out.minX = Math.min(x1, x2);
+    out.minY = Math.min(y1, y2);
+    out.maxX = Math.max(x1, x2);
+    out.maxY = Math.max(y1, y2);
+    return out;
+}
+/** @returns {Aabb2D} */
+export function aabbFromTwoPoints(x1, y1, x2, y2) {
+    return aabbFromTwoPointsInto(createAabb(), x1, y1, x2, y2);
+}
+/** @param {Aabb2D} out @returns {Aabb2D} */
 export function unionAabbInto(out, a, b) {
     out.minX = Math.min(a.minX, b.minX);
     out.minY = Math.min(a.minY, b.minY);

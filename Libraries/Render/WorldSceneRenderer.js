@@ -4,7 +4,7 @@
 import { getStaticCellDamageAlphaAtGrid } from "../World/staticCellDamage.js";
 import { collectStaticGridWallDrawables } from "./Structure3D/StaticGridWallDraw.js";
 import { drawProjectedWallFace } from "./Structure3D/ProjectedWallDraw.js";
-import { viewportVisibleBounds } from "../../GameState/EntityRegistry.js";
+import { viewportVisibleBounds } from "../Render/common/viewportUtils.js";
 /** @typedef {import("./Structure3D/WallDrawContext.js").WallDrawContext} WallDrawContext */
 import { clipToViewport } from "./common/viewportUtils.js";
 import { PropRenderer } from "./Props3D/PropRenderer.js";

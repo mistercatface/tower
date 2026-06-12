@@ -1,6 +1,8 @@
 import { getSandboxEntityMeta } from "../Libraries/Sandbox/sandboxEntityMeta.js";
+import { circleIntersectsAabb, pointInAabb } from "../Libraries/Math/Aabb2D.js";
 /** @typedef {{ minX: number, minY: number, maxX: number, maxY: number }} BoundsRect */
 /** @typedef {{ kind: string, ref: object }} EntityRegistryEntry */
+/** @typedef {'center' | 'circle'} AabbEntityHitTest */
 /**
  * @typedef {Object} QueryViewCriteria
  * @property {BoundsRect} bounds
@@ -8,7 +10,19 @@ import { getSandboxEntityMeta } from "../Libraries/Sandbox/sandboxEntityMeta.js"
  * @property {string} [filterId] — cache key segment for optional `match`
  * @property {(ref: object) => boolean} [match]
  */
+/**
+ * @typedef {Object} QueryInAabbStrictOptions
+ * @property {string[]} [kinds]
+ * @property {(ref: object) => boolean} [match]
+ * @property {AabbEntityHitTest} [hitTest]
+ */
 const EMPTY_KINDS = ["worldProp"];
+/** @param {object} ref @param {BoundsRect} bounds @param {AabbEntityHitTest} hitTest */
+function entityIntersectsAabb(ref, bounds, hitTest) {
+    if (hitTest === "center") return pointInAabb(ref.x, ref.y, bounds);
+    const radius = ref.getBoundingRadius?.() ?? ref.radius ?? 0;
+    return circleIntersectsAabb(ref.x, ref.y, radius, bounds);
+}
 /** @param {BoundsRect} bounds */
 function boundsKey(bounds) {
     return `${bounds.minX}|${bounds.minY}|${bounds.maxX}|${bounds.maxY}`;
@@ -19,10 +33,17 @@ function filterKey(criteria) {
     const filterId = criteria.filterId ?? "";
     return `${kinds.join(",")}|${filterId}`;
 }
-/** @param {import("../Libraries/Viewport/Viewport.js").Viewport} viewport */
-export function viewportVisibleBounds(viewport) {
-    const b = viewport.boundsVisibleDefault;
-    return { minX: b.minX, minY: b.minY, maxX: b.maxX, maxY: b.maxY };
+/**
+ * Exact AABB membership query — never uses the spatial broadphase or expanded cell bounds.
+ * Use for editor box-select and other pick semantics that must match a drawn rectangle.
+ *
+ * @param {EntityRegistry} registry
+ * @param {BoundsRect} bounds
+ * @param {QueryInAabbStrictOptions} [options]
+ * @returns {object[]}
+ */
+export function queryEntitiesInAabbStrict(registry, bounds, options = {}) {
+    return registry.queryInAabbStrict(bounds, options);
 }
 /**
  * Instance masterlist over live entity refs. Arrays remain source of truth;
@@ -80,6 +101,27 @@ export class EntityRegistry {
     /** @param {string} kind @param {(ref: object) => void} fn */
     forEachOfKind(kind, fn) {
         for (const entry of this._entries.values()) if (entry.kind === kind) fn(entry.ref);
+    }
+    /**
+     * @param {BoundsRect} bounds
+     * @param {QueryInAabbStrictOptions} [options]
+     * @returns {object[]}
+     */
+    queryInAabbStrict(bounds, options = {}) {
+        const kinds = options.kinds ?? EMPTY_KINDS;
+        const kindSet = new Set(kinds);
+        const hitTest = options.hitTest ?? "center";
+        /** @type {object[]} */
+        const result = [];
+        for (const entry of this._entries.values()) {
+            if (!kindSet.has(entry.kind)) continue;
+            const ref = entry.ref;
+            if (ref.isDead) continue;
+            if (!entityIntersectsAabb(ref, bounds, hitTest)) continue;
+            if (options.match && !options.match(ref)) continue;
+            result.push(ref);
+        }
+        return result;
     }
     /**
      * Demand-built bounds query, tick-scoped via spatialGen.
@@ -140,8 +182,7 @@ export class EntityRegistry {
             if (!kindSet.has(entry.kind)) continue;
             const ref = entry.ref;
             if (ref.isDead) continue;
-            const r = ref.getBoundingRadius?.() ?? ref.radius ?? 0;
-            if (ref.x + r < bounds.minX || ref.x - r > bounds.maxX || ref.y + r < bounds.minY || ref.y - r > bounds.maxY) continue;
+            if (!entityIntersectsAabb(ref, bounds, "circle")) continue;
             if (match && !match(ref)) continue;
             result.push(ref);
         }
