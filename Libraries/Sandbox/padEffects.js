@@ -8,7 +8,7 @@ import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { releaseFlipper, triggerFlipper } from "./behaviors/flipperBehavior.js";
 import { getButtonPadLinks } from "./sandboxPadLinks.js";
 import { addSandboxWalls, removeSandboxWalls } from "./spawnAssembly.js";
-import { buttonEffectiveActive, isSustainedFlipperButtonInputMode } from "./buttonPad.js";
+import { buttonEffectiveActive, isSustainedFlipperButtonInputMode, isSustainedSpawnerButtonInputMode } from "./buttonPad.js";
 import { fireSpawner, isSpawnerWorldProp } from "./spawnerConfig.js";
 /** @typedef {import("./padPresets.js").PadTriggerDef} PadTriggerDef */
 const padStampScratch = createAabb();
@@ -123,7 +123,8 @@ function runButtonWorldPropLink(state, link, buttonPad) {
 export function tickButtonSpawnerLinks(state, buttonPad) {
     const active = buttonEffectiveActive(state, buttonPad);
     const wasActive = buttonPad._spawnerButtonWasActive ?? false;
-    if (active && !wasActive) {
+    const sustained = isSustainedSpawnerButtonInputMode(buttonPad.inputMode);
+    if (active && (sustained || !wasActive)) {
         const links = getButtonPadLinks(buttonPad);
         for (let i = 0; i < links.length; i++) {
             const link = links[i];

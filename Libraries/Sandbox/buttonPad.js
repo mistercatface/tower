@@ -11,6 +11,10 @@ export function isToggleInputMode(inputMode) {
     return inputMode === "toggle" || inputMode === "massToggle";
 }
 /** @param {ButtonInputMode} inputMode */
+export function isSustainedSpawnerButtonInputMode(inputMode) {
+    return inputMode === "hold" || inputMode === "massHold";
+}
+/** @param {ButtonInputMode} inputMode */
 export function isSustainedFlipperButtonInputMode(inputMode) {
     return inputMode === "hold" || inputMode === "massHold" || isToggleInputMode(inputMode);
 }
