@@ -2,8 +2,7 @@ import { resolveStructurePerspectiveStrength } from "../../../Core/GamePerspecti
 import { resolveElevationAlpha } from "../../Spatial/iso/IsometricProjection.js";
 import { createAabb, expandPointsAabbInto } from "../../Math/Aabb2D.js";
 import { traceClosedPolygon } from "../../Canvas/CanvasPath.js";
-import { computeProjectedFace, drawFaceTexture, traceProjectedFace } from "../Structure3D/ProjectedWallDraw.js";
-import { drawDamageOverlayInClip } from "../Structure3D/wallDamageVisual.js";
+import { drawProjectedWallFace } from "../Structure3D/ProjectedWallDraw.js";
 const sRoofProjectedCorners = [
     { x: 0, y: 0 },
     { x: 0, y: 0 },
@@ -58,17 +57,18 @@ export class RenderableWallFace extends Renderable {
         return this.outX * viewX + this.outY * viewY < 0;
     }
     draw(ctx, viewport, worldSurfaces, proceduralSurfaceDraw, fillStyle, damageAlpha, viewerX, viewerY, worldBounds) {
-        const settings = worldSurfaces.settings;
-        if (!settings) return;
-        const face = computeProjectedFace(this.p1, this.p2, viewerX, viewerY, this.wallHeight, settings, undefined, viewport);
-        traceProjectedFace(ctx, this.p1, this.p2, face);
-        if (worldSurfaces && proceduralSurfaceDraw) {
-            drawFaceTexture(ctx, this.p1, this.p2, face, worldSurfaces, proceduralSurfaceDraw, { x: viewerX, y: viewerY }, viewport, this.wallHeight, fillStyle, this.simWall, worldBounds);
-            if (damageAlpha > 0) drawDamageOverlayInClip(ctx, damageAlpha, (ctx) => traceProjectedFace(ctx, this.p1, this.p2, face));
-        } else {
-            ctx.fillStyle = fillStyle;
-            ctx.fill();
-        }
+        drawProjectedWallFace(ctx, this.p1, this.p2, {
+            wallHeight: this.wallHeight,
+            viewerX,
+            viewerY,
+            viewport,
+            worldSurfaces,
+            proceduralSurfaceDraw,
+            fillStyle,
+            damageAlpha,
+            cacheObj: this.simWall,
+            worldBounds,
+        });
     }
 }
 /**

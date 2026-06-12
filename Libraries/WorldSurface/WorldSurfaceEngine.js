@@ -20,7 +20,7 @@ import {
     drawWallFootprintDamageOverlays,
     drawStaticRoofDamageOverlays,
     drawStaticWallFootprintDamageOverlays,
-    projectHorizontalSurfaceCorners,
+    projectHorizontalSurfaceCornersInto,
 } from "./HorizontalSurfaceDraw.js";
 import { chunkHasStaticRoofAtLevel } from "../World/staticOccupancyLayers.js";
 import { getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
@@ -30,6 +30,12 @@ import { wallFaceColumns } from "./WallFaceColumns.js";
 import { TileWorkerCoordinator } from "./TileWorkerCoordinator.js";
 import { drawBakedTexture, getTexelResolution } from "./WorldSurfaceResolution.js";
 import { bakeFrameRange } from "./AnimationFrameBake.js";
+const sRoofChunkCorners = [
+    { x: 0, y: 0 },
+    { x: 0, y: 0 },
+    { x: 0, y: 0 },
+    { x: 0, y: 0 },
+];
 /**
  * @typedef {Object} WorldSurfaceEngineHooks
  * @property {(state: object, chunkCol: number, chunkRow: number, zLevel?: number) => object} buildChunkPayload
@@ -280,7 +286,7 @@ export class WorldSurfaceEngine {
                             ctx.restore();
                             continue;
                         }
-                        const corners = projectHorizontalSurfaceCorners(originX, originY, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight, viewport);
+                        const corners = projectHorizontalSurfaceCornersInto(sRoofChunkCorners, originX, originY, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight, viewport);
                         const dstX = corners[0].x;
                         const dstY = corners[0].y;
                         const dstW = corners[2].x - corners[0].x;
@@ -302,7 +308,7 @@ export class WorldSurfaceEngine {
                             drawWallFootprintDamageOverlays(ctx, originX, originY, chunkSizePx, wallSpatialIndex);
                             drawStaticWallFootprintDamageOverlays(ctx, obstacleGrid, originX, originY, chunkSizePx, state);
                         } else {
-                            const corners = projectHorizontalSurfaceCorners(originX, originY, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight, viewport);
+                            const corners = projectHorizontalSurfaceCornersInto(sRoofChunkCorners, originX, originY, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight, viewport);
                             const dstX = corners[0].x;
                             const dstY = corners[0].y;
                             const dstW = corners[2].x - corners[0].x;

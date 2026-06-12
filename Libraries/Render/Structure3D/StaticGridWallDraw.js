@@ -4,8 +4,7 @@
 import { forEachObstacleGridCellInAabb } from "../../Spatial/grid/GridCoords.js";
 import { getWallHeight } from "../../WorldSurface/WorldSurfaceSettings.js";
 import { cellIsStaticBlocked, resolveStaticWallHeightAtCell } from "../../World/staticOccupancyLayers.js";
-import { computeProjectedFace, drawFaceTexture, traceProjectedFace } from "./ProjectedWallDraw.js";
-import { drawDamageOverlayInClip } from "./wallDamageVisual.js";
+import { drawProjectedWallFace } from "./ProjectedWallDraw.js";
 const sP1 = { x: 0, y: 0 };
 const sP2 = { x: 0, y: 0 };
 /** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} edge */
@@ -109,16 +108,16 @@ export function collectStaticGridWallDrawables(obstacleGrid, viewport, layers, s
  * @param {number} [damageAlpha]
  */
 export function drawStaticGridWallFace(ctx, face, input, viewport, viewerX, viewerY, worldBounds, fillStyle, damageAlpha = 0) {
-    const worldSurfaces = input.worldSurfaces;
-    const settings = worldSurfaces?.settings;
-    if (!settings) return;
-    const projected = computeProjectedFace(face.p1, face.p2, viewerX, viewerY, face.wallHeight, settings, undefined, viewport);
-    traceProjectedFace(ctx, face.p1, face.p2, projected);
-    if (worldSurfaces && input.proceduralSurfaceDraw)
-        drawFaceTexture(ctx, face.p1, face.p2, projected, worldSurfaces, input.proceduralSurfaceDraw, { x: viewerX, y: viewerY }, viewport, face.wallHeight, fillStyle, face, worldBounds);
-    else {
-        ctx.fillStyle = fillStyle;
-        ctx.fill();
-    }
-    if (damageAlpha > 0) drawDamageOverlayInClip(ctx, damageAlpha, (ctx) => traceProjectedFace(ctx, face.p1, face.p2, projected));
+    drawProjectedWallFace(ctx, face.p1, face.p2, {
+        wallHeight: face.wallHeight,
+        viewerX,
+        viewerY,
+        viewport,
+        worldSurfaces: input.worldSurfaces,
+        proceduralSurfaceDraw: input.proceduralSurfaceDraw,
+        fillStyle,
+        damageAlpha,
+        cacheObj: face,
+        worldBounds,
+    });
 }

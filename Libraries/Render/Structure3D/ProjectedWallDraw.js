@@ -10,6 +10,7 @@ import { resolveStructurePerspectiveStrength } from "../../../Core/GamePerspecti
 import { resolveElevationAlpha } from "../../Spatial/iso/IsometricProjection.js";
 import { pointsAabbOverlapAabb } from "../../Math/Aabb2D.js";
 import { traceQuad } from "../../Canvas/CanvasPath.js";
+import { drawDamageOverlayInClip } from "./wallDamageVisual.js";
 export { getWallHeight };
 export { wallFaceColumns } from "../../WorldSurface/WallFaceColumns.js";
 const WALL_ANGLE_SPREAD = 0.002;
@@ -40,9 +41,12 @@ export function computeProjectedFace(p1, p2, px, py, wallHeight, settings, out =
     out.proj2Y = p2.y + Math.sin(angle2) * dist2 * alpha;
     return out;
 }
+export function appendProjectedFace(ctx, p1, p2, face) {
+    traceQuad(ctx, p1, { x: face.proj1X, y: face.proj1Y }, { x: face.proj2X, y: face.proj2Y }, p2);
+}
 export function traceProjectedFace(ctx, p1, p2, face) {
     ctx.beginPath();
-    traceQuad(ctx, p1, { x: face.proj1X, y: face.proj1Y }, { x: face.proj2X, y: face.proj2Y }, p2);
+    appendProjectedFace(ctx, p1, p2, face);
 }
 function computeFaceCorner(out, p1, p2, proj1X, proj1Y, proj2X, proj2Y, u, v) {
     const bx = p1.x + (p2.x - p1.x) * u;
@@ -127,4 +131,37 @@ export function drawFaceTexture(ctx, p1, p2, face, worldSurfaces, proceduralSurf
         }
     }
     ctx.restore();
+}
+/**
+ * Shared wall-face draw: project → trace → texture or solid fill → optional damage overlay.
+ *
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {{ x: number, y: number }} p1
+ * @param {{ x: number, y: number }} p2
+ * @param {{
+ *   wallHeight: number,
+ *   viewerX: number,
+ *   viewerY: number,
+ *   viewport?: import("../../Viewport/Viewport.js").Viewport | null,
+ *   worldSurfaces?: { settings?: import("../../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings } | null,
+ *   proceduralSurfaceDraw?: ProceduralSurfaceDrawContext | null,
+ *   fillStyle: string,
+ *   damageAlpha?: number,
+ *   cacheObj?: object | null,
+ *   worldBounds?: import("../../Math/Aabb2D.js").Aabb2D | null,
+ * }} options
+ */
+export function drawProjectedWallFace(ctx, p1, p2, options) {
+    const { wallHeight, viewerX, viewerY, viewport, worldSurfaces, proceduralSurfaceDraw, fillStyle, damageAlpha = 0, cacheObj = null, worldBounds = null } = options;
+    const settings = worldSurfaces?.settings;
+    if (!settings) return;
+    const face = computeProjectedFace(p1, p2, viewerX, viewerY, wallHeight, settings, undefined, viewport);
+    traceProjectedFace(ctx, p1, p2, face);
+    if (worldSurfaces && proceduralSurfaceDraw)
+        drawFaceTexture(ctx, p1, p2, face, worldSurfaces, proceduralSurfaceDraw, { x: viewerX, y: viewerY }, viewport, wallHeight, fillStyle, cacheObj, worldBounds);
+    else {
+        ctx.fillStyle = fillStyle;
+        ctx.fill();
+    }
+    if (damageAlpha > 0) drawDamageOverlayInClip(ctx, damageAlpha, (clipCtx) => appendProjectedFace(clipCtx, p1, p2, face));
 }

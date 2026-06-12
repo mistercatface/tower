@@ -1,0 +1,87 @@
+# Tower — backlog
+
+Living notes from the static-grid / render-path refactor. Not a release checklist.
+
+---
+
+## Recently done
+
+- [x] **Static stamp = only 3D wall render path** — `StaticGridWallDraw` in radial mode; entity `RenderableWallFace` no longer drawn.
+- [x] **Sandbox walls = collision only** — `addSandboxWalls` forces `collisionOnly`; no `SceneCompiler.compileWall`.
+- [x] **Pull-pad `wallMode` barriers** — collision-only segments (no 3D compile).
+- [x] **Roofs from static stamps only** — `drawRoofs` uses `staticOccupancyLayers`; entity wall roof indexing removed.
+- [x] **Shared-edge solve disconnected** — `StructureRenderer.updateSharedEdges` no longer called from `WorldSceneRenderer`.
+- [x] **`drawProjectedWallFace`** — unified wall-face draw in `ProjectedWallDraw.js`; static grid + `RenderableWallFace` are thin callers.
+- [x] **`appendProjectedFace`** — split from `traceProjectedFace`; damage overlays use append-only inside `withClip`.
+- [x] **`projectHorizontalSurfaceCornersInto`** — scratch quad for roof chunk draw + static roof damage (no per-frame corner allocations on hot paths).
+
+---
+
+## Cleanup — dead code (safe to delete when bored)
+
+These are **orphaned** after the render-path split. Nothing in the live path calls them anymore.
+
+### Shared-edge worker
+
+- [ ] Delete `Libraries/Render/Structure3D/StructureRenderer.js`
+- [ ] Delete `Libraries/Render/Structure3D/SharedEdgeBridge.js`
+- [ ] Delete `Libraries/Spatial/structure/SharedEdgeSolver.js`
+- [ ] Remove from `Libraries/WorldSurface/TileWorkerCoordinator.js`:
+  - `wallSharedEdgesSab` / `wallSharedEdgesView`
+  - `requestSharedEdges()`
+  - `initSharedEdgesSAB` postMessage on worker boot
+- [ ] Remove from `Render/WorldSurface/TileWorkerEntry.js`:
+  - `initSharedEdgesSAB` handler
+  - `rebuildSharedEdges` handler + `SharedEdgeSolver` import
+
+### Entity 3D wall compile / draw (unused)
+
+- [ ] Delete or gut `Libraries/Render/Scene/SceneCompiler.js` (`compileWall` / `compileWalls`)
+- [ ] Remove `RenderableWallFace` / `RenderableRoofCap` from live draw path (or delete if `RenderScene` wall pass is unused entirely)
+- [ ] Remove `Render/game/wallSurfaceInvalidation.js` if only served entity wall edge memo
+- [ ] Trim `Libraries/Render/Scene/Renderables.js` — `sharedEdges` checks on wall faces
+- [ ] Drop unused `invalidateRoofs()` no-op in `WorldSurfaceSystem` once all callers are gone
+- [ ] Update stale comment in `Libraries/WorldSurface/stampWallHeight.js` (still mentions `compileWall`)
+
+### Sandbox collision still uses `Segment` (keep for now)
+
+Not dead — assemblies and pull pads still spawn `Segment` for grid occupancy + physics. Only the **3D render** path was removed.
+
+- [ ] Later: optional migration of sandbox barriers to dynamic static occupancy patches (no `Segment` entities)
+- [ ] Later: simplify `cellIsStaticBlocked` once nothing writes `segmentGrid` for render gating
+
+---
+
+## Static grid / map editor
+
+- [x] CA cavern stamp → `staticOccupancyLayers` + 3D static faces
+- [x] Static cell damage (`damageStaticGridCell`)
+- [ ] Replace-region stamp (non-additive overwrite of a layer region) — low priority
+- [ ] Layer prune / compaction for old `staticOccupancyLayers`
+- [ ] HPA* debug overlay polish — deprioritized
+
+---
+
+## Render / canvas dedup (optional)
+
+- [ ] More `CanvasPath` clip migrations if any stragglers remain
+
+---
+
+## Deferred — rotated / arc map walls
+
+Old generator strategies lived in git commit `9585717` (`Generator/Strategies.js`). Do **not** revive entity 3D walls for maps.
+
+When wanted again, pick one:
+
+- [ ] **Rasterize to grid** — arcs/diamonds → occupancy bitmap → static stamp (single render path), or
+- [ ] **Entity collision only** — like sandbox tables (no 3D compile)
+
+---
+
+## Explicitly out of scope (for now)
+
+- Physics Walls debug overlay
+- Explosions on static grid (beyond existing `damageStaticGridCell`)
+- Static wall face chunking refinements
+- 2D static roofs at stamp height in radial mode
