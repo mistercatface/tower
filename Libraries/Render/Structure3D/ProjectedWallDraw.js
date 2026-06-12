@@ -2,7 +2,6 @@
  * Projects wall faces in isometric space and samples baked atlases from WorldSurfaceEngine.
  * Roof caps are chunk-cached horizontal surfaces (WorldSurfaceEngine.drawRoofLayers).
  */
-import { getWallHeight } from "../../WorldSurface/WorldSurfaceSettings.js";
 import { drawImageQuad } from "../../Canvas/AffineTexture.js";
 /** @typedef {import("../WorldSceneTypes.js").ProceduralSurfaceDrawContext} ProceduralSurfaceDrawContext */
 import { getTexelResolution } from "../../WorldSurface/WorldSurfaceResolution.js";
@@ -11,7 +10,6 @@ import { pointsAabbOverlapAabb } from "../../Math/Aabb2D.js";
 import { traceQuad } from "../../Canvas/CanvasPath.js";
 import { drawDamageOverlayInClip } from "./wallDamageVisual.js";
 /** @typedef {import("./WallDrawContext.js").WallDrawContext} WallDrawContext */
-export { getWallHeight };
 export { wallFaceColumns } from "../../WorldSurface/WallFaceColumns.js";
 const WALL_ANGLE_SPREAD = 0.002;
 const sCorner0 = { x: 0, y: 0 };

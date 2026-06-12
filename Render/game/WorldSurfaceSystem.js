@@ -4,7 +4,6 @@
  */
 import { playBoundsFromObstacleGrid } from "../../Libraries/Spatial/playBounds.js";
 import { WorldSurfaceEngine } from "../../Libraries/WorldSurface/WorldSurfaceEngine.js";
-import { getWallHeight } from "../../Libraries/WorldSurface/WorldSurfaceSettings.js";
 import { getGameWorldSurfaceSettings } from "../WorldSurfaceBootstrap.js";
 import { getChunkSizePx } from "../../Libraries/Spatial/grid/ChunkGrid.js";
 import { buildGroundChunkBakePayload, resolveSurfaceProfileAtCoords } from "./surfaceProfileResolver.js";
@@ -31,7 +30,7 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
     }
     invalidateRoofs() {}
     invalidateGridBounds(bounds, state, cellsPerChunk = this.settings.cellsPerChunk) {
-        const roofZ = collectStaticRoofHeightsFromGrid(state.obstacleGrid, this.settings);
+        const roofZ = collectStaticRoofHeightsFromGrid(state.obstacleGrid);
         super.invalidateGridBounds(bounds, state.obstacleGrid, (x, y) => resolveSurfaceProfileAtCoords(state, x, y), cellsPerChunk, roofZ);
     }
     /** Draw procedural ground: shadow underpaint + baked chunk textures (simulation/inspector scenes only). */
@@ -50,7 +49,7 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
     }
     /** Chunk-cached roof layers for stamped static walls. */
     drawRoofs(ctx, state, viewport) {
-        const staticHeights = collectStaticRoofHeightsFromGrid(state.obstacleGrid, this.settings);
+        const staticHeights = collectStaticRoofHeightsFromGrid(state.obstacleGrid);
         for (let i = 0; i < staticHeights.length; i++) {
             const zLevel = staticHeights[i];
             this.drawGroundChunks(ctx, {
@@ -68,7 +67,7 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
     }
     /** Flat world-aligned wall rails — same chunk bake path as floor, clipped to segment footprints. */
     drawFlatWallRails(ctx, state, viewport) {
-        const wallHeight = getWallHeight(this.settings);
+        const wallHeight = this.settings.wallHeight;
         this.drawGroundChunks(ctx, {
             obstacleGrid: state.obstacleGrid,
             wallSpatialIndex: state.wallSpatialIndex,

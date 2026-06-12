@@ -24,6 +24,7 @@ export function createGameWorldSurfaceSettings(overrides = {}) {
         maxCachedSurfaces: surfaceDefaults.maxCachedSurfaces,
         pixelsPerCell,
         wallHeight: wallSurface.wallHeight,
+        maxWallHeightLevel: overrides.maxWallHeightLevel ?? surfaceDefaults.maxWallHeightLevel,
         wallHeightCells: wallSurface.wallHeightCells,
         texelResolution,
         wallTextureBleedPx: surfaceDefaults.wallTextureBleedPx,

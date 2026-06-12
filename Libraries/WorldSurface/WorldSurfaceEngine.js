@@ -2,7 +2,6 @@
  * Procedural world-surface bake cache: static ground chunks + wall atlases (frame 0 only).
  * Animated surfaces are baked at assembly spawn — see Libraries/Sandbox/assemblySurfaceBake.js.
  */
-import { getWallHeight } from "./WorldSurfaceSettings.js";
 import { createAabb, intersectAabbOptionalInto } from "../Math/Aabb2D.js";
 import { clipToAabb } from "../Canvas/CanvasPath.js";
 import { getChunkSizePx, worldBoundsToChunkRange, worldToChunkCol, worldToChunkRow } from "../Spatial/grid/ChunkGrid.js";
@@ -92,7 +91,7 @@ export class WorldSurfaceEngine {
         const cellSize = proceduralSurfaceDraw.obstacleCellSize ?? this.settings.cellSize;
         const pixelsPerUnit = getTexelResolution(this.settings);
         const canvasWidth = Math.max(1, Math.ceil(edgeLen * pixelsPerUnit));
-        const hVal = wallHeight ?? getWallHeight(this.settings);
+        const hVal = wallHeight ?? this.settings.wallHeight;
         const canvasHeight = Math.max(1, Math.ceil((hVal + cellSize) * pixelsPerUnit));
         const wallCenterX = (p1.x + p2.x) / 2;
         const wallCenterY = (p1.y + p2.y) / 2;
@@ -154,14 +153,14 @@ export class WorldSurfaceEngine {
      */
     getStaticRoofDrawCanvas(pass, roofCanvas, payload) {
         if (roofCanvas.isPlaceholder) return roofCanvas;
-        const { chunkCol, chunkRow, zLevel, obstacleGrid, settings, originX, originY, sizePx } = pass;
+        const { chunkCol, chunkRow, zLevel, obstacleGrid, originX, originY, sizePx } = pass;
         const ppwu = getTexelResolution(this.settings);
         const rev = getSurfaceProfileRevision(payload.profileId);
         const drawKey = staticRoofDrawCachePrefix(chunkCol, chunkRow, payload.profileId, rev, ppwu, zLevel);
         const maskKey = staticRoofMaskCachePrefix(chunkCol, chunkRow, zLevel);
         let maskEntry = this.surfaceCache.get(maskKey);
         if (!maskEntry) {
-            const maskCanvas = buildStaticRoofMaskCanvas(obstacleGrid, originX, originY, sizePx, zLevel, settings, ppwu);
+            const maskCanvas = buildStaticRoofMaskCanvas(obstacleGrid, originX, originY, sizePx, zLevel, ppwu);
             if (!maskCanvas) {
                 this.surfaceCache.delete(drawKey);
                 return null;
@@ -191,7 +190,7 @@ export class WorldSurfaceEngine {
         const ppwu = getTexelResolution(this.settings);
         const seed = proceduralSurfaceDraw.surfaceSeed;
         const rev = getSurfaceProfileRevision(profileId);
-        const wallHeightKey = wallHeight ?? getWallHeight(this.settings);
+        const wallHeightKey = wallHeight ?? this.settings.wallHeight;
         const stash = cacheObj?._wallAtlasStash;
         if (
             stash &&
@@ -274,7 +273,7 @@ export class WorldSurfaceEngine {
                     requireWallSegments &&
                     !chunkHasWallSegments(wallSpatialIndex, originX, originY, chunkSizePx) &&
                     !chunkHasBlockedCells(obstacleGrid, originX, originY, chunkSizePx) &&
-                    !(staticRoofDraw && chunkHasStaticRoofAtLevel(obstacleGrid, originX, originY, chunkSizePx, zLevel, this.settings))
+                    !(staticRoofDraw && chunkHasStaticRoofAtLevel(obstacleGrid, originX, originY, chunkSizePx, zLevel))
                 )
                     continue;
                 const payload = this._resolveChunkPayload(state, chunkCol, chunkRow, zLevel);

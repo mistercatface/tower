@@ -1,16 +1,16 @@
 /**
- * Static wall height levels stored on obstacleGrid.grid (0 = open, 1–9 = level, 10 = infiniwall).
+ * Static wall height levels stored on obstacleGrid.grid (0 = open, 1 … maxWallHeightLevel).
  */
 import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { forEachObstacleGridCellInAabb, chunkWorldAabbScratch } from "../Spatial/grid/GridCoords.js";
-import { getWallHeight } from "../WorldSurface/WorldSurfaceSettings.js";
-import { STAMP_WALL_LEVEL_INFINI } from "../WorldSurface/stampWallHeight.js";
 
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row */
 export function cellIsStaticWall(grid, col, row) {
-    if (!grid.isBlocked(col, row)) return false;
+    if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return false;
+    const idx = colRowToIndex(col, row, grid.cols);
+    if (grid.grid[idx] === 0) return false;
     if (!grid.segmentGrid) return true;
-    return !grid.segmentGrid[colRowToIndex(col, row, grid.cols)]?.length;
+    return !grid.segmentGrid[idx]?.length;
 }
 
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row */
@@ -23,24 +23,20 @@ export function gridCellToGlobalColRow(grid, col, row) {
  * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
  * @param {number} col
  * @param {number} row
- * @param {import("../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} settings
  * @returns {number} px height; 0 when not a static wall cell
  */
-export function resolveCellWallHeightPx(grid, col, row, settings) {
+export function resolveCellWallHeightPx(grid, col, row) {
     if (!cellIsStaticWall(grid, col, row)) return 0;
-    const level = grid.getCellWallHeightLevel(col, row);
-    if (level >= STAMP_WALL_LEVEL_INFINI) return getWallHeight(settings);
-    return level * grid.cellSize;
+    return grid.grid[colRowToIndex(col, row, grid.cols)] * grid.cellSize;
 }
 
-/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {import("../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} settings @returns {number[]} */
-export function collectStaticRoofHeightsFromGrid(grid, settings) {
-    if (!grid?.cols) return [];
+/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @returns {number[]} */
+export function collectStaticRoofHeightsFromGrid(grid) {
     const seen = new Set();
     const out = [];
     for (let row = 0; row < grid.rows; row++)
         for (let col = 0; col < grid.cols; col++) {
-            const px = resolveCellWallHeightPx(grid, col, row, settings);
+            const px = resolveCellWallHeightPx(grid, col, row);
             if (px <= 0 || seen.has(px)) continue;
             seen.add(px);
             out.push(px);
@@ -55,13 +51,11 @@ export function collectStaticRoofHeightsFromGrid(grid, settings) {
  * @param {number} chunkOriginY
  * @param {number} chunkSizePx
  * @param {number} zLevel
- * @param {import("../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} settings
  */
-export function chunkHasStaticRoofAtLevel(obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx, zLevel, settings) {
-    if (!obstacleGrid?.cols) return false;
+export function chunkHasStaticRoofAtLevel(obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx, zLevel) {
     let found = false;
     forEachObstacleGridCellInAabb(obstacleGrid, chunkWorldAabbScratch(chunkOriginX, chunkOriginY, chunkSizePx), (col, row) => {
-        if (resolveCellWallHeightPx(obstacleGrid, col, row, settings) === zLevel) found = true;
+        if (resolveCellWallHeightPx(obstacleGrid, col, row) === zLevel) found = true;
     });
     return found;
 }

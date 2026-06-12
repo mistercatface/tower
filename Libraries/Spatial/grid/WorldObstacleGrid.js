@@ -4,11 +4,10 @@ import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsAtOriginInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
 import { getWallCellBounds, markWallOnGrid, clearWallCells, computeBoundsFromWalls } from "./wallGridBake.js";
 import { collectSegmentsAlongLine, collectSegmentsInWorldBounds, collectSegmentsNearPose, segmentGridLayoutFromObstacleGrid } from "./segmentGridWalk.js";
-import { clampStampWallHeightLevel, STAMP_WALL_LEVEL_INFINI } from "../../WorldSurface/stampWallHeight.js";
 export { getWallCellBounds, markWallOnGrid, clearWallCells, computeBoundsFromWalls } from "./wallGridBake.js";
 /**
  * Occupancy + per-cell wall segment index. Implements NavGraph for pathfinding.
- * grid[]: 0 = open, 1–9 = static wall height level, 10 = infiniwall sentinel.
+ * grid[]: 0 = open, 1 … maxWallHeightLevel = static wall height level.
  */
 export class WorldObstacleGrid {
     constructor(cellSize) {
@@ -29,19 +28,6 @@ export class WorldObstacleGrid {
     }
     bumpWallGridRevision() {
         this.wallGridRevision = (this.wallGridRevision + 1) | 0;
-    }
-    getCellWallHeightLevel(col, row) {
-        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return 0;
-        return this.grid[colRowToIndex(col, row, this.cols)];
-    }
-    setCellWallHeightLevel(col, row, level) {
-        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return false;
-        const clamped = level === 0 ? 0 : clampStampWallHeightLevel(level);
-        const idx = colRowToIndex(col, row, this.cols);
-        if (this.grid[idx] === clamped) return false;
-        this.grid[idx] = clamped;
-        this.bumpWallGridRevision();
-        return true;
     }
     _borrowStaticWallProxy(x, y, col, row) {
         const size = this.cellSize;
@@ -74,7 +60,6 @@ export class WorldObstacleGrid {
     }
     /** @param {object} entity @param {object[]} out */
     appendStaticWallProxiesNear(entity, out) {
-        if (!this.cols) return out;
         this._staticWallProxyCount = 0;
         const radius = entity.radius ?? 0;
         const { col: ec, row: er } = this.worldToGrid(entity.x, entity.y);
@@ -192,8 +177,8 @@ export class WorldObstacleGrid {
      * @param {{ additive?: boolean, heightLevel?: number }} [options]
      * @returns {{ startCol: number, endCol: number, startRow: number, endRow: number }}
      */
-    stampStaticWalls(originCol, originRow, cols, rows, cells, wallSpatialIndex = null, { additive = false, heightLevel = STAMP_WALL_LEVEL_INFINI } = {}) {
-        const level = clampStampWallHeightLevel(heightLevel);
+    stampStaticWalls(originCol, originRow, cols, rows, cells, wallSpatialIndex = null, { additive = false, heightLevel }) {
+        const level = heightLevel;
         const { col: baseCol, row: baseRow } = this.worldToGrid(originCol * this.cellSize, originRow * this.cellSize);
         const gridBounds = { startCol: Math.max(0, baseCol), endCol: Math.min(this.cols - 1, baseCol + cols - 1), startRow: Math.max(0, baseRow), endRow: Math.min(this.rows - 1, baseRow + rows - 1) };
         if (!additive) clearWallCells(this.grid, this.cols, gridBounds, this.segmentGrid);

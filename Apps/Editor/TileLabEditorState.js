@@ -46,19 +46,9 @@ export class TileLabEditorState {
             donutThicknessCells: 4,
             fillChance: 0.45,
             iterations: 3,
-            wallHeightLevel: 10,
+            wallHeightLevel: 9,
         };
-        this.wallToolConfig = {
-            boundsMode: "rect",
-            boundsCol: 0,
-            boundsRow: 0,
-            boundsCols: 8,
-            boundsRows: 8,
-            centerCol: 4,
-            centerRow: 4,
-            outerRadiusCells: 4,
-            wallHeightLevel: 1,
-        };
+        this.wallToolConfig = { boundsMode: "rect", boundsCol: 0, boundsRow: 0, boundsCols: 8, boundsRows: 8, centerCol: 4, centerRow: 4, outerRadiusCells: 4, wallHeightLevel: 1 };
         this.showSandboxPanel = true;
         this.showProfilePanel = true;
         this.showMapPanel = false;

@@ -94,11 +94,10 @@ export function drawRoofSegmentDamageOverlays(ctx, pass) {
  * @param {[{ x: number, y: number }, { x: number, y: number }, { x: number, y: number }, { x: number, y: number }]} cornerScratch
  */
 export function drawStaticRoofDamageOverlays(ctx, pass, cornerScratch) {
-    const { obstacleGrid, settings, state, zLevel } = pass;
-    if (!obstacleGrid?.cols || !settings || !state) return;
+    const { obstacleGrid, state, zLevel } = pass;
     const cellSize = obstacleGrid.cellSize;
     forEachObstacleGridCellInAabb(obstacleGrid, pass.chunkAabb, (col, row) => {
-        if (resolveCellWallHeightPx(obstacleGrid, col, row, settings) !== zLevel) return;
+        if (resolveCellWallHeightPx(obstacleGrid, col, row) !== zLevel) return;
         const damageAlpha = getStaticCellDamageAlphaAtGrid(obstacleGrid, state, col, row);
         if (damageAlpha <= 0) return;
         const bounds = obstacleGrid.getCellBounds(col, row);
@@ -109,7 +108,6 @@ export function drawStaticRoofDamageOverlays(ctx, pass, cornerScratch) {
 /** @param {CanvasRenderingContext2D} ctx @param {ChunkDrawPass} pass @returns {boolean} */
 export function clipChunkToBlockedCells(ctx, pass) {
     const { obstacleGrid } = pass;
-    if (!obstacleGrid?.cols) return false;
     const segmentGrid = obstacleGrid.segmentGrid;
     return clipToPath(ctx, (clipCtx) => {
         let clippedAny = false;
@@ -142,7 +140,6 @@ export function clipChunkToWallFootprints(ctx, pass) {
 /** @param {CanvasRenderingContext2D} ctx @param {ChunkDrawPass} pass */
 export function drawStaticWallFootprintDamageOverlays(ctx, pass) {
     const { obstacleGrid, state } = pass;
-    if (!obstacleGrid?.cols || !state) return;
     forEachObstacleGridCellInAabb(obstacleGrid, pass.chunkAabb, (col, row) => {
         if (!cellIsStaticWall(obstacleGrid, col, row)) return;
         const damageAlpha = getStaticCellDamageAlphaAtGrid(obstacleGrid, state, col, row);

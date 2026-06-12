@@ -2,18 +2,16 @@
  * Viewport-scoped draw + query for static obstacle-grid walls (no Segment entities).
  */
 import { forEachObstacleGridCellInAabb } from "../../Spatial/grid/GridCoords.js";
-import { getWallHeight } from "../../WorldSurface/WorldSurfaceSettings.js";
 import { cellIsStaticWall, resolveCellWallHeightPx } from "../../World/wallGridCells.js";
 const sP1 = { x: 0, y: 0 };
 const sP2 = { x: 0, y: 0 };
-/** @type {{ grid: object | null, wallGridRevision: number, defaultWallHeight: number, boundsMinX: number, boundsMaxX: number, boundsMinY: number, boundsMaxY: number, gridCols: number, gridRows: number, faces: object[] }} */
-const sGeomCache = { grid: null, wallGridRevision: -1, defaultWallHeight: 0, boundsMinX: 0, boundsMaxX: 0, boundsMinY: 0, boundsMaxY: 0, gridCols: 0, gridRows: 0, faces: [] };
-/** @param {typeof sGeomCache} cache @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} wallGridRevision @param {number} defaultWallHeight @param {import("../../Math/Aabb2D.js").Aabb2D} bounds */
-function geomCacheHit(cache, grid, wallGridRevision, defaultWallHeight, bounds) {
+/** @type {{ grid: object | null, wallGridRevision: number, boundsMinX: number, boundsMaxX: number, boundsMinY: number, boundsMaxY: number, gridCols: number, gridRows: number, faces: object[] }} */
+const sGeomCache = { grid: null, wallGridRevision: -1, boundsMinX: 0, boundsMaxX: 0, boundsMinY: 0, boundsMaxY: 0, gridCols: 0, gridRows: 0, faces: [] };
+/** @param {typeof sGeomCache} cache @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} wallGridRevision @param {import("../../Math/Aabb2D.js").Aabb2D} bounds */
+function geomCacheHit(cache, grid, wallGridRevision, bounds) {
     return (
         cache.grid === grid &&
         cache.wallGridRevision === wallGridRevision &&
-        cache.defaultWallHeight === defaultWallHeight &&
         cache.gridCols === grid.cols &&
         cache.gridRows === grid.rows &&
         cache.boundsMinX === bounds.minX &&
@@ -22,11 +20,10 @@ function geomCacheHit(cache, grid, wallGridRevision, defaultWallHeight, bounds) 
         cache.boundsMaxY === bounds.maxY
     );
 }
-/** @param {typeof sGeomCache} cache @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} wallGridRevision @param {number} defaultWallHeight @param {import("../../Math/Aabb2D.js").Aabb2D} bounds */
-function storeGeomCache(cache, grid, wallGridRevision, defaultWallHeight, bounds) {
+/** @param {typeof sGeomCache} cache @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} wallGridRevision @param {import("../../Math/Aabb2D.js").Aabb2D} bounds */
+function storeGeomCache(cache, grid, wallGridRevision, bounds) {
     cache.grid = grid;
     cache.wallGridRevision = wallGridRevision;
-    cache.defaultWallHeight = defaultWallHeight;
     cache.gridCols = grid.cols;
     cache.gridRows = grid.rows;
     cache.boundsMinX = bounds.minX;
@@ -34,10 +31,9 @@ function storeGeomCache(cache, grid, wallGridRevision, defaultWallHeight, bounds
     cache.boundsMinY = bounds.minY;
     cache.boundsMaxY = bounds.maxY;
 }
-/** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {import("../../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} settings @returns {number | null} null = open air */
-function staticCellCapHeight(grid, col, row, settings) {
-    if (!grid.isBlocked(col, row)) return null;
-    const px = resolveCellWallHeightPx(grid, col, row, settings);
+/** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @returns {number | null} null = open air */
+function staticCellCapHeight(grid, col, row) {
+    const px = resolveCellWallHeightPx(grid, col, row);
     return px > 0 ? px : null;
 }
 /** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} edge */
@@ -50,19 +46,19 @@ function staticCellNeighbor(grid, col, row, edge) {
     else nc = col - 1;
     return { nc, nr };
 }
-/** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} edge @param {import("../../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} settings @param {number} faceHeight */
-function staticCellEdgeShouldShowFace(grid, col, row, edge, settings, faceHeight) {
+/** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} edge @param {number} faceHeight */
+function staticCellEdgeShouldShowFace(grid, col, row, edge, faceHeight) {
     const { nc, nr } = staticCellNeighbor(grid, col, row, edge);
     if (nc < 0 || nc >= grid.cols || nr < 0 || nr >= grid.rows) return true;
-    const neighborCap = staticCellCapHeight(grid, nc, nr, settings);
+    const neighborCap = staticCellCapHeight(grid, nc, nr);
     if (neighborCap == null) return true;
     return faceHeight > neighborCap;
 }
-/** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} edge @param {import("../../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} settings @param {number} faceHeight @returns {number} */
-function staticCellEdgeWallBaseZ(grid, col, row, edge, settings, faceHeight) {
+/** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} edge @param {number} faceHeight @returns {number} */
+function staticCellEdgeWallBaseZ(grid, col, row, edge, faceHeight) {
     const { nc, nr } = staticCellNeighbor(grid, col, row, edge);
     if (nc < 0 || nc >= grid.cols || nr < 0 || nr >= grid.rows) return 0;
-    const neighborCap = staticCellCapHeight(grid, nc, nr, settings);
+    const neighborCap = staticCellCapHeight(grid, nc, nr);
     if (neighborCap == null || faceHeight <= neighborCap) return 0;
     return neighborCap;
 }
@@ -98,24 +94,22 @@ function staticCellEdgeEndpoints(grid, col, row, edge, p1, p2) {
 /**
  * @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid
  * @param {import("../../Math/Aabb2D.js").Aabb2D} bounds
- * @param {import("../../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} settings
  * @param {object[]} out
  */
-function collectStaticGridWallFaceCandidates(obstacleGrid, bounds, settings, out) {
+function collectStaticGridWallFaceCandidates(obstacleGrid, bounds, out) {
     out.length = 0;
     forEachObstacleGridCellInAabb(obstacleGrid, bounds, (col, row) => {
         if (!cellIsStaticWall(obstacleGrid, col, row)) return;
-        const faceHeight = resolveCellWallHeightPx(obstacleGrid, col, row, settings);
-        if (faceHeight <= 0) return;
+        const faceHeight = resolveCellWallHeightPx(obstacleGrid, col, row);
         const cellBounds = obstacleGrid.getCellBounds(col, row);
         const cx = (cellBounds.minX + cellBounds.maxX) / 2;
         const cy = (cellBounds.minY + cellBounds.maxY) / 2;
         for (let edge = 0; edge < 4; edge++) {
-            if (!staticCellEdgeShouldShowFace(obstacleGrid, col, row, edge, settings, faceHeight)) continue;
+            if (!staticCellEdgeShouldShowFace(obstacleGrid, col, row, edge, faceHeight)) continue;
             staticCellEdgeEndpoints(obstacleGrid, col, row, edge, sP1, sP2);
             const ecx = (sP1.x + sP2.x) / 2;
             const ecy = (sP1.y + sP2.y) / 2;
-            const wallBaseZ = staticCellEdgeWallBaseZ(obstacleGrid, col, row, edge, settings, faceHeight);
+            const wallBaseZ = staticCellEdgeWallBaseZ(obstacleGrid, col, row, edge, faceHeight);
             out.push({
                 staticGrid: true,
                 gridCol: col,
@@ -136,20 +130,17 @@ function collectStaticGridWallFaceCandidates(obstacleGrid, bounds, settings, out
 /**
  * @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid
  * @param {import("../../Viewport/Viewport.js").Viewport} viewport
- * @param {import("../../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} settings
  * @param {number} viewerX
  * @param {number} viewerY
  * @param {object[]} out
  */
-export function collectStaticGridWallDrawables(obstacleGrid, viewport, settings, viewerX, viewerY, out) {
+export function collectStaticGridWallDrawables(obstacleGrid, viewport, viewerX, viewerY, out) {
     out.length = 0;
-    if (!obstacleGrid?.cols) return out;
     const bounds = viewport.boundsQuery;
-    const defaultWallHeight = getWallHeight(settings);
-    const wallGridRevision = obstacleGrid.wallGridRevision ?? 0;
-    if (!geomCacheHit(sGeomCache, obstacleGrid, wallGridRevision, defaultWallHeight, bounds)) {
-        collectStaticGridWallFaceCandidates(obstacleGrid, bounds, settings, sGeomCache.faces);
-        storeGeomCache(sGeomCache, obstacleGrid, wallGridRevision, defaultWallHeight, bounds);
+    const wallGridRevision = obstacleGrid.wallGridRevision;
+    if (!geomCacheHit(sGeomCache, obstacleGrid, wallGridRevision, bounds)) {
+        collectStaticGridWallFaceCandidates(obstacleGrid, bounds, sGeomCache.faces);
+        storeGeomCache(sGeomCache, obstacleGrid, wallGridRevision, bounds);
     }
     const faces = sGeomCache.faces;
     for (let i = 0; i < faces.length; i++) {

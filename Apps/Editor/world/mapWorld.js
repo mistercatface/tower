@@ -8,6 +8,7 @@ import { colRowToIndex } from "../../../Libraries/Spatial/grid/GridUtils.js";
 import { computeBoundsFromWalls } from "../../../Libraries/Spatial/grid/wallGridBake.js";
 import { clearSandboxWallsInBounds } from "../../../Libraries/Sandbox/spawnAssembly.js";
 import { cellIsStaticWall, gridCellToGlobalColRow } from "../../../Libraries/World/wallGridCells.js";
+import { clampStampWallHeightLevel } from "../../../Libraries/WorldSurface/stampWallHeight.js";
 import {
     applyCavernShapeMask,
     centerCavernBoundsOnViewport,
@@ -176,7 +177,8 @@ export function generateLabCaverns(state) {
     });
     ensureLabObstacleGridCoverage(state);
     clearSandboxWallsInBounds(state, stampBounds);
-    const damageBounds = state.obstacleGrid.stampStaticWalls(stamp.originCol, stamp.originRow, stamp.cols, stamp.rows, stamp.cells, state.wallSpatialIndex, { additive: true, heightLevel: cavernConfig.wallHeightLevel });
+    const level = clampStampWallHeightLevel(cavernConfig.wallHeightLevel, state.worldSurfaces.settings);
+    const damageBounds = state.obstacleGrid.stampStaticWalls(stamp.originCol, stamp.originRow, stamp.cols, stamp.rows, stamp.cells, state.wallSpatialIndex, { additive: true, heightLevel: level });
     if (cavernConfig.boundsMode === "donut") {
         const innerR = getCavernInnerRadiusCells(cavernConfig) * cellSize;
         const center = getCavernCenterWorld(cavernConfig, cellSize);

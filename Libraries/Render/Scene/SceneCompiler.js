@@ -1,6 +1,5 @@
 import { RenderableWallFace, RenderableRoofCap } from "./Renderables.js";
 import { getSegmentFootprintCorners } from "../../Spatial/geometry/WallGeometry.js";
-import { getWallHeight } from "../../WorldSurface/WorldSurfaceSettings.js";
 export class SceneCompiler {
     /**
      * @param {import("../../GameState/GameState.js").GameState} state
@@ -10,7 +9,7 @@ export class SceneCompiler {
      */
     static compileWalls(state, scene, gridMinX = state.obstacleGrid.minX, gridMinY = state.obstacleGrid.minY) {
         scene.setGridOrigin(gridMinX, gridMinY);
-        const defaultWallHeight = getWallHeight(state.worldSurfaces.settings);
+        const defaultWallHeight = state.worldSurfaces.settings.wallHeight;
         for (const wall of state.walls) {
             if (wall.isDead || wall.collisionOnly) continue;
             SceneCompiler.compileWall(wall, scene, defaultWallHeight);

@@ -10,8 +10,8 @@ export const STATIC_CELL_MAX_HEALTH = 30;
 /** @param {object} state @param {number} globalCol @param {number} globalRow */
 function readStaticCellHealth(state, globalCol, globalRow) {
     const entry = state.staticCellHealth.get(`${globalCol},${globalRow}`);
-    if (!entry) return { health: STATIC_CELL_MAX_HEALTH, maxHealth: STATIC_CELL_MAX_HEALTH };
-    return entry;
+    if (entry) return entry;
+    return { health: STATIC_CELL_MAX_HEALTH, maxHealth: STATIC_CELL_MAX_HEALTH };
 }
 
 /**
@@ -21,7 +21,7 @@ function readStaticCellHealth(state, globalCol, globalRow) {
  * @param {number} row
  */
 export function getStaticCellDamageAlphaAtGrid(grid, state, col, row) {
-    if (!grid?.cols || !cellIsStaticWall(grid, col, row)) return 0;
+    if (!cellIsStaticWall(grid, col, row)) return 0;
     const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
     const { health, maxHealth } = readStaticCellHealth(state, globalCol, globalRow);
     return getDamageAlphaFromHealth(health, maxHealth);
@@ -35,10 +35,8 @@ export function getStaticCellDamageAlphaAtGrid(grid, state, col, row) {
  * @param {number} damage
  */
 export function damageStaticGridCell(state, grid, col, row, damage) {
-    if (!grid?.cols || col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return;
     if (!cellIsStaticWall(grid, col, row)) return;
     const idx = colRowToIndex(col, row, grid.cols);
-    if (grid.segmentGrid?.[idx]?.length) return;
     const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
     const key = `${globalCol},${globalRow}`;
     let entry = state.staticCellHealth.get(key);

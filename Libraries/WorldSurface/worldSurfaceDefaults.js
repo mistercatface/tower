@@ -9,6 +9,7 @@ export const LIBRARY_WORLD_SURFACE_DEFAULTS = {
     maxCachedSurfaces: 10000,
     pixelsPerCell: 16,
     wallHeight: 150,
+    maxWallHeightLevel: 9,
     wallTextureBleedPx: 1,
     wallSubdivNearPx: 80,
     wallSubdivFarPx: 320,

@@ -37,9 +37,9 @@ Unified world-space boxes around `Aabb2D`, registry query semantics, and typed-a
 
 # Wall height / obstacle grid
 
-**Done** — one combined cell grid: `0` = open, `1–9` = stamp height level, `10` = infiniwall sentinel resolved at read time via `getWallHeight(settings)` / `STAMP_WALL_LEVEL_INFINI`. Segment walls keep height on `Segment.wallHeight`; when `segmentGrid` has segments for a cell, segment entity height wins.
+**Done** — one combined cell grid: `0` = open, `1 … maxWallHeightLevel` = stamp height level (`level * cellSize` px). Cap lives on `WorldSurfaceSettings.maxWallHeightLevel` (default in `worldSurfaceDefaults.js`).
 
-- [x] **Grid model + resolver** — `WorldObstacleGrid.grid` stores levels; `isBlocked` → `!== 0`; `getCellWallHeightLevel`, `resolveCellWallHeightPx` in `Libraries/World/wallGridCells.js`; `wallGridRevision` on grid for draw cache invalidation.
+- [x] **Grid model + resolver** — `WorldObstacleGrid.grid` stores levels; `isBlocked` → `!== 0`; `resolveCellWallHeightPx` in `Libraries/World/wallGridCells.js`; `wallGridRevision` on grid for draw cache invalidation.
 - [x] **Write path** — stamp/edit paths write level into grid directly; removed `staticOccupancyLayers` / `staticOccupancyRevision`.
 - [x] **Read path** — `StaticGridWallDraw`, chunk roofs, `WorldSurfaceSystem` use grid resolver; pathfinding treats any non-zero cell as blocked.
 
@@ -48,8 +48,7 @@ Unified world-space boxes around `Aabb2D`, registry query semantics, and typed-a
 Separate from grid storage — projection and defaults should not be re-fetched per wall face.
 
 - [ ] **Hoist view constants per pass** — `cameraHeight` + `ElevationCamera` on `ChunkDrawPass` / `WallDrawContext` once per frame; stop calling `elevationCameraFromViewport` / reading `settings.cameraHeight` deep in wall draw helpers.
-- [ ] **Single wall-height px resolver at draw boundary** — one function for draw/bake: cell level → px, segment `.wallHeight`, infiniwall sentinel → settings default; remove scattered `?? getWallHeight(settings)` and `defaultWallHeight` args passed through static grid draw.
-- [ ] **Audit `getWallHeight` call sites** — after grid resolver exists, limit `getWallHeight(settings)` to resolver + atlas cache keys + game-definition bootstrap, not per-cell fallbacks.
+- [ ] **Single wall-height px resolver at draw boundary** — consolidate `resolveCellWallHeightPx` + segment `.wallHeight ?? settings.wallHeight` at draw/bake entry; drop redundant `defaultWallHeight` threading through static grid draw cache.
 
 # WorldProp / state shape cleanup
 

@@ -1,5 +1,4 @@
 import { gridSettings } from "../../../Config/Config.js";
-import { formatStampWallHeightLevel, STAMP_WALL_LEVEL_INFINI, STAMP_WALL_LEVEL_MIN } from "../../../Libraries/WorldSurface/stampWallHeight.js";
 import { centerCellBoundsOnViewport } from "../world/cellBoundsConfig.js";
 import { deleteStaticWallsInBounds, stampStaticWallsInBounds } from "../world/staticGridWallEdit.js";
 import { buildRectCircleBoundsFields } from "./cellBoundsFields.js";
@@ -8,6 +7,7 @@ import { SliderControl } from "./controls/SliderControl.js";
 /** @param {import("../state.js").TileLabGameState} state @param {HTMLElement} mount @param {() => void} onChanged */
 export function buildMapWallToolPanel(state, mount, onChanged) {
     const config = state.editor.wallToolConfig;
+    const surfaceSettings = state.worldSurfaces.settings;
     mount.innerHTML = "";
     const onPreviewChange = () => onChanged();
     /** @type {{ input: HTMLInputElement, getValue: () => number }[]} */
@@ -48,14 +48,13 @@ export function buildMapWallToolPanel(state, mount, onChanged) {
     mount.appendChild(
         new SliderControl(
             "Wall height",
-            STAMP_WALL_LEVEL_MIN,
-            STAMP_WALL_LEVEL_INFINI,
+            1,
+            surfaceSettings.maxWallHeightLevel,
             1,
             config.wallHeightLevel,
             (val) => {
                 config.wallHeightLevel = val;
             },
-            (val) => formatStampWallHeightLevel(val),
         ).element,
     );
     const row = document.createElement("div");

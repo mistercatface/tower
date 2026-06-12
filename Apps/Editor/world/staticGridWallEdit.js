@@ -32,7 +32,7 @@ function notifyWallRegionChange(state, damageBounds, occupancyChanged) {
 export function stampStaticWallsInBounds(state, boundsConfig, heightLevel) {
     prepareWallRegion(state, boundsConfig);
     const grid = state.obstacleGrid;
-    const level = clampStampWallHeightLevel(heightLevel);
+    const level = clampStampWallHeightLevel(heightLevel, state.worldSurfaces.settings);
     let minGc = Infinity;
     let minGr = Infinity;
     let maxGc = -Infinity;
@@ -101,7 +101,7 @@ export function deleteStaticWallsInBounds(state, boundsConfig) {
 export function setStaticWallHeightInBounds(state, boundsConfig, heightLevel) {
     ensureLabObstacleGridCoverage(state, getCellBoundsAabb(boundsConfig, gridSettings.cellSize));
     const grid = state.obstacleGrid;
-    const level = clampStampWallHeightLevel(heightLevel);
+    const level = clampStampWallHeightLevel(heightLevel, state.worldSurfaces.settings);
     let startCol = Infinity;
     let endCol = -1;
     let startRow = Infinity;

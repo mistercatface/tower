@@ -35,7 +35,6 @@ export function chunkHasWallSegments(wallSpatialIndex, chunkOriginX, chunkOrigin
  * @param {number} chunkSizePx
  */
 export function chunkHasBlockedCells(obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx) {
-    if (!obstacleGrid?.cols) return false;
     let found = false;
     forEachObstacleGridCellInAabb(obstacleGrid, chunkWorldAabbScratch(chunkOriginX, chunkOriginY, chunkSizePx), (col, row) => {
         if (obstacleGrid.isBlocked(col, row)) found = true;
@@ -50,12 +49,10 @@ export function chunkHasBlockedCells(obstacleGrid, chunkOriginX, chunkOriginY, c
  * @param {number} chunkOriginY
  * @param {number} chunkSizePx
  * @param {number} zLevel
- * @param {import("../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} settings
  * @param {number} texelResolution
  * @returns {OffscreenCanvas | null}
  */
-export function buildStaticRoofMaskCanvas(obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx, zLevel, settings, texelResolution) {
-    if (!obstacleGrid?.cols || !settings) return null;
+export function buildStaticRoofMaskCanvas(obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx, zLevel, texelResolution) {
     const bakeSize = bakePixelsForWorldSpan(chunkSizePx, { texelResolution });
     const cellBakeSize = bakePixelsForWorldSpan(obstacleGrid.cellSize, { texelResolution });
     const canvas = createOffscreenCanvas(bakeSize, bakeSize);
@@ -63,7 +60,7 @@ export function buildStaticRoofMaskCanvas(obstacleGrid, chunkOriginX, chunkOrigi
     ctx.fillStyle = "#ffffff";
     let any = false;
     forEachObstacleGridCellInAabb(obstacleGrid, chunkWorldAabbScratch(chunkOriginX, chunkOriginY, chunkSizePx), (col, row) => {
-        if (resolveCellWallHeightPx(obstacleGrid, col, row, settings) !== zLevel) return;
+        if (resolveCellWallHeightPx(obstacleGrid, col, row) !== zLevel) return;
         const bounds = obstacleGrid.getCellBounds(col, row);
         const x = Math.round((bounds.minX - chunkOriginX) * texelResolution);
         const y = Math.round((bounds.minY - chunkOriginY) * texelResolution);
