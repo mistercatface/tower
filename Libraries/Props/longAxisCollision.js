@@ -1,4 +1,5 @@
 import { resolveBodyRadius } from "../Motion/bodyDefaults.js";
+import { invalidateBroadphaseBounds } from "../Spatial/collision/entityBroadphase.js";
 import { CircleShape, PolygonShape } from "../Spatial/collision/Shapes.js";
 import { buildLongAxisFootprintObb, isStandTipFallen, isStandTipProp, isStandTipTilted, longAxisBoxDimsFromProp } from "../Spatial/transforms/longAxisBox3d.js";
 const STAND_CIRCLE_THRESHOLD = 0.06;
@@ -21,12 +22,14 @@ export function syncLongAxisCollisionShape(prop) {
         prop._collisionHalfExtents = null;
         prop._longAxisShapeKey = null;
         if (!prop.shape || prop.shape.type !== "Circle") prop.shape = new CircleShape(resolveBodyRadius(prop));
+        invalidateBroadphaseBounds(prop);
         return prop.shape;
     }
     if (prop.strategy?.rollAxis === "long" && prop.strategy?.standTip && (prop.rollAngle ?? 0) < STAND_CIRCLE_THRESHOLD && !prop.isFallen) {
         prop._collisionFacing = null;
         prop._collisionHalfExtents = null;
         if (!prop.shape || prop.shape.type !== "Circle") prop.shape = new CircleShape(resolveBodyRadius(prop));
+        invalidateBroadphaseBounds(prop);
         return prop.shape;
     }
     const { hx, hy, height } = longAxisBoxDimsFromProp(prop);
@@ -40,5 +43,6 @@ export function syncLongAxisCollisionShape(prop) {
     prop._collisionFacing = footprint.facing;
     prop._collisionBoundingRadius = footprint.boundingRadius;
     prop._longAxisShapeKey = key;
+    invalidateBroadphaseBounds(prop);
     return prop.shape;
 }

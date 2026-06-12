@@ -1,15 +1,65 @@
 import { isStandTipActive } from "../../Props/standTipMotion.js";
 import { lengthXY, speedSqXY } from "../../Math/Vec2.js";
-import { broadphaseBoundsFromShape, pairBroadphaseBoundsOverlap } from "./Broadphase.js";
+import { broadphaseBoundsFromShapeInto, createBroadphaseBounds, pairBroadphaseBoundsOverlap } from "./Broadphase.js";
 import { SatCollision } from "./SatCollision.js";
 export const MOVING_SPEED_SQ = 0.25;
 /** |angularVelocity| above this counts as kinematically active (rad/s). */
 export const ROTATING_ANGULAR_SQ = 0.08 * 0.08;
 /** Margin beyond combined entity extents for neighbor queries (separation, etc.). */
 export const NEIGHBOR_QUERY_PAD = 15;
+/** @returns {{ x: number, y: number, angle: number, shapeType: string, shapeSpan: number, halfHx: number, halfHy: number }} */
+export function createBroadphaseSnapshot() {
+    return { x: NaN, y: NaN, angle: NaN, shapeType: "", shapeSpan: NaN, halfHx: NaN, halfHy: NaN };
+}
 function entityAngle(entity) {
     if (entity._collisionFacing != null) return entity._collisionFacing;
     return entity.facing ?? entity.angle ?? 0;
+}
+function entityHalfExtents(entity) {
+    return entity._collisionFacing != null ? null : (entity._collisionHalfExtents ?? entity.halfExtents ?? null);
+}
+function shapeSpan(shape) {
+    if (shape.type === "Circle") return shape.radius;
+    return shape.boundingRadius ?? shape.getBoundingRadius?.() ?? 0;
+}
+function ensureBroadphaseCache(entity) {
+    if (!entity.broadphaseBounds) entity.broadphaseBounds = createBroadphaseBounds();
+    if (!entity.broadphaseSnapshot) entity.broadphaseSnapshot = createBroadphaseSnapshot();
+}
+/** @param {object} entity */
+export function invalidateBroadphaseBounds(entity) {
+    if (entity.broadphaseSnapshot) entity.broadphaseSnapshot.x = NaN;
+}
+/** @param {object} entity */
+export function getBroadphaseBounds(entity) {
+    ensureBroadphaseCache(entity);
+    const x = entity.x;
+    const y = entity.y;
+    const shape = entity.getShape();
+    const angle = entityAngle(entity);
+    const halfExtents = entityHalfExtents(entity);
+    const span = shapeSpan(shape);
+    const snapshot = entity.broadphaseSnapshot;
+    const halfHx = halfExtents?.x ?? NaN;
+    const halfHy = halfExtents?.y ?? NaN;
+    if (
+        snapshot.x === x &&
+        snapshot.y === y &&
+        snapshot.angle === angle &&
+        snapshot.shapeType === shape.type &&
+        snapshot.shapeSpan === span &&
+        snapshot.halfHx === halfHx &&
+        snapshot.halfHy === halfHy
+    )
+        return entity.broadphaseBounds;
+    snapshot.x = x;
+    snapshot.y = y;
+    snapshot.angle = angle;
+    snapshot.shapeType = shape.type;
+    snapshot.shapeSpan = span;
+    snapshot.halfHx = halfHx;
+    snapshot.halfHy = halfHy;
+    return broadphaseBoundsFromShapeInto(entity.broadphaseBounds, shape, x, y, angle, halfExtents);
 }
 /** Furthest collision edge from entity center (circle radius or OBB corner distance). */
 export function entityBroadphaseExtent(entity) {
@@ -35,13 +85,6 @@ export function pairShapeOverlap(a, b) {
     const shapeB = b.getShape?.();
     if (!shapeA || !shapeB) return false;
     return SatCollision.checkCollision(a, shapeA, b, shapeB) != null;
-}
-/**
- * @returns {{ kind: 'circle', cx: number, cy: number, r: number } | { kind: 'obb', cx: number, cy: number, hx: number, hy: number, cos: number, sin: number }}
- */
-export function getBroadphaseBounds(entity) {
-    const shape = entity.getShape();
-    return broadphaseBoundsFromShape(shape, entity.x, entity.y, entityAngle(entity), entity._collisionFacing != null ? null : (entity._collisionHalfExtents ?? entity.halfExtents ?? null));
 }
 export function pairBroadphaseOverlap(a, b) {
     return pairBroadphaseBoundsOverlap(getBroadphaseBounds(a), getBroadphaseBounds(b));
