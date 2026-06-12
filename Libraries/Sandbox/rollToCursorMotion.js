@@ -1,5 +1,6 @@
 import { steerLocomotionPickup, stopLocomotionPickup, usesLocomotionPickup } from "../Props/locomotionPickup.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
+import { traceCircle, traceSegment } from "../Canvas/CanvasPath.js";
 const ROLL_TO_CURSOR_DEFAULTS = { maxSpeed: 180, accel: 600, stopRadius: 6 };
 /** @param {object} pickup @param {object} [overrides] */
 export function getRollToCursorConfig(pickup, overrides = {}) {
@@ -79,14 +80,13 @@ export function drawRollTargetOverlay(ctx, fromX, fromY, toX, toY, style) {
     ctx.strokeStyle = style.lineColor;
     ctx.lineWidth = (style.lineWidth ?? 1.5) * lineScale;
     ctx.beginPath();
-    ctx.moveTo(fromX, fromY);
-    ctx.lineTo(toX, toY);
+    traceSegment(ctx, fromX, fromY, toX, toY);
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.strokeStyle = style.markerColor;
     ctx.lineWidth = 2 * lineScale;
     ctx.beginPath();
-    ctx.arc(toX, toY, (style.markerRadius ?? 4) * lineScale, 0, Math.PI * 2);
+    traceCircle(ctx, toX, toY, (style.markerRadius ?? 4) * lineScale);
     ctx.stroke();
     ctx.restore();
 }

@@ -1,4 +1,5 @@
 /** Stroked bullet tracers ported from OLD_FILES projectiles.js drawProjectiles(). */
+import { traceSegment } from "../Canvas/CanvasPath.js";
 const FADE_IN_START_MS = 15;
 const FADE_IN_END_MS = 60;
 const RIFLE = { tailPx: 12, outlinePx: 2.5, corePx: 1.5, coreColor: "#FFFFEE" };
@@ -19,14 +20,12 @@ export function drawProjectileTracer(ctx, projectile) {
     ctx.strokeStyle = "#000000";
     ctx.lineWidth = style.outlinePx / zoom;
     ctx.beginPath();
-    ctx.moveTo(projectile.x, projectile.y);
-    ctx.lineTo(tailX, tailY);
+    traceSegment(ctx, projectile.x, projectile.y, tailX, tailY);
     ctx.stroke();
     ctx.strokeStyle = style.coreColor;
     ctx.lineWidth = style.corePx / zoom;
     ctx.beginPath();
-    ctx.moveTo(projectile.x, projectile.y);
-    ctx.lineTo(tailX, tailY);
+    traceSegment(ctx, projectile.x, projectile.y, tailX, tailY);
     ctx.stroke();
     ctx.restore();
 }

@@ -1,4 +1,5 @@
 import { createCircleFloorShape, createRectFloorShape, drawFloorShape, isAabbInView, processFloorShapes, readRectPadHalfExtents, syncPadQueryAabb } from "../Spatial/zones/floorShapes.js";
+import { traceCircle } from "../Canvas/CanvasPath.js";
 import { PolygonShape } from "../Spatial/collision/Shapes.js";
 import { drawPitInterior } from "../Spatial/zones/pit.js";
 import { PAD_PRESETS } from "./padPresets.js";
@@ -348,19 +349,19 @@ function drawPadButton(ctx, x, y, pressed, radius) {
     grad.addColorStop(1, pressed ? "#BF360C" : "#E64A19");
     ctx.fillStyle = grad;
     ctx.beginPath();
-    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    traceCircle(ctx, 0, 0, radius);
     ctx.fill();
     ctx.strokeStyle = "#3E2723";
     ctx.lineWidth = 2.5 * lineScale;
     ctx.stroke();
     ctx.fillStyle = "rgba(255,255,255,0.38)";
     ctx.beginPath();
-    ctx.arc(-radius * 0.28, -radius * 0.28, radius * 0.32, 0, Math.PI * 2);
+    traceCircle(ctx, -radius * 0.28, -radius * 0.28, radius * 0.32);
     ctx.fill();
     ctx.strokeStyle = "rgba(0,0,0,0.18)";
     ctx.lineWidth = 1.5 * lineScale;
     ctx.beginPath();
-    ctx.arc(0, 0, radius * 0.55, 0, Math.PI * 2);
+    traceCircle(ctx, 0, 0, radius * 0.55);
     ctx.stroke();
     ctx.restore();
 }

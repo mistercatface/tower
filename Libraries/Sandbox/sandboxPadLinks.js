@@ -2,6 +2,7 @@ import { findPickupAt } from "./findPickupAt.js";
 import { hitTestPad } from "./sandboxPads.js";
 import { isFlipperPickup } from "./behaviors/flipperBehavior.js";
 import { isSpawnerPickup } from "./spawnerConfig.js";
+import { traceCircle, traceSegment } from "../Canvas/CanvasPath.js";
 /** @param {object} state @param {string} id */
 function findSandboxPad(state, id) {
     return state.sandboxPads.find((pad) => pad.id === id) ?? null;
@@ -119,11 +120,10 @@ export function drawSandboxPadWires(ctx, state, { wireFromPadId = null, wireCurs
 function drawWire(ctx, x0, y0, x1, y1, color) {
     ctx.strokeStyle = color;
     ctx.beginPath();
-    ctx.moveTo(x0, y0);
-    ctx.lineTo(x1, y1);
+    traceSegment(ctx, x0, y0, x1, y1);
     ctx.stroke();
     ctx.fillStyle = color;
     ctx.beginPath();
-    ctx.arc(x1, y1, 3, 0, Math.PI * 2);
+    traceCircle(ctx, x1, y1, 3);
     ctx.fill();
 }

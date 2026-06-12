@@ -6,6 +6,7 @@ import { bakeSlotForSourceFrame } from "../WorldSurface/AnimationFrameBake.js";
 import { drawBakedTexture } from "../WorldSurface/WorldSurfaceResolution.js";
 import { projectWorldPointAtHeight } from "../Spatial/iso/IsometricProjection.js";
 import { drawImageQuad } from "../Canvas/AffineTexture.js";
+import { traceSegment } from "../Canvas/CanvasPath.js";
 /** @param {{ play: object, bounds: object, railHeight: number, profileId: string, id: string, surfaceAnimation?: boolean }} spec */
 export function createAssemblySurfaceZone({ play, bounds, railHeight, profileId, id, surfaceAnimation = false }) {
     return { id, kind: "assemblySurface", profileId, surfaceAnimation, play, bounds, railHeight, aabb: bounds, flipbook: null, bakeGeneration: 0 };
@@ -98,8 +99,7 @@ function drawAssemblyGuideOverlay(ctx, guide) {
     for (let i = 0; i < guide.wallSegments.length; i++) {
         const seg = guide.wallSegments[i];
         ctx.beginPath();
-        ctx.moveTo(seg.from.x, seg.from.y);
-        ctx.lineTo(seg.to.x, seg.to.y);
+        traceSegment(ctx, seg.from.x, seg.from.y, seg.to.x, seg.to.y);
         strokeGuidePath(ctx, railWidth);
     }
     for (let i = 0; i < guide.arcWallSegments.length; i++) {

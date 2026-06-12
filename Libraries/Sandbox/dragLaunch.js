@@ -2,6 +2,7 @@ import { normalizeXY } from "../Math/Vec2.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { drawAimSegment } from "../Render/contactPreviewDraw.js";
+import { traceCircle, traceSegment } from "../Canvas/CanvasPath.js";
 import { computeCircleAimLineSegment, estimateRollingTravelDistance } from "../Spatial/query/circleAimLinePreview.js";
 import { wallContextFromState } from "../Spatial/query/wallContext.js";
 import { evaluateInputGates, isEntityAtRest } from "./inputGates.js";
@@ -234,7 +235,7 @@ export function drawDragLaunchPreview(ctx, aim, config, aimLineContext = null, r
     // Draw max drag radius circle around start point representing where power caps out
     const maxFingerDrag = config.maxPull / config.pullScale;
     ctx.beginPath();
-    ctx.arc(startX, startY, maxFingerDrag, 0, Math.PI * 2);
+    traceCircle(ctx, startX, startY, maxFingerDrag);
     ctx.strokeStyle = `hsla(${hue}, 90%, 55%, 0.15)`;
     ctx.lineWidth = 1 * lineScale;
     ctx.setLineDash([4 * lineScale, 4 * lineScale]);
@@ -243,15 +244,14 @@ export function drawDragLaunchPreview(ctx, aim, config, aimLineContext = null, r
     // Draw faint connection line and circle at the current actual pointer position
     if (aim && aim.pullX != null && aim.pullY != null) {
         ctx.beginPath();
-        ctx.moveTo(startX, startY);
-        ctx.lineTo(aim.pullX, aim.pullY);
+        traceSegment(ctx, startX, startY, aim.pullX, aim.pullY);
         ctx.strokeStyle = `hsla(${hue}, 90%, 55%, 0.12)`;
         ctx.lineWidth = 1 * lineScale;
         ctx.setLineDash([3 * lineScale, 3 * lineScale]);
         ctx.stroke();
         ctx.setLineDash([]);
         ctx.beginPath();
-        ctx.arc(aim.pullX, aim.pullY, 4 * lineScale, 0, Math.PI * 2);
+        traceCircle(ctx, aim.pullX, aim.pullY, 4 * lineScale);
         ctx.fillStyle = `hsla(${hue}, 90%, 55%, 0.35)`;
         ctx.strokeStyle = `hsla(${hue}, 90%, 55%, 0.85)`;
         ctx.lineWidth = 1.5 * lineScale;
@@ -260,12 +260,12 @@ export function drawDragLaunchPreview(ctx, aim, config, aimLineContext = null, r
     }
     if (Math.hypot(startX - preview.anchorX, startY - preview.anchorY) > 0.1) {
         ctx.beginPath();
-        ctx.arc(startX, startY, 5 * lineScale, 0, Math.PI * 2);
+        traceCircle(ctx, startX, startY, 5 * lineScale);
         ctx.strokeStyle = `hsla(${hue}, 90%, 55%, 0.4)`;
         ctx.lineWidth = 1.5 * lineScale;
         ctx.stroke();
         ctx.beginPath();
-        ctx.arc(startX, startY, 1.5 * lineScale, 0, Math.PI * 2);
+        traceCircle(ctx, startX, startY, 1.5 * lineScale);
         ctx.fillStyle = `hsla(${hue}, 90%, 55%, 0.65)`;
         ctx.fill();
     }
@@ -273,12 +273,11 @@ export function drawDragLaunchPreview(ctx, aim, config, aimLineContext = null, r
     ctx.lineWidth = 2 * lineScale;
     ctx.setLineDash([6 * lineScale, 4 * lineScale]);
     ctx.beginPath();
-    ctx.moveTo(preview.pullX, preview.pullY);
-    ctx.lineTo(preview.anchorX, preview.anchorY);
+    traceSegment(ctx, preview.pullX, preview.pullY, preview.anchorX, preview.anchorY);
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.beginPath();
-    ctx.arc(preview.anchorX, preview.anchorY, 7, 0, Math.PI * 2);
+    traceCircle(ctx, preview.anchorX, preview.anchorY, 7);
     ctx.strokeStyle = `hsla(${hue}, 100%, 60%, 0.85)`;
     ctx.lineWidth = 2 * lineScale;
     ctx.stroke();

@@ -1,4 +1,5 @@
 import { entityBroadphaseExtent } from "../collision/entityBroadphase.js";
+import { traceCircle } from "../../Canvas/CanvasPath.js";
 import { CAMERA_HEIGHT, PERSPECTIVE_STRENGTH } from "../iso/IsometricProjection.js";
 export const DEFAULT_PIT_RADIUS = 8;
 export const DEFAULT_PIT_DEPTH = 24;
@@ -49,7 +50,7 @@ export function drawPitInterior(ctx, pad, viewerX, viewerY) {
     const pocketDepth = pad.sinkDepth ?? DEFAULT_PIT_DEPTH;
     ctx.save();
     ctx.beginPath();
-    ctx.arc(pad.x, pad.y, mouthRadius, 0, Math.PI * 2);
+    traceCircle(ctx, pad.x, pad.y, mouthRadius);
     ctx.clip();
     const step = pocketDepth / 8;
     for (let H = 0; H >= -pocketDepth; H -= step) {
@@ -64,7 +65,7 @@ export function drawPitInterior(ctx, pad, viewerX, viewerY) {
         const lightness = Math.max(0, 100 - ratio * 100);
         ctx.fillStyle = `hsl(0, 0%, ${lightness}%)`;
         ctx.beginPath();
-        ctx.arc(projX, projY, layerRadius, 0, Math.PI * 2);
+        traceCircle(ctx, projX, projY, layerRadius);
         ctx.fill();
     }
     ctx.restore();

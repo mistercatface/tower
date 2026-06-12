@@ -1,3 +1,4 @@
+import { traceClosedPolygon } from "../../Canvas/CanvasPath.js";
 import { CAMERA_HEIGHT, PERSPECTIVE_STRENGTH } from "../../Spatial/iso/IsometricProjection.js";
 /**
  * Iso-project a local prop vertex (ground origin at prop base, z = height above ground).
@@ -40,9 +41,7 @@ export function drawPropMeshFace(ctx, prop, px, py, verts3d, fill, stroke, lineW
     const projected = verts3d.map((v) => projectPropVertex(prop, px, py, v.lx, v.ly, v.z));
     ctx.fillStyle = fill;
     ctx.beginPath();
-    ctx.moveTo(projected[0].x, projected[0].y);
-    for (let i = 1; i < projected.length; i++) ctx.lineTo(projected[i].x, projected[i].y);
-    ctx.closePath();
+    traceClosedPolygon(ctx, projected);
     ctx.fill();
     if (stroke != null && stroke !== false && lineWidth > 0) {
         ctx.strokeStyle = stroke;

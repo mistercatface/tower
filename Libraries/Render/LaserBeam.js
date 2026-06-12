@@ -1,9 +1,9 @@
 /** Draw a combat beam or a subtle laser-sight preview line. */
+import { traceSegment } from "../Canvas/CanvasPath.js";
 export function drawLaserBeam(ctx, x1, y1, x2, y2, color = "#ff0000", isSight = false) {
     ctx.save();
     ctx.beginPath();
-    ctx.moveTo(x1, y1);
-    ctx.lineTo(x2, y2);
+    traceSegment(ctx, x1, y1, x2, y2);
     if (isSight) {
         const grad = ctx.createLinearGradient(x1, y1, x2, y2);
         let rgb = "255, 0, 0";

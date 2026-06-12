@@ -1,8 +1,15 @@
 import { resolveStructurePerspectiveStrength } from "../../../Core/GamePerspective.js";
 import { resolveElevationAlpha } from "../../Spatial/iso/IsometricProjection.js";
 import { createAabb, expandPointsAabbInto } from "../../Math/Aabb2D.js";
+import { traceClosedPolygon } from "../../Canvas/CanvasPath.js";
 import { computeProjectedFace, drawFaceTexture, traceProjectedFace } from "../Structure3D/ProjectedWallDraw.js";
 import { drawDamageOverlayInClip } from "../Structure3D/wallDamageVisual.js";
+const sRoofProjectedCorners = [
+    { x: 0, y: 0 },
+    { x: 0, y: 0 },
+    { x: 0, y: 0 },
+    { x: 0, y: 0 },
+];
 /**
  * Base class for all pre-calculated static geometry.
  */
@@ -87,11 +94,10 @@ export class RenderableRoofCap extends Renderable {
         const alpha = resolveElevationAlpha(this.zLevel, cameraHeight, strength);
         for (let j = 0; j < 4; j++) {
             const corner = this.corners[j];
-            const px = corner.x + (corner.x - viewerX) * alpha;
-            const py = corner.y + (corner.y - viewerY) * alpha;
-            if (j === 0) ctx.moveTo(px, py);
-            else ctx.lineTo(px, py);
+            sRoofProjectedCorners[j].x = corner.x + (corner.x - viewerX) * alpha;
+            sRoofProjectedCorners[j].y = corner.y + (corner.y - viewerY) * alpha;
         }
-        ctx.closePath();
+        ctx.beginPath();
+        traceClosedPolygon(ctx, sRoofProjectedCorners);
     }
 }

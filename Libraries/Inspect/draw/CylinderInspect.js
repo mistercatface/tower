@@ -5,6 +5,7 @@ import { createInspectCamera } from "../camera/InspectCamera.js";
 import { tessellateCylinderQuads, drawSolidQuad } from "../geometry/CylinderSurface.js";
 import { labelBandYRange } from "../../Math/Interpolate.js";
 import { drawTexturedQuadCells, gatherTexturedQuadCells } from "../../Render/SurfaceTexturing/texturedCells.js";
+import { traceClosedPolygon } from "../../Canvas/CanvasPath.js";
 const DEFAULT_SUBDIV = { subRadial: 2, subVertical: 2 };
 const DEFAULT_BLEED = { uvBleed: 2, screenBleed: 2.5 };
 function inspectCamera(cx, cy, scale, { referenceDepth = 420, screenScale = scale * 88 } = {}) {
@@ -23,9 +24,7 @@ function drawBackingHull(ctx, points, color) {
     ctx.save();
     ctx.fillStyle = color;
     ctx.beginPath();
-    ctx.moveTo(points[0].x, points[0].y);
-    for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
-    ctx.closePath();
+    traceClosedPolygon(ctx, points);
     ctx.fill();
     ctx.restore();
 }

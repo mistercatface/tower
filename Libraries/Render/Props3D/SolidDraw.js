@@ -9,7 +9,7 @@ import {
     createSideGradient,
     projectVertical,
 } from "../../Spatial/iso/IsometricProjection.js";
-import { traceQuad } from "../../Canvas/CanvasPath.js";
+import { traceClosedPolygon, traceQuad, traceSegment } from "../../Canvas/CanvasPath.js";
 export const DEFAULT_PROP_HEIGHT = 14;
 export const RADIAL_SEGMENTS = 14;
 export function drawCullFace(ctx, face, shadeAngle, { fill, stroke, lineWidth }) {
@@ -131,9 +131,7 @@ export function drawBox(
     ctx.strokeStyle = stroke;
     ctx.lineWidth = lineWidth;
     ctx.beginPath();
-    ctx.moveTo(box.baseCorners[0].x, box.baseCorners[0].y);
-    for (let i = 1; i < box.baseCorners.length; i++) ctx.lineTo(box.baseCorners[i].x, box.baseCorners[i].y);
-    ctx.closePath();
+    traceClosedPolygon(ctx, box.baseCorners);
     ctx.fill();
     ctx.stroke();
     for (const face of backFaces) drawBoxSideFace(ctx, face, cx, cy, backColors, { stroke, lineWidth, plankTs, drawPlanks: false });
@@ -148,19 +146,15 @@ export function drawBox(
     ctx.strokeStyle = stroke;
     ctx.lineWidth = lineWidth;
     ctx.beginPath();
-    ctx.moveTo(box.topCorners[0].x, box.topCorners[0].y);
-    for (let i = 1; i < box.topCorners.length; i++) ctx.lineTo(box.topCorners[i].x, box.topCorners[i].y);
-    ctx.closePath();
+    traceClosedPolygon(ctx, box.topCorners);
     ctx.fill();
     ctx.stroke();
     if (topCross) {
         ctx.strokeStyle = topCross.stroke ?? "rgba(0,0,0,0.6)";
         ctx.lineWidth = topCross.lineWidth ?? 0.8;
         ctx.beginPath();
-        ctx.moveTo(box.topCorners[0].x, (box.topCorners[0].y + box.topCorners[2].y) / 2);
-        ctx.lineTo(box.topCorners[1].x, (box.topCorners[1].y + box.topCorners[3].y) / 2);
-        ctx.moveTo((box.topCorners[0].x + box.topCorners[1].x) / 2, box.topCorners[0].y);
-        ctx.lineTo((box.topCorners[2].x + box.topCorners[3].x) / 2, box.topCorners[2].y);
+        traceSegment(ctx, box.topCorners[0].x, (box.topCorners[0].y + box.topCorners[2].y) / 2, box.topCorners[1].x, (box.topCorners[1].y + box.topCorners[3].y) / 2);
+        traceSegment(ctx, (box.topCorners[0].x + box.topCorners[1].x) / 2, box.topCorners[0].y, (box.topCorners[2].x + box.topCorners[3].x) / 2, box.topCorners[2].y);
         ctx.stroke();
     }
 }

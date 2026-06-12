@@ -1,3 +1,4 @@
+import { traceCircle, traceOpenPolyline, traceSegment } from "../../Canvas/CanvasPath.js";
 const WALL_OVERLAY_THICKNESS = 20;
 /** @typedef {import("../../Math/Aabb2D.js").Aabb2D & { canvas: OffscreenCanvas }} MapImageCache */
 /** @typedef {MapImageCache} ObstacleOverviewCache */
@@ -67,20 +68,14 @@ function bakePathDebugLayer(hnav, minX, minY, maxX, maxY) {
                     const rIdx = idx + 1;
                     if (hnav.grid[rIdx] === 0) {
                         const rightNode = hnav.cellToNode[rIdx];
-                        if (rightNode && rightNode.id !== node.id) {
-                            ctx.moveTo(wx + cellSize, wy);
-                            ctx.lineTo(wx + cellSize, wy + cellSize);
-                        }
+                        if (rightNode && rightNode.id !== node.id) traceSegment(ctx, wx + cellSize, wy, wx + cellSize, wy + cellSize);
                     }
                 }
                 if (row + 1 < hnav.rows) {
                     const bIdx = idx + hnav.cols;
                     if (hnav.grid[bIdx] === 0) {
                         const bottomNode = hnav.cellToNode[bIdx];
-                        if (bottomNode && bottomNode.id !== node.id) {
-                            ctx.moveTo(wx, wy + cellSize);
-                            ctx.lineTo(wx + cellSize, wy + cellSize);
-                        }
+                        if (bottomNode && bottomNode.id !== node.id) traceSegment(ctx, wx, wy + cellSize, wx + cellSize, wy + cellSize);
                     }
                 }
             }
@@ -93,26 +88,23 @@ function bakePathDebugLayer(hnav, minX, minY, maxX, maxY) {
             if (!targetNode) continue;
             if (edge.path && edge.path.length > 0) {
                 ctx.beginPath();
-                const p0 = hnav.gridToWorld(edge.path[0].col, edge.path[0].row);
-                ctx.moveTo(p0.x, p0.y);
-                for (let k = 1; k < edge.path.length; k++) {
-                    const pk = hnav.gridToWorld(edge.path[k].col, edge.path[k].row);
-                    ctx.lineTo(pk.x, pk.y);
-                }
+                traceOpenPolyline(
+                    ctx,
+                    edge.path.map((cell) => hnav.gridToWorld(cell.col, cell.row)),
+                );
                 ctx.strokeStyle = "#ff9800";
                 ctx.lineWidth = 2.5;
                 ctx.stroke();
             } else {
                 ctx.beginPath();
-                ctx.moveTo(node.x, node.y);
-                ctx.lineTo(targetNode.x, targetNode.y);
+                traceSegment(ctx, node.x, node.y, targetNode.x, targetNode.y);
                 ctx.strokeStyle = "#ff9800";
                 ctx.lineWidth = 2.5;
                 ctx.stroke();
             }
         }
         ctx.beginPath();
-        ctx.arc(node.x, node.y, 4, 0, Math.PI * 2);
+        traceCircle(ctx, node.x, node.y, 4);
         ctx.fillStyle = "#00e5ff";
         ctx.fill();
     }
