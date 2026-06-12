@@ -1,4 +1,4 @@
-import { fillCircle, strokeOpenPolyline, strokeSegment } from "../../Canvas/CanvasPath.js";
+import { fillCircle, strokeOpenPolyline, strokeSegment, traceSegment } from "../../Canvas/CanvasPath.js";
 const WALL_OVERLAY_THICKNESS = 20;
 /** @typedef {import("../../Math/Aabb2D.js").Aabb2D & { canvas: OffscreenCanvas }} MapImageCache */
 /** @typedef {MapImageCache} ObstacleOverviewCache */
