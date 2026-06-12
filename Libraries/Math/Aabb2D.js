@@ -193,3 +193,15 @@ export function entityIntersectsAabb(ref, bounds, hitTest) {
     const radius = ref.getBoundingRadius?.() ?? ref.radius ?? 0;
     return circleIntersectsAabb(ref.x, ref.y, radius, bounds);
 }
+const AABB_HASH_F64 = new Float64Array(4);
+const AABB_HASH_U32 = new Uint32Array(AABB_HASH_F64.buffer);
+/** @param {Aabb2D} bounds @returns {number} uint32 hash of exact float bit patterns */
+export function aabbHash(bounds) {
+    AABB_HASH_F64[0] = bounds.minX;
+    AABB_HASH_F64[1] = bounds.minY;
+    AABB_HASH_F64[2] = bounds.maxX;
+    AABB_HASH_F64[3] = bounds.maxY;
+    let h = AABB_HASH_U32[0];
+    for (let i = 1; i < 8; i++) h = Math.imul(h ^ AABB_HASH_U32[i], 0x9e3779b1);
+    return h >>> 0;
+}
