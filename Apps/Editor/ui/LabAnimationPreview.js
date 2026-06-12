@@ -14,18 +14,19 @@ let rafId = null;
 let lastGameTime = 0;
 let lastDrawTime = 0;
 let isAnimationEnabled = false;
-/** @type {OffscreenCanvas | null} */
 let patchCanvas = null;
-/** @type {CanvasRenderingContext2D | null} */
 let patchCtx = null;
+let previewCtx = null;
 function ensurePatchSurface(destW, destH) {
     if (!patchCanvas) {
         patchCanvas = createOffscreenCanvas(destW, destH);
         patchCtx = patchCanvas.getContext("2d");
         return;
     }
+    const prevW = patchCanvas.width;
+    const prevH = patchCanvas.height;
     resizeOffscreenCanvas(patchCanvas, destW, destH);
-    if (!patchCtx) patchCtx = patchCanvas.getContext("2d");
+    if (patchCanvas.width !== prevW || patchCanvas.height !== prevH) patchCtx = patchCanvas.getContext("2d");
 }
 /** Vertical space taken by the animation preview (for map canvas max-size). */
 export function estimateAnimationPreviewHeight(fallbackSize = 200) {
@@ -36,8 +37,6 @@ export function estimateAnimationPreviewHeight(fallbackSize = 200) {
     const hostH = host?.offsetHeight ?? fallbackSize;
     return hostH + headerH + 6;
 }
-/** @type {CanvasRenderingContext2D | null} */
-let previewCtx = null;
 export function initAnimationPreview(canvas, getProfileConfig) {
     previewCtx = canvas.getContext("2d");
     let currentProfileStr = null;

@@ -48,6 +48,7 @@ export function mountEditorUi(state) {
     const canvas = document.getElementById("gameCanvas");
     if (canvas.parentElement !== mapStage) mapStage.appendChild(canvas);
     state.labCanvas = canvas;
+    state.labCtx = canvas.getContext("2d");
     initPresetSelect(listShippedSurfaceProfileIds());
     initProfileEditor({
         onChange: (options = {}) => {
@@ -115,7 +116,6 @@ export function mountEditorUi(state) {
         },
         onResize: (size) => onMapCanvasResize(state, size),
     });
-    state.labCtx = canvas.getContext("2d");
     initResizer("resizer", () => resizeCanvases(state));
     drawLabFrame(state);
 }
