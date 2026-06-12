@@ -7,7 +7,8 @@ import { createCharacterRigCalculator } from "./core/rigCalculator.js";
 import { createProjector } from "./core/projector.js";
 import { applyRigDeltas } from "./skeleton/adapters.js";
 import { clamp } from "../Math/Interpolate.js";
-const sharedCanvas = new OffscreenCanvas(300, 150);
+import { createOffscreenCanvas } from "../Canvas/offscreenCanvas.js";
+const sharedCanvas = createOffscreenCanvas(300, 150);
 const sharedCtx = sharedCanvas.getContext("2d");
 export function createKinematicsBundle({ pixelSize, cameraHeight, maxTiltDist = 120, displayDiameter = null, ports }) {
     const { resolveCombatFacing, resolveSpriteBodyRotation, resolveWeaponStaticPoseName, resolveWeaponDrawSlots, resolveMuzzleFromRig, getCharacterForActor, drawHeldWeapons } = ports;

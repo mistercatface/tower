@@ -1,5 +1,6 @@
 import { composeSurfaceImage } from "../Procedural/SurfaceTextureComposer.js";
 import { getSurfaceProfileProvider } from "../Procedural/SurfaceProfileProvider.js";
+import { createOffscreenCanvas } from "../Canvas/offscreenCanvas.js";
 import { buildMapContext, createWallFaceAxes, writePixelToSamples } from "./SurfaceCoordinateMapper.js";
 import { bakePixelsForWorldSpan, getTexelResolution } from "./WorldSurfaceResolution.js";
 import { getAnimationFrames, resolveBakeProfile } from "./ProfileBakeResolver.js";
@@ -95,9 +96,8 @@ function bakeResolvedProfile(ctx, width, height, startWorldX, startWorldY, seed,
     paintPixelArea(ctx, width, height, startWorldX, startWorldY, seed, options, profile);
 }
 export function bakeWallAtlasCanvas(width, height, p1, p2, pixelsPerUnit, seed, profileOrId, payload = null, optionsPayload = null) {
-    const canvas = new OffscreenCanvas(width, height);
+    const canvas = createOffscreenCanvas(width, height);
     const ctx = canvas.getContext("2d");
-    ctx.imageSmoothingEnabled = false;
     const paintOpts = wallPaintOptions(pixelsPerUnit, { p1, p2, ...optionsPayload });
     if (payload) {
         const profileKey = typeof profileOrId === "string" ? profileOrId : getSurfaceProfileProvider().defaultId;
@@ -125,9 +125,8 @@ export function bakeGroundChunkCanvases(payload) {
     const pixelsPerUnit = texelResolution;
     const zLevel = payload.zLevel ?? 0;
     const paintOptions = zLevel > 0 ? { cellSize, pixelsPerUnit, isWall: true, roofSurface: true } : { cellSize, pixelsPerUnit };
-    const canvas = new OffscreenCanvas(bakeSize, bakeSize);
+    const canvas = createOffscreenCanvas(bakeSize, bakeSize);
     const ctx = canvas.getContext("2d");
-    ctx.imageSmoothingEnabled = false;
     if (chunkNeedsRuntimeResolve(baseProfile)) {
         payload.frameIndex = 0;
         bakeResolvedProfile(ctx, bakeSize, bakeSize, chunkWorldX, chunkWorldY, seed, paintOptions, baseProfile, profileId, payload);
@@ -153,9 +152,8 @@ export function bakeHorizontalPatchCanvases(payload) {
     const bakeTotal = payload.animationBakeFrames ?? sourceTotal;
     for (let i = 0; i < frameCount; i++) {
         payload.frameIndex = sourceFrameIndexForBakeSlot(frameStart + i, bakeTotal, sourceTotal);
-        const canvas = new OffscreenCanvas(widthPx, heightPx);
+        const canvas = createOffscreenCanvas(widthPx, heightPx);
         const ctx = canvas.getContext("2d");
-        ctx.imageSmoothingEnabled = false;
         if (useResolver) bakeResolvedProfile(ctx, widthPx, heightPx, originX, originY, seed, paintOptions, baseProfile, profileId, payload);
         else paintPixelArea(ctx, widthPx, heightPx, originX, originY, seed, paintOptions, profileId);
         canvases.push(canvas);

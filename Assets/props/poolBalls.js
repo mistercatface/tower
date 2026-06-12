@@ -1,5 +1,6 @@
 import { drawSphere } from "../../Libraries/Render/Props3D/sphere.js";
 import { drawSphereTexturePatch } from "../../Libraries/Render/SurfaceTexturing/drawSphereTexturePatch.js";
+import { createOffscreenCanvas } from "../../Libraries/Canvas/offscreenCanvas.js";
 const POOL_BALL_COLORS = { 1: "#FFD600", 2: "#1565C0", 3: "#D32F2F", 4: "#7B1FA2", 5: "#FF6F00", 6: "#2E7D32", 7: "#8B0000", 8: "#1A1A1A" };
 /** @param {string} hex @param {number} amount */
 function shadeHex(hex, amount) {
@@ -34,9 +35,8 @@ function getPoolBallLabelImage(poolBall, radius, compact) {
     const key = `${poolBall.kind}_${poolBall.number ?? 0}_${labelSize}`;
     if (labelCache.has(key)) return labelCache.get(key);
     if (poolBall.kind === "cue") {
-        const canvas = new OffscreenCanvas(labelSize, labelSize);
+        const canvas = createOffscreenCanvas(labelSize, labelSize);
         const ctx = canvas.getContext("2d");
-        ctx.imageSmoothingEnabled = false;
         const cx = labelSize * 0.5;
         const cy = labelSize * 0.5;
         const dotR = labelSize * (compact ? 0.32 : 0.28);
@@ -48,9 +48,8 @@ function getPoolBallLabelImage(poolBall, radius, compact) {
         return canvas;
     }
     if (!poolBall.number) return null;
-    const canvas = new OffscreenCanvas(labelSize, labelSize);
+    const canvas = createOffscreenCanvas(labelSize, labelSize);
     const ctx = canvas.getContext("2d");
-    ctx.imageSmoothingEnabled = false;
     const cx = labelSize * 0.5;
     const cy = labelSize * 0.5;
     const discR = labelSize * (compact ? 0.47 : 0.46);

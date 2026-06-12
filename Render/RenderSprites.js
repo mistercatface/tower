@@ -1,7 +1,7 @@
+import { createOffscreenCanvas } from "../Libraries/Canvas/offscreenCanvas.js";
 export const RenderSprites = {
     floatingText: (text, style, color) => {
-        const measureCanvas = new OffscreenCanvas(1, 1);
-        const measureCtx = measureCanvas.getContext("2d");
+        const measureCtx = createOffscreenCanvas(1, 1).getContext("2d");
         measureCtx.font = style.font;
         const metrics = measureCtx.measureText(text);
         const strokeWidth = style.strokeWidth;
@@ -12,7 +12,7 @@ export const RenderSprites = {
         const padding = strokeWidth * 2 + 4;
         const W = textWidth + padding;
         const H = textHeight + padding;
-        const offCanvas = new OffscreenCanvas(W, H);
+        const offCanvas = createOffscreenCanvas(W, H);
         const offCtx = offCanvas.getContext("2d");
         offCtx.textAlign = "center";
         offCtx.textBaseline = "middle";

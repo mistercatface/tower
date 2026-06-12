@@ -1,4 +1,5 @@
 import { fillCircle, strokeOpenPolyline, strokeSegment, traceSegment } from "../../Canvas/CanvasPath.js";
+import { createOffscreenCanvas } from "../../Canvas/offscreenCanvas.js";
 const WALL_OVERLAY_THICKNESS = 20;
 /** @typedef {import("../../Math/Aabb2D.js").Aabb2D & { canvas: OffscreenCanvas }} MapImageCache */
 /** @typedef {MapImageCache} ObstacleOverviewCache */
@@ -6,7 +7,7 @@ function bakeCanvas(width, height) {
     const w = Math.ceil(width);
     const h = Math.ceil(height);
     if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return null;
-    return new OffscreenCanvas(w, h);
+    return createOffscreenCanvas(w, h);
 }
 function drawWallSegment(ctx, seg) {
     ctx.save();
@@ -107,7 +108,7 @@ function bakePathDebugLayer(hnav, minX, minY, maxX, maxY) {
 /** @param {import("../Math/Aabb2D.js").Aabb2D & { cols: number, rows: number, grid: ArrayLike<number>, cellSize: number }} obstacleGrid */
 export function bakeObstacleOverviewCache(obstacleGrid) {
     if (!obstacleGrid.cols || !obstacleGrid.rows) return null;
-    const canvas = new OffscreenCanvas(obstacleGrid.cols, obstacleGrid.rows);
+    const canvas = createOffscreenCanvas(obstacleGrid.cols, obstacleGrid.rows);
     const ctx = canvas.getContext("2d");
     const data = ctx.createImageData(obstacleGrid.cols, obstacleGrid.rows);
     const pixels = data.data;

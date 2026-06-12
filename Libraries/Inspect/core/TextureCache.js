@@ -1,6 +1,7 @@
+import { createOffscreenCanvas } from "../../Canvas/offscreenCanvas.js";
 const entries = new Map();
 function keyWhiteTransparent(img) {
-    const canvas = new OffscreenCanvas(img.width, img.height);
+    const canvas = createOffscreenCanvas(img.width, img.height);
     const ctx = canvas.getContext("2d");
     ctx.drawImage(img, 0, 0);
     const data = ctx.getImageData(0, 0, canvas.width, canvas.height);

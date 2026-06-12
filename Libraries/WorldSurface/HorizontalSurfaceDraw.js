@@ -12,6 +12,7 @@ import { getDamageAlphaFromHealth, drawAabbDamageOverlay, drawDamageOverlayInCli
 import { resolveStaticWallHeightAtCell, cellIsStaticBlocked } from "../World/staticOccupancyLayers.js";
 import { getStaticCellDamageAlphaAtGrid } from "../World/staticCellDamage.js";
 import { bakePixelsForWorldSpan } from "./WorldSurfaceResolution.js";
+import { createOffscreenCanvas } from "../Canvas/offscreenCanvas.js";
 const sHorizontalCorners = [
     { x: 0, y: 0 },
     { x: 0, y: 0 },
@@ -94,7 +95,7 @@ export function buildStaticRoofMaskCanvas(obstacleGrid, chunkOriginX, chunkOrigi
     if (!obstacleGrid?.cols || !staticOccupancyLayers?.length) return null;
     const bakeSize = bakePixelsForWorldSpan(chunkSizePx, { texelResolution });
     const cellBakeSize = bakePixelsForWorldSpan(obstacleGrid.cellSize, { texelResolution });
-    const canvas = new OffscreenCanvas(bakeSize, bakeSize);
+    const canvas = createOffscreenCanvas(bakeSize, bakeSize);
     const ctx = canvas.getContext("2d");
     ctx.fillStyle = "#ffffff";
     let any = false;
@@ -112,7 +113,7 @@ export function buildStaticRoofMaskCanvas(obstacleGrid, chunkOriginX, chunkOrigi
 export function applyStaticRoofMaskToCanvas(roofCanvas, maskCanvas) {
     const w = roofCanvas.width;
     const h = roofCanvas.height;
-    const out = new OffscreenCanvas(w, h);
+    const out = createOffscreenCanvas(w, h);
     const ctx = out.getContext("2d");
     ctx.drawImage(roofCanvas, 0, 0);
     ctx.globalCompositeOperation = "destination-in";

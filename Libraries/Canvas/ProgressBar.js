@@ -1,4 +1,5 @@
 import { clamp } from "../Math/Interpolate.js";
+import { createOffscreenCanvas } from "./offscreenCanvas.js";
 export class ProgressBar {
     constructor(config = {}) {
         this.width = config.width || 20;
@@ -45,7 +46,7 @@ export class ProgressBar {
         const cachedSprite = cache.get(cacheKey, () => {
             const canvasSizeW = this.width + 2;
             const canvasSizeH = this.height + 2;
-            const offCanvas = new OffscreenCanvas(canvasSizeW, canvasSizeH);
+            const offCanvas = createOffscreenCanvas(canvasSizeW, canvasSizeH);
             const offCtx = offCanvas.getContext("2d");
             offCtx.fillStyle = this.bgColor;
             offCtx.strokeStyle = this.borderColor;

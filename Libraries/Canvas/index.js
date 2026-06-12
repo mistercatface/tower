@@ -1,4 +1,5 @@
 export { applySquareCanvasResize } from "./squareCanvasResize.js";
+export { createOffscreenCanvas, resizeOffscreenCanvas } from "./offscreenCanvas.js";
 export {
     TAU,
     traceAabbRect,

@@ -1,3 +1,4 @@
+import { createOffscreenCanvas, resizeOffscreenCanvas } from "../../../Libraries/Canvas/offscreenCanvas.js";
 import { paintPixelArea } from "../../../Libraries/WorldSurface/WorldSurfacePainter.js";
 import { resolveBakeProfile, getAnimationDuration } from "../../../Libraries/WorldSurface/ProfileBakeResolver.js";
 import { minCornerAabb } from "../../../Libraries/Math/Aabb2D.js";
@@ -13,8 +14,19 @@ let rafId = null;
 let lastGameTime = 0;
 let lastDrawTime = 0;
 let isAnimationEnabled = false;
-/** @type {HTMLCanvasElement | null} */
+/** @type {OffscreenCanvas | null} */
 let patchCanvas = null;
+/** @type {CanvasRenderingContext2D | null} */
+let patchCtx = null;
+function ensurePatchSurface(destW, destH) {
+    if (!patchCanvas) {
+        patchCanvas = createOffscreenCanvas(destW, destH);
+        patchCtx = patchCanvas.getContext("2d");
+        return;
+    }
+    resizeOffscreenCanvas(patchCanvas, destW, destH);
+    if (!patchCtx) patchCtx = patchCanvas.getContext("2d");
+}
 /** Vertical space taken by the animation preview (for map canvas max-size). */
 export function estimateAnimationPreviewHeight(fallbackSize = 200) {
     const stage = document.getElementById("animationStage");
@@ -90,13 +102,7 @@ function paintPreviewPatch(ctx, bounds, worldRect, pixelsPerUnit, cellSize, prof
     const destY = Math.round((worldRect.minY - bounds.minY) * pixelsPerUnit);
     const destW = Math.max(1, Math.round((worldRect.maxX - worldRect.minX) * pixelsPerUnit));
     const destH = Math.max(1, Math.round((worldRect.maxY - worldRect.minY) * pixelsPerUnit));
-    if (!patchCanvas) patchCanvas = document.createElement("canvas");
-    if (patchCanvas.width !== destW || patchCanvas.height !== destH) {
-        patchCanvas.width = destW;
-        patchCanvas.height = destH;
-    }
-    const patchCtx = patchCanvas.getContext("2d");
-    patchCtx.imageSmoothingEnabled = false;
+    ensurePatchSurface(destW, destH);
     const paintOptions = zLevel > 0 ? { cellSize, pixelsPerUnit, isWall: true, roofSurface: true } : { cellSize, pixelsPerUnit };
     paintPixelArea(patchCtx, destW, destH, worldRect.minX, worldRect.minY, 42, paintOptions, profile);
     ctx.drawImage(patchCanvas, destX, destY);
