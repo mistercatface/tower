@@ -1,4 +1,5 @@
 import { colRowToIndex, indexToColRow, forEachCardinalNeighbor } from "../Spatial/grid/GridUtils.js";
+import { forEachDenseCellInRect } from "../DataStructures/CellRect.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin } from "../Spatial/grid/GridCoords.js";
 import { runLocalAStarFlat, runAbstractAStar } from "./AStar.js";
 import { RegionNode, computeDistanceTransform, generateVoronoiRegions, findRegionAdjacencies, repositionNodeCentroid } from "./VoronoiRegions.js";
@@ -147,11 +148,10 @@ export class HierarchicalNavigator {
     }
     _collectRegionIdsInBox(startCol, endCol, startRow, endRow) {
         const ids = new Set();
-        for (let row = startRow; row <= endRow; row++)
-            for (let col = startCol; col <= endCol; col++) {
-                const node = this.cellToNode[colRowToIndex(col, row, this.cols)];
-                if (node) ids.add(node.id);
-            }
+        forEachDenseCellInRect(startCol, endCol, startRow, endRow, this.cols, (_col, _row, idx) => {
+            const node = this.cellToNode[idx];
+            if (node) ids.add(node.id);
+        });
         return ids;
     }
     _stripEdgePair(nodeA, nodeB) {
@@ -222,16 +222,14 @@ export class HierarchicalNavigator {
     /** @returns {Set<string>} */
     _stripBlockedCellsFromRegions(startCol, endCol, startRow, endRow) {
         const touched = new Set();
-        for (let row = startRow; row <= endRow; row++)
-            for (let col = startCol; col <= endCol; col++) {
-                const idx = colRowToIndex(col, row, this.cols);
-                if (this.grid[idx] !== 1) continue;
-                const node = this.cellToNode[idx];
-                if (!node) continue;
-                touched.add(node.id);
-                node.cells = node.cells.filter((cellIdx) => cellIdx !== idx);
-                this.cellToNode[idx] = null;
-            }
+        forEachDenseCellInRect(startCol, endCol, startRow, endRow, this.cols, (_col, _row, idx) => {
+            if (this.grid[idx] !== 1) return;
+            const node = this.cellToNode[idx];
+            if (!node) return;
+            touched.add(node.id);
+            node.cells = node.cells.filter((cellIdx) => cellIdx !== idx);
+            this.cellToNode[idx] = null;
+        });
         for (const id of [...touched]) {
             const node = this.nodesMap[id];
             if (!node) continue;
@@ -292,44 +290,42 @@ export class HierarchicalNavigator {
     }
     _assignOpenedCells(startCol, endCol, startRow, endRow) {
         const visited = new Uint8Array(this.cols * this.rows);
-        for (let row = startRow; row <= endRow; row++)
-            for (let col = startCol; col <= endCol; col++) {
-                const idx = colRowToIndex(col, row, this.cols);
-                if (this.grid[idx] !== 0 || this.cellToNode[idx] || visited[idx]) continue;
-                const component = [];
-                const neighborRegions = new Map();
-                const queue = [idx];
-                visited[idx] = 1;
-                let head = 0;
-                while (head < queue.length) {
-                    const currIdx = queue[head++];
-                    component.push(currIdx);
-                    const { col: c, row: r } = indexToColRow(currIdx, this.cols);
-                    forEachCardinalNeighbor(c, r, this.cols, this.rows, (nc, nr, nIdx) => {
-                        if (this.grid[nIdx] !== 0) return;
-                        const neighborNode = this.cellToNode[nIdx];
-                        if (neighborNode) {
-                            neighborRegions.set(neighborNode.id, neighborNode);
-                            return;
-                        }
-                        if (visited[nIdx]) return;
-                        if (nc < startCol || nc > endCol || nr < startRow || nr > endRow) return;
-                        visited[nIdx] = 1;
-                        queue.push(nIdx);
-                    });
-                }
-                if (neighborRegions.size === 0) this._createRegionFromCells(component);
-                else {
-                    const regions = [...neighborRegions.values()];
-                    let keep = regions[0];
-                    for (let i = 1; i < regions.length; i++) this._mergeRegionInto(keep, regions[i]);
-                    for (const cellIdx of component) {
-                        this.cellToNode[cellIdx] = keep;
-                        keep.cells.push(cellIdx);
+        forEachDenseCellInRect(startCol, endCol, startRow, endRow, this.cols, (col, row, idx) => {
+            if (this.grid[idx] !== 0 || this.cellToNode[idx] || visited[idx]) return;
+            const component = [];
+            const neighborRegions = new Map();
+            const queue = [idx];
+            visited[idx] = 1;
+            let head = 0;
+            while (head < queue.length) {
+                const currIdx = queue[head++];
+                component.push(currIdx);
+                const { col: c, row: r } = indexToColRow(currIdx, this.cols);
+                forEachCardinalNeighbor(c, r, this.cols, this.rows, (nc, nr, nIdx) => {
+                    if (this.grid[nIdx] !== 0) return;
+                    const neighborNode = this.cellToNode[nIdx];
+                    if (neighborNode) {
+                        neighborRegions.set(neighborNode.id, neighborNode);
+                        return;
                     }
-                    repositionNodeCentroid(keep, this.cellToNode, this.grid, this.cols, this.rows, this.minX, this.minY, this.cellSize);
-                }
+                    if (visited[nIdx]) return;
+                    if (nc < startCol || nc > endCol || nr < startRow || nr > endRow) return;
+                    visited[nIdx] = 1;
+                    queue.push(nIdx);
+                });
             }
+            if (neighborRegions.size === 0) this._createRegionFromCells(component);
+            else {
+                const regions = [...neighborRegions.values()];
+                let keep = regions[0];
+                for (let i = 1; i < regions.length; i++) this._mergeRegionInto(keep, regions[i]);
+                for (const cellIdx of component) {
+                    this.cellToNode[cellIdx] = keep;
+                    keep.cells.push(cellIdx);
+                }
+                repositionNodeCentroid(keep, this.cellToNode, this.grid, this.cols, this.rows, this.minX, this.minY, this.cellSize);
+            }
+        });
     }
     rebuildDamagedArea(bounds) {
         if (!bounds || this.cols === 0 || this.rows === 0) return;

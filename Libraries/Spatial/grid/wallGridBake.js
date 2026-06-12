@@ -1,3 +1,4 @@
+import { forEachDenseCellInRect } from "../../DataStructures/CellRect.js";
 import { colRowToIndex } from "./GridUtils.js";
 import { pointToSegmentPaddingDistanceSq, getWallReach } from "../geometry/WallGeometry.js";
 import { spatialWorldMargin } from "../../../Config/Config.js";
@@ -30,23 +31,19 @@ export function markWallOnGrid(wall, grid, cols, rows, { worldToGrid, cellCenter
     }
     const bounds = getWallCellBounds(wall, worldToGrid, cols, rows, padding);
     const paddingSq = padding * padding + 0.01;
-    for (let col = bounds.startCol; col <= bounds.endCol; col++)
-        for (let row = bounds.startRow; row <= bounds.endRow; row++) {
-            const { x: cx, y: cy } = cellCenter(col, row);
-            if (pointToSegmentPaddingDistanceSq(wall, cx, cy) <= paddingSq) {
-                const idx = colRowToIndex(col, row, cols);
-                grid[idx] = 1;
-                if (onBlockedCell) onBlockedCell(col, row, idx);
-            }
+    forEachDenseCellInRect(bounds.startCol, bounds.endCol, bounds.startRow, bounds.endRow, cols, (col, row, idx) => {
+        const { x: cx, y: cy } = cellCenter(col, row);
+        if (pointToSegmentPaddingDistanceSq(wall, cx, cy) <= paddingSq) {
+            grid[idx] = 1;
+            if (onBlockedCell) onBlockedCell(col, row, idx);
         }
+    });
 }
 export function clearWallCells(grid, cols, bounds, segmentGrid = null) {
-    for (let row = bounds.startRow; row <= bounds.endRow; row++)
-        for (let col = bounds.startCol; col <= bounds.endCol; col++) {
-            const idx = colRowToIndex(col, row, cols);
-            grid[idx] = 0;
-            if (segmentGrid && segmentGrid[idx]) segmentGrid[idx].length = 0;
-        }
+    forEachDenseCellInRect(bounds.startCol, bounds.endCol, bounds.startRow, bounds.endRow, cols, (_col, _row, idx) => {
+        grid[idx] = 0;
+        if (segmentGrid && segmentGrid[idx]) segmentGrid[idx].length = 0;
+    });
 }
 export function computeBoundsFromWalls(walls, cellSize) {
     let minX = Infinity;

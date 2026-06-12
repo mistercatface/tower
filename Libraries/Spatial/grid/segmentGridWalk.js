@@ -1,4 +1,4 @@
-import { colRowToIndex } from "./GridUtils.js";
+import { forEachDenseCellInRect } from "../../DataStructures/CellRect.js";
 /**
  * @typedef {object} SegmentGridLayout
  * @property {object[][] | null} segmentGrid — per-cell segment lists (sparse)
@@ -20,7 +20,7 @@ import { colRowToIndex } from "./GridUtils.js";
  */
 function pushCellSegments(segmentGrid, cols, rows, col, row, result, checked) {
     if (col < 0 || col >= cols || row < 0 || row >= rows) return;
-    const cellSegs = segmentGrid[colRowToIndex(col, row, cols)];
+    const cellSegs = segmentGrid[col + row * cols];
     if (!cellSegs) return;
     for (const segment of cellSegs)
         if (!checked.has(segment)) {
@@ -41,16 +41,15 @@ export function collectSegmentsInCellRect(segmentGrid, cols, startCol, endCol, s
     if (!segmentGrid) return [];
     const result = [];
     const checked = new Set();
-    for (let row = startRow; row <= endRow; row++)
-        for (let col = startCol; col <= endCol; col++) {
-            const cellSegs = segmentGrid[colRowToIndex(col, row, cols)];
-            if (!cellSegs) continue;
-            for (const segment of cellSegs)
-                if (!checked.has(segment)) {
-                    checked.add(segment);
-                    result.push(segment);
-                }
-        }
+    forEachDenseCellInRect(startCol, endCol, startRow, endRow, cols, (_col, _row, idx) => {
+        const cellSegs = segmentGrid[idx];
+        if (!cellSegs) return;
+        for (const segment of cellSegs)
+            if (!checked.has(segment)) {
+                checked.add(segment);
+                result.push(segment);
+            }
+    });
     return result;
 }
 /**

@@ -59,17 +59,21 @@ export class FlowFieldGrid {
         this.refresh();
     }
     syncLocalObstacles() {
-        for (let row = 0; row < this.rows; row++)
-            for (let col = 0; col < this.cols; col++) {
-                const wx = col * this.cellSize + this.centerX - this.offsetX + this.cellSize / 2;
-                const wy = row * this.cellSize + this.centerY - this.offsetY + this.cellSize / 2;
-                const worldCell = this.navGraph.worldToGrid(wx, wy);
-                const idx = row * this.cols + col;
-                if (worldCell.col >= 0 && worldCell.col < this.navGraph.cols && worldCell.row >= 0 && worldCell.row < this.navGraph.rows) {
-                    const worldIdx = worldCell.row * this.navGraph.cols + worldCell.col;
-                    this.grid[idx] = this.navGraph.grid[worldIdx];
-                } else this.grid[idx] = 1;
-            }
+        const size = this.cols * this.rows;
+        const navCols = this.navGraph.cols;
+        const navRows = this.navGraph.rows;
+        const navGrid = this.navGraph.grid;
+        const cellSize = this.cellSize;
+        const half = cellSize / 2;
+        const wxBase = this.centerX - this.offsetX + half;
+        const wyBase = this.centerY - this.offsetY + half;
+        for (let idx = 0; idx < size; idx++) {
+            const col = idx % this.cols;
+            const row = (idx / this.cols) | 0;
+            const worldCell = this.navGraph.worldToGrid(col * cellSize + wxBase, row * cellSize + wyBase);
+            if (worldCell.col >= 0 && worldCell.col < navCols && worldCell.row >= 0 && worldCell.row < navRows) this.grid[idx] = navGrid[worldCell.row * navCols + worldCell.col];
+            else this.grid[idx] = 1;
+        }
         this.cacheLookup.fill(-1);
         this.cacheCounter = 0;
     }

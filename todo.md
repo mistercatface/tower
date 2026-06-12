@@ -69,9 +69,9 @@ Hot paths already use flat `idx` internally (`flowFieldBfs`, HPA `node.cells`, `
 
 ## Tier 2 — profiling gate
 
-- [ ] **`collectStaticGridWallFaceCandidates`** — read `grid.grid[idx]` once per cell; pass height into neighbor edge checks instead of re-resolving per edge (`StaticGridWallDraw.js`).
-- [ ] **Full-grid scans as flat loops** — `stampStaticWalls`, `expandToCoverAabb` copy, `FlowFieldGrid.syncLocalObstacles`: `for (idx = 0; idx < size; idx++)` where body is mostly array access.
-- [ ] **Route hand-rolled nested rect loops through `forEachDenseCellInRect`** — e.g. `wallGridBake` clear/mark, `segmentGridWalk.collectSegmentsInCellRect`, HPA rect walks (`HierarchicalNavigator`).
+- [x] **`collectStaticGridWallFaceCandidates`** — read `grid.grid[idx]` once per cell; pass height into neighbor edge checks instead of re-resolving per edge (`StaticGridWallDraw.js`).
+- [x] **Full-grid scans as flat loops** — `stampStaticWalls`, `expandToCoverAabb` copy, `FlowFieldGrid.syncLocalObstacles`: `for (idx = 0; idx < size; idx++)` where body is mostly array access.
+- [x] **Route hand-rolled nested rect loops through `forEachDenseCellInRect`** — e.g. `wallGridBake` clear/mark, `segmentGridWalk.collectSegmentsInCellRect`, HPA rect walks (`HierarchicalNavigator`).
 
 ## Tier 3 — skip unless a specific bottleneck appears
 

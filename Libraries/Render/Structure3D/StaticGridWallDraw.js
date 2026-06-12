@@ -2,7 +2,7 @@
  * Viewport-scoped draw + query for static obstacle-grid walls (no Segment entities).
  */
 import { forEachObstacleGridCellInAabb } from "../../Spatial/grid/GridCoords.js";
-import { cellIsStaticWall, resolveCellWallHeightPx } from "../../World/wallGridCells.js";
+import { cellIsStaticWallAtIdx, resolveCellWallHeightAtIdx } from "../../World/wallGridCells.js";
 const sP1 = { x: 0, y: 0 };
 const sP2 = { x: 0, y: 0 };
 /** @type {{ grid: object | null, wallGridRevision: number, boundsMinX: number, boundsMaxX: number, boundsMinY: number, boundsMaxY: number, gridCols: number, gridRows: number, faces: object[] }} */
@@ -31,13 +31,13 @@ function storeGeomCache(cache, grid, wallGridRevision, bounds) {
     cache.boundsMinY = bounds.minY;
     cache.boundsMaxY = bounds.maxY;
 }
-/** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @returns {number | null} null = open air */
-function staticCellCapHeight(grid, col, row) {
-    const px = resolveCellWallHeightPx(grid, col, row);
+/** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} idx @returns {number | null} null = open air */
+function capHeightPxAtIdx(grid, idx) {
+    const px = resolveCellWallHeightAtIdx(grid, idx);
     return px > 0 ? px : null;
 }
-/** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} edge */
-function staticCellNeighbor(grid, col, row, edge) {
+/** @param {number} col @param {number} row @param {number} edge */
+function staticCellNeighbor(col, row, edge) {
     let nc = col;
     let nr = row;
     if (edge === 0) nr = row - 1;
@@ -46,19 +46,13 @@ function staticCellNeighbor(grid, col, row, edge) {
     else nc = col - 1;
     return { nc, nr };
 }
-/** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} edge @param {number} faceHeight */
-function staticCellEdgeShouldShowFace(grid, col, row, edge, faceHeight) {
-    const { nc, nr } = staticCellNeighbor(grid, col, row, edge);
-    if (nc < 0 || nc >= grid.cols || nr < 0 || nr >= grid.rows) return true;
-    const neighborCap = staticCellCapHeight(grid, nc, nr);
+/** @param {number | null} neighborCap @param {number} faceHeight */
+function staticCellEdgeShouldShowFace(neighborCap, faceHeight) {
     if (neighborCap == null) return true;
     return faceHeight > neighborCap;
 }
-/** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} edge @param {number} faceHeight @returns {number} */
-function staticCellEdgeWallBaseZ(grid, col, row, edge, faceHeight) {
-    const { nc, nr } = staticCellNeighbor(grid, col, row, edge);
-    if (nc < 0 || nc >= grid.cols || nr < 0 || nr >= grid.rows) return 0;
-    const neighborCap = staticCellCapHeight(grid, nc, nr);
+/** @param {number | null} neighborCap @param {number} faceHeight @returns {number} */
+function staticCellEdgeWallBaseZ(neighborCap, faceHeight) {
     if (neighborCap == null || faceHeight <= neighborCap) return 0;
     return neighborCap;
 }
@@ -98,18 +92,22 @@ function staticCellEdgeEndpoints(grid, col, row, edge, p1, p2) {
  */
 function collectStaticGridWallFaceCandidates(obstacleGrid, bounds, out) {
     out.length = 0;
-    forEachObstacleGridCellInAabb(obstacleGrid, bounds, (col, row) => {
-        if (!cellIsStaticWall(obstacleGrid, col, row)) return;
-        const faceHeight = resolveCellWallHeightPx(obstacleGrid, col, row);
+    const cols = obstacleGrid.cols;
+    forEachObstacleGridCellInAabb(obstacleGrid, bounds, (col, row, idx) => {
+        if (!cellIsStaticWallAtIdx(obstacleGrid, idx)) return;
+        const faceHeight = resolveCellWallHeightAtIdx(obstacleGrid, idx);
         const cellBounds = obstacleGrid.getCellBounds(col, row);
         const cx = (cellBounds.minX + cellBounds.maxX) / 2;
         const cy = (cellBounds.minY + cellBounds.maxY) / 2;
         for (let edge = 0; edge < 4; edge++) {
-            if (!staticCellEdgeShouldShowFace(obstacleGrid, col, row, edge, faceHeight)) continue;
+            const { nc, nr } = staticCellNeighbor(col, row, edge);
+            let neighborCap = null;
+            if (nc >= 0 && nc < cols && nr >= 0 && nr < obstacleGrid.rows) neighborCap = capHeightPxAtIdx(obstacleGrid, nc + nr * cols);
+            if (!staticCellEdgeShouldShowFace(neighborCap, faceHeight)) continue;
             staticCellEdgeEndpoints(obstacleGrid, col, row, edge, sP1, sP2);
             const ecx = (sP1.x + sP2.x) / 2;
             const ecy = (sP1.y + sP2.y) / 2;
-            const wallBaseZ = staticCellEdgeWallBaseZ(obstacleGrid, col, row, edge, faceHeight);
+            const wallBaseZ = staticCellEdgeWallBaseZ(neighborCap, faceHeight);
             out.push({
                 staticGrid: true,
                 gridCol: col,

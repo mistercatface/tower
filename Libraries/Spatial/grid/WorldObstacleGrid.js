@@ -1,3 +1,4 @@
+import { forEachDenseCellInRect } from "../../DataStructures/CellRect.js";
 import { colRowToIndex } from "./GridUtils.js";
 import { damageStaticGridCell } from "../../World/staticCellDamage.js";
 import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
@@ -64,15 +65,16 @@ export class WorldObstacleGrid {
         const radius = entity.radius ?? 0;
         const { col: ec, row: er } = this.worldToGrid(entity.x, entity.y);
         const pad = 1 + Math.ceil(radius / this.cellSize);
-        for (let row = er - pad; row <= er + pad; row++)
-            for (let col = ec - pad; col <= ec + pad; col++) {
-                if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) continue;
-                if (!this.isBlocked(col, row)) continue;
-                const idx = colRowToIndex(col, row, this.cols);
-                if (this.segmentGrid?.[idx]?.length) continue;
-                const { x, y } = this.gridToWorld(col, row);
-                out.push(this._borrowStaticWallProxy(x, y, col, row));
-            }
+        const minCol = Math.max(0, ec - pad);
+        const maxCol = Math.min(this.cols - 1, ec + pad);
+        const minRow = Math.max(0, er - pad);
+        const maxRow = Math.min(this.rows - 1, er + pad);
+        forEachDenseCellInRect(minCol, maxCol, minRow, maxRow, this.cols, (col, row, idx) => {
+            if (this.grid[idx] === 0) return;
+            if (this.segmentGrid?.[idx]?.length) return;
+            const { x, y } = this.gridToWorld(col, row);
+            out.push(this._borrowStaticWallProxy(x, y, col, row));
+        });
         return out;
     }
     rebuild(walls) {
@@ -131,15 +133,17 @@ export class WorldObstacleGrid {
         this.cols = Math.ceil((newMaxX - newMinX) / this.cellSize);
         this.rows = Math.ceil((newMaxY - newMinY) / this.cellSize);
         const newGrid = new Uint8Array(this.cols * this.rows);
-        for (let row = 0; row < oldRows; row++)
-            for (let col = 0; col < oldCols; col++) {
-                const level = oldGrid[colRowToIndex(col, row, oldCols)];
-                if (level === 0) continue;
-                const nc = col + colOffset;
-                const nr = row + rowOffset;
-                if (nc < 0 || nc >= this.cols || nr < 0 || nr >= this.rows) continue;
-                newGrid[colRowToIndex(nc, nr, this.cols)] = level;
-            }
+        const oldSize = oldCols * oldRows;
+        for (let idx = 0; idx < oldSize; idx++) {
+            const level = oldGrid[idx];
+            if (level === 0) continue;
+            const col = idx % oldCols;
+            const row = (idx / oldCols) | 0;
+            const nc = col + colOffset;
+            const nr = row + rowOffset;
+            if (nc < 0 || nc >= this.cols || nr < 0 || nr >= this.rows) continue;
+            newGrid[nc + nr * this.cols] = level;
+        }
         this.grid = newGrid;
         return true;
     }
@@ -183,18 +187,20 @@ export class WorldObstacleGrid {
         const gridBounds = { startCol: Math.max(0, baseCol), endCol: Math.min(this.cols - 1, baseCol + cols - 1), startRow: Math.max(0, baseRow), endRow: Math.min(this.rows - 1, baseRow + rows - 1) };
         if (!additive) clearWallCells(this.grid, this.cols, gridBounds, this.segmentGrid);
         let changed = false;
-        for (let lr = 0; lr < rows; lr++)
-            for (let lc = 0; lc < cols; lc++) {
-                if (cells[lr * cols + lc] !== 1) continue;
-                const col = baseCol + lc;
-                const row = baseRow + lr;
-                if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) continue;
-                const idx = colRowToIndex(col, row, this.cols);
-                if (this.grid[idx] !== level) {
-                    this.grid[idx] = level;
-                    changed = true;
-                }
+        const stampSize = rows * cols;
+        for (let i = 0; i < stampSize; i++) {
+            if (cells[i] !== 1) continue;
+            const lr = (i / cols) | 0;
+            const lc = i % cols;
+            const col = baseCol + lc;
+            const row = baseRow + lr;
+            if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) continue;
+            const idx = col + row * this.cols;
+            if (this.grid[idx] !== level) {
+                this.grid[idx] = level;
+                changed = true;
             }
+        }
         if (changed) this.bumpWallGridRevision();
         if (wallSpatialIndex && this.segmentGrid) {
             const worldBounds = cellBoundsToWorldBoundsInto(this.patchBoundsScratch, gridBounds, this.minX, this.minY, this.cellSize);
