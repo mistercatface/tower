@@ -22,6 +22,31 @@ export function getPlayAreaPreviewBounds(viewport, playConfig) {
 export function getCavernBoundsPreview(cavernConfig) {
     return worldBoundsFromCellOrigin(cavernConfig.boundsCol, cavernConfig.boundsRow, cavernConfig.boundsCols, cavernConfig.boundsRows, gridSettings.cellSize);
 }
+/** @param {import("../state.js").TileLabGameState} state */
+export function refreshLabMapBoundsPreview(state) {
+    const { viewport, labPlayConfig, labCavernConfig } = state;
+    const cellSize = gridSettings.cellSize;
+    const playKey = `${viewport.x}|${viewport.y}|${labPlayConfig.playAreaCols}|${labPlayConfig.playAreaRows}`;
+    if (state._labPlayAreaBoundsKey !== playKey) {
+        state._labPlayAreaBoundsKey = playKey;
+        const box = centeredAabb(viewport.x, viewport.y, labPlayConfig.playAreaCols * cellSize, labPlayConfig.playAreaRows * cellSize);
+        const out = state.labPlayAreaBoundsPreview;
+        out.minX = box.minX;
+        out.minY = box.minY;
+        out.maxX = box.maxX;
+        out.maxY = box.maxY;
+    }
+    const cavernKey = `${labCavernConfig.boundsCol}|${labCavernConfig.boundsRow}|${labCavernConfig.boundsCols}|${labCavernConfig.boundsRows}`;
+    if (state._labCavernBoundsKey !== cavernKey) {
+        state._labCavernBoundsKey = cavernKey;
+        const box = getCavernBoundsPreview(labCavernConfig);
+        const out = state.labCavernBoundsPreview;
+        out.minX = box.minX;
+        out.minY = box.minY;
+        out.maxX = box.maxX;
+        out.maxY = box.maxY;
+    }
+}
 /**
  * @param {import("../state.js").TileLabGameState["viewport"]} viewport
  * @param {import("../state.js").TileLabGameState["labPlayConfig"]} playConfig

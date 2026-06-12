@@ -23,6 +23,10 @@ export class TileLabGameState extends SharedGameState {
         this.floorSeed = rand;
         this.labPlayConfig = { playAreaCols: 256, playAreaRows: 256 };
         this.labCavernConfig = { boundsCol: -128, boundsRow: -128, boundsCols: 256, boundsRows: 256, fillChance: 0.45, iterations: 3 };
+        this.labPlayAreaBoundsPreview = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+        this.labCavernBoundsPreview = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+        this._labPlayAreaBoundsKey = "";
+        this._labCavernBoundsKey = "";
         this.labShowSandboxPanel = true;
         this.labShowProfilePanel = true;
         this.labShowMapPanel = false;

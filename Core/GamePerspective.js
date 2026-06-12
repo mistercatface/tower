@@ -10,6 +10,8 @@ import { setCameraHeight, setPerspectiveStrength } from "../Libraries/Spatial/is
 export const DEFAULT_PERSPECTIVE = { cameraHeight: LIBRARY_DEFAULT_CAMERA_HEIGHT, strength: LIBRARY_DEFAULT_PERSPECTIVE_STRENGTH, viewerSource: "player" };
 /** @type {PerspectiveConfig} */
 let activePerspective = { ...DEFAULT_PERSPECTIVE };
+/** Bumped when perspective config changes so viewport strength caches invalidate. */
+let perspectiveConfigGeneration = 0;
 /** @param {import("./GameDefinitionTypes.js").EngineProfile | null | undefined} definition */
 export function resolvePerspectiveConfig(definition) {
     return { ...DEFAULT_PERSPECTIVE, ...definition?.perspective };
@@ -22,18 +24,20 @@ export function applyGamePerspective(definition) {
     activePerspective = resolvePerspectiveConfig(definition);
     setCameraHeight(activePerspective.cameraHeight);
     setPerspectiveStrength(activePerspective.strength);
+    perspectiveConfigGeneration++;
     return activePerspective;
 }
 /**
- * Zoom-scaled structure perspective (walls + roofs).
- * BOIDS: `ratioBase = PERSPECTIVE_INTENSITY / max(10, viewport.width)`.
- * Here: `intensity * referenceSpan / worldSpan` — same inverse-zoom curve, props unchanged.
+ * Zoom-scaled structure perspective (walls + roofs). Cached on viewport until pan/zoom or perspective config changes.
  *
  * @param {import("../Libraries/Viewport/Viewport.js").Viewport} viewport
  */
 export function resolveStructurePerspectiveStrength(viewport) {
+    if (viewport.structurePerspectiveStrength !== undefined && viewport._structurePerspectiveConfigGen === perspectiveConfigGeneration) return viewport.structurePerspectiveStrength;
     const intensity = activePerspective.strength ?? LIBRARY_DEFAULT_PERSPECTIVE_STRENGTH;
-    const worldSpan = Math.max(LIBRARY_MIN_WORLD_SPAN, Math.min(viewport.halfW, viewport.halfH) * 2);
-    const referenceSpan = Math.max(LIBRARY_MIN_WORLD_SPAN, viewport.getVisualRadius() * 2);
-    return (intensity * referenceSpan) / worldSpan;
+    const worldSpan = viewport.structurePerspectiveWorldSpan ?? Math.max(LIBRARY_MIN_WORLD_SPAN, Math.min(viewport.halfW, viewport.halfH) * 2);
+    const referenceSpan = viewport.structurePerspectiveReferenceSpan ?? Math.max(LIBRARY_MIN_WORLD_SPAN, viewport.getVisualRadius() * 2);
+    viewport._structurePerspectiveConfigGen = perspectiveConfigGeneration;
+    viewport.structurePerspectiveStrength = (intensity * referenceSpan) / worldSpan;
+    return viewport.structurePerspectiveStrength;
 }

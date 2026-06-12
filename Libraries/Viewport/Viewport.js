@@ -1,3 +1,8 @@
+import { LIBRARY_DEFAULT_PERSPECTIVE_STRENGTH, LIBRARY_MIN_WORLD_SPAN } from "../Spatial/iso/perspectiveDefaults.js";
+/** Default entity cull padding (px in world space). */
+export const VIEWPORT_VISIBILITY_PAD_DEFAULT = 20;
+/** Off-screen nav replan threshold padding. */
+export const VIEWPORT_VISIBILITY_PAD_NAV = 128;
 /** 2D world camera: pan, zoom, and screen/world coordinate transforms. */
 export class Viewport {
     constructor(x, y, zoom = 1.0) {
@@ -16,6 +21,14 @@ export class Viewport {
         this.boundsClip = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
         this.boundsQuery = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
         this.boundsDraw = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+        this.boundsVisibleDefault = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+        this.boundsVisibleNav = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+        this.structurePerspectiveWorldSpan = LIBRARY_MIN_WORLD_SPAN;
+        this.structurePerspectiveReferenceSpan = LIBRARY_MIN_WORLD_SPAN;
+        /** @type {number | undefined} Lazily filled by resolveStructurePerspectiveStrength. */
+        this.structurePerspectiveStrength = undefined;
+        /** @type {number | undefined} */
+        this._structurePerspectiveConfigGen = undefined;
         Object.defineProperty(this, "x", { get: () => this._x, set: (v) => this._setPosition(v, this._y) });
         Object.defineProperty(this, "y", { get: () => this._y, set: (v) => this._setPosition(this._x, v) });
         Object.defineProperty(this, "zoom", { get: () => this._zoom, set: (v) => this._setZoom(v) });
@@ -45,6 +58,11 @@ export class Viewport {
         this._writeWorldBounds(this.boundsClip, this.halfW, this.halfH, 0);
         this._writeWorldBounds(this.boundsQuery, this.halfW, this.halfH, this.viewQueryPadPx);
         this._writeWorldBounds(this.boundsDraw, this.halfW, this.halfH, this.viewPaddingPx);
+        this._writeWorldBounds(this.boundsVisibleDefault, this.halfW, this.halfH, VIEWPORT_VISIBILITY_PAD_DEFAULT);
+        this._writeWorldBounds(this.boundsVisibleNav, this.halfW, this.halfH, VIEWPORT_VISIBILITY_PAD_NAV);
+        this.structurePerspectiveWorldSpan = Math.max(LIBRARY_MIN_WORLD_SPAN, Math.min(this.halfW, this.halfH) * 2);
+        this.structurePerspectiveReferenceSpan = Math.max(LIBRARY_MIN_WORLD_SPAN, this.getVisualRadius() * 2);
+        this.structurePerspectiveStrength = undefined;
     }
     _writeWorldBounds(out, halfW, halfH, padding) {
         out.minX = this._x - halfW - padding;
@@ -79,11 +97,22 @@ export class Viewport {
     getVisualRadius() {
         return Math.max(1, Math.min(this.cx, this.cy) - 4);
     }
-    isVisible(worldX, worldY, radius = 0, padding = 20) {
+    /** @param {number} worldX @param {number} worldY @param {number} radius @param {{ minX: number, minY: number, maxX: number, maxY: number }} bounds */
+    _isVisibleInBounds(worldX, worldY, radius, bounds) {
+        return worldX >= bounds.minX - radius && worldX <= bounds.maxX + radius && worldY >= bounds.minY - radius && worldY <= bounds.maxY + radius;
+    }
+    isVisible(worldX, worldY, radius = 0, padding = VIEWPORT_VISIBILITY_PAD_DEFAULT) {
+        if (padding === VIEWPORT_VISIBILITY_PAD_DEFAULT) return this._isVisibleInBounds(worldX, worldY, radius, this.boundsVisibleDefault);
+        if (padding === VIEWPORT_VISIBILITY_PAD_NAV) return this._isVisibleInBounds(worldX, worldY, radius, this.boundsVisibleNav);
         const limit = radius + padding;
         return worldX >= this.x - this.halfW - limit && worldX <= this.x + this.halfW + limit && worldY >= this.y - this.halfH - limit && worldY <= this.y + this.halfH + limit;
     }
+    /** Nav replan visibility (128px pad beyond clip). */
+    isNavVisible(worldX, worldY, radius = 0) {
+        return this._isVisibleInBounds(worldX, worldY, radius, this.boundsVisibleNav);
+    }
     intersectsWorldAabb(minX, maxX, minY, maxY, padding = 0) {
+        if (padding === 0) return minX <= this.boundsClip.maxX && maxX >= this.boundsClip.minX && minY <= this.boundsClip.maxY && maxY >= this.boundsClip.minY;
         const hw = this.halfW + padding;
         const hh = this.halfH + padding;
         return minX <= this.x + hw && maxX >= this.x - hw && minY <= this.y + hh && maxY >= this.y - hh;

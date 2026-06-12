@@ -21,7 +21,7 @@ export class NavigationService {
                     controller.settings,
                     controller.flowFieldGrid.navGraph,
                     controller.obstacleGeneration,
-                    state?.viewport ? { isVisible: (e) => state.viewport.isVisible(e.x, e.y, e.radius, 128), getReplanScale: (e) => (state.viewport.isVisible(e.x, e.y, e.radius, 128) ? 1 : 10) } : {},
+                    state?.viewport ? { isVisible: (e) => state.viewport.isNavVisible(e.x, e.y, e.radius) } : {},
                     state?.gameTime ?? Date.now(),
                 ),
             onSteerComplete: (entity, { navState, settings }) => {

@@ -18,6 +18,7 @@ export class WorldSceneRenderer {
         this.props = new PropRenderer(propRecipes);
         this.visibleDrawables = [];
         this.wallPassBuffer = [];
+        this._chunkRange = { minCol: 0, maxCol: 0, minRow: 0, maxRow: 0 };
     }
     /** @param {Record<string, PropDrawRecipe>} propRecipes */
     setPropRecipes(propRecipes) {
@@ -45,12 +46,12 @@ export class WorldSceneRenderer {
     }
     _getSceneChunkRange(scene, viewport) {
         const bounds = viewport.boundsQuery;
-        return {
-            minCol: worldToChunkCol(bounds.minX, scene.gridMinX, scene.chunkSizePx),
-            maxCol: worldToChunkCol(bounds.maxX - 1, scene.gridMinX, scene.chunkSizePx),
-            minRow: worldToChunkRow(bounds.minY, scene.gridMinY, scene.chunkSizePx),
-            maxRow: worldToChunkRow(bounds.maxY - 1, scene.gridMinY, scene.chunkSizePx),
-        };
+        const range = this._chunkRange;
+        range.minCol = worldToChunkCol(bounds.minX, scene.gridMinX, scene.chunkSizePx);
+        range.maxCol = worldToChunkCol(bounds.maxX - 1, scene.gridMinX, scene.chunkSizePx);
+        range.minRow = worldToChunkRow(bounds.minY, scene.gridMinY, scene.chunkSizePx);
+        range.maxRow = worldToChunkRow(bounds.maxY - 1, scene.gridMinY, scene.chunkSizePx);
+        return range;
     }
     _appendVisibleWallsFromScene(input, viewport, px, py) {
         const scene = input.worldSurfaces.renderScene;
