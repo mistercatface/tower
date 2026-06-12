@@ -1,5 +1,5 @@
 /** Stroked bullet tracers ported from OLD_FILES projectiles.js drawProjectiles(). */
-import { traceSegment } from "../Canvas/CanvasPath.js";
+import { strokeSegment } from "../Canvas/CanvasPath.js";
 const FADE_IN_START_MS = 15;
 const FADE_IN_END_MS = 60;
 const RIFLE = { tailPx: 12, outlinePx: 2.5, corePx: 1.5, coreColor: "#FFFFEE" };
@@ -19,13 +19,9 @@ export function drawProjectileTracer(ctx, projectile) {
     if (age < FADE_IN_END_MS) ctx.globalAlpha = (age - FADE_IN_START_MS) / (FADE_IN_END_MS - FADE_IN_START_MS);
     ctx.strokeStyle = "#000000";
     ctx.lineWidth = style.outlinePx / zoom;
-    ctx.beginPath();
-    traceSegment(ctx, projectile.x, projectile.y, tailX, tailY);
-    ctx.stroke();
+    strokeSegment(ctx, projectile.x, projectile.y, tailX, tailY);
     ctx.strokeStyle = style.coreColor;
     ctx.lineWidth = style.corePx / zoom;
-    ctx.beginPath();
-    traceSegment(ctx, projectile.x, projectile.y, tailX, tailY);
-    ctx.stroke();
+    strokeSegment(ctx, projectile.x, projectile.y, tailX, tailY);
     ctx.restore();
 }

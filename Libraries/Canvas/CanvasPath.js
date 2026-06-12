@@ -61,6 +61,67 @@ export function tracePolylineFrom(ctx, x0, y0, points, endX, endY) {
 export function traceAabbRect(ctx, { minX, minY, maxX, maxY }) {
     ctx.rect(minX, minY, maxX - minX, maxY - minY);
 }
+/** @param {CanvasRenderingContext2D} ctx @param {number} cx @param {number} cy @param {number} radius @param {number} startAngle @param {number} endAngle @param {boolean} [counterclockwise] */
+export function traceArc(ctx, cx, cy, radius, startAngle, endAngle, counterclockwise = false) {
+    ctx.arc(cx, cy, radius, startAngle, endAngle, counterclockwise);
+}
+/** @param {CanvasRenderingContext2D} ctx @param {number} cx @param {number} cy @param {number} radius */
+export function strokeCircle(ctx, cx, cy, radius) {
+    ctx.beginPath();
+    traceCircle(ctx, cx, cy, radius);
+    ctx.stroke();
+}
+/** @param {CanvasRenderingContext2D} ctx @param {number} cx @param {number} cy @param {number} radius */
+export function fillCircle(ctx, cx, cy, radius) {
+    ctx.beginPath();
+    traceCircle(ctx, cx, cy, radius);
+    ctx.fill();
+}
+/** @param {CanvasRenderingContext2D} ctx @param {number} cx @param {number} cy @param {number} radius */
+export function fillStrokeCircle(ctx, cx, cy, radius) {
+    ctx.beginPath();
+    traceCircle(ctx, cx, cy, radius);
+    ctx.fill();
+    ctx.stroke();
+}
+/** @param {CanvasRenderingContext2D} ctx @param {number} x0 @param {number} y0 @param {number} x1 @param {number} y1 */
+export function strokeSegment(ctx, x0, y0, x1, y1) {
+    ctx.beginPath();
+    traceSegment(ctx, x0, y0, x1, y1);
+    ctx.stroke();
+}
+/** @param {CanvasRenderingContext2D} ctx @param {{ x: number, y: number }[]} points */
+export function strokeOpenPolyline(ctx, points) {
+    ctx.beginPath();
+    traceOpenPolyline(ctx, points);
+    ctx.stroke();
+}
+/** @param {CanvasRenderingContext2D} ctx @param {number} x0 @param {number} y0 @param {{ x: number, y: number }[] | null | undefined} points @param {number} endX @param {number} endY */
+export function strokePolylineFrom(ctx, x0, y0, points, endX, endY) {
+    ctx.beginPath();
+    tracePolylineFrom(ctx, x0, y0, points, endX, endY);
+    ctx.stroke();
+}
+/** @param {CanvasRenderingContext2D} ctx @param {{ x: number, y: number }[]} points */
+export function fillClosedPolygon(ctx, points) {
+    ctx.beginPath();
+    traceClosedPolygon(ctx, points);
+    ctx.fill();
+}
+/** @param {CanvasRenderingContext2D} ctx @param {{ x: number, y: number }[]} points */
+export function fillStrokeClosedPolygon(ctx, points) {
+    ctx.beginPath();
+    traceClosedPolygon(ctx, points);
+    ctx.fill();
+    ctx.stroke();
+}
+/** @param {CanvasRenderingContext2D} ctx @param {number} ox @param {number} oy @param {{ x: number, y: number }[]} points */
+export function fillStrokeClosedPolygonTranslated(ctx, ox, oy, points) {
+    ctx.beginPath();
+    traceClosedPolygonTranslated(ctx, ox, oy, points);
+    ctx.fill();
+    ctx.stroke();
+}
 /**
  * One path, one clip. `buildPath` traces subpaths on a fresh path; return false to skip clip.
  *

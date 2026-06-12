@@ -1,5 +1,5 @@
 /** @typedef {"normal" | "debug"} PathOverlayVisual */
-import { traceCircle, traceOpenPolyline, tracePolylineFrom, traceSegment } from "../../Canvas/CanvasPath.js";
+import { fillStrokeCircle, strokeCircle, strokeOpenPolyline, strokePolylineFrom, strokeSegment } from "../../Canvas/CanvasPath.js";
 /**
  * @typedef {Object} ActivePathOverlay
  * @property {"direct" | "hpa"} mode
@@ -19,39 +19,28 @@ function drawNormalPathOverlay(ctx, overlay) {
         ctx.setLineDash([4 * lineScale, 4 * lineScale]);
         ctx.strokeStyle = "rgba(0, 188, 212, 0.55)";
         ctx.lineWidth = 1.5 * lineScale;
-        ctx.beginPath();
-        traceSegment(ctx, fromX, fromY, targetX, targetY);
-        ctx.stroke();
+        strokeSegment(ctx, fromX, fromY, targetX, targetY);
         ctx.setLineDash([]);
         ctx.strokeStyle = "rgba(0, 188, 212, 0.85)";
         ctx.lineWidth = 2 * lineScale;
-        ctx.beginPath();
-        traceCircle(ctx, targetX, targetY, 4 * lineScale);
-        ctx.stroke();
+        strokeCircle(ctx, targetX, targetY, 4 * lineScale);
         ctx.restore();
         return;
     }
     ctx.save();
     ctx.strokeStyle = "rgba(156, 39, 176, 0.65)";
     ctx.lineWidth = 2.5 * lineScale;
-    ctx.beginPath();
-    tracePolylineFrom(ctx, fromX, fromY, waypoints, targetX, targetY);
-    ctx.stroke();
+    strokePolylineFrom(ctx, fromX, fromY, waypoints, targetX, targetY);
     ctx.strokeStyle = "rgba(156, 39, 176, 0.9)";
     ctx.lineWidth = 2 * lineScale;
-    ctx.beginPath();
-    traceCircle(ctx, targetX, targetY, 5 * lineScale);
-    ctx.stroke();
+    strokeCircle(ctx, targetX, targetY, 5 * lineScale);
     ctx.restore();
 }
 function drawPathMarker(ctx, x, y, radius, fillStyle, label, zoom) {
-    ctx.beginPath();
-    traceCircle(ctx, x, y, radius);
     ctx.fillStyle = fillStyle;
     ctx.strokeStyle = "#fff";
     ctx.lineWidth = 3 / zoom;
-    ctx.fill();
-    ctx.stroke();
+    fillStrokeCircle(ctx, x, y, radius);
     if (label) {
         ctx.fillStyle = "#fff";
         ctx.font = `bold ${16 / zoom}px Inter, sans-serif`;
@@ -66,23 +55,18 @@ function drawAbstractPath(ctx, abstractPath, zoom, pathPlanner = "hpa") {
     const lineColor = isLocal ? "#ff9800" : "#ffeb3b";
     const nodeColor = isLocal ? "#ffb74d" : "#ffeb3b";
     const endpointColor = isLocal ? "#f57c00" : "#ff9800";
-    ctx.beginPath();
-    traceOpenPolyline(ctx, abstractPath);
     ctx.strokeStyle = lineColor;
     ctx.lineWidth = 5 / zoom;
     ctx.setLineDash([12 / zoom, 8 / zoom]);
-    ctx.stroke();
+    strokeOpenPolyline(ctx, abstractPath);
     ctx.setLineDash([]);
     for (const node of abstractPath) {
         const isEndpoint = node.id === "start" || node.id === "target";
         const radius = (isEndpoint ? 8 : 10) / zoom;
-        ctx.beginPath();
-        traceCircle(ctx, node.x, node.y, radius);
         ctx.fillStyle = isEndpoint ? endpointColor : nodeColor;
-        ctx.fill();
         ctx.strokeStyle = "#fff";
         ctx.lineWidth = 2 / zoom;
-        ctx.stroke();
+        fillStrokeCircle(ctx, node.x, node.y, radius);
     }
 }
 /**
@@ -100,19 +84,14 @@ export function drawActivePathOverlay(ctx, overlay, zoom, visual = "debug") {
     if (mode === "hpa") {
         if (abstractPath) drawAbstractPath(ctx, abstractPath, zoom, pathPlanner ?? "hpa");
         if (waypoints?.length) {
-            ctx.beginPath();
-            tracePolylineFrom(ctx, fromX, fromY, waypoints, targetX, targetY);
             ctx.strokeStyle = "#00e5ff";
             ctx.lineWidth = 4 / zoom;
-            ctx.stroke();
+            strokePolylineFrom(ctx, fromX, fromY, waypoints, targetX, targetY);
             for (const wp of waypoints) {
-                ctx.beginPath();
-                traceCircle(ctx, wp.x, wp.y, 6 / zoom);
                 ctx.fillStyle = "#00e5ff";
-                ctx.fill();
                 ctx.strokeStyle = "#fff";
                 ctx.lineWidth = 1.5 / zoom;
-                ctx.stroke();
+                fillStrokeCircle(ctx, wp.x, wp.y, 6 / zoom);
             }
         }
         return;
@@ -120,9 +99,7 @@ export function drawActivePathOverlay(ctx, overlay, zoom, visual = "debug") {
     ctx.strokeStyle = "rgba(0, 188, 212, 0.65)";
     ctx.lineWidth = 3 / zoom;
     ctx.setLineDash([8 / zoom, 6 / zoom]);
-    ctx.beginPath();
-    traceSegment(ctx, fromX, fromY, targetX, targetY);
-    ctx.stroke();
+    strokeSegment(ctx, fromX, fromY, targetX, targetY);
     ctx.setLineDash([]);
     drawPathMarker(ctx, targetX, targetY, 10 / zoom, "rgba(0, 188, 212, 0.85)", null, zoom);
 }

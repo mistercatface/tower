@@ -1,5 +1,5 @@
+import { fillCircle, fillClosedPolygon, strokeCircle, strokeSegment } from "../Canvas/CanvasPath.js";
 import { lengthXY, normalizeXY } from "../Math/Vec2.js";
-import { traceClosedPolygon, traceSegment } from "../Canvas/CanvasPath.js";
 /**
  * @param {CanvasRenderingContext2D} ctx
  * @param {{ x1: number, y1: number, x2: number, y2: number }} segment
@@ -14,12 +14,10 @@ export function drawAimSegment(ctx, { x1, y1, x2, y2 }, { color = "#00e5ff", lin
         ctx.shadowColor = `hsla(${glowHue}, 100%, 50%, 0.6)`;
         ctx.shadowBlur = 8;
     }
-    ctx.beginPath();
-    traceSegment(ctx, x1, y1, x2, y2);
     ctx.strokeStyle = color;
     ctx.lineWidth = lineWidth;
     ctx.lineCap = "round";
-    ctx.stroke();
+    strokeSegment(ctx, x1, y1, x2, y2);
     if (arrowhead) {
         const { nx, ny } = normalizeXY(dx, dy);
         const tx = -ny;
@@ -28,14 +26,12 @@ export function drawAimSegment(ctx, { x1, y1, x2, y2 }, { color = "#00e5ff", lin
         const headWidth = 5;
         const baseCenterX = x2 - nx * headSize;
         const baseCenterY = y2 - ny * headSize;
-        ctx.beginPath();
-        traceClosedPolygon(ctx, [
+        ctx.fillStyle = color;
+        fillClosedPolygon(ctx, [
             { x: x2, y: y2 },
             { x: baseCenterX + tx * headWidth, y: baseCenterY + ty * headWidth },
             { x: baseCenterX - tx * headWidth, y: baseCenterY - ty * headWidth },
         ]);
-        ctx.fillStyle = color;
-        ctx.fill();
     }
     ctx.restore();
 }

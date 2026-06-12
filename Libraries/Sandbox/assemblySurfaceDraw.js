@@ -6,7 +6,7 @@ import { bakeSlotForSourceFrame } from "../WorldSurface/AnimationFrameBake.js";
 import { drawBakedTexture } from "../WorldSurface/WorldSurfaceResolution.js";
 import { projectWorldAabbCornersInto } from "../Spatial/iso/IsometricProjection.js";
 import { drawImageQuad } from "../Canvas/AffineTexture.js";
-import { traceSegment } from "../Canvas/CanvasPath.js";
+import { traceArc, traceSegment } from "../Canvas/CanvasPath.js";
 const sAssemblyPatchCorners = [
     { x: 0, y: 0 },
     { x: 0, y: 0 },
@@ -106,7 +106,7 @@ function drawAssemblyGuideOverlay(ctx, guide) {
     for (let i = 0; i < guide.arcWallSegments.length; i++) {
         const arc = guide.arcWallSegments[i];
         ctx.beginPath();
-        ctx.arc(arc.center.x, arc.center.y, arc.radius, arc.startAngle, arc.endAngle, arc.endAngle < arc.startAngle);
+        traceArc(ctx, arc.center.x, arc.center.y, arc.radius, arc.startAngle, arc.endAngle, arc.endAngle < arc.startAngle);
         strokeGuidePath(ctx, railWidth);
     }
 }

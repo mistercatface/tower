@@ -1,7 +1,7 @@
 import { CircleShape, PolygonShape } from "../collision/Shapes.js";
 import { SatCollision } from "../collision/SatCollision.js";
 import { aabbOverlap, centerHalfExtentsAabbInto, createAabb } from "../../Math/Aabb2D.js";
-import { traceCircle, traceClosedPolygonTranslated } from "../../Canvas/CanvasPath.js";
+import { fillStrokeCircle, fillStrokeClosedPolygonTranslated } from "../../Canvas/CanvasPath.js";
 import { NEIGHBOR_QUERY_PAD } from "../collision/entityBroadphase.js";
 /** @typedef {import("../../Math/Aabb2D.js").Aabb2D} Aabb2D */
 function createFloorShape(x, y, shape, aabb, { id = "floor-shape" } = {}) {
@@ -92,12 +92,9 @@ export function isAabbInView(entity, viewport) {
 /** @param {CanvasRenderingContext2D} ctx @param {ReturnType<typeof createRectFloorShape>} floorShape */
 export function drawFloorShape(ctx, floorShape, { fill = "rgba(120, 200, 255, 0.18)", stroke = "rgba(120, 200, 255, 0.65)", lineWidth = 2 } = {}) {
     const shape = floorShape.shape;
-    ctx.beginPath();
-    if (shape.type === "Circle") traceCircle(ctx, floorShape.x, floorShape.y, shape.radius);
-    else traceClosedPolygonTranslated(ctx, floorShape.x, floorShape.y, shape.vertices);
     ctx.fillStyle = fill;
-    ctx.fill();
     ctx.strokeStyle = stroke;
     ctx.lineWidth = lineWidth;
-    ctx.stroke();
+    if (shape.type === "Circle") fillStrokeCircle(ctx, floorShape.x, floorShape.y, shape.radius);
+    else fillStrokeClosedPolygonTranslated(ctx, floorShape.x, floorShape.y, shape.vertices);
 }

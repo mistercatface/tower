@@ -31,21 +31,23 @@ Three projection layers exist — intentional, but easy to confuse:
 | **Vertical extrusion** | `projectVertical`, `extrudeBox`, `pointOnFrustum`, `traceVisibleArc` | `SolidDraw.js` boxes/cylinders/cones |
 | **Affine texture quads** | `drawImageQuad` + `drawTexturedQuadCells` | Wall atlases, sphere decals, inspect labels |
 
+- [x] **`drawSphereTexturePatch`** — scratch cell pool + `projectPropVertexInto` (pool balls hot path).
+- [x] **Direct canvas paint helpers** — `strokeCircle`, `fillCircle`, `strokeSegment`, `fillStrokeClosedPolygonTranslated`, etc. in `CanvasPath.js` (no trace→paint closures).
+- [x] **`traceArc`** — wrapper for arc segments (assembly guides).
+- [x] Migrated **`drawActivePathOverlay`**, **`dragLaunch`**, **`contactPreviewDraw`**, **`rollToCursorMotion`**, **`projectileDraw`**, **`sandboxPadLinks`**, **`sandboxPads`**, **`floorShapes`**, **`pit` interior**, **`labMapCaches`** debug edges.
+
 ### Still messy (todo)
 
-**3D props — high impact**
+**3D props — lower priority**
 
-- [ ] **`drawSphereTexturePatch`** — `projectSphereCell` still allocates 4 points × N cells per draw; needs scratch + `projectPropVertexInto` (pool balls hot path)
-- [ ] **`drawRadialSilhouetteBody`** (`SolidDraw.js`) — custom arc path; OK to keep, but could wrap `traceVisibleArc` sequence in a named helper
-- [ ] **`drawCullFace` / plank lines** — small raw `beginPath` blocks; low priority
+- [ ] **`drawRadialSilhouetteBody`** (`SolidDraw.js`) — custom arc path; OK to keep, optional named helper
+- [ ] **`gatherTexturedQuadCells`** — still allocates sorted cell list per sphere draw
 
-**ctx path — migrated vs raw**
+**ctx path — low priority**
 
-| Status | Files |
-|--------|--------|
-| Uses `CanvasPath` | walls, static grid, pits, pads (partial), `SolidDraw` (partial), damage overlays |
-| Raw `ctx.beginPath` still fine | `ProgressBar`, editor preview, label bake canvases (offscreen), `AffineTexture` internals |
-| Worth migrating | `drawActivePathOverlay.js` (10×), `dragLaunch.js` (7×), `labMapCaches.js` (4×), `sandboxPads.js` guides |
+- [ ] **`LaserBeam.js`** — intentional double-stroke on one path; leave as-is
+- [ ] **`CombatParticles.js`**, **`CylinderInspect`**, editor **`preview.js`** — offscreen/debug; migrate if touched
+- [ ] **`ProgressBar.js`**, **`AffineTexture.js`** — internal canvas utilities
 
 **Dead / low-use**
 
@@ -101,9 +103,8 @@ Not dead — assemblies and pull pads still spawn `Segment` for grid occupancy +
 
 ## Render / canvas dedup (optional)
 
-- [ ] **`drawSphereTexturePatch`** scratch projection (see audit above)
-- [ ] Migrate `drawActivePathOverlay.js`, `dragLaunch.js` to `CanvasPath` where paths repeat
-- [ ] More `CanvasPath` clip migrations if any stragglers remain
+- [ ] **`gatherTexturedQuadCells`** scratch / in-place sort for sphere draws
+- [ ] Migrate **`LaserBeam`**, particles, inspect draw if touched during prop work
 
 ---
 

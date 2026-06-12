@@ -1,4 +1,4 @@
-import { traceCircle, traceOpenPolyline, traceSegment } from "../../Canvas/CanvasPath.js";
+import { fillCircle, strokeOpenPolyline, strokeSegment } from "../../Canvas/CanvasPath.js";
 const WALL_OVERLAY_THICKNESS = 20;
 /** @typedef {import("../../Math/Aabb2D.js").Aabb2D & { canvas: OffscreenCanvas }} MapImageCache */
 /** @typedef {MapImageCache} ObstacleOverviewCache */
@@ -87,26 +87,20 @@ function bakePathDebugLayer(hnav, minX, minY, maxX, maxY) {
             const targetNode = hnav.nodesMap[edge.targetId];
             if (!targetNode) continue;
             if (edge.path && edge.path.length > 0) {
-                ctx.beginPath();
-                traceOpenPolyline(
+                ctx.strokeStyle = "#ff9800";
+                ctx.lineWidth = 2.5;
+                strokeOpenPolyline(
                     ctx,
                     edge.path.map((cell) => hnav.gridToWorld(cell.col, cell.row)),
                 );
-                ctx.strokeStyle = "#ff9800";
-                ctx.lineWidth = 2.5;
-                ctx.stroke();
             } else {
-                ctx.beginPath();
-                traceSegment(ctx, node.x, node.y, targetNode.x, targetNode.y);
                 ctx.strokeStyle = "#ff9800";
                 ctx.lineWidth = 2.5;
-                ctx.stroke();
+                strokeSegment(ctx, node.x, node.y, targetNode.x, targetNode.y);
             }
         }
-        ctx.beginPath();
-        traceCircle(ctx, node.x, node.y, 4);
         ctx.fillStyle = "#00e5ff";
-        ctx.fill();
+        fillCircle(ctx, node.x, node.y, 4);
     }
     return { canvas, minX, minY, maxX, maxY };
 }
