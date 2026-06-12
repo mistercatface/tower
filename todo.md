@@ -39,3 +39,4 @@
 - [ ] **Read `getTexelResolution(settings)` once per draw pass** — `WorldSurfaceEngine` calls it repeatedly per chunk/wall path.
 - [ ] **Drop redundant `gridCellToGlobalColRow` in `resolveStaticWallHeightAtCell`** — index static layers directly from local `(col, row)` when possible.
 - [ ] **Batch or cache `getStaticCellDamageAlphaAtGrid`** — per-wall call in draw loop; worth caching if many damaged cells are visible.
+- [ ] **WHAT IS THIS DOING HERE IT SMELLS:** `...createDefaultRenderPorts({ weaponVisuals: createWeaponVisuals(GUN_ID_TO_VISUAL) })`.
