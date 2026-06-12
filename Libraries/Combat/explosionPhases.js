@@ -40,13 +40,6 @@ function applyExpandingDamage(state, exp, allEvents) {
         }
     }
     state.entityRegistry.forEachOfKind("worldProp", (p) => applyBlastToTarget(state, exp, allEvents, p));
-    const actors = state.actors;
-    if (actors?.length)
-        for (let i = 0; i < actors.length; i++) {
-            const actor = actors[i];
-            if (!actor?.faction) continue;
-            applyBlastToTarget(state, exp, allEvents, actor);
-        }
 }
 export class ExplosionExpandingPhase {
     constructor() {

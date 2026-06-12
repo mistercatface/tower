@@ -20,12 +20,4 @@ export function populateCombatFrame(frame, state, combatants, pushables) {
         combatants.push(prop);
         if (prop.strategy?.isPushable) pushables.push(prop);
     });
-    const actors = state.actors;
-    if (actors?.length)
-        for (let i = 0; i < actors.length; i++) {
-            const actor = actors[i];
-            if (!actor?.faction || actor.isDead) continue;
-            frame.insertEntity(actor, physIdCounter++);
-            combatants.push(actor);
-        }
 }

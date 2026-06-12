@@ -29,12 +29,6 @@ export function getAllCombatants(state) {
     state.entityRegistry.forEachOfKind("worldProp", (p) => {
         if (!p.isDead) combatants.push(p);
     });
-    const actors = state.actors;
-    if (actors?.length)
-        for (let i = 0; i < actors.length; i++) {
-            const actor = actors[i];
-            if (actor?.faction) combatants.push(actor);
-        }
     return combatants;
 }
 /** @type {import("../../Core/GameDefinitionTypes.js").TargetingPort} */
