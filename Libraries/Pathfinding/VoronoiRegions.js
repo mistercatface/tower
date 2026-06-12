@@ -19,7 +19,7 @@ export function computeDistanceTransform(grid, cols, rows, distToWall = null) {
     const queue = [];
     let head = 0;
     for (let i = 0; i < size; i++)
-        if (grid[i] === 1) {
+        if (grid[i]) {
             distances[i] = 0;
             const col = i % cols;
             const row = (i / cols) | 0;
@@ -126,7 +126,7 @@ function repositionRegionCentroids(nodesMap, grid, cols, rows, minX, minY, cellS
         node.col = Math.floor(sumCol / count);
         node.row = Math.floor(sumRow / count);
         const centroidIdx = node.row * cols + node.col;
-        if (grid[centroidIdx] === 1 || cellToNode[centroidIdx]?.id !== node.id) {
+        if (grid[centroidIdx] || cellToNode[centroidIdx]?.id !== node.id) {
             node.col = startCol;
             node.row = startRow;
         }
@@ -188,7 +188,7 @@ export function repositionNodeCentroid(node, cellToNode, grid, cols, rows, minX,
     node.col = Math.floor(sumCol / count);
     node.row = Math.floor(sumRow / count);
     const centroidIdx = node.row * cols + node.col;
-    if (grid[centroidIdx] === 1 || cellToNode[centroidIdx]?.id !== node.id) {
+    if (grid[centroidIdx] || cellToNode[centroidIdx]?.id !== node.id) {
         const anchorIdx = nodeCells[0];
         node.col = anchorIdx % cols;
         node.row = (anchorIdx / cols) | 0;

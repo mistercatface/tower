@@ -3,7 +3,7 @@
  */
 import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { getDamageAlphaFromHealth } from "../Render/Structure3D/wallDamageVisual.js";
-import { cellIsStaticBlocked, gridCellToGlobalColRow, patchStaticOccupancyCell } from "./staticOccupancyLayers.js";
+import { cellIsStaticWall, gridCellToGlobalColRow } from "./wallGridCells.js";
 
 export const STATIC_CELL_MAX_HEALTH = 30;
 
@@ -21,7 +21,7 @@ function readStaticCellHealth(state, globalCol, globalRow) {
  * @param {number} row
  */
 export function getStaticCellDamageAlphaAtGrid(grid, state, col, row) {
-    if (!grid?.cols || !cellIsStaticBlocked(grid, col, row)) return 0;
+    if (!grid?.cols || !cellIsStaticWall(grid, col, row)) return 0;
     const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
     const { health, maxHealth } = readStaticCellHealth(state, globalCol, globalRow);
     return getDamageAlphaFromHealth(health, maxHealth);
@@ -36,7 +36,7 @@ export function getStaticCellDamageAlphaAtGrid(grid, state, col, row) {
  */
 export function damageStaticGridCell(state, grid, col, row, damage) {
     if (!grid?.cols || col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return;
-    if (!cellIsStaticBlocked(grid, col, row)) return;
+    if (!cellIsStaticWall(grid, col, row)) return;
     const idx = colRowToIndex(col, row, grid.cols);
     if (grid.segmentGrid?.[idx]?.length) return;
     const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
@@ -50,7 +50,7 @@ export function damageStaticGridCell(state, grid, col, row, damage) {
     if (entry.health > 0) return;
     state.staticCellHealth.delete(key);
     grid.grid[idx] = 0;
-    patchStaticOccupancyCell(state, globalCol, globalRow, 0);
+    grid.bumpWallGridRevision();
     const bounds = { startCol: col, endCol: col, startRow: row, endRow: row };
     state.worldSurfaces.invalidateGridBounds(bounds, state);
     state.navigation.onObstaclesChanged(bounds);

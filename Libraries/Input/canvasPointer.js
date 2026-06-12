@@ -10,10 +10,6 @@ export function canvasClientToScreen(canvas, clientX, clientY) {
     const scaleY = canvas.height / rect.height;
     return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
 }
-/** @deprecated Use canvasClientToScreen — same behavior. */
-export function canvasClientCoords(canvas, clientX, clientY) {
-    return canvasClientToScreen(canvas, clientX, clientY);
-}
 /** @param {import("../../Viewport/Viewport.js").Viewport} viewport */
 export function canvasClientToWorld(canvas, viewport, clientX, clientY) {
     const screen = canvasClientToScreen(canvas, clientX, clientY);

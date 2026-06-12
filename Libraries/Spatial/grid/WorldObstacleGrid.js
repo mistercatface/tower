@@ -4,9 +4,11 @@ import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsAtOriginInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
 import { getWallCellBounds, markWallOnGrid, clearWallCells, computeBoundsFromWalls } from "./wallGridBake.js";
 import { collectSegmentsAlongLine, collectSegmentsInWorldBounds, collectSegmentsNearPose, segmentGridLayoutFromObstacleGrid } from "./segmentGridWalk.js";
+import { clampStampWallHeightLevel, STAMP_WALL_LEVEL_INFINI } from "../../WorldSurface/stampWallHeight.js";
 export { getWallCellBounds, markWallOnGrid, clearWallCells, computeBoundsFromWalls } from "./wallGridBake.js";
 /**
  * Occupancy + per-cell wall segment index. Implements NavGraph for pathfinding.
+ * grid[]: 0 = open, 1–9 = static wall height level, 10 = infiniwall sentinel.
  */
 export class WorldObstacleGrid {
     constructor(cellSize) {
@@ -19,10 +21,27 @@ export class WorldObstacleGrid {
         this.rows = 0;
         this.grid = new Uint8Array(0);
         this.segmentGrid = [];
+        this.wallGridRevision = 0;
         this.cellBoundsScratch = createAabb();
         this.patchBoundsScratch = createAabb();
         this._staticWallProxies = [];
         this._staticWallProxyCount = 0;
+    }
+    bumpWallGridRevision() {
+        this.wallGridRevision = (this.wallGridRevision + 1) | 0;
+    }
+    getCellWallHeightLevel(col, row) {
+        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return 0;
+        return this.grid[colRowToIndex(col, row, this.cols)];
+    }
+    setCellWallHeightLevel(col, row, level) {
+        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return false;
+        const clamped = level === 0 ? 0 : clampStampWallHeightLevel(level);
+        const idx = colRowToIndex(col, row, this.cols);
+        if (this.grid[idx] === clamped) return false;
+        this.grid[idx] = clamped;
+        this.bumpWallGridRevision();
+        return true;
     }
     _borrowStaticWallProxy(x, y, col, row) {
         const size = this.cellSize;
@@ -129,11 +148,12 @@ export class WorldObstacleGrid {
         const newGrid = new Uint8Array(this.cols * this.rows);
         for (let row = 0; row < oldRows; row++)
             for (let col = 0; col < oldCols; col++) {
-                if (oldGrid[colRowToIndex(col, row, oldCols)] !== 1) continue;
+                const level = oldGrid[colRowToIndex(col, row, oldCols)];
+                if (level === 0) continue;
                 const nc = col + colOffset;
                 const nr = row + rowOffset;
                 if (nc < 0 || nc >= this.cols || nr < 0 || nr >= this.rows) continue;
-                newGrid[colRowToIndex(nc, nr, this.cols)] = 1;
+                newGrid[colRowToIndex(nc, nr, this.cols)] = level;
             }
         this.grid = newGrid;
         return true;
@@ -161,29 +181,36 @@ export class WorldObstacleGrid {
         return bounds;
     }
     /**
-     * Write static blocked cells from a cell-origin-aligned bitmap. Clears the target region first,
-     * then stamps occupancy (no segment entities). Entity walls overlapping the region are re-indexed.
+     * Stamp static wall cells from a cell-origin-aligned bitmap (value 1 = wall).
+     * Writes heightLevel into grid for each stamped cell.
      * @param {number} originCol Global cell column (region minX = originCol * cellSize).
      * @param {number} originRow
      * @param {number} cols
      * @param {number} rows
      * @param {ArrayLike<number>} cells Row-major; value 1 = blocked.
      * @param {import("../indexes/WallSpatialIndex.js").WallSpatialIndex | null} [wallSpatialIndex]
-     * @param {{ additive?: boolean }} [options] additive: only write rock (1) cells; never clear the region first.
+     * @param {{ additive?: boolean, heightLevel?: number }} [options]
      * @returns {{ startCol: number, endCol: number, startRow: number, endRow: number }}
      */
-    stampStaticOccupancy(originCol, originRow, cols, rows, cells, wallSpatialIndex = null, { additive = false } = {}) {
+    stampStaticWalls(originCol, originRow, cols, rows, cells, wallSpatialIndex = null, { additive = false, heightLevel = STAMP_WALL_LEVEL_INFINI } = {}) {
+        const level = clampStampWallHeightLevel(heightLevel);
         const { col: baseCol, row: baseRow } = this.worldToGrid(originCol * this.cellSize, originRow * this.cellSize);
         const gridBounds = { startCol: Math.max(0, baseCol), endCol: Math.min(this.cols - 1, baseCol + cols - 1), startRow: Math.max(0, baseRow), endRow: Math.min(this.rows - 1, baseRow + rows - 1) };
         if (!additive) clearWallCells(this.grid, this.cols, gridBounds, this.segmentGrid);
+        let changed = false;
         for (let lr = 0; lr < rows; lr++)
             for (let lc = 0; lc < cols; lc++) {
                 if (cells[lr * cols + lc] !== 1) continue;
                 const col = baseCol + lc;
                 const row = baseRow + lr;
                 if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) continue;
-                this.grid[colRowToIndex(col, row, this.cols)] = 1;
+                const idx = colRowToIndex(col, row, this.cols);
+                if (this.grid[idx] !== level) {
+                    this.grid[idx] = level;
+                    changed = true;
+                }
             }
+        if (changed) this.bumpWallGridRevision();
         if (wallSpatialIndex && this.segmentGrid) {
             const worldBounds = cellBoundsToWorldBoundsInto(this.patchBoundsScratch, gridBounds, this.minX, this.minY, this.cellSize);
             const localWalls = wallSpatialIndex.collectInBounds(worldBounds);
@@ -199,7 +226,7 @@ export class WorldObstacleGrid {
     }
     isBlocked(col, row) {
         if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return true;
-        return this.grid[colRowToIndex(col, row, this.cols)] === 1;
+        return this.grid[colRowToIndex(col, row, this.cols)] !== 0;
     }
     isBlockedWorld(x, y) {
         const { col, row } = this.worldToGrid(x, y);

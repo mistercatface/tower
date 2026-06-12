@@ -5,17 +5,14 @@ import { gridSettings } from "../../../Config/Config.js";
 import { rebuildLabMapCaches } from "../../../Libraries/Render/map/labMapCaches.js";
 import { colRowToIndex } from "../../../Libraries/Spatial/grid/GridUtils.js";
 import { clearSandboxWallsInBounds } from "../../../Libraries/Sandbox/spawnAssembly.js";
-import { resolveStampWallHeight } from "../../../Libraries/WorldSurface/stampWallHeight.js";
-import { appendStaticOccupancyLayer, cellIsStaticBlocked, patchStaticOccupancyCell } from "../../../Libraries/World/staticOccupancyLayers.js";
+import { clampStampWallHeightLevel } from "../../../Libraries/WorldSurface/stampWallHeight.js";
+import { cellIsStaticWall } from "../../../Libraries/World/wallGridCells.js";
 import { forEachGlobalCellInBounds, getCellBoundsAabb } from "./cellBoundsConfig.js";
 import { ensureLabObstacleGridCoverage } from "./mapWorld.js";
 /** @param {import("../../../Libraries/Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} globalCol @param {number} globalRow */
 function globalCellToLocal(grid, globalCol, globalRow) {
-    const cellSize = grid.cellSize;
-    const worldX = globalCol * cellSize + cellSize * 0.5;
-    const worldY = globalRow * cellSize + cellSize * 0.5;
-    const col = Math.floor((worldX - grid.minX) / cellSize);
-    const row = Math.floor((worldY - grid.minY) / cellSize);
+    const half = grid.cellSize * 0.5;
+    const { col, row } = grid.worldToGrid(globalCol * grid.cellSize + half, globalRow * grid.cellSize + half);
     if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return null;
     return { col, row };
 }
@@ -35,7 +32,7 @@ function notifyWallRegionChange(state, damageBounds, occupancyChanged) {
 export function stampStaticWallsInBounds(state, boundsConfig, heightLevel) {
     prepareWallRegion(state, boundsConfig);
     const grid = state.obstacleGrid;
-    const wallHeight = resolveStampWallHeight(heightLevel, gridSettings.cellSize);
+    const level = clampStampWallHeightLevel(heightLevel);
     let minGc = Infinity;
     let minGr = Infinity;
     let maxGc = -Infinity;
@@ -55,7 +52,7 @@ export function stampStaticWallsInBounds(state, boundsConfig, heightLevel) {
         if (globalRow < minGr) minGr = globalRow;
         if (globalCol > maxGc) maxGc = globalCol;
         if (globalRow > maxGr) maxGr = globalRow;
-        if (!cellIsStaticBlocked(grid, local.col, local.row)) anyNew = true;
+        if (!cellIsStaticWall(grid, local.col, local.row)) anyNew = true;
     });
     if (!cells.length) return false;
     const stampCols = maxGc - minGc + 1;
@@ -69,8 +66,7 @@ export function stampStaticWallsInBounds(state, boundsConfig, heightLevel) {
         if (row < startRow) startRow = row;
         if (row > endRow) endRow = row;
     }
-    grid.stampStaticOccupancy(minGc, minGr, stampCols, stampRows, bitmap, state.wallSpatialIndex, { additive: true });
-    appendStaticOccupancyLayer(state, { originCol: minGc, originRow: minGr, cols: stampCols, rows: stampRows, wallHeight, cells: bitmap.slice() });
+    grid.stampStaticWalls(minGc, minGr, stampCols, stampRows, bitmap, state.wallSpatialIndex, { additive: true, heightLevel: level });
     notifyWallRegionChange(state, { startCol, endCol, startRow, endRow }, anyNew);
     return true;
 }
@@ -85,11 +81,10 @@ export function deleteStaticWallsInBounds(state, boundsConfig) {
     let anyRemoved = false;
     forEachGlobalCellInBounds(boundsConfig, (globalCol, globalRow) => {
         const local = globalCellToLocal(grid, globalCol, globalRow);
-        if (!local || !cellIsStaticBlocked(grid, local.col, local.row)) return;
+        if (!local || !cellIsStaticWall(grid, local.col, local.row)) return;
         const idx = colRowToIndex(local.col, local.row, grid.cols);
         if (grid.segmentGrid?.[idx]?.length) return;
         grid.grid[idx] = 0;
-        patchStaticOccupancyCell(state, globalCol, globalRow, 0);
         state.staticCellHealth.delete(`${globalCol},${globalRow}`);
         anyRemoved = true;
         if (local.col < startCol) startCol = local.col;
@@ -98,6 +93,7 @@ export function deleteStaticWallsInBounds(state, boundsConfig) {
         if (local.row > endRow) endRow = local.row;
     });
     if (!anyRemoved) return false;
+    grid.bumpWallGridRevision();
     notifyWallRegionChange(state, { startCol, endCol, startRow, endRow }, true);
     return true;
 }
@@ -105,7 +101,7 @@ export function deleteStaticWallsInBounds(state, boundsConfig) {
 export function setStaticWallHeightInBounds(state, boundsConfig, heightLevel) {
     ensureLabObstacleGridCoverage(state, getCellBoundsAabb(boundsConfig, gridSettings.cellSize));
     const grid = state.obstacleGrid;
-    const wallHeight = resolveStampWallHeight(heightLevel, gridSettings.cellSize);
+    const level = clampStampWallHeightLevel(heightLevel);
     let startCol = Infinity;
     let endCol = -1;
     let startRow = Infinity;
@@ -113,8 +109,10 @@ export function setStaticWallHeightInBounds(state, boundsConfig, heightLevel) {
     let any = false;
     forEachGlobalCellInBounds(boundsConfig, (globalCol, globalRow) => {
         const local = globalCellToLocal(grid, globalCol, globalRow);
-        if (!local || !cellIsStaticBlocked(grid, local.col, local.row)) return;
-        appendStaticOccupancyLayer(state, { originCol: globalCol, originRow: globalRow, cols: 1, rows: 1, wallHeight, cells: new Uint8Array([1]) });
+        if (!local || !cellIsStaticWall(grid, local.col, local.row)) return;
+        const idx = colRowToIndex(local.col, local.row, grid.cols);
+        if (grid.grid[idx] === level) return;
+        grid.grid[idx] = level;
         any = true;
         if (local.col < startCol) startCol = local.col;
         if (local.col > endCol) endCol = local.col;
@@ -122,6 +120,7 @@ export function setStaticWallHeightInBounds(state, boundsConfig, heightLevel) {
         if (local.row > endRow) endRow = local.row;
     });
     if (!any) return false;
+    grid.bumpWallGridRevision();
     notifyWallRegionChange(state, { startCol, endCol, startRow, endRow }, false);
     return true;
 }

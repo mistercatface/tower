@@ -19,7 +19,7 @@ import {
     drawStaticRoofDamageOverlays,
     drawStaticWallFootprintDamageOverlays,
 } from "./ChunkDrawPass.js";
-import { chunkHasStaticRoofAtLevel } from "../World/staticOccupancyLayers.js";
+import { chunkHasStaticRoofAtLevel } from "../World/wallGridCells.js";
 import { chunkWorldAabbInto } from "../Spatial/grid/GridCoords.js";
 import { elevationCameraFromViewport } from "../Spatial/iso/ElevationCamera.js";
 import { getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
@@ -154,14 +154,14 @@ export class WorldSurfaceEngine {
      */
     getStaticRoofDrawCanvas(pass, roofCanvas, payload) {
         if (roofCanvas.isPlaceholder) return roofCanvas;
-        const { chunkCol, chunkRow, zLevel, obstacleGrid, staticOccupancyLayers, originX, originY, sizePx } = pass;
+        const { chunkCol, chunkRow, zLevel, obstacleGrid, settings, originX, originY, sizePx } = pass;
         const ppwu = getTexelResolution(this.settings);
         const rev = getSurfaceProfileRevision(payload.profileId);
         const drawKey = staticRoofDrawCachePrefix(chunkCol, chunkRow, payload.profileId, rev, ppwu, zLevel);
         const maskKey = staticRoofMaskCachePrefix(chunkCol, chunkRow, zLevel);
         let maskEntry = this.surfaceCache.get(maskKey);
         if (!maskEntry) {
-            const maskCanvas = buildStaticRoofMaskCanvas(obstacleGrid, originX, originY, sizePx, zLevel, staticOccupancyLayers, ppwu);
+            const maskCanvas = buildStaticRoofMaskCanvas(obstacleGrid, originX, originY, sizePx, zLevel, settings, ppwu);
             if (!maskCanvas) {
                 this.surfaceCache.delete(drawKey);
                 return null;
@@ -229,7 +229,6 @@ export class WorldSurfaceEngine {
      *   skipRoofFootprintClip?: boolean,
      *   flatWallRails?: boolean,
      *   staticRoofDraw?: boolean,
-     *   staticOccupancyLayers?: import("../World/staticOccupancyLayers.js").StaticOccupancyLayer[],
      *   renderScene?: import("../Render/Scene/RenderScene.js").RenderScene,
      * }} options
      */
@@ -246,7 +245,6 @@ export class WorldSurfaceEngine {
             skipRoofFootprintClip = false,
             flatWallRails = false,
             staticRoofDraw = false,
-            staticOccupancyLayers = null,
         } = options;
         const viewerX = viewport.x;
         const viewerY = viewport.y;
@@ -276,7 +274,7 @@ export class WorldSurfaceEngine {
                     requireWallSegments &&
                     !chunkHasWallSegments(wallSpatialIndex, originX, originY, chunkSizePx) &&
                     !chunkHasBlockedCells(obstacleGrid, originX, originY, chunkSizePx) &&
-                    !(staticRoofDraw && chunkHasStaticRoofAtLevel(obstacleGrid, originX, originY, chunkSizePx, zLevel, staticOccupancyLayers))
+                    !(staticRoofDraw && chunkHasStaticRoofAtLevel(obstacleGrid, originX, originY, chunkSizePx, zLevel, this.settings))
                 )
                     continue;
                 const payload = this._resolveChunkPayload(state, chunkCol, chunkRow, zLevel);
@@ -296,7 +294,7 @@ export class WorldSurfaceEngine {
                     cameraHeight: this.settings.cameraHeight,
                     viewport,
                     obstacleGrid,
-                    staticOccupancyLayers,
+                    settings: this.settings,
                     state,
                     renderScene: options.renderScene ?? null,
                     wallSpatialIndex: flatWallRails ? wallSpatialIndex : null,

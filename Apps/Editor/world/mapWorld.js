@@ -7,8 +7,7 @@ import { worldBoundsFromCellOrigin, forEachObstacleGridCellInAabb } from "../../
 import { colRowToIndex } from "../../../Libraries/Spatial/grid/GridUtils.js";
 import { computeBoundsFromWalls } from "../../../Libraries/Spatial/grid/wallGridBake.js";
 import { clearSandboxWallsInBounds } from "../../../Libraries/Sandbox/spawnAssembly.js";
-import { resolveStampWallHeight } from "../../../Libraries/WorldSurface/stampWallHeight.js";
-import { appendStaticOccupancyLayer, cellIsStaticBlocked, gridCellToGlobalColRow, patchStaticOccupancyCell } from "../../../Libraries/World/staticOccupancyLayers.js";
+import { cellIsStaticWall, gridCellToGlobalColRow } from "../../../Libraries/World/wallGridCells.js";
 import {
     applyCavernShapeMask,
     centerCavernBoundsOnViewport,
@@ -106,7 +105,7 @@ export function syncCavernBoundsFromPlay(viewport, playConfig, cavernConfig, { c
     if (center) centerCavernBoundsOnViewport(viewport, cavernConfig, gridSettings.cellSize);
 }
 /** @param {import("../state.js").TileLabGameState} state @param {number} centerWorldX @param {number} centerWorldY @param {number} radiusWorld */
-function clearStaticOccupancyInWorldCircle(state, centerWorldX, centerWorldY, radiusWorld) {
+function clearStaticWallsInWorldCircle(state, centerWorldX, centerWorldY, radiusWorld) {
     const grid = state.obstacleGrid;
     if (!grid?.cols || radiusWorld <= 0) return;
     centerReachAabbInto(CLEAR_CIRCLE_BOUNDS, centerWorldX, centerWorldY, radiusWorld);
@@ -119,12 +118,11 @@ function clearStaticOccupancyInWorldCircle(state, centerWorldX, centerWorldY, ra
         const cx = (bounds.minX + bounds.maxX) * 0.5;
         const cy = (bounds.minY + bounds.maxY) * 0.5;
         if (Math.hypot(cx - centerWorldX, cy - centerWorldY) >= radiusWorld) return;
-        if (!cellIsStaticBlocked(grid, col, row)) return;
+        if (!cellIsStaticWall(grid, col, row)) return;
         const idx = colRowToIndex(col, row, grid.cols);
         if (grid.segmentGrid?.[idx]?.length) return;
         grid.grid[idx] = 0;
         const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
-        patchStaticOccupancyCell(state, globalCol, globalRow, 0);
         state.staticCellHealth.delete(`${globalCol},${globalRow}`);
         if (col < startCol) startCol = col;
         if (col > endCol) endCol = col;
@@ -132,6 +130,7 @@ function clearStaticOccupancyInWorldCircle(state, centerWorldX, centerWorldY, ra
         if (row > endRow) endRow = row;
     });
     if (startCol === Infinity) return;
+    grid.bumpWallGridRevision();
     const damageBounds = { startCol, endCol, startRow, endRow };
     state.worldSurfaces.invalidateGridBounds(damageBounds, state);
     state.navigation.onObstaclesChanged(damageBounds);
@@ -141,7 +140,6 @@ export function ensureLabObstacleGridCoverage(state, extraAabb = null) {
     const cellSize = gridSettings.cellSize;
     let required = getCavernBoundsPreview(state.editor.cavernConfig);
     if (extraAabb) required = unionAabb(required, extraAabb);
-    for (const layer of state.staticOccupancyLayers ?? []) required = unionAabb(required, worldBoundsFromCellOrigin(layer.originCol, layer.originRow, layer.cols, layer.rows, cellSize));
     if (state.walls.length) required = unionAabb(required, computeBoundsFromWalls(state.walls, cellSize));
     required = padAabb(required, cellSize);
     const grid = state.obstacleGrid;
@@ -178,13 +176,11 @@ export function generateLabCaverns(state) {
     });
     ensureLabObstacleGridCoverage(state);
     clearSandboxWallsInBounds(state, stampBounds);
-    const wallHeight = resolveStampWallHeight(cavernConfig.wallHeightLevel, cellSize);
-    const damageBounds = state.obstacleGrid.stampStaticOccupancy(stamp.originCol, stamp.originRow, stamp.cols, stamp.rows, stamp.cells, state.wallSpatialIndex, { additive: true });
-    appendStaticOccupancyLayer(state, { originCol: stamp.originCol, originRow: stamp.originRow, cols: stamp.cols, rows: stamp.rows, wallHeight, cells: stamp.cells });
+    const damageBounds = state.obstacleGrid.stampStaticWalls(stamp.originCol, stamp.originRow, stamp.cols, stamp.rows, stamp.cells, state.wallSpatialIndex, { additive: true, heightLevel: cavernConfig.wallHeightLevel });
     if (cavernConfig.boundsMode === "donut") {
         const innerR = getCavernInnerRadiusCells(cavernConfig) * cellSize;
         const center = getCavernCenterWorld(cavernConfig, cellSize);
-        clearStaticOccupancyInWorldCircle(state, center.x, center.y, innerR);
+        clearStaticWallsInWorldCircle(state, center.x, center.y, innerR);
     }
     state.worldSurfaces.invalidateGridBounds(damageBounds, state);
     state.navigation.onObstaclesChanged(damageBounds);

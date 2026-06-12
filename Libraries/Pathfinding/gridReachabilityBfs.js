@@ -9,7 +9,7 @@
  */
 export function gridReachabilityBfs(startIdx, targetIdx, obstacleGrid, neighborGrid, gridWidth) {
     if (startIdx === targetIdx) return true;
-    if (obstacleGrid[startIdx] === 1 || obstacleGrid[targetIdx] === 1) return false;
+    if (obstacleGrid[startIdx] || obstacleGrid[targetIdx]) return false;
 
     const gridSize = obstacleGrid.length;
     const visited = new Uint8Array(gridSize);
@@ -30,7 +30,7 @@ export function gridReachabilityBfs(startIdx, targetIdx, obstacleGrid, neighborG
         for (let i = 0; i < 8; i++) {
             const nIdx = neighborGrid[currIdx * 8 + i];
             if (nIdx === -1 || visited[nIdx]) continue;
-            if (obstacleGrid[nIdx] === 1) continue;
+            if (obstacleGrid[nIdx]) continue;
 
             const nc = nIdx % gridWidth;
             const nr = (nIdx / gridWidth) | 0;
@@ -40,7 +40,7 @@ export function gridReachabilityBfs(startIdx, targetIdx, obstacleGrid, neighborG
             if (dx !== 0 && dy !== 0) {
                 const check1 = obstacleGrid[currRow * gridWidth + nc];
                 const check2 = obstacleGrid[nr * gridWidth + currCol];
-                if (check1 === 1 || check2 === 1) continue;
+                if (check1 || check2) continue;
             }
 
             visited[nIdx] = 1;

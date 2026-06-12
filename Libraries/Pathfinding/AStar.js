@@ -33,8 +33,8 @@ export function runLocalAStarFlat(startCol, startRow, targetCol, targetRow, grid
             const nr = currRow + offset.dr;
             if (nc >= 0 && nc < cols && nr >= 0 && nr < rows) {
                 const nIdx = nr * cols + nc;
-                if (grid[nIdx] === 1) continue;
-                if (offset.dc !== 0 && offset.dr !== 0) if (grid[nr * cols + currCol] === 1 || grid[currRow * cols + nc] === 1) continue;
+                if (grid[nIdx]) continue;
+                if (offset.dc !== 0 && offset.dr !== 0) if (grid[nr * cols + currCol] || grid[currRow * cols + nc]) continue;
                 const tentativeG = currentG + offset.cost;
                 if (visited[nIdx] !== runId || tentativeG < gScore[nIdx]) {
                     visited[nIdx] = runId;

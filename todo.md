@@ -35,6 +35,22 @@ Unified world-space boxes around `Aabb2D`, registry query semantics, and typed-a
 - **Inclusive max** — world and grid boxes both use `<= max`; grid redo is rename + unify ops, not off-by-one change.
 - **Scalar seam OK at cell grid** — `forEachInBounds` unpacks to cols/rows once inside indexes; public APIs stay `Aabb2D` / `Box4`.
 
+# Wall height / obstacle grid
+
+**Done** — one combined cell grid: `0` = open, `1–9` = stamp height level, `10` = infiniwall sentinel resolved at read time via `getWallHeight(settings)` / `STAMP_WALL_LEVEL_INFINI`. Segment walls keep height on `Segment.wallHeight`; when `segmentGrid` has segments for a cell, segment entity height wins.
+
+- [x] **Grid model + resolver** — `WorldObstacleGrid.grid` stores levels; `isBlocked` → `!== 0`; `getCellWallHeightLevel`, `resolveCellWallHeightPx` in `Libraries/World/wallGridCells.js`; `wallGridRevision` on grid for draw cache invalidation.
+- [x] **Write path** — stamp/edit paths write level into grid directly; removed `staticOccupancyLayers` / `staticOccupancyRevision`.
+- [x] **Read path** — `StaticGridWallDraw`, chunk roofs, `WorldSurfaceSystem` use grid resolver; pathfinding treats any non-zero cell as blocked.
+
+## View / camera constants (wall-height related)
+
+Separate from grid storage — projection and defaults should not be re-fetched per wall face.
+
+- [ ] **Hoist view constants per pass** — `cameraHeight` + `ElevationCamera` on `ChunkDrawPass` / `WallDrawContext` once per frame; stop calling `elevationCameraFromViewport` / reading `settings.cameraHeight` deep in wall draw helpers.
+- [ ] **Single wall-height px resolver at draw boundary** — one function for draw/bake: cell level → px, segment `.wallHeight`, infiniwall sentinel → settings default; remove scattered `?? getWallHeight(settings)` and `defaultWallHeight` args passed through static grid draw.
+- [ ] **Audit `getWallHeight` call sites** — after grid resolver exists, limit `getWallHeight(settings)` to resolver + atlas cache keys + game-definition bootstrap, not per-cell fallbacks.
+
 # WorldProp / state shape cleanup
 
 - [x] **Sandbox/editor fields off `WorldProp`** — `SandboxEntityMetaStore` on `state.sandbox.entityMeta`; behavior, camera, path visual, assembly membership keyed by entity id.
@@ -74,6 +90,5 @@ Unified world-space boxes around `Aabb2D`, registry query semantics, and typed-a
 ## Minor
 
 - [ ] **Read `getTexelResolution(settings)` once per draw pass** — `WorldSurfaceEngine` calls it repeatedly per chunk/wall path.
-- [ ] **Drop redundant `gridCellToGlobalColRow` in `resolveStaticWallHeightAtCell`** — index static layers directly from local `(col, row)` when possible.
 - [ ] **Batch or cache `getStaticCellDamageAlphaAtGrid`** — per-wall call in draw loop; worth caching if many damaged cells are visible.
 - [ ] **WHAT IS THIS DOING HERE IT SMELLS:** `...createDefaultRenderPorts({ weaponVisuals: createWeaponVisuals(GUN_ID_TO_VISUAL) })`.

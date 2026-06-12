@@ -9,7 +9,7 @@ import { getGameWorldSurfaceSettings } from "../WorldSurfaceBootstrap.js";
 import { getChunkSizePx } from "../../Libraries/Spatial/grid/ChunkGrid.js";
 import { buildGroundChunkBakePayload, resolveSurfaceProfileAtCoords } from "./surfaceProfileResolver.js";
 import { RenderScene } from "../../Libraries/Render/Scene/RenderScene.js";
-import { collectStaticRoofHeights } from "../../Libraries/World/staticOccupancyLayers.js";
+import { collectStaticRoofHeightsFromGrid } from "../../Libraries/World/wallGridCells.js";
 export class WorldSurfaceSystem extends WorldSurfaceEngine {
     /** @param {import("../../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} [settings] */
     constructor(settings = getGameWorldSurfaceSettings()) {
@@ -31,7 +31,7 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
     }
     invalidateRoofs() {}
     invalidateGridBounds(bounds, state, cellsPerChunk = this.settings.cellsPerChunk) {
-        const roofZ = collectStaticRoofHeights(state.staticOccupancyLayers);
+        const roofZ = collectStaticRoofHeightsFromGrid(state.obstacleGrid, this.settings);
         super.invalidateGridBounds(bounds, state.obstacleGrid, (x, y) => resolveSurfaceProfileAtCoords(state, x, y), cellsPerChunk, roofZ);
     }
     /** Draw procedural ground: shadow underpaint + baked chunk textures (simulation/inspector scenes only). */
@@ -50,7 +50,7 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
     }
     /** Chunk-cached roof layers for stamped static walls. */
     drawRoofs(ctx, state, viewport) {
-        const staticHeights = collectStaticRoofHeights(state.staticOccupancyLayers);
+        const staticHeights = collectStaticRoofHeightsFromGrid(state.obstacleGrid, this.settings);
         for (let i = 0; i < staticHeights.length; i++) {
             const zLevel = staticHeights[i];
             this.drawGroundChunks(ctx, {
@@ -62,7 +62,6 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
                 playBounds: playBoundsFromObstacleGrid(state.obstacleGrid),
                 requireWallSegments: false,
                 staticRoofDraw: true,
-                staticOccupancyLayers: state.staticOccupancyLayers,
                 renderScene: this.renderScene,
             });
         }

@@ -13,7 +13,7 @@ export {
     drawWallFootprintDamageOverlays,
 } from "./ChunkDrawPass.js";
 import { forEachObstacleGridCellInAabb, chunkWorldAabbScratch } from "../Spatial/grid/GridCoords.js";
-import { resolveStaticWallHeightAtCell } from "../World/staticOccupancyLayers.js";
+import { resolveCellWallHeightPx } from "../World/wallGridCells.js";
 import { bakePixelsForWorldSpan } from "./WorldSurfaceResolution.js";
 import { createOffscreenCanvas } from "../Canvas/offscreenCanvas.js";
 /**
@@ -50,12 +50,12 @@ export function chunkHasBlockedCells(obstacleGrid, chunkOriginX, chunkOriginY, c
  * @param {number} chunkOriginY
  * @param {number} chunkSizePx
  * @param {number} zLevel
- * @param {import("../World/staticOccupancyLayers.js").StaticOccupancyLayer[] | null | undefined} staticOccupancyLayers
+ * @param {import("../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} settings
  * @param {number} texelResolution
  * @returns {OffscreenCanvas | null}
  */
-export function buildStaticRoofMaskCanvas(obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx, zLevel, staticOccupancyLayers, texelResolution) {
-    if (!obstacleGrid?.cols || !staticOccupancyLayers?.length) return null;
+export function buildStaticRoofMaskCanvas(obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx, zLevel, settings, texelResolution) {
+    if (!obstacleGrid?.cols || !settings) return null;
     const bakeSize = bakePixelsForWorldSpan(chunkSizePx, { texelResolution });
     const cellBakeSize = bakePixelsForWorldSpan(obstacleGrid.cellSize, { texelResolution });
     const canvas = createOffscreenCanvas(bakeSize, bakeSize);
@@ -63,7 +63,7 @@ export function buildStaticRoofMaskCanvas(obstacleGrid, chunkOriginX, chunkOrigi
     ctx.fillStyle = "#ffffff";
     let any = false;
     forEachObstacleGridCellInAabb(obstacleGrid, chunkWorldAabbScratch(chunkOriginX, chunkOriginY, chunkSizePx), (col, row) => {
-        if (resolveStaticWallHeightAtCell(obstacleGrid, col, row, staticOccupancyLayers) !== zLevel) return;
+        if (resolveCellWallHeightPx(obstacleGrid, col, row, settings) !== zLevel) return;
         const bounds = obstacleGrid.getCellBounds(col, row);
         const x = Math.round((bounds.minX - chunkOriginX) * texelResolution);
         const y = Math.round((bounds.minY - chunkOriginY) * texelResolution);

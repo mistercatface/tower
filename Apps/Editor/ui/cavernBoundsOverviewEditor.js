@@ -238,7 +238,3 @@ export function mountOverviewBoundsEditors(canvas, state, onChange) {
     canvas.addEventListener("pointerup", finishDrag);
     canvas.addEventListener("pointercancel", finishDrag);
 }
-/** @deprecated use mountOverviewBoundsEditors */
-export function mountCavernBoundsOverviewEditor(canvas, state, onChange) {
-    mountOverviewBoundsEditors(canvas, state, onChange);
-}

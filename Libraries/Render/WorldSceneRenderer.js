@@ -68,8 +68,7 @@ export class WorldSceneRenderer {
     _appendVisibleStaticGridWalls(input, viewport, px, py) {
         const obstacleGrid = input.obstacleGrid;
         if (!obstacleGrid?.cols) return;
-        const layers = input.gameState?.staticOccupancyLayers;
-        collectStaticGridWallDrawables(obstacleGrid, viewport, layers, this.settings, px, py, input.gameState?.staticOccupancyRevision ?? 0, this.staticGridDrawables);
+        collectStaticGridWallDrawables(obstacleGrid, viewport, this.settings, px, py, this.staticGridDrawables);
         const visibleObjects = this.visibleDrawables;
         for (let i = 0; i < this.staticGridDrawables.length; i++) visibleObjects.push(this.staticGridDrawables[i]);
     }

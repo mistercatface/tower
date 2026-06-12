@@ -41,7 +41,7 @@ function bakePathDebugLayer(hnav, minX, minY, maxX, maxY) {
     const endRow = hnav.rows - 1;
     for (let row = 0; row <= endRow; row++)
         for (let col = 0; col <= endCol; col++) {
-            const isBlocked = hnav.grid[row * hnav.cols + col] === 1;
+            const isBlocked = hnav.grid[row * hnav.cols + col] !== 0;
             const wx = hnav.minX + col * hnav.cellSize;
             const wy = hnav.minY + row * hnav.cellSize;
             if (isBlocked) {
@@ -59,7 +59,7 @@ function bakePathDebugLayer(hnav, minX, minY, maxX, maxY) {
         for (let row = 0; row <= endRow; row++)
             for (let col = 0; col <= endCol; col++) {
                 const idx = row * hnav.cols + col;
-                if (hnav.grid[idx] === 1) continue;
+                if (hnav.grid[idx]) continue;
                 const node = hnav.cellToNode[idx];
                 if (!node) continue;
                 const wx = hnav.minX + col * hnav.cellSize;
@@ -113,7 +113,7 @@ export function bakeObstacleOverviewCache(obstacleGrid) {
     const data = ctx.createImageData(obstacleGrid.cols, obstacleGrid.rows);
     const pixels = data.data;
     for (let i = 0; i < obstacleGrid.grid.length; i++) {
-        const blocked = obstacleGrid.grid[i] === 1;
+        const blocked = obstacleGrid.grid[i] !== 0;
         const offset = i * 4;
         if (blocked) {
             pixels[offset] = 72;

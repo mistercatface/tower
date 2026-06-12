@@ -25,10 +25,6 @@ export function stampAssemblyEntityMember(state, entity, groupId, assemblyId, gr
     const meta = getSandboxEntityMeta(state);
     meta.setAssemblyGroup(entity.id, groupId, assemblyId);
 }
-/** @deprecated Use stampAssemblySceneMember or stampAssemblyEntityMember */
-export function stampAssemblyGroupMember(entity, groupId, assemblyId, groupField) {
-    stampAssemblySceneMember(entity, groupId, assemblyId, groupField);
-}
 /** @param {object} state @param {object} entity @param {string} groupId @param {string} groupField */
 export function entityBelongsToAssemblyGroup(state, entity, groupId, groupField) {
     if (groupField === "sandboxGroupId") return getSandboxEntityMeta(state).getAssemblyGroupId(entity.id) === groupId;

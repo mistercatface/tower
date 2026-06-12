@@ -8,7 +8,7 @@ import { forEachObstacleGridCellInAabb } from "../Spatial/grid/GridCoords.js";
 import { traceAabbRect, traceClosedPolygon, clipToPath } from "../Canvas/CanvasPath.js";
 import { worldToChunkCol, worldToChunkRow } from "../Spatial/grid/ChunkGrid.js";
 import { getDamageAlphaFromHealth, drawAabbDamageOverlay, drawDamageOverlayInClip, drawPolygonDamageOverlay } from "../Render/Structure3D/wallDamageVisual.js";
-import { resolveStaticWallHeightAtCell, cellIsStaticBlocked } from "../World/staticOccupancyLayers.js";
+import { resolveCellWallHeightPx, cellIsStaticWall } from "../World/wallGridCells.js";
 import { getStaticCellDamageAlphaAtGrid } from "../World/staticCellDamage.js";
 /**
  * @typedef {Object} ChunkDrawPass
@@ -23,7 +23,7 @@ import { getStaticCellDamageAlphaAtGrid } from "../World/staticCellDamage.js";
  * @property {number} cameraHeight
  * @property {import("../Viewport/Viewport.js").Viewport | null} viewport
  * @property {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid | null} obstacleGrid
- * @property {import("../World/staticOccupancyLayers.js").StaticOccupancyLayer[] | null} staticOccupancyLayers
+ * @property {import("../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings | null} settings
  * @property {object | null} state
  * @property {import("../Render/Scene/RenderScene.js").RenderScene | null} renderScene
  * @property {import("../Spatial/indexes/WallSpatialIndex.js").WallSpatialIndex | null} wallSpatialIndex
@@ -94,11 +94,11 @@ export function drawRoofSegmentDamageOverlays(ctx, pass) {
  * @param {[{ x: number, y: number }, { x: number, y: number }, { x: number, y: number }, { x: number, y: number }]} cornerScratch
  */
 export function drawStaticRoofDamageOverlays(ctx, pass, cornerScratch) {
-    const { obstacleGrid, staticOccupancyLayers, state, zLevel } = pass;
-    if (!obstacleGrid?.cols || !staticOccupancyLayers?.length || !state) return;
+    const { obstacleGrid, settings, state, zLevel } = pass;
+    if (!obstacleGrid?.cols || !settings || !state) return;
     const cellSize = obstacleGrid.cellSize;
     forEachObstacleGridCellInAabb(obstacleGrid, pass.chunkAabb, (col, row) => {
-        if (resolveStaticWallHeightAtCell(obstacleGrid, col, row, staticOccupancyLayers) !== zLevel) return;
+        if (resolveCellWallHeightPx(obstacleGrid, col, row, settings) !== zLevel) return;
         const damageAlpha = getStaticCellDamageAlphaAtGrid(obstacleGrid, state, col, row);
         if (damageAlpha <= 0) return;
         const bounds = obstacleGrid.getCellBounds(col, row);
@@ -144,7 +144,7 @@ export function drawStaticWallFootprintDamageOverlays(ctx, pass) {
     const { obstacleGrid, state } = pass;
     if (!obstacleGrid?.cols || !state) return;
     forEachObstacleGridCellInAabb(obstacleGrid, pass.chunkAabb, (col, row) => {
-        if (!cellIsStaticBlocked(obstacleGrid, col, row)) return;
+        if (!cellIsStaticWall(obstacleGrid, col, row)) return;
         const damageAlpha = getStaticCellDamageAlphaAtGrid(obstacleGrid, state, col, row);
         if (damageAlpha <= 0) return;
         drawAabbDamageOverlay(ctx, obstacleGrid.getCellBounds(col, row), damageAlpha);

@@ -45,7 +45,7 @@ export function computeFlowField(vectorMap, {
             for (let i = 0; i < 8; i++) {
                 const nIdx = neighborGrid[base + i];
                 if (nIdx !== -1 && bfsDistances[nIdx] === -1) {
-                    if (obstacleGrid[nIdx] === 1) continue;
+                    if (obstacleGrid[nIdx]) continue;
 
                     const nx = nIdx % gridWidth;
                     const ny = (nIdx / gridWidth) | 0;
@@ -54,7 +54,7 @@ export function computeFlowField(vectorMap, {
                     if (dx !== 0 && dy !== 0) {
                         const check1 = obstacleGrid[cy * gridWidth + nx];
                         const check2 = obstacleGrid[ny * gridWidth + cx];
-                        if (check1 === 1 || check2 === 1) {
+                        if (check1 || check2) {
                             continue;
                         }
                     }
