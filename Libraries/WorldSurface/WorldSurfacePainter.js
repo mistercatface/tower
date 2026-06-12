@@ -1,11 +1,10 @@
 import { composeSurfaceImage } from "../Procedural/SurfaceTextureComposer.js";
 import { getSurfaceProfileProvider } from "../Procedural/SurfaceProfileProvider.js";
 import { createOffscreenCanvas } from "../Canvas/offscreenCanvas.js";
-import { buildMapContext, createWallFaceAxes, writePixelToSamples } from "./SurfaceCoordinateMapper.js";
+import { createWallFaceAxes, writeFloorPixel, writeRoofPixel, writeWallCellPixel, writeWallFacePixel } from "./SurfaceCoordinateMapper.js";
 import { bakePixelsForWorldSpan, getTexelResolution } from "./WorldSurfaceResolution.js";
 import { getAnimationFrames, resolveBakeProfile } from "./ProfileBakeResolver.js";
 import { sourceFrameIndexForBakeSlot } from "./AnimationFrameBake.js";
-
 /**
  * @typedef {Object} BakeRequest
  * @property {CanvasRenderingContext2D} ctx
@@ -61,39 +60,64 @@ export function bakeRequestToCanvas(req) {
     paintBakeRequest({ ...req, ctx: canvas.getContext("2d") });
     return canvas;
 }
-
 export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, seed, options = {}, profileOrId) {
     const profile = resolvePaintProfile(profileOrId);
-    const isWall = options.isWall === true || options.roofSurface === true;
     const cellSize = options.cellSize;
     if (cellSize == null) throw new Error("paintPixelArea requires options.cellSize");
-    let surfaceKind = "floor";
-    let wallFace = null;
-    let pixelsPerUnit = options.pixelsPerUnit ?? (options.settings ? getTexelResolution(options.settings) : null);
+    const pixelsPerUnit = options.pixelsPerUnit ?? (options.settings ? getTexelResolution(options.settings) : null);
     if (pixelsPerUnit == null) throw new Error("paintPixelArea requires options.pixelsPerUnit or options.settings");
-    let zOffset = 0;
-    if (isWall && options.p1 && options.p2) {
-        surfaceKind = "wallFace";
-        const axes = createWallFaceAxes(options.p1, options.p2);
-        wallFace = { p1: options.p1, ...axes };
-    } else if (options.roofSurface) surfaceKind = "roof";
-    else if (isWall) {
-        surfaceKind = "wallCell";
-        zOffset = options.zOffset ?? 0;
+    const invPpwu = 1 / pixelsPerUnit;
+    let writePixel = writeFloorPixel;
+    let mapCtx = { invPpwu, startWorldX, startWorldY };
+    /** @type {{ useWallBase: boolean, wallFace?: boolean, wallCell?: boolean }} */
+    let bake = { useWallBase: false };
+    if (options.isWall && options.p1 && options.p2) {
+        const wf = { p1: options.p1, ...createWallFaceAxes(options.p1, options.p2) };
+        if (options.wallHeight == null) throw new Error("paintPixelArea wallFace requires options.wallHeight");
+        writePixel = writeWallFacePixel;
+        mapCtx = {
+            invPpwu,
+            height,
+            p1x: wf.p1.x,
+            p1y: wf.p1.y,
+            dirX: wf.dirX,
+            dirY: wf.dirY,
+            foldX: wf.foldX,
+            foldY: wf.foldY,
+            invEdgeLen: wf.edgeLen > 0 ? 1 / wf.edgeLen : 1,
+            wallHeight: options.wallHeight,
+            wallWidth: options.wallWidth ?? cellSize,
+        };
+        bake = { useWallBase: true, wallFace: true };
+    } else if (options.roofSurface) {
+        writePixel = writeRoofPixel;
+        mapCtx = { invPpwu, startWorldX, startWorldY, spanU: width > 1 ? width - 1 : 1 };
+        bake = { useWallBase: true };
+    } else if (options.isWall) {
+        writePixel = writeWallCellPixel;
+        mapCtx = {
+            invPpwu,
+            startWorldX,
+            startWorldY,
+            cellSize,
+            zOffset: options.zOffset ?? 0,
+            height,
+            spanU: width > 1 ? width - 1 : 1,
+        };
+        bake = { useWallBase: true, wallCell: true };
     }
     const imgData = ctx.createImageData(width, height);
     const data = imgData.data;
     const numPixels = width * height;
     const pooled = memoryPool.getSamples(numPixels);
-    const samples = { width, height, evalX: pooled.evalX, evalY: pooled.evalY, lookupX: pooled.lookupX, lookupY: pooled.lookupY, wallU: pooled.wallU, wallV: pooled.wallV, isWall, surfaceKind };
-    const mapCtx = buildMapContext({ startWorldX, startWorldY, cellSize, surfaceKind, height, width, pixelsPerUnit, zOffset, wallFace, wallHeight: options.wallHeight, wallWidth: options.wallWidth });
+    const samples = { width, height, evalX: pooled.evalX, evalY: pooled.evalY, lookupX: pooled.lookupX, lookupY: pooled.lookupY, wallU: pooled.wallU, wallV: pooled.wallV };
     let idx = 0;
     for (let y = 0; y < height; y++)
         for (let x = 0; x < width; x++) {
-            writePixelToSamples(samples, idx, x, y, mapCtx);
+            writePixel(samples, idx, x, y, mapCtx);
             idx++;
         }
-    const rgbBuffer = composeSurfaceImage(samples, profile, seed);
+    const rgbBuffer = composeSurfaceImage(samples, profile, seed, bake);
     let dataIdx = 0;
     for (let i = 0; i < numPixels; i++) {
         data[dataIdx++] = rgbBuffer[i * 3];

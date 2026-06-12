@@ -22,7 +22,7 @@ import {
 import { chunkHasStaticRoofAtLevel } from "../World/staticOccupancyLayers.js";
 import { getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
 import { getWallAtlasCacheInfo } from "./WallSurfaceCache.js";
-import { createWallFaceAxes, wallFaceAtlasUnrolledHeight } from "./SurfaceCoordinateMapper.js";
+import { createWallFaceAxes } from "./SurfaceCoordinateMapper.js";
 import { wallFaceColumns } from "./WallFaceColumns.js";
 import { TileWorkerCoordinator } from "./TileWorkerCoordinator.js";
 import { drawBakedTexture, drawProjectedHorizontalChunk, getTexelResolution } from "./WorldSurfaceResolution.js";
@@ -91,8 +91,7 @@ export class WorldSurfaceEngine {
         const pixelsPerUnit = getTexelResolution(this.settings);
         const canvasWidth = Math.max(1, Math.ceil(edgeLen * pixelsPerUnit));
         const hVal = wallHeight ?? getWallHeight(this.settings);
-        const unrolledHeight = wallFaceAtlasUnrolledHeight(hVal, cellSize);
-        const canvasHeight = Math.max(1, Math.ceil(unrolledHeight * pixelsPerUnit));
+        const canvasHeight = Math.max(1, Math.ceil((hVal + cellSize) * pixelsPerUnit));
         const wallCenterX = (p1.x + p2.x) / 2;
         const wallCenterY = (p1.y + p2.y) / 2;
         const bakeProfileId = profileId ?? proceduralSurfaceDraw.resolveProfileAt(wallCenterX, wallCenterY);

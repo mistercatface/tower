@@ -3,13 +3,13 @@ import { ensureNoiseInitialized } from "./Noise/Perlin2D.js";
 import { warpPoint, writeDomainWarp } from "./Fields/DomainWarp.js";
 import { getMotif } from "./MotifRegistry.js";
 import { readTranslateConfig, TRANSLATE_COORDINATE_MODES } from "./Motifs/translate.js";
-const sampleScratch = { evalX: 0, evalY: 0, lookupX: 0, lookupY: 0, wallU: 0, wallV: 0, isWall: false, surfaceKind: "floor", seed: 0 };
+const sampleScratch = { evalX: 0, evalY: 0, lookupX: 0, lookupY: 0, wallU: 0, wallV: 0, seed: 0 };
 const beforeRgb = { r: 0, g: 0, b: 0 };
 const layerRgb = { r: 0, g: 0, b: 0 };
 const blendOut = { r: 0, g: 0, b: 0 };
-function resolvePaletteBase(profile, isWall) {
-    if (isWall && profile.palette.wallBase) return profile.palette.wallBase;
-    if (!isWall && profile.palette.floorBase) return profile.palette.floorBase;
+function resolvePaletteBase(profile, useWallBase) {
+    if (useWallBase && profile.palette.wallBase) return profile.palette.wallBase;
+    if (!useWallBase && profile.palette.floorBase) return profile.palette.floorBase;
     return profile.palette.base;
 }
 function resolveMotifStack(profile) {
@@ -22,13 +22,13 @@ function resolveMotifStack(profile) {
     return stack;
 }
 /** Profile surfaceMask "floor" means ground (non-wall) pixels. */
-function motifMatchesSurface(config, surface) {
+function motifMatchesBake(config, bake) {
     const mask = config.surfaceMask ?? "all";
     if (mask === "all") return true;
-    if (mask === "floor") return !surface.isWall;
-    if (mask === "wall") return surface.isWall === true;
-    if (mask === "wallFace") return surface.surfaceKind === "wallFace";
-    if (mask === "wallCell") return surface.surfaceKind === "wallCell";
+    if (mask === "floor") return !bake.useWallBase;
+    if (mask === "wall") return bake.useWallBase;
+    if (mask === "wallFace") return bake.wallFace === true;
+    if (mask === "wallCell") return bake.wallCell === true;
     return true;
 }
 function createTranslateContext() {
@@ -62,18 +62,14 @@ function applyTranslateToSample(scratch, samples, pixelIndex, translateContext, 
     scratch.lookupX = warped.x;
     scratch.lookupY = warped.y;
 }
-export function composeSurfaceImage(samples, profile, seed) {
+export function composeSurfaceImage(samples, profile, seed, bake = { useWallBase: false }) {
     ensureNoiseInitialized(seed);
     const numPixels = samples.width * samples.height;
     const rgbBuffer = new Float32Array(numPixels * 3);
-    const baseFloor = resolvePaletteBase(profile, false);
-    const baseWall = resolvePaletteBase(profile, true);
+    const base = resolvePaletteBase(profile, bake.useWallBase);
     const warp = profile.warp;
-    sampleScratch.isWall = samples.isWall;
-    sampleScratch.surfaceKind = samples.surfaceKind;
     sampleScratch.seed = seed;
     for (let i = 0; i < numPixels; i++) {
-        const base = samples.isWall ? baseWall : baseFloor;
         rgbBuffer[i * 3] = base[0];
         rgbBuffer[i * 3 + 1] = base[1];
         rgbBuffer[i * 3 + 2] = base[2];
@@ -81,19 +77,23 @@ export function composeSurfaceImage(samples, profile, seed) {
     }
     const motifs = resolveMotifStack(profile);
     const translateContext = createTranslateContext();
+    /** @type {{ motifConfig: object, motifImpl: object, blendMode: string }[]} */
+    const motifPasses = [];
     for (let m = 0; m < motifs.length; m++) {
         const motifConfig = motifs[m];
         if (motifConfig.type === "translate") {
             pushTranslateLayer(translateContext, motifConfig);
             continue;
         }
-        const motifImpl = getMotif(motifConfig.type);
-        const blendMode = motifConfig.blendMode ?? "add";
+        if (!motifMatchesBake(motifConfig, bake)) continue;
+        motifPasses.push({ motifConfig, motifImpl: getMotif(motifConfig.type), blendMode: motifConfig.blendMode ?? "add" });
+    }
+    for (let p = 0; p < motifPasses.length; p++) {
+        const { motifImpl, motifConfig, blendMode } = motifPasses[p];
         for (let i = 0; i < numPixels; i++) {
             applyTranslateToSample(sampleScratch, samples, i, translateContext, warp);
             sampleScratch.wallU = samples.wallU[i];
             sampleScratch.wallV = samples.wallV[i];
-            if (!motifMatchesSurface(motifConfig, sampleScratch)) continue;
             const idx = i * 3;
             beforeRgb.r = rgbBuffer[idx];
             beforeRgb.g = rgbBuffer[idx + 1];

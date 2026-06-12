@@ -67,64 +67,125 @@ function resolveWallProfileId(proceduralSurfaceDraw, wallCx, wallCy, cacheObj) {
     }
     return profileId;
 }
-/** @param {ReturnType<typeof computeProjectedFace>} face @param {WallDrawContext} wallCtx @param {import("../../Spatial/iso/ElevationCamera.js").ElevationCamera} camera */
-function drawFaceTexture(ctx, p1, p2, face, wallCtx, camera) {
-    const { worldSurfaces, proceduralSurfaceDraw, wallHeight, fillStyle, cacheObj, worldBounds } = wallCtx;
+/**
+ * @typedef {Object} WallFaceAtlas
+ * @property {CanvasImageSource & { width: number, height: number }} canvas
+ * @property {number} bleedPx
+ * @property {import("../../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} settings
+ * @property {number} wallHeight
+ * @property {number} edgeLen
+ * @property {number} wallCx
+ * @property {number} wallCy
+ */
+/**
+ * @typedef {Object} WallFaceAtlasResolve
+ * @property {WallFaceAtlas | null} atlas
+ * @property {boolean} solidFill
+ */
+/**
+ * @param {{ x: number, y: number }} p1
+ * @param {{ x: number, y: number }} p2
+ * @param {WallDrawContext} wallCtx
+ * @returns {WallFaceAtlasResolve}
+ */
+function resolveWallFaceAtlas(p1, p2, wallCtx) {
+    const { worldSurfaces, proceduralSurfaceDraw, wallHeight, cacheObj } = wallCtx;
     const settings = worldSurfaces.settings;
-    const cellSize = settings.cellSize;
     const wallCx = cacheObj?.cx ?? (p1.x + p2.x) * 0.5;
     const wallCy = cacheObj?.cy ?? (p1.y + p2.y) * 0.5;
     const profileId = resolveWallProfileId(proceduralSurfaceDraw, wallCx, wallCy, cacheObj);
-    const ppwu = getTexelResolution(settings);
-    const atlas = worldSurfaces.getOrEnsureWallAtlas(p1, p2, { profileId, proceduralSurfaceDraw, wallHeight, cacheObj });
-    if (!atlas) return;
-    const flatCanvas = atlas.canvases[0];
-    if (!flatCanvas || flatCanvas.isPlaceholder) {
-        ctx.fillStyle = fillStyle;
-        ctx.fill();
-        return;
-    }
-    const bleedPx = settings.wallTextureBleedPx ?? 1;
+    const baked = worldSurfaces.getOrEnsureWallAtlas(p1, p2, { profileId, proceduralSurfaceDraw, wallHeight, cacheObj });
+    if (!baked) return { atlas: null, solidFill: false };
+    const canvas = baked.canvases[0];
+    if (!canvas || canvas.isPlaceholder) return { atlas: null, solidFill: true };
+    return { atlas: { canvas, bleedPx: settings.wallTextureBleedPx ?? 1, settings, wallHeight, edgeLen: cacheObj?.edgeLen ?? Math.hypot(p2.x - p1.x, p2.y - p1.y), wallCx, wallCy }, solidFill: false };
+}
+/**
+ * @typedef {Object} WallFaceSubdiv
+ * @property {number} subdivX
+ * @property {number} subdivY
+ * @property {number} hPx
+ * @property {number} alphaMax
+ */
+/**
+ * @param {import("../../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} settings
+ * @param {number} wallHeight
+ * @param {number} edgeLen
+ * @param {number} wallCx
+ * @param {number} wallCy
+ * @param {import("../../Spatial/iso/ElevationCamera.js").ElevationCamera} camera
+ * @returns {WallFaceSubdiv | null}
+ */
+function computeWallFaceSubdiv(settings, wallHeight, edgeLen, wallCx, wallCy, camera) {
+    const cellSize = settings.cellSize;
     const clampedHeight = Math.min(wallHeight, camera.cameraHeight - 1);
     const alphaMax = resolveElevationAlpha(clampedHeight, camera);
-    if (alphaMax <= 0) {
-        ctx.fillStyle = fillStyle;
-        ctx.fill();
-        return;
-    }
-    ctx.save();
-    const edgeLen = cacheObj?.edgeLen ?? Math.hypot(p2.x - p1.x, p2.y - p1.y);
+    if (alphaMax <= 0) return null;
     const dist = Math.hypot(wallCx - camera.viewerX, wallCy - camera.viewerY);
     const subdivScale = Math.max(0.05, Math.min(1.0, 1.0 - (dist - settings.wallSubdivNearPx) / settings.wallSubdivFarPx));
     const visibleHeightCells = clampedHeight / cellSize;
-    const SUBDIV_X = Math.max(1, Math.min(2, Math.ceil((edgeLen / cellSize) * subdivScale)));
-    const SUBDIV_Y = Math.max(1, Math.ceil(visibleHeightCells * subdivScale));
-    const H_px = clampedHeight * ppwu;
-    for (let row = 0; row < SUBDIV_Y; row++) {
-        const bottomZ = row * (wallHeight / SUBDIV_Y);
-        let topZ = (row + 1) * (wallHeight / SUBDIV_Y);
-        if (bottomZ >= settings.cameraHeight) break;
-        if (topZ >= settings.cameraHeight) topZ = settings.cameraHeight - 1;
-        const alphaBottom = resolveElevationAlpha(bottomZ, camera);
-        const alphaTop = resolveElevationAlpha(topZ, camera);
-        const v0 = alphaBottom / alphaMax;
-        const v1 = alphaTop / alphaMax;
-        const sy0 = (row / SUBDIV_Y) * H_px;
-        const sy1 = ((row + 1) / SUBDIV_Y) * H_px;
-        for (let col = 0; col < SUBDIV_X; col++) {
-            const u0 = col / SUBDIV_X;
-            const u1 = (col + 1) / SUBDIV_X;
+    return {
+        subdivX: Math.max(1, Math.min(2, Math.ceil((edgeLen / cellSize) * subdivScale))),
+        subdivY: Math.max(1, Math.ceil(visibleHeightCells * subdivScale)),
+        hPx: clampedHeight * getTexelResolution(settings),
+        alphaMax,
+    };
+}
+/**
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {{ x: number, y: number }} p1
+ * @param {{ x: number, y: number }} p2
+ * @param {ReturnType<typeof computeProjectedFace>} face
+ * @param {WallFaceAtlas} atlas
+ * @param {WallFaceSubdiv} subdiv
+ * @param {import("../../Spatial/iso/ElevationCamera.js").ElevationCamera} camera
+ * @param {import("../../Math/Aabb2D.js").Aabb2D} worldBounds
+ */
+function blitWallFaceSubdiv(ctx, p1, p2, face, atlas, subdiv, camera, worldBounds) {
+    const { canvas, bleedPx, settings, wallHeight } = atlas;
+    const { subdivX, subdivY, hPx, alphaMax } = subdiv;
+    const rowStep = wallHeight / subdivY;
+    const cameraHeight = settings.cameraHeight;
+    const visibleRows = Math.min(subdivY, Math.ceil(cameraHeight / rowStep));
+    ctx.save();
+    for (let row = 0; row < visibleRows; row++) {
+        const bottomZ = row * rowStep;
+        let topZ = (row + 1) * rowStep;
+        if (topZ >= cameraHeight) topZ = cameraHeight - 1;
+        const v0 = resolveElevationAlpha(bottomZ, camera) / alphaMax;
+        const v1 = resolveElevationAlpha(topZ, camera) / alphaMax;
+        const sy0 = (row / subdivY) * hPx;
+        const sy1 = ((row + 1) / subdivY) * hPx;
+        for (let col = 0; col < subdivX; col++) {
+            const u0 = col / subdivX;
+            const u1 = (col + 1) / subdivX;
             computeFaceCorner(sCorner0, p1, p2, face.proj1X, face.proj1Y, face.proj2X, face.proj2Y, u0, v0);
             computeFaceCorner(sCorner1, p1, p2, face.proj1X, face.proj1Y, face.proj2X, face.proj2Y, u1, v0);
             computeFaceCorner(sCorner2, p1, p2, face.proj1X, face.proj1Y, face.proj2X, face.proj2Y, u1, v1);
             computeFaceCorner(sCorner3, p1, p2, face.proj1X, face.proj1Y, face.proj2X, face.proj2Y, u0, v1);
             if (!pointsAabbOverlapAabb(sCorner0, sCorner1, sCorner2, sCorner3, worldBounds)) continue;
-            const sx0 = u0 * flatCanvas.width;
-            const sx1 = u1 * flatCanvas.width;
-            drawImageQuad(ctx, { img: flatCanvas, sx0, sy0, sx1, sy1, d0: sCorner0, d1: sCorner1, d2: sCorner2, d3: sCorner3 }, { bleedPx });
+            drawImageQuad(ctx, { img: canvas, sx0: u0 * canvas.width, sy0, sx1: u1 * canvas.width, sy1, d0: sCorner0, d1: sCorner1, d2: sCorner2, d3: sCorner3 }, { bleedPx });
         }
     }
     ctx.restore();
+}
+/** @param {ReturnType<typeof computeProjectedFace>} face @param {WallDrawContext} wallCtx @param {import("../../Spatial/iso/ElevationCamera.js").ElevationCamera} camera */
+function drawFaceTexture(ctx, p1, p2, face, wallCtx, camera) {
+    const { atlas, solidFill } = resolveWallFaceAtlas(p1, p2, wallCtx);
+    if (!atlas) {
+        if (solidFill) {
+            ctx.fillStyle = wallCtx.fillStyle;
+            ctx.fill();
+        }
+        return;
+    }
+    const subdiv = computeWallFaceSubdiv(atlas.settings, atlas.wallHeight, atlas.edgeLen, atlas.wallCx, atlas.wallCy, camera);
+    if (!subdiv) {
+        ctx.fillStyle = wallCtx.fillStyle;
+        ctx.fill();
+        return;
+    }
+    blitWallFaceSubdiv(ctx, p1, p2, face, atlas, subdiv, camera, wallCtx.worldBounds);
 }
 /**
  * Shared wall-face draw: project → trace → texture or solid fill → optional damage overlay.
