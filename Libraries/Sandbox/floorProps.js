@@ -1,6 +1,6 @@
-import { processFloorShapes } from "../Spatial/zones/floorShapes.js";
+import { floorShapeHasLiveOccupant, processFloorShapes } from "../Spatial/zones/floorShapes.js";
 import { tickFloorButtons } from "./floorButtons.js";
-import { runPadEffect } from "./padEffects.js";
+import { runFloorEffect } from "./floorEffects.js";
 /** @param {object} state @param {import("../Spatial/world/SpatialFrameCore.js").SpatialFrameCore} spatialFrame @param {number} dt */
 export function tickFloorProps(state, spatialFrame, dt) {
     tickFloorButtons(state, spatialFrame);
@@ -25,22 +25,14 @@ export function tickFloorProps(state, spatialFrame, dt) {
     for (let i = 0; i < shapes.length; i++) {
         const prop = shapes[i];
         if (!prop.powered) continue;
-        runFloorTriggers(state, prop, floorPropHasOccupant(state, prop) ? "occupied" : "empty", { dtSec });
+        runFloorTriggers(state, prop, floorShapeHasLiveOccupant(state.entityRegistry, prop) ? "occupied" : "empty", { dtSec });
     }
 }
-/** @param {object} state @param {object} prop */
-function floorPropHasOccupant(state, prop) {
-    for (const entityId of prop._occupants) {
-        const entity = state.entityRegistry.get(entityId);
-        if (entity && !entity.isDead) return true;
-    }
-    return false;
-}
-/** @param {object} state @param {object} prop @param {import("./padEffects.js").FloorTriggerWhen} when @param {import("./padEffects.js").PadEffectContext} ctx */
+/** @param {object} state @param {object} prop @param {import("./floorEffects.js").FloorTriggerWhen} when @param {import("./floorEffects.js").FloorEffectContext} ctx */
 function runFloorTriggers(state, prop, when, ctx) {
     for (let i = 0; i < prop.triggers.length; i++) {
         const trigger = prop.triggers[i];
-        if (trigger.when === when) runPadEffect(state, prop, trigger, ctx);
+        if (trigger.when === when) runFloorEffect(state, prop, trigger, ctx);
     }
 }
 /** @type {import("../../Core/GameDefinitionTypes.js").SimulationEffectPass} */

@@ -1,33 +1,20 @@
 import { Segment } from "../../Entities/Wall.js";
 import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
-import { createAabb } from "../Math/Aabb2D.js";
+import { createAabb, centerHalfExtentsAabbInto } from "../Math/Aabb2D.js";
 import { forEachObstacleGridCellInAabb } from "../Spatial/grid/GridCoords.js";
-import { padStampBoundsInto } from "../Spatial/zones/floorShapes.js";
+import { readFloorPropHalfExtents } from "../Spatial/zones/floorShapes.js";
 import { addSandboxWalls, removeSandboxWalls } from "./spawnAssembly.js";
-
 const fixtureStampScratch = createAabb();
-
-/** @param {object} fixture */
-export function readPullFixtureHalfExtents(fixture) {
-    if (fixture.halfExtents) return { halfWidth: fixture.halfExtents.x, halfHeight: fixture.halfExtents.y };
-    if (fixture.shape?.type === "Polygon") {
-        const v = fixture.shape.vertices[0];
-        return { halfWidth: Math.abs(v.x), halfHeight: Math.abs(v.y) };
-    }
-    throw new Error("readPullFixtureHalfExtents requires halfExtents or polygon shape");
-}
-
 /** @param {object} entity */
 export function isPullPowerTarget(entity) {
     return entity?.triggers?.some((trigger) => trigger.effect === "pull") === true;
 }
-
 /** @param {object} state @param {object} fixture */
 function buildPullFixtureWalls(state, fixture) {
-    const { halfWidth, halfHeight } = readPullFixtureHalfExtents(fixture);
+    const { halfWidth, halfHeight } = readFloorPropHalfExtents(fixture);
     const grid = state.obstacleGrid;
     const cellSize = grid.cellSize;
-    const stamp = padStampBoundsInto(fixtureStampScratch, fixture, halfWidth, halfHeight);
+    const stamp = centerHalfExtentsAabbInto(fixtureStampScratch, fixture.x, fixture.y, halfWidth, halfHeight);
     const originX = grid.minX;
     const originY = grid.minY;
     const halfCell = cellSize * 0.5;
@@ -41,12 +28,10 @@ function buildPullFixtureWalls(state, fixture) {
     });
     return walls;
 }
-
 function rebuildPullFixtureNavigation(state) {
     state.hierarchicalNavigator.rebuildRegions(state.viewport.x, state.viewport.y);
     state.navigation.onObstaclesChanged(null);
 }
-
 /** @param {object} state @param {object} fixture @param {boolean} wallsUp */
 function setPullFixtureWalls(state, fixture, wallsUp) {
     if (!fixture.wallMode || fixture.wallsUp === wallsUp) return;
@@ -60,18 +45,15 @@ function setPullFixtureWalls(state, fixture, wallsUp) {
     rebuildPullFixtureNavigation(state);
     fixture.wallsUp = wallsUp;
 }
-
 /** @param {object} state @param {object} fixture */
 export function syncPullFixtureWalls(state, fixture) {
     if (!fixture.wallMode) return;
     setPullFixtureWalls(state, fixture, fixture.powered);
 }
-
 /** @param {object} state @param {object} fixture */
 export function teardownPullFixtureWalls(state, fixture) {
     if (fixture.wallsUp) setPullFixtureWalls(state, fixture, false);
 }
-
 /** @param {object} state @param {object} prop */
 export function removeSandboxWorldProp(state, prop) {
     if (!prop) return;

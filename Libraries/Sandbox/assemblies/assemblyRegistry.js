@@ -10,8 +10,9 @@ export function getAssemblyManifest(id) {
 }
 /** @param {import("./assemblyManifest.js").AssemblyManifest} manifest */
 export function resolveAssemblyManifest(manifest) {
-    const { id, label, surfaceProfileId, surfaceAnimation, arena, link, pads = [], wallSegments = [], arcWallSegments = [], worldProps = [], behaviors = {} } = manifest;
-    return { id, label: label ?? id, surfaceProfileId, surfaceAnimation: surfaceAnimation === true, arena, pads, wallSegments, arcWallSegments, worldProps, groupField: link.groupField, behaviors };
+    if (manifest.pads?.length) throw new Error(`Assembly "${manifest.id}" still declares pads — migrate to worldProps`);
+    const { id, label, surfaceProfileId, surfaceAnimation, arena, link, wallSegments = [], arcWallSegments = [], worldProps = [], behaviors = {} } = manifest;
+    return { id, label: label ?? id, surfaceProfileId, surfaceAnimation: surfaceAnimation === true, arena, wallSegments, arcWallSegments, worldProps, groupField: link.groupField, behaviors };
 }
 /** @returns {{ id: string, label: string }[]} */
 export function listAssemblyManifests() {

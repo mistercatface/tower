@@ -269,29 +269,12 @@ export function removeWorldPropFromState(state, prop) {
     state.entityRegistry.unregister(prop);
     getSandboxEntityMeta(state)?.delete(prop.id);
 }
-/** @param {object} state @param {object} pad */
-export function addPadToState(state, pad) {
-    state.sandbox.pads.push(pad);
-    state.entityRegistry.register("pad", pad);
-}
-/** @param {object} state @param {object} pad */
-export function removePadFromState(state, pad) {
-    const index = state.sandbox.pads.indexOf(pad);
-    if (index >= 0) state.sandbox.pads.splice(index, 1);
-    state.entityRegistry.unregister(pad);
-    getSandboxEntityMeta(state)?.delete(pad.id);
-}
 /** @param {object} state */
 export function clearWorldPropsInState(state) {
     const meta = getSandboxEntityMeta(state);
     for (let i = 0; i < state.worldProps.length; i++) meta?.delete(state.worldProps[i].id);
     state.worldProps = [];
     state.entityRegistry.clear("worldProp");
-}
-/** @param {object} state */
-export function clearPadsInState(state) {
-    state.sandbox.pads = [];
-    state.entityRegistry.clear("pad");
 }
 /** @param {object[]} worldProps @param {number} worldX @param {number} worldY @param {number} padding */
 function nearestWorldPropInList(worldProps, worldX, worldY, padding) {

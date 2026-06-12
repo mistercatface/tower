@@ -3,27 +3,6 @@ import { Segment } from "../../Entities/Wall.js";
 import { insetAabb, minCornerAabb, padAabb } from "../Math/Aabb2D.js";
 import { resolvePlacement } from "./assemblies/assemblyPlacement.js";
 /** @typedef {import("./assemblies/assemblyManifest.js").ResolvedAssemblyManifest} ResolvedAssemblyManifest */
-/**
- * @param {import("./assemblies/assemblyManifest.js").AssemblyPadManifest[]} pads
- * @param {ReturnType<typeof getPlayfieldBounds>} play
- */
-function resolveAssemblyPads(pads, play) {
-    const playW = play.maxX - play.minX;
-    return pads.map((entry) => {
-        const point = resolvePlacement(play, entry.at);
-        /** @type {object} */
-        const resolved = { id: entry.id, preset: entry.preset, x: point.x, y: point.y };
-        if (entry.preset === "button") {
-            if (entry.radiusU == null) throw new Error(`Button pad "${entry.id}" missing radiusU`);
-            resolved.radius = entry.radiusU * playW;
-            resolved.targets = entry.targets?.length ? entry.targets : entry.target ? [entry.target] : [];
-            if (entry.inputMode != null) resolved.inputMode = entry.inputMode;
-            if (entry.massThreshold != null) resolved.massThreshold = entry.massThreshold;
-            if (entry.invert === true) resolved.invert = true;
-        }
-        return resolved;
-    });
-}
 /** @param {number} offsetX @param {number} offsetY @param {number} width @param {number} height */
 function getArenaWorldBounds(offsetX, offsetY, width, height) {
     const box = minCornerAabb(offsetX, offsetY, width, height);
@@ -150,11 +129,11 @@ function buildPlayfieldArcWallSegments(arcs, walls, wallHeight) {
  * @param {ResolvedAssemblyManifest} resolved
  */
 export function buildAssemblyLayout(centerX, centerY, resolved) {
-    const { arena, pads, wallSegments, arcWallSegments } = resolved;
+    const { arena, wallSegments, arcWallSegments } = resolved;
     const { offsetX, offsetY } = snapLayoutOrigin(centerX, centerY, arena.width, arena.height, 1);
     const bounds = getArenaWorldBounds(offsetX, offsetY, arena.width, arena.height);
     const play = getPlayfieldBounds(bounds, arena.walls.width);
-    return { bounds, play, pads: resolveAssemblyPads(pads, play), wallSegments: resolveWallSegments(wallSegments, play), arcWallSegments: resolveArcWallSegments(arcWallSegments, play) };
+    return { bounds, play, wallSegments: resolveWallSegments(wallSegments, play), arcWallSegments: resolveArcWallSegments(arcWallSegments, play) };
 }
 /** @returns {import("../Math/Aabb2D.js").Aabb2D[]} */
 export function getAssemblyRailBandBounds(layout) {

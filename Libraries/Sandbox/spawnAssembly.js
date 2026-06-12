@@ -122,7 +122,6 @@ export function spawnResolvedAssembly(state, centerX, centerY, resolved, { facti
         defaultPropId = spawned.defaultPropId;
         propIdByManifestId = spawned.propIdByManifestId;
     }
-    if (resolved.pads.length) throw new Error(`Assembly "${resolved.id}" still declares pads — migrate to worldProps`);
     const instance = { id: groupId, assemblyId: resolved.id, defaultPropId, arenaWidth, arenaHeight };
     state.sandbox.assemblyInstances.push(instance);
     return { id: groupId, assemblyId: resolved.id, defaultPropId, centerX, centerY };
