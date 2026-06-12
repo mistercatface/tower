@@ -65,6 +65,12 @@
  * @property {number} [radius] — floor fixtures e.g. void pit mouth radius
  * @property {number} [depth] — void pit pocket depth
  * @property {number} [captureTolerance]
+ * @property {number} [width] — gravity pad rect width
+ * @property {number} [height] — gravity pad rect height
+ * @property {number} [forceX] — gravity pad pull override
+ * @property {number} [forceY] — gravity pad pull override
+ * @property {boolean} [wallMode] — gravity pad wall mode when powered
+ * @property {boolean} [powered] — starts unpowered when false
  * @property {AssemblyPlacementManifest} at
  */
 /**

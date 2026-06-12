@@ -68,17 +68,35 @@ export function processFloorShapes(spatialFrame, shapes, { onEnter, onExit }) {
 }
 /** @param {object} prop */
 export function syncFloorTriggerAabb(prop) {
-    centerHalfExtentsAabbInto(prop.aabb, prop.x, prop.y, prop.radius, prop.radius, NEIGHBOR_QUERY_PAD);
+    if (prop.halfExtents) centerHalfExtentsAabbInto(prop.aabb, prop.x, prop.y, prop.halfExtents.x, prop.halfExtents.y, NEIGHBOR_QUERY_PAD);
+    else centerHalfExtentsAabbInto(prop.aabb, prop.x, prop.y, prop.radius, prop.radius, NEIGHBOR_QUERY_PAD);
 }
 /** @param {object} prop */
 export function initFloorTriggerProp(prop) {
     prop._occupants = new Set();
     prop._nextOccupants = new Set();
     prop.triggers = prop.strategy.floorTriggers.map((trigger) => ({ ...trigger }));
-    prop.sinkDepth = prop.strategy.sinkDepth;
+    if (prop.strategy.sinkDepth != null) prop.sinkDepth = prop.strategy.sinkDepth;
     if (prop.strategy.captureTolerance != null) prop.captureTolerance = prop.strategy.captureTolerance;
-    prop.powered = true;
+    if (prop.strategy.wallMode === true) {
+        prop.wallMode = true;
+        prop.walls = [];
+        prop.wallsUp = false;
+    }
+    prop.powered = prop.strategy.powered !== false;
     prop.aabb = createAabb();
+    syncFloorTriggerAabb(prop);
+}
+/** @param {object} prop @param {number} halfWidth @param {number} halfHeight */
+export function resizeFloorPropHalfExtents(prop, halfWidth, halfHeight) {
+    prop.halfExtents = { x: halfWidth, y: halfHeight };
+    prop.radius = Math.max(halfWidth, halfHeight);
+    prop.shape = new PolygonShape([
+        { x: -halfWidth, y: -halfHeight },
+        { x: halfWidth, y: -halfHeight },
+        { x: halfWidth, y: halfHeight },
+        { x: -halfWidth, y: halfHeight },
+    ]);
     syncFloorTriggerAabb(prop);
 }
 /** @param {{ shape: { type: string, vertices?: { x: number, y: number }[] } }} pad @param {{ halfWidth: number, halfHeight: number }} [defaults] */

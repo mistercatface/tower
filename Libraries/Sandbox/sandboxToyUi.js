@@ -149,7 +149,10 @@ function buildSpawnOptions(propIds, assemblyManifests) {
         const asset = getPropAsset(id);
         return { value: id, label: asset?.sandbox?.spawnLabel ?? id.replace(/_/g, " ") };
     });
-    for (const preset of Object.keys(PAD_PRESETS)) options.push({ value: sandboxSpawnPadId(preset), label: PAD_PRESETS[preset].listLabel });
+    for (const preset of Object.keys(PAD_PRESETS)) {
+        if (preset === "pull") continue;
+        options.push({ value: sandboxSpawnPadId(preset), label: PAD_PRESETS[preset].listLabel });
+    }
     const assemblies = [...assemblyManifests].sort((a, b) => a.label.localeCompare(b.label));
     for (const manifest of assemblies) options.push({ value: sandboxSpawnAssemblyId(manifest.id), label: manifest.label });
     return options;

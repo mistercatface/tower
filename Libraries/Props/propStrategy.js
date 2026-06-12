@@ -85,6 +85,7 @@ export function getBaseSpriteCacheKey(prop, deps) {
     const halfY = Math.round(stratHy);
     let key = `${orientKey}_${radius}_${halfX}x${halfY}`;
     if (prop.sinkDepth != null) key += `_d${Math.round(prop.sinkDepth)}`;
+    if (prop.powered === false) key += "_off";
     return key;
 }
 /**

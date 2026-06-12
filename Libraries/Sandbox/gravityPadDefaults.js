@@ -1,0 +1,5 @@
+/** Generic sandbox gravity-zone defaults (assemblies override per instance). */
+export const DEFAULT_GRAVITY_PAD_HALF_WIDTH = 40;
+export const DEFAULT_GRAVITY_PAD_HALF_HEIGHT = 80;
+export const DEFAULT_GRAVITY_PAD_FORCE_X = 0;
+export const DEFAULT_GRAVITY_PAD_FORCE_Y = 1000;

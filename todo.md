@@ -2,16 +2,15 @@
 
 ## Next: gravity pad → floor prop
 
-Same pattern as `void_pit`: `WorldProp` + `renderMode: "floor"` + quantized bake + `floorTriggers` + assembly overrides. Retire `pad:pull` when done.
+Same pattern as `void_pit`: `WorldProp` + `renderMode: "floor"` + quantized bake + `floorTriggers` + assembly overrides.
 
-- [ ] **`gravity_pad` asset** — generic defaults from shared constants (not table-specific); `floorTriggers` with `occupied` → `pull`; `isPushable: false`, `gravityImmune: false` on occupants only (fixture stays immune via strategy if needed).
-- [ ] **Rect floor triggers** — `halfExtents` / polygon shape on floor props; `initFloorTriggerAabb` + `processFloorShapes` for rects (void pit is circle-only today).
-- [ ] **Cached draw recipe** — port pull-zone visual from `drawFloorShape` / pad pull draw into `createGravityPadDraw()` (size + powered tint in cache key).
-- [ ] **Spawn + inspector** — `sandbox.spawnLabel`, menu spawn via prop list; inspector fields: width, height, force X/Y, wall mode, powered.
-- [ ] **`wallMode` on floor prop** — move pull-pad grid wall spawn/teardown off `padEffects` onto prop id (or shared floor-fixture helper).
-- [ ] **Button → powered links (gravity prep)** — extend `syncSandboxPadPower` so powered targets are entity ids (floor props + legacy pads during transition); full button plan below.
-
-- [ ] **Remove `pull` pad preset** — once `gravity_pad` is default; last pad preset is `button` until button plan above is done.
+- [x] **`gravity_pad` asset** — generic defaults in `gravityPadDefaults.js`; assembly JSON overrides size/force/power.
+- [x] **Rect floor triggers** — `halfExtents` + `resizeFloorPropHalfExtents`; `syncFloorTriggerAabb` for rects.
+- [x] **Cached draw recipe** — `createGravityPadDraw()` (powered tint in cache key via `_off` suffix).
+- [x] **Spawn + inspector** — menu spawn; inspector width/height/force X/Y; assembly override fields on worldProps.
+- [ ] **`wallMode` on floor prop** — move pull-pad grid wall spawn/teardown off `padEffects` onto prop id.
+- [ ] **Button → powered links (gravity prep)** — extend `syncSandboxPadPower` for floor prop ids; pinball still uses pull pads until migrated.
+- [ ] **Remove `pull` pad preset** — migrate `pinballTable` pull pads → `gravity_pad` worldProps + button links; then delete pad pull path.
 
 ## After gravity pad: buttons → props
 
