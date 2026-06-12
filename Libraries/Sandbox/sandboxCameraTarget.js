@@ -1,7 +1,6 @@
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
-/** @param {object} state @param {object | null | undefined} prop */
+/** @param {object} state @param {object} prop */
 export function isSandboxCameraTarget(state, prop) {
-    if (!prop) return false;
     return getSandboxEntityMeta(state).isCameraTarget(prop.id);
 }
 /** @param {object} state @param {object} prop @param {boolean} enabled */

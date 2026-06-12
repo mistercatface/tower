@@ -463,27 +463,24 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
             drawSandboxWeaponBars(ctx, state);
             drawSandboxLaserSights(ctx, state);
         },
-        getPathVisual(prop = session.getSelectedProp()) {
-            return prop ? resolveSandboxPathVisual(state, prop) : "off";
+        getPathVisual(prop) {
+            return resolveSandboxPathVisual(state, prop);
         },
-        setPathVisual(visual, prop = session.getSelectedProp()) {
-            if (!prop) return;
+        setPathVisual(visual, prop) {
             setSandboxPathVisual(state, prop, visual);
             session.sync();
         },
-        getPropVisual(prop = session.getSelectedProp()) {
-            return prop ? resolveSandboxPropVisual(state, prop) : "default";
+        getPropVisual(prop) {
+            return resolveSandboxPropVisual(state, prop);
         },
-        setPropVisual(visual, prop = session.getSelectedProp()) {
-            if (!prop) return;
+        setPropVisual(visual, prop) {
             setSandboxPropVisual(state, prop, visual);
             session.sync();
         },
-        isCameraTarget(prop = session.getSelectedProp()) {
-            return prop ? isSandboxCameraTarget(state, prop) : false;
+        isCameraTarget(prop) {
+            return isSandboxCameraTarget(state, prop);
         },
-        setCameraTarget(enabled, prop = session.getSelectedProp()) {
-            if (!prop) return;
+        setCameraTarget(enabled, prop) {
             setSandboxCameraTarget(state, prop, enabled);
             if (enabled) state.viewport.snapTo(prop.x, prop.y);
             session.sync();
