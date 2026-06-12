@@ -132,3 +132,32 @@ export function drawRoofSegmentDamageOverlays(ctx, chunkOriginX, chunkOriginY, c
         ctx.restore();
     }
 }
+/**
+ * Per-wall damage tint for flat 2D rail caps — same overlay as projected wall faces.
+ *
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} chunkOriginX
+ * @param {number} chunkOriginY
+ * @param {number} chunkSizePx
+ * @param {import("../Spatial/indexes/WallSpatialIndex.js").WallSpatialIndex | null | undefined} wallSpatialIndex
+ */
+export function drawWallFootprintDamageOverlays(ctx, chunkOriginX, chunkOriginY, chunkSizePx, wallSpatialIndex) {
+    if (!wallSpatialIndex) return;
+    const segments = wallSpatialIndex.collectInBounds(chunkOriginX, chunkOriginY, chunkOriginX + chunkSizePx, chunkOriginY + chunkSizePx);
+    for (let i = 0; i < segments.length; i++) {
+        const wall = segments[i];
+        if (wall.isDead || wall.collisionOnly) continue;
+        const damageAlpha = getWallDamageAlpha(wall);
+        if (damageAlpha <= 0) continue;
+        const corners = getSegmentFootprintCorners(wall);
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(corners[0].x, corners[0].y);
+        for (let j = 1; j < corners.length; j++) ctx.lineTo(corners[j].x, corners[j].y);
+        ctx.closePath();
+        ctx.clip();
+        ctx.fillStyle = wallDamageOverlayStyle(damageAlpha);
+        ctx.fill();
+        ctx.restore();
+    }
+}
