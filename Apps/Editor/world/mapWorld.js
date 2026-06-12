@@ -7,6 +7,7 @@ import { aabbContains, centeredAabb, centeredAabbInto, padAabb, unionAabb } from
 import { worldBoundsFromCellOrigin, worldBoundsFromCellOriginInto } from "../../../Libraries/Spatial/grid/GridCoords.js";
 import { computeBoundsFromWalls } from "../../../Libraries/Spatial/grid/wallGridBake.js";
 import { addSandboxWalls, clearSandboxWallsInBounds } from "../../../Libraries/Sandbox/spawnAssembly.js";
+import { resolveStampWallHeight } from "../../../Libraries/WorldSurface/stampWallHeight.js";
 export const PLAY_AREA_CELL_OPTIONS = [64, 128, 256, 512, 1024];
 /** @param {number} cells */
 export function playAreaCellsToIndex(cells) {
@@ -90,11 +91,12 @@ function generateCavernWalls(config) {
     const { minX: caMinX, minY: caMinY } = worldBoundsFromCellOrigin(config.boundsCol, config.boundsRow, cols, rows, cellSize);
     let grid = fillRandomGrid(cols, rows, config.fillChance);
     grid = runCellularAutomata(cols, rows, grid, { iterations: config.iterations, scratch: new Uint8Array(cols * rows) });
+    const wallHeight = resolveStampWallHeight(config.wallHeightLevel, cellSize);
     const walls = [];
     for (let r = 0; r < rows; r++)
         for (let c = 0; c < cols; c++) {
             if (grid[r * cols + c] !== 1) continue;
-            walls.push(new Segment(caMinX + c * cellSize + cellSize / 2, caMinY + r * cellSize + cellSize / 2, 0, cellSize, 0));
+            walls.push(new Segment(caMinX + c * cellSize + cellSize / 2, caMinY + r * cellSize + cellSize / 2, 0, cellSize, 0, 30, 30, false, wallHeight));
         }
     return walls;
 }

@@ -26,7 +26,7 @@ export class TileLabGameState extends SharedGameState {
         this.mapSeed = rand;
         this.floorSeed = rand;
         this.labPlayConfig = { playAreaCols: 256, playAreaRows: 256 };
-        this.labCavernConfig = { boundsCol: -128, boundsRow: -128, boundsCols: 256, boundsRows: 256, fillChance: 0.45, iterations: 3 };
+        this.labCavernConfig = { boundsCol: -128, boundsRow: -128, boundsCols: 256, boundsRows: 256, fillChance: 0.45, iterations: 3, wallHeightLevel: 10 };
         this.labMapBoundsPreview = createLabMapBoundsPreview();
         this.labShowSandboxPanel = true;
         this.labShowProfilePanel = true;

@@ -1,4 +1,5 @@
 import { generateLabCaverns, PLAY_AREA_CELL_OPTIONS, playAreaCellsToIndex, syncCavernBoundsFromPlay } from "../world/mapWorld.js";
+import { formatStampWallHeightLevel, STAMP_WALL_LEVEL_INFINI, STAMP_WALL_LEVEL_MIN } from "../../../Libraries/WorldSurface/stampWallHeight.js";
 import { paintMapOverviewFrame } from "./mapOverview.js";
 import { SliderControl } from "./controls/SliderControl.js";
 /** @param {HTMLElement} panel @param {string} title */
@@ -165,6 +166,7 @@ export function buildMapPanel(state, onGenerated) {
     };
     addSlider("Rock density", 0.2, 0.7, 0.05, "fillChance", (v) => `${Math.round(v * 100)}%`);
     addSlider("Smooth passes", 1, 8, 1, "iterations");
+    addSlider("Wall height", STAMP_WALL_LEVEL_MIN, STAMP_WALL_LEVEL_INFINI, 1, "wallHeightLevel", (v) => formatStampWallHeightLevel(v));
     const previewLabel = document.createElement("label");
     previewLabel.className = "check-inline editor-map-preview-toggle";
     const previewInput = document.createElement("input");
