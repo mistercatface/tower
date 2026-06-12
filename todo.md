@@ -26,6 +26,7 @@ Living notes from the static-grid / render-path refactor. Not a release checklis
 - [x] **`RenderableRoofCap` bounds** — uses `expandPointsAabbInto` like wall faces.
 - [x] **`getCanvasLineScale(ctx)`** — screen-constant stroke/dash/marker sizing in overlay draw paths.
 - [x] **`drawProjectedHorizontalChunk`** — perspective `drawImageQuad` blit for elevated horizontal chunks (`WorldSurfaceResolution.js`); roof chunks + assembly patches.
+- [x] **`Entity.renderCachedSprite` audit** — no callers; removed dead method. Live sprite blits: `blitAnchoredSprite` (`PropRenderer`), `blitCenteredSprite` (`actorKinematicsRenderer`). `FloatingText` / `ProgressBar` keep bespoke blits (alpha/scale/quantization).
 
 ---
 
@@ -157,9 +158,7 @@ Most warped textures already go through `drawImageQuad` (`AffineTexture.js`) or 
 
 - [ ] **`drawMapImageCache(ctx, cache)`** — Lab editor repeats `ctx.drawImage(cache.canvas, cache.minX, cache.minY)` (and scaled variants in `mapOverview.js`, `preview.js` wall/path layers). Thin wrapper over `{ canvas, minX, minY, maxX, maxY }` bake caches from `labMapCaches.js`.
 
-**5. Legacy sprite blit audit**
-
-- [ ] **Audit `Entity.renderCachedSprite` callers** — `QuantizedSpriteCache` already has `blitAnchoredSprite` / `blitCenteredSprite` (translate, scale, smoothing, `drawImage`). `Entity.renderCachedSprite` is an older parallel (translate, rotate, centered `drawImage`). Find callers; migrate hot paths to quantized blit helpers and retire or document the legacy path.
+**5. ~~Legacy sprite blit audit~~** — done; `renderCachedSprite` had zero callers and was deleted.
 
 **6. Image-smoothing boilerplate (nitpick)**
 

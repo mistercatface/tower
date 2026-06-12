@@ -49,6 +49,7 @@ export function createQuantizedSpriteCache({ maxItems = 2000, viewStep = 30, vie
 }
 /**
  * World-anchored blit (iso props). Opacity applied at blit time, not bake time.
+ * Primary entry points for cached sprite draws (iso props, kinematics bodies).
  *
  * @param {import("../Render/spriteDrawModifier.js").SpriteDrawModifier | null} [modifier]
  */

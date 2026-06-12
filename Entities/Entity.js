@@ -35,18 +35,6 @@ export class Entity {
     isVisible(viewport) {
         return viewport.isVisible(this.x, this.y, this.getBoundingRadius());
     }
-    renderCachedSprite(ctx, cache, cacheKey, generateFn, ...generateArgs) {
-        const cachedSprite = cache.get(cacheKey, generateFn, ...generateArgs);
-        ctx.save();
-        ctx.translate(this.x, this.y);
-        if (this.angle !== 0) ctx.rotate(this.angle);
-        const img = cachedSprite.offCanvas || cachedSprite;
-        const cx = cachedSprite.cx !== undefined ? cachedSprite.cx : img.width / 2;
-        const cy = cachedSprite.cy !== undefined ? cachedSprite.cy : img.height / 2;
-        ctx.drawImage(img, -cx, -cy);
-        ctx.restore();
-        return cachedSprite;
-    }
     resolveWallContext(stateOrWalls) {
         if (!stateOrWalls) return null;
         if (stateOrWalls.walls) return wallContextFromState(stateOrWalls);
