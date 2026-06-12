@@ -1,5 +1,6 @@
-import { TileWorkerCoordinator, wallGeometryView, wallSharedEdgesView, MAX_WALLS, STRIDE } from "../../WorldSurface/TileWorkerCoordinator.js";
 import { resolveSegmentWallHeightPx } from "../../World/wallGridCells.js";
+import { MAX_WALLS, STRIDE, wallGeometryView, wallSharedEdgesView } from "./SharedEdgeBuffers.js";
+import { requestSharedEdges } from "./SharedEdgeWorkerCoordinator.js";
 export { MAX_WALLS, STRIDE, wallGeometryView, wallSharedEdgesView };
 /**
  * @param {object[]} walls
@@ -36,5 +37,9 @@ export function applySharedEdgeFlags(walls, numWalls) {
     }
 }
 export function requestSharedEdgeSolve(numWalls) {
-    return TileWorkerCoordinator.requestSharedEdges(numWalls);
+    return requestSharedEdges(numWalls);
+}
+/** @param {object | null | undefined} seg @param {number} edgeIndex */
+export function shouldCullSharedWallFace(seg, edgeIndex) {
+    return seg?.sharedEdges?.[edgeIndex] === true;
 }

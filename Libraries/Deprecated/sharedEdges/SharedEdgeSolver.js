@@ -1,6 +1,7 @@
 import { packCellKey, worldToCell } from "../../DataStructures/CellKey.js";
 import { forEachSparseCellInRect } from "../../DataStructures/CellRect.js";
 import { SparseBucketGrid } from "../../DataStructures/SparseBucketGrid.js";
+import { STRIDE } from "./SharedEdgeBuffers.js";
 export class SharedEdgeSolver {
     /**
      * @param {Float32Array} wallsData - Buffer with layout [x, y, angle, size, isDead, wallHeight]
@@ -9,7 +10,6 @@ export class SharedEdgeSolver {
      */
     static solve(wallsData, sharedEdgesOut, numWalls) {
         const activeEdges = [];
-        const STRIDE = 6;
         for (let i = 0; i < numWalls; i++) {
             const offset = i * STRIDE;
             const isDead = wallsData[offset + 4] !== 0;

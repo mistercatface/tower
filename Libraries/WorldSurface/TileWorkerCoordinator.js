@@ -3,12 +3,6 @@ import { bumpSurfaceProfileRevision, getSurfaceProfileRevision } from "./Surface
 import { clampBakeFrameRange, isFirstFrameRange } from "./AnimationFrameBake.js";
 import { getAnimationFrames } from "./ProfileBakeResolver.js";
 import { MinHeap } from "../DataStructures/MinHeap.js";
-export const MAX_WALLS = 10000;
-export const STRIDE = 6;
-export const wallGeometrySab = new SharedArrayBuffer(MAX_WALLS * STRIDE * 4);
-export const wallGeometryView = new Float32Array(wallGeometrySab);
-export const wallSharedEdgesSab = new SharedArrayBuffer(MAX_WALLS);
-export const wallSharedEdgesView = new Uint8Array(wallSharedEdgesSab);
 /**
  * Job tiers. The scheduler always drains lower tiers first, then sorts by
  * distance-to-focus within a tier. This is what guarantees the whole visible
@@ -16,7 +10,7 @@ export const wallSharedEdgesView = new Uint8Array(wallSharedEdgesSab);
  * without needing a separate queue or an artificial concurrency throttle.
  */
 const TIER_REGISTRATION = -1; // runtime profile sync — must reach workers before any paint
-const TIER_STATIC = 0; // first-frame / non-animated bakes / shared edges
+const TIER_STATIC = 0; // first-frame / non-animated bakes
 const TIER_ANIMATION = 1; // incremental animation frame fill
 /** Re-sort the queue by focus only after the camera moves at least this far. */
 const FOCUS_RESORT_DIST_SQ = 16 * 16;
@@ -153,7 +147,6 @@ function getWorkerPool() {
         if (!tileWorkerUrl) throw new Error("TileWorkerCoordinator requires configureTileWorkerCoordinator({ workerUrl }) from game bootstrap");
         for (let i = 0; i < poolSize; i++) {
             const w = new Worker(tileWorkerUrl, { type: "module" });
-            w.postMessage({ id: -1, type: "initSharedEdgesSAB", payload: { wallGeometrySab, wallSharedEdgesSab } });
             w.onmessage = (e) => {
                 const { id, bitmaps, error } = e.data;
                 const wi = workers.indexOf(w);
@@ -232,8 +225,5 @@ export const TileWorkerCoordinator = {
         registeredRuntimeProfileIds.add(profileId);
         workerReady = workerReady.then(() => broadcastRequest("registerRuntimeProfile", { profileId, profile }));
         return workerReady;
-    },
-    requestSharedEdges(numWalls) {
-        return sendRequest("rebuildSharedEdges", { numWalls }, TIER_STATIC);
     },
 };

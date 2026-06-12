@@ -51,7 +51,6 @@ export class RenderableWallFace extends Renderable {
     shouldDraw(viewerX, viewerY) {
         const seg = this.simWall;
         if (seg?.isDead) return false;
-        if (seg?.sharedEdges?.[this.edgeIndex]) return false;
         const viewX = this.cx - viewerX;
         const viewY = this.cy - viewerY;
         return this.outX * viewX + this.outY * viewY < 0;
