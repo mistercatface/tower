@@ -141,3 +141,54 @@ Separate from grid storage — projection and defaults should not be re-fetched 
 - [ ] **Read `getTexelResolution(settings)` once per draw pass** — `WorldSurfaceEngine` calls it repeatedly per chunk/wall path.
 - [ ] **Batch or cache `getStaticCellDamageAlphaAtGrid`** — per-wall call in draw loop; Tier 1 idx-aware reads reduce duplicate work first; full cache only if many damaged cells visible (see Grid cell indexing).
 - [ ] **WHAT IS THIS DOING HERE IT SMELLS:** `...createDefaultRenderPorts({ weaponVisuals: createWeaponVisuals(GUN_ID_TO_VISUAL) })`.
+
+# Prop vector overlay (radar / boids-style)
+
+Boiled-down physics silhouettes for props: circle or oriented rect for the body, optional aim-aligned triangles for equipped gun muzzles (humanoid v1). Cached shape sprites keyed by **geometry only** — facing/aim applied as **rotation at blit**, not iso-style angle quantization. **Single draw stream:** one facade replaces the kinematics vs iso fork in `WorldSceneRenderer`; vector is an internal presentation branch, not a parallel render pass.
+
+| Primitive | Cache key | Blit |
+|-----------|-----------|------|
+| Circle body | radius | translate only |
+| Rect body | `halfExtents.x × halfExtents.y` | translate + rotate(`facing`) |
+| Muzzle tri | size | translate(muzzle) + rotate(`turret.angle`) |
+
+New code lives under `Libraries/Render/VectorProp/` — do **not** extend `QuantizedSpriteCache` / `getOrBakePropSprite` view-offset or facing bake paths.
+
+## Part 1 — Toggle & presentation resolver
+
+- [ ] **`propVisual` on sandbox entity meta** — `"default" | "vector"` on `SandboxEntityMetaStore` (parallel to `pathVisual`); getters/setters on `createSandboxController`.
+- [ ] **`resolvePropVisualMode(prop, gameState)`** — read per-entity meta; optional lab/global override flag on `state.editor` or lab state for “all vector” debug (toolbar checkbox later).
+- [ ] **`resolveVectorPropSpec(prop, asset)`** — map physics footprint to vector recipe: `collisionShape: "circle"` → circle; `"box"` → rect via `propFootprintHalfExtents`; asset flag e.g. `sandbox.vectorExtras: ["muzzles"]` for humanoid. Return `null` for unsupported primitives (flipper, pipe elbow, cylinder) → facade falls back to default draw.
+- [ ] **Facade contract** — document that `null` spec or `"default"` mode never touches vector draw; no vector branches outside the resolver + facade.
+
+## Part 2 — `VectorProp` library (new functions)
+
+- [ ] **`vectorShapeCache.js`** — small LRU; keys like `"circle:7"`, `"rect:8x2"`, `"tri:4"` (size/style only, no angles).
+- [ ] **`bakeVectorShapes.js`** — bake stroke circle, stroke rect, filled triangle onto offscreen canvases once per key.
+- [ ] **`blitVectorSprite.js`** — `translate(x, y) → rotate(angle?) → drawImage → restore`; shared by body + muzzle draws.
+- [ ] **`drawVectorProp.js`** — body blit at `prop.x/y`; for muzzle extras, world positions from existing muzzle ports (`resolveKinematicsMuzzlePosition` / weapon visuals) — reuse combat aim math, not full rig bake.
+- [ ] **Styles** — single palette (radar stroke/fill constants); line width scaled once at bake or blit, not per-prop soup.
+
+## Part 3 — Single-stream render integration
+
+- [ ] **`drawWorldProp(ctx, prop, viewport, drawContext)`** — new facade in `Libraries/Render/drawWorldProp.js`:
+  - `vector` mode + non-null spec → `drawVectorProp`
+  - else → `drawDefaultWorldProp` (extract current behavior unchanged: `usesKinematicsBody` → `renderActorKinematicsBody`; else → `PropRenderer.drawProp`)
+- [ ] **`WorldSceneRenderer.draw3DBuildings`** — replace the two-way `if (usesKinematicsBody) … else drawProp` with one `drawWorldProp` call; same query loop, sort, z-order. Pass `drawContext` with `gameState`, `propRecipes`, muzzle/weapon ports.
+- [ ] **Debris / other prop draw sites** — audit for duplicate kinematics vs iso forks; route through the same facade if any exist.
+- [ ] **No iso recipe changes** — vector does not register in `loadPropAssets` / `PROP_PRIMITIVE_BUILDERS`; default path stays on existing 3D + kinematics caches.
+
+## Part 4 — V1 coverage, UI & follow-ups
+
+- [ ] **Sandbox Selected panel** — “Visual” select: Default / Vector (next to Path visual); sync via controller like `getPathVisual` / `setPathVisual`.
+- [ ] **Optional toolbar** — “Vector props” global override on lab toolbar (`shellHtml.js` + `preview.js` pattern like `showWallsInput`).
+- [ ] **V1 assets** — circle props (balls); box props (crate, log, barrel) with `facing` rotation; humanoid circle + one muzzle tri per equipped turret when `weaponLoadout` non-empty.
+- [ ] **Explicit v1 exclusions** — flipper, pipe elbow, cylinder → spec `null`, default visual; document in asset comments if helpful.
+- [ ] **Later (not v1)** — per-asset vector colors; skip kinematics animation tick when vector-only selected; projectiles as tiny vector shapes; fallen/tipped rect via `rollAngle` / `fallenHalfExtents`.
+
+## Design notes
+
+- **Not a second render pass** — no vector effect pass, no duplicated entity queries; presentation switch lives entirely inside `drawWorldProp`.
+- **Not quantized** — unlike iso prop bakes, vector angles are continuous runtime rotations; cache entries are shape atlases only.
+- **Humanoid** — `renderMode: "none"` + `usesKinematicsBody` today; vector mode bypasses `ActorKinematicsRenderer` for **draw** only; locomotion/combat unchanged unless profiled later.
+
