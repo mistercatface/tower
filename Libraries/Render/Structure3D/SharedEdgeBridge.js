@@ -1,4 +1,5 @@
 import { TileWorkerCoordinator, wallGeometryView, wallSharedEdgesView, MAX_WALLS, STRIDE } from "../../WorldSurface/TileWorkerCoordinator.js";
+import { resolveSegmentWallHeightPx } from "../../World/wallGridCells.js";
 export { MAX_WALLS, STRIDE, wallGeometryView, wallSharedEdgesView };
 /**
  * @param {object[]} walls
@@ -14,7 +15,7 @@ export function writeWallGeometry(walls, settings) {
         wallGeometryView[offset + 2] = seg.angle;
         wallGeometryView[offset + 3] = seg.size;
         wallGeometryView[offset + 4] = seg.isDead ? 1 : 0;
-        wallGeometryView[offset + 5] = seg.wallHeight ?? settings.wallHeight;
+        wallGeometryView[offset + 5] = resolveSegmentWallHeightPx(seg, settings);
         if (!seg.sharedEdges) seg.sharedEdges = [false, false, false, false];
     }
     return numWalls;

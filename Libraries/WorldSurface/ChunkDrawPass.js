@@ -17,9 +17,6 @@ import { getStaticCellDamageAlphaAtIdx } from "../World/staticCellDamage.js";
  * @property {number} originY
  * @property {number} sizePx
  * @property {number} zLevel
- * @property {number} viewerX
- * @property {number} viewerY
- * @property {number} cameraHeight
  * @property {import("../Viewport/Viewport.js").Viewport | null} viewport
  * @property {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid | null} obstacleGrid
  * @property {import("../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings | null} settings
@@ -57,7 +54,7 @@ export function projectHorizontalSurfaceCornersInto(out4, pass, rect = null) {
 }
 /** @param {CanvasRenderingContext2D} ctx @param {ChunkDrawPass} pass @returns {boolean} */
 export function clipChunkToRoofFootprints(ctx, pass) {
-    const { zLevel, cameraHeight, viewport } = pass;
+    const { zLevel, camera } = pass;
     const roofs = getChunkRoofs(pass);
     if (!roofs.length) return false;
     return clipToPath(ctx, (clipCtx) => {
@@ -66,7 +63,7 @@ export function clipChunkToRoofFootprints(ctx, pass) {
             const roof = roofs[i];
             if (roof.simWall?.isDead) continue;
             if (Math.abs(roof.zLevel - zLevel) > 0.01) continue;
-            roof.draw(clipCtx, viewport, cameraHeight);
+            roof.draw(clipCtx, camera);
             clippedAny = true;
         }
         return clippedAny;
@@ -74,7 +71,7 @@ export function clipChunkToRoofFootprints(ctx, pass) {
 }
 /** @param {CanvasRenderingContext2D} ctx @param {ChunkDrawPass} pass */
 export function drawRoofSegmentDamageOverlays(ctx, pass) {
-    const { zLevel, cameraHeight, viewport } = pass;
+    const { zLevel, camera } = pass;
     const roofs = getChunkRoofs(pass);
     for (let i = 0; i < roofs.length; i++) {
         const roof = roofs[i];
@@ -83,7 +80,7 @@ export function drawRoofSegmentDamageOverlays(ctx, pass) {
         const damageAlpha = getDamageAlphaFromHealth(roof.simWall.health, roof.simWall.maxHealth);
         if (damageAlpha <= 0) continue;
         drawDamageOverlayInClip(ctx, damageAlpha, (clipCtx) => {
-            roof.draw(clipCtx, viewport, cameraHeight);
+            roof.draw(clipCtx, camera);
         });
     }
 }

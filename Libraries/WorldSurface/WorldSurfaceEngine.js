@@ -18,7 +18,7 @@ import {
     drawStaticRoofDamageOverlays,
     drawStaticWallFootprintDamageOverlays,
 } from "./ChunkDrawPass.js";
-import { chunkHasStaticRoofAtLevel } from "../World/wallGridCells.js";
+import { chunkHasStaticRoofAtLevel, resolveWallCapHeightPx } from "../World/wallGridCells.js";
 import { chunkWorldAabbInto } from "../Spatial/grid/GridCoords.js";
 import { elevationCameraFromViewport } from "../Spatial/iso/ElevationCamera.js";
 import { getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
@@ -91,7 +91,7 @@ export class WorldSurfaceEngine {
         const cellSize = proceduralSurfaceDraw.obstacleCellSize ?? this.settings.cellSize;
         const pixelsPerUnit = getTexelResolution(this.settings);
         const canvasWidth = Math.max(1, Math.ceil(edgeLen * pixelsPerUnit));
-        const hVal = wallHeight ?? this.settings.wallHeight;
+        const hVal = resolveWallCapHeightPx(wallHeight, this.settings);
         const canvasHeight = Math.max(1, Math.ceil((hVal + cellSize) * pixelsPerUnit));
         const wallCenterX = (p1.x + p2.x) / 2;
         const wallCenterY = (p1.y + p2.y) / 2;
@@ -190,7 +190,7 @@ export class WorldSurfaceEngine {
         const ppwu = getTexelResolution(this.settings);
         const seed = proceduralSurfaceDraw.surfaceSeed;
         const rev = getSurfaceProfileRevision(profileId);
-        const wallHeightKey = wallHeight ?? this.settings.wallHeight;
+        const wallHeightKey = resolveWallCapHeightPx(wallHeight, this.settings);
         const stash = cacheObj?._wallAtlasStash;
         if (
             stash &&
@@ -245,8 +245,6 @@ export class WorldSurfaceEngine {
             flatWallRails = false,
             staticRoofDraw = false,
         } = options;
-        const viewerX = viewport.x;
-        const viewerY = viewport.y;
         const cellsPerChunk = this.settings.cellsPerChunk;
         const chunkSizePx = getChunkSizePx(obstacleGrid.cellSize, cellsPerChunk);
         const viewportBounds = viewport.boundsDraw;
@@ -261,7 +259,7 @@ export class WorldSurfaceEngine {
         const maxChunkCol = worldToChunkCol(bounds.maxX - 1, obstacleGrid.minX, chunkSizePx);
         const minChunkRow = worldToChunkRow(bounds.minY, obstacleGrid.minY, chunkSizePx);
         const maxChunkRow = worldToChunkRow(bounds.maxY - 1, obstacleGrid.minY, chunkSizePx);
-        const chunkCamera = elevationCameraFromViewport(viewport, this.settings.cameraHeight);
+        const passCamera = elevationCameraFromViewport(viewport, this.settings.cameraHeight);
         ctx.save();
         if (playBounds) clipToAabb(ctx, bounds);
         for (let chunkRow = minChunkRow; chunkRow <= maxChunkRow; chunkRow++)
@@ -288,9 +286,6 @@ export class WorldSurfaceEngine {
                     originY,
                     sizePx: chunkSizePx,
                     zLevel,
-                    viewerX,
-                    viewerY,
-                    cameraHeight: this.settings.cameraHeight,
                     viewport,
                     obstacleGrid,
                     settings: this.settings,
@@ -298,7 +293,7 @@ export class WorldSurfaceEngine {
                     renderScene: options.renderScene ?? null,
                     wallSpatialIndex: flatWallRails ? wallSpatialIndex : null,
                     chunkAabb: chunkWorldAabbInto(createAabb(), originX, originY, chunkSizePx),
-                    camera: chunkCamera,
+                    camera: passCamera,
                 };
                 if (zLevel > 0) {
                     ctx.save();

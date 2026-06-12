@@ -20,6 +20,18 @@ export function resolveCellWallHeightAtIdx(grid, idx) {
     if (grid.segmentGrid?.[idx]?.length) return 0;
     return level * grid.cellSize;
 }
+/** @param {import("../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} settings */
+export function defaultWallHeightPx(settings) {
+    return settings.wallHeight;
+}
+/** @param {{ wallHeight?: number | null } | null | undefined} segment @param {import("../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} settings */
+export function resolveSegmentWallHeightPx(segment, settings) {
+    return segment?.wallHeight ?? settings.wallHeight;
+}
+/** Cap height for wall atlas bake / projected draw when caller has no per-face override. */
+export function resolveWallCapHeightPx(capHeight, settings) {
+    return capHeight ?? settings.wallHeight;
+}
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row */
 export function cellIsStaticWall(grid, col, row) {
     if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return false;

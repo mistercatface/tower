@@ -154,7 +154,7 @@ function blitWallFaceSubdiv(ctx, faceBottom, faceTop, atlas, subdiv, camera, wor
     const { subdivX, subdivY, capPx, alphaBase, alphaBandMax } = subdiv;
     const alphaSpan = alphaBandMax - alphaBase;
     const rowStep = bandHeight / subdivY;
-    const cameraHeight = settings.cameraHeight;
+    const cameraHeight = camera.cameraHeight;
     const visibleRows = Math.min(subdivY, Math.ceil((cameraHeight - wallBaseZ) / rowStep));
     ctx.save();
     for (let row = 0; row < visibleRows; row++) {

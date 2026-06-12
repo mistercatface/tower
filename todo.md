@@ -13,11 +13,6 @@
 - [ ] **Hardening: sync pickups on state load** — registry membership + spatial tags when restoring sim state.
 - [ ] **Reduce dual array/registry scans** — `pushablePhysicsPass`, assembly cleanup via `forEachOfKind` where order allows.
 
-## Wall height / draw
-
-- [ ] **Hoist view constants per pass** — `cameraHeight` + `ElevationCamera` on `ChunkDrawPass` / `WallDrawContext` once per frame.
-- [ ] **Single wall-height px resolver at draw boundary** — consolidate at draw/bake entry; drop redundant `defaultWallHeight` threading.
-
 ## WorldProp / state shape
 
 - [ ] **Combat as one owned object** — `weaponLoadout`, turrets, etc. under `prop.combat`.

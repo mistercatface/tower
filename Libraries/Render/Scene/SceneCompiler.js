@@ -1,5 +1,6 @@
 import { RenderableWallFace, RenderableRoofCap } from "./Renderables.js";
 import { getSegmentFootprintCorners } from "../../Spatial/geometry/WallGeometry.js";
+import { resolveSegmentWallHeightPx } from "../../World/wallGridCells.js";
 export class SceneCompiler {
     /**
      * @param {import("../../GameState/GameState.js").GameState} state
@@ -9,15 +10,15 @@ export class SceneCompiler {
      */
     static compileWalls(state, scene, gridMinX = state.obstacleGrid.minX, gridMinY = state.obstacleGrid.minY) {
         scene.setGridOrigin(gridMinX, gridMinY);
-        const defaultWallHeight = state.worldSurfaces.settings.wallHeight;
+        const settings = state.worldSurfaces.settings;
         for (const wall of state.walls) {
             if (wall.isDead || wall.collisionOnly) continue;
-            SceneCompiler.compileWall(wall, scene, defaultWallHeight);
+            SceneCompiler.compileWall(wall, scene, settings);
         }
     }
-    /** @param {object} wall @param {import("./RenderScene.js").RenderScene} scene @param {number} defaultWallHeight */
-    static compileWall(wall, scene, defaultWallHeight) {
-        const wallHeight = wall.wallHeight ?? defaultWallHeight;
+    /** @param {object} wall @param {import("./RenderScene.js").RenderScene} scene @param {import("../../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} settings */
+    static compileWall(wall, scene, settings) {
+        const wallHeight = resolveSegmentWallHeightPx(wall, settings);
         const sourceId = wall.id ?? wall;
         const corners = getSegmentFootprintCorners(wall);
         for (let i = 0; i < 4; i++) {
@@ -30,7 +31,7 @@ export class SceneCompiler {
             scene.insert(renderableWall);
         }
         if (wall.wallHeight != null) {
-            const renderableRoof = new RenderableRoofCap(sourceId, wall.wallHeight, corners);
+            const renderableRoof = new RenderableRoofCap(sourceId, wallHeight, corners);
             renderableRoof.simWall = wall;
             scene.insert(renderableRoof);
         }
