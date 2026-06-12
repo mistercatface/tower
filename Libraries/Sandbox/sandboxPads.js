@@ -157,14 +157,13 @@ export function buildSandboxPad(state, preset, x, y, options = {}) {
     return pad;
 }
 /**
- * @param {import("./SandboxHostPort.js").SandboxHostPort} host
+ * @param {object} state
  * @param {string} preset
  * @param {number} x
  * @param {number} y
  * @param {object} [options]
  */
-export function spawnSandboxPad(host, preset, x, y, options = {}) {
-    const state = host.getSimState();
+export function spawnSandboxPad(state, preset, x, y, options = {}) {
     const pad = buildSandboxPad(state, preset, x, y, options);
     addPadToState(state, pad);
     return pad;

@@ -131,24 +131,24 @@ function tickFlipperWorldProp(prop, asset, dt) {
     prop.vy = 0;
     syncFlipperCollisionShape(prop);
 }
-/** @param {import("../SandboxHostPort.js").SandboxHostPort} host @param {number} dt */
-function tickAllFlippers(host, dt) {
-    host.forEachWorldProp((prop) => {
-        if (!isFlipperWorldProp(prop)) return;
+/** @param {object} state @param {number} dt */
+function tickAllFlippers(state, dt) {
+    state.entityRegistry.forEachOfKind("worldProp", (prop) => {
+        if (prop.isDead || !isFlipperWorldProp(prop)) return;
         const asset = getPropAsset(prop.type);
         if (!asset) return;
         tickFlipperWorldProp(prop, asset, dt);
     });
 }
-/** @returns {import("../createSandboxController.js").SandboxBehavior} */
-export function createFlipperBehavior() {
+/** @param {object} state @returns {import("../createSandboxController.js").SandboxBehavior} */
+export function createFlipperBehavior(state) {
     return {
         id: FLIPPER_BEHAVIOR_ID,
         supports(_prop, asset) {
             return asset?.sandbox?.behaviors?.includes(FLIPPER_BEHAVIOR_ID) ?? false;
         },
-        tickWorld(dt, host) {
-            tickAllFlippers(host, dt);
+        tickWorld(dt) {
+            tickAllFlippers(state, dt);
         },
         onPointerDown: () => false,
         onPointerMove() {},

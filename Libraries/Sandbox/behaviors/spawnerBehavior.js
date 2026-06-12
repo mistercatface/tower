@@ -9,15 +9,15 @@ function aimSpawnerFacing(prop, aim) {
     prop.angularVelocity = 0;
     prop.strategy.syncCollisionShape?.(prop);
 }
-/** @returns {import("../createSandboxController.js").SandboxBehavior} */
-export function createSpawnerBehavior() {
+/** @param {object} state @returns {import("../createSandboxController.js").SandboxBehavior} */
+export function createSpawnerBehavior(state) {
     return {
         ...createDragLaunchInteraction({
             id: SPAWNER_BEHAVIOR_ID,
             getConfig: (prop) => getSpawnerDragConfig(prop, getPropAsset(prop.type)),
             onAim: aimSpawnerFacing,
-            onLaunch(prop, shot, host) {
-                fireSpawner(host.getSimState(), prop, { nx: shot.nx, ny: shot.ny, power: shot.power });
+            onLaunch(prop, shot) {
+                fireSpawner(state, prop, { nx: shot.nx, ny: shot.ny, power: shot.power });
             },
         }),
         supports(_prop, asset) {

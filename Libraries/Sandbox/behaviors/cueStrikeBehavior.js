@@ -10,27 +10,26 @@ export const CUE_STRIKE_BEHAVIOR_ID = "cueStrike";
 function getCueStrikeConfig(state, prop, asset) {
     return { ...DRAG_LAUNCH_DEFAULTS, ...resolveWorldPropSandboxBehavior(state, prop, asset, "cueStrike") };
 }
-/** @param {object} prop @param {import("../SandboxHostPort.js").SandboxHostPort} host */
-function cueStrikeTableBounds(prop, host) {
-    const state = host.getSimState();
+/** @param {object} prop @param {object} state */
+function cueStrikeTableBounds(prop, state) {
     const groupId = getSandboxEntityMeta(state).getAssemblyGroupId(prop.id);
     const instance = state.sandbox.assemblyInstances.find((entry) => entry.id === groupId);
     if (!instance) throw new Error(`Cue strike prop has no assembly instance (${groupId})`);
     return { tableWidth: instance.arenaWidth, tableHeight: instance.arenaHeight };
 }
-/** @returns {import("../createSandboxController.js").SandboxBehavior} */
-export function createCueStrikeBehavior() {
+/** @param {object} state @returns {import("../createSandboxController.js").SandboxBehavior} */
+export function createCueStrikeBehavior(state) {
     return createDragLaunchInteraction({
         id: CUE_STRIKE_BEHAVIOR_ID,
-        getConfig: (prop, host) => getCueStrikeConfig(host.getSimState(), prop, getPropAsset(prop.type)),
-        canStart(prop, _world, host) {
-            return evaluateInputGates(CUE_STRIKE_BEHAVIOR_ID, prop, getPropAsset(prop.type), host).allowed;
+        getConfig: (prop) => getCueStrikeConfig(state, prop, getPropAsset(prop.type)),
+        canStart(prop) {
+            return evaluateInputGates(CUE_STRIKE_BEHAVIOR_ID, prop, getPropAsset(prop.type), state).allowed;
         },
         onLaunch(prop, shot) {
             applyCueStrikeCollision(prop, shot);
         },
-        buildAimLineContext(prop, host) {
-            return buildCueStrikeAimLineContext(prop, host.getSimState(), cueStrikeTableBounds(prop, host));
+        buildAimLineContext(prop) {
+            return buildCueStrikeAimLineContext(prop, state, cueStrikeTableBounds(prop, state));
         },
         resolveAimLine: getCueStrikeAimLine,
     });

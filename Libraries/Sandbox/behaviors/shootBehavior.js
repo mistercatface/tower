@@ -3,8 +3,8 @@ import { normalizeWeaponLoadout } from "../../Combat/equipmentLoadout.js";
 import { manualFireWorldProp } from "../../Combat/worldPropManualFire.js";
 import { getPropAsset } from "../../Props/PropCatalog.js";
 export const SHOOT_BEHAVIOR_ID = "shoot";
-/** @returns {import("../createSandboxController.js").SandboxBehavior} */
-export function createShootBehavior() {
+/** @param {object} state @returns {import("../createSandboxController.js").SandboxBehavior} */
+export function createShootBehavior(state) {
     let isShooting = false;
     let aimX = 0;
     let aimY = 0;
@@ -26,9 +26,7 @@ export function createShootBehavior() {
         onPointerUp(prop, e) {
             isShooting = false;
         },
-        tick(prop, dt, host) {
-            const state = host.getSimState?.();
-            if (!state) return;
+        tick(prop, dt) {
             manualFireWorldProp(state, prop, aimX, aimY, dt, isShooting);
         },
         reset() {

@@ -96,14 +96,13 @@ function registerAssemblyGuideOverlay(state, layout, groupId, assemblyId, groupF
     return guide;
 }
 /**
- * @param {import("./SandboxHostPort.js").SandboxHostPort} host
+ * @param {object} state
  * @param {number} centerX
  * @param {number} centerY
  * @param {import("./assemblies/assemblyManifest.js").ResolvedAssemblyManifest} resolved
  * @param {{ faction?: string }} [options]
  */
-export function spawnResolvedAssembly(host, centerX, centerY, resolved, { faction } = {}) {
-    const state = host.getSimState();
+export function spawnResolvedAssembly(state, centerX, centerY, resolved, { faction } = {}) {
     const layout = buildAssemblyLayout(centerX, centerY, resolved);
     clearSandboxWallsInBounds(state, buildAssemblyClearBounds(layout, resolved));
     const groupId = `${resolved.id}:${Date.now()}`;
@@ -121,7 +120,7 @@ export function spawnResolvedAssembly(host, centerX, centerY, resolved, { factio
     /** @type {Map<string, number>} */
     let propIdByManifestId = new Map();
     if (resolved.worldProps.length) {
-        const spawned = spawnAssemblyWorldProps(host, layout, resolved, { faction, groupId, rackId, groupField });
+        const spawned = spawnAssemblyWorldProps(state, layout, resolved, { faction, groupId, rackId, groupField });
         defaultPropId = spawned.defaultPropId;
         propIdByManifestId = spawned.propIdByManifestId;
     }
@@ -131,15 +130,15 @@ export function spawnResolvedAssembly(host, centerX, centerY, resolved, { factio
     return { id: groupId, assemblyId: resolved.id, defaultPropId, centerX, centerY };
 }
 /**
- * @param {import("./SandboxHostPort.js").SandboxHostPort} host
+ * @param {object} state
  * @param {number} centerX
  * @param {number} centerY
  * @param {string} assemblyId
  * @param {{ faction?: string }} [options]
  */
-export function spawnAssembly(host, centerX, centerY, assemblyId, options = {}) {
+export function spawnAssembly(state, centerX, centerY, assemblyId, options = {}) {
     const resolved = getResolvedAssembly(assemblyId);
-    return spawnResolvedAssembly(host, centerX, centerY, resolved, options);
+    return spawnResolvedAssembly(state, centerX, centerY, resolved, options);
 }
 /** @param {object} state @param {string} groupId @param {string} groupField */
 export function deleteAssemblyInstance(state, groupId, groupField) {

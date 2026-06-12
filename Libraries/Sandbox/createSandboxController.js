@@ -12,32 +12,34 @@ import { drawSandboxWeaponBars } from "./drawWorldPropWeaponBars.js";
 import { resolveSandboxPathVisual, setSandboxPathVisual } from "./sandboxPathVisual.js";
 import { isSandboxCameraTarget, setSandboxCameraTarget } from "./sandboxCameraTarget.js";
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
-/** @typedef {import("./SandboxHostPort.js").SandboxHostPort} SandboxHostPort */
 /**
  * @typedef {object} SandboxBehavior
  * @property {string} id
  * @property {(prop: object | null, asset: object) => boolean} [supports]
- * @property {(world: { x: number, y: number }, e: PointerEvent, host: SandboxHostPort) => boolean} [tryCanvasInput]
- * @property {(prop: object, world: { x: number, y: number }, e: PointerEvent, host: SandboxHostPort) => boolean} onPointerDown
- * @property {(prop: object, world: { x: number, y: number }, e: PointerEvent, host: SandboxHostPort) => void} onPointerMove
- * @property {(prop: object, e: PointerEvent, host: SandboxHostPort) => void} onPointerUp
- * @property {(prop: object, dt: number, host: SandboxHostPort) => void} [tick]
- * @property {(dt: number, host: SandboxHostPort) => void} [tickWorld]
- * @property {(ctx: CanvasRenderingContext2D, prop: object, host: SandboxHostPort) => void} [drawOverlay]
- * @property {(ctx: CanvasRenderingContext2D, host: SandboxHostPort) => void} [drawWorldOverlay]
- * @property {(prop: object, host: SandboxHostPort) => import("../../Render/map/drawActivePathOverlay.js").ActivePathOverlay | null} [getPathOverlay]
+ * @property {(world: { x: number, y: number }, e: PointerEvent) => boolean} [tryCanvasInput]
+ * @property {(prop: object, world: { x: number, y: number }, e: PointerEvent) => boolean} onPointerDown
+ * @property {(prop: object, world: { x: number, y: number }, e: PointerEvent) => void} onPointerMove
+ * @property {(prop: object, e: PointerEvent) => void} onPointerUp
+ * @property {(prop: object, dt: number) => void} [tick]
+ * @property {(dt: number) => void} [tickWorld]
+ * @property {(ctx: CanvasRenderingContext2D, prop: object) => void} [drawOverlay]
+ * @property {(ctx: CanvasRenderingContext2D) => void} [drawWorldOverlay]
+ * @property {(prop: object) => import("../../Render/map/drawActivePathOverlay.js").ActivePathOverlay | null} [getPathOverlay]
  * @property {() => void} [reset]
  */
 /**
- * @param {SandboxHostPort} host
+ * @param {object} state
  * @param {{
+ *   requestRedraw: () => void,
+ *   getCanvas: () => HTMLCanvasElement,
+ *   clientToWorld: (clientX: number, clientY: number) => { x: number, y: number },
  *   defaultSpawnPropId: string,
  *   behaviors: SandboxBehavior[],
  *   defaultBehaviorId?: string,
  * }} options
  */
-export function createSandboxController(host, { defaultSpawnPropId, behaviors, defaultBehaviorId }) {
-    const session = createSandboxSession(host, { defaultSpawnPropId });
+export function createSandboxController(state, { requestRedraw, getCanvas, clientToWorld, defaultSpawnPropId, behaviors, defaultBehaviorId }) {
+    const session = createSandboxSession(state, { requestRedraw, defaultSpawnPropId });
     const behaviorById = new Map(behaviors.map((behavior) => [behavior.id, behavior]));
     let spawnBehaviorId = defaultBehaviorId ?? behaviors[0]?.id ?? "";
     /** @type {SandboxBehavior | null} */
@@ -47,8 +49,7 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
     let padWireMode = false;
     /** @type {{ x: number, y: number } | null} */
     let padWireCursor = null;
-    const sim = () => host.getSimState();
-    const meta = () => getSandboxEntityMeta(sim());
+    const entityMeta = () => getSandboxEntityMeta(state);
     const spawnAsset = () => {
         const spawnId = session.getSpawnPropId();
         if (isSandboxSpawnPadId(spawnId) || spawnId.startsWith(SANDBOX_SPAWN_ASSEMBLY_PREFIX)) return null;
@@ -59,27 +60,27 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
         if (allowed.length === 0) return id;
         return allowed.includes(id) ? id : allowed[0];
     };
-    const listSpawnBehaviors = () => resolveSandboxBehaviors(spawnAsset(), behaviors, sim(), null);
+    const listSpawnBehaviors = () => resolveSandboxBehaviors(spawnAsset(), behaviors, state, null);
     const clampSpawnBehavior = () => {
         spawnBehaviorId = clampBehaviorId(spawnBehaviorId, listSpawnBehaviors());
     };
     /** @param {object | null | undefined} prop */
     const listSelectedBehaviors = (prop = session.getSelectedProp()) => {
         if (!prop) return [];
-        return resolveSandboxBehaviors(getPropAsset(prop.type), behaviors, sim(), prop);
+        return resolveSandboxBehaviors(getPropAsset(prop.type), behaviors, state, prop);
     };
     /** @param {object} prop */
     const getPropBehaviorId = (prop) => {
         const allowed = listSelectedBehaviors(prop);
         if (allowed.length === 0) return spawnBehaviorId;
-        return clampBehaviorId(meta().getActiveBehaviorId(prop.id) ?? spawnBehaviorId, allowed);
+        return clampBehaviorId(entityMeta().getActiveBehaviorId(prop.id) ?? spawnBehaviorId, allowed);
     };
     /** @param {object | null | undefined} prop */
     const stampPropBehavior = (prop) => {
         if (!prop) return;
         const allowed = listSelectedBehaviors(prop);
         if (allowed.length === 0) return;
-        meta().setActiveBehaviorId(prop.id, clampBehaviorId(spawnBehaviorId, allowed));
+        entityMeta().setActiveBehaviorId(prop.id, clampBehaviorId(spawnBehaviorId, allowed));
     };
     clampSpawnBehavior();
     const resolveBehavior = () => {
@@ -96,14 +97,14 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
     };
     /** @param {{ x: number, y: number }} world @param {PointerEvent} e */
     const tryCanvasInput = (world, e) => {
-        for (let i = 0; i < behaviors.length; i++) if (behaviors[i].tryCanvasInput?.(world, e, host)) return true;
+        for (let i = 0; i < behaviors.length; i++) if (behaviors[i].tryCanvasInput?.(world, e)) return true;
         return false;
     };
     /** @param {PointerEvent} e */
     const onPointerDown = (e) => {
-        const canvas = host.getCanvas();
-        const world = host.clientToWorld(e.clientX, e.clientY);
-        const registry = host.getSimState().entityRegistry;
+        const canvas = getCanvas();
+        const world = clientToWorld(e.clientX, e.clientY);
+        const registry = state.entityRegistry;
         if (e.button === 2) {
             const hit = findWorldPropAtInView(registry, combatSpatial, world.x, world.y);
             if (!hit) return;
@@ -115,18 +116,18 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
         if (e.button !== 0) return;
         if (padWireMode) {
             const buttonPadId = session.getSelectedPadId();
-            const buttonPad = buttonPadId ? host.getSimState().entityRegistry.get(buttonPadId) : null;
+            const buttonPad = buttonPadId ? state.entityRegistry.get(buttonPadId) : null;
             if (buttonPad?.preset === "button") {
-                const target = findButtonLinkTarget(host.getSimState(), world.x, world.y, buttonPad.id);
-                if (target) addButtonPadLink(host.getSimState(), buttonPad.id, target);
+                const target = findButtonLinkTarget(state, world.x, world.y, buttonPad.id);
+                if (target) addButtonPadLink(state, buttonPad.id, target);
                 session.sync();
                 e.preventDefault();
                 e.stopPropagation();
                 return;
             }
         }
-        const pad = hitTestPad(host.getSimState(), world.x, world.y);
-        if (pad && handlePadPointerDown(host.getSimState(), pad, world)) {
+        const pad = hitTestPad(state, world.x, world.y);
+        if (pad && handlePadPointerDown(state, pad, world)) {
             e.preventDefault();
             e.stopPropagation();
             session.sync();
@@ -140,13 +141,13 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
         session.pruneSelection();
         const hit = findWorldPropAtInView(registry, combatSpatial, world.x, world.y);
         if (hit) {
-            const allowed = resolveSandboxBehaviors(getPropAsset(hit.type), behaviors, sim(), hit);
+            const allowed = resolveSandboxBehaviors(getPropAsset(hit.type), behaviors, state, hit);
             if (allowed.length > 0) session.setSelectedPropId(hit.id);
         }
         const prop = session.getSelectedProp();
         const behavior = resolveBehavior();
         if (!prop || !behavior) return;
-        if (!behavior.onPointerDown(prop, world, e, host)) return;
+        if (!behavior.onPointerDown(prop, world, e)) return;
         e.preventDefault();
         e.stopPropagation();
         interactionBehavior = behavior;
@@ -156,26 +157,26 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
     /** @param {PointerEvent} e */
     const onPointerMove = (e) => {
         if (padWireMode) {
-            padWireCursor = host.clientToWorld(e.clientX, e.clientY);
-            host.requestRedraw();
+            padWireCursor = clientToWorld(e.clientX, e.clientY);
+            requestRedraw();
         }
         if (!interactionBehavior) return;
         const prop = session.getSelectedProp();
         if (!prop) return;
-        const world = host.clientToWorld(e.clientX, e.clientY);
+        const world = clientToWorld(e.clientX, e.clientY);
         e.stopPropagation();
-        interactionBehavior.onPointerMove(prop, world, e, host);
+        interactionBehavior.onPointerMove(prop, world, e);
     };
     /** @param {PointerEvent} e */
     const onPointerUp = (e) => {
-        releaseButtonPointerHold(host.getSimState());
+        releaseButtonPointerHold(state);
         if (!interactionBehavior) return;
-        const canvas = host.getCanvas();
+        const canvas = getCanvas();
         const prop = session.getSelectedProp();
         if (prop) {
-            const world = host.clientToWorld(e.clientX, e.clientY);
-            interactionBehavior.onPointerMove(prop, world, e, host);
-            interactionBehavior.onPointerUp(prop, e, host);
+            const world = clientToWorld(e.clientX, e.clientY);
+            interactionBehavior.onPointerMove(prop, world, e);
+            interactionBehavior.onPointerUp(prop, e);
         }
         interactionBehavior = null;
         releasePointerCapture(canvas, e);
@@ -203,9 +204,9 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
             padWireCursor = null;
             session.setSelectedPropId(id);
             const prop = session.getSelectedProp();
-            if (prop && meta().getActiveBehaviorId(prop.id) == null) {
+            if (prop && entityMeta().getActiveBehaviorId(prop.id) == null) {
                 const allowed = listSelectedBehaviors(prop);
-                if (allowed.length > 0) meta().setActiveBehaviorId(prop.id, allowed[0]);
+                if (allowed.length > 0) entityMeta().setActiveBehaviorId(prop.id, allowed[0]);
             }
         },
         getSelectedPadId: () => session.getSelectedPadId(),
@@ -219,7 +220,7 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
         startPadWireLink: () => {
             if (session.getSelectedPad()?.preset !== "button") return;
             padWireMode = true;
-            padWireCursor = host.getCameraOrigin();
+            padWireCursor = { x: state.viewport.x, y: state.viewport.y };
             session.sync();
         },
         cancelPadWireLink: () => {
@@ -231,21 +232,21 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
         clearSelectedPadLinks: () => {
             const padId = session.getSelectedPadId();
             if (!padId) return;
-            clearButtonPadLinks(host.getSimState(), padId);
+            clearButtonPadLinks(state, padId);
             session.sync();
         },
         removeSelectedPadLink: (target) => {
             const padId = session.getSelectedPadId();
             if (!padId) return;
-            removeButtonPadLink(host.getSimState(), padId, target);
+            removeButtonPadLink(state, padId, target);
             session.sync();
         },
         listSelectedPadLinks: () => {
             const padId = session.getSelectedPadId();
             if (!padId) return [];
-            const pad = host.getSimState().entityRegistry.get(padId);
+            const pad = state.entityRegistry.get(padId);
             if (!pad) return [];
-            return listButtonPadLinkEndpoints(host.getSimState(), pad);
+            return listButtonPadLinkEndpoints(state, pad);
         },
         spawnAtCameraOrigin: () => {
             session.spawnAtCameraOrigin();
@@ -281,13 +282,13 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
         setSelectedBehaviorId: (id) => {
             const prop = session.getSelectedProp();
             if (!prop) return;
-            meta().setActiveBehaviorId(prop.id, clampBehaviorId(id, listSelectedBehaviors(prop)));
+            entityMeta().setActiveBehaviorId(prop.id, clampBehaviorId(id, listSelectedBehaviors(prop)));
             session.sync();
         },
         listSelectedBehaviors: () => listSelectedBehaviors(),
         register() {
             controller.destroy();
-            unbindPointers = bindCanvasPointers(host, { pointerdown: onPointerDown, pointermove: onPointerMove, pointerup: onPointerUp, pointercancel: onPointerUp });
+            unbindPointers = bindCanvasPointers(getCanvas(), { pointerdown: onPointerDown, pointermove: onPointerMove, pointerup: onPointerUp, pointercancel: onPointerUp });
         },
         destroy() {
             unbindPointers?.();
@@ -303,52 +304,51 @@ export function createSandboxController(host, { defaultSpawnPropId, behaviors, d
         },
         tick(dt) {
             session.pruneSelection();
-            for (let i = 0; i < behaviors.length; i++) behaviors[i].tickWorld?.(dt, host);
+            for (let i = 0; i < behaviors.length; i++) behaviors[i].tickWorld?.(dt);
             const prop = session.getSelectedProp();
             const behavior = resolveBehavior();
             if (!prop || !behavior?.tick) return;
-            behavior.tick(prop, dt, host);
+            behavior.tick(prop, dt);
         },
         /** @param {CanvasRenderingContext2D} ctx */
         drawPathOverlay(ctx) {
             const prop = session.getSelectedProp();
             const behavior = resolveBehavior();
             if (!prop) return;
-            const visual = resolveSandboxPathVisual(sim(), prop);
+            const visual = resolveSandboxPathVisual(state, prop);
             if (visual === "off" || !behavior?.getPathOverlay) return;
-            const overlay = behavior.getPathOverlay(prop, host);
+            const overlay = behavior.getPathOverlay(prop);
             if (!overlay) return;
-            drawActivePathOverlay(ctx, overlay, host.getSimState().viewport.zoom, visual);
+            drawActivePathOverlay(ctx, overlay, state.viewport.zoom, visual);
         },
-        /** Drag-launch aim preview — above world structure (walls/props/pit rims). */
         drawLaunchPreview(ctx) {
             const prop = session.getSelectedProp();
             const behavior = resolveBehavior();
-            behavior?.drawOverlay?.(ctx, prop, host);
+            behavior?.drawOverlay?.(ctx, prop);
         },
         drawBehaviorOverlays(ctx) {
-            drawSandboxPadWires(ctx, host.getSimState(), { wireFromPadId: padWireMode ? session.getSelectedPadId() : null, wireCursor: padWireMode ? padWireCursor : null });
-            for (let i = 0; i < behaviors.length; i++) behaviors[i].drawWorldOverlay?.(ctx, host);
+            drawSandboxPadWires(ctx, state, { wireFromPadId: padWireMode ? session.getSelectedPadId() : null, wireCursor: padWireMode ? padWireCursor : null });
+            for (let i = 0; i < behaviors.length; i++) behaviors[i].drawWorldOverlay?.(ctx);
         },
         drawOverlay(ctx) {
-            drawSandboxWeaponBars(ctx, host);
-            drawSandboxLaserSights(ctx, host);
+            drawSandboxWeaponBars(ctx, state);
+            drawSandboxLaserSights(ctx, state);
         },
         getPathVisual(prop = session.getSelectedProp()) {
-            return prop ? resolveSandboxPathVisual(sim(), prop) : "off";
+            return prop ? resolveSandboxPathVisual(state, prop) : "off";
         },
         setPathVisual(visual, prop = session.getSelectedProp()) {
             if (!prop) return;
-            setSandboxPathVisual(sim(), prop, visual);
+            setSandboxPathVisual(state, prop, visual);
             session.sync();
         },
         isCameraTarget(prop = session.getSelectedProp()) {
-            return prop ? isSandboxCameraTarget(sim(), prop) : false;
+            return prop ? isSandboxCameraTarget(state, prop) : false;
         },
         setCameraTarget(enabled, prop = session.getSelectedProp()) {
             if (!prop) return;
-            setSandboxCameraTarget(sim(), prop, enabled);
-            if (enabled) sim().viewport.snapTo(prop.x, prop.y);
+            setSandboxCameraTarget(state, prop, enabled);
+            if (enabled) state.viewport.snapTo(prop.x, prop.y);
             session.sync();
         },
     };

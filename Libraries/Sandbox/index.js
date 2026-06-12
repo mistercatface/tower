@@ -1,5 +1,5 @@
 /**
- * Sandbox toy orchestration: host port, input session, behavior plugins, equip UI.
+ * Sandbox toy orchestration: input session, behavior plugins, equip UI.
  *
  * Weapon semantics (ammo, charge cadence, projectile spawn, gun state) live in
  * `Libraries/Combat/` (`worldPropManualFire`, `worldPropWeaponState`, `spawnProjectiles`).

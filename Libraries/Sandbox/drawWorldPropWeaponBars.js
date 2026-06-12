@@ -33,9 +33,7 @@ export function drawWorldPropWeaponBars(ctx, prop, caches) {
 /**
  * Charge/reload bars for every armed sandbox prop (auto-combat + manual fire).
  * @param {CanvasRenderingContext2D} ctx
- * @param {import("./SandboxHostPort.js").SandboxHostPort} host
- * @param {import("../../Libraries/Canvas/SpriteCache.js").SpriteCache | null} [caches]
- */
-export function drawSandboxWeaponBars(ctx, host, caches = null) {
-    forEachArmedSandboxWorldProp(host, (prop) => drawWorldPropWeaponBars(ctx, prop, caches));
+/** @param {CanvasRenderingContext2D} ctx @param {object} state @param {import("../../Libraries/Canvas/SpriteCache.js").SpriteCache | null} [caches] */
+export function drawSandboxWeaponBars(ctx, state, caches = null) {
+    forEachArmedSandboxWorldProp(state, (prop) => drawWorldPropWeaponBars(ctx, prop, caches));
 }

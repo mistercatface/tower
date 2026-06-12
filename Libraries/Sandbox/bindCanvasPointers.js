@@ -1,11 +1,9 @@
-/** @typedef {import("./SandboxHostPort.js").SandboxHostPort} SandboxHostPort */
 /**
- * @param {SandboxHostPort} host
+ * @param {HTMLCanvasElement} canvas
  * @param {Record<string, (e: PointerEvent) => void>} handlers
  * @returns {() => void}
  */
-export function bindCanvasPointers(host, handlers) {
-    const canvas = host.getCanvas();
+export function bindCanvasPointers(canvas, handlers) {
     /** @type {(() => void)[]} */
     const unbind = [];
     for (const [type, handler] of Object.entries(handlers)) {

@@ -1,4 +1,5 @@
 import { WorldProp } from "../../Entities/WorldProp.js";
+import { addWorldPropToState } from "../../GameState/EntityRegistry.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { resolvePlacement } from "./assemblies/assemblyPlacement.js";
@@ -6,13 +7,12 @@ import { stampAssemblyEntityMember } from "./assemblies/assemblyLink.js";
 import { applyFlipperAssemblyScale } from "./behaviors/flipperBehavior.js";
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 /**
- * @param {import("./SandboxHostPort.js").SandboxHostPort} host
+ * @param {object} state
  * @param {ReturnType<typeof import("./assemblyLayout.js").buildAssemblyLayout>} layout
  * @param {import("./assemblies/assemblyManifest.js").ResolvedAssemblyManifest} resolved
  * @param {{ faction?: string, groupId: string, rackId: string, groupField: string }} ctx
  */
-export function spawnAssemblyWorldProps(host, layout, resolved, ctx) {
-    const state = host.getSimState();
+export function spawnAssemblyWorldProps(state, layout, resolved, ctx) {
     /** @type {Map<string, number>} */
     const propIdByManifestId = new Map();
     /** @type {string | null} */
@@ -30,7 +30,7 @@ export function spawnAssemblyWorldProps(host, layout, resolved, ctx) {
         const overrides = resolved.behaviors[entry.prop];
         if (overrides) getSandboxEntityMeta(state).setBehaviorOverrides(prop.id, overrides);
         wakePushableBody(prop);
-        host.addProp(prop);
+        addWorldPropToState(state, prop);
         if (entry.id) propIdByManifestId.set(entry.id, prop.id);
         if (entry.id === "cue" || resolved.behaviors[entry.prop]?.cueStrike) defaultPropId = prop.id;
     }

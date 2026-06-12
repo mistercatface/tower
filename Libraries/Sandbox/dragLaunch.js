@@ -101,10 +101,9 @@ export function releaseDragLaunch(aim, config) {
 }
 /**
  * @param {object} prop
- * @param {import("./SandboxHostPort.js").SandboxHostPort | null | undefined} host
+ * @param {object | null | undefined} state
  */
-export function buildDragLaunchAimLineContext(prop, host) {
-    const state = host?.getSimState?.();
+export function buildDragLaunchAimLineContext(prop, state) {
     if (!state || !prop) return null;
     const radius = prop.radius;
     const circleTargets = [];
@@ -150,11 +149,11 @@ export function applyDragLaunchVelocity(body, nx, ny, power) {
  *
  * @param {{
  *   id: string,
- *   getConfig: (prop: object, host?: import("./SandboxHostPort.js").SandboxHostPort) => DragLaunchConfig,
- *   canStart?: (prop: object, world: { x: number, y: number }, host: import("./SandboxHostPort.js").SandboxHostPort) => boolean,
- *   onLaunch?: (prop: object, shot: { anchorX: number, anchorY: number, nx: number, ny: number, power: number }, host: import("./SandboxHostPort.js").SandboxHostPort) => void,
+ *   getConfig?: (prop: object) => DragLaunchConfig,
+ *   canStart?: (prop: object, world: { x: number, y: number }) => boolean,
+ *   onLaunch?: (prop: object, shot: { anchorX: number, anchorY: number, nx: number, ny: number, power: number }) => void,
  *   onAim?: (prop: object, aim: DragLaunchAim) => void,
- *   buildAimLineContext?: (prop: object, host: import("./SandboxHostPort.js").SandboxHostPort) => ReturnType<typeof buildDragLaunchAimLineContext>,
+ *   buildAimLineContext?: (prop: object) => ReturnType<typeof buildDragLaunchAimLineContext>,
  *   resolveAimLine?: typeof getDragLaunchAimLine,
  * }} spec
  * @returns {import("./createSandboxController.js").SandboxBehavior}
@@ -166,30 +165,31 @@ export function createDragLaunchInteraction(spec) {
     const resolveLine = spec.resolveAimLine ?? getDragLaunchAimLine;
     return {
         id: spec.id,
-        onPointerDown(prop, world, _e, host) {
-            if (spec.canStart && !spec.canStart(prop, world, host)) return false;
+        onPointerDown(prop, world, _e) {
+            if (spec.canStart && !spec.canStart(prop, world)) return false;
             wakePushableBody(prop);
             aim = createDragLaunchAim(prop.x, prop.y, world.x, world.y);
-            updateDragLaunchAim(aim, world.x, world.y, spec.getConfig(prop, host));
+            updateDragLaunchAim(aim, world.x, world.y, spec.getConfig?.(prop) ?? dragLaunchConfigForProp(prop));
             spec.onAim?.(prop, aim);
             return true;
         },
-        onPointerMove(prop, world, _e, host) {
+        onPointerMove(prop, world, _e) {
             if (!aim?.active) return;
-            updateDragLaunchAim(aim, world.x, world.y, spec.getConfig(prop, host));
+            updateDragLaunchAim(aim, world.x, world.y, spec.getConfig?.(prop) ?? dragLaunchConfigForProp(prop));
             spec.onAim?.(prop, aim);
         },
-        onPointerUp(prop, _e, host) {
+        onPointerUp(prop, _e) {
             if (!aim?.active) return;
-            const shot = releaseDragLaunch(aim, spec.getConfig(prop, host));
+            const shot = releaseDragLaunch(aim, spec.getConfig?.(prop) ?? dragLaunchConfigForProp(prop));
             aim = null;
             if (!shot) return;
-            if (spec.onLaunch) spec.onLaunch(prop, shot, host);
+            if (spec.onLaunch) spec.onLaunch(prop, shot);
             else applyDragLaunchVelocity(prop, shot.nx, shot.ny, shot.power);
         },
-        drawOverlay(ctx, prop, host) {
+        drawOverlay(ctx, prop) {
             if (!aim?.active) return;
-            drawDragLaunchPreview(ctx, aim, spec.getConfig(prop, host), buildCtx(prop, host), resolveLine);
+            const config = spec.getConfig?.(prop) ?? dragLaunchConfigForProp(prop);
+            drawDragLaunchPreview(ctx, aim, config, buildCtx(prop), resolveLine);
         },
         reset() {
             aim = null;
@@ -206,14 +206,14 @@ function dragLaunchConfigForProp(prop) {
 export function createDragLaunchBehavior() {
     return createDragLaunchInteraction({ id: DRAG_LAUNCH_BEHAVIOR_ID, getConfig: dragLaunchConfigForProp });
 }
-/** @returns {import("./createSandboxController.js").SandboxBehavior} */
-export function createDragLaunchWaitBehavior() {
+/** @param {object} state @returns {import("../createSandboxController.js").SandboxBehavior} */
+export function createDragLaunchWaitBehavior(state) {
     return createDragLaunchInteraction({
         id: DRAG_LAUNCH_WAIT_BEHAVIOR_ID,
         getConfig: dragLaunchConfigForProp,
-        canStart(prop, _world, host) {
+        canStart(prop) {
             if (!isEntityAtRest(prop)) return false;
-            return evaluateInputGates(DRAG_LAUNCH_WAIT_BEHAVIOR_ID, prop, getPropAsset(prop?.type), host).allowed;
+            return evaluateInputGates(DRAG_LAUNCH_WAIT_BEHAVIOR_ID, prop, getPropAsset(prop?.type), state).allowed;
         },
     });
 }

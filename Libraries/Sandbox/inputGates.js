@@ -74,16 +74,15 @@ export function evaluateInputGateRule(rule, prop, state, registry) {
  * @param {string} behaviorId
  * @param {object} prop
  * @param {object | null | undefined} asset
- * @param {import("./SandboxHostPort.js").SandboxHostPort} host
+ * @param {object} state
  */
-export function evaluateInputGates(behaviorId, prop, asset, host) {
-    const simState = host.getSimState();
-    const rules = resolveWorldPropInputGateRules(simState, prop, asset, behaviorId);
+export function evaluateInputGates(behaviorId, prop, asset, state) {
+    const rules = resolveWorldPropInputGateRules(state, prop, asset, behaviorId);
     if (rules.length === 0) return { allowed: true };
-    const registry = simState.entityRegistry;
+    const registry = state.entityRegistry;
     for (let i = 0; i < rules.length; i++) {
         const rule = rules[i];
-        if (!evaluateInputGateRule(rule, prop, simState, registry)) return { allowed: false, failedRule: rule };
+        if (!evaluateInputGateRule(rule, prop, state, registry)) return { allowed: false, failedRule: rule };
     }
     return { allowed: true };
 }

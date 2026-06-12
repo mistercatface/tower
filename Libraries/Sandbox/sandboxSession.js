@@ -1,12 +1,12 @@
 import { WorldProp } from "../../Entities/WorldProp.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { SANDBOX_DEFAULT_FACTION, resolveSandboxFaction } from "../Combat/sandboxTargeting.js";
+import { addWorldPropToState, removeWorldPropFromState, clearWorldPropsInState } from "../../GameState/EntityRegistry.js";
 import { spawnAssembly, deleteAssemblyInstance, clearAssemblyInstances } from "./spawnAssembly.js";
 import { getResolvedAssembly, listAssemblyManifests } from "./assemblies/assemblyRegistry.js";
 import { clearSandboxPads, deleteSandboxPad, getSandboxPadEditorState, isSandboxSpawnPadId, listSandboxPads, parseSandboxPadPreset, patchSandboxPad, spawnSandboxPad } from "./sandboxPads.js";
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 import { PAD_PRESETS } from "./padPresets.js";
-/** @typedef {import("./SandboxHostPort.js").SandboxHostPort} SandboxHostPort */
 export { SANDBOX_SPAWN_PAD_PREFIX, isSandboxSpawnPadId, parseSandboxPadPreset, sandboxSpawnPadId } from "./sandboxPads.js";
 export const SANDBOX_SPAWN_ASSEMBLY_PREFIX = "assembly:";
 /** @param {string} assemblyId */
@@ -18,10 +18,10 @@ export function isSandboxSpawnPropId(spawnId) {
     return !isSandboxSpawnPadId(spawnId) && !spawnId.startsWith(SANDBOX_SPAWN_ASSEMBLY_PREFIX);
 }
 /**
- * @param {SandboxHostPort} host
- * @param {{ defaultSpawnPropId: string }} options
+ * @param {object} state
+ * @param {{ requestRedraw: () => void, defaultSpawnPropId: string }} options
  */
-export function createSandboxSession(host, { defaultSpawnPropId }) {
+export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId }) {
     let spawnPropId = defaultSpawnPropId;
     let spawnFaction = SANDBOX_DEFAULT_FACTION;
     let spawnPullWidth = PAD_PRESETS.pull.halfWidth * 2;
@@ -33,10 +33,10 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
     /** @type {(() => void) | null} */
     let uiSync = null;
     const sync = () => {
-        host.requestRedraw();
+        requestRedraw();
         uiSync?.();
     };
-    const registry = () => host.getSimState().entityRegistry;
+    const registry = () => state.entityRegistry;
     const pruneSelection = () => {
         if (selectedPropId == null) return;
         if (!registry().getLive(selectedPropId)) {
@@ -48,7 +48,7 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
         if (!isSandboxSpawnPropId(spawnPropId) || !getPropAsset(spawnPropId)) return null;
         const prop = new WorldProp(worldX, worldY, spawnPropId, 0);
         prop.faction = spawnFaction;
-        host.addProp(prop);
+        addWorldPropToState(state, prop);
         selectedPropId = prop.id;
         sync();
         return prop;
@@ -81,8 +81,8 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
         },
         getSelectedPad: () => {
             if (selectedPadId == null) return null;
-            const pad = host.getSimState().entityRegistry.get(selectedPadId);
-            if (!pad || getSandboxEntityMeta(host.getSimState()).getAssemblyGroupId(pad.id)) {
+            const pad = state.entityRegistry.get(selectedPadId);
+            if (!pad || getSandboxEntityMeta(state).getAssemblyGroupId(pad.id)) {
                 selectedPadId = null;
                 return null;
             }
@@ -90,7 +90,7 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
         },
         patchSelectedPad: (patch) => {
             if (selectedPadId == null) return false;
-            const ok = patchSandboxPad(host.getSimState(), selectedPadId, patch);
+            const ok = patchSandboxPad(state, selectedPadId, patch);
             if (ok) sync();
             return ok;
         },
@@ -101,7 +101,7 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
         pruneSelection,
         spawnAt,
         spawnAtCameraOrigin() {
-            const origin = host.getCameraOrigin();
+            const origin = { x: state.viewport.x, y: state.viewport.y };
             if (isSandboxSpawnPadId(spawnPropId)) {
                 const preset = parseSandboxPadPreset(spawnPropId);
                 /** @type {{ halfWidth?: number, halfHeight?: number }} */
@@ -110,7 +110,7 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
                     options.halfWidth = spawnPullWidth / 2;
                     options.halfHeight = spawnPullHeight / 2;
                 }
-                const pad = spawnSandboxPad(host, preset, origin.x, origin.y, options);
+                const pad = spawnSandboxPad(state, preset, origin.x, origin.y, options);
                 selectedPadId = pad.id;
                 selectedPropId = null;
                 sync();
@@ -120,18 +120,17 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
             return spawnAt(origin.x, origin.y);
         },
         spawnAssemblyAt(centerX, centerY, assemblyId) {
-            const instance = spawnAssembly(host, centerX, centerY, assemblyId, { faction: spawnFaction });
+            const instance = spawnAssembly(state, centerX, centerY, assemblyId, { faction: spawnFaction });
             selectedPropId = instance.defaultPropId;
             sync();
             return instance;
         },
         spawnAssemblyAtCameraOrigin(assemblyId) {
-            const origin = host.getCameraOrigin();
+            const origin = { x: state.viewport.x, y: state.viewport.y };
             return this.spawnAssemblyAt(origin.x, origin.y, assemblyId);
         },
         listAssemblyManifests: () => listAssemblyManifests(),
         deleteAssemblyById(assemblyId) {
-            const state = host.getSimState();
             const instance = state.sandbox.assemblyInstances.find((entry) => entry.id === assemblyId);
             if (!instance) return;
             deleteAssemblyInstance(state, assemblyId, getResolvedAssembly(instance.assemblyId).groupField);
@@ -139,18 +138,17 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
             sync();
         },
         listAssemblies() {
-            const state = host.getSimState();
             return state.sandbox.assemblyInstances.map((entry) => ({ id: entry.id, label: getResolvedAssembly(entry.assemblyId).label, defaultPropId: entry.defaultPropId }));
         },
         deleteSandboxPadById(id) {
-            deleteSandboxPad(host.getSimState(), id);
+            deleteSandboxPad(state, id);
             if (selectedPadId === id) selectedPadId = null;
             sync();
         },
-        listSandboxPads: () => listSandboxPads(host.getSimState()),
+        listSandboxPads: () => listSandboxPads(state),
         deleteProp(prop) {
             if (!prop) return;
-            host.removeProp(prop);
+            removeWorldPropFromState(state, prop);
             if (selectedPropId === prop.id) {
                 selectedPropId = null;
                 registry().forEachOfKind("worldProp", (p) => {
@@ -167,7 +165,7 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
             /** @type {{ id: number, type: string, faction: string, label: string }[]} */
             const placed = [];
             registry().forEachOfKind("worldProp", (prop) => {
-                if (prop.isDead || getSandboxEntityMeta(host.getSimState()).hasAssemblyMembership(prop.id)) return;
+                if (prop.isDead || getSandboxEntityMeta(state).hasAssemblyMembership(prop.id)) return;
                 const typeLabel = (prop.type ?? "prop").replace(/_/g, " ");
                 const index = (counts.get(prop.type) ?? 0) + 1;
                 counts.set(prop.type, index);
@@ -176,9 +174,9 @@ export function createSandboxSession(host, { defaultSpawnPropId }) {
             return placed;
         },
         clear() {
-            host.clearProps();
-            clearAssemblyInstances(host.getSimState());
-            clearSandboxPads(host.getSimState());
+            clearWorldPropsInState(state);
+            clearAssemblyInstances(state);
+            clearSandboxPads(state);
             selectedPropId = null;
             selectedPadId = null;
             sync();

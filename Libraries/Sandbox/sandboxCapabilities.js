@@ -24,11 +24,12 @@ export function isSandboxEquippable(asset) {
     return asset?.sandbox?.equip === true;
 }
 /**
- * @param {import("./SandboxHostPort.js").SandboxHostPort} host
+ * @param {object} state
  * @param {(prop: object) => void} fn
  */
-export function forEachArmedSandboxWorldProp(host, fn) {
-    host.forEachWorldProp((prop) => {
+export function forEachArmedSandboxWorldProp(state, fn) {
+    state.entityRegistry.forEachOfKind("worldProp", (prop) => {
+        if (prop.isDead) return;
         if (!prop.weaponLoadout?.length) return;
         if (!isSandboxEquippable(getPropAsset(prop.type))) return;
         syncWorldPropWeaponState(prop);

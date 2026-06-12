@@ -1,8 +1,8 @@
 import { createRollToCursorHpaNav } from "../rollToCursorHpaNav.js";
 import { decelerateRoll, getRollToCursorConfig, steerRollToward } from "../rollToCursorMotion.js";
 export const ROLL_TO_CURSOR_HPA_BEHAVIOR_ID = "rollToCursorHpa";
-/** @returns {import("../createSandboxController.js").SandboxBehavior} */
-export function createRollToCursorHpaBehavior() {
+/** @param {object} state @returns {import("../createSandboxController.js").SandboxBehavior} */
+export function createRollToCursorHpaBehavior(state) {
     let targetWorld = null;
     let dragging = false;
     const hpaNav = createRollToCursorHpaNav();
@@ -26,7 +26,7 @@ export function createRollToCursorHpaBehavior() {
         onPointerUp() {
             dragging = false;
         },
-        tick(prop, dt, host) {
+        tick(prop, dt) {
             if (!targetWorld) return;
             const config = getRollToCursorConfig(prop, { stopRadius: 8 });
             const distToTarget = Math.hypot(targetWorld.x - prop.x, targetWorld.y - prop.y);
@@ -37,7 +37,7 @@ export function createRollToCursorHpaBehavior() {
                 if (speed < 0.5) clearTarget();
                 return;
             }
-            hpaNav.update(prop, targetWorld.x, targetWorld.y, host, dt * 1000);
+            hpaNav.update(prop, targetWorld.x, targetWorld.y, state, dt * 1000);
             const steering = hpaNav.getSteering(prop, targetWorld.x, targetWorld.y, {
                 pathWaypointArrival: Math.max(12, (prop.radius ?? 6) * 1.5),
                 arrivalDistance: config.stopRadius,
