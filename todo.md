@@ -32,3 +32,29 @@
 - [ ] **Drop redundant `gridCellToGlobalColRow` in `resolveStaticWallHeightAtCell`** — index static layers directly from local `(col, row)` when possible.
 - [ ] **Batch or cache `getStaticCellDamageAlphaAtGrid`** — per-wall call in draw loop; worth caching if many damaged cells are visible.
 
+# EntityRegistry — instance masterlist + bounds query cache
+
+**Goal:** one authoritative instance index over existing storage (`pickups`, `sandboxPads`, …). Arrays stay source of truth; registry holds `Map<id, { kind, ref }>`, central lookup, and the first real consumer — **cached bounds queries** — so sim/render stop linear-scanning full lists.
+
+**Not in scope:** UI/selection (sandbox editor hit-test, multi-select, link validation on delete). `EntityGrid` / `SpatialFrameCore` stay for physics broadphase; `PropCatalog` / `WallSpatialIndex` unchanged.
+
+## Step 1 — Instance masterlist
+
+- [ ] **`EntityRegistry`** on game state — `get(id)`, `getRef(id)`, `membershipGen` (bump on register/unregister and tag/kind edits).
+- [ ] **Lifecycle hooks** — register on spawn/add; unregister on remove, death cull, assembly purge (`tilelabSandbox`, `spawnerConfig`, `spawnAssembly`, `pushablePhysicsPass`, …).
+- [ ] **Sim id lookups** — pads, pad effects, button links use registry instead of `findPickupById` / `findLivePickup` scans.
+- [ ] **Pads** — same register/unregister pattern once pickups are solid.
+
+## Step 2 — Bounds query cache (first registry consumer)
+
+Generic **bounds + optional filters** — viewport is just a caller passing the visible rect. Demand-built, tick-scoped cache on top of current-tick `EntityGrid`.
+
+- [ ] **`queryView(criteria) → refs[]`** — `{ bounds, kinds?, tags? }`; build on miss, return cached array ref on hit.
+- [ ] **Validity key** — `(spatialGen, membershipGen, boundsKey, filterKey)`. `spatialGen` = `SpatialFrameCore.frameId` (positions change every tick). `membershipGen` = entity set/tags changed. Live sim: spatial entries expire each tick; coalesce duplicate asks within the same tick. Paused/static: cache can persist while gens don't advance.
+- [ ] **Derived narrow** — e.g. `kind: ball` + same bounds/gens filters a warm superset (`all pickups in bounds`) in memory instead of re-querying spatial.
+
+## Step 3 — Wire sim + render (non-UI)
+
+- [ ] **Renderer** — cull/draw via `queryView({ bounds: viewportRect, … })` instead of full `state.pickups` iteration.
+- [ ] **Sim scans** — `populateCombatFrame`, `pushablePhysicsPass`, `dragLaunch`, cue-strike targets: registry `get(id)` or `queryView` where arrays are scanned today.
+- [ ] **Camera follow** — `tickSandboxCameraFollow` resolves target by id via registry.
