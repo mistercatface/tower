@@ -25,6 +25,28 @@ export function resolveElevationAlpha(height, cameraHeight, strength = 1) {
     return (height / (cameraHeight - height)) * strength;
 }
 /**
+ * @param {{ x: number, y: number }} out
+ * @param {number} worldX
+ * @param {number} worldY
+ * @param {number} viewerX
+ * @param {number} viewerY
+ * @param {number} height
+ * @param {number} cameraHeight
+ * @param {number} [strength]
+ * @returns {typeof out}
+ */
+export function projectWorldPointInto(out, worldX, worldY, viewerX, viewerY, height, cameraHeight, strength = 1) {
+    const alpha = resolveElevationAlpha(height, cameraHeight, strength);
+    if (alpha <= 0) {
+        out.x = worldX;
+        out.y = worldY;
+    } else {
+        out.x = worldX + (worldX - viewerX) * alpha;
+        out.y = worldY + (worldY - viewerY) * alpha;
+    }
+    return out;
+}
+/**
  * Project a world point to its screen position at elevation height.
  * Shared by horizontal surfaces, wall roof caps, and iso props.
  *
@@ -38,9 +60,7 @@ export function resolveElevationAlpha(height, cameraHeight, strength = 1) {
  * @returns {{ x: number, y: number }}
  */
 export function projectWorldPointAtHeight(worldX, worldY, viewerX, viewerY, height, cameraHeight, strength = 1) {
-    const alpha = resolveElevationAlpha(height, cameraHeight, strength);
-    if (alpha <= 0) return { x: worldX, y: worldY };
-    return { x: worldX + (worldX - viewerX) * alpha, y: worldY + (worldY - viewerY) * alpha };
+    return projectWorldPointInto({ x: 0, y: 0 }, worldX, worldY, viewerX, viewerY, height, cameraHeight, strength);
 }
 /**
  * Project the four corners of a world-axis-aligned rectangle at elevation height.
@@ -55,13 +75,24 @@ export function projectWorldPointAtHeight(worldX, worldY, viewerX, viewerY, heig
  * @param {number} [strength]
  * @returns {[{ x: number, y: number }, { x: number, y: number }, { x: number, y: number }, { x: number, y: number }]}
  */
+/** @returns {[{ x: number, y: number }, { x: number, y: number }, { x: number, y: number }, { x: number, y: number }]} Allocates — prefer `projectWorldAabbCornersInto`. */
 export function projectWorldRectCorners(originX, originY, sizePx, height, viewerX, viewerY, cameraHeight, strength = 1) {
-    return [
-        projectWorldPointAtHeight(originX, originY, viewerX, viewerY, height, cameraHeight, strength),
-        projectWorldPointAtHeight(originX + sizePx, originY, viewerX, viewerY, height, cameraHeight, strength),
-        projectWorldPointAtHeight(originX + sizePx, originY + sizePx, viewerX, viewerY, height, cameraHeight, strength),
-        projectWorldPointAtHeight(originX, originY + sizePx, viewerX, viewerY, height, cameraHeight, strength),
+    const out = [
+        { x: 0, y: 0 },
+        { x: 0, y: 0 },
+        { x: 0, y: 0 },
+        { x: 0, y: 0 },
     ];
+    projectWorldAabbCornersInto(out, originX, originY, originX + sizePx, originY + sizePx, height, viewerX, viewerY, cameraHeight, strength);
+    return out;
+}
+/** @param {[{ x: number, y: number }, { x: number, y: number }, { x: number, y: number }, { x: number, y: number }]} out4 @param {number} [strength] */
+export function projectWorldAabbCornersInto(out4, minX, minY, maxX, maxY, height, viewerX, viewerY, cameraHeight, strength = 1) {
+    projectWorldPointInto(out4[0], minX, minY, viewerX, viewerY, height, cameraHeight, strength);
+    projectWorldPointInto(out4[1], maxX, minY, viewerX, viewerY, height, cameraHeight, strength);
+    projectWorldPointInto(out4[2], maxX, maxY, viewerX, viewerY, height, cameraHeight, strength);
+    projectWorldPointInto(out4[3], minX, maxY, viewerX, viewerY, height, cameraHeight, strength);
+    return out4;
 }
 export function projectVertical(objX, objY, viewerX, viewerY, height) {
     const dx = objX - viewerX;

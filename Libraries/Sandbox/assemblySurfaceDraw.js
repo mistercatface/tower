@@ -4,9 +4,15 @@ import { getSurfaceProfileProvider } from "../Procedural/SurfaceProfileProvider.
 import { animationFrameIndex } from "../WorldSurface/ProfileBakeResolver.js";
 import { bakeSlotForSourceFrame } from "../WorldSurface/AnimationFrameBake.js";
 import { drawBakedTexture } from "../WorldSurface/WorldSurfaceResolution.js";
-import { projectWorldPointAtHeight } from "../Spatial/iso/IsometricProjection.js";
+import { projectWorldAabbCornersInto } from "../Spatial/iso/IsometricProjection.js";
 import { drawImageQuad } from "../Canvas/AffineTexture.js";
 import { traceSegment } from "../Canvas/CanvasPath.js";
+const sAssemblyPatchCorners = [
+    { x: 0, y: 0 },
+    { x: 0, y: 0 },
+    { x: 0, y: 0 },
+    { x: 0, y: 0 },
+];
 /** @param {{ play: object, bounds: object, railHeight: number, profileId: string, id: string, surfaceAnimation?: boolean }} spec */
 export function createAssemblySurfaceZone({ play, bounds, railHeight, profileId, id, surfaceAnimation = false }) {
     return { id, kind: "assemblySurface", profileId, surfaceAnimation, play, bounds, railHeight, aabb: bounds, flipbook: null, bakeGeneration: 0 };
@@ -42,12 +48,7 @@ function drawAssemblyPatch(ctx, patch, frameIndex, settings, zLevel, viewerX, vi
         return;
     }
     ctx.save();
-    const corners = [
-        projectWorldPointAtHeight(minX, minY, viewerX, viewerY, zLevel, settings.cameraHeight),
-        projectWorldPointAtHeight(maxX, minY, viewerX, viewerY, zLevel, settings.cameraHeight),
-        projectWorldPointAtHeight(maxX, maxY, viewerX, viewerY, zLevel, settings.cameraHeight),
-        projectWorldPointAtHeight(minX, maxY, viewerX, viewerY, zLevel, settings.cameraHeight),
-    ];
+    const corners = projectWorldAabbCornersInto(sAssemblyPatchCorners, minX, minY, maxX, maxY, zLevel, viewerX, viewerY, settings.cameraHeight);
     const bleedPx = settings.wallTextureBleedPx ?? 1;
     ctx.imageSmoothingEnabled = false;
     drawImageQuad(ctx, canvas, 0, 0, canvas.width, canvas.height, corners[0], corners[1], corners[2], corners[3], { bleedPx });

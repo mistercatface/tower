@@ -2,7 +2,7 @@
  * World-aligned horizontal surface chunks (ground z=0, elevated roofs z>0).
  */
 import { resolveStructurePerspectiveStrength } from "../../Core/GamePerspective.js";
-import { resolveElevationAlpha } from "../Spatial/iso/IsometricProjection.js";
+import { projectWorldAabbCornersInto } from "../Spatial/iso/IsometricProjection.js";
 import { getSegmentFootprintCorners } from "../Spatial/geometry/WallGeometry.js";
 import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { forEachObstacleGridCellInAabb } from "../Spatial/grid/GridCoords.js";
@@ -18,28 +18,13 @@ const sHorizontalCorners = [
     { x: 0, y: 0 },
     { x: 0, y: 0 },
 ];
-/** @param {{ x: number, y: number }} out @param {number} worldX @param {number} worldY @param {number} viewerX @param {number} viewerY @param {number} zLevel @param {number} cameraHeight @param {number} strength */
-function projectHorizontalCornerInto(out, worldX, worldY, viewerX, viewerY, zLevel, cameraHeight, strength) {
-    const alpha = resolveElevationAlpha(zLevel, cameraHeight, strength);
-    if (alpha <= 0) {
-        out.x = worldX;
-        out.y = worldY;
-    } else {
-        out.x = worldX + (worldX - viewerX) * alpha;
-        out.y = worldY + (worldY - viewerY) * alpha;
-    }
-}
 /**
  * @param {[{ x: number, y: number }, { x: number, y: number }, { x: number, y: number }, { x: number, y: number }]} out4
  * @returns {typeof out4}
  */
 export function projectHorizontalSurfaceCornersInto(out4, originX, originY, sizePx, zLevel, viewerX, viewerY, cameraHeight, viewport = null) {
     const strength = resolveStructurePerspectiveStrength(viewport);
-    projectHorizontalCornerInto(out4[0], originX, originY, viewerX, viewerY, zLevel, cameraHeight, strength);
-    projectHorizontalCornerInto(out4[1], originX + sizePx, originY, viewerX, viewerY, zLevel, cameraHeight, strength);
-    projectHorizontalCornerInto(out4[2], originX + sizePx, originY + sizePx, viewerX, viewerY, zLevel, cameraHeight, strength);
-    projectHorizontalCornerInto(out4[3], originX, originY + sizePx, viewerX, viewerY, zLevel, cameraHeight, strength);
-    return out4;
+    return projectWorldAabbCornersInto(out4, originX, originY, originX + sizePx, originY + sizePx, zLevel, viewerX, viewerY, cameraHeight, strength);
 }
 /** @returns {typeof sHorizontalCorners} Reuses module scratch — consume immediately, do not store. */
 export function projectHorizontalSurfaceCorners(originX, originY, sizePx, zLevel, viewerX, viewerY, cameraHeight, viewport = null) {

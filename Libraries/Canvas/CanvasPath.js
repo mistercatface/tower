@@ -27,9 +27,13 @@ export function traceOpenPolyline(ctx, points) {
  * @param {{ x: number, y: number }[]} points
  */
 export function traceClosedPolygon(ctx, points) {
-    if (points.length < 3) return;
+    traceClosedPolygonCount(ctx, points, points.length);
+}
+/** @param {CanvasRenderingContext2D} ctx @param {{ x: number, y: number }[]} points @param {number} count */
+export function traceClosedPolygonCount(ctx, points, count) {
+    if (count < 3) return;
     ctx.moveTo(points[0].x, points[0].y);
-    for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+    for (let i = 1; i < count; i++) ctx.lineTo(points[i].x, points[i].y);
     ctx.closePath();
 }
 /** @param {CanvasRenderingContext2D} ctx @param {number} ox @param {number} oy @param {{ x: number, y: number }[]} points */

@@ -68,11 +68,7 @@ export function drawRadialBand(ctx, prop, px, py, options) {
         ctx.strokeStyle = stroke;
         ctx.lineWidth = lineWidth;
         ctx.beginPath();
-        ctx.moveTo(p0a.x, p0a.y);
-        ctx.lineTo(p0b.x, p0b.y);
-        ctx.lineTo(p1b.x, p1b.y);
-        ctx.lineTo(p1a.x, p1a.y);
-        ctx.closePath();
+        traceQuad(ctx, p0a, p0b, p1b, p1a);
         ctx.fill();
         ctx.stroke();
     }

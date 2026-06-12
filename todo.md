@@ -14,6 +14,43 @@ Living notes from the static-grid / render-path refactor. Not a release checklis
 - [x] **`drawProjectedWallFace`** — unified wall-face draw in `ProjectedWallDraw.js`; static grid + `RenderableWallFace` are thin callers.
 - [x] **`appendProjectedFace`** — split from `traceProjectedFace`; damage overlays use append-only inside `withClip`.
 - [x] **`projectHorizontalSurfaceCornersInto`** — scratch quad for roof chunk draw + static roof damage (no per-frame corner allocations on hot paths).
+- [x] **`projectWorldPointInto` / `projectWorldAabbCornersInto`** — single elevation projection primitive in `IsometricProjection.js`.
+- [x] **Prop mesh projection** — `projectPropVertexInto` + scratch verts in `drawPropMeshFace` (no `.map()` per face).
+- [x] **`traceClosedPolygonCount`** — prefix-length polygon trace for scratch vertex buffers.
+- [x] **Assembly elevated patches** — `projectWorldAabbCornersInto` instead of four allocating `projectWorldPointAtHeight` calls.
+
+---
+
+## Canvas / 3D projection audit (2025-06)
+
+Three projection layers exist — intentional, but easy to confuse:
+
+| Layer | Where | Used for |
+|-------|--------|----------|
+| **Elevation point/rect** | `IsometricProjection.js` — `projectWorldPointInto`, `projectWorldAabbCornersInto` | Roofs, walls, assembly patches, prop mesh verts |
+| **Vertical extrusion** | `projectVertical`, `extrudeBox`, `pointOnFrustum`, `traceVisibleArc` | `SolidDraw.js` boxes/cylinders/cones |
+| **Affine texture quads** | `drawImageQuad` + `drawTexturedQuadCells` | Wall atlases, sphere decals, inspect labels |
+
+### Still messy (todo)
+
+**3D props — high impact**
+
+- [ ] **`drawSphereTexturePatch`** — `projectSphereCell` still allocates 4 points × N cells per draw; needs scratch + `projectPropVertexInto` (pool balls hot path)
+- [ ] **`drawRadialSilhouetteBody`** (`SolidDraw.js`) — custom arc path; OK to keep, but could wrap `traceVisibleArc` sequence in a named helper
+- [ ] **`drawCullFace` / plank lines** — small raw `beginPath` blocks; low priority
+
+**ctx path — migrated vs raw**
+
+| Status | Files |
+|--------|--------|
+| Uses `CanvasPath` | walls, static grid, pits, pads (partial), `SolidDraw` (partial), damage overlays |
+| Raw `ctx.beginPath` still fine | `ProgressBar`, editor preview, label bake canvases (offscreen), `AffineTexture` internals |
+| Worth migrating | `drawActivePathOverlay.js` (10×), `dragLaunch.js` (7×), `labMapCaches.js` (4×), `sandboxPads.js` guides |
+
+**Dead / low-use**
+
+- `RenderableRoofCap.draw` — entity roof clip path; static roofs use chunk draw instead
+- `projectWorldPointAtHeight` / `projectPropVertex` — allocating wrappers; prefer `*Into` at hot sites
 
 ---
 
@@ -64,6 +101,8 @@ Not dead — assemblies and pull pads still spawn `Segment` for grid occupancy +
 
 ## Render / canvas dedup (optional)
 
+- [ ] **`drawSphereTexturePatch`** scratch projection (see audit above)
+- [ ] Migrate `drawActivePathOverlay.js`, `dragLaunch.js` to `CanvasPath` where paths repeat
 - [ ] More `CanvasPath` clip migrations if any stragglers remain
 
 ---

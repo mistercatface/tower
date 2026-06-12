@@ -4,6 +4,7 @@ export {
     traceAabbRect,
     traceCircle,
     traceClosedPolygon,
+    traceClosedPolygonCount,
     traceClosedPolygonTranslated,
     traceOpenPolyline,
     tracePolylineFrom,
