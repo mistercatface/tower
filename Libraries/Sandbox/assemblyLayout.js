@@ -1,5 +1,6 @@
 import { snapLayoutOrigin } from "../../Generator/GridLayout.js";
 import { Segment } from "../../Entities/Wall.js";
+import { padAabb } from "../Math/Aabb2D.js";
 import { resolvePlacement } from "./assemblies/assemblyPlacement.js";
 /** @typedef {import("./assemblies/assemblyManifest.js").ResolvedAssemblyManifest} ResolvedAssemblyManifest */
 /**
@@ -177,8 +178,7 @@ export function getAssemblyRailBandBounds(layout) {
 }
 /** @param {ReturnType<typeof buildAssemblyLayout>} layout @param {ResolvedAssemblyManifest} resolved */
 export function buildAssemblyClearBounds(layout, resolved) {
-    const pad = resolved.arena.clearPadding;
-    return { minX: layout.bounds.minX - pad, minY: layout.bounds.minY - pad, maxX: layout.bounds.maxX + pad, maxY: layout.bounds.maxY + pad };
+    return padAabb(layout.bounds, resolved.arena.clearPadding);
 }
 /** @param {ReturnType<typeof buildAssemblyLayout>} layout @param {ResolvedAssemblyManifest} resolved @param {{ collisionOnly?: boolean }} [options] */
 export function buildAssemblyWallSegments(layout, resolved, { collisionOnly = false } = {}) {

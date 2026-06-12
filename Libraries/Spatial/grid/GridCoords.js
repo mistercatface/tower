@@ -21,6 +21,11 @@ export function getCellBoundsCentered(col, row, centerX, centerY, offsetX, offse
 export function cellBoundsToWorldBounds(bounds, originX, originY, cellSize) {
     return { minX: originX + bounds.startCol * cellSize, maxX: originX + (bounds.endCol + 1) * cellSize, minY: originY + bounds.startRow * cellSize, maxY: originY + (bounds.endRow + 1) * cellSize };
 }
+export function worldBoundsFromCellOrigin(col, row, cols, rows, cellSize) {
+    const minX = col * cellSize;
+    const minY = row * cellSize;
+    return { minX, minY, maxX: minX + cols * cellSize, maxY: minY + rows * cellSize };
+}
 export function entityIntersectsCellBounds(x, y, radius, bounds) {
     return circleIntersectsAabb(x, y, radius, bounds);
 }

@@ -10,12 +10,8 @@ import { requestUiUpdate } from "../../Core/EventSystem.js";
 import { spawnAssemblyPickups } from "./assemblyPickupSpawn.js";
 import { spawnAssemblyPads } from "./assemblyPadSpawn.js";
 import { deleteSandboxPad } from "./sandboxPads.js";
-import { getWallCellBounds } from "../Spatial/grid/wallGridBake.js";
-/** @param {{ startCol: number, endCol: number, startRow: number, endRow: number } | null} a @param {{ startCol: number, endCol: number, startRow: number, endRow: number }} b */
-function mergeCellBounds(a, b) {
-    if (!a) return b;
-    return { startCol: Math.min(a.startCol, b.startCol), endCol: Math.max(a.endCol, b.endCol), startRow: Math.min(a.startRow, b.startRow), endRow: Math.max(a.endRow, b.endRow) };
-}
+import { getWallCellBounds, unionGridCellRect } from "../Spatial/grid/wallGridBake.js";
+import { pointInAabb } from "../Math/Aabb2D.js";
 /** @param {object} state @param {object} wall */
 function detachSandboxWall(state, wall) {
     const idx = state.walls.indexOf(wall);
@@ -29,7 +25,7 @@ function detachSandboxWall(state, wall) {
 /** @param {object} state @param {object[]} walls @param {{ notifyNavigation?: boolean }} [options] */
 export function removeSandboxWalls(state, walls, { notifyNavigation = true } = {}) {
     let damageBounds = null;
-    for (let i = 0; i < walls.length; i++) damageBounds = mergeCellBounds(damageBounds, detachSandboxWall(state, walls[i]));
+    for (let i = 0; i < walls.length; i++) damageBounds = unionGridCellRect(damageBounds, detachSandboxWall(state, walls[i]));
     if (damageBounds && notifyNavigation) state.navigation.onObstaclesChanged(damageBounds);
     if (walls.length) state.worldSurfaces.invalidateRoofs();
 }
@@ -47,7 +43,7 @@ export function addSandboxWalls(state, walls, { compileRender = true, notifyNavi
         state.walls.push(wall);
         state.wallSpatialIndex.insert(wall);
         grid.addWall(wall);
-        damageBounds = mergeCellBounds(
+        damageBounds = unionGridCellRect(
             damageBounds,
             getWallCellBounds(wall, (x, y) => grid.worldToGrid(x, y), grid.cols, grid.rows),
         );
@@ -65,14 +61,10 @@ export function clearSandboxWallsInBounds(state, bounds) {
     const toRemove = [];
     for (let i = 0; i < candidates.length; i++) {
         const wall = candidates[i];
-        if (wall.isDead || !wallCenterInsideBounds(wall, bounds)) continue;
+        if (wall.isDead || !pointInAabb(wall.x, wall.y, bounds)) continue;
         toRemove.push(wall);
     }
     if (toRemove.length) removeSandboxWalls(state, toRemove);
-}
-/** @param {{ minX: number, minY: number, maxX: number, maxY: number }} bounds */
-function wallCenterInsideBounds(wall, bounds) {
-    return wall.x >= bounds.minX && wall.x <= bounds.maxX && wall.y >= bounds.minY && wall.y <= bounds.maxY;
 }
 /** @param {object} state @param {ReturnType<typeof buildAssemblyLayout>} layout @param {import("./assemblies/assemblyManifest.js").ResolvedAssemblyManifest} resolved @param {string} groupId @param {string} groupField */
 function registerAssemblyPlayfieldSurface(state, layout, resolved, groupId, groupField) {

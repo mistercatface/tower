@@ -10,6 +10,11 @@ export function getWallCellBounds(wall, worldToGrid, cols, rows, padding = wall.
     const maxGrid = worldToGrid(wall.x + reach, wall.y + reach);
     return { startCol: Math.max(0, minGrid.col), endCol: Math.min(cols - 1, maxGrid.col), startRow: Math.max(0, minGrid.row), endRow: Math.min(rows - 1, maxGrid.row) };
 }
+/** @param {{ startCol: number, endCol: number, startRow: number, endRow: number } | null} a @param {{ startCol: number, endCol: number, startRow: number, endRow: number }} b */
+export function unionGridCellRect(a, b) {
+    if (!a) return b;
+    return { startCol: Math.min(a.startCol, b.startCol), endCol: Math.max(a.endCol, b.endCol), startRow: Math.min(a.startRow, b.startRow), endRow: Math.max(a.endRow, b.endRow) };
+}
 export function markWallOnGrid(wall, grid, cols, rows, { worldToGrid, cellCenter, cellSize, padding = wall.padding, onBlockedCell }) {
     if (wall.isDead) return;
     if (cellSize && isGridTileWall(wall, cellSize)) {

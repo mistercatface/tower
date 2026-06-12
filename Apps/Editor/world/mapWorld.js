@@ -3,6 +3,8 @@ import { gridSettings } from "../../../Config/Config.js";
 import { rebuildLabMapCaches } from "../../../Libraries/Render/map/labMapCaches.js";
 import { withSeededRandom } from "../../../Libraries/Random/index.js";
 import { fillRandomGrid, runCellularAutomata } from "../../../Libraries/CA/index.js";
+import { aabbContains, centeredAabb, padAabb, unionAabb } from "../../../Libraries/Math/Aabb2D.js";
+import { worldBoundsFromCellOrigin } from "../../../Libraries/Spatial/grid/GridCoords.js";
 import { computeBoundsFromWalls } from "../../../Libraries/Spatial/grid/wallGridBake.js";
 import { addSandboxWalls, clearSandboxWallsInBounds } from "../../../Libraries/Sandbox/spawnAssembly.js";
 export const PLAY_AREA_CELL_OPTIONS = [64, 128, 256, 512, 1024];
@@ -11,22 +13,14 @@ export function playAreaCellsToIndex(cells) {
     const index = PLAY_AREA_CELL_OPTIONS.indexOf(cells);
     return index >= 0 ? index : PLAY_AREA_CELL_OPTIONS.indexOf(256);
 }
-/** @param {{ playAreaCols: number, playAreaRows: number }} playConfig */
-function playAreaWorldSize(playConfig) {
-    const cellSize = gridSettings.cellSize;
-    return { width: playConfig.playAreaCols * cellSize, height: playConfig.playAreaRows * cellSize };
-}
 /** @param {import("../state.js").TileLabGameState["viewport"]} viewport @param {{ playAreaCols: number, playAreaRows: number }} playConfig */
 export function getPlayAreaPreviewBounds(viewport, playConfig) {
-    const { width, height } = playAreaWorldSize(playConfig);
-    return { minX: viewport.x - width / 2, minY: viewport.y - height / 2, maxX: viewport.x + width / 2, maxY: viewport.y + height / 2 };
+    const cellSize = gridSettings.cellSize;
+    return centeredAabb(viewport.x, viewport.y, playConfig.playAreaCols * cellSize, playConfig.playAreaRows * cellSize);
 }
 /** @param {import("../state.js").TileLabGameState["labCavernConfig"]} cavernConfig */
 export function getCavernBoundsPreview(cavernConfig) {
-    const cellSize = gridSettings.cellSize;
-    const minX = cavernConfig.boundsCol * cellSize;
-    const minY = cavernConfig.boundsRow * cellSize;
-    return { minX, minY, maxX: minX + cavernConfig.boundsCols * cellSize, maxY: minY + cavernConfig.boundsRows * cellSize };
+    return worldBoundsFromCellOrigin(cavernConfig.boundsCol, cavernConfig.boundsRow, cavernConfig.boundsCols, cavernConfig.boundsRows, gridSettings.cellSize);
 }
 /**
  * @param {import("../state.js").TileLabGameState["viewport"]} viewport
@@ -44,23 +38,19 @@ export function syncCavernBoundsFromPlay(viewport, playConfig, cavernConfig, { c
     cavernConfig.boundsCol = Math.round(minX / cellSize);
     cavernConfig.boundsRow = Math.round(minY / cellSize);
 }
-/** @param {{ minX: number, minY: number, maxX: number, maxY: number }} a @param {{ minX: number, minY: number, maxX: number, maxY: number }} b */
-function mergeWorldBounds(a, b) {
-    return { minX: Math.min(a.minX, b.minX), minY: Math.min(a.minY, b.minY), maxX: Math.max(a.maxX, b.maxX), maxY: Math.max(a.maxY, b.maxY) };
-}
 /** @param {import("../state.js").TileLabGameState} state */
 function ensureLabObstacleGridCoverage(state) {
     const cellSize = gridSettings.cellSize;
     let required = getPlayAreaPreviewBounds(state.viewport, state.labPlayConfig);
-    required = mergeWorldBounds(required, getCavernBoundsPreview(state.labCavernConfig));
+    required = unionAabb(required, getCavernBoundsPreview(state.labCavernConfig));
     if (state.walls.length) {
         const wallBounds = computeBoundsFromWalls(state.walls, cellSize);
-        required = mergeWorldBounds(required, { minX: wallBounds.minX, minY: wallBounds.minY, maxX: wallBounds.maxX, maxY: wallBounds.maxY });
+        required = unionAabb(required, { minX: wallBounds.minX, minY: wallBounds.minY, maxX: wallBounds.maxX, maxY: wallBounds.maxY });
     }
-    const pad = cellSize;
-    required = { minX: required.minX - pad, minY: required.minY - pad, maxX: required.maxX + pad, maxY: required.maxY + pad };
+    required = padAabb(required, cellSize);
     const grid = state.obstacleGrid;
-    if (grid.cols > 0 && grid.minX <= required.minX && grid.minY <= required.minY && grid.maxX >= required.maxX && grid.maxY >= required.maxY && grid.segmentGrid) return;
+    const gridBounds = { minX: grid.minX, minY: grid.minY, maxX: grid.maxX, maxY: grid.maxY };
+    if (grid.cols > 0 && aabbContains(gridBounds, required) && grid.segmentGrid) return;
     const width = required.maxX - required.minX;
     const height = required.maxY - required.minY;
     const centerX = (required.minX + required.maxX) / 2;
@@ -76,8 +66,7 @@ function generateCavernWalls(config) {
     const cellSize = gridSettings.cellSize;
     const cols = Math.max(1, Math.round(config.boundsCols));
     const rows = Math.max(1, Math.round(config.boundsRows));
-    const caMinX = config.boundsCol * cellSize;
-    const caMinY = config.boundsRow * cellSize;
+    const { minX: caMinX, minY: caMinY } = worldBoundsFromCellOrigin(config.boundsCol, config.boundsRow, cols, rows, cellSize);
     let grid = fillRandomGrid(cols, rows, config.fillChance);
     grid = runCellularAutomata(cols, rows, grid, { iterations: config.iterations, scratch: new Uint8Array(cols * rows) });
     const walls = [];

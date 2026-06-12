@@ -1,4 +1,5 @@
 import { applySquareCanvasResize } from "../../../Libraries/Canvas/index.js";
+import { centeredAabb } from "../../../Libraries/Math/Aabb2D.js";
 import { rebuildLabMapCaches } from "../../../Libraries/Render/map/labMapCaches.js";
 import { getCavernBoundsPreview, getPlayAreaPreviewBounds } from "../world/mapWorld.js";
 /** @typedef {import("../../../Libraries/Render/map/labMapCaches.js").ObstacleOverviewCache} MapOverviewCache */
@@ -47,14 +48,7 @@ export function paintMapOverviewFrame(state) {
     const displayH = canvas.height;
     if (state.labShowMapOverviewViewport) {
         const viewport = state.viewport;
-        drawWorldBoundsBox(
-            ctx,
-            { minX: viewport.x - viewport.halfW, minY: viewport.y - viewport.halfH, maxX: viewport.x + viewport.halfW, maxY: viewport.y + viewport.halfH },
-            cache,
-            displayW,
-            displayH,
-            "#00e5ff",
-        );
+        drawWorldBoundsBox(ctx, centeredAabb(viewport.x, viewport.y, viewport.halfW * 2, viewport.halfH * 2), cache, displayW, displayH, "#00e5ff");
     }
     if (state.labShowMapOverviewGenBounds) {
         drawWorldBoundsBox(ctx, getPlayAreaPreviewBounds(state.viewport, state.labPlayConfig), cache, displayW, displayH, "#76ff03", 2, [6, 4]);

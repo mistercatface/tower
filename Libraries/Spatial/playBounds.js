@@ -1,6 +1,5 @@
-/**
- * @typedef {{ minX: number, minY: number, maxX: number, maxY: number }} WorldPlayBounds
- */
+import { padAabb, intersectAabbInto } from "../Math/Aabb2D.js";
+/** @typedef {import("../Math/Aabb2D.js").Aabb2D} WorldPlayBounds */
 /**
  * @param {WorldPlayBounds} out
  * @param {WorldPlayBounds | null | undefined} a
@@ -23,16 +22,7 @@ export function intersectWorldBoundsInto(out, a, b) {
         out.maxY = a.maxY;
         return true;
     }
-    const minX = Math.max(a.minX, b.minX);
-    const minY = Math.max(a.minY, b.minY);
-    const maxX = Math.min(a.maxX, b.maxX);
-    const maxY = Math.min(a.maxY, b.maxY);
-    if (minX >= maxX || minY >= maxY) return false;
-    out.minX = minX;
-    out.minY = minY;
-    out.maxX = maxX;
-    out.maxY = maxY;
-    return true;
+    return intersectAabbInto(out, a, b);
 }
 /**
  * @param {{ minX: number, minY: number, maxX: number, maxY: number, cols?: number } | null | undefined} grid
@@ -41,5 +31,6 @@ export function intersectWorldBoundsInto(out, a, b) {
  */
 export function playBoundsFromObstacleGrid(grid, pad = 0) {
     if (!grid?.cols) return null;
-    return { minX: grid.minX - pad, minY: grid.minY - pad, maxX: grid.maxX + pad, maxY: grid.maxY + pad };
+    const bounds = { minX: grid.minX, minY: grid.minY, maxX: grid.maxX, maxY: grid.maxY };
+    return pad ? padAabb(bounds, pad) : bounds;
 }
