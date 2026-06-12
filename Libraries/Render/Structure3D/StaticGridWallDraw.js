@@ -112,6 +112,7 @@ function collectStaticGridWallFaceCandidates(obstacleGrid, bounds, out) {
                 staticGrid: true,
                 gridCol: col,
                 gridRow: row,
+                gridIdx: idx,
                 p1: { x: sP1.x, y: sP1.y },
                 p2: { x: sP2.x, y: sP2.y },
                 wallBaseZ,

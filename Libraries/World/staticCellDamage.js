@@ -4,7 +4,7 @@
 import { packCellKey } from "../DataStructures/CellKey.js";
 import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { getDamageAlphaFromHealth } from "../Render/Structure3D/wallDamageVisual.js";
-import { cellIsStaticWall, cellIsStaticWallAtIdx, gridCellToGlobalColRow } from "./wallGridCells.js";
+import { cellIsStaticWallAtIdx, gridCellToGlobalColRow } from "./wallGridCells.js";
 export const STATIC_CELL_MAX_HEALTH = 30;
 /** @param {object} state @param {number} globalCol @param {number} globalRow */
 function readStaticCellHealth(state, globalCol, globalRow) {
@@ -43,8 +43,9 @@ export function getStaticCellDamageAlphaAtGrid(grid, state, col, row) {
  * @param {number} damage
  */
 export function damageStaticGridCell(state, grid, col, row, damage) {
-    if (!cellIsStaticWall(grid, col, row)) return;
+    if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return;
     const idx = colRowToIndex(col, row, grid.cols);
+    if (!cellIsStaticWallAtIdx(grid, idx)) return;
     const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
     const key = packCellKey(globalCol, globalRow);
     let entry = state.staticCellHealth.get(key);

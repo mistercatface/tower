@@ -5,10 +5,9 @@ import { fillRandomGrid, runCellularAutomata } from "../../../Libraries/CA/index
 import { centeredAabb, centeredAabbInto, centerReachAabbInto, createAabb, padAabb, unionAabb } from "../../../Libraries/Math/Aabb2D.js";
 import { packCellKey } from "../../../Libraries/DataStructures/CellKey.js";
 import { worldBoundsFromCellOrigin, forEachObstacleGridCellInAabb } from "../../../Libraries/Spatial/grid/GridCoords.js";
-import { colRowToIndex } from "../../../Libraries/Spatial/grid/GridUtils.js";
 import { computeBoundsFromWalls } from "../../../Libraries/Spatial/grid/wallGridBake.js";
 import { clearSandboxWallsInBounds } from "../../../Libraries/Sandbox/spawnAssembly.js";
-import { cellIsStaticWall, gridCellToGlobalColRow } from "../../../Libraries/World/wallGridCells.js";
+import { cellIsStaticWallAtIdx, gridCellToGlobalColRow } from "../../../Libraries/World/wallGridCells.js";
 import { clampStampWallHeightLevel } from "../../../Libraries/WorldSurface/stampWallHeight.js";
 import {
     applyCavernShapeMask,
@@ -115,13 +114,12 @@ function clearStaticWallsInWorldCircle(state, centerWorldX, centerWorldY, radius
     let endCol = -1;
     let startRow = Infinity;
     let endRow = -1;
-    forEachObstacleGridCellInAabb(grid, CLEAR_CIRCLE_BOUNDS, (col, row) => {
+    forEachObstacleGridCellInAabb(grid, CLEAR_CIRCLE_BOUNDS, (col, row, idx) => {
         const bounds = grid.getCellBounds(col, row);
         const cx = (bounds.minX + bounds.maxX) * 0.5;
         const cy = (bounds.minY + bounds.maxY) * 0.5;
         if (Math.hypot(cx - centerWorldX, cy - centerWorldY) >= radiusWorld) return;
-        if (!cellIsStaticWall(grid, col, row)) return;
-        const idx = colRowToIndex(col, row, grid.cols);
+        if (!cellIsStaticWallAtIdx(grid, idx)) return;
         if (grid.segmentGrid?.[idx]?.length) return;
         grid.grid[idx] = 0;
         const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);

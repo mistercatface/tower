@@ -13,7 +13,7 @@ export {
     drawWallFootprintDamageOverlays,
 } from "./ChunkDrawPass.js";
 import { forEachObstacleGridCellInAabb, chunkWorldAabbScratch } from "../Spatial/grid/GridCoords.js";
-import { resolveCellWallHeightPx } from "../World/wallGridCells.js";
+import { resolveCellWallHeightAtIdx } from "../World/wallGridCells.js";
 import { bakePixelsForWorldSpan } from "./WorldSurfaceResolution.js";
 import { createOffscreenCanvas } from "../Canvas/offscreenCanvas.js";
 /**
@@ -36,8 +36,8 @@ export function chunkHasWallSegments(wallSpatialIndex, chunkOriginX, chunkOrigin
  */
 export function chunkHasBlockedCells(obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx) {
     let found = false;
-    forEachObstacleGridCellInAabb(obstacleGrid, chunkWorldAabbScratch(chunkOriginX, chunkOriginY, chunkSizePx), (col, row) => {
-        if (obstacleGrid.isBlocked(col, row)) found = true;
+    forEachObstacleGridCellInAabb(obstacleGrid, chunkWorldAabbScratch(chunkOriginX, chunkOriginY, chunkSizePx), (col, row, idx) => {
+        if (obstacleGrid.grid[idx] !== 0) found = true;
     });
     return found;
 }
@@ -59,8 +59,8 @@ export function buildStaticRoofMaskCanvas(obstacleGrid, chunkOriginX, chunkOrigi
     const ctx = canvas.getContext("2d");
     ctx.fillStyle = "#ffffff";
     let any = false;
-    forEachObstacleGridCellInAabb(obstacleGrid, chunkWorldAabbScratch(chunkOriginX, chunkOriginY, chunkSizePx), (col, row) => {
-        if (resolveCellWallHeightPx(obstacleGrid, col, row) !== zLevel) return;
+    forEachObstacleGridCellInAabb(obstacleGrid, chunkWorldAabbScratch(chunkOriginX, chunkOriginY, chunkSizePx), (col, row, idx) => {
+        if (resolveCellWallHeightAtIdx(obstacleGrid, idx) !== zLevel) return;
         const bounds = obstacleGrid.getCellBounds(col, row);
         const x = Math.round((bounds.minX - chunkOriginX) * texelResolution);
         const y = Math.round((bounds.minY - chunkOriginY) * texelResolution);

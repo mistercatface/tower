@@ -44,13 +44,13 @@ export function resolveCellWallHeightPx(grid, col, row) {
 export function collectStaticRoofHeightsFromGrid(grid) {
     const seen = new Set();
     const out = [];
-    for (let row = 0; row < grid.rows; row++)
-        for (let col = 0; col < grid.cols; col++) {
-            const px = resolveCellWallHeightPx(grid, col, row);
-            if (px <= 0 || seen.has(px)) continue;
-            seen.add(px);
-            out.push(px);
-        }
+    const size = grid.cols * grid.rows;
+    for (let idx = 0; idx < size; idx++) {
+        const px = resolveCellWallHeightAtIdx(grid, idx);
+        if (px <= 0 || seen.has(px)) continue;
+        seen.add(px);
+        out.push(px);
+    }
     out.sort((a, b) => a - b);
     return out;
 }

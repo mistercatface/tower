@@ -4,10 +4,9 @@
 import { gridSettings } from "../../../Config/Config.js";
 import { rebuildLabMapCaches } from "../../../Libraries/Render/map/labMapCaches.js";
 import { packCellKey } from "../../../Libraries/DataStructures/CellKey.js";
-import { colRowToIndex } from "../../../Libraries/Spatial/grid/GridUtils.js";
 import { clearSandboxWallsInBounds } from "../../../Libraries/Sandbox/spawnAssembly.js";
 import { clampStampWallHeightLevel } from "../../../Libraries/WorldSurface/stampWallHeight.js";
-import { cellIsStaticWall } from "../../../Libraries/World/wallGridCells.js";
+import { cellIsStaticWall, cellIsStaticWallAtIdx } from "../../../Libraries/World/wallGridCells.js";
 import { forEachGlobalCellInBounds, getCellBoundsAabb } from "./cellBoundsConfig.js";
 import { ensureLabObstacleGridCoverage } from "./mapWorld.js";
 /** @param {import("../../../Libraries/Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} globalCol @param {number} globalRow */
@@ -15,7 +14,7 @@ function globalCellToLocal(grid, globalCol, globalRow) {
     const half = grid.cellSize * 0.5;
     const { col, row } = grid.worldToGrid(globalCol * grid.cellSize + half, globalRow * grid.cellSize + half);
     if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return null;
-    return { col, row };
+    return { col, row, idx: col + row * grid.cols };
 }
 /** @param {import("../state.js").TileLabGameState} state @param {import("./cellBoundsConfig.js").CellBoundsConfig} boundsConfig */
 function prepareWallRegion(state, boundsConfig) {
@@ -82,10 +81,9 @@ export function deleteStaticWallsInBounds(state, boundsConfig) {
     let anyRemoved = false;
     forEachGlobalCellInBounds(boundsConfig, (globalCol, globalRow) => {
         const local = globalCellToLocal(grid, globalCol, globalRow);
-        if (!local || !cellIsStaticWall(grid, local.col, local.row)) return;
-        const idx = colRowToIndex(local.col, local.row, grid.cols);
-        if (grid.segmentGrid?.[idx]?.length) return;
-        grid.grid[idx] = 0;
+        if (!local || !cellIsStaticWallAtIdx(grid, local.idx)) return;
+        if (grid.segmentGrid?.[local.idx]?.length) return;
+        grid.grid[local.idx] = 0;
         state.staticCellHealth.delete(packCellKey(globalCol, globalRow));
         anyRemoved = true;
         if (local.col < startCol) startCol = local.col;
@@ -110,10 +108,9 @@ export function setStaticWallHeightInBounds(state, boundsConfig, heightLevel) {
     let any = false;
     forEachGlobalCellInBounds(boundsConfig, (globalCol, globalRow) => {
         const local = globalCellToLocal(grid, globalCol, globalRow);
-        if (!local || !cellIsStaticWall(grid, local.col, local.row)) return;
-        const idx = colRowToIndex(local.col, local.row, grid.cols);
-        if (grid.grid[idx] === level) return;
-        grid.grid[idx] = level;
+        if (!local || !cellIsStaticWallAtIdx(grid, local.idx)) return;
+        if (grid.grid[local.idx] === level) return;
+        grid.grid[local.idx] = level;
         any = true;
         if (local.col < startCol) startCol = local.col;
         if (local.col > endCol) endCol = local.col;
