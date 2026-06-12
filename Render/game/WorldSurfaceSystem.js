@@ -6,18 +6,14 @@ import { playBoundsFromObstacleGrid } from "../../Libraries/Spatial/playBounds.j
 import { WorldSurfaceEngine } from "../../Libraries/WorldSurface/WorldSurfaceEngine.js";
 import { getWallHeight } from "../../Libraries/WorldSurface/WorldSurfaceSettings.js";
 import { getGameWorldSurfaceSettings } from "../WorldSurfaceBootstrap.js";
-import { WallSpatialIndex } from "../../Libraries/Spatial/indexes/WallSpatialIndex.js";
 import { getChunkSizePx } from "../../Libraries/Spatial/grid/ChunkGrid.js";
 import { buildGroundChunkBakePayload, resolveSurfaceProfileAtCoords } from "./surfaceProfileResolver.js";
 import { RenderScene } from "../../Libraries/Render/Scene/RenderScene.js";
-import { SceneCompiler } from "../../Libraries/Render/Scene/SceneCompiler.js";
 import { collectStaticRoofHeights } from "../../Libraries/World/staticOccupancyLayers.js";
 export class WorldSurfaceSystem extends WorldSurfaceEngine {
     /** @param {import("../../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} [settings] */
     constructor(settings = getGameWorldSurfaceSettings()) {
         super(settings, { buildChunkPayload: (state, chunkCol, chunkRow, zLevel) => buildGroundChunkBakePayload(state, chunkCol, chunkRow, zLevel) });
-        this.roofZLevels = null;
-        this.roofSpatialIndices = null;
         this.worldSurfaceSeed = 0;
         this.surfaceProfileOverride = null;
         this.renderScene = new RenderScene(getChunkSizePx(settings.cellSize, settings.cellsPerChunk));
@@ -27,19 +23,15 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
         super.clear();
         this.invalidateRoofs();
     }
-    /** Full reset — compiled wall scene too. Only call from world gen / map regen (then compileWalls). */
+    /** Full reset — compiled render scene too. Only call from world gen / map regen. */
     clear() {
         this.clearBakeCache();
         this.surfaceProfileOverride = null;
         this.renderScene.clear();
     }
-    invalidateRoofs() {
-        this.roofZLevels = null;
-        this.roofSpatialIndices = null;
-    }
+    invalidateRoofs() {}
     invalidateGridBounds(bounds, state, cellsPerChunk = this.settings.cellsPerChunk) {
-        const staticHeights = collectStaticRoofHeights(state.staticOccupancyLayers);
-        const roofZ = [...new Set([...(this.roofZLevels ?? []), ...staticHeights])];
+        const roofZ = collectStaticRoofHeights(state.staticOccupancyLayers);
         super.invalidateGridBounds(bounds, state.obstacleGrid, (x, y) => resolveSurfaceProfileAtCoords(state, x, y), cellsPerChunk, roofZ);
     }
     /** Draw procedural ground: shadow underpaint + baked chunk textures (simulation/inspector scenes only). */
@@ -56,37 +48,11 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
             },
         });
     }
-    /** Chunk-cached roof layers at wall height (after walls). */
+    /** Chunk-cached roof layers for stamped static walls. */
     drawRoofs(ctx, state, viewport) {
-        if (!this.roofZLevels) {
-            const zSet = new Set();
-            this.roofSpatialIndices = new Map();
-            for (const w of state.walls)
-                if (!w.isDead && w.wallHeight != null) {
-                    zSet.add(w.wallHeight);
-                    let index = this.roofSpatialIndices.get(w.wallHeight);
-                    if (!index) {
-                        index = new WallSpatialIndex(100);
-                        this.roofSpatialIndices.set(w.wallHeight, index);
-                    }
-                    index.insert(w);
-                }
-            this.roofZLevels = Array.from(zSet).sort((a, b) => a - b);
-        }
-        this.drawRoofLayers(ctx, {
-            obstacleGrid: state.obstacleGrid,
-            wallSpatialIndex: state.wallSpatialIndex,
-            viewport,
-            state,
-            playBounds: playBoundsFromObstacleGrid(state.obstacleGrid),
-            roofZLevels: this.roofZLevels,
-            roofSpatialIndices: this.roofSpatialIndices,
-            renderScene: this.renderScene,
-        });
         const staticHeights = collectStaticRoofHeights(state.staticOccupancyLayers);
         for (let i = 0; i < staticHeights.length; i++) {
             const zLevel = staticHeights[i];
-            if (this.roofZLevels?.includes(zLevel)) continue;
             this.drawGroundChunks(ctx, {
                 obstacleGrid: state.obstacleGrid,
                 wallSpatialIndex: state.wallSpatialIndex,

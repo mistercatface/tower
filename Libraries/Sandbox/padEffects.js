@@ -32,6 +32,7 @@ function buildPullPadWalls(state, pad) {
     const walls = [];
     forEachObstacleGridCellInAabb(grid, stamp, (col, row) => {
         const wall = new Segment(originX + col * cellSize + halfCell, originY + row * cellSize + halfCell, 0, cellSize, 0, 30, 30, false, cellSize);
+        wall.collisionOnly = true;
         wall.sandboxPadId = pad.id;
         walls.push(wall);
     });

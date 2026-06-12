@@ -1,6 +1,3 @@
-import { getWallHeight } from "../WorldSurface/WorldSurfaceSettings.js";
-import { getGameWorldSurfaceSettings } from "../../Render/WorldSurfaceBootstrap.js";
-import { SceneCompiler } from "../Render/Scene/SceneCompiler.js";
 import { buildAssemblyLayout, buildAssemblyClearBounds, buildAssemblyWallSegments } from "./assemblyLayout.js";
 import { getResolvedAssembly } from "./assemblies/assemblyRegistry.js";
 import { stampAssemblyGroupMember, entityBelongsToAssemblyGroup } from "./assemblies/assemblyLink.js";
@@ -19,7 +16,6 @@ function detachSandboxWall(state, wall) {
     state.wallSpatialIndex.remove(wall);
     const bounds = state.obstacleGrid.patchAfterWallRemoved(wall, state.wallSpatialIndex);
     if (bounds) state.worldSurfaces.invalidateGridBounds(bounds, state);
-    state.worldSurfaces.renderScene.removeBySourceId(wall.id);
     return bounds ?? null;
 }
 /** @param {object} state @param {object[]} walls @param {{ notifyNavigation?: boolean }} [options] */
@@ -27,19 +23,14 @@ export function removeSandboxWalls(state, walls, { notifyNavigation = true } = {
     let damageBounds = null;
     for (let i = 0; i < walls.length; i++) damageBounds = unionGridCellRect(damageBounds, detachSandboxWall(state, walls[i]));
     if (damageBounds && notifyNavigation) state.navigation.onObstaclesChanged(damageBounds);
-    if (walls.length) state.worldSurfaces.invalidateRoofs();
 }
-/** @param {object} state @param {object[]} walls @param {{ compileRender?: boolean, notifyNavigation?: boolean }} [options] */
-export function addSandboxWalls(state, walls, { compileRender = true, notifyNavigation = true } = {}) {
-    const scene = state.worldSurfaces.renderScene;
-    const defaultWallHeight = getWallHeight(getGameWorldSurfaceSettings());
+/** @param {object} state @param {object[]} walls @param {{ notifyNavigation?: boolean }} [options] */
+export function addSandboxWalls(state, walls, { notifyNavigation = true } = {}) {
     const grid = state.obstacleGrid;
-    const gridMinX = grid.minX;
-    const gridMinY = grid.minY;
-    scene.setGridOrigin(gridMinX, gridMinY);
     let damageBounds = null;
     for (let i = 0; i < walls.length; i++) {
         const wall = walls[i];
+        wall.collisionOnly = true;
         state.walls.push(wall);
         state.wallSpatialIndex.insert(wall);
         grid.addWall(wall);
@@ -47,13 +38,11 @@ export function addSandboxWalls(state, walls, { compileRender = true, notifyNavi
             damageBounds,
             getWallCellBounds(wall, (x, y) => grid.worldToGrid(x, y), grid.cols, grid.rows),
         );
-        if (compileRender && !wall.collisionOnly) SceneCompiler.compileWall(wall, scene, defaultWallHeight);
     }
     if (damageBounds) {
         state.worldSurfaces.invalidateGridBounds(damageBounds, state);
         if (notifyNavigation) state.navigation.onObstaclesChanged(damageBounds);
     }
-    if (compileRender) state.worldSurfaces.invalidateRoofs();
 }
 /** @param {object} state @param {import("../../../Libraries/Math/Aabb2D.js").Aabb2D} bounds */
 export function clearSandboxWallsInBounds(state, bounds) {
@@ -123,10 +112,9 @@ export function spawnResolvedAssembly(host, centerX, centerY, resolved, { factio
     if (flatSurface) registerAssemblyGuideOverlay(state, layout, groupId, resolved.id, groupField);
     const arenaWidth = resolved.arena.width;
     const arenaHeight = resolved.arena.height;
-    const walls = buildAssemblyWallSegments(layout, resolved, { collisionOnly: flatSurface });
-    if (flatSurface) for (let i = 0; i < walls.length; i++) walls[i].collisionOnly = true;
+    const walls = buildAssemblyWallSegments(layout, resolved, { collisionOnly: true });
     for (let i = 0; i < walls.length; i++) stampAssemblyGroupMember(walls[i], groupId, resolved.id, groupField);
-    addSandboxWalls(state, walls, { compileRender: true });
+    addSandboxWalls(state, walls);
     let defaultPickupId = null;
     /** @type {Map<string, number>} */
     let pickupIdByManifestId = new Map();
