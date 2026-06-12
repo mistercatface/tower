@@ -22,7 +22,7 @@ function addPlayAreaSlider(panel, label, key, state, onPreviewChange, refreshBou
             playAreaCellsToIndex(labPlayConfig[key]),
             (index) => {
                 labPlayConfig[key] = PLAY_AREA_CELL_OPTIONS[index];
-                syncCavernBoundsFromPlay(state.viewport, labPlayConfig, labCavernConfig, { center: false });
+                syncCavernBoundsFromPlay(state.viewport, labPlayConfig, labCavernConfig, { center: false, syncSizeFromPlay: true });
                 refreshBoundInputs();
                 onPreviewChange();
             },

@@ -3,7 +3,8 @@
  */
 import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { forEachObstacleGridCellInAabb } from "../Spatial/grid/GridCoords.js";
-/** @typedef {{ originCol: number, originRow: number, cols: number, rows: number, wallHeight: number | null }} StaticOccupancyLayer */
+import { unionGridCellRect } from "../Spatial/grid/wallGridBake.js";
+/** @typedef {{ originCol: number, originRow: number, cols: number, rows: number, wallHeight: number | null, cells: Uint8Array }} StaticOccupancyLayer */
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row */
 export function cellIsStaticBlocked(grid, col, row) {
     if (!grid.isBlocked(col, row)) return false;
@@ -33,6 +34,24 @@ export function upsertStaticOccupancyLayer(state, layer) {
     const layers = state.staticOccupancyLayers;
     for (let i = layers.length - 1; i >= 0; i--) if (layersOverlap(layers[i], layer)) layers.splice(i, 1);
     layers.push(layer);
+}
+/**
+ * Restore all stamped static layers onto the obstacle grid (after grid rebuild/expand).
+ * @param {object} state
+ * @returns {{ startCol: number, endCol: number, startRow: number, endRow: number } | null}
+ */
+export function reapplyStaticOccupancyLayers(state) {
+    const layers = state.staticOccupancyLayers;
+    const grid = state.obstacleGrid;
+    if (!layers?.length || !grid?.cols) return null;
+    let bounds = null;
+    for (let i = 0; i < layers.length; i++) {
+        const layer = layers[i];
+        if (!layer.cells) continue;
+        const patch = grid.stampStaticOccupancy(layer.originCol, layer.originRow, layer.cols, layer.rows, layer.cells, state.wallSpatialIndex);
+        bounds = bounds ? unionGridCellRect(bounds, patch) : patch;
+    }
+    return bounds;
 }
 /**
  * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
