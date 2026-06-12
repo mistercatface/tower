@@ -34,7 +34,7 @@ function filterKey(criteria) {
     return `${kinds.join(",")}|${filterId}`;
 }
 /**
- * Exact AABB membership query — never uses the spatial broadphase or expanded cell bounds.
+ * Exact AABB membership query — full registry scan, no spatial broadphase.
  * Use for editor box-select and other pick semantics that must match a drawn rectangle.
  *
  * @param {EntityRegistry} registry
@@ -56,6 +56,13 @@ export class EntityRegistry {
         this.membershipGen = 0;
         /** @type {Map<string, { result: object[], spatialGen: number, membershipGen: number }>} */
         this._queryCache = new Map();
+        this._viewQueryDepth = 0;
+        /** Reused candidate buffer for view queries — do not retain references across calls. */
+        this._candidateScratch = [];
+        /** Reused id set for spatial candidate dedupe — cleared each spatial fill. */
+        this._candidateSeenIds = new Set();
+        /** Reused kind filter — cleared each top-level view query. */
+        this._kindSetScratch = new Set();
     }
     /** @param {string} kind @param {object} ref */
     register(kind, ref) {
@@ -108,23 +115,10 @@ export class EntityRegistry {
      * @returns {object[]}
      */
     queryInAabbStrict(bounds, options = {}) {
-        const kinds = options.kinds ?? EMPTY_KINDS;
-        const kindSet = new Set(kinds);
-        const hitTest = options.hitTest ?? "center";
-        /** @type {object[]} */
-        const result = [];
-        for (const entry of this._entries.values()) {
-            if (!kindSet.has(entry.kind)) continue;
-            const ref = entry.ref;
-            if (ref.isDead) continue;
-            if (!entityIntersectsAabb(ref, bounds, hitTest)) continue;
-            if (options.match && !options.match(ref)) continue;
-            result.push(ref);
-        }
-        return result;
+        return this._queryInAabb(bounds, options.kinds ?? EMPTY_KINDS, options.match, options.hitTest ?? "center", null);
     }
     /**
-     * Demand-built bounds query, tick-scoped via spatialGen.
+     * View/cull query — spatial broadphase when fresh, then circle-vs-AABB filter on candidates.
      *
      * @param {QueryViewCriteria} criteria
      * @param {import("../Libraries/Spatial/world/SpatialFrameCore.js").SpatialFrameCore | null | undefined} spatialFrame
@@ -132,7 +126,6 @@ export class EntityRegistry {
      */
     queryView(criteria, spatialFrame) {
         const kinds = criteria.kinds ?? EMPTY_KINDS;
-        const kindSet = new Set(kinds);
         const spatialGen = spatialFrame?.frameId ?? -1;
         const bKey = boundsKey(criteria.bounds);
         const fKey = filterKey(criteria);
@@ -153,40 +146,86 @@ export class EntityRegistry {
                 return result;
             }
         }
-        result =
-            spatialFrame && spatialFrame.populatedMembershipGen === this.membershipGen
-                ? this._querySpatial(criteria.bounds, kindSet, criteria.match, spatialFrame)
-                : this._queryFallback(criteria.bounds, kindSet, criteria.match);
+        result = this._queryInAabb(criteria.bounds, kinds, criteria.match, "circle", spatialFrame);
         this._queryCache.set(cacheKey, { result, spatialGen, membershipGen: this.membershipGen });
         return result;
     }
-    /** @param {BoundsRect} bounds @param {Set<string>} kindSet @param {((ref: object) => boolean) | undefined} match @param {import("../Libraries/Spatial/world/SpatialFrameCore.js").SpatialFrameCore} spatialFrame */
-    _querySpatial(bounds, kindSet, match, spatialFrame) {
-        const entities = spatialFrame.collectEntitiesInBounds(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY);
-        const result = [];
-        for (let i = 0; i < entities.length; i++) {
-            const entity = entities[i];
-            const entry = this._entries.get(entity.id);
-            if (!entry || !kindSet.has(entry.kind)) continue;
-            const ref = entry.ref;
-            if (ref.isDead) continue;
-            if (match && !match(ref)) continue;
-            result.push(ref);
+    /**
+     * @param {BoundsRect} bounds
+     * @param {string[]} kinds
+     * @param {((ref: object) => boolean) | undefined} match
+     * @param {AabbEntityHitTest} hitTest
+     * @param {import("../Libraries/Spatial/world/SpatialFrameCore.js").SpatialFrameCore | null | undefined} spatialFrame
+     * @returns {object[]}
+     */
+    _queryInAabb(bounds, kinds, match, hitTest, spatialFrame) {
+        this._viewQueryDepth++;
+        const kindSet = this._kindSetForQuery(kinds);
+        const candidates = this._viewQueryDepth === 1 ? this._candidateScratch : [];
+        candidates.length = 0;
+        try {
+            this._fillViewCandidates(candidates, bounds, kindSet, spatialFrame);
+            /** @type {object[]} */
+            const result = [];
+            for (let i = 0; i < candidates.length; i++) {
+                const ref = candidates[i];
+                if (ref.isDead) continue;
+                if (!entityIntersectsAabb(ref, bounds, hitTest)) continue;
+                if (match && !match(ref)) continue;
+                result.push(ref);
+            }
+            return result;
+        } finally {
+            this._viewQueryDepth--;
         }
-        return result;
     }
-    /** @param {BoundsRect} bounds @param {Set<string>} kindSet @param {((ref: object) => boolean) | undefined} match */
-    _queryFallback(bounds, kindSet, match) {
-        const result = [];
-        for (const entry of this._entries.values()) {
-            if (!kindSet.has(entry.kind)) continue;
-            const ref = entry.ref;
-            if (ref.isDead) continue;
-            if (!entityIntersectsAabb(ref, bounds, "circle")) continue;
-            if (match && !match(ref)) continue;
-            result.push(ref);
+    /** @param {string[]} kinds @returns {Set<string>} */
+    _kindSetForQuery(kinds) {
+        if (this._viewQueryDepth > 1) return new Set(kinds);
+        const set = this._kindSetScratch;
+        set.clear();
+        for (let i = 0; i < kinds.length; i++) set.add(kinds[i]);
+        return set;
+    }
+    /**
+     * @param {object[]} out
+     * @param {BoundsRect} bounds
+     * @param {Set<string>} kindSet
+     * @param {import("../Libraries/Spatial/world/SpatialFrameCore.js").SpatialFrameCore | null | undefined} spatialFrame
+     */
+    _fillViewCandidates(out, bounds, kindSet, spatialFrame) {
+        if (spatialFrame && spatialFrame.populatedMembershipGen === this.membershipGen) {
+            this._fillSpatialViewCandidates(out, bounds, kindSet, spatialFrame);
+            return;
         }
-        return result;
+        this._fillAllEntriesOfKinds(out, kindSet);
+    }
+    /** @param {object[]} out @param {Set<string>} kindSet */
+    _fillAllEntriesOfKinds(out, kindSet) {
+        for (const entry of this._entries.values()) if (kindSet.has(entry.kind)) out.push(entry.ref);
+    }
+    /**
+     * @param {object[]} out
+     * @param {BoundsRect} bounds
+     * @param {Set<string>} kindSet
+     * @param {import("../Libraries/Spatial/world/SpatialFrameCore.js").SpatialFrameCore} spatialFrame
+     */
+    _fillSpatialViewCandidates(out, bounds, kindSet, spatialFrame) {
+        const seen = this._viewQueryDepth === 1 ? this._candidateSeenIds : new Set();
+        seen.clear();
+        const entities = spatialFrame.collectEntitiesInBounds(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY);
+        for (let i = 0; i < entities.length; i++) {
+            const entry = this._entries.get(entities[i].id);
+            if (!entry || !kindSet.has(entry.kind)) continue;
+            out.push(entry.ref);
+            seen.add(entry.ref.id);
+        }
+        for (const entry of this._entries.values()) {
+            if (!kindSet.has(entry.kind) || seen.has(entry.ref.id)) continue;
+            const tileIdx = entry.ref._gridTileIdx;
+            if (tileIdx != null && tileIdx !== -1) continue;
+            out.push(entry.ref);
+        }
     }
     _bumpMembership() {
         this.membershipGen = (this.membershipGen + 1) | 0;
