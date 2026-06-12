@@ -1,6 +1,8 @@
 import { forEachDenseCellInRect } from "../../DataStructures/CellRect.js";
+import { centerReachAabbInto, createAabb, padAabbInto } from "../../Math/Aabb2D.js";
 import { entityBroadphaseExtent, NEIGHBOR_QUERY_PAD } from "../collision/entityBroadphase.js";
 /** @typedef {import("../query/SpatialQuery.js").SpatialQuery} SpatialQueryType */
+/** @typedef {import("../../Math/Aabb2D.js").Aabb2D} Aabb2D */
 const MAX_ENTITIES = 4096;
 const GLOBAL_QUERY_RESULT = [];
 export class EntityGrid {
@@ -16,6 +18,7 @@ export class EntityGrid {
         this.activeEntities = [];
         this.queryGen = 0;
         this.maxInsertedExtent = 0;
+        this.queryBoundsScratch = createAabb();
     }
     syncBounds(obstacleGrid) {
         if (!obstacleGrid) return;
@@ -92,19 +95,16 @@ export class EntityGrid {
         entity._gridTileIdx = -1;
     }
     /**
-     * @param {number} minX
-     * @param {number} minY
-     * @param {number} maxX
-     * @param {number} maxY
+     * @param {Aabb2D} bounds
      * @param {object | null} exclude
      * @param {number} queryGen
      * @param {(entity: object) => void} fn
      */
-    forEachInBoundsCoords(minX, minY, maxX, maxY, exclude, queryGen, fn) {
-        const minCol = Math.max(0, Math.floor((minX - this.minX) / this.cellSize));
-        const maxCol = Math.min(this.cols - 1, Math.floor((maxX - this.minX) / this.cellSize));
-        const minRow = Math.max(0, Math.floor((minY - this.minY) / this.cellSize));
-        const maxRow = Math.min(this.rows - 1, Math.floor((maxY - this.minY) / this.cellSize));
+    forEachInBounds(bounds, exclude, queryGen, fn) {
+        const minCol = Math.max(0, Math.floor((bounds.minX - this.minX) / this.cellSize));
+        const maxCol = Math.min(this.cols - 1, Math.floor((bounds.maxX - this.minX) / this.cellSize));
+        const minRow = Math.max(0, Math.floor((bounds.minY - this.minY) / this.cellSize));
+        const maxRow = Math.min(this.rows - 1, Math.floor((bounds.maxY - this.minY) / this.cellSize));
         if (minCol > maxCol || minRow > maxRow) return;
         forEachDenseCellInRect(minCol, maxCol, minRow, maxRow, this.cols, (_c, _r, cellIdx) => {
             let curr = this.cellHead[cellIdx];
@@ -123,31 +123,25 @@ export class EntityGrid {
      * their center point, bounds are expanded by maxInsertedExtent + NEIGHBOR_QUERY_PAD
      * unless expandForEntityExtents is false.
      *
-     * @param {import("../../Math/Aabb2D.js").Aabb2D} bounds
+     * @param {Aabb2D} bounds
      * @param {SpatialQueryType} query
      * @param {object | null} [exclude]
      * @param {{ expandForEntityExtents?: boolean }} [options]
      * @returns {object[]}
      */
     collectInBounds(bounds, query, exclude = null, { expandForEntityExtents = true } = {}) {
-        let qMinX = bounds.minX;
-        let qMinY = bounds.minY;
-        let qMaxX = bounds.maxX;
-        let qMaxY = bounds.maxY;
         if (expandForEntityExtents) {
-            const pad = this.maxInsertedExtent + NEIGHBOR_QUERY_PAD;
-            qMinX -= pad;
-            qMinY -= pad;
-            qMaxX += pad;
-            qMaxY += pad;
+            padAabbInto(this.queryBoundsScratch, bounds, this.maxInsertedExtent + NEIGHBOR_QUERY_PAD);
+            return query.collectInIndex(this, this.queryBoundsScratch, exclude);
         }
-        return query.collectInIndexCoords(this, qMinX, qMinY, qMaxX, qMaxY, exclude);
+        return query.collectInIndex(this, bounds, exclude);
     }
     collectNearby(entity) {
         GLOBAL_QUERY_RESULT.length = 0;
         this.queryGen++;
         const searchRadius = entityBroadphaseExtent(entity) + this.maxInsertedExtent + NEIGHBOR_QUERY_PAD;
-        this.forEachInBoundsCoords(entity.x - searchRadius, entity.y - searchRadius, entity.x + searchRadius, entity.y + searchRadius, entity, this.queryGen, (other) => {
+        centerReachAabbInto(this.queryBoundsScratch, entity.x, entity.y, searchRadius);
+        this.forEachInBounds(this.queryBoundsScratch, entity, this.queryGen, (other) => {
             GLOBAL_QUERY_RESULT.push(other);
         });
         return GLOBAL_QUERY_RESULT;

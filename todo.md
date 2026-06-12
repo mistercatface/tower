@@ -1,3 +1,40 @@
+# Bounds / spatial query architecture
+
+Unified world-space boxes around `Aabb2D`, registry query semantics, and typed-array-friendly hot paths. Design direction: **Box4** (min/max interval semantics) over raw **Vec4** (4-wide storage only) — same `Float32Array(4)` / `Int32Array(4)` layout, different ops per frame.
+
+## Done
+
+- [x] **Single world box type** — `Libraries/Math/Aabb2D.js`; re-export via `Libraries/Spatial/bounds.js`.
+- [x] **Shared narrowphase** — `entityIntersectsAabb` (+ `AabbEntityHitTest`) in `Aabb2D.js`; used by `EntityRegistry`.
+- [x] **Explicit query modes** — `queryView` (spatial broadphase + circle vs AABB, cached) vs `queryInAabbStrict` (full scan + center/circle, no spatial false negatives).
+- [x] **Viewport-owned cull bounds** — render cull passes `viewport.boundsVisibleDefault` by ref; `Viewport.intersectsAabb(aabb)`.
+- [x] **Zero-alloc hot paths** — module scratch + `*Into` for pick (`PICK_SEARCH_BOUNDS`), marquee, map circle clear, laser visibility, LOS/path corridor, chunk preflight.
+- [x] **Numeric query cache** — `aabbHash` + `hashString` / `mixHash4` in `EntityRegistry._queryCache`; verify-on-hit for bounds + filter key.
+- [x] **Aabb end-to-end entity broadphase** — `SpatialFrameCore.collectEntitiesInBounds(bounds)` → `EntityGrid.collectInBounds(bounds)` → `SpatialQuery.collectInIndex`.
+- [x] **Aabb end-to-end wall broadphase** — `WallSpatialIndex.collectInBounds(bounds)` → `collectInIndex`.
+- [x] **Nav segment bounds** — `getSegmentsInBounds(bounds)`, `collectSegmentsInWorldBounds(layout, bounds)`; `PathClearance` uses `corridorAabbInto`.
+- [x] **Chunk AABB** — `chunkWorldAabbInto` / `chunkWorldAabbScratch`; `ChunkDrawPass.chunkAabb` built once in `WorldSurfaceEngine`.
+- [x] **Dead code / aliases removed** — `BoundsRect`, `viewportVisibleBounds`, `intersectsWorldAabb`, `sandboxMarqueeBounds`, string `boundsKey`, `entityIntersectsCellBounds`, local `lineCorridorAabbInto`, scalar `SpatialQuery.collectInIndexCoords` public API.
+
+## Next (Box4 / grid — deferred)
+
+- [ ] **`Box4f` / `Box4i` math layer** — `Float32Array(4)` / `Int32Array(4)` + layout enum (`MIN_X`, `MIN_Y`, `MAX_X`, `MAX_Y`); `overlap`, `union`, `pad`, `hash` shared by world + grid boxes. Keep **Vec4** name for generic 4-wide storage (colors, etc.); **Box4** = vec4 with min/max interval contract.
+- [ ] **Redo `GridCellRect` as min/max** — replace `{ startCol, endCol, startRow, endRow }` with `{ minX, minY, maxX, maxY }` (or `minCol`/`maxCol`) in **grid index frame**; same algebra as `Aabb2D`, explicit frame tag or separate `Box4i` type so grid indices are never confused with world px.
+- [ ] **Frame converters** — formalize existing glue: `gridBoxToWorldAabbInto`, `worldAabbToGridBoxInto`, chunk `(origin, size)` → box; fold `cellBoundsToWorldBoundsInto`, `unionGridCellRect`, damage-bounds literals into Box4 API.
+- [ ] **Migrate `Aabb2D` object API** — optional thin typedef/view over `Box4f` backing store; keep object literals at public boundaries only where ergonomics need it.
+- [ ] **`boundsToCellRect(aabb)`** — accept `Aabb2D` at grid floor instead of four scalars (internal seam only).
+
+## Next (entity registry — related)
+
+- [ ] **Hardening: sync pickups on state load** — registry membership + spatial tags when restoring sim state.
+- [ ] **Reduce dual array/registry scans** — `pushablePhysicsPass`, assembly cleanup still iterate `state.worldProps` directly; route through `forEachOfKind` / registry where order semantics allow.
+
+## Design notes (for later discussion)
+
+- **Not mat4** — AABB/box ops are interval algebra; mat3/affine is for transforms (viewport, iso projection) at frame boundaries.
+- **Inclusive max** — world and grid boxes both use `<= max`; grid redo is rename + unify ops, not off-by-one change.
+- **Scalar seam OK at cell grid** — `forEachInBounds` unpacks to cols/rows once inside indexes; public APIs stay `Aabb2D` / `Box4`.
+
 # WorldProp / state shape cleanup
 
 - [x] **Sandbox/editor fields off `WorldProp`** — `SandboxEntityMetaStore` on `state.sandbox.entityMeta`; behavior, camera, path visual, assembly membership keyed by entity id.

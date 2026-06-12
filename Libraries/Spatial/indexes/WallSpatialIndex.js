@@ -1,10 +1,11 @@
 import { boundsToCellRect } from "../../DataStructures/CellKey.js";
 import { forEachSparseCellInRect } from "../../DataStructures/CellRect.js";
 import { SparseBucketGrid } from "../../DataStructures/SparseBucketGrid.js";
-import { centerHalfExtentsAabbInto, copyAabbInto, createAabb } from "../../Math/Aabb2D.js";
+import { centerHalfExtentsAabbInto, copyAabbInto, createAabb, padAabbInto } from "../../Math/Aabb2D.js";
 import { SpatialQuery } from "../query/SpatialQuery.js";
+/** @typedef {import("../../Math/Aabb2D.js").Aabb2D} Aabb2D */
 const fallbackQuery = new SpatialQuery();
-/** @param {import("../../Math/Aabb2D.js").Aabb2D} out @param {object} entity */
+/** @param {Aabb2D} out @param {object} entity */
 function writeEntityBoundsInto(out, entity) {
     if (entity.getBounds) {
         copyAabbInto(out, entity.getBounds());
@@ -18,12 +19,19 @@ export class WallSpatialIndex {
         this.cellSize = cellSize;
         this.buckets = new SparseBucketGrid();
         this.boundsScratch = createAabb();
+        this.queryBoundsScratch = createAabb();
     }
     clear() {
         this.buckets.clear();
     }
-    forEachInBoundsCoords(minX, minY, maxX, maxY, exclude, queryGen, fn) {
-        const { minCol, maxCol, minRow, maxRow } = boundsToCellRect(minX, minY, maxX, maxY, this.cellSize);
+    /**
+     * @param {Aabb2D} bounds
+     * @param {object | null} exclude
+     * @param {number} queryGen
+     * @param {(entity: object) => void} fn
+     */
+    forEachInBounds(bounds, exclude, queryGen, fn) {
+        const { minCol, maxCol, minRow, maxRow } = boundsToCellRect(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY, this.cellSize);
         forEachSparseCellInRect(minCol, maxCol, minRow, maxRow, (_c, _r, key) => {
             const list = this.buckets.peek(key);
             if (!list) return;
@@ -51,11 +59,11 @@ export class WallSpatialIndex {
     }
     collectNearby(entity, query) {
         const b = writeEntityBoundsInto(this.boundsScratch, entity);
-        const padding = this.cellSize;
-        return query.collectInIndexCoords(this, b.minX - padding, b.minY - padding, b.maxX + padding, b.maxY + padding, entity);
+        padAabbInto(this.queryBoundsScratch, b, this.cellSize);
+        return query.collectInIndex(this, this.queryBoundsScratch, entity);
     }
-    /** @param {import("../../Math/Aabb2D.js").Aabb2D} bounds @param {import("../query/SpatialQuery.js").SpatialQuery} [query] */
+    /** @param {Aabb2D} bounds @param {import("../query/SpatialQuery.js").SpatialQuery} [query] */
     collectInBounds(bounds, query = fallbackQuery) {
-        return query.collectInIndexCoords(this, bounds.minX, bounds.minY, bounds.maxX, bounds.maxY);
+        return query.collectInIndex(this, bounds);
     }
 }

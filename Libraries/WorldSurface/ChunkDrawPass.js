@@ -4,7 +4,7 @@
 import { projectWorldAabbCornersInto } from "../Spatial/iso/IsometricProjection.js";
 import { getSegmentFootprintCorners } from "../Spatial/geometry/WallGeometry.js";
 import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
-import { forEachObstacleGridCellInAabb, chunkWorldAabb } from "../Spatial/grid/GridCoords.js";
+import { forEachObstacleGridCellInAabb } from "../Spatial/grid/GridCoords.js";
 import { traceAabbRect, traceClosedPolygon, clipToPath } from "../Canvas/CanvasPath.js";
 import { worldToChunkCol, worldToChunkRow } from "../Spatial/grid/ChunkGrid.js";
 import { getDamageAlphaFromHealth, drawAabbDamageOverlay, drawDamageOverlayInClip, drawPolygonDamageOverlay } from "../Render/Structure3D/wallDamageVisual.js";
@@ -27,6 +27,7 @@ import { getStaticCellDamageAlphaAtGrid } from "../World/staticCellDamage.js";
  * @property {object | null} state
  * @property {import("../Render/Scene/RenderScene.js").RenderScene | null} renderScene
  * @property {import("../Spatial/indexes/WallSpatialIndex.js").WallSpatialIndex | null} wallSpatialIndex
+ * @property {import("../Math/Aabb2D.js").Aabb2D} chunkAabb
  * @property {import("../Spatial/iso/ElevationCamera.js").ElevationCamera} camera
  * @property {import("../Render/Scene/Renderables.js").RenderableRoofCap[] | null} [chunkRoofs]
  */
@@ -93,10 +94,10 @@ export function drawRoofSegmentDamageOverlays(ctx, pass) {
  * @param {[{ x: number, y: number }, { x: number, y: number }, { x: number, y: number }, { x: number, y: number }]} cornerScratch
  */
 export function drawStaticRoofDamageOverlays(ctx, pass, cornerScratch) {
-    const { obstacleGrid, staticOccupancyLayers, state, originX, originY, sizePx, zLevel } = pass;
+    const { obstacleGrid, staticOccupancyLayers, state, zLevel } = pass;
     if (!obstacleGrid?.cols || !staticOccupancyLayers?.length || !state) return;
     const cellSize = obstacleGrid.cellSize;
-    forEachObstacleGridCellInAabb(obstacleGrid, chunkWorldAabb(originX, originY, sizePx), (col, row) => {
+    forEachObstacleGridCellInAabb(obstacleGrid, pass.chunkAabb, (col, row) => {
         if (resolveStaticWallHeightAtCell(obstacleGrid, col, row, staticOccupancyLayers) !== zLevel) return;
         const damageAlpha = getStaticCellDamageAlphaAtGrid(obstacleGrid, state, col, row);
         if (damageAlpha <= 0) return;
@@ -107,12 +108,12 @@ export function drawStaticRoofDamageOverlays(ctx, pass, cornerScratch) {
 }
 /** @param {CanvasRenderingContext2D} ctx @param {ChunkDrawPass} pass @returns {boolean} */
 export function clipChunkToBlockedCells(ctx, pass) {
-    const { obstacleGrid, originX, originY, sizePx } = pass;
+    const { obstacleGrid } = pass;
     if (!obstacleGrid?.cols) return false;
     const segmentGrid = obstacleGrid.segmentGrid;
     return clipToPath(ctx, (clipCtx) => {
         let clippedAny = false;
-        forEachObstacleGridCellInAabb(obstacleGrid, chunkWorldAabb(originX, originY, sizePx), (col, row) => {
+        forEachObstacleGridCellInAabb(obstacleGrid, pass.chunkAabb, (col, row) => {
             if (!obstacleGrid.isBlocked(col, row)) return;
             const idx = colRowToIndex(col, row, obstacleGrid.cols);
             if (segmentGrid?.[idx]?.length) return;
@@ -124,9 +125,9 @@ export function clipChunkToBlockedCells(ctx, pass) {
 }
 /** @param {CanvasRenderingContext2D} ctx @param {ChunkDrawPass} pass @returns {boolean} */
 export function clipChunkToWallFootprints(ctx, pass) {
-    const { wallSpatialIndex, originX, originY, sizePx } = pass;
+    const { wallSpatialIndex } = pass;
     if (!wallSpatialIndex) return false;
-    const segments = wallSpatialIndex.collectInBounds(chunkWorldAabb(originX, originY, sizePx));
+    const segments = wallSpatialIndex.collectInBounds(pass.chunkAabb);
     return clipToPath(ctx, (clipCtx) => {
         let clippedAny = false;
         for (let i = 0; i < segments.length; i++) {
@@ -140,9 +141,9 @@ export function clipChunkToWallFootprints(ctx, pass) {
 }
 /** @param {CanvasRenderingContext2D} ctx @param {ChunkDrawPass} pass */
 export function drawStaticWallFootprintDamageOverlays(ctx, pass) {
-    const { obstacleGrid, state, originX, originY, sizePx } = pass;
+    const { obstacleGrid, state } = pass;
     if (!obstacleGrid?.cols || !state) return;
-    forEachObstacleGridCellInAabb(obstacleGrid, chunkWorldAabb(originX, originY, sizePx), (col, row) => {
+    forEachObstacleGridCellInAabb(obstacleGrid, pass.chunkAabb, (col, row) => {
         if (!cellIsStaticBlocked(obstacleGrid, col, row)) return;
         const damageAlpha = getStaticCellDamageAlphaAtGrid(obstacleGrid, state, col, row);
         if (damageAlpha <= 0) return;
@@ -151,9 +152,9 @@ export function drawStaticWallFootprintDamageOverlays(ctx, pass) {
 }
 /** @param {CanvasRenderingContext2D} ctx @param {ChunkDrawPass} pass */
 export function drawWallFootprintDamageOverlays(ctx, pass) {
-    const { wallSpatialIndex, originX, originY, sizePx } = pass;
+    const { wallSpatialIndex } = pass;
     if (!wallSpatialIndex) return;
-    const segments = wallSpatialIndex.collectInBounds(chunkWorldAabb(originX, originY, sizePx));
+    const segments = wallSpatialIndex.collectInBounds(pass.chunkAabb);
     for (let i = 0; i < segments.length; i++) {
         const wall = segments[i];
         if (wall.isDead || wall.collisionOnly) continue;

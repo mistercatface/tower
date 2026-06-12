@@ -22,12 +22,11 @@ function pushCellSegments(segmentGrid, cols, rows, col, row, result, checked) {
     if (col < 0 || col >= cols || row < 0 || row >= rows) return;
     const cellSegs = segmentGrid[colRowToIndex(col, row, cols)];
     if (!cellSegs) return;
-    for (const segment of cellSegs) {
+    for (const segment of cellSegs)
         if (!checked.has(segment)) {
             checked.add(segment);
             result.push(segment);
         }
-    }
 }
 /**
  * @param {object[][] | null} segmentGrid
@@ -159,12 +158,13 @@ export function collectSegmentsAlongLine(layout, x1, y1, x2, y2) {
 }
 /**
  * @param {SegmentGridLayout} layout
+ * @param {import("../../Math/Aabb2D.js").Aabb2D} bounds
  * @returns {object[]}
  */
-export function collectSegmentsInWorldBounds(layout, minX, minY, maxX, maxY) {
+export function collectSegmentsInWorldBounds(layout, bounds) {
     if (!layout.segmentGrid) return [];
-    const minGrid = layout.worldToGrid(minX, minY);
-    const maxGrid = layout.worldToGrid(maxX, maxY);
+    const minGrid = layout.worldToGrid(bounds.minX, bounds.minY);
+    const maxGrid = layout.worldToGrid(bounds.maxX, bounds.maxY);
     const startCol = Math.max(0, minGrid.col);
     const endCol = Math.min(layout.cols - 1, maxGrid.col);
     const startRow = Math.max(0, minGrid.row);

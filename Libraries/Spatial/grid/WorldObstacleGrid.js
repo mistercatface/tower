@@ -217,7 +217,7 @@ export class WorldObstacleGrid {
     getSegmentsAlongLine(x1, y1, x2, y2) {
         return collectSegmentsAlongLine(this._segmentLayout(), x1, y1, x2, y2);
     }
-    getSegmentsInBounds(minX, minY, maxX, maxY) {
-        return collectSegmentsInWorldBounds(this._segmentLayout(), minX, minY, maxX, maxY);
+    getSegmentsInBounds(bounds) {
+        return collectSegmentsInWorldBounds(this._segmentLayout(), bounds);
     }
 }

@@ -20,6 +20,7 @@ import {
     drawStaticWallFootprintDamageOverlays,
 } from "./ChunkDrawPass.js";
 import { chunkHasStaticRoofAtLevel } from "../World/staticOccupancyLayers.js";
+import { chunkWorldAabbInto } from "../Spatial/grid/GridCoords.js";
 import { elevationCameraFromViewport } from "../Spatial/iso/ElevationCamera.js";
 import { getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
 import { getWallAtlasCacheInfo } from "./WallSurfaceCache.js";
@@ -299,6 +300,7 @@ export class WorldSurfaceEngine {
                     state,
                     renderScene: options.renderScene ?? null,
                     wallSpatialIndex: flatWallRails ? wallSpatialIndex : null,
+                    chunkAabb: chunkWorldAabbInto(createAabb(), originX, originY, chunkSizePx),
                     camera: chunkCamera,
                 };
                 if (zLevel > 0) {

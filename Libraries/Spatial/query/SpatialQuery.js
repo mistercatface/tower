@@ -1,5 +1,4 @@
 let globalGeneration = 0;
-
 export class SpatialQuery {
     constructor() {
         this.generation = 0;
@@ -13,19 +12,15 @@ export class SpatialQuery {
         if (globalGeneration === 0) globalGeneration = 1;
         this.generation = globalGeneration;
     }
-    forEachInIndexCoords(index, minX, minY, maxX, maxY, fn, exclude = null) {
-        this.nextQuery();
-        index.forEachInBoundsCoords(minX, minY, maxX, maxY, exclude, this.generation, fn);
-    }
-    collectInIndexCoords(index, minX, minY, maxX, maxY, exclude = null) {
-        this._scratch.length = 0;
-        this.forEachInIndexCoords(index, minX, minY, maxX, maxY, this._collectFn, exclude);
-        return this._scratch;
-    }
+    /** @param {{ forEachInBounds: Function }} index @param {import("../../Math/Aabb2D.js").Aabb2D} bounds @param {(entity: object) => void} fn @param {object | null} [exclude] */
     forEachInIndex(index, bounds, fn, exclude = null) {
-        this.forEachInIndexCoords(index, bounds.minX, bounds.minY, bounds.maxX, bounds.maxY, fn, exclude);
+        this.nextQuery();
+        index.forEachInBounds(bounds, exclude, this.generation, fn);
     }
+    /** @param {{ forEachInBounds: Function }} index @param {import("../../Math/Aabb2D.js").Aabb2D} bounds @param {object | null} [exclude] @returns {object[]} */
     collectInIndex(index, bounds, exclude = null) {
-        return this.collectInIndexCoords(index, bounds.minX, bounds.minY, bounds.maxX, bounds.maxY, exclude);
+        this._scratch.length = 0;
+        this.forEachInIndex(index, bounds, this._collectFn, exclude);
+        return this._scratch;
     }
 }

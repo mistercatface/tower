@@ -1,7 +1,7 @@
 import { applySteeringResult, agentPose, getMobileAgent } from "../Agent/index.js";
 import { computeFlowFieldSteering } from "../Pathfinding/flowSteering.js";
 import { createNavState } from "../Pathfinding/navSession.js";
-import { entityIntersectsCellBounds } from "../Spatial/grid/GridCoords.js";
+import { circleIntersectsAabb } from "../Math/Aabb2D.js";
 const ARRIVED_STEERING = { desiredX: 0, desiredY: 0 };
 /**
  * @typedef {import("../Pathfinding/navSession.js").NavSessionState} NavSessionState
@@ -114,7 +114,7 @@ export class NavigationController {
     }
     _checkArrived(entity, targetX, targetY, settings) {
         if (this.isArrived) return this.isArrived(entity, targetX, targetY, settings);
-        if (entity.targetCellBounds && entityIntersectsCellBounds(entity.x, entity.y, entity.radius, entity.targetCellBounds)) return true;
+        if (entity.targetCellBounds && circleIntersectsAabb(entity.x, entity.y, entity.radius, entity.targetCellBounds)) return true;
         return false;
     }
     _setDebug(entity, info) {

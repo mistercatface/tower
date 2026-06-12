@@ -1,5 +1,5 @@
 import { boundsToCellRect } from "../../DataStructures/CellKey.js";
-import { circleIntersectsAabb, createAabb, minCornerAabbInto } from "../../Math/Aabb2D.js";
+import { createAabb, minCornerAabbInto } from "../../Math/Aabb2D.js";
 /** Grid anchored at a world-space min corner (ObstacleGrid). */
 export function worldToGridAtOrigin(x, y, minX, minY, cellSize) {
     return { col: Math.floor((x - minX) / cellSize), row: Math.floor((y - minY) / cellSize) };
@@ -47,9 +47,6 @@ export function worldBoundsFromCellOriginInto(out, col, row, cols, rows, cellSiz
 export function worldBoundsFromCellOrigin(col, row, cols, rows, cellSize) {
     return worldBoundsFromCellOriginInto(createAabb(), col, row, cols, rows, cellSize);
 }
-export function entityIntersectsCellBounds(x, y, radius, bounds) {
-    return circleIntersectsAabb(x, y, radius, bounds);
-}
 /** Snap a world point to the min corner of its obstacle-grid cell. */
 export function snapWorldToCellOrigin(worldX, worldY, minX, minY, cellSize) {
     const col = Math.floor((worldX - minX) / cellSize);
@@ -70,7 +67,16 @@ export function forEachObstacleGridCellInAabb(grid, aabb, fn) {
     const rowMax = Math.min(grid.rows - 1, maxRow);
     for (let row = rowMin; row <= rowMax; row++) for (let col = colMin; col <= colMax; col++) fn(col, row);
 }
-/** @param {number} originX @param {number} originY @param {number} sizePx @returns {import("../../Math/Aabb2D.js").Aabb2D} */
-export function chunkWorldAabb(originX, originY, sizePx) {
-    return { minX: originX, minY: originY, maxX: originX + sizePx, maxY: originY + sizePx };
+/** @param {import("../../Math/Aabb2D.js").Aabb2D} out @param {number} originX @param {number} originY @param {number} sizePx @returns {import("../../Math/Aabb2D.js").Aabb2D} */
+export function chunkWorldAabbInto(out, originX, originY, sizePx) {
+    out.minX = originX;
+    out.minY = originY;
+    out.maxX = originX + sizePx;
+    out.maxY = originY + sizePx;
+    return out;
+}
+const CHUNK_AABB_SCRATCH = createAabb();
+/** Sequential chunk AABB scratch — do not retain the returned reference. */
+export function chunkWorldAabbScratch(originX, originY, sizePx) {
+    return chunkWorldAabbInto(CHUNK_AABB_SCRATCH, originX, originY, sizePx);
 }

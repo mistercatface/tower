@@ -13,23 +13,14 @@
  * @property {(col: number, row: number) => { x: number, y: number }} gridToWorld
  * @property {(col: number, row: number) => boolean} isBlocked
  */
-
 /**
  * Segment lookup for path clearance. WorldObstacleGrid also satisfies this.
  *
  * @typedef {NavGraph & object} NavSegmentGraph
  * @property {(entity: { x: number, y: number, radius?: number }) => object[]} getNearbySegments
- * @property {(minX: number, minY: number, maxX: number, maxY: number) => object[]} getSegmentsInBounds
+ * @property {(bounds: import("../Math/Aabb2D.js").Aabb2D) => object[]} getSegmentsInBounds
  */
-
 /** @param {NavGraph} navGraph */
 export function readNavGrid(navGraph) {
-    return {
-        grid: navGraph.grid,
-        cols: navGraph.cols,
-        rows: navGraph.rows,
-        minX: navGraph.minX,
-        minY: navGraph.minY,
-        cellSize: navGraph.cellSize,
-    };
+    return { grid: navGraph.grid, cols: navGraph.cols, rows: navGraph.rows, minX: navGraph.minX, minY: navGraph.minY, cellSize: navGraph.cellSize };
 }

@@ -70,6 +70,11 @@ export function padAabb(a, pad) {
     return padAabbInto(createAabb(), a, pad);
 }
 /** @param {Aabb2D} out @returns {Aabb2D} */
+export function corridorAabbInto(out, x1, y1, x2, y2, pad) {
+    aabbFromTwoPointsInto(out, x1, y1, x2, y2);
+    return padAabbInto(out, out, pad);
+}
+/** @param {Aabb2D} out @returns {Aabb2D} */
 export function insetAabbInto(out, { minX, minY, maxX, maxY }, inset) {
     out.minX = minX + inset;
     out.minY = minY + inset;

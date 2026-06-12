@@ -12,7 +12,7 @@ export {
     drawStaticWallFootprintDamageOverlays,
     drawWallFootprintDamageOverlays,
 } from "./ChunkDrawPass.js";
-import { forEachObstacleGridCellInAabb, chunkWorldAabb } from "../Spatial/grid/GridCoords.js";
+import { forEachObstacleGridCellInAabb, chunkWorldAabbScratch } from "../Spatial/grid/GridCoords.js";
 import { resolveStaticWallHeightAtCell } from "../World/staticOccupancyLayers.js";
 import { bakePixelsForWorldSpan } from "./WorldSurfaceResolution.js";
 import { createOffscreenCanvas } from "../Canvas/offscreenCanvas.js";
@@ -24,7 +24,7 @@ import { createOffscreenCanvas } from "../Canvas/offscreenCanvas.js";
  */
 export function chunkHasWallSegments(wallSpatialIndex, chunkOriginX, chunkOriginY, chunkSizePx) {
     if (!wallSpatialIndex) return false;
-    const segments = wallSpatialIndex.collectInBounds(chunkWorldAabb(chunkOriginX, chunkOriginY, chunkSizePx));
+    const segments = wallSpatialIndex.collectInBounds(chunkWorldAabbScratch(chunkOriginX, chunkOriginY, chunkSizePx));
     for (let i = 0; i < segments.length; i++) if (!segments[i].isDead) return true;
     return false;
 }
@@ -37,7 +37,7 @@ export function chunkHasWallSegments(wallSpatialIndex, chunkOriginX, chunkOrigin
 export function chunkHasBlockedCells(obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx) {
     if (!obstacleGrid?.cols) return false;
     let found = false;
-    forEachObstacleGridCellInAabb(obstacleGrid, chunkWorldAabb(chunkOriginX, chunkOriginY, chunkSizePx), (col, row) => {
+    forEachObstacleGridCellInAabb(obstacleGrid, chunkWorldAabbScratch(chunkOriginX, chunkOriginY, chunkSizePx), (col, row) => {
         if (obstacleGrid.isBlocked(col, row)) found = true;
     });
     return found;
@@ -62,7 +62,7 @@ export function buildStaticRoofMaskCanvas(obstacleGrid, chunkOriginX, chunkOrigi
     const ctx = canvas.getContext("2d");
     ctx.fillStyle = "#ffffff";
     let any = false;
-    forEachObstacleGridCellInAabb(obstacleGrid, chunkWorldAabb(chunkOriginX, chunkOriginY, chunkSizePx), (col, row) => {
+    forEachObstacleGridCellInAabb(obstacleGrid, chunkWorldAabbScratch(chunkOriginX, chunkOriginY, chunkSizePx), (col, row) => {
         if (resolveStaticWallHeightAtCell(obstacleGrid, col, row, staticOccupancyLayers) !== zLevel) return;
         const bounds = obstacleGrid.getCellBounds(col, row);
         const x = Math.round((bounds.minX - chunkOriginX) * texelResolution);
