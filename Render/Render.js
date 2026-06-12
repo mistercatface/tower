@@ -45,6 +45,8 @@ export class Renderer {
         input.pickups = state.pickups;
         input.ragdollCorpses = state.ragdollCorpses ?? [];
         input.worldSurfaces = state.worldSurfaces;
+        input.obstacleGrid = state.obstacleGrid;
+        input.gameState = state;
         const surfaceDraw = input.proceduralSurfaceDraw;
         surfaceDraw.boundGameState = state;
         surfaceDraw.surfaceSeed = state.worldSurfaces.worldSurfaceSeed ?? 0;

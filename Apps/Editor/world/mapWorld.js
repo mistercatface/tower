@@ -1,4 +1,3 @@
-import { Segment } from "../../../Entities/Wall.js";
 import { gridSettings } from "../../../Config/Config.js";
 import { rebuildLabMapCaches } from "../../../Libraries/Render/map/labMapCaches.js";
 import { withSeededRandom } from "../../../Libraries/Random/index.js";
@@ -6,8 +5,9 @@ import { fillRandomGrid, runCellularAutomata } from "../../../Libraries/CA/index
 import { aabbContains, centeredAabb, centeredAabbInto, padAabb, unionAabb } from "../../../Libraries/Math/Aabb2D.js";
 import { worldBoundsFromCellOrigin, worldBoundsFromCellOriginInto } from "../../../Libraries/Spatial/grid/GridCoords.js";
 import { computeBoundsFromWalls } from "../../../Libraries/Spatial/grid/wallGridBake.js";
-import { addSandboxWalls, clearSandboxWallsInBounds } from "../../../Libraries/Sandbox/spawnAssembly.js";
+import { clearSandboxWallsInBounds } from "../../../Libraries/Sandbox/spawnAssembly.js";
 import { resolveStampWallHeight } from "../../../Libraries/WorldSurface/stampWallHeight.js";
+import { upsertStaticOccupancyLayer } from "../../../Libraries/World/staticOccupancyLayers.js";
 export const PLAY_AREA_CELL_OPTIONS = [64, 128, 256, 512, 1024];
 /** @param {number} cells */
 export function playAreaCellsToIndex(cells) {
@@ -83,34 +83,30 @@ function ensureLabObstacleGridCoverage(state) {
     state.hierarchicalNavigator.initialize(centerX, centerY);
     state.worldSurfaces.renderScene.setGridOrigin(grid.minX, grid.minY);
 }
-/** @param {import("../state.js").TileLabGameState["labCavernConfig"]} config */
-function generateCavernWalls(config) {
-    const cellSize = gridSettings.cellSize;
+/** @param {import("../state.js").TileLabGameState["labCavernConfig"]} config @returns {{ originCol: number, originRow: number, cols: number, rows: number, cells: Uint8Array }} */
+function generateCavernOccupancy(config) {
     const cols = Math.max(1, Math.round(config.boundsCols));
     const rows = Math.max(1, Math.round(config.boundsRows));
-    const { minX: caMinX, minY: caMinY } = worldBoundsFromCellOrigin(config.boundsCol, config.boundsRow, cols, rows, cellSize);
-    let grid = fillRandomGrid(cols, rows, config.fillChance);
-    grid = runCellularAutomata(cols, rows, grid, { iterations: config.iterations, scratch: new Uint8Array(cols * rows) });
-    const wallHeight = resolveStampWallHeight(config.wallHeightLevel, cellSize);
-    const walls = [];
-    for (let r = 0; r < rows; r++)
-        for (let c = 0; c < cols; c++) {
-            if (grid[r * cols + c] !== 1) continue;
-            walls.push(new Segment(caMinX + c * cellSize + cellSize / 2, caMinY + r * cellSize + cellSize / 2, 0, cellSize, 0, 30, 30, false, wallHeight));
-        }
-    return walls;
+    let cells = fillRandomGrid(cols, rows, config.fillChance);
+    cells = runCellularAutomata(cols, rows, cells, { iterations: config.iterations, scratch: new Uint8Array(cols * rows) });
+    return { originCol: config.boundsCol, originRow: config.boundsRow, cols, rows, cells };
 }
 /** @param {import("../state.js").TileLabGameState} state */
 export function generateLabCaverns(state) {
     const { labCavernConfig } = state;
     const stampBounds = getCavernBoundsPreview(labCavernConfig);
-    let newWalls = [];
+    /** @type {{ originCol: number, originRow: number, cols: number, rows: number, cells: Uint8Array }} */
+    let stamp = null;
     withSeededRandom(state.mapSeed, () => {
-        newWalls = generateCavernWalls(labCavernConfig);
+        stamp = generateCavernOccupancy(labCavernConfig);
     });
     ensureLabObstacleGridCoverage(state);
     clearSandboxWallsInBounds(state, stampBounds);
-    addSandboxWalls(state, newWalls);
+    const wallHeight = resolveStampWallHeight(labCavernConfig.wallHeightLevel, gridSettings.cellSize);
+    const damageBounds = state.obstacleGrid.stampStaticOccupancy(stamp.originCol, stamp.originRow, stamp.cols, stamp.rows, stamp.cells, state.wallSpatialIndex);
+    upsertStaticOccupancyLayer(state, { originCol: stamp.originCol, originRow: stamp.originRow, cols: stamp.cols, rows: stamp.rows, wallHeight });
+    state.worldSurfaces.invalidateGridBounds(damageBounds, state);
+    state.navigation.onObstaclesChanged(damageBounds);
     state.floorSeed = state.mapSeed;
     state.worldSurfaces.clearBakeCache();
     rebuildLabMapCaches(state);

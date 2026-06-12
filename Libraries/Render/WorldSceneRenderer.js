@@ -2,6 +2,7 @@
 /** @typedef {import("./WorldSceneTypes.js").WorldSceneDrawOptions} WorldSceneDrawOptions */
 /** @typedef {import("./Props3D/PropRenderer.js").PropDrawRecipe} PropDrawRecipe */
 import { getWallDamageAlpha } from "./Structure3D/wallDamageVisual.js";
+import { collectStaticGridWallDrawables, drawStaticGridWallFace } from "./Structure3D/StaticGridWallDraw.js";
 import { clipToViewport } from "./common/viewportUtils.js";
 import { worldToChunkCol, worldToChunkRow } from "../Spatial/grid/ChunkGrid.js";
 import { PropRenderer } from "./Props3D/PropRenderer.js";
@@ -18,6 +19,7 @@ export class WorldSceneRenderer {
         this.props = new PropRenderer(propRecipes);
         this.visibleDrawables = [];
         this.wallPassBuffer = [];
+        this.staticGridDrawables = [];
         this._chunkRange = { minCol: 0, maxCol: 0, minRow: 0, maxRow: 0 };
     }
     /** @param {Record<string, PropDrawRecipe>} propRecipes */
@@ -87,6 +89,18 @@ export class WorldSceneRenderer {
             visibleObjects.push(corpse);
         }
     }
+    _appendVisibleStaticGridWalls(input, viewport, px, py) {
+        const obstacleGrid = input.obstacleGrid;
+        if (!obstacleGrid?.cols) return;
+        const layers = input.gameState?.staticOccupancyLayers;
+        collectStaticGridWallDrawables(obstacleGrid, viewport, layers, this.settings, px, py, this.staticGridDrawables);
+        const visibleObjects = this.visibleDrawables;
+        for (let i = 0; i < this.staticGridDrawables.length; i++) visibleObjects.push(this.staticGridDrawables[i]);
+    }
+    _drawStaticGridWallFace(ctx, face, input, viewport, px, py, worldBounds) {
+        const fillStyle = this.settings.floorShadow ?? "#12161c";
+        drawStaticGridWallFace(ctx, face, input, viewport, px, py, worldBounds, fillStyle);
+    }
     _drawRetainedWallFace(ctx, face, input, viewport, px, py, worldBounds) {
         const fillStyle = this.settings.floorShadow ?? "#12161c";
         face.draw(ctx, viewport, input.worldSurfaces, input.proceduralSurfaceDraw, fillStyle, getWallDamageAlpha(face.simWall), px, py, worldBounds);
@@ -114,13 +128,17 @@ export class WorldSceneRenderer {
         clipToViewport(ctx, viewport);
         const visibleObjects = this.visibleDrawables;
         visibleObjects.length = 0;
-        if (!skipWalls) this._appendVisibleWallsFromScene(input, viewport, px, py);
+        if (!skipWalls) {
+            this._appendVisibleWallsFromScene(input, viewport, px, py);
+            this._appendVisibleStaticGridWalls(input, viewport, px, py);
+        }
         this._appendVisible3dProps(input, viewport, px, py);
         visibleObjects.sort((a, b) => b._distSq - a._distSq);
         for (let i = 0; i < visibleObjects.length; i++) {
             const obj = visibleObjects[i];
             if (obj.usesKinematicsBody) renderActorKinematicsBody(ctx, obj, viewport);
             else if (obj.strategy) this.props.drawProp(ctx, obj, px, py, { zoom });
+            else if (!skipWalls && obj.staticGrid) this._drawStaticGridWallFace(ctx, obj, input, viewport, px, py, worldBounds);
             else if (!skipWalls && obj.pass === "walls") this._drawRetainedWallFace(ctx, obj, input, viewport, px, py, worldBounds);
         }
         ctx.restore();

@@ -11,6 +11,7 @@ import { getChunkSizePx } from "../../Libraries/Spatial/grid/ChunkGrid.js";
 import { buildGroundChunkBakePayload, resolveSurfaceProfileAtCoords } from "./surfaceProfileResolver.js";
 import { RenderScene } from "../../Libraries/Render/Scene/RenderScene.js";
 import { SceneCompiler } from "../../Libraries/Render/Scene/SceneCompiler.js";
+import { collectStaticRoofHeights } from "../../Libraries/World/staticOccupancyLayers.js";
 export class WorldSurfaceSystem extends WorldSurfaceEngine {
     /** @param {import("../../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} [settings] */
     constructor(settings = getGameWorldSurfaceSettings()) {
@@ -80,6 +81,23 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
             roofSpatialIndices: this.roofSpatialIndices,
             renderScene: this.renderScene,
         });
+        const staticHeights = collectStaticRoofHeights(state.staticOccupancyLayers);
+        for (let i = 0; i < staticHeights.length; i++) {
+            const zLevel = staticHeights[i];
+            if (this.roofZLevels?.includes(zLevel)) continue;
+            this.drawGroundChunks(ctx, {
+                obstacleGrid: state.obstacleGrid,
+                wallSpatialIndex: state.wallSpatialIndex,
+                viewport,
+                state,
+                zLevel,
+                playBounds: playBoundsFromObstacleGrid(state.obstacleGrid),
+                requireWallSegments: false,
+                staticRoofClip: true,
+                staticOccupancyLayers: state.staticOccupancyLayers,
+                renderScene: this.renderScene,
+            });
+        }
     }
     /** Flat world-aligned wall rails — same chunk bake path as floor, clipped to segment footprints. */
     drawFlatWallRails(ctx, state, viewport) {

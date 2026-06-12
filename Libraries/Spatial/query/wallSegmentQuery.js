@@ -9,9 +9,12 @@ import { collectSegmentsAlongLine, segmentGridLayoutFromObstacleGrid } from "../
  */
 export function collectWallSegmentsForEntity(wallQuery, wallCtx, entity) {
     if (!wallCtx) return [];
-    if (wallCtx.wallSpatialIndex) return [...wallCtx.wallSpatialIndex.collectNearby(entity, wallQuery)];
-    if (wallCtx.obstacleGrid) return wallCtx.obstacleGrid.getNearbySegments(entity);
-    return wallCtx.walls ?? [];
+    let segments;
+    if (wallCtx.wallSpatialIndex) segments = [...wallCtx.wallSpatialIndex.collectNearby(entity, wallQuery)];
+    else if (wallCtx.obstacleGrid) segments = [...wallCtx.obstacleGrid.getNearbySegments(entity)];
+    else segments = [...(wallCtx.walls ?? [])];
+    if (wallCtx.obstacleGrid) wallCtx.obstacleGrid.appendStaticWallProxiesNear(entity, segments);
+    return segments;
 }
 /**
  * @param {WallContext | null} wallCtx

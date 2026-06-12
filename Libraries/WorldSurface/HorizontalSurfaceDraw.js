@@ -4,8 +4,11 @@
 import { resolveStructurePerspectiveStrength } from "../../Core/GamePerspective.js";
 import { projectWorldPointAtHeight } from "../Spatial/iso/IsometricProjection.js";
 import { getSegmentFootprintCorners } from "../Spatial/geometry/WallGeometry.js";
+import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
+import { forEachObstacleGridCellInAabb } from "../Spatial/grid/GridCoords.js";
 import { worldToChunkCol, worldToChunkRow } from "../Spatial/grid/ChunkGrid.js";
 import { getWallDamageAlpha, wallDamageOverlayStyle } from "../Render/Structure3D/wallDamageVisual.js";
+import { cellIsStaticBlocked, resolveStaticWallHeightAtCell } from "../World/staticOccupancyLayers.js";
 /** @returns {{ x: number, y: number }} */
 export function projectHorizontalSurfaceOrigin(worldX, worldY, zLevel, viewerX, viewerY, cameraHeight, viewport = null) {
     const strength = resolveStructurePerspectiveStrength(viewport);
@@ -32,6 +35,79 @@ export function chunkHasWallSegments(wallSpatialIndex, chunkOriginX, chunkOrigin
     const segments = wallSpatialIndex.collectInBounds(chunkOriginX, chunkOriginY, chunkOriginX + chunkSizePx, chunkOriginY + chunkSizePx);
     for (let i = 0; i < segments.length; i++) if (!segments[i].isDead) return true;
     return false;
+}
+/**
+ * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid
+ * @param {number} chunkOriginX
+ * @param {number} chunkOriginY
+ * @param {number} chunkSizePx
+ */
+export function chunkHasBlockedCells(obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx) {
+    if (!obstacleGrid?.cols) return false;
+    let found = false;
+    forEachObstacleGridCellInAabb(obstacleGrid, { minX: chunkOriginX, minY: chunkOriginY, maxX: chunkOriginX + chunkSizePx, maxY: chunkOriginY + chunkSizePx }, (col, row) => {
+        if (obstacleGrid.isBlocked(col, row)) found = true;
+    });
+    return found;
+}
+/**
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid
+ * @param {number} chunkOriginX
+ * @param {number} chunkOriginY
+ * @param {number} chunkSizePx
+ */
+export function clipChunkToBlockedCells(ctx, obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx) {
+    if (!obstacleGrid?.cols) return false;
+    const cellSize = obstacleGrid.cellSize;
+    const segmentGrid = obstacleGrid.segmentGrid;
+    ctx.beginPath();
+    let clippedAny = false;
+    forEachObstacleGridCellInAabb(obstacleGrid, { minX: chunkOriginX, minY: chunkOriginY, maxX: chunkOriginX + chunkSizePx, maxY: chunkOriginY + chunkSizePx }, (col, row) => {
+        if (!obstacleGrid.isBlocked(col, row)) return;
+        const idx = colRowToIndex(col, row, obstacleGrid.cols);
+        if (segmentGrid?.[idx]?.length) return;
+        const bounds = obstacleGrid.getCellBounds(col, row);
+        ctx.rect(bounds.minX, bounds.minY, cellSize, cellSize);
+        clippedAny = true;
+    });
+    if (!clippedAny) return false;
+    ctx.clip();
+    return true;
+}
+/**
+ * Clip draw to projected static-stamp roof caps at zLevel (same elevation as entity roofs).
+ *
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid
+ * @param {number} chunkOriginX
+ * @param {number} chunkOriginY
+ * @param {number} chunkSizePx
+ * @param {number} zLevel
+ * @param {import("../World/staticOccupancyLayers.js").StaticOccupancyLayer[] | null | undefined} staticOccupancyLayers
+ * @param {number} viewerX
+ * @param {number} viewerY
+ * @param {number} cameraHeight
+ * @param {import("../Viewport/Viewport.js").Viewport | null | undefined} [viewport]
+ */
+export function clipChunkToStaticRoofFootprints(ctx, obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx, zLevel, staticOccupancyLayers, viewerX, viewerY, cameraHeight, viewport = null) {
+    if (!obstacleGrid?.cols || !staticOccupancyLayers?.length) return false;
+    const cellSize = obstacleGrid.cellSize;
+    ctx.beginPath();
+    let clippedAny = false;
+    forEachObstacleGridCellInAabb(obstacleGrid, { minX: chunkOriginX, minY: chunkOriginY, maxX: chunkOriginX + chunkSizePx, maxY: chunkOriginY + chunkSizePx }, (col, row) => {
+        if (resolveStaticWallHeightAtCell(obstacleGrid, col, row, staticOccupancyLayers) !== zLevel) return;
+        const bounds = obstacleGrid.getCellBounds(col, row);
+        const corners = projectHorizontalSurfaceCorners(bounds.minX, bounds.minY, cellSize, zLevel, viewerX, viewerY, cameraHeight, viewport);
+        for (let j = 0; j < 4; j++)
+            if (j === 0) ctx.moveTo(corners[j].x, corners[j].y);
+            else ctx.lineTo(corners[j].x, corners[j].y);
+        ctx.closePath();
+        clippedAny = true;
+    });
+    if (!clippedAny) return false;
+    ctx.clip();
+    return true;
 }
 /**
  * Clip draw to retained roof-cap footprints at the given elevation.

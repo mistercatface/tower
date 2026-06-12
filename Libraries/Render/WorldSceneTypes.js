@@ -17,6 +17,8 @@
  * @property {object[]} [ragdollCorpses]
  * @property {import("../WorldSurface/WorldSurfaceEngine.js").WorldSurfaceEngine|null} [worldSurfaces]
  * @property {ProceduralSurfaceDrawContext|null} [proceduralSurfaceDraw]
+ * @property {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid|null} [obstacleGrid]
+ * @property {object|null} [gameState]
  */
 /**
  * @typedef {Object} WorldSceneDrawOptions

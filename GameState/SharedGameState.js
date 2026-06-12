@@ -38,6 +38,7 @@ export class SharedGameState {
         this.radioSeenThisRun = {};
         this.walls = [];
         this.pickups = [];
+        this.staticOccupancyLayers = [];
         this.wallResolver = new WallCollisionResolver();
         this.obstacleGrid.rebuildFixed(0, 0, gridSettings.width, gridSettings.height);
         this.obstacleGrid.segmentGrid = new Array(this.obstacleGrid.cols * this.obstacleGrid.rows);
