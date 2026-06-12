@@ -12,4 +12,5 @@
  * @property {number} damageAlpha
  * @property {object | null} cacheObj
  * @property {import("../../Math/Aabb2D.js").Aabb2D} worldBounds
+ * @property {import("../../Spatial/iso/ElevationCamera.js").ElevationCamera} [camera]
  */

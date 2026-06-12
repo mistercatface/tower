@@ -20,6 +20,7 @@ import {
     drawStaticWallFootprintDamageOverlays,
 } from "./ChunkDrawPass.js";
 import { chunkHasStaticRoofAtLevel } from "../World/staticOccupancyLayers.js";
+import { elevationCameraFromViewport } from "../Spatial/iso/ElevationCamera.js";
 import { getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
 import { getWallAtlasCacheInfo } from "./WallSurfaceCache.js";
 import { createWallFaceAxes } from "./SurfaceCoordinateMapper.js";
@@ -246,6 +247,7 @@ export class WorldSurfaceEngine {
         const maxChunkCol = worldToChunkCol(bounds.maxX - 1, obstacleGrid.minX, chunkSizePx);
         const minChunkRow = worldToChunkRow(bounds.minY, obstacleGrid.minY, chunkSizePx);
         const maxChunkRow = worldToChunkRow(bounds.maxY - 1, obstacleGrid.minY, chunkSizePx);
+        const chunkCamera = elevationCameraFromViewport(viewport, this.settings.cameraHeight);
         ctx.save();
         if (playBounds) clipToAabb(ctx, bounds);
         for (let chunkRow = minChunkRow; chunkRow <= maxChunkRow; chunkRow++)
@@ -281,6 +283,7 @@ export class WorldSurfaceEngine {
                     state,
                     renderScene: options.renderScene ?? null,
                     wallSpatialIndex: flatWallRails ? wallSpatialIndex : null,
+                    camera: chunkCamera,
                 };
                 if (zLevel > 0) {
                     ctx.save();

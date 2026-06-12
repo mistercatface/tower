@@ -6,6 +6,48 @@ import { getWallHeight } from "../../WorldSurface/WorldSurfaceSettings.js";
 import { cellIsStaticBlocked, resolveStaticWallHeightAtCell } from "../../World/staticOccupancyLayers.js";
 const sP1 = { x: 0, y: 0 };
 const sP2 = { x: 0, y: 0 };
+/** @type {{ grid: object | null, layers: object[] | null, occupancyRevision: number, defaultWallHeight: number, boundsMinX: number, boundsMaxX: number, boundsMinY: number, boundsMaxY: number, gridCols: number, gridRows: number, faces: object[] }} */
+const sGeomCache = {
+    grid: null,
+    layers: null,
+    occupancyRevision: -1,
+    defaultWallHeight: 0,
+    boundsMinX: 0,
+    boundsMaxX: 0,
+    boundsMinY: 0,
+    boundsMaxY: 0,
+    gridCols: 0,
+    gridRows: 0,
+    faces: [],
+};
+/** @param {typeof sGeomCache} cache @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {import("../../World/staticOccupancyLayers.js").StaticOccupancyLayer[] | null | undefined} layers @param {number} occupancyRevision @param {number} defaultWallHeight @param {import("../../Math/Aabb2D.js").Aabb2D} bounds */
+function geomCacheHit(cache, grid, layers, occupancyRevision, defaultWallHeight, bounds) {
+    return (
+        cache.grid === grid &&
+        cache.layers === layers &&
+        cache.occupancyRevision === occupancyRevision &&
+        cache.defaultWallHeight === defaultWallHeight &&
+        cache.gridCols === grid.cols &&
+        cache.gridRows === grid.rows &&
+        cache.boundsMinX === bounds.minX &&
+        cache.boundsMaxX === bounds.maxX &&
+        cache.boundsMinY === bounds.minY &&
+        cache.boundsMaxY === bounds.maxY
+    );
+}
+/** @param {typeof sGeomCache} cache @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {import("../../World/staticOccupancyLayers.js").StaticOccupancyLayer[] | null | undefined} layers @param {number} occupancyRevision @param {number} defaultWallHeight @param {import("../../Math/Aabb2D.js").Aabb2D} bounds */
+function storeGeomCache(cache, grid, layers, occupancyRevision, defaultWallHeight, bounds) {
+    cache.grid = grid;
+    cache.layers = layers ?? null;
+    cache.occupancyRevision = occupancyRevision;
+    cache.defaultWallHeight = defaultWallHeight;
+    cache.gridCols = grid.cols;
+    cache.gridRows = grid.rows;
+    cache.boundsMinX = bounds.minX;
+    cache.boundsMaxX = bounds.maxX;
+    cache.boundsMinY = bounds.minY;
+    cache.boundsMaxY = bounds.maxY;
+}
 /** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} edge */
 function staticCellEdgeOpen(grid, col, row, edge) {
     let nc = col;
@@ -48,18 +90,13 @@ function staticCellEdgeEndpoints(grid, col, row, edge, p1, p2) {
 }
 /**
  * @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid
- * @param {import("../../Viewport/Viewport.js").Viewport} viewport
+ * @param {import("../../Math/Aabb2D.js").Aabb2D} bounds
  * @param {import("../../World/staticOccupancyLayers.js").StaticOccupancyLayer[] | null | undefined} layers
- * @param {import("../../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} settings
- * @param {number} viewerX
- * @param {number} viewerY
+ * @param {number} defaultWallHeight
  * @param {object[]} out
  */
-export function collectStaticGridWallDrawables(obstacleGrid, viewport, layers, settings, viewerX, viewerY, out) {
+function collectStaticGridWallFaceCandidates(obstacleGrid, bounds, layers, defaultWallHeight, out) {
     out.length = 0;
-    if (!obstacleGrid?.cols || !layers?.length) return out;
-    const defaultWallHeight = getWallHeight(settings);
-    const bounds = viewport.boundsQuery;
     forEachObstacleGridCellInAabb(obstacleGrid, bounds, (col, row) => {
         if (!cellIsStaticBlocked(obstacleGrid, col, row)) return;
         const stampedHeight = resolveStaticWallHeightAtCell(obstacleGrid, col, row, layers);
@@ -73,13 +110,7 @@ export function collectStaticGridWallDrawables(obstacleGrid, viewport, layers, s
             staticCellEdgeEndpoints(obstacleGrid, col, row, edge, sP1, sP2);
             const ecx = (sP1.x + sP2.x) / 2;
             const ecy = (sP1.y + sP2.y) / 2;
-            const outX = ecx - cx;
-            const outY = ecy - cy;
-            const viewX = ecx - viewerX;
-            const viewY = ecy - viewerY;
-            if (outX * viewX + outY * viewY >= 0) continue;
             out.push({
-                staticGrid: true,
                 gridCol: col,
                 gridRow: row,
                 p1: { x: sP1.x, y: sP1.y },
@@ -87,11 +118,50 @@ export function collectStaticGridWallDrawables(obstacleGrid, viewport, layers, s
                 wallHeight: faceHeight,
                 cx: ecx,
                 cy: ecy,
-                outX,
-                outY,
-                _distSq: (ecx - viewerX) ** 2 + (ecy - viewerY) ** 2,
+                outX: ecx - cx,
+                outY: ecy - cy,
             });
         }
     });
+}
+/**
+ * @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid
+ * @param {import("../../Viewport/Viewport.js").Viewport} viewport
+ * @param {import("../../World/staticOccupancyLayers.js").StaticOccupancyLayer[] | null | undefined} layers
+ * @param {import("../../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} settings
+ * @param {number} viewerX
+ * @param {number} viewerY
+ * @param {number} occupancyRevision
+ * @param {object[]} out
+ */
+export function collectStaticGridWallDrawables(obstacleGrid, viewport, layers, settings, viewerX, viewerY, occupancyRevision, out) {
+    out.length = 0;
+    if (!obstacleGrid?.cols || !layers?.length) return out;
+    const bounds = viewport.boundsQuery;
+    const defaultWallHeight = getWallHeight(settings);
+    if (!geomCacheHit(sGeomCache, obstacleGrid, layers, occupancyRevision, defaultWallHeight, bounds)) {
+        collectStaticGridWallFaceCandidates(obstacleGrid, bounds, layers, defaultWallHeight, sGeomCache.faces);
+        storeGeomCache(sGeomCache, obstacleGrid, layers, occupancyRevision, defaultWallHeight, bounds);
+    }
+    const faces = sGeomCache.faces;
+    for (let i = 0; i < faces.length; i++) {
+        const face = faces[i];
+        const viewX = face.cx - viewerX;
+        const viewY = face.cy - viewerY;
+        if (face.outX * viewX + face.outY * viewY >= 0) continue;
+        out.push({
+            staticGrid: true,
+            gridCol: face.gridCol,
+            gridRow: face.gridRow,
+            p1: face.p1,
+            p2: face.p2,
+            wallHeight: face.wallHeight,
+            cx: face.cx,
+            cy: face.cy,
+            outX: face.outX,
+            outY: face.outY,
+            _distSq: viewX * viewX + viewY * viewY,
+        });
+    }
     return out;
 }

@@ -8,6 +8,7 @@ import { drawProjectedWallFace } from "./Structure3D/ProjectedWallDraw.js";
 import { clipToViewport } from "./common/viewportUtils.js";
 import { PropRenderer } from "./Props3D/PropRenderer.js";
 import { renderActorKinematicsBody } from "./Characters/actorKinematicsRenderer.js";
+import { elevationCameraFromViewport } from "../Spatial/iso/ElevationCamera.js";
 export class WorldSceneRenderer {
     /**
      * @param {import("../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} settings
@@ -69,7 +70,7 @@ export class WorldSceneRenderer {
         const obstacleGrid = input.obstacleGrid;
         if (!obstacleGrid?.cols) return;
         const layers = input.gameState?.staticOccupancyLayers;
-        collectStaticGridWallDrawables(obstacleGrid, viewport, layers, this.settings, px, py, this.staticGridDrawables);
+        collectStaticGridWallDrawables(obstacleGrid, viewport, layers, this.settings, px, py, input.gameState?.staticOccupancyRevision ?? 0, this.staticGridDrawables);
         const visibleObjects = this.visibleDrawables;
         for (let i = 0; i < this.staticGridDrawables.length; i++) visibleObjects.push(this.staticGridDrawables[i]);
     }
@@ -88,6 +89,7 @@ export class WorldSceneRenderer {
             damageAlpha: 0,
             cacheObj: null,
             worldBounds: viewport.boundsDraw,
+            camera: elevationCameraFromViewport(viewport, input.worldSurfaces.settings.cameraHeight),
         };
         ctx.save();
         clipToViewport(ctx, viewport);

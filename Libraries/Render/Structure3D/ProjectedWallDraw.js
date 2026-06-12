@@ -196,8 +196,8 @@ function drawFaceTexture(ctx, p1, p2, face, wallCtx, camera) {
  * @param {WallDrawContext} wallCtx
  */
 export function drawProjectedWallFace(ctx, p1, p2, wallCtx) {
-    const { wallHeight, viewport, worldSurfaces, proceduralSurfaceDraw, fillStyle, damageAlpha } = wallCtx;
-    const camera = elevationCameraFromViewport(viewport, worldSurfaces.settings.cameraHeight);
+    const { wallHeight, viewport, worldSurfaces, proceduralSurfaceDraw, fillStyle, damageAlpha, camera: passCamera } = wallCtx;
+    const camera = passCamera ?? elevationCameraFromViewport(viewport, worldSurfaces.settings.cameraHeight);
     const face = computeProjectedFace(p1, p2, wallHeight, camera);
     traceProjectedFace(ctx, p1, p2, face);
     if (proceduralSurfaceDraw) drawFaceTexture(ctx, p1, p2, face, wallCtx, camera);

@@ -1,7 +1,6 @@
 /**
  * Per-chunk horizontal surface draw context — built once per visible chunk in `drawGroundChunks`.
  */
-import { elevationCameraFromChunkPass } from "../Spatial/iso/ElevationCamera.js";
 import { projectWorldAabbCornersInto } from "../Spatial/iso/IsometricProjection.js";
 import { getSegmentFootprintCorners } from "../Spatial/geometry/WallGeometry.js";
 import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
@@ -28,7 +27,21 @@ import { getStaticCellDamageAlphaAtGrid } from "../World/staticCellDamage.js";
  * @property {object | null} state
  * @property {import("../Render/Scene/RenderScene.js").RenderScene | null} renderScene
  * @property {import("../Spatial/indexes/WallSpatialIndex.js").WallSpatialIndex | null} wallSpatialIndex
+ * @property {import("../Spatial/iso/ElevationCamera.js").ElevationCamera} camera
+ * @property {import("../Render/Scene/Renderables.js").RenderableRoofCap[] | null} [chunkRoofs]
  */
+/** @param {ChunkDrawPass} pass */
+function getChunkRoofs(pass) {
+    if (pass.chunkRoofs) return pass.chunkRoofs;
+    const { renderScene, originX, originY, sizePx } = pass;
+    if (!renderScene) return (pass.chunkRoofs = []);
+    const minCol = worldToChunkCol(originX, renderScene.gridMinX, renderScene.chunkSizePx);
+    const maxCol = worldToChunkCol(originX + sizePx - 1, renderScene.gridMinX, renderScene.chunkSizePx);
+    const minRow = worldToChunkRow(originY, renderScene.gridMinY, renderScene.chunkSizePx);
+    const maxRow = worldToChunkRow(originY + sizePx - 1, renderScene.gridMinY, renderScene.chunkSizePx);
+    pass.chunkRoofs = renderScene.collectPass("roofs", minCol, minRow, maxCol, maxRow);
+    return pass.chunkRoofs;
+}
 /** @param {ChunkDrawPass} pass @param {{ originX?: number, originY?: number, sizePx?: number, zLevel?: number } | null} [rect] */
 function chunkRect(pass, rect = null) {
     return { originX: rect?.originX ?? pass.originX, originY: rect?.originY ?? pass.originY, sizePx: rect?.sizePx ?? pass.sizePx, zLevel: rect?.zLevel ?? pass.zLevel };
@@ -40,17 +53,13 @@ function chunkRect(pass, rect = null) {
  */
 export function projectHorizontalSurfaceCornersInto(out4, pass, rect = null) {
     const { originX, originY, sizePx, zLevel } = chunkRect(pass, rect);
-    return projectWorldAabbCornersInto(out4, originX, originY, originX + sizePx, originY + sizePx, zLevel, elevationCameraFromChunkPass(pass));
+    return projectWorldAabbCornersInto(out4, originX, originY, originX + sizePx, originY + sizePx, zLevel, pass.camera);
 }
 /** @param {CanvasRenderingContext2D} ctx @param {ChunkDrawPass} pass @returns {boolean} */
 export function clipChunkToRoofFootprints(ctx, pass) {
-    const { renderScene, originX, originY, sizePx, zLevel, cameraHeight, viewport } = pass;
-    if (!renderScene) return false;
-    const minCol = worldToChunkCol(originX, renderScene.gridMinX, renderScene.chunkSizePx);
-    const maxCol = worldToChunkCol(originX + sizePx - 1, renderScene.gridMinX, renderScene.chunkSizePx);
-    const minRow = worldToChunkRow(originY, renderScene.gridMinY, renderScene.chunkSizePx);
-    const maxRow = worldToChunkRow(originY + sizePx - 1, renderScene.gridMinY, renderScene.chunkSizePx);
-    const roofs = renderScene.collectPass("roofs", minCol, minRow, maxCol, maxRow);
+    const { zLevel, cameraHeight, viewport } = pass;
+    const roofs = getChunkRoofs(pass);
+    if (!roofs.length) return false;
     return clipToPath(ctx, (clipCtx) => {
         let clippedAny = false;
         for (let i = 0; i < roofs.length; i++) {
@@ -65,13 +74,8 @@ export function clipChunkToRoofFootprints(ctx, pass) {
 }
 /** @param {CanvasRenderingContext2D} ctx @param {ChunkDrawPass} pass */
 export function drawRoofSegmentDamageOverlays(ctx, pass) {
-    const { renderScene, originX, originY, sizePx, zLevel, cameraHeight, viewport } = pass;
-    if (!renderScene) return;
-    const minCol = worldToChunkCol(originX, renderScene.gridMinX, renderScene.chunkSizePx);
-    const maxCol = worldToChunkCol(originX + sizePx - 1, renderScene.gridMinX, renderScene.chunkSizePx);
-    const minRow = worldToChunkRow(originY, renderScene.gridMinY, renderScene.chunkSizePx);
-    const maxRow = worldToChunkRow(originY + sizePx - 1, renderScene.gridMinY, renderScene.chunkSizePx);
-    const roofs = renderScene.collectPass("roofs", minCol, minRow, maxCol, maxRow);
+    const { zLevel, cameraHeight, viewport } = pass;
+    const roofs = getChunkRoofs(pass);
     for (let i = 0; i < roofs.length; i++) {
         const roof = roofs[i];
         if (roof.simWall?.isDead) continue;

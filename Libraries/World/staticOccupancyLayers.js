@@ -15,6 +15,10 @@ export function gridCellToGlobalColRow(grid, col, row) {
     const cellSize = grid.cellSize;
     return { globalCol: Math.floor((grid.minX + col * cellSize) / cellSize), globalRow: Math.floor((grid.minY + row * cellSize) / cellSize) };
 }
+/** @param {object} state */
+function bumpStaticOccupancyRevision(state) {
+    state.staticOccupancyRevision = (state.staticOccupancyRevision ?? 0) + 1;
+}
 /** @param {object} state @param {number} globalCol @param {number} globalRow @param {0 | 1} value */
 export function patchStaticOccupancyCell(state, globalCol, globalRow, value) {
     const layers = state.staticOccupancyLayers;
@@ -24,6 +28,7 @@ export function patchStaticOccupancyCell(state, globalCol, globalRow, value) {
         const lr = globalRow - layer.originRow;
         if (lc < 0 || lc >= layer.cols || lr < 0 || lr >= layer.rows) continue;
         layer.cells[lr * layer.cols + lc] = value;
+        bumpStaticOccupancyRevision(state);
         return true;
     }
     return false;
@@ -35,6 +40,7 @@ export function patchStaticOccupancyCell(state, globalCol, globalRow, value) {
  */
 export function appendStaticOccupancyLayer(state, layer) {
     state.staticOccupancyLayers.push({ ...layer, cells: layer.cells.slice() });
+    bumpStaticOccupancyRevision(state);
 }
 /**
  * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid

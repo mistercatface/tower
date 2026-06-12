@@ -1,9 +1,10 @@
 import { blendMotifRgb } from "./util/blend.js";
 import { ensureNoiseInitialized } from "./Noise/Perlin2D.js";
-import { warpPoint, writeDomainWarp } from "./Fields/DomainWarp.js";
+import { warpPointInto, writeDomainWarp } from "./Fields/DomainWarp.js";
 import { getMotif } from "./MotifRegistry.js";
 import { readTranslateConfig, TRANSLATE_COORDINATE_MODES } from "./Motifs/translate.js";
 const sampleScratch = { evalX: 0, evalY: 0, lookupX: 0, lookupY: 0, wallU: 0, wallV: 0, seed: 0 };
+const sWarpScratch = { x: 0, y: 0 };
 const beforeRgb = { r: 0, g: 0, b: 0 };
 const layerRgb = { r: 0, g: 0, b: 0 };
 const blendOut = { r: 0, g: 0, b: 0 };
@@ -58,7 +59,7 @@ function applyTranslateToSample(scratch, samples, pixelIndex, translateContext, 
         scratch.lookupY = samples.lookupY[pixelIndex] - ty;
         return;
     }
-    const warped = warpPoint(scratch.evalX, scratch.evalY, warp);
+    const warped = warpPointInto(sWarpScratch, scratch.evalX, scratch.evalY, warp);
     scratch.lookupX = warped.x;
     scratch.lookupY = warped.y;
 }

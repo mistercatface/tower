@@ -14,6 +14,46 @@ export function writeFloorPixel(samples, idx, x, y, mapCtx) {
     samples.wallU[idx] = 0;
     samples.wallV[idx] = 0;
 }
+export function fillWallFaceRows(samples, width, height, mapCtx) {
+    const invPpwu = mapCtx.invPpwu;
+    const H = mapCtx.wallHeight;
+    const W = mapCtx.wallWidth;
+    const heightPx = mapCtx.height;
+    const dirX = mapCtx.dirX;
+    const dirY = mapCtx.dirY;
+    const foldX = mapCtx.foldX;
+    const foldY = mapCtx.foldY;
+    const invEdgeLen = mapCtx.invEdgeLen;
+    const p1x = mapCtx.p1x;
+    const p1y = mapCtx.p1y;
+    let idx = 0;
+    for (let y = 0; y < height; y++) {
+        const v = (heightPx - 1 - y) * invPpwu;
+        let evalXBase;
+        let evalYBase;
+        let wallV;
+        if (v < W) {
+            const foldOffset = H + v;
+            evalXBase = p1x + foldX * foldOffset;
+            evalYBase = p1y + foldY * foldOffset;
+            wallV = 1;
+        } else {
+            const z = H + W - v;
+            const foldOffset = z;
+            evalXBase = p1x + foldX * foldOffset;
+            evalYBase = p1y + foldY * foldOffset;
+            wallV = z / H;
+        }
+        for (let x = 0; x < width; x++, idx++) {
+            const dist = x * invPpwu;
+            samples.evalX[idx] = evalXBase + dist * dirX;
+            samples.evalY[idx] = evalYBase + dist * dirY;
+            samples.wallU[idx] = dist * invEdgeLen;
+            samples.wallV[idx] = wallV;
+        }
+    }
+}
+
 export function writeWallFacePixel(samples, idx, x, y, mapCtx) {
     const invPpwu = mapCtx.invPpwu;
     const v = (mapCtx.height - 1 - y) * invPpwu;

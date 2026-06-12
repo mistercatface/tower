@@ -1,7 +1,7 @@
 import { composeSurfaceImage } from "../Procedural/SurfaceTextureComposer.js";
 import { getSurfaceProfileProvider } from "../Procedural/SurfaceProfileProvider.js";
 import { createOffscreenCanvas } from "../Canvas/offscreenCanvas.js";
-import { createWallFaceAxes, writeFloorPixel, writeRoofPixel, writeWallCellPixel, writeWallFacePixel } from "./SurfaceCoordinateMapper.js";
+import { createWallFaceAxes, fillWallFaceRows, writeFloorPixel, writeRoofPixel, writeWallCellPixel } from "./SurfaceCoordinateMapper.js";
 import { bakePixelsForWorldSpan, getTexelResolution } from "./WorldSurfaceResolution.js";
 import { getAnimationFrames, resolveBakeProfile } from "./ProfileBakeResolver.js";
 import { sourceFrameIndexForBakeSlot } from "./AnimationFrameBake.js";
@@ -74,7 +74,6 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, see
     if (options.isWall && options.p1 && options.p2) {
         const wf = { p1: options.p1, ...createWallFaceAxes(options.p1, options.p2) };
         if (options.wallHeight == null) throw new Error("paintPixelArea wallFace requires options.wallHeight");
-        writePixel = writeWallFacePixel;
         mapCtx = {
             invPpwu,
             height,
@@ -111,12 +110,15 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, see
     const numPixels = width * height;
     const pooled = memoryPool.getSamples(numPixels);
     const samples = { width, height, evalX: pooled.evalX, evalY: pooled.evalY, lookupX: pooled.lookupX, lookupY: pooled.lookupY, wallU: pooled.wallU, wallV: pooled.wallV };
-    let idx = 0;
-    for (let y = 0; y < height; y++)
-        for (let x = 0; x < width; x++) {
-            writePixel(samples, idx, x, y, mapCtx);
-            idx++;
-        }
+    if (bake.wallFace) fillWallFaceRows(samples, width, height, mapCtx);
+    else {
+        let idx = 0;
+        for (let y = 0; y < height; y++)
+            for (let x = 0; x < width; x++) {
+                writePixel(samples, idx, x, y, mapCtx);
+                idx++;
+            }
+    }
     const rgbBuffer = composeSurfaceImage(samples, profile, seed, bake);
     let dataIdx = 0;
     for (let i = 0; i < numPixels; i++) {
