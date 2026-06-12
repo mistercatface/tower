@@ -17,6 +17,8 @@ import {
     applyStaticRoofMaskToCanvas,
     drawRoofSegmentDamageOverlays,
     drawWallFootprintDamageOverlays,
+    drawStaticRoofDamageOverlays,
+    drawStaticWallFootprintDamageOverlays,
     projectHorizontalSurfaceCorners,
 } from "./HorizontalSurfaceDraw.js";
 import { chunkHasStaticRoofAtLevel } from "../World/staticOccupancyLayers.js";
@@ -279,11 +281,12 @@ export class WorldSurfaceEngine {
                         const dstH = corners[2].y - corners[0].y;
                         const bleedPx = this.settings.wallTextureBleedPx ?? 1;
                         ctx.drawImage(drawCanvas, dstX - bleedPx, dstY - bleedPx, dstW + bleedPx * 2, dstH + bleedPx * 2);
+                        drawStaticRoofDamageOverlays(ctx, obstacleGrid, originX, originY, chunkSizePx, zLevel, staticOccupancyLayers, state, viewerX, viewerY, this.settings.cameraHeight, viewport);
                     } else {
                         const clipped = flatWallRails
                             ? clipChunkToWallFootprints(ctx, originX, originY, chunkSizePx, wallSpatialIndex) || clipChunkToBlockedCells(ctx, obstacleGrid, originX, originY, chunkSizePx)
                             : !skipRoofFootprintClip &&
-                                clipChunkToRoofFootprints(ctx, originX, originY, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight, options.renderScene, viewport);
+                              clipChunkToRoofFootprints(ctx, originX, originY, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight, options.renderScene, viewport);
                         if (!clipped) {
                             ctx.restore();
                             continue;
@@ -291,6 +294,7 @@ export class WorldSurfaceEngine {
                         if (flatWallRails) {
                             drawBakedTexture(ctx, canvas, originX, originY, chunkSizePx, chunkSizePx, this.settings);
                             drawWallFootprintDamageOverlays(ctx, originX, originY, chunkSizePx, wallSpatialIndex);
+                            drawStaticWallFootprintDamageOverlays(ctx, obstacleGrid, originX, originY, chunkSizePx, state);
                         } else {
                             const corners = projectHorizontalSurfaceCorners(originX, originY, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight, viewport);
                             const dstX = corners[0].x;

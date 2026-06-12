@@ -2,10 +2,14 @@
 export function getWallHealthRatio(seg) {
     return Math.max(0, Math.round((seg.health / seg.maxHealth) * 10) / 10);
 }
+/** @param {number} health @param {number} maxHealth */
+export function getDamageAlphaFromHealth(health, maxHealth) {
+    const healthRatio = health / maxHealth;
+    return healthRatio < 1 ? (1 - healthRatio) * 0.45 : 0;
+}
 /** @param {object} seg */
 export function getWallDamageAlpha(seg) {
-    const healthRatio = seg.health / seg.maxHealth;
-    return healthRatio < 1 ? (1 - healthRatio) * 0.45 : 0;
+    return getDamageAlphaFromHealth(seg.health, seg.maxHealth);
 }
 /** @param {object} seg @param {number} [darkenRatio] */
 export function getWallDamageColor(seg, darkenRatio = 1.0) {

@@ -4,7 +4,8 @@
 import { forEachObstacleGridCellInAabb } from "../../Spatial/grid/GridCoords.js";
 import { getWallHeight } from "../../WorldSurface/WorldSurfaceSettings.js";
 import { cellIsStaticBlocked, resolveStaticWallHeightAtCell } from "../../World/staticOccupancyLayers.js";
-import { computeProjectedFace, drawFaceTexture } from "./ProjectedWallDraw.js";
+import { computeProjectedFace, drawFaceTexture, traceProjectedFace } from "./ProjectedWallDraw.js";
+import { wallDamageOverlayStyle } from "./wallDamageVisual.js";
 const sP1 = { x: 0, y: 0 };
 const sP2 = { x: 0, y: 0 };
 /** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} edge */
@@ -81,6 +82,8 @@ export function collectStaticGridWallDrawables(obstacleGrid, viewport, layers, s
             if (outX * viewX + outY * viewY >= 0) continue;
             out.push({
                 staticGrid: true,
+                gridCol: col,
+                gridRow: row,
                 p1: { x: sP1.x, y: sP1.y },
                 p2: { x: sP2.x, y: sP2.y },
                 wallHeight: faceHeight,
@@ -103,8 +106,9 @@ export function collectStaticGridWallDrawables(obstacleGrid, viewport, layers, s
  * @param {number} viewerY
  * @param {import("../../Math/Aabb2D.js").Aabb2D} worldBounds
  * @param {string} fillStyle
+ * @param {number} [damageAlpha]
  */
-export function drawStaticGridWallFace(ctx, face, input, viewport, viewerX, viewerY, worldBounds, fillStyle) {
+export function drawStaticGridWallFace(ctx, face, input, viewport, viewerX, viewerY, worldBounds, fillStyle, damageAlpha = 0) {
     const worldSurfaces = input.worldSurfaces;
     const settings = worldSurfaces?.settings;
     if (!settings) return;
@@ -120,5 +124,13 @@ export function drawStaticGridWallFace(ctx, face, input, viewport, viewerX, view
     else {
         ctx.fillStyle = fillStyle;
         ctx.fill();
+    }
+    if (damageAlpha > 0) {
+        ctx.save();
+        traceProjectedFace(ctx, face.p1, face.p2, projected);
+        ctx.clip();
+        ctx.fillStyle = wallDamageOverlayStyle(damageAlpha);
+        ctx.fill();
+        ctx.restore();
     }
 }

@@ -8,7 +8,8 @@ import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { forEachObstacleGridCellInAabb } from "../Spatial/grid/GridCoords.js";
 import { worldToChunkCol, worldToChunkRow } from "../Spatial/grid/ChunkGrid.js";
 import { getWallDamageAlpha, wallDamageOverlayStyle } from "../Render/Structure3D/wallDamageVisual.js";
-import { resolveStaticWallHeightAtCell } from "../World/staticOccupancyLayers.js";
+import { resolveStaticWallHeightAtCell, cellIsStaticBlocked } from "../World/staticOccupancyLayers.js";
+import { getStaticCellDamageAlphaAtGrid } from "../World/staticCellDamage.js";
 import { bakePixelsForWorldSpan } from "./WorldSurfaceResolution.js";
 /** @returns {{ x: number, y: number }} */
 export function projectHorizontalSurfaceOrigin(worldX, worldY, zLevel, viewerX, viewerY, cameraHeight, viewport = null) {
@@ -215,6 +216,70 @@ export function drawRoofSegmentDamageOverlays(ctx, chunkOriginX, chunkOriginY, c
         ctx.fill();
         ctx.restore();
     }
+}
+/**
+ * Per-cell static roof damage tint at zLevel (same overlay as entity roof caps).
+ *
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid
+ * @param {number} chunkOriginX
+ * @param {number} chunkOriginY
+ * @param {number} chunkSizePx
+ * @param {number} zLevel
+ * @param {import("../World/staticOccupancyLayers.js").StaticOccupancyLayer[] | null | undefined} staticOccupancyLayers
+ * @param {object} state
+ * @param {number} viewerX
+ * @param {number} viewerY
+ * @param {number} cameraHeight
+ * @param {import("../Viewport/Viewport.js").Viewport | null | undefined} [viewport]
+ */
+export function drawStaticRoofDamageOverlays(ctx, obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx, zLevel, staticOccupancyLayers, state, viewerX, viewerY, cameraHeight, viewport = null) {
+    if (!obstacleGrid?.cols || !staticOccupancyLayers?.length || !state) return;
+    const cellSize = obstacleGrid.cellSize;
+    forEachObstacleGridCellInAabb(obstacleGrid, { minX: chunkOriginX, minY: chunkOriginY, maxX: chunkOriginX + chunkSizePx, maxY: chunkOriginY + chunkSizePx }, (col, row) => {
+        if (resolveStaticWallHeightAtCell(obstacleGrid, col, row, staticOccupancyLayers) !== zLevel) return;
+        const damageAlpha = getStaticCellDamageAlphaAtGrid(obstacleGrid, state, col, row);
+        if (damageAlpha <= 0) return;
+        const bounds = obstacleGrid.getCellBounds(col, row);
+        const corners = projectHorizontalSurfaceCorners(bounds.minX, bounds.minY, cellSize, zLevel, viewerX, viewerY, cameraHeight, viewport);
+        ctx.save();
+        ctx.beginPath();
+        for (let j = 0; j < 4; j++)
+            if (j === 0) ctx.moveTo(corners[j].x, corners[j].y);
+            else ctx.lineTo(corners[j].x, corners[j].y);
+        ctx.closePath();
+        ctx.clip();
+        ctx.fillStyle = wallDamageOverlayStyle(damageAlpha);
+        ctx.fill();
+        ctx.restore();
+    });
+}
+/**
+ * Per-cell static wall damage tint for flat 2D rail caps.
+ *
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid
+ * @param {number} chunkOriginX
+ * @param {number} chunkOriginY
+ * @param {number} chunkSizePx
+ * @param {object} state
+ */
+export function drawStaticWallFootprintDamageOverlays(ctx, obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx, state) {
+    if (!obstacleGrid?.cols || !state) return;
+    const cellSize = obstacleGrid.cellSize;
+    forEachObstacleGridCellInAabb(obstacleGrid, { minX: chunkOriginX, minY: chunkOriginY, maxX: chunkOriginX + chunkSizePx, maxY: chunkOriginY + chunkSizePx }, (col, row) => {
+        if (!cellIsStaticBlocked(obstacleGrid, col, row)) return;
+        const damageAlpha = getStaticCellDamageAlphaAtGrid(obstacleGrid, state, col, row);
+        if (damageAlpha <= 0) return;
+        const bounds = obstacleGrid.getCellBounds(col, row);
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(bounds.minX, bounds.minY, cellSize, cellSize);
+        ctx.clip();
+        ctx.fillStyle = wallDamageOverlayStyle(damageAlpha);
+        ctx.fill();
+        ctx.restore();
+    });
 }
 /**
  * Per-wall damage tint for flat 2D rail caps — same overlay as projected wall faces.

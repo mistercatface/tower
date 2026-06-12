@@ -1,4 +1,5 @@
 import { colRowToIndex } from "./GridUtils.js";
+import { handleStaticGridCellHit } from "../../World/staticCellDamage.js";
 import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsAtOriginInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
 import { getWallCellBounds, markWallOnGrid, clearWallCells, computeBoundsFromWalls } from "./wallGridBake.js";
@@ -23,17 +24,33 @@ export class WorldObstacleGrid {
         this._staticWallProxies = [];
         this._staticWallProxyCount = 0;
     }
-    _borrowStaticWallProxy(x, y) {
+    _borrowStaticWallProxy(x, y, col, row) {
         const size = this.cellSize;
         let proxy = this._staticWallProxies[this._staticWallProxyCount];
         if (!proxy) {
-            proxy = { x: 0, y: 0, angle: 0, size, padding: 0, isDead: false, isStaticGridProxy: true, handleHit: () => false };
+            proxy = {
+                x: 0,
+                y: 0,
+                angle: 0,
+                size,
+                padding: 0,
+                isDead: false,
+                isStaticGridProxy: true,
+                gridCol: 0,
+                gridRow: 0,
+                handleHit(damage, state) {
+                    handleStaticGridCellHit(state, this._obstacleGrid, this.gridCol, this.gridRow, damage);
+                },
+            };
             this._staticWallProxies[this._staticWallProxyCount] = proxy;
         }
         this._staticWallProxyCount++;
+        proxy._obstacleGrid = this;
         proxy.x = x;
         proxy.y = y;
         proxy.size = size;
+        proxy.gridCol = col;
+        proxy.gridRow = row;
         return proxy;
     }
     /** @param {object} entity @param {object[]} out */
@@ -50,7 +67,7 @@ export class WorldObstacleGrid {
                 const idx = colRowToIndex(col, row, this.cols);
                 if (this.segmentGrid?.[idx]?.length) continue;
                 const { x, y } = this.gridToWorld(col, row);
-                out.push(this._borrowStaticWallProxy(x, y));
+                out.push(this._borrowStaticWallProxy(x, y, col, row));
             }
         return out;
     }

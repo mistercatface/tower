@@ -39,6 +39,7 @@ export class SharedGameState {
         this.walls = [];
         this.pickups = [];
         this.staticOccupancyLayers = [];
+        this.staticCellHealth = new Map();
         this.wallResolver = new WallCollisionResolver();
         this.obstacleGrid.rebuildFixed(0, 0, gridSettings.width, gridSettings.height);
         this.obstacleGrid.segmentGrid = new Array(this.obstacleGrid.cols * this.obstacleGrid.rows);

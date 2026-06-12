@@ -12,9 +12,23 @@ export function cellIsStaticBlocked(grid, col, row) {
     return !grid.segmentGrid[colRowToIndex(col, row, grid.cols)]?.length;
 }
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row */
-function gridCellToGlobalColRow(grid, col, row) {
+export function gridCellToGlobalColRow(grid, col, row) {
     const cellSize = grid.cellSize;
     return { globalCol: Math.floor((grid.minX + col * cellSize) / cellSize), globalRow: Math.floor((grid.minY + row * cellSize) / cellSize) };
+}
+/** @param {object} state @param {number} globalCol @param {number} globalRow @param {0 | 1} value */
+export function patchStaticOccupancyCell(state, globalCol, globalRow, value) {
+    const layers = state.staticOccupancyLayers;
+    if (!layers?.length) return false;
+    for (let i = layers.length - 1; i >= 0; i--) {
+        const layer = layers[i];
+        const lc = globalCol - layer.originCol;
+        const lr = globalRow - layer.originRow;
+        if (lc < 0 || lc >= layer.cols || lr < 0 || lr >= layer.rows) continue;
+        if (layer.cells) layer.cells[lr * layer.cols + lc] = value;
+        return true;
+    }
+    return false;
 }
 /** @param {StaticOccupancyLayer} a @param {StaticOccupancyLayer} b */
 function layersOverlap(a, b) {

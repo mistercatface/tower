@@ -2,6 +2,7 @@
 /** @typedef {import("./WorldSceneTypes.js").WorldSceneDrawOptions} WorldSceneDrawOptions */
 /** @typedef {import("./Props3D/PropRenderer.js").PropDrawRecipe} PropDrawRecipe */
 import { getWallDamageAlpha } from "./Structure3D/wallDamageVisual.js";
+import { getStaticCellDamageAlphaAtGrid } from "../World/staticCellDamage.js";
 import { collectStaticGridWallDrawables, drawStaticGridWallFace } from "./Structure3D/StaticGridWallDraw.js";
 import { clipToViewport } from "./common/viewportUtils.js";
 import { worldToChunkCol, worldToChunkRow } from "../Spatial/grid/ChunkGrid.js";
@@ -99,7 +100,8 @@ export class WorldSceneRenderer {
     }
     _drawStaticGridWallFace(ctx, face, input, viewport, px, py, worldBounds) {
         const fillStyle = this.settings.floorShadow ?? "#12161c";
-        drawStaticGridWallFace(ctx, face, input, viewport, px, py, worldBounds, fillStyle);
+        const damageAlpha = getStaticCellDamageAlphaAtGrid(input.obstacleGrid, input.gameState, face.gridCol, face.gridRow);
+        drawStaticGridWallFace(ctx, face, input, viewport, px, py, worldBounds, fillStyle, damageAlpha);
     }
     _drawRetainedWallFace(ctx, face, input, viewport, px, py, worldBounds) {
         const fillStyle = this.settings.floorShadow ?? "#12161c";
