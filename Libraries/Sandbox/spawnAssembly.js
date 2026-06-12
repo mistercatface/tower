@@ -61,14 +61,6 @@ export function addSandboxWalls(state, walls, { compileRender = true, notifyNavi
 }
 /** @param {object} state @param {{ minX: number, minY: number, maxX: number, maxY: number }} bounds */
 export function clearSandboxWallsInBounds(state, bounds) {
-    clearWallsInBounds(state, bounds);
-}
-/** @param {{ minX: number, minY: number, maxX: number, maxY: number }} bounds */
-function wallCenterInsideBounds(wall, bounds) {
-    return wall.x >= bounds.minX && wall.x <= bounds.maxX && wall.y >= bounds.minY && wall.y <= bounds.maxY;
-}
-/** @param {object} state @param {{ minX: number, minY: number, maxX: number, maxY: number }} bounds */
-function clearWallsInBounds(state, bounds) {
     const candidates = state.wallSpatialIndex.collectInBounds(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY);
     const toRemove = [];
     for (let i = 0; i < candidates.length; i++) {
@@ -77,6 +69,10 @@ function clearWallsInBounds(state, bounds) {
         toRemove.push(wall);
     }
     if (toRemove.length) removeSandboxWalls(state, toRemove);
+}
+/** @param {{ minX: number, minY: number, maxX: number, maxY: number }} bounds */
+function wallCenterInsideBounds(wall, bounds) {
+    return wall.x >= bounds.minX && wall.x <= bounds.maxX && wall.y >= bounds.minY && wall.y <= bounds.maxY;
 }
 /** @param {object} state @param {ReturnType<typeof buildAssemblyLayout>} layout @param {import("./assemblies/assemblyManifest.js").ResolvedAssemblyManifest} resolved @param {string} groupId @param {string} groupField */
 function registerAssemblyPlayfieldSurface(state, layout, resolved, groupId, groupField) {
@@ -126,7 +122,7 @@ function registerAssemblyGuideOverlay(state, layout, groupId, assemblyId, groupF
 export function spawnResolvedAssembly(host, centerX, centerY, resolved, { faction } = {}) {
     const state = host.getWorldState();
     const layout = buildAssemblyLayout(centerX, centerY, resolved);
-    clearWallsInBounds(state, buildAssemblyClearBounds(layout, resolved));
+    clearSandboxWallsInBounds(state, buildAssemblyClearBounds(layout, resolved));
     const groupId = `${resolved.id}:${Date.now()}`;
     const rackId = `${groupId}:rack`;
     const groupField = resolved.groupField;

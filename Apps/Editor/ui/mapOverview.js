@@ -1,6 +1,6 @@
 import { applySquareCanvasResize } from "../../../Libraries/Canvas/index.js";
 import { rebuildLabMapCaches } from "../../../Libraries/Render/map/labMapCaches.js";
-import { getCavernBoundsPreview, getPlayAreaPreviewBounds, labCavernConfig, labPlayConfig } from "../world/mapWorld.js";
+import { getCavernBoundsPreview, getPlayAreaPreviewBounds } from "../world/mapWorld.js";
 /** @typedef {import("../../../Libraries/Render/map/labMapCaches.js").ObstacleOverviewCache} MapOverviewCache */
 /**
  * @param {CanvasRenderingContext2D} ctx
@@ -27,17 +27,6 @@ function drawWorldBoundsBox(ctx, bounds, cache, displayW, displayH, strokeStyle,
     ctx.strokeRect(x, y, w, h);
     ctx.restore();
 }
-/** @param {CanvasRenderingContext2D} ctx @param {import("../../../Libraries/Viewport/Viewport.js").Viewport} viewport @param {MapOverviewCache} cache @param {number} displayW @param {number} displayH */
-function drawViewportBox(ctx, viewport, cache, displayW, displayH) {
-    drawWorldBoundsBox(
-        ctx,
-        { minX: viewport.x - viewport.halfW, minY: viewport.y - viewport.halfH, maxX: viewport.x + viewport.halfW, maxY: viewport.y + viewport.halfH },
-        cache,
-        displayW,
-        displayH,
-        "#00e5ff",
-    );
-}
 /** Blit cached map and draw live viewport / generation bounds — not part of the bake. */
 export function paintMapOverviewFrame(state) {
     if (!state.labShowMapOverview) return;
@@ -56,10 +45,20 @@ export function paintMapOverviewFrame(state) {
     ctx.drawImage(cache.canvas, 0, 0, canvas.width, canvas.height);
     const displayW = canvas.width;
     const displayH = canvas.height;
-    if (state.labShowMapOverviewViewport) drawViewportBox(ctx, state.viewport, cache, displayW, displayH);
+    if (state.labShowMapOverviewViewport) {
+        const viewport = state.viewport;
+        drawWorldBoundsBox(
+            ctx,
+            { minX: viewport.x - viewport.halfW, minY: viewport.y - viewport.halfH, maxX: viewport.x + viewport.halfW, maxY: viewport.y + viewport.halfH },
+            cache,
+            displayW,
+            displayH,
+            "#00e5ff",
+        );
+    }
     if (state.labShowMapOverviewGenBounds) {
-        drawWorldBoundsBox(ctx, getPlayAreaPreviewBounds(state.viewport, labPlayConfig), cache, displayW, displayH, "#76ff03", 2, [6, 4]);
-        drawWorldBoundsBox(ctx, getCavernBoundsPreview(labCavernConfig), cache, displayW, displayH, "#ff9800", 2);
+        drawWorldBoundsBox(ctx, getPlayAreaPreviewBounds(state.viewport, state.labPlayConfig), cache, displayW, displayH, "#76ff03", 2, [6, 4]);
+        drawWorldBoundsBox(ctx, getCavernBoundsPreview(state.labCavernConfig), cache, displayW, displayH, "#ff9800", 2);
     }
 }
 /** Vertical space for main map max-size when overview is visible. */

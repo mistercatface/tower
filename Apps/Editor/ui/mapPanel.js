@@ -1,10 +1,6 @@
-import { labPlayConfig, labCavernConfig, generateLabCaverns, PLAY_AREA_CELL_OPTIONS, playAreaCellsToIndex, syncCavernBoundsFromPlay, syncCavernBoundsSizeFromPlay } from "../world/mapWorld.js";
+import { generateLabCaverns, PLAY_AREA_CELL_OPTIONS, playAreaCellsToIndex, syncCavernBoundsFromPlay } from "../world/mapWorld.js";
 import { paintMapOverviewFrame } from "./mapOverview.js";
 import { SliderControl } from "./controls/SliderControl.js";
-/** @param {import("../state.js").TileLabGameState} state */
-function refreshGenPreview(state) {
-    paintMapOverviewFrame(state);
-}
 /** @param {HTMLElement} panel @param {string} title */
 function appendSectionTitle(panel, title) {
     const heading = document.createElement("div");
@@ -12,8 +8,9 @@ function appendSectionTitle(panel, title) {
     heading.textContent = title;
     panel.appendChild(heading);
 }
-/** @param {string} label @param {"playAreaCols" | "playAreaRows"} key @param {() => void} onPreviewChange @param {() => void} refreshBoundInputs */
-function addPlayAreaSlider(panel, label, key, onPreviewChange, refreshBoundInputs) {
+/** @param {string} label @param {"playAreaCols" | "playAreaRows"} key @param {import("../state.js").TileLabGameState} state @param {() => void} onPreviewChange @param {() => void} refreshBoundInputs */
+function addPlayAreaSlider(panel, label, key, state, onPreviewChange, refreshBoundInputs) {
+    const { labPlayConfig, labCavernConfig } = state;
     const maxIndex = PLAY_AREA_CELL_OPTIONS.length - 1;
     panel.appendChild(
         new SliderControl(
@@ -24,7 +21,7 @@ function addPlayAreaSlider(panel, label, key, onPreviewChange, refreshBoundInput
             playAreaCellsToIndex(labPlayConfig[key]),
             (index) => {
                 labPlayConfig[key] = PLAY_AREA_CELL_OPTIONS[index];
-                syncCavernBoundsSizeFromPlay(labPlayConfig, labCavernConfig);
+                syncCavernBoundsFromPlay(state.viewport, labPlayConfig, labCavernConfig, { center: false });
                 refreshBoundInputs();
                 onPreviewChange();
             },
@@ -68,9 +65,10 @@ function addNumberField(panel, label, getValue, setValue, options, onPreviewChan
 }
 /** @param {import("../state.js").TileLabGameState} state @param {() => void} onGenerated */
 export function buildMapPanel(state, onGenerated) {
+    const { labPlayConfig, labCavernConfig } = state;
     const panel = document.getElementById("mapSettingsPanel");
     panel.innerHTML = "";
-    const onPreviewChange = () => refreshGenPreview(state);
+    const onPreviewChange = () => paintMapOverviewFrame(state);
     /** @type {{ input: HTMLInputElement, getValue: () => number }[]} */
     const boundInputs = [];
     const refreshBoundInputs = () => {
@@ -83,8 +81,8 @@ export function buildMapPanel(state, onGenerated) {
     playHint.className = "editor-hint";
     playHint.textContent = "Obstacle grid size — centered on the camera when you generate.";
     playSection.appendChild(playHint);
-    addPlayAreaSlider(playSection, "Play width", "playAreaCols", onPreviewChange, refreshBoundInputs);
-    addPlayAreaSlider(playSection, "Play height", "playAreaRows", onPreviewChange, refreshBoundInputs);
+    addPlayAreaSlider(playSection, "Play width", "playAreaCols", state, onPreviewChange, refreshBoundInputs);
+    addPlayAreaSlider(playSection, "Play height", "playAreaRows", state, onPreviewChange, refreshBoundInputs);
     panel.appendChild(playSection);
     const cavernSection = document.createElement("div");
     cavernSection.className = "editor-block";
