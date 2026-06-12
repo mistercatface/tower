@@ -3,7 +3,6 @@
  */
 import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { forEachObstacleGridCellInAabb } from "../Spatial/grid/GridCoords.js";
-import { unionGridCellRect } from "../Spatial/grid/wallGridBake.js";
 /** @typedef {{ originCol: number, originRow: number, cols: number, rows: number, wallHeight: number | null, cells: Uint8Array }} StaticOccupancyLayer */
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row */
 export function cellIsStaticBlocked(grid, col, row) {
@@ -19,24 +18,15 @@ export function gridCellToGlobalColRow(grid, col, row) {
 /** @param {object} state @param {number} globalCol @param {number} globalRow @param {0 | 1} value */
 export function patchStaticOccupancyCell(state, globalCol, globalRow, value) {
     const layers = state.staticOccupancyLayers;
-    if (!layers?.length) return false;
     for (let i = layers.length - 1; i >= 0; i--) {
         const layer = layers[i];
         const lc = globalCol - layer.originCol;
         const lr = globalRow - layer.originRow;
         if (lc < 0 || lc >= layer.cols || lr < 0 || lr >= layer.rows) continue;
-        if (layer.cells) layer.cells[lr * layer.cols + lc] = value;
+        layer.cells[lr * layer.cols + lc] = value;
         return true;
     }
     return false;
-}
-/** @param {StaticOccupancyLayer} a @param {StaticOccupancyLayer} b */
-function layersOverlap(a, b) {
-    const aMaxCol = a.originCol + a.cols;
-    const aMaxRow = a.originRow + a.rows;
-    const bMaxCol = b.originCol + b.cols;
-    const bMaxRow = b.originRow + b.rows;
-    return a.originCol < bMaxCol && aMaxCol > b.originCol && a.originRow < bMaxRow && aMaxRow > b.originRow;
 }
 /**
  * Append a stamp layer — previous stamps are kept.
@@ -44,37 +34,7 @@ function layersOverlap(a, b) {
  * @param {StaticOccupancyLayer} layer
  */
 export function appendStaticOccupancyLayer(state, layer) {
-    if (!state.staticOccupancyLayers) state.staticOccupancyLayers = [];
     state.staticOccupancyLayers.push({ ...layer, cells: layer.cells.slice() });
-}
-/**
- * Replace any layers overlapping the new stamp and append it.
- * @param {object} state
- * @param {StaticOccupancyLayer} layer
- */
-export function upsertStaticOccupancyLayer(state, layer) {
-    if (!state.staticOccupancyLayers) state.staticOccupancyLayers = [];
-    const layers = state.staticOccupancyLayers;
-    for (let i = layers.length - 1; i >= 0; i--) if (layersOverlap(layers[i], layer)) layers.splice(i, 1);
-    layers.push(layer);
-}
-/**
- * Restore all stamped static layers onto the obstacle grid (after grid rebuild/expand).
- * @param {object} state
- * @returns {{ startCol: number, endCol: number, startRow: number, endRow: number } | null}
- */
-export function reapplyStaticOccupancyLayers(state) {
-    const layers = state.staticOccupancyLayers;
-    const grid = state.obstacleGrid;
-    if (!layers?.length || !grid?.cols) return null;
-    let bounds = null;
-    for (let i = 0; i < layers.length; i++) {
-        const layer = layers[i];
-        if (!layer.cells) continue;
-        const patch = grid.stampStaticOccupancy(layer.originCol, layer.originRow, layer.cols, layer.rows, layer.cells, state.wallSpatialIndex, { additive: true });
-        bounds = bounds ? unionGridCellRect(bounds, patch) : patch;
-    }
-    return bounds;
 }
 /**
  * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
@@ -91,6 +51,7 @@ export function resolveStaticWallHeightAtCell(grid, col, row, layers) {
         const lc = globalCol - layer.originCol;
         const lr = globalRow - layer.originRow;
         if (lc < 0 || lc >= layer.cols || lr < 0 || lr >= layer.rows) continue;
+        if (layer.cells[lr * layer.cols + lc] !== 1) continue;
         return layer.wallHeight;
     }
     return undefined;

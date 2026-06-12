@@ -6,7 +6,6 @@ import { getWallHeight } from "../../WorldSurface/WorldSurfaceSettings.js";
 import { drawImageQuad } from "../../Canvas/AffineTexture.js";
 /** @typedef {import("../WorldSceneTypes.js").ProceduralSurfaceDrawContext} ProceduralSurfaceDrawContext */
 import { getTexelResolution, shouldSmoothTextureDownsample } from "../../WorldSurface/WorldSurfaceResolution.js";
-import { wallDamageOverlayStyle } from "./wallDamageVisual.js";
 import { resolveStructurePerspectiveStrength } from "../../../Core/GamePerspective.js";
 import { resolveElevationAlpha } from "../../Spatial/iso/IsometricProjection.js";
 import { pointsAabbOverlapAabb } from "../../Math/Aabb2D.js";
@@ -131,56 +130,4 @@ export function drawFaceTexture(ctx, p1, p2, face, worldSurfaces, proceduralSurf
         }
     }
     ctx.restore();
-}
-export function drawProjectedWallFace(
-    ctx,
-    p1,
-    p2,
-    px,
-    py,
-    fillStyle,
-    worldSurfaces,
-    proceduralSurfaceDraw,
-    viewport,
-    worldBounds,
-    { damageAlpha = 0, textureEnabled = true, cacheObj = null, wallHeight = null, settings = null } = {},
-) {
-    const resolvedSettings = settings ?? worldSurfaces.settings;
-    const finalWallHeight = wallHeight ?? getWallHeight(resolvedSettings);
-    const face = computeProjectedFace(p1, p2, px, py, finalWallHeight, resolvedSettings, sharedScratchFace, viewport);
-    sCorner0.x = p1.x;
-    sCorner0.y = p1.y;
-    sCorner1.x = p2.x;
-    sCorner1.y = p2.y;
-    sCorner2.x = face.proj2X;
-    sCorner2.y = face.proj2Y;
-    sCorner3.x = face.proj1X;
-    sCorner3.y = face.proj1Y;
-    if (!pointsAabbOverlapAabb(sCorner0, sCorner1, sCorner2, sCorner3, worldBounds)) return;
-    traceProjectedFace(ctx, p1, p2, face);
-    if (textureEnabled) drawFaceTexture(ctx, p1, p2, face, worldSurfaces, proceduralSurfaceDraw, { x: px, y: py }, viewport, finalWallHeight, fillStyle, cacheObj, worldBounds);
-    else {
-        ctx.fillStyle = fillStyle;
-        ctx.fill();
-    }
-    if (damageAlpha > 0) {
-        ctx.save();
-        traceProjectedFace(ctx, p1, p2, face);
-        ctx.clip();
-        ctx.fillStyle = wallDamageOverlayStyle(damageAlpha);
-        ctx.fill();
-        ctx.restore();
-    }
-}
-export function preloadProjectedWallFace(p1, p2, worldSurfaces, proceduralSurfaceDraw, cacheObj = null) {
-    const settings = worldSurfaces?.settings;
-    if (!settings) return;
-    if (!worldSurfaces || !proceduralSurfaceDraw) return;
-    const wallCx = cacheObj && cacheObj.cx !== undefined ? cacheObj.cx : (p1.x + p2.x) * 0.5;
-    const wallCy = cacheObj && cacheObj.cy !== undefined ? cacheObj.cy : (p1.y + p2.y) * 0.5;
-    const finalWallCx = wallCx ?? (p1.x + p2.x) * 0.5;
-    const finalWallCy = wallCy ?? (p1.y + p2.y) * 0.5;
-    const profileId = resolveWallProfileId(proceduralSurfaceDraw, finalWallCx, finalWallCy, cacheObj);
-    const wallHeight = getWallHeight(settings);
-    worldSurfaces.getOrEnsureWallAtlas(p1, p2, { profileId, proceduralSurfaceDraw, wallHeight, cacheObj });
 }

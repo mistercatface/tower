@@ -4,7 +4,7 @@
  */
 import { getWallHeight } from "./WorldSurfaceSettings.js";
 import { createAabb, intersectAabbOptionalInto } from "../Math/Aabb2D.js";
-import { getChunkSizePx, gridBoundsToChunkRange, worldToChunkCol, worldToChunkRow } from "../Spatial/grid/ChunkGrid.js";
+import { getChunkSizePx, worldBoundsToChunkRange, worldToChunkCol, worldToChunkRow } from "../Spatial/grid/ChunkGrid.js";
 import { SurfaceBitmapCache } from "./SurfaceBitmapCache.js";
 import { groundChunkCachePrefix, staticRoofDrawCachePrefix, staticRoofMaskCachePrefix } from "./bake/SurfaceBakeHelpers.js";
 import {
@@ -55,8 +55,13 @@ export class WorldSurfaceEngine {
      */
     invalidateGridBounds(bounds, obstacleGrid, resolveProfileAt, cellsPerChunk = this.settings.cellsPerChunk, roofZLevels = null) {
         if (!bounds || !obstacleGrid) return;
-        const chunkSizePx = obstacleGrid.cellSize * cellsPerChunk;
-        const range = gridBoundsToChunkRange(bounds.startCol, bounds.endCol, bounds.startRow, bounds.endRow, cellsPerChunk);
+        const cellSize = obstacleGrid.cellSize;
+        const chunkSizePx = cellSize * cellsPerChunk;
+        const minX = obstacleGrid.minX + bounds.startCol * cellSize;
+        const minY = obstacleGrid.minY + bounds.startRow * cellSize;
+        const maxX = obstacleGrid.minX + (bounds.endCol + 1) * cellSize;
+        const maxY = obstacleGrid.minY + (bounds.endRow + 1) * cellSize;
+        const range = worldBoundsToChunkRange(minX, minY, maxX, maxY, obstacleGrid.minX, obstacleGrid.minY, chunkSizePx);
         const zLevels = [0, ...(roofZLevels ?? this.settings.roofZLevels ?? []).filter((z) => z > 0)];
         for (let chunkRow = range.minChunkRow; chunkRow <= range.maxChunkRow; chunkRow++)
             for (let chunkCol = range.minChunkCol; chunkCol <= range.maxChunkCol; chunkCol++) {
@@ -157,16 +162,20 @@ export class WorldSurfaceEngine {
         const ppwu = getTexelResolution(this.settings);
         const rev = getSurfaceProfileRevision(payload.profileId);
         const drawKey = staticRoofDrawCachePrefix(chunkCol, chunkRow, payload.profileId, rev, ppwu, zLevel);
-        let cached = this.surfaceCache.get(drawKey);
-        if (cached?.[0] && !cached[0].isPlaceholder) return cached[0];
         const maskKey = staticRoofMaskCachePrefix(chunkCol, chunkRow, zLevel);
         let maskEntry = this.surfaceCache.get(maskKey);
         if (!maskEntry) {
             const maskCanvas = buildStaticRoofMaskCanvas(obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx, zLevel, staticOccupancyLayers, ppwu);
-            if (!maskCanvas) return null;
+            if (!maskCanvas) {
+                this.surfaceCache.delete(drawKey);
+                return null;
+            }
             maskEntry = [maskCanvas];
             this.surfaceCache.set(maskKey, maskEntry);
+            this.surfaceCache.delete(drawKey);
         }
+        let cached = this.surfaceCache.get(drawKey);
+        if (cached?.[0] && !cached[0].isPlaceholder) return cached[0];
         const masked = applyStaticRoofMaskToCanvas(roofCanvas, maskEntry[0]);
         this.surfaceCache.set(drawKey, [masked]);
         return masked;

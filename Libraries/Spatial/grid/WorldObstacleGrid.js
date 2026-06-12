@@ -1,5 +1,5 @@
 import { colRowToIndex } from "./GridUtils.js";
-import { handleStaticGridCellHit } from "../../World/staticCellDamage.js";
+import { damageStaticGridCell } from "../../World/staticCellDamage.js";
 import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsAtOriginInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
 import { getWallCellBounds, markWallOnGrid, clearWallCells, computeBoundsFromWalls } from "./wallGridBake.js";
@@ -39,7 +39,7 @@ export class WorldObstacleGrid {
                 gridCol: 0,
                 gridRow: 0,
                 handleHit(damage, state) {
-                    handleStaticGridCellHit(state, this._obstacleGrid, this.gridCol, this.gridRow, damage);
+                    damageStaticGridCell(state, this._obstacleGrid, this.gridCol, this.gridRow, damage);
                 },
             };
             this._staticWallProxies[this._staticWallProxyCount] = proxy;

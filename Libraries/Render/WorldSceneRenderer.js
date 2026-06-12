@@ -1,7 +1,7 @@
 /** @typedef {import("./WorldSceneTypes.js").WorldSceneDrawInput} WorldSceneDrawInput */
 /** @typedef {import("./WorldSceneTypes.js").WorldSceneDrawOptions} WorldSceneDrawOptions */
 /** @typedef {import("./Props3D/PropRenderer.js").PropDrawRecipe} PropDrawRecipe */
-import { getWallDamageAlpha } from "./Structure3D/wallDamageVisual.js";
+import { getDamageAlphaFromHealth } from "./Structure3D/wallDamageVisual.js";
 import { getStaticCellDamageAlphaAtGrid } from "../World/staticCellDamage.js";
 import { collectStaticGridWallDrawables, drawStaticGridWallFace } from "./Structure3D/StaticGridWallDraw.js";
 import { clipToViewport } from "./common/viewportUtils.js";
@@ -105,7 +105,7 @@ export class WorldSceneRenderer {
     }
     _drawRetainedWallFace(ctx, face, input, viewport, px, py, worldBounds) {
         const fillStyle = this.settings.floorShadow ?? "#12161c";
-        face.draw(ctx, viewport, input.worldSurfaces, input.proceduralSurfaceDraw, fillStyle, getWallDamageAlpha(face.simWall), px, py, worldBounds);
+        face.draw(ctx, viewport, input.worldSurfaces, input.proceduralSurfaceDraw, fillStyle, getDamageAlphaFromHealth(face.simWall.health, face.simWall.maxHealth), px, py, worldBounds);
     }
     drawRagdollCorpsesOnly(ctx, input, viewport) {
         const px = viewport.x;

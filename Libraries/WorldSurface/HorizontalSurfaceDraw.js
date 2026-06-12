@@ -7,15 +7,10 @@ import { getSegmentFootprintCorners } from "../Spatial/geometry/WallGeometry.js"
 import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { forEachObstacleGridCellInAabb } from "../Spatial/grid/GridCoords.js";
 import { worldToChunkCol, worldToChunkRow } from "../Spatial/grid/ChunkGrid.js";
-import { getWallDamageAlpha, wallDamageOverlayStyle } from "../Render/Structure3D/wallDamageVisual.js";
+import { getDamageAlphaFromHealth, wallDamageOverlayStyle } from "../Render/Structure3D/wallDamageVisual.js";
 import { resolveStaticWallHeightAtCell, cellIsStaticBlocked } from "../World/staticOccupancyLayers.js";
 import { getStaticCellDamageAlphaAtGrid } from "../World/staticCellDamage.js";
 import { bakePixelsForWorldSpan } from "./WorldSurfaceResolution.js";
-/** @returns {{ x: number, y: number }} */
-export function projectHorizontalSurfaceOrigin(worldX, worldY, zLevel, viewerX, viewerY, cameraHeight, viewport = null) {
-    const strength = resolveStructurePerspectiveStrength(viewport);
-    return projectWorldPointAtHeight(worldX, worldY, viewerX, viewerY, zLevel, cameraHeight, strength);
-}
 /** @returns {[{ x: number, y: number }, { x: number, y: number }, { x: number, y: number }, { x: number, y: number }]} */
 export function projectHorizontalSurfaceCorners(originX, originY, sizePx, zLevel, viewerX, viewerY, cameraHeight, viewport = null) {
     const strength = resolveStructurePerspectiveStrength(viewport);
@@ -206,7 +201,7 @@ export function drawRoofSegmentDamageOverlays(ctx, chunkOriginX, chunkOriginY, c
         const roof = roofs[i];
         if (roof.simWall?.isDead) continue;
         if (Math.abs(roof.zLevel - zLevel) > 0.01) continue;
-        const damageAlpha = getWallDamageAlpha(roof.simWall);
+        const damageAlpha = getDamageAlphaFromHealth(roof.simWall.health, roof.simWall.maxHealth);
         if (damageAlpha <= 0) continue;
         ctx.save();
         ctx.beginPath();
@@ -296,7 +291,7 @@ export function drawWallFootprintDamageOverlays(ctx, chunkOriginX, chunkOriginY,
     for (let i = 0; i < segments.length; i++) {
         const wall = segments[i];
         if (wall.isDead || wall.collisionOnly) continue;
-        const damageAlpha = getWallDamageAlpha(wall);
+        const damageAlpha = getDamageAlphaFromHealth(wall.health, wall.maxHealth);
         if (damageAlpha <= 0) continue;
         const corners = getSegmentFootprintCorners(wall);
         ctx.save();
