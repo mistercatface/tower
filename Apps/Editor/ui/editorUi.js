@@ -6,7 +6,7 @@ import { mountMapOverview, estimateMapOverviewHeight, paintMapOverviewFrame } fr
 import { refreshMapPanelInputs } from "./mapPanel.js";
 import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEditor.js";
 import { drawLabFrame, pushEditorProfile, repaintUntilBakesDone, applyLabWorldRenderMode } from "./preview.js";
-import { initPresetSelect, bindToolbarControls, syncWorldRenderModeUi } from "./toolbar.js";
+import { initPresetSelect, bindToolbarControls, bindVectorPropsToolbar, syncWorldRenderModeUi } from "./toolbar.js";
 import { fitLabStageToView, mountLabViewport, refreshLabSpeed } from "./labViewport.js";
 import { TILELAB_UI_HTML } from "./shellHtml.js";
 import { buildMapPanel } from "./mapPanel.js";
@@ -81,6 +81,7 @@ export function mountEditorUi(state) {
             requestRedraw();
         },
     });
+    bindVectorPropsToolbar(state, requestRedraw);
     syncWorldRenderModeUi(state);
     const overviewViewportInput = document.getElementById("showMapOverviewViewportInput");
     overviewViewportInput.checked = state.editor.showMapOverviewViewport;

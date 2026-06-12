@@ -57,5 +57,6 @@ export class TileLabEditorState {
         this.showMapOverviewViewport = true;
         this.showMapOverviewGenBounds = true;
         this.showMapOverviewWallBounds = false;
+        this.forceVectorPropsAll = false;
     }
 }

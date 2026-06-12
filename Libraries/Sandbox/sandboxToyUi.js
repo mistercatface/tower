@@ -6,6 +6,7 @@ import { appendSandboxWorldPropInspectorFields, appendTranslateFields } from "./
 import { PAD_PRESETS } from "./padPresets.js";
 import { renderSandboxEquipPanel } from "./sandboxEquipPanel.js";
 import { SANDBOX_PATH_VISUAL_LABELS, SANDBOX_PATH_VISUAL_OPTIONS } from "./sandboxPathVisual.js";
+import { SANDBOX_PROP_VISUAL_LABELS, SANDBOX_PROP_VISUAL_OPTIONS } from "./sandboxPropVisual.js";
 import { sandboxSpawnAssemblyId, sandboxSpawnPadId, isSandboxSpawnPadId, isSandboxSpawnPropId, parseSandboxPadPreset } from "./sandboxSession.js";
 function readOpenSections(root) {
     const open = new Set();
@@ -485,6 +486,14 @@ export function mountSandboxToyUi(container, controller, onChange) {
                 options: SANDBOX_PATH_VISUAL_OPTIONS.map((optionId) => ({ value: optionId, label: SANDBOX_PATH_VISUAL_LABELS[optionId] })),
                 onChange: (value) => {
                     controller.setPathVisual(value, selectedProp);
+                    onChange();
+                },
+            });
+            appendSelectField(body, "Visual", {
+                value: controller.getPropVisual(selectedProp),
+                options: SANDBOX_PROP_VISUAL_OPTIONS.map((optionId) => ({ value: optionId, label: SANDBOX_PROP_VISUAL_LABELS[optionId] })),
+                onChange: (value) => {
+                    controller.setPropVisual(value, selectedProp);
                     onChange();
                 },
             });

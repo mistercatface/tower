@@ -25,6 +25,14 @@ export {
     SANDBOX_PATH_VISUAL_OPTIONS,
     SANDBOX_PATH_VISUAL_LABELS,
 } from "./sandboxPathVisual.js";
+export {
+    resolveSandboxPropVisual,
+    setSandboxPropVisual,
+    SANDBOX_PROP_VISUAL_DEFAULT,
+    SANDBOX_PROP_VISUAL_VECTOR,
+    SANDBOX_PROP_VISUAL_OPTIONS,
+    SANDBOX_PROP_VISUAL_LABELS,
+} from "./sandboxPropVisual.js";
 export { isSandboxCameraTarget, setSandboxCameraTarget, findSandboxCameraTargetWorldProp, tickSandboxCameraFollow } from "./sandboxCameraTarget.js";
 export { renderSandboxEquipPanel } from "./sandboxEquipPanel.js";
 export { getSandboxBehaviorLabel, isSandboxEquippable, isSandboxSpawnable, resolveSandboxBehaviors, forEachArmedSandboxWorldProp, SANDBOX_BEHAVIOR_LABELS } from "./sandboxCapabilities.js";

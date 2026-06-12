@@ -5,6 +5,7 @@ export const TILELAB_UI_HTML = `
         <span class="sep"></span>
         <label class="check-inline"><input id="showWallsInput" type="checkbox"> Physics Walls</label>
         <label class="check-inline"><input id="showPathDebugInput" type="checkbox"> HPA* Grid</label>
+        <label class="check-inline"><input id="showVectorPropsAllInput" type="checkbox"> Vector props</label>
         <label class="check-inline"><input id="showVignetteInput" type="checkbox"> Circular Overlay</label>
         <label class="check-inline"><input id="showAnimationPreviewInput" type="checkbox"> Animation Preview</label>
         <label class="check-inline"><input id="showMapOverviewInput" type="checkbox" checked> Map Overview</label>

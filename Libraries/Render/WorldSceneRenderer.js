@@ -7,7 +7,7 @@ import { drawProjectedWallFace } from "./Structure3D/ProjectedWallDraw.js";
 /** @typedef {import("./Structure3D/WallDrawContext.js").WallDrawContext} WallDrawContext */
 import { clipToViewport } from "./common/viewportUtils.js";
 import { PropRenderer } from "./Props3D/PropRenderer.js";
-import { renderActorKinematicsBody } from "./Characters/actorKinematicsRenderer.js";
+import { drawWorldProp } from "./drawWorldProp.js";
 import { elevationCameraFromViewport } from "../Spatial/iso/ElevationCamera.js";
 export class WorldSceneRenderer {
     /**
@@ -40,7 +40,7 @@ export class WorldSceneRenderer {
             { bounds: viewport.boundsVisibleDefault, kinds: ["worldProp"], filterId: "debris", match: (p) => p.strategy?.renderMode === "debris" },
             input.spatialFrame,
         );
-        for (let i = 0; i < props.length; i++) this.props.drawProp(ctx, props[i], px, py, { zoom });
+        for (let i = 0; i < props.length; i++) drawWorldProp(ctx, props[i], viewport, { gameState: input.gameState, propRenderer: this.props, px, py, zoom });
         ctx.restore();
     }
     _appendVisible3dProps(input, viewport, px, py) {
@@ -75,6 +75,7 @@ export class WorldSceneRenderer {
         const px = viewport.x;
         const py = viewport.y;
         const zoom = viewport.zoom ?? 1;
+        const drawContext = { gameState: input.gameState, propRenderer: this.props, px, py, zoom };
         /** @type {WallDrawContext} */
         const wallCtx = {
             viewport,
@@ -96,8 +97,7 @@ export class WorldSceneRenderer {
         visibleObjects.sort((a, b) => b._distSq - a._distSq);
         for (let i = 0; i < visibleObjects.length; i++) {
             const obj = visibleObjects[i];
-            if (obj.usesKinematicsBody) renderActorKinematicsBody(ctx, obj, viewport);
-            else if (obj.strategy) this.props.drawProp(ctx, obj, px, py, { zoom });
+            if (obj.strategy || obj.usesKinematicsBody) drawWorldProp(ctx, obj, viewport, drawContext);
             else if (!skipWalls && obj.staticGrid) {
                 wallCtx.wallHeight = obj.wallHeight;
                 wallCtx.wallBaseZ = obj.wallBaseZ;

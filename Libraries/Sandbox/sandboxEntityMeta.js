@@ -1,9 +1,11 @@
 /** @typedef {"off" | "normal" | "debug"} SandboxPathVisual */
+/** @typedef {"default" | "vector"} SandboxPropVisual */
 /**
  * @typedef {object} SandboxEntityMeta
  * @property {string} [activeBehaviorId]
  * @property {Record<string, object>} [behaviorOverrides]
  * @property {SandboxPathVisual} [pathVisual]
+ * @property {SandboxPropVisual} [propVisual]
  * @property {string} [assemblyGroupId]
  * @property {string} [assemblyRackId]
  * @property {string} [assemblyId]
@@ -73,6 +75,14 @@ export class SandboxEntityMetaStore {
     /** @param {number} entityId */
     getPathVisual(entityId) {
         return this.get(entityId)?.pathVisual;
+    }
+    /** @param {number} entityId @param {import("./sandboxPropVisual.js").SandboxPropVisual} visual */
+    setPropVisual(entityId, visual) {
+        this.ensure(entityId).propVisual = visual;
+    }
+    /** @param {number} entityId */
+    getPropVisual(entityId) {
+        return this.get(entityId)?.propVisual;
     }
     /** @param {number} entityId */
     getAssemblyGroupId(entityId) {

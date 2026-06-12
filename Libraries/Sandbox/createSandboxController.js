@@ -12,6 +12,7 @@ import { aabbFromTwoPointsInto, createAabb } from "../Math/Aabb2D.js";
 import { drawActivePathOverlay } from "../Render/map/drawActivePathOverlay.js";
 import { drawSandboxWeaponBars } from "./drawWorldPropWeaponBars.js";
 import { resolveSandboxPathVisual, setSandboxPathVisual } from "./sandboxPathVisual.js";
+import { resolveSandboxPropVisual, setSandboxPropVisual } from "./sandboxPropVisual.js";
 import { isSandboxCameraTarget, setSandboxCameraTarget } from "./sandboxCameraTarget.js";
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 /**
@@ -468,6 +469,14 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
         setPathVisual(visual, prop = session.getSelectedProp()) {
             if (!prop) return;
             setSandboxPathVisual(state, prop, visual);
+            session.sync();
+        },
+        getPropVisual(prop = session.getSelectedProp()) {
+            return prop ? resolveSandboxPropVisual(state, prop) : "default";
+        },
+        setPropVisual(visual, prop = session.getSelectedProp()) {
+            if (!prop) return;
+            setSandboxPropVisual(state, prop, visual);
             session.sync();
         },
         isCameraTarget(prop = session.getSelectedProp()) {
