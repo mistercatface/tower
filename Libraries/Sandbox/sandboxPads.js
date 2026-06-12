@@ -1,6 +1,6 @@
 import { createCircleFloorShape, createRectFloorShape, drawFloorShape, isAabbInView, processFloorShapes, syncPadQueryAabb } from "../Spatial/zones/floorShapes.js";
 import { PolygonShape } from "../Spatial/collision/Shapes.js";
-import { drawPitInterior, syncSinkPadAabb } from "../Spatial/zones/pit.js";
+import { drawPitInterior } from "../Spatial/zones/pit.js";
 import { PAD_PRESETS } from "./padPresets.js";
 import { runPadEffect, syncButtonFlipperLinks, syncPullPadWalls, syncSandboxPadPower, teardownPullPad, tickButtonSpawnerLinks } from "./padEffects.js";
 import {
@@ -57,14 +57,6 @@ function pointInPad(pad, wx, wy, padding = POINTER_HIT_PADDING) {
         halfH = Math.max(halfH, Math.abs(verts[i].y));
     }
     return Math.abs(wx - pad.x) <= halfW + padding && Math.abs(wy - pad.y) <= halfH + padding;
-}
-/** @param {object} pad @param {number} halfWidth @param {number} halfHeight */
-function syncRectPadAabb(pad, halfWidth, halfHeight) {
-    syncPadQueryAabb(pad, halfWidth, halfHeight);
-}
-/** @param {object} pad @param {number} radius */
-function syncCirclePadAabb(pad, radius) {
-    syncPadQueryAabb(pad, radius, radius);
 }
 /** @param {object} state @param {number} wx @param {number} wy */
 export function hitTestPad(state, wx, wy) {
@@ -127,15 +119,14 @@ export function buildSandboxPad(state, preset, x, y, options = {}) {
         const halfWidth = options.halfWidth ?? defHalfWidth;
         const halfHeight = options.halfHeight ?? defHalfHeight;
         pad = createRectFloorShape(x, y, halfWidth, halfHeight, { id });
-        syncRectPadAabb(pad, halfWidth, halfHeight);
+        syncPadQueryAabb(pad, halfWidth, halfHeight);
     } else if (options.halfWidth != null && options.halfHeight != null) {
         pad = createRectFloorShape(x, y, options.halfWidth, options.halfHeight, { id });
-        syncRectPadAabb(pad, options.halfWidth, options.halfHeight);
+        syncPadQueryAabb(pad, options.halfWidth, options.halfHeight);
     } else {
         const radius = options.radius ?? def.circleRadius;
         pad = createCircleFloorShape(x, y, radius, { id });
-        if (preset === "sink") syncSinkPadAabb(pad, radius);
-        else syncCirclePadAabb(pad, radius);
+        syncPadQueryAabb(pad, radius, radius);
     }
     pad.preset = preset;
     pad.powered = options.powered ?? true;
@@ -206,7 +197,7 @@ function ensurePullRectShape(pad, halfWidth, halfHeight) {
         { x: halfWidth, y: halfHeight },
         { x: -halfWidth, y: halfHeight },
     ]);
-    syncRectPadAabb(pad, halfWidth, halfHeight);
+    syncPadQueryAabb(pad, halfWidth, halfHeight);
 }
 /** @param {object} pad */
 function readPullHalfExtents(pad) {
@@ -216,10 +207,10 @@ function readPullHalfExtents(pad) {
 }
 /** @param {object} state @param {object} pad */
 function syncPadPosition(state, pad) {
-    if (pad.shape.type === "Circle") resizeCirclePad(pad, pad.shape.radius, pad.preset);
+    if (pad.shape.type === "Circle") resizeCirclePad(pad, pad.shape.radius);
     else if (pad.shape.type === "Polygon") {
         const { halfWidth, halfHeight } = readPullHalfExtents(pad);
-        syncRectPadAabb(pad, halfWidth, halfHeight);
+        syncPadQueryAabb(pad, halfWidth, halfHeight);
     }
     if (pad.preset === "pull" && pad.wallMode && pad.wallsUp) {
         teardownPullPad(state, pad);
@@ -263,13 +254,12 @@ function resizeRectPad(pad, halfWidth, halfHeight) {
     ];
     pad.shape.normals = pad.shape._computeNormals();
     pad.shape.boundingRadius = pad.shape._computeBoundingRadius();
-    syncRectPadAabb(pad, halfWidth, halfHeight);
+    syncPadQueryAabb(pad, halfWidth, halfHeight);
 }
-/** @param {object} pad @param {number} radius @param {string} preset */
-function resizeCirclePad(pad, radius, preset) {
+/** @param {object} pad @param {number} radius */
+function resizeCirclePad(pad, radius) {
     pad.shape.radius = radius;
-    if (preset === "sink") syncSinkPadAabb(pad, radius);
-    else syncCirclePadAabb(pad, radius);
+    syncPadQueryAabb(pad, radius, radius);
 }
 /**
  * @param {object} state
@@ -299,7 +289,7 @@ export function patchSandboxPad(state, id, patch) {
         syncPadPosition(state, pad);
     }
     if (pad.preset === "sink") {
-        if (patch.radius != null) resizeCirclePad(pad, patch.radius, pad.preset);
+        if (patch.radius != null) resizeCirclePad(pad, patch.radius);
         if (patch.sinkDepth != null) pad.sinkDepth = patch.sinkDepth;
     } else if (pad.preset === "pull") {
         const current = readPullHalfExtents(pad);
@@ -318,7 +308,7 @@ export function patchSandboxPad(state, id, patch) {
             syncPullPadWalls(state, pad);
         } else if (patch.wallMode === true && !pad.wallsUp) syncPullPadWalls(state, pad);
     } else if (pad.preset === "button") {
-        if (patch.radius != null) resizeCirclePad(pad, patch.radius, pad.preset);
+        if (patch.radius != null) resizeCirclePad(pad, patch.radius);
         if (patch.inputMode != null) {
             pad.inputMode = patch.inputMode;
             pad._toggleLatched = false;
